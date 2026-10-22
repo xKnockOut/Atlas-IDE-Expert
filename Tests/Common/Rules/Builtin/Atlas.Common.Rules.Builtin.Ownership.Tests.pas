@@ -1,0 +1,635 @@
+﻿unit Atlas.Common.Rules.Builtin.Ownership.Tests;
+
+// Tests der Regel owned-item-freed (#947): Freigabe von Elementen besitzender Listen
+// und Dictionarys, Besitz aus Erzeugung und OwnsObjects, Elementvariablen, Korrekturen, Optionen.
+// Tests der Regel create-without-assignment (#948): erzeugte und sofort verlorene Objekte,
+// Owner, Threads, selfRegistering, Korrektur mit try/finally.
+// Tests der Regel self-as-interface-in-constructor (#950): eigene Referenzzählung im Konstruktor,
+// TInterfacedObject nach inherited AfterConstruction, Formen der Weitergabe, Korrektur.
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TOwnershipRulesTests = class
+  public
+    [Test]
+    procedure IssueExampleReported;
+    [Test]
+    procedure FixRemovesFree;
+    [Test]
+    procedure FreeWithoutRemovalSuggestsDelete;
+    [Test]
+    procedure NotOwningListsAreSilent;
+    [Test]
+    procedure ElementVariablesAndLoops;
+    [Test]
+    procedure RemoveSuggestsExtract;
+    [Test]
+    procedure Dictionaries;
+    [Test]
+    procedure OffAndExclude;
+    [Test]
+    procedure CreatesOwning;
+    [Test]
+    procedure CreateIssueExampleReported;
+    [Test]
+    procedure CreateFixAssignsWithTryFinally;
+    [Test]
+    procedure CreateOwnersAndThreadsAreSilent;
+    [Test]
+    procedure CreateSelfRegisteringOption;
+    [Test]
+    procedure CreateOffAndExclude;
+    [Test]
+    procedure CreateNames;
+    [Test]
+    procedure SelfAsInterfaceOwnCounting;
+    [Test]
+    procedure SelfAsInterfaceOwnCountingSilentCases;
+    [Test]
+    procedure SelfAsInterfaceAfterConstruction;
+    [Test]
+    procedure SelfAsInterfaceOffAndExclude;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Configuration.Parser,
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Rules.Builtin.Ownership,
+  Atlas.Tests.RuleAssert;
+
+function Routine(const ACreate, ABody: string): string;
+begin
+  Result :=
+    'unit Auftraege;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'uses System.Generics.Collections;'#10 +
+    'procedure Bereinigen(I: Integer);'#10 +
+    'var'#10 +
+    '  Auftraege: TObjectList<TAuftrag>;'#10 +
+    '  Auftrag: TAuftrag;'#10 +
+    'begin'#10 +
+    '  Auftraege := ' + ACreate + ';'#10 +
+    ABody +
+    'end;'#10 +
+    'end.';
+end;
+
+function Body(const ABody: string): string;
+begin
+  Result := Routine('TObjectList<TAuftrag>.Create', ABody);
+end;
+
+/// <summary>Wendet alle Änderungen der Korrektur an, von hinten nach vorn (Zeilen mit #10).</summary>
+function ApplyFix(const AText: string; const AFix: TRuleFix): string;
+var
+  Index: Integer;
+  Edit: TRuleEdit;
+
+  function OffsetOf(const APosition: TTextPosition): Integer;
+  var
+    Line, Position: Integer;
+  begin
+    Position := 0;
+    for Line := 1 to APosition.Line do
+      Position := Pos(#10, AText, Position + 1);
+    Result := Position + APosition.Character;
+  end;
+
+begin
+  Result := AText;
+  for Index := High(AFix.Edits) downto 0 do
+  begin
+    Edit := AFix.Edits[Index];
+    Result := Copy(Result, 1, OffsetOf(Edit.Range.StartPos)) + Edit.NewText +
+      Copy(Result, OffsetOf(Edit.Range.EndPos) + 1, MaxInt);
+  end;
+end;
+
+procedure AssertParses(const ASource: string);
+var
+  Tree: TSyntaxTree;
+begin
+  Tree := TPascalParser.Parse(ASource);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+end;
+
+{ TOwnershipRulesTests }
+
+procedure TOwnershipRulesTests.IssueExampleReported;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TOwnedItemFreedRule.Create, Body('  Auftraege[I].Free;'#10 +
+    '  Auftraege.Delete(I);'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('owned-item-freed', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Auftraege besitzt seine Elemente (OwnsObjects); Delete gibt das Element ein zweites Mal frei.',
+    Findings[0].Message);
+  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(19, Findings[0].Range.EndPos.Character);
+  // Reihenfolge egal: Delete vor Free ebenso.
+  TRuleAssert.Reports(TOwnedItemFreedRule.Create, Body('  Auftrag := Auftraege[I];'#10 +
+    '  Auftraege.Delete(I);'#10'  Auftrag.Free;'#10));
+  // Zuweisung an das Element gibt das alte frei.
+  Findings := TRuleAssert.Findings(TOwnedItemFreedRule.Create, Body('  Auftraege[I].Free;'#10 +
+    '  Auftraege[I] := nil;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Auftraege besitzt seine Elemente (OwnsObjects); die Zuweisung an Auftraege[…] gibt das ' +
+    'Element ein zweites Mal frei.', Findings[0].Message);
+end;
+
+procedure TOwnershipRulesTests.FixRemovesFree;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Body('  Auftraege[I].Free;'#10'  Auftraege.Delete(I);'#10);
+  Findings := TRuleAssert.Findings(TOwnedItemFreedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Free entfernen', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(Body('  Auftraege.Delete(I);'#10), Fixed);
+  AssertParses(Fixed);
+  TRuleAssert.Silent(TOwnedItemFreedRule.Create, Fixed);
+  // FreeAndNil ebenso.
+  Source := Body('  FreeAndNil(Auftraege[I]);'#10'  Auftraege.Delete(I);'#10);
+  Findings := TRuleAssert.Findings(TOwnedItemFreedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(Body('  Auftraege.Delete(I);'#10), ApplyFix(Source, Findings[0].Fixes[0]));
+end;
+
+procedure TOwnershipRulesTests.FreeWithoutRemovalSuggestsDelete;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Body('  Auftraege.Items[I].Free;'#10);
+  Findings := TRuleAssert.Findings(TOwnedItemFreedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Auftraege besitzt seine Elemente (OwnsObjects); die Liste gibt das Element beim Freigeben ' +
+    'ein zweites Mal frei.', Findings[0].Message);
+  Assert.AreEqual('Delete statt Free', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(Body('  Auftraege.Delete(I);'#10), Fixed);
+  AssertParses(Fixed);
+end;
+
+procedure TOwnershipRulesTests.NotOwningListsAreSilent;
+begin
+  TRuleAssert.Silent(TOwnedItemFreedRule.Create, Routine('TObjectList<TAuftrag>.Create(False)',
+    '  Auftraege[I].Free;'#10'  Auftraege.Delete(I);'#10));
+  TRuleAssert.Silent(TOwnedItemFreedRule.Create, Body('  Auftraege.OwnsObjects := False;'#10 +
+    '  Auftraege[I].Free;'#10'  Auftraege.Delete(I);'#10));
+  // Extract gibt nicht frei.
+  TRuleAssert.Silent(TOwnedItemFreedRule.Create, Body('  Auftrag := Auftraege[I];'#10 +
+    '  Auftraege.Extract(Auftrag);'#10'  Auftrag.Free;'#10));
+  // Liste selbst freigeben und Delete allein sind richtig.
+  TRuleAssert.Silent(TOwnedItemFreedRule.Create, Body('  Auftraege.Delete(I);'#10'  Auftraege.Free;'#10));
+  // TList<T> besitzt nichts.
+  TRuleAssert.Silent(TOwnedItemFreedRule.Create, StringReplace(Routine('TList<TAuftrag>.Create',
+    '  Auftraege[I].Free;'#10'  Auftraege.Delete(I);'#10), 'TObjectList<TAuftrag>;', 'TList<TAuftrag>;', []));
+  // Element eines anderen Objekts.
+  TRuleAssert.Silent(TOwnedItemFreedRule.Create, Body('  Kunde.Auftraege[I].Free;'#10));
+end;
+
+procedure TOwnershipRulesTests.ElementVariablesAndLoops;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  TRuleAssert.Reports(TOwnedItemFreedRule.Create, Body('  Auftrag := Auftraege.Last;'#10'  Auftrag.Free;'#10));
+  Source := Body('  for Auftrag in Auftraege do'#10'    Auftrag.Free;'#10'  Auftraege.Clear;'#10);
+  Findings := TRuleAssert.Findings(TOwnedItemFreedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Auftraege besitzt seine Elemente (OwnsObjects); Clear gibt das Element ein zweites Mal frei.',
+    Findings[0].Message);
+  // Die Korrektur nimmt die ganze Schleife weg.
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(Body('  Auftraege.Clear;'#10), Fixed);
+  AssertParses(Fixed);
+  // Freigabe nach der Schleife betrifft das Element nicht mehr sicher; ein Feld der Schleife schon.
+  TRuleAssert.Silent(TOwnedItemFreedRule.Create, Body('  for Auftrag in Auftraege do'#10'    Pruefen(Auftrag);'#10 +
+    '  Auftrag := TAuftrag.Create;'#10'  Auftrag.Free;'#10));
+  TRuleAssert.Silent(TOwnedItemFreedRule.Create, Body('  Auftrag := TAuftrag.Create;'#10'  Auftrag.Free;'#10));
+  // V := Liste[I].Kunde ist kein Element.
+  TRuleAssert.Silent(TOwnedItemFreedRule.Create, Body('  Auftrag := Auftraege[I].Vorgaenger;'#10'  Auftrag.Free;'#10));
+end;
+
+procedure TOwnershipRulesTests.RemoveSuggestsExtract;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Body('  Auftrag := Auftraege[I];'#10'  Auftraege.Remove(Auftrag);'#10'  Auftrag.Free;'#10);
+  Findings := TRuleAssert.Findings(TOwnedItemFreedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Free entfernen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual('Extract statt Remove', Findings[0].Fixes[1].Title);
+  Assert.IsTrue(Findings[0].Fixes[1].Alternative);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[1]);
+  Assert.AreEqual(Body('  Auftrag := Auftraege[I];'#10'  Auftraege.Extract(Auftrag);'#10'  Auftrag.Free;'#10), Fixed);
+  TRuleAssert.Silent(TOwnedItemFreedRule.Create, Fixed);
+end;
+
+procedure TOwnershipRulesTests.Dictionaries;
+const
+  Source =
+    'unit Kunden;'#10 +
+    'interface'#10 +
+    'uses System.Generics.Collections;'#10 +
+    'type'#10 +
+    '  TKunden = class'#10 +
+    '  private'#10 +
+    '    FKunden: TObjectDictionary<string, TKunde>;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '    procedure Entfernen(const AName: string);'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TKunden.Create;'#10 +
+    'begin'#10 +
+    '  FKunden := TObjectDictionary<string, TKunde>.Create([doOwnsValues]);'#10 +
+    'end;'#10 +
+    'procedure TKunden.Entfernen(const AName: string);'#10 +
+    'begin'#10 +
+    '  Self.FKunden[AName].Free;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TOwnedItemFreedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('FKunden besitzt seine Werte (doOwnsValues); die Liste gibt das Element beim Freigeben ' +
+    'ein zweites Mal frei.', Findings[0].Message);
+  Assert.AreEqual('Remove statt Free', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(StringReplace(Source, 'Self.FKunden[AName].Free', 'Self.FKunden.Remove(AName)', []),
+    ApplyFix(Source, Findings[0].Fixes[0]));
+  // Ohne doOwnsValues besitzt das Dictionary nichts.
+  TRuleAssert.Silent(TOwnedItemFreedRule.Create, StringReplace(Source, '[doOwnsValues]', '[]', []));
+  // for in Values.
+  TRuleAssert.Reports(TOwnedItemFreedRule.Create, StringReplace(Source, '  Self.FKunden[AName].Free;'#10,
+    '  for var Kunde in FKunden.Values do'#10'    Kunde.Free;'#10, []));
+end;
+
+procedure TOwnershipRulesTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Body('  Auftraege[I].Free;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOwnedItemFreedRule.Create, Source,
+    '{"rules": {"owned-item-freed": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOwnedItemFreedRule.Create, Source,
+    '{"rules": {"owned-item-freed": {"exclude": ["Source/*.pas"]}}}', 'Source/Auftraege.pas'))));
+end;
+
+procedure TOwnershipRulesTests.CreatesOwning;
+var
+  IsDictionary: Boolean;
+begin
+  Assert.IsTrue(TOwnedItemFreedRule.CreatesOwning('TObjectList', '', IsDictionary));
+  Assert.IsFalse(IsDictionary);
+  Assert.IsTrue(TOwnedItemFreedRule.CreatesOwning('TObjectList', 'True', IsDictionary));
+  Assert.IsFalse(TOwnedItemFreedRule.CreatesOwning('TObjectList', 'False', IsDictionary));
+  Assert.IsFalse(TOwnedItemFreedRule.CreatesOwning('TObjectList', 'TComparer<T>.Default, False', IsDictionary));
+  Assert.IsTrue(TOwnedItemFreedRule.CreatesOwning('TObjectDictionary', '[doOwnsKeys, doOwnsValues]', IsDictionary));
+  Assert.IsTrue(IsDictionary);
+  Assert.IsFalse(TOwnedItemFreedRule.CreatesOwning('TObjectDictionary', '[doOwnsKeys]', IsDictionary));
+  Assert.IsFalse(TOwnedItemFreedRule.CreatesOwning('TObjectDictionary', '', IsDictionary));
+end;
+
+function Import(const ABody: string): string;
+begin
+  Result :=
+    'unit Import;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TImportProtokoll = class'#10 +
+    '  end;'#10 +
+    '  TImport = class'#10 +
+    '    procedure Starten;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TImport.Starten;'#10 +
+    'begin'#10 +
+    ABody +
+    'end;'#10 +
+    'end.';
+end;
+
+procedure TOwnershipRulesTests.CreateIssueExampleReported;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create,
+    Import('  TImportProtokoll.Create;'#10'  Laden;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('create-without-assignment', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Das erzeugte TImportProtokoll wird nirgends gespeichert und nie freigegeben (Speicherleck).',
+    Findings[0].Message);
+  Assert.AreEqual(11, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(25, Findings[0].Range.EndPos.Character);
+  // Gespeichert, weitergegeben oder sofort benutzt: still.
+  TRuleAssert.Silent(TCreateWithoutAssignmentRule.Create, Import('  FProtokoll := TImportProtokoll.Create;'#10));
+  TRuleAssert.Silent(TCreateWithoutAssignmentRule.Create, Import('  FListe.Add(TImportProtokoll.Create);'#10));
+  TRuleAssert.Silent(TCreateWithoutAssignmentRule.Create, Import('  TImportProtokoll.Create.Free;'#10));
+  TRuleAssert.Silent(TCreateWithoutAssignmentRule.Create, Import('  inherited Create;'#10));
+  TRuleAssert.Silent(TCreateWithoutAssignmentRule.Create, Import('  FFabrik.Create;'#10));
+  // Records belegen keinen Heap.
+  TRuleAssert.Silent(TCreateWithoutAssignmentRule.Create, StringReplace(Import('  TImportProtokoll.Create(1);'#10),
+    '  TImportProtokoll = class', '  TImportProtokoll = record', []));
+  // Unbekannte Klasse ohne Argumente: gemeldet, mit Unit-Präfix und generisch ebenso.
+  TRuleAssert.Reports(TCreateWithoutAssignmentRule.Create, Import('  System.Classes.TStringList.Create;'#10));
+  Findings := TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, Import('  TList<Integer>.Create();'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Das erzeugte TList<Integer> wird nirgends gespeichert und nie freigegeben (Speicherleck).',
+    Findings[0].Message);
+end;
+
+procedure TOwnershipRulesTests.CreateFixAssignsWithTryFinally;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Import('  TImportProtokoll.Create;'#10'  Laden;'#10'  Melden;'#10);
+  Findings := TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('An ImportProtokoll zuweisen und in try/finally freigeben', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(StringReplace(Import('  ImportProtokoll := TImportProtokoll.Create;'#10'  try'#10 +
+    '    Laden;'#10'    Melden;'#10'  finally'#10'    ImportProtokoll.Free;'#10'  end;'#10),
+    'procedure TImport.Starten;'#10'begin', 'procedure TImport.Starten;'#10'var'#10 +
+    '  ImportProtokoll: TImportProtokoll;'#10'begin', []), Fixed);
+  AssertParses(Fixed);
+  TRuleAssert.Silent(TCreateWithoutAssignmentRule.Create, Fixed);
+  // Letzte Anweisung: leerer try-Block; vergebener Name bekommt eine Nummer.
+  Source := Import('  ImportProtokoll := 1;'#10'  TImportProtokoll.Create;'#10);
+  Findings := TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, Source);
+  Assert.AreEqual('An ImportProtokoll2 zuweisen und in try/finally freigeben', Findings[0].Fixes[0].Title);
+  AssertParses(ApplyFix(Source, Findings[0].Fixes[0]));
+  // In einer Zeile mit anderer Anweisung keine Korrektur.
+  Findings := TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create,
+    Import('  if X then TImportProtokoll.Create;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TOwnershipRulesTests.CreateOwnersAndThreadsAreSilent;
+const
+  Source =
+    'unit Formular;'#10 +
+    'interface'#10 +
+    'uses Vcl.StdCtrls, System.Classes;'#10 +
+    'type'#10 +
+    '  TKnopf = class(TButton)'#10 +
+    '  end;'#10 +
+    '  TArbeiter = class(TThread)'#10 +
+    '  end;'#10 +
+    '  TMerker = class'#10 +
+    '    constructor Create(A: Integer);'#10 +
+    '  end;'#10 +
+    '  TFormular = class(TForm)'#10 +
+    '    procedure Anlegen;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TMerker.Create(A: Integer);'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'procedure TFormular.Anlegen;'#10 +
+    'begin'#10 +
+    '  TButton.Create(Self);'#10 +
+    '  TKnopf.Create(Panel1);'#10 +
+    '  TArbeiter.Create(False);'#10 +
+    '  TRegistrierung.Create(Menue);'#10 +
+    '  TMerker.Create(1);'#10 +
+    '  TKnopf.Create(nil);'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Gemeldet: TMerker (bekannte Klasse ohne Owner) und TKnopf.Create(nil).
+  Findings := TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, Source);
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(24, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(25, Findings[1].Range.StartPos.Line);
+end;
+
+procedure TOwnershipRulesTests.CreateSelfRegisteringOption;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Import('  TImportProtokoll.Create;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, Source,
+    '{"rules": {"create-without-assignment": {"selfRegistering": ["TImport*"]}}}'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, Source,
+    '{"rules": {"create-without-assignment": {"selfRegistering": ["TExpert"]}}}'))));
+  TConfigurationParser.Parse('{"rules": {"create-without-assignment": {"selfRegistering": "TExpert"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+procedure TOwnershipRulesTests.CreateOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Import('  TImportProtokoll.Create;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, Source,
+    '{"rules": {"create-without-assignment": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, Source,
+    '{"rules": {"create-without-assignment": {"exclude": ["Source/*.pas"]}}}', 'Source/Import.pas'))));
+end;
+
+procedure TOwnershipRulesTests.CreateNames;
+begin
+  Assert.IsTrue(TCreateWithoutAssignmentRule.LooksLikeType('TStringList'));
+  Assert.IsTrue(TCreateWithoutAssignmentRule.LooksLikeType('EImport'));
+  Assert.IsFalse(TCreateWithoutAssignmentRule.LooksLikeType('FFabrik'));
+  Assert.IsFalse(TCreateWithoutAssignmentRule.LooksLikeType('Termin'));
+  Assert.AreEqual('StringList', TCreateWithoutAssignmentRule.VariableName('System.Classes.TStringList'));
+  Assert.AreEqual('List', TCreateWithoutAssignmentRule.VariableName('TList<Integer>'));
+  Assert.AreEqual('Termin', TCreateWithoutAssignmentRule.VariableName('Termin'));
+end;
+
+function Beobachter(const AAncestor, AMembers, AImplementation: string): string;
+begin
+  Result :=
+    'unit Beobachtung;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  IBeobachter = interface'#10 +
+    '  end;'#10 +
+    '  IQuelle = interface'#10 +
+    '    procedure Anmelden(const ABeobachter: IBeobachter);'#10 +
+    '    procedure Merken(AObjekt: TObject);'#10 +
+    '  end;'#10 +
+    '  TBeobachter = class(' + AAncestor + ', IBeobachter)'#10 +
+    '  private'#10 +
+    '    FQuelle: IQuelle;'#10 +
+    AMembers +
+    '  public'#10 +
+    '    constructor Create(const AQuelle: IQuelle);'#10 +
+    '    procedure AfterConstruction; override;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    AImplementation +
+    'end.';
+end;
+
+function Gezaehlt(const AConstructorBody: string): string;
+begin
+  Result := Beobachter('TObject',
+    '    FZaehler: Integer;'#10 +
+    '    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;'#10 +
+    '    function _AddRef: Integer; stdcall;'#10 +
+    '    function _Release: Integer; stdcall;'#10,
+    'function TBeobachter._Release: Integer;'#10 +
+    'begin'#10 +
+    '  Dec(FZaehler);'#10 +
+    '  Result := FZaehler;'#10 +
+    '  if Result = 0 then'#10 +
+    '    Destroy;'#10 +
+    'end;'#10 +
+    'constructor TBeobachter.Create(const AQuelle: IQuelle);'#10 +
+    'begin'#10 +
+    '  inherited Create;'#10 +
+    '  FQuelle := AQuelle;'#10 +
+    AConstructorBody +
+    'end;'#10 +
+    'procedure TBeobachter.AfterConstruction;'#10 +
+    'begin'#10 +
+    '  inherited;'#10 +
+    'end;'#10);
+end;
+
+function NachInherited(const ABody: string): string;
+begin
+  Result := Beobachter('TInterfacedObject', '',
+    'constructor TBeobachter.Create(const AQuelle: IQuelle);'#10 +
+    'begin'#10 +
+    '  inherited Create;'#10 +
+    '  FQuelle := AQuelle;'#10 +
+    '  FQuelle.Anmelden(Self);'#10 +
+    'end;'#10 +
+    'procedure TBeobachter.AfterConstruction;'#10 +
+    'begin'#10 +
+    ABody +
+    'end;'#10);
+end;
+
+procedure TOwnershipRulesTests.SelfAsInterfaceOwnCounting;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TSelfAsInterfaceInConstructorRule.Create,
+    Gezaehlt('  FQuelle.Anmelden(Self);'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('self-as-interface-in-constructor', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Self wird im Konstruktor als Interface übergeben; die eigene Referenzzählung von TBeobachter ' +
+    'gibt das Objekt frei, sobald der Zähler danach auf 0 fällt.', Findings[0].Message);
+  Assert.AreEqual(32, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(19, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Weitere Formen der Weitergabe.
+  TRuleAssert.Reports(TSelfAsInterfaceInConstructorRule.Create, Gezaehlt('  (Self as IBeobachter)._AddRef;'#10));
+  TRuleAssert.Reports(TSelfAsInterfaceInConstructorRule.Create,
+    Gezaehlt('  FQuelle.Anmelden(IBeobachter(Self));'#10));
+  TRuleAssert.Reports(TSelfAsInterfaceInConstructorRule.Create,
+    StringReplace(Gezaehlt('  FSelbst := Self;'#10), '    FQuelle: IQuelle;'#10,
+    '    FQuelle: IQuelle;'#10'    FSelbst: IBeobachter;'#10, []));
+end;
+
+procedure TOwnershipRulesTests.SelfAsInterfaceOwnCountingSilentCases;
+begin
+  // Als Objekt weitergegeben, Methode von Self, Feld von Self.
+  TRuleAssert.Silent(TSelfAsInterfaceInConstructorRule.Create, Gezaehlt('  FQuelle.Merken(Self);'#10 +
+    '  Self.Free;'#10'  FQuelle.Anmelden(nil);'#10));
+  // Schutz in NewInstance.
+  TRuleAssert.Silent(TSelfAsInterfaceInConstructorRule.Create, StringReplace(Gezaehlt('  FQuelle.Anmelden(Self);'#10),
+    '    function _Release: Integer; stdcall;'#10, '    function _Release: Integer; stdcall;'#10 +
+    '    class function NewInstance: TObject; override;'#10, []));
+  // _Release ohne Freigabe (Singleton-Muster).
+  TRuleAssert.Silent(TSelfAsInterfaceInConstructorRule.Create, StringReplace(Gezaehlt('  FQuelle.Anmelden(Self);'#10),
+    '    Destroy;'#10, '    Result := -1;'#10, []));
+  // Unbekannter Vorfahr: die Kette ist nicht zu prüfen.
+  TRuleAssert.Silent(TSelfAsInterfaceInConstructorRule.Create, StringReplace(Gezaehlt('  FQuelle.Anmelden(Self);'#10),
+    'class(TObject,', 'class(TUnbekannt,', []));
+  // TInterfacedObject im Konstruktor: Self ist durch NewInstance geschützt.
+  TRuleAssert.Silent(TSelfAsInterfaceInConstructorRule.Create, NachInherited('  inherited;'#10));
+end;
+
+procedure TOwnershipRulesTests.SelfAsInterfaceAfterConstruction;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := NachInherited('  inherited;'#10'  FQuelle.Anmelden(Self);'#10);
+  Findings := TRuleAssert.Findings(TSelfAsInterfaceInConstructorRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Self wird nach inherited AfterConstruction als Interface übergeben; fällt der Zähler danach ' +
+    'auf 0, ist das Objekt schon freigegeben.', Findings[0].Message);
+  Assert.AreEqual(26, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual('Vor inherited verschieben', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(NachInherited('  FQuelle.Anmelden(Self);'#10'  inherited;'#10), Fixed);
+  AssertParses(Fixed);
+  TRuleAssert.Silent(TSelfAsInterfaceInConstructorRule.Create, Fixed);
+  // Ohne eigene Zeile keine Korrektur.
+  Findings := TRuleAssert.Findings(TSelfAsInterfaceInConstructorRule.Create,
+    NachInherited('  inherited; FQuelle.Anmelden(Self);'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Eigene Referenzzählung: auch in AfterConstruction gemeldet.
+  Findings := TRuleAssert.Findings(TSelfAsInterfaceInConstructorRule.Create,
+    StringReplace(Gezaehlt(''), '  inherited;'#10'end;'#10'end.', '  FQuelle.Anmelden(Self);'#10'end;'#10'end.', []));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Self wird in AfterConstruction als Interface übergeben; die eigene Referenzzählung von ' +
+    'TBeobachter gibt das Objekt frei, sobald der Zähler danach auf 0 fällt.', Findings[0].Message);
+end;
+
+procedure TOwnershipRulesTests.SelfAsInterfaceOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Gezaehlt('  FQuelle.Anmelden(Self);'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSelfAsInterfaceInConstructorRule.Create, Source,
+    '{"rules": {"self-as-interface-in-constructor": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSelfAsInterfaceInConstructorRule.Create, Source,
+    '{"rules": {"self-as-interface-in-constructor": {"exclude": ["Source/*.pas"]}}}', 'Source/Beobachtung.pas'))));
+  Assert.IsTrue(TSelfAsInterfaceInConstructorRule.IsInterfaceType('IBeobachter'));
+  Assert.IsTrue(TSelfAsInterfaceInConstructorRule.IsInterfaceType('System.IInterface'));
+  Assert.IsTrue(TSelfAsInterfaceInConstructorRule.IsInterfaceType('IList<Integer>'));
+  Assert.IsFalse(TSelfAsInterfaceInConstructorRule.IsInterfaceType('TObject'));
+  Assert.IsFalse(TSelfAsInterfaceInConstructorRule.IsInterfaceType('Integer'));
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TOwnershipRulesTests);
+
+end.

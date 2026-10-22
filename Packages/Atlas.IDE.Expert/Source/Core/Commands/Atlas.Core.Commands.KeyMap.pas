@@ -360,6 +360,8 @@ begin
       Result := 'Atlas.NewLineAbove';
     TAtlasKeyFunction.Unwrap:
       Result := 'Atlas.Unwrap';
+    TAtlasKeyFunction.ProblemsWindow:
+      Result := 'Atlas.ProblemsWindow';
   else
     Result := '';
   end;

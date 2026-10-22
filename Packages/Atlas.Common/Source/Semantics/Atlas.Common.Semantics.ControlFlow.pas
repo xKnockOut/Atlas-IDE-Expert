@@ -79,6 +79,8 @@ type
     FTouches: TArray<string>;
     FSuccessors: TList<TFlowNode>;
     FPredecessors: TList<TFlowNode>;
+    FMayRaise: Boolean;
+    FRaiseEntry: Boolean;
   public
     constructor Create(AIndex: Integer; AKind: TFlowNodeKind; ASyntax: TSyntaxNode);
     destructor Destroy; override;
@@ -97,6 +99,13 @@ type
     function ReadsName(const AName: string): Boolean;
     function MaybeReadsName(const AName: string): Boolean;
     function TouchesName(const AName: string): Boolean;
+    /// <summary>Anweisung in einem try: Sie kann eine Ausnahme auslösen, bevor sie wirkt (#915).</summary>
+    property MayRaise: Boolean read FMayRaise;
+    /// <summary>Eingang eines except-Teils bzw. der finally-Kopie für Ausnahmen (#915).</summary>
+    property RaiseEntry: Boolean read FRaiseEntry;
+    /// <summary>Führt die Kante zu ANext nur über eine mögliche Ausnahme dieser Anweisung (nicht über raise)?
+    /// Regeln, die einem Wert folgen, können solche Wege auslassen (use-after-free, #915).</summary>
+    function IsImplicitRaiseEdge(ANext: TFlowNode): Boolean;
     property Successors: TList<TFlowNode> read FSuccessors;
     property Predecessors: TList<TFlowNode> read FPredecessors;
   end;
@@ -341,6 +350,12 @@ end;
 function TFlowNode.TouchesName(const AName: string): Boolean;
 begin
   Result := ContainsName(FTouches, AName);
+end;
+
+function TFlowNode.IsImplicitRaiseEdge(ANext: TFlowNode): Boolean;
+begin
+  Result := FMayRaise and (ANext <> nil) and ANext.FRaiseEntry and
+    not ((FSyntax <> nil) and (FSyntax.Kind = TSyntaxKind.RaiseStatement));
 end;
 
 { TFlowSignatures }
@@ -640,7 +655,10 @@ begin
   LinkAll(APreds, Result);
   // Innerhalb eines try kann jede Anweisung eine Ausnahme auslösen.
   if FTryDepth > 0 then
+  begin
+    Result.FMayRaise := True;
     Jump(Result, FRaiseTargets.Last);
+  end;
 end;
 
 function TFlowBuilder.Sequence(AParent: TSyntaxNode; AFirst: Integer;
@@ -848,6 +866,7 @@ begin
           if FRaiseTargets.Contains(Onward) <> Pass then
             Continue;
           FinallyEntry := NewNode(TFlowNodeKind.Join, nil);
+          FinallyEntry.FRaiseEntry := Pass;
           Resolve(Context.Routes[Index], FinallyEntry);
           Ends := Sequence(FinallyPart, 0, [FinallyEntry]);
           for Node in Ends do
@@ -869,6 +888,7 @@ begin
   Dec(FTryDepth);
   FRaiseTargets.Delete(FRaiseTargets.Count - 1);
   Handler := NewNode(TFlowNodeKind.Join, nil);
+  Handler.FRaiseEntry := True;
   Resolve(Handlers, Handler);
   Result := Body;
   HasHandlers := False;

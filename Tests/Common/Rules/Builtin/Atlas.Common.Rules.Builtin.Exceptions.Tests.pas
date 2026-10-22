@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Exceptions.Tests;
 
-// Tests für die Exception-Regeln (#277): je Regel ein positiver und ein negativer Fall.
+// Tests für die Exception-Regeln (#277): je Regel ein positiver und ein negativer Fall;
+// exception-in-destructor (#927).
 
 interface
 
@@ -25,6 +26,28 @@ type
     procedure FreedAfterRaiseReported;
     [Test]
     procedure NoDoubleFreeSilent;
+    [Test]
+    procedure ExceptionInDestructorIssueExample;
+    [Test]
+    procedure ExceptionInDestructorVariants;
+    [Test]
+    procedure ExceptionInDestructorSilentCases;
+    [Test]
+    procedure ExceptHandlerOrderIssueExample;
+    [Test]
+    procedure ExceptHandlerOrderVariants;
+    [Test]
+    procedure ExceptHandlerOrderSilentCases;
+    [Test]
+    procedure ExceptHandlerOrderOffAndExclude;
+    [Test]
+    procedure ReraiseIssueExample;
+    [Test]
+    procedure ReraiseVariants;
+    [Test]
+    procedure ReraiseSilentCases;
+    [Test]
+    procedure ReraiseOffAndExclude;
   end;
 
 implementation
@@ -34,6 +57,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Exceptions,
+  Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
 const
@@ -114,6 +138,231 @@ begin
     '  Liste.Free;'#10'  raise EKunde.Create(''X'');'));
   TRuleAssert.Silent(TExceptionFreedRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
     'procedure A;'#10'begin'#10'  raise E;'#10'end;'#10'procedure B;'#10'begin'#10'  E.Free;'#10'end;'#10'end.');
+end;
+
+function Sitzung(const ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  TSitzung = class'#10'    FOffen: Boolean;'#10 +
+    '    destructor Destroy; override;'#10'  end;'#10'implementation'#10'destructor TSitzung.Destroy;'#10 +
+    'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+procedure TExceptionRulesTests.ExceptionInDestructorIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TExceptionInDestructorRule.Create, Sitzung('  if FOffen then'#10 +
+    '    raise ESitzung.Create(''Sitzung noch offen'');'#10'  inherited;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('raise im Destruktor: inherited Destroy läuft nicht mehr, Felder bleiben liegen.',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(11, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(4, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Korrigiert: Zustand protokollieren statt auslösen.
+  TRuleAssert.Silent(TExceptionInDestructorRule.Create, Sitzung('  if FOffen then'#10 +
+    '    Schliessen;'#10'  inherited;'));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TExceptionInDestructorRule.Create,
+    Sitzung('  raise ESitzung.Create(''x'');'), '{"rules": {"exception-in-destructor": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TExceptionInDestructorRule.Create,
+    Sitzung('  raise ESitzung.Create(''x'');'), '{"rules": {"exception-in-destructor": {"exclude": ["Alt/*.pas"]}}}',
+    'Alt/U.pas'))));
+end;
+
+procedure TExceptionRulesTests.ExceptionInDestructorVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Nach inherited, im finally, erneutes raise im except-Teil, class destructor.
+  Findings := TRuleAssert.Findings(TExceptionInDestructorRule.Create, Sitzung('  try'#10'    Speichern;'#10 +
+    '  finally'#10'    inherited;'#10'  end;'#10'  if FOffen then'#10'    raise ESitzung.Create(''x'');'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('raise im Destruktor: die Ausnahme verlässt Destroy, der Aufrufer erwartet eine Freigabe ohne ' +
+    'Ausnahme.', Findings[0].Message);
+  TRuleAssert.Reports(TExceptionInDestructorRule.Create, Sitzung('  try'#10'    Speichern;'#10'  finally'#10 +
+    '    raise ESitzung.Create(''x'');'#10'  end;'));
+  TRuleAssert.Reports(TExceptionInDestructorRule.Create, Sitzung('  try'#10'    Speichern;'#10'  except'#10 +
+    '    Protokoll;'#10'    raise;'#10'  end;'));
+  TRuleAssert.Reports(TExceptionInDestructorRule.Create, 'unit U;'#10'interface'#10'type'#10'  TListe = class'#10 +
+    '    class destructor Destroy;'#10'  end;'#10'implementation'#10'class destructor TListe.Destroy;'#10 +
+    'begin'#10'  raise EListe.Create(''x'');'#10'end;'#10'end.');
+end;
+
+procedure TExceptionRulesTests.ExceptionInDestructorSilentCases;
+begin
+  // Abgefangen im try-Teil, andere Methode, eingebettete Routine und anonyme Methode.
+  TRuleAssert.Silent(TExceptionInDestructorRule.Create, Sitzung('  try'#10'    if FOffen then'#10 +
+    '      raise ESitzung.Create(''x'');'#10'  except'#10'    on E: ESitzung do'#10'      Protokoll(E);'#10'  end;'#10 +
+    '  inherited;'));
+  TRuleAssert.Silent(TExceptionInDestructorRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'procedure TSitzung.Schliessen;'#10'begin'#10'  raise ESitzung.Create(''x'');'#10'end;'#10'end.');
+  TRuleAssert.Silent(TExceptionInDestructorRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'destructor TSitzung.Destroy;'#10'  procedure Pruefen;'#10'  begin'#10'    raise ESitzung.Create(''x'');'#10 +
+    '  end;'#10'begin'#10'  FAufgabe := procedure'#10'    begin'#10'      raise ESitzung.Create(''x'');'#10 +
+    '    end;'#10'  inherited;'#10'end;'#10'end.');
+end;
+
+function Handler(const AHandlers: string): string;
+begin
+  Result := InRoutine('  try'#10'    Wert := StrToInt(Text);'#10'  except'#10 + AHandlers + '  end;');
+end;
+
+procedure TExceptionRulesTests.ExceptHandlerOrderIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Handler('    on E: Exception do'#10'      Protokoll(E.Message);'#10 +
+    '    on E: EConvertError do'#10'      ShowMessage(''Ungültige Zahl'');'#10);
+  Findings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('except-handler-order', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual('Nie erreicht: EConvertError ist ein Nachfahr von Exception, das schon in Zeile 9 behandelt wird.',
+    Findings[0].Message);
+  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(10, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('on EConvertError vor on Exception verschieben', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Handler('    on E: EConvertError do'#10'      ShowMessage(''Ungültige Zahl'');'#10 +
+    '    on E: Exception do'#10'      Protokoll(E.Message);'#10), Fixed);
+  TRuleAssert.Silent(TExceptHandlerOrderRule.Create, Fixed);
+end;
+
+procedure TExceptionRulesTests.ExceptHandlerOrderVariants;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Doppelter Handler: keine Korrektur.
+  Findings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Handler('    on E: EConvertError do'#10 +
+    '      Protokoll(E.Message);'#10'    on EConvertError do'#10'      Abbrechen;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Nie erreicht: EConvertError wird schon in Zeile 9 behandelt.', Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Bekannte Hierarchie über zwei Stufen; letzter Handler ohne Semikolon, danach else.
+  Source := Handler('    on E: EStreamError do'#10'      Protokoll(E.Message);'#10 +
+    '    on E: EFOpenError do'#10'      begin'#10'        Abbrechen;'#10'      end'#10'  else'#10'    raise;'#10);
+  Findings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Nie erreicht: EFOpenError ist ein Nachfahr von EStreamError, das schon in Zeile 9 behandelt wird.',
+    Findings[0].Message);
+  Assert.AreEqual(Handler('    on E: EFOpenError do'#10'      begin'#10'        Abbrechen;'#10'      end;'#10 +
+    '    on E: EStreamError do'#10'      Protokoll(E.Message);'#10'  else'#10'    raise;'#10),
+    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+  // Eigene Hierarchie aus der Unit, TObject, geschachteltes try.
+  Findings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  EBasis = class(Exception);'#10'  EKunde = class(EBasis);'#10'implementation'#10'procedure P;'#10'begin'#10 +
+    '  try'#10'    try'#10'      Laden;'#10'    except'#10'      on EBasis do Abbrechen;'#10 +
+    '      on E: EKunde do Melden(E);'#10'    end;'#10'  except'#10'    on TObject do Abbrechen;'#10 +
+    '    on E: Exception do Melden(E);'#10'  end;'#10'end;'#10'end.');
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('Nie erreicht: Exception ist ein Nachfahr von TObject, das schon in Zeile 17 behandelt wird.',
+    Findings[1].Message);
+  Assert.AreEqual('Nie erreicht: EKunde ist ein Nachfahr von EBasis, das schon in Zeile 13 behandelt wird.',
+    Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  // Beide Handler in einer Zeile: gemeldet, aber ohne Korrektur.
+  Findings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Handler(
+    '    on Exception do Abbrechen; on SysUtils.EConvertError do Melden;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('EIntError', TExceptHandlerOrderRule.KnownParent('ERangeError'));
+  Assert.AreEqual('', TExceptHandlerOrderRule.KnownParent('EFremd'));
+end;
+
+procedure TExceptionRulesTests.ExceptHandlerOrderSilentCases;
+begin
+  // Speziell vor allgemein, unverwandte Klassen, unbekannte Klassen untereinander, Exception nach TObject-fremdem.
+  TRuleAssert.Silent(TExceptHandlerOrderRule.Create, Handler('    on E: EConvertError do'#10'      Melden;'#10 +
+    '    on E: EInOutError do'#10'      Melden;'#10'    on E: EFremd do'#10'      Melden;'#10 +
+    '    on E: EAnders do'#10'      Melden;'#10'    on E: Exception do'#10'      Protokoll(E.Message);'#10));
+  TRuleAssert.Silent(TExceptHandlerOrderRule.Create, Handler('    on E: EDivByZero do Melden;'#10 +
+    '    on E: EMathError do Melden;'#10'    on E: EIntError do Melden;'#10));
+  TRuleAssert.Silent(TExceptHandlerOrderRule.Create, Handler('    Protokoll;'#10));
+end;
+
+procedure TExceptionRulesTests.ExceptHandlerOrderOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Handler('    on Exception do Abbrechen;'#10'    on EConvertError do Melden;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Source,
+    '{"rules": {"except-handler-order": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Source,
+    '{"rules": {"except-handler-order": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
+end;
+
+procedure TExceptionRulesTests.ReraiseIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Handler('    on E: EDatenbank do'#10'    begin'#10'      Protokoll(E.Message);'#10'      raise E;'#10 +
+    '    end;'#10);
+  Findings := TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('reraise-exception-object', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('raise E löst das Objekt neu aus: Absprungstelle (ExceptAddr) und Aufrufliste zeigen danach auf ' +
+    'diesen Handler statt auf den ursprünglichen Fehler; raise; wirft die Exception unverändert weiter.',
+    Findings[0].Message);
+  Assert.AreEqual(11, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(6, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(13, Findings[0].Range.EndPos.Character);
+  Assert.AreEqual('raise E; durch raise; ersetzen', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Handler('    on E: EDatenbank do'#10'    begin'#10'      Protokoll(E.Message);'#10 +
+    '      raise;'#10'    end;'#10), Fixed);
+  TRuleAssert.Silent(TReraiseExceptionObjectRule.Create, Fixed);
+end;
+
+procedure TExceptionRulesTests.ReraiseVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Ohne begin, vor else, im inneren try, mit at (ohne Korrektur), anderer Name.
+  Findings := TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, Handler(
+    '    on Fehler: EConvertError do raise Fehler'#10'  else'#10'    raise;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Findings := TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, Handler(
+    '    on E: Exception do'#10'    begin'#10'      try'#10'        Aufraeumen;'#10'      except'#10 +
+    '        on F: EInOutError do'#10'          raise E;'#10'      end;'#10'      raise E at ReturnAddress;'#10 +
+    '    end;'#10));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
+end;
+
+procedure TExceptionRulesTests.ReraiseSilentCases;
+begin
+  // raise;, neue Exception, Handler ohne Namen, AcquireExceptionObject, neu zugewiesen, anonyme Methode, außerhalb.
+  TRuleAssert.Silent(TReraiseExceptionObjectRule.Create, Handler('    on E: EDatenbank do'#10'      raise;'#10 +
+    '    on E: EConvertError do'#10'      raise EEingabe.Create(E.Message);'#10'    on EInOutError do'#10 +
+    '      raise E;'#10));
+  TRuleAssert.Silent(TReraiseExceptionObjectRule.Create, Handler('    on E: EDatenbank do'#10'    begin'#10 +
+    '      AcquireExceptionObject;'#10'      Merken(E);'#10'      raise E;'#10'    end;'#10));
+  TRuleAssert.Silent(TReraiseExceptionObjectRule.Create, Handler('    on E: EDatenbank do'#10'    begin'#10 +
+    '      E := EDatenbank.Create(''Neu'');'#10'      raise E;'#10'    end;'#10));
+  TRuleAssert.Silent(TReraiseExceptionObjectRule.Create, Handler('    on E: EDatenbank do'#10 +
+    '      TThread.Queue(nil, procedure begin raise E; end);'#10));
+  TRuleAssert.Silent(TReraiseExceptionObjectRule.Create, InRoutine('  E := EDatenbank.Create(''x'');'#10 +
+    '  raise E;'));
+end;
+
+procedure TExceptionRulesTests.ReraiseOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Handler('    on E: EDatenbank do'#10'      raise E;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, Source,
+    '{"rules": {"reraise-exception-object": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, Source,
+    '{"rules": {"reraise-exception-object": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
 end;
 
 initialization

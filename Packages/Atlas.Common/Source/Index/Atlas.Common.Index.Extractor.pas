@@ -45,6 +45,8 @@ type
     FForward: Boolean;
     /// <summary>Zweig des varianten Record-Teils, in dem AddMembers gerade steht (#846).</summary>
     FVariant: string;
+    /// <summary>AddMembers steht in einem Abschnitt "class var" (#1001).</summary>
+    FClassVar: Boolean;
     FForwards: TList<Integer>;
     function IsDefaultProperty(ANode: TSyntaxNode): Boolean;
     /// <summary>Methodenkopf mit virtual, dynamic, abstract oder override?</summary>
@@ -52,6 +54,9 @@ type
     function TokenIndexAt(AOffset: Integer): Integer;
     function NameRange(ANode: TSyntaxNode; const AName: string): TTextRange;
     function IsConstructor(ANode: TSyntaxNode): Boolean;
+    /// <summary>Beginnt die Deklaration mit "class" oder steht "class" direkt davor ("class property",
+    /// "class var" vor dem var-Abschnitt)?</summary>
+    function IsClassMember(ANode: TSyntaxNode): Boolean;
     procedure Add(ANode: TSyntaxNode; const AName, AContainer: string; AKind: TIndexSymbolKind;
       const AAncestors: TArray<string> = nil);
     /// <summary>Tokens AFrom..ATo (ohne Kommentare und Compiler-Direktiven) als eine Zeile; mit
@@ -239,6 +244,27 @@ begin
     (FTokens[Index].IsKeyword('constructor') or FTokens[Index].IsKeyword('destructor'));
 end;
 
+function TIndexExtractor.IsClassMember(ANode: TSyntaxNode): Boolean;
+var
+  Index: Integer;
+begin
+  Index := TokenIndexAt(ANode.StartOffset);
+  while (Index < Length(FTokens)) and (FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+    Inc(Index);
+  if (Index < Length(FTokens)) and FTokens[Index].IsKeyword('class') then
+    Exit(True);
+  Index := TokenIndexAt(ANode.StartOffset) - 1;
+  while (Index >= 0) and (FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+    Dec(Index);
+  if (Index < 0) or not FTokens[Index].IsKeyword('class') then
+    Exit(False);
+  // "TFoo = class" bzw. "= packed class" direkt vor dem ersten Mitglied ist der Typ selbst.
+  Dec(Index);
+  while (Index >= 0) and (FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+    Dec(Index);
+  Result := (Index >= 0) and not FTokens[Index].IsSymbol('=') and not FTokens[Index].IsKeyword('packed');
+end;
+
 procedure TIndexExtractor.Add(ANode: TSyntaxNode; const AName, AContainer: string; AKind: TIndexSymbolKind;
   const AAncestors: TArray<string>);
 var
@@ -295,6 +321,12 @@ begin
   Symbol.Directives := DirectivesOf(ANode, AKind, Symbol.DeprecatedText);
   if Symbol.IsDefault and (IndexText('default', Symbol.Directives) < 0) then
     Symbol.Directives := Symbol.Directives + ['default'];
+  // Klassenmitglieder (class var, class property, class function) tragen "class" vorn, damit Regeln wie
+  // property-accessor-invalid (#1001) sie ohne die Datei erkennen.
+  if (AContainer <> '') and (((AKind = TIndexSymbolKind.Field) and FClassVar) or
+    ((AKind in [TIndexSymbolKind.Property_, TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and
+    IsClassMember(ANode))) then
+    Symbol.Directives := ['class'] + Symbol.Directives;
   Symbol.Summary := SummaryOf(ANode);
   FSymbols.Add(Symbol);
 end;
@@ -690,6 +722,7 @@ var
   Child: TSyntaxNode;
   Kind: TIndexSymbolKind;
   Outer: string;
+  ClassVar: Boolean;
 begin
   for Index := 0 to ABody.ChildCount - 1 do
   begin
@@ -700,9 +733,18 @@ begin
           FVisibility := VisibilityOf(Child.Name);
           AddMembers(Child, AContainer);
         end;
-      TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VarSection,
-      TSyntaxKind.VariantPart:
+      TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VariantPart:
         AddMembers(Child, AContainer);
+      TSyntaxKind.VarSection:
+        begin
+          ClassVar := FClassVar;
+          FClassVar := (AContainer <> '') and IsClassMember(Child);
+          try
+            AddMembers(Child, AContainer);
+          finally
+            FClassVar := ClassVar;
+          end;
+        end;
       TSyntaxKind.CaseItem:
         begin
           // Zweig eines varianten Teils (#846); das Selektorfeld davor steht im äußeren Zweig.

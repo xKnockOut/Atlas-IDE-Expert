@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.FormFields.Tests;
 
-// Tests für den Abgleich von Formularfeldern und DFM-Objekten (#123).
+// Tests für den Abgleich von Formularfeldern und DFM-Objekten (#123) und für
+// form-access-before-create (#956) mit der CreateForm-Reihenfolge der .dpr.
 
 interface
 
@@ -27,6 +28,14 @@ type
     procedure UnnamedMenuItemIsSilent;
     [Test]
     procedure WithoutFormFileIsSilent;
+    [Test]
+    procedure FormAccessIssueExample;
+    [Test]
+    procedure FormAccessVariants;
+    [Test]
+    procedure FormAccessSilentCases;
+    [Test]
+    procedure FormAccessOffAndExclude;
   end;
 
 implementation
@@ -34,6 +43,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.FormFields,
   Atlas.Tests.RuleAssert;
@@ -145,6 +155,101 @@ procedure TFormFieldRulesTests.WithoutFormFileIsSilent;
 begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(TFormFieldWithoutObjectRule.Create,
     FormUnit('    Edit1: TEdit;'), ''))));
+end;
+
+function Haupt(const ABody: string): string;
+begin
+  Result := 'unit Haupt;'#10'interface'#10'type'#10'  TfrmHaupt = class(TForm)'#10'    lblNutzer: TLabel;'#10 +
+    '    procedure FormCreate(Sender: TObject);'#10'  end;'#10'var'#10'  frmHaupt: TfrmHaupt;'#10 +
+    'implementation'#10'uses Daten;'#10'procedure TfrmHaupt.FormCreate(Sender: TObject);'#10'begin'#10 + ABody +
+    'end;'#10'end.';
+end;
+
+procedure TFormFieldRulesTests.FormAccessIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create,
+    Haupt('  lblNutzer.Caption := dmDaten.Benutzer;'#10), '', ['frmHaupt', 'dmDaten'], '', '');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('form-access-before-create', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('dmDaten wird in der .dpr erst nach frmHaupt erzeugt und ist hier noch nil.', Findings[0].Message);
+  Assert.AreEqual(13, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(23, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Richtige Reihenfolge in der .dpr: still.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create,
+    Haupt('  lblNutzer.Caption := dmDaten.Benutzer;'#10), '', ['dmDaten', 'frmHaupt'], '', ''))));
+end;
+
+procedure TFormFieldRulesTests.FormAccessVariants;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Handler aus der Formulardatei, mehrfacher Zugriff nur einmal gemeldet, Konstruktor.
+  Source := StringReplace(Haupt('  lblNutzer.Caption := dmDaten.Benutzer + dmDaten.Rolle;'#10),
+    'FormCreate', 'Anlegen', [rfReplaceAll]);
+  Findings := TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create, Source,
+    'object frmHaupt: TfrmHaupt'#10'  OnCreate = Anlegen'#10'  object lblNutzer: TLabel'#10'  end'#10'end'#10,
+    ['frmHaupt', 'dmDaten', 'frmLog'], '', '');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Source := StringReplace(StringReplace(Haupt('  inherited Create(AOwner);'#10'  frmLog.Show;'#10),
+    'procedure FormCreate(Sender: TObject)', 'constructor Create(AOwner: TComponent); override', []),
+    'procedure TfrmHaupt.FormCreate(Sender: TObject)', 'constructor TfrmHaupt.Create(AOwner: TComponent)', []);
+  Findings := TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create, Source, '',
+    ['frmHaupt', 'dmDaten', 'frmLog'], '', '');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('frmLog wird in der .dpr erst nach frmHaupt erzeugt und ist hier noch nil.', Findings[0].Message);
+  // Reihenfolge aus der .dpr.
+  Assert.AreEqual('frmHaupt,dmDaten', string.Join(',', TFormAccessBeforeCreateRule.AutoCreatedForms(
+    'program P;'#10'uses Vcl.Forms;'#10'begin'#10'  Application.Initialize;'#10 +
+    '  Application.CreateForm(TfrmHaupt, frmHaupt);'#10'  // Application.CreateForm(TfrmAlt, frmAlt);'#10 +
+    '  Application.CreateForm(TdmDaten, dmDaten);'#10'  Application.Run;'#10'end.')));
+  // Programm, dessen uses die Unit nennt.
+  Assert.AreEqual('frmB', string.Join(',', TFormAccessBeforeCreateRule.FormsOfProgram([
+    'program A;'#10'uses Vcl.Forms, Andere;'#10'begin'#10'  Application.CreateForm(TfrmA, frmA);'#10'end.',
+    'program B;'#10'uses Vcl.Forms, Haupt in ''Haupt.pas'' {frmB};'#10'begin'#10 +
+    '  Application.CreateForm(TfrmB, frmB);'#10'end.'], 'Haupt')));
+  Assert.AreEqual(0, Integer(Length(TFormAccessBeforeCreateRule.FormsOfProgram(['program A;'#10'begin'#10'end.'],
+    'Haupt'))));
+  Assert.AreEqual('Anlegen', TFormAccessBeforeCreateRule.CreateHandler('object frmHaupt: TfrmHaupt'#10 +
+    '  OnCreate = Anlegen'#10'end'#10));
+  Assert.AreEqual('', TFormAccessBeforeCreateRule.CreateHandler('object frmHaupt: TfrmHaupt'#10 +
+    '  object Timer1: TTimer'#10'    OnCreate = Fremd'#10'  end'#10'end'#10));
+end;
+
+procedure TFormFieldRulesTests.FormAccessSilentCases;
+begin
+  // Geprüft, selbst erzeugt, lokal verdeckt, anderer Methodenname, ohne Projekt.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create,
+    Haupt('  if Assigned(dmDaten) then lblNutzer.Caption := dmDaten.Benutzer;'#10 +
+    '  if frmLog <> nil then frmLog.Show;'#10'  Application.CreateForm(TfrmOpt, frmOpt);'#10'  frmOpt.Show;'#10),
+    '', ['frmHaupt', 'dmDaten', 'frmLog', 'frmOpt'], '', ''))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create,
+    StringReplace(Haupt('  dmDaten.Oeffnen;'#10), 'FormCreate', 'FormShow', [rfReplaceAll]), '',
+    ['frmHaupt', 'dmDaten'], '', ''))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create,
+    StringReplace(Haupt('  dmDaten.Oeffnen;'#10), 'begin'#10'  dmDaten', 'var'#10'  dmDaten: TObject;'#10 +
+    'begin'#10'  dmDaten', []), '', ['frmHaupt', 'dmDaten'], '', ''))));
+  TRuleAssert.Silent(TFormAccessBeforeCreateRule.Create, Haupt('  dmDaten.Oeffnen;'#10));
+  // Formular, das nicht automatisch erzeugt wird.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create,
+    Haupt('  dmDaten.Oeffnen;'#10), '', ['frmStart', 'dmDaten'], '', ''))));
+end;
+
+procedure TFormFieldRulesTests.FormAccessOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Haupt('  dmDaten.Oeffnen;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create, Source, '',
+    ['frmHaupt', 'dmDaten'], '{"rules": {"form-access-before-create": "off"}}', ''))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create, Source, '',
+    ['frmHaupt', 'dmDaten'], '{"rules": {"form-access-before-create": {"exclude": ["Source/*.pas"]}}}',
+    'Source/Haupt.pas'))));
 end;
 
 initialization

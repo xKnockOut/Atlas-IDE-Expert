@@ -12,6 +12,15 @@
 //     case, Schleifen und except; +1 für else und else if; +1 je Folge
 //     gleicher logischer Operatoren in einer Bedingung; +1 für goto.
 //   - Parameteranzahl: Namen in der Parameterliste.
+// Kennzahlen des Aufbaus (#939):
+//   - Klassengröße: Member einer Klasse (auch object): Feldnamen, Methoden,
+//     Properties mit eigenem Typ und class var; Hochstufungen wie
+//     "property Align;" und geschachtelte Typen zählen nicht.
+//   - Unit-Länge: Zeilen bis zum letzten Token (end.).
+//   - uses-Anzahl: Units in allen uses-Klauseln (interface und
+//     implementation).
+//   Unit-Länge und uses-Anzahl nur für Units: Das uses eines Programms oder
+//   einer Bibliothek zählt die Units des Projekts auf.
 // Grenzwerte (Vorgaben aus der Spezifikation, Abschnitt 4.13) stehen in
 // atlas.json bei den Regeln metric-* unter "max" (Atlas.Common.Rules.Builtin.Metrics).
 
@@ -27,15 +36,35 @@ type
 
   TMetricValues = array[TMetricKind] of Integer;
 
+  /// <summary>Kennzahlen des Aufbaus einer Unit (#939).</summary>
+  TStructureKind = (ClassSize, UnitLength, UsesCount);
+
+  TStructureValues = array[TStructureKind] of Integer;
+
   /// <summary>Grenzwerte je Kennzahl; ein Wert darüber ist eine Überschreitung.</summary>
   TMetricLimits = record
     Values: TMetricValues;
-    /// <summary>60 Zeilen, Tiefe 4, zyklomatisch 15, kognitiv 15, 6 Parameter.</summary>
+    /// <summary>Grenzwerte des Aufbaus (#939).</summary>
+    Structure: TStructureValues;
+    /// <summary>60 Zeilen, Tiefe 4, zyklomatisch 15, kognitiv 15, 6 Parameter; 40 Member je Klasse,
+    /// 2000 Zeilen je Unit, 30 Units im uses.</summary>
     class function Default: TMetricLimits; static;
     /// <summary>True, wenn AValue über dem Grenzwert von AKind liegt.</summary>
     function Exceeds(AKind: TMetricKind; AValue: Integer): Boolean;
     /// <summary>Kennzahlen aus AValues über ihrem Grenzwert, in der Reihenfolge von TMetricKind.</summary>
     function Exceeded(const AValues: TMetricValues): TArray<TMetricKind>;
+    /// <summary>True, wenn AValue über dem Grenzwert des Aufbaus AKind liegt.</summary>
+    function ExceedsStructure(AKind: TStructureKind; AValue: Integer): Boolean;
+  end;
+
+  /// <summary>Eine Kennzahl des Aufbaus: eine Klasse oder die Unit selbst (#939).</summary>
+  TStructureMetrics = record
+    Kind: TStructureKind;
+    /// <summary>Klassenname bzw. Unit-Name.</summary>
+    Name: string;
+    /// <summary>Name in der Deklaration bzw. im Kopf der Unit; bei UsesCount das Schlüsselwort uses.</summary>
+    NameRange: TTextRange;
+    Value: Integer;
   end;
 
   /// <summary>Kennzahlen einer Routine mit Rumpf.</summary>
@@ -82,6 +111,14 @@ begin
   Result.Values[TMetricKind.Cyclomatic] := 15;
   Result.Values[TMetricKind.Cognitive] := 15;
   Result.Values[TMetricKind.ParameterCount] := 6;
+  Result.Structure[TStructureKind.ClassSize] := 40;
+  Result.Structure[TStructureKind.UnitLength] := 2000;
+  Result.Structure[TStructureKind.UsesCount] := 30;
+end;
+
+function TMetricLimits.ExceedsStructure(AKind: TStructureKind; AValue: Integer): Boolean;
+begin
+  Result := AValue > Structure[AKind];
 end;
 
 function TMetricLimits.Exceeds(AKind: TMetricKind; AValue: Integer): Boolean;

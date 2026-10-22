@@ -21,6 +21,11 @@
 // an, auch ohne Bezeichner (dann nur das Problem). Aktionen unter einem
 // uses-Hinweis (#621) gehen über OnProblemAction mit der Kennung der
 // Code-Aktion (uses.remove, uses.removeAll, uses.move) an die Befehle.
+// Befund-Hover (#909): Die Aktionszeile unter Regelbefunden
+// (hover.problemActions) meldet rule.fix, rule.suppressLine und
+// rule.configure (öffnet die Einstellungsseite auf der Regel). Angeheftet oder
+// mit der Maus über dem Tooltip wendet Alt+Enter die Korrektur an, Tab und
+// Umschalt+Tab markieren die Aktionen, Enter löst die markierte aus.
 // Debuggen (#891): Ist der Prozess angehalten, wertet Atlas den Ausdruck unter
 // der Maus über den Debugger der IDE aus (TAtlasIdeDebugValues) und zeigt den
 // Wert ganz oben; ohne Antwort des Servers nur den Wert. Antwortet der Debugger
@@ -384,6 +389,8 @@ end;
 
 procedure TAtlasEditorHover.Refresh;
 begin
+  FTip.ProblemActions := TAtlasIdeSettings.Current.HoverProblemActions;
+  FTip.HideCompilerCode := not TAtlasIdeSettings.Current.ProblemsShowCompilerCode;
   FTip.UpdateContent(CurrentView);
 end;
 
@@ -647,6 +654,8 @@ begin
   FHistory.Start(AData);
   FUsagesCount := -1;
   TAtlasIdeStyle.Apply(FTip, FWordRect);
+  FTip.ProblemActions := TAtlasIdeSettings.Current.HoverProblemActions;
+  FTip.HideCompilerCode := not TAtlasIdeSettings.Current.ProblemsShowCompilerCode;
   FTip.ShowContent(CurrentView, FWordRect);
   TAtlasKeyHook.Add(FKeys);
   FShownKey := FKey;
@@ -806,7 +815,8 @@ end;
 
 procedure TAtlasEditorHover.TipProblemAction(Sender: TObject; AProblem: Integer; AAction: TAtlasHoverProblemAction);
 const
-  Tags: array[TAtlasHoverProblemAction] of string = ('uses.remove', 'uses.removeAll', 'uses.move');
+  Tags: array[TAtlasHoverProblemAction] of string = ('uses.remove', 'uses.removeAll', 'uses.move', 'rule.fix',
+    'rule.suppressLine', 'rule.configure');
 var
   Problem: TAtlasProblem;
 begin
@@ -904,6 +914,13 @@ begin
   // Markierter Doku-Text lässt sich auch ohne Fundort kopieren (#654).
   if ForTip and FTip.HasSelection and (AKey = Ord('C')) and (AShift = [ssCtrl]) then
     Exit(True);
+  // Aktionen unter Befunden (#909), auch ohne Fundort (Hover nur mit Problem).
+  if ForTip and (AKey = VK_RETURN) and (AShift = [ssAlt]) and FTip.HasFix then
+    Exit(True);
+  if ForTip and (AKey = VK_TAB) and ((AShift = []) or (AShift = [ssShift])) and FTip.HasProblemActions then
+    Exit(True);
+  if ForTip and (AKey = VK_RETURN) and (AShift = []) and FTip.ProblemActionMarked then
+    Exit(True);
   if not ForTip or not Data.Location.HasLocation then
     Exit;
   Result := ((AKey = VK_F12) and ((AShift = []) or (AShift = [ssShift]))) or
@@ -925,6 +942,13 @@ begin
         Execute(TAtlasHoverAction.Navigate);
     VK_F1:
       Execute(TAtlasHoverAction.Help);
+    VK_TAB:
+      FTip.StepProblemAction(not (ssShift in AShift));
+    VK_RETURN:
+      if ssAlt in AShift then
+        FTip.ApplyFix
+      else
+        FTip.ActivateProblemAction;
   else
     if AKey = Ord('C') then
       Execute(TAtlasHoverAction.Copy);

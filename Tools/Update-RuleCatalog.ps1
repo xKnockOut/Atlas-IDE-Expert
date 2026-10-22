@@ -11,7 +11,9 @@
 
     Zusätzlich wird geprüft, dass jede implementierte Regel (TRuleDescriptor.Create
     und die RuleId-Konstanten) im Katalog steht, jede Katalogregel implementiert ist
-    und jede Regel Name, Beschreibung und beide Beispiele hat.
+    und jede Regel Name, Beschreibung, beide Beispiele und eine bekannte Gruppe
+    (#909) hat. Optionen (options) brauchen Name, bekannten Typ und Beschreibung.
+    Regeln.md listet die Regeln nach Gruppen und je Regel ihre Optionen.
 
     Mit -Check wird nichts geschrieben; Exit-Code 1, wenn die erzeugten Dateien
     veraltet sind oder eine Prüfung fehlschlägt.
@@ -49,12 +51,54 @@ foreach ($File in Get-ChildItem $CatalogDir -Filter 'regelkatalog.*.json' | Sort
     $Overlays[$Language] = Read-Text $File.FullName
 }
 
+# Gruppen der Einstellungsseite und des Fensters „Atlas-Prüfung“ (#909), Reihenfolge wie TRuleGroup.
+$GroupNames = [ordered]@{
+    'find-bugs' = 'Fehler finden'; 'exceptions' = 'Exceptions'; 'threads' = 'Threads'; 'database' = 'Datenbank'
+    'compiler' = 'Compiler vorab'; 'robustness' = 'Robustheit und Muster'; 'performance' = 'Performance'
+    'security' = 'Sicherheit'; 'components' = 'Komponenten'; 'forms' = 'Formulare und Daten'
+    'architecture' = 'Architektur'; 'style' = 'Stil und Metriken'; 'packages' = 'Packages und Tests'
+    'internal' = 'Atlas intern'
+}
+$LevelNames = @{
+    'A' = 'A (Parser genügt)'
+    'B' = 'B (Namensauflösung über Units)'
+    'T' = 'T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar)'
+}
+$OptionKinds = @('integer', 'boolean', 'string', 'string-list', 'number-list', 'json')
+
 # Vollständigkeit der Einträge
 foreach ($Rule in $Base.rules) {
-    foreach ($Field in 'id', 'name', 'category', 'severity', 'description', 'bad', 'good') {
+    foreach ($Field in 'id', 'name', 'category', 'severity', 'group', 'description', 'bad', 'good') {
         if (-not ($Rule.PSObject.Properties.Name -contains $Field) -or [string]::IsNullOrWhiteSpace($Rule.$Field)) {
             $Problems.Add("Regel '$($Rule.id)': Feld '$Field' fehlt")
         }
+    }
+    if (($Rule.PSObject.Properties.Name -contains 'group') -and -not $GroupNames.Contains([string]$Rule.group)) {
+        $Problems.Add("Regel '$($Rule.id)': unbekannte Gruppe '$($Rule.group)'")
+    }
+    if ($Rule.PSObject.Properties.Name -contains 'options') {
+        foreach ($Option in @($Rule.options)) {
+            foreach ($Field in 'name', 'type', 'description') {
+                if (-not ($Option.PSObject.Properties.Name -contains $Field) -or [string]::IsNullOrWhiteSpace($Option.$Field)) {
+                    $Problems.Add("Regel '$($Rule.id)': Option ohne '$Field'")
+                }
+            }
+            if (($Option.PSObject.Properties.Name -contains 'type') -and ($OptionKinds -notcontains $Option.type)) {
+                $Problems.Add("Regel '$($Rule.id)': Option '$($Option.name)' hat unbekannten Typ '$($Option.type)'")
+            }
+        }
+    }
+    # Compilermeldungen, denen die Regel entspricht (#938), z. B. F2069.
+    if ($Rule.PSObject.Properties.Name -contains 'compilerCodes') {
+        foreach ($Code in @($Rule.compilerCodes)) {
+            if ([string]$Code -cnotmatch '^[EFWH]\d{4}$') {
+                $Problems.Add("Regel '$($Rule.id)': ungültiger Compilercode '$Code'")
+            }
+        }
+    }
+    # Stufe der Compilerregeln (#1024): A Parser, B Namensauflösung, T Ausdruckstypen.
+    if (($Rule.PSObject.Properties.Name -contains 'level') -and (@('A', 'B', 'T') -cnotcontains [string]$Rule.level)) {
+        $Problems.Add("Regel '$($Rule.id)': ungültige Stufe '$($Rule.level)' (erlaubt A, B, T)")
     }
 }
 
@@ -121,20 +165,58 @@ $SeverityNames = @{ 'error' = 'Fehler'; 'warning' = 'Warnung'; 'information' = '
 $Doc = New-Object System.Text.StringBuilder
 [void]$Doc.Append("# Prüfregeln`r`n`r`n")
 [void]$Doc.Append("Erzeugt von ``Tools/Update-RuleCatalog.ps1`` aus dem Regelkatalog. Nicht von Hand ändern.`r`n`r`n")
-[void]$Doc.Append("| Regel | Name | Kategorie | Schweregrad |`r`n|---|---|---|---|`r`n")
 $Rows = foreach ($Rule in $Base.rules) {
     $Translated = if ($German) { $German.rules | Where-Object { $_.id -eq $Rule.id } | Select-Object -First 1 } else { $null }
     $Name = if ($Translated -and $Translated.PSObject.Properties.Name -contains 'name') { $Translated.name } else { $Rule.name }
     $Description = if ($Translated -and $Translated.PSObject.Properties.Name -contains 'description') { $Translated.description } else { $Rule.description }
-    [pscustomobject]@{ Rule = $Rule; Name = $Name; Description = $Description }
+    $Options = @()
+    if ($Rule.PSObject.Properties.Name -contains 'options') {
+        $Options = foreach ($Option in @($Rule.options)) {
+            $Text = $Option.description
+            if ($Translated -and $Translated.PSObject.Properties.Name -contains 'options') {
+                $Match = @($Translated.options) | Where-Object { $_.name -eq $Option.name } | Select-Object -First 1
+                if ($Match) { $Text = $Match.description }
+            }
+            $Default = if ($Option.PSObject.Properties.Name -contains 'default') { ConvertTo-Json -InputObject $Option.default -Compress -Depth 8 } else { '' }
+            [pscustomobject]@{ Name = $Option.name; Kind = $Option.type; Default = $Default; Description = $Text }
+        }
+    }
+    [pscustomobject]@{ Rule = $Rule; Name = $Name; Description = $Description; Options = @($Options) }
 }
-foreach ($Row in $Rows) {
-    [void]$Doc.Append("| [``$($Row.Rule.id)``](#$($Row.Rule.id)) | $($Row.Name) | $($CategoryNames[$Row.Rule.category]) | $($SeverityNames[$Row.Rule.severity]) |`r`n")
+# Gruppen (#909) in der Reihenfolge der Einstellungsseite, darin die Reihenfolge des Katalogs.
+[void]$Doc.Append("## Gruppen`r`n`r`n| Gruppe | Regeln |`r`n|---|---|`r`n")
+foreach ($Group in $GroupNames.Keys) {
+    $InGroup = @($Rows | Where-Object { $_.Rule.group -eq $Group })
+    if ($InGroup.Count -eq 0) { continue }
+    [void]$Doc.Append("| [$($GroupNames[$Group])](#gruppe-$Group) | $($InGroup.Count) |`r`n")
 }
+foreach ($Group in $GroupNames.Keys) {
+    $InGroup = @($Rows | Where-Object { $_.Rule.group -eq $Group })
+    if ($InGroup.Count -eq 0) { continue }
+    [void]$Doc.Append("`r`n<a id=""gruppe-$Group""></a>`r`n### $($GroupNames[$Group])`r`n`r`n")
+    [void]$Doc.Append("| Regel | Name | Kategorie | Schweregrad |`r`n|---|---|---|---|`r`n")
+    foreach ($Row in $InGroup) {
+        [void]$Doc.Append("| [``$($Row.Rule.id)``](#$($Row.Rule.id)) | $($Row.Name) | $($CategoryNames[$Row.Rule.category]) | $($SeverityNames[$Row.Rule.severity]) |`r`n")
+    }
+}
+[void]$Doc.Append("`r`n## Regeln`r`n")
 foreach ($Row in $Rows) {
-    [void]$Doc.Append("`r`n<a id=""$($Row.Rule.id)""></a>`r`n## $($Row.Rule.id)`r`n`r`n")
-    [void]$Doc.Append("**$($Row.Name)** · $($CategoryNames[$Row.Rule.category]) · $($SeverityNames[$Row.Rule.severity])`r`n`r`n")
+    [void]$Doc.Append("`r`n<a id=""$($Row.Rule.id)""></a>`r`n### $($Row.Rule.id)`r`n`r`n")
+    [void]$Doc.Append("**$($Row.Name)** · $($CategoryNames[$Row.Rule.category]) · $($SeverityNames[$Row.Rule.severity]) · Gruppe $($GroupNames[[string]$Row.Rule.group])`r`n`r`n")
     [void]$Doc.Append("$($Row.Description)`r`n`r`n")
+    if ($Row.Rule.PSObject.Properties.Name -contains 'compilerCodes') {
+        [void]$Doc.Append("Entspricht der Compilermeldung $((@($Row.Rule.compilerCodes) | ForEach-Object { '`' + $_ + '`' }) -join ', ').`r`n`r`n")
+    }
+    if ($Row.Rule.PSObject.Properties.Name -contains 'level') {
+        [void]$Doc.Append("Stufe $($LevelNames[[string]$Row.Rule.level]).`r`n`r`n")
+    }
+    if ($Row.Options.Count -gt 0) {
+        [void]$Doc.Append("| Option | Typ | Vorgabe | Bedeutung |`r`n|---|---|---|---|`r`n")
+        foreach ($Option in $Row.Options) {
+            [void]$Doc.Append("| ``$($Option.Name)`` | $($Option.Kind) | ``$($Option.Default)`` | $($Option.Description) |`r`n")
+        }
+        [void]$Doc.Append("`r`n")
+    }
     [void]$Doc.Append("Mit Treffer:`r`n`r`n``````pascal`r`n$($Row.Rule.bad -replace "`n", "`r`n")`r`n```````r`n`r`n")
     [void]$Doc.Append("Richtig:`r`n`r`n``````pascal`r`n$($Row.Rule.good -replace "`n", "`r`n")`r`n```````r`n")
 }

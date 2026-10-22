@@ -5,6 +5,10 @@
 // Übersetzungen liegen als Overlay daneben (regelkatalog.de.json) und
 // überschreiben nur Name und Beschreibung. SARIF nutzt immer den englischen
 // Katalog, damit Fingerabdrücke in GitHub Code Scanning stabil bleiben.
+// "compilerCodes" nennt Compilermeldungen, denen eine Regel entspricht (#938),
+// "level" die Stufe einer Regel der Gruppe „Compiler vorab“ (#1024): A = Parser
+// genügt, B = Namensauflösung über Units, T = braucht Ausdruckstypen; nur
+// Stufe T lässt sich über "group:compiler": {"typeLevel": "off"} abschalten.
 
 interface
 
@@ -15,6 +19,19 @@ uses
 
 type
   TRuleCategory = (Bug, Vulnerability, CodeSmell, SecurityHotspot);
+  /// <summary>Gruppe der Einstellungsseite und des Fensters „Atlas-Prüfung“ (#909).</summary>
+  TRuleGroup = (FindBugs, Exceptions, Threads, Database, Compiler, Robustness, Performance, Security, Components,
+    Forms, Architecture, Style, Packages, Internal);
+
+  /// <summary>Eine Option einer Regel in "rules.&lt;id&gt;" (#909).</summary>
+  TRuleOption = record
+    Name: string;
+    /// <summary>"integer", "boolean", "string", "string-list", "number-list" (#937) oder "json".</summary>
+    Kind: string;
+    /// <summary>Vorgabe als JSON-Text, z. B. 60, ["TODO"] oder "".</summary>
+    DefaultJson: string;
+    Description: string;
+  end;
 
   /// <summary>Ein Eintrag des Regelkatalogs.</summary>
   TRuleCatalogEntry = record
@@ -27,11 +44,19 @@ type
     Bad: string;
     /// <summary>Korrigiertes Beispiel.</summary>
     Good: string;
+    Group: TRuleGroup;
+    Options: TArray<TRuleOption>;
+    /// <summary>Compilermeldungen, denen die Regel entspricht, z. B. F2069 (#938); nil = keine.</summary>
+    CompilerCodes: TArray<string>;
+    /// <summary>Stufe "A", "B" oder "T" (#1024); '' ohne Angabe.</summary>
+    Level: string;
   end;
 
   ERuleCatalog = class(Exception);
 
   TRuleCatalog = class
+  private class var
+    FShared: TRuleCatalog;
   private
     FEntries: TList<TRuleCatalogEntry>;
     procedure ParseBase(const AJson: string);
@@ -50,6 +75,16 @@ type
     class function Explanation(const AEntry: TRuleCatalogEntry; const ALineBreak: string): string; static;
     class function CategoryName(ACategory: TRuleCategory): string; static;
     class function TryParseCategory(const AText: string; out ACategory: TRuleCategory): Boolean; static;
+    /// <summary>Kennung der Gruppe in JSON, z. B. "find-bugs".</summary>
+    class function GroupName(AGroup: TRuleGroup): string; static;
+    /// <summary>Schlüssel des Hauptschalters einer Gruppe in "rules" (#909): "group:find-bugs"; "off" schaltet alle
+    /// Regeln der Gruppe ab.</summary>
+    class function GroupKey(AGroup: TRuleGroup): string; static;
+    class function TryParseGroup(const AText: string; out AGroup: TRuleGroup): Boolean; static;
+    /// <summary>Gruppe einer Regel ohne Angabe: nach der Kategorie.</summary>
+    class function GroupOfCategory(ACategory: TRuleCategory): TRuleGroup; static;
+    /// <summary>Eingebetteter englischer Katalog, einmal je Prozess gelesen; nicht freigeben.</summary>
+    class function Shared: TRuleCatalog; static;
   end;
 
 const
@@ -58,10 +93,18 @@ const
 implementation
 
 uses
-  System.JSON;
+  System.JSON,
+  System.SyncObjs,
+  Atlas.Common.Rules.Catalog.Data;
 
 const
   CategoryNames: array[TRuleCategory] of string = ('bug', 'vulnerability', 'code-smell', 'security-hotspot');
+  GroupNames: array[TRuleGroup] of string = ('find-bugs', 'exceptions', 'threads', 'database', 'compiler',
+    'robustness', 'performance', 'security', 'components', 'forms', 'architecture', 'style', 'packages', 'internal');
+  OptionKinds: array[0..5] of string = ('integer', 'boolean', 'string', 'string-list', 'number-list', 'json');
+
+var
+  SharedLock: TCriticalSection;
 
 function TryParseSeverity(const AText: string; out ASeverity: TRuleSeverity): Boolean;
 begin
@@ -87,6 +130,72 @@ begin
     Result := TJSONString(Value).Value
   else
     Result := '';
+end;
+
+function OptionsOf(AItem: TJSONObject; const AId: string): TArray<TRuleOption>;
+var
+  Value, DefaultValue: TJSONValue;
+  Item: TJSONValue;
+  Option: TRuleOption;
+  Known: Boolean;
+  Kind: string;
+begin
+  Result := nil;
+  Value := AItem.GetValue('options');
+  if Value = nil then
+    Exit;
+  if not (Value is TJSONArray) then
+    raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat ungültige "options"', [AId]);
+  for Item in TJSONArray(Value) do
+  begin
+    if not (Item is TJSONObject) then
+      raise ERuleCatalog.CreateFmt('Regelkatalog: Option von "%s" ist kein Objekt', [AId]);
+    Option := Default(TRuleOption);
+    Option.Name := StringOf(TJSONObject(Item), 'name');
+    Option.Kind := StringOf(TJSONObject(Item), 'type');
+    Option.Description := StringOf(TJSONObject(Item), 'description');
+    if Option.Name = '' then
+      raise ERuleCatalog.CreateFmt('Regelkatalog: Option von "%s" ohne "name"', [AId]);
+    Known := False;
+    for Kind in OptionKinds do
+      if Kind = Option.Kind then
+        Known := True;
+    if not Known then
+      raise ERuleCatalog.CreateFmt('Regelkatalog: Option "%s" von "%s" hat keinen gültigen Typ', [Option.Name, AId]);
+    DefaultValue := TJSONObject(Item).GetValue('default');
+    if DefaultValue <> nil then
+      Option.DefaultJson := DefaultValue.ToJSON;
+    Result := Result + [Option];
+  end;
+end;
+
+function IsCompilerCode(const ACode: string): Boolean;
+var
+  Index: Integer;
+begin
+  Result := (Length(ACode) = 5) and CharInSet(ACode[1], ['E', 'F', 'W', 'H']);
+  if Result then
+    for Index := 2 to 5 do
+      if not CharInSet(ACode[Index], ['0'..'9']) then
+        Exit(False);
+end;
+
+function CompilerCodesOf(AItem: TJSONObject; const AId: string): TArray<string>;
+var
+  Value, Item: TJSONValue;
+begin
+  Result := nil;
+  Value := AItem.GetValue('compilerCodes');
+  if Value = nil then
+    Exit;
+  if not (Value is TJSONArray) then
+    raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat ungültige "compilerCodes"', [AId]);
+  for Item in TJSONArray(Value) do
+  begin
+    if not (Item is TJSONString) or not IsCompilerCode(TJSONString(Item).Value) then
+      raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat einen ungültigen Compilercode', [AId]);
+    Result := Result + [TJSONString(Item).Value];
+  end;
 end;
 
 function RulesOf(ARoot: TJSONValue): TJSONArray;
@@ -148,6 +257,15 @@ begin
         raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat keine gültige Kategorie', [Entry.Id]);
       if not TryParseSeverity(StringOf(Item, 'severity'), Entry.DefaultSeverity) then
         raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat keinen gültigen Schweregrad', [Entry.Id]);
+      if Item.GetValue('group') = nil then
+        Entry.Group := GroupOfCategory(Entry.Category)
+      else if not TryParseGroup(StringOf(Item, 'group'), Entry.Group) then
+        raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat keine gültige Gruppe', [Entry.Id]);
+      Entry.Options := OptionsOf(Item, Entry.Id);
+      Entry.CompilerCodes := CompilerCodesOf(Item, Entry.Id);
+      Entry.Level := StringOf(Item, 'level');
+      if (Entry.Level <> '') and (Entry.Level <> 'A') and (Entry.Level <> 'B') and (Entry.Level <> 'T') then
+        raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat eine ungültige Stufe "%s"', [Entry.Id, Entry.Level]);
       FEntries.Add(Entry);
     end;
   finally
@@ -159,10 +277,11 @@ procedure TRuleCatalog.ApplyOverlay(const AJson: string);
 var
   Root: TJSONValue;
   Rules: TJSONArray;
-  I, Index: Integer;
+  I, Index, OptionIndex: Integer;
   Item: TJSONObject;
   Entry: TRuleCatalogEntry;
-  Text: string;
+  Text, Name: string;
+  Options, Option: TJSONValue;
 begin
   Root := TJSONObject.ParseJSONValue(AJson);
   try
@@ -183,6 +302,19 @@ begin
       Text := StringOf(Item, 'description');
       if Text <> '' then
         Entry.Description := Text;
+      // Beschreibungen der Optionen nach Namen (#909); unbekannte Optionen bleiben unbeachtet.
+      Options := Item.GetValue('options');
+      if Options is TJSONArray then
+        for Option in TJSONArray(Options) do
+          if Option is TJSONObject then
+          begin
+            Name := StringOf(TJSONObject(Option), 'name');
+            Text := StringOf(TJSONObject(Option), 'description');
+            if Text <> '' then
+              for OptionIndex := 0 to High(Entry.Options) do
+                if SameText(Entry.Options[OptionIndex].Name, Name) then
+                  Entry.Options[OptionIndex].Description := Text;
+          end;
       FEntries[Index] := Entry;
     end;
   finally
@@ -233,6 +365,9 @@ begin
     Result := Result + ALineBreak + ALineBreak + 'Falsch:' + ALineBreak + AEntry.Bad;
   if AEntry.Good <> '' then
     Result := Result + ALineBreak + ALineBreak + 'Richtig:' + ALineBreak + AEntry.Good;
+  if AEntry.CompilerCodes <> nil then
+    Result := Result + ALineBreak + ALineBreak + 'Entspricht der Compilermeldung ' +
+      string.Join(', ', AEntry.CompilerCodes) + '.';
   Result := Result + ALineBreak + ALineBreak + 'Mehr: ' + HelpUri(AEntry.Id);
 end;
 
@@ -254,5 +389,61 @@ begin
   ACategory := TRuleCategory.Bug;
   Result := False;
 end;
+
+class function TRuleCatalog.GroupName(AGroup: TRuleGroup): string;
+begin
+  Result := GroupNames[AGroup];
+end;
+
+class function TRuleCatalog.GroupKey(AGroup: TRuleGroup): string;
+begin
+  Result := 'group:' + GroupNames[AGroup];
+end;
+
+class function TRuleCatalog.TryParseGroup(const AText: string; out AGroup: TRuleGroup): Boolean;
+var
+  Group: TRuleGroup;
+begin
+  for Group := Low(TRuleGroup) to High(TRuleGroup) do
+    if SameText(AText, GroupNames[Group]) then
+    begin
+      AGroup := Group;
+      Exit(True);
+    end;
+  AGroup := TRuleGroup.FindBugs;
+  Result := False;
+end;
+
+class function TRuleCatalog.GroupOfCategory(ACategory: TRuleCategory): TRuleGroup;
+begin
+  case ACategory of
+    TRuleCategory.Vulnerability, TRuleCategory.SecurityHotspot:
+      Result := TRuleGroup.Security;
+    TRuleCategory.CodeSmell:
+      Result := TRuleGroup.Style;
+  else
+    Result := TRuleGroup.FindBugs;
+  end;
+end;
+
+class function TRuleCatalog.Shared: TRuleCatalog;
+begin
+  // Mehrere Prüf-Threads fragen gleichzeitig; gelesen wird nur einmal.
+  SharedLock.Acquire;
+  try
+    if FShared = nil then
+      FShared := TRuleCatalog.Create(RuleCatalogBaseJson);
+    Result := FShared;
+  finally
+    SharedLock.Release;
+  end;
+end;
+
+initialization
+  SharedLock := TCriticalSection.Create;
+
+finalization
+  FreeAndNil(TRuleCatalog.FShared);
+  FreeAndNil(SharedLock);
 
 end.

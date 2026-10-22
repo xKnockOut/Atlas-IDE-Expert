@@ -1,4 +1,4 @@
-﻿# Atlas: Testfälle in der IDE
+# Atlas: Testfälle in der IDE
 
 Bei Delphi 12 heißen BPL und Protokoll `…290.bpl` und `…290.log` statt `…370`.
 
@@ -2317,7 +2317,7 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | RK6 | `function TFoo.GetName: string; begin Result := Name; end;` mit Feld `FName` | Warnung „Getter GetName liest die eigene Property Name …; das Feld FName verwenden“, Schnellkorrektur setzt `FName` ein; zusätzlich Pfeil in der Rinne |
 | RK7 | Setter `SetTitle` mit `Self.Title := AValue` ohne Feld `FTitle` | Warnung ohne Korrektur |
 | RK8 | Zeile mit dem Aufruf bearbeiten | Pfeil verschwindet und kommt nach der Tipp-Pause mit der neuen Antwort wieder |
-| RK9 | `editor.recursionMarkers` aus bzw. „Element ausblenden“ › Rekursionssymbole; Regel `recursive-property-accessor` auf `off` | Keine Pfeile, keine Anfrage an den Server; keine Warnung |
+| RK9 | `editor.recursionMarkers` aus bzw. „Element ausblenden“ › Rekursionssymbole; Regel `setter-recursion` auf `off` | Keine Pfeile, keine Anfrage an den Server; keine Warnung |
 
 ## Vervollständigung: Treffer und Rest (#497)
 
@@ -2850,14 +2850,14 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TOrderList = 
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| FF1 | Unit öffnen | Warnung `owned-field-not-freed` an `FItems` und an `FIndex` |
+| FF1 | Unit öffnen | Warnung `field-not-freed` (bis #918 `owned-field-not-freed`) an `FItems` und an `FIndex` |
 | FF2 | Glühbirne auf der Zeile von `FItems` | „Im Destruktor freigeben“ und „Alle eigenen Objekte freigeben (2)“ |
 | FF3 | „Alle eigenen Objekte freigeben (2)“ | `destructor Destroy; override;` hinter `constructor Create;`; hinter dem Konstruktor `destructor TOrderList.Destroy;` mit `FIndex.Free;`, `FItems.Free;`, `inherited;`; kompiliert, keine Warnung mehr; Strg+Z nimmt alles in einem Schritt zurück (**Abnahme**) |
 | FF4 | Wie FF3 mit vorhandenem Destruktor `begin FItems.Free; inherited; end;` | Nur `FIndex` gemeldet; `FIndex.Free;` vor `inherited;` |
 | FF5 | Glühbirne auf der Kopfzeile `TOrderList = class` | „Alle eigenen Objekte freigeben (2)“ |
 | FF6 | Feld `FTimer: TTimer`, im Konstruktor `FTimer := TTimer.Create(Self);` | Keine Meldung (Owner gibt frei) (**Abnahme**) |
 | FF7 | Feld `FLog: ILog`, im Konstruktor `FLog := TFileLog.Create;` | Keine Meldung (Interface) (**Abnahme**) |
-| FF8 | Erzeugung in einer privaten Methode `Init`, die der Konstruktor aufruft | Gemeldet wie FF1, die Meldung nennt `TOrderList.Init` (**Abnahme**) |
+| FF8 | Erzeugung in einer privaten Methode `Init`, die der Konstruktor aufruft | Gemeldet wie FF1 (**Abnahme**) |
 | FF9 | `function Take: TList; begin Result := FList; end;` für ein erzeugtes Feld | Hinweis `owned-field-free-unclear` „… wird von TOrderList.Take zurückgegeben“, keine Aktion |
 | FF10 | Drei Felder in der Reihenfolge FA, FB, FC erzeugt, „Alle eigenen Objekte freigeben (3)“ | Freigaben FC, FB, FA (**Abnahme**) |
 | FF11 | `"refactoring": {"freeFieldsStyle": "freeAndNil"}` | `FreeAndNil(FIndex);` statt `FIndex.Free;` |
@@ -3075,3 +3075,1088 @@ Voraussetzung: Einstellungen auf Vorgabe, Diagnoselog an; Projektgruppe `Atlas.g
 | SN4 | In einer eigenen Unit `X := 1 - 1 - 1 …` mit 1200 Gliedern schreiben (Testprojekt) und speichern | Kein Absturz; die Prüfregeln melden für diese Unit nichts, im Diagnoselog steht `deepUnits=1 deepUnit=unit#N deepUnitDepth=…` |
 | SN5 | Kommandozeile: `AtlasServer.exe --check` über die Gruppe (Abschnitt „Linter mode“ im README) | Läuft durch alle Units ohne Absturz; dieselben Befunde wie vor #1094 |
 | SN6 | Testlauf `Atlas.Tests.exe` | Grün, darunter `SecondOverflowInSameThreadIsCaughtAgain` (drei Stapelüberläufe im selben Thread werden abgefangen, der Prozess lebt) |
+## Fenster „Atlas-Prüfung“ und Seite „Prüfregeln“ (#909)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit einigen Befunden (z. B. leerer `except`-Block, magische Zahl, W1036 nach dem Übersetzen).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AP1 | Strg+Alt+P bzw. *Ansicht › Atlas › Prüfung* | Andockbares Fenster „Atlas-Prüfung“ mit Atlas-Symbol im Titel, Befunde der aktuellen Datei, rechts „Live“ (**Abnahme**) |
+| AP2 | Bereich auf „Projekt“, dann „Projektgruppe“ | Befunde aller Dateien, auch nicht geöffneter; Statuszeile nennt die Anzahl |
+| AP3 | Umschalter „Fehler“ aus, Kategorie „Code-Smell“, Text „except“ | Nur passende Zeilen; die Zahlen an den Umschaltern bleiben |
+| AP4 | Gruppierung „Datei“, Gruppe per Klick, Leertaste und ←/→ auf- und zuklappen | Gruppenzeilen ▾/▸ mit Anzahl; der Zustand bleibt beim nächsten Tippen erhalten |
+| AP5 | Spaltenkopf „Regel“ klicken, nochmals klicken; Spalte „Zeile“ an eine andere Stelle ziehen; IDE neu starten | Sortierung auf- und absteigend; Reihenfolge und Breite bleiben nach dem Neustart (`problems.window.columns`) |
+| AP6 | In der Datei einen neuen Befund eintippen | Die Zeile erscheint ohne Flackern und wird kurz hervorgehoben, Auswahl und Bildlauf bleiben |
+| AP7 | Enter bzw. Doppelklick auf eine Zeile | Editor springt an die Stelle |
+| AP8 | Alt+Enter auf einem Befund mit Korrektur | Korrektur angewendet, Befund verschwindet |
+| AP9 | Kontextmenü › „Für diese Zeile unterdrücken“ | `// lsp-ignore: <regel>` an der Zeile, Befund weg |
+| AP10 | Kontextmenü › „Regel erklären“ | Dialog mit Name, Beschreibung, Beispielen falsch/richtig; Esc schließt |
+| AP11 | Kontextmenü › „Regel abschalten“ | Regel in den globalen Einstellungen auf off, alle Befunde dieser Regel weg |
+| AP12 | `problems.window.compiler` an, übersetzen | dcc-Meldungen mit Kategorie „Compiler“ im Fenster |
+| AP13 | `problems.window.followCursor` an, im Editor durch die Datei gehen | Die Auswahl folgt dem Befund an der Cursorzeile |
+| AP14 | `problems.live` aus | Anzeige „Angehalten“, Liste ändert sich erst beim Speichern |
+| AP15 | Maus über einen Befund im Editor | Tooltip: Pille „Fehler“/„Warnung“/„Info“, Fehler zuerst, darunter „Atlas · regel-id“ bzw. „dcc · W1036“ und die Aktionszeile „Alt+Enter: …“, „Für diese Zeile unterdrücken“, „Regel einstellen…“ (**Abnahme**) |
+| AP16 | Tooltip festhalten, Tab/Umschalt+Tab, Enter | Aktionen werden der Reihe nach markiert, Enter führt die markierte aus |
+| AP17 | „Regel einstellen…“ im Tooltip | Optionen öffnen sich auf der Seite der Gruppe, die Regel ist markiert |
+| AP18 | `hover.problemActions` aus | Kein Aktionsblock im Tooltip, Pille und Regelzeile bleiben |
+| AP19 | *Tools › Optionen › Atlas › Prüfregeln › Threads*, Hauptschalter aus, OK | settings.json enthält `"group:threads": "off"`; Tabelle und Detailfelder gesperrt, Knoten grau; keine Thread-Befunde mehr (**Abnahme**) |
+| AP20 | Seite „Stil und Metriken“, Regel `magic-number`: Schweregrad Fehler, Ausnahme `Tests\*.pas`, Option `maxDigits` 5, OK | settings.json `"magic-number": {"severity": "error", "exclude": ["Tests\\*.pas"], "options": {"maxDigits": 5}}`; Befunde als Fehler, in Tests keine |
+| AP21 | Option mit ungültigem Wert (Buchstaben in einer Zahl) | Hinweis in Rot, der Wert wird nicht übernommen |
+| AP22 | Haken einer Regel in der Tabelle entfernen | Schweregrad „Aus“, Befunde weg |
+| AP23 | *Atlas › Projekt-Einstellungen*, Reiter Regeln | Derselbe Editor; Werte aus settings.json als „(global: …)“; Änderung landet in atlas.json |
+| AP24 | Server beenden, Optionen öffnen | Seite zeigt „Ohne laufenden Server fehlt der Regelkatalog; hier stehen nur die eingestellten Regeln.“ und nur diese Regeln |
+| AP25 | Knoten „Profile und Baseline“ | Knopf „Projekt-Einstellungen…“, Baseline-Stand, „Aktualisieren“ und „Löschen“ arbeiten |
+| AP26 | Oberfläche auf Englisch | Fenster, Tooltip und Seite englisch, Katalogtexte englisch |
+
+## Setter oder Getter ruft sich selbst auf (#910)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SR1 | `TKunde` mit `FName`, `property Name: string read FName write SetName;`, im Setter `if Name <> Value then Name := Value;` | Rote Wellenlinie unter `Name` in der Zuweisung: „Zuweisung an die Property Name im eigenen Setter: Endlosrekursion.“ (Fehler); Hover mit „Atlas · setter-recursion“ (**Abnahme**) |
+| SR2 | Alt+Enter bzw. Glühbirne „Feld FName verwenden“ | `FName := Value;`; Strg+Z nimmt es in einem Schritt zurück |
+| SR3 | Getter `Result := Name;` in `GetName` | „Lesen der Property Name im eigenen Getter: Endlosrekursion.“ |
+| SR4 | `// lsp-ignore: recursive-property-accessor` über der Zeile | Keine Meldung, kein Hinweis „Unbekannte Regelkennung“ |
+| SR5 | `"rules": {"setter-recursion": "off"}` bzw. `{"exclude": ["Alt/*.pas"]}` | Keine Meldung bzw. keine in `Alt/` |
+| SR6 | Fenster „Atlas-Prüfung“ | Befund in Gruppe „Fehler finden“, Kategorie Bug |
+
+## Vorrang von not übersehen (#911)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TZustand = (zsNeu, zsOffen, zsGesperrt)`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OP1 | `if not Zustand in [zsOffen, zsGesperrt] then` mit `Zustand: TZustand` | Gelbe Wellenlinie über `not Zustand in […]`: „„not“ gilt nur für Zustand, nicht für den in-Ausdruck. Gemeint ist vermutlich not (Zustand in […]).“ (**Abnahme**) |
+| OP2 | Alt+Enter „Klammern setzen: not (Zustand in […])“ | `if not (Zustand in [zsOffen, zsGesperrt]) then`; ein Strg+Z nimmt es zurück; Meldung weg |
+| OP3 | `if not Anzahl = 0 then` mit `Anzahl: Integer` | „„not“ kehrt die Ganzzahl Anzahl bitweise um, nicht den Vergleich. …“ |
+| OP4 | `if not Fertig = True then` mit `Fertig: Boolean` | Keine Meldung |
+| OP5 | `"rules": {"operator-precedence": "off"}` bzw. mit `exclude` | Keine Meldung bzw. keine in den ausgenommenen Dateien |
+
+## Leere Anweisung nach then, do oder else (#912)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ES1 | `if Liste.Count = 0 then;` und darunter `raise EKeineDaten.Create('Keine Daten');` | Gelbe Wellenlinie über `then;`: „Leere Anweisung nach then: die nächste Zeile läuft immer.“ (**Abnahme**) |
+| ES2 | Alt+Enter „Semikolon entfernen“ | `if Liste.Count = 0 then`; ein Strg+Z stellt das Semikolon wieder her |
+| ES3 | `for I := 0 to 9 do;` mit Anweisung darunter | „Leere Anweisung nach do: die Schleife dreht leer.“ |
+| ES4 | `if Fertig then begin end;` | „Leerer Block nach then: hier passiert nichts.“ |
+| ES5 | `if Fertig then begin { absichtlich leer } end;` | Keine Meldung; mit `"empty-statement": {"allowCommented": false}` wie ES4 |
+| ES6 | `while not Bereit do;` direkt vor `end` und `case … else; end` | Keine Meldung |
+| ES7 | `"allowCommented": "ja"` in atlas.json | Diagnose in atlas.json: „"allowCommented" muss true oder false sein“ |
+| ES8 | Seite *Prüfregeln › Fehler finden*, Regel `empty-statement` | Option `allowCommented` als Kontrollkästchen |
+
+## Schleife läuft einen Schritt zu weit (#913)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; `Kunden: TList<TKunde>`, `Zahlen: TArray<Integer>`, `Text: string`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LO1 | `for I := 0 to Kunden.Count do Ausgabe(Kunden[I].Name);` | Gelbe Wellenlinie über `0 to Kunden.Count`: „Obergrenze Kunden.Count: der letzte Durchlauf greift hinter das Listenende (Index Count).“ (**Abnahme**) |
+| LO2 | Alt+Enter „„- 1“ ergänzen“ | `for I := 0 to Kunden.Count - 1 do`; ein Strg+Z nimmt es zurück |
+| LO3 | `for I := 0 to Length(Zahlen) do Zahlen[I] := 0;`, Korrektur | `for I := 0 to High(Zahlen) do` |
+| LO4 | `for I := 0 to Length(Text) do Ausgabe(Text[I]);` | „Strings beginnen bei 1: der erste Durchlauf greift auf Text[0].“; Korrektur `Low(Text) to High(Text)` |
+| LO5 | `if Text[0] = '#' then` | „Strings beginnen bei 1: Text[0] liegt vor dem ersten Zeichen.“; Korrektur `Text[Low(Text)]` |
+| LO6 | `{$ZEROBASEDSTRINGS ON}` am Unit-Anfang, LO5 und `for I := 1 to Length(Text)` | LO5 ohne Meldung; die Schleife meldet „Mit {$ZEROBASEDSTRINGS ON} sind Strings nullbasiert …“ |
+| LO7 | `for I := 0 to Kunden.Count do Ausgabe(IntToStr(I));` (kein `Kunden[I]`) | Keine Meldung |
+| LO8 | `"loop-off-by-one": {"countNames": ["Anzahl"]}`, `for I := 0 to Kunden.Anzahl do … Kunden[I]` | Meldung mit „Index Anzahl“; `Kunden.Count` wird nicht mehr geprüft |
+
+## Liste in der eigenen Schleife verändert (#914)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; `Liste: TList<TAufgabe>` mit Feld `Erledigt`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CM1 | `for I := 0 to Liste.Count - 1 do if Liste[I].Erledigt then Liste.Delete(I);` | Gelbe Wellenlinie über `Liste.Delete`: „Liste.Delete in einer Vorwärtsschleife über Liste: das nächste Element wird übersprungen, am Ende folgt ein Indexfehler.“ (**Abnahme**) |
+| CM2 | Alt+Enter „Schleife rückwärts (downto) umschreiben“ | `for I := Liste.Count - 1 downto 0 do`; keine Meldung mehr; ein Strg+Z nimmt es zurück |
+| CM3 | `for var A in Liste do if A.Erledigt then Liste.Remove(A);` | „Liste.Remove in for … in über Liste: die RTL wirft eine Exception, weil sich die Liste ändert. Elemente sammeln und nach der Schleife ändern.“; keine Schnellkorrektur |
+| CM4 | `for I := 0 to Liste.Count - 1 do Liste.Add(…);` bzw. `Liste.Insert(0, …)` | Meldung zu Add („die neuen Elemente durchläuft die Schleife nicht …“) bzw. Insert („die Elemente rücken nach …“) |
+| CM5 | Wie CM1, aber `begin Liste.Delete(I); Break; end` | Keine Meldung |
+| CM6 | Befund im Fenster „Atlas-Prüfung“ und im Befund-Hover | Regel `collection-modified-in-loop`, Gruppe „Fehler finden“, Aktionszeile mit der Korrektur aus CM2 |
+| CM7 | `"collection-modified-in-loop": {"mutatingMethods": ["Loeschen"]}`, CM1 mit `Liste.Loeschen(I)` | Meldung für `Loeschen`; `Liste.Delete` bleibt still |
+| CM8 | `"collection-modified-in-loop": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Objekt nach Free weiter benutzt (#915)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; `Bericht: TBericht`, `Protokoll: TStrings`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UF1 | `Bericht.Free;` und in der nächsten Zeile `Protokoll.Add('Seiten: ' + IntToStr(Bericht.Seiten));` | Rote Wellenlinie unter `Bericht` in der zweiten Zeile: „Bericht wurde in Zeile N freigegeben und wird hier wieder gelesen.“ (**Abnahme**) |
+| UF2 | Alt+Enter auf dem Befund | Erste Aktion „Zur Freigabe in Zeile N springen“; sie setzt den Cursor auf `Bericht.Free`, ändert nichts am Text |
+| UF3 | Befund-Hover und Fenster „Atlas-Prüfung“ | Aktionszeile bzw. „Korrektur anwenden“ zeigt „Zur Freigabe in Zeile N springen“ und springt dorthin; Gruppe „Fehler finden“ |
+| UF4 | `FreeAndNil(Bericht); Bericht.Drucken;` | „Bericht wurde in Zeile N mit FreeAndNil freigegeben und ist hier nil.“ |
+| UF5 | `FreeAndNil(Bericht); if Assigned(Bericht) then Bericht.Drucken;` | Keine Meldung |
+| UF6 | `Bericht.Free; Bericht := TBericht.Create; Bericht.Drucken;` bzw. `Bericht.Free; Liste.Remove(Bericht);` | Keine Meldung |
+| UF7 | `if A then Bericht.Free; Bericht.Drucken;` mit `"minConfidence": "low"` | Meldung mit Konfidenz mittel; mit Vorgabe `medium` ebenfalls sichtbar |
+| UF8 | `"use-after-free": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Erst benutzt, dann auf nil geprüft (#916)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Parameter `Kunde: TKunde`, Variable `Titel: string`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DN1 | `Titel := Kunde.Name;` und danach `if Assigned(Kunde) then Anzeigen(Kunde);` | Gelbe Wellenlinie unter `Kunde` in der ersten Zeile: „Kunde wird hier benutzt, aber erst in Zeile N auf nil geprüft.“ (**Abnahme**) |
+| DN2 | Alt+Enter „Prüfung vor den Zugriff ziehen“ | `if Assigned(Kunde) then begin Titel := Kunde.Name; Anzeigen(Kunde); end;` in eigenen Zeilen; ein Strg+Z nimmt es zurück; keine Meldung mehr |
+| DN3 | Wie DN1 mit `else`-Zweig oder einer Anweisung zwischen Zugriff und Prüfung | Meldung ohne Schnellkorrektur |
+| DN4 | `if Kunde = nil then Exit;` vor DN1 | Keine Meldung |
+| DN5 | `Kunde := Suchen(Titel);` bzw. `Ersetzen(Kunde);` zwischen Zugriff und Prüfung | Keine Meldung |
+| DN6 | Feld `FKunde` statt Parameter, dazwischen ein Aufruf `Laden;` | Keine Meldung; ohne den Aufruf gemeldet |
+| DN7 | Befund-Hover und Fenster „Atlas-Prüfung“ | Gruppe „Fehler finden“, Konfidenz mittel, Aktionszeile mit der Korrektur aus DN2 |
+| DN8 | `"deref-before-nil-check": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Feld freigegeben, Verweis bleibt stehen (#917)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Klasse `TImport` mit Feld `FCache: TObject`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FN1 | `procedure TImport.Zuruecksetzen; begin FCache.Free; end;` | Gelbe Wellenlinie über `FCache.Free`: „FCache bleibt nach Free gesetzt; ein späterer Zugriff trifft freigegebenen Speicher.“ (**Abnahme**) |
+| FN2 | Alt+Enter „FreeAndNil(FCache)“ | `FreeAndNil(FCache);`; ein Strg+Z nimmt es zurück; keine Meldung mehr |
+| FN3 | Dasselbe im Destruktor bzw. in einer Methode, die nur der Destruktor aufruft | Keine Meldung |
+| FN4 | `FCache.Free; FCache := nil;` bzw. `FCache.Free; Laden;` (Laden setzt `FCache := TObject.Create`) | Keine Meldung |
+| FN5 | DUnitX-Testklasse: `[TearDown] procedure Aufraeumen;` mit `FListe.Free;` | Keine Meldung |
+| FN6 | `"field-free-without-nil": {"ignoreMethods": ["Zuruecksetzen"]}` | FN1 ohne Meldung; `BeforeDestruction` wird jetzt gemeldet |
+| FN7 | Befund-Hover und Fenster „Atlas-Prüfung“ | Gruppe „Fehler finden“, Konfidenz mittel, Aktionszeile mit der Korrektur aus FN2 |
+| FN8 | `"field-free-without-nil": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Feld erzeugt, aber nie freigegeben (#918)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TImport = class private FZeilen, FFehler: TStringList; public constructor Create; destructor Destroy; override; end;`, im Konstruktor `FZeilen := TStringList.Create;` und `FFehler := TStringList.Create;`, im Destruktor nur `FZeilen.Free; inherited;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FL1 | Unit öffnen | Warnung `field-not-freed` an `FFehler`: „FFehler wird im Konstruktor erzeugt, aber im Destruktor nicht freigegeben (Speicherleck).“, Konfidenz mittel; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| FL2 | Glühbirne auf `FFehler`, „Im Destruktor freigeben“ | `FFehler.Free;` vor `inherited;`; Meldung weg |
+| FL3 | Feld `FKnopf: TButton`, im Konstruktor `FKnopf := TButton.Create(Self);` | Keine Meldung (Owner gibt frei) |
+| FL4 | Feld `FLog: ILog` und `FLogImpl: TFileLog`, im Konstruktor `FLogImpl := TFileLog.Create; FLog := FLogImpl;` | Keine Meldung (die Referenzzählung gibt frei) |
+| FL5 | Feld `FPruefung: TRegEx`, im Konstruktor `FPruefung := TRegEx.Create('x');` | Keine Meldung (Record) |
+| FL6 | `"rules": {"field-not-freed": {"ignoreTypes": ["TStringList"]}}` | Keine Meldung an `FFehler`; auf der Seite „Prüfregeln“ steht die Option unter der Regel (**Abnahme**) |
+| FL7 | Alte Kennung: `"rules": {"owned-field-not-freed": "off"}` bzw. `// lsp-ignore: owned-field-not-freed` an `FFehler` | Keine Meldung |
+| FL8 | `"field-not-freed": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Konstruktor oder Destruktor ohne inherited (#919)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TBasisExport = class public constructor Create; destructor Destroy; override; end;` und `TExport = class(TBasisExport) public destructor Destroy; override; end;`, `TExport.Destroy` mit `FDatei.Free;` ohne `inherited`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MI1 | Unit öffnen | Warnung `missing-inherited` an `Destroy`: „Destroy ruft inherited nicht auf; die Felder von TBasisExport werden nie freigegeben.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| MI2 | Glühbirne, „"inherited;" einfügen“ | `inherited;` nach `FDatei.Free;`; kompiliert; Strg+Z nimmt es in einem Schritt zurück (**Abnahme**) |
+| MI3 | `constructor TExport.Create;` ohne `inherited` | Warnung „Create ruft inherited nicht auf; die Felder von TBasisExport werden nie angelegt.“, Korrektur setzt `inherited;` an den Anfang |
+| MI4 | `constructor Create(AName: string);` ohne override und ohne `inherited` | Korrektur „"inherited Create;" einfügen“ |
+| MI5 | Klasse ohne Vorfahr (`class`) mit Destruktor ohne `inherited` | Keine Meldung |
+| MI6 | Komponente `TFoo = class(TCustomControl)` mit `Destroy` ohne `inherited` | Nur `component-missing-inherited`, keine Doppelmeldung |
+| MI7 | `"rules": {"missing-inherited": {"methods": ["Create"]}}` | Destroy aus MI1 nicht mehr gemeldet; auf der Seite „Prüfregeln“ steht die Option unter der Regel |
+| MI8 | `"missing-inherited": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Destroy statt Free aufgerufen (#920)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Routine mit `Verbindung.Destroy;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DC1 | Unit öffnen | Warnung `destroy-called-directly` an `Destroy`: „Destroy direkt aufgerufen; Free prüft vorher auf nil.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| DC2 | Glühbirne, „Free statt Destroy“ | `Verbindung.Free;`; kompiliert; Strg+Z nimmt es in einem Schritt zurück (**Abnahme**) |
+| DC3 | `inherited Destroy;` im Destruktor | Keine Meldung |
+| DC4 | `Knoten.Destroy(True);` (eigener Destruktor mit Argument) | Keine Meldung |
+| DC5 | `"destroy-called-directly": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## FillChar, Move oder GetMem auf verwaltete Typen (#921)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TAdresse = record Strasse, Ort: string; end;`, `PAdresse = ^TAdresse;` und in einer Routine `Adresse: TAdresse;` und `FillChar(Adresse, SizeOf(Adresse), 0);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MR1 | Unit öffnen | Fehler `managed-type-raw-memory`: „TAdresse enthält Strings; FillChar überschreibt die Referenzen ohne Freigabe (Leck, ggf. Zugriffsverletzung).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| MR2 | Glühbirne, „Adresse := Default(TAdresse)“ | `Adresse := Default(TAdresse);`; kompiliert; Strg+Z nimmt es in einem Schritt zurück (**Abnahme**) |
+| MR3 | `Move(A, B, SizeOf(TAdresse));` mit `A, B: TAdresse` | Meldung „… Move kopiert die Referenzen ohne Referenzzählung …“, Korrektur `B := A;` |
+| MR4 | `GetMem(P, SizeOf(TAdresse));` und `FreeMem(P);` mit `P: PAdresse` | Zwei Meldungen; Korrekturen `New(P);` und `Dispose(P);` |
+| MR5 | Record aus einer anderen Unit des Projekts (im Index) mit einem Interface-Feld | Meldung „… enthält Interfaces …“ |
+| MR6 | `FillChar(Punkt, SizeOf(Punkt), 0);` mit `TPunkt = record X, Y: Integer; end;` und `FillChar(S[1], …)` | Keine Meldung |
+| MR7 | `"managed-type-raw-memory": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## threadvar mit verwaltetem Typ (#922)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `threadvar LetzteMeldung: string; Zaehler: Integer;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TV1 | Unit öffnen | Warnung `threadvar-managed` an `LetzteMeldung`: „threadvar mit string wird beim Thread-Ende nicht finalisiert (Leck je Thread).“; keine an `Zaehler`; im Fenster „Atlas-Prüfung“ (Gruppe Threads) und im Befund-Hover (**Abnahme**) |
+| TV2 | `Meldung: TMeldung;` mit `TMeldung = record Text: string; end;` in der threadvar | Meldung „threadvar mit TMeldung (enthält Strings) …“ |
+| TV3 | `LetzteMeldung: PChar;` bzw. dieselbe Variable unter `var` | Keine Meldung |
+| TV4 | `"threadvar-managed": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## PChar auf einen temporären String (#923)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Routine mit `const Pfad: string`, lokaler Variable `Ziel: PChar` und den Zeilen `Ziel := PChar(Pfad + '.bak');` und `CopyFile(PChar(Pfad), Ziel, False);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PT1 | Unit öffnen | Warnung `pchar-of-temporary` an `Pfad + '.bak'`: „Der Ausdruck Pfad + '.bak' ist temporär; Ziel zeigt nach dieser Zeile auf freigegebenen Speicher.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| PT2 | Glühbirne, „Zwischenergebnis in ZielText ablegen“ | Davor `var ZielText: string := Pfad + '.bak';`, dann `Ziel := PChar(ZielText);`; kompiliert; Strg+Z nimmt es in einem Schritt zurück (**Abnahme**) |
+| PT3 | `PostMessage(Handle, WM_USER, 0, LPARAM(PChar(Pfad + 'x')));` | Meldung „… PostMessage liest den Zeiger erst später aus freigegebenem Speicher.“ |
+| PT4 | `FName := PChar(IntToStr(N));` mit Feld `FName` | Meldung ohne Korrektur |
+| PT5 | `CopyFile(PChar(Pfad + '.bak'), …)`, `Ziel := PChar(Pfad);`, `SendMessage(…, LPARAM(PChar(Pfad + 'x')))` | Keine Meldung |
+| PT6 | `"pchar-of-temporary": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## out-Parameter gelesen, bevor er gesetzt ist (#924)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `procedure Anhaengen(out Text: string);` im interface und der Implementierung `Text := Text + sLineBreak + 'Ende';`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OP1 | Unit öffnen | Warnung `out-param-read` am gelesenen `Text`: „out-Parameter Text wird gelesen, bevor er gesetzt ist; bei string ist er hier immer leer.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| OP2 | Glühbirne, „out durch var ersetzen“ | `var Text` in interface und Implementierung; kompiliert; Strg+Z nimmt beides in einem Schritt zurück (**Abnahme**) |
+| OP3 | Methode `procedure Weiter(out N: Integer);` mit `if N > 0 then` vor der Zuweisung | Meldung „… sein Wert ist hier undefiniert.“; Korrektur ändert nur die Deklaration dieser Klasse |
+| OP4 | Erst `S := '';`, dann `S := S + 'x';` bzw. `Lesen(P.X)` mit `out P: TPunkt` | Keine Meldung |
+| OP5 | `"out-param-read": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Find auf einer unsortierten TStringList (#925)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Routine mit `Namen := TStringList.Create;`, `Namen.LoadFromFile(Datei);` und `if Namen.Find(Suche, Index) then Namen.Delete(Index);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SL1 | Unit öffnen | Warnung `stringlist-unsorted` an `Namen.Find(Suche, Index)`: „Find setzt eine sortierte Liste voraus; Namen ist nicht sortiert.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| SL2 | Glühbirne, „Sorted := True nach dem Erzeugen ergänzen“ | Neue Zeile `Namen.Sorted := True;` direkt unter `TStringList.Create`; Meldung verschwindet (**Abnahme**) |
+| SL3 | Rückgängig, Glühbirne, „IndexOf statt Find verwenden“ | `Index := Namen.IndexOf(Suche);` vor dem `if`, Bedingung `Index >= 0`; kompiliert |
+| SL4 | `Namen.Duplicates := dupIgnore;` statt Find | Meldung „Duplicates wirkt nur bei sortierten Listen; Namen ist nicht sortiert.“ |
+| SL5 | `Namen.Insert(0, Suche);` ergänzen | Meldung bleibt, die Glühbirne bietet nur noch IndexOf an |
+| SL6 | `Namen.Sort;`, `TStringList.Create(dupIgnore, True, False)` bzw. `Fuellen(Namen);` | Keine Meldung |
+| SL7 | `"stringlist-unsorted": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Writeln in einem Programm ohne Konsole (#926)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; VCL-Projekt ohne `{$APPTYPE CONSOLE}` geladen; im Formular `procedure TfrmHaupt.btnStartClick` mit `Writeln('Start: ', TimeToStr(Now));`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WG1 | Unit öffnen | Warnung `writeln-in-gui-app` an `Writeln`: „Das Projekt hat keine Konsole; Writeln löst zur Laufzeit E/A-Fehler 105 aus.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| WG2 | Glühbirne, „Durch OutputDebugString ersetzen“ | `OutputDebugString(PChar('Start: ' + TimeToStr(Now)));`, `Winapi.Windows` im uses; kompiliert; Ausgabe im Ereignisprotokoll der IDE (**Abnahme**) |
+| WG3 | `Readln;` ergänzen | Meldung „… Readln löst zur Laufzeit E/A-Fehler 104 aus.“ ohne Korrektur |
+| WG4 | `"writeln-in-gui-app": {"replacement": "Log.Info"}` in atlas.json | Korrektur heißt „Durch Log.Info ersetzen“ und schreibt `Log.Info('Start: ' + TimeToStr(Now));` |
+| WG5 | Dieselbe Unit in einem Konsolenprojekt (`{$APPTYPE CONSOLE}` oder Linker-Option „Konsolenanwendung erzeugen“) | Keine Meldung |
+| WG6 | `if IsConsole then Writeln(...)` bzw. `Writeln(F, ...)` mit `F: TextFile` | Keine Meldung |
+| WG7 | `"writeln-in-gui-app": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## raise im Destruktor (#927)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Klasse `TSitzung` mit `destructor Destroy; override;` und im Rumpf `if FOffen then raise ESitzung.Create('Sitzung noch offen');` vor `inherited;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ED1 | Unit öffnen | Warnung `exception-in-destructor` am `raise`: „raise im Destruktor: inherited Destroy läuft nicht mehr, Felder bleiben liegen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| ED2 | `raise` hinter `inherited;` verschieben | Meldung „raise im Destruktor: die Ausnahme verlässt Destroy, der Aufrufer erwartet eine Freigabe ohne Ausnahme.“ |
+| ED3 | `raise` in `try … except on E: ESitzung do Protokoll(E); end;` einschließen | Keine Meldung |
+| ED4 | Im except-Teil `raise;` ergänzen | Meldung am `raise` |
+| ED5 | `raise` in einer eingebetteten Prozedur des Destruktors | Keine Meldung |
+| ED6 | `"exception-in-destructor": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Doppelte Bedingung oder gleiche Zweige (#928)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Routine mit `if Betrag > 1000 then Stufe := 3 else if Betrag > 500 then Stufe := 2 else if Betrag > 1000 then Stufe := 1;` über mehrere Zeilen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DQ1 | Unit öffnen | Warnung `duplicate-condition` an der dritten Bedingung: „Gleiche Bedingung wie in Zeile N; dieser Zweig wird nie erreicht.“ (N = Zeile des ersten if); im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| DQ2 | Glühbirne, „Zum ersten Vorkommen springen“ | Cursor steht auf der ersten Bedingung (**Abnahme**) |
+| DQ3 | `if A then X := 1 else X := 1;` | Meldung „then- und else-Zweig sind gleich; die Bedingung hat keine Wirkung.“ |
+| DQ4 | `if A and B and A then` bzw. `if Betrag = Betrag then` | Meldung „A steht zweimal in derselben and-Verknüpfung …“ bzw. „Betrag wird mit sich selbst verglichen; das Ergebnis ist immer True.“ |
+| DQ5 | `if Leser.Next = 'x' then … else if Leser.Next = 'x' then`, `Wert <> Wert` mit `Wert: Double` | Keine Meldung |
+| DQ6 | `"duplicate-condition": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## case über Aufzählung ohne alle Werte (#929)
+
+Voraussetzung: Server läuft, Index aufgebaut; Einstellungen auf Vorgabe; `TBestellStatus = (bsNeu, bsBezahlt, bsStorniert, bsZurueck)` und `case Bestellung.Status of bsNeu: Anlegen; bsBezahlt: Versenden; end;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CE1 | Unit öffnen | Warnung `case-missing-enum-value` am Selektor: „Fehlende Werte von TBestellStatus: bsStorniert, bsZurueck.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| CE2 | Glühbirne, „Fehlende Werte ergänzen (2)“ | Zweige `bsStorniert: ;` und `bsZurueck: ;` vor `end`, gleich eingerückt; Meldung verschwindet (**Abnahme**) |
+| CE3 | Typ in einer anderen Unit (z. B. `case Align of` mit `TAlign` aus Vcl.Controls) | Meldung mit den fehlenden Werten aus dem Index |
+| CE4 | `else` ergänzen | Keine Meldung; mit `"requireElse": true` wieder gemeldet, die Korrektur fügt vor `else` ein |
+| CE5 | `{$SCOPEDENUMS ON}`-Typ mit Marken `TAmpel.Rot:` | Korrektur schreibt `TAmpel.Gelb: ;` |
+| CE6 | `"case-missing-enum-value": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Paarige Aufrufe ohne try/finally (#930)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Routine mit `Screen.Cursor := crHourGlass; Tabelle.DisableControls; Importieren; Tabelle.EnableControls; Screen.Cursor := crDefault;` je auf einer Zeile.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PF1 | Unit öffnen | Warnung `pair-without-finally` an `Tabelle.EnableControls`: „EnableControls steht nicht im finally; bei einer Exception bleibt das Grid eingefroren. Gleiches gilt für Screen.Cursor.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| PF2 | Glühbirne, „In try/finally einschließen“ | `try Importieren; finally Tabelle.EnableControls; Screen.Cursor := crDefault; end;` richtig eingerückt; kompiliert (**Abnahme**) |
+| PF3 | `if FindFirst('*.txt', faAnyFile, SR) = 0 then begin Verarbeiten(SR); FindClose(SR); end;` | Meldung „FindClose steht nicht im finally; … bleibt das Suchhandle offen.“ |
+| PF4 | `Liste.BeginUpdate; Liste.EndUpdate;` direkt hintereinander bzw. mit `try`/`finally` | Keine Meldung |
+| PF5 | `"pair-without-finally": {"pairs": [{"open": "Einfrieren", "close": "Auftauen"}]}` und `Anzeige.Einfrieren; Lesen; Anzeige.Auftauen;` | Meldung „Auftauen steht nicht im finally; … bleibt der Zustand hängen.“ |
+| PF6 | `"pair-without-finally": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Application.ProcessMessages in Schleifen (#931)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; VCL-Formular mit Knopf `StartButton` und Methode `TForm1.Warten` mit `while not Fertig do begin Schritt; Application.ProcessMessages; end;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PQ1 | Unit öffnen | Hinweis `processmessages-in-loop` an `Application.ProcessMessages`: „ProcessMessages in der Schleife erlaubt Wiedereintritt (zweiter Klick, Formular schließen). Besser die Arbeit in einen Thread oder TTask auslagern oder den Auslöser bis zum Ende sperren.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover, keine Glühbirne (**Abnahme**) |
+| PQ2 | In `StartButtonClick(Sender: TObject)` ohne Schleife `Application.ProcessMessages;` schreiben | Hinweis „ProcessMessages im Ereignis-Handler erlaubt Wiedereintritt …“ |
+| PQ3 | `Application.ProcessMessages` in `TTask.Run(procedure begin … end)` bzw. in einer Routine ohne Schleife und ohne Sender | Keine Meldung |
+| PQ4 | `"processmessages-in-loop": {"allowIn": ["Warten"]}` bzw. `["TForm1.Warten"]` | Keine Meldung in `Warten`; in anderen Methoden weiter |
+| PQ5 | `"processmessages-in-loop": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| PQ6 | Einstellungsseite „Prüfregeln“, Gruppe „Threads“ | Regel mit Schweregrad Hinweis und Option `allowIn` als Liste |
+
+## Umwandlung einer Benutzereingabe ohne Prüfung (#932)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; VCL-Formular mit `edtMenge: TEdit` und in `btnOkClick` die lokale Variable `Menge: Integer` sowie die Zeile `Menge := StrToInt(edtMenge.Text);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UK1 | Unit öffnen | Hinweis `unchecked-conversion` an `StrToInt(edtMenge.Text)`: „Eingabe aus edtMenge.Text ohne Prüfung umgewandelt; eine Fehleingabe löst EConvertError aus.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| UK2 | Glühbirne, „In TryStrToInt mit Fehlerzweig umschreiben“ | `if not TryStrToInt(edtMenge.Text, Menge) then` und eingerückt `raise EConvertError.Create('Menge ist keine Zahl');`; ein Strg+Z stellt die Zeile wieder her; kompiliert (**Abnahme**) |
+| UK3 | `Preis := StrToFloat(Trim(Grid.Cells[1, Zeile]));` mit `Preis: Double` | Hinweis mit „Grid.Cells[1, Zeile]“, Korrektur mit `TryStrToFloat` |
+| UK4 | Zeile in `try … except … end` setzen bzw. `StrToIntDef(edtMenge.Text, 0)` schreiben | Keine Meldung; mit `try … finally` weiter gemeldet |
+| UK5 | `"unchecked-conversion": {"sources": ["Text", "AsString"]}` und `Menge := StrToInt(Query.Params[0].AsString);` | Hinweis; mit `"functions": ["StrToFloat"]` verschwindet der Hinweis auf `StrToInt` |
+| UK6 | `"unchecked-conversion": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Dictionary-Zugriff ohne Prüfung des Schlüssels (#933)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Methode mit den lokalen Variablen `Preise: TDictionary<string, Double>` und `Preis: Double` sowie der Zeile `Preis := Preise[Artikel.Nummer];`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DG1 | Unit öffnen | Hinweis `dictionary-get-without-check` an `Preise[Artikel.Nummer]`: „Schlüssel wird nicht geprüft; fehlt er, löst der Zugriff EListError aus.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| DG2 | Glühbirne, „In TryGetValue umschreiben“ | `if not Preise.TryGetValue(Artikel.Nummer, Preis) then` und eingerückt `Preis := 0;`; ein Strg+Z stellt die Zeile wieder her; kompiliert (**Abnahme**) |
+| DG3 | Davor `if Preise.ContainsKey(Artikel.Nummer) then` setzen | Keine Meldung |
+| DG4 | `for var Name in Preise.Keys do Anzeigen(Preise[Name]);` bzw. `Preise.Add('A', 1);` davor | Keine Meldung |
+| DG5 | `TObjectDictionary<string, TArtikel>` mit `Teil := Lager['A1'];` (`Teil: TArtikel`) | Hinweis; Korrektur setzt `Teil := Default(TArtikel)` |
+| DG6 | `"dictionary-get-without-check": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Lokaler Name verdeckt Feld oder Property (#934)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; VCL-Formular `TfrmKunde` mit der Methode `procedure Laden(const Caption: string);` und im Rumpf `Caption := Caption + ' (geladen)';`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SN1 | Unit öffnen | Hinweis `shadowed-name` am Parameter `Caption` im Methodenkopf: „Parameter Caption verdeckt die Property TfrmKunde.Caption; die Zuweisung ändert nur den Parameter.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| SN2 | Glühbirne, „In ACaption umbenennen“ | Parameter in Deklaration und Rumpf heißt `ACaption`, `Caption := ACaption + …` bleibt; ein Strg+Z macht alles rückgängig; kompiliert |
+| SN3 | Lokale Variable `Left: Integer` in einer Formularmethode | Hinweis „Lokale Variable Left verdeckt die Property …“; Korrektur „In LLeft umbenennen“ |
+| SN4 | Feld `FStand` in der Klasse und lokale Variable `FStand` bzw. globale Variable `Protokoll` und lokale `var Protokoll := 1;` | Hinweis „… verdeckt das Feld …“ bzw. „… verdeckt die globale Variable Protokoll.“ |
+| SN5 | `FormClose(Sender: TObject; var Action: TCloseAction)` bzw. Setter mit `Value` | Keine Meldung |
+| SN6 | `"shadowed-name": {"ignore": ["Cap*"]}` | Keine Meldung zu `Caption` |
+| SN7 | `"shadowed-name": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## if, das nur True oder False zuweist (#935)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Funktion mit `if Betrag > 0 then Result := True else Result := False;` über vier Zeilen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BA1 | Unit öffnen | Hinweis `boolean-assign-if` an `if Betrag > 0`: „Das if weist nur True oder False zu.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| BA2 | Glühbirne, „Durch Result := Betrag > 0 ersetzen“ | Eine Zeile `Result := Betrag > 0;`; ein Strg+Z stellt das if wieder her (**Abnahme**) |
+| BA3 | Werte vertauschen (`Result := False … else Result := True`) | Korrektur `Result := not (Betrag > 0)` |
+| BA4 | `if Gefunden then Exit(True);` und in der nächsten Zeile `Exit(False);` | Hinweis; Korrektur `Exit(Gefunden)` ersetzt beide Zeilen |
+| BA5 | Kommentar in einem Zweig bzw. eine zweite Anweisung im then-Zweig | Mit Kommentar Hinweis ohne Korrektur; mit zweiter Anweisung keine Meldung |
+| BA6 | `"boolean-assign-if": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Vergleich über UpperCase oder LowerCase (#936)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Routine mit `if UpperCase(Land) = UpperCase(Standard) then`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CV1 | Unit öffnen | Hinweis `case-insensitive-compare` am Vergleich: „Vergleich über UpperCase; SameText vergleicht ohne Zwischenstrings.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| CV2 | Glühbirne, „Durch SameText(Land, Standard) ersetzen“ | `if SameText(Land, Standard) then`; ein Strg+Z stellt den Vergleich wieder her (**Abnahme**) |
+| CV3 | `if LowerCase(S) <> 'ja' then` | Korrektur `if not SameText(S, 'ja') then` |
+| CV4 | `S.ToUpper = Name.ToUpper` bzw. `AnsiUpperCase(S) = 'JA'` | Korrektur mit `AnsiSameText` |
+| CV5 | `UpperCase(S) = 'ja'` bzw. `UpperCase(S) = LowerCase(T)` | Keine Meldung (andere Fehler) |
+| CV6 | `"case-insensitive-compare": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Zahl ohne Namen im Code (#937)
+
+Voraussetzung: Server läuft; in `atlas.json` `"minConfidence": "low"` und `"rules": { "magic-number": "hint" }` (die Regel ist experimentell und steht auf `off`); Routine mit `if Tage > 42 then Mahnen;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MN1 | Unit öffnen | Hinweis `magic-number` an `42`: „Zahl 42 ohne Namen; als Konstante wird klar, was sie bedeutet.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| MN2 | Glühbirne, „Konstante einführen“ | Konstante mit dem Wert 42 im const-Abschnitt, `if Tage > NewConstant then`; Umbenennen läuft an; ein Strg+Z stellt den Vergleich wieder her (**Abnahme**) |
+| MN3 | `X := -7 * 3.5 + $FF;` | Drei Meldungen: `-7` (mit Vorzeichen), `3.5` und `$FF` |
+| MN4 | Zahlen in `const`, Array-Grenzen `array[0..41]`, Teilbereich `1..31`, Zeichen `#13#10`, `X * 2 + 1 - 100` | Keine Meldung |
+| MN5 | Einstellungsseite „Prüfregeln“, Option „allowed“ der Regel auf `42` setzen | Keine Meldung mehr an `42`; `0`, `1` usw. werden jetzt gemeldet; eine Eingabe wie `zwei` lehnt das Feld ab |
+| MN6 | `"magic-number": "off"`, ohne `minConfidence` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Zeile zu lang (#938)
+
+Voraussetzung: Server läuft; in `atlas.json` `"rules": { "line-length": "hint" }` (die Regel ist experimentell und steht auf `off`); Routine mit `Ergebnis := Rechner.Berechne(Kunde.Rabattstufe, Bestellung.Positionen, Lager.Verfuegbarkeit(Artikel), Steuer.Satz(Land));` mit zwei Leerzeichen Einrückung (123 Zeichen).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LL1 | Unit öffnen | Hinweis `line-length` ab Spalte 121 bis zum Zeilenende: „Zeile hat 123 Zeichen (Grenze 120).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover; die Markierung beginnt am Lineal (#710) (**Abnahme**) |
+| LL2 | Glühbirne, „Zeile umbrechen“ | Umbruch hinter `Lager.Verfuegbarkeit(Artikel),`, die Fortsetzung `Steuer.Satz(Land));` eine Ebene tiefer; die Meldung verschwindet; ein Strg+Z stellt die Zeile wieder her (**Abnahme**) |
+| LL3 | Option „max“ auf der Einstellungsseite „Prüfregeln“ auf 40, `Summe := Erster + Zweiter + Dritter + Vierter + Fuenfter + Sechster;` | Meldung „Zeile hat 70 Zeichen (Grenze 40).“; Korrektur bricht vor `+ Vierter` um |
+| LL4 | Zeile, die nur wegen eines langen Strings zu lang ist; dann Option „ignoreStrings“ aus | Erst keine Meldung, danach Meldung |
+| LL5 | Zeile mit langem Kommentar am Ende; dann Option „ignoreComments“ an | Erst Meldung, danach keine |
+| LL6 | Zeile mit Tabs, `"format": { "indentSize": 8 }` | Tabs zählen bis zur nächsten Tabstelle (8er-Schritte) |
+| LL7 | Konstante mit 1400 Zeichen langem String in einer Zeile, `max` 5000 | Fehler (rot): „Zeile mit 1412 Zeichen; der Compiler bricht über 1023 Zeichen ab (wie F2069).“; `/explain line-length` und `docs/Regeln.md` nennen „Entspricht der Compilermeldung F2069.“ (**Abnahme**) |
+| LL8 | `"line-length": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung, auch nicht bei LL7 |
+
+## Klasse, Unit oder uses zu groß (#939)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe (die drei Regeln sind an); Code-Metriken und `codeLens.metrics` an; Formular `TfrmHaupt` mit 87 Komponenten bzw. Feldern.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MS1 | Unit des Formulars öffnen | Hinweis `metric-class-size` am Klassennamen: „TfrmHaupt hat 87 Member (Grenze 40).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| MS2 | Metrik-Linse ansehen | Hinter `TfrmHaupt = class(TForm)` die Marke „87 Member (> 40)“ in Warnfarbe, hinter dem Unit-Namen „N Zeilen“, hinter dem ersten `uses` „N Units im uses“ (**Abnahme**) |
+| MS3 | Klasse mit `property Align;` und geschachteltem Typ | Hochstufungen und geschachtelte Typen zählen nicht; die geschachtelte Klasse hat eine eigene Marke |
+| MS4 | Unit mit mehr als 2000 Zeilen | Hinweis `metric-unit-length` am Unit-Namen „Unit … hat N Zeilen (Grenze 2000); Klassen lassen sich mit „Klasse in eigene Unit verschieben“ auslagern.“ |
+| MS5 | Unit mit 34 Units in interface- und implementation-uses zusammen; zum Vergleich die .dpr | Hinweis `metric-uses-count` am ersten `uses`; in der .dpr keine Meldung |
+| MS6 | Seite „Prüfregeln“, bei `metric-class-size` die Option „max“ auf 90 | Keine Meldung mehr an `TfrmHaupt`; die Linse zeigt „87 Member“ ohne Grenzwert |
+| MS7 | `"metric-class-size": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Öffentliches Feld (#940)
+
+Voraussetzung: Server läuft; in `atlas.json` `"rules": { "public-field": "hint" }` (die Regel ist experimentell und steht auf `off`); Klasse `TKunde = class` mit `public` und `Name: string;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PF1 | Unit öffnen | Hinweis `public-field` am Feld: „Öffentliches Feld Name; eine Property hält die Klasse änderbar.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| PF2 | Glühbirne, „Feld kapseln“ | `private` mit `FName: string;`, dann `public` mit `property Name: string read FName write FName;`; der leere public-Abschnitt ist weg; die Unit übersetzt; ein Strg+Z stellt alles wieder her (**Abnahme**) |
+| PF3 | Feld in `published` neben weiteren Mitgliedern | Korrektur legt `private` und `published` mit der Property ans Ende der Klasse, der alte Abschnitt bleibt |
+| PF4 | Formular mit Designerfeldern (`btnOk: TButton;` ohne Sichtbarkeitswort), private/protected-Felder, `class var` | Keine Meldung |
+| PF5 | `X, Y: Integer;` in einer Klasse ohne Vorfahren; `FName` in public | Je eine Meldung für X und Y bzw. FName, aber ohne Korrektur |
+| PF6 | Record `TPunkt = record X: Integer; end;`, dann Option „includeRecords“ an | Erst keine Meldung, danach Meldung mit Korrektur |
+| PF7 | `"public-field": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Globale Variable im interface (#941)
+
+Voraussetzung: Server läuft; in `atlas.json` `"rules": { "global-variable": "hint" }` (die Regel ist experimentell und steht auf `off`); Unit mit `var AktuellerBenutzer: TBenutzer;` im interface-Teil.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GV1 | Unit öffnen | Hinweis `global-variable` am Namen: „Globale Variable AktuellerBenutzer ist in jeder Unit sichtbar, die diese verwendet.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| GV2 | Variable in den implementation-Teil verschieben, im interface `function AktuellerBenutzer: TBenutzer;` | Keine Meldung |
+| GV3 | Formular-Unit mit `var frmHaupt: TfrmHaupt;` | Keine Meldung (**Abnahme**) |
+| GV4 | Option „includeFormVariables“ auf der Seite „Prüfregeln“ an | Meldung an `frmHaupt` |
+| GV5 | `A, B: Integer;` und `threadvar Puffer: string;` im interface | Je eine Meldung für A, B und Puffer |
+| GV6 | `"global-variable": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Auskommentierter Code (#942)
+
+Voraussetzung: Server läuft; Unit mit drei auskommentierten Codezeilen im Rumpf einer Routine (`// if Kunde.Rabatt > 0 then`, `//   Preis := Preis * (1 - Kunde.Rabatt);`, `// Protokoll.Add('Rabatt: ' + FloatToStr(Kunde.Rabatt));`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CC1 | Unit öffnen | Hinweis `commented-out-code` über den drei Zeilen: „3 Zeilen auskommentierter Code; die Versionsverwaltung bewahrt ihn auf.“, Sicherheit mittel; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| CC2 | Alt+Enter, „Auskommentierten Code entfernen“ | Die drei Zeilen sind weg, der Code darum bleibt unverändert (**Abnahme**) |
+| CC3 | Drei Zeilen Prosa als `//`-Kommentar, XMLDoc mit `///` und der Lizenzkopf am Dateianfang | Keine Meldung |
+| CC4 | Beispiel im Kommentar hinter „So sieht es aus:“ bzw. in `<code>` | Keine Meldung |
+| CC5 | Code als mehrzeiliger `{ … }`-Kommentar | Eine Meldung; die Korrektur entfernt den ganzen Kommentar |
+| CC6 | Option „minLines“ auf 4 bzw. 2 | Bei 4 keine Meldung, bei 2 werden auch zwei Zeilen gemeldet |
+| CC7 | `"commented-out-code": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## TThread.Queue(nil, …) in einem Package (#943)
+
+Voraussetzung: Server läuft; ein Package-Projekt (`.dproj` mit `.dpk`) ist geladen, eine seiner Units enthält `TThread.Queue(nil, procedure begin FPanel.Aktualisieren; end);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QN1 | Unit öffnen | Warnung `queue-nil-in-package` auf `TThread.Queue(nil`: „Queue(nil, …) in <Package>.bpl: der Eintrag kann nach dem Entladen des Packages laufen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| QN2 | Alt+Enter, „Durch TAtlasMainThread.Queue(…) ersetzen“ | `TAtlasMainThread.Queue(procedure … end);`, ein Undo-Schritt nimmt es zurück (**Abnahme**) |
+| QN3 | Dieselbe Zeile in einer Unit eines Programms (`.dpr`) | Keine Meldung |
+| QN4 | `// mainthread-ok` hinter die Zeile schreiben | Keine Meldung |
+| QN5 | `TThread.ForceQueue(nil, Proc);` bzw. `TThread.ForceQueue(nil, Proc, 100);` | Meldung; Korrektur auf `TAtlasMainThread.ForceQueue(Proc)` bzw. ohne Korrektur |
+| QN6 | Auf der Seite „Prüfregeln“ `wrapper` = `Haupt.Einreihen` und `okMarker` = `ui-ok` | Korrektur schreibt `Haupt.Einreihen(…)`; `// ui-ok` nimmt die Zeile aus |
+| QN7 | `atlas --check` auf den Ordner des Packages | Meldung in der Package-Unit, wie im Editor |
+| QN8 | `"queue-nil-in-package": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## IDE-Notifier ohne RemoveNotifier (#944)
+
+Voraussetzung: Server läuft; Unit eines Experten mit `procedure Register;` und darin `(BorlandIDEServices as IOTAServices).AddNotifier(TSpeicherNotifier.Create);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ON1 | Unit öffnen | Warnung `ota-notifier-not-removed` auf `AddNotifier`: „Der Index von AddNotifier wird nicht gemerkt; ohne RemoveNotifier ruft die IDE nach dem Entladen ins Leere.“, Sicherheit mittel; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| ON2 | Alt+Enter, „Index merken und RemoveNotifier in finalization ergänzen“ | `var NotifierIndex: Integer = -1;` vor `Register`, Zuweisung im Aufruf, `initialization`/`finalization` mit `RemoveNotifier(NotifierIndex)`; übersetzt, keine Meldung mehr (**Abnahme**) |
+| ON3 | Gleicher Aufruf im Konstruktor einer Klasse, Alt+Enter | „Index in ein Feld legen und RemoveNotifier im Destruktor ergänzen“: `FNotifierIndex` im private-Abschnitt, `RemoveNotifier(FNotifierIndex)` im (neu angelegten) Destruktor vor `inherited` |
+| ON4 | `FIndex := Services.AddNotifier(…)` ohne `RemoveNotifier(FIndex)` | Meldung „Der Index FIndex von AddNotifier geht nie an RemoveNotifier …“, Korrektur „RemoveNotifier im Destruktor ergänzen“ |
+| ON5 | `RegisterPackageWizard(TWizard.Create)` in `Register` | Keine Meldung |
+| ON6 | `AModule.AddNotifier(…)` mit Parameter `AModule` | Meldung ohne Korrektur |
+| ON7 | Auf der Seite „Prüfregeln“ `registerPairs` = `[{"open": "AddWizard", "close": "RemoveWizard"}]` | Nur `AddWizard` ohne `RemoveWizard` wird gemeldet |
+| ON8 | `"ota-notifier-not-removed": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## DUnitX-Test ohne Assert (#945)
+
+Voraussetzung: Server läuft; Testunit mit `[Test] procedure TImportTests.LeereDateiWirdGelesen;`, deren Rumpf nur `FImport.Laden('leer.csv');` enthält.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DA1 | Testunit öffnen | Hinweis `dunitx-test-without-assert` am Methodennamen in der Klasse: „Der Test prüft nichts; er ist immer grün.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| DA2 | Alt+Enter, „Assert.Pass; als Platzhalter einfügen“ | `Assert.Pass;` vor dem `end` des Rumpfs, die Meldung verschwindet |
+| DA3 | Alt+Enter, „Zur Methode springen“ | Cursor steht am Rumpf `TImportTests.LeereDateiWirdGelesen` |
+| DA4 | Prüfung in einer privaten Hilfsmethode der Klasse bzw. einer Routine der Unit, `TRuleAssert.Reports(…)` oder `CheckEquals(…)` | Keine Meldung |
+| DA5 | `[WillRaise(EImport)]` bzw. `[Ignore]` am Test | Keine Meldung |
+| DA6 | Option „assertPatterns“ = `["Expect"]`, Rumpf `Expect(Laden).ToBe(1);` | Keine Meldung; `CheckEquals` zählt dann nicht mehr |
+| DA7 | `"dunitx-test-without-assert": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Ereignis ohne Assigned-Prüfung (#946)
+
+Voraussetzung: Server läuft; Unit mit `TZaehler`, Feld `FOnChange: TNotifyEvent`, Property `OnChange` und `procedure TZaehler.Erhoehen;` mit `Inc(FWert); FOnChange(Self);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EA1 | Unit öffnen | Warnung `event-call-without-assigned` auf `FOnChange`: „FOnChange kann nil sein; ohne Assigned-Prüfung folgt eine Zugriffsverletzung.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| EA2 | Alt+Enter, „In if Assigned(FOnChange) then einschließen“ | `if Assigned(FOnChange) then` mit eingerücktem Aufruf darunter; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| EA3 | `OnChange(Self);` bzw. `Self.FOnChange(Self);` statt `FOnChange(Self);` | Gleiche Warnung mit dem geschriebenen Namen |
+| EA4 | `if Assigned(FOnChange) and (FWert > 0) then FOnChange(Self);`, `if not Assigned(FOnChange) then Exit;` davor, `Assigned(FBusy) and FBusy()` | Keine Meldung |
+| EA5 | `Ok := … and Assigned(FOnChange); if not Ok then Exit;` bzw. Prüfmethode `function KannMelden: Boolean` mit `Result := … and Assigned(FOnChange)` | Keine Meldung |
+| EA6 | Feld `FReadText: TFunc<string, string>`, das der Konstruktor mit `FReadText := AReadText` belegt | Keine Meldung (Abhängigkeit, kein Ereignis) |
+| EA7 | `if FWert > 0 then FOnChange(Self);` in einer Zeile | Warnung ohne Korrektur |
+| EA8 | `"event-call-without-assigned": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Element einer besitzenden Liste freigegeben (#947)
+
+Voraussetzung: Server läuft; Routine mit `Auftraege := TObjectList<TAuftrag>.Create;`, darunter `Auftraege[I].Free;` und `Auftraege.Delete(I);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OI1 | Unit öffnen | Fehler `owned-item-freed` auf `Auftraege[I].Free`: „Auftraege besitzt seine Elemente (OwnsObjects); Delete gibt das Element ein zweites Mal frei.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| OI2 | Alt+Enter, „Free entfernen“ | Die Zeile mit `Free` verschwindet, `Auftraege.Delete(I);` bleibt; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| OI3 | `Auftraege.Delete(I);` entfernen, nur `Auftraege[I].Free;` | Meldung „… die Liste gibt das Element beim Freigeben ein zweites Mal frei.“, Korrektur „Delete statt Free“ ergibt `Auftraege.Delete(I);` |
+| OI4 | `for Auftrag in Auftraege do Auftrag.Free;` vor `Auftraege.Clear;` | Meldung mit „Clear“; „Free entfernen“ nimmt die ganze Schleife weg |
+| OI5 | `Auftrag := Auftraege[I]; Auftraege.Remove(Auftrag); Auftrag.Free;` | Meldung mit „Remove“; Alternative „Extract statt Remove“ ersetzt `Remove` durch `Extract` |
+| OI6 | `TObjectList<TAuftrag>.Create(False)`, `Auftraege.OwnsObjects := False` oder `Extract` in der Routine | Keine Meldung |
+| OI7 | Feld `FKunden := TObjectDictionary<string, TKunde>.Create([doOwnsValues]);`, in einer Methode `FKunden[AName].Free;` | Meldung „FKunden besitzt seine Werte (doOwnsValues) …“, Korrektur „Remove statt Free“; ohne `doOwnsValues` keine Meldung |
+| OI8 | `"owned-item-freed": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Objekt erzeugt und sofort verloren (#948)
+
+Voraussetzung: Server läuft; `procedure TImport.Starten;` mit `TImportProtokoll.Create;` und `Laden;` im Rumpf.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CW1 | Unit öffnen | Warnung `create-without-assignment` auf `TImportProtokoll.Create`: „Das erzeugte TImportProtokoll wird nirgends gespeichert und nie freigegeben (Speicherleck).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| CW2 | Alt+Enter, „An ImportProtokoll zuweisen und in try/finally freigeben“ | `var ImportProtokoll: TImportProtokoll;`, Zuweisung, `Laden;` im `try`, `ImportProtokoll.Free;` im `finally`; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| CW3 | `TButton.Create(Self);`, `TArbeiter.Create(False);` (Nachfahr von `TThread`), `TPoint.Create(1, 2);` | Keine Meldung |
+| CW4 | `TButton.Create(nil);` | Warnung |
+| CW5 | `FProtokoll := TImportProtokoll.Create;`, `FListe.Add(TImportProtokoll.Create);` | Keine Meldung |
+| CW6 | Auf der Seite „Prüfregeln“ `selfRegistering` = `["TImport*"]` | Keine Meldung für `TImportProtokoll.Create;` |
+| CW7 | `"create-without-assignment": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Message-Handler ohne inherited (#949)
+
+Voraussetzung: Server läuft; Formular `TfrmHaupt` mit `procedure WMSize(var Msg: TWMSize); message WM_SIZE;`, dessen Rumpf nur `AnordnungAnpassen;` enthält.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MH1 | Unit öffnen | Warnung `message-handler-without-inherited` am Methodennamen im Rumpf: „WMSize ruft inherited nicht auf; die VCL passt Ausrichtung und Anker nicht mehr an.“, Sicherheit mittel; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| MH2 | Alt+Enter, „"inherited;" am Anfang einfügen“ | `inherited;` als erste Anweisung; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| MH3 | Gleicher Handler mit `message WM_CLOSE` bzw. `WM_PAINT` | Meldung „… das Fenster schließt nicht mehr.“ bzw. „… die VCL zeichnet das Steuerelement nicht mehr.“ |
+| MH4 | Rumpf mit `DefaultHandler(Msg);` bzw. `Msg.Result := MA_NOACTIVATE;` | Keine Meldung |
+| MH5 | Handler für `WM_ERASEBKGND` ohne `inherited` | Keine Meldung (Vorgabe von `swallow`) |
+| MH6 | Auf der Seite „Prüfregeln“ `swallow` = `["WM_SIZE"]` | Keine Meldung für `WMSize`; `WM_ERASEBKGND` wird jetzt gemeldet |
+| MH7 | `"message-handler-without-inherited": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## String-Index ab 0 und Pos mit -1 (#951)
+
+Voraussetzung: Server läuft; Routine mit `const Zeile: string` und `if Pos(';', Zeile) > -1 then Felder := Copy(Zeile, 0, Pos(';', Zeile) - 1);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SI1 | Unit öffnen | Zwei Warnungen `string-index-base`: auf `> -1` „Pos liefert 0 bei keinem Treffer; der Vergleich > -1 ist immer wahr.“ und auf `0` in `Copy` „Copy zählt Zeichen ab 1; der Startwert 0 wirkt nur zufällig wie 1.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| SI2 | Alt+Enter auf beiden Meldungen | `> 0` bzw. `Copy(Zeile, 1, …)`; je ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| SI3 | `Delete(Zeile2, 0, 1);` mit `Zeile2: string` | Warnung „Delete zählt Zeichen ab 1; mit dem Startwert 0 löscht es nichts.“ |
+| SI4 | `if Pos('a', Zeile) = -1 then` | Warnung „… ist nie wahr.“, Korrektur auf `= 0` |
+| SI5 | `if Zeile.IndexOf('a') > 0 then` | Warnung mit Sicherheit mittel, Korrektur auf `>= 0`; `Zeile.LastIndexOf('.') > 0` bleibt still |
+| SI6 | `Werte := Copy(Werte, 0, 2);` mit `Werte: TArray<Integer>` | Keine Meldung (Arrays zählen ab 0) |
+| SI7 | `"string-index-base": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## DelimitedText ohne StrictDelimiter (#952)
+
+Voraussetzung: Server läuft; Routine mit lokaler `Teile: TStringList`, darin `Teile.Delimiter := ';';` und `Teile.DelimitedText := Zeile;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DT1 | Unit öffnen | Warnung `delimited-text-without-strict` auf `DelimitedText`: „Ohne StrictDelimiter trennt DelimitedText auch an Leerzeichen: 'Max Muster' wird zu zwei Einträgen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| DT2 | Alt+Enter, „StrictDelimiter := True; einfügen“ | `Teile.StrictDelimiter := True;` vor `DelimitedText`; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| DT3 | Feld `FTeile`, `FTeile.StrictDelimiter := True;` im Konstruktor, in einer Methode Delimiter und DelimitedText | Keine Meldung |
+| DT4 | `Teile.StrictDelimiter := False;` bzw. kein `Delimiter` gesetzt | Keine Meldung |
+| DT5 | `if Zeile <> '' then Teile.DelimitedText := Zeile;` | Warnung ohne Korrektur |
+| DT6 | `"delimited-text-without-strict": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Self als Interface während der Konstruktion (#950)
+
+Voraussetzung: Server läuft; Unit mit `IQuelle.Anmelden(const ABeobachter: IBeobachter)` und Klasse `TBeobachter`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SA1 | `TBeobachter = class(TObject, IBeobachter)` mit eigenem `_AddRef`/`_Release` (`_Release` ruft bei 0 `Destroy`), im Konstruktor `FQuelle.Anmelden(Self);` | Warnung `self-as-interface-in-constructor` auf `Self`: „Self wird im Konstruktor als Interface übergeben; die eigene Referenzzählung von TBeobachter gibt das Objekt frei, sobald der Zähler danach auf 0 fällt.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| SA2 | Wie SA1, zusätzlich `class function NewInstance: TObject; override;` bzw. `_Release` ohne `Destroy` (Singleton) | Keine Meldung |
+| SA3 | `TBeobachter = class(TInterfacedObject, IBeobachter)`, `FQuelle.Anmelden(Self);` im Konstruktor | Keine Meldung (Self ist durch NewInstance geschützt) |
+| SA4 | `TInterfacedObject`-Nachfahr, `AfterConstruction` mit `inherited;` und danach `FQuelle.Anmelden(Self);` | Warnung „Self wird nach inherited AfterConstruction als Interface übergeben; …“ (**Abnahme**) |
+| SA5 | Bei SA4 Alt+Enter, „Vor inherited verschieben“ | `FQuelle.Anmelden(Self);` steht vor `inherited;`; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| SA6 | `(Self as IBeobachter)`, `IBeobachter(Self)` bzw. `FSelbst := Self` mit `FSelbst: IBeobachter` statt des Aufrufs in SA1 | Warnung; `FQuelle.Merken(Self)` mit Parameter `TObject` bleibt still |
+| SA7 | `"self-as-interface-in-constructor": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Vergleich mit Null (#953)
+
+Voraussetzung: Server läuft; Unit mit `uses System.Variants, Data.DB;`, Datenmenge `qryKunde` und Variant `Wert`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NC1 | `if qryKunde.FieldByName('Geburtstag').Value = Null then` | Warnung `null-compare` auf dem Vergleich: „Der Vergleich mit Null hängt von NullEqualityRule ab (ncrStrict: nie wahr, ncrError: Exception); IsNull prüft das Feld unabhängig davon.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| NC2 | Alt+Enter, „Durch "qryKunde.FieldByName('Geburtstag').IsNull" ersetzen“ | `if qryKunde.FieldByName('Geburtstag').IsNull then`; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| NC3 | `if Wert <> Null then` | Warnung mit „VarIsNull prüft den Wert …“; Korrektur ergibt `if not VarIsNull(Wert) then` |
+| NC4 | `if (Null = Feld.Value) and …` mit `Feld: TDateField` | Warnung; Korrektur ergibt `(Feld.IsNull)` |
+| NC5 | `if not Wert = Null then` | Warnung ohne Korrektur (bindet als `(not Wert) = Null`) |
+| NC6 | `Wert := Null;`, `if VarIsNull(Wert) then`, `if (A > 0) and Wert = Null then` | Keine Meldung |
+| NC7 | `"null-compare": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Zahl ungeprüft in Aufzählung umgewandelt (#954)
+
+Voraussetzung: Server läuft; Unit mit `TStatus = (stNeu, stOffen, stFertig, stStorniert);` und einer Datenmenge `qry`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EC1 | `Status := TStatus(qry.FieldByName('Status').AsInteger);` | Hinweis `unchecked-enum-cast` auf der Umwandlung: „Wert aus der Datenbank ungeprüft nach TStatus umgewandelt; Werte außerhalb 0..3 ergeben keinen gültigen TStatus-Wert.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| EC2 | Alt+Enter, „Prüfung mit InRange davorsetzen“ | Variable `Wert: Integer`, Zuweisung, `if not InRange(…) then raise EConvertError.CreateFmt(…)`, `Status := TStatus(Wert);`, `System.Math` in uses; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| EC3 | `N := Ini.ReadInteger(…); Status := TStatus(N);` | Hinweis „aus der Registry bzw. INI-Datei“ ohne Korrektur |
+| EC4 | Wie EC3 mit `if (N < 0) or (N > Ord(High(TStatus))) then Exit;` dazwischen bzw. `TStatus(EnsureRange(…, 0, 3))` | Keine Meldung |
+| EC5 | Aufzählung mit eigenen Werten (`sfEins = 1, sfZwei = 2`) in `case TStufe(StrToInt(Zeile)) of` | Hinweis mit Bereich `Ord(Low(TStufe))..Ord(High(TStufe))`, ohne Korrektur |
+| EC6 | `"sources": ["LeseZahl"]` und `TStatus(LeseZahl)` bzw. `TStatus(qry.FieldByName(…).AsInteger)` | Erstes gemeldet, zweites nicht (**Abnahme** Option) |
+| EC7 | `"unchecked-enum-cast": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## CreateProcess mit unveränderlicher Befehlszeile (#955)
+
+Voraussetzung: Server läuft; Routine mit `SI: TStartupInfo; PI: TProcessInformation;` und Parameter `const Datei: string`, Konstante `Editor = 'notepad.exe'`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CP1 | `CreateProcess(nil, PChar('notepad.exe ' + Datei), nil, nil, False, 0, nil, nil, SI, PI);` | Fehler `createprocess-readonly-commandline` auf der Befehlszeile: „CreateProcess schreibt in die Befehlszeile; ist der andere Teil leer, liefert die Verkettung das konstante Literal, das nicht beschreibbar ist.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| CP2 | Alt+Enter, „Befehlszeile in eine lokale Variable kopieren und UniqueString aufrufen“ | `Befehl: string`, `Befehl := …; UniqueString(Befehl);` vor dem Aufruf, `PChar(Befehl)`; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| CP3 | `PChar('notepad.exe')` bzw. `PWideChar(Editor)` in `if not CreateProcessW(…) then` | Fehler „ein konstanter String ist nicht beschreibbar“; Korrektur fügt vor dem `if` ein |
+| CP4 | `Befehl := Editor;` und danach `PChar(Befehl)` | Fehler; Korrektur „UniqueString(Befehl) davor aufrufen“ |
+| CP5 | `CreateProcessAsUser(0, nil, PChar(Datei), …)` | Fehler mit mittlerer Konfidenz (Parameter kann ein Literal sein) |
+| CP6 | `UniqueString(Befehl)` vor dem Aufruf, `PChar(Format(…))`, `PChar('"' + Datei + '"')`, `CreateProcessA`, `PChar(Editor)` als lpApplicationName | Keine Meldung |
+| CP7 | `"createprocess-readonly-commandline": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Zugriff auf ein Formular, das noch nicht erzeugt ist (#956)
+
+Voraussetzung: Server läuft; Projekt mit `Application.CreateForm(TfrmHaupt, frmHaupt);` vor `Application.CreateForm(TdmDaten, dmDaten);` in der .dpr; `TfrmHaupt.FormCreate` als `OnCreate` in der .dfm.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FA1 | In `FormCreate`: `lblNutzer.Caption := dmDaten.Benutzer;` | Warnung `form-access-before-create` auf `dmDaten`: „dmDaten wird in der .dpr erst nach frmHaupt erzeugt und ist hier noch nil.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover, keine Korrektur (**Abnahme**) |
+| FA2 | In der .dpr die beiden CreateForm-Zeilen tauschen, speichern, Unit neu prüfen | Keine Meldung mehr (**Abnahme**) |
+| FA3 | `OnCreate = Anlegen` in der .dfm, Zugriff in `Anlegen` bzw. im Konstruktor `Create(AOwner)` | Warnung; mehrere Zugriffe auf dieselbe Variable in einer Routine nur einmal |
+| FA4 | `if Assigned(dmDaten) then …`, `if frmLog <> nil then …`, `Application.CreateForm(TfrmOpt, frmOpt)` vor dem Zugriff, lokale Variable `dmDaten` | Keine Meldung |
+| FA5 | Zugriff in `FormShow` bzw. Formular, das nicht in der .dpr erzeugt wird | Keine Meldung |
+| FA6 | `"form-access-before-create": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Allgemeiner Exception-Handler vor speziellem (#957)
+
+Voraussetzung: Server läuft; Unit mit `try … except` und mehreren `on`-Handlern.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EH1 | `on E: Exception do Protokoll(E.Message);` und danach `on E: EConvertError do ShowMessage('Ungültige Zahl');`, jeweils auf eigenen Zeilen | Warnung `except-handler-order` auf `EConvertError`: „Nie erreicht: EConvertError ist ein Nachfahr von Exception, das schon in Zeile … behandelt wird.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| EH2 | Schnellkorrektur „on EConvertError vor on Exception verschieben“ | Der EConvertError-Handler steht vor dem Exception-Handler, Code übersetzt, Meldung weg (**Abnahme**) |
+| EH3 | Letzter Handler ohne Semikolon, danach `else` | Korrektur ergänzt das Semikolon, Code übersetzt |
+| EH4 | `on EStreamError` vor `on EFOpenError`; eigene Klassen `EBasis = class(Exception)`, `EKunde = class(EBasis)` in dieser Reihenfolge | Je eine Warnung mit dem Namen des Vorfahren |
+| EH5 | Zweimal `on E: EConvertError` | „Nie erreicht: EConvertError wird schon in Zeile … behandelt.“, keine Korrektur |
+| EH6 | Spezielle Handler vor `Exception`; unverwandte Klassen (`EConvertError`, `EInOutError`) | Keine Meldung |
+| EH7 | `"except-handler-order": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## raise E statt raise im Handler (#958)
+
+Voraussetzung: Server läuft; Unit mit `try … except on E: … do`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RR1 | Im Handler `on E: EDatenbank do begin Protokoll(E.Message); raise E; end;` | Warnung `reraise-exception-object` auf `raise E`: „raise E löst das Objekt neu aus: Absprungstelle (ExceptAddr) und Aufrufliste zeigen danach auf diesen Handler …“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| RR2 | Schnellkorrektur „raise E; durch raise; ersetzen“, danach Strg+Z | Aus `raise E;` wird `raise;`, Meldung weg; ein Undo-Schritt stellt es wieder her (**Abnahme**) |
+| RR3 | Programm mit madExcept oder JclDebug, Ausnahme im try-Teil, Handler mit `raise E;` bzw. `raise;` | Mit `raise E;` zeigt der Bericht auf den Handler, mit `raise;` auf die ursprüngliche Stelle |
+| RR4 | `raise E at ReturnAddress` im Handler | Warnung ohne Korrektur |
+| RR5 | `raise;`, `raise EEingabe.Create(E.Message)`, `on EInOutError do`, `AcquireExceptionObject` im Handler, `E := …` vor `raise E`, `raise E` in einer anonymen Methode | Keine Meldung |
+| RR6 | `"reraise-exception-object": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Blockierender Aufruf im Hauptthread (#959)
+
+Voraussetzung: Server läuft; VCL-Projekt mit Formular `TfrmHaupt` und Thread-Feld `FExport: TThread`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BC1 | In `btnExportClick`: `FExport.Start; FExport.WaitFor;` | Warnung `blocking-call-in-main-thread` auf `WaitFor`: „WaitFor im Click-Handler blockiert den Hauptthread; ruft FExport Synchronize auf, hängt das Programm. Besser …“; im Fenster „Atlas-Prüfung“ und im Befund-Hover, keine Korrektur (**Abnahme**) |
+| BC2 | Umbauen auf `TTask.Run(procedure begin …; TThread.Queue(nil, …); end)` | Keine Meldung (**Abnahme**) |
+| BC3 | In einer Formularmethode `Sleep(500)`, `WaitForSingleObject(H, INFINITE)`, `FEreignis.WaitFor(5000)`, `FAufgabe.Wait` | Je eine Warnung mit dem Aufruf und der Methode |
+| BC4 | `while not Fertig do Sleep(10);` bzw. dieselbe Schleife mit `Application.ProcessMessages` | Warnung „Warteschleife mit Sleep …“ bzw. keine Meldung |
+| BC5 | `Sleep(10)`, `WaitForSingleObject(H, 0)`, `Sleep` in `TThread.Execute`, in einer anonymen Methode oder in einer Klasse ohne Formular und ohne Sender | Keine Meldung |
+| BC6 | `"maxSleepMs": 1000` bzw. `5`; `"calls": ["Pause"]` | `Sleep(500)` still bzw. auch `Sleep(10)` gemeldet; nur noch `Pause(…)` gemeldet; Einstellungsseite zeigt beide Optionen unter der Regel |
+| BC7 | `"blocking-call-in-main-thread": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Thread-Schleife ohne Terminated (#960)
+
+Voraussetzung: Server läuft; Unit mit `TPoller = class(TThread)` und `procedure Execute; override;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TL1 | In `Execute`: `while True do begin Abfragen; Sleep(1000); end;` | Warnung `thread-loop-without-terminated` auf `while`: „Die Schleife prüft Terminated nicht; der Thread lässt sich nicht beenden.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| TL2 | Schnellkorrektur „Terminated in die Schleifenbedingung aufnehmen“, danach Strg+Z | `while not Terminated do`, Meldung weg; ein Undo-Schritt stellt es wieder her (**Abnahme**) |
+| TL3 | `while not FFertig do FEreignis.WaitFor(500);`, `repeat … until False;`, `repeat Sleep(10) until A or B;` | Je eine Warnung; Korrektur ergibt `… and not Terminated`, `until Terminated`, `until (A or B) or Terminated` |
+| TL4 | Schleife in einer privaten Methode, die nur `Execute` aufruft | Warnung; ruft eine Routine außerhalb der Klasse die Methode auch auf, keine Meldung |
+| TL5 | `if Terminated then Exit;` im Rumpf, `CheckTerminated`, `for`-Schleife, `while I < Count do Inc(I)`, anonyme Methode, Klasse mit `TerminatedSet` | Keine Meldung |
+| TL6 | Programm mit dem Thread aus TL1 schließen, mit und ohne Korrektur | Ohne Korrektur hängt das Beenden in `WaitFor`, mit Korrektur endet es sofort |
+| TL7 | `"thread-loop-without-terminated": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Anonymer Thread nie gestartet (#961)
+
+Voraussetzung: Server läuft; Unit mit `uses System.Classes`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AT1 | `TThread.CreateAnonymousThread(procedure begin Synchronisieren; end);` | Warnung `anonymous-thread-not-started` auf `CreateAnonymousThread`: „Der anonyme Thread wird nie gestartet und nie freigegeben.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| AT2 | Schnellkorrektur „.Start anhängen“, danach Strg+Z | `end).Start;`, Meldung weg; ein Undo-Schritt stellt es wieder her (**Abnahme**) |
+| AT3 | `T := TThread.CreateAnonymousThread(Arbeit); T.FreeOnTerminate := False;` ohne `T.Start` | Warnung; Korrektur „T.Start ergänzen“ setzt `T.Start;` nach die Eigenschaftszeile |
+| AT4 | `var Aufgabe := TThread.CreateAnonymousThread(Arbeit);` ohne Start | Warnung mit Korrektur `Aufgabe.Start;` |
+| AT5 | `.Start` angehängt, `T.Start` bzw. `T.Resume` später, `FListe.Add(T)`, `Result := …`, Feld `FThread := …`, `Fabrik.CreateAnonymousThread(…)` | Keine Meldung |
+| AT6 | `"anonymous-thread-not-started": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Exception in TTask geht verloren (#962)
+
+Voraussetzung: Server läuft; VCL-Unit mit `uses System.Threading`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TE1 | `TTask.Run(procedure begin Importieren(Datei); end);` mit `begin`/`end` auf eigenen Zeilen | Hinweis `task-exception-unobserved` auf `Run`: „Der Task wird nie abgefragt und fängt keine Exceptions; Fehler in Importieren gehen verloren.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| TE2 | Schnellkorrektur „Rumpf in try … except mit Meldung über TThread.Queue einschließen“, danach Strg+Z | Rumpf eingerückt in `try … except on E: Exception do … TThread.Queue(nil, … ShowMessage(Fehler) …)`, `Vcl.Dialogs` im uses ergänzt, Code übersetzt; ein Undo-Schritt stellt alles wieder her (**Abnahme**) |
+| TE3 | Dasselbe in einer FireMonkey-Unit | Korrektur ergänzt `FMX.Dialogs` |
+| TE4 | `TTask.Create(…).Start;`, `A := TTask.Run(…)` ohne weitere Verwendung, `var B := TTask.Create(…); B.Start;` | Je ein Hinweis; einzeiliger Rumpf ohne Korrektur |
+| TE5 | `try … except` im Rumpf, `.Wait`, `A.Wait`, Feld, `Result`, `TTask.Run(Laden)` | Keine Meldung |
+| TE6 | `"task-exception-unobserved": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Datenmengen-Schleife ohne Next (#963)
+
+Voraussetzung: Server läuft; Unit mit einer Abfrage `qryPositionen: TFDQuery`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DL1 | `while not qryPositionen.Eof do begin Summe := Summe + …; end;` | Fehler `dataset-loop-without-next` auf `not qryPositionen.Eof`: „Im Rumpf fehlt qryPositionen.Next; die Schleife läuft endlos.“; im Fenster „Atlas-Prüfung“ (Gruppe Datenbank) und im Befund-Hover (**Abnahme**) |
+| DL2 | Schnellkorrektur „qryPositionen.Next; am Ende des Rumpfs einfügen“, danach Strg+Z | `qryPositionen.Next;` steht eingerückt vor `end;`, Meldung weg; ein Undo-Schritt stellt es wieder her (**Abnahme**) |
+| DL3 | `Next` nur in `if … then Q.Next;` bzw. `if Fertig then Continue;` vor `Q.Next` | Fehler „Nicht jeder Weg durch den Rumpf ruft Q.Next auf …“ mit mittlerer Konfidenz, keine Korrektur |
+| DL4 | `if … then Q.Delete else Q.Next;`, `Break` vor `Q.Next`, `Q.Next` im `finally`, `Verarbeiten(Q)`, `with Q do Next` | Keine Meldung |
+| DL5 | Einstellungsseite, Bereich Prüfregeln | Regel unter der Gruppe „Datenbank“ |
+| DL6 | `"dataset-loop-without-next": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Edit oder Append ohne Post (#964)
+
+Voraussetzung: Server läuft; Unit mit einer Tabelle `tblKunde`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DE1 | `tblKunde.Edit; tblKunde.FieldByName('Status').AsInteger := Ord(ksAktiv); Protokollieren;` ohne Post | Warnung `dataset-edit-without-post` auf `Edit`: „Nach Edit fehlt Post oder Cancel; die Änderung bleibt offen.“; im Fenster „Atlas-Prüfung“ (Gruppe Datenbank) und im Befund-Hover (**Abnahme**) |
+| DE2 | Schnellkorrektur „tblKunde.Post mit try … except Cancel ergänzen“, danach Strg+Z | Zuweisung in `try … tblKunde.Post; except tblKunde.Cancel; raise; end;`, `Protokollieren` bleibt dahinter, Code übersetzt; ein Undo-Schritt stellt es wieder her (**Abnahme**) |
+| DE3 | `Q.Append; Q['Name'] := Name;` bzw. `R.Insert();` ohne Zuweisung | Warnung mit Korrektur bzw. ohne Korrektur |
+| DE4 | `Post`, `Cancel` im if, `CheckBrowseMode`, `Speichern(D)` nach `D.Edit`, `Liste.Insert(0, 'x')` | Keine Meldung |
+| DE5 | `tblKunde.Edit` in `BearbeitenClick`, `tblKunde.Post` in `SpeichernClick` | Keine Meldung |
+| DE6 | `"dataset-edit-without-post": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Transaktion ohne Rollback (#965)
+
+Voraussetzung: Server läuft; Unit mit `Verbindung: TFDConnection`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TR1 | `Verbindung.StartTransaction; Buchen(Auftrag); Verbindung.Commit;` | Warnung `transaction-without-rollback` auf `StartTransaction`: „Kein Rollback bei einer Exception; die Transaktion bleibt offen und hält Sperren.“; im Fenster „Atlas-Prüfung“ (Gruppe Datenbank) und im Befund-Hover (**Abnahme**) |
+| TR2 | Schnellkorrektur „try … except Verbindung.Rollback; raise; end erzeugen“, danach Strg+Z | `try Buchen; Commit; except Rollback; raise; end;` nach `StartTransaction`, Code übersetzt; ein Undo-Schritt stellt es wieder her (**Abnahme**) |
+| TR3 | ADO `BeginTrans … CommitTrans`; dbExpress `T := Sql.BeginTransaction; … Sql.CommitFreeAndNil(T);` | Warnung; Korrektur mit `RollbackTrans` bzw. `RollbackFreeAndNil(T)` |
+| TR4 | `StartTransaction` ohne Commit im selben Block; `Rollback` auf einer anderen Verbindung | Warnung ohne Korrektur |
+| TR5 | `try … except on E: Exception do begin A.Rollback; raise; end; end`, `try try … except Rollback … end finally … end`, Rollback in einem anderen Ereignis-Handler | Keine Meldung |
+| TR6 | `"pairs": [{"start": "Beginnen", "commit": "Festschreiben", "rollback": "Verwerfen"}]` | `Db.Beginnen` gemeldet, `StartTransaction` nicht mehr; `"pairs": [{"open": …}]` meldet einen Konfigurationsfehler |
+| TR7 | `"transaction-without-rollback": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## UPDATE oder DELETE ohne WHERE (#966)
+
+Voraussetzung: Server läuft; Unit mit `qry: TFDQuery` bzw. Datenmodul mit Query in der Formulardatei.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SW1 | `qry.SQL.Text := 'DELETE FROM Warenkorb'; qry.ExecSQL;` | Warnung `sql-write-without-where` auf dem Literal: „DELETE ohne WHERE löscht alle Zeilen von Warenkorb.“; im Fenster „Atlas-Prüfung“ (Gruppe Datenbank) und im Befund-Hover, keine Schnellkorrektur (**Abnahme**) |
+| SW2 | `'UPDATE Kunden SET Gesperrt = 1'`; `SQL.Add('DELETE')` und `SQL.Add('FROM Log')`; `Cmd.CommandText := 'delete from Puffer'`; `Verbindung.ExecSQL('DELETE FROM Protokoll')` | je eine Warnung, bei UPDATE „… ändert alle Zeilen von Kunden.“ |
+| SW3 | `const SqlLeeren = 'DELETE FROM Warenkorb';` und `qry.SQL.Text := SqlLeeren;` | Warnung an `SqlLeeren` in der Zuweisung; mit folgendem `qry.SQL.Add('WHERE …')` keine |
+| SW4 | `Format('DELETE FROM %s', [Tabelle])` | Warnung „… alle Zeilen der Tabelle.“ mit mittlerer Konfidenz |
+| SW5 | Datenmodul: `qryLeeren` mit `SQL.Strings = ('DELETE FROM Warenkorb')` in der .dfm, Unit ändert das SQL nicht | Warnung am Feld `qryLeeren` „… (qryLeeren.SQL in der Formulardatei).“; mit `qryLeeren.SQL.Add('WHERE …')` in der Unit keine |
+| SW6 | `WHERE` in einem späteren `SQL.Add`, `INNER JOIN`, `DELETE TOP (10)`, `LIMIT`, `'DELETE FROM X ' + Bedingung`, `FilterSetzen(qry.SQL)`, Ergänzung in einer anderen Methode, `ShowMessage('Update fehlgeschlagen')` | Keine Meldung |
+| SW7 | `"allowTables": ["Puffer"]` | `DELETE FROM Puffer` und `DELETE FROM dbo.Puffer` still, andere Tabellen weiter gemeldet; `"allowTables": "Puffer"` meldet einen Konfigurationsfehler |
+| SW8 | `"sql-write-without-where": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Implementierung weicht von der Deklaration ab (#996)
+
+Voraussetzung: Server läuft; Unit mit Klasse `TKonto`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SM1 | Deklaration `procedure Buchen(const Betrag: Currency; Datum: TDate);`, Rumpf `procedure TKonto.Buchen(Betrag: Currency; Datum: TDateTime);` | Fehler `signature-mismatch` am Namen im Rumpf: „Buchen weicht von der Deklaration ab: Betrag ohne const, Datum TDateTime statt TDate (wie E2037).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover; keine Meldung von `declared-not-implemented` oder `implemented-not-declared` (**Abnahme**) |
+| SM2 | Schnellkorrektur „Implementierung von Buchen an die Deklaration angleichen“, danach Strg+Z | Rumpf `(const Betrag: Currency; Datum: TDate)`, Code übersetzt; ein Undo-Schritt stellt es wieder her (**Abnahme**) |
+| SM3 | Zweite Aktion „Deklaration von Buchen an die Implementierung angleichen“ | Deklaration übernimmt den Kopf des Rumpfs, Standardwerte bleiben |
+| SM4 | `function Foo: Integer;` gegen `function TFoo.Foo: Int64;`; `stdcall` in der Deklaration, `cdecl` im Rumpf; zwei Parameter statt einem | je eine Meldung „Ergebnis Int64 statt Integer“, „cdecl statt stdcall“, „2 statt 1 Parameter“ |
+| SM5 | Überladungen `Foo(A: Integer)` und `Foo(A, B: string)`, Rümpfe `Foo(A: Integer)` und `Foo(A: string; B: Integer)` | eine Meldung „B Integer statt string“ |
+| SM6 | Rumpf ohne Parameterliste, Rumpf ohne `stdcall`, anders gruppierte Parameter (`const A, B` gegen `const A; const B`) | Keine Meldung |
+| SM7 | `"signature-mismatch": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei; `refactoring.syncSignatures` = `false` | Keine Meldung bzw. Meldung ohne Korrekturen |
+| SM8 | Abgleich mit Delphi: SM1, SM4 und SM5 übersetzen | dcc meldet an denselben Stellen E2037 |
+
+## Interface-Methode fehlt in der Klasse (#1000)
+
+Voraussetzung: Server läuft; Unit mit `ILogger = interface` (Methoden `Info`, `Warnung`, `Fehler`, je `const Text: string`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IN1 | `TDateiLog = class(TInterfacedObject, ILogger)` mit nur `procedure Info(const Text: string);` | Fehler `interface-not-implemented` am Klassennamen: „ILogger.Fehler und ILogger.Warnung fehlen in TDateiLog (wie E2291).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| IN2 | Schnellkorrektur „Interface ILogger implementieren“, danach Strg+Z | `Warnung` und `Fehler` deklariert und mit leeren Rümpfen angelegt, Code übersetzt, keine Meldung mehr; ein Undo-Schritt stellt es wieder her (**Abnahme**) |
+| IN3 | `Warnung`/`Fehler` in einer Vorfahrklasse; Zuordnung `procedure ILogger.Fehler = Melde;`; Property mit `implements ILogger` | Keine Meldung |
+| IN4 | Vorfahr aus einer nicht indizierten Unit (`class(TFremdeBasis, ILogger)`) bzw. unbekanntes Interface | Keine Meldung |
+| IN5 | `procedure Info(const Text: Integer);` statt `string` | Fehler an `Info`: „Info weicht von der Deklaration in ILogger ab (wie E2211).“, ohne Korrektur |
+| IN6 | Zuordnung `procedure IAnders.Info = Melde;`, `IAnders` steht nicht in der Klassenliste | Fehler „IAnders steht nicht in der Interface-Liste von TLog (wie E2265).“ |
+| IN7 | Interface aus einer anderen Unit des Projekts (über `uses`) | Fehlende Methoden werden ebenso gemeldet |
+| IN8 | `"interface-not-implemented": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| IN9 | Abgleich mit Delphi: IN1, IN5 und IN6 übersetzen | dcc meldet E2291, E2211 bzw. E2265 an denselben Stellen |
+
+## Unit in uses nicht gefunden (#1016)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; Delphi-Installation bekannt (Bibliothekspfade).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UN1 | `uses System.SysUtils, Vcl.Forms, Kunden.Daten, Rechnungs.Druck;`, im Suchpfad liegt `Rechnung.Druck.pas` | Fehler `uses-unit-not-found` an `Rechnungs.Druck`: „Unit Rechnungs.Druck nicht gefunden; ähnlich: Rechnung.Druck (wie F2613).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| UN2 | Schnellkorrektur „Rechnung.Druck verwenden“, danach Strg+Z | Name ersetzt, Projekt übersetzt; ein Undo-Schritt stellt ihn wieder her |
+| UN3 | Projekt ohne Namespace `Vcl` (DCC_Namespace), `uses Forms;` | „Unit Forms nicht gefunden; ähnlich: Vcl.Forms (wie F2613).“, Korrektur „Vcl.Forms verwenden“ |
+| UN4 | Unit `Hilfen.pas` in einem Unterordner `Extra` des Projekts, der nicht im Suchpfad steht | „… sie liegt in Extra außerhalb der Suchpfade (wie F2613).“; Korrektur „Ordner Extra in den Suchpfad aufnehmen“ ändert nur die Zeile `DCC_UnitSearchPath` der Basis in der `.dproj`, danach übersetzt das Projekt |
+| UN5 | Units der RTL ohne Quelltext (nur `.dcu`, z. B. in der Starter-Edition), Komponenten aus dem Bibliothekspfad, `SysUtils` mit Namespace `System` | Keine Meldung |
+| UN6 | In der `.dpr` `Alt in 'Alt\Alt.pas'` mit nicht vorhandener Datei | „Datei Alt\Alt.pas für Alt nicht gefunden (wie F1026).“ |
+| UN7 | `.dpk` mit `requires vclfehlt;` | „Package vclfehlt nicht gefunden (wie E2202).“ |
+| UN8 | Unit nennt sich selbst in `uses` | „Haupt verwendet sich selbst (wie F2092).“, auch im Linter |
+| UN9 | Bibliothekspfad in den IDE-Optionen leeren | Eine Meldung „Unit System nicht gefunden; der Bibliothekspfad der Installation fehlt (wie F1027).“, keine je Unit |
+| UN10 | Unit in `{$IFDEF LINUX} … {$ENDIF}`; Suchpfad mit unbekanntem Makro `$(MEINE_LIB)` | Keine Meldung |
+| UN11 | `"searchPaths": "atlas"` bzw. `"both"`; `"searchPaths": "alles"` | Units aus dem Index bzw. den Quellpfaden gelten als gefunden; beim falschen Wert ein Konfigurationsfehler |
+| UN12 | `"uses-unit-not-found": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| UN13 | Abgleich mit Delphi: UN1, UN4, UN6, UN7, UN8, UN9 übersetzen; außerdem ein großes echtes Projekt öffnen | dcc meldet F2613, F1026, E2202, F2092 bzw. F1027 an denselben Stellen; im echten Projekt meldet Atlas nichts, was dcc nicht meldet |
+
+## Attribut nicht gefunden (#1019)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index (Bibliotheks-Cache).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UA1 | Testunit mit `uses System.SysUtils;` und `[TestFixture]` vor der Klasse, `[Test]` vor einer Methode | Fehler `unresolved-attribute` an beiden Namen: „Attribut TestFixture nicht gefunden und wird ignoriert; die Tests laufen nicht (wie W1074). Unit DUnitX.TestFramework fehlt.“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| UA2 | Schnellkorrektur „uses DUnitX.TestFramework ergänzen“, danach Strg+Z | Unit im interface-uses ergänzt, beide Meldungen weg, Test läuft im Test-Explorer; ein Undo-Schritt stellt es wieder her |
+| UA3 | `[JSONName('name')]` an einem Feld ohne `REST.Json.Types` in uses | „Attribut JSONName nicht gefunden und wird ignoriert (wie W1074). Unit REST.Json.Types fehlt.“ |
+| UA4 | `[GibtEsNicht]` | Meldung ohne Unit, ohne Korrektur |
+| UA5 | Eigene Klasse `MarkeAttribute = class(TCustomAttribute)` und `[Marke]`; `[Weak]`, `[Unsafe]`, `[Volatile]` an Feldern; GUID `['{…}']` im Interface | Keine Meldung |
+| UA6 | Eine Unit aus uses ohne Quelltext (nur `.dcu`, nicht im Index); Attribut in `{$IFDEF TESTS} … {$ENDIF}` | Keine Meldung |
+| UA7 | `"unresolved-attribute": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| UA8 | Abgleich mit Delphi: UA1, UA3 und UA4 übersetzen | dcc meldet W1074 an denselben Stellen, für UA5 und UA6 nichts |
+
+## Vergleich als Anweisung (#982)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VA1 | In einer Funktion `Result = 0;` als erste Anweisung | Fehler `comparison-as-statement` am Ausdruck: „Vergleich als Anweisung (wie E2014); gemeint ist wohl Result := 0.“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| VA2 | Schnellkorrektur „= durch := ersetzen“, danach Strg+Z | `Result := 0;`, Meldung weg; ein Undo-Schritt stellt es wieder her |
+| VA3 | `FAktiv = True;`, `FWerte[I] = 2;`, `P^ = 3;`, `if Neu then FName = '';` | Je eine Meldung mit Korrektur |
+| VA4 | `Laden(1) = 2;`, `Result <> 0;`, `A + B;`, `not FAktiv;` | Meldung ohne Korrektur („das Ergebnis wird nicht verwendet“) |
+| VA5 | `if Result = 0 then Exit;`, `FAktiv := Result = 0;`, `Assert.AreEqual<Integer>(1, 2);` | Keine Meldung |
+| VA6 | `"comparison-as-statement": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| VA7 | Abgleich mit Delphi: VA1, VA3 und VA4 übersetzen | dcc meldet E2014 an denselben Stellen, für VA5 nichts |
+
+## Doppelte case-Marke (#983)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DK1 | Das Beispiel aus #983: `stOffen` in zwei Zweigen | Fehler `duplicate-case-label` am zweiten `stOffen`: „stOffen kommt schon in Zeile … vor (wie E2030).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| DK2 | Schnellkorrektur „Zweig mit doppeltem Wert entfernen“, danach Strg+Z | Der spätere Zweig verschwindet samt Semikolon; ein Undo-Schritt stellt ihn wieder her |
+| DK3 | `stNeu: A; stOffen, stNeu: B;` und Korrektur „Doppelten Wert aus dem späteren Zweig entfernen“ | Nur `stNeu` im zweiten Zweig verschwindet, `stOffen: B;` bleibt |
+| DK4 | `1..5: A; 3: B;`, `const Max = 5;` mit `Max: A; 5: B;`, `'a': A; #97: B;`, `stNeu..stOffen` und `TStatus.stOffen` | Je eine Meldung „liegt schon in“ bzw. „hat denselben Wert wie“ |
+| DK5 | `1..5: A; 4..8: B;` | „4..8 überschneidet sich mit 1..5 …“ ohne Korrektur |
+| DK6 | Varianter Record `case Art: Integer of 0: (…); 1, 2: (…); 2: (…);` | „2 kommt schon in Zeile … vor (wie E2027).“ |
+| DK7 | `{$IFDEF DEBUG} 1: A; {$ELSE} 1: B; {$ENDIF}`; Konstante aus einer Unit ohne Quelltext; Aufzählung mit eigenen Werten | Keine Meldung |
+| DK8 | `"duplicate-case-label": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| DK9 | Abgleich mit Delphi: DK1, DK4, DK5 und DK6 übersetzen | dcc meldet E2030 bzw. E2027 an denselben Stellen, für DK7 nichts |
+
+## Feld nach Methoden (#986)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FM1 | Das Beispiel aus #986: `function GetName: string;` und danach `FName: string;` im private-Abschnitt | Fehler `field-after-method` am Feld: „Feld nach Methoden im selben Abschnitt (wie E2169).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| FM2 | Schnellkorrektur „Feld an den Anfang des Abschnitts verschieben“, danach Strg+Z | `FName` steht vor `GetName`, Meldung weg; ein Undo-Schritt stellt es wieder her |
+| FM3 | Wie FM1, Korrektur „var davor setzen“ | `var FName: string;`, Meldung weg, Delphi übersetzt |
+| FM4 | Feld mit `[Weak]` und Kommentar darüber hinter einer Property mit XMLDoc; verschieben | Attribut und Kommentar wandern mit, das Feld steht vor dem XMLDoc der Property |
+| FM5 | Record mit `procedure Setzen;` und danach `X: Integer;` | Meldung; erste Korrektur ist „var davor setzen“ |
+| FM6 | Felder zuerst, neuer Abschnitt (`private`, `public`), `var` und `class var` nach Methoden; Methode nur unter `{$IFDEF DEBUG}` und Feld danach | Keine Meldung |
+| FM7 | `"field-after-method": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| FM8 | Abgleich mit Delphi: FM1, FM4 und FM5 übersetzen | dcc meldet E2169 an denselben Stellen, für FM6 nichts |
+
+## Überladung ohne overload (#987)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OV1 | Das Beispiel aus #987: `procedure Laden(const Datei: string);` und `procedure Laden(Strom: TStream);` in einer Klasse | Fehler `overload-directive-missing` am zweiten `Laden`: „Laden ist überladen, aber nicht mit overload markiert (wie E2254).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| OV2 | Schnellkorrektur „overload; an alle Deklarationen anhängen“, danach Strg+Z | Beide Köpfe enden mit `overload;`, bei `virtual;` steht `overload;` davor; ein Undo-Schritt stellt beides wieder her |
+| OV3 | Nur die zweite Deklaration mit `overload` | „… die frühere Deklaration in Zeile … trägt kein overload (wie E2267).“ |
+| OV4 | Zwei Überladungen `Laden(A, B: Integer)` und `Laden(X: Integer; Y: Integer)`; zwei Funktionen mit gleichen Parametern und Ergebnis | „… gibt es schon in Zeile … (wie E2252)“ bzw. „(wie E2301)“, ohne Korrektur |
+| OV5 | Routine im interface ohne overload, in der implementation ihr Rumpf und eine zweite Routine gleichen Namens | Meldung an der zweiten Routine; Korrektur ergänzt overload an interface-Deklaration und zweiter Routine, nicht am Rumpf |
+| OV6 | `var` gegen Wertparameter, generische Variante, `class operator Implicit` zweimal, Rumpf zu `forward`, gleichnamige Methoden in zwei Klassen, Routinen in `{$IFDEF}`/`{$ELSE}` | Keine Meldung |
+| OV7 | `"overload-directive-missing": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| OV8 | Abgleich mit Delphi: OV1, OV3, OV4 und OV5 übersetzen | dcc meldet E2254, E2267, E2252 bzw. E2301 an denselben Stellen, für OV6 nichts |
+
+## Bezeichner doppelt deklariert (#988)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DD1 | Das Beispiel aus #988: Parameter `Betrag` und lokale Variable `Betrag` | Fehler `duplicate-declaration` an der Variable: „Betrag ist schon als Parameter deklariert (wie E2004).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| DD2 | Schnellkorrektur „Zweite Deklaration entfernen“, danach Strg+Z | Variable samt leerem `var` weg; mit weiteren Variablen nur die Zeile bzw. der Name; ein Undo-Schritt stellt es wieder her |
+| DD3 | Konstante und Variable gleichen Namens in einer Routine; zwei gleiche Labels; zwei Parameter gleichen Namens | Je eine Meldung; bei Parametern ohne Korrektur |
+| DD4 | Zwei Felder gleichen Namens in verschiedenen Abschnitten einer Klasse; Methode und Property gleichen Namens; Feld im varianten Teil eines Records wie ein anderes Feld | Je eine Meldung |
+| DD5 | Variable im interface, Typ und Routine gleichen Namens in der implementation | Zwei Meldungen „… schon als Variable deklariert“ |
+| DD6 | `System.SysUtils` zweimal in uses; `System.Classes` in interface- und implementation-uses | „Unit … steht schon in uses“ bzw. „… im uses des interface“; Korrektur entfernt den Eintrag bzw. die ganze uses-Klausel |
+| DD7 | `"checkUses": false` | Keine Meldung für uses, die übrigen bleiben |
+| DD8 | Überladungen und Rümpfe, Vorwärtsdeklaration, `TListe` neben `TListe<T>`, Feld und gleichnamiger Parameter einer Methode, `{$IFDEF}`/`{$ELSE}` | Keine Meldung |
+| DD9 | `"duplicate-declaration": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| DD10 | Abgleich mit Delphi: DD1, DD3 bis DD6 übersetzen | dcc meldet E2004 an denselben Stellen, für DD8 nichts |
+
+## Bedingte Direktiven unvollständig oder unbekannt (#989)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BD1 | Das Beispiel aus #989: `{$IFDEF DEBUG}` ohne `{$ENDIF}` vor einer Prozedur | Fehler `conditional-directive-unbalanced` an der Direktive: „{$IFDEF DEBUG} wird nie geschlossen; der Rest der Datei hängt an DEBUG (wie E2095).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| BD2 | Schnellkorrektur „{$ENDIF} nach Zeile N ergänzen“, danach Strg+Z | `{$ENDIF}` steht vor der ersten Leerzeile hinter dem Block, mit der Einrückung des `{$IFDEF}`; ein Undo-Schritt nimmt es zurück |
+| BD3 | `{$IF CompilerVersion >= 36}` ohne Abschluss; `{$IFNDEF RELEASE}` ohne Abschluss | „… (wie E2280)“ bzw. „… hängt an not RELEASE (wie E2095)“ |
+| BD4 | Einzelnes `{$ENDIF}`; `{$ELSE}` ohne `{$IF}`; zweites `{$ELSE}` in einer Kette | „… ohne passendes {$IF…} (wie E2279)“ mit Korrektur „Überzähliges … entfernen“ bzw. „{$ELSE} nach {$ELSE} von … (wie E2279)“ |
+| BD5 | `{$IFDEF}` ohne Symbol; `{$DEFINE 1X}` | „{$IFDEF} ohne Symbol (wie E2173).“ bzw. „1X ist kein gültiges Symbol für {$DEFINE} (wie E2173).“ |
+| BD6 | `{$OPTIMISATION ON}`; `{$WARN SYMBOL_PLATFROM OFF}`; `{$WARN UNKOWN OFF}`; `{$FOOBAR}` | W1030-Meldungen; für die ersten beiden die Korrektur „Tippfehler korrigieren: …“, Schreibweise bleibt (klein bleibt klein) |
+| BD7 | `{$POPOPT}` ohne `{$PUSHOPT}`; zwei `{$PUSHOPT}`, ein `{$POPOPT}` | „… (wie W1078)“ bzw. eine Meldung am ersten `{$PUSHOPT}` „… (wie W1079)“ |
+| BD8 | `{$ALIGN 3}`, `{$R+,A32}`, `{$ALIGN DOUBLE}` | „Ungültiger Wert … für {$ALIGN} …(wie E2573)“ |
+| BD9 | `{$IFDEF FPC}{$MODE DELPHI}{$ENDIF}`, `{$IF Defined(FPC_FULLVERSION)}{$WARN 5024 OFF}{$ENDIF}`, verschachtelte Ketten, `{$R *.res}`, `{$A8}`, `{$YD}`, `{$SetPEFlags 1}`, `(*$IFDEF X*)(*$ENDIF*)` | Keine Meldung |
+| BD10 | `"conditional-directive-unbalanced": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| BD11 | Hover über `{$WARN ZERO_NIL_COMPAT OFF}` | Hover nennt die Warnung `ZERO_NIL_COMPAT`; die Vervollständigung nach `{$WARN ` bietet sie an |
+| BD12 | Abgleich mit Delphi: BD1, BD3 bis BD8 übersetzen | dcc meldet an denselben Stellen die Codes aus der Meldung (E2095, E2280, E2279, E2173, W1030, W1078, W1079, E2573); bei abweichendem Code die Meldung in der Regel anpassen; für BD9 nichts |
+
+## override ohne passende virtuelle Methode (#997)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OT1 | Das Beispiel aus #997: `TDienst.Ausfuehren(const Modus: TModus); virtual;`, im Nachfahren `Ausfuehren(Modus: Integer); override;` | Fehler `override-target-missing`: „TDienst hat kein virtuelles Ausfuehren(Integer); dort heißt es Ausfuehren(const Modus: TModus) (wie E2137).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| OT2 | Schnellkorrektur „Signatur von TDienst.Ausfuehren übernehmen“, danach Strg+Z | Deklaration und Rumpf tragen den Kopf des Vorfahren (ohne Standardwerte im Rumpf); ein Undo-Schritt nimmt beides zurück |
+| OT3 | `destructor Destory; override;` in einer Klasse ohne Vorfahr | „Kein Vorfahr von … hat ein virtuelles Destory; gemeint ist wohl Destroy (wie E2137).“ mit Korrektur auf `Destroy` in Deklaration und Rumpf |
+| OT4 | override auf eine statische Methode des Vorfahren; auf eine Methode mit `final` | „… ist nicht virtuell … (wie E2170).“ bzw. „… ist final … (wie E2352).“ |
+| OT5 | `TFest = class sealed`, `TAbgeleitet = class(TFest)`; ebenso mit einer sealed-Klasse aus einer anderen Unit | „TFest ist sealed; davon lässt sich nicht ableiten (wie E2353).“ am Namen von TAbgeleitet |
+| OT6 | Formular `TForm1` mit `procedure Loaded; override;`, `procedure Paint; override;` in einem TCustomControl-Nachfahren, `Notification(…); override;` | Keine Meldung (Vorfahren aus der VCL im Index) |
+| OT7 | Vorfahr aus einer Unit, die nicht im Index steht; generischer Vorfahr `TObjectList<TKunde>` mit `Notify(const Value: TKunde; …); override;`; Parameter vom Aliastyp | Keine Meldung |
+| OT8 | Typ im Nachfahren unbekannt (Unit fehlt in uses) | Meldung nur mit mittlerer Konfidenz (Warnung) |
+| OT9 | `"override-target-missing": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| OT10 | Abgleich mit Delphi: OT1, OT3 bis OT5 übersetzen | dcc meldet E2137, E2170, E2352 bzw. E2353 an denselben Stellen, für OT6 und OT7 nichts |
+
+## Instanz einer Klasse mit abstrakten Methoden (#999)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AI1 | Das Beispiel aus #999: `TForm` mit `function Flaeche: Double; virtual; abstract;`, dann `Form := TForm.Create;` | Warnung `abstract-class-instantiated` an `TForm.Create`: „TForm hat die abstrakte Methode Flaeche; der Aufruf löst EAbstractError aus (wie W1020).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| AI2 | `TKreis = class(TForm)` ohne `Flaeche`, `TKreis.Create`; Schnellkorrektur „Flaeche in TKreis überschreiben“, danach Strg+Z | Meldung nennt `TForm.Flaeche`; die Korrektur legt Deklaration und Rumpf mit `override` an, danach keine Meldung; ein Undo-Schritt nimmt es zurück |
+| AI3 | Klasse mit zwei offenen abstrakten Methoden | Eine Meldung „… hat die abstrakten Methoden Eins, Zwei; ihr Aufruf …“ |
+| AI4 | `TBasis = class abstract`, `TBasis.Create` | „TBasis ist als abstract deklariert; davon lässt sich keine Instanz erzeugen (wie E2402).“ |
+| AI5 | `TStrings.Create` (RTL im Index) | Meldung mit den abstrakten Methoden von TStrings (Get, GetCount …); `TStringList.Create` bleibt still |
+| AI6 | Konstruktor-Rumpf `constructor TA.Create`, `inherited Create`, Klassenreferenz `K.Create`, unbekannte Klasse | Keine Meldung |
+| AI7 | `"abstract-class-instantiated": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| AI8 | Abgleich mit Delphi: AI1, AI3 bis AI5 übersetzen | dcc meldet W1020 (je abstrakte Methode) bzw. E2402 an denselben Aufrufen, für AI6 nichts |
+
+## Getter oder Setter einer Property ungültig (#1001)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZG1 | Das Beispiel aus #1001: `TKunde = class` mit `FName: string;` und `property Name: string read FName write SetName;` | Fehler `property-accessor-invalid` an `SetName`: „SetName ist in TKunde nicht deklariert (wie E2168).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| ZG2 | Schnellkorrektur „SetName anlegen“, danach Strg+Z | Deklaration `procedure SetName(const Value: string);` vor der Property und Rumpf mit Änderungsprüfung; danach keine Meldung; ein Undo-Schritt nimmt es zurück. Mit `completion.accessorSection` = `protected` landet der Setter in protected |
+| ZG3 | `read GetName` mit `procedure GetName;` bzw. `function GetName: Integer;`, `property Items[Index: Integer]: string read GetItem` mit `function GetItem: string;` | „… passt nicht als Getter von …; erwartet wird function …“ (wie E2234) |
+| ZG4 | Setter `procedure SetName(var Value: string);` | „Der Setter SetName nimmt den Wert als var-Parameter …“ (wie E2282) |
+| ZG5 | `GetName` zweimal mit `overload` | „GetName ist überladen …“ (wie E2271) |
+| ZG6 | `class property Anzahl: Integer read FAnzahl` mit Instanzfeld, mit `class function GetAnzahl` ohne `static`; `property Anzahl read FAnzahl` mit `class var FAnzahl` | Meldungen wie E2355 bzw. E2356 |
+| ZG7 | `property Items[I: Integer]: string read FItems;`, `property Rot: Integer index 1 read FRot;`, `read Basis` auf eine andere Property | Meldungen wie E2174 bzw. E2168 |
+| ZG8 | Feldselektoren: `read FAdresse.Ort` (Klasse), `read FPunkt.Z` (fehlt im Record), `read FPunkt.Laenge` (Methode des Records); `read FPunkt.X` | Meldungen wie E2459, E2562, E2461; `FPunkt.X` still |
+| ZG9 | Geerbte Felder und Methoden aus VCL-Vorfahren (`TCustomControl`), Property ohne Typ (`property Caption;`), Klasse mit `{$I …}`, Accessor nur in `{$IFDEF}` | Keine Meldung |
+| ZG10 | `"property-accessor-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| ZG11 | Abgleich mit Delphi: ZG1, ZG3 bis ZG8 übersetzen | dcc meldet an denselben Stellen E2168, E2234, E2282, E2271, E2355, E2356, E2174, E2459, E2461 bzw. E2562; für ZG9 nichts. Abweichende Codes im Issue nachtragen |
+
+## Zuweisung an ein Feld eines Property-Records (#1005)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| XK1 | Das Beispiel aus #1005: `Rahmen.BoundsRect.Left := 0;` in einer Routine mit `Rahmen: TControl` | Fehler `assign-to-property-member` an `Rahmen.BoundsRect.Left`: „BoundsRect liefert eine Kopie; die Zuweisung an Left hat keine Wirkung (wie E2064).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| XK2 | Schnellkorrektur „Über R zuweisen und zurückschreiben“, danach Strg+Z | `var R: TRect;` in der Routine, drei Zeilen `R := Rahmen.BoundsRect; R.Left := 0; Rahmen.BoundsRect := R;`, fehlt `System.Types` in uses, wird es ergänzt; kompiliert; ein Undo-Schritt nimmt alles zurück |
+| XK3 | `Liste[I].Wert := 1;` mit `Liste: TList<TWert>` (Record) | Meldung „Liste[I] liefert eine Kopie …“, Korrektur über eine Variable W |
+| XK4 | `Mitte(R).X := 1;` mit einer Funktion, die einen Record liefert | Meldung „Mitte liefert eine Kopie …“ ohne Korrektur |
+| XK5 | `const Grenze = 10;` und `Grenze := 1;` | „Grenze ist eine Konstante; ihr lässt sich nichts zuweisen (wie E2064).“; typisierte Konstante `Start: Integer = 1` still |
+| XK6 | `Rahmen.Font.Size := 9`, `Rahmen.BoundsRect := R`, Record-Variable `R.Left := 1`, Property mit `read FFeld` | Keine Meldung |
+| XK7 | `"assign-to-property-member": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| XK8 | Abgleich mit Delphi: XK1, XK3 bis XK5 übersetzen | dcc meldet E2064 an denselben Stellen, für XK6 nichts; kommt E2453 vor, den Fall im Issue nachtragen |
+
+## Zuweisung an eine Property ohne write (#1006)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RO1 | Das Beispiel aus #1006: `Liste.Count := 0;` mit `Liste: TStrings` | Fehler `readonly-property-assigned` an `Liste.Count`: „TStrings.Count hat kein write (wie E2129); zum Leeren Clear aufrufen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| RO2 | Schnellkorrektur „Clear aufrufen“, danach Strg+Z | Zeile wird `Liste.Clear;`, keine Meldung mehr; ein Undo-Schritt |
+| RO3 | Eigene Klasse mit `property Name: string read FName;`, in einer Methode `Name := 'Neu';` | Meldung „TKunde.Name hat kein write (wie E2129).“; Korrekturen „Feld FName zuweisen“ und „SetName anlegen und write ergänzen“ (Setter in private bzw. nach `completion.accessorSection`) |
+| RO4 | `property Passwort: string write SetPasswort;` und `if Passwort = '' then` | „TKunde.Passwort hat kein read (wie E2130).“ |
+| RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
+| RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## Falsche Anzahl Argumente (#1007)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AK1 | Das Beispiel aus #1007: `procedure Versenden(const An, Betreff, Text: string);` und `Versenden(Kunde.Mail, 'Rechnung');` | Fehler `argument-count-mismatch` am Aufruf: „Versenden erwartet 3 Argumente, übergeben sind 2; Text fehlt (wie E2035).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| AK2 | Schnellkorrektur „Signaturhilfe öffnen“ (Glühbirne, Befund-Hover und Fenster „Atlas-Prüfung“) | Schreibmarke steht vor `)`, der Parameter-Hint von Atlas öffnet sich und hebt `Text` hervor |
+| AK3 | `Versenden;` als Anweisung, dann „Signaturhilfe öffnen“ | Meldung „… übergeben ist keins; An, Betreff und Text fehlen (wie E2035).“; die Korrektur setzt `()` und öffnet den Hint zwischen den Klammern; Strg+Z nimmt `()` zurück |
+| AK4 | `Kunde.Senden(1, 2, 3)` bei `procedure Senden(A: Integer; B: Integer = 0);` | „Senden erwartet höchstens 2 Argumente, übergeben sind 3 (wie E2034).“, Wellenlinie unter `3` |
+| AK5 | Überladene Routine (`overload`), `Format('x', [1], 2)`, `Writeln(1, 2, 3)`, `TKunde(X)`, Aufruf einer Variablen vom Typ `TProc`, Deklaration in `{$IFDEF}`/`{$ELSE}` mit verschiedenen Listen | Keine Meldung |
+| AK6 | `"argument-count-mismatch": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| AK7 | Abgleich mit Delphi: AK1, AK3, AK4 übersetzen | dcc meldet E2035 bzw. E2034 an denselben Stellen, für AK5 nichts |
+
+## Gruppe „Compiler vorab“: Stufen und Zusammenführen mit dcc (#1024)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; eine Unit mit `Versenden(Kunde.Mail, 'Rechnung');` wie in AK1.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CV1 | Tools › Optionen › Atlas › Prüfregeln › Compiler vorab öffnen | Hauptschalter „Regeln der Gruppe „Compiler vorab“ prüfen“, darunter „Regeln der Stufe T prüfen …“, die Regeltabelle, „Bestätigte Compilermeldungen“ und „Compilercode (E2035 …) zu Befunden zeigen“ |
+| CV2 | Projekt bauen (Strg+F9) mit dem Fehler aus AK1 | Ein Eintrag an der Zeile: Atlas-Befund mit Herkunft „Atlas + dcc · argument-count-mismatch · vom Compiler bestätigt (E2035)“ im Hover; im Fenster „Atlas-Prüfung“ mit „Compilermeldungen im Fenster zeigen“ Spalte „Compiler“ = „E2035 · Atlas + dcc“, keine zweite Zeile von dcc (**Abnahme**) |
+| CV3 | „Bestätigte Compilermeldungen“ = „beide zeigen“, OK | Atlas-Befund und dcc-Meldung stehen beide da; der Atlas-Befund bleibt „vom Compiler bestätigt“ |
+| CV4 | Fehler beheben, erneut bauen | Weder Atlas-Befund noch dcc-Meldung; ein anderer dcc-Fehler an einer anderen Zeile bleibt als eigene Zeile |
+| CV5 | „Compilercode … zeigen“ aus | Meldungen ohne „(wie E2035)“, Spalte „Compiler“ verschwindet (Spaltenlayout bleibt gemerkt), Hover nur „vom Compiler bestätigt“ |
+| CV6 | „Regeln der Stufe T prüfen“ aus | In atlas.json steht `"group:compiler": {"typeLevel": "off"}`; `argument-count-mismatch` und die übrigen Regeln der Stufe T (Regeln.md) melden nichts, `duplicate-case-label` (Stufe B) meldet weiter |
+| CV7 | Hauptschalter der Gruppe aus | `"group:compiler": {"typeLevel": "off", "severity": "off"}` bzw. `"off"`; Tabelle, Stufe T und die beiden Plugin-Einstellungen gesperrt, Knoten grau; keine Regel der Gruppe meldet |
+| CV8 | `"group:compiler": {"typeLevel": "maybe"}` in atlas.json | Hinweis „"typeLevel" muss "certain" oder "off" sein“ beim Laden der Konfiguration |

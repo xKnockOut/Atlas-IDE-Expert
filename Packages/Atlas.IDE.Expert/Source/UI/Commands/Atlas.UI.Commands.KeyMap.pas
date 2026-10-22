@@ -338,6 +338,8 @@ begin
       Id := TAtlasTextId.NewLineAboveCommand;
     TAtlasKeyFunction.Unwrap:
       Id := TAtlasTextId.UnwrapCommand;
+    TAtlasKeyFunction.ProblemsWindow:
+      Id := TAtlasTextId.ProblemsWindowCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

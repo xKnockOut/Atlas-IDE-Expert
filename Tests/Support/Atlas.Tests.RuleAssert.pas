@@ -9,6 +9,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Contract;
 
 type
@@ -20,8 +21,28 @@ type
     /// <summary>Treffer von ARule auf ASource mit Einstellungen aus AConfigJson ('' = Vorgaben).</summary>
     class function Findings(ARule: IRule; const ASource: string;
       const AConfigJson: string = ''; const ARelativePath: string = ''): TArray<TRuleFinding>; static;
+    /// <summary>Treffer von ARule auf ASource in einem Projekt der Anwendungsart AApplication (#926).</summary>
+    class function ApplicationFindings(ARule: IRule; const ASource: string;
+      AApplication: TRuleApplicationKind): TArray<TRuleFinding>; static;
+    /// <summary>Treffer von ARule auf ASource als Unit des Packages AProjectName (#943) mit Einstellungen aus
+    /// AConfigJson ('' = Vorgaben) unter ARelativePath.</summary>
+    class function PackageFindings(ARule: IRule; const ASource, AProjectName, AConfigJson,
+      ARelativePath: string): TArray<TRuleFinding>; static;
     /// <summary>Treffer von ARule auf ASource mit der Formulardatei AFormText daneben (#123).</summary>
     class function FormFindings(const ARule: IRule; const ASource, AFormText: string): TArray<TRuleFinding>; static;
+    /// <summary>Treffer von ARule auf ASource als Unit eines Projekts, dessen .dpr die Formulare AForms in dieser
+    /// Reihenfolge erzeugt (#956), mit Formulardatei AFormText und Einstellungen aus AConfigJson unter
+    /// ARelativePath.</summary>
+    class function AutoCreateFindings(ARule: IRule; const ASource, AFormText: string; const AForms: TArray<string>;
+      const AConfigJson, ARelativePath: string): TArray<TRuleFinding>; static;
+    /// <summary>Treffer von ARule auf ASource als Datei AFileName (absolut) mit der Unit-Suche AUnits (#1016),
+    /// Einstellungen aus AConfigJson ('' = Vorgaben) unter ARelativePath.</summary>
+    class function UnitFindings(ARule: IRule; const ASource, AFileName: string; const AUnits: IRuleUnitLookup;
+      const AConfigJson, ARelativePath: string): TArray<TRuleFinding>; static;
+    /// <summary>Treffer von ARule auf ASource mit dem Symbolindex AIndex (#1019), Einstellungen aus AConfigJson
+    /// ('' = Vorgaben) unter ARelativePath.</summary>
+    class function IndexFindings(ARule: IRule; const ASource: string; const AIndex: ISymbolIndex;
+      const AConfigJson, ARelativePath: string): TArray<TRuleFinding>; static;
     /// <summary>Positiver Testfall: genau ACount Treffer.</summary>
     class procedure Reports(ARule: IRule; const ASource: string; ACount: Integer = 1); static;
     /// <summary>Negativer Testfall: kein Treffer.</summary>
@@ -87,6 +108,50 @@ begin
   end;
 end;
 
+class function TRuleAssert.ApplicationFindings(ARule: IRule; const ASource: string;
+  AApplication: TRuleApplicationKind): TArray<TRuleFinding>;
+var
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+begin
+  Tree := TPascalParser.Parse(ASource);
+  try
+    Context := Default(TRuleContext);
+    Context.Text := ASource;
+    Context.Tree := Tree;
+    Context.Application := AApplication;
+    Result := TRuleEngine.Run([ARule], TServerSettings.Default, Context);
+  finally
+    Tree.Free;
+  end;
+end;
+
+class function TRuleAssert.PackageFindings(ARule: IRule; const ASource, AProjectName, AConfigJson,
+  ARelativePath: string): TArray<TRuleFinding>;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+begin
+  if AConfigJson = '' then
+    Settings := TServerSettings.Default
+  else
+    Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  Tree := TPascalParser.Parse(ASource);
+  try
+    Context := Default(TRuleContext);
+    Context.RelativePath := ARelativePath;
+    Context.Text := ASource;
+    Context.Tree := Tree;
+    Context.Application := TRuleApplicationKind.Package;
+    Context.ProjectName := AProjectName;
+    Result := TRuleEngine.Run([ARule], Settings, Context);
+  finally
+    Tree.Free;
+  end;
+end;
+
 class function TRuleAssert.FormFindings(const ARule: IRule; const ASource, AFormText: string): TArray<TRuleFinding>;
 var
   Context: TRuleContext;
@@ -99,6 +164,83 @@ begin
     Context.Tree := Tree;
     Context.FormText := AFormText;
     Result := TRuleEngine.Run([ARule], TServerSettings.Default, Context);
+  finally
+    Tree.Free;
+  end;
+end;
+
+class function TRuleAssert.AutoCreateFindings(ARule: IRule; const ASource, AFormText: string;
+  const AForms: TArray<string>; const AConfigJson, ARelativePath: string): TArray<TRuleFinding>;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+begin
+  if AConfigJson = '' then
+    Settings := TServerSettings.Default
+  else
+    Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  Tree := TPascalParser.Parse(ASource);
+  try
+    Context := Default(TRuleContext);
+    Context.RelativePath := ARelativePath;
+    Context.Text := ASource;
+    Context.Tree := Tree;
+    Context.FormText := AFormText;
+    Context.AutoCreateForms := AForms;
+    Result := TRuleEngine.Run([ARule], Settings, Context);
+  finally
+    Tree.Free;
+  end;
+end;
+
+class function TRuleAssert.UnitFindings(ARule: IRule; const ASource, AFileName: string;
+  const AUnits: IRuleUnitLookup; const AConfigJson, ARelativePath: string): TArray<TRuleFinding>;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+begin
+  if AConfigJson = '' then
+    Settings := TServerSettings.Default
+  else
+    Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  Tree := TPascalParser.Parse(ASource);
+  try
+    Context := Default(TRuleContext);
+    Context.RelativePath := ARelativePath;
+    Context.FileName := AFileName;
+    Context.Text := ASource;
+    Context.Tree := Tree;
+    Context.Units := AUnits;
+    Result := TRuleEngine.Run([ARule], Settings, Context);
+  finally
+    Tree.Free;
+  end;
+end;
+
+class function TRuleAssert.IndexFindings(ARule: IRule; const ASource: string; const AIndex: ISymbolIndex;
+  const AConfigJson, ARelativePath: string): TArray<TRuleFinding>;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+begin
+  if AConfigJson = '' then
+    Settings := TServerSettings.Default
+  else
+    Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  Tree := TPascalParser.Parse(ASource);
+  try
+    Context := Default(TRuleContext);
+    Context.RelativePath := ARelativePath;
+    Context.Text := ASource;
+    Context.Tree := Tree;
+    Context.Index := AIndex;
+    Result := TRuleEngine.Run([ARule], Settings, Context);
   finally
     Tree.Free;
   end;

@@ -120,7 +120,8 @@ uses
   Atlas.IDE.Editor.BlockComment,
   Atlas.Core.Editor.NewLine,
   Atlas.IDE.Editor.NewLine,
-  Atlas.IDE.Editor.Unwrap;
+  Atlas.IDE.Editor.Unwrap,
+  Atlas.IDE.Problems.Service;
 
 /// <summary>Zeilen verschieben bzw. duplizieren (#634), gesichert.</summary>
 procedure RunLineMove(AKind: TAtlasLineMoveKind);
@@ -387,6 +388,17 @@ begin
         TAtlasIdeEditorCommands.StepProblem(False);
       end);
   end;
+  // Fenster „Atlas-Prüfung“ (#909): aus = das Kürzel gehört der IDE.
+  if Settings.Problems and Settings.ProblemsWindow then
+    AddKey(Settings.ProblemsWindowKey, TAtlasStrings.Text(TAtlasTextId.ProblemsWindowCommand),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.Problems,
+          procedure
+          begin
+            TAtlasIdeProblems.ShowWindow;
+          end);
+      end);
   AddKey(Settings.TestUnitKey, TAtlasStrings.Text(TAtlasTextId.EditorTestUnit),
     procedure
     begin

@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Rules.Builtin.Metrics.Tests;
 
 // Tests der Metrik-Regeln (#66): Treffer mit Regel-ID auf dem Methodennamen,
-// Unterdrückung per Kommentar, Grenzwerte aus atlas.json ("max").
+// Unterdrückung per Kommentar, Grenzwerte aus atlas.json ("max"); Aufbau (#939): Member je Klasse, Zeilen
+// der Unit, Units im uses.
 
 interface
 
@@ -32,6 +33,14 @@ type
     procedure InvalidMaxKeepsDefault;
     [Test]
     procedure RulesAreRegistered;
+    [Test]
+    procedure ClassSizeIssueExample;
+    [Test]
+    procedure ClassSizeCountsMembers;
+    [Test]
+    procedure UnitLengthAndUsesCount;
+    [Test]
+    procedure StructureLimitsOffAndExclude;
   end;
 
 implementation
@@ -173,7 +182,104 @@ begin
     if Rule.Descriptor.Id.StartsWith('metric-') then
       Found := Found + Rule.Descriptor.Id + ' ';
   Assert.AreEqual('metric-method-length metric-nesting-depth metric-cyclomatic-complexity ' +
-    'metric-cognitive-complexity metric-parameter-count ', Found);
+    'metric-cognitive-complexity metric-parameter-count metric-class-size metric-unit-length metric-uses-count ',
+    Found);
+end;
+
+/// <summary>Unit mit einer Formularklasse aus ACount Feldern.</summary>
+function FormWith(ACount: Integer): string;
+var
+  Index: Integer;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  TfrmHaupt = class(TForm)'#10;
+  for Index := 1 to ACount do
+    Result := Result + '    Feld' + IntToStr(Index) + ': TLabel;'#10;
+  Result := Result + '  end;'#10'implementation'#10'end.';
+end;
+
+procedure TMetricRulesTests.ClassSizeIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TStructureMetricRule.Create(TStructureKind.ClassSize), FormWith(87));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(ClassSizeRuleId, Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual('TfrmHaupt hat 87 Member (Grenze 40).', Findings[0].Message);
+  Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(11, Findings[0].Range.EndPos.Character);
+  TRuleAssert.Silent(TStructureMetricRule.Create(TStructureKind.ClassSize), FormWith(40));
+  // Option max
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TStructureMetricRule.Create(TStructureKind.ClassSize),
+    FormWith(40), '{"rules": {"metric-class-size": {"max": 39}}}'))));
+end;
+
+procedure TMetricRulesTests.ClassSizeCountsMembers;
+const
+  // 2 Felder in einer Zeile, Methode, Konstruktor, Property mit Typ, class var: 6 Member. Hochgestufte
+  // Property, geschachtelter Typ und Konstante zählen nicht; die geschachtelte Klasse zählt für sich.
+  Source = 'unit U;'#10'interface'#10'type'#10'  TFoo = class(TControl)'#10'  private'#10'    FA, FB: Integer;'#10 +
+    '    class var FAnzahl: Integer;'#10'  public type'#10'    TInner = class'#10'      X: Integer;'#10'    end;'#10 +
+    '  public const'#10'    Grenze = 3;'#10'  public'#10'    constructor Create(AOwner: TComponent); override;'#10 +
+    '    procedure Zeichne;'#10'    property A: Integer read FA;'#10'  published'#10'    property Align;'#10 +
+    '  end;'#10'implementation'#10'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TStructureMetricRule.Create(TStructureKind.ClassSize), Source,
+    '{"rules": {"metric-class-size": {"max": 1}}}');
+  Assert.AreEqual(1, Integer(Length(Findings)), 'TInner hat genau ein Member');
+  Assert.AreEqual('TFoo hat 6 Member (Grenze 1).', Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStructureMetricRule.Create(TStructureKind.ClassSize),
+    Source, '{"rules": {"metric-class-size": {"max": 6}}}'))));
+end;
+
+procedure TMetricRulesTests.UnitLengthAndUsesCount;
+const
+  Source = 'unit Kasse.Haupt;'#10'interface'#10'uses'#10'  A, B, C;'#10'implementation'#10'uses'#10'  D;'#10 +
+    #10'end.';
+  ProgramSource = 'program P;'#10'uses'#10'  A, B, C, D, E;'#10'begin'#10'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  TRuleAssert.Silent(TStructureMetricRule.Create(TStructureKind.UnitLength), Source);
+  TRuleAssert.Silent(TStructureMetricRule.Create(TStructureKind.UsesCount), Source);
+  Findings := TRuleAssert.Findings(TStructureMetricRule.Create(TStructureKind.UnitLength), Source,
+    '{"rules": {"metric-unit-length": {"max": 8}}}');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Unit Kasse.Haupt hat 9 Zeilen (Grenze 8); Klassen lassen sich mit „Klasse in eigene Unit ' +
+    'verschieben“ auslagern.', Findings[0].Message);
+  Assert.AreEqual(0, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(16, Findings[0].Range.EndPos.Character);
+  Findings := TRuleAssert.Findings(TStructureMetricRule.Create(TStructureKind.UsesCount), Source,
+    '{"rules": {"metric-uses-count": {"max": 3}}}');
+  Assert.AreEqual(1, Integer(Length(Findings)), 'interface und implementation zusammen');
+  Assert.AreEqual('Unit Kasse.Haupt hat 4 Units im uses (Grenze 3); Klassen lassen sich mit „Klasse in eigene ' +
+    'Unit verschieben“ auslagern.', Findings[0].Message);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Line, 'auf dem ersten uses');
+  // Programme zählen nicht: ihr uses führt die Units des Projekts auf.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStructureMetricRule.Create(TStructureKind.UsesCount),
+    ProgramSource, '{"rules": {"metric-uses-count": {"max": 1}}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStructureMetricRule.Create(TStructureKind.UnitLength),
+    ProgramSource, '{"rules": {"metric-unit-length": {"max": 1}}}'))));
+end;
+
+procedure TMetricRulesTests.StructureLimitsOffAndExclude;
+var
+  Issues: TArray<TConfigurationIssue>;
+  Limits: TMetricLimits;
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStructureMetricRule.Create(TStructureKind.ClassSize),
+    FormWith(87), '{"rules": {"metric-class-size": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStructureMetricRule.Create(TStructureKind.ClassSize),
+    FormWith(87), '{"rules": {"metric-class-size": {"exclude": ["Formulare/*.pas"]}}}', 'Formulare/U.pas'))));
+  Limits := TMetricRules.Limits(TConfigurationParser.Parse('{"rules": {"metric-class-size": {"max": 50}, ' +
+    '"metric-uses-count": {"max": 12}}}', Issues));
+  Assert.AreEqual(50, Limits.Structure[TStructureKind.ClassSize]);
+  Assert.AreEqual(2000, Limits.Structure[TStructureKind.UnitLength]);
+  Assert.AreEqual(12, Limits.Structure[TStructureKind.UsesCount]);
 end;
 
 initialization

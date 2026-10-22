@@ -118,6 +118,9 @@ begin
     Assert.Contains(Text, '"name":"Run","line":4,"character":11');
     Assert.Contains(Text, '"cyclomatic":2');
     Assert.Contains(Text, '"exceeded":["parameters"]');
+    // Aufbau (#939) für die Metrik-Linse.
+    Assert.Contains(Text, '"structure":[{"kind":"unitLength","name":"Main","line":1,"character":6,');
+    Assert.Contains(Text, '"limit":2000}');
   finally
     Metrics.Free;
   end;

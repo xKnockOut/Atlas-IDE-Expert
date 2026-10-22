@@ -14,6 +14,8 @@ type
     [Test]
     procedure EmptyStoreGivesDefaults;
     [Test]
+    procedure ProblemsWindowOptions;
+    [Test]
     procedure SaveAndLoadRoundTrip;
     [Test]
     procedure ClampsOutOfRangeValues;
@@ -285,7 +287,7 @@ begin
   Assert.IsTrue(Settings.PairOwners, 'Anweisungen mitfärben standardmäßig an (#653)');
   Assert.AreEqual(1, Settings.PairGuideWidth, 'Blocklinien 1 px');
   Assert.AreEqual(75, Settings.PairGuideOpacity, 'Blocklinien 75 % Deckkraft');
-  Assert.IsTrue(Settings.ProblemsList, 'Liste „Atlas-Probleme“ standardmäßig an');
+  Assert.IsFalse(Settings.ProblemsList, 'Liste „Atlas-Probleme“ seit dem Prüffenster (#909) standardmäßig aus');
   Assert.IsTrue(Settings.Favorites, 'Favoriten anheften standardmäßig an (#458)');
   Assert.IsTrue(Settings.Notes, 'Notizen standardmäßig an (#545)');
   Assert.IsTrue(Settings.BookmarksNamed, 'Benannte Lesezeichen standardmäßig an (#622)');
@@ -374,7 +376,7 @@ begin
   Settings.RedoKey := $C059;
   Settings.UpdatesCheck := True;
   Settings.BugReportAnonymize := False;
-  Settings.ProblemsList := False;
+  Settings.ProblemsList := True;
   Settings.PairOwners := False;
   Settings.PairGuideWidth := 3;
   Settings.PairGuideOpacity := 80;
@@ -429,7 +431,7 @@ begin
   Assert.AreEqual(3, Loaded.PairGuideWidth);
   Assert.AreEqual(80, Loaded.PairGuideOpacity);
   Assert.AreEqual('#112233,#445566,#778899,#AABBCC,#DDEEFF', Loaded.PairColorsDark, 'einheitlich geschrieben');
-  Assert.IsFalse(Loaded.ProblemsList, 'Liste „Atlas-Probleme“ abgeschaltet');
+  Assert.IsTrue(Loaded.ProblemsList, 'Liste „Atlas-Probleme“ eingeschaltet');
   Assert.IsTrue(Loaded.Problems, 'Wellenlinien bleiben an');
   Assert.AreEqual('D:\Atlas\AtlasServer.exe', Loaded.ServerPath, 'Serverpfad ohne Leerraum');
   Assert.AreEqual($6048, Loaded.SignatureKey);
@@ -1932,6 +1934,69 @@ begin
   for Field in Fields do
     if Pos('|' + Field.Path + '|', '|index.projectGroup|memoryBudgetMb|compiler.onSave|slashCommands.enabled|') > 0 then
       Assert.IsTrue(Field.Global, Field.Path);
+end;
+
+procedure TAtlasPluginSettingsTests.ProblemsWindowOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // Fenster „Atlas-Prüfung“, laufende Prüfung und Aktionen im Befund-Hover (#909).
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.ProblemsWindow);
+  Assert.AreEqual('group', Settings.ProblemsWindowScope);
+  Assert.AreEqual('file', Settings.ProblemsWindowGroupBy);
+  Assert.AreEqual('', Settings.ProblemsWindowColumns);
+  Assert.IsFalse(Settings.ProblemsWindowCompiler);
+  Assert.IsTrue(Settings.ProblemsWindowFollowCursor);
+  Assert.AreEqual($C050, Settings.ProblemsWindowKey, 'Strg+Alt+P');
+  Assert.IsTrue(Settings.ProblemsLive);
+  Assert.IsTrue(Settings.HoverProblemActions);
+  Assert.IsFalse(Settings.ProblemsList, 'Meldungsfenster-Gruppe seit dem Prüffenster aus');
+  // Gruppe „Compiler vorab“ (#1024).
+  Assert.AreEqual('merge', Settings.ProblemsCompilerMerge);
+  Assert.IsTrue(Settings.ProblemsShowCompilerCode);
+  Settings.ProblemsCompilerMerge := 'BOTH';
+  Settings.Normalize;
+  Assert.AreEqual('both', Settings.ProblemsCompilerMerge);
+  Settings.ProblemsCompilerMerge := 'beides';
+  Settings.Normalize;
+  Assert.AreEqual('merge', Settings.ProblemsCompilerMerge, 'Unbekanntes = Vorgabe');
+  Settings.ProblemsWindowScope := 'PROJECT';
+  Settings.ProblemsWindowGroupBy := 'unsinn';
+  Settings.ProblemsWindowKey := -1;
+  Settings.Normalize;
+  Assert.AreEqual('project', Settings.ProblemsWindowScope);
+  Assert.AreEqual('file', Settings.ProblemsWindowGroupBy, 'Unbekanntes = Vorgabe');
+  Assert.AreEqual(0, Settings.ProblemsWindowKey);
+  Settings.ProblemsWindow := False;
+  Settings.ProblemsWindowScope := 'file';
+  Settings.ProblemsWindowGroupBy := 'category';
+  Settings.ProblemsWindowColumns := 'kind:70,-rule';
+  Settings.ProblemsWindowCompiler := True;
+  Settings.ProblemsWindowFollowCursor := False;
+  Settings.ProblemsWindowKey := $C051;
+  Settings.ProblemsLive := False;
+  Settings.HoverProblemActions := False;
+  Settings.ProblemsList := True;
+  Settings.ProblemsCompilerMerge := 'both';
+  Settings.ProblemsShowCompilerCode := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.ProblemsWindow);
+  Assert.AreEqual('file', Loaded.ProblemsWindowScope);
+  Assert.AreEqual('category', Loaded.ProblemsWindowGroupBy);
+  Assert.AreEqual('kind:70,-rule', Loaded.ProblemsWindowColumns);
+  Assert.IsTrue(Loaded.ProblemsWindowCompiler);
+  Assert.IsFalse(Loaded.ProblemsWindowFollowCursor);
+  Assert.AreEqual($C051, Loaded.ProblemsWindowKey);
+  Assert.IsFalse(Loaded.ProblemsLive);
+  Assert.IsFalse(Loaded.HoverProblemActions);
+  Assert.AreEqual('both', Loaded.ProblemsCompilerMerge);
+  Assert.IsFalse(Loaded.ProblemsShowCompilerCode);
+  Assert.IsTrue(Loaded.ProblemsList);
 end;
 
 initialization

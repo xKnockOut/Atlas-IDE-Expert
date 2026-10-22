@@ -3,7 +3,8 @@
 // Attribute im Quelltext (#119): [TestFixture], [DUnitX.Attributes.TestFixture],
 // [TestCase('A', '1,2')]. Liefert zur Position den geschriebenen Namen und die
 // Zahl der Argumente; die Namensauflösung sucht damit zuerst NameAttribute,
-// dann Name.
+// dann Name. Names liefert die Namen eines Attribut-Knotens ohne Endung
+// Attribute und ohne Unit, z. B. für die DUnitX-Regeln (#945).
 
 interface
 
@@ -27,6 +28,9 @@ type
     class function At(ATree: TSyntaxTree; const APosition: TTextPosition; out AUse: TAttributeUse): Boolean; static;
     /// <summary>Klassennamen in Suchreihenfolge: NameAttribute, dann Name.</summary>
     class function ClassNames(const AName: string): TArray<string>; static;
+    /// <summary>Namen der Attribute im Knoten AAttribute ([Test, TestCase('a', '1')] → Test, TestCase): letzter
+    /// Teil eines qualifizierten Namens, ohne Endung Attribute.</summary>
+    class function Names(AAttribute: TSyntaxNode): TArray<string>; static;
   end;
 
 implementation
@@ -105,6 +109,31 @@ begin
     Exit(True);
   end;
   Result := False;
+end;
+
+class function TAttributes.Names(AAttribute: TSyntaxNode): TArray<string>;
+var
+  Index, Dot: Integer;
+  Item: TSyntaxNode;
+  Name: string;
+begin
+  Result := nil;
+  if (AAttribute = nil) or (AAttribute.Kind <> TSyntaxKind.Attribute) then
+    Exit;
+  for Index := 0 to AAttribute.ChildCount - 1 do
+  begin
+    Item := AAttribute[Index];
+    if (Item.Kind = TSyntaxKind.Call) and (Item.ChildCount > 0) then
+      Item := Item[0];
+    Name := DottedName(Item);
+    if Name = '' then
+      Continue;
+    Dot := LastDelimiter('.', Name);
+    Name := Copy(Name, Dot + 1, MaxInt);
+    if EndsText('Attribute', Name) and (Length(Name) > Length('Attribute')) then
+      Name := Copy(Name, 1, Length(Name) - Length('Attribute'));
+    Result := Result + [Name];
+  end;
 end;
 
 class function TAttributes.ClassNames(const AName: string): TArray<string>;

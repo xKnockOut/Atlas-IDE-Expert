@@ -25,6 +25,13 @@
 // Update des Servers lässt sie stehen, Edit führt sie wie Atlas-Meldungen mit.
 // Eine Datei nur mit Tests gilt nicht als vom Server geprüft (Contains,
 // AllFiles).
+// Gruppe „Compiler vorab“ (#1024): Meldet der letzte Build an der Zeile eines
+// Atlas-Befunds einen der Codes aus data.compilerCodes, ist der Befund „vom
+// Compiler bestätigt“ (Confirmed, ConfirmedCode). Mit CompilerMerge (Vorgabe,
+// problems.compilerMerge = merge) entfällt die Compilermeldung dann in
+// ForFile und allem, was darauf aufbaut (Wellenlinie, Hover, Fenster); mit
+// both bleiben beide. Ist die Meldung nach dem nächsten Build weg, bleibt nur
+// der Atlas-Befund.
 
 interface
 
@@ -76,6 +83,8 @@ type
   private
     FEntries: TObjectDictionary<string, TEntry>;
     FVersion: Integer;
+    FCompilerMerge: Boolean;
+    procedure SetCompilerMerge(AValue: Boolean);
     function Find(const AFileName: string): TEntry;
     function Ensure(const AFileName: string): TEntry;
     class procedure Shift(AEntry: TEntry; const ANewText: string); static;
@@ -133,6 +142,9 @@ type
     /// #592: Was hier fehlt, ist nicht geprüft).</summary>
     function AllFiles: TArray<string>;
     property Version: Integer read FVersion;
+    /// <summary>Bestätigte Compilermeldungen mit dem Atlas-Befund zusammenführen (problems.compilerMerge, #1024).
+    /// </summary>
+    property CompilerMerge: Boolean read FCompilerMerge write SetCompilerMerge;
   end;
 
 implementation
@@ -177,6 +189,34 @@ constructor TAtlasProblemStore.Create;
 begin
   inherited Create;
   FEntries := TObjectDictionary<string, TEntry>.Create([doOwnsValues]);
+  FCompilerMerge := True;
+end;
+
+procedure TAtlasProblemStore.SetCompilerMerge(AValue: Boolean);
+var
+  Entry: TEntry;
+begin
+  if FCompilerMerge = AValue then
+    Exit;
+  FCompilerMerge := AValue;
+  for Entry in FEntries.Values do
+    Entry.VisibleValid := False;
+  Inc(FVersion);
+end;
+
+/// <summary>Index der Compilermeldung in AProblems, die AProblem bestätigt (gleiche Zeile, Code aus
+/// CompilerCodes); -1 ohne.</summary>
+function ConfirmingIndex(const AProblems: TArray<TAtlasProblem>; const AProblem: TAtlasProblem): Integer;
+var
+  Index: Integer;
+  Code: string;
+begin
+  for Index := 0 to High(AProblems) do
+    if AProblems[Index].IsCompiler and (AProblems[Index].StartLine = AProblem.StartLine) then
+      for Code in AProblem.CompilerCodes do
+        if SameText(Code, AProblems[Index].Code) then
+          Exit(Index);
+  Result := -1;
 end;
 
 destructor TAtlasProblemStore.Destroy;
@@ -546,7 +586,9 @@ var
   Entry: TEntry;
   Problem, Other: TAtlasProblem;
   Duplicate: Boolean;
-  Visible: TArray<TAtlasProblem>;
+  Visible, Merged: TArray<TAtlasProblem>;
+  Drop: TArray<Boolean>;
+  Index, Found: Integer;
 begin
   Result := nil;
   Entry := Find(AFileName);
@@ -568,6 +610,24 @@ begin
     if not Duplicate then
       Visible := Visible + [Problem];
   end;
+  // Vom Compiler bestätigte Befunde (#1024); beim Zusammenführen ohne die Compilermeldung.
+  SetLength(Drop, Length(Visible));
+  for Index := 0 to High(Visible) do
+    if not Visible[Index].IsCompiler and (Visible[Index].CompilerCodes <> nil) then
+    begin
+      Found := ConfirmingIndex(Visible, Visible[Index]);
+      if Found < 0 then
+        Continue;
+      Visible[Index].Confirmed := True;
+      Visible[Index].ConfirmedCode := Visible[Found].Code;
+      if FCompilerMerge then
+        Drop[Found] := True;
+    end;
+  Merged := nil;
+  for Index := 0 to High(Visible) do
+    if not Drop[Index] then
+      Merged := Merged + [Visible[Index]];
+  Visible := Merged;
   TArray.Sort<TAtlasProblem>(Visible, TComparer<TAtlasProblem>.Construct(
     function(const A, B: TAtlasProblem): Integer
     begin

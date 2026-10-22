@@ -479,6 +479,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Builtin.General,
+  Atlas.Common.Rules.Builtin.RtlTypePatterns,
+  Atlas.Common.Rules.Builtin.FormFields,
   Atlas.Common.Lsp.FormFiles,
   Atlas.Common.Lsp.DfmPropertyRules,
   Atlas.Common.Lsp.ChangeSignature,
@@ -1579,8 +1581,17 @@ begin
     end);
   FCommands.RegisterConcurrent(TLspSettingsCommands.CatalogCommand,
     function(const AArguments: TJSONArray): TJSONValue
+    var
+      Rule: IRule;
+      Experimental: TArray<string>;
     begin
-      Result := TLspSettingsCommands.Catalog(TLspSettingsCommands.CatalogEntries(AArguments), FGlobalSettingsFile);
+      // Experimentelle Regeln (#834) kennt nur ihr Deskriptor; die Einstellungsseite (#909) markiert sie.
+      Experimental := nil;
+      for Rule in BuiltinRules do
+        if Rule.Descriptor.Experimental then
+          Experimental := Experimental + [Rule.Descriptor.Id];
+      Result := TLspSettingsCommands.Catalog(TLspSettingsCommands.CatalogEntries(AArguments), FGlobalSettingsFile,
+        Experimental);
     end);
   FCommands.RegisterConcurrent(TBugReport.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -3868,11 +3879,17 @@ var
   Workspace: TShellWorkspace;
   FileName, Folder: string;
   Locator: TPackageLocator;
+  Project: TProjectInfo;
+  HasProject, Member: Boolean;
+  ProjectUnit: TProjectUnit;
+  Pair: TPair<string, string>;
+  ConsoleTarget, MainText: string;
 begin
   AContext := Default(TRuleCheckContext);
   FileName := TDocumentUris.ToPath(AUri);
   AContext.FileName := FileName;
   Locator := nil;
+  HasProject := False;
   TMonitor.Enter(FWorkspacesLock);
   try
     Workspace := PickWorkspace(FileName);
@@ -3885,9 +3902,31 @@ begin
       AContext.Baseline := Workspace.Baseline;
       AContext.Namespaces := Workspace.Namespaces;
       Locator := Workspace.PackageLocator;
+      // Unit-Suche wie beim Compiler für uses-unit-not-found (#1016).
+      AContext.Units := Workspace.UnitLookup;
+      HasProject := Workspace.Project(Project);
     end;
   finally
     TMonitor.Exit(FWorkspacesLock);
+  end;
+  // Anwendungsart für writeln-in-gui-app (#926) und queue-nil-in-package (#943), nur für Dateien des Projekts.
+  if HasProject and (Project.MainSource <> '') then
+  begin
+    Member := SameText(Project.MainSource, FileName);
+    for ProjectUnit in Project.Units do
+      if SameText(ProjectUnit.FileName, FileName) then
+        Member := True;
+    ConsoleTarget := '';
+    for Pair in Project.Properties do
+      if SameText(Pair.Key, 'DCC_ConsoleTarget') then
+        ConsoleTarget := Pair.Value;
+    if Member and ReadSourceText(Project.MainSource, MainText) then
+    begin
+      AContext.Application := TWritelnInGuiAppRule.ApplicationKind(ConsoleTarget, MainText);
+      AContext.ProjectName := ChangeFileExt(ExtractFileName(Project.MainSource), '');
+      // Reihenfolge von Application.CreateForm für form-access-before-create (#956).
+      AContext.AutoCreateForms := TFormAccessBeforeCreateRule.AutoCreatedForms(MainText);
+    end;
   end;
   // requires-Packages für implicit-package-import (#46); der Locator lebt so lange wie der Arbeitsbereich.
   if Locator <> nil then

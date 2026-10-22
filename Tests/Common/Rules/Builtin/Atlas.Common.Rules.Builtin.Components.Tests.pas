@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Components.Tests;
 
-// Tests für die Komponentenregeln (#55, Teil A).
+// Tests für die Komponentenregeln (#55, Teil A) und missing-inherited (#919) sowie message-handler-without-inherited (#949).
 
 interface
 
@@ -42,6 +42,24 @@ type
     /// <summary>Alle sechs Regeln in einem Lauf teilen das Komponentenmodell (Review P-03).</summary>
     [Test]
     procedure AllComponentRulesShareModelInOneRun;
+    [Test]
+    procedure MissingInheritedIssueExample;
+    [Test]
+    procedure MissingInheritedConstructor;
+    [Test]
+    procedure MissingInheritedSilentCases;
+    [Test]
+    procedure MissingInheritedComponentsNoDoubleReport;
+    [Test]
+    procedure MissingInheritedMethodsOptionOffAndExclude;
+    [Test]
+    procedure MessageHandlerIssueExample;
+    [Test]
+    procedure MessageHandlerSilentCases;
+    [Test]
+    procedure MessageHandlerConsequences;
+    [Test]
+    procedure MessageHandlerSwallowOffAndExclude;
   end;
 
 implementation
@@ -51,6 +69,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Configuration.Parser,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Builtin.Components,
   Atlas.Tests.RuleAssert;
 
@@ -296,6 +317,228 @@ begin
     TComponentSetterWithoutInvalidateRule.Create, TComponentFixedPixelsRule.Create,
     TComponentHardcodedColorRule.Create], Source, LowConfidence);
   Assert.IsTrue(Count >= 5, 'Treffer mehrerer Regeln: ' + IntToStr(Count));
+end;
+
+const
+  ExportUnit = 'unit U;'#10'interface'#10'type'#10'  TBasisExport = class'#10'  public'#10 +
+    '    constructor Create;'#10'    destructor Destroy; override;'#10'  end;'#10 +
+    '  TExport = class(TBasisExport)'#10'  public'#10'    destructor Destroy; override;'#10'  end;'#10 +
+    'implementation'#10'constructor TBasisExport.Create;'#10'begin'#10'end;'#10 +
+    'destructor TBasisExport.Destroy;'#10'begin'#10'  inherited;'#10'end;'#10 +
+    'destructor TExport.Destroy;'#10'begin'#10'  FDatei.Free;'#10'end;'#10'end.';
+
+procedure TComponentRulesTests.MissingInheritedIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+  Fixed: string;
+begin
+  Findings := TRuleAssert.Findings(TMissingInheritedRule.Create, ExportUnit);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Destroy ruft inherited nicht auf; die Felder von TBasisExport werden nie freigegeben.',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('"inherited;" einfügen', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(ExportUnit, Findings[0].Fixes[0]);
+  Assert.IsTrue(Fixed.Contains('destructor TExport.Destroy;'#10'begin'#10'  FDatei.Free;'#10'  inherited;'#10'end;'),
+    Fixed);
+  TRuleAssert.Silent(TMissingInheritedRule.Create, Fixed);
+end;
+
+procedure TComponentRulesTests.MissingInheritedConstructor;
+const
+  Head = 'unit U;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10'    constructor Create;'#10 +
+    '  end;'#10'  TKind = class(TBasis)'#10'  public'#10;
+  Impl = 'implementation'#10'constructor TBasis.Create;'#10'begin'#10'end;'#10;
+var
+  Findings: TArray<TRuleFinding>;
+  Source: string;
+begin
+  Source := Head + '    constructor Create;'#10'  end;'#10 + Impl +
+    'constructor TKind.Create;'#10'begin'#10'  FWert := 1;'#10'end;'#10'end.';
+  Findings := TRuleAssert.Findings(TMissingInheritedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Create ruft inherited nicht auf; die Felder von TBasis werden nie angelegt.', Findings[0].Message);
+  Assert.IsTrue(ApplyFix(Source, Findings[0].Fixes[0]).Contains(
+    'constructor TKind.Create;'#10'begin'#10'  inherited;'#10'  FWert := 1;'), ApplyFix(Source, Findings[0].Fixes[0]));
+  // Eigener Konstruktor mit Parametern: inherited Create ohne Argumente.
+  Source := Head + '    constructor Create(AWert: Integer);'#10'  end;'#10 + Impl +
+    'constructor TKind.Create(AWert: Integer);'#10'begin'#10'  FWert := AWert;'#10'end;'#10'end.';
+  Findings := TRuleAssert.Findings(TMissingInheritedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('"inherited Create;" einfügen', Findings[0].Fixes[0].Title);
+  // Ruft einen anderen eigenen Konstruktor: still.
+  TRuleAssert.Silent(TMissingInheritedRule.Create, Head + '    constructor Create;'#10 +
+    '    constructor CreateLeer;'#10'  end;'#10 + Impl +
+    'constructor TKind.Create;'#10'begin'#10'  inherited;'#10'end;'#10 +
+    'constructor TKind.CreateLeer;'#10'begin'#10'  Create;'#10'  FListe := TStringList.Create;'#10'end;'#10'end.');
+  // AfterConstruction ohne inherited.
+  Findings := TRuleAssert.Findings(TMissingInheritedRule.Create, Head +
+    '    procedure AfterConstruction; override;'#10'  end;'#10 + Impl +
+    'procedure TKind.AfterConstruction;'#10'begin'#10'  Laden;'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('AfterConstruction ruft inherited nicht auf; die Arbeit von TBasis nach dem Erzeugen entfällt.',
+    Findings[0].Message);
+end;
+
+procedure TComponentRulesTests.MissingInheritedSilentCases;
+begin
+  // Vorfahr TObject: nichts aufzurufen.
+  TRuleAssert.Silent(TMissingInheritedRule.Create, 'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10 +
+    '  public'#10'    constructor Create;'#10'    destructor Destroy; override;'#10'  end;'#10'implementation'#10 +
+    'constructor TFoo.Create;'#10'begin'#10'  FX := 1;'#10'end;'#10 +
+    'destructor TFoo.Destroy;'#10'begin'#10'  FX := 0;'#10'end;'#10'end.');
+  // Vorfahr ohne eigenen Konstruktor: der Konstruktor ist still.
+  TRuleAssert.Silent(TMissingInheritedRule.Create, 'unit U;'#10'interface'#10'type'#10'  TBasis = class'#10 +
+    '  end;'#10'  TKind = class(TBasis)'#10'  public'#10'    constructor Create;'#10'  end;'#10'implementation'#10 +
+    'constructor TKind.Create;'#10'begin'#10'  FX := 1;'#10'end;'#10'end.');
+  // Destroy ohne override meldet destroy-without-override, nicht diese Regel.
+  TRuleAssert.Silent(TMissingInheritedRule.Create, StringReplace(ExportUnit,
+    '  TExport = class(TBasisExport)'#10'  public'#10'    destructor Destroy; override;',
+    '  TExport = class(TBasisExport)'#10'  public'#10'    destructor Destroy;', []));
+end;
+
+procedure TComponentRulesTests.MissingInheritedComponentsNoDoubleReport;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := ControlUnit('  public'#10'    constructor Create(AOwner: TComponent); override;'#10 +
+    '    destructor Destroy; override;',
+    'constructor TFoo.Create(AOwner: TComponent);'#10'begin'#10'  FSize := 10;'#10'end;'#10 +
+    'destructor TFoo.Destroy;'#10'begin'#10'  FLink := nil;'#10'end;');
+  Findings := TRuleAssert.Findings(TMissingInheritedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)), 'Destroy meldet component-missing-inherited');
+  Assert.AreEqual('Create ruft inherited nicht auf; die Felder von TCustomControl werden nie angelegt.',
+    Findings[0].Message);
+  Assert.AreEqual('"inherited;" einfügen', Findings[0].Fixes[0].Title, 'override reicht AOwner weiter');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TComponentMissingInheritedRule.Create, Source))));
+end;
+
+procedure TComponentRulesTests.MissingInheritedMethodsOptionOffAndExclude;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMissingInheritedRule.Create, ExportUnit,
+    '{"rules": {"missing-inherited": {"methods": ["Create"]}}}', 'U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMissingInheritedRule.Create, ExportUnit,
+    '{"rules": {"missing-inherited": {"methods": ["Destroy"]}}}', 'U.pas'))));
+  Assert.AreEqual(4, Integer(Length(TMissingInheritedRule.DefaultMethods)));
+  TConfigurationParser.Parse('{"rules": {"missing-inherited": {"methods": "Destroy"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"methods" muss eine Liste von Texten sein', Issues[0].Message);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMissingInheritedRule.Create, ExportUnit,
+    '{"rules": {"missing-inherited": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMissingInheritedRule.Create, ExportUnit,
+    '{"rules": {"missing-inherited": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMissingInheritedRule.Create, ExportUnit,
+    '{"rules": {"missing-inherited": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
+end;
+
+function Haupt(const AMessage, ABody: string): string;
+begin
+  Result :=
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'uses Winapi.Messages, Vcl.Forms;'#10 +
+    'type'#10 +
+    '  TfrmHaupt = class(TForm)'#10 +
+    '  private'#10 +
+    '    procedure WMSize(var Msg: TWMSize); message ' + AMessage + ';'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TfrmHaupt.WMSize(var Msg: TWMSize);'#10 +
+    'begin'#10 +
+    ABody +
+    'end;'#10 +
+    'end.';
+end;
+
+procedure TComponentRulesTests.MessageHandlerIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+  Tree: TSyntaxTree;
+begin
+  Source := Haupt('WM_SIZE', '  AnordnungAnpassen;'#10);
+  Findings := TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('message-handler-without-inherited', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('WMSize ruft inherited nicht auf; die VCL passt Ausrichtung und Anker nicht mehr an.',
+    Findings[0].Message);
+  Assert.AreEqual(9, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(20, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('"inherited;" am Anfang einfügen', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(Haupt('WM_SIZE', '  inherited;'#10'  AnordnungAnpassen;'#10), Fixed);
+  Tree := TPascalParser.Parse(Fixed);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create, Fixed);
+end;
+
+procedure TComponentRulesTests.MessageHandlerSilentCases;
+begin
+  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create,
+    Haupt('WM_SIZE', '  AnordnungAnpassen;'#10'  inherited WMSize(Msg);'#10));
+  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create,
+    Haupt('WM_SIZE', '  DefaultHandler(Msg);'#10));
+  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create,
+    Haupt('WM_SIZE', '  Msg.Result := DefWindowProc(Handle, Msg.Msg, 0, 0);'#10));
+  // Vorgabe von swallow: WM_ERASEBKGND.
+  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create, Haupt('WM_ERASEBKGND', '  Zeichnen;'#10));
+  // Der Handler beantwortet die Nachricht selbst.
+  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create, Haupt('WM_MOUSEACTIVATE',
+    '  Msg.Result := MA_NOACTIVATE;'#10));
+  // Ohne Vorfahr behandelt TObject nichts.
+  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create, StringReplace(Haupt('WM_SIZE',
+    '  AnordnungAnpassen;'#10), 'TfrmHaupt = class(TForm)', 'TfrmHaupt = class', []));
+  // Ohne message keine Meldung.
+  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create, StringReplace(Haupt('WM_SIZE',
+    '  AnordnungAnpassen;'#10), ' message WM_SIZE;', ';', []));
+end;
+
+procedure TComponentRulesTests.MessageHandlerConsequences;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, Haupt('WM_CLOSE', '  Speichern;'#10));
+  Assert.AreEqual('WMSize ruft inherited nicht auf; das Fenster schließt nicht mehr.', Findings[0].Message);
+  Findings := TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create,
+    Haupt('Winapi.Messages.WM_PAINT', '  Zeichnen;'#10));
+  Assert.AreEqual('WMSize ruft inherited nicht auf; die VCL zeichnet das Steuerelement nicht mehr.',
+    Findings[0].Message);
+  Assert.AreEqual('die Standardbehandlung der VCL entfällt',
+    TMessageHandlerWithoutInheritedRule.Consequence('CM_TEXTCHANGED'));
+  Assert.AreEqual('die Standardbehandlung von Windows bzw. der VCL entfällt',
+    TMessageHandlerWithoutInheritedRule.Consequence('WM_USER_FERTIG'));
+  Assert.AreEqual('Mausereignisse wie OnClick und OnMouseDown entfallen',
+    TMessageHandlerWithoutInheritedRule.Consequence('WM_LBUTTONDOWN'));
+end;
+
+procedure TComponentRulesTests.MessageHandlerSwallowOffAndExclude;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Haupt('WM_SIZE', '  AnordnungAnpassen;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, Source,
+    '{"rules": {"message-handler-without-inherited": {"swallow": ["WM_SIZE"]}}}'))));
+  // Eigene Liste ersetzt die Vorgabe: WM_ERASEBKGND wird dann gemeldet.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create,
+    Haupt('WM_ERASEBKGND', '  Zeichnen;'#10),
+    '{"rules": {"message-handler-without-inherited": {"swallow": ["WM_SIZE"]}}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, Source,
+    '{"rules": {"message-handler-without-inherited": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, Source,
+    '{"rules": {"message-handler-without-inherited": {"exclude": ["Source/*.pas"]}}}', 'Source/Haupt.pas'))));
+  TConfigurationParser.Parse('{"rules": {"message-handler-without-inherited": {"swallow": "WM_SIZE"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
 initialization

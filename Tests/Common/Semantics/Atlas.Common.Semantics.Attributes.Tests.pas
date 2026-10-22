@@ -33,6 +33,8 @@ type
     procedure SuffixClassMustBeAttribute;
     [Test]
     procedure ClassNamesOrder;
+    [Test]
+    procedure NamesOfAttributeNode;
   end;
 
 implementation
@@ -188,6 +190,30 @@ begin
   Assert.AreEqual(2, Integer(Length(TAttributes.ClassNames('TestFixture'))));
   Assert.AreEqual('TestFixtureAttribute', TAttributes.ClassNames('TestFixture')[0]);
   Assert.AreEqual(1, Integer(Length(TAttributes.ClassNames('TestFixtureAttribute'))));
+end;
+
+procedure TAttributesTests.NamesOfAttributeNode;
+var
+  Tree: TSyntaxTree;
+  Found: TArray<string>;
+begin
+  Tree := TPascalParser.Parse('unit U;'#10'interface'#10'type'#10'  TA = class'#10'  public'#10 +
+    '    [Test, DUnitX.Attributes.TestCaseAttribute(''a'', ''1'')]'#10'    procedure P;'#10'  end;'#10 +
+    'implementation'#10'end.');
+  try
+    Found := nil;
+    Tree.Root.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        Result := True;
+        if ANode.Kind = TSyntaxKind.Attribute then
+          Found := Found + TAttributes.Names(ANode);
+      end);
+    Assert.AreEqual('Test,TestCase', string.Join(',', Found));
+    Assert.AreEqual(0, Integer(Length(TAttributes.Names(nil))));
+  finally
+    Tree.Free;
+  end;
 end;
 
 initialization

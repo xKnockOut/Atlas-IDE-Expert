@@ -84,7 +84,7 @@
     },
     "rules": {
       "type": "object",
-      "description": "Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit \"severity\" und Optionen. Die Konfidenz eines Treffers begrenzt den Schweregrad auch hier: Bei mittlerer Konfidenz bleibt ein Treffer höchstens eine Warnung, bei niedriger höchstens ein Hinweis, auch mit \"error\".",
+      "description": "Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit \"severity\" und Optionen. Hauptschalter je Gruppe der Einstellungsseite (#909): \"group:<gruppe>\": \"off\" schaltet alle Regeln der Gruppe ab (Gruppen siehe Regeln.md, z. B. \"group:threads\"). Die Gruppe „Compiler vorab“ nimmt auch ein Objekt (#1024): \"group:compiler\": {\"severity\": \"off\", \"typeLevel\": \"off\"}; \"typeLevel\": \"off\" schaltet nur die Regeln der Stufe T ab, die Ausdruckstypen brauchen (Stufen siehe Regeln.md). Die Konfidenz eines Treffers begrenzt den Schweregrad auch hier: Bei mittlerer Konfidenz bleibt ein Treffer höchstens eine Warnung, bei niedriger höchstens ein Hinweis, auch mit \"error\".",
       "additionalProperties": {
         "oneOf": [
           {
@@ -124,7 +124,12 @@
               "max": {
                 "type": "integer",
                 "minimum": 1,
-                "description": "Nur metric-* (#66): Grenzwert der Kennzahl; darüber meldet die Regel die Methode. Vorgaben: Länge 60, Tiefe 4, zyklomatisch 15, kognitiv 15, Parameter 6."
+                "description": "Nur metric-* (#66): Grenzwert der Kennzahl; darüber meldet die Regel die Methode. Vorgaben: Länge 60, Tiefe 4, zyklomatisch 15, kognitiv 15, Parameter 6; metric-class-size 40 Member, metric-unit-length 2000 Zeilen, metric-uses-count 30 Units (#939). Bei line-length (#938) die Höchstlänge einer Zeile, Vorgabe 120."
+              },
+              "minLines": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Nur commented-out-code (#942): so viele aufeinanderfolgende Kommentarzeilen mit Code meldet die Regel; Vorgabe 3."
               },
               "keywords": {
                 "type": "array",
@@ -186,6 +191,244 @@
                     }
                   }
                 }
+              },
+              "ignore": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Nur unused-local, unused-parameter, unused-assignment und shadowed-name (#934): Namensmuster (* und ?), die nie gemeldet werden. Bei shadowed-name ohne Angabe Sender und Value."
+              },
+              "deferredApis": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Nur captured-loop-variable: weitere verzögert ausführende Aufrufe (neben TThread.Queue, TTask.Run und anderen), z. B. \"TMyPool.Post\"."
+              },
+              "lockPairs": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                "description": "Nur lock-without-finally: weitere Paare aus Sperren und Freigeben, z. B. [[\"Lock\", \"Unlock\"]]."
+              },
+              "template": {
+                "type": "string",
+                "description": "Nur file-header: erwarteter Dateikopf mit Platzhaltern (siehe Regeln.md)."
+              },
+              "allowCommented": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur empty-statement: leere Blöcke begin … end mit Kommentar darin nicht melden (#912)."
+              },
+              "countNames": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["Count", "Length"],
+                "description": "Nur loop-off-by-one: Namen, die eine Anzahl liefern (Property wie Count oder Funktion wie Length) (#913)."
+              },
+              "mutatingMethods": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["Add", "Delete", "Remove", "Extract", "Clear", "Insert"],
+                "description": "Nur assert-side-effect und collection-modified-in-loop (#914): Methoden, die ihr Objekt bzw. die Liste verändern. Vorgabe: Add, Delete, Remove, Extract, Clear, Insert."
+              },
+              "ignoreMethods": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["Destroy", "BeforeDestruction"],
+                "description": "Nur field-free-without-nil: Methoden, in denen Free ohne nil erlaubt ist (#917). Destruktoren und Methoden mit [TearDown] gelten immer."
+              },
+              "assertPatterns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["Assert.*", "WillRaise*", "Check*"],
+                "description": "Nur dunitx-test-without-assert (#945): Aufrufe, die als Prüfung zählen, als Muster mit * und ?; ersetzt die Vorgabe. System.Assert und Klassen mit Assert im Namen zählen immer."
+              },
+              "selfRegistering": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur create-without-assignment (#948): Klassen, die sich im Konstruktor selbst registrieren (Muster mit * und ?); TKlasse.Create; bleibt für sie still."
+              },
+              "swallow": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["WM_ERASEBKGND"],
+                "description": "Nur message-handler-without-inherited (#949): Nachrichten, die ohne inherited behandelt werden dürfen (WM_…, CM_…); ersetzt die Vorgabe."
+              },
+              "ignoreTypes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur field-not-freed: Klassen, die anderswo freigegeben werden (#918). Generische Typen treffen ohne Typparameter, z. B. TObjectList."
+              },
+              "methods": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["Create", "Destroy", "AfterConstruction", "BeforeDestruction"],
+                "description": "Nur missing-inherited: geprüfte Methoden (#919). Create steht für alle Konstruktoren, deren Name mit Create beginnt."
+              },
+              "registerPairs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["open", "close"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "open": {
+                      "type": "string",
+                      "description": "Anmeldung, deren Ergebnis der Index ist, z. B. AddNotifier."
+                    },
+                    "close": {
+                      "type": "string",
+                      "description": "Abmeldung, die den Index erhält, z. B. RemoveNotifier."
+                    }
+                  }
+                },
+                "default": [{"open": "AddNotifier", "close": "RemoveNotifier"}, {"open": "RegisterPackageWizard", "close": "RemoveWizard"}],
+                "description": "Nur ota-notifier-not-removed (#944): Paare der Open Tools API aus Anmeldung und Abmeldung; ersetzt die Vorgabe."
+              },
+              "pairs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["open", "close"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "open": {
+                      "type": "string",
+                      "description": "Öffnende Methode bzw. Routine, z. B. DisableControls, oder eine Zuweisung wie \"Screen.Cursor :=\"."
+                    },
+                    "close": {
+                      "type": "string",
+                      "description": "Schließende Methode bzw. Routine, z. B. EnableControls."
+                    },
+                    "openArg": {
+                      "type": "integer",
+                      "description": "Argument (ab 0), das beide Aufrufe verbindet; ohne Angabe der Empfänger bzw. das erste Argument."
+                    },
+                    "closeArg": {
+                      "type": "integer",
+                      "description": "Argument (ab 0) des schließenden Aufrufs; ohne Angabe der Empfänger bzw. das erste Argument."
+                    }
+                  }
+                },
+                "default": [],
+                "description": "Nur pair-without-finally: weitere Paare neben den eingebauten (DisableControls/EnableControls, BeginUpdate/EndUpdate, FindFirst/FindClose, Reset/CloseFile, GetMem/FreeMem, Screen.Cursor) (#930)."
+              },
+              "requireElse": {
+                "type": "boolean",
+                "default": false,
+                "description": "Nur case-missing-enum-value: auch case-Anweisungen mit else melden, wenn Werte fehlen (#929)."
+              },
+              "wrapper": {
+                "type": "string",
+                "default": "TAtlasMainThread.Queue",
+                "description": "Nur queue-nil-in-package (#943): Ersatz für TThread.Queue(nil, …) in der Schnellkorrektur; bei ForceQueue wird aus …Queue …ForceQueue. Mit Klammer steht der Text so vor den übrigen Argumenten, z. B. \"TAtlasMainThread.Queue(TAtlasFeature.Hover, \"."
+              },
+              "okMarker": {
+                "type": "string",
+                "default": "mainthread-ok",
+                "description": "Nur queue-nil-in-package (#943): Kommentar, der eine Zeile ausnimmt, z. B. // mainthread-ok."
+              },
+              "replacement": {
+                "type": "string",
+                "default": "OutputDebugString",
+                "description": "Nur writeln-in-gui-app: Ersatz für Write und Writeln in der Schnellkorrektur (#926), z. B. \"Log.Info\" oder mit Platzhalter \"Logger.Log(TLogLevel.Info, %s)\"."
+              },
+              "allowIn": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur processmessages-in-loop: Methoden, in denen Application.ProcessMessages erlaubt ist, als Name oder Klasse.Name (#931)."
+              },
+              "functions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["StrToInt", "StrToInt64", "StrToFloat", "StrToDate", "StrToDateTime", "StrToCurr"],
+                "description": "Nur unchecked-conversion: geprüfte Umwandlungen (#932)."
+              },
+              "sources": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["Text", "Cells", "Lines"],
+                "description": "Nur unchecked-conversion: Eigenschaften, die als Benutzereingabe gelten, z. B. Text in Edit.Text oder Cells in Grid.Cells[…] (#932)."
+              },
+              "allowed": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "default": [0, 1, -1, 2, 10, 100],
+                "description": "Nur magic-number: Zahlen, die nie gemeldet werden (#937)."
+              },
+              "ignoreStrings": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur line-length: Zeilen, die nur wegen eines Strings zu lang sind, nicht melden (#938)."
+              },
+              "ignoreComments": {
+                "type": "boolean",
+                "default": false,
+                "description": "Nur line-length: Zeilen, die nur wegen eines Kommentars zu lang sind, nicht melden (#938)."
+              },
+              "includeRecords": {
+                "type": "boolean",
+                "default": false,
+                "description": "Nur public-field: auch Felder von Records melden (#940)."
+              },
+              "includeFormVariables": {
+                "type": "boolean",
+                "default": false,
+                "description": "Nur global-variable: auch die Formularvariablen des Designers melden (#941)."
+              },
+              "checkUses": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur duplicate-declaration: doppelte Einträge in uses-Klauseln melden (#988)."
+              },
+              "allowTables": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur sql-write-without-where: Tabellen, die absichtlich ganz geleert bzw. geändert werden, mit oder ohne Schema (#966)."
+              },
+              "searchPaths": {
+                "type": "string",
+                "enum": ["project", "atlas", "both"],
+                "default": "project",
+                "description": "Nur uses-unit-not-found: wo nach Units gesucht wird (#1016). project: wie der Compiler (Projekt, Suchpfade der .dproj, Bibliothekspfade der Installation, .pas und .dcu); atlas: was Atlas kennt (Index, Quellpfade der Installation); both: beides."
               }
             }
           }
@@ -625,7 +868,7 @@
         "freeFields": {
           "type": "boolean",
           "default": true,
-          "description": "Im Konstruktor (oder einer von ihm aufgerufenen privaten Methode) mit TKlasse.Create erzeugte Objektfelder, die die Klasse nirgends freigibt, melden (owned-field-not-freed) und die Code-Aktionen „Im Destruktor freigeben“ am Feld und „Alle eigenen Objekte freigeben (n)“ an der Klasse anbieten. Fehlt der Destruktor, legt Atlas ihn mit override und inherited an. Ausgenommen sind Komponenten mit Owner sowie Interface- und Record-Felder; zurückgegebene oder weitergereichte Felder meldet Atlas als unklar (owned-field-free-unclear).",
+          "description": "Im Konstruktor (oder einer von ihm aufgerufenen privaten Methode) mit TKlasse.Create erzeugte Objektfelder, die die Klasse nirgends freigibt, melden (field-not-freed, bis #918 owned-field-not-freed) und die Code-Aktionen „Im Destruktor freigeben“ am Feld und „Alle eigenen Objekte freigeben (n)“ an der Klasse anbieten. Fehlt der Destruktor, legt Atlas ihn mit override und inherited an. Ausgenommen sind Komponenten mit Owner sowie Interface- und Record-Felder; zurückgegebene oder weitergereichte Felder meldet Atlas als unklar (owned-field-free-unclear).",
           "x-issue": "#666"
         },
         "freeFieldsStyle": {

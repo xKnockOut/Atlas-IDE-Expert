@@ -20,6 +20,14 @@
 // ShowSetting (#628, „Einstellungen dazu …“): öffnet Tools › Optionen, wählt
 // die Seite „Atlas“ in der Baumansicht des Dialogs (soweit sie sich finden
 // lässt) und zeigt dort die Einstellung mit markierter Zeile (Reveal).
+// ShowRule (#909, „Regel einstellen…“ im Fenster „Atlas-Prüfung“ und im
+// Befund-Hover) tut dasselbe mit "rule:<id>": Die Seite öffnet den Knoten der
+// Gruppe auf der Seite Prüfregeln und markiert die Regel.
+// Seite Prüfregeln (#909): Den Regelkatalog holt CommandWithArguments im
+// Hintergrund, "rules" kommt aus der globalen settings.json; mit OK schreibt
+// DialogClosed nur die geänderten Regeln dorthin (TAtlasJsonText,
+// Kommentare bleiben). Der Server liest die Datei über seinen
+// Dateibeobachter neu ein; ein Neustart ist nicht nötig.
 
 interface
 
@@ -31,6 +39,9 @@ type
   /// <summary>Befehl an den Server im Hintergrund (#874); ADone im Hauptthread mit der Antwort, nil ohne Server
   /// oder bei Fehler. Den Wert gibt der Aufrufer von ADone frei.</summary>
   TAtlasServerCommand = reference to procedure(ACommand: string; ADone: TProc<TJSONValue>);
+  /// <summary>Wie TAtlasServerCommand mit Argumenten als JSON-Array (#909).</summary>
+  TAtlasServerCommandWithArguments = reference to procedure(ACommand, AArgumentsJson: string;
+    ADone: TProc<TJSONValue>);
 
   /// <summary>Was die Optionsseiten von anderen Features brauchen; setzt die Composition (A-09: die Seiten
   /// importieren Befehlszählung, Tipps, Code Insight-Manager und Vervollständigung nicht). Nicht gesetzte Haken
@@ -40,6 +51,8 @@ type
     ResetHistory: TProc;
     /// <summary>Befehl an den Server (#492).</summary>
     Command: TAtlasServerCommand;
+    /// <summary>Befehl mit Argumenten, z. B. der Regelkatalog in der Sprache der Oberfläche (#909).</summary>
+    CommandWithArguments: TAtlasServerCommandWithArguments;
     /// <summary>Zählung der Befehle zurücksetzen (#757).</summary>
     ResetUsage: TProc;
     /// <summary>Gesperrte Tipps wieder zeigen (#757).</summary>
@@ -61,6 +74,9 @@ type
     /// <summary>Tools › Optionen öffnen und auf der Seite „Atlas“ die Einstellung AKey (Name der
     /// Plugin-Einstellung) zeigen und markieren (#628).</summary>
     class procedure ShowSetting(const AKey: string); static;
+    /// <summary>„Regel einstellen…“ (#909): Tools › Optionen auf der Seite Prüfregeln bei der Regel ARuleId
+    /// öffnen.</summary>
+    class procedure ShowRule(const ARuleId: string); static;
   end;
 
 implementation
@@ -68,6 +84,7 @@ implementation
 uses
   Atlas.Core.Diagnostics.MainThread,
   System.IOUtils,
+  System.Generics.Collections,
   Atlas.Core.Diagnostics.Guard,
   System.Classes,
   Vcl.Forms,
@@ -98,6 +115,8 @@ uses
   Atlas.IDE.Foundation.StructureSwitch,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Settings.TeamFile,
+  Atlas.Core.Settings.JsonText,
+  Atlas.Core.Files.TextFile,
   Atlas.IDE.Foundation.TeamFile;
 
 type
@@ -109,6 +128,9 @@ type
     /// <summary>Führt ACommand im Hintergrund aus; AText macht aus der Antwort (nil ohne Server) den Text für
     /// die Seite.</summary>
     procedure Run(const ACommand: string; const AText: TFunc<TJSONValue, string>);
+    /// <summary>Seite Prüfregeln (#909): Katalog im Hintergrund holen und mit "rules" der globalen Datei
+    /// übergeben.</summary>
+    procedure LoadRules;
   public
     function GetArea: string;
     function GetCaption: string;
@@ -287,6 +309,80 @@ begin
     Result := AHook();
 end;
 
+function ServerExe: string;
+begin
+  Result := HookText(Hooks.ServerPath);
+end;
+
+/// <summary>atlas-baseline.json des aktiven Projekts (oder der alte Name, wenn nur er existiert); '' ohne Projekt.
+/// </summary>
+function BaselineFile: string;
+var
+  Folder: string;
+begin
+  Result := '';
+  if TAtlasProjectSettings.SettingsFile = '' then
+    Exit;
+  Folder := ExtractFileDir(TAtlasProjectSettings.SettingsFile);
+  Result := IncludeTrailingPathDelimiter(Folder) + TAtlasBaselineInfo.FileName;
+  if not FileExists(Result) and FileExists(IncludeTrailingPathDelimiter(Folder) + TAtlasBaselineInfo.LegacyFileName)
+  then
+    Result := IncludeTrailingPathDelimiter(Folder) + TAtlasBaselineInfo.LegacyFileName;
+end;
+
+function BaselineText: string;
+var
+  FileName: string;
+  Count, Entries: Integer;
+begin
+  FileName := BaselineFile;
+  if FileName = '' then
+    Exit(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject));
+  if not FileExists(FileName) then
+    Exit(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineNone));
+  Count := TAtlasBaselineInfo.Count(TFile.ReadAllText(FileName, TEncoding.UTF8), Entries);
+  if Count < 0 then
+    Exit(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineNone));
+  Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageBaselineCount, [Count, Entries]);
+end;
+
+/// <summary>Wert von "rules" in der globalen settings.json als JSON-Text; '' ohne Datei oder ohne Regeln.
+/// </summary>
+function GlobalRules: string;
+var
+  Content: TAtlasTextFileContent;
+  Root: TJSONObject;
+  Rules: TJSONValue;
+begin
+  Result := '';
+  if not TAtlasIdeSettings.LoadGlobal(Content) then
+    Exit;
+  Root := TAtlasJsonText.Parse(Content.Text);
+  try
+    if Root = nil then
+      Exit;
+    Rules := Root.GetValue('rules');
+    if Rules is TJSONObject then
+      Result := Rules.ToJSON;
+  finally
+    Root.Free;
+  end;
+end;
+
+/// <summary>AtlasServer.exe mit AArguments im Projektordner; '' bei Erfolg, sonst die Meldung.</summary>
+function RunTool(const AArguments: string; ATimeoutMs: Cardinal; out AOutput: string): string;
+var
+  Code: Cardinal;
+  Error, Folder: string;
+begin
+  Result := '';
+  Folder := ExtractFileDir(TAtlasProjectSettings.ActiveProject);
+  if not TAtlasServerTool.Run(ServerExe, AArguments, Folder, ATimeoutMs, AOutput, Code, Error) then
+    Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageToolFailed, [Error])
+  else if Code = 3 then
+    Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageToolFailed, ['Exit-Code 3']);
+end;
+
 { TAtlasAddInOptions }
 
 procedure TAtlasAddInOptions.Run(const ACommand: string; const AText: TFunc<TJSONValue, string>);
@@ -319,6 +415,39 @@ begin
     end);
 end;
 
+procedure TAtlasAddInOptions.LoadRules;
+var
+  Keep: INTAAddInOptions;
+  Owner: TAtlasAddInOptions;
+  Generation: Integer;
+  Language: string;
+begin
+  // Wie Run: Die Antwort gilt nur für die Seite, für die sie bestellt wurde (#874).
+  Keep := Self;
+  Owner := Self;
+  Generation := FGeneration;
+  Language := 'de';
+  if TAtlasStrings.Language = TAtlasLanguage.English then
+    Language := 'en';
+  if not Assigned(Hooks.CommandWithArguments) then
+  begin
+    if FPage <> nil then
+      FPage.RulesLoaded(nil, GlobalRules);
+    Exit;
+  end;
+  Hooks.CommandWithArguments(TAtlasProjectSettings.CatalogCommand, '["' + Language + '"]',
+    procedure(AAnswer: TJSONValue)
+    begin
+      if (Keep <> nil) and (Owner.FPage <> nil) and (Owner.FGeneration = Generation) then
+        TAtlasGuard.Run(TAtlasFeature.Settings,
+          procedure
+          begin
+            // Die Seite kopiert den Katalog; den Wert gibt der Absender frei.
+            Owner.FPage.RulesLoaded(AAnswer, GlobalRules);
+          end);
+    end);
+end;
+
 function TAtlasAddInOptions.GetArea: string;
 begin
   // Leer: unter „Drittanbieter“, wie die Open Tools API empfiehlt.
@@ -347,6 +476,41 @@ begin
       Result := TAtlasServerTool.FileVersion(APath);
     end;
   FPage.OnResetHistory := Hooks.ResetHistory;
+  // Seite Prüfregeln (#909): Katalog und globale Regeln, Projektdialog, Baseline.
+  FPage.OnRulesCatalog :=
+    procedure
+    begin
+      LoadRules;
+    end;
+  FPage.OnRulesProject :=
+    procedure
+    begin
+      TAtlasProjectSettings.Execute;
+    end;
+  FPage.OnBaselineInfo :=
+    function: string
+    begin
+      Result := BaselineText;
+    end;
+  FPage.OnBaselineUpdate :=
+    function: string
+    var
+      Output: string;
+    begin
+      if TAtlasProjectSettings.ActiveProject = '' then
+        Exit(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject));
+      Result := RunTool('--check "' + TAtlasProjectSettings.ActiveProject + '" --update-baseline',
+        TAtlasServerTool.CheckTimeoutMs, Output);
+      if Result = '' then
+        Result := BaselineText;
+    end;
+  FPage.OnBaselineDelete :=
+    function: string
+    begin
+      if (BaselineFile <> '') and FileExists(BaselineFile) then
+        TFile.Delete(BaselineFile);
+      Result := BaselineText;
+    end;
   // „Einstellungen dazu …“ (#628): gewünschte Zeile zeigen.
   if PendingReveal <> '' then
     FPage.Reveal(PendingReveal);
@@ -458,6 +622,8 @@ end;
 procedure TAtlasAddInOptions.DialogClosed(Accepted: Boolean);
 var
   Settings: TAtlasPluginSettings;
+  Changes: TArray<TPair<string, string>>;
+  Content: TAtlasTextFileContent;
 begin
   PendingReveal := '';
   try
@@ -466,6 +632,10 @@ begin
       Settings := TAtlasIdeSettings.Stored;
       FPage.SaveTo(Settings);
       TAtlasIdeSettings.Update(Settings);
+      // Prüfregeln (#909): nur die geänderten Regeln in die globale settings.json.
+      Changes := FPage.RulesChanges;
+      if (Length(Changes) > 0) and TAtlasIdeSettings.LoadGlobal(Content) then
+        TAtlasIdeSettings.SaveGlobal(Content, TAtlasJsonText.ApplyChanges(Content.Text, Changes));
     end;
     // Strukturhervorhebung und Help Insight der IDE erst nach dem Dialog abgleichen: Mit OK
     // schreibt die IDE danach ihre Editoroptionen aus dem Speicher zurück, auch die Schalter,
@@ -645,56 +815,6 @@ end;
 
 { TAtlasServerOptions }
 
-function ServerExe: string;
-begin
-  Result := HookText(Hooks.ServerPath);
-end;
-
-/// <summary>atlas-baseline.json des aktiven Projekts (oder der alte Name, wenn nur er existiert); '' ohne Projekt.
-/// </summary>
-function BaselineFile: string;
-var
-  Folder: string;
-begin
-  Result := '';
-  if TAtlasProjectSettings.SettingsFile = '' then
-    Exit;
-  Folder := ExtractFileDir(TAtlasProjectSettings.SettingsFile);
-  Result := IncludeTrailingPathDelimiter(Folder) + TAtlasBaselineInfo.FileName;
-  if not FileExists(Result) and FileExists(IncludeTrailingPathDelimiter(Folder) + TAtlasBaselineInfo.LegacyFileName)
-  then
-    Result := IncludeTrailingPathDelimiter(Folder) + TAtlasBaselineInfo.LegacyFileName;
-end;
-
-function BaselineText: string;
-var
-  FileName: string;
-  Count, Entries: Integer;
-begin
-  FileName := BaselineFile;
-  if FileName = '' then
-    Exit(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject));
-  if not FileExists(FileName) then
-    Exit(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineNone));
-  Count := TAtlasBaselineInfo.Count(TFile.ReadAllText(FileName, TEncoding.UTF8), Entries);
-  if Count < 0 then
-    Exit(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineNone));
-  Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageBaselineCount, [Count, Entries]);
-end;
-
-/// <summary>AtlasServer.exe mit AArguments im Projektordner; '' bei Erfolg, sonst die Meldung.</summary>
-function RunTool(const AArguments: string; ATimeoutMs: Cardinal; out AOutput: string): string;
-var
-  Code: Cardinal;
-  Error, Folder: string;
-begin
-  Result := '';
-  Folder := ExtractFileDir(TAtlasProjectSettings.ActiveProject);
-  if not TAtlasServerTool.Run(ServerExe, AArguments, Folder, ATimeoutMs, AOutput, Code, Error) then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageToolFailed, [Error])
-  else if Code = 3 then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageToolFailed, ['Exit-Code 3']);
-end;
 
 function TAtlasServerOptions.GetArea: string;
 begin
@@ -910,6 +1030,11 @@ begin
       Exit(True);
     end;
   end;
+end;
+
+class procedure TAtlasOptionsRegistration.ShowRule(const ARuleId: string);
+begin
+  ShowSetting(TAtlasSettingsPage.RuleRevealPrefix + ARuleId);
 end;
 
 class procedure TAtlasOptionsRegistration.ShowSetting(const AKey: string);
