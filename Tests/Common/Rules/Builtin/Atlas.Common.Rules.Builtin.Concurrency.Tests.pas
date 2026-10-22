@@ -77,6 +77,14 @@ type
     procedure QueueNilOptions;
     [Test]
     procedure QueueNilWrapperCall;
+    [Test]
+    procedure BlockingCallIssueExample;
+    [Test]
+    procedure BlockingCallVariants;
+    [Test]
+    procedure BlockingCallSilentCases;
+    [Test]
+    procedure BlockingCallOptions;
   end;
 
 implementation
@@ -600,6 +608,108 @@ begin
   Assert.AreEqual('TAtlasMainThread.Queue(TAtlasFeature.Hover, ',
     TQueueNilInPackageRule.WrapperCall('TAtlasMainThread.Queue(TAtlasFeature.Hover, ', 'queue'));
   Assert.AreEqual('Post(', TQueueNilInPackageRule.WrapperCall('Post', 'ForceQueue'));
+end;
+
+const
+  BlockingCallAdvice = ' Besser die Arbeit mit TTask.Run auslagern und das Ergebnis über TThread.Queue melden.';
+
+function FormUnit(const AMethods: string): string;
+begin
+  Result := 'unit Haupt;'#10'interface'#10'type'#10'  TfrmHaupt = class(TForm)'#10 +
+    '    procedure btnExportClick(Sender: TObject);'#10'  end;'#10'implementation'#10 + AMethods + 'end.';
+end;
+
+function FormMethod(const AHeader, ABody: string): string;
+begin
+  Result := FormUnit(AHeader + #10'begin'#10 + ABody + 'end;'#10);
+end;
+
+procedure TConcurrencyRulesTests.BlockingCallIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, FormMethod(
+    'procedure TfrmHaupt.btnExportClick(Sender: TObject);', '  FExport.Start;'#10'  FExport.WaitFor;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('blocking-call-in-main-thread', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('WaitFor im Click-Handler blockiert den Hauptthread; ruft FExport Synchronize auf, hängt das ' +
+    'Programm.' + BlockingCallAdvice, Findings[0].Message);
+  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(10, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(17, Findings[0].Range.EndPos.Character);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Korrigierte Form: Arbeit in TTask.Run, Rückmeldung über TThread.Queue.
+  TRuleAssert.Silent(TBlockingCallInMainThreadRule.Create, FormMethod(
+    'procedure TfrmHaupt.btnExportClick(Sender: TObject);', '  btnExport.Enabled := False;'#10 +
+    '  TTask.Run(procedure begin FExport.Ausfuehren; FExport.WaitFor; TThread.Queue(nil, procedure begin ' +
+    'btnExport.Enabled := True; end); end);'#10));
+end;
+
+procedure TConcurrencyRulesTests.BlockingCallVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, FormMethod('procedure TfrmHaupt.Laden;',
+    '  Sleep(500);'#10'  if WaitForSingleObject(H, INFINITE) = WAIT_OBJECT_0 then'#10'    FEreignis.WaitFor(5000);'#10 +
+    '  FAufgabe.Wait;'#10'  Winapi.Windows.Sleep(Pause);'#10'  while not Fertig do'#10'    Sleep(10);'#10));
+  Assert.AreEqual(6, Integer(Length(Findings)));
+  Assert.AreEqual('Sleep(500) in Laden blockiert den Hauptthread; die Oberfläche friert ein.' + BlockingCallAdvice,
+    Findings[0].Message);
+  Assert.AreEqual('FEreignis.WaitFor(5000) in Laden blockiert den Hauptthread; die Oberfläche friert ein.' +
+    BlockingCallAdvice, Findings[2].Message);
+  Assert.AreEqual('Warteschleife mit Sleep in Laden blockiert den Hauptthread; die Oberfläche friert ein.' +
+    BlockingCallAdvice, Findings[5].Message);
+  // Ereignis-Handler einer anderen Klasse, Frame, eingebettete Routine.
+  Findings := TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TfraListe = class(TFrame)'#10'  end;'#10'implementation'#10 +
+    'procedure TVerwaltung.TimerTimer(Sender: TObject);'#10'begin'#10'  Sleep(100);'#10'end;'#10 +
+    'procedure TfraListe.Fuellen;'#10'  procedure Warten;'#10'  begin'#10'    Sleep(1000);'#10'  end;'#10 +
+    'begin'#10'  Warten;'#10'end;'#10'end.');
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('Sleep(100) im Ereignis-Handler TimerTimer blockiert den Hauptthread; die Oberfläche friert ein.' +
+    BlockingCallAdvice, Findings[0].Message);
+  Assert.AreEqual(1, TBlockingCallInMainThreadRule.TimeoutArgument('WaitForSingleObject'));
+  Assert.AreEqual(3, TBlockingCallInMainThreadRule.TimeoutArgument('WaitForMultipleObjects'));
+  Assert.AreEqual(-1, TBlockingCallInMainThreadRule.TimeoutArgument('Pause'));
+end;
+
+procedure TConcurrencyRulesTests.BlockingCallSilentCases;
+begin
+  // Kurze Wartezeiten, Warteschleife mit ProcessMessages, anonyme Methode, fremde Sleep- und Wait-Methoden.
+  TRuleAssert.Silent(TBlockingCallInMainThreadRule.Create, FormMethod('procedure TfrmHaupt.Laden;',
+    '  Sleep(10);'#10'  Sleep(0);'#10'  WaitForSingleObject(H, 0);'#10'  while not Fertig do'#10'  begin'#10 +
+    '    Application.ProcessMessages;'#10'    Sleep(10);'#10'  end;'#10 +
+    '  TTask.Run(procedure begin Sleep(1000); end);'#10'  FUhr.Sleep(1000);'#10'  Wait(1000);'#10));
+  // Thread-Klasse, Klasse ohne Formular und ohne Sender, Routine außerhalb einer Klasse.
+  TRuleAssert.Silent(TBlockingCallInMainThreadRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TExport = class(TThread)'#10'  end;'#10'implementation'#10'procedure TExport.Execute;'#10'begin'#10 +
+    '  Sleep(1000);'#10'  FEreignis.WaitFor;'#10'end;'#10'procedure TExport.Fertig(Sender: TObject);'#10'begin'#10 +
+    '  Sleep(1000);'#10'end;'#10'procedure TDienst.Laufen;'#10'begin'#10'  Sleep(1000);'#10'end;'#10 +
+    'procedure Warten;'#10'begin'#10'  Sleep(1000);'#10'end;'#10'end.');
+end;
+
+procedure TConcurrencyRulesTests.BlockingCallOptions;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := FormMethod('procedure TfrmHaupt.Laden;', '  Sleep(500);'#10'  Sleep(10);'#10'  Pause(100);'#10);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, Source, '', 'U.pas'))));
+  Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, Source,
+    '{"rules": {"blocking-call-in-main-thread": {"maxSleepMs": 5}}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, Source,
+    '{"rules": {"blocking-call-in-main-thread": {"maxSleepMs": 1000}}}', 'U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, Source,
+    '{"rules": {"blocking-call-in-main-thread": {"calls": ["Pause"]}}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, Source,
+    '{"rules": {"blocking-call-in-main-thread": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, Source,
+    '{"rules": {"blocking-call-in-main-thread": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+  TConfigurationParser.Parse('{"rules": {"blocking-call-in-main-thread": {"maxSleepMs": "x", "calls": 1}}}',
+    Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
 end;
 
 initialization

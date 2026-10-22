@@ -80,3 +80,4 @@ createprocess-readonly-commandline | Ref.Daten.Suche.pas | \nimplementation | \n
 form-access-before-create | Ref.Formulare.Haupt.pas | Suche.OnSuchen := SucheAusfuehren; | Suche.OnSuchen := SucheAusfuehren;\n  DetailFormular.Caption := Caption;
 except-handler-order | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nprocedure LeseZahl(const AText: string);\nbegin\n  try\n    StrToInt(AText);\n  except\n    on E: Exception do\n      Exit;\n    on E: EConvertError do\n      Exit;\n  end;\nend;
 reraise-exception-object | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nprocedure LeseWert(const AText: string);\nbegin\n  try\n    StrToInt(AText);\n  except\n    on E: EConvertError do\n      raise E;\n  end;\nend;
+blocking-call-in-main-thread | Ref.Formulare.Haupt.pas | Formular.ShowModal; | Sleep(500);\n    Formular.ShowModal;

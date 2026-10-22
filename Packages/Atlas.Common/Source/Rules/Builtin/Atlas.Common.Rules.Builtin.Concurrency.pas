@@ -22,6 +22,9 @@
 //                                       Entladen laufen. Korrektur auf den Wrapper aus "wrapper" (Vorgabe
 //                                       TAtlasMainThread.Queue, für ForceQueue …ForceQueue); eine Zeile mit
 //                                       dem Kommentar aus "okMarker" (Vorgabe mainthread-ok) bleibt still.
+//   blocking-call-in-main-thread        Sleep, WaitFor, WaitForSingleObject, WaitForMultipleObjects und Wait
+//                                       in Methoden von Formularen und Frames sowie in Ereignis-Handlern
+//                                       (#959); kurzes Sleep unter "maxSleepMs" nur in Warteschleifen.
 //
 // Ein Thread mit Free ohne Terminate und WaitFor wird nicht gemeldet:
 // TThread.Destroy ruft beides selbst auf.
@@ -109,6 +112,14 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TBlockingCallInMainThreadRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Position des Timeouts unter den Argumenten von ACall (ab 0); -1 ohne Timeout.</summary>
+    class function TimeoutArgument(const ACall: string): Integer; static;
+  end;
+
   TQueueNilInPackageRule = class(TInterfacedObject, IRule)
   public const
     DefaultWrapper = 'TAtlasMainThread.Queue';
@@ -135,6 +146,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options;
@@ -1306,6 +1318,29 @@ begin
     Visit(AContext.Tree.Root);
 end;
 
+/// <summary>Methode mit einem Parameter Sender: OnClick, OnTimer und Verwandte.</summary>
+function IsEventHandler(ARoutine: TSyntaxNode): Boolean;
+var
+  Header, Params: TSyntaxNode;
+  Index: Integer;
+  Name: string;
+begin
+  Result := False;
+  if Pos('.', ARoutine.Name) = 0 then
+    Exit;
+  Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if Header = nil then
+    Exit;
+  Params := Header.FindChild(TSyntaxKind.Parameters);
+  if Params = nil then
+    Exit;
+  for Index := 0 to Params.ChildCount - 1 do
+    if Params[Index].Kind = TSyntaxKind.Parameter then
+      for Name in SplitString(Params[Index].Name, ',') do
+        if SameText(Trim(Name), 'Sender') then
+          Exit(True);
+end;
+
 { TProcessMessagesInLoopRule }
 
 const
@@ -1330,29 +1365,6 @@ var
       if SameText(Name, ARoutineName) or SameText(Name, MethodPart(ARoutineName)) then
         Exit(True);
     Result := False;
-  end;
-
-  // Methode mit einem Parameter Sender: OnClick, OnTimer und Verwandte.
-  function IsEventHandler(ARoutine: TSyntaxNode): Boolean;
-  var
-    Header, Params: TSyntaxNode;
-    Index: Integer;
-    Name: string;
-  begin
-    Result := False;
-    if Pos('.', ARoutine.Name) = 0 then
-      Exit;
-    Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-    if Header = nil then
-      Exit;
-    Params := Header.FindChild(TSyntaxKind.Parameters);
-    if Params = nil then
-      Exit;
-    for Index := 0 to Params.ChildCount - 1 do
-      if Params[Index].Kind = TSyntaxKind.Parameter then
-        for Name in SplitString(Params[Index].Name, ',') do
-          if SameText(Trim(Name), 'Sender') then
-            Exit(True);
   end;
 
   function IsProcessMessages(ANode: TSyntaxNode): Boolean;
@@ -1542,6 +1554,184 @@ begin
       CheckAt(Index);
 end;
 
+{ TBlockingCallInMainThreadRule }
+
+const
+  FormBaseClasses: array[0..3] of string = ('TCustomForm', 'TForm', 'TCustomFrame', 'TFrame');
+  WindowsWaitCalls: array[0..2] of string = ('Sleep', 'WaitForSingleObject', 'WaitForMultipleObjects');
+  BlockingCallAdvice = ' Besser die Arbeit mit TTask.Run auslagern und das Ergebnis über TThread.Queue melden.';
+
+function TBlockingCallInMainThreadRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('blocking-call-in-main-thread', TRuleSeverity.Warning,
+    'Blockierender Aufruf im Hauptthread');
+end;
+
+class function TBlockingCallInMainThreadRule.TimeoutArgument(const ACall: string): Integer;
+begin
+  // Position des Timeouts in den Argumenten (ab 0); -1: Aufruf ohne Timeout, blockiert immer.
+  if SameText(ACall, 'Sleep') or SameText(ACall, 'WaitFor') or SameText(ACall, 'Wait') then
+    Result := 0
+  else if SameText(ACall, 'WaitForSingleObject') then
+    Result := 1
+  else if SameText(ACall, 'WaitForMultipleObjects') then
+    Result := 3
+  else
+    Result := -1;
+end;
+
+procedure TBlockingCallInMainThreadRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Calls: TArray<string>;
+  MaxSleep: Integer;
+  Ancestry: TAncestry;
+  Threads: TArray<string>;
+
+  // Methode eines Formulars oder Frames bzw. Ereignis-Handler außerhalb eines Threads.
+  function InMainThread(ARoutine: TSyntaxNode): Boolean;
+  var
+    Owner, Base: string;
+  begin
+    Owner := ClassPart(ARoutine.Name);
+    if (Owner = '') or InList(Threads, Owner) or Ancestry.DescendsFrom(Owner, 'TThread') then
+      Exit(False);
+    for Base in FormBaseClasses do
+      if Ancestry.DescendsFrom(Owner, Base) then
+        Exit(True);
+    Result := IsEventHandler(ARoutine);
+  end;
+
+  // Timeout in Millisekunden: Zahl, INFINITE = MaxInt; -1 = unbekannt.
+  function Milliseconds(ANode: TSyntaxNode): Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, 'INFINITE') then
+      Exit(MaxInt);
+    if (ANode.Kind <> TSyntaxKind.Literal) or not TryStrToInt(ANode.Name, Result) then
+      Result := -1;
+  end;
+
+  function MentionsProcessMessages(ANode: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+      SameText(ANode.Name, 'ProcessMessages') then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if MentionsProcessMessages(ANode[Index]) then
+        Exit(True);
+    Result := False;
+  end;
+
+  function Where(ARoutine: TSyntaxNode): string;
+  var
+    Method: string;
+  begin
+    Method := MethodPart(ARoutine.Name);
+    if EndsText('Click', Method) then
+      Result := 'im Click-Handler'
+    else if IsEventHandler(ARoutine) then
+      Result := 'im Ereignis-Handler ' + Method
+    else
+      Result := 'in ' + Method;
+  end;
+
+  // ACallee: Identifier oder MemberAccess mit dem Namen; AArgs: Aufruf mit Argumenten oder nil.
+  procedure CheckCall(ACallee, AArgs: TSyntaxNode; ARoutine, ALoop: TSyntaxNode);
+  var
+    Name, Text, Receiver: string;
+    Position, Timeout: Integer;
+  begin
+    Name := ACallee.Name;
+    if not InList(Calls, Name) then
+      Exit;
+    // Sleep und die Wait-Funktionen der Windows-API ohne Empfänger (oder Winapi.Windows.…), WaitFor und Wait
+    // mit Empfänger.
+    if InList(WindowsWaitCalls, Name) then
+    begin
+      if (ACallee.Kind = TSyntaxKind.MemberAccess) and not MatchText(SourceText(AContext.Text, ACallee[0]),
+        ['Windows', 'Winapi.Windows']) then
+        Exit;
+    end
+    else if MatchText(Name, ['WaitFor', 'Wait']) and (ACallee.Kind <> TSyntaxKind.MemberAccess) then
+      Exit;
+    Position := TimeoutArgument(Name);
+    Timeout := MaxInt;
+    if (Position >= 0) and (AArgs <> nil) and (AArgs.ChildCount > Position + 1) then
+      Timeout := Milliseconds(AArgs[Position + 1])
+    else if SameText(Name, 'Sleep') then
+      Exit;
+    if AArgs <> nil then
+      Text := SourceText(AContext.Text, AArgs)
+    else
+      Text := SourceText(AContext.Text, ACallee);
+    if (Timeout >= 0) and (Timeout < MaxSleep) then
+    begin
+      // Kurzes Sleep nur in einer Warteschleife ohne ProcessMessages.
+      if not SameText(Name, 'Sleep') or (ALoop = nil) or MentionsProcessMessages(ALoop) then
+        Exit;
+      AReport.Add(NameRange(ACallee), Format('Warteschleife mit Sleep %s blockiert den Hauptthread; die ' +
+        'Oberfläche friert ein.', [Where(ARoutine)]) + BlockingCallAdvice, TRuleConfidence.Medium);
+      Exit;
+    end;
+    Receiver := '';
+    if ACallee.Kind = TSyntaxKind.MemberAccess then
+      Receiver := VariableName(ACallee[0]);
+    if SameText(Name, 'WaitFor') and ((AArgs = nil) or (AArgs.ChildCount = 1)) and (Receiver <> '') then
+      AReport.Add(NameRange(ACallee), Format('WaitFor %s blockiert den Hauptthread; ruft %s Synchronize auf, ' +
+        'hängt das Programm.', [Where(ARoutine), Receiver]) + BlockingCallAdvice, TRuleConfidence.Medium)
+    else
+      AReport.Add(NameRange(ACallee), Format('%s %s blockiert den Hauptthread; die Oberfläche friert ein.',
+        [Text, Where(ARoutine)]) + BlockingCallAdvice, TRuleConfidence.Medium);
+  end;
+
+  procedure Visit(ANode: TSyntaxNode; ARoutine, ALoop: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    case ANode.Kind of
+      TSyntaxKind.RoutineDecl:
+        // Eingebettete Routinen gehören zur äußeren Methode.
+        if Pos('.', ANode.Name) > 0 then
+        begin
+          ARoutine := nil;
+          if InMainThread(ANode) then
+            ARoutine := ANode;
+          ALoop := nil;
+        end;
+      // Anonyme Methoden laufen oft in einem Thread oder später.
+      TSyntaxKind.AnonymousMethod:
+        Exit;
+      TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement,
+      TSyntaxKind.ForInStatement:
+        ALoop := ANode;
+    end;
+    if ARoutine <> nil then
+      if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) and
+        (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+        CheckCall(ANode[0], ANode, ARoutine, ALoop)
+      else if (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount > 0) and
+        (ANode[0].Kind = TSyntaxKind.MemberAccess) then
+        CheckCall(ANode[0], nil, ARoutine, ALoop);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index], ARoutine, ALoop);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Calls := TRuleOptions.Strings(AContext.Options, 'calls', ['Sleep', 'WaitFor', 'WaitForSingleObject',
+    'WaitForMultipleObjects', 'Wait']);
+  MaxSleep := TRuleOptions.Int(AContext.Options, 'maxSleepMs', 50);
+  Threads := ThreadClasses(AContext.Tree.Root);
+  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
+  try
+    Visit(AContext.Tree.Root, nil, nil);
+  finally
+    Ancestry.Free;
+  end;
+end;
+
 procedure RegisterConcurrencyRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TThreadVclAccessRule.Create);
@@ -1553,6 +1743,7 @@ begin
   ARegistry.Register(TPairWithoutFinallyRule.Create);
   ARegistry.Register(TProcessMessagesInLoopRule.Create);
   ARegistry.Register(TQueueNilInPackageRule.Create);
+  ARegistry.Register(TBlockingCallInMainThreadRule.Create);
 end;
 
 end.
