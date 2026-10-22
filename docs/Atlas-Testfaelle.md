@@ -662,6 +662,21 @@ Protokoll: `atlas.log` (Diagnosemodus an). Voraussetzung: `Atlas.IDE.Expert370.m
 | ST5 | Einfrier-Wächter testen (W1) | Rahmen in `Atlas.IDE.Expert370.bpl` tragen Unit, Routine und Zeile |
 | ST6 | IDE beenden und Atlas über *Komponenten › Packages installieren* entladen | Kein Absturz; Protokoll nennt den Abbauschritt „StackCapture“ ohne Fehler |
 
+## Sicherung je Funktion (#493)
+
+Protokoll: `atlas.log` (Diagnosemodus an). Einen Fehler gezielt auszulösen geht nur mit einem Fehler im Plugin; die Fälle prüfen deshalb das Protokoll nach normaler Arbeit und die Benachrichtigung, sobald eine Sicherung auslöst.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SF1 | Eine Stunde mit Minimap, mitlaufendem Kopf, Gliederung, Änderungsmarken und Mehrfachmarken arbeiten, danach `atlas.log` durchsuchen | Fehlerzeilen nennen die Funktion selbst („Fehler in Minimap“, „Fehler in Mitlaufender Kopf“ …); „Editorbefehle“ nur nach ausdrücklich aufgerufenen Befehlen (Zeilen verschieben, Formatieren, Blockkommentar, Neue Zeile, Gegenstück) |
+| SF2 | Tritt ein Fehler beim Zeichnen auf (SF1) | Höchstens eine Zeile je Sekunde für denselben Fehler; die nächste Zeile endet mit „(seit der letzten Meldung n Wiederholungen übergangen)“ |
+| SF3 | Eine Sicherung löst aus (Zeile „… nach 3 Fehlern in 5 Minuten abgeschaltet“) | In der Benachrichtigungszentrale (Strg+Umschalt+Alt+N) ein Fehlereintrag „<Funktion> nach Fehlern abgeschaltet“ mit der letzten Meldung und den Knöpfen „Wieder einschalten“ und „Protokoll öffnen“ |
+| SF4 | In SF3 „Protokoll öffnen“ | `atlas.log` öffnet sich im Editor der IDE |
+| SF5 | In SF3 „Wieder einschalten“ | Die Funktion arbeitet wieder ohne Neustart; Protokoll „<Funktion>: aus der Benachrichtigung wieder eingeschaltet“ |
+| SF6 | Nach SF3, solange die Funktion aus ist: Brotkrumen anklicken, Gliederung öffnen, F12, Strg+D, Kontextmenü › Atlas › Erzeugen, Code Lens | Alles außer der abgeschalteten Funktion arbeitet weiter (**Abnahme**) |
+| SF7 | IDE mit Englisch als Sprache, SF3 | Eintrag „<Funktion> switched off after errors“, Knöpfe „Switch on again“ und „Open log“ |
+| SF8 | Nach einem Absturz mit Fehlern einer Funktion (z. B. Minimap) abgesicherter Start (#722) | Der Vorschlag nennt den Schalter dieser Funktion, nicht pauschal die Editorbefehle |
+
 ## Include-Dateien (#500)
 
 Vorbereitung: `Tests\Referenzprojekt\RefGruppe.groupproj` öffnen; `Ref.Daten.Auftraege.pas` bindet `Ref.Daten.Auftraege.inc` (Typen) und `Ref.Daten.Auftraege.Rumpf.inc` (Rümpfe) ein.

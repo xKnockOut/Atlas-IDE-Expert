@@ -165,7 +165,7 @@ end;
 function Wanted(const ASettings: TAtlasPluginSettings): Boolean;
 begin
   Result := ASettings.Enabled and ASettings.Metrics and ASettings.CodeLensMetrics and
-    not TAtlasGuard.Disabled(TAtlasFeature.EditorCommands);
+    not TAtlasGuard.Disabled(TAtlasFeature.CodeLens);
 end;
 
 function IsSource(const AFileName: string): Boolean;
@@ -224,7 +224,7 @@ begin
     Fetch;
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.CodeLens, E);
   end;
 end;
 
@@ -365,7 +365,7 @@ begin
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.CodeLens, E);
   end;
 end;
 

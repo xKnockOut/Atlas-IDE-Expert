@@ -404,7 +404,7 @@ begin
     begin
       Entry := AEntry;
       Argument := AArgument;
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      TAtlasGuard.Run(TAtlasFeature.Generate,
         procedure
         var
           Current: TLspSession;

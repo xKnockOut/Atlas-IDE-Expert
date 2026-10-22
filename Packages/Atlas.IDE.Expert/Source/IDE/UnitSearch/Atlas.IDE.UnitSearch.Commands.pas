@@ -234,12 +234,12 @@ begin
     Exit;
   end;
   // Abgeschaltet nach Fehlern (#493) oder Fehler beim Öffnen: Strg+F12 darf nie ins Leere gehen.
-  if TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) then
+  if TAtlasGuard.Disabled(TAtlasFeature.UnitSearch) then
   begin
     RunOriginal;
     Exit;
   end;
-  if not TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  if not TAtlasGuard.Run(TAtlasFeature.UnitSearch,
     procedure
     begin
       TAtlasIdeUnitSearch.Show(True);
@@ -550,7 +550,7 @@ begin
       Target := '';
       if Current <> nil then
         Target := Current.Target;
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      TAtlasGuard.Run(TAtlasFeature.UnitSearch,
         procedure
         begin
           RunAction(AAction, AEntries, Target);
@@ -559,7 +559,7 @@ begin
   Area := Screen.MonitorFromWindow(GetForegroundWindow).WorkareaRect;
   Search.Window.ShowOver(Area);
   // Erst nach dem Zeichnen laden: das Fenster zeigt so lange „Units werden geladen …“.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.UnitSearch,
     procedure
     var
       Answer: TJSONValue;

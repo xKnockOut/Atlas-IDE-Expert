@@ -773,7 +773,7 @@ end;
 procedure TAtlasMainMenu.OutlineClick(Sender: TObject);
 begin
   TAtlasIdeShortcutTips.Invoked('Atlas.Outline');
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  TAtlasGuard.Run(TAtlasFeature.Outline,
     procedure
     begin
       TAtlasIdeOutline.ShowWindow;

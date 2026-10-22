@@ -42,6 +42,18 @@ type
     procedure ErrorLineCarriesStackFromHook;
     [Test]
     procedure FailingStackHookKeepsErrorLine;
+    /// <summary>Derselbe Fehler kurz nach dem gezählten zählt nicht (ein Zeichendurchlauf meldet ihn je Zeile);
+    /// fester Abstand, sodass ein dauernder Fehler die Sicherung weiterhin auslöst.</summary>
+    [Test]
+    procedure RepeatedFailureCountsOncePerWindow;
+    /// <summary>Wiederholungen stehen nicht einzeln im Protokoll; die nächste gezählte Zeile nennt ihre Zahl.</summary>
+    [Test]
+    procedure RepeatsOfOnePaintPassDoNotTrip;
+    [Test]
+    procedure TripReportsFeatureAndMessage;
+    /// <summary>Jede sichtbare Funktion hat eine eigene Sicherung mit eigenem Namen.</summary>
+    [Test]
+    procedure FeaturesHaveDistinctNames;
   end;
 
 implementation
@@ -50,8 +62,33 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.DateUtils,
+  System.Generics.Collections,
   Atlas.Core.Product.Version,
   Atlas.Core.Diagnostics.Guard;
+
+/// <summary>Löst einen von drei Fehlern an drei verschiedenen Stellen aus: Wiederholungen derselben Stelle zählen
+/// innerhalb von TAtlasFuse.RepeatMs nur einmal.</summary>
+procedure RaiseAt(AIndex: Integer);
+begin
+  case AIndex of
+    1:
+      raise Exception.Create('Fehler 1');
+    2:
+      raise Exception.Create('Fehler 2');
+  else
+    raise Exception.Create('Fehler 3');
+  end;
+end;
+
+/// <summary>RaiseAt als Aufruf für TAtlasGuard.Run; über den Parameter statt die Schleifenvariable gebunden.</summary>
+function RaiserAt(AIndex: Integer): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      RaiseAt(AIndex);
+    end;
+end;
 
 procedure TAtlasGuardTests.WarmUpFirstUse;
 begin
@@ -160,11 +197,7 @@ begin
       Warning := AText;
     end;
   for Index := 1 to 3 do
-    TAtlasGuard.Run(TAtlasFeature.Problems,
-      procedure
-      begin
-        raise Exception.Create('Fehler');
-      end);
+    TAtlasGuard.Run(TAtlasFeature.Problems, RaiserAt(Index));
   Assert.IsTrue(TAtlasGuard.Disabled(TAtlasFeature.Problems));
   Assert.Contains(Warning, 'Probleme');
   Calls := 0;
@@ -190,11 +223,7 @@ var
 begin
   Assert.AreEqual('Brotkrumenleiste', TAtlasGuard.FeatureName(TAtlasFeature.Breadcrumbs));
   for Index := 1 to 3 do
-    TAtlasGuard.Run(TAtlasFeature.EditorCommands,
-      procedure
-      begin
-        raise Exception.Create('Fehler');
-      end);
+    TAtlasGuard.Run(TAtlasFeature.EditorCommands, RaiserAt(Index));
   Assert.IsTrue(TAtlasGuard.Disabled(TAtlasFeature.EditorCommands));
   Assert.IsFalse(TAtlasGuard.Disabled(TAtlasFeature.Breadcrumbs), 'Editorbefehle reißen die Leiste nicht mit');
   Calls := 0;
@@ -205,11 +234,7 @@ begin
     end);
   Assert.AreEqual(1, Calls);
   for Index := 1 to 3 do
-    TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
-      procedure
-      begin
-        raise Exception.Create('Fehler');
-      end);
+    TAtlasGuard.Run(TAtlasFeature.Breadcrumbs, RaiserAt(Index));
   Assert.IsTrue(TAtlasGuard.Disabled(TAtlasFeature.Breadcrumbs));
   TAtlasGuard.EnableAll;
   Assert.IsFalse(TAtlasGuard.Disabled(TAtlasFeature.Breadcrumbs), 'Abgeschaltete Funktionen einschalten');
@@ -333,6 +358,119 @@ begin
   Text := TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8);
   Assert.Contains(Text, 'EInvalidOpException: eigentlicher Fehler');
   Assert.Contains(Text, 'Stack: nicht verfügbar (EInvalidOpException)');
+end;
+
+procedure TAtlasGuardTests.RepeatedFailureCountsOncePerWindow;
+var
+  Fuse: TAtlasFuse;
+  Clock: TDateTime;
+  Repeated: Boolean;
+  Skipped, Index: Integer;
+begin
+  Clock := EncodeDateTime(2026, 10, 22, 12, 0, 0, 0);
+  Fuse := TAtlasFuse.Create(
+    function: TDateTime
+    begin
+      Result := Clock;
+    end);
+  try
+    Assert.IsFalse(Fuse.Failed(TAtlasFeature.Minimap, 'EAccessViolation@1', Repeated, Skipped));
+    Assert.IsFalse(Repeated, 'erster Fehler zählt');
+    // Dieselbe Stelle für 40 Zeilen desselben Zeichendurchlaufs.
+    for Index := 1 to 40 do
+    begin
+      Clock := IncMilliSecond(Clock, 5);
+      Assert.IsFalse(Fuse.Failed(TAtlasFeature.Minimap, 'EAccessViolation@1', Repeated, Skipped));
+      Assert.IsTrue(Repeated);
+    end;
+    // Fester Abstand ab dem gezählten, nicht gleitend: Ein dauernder Fehler zählt einmal je RepeatMs.
+    Clock := IncMilliSecond(Clock, TAtlasFuse.RepeatMs);
+    Assert.IsFalse(Fuse.Failed(TAtlasFeature.Minimap, 'EAccessViolation@1', Repeated, Skipped));
+    Assert.IsFalse(Repeated, 'nach RepeatMs zählt er wieder');
+    Assert.AreEqual(40, Skipped, 'die übergangenen Wiederholungen');
+    Assert.IsFalse(Fuse.Tripped(TAtlasFeature.Minimap), 'zwei gezählte Fehler');
+    // Ein anderer Fehler zählt sofort, hier als dritter, und löst aus.
+    Clock := IncMilliSecond(Clock, 5);
+    Assert.IsTrue(Fuse.Failed(TAtlasFeature.Minimap, 'EInvalidOp@2', Repeated, Skipped), 'dritter gezählt');
+    Assert.IsFalse(Repeated);
+    Assert.AreEqual(0, Skipped);
+    Assert.IsTrue(Fuse.Tripped(TAtlasFeature.Minimap));
+    Assert.IsFalse(Fuse.Tripped(TAtlasFeature.Outline), 'nur die Minimap');
+  finally
+    Fuse.Free;
+  end;
+end;
+
+procedure TAtlasGuardTests.RepeatsOfOnePaintPassDoNotTrip;
+var
+  Index: Integer;
+  Text: string;
+begin
+  for Index := 1 to 30 do
+    TAtlasGuard.Run(TAtlasFeature.StickyScroll,
+      procedure
+      begin
+        raise EInvalidOpException.Create('beim Zeichnen');
+      end);
+  Assert.IsFalse(TAtlasGuard.Disabled(TAtlasFeature.StickyScroll), 'ein Zeichendurchlauf ist ein Fehler');
+  Text := TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8);
+  Assert.AreEqual(1, Integer(Length(Text.Trim.Split([sLineBreak]))), 'Wiederholungen nicht einzeln im Protokoll');
+  Assert.Contains(Text, 'Fehler in Mitlaufender Kopf: EInvalidOpException: beim Zeichnen');
+end;
+
+procedure TAtlasGuardTests.TripReportsFeatureAndMessage;
+var
+  Index, Calls: Integer;
+  Tripped: TAtlasFeature;
+  Message: string;
+begin
+  Calls := 0;
+  Tripped := TAtlasFeature.Completion;
+  TAtlasGuard.OnTripped :=
+    procedure(AFeature: TAtlasFeature; const AMessage: string)
+    begin
+      Inc(Calls);
+      Tripped := AFeature;
+      Message := AMessage;
+    end;
+  try
+    for Index := 1 to 3 do
+      TAtlasGuard.Run(TAtlasFeature.Outline, RaiserAt(Index));
+    Assert.AreEqual(1, Calls, 'einmal beim Auslösen');
+    Assert.IsTrue(Tripped = TAtlasFeature.Outline);
+    Assert.AreEqual('Fehler 3', Message);
+    TAtlasGuard.Run(TAtlasFeature.Outline,
+      procedure
+      begin
+        RaiseAt(1);
+      end);
+    Assert.AreEqual(1, Calls, 'abgeschaltet: nicht noch einmal');
+    Assert.IsFalse(TAtlasGuard.Disabled(TAtlasFeature.Breadcrumbs), 'Brotkrumen laufen weiter');
+    Assert.IsFalse(TAtlasGuard.Disabled(TAtlasFeature.StickyScroll), 'Sticky Scroll läuft weiter');
+  finally
+    TAtlasGuard.OnTripped := nil;
+    Message := '';
+  end;
+end;
+
+procedure TAtlasGuardTests.FeaturesHaveDistinctNames;
+var
+  Feature: TAtlasFeature;
+  Seen: TDictionary<string, TAtlasFeature>;
+begin
+  Seen := TDictionary<string, TAtlasFeature>.Create;
+  try
+    for Feature := Low(TAtlasFeature) to High(TAtlasFeature) do
+    begin
+      Assert.IsTrue(TAtlasGuard.FeatureName(Feature) <> '', 'Name fehlt');
+      Assert.IsFalse(Seen.ContainsKey(TAtlasGuard.FeatureName(Feature)), TAtlasGuard.FeatureName(Feature));
+      Seen.Add(TAtlasGuard.FeatureName(Feature), Feature);
+    end;
+  finally
+    Seen.Free;
+  end;
+  Assert.AreEqual('Minimap', TAtlasGuard.FeatureName(TAtlasFeature.Minimap));
+  Assert.AreEqual('Gehe zu Definition', TAtlasGuard.FeatureName(TAtlasFeature.GoToDefinition));
 end;
 
 initialization

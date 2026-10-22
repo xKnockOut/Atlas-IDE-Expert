@@ -148,7 +148,7 @@ Code-Aktionen öffnet Alt+Enter; alles steht auch im Menü *Atlas* und im Kontex
 - **Änderungsmarken** in der Rinne gegenüber Git HEAD bzw. SVN BASE
 - **Markierung suchen** mit F3 bzw. Umschalt+F3
 - **Stilles Neuladen** extern geänderter Dateien
-- **Robustheit:** kein Fehler in Atlas erreicht die IDE, Hänger-Wächter mit Protokoll, Stacktraces mit Unit und Zeile für jeden abgefangenen Fehler, abgesicherter Start nach einem Absturz, Fehlerbericht zum Anhängen, Tastenkonflikte mit anderen Erweiterungen (GExperts, CnPack, MMX) werden erkannt
+- **Robustheit:** kein Fehler in Atlas erreicht die IDE, Hänger-Wächter mit Protokoll, Stacktraces mit Unit und Zeile für jeden abgefangenen Fehler, eine wiederholt fehlerhafte Funktion wird einzeln abgeschaltet (mit Benachrichtigung zum Wiedereinschalten), die übrigen laufen weiter, abgesicherter Start nach einem Absturz, Fehlerbericht zum Anhängen, Tastenkonflikte mit anderen Erweiterungen (GExperts, CnPack, MMX) werden erkannt
 - **Update-Prüfung** nur nach Zustimmung
 - **Barrierefreiheit:** Listen und Tooltips für UI Automation lesbar
 

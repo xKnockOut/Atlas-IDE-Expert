@@ -1394,7 +1394,7 @@ begin
   ALineNum := 0;
   Result := True;
   // Durch die Sicherung abgeschaltet (#493, Code-Review S-05); AFileName = '' bricht still ab.
-  if TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) then
+  if TAtlasGuard.Disabled(TAtlasFeature.GoToDefinition) then
     Exit;
   Diagnose(Format('GotoDefinition(Index %d) aufgerufen', [Index]));
   try
@@ -1429,7 +1429,7 @@ begin
     on E: Exception do
     begin
       ReportError('Gehe zu Definition: ' + E.Message);
-      ReportFailure(TAtlasFeature.EditorCommands, E);
+      ReportFailure(TAtlasFeature.GoToDefinition, E);
       AFileName := '';
       ALineNum := 0;
     end;

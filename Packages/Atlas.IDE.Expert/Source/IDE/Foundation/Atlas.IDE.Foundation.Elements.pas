@@ -250,7 +250,7 @@ begin
     DropOld(KeyOf(Context.FileName, Context.LogicalLineNum - 1));
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.Hide, E);
   end;
 end;
 
@@ -422,7 +422,7 @@ begin
     end;
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.Hide, E);
   end;
 end;
 
@@ -446,7 +446,7 @@ begin
       Targets := FPendingTargets;
       FPendingTargets := nil;
       Where := Mouse.CursorPos;
-      TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+      TAtlasMainThread.ForceQueue(TAtlasFeature.Hide,
         procedure
         begin
           if (FInstance <> nil) and Assigned(FOnOverlayMenu) then
@@ -457,7 +457,7 @@ begin
       FPendingWnd := 0;
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.Hide, E);
   end;
 end;
 

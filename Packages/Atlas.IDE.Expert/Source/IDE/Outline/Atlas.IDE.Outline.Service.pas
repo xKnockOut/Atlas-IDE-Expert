@@ -75,7 +75,7 @@ type
 
 function Active: Boolean;
 begin
-  Result := TAtlasIdeSettings.Current.Outline and not TAtlasGuard.Disabled(TAtlasFeature.EditorCommands);
+  Result := TAtlasIdeSettings.Current.Outline and not TAtlasGuard.Disabled(TAtlasFeature.Outline);
 end;
 
 { TOutlineState }
@@ -130,7 +130,7 @@ begin
   AFrame.OnOpen :=
     procedure(ANode: Integer; AImplementation: Boolean)
     begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      TAtlasGuard.Run(TAtlasFeature.Outline,
         procedure
         begin
           Open(ANode, AImplementation);
@@ -230,7 +230,7 @@ procedure TOutlineState.Tick(Sender: TObject);
 begin
   if not Active or not TAtlasIdeOutlineWindow.Visible then
     Exit;
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  TAtlasGuard.Run(TAtlasFeature.Outline,
     procedure
     begin
       Update;

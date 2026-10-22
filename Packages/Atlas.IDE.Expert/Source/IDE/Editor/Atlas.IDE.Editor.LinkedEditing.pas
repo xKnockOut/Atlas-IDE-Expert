@@ -404,11 +404,11 @@ begin
         Ranges := nil;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen (Code-Review A-02).
-      TAtlasMainThread.Queue(TAtlasFeature.EditorCommands,
+      TAtlasMainThread.Queue(TAtlasFeature.LinkedEditing,
         procedure
         begin
           if FInstance <> nil then
-            TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+            TAtlasGuard.Run(TAtlasFeature.LinkedEditing,
               procedure
               begin
                 if FInstance <> nil then
@@ -795,10 +795,10 @@ begin
     not SameText(AView.Buffer.FileName, FInstance.FView.Buffer.FileName) then
     Exit;
   // Nie im Notifier schreiben: nach der Änderung, in der Warteschlange des Hauptthreads.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.LinkedEditing,
     procedure
     begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      TAtlasGuard.Run(TAtlasFeature.LinkedEditing,
         procedure
         begin
           if FInstance <> nil then
@@ -809,7 +809,7 @@ end;
 
 procedure TAtlasIdeLinkedEditing.AppMessage(var Msg: TMsg; var Handled: Boolean);
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) then
+  if TAtlasGuard.Disabled(TAtlasFeature.LinkedEditing) then
     Exit;
   try
     case Msg.message of
@@ -823,7 +823,7 @@ begin
     on E: Exception do
     begin
       Handled := False;
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.LinkedEditing, E);
     end;
   end;
 end;
@@ -913,7 +913,7 @@ var
   Line, Character: Integer;
 begin
   try
-    if TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) then
+    if TAtlasGuard.Disabled(TAtlasFeature.LinkedEditing) then
       Exit;
     ReapWorkers(False);
     if not IsActive then
@@ -951,7 +951,7 @@ begin
       Finish;
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.LinkedEditing, E);
   end;
 end;
 
@@ -972,7 +972,7 @@ var
   Font: TFont;
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not IsActive or
-    TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) then
+    TAtlasGuard.Disabled(TAtlasFeature.LinkedEditing) then
     Exit;
   try
     if (FView = nil) or not SameText(Context.FileName, FView.Buffer.FileName) then
@@ -1052,7 +1052,7 @@ begin
     end;
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.LinkedEditing, E);
   end;
 end;
 

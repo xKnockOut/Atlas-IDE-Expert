@@ -496,7 +496,7 @@ begin
   Close;
   // Erst nach dem Schließen ausführen: Der Editor hat dann wieder den Fokus.
   if Assigned(Handler) then
-    TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Generate,
       procedure
       begin
         Handler(Entry, Argument);
