@@ -6,7 +6,9 @@
 // Ausnahmen und falscher Optionstyp in atlas.json. Danach loop-off-by-one
 // (#913) und collection-modified-in-loop (#914): Beispiel mit Korrektur nach
 // downto, for … in, Add und Insert, Break/Exit und downto still, Option
-// mutatingMethods, Abschalten und Ausnahmen.
+// mutatingMethods, Abschalten und Ausnahmen. Zuletzt destroy-called-directly
+// (#920): Beispiel mit Korrektur, inherited Destroy, Destroy mit Argumenten,
+// Abschalten und Ausnahmen.
 
 interface
 
@@ -57,6 +59,12 @@ type
     procedure MutatingMethodsOption;
     [Test]
     procedure CollectionModifiedOffAndExclude;
+    [Test]
+    procedure DestroyCalledDirectlyIssueExample;
+    [Test]
+    procedure DestroyCalledDirectlySilentCases;
+    [Test]
+    procedure DestroyCalledDirectlyOffAndExclude;
   end;
 
 implementation
@@ -449,6 +457,54 @@ begin
     if Rule.Descriptor.Id = CollectionModifiedInLoopRuleId then
       Found := True;
   Assert.IsTrue(Found, CollectionModifiedInLoopRuleId);
+  Found := False;
+  for Rule in BuiltinRules do
+    if Rule.Descriptor.Id = DestroyCalledDirectlyRuleId then
+      Found := True;
+  Assert.IsTrue(Found, DestroyCalledDirectlyRuleId);
+end;
+
+procedure TStatementRulesTests.DestroyCalledDirectlyIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+  Text: string;
+begin
+  Findings := TRuleAssert.Findings(TDestroyCalledDirectlyRule.Create, Body('  Verbindung.Destroy;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Destroy direkt aufgerufen; Free prüft vorher auf nil.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(13, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('Free statt Destroy', Findings[0].Fixes[0].Title);
+  Assert.IsTrue(Findings[0].Fixes[0].Safe);
+  Text := TChangeSignature.ApplyEdits(Body('  Verbindung.Destroy;'#10), Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Body('  Verbindung.Free;'#10), Text);
+  TRuleAssert.Silent(TDestroyCalledDirectlyRule.Create, Text);
+  // Mit Klammern und über eine Typumwandlung ebenso.
+  Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TDestroyCalledDirectlyRule.Create,
+    Body('  Liste.Destroy();'#10'  TObject(Liste).Destroy;'#10)))));
+end;
+
+procedure TStatementRulesTests.DestroyCalledDirectlySilentCases;
+begin
+  // inherited Destroy im Destruktor, eigener Destruktor mit Argumenten, Methodenzeiger.
+  TRuleAssert.Silent(TDestroyCalledDirectlyRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'destructor TFoo.Destroy;'#10'begin'#10'  FListe.Free;'#10'  inherited Destroy;'#10'end;'#10'end.');
+  TRuleAssert.Silent(TDestroyCalledDirectlyRule.Create, Body('  Knoten.Destroy(True);'#10 +
+    '  Ereignis := Liste.Destroy;'#10));
+end;
+
+procedure TStatementRulesTests.DestroyCalledDirectlyOffAndExclude;
+const
+  Source = '  Verbindung.Destroy;'#10;
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDestroyCalledDirectlyRule.Create, Body(Source),
+    '{"rules": {"destroy-called-directly": "off"}}', 'Daten.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDestroyCalledDirectlyRule.Create, Body(Source),
+    '{"rules": {"destroy-called-directly": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Daten.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDestroyCalledDirectlyRule.Create, Body(Source),
+    '{"rules": {"destroy-called-directly": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Daten.pas'))));
 end;
 
 initialization

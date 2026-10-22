@@ -668,6 +668,11 @@
           "description": "Geprüfte Methoden; Create steht für alle Konstruktoren, deren Name mit Create beginnt."
         }
       ]
+    },
+    {
+      "id": "destroy-called-directly",
+      "name": "Destroy statt Free aufgerufen",
+      "description": "Obj.Destroy wird direkt als Anweisung aufgerufen. Ist Obj nil, knallt der Aufruf; Free prüft vorher auf nil und ist der übliche Weg, ein Objekt freizugeben. inherited Destroy und Aufrufe eines Destruktors mit Argumenten sind ausgenommen. Konfidenz hoch. Schnellkorrektur: aus Destroy wird Free."
     }
   ]
 }

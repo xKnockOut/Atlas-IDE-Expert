@@ -3240,3 +3240,15 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TBasisExport 
 | MI6 | Komponente `TFoo = class(TCustomControl)` mit `Destroy` ohne `inherited` | Nur `component-missing-inherited`, keine Doppelmeldung |
 | MI7 | `"rules": {"missing-inherited": {"methods": ["Create"]}}` | Destroy aus MI1 nicht mehr gemeldet; auf der Seite „Prüfregeln“ steht die Option unter der Regel |
 | MI8 | `"missing-inherited": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Destroy statt Free aufgerufen (#920)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Routine mit `Verbindung.Destroy;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DC1 | Unit öffnen | Warnung `destroy-called-directly` an `Destroy`: „Destroy direkt aufgerufen; Free prüft vorher auf nil.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| DC2 | Glühbirne, „Free statt Destroy“ | `Verbindung.Free;`; kompiliert; Strg+Z nimmt es in einem Schritt zurück (**Abnahme**) |
+| DC3 | `inherited Destroy;` im Destruktor | Keine Meldung |
+| DC4 | `Knoten.Destroy(True);` (eigener Destruktor mit Argument) | Keine Meldung |
+| DC5 | `"destroy-called-directly": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

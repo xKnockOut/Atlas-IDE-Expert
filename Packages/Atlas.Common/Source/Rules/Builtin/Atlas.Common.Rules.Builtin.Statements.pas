@@ -17,6 +17,10 @@
 //                     Ein Break oder Exit direkt nach dem Aufruf beendet die
 //                     Schleife und bleibt still; die Methoden nennt die Option
 //                     mutatingMethods.
+//   destroy-called-directly
+//                     Obj.Destroy als Anweisung statt Obj.Free (#920): bei nil
+//                     knallt es. inherited Destroy und Destroy mit Argumenten
+//                     (eigener Destruktor) bleiben still; Korrektur Free.
 // Grundlage ist der Syntaxbaum: if, while, for, for-in und with ohne Rumpf
 // bzw. mit leerem Block; das Schlüsselwort davor sucht die Regel in den Token.
 
@@ -31,6 +35,7 @@ const
   EmptyStatementRuleId = 'empty-statement';
   LoopOffByOneRuleId = 'loop-off-by-one';
   CollectionModifiedInLoopRuleId = 'collection-modified-in-loop';
+  DestroyCalledDirectlyRuleId = 'destroy-called-directly';
 
 type
   TEmptyStatementRule = class(TInterfacedObject, IRule)
@@ -53,6 +58,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
     /// <summary>Vorgabe der Option mutatingMethods.</summary>
     class function DefaultMutatingMethods: TArray<string>; static;
+  end;
+
+  TDestroyCalledDirectlyRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
@@ -849,9 +860,65 @@ begin
   Visit(AContext.Tree.Root);
 end;
 
+{ TDestroyCalledDirectlyRule }
+
+function TDestroyCalledDirectlyRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(DestroyCalledDirectlyRuleId, TRuleSeverity.Warning,
+    'Destroy statt Free aufgerufen');
+end;
+
+procedure TDestroyCalledDirectlyRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TTokens;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Target: TSyntaxNode;
+    Index, Name: Integer;
+    Range: TTextRange;
+  begin
+    if (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount > 0) then
+    begin
+      Target := ANode[0];
+      // X.Destroy() ohne Argumente zählt wie X.Destroy.
+      if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount = 1) then
+        Target := Target[0];
+      if (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount = 1) and
+        SameText(Target.Name, 'Destroy') then
+      begin
+        // Name ist das letzte Token "Destroy" im Zugriff.
+        Name := -1;
+        for Index := TokenFrom(Tokens, Target.StartOffset) to High(Tokens) do
+        begin
+          if Tokens[Index].Offset >= Target.EndOffset then
+            Break;
+          if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, 'Destroy') then
+            Name := Index;
+        end;
+        if Name >= 0 then
+        begin
+          Range := TTextRange.Create(Tokens[Name].StartPos, Tokens[Name].EndPos);
+          AReport.Add(Range, 'Destroy direkt aufgerufen; Free prüft vorher auf nil.', TRuleConfidence.High,
+            [TRuleFix.Create('Free statt Destroy', [TRuleEdit.Create(Range, 'Free')], True)]);
+        end;
+      end;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Visit(AContext.Tree.Root);
+end;
+
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TEmptyStatementRule.Create);
+  ARegistry.Register(TDestroyCalledDirectlyRule.Create);
   ARegistry.Register(TLoopOffByOneRule.Create);
   ARegistry.Register(TCollectionModifiedInLoopRule.Create);
 end;
