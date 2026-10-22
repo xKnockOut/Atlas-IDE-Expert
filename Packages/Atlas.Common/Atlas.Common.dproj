@@ -349,6 +349,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UnitSearch.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Recursion.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.OrdinalConstants.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Attributes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Definition.pas"/>

@@ -45,6 +45,13 @@
 //                     war :=. Bei = mit zuweisbarer linker Seite ersetzt die
 //                     Korrektur = durch :=; andere Vergleiche und Ausdrücke wie
 //                     A + B; oder not A; meldet die Regel ohne Korrektur.
+//   duplicate-case-label
+//                     Zwei Marken einer case-Anweisung (wie E2030) bzw. eines
+//                     varianten Record-Teils (wie E2027) decken denselben Wert ab,
+//                     auch über Bereiche und Konstanten (#983). Die Werte rechnet
+//                     Semantics.OrdinalConstants aus, Namen löst TNameResolver auf;
+//                     Unbekanntes vergleicht die Regel nur über den Text. Die
+//                     Korrektur entfernt den späteren Wert bzw. dessen Zweig.
 // Grundlage ist der Syntaxbaum: if, while, for, for-in und with ohne Rumpf
 // bzw. mit leerem Block; das Schlüsselwort davor sucht die Regel in den Token.
 
@@ -63,6 +70,7 @@ const
   DestroyCalledDirectlyRuleId = 'destroy-called-directly';
   CaseMissingEnumValueRuleId = 'case-missing-enum-value';
   ComparisonAsStatementRuleId = 'comparison-as-statement';
+  DuplicateCaseLabelRuleId = 'duplicate-case-label';
 
 type
   TEmptyStatementRule = class(TInterfacedObject, IRule)
@@ -134,6 +142,12 @@ type
     class function ExpressionOf(AStatement: TSyntaxNode): TSyntaxNode; static;
   end;
 
+  TDuplicateCaseLabelRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -148,6 +162,8 @@ uses
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Semantics.OrdinalConstants,
+  Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Text.Lines,
@@ -1875,6 +1891,515 @@ begin
   Visit(AContext.Tree.Root);
 end;
 
+{ TCaseLabelValues }
+
+type
+  /// <summary>Werte der Marken einer case-Anweisung bzw. eines varianten Teils (#983): Zahlen,
+  /// Zeichen, Konstanten und Aufzählungswerte über die Namensauflösung.</summary>
+  TCaseLabelValues = class
+  private
+    FTree: TSyntaxTree;
+    FTokens: TTokens;
+    FFileName: string;
+    FIndex: ISymbolIndex;
+    FResolver: TNameResolver;
+    FLookup: TOrdinalNameLookup;
+    FDepth: Integer;
+    function OwnerUnit(const ASymbol: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
+    function TokenAt(const APosition: TTextPosition): Integer;
+    function EnumOrdinal(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
+    function ConstantValue(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
+    function ForeignValue(const AOwner: TUnitIndex; const ASymbol: TIndexSymbol; out AValue: Int64): Boolean;
+  public
+    constructor Create(ATree: TSyntaxTree; const AFileName: string; const AIndex: ISymbolIndex;
+      AResolver: TNameResolver);
+    function NameValue(const ANames: TArray<string>; ATokenIndex: Integer; out AValue: Int64): Boolean;
+    function Evaluate(AFirst, ALast: Integer; out AValue: Int64): Boolean;
+  end;
+
+constructor TCaseLabelValues.Create(ATree: TSyntaxTree; const AFileName: string; const AIndex: ISymbolIndex;
+  AResolver: TNameResolver);
+begin
+  inherited Create;
+  FTree := ATree;
+  FTokens := ATree.Tokens;
+  FFileName := AFileName;
+  FIndex := AIndex;
+  FResolver := AResolver;
+  // Fängt nur Self, keinen Verweis auf sich selbst.
+  FLookup :=
+    function(const ANames: TArray<string>; ATokenIndex: Integer; out AValue: Int64): Boolean
+    begin
+      Result := NameValue(ANames, ATokenIndex, AValue);
+    end;
+end;
+
+function TCaseLabelValues.Evaluate(AFirst, ALast: Integer; out AValue: Int64): Boolean;
+begin
+  Result := TOrdinalConstants.Evaluate(FTokens, AFirst, ALast, FLookup, AValue);
+end;
+
+function TCaseLabelValues.OwnerUnit(const ASymbol: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
+begin
+  if (ASymbol.Kind = TResolvedKind.Local) or (ASymbol.FileName = '') or SameText(ASymbol.FileName, FFileName) then
+  begin
+    AUnit := FResolver.ExtractedUnit(FTree, FFileName);
+    Exit(True);
+  end;
+  Result := (FIndex <> nil) and FIndex.FindFile(ASymbol.FileName, AUnit);
+end;
+
+function TCaseLabelValues.TokenAt(const APosition: TTextPosition): Integer;
+var
+  Low, High, Middle: Integer;
+begin
+  // Erstes Token, das an APosition oder dahinter beginnt.
+  Low := 0;
+  High := Length(FTokens);
+  while Low < High do
+  begin
+    Middle := (Low + High) div 2;
+    if (FTokens[Middle].StartPos.Line < APosition.Line) or ((FTokens[Middle].StartPos.Line = APosition.Line) and
+      (FTokens[Middle].StartPos.Character < APosition.Character)) then
+      Low := Middle + 1
+    else
+      High := Middle;
+  end;
+  Result := Low;
+end;
+
+function TCaseLabelValues.EnumOrdinal(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
+var
+  Owner: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Position: Int64;
+  Signature: string;
+begin
+  // Position in der Aufzählung; mit eigenen Werten (a = 3) nur über den Namen vergleichbar.
+  Result := False;
+  AValue := 0;
+  if (ASymbol.Container = '') or not OwnerUnit(ASymbol, Owner) then
+    Exit;
+  for Symbol in Owner.Symbols do
+    if (Symbol.Kind = TIndexSymbolKind.EnumType) and SameText(Symbol.QualifiedName, ASymbol.Container) then
+    begin
+      Signature := Symbol.Signature;
+      if (Signature = '') or (Pos('=', Copy(Signature, Pos('(', Signature) + 1, MaxInt)) > 0) or
+        Signature.EndsWith('…') then
+        Exit;
+    end;
+  Position := 0;
+  for Symbol in Owner.Symbols do
+    if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, ASymbol.Container) then
+    begin
+      if SameText(Symbol.Name, ASymbol.Name) then
+      begin
+        AValue := Position;
+        Exit(True);
+      end;
+      Inc(Position);
+    end;
+end;
+
+function TCaseLabelValues.ForeignValue(const AOwner: TUnitIndex; const ASymbol: TIndexSymbol;
+  out AValue: Int64): Boolean;
+var
+  Tokens: TTokens;
+  Index, Last: Integer;
+  Lookup: TOrdinalNameLookup;
+  Owner: TUnitIndex;
+begin
+  // "Max = Basis + 1" aus der Signatur; Namen darin gelten in der Unit der Konstanten.
+  Result := False;
+  AValue := 0;
+  if ASymbol.Signature.EndsWith('…') then
+    Exit;
+  Tokens := TPascalLexer.Tokenize(ASymbol.Signature);
+  Index := DepthZero(Tokens, 0, Length(Tokens), '=', False);
+  if Index < 0 then
+    Exit;
+  Last := High(Tokens);
+  if (Last > Index) and Tokens[Last].IsSymbol(';') then
+    Dec(Last);
+  Owner := AOwner;
+  Lookup :=
+    function(const AParts: TArray<string>; AAt: Integer; out AResult: Int64): Boolean
+    var
+      Resolved: TResolvedSymbol;
+    begin
+      AResult := 0;
+      Result := (Length(AParts) = 1) and FResolver.ResolveNameFrom(Owner, AParts[0], Resolved) and
+        Resolved.Found;
+      if not Result then
+        Exit;
+      if Resolved.SymbolKind = TIndexSymbolKind.EnumMember then
+        Result := EnumOrdinal(Resolved, AResult)
+      else if Resolved.SymbolKind = TIndexSymbolKind.Constant then
+        Result := ConstantValue(Resolved, AResult)
+      else
+        Result := False;
+    end;
+  Result := TOrdinalConstants.Evaluate(Tokens, Index + 1, Last, Lookup, AValue);
+end;
+
+function TCaseLabelValues.ConstantValue(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
+var
+  Owner: TUnitIndex;
+  Symbol: TIndexSymbol;
+  First, Last, Equals: Integer;
+begin
+  Result := False;
+  AValue := 0;
+  // Konstanten, die aufeinander verweisen, enden hier.
+  if FDepth >= 8 then
+    Exit;
+  Inc(FDepth);
+  try
+    if (ASymbol.Kind = TResolvedKind.Local) or (ASymbol.FileName = '') or SameText(ASymbol.FileName, FFileName) then
+    begin
+      // Deklaration im eigenen Baum: Ausdruck hinter "=" bis vor das Semikolon.
+      First := TokenAt(ASymbol.Range.StartPos);
+      Last := TokenAt(ASymbol.Range.EndPos) - 1;
+      if (First > High(FTokens)) or (Last < First) then
+        Exit;
+      if FTokens[Last].IsSymbol(';') then
+        Dec(Last);
+      Equals := DepthZero(FTokens, First, Last + 1, '=', False);
+      if Equals < 0 then
+        Exit;
+      Result := Evaluate(Equals + 1, Last, AValue);
+      Exit;
+    end;
+    if not OwnerUnit(ASymbol, Owner) then
+      Exit;
+    for Symbol in Owner.Symbols do
+      if (Symbol.Kind = TIndexSymbolKind.Constant) and SameText(Symbol.Name, ASymbol.Name) and
+        (Symbol.Range.StartPos.Line = ASymbol.Range.StartPos.Line) and
+        (Symbol.Range.StartPos.Character = ASymbol.Range.StartPos.Character) then
+        Exit(ForeignValue(Owner, Symbol, AValue));
+  finally
+    Dec(FDepth);
+  end;
+end;
+
+function TCaseLabelValues.NameValue(const ANames: TArray<string>; ATokenIndex: Integer; out AValue: Int64): Boolean;
+var
+  Resolved: TResolvedSymbol;
+begin
+  Result := False;
+  AValue := 0;
+  if (ATokenIndex < 0) or (ATokenIndex > High(FTokens)) then
+    Exit;
+  Resolved := FResolver.ResolveChain(FTree, FFileName, ANames, FTokens[ATokenIndex].Offset);
+  if not Resolved.Found then
+    Exit;
+  if Resolved.SymbolKind = TIndexSymbolKind.EnumMember then
+    Result := EnumOrdinal(Resolved, AValue)
+  else if Resolved.SymbolKind = TIndexSymbolKind.Constant then
+    Result := ConstantValue(Resolved, AValue);
+end;
+
+{ TDuplicateCaseLabelRule }
+
+/// <summary>Zweige bedingter Übersetzung je Token: "3.0/5.1" heißt Zweig 0 des {$IF} Nummer 3, darin
+/// Zweig 1 ({$ELSE}) des {$IF} Nummer 5; '' außerhalb. Leer, wenn die Datei keine Bedingungen hat.</summary>
+function BranchPaths(const ATokens: TTokens): TArray<string>;
+var
+  Stack: TArray<string>;
+  Index, Next, Dot: Integer;
+  Text, Path: string;
+begin
+  Result := nil;
+  Stack := nil;
+  Next := 0;
+  Path := '';
+  for Index := 0 to High(ATokens) do
+  begin
+    if ATokens[Index].Kind = TPascalTokenKind.Directive then
+    begin
+      Text := UpperCase(TPascalLexer.DirectiveName(ATokens[Index].Text));
+      if (Text = 'IF') or (Text = 'IFDEF') or (Text = 'IFNDEF') or (Text = 'IFOPT') then
+      begin
+        if Result = nil then
+          SetLength(Result, Length(ATokens));
+        Stack := Stack + [IntToStr(Next) + '.0'];
+        Inc(Next);
+      end
+      else if ((Text = 'ELSE') or (Text = 'ELSEIF')) and (Stack <> nil) then
+      begin
+        Dot := Pos('.', Stack[High(Stack)]);
+        Stack[High(Stack)] := Copy(Stack[High(Stack)], 1, Dot) +
+          IntToStr(StrToIntDef(Copy(Stack[High(Stack)], Dot + 1, MaxInt), 0) + 1);
+      end
+      else if ((Text = 'ENDIF') or (Text = 'IFEND')) and (Stack <> nil) then
+        SetLength(Stack, Length(Stack) - 1);
+      Path := string.Join('/', Stack);
+    end;
+    if Result <> nil then
+      Result[Index] := Path;
+  end;
+end;
+
+/// <summary>Schließen sich die Zweige APath und AOther aus (verschiedene Zweige desselben {$IF})?</summary>
+function ExclusiveBranches(const APath, AOther: string): Boolean;
+var
+  Mine, Theirs: TArray<string>;
+  Part, Other: string;
+begin
+  Result := False;
+  if (APath = '') or (AOther = '') or (APath = AOther) then
+    Exit;
+  Mine := APath.Split(['/']);
+  Theirs := AOther.Split(['/']);
+  for Part in Mine do
+    for Other in Theirs do
+      if (Copy(Part, 1, Pos('.', Part)) = Copy(Other, 1, Pos('.', Other))) and (Part <> Other) then
+        Exit(True);
+end;
+
+type
+  /// <summary>Eine Marke: Token AFirst..ALast, ausgewertet als Bereich Low..High (Known) oder nur über den Text.</summary>
+  TCaseLabel = record
+    Item: TSyntaxNode;
+    First: Integer;
+    Last: Integer;
+    Known: Boolean;
+    Lowest: Int64;
+    Highest: Int64;
+    IsRange: Boolean;
+    Key: string;
+    /// <summary>Position unter den Marken des Zweigs und deren Zahl.</summary>
+    Position: Integer;
+    Count: Integer;
+  end;
+
+function TDuplicateCaseLabelRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(DuplicateCaseLabelRuleId, TRuleSeverity.Error, 'Doppelte case-Marke');
+end;
+
+procedure TDuplicateCaseLabelRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TTokens;
+  Values: TCaseLabelValues;
+  Paths: TArray<string>;
+
+  function LabelText(const ALabel: TCaseLabel): string;
+  begin
+    Result := SourceText(AContext.Text, Tokens, ALabel.First, ALabel.Last);
+  end;
+
+  // Vergleichstext: Bezeichner ohne Groß-/Kleinschreibung, Literale wie geschrieben ('a' <> 'A').
+  function LabelKey(AFirst, ALast: Integer): string;
+  var
+    Index: Integer;
+  begin
+    Result := '';
+    for Index := AFirst to ALast do
+      if Tokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword] then
+        Result := Result + LowerCase(Tokens[Index].Text) + ' '
+      else if not IsTrivia(Tokens[Index]) then
+        Result := Result + Tokens[Index].Text + ' ';
+  end;
+
+  // Marken eines Zweigs: Token vom Anfang bis zum ":" auf Klammerebene 0, getrennt an ",".
+  procedure AddLabels(AItem: TSyntaxNode; var ALabels: TArray<TCaseLabel>);
+  var
+    First, Stop, Colon, Index, Range, Start: Integer;
+    Parts: TArray<TCaseLabel>;
+    Item: TCaseLabel;
+    LowValue, HighValue: Int64;
+  begin
+    First := NextCode(Tokens, TokenFrom(Tokens, AItem.StartOffset));
+    Stop := TokenFrom(Tokens, AItem.EndOffset);
+    Colon := DepthZero(Tokens, First, Stop, ':', False);
+    if Colon < 0 then
+      Exit;
+    Parts := nil;
+    Start := First;
+    Index := First;
+    while Index <= Colon do
+    begin
+      if (Index = Colon) or Tokens[Index].IsSymbol(',') then
+      begin
+        Item := Default(TCaseLabel);
+        Item.Item := AItem;
+        Item.First := NextCode(Tokens, Start);
+        Item.Last := PreviousCode(Tokens, Index);
+        if Item.Last >= Item.First then
+          Parts := Parts + [Item];
+        Start := Index + 1;
+      end
+      else if Tokens[Index].IsSymbol('(') or Tokens[Index].IsSymbol('[') then
+      begin
+        // Klammern überspringen, damit "," darin nicht trennt.
+        Range := Closing(Tokens, Index, Colon);
+        if Range < 0 then
+          Exit;
+        Index := Range;
+      end;
+      Inc(Index);
+    end;
+    for Index := 0 to High(Parts) do
+    begin
+      Item := Parts[Index];
+      Item.Position := Index;
+      Item.Count := Length(Parts);
+      Item.Key := LabelKey(Item.First, Item.Last);
+      Range := DepthZero(Tokens, Item.First, Item.Last + 1, '..', False);
+      Item.IsRange := Range >= 0;
+      if Item.IsRange then
+        Item.Known := Values.Evaluate(Item.First, Range - 1, LowValue) and
+          Values.Evaluate(Range + 1, Item.Last, HighValue) and (LowValue <= HighValue)
+      else
+      begin
+        Item.Known := Values.Evaluate(Item.First, Item.Last, LowValue);
+        HighValue := LowValue;
+      end;
+      Item.Lowest := LowValue;
+      Item.Highest := HighValue;
+      ALabels := ALabels + [Item];
+    end;
+  end;
+
+  function Overlaps(const A, B: TCaseLabel): Boolean;
+  begin
+    // {$IFDEF A} 1: … {$ELSE} 1: … {$ENDIF}: nie beide übersetzt.
+    if (Paths <> nil) and ExclusiveBranches(Paths[A.First], Paths[B.First]) then
+      Exit(False);
+    if A.Known and B.Known then
+      Result := (A.Lowest <= B.Highest) and (B.Lowest <= A.Highest)
+    else
+      Result := not A.Known and not B.Known and (A.Key = B.Key);
+  end;
+
+  function Covers(const AOuter, AInner: TCaseLabel): Boolean;
+  begin
+    if AOuter.Known and AInner.Known then
+      Result := (AOuter.Lowest <= AInner.Lowest) and (AInner.Highest <= AOuter.Highest)
+    else
+      Result := AOuter.Key = AInner.Key;
+  end;
+
+  // Löscht die Marke ALabel bzw. den ganzen Zweig, wenn sie seine einzige ist.
+  function RemovalFix(const ALabels: TArray<TCaseLabel>; ALabel: Integer): TRuleFix;
+  var
+    Current: TCaseLabel;
+    Neighbour, Before, ItemLast, After: Integer;
+    Range: TTextRange;
+  begin
+    Current := ALabels[ALabel];
+    if Current.Count > 1 then
+    begin
+      if Current.Position < Current.Count - 1 then
+      begin
+        Neighbour := ALabel + 1;
+        Range := TTextRange.Create(Tokens[Current.First].StartPos, Tokens[ALabels[Neighbour].First].StartPos);
+      end
+      else
+      begin
+        Neighbour := ALabel - 1;
+        Range := TTextRange.Create(Tokens[ALabels[Neighbour].Last].EndPos, Tokens[Current.Last].EndPos);
+      end;
+      Exit(TRuleFix.Create('Doppelten Wert aus dem späteren Zweig entfernen', [TRuleEdit.Create(Range, '')],
+        True));
+    end;
+    // Ganzer Zweig samt Semikolon, ab dem Ende des Codes davor.
+    Before := PreviousCode(Tokens, Current.First);
+    ItemLast := PreviousCode(Tokens, TokenFrom(Tokens, Current.Item.EndOffset));
+    if (Before < 0) or (ItemLast < Current.First) then
+      Exit(Default(TRuleFix));
+    After := NextCode(Tokens, ItemLast + 1);
+    if (After <= High(Tokens)) and Tokens[After].IsSymbol(';') then
+      ItemLast := After;
+    Range := TTextRange.Create(Tokens[Before].EndPos, Tokens[ItemLast].EndPos);
+    Result := TRuleFix.Create('Zweig mit doppeltem Wert entfernen', [TRuleEdit.Create(Range, '')], False);
+  end;
+
+  procedure CheckLabels(AOwner: TSyntaxNode; const ACode: string);
+  var
+    Labels: TArray<TCaseLabel>;
+    Index, Earlier, Line: Integer;
+    Text, Other, Message: string;
+    Fix: TRuleFix;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Labels := nil;
+    for Index := 0 to AOwner.ChildCount - 1 do
+      if AOwner[Index].Kind = TSyntaxKind.CaseItem then
+        AddLabels(AOwner[Index], Labels);
+    for Index := 1 to High(Labels) do
+      for Earlier := 0 to Index - 1 do
+        if Overlaps(Labels[Earlier], Labels[Index]) then
+        begin
+          Text := LabelText(Labels[Index]);
+          Other := LabelText(Labels[Earlier]);
+          Line := Tokens[Labels[Earlier].First].StartPos.Line + 1;
+          if Labels[Earlier].Key = Labels[Index].Key then
+            Message := Format('%s kommt schon in Zeile %d vor (wie %s).', [Text, Line, ACode])
+          else if Covers(Labels[Earlier], Labels[Index]) and Labels[Earlier].IsRange then
+            Message := Format('%s liegt schon in %s aus Zeile %d (wie %s).', [Text, Other, Line, ACode])
+          else if Covers(Labels[Earlier], Labels[Index]) then
+            Message := Format('%s hat denselben Wert wie %s aus Zeile %d (wie %s).', [Text, Other, Line, ACode])
+          else
+            Message := Format('%s überschneidet sich mit %s aus Zeile %d (wie %s).', [Text, Other, Line, ACode]);
+          Fixes := nil;
+          if Covers(Labels[Earlier], Labels[Index]) then
+          begin
+            Fix := RemovalFix(Labels, Index);
+            if Fix.Title <> '' then
+              Fixes := [Fix];
+          end;
+          AReport.Add(TTextRange.Create(Tokens[Labels[Index].First].StartPos, Tokens[Labels[Index].Last].EndPos),
+            Message, TRuleConfidence.High, Fixes);
+          Break;
+        end;
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.CaseStatement then
+      CheckLabels(ANode, 'E2030')
+    else if ANode.Kind = TSyntaxKind.VariantPart then
+      CheckLabels(ANode, 'E2027');
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+var
+  Resolver: TNameResolver;
+  FileName: string;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Paths := BranchPaths(Tokens);
+  FileName := AContext.FileName;
+  if FileName = '' then
+    FileName := AContext.RelativePath;
+  if FileName = '' then
+    FileName := AContext.UnitName + '.pas';
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  try
+    Resolver.Namespaces := AContext.Namespaces;
+    Resolver.PinTree(AContext.Tree, FileName);
+    try
+      Values := TCaseLabelValues.Create(AContext.Tree, FileName, AContext.Index, Resolver);
+      try
+        Visit(AContext.Tree.Root);
+      finally
+        Values.Free;
+      end;
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TEmptyStatementRule.Create);
@@ -1886,6 +2411,7 @@ begin
   ARegistry.Register(TDatasetEditWithoutPostRule.Create);
   ARegistry.Register(TTransactionWithoutRollbackRule.Create);
   ARegistry.Register(TComparisonAsStatementRule.Create);
+  ARegistry.Register(TDuplicateCaseLabelRule.Create);
 end;
 
 end.

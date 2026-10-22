@@ -14,6 +14,9 @@
 // comparison-as-statement (#982): Beispiel mit Korrektur, Feld, Element,
 // Zeiger, nach then und in Klammern, ohne Korrektur bei Aufruf links und
 // anderen Ausdrücken, stille Fälle, Abschalten, Gruppe und Ausnahmen.
+// duplicate-case-label (#983): Beispiel mit Korrektur (Zweig bzw. ein Wert),
+// Bereiche, Konstanten, Zeichen, Aufzählungsbereiche, varianter Record, stille
+// Fälle (unbekannte Namen, Aufzählung mit eigenen Werten), Abschalten.
 
 interface
 
@@ -110,6 +113,18 @@ type
     procedure ComparisonAsStatementSilentCases;
     [Test]
     procedure ComparisonAsStatementOffAndExclude;
+    [Test]
+    procedure DuplicateCaseLabelIssueExample;
+    [Test]
+    procedure DuplicateCaseLabelValues;
+    [Test]
+    procedure DuplicateCaseLabelVariantRecord;
+    [Test]
+    procedure DuplicateCaseLabelFromIndex;
+    [Test]
+    procedure DuplicateCaseLabelSilentCases;
+    [Test]
+    procedure DuplicateCaseLabelOffAndExclude;
   end;
 
 implementation
@@ -124,6 +139,9 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Statements,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
@@ -929,6 +947,136 @@ begin
     '{"rules": {"comparison-as-statement": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Konten.pas'))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto(Statements),
     '{"rules": {"comparison-as-statement": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Konten.pas'))));
+end;
+
+function Vorgang(const ACase: string): string;
+begin
+  Result := 'unit Vorgaenge;'#10'interface'#10'type'#10'  TStatus = (stNeu, stOffen, stGeschlossen);'#10 +
+    'implementation'#10'const'#10'  Grenze = 5;'#10'  Danach = Grenze + 1;'#10 +
+    'procedure Pruefen(Status: TStatus; Zahl: Integer; Zeichen: Char);'#10'begin'#10 + ACase + 'end;'#10'end.';
+end;
+
+procedure TStatementRulesTests.DuplicateCaseLabelIssueExample;
+const
+  Statements = '  case Status of'#10'    stNeu, stOffen: Bearbeiten;'#10'    stGeschlossen: Archivieren;'#10 +
+    '    stOffen: Erinnern;'#10'  end;'#10;
+var
+  Findings: TArray<TRuleFinding>;
+  Text: string;
+begin
+  Findings := TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang(Statements));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(DuplicateCaseLabelRuleId, Findings[0].RuleId);
+  Assert.AreEqual('stOffen kommt schon in Zeile 12 vor (wie E2030).', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(13, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(4, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('Zweig mit doppeltem Wert entfernen', Findings[0].Fixes[0].Title);
+  Text := TChangeSignature.ApplyEdits(Vorgang(Statements), Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Vorgang('  case Status of'#10'    stNeu, stOffen: Bearbeiten;'#10'    stGeschlossen: Archivieren;'#10 +
+    '  end;'#10), Text);
+  TRuleAssert.Silent(TDuplicateCaseLabelRule.Create, Text);
+  // Ein Wert unter mehreren: nur er verschwindet.
+  Findings := TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang('  case Status of'#10 +
+    '    stNeu: Bearbeiten;'#10'    stOffen, stNeu: Erinnern;'#10'  end;'#10));
+  Assert.AreEqual('Doppelten Wert aus dem späteren Zweig entfernen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(Vorgang('  case Status of'#10'    stNeu: Bearbeiten;'#10'    stOffen: Erinnern;'#10'  end;'#10),
+    TChangeSignature.ApplyEdits(Vorgang('  case Status of'#10'    stNeu: Bearbeiten;'#10 +
+    '    stOffen, stNeu: Erinnern;'#10'  end;'#10), Findings[0].Fixes[0].Edits));
+  Findings := TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang('  case Status of'#10 +
+    '    stNeu: Bearbeiten;'#10'    stNeu, stOffen: Erinnern;'#10'  end;'#10));
+  Assert.AreEqual(Vorgang('  case Status of'#10'    stNeu: Bearbeiten;'#10'    stOffen: Erinnern;'#10'  end;'#10),
+    TChangeSignature.ApplyEdits(Vorgang('  case Status of'#10'    stNeu: Bearbeiten;'#10 +
+    '    stNeu, stOffen: Erinnern;'#10'  end;'#10), Findings[0].Fixes[0].Edits));
+end;
+
+procedure TStatementRulesTests.DuplicateCaseLabelValues;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Bereiche, Konstanten, Zeichen und Aufzählungswerte über Bereiche.
+  Findings := TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang('  case Zahl of'#10 +
+    '    1..5: A;'#10'    3: B;'#10'    Danach: C;'#10'    6: D;'#10'    4..8: E;'#10'  end;'#10 +
+    '  case Zeichen of'#10'    ''a'': A;'#10'    #97: B;'#10'    Chr(98), ''b'': C;'#10'  end;'#10 +
+    '  case Status of'#10'    stNeu..stOffen: A;'#10'    TStatus.stOffen: B;'#10'  end;'#10));
+  Assert.AreEqual(6, Integer(Length(Findings)));
+  Assert.AreEqual('3 liegt schon in 1..5 aus Zeile 12 (wie E2030).', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('6 hat denselben Wert wie Danach aus Zeile 14 (wie E2030).', Findings[1].Message);
+  Assert.AreEqual('4..8 überschneidet sich mit 1..5 aus Zeile 12 (wie E2030).', Findings[2].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[2].Fixes)));
+  Assert.AreEqual('#97 hat denselben Wert wie ''a'' aus Zeile 19 (wie E2030).', Findings[3].Message);
+  Assert.AreEqual('''b'' hat denselben Wert wie Chr(98) aus Zeile 21 (wie E2030).', Findings[4].Message);
+  Assert.AreEqual('TStatus.stOffen liegt schon in stNeu..stOffen aus Zeile 24 (wie E2030).', Findings[5].Message);
+end;
+
+procedure TStatementRulesTests.DuplicateCaseLabelVariantRecord;
+const
+  Source = 'unit Formen;'#10'interface'#10'type'#10'  TForm = record'#10'    case Art: Integer of'#10 +
+    '      0: (Radius: Double);'#10'      1, 2: (Breite, Hoehe: Double);'#10'      2: (Seite: Double);'#10 +
+    '  end;'#10'implementation'#10'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('2 kommt schon in Zeile 7 vor (wie E2027).', Findings[0].Message);
+  Assert.AreEqual(StringReplace(Source, #10'      2: (Seite: Double);', '', []),
+    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+end;
+
+procedure TStatementRulesTests.DuplicateCaseLabelFromIndex;
+const
+  Source = 'unit Auftraege;'#10'interface'#10'uses'#10'  Grenzen;'#10'implementation'#10 +
+    'procedure P(Zahl: Integer; Farbe: TFarbe);'#10'begin'#10'  case Zahl of'#10'    Oben: A;'#10'    10: B;'#10 +
+    '    Mitte: C;'#10'    3: D;'#10'  end;'#10'  case Farbe of'#10'    fRot..fBlau: A;'#10'    fGruen: B;'#10'  end;'#10 +
+    'end;'#10'end.';
+var
+  Index: ISymbolIndex;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Konstanten und Aufzählung aus einer anderen Unit; Oben verweist dort auf Basis.
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText('unit Grenzen;'#10'interface'#10'type'#10 +
+    '  TFarbe = (fRot, fGruen, fBlau);'#10'const'#10'  Basis = 4;'#10'  Oben = Basis * 2 + 2;'#10 +
+    '  Mitte = Basis - 1;'#10'implementation'#10'end.', 'C:\Projekt\Grenzen.pas', nil));
+  Findings := TRuleAssert.IndexFindings(TDuplicateCaseLabelRule.Create, Source, Index, '', 'Auftraege.pas');
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual('10 hat denselben Wert wie Oben aus Zeile 9 (wie E2030).', Findings[0].Message);
+  Assert.AreEqual('3 hat denselben Wert wie Mitte aus Zeile 11 (wie E2030).', Findings[1].Message);
+  Assert.AreEqual('fGruen liegt schon in fRot..fBlau aus Zeile 15 (wie E2030).', Findings[2].Message);
+end;
+
+procedure TStatementRulesTests.DuplicateCaseLabelSilentCases;
+begin
+  // Verschiedene Werte, unbekannte Namen und Aufzählungen mit eigenen Werten.
+  TRuleAssert.Silent(TDuplicateCaseLabelRule.Create, Vorgang('  case Status of'#10 +
+    '    stNeu, stOffen: Bearbeiten;'#10'    stGeschlossen: Archivieren;'#10'  else'#10'    Erinnern;'#10'  end;'#10 +
+    '  case Zahl of'#10'    1..5: A;'#10'    6..9, Grenze + 5: B;'#10'    Unbekannt: C;'#10'    Fremd: D;'#10 +
+    '    -1: E;'#10'  end;'#10 +
+    '  case Zeichen of'#10'    ''ä'': A;'#10'    ''ö'': B;'#10'    ''A'': C;'#10'    ''a'', ''Ä'': D;'#10'  end;'#10));
+  // Zweige von {$IFDEF} und {$ELSE} werden nie zusammen übersetzt; innerhalb eines Zweigs zählt es.
+  TRuleAssert.Silent(TDuplicateCaseLabelRule.Create, Vorgang('  case Zahl of'#10'{$IFDEF DEBUG}'#10 +
+    '    1: A;'#10'{$ELSEIF Defined(TEST)}'#10'    1: B;'#10'{$ELSE}'#10'    1: C;'#10'{$ENDIF}'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang('  case Zahl of'#10 +
+    '    1: A;'#10'{$IFDEF DEBUG}'#10'    1: B;'#10'{$ENDIF}'#10'  end;'#10)))));
+  TRuleAssert.Silent(TDuplicateCaseLabelRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TArt = (aEins = 1, aAuch = 1);'#10'implementation'#10'procedure P(A: TArt);'#10'begin'#10 +
+    '  case A of'#10'    aEins: X;'#10'    aAuch: Y;'#10'  end;'#10'end;'#10'end.');
+end;
+
+procedure TStatementRulesTests.DuplicateCaseLabelOffAndExclude;
+const
+  Statements = '  case Zahl of'#10'    1: A;'#10'    1: B;'#10'  end;'#10;
+begin
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang(Statements)))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang(Statements),
+    '{"rules": {"duplicate-case-label": "off"}}', 'Vorgaenge.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang(Statements),
+    '{"rules": {"group:compiler": "off"}}', 'Vorgaenge.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang(Statements),
+    '{"rules": {"duplicate-case-label": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Vorgaenge.pas'))));
 end;
 
 initialization
