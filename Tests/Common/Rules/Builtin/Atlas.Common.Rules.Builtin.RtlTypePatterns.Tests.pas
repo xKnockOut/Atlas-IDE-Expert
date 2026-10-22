@@ -4,7 +4,8 @@
 // für die deklarierten Typen, auf denen sie aufbauen; zuletzt
 // managed-type-raw-memory (#921) mit Records, Aliassen, Zeigern, Index und
 // Korrekturen, threadvar-managed (#922), pchar-of-temporary (#923) und
-// stringlist-unsorted (#925), writeln-in-gui-app (#926) und unchecked-conversion (#932).
+// stringlist-unsorted (#925), writeln-in-gui-app (#926), unchecked-conversion (#932) und
+// dictionary-get-without-check (#933).
 
 interface
 
@@ -73,6 +74,12 @@ type
     procedure UncheckedConversionSilentCases;
     [Test]
     procedure UncheckedConversionOptions;
+    [Test]
+    procedure DictionaryGetIssueExample;
+    [Test]
+    procedure DictionaryGetVariants;
+    [Test]
+    procedure DictionaryGetSilentCases;
   end;
 
 implementation
@@ -712,6 +719,69 @@ begin
     '{"rules": {"unchecked-conversion": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
   TConfigurationParser.Parse('{"rules": {"unchecked-conversion": {"functions": "StrToInt", "sources": [1]}}}', Issues);
   Assert.AreEqual(2, Integer(Length(Issues)));
+end;
+
+function Preisliste(const AVars, ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  TPreisMap = TObjectDictionary<string, TArtikel>;'#10 +
+    '  TKasse = class'#10'    FPreise: TDictionary<string, Double>;'#10'  end;'#10'implementation'#10 +
+    'procedure TKasse.Buchen(Artikel: TArtikel);'#10'var'#10'  Preis: Double;'#10'  Preise: TDictionary<string, Double>;'#10 +
+    AVars + 'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+procedure TRtlTypePatternRulesTests.DictionaryGetIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Preisliste('', '  Preis := Preise[Artikel.Nummer];');
+  Findings := TRuleAssert.Findings(TDictionaryGetWithoutCheckRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Schlüssel wird nicht geprüft; fehlt er, löst der Zugriff EListError aus.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('In TryGetValue umschreiben', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Preisliste('', '  if not Preise.TryGetValue(Artikel.Nummer, Preis) then'#10'    Preis := 0;'), Fixed);
+  TRuleAssert.Silent(TDictionaryGetWithoutCheckRule.Create, Fixed);
+end;
+
+procedure TRtlTypePatternRulesTests.DictionaryGetVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Feld, Items[…], Alias auf TObjectDictionary, Ausdruck, anderer Schlüssel geprüft.
+  Findings := TRuleAssert.Findings(TDictionaryGetWithoutCheckRule.Create, Preisliste('  Lager: TPreisMap;'#10 +
+    '  Teil: TArtikel;'#10, '  Preis := Self.FPreise.Items[Artikel.Nummer];'#10'  Teil := Lager[''A1''];'#10 +
+    '  Anzeigen(Preise[''B2''] * 2);'#10'  if Preise.ContainsKey(''X'') then'#10'    Preis := Preise[''Y''];'));
+  Assert.AreEqual(4, Integer(Length(Findings)));
+  Assert.AreEqual('if not Self.FPreise.TryGetValue(Artikel.Nummer, Preis) then'#10'    Preis := 0',
+    Findings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual('if not Lager.TryGetValue(''A1'', Teil) then'#10'    Teil := Default(TArtikel)',
+    Findings[1].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(0, Integer(Length(Findings[2].Fixes)));
+  Assert.AreEqual(0, Integer(Length(Findings[3].Fixes)));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDictionaryGetWithoutCheckRule.Create,
+    Preisliste('', '  Preis := Preise[''A''];'), '{"rules": {"dictionary-get-without-check": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDictionaryGetWithoutCheckRule.Create,
+    Preisliste('', '  Preis := Preise[''A''];'), '{"rules": {"dictionary-get-without-check": {"exclude": ' +
+    '["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+end;
+
+procedure TRtlTypePatternRulesTests.DictionaryGetSilentCases;
+begin
+  // ContainsKey davor, TryGetValue, Add, Schreiben, for in Keys, kein Dictionary.
+  TRuleAssert.Silent(TDictionaryGetWithoutCheckRule.Create, Preisliste('  Namen: TStringList;'#10 +
+    '  Werte: TArray<Double>;'#10, '  if Preise.ContainsKey(Artikel.Nummer) then'#10 +
+    '    Preis := Preise[Artikel.Nummer];'#10'  if not Preise.ContainsKey(''A'') then'#10'    Exit;'#10 +
+    '  Preis := Preise[''A''];'#10'  Preise.Add(''B'', 1);'#10'  Anzeigen(Preise[''B'']);'#10 +
+    '  Preise[''C''] := 2;'#10'  Preis := Preise[''C''];'#10'  for var Name in Preise.Keys do'#10 +
+    '    Anzeigen(Preise[Name]);'#10'  Preis := Werte[0];'#10'  Anzeigen(Namen[0]);'));
+  // Schlüssel aus Keys bzw. aus den Paaren, Dictionary in der Routine gefüllt.
+  TRuleAssert.Silent(TDictionaryGetWithoutCheckRule.Create, Preisliste('  Liste: TArray<string>;'#10 +
+    '  Erster: string;'#10, '  Liste := Preise.Keys.ToArray;'#10'  for var I := 0 to High(Liste) do'#10 +
+    '    Anzeigen(Preise[Liste[I]]);'#10'  for var Paar in Preise do'#10'    Erster := Paar.Key;'#10 +
+    '  Preis := Preise[Erster];'#10'  FPreise.AddOrSetValue(''A'', 1);'#10'  Preis := FPreise[''B''];'));
 end;
 
 initialization

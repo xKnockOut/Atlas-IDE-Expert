@@ -1464,6 +1464,16 @@
           "description": "Properties that count as user input."
         }
       ]
+    },
+    {
+      "id": "dictionary-get-without-check",
+      "name": "Dictionary access without key check",
+      "category": "bug",
+      "severity": "hint",
+      "group": "find-bugs",
+      "description": "Dict[Key] or Dict.Items[Key] is read on a TDictionary or TObjectDictionary (also through a type alias of the file) although neither ContainsKey nor TryGetValue checked the same key earlier in the routine. The rule stays silent when the routine fills the dictionary itself beforehand (Add, AddOrSetValue, TryAdd, Dict[K] := ...) or when the key stems from Keys or the pairs (for K in Dict.Keys, Names := Dict.Keys.ToArray, for Pair in Dict with K := Pair.Key). A missing key raises EListError. Medium confidence. Quick fix for X := Dict[Key]; as its own statement, when X is a variable of the value type: if not Dict.TryGetValue(Key, X) then X := 0 (or '', False, Default(T)).",
+      "bad": "Preis := Preise[Artikel.Nummer];",
+      "good": "if not Preise.TryGetValue(Artikel.Nummer, Preis) then\n  Preis := 0;"
     }
   ]
 }

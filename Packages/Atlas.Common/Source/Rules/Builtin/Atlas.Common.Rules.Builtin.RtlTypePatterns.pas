@@ -23,6 +23,12 @@
 //   unchecked-conversion     StrToInt, StrToFloat, StrToDate … direkt auf Edit.Text, Cells[…] oder Lines[…]
 //                            ohne umgebendes try/except (#932); Korrektur: TryStrToInt … mit raise im
 //                            Fehlerzweig, wenn das Ziel eine Variable des passenden Typs ist
+//   dictionary-get-without-check
+//                            Dict[Key] bzw. Dict.Items[Key] gelesen, ohne dass ContainsKey oder TryGetValue
+//                            denselben Schlüssel vorher in der Routine geprüft hat (#933). Still bleibt die
+//                            Regel, wenn die Routine das Dictionary vorher selbst füllt (Add, AddOrSetValue,
+//                            Dict[K] := …) oder der Schlüssel aus Keys stammt (for K in Dict.Keys,
+//                            Namen := Dict.Keys.ToArray). Korrektur: TryGetValue mit Vorgabewert
 // Bezeichner, deren Typ in der Datei nicht deklariert ist, lösen keinen Treffer aus.
 
 interface
@@ -113,6 +119,12 @@ type
     DefaultFunctions: array[0..5] of string = ('StrToInt', 'StrToInt64', 'StrToFloat', 'StrToDate', 'StrToDateTime',
       'StrToCurr');
     DefaultSources: array[0..2] of string = ('Text', 'Cells', 'Lines');
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TDictionaryGetWithoutCheckRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -2140,6 +2152,304 @@ begin
   end;
 end;
 
+{ TDictionaryGetWithoutCheckRule }
+
+const
+  // Aufrufe, die den Schlüssel prüfen.
+  DictionaryKeyChecks: array[0..1] of string = ('ContainsKey', 'TryGetValue');
+  // Aufrufe, mit denen die Routine das Dictionary selbst füllt.
+  DictionaryFills: array[0..2] of string = ('Add', 'AddOrSetValue', 'TryAdd');
+
+function TDictionaryGetWithoutCheckRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('dictionary-get-without-check', TRuleSeverity.Hint,
+    'Dictionary-Zugriff ohne Prüfung des Schlüssels');
+end;
+
+procedure TDictionaryGetWithoutCheckRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Types: TDeclaredTypes;
+  LineBreak: string;
+
+  function Text(ANode: TSyntaxNode): string;
+  begin
+    Result := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+  end;
+
+  // Vergleichsschlüssel: Quelltext ohne Leerraum, klein.
+  function Key(ANode: TSyntaxNode): string;
+  var
+    Index: Integer;
+    Source: string;
+  begin
+    Source := Text(ANode);
+    Result := '';
+    for Index := 1 to Length(Source) do
+      if not CharInSet(Source[Index], [' ', #9, #10, #13]) then
+        Result := Result + Source[Index];
+    Result := LowerCase(Result);
+    if StartsText('self.', Result) then
+      Delete(Result, 1, 5);
+  end;
+
+  // Typtext einer Typdeklaration der Datei (TPreise = TDictionary<string, Double>), sonst ''.
+  function AliasOf(ANode: TSyntaxNode; const AName: string): string;
+  var
+    Index: Integer;
+    Reference: TSyntaxNode;
+  begin
+    Result := '';
+    if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, AName) then
+    begin
+      Reference := ANode.FindChild(TSyntaxKind.TypeReference);
+      if Reference <> nil then
+        Result := Text(Reference);
+      Exit;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+    begin
+      Result := AliasOf(ANode[Index], AName);
+      if Result <> '' then
+        Exit;
+    end;
+  end;
+
+  // Wertetyp V aus TDictionary<K, V> bzw. TObjectDictionary<K, V>; '' wenn ADict kein Dictionary ist.
+  function ValueType(ADict: TSyntaxNode): string;
+  var
+    Name, TypeName: string;
+    Open, Depth, Index, Comma: Integer;
+  begin
+    Result := '';
+    if ADict.Kind = TSyntaxKind.Identifier then
+      Name := ADict.Name
+    else if (ADict.Kind = TSyntaxKind.MemberAccess) and (ADict.ChildCount = 1) and
+      (ADict[0].Kind = TSyntaxKind.Identifier) and SameText(ADict[0].Name, 'Self') then
+      Name := ADict.Name
+    else
+      Exit;
+    TypeName := Types.DeclaredType(Name, ADict.StartPos);
+    if (TypeName <> '') and (Pos('<', TypeName) = 0) then
+      TypeName := AliasOf(AContext.Tree.Root, TypeName);
+    Open := Pos('<', TypeName);
+    if (Open = 0) or not MatchText(Trim(Copy(TypeName, 1, Open - 1)), ['TDictionary', 'TObjectDictionary',
+      'System.Generics.Collections.TDictionary', 'System.Generics.Collections.TObjectDictionary']) then
+      Exit;
+    Depth := 0;
+    Comma := 0;
+    for Index := Open + 1 to Length(TypeName) do
+      if TypeName[Index] = '<' then
+        Inc(Depth)
+      else if TypeName[Index] = '>' then
+      begin
+        if Depth = 0 then
+        begin
+          if Comma > 0 then
+            Result := Trim(Copy(TypeName, Comma + 1, Index - Comma - 1));
+          Exit;
+        end;
+        Dec(Depth);
+      end
+      else if (TypeName[Index] = ',') and (Depth = 0) then
+        Comma := Index;
+  end;
+
+  // Äußerste Routine: anonyme Methoden (Vergleicher, Aufgaben) sehen die Anweisungen davor.
+  function Routine(ANode: TSyntaxNode): TSyntaxNode;
+  var
+    Parent: TSyntaxNode;
+  begin
+    Result := AContext.Tree.Root;
+    Parent := ANode.Parent;
+    while Parent <> nil do
+    begin
+      if Parent.Kind = TSyntaxKind.RoutineDecl then
+        Result := Parent;
+      Parent := Parent.Parent;
+    end;
+  end;
+
+  function MentionsKeys(ANode: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.MemberAccess) and SameText(ANode.Name, 'Keys') then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if MentionsKeys(ANode[Index]) then
+        Exit(True);
+    Result := False;
+  end;
+
+  function MentionsAny(ANode: TSyntaxNode; const ANames: TArray<string>): Boolean;
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.Identifier) and MatchText(ANode.Name, ANames) then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if MentionsAny(ANode[Index], ANames) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Namen, deren Wert aus Keys eines Dictionarys stammt: for K in D.Keys, Namen := D.Keys.ToArray,
+  // for N in Namen, for Pair in D mit K := Pair.Key. Bis zum Fixpunkt, weil Ketten über mehrere
+  // Variablen gehen.
+  function KeyNames(AScope: TSyntaxNode): TArray<string>;
+  var
+    Names: TArray<string>;
+    Changed: Boolean;
+
+    procedure Collect(ANode: TSyntaxNode);
+    var
+      Index: Integer;
+      Source: TSyntaxNode;
+      Name: string;
+    begin
+      Name := '';
+      Source := nil;
+      if (ANode.Kind = TSyntaxKind.ForInStatement) and (ANode.ChildCount >= 2) then
+      begin
+        Name := ANode.Name;
+        Source := ANode[ANode.ChildCount - 2];
+      end
+      else if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
+        (ANode[0].Kind = TSyntaxKind.Identifier) then
+      begin
+        Name := ANode[0].Name;
+        Source := ANode[1];
+      end;
+      if (Source <> nil) and not MatchText(Name, Names) and (MentionsKeys(Source) or MentionsAny(Source, Names) or
+        ((ANode.Kind = TSyntaxKind.ForInStatement) and (ValueType(Source) <> ''))) then
+      begin
+        Names := Names + [Name];
+        Changed := True;
+      end;
+      for Index := 0 to ANode.ChildCount - 1 do
+        Collect(ANode[Index]);
+    end;
+
+  begin
+    Names := nil;
+    repeat
+      Changed := False;
+      Collect(AScope);
+    until not Changed;
+    Result := Names;
+  end;
+
+  // ContainsKey/TryGetValue mit demselben Schlüssel oder Add, AddOrSetValue, Dict[K] := … vor AAccess.
+  function Checked(AScope, AAccess: TSyntaxNode; const ADict, AKey: string): Boolean;
+  var
+    Index: Integer;
+    Node, Callee: TSyntaxNode;
+  begin
+    Node := AScope;
+    if Node.StartOffset < AAccess.StartOffset then
+    begin
+      if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount >= 2) and (Node[0].Kind = TSyntaxKind.MemberAccess) and
+        (Node[0].ChildCount = 1) then
+      begin
+        Callee := Node[0];
+        if (Key(Callee[0]) = ADict) and (MatchText(Node.Name, DictionaryFills) or
+          (MatchText(Node.Name, DictionaryKeyChecks) and (Key(Node[1]) = AKey))) then
+          Exit(True);
+      end;
+      if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and (Node[0] <> AAccess) and
+        (Node[0].Kind = TSyntaxKind.IndexAccess) and (Node[0].ChildCount = 2) and (Key(Node[0][0]) = ADict) then
+        Exit(True);
+    end;
+    for Index := 0 to Node.ChildCount - 1 do
+      if Node[Index].StartOffset < AAccess.EndOffset then
+        if Checked(Node[Index], AAccess, ADict, AKey) then
+          Exit(True);
+    Result := False;
+  end;
+
+  function DefaultValue(const AType: string): string;
+  begin
+    if TDeclaredTypes.IsInt32(AType) or TDeclaredTypes.IsInt64(AType) or TDeclaredTypes.IsFloat(AType) or
+      SameText(AType, 'Currency') then
+      Result := '0'
+    else if MatchText(AType, ['string', 'UnicodeString', 'AnsiString', 'WideString']) then
+      Result := ''''''
+    else if SameText(AType, 'Boolean') then
+      Result := 'False'
+    else
+      Result := 'Default(' + AType + ')';
+  end;
+
+  // X := Dict[K]; für sich, X eine Variable vom Wertetyp: if not Dict.TryGetValue(K, X) then X := 0.
+  function Fixes(AAccess, ADictNode: TSyntaxNode; const AValueType: string): TArray<TRuleFix>;
+  var
+    Statement, Target: TSyntaxNode;
+    Indent: string;
+  begin
+    Result := nil;
+    Statement := AAccess.Parent;
+    if (Statement = nil) or (Statement.Kind <> TSyntaxKind.AssignStatement) or (Statement.ChildCount <> 2) or
+      (Statement[1] <> AAccess) or (Statement.Parent = nil) or not (Statement.Parent.Kind in [TSyntaxKind.Block,
+      TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement,
+      TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection]) then
+      Exit;
+    Target := Statement[0];
+    if (Target.Kind <> TSyntaxKind.Identifier) or
+      not SameText(Types.DeclaredType(Target.Name, Target.StartPos), AValueType) then
+      Exit;
+    Indent := StringOfChar(' ', Statement.StartPos.Character);
+    Result := [TRuleFix.Create('In TryGetValue umschreiben', [TRuleEdit.Create(TTextRange.Create(Statement.StartPos,
+      Statement.EndPos), 'if not ' + Text(ADictNode) + '.TryGetValue(' + Text(AAccess[AAccess.ChildCount - 1]) +
+      ', ' + Target.Name + ') then' + LineBreak + Indent + '  ' + Target.Name + ' := ' + DefaultValue(AValueType))])];
+  end;
+
+  procedure CheckAccess(AAccess: TSyntaxNode);
+  var
+    DictNode, Scope: TSyntaxNode;
+    Value: string;
+  begin
+    if AAccess.ChildCount <> 2 then
+      Exit;
+    DictNode := AAccess[0];
+    // Dict.Items[K]
+    if (DictNode.Kind = TSyntaxKind.MemberAccess) and SameText(DictNode.Name, 'Items') and (DictNode.ChildCount = 1) then
+      DictNode := DictNode[0];
+    // Schreiben: Dict[K] := V legt an bzw. überschreibt.
+    if (AAccess.Parent <> nil) and (AAccess.Parent.Kind = TSyntaxKind.AssignStatement) and
+      (AAccess.Parent[0] = AAccess) then
+      Exit;
+    Value := ValueType(DictNode);
+    if Value = '' then
+      Exit;
+    Scope := Routine(AAccess);
+    if Checked(Scope, AAccess, Key(DictNode), Key(AAccess[1])) or MentionsAny(AAccess[1], KeyNames(Scope)) then
+      Exit;
+    AReport.Add(TTextRange.Create(AAccess.StartPos, AAccess.EndPos), 'Schlüssel wird nicht geprüft; fehlt er, löst ' +
+      'der Zugriff EListError aus.', TRuleConfidence.Medium, Fixes(AAccess, DictNode, Value));
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.IndexAccess then
+      CheckAccess(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  LineBreak := TTextLines.LineBreakOf(AContext.Text);
+  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  try
+    Visit(AContext.Tree.Root);
+  finally
+    Types.Free;
+  end;
+end;
+
 procedure RegisterRtlTypePatternRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TInt32MulOverflowRule.Create);
@@ -2154,6 +2464,7 @@ begin
   ARegistry.Register(TStringListUnsortedRule.Create);
   ARegistry.Register(TWritelnInGuiAppRule.Create);
   ARegistry.Register(TUncheckedConversionRule.Create);
+  ARegistry.Register(TDictionaryGetWithoutCheckRule.Create);
 end;
 
 end.
