@@ -4175,3 +4175,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | FC5 | `ExtractFileName(Datei) = ''`, `ExtractFileExt(Datei) = '.1'`, `ExtractFileDir(Dir) = Dir`, `SameFileName(A, B)` | Keine Meldung |
 | FC6 | FC1 in einer Unit ohne `System.SysUtils` in der uses-Klausel (Datei-Funktion über eigene Unit), Korrektur anwenden | `System.SysUtils` wird ergänzt, das Ergebnis übersetzt |
 | FC7 | `"filename-compare-case": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |
+
+## Beim Start erzeugtes Objekt wird nicht freigegeben (#971)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IF1 | Das Beispiel aus #971: `var GProtokoll: TProtokoll;` im implementation-Abschnitt, `initialization GProtokoll := TProtokoll.Create; end.` | Warnung `initialization-not-finalized` an `GProtokoll`: „GProtokoll wird in initialization erzeugt, aber in finalization nicht freigegeben.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| IF2 | Schnellkorrektur „In finalization freigeben“ auf IF1 | Leerzeile, `finalization`, `FreeAndNil(GProtokoll);` vor `end.`; fehlt `System.SysUtils`, steht es danach in der uses-Klausel; ein Undo-Schritt macht alles rückgängig; die Unit übersetzt (**Abnahme**) |
+| IF3 | Zwei Objekte in initialization, eines in vorhandener finalization freigegeben, „Alle sicheren Korrekturen“ | Das fehlende `FreeAndNil` landet am Ende der vorhandenen finalization |
+| IF4 | `class var FInstanz: TDienst;` und `class constructor Create;` mit `FInstanz := TDienst.Create;`, ohne class destructor, Korrektur anwenden | Meldung „… im class constructor erzeugt, aber im class destructor nicht freigegeben.“; Korrektur deklariert `class destructor Destroy;` und legt den Rumpf mit `FreeAndNil(FInstanz);` an |
+| IF5 | Freigabe in einer Prozedur der Unit, `G.Free` in finalization hinter `if Assigned(G)`, Interface-Variable, `TStopwatch.Create`, `TDatenmodul.Create(Application)`, `Liste.Add(G)`, `with G do`, `G.FreeOnTerminate := True` | Keine Meldung |
+| IF6 | Variable im interface-Abschnitt, eine andere Unit des Projekts verwendet sie | Keine Meldung; ohne die andere Unit Meldung |
+| IF7 | `"initialization-not-finalized": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |

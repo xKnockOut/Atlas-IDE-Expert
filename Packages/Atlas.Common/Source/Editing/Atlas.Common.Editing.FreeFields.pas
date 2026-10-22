@@ -90,6 +90,19 @@ type
     /// „Alle eigenen Objekte freigeben (n)“.</summary>
     class function Actions(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex; ALine: Integer;
       AStyle: TFreeFieldsStyle; AWithFieldAction: Boolean): TArray<TCodeAction>; static;
+    /// <summary>Erzeugt AValue ein Objekt, das jemand freigeben muss (TKlasse.Create…, keine Records, Interfaces
+    /// usw.)? AOwned: eine Komponente mit Owner ungleich nil, die ihr Owner freigibt (#971).</summary>
+    class function ObjectCreation(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex;
+      AValue: TSyntaxNode; out ATypeName: string; out AOwned: Boolean): Boolean; static;
+    /// <summary>Ist ATypeName eine Klasse oder unbekannt, also kein Record, Interface oder anderer Typ (#971)?
+    /// </summary>
+    class function IsObjectType(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex;
+      const ATypeName: string): Boolean; static;
+    /// <summary>AStatements in den class destructor der Klasse AClassDecl, vor dessen "end"; fehlt er, wird er
+    /// hinter dem class constructor deklariert und angelegt (#971). False ohne class constructor bzw. wenn
+    /// kein Platz zu finden ist.</summary>
+    class function ClassDestructorEdits(ATree: TSyntaxTree; const AText: string; AClassDecl: TSyntaxNode;
+      const AStatements: TArray<string>; out AEdits: TArray<TTextEdit>): Boolean; static;
   end;
 
 implementation
@@ -274,6 +287,9 @@ begin
   FText := AText;
   FIndex := AIndex;
   FDecl := ADecl;
+  // Ohne Klasse (ADecl = nil) nur für Typen und Erzeugungen außerhalb von Klassen (#971).
+  if ADecl = nil then
+    Exit;
   FClassNode := ADecl.FindChild(TSyntaxKind.ClassType);
   FClassName := ADecl.Name;
 end;
@@ -828,7 +844,8 @@ begin
   // Text vom Anfang der Routine bis zum Block; der Kopfknoten generischer Klassen deckt nicht alles ab.
   Header := Collapse(Copy(AText, AConstructor.StartOffset + 1,
     AConstructor.FindChild(TSyntaxKind.Block).StartOffset - AConstructor.StartOffset));
-  Header := Trim(Copy(Header, Length('constructor') + 1, MaxInt));
+  // "constructor" bzw. "class constructor" (#971) abschneiden.
+  Header := Trim(Copy(Header, Pos('constructor', LowerCase(Header)) + Length('constructor'), MaxInt));
   Stop := Pos('(', Header);
   if Stop = 0 then
     Stop := Pos(';', Header);
@@ -1134,6 +1151,98 @@ begin
     Action.Edits := Edits_;
     Result := Result + [Action];
   end;
+end;
+
+class function TFreeFields.ObjectCreation(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex;
+  AValue: TSyntaxNode; out ATypeName: string; out AOwned: Boolean): Boolean;
+var
+  Analyzer: TClassAnalyzer;
+begin
+  Analyzer := TClassAnalyzer.Create(ATree, AText, AIndex, nil);
+  try
+    Result := Analyzer.Creation(AValue, ATypeName, AOwned);
+  finally
+    Analyzer.Free;
+  end;
+end;
+
+class function TFreeFields.IsObjectType(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex;
+  const ATypeName: string): Boolean;
+var
+  Analyzer: TClassAnalyzer;
+begin
+  Analyzer := TClassAnalyzer.Create(ATree, AText, AIndex, nil);
+  try
+    Result := not (Analyzer.TypeGuess(ATypeName) in [tgRecord, tgInterface, tgOther]);
+  finally
+    Analyzer.Free;
+  end;
+end;
+
+/// <summary>Beginnt der Kopf mit "class constructor" bzw. "class destructor" (AKind)?</summary>
+function IsClassStructor(const AText: string; AHeader: TSyntaxNode; const AKind: string): Boolean;
+var
+  Text: string;
+begin
+  Result := False;
+  if AHeader = nil then
+    Exit;
+  Text := Collapse(NodeText(AText, AHeader));
+  Result := StartsWithWord(Text, 'class') and StartsWithWord(Trim(Copy(Text, Length('class') + 1, MaxInt)), AKind);
+end;
+
+class function TFreeFields.ClassDestructorEdits(ATree: TSyntaxTree; const AText: string; AClassDecl: TSyntaxNode;
+  const AStatements: TArray<string>; out AEdits: TArray<TTextEdit>): Boolean;
+var
+  ClassNode, Child, Declaration, Body, LastConstructor, Decl: TSyntaxNode;
+  Lines: TArray<string>;
+  LineBreak, Indent, Text, Statement: string;
+  Index, Line: Integer;
+begin
+  AEdits := nil;
+  Result := False;
+  if (ATree = nil) or (AClassDecl = nil) or (Length(AStatements) = 0) then
+    Exit;
+  ClassNode := AClassDecl.FindChild(TSyntaxKind.ClassType);
+  if ClassNode = nil then
+    Exit;
+  Lines := TTextLines.SplitLines(AText, LineBreak);
+  Declaration := nil;
+  for Index := 0 to ClassNode.ChildCount - 1 do
+  begin
+    Child := ClassNode[Index];
+    if (Child.Kind = TSyntaxKind.RoutineHeader) and IsClassStructor(AText, Child, 'constructor') then
+      Declaration := Child;
+  end;
+  Body := nil;
+  LastConstructor := nil;
+  for Decl in ClassMethods(ATree, AClassDecl.Name) do
+    if IsClassStructor(AText, HeaderOf(Decl), 'destructor') then
+      Body := Decl
+    else if IsClassStructor(AText, HeaderOf(Decl), 'constructor') then
+      LastConstructor := Decl;
+  if Body <> nil then
+  begin
+    AEdits := [BodyEdit(Lines, Body, AStatements, LineBreak)];
+    Exit(True);
+  end;
+  if (Declaration = nil) or (LastConstructor = nil) then
+    Exit;
+  // Deklaration in eigener Zeile hinter dem class constructor, gleich eingerückt.
+  Line := Declaration.EndPos.Line;
+  if Line > High(Lines) then
+    Exit;
+  Indent := TTextLines.IndentOf(Lines[Declaration.StartPos.Line]);
+  AEdits := [InsertAt(TTextPosition.Create(Line, Length(Lines[Line])), LineBreak + Indent +
+    'class destructor Destroy;')];
+  Indent := StringOfChar(' ', LastConstructor.StartPos.Character);
+  Text := Indent + Format('class destructor %s.Destroy;', [Qualifier(AText, LastConstructor, AClassDecl.Name)]) +
+    LineBreak + Indent + 'begin';
+  for Statement in AStatements do
+    Text := Text + LineBreak + Indent + '  ' + Statement;
+  Text := Text + LineBreak + Indent + 'end;';
+  AEdits := AEdits + [InsertAt(LastConstructor.EndPos, LineBreak + LineBreak + Text)];
+  Result := True;
 end;
 
 end.
