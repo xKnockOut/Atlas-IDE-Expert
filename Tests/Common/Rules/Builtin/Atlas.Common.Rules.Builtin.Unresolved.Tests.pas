@@ -5,7 +5,9 @@
 // Selbstbezug (F2092), requires (E2202), fehlende Bibliothek (F1027), bedingte
 // Einträge, unsichere Suche, Option searchPaths, Abschalten und Ausnahmen;
 // unresolved-attribute (#1019): Beispiel mit Korrektur, aufgelöste und
-// Compiler-Attribute, andere Bibliothek, unbekanntes Attribut, Fassaden-Unit.
+// Compiler-Attribute, andere Bibliothek, unbekanntes Attribut, Fassaden-Unit;
+// unresolved-type (#1031): Beispiel mit Korrektur, Deklarationsarten, kein Typ
+// (E2005), Zeigerziel (E2564), stille Fälle, Abschalten.
 
 interface
 
@@ -57,6 +59,21 @@ type
     procedure FacadeUnitWins;
     [Test]
     procedure AttributeOffGroupAndExclude;
+  end;
+
+  [TestFixture]
+  TUnresolvedTypeTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure DeclarationKinds;
+    [Test]
+    procedure NotATypeAndPointerTarget;
+    [Test]
+    procedure SilentCases;
+    [Test]
+    procedure TypeOffGroupAndExclude;
   end;
 
 implementation
@@ -513,8 +530,127 @@ begin
     '{"rules": {"unresolved-attribute": {"exclude": ["Tests/*.pas"]}}}'))));
 end;
 
+{ TUnresolvedTypeTests }
+
+function TypeIndex: ISymbolIndex;
+begin
+  Result := TSymbolIndex.Create;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit System;'#10'interface'#10'type'#10'  TObject = class'#10 +
+    '  end;'#10'  TArray<T> = array of T;'#10'implementation'#10'end.', 'C:\BDS\source\System.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText('unit System.SysUtils;'#10'interface'#10'type'#10 +
+    '  Exception = class(TObject)'#10'  end;'#10'implementation'#10'end.', 'C:\BDS\source\System.SysUtils.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText('unit System.Generics.Collections;'#10'interface'#10'type'#10 +
+    '  TList<T> = class'#10'  end;'#10'  TObjectList<T: class> = class(TList<T>)'#10'  end;'#10 +
+    'implementation'#10'end.', 'C:\BDS\source\System.Generics.Collections.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText('unit System.Contnrs;'#10'interface'#10'type'#10 +
+    '  TObjectList = class'#10'  end;'#10'implementation'#10'end.', 'C:\BDS\source\System.Contnrs.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText('unit Vcl.Basis;'#10'interface'#10'type'#10 +
+    '  TSteuerung = class'#10'  public type'#10'    TStil = (stFlach, stRund);'#10'  end;'#10 +
+    'implementation'#10'end.', 'C:\BDS\source\Vcl.Basis.pas', nil));
+end;
+
+function TypeFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TUnresolvedTypeRule.Create, ASource, TypeIndex, '', '');
+end;
+
+function TypeFindings(const ASource, AConfig: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TUnresolvedTypeRule.Create, ASource, TypeIndex, AConfig, 'Src/Kunden.pas');
+end;
+
+function KundenUnit(const AUses, ATypes: string): string;
+begin
+  Result := 'unit Kunden;'#10'interface'#10'uses'#10'  ' + AUses + ';'#10'type'#10'  TKunde = class'#10'  end;'#10 +
+    ATypes + 'implementation'#10'end.';
+end;
+
+procedure TUnresolvedTypeTests.IssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := KundenUnit('System.SysUtils', '  TKunden = TObjectList<TKunde>;'#10);
+  Found := TypeFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Typ TObjectList ist nicht deklariert; System.Generics.Collections fehlt in uses (wie E2003).',
+    Found[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
+  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(12, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(23, Found[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('uses System.Generics.Collections ergänzen', Found[0].Fixes[0].Title);
+  Fixed := Applied(Source, Found[0].Fixes[0].Edits[0]);
+  Assert.AreEqual(KundenUnit('System.SysUtils,'#10'  System.Generics.Collections', '  TKunden = TObjectList<TKunde>;'#10),
+    Fixed);
+  Assert.AreEqual(0, Integer(Length(TypeFindings(Fixed))), Fixed);
+end;
+
+procedure TUnresolvedTypeTests.DeclarationKinds;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  // Vorfahr, Feld, Parameter, Ergebnis, globale Variable; ohne Kandidaten im Index ohne Korrektur.
+  Found := TypeFindings(KundenUnit('System.SysUtils', '  TSonder = class(TBasiz)'#10'    FAdresse: TAdresse;'#10 +
+    '    function Pruefe(A: TAnschrift): TErgebnis;'#10'  end;'#10'var'#10'  Aktuell: TKundeX;'#10));
+  Assert.AreEqual(5, Integer(Length(Found)));
+  Assert.AreEqual('Typ TBasiz ist nicht deklariert (wie E2003).', Found[0].Message);
+  Assert.AreEqual('Typ TAdresse ist nicht deklariert (wie E2003).', Found[1].Message);
+  Assert.AreEqual('Typ TAnschrift ist nicht deklariert (wie E2003).', Found[2].Message);
+  Assert.AreEqual('Typ TErgebnis ist nicht deklariert (wie E2003).', Found[3].Message);
+  Assert.AreEqual('Typ TKundeX ist nicht deklariert (wie E2003).', Found[4].Message);
+  Assert.AreEqual(0, Integer(Length(Found[4].Fixes)));
+end;
+
+procedure TUnresolvedTypeTests.NotATypeAndPointerTarget;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := TypeFindings('unit Kunden;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'var'#10 +
+    '  Zaehler: Integer;'#10'type'#10'  PKnoten = ^TKnotn;'#10'  TKnoten = record'#10'    Wert: Zaehler;'#10 +
+    '  end;'#10'implementation'#10'end.');
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('Typ TKnotn ist nicht deklariert (wie E2564).', Found[0].Message);
+  Assert.AreEqual('Zaehler ist kein Typ (wie E2005).', Found[1].Message);
+end;
+
+procedure TUnresolvedTypeTests.SilentCases;
+begin
+  // Typparameter, verschachtelte Typen (eigene und geerbte), später deklarierte Typen, eingebaute, string,
+  // array of const, Unit-Präfix, Typen in bedingten Zweigen.
+  Assert.AreEqual(0, Integer(Length(TypeFindings(KundenUnit('System.SysUtils, Vcl.Basis',
+    '  TBox<T> = class'#10'    FWert: T;'#10'    FListe: TArray<T>;'#10'  end;'#10 +
+    '  TAussen = class'#10'  public type'#10'    TInnen = record'#10'    end;'#10'  public'#10 +
+    '    FInnen: TInnen;'#10'    FVor: TSpaeter;'#10'    FStil: TStil;'#10'    FText: string;'#10 +
+    '    FZahl: Integer;'#10'    FFehler: System.SysUtils.Exception;'#10 +
+    '    procedure Log(const Werte: array of const);'#10'  end;'#10'  TSpaeter = class(TSteuerung)'#10'  end;'#10 +
+    '{$IFDEF NEU}'#10'  TNeu = class(TGibtEsNicht)'#10'  end;'#10'{$ENDIF}'#10)))));
+  // Teilbereich aus Konstanten.
+  Assert.AreEqual(0, Integer(Length(TypeFindings('unit Kunden;'#10'interface'#10'uses'#10'  System.SysUtils;'#10 +
+    'const'#10'  MinWert = 1;'#10'  MaxWert = 9;'#10'type'#10'  TBereich = MinWert..MaxWert;'#10 +
+    'implementation'#10'end.'))));
+  // Ohne System im Index bzw. mit einer unbekannten Unit in uses keine Aussage.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TUnresolvedTypeRule.Create,
+    KundenUnit('System.SysUtils', '  TX = class(TBasiz)'#10'  end;'#10), AttributeIndex(False), '', ''))));
+  Assert.AreEqual(0, Integer(Length(TypeFindings(KundenUnit('System.SysUtils, Unbekannt',
+    '  TX = class(TBasiz)'#10'  end;'#10)))));
+end;
+
+procedure TUnresolvedTypeTests.TypeOffGroupAndExclude;
+var
+  Text: string;
+begin
+  Text := KundenUnit('System.SysUtils', '  TKunden = TObjectList<TKunde>;'#10);
+  Assert.AreEqual(1, Integer(Length(TypeFindings(Text, ''))));
+  Assert.AreEqual(0, Integer(Length(TypeFindings(Text, '{"rules": {"unresolved-type": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TypeFindings(Text, '{"rules": {"group:compiler": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TypeFindings(Text, '{"rules": {"unresolved-type": {"exclude": ["Src/*.pas"]}}}'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TUsesUnitNotFoundTests);
   TDUnitX.RegisterTestFixture(TUnresolvedAttributeTests);
+  TDUnitX.RegisterTestFixture(TUnresolvedTypeTests);
 
 end.

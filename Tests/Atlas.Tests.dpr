@@ -126,6 +126,7 @@ uses
   Atlas.Common.Rules.Builtin.Calls.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Calls.Tests.pas',
   Atlas.Common.Rules.Builtin.Jumps.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Jumps.Tests.pas',
   Atlas.Common.Rules.Builtin.Loops.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Loops.Tests.pas',
+  Atlas.Common.Rules.Builtin.Generics.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Generics.Tests.pas',
   Atlas.Common.Rules.Builtin.Unresolved.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas',
   Atlas.Common.Projects.UnitLookup.Tests in 'Common\Projects\Atlas.Common.Projects.UnitLookup.Tests.pas',
   Atlas.Common.Rules.Builtin.Packages.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas',

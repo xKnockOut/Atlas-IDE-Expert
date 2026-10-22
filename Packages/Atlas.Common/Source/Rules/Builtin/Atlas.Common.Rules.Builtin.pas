@@ -54,6 +54,7 @@ uses
   Atlas.Common.Rules.Builtin.Calls,
   Atlas.Common.Rules.Builtin.Jumps,
   Atlas.Common.Rules.Builtin.Loops,
+  Atlas.Common.Rules.Builtin.Generics,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -103,6 +104,7 @@ begin
     RegisterCallRules(Registry);
     RegisterJumpRules(Registry);
     RegisterLoopRules(Registry);
+    RegisterGenericRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

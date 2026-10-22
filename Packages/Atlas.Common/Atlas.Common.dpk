@@ -331,6 +331,7 @@ contains
   Atlas.Common.Rules.Builtin.Calls in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Calls.pas',
   Atlas.Common.Rules.Builtin.Jumps in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Jumps.pas',
   Atlas.Common.Rules.Builtin.Loops in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Loops.pas',
+  Atlas.Common.Rules.Builtin.Generics in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Generics.pas',
   Atlas.Common.Rules.Builtin.Packages in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.pas',
   Atlas.Common.Rules.Builtin.OpenTools in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.pas',
   Atlas.Common.Rules.Builtin.Testing in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.pas',
