@@ -4119,3 +4119,19 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## Inline-Funktion wird nicht eingebettet (#1017)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IL1 | Das Beispiel aus #1017: Unit mit `uses System.JSON;`, `if Obj.Count > 0 then` mit `Obj: TJSONObject` | Hinweis `inline-not-expanded` an `Count`: „Inline-Funktion TJSONObject.GetCount wird nicht eingebettet: System.Generics.Collections fehlt in uses (wie H2443).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| IL2 | Schnellkorrektur „uses System.Generics.Collections ergänzen“, danach Strg+Z | Unit steht im uses, keine Meldung mehr; ein Undo-Schritt |
+| IL3 | Klasse mit `strict private FStand` und `function Stand: Integer; inline;` (Rumpf `Result := FStand`), Aufruf `Z.Stand` in einer Routine außerhalb der Klasse, auch in derselben Unit | „Inline-Funktion TZaehler.Stand wird nicht eingebettet: Zugriff auf TZaehler.FStand (strict private) ist hier nicht möglich (wie H2444).“; in einer Methode von TZaehler keine Meldung |
+| IL4 | Eigene inline-Routine, die eine Unit aus dem implementation-uses aufruft, deren inline-Routine sie nutzt | Meldung mit „steht nur im uses des implementation-Teils … (wie H2445)“ |
+| IL5 | Zwei Units, die sich gegenseitig im implementation-uses nennen; Aufruf einer inline-Routine der anderen Unit | Meldung „… verwendet die übersetzte Unit … (wie H2456)“, über eine dritte Unit „… indirekt über … (wie H2457)“ |
+| IL6 | `for Paar in Obj do` mit `Obj: TJSONObject` ohne System.Generics.Collections | Meldung am Ausdruck nach `in` für den inline-Enumerator |
+| IL7 | Alle Units ergänzt, Routine ohne `inline`, `{$INLINE OFF}` in der Datei | Keine Meldung |
+| IL8 | `"inline-not-expanded": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| IL9 | Abgleich mit Delphi: IL1, IL3, IL4, IL5 übersetzen | dcc meldet H2443, H2444, H2445 bzw. H2456/H2457 an denselben Stellen, für IL7 nichts |

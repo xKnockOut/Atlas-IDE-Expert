@@ -140,7 +140,8 @@ begin
   for Symbol in AUnit.Symbols do
     Inc(Result, SizeOf(TIndexSymbol) + StringBytes(Symbol.Name) + StringBytes(Symbol.Container) +
       StringBytes(Symbol.TypeName) + ArrayBytes(Symbol.Ancestors) + StringBytes(Symbol.Signature) +
-      StringBytes(Symbol.Summary) + ArrayBytes(Symbol.Directives) + StringBytes(Symbol.DeprecatedText));
+      StringBytes(Symbol.Summary) + ArrayBytes(Symbol.Directives) + StringBytes(Symbol.DeprecatedText) +
+      ArrayBytes(Symbol.InlineRefs));
   Inc(Result, UsageBytes(AUnit));
 end;
 

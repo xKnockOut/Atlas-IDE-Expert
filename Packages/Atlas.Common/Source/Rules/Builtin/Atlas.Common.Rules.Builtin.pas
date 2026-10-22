@@ -51,6 +51,7 @@ uses
   Atlas.Common.Rules.Builtin.Database,
   Atlas.Common.Rules.Builtin.Directives,
   Atlas.Common.Rules.Builtin.Properties,
+  Atlas.Common.Rules.Builtin.Inlining,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -97,6 +98,7 @@ begin
     RegisterDatabaseRules(Registry);
     RegisterDirectiveRules(Registry);
     RegisterPropertyRules(Registry);
+    RegisterInliningRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;
