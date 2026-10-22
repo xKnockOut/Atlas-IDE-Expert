@@ -867,6 +867,9 @@ begin
     if not Fix.Alternative then
       Data.AddPair('fix', Fix.Title);
   end;
+  // Zusatz für den Befund-Hover, z. B. der durchsuchte Bereich projektweiter Regeln (#1102).
+  if AFinding.Details <> '' then
+    Data.AddPair('details', AFinding.Details);
   Result.AddPair('data', Data);
   // Veraltete Symbole durchgestrichen (#38).
   if AFinding.RuleId = DeprecatedSymbolRuleId then

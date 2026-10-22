@@ -15,6 +15,10 @@
 //   auf, zählt es als Verwendung.
 // - Formulardateien (Ereignis-Handler, Properties) und, mit
 //   stringLiteralsCountAsUse, String-Literale mit genau dem Namen (RTTI).
+// - published-Mitglieder gelten als verwendet, solange eine Formulardatei des
+//   Suchbereichs nicht lesbar ist, und für Klassen, die eine Datei des
+//   Suchbereichs in RegisterComponents, RegisterClass oder RegisterClasses
+//   nennt (Streaming und Objektinspektor erreichen sie über RTTI).
 // - Verwendungen nur in Testprojekten zählen mit testsCountAsUse = false nicht;
 //   die Meldung nennt dann das Testprojekt.
 //
@@ -61,6 +65,10 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.ConsideredUsed,
   Atlas.Text.Lines;
+
+const
+  /// <summary>Aufrufe, die Klassen für Streaming und Objektinspektor bekannt machen.</summary>
+  RegisterCalls: array[0..2] of string = ('RegisterComponents', 'RegisterClass', 'RegisterClasses');
 
 type
 {$SCOPEDENUMS ON}
@@ -208,6 +216,10 @@ var
   Texts: TDictionary<string, string>;
   Resolver: TNameResolver;
   Considered: TConsideredUsed;
+  // Klassen (Kurzname, klein) -> in RegisterComponents/RegisterClass(es) genannt; je Prüfung einmal.
+  Registered: TDictionary<string, Boolean>;
+  // 0 = noch nicht geprüft, 1 = alle Formulardateien lesbar, 2 = mindestens eine nicht.
+  FormsState: Integer;
 
   function HasIncludes: Boolean;
   var
@@ -423,6 +435,101 @@ var
     Result := False;
   end;
 
+  /// <summary>Ist eine Formulardatei des Suchbereichs nicht lesbar? Dann können published-Methoden dort als
+  /// Handler stehen.</summary>
+  function FormUnreadable: Boolean;
+  var
+    Form, Text: string;
+  begin
+    if FormsState = 0 then
+    begin
+      FormsState := 1;
+      for Form in Forms do
+        if not TextOf(Form, Text) then
+          FormsState := 2;
+    end;
+    Result := FormsState = 2;
+  end;
+
+  /// <summary>Nennt ein Aufruf RegisterComponents, RegisterClass oder RegisterClasses in ATokens die Klasse
+  /// AClass?</summary>
+  function RegistersIn(const ATokens: TArray<TPascalToken>; const AClass: string): Boolean;
+  var
+    Index, At, Depth: Integer;
+  begin
+    for Index := 0 to High(ATokens) - 1 do
+      if (ATokens[Index].Kind = TPascalTokenKind.Identifier) and (IndexText(CleanName(ATokens[Index].Text),
+        RegisterCalls) >= 0) and ATokens[Index + 1].IsSymbol('(') then
+      begin
+        // Argumente bis zur schließenden Klammer: RegisterComponents('Seite', [TA, TB]), RegisterClass(TA).
+        Depth := 0;
+        At := Index + 1;
+        while At <= High(ATokens) do
+        begin
+          if ATokens[At].IsSymbol('(') then
+            Inc(Depth)
+          else if ATokens[At].IsSymbol(')') then
+          begin
+            Dec(Depth);
+            if Depth = 0 then
+              Break;
+          end
+          else if (ATokens[At].Kind = TPascalTokenKind.Identifier) and SameText(CleanName(ATokens[At].Text), AClass) then
+            Exit(True);
+          Inc(At);
+        end;
+      end;
+    Result := False;
+  end;
+
+  /// <summary>Registriert eine Datei des Suchbereichs die Klasse AContainer (RegisterComponents,
+  /// RegisterClass, RegisterClasses)? Nicht lesbare Dateien mit einem dieser Aufrufe zählen als ja.</summary>
+  function IsRegistered(const AContainer: string): Boolean;
+  var
+    Short, Call, Text: string;
+    Entry: TSearchFile;
+    Mentioned: Boolean;
+    Tree: TSyntaxTree;
+  begin
+    Short := Copy(AContainer, LastDelimiter('.', AContainer) + 1, MaxInt);
+    if Registered.TryGetValue(LowerCase(Short), Result) then
+      Exit;
+    Result := False;
+    for Entry in Files do
+    begin
+      if SameText(Entry.FileName, FileName) then
+        Result := RegistersIn(AContext.Tree.Tokens, Short)
+      else
+      begin
+        Mentioned := False;
+        for Call in RegisterCalls do
+          case AContext.ProjectFiles.NameIn(Entry.FileName, Call) of
+            TRuleNameAnswer.Present:
+              Mentioned := True;
+            TRuleNameAnswer.Unknown:
+              Result := True;
+          end;
+        if Mentioned and not Result then
+        begin
+          if not TextOf(Entry.FileName, Text) then
+            Result := True
+          else
+          begin
+            Tree := TSyntaxTreeCache.Parse(Text);
+            try
+              Result := RegistersIn(Tree.Tokens, Short);
+            finally
+              Tree.Free;
+            end;
+          end;
+        end;
+      end;
+      if Result then
+        Break;
+    end;
+    Registered.Add(LowerCase(Short), Result);
+  end;
+
   /// <summary>Kommt AName als String-Literal ('Name') in einer Datei des Suchbereichs vor?</summary>
   function InStrings(const AName: string): Boolean;
   var
@@ -528,19 +635,45 @@ var
       TIndexSymbolKind.Field, TIndexSymbolKind.Variable]) and Contains(Visibilities, VisibilityKey(ASymbol.Visibility));
   end;
 
+  /// <summary>Durchsuchter Bereich für den Befund-Hover: "Durchsucht: 214 Units und 37 Formulare der
+  /// Projektgruppe".</summary>
+  function SearchedText: string;
+
+    function Counted(ACount: Integer; const AOne, AMany: string): string;
+    begin
+      if ACount = 1 then
+        Result := '1 ' + AOne
+      else
+        Result := Format('%d %s', [ACount, AMany]);
+    end;
+
+  begin
+    Result := 'Durchsucht: ' + Counted(Files.Count, 'Datei', 'Dateien');
+    if Forms.Count > 0 then
+      Result := Result + ' und ' + Counted(Forms.Count, 'Formular', 'Formulare');
+    if WholeGroup then
+      Result := Result + ' der Projektgruppe'
+    else
+      Result := Result + ' des Projekts';
+  end;
+
   procedure CheckSymbol(const ASymbol: TIndexSymbol);
   var
     TestProject: string;
   begin
     if Considered.Reason(ASymbol) <> TConsideredUsedReason.None then
       Exit;
+    if (ASymbol.Visibility = TIndexVisibility.Published) and (ASymbol.Container <> '') and
+      (((ASymbol.Kind = TIndexSymbolKind.Method) and FormUnreadable) or IsRegistered(ASymbol.Container)) then
+      Exit;
     case UsageOf(ASymbol, TestProject) of
       TUsage.Unused:
-        AReport.Add(ASymbol.SelectionRange, Format('%s %s wird im Projekt nirgends verwendet.',
-          [KindText(ASymbol), QualifiedOf(ASymbol)]), TRuleConfidence.Medium, [IgnoreFix(ASymbol)]);
+        AReport.AddWithDetails(ASymbol.SelectionRange, Format('%s %s wird im Projekt nirgends verwendet.',
+          [KindText(ASymbol), QualifiedOf(ASymbol)]), SearchedText, TRuleConfidence.Medium, [IgnoreFix(ASymbol)]);
       TUsage.OnlyTests:
-        AReport.Add(ASymbol.SelectionRange, Format('%s %s wird nur in %s verwendet.',
-          [KindText(ASymbol), QualifiedOf(ASymbol), TestProject]), TRuleConfidence.Medium, [IgnoreFix(ASymbol)]);
+        AReport.AddWithDetails(ASymbol.SelectionRange, Format('%s %s wird nur in %s verwendet.',
+          [KindText(ASymbol), QualifiedOf(ASymbol), TestProject]), SearchedText, TRuleConfidence.Medium,
+          [IgnoreFix(ASymbol)]);
     end;
   end;
 
@@ -572,6 +705,8 @@ begin
   Files := TList<TSearchFile>.Create;
   Forms := TList<string>.Create;
   Texts := TDictionary<string, string>.Create;
+  Registered := TDictionary<string, Boolean>.Create;
+  FormsState := 0;
   Seen := TDictionary<string, Boolean>.Create;
   Considered := TConsideredUsed.Create(AContext.Index, Local, Tokens,
     TRuleOptions.Strings(AContext.Options, 'keepAttributes', []),
@@ -596,6 +731,7 @@ begin
     Considered.Free;
     Seen.Free;
     Texts.Free;
+    Registered.Free;
     Forms.Free;
     Files.Free;
   end;

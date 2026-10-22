@@ -100,6 +100,8 @@ type
       const AFixes: TArray<TRuleFix>); overload;
     procedure AddWithSeverity(const ARange: TTextRange; const AMessage: string; ASeverity: TRuleSeverity;
       const AFixes: TArray<TRuleFix>);
+    procedure AddWithDetails(const ARange: TTextRange; const AMessage, ADetails: string; AConfidence: TRuleConfidence;
+      const AFixes: TArray<TRuleFix>);
   end;
 
 function CompareFindings(const A, B: TRuleFinding): Integer;
@@ -147,6 +149,22 @@ begin
   Finding.Severity := TRuleEngine.CapSeverity(FSeverity, AConfidence);
   Finding.Confidence := AConfidence;
   Finding.Fixes := AFixes;
+  Finding.Details := '';
+  FFindings.Add(Finding);
+end;
+
+procedure TRuleReport.AddWithDetails(const ARange: TTextRange; const AMessage, ADetails: string;
+  AConfidence: TRuleConfidence; const AFixes: TArray<TRuleFix>);
+var
+  Finding: TRuleFinding;
+begin
+  Finding.RuleId := FRuleId;
+  Finding.Range := ARange;
+  Finding.Message := AMessage;
+  Finding.Severity := TRuleEngine.CapSeverity(FSeverity, AConfidence);
+  Finding.Confidence := AConfidence;
+  Finding.Fixes := AFixes;
+  Finding.Details := ADetails;
   FFindings.Add(Finding);
 end;
 
@@ -166,6 +184,7 @@ begin
     Finding.Severity := ASeverity;
   Finding.Confidence := TRuleConfidence.High;
   Finding.Fixes := AFixes;
+  Finding.Details := '';
   FFindings.Add(Finding);
 end;
 

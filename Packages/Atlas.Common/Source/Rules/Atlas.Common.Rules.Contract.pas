@@ -66,6 +66,8 @@ type
     Severity: TRuleSeverity;
     Confidence: TRuleConfidence;
     Fixes: TArray<TRuleFix>;
+    /// <summary>Zusatz für den Befund-Hover, z. B. der durchsuchte Bereich (#1102); '' ohne.</summary>
+    Details: string;
   end;
 
   /// <summary>Liest eine Datei neben der Unit, z. B. die .dcr aus {$R *.dcr} (#114).</summary>
@@ -249,6 +251,9 @@ type
     /// <summary>Treffer mit eigenem Schweregrad aus der Konfiguration der Regel (#309);
     /// TRuleSeverity.Default = Schweregrad der Regel.</summary>
     procedure AddWithSeverity(const ARange: TTextRange; const AMessage: string; ASeverity: TRuleSeverity;
+      const AFixes: TArray<TRuleFix>);
+    /// <summary>Treffer mit Zusatz für den Befund-Hover (TRuleFinding.Details, #1102).</summary>
+    procedure AddWithDetails(const ARange: TTextRange; const AMessage, ADetails: string; AConfidence: TRuleConfidence;
       const AFixes: TArray<TRuleFix>);
   end;
 

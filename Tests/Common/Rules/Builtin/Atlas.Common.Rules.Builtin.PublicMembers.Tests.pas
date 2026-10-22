@@ -47,11 +47,15 @@ type
     [Test]
     procedure OffAndExclude;
     [Test]
+    procedure PublishedWithUnreadableFormOrRegistration;
+    [Test]
     procedure ParserChecksOptions;
     [Test]
     procedure RecheckAfterChangeInOtherUnit;
     [Test]
     procedure IgnoreFixInsertsComment;
+    [Test]
+    procedure ReferenceProjectMatchesMarkers;
     [Test]
     [Category('Benchmark')]
     procedure CheckOfLargeProject;
@@ -61,9 +65,14 @@ implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
+  System.Classes,
+  System.IOUtils,
   System.Diagnostics,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Documents.FileEncoding,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Index.Contract,
@@ -282,6 +291,8 @@ begin
   Assert.AreEqual(14, Found[1].Range.StartPos.Character);
   Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Hint, Found[1].Severity);
   Assert.AreEqual<TRuleConfidence>(TRuleConfidence.Medium, Found[1].Confidence);
+  // Durchsuchter Bereich für den Befund-Hover: App.dpr, zwei Units und die Formulardatei.
+  Assert.AreEqual('Durchsucht: 3 Dateien und 1 Formular der Projektgruppe', Found[1].Details);
 end;
 
 procedure TUnusedPublicMemberTests.UsesInOtherUnitsAreFound;
@@ -489,6 +500,126 @@ begin
     '    // lsp-ignore: unused-public-member'#10'    procedure ExportiereAlsXml', []));
   Data.Config := '';
   Assert.IsFalse(Messages(Run(Data, ServiceFile)).Contains('ExportiereAlsXml'));
+end;
+
+procedure TUnusedPublicMemberTests.PublishedWithUnreadableFormOrRegistration;
+const
+  Published_ = '  published'#10'    procedure KundeGeaendert(Sender: TObject);'#10;
+  Extra = '  published'#10'    procedure KundeGeaendert(Sender: TObject);'#10'    procedure Aktualisiere;'#10 +
+    '    property Titel: string read FFehler;'#10;
+  Body = 'procedure TKundenService.KundeGeaendert(Sender: TObject);'#10'begin'#10'end;'#10;
+var
+  Data: TScenario;
+  Found: string;
+begin
+  Data := Scenario('');
+  Data.Put(ServiceFile, StringReplace(StringReplace(ServiceText, Published_, Extra, []), Body,
+    Body + 'procedure TKundenService.Aktualisiere;'#10'begin'#10'end;'#10, []));
+  Data.Config := '{"rules": {"unused-public-member": {"stringLiteralsCountAsUse": false}}}';
+  Found := Messages(Run(Data, ServiceFile));
+  Assert.IsTrue(Found.Contains('TKundenService.Aktualisiere'), Found);
+  Assert.IsTrue(Found.Contains('TKundenService.Titel'), Found);
+  // Formulardatei nicht lesbar: published-Methoden können dort Handler sein, die Property nicht.
+  Data.Unreadable := FormFile;
+  Found := Messages(Run(Data, ServiceFile));
+  Assert.IsFalse(Found.Contains('TKundenService.Aktualisiere'), Found);
+  Assert.IsTrue(Found.Contains('TKundenService.Titel'), Found);
+  Data.Unreadable := '';
+  // RegisterClass in einer anderen Unit: alle published-Mitglieder erreicht das Streaming.
+  Data.Put(MainFile, StringReplace(MainText(''), 'end.', 'initialization'#10'  RegisterClasses([TKunde, ' +
+    'TKundenService]);'#10'end.', []));
+  Found := Messages(Run(Data, ServiceFile));
+  Assert.IsFalse(Found.Contains('TKundenService.Aktualisiere'), Found);
+  Assert.IsFalse(Found.Contains('TKundenService.Titel'), Found);
+  Assert.IsTrue(Found.Contains('TKundenService.ExportiereAlsXml'), 'public bleibt gemeldet: ' + Found);
+  // Ein anderer Name in der Registrierung zählt nicht.
+  Data.Put(MainFile, StringReplace(MainText(''), 'end.', 'initialization'#10'  RegisterClass(TKunde);'#10 +
+    'end.', []));
+  Assert.IsTrue(Messages(Run(Data, ServiceFile)).Contains('TKundenService.Aktualisiere'));
+end;
+
+/// <summary>Ordner Tests\Referenzprojekt oberhalb der Testanwendung; '' ohne.</summary>
+function ReferenceFolder: string;
+var
+  Directory: string;
+begin
+  Directory := ExtractFileDir(ParamStr(0));
+  while Directory <> '' do
+  begin
+    Result := TPath.Combine(Directory, TPath.Combine('Tests', 'Referenzprojekt'));
+    if TDirectory.Exists(Result) then
+      Exit;
+    if ExtractFileDir(Directory) = Directory then
+      Break;
+    Directory := ExtractFileDir(Directory);
+  end;
+  Result := '';
+end;
+
+function ReadSource(const AFileName: string): string;
+var
+  Format: TFileFormat;
+begin
+  Result := TFileEncoding.Decode(TFile.ReadAllBytes(AFileName), Format);
+end;
+
+procedure TUnusedPublicMemberTests.ReferenceProjectMatchesMarkers;
+const
+  Marker = '// ERWARTET-PROJEKT: unused-public-member';
+var
+  Folder, MainFile, Source, Expected, Actual: string;
+  Data: TScenario;
+  Sources, Forms: TArray<string>;
+  Lines: TArray<string>;
+  Token: TPascalToken;
+  Tree: TSyntaxTree;
+  Finding: TRuleFinding;
+  Index: Integer;
+begin
+  Folder := ReferenceFolder;
+  if Folder = '' then
+    Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
+  // Units von RefApp aus den in-Klauseln der .dpr, Formulare daneben.
+  MainFile := TPath.Combine(Folder, 'RefApp.dpr');
+  Data := Default(TScenario);
+  Data.Put(MainFile, ReadSource(MainFile));
+  Sources := [MainFile];
+  Forms := nil;
+  Tree := TSyntaxTreeCache.Parse(Data.Text(MainFile));
+  try
+    for Token in Tree.Tokens do
+      if (Token.Kind = TPascalTokenKind.StringLiteral) and EndsText('.pas''', Token.Text) then
+      begin
+        Source := TPath.Combine(Folder, StringReplace(Copy(Token.Text, 2, Length(Token.Text) - 2), '\',
+          PathDelim, [rfReplaceAll]));
+        Sources := Sources + [Source];
+        Data.Put(Source, ReadSource(Source));
+        if TFile.Exists(ChangeFileExt(Source, '.dfm')) then
+        begin
+          Forms := Forms + [ChangeFileExt(Source, '.dfm')];
+          Data.Put(ChangeFileExt(Source, '.dfm'), ReadSource(ChangeFileExt(Source, '.dfm')));
+        end;
+      end;
+  finally
+    Tree.Free;
+  end;
+  Data.Projects := [Project(TPath.Combine(Folder, 'RefApp.dproj'), TRuleProjectKind.Application, False, Sources,
+    Forms)];
+  // Erwartet: genau die markierten Zeilen, sonst nichts (jede weitere Meldung ist ein Fehlalarm).
+  Expected := '';
+  Actual := '';
+  for Source in Sources do
+  begin
+    Lines := Data.Text(Source).Replace(#13#10, #10).Split([#10]);
+    for Index := 0 to High(Lines) do
+      if Lines[Index].Contains(Marker) then
+        Expected := Expected + Format('%s:%d'#10, [ExtractFileName(Source), Index + 1]);
+    if SameText(ExtractFileExt(Source), '.pas') then
+      for Finding in Run(Data, Source) do
+        Actual := Actual + Format('%s:%d'#10, [ExtractFileName(Source), Finding.Range.StartPos.Line + 1]);
+  end;
+  Assert.AreEqual(Expected, Actual);
+  Assert.IsTrue(Expected <> '', 'Keine Markierungen im Referenzprojekt');
 end;
 
 procedure TUnusedPublicMemberTests.ParserChecksOptions;

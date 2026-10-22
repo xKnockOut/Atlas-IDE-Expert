@@ -4157,13 +4157,15 @@ Voraussetzung: Server läuft in der IDE mit einer Projektgruppe aus Anwendung un
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| OM1 | Das Beispiel aus #1102: `TKundenService` mit `public const MaxKunden`, `procedure ExportiereAlsXml`, `property LetzterFehler`, keines davon in einer Unit der Gruppe verwendet | Hinweise `unused-public-member`: „Öffentliche Methode TKundenService.ExportiereAlsXml wird im Projekt nirgends verwendet.“, ebenso für Konstante und Property; im Fenster „Atlas-Prüfung“ (Gruppe Stil) und im Befund-Hover (**Abnahme**) |
+| OM1 | Das Beispiel aus #1102: `TKundenService` mit `public const MaxKunden`, `procedure ExportiereAlsXml`, `property LetzterFehler`, keines davon in einer Unit der Gruppe verwendet | Hinweise `unused-public-member`: „Öffentliche Methode TKundenService.ExportiereAlsXml wird im Projekt nirgends verwendet.“, ebenso für Konstante und Property; im Fenster „Atlas-Prüfung“ (Gruppe Stil) und im Befund-Hover mit der Zeile „Durchsucht: … Dateien und … Formulare der Projektgruppe“ (**Abnahme**) |
 | OM2 | `S.ExportiereAlsXml('x')` in einer anderen Unit der Anwendung ergänzen, speichern, zurück zur Service-Unit | Die Meldung für `ExportiereAlsXml` verschwindet; nach Entfernen des Aufrufs kommt sie wieder |
 | OM3 | Gleichnamige Methode einer anderen Klasse aufrufen; Methode ruft sich nur selbst rekursiv auf | Meldung bleibt in beiden Fällen |
 | OM4 | Aufruf nur im Testprojekt; dann `"unused-public-member": {"testsCountAsUse": false}` | Erst keine Meldung, dann „… wird nur in <Testprojekt> verwendet.“ |
 | OM5 | Methode, die ein Interface umsetzt; `override`-Methode; published-Property einer TComponent; Ereignis-Handler aus der .dfm; Name als `'ExportiereAlsXml'` im Code; Attribut aus `keepAttributes`; Muster aus `keepPatterns` | Keine Meldung |
 | OM6 | Unit eines Packages bzw. einer DLL der Gruppe | Keine Meldung; mit `"projectKinds": ["application", "package", "library"]` wieder Meldungen |
-| OM7 | IDE neu starten, Service-Unit öffnen, solange der Index noch aufgebaut wird | Keine Meldung, bis der Index fertig ist; danach erscheinen OM1-Meldungen ohne Neuöffnen |
+| OM7 | IDE neu starten, Service-Unit öffnen, solange der Index noch aufgebaut wird | Keine Meldung, bis der Index fertig ist; die Statuszeile des Fensters „Atlas-Prüfung“ zeigt so lange „Projektweite Regeln warten auf den Index (… %)“; danach erscheinen die OM1-Meldungen ohne Neuöffnen |
+| OM12 | Published-Methode einer Klasse, die eine andere Unit mit `RegisterClasses([…])` registriert; eine Formulardatei des Projekts ist gesperrt bzw. unlesbar | Keine Meldung für published-Mitglieder der registrierten Klasse bzw. für published-Methoden, solange die Formulardatei nicht lesbar ist |
+| OM13 | `unused-private-member` (#1020) an einer privaten Methode einer Klasse mit Interface, die keine Interface-Methode umsetzt (Vorfahren im Index) | Meldung; ist ein Vorfahr nicht im Index, bleibt die Regel wie bisher still |
 | OM8 | `"visibilities": ["protected"]`, `"memberKinds": ["field"]`, `"unitLevel": false`, `"scope": "project"` | Nur noch die gewählten Sichtbarkeiten bzw. Arten; ohne unitLevel keine Routinen und Konstanten aus dem interface-Abschnitt; mit scope project zählen Verwendungen anderer Projekte nicht |
 | OM9 | Schnellkorrektur „Als bewusst öffentlich markieren (lsp-ignore)“ | Über der Deklaration steht `// lsp-ignore: unused-public-member`; die Meldung ist weg |
 | OM10 | `"unused-public-member": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |

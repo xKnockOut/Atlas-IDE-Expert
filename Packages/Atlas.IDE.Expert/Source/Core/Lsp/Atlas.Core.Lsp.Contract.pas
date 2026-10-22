@@ -43,6 +43,9 @@ type
     Group: string;
     /// <summary>Titel der Schnellkorrektur (data.fix, #909); '' ohne.</summary>
     FixTitle: string;
+    /// <summary>Zusatz für den Befund-Hover aus data.details, z. B. der durchsuchte Bereich projektweiter Regeln
+    /// („Durchsucht: 214 Dateien und 37 Formulare der Projektgruppe“, #1102); '' ohne.</summary>
+    Details: string;
     /// <summary>Inaktiver Bereich ({$IFDEF}); kein Problem im eigentlichen Sinn.</summary>
     Unnecessary: Boolean;
     /// <summary>Verwendung eines veralteten Symbols (Tag Deprecated, #38): durchgestrichen statt unterstrichen.
@@ -193,6 +196,7 @@ begin
     Result.Category := TJSONObject(Data).GetValue<string>('category', '');
     Result.Group := TJSONObject(Data).GetValue<string>('group', '');
     Result.FixTitle := TJSONObject(Data).GetValue<string>('fix', '');
+    Result.Details := TJSONObject(Data).GetValue<string>('details', '');
     Inactive := TJSONObject(Data).GetValue('inactive');
     if Inactive is TJSONObject then
     begin
