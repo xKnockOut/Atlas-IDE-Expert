@@ -40,8 +40,15 @@ uses
   Atlas.Common.Index.Cache;
 
 type
+  /// <summary>Warum der Builder eine Unit neu einlas statt aus dem Cache (Diagnoselog, Rückmeldung
+  /// 22.10.2026: bei jedem Start rund 2300 Units neu): kein Eintrag, Datei geändert, Include-Datei geändert,
+  /// Verwendungen fehlen, kompakter Eintrag nicht verwendbar, Block beschädigt.</summary>
+  TIndexCacheMiss = (NoEntry, Changed, Includes, Usages, Compact, Damaged);
+
   TIndexBuildResult = record
     Parsed: Integer;
+    /// <summary>Parsed nach Grund; die Summe ist Parsed.</summary>
+    Misses: array[TIndexCacheMiss] of Integer;
     FromCache: Integer;
     Missing: Integer;
     /// <summary>Zeit für das Suchen der Unit-Dateien (uses) und für das Parsen, fürs Diagnoselog (#647).</summary>
@@ -70,7 +77,8 @@ type
     FUsages: Boolean;
     FLibraryRoots: TArray<string>;
     function WantsUsages(ALibrary: Boolean): Boolean;
-    function CacheFits(const AEntry: TIndexCacheEntry; ALibrary: Boolean): Boolean;
+    /// <summary>Taugt der Cache-Eintrag? AMiss nennt bei False den Grund.</summary>
+    function CacheFits(const AEntry: TIndexCacheEntry; ALibrary: Boolean; out AMiss: TIndexCacheMiss): Boolean;
     function FromCache(const AEntry: TIndexCacheEntry; ALibrary: Boolean; out AUnit: TUnitIndex): Boolean;
     function IncludeResolver: TIncludeResolver;
     /// <summary>Symbole für AFileName: Dateien der Installation mit LibraryDefines, alle anderen mit
@@ -291,16 +299,31 @@ begin
   Result := FUsages and not ALibrary;
 end;
 
-function TIndexBuilder.CacheFits(const AEntry: TIndexCacheEntry; ALibrary: Boolean): Boolean;
+function TIndexBuilder.CacheFits(const AEntry: TIndexCacheEntry; ALibrary: Boolean;
+  out AMiss: TIndexCacheMiss): Boolean;
 begin
+  AMiss := TIndexCacheMiss.NoEntry;
   // Mit Includes kann sich das Ergebnis ändern, ohne dass die Unit sich ändert; ohne erfasste
   // Verwendungen taugt der Eintrag nicht, sobald sie gebraucht werden.
-  Result := IncludesUnchanged(AEntry.Header) and (AEntry.Header.UsagesIndexed or not WantsUsages(ALibrary));
+  Result := IncludesUnchanged(AEntry.Header);
+  if not Result then
+  begin
+    AMiss := TIndexCacheMiss.Includes;
+    Exit;
+  end;
+  Result := AEntry.Header.UsagesIndexed or not WantsUsages(ALibrary);
+  if not Result then
+  begin
+    AMiss := TIndexCacheMiss.Usages;
+    Exit;
+  end;
   // Kompakten Einträgen fehlen die Symbole aus dem implementation-Teil. Für Bibliotheken reicht
   // das, solange ein Budget gilt: der Index würde sie ohnehin wieder kompakt halten. Sonst liefen
   // bei knappem Budget alle Bibliotheken bei jedem Start durch den Parser (Diagnoselog 15.10.2026).
-  if Result and AEntry.Header.Compact then
+  if AEntry.Header.Compact then
     Result := ALibrary and (FIndex.Budget > 0);
+  if not Result then
+    AMiss := TIndexCacheMiss.Compact;
 end;
 
 function TIndexBuilder.FromCache(const AEntry: TIndexCacheEntry; ALibrary: Boolean; out AUnit: TUnitIndex): Boolean;
@@ -333,6 +356,7 @@ var
   Cached, UnitIndex: TUnitIndex;
   HasCache: Boolean;
   Watch: TStopwatch;
+  Miss: TIndexCacheMiss;
 begin
   if not FFileSystem.FileStamp(AFileName, Stamp) then
   begin
@@ -345,7 +369,8 @@ begin
   finally
     TMonitor.Exit(FCacheLock);
   end;
-  if HasCache and not CacheFits(Entry, ALibrary) then
+  Miss := TIndexCacheMiss.NoEntry;
+  if HasCache and not CacheFits(Entry, ALibrary, Miss) then
     HasCache := False;
   // Zeitstempel oder Inhalt passen: erst jetzt die Symbole dekodieren; ein beschädigter Block
   // zählt wie ein fehlender Cache-Eintrag.
@@ -362,14 +387,20 @@ begin
     Exit(False);
   end;
   Hash := TIndexCache.HashOf(Text);
-  if HasCache and (Entry.Header.Hash = Hash) and FromCache(Entry, ALibrary, Cached) then
+  if HasCache and (Entry.Header.Hash = Hash) then
   begin
-    Cached.Stamp := Stamp;
-    Cached.Library_ := ALibrary;
-    FIndex.AddUnit(Cached);
-    Inc(AResult.FromCache);
-    Exit(True);
-  end;
+    if FromCache(Entry, ALibrary, Cached) then
+    begin
+      Cached.Stamp := Stamp;
+      Cached.Library_ := ALibrary;
+      FIndex.AddUnit(Cached);
+      Inc(AResult.FromCache);
+      Exit(True);
+    end;
+    Miss := TIndexCacheMiss.Damaged;
+  end
+  else if HasCache then
+    Miss := TIndexCacheMiss.Changed;
   Watch := TStopwatch.StartNew;
   UnitIndex := TIndexExtractor.ExtractText(Text, AFileName, DefinesFor(AFileName), IncludeResolver(),
     WantsUsages(ALibrary));
@@ -380,6 +411,7 @@ begin
   UnitIndex.Library_ := ALibrary;
   FIndex.AddUnit(UnitIndex);
   Inc(AResult.Parsed);
+  Inc(AResult.Misses[Miss]);
   Result := True;
 end;
 
