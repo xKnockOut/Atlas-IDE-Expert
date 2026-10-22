@@ -902,6 +902,16 @@ begin
     '      "good": "ListBox1.Items.BeginUpdate;\ntry\n  for I := 1 to 1000 do\n    ListBox1.Items.Add(IntToStr(I));\nfinally\n  ListBox1.Items.EndUpdate;\nend;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "setlength-in-loop",' + #10 +
+    '      "name": "Array grows by one element in a loop",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "performance",' + #10 +
+    '      "description": "SetLength(A, Length(A) + 1) inside a loop copies the dynamic array on every iteration. The rule only reports when A is surely a dynamic array (array of, TArray<T>, an array type ' + 'of the file or a known RTL type such as TBytes), never for strings. In a for loop the count is known: the message names it, and when A is a local variable not used before the loop and only written as ' + 'A[High(A)] or A[Length(A) - 1] inside it, the quick fix sets the length once before the loop and indexes with the loop variable. Otherwise collect the values in a TList<T>.",' + #10 +
+    '      "bad": "for I := 0 to Liste.Count - 1 do\nbegin\n  SetLength(Namen, Length(Namen) + 1);\n  Namen[High(Namen)] := Liste[I].Name;\nend;",' + #10 +
+    '      "good": "SetLength(Namen, Liste.Count);\nfor I := 0 to Liste.Count - 1 do\n  Namen[I] := Liste[I].Name;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "bool-compare",' + #10 +
     '      "name": "Comparison with True or False",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -2781,6 +2791,11 @@ begin
     '      "id": "missing-begin-update",' + #10 +
     '      "name": "Hinzufügen in einer Schleife ohne BeginUpdate",' + #10 +
     '      "description": "Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen.' + ' Standardmäßig aus."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "setlength-in-loop",' + #10 +
+    '      "name": "Array wächst in der Schleife um je ein Element",' + #10 +
+    '      "description": "SetLength(A, Length(A) + 1) in einer Schleife kopiert das dynamische Array bei jedem Durchlauf. Die Regel meldet nur, wenn A sicher ein dynamisches Array ist (array of, TArray<T>' + ', ein Array-Typ der Datei oder ein bekannter RTL-Typ wie TBytes), nie bei Strings. In einer for-Schleife ist die Anzahl bekannt: Die Meldung nennt sie, und ist A eine lokale Variable, die vor der Schl' + 'eife nicht benutzt und darin nur als A[High(A)] bzw. A[Length(A) - 1] beschrieben wird, setzt die Schnellkorrektur die Länge einmal vor der Schleife und indiziert mit der Schleifenvariable. Sonst die ' + 'Werte in einer TList<T> sammeln."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "bool-compare",' + #10 +

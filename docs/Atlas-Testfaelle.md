@@ -4119,3 +4119,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## Array wächst in der Schleife um je ein Element (#974)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JL1 | Das Beispiel aus #974: `Namen: TArray<string>` lokal, `for I := 0 to Liste.Count - 1 do begin SetLength(Namen, Length(Namen) + 1); Namen[High(Namen)] := Liste[I].Name; end;` | Hinweis `setlength-in-loop` an der SetLength-Zeile: „SetLength in der Schleife kopiert Namen bei jedem Durchlauf; die Anzahl Liste.Count ist vorher bekannt.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JL2 | Schnellkorrektur „Länge von Namen vor der Schleife setzen“, danach Strg+Z | `SetLength(Namen, Liste.Count);` vor der Schleife, Rumpf `Namen[I] := Liste[I].Name;` ohne begin/end; keine Meldung mehr; ein Undo-Schritt stellt alles wieder her |
+| JL3 | Wie JL1, aber `for I := 1 to N` und `Namen[Length(Namen) - 1]`; dann mit einer zweiten Anweisung im Rumpf | Anzahl N, Index `I - 1`; mit zweiter Anweisung bleibt begin/end stehen |
+| JL4 | `while not Eof(F)`, `repeat … until`, `for X in Quelle`, SetLength unter `if` | Meldung „… die Länge vor der Schleife setzen oder die Werte in einer TList<T> sammeln.“ ohne Korrektur |
+| JL5 | Array vor der Schleife befüllt, Feld statt lokaler Variable, `Result` einer Funktion, `Break` im Rumpf | Meldung ohne Korrektur |
+| JL6 | `S: string` mit `SetLength(S, Length(S) + 1)` in einer Schleife, `SetLength(A, 10)` in einer Schleife, SetLength außerhalb einer Schleife | Keine Meldung |
+| JL7 | `"setlength-in-loop": "off"`, `"group:performance": "off"` bzw. `exclude` | Keine Meldung |
