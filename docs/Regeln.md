@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 17 |
+| [Compiler vorab](#gruppe-compiler) | 18 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -148,6 +148,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
 | [`dynamic-array-misuse`](#dynamic-array-misuse) | New, Dispose oder SetLength falsch für dynamische Arrays | Bug | Fehler |
 | [`local-routine-as-callback`](#local-routine-as-callback) | Lokale Routine als Prozedurvariable | Bug | Fehler |
+| [`hresult-integer-mix`](#hresult-integer-mix) | Integer und HRESULT vertauscht | Bug | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4599,4 +4600,33 @@ procedure TListe.Sortieren;
 begin
   FListe.Sort(Vergleich);
 end;
+```
+
+<a id="hresult-integer-mix"></a>
+### hresult-integer-mix
+
+**Integer und HRESULT vertauscht** · Bug · Warnung · Gruppe Compiler vorab
+
+Eine Klasse implementiert eine Interface-Methode mit HRESULT-Ergebnis über eine Methode mit Integer- (bzw. LongInt-) Ergebnis oder umgekehrt (wie X1008). Beide sind 32 Bit groß, deshalb fällt es nicht auf; die Bedeutung der Werte (S_FALSE als Erfolg) geht aber verloren; wichtig für COM- und OTA-Code. Zugeordnet wird über Name und Parametertypen samt Zuordnungen wie function IFoo.Bar = Baz; Interfaces samt ihren Vorfahren kommen aus der Datei bzw. dem Index. Stehen Varianten in bedingten Zweigen, meldet die Regel nur, wenn jede Variante abweicht. Korrektur: den Ergebnistyp in Deklaration und Implementierung an das Interface angleichen.
+
+Entspricht der Compilermeldung `X1008`.
+
+Mit Treffer:
+
+```pascal
+IExport = interface
+  function Schreiben: HRESULT; stdcall;
+end;
+…
+  function Schreiben: Integer; stdcall;
+```
+
+Richtig:
+
+```pascal
+IExport = interface
+  function Schreiben: HRESULT; stdcall;
+end;
+…
+  function Schreiben: HRESULT; stdcall;
 ```

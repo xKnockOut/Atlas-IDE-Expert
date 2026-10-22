@@ -4150,3 +4150,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | YL6 | Aufrufe `Vergleich(nil, nil)`, `@Vergleich` an einen `Pointer`, lokale Prozedur an ein Ereignis (`of object`) bzw. an `TProc`, Routine der Unit an `Sort` | Keine Meldung (Ereignis und `TProc` meldet der Compiler mit anderen Codes) |
 | YL7 | `"local-routine-as-callback": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | YL8 | Abgleich mit Delphi: YL1, YL3, YL5 übersetzen | dcc meldet E2094 bzw. E2278 an denselben Stellen, für YL6 nicht E2094 |
+
+## Integer und HRESULT vertauscht (#1040)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| YH1 | Das Beispiel aus #1040: `IExport` mit `function Schreiben: HRESULT; stdcall;`, Klasse `TExport = class(TInterfacedObject, IExport)` mit `function Schreiben: Integer; stdcall;` | Warnung `hresult-integer-mix` an `Schreiben` der Klasse: „IExport.Schreiben liefert HRESULT, die Implementierung Integer (wie X1008).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| YH2 | Schnellkorrektur „Ergebnistyp HRESULT wie im Interface“, danach Strg+Z | Deklaration und Implementierung liefern `HRESULT`, keine Meldung mehr, kompiliert; ein Undo-Schritt nimmt es zurück |
+| YH3 | Umgekehrt: Interface `Integer`, Klasse `HRESULT` bzw. `LongInt` gegen `HRESULT` | Meldung mit vertauschten Typen |
+| YH4 | Zuordnung `function IExport.Lesen = LesenIntern;` mit `LesenIntern: Integer` | Meldung an `LesenIntern` |
+| YH5 | Interface aus einer anderen Unit (Index), auch über einen Interface-Vorfahren | Meldung wie YH1 |
+| YH6 | Passende Typen, gleichnamige Überladungen mit anderen Parametern, Varianten in `{$IFDEF}`-Zweigen, von denen eine passt | Keine Meldung |
+| YH7 | `"hresult-integer-mix": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| YH8 | Abgleich mit Delphi: YH1, YH3, YH4 übersetzen | dcc meldet X1008 (bzw. die Warnung „Integer and HRESULT interchanged“) an denselben Stellen; in der Meldungsliste von Atlas erscheint der Code X1008 als Warnung |
