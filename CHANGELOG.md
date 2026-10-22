@@ -7,6 +7,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Regel `stringlist-unsorted` (#925): `Find` oder `Duplicates := dupIgnore`/`dupError` auf einer `TStringList`, die in der Unit erzeugt, aber nie sortiert wird, meldet Atlas („Find setzt eine sortierte Liste voraus; Namen ist nicht sortiert.“). Korrekturen: `Sorted := True` nach dem Erzeugen oder bei `if Liste.Find(S, I) then` die Form mit `IndexOf`.
 - Regel `out-param-read` (#924): Ein `out`-Parameter, der auf einem Weg gelesen wird, bevor die Routine ihn setzt, meldet Atlas („out-Parameter Text wird gelesen, bevor er gesetzt ist; bei string ist er hier immer leer.“). Die Korrektur macht aus `out` ein `var` in Implementierung und Deklaration.
 - Regel `pchar-of-temporary` (#923): `PChar` eines temporären Strings (`Pfad + '.bak'`, `IntToStr(N)`), das in einer Variablen, einem Feld oder `Result` landet oder an `PostMessage` und verwandte asynchrone Aufrufe geht, meldet Atlas („Der Ausdruck Pfad + '.bak' ist temporär; Ziel zeigt nach dieser Zeile auf freigegebenen Speicher.“). Bei lokalen Variablen legt die Korrektur das Zwischenergebnis in eine Inline-Variable.
 - Regel `threadvar-managed` (#922): Eine `threadvar` mit String, Interface, dynamischem Array oder Variant (auch in einem Record) meldet Atlas („threadvar mit string wird beim Thread-Ende nicht finalisiert (Leck je Thread).“), weil Delphi `threadvar` nicht finalisiert.

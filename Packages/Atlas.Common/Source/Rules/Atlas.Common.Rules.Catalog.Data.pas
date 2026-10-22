@@ -1347,6 +1347,16 @@ begin
     '      "description": "An out parameter is read before the routine sets it on some path through the control flow. For managed types (string, interfaces, dynamic arrays, Variant) the caller has already ' + 'cleared it, so the old value is gone; for other types the value is undefined. Usually var was meant. Uses the control flow graph cannot follow (passing the parameter to a routine, setting a field of i' + 't, @Param) stay silent. High confidence. Quick fix: out becomes var in the implementation and in the declaration.",' + #10 +
     '      "bad": "procedure Anhaengen(out Text: string);\nbegin\n  Text := Text + sLineBreak + ''Ende'';\nend;",' + #10 +
     '      "good": "procedure Anhaengen(var Text: string);\nbegin\n  Text := Text + sLineBreak + ''Ende'';\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "stringlist-unsorted",' + #10 +
+    '      "name": "Find or Duplicates on an unsorted TStringList",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "Find on a TStringList or THashedStringList that is created in the unit but never sorted: Find searches binary and returns wrong results on an unsorted list. The same holds for Du' + 'plicates := dupIgnore or dupError, which only works on sorted lists. Sorted counts as Sorted := True (or any value other than False), Sort, CustomSort, Create(Duplicates, True, ...) and with List do. ' + 'A list passed to a routine or assigned to another variable stays silent. Locals are tracked per routine, fields across the unit. Medium confidence. Quick fixes: Sorted := True after the creation (not ' + 'offered when the list uses Insert, Move or Exchange, which raise on sorted lists) and, for if List.Find(S, I) then, I := List.IndexOf(S) with if I >= 0.",' + #10 +
+    '      "bad": "Namen := TStringList.Create;\nNamen.LoadFromFile(Datei);\nif Namen.Find(Suche, Index) then\n  Namen.Delete(Index);",' + #10 +
+    '      "good": "Namen := TStringList.Create;\nNamen.Sorted := True;\nNamen.LoadFromFile(Datei);\nif Namen.Find(Suche, Index) then\n  Namen.Delete(Index);"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2052,6 +2062,11 @@ begin
     '      "id": "out-param-read",' + #10 +
     '      "name": "out-Parameter gelesen, bevor er gesetzt ist",' + #10 +
     '      "description": "Ein out-Parameter wird auf einem Weg durch den Kontrollfluss gelesen, bevor die Routine ihn setzt. Bei verwalteten Typen (string, Interfaces, dynamische Arrays, Variant) hat der ' + 'Aufrufer ihn schon geleert, der alte Wert ist weg; bei anderen Typen ist der Wert undefiniert. Gemeint war meist var. Verwendungen, denen der Kontrollflussgraph nicht folgen kann (Übergabe an eine Rou' + 'tine, Setzen eines Felds, @Param), bleiben still. Konfidenz hoch. Schnellkorrektur: aus out wird var in Implementierung und Deklaration."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "stringlist-unsorted",' + #10 +
+    '      "name": "Find oder Duplicates auf einer unsortierten TStringList",' + #10 +
+    '      "description": "Find auf einer TStringList oder THashedStringList, die in der Unit erzeugt, aber nie sortiert wird: Find sucht binär und liefert auf einer unsortierten Liste falsche Ergebnisse. ' + 'Ebenso wirkt Duplicates := dupIgnore oder dupError nur bei sortierten Listen. Als sortiert gelten Sorted := True (oder jeder Wert außer False), Sort, CustomSort, Create(Duplicates, True, ...) und with' + ' Liste do. Eine Liste, die an eine Routine übergeben oder einer anderen Variablen zugewiesen wird, bleibt still. Lokale Variablen gelten je Routine, Felder in der ganzen Unit. Konfidenz mittel. Schnel' + 'lkorrekturen: Sorted := True nach dem Erzeugen (nicht, wenn die Liste Insert, Move oder Exchange benutzt, die bei sortierten Listen eine Ausnahme auslösen) und bei if Liste.Find(S, I) then die Form I ' + ':= Liste.IndexOf(S) mit if I >= 0."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
