@@ -2393,7 +2393,8 @@ begin
         Advance;
       FinishNode(Result, Start);
     end
-    else if IsKw('string') then
+    // string und file als Typname im Ausdruck: string(P), SizeOf(string), Default(File) (#1084).
+    else if IsKw(['string', 'file']) then
       Result := Leaf(TSyntaxKind.Identifier, Current.Text)
     else if IsKw(['procedure', 'function']) then
       Result := ParseAnonymousMethod

@@ -2445,6 +2445,22 @@ begin
     '        "E2448",' + #10 +
     '        "E2584"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "typeinfo-invalid",' + #10 +
+    '      "name": "TypeInfo or Default with an invalid argument",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "TypeInfo or Default receives a variable instead of a type (like E2133, E2537: parameters, local, inline and unit variables, fields, properties, Result, for and exception variable' + 's), TypeInfo receives a type without RTTI (enumeration with explicit values, file type, Text/TextFile; E2134), or Default receives a file type (E2538). Names are resolved from the inside out; inside w' + 'ith, in helpers, in methods of types outside the file, for declarations in other conditional branches and when the file or the index declares its own TypeInfo or Default the rule stays silent. Quick f' + 'ix: insert the variable''s declared type.",' + #10 +
+    '      "bad": "Name := GetEnumName(TypeInfo(Status), Ord(Status));",' + #10 +
+    '      "good": "Name := GetEnumName(TypeInfo(TStatus), Ord(Status));",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2133",' + #10 +
+    '        "E2134",' + #10 +
+    '        "E2537",' + #10 +
+    '        "E2538"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3646,6 +3662,11 @@ begin
     '      "id": "attribute-usage-invalid",' + #10 +
     '      "name": "Attribut falsch verwendet",' + #10 +
     '      "description": "Ein Attribut des Compilers steht dort, wo Delphi es ablehnt: [Weak] an einem Feld oder einer Variablen, deren Typ sicher weder Klasse noch Interface ist (eingebaute Werttypen, Re' + 'cords, Aufzählungen, Mengen, Arrays, Zeigertypen der Datei, Aliase verfolgt; wie E2584), [Volatile] an Typ, Routine, Methode oder Property (E2325), Weak, Unsafe, Volatile oder Ref doppelt an derselben' + ' Deklaration (E2326; sich ausschließende Zweige zählen nicht) oder ein Attributargument, das sicher eine Variable oder Routine der Datei ist (E2448; vor dem Attribut sichtbar, nicht durch eine gleichn' + 'amige Konstante, einen Typ oder eine andere Deklaration verdeckt). Eigene Attribute dürfen mehrfach stehen; ein Typ Weak bzw. WeakAttribute in der Datei macht die Regel für diesen Namen still. Keine S' + 'chnellkorrektur."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "typeinfo-invalid",' + #10 +
+    '      "name": "TypeInfo oder Default mit unzulässigem Argument",' + #10 +
+    '      "description": "TypeInfo oder Default bekommt eine Variable statt eines Typs (wie E2133, E2537: Parameter, lokale, Inline- und Unit-Variablen, Felder, Properties, Result, for- und Ausnahmevariab' + 'len), TypeInfo einen Typ ohne RTTI (Aufzählung mit festen Werten, Dateityp, Text/TextFile; E2134) oder Default einen Dateityp (E2538). Namen werden von innen nach außen aufgelöst; in with, in Helfern,' + ' in Methoden von Typen außerhalb der Datei, bei Deklarationen in anderen bedingten Zweigen und wenn Datei oder Index ein eigenes TypeInfo bzw. Default deklarieren, bleibt die Regel still. Korrektur: d' + 'en deklarierten Typ der Variablen einsetzen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
