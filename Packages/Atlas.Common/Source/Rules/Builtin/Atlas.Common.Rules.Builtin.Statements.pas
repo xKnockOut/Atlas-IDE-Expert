@@ -36,6 +36,10 @@
 //                     Q.Edit, Q.Append bzw. Q.Insert ohne folgendes Post, Cancel
 //                     oder CheckBrowseMode in der Routine (#964); still, wenn
 //                     eine andere Routine der Unit Q postet oder Q weitergegeben wird.
+//   transaction-without-rollback
+//                     StartTransaction (BeginTransaction, BeginTrans) ohne Rollback
+//                     im except des unmittelbar folgenden try (#965); Paare aus der
+//                     Option pairs (start, commit, rollback) ersetzen die eingebauten.
 // Grundlage ist der Syntaxbaum: if, while, for, for-in und with ohne Rumpf
 // bzw. mit leerem Block; das Schlüsselwort davor sucht die Regel in den Token.
 
@@ -100,6 +104,21 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  /// <summary>Methoden einer Transaktion für transaction-without-rollback (#965).</summary>
+  TTransactionPair = record
+    Start: string;
+    Commit: string;
+    Rollback: string;
+  end;
+
+  TTransactionWithoutRollbackRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Paare aus "pairs" in AOptions, ohne Option die eingebauten (FireDAC, IBX, dbExpress, ADO).</summary>
+    class function Pairs(const AOptions: string): TArray<TTransactionPair>; static;
+  end;
+
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -107,6 +126,8 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.JSON,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
@@ -1479,6 +1500,238 @@ begin
   Visit(AContext.Tree.Root, nil);
 end;
 
+{ TTransactionWithoutRollbackRule }
+
+const
+  // FireDAC, IBX und dbExpress (StartTransaction), dbExpress ab XE (BeginTransaction), ADO (BeginTrans).
+  BuiltinTransactionPairs: array[0..2, 0..2] of string = (('StartTransaction', 'Commit', 'Rollback'),
+    ('BeginTransaction', 'CommitFreeAndNil', 'RollbackFreeAndNil'), ('BeginTrans', 'CommitTrans', 'RollbackTrans'));
+
+function TTransactionWithoutRollbackRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('transaction-without-rollback', TRuleSeverity.Warning,
+    'Transaktion ohne Rollback');
+end;
+
+class function TTransactionWithoutRollbackRule.Pairs(const AOptions: string): TArray<TTransactionPair>;
+var
+  Index: Integer;
+  Pair: TTransactionPair;
+  Value, List, Item: TJSONValue;
+begin
+  Result := nil;
+  if Trim(AOptions) <> '' then
+  begin
+    Value := TJSONObject.ParseJSONValue(AOptions);
+    try
+      if Value is TJSONObject then
+      begin
+        List := TJSONObject(Value).GetValue('pairs');
+        // Eine eigene Liste ersetzt die eingebauten Paare.
+        if List is TJSONArray then
+        begin
+          for Item in TJSONArray(List) do
+            if (Item is TJSONObject) and TJSONObject(Item).TryGetValue<string>('start', Pair.Start) and
+              TJSONObject(Item).TryGetValue<string>('commit', Pair.Commit) and
+              TJSONObject(Item).TryGetValue<string>('rollback', Pair.Rollback) and (Trim(Pair.Start) <> '') and
+              (Trim(Pair.Rollback) <> '') then
+            begin
+              Pair.Start := Trim(Pair.Start);
+              Pair.Commit := Trim(Pair.Commit);
+              Pair.Rollback := Trim(Pair.Rollback);
+              Result := Result + [Pair];
+            end;
+          Exit;
+        end;
+      end;
+    finally
+      Value.Free;
+    end;
+  end;
+  for Index := Low(BuiltinTransactionPairs) to High(BuiltinTransactionPairs) do
+  begin
+    Pair.Start := BuiltinTransactionPairs[Index, 0];
+    Pair.Commit := BuiltinTransactionPairs[Index, 1];
+    Pair.Rollback := BuiltinTransactionPairs[Index, 2];
+    Result := Result + [Pair];
+  end;
+end;
+
+procedure TTransactionWithoutRollbackRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Lines: TArray<string>;
+  LineBreak: string;
+  Routines: TArray<TSyntaxNode>;
+  Known: TArray<TTransactionPair>;
+
+  function NodeText(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  // Aufruf X.M bzw. X.M(…) in ANode selbst (Anweisung oder rechte Seite einer Zuweisung).
+  function CallIn(ANode: TSyntaxNode; out AReceiver: string; out ACall, AMember: TSyntaxNode): string;
+  var
+    Target: TSyntaxNode;
+  begin
+    Result := '';
+    AReceiver := '';
+    ACall := nil;
+    AMember := nil;
+    if (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount > 0) then
+      Target := ANode[0]
+    else if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) then
+      Target := ANode[1]
+    else if (ANode.Kind = TSyntaxKind.InlineVar) and (ANode.ChildCount > 0) then
+      Target := ANode[ANode.ChildCount - 1]
+    else
+      Exit;
+    if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount > 0) then
+    begin
+      ACall := Target;
+      Target := Target[0];
+    end;
+    if (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount > 0) then
+    begin
+      AReceiver := NodeText(Target[0]);
+      AMember := Target;
+      Result := Target.Name;
+    end;
+  end;
+
+  // Ruft ANode (auch verschachtelt) AReceiver.AMethod auf? Nur in except-Teilen, wenn AInExcept.
+  function Calls(ANode: TSyntaxNode; const AReceiver, AMethod: string; AInExcept, AInside: Boolean): Boolean;
+  var
+    Index: Integer;
+    Receiver: string;
+    Call, Member: TSyntaxNode;
+  begin
+    if ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+      Exit(False);
+    if ANode.Kind = TSyntaxKind.ExceptBlock then
+      AInside := True;
+    if (AInside or not AInExcept) and SameText(CallIn(ANode, Receiver, Call, Member), AMethod) and
+      SameText(Receiver, AReceiver) then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if Calls(ANode[Index], AReceiver, AMethod, AInExcept, AInside) then
+        Exit(True);
+    Result := False;
+  end;
+
+  function OwnLine(ANode: TSyntaxNode): Boolean;
+  var
+    Rest: string;
+  begin
+    Rest := Trim(Copy(Lines[ANode.EndPos.Line], ANode.EndPos.Character + 1, MaxInt));
+    Result := (Trim(Copy(Lines[ANode.StartPos.Line], 1, ANode.StartPos.Character)) = '') and
+      ((Rest = '') or (Rest = ';')) and (ANode.EndPos.Line < High(Lines));
+  end;
+
+  // Korrektur: Anweisungen bis zum Commit in try … except Rollback; raise; end.
+  function RollbackFix(AList: TSyntaxNode; APosition: Integer; const AReceiver: string;
+    const APair: TTransactionPair): TArray<TRuleFix>;
+  var
+    Index, Last, Line: Integer;
+    Receiver, Indent, Step, Text, Arguments: string;
+    Call, Member: TSyntaxNode;
+  begin
+    Result := nil;
+    Last := -1;
+    Arguments := '';
+    for Index := APosition + 1 to AList.ChildCount - 1 do
+      if SameText(CallIn(AList[Index], Receiver, Call, Member), APair.Commit) and SameText(Receiver, AReceiver) then
+      begin
+        Last := Index;
+        // Commit(TD) bzw. CommitFreeAndNil(T): dieselben Argumente für Rollback.
+        if (Call <> nil) and (Call.ChildCount > 1) then
+          Arguments := Copy(NodeText(Call), Length(NodeText(Call[0])) + 1, MaxInt);
+        Break;
+      end;
+    if (Last < 0) or not OwnLine(AList[APosition]) then
+      Exit;
+    for Index := APosition + 1 to Last do
+      if not OwnLine(AList[Index]) then
+        Exit;
+    Indent := TTextLines.IndentOf(Lines[AList[APosition].StartPos.Line]);
+    Step := TRoutineBody.IndentUnit(AContext.Formatting);
+    Text := Indent + 'try' + LineBreak;
+    for Line := AList[APosition + 1].StartPos.Line to AList[Last].EndPos.Line do
+      Text := Text + Step + Lines[Line] + LineBreak;
+    Text := Text + Indent + 'except' + LineBreak + Indent + Step + AReceiver + '.' + APair.Rollback + Arguments +
+      ';' + LineBreak + Indent + Step + 'raise;' + LineBreak + Indent + 'end;' + LineBreak;
+    Result := [TRuleFix.Create(Format('try … except %s.%s; raise; end erzeugen', [AReceiver, APair.Rollback]),
+      [TRuleEdit.Create(TTextRange.Create(AList[APosition + 1].StartPos.Line, 0, AList[Last].EndPos.Line + 1, 0),
+      Text)])];
+  end;
+
+  procedure CheckStatement(AStatement, ARoutine: TSyntaxNode);
+  var
+    Pair: TTransactionPair;
+    Receiver, Name: string;
+    Call, Member, List, Other: TSyntaxNode;
+    Index, Position: Integer;
+    Handled: Boolean;
+  begin
+    Name := CallIn(AStatement, Receiver, Call, Member);
+    if Receiver = '' then
+      Exit;
+    for Pair in Known do
+      if SameText(Name, Pair.Start) then
+      begin
+        List := AStatement.Parent;
+        Position := -1;
+        if List <> nil then
+          for Index := 0 to List.ChildCount - 1 do
+            if List[Index] = AStatement then
+              Position := Index;
+        // Rollback im except des unmittelbar folgenden try (auch in einem try … finally darum).
+        Handled := (Position >= 0) and (Position + 1 < List.ChildCount) and
+          (List[Position + 1].Kind = TSyntaxKind.TryStatement) and
+          Calls(List[Position + 1], Receiver, Pair.Rollback, True, False);
+        // Commit und Rollback in einer anderen Routine der Unit (Transaktion über mehrere Ereignisse).
+        for Other in Routines do
+          if Other <> ARoutine then
+            for Index := 0 to Other.ChildCount - 1 do
+              if Calls(Other[Index], Receiver, Pair.Rollback, False, False) then
+                Handled := True;
+        if not Handled then
+          AReport.Add(TTextRange.Create(Member.EndPos.Line, Member.EndPos.Character - Length(Member.Name),
+            Member.EndPos.Line, Member.EndPos.Character), 'Kein Rollback bei einer Exception; die Transaktion bleibt ' +
+            'offen und hält Sperren.', TRuleConfidence.High, RollbackFix(List, Position, Receiver, Pair));
+        Exit;
+      end;
+  end;
+
+  procedure Visit(ANode, ARoutine: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.RoutineDecl then
+      ARoutine := ANode;
+    if (ARoutine <> nil) and (ANode.Kind in [TSyntaxKind.CallStatement, TSyntaxKind.AssignStatement,
+      TSyntaxKind.InlineVar]) then
+      CheckStatement(ANode, ARoutine);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index], ARoutine);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Known := Pairs(AContext.Options);
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  Routines := nil;
+  AContext.Tree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if ANode.Kind = TSyntaxKind.RoutineDecl then
+        Routines := Routines + [ANode];
+      Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
+    end);
+  Visit(AContext.Tree.Root, nil);
+end;
+
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TEmptyStatementRule.Create);
@@ -1488,6 +1741,7 @@ begin
   ARegistry.Register(TCaseMissingEnumValueRule.Create);
   ARegistry.Register(TDatasetLoopWithoutNextRule.Create);
   ARegistry.Register(TDatasetEditWithoutPostRule.Create);
+  ARegistry.Register(TTransactionWithoutRollbackRule.Create);
 end;
 
 end.

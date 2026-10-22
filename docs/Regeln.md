@@ -9,7 +9,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Fehler finden](#gruppe-find-bugs) | 56 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
-| [Datenbank](#gruppe-database) | 2 |
+| [Datenbank](#gruppe-database) | 3 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -122,6 +122,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|---|---|
 | [`dataset-loop-without-next`](#dataset-loop-without-next) | Datenmengen-Schleife ohne Next | Bug | Fehler |
 | [`dataset-edit-without-post`](#dataset-edit-without-post) | Edit oder Append ohne Post | Bug | Warnung |
+| [`transaction-without-rollback`](#transaction-without-rollback) | Transaktion ohne Rollback | Bug | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4060,4 +4061,36 @@ except
   raise;
 end;
 Protokollieren;
+```
+
+<a id="transaction-without-rollback"></a>
+### transaction-without-rollback
+
+**Transaktion ohne Rollback** · Bug · Warnung · Gruppe Datenbank
+
+StartTransaction ohne Rollback im except des unmittelbar folgenden try. Bei einer Exception bleibt die Transaktion offen und hält Sperren. Erkannt für FireDAC (TFDConnection, TFDTransaction), IBX und dbExpress (StartTransaction/Commit/Rollback), dbExpress ab XE (BeginTransaction/CommitFreeAndNil/RollbackFreeAndNil, auch als T := Conn.BeginTransaction) und ADO (BeginTrans/CommitTrans/RollbackTrans). Die Option pairs ersetzt diese Paare durch eigene. Das Rollback darf in einem try … except innerhalb eines direkt folgenden try … finally stehen. Still, wenn eine andere Routine der Unit dieselbe Verbindung zurückrollt (Transaktion über mehrere Ereignisse). Konfidenz hoch. Korrektur: die Anweisungen bis zum Commit desselben Blocks in try … except mit Rollback (mit den Argumenten des Commit) und raise; einschließen; nur, wenn im selben Block ein Commit folgt.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `pairs` | json | `[{"start":"StartTransaction","commit":"Commit","rollback":"Rollback"},{"start":"BeginTransaction","commit":"CommitFreeAndNil","rollback":"RollbackFreeAndNil"},{"start":"BeginTrans","commit":"CommitTrans","rollback":"RollbackTrans"}]` | Transaktionsmethoden je Bibliothek als [{"start": …, "commit": …, "rollback": …}]; ersetzt die eingebauten Paare. |
+
+Mit Treffer:
+
+```pascal
+Verbindung.StartTransaction;
+Buchen(Auftrag);
+Verbindung.Commit;
+```
+
+Richtig:
+
+```pascal
+Verbindung.StartTransaction;
+try
+  Buchen(Auftrag);
+  Verbindung.Commit;
+except
+  Verbindung.Rollback;
+  raise;
+end;
 ```

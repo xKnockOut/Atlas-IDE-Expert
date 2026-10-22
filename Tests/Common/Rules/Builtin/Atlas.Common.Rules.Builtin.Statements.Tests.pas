@@ -91,6 +91,14 @@ type
     procedure DatasetEditSilentCases;
     [Test]
     procedure DatasetEditOffAndExclude;
+    [Test]
+    procedure TransactionIssueExample;
+    [Test]
+    procedure TransactionVariants;
+    [Test]
+    procedure TransactionSilentCases;
+    [Test]
+    procedure TransactionOptions;
   end;
 
 implementation
@@ -743,6 +751,93 @@ begin
     '{"rules": {"dataset-edit-without-post": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDatasetEditWithoutPostRule.Create, Source,
     '{"rules": {"dataset-edit-without-post": {"exclude": ["Source/*.pas"]}}}', 'Source/Daten.pas'))));
+end;
+
+procedure TStatementRulesTests.TransactionIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Body('  Verbindung.StartTransaction;'#10'  Buchen(Auftrag);'#10'  Verbindung.Commit;'#10);
+  Findings := TRuleAssert.Findings(TTransactionWithoutRollbackRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('transaction-without-rollback', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Kein Rollback bei einer Exception; die Transaktion bleibt offen und hält Sperren.',
+    Findings[0].Message);
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(13, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(29, Findings[0].Range.EndPos.Character);
+  Assert.AreEqual('try … except Verbindung.Rollback; raise; end erzeugen', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Body('  Verbindung.StartTransaction;'#10'  try'#10'    Buchen(Auftrag);'#10'    Verbindung.Commit;'#10 +
+    '  except'#10'    Verbindung.Rollback;'#10'    raise;'#10'  end;'#10), Fixed);
+  TRuleAssert.Silent(TTransactionWithoutRollbackRule.Create, Fixed);
+end;
+
+procedure TStatementRulesTests.TransactionVariants;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // ADO, dbExpress mit Transaktionsobjekt, ohne Commit (keine Korrektur), Rollback auf anderer Verbindung.
+  Source := Body('  ADO.BeginTrans;'#10'  Buchen;'#10'  ADO.CommitTrans;'#10'  T := Sql.BeginTransaction;'#10 +
+    '  Buchen;'#10'  Sql.CommitFreeAndNil(T);'#10'  A.StartTransaction;'#10'  Buchen;'#10 +
+    '  B.StartTransaction;'#10'  try'#10'    Buchen;'#10'    B.Commit;'#10'  except'#10'    A.Rollback;'#10 +
+    '    raise;'#10'  end;'#10);
+  Findings := TRuleAssert.Findings(TTransactionWithoutRollbackRule.Create, Source);
+  Assert.AreEqual(4, Integer(Length(Findings)));
+  Assert.AreEqual('try … except ADO.RollbackTrans; raise; end erzeugen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(Body('  ADO.BeginTrans;'#10'  Buchen;'#10'  ADO.CommitTrans;'#10'  T := Sql.BeginTransaction;'#10 +
+    '  try'#10'    Buchen;'#10'    Sql.CommitFreeAndNil(T);'#10'  except'#10'    Sql.RollbackFreeAndNil(T);'#10 +
+    '    raise;'#10'  end;'#10'  A.StartTransaction;'#10'  Buchen;'#10'  B.StartTransaction;'#10'  try'#10 +
+    '    Buchen;'#10'    B.Commit;'#10'  except'#10'    A.Rollback;'#10'    raise;'#10'  end;'#10),
+    TChangeSignature.ApplyEdits(Source, Findings[1].Fixes[0].Edits));
+  Assert.AreEqual(0, Integer(Length(Findings[2].Fixes)));
+  Assert.AreEqual(0, Integer(Length(Findings[3].Fixes)));
+  Assert.AreEqual(3, Integer(Length(TTransactionWithoutRollbackRule.Pairs(''))));
+  Assert.AreEqual('BeginTrans', TTransactionWithoutRollbackRule.Pairs('')[2].Start);
+end;
+
+procedure TStatementRulesTests.TransactionSilentCases;
+begin
+  // Rollback im folgenden try, try … finally um try … except, Rollback in anderer Routine, ohne Empfänger.
+  TRuleAssert.Silent(TTransactionWithoutRollbackRule.Create, Body('  A.StartTransaction;'#10'  try'#10 +
+    '    Buchen;'#10'    A.Commit;'#10'  except'#10'    on E: Exception do'#10'    begin'#10'      A.Rollback;'#10 +
+    '      raise;'#10'    end;'#10'  end;'#10'  B.StartTransaction;'#10'  try'#10'    try'#10'      Buchen;'#10 +
+    '      B.Commit;'#10'    except'#10'      B.Rollback;'#10'      raise;'#10'    end;'#10'  finally'#10 +
+    '    Aufraeumen;'#10'  end;'#10'  StartTransaction;'#10));
+  TRuleAssert.Silent(TTransactionWithoutRollbackRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'procedure TForm1.BeginnenClick(Sender: TObject);'#10'begin'#10'  Db.StartTransaction;'#10'end;'#10 +
+    'procedure TForm1.VerwerfenClick(Sender: TObject);'#10'begin'#10'  Db.Rollback;'#10'end;'#10'end.');
+end;
+
+procedure TStatementRulesTests.TransactionOptions;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+  Pairs: TArray<TTransactionPair>;
+begin
+  Pairs := TTransactionWithoutRollbackRule.Pairs('{"pairs": [{"start": "Beginnen", "commit": "Festschreiben", ' +
+    '"rollback": "Verwerfen"}]}');
+  Assert.AreEqual(1, Integer(Length(Pairs)));
+  Assert.AreEqual('Verwerfen', Pairs[0].Rollback);
+  Source := Body('  Db.Beginnen;'#10'  Buchen;'#10'  Db.StartTransaction;'#10'  Buchen;'#10);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TTransactionWithoutRollbackRule.Create, Source))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TTransactionWithoutRollbackRule.Create, Source,
+    '{"rules": {"transaction-without-rollback": {"pairs": [{"start": "Beginnen", "commit": "Festschreiben", ' +
+    '"rollback": "Verwerfen"}]}}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTransactionWithoutRollbackRule.Create, Source,
+    '{"rules": {"transaction-without-rollback": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTransactionWithoutRollbackRule.Create, Source,
+    '{"rules": {"transaction-without-rollback": {"exclude": ["Source/*.pas"]}}}', 'Source/Daten.pas'))));
+  TConfigurationParser.Parse('{"rules": {"transaction-without-rollback": {"pairs": [{"open": "A", "close": "B"}]}}}',
+    Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"transaction-without-rollback": {"pairs": [{"start": "A", "commit": "B", ' +
+    '"rollback": "C"}]}, "pair-without-finally": {"pairs": [{"open": "A", "close": "B"}]}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
 end;
 
 initialization

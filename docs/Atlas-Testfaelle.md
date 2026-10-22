@@ -3849,3 +3849,17 @@ Voraussetzung: Server läuft; Unit mit einer Tabelle `tblKunde`.
 | DE4 | `Post`, `Cancel` im if, `CheckBrowseMode`, `Speichern(D)` nach `D.Edit`, `Liste.Insert(0, 'x')` | Keine Meldung |
 | DE5 | `tblKunde.Edit` in `BearbeitenClick`, `tblKunde.Post` in `SpeichernClick` | Keine Meldung |
 | DE6 | `"dataset-edit-without-post": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Transaktion ohne Rollback (#965)
+
+Voraussetzung: Server läuft; Unit mit `Verbindung: TFDConnection`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TR1 | `Verbindung.StartTransaction; Buchen(Auftrag); Verbindung.Commit;` | Warnung `transaction-without-rollback` auf `StartTransaction`: „Kein Rollback bei einer Exception; die Transaktion bleibt offen und hält Sperren.“; im Fenster „Atlas-Prüfung“ (Gruppe Datenbank) und im Befund-Hover (**Abnahme**) |
+| TR2 | Schnellkorrektur „try … except Verbindung.Rollback; raise; end erzeugen“, danach Strg+Z | `try Buchen; Commit; except Rollback; raise; end;` nach `StartTransaction`, Code übersetzt; ein Undo-Schritt stellt es wieder her (**Abnahme**) |
+| TR3 | ADO `BeginTrans … CommitTrans`; dbExpress `T := Sql.BeginTransaction; … Sql.CommitFreeAndNil(T);` | Warnung; Korrektur mit `RollbackTrans` bzw. `RollbackFreeAndNil(T)` |
+| TR4 | `StartTransaction` ohne Commit im selben Block; `Rollback` auf einer anderen Verbindung | Warnung ohne Korrektur |
+| TR5 | `try … except on E: Exception do begin A.Rollback; raise; end; end`, `try try … except Rollback … end finally … end`, Rollback in einem anderen Ereignis-Handler | Keine Meldung |
+| TR6 | `"pairs": [{"start": "Beginnen", "commit": "Festschreiben", "rollback": "Verwerfen"}]` | `Db.Beginnen` gemeldet, `StartTransaction` nicht mehr; `"pairs": [{"open": …}]` meldet einen Konfigurationsfehler |
+| TR7 | `"transaction-without-rollback": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

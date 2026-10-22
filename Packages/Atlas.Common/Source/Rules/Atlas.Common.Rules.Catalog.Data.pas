@@ -2015,6 +2015,40 @@ begin
     '      "description": "After Edit, Append or Insert (without arguments) on a dataset, the same routine calls neither Post nor Cancel (nor CheckBrowseMode). The change stays open and is silently lost on' + ' scrolling or saved unexpectedly later; on an exception in between, nothing cancels it. Silent when another routine of the unit posts or cancels the same dataset (an Edit button with a separate Save b' + 'utton) and when the dataset is passed on after Edit (argument, assignment, with). Medium confidence. Quick fix: wrap the following statements that use the dataset in try … except, with Post at the end' + ' of the try part and Cancel; raise; in the except part.",' + #10 +
     '      "bad": "tblKunde.Edit;\ntblKunde.FieldByName(''Status'').AsInteger := Ord(ksAktiv);\nProtokollieren;",' + #10 +
     '      "good": "tblKunde.Edit;\ntry\n  tblKunde.FieldByName(''Status'').AsInteger := Ord(ksAktiv);\n  tblKunde.Post;\nexcept\n  tblKunde.Cancel;\n  raise;\nend;\nProtokollieren;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "transaction-without-rollback",' + #10 +
+    '      "name": "Transaction without Rollback",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "database",' + #10 +
+    '      "description": "StartTransaction without Rollback in the except part of the try that directly follows. On an exception the transaction stays open and holds locks. Recognized for FireDAC (TFDConn' + 'ection, TFDTransaction), IBX and dbExpress (StartTransaction/Commit/Rollback), dbExpress from XE (BeginTransaction/CommitFreeAndNil/RollbackFreeAndNil, also as T := Conn.BeginTransaction) and ADO (Beg' + 'inTrans/CommitTrans/RollbackTrans). The option pairs replaces these pairs with your own. The Rollback may sit in a try … except inside a try … finally that follows directly. Silent when another routin' + 'e of the unit rolls back the same connection (transaction across several events). High confidence. Quick fix: wrap the statements up to the Commit of the same block in try … except with Rollback (with' + ' the arguments of the Commit) and raise; only when a Commit follows in the same block.",' + #10 +
+    '      "bad": "Verbindung.StartTransaction;\nBuchen(Auftrag);\nVerbindung.Commit;",' + #10 +
+    '      "good": "Verbindung.StartTransaction;\ntry\n  Buchen(Auftrag);\n  Verbindung.Commit;\nexcept\n  Verbindung.Rollback;\n  raise;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "pairs",' + #10 +
+    '          "type": "json",' + #10 +
+    '          "default": [' + #10 +
+    '            {' + #10 +
+    '              "start": "StartTransaction",' + #10 +
+    '              "commit": "Commit",' + #10 +
+    '              "rollback": "Rollback"' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "start": "BeginTransaction",' + #10 +
+    '              "commit": "CommitFreeAndNil",' + #10 +
+    '              "rollback": "RollbackFreeAndNil"' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "start": "BeginTrans",' + #10 +
+    '              "commit": "CommitTrans",' + #10 +
+    '              "rollback": "RollbackTrans"' + #10 +
+    '            }' + #10 +
+    '          ],' + #10 +
+    '          "description": "Transaction methods per library as [{\"start\": …, \"commit\": …, \"rollback\": …}]; replaces the built-in pairs."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3076,6 +3110,17 @@ begin
     '      "id": "dataset-edit-without-post",' + #10 +
     '      "name": "Edit oder Append ohne Post",' + #10 +
     '      "description": "Nach Edit, Append oder Insert (ohne Argumente) einer Datenmenge ruft dieselbe Routine weder Post noch Cancel (noch CheckBrowseMode) auf. Die Änderung bleibt offen und geht beim S' + 'crollen still verloren oder wird später unerwartet gespeichert; bei einer Exception dazwischen bricht sie niemand ab. Still, wenn eine andere Routine der Unit dieselbe Datenmenge postet oder abbricht ' + '(Bearbeiten-Knopf mit eigenem Speichern-Knopf), und wenn die Datenmenge nach Edit weitergegeben wird (Argument, Zuweisung, with). Konfidenz mittel. Korrektur: die folgenden Anweisungen, die die Datenm' + 'enge benutzen, in try … except einschließen, mit Post am Ende des try-Teils und Cancel; raise; im except-Teil."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "transaction-without-rollback",' + #10 +
+    '      "name": "Transaktion ohne Rollback",' + #10 +
+    '      "description": "StartTransaction ohne Rollback im except des unmittelbar folgenden try. Bei einer Exception bleibt die Transaktion offen und hält Sperren. Erkannt für FireDAC (TFDConnection, TFD' + 'Transaction), IBX und dbExpress (StartTransaction/Commit/Rollback), dbExpress ab XE (BeginTransaction/CommitFreeAndNil/RollbackFreeAndNil, auch als T := Conn.BeginTransaction) und ADO (BeginTrans/Comm' + 'itTrans/RollbackTrans). Die Option pairs ersetzt diese Paare durch eigene. Das Rollback darf in einem try … except innerhalb eines direkt folgenden try … finally stehen. Still, wenn eine andere Routin' + 'e der Unit dieselbe Verbindung zurückrollt (Transaktion über mehrere Ereignisse). Konfidenz hoch. Korrektur: die Anweisungen bis zum Commit desselben Blocks in try … except mit Rollback (mit den Argum' + 'enten des Commit) und raise; einschließen; nur, wenn im selben Block ein Commit folgt.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "pairs",' + #10 +
+    '          "description": "Transaktionsmethoden je Bibliothek als [{\"start\": …, \"commit\": …, \"rollback\": …}]; ersetzt die eingebauten Paare."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
