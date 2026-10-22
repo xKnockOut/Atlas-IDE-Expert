@@ -296,8 +296,19 @@ uses
   Atlas.Common.Index.Adapters.DiskFileSystem,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Index.CacheHousekeeping,
+  Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Windows.Projects.DelphiInstallation,
   Shell.Bootstrap;
+
+/// <summary>Neu eingelesene Units nach Grund und belegter Speicher, fürs Diagnoselog (Rückmeldung 22.10.2026).</summary>
+function MissText(const AResult: TIndexBuildResult): string;
+begin
+  Result := Format(' new %d changed %d includes %d usages %d compact %d damaged %d mem %d MB',
+    [AResult.Misses[TIndexCacheMiss.NoEntry], AResult.Misses[TIndexCacheMiss.Changed],
+     AResult.Misses[TIndexCacheMiss.Includes], AResult.Misses[TIndexCacheMiss.Usages],
+     AResult.Misses[TIndexCacheMiss.Compact], AResult.Misses[TIndexCacheMiss.Damaged],
+     TShutdownLeaks.AllocatedBytes div (1024 * 1024)]);
+end;
 
 type
   /// <summary>.pas-Dateien (für uses-unit-not-found auch .dcu, #1016) je Ordner, geteilt von allen Projekten
@@ -529,7 +540,7 @@ begin
     begin
       FProjectPending := False;
       IndexEvent(Format('index project#%d projectStage %d ms parsed %d cached %d missing %d',
-        [FPriority, AElapsedMs, AResult.Parsed, AResult.FromCache, AResult.Missing]));
+        [FPriority, AElapsedMs, AResult.Parsed, AResult.FromCache, AResult.Missing]) + MissText(AResult));
       if Assigned(FOnProjectReady) then
         FOnProjectReady();
     end;
@@ -541,7 +552,7 @@ begin
         FProjectPending := False;
       IndexEvent(Format('index project#%d done %d ms parsed %d cached %d missing %d units %d resolve %d ms parse %d ms%s',
         [FPriority, AElapsedMs, AResult.Parsed, AResult.FromCache, AResult.Missing, FIndex.UnitCount,
-         AResult.ResolveMs, AResult.ParseMs, IfThen(AResult.Cancelled, ' cancelled', '')]));
+         AResult.ResolveMs, AResult.ParseMs, IfThen(AResult.Cancelled, ' cancelled', '')]) + MissText(AResult));
       if not AResult.Cancelled then
       begin
         TMonitor.Enter(FLock);
@@ -569,6 +580,14 @@ begin
         if Assigned(FOnIndexFinished) then
           FOnIndexFinished();
       end;
+    end;
+  FIndexService.OnCacheWritten :=
+    procedure(ALibrary: Boolean; AUnits: Integer; ABytes, AElapsedMs: Int64)
+    begin
+      // Wie oft und wie groß geschrieben wird (Rückmeldung 22.10.2026); ohne Pfad.
+      IndexEvent(Format('index project#%d cacheWrite %s units %d %d KB %d ms mem %d MB',
+        [FPriority, IfThen(ALibrary, 'library', 'project'), AUnits, ABytes div 1024, AElapsedMs,
+         TShutdownLeaks.AllocatedBytes div (1024 * 1024)]));
     end;
   FIndexService.OnCacheRejected :=
     procedure(const AFileName, AReason: string)
