@@ -3,7 +3,9 @@
 // Tests für uses-unit-not-found (#1016): Beispiel aus dem Issue mit Vorschlag,
 // Namespace-Korrektur, Suchpfad-Korrektur in der .dproj, "in 'Pfad'" (F1026),
 // Selbstbezug (F2092), requires (E2202), fehlende Bibliothek (F1027), bedingte
-// Einträge, unsichere Suche, Option searchPaths, Abschalten und Ausnahmen.
+// Einträge, unsichere Suche, Option searchPaths, Abschalten und Ausnahmen;
+// unresolved-attribute (#1019): Beispiel mit Korrektur, aufgelöste und
+// Compiler-Attribute, andere Bibliothek, unbekanntes Attribut, Fassaden-Unit.
 
 interface
 
@@ -40,6 +42,23 @@ type
     procedure EntriesSuggestionsAndDiffEdit;
   end;
 
+  [TestFixture]
+  TUnresolvedAttributeTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure ResolvedAndCompilerAttributesAreSilent;
+    [Test]
+    procedure OtherLibraryAndUnknownAttribute;
+    [Test]
+    procedure SilentWithoutSystemOrInConditional;
+    [Test]
+    procedure FacadeUnitWins;
+    [Test]
+    procedure AttributeOffGroupAndExclude;
+  end;
+
 implementation
 
 uses
@@ -49,6 +68,9 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Projects.UnitLookup,
@@ -348,7 +370,151 @@ begin
   Assert.AreEqual('Form', Suggested[2]);
 end;
 
+{ TUnresolvedAttributeTests }
+
+/// <summary>Index mit System (TCustomAttribute, WeakAttribute), DUnitX.Attributes, der Fassade
+/// DUnitX.TestFramework und Rest.Json.Types (JSONNameAttribute).</summary>
+function AttributeIndex(AWithSystem: Boolean): ISymbolIndex;
+begin
+  Result := TSymbolIndex.Create;
+  if AWithSystem then
+    Result.AddUnit(TIndexExtractor.ExtractText('unit System;'#10'interface'#10'type'#10'  TObject = class'#10 +
+      '  end;'#10'  TCustomAttribute = class(TObject)'#10'  end;'#10'  WeakAttribute = class(TCustomAttribute)'#10 +
+      '  end;'#10'implementation'#10'end.', 'C:\BDS\source\System.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText('unit System.SysUtils;'#10'interface'#10'implementation'#10'end.',
+    'C:\BDS\source\System.SysUtils.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText('unit DUnitX.Attributes;'#10'interface'#10'type'#10 +
+    '  TestFixtureAttribute = class(TCustomAttribute)'#10'  end;'#10'  TestAttribute = class(TCustomAttribute)'#10 +
+    '  end;'#10'implementation'#10'end.', 'C:\BDS\source\DUnitX.Attributes.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText('unit DUnitX.TestFramework;'#10'interface'#10'uses'#10 +
+    '  DUnitX.Attributes;'#10'type'#10'  TestFixtureAttribute = DUnitX.Attributes.TestFixtureAttribute;'#10 +
+    '  TestAttribute = DUnitX.Attributes.TestAttribute;'#10'implementation'#10'end.',
+    'C:\BDS\source\DUnitX.TestFramework.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText('unit Rest.Json.Types;'#10'interface'#10'type'#10 +
+    '  JSONNameAttribute = class(TCustomAttribute)'#10'  public'#10'    constructor Create(const AName: string);'#10 +
+    '  end;'#10'implementation'#10'constructor JSONNameAttribute.Create(const AName: string);'#10'begin'#10'end;'#10 +
+    'end.', 'C:\BDS\source\Rest.Json.Types.pas', nil));
+end;
+
+function TestUnit(const AUses: string): string;
+begin
+  Result := 'unit KundeTests;'#10'interface'#10'uses'#10'  ' + AUses + ';'#10'type'#10'  [TestFixture]'#10 +
+    '  TKundeTests = class'#10'  public'#10'    [Test]'#10'    procedure Lauf;'#10'  end;'#10'implementation'#10 +
+    'procedure TKundeTests.Lauf;'#10'begin'#10'end;'#10'end.';
+end;
+
+function AttributeFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TUnresolvedAttributeRule.Create, ASource, AttributeIndex(True), '', '');
+end;
+
+function AttributeFindings(const ASource, AConfig: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TUnresolvedAttributeRule.Create, ASource, AttributeIndex(True), AConfig,
+    'Tests/KundeTests.pas');
+end;
+
+/// <summary>Wendet das Edit an (eine Zeile, Zeilen mit #10).</summary>
+function Applied(const AText: string; const AEdit: TTextEdit): string;
+var
+  Lines: TArray<string>;
+  Line: string;
+begin
+  Lines := AText.Split([#10]);
+  Line := Lines[AEdit.Range.StartPos.Line];
+  Lines[AEdit.Range.StartPos.Line] := Copy(Line, 1, AEdit.Range.StartPos.Character) + AEdit.NewText +
+    Copy(Line, AEdit.Range.EndPos.Character + 1, MaxInt);
+  Result := string.Join(#10, Lines);
+end;
+
+procedure TUnresolvedAttributeTests.IssueExampleWithFix;
+var
+  Found: TArray<TRuleFinding>;
+  Fixed: string;
+begin
+  Found := AttributeFindings(TestUnit('System.SysUtils'));
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('Attribut TestFixture nicht gefunden und wird ignoriert; die Tests laufen nicht (wie W1074). ' +
+    'Unit DUnitX.TestFramework fehlt.', Found[0].Message);
+  Assert.AreEqual(5, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(3, Found[0].Range.StartPos.Character);
+  Assert.AreEqual('Attribut Test nicht gefunden und wird ignoriert; die Tests laufen nicht (wie W1074). ' +
+    'Unit DUnitX.TestFramework fehlt.', Found[1].Message);
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('uses DUnitX.TestFramework ergänzen', Found[0].Fixes[0].Title);
+  Fixed := Applied(TestUnit('System.SysUtils'), Found[0].Fixes[0].Edits[0]);
+  // Steht die Liste in eigener Zeile, kommt die Unit in eine neue Zeile (wie "uses … ergänzen").
+  Assert.AreEqual(TestUnit('System.SysUtils,'#10'  DUnitX.TestFramework'), Fixed);
+  Assert.AreEqual(0, Integer(Length(AttributeFindings(Fixed))));
+end;
+
+procedure TUnresolvedAttributeTests.ResolvedAndCompilerAttributesAreSilent;
+begin
+  Assert.AreEqual(0, Integer(Length(AttributeFindings(TestUnit('DUnitX.TestFramework')))));
+  Assert.AreEqual(0, Integer(Length(AttributeFindings(TestUnit('DUnitX.Attributes')))));
+  // Eigene Attributklasse, Compiler-Attribute, GUID eines Interface.
+  Assert.AreEqual(0, Integer(Length(AttributeFindings('unit U;'#10'interface'#10'type'#10 +
+    '  MarkeAttribute = class(TCustomAttribute)'#10'  end;'#10'  IFoo = interface'#10 +
+    '    [''{6F1C2B9E-4A37-4D2B-9E61-3C5A7B8D9E01}'']'#10'  end;'#10'  [Marke]'#10'  TFoo = class'#10 +
+    '    [Weak] FRef: TObject;'#10'    [Unsafe] FRoh: TObject;'#10'    [Volatile] FZahl: Integer;'#10'  end;'#10 +
+    'implementation'#10'end.'))));
+end;
+
+procedure TUnresolvedAttributeTests.OtherLibraryAndUnknownAttribute;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := AttributeFindings('unit U;'#10'interface'#10'type'#10'  TKunde = class'#10'  public'#10 +
+    '    [JSONName(''name'')]'#10'    FName: string;'#10'    [GibtEsNicht]'#10'    FAlter: Integer;'#10'  end;'#10 +
+    'implementation'#10'end.');
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('Attribut JSONName nicht gefunden und wird ignoriert (wie W1074). Unit Rest.Json.Types fehlt.',
+    Found[0].Message);
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('Attribut GibtEsNicht nicht gefunden und wird ignoriert (wie W1074).', Found[1].Message);
+  Assert.AreEqual(0, Integer(Length(Found[1].Fixes)));
+end;
+
+procedure TUnresolvedAttributeTests.SilentWithoutSystemOrInConditional;
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TUnresolvedAttributeRule.Create,
+    TestUnit('System.SysUtils'), AttributeIndex(False), '', ''))), 'ohne System im Index');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUnresolvedAttributeRule.Create,
+    TestUnit('System.SysUtils')))), 'ohne Index');
+  // Eine Unit aus uses fehlt im Index: Sie könnte TestFixtureAttribute deklarieren.
+  Assert.AreEqual(0, Integer(Length(AttributeFindings(TestUnit('System.SysUtils, Fremd.Tests')))),
+    'unbekannte Unit in uses');
+  Assert.AreEqual(0, Integer(Length(AttributeFindings('unit U;'#10'interface'#10'type'#10'{$IFDEF TESTS}'#10 +
+    '  [TestFixture]'#10'{$ENDIF}'#10'  TFoo = class'#10'  end;'#10'implementation'#10'end.'))));
+end;
+
+procedure TUnresolvedAttributeTests.FacadeUnitWins;
+var
+  Units: TArray<string>;
+begin
+  Units := TUnresolvedAttributeRule.DeclaringUnits(AttributeIndex(True), 'TestFixture');
+  Assert.AreEqual(1, Integer(Length(Units)));
+  Assert.AreEqual('DUnitX.TestFramework', Units[0]);
+  Units := TUnresolvedAttributeRule.DeclaringUnits(AttributeIndex(True), 'JSONNameAttribute');
+  Assert.AreEqual(1, Integer(Length(Units)));
+  Assert.AreEqual('Rest.Json.Types', Units[0]);
+  Assert.AreEqual(0, Integer(Length(TUnresolvedAttributeRule.DeclaringUnits(nil, 'Test'))));
+end;
+
+procedure TUnresolvedAttributeTests.AttributeOffGroupAndExclude;
+var
+  Text: string;
+begin
+  Text := TestUnit('System.SysUtils');
+  Assert.AreEqual(2, Integer(Length(AttributeFindings(Text, ''))));
+  Assert.AreEqual(0, Integer(Length(AttributeFindings(Text, '{"rules": {"unresolved-attribute": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(AttributeFindings(Text, '{"rules": {"group:compiler": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(AttributeFindings(Text,
+    '{"rules": {"unresolved-attribute": {"exclude": ["Tests/*.pas"]}}}'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TUsesUnitNotFoundTests);
+  TDUnitX.RegisterTestFixture(TUnresolvedAttributeTests);
 
 end.
