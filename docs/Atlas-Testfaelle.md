@@ -4180,3 +4180,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | IZ6 | Feld in `{$IFDEF}`, Alias als Vorfahr, unbekannter Typ, `dispinterface` mit `readonly dispid 1` | Keine Meldung |
 | IZ7 | `"interface-declaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | IZ8 | Abgleich mit Delphi: IZ1 bis IZ5 übersetzen | dcc meldet E2209, E2210, E2207, E2206, E2370, E2205 und E2208 an denselben Stellen; für IZ6 nichts |
+
+## implements-Klausel unzulässig (#1076)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IK1 | Das Beispiel aus #1076: `property Logger: ILogger write FLogger implements ILogger;` in einer Klasse | Fehler `implements-clause-invalid` an `implements`: „implements braucht eine lesbare Property (wie E2261).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| IK2 | `property Zahl: Integer read FZahl implements IA;`, `property C: IC index 1 read GetC implements IC;` | E2259 am Typ `Integer`, E2260 an `index` |
+| IK3 | Getter `function GetB: IB; cdecl;` bzw. `dynamic;` hinter `read` einer implements-Property | E2262 bzw. E2263 am Getter; mit `register` keine Meldung |
+| IK4 | Zwei Properties mit `implements IA`; `procedure IB.Machen = Tun;` in einer Klasse mit `implements IB` | E2257 am zweiten `IA`, E2264 an der Methodenzuordnung |
+| IK5 | `implements` an einer Property eines Records bzw. Interfaces | E2258 an `implements` |
+| IK6 | Unbekannter Typ, Alias, Klassentyp, generisches Interface, Property in `{$IFDEF}` | Keine Meldung |
+| IK7 | `"implements-clause-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| IK8 | Abgleich mit Delphi: IK1 bis IK5 übersetzen | dcc meldet E2261, E2259, E2260, E2262, E2263, E2257, E2264 und E2258 an denselben Stellen; für IK6 nichts |
