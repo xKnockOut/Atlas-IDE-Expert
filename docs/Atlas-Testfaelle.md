@@ -4119,3 +4119,19 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## Zugriff auf ein nicht sichtbares Mitglied (#1008)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NS1 | Das Beispiel aus #1008: in `class function TKonfig.Standard` die Zeile `Result.Pfad := FBasisPfad;` | Fehler `inaccessible-member` an `FBasisPfad`: „FBasisPfad ist ein Instanzfeld und in der Klassenmethode Standard nicht erreichbar (wie E2124).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| NS2 | In einer Klassenmethode bzw. `class function …; static;` eine Instanzmethode (`Free`) und eine Instanz-Property aufrufen | Je eine Meldung „… ist eine Instanzmethode …“ bzw. „… eine Instanz-Property …“ (wie E2124) |
+| NS3 | `Result.FBasisPfad`, `class var` lesen, `Create` aufrufen, `with Result do Pfad := …` in der Klassenmethode | Keine Meldung |
+| NS4 | In einer Unit ohne Bezug zu `TControl`: `Control.Click` (protected in Vcl.Controls) | „TControl.Click ist protected und hier nicht sichtbar (wie E2362).“ |
+| NS5 | Dieselbe Zeile in einer Methode eines Nachfahren von `TControl` bzw. als `TZugang(Control).Click` mit `TZugang = class(TControl)` in der eigenen Unit | Keine Meldung |
+| NS6 | Zwei Klassen in einer Unit, die zweite greift auf ein `strict private`-Feld der ersten zu; danach dasselbe mit `private` | Erst „… ist strict private und hier nicht sichtbar (wie E2361).“, mit `private` keine Meldung |
+| NS7 | `TKind = class(TBasis)` in derselben Unit mit `property Wert: Integer read FWert;`, `FWert` private in `TBasis` | Warnung an `Wert`: „Die Property Wert verweist auf TBasis.FWert, das im Vorfahren private ist (wie W1045).“ |
+| NS8 | `"inaccessible-member": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| NS9 | Abgleich mit Delphi: NS1, NS2, NS4, NS6, NS7 übersetzen | dcc meldet E2124, E2362, E2361 bzw. W1045 an denselben Stellen, für NS3 und NS5 nichts |

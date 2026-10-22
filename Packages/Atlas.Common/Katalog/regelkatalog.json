@@ -2293,6 +2293,23 @@
         "E2129",
         "E2130"
       ]
+    },
+    {
+      "id": "inaccessible-member",
+      "name": "Access to a member that is not visible",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "Access A.B to a member that is not visible at that point: private or strict private of another unit or class (like E2361), protected or strict protected outside the declaring unit and its descendants (like E2362, E2389). Inside a class method or static method, an instance field, method or property of the class is not reachable (like E2124). A property that refers to a private member of an ancestor in the same unit is reported as a warning (like W1045). The rule only reports when name resolution knows the receiver and its type for sure and finds the member only without regard to visibility; protected members stay visible through a class declared in the same unit (TAccess(Control).Click). Declarations in conditional branches, methods of helpers and nested types stay silent.",
+      "bad": "class function TKonfig.Standard: TKonfig;\nbegin\n  Result := TKonfig.Create;\n  Result.Pfad := FBasisPfad;\nend;",
+      "good": "class function TKonfig.Standard: TKonfig;\nbegin\n  Result := TKonfig.Create;\n  Result.Pfad := Result.FBasisPfad;\nend;",
+      "compilerCodes": [
+        "E2361",
+        "E2362",
+        "E2389",
+        "E2124",
+        "W1045"
+      ]
     }
   ]
 }

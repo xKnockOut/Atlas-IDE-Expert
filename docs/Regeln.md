@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 15 |
+| [Compiler vorab](#gruppe-compiler) | 16 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -146,6 +146,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`property-accessor-invalid`](#property-accessor-invalid) | Getter oder Setter einer Property ungültig | Bug | Fehler |
 | [`assign-to-property-member`](#assign-to-property-member) | Zuweisung an ein Feld eines Property-Records | Bug | Fehler |
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
+| [`inaccessible-member`](#inaccessible-member) | Zugriff auf ein nicht sichtbares Mitglied | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4540,4 +4541,33 @@ Richtig:
 
 ```pascal
 Liste.Clear;
+```
+
+<a id="inaccessible-member"></a>
+### inaccessible-member
+
+**Zugriff auf ein nicht sichtbares Mitglied** · Bug · Fehler · Gruppe Compiler vorab
+
+Zugriff A.B auf ein Mitglied, das an der Stelle nicht sichtbar ist: private bzw. strict private einer anderen Unit oder Klasse (wie E2361), protected bzw. strict protected außerhalb der deklarierenden Unit und ihrer Nachfahren (wie E2362, E2389). In einer Klassenmethode oder statischen Methode sind Instanzfelder, -methoden und -Properties der Klasse nicht erreichbar (wie E2124). Eine Property, die auf ein private-Mitglied eines Vorfahren derselben Unit verweist, meldet die Regel als Warnung (wie W1045). Gemeldet wird nur, wenn die Namensauflösung den Empfänger und seinen Typ sicher kennt und das Mitglied erst ohne Rücksicht auf die Sichtbarkeit findet; protected-Mitglieder bleiben über eine Klasse der eigenen Unit sichtbar (TZugang(Control).Click). Deklarationen in bedingten Zweigen, Methoden von Helfern und verschachtelten Typen bleiben still.
+
+Entspricht der Compilermeldung `E2361`, `E2362`, `E2389`, `E2124`, `W1045`.
+
+Mit Treffer:
+
+```pascal
+class function TKonfig.Standard: TKonfig;
+begin
+  Result := TKonfig.Create;
+  Result.Pfad := FBasisPfad;
+end;
+```
+
+Richtig:
+
+```pascal
+class function TKonfig.Standard: TKonfig;
+begin
+  Result := TKonfig.Create;
+  Result.Pfad := Result.FBasisPfad;
+end;
 ```
