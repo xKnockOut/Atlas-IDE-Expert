@@ -2374,6 +2374,24 @@
           "description": "Also report Round on money amounts."
         }
       ]
+    },
+    {
+      "id": "string-if-chain",
+      "name": "Long if chain over the same string",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "An if … else if chain that compares the same string (identifier or A.B, no function calls) with at least min literals: S = 'x', 'x' = S, SameText(S, 'x'), also combined with or, in at least two branches (a single if with or stays silent). case IndexStr(S, [...]) of or a dictionary is shorter and faster. Only comparisons that are always compiled together with the head count ({$IFDEF} branches inside the chain do not). Off by default, high confidence. Quick fix as in the code action if chain to case (#646): case IndexStr(…) of, IndexText(…) for SameText, comparisons joined with or share one label, the rest of the chain becomes else, System.StrUtils is added to uses. No fix when comments or directives sit between the branches, a literal appears twice or = and SameText are mixed.",
+      "bad": "if Befehl = 'neu' then Neu\nelse if Befehl = 'oeffnen' then Oeffnen\nelse if Befehl = 'speichern' then Speichern\nelse if Befehl = 'beenden' then Beenden;",
+      "good": "case IndexStr(Befehl, ['neu', 'oeffnen', 'speichern', 'beenden']) of\n  0: Neu;\n  1: Oeffnen;\n  2: Speichern;\n  3: Beenden;\nend;",
+      "options": [
+        {
+          "name": "min",
+          "type": "integer",
+          "default": 4,
+          "description": "Number of comparisons of the same string from which the rule reports; at least 2."
+        }
+      ]
     }
   ]
 }

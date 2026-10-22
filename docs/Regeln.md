@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 30 |
+| [Stil und Metriken](#gruppe-style) | 31 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -260,6 +260,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`commented-out-code`](#commented-out-code) | Auskommentierter Code | Code Smell | Hinweis |
 | [`now-for-elapsed-time`](#now-for-elapsed-time) | Laufzeit mit Now gemessen | Code Smell | Hinweis |
 | [`money-as-float`](#money-as-float) | Geldbetrag als Gleitkommazahl | Bug | Hinweis |
+| [`string-if-chain`](#string-if-chain) | Lange if-Kette über denselben String | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -4670,5 +4671,36 @@ Richtig:
 TPosition = record
   Menge: Integer;
   Preis: Currency;
+end;
+```
+
+<a id="string-if-chain"></a>
+### string-if-chain
+
+**Lange if-Kette über denselben String** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine if … else if-Kette vergleicht denselben String (Bezeichner oder A.B, keine Funktionsaufrufe) mit mindestens min Literalen: S = 'x', 'x' = S, SameText(S, 'x'), auch mit or verknüpft, in mindestens zwei Zweigen (ein einzelnes if mit or bleibt still). case IndexStr(S, [...]) of oder ein Dictionary ist kürzer und schneller. Es zählen nur Vergleiche, die immer zusammen mit dem Kopf übersetzt werden ({$IFDEF}-Zweige innerhalb der Kette nicht). Standard aus, Konfidenz hoch. Schnellkorrektur wie die Code-Aktion if-Kette in case umwandeln (#646): case IndexStr(…) of, IndexText(…) bei SameText, mit or verknüpfte Vergleiche teilen sich eine Marke, der Rest der Kette wird zum else, System.StrUtils kommt ins uses. Keine Korrektur bei Kommentaren oder Direktiven zwischen den Zweigen, doppelten Literalen oder gemischtem = und SameText.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `min` | integer | `4` | Ab so vielen Vergleichen desselben Strings meldet die Regel; mindestens 2. |
+
+Mit Treffer:
+
+```pascal
+if Befehl = 'neu' then Neu
+else if Befehl = 'oeffnen' then Oeffnen
+else if Befehl = 'speichern' then Speichern
+else if Befehl = 'beenden' then Beenden;
+```
+
+Richtig:
+
+```pascal
+case IndexStr(Befehl, ['neu', 'oeffnen', 'speichern', 'beenden']) of
+  0: Neu;
+  1: Oeffnen;
+  2: Speichern;
+  3: Beenden;
 end;
 ```

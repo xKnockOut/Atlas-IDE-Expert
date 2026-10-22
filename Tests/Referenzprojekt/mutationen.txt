@@ -107,3 +107,4 @@ load-without-encoding | Ref.Daten.Kunden.pas | FAbfrage.SQL.Text := 'SELECT Id, 
 registry-hklm-write | Ref.Sprache.Merkmale.pas | Result := 'Andere'; | Reg.RootKey := HKEY_LOCAL_MACHINE;\n  Reg.WriteString('Plattform', 'Andere');\n  Result := 'Andere';
 now-for-elapsed-time | Ref.Sprache.Merkmale.pas | Result := IntToStr(AWert); | Beginn := Now;\n  Result := FloatToStr(Now - Beginn);
 money-as-float | Ref.Daten.Verwendung.pas | function NeuerAuftrag(ANummer: Integer): TAuftrag;\nbegin | function NeuerAuftrag(ANummer: Integer): TAuftrag;\nvar\n  Brutto: Double;\nbegin
+string-if-chain | Ref.Sprache.Merkmale.pas | Result := Self = ''; | if Self = 'a' then Result := True\n  else if Self = 'b' then Result := True\n  else if Self = 'c' then Result := True\n  else if Self = 'd' then Result := True\n  else Result := Self = '';
