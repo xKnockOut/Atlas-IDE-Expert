@@ -8,7 +8,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|
 | [Fehler finden](#gruppe-find-bugs) | 56 |
 | [Exceptions](#gruppe-exceptions) | 8 |
-| [Threads](#gruppe-threads) | 11 |
+| [Threads](#gruppe-threads) | 12 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -111,6 +111,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`queue-nil-in-package`](#queue-nil-in-package) | TThread.Queue(nil, …) in einem Package | Bug | Warnung |
 | [`blocking-call-in-main-thread`](#blocking-call-in-main-thread) | Blockierender Aufruf im Hauptthread | Code Smell | Warnung |
 | [`thread-loop-without-terminated`](#thread-loop-without-terminated) | Thread-Schleife ohne Terminated | Bug | Warnung |
+| [`anonymous-thread-not-started`](#anonymous-thread-not-started) | Anonymer Thread nie gestartet | Bug | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -3926,4 +3927,31 @@ begin
     Sleep(1000);
   end;
 end;
+```
+
+<a id="anonymous-thread-not-started"></a>
+### anonymous-thread-not-started
+
+**Anonymer Thread nie gestartet** · Bug · Warnung · Gruppe Threads
+
+TThread.CreateAnonymousThread(…) legt den Thread angehalten und mit FreeOnTerminate an. Ohne Start läuft er nie, und weil er nie endet, wird er auch nie freigegeben. Gemeldet für den Aufruf als eigene Anweisung und für eine lokale Variable (auch Inline-Variable), die weder mit Start oder Resume gestartet noch weitergegeben wird (Argument, Zuweisung, Result, Feld). Eigenschaften wie FreeOnTerminate oder OnTerminate zu setzen gilt nicht als Weitergabe. Konfidenz hoch. Korrektur: .Start anhängen; bei einer Variablen T.Start; nach der letzten Anweisung desselben Blocks, die sie erwähnt.
+
+Mit Treffer:
+
+```pascal
+TThread.CreateAnonymousThread(
+  procedure
+  begin
+    Synchronisieren;
+  end);
+```
+
+Richtig:
+
+```pascal
+TThread.CreateAnonymousThread(
+  procedure
+  begin
+    Synchronisieren;
+  end).Start;
 ```

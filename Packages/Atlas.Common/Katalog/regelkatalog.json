@@ -1955,6 +1955,16 @@
       "description": "A while or repeat loop in TThread.Execute, or in a method of the thread class that is only called from there (also through other such methods, including nested routines), does not check Terminated. Terminate then has no effect, and WaitFor or Free hang when the program shuts down. Reported for endless loops (while True, until False) and for waiting loops with Sleep, WaitFor, WaitForSingleObject, WaitForMultipleObjects, MsgWaitForMultipleObjects, Wait or Yield whose condition and body never mention Terminated or CheckTerminated. Thread classes come from the unit and the index. Bounded loops, for loops, anonymous methods and classes that override TerminatedSet (they end their loops another way) stay silent. High confidence. Quick fix: add Terminated to the loop condition (while True → while not Terminated, otherwise and not Terminated; until False → until Terminated, otherwise or Terminated).",
       "bad": "procedure TPoller.Execute;\nbegin\n  while True do\n  begin\n    Abfragen;\n    Sleep(1000);\n  end;\nend;",
       "good": "procedure TPoller.Execute;\nbegin\n  while not Terminated do\n  begin\n    Abfragen;\n    Sleep(1000);\n  end;\nend;"
+    },
+    {
+      "id": "anonymous-thread-not-started",
+      "name": "Anonymous thread never started",
+      "category": "bug",
+      "severity": "warning",
+      "group": "threads",
+      "description": "TThread.CreateAnonymousThread(…) creates the thread suspended with FreeOnTerminate set. Without Start the thread never runs, and because it never terminates it is never freed either. Reported for the call as a statement of its own and for a local variable (also an inline variable) that is never started with Start or Resume and not passed on (argument, assignment, Result, field). Setting properties such as FreeOnTerminate or OnTerminate does not count as passing on. High confidence. Quick fix: append .Start; for a variable, T.Start; after the last statement of the same block that mentions it.",
+      "bad": "TThread.CreateAnonymousThread(\n  procedure\n  begin\n    Synchronisieren;\n  end);",
+      "good": "TThread.CreateAnonymousThread(\n  procedure\n  begin\n    Synchronisieren;\n  end).Start;"
     }
   ]
 }

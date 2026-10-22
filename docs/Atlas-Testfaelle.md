@@ -3797,3 +3797,16 @@ Voraussetzung: Server läuft; Unit mit `TPoller = class(TThread)` und `procedure
 | TL5 | `if Terminated then Exit;` im Rumpf, `CheckTerminated`, `for`-Schleife, `while I < Count do Inc(I)`, anonyme Methode, Klasse mit `TerminatedSet` | Keine Meldung |
 | TL6 | Programm mit dem Thread aus TL1 schließen, mit und ohne Korrektur | Ohne Korrektur hängt das Beenden in `WaitFor`, mit Korrektur endet es sofort |
 | TL7 | `"thread-loop-without-terminated": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Anonymer Thread nie gestartet (#961)
+
+Voraussetzung: Server läuft; Unit mit `uses System.Classes`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AT1 | `TThread.CreateAnonymousThread(procedure begin Synchronisieren; end);` | Warnung `anonymous-thread-not-started` auf `CreateAnonymousThread`: „Der anonyme Thread wird nie gestartet und nie freigegeben.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| AT2 | Schnellkorrektur „.Start anhängen“, danach Strg+Z | `end).Start;`, Meldung weg; ein Undo-Schritt stellt es wieder her (**Abnahme**) |
+| AT3 | `T := TThread.CreateAnonymousThread(Arbeit); T.FreeOnTerminate := False;` ohne `T.Start` | Warnung; Korrektur „T.Start ergänzen“ setzt `T.Start;` nach die Eigenschaftszeile |
+| AT4 | `var Aufgabe := TThread.CreateAnonymousThread(Arbeit);` ohne Start | Warnung mit Korrektur `Aufgabe.Start;` |
+| AT5 | `.Start` angehängt, `T.Start` bzw. `T.Resume` später, `FListe.Add(T)`, `Result := …`, Feld `FThread := …`, `Fabrik.CreateAnonymousThread(…)` | Keine Meldung |
+| AT6 | `"anonymous-thread-not-started": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

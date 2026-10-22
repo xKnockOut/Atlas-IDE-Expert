@@ -27,6 +27,8 @@
 //                                       (#959); kurzes Sleep unter "maxSleepMs" nur in Warteschleifen.
 //   thread-loop-without-terminated      while/repeat ohne Terminated in Execute eines Threads und in Methoden,
 //                                       die nur von dort kommen (#960); nur Endlos- und Warteschleifen.
+//   anonymous-thread-not-started        TThread.CreateAnonymousThread(…) ohne Start, als Anweisung oder in
+//                                       einer lokalen Variablen, die weder gestartet noch weitergegeben wird (#961).
 //
 // Ein Thread mit Free ohne Terminate und WaitFor wird nicht gemeldet:
 // TThread.Destroy ruft beides selbst auf.
@@ -123,6 +125,12 @@ type
   end;
 
   TThreadLoopWithoutTerminatedRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TAnonymousThreadNotStartedRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1947,6 +1955,149 @@ begin
         Visit(Routine);
 end;
 
+{ TAnonymousThreadNotStartedRule }
+
+const
+  AnonymousThreadMessage = 'Der anonyme Thread wird nie gestartet und nie freigegeben.';
+
+function TAnonymousThreadNotStartedRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('anonymous-thread-not-started', TRuleSeverity.Warning,
+    'Anonymer Thread nie gestartet');
+end;
+
+procedure TAnonymousThreadNotStartedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Lines: TArray<string>;
+  LineBreak: string;
+
+  // TThread.CreateAnonymousThread(…) bzw. System.Classes.TThread.CreateAnonymousThread(…)?
+  function IsCreation(ANode: TSyntaxNode): Boolean;
+  begin
+    Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) and
+      (ANode[0].Kind = TSyntaxKind.MemberAccess) and SameText(ANode[0].Name, 'CreateAnonymousThread') and
+      (ANode[0].ChildCount > 0) and SameText(MethodPart(SourceText(AContext.Text, ANode[0][0])), 'TThread');
+  end;
+
+  // Wie benutzt die Routine die Variable sonst? Gestartet, nur Eigenschaften gesetzt oder weitergegeben.
+  procedure Usage(ANode, AParent, AGrand, ATarget: TSyntaxNode; const AName: string; var AStarted,
+    AEscapes: Boolean);
+  var
+    Index: Integer;
+  begin
+    if (ANode <> ATarget) and (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, AName) then
+    begin
+      if (AParent <> nil) and (AParent.Kind = TSyntaxKind.MemberAccess) and (AParent[0] = ANode) then
+      begin
+        if MatchText(AParent.Name, ['Start', 'Resume']) then
+          AStarted := True
+        else if not ((AGrand <> nil) and (AGrand.Kind = TSyntaxKind.AssignStatement) and (AGrand[0] = AParent)) then
+          AEscapes := True;
+      end
+      else
+        AEscapes := True;
+      Exit;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Usage(ANode[Index], ANode, AParent, ATarget, AName, AStarted, AEscapes);
+  end;
+
+  // T.Start; nach der letzten Anweisung derselben Liste, die T erwähnt.
+  function StartFix(AAssign: TSyntaxNode; const AName: string): TArray<TRuleFix>;
+  var
+    List, Last: TSyntaxNode;
+    Index, Position: Integer;
+    Rest: string;
+  begin
+    Result := nil;
+    List := AAssign.Parent;
+    if (List = nil) or not IsStatementList(List) then
+      Exit;
+    Last := AAssign;
+    Position := -1;
+    for Index := 0 to List.ChildCount - 1 do
+      if List[Index] = AAssign then
+        Position := Index
+      else if (Position >= 0) and Mentions(List[Index], AName) then
+        Last := List[Index];
+    Rest := Trim(Copy(Lines[Last.EndPos.Line], Last.EndPos.Character + 1, MaxInt));
+    if ((Rest <> '') and (Rest <> ';')) or (Last.EndPos.Line >= High(Lines)) then
+      Exit;
+    Result := [TRuleFix.Create(Format('%s.Start ergänzen', [AName]), [TRuleEdit.Create(
+      TTextRange.Create(Last.EndPos.Line + 1, 0, Last.EndPos.Line + 1, 0),
+      TTextLines.IndentOf(Lines[AAssign.StartPos.Line]) + AName + '.Start;' + LineBreak)])];
+  end;
+
+  // Lokale Variable der Routine (var-Abschnitt oder Inline-Variable)?
+  function DeclaresLocal(ANode: TSyntaxNode; const AName: string): Boolean;
+  var
+    Index: Integer;
+    Name: string;
+  begin
+    for Index := 0 to ANode.ChildCount - 1 do
+    begin
+      if ANode[Index].Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar] then
+        for Name in SplitString(ANode[Index].Name, ',') do
+          if SameText(Trim(Name), AName) then
+            Exit(True);
+      if (ANode[Index].Kind <> TSyntaxKind.RoutineDecl) and DeclaresLocal(ANode[Index], AName) then
+        Exit(True);
+    end;
+    Result := False;
+  end;
+
+  procedure Visit(ANode, ARoutine: TSyntaxNode);
+  var
+    Index: Integer;
+    Started, Escapes: Boolean;
+    Creation, Target: TSyntaxNode;
+    Name: string;
+  begin
+    if ANode.Kind = TSyntaxKind.RoutineDecl then
+      ARoutine := ANode;
+    // TThread.CreateAnonymousThread(…); als eigene Anweisung.
+    if (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount > 0) and IsCreation(ANode[0]) then
+      AReport.Add(NameRange(ANode[0][0]), AnonymousThreadMessage, TRuleConfidence.High,
+        [TRuleFix.Create('.Start anhängen', [TRuleEdit.Create(TTextRange.Create(ANode[0].EndPos, ANode[0].EndPos),
+        '.Start')])]);
+    // T := TThread.CreateAnonymousThread(…); bzw. var T := …; mit lokaler Variable, die nie gestartet und
+    // nicht weitergegeben wird.
+    Creation := nil;
+    Target := nil;
+    Name := '';
+    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and (ARoutine <> nil) and
+      (ANode[0].Kind = TSyntaxKind.Identifier) and IsCreation(ANode[1]) and DeclaresLocal(ARoutine, ANode[0].Name) then
+    begin
+      Creation := ANode[1];
+      Target := ANode[0];
+      Name := Target.Name;
+    end
+    else if (ANode.Kind = TSyntaxKind.InlineVar) and (ANode.ChildCount > 0) and (Pos(',', ANode.Name) = 0) and
+      (ARoutine <> nil) and IsCreation(ANode[ANode.ChildCount - 1]) then
+    begin
+      Creation := ANode[ANode.ChildCount - 1];
+      Name := ANode.Name;
+    end;
+    if Creation <> nil then
+    begin
+      Started := False;
+      Escapes := False;
+      Usage(ARoutine, nil, nil, Target, Name, Started, Escapes);
+      if not Started and not Escapes then
+        AReport.Add(NameRange(Creation[0]), AnonymousThreadMessage, TRuleConfidence.High, StartFix(ANode, Name));
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index], ARoutine);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text,
+    'CreateAnonymousThread') then
+    Exit;
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  Visit(AContext.Tree.Root, nil);
+end;
+
 procedure RegisterConcurrencyRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TThreadVclAccessRule.Create);
@@ -1960,6 +2111,7 @@ begin
   ARegistry.Register(TQueueNilInPackageRule.Create);
   ARegistry.Register(TBlockingCallInMainThreadRule.Create);
   ARegistry.Register(TThreadLoopWithoutTerminatedRule.Create);
+  ARegistry.Register(TAnonymousThreadNotStartedRule.Create);
 end;
 
 end.
