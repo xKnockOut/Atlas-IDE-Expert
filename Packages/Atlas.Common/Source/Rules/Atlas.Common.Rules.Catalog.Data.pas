@@ -2326,6 +2326,25 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "E2373"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "generic-constraint-violated",' + #10 +
+    '      "name": "Type argument violates a constraint",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A type argument does not satisfy the constraint of its type parameter: class (like E2511), record (like E2512), constructor (like E2513), an interface (like E2514) or a base clas' + 's (like E2515). Inside methods of a generic type of this file the rule also reports T.Create without a constructor constraint (like E2568) and method calls on values of a type parameter without any co' + 'nstraint (like E2571). The generic type is resolved by name resolution including the number of type parameters, its constraints come from its declaration in the file or in the symbol index. Arguments ' + 'that are type parameters themselves, aliases and types whose ancestry cannot be resolved are not reported. Quick fix for a type parameter of this file that stands alone in its group: add the constrain' + 't (T: class, constructor or T: class).",' + #10 +
+    '      "bad": "  TFabrik<T: class> = class\n    function Neu: T;\n  end;\n…\n  Result := T.Create;",' + #10 +
+    '      "good": "  TFabrik<T: class, constructor> = class\n    function Neu: T;\n  end;\n…\n  Result := T.Create;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2511",' + #10 +
+    '        "E2512",' + #10 +
+    '        "E2513",' + #10 +
+    '        "E2514",' + #10 +
+    '        "E2515",' + #10 +
+    '        "E2568",' + #10 +
+    '        "E2571"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3501,6 +3520,11 @@ begin
     '      "id": "inherited-abstract-call",' + #10 +
     '      "name": "inherited ruft eine abstrakte Methode auf",' + #10 +
     '      "description": "inherited mit ausdrücklichem Methodennamen, etwa inherited Zeichnen(C), obwohl die Methode im Vorfahren abstract ist (wie E2373). Ein bloßes inherited; übergeht der Compiler bei ' + 'abstrakten Methoden still; das meldet die Regel nicht. Die Methode löst die Namensauflösung samt Überladungen auf; gemeldet wird nur, wenn jede passende Überladung abstrakt ist. Korrektur: den Aufruf ' + 'entfernen, wenn er als eigene Anweisung in einem begin…end steht."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "generic-constraint-violated",' + #10 +
+    '      "name": "Typargument verletzt eine Einschränkung",' + #10 +
+    '      "description": "Ein Typargument erfüllt die Einschränkung seines Typparameters nicht: class (wie E2511), record (wie E2512), constructor (wie E2513), ein Interface (wie E2514) oder eine Basiskla' + 'sse (wie E2515). In Methoden eines generischen Typs dieser Datei meldet die Regel außerdem T.Create ohne constructor-Einschränkung (wie E2568) und Methodenaufrufe auf Werten eines Typparameters ganz o' + 'hne Einschränkung (wie E2571). Den generischen Typ löst die Namensauflösung samt Zahl der Typparameter auf, seine Einschränkungen stammen aus seiner Deklaration in der Datei oder im Symbolindex. Argum' + 'ente, die selbst Typparameter sind, Aliase und Typen mit unvollständiger Vorfahrenkette meldet die Regel nicht. Korrektur für einen Typparameter dieser Datei, der allein in seiner Gruppe steht: die Ei' + 'nschränkung ergänzen (T: class, constructor bzw. T: class)."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

@@ -4132,3 +4132,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | IA4 | Bloßes `inherited;`, Zwischenklasse überschreibt die Methode, passende Überladung ist konkret, Vorfahr unbekannt | Keine Meldung |
 | IA5 | `"inherited-abstract-call": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | IA6 | Abgleich mit Delphi: IA1 und IA3 übersetzen | dcc meldet E2373 an denselben Stellen, für IA4 nichts |
+
+## Typargument verletzt eine Einschränkung (#1028)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GC1 | Das Beispiel aus #1028: `TFabrik<T: class> = class` mit `function Neu: T;`, im Rumpf `Result := T.Create;` | Fehler `generic-constraint-violated` an `T.Create`: „T hat keine constructor-Einschränkung; T.Create ist nicht erlaubt (wie E2568).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| GC2 | Schnellkorrektur „Einschränkung ergänzen“, danach Strg+Z | Kopf wird `TFabrik<T: class, constructor> = class`, keine Meldung mehr; ein Undo-Schritt |
+| GC3 | `var L: TObjectList<Integer>;` mit `System.Generics.Collections` in uses | „Integer ist kein Klassentyp; T von TObjectList verlangt class (wie E2511).“ |
+| GC4 | Eigene Typen `TPuffer<T: record>`, `TSortierer<T: IVergleich>`, `TZoo<T: TTier>` mit `TPuffer<TAuto>`, `TSortierer<TAuto>`, `TZoo<TAuto>` | Meldungen wie E2512, E2514, E2515 an den Typargumenten |
+| GC5 | `TBox<T>` mit `procedure Zeige(V: T);` und `V.Free;` im Rumpf | „T hat keine class- oder Interface-Einschränkung; V.Free ist nicht erlaubt (wie E2571).“; Korrektur ergänzt `: class` |
+| GC6 | `TList<T>` innerhalb eines generischen Typs, `TObjectList<TKunde>`, `T: constructor` mit `T.Create`, `T: TTier` mit `T.Create` | Keine Meldung |
+| GC7 | `"generic-constraint-violated": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| GC8 | Abgleich mit Delphi: GC1, GC3 bis GC5 übersetzen | dcc meldet die genannten Codes an denselben Stellen, für GC6 nichts; weicht ein Code ab (etwa E2003 statt E2571), den Fall im Issue nachtragen |

@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 16 |
+| [Compiler vorab](#gruppe-compiler) | 17 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -147,6 +147,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`assign-to-property-member`](#assign-to-property-member) | Zuweisung an ein Feld eines Property-Records | Bug | Fehler |
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
 | [`inherited-abstract-call`](#inherited-abstract-call) | inherited ruft eine abstrakte Methode auf | Bug | Fehler |
+| [`generic-constraint-violated`](#generic-constraint-violated) | Typargument verletzt eine Einschränkung | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4569,4 +4570,33 @@ procedure TKreis.Zeichnen(C: TCanvas);
 begin
   C.Ellipse(FRahmen);
 end;
+```
+
+<a id="generic-constraint-violated"></a>
+### generic-constraint-violated
+
+**Typargument verletzt eine Einschränkung** · Bug · Fehler · Gruppe Compiler vorab
+
+Ein Typargument erfüllt die Einschränkung seines Typparameters nicht: class (wie E2511), record (wie E2512), constructor (wie E2513), ein Interface (wie E2514) oder eine Basisklasse (wie E2515). In Methoden eines generischen Typs dieser Datei meldet die Regel außerdem T.Create ohne constructor-Einschränkung (wie E2568) und Methodenaufrufe auf Werten eines Typparameters ganz ohne Einschränkung (wie E2571). Den generischen Typ löst die Namensauflösung samt Zahl der Typparameter auf, seine Einschränkungen stammen aus seiner Deklaration in der Datei oder im Symbolindex. Argumente, die selbst Typparameter sind, Aliase und Typen mit unvollständiger Vorfahrenkette meldet die Regel nicht. Korrektur für einen Typparameter dieser Datei, der allein in seiner Gruppe steht: die Einschränkung ergänzen (T: class, constructor bzw. T: class).
+
+Entspricht der Compilermeldung `E2511`, `E2512`, `E2513`, `E2514`, `E2515`, `E2568`, `E2571`.
+
+Mit Treffer:
+
+```pascal
+  TFabrik<T: class> = class
+    function Neu: T;
+  end;
+…
+  Result := T.Create;
+```
+
+Richtig:
+
+```pascal
+  TFabrik<T: class, constructor> = class
+    function Neu: T;
+  end;
+…
+  Result := T.Create;
 ```

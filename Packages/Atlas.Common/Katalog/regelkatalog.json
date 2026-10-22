@@ -2306,6 +2306,25 @@
       "compilerCodes": [
         "E2373"
       ]
+    },
+    {
+      "id": "generic-constraint-violated",
+      "name": "Type argument violates a constraint",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A type argument does not satisfy the constraint of its type parameter: class (like E2511), record (like E2512), constructor (like E2513), an interface (like E2514) or a base class (like E2515). Inside methods of a generic type of this file the rule also reports T.Create without a constructor constraint (like E2568) and method calls on values of a type parameter without any constraint (like E2571). The generic type is resolved by name resolution including the number of type parameters, its constraints come from its declaration in the file or in the symbol index. Arguments that are type parameters themselves, aliases and types whose ancestry cannot be resolved are not reported. Quick fix for a type parameter of this file that stands alone in its group: add the constraint (T: class, constructor or T: class).",
+      "bad": "  TFabrik<T: class> = class\n    function Neu: T;\n  end;\n…\n  Result := T.Create;",
+      "good": "  TFabrik<T: class, constructor> = class\n    function Neu: T;\n  end;\n…\n  Result := T.Create;",
+      "compilerCodes": [
+        "E2511",
+        "E2512",
+        "E2513",
+        "E2514",
+        "E2515",
+        "E2568",
+        "E2571"
+      ]
     }
   ]
 }
