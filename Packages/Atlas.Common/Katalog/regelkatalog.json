@@ -2331,6 +2331,16 @@
           "description": "Units in which hard-coded paths are allowed, by unit name; * at the end matches a prefix (App.Config*)."
         }
       ]
+    },
+    {
+      "id": "filename-compare-case",
+      "name": "File names compared with =",
+      "category": "bug",
+      "severity": "hint",
+      "group": "robustness",
+      "description": "A comparison with = or <> where one side is a file or path name: the result of ExtractFileName, ExtractFilePath, ExtractFileDir, ExtractFileExt, ExpandFileName, ChangeFileExt and related System.SysUtils functions, of TPath.GetFileName, GetExtension, GetDirectoryName, GetFullPath, Combine and related methods, or a variable or property whose name ends in FileName, or Application.ExeName. On Windows Kunde.pas and kunde.PAS are the same file. Comparisons with an empty string, nil or a literal without letters stay silent, as does ExtractFileDir(X) = X (both sides come from the same text). Medium confidence. Quick fix: SameFileName(A, B), or not SameFileName(A, B) for <>; adds System.SysUtils to uses if needed.",
+      "bad": "if ExtractFileName(Datei) = 'Config.ini' then",
+      "good": "if SameFileName(ExtractFileName(Datei), 'Config.ini') then"
     }
   ]
 }

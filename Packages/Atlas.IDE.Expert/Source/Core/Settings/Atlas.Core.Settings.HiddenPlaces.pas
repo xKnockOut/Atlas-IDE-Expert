@@ -280,7 +280,7 @@ begin
   if FAnchors.Count = 0 then
     Exit(False);
   // Beim Zeichnen kommt dieselbe Datei Zeile für Zeile: Pfad nur einmal umrechnen.
-  if AFileName <> FLastFile then
+  if not SameFileName(AFileName, FLastFile) then
   begin
     FLastFile := AFileName;
     FLastInside := TAtlasHiddenPlaces.Relative(FFolder, AFileName, FLastRelative);

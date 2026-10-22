@@ -4161,3 +4161,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | HP5 | Dasselbe Literal in einer DUnitX-Test-Unit | Keine Meldung |
 | HP6 | Konstante `'C:\ProgramData\Atlas'` in `App.Pfade`, dann `"hardcoded-path": {"allowUnits": ["App.*"]}` | Erst Meldung, danach keine; auf der Seite „Prüfregeln“ steht `allowUnits` unter der Regel |
 | HP7 | `"hardcoded-path": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |
+
+## Dateinamen mit = verglichen (#970)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FC1 | Das Beispiel aus #970: `if ExtractFileName(Datei) = 'Config.ini' then` | Hinweis `filename-compare-case` am Vergleich: „Dateinamen unterscheiden unter Windows nicht nach Groß-/Kleinschreibung; SameFileName vergleicht richtig.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| FC2 | Schnellkorrektur „SameFileName verwenden“ auf FC1 | `if SameFileName(ExtractFileName(Datei), 'Config.ini') then`; ein Undo-Schritt macht alles rückgängig (**Abnahme**) |
+| FC3 | `if Dialog.FileName <> FLetzteDatei then`, Korrektur anwenden | Meldung; Korrektur ergibt `not SameFileName(Dialog.FileName, FLetzteDatei)` |
+| FC4 | `TPath.GetExtension(Datei) = '.pas'`, `Application.ExeName = Pfad` | Je eine Meldung |
+| FC5 | `ExtractFileName(Datei) = ''`, `ExtractFileExt(Datei) = '.1'`, `ExtractFileDir(Dir) = Dir`, `SameFileName(A, B)` | Keine Meldung |
+| FC6 | FC1 in einer Unit ohne `System.SysUtils` in der uses-Klausel (Datei-Funktion über eigene Unit), Korrektur anwenden | `System.SysUtils` wird ergänzt, das Ergebnis übersetzt |
+| FC7 | `"filename-compare-case": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |
