@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Settings.RuleTable.Tests;
 
 // Tests für das Modell der Seite „Prüfregeln“ (#909): Katalogfelder,
-// Optionen, Ausnahmen, Hauptschalter je Gruppe und Suche.
+// Optionen, Ausnahmen, Hauptschalter je Gruppe und Suche; Gegenregeln (#1025).
 
 interface
 
@@ -38,6 +38,8 @@ type
     procedure SearchFindsCategory;
     [Test]
     procedure ChangesListOnlyChangedRules;
+    [Test]
+    procedure OverridingRuleOnlyWhenEnabled;
   end;
 
 implementation
@@ -308,6 +310,29 @@ begin
   Assert.AreEqual('', Changes[2].Value);
   Assert.AreEqual(0, Integer(Length(TAtlasRuleTable.Changes('', ''))));
   Changes := nil;
+end;
+
+procedure TAtlasRuleTableTests.OverridingRuleOnlyWhenEnabled;
+const
+  Text = '{"rules": [' +
+    '{"id": "redundant-begin-end", "category": "code-smell", "severity": "hint", "group": "style",' +
+    ' "overriddenBy": ["missing-begin-end"]},' +
+    '{"id": "missing-begin-end", "category": "code-smell", "severity": "hint", "group": "style"}]}';
+var
+  Value: TJSONValue;
+  Rows: TArray<TAtlasRuleRow>;
+begin
+  Value := TJSONObject.ParseJSONValue(Text);
+  try
+    Rows := TAtlasRuleTable.Rows(Value, '');
+    Assert.AreEqual('missing-begin-end', string.Join(',', Rows[0].OverriddenBy));
+    Assert.AreEqual('missing-begin-end', TAtlasRuleTable.OverridingRule(Rows, Rows[0]));
+    Assert.AreEqual('', TAtlasRuleTable.OverridingRule(Rows, Rows[1]));
+    Rows := TAtlasRuleTable.Rows(Value, '{"missing-begin-end": "off"}');
+    Assert.AreEqual('', TAtlasRuleTable.OverridingRule(Rows, Rows[0]));
+  finally
+    Value.Free;
+  end;
 end;
 
 initialization

@@ -582,6 +582,7 @@ var
   Index, Value, Choice: Integer;
   Row: TAtlasRuleRow;
   Present: Boolean;
+  Overriding: string;
 begin
   Index := SelectedRow;
   Present := Index >= 0;
@@ -608,6 +609,11 @@ begin
         FTitle.Caption := Row.Name + '  ·  ' + Row.Id;
       FMark.Visible := Row.Experimental;
       FDescription.Caption := Row.Description;
+      // Gegenregel an (#1025): z. B. redundant-begin-end schweigt, solange missing-begin-end an ist.
+      Overriding := TAtlasRuleTable.OverridingRule(FRows, Row);
+      if Overriding <> '' then
+        FDescription.Caption := Trim(Row.Description + sLineBreak + sLineBreak +
+          TAtlasStrings.Fmt(TAtlasTextId.RulesOverriddenBy, [Overriding]));
       if FSeverity.Items.Count > 0 then
       begin
         FSeverity.Items[0] := TAtlasStrings.Fmt(TAtlasTextId.RulesSeverityDefault,

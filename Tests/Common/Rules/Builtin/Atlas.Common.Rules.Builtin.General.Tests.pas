@@ -43,6 +43,16 @@ type
     procedure HardcodedStringInStatements;
     [Test]
     procedure GuidLineFormat;
+    [Test]
+    procedure GuidSyntaxIssueExample;
+    [Test]
+    procedure GuidSyntaxProblems;
+    [Test]
+    procedure GuidSyntaxBracesAndConstants;
+    [Test]
+    procedure GuidSyntaxSilentCases;
+    [Test]
+    procedure GuidSyntaxOffAndExclude;
   end;
 
 implementation
@@ -53,6 +63,7 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.General,
+  Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
 const
@@ -282,6 +293,99 @@ begin
     '{"rules": {"group:style": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyFinallyRule.Create, Source,
     '{"rules": {"empty-finally": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+end;
+
+function Logger(const AGuid: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  ILogger = interface'#10'    [''' + AGuid + ''']'#10 +
+    '    procedure Schreiben;'#10'  end;'#10'implementation'#10'end.';
+end;
+
+procedure TGeneralRulesTests.GuidSyntaxIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Logger('{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6}');
+  Findings := TRuleAssert.Findings(TGuidSyntaxInvalidRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('guid-syntax-invalid', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Der letzte Block der GUID hat 11 statt 12 Zeichen (wie E2204).', Findings[0].Message);
+  Assert.AreEqual(4, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(44, Findings[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Neue GUID erzeugen', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreNotEqual(Source, Fixed);
+  TRuleAssert.Silent(TGuidSyntaxInvalidRule.Create, Fixed);
+  TRuleAssert.Silent(TGuidSyntaxInvalidRule.Create, Logger('{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C}'));
+end;
+
+procedure TGeneralRulesTests.GuidSyntaxProblems;
+begin
+  Assert.AreEqual('', TGuidSyntaxInvalidRule.Problem('{6a1f3b2c-9d4e-4f5a-8b7c-1d2e3f4a5b6c}'));
+  Assert.AreEqual('Der GUID fehlen die geschweiften Klammern',
+    TGuidSyntaxInvalidRule.Problem('6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C'));
+  Assert.AreEqual('Der GUID fehlt die öffnende geschweifte Klammer',
+    TGuidSyntaxInvalidRule.Problem('6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C}'));
+  Assert.AreEqual('Der GUID fehlt die schließende geschweifte Klammer',
+    TGuidSyntaxInvalidRule.Problem('{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C'));
+  Assert.AreEqual('Die GUID hat 4 statt 5 Blöcke',
+    TGuidSyntaxInvalidRule.Problem('{6A1F3B2C-9D4E-4F5A-8B7C1D2E3F4A5B6C}'));
+  Assert.AreEqual('Der erste Block der GUID hat 7 statt 8 Zeichen',
+    TGuidSyntaxInvalidRule.Problem('{6A1F3B2-9D4E-4F5A-8B7C-1D2E3F4A5B6C}'));
+  Assert.AreEqual('Der dritte Block der GUID hat 5 statt 4 Zeichen',
+    TGuidSyntaxInvalidRule.Problem('{6A1F3B2C-9D4E-4F5AB-8B7C-1D2E3F4A5B6C}'));
+  Assert.AreEqual('Die GUID enthält „G“, das ist keine Hexadezimalziffer',
+    TGuidSyntaxInvalidRule.Problem('{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6G}'));
+  Assert.AreEqual('Der GUID fehlt die schließende geschweifte Klammer', TGuidSyntaxInvalidRule.Problem('{'));
+  Assert.AreEqual('Der GUID fehlen die geschweiften Klammern', TGuidSyntaxInvalidRule.Problem(''));
+end;
+
+procedure TGeneralRulesTests.GuidSyntaxBracesAndConstants;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Nur die Klammern fehlen: sichere Korrektur zuerst; Vorfahr in Klammern; typisierte Konstante.
+  Source := 'unit U;'#10'interface'#10'type'#10'  ILogger = interface(IInterface)'#10 +
+    '    [''6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C'']'#10'  end;'#10'const'#10 +
+    '  IID_Logger: TGUID = ''{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6X}'';'#10'implementation'#10'end.';
+  Findings := TRuleAssert.Findings(TGuidSyntaxInvalidRule.Create, Source);
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('Der GUID fehlen die geschweiften Klammern (wie E2204).', Findings[0].Message);
+  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Geschweifte Klammern ergänzen', Findings[0].Fixes[0].Title);
+  Assert.IsTrue(Findings[0].Fixes[0].Safe);
+  Assert.IsTrue(TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits).Contains(
+    '[''{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C}'']'));
+  Assert.AreEqual('Die GUID enthält „X“, das ist keine Hexadezimalziffer (wie E2204).', Findings[1].Message);
+  Assert.AreEqual(7, Findings[1].Range.StartPos.Line);
+end;
+
+procedure TGeneralRulesTests.GuidSyntaxSilentCases;
+begin
+  // Gültige GUID, Konstante als GUID, Verkettung, string-Konstante, Attribut mit Text.
+  TRuleAssert.Silent(TGuidSyntaxInvalidRule.Create, 'unit U;'#10'interface'#10'const'#10 +
+    '  Kennung = ''{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C}'';'#10'  Text: string = ''kein GUID'';'#10 +
+    '  Teil: TGUID = ''{6A1F3B2C-9D4E-4F5A-'' + ''8B7C-1D2E3F4A5B6C}'';'#10'type'#10'  IA = interface'#10 +
+    '    [Kennung]'#10'  end;'#10'  IB = interface'#10'    [''{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6D}'']'#10 +
+    '  end;'#10'  IC = interface;'#10'  [Beschreibung(''kurz'')]'#10'  TKlasse = class'#10'  end;'#10 +
+    'implementation'#10'end.');
+end;
+
+procedure TGeneralRulesTests.GuidSyntaxOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Logger('{6A1F3B2C}');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGuidSyntaxInvalidRule.Create, Source,
+    '{"rules": {"guid-syntax-invalid": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGuidSyntaxInvalidRule.Create, Source,
+    '{"rules": {"guid-syntax-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
 end;
 
 initialization

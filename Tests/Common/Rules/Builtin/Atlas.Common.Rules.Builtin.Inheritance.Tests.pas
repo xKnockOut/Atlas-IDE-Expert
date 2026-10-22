@@ -38,8 +38,6 @@ type
     /// Ohne Fix stieg ClassMethods rekursiv durch jeden Ausdruck ab und lief in 256 KB Stapel über.</summary>
     [Test]
     procedure DeepExpressionDoesNotOverflowStack;
-end;
-
     [Test]
     procedure ShadowedNameIssueExample;
     [Test]

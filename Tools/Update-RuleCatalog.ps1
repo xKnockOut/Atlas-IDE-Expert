@@ -100,6 +100,14 @@ foreach ($Rule in $Base.rules) {
     if (($Rule.PSObject.Properties.Name -contains 'level') -and (@('A', 'B', 'T') -cnotcontains [string]$Rule.level)) {
         $Problems.Add("Regel '$($Rule.id)': ungültige Stufe '$($Rule.level)' (erlaubt A, B, T)")
     }
+    # Gegenregeln (#1025): Ist eine davon an, meldet die Regel nichts.
+    if ($Rule.PSObject.Properties.Name -contains 'overriddenBy') {
+        foreach ($Other in @($Rule.overriddenBy)) {
+            if (-not ($Base.rules | Where-Object { $_.id -eq $Other })) {
+                $Problems.Add("Regel '$($Rule.id)': unbekannte Gegenregel '$Other'")
+            }
+        }
+    }
 }
 
 # Abgleich mit dem Quelltext
@@ -209,6 +217,9 @@ foreach ($Row in $Rows) {
     }
     if ($Row.Rule.PSObject.Properties.Name -contains 'level') {
         [void]$Doc.Append("Stufe $($LevelNames[[string]$Row.Rule.level]).`r`n`r`n")
+    }
+    if ($Row.Rule.PSObject.Properties.Name -contains 'overriddenBy') {
+        [void]$Doc.Append("Schweigt, solange $((@($Row.Rule.overriddenBy) | ForEach-Object { '[`' + $_ + '`](#' + $_ + ')' }) -join ' oder ') an ist.`r`n`r`n")
     }
     if ($Row.Options.Count -gt 0) {
         [void]$Doc.Append("| Option | Typ | Vorgabe | Bedeutung |`r`n|---|---|---|---|`r`n")

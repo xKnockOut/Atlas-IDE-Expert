@@ -679,7 +679,8 @@ type
     ProblemsColumnCompiler, ProblemsCompilerConfirmed, ProblemsCompilerConfirmedCode, SettingsProblemsCompilerMerge,
     ProblemsCompilerMergeMerge, ProblemsCompilerMergeBoth, SettingsProblemsShowCompilerCode, RulesTypeLevel,
     BreadcrumbsDisabled, FuseTrippedTitle, FuseTrippedEnable, FuseTrippedOpenLog, ServerCrashedCause, ServerHeldTitle,
-    ServerHeldText, ServerHeldPhase, LogBrokenTitle, LogBrokenText);
+    ServerHeldText, ServerHeldPhase, LogBrokenTitle, LogBrokenText,
+    RulesOverriddenBy);
 
   TAtlasStrings = class
   private class var
@@ -2161,7 +2162,8 @@ const
      '%s; zweimal, kein automatischer Neustart',
      'Atlas-Protokoll gestört',
      'Atlas kann nicht in %s schreiben: %s. Atlas versucht es bei jeder Zeile weiter und vermerkt die Lücke im ' +
-     'Protokoll, sobald es wieder geht.'),
+     'Protokoll, sobald es wieder geht.',
+     'Wird durch %s übersteuert: Solange diese Regel an ist, meldet diese hier nichts.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3547,7 +3549,8 @@ const
      '%s; twice, no automatic restart',
      'Atlas log disrupted',
      'Atlas cannot write to %s: %s. Atlas keeps trying with every line and notes the gap in the log once writing ' +
-     'works again.'));
+     'works again.',
+     'Overridden by %s: while that rule is on, this one reports nothing.'));
 
 { TAtlasStrings }
 

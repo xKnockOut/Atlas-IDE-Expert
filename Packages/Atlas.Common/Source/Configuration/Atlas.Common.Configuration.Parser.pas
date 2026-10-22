@@ -45,14 +45,14 @@ uses
 
 const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
-  BooleanRuleOptions: array[0..9] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
-    'includeRecords', 'includeFormVariables', 'checkUses', 'allowLazyInit', 'checkRound', 'includeFields');
+  BooleanRuleOptions: array[0..11] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
+    'includeRecords', 'includeFormVariables', 'checkUses', 'allowLazyInit', 'checkRound', 'includeFields', 'allowSingleLineExit', 'allowSameLine');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  StringListRuleOptions: array[0..19] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+  StringListRuleOptions: array[0..20] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
     'allowTables', 'types', 'allowProperties', 'threadSafeTypes', 'switchConstants', 'namePatterns', 'kinds');
   /// <summary>Erlaubte Einträge von kinds bei deprecated-symbol (#1018).</summary>
-  DeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
+  DeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library', 'statements');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
   NumberListRuleOptions: array[0..0] of string = ('allowed');
   /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>

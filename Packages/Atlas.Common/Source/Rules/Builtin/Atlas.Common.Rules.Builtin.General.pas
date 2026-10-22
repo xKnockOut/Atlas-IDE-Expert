@@ -7,6 +7,8 @@
 //                             (als einzige Anweisung eines if/while … mit mehreren Anweisungen: begin … end)
 //   interface-guid            Interface ohne GUID; mit Supports/as/QueryInterface hohe Konfidenz
 //   duplicate-interface-guid  zwei Interfaces der Datei mit derselben GUID
+//   guid-syntax-invalid       GUID-Literal eines Interfaces oder einer TGUID-Konstante nicht in der Form
+//                             '{8-4-4-4-12}' (#1072, wie E2204); Korrektur: neue GUID bzw. Klammern ergänzen
 //   file-header               Dateikopf weicht von der Vorlage ab (Option "template", Standard aus)
 //   hardcoded-string          Text im Code statt resourcestring (Standard aus, niedrige Konfidenz)
 
@@ -39,6 +41,15 @@ type
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TGuidSyntaxInvalidRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Was an der GUID AGuid (ohne Anführungszeichen) falsch ist, z. B. "Der letzte Block der GUID
+    /// hat 11 statt 12 Zeichen"; '' bei der Form {8-4-4-4-12} aus Hexadezimalziffern.</summary>
+    class function Problem(const AGuid: string): string; static;
   end;
 
   TFileHeaderRule = class(TInterfacedObject, IRule)
@@ -496,6 +507,96 @@ begin
   end;
 end;
 
+{ TGuidSyntaxInvalidRule }
+
+function TGuidSyntaxInvalidRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('guid-syntax-invalid', TRuleSeverity.Error, 'GUID mit falscher Schreibweise');
+end;
+
+class function TGuidSyntaxInvalidRule.Problem(const AGuid: string): string;
+const
+  Lengths: array[0..4] of Integer = (8, 4, 4, 4, 12);
+  Ordinals: array[0..4] of string = ('erste', 'zweite', 'dritte', 'vierte', 'letzte');
+var
+  Blocks: TArray<string>;
+  Index, Position: Integer;
+begin
+  Result := '';
+  if not AGuid.StartsWith('{') and not AGuid.EndsWith('}') then
+    Exit('Der GUID fehlen die geschweiften Klammern');
+  if not AGuid.StartsWith('{') then
+    Exit('Der GUID fehlt die öffnende geschweifte Klammer');
+  if not AGuid.EndsWith('}') or (Length(AGuid) < 2) then
+    Exit('Der GUID fehlt die schließende geschweifte Klammer');
+  Blocks := Copy(AGuid, 2, Length(AGuid) - 2).Split(['-']);
+  if Length(Blocks) <> Length(Lengths) then
+    Exit(Format('Die GUID hat %d statt 5 Blöcke', [Length(Blocks)]));
+  for Index := 0 to High(Blocks) do
+    if Length(Blocks[Index]) <> Lengths[Index] then
+      Exit(Format('Der %s Block der GUID hat %d statt %d Zeichen', [Ordinals[Index], Length(Blocks[Index]),
+        Lengths[Index]]));
+  for Index := 0 to High(Blocks) do
+    for Position := 1 to Length(Blocks[Index]) do
+      if not CharInSet(Blocks[Index][Position], ['0'..'9', 'A'..'F', 'a'..'f']) then
+        Exit(Format('Die GUID enthält „%s“, das ist keine Hexadezimalziffer', [Blocks[Index][Position]]));
+end;
+
+procedure TGuidSyntaxInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+
+  procedure CheckLiteral(AIndex: Integer);
+  var
+    Text, Guid, Message: string;
+    Fixes: TArray<TRuleFix>;
+    Next: Integer;
+  begin
+    Text := Tokens[AIndex].Text;
+    // Nur ein einzelnes Literal ohne #-Zeichen; Verkettungen wertet erst der Compiler aus.
+    if not Text.StartsWith('''') or not Text.EndsWith('''') or (Length(Text) < 2) then
+      Exit;
+    Next := NextCode(Tokens, AIndex + 1);
+    if (Next > High(Tokens)) or not (Tokens[Next].IsSymbol(']') or Tokens[Next].IsSymbol(';')) then
+      Exit;
+    Guid := AnsiDequotedStr(Text, '''');
+    Message := TGuidSyntaxInvalidRule.Problem(Guid);
+    if Message = '' then
+      Exit;
+    Fixes := nil;
+    if TGuidSyntaxInvalidRule.Problem('{' + Guid + '}') = '' then
+      Fixes := [TRuleFix.Create('Geschweifte Klammern ergänzen', [TRuleEdit.Create(TokenRange(Tokens[AIndex]),
+        '''{' + Guid + '}''')], True)];
+    Fixes := Fixes + [TRuleFix.Create('Neue GUID erzeugen', [TRuleEdit.Create(TokenRange(Tokens[AIndex]),
+      Copy(GuidLine, 2, Length(GuidLine) - 2))])];
+    AReport.Add(TokenRange(Tokens[AIndex]), Message + ' (wie E2204).', TRuleConfidence.High, Fixes);
+  end;
+
+var
+  Declaration: TInterfaceDeclaration;
+  Index, Colon, Equals: Integer;
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  for Declaration in InterfaceDeclarations(Tokens) do
+    if (Declaration.GuidToken >= 0) and (Tokens[Declaration.GuidToken].Kind = TPascalTokenKind.StringLiteral) then
+      CheckLiteral(Declaration.GuidToken);
+  // Typisierte Konstanten: Name: TGUID = '…';
+  for Index := 0 to High(Tokens) do
+  begin
+    if (Tokens[Index].Kind <> TPascalTokenKind.StringLiteral) then
+      Continue;
+    Equals := PreviousCode(Tokens, Index);
+    if (Equals < 0) or not Tokens[Equals].IsSymbol('=') then
+      Continue;
+    Colon := PreviousCode(Tokens, PreviousCode(Tokens, Equals));
+    if (Colon >= 0) and Tokens[Colon].IsSymbol(':') and
+      SameText(Tokens[PreviousCode(Tokens, Equals)].Text, 'TGUID') then
+      CheckLiteral(Index);
+  end;
+end;
+
 { TFileHeaderRule }
 
 function TFileHeaderRule.Descriptor: TRuleDescriptor;
@@ -594,6 +695,7 @@ begin
   ARegistry.Register(TEmptyFinallyRule.Create);
   ARegistry.Register(TInterfaceGuidRule.Create);
   ARegistry.Register(TDuplicateInterfaceGuidRule.Create);
+  ARegistry.Register(TGuidSyntaxInvalidRule.Create);
   ARegistry.Register(TFileHeaderRule.Create);
   ARegistry.Register(THardcodedStringRule.Create);
 end;
