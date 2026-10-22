@@ -1,6 +1,7 @@
 ﻿unit Atlas.Core.Diagnostics.FeatureTable.Tests;
 
-// Startreihenfolge, Abbau und Stufen der Feature-Tabelle (Code-Review S-03).
+// Startreihenfolge, Abbau und Stufen der Feature-Tabelle (Code-Review S-03);
+// Startanteile je Teil (Bericht N4).
 
 interface
 
@@ -25,6 +26,8 @@ type
     procedure WantedSeesLevel;
     [Test]
     procedure StopAllContinuesAfterFailure;
+    [Test]
+    procedure TimesEachStartedPart;
   end;
 
 implementation
@@ -32,6 +35,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Diagnostics.SafeMode,
+  Atlas.Core.Diagnostics.StartTimes,
   Atlas.Core.Diagnostics.FeatureTable;
 
 type
@@ -246,6 +250,50 @@ begin
     Assert.AreEqual(1, Integer(Length(Failures)));
     Assert.AreEqual('Kaputt: EArgumentException', Failures[0]);
   finally
+    Probe.Free;
+    Table.Free;
+  end;
+end;
+
+procedure TFeatureTableTests.TimesEachStartedPart;
+var
+  Table: TAtlasFeatureTable;
+  Probe: TProbe;
+  Times: TAtlasStartTimes;
+  Clock: TFunc<Int64>;
+  Tick: Int64;
+  Parts: TArray<TAtlasStartPart>;
+begin
+  // Bericht N4: Beim Start misst die Tabelle jedes gestartete Teil, damit ein langsamer Start seine Ursache nennt.
+  Tick := 0;
+  Clock :=
+    function: Int64
+    begin
+      Inc(Tick, 25);
+      Result := Tick;
+    end;
+  Table := TAtlasFeatureTable.Create;
+  Probe := TProbe.Create;
+  Times := TAtlasStartTimes.Create(Clock);
+  try
+    Probe.AddTo(Table, 0, TAtlasSafeLevel.Minimal);
+    Probe.AddTo(Table, 1, TAtlasSafeLevel.Normal);
+    Probe.AddTo(Table, 2, TAtlasSafeLevel.Minimal);
+    Table.Times := Times;
+    Table.StartWanted(TAtlasSafeLevel.Safe);
+    Assert.AreEqual('+A+C', Probe.Log);
+    Parts := Times.Slowest(10);
+    Assert.AreEqual(2, Integer(Length(Parts)), 'nur gestartete Teile');
+    Assert.AreEqual('A', Parts[0].Name);
+    Assert.AreEqual(Int64(25), Parts[0].Ms);
+    Assert.AreEqual('C', Parts[1].Name);
+    // Nach dem Start (Times nil) zählt ein Schnellschalter nicht mehr mit.
+    Table.Times := nil;
+    Table.StartWanted(TAtlasSafeLevel.Normal);
+    Assert.AreEqual('+A+C+B', Probe.Log);
+    Assert.AreEqual(Int64(50), Times.Total);
+  finally
+    Times.Free;
     Probe.Free;
     Table.Free;
   end;

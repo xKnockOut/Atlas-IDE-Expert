@@ -201,6 +201,7 @@ uses
   Atlas.Core.Completion.Providers.Snippets,
   Atlas.Core.Completion.Providers.XmlDoc,
   Atlas.Core.Diagnostics.FeatureTable,
+  Atlas.Core.Diagnostics.StartTimes,
   Atlas.Core.Diagnostics.Teardown,
   Atlas.Core.Build.Inbox,
   Atlas.Core.Build.ReleaseGuard,
@@ -284,10 +285,10 @@ var
   SafeMode: TAtlasIdeSafeMode;
   // Rückfrage und tägliche Update-Prüfung (#495).
   Updates: TAtlasIdeUpdates;
-  // Zeitpunkt des Ladens (TAtlasWatchdog.Timestamp) für Wächter und Ladezeit.
+  // Zeitpunkt des Ladens (TAtlasWatchdog.Timestamp) für Ladezeit und Startanteile.
   LoadedAt: Int64;
-  // Laden abgeschlossen: Später angemeldete Teile messen ab dann.
-  StartupDone: Boolean;
+  // Startanteile von Atlas bis zur freien Nachrichtenschleife (Bericht N4); danach nil.
+  StartTimes: TAtlasStartTimes;
   // Paketbeobachtung und Meldung fremder Vervollständigung angemeldet (#494).
   KeysWatched: Boolean;
   // Atlas-Bereiche auf der Willkommensseite und Fenster „Atlas-Start“ (#753).
@@ -1774,21 +1775,15 @@ begin
   TAtlasStatusRegistry.ReleaseDefault;
 end;
 
-procedure RegisterWatchdog(ALoadedAt: Int64);
+procedure RegisterWatchdog;
 begin
   Hangs := TAtlasHangMonitor.Create(TAtlasIdeSettings.Current.HangThresholdMs);
-  Watchdog := TAtlasWatchdog.Create(ALoadedAt,
+  Watchdog := TAtlasWatchdog.Create(
     function: Integer
     begin
       Result := TAtlasIdeSettings.Current.HangThresholdMs;
     end);
   Watchdog.OnHang := ReportHang;
-  Watchdog.OnStartup :=
-    procedure(AMilliseconds: Int64)
-    begin
-      if Manager <> nil then
-        Manager.Log(Format('Start: Laden des Packages bis zur freien Nachrichtenschleife %d ms', [AMilliseconds]));
-    end;
 end;
 
 procedure UnregisterWatchdog;
@@ -2157,15 +2152,6 @@ begin
     Manager := nil;
     ManagerRef := nil;
   end;
-end;
-
-procedure StartWatchdog;
-begin
-  // Später angemeldet (Schnellschalter) misst der Wächter ab jetzt, beim Laden ab dem Laden.
-  if StartupDone then
-    RegisterWatchdog(TAtlasWatchdog.Timestamp)
-  else
-    RegisterWatchdog(LoadedAt);
 end;
 
 procedure StartCheckOnSave;
@@ -3329,7 +3315,7 @@ begin
     begin
       Result := Watchdog <> nil;
     end,
-    StartWatchdog, UnregisterWatchdog);
+    RegisterWatchdog, UnregisterWatchdog);
   Features.AddWanted('CheckOnSave',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
@@ -3750,6 +3736,8 @@ procedure RegisterFeatures;
 begin
   if Features = nil then
     AddFeatures;
+  // Bis zur freien Nachrichtenschleife zählt jedes Teil zu den Startanteilen (Bericht N4).
+  Features.Times := StartTimes;
   Features.StartWanted(Level);
   if Welcome <> nil then
     Welcome.Sync;
@@ -3801,10 +3789,54 @@ begin
     end;
 end;
 
+/// <summary>Startanteile beenden (Bericht N4): Danach zählen weder Aktionen noch Teile mit.</summary>
+procedure EndStartTimes;
+begin
+  TAtlasActivity.TimeInto(nil);
+  if Features <> nil then
+    Features.Times := nil;
+  FreeAndNil(StartTimes);
+end;
+
+/// <summary>Nachrichtenschleife frei nach ALoadMs: Ladezeit in die Startmarke (#722), Startanteile ins Protokoll
+/// und bei einem langsamen Start (safeMode.startupTimeoutMs) eine Zeile im Meldungsfenster (abschaltbar mit
+/// robustness.hangHint). Bericht N4: Ein langsamer Start zählt nicht mehr wie ein Absturz und schaltet beim
+/// nächsten Start nichts ab; er nennt, was Atlas daran hatte, damit sich die Ursache beheben lässt.</summary>
+procedure ReportStartup(ALoadMs: Int64);
+var
+  Limit: Integer;
+  Line, Parts: string;
+begin
+  if SafeMode <> nil then
+    SafeMode.Loaded(ALoadMs);
+  if StartTimes = nil then
+    Exit;
+  try
+    // Erst anhalten, dann lesen: Keine Aktion zählt mehr mit.
+    TAtlasActivity.TimeInto(nil);
+    Limit := TAtlasIdeSettings.Current.SafeStartupTimeoutMs;
+    Line := StartTimes.LogLine(ALoadMs, Limit);
+    TAtlasGuard.Log(Line);
+    if Manager <> nil then
+      Manager.Log(Line);
+    if TAtlasStartTimes.IsSlow(ALoadMs, Limit) and TAtlasIdeSettings.Current.HangHint then
+    begin
+      Parts := StartTimes.SlowestText;
+      if Parts <> '' then
+        Parts := ': ' + Parts;
+      MessageLine(TAtlasStrings.Fmt(TAtlasTextId.StartSlow, [ALoadMs, Limit, StartTimes.Total, Parts]));
+    end;
+  finally
+    EndStartTimes;
+  end;
+end;
+
 procedure Register;
 begin
   LoadedAt := TAtlasWatchdog.Timestamp;
-  StartupDone := False;
+  // Startanteile (Bericht N4): ab dem Laden jedes Teil, nach der Anmeldung die Atlas-Aktionen.
+  EndStartTimes;
+  StartTimes := TAtlasStartTimes.Create;
   // Abbruchsignal eines früheren Entladens in derselben Sitzung zurücknehmen (#493).
   TAtlasShutdown.Reset;
   // Einreihen in den Hauptthread wieder annehmen (nach einem früheren Unregister, Code-Review A-02).
@@ -3937,13 +3969,19 @@ begin
         Result := nil;
     end;
   RegisterOptions;
-  // Ladezeit bis zur freien Nachrichtenschleife: zu lange zählt beim nächsten Start wie ein Absturz (#722).
+  if StartTimes <> nil then
+  begin
+    // Die übrige Anmeldung ohne die schon einzeln gezählten Teile.
+    StartTimes.Add('Anmeldung', TAtlasWatchdog.Timestamp - LoadedAt - StartTimes.Total);
+    // Bis zur freien Nachrichtenschleife laden IDE, übrige Packages und Projekt; Atlas ist dann nur mit Aktionen
+    // dabei (etwa Bauen beim Öffnen).
+    TAtlasActivity.TimeInto(StartTimes);
+  end;
+  // Ladezeit bis zur freien Nachrichtenschleife (#722) und Startanteile (Bericht N4).
   TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
     procedure
     begin
-      StartupDone := True;
-      if SafeMode <> nil then
-        SafeMode.Loaded(TAtlasWatchdog.Timestamp - LoadedAt);
+      ReportStartup(TAtlasWatchdog.Timestamp - LoadedAt);
       // Prüfliste beim ersten Start bzw. solange ein Punkt fest gelb oder rot ist (#625).
       if Setup <> nil then
         Setup.Start;
@@ -3991,6 +4029,12 @@ begin
     TAtlasGuard.OnFailure := nil;
     TAtlasGuard.RotatingLog.OnError := nil;
     TAtlasIdeSettings.OnChanged := nil;
+    // Entladen vor der freien Nachrichtenschleife: Die Startanteile hängen noch an Aktionen und Teilen.
+    Teardown.Step('StartTimes',
+      procedure
+      begin
+        EndStartTimes;
+      end);
     // Sauberes Ende: Startmarke löschen, Absturzzähler zurück (#722).
     Teardown.Step('SafeMode',
       procedure

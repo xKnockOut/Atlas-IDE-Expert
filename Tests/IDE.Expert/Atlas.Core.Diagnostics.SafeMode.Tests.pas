@@ -1,9 +1,9 @@
 ﻿unit Atlas.Core.Diagnostics.SafeMode.Tests;
 
 // Abgesicherter Start (#722): Startmarke anlegen und lesen, Erkennung eines
-// Absturzes, Zählung wiederholter Abstürze, Zeitlimit beim Laden, Taste und
-// Kommandozeile, Auswahl der Funktionen im abgesicherten Modus, Vorschlag und
-// Einstellungsstände zurücksetzen.
+// Absturzes, Zählung wiederholter Abstürze, langsamer Start ist kein Absturz
+// (Bericht N4), Taste und Kommandozeile, Auswahl der Funktionen im
+// abgesicherten Modus, Vorschlag und Einstellungsstände zurücksetzen.
 
 interface
 
@@ -25,7 +25,7 @@ type
     [Test]
     procedure CleanExitResetsCount;
     [Test]
-    procedure SlowStartCountsAsCrash;
+    procedure SlowStartIsNoCrash;
     [Test]
     procedure KeyAndCommandLineStartMinimal;
     [Test]
@@ -57,7 +57,7 @@ uses
 
 function Options: TAtlasSafeOptions;
 begin
-  Result := TAtlasSafeOptions.Create(True, True, TAtlasStartupKey.Shift, 10000);
+  Result := TAtlasSafeOptions.Create(True, True, TAtlasStartupKey.Shift);
 end;
 
 function Crashed(AProcess: Cardinal; AStartedAt: TDateTime): TAtlasSessionMarker;
@@ -167,20 +167,20 @@ begin
   Assert.IsTrue(Decision.Reason = TAtlasSafeReason.Crash, 'nach sauberem Ende nicht „wiederholt“');
 end;
 
-procedure TAtlasSafeModeTests.SlowStartCountsAsCrash;
+procedure TAtlasSafeModeTests.SlowStartIsNoCrash;
 var
   State: TAtlasSafeState;
   Decision: TAtlasSafeDecision;
 begin
-  State := Default(TAtlasSafeState);
-  Assert.IsFalse(TAtlasSafeMode.LoadFinished(State, 9000, Options));
-  Assert.IsFalse(State.SlowStart);
-  Assert.IsTrue(TAtlasSafeMode.LoadFinished(State, 12000, Options));
-  Assert.IsTrue(State.SlowStart);
+  // Bericht N4: Ein langsamer Start schaltete früher beim nächsten Start alles ab. Ein Zustand älterer Fassungen
+  // mit "slowStart" startet jetzt normal; die Startanteile nennen stattdessen die Ursache.
+  State := TAtlasSafeState.FromJson('{"crashCount": 0, "slowStart": true}');
   Decision := TAtlasSafeMode.Decide(State, nil, Now, Options, TAtlasStartupKey.None, False);
-  Assert.IsTrue(Decision.Crashed, 'hängender Start zählt wie ein Absturz');
-  Assert.IsTrue(Decision.Ask);
-  Assert.IsFalse(State.SlowStart, 'nur einmal');
+  Assert.IsFalse(Decision.Crashed, 'langsamer Start ist kein Absturz');
+  Assert.IsFalse(Decision.Ask);
+  Assert.IsTrue(Decision.Level = TAtlasSafeLevel.Normal);
+  Assert.AreEqual(0, State.CrashCount);
+  Assert.IsFalse(State.ToJson.Contains('slowStart'), 'wird nicht mehr geschrieben');
 end;
 
 procedure TAtlasSafeModeTests.KeyAndCommandLineStartMinimal;
@@ -215,7 +215,7 @@ var
   Start: TDateTime;
 begin
   // safeMode.askAfterCrash und autoAfterRepeatedCrash aus, startupKey none: abgeschaltet.
-  Off := TAtlasSafeOptions.Create(False, False, TAtlasStartupKey.None, 10000);
+  Off := TAtlasSafeOptions.Create(False, False, TAtlasStartupKey.None);
   State := Default(TAtlasSafeState);
   Start := EncodeDateTime(2026, 10, 14, 9, 0, 0, 0);
   Decision := TAtlasSafeMode.Decide(State, [Crashed(1, Start)], Start, Off, TAtlasStartupKey.Shift, False);
@@ -234,12 +234,10 @@ begin
   State := Default(TAtlasSafeState);
   State.CrashCount := 2;
   State.LastCrashAt := EncodeDateTime(2026, 10, 14, 9, 30, 0, 0);
-  State.SlowStart := True;
   State.CrashedMarker := Crashed(7, State.LastCrashAt).ToJson;
   Loaded := TAtlasSafeState.FromJson(State.ToJson);
   Assert.AreEqual(2, Loaded.CrashCount);
   Assert.IsTrue(SameDateTime(State.LastCrashAt, Loaded.LastCrashAt));
-  Assert.IsTrue(Loaded.SlowStart);
   Assert.IsTrue(TAtlasSessionMarker.FromJson(Loaded.CrashedMarker, Marker));
   Assert.AreEqual(Int64(7), Int64(Marker.ProcessId));
   Loaded := TAtlasSafeState.FromJson('kein JSON');
@@ -408,11 +406,9 @@ begin
     // Zustand über die Datei.
     State := Default(TAtlasSafeState);
     State.CrashCount := 2;
-    State.SlowStart := True;
     TAtlasSessionFiles.WriteState(Folder, State);
     State := TAtlasSessionFiles.ReadState(Folder);
     Assert.AreEqual(2, State.CrashCount);
-    Assert.IsTrue(State.SlowStart);
     // Ersetzen in einem Schritt (Bericht N3): neuer Stand, keine Reste daneben.
     State.CrashCount := 3;
     TAtlasSessionFiles.WriteState(Folder, State);

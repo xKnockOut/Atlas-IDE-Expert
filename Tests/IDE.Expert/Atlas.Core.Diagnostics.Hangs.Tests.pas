@@ -18,6 +18,8 @@ type
     [Test]
     procedure ActivityScopesNest;
     [Test]
+    procedure ActivityTimesOutermostDuringStart;
+    [Test]
     procedure StackScanMapsAddressesToModules;
   end;
 
@@ -25,6 +27,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Core.Diagnostics.StartTimes,
   Atlas.Core.Diagnostics.Hangs;
 
 function MakeHang(ADurationMs: Int64; const AActivity: string): TAtlasHang;
@@ -87,6 +90,47 @@ begin
   Assert.AreEqual('Vervollständigung', TAtlasActivity.Current);
   Outer := nil;
   Assert.AreEqual('', TAtlasActivity.Current);
+end;
+
+procedure TAtlasHangTests.ActivityTimesOutermostDuringStart;
+var
+  Times: TAtlasStartTimes;
+  Clock: TFunc<Int64>;
+  Tick: Int64;
+  Outer, Inner: IInterface;
+  Parts: TArray<TAtlasStartPart>;
+begin
+  // Bericht N4: Bis zur freien Nachrichtenschleife zählt jede äußerste Atlas-Aktion zu den Startanteilen.
+  Tick := 0;
+  Clock :=
+    function: Int64
+    begin
+      Inc(Tick, 40);
+      Result := Tick;
+    end;
+  Times := TAtlasStartTimes.Create(Clock);
+  try
+    TAtlasActivity.TimeInto(Times);
+    try
+      Outer := TAtlasActivity.Scope('Bauen beim Öffnen');
+      Inner := TAtlasActivity.Scope('Compilerprüfung');
+      Inner := nil;
+      Outer := nil;
+    finally
+      TAtlasActivity.TimeInto(nil);
+    end;
+    Parts := Times.Slowest(10);
+    Assert.AreEqual(1, Integer(Length(Parts)), 'die innere Aktion steckt in der äußeren');
+    Assert.AreEqual('Aktion Bauen beim Öffnen', Parts[0].Name);
+    Assert.AreEqual(Int64(40), Parts[0].Ms);
+    // Nach TimeInto(nil) zählt nichts mehr.
+    Outer := TAtlasActivity.Scope('Symbolhinweis');
+    Outer := nil;
+    Assert.AreEqual(Int64(40), Times.Total);
+    Assert.AreEqual('', TAtlasActivity.Current);
+  finally
+    Times.Free;
+  end;
 end;
 
 procedure TAtlasHangTests.StackScanMapsAddressesToModules;
