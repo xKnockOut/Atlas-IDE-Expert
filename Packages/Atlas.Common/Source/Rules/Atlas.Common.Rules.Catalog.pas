@@ -6,6 +6,8 @@
 // überschreiben nur Name und Beschreibung. SARIF nutzt immer den englischen
 // Katalog, damit Fingerabdrücke in GitHub Code Scanning stabil bleiben.
 // "compilerCodes" nennt Compilermeldungen, denen eine Regel entspricht (#938).
+// "overriddenBy" nennt Gegenregeln: Ist eine davon an, meldet die Regel nichts
+// (#1025, z. B. redundant-begin-end bei missing-begin-end); Rules.Engine.
 
 interface
 
@@ -45,6 +47,8 @@ type
     Options: TArray<TRuleOption>;
     /// <summary>Compilermeldungen, denen die Regel entspricht, z. B. F2069 (#938); nil = keine.</summary>
     CompilerCodes: TArray<string>;
+    /// <summary>Gegenregeln (#1025): Ist eine davon an, meldet diese Regel nichts; nil = keine.</summary>
+    OverriddenBy: TArray<string>;
   end;
 
   ERuleCatalog = class(Exception);
@@ -193,6 +197,24 @@ begin
   end;
 end;
 
+function OverriddenByOf(AItem: TJSONObject; const AId: string): TArray<string>;
+var
+  Value, Item: TJSONValue;
+begin
+  Result := nil;
+  Value := AItem.GetValue('overriddenBy');
+  if Value = nil then
+    Exit;
+  if not (Value is TJSONArray) then
+    raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat ungültige "overriddenBy"', [AId]);
+  for Item in TJSONArray(Value) do
+  begin
+    if not (Item is TJSONString) or (Item is TJSONNumber) or (TJSONString(Item).Value = '') then
+      raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat eine ungültige Gegenregel', [AId]);
+    Result := Result + [TJSONString(Item).Value];
+  end;
+end;
+
 function RulesOf(ARoot: TJSONValue): TJSONArray;
 var
   Value: TJSONValue;
@@ -258,6 +280,7 @@ begin
         raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat keine gültige Gruppe', [Entry.Id]);
       Entry.Options := OptionsOf(Item, Entry.Id);
       Entry.CompilerCodes := CompilerCodesOf(Item, Entry.Id);
+      Entry.OverriddenBy := OverriddenByOf(Item, Entry.Id);
       FEntries.Add(Entry);
     end;
   finally
@@ -360,6 +383,9 @@ begin
   if AEntry.CompilerCodes <> nil then
     Result := Result + ALineBreak + ALineBreak + 'Entspricht der Compilermeldung ' +
       string.Join(', ', AEntry.CompilerCodes) + '.';
+  if AEntry.OverriddenBy <> nil then
+    Result := Result + ALineBreak + ALineBreak + 'Schweigt, solange ' + string.Join(' oder ', AEntry.OverriddenBy) +
+      ' an ist.';
   Result := Result + ALineBreak + ALineBreak + 'Mehr: ' + HelpUri(AEntry.Id);
 end;
 

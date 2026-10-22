@@ -675,7 +675,8 @@ type
     RulesGroupForms, RulesGroupArchitecture, RulesGroupStyle, RulesGroupPackages, RulesGroupInternal,
     RulesProfilesNode, RulesProfilesText, RulesProjectButton, SettingsProblemsWindow, SettingsProblemsWindowScope,
     SettingsProblemsWindowGroupBy, SettingsProblemsWindowCompiler, SettingsProblemsWindowFollowCursor,
-    SettingsProblemsLive, SettingsHoverProblemActions, MetricsLensMembers, MetricsLensUses);
+    SettingsProblemsLive, SettingsHoverProblemActions, MetricsLensMembers, MetricsLensUses,
+    RulesOverriddenBy);
 
   TAtlasStrings = class
   private class var
@@ -2132,7 +2133,8 @@ const
      'Laufende Prüfung beim Tippen (aus: nur beim Speichern)',
      'Aktionszeile unter Befunden im Hover',
      '%d Member',
-     '%d Units im uses'),
+     '%d Units im uses',
+     'Wird durch %s übersteuert: Solange diese Regel an ist, meldet diese hier nichts.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3497,7 +3499,8 @@ const
      'Check while typing (off: only on save)',
      'Action row below findings in the hover',
      '%d members',
-     '%d units in uses'));
+     '%d units in uses',
+     'Overridden by %s: while that rule is on, this one reports nothing.'));
 
 { TAtlasStrings }
 

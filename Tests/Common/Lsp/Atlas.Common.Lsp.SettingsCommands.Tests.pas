@@ -150,7 +150,7 @@ var
   Answer: TJSONObject;
   Rules: TJSONArray;
   Rule: TJSONValue;
-  Options: TJSONArray;
+  Options, Overrides: TJSONArray;
   Option: TJSONValue;
   Index: Integer;
   SeenMetric: Boolean;
@@ -185,10 +185,18 @@ begin
         Assert.IsTrue(Option.GetValue<string>('description') <> '');
         Assert.IsTrue(Rule.GetValue<string>('bad') <> '');
       end;
+      // Gegenregel (#1025).
+      if Rule.GetValue<string>('id') = 'redundant-begin-end' then
+      begin
+        Overrides := Rule.GetValue<TJSONArray>('overriddenBy');
+        Assert.AreEqual(1, Overrides.Count);
+        Assert.AreEqual('missing-begin-end', Overrides.Items[0].Value);
+      end;
       if Rule.GetValue<string>('id') = 'syntax' then
       begin
         SeenSyntax := True;
         Assert.IsNull(Rule.FindValue('experimental'));
+        Assert.IsNull(Rule.FindValue('overriddenBy'));
         Assert.AreEqual(0, Rule.GetValue<TJSONArray>('options').Count);
       end;
     end;

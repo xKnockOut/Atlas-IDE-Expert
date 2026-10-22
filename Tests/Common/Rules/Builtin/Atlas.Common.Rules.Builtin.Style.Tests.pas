@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Rules.Builtin.Style.Tests;
 
 // Tests für die Stilregeln (#104): je Regel positiv, negativ und Schnellkorrektur; boolean-assign-if (#935),
-// case-insensitive-compare (#936), magic-number (#937), line-length (#938), public-field (#940) und global-variable (#941).
+// case-insensitive-compare (#936), magic-number (#937), line-length (#938), public-field (#940), global-variable (#941)
+// und missing-begin-end (#1025) samt Gegenregel redundant-begin-end.
 
 interface
 
@@ -74,6 +75,20 @@ type
     procedure GlobalVariableIssueExample;
     [Test]
     procedure GlobalVariableFormVariablesAndOptions;
+    [Test]
+    procedure MissingBeginEndIssueExample;
+    [Test]
+    procedure MissingBeginEndFixesIssueExample;
+    [Test]
+    procedure MissingBeginEndSameLineAndNestedFixes;
+    [Test]
+    procedure MissingBeginEndSilentCases;
+    [Test]
+    procedure MissingBeginEndOptions;
+    [Test]
+    procedure MissingBeginEndOverridesRedundantBeginEnd;
+    [Test]
+    procedure MissingBeginEndOffAndExclude;
   end;
 
 implementation
@@ -85,11 +100,16 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Style,
   Atlas.Common.Configuration.Parser,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Rules.Engine,
   Atlas.Tests.RuleAssert;
 
 const
   ParensOn = '{ "rules": { "redundant-parens": "hint" } }';
-  BeginEndOn = '{ "rules": { "redundant-begin-end": "hint" } }';
+  // Die Gegenregel missing-begin-end ist standardmäßig an und übersteuert redundant-begin-end (#1025).
+  BeginEndOn = '{ "rules": { "redundant-begin-end": "hint", "missing-begin-end": "off" } }';
+  BothBeginEndOn = '{ "rules": { "redundant-begin-end": "hint" } }';
 
 function InRoutine(const AVars, ABody: string): string;
 begin
@@ -97,8 +117,8 @@ begin
     ABody + #10'end;'#10'end.';
 end;
 
-/// <summary>Wendet die erste Korrektur des ersten Treffers auf ASource an.</summary>
-function Fixed(const ASource: string; const AFindings: TArray<TRuleFinding>): string;
+/// <summary>Wendet AFix auf ASource an.</summary>
+function Applied(const ASource: string; const AFix: TRuleFix): string;
 var
   Lines: TArray<string>;
   Offsets: TArray<Integer>;
@@ -119,13 +139,57 @@ begin
   for Index := 0 to High(Lines) do
     Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
   Result := ASource;
-  // Von hinten nach vorn, damit die Positionen stimmen.
-  Edits := AFindings[0].Fixes[0].Edits;
+  // Von hinten nach vorn, damit die Positionen stimmen (die Edits einer Korrektur sind nicht sortiert).
+  Edits := Copy(AFix.Edits);
+  for Index := 1 to High(Edits) do
+  begin
+    Edit := Edits[Index];
+    Start := Index - 1;
+    while (Start >= 0) and ((Edits[Start].Range.StartPos.Line > Edit.Range.StartPos.Line) or
+      ((Edits[Start].Range.StartPos.Line = Edit.Range.StartPos.Line) and
+      (Edits[Start].Range.StartPos.Character > Edit.Range.StartPos.Character))) do
+    begin
+      Edits[Start + 1] := Edits[Start];
+      Dec(Start);
+    end;
+    Edits[Start + 1] := Edit;
+  end;
   for Index := High(Edits) downto 0 do
   begin
     Edit := Edits[Index];
     Result := Copy(Result, 1, Offsets[Edit.Range.StartPos.Line] + Edit.Range.StartPos.Character) + Edit.NewText +
       Copy(Result, Offsets[Edit.Range.EndPos.Line] + Edit.Range.EndPos.Character + 1, MaxInt);
+  end;
+end;
+
+/// <summary>Wendet die erste Korrektur des ersten Treffers auf ASource an.</summary>
+function Fixed(const ASource: string; const AFindings: TArray<TRuleFinding>): string;
+begin
+  Result := Applied(ASource, AFindings[0].Fixes[0]);
+end;
+
+/// <summary>Korrektur von AFinding mit AText im Titel.</summary>
+function FixTitled(const AFinding: TRuleFinding; const AText: string): TRuleFix;
+var
+  Fix: TRuleFix;
+begin
+  for Fix in AFinding.Fixes do
+    if Pos(AText, Fix.Title) > 0 then
+      Exit(Fix);
+  Assert.Fail('Keine Korrektur mit "' + AText + '"');
+  Result := Default(TRuleFix);
+end;
+
+/// <summary>ASource parst ohne Syntaxfehler.</summary>
+procedure AssertParses(const ASource: string);
+var
+  Tree: TSyntaxTree;
+begin
+  Tree := TPascalParser.Parse(ASource);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), ASource);
+  finally
+    Tree.Free;
   end;
 end;
 
@@ -651,6 +715,206 @@ begin
     'program P;'#10'var'#10'  X: Integer;'#10'begin'#10'end.', GlobalOn))));
   TConfigurationParser.Parse('{"rules": {"global-variable": {"includeFormVariables": 1}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+procedure TStyleRulesTests.MissingBeginEndIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Das Beispiel aus #1025: if, else und for, je ein Befund am Schlüsselwort.
+  Findings := TRuleAssert.Findings(TMissingBeginEndRule.Create, InRoutine('  I: Integer;',
+    '  if Kunde.Gesperrt then'#10'    Protokoll.Warnung(''Gesperrt'')'#10'  else'#10'    Speichern(Kunde);'#10 +
+    '  for I := 0 to High(Werte) do'#10'    Summe := Summe + Werte[I];'));
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual('if ohne begin … end', Findings[0].Message);
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(4, Findings[0].Range.EndPos.Character);
+  Assert.AreEqual('else ohne begin … end', Findings[1].Message);
+  Assert.AreEqual(9, Findings[1].Range.StartPos.Line);
+  Assert.AreEqual('for ohne begin … end', Findings[2].Message);
+  Assert.AreEqual(11, Findings[2].Range.StartPos.Line);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+end;
+
+procedure TStyleRulesTests.MissingBeginEndFixesIssueExample;
+var
+  Source, Expected: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := InRoutine('  I: Integer;',
+    '  if Kunde.Gesperrt then'#10'    Protokoll.Warnung(''Gesperrt'')'#10'  else'#10'    Speichern(Kunde);'#10 +
+    '  for I := 0 to High(Werte) do'#10'    Summe := Summe + Werte[I];');
+  Expected := InRoutine('  I: Integer;',
+    '  if Kunde.Gesperrt then'#10'  begin'#10'    Protokoll.Warnung(''Gesperrt'');'#10'  end'#10'  else'#10 +
+    '  begin'#10'    Speichern(Kunde);'#10'  end;'#10 +
+    '  for I := 0 to High(Werte) do'#10'  begin'#10'    Summe := Summe + Werte[I];'#10'  end;');
+  Findings := TRuleAssert.Findings(TMissingBeginEndRule.Create, Source);
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  // Drei Reichweiten: die Stelle, die Methode, die Datei (hier nur eine Methode, also zwei Korrekturen).
+  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(Expected, Applied(Source, FixTitled(Findings[0], 'ganzen Methode')));
+  AssertParses(Expected);
+  // Nur die Stelle: ; vor else wandert in den Block (kein E2153).
+  Assert.AreEqual(InRoutine('  I: Integer;',
+    '  if Kunde.Gesperrt then'#10'  begin'#10'    Protokoll.Warnung(''Gesperrt'');'#10'  end'#10'  else'#10 +
+    '    Speichern(Kunde);'#10'  for I := 0 to High(Werte) do'#10'    Summe := Summe + Werte[I];'),
+    Fixed(Source, Findings));
+  TRuleAssert.Silent(TMissingBeginEndRule.Create, Expected);
+  // Zwei Routinen: dazu die Korrektur für die ganze Datei.
+  Source := 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  if A then'#10'    B;'#10 +
+    '  while C do'#10'    D;'#10'end;'#10'procedure Q;'#10'begin'#10'  with E do'#10'    F;'#10'end;'#10'end.';
+  Findings := TRuleAssert.Findings(TMissingBeginEndRule.Create, Source);
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual(3, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(2, Integer(Length(Findings[2].Fixes)));
+  Expected := Applied(Source, FixTitled(Findings[2], 'ganzen Datei'));
+  Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  if A then'#10 +
+    '  begin'#10'    B;'#10'  end;'#10'  while C do'#10'  begin'#10'    D;'#10'  end;'#10'end;'#10'procedure Q;'#10 +
+    'begin'#10'  with E do'#10'  begin'#10'    F;'#10'  end;'#10'end;'#10'end.', Expected);
+  AssertParses(Expected);
+end;
+
+procedure TStyleRulesTests.MissingBeginEndSameLineAndNestedFixes;
+var
+  Source, Expected: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // then und else in einer Zeile: Rümpfe rücken ein, else steht unter if.
+  Source := InRoutine('  X: Integer;', '  if A then X := 1 else X := 2;');
+  Findings := TRuleAssert.Findings(TMissingBeginEndRule.Create, Source);
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Expected := InRoutine('  X: Integer;', '  if A then'#10'  begin'#10'    X := 1;'#10'  end'#10'  else'#10'  begin'#10 +
+    '    X := 2;'#10'  end;');
+  Assert.AreEqual(Expected, Applied(Source, FixTitled(Findings[0], 'ganzen Methode')));
+  AssertParses(Expected);
+  // Verschachtelt in einer Zeile: innen zuerst geschlossen, eine Ebene tiefer eingerückt.
+  Source := InRoutine('  I: Integer;', '  for I := 0 to 1 do if A then X := I;');
+  Findings := TRuleAssert.Findings(TMissingBeginEndRule.Create, Source);
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Expected := InRoutine('  I: Integer;', '  for I := 0 to 1 do'#10'  begin'#10'    if A then'#10'    begin'#10 +
+    '      X := I;'#10'    end;'#10'  end;');
+  Assert.AreEqual(Expected, Applied(Source, FixTitled(Findings[0], 'ganzen Methode')));
+  AssertParses(Expected);
+  Assert.AreEqual(InRoutine('  I: Integer;', '  for I := 0 to 1 do'#10'  begin'#10'    if A then X := I;'#10'  end;'),
+    Fixed(Source, Findings));
+  // Dangling else: das else gehört zum inneren if und bleibt dort.
+  Source := InRoutine('  X: Integer;', '  if A then'#10'    if B then'#10'      X := 1'#10'    else'#10'      X := 2;');
+  Findings := TRuleAssert.Findings(TMissingBeginEndRule.Create, Source);
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Expected := InRoutine('  X: Integer;', '  if A then'#10'  begin'#10'    if B then'#10'    begin'#10'      X := 1;'#10 +
+    '    end'#10'    else'#10'    begin'#10'      X := 2;'#10'    end;'#10'  end;');
+  Assert.AreEqual(Expected, Applied(Source, FixTitled(Findings[0], 'ganzen Methode')));
+  AssertParses(Expected);
+  // Letzte Anweisung ohne Semikolon vor end, Kommentar hinter dem Rumpf.
+  Source := InRoutine('  X: Integer;', '  while A do'#10'    X := 1 // weiter'#10'  ;');
+  Expected := Fixed(Source, TRuleAssert.Findings(TMissingBeginEndRule.Create, Source));
+  Assert.AreEqual(InRoutine('  X: Integer;', '  while A do'#10'  begin'#10'    X := 1;'#10'  end // weiter'#10'  ;'),
+    Expected);
+  AssertParses(Expected);
+end;
+
+procedure TStyleRulesTests.MissingBeginEndSilentCases;
+begin
+  TRuleAssert.Silent(TMissingBeginEndRule.Create, InRoutine('  X: Integer;',
+    // else if: das innere if braucht keinen eigenen Block.
+    '  if A then'#10'  begin'#10'    X := 1;'#10'  end'#10'  else if B then'#10'  begin'#10'    X := 2;'#10'  end'#10 +
+    '  else'#10'  begin'#10'    X := 3;'#10'  end;'#10 +
+    // repeat, case, try und asm sind schon Blöcke.
+    '  repeat'#10'    Inc(X);'#10'  until X > 3;'#10 +
+    '  case X of'#10'    1: X := 2;'#10'  else'#10'    X := 0;'#10'  end;'#10 +
+    '  if A then'#10'    try'#10'      X := 1;'#10'    finally'#10'      X := 2;'#10'    end;'#10 +
+    '  while A do'#10'    case X of'#10'      1: X := 2;'#10'    end;'#10 +
+    // Leere Anweisung meldet empty-statement.
+    '  if A then ;'#10 +
+    // Rumpf mit {$IFDEF}: ohne sichere Lage keine Meldung.
+    '  if A then'#10'  {$IFDEF DEBUG}'#10'    X := 1'#10'  {$ELSE}'#10'    X := 2'#10'  {$ENDIF};'));
+  // else if: nur der Rumpf des inneren if wird gemeldet.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMissingBeginEndRule.Create, InRoutine('  X: Integer;',
+    '  if A then'#10'  begin'#10'    X := 1;'#10'  end'#10'  else if B then'#10'    X := 2;')))));
+end;
+
+procedure TStyleRulesTests.MissingBeginEndOptions;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := InRoutine('  I: Integer;', '  for I := 0 to 1 do'#10'    if A then Exit;'#10'  case I of'#10 +
+    '    1: X := 2;'#10'    2:'#10'    begin'#10'      X := 3;'#10'    end;'#10'  end;'#10'  if B then'#10'    Continue;'#10 +
+    '  while C do Inc(I);');
+  // Vorgabe: for, if (Exit), if (Continue), while.
+  Assert.AreEqual(4, Integer(Length(TRuleAssert.Findings(TMissingBeginEndRule.Create, Source))));
+  // statements: nur case-Zweige.
+  Findings := TRuleAssert.Findings(TMissingBeginEndRule.Create, Source,
+    '{"rules": {"missing-begin-end": {"statements": ["case"]}}}');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('case-Zweig ohne begin … end', Findings[0].Message);
+  Assert.AreEqual(Integer(10), Findings[0].Range.StartPos.Line);
+  // allowSingleLineExit: if … then Exit; in einer Zeile erlaubt, Continue in der nächsten Zeile nicht.
+  Assert.AreEqual(3, Integer(Length(TRuleAssert.Findings(TMissingBeginEndRule.Create, Source,
+    '{"rules": {"missing-begin-end": {"allowSingleLineExit": true}}}'))));
+  // allowSameLine: jede einzelne Anweisung in derselben Zeile (Exit und Inc).
+  Findings := TRuleAssert.Findings(TMissingBeginEndRule.Create, Source,
+    '{"rules": {"missing-begin-end": {"allowSameLine": true}}}');
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('for ohne begin … end', Findings[0].Message);
+  Assert.AreEqual('if ohne begin … end', Findings[1].Message);
+end;
+
+procedure TStyleRulesTests.MissingBeginEndOverridesRedundantBeginEnd;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := InRoutine('  X: Integer;', '  if A then begin Save(X); end else Load;');
+  // missing-begin-end ist an (Vorgabe): redundant-begin-end schweigt, auch wenn es eingeschaltet ist.
+  Findings := TRuleAssert.FindingsOfAll([TRedundantBeginEndRule.Create, TMissingBeginEndRule.Create], Source,
+    BothBeginEndOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('missing-begin-end', Findings[0].RuleId);
+  // Auch allein gelaufen zählt die Einstellung, nicht die Liste der Regeln.
+  TRuleAssert.Silent(TRedundantBeginEndRule.Create, Source);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRedundantBeginEndRule.Create, Source, BothBeginEndOn))));
+  // missing-begin-end aus: redundant-begin-end meldet wieder.
+  Findings := TRuleAssert.Findings(TRedundantBeginEndRule.Create, Source,
+    '{ "rules": { "redundant-begin-end": "hint", "missing-begin-end": "off" } }');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  // Gruppe Stil aus: beide schweigen.
+  Settings := TConfigurationParser.Parse('{ "rules": { "redundant-begin-end": "hint", "group:style": "off" } }',
+    Issues);
+  Assert.AreEqual('', TRuleEngine.OverridingRule('redundant-begin-end', nil, Settings, '', ''));
+  Settings := TConfigurationParser.Parse(BothBeginEndOn, Issues);
+  Assert.AreEqual('missing-begin-end', TRuleEngine.OverridingRule('redundant-begin-end', nil, Settings, '', ''));
+  // Mit exclude der Gegenregel gilt redundant-begin-end in den ausgenommenen Dateien wieder.
+  Settings := TConfigurationParser.Parse('{ "rules": { "redundant-begin-end": "hint", "missing-begin-end": ' +
+    '{ "exclude": ["Alt/**"] } } }', Issues);
+  Assert.AreEqual('', TRuleEngine.OverridingRule('redundant-begin-end', nil, Settings, 'Alt/U.pas', 'U'));
+  Assert.AreEqual('missing-begin-end', TRuleEngine.OverridingRule('redundant-begin-end', nil, Settings,
+    'Neu/U.pas', 'U'));
+  Assert.AreEqual('', TRuleEngine.OverridingRule('missing-begin-end', nil, Settings, '', ''));
+end;
+
+procedure TStyleRulesTests.MissingBeginEndOffAndExclude;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := InRoutine('  X: Integer;', '  if A then'#10'    X := 1;');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMissingBeginEndRule.Create, Source))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMissingBeginEndRule.Create, Source,
+    '{"rules": {"missing-begin-end": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMissingBeginEndRule.Create, Source,
+    '{"rules": {"group:style": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMissingBeginEndRule.Create, Source,
+    '{"rules": {"missing-begin-end": {"exclude": ["Alt/**"]}}}', 'Alt/U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMissingBeginEndRule.Create, Source,
+    '{"rules": {"missing-begin-end": {"exclude": ["Alt/**"]}}}', 'Neu/U.pas'))));
+  // Optionen mit falschem Typ meldet der Konfigurationsparser.
+  TConfigurationParser.Parse('{"rules": {"missing-begin-end": {"statements": "if", "allowSameLine": 1}}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
 end;
 
 initialization

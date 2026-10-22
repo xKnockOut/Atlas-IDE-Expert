@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1760] of string = (
+  Lines: array[0..1779] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -437,6 +437,25 @@ const
     '                },',
     '                "default": [],',
     '                "description": "Nur sql-write-without-where: Tabellen, die absichtlich ganz geleert bzw. geändert werden, mit oder ohne Schema (#966)."',
+    '              },',
+    '              "statements": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string",',
+    '                  "enum": ["if", "else", "for", "while", "with", "case"]',
+    '                },',
+    '                "default": ["if", "else", "for", "while", "with"],',
+    '                "description": "Nur missing-begin-end: geprüfte Anweisungen; case prüft die Zweige von case-Anweisungen (#1025)."',
+    '              },',
+    '              "allowSingleLineExit": {',
+    '                "type": "boolean",',
+    '                "default": false,',
+    '                "description": "Nur missing-begin-end: Exit, Continue, Break und raise in derselben Zeile wie die Bedingung erlauben (#1025)."',
+    '              },',
+    '              "allowSameLine": {',
+    '                "type": "boolean",',
+    '                "default": false,',
+    '                "description": "Nur missing-begin-end: eine einzelne Anweisung in derselben Zeile wie Bedingung bzw. Schleifenkopf erlauben (#1025)."',
     '              },',
     '              "searchPaths": {',
     '                "type": "string",',
