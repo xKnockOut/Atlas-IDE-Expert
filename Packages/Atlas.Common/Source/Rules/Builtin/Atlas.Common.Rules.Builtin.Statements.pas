@@ -65,6 +65,14 @@
 //                     mit write: über eine lokale Variable zuweisen und
 //                     zurückschreiben (Variable über TRoutineBody.AddVariable, Unit
 //                     des Typs über TUsesClauses.AddUnit).
+//   readonly-property-assigned
+//                     Zuweisung an eine Property ohne write (#1006, wie E2129) und
+//                     Lesen einer Property ohne read (wie E2130), nur bei sicher
+//                     aufgelöster Property. Vorab gefiltert über die Namen solcher
+//                     Properties in Datei und Index. Korrekturen: Count := 0 wird
+//                     Clear, wenn der Typ Clear hat; in einer Methode der eigenen
+//                     Klasse direkt das Feld hinter read; für eine Property dieser
+//                     Datei den Setter anlegen und write ergänzen.
 // Grundlage ist der Syntaxbaum: if, while, for, for-in und with ohne Rumpf
 // bzw. mit leerem Block; das Schlüsselwort davor sucht die Regel in den Token.
 
@@ -85,6 +93,7 @@ const
   ComparisonAsStatementRuleId = 'comparison-as-statement';
   DuplicateCaseLabelRuleId = 'duplicate-case-label';
   AssignToPropertyMemberRuleId = 'assign-to-property-member';
+  ReadonlyPropertyAssignedRuleId = 'readonly-property-assigned';
 
 type
   TEmptyStatementRule = class(TInterfacedObject, IRule)
@@ -168,6 +177,15 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TReadonlyPropertyAssignedRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Hat die Property-Signatur ASignature read bzw. write? Ohne beides ist es eine Neudeklaration
+    /// (property Caption;), dann False.</summary>
+    class function Accessors(const ASignature: string; out AHasRead, AHasWrite: Boolean): Boolean; static;
+  end;
+
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -188,6 +206,9 @@ uses
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Editing.ClassActions,
+  Atlas.Common.Editing.AccessorCreation,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Options;
 
@@ -2428,7 +2449,7 @@ var
       TTextEdit.Create(TTextRange.Create(AStatement.StartPos, AStatement.EndPos), NewText)];
     // Der Typ stammt oft aus einer Unit, die die Datei nicht einbindet (TRect aus System.Types).
     if (AType.UnitName <> '') and not SameText(AType.UnitName, 'System') and
-      not SameText(AType.UnitName, AContext.UnitName) and
+      not SameText(AType.UnitName, TUsesClauses.OwnName(Tokens)) and
       not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(Tokens), AType.UnitName, AContext.Namespaces) then
     begin
       if not TUsesClauses.AddUnit(Tokens, AStatement.StartOffset, AType.UnitName, LineBreak, UsesEdit) then
@@ -2550,6 +2571,263 @@ begin
   end;
 end;
 
+{ TReadonlyPropertyAssignedRule }
+
+function TReadonlyPropertyAssignedRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(ReadonlyPropertyAssignedRuleId, TRuleSeverity.Error,
+    'Zuweisung an eine Property ohne write');
+end;
+
+class function TReadonlyPropertyAssignedRule.Accessors(const ASignature: string; out AHasRead,
+  AHasWrite: Boolean): Boolean;
+var
+  Text, Word: string;
+  Index, Depth: Integer;
+begin
+  // Indexparameter ausblenden: [read: Integer] wäre kein Zugriff.
+  Text := '';
+  Depth := 0;
+  for Index := 1 to Length(ASignature) do
+    if ASignature[Index] = '[' then
+      Inc(Depth)
+    else if ASignature[Index] = ']' then
+      Dec(Depth)
+    else if Depth = 0 then
+      Text := Text + ASignature[Index];
+  AHasRead := False;
+  AHasWrite := False;
+  for Word in Text.Replace(';', ' ').Split([' '], TStringSplitOptions.ExcludeEmpty) do
+    if SameText(Word, 'read') then
+      AHasRead := True
+    else if SameText(Word, 'write') then
+      AHasWrite := True;
+  Result := AHasRead or AHasWrite;
+end;
+
+procedure TReadonlyPropertyAssignedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Resolver: TNameResolver;
+  FileName: string;
+  Lines: TArray<string>;
+  Local: TUnitIndex;
+  // Name -> gibt es eine Property ohne write (Bit 1) bzw. ohne read (Bit 2) mit diesem Namen?
+  Suspects: TDictionary<string, Integer>;
+  Actions: TClassActionContext;
+
+  function NodeText(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  function SuspectFlags(const AName: string): Integer;
+  var
+    Symbol: TIndexSymbol;
+    Location: TSymbolLocation;
+    HasRead, HasWrite: Boolean;
+
+    procedure Note(const ASignature: string);
+    begin
+      if Accessors(ASignature, HasRead, HasWrite) then
+      begin
+        if not HasWrite then
+          Result := Result or 1;
+        if not HasRead then
+          Result := Result or 2;
+      end;
+    end;
+
+  begin
+    if Suspects.TryGetValue(LowerCase(AName), Result) then
+      Exit;
+    Result := 0;
+    for Symbol in Local.Symbols do
+      if (Symbol.Kind = TIndexSymbolKind.Property_) and SameText(Symbol.Name, AName) then
+        Note(Symbol.Signature);
+    if AContext.Index <> nil then
+      for Location in AContext.Index.FindSymbols(AName) do
+        if Location.Symbol.Kind = TIndexSymbolKind.Property_ then
+          Note(Location.Symbol.Signature);
+    Suspects.Add(LowerCase(AName), Result);
+  end;
+
+  /// <summary>Wort hinter read in der Signatur ('' ohne); bei read FPunkt.X das ganze FPunkt.X.</summary>
+  function ReadAccessor(const ASignature: string): string;
+  var
+    Words: TArray<string>;
+    Index: Integer;
+  begin
+    Result := '';
+    Words := ASignature.Replace(';', ' ').Split([' '], TStringSplitOptions.ExcludeEmpty);
+    for Index := 0 to High(Words) - 1 do
+      if SameText(Words[Index], 'read') then
+        Exit(Words[Index + 1]);
+  end;
+
+  /// <summary>Klasse der Methode, in der ANode steht (TKunde bei TKunde.Laden); '' außerhalb.</summary>
+  function MethodClass(ANode: TSyntaxNode): string;
+  var
+    Node: TSyntaxNode;
+  begin
+    Result := '';
+    Node := ANode.Parent;
+    while (Node <> nil) and (Node.Kind <> TSyntaxKind.RoutineDecl) do
+      Node := Node.Parent;
+    if (Node <> nil) and (Pos('.', Node.Name) > 0) then
+      Result := Copy(Node.Name, 1, LastDelimiter('.', Node.Name) - 1);
+  end;
+
+  function SetterFix(const AProperty: TResolvedSymbol; out AFix: TRuleFix): Boolean;
+  var
+    Plan: TAccessorPlan;
+    Action: TCodeAction;
+    Line, Column: Integer;
+    Accessor, Text: string;
+  begin
+    Result := False;
+    Line := AProperty.Range.StartPos.Line;
+    if not SameText(AProperty.UnitName, Local.UnitName) or (AProperty.MaxArgs > 0) or
+      (AProperty.Range.EndPos.Line <> Line) or (Line > High(Lines)) or StartsText('class ', AProperty.Signature) then
+      Exit;
+    Accessor := ReadAccessor(AProperty.Signature);
+    Text := LowerCase(Lines[Line]);
+    Column := Pos('read ' + LowerCase(Accessor), Text);
+    if (Accessor = '') or (Column = 0) then
+      Exit;
+    Column := Column - 1 + Length('read ' + Accessor);
+    Plan := Default(TAccessorPlan);
+    Plan.Kind := TAccessorKind.Setter;
+    Plan.PropertyName := AProperty.Name;
+    Plan.PropertyType := AProperty.TypeName;
+    if AProperty.TypeArgs <> '' then
+      Plan.PropertyType := Plan.PropertyType + '<' + AProperty.TypeArgs + '>';
+    Plan.MethodSection := 'private';
+    if AContext.AccessorsProtected then
+      Plan.MethodSection := 'protected';
+    if not TClassActions.CreateAccessor(AContext.Text, Line, Plan, Actions, Action) then
+      Exit;
+    AFix := TRuleFix.Create(Format('%s anlegen und write ergänzen', [Plan.Name]), Action.Edits +
+      [TTextEdit.Create(TTextRange.Create(Line, Column, Line, Column), ' write ' + Plan.Name)]);
+    Result := True;
+  end;
+
+  procedure CheckWrite(AStatement, ATarget: TSyntaxNode);
+  var
+    Symbol, TypeInfo, Owner, OwnerType, Clear: TResolvedSymbol;
+    TypeFound, OwnerFound, HasRead, HasWrite, ReadsField: Boolean;
+    Message, Field: string;
+    Fix: TRuleFix;
+    Fixes: TArray<TRuleFix>;
+  begin
+    if not (ATarget.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess]) or
+      (SuspectFlags(ATarget.Name) and 1 = 0) and ((ATarget.Kind <> TSyntaxKind.IndexAccess) or
+      (ATarget.ChildCount = 0) or (SuspectFlags(ATarget[0].Name) and 1 = 0)) then
+      Exit;
+    if not Resolver.NodeType(AContext.Tree, FileName, ATarget, Symbol, TypeInfo, TypeFound) or
+      (Symbol.SymbolKind <> TIndexSymbolKind.Property_) or not Accessors(Symbol.Signature, HasRead, HasWrite) or
+      HasWrite then
+      Exit;
+    Message := Format('%s.%s hat kein write (wie E2129).', [Symbol.Container, Symbol.Name]);
+    Fixes := nil;
+    // Count := 0 auf einer Liste: Clear leert sie.
+    if SameText(Symbol.Name, 'Count') and (AStatement.ChildCount > 1) and (NodeText(AStatement[1]) = '0') and
+      (ATarget.Kind = TSyntaxKind.MemberAccess) and (ATarget.ChildCount > 0) then
+    begin
+      OwnerFound := Resolver.NodeType(AContext.Tree, FileName, ATarget[0], Owner, OwnerType, TypeFound) and
+        TypeFound and Resolver.FindMember(OwnerType, 'Clear', Clear) and
+        (Clear.SymbolKind = TIndexSymbolKind.Method);
+      if OwnerFound then
+      begin
+        Message := Format('%s.%s hat kein write (wie E2129); zum Leeren Clear aufrufen.', [Symbol.Container,
+          Symbol.Name]);
+        Fixes := [TRuleFix.Create('Clear aufrufen', [TTextEdit.Create(TTextRange.Create(AStatement.StartPos,
+          AStatement.EndPos), NodeText(ATarget[0]) + '.Clear')])];
+      end;
+    end;
+    // In einer Methode der Klasse selbst: direkt in das Feld hinter read schreiben.
+    if (Fixes = nil) and SameText(MethodClass(AStatement), Symbol.Container) and
+      ((ATarget.Kind = TSyntaxKind.Identifier) or ((ATarget.Kind = TSyntaxKind.MemberAccess) and
+      (ATarget.ChildCount > 0) and SameText(NodeText(ATarget[0]), 'Self'))) and
+      Resolver.PropertyReadsField(Symbol, ReadsField) and ReadsField then
+    begin
+      Field := ReadAccessor(Symbol.Signature);
+      Fixes := [TRuleFix.Create(Format('Feld %s zuweisen', [Field]), [TTextEdit.Create(TTextRange.Create(
+        ATarget.StartPos, ATarget.EndPos), Field)])];
+    end;
+    if SetterFix(Symbol, Fix) then
+      Fixes := Fixes + [Fix];
+    if Length(Fixes) > 1 then
+      Fixes[1].Alternative := True;
+    AReport.Add(TTextRange.Create(ATarget.StartPos, ATarget.EndPos), Message, TRuleConfidence.High, Fixes);
+  end;
+
+  procedure CheckRead(ANode: TSyntaxNode);
+  var
+    Symbol, TypeInfo: TResolvedSymbol;
+    TypeFound, HasRead, HasWrite: Boolean;
+  begin
+    if SuspectFlags(ANode.Name) and 2 = 0 then
+      Exit;
+    if Resolver.NodeType(AContext.Tree, FileName, ANode, Symbol, TypeInfo, TypeFound) and
+      (Symbol.SymbolKind = TIndexSymbolKind.Property_) and Accessors(Symbol.Signature, HasRead, HasWrite) and
+      not HasRead then
+      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('%s.%s hat kein read (wie E2130).',
+        [Symbol.Container, Symbol.Name]), TRuleConfidence.High);
+  end;
+
+  procedure Visit(ANode: TSyntaxNode; AWritten: Boolean);
+  var
+    Index: Integer;
+    Target: TSyntaxNode;
+  begin
+    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount > 0) then
+    begin
+      Target := ANode[0];
+      CheckWrite(ANode, Target);
+      // Das Ziel selbst wird geschrieben, bei Liste.Items[I] auch die Property davor.
+      for Index := 0 to Target.ChildCount - 1 do
+        Visit(Target[Index], (Target.Kind = TSyntaxKind.IndexAccess) and (Index = 0));
+      for Index := 1 to ANode.ChildCount - 1 do
+        Visit(ANode[Index], False);
+      Exit;
+    end;
+    if not AWritten and (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+      CheckRead(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index], False);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  FileName := AContext.FileName;
+  if FileName = '' then
+    FileName := AContext.RelativePath;
+  if FileName = '' then
+    FileName := AContext.UnitName + '.pas';
+  Lines := TTextLines.SplitLines(AContext.Text);
+  Actions := TClassActionContext.Default;
+  Actions.Index := AContext.Index;
+  Actions.Namespaces := AContext.Namespaces;
+  Actions.DelphiVersion := AContext.DelphiVersion;
+  Actions.Style := AContext.Formatting;
+  Suspects := TDictionary<string, Integer>.Create;
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  try
+    Resolver.Namespaces := AContext.Namespaces;
+    Resolver.PinTree(AContext.Tree, FileName);
+    try
+      Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
+      Visit(AContext.Tree.Root, False);
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+    Suspects.Free;
+  end;
+end;
+
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TEmptyStatementRule.Create);
@@ -2563,6 +2841,7 @@ begin
   ARegistry.Register(TComparisonAsStatementRule.Create);
   ARegistry.Register(TDuplicateCaseLabelRule.Create);
   ARegistry.Register(TAssignToPropertyMemberRule.Create);
+  ARegistry.Register(TReadonlyPropertyAssignedRule.Create);
 end;
 
 end.

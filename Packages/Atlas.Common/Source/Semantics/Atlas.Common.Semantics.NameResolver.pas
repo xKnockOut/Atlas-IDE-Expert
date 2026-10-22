@@ -230,7 +230,6 @@ type
       AOffset: Integer; AInherited: Boolean; AReceiver, ACall: TSyntaxNode): TArray<TResolvedSymbol>;
     function ResolveAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition): TArray<TResolvedSymbol>;
     function TypeOf(const AResolved: TResolvedSymbol; out AType: TResolvedSymbol): Boolean;
-    function FindMember(const AType: TResolvedSymbol; const AName: string; out AResult: TResolvedSymbol): Boolean;
     function IsAttributeClass(const AType: TResolvedSymbol): Boolean;
     function EnclosingRoutines: TArray<TSyntaxNode>;
     function LookupLocal(const AName: string; out AResult: TResolvedSymbol): Boolean;
@@ -323,6 +322,9 @@ type
     /// <summary>Liest die Property AProperty direkt aus einem Feld (read FFeld, read FFeld.X)? False, wenn das
     /// nicht sicher feststeht (kein read, Typ oder Mitglied unbekannt); sonst AReadsField (#1005).</summary>
     function PropertyReadsField(const AProperty: TResolvedSymbol; out AReadsField: Boolean): Boolean;
+    /// <summary>Mitglied AName des Typs AType samt Vorfahren und Helfern, sichtbar von der zuletzt vorbereiteten
+    /// Stelle (nach NodeType, Resolve …); bei Überladungen das erste.</summary>
+    function FindMember(const AType: TResolvedSymbol; const AName: string; out AResult: TResolvedSymbol): Boolean;
     /// <summary>Kette A.B als Wert und ihr Typ (Aliase verfolgt), z. B. für Postfix-Vorlagen (#188).
     /// False, wenn die Kette nicht auflösbar ist; ATypeFound sagt, ob der Typ bekannt ist.</summary>
     function ChainType(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;

@@ -2299,6 +2299,20 @@ begin
     '        "E2064",' + #10 +
     '        "E2453"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "readonly-property-assigned",' + #10 +
+    '      "name": "Assignment to a property without write",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Assignment to a property that has no write (like E2129), or reading a property that has no read (like E2130). The rule only reports when name resolution finds the property for su' + 're; redeclarations without read and write (property Caption;) count as unknown. Quick fixes: Count := 0 becomes Clear when the type has Clear; inside a method of the declaring class, assign the field ' + 'behind read; for a property declared in this file, create the setter and add write.",' + #10 +
+    '      "bad": "Liste.Count := 0;",' + #10 +
+    '      "good": "Liste.Clear;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2129",' + #10 +
+    '        "E2130"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3464,6 +3478,11 @@ begin
     '      "id": "assign-to-property-member",' + #10 +
     '      "name": "Zuweisung an ein Feld eines Property-Records",' + #10 +
     '      "description": "Zuweisung an ein Feld eines Records, den eine Property mit Getter, eine Default- oder Array-Property oder ein Funktionsergebnis nur als Kopie liefert (wie E2064): Die Zuweisung h' + 'at keine Wirkung. Zuweisungen an untypisierte Konstanten meldet die Regel ebenso. Typen kommen aus der Namensauflösung; gemeldet wird nur bei sicher bekanntem Record-Typ. Liest die Property direkt ein' + ' Feld, schreibt Delphi in dieses Feld, und die Regel bleibt still. Korrektur bei einer Property mit write: über eine lokale Variable zuweisen und zurückschreiben; die Variable wird in der Routine dekl' + 'ariert, die Unit ihres Typs in uses ergänzt."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "readonly-property-assigned",' + #10 +
+    '      "name": "Zuweisung an eine Property ohne write",' + #10 +
+    '      "description": "Zuweisung an eine Property ohne write (wie E2129) bzw. Lesen einer Property ohne read (wie E2130). Die Regel meldet nur, wenn die Namensauflösung die Property sicher findet; Neud' + 'eklarationen ohne read und write (property Caption;) gelten als unbekannt. Korrekturen: Count := 0 wird Clear, wenn der Typ Clear hat; in einer Methode der deklarierenden Klasse das Feld hinter read z' + 'uweisen; für eine Property dieser Datei den Setter anlegen und write ergänzen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

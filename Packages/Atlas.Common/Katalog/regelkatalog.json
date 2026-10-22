@@ -2279,6 +2279,20 @@
         "E2064",
         "E2453"
       ]
+    },
+    {
+      "id": "readonly-property-assigned",
+      "name": "Assignment to a property without write",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "Assignment to a property that has no write (like E2129), or reading a property that has no read (like E2130). The rule only reports when name resolution finds the property for sure; redeclarations without read and write (property Caption;) count as unknown. Quick fixes: Count := 0 becomes Clear when the type has Clear; inside a method of the declaring class, assign the field behind read; for a property declared in this file, create the setter and add write.",
+      "bad": "Liste.Count := 0;",
+      "good": "Liste.Clear;",
+      "compilerCodes": [
+        "E2129",
+        "E2130"
+      ]
     }
   ]
 }
