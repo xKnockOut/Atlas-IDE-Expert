@@ -170,6 +170,8 @@ type
     [Test]
     procedure Variants;
     [Test]
+    procedure Strings;
+    [Test]
     procedure SilentCases;
     [Test]
     procedure OffAndExclude;
@@ -1473,10 +1475,27 @@ begin
     Findings[3].Message);
 end;
 
+procedure TUntypedPointerRefcountTests.Strings;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // dcc warnt bei Strings nur unter NEXTGEN; Atlas meldet sie mit Zusatz und ohne Korrektur.
+  Findings := TRuleAssert.Findings(TUntypedPointerRefcountRule.Create, Teil('    FText: string;'#10 +
+    '    FAnsi: AnsiString;'#10, 'begin'#10'  Pointer(FText) := nil;'#10'  Pointer(FAnsi) := Pointer(FText);'#10));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('Die Zuweisung über Pointer umgeht die Referenzzählung des Strings FText (dcc meldet das nicht).',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Die Zuweisung über Pointer umgeht die Referenzzählung des Strings FAnsi (dcc meldet das nicht).',
+    Findings[1].Message);
+end;
+
 procedure TUntypedPointerRefcountTests.SilentCases;
 begin
-  // Objekt, String, unbekannter Typ, Lesen über Pointer, Vergleich, Feld mit [weak]/[unsafe], mehrere Namen ohne Korrektur.
-  TRuleAssert.Silent(TUntypedPointerRefcountRule.Create, Teil('    FObjekt: TObject;'#10'    FText: string;'#10 +
+  // Objekt, WideString, unbekannter Typ, Lesen über Pointer, Vergleich, Feld mit [weak]/[unsafe], mehrere Namen
+  // ohne Korrektur.
+  TRuleAssert.Silent(TUntypedPointerRefcountRule.Create, Teil('    FObjekt: TObject;'#10'    FText: WideString;'#10 +
     '    FFremd: TUnbekannt;'#10'    FBesitzer: IBesitzer;'#10'    [weak] FSchwach: IBesitzer;'#10 +
     '    [unsafe] FRoh: IBesitzer;'#10, 'var'#10'  P: Pointer;'#10'begin'#10'  Pointer(FObjekt) := nil;'#10 +
     '  Pointer(FText) := nil;'#10'  Pointer(FFremd) := nil;'#10'  P := Pointer(FBesitzer);'#10 +

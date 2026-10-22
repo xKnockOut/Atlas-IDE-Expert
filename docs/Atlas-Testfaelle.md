@@ -4190,5 +4190,6 @@ Voraussetzung: Server läuft in der IDE mit Projekt; `untyped-pointer-refcount` 
 | ZR2 | Projekt bauen | Der Compiler meldet W1070 an derselben Stelle; Fenster zeigt Quelle „Atlas + dcc“. Meldet der Compiler unter Win32/Win64 nichts, bitte notieren (Abgleich #1024) |
 | ZR3 | Alt+Enter: „[weak] FBesitzer verwenden“, danach Strg+Z; dann „[unsafe] FBesitzer verwenden“ | `[weak] FBesitzer: IBesitzer;` und `FBesitzer := Besitzer;`; übersetzt ohne W1070; ein Undo-Schritt. Bzw. `[unsafe]` |
 | ZR4 | `Pointer(FBesitzer) := nil;`, `Pointer(FAnderer) := P;` mit `P: Pointer`, `Pointer(L) := nil;` mit lokaler Variable `L: IBesitzer` | Je eine Warnung; Korrektur nur beim ersten (`FBesitzer := nil`), die anderen ohne Korrektur |
-| ZR5 | `Pointer(FObjekt) := nil` (TObject), `Pointer(FText) := nil` (string), `P := Pointer(FBesitzer)`, `if Pointer(FBesitzer) = nil`, Feld mit `[weak]` oder `[unsafe]`, unbekannter Typ | Keine Meldung |
+| ZR5 | `Pointer(FText) := nil` mit `FText: string` | Warnung „Die Zuweisung über Pointer umgeht die Referenzzählung des Strings FText (dcc meldet das nicht).“ ohne Korrektur; der Compiler meldet hier nichts |
+| ZR5a | `Pointer(FObjekt) := nil` (TObject), `Pointer(FWide) := nil` (WideString), `P := Pointer(FBesitzer)`, `if Pointer(FBesitzer) = nil`, Feld mit `[weak]` oder `[unsafe]`, unbekannter Typ | Keine Meldung |
 | ZR6 | `"untyped-pointer-refcount": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |

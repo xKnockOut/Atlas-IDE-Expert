@@ -69,8 +69,9 @@
 //                     Pointer(X) := … mit einem Interface X (#1081, wie W1070):
 //                     die Zuweisung umgeht die Referenzzählung. Typ über
 //                     TNameResolver.NodeType, gemeldet wird nur bei sicher
-//                     bekanntem Interface-Typ; Strings meldet Delphi außerhalb
-//                     von NEXTGEN nicht, Atlas daher auch nicht. Felder mit
+//                     bekanntem Interface-Typ. Strings (string, AnsiString …)
+//                     meldet Atlas mit „(dcc meldet das nicht)“, weil Delphi
+//                     dort nur unter NEXTGEN warnt. Felder mit
 //                     [weak] oder [unsafe] bleiben still. Korrekturen für Felder
 //                     dieser Datei mit Pointer(Y) oder nil rechts: [weak] bzw.
 //                     [unsafe] ans Feld, Zuweisung ohne Pointer.
@@ -2661,8 +2662,17 @@ var
     Target := PointerArgument(AStatement[0]);
     if (Target = nil) or not (Target.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
       Exit;
-    if not Resolver.NodeType(AContext.Tree, FileName, Target, Symbol, TypeInfo, TypeFound) or Symbol.IsType or
-      not ((TypeFound and (TypeInfo.SymbolKind = TIndexSymbolKind.InterfaceType)) or
+    if not Resolver.NodeType(AContext.Tree, FileName, Target, Symbol, TypeInfo, TypeFound) or Symbol.IsType then
+      Exit;
+    // Strings: ebenso falsch, aber dcc warnt nur unter NEXTGEN; [weak]/[unsafe] gibt es für sie nicht.
+    if MatchText(Symbol.TypeName, ['string', 'UnicodeString', 'AnsiString', 'RawByteString', 'UTF8String']) then
+    begin
+      AReport.Add(TTextRange.Create(AStatement[0].StartPos, AStatement[0].EndPos), Format('Die Zuweisung über ' +
+        'Pointer umgeht die Referenzzählung des Strings %s (dcc meldet das nicht).', [NodeText(Target)]),
+        TRuleConfidence.Medium);
+      Exit;
+    end;
+    if not ((TypeFound and (TypeInfo.SymbolKind = TIndexSymbolKind.InterfaceType)) or
       MatchText(Symbol.TypeName, ['IInterface', 'IUnknown', 'IDispatch'])) then
       Exit;
     Field := FieldToken(Symbol, Marked);
