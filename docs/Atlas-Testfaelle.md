@@ -4388,3 +4388,60 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | HL4 | `10 downto 1`, `1 to 10`, `5 to 5`, `10 - 9 to 1`, `Max to 1`, `{$IFDEF X}10{$ELSE}0{$ENDIF} to 1` | Keine Meldung |
 | HL5 | `"for-high-to-low": "off"` bzw. `"group:compiler": "off"` | Keine Meldung |
 | HL6 | Abgleich mit Delphi: HL1 und HL3 übersetzen | dcc meldet H2135 an denselben Stellen, für HL4 nichts; Abweichungen in der Regel nachtragen |
+
+## inherited ruft eine abstrakte Methode auf (#1026)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IA1 | Das Beispiel aus #1026: `TForm` mit `procedure Zeichnen(C: TCanvas); virtual; abstract;`, in `TKreis.Zeichnen` die Zeile `inherited Zeichnen(C);` | Fehler `inherited-abstract-call` an `inherited Zeichnen`: „TForm.Zeichnen ist abstrakt; der Aufruf über inherited ist nicht erlaubt (wie E2373).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| IA2 | Schnellkorrektur „Aufruf entfernen“, danach Strg+Z | Die Zeile verschwindet, keine Meldung mehr; ein Undo-Schritt |
+| IA3 | `Result := inherited Berechnen(X) + 1;` mit abstraktem `Berechnen` aus einer anderen Unit | Meldung ohne Korrektur |
+| IA4 | Bloßes `inherited;`, Zwischenklasse überschreibt die Methode, passende Überladung ist konkret, Vorfahr unbekannt | Keine Meldung |
+| IA5 | `"inherited-abstract-call": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| IA6 | Abgleich mit Delphi: IA1 und IA3 übersetzen | dcc meldet E2373 an denselben Stellen, für IA4 nichts |
+
+## Typargument verletzt eine Einschränkung (#1028)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GC1 | Das Beispiel aus #1028: `TFabrik<T: class> = class` mit `function Neu: T;`, im Rumpf `Result := T.Create;` | Fehler `generic-constraint-violated` an `T.Create`: „T hat keine constructor-Einschränkung; T.Create ist nicht erlaubt (wie E2568).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| GC2 | Schnellkorrektur „Einschränkung ergänzen“, danach Strg+Z | Kopf wird `TFabrik<T: class, constructor> = class`, keine Meldung mehr; ein Undo-Schritt |
+| GC3 | `var L: TObjectList<Integer>;` mit `System.Generics.Collections` in uses | „Integer ist kein Klassentyp; T von TObjectList verlangt class (wie E2511).“ |
+| GC4 | Eigene Typen `TPuffer<T: record>`, `TSortierer<T: IVergleich>`, `TZoo<T: TTier>` mit `TPuffer<TAuto>`, `TSortierer<TAuto>`, `TZoo<TAuto>` | Meldungen wie E2512, E2514, E2515 an den Typargumenten |
+| GC5 | `TBox<T>` mit `procedure Zeige(V: T);` und `V.Free;` im Rumpf | „T hat keine class- oder Interface-Einschränkung; V.Free ist nicht erlaubt (wie E2571).“; Korrektur ergänzt `: class` |
+| GC6 | `TList<T>` innerhalb eines generischen Typs, `TObjectList<TKunde>`, `T: constructor` mit `T.Create`, `T: TTier` mit `T.Create` | Keine Meldung |
+| GC7 | `"generic-constraint-violated": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| GC8 | Abgleich mit Delphi: GC1, GC3 bis GC5 übersetzen | dcc meldet die genannten Codes an denselben Stellen, für GC6 nichts; weicht ein Code ab (etwa E2003 statt E2571), den Fall im Issue nachtragen |
+
+## Unbekannter Typ (#1031)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NT1 | Das Beispiel aus #1031: `var K: TKunde;`, `TKunde` steht in Unit `Kunden`, die nicht in uses steht | Fehler `unresolved-type` an `TKunde`: „Typ TKunde ist nicht deklariert; Kunden fehlt in uses (wie E2003).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| NT2 | Schnellkorrektur „uses Kunden ergänzen“, danach Strg+Z | `Kunden` steht in uses, keine Meldung mehr; ein Undo-Schritt |
+| NT3 | Unbekannter Typ als Parameter, Rückgabe, Feld, Eigenschaft, Vorfahr, Typumwandlung `TKunde(X)` und in `TList<TKunde>` | Je eine Meldung am Typnamen |
+| NT4 | `var Z: ^TUnbekannt;` und `var V: Integer; W: V;` | Zeigerziel: Meldung wie E2564 (Code gegen dcc prüfen, siehe NT7); `W: V`: „V ist kein Typ (wie E2005).“ |
+| NT5 | Typen der Datei, Typparameter `T`, `TFormular.TEintrag` (verschachtelt), Teilbereich `MinWert..MaxWert`, Typ aus einer Unit außerhalb des Index, Vorfahr unbekannt, `{$IFDEF}`-Zweig | Keine Meldung |
+| NT6 | `"unresolved-type": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| NT7 | Abgleich mit Delphi: NT1, NT3, NT4 übersetzen | dcc meldet die genannten Codes; weicht der Code beim Zeigerziel ab (E2003 statt E2564), Meldung der Regel anpassen und im Issue nachtragen |
+
+## Konstruktor über Klassenreferenz nicht virtuell (#1032)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KV1 | Das Beispiel aus #1032: `TPluginKlasse = class of TPlugin`, `TPlugin` mit `constructor Create;`, Nachfahr `TSpezial` mit eigenem `constructor Create;`, im Rumpf `P := Klasse.Create;` | Warnung `class-reference-nonvirtual-constructor` an `Klasse.Create`: „TPlugin.Create ist nicht virtuell; über die Klassenreferenz läuft immer TPlugin.Create (wie E2391).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| KV2 | Schnellkorrektur „virtual an TPlugin.Create, override in den Nachfahren“, danach Strg+Z | `constructor Create; virtual;` in TPlugin, `constructor Create; override;` in TSpezial, keine Meldung mehr; ein Undo-Schritt |
+| KV3 | Klassenreferenz als Feld (`FKlasse.Create(1)`), als Parameter und als Funktionsergebnis; Klasse aus einer anderen Unit | Je eine Meldung; bei der Klasse aus einer anderen Unit ohne Korrektur |
+| KV4 | `TComponentClass`, `TFormClass` bzw. eigene Klasse mit `constructor Create; virtual;`; `TPlugin.Create` direkt an der Klasse; Überladung, deren passende Variante virtuell ist | Keine Meldung |
+| KV5 | `var K: TClass; … K.Create` (System im Index) | Meldung „TObject.Create ist nicht virtuell …“, ohne Korrektur |
+| KV6 | Variable nur in einem `{$IFDEF}`-Zweig vom Typ der Klassenreferenz | Keine Meldung |
+| KV7 | `"class-reference-nonvirtual-constructor": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| KV8 | Abgleich mit Delphi: KV1, KV3, KV5 übersetzen | dcc meldet hier meist nichts (E2391 nur in Sonderfällen, siehe Issue); Atlas meldet die Stellen trotzdem, weil zur Laufzeit immer der Basiskonstruktor läuft. Weicht etwas ab, im Issue nachtragen |

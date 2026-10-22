@@ -2325,6 +2325,67 @@
       "level": "T"
     },
     {
+      "id": "inherited-abstract-call",
+      "name": "inherited calls an abstract method",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "inherited with an explicit method name, such as inherited Zeichnen(C), although the method is abstract in the ancestor (like E2373). A bare inherited; is skipped silently by the compiler for abstract methods and is not reported. The method is resolved by name resolution including overloads; the rule only reports when every matching overload is abstract. Quick fix: remove the call when it is a statement of its own in a begin…end block.",
+      "bad": "procedure TKreis.Zeichnen(C: TCanvas);\nbegin\n  inherited Zeichnen(C);\n  C.Ellipse(FRahmen);\nend;",
+      "good": "procedure TKreis.Zeichnen(C: TCanvas);\nbegin\n  C.Ellipse(FRahmen);\nend;",
+      "compilerCodes": [
+        "E2373"
+      ]
+    },
+    {
+      "id": "generic-constraint-violated",
+      "name": "Type argument violates a constraint",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A type argument does not satisfy the constraint of its type parameter: class (like E2511), record (like E2512), constructor (like E2513), an interface (like E2514) or a base class (like E2515). Inside methods of a generic type of this file the rule also reports T.Create without a constructor constraint (like E2568) and method calls on values of a type parameter without any constraint (like E2571). The generic type is resolved by name resolution including the number of type parameters, its constraints come from its declaration in the file or in the symbol index. Arguments that are type parameters themselves, aliases and types whose ancestry cannot be resolved are not reported. Quick fix for a type parameter of this file that stands alone in its group: add the constraint (T: class, constructor or T: class).",
+      "bad": "  TFabrik<T: class> = class\n    function Neu: T;\n  end;\n…\n  Result := T.Create;",
+      "good": "  TFabrik<T: class, constructor> = class\n    function Neu: T;\n  end;\n…\n  Result := T.Create;",
+      "compilerCodes": [
+        "E2511",
+        "E2512",
+        "E2513",
+        "E2514",
+        "E2515",
+        "E2568",
+        "E2571"
+      ]
+    },
+    {
+      "id": "unresolved-type",
+      "name": "Type in a declaration not found",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A type name in a declaration (field, parameter, result, ancestor, interface list, variable, type argument) is not declared (like E2003, for the target of a pointer type like E2564) or is not a type (like E2005). Complements unresolved-identifier, which only checks statements. Same preconditions as unresolved-attribute: System in the symbol index, every unit from uses known, not inside {$IF…} blocks. Type parameters, names the file declares as a type anywhere (also nested) and names the index knows as a nested type (inherited inner types) are not reported. Quick fix: add the unit that declares the type (with the same number of type parameters) to uses.",
+      "bad": "uses\n  System.SysUtils;\ntype\n  TKunden = TObjectList<TKunde>;",
+      "good": "uses\n  System.SysUtils, System.Generics.Collections;\ntype\n  TKunden = TObjectList<TKunde>;",
+      "compilerCodes": [
+        "E2564",
+        "E2563",
+        "E2005",
+        "E2003"
+      ]
+    },
+    {
+      "id": "class-reference-nonvirtual-constructor",
+      "name": "Constructor called through a class reference is not virtual",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "Create called through a class reference (class of TBasis) whose constructor is not virtual. On Win32 and Win64 this compiles silently but always runs the constructor of TBasis: fields that descendants set up in their own constructors stay empty (like E2391). The receiver may be a variable, field, parameter or function result whose type is a class reference; the constructor is resolved by name resolution in the nearest class that declares it, including overloads by argument count. The rule stays silent when a matching overload is virtual, dynamic, override or abstract, when a declaration lies in another branch of conditional compilation, and when a type cannot be resolved. Quick fix when the constructor is declared in this file: virtual on it and override on the constructors with the same signature in descendants in this file.",
+      "bad": "type\n  TPluginKlasse = class of TPlugin;\n  TPlugin = class\n    constructor Create;\n  end;\n...\n  P := Klasse.Create;",
+      "good": "type\n  TPluginKlasse = class of TPlugin;\n  TPlugin = class\n    constructor Create; virtual;\n  end;\n  TSpezial = class(TPlugin)\n    constructor Create; override;\n  end;\n...\n  P := Klasse.Create;",
+      "compilerCodes": [
+        "E2391"
+      ]
+    },
+    {
       "id": "jump-outside-allowed-scope",
       "name": "Break, Continue or Exit in a place where it is not allowed",
       "category": "bug",
