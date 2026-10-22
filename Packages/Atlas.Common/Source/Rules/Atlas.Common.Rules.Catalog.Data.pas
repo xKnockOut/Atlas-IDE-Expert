@@ -2361,6 +2361,19 @@ begin
     '        "E2005",' + #10 +
     '        "E2003"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "class-reference-nonvirtual-constructor",' + #10 +
+    '      "name": "Constructor called through a class reference is not virtual",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Create called through a class reference (class of TBasis) whose constructor is not virtual. On Win32 and Win64 this compiles silently but always runs the constructor of TBasis: f' + 'ields that descendants set up in their own constructors stay empty (like E2391). The receiver may be a variable, field, parameter or function result whose type is a class reference; the constructor is' + ' resolved by name resolution in the nearest class that declares it, including overloads by argument count. The rule stays silent when a matching overload is virtual, dynamic, override or abstract, whe' + 'n a declaration lies in another branch of conditional compilation, and when a type cannot be resolved. Quick fix when the constructor is declared in this file: virtual on it and override on the constr' + 'uctors with the same signature in descendants in this file.",' + #10 +
+    '      "bad": "type\n  TPluginKlasse = class of TPlugin;\n  TPlugin = class\n    constructor Create;\n  end;\n...\n  P := Klasse.Create;",' + #10 +
+    '      "good": "type\n  TPluginKlasse = class of TPlugin;\n  TPlugin = class\n    constructor Create; virtual;\n  end;\n  TSpezial = class(TPlugin)\n    constructor Create; override;\n  end;\n...\n  P ' + ':= Klasse.Create;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2391"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3546,6 +3559,11 @@ begin
     '      "id": "unresolved-type",' + #10 +
     '      "name": "Typ in einer Deklaration nicht gefunden",' + #10 +
     '      "description": "Ein Typname in einer Deklaration (Feld, Parameter, Ergebnis, Vorfahr, Interface-Liste, Variable, Typargument) ist nicht deklariert (wie E2003, beim Ziel eines Zeigertyps wie E256' + '4) oder kein Typ (wie E2005). Ergänzt unresolved-identifier, das nur Anweisungen prüft. Dieselben Vorbedingungen wie bei unresolved-attribute: System im Symbolindex, alle Units aus uses bekannt, nicht' + ' in {$IF…}-Blöcken. Typparameter, Namen, die die Datei irgendwo als Typ deklariert (auch verschachtelt), und Namen, die der Index als verschachtelten Typ kennt (geerbte innere Typen), meldet die Regel' + ' nicht. Korrektur: die Unit, die den Typ (mit gleich vielen Typparametern) deklariert, in uses aufnehmen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "class-reference-nonvirtual-constructor",' + #10 +
+    '      "name": "Konstruktor über Klassenreferenz nicht virtuell",' + #10 +
+    '      "description": "Create über eine Klassenreferenz (class of TBasis), deren Konstruktor nicht virtual ist. Unter Win32 und Win64 übersetzt das ohne Meldung, erzeugt aber immer über den Konstruktor' + ' von TBasis: Felder, die Nachfahren in ihren eigenen Konstruktoren setzen, bleiben leer (wie E2391). Der Empfänger kann eine Variable, ein Feld, ein Parameter oder ein Funktionsergebnis vom Typ einer ' + 'Klassenreferenz sein; den Konstruktor löst die Namensauflösung in der nächsten Klasse auf, die ihn deklariert, Überladungen nach Zahl der Argumente. Still, wenn eine passende Überladung virtual, dynam' + 'ic, override oder abstract ist, wenn eine Deklaration in einem anderen Zweig der bedingten Übersetzung steht und wenn ein Typ nicht auflösbar ist. Korrektur, wenn der Konstruktor in dieser Datei steht' + ': virtual an ihn und override an die gleichlautenden Konstruktoren der Nachfahren in dieser Datei."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

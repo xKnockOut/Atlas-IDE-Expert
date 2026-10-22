@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 18 |
+| [Compiler vorab](#gruppe-compiler) | 19 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -149,6 +149,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`inherited-abstract-call`](#inherited-abstract-call) | inherited ruft eine abstrakte Methode auf | Bug | Fehler |
 | [`generic-constraint-violated`](#generic-constraint-violated) | Typargument verletzt eine Einschränkung | Bug | Fehler |
 | [`unresolved-type`](#unresolved-type) | Typ in einer Deklaration nicht gefunden | Bug | Fehler |
+| [`class-reference-nonvirtual-constructor`](#class-reference-nonvirtual-constructor) | Konstruktor über Klassenreferenz nicht virtuell | Bug | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4627,4 +4628,40 @@ uses
   System.SysUtils, System.Generics.Collections;
 type
   TKunden = TObjectList<TKunde>;
+```
+
+<a id="class-reference-nonvirtual-constructor"></a>
+### class-reference-nonvirtual-constructor
+
+**Konstruktor über Klassenreferenz nicht virtuell** · Bug · Warnung · Gruppe Compiler vorab
+
+Create über eine Klassenreferenz (class of TBasis), deren Konstruktor nicht virtual ist. Unter Win32 und Win64 übersetzt das ohne Meldung, erzeugt aber immer über den Konstruktor von TBasis: Felder, die Nachfahren in ihren eigenen Konstruktoren setzen, bleiben leer (wie E2391). Der Empfänger kann eine Variable, ein Feld, ein Parameter oder ein Funktionsergebnis vom Typ einer Klassenreferenz sein; den Konstruktor löst die Namensauflösung in der nächsten Klasse auf, die ihn deklariert, Überladungen nach Zahl der Argumente. Still, wenn eine passende Überladung virtual, dynamic, override oder abstract ist, wenn eine Deklaration in einem anderen Zweig der bedingten Übersetzung steht und wenn ein Typ nicht auflösbar ist. Korrektur, wenn der Konstruktor in dieser Datei steht: virtual an ihn und override an die gleichlautenden Konstruktoren der Nachfahren in dieser Datei.
+
+Entspricht der Compilermeldung `E2391`.
+
+Mit Treffer:
+
+```pascal
+type
+  TPluginKlasse = class of TPlugin;
+  TPlugin = class
+    constructor Create;
+  end;
+...
+  P := Klasse.Create;
+```
+
+Richtig:
+
+```pascal
+type
+  TPluginKlasse = class of TPlugin;
+  TPlugin = class
+    constructor Create; virtual;
+  end;
+  TSpezial = class(TPlugin)
+    constructor Create; override;
+  end;
+...
+  P := Klasse.Create;
 ```

@@ -4161,3 +4161,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | NT5 | Typen der Datei, Typparameter `T`, `TFormular.TEintrag` (verschachtelt), Teilbereich `MinWert..MaxWert`, Typ aus einer Unit außerhalb des Index, Vorfahr unbekannt, `{$IFDEF}`-Zweig | Keine Meldung |
 | NT6 | `"unresolved-type": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | NT7 | Abgleich mit Delphi: NT1, NT3, NT4 übersetzen | dcc meldet die genannten Codes; weicht der Code beim Zeigerziel ab (E2003 statt E2564), Meldung der Regel anpassen und im Issue nachtragen |
+
+## Konstruktor über Klassenreferenz nicht virtuell (#1032)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KV1 | Das Beispiel aus #1032: `TPluginKlasse = class of TPlugin`, `TPlugin` mit `constructor Create;`, Nachfahr `TSpezial` mit eigenem `constructor Create;`, im Rumpf `P := Klasse.Create;` | Warnung `class-reference-nonvirtual-constructor` an `Klasse.Create`: „TPlugin.Create ist nicht virtuell; über die Klassenreferenz läuft immer TPlugin.Create (wie E2391).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| KV2 | Schnellkorrektur „virtual an TPlugin.Create, override in den Nachfahren“, danach Strg+Z | `constructor Create; virtual;` in TPlugin, `constructor Create; override;` in TSpezial, keine Meldung mehr; ein Undo-Schritt |
+| KV3 | Klassenreferenz als Feld (`FKlasse.Create(1)`), als Parameter und als Funktionsergebnis; Klasse aus einer anderen Unit | Je eine Meldung; bei der Klasse aus einer anderen Unit ohne Korrektur |
+| KV4 | `TComponentClass`, `TFormClass` bzw. eigene Klasse mit `constructor Create; virtual;`; `TPlugin.Create` direkt an der Klasse; Überladung, deren passende Variante virtuell ist | Keine Meldung |
+| KV5 | `var K: TClass; … K.Create` (System im Index) | Meldung „TObject.Create ist nicht virtuell …“, ohne Korrektur |
+| KV6 | Variable nur in einem `{$IFDEF}`-Zweig vom Typ der Klassenreferenz | Keine Meldung |
+| KV7 | `"class-reference-nonvirtual-constructor": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| KV8 | Abgleich mit Delphi: KV1, KV3, KV5 übersetzen | dcc meldet hier meist nichts (E2391 nur in Sonderfällen, siehe Issue); Atlas meldet die Stellen trotzdem, weil zur Laufzeit immer der Basiskonstruktor läuft. Weicht etwas ab, im Issue nachtragen |
