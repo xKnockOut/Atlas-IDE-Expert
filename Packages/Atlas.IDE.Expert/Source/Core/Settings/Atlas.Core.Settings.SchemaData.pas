@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1774] of string = (
+  Lines: array[0..1779] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -240,6 +240,11 @@ const
     '                "type": "boolean",',
     '                "default": true,',
     '                "description": "Nur empty-statement: leere Blöcke begin … end mit Kommentar darin nicht melden (#912)."',
+    '              },',
+    '              "allowInProgram": {',
+    '                "type": "boolean",',
+    '                "default": false,',
+    '                "description": "Nur global-formatsettings-modified: Zuweisungen an die globale FormatSettings in der .dpr erlauben, etwa einmal beim Programmstart (#1089)."',
     '              },',
     '              "countNames": {',
     '                "type": "array",',
