@@ -4119,3 +4119,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## Bedingung oder Schleife ohne begin … end (#1025)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; `missing-begin-end` steht auf der Vorgabe (an).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BB1 | Das Beispiel aus #1025 (`if Kunde.Gesperrt then … else …` und `for I := 0 to High(Werte) do …`, je ohne `begin … end`) | Drei Hinweise `missing-begin-end` an `if`, `else` und `for`: „if ohne begin … end“ usw.; im Fenster „Atlas-Prüfung“ und im Befund-Hover |
+| BB2 | Alt+Enter am `if`: „begin … end setzen“, danach Strg+Z | Nur dieser Rumpf bekommt `begin … end`; das `;` hinter `Protokoll.Warnung('Gesperrt')` steht im Block, vor `else` keins (übersetzt ohne E2153); ein Undo-Schritt |
+| BB3 | Alt+Enter: „begin … end in der ganzen Methode setzen“, dann in einer Unit mit zwei Routinen „… in der ganzen Datei setzen“ | Code wie im Issue nach der Korrektur, eingerückt nach `format.indentSize`; ein Undo-Schritt; danach keine Meldung mehr |
+| BB4 | `if A then X := 1 else X := 2;` in einer Zeile und `for I := 0 to 1 do if A then X := I;`, Korrektur für die Methode | Beide Rümpfe in eigenen Zeilen, `else` unter `if`, innen zuerst geschlossen; übersetzt |
+| BB5 | `else if`-Kette mit Blöcken, `repeat … until`, `case … end`, `if A then try … end`, `if A then ;`, Rumpf mit `{$IFDEF DEBUG} … {$ELSE} … {$ENDIF}` | Keine Meldung von `missing-begin-end` (die leere Anweisung meldet `empty-statement`) |
+| BB6 | In `atlas.json` `"missing-begin-end": {"statements": ["case"]}`, dann `{"allowSingleLineExit": true}` und `{"allowSameLine": true}` | Nur case-Zweige ohne Block („case-Zweig ohne begin … end“); dann kein Befund mehr für `if A then Exit;` in einer Zeile; dann keiner für eine Anweisung in derselben Zeile |
+| BB7 | `"redundant-begin-end": "hint"` setzen, `if A then begin Save; end;` | Keine Meldung von `redundant-begin-end`, solange `missing-begin-end` an ist; Seite Prüfregeln zeigt bei `redundant-begin-end` „Wird durch missing-begin-end übersteuert …“. Mit `"missing-begin-end": "off"` meldet `redundant-begin-end` wieder |
+| BB8 | `"missing-begin-end": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |

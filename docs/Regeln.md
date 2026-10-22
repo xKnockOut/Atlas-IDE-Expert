@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 28 |
+| [Stil und Metriken](#gruppe-style) | 29 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -255,6 +255,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`public-field`](#public-field) | Öffentliches Feld | Code Smell | Hinweis |
 | [`global-variable`](#global-variable) | Globale Variable im interface | Code Smell | Hinweis |
 | [`commented-out-code`](#commented-out-code) | Auskommentierter Code | Code Smell | Hinweis |
+| [`missing-begin-end`](#missing-begin-end) | Bedingung oder Schleife ohne begin … end | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -2168,6 +2169,8 @@ if Done then
 **begin … end um eine einzelne Anweisung** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Ein begin … end-Block mit genau einer Anweisung kann entfallen. Standardmäßig aus.
+
+Schweigt, solange [`missing-begin-end`](#missing-begin-end) an ist.
 
 Mit Treffer:
 
@@ -4540,4 +4543,39 @@ Richtig:
 
 ```pascal
 Liste.Clear;
+```
+
+<a id="missing-begin-end"></a>
+### missing-begin-end
+
+**Bedingung oder Schleife ohne begin … end** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Der Rumpf von if … then, else, for, while oder with ist eine einzelne Anweisung ohne begin … end. Mit der Regel haben Bedingungen und Schleifen immer einen Block; eine später ergänzte zweite Anweisung landet so nicht versehentlich außerhalb. else if bleibt erlaubt (das innere if braucht keinen eigenen Block); repeat … until, case … end, try … end und asm … end sind schon Blöcke. Eine leere Anweisung (if X then ;) meldet empty-statement. Rümpfe mit {$IFDEF} meldet die Regel nicht. Solange die Regel an ist, meldet redundant-begin-end nichts. Schnellkorrekturen: begin … end um die Anweisung setzen, für die ganze Methode oder für die ganze Datei, eingerückt nach den Formatierungseinstellungen; ein ; vor else wandert in den Block (kein E2153).
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `statements` | string-list | `["if","else","for","while","with"]` | Geprüfte Anweisungen; case für die Zweige von case-Anweisungen ergänzen. |
+| `allowSingleLineExit` | boolean | `false` | Exit, Continue, Break und raise in derselben Zeile wie die Bedingung erlauben (if … then Exit;). |
+| `allowSameLine` | boolean | `false` | Eine einzelne Anweisung in derselben Zeile wie Bedingung bzw. Schleifenkopf erlauben. |
+
+Mit Treffer:
+
+```pascal
+if Kunde.Gesperrt then
+  Protokoll.Warnung('Gesperrt')
+else
+  Speichern(Kunde);
+```
+
+Richtig:
+
+```pascal
+if Kunde.Gesperrt then
+begin
+  Protokoll.Warnung('Gesperrt');
+end
+else
+begin
+  Speichern(Kunde);
+end;
 ```

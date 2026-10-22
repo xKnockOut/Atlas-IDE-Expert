@@ -949,7 +949,10 @@ begin
     '      "group": "style",' + #10 +
     '      "description": "A begin … end block that holds exactly one statement can be removed. Off by default.",' + #10 +
     '      "bad": "if Done then\nbegin\n  Exit;\nend;",' + #10 +
-    '      "good": "if Done then\n  Exit;"' + #10 +
+    '      "good": "if Done then\n  Exit;",' + #10 +
+    '      "overriddenBy": [' + #10 +
+    '        "missing-begin-end"' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "with-statement",' + #10 +
@@ -2313,6 +2316,42 @@ begin
     '        "E2129",' + #10 +
     '        "E2130"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "missing-begin-end",' + #10 +
+    '      "name": "Condition or loop without begin … end",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "The body of if … then, else, for, while or with is a single statement without begin … end. With the rule, conditions and loops always have a block, so a second statement added la' + 'ter does not end up outside by accident. else if stays allowed (the inner if needs no block of its own); repeat … until, case … end, try … end and asm … end are blocks already. An empty statement (if ' + 'X then ;) is reported by empty-statement. Bodies with {$IFDEF} are not reported. While the rule is on, redundant-begin-end reports nothing. Quick fixes: put begin … end around the statement, for the w' + 'hole method or for the whole file, indented by the format settings; a ; before else moves into the block (no E2153).",' + #10 +
+    '      "bad": "if Kunde.Gesperrt then\n  Protokoll.Warnung(''Gesperrt'')\nelse\n  Speichern(Kunde);",' + #10 +
+    '      "good": "if Kunde.Gesperrt then\nbegin\n  Protokoll.Warnung(''Gesperrt'');\nend\nelse\nbegin\n  Speichern(Kunde);\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "statements",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "if",' + #10 +
+    '            "else",' + #10 +
+    '            "for",' + #10 +
+    '            "while",' + #10 +
+    '            "with"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Checked statements; add case for the branches of case statements."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "allowSingleLineExit",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": false,' + #10 +
+    '          "description": "Allow Exit, Continue, Break and raise on the same line as the condition (if … then Exit;)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "allowSameLine",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": false,' + #10 +
+    '          "description": "Allow a single statement on the same line as the condition or loop header."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3483,6 +3522,25 @@ begin
     '      "id": "readonly-property-assigned",' + #10 +
     '      "name": "Zuweisung an eine Property ohne write",' + #10 +
     '      "description": "Zuweisung an eine Property ohne write (wie E2129) bzw. Lesen einer Property ohne read (wie E2130). Die Regel meldet nur, wenn die Namensauflösung die Property sicher findet; Neud' + 'eklarationen ohne read und write (property Caption;) gelten als unbekannt. Korrekturen: Count := 0 wird Clear, wenn der Typ Clear hat; in einer Methode der deklarierenden Klasse das Feld hinter read z' + 'uweisen; für eine Property dieser Datei den Setter anlegen und write ergänzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "missing-begin-end",' + #10 +
+    '      "name": "Bedingung oder Schleife ohne begin … end",' + #10 +
+    '      "description": "Der Rumpf von if … then, else, for, while oder with ist eine einzelne Anweisung ohne begin … end. Mit der Regel haben Bedingungen und Schleifen immer einen Block; eine später erg' + 'änzte zweite Anweisung landet so nicht versehentlich außerhalb. else if bleibt erlaubt (das innere if braucht keinen eigenen Block); repeat … until, case … end, try … end und asm … end sind schon Blöc' + 'ke. Eine leere Anweisung (if X then ;) meldet empty-statement. Rümpfe mit {$IFDEF} meldet die Regel nicht. Solange die Regel an ist, meldet redundant-begin-end nichts. Schnellkorrekturen: begin … end ' + 'um die Anweisung setzen, für die ganze Methode oder für die ganze Datei, eingerückt nach den Formatierungseinstellungen; ein ; vor else wandert in den Block (kein E2153).",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "statements",' + #10 +
+    '          "description": "Geprüfte Anweisungen; case für die Zweige von case-Anweisungen ergänzen."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "allowSingleLineExit",' + #10 +
+    '          "description": "Exit, Continue, Break und raise in derselben Zeile wie die Bedingung erlauben (if … then Exit;)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "allowSameLine",' + #10 +
+    '          "description": "Eine einzelne Anweisung in derselben Zeile wie Bedingung bzw. Schleifenkopf erlauben."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

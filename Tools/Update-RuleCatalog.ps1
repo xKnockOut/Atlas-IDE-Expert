@@ -91,6 +91,14 @@ foreach ($Rule in $Base.rules) {
             }
         }
     }
+    # Gegenregeln (#1025): Ist eine davon an, meldet die Regel nichts.
+    if ($Rule.PSObject.Properties.Name -contains 'overriddenBy') {
+        foreach ($Other in @($Rule.overriddenBy)) {
+            if (-not ($Base.rules | Where-Object { $_.id -eq $Other })) {
+                $Problems.Add("Regel '$($Rule.id)': unbekannte Gegenregel '$Other'")
+            }
+        }
+    }
 }
 
 # Abgleich mit dem Quelltext
@@ -197,6 +205,9 @@ foreach ($Row in $Rows) {
     [void]$Doc.Append("$($Row.Description)`r`n`r`n")
     if ($Row.Rule.PSObject.Properties.Name -contains 'compilerCodes') {
         [void]$Doc.Append("Entspricht der Compilermeldung $((@($Row.Rule.compilerCodes) | ForEach-Object { '`' + $_ + '`' }) -join ', ').`r`n`r`n")
+    }
+    if ($Row.Rule.PSObject.Properties.Name -contains 'overriddenBy') {
+        [void]$Doc.Append("Schweigt, solange $((@($Row.Rule.overriddenBy) | ForEach-Object { '[`' + $_ + '`](#' + $_ + ')' }) -join ' oder ') an ist.`r`n`r`n")
     }
     if ($Row.Options.Count -gt 0) {
         [void]$Doc.Append("| Option | Typ | Vorgabe | Bedeutung |`r`n|---|---|---|---|`r`n")

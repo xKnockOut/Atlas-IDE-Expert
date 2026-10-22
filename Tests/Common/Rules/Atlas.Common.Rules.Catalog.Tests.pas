@@ -54,6 +54,8 @@ type
     procedure SharedCatalogIsReadOnce;
     [Test]
     procedure ReadsCompilerCodes;
+    [Test]
+    procedure ReadsOverriddenBy;
   end;
 
 implementation
@@ -308,6 +310,30 @@ begin
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":["X2069"]}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":["F206"]}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":[2069]}]}');
+end;
+
+procedure TRuleCatalogTests.ReadsOverriddenBy;
+var
+  Catalog: TRuleCatalog;
+  Entry: TRuleCatalogEntry;
+begin
+  Catalog := TRuleCatalog.Create('{"rules":[{"id":"x","category":"code-smell","severity":"hint",' +
+    '"overriddenBy":["y"]},{"id":"y","category":"code-smell","severity":"hint"}]}');
+  try
+    Assert.IsTrue(Catalog.TryFind('x', Entry));
+    Assert.AreEqual('y', string.Join(',', Entry.OverriddenBy));
+    Assert.IsTrue(Pos('Schweigt, solange y an ist.', TRuleCatalog.Explanation(Entry, #10)) > 0);
+    Assert.IsTrue(Catalog.TryFind('y', Entry));
+    Assert.AreEqual(0, Integer(Length(Entry.OverriddenBy)));
+  finally
+    Catalog.Free;
+  end;
+  // Eingebauter Katalog: redundant-begin-end schweigt bei missing-begin-end (#1025).
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('redundant-begin-end', Entry));
+  Assert.AreEqual('missing-begin-end', string.Join(',', Entry.OverriddenBy));
+  ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","overriddenBy":"y"}]}');
+  ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","overriddenBy":[1]}]}');
+  ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","overriddenBy":[""]}]}');
 end;
 
 procedure TRuleCatalogTests.RejectsOptionWithUnknownType;
