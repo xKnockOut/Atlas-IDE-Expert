@@ -2351,6 +2351,24 @@
       "description": "An object is created with TClass.Create in the initialization section and assigned to a unit variable, or created in a class constructor and assigned to a class var, but the unit never frees it (no Free, Destroy, DisposeOf, Release or FreeAndNil anywhere in the unit). FastMM reports a leak on shutdown; in packages the object stays behind on every unload. Interface and record types, components with an owner (Application, Self, Owner) and objects the unit hands over stay silent: every mention of the variable must be harmless (member access, comparison with nil, Assigned, a new Create or nil assignment); passing it as an argument, assigning it elsewhere, with, a property reading it or FreeOnTerminate silence the rule. For variables in the interface section and public class vars the rule also stays silent when another indexed unit uses the name. High confidence. Quick fix: FreeAndNil at the end of finalization or in the class destructor; a missing finalization section or class destructor (declaration and body) is created and System.SysUtils is added to uses when needed.",
       "bad": "initialization\n  GProtokoll := TProtokoll.Create;\nend.",
       "good": "initialization\n  GProtokoll := TProtokoll.Create;\n\nfinalization\n  FreeAndNil(GProtokoll);\nend."
+    },
+    {
+      "id": "compiler-warnings-disabled",
+      "name": "Compiler warnings or checks switched off up to the end of the unit",
+      "category": "code-smell",
+      "severity": "warning",
+      "group": "robustness",
+      "description": "{$WARNINGS OFF}, {$HINTS OFF}, {$WARN X OFF}, {$R-}, {$Q-} (also combined as {$R-,Q-}) or the long forms {$RANGECHECKS OFF} and {$OVERFLOWCHECKS OFF} without a later restore up to the end of the unit. Messages and checks disappear far beyond the intended spot, and the 0/0/0 rule is bypassed. Any later ON, +, DEFAULT or ERROR for the same switch counts as a restore, also inside {$IFOPT}/{$IFDEF} patterns, as does a later {$POPOPT}. A switch whose counterpart stands in another branch of the same {$IF} ({$IFDEF DEBUG}{$R+}{$ELSE}{$R-}{$ENDIF}) is a deliberate setting per configuration and stays silent, as does a directive with no code after it; {$R *.dfm} is a resource, not a range check. Option allow lists switches that may stay off (warning names such as SYMBOL_PLATFORM, WARNINGS, HINTS, R or RANGECHECKS, Q or OVERFLOWCHECKS). High confidence. Quick fix: insert the restore ({$WARNINGS ON}, {$WARN X DEFAULT}, {$R+} …) after the next block; for range and overflow checks only individually, since {$R+} may switch on a check the project has off.",
+      "bad": "{$WARNINGS OFF}\nfunction AlteBerechnung(const Wert: Integer): Integer;\nbegin\n  Result := Wert * 2;\nend;",
+      "good": "{$WARNINGS OFF}\nfunction AlteBerechnung(const Wert: Integer): Integer;\nbegin\n  Result := Wert * 2;\nend;\n{$WARNINGS ON}",
+      "options": [
+        {
+          "name": "allow",
+          "type": "string-list",
+          "default": [],
+          "description": "Switches that may stay off up to the end of the unit: warning names for {$WARN} (SYMBOL_PLATFORM), WARNINGS, HINTS, R or RANGECHECKS, Q or OVERFLOWCHECKS; case is ignored."
+        }
+      ]
     }
   ]
 }

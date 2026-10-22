@@ -4189,3 +4189,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | IF5 | Freigabe in einer Prozedur der Unit, `G.Free` in finalization hinter `if Assigned(G)`, Interface-Variable, `TStopwatch.Create`, `TDatenmodul.Create(Application)`, `Liste.Add(G)`, `with G do`, `G.FreeOnTerminate := True` | Keine Meldung |
 | IF6 | Variable im interface-Abschnitt, eine andere Unit des Projekts verwendet sie | Keine Meldung; ohne die andere Unit Meldung |
 | IF7 | `"initialization-not-finalized": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |
+
+## Compiler-Warnungen bis zum Ende der Unit abgeschaltet (#972)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WD1 | Das Beispiel aus #972: `{$WARNINGS OFF}` vor `function AlteBerechnung(…)`, danach weitere Routinen, kein `{$WARNINGS ON}` | Warnung `compiler-warnings-disabled` an der Direktive: „WARNINGS bleibt bis zum Ende der Unit aus; alle späteren Warnungen fehlen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| WD2 | Schnellkorrektur „Nach dem nächsten Block wiederherstellen“ auf WD1 | `{$WARNINGS ON}` in der Zeile hinter dem `end;` von `AlteBerechnung`; Meldung verschwindet; ein Undo-Schritt |
+| WD3 | `{$HINTS OFF}`, `{$WARN SYMBOL_PLATFORM OFF}`, `{$R-,Q-}`, `{$OVERFLOWCHECKS OFF}` ohne Gegenstück | Je Schalter eine Meldung, bei `{$R-,Q-}` zwei; die Korrektur schreibt `{$HINTS ON}`, `{$WARN SYMBOL_PLATFORM DEFAULT}`, `{$R+}`, `{$Q+}` bzw. `{$OVERFLOWCHECKS ON}`; bei R und Q nicht unter „Alle sicheren Korrekturen“ |
+| WD4 | Wiederhergestellt: `{$WARNINGS ON}` weiter unten, `{$IFOPT R+}{$DEFINE X}{$R-}{$ENDIF}` … `{$IFDEF X}{$R+}{$ENDIF}`, `{$PUSHOPT}{$Q-}` … `{$POPOPT}`, `{$IFDEF DEBUG}{$R+}{$ELSE}{$R-}{$ENDIF}`, `{$R *.dfm}`, Schalter in einer `.dpk` | Keine Meldung |
+| WD5 | `"compiler-warnings-disabled": {"allow": ["SYMBOL_PLATFORM", "R"]}` | Keine Meldung für `{$WARN SYMBOL_PLATFORM OFF}` und `{$R-}`, `{$Q-}` bleibt gemeldet; auf der Seite „Prüfregeln“ steht `allow` unter der Regel |
+| WD6 | `"compiler-warnings-disabled": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |
+| WD7 | Atlas.IDE.Expert mit eingeschalteter Überlaufprüfung bauen, Projekt öffnen und schließen | Keine Überlauf-Exception aus `TAtlasProjectSummaries.KeyOf`; der Index-Cache findet seine Ordner wieder (`KeyHash`) |

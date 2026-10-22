@@ -107,3 +107,4 @@ path-concat-without-delimiter | Ref.Daten.Suche.pas | \nimplementation | \nimple
 hardcoded-path | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nconst\n  Protokolldatei = 'C:\\Users\\Public\\Atlas\\suche.log';
 filename-compare-case | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nfunction IstKonfig(const AFileName: string): Boolean;\nbegin\n  Result := ExtractFileName(AFileName) = 'Config.ini';\nend;
 initialization-not-finalized | Ref.Daten.Suche.pas | \nend. | \nvar\n  GTreffer: TStringList;\n\ninitialization\n  GTreffer := TStringList.Create;\nend.
+compiler-warnings-disabled | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\n{$WARNINGS OFF}

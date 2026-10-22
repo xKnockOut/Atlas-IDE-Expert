@@ -171,7 +171,7 @@ const
   Threads = 'thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,thread-vcl-access';
   All = 'abstract-class-instantiated,anonymous-thread-not-started,assert-side-effect,assign-to-property-member,bidi-control,blocking-call-in-main-thread,bool-compare,boolean-assign-if,captured-loop-variable,case-insensitive-compare,case-missing-enum-value,char-to-pchar,' +
     'collection-modified-in-loop,commented-out-code,comparison-as-statement,' +
-    'component-create-without-override,component-default-mismatch,component-fixed-pixels,' +
+    'compiler-warnings-disabled,component-create-without-override,component-default-mismatch,component-fixed-pixels,' +
     'component-hardcoded-color,component-missing-free-notification,component-missing-inherited,' +
     'component-palette-icon,component-setter-without-invalidate,conditional-directive-unbalanced,confusable-identifier,' +
     'constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,delimited-text-without-strict,deprecated-symbol,deref-before-nil-check,destroy-called-directly,destroy-without-override,' +
@@ -223,7 +223,7 @@ begin
     'security-insecure-random,security-sql-injection,security-tls-verification-disabled,' +
     'security-weak-crypto',
     ActiveRules('security'));
-  Assert.AreEqual('blocking-call-in-main-thread,bool-compare,boolean-assign-if,case-insensitive-compare,commented-out-code,component-fixed-pixels,component-hardcoded-color,component-palette-icon,' +
+  Assert.AreEqual('blocking-call-in-main-thread,bool-compare,boolean-assign-if,case-insensitive-compare,commented-out-code,compiler-warnings-disabled,component-fixed-pixels,component-hardcoded-color,component-palette-icon,' +
     'component-setter-without-invalidate,deprecated-symbol,dfm-property,dunitx-test-without-assert,empty-except,forbidden-uses,' +
     'foreign-form-control-access,format-without-settings,generic-exception-raised,hardcoded-path,implicit-package-import,' +
     'metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
