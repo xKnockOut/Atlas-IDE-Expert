@@ -10,6 +10,9 @@
 // field-after-method (#986): Beispiel mit beiden Korrekturen, Attribute und
 // Kommentare wandern mit, Records mit var zuerst, Feld neben anderem auf der
 // Zeile, neue Abschnitte und var, Zweige bedingter Übersetzung, Abschalten.
+// overload-directive-missing (#987): Beispiel mit Korrektur, E2267, E2252,
+// E2301, Routinen der Unit über interface und implementation, verschachtelte
+// Routinen, stille Fälle (var, Generika, Operatoren, forward, {$IF}-Zweige).
 
 interface
 
@@ -78,6 +81,14 @@ type
     procedure FieldAfterMethodConditional;
     [Test]
     procedure FieldAfterMethodOffAndExclude;
+    [Test]
+    procedure OverloadIssueExample;
+    [Test]
+    procedure OverloadVariants;
+    [Test]
+    procedure OverloadSilentCases;
+    [Test]
+    procedure OverloadOffAndExclude;
   end;
 
 implementation
@@ -606,6 +617,95 @@ begin
     '{"rules": {"field-after-method": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Kunden.pas'))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(Members),
     '{"rules": {"field-after-method": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Kunden.pas'))));
+end;
+
+procedure TDeclarationRulesTests.OverloadIssueExample;
+const
+  Members = '    procedure Laden(const Datei: string);'#10'    procedure Laden(Strom: TStream);'#10;
+var
+  Findings: TArray<TRuleFinding>;
+  Text: string;
+begin
+  Findings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(Members));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(OverloadDirectiveMissingRuleId, Findings[0].RuleId);
+  Assert.AreEqual('Laden ist überladen, aber nicht mit overload markiert (wie E2254).', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(14, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('overload; an alle Deklarationen anhängen', Findings[0].Fixes[0].Title);
+  Text := TChangeSignature.ApplyEdits(Kunde(Members), Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Kunde('    procedure Laden(const Datei: string); overload;'#10 +
+    '    procedure Laden(Strom: TStream); overload;'#10), Text);
+  TRuleAssert.Silent(TOverloadDirectiveMissingRule.Create, Text);
+end;
+
+procedure TDeclarationRulesTests.OverloadVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Frühere ohne overload (E2267); overload vor den übrigen Direktiven.
+  Findings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(
+    '    procedure Laden(const Datei: string); virtual;'#10'    procedure Laden(Strom: TStream); overload;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Laden ist überladen, die frühere Deklaration in Zeile 5 trägt kein overload (wie E2267).',
+    Findings[0].Message);
+  Assert.AreEqual(Kunde('    procedure Laden(const Datei: string); overload; virtual;'#10 +
+    '    procedure Laden(Strom: TStream); overload;'#10), TChangeSignature.ApplyEdits(Kunde(
+    '    procedure Laden(const Datei: string); virtual;'#10'    procedure Laden(Strom: TStream); overload;'#10),
+    Findings[0].Fixes[0].Edits));
+  // Gleiche Parameter (E2252) und gleiches Ergebnis (E2301), auch mit anderen Namen.
+  Findings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(
+    '    procedure Laden(A, B: Integer); overload;'#10'    procedure Laden(X: Integer; Y: integer); overload;'#10 +
+    '    function Wert(const S: string): Integer; overload;'#10'    function Wert(const T: string): Integer; overload;'#10));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('Laden mit denselben Parametern gibt es schon in Zeile 5 (wie E2252).', Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Wert mit denselben Parametern und demselben Ergebnistyp gibt es schon in Zeile 7 (wie E2301).',
+    Findings[1].Message);
+  // Routinen der Unit: interface und implementation zusammen, Rumpf zur Deklaration zählt nicht.
+  Findings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, 'unit U;'#10'interface'#10 +
+    'procedure Global(A: Integer);'#10'implementation'#10'procedure Global(A: Integer);'#10'begin'#10'end;'#10 +
+    'procedure Global(const S: string);'#10'begin'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual('unit U;'#10'interface'#10'procedure Global(A: Integer); overload;'#10'implementation'#10 +
+    'procedure Global(A: Integer);'#10'begin'#10'end;'#10'procedure Global(const S: string); overload;'#10'begin'#10 +
+    'end;'#10'end.', TChangeSignature.ApplyEdits('unit U;'#10'interface'#10'procedure Global(A: Integer);'#10 +
+    'implementation'#10'procedure Global(A: Integer);'#10'begin'#10'end;'#10'procedure Global(const S: string);'#10 +
+    'begin'#10'end;'#10'end.', Findings[0].Fixes[0].Edits));
+  // Verschachtelte Routinen bilden einen eigenen Bereich.
+  Findings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'procedure Aussen;'#10'  procedure Innen; begin end;'#10'  procedure Innen(X: Integer); begin end;'#10'begin'#10 +
+    'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+end;
+
+procedure TDeclarationRulesTests.OverloadSilentCases;
+begin
+  // overload überall, var gegen Wert, Generika, Operatoren, Rumpf zu forward, Methodenrümpfe,
+  // gleichnamige Methoden verschiedener Klassen und Zweige von {$IFDEF}/{$ELSE}.
+  TRuleAssert.Silent(TOverloadDirectiveMissingRule.Create, 'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10 +
+    '    procedure Laden(A: Integer); overload;'#10'    procedure Laden(var A: Integer); overload;'#10 +
+    '    procedure Laden<T>(A: Integer); overload;'#10'  end;'#10'  TBar = class'#10'    procedure Laden;'#10'  end;'#10 +
+    '  TWert = record'#10'    class operator Implicit(A: Integer): TWert;'#10 +
+    '    class operator Implicit(A: TWert): Integer;'#10'  end;'#10'implementation'#10 +
+    'procedure Vorab(A: Integer); forward;'#10'procedure Vorab(A: Integer);'#10'begin'#10'end;'#10 +
+    'procedure TFoo.Laden(A: Integer);'#10'begin'#10'end;'#10'procedure TBar.Laden;'#10'begin'#10'end;'#10 +
+    '{$IFDEF DEBUG}'#10'procedure Schreiben(A: Integer);'#10'begin'#10'end;'#10'{$ELSE}'#10 +
+    'procedure Schreiben(A: Integer);'#10'begin'#10'end;'#10'{$ENDIF}'#10'end.');
+end;
+
+procedure TDeclarationRulesTests.OverloadOffAndExclude;
+const
+  Members = '    procedure Laden(const Datei: string);'#10'    procedure Laden(Strom: TStream);'#10;
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(Members),
+    '{"rules": {"overload-directive-missing": "off"}}', 'Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(Members),
+    '{"rules": {"group:compiler": "off"}}', 'Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(Members),
+    '{"rules": {"overload-directive-missing": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Kunden.pas'))));
 end;
 
 initialization

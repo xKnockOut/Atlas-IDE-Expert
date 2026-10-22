@@ -3989,3 +3989,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | FM6 | Felder zuerst, neuer Abschnitt (`private`, `public`), `var` und `class var` nach Methoden; Methode nur unter `{$IFDEF DEBUG}` und Feld danach | Keine Meldung |
 | FM7 | `"field-after-method": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
 | FM8 | Abgleich mit Delphi: FM1, FM4 und FM5 übersetzen | dcc meldet E2169 an denselben Stellen, für FM6 nichts |
+
+## Überladung ohne overload (#987)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OV1 | Das Beispiel aus #987: `procedure Laden(const Datei: string);` und `procedure Laden(Strom: TStream);` in einer Klasse | Fehler `overload-directive-missing` am zweiten `Laden`: „Laden ist überladen, aber nicht mit overload markiert (wie E2254).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| OV2 | Schnellkorrektur „overload; an alle Deklarationen anhängen“, danach Strg+Z | Beide Köpfe enden mit `overload;`, bei `virtual;` steht `overload;` davor; ein Undo-Schritt stellt beides wieder her |
+| OV3 | Nur die zweite Deklaration mit `overload` | „… die frühere Deklaration in Zeile … trägt kein overload (wie E2267).“ |
+| OV4 | Zwei Überladungen `Laden(A, B: Integer)` und `Laden(X: Integer; Y: Integer)`; zwei Funktionen mit gleichen Parametern und Ergebnis | „… gibt es schon in Zeile … (wie E2252)“ bzw. „(wie E2301)“, ohne Korrektur |
+| OV5 | Routine im interface ohne overload, in der implementation ihr Rumpf und eine zweite Routine gleichen Namens | Meldung an der zweiten Routine; Korrektur ergänzt overload an interface-Deklaration und zweiter Routine, nicht am Rumpf |
+| OV6 | `var` gegen Wertparameter, generische Variante, `class operator Implicit` zweimal, Rumpf zu `forward`, gleichnamige Methoden in zwei Klassen, Routinen in `{$IFDEF}`/`{$ELSE}` | Keine Meldung |
+| OV7 | `"overload-directive-missing": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| OV8 | Abgleich mit Delphi: OV1, OV3, OV4 und OV5 übersetzen | dcc meldet E2254, E2267, E2252 bzw. E2301 an denselben Stellen, für OV6 nichts |
