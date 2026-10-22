@@ -440,13 +440,36 @@ begin
       Exit(Symbol);
 end;
 
+/// <summary>Köpfe aller Methodenzuordnungen (procedure IFoo.Bar = Baz) in Typrümpfen der Datei; Anweisungen
+/// werden nicht durchlaufen.</summary>
+function ResolutionHeaders(ATree: TSyntaxTree): TArray<TSyntaxNode>;
+var
+  Found: TList<TSyntaxNode>;
+begin
+  Found := TList<TSyntaxNode>.Create;
+  try
+    ATree.Root.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        if (ANode.Kind = TSyntaxKind.RoutineHeader) and ANode.IsMethodResolution then
+          Found.Add(ANode);
+        Result := not (ANode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock]);
+      end);
+    Result := Found.ToArray;
+  finally
+    Found.Free;
+  end;
+end;
+
 procedure TInterfaceNotImplementedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Lines: TArray<Boolean>;
   Index: ISymbolIndex;
   Resolver: TNameResolver;
   OwnUnit: TUnitIndex;
-  TypeSymbol, Symbol: TIndexSymbol;
+  TypeSymbol: TIndexSymbol;
+  Header: TSyntaxNode;
+  Headers: TArray<TSyntaxNode>;
   TypeName, Ancestor, Prefix: string;
   Missing: TArray<TResolvedSymbol>;
   Member: TResolvedSymbol;
@@ -473,6 +496,7 @@ begin
     Resolver.PinTree(AContext.Tree, AContext.RelativePath);
     try
       OwnUnit := Resolver.ExtractedUnit(AContext.Tree, AContext.RelativePath);
+      Headers := ResolutionHeaders(AContext.Tree);
       Actions := TClassActionContext.Default;
       Actions.Index := Index;
       Actions.Namespaces := AContext.Namespaces;
@@ -520,20 +544,20 @@ begin
             AReport.Add(TypeSymbol.SelectionRange, Format('%s fehlen in %s (wie E2291).',
               [JoinedList(Names.ToArray), TypeSymbol.Name]), Level, Fixes);
         end;
-        // Zuordnung "procedure IFoo.Bar = Baz" für ein Interface, das die Klasse nicht nennt.
-        for Symbol in OwnUnit.Symbols do
+        // Zuordnung "procedure IFoo.Bar = Baz" für ein Interface, das die Klasse nicht nennt; die Zuordnungen
+        // sind keine Mitglieder (#849), ihre Stelle steht nur im Baum.
+        for Header in Headers do
         begin
-          if not SameText(Symbol.Container, TypeName) or (Pos('.', Symbol.Name) = 0) or
-            not (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) then
+          if not SameText(Header.EnclosingTypeName, TypeName) then
             Continue;
-          Prefix := BareName(Copy(Symbol.Name, 1, LastDelimiter('.', Symbol.Name) - 1));
+          Prefix := BareName(Copy(Header.Name, 1, LastDelimiter('.', Header.Name) - 1));
           Listed := False;
           for Ancestor in TypeSymbol.Ancestors do
             if SameText(BareName(Ancestor), Prefix) then
               Listed := True;
           if not Listed then
-            AReport.Add(Symbol.SelectionRange, Format('%s steht nicht in der Interface-Liste von %s (wie E2265).',
-              [Prefix, TypeSymbol.Name]), Level);
+            AReport.Add(TTextRange.Create(Header.StartPos, Header.EndPos),
+              Format('%s steht nicht in der Interface-Liste von %s (wie E2265).', [Prefix, TypeSymbol.Name]), Level);
         end;
       end;
     finally

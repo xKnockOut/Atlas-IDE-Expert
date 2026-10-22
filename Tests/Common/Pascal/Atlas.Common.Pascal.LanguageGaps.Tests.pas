@@ -448,6 +448,7 @@ end;
 procedure TLanguageGapsTests.MethodResolutionIsNoMember;
 var
   U: TUnitIndex;
+  Loaded: TArray<TUnitIndex>;
   Tree: TSyntaxTree;
   Outline: TJSONArray;
   Index: ISymbolIndex;
@@ -460,6 +461,13 @@ begin
   Assert.IsFalse(HasSymbol(U, 'TFoo', 'IFoo.Bar'));
   Assert.IsFalse(HasSymbol(U, 'TFoo', 'Bar'));
   Assert.IsTrue(HasSymbol(U, 'TFoo', 'MyBar'));
+  // Die Zuordnung steht an der Klasse und übersteht den Cache (interface-not-implemented, hresult-integer-mix).
+  Assert.AreEqual(1, Integer(Length(SymbolOf(U, '', 'TFoo').Resolutions)));
+  Assert.AreEqual('IFoo.Bar=MyBar', SymbolOf(U, '', 'TFoo').Resolutions[0]);
+  Loaded := TIndexCache.Deserialize(TIndexCache.Serialize([U]));
+  Assert.AreEqual(1, Integer(Length(SymbolOf(Loaded[0], '', 'TFoo').Resolutions)));
+  Assert.AreEqual('IFoo.Bar=MyBar', SymbolOf(Loaded[0], '', 'TFoo').Resolutions[0]);
+  Assert.AreEqual(0, Integer(Length(SymbolOf(U, '', 'IFoo').Resolutions)));
   Tree := TPascalParser.Parse(CaseEight);
   try
     Outline := TLspDocumentSymbols.BuildSymbols(Tree);

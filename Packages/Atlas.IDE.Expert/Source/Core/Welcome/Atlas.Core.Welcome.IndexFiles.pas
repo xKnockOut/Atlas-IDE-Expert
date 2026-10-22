@@ -45,8 +45,9 @@ type
     // Immer wie TIndexCache.FormatVersion, weil Plugin und Server dasselbe Cache-Format lesen (K-05; Test
     // FormatVersionMatchesServer). 20: Verweise der inline-Rümpfe (#1017), 21: Hinweise im Unit-Kopf (#1018),
     // 22: Typparameter ohne Einschränkungstypen (#1029), 23: Unit-Name kein Hinweis (#1018), 24: Parser-Lücken
-    // #848, #849, #861, #862. 19 (#1001) fehlte hier, die Willkommensseite fand deshalb keinen Cache.
-    FormatVersion = 24;
+    // #848, #849, #861, #862, 25: Methodenzuordnungen je Klasse. 19 (#1001) fehlte hier, die Willkommensseite
+    // fand deshalb keinen Cache.
+    FormatVersion = 25;
     CacheFileName = 'index.atlasidx';
     IndexFolder = 'Index';
     LibraryFolder = 'Bibliothek';
