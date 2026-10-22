@@ -269,6 +269,10 @@ begin
           else if (Value.Keys[Inner] = 'max') and not ((Value[Inner].Kind = TJsonKind.Number) and
             TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 1)) then
             ReportNode(Value[Inner], '"max" muss eine ganze Zahl ab 1 sein')
+          // Mindestzahl der Zeilen von commented-out-code (#942).
+          else if (Value.Keys[Inner] = 'minLines') and not ((Value[Inner].Kind = TJsonKind.Number) and
+            TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 1)) then
+            ReportNode(Value[Inner], '"minLines" muss eine ganze Zahl ab 1 sein')
           // Marken der Regel todo-comment (#68); die Regel und get_todos lesen sie aus den Optionen.
           else if Value.Keys[Inner] = 'keywords' then
             CheckTodoKeywords(Value[Inner])

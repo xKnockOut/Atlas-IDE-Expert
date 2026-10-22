@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1682] of string = (
+  Lines: array[0..1687] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -139,6 +139,11 @@ const
     '                "type": "integer",',
     '                "minimum": 1,',
     '                "description": "Nur metric-* (#66): Grenzwert der Kennzahl; darüber meldet die Regel die Methode. Vorgaben: Länge 60, Tiefe 4, zyklomatisch 15, kognitiv 15, Parameter 6; metric-class-s' + 'ize 40 Member, metric-unit-length 2000 Zeilen, metric-uses-count 30 Units (#939). Bei line-length (#938) die Höchstlänge einer Zeile, Vorgabe 120."',
+    '              },',
+    '              "minLines": {',
+    '                "type": "integer",',
+    '                "minimum": 1,',
+    '                "description": "Nur commented-out-code (#942): so viele aufeinanderfolgende Kommentarzeilen mit Code meldet die Regel; Vorgabe 3."',
     '              },',
     '              "keywords": {',
     '                "type": "array",',

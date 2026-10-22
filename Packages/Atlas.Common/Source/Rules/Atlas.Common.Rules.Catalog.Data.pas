@@ -1683,6 +1683,24 @@ begin
     '          "description": "Also report the form variables created by the designer."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "commented-out-code",' + #10 +
+    '      "name": "Commented-out code",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "At least minLines consecutive comment lines (// per line or a multi-line { } comment) that parse as statements, declarations or class members. Prose at the start and end of the b' + 'lock is ignored, and at least half the lines must look like code (;, :=, begin, end, then, do). XMLDoc (///) and comments before the first token (license headers) are never reported. Confidence medium' + '. Version control keeps the old code; the fix removes the lines.",' + #10 +
+    '      "bad": "Speichern;\n// if Kunde.Aktiv then\n//   Kunde.Speichern;\n// Log(''gespeichert'');",' + #10 +
+    '      "good": "Speichern;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "minLines",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 3,' + #10 +
+    '          "description": "Minimum number of consecutive commented-out code lines."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2571,6 +2589,17 @@ begin
     '        {' + #10 +
     '          "name": "includeFormVariables",' + #10 +
     '          "description": "Auch die Formularvariablen des Designers melden."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "commented-out-code",' + #10 +
+    '      "name": "Auskommentierter Code",' + #10 +
+    '      "description": "Mindestens minLines aufeinanderfolgende Kommentarzeilen (// je Zeile oder ein mehrzeiliger { }-Kommentar), die sich als Anweisungen, Deklarationen oder Klassenmitglieder parsen l' + 'assen. Prosa am Anfang und Ende des Blocks bleibt außen vor, mindestens die Hälfte der Zeilen muss nach Code aussehen (;, :=, begin, end, then, do). XMLDoc (///) und Kommentare vor dem ersten Token (L' + 'izenzköpfe) meldet die Regel nie. Sicherheit mittel. Die Versionsverwaltung bewahrt den alten Code auf; die Korrektur entfernt die Zeilen.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "minLines",' + #10 +
+    '          "description": "Mindestzahl aufeinanderfolgender auskommentierter Codezeilen."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    }' + #10 +

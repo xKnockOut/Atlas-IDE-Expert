@@ -1663,6 +1663,24 @@
           "description": "Also report the form variables created by the designer."
         }
       ]
+    },
+    {
+      "id": "commented-out-code",
+      "name": "Commented-out code",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "At least minLines consecutive comment lines (// per line or a multi-line { } comment) that parse as statements, declarations or class members. Prose at the start and end of the block is ignored, and at least half the lines must look like code (;, :=, begin, end, then, do). XMLDoc (///) and comments before the first token (license headers) are never reported. Confidence medium. Version control keeps the old code; the fix removes the lines.",
+      "bad": "Speichern;\n// if Kunde.Aktiv then\n//   Kunde.Speichern;\n// Log('gespeichert');",
+      "good": "Speichern;",
+      "options": [
+        {
+          "name": "minLines",
+          "type": "integer",
+          "default": 3,
+          "description": "Minimum number of consecutive commented-out code lines."
+        }
+      ]
     }
   ]
 }
