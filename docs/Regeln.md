@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 34 |
+| [Fehler finden](#gruppe-find-bugs) | 35 |
 | [Exceptions](#gruppe-exceptions) | 5 |
 | [Threads](#gruppe-threads) | 6 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -58,6 +58,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`use-after-free`](#use-after-free) | Objekt nach Free weiter benutzt | Bug | Fehler |
 | [`deref-before-nil-check`](#deref-before-nil-check) | Erst benutzt, dann auf nil geprüft | Bug | Warnung |
 | [`field-free-without-nil`](#field-free-without-nil) | Feld freigegeben, Verweis bleibt stehen | Bug | Warnung |
+| [`missing-inherited`](#missing-inherited) | Konstruktor oder Destruktor ohne inherited | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -2684,5 +2685,35 @@ Richtig:
 procedure TImport.Zuruecksetzen;
 begin
   FreeAndNil(FCache);
+end;
+```
+
+<a id="missing-inherited"></a>
+### missing-inherited
+
+**Konstruktor oder Destruktor ohne inherited** · Bug · Warnung · Gruppe Fehler finden
+
+Ein Konstruktor oder ein override von Destroy, AfterConstruction oder BeforeDestruction ruft inherited nicht auf, in jeder Klasse, deren Vorfahr nicht TObject ist. Konstruktoren werden nur gemeldet, wenn ein Vorfahr einen eigenen Konstruktor deklariert (Datei, Index oder bekannte RTL-/VCL-Klasse) und der Konstruktor keinen anderen Konstruktor derselben Klasse aufruft. Bei Komponenten meldet Destroy nur component-missing-inherited. Konfidenz hoch. Schnellkorrektur: inherited; am Ende von Destroy und BeforeDestruction, am Anfang von Konstruktoren und AfterConstruction; ein Konstruktor mit Parametern ohne override bekommt inherited Create;.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `methods` | string-list | `["Create","Destroy","AfterConstruction","BeforeDestruction"]` | Geprüfte Methoden; Create steht für alle Konstruktoren, deren Name mit Create beginnt. |
+
+Mit Treffer:
+
+```pascal
+destructor TExport.Destroy;
+begin
+  FDatei.Free;
+end;
+```
+
+Richtig:
+
+```pascal
+destructor TExport.Destroy;
+begin
+  FDatei.Free;
+  inherited;
 end;
 ```

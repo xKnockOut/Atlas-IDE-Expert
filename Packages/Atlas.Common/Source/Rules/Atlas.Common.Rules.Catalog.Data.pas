@@ -1274,6 +1274,29 @@ begin
     '          "description": "Methods in which Free without nil is allowed."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "missing-inherited",' + #10 +
+    '      "name": "Constructor or destructor without inherited",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "A constructor, or an override of Destroy, AfterConstruction or BeforeDestruction, does not call inherited, in any class whose ancestor is not TObject. Constructors are reported o' + 'nly if an ancestor declares a constructor of its own (file, index or a known RTL/VCL class) and the constructor does not call another constructor of the same class. For components, Destroy is reported' + ' only by component-missing-inherited. High confidence. Quick fix: insert inherited; at the end of Destroy and BeforeDestruction, at the start of constructors and AfterConstruction; a constructor with ' + 'parameters without override gets inherited Create;.",' + #10 +
+    '      "bad": "destructor TExport.Destroy;\nbegin\n  FDatei.Free;\nend;",' + #10 +
+    '      "good": "destructor TExport.Destroy;\nbegin\n  FDatei.Free;\n  inherited;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "methods",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "Create",' + #10 +
+    '            "Destroy",' + #10 +
+    '            "AfterConstruction",' + #10 +
+    '            "BeforeDestruction"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Checked methods; Create stands for all constructors whose name starts with Create."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -1941,6 +1964,17 @@ begin
     '        {' + #10 +
     '          "name": "ignoreMethods",' + #10 +
     '          "description": "Methoden, in denen Free ohne nil erlaubt ist."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "missing-inherited",' + #10 +
+    '      "name": "Konstruktor oder Destruktor ohne inherited",' + #10 +
+    '      "description": "Ein Konstruktor oder ein override von Destroy, AfterConstruction oder BeforeDestruction ruft inherited nicht auf, in jeder Klasse, deren Vorfahr nicht TObject ist. Konstruktoren ' + 'werden nur gemeldet, wenn ein Vorfahr einen eigenen Konstruktor deklariert (Datei, Index oder bekannte RTL-/VCL-Klasse) und der Konstruktor keinen anderen Konstruktor derselben Klasse aufruft. Bei Kom' + 'ponenten meldet Destroy nur component-missing-inherited. Konfidenz hoch. Schnellkorrektur: inherited; am Ende von Destroy und BeforeDestruction, am Anfang von Konstruktoren und AfterConstruction; ein ' + 'Konstruktor mit Parametern ohne override bekommt inherited Create;.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "methods",' + #10 +
+    '          "description": "Geprüfte Methoden; Create steht für alle Konstruktoren, deren Name mit Create beginnt."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    }' + #10 +

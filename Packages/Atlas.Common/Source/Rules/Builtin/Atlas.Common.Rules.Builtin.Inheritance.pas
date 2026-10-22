@@ -56,6 +56,8 @@ type
     function ParentOf(const ATypeName: string): string;
     /// <summary>Erbt ATypeName (auch über mehrere Stufen) von AAncestor? False, wenn die Kette abbricht.</summary>
     function DescendsFrom(const ATypeName, AAncestor: string): Boolean;
+    /// <summary>Deklariert die Klasse ATypeName selbst einen Konstruktor (Datei oder Index, #919)?</summary>
+    function HasConstructor(const ATypeName: string): Boolean;
     /// <summary>Nächste gleichnamige Methode in den Vorfahren, falls sie virtuell ist.</summary>
     function InheritedVirtual(const AMethod: TMethodDecl): TInherited;
     property Local: TUnitIndex read FLocal;
@@ -190,6 +192,30 @@ begin
       SameText(Symbol.Container, AType.Symbol.Name) and SameText(Symbol.Name, AName) and
       ContainsLine(AType.Symbol.Range, Symbol.Range.StartPos.Line) then
       Result := Result + [Symbol];
+end;
+
+function TAncestry.HasConstructor(const ATypeName: string): Boolean;
+var
+  Location: TSymbolLocation;
+  Symbols: TArray<TIndexSymbol>;
+  Symbol: TIndexSymbol;
+  UnitIndex: TUnitIndex;
+begin
+  Result := False;
+  if not FindType(ATypeName, Location) then
+    Exit;
+  if Location.FileName = '' then
+    Symbols := FLocal.Symbols
+  else if (FIndex <> nil) and FIndex.FindFile(Location.FileName, UnitIndex) then
+    Symbols := UnitIndex.Symbols
+  else
+    Exit;
+  for Symbol in Symbols do
+    // Der Index führt Destruktoren ebenfalls als Constructor_.
+    if (Symbol.Kind = TIndexSymbolKind.Constructor_) and not SameText(Symbol.Name, 'Destroy') and
+      SameText(Symbol.Container, Location.Symbol.Name) and
+      ContainsLine(Location.Symbol.Range, Symbol.Range.StartPos.Line) then
+      Exit(True);
 end;
 
 function TAncestry.ParentOf(const ATypeName: string): string;

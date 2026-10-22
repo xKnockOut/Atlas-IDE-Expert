@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1584] of string = (
+  Lines: array[0..1592] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -267,6 +267,14 @@ const
     '                },',
     '                "default": [],',
     '                "description": "Nur field-not-freed: Klassen, die anderswo freigegeben werden (#918). Generische Typen treffen ohne Typparameter, z. B. TObjectList."',
+    '              },',
+    '              "methods": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "default": ["Create", "Destroy", "AfterConstruction", "BeforeDestruction"],',
+    '                "description": "Nur missing-inherited: geprüfte Methoden (#919). Create steht für alle Konstruktoren, deren Name mit Create beginnt."',
     '              }',
     '            }',
     '          }',
