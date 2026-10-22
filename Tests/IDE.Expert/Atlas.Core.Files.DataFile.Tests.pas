@@ -298,7 +298,8 @@ var
   Log: string;
 begin
   Locked := EAtlasTextFileError.Create('Ziel von einem anderen Programm gesperrt');
-  Open := EFOpenError.Create('C:\Benutzer\Geheim\notizen.json lässt sich nicht öffnen');
+  // CreateFmt: Delphis EFOpenError.Create erwartet einen Ressourcen-String.
+  Open := EFOpenError.CreateFmt('%s lässt sich nicht öffnen', ['C:\Benutzer\Geheim\notizen.json']);
   try
     TAtlasDataFile.ReportNotWritten('Favoriten', Locked);
     TAtlasDataFile.ReportNotWritten('Favoriten', Locked);

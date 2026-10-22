@@ -522,7 +522,6 @@ begin
     while Pending.Count > 0 do
     begin
       Node := Pending.Pop;
-      First := 0;
       case Node.Kind of
         TSyntaxKind.Literal:
           Continue;

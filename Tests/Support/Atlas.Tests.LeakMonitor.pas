@@ -83,6 +83,7 @@ uses
   Winapi.TlHelp32,
   System.SysUtils,
   System.Classes,
+  System.IOUtils,
   System.Threading,
   System.DateUtils,
   System.JSON,
@@ -252,6 +253,27 @@ begin
   end;
 end;
 
+/// <summary>Dateifehler einmal auslösen: Die RTL lädt dabei Ressourcen-Strings (EFOpenError, EInOutError) und
+/// behält sie bis Programmende; das träfe sonst den ersten Test mit einer gesperrten oder fehlenden Datei.</summary>
+procedure PrewarmFileErrors;
+var
+  Missing: string;
+begin
+  Missing := TPath.Combine(TPath.GetTempPath, 'atlas-leckmonitor-fehlt-' + IntToStr(GetCurrentProcessId) + '.bin');
+  try
+    TFile.ReadAllBytes(Missing);
+  except
+    on Exception do
+      ;
+  end;
+  try
+    TFileStream.Create(Missing, fmOpenRead or fmShareDenyNone).Free;
+  except
+    on Exception do
+      ;
+  end;
+end;
+
 procedure PrewarmRuntime;
 var
   Task: ITask;
@@ -286,6 +308,7 @@ begin
     Json.Free;
   end;
   PrewarmSettingsTransfer;
+  PrewarmFileErrors;
 end;
 
 procedure RegisterLeakMonitor;

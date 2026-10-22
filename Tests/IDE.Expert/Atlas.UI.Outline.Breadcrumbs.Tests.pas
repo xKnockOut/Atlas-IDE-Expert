@@ -365,9 +365,6 @@ begin
   Assert.AreEqual(0, Integer(Key), 'Taste verbraucht');
 end;
 
-initialization
-  TDUnitX.RegisterTestFixture(TAtlasBreadcrumbBarTests);
-
 procedure TAtlasBreadcrumbBarTests.ReportsWhenItsWindowIsDisabled;
 var
   Calls: Integer;
@@ -422,5 +419,8 @@ begin
   Transparent.Align := alBottom;
   Assert.Contains(Transparent.HitProblem(Transparent.ClientToScreen(TPoint.Create(10, 5))), 'HTTRANSPARENT');
 end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TAtlasBreadcrumbBarTests);
 
 end.

@@ -113,6 +113,13 @@ begin
   finally
     TearDown;
   end;
+  // Schreibfehler des Protokolls: Erstgebrauch der Fehlerpfade beim Anhängen.
+  Setup;
+  try
+    LogCountsLostLinesAndReportsTheGap;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TAtlasGuardTests.Setup;

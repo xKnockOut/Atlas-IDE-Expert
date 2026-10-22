@@ -77,6 +77,9 @@ type
     function Project: string;
     function UnitFile: string;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -869,6 +872,17 @@ begin
   Assert.IsFalse(DirectoryExists(TPath.Combine(FFolder, '.git')));
 end;
 
+procedure TAtlasBookmarkStorageTests.WarmUpFirstUse;
+begin
+  // Gesperrte Datei: Erstgebrauch der Melde- und Fehlerpfade.
+  Setup;
+  try
+    BrokenFileSetAsideLockedFileKept;
+  finally
+    TearDown;
+  end;
+end;
+
 procedure TAtlasBookmarkStorageTests.BrokenFileSetAsideLockedFileKept;
 var
   List: TAtlasBookmarkList;
@@ -895,6 +909,8 @@ begin
   Assert.IsFalse(TAtlasBookmarks.Save(List, False), 'beim Laden gesperrt: nicht überschreiben');
   Assert.Contains(TFile.ReadAllText(FileName), 'Rundung');
   Assert.DoesNotContain(TFile.ReadAllText(FileName), 'Ersatz');
+  // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
+  TAtlasDataFile.ForgetReports;
 end;
 
 initialization

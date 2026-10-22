@@ -135,8 +135,9 @@ begin
     Exit;
   end;
   try
-    // Nur der Name: Umbenennen im selben Ordner, ohne Pfad in NT-Schreibweise.
-    Name := ExtractFileName(ATarget);
+    // Voller Pfad: Ein bloßer Name gilt hier relativ zum aktuellen Verzeichnis des Prozesses, nicht zum
+    // Ordner der Datei (die Dateien landeten sonst im Arbeitsverzeichnis von bds.exe bzw. der Tests).
+    Name := ExpandFileName(ATarget);
     Size := SizeOf(TFileRenameInfoEx) + Length(Name) * SizeOf(WideChar);
     GetMem(Info, Size);
     try

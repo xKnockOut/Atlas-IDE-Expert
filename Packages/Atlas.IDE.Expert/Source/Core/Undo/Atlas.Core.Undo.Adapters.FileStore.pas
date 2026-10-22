@@ -240,6 +240,18 @@ begin
 end;
 
 function TAtlasUndoFileStore.Load: TArray<TAtlasChangeSet>;
+
+  /// <summary>Inhalt von AFileName als JSON; nil, wenn die Datei nicht lesbar ist.</summary>
+  function ReadSet(const AFileName: string): TJSONValue;
+  begin
+    try
+      Result := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetString(TAtlasTextFile.ReadAllBytes(AFileName)));
+    except
+      on EStreamError do
+        Result := nil;
+    end;
+  end;
+
 var
   FileName: string;
   Value: TJSONValue;
@@ -249,12 +261,7 @@ begin
   for FileName in SetFiles do
   begin
     // Nicht lesbare oder kaputte Datei: überspringen (siehe Kopf). Lesen teilt Löschen (Bericht M5).
-    try
-      Value := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetString(TAtlasTextFile.ReadAllBytes(FileName)));
-    except
-      on EStreamError do
-        Value := nil;
-    end;
+    Value := ReadSet(FileName);
     try
       if FromJson(Value, ChangeSet) then
         Result := Result + [ChangeSet];
