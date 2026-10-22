@@ -12,7 +12,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Datenbank](#gruppe-database) | 4 |
 | [Compiler vorab](#gruppe-compiler) | 15 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
-| [Performance](#gruppe-performance) | 4 |
+| [Performance](#gruppe-performance) | 5 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
@@ -164,6 +164,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`string-concat-in-loop`](#string-concat-in-loop) | String-Verkettung in einer Schleife | Code Smell | Hinweis |
 | [`loop-invariant-call`](#loop-invariant-call) | Teurer Aufruf in der Schleifenbedingung | Code Smell | Hinweis |
 | [`missing-begin-update`](#missing-begin-update) | Hinzufügen in einer Schleife ohne BeginUpdate | Code Smell | Hinweis |
+| [`setlength-in-loop`](#setlength-in-loop) | Array wächst in der Schleife um je ein Element | Code Smell | Hinweis |
 | [`case-insensitive-compare`](#case-insensitive-compare) | Vergleich über UpperCase oder LowerCase | Code Smell | Hinweis |
 
 <a id="gruppe-security"></a>
@@ -2071,6 +2072,31 @@ try
 finally
   ListBox1.Items.EndUpdate;
 end;
+```
+
+<a id="setlength-in-loop"></a>
+### setlength-in-loop
+
+**Array wächst in der Schleife um je ein Element** · Code Smell · Hinweis · Gruppe Performance
+
+SetLength(A, Length(A) + 1) in einer Schleife kopiert das dynamische Array bei jedem Durchlauf. Die Regel meldet nur, wenn A sicher ein dynamisches Array ist (array of, TArray<T>, ein Array-Typ der Datei oder ein bekannter RTL-Typ wie TBytes), nie bei Strings. In einer for-Schleife ist die Anzahl bekannt: Die Meldung nennt sie, und ist A eine lokale Variable, die vor der Schleife nicht benutzt und darin nur als A[High(A)] bzw. A[Length(A) - 1] beschrieben wird, setzt die Schnellkorrektur die Länge einmal vor der Schleife und indiziert mit der Schleifenvariable. Sonst die Werte in einer TList<T> sammeln.
+
+Mit Treffer:
+
+```pascal
+for I := 0 to Liste.Count - 1 do
+begin
+  SetLength(Namen, Length(Namen) + 1);
+  Namen[High(Namen)] := Liste[I].Name;
+end;
+```
+
+Richtig:
+
+```pascal
+SetLength(Namen, Liste.Count);
+for I := 0 to Liste.Count - 1 do
+  Namen[I] := Liste[I].Name;
 ```
 
 <a id="bool-compare"></a>
