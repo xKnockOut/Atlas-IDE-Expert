@@ -107,3 +107,4 @@ operator-declaration-invalid | Ref.Sprache.Merkmale.pas | constructor Create(con
 generic-declaration-invalid | Ref.Sprache.Merkmale.pas | TStapel<T> = class | TStapel<T: class, record> = class
 type-restriction-violated | Ref.Sprache.Merkmale.pas | function IstLeer: Boolean; | function IstLeer: Boolean; virtual;
 attribute-usage-invalid | Ref.Sprache.Merkmale.pas | FElemente: TList<T>; | FElemente: TList<T>;\n    [Weak] FAnzahl: Integer;
+typeinfo-invalid | Ref.Sprache.Merkmale.pas | Result := 0;\n  for var Wert | Result := 0;\n  if TypeInfo(AWerte) = nil then\n    Exit;\n  for var Wert

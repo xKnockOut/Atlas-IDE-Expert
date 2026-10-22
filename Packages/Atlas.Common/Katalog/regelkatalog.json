@@ -2425,6 +2425,22 @@
         "E2448",
         "E2584"
       ]
+    },
+    {
+      "id": "typeinfo-invalid",
+      "name": "TypeInfo or Default with an invalid argument",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "TypeInfo or Default receives a variable instead of a type (like E2133, E2537: parameters, local, inline and unit variables, fields, properties, Result, for and exception variables), TypeInfo receives a type without RTTI (enumeration with explicit values, file type, Text/TextFile; E2134), or Default receives a file type (E2538). Names are resolved from the inside out; inside with, in helpers, in methods of types outside the file, for declarations in other conditional branches and when the file or the index declares its own TypeInfo or Default the rule stays silent. Quick fix: insert the variable's declared type.",
+      "bad": "Name := GetEnumName(TypeInfo(Status), Ord(Status));",
+      "good": "Name := GetEnumName(TypeInfo(TStatus), Ord(Status));",
+      "compilerCodes": [
+        "E2133",
+        "E2134",
+        "E2537",
+        "E2538"
+      ]
     }
   ]
 }

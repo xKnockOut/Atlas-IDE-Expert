@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 20 |
+| [Compiler vorab](#gruppe-compiler) | 21 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -151,6 +151,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`generic-declaration-invalid`](#generic-declaration-invalid) | Generische Deklaration unzulässig | Bug | Fehler |
 | [`type-restriction-violated`](#type-restriction-violated) | Sprachregel für Records, Inline und Helfer verletzt | Bug | Fehler |
 | [`attribute-usage-invalid`](#attribute-usage-invalid) | Attribut falsch verwendet | Bug | Fehler |
+| [`typeinfo-invalid`](#typeinfo-invalid) | TypeInfo oder Default mit unzulässigem Argument | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4684,4 +4685,25 @@ private
   [Weak] FOwner: IInterface;
   FCount: Integer;
 end;
+```
+
+<a id="typeinfo-invalid"></a>
+### typeinfo-invalid
+
+**TypeInfo oder Default mit unzulässigem Argument** · Bug · Fehler · Gruppe Compiler vorab
+
+TypeInfo oder Default bekommt eine Variable statt eines Typs (wie E2133, E2537: Parameter, lokale, Inline- und Unit-Variablen, Felder, Properties, Result, for- und Ausnahmevariablen), TypeInfo einen Typ ohne RTTI (Aufzählung mit festen Werten, Dateityp, Text/TextFile; E2134) oder Default einen Dateityp (E2538). Namen werden von innen nach außen aufgelöst; in with, in Helfern, in Methoden von Typen außerhalb der Datei, bei Deklarationen in anderen bedingten Zweigen und wenn Datei oder Index ein eigenes TypeInfo bzw. Default deklarieren, bleibt die Regel still. Korrektur: den deklarierten Typ der Variablen einsetzen.
+
+Entspricht der Compilermeldung `E2133`, `E2134`, `E2537`, `E2538`.
+
+Mit Treffer:
+
+```pascal
+Name := GetEnumName(TypeInfo(Status), Ord(Status));
+```
+
+Richtig:
+
+```pascal
+Name := GetEnumName(TypeInfo(TStatus), Ord(Status));
 ```

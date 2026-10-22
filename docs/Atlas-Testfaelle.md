@@ -4207,3 +4207,19 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | AW9 | Eigener Typ `WeakAttribute = class(TCustomAttribute)` in der Unit, dann `[Weak] FZahl: Integer;` | Keine Meldung |
 | AW10 | `"attribute-usage-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | AW11 | Abgleich mit Delphi 12 und 13: AW1, AW2, AW4, AW6, AW7 übersetzen; dazu `[Ref]` an einem Feld und `[Weak]` an einem Typ bzw. einer Methode | dcc meldet dieselben Codes an denselben Stellen, für die stillen Fälle nichts. Meldet dcc für `[Ref]` am Feld oder `[Weak]` an Typ bzw. Methode E2325, die Regel um diese Ziele erweitern (bisher still, weil nicht abgeglichen) |
+
+## TypeInfo oder Default mit unzulässigem Argument (#1084)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TJ1 | Das Beispiel aus #1084: `function StatusName(Status: TStatus): string;` mit `Result := GetEnumName(TypeInfo(Status), Ord(Status));` | Fehler `typeinfo-invalid` an `Status`: „TypeInfo erwartet einen Typ, Status ist eine Variable; gemeint ist TypeInfo(TStatus) (wie E2133).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| TJ2 | Schnellkorrektur „TypeInfo(TStatus) einsetzen“, danach Strg+Z | `GetEnumName(TypeInfo(TStatus), Ord(Status))`; keine Meldung mehr; ein Undo-Schritt |
+| TJ3 | In einer Methode `Default(Wert)` mit Parameter, `TypeInfo(FListe)` mit Feld, Inline-Variable, `Default(Result)`, Unit-Variable, `for var I`, `on E: Exception`, Parameter einer anonymen Methode, untypisierter `var`-Parameter | Meldungen wie E2537 bzw. E2133, jeweils mit Korrektur auf den deklarierten Typ; beim untypisierten Parameter ohne Korrektur |
+| TJ4 | `TStatus = (Aus = 1, An = 5);` und Alias darauf mit `TypeInfo(…)`; `TypeInfo(TextFile)`, `TypeInfo` eines `file of Integer` | Meldungen wie E2134 |
+| TJ5 | `Default(Text);`, `Default(File);`, `Default(TDatei)` mit `TDatei = file of Integer` | Meldungen wie E2538; `Default(File)` erzeugt keinen Syntaxfehler mehr |
+| TJ6 | `TypeInfo(TFarbe)` ohne feste Werte, `Default(TFarbe)`, `TypeInfo(TList<Integer>)`, `TypeInfo(T)` in `TBox<T>`, `with Q do TypeInfo(Wert)`, Methode eines Typs aus einer anderen Unit, lokaler Typ, Konstante, Variable nur in `{$IFDEF X}` | Keine Meldung |
+| TJ7 | Eigene Funktion `Default(A: Integer)` bzw. eigener Typ `Text` in der Unit | Keine Meldung |
+| TJ8 | `"typeinfo-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| TJ9 | Abgleich mit Delphi 12 und 13: TJ1 und TJ3 bis TJ5 übersetzen | dcc meldet dieselben Codes an denselben Stellen, für die stillen Fälle nichts |

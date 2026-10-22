@@ -97,6 +97,21 @@ type
     procedure OffAndExclude;
   end;
 
+  [TestFixture]
+  TTypeInfoInvalidTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure Variables;
+    [Test]
+    procedure TypesWithoutTypeInfo;
+    [Test]
+    procedure SilentCases;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
 implementation
 
 uses
@@ -821,10 +836,117 @@ begin
     '{"rules": {"attribute-usage-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/G.pas'))));
 end;
 
+function TypeInfoFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TTypeInfoInvalidRule.Create, ASource);
+end;
+
+function TypeInfoFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TTypeInfoInvalidRule.Create, ASource, AConfig, APath);
+end;
+
+/// <summary>Unit G mit TStatus und der Funktion StatusName, deren Rumpf AExpression liefert.</summary>
+function StatusUnit(const AExpression: string): string;
+begin
+  Result := 'unit G;'#10'interface'#10'type'#10'  TStatus = (Aus, An);'#10'implementation'#10 +
+    'uses System.TypInfo;'#10'function StatusName(Status: TStatus): string;'#10'begin'#10'  Result := ' +
+    AExpression + ';'#10'end;'#10'end.';
+end;
+
+procedure TTypeInfoInvalidTests.IssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := StatusUnit('GetEnumName(TypeInfo(Status), Ord(Status))');
+  Found := TypeInfoFindings(Source);
+  Assert.AreEqual('9: TypeInfo erwartet einen Typ, Status ist eine Variable; gemeint ist TypeInfo(TStatus) ' +
+    '(wie E2133).', Messages(Found));
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('TypeInfo(TStatus) einsetzen', Found[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
+  Assert.AreEqual(StatusUnit('GetEnumName(TypeInfo(TStatus), Ord(Status))'), Fixed);
+  Assert.AreEqual(0, Integer(Length(TypeInfoFindings(Fixed))), Fixed);
+end;
+
+procedure TTypeInfoInvalidTests.Variables;
+begin
+  Assert.AreEqual('14: Default erwartet einen Typ, Wert ist eine Variable; gemeint ist Default(Integer) (wie E2537).|' +
+    '15: TypeInfo erwartet einen Typ, FListe ist eine Variable; gemeint ist TypeInfo(TList<Integer>) (wie E2133).|' +
+    '17: TypeInfo erwartet einen Typ, Anzahl ist eine Variable; gemeint ist TypeInfo(Integer) (wie E2133).|' +
+    '17: Default erwartet einen Typ, Result ist eine Variable; gemeint ist Default(string) (wie E2537).|' +
+    '18: TypeInfo erwartet einen Typ, Zaehler ist eine Variable; gemeint ist TypeInfo(Cardinal) (wie E2133).|' +
+    '19: TypeInfo erwartet einen Typ, Lokal ist eine Variable; gemeint ist TypeInfo(Double) (wie E2133).|' +
+    '20: TypeInfo erwartet einen Typ, I ist eine Variable; gemeint ist TypeInfo(Integer) (wie E2133).|' +
+    '21: TypeInfo erwartet einen Typ, E ist eine Variable; gemeint ist TypeInfo(Exception) (wie E2133).|' +
+    '22: Default erwartet einen Typ, A ist eine Variable; gemeint ist Default(Byte) (wie E2537).|' +
+    '23: TypeInfo erwartet einen Typ, Q ist eine Variable (wie E2133).',
+    Messages(TypeInfoFindings('unit G;'#10'interface'#10'type'#10'  TKonto = class'#10'  private'#10 +
+    '    FListe: TList<Integer>;'#10'    function Lies(Wert: Integer; var Q): string;'#10'  end;'#10 +
+    'var'#10'  Zaehler: Cardinal;'#10'implementation'#10'function TKonto.Lies(Wert: Integer; var Q): string;'#10 +
+    'begin'#10'  X := Default(Wert);'#10'  X := TypeInfo(FListe);'#10'  var Anzahl: Integer := 0;'#10 +
+    '  X := TypeInfo(Anzahl); X := Default(Result);'#10'  X := TypeInfo(Zaehler);'#10 +
+    '  var Lokal: Double := 0; X := TypeInfo(Lokal);'#10'  for var I: Integer := 0 to 1 do X := TypeInfo(I);'#10 +
+    '  try except on E: Exception do X := TypeInfo(E); end;'#10 +
+    '  F(procedure(A: Byte) begin X := Default(A); end);'#10'  X := TypeInfo(Q);'#10'end;'#10'end.')));
+end;
+
+procedure TTypeInfoInvalidTests.TypesWithoutTypeInfo;
+begin
+  Assert.AreEqual('11: TStatus hat keine Typinformation: Aufzählungen mit festen Werten erzeugen keine RTTI ' +
+    '(wie E2134).|' +
+    '12: TAlias hat keine Typinformation: Aufzählungen mit festen Werten erzeugen keine RTTI (wie E2134).|' +
+    '13: TextFile hat keine Typinformation: Dateitypen erzeugen keine RTTI (wie E2134).|' +
+    '14: TDatei hat keine Typinformation: Dateitypen erzeugen keine RTTI (wie E2134).|' +
+    '15: Default ist für den Dateityp Text nicht erlaubt (wie E2538).|' +
+    '16: Default ist für den Dateityp File nicht erlaubt (wie E2538).|' +
+    '17: Default ist für den Dateityp TDatei nicht erlaubt (wie E2538).',
+    Messages(TypeInfoFindings('unit G;'#10'interface'#10'type'#10'  TStatus = (Aus = 1, An = 5);'#10 +
+    '  TAlias = TStatus;'#10'  TDatei = file of Integer;'#10'  TFarbe = (Rot, Gruen);'#10'implementation'#10 +
+    'procedure P;'#10'begin'#10'  X := TypeInfo(TStatus);'#10'  X := TypeInfo(TAlias);'#10 +
+    '  X := TypeInfo(TextFile);'#10'  X := TypeInfo(TDatei);'#10'  Default(Text);'#10'  Default(File);'#10 +
+    '  Default(TDatei);'#10'  X := TypeInfo(TFarbe); Y := Default(TFarbe); Z := TypeInfo(TList<Integer>);'#10 +
+    'end;'#10'end.')));
+end;
+
+procedure TTypeInfoInvalidTests.SilentCases;
+begin
+  // with, Methoden fremder Typen, lokale Typen, Typparameter, Konstanten, Variablen in anderem Zweig und
+  // unbekannte Namen bleiben still.
+  Assert.AreEqual('', Messages(TypeInfoFindings('unit G;'#10'interface'#10'type'#10 +
+    '  TBox<T> = class'#10'    procedure Zeige;'#10'  end;'#10'implementation'#10'{$IFDEF X}'#10'var'#10 +
+    '  Bedingt: Integer;'#10'{$ENDIF}'#10'procedure TBox<T>.Zeige;'#10'begin'#10'  X := TypeInfo(T);'#10 +
+    'end;'#10'procedure TFremd.Zeige;'#10'begin'#10'  X := TypeInfo(FWert);'#10'end;'#10 +
+    'procedure P(Wert: Integer);'#10'type'#10'  TLokal = Integer;'#10'const'#10'  K = 1;'#10'begin'#10 +
+    '  with Q do X := TypeInfo(Wert);'#10'  X := TypeInfo(TLokal); X := Default(K);'#10 +
+    '  X := TypeInfo(Bedingt); X := TypeInfo(TUnbekannt);'#10'end;'#10'end.')));
+  // Eigene Routine Default bzw. eigener Typ Text verdecken die des Compilers.
+  Assert.AreEqual('', Messages(TypeInfoFindings('unit G;'#10'interface'#10'type'#10'  Text = Integer;'#10 +
+    'function Default(A: Integer): Integer;'#10'implementation'#10'function Default(A: Integer): Integer;'#10 +
+    'begin'#10'  Result := A;'#10'end;'#10'procedure P(Wert: Integer);'#10'begin'#10 +
+    '  X := Default(Wert); Y := TypeInfo(Text);'#10'end;'#10'end.')));
+end;
+
+procedure TTypeInfoInvalidTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := StatusUnit('GetEnumName(TypeInfo(Status), Ord(Status))');
+  Assert.AreEqual(1, Integer(Length(TypeInfoFindings(Source, '', 'Source/G.pas'))));
+  Assert.AreEqual(0, Integer(Length(TypeInfoFindings(Source, '{"rules": {"typeinfo-invalid": "off"}}',
+    'Source/G.pas'))));
+  Assert.AreEqual(0, Integer(Length(TypeInfoFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/G.pas'))));
+  Assert.AreEqual(0, Integer(Length(TypeInfoFindings(Source,
+    '{"rules": {"typeinfo-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/G.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TOperatorDeclarationInvalidTests);
   TDUnitX.RegisterTestFixture(TGenericDeclarationInvalidTests);
   TDUnitX.RegisterTestFixture(TTypeRestrictionViolatedTests);
   TDUnitX.RegisterTestFixture(TAttributeUsageInvalidTests);
+  TDUnitX.RegisterTestFixture(TTypeInfoInvalidTests);
 
 end.

@@ -24,6 +24,8 @@ type
     [Test]
     procedure ParsesHelperWithAncestor;
     [Test]
+    procedure ParsesFileKeywordInExpression;
+    [Test]
     procedure ParsesRecordWithVariantPart;
     [Test]
     procedure ParsesProcedureTypesWithCallingConvention;
@@ -286,6 +288,26 @@ begin
     Assert.AreEqual('TBasisHelfer', Helper[0].Name);
     Assert.AreEqual('TListe', Helper[1].Name);
     Assert.AreEqual('Leeren', Helper[2].Name);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TPascalParserTests.ParsesFileKeywordInExpression;
+var
+  Tree: TSyntaxTree;
+  Call: TSyntaxNode;
+begin
+  // file steht wie string als Typname im Ausdruck: Default(File), SizeOf(file) (#1084).
+  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'implementation', 'procedure P;', 'begin',
+    '  X := Default(File);', '  Y := SizeOf(string);', 'end;', 'end.']));
+  try
+    AssertNoDiagnostics(Tree);
+    Call := FindFirst(Tree.Root, TSyntaxKind.Call);
+    Assert.AreEqual('Default', Call.Name);
+    Assert.AreEqual(2, Integer(Call.ChildCount));
+    Assert.AreEqual('File', Call[1].Name);
+    Assert.IsTrue(Call[1].Kind = TSyntaxKind.Identifier);
   finally
     Tree.Free;
   end;

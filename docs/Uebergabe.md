@@ -690,3 +690,11 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Unter FPC getestet: RuleTable, Hover.Layout, Findings. VCL-Tests (`Atlas.UI.Settings.Rules.Tests`, Page.Tests) nur mit Delphi.
 - Risiken beim ersten Delphi-Build: `TListView.OnItemChecked`, AutoSize des Editors, `HandleNeeded` der Editoren auf verborgenen Seiten.
 - Handtest AP1–AP26 in `docs/Atlas-Testfaelle.md`. Danach folgen die Unter-Issues (#910 ff.) als Kette auf diesem Branch.
+
+## Compiler vorab: sechs Regeln (#1035, #1030, #1029, #994, #1033, #1084; 22.10.2026, ungebaut)
+- Kette auf `feature/1006-readonly-property-assigned` (912a9065): `feature/1035-anonymous-capture-invalid` → `feature/1030-operator-declaration-invalid` → `feature/1029-generic-declaration-invalid` → `feature/994-type-restriction-violated` → `feature/1033-attribute-usage-invalid` → `feature/1084-typeinfo-invalid`. Nichts in main, Issues offen (Handtest).
+- `anonymous-capture-invalid` in `Builtin.Capture`, die übrigen fünf in `Builtin.TypeRestrictions` (gemeinsam `TRoutineHead`, `TFileTypes`, `TImplementationSymbols`, `TDeclarationNames`).
+- Parser: Typen in Generics-Einschränkungen sind keine Typparameter mehr (Cache-Format 20, #1029); `class helper (TBasis) for T` und `record helper (…) for T` sind Helfer (#994); `file` im Ausdruck ist ein Typname wie `string` (#1084).
+- Option `disabledChecks` für `type-restriction-violated` (Schema, Parser, Katalog).
+- Bewusst still bis zum Abgleich mit dcc: E2570 (GD12), `[Ref]` am Feld und `[Weak]` an Typ oder Methode (AW11), `[Weak]` an `Pointer`. Alle Fälle stehen in den Handtests EF, OD, GD, TB, AW und TJ; dort zuerst die Abgleich-Zeilen (EF7, OD10, GD12, TB13, AW11, TJ9) mit Delphi 12 und 13 übersetzen.
+- Unter FPC: alle Tests der Regeln grün, Scan über 2714 Dateien (Atlas und BetterDelphiLSP) ohne Fehlalarm, jede Mutation in `mutationen.txt` von Hand geprüft (der Golden-Korpus läuft unter FPC wegen des Regex-UTF-8-Fehlers nicht).
