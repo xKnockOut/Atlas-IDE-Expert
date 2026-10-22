@@ -3660,3 +3660,16 @@ Voraussetzung: Server läuft; Routine mit `const Zeile: string` und `if Pos(';',
 | SI5 | `if Zeile.IndexOf('a') > 0 then` | Warnung mit Sicherheit mittel, Korrektur auf `>= 0`; `Zeile.LastIndexOf('.') > 0` bleibt still |
 | SI6 | `Werte := Copy(Werte, 0, 2);` mit `Werte: TArray<Integer>` | Keine Meldung (Arrays zählen ab 0) |
 | SI7 | `"string-index-base": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## DelimitedText ohne StrictDelimiter (#952)
+
+Voraussetzung: Server läuft; Routine mit lokaler `Teile: TStringList`, darin `Teile.Delimiter := ';';` und `Teile.DelimitedText := Zeile;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DT1 | Unit öffnen | Warnung `delimited-text-without-strict` auf `DelimitedText`: „Ohne StrictDelimiter trennt DelimitedText auch an Leerzeichen: 'Max Muster' wird zu zwei Einträgen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| DT2 | Alt+Enter, „StrictDelimiter := True; einfügen“ | `Teile.StrictDelimiter := True;` vor `DelimitedText`; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| DT3 | Feld `FTeile`, `FTeile.StrictDelimiter := True;` im Konstruktor, in einer Methode Delimiter und DelimitedText | Keine Meldung |
+| DT4 | `Teile.StrictDelimiter := False;` bzw. kein `Delimiter` gesetzt | Keine Meldung |
+| DT5 | `if Zeile <> '' then Teile.DelimitedText := Zeile;` | Warnung ohne Korrektur |
+| DT6 | `"delimited-text-without-strict": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
