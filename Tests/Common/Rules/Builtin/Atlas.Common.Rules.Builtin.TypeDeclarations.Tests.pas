@@ -5,6 +5,11 @@
 // Nummern über Werte und Ausdrücke, sich ausschließende {$IF}-Zweige,
 // Parameterlisten mit Korrektur (E2138), Nummern unter 1 (E2139) und die
 // Einstellungen.
+// interface-declaration-invalid (#1075): Beispiel aus dem Issue (E2209),
+// Sichtbarkeit und Direktiven (E2210), Property-Klauseln (E2207), Properties
+// und Accessoren aus Vorfahr-Interfaces (E2206, E2370), Klassen und Records
+// als Interfaces und doppelte Einträge (E2205, E2208), stille Fälle und die
+// Einstellungen.
 
 interface
 
@@ -25,6 +30,25 @@ type
     procedure ParameterListWithFixes;
     [Test]
     procedure NumberBelowOne;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TInterfaceDeclarationInvalidTests = class
+  public
+    [Test]
+    procedure IssueExampleField;
+    [Test]
+    procedure VisibilityAndDirectives;
+    [Test]
+    procedure PropertyClauses;
+    [Test]
+    procedure InheritedPropertiesAndAccessors;
+    [Test]
+    procedure ClassesAsInterfacesAndDuplicates;
+    [Test]
+    procedure SilentCases;
     [Test]
     procedure OffAndExclude;
   end;
@@ -216,7 +240,167 @@ begin
     '{"rules": {"message-method-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Fenster.pas'))));
 end;
 
+{ TInterfaceDeclarationInvalidTests }
+
+/// <summary>System mit TObject, IInterface und TInterfacedObject; Unit Basis mit IBasis (Property Name über
+/// GetName), TKlasse, TPunkt (Record), TFarbe (Aufzählung) und dem Alias TAlias.</summary>
+function BasisIndex: ISymbolIndex;
+begin
+  Result := TSymbolIndex.Create;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit System;'#10'interface'#10'type'#10'  TObject = class'#10 +
+    '  end;'#10'  IInterface = interface'#10'    function _AddRef: Integer; stdcall;'#10'  end;'#10 +
+    '  TInterfacedObject = class(TObject, IInterface)'#10'    function _AddRef: Integer; stdcall;'#10'  end;'#10 +
+    'implementation'#10'end.', 'C:\BDS\source\System.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText('unit Basis;'#10'interface'#10'type'#10'  IBasis = interface'#10 +
+    '    function GetName: string;'#10'    property Name: string read GetName;'#10'  end;'#10 +
+    '  TKlasse = class'#10'  end;'#10'  TPunkt = record'#10'    X: Integer;'#10'  end;'#10 +
+    '  TFarbe = (fRot, fBlau);'#10'  TAlias = IBasis;'#10'implementation'#10'end.', 'C:\Projekt\Basis.pas', nil));
+end;
+
+function InterfaceFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TInterfaceDeclarationInvalidRule.Create, ASource, BasisIndex, '', 'Kunden.pas');
+end;
+
+function InterfaceFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TInterfaceDeclarationInvalidRule.Create, ASource, BasisIndex, AConfig, APath);
+end;
+
+/// <summary>Unit Kunden, die Basis einbindet, mit den Typen ATypes.</summary>
+function Kunden(const ATypes: string): string;
+begin
+  Result := 'unit Kunden;'#10'interface'#10'uses'#10'  Basis;'#10'type'#10 + ATypes + 'implementation'#10'end.';
+end;
+
+procedure TInterfaceDeclarationInvalidTests.IssueExampleField;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := InterfaceFindings(Kunden('  IKunde = interface'#10'    FName: string;'#10'    function GetName: string;'#10 +
+    '  end;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Interfaces dürfen keine Felder haben (wie E2209).', Found[0].Message);
+  Assert.AreEqual(Integer(Ord(TRuleSeverity.Error)), Integer(Ord(Found[0].Severity)));
+  Assert.AreEqual(6, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(4, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(9, Found[0].Range.EndPos.Character);
+  // Korrigierte Form und Felder einer Klasse.
+  Assert.AreEqual(0, Integer(Length(InterfaceFindings(Kunden('  IKunde = interface'#10 +
+    '    function GetName: string;'#10'  end;'#10'  TKunde = class'#10'    FName: string;'#10'  end;'#10)))));
+  Found := InterfaceFindings(Kunden('  IKunde = interface'#10'    class var Zaehler: Integer;'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(6, Found[0].Range.StartPos.Line);
+end;
+
+procedure TInterfaceDeclarationInvalidTests.VisibilityAndDirectives;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := InterfaceFindings(Kunden('  IKunde = interface'#10'  private'#10'    procedure A; virtual;'#10 +
+    '    procedure B; stdcall;'#10'    function C: Integer; safecall;'#10'    procedure D; overload;'#10 +
+    '    procedure D(X: Integer); overload; abstract;'#10'  end;'#10));
+  Assert.AreEqual(3, Integer(Length(Found)));
+  Assert.AreEqual('Die Direktive private ist in Interfaces nicht erlaubt (wie E2210).', Found[0].Message);
+  Assert.AreEqual(6, Found[0].Range.StartPos.Line);
+  Assert.AreEqual('Die Direktive virtual ist in Interfaces nicht erlaubt (wie E2210).', Found[1].Message);
+  Assert.AreEqual(7, Found[1].Range.StartPos.Line);
+  Assert.AreEqual(17, Found[1].Range.StartPos.Character);
+  Assert.AreEqual(24, Found[1].Range.EndPos.Character);
+  Assert.AreEqual('Die Direktive abstract ist in Interfaces nicht erlaubt (wie E2210).', Found[2].Message);
+end;
+
+procedure TInterfaceDeclarationInvalidTests.PropertyClauses;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := InterfaceFindings(Kunden('  IKunde = interface'#10'    function GetX: Integer;'#10 +
+    '    procedure SetX(V: Integer);'#10'    function GetItem(I: Integer): Integer;'#10 +
+    '    property X: Integer read GetX write SetX stored False;'#10'    property Y: Integer read GetX default 0;'#10 +
+    '    property Z: Integer read GetX nodefault;'#10 +
+    '    property Items[I: Integer]: Integer read GetItem; default;'#10 +
+    '    property Default: Integer read GetX;'#10'    property Stored: Integer read GetX;'#10'  end;'#10));
+  Assert.AreEqual(3, Integer(Length(Found)));
+  Assert.AreEqual('Die Klausel stored ist in Interfaces nicht erlaubt (wie E2207).', Found[0].Message);
+  Assert.AreEqual(9, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(45, Found[0].Range.StartPos.Character);
+  Assert.AreEqual('Die Klausel default ist in Interfaces nicht erlaubt (wie E2207).', Found[1].Message);
+  Assert.AreEqual('Die Klausel nodefault ist in Interfaces nicht erlaubt (wie E2207).', Found[2].Message);
+  // In einer Klasse sind die Klauseln erlaubt.
+  Assert.AreEqual(0, Integer(Length(InterfaceFindings(Kunden('  TKunde = class'#10'    function GetX: Integer;'#10 +
+    '  published'#10'    property X: Integer read GetX stored False default 0;'#10'  end;'#10)))));
+end;
+
+procedure TInterfaceDeclarationInvalidTests.InheritedPropertiesAndAccessors;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := InterfaceFindings(Kunden('  IKunde = interface(IBasis)'#10'    property Name: string read GetName;'#10 +
+    '    property Titel: string read GetName;'#10'  end;'#10));
+  Assert.AreEqual(3, Integer(Length(Found)));
+  Assert.AreEqual('Die Property Name ist schon in IBasis deklariert; Interfaces dürfen Properties nicht ' +
+    'überschreiben (wie E2206).', Found[0].Message);
+  Assert.AreEqual(6, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(13, Found[0].Range.StartPos.Character);
+  Assert.AreEqual('GetName stammt aus IBasis; Accessoren einer Interface-Property müssen im Interface selbst ' +
+    'stehen (wie E2370).', Found[1].Message);
+  Assert.AreEqual(6, Found[1].Range.StartPos.Line);
+  Assert.AreEqual(31, Found[1].Range.StartPos.Character);
+  Assert.AreEqual(7, Found[2].Range.StartPos.Line);
+  // Eigener Accessor und neuer Name: still.
+  Assert.AreEqual(0, Integer(Length(InterfaceFindings(Kunden('  IKunde = interface(IBasis)'#10 +
+    '    function GetTitel: string;'#10'    property Titel: string read GetTitel;'#10'  end;'#10)))));
+  // Über zwei Stufen in derselben Unit.
+  Found := InterfaceFindings(Kunden('  IMitte = interface(IBasis)'#10'  end;'#10 +
+    '  IKunde = interface(IMitte)'#10'    function GetName: string;'#10'    property Name: string read GetName;'#10 +
+    '  end;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Die Property Name ist schon in IBasis deklariert; Interfaces dürfen Properties nicht ' +
+    'überschreiben (wie E2206).', Found[0].Message);
+end;
+
+procedure TInterfaceDeclarationInvalidTests.ClassesAsInterfacesAndDuplicates;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := InterfaceFindings(Kunden('  IFalsch = interface(TKlasse)'#10'  end;'#10 +
+    '  TDienst = class(TInterfacedObject, TPunkt, IBasis, TFarbe, Basis.IBasis)'#10'  end;'#10));
+  Assert.AreEqual(4, Integer(Length(Found)));
+  Assert.AreEqual('TKlasse ist eine Klasse und kein Interface (wie E2205).', Found[0].Message);
+  Assert.AreEqual(5, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(22, Found[0].Range.StartPos.Character);
+  Assert.AreEqual('TPunkt ist ein Record und kein Interface (wie E2205).', Found[1].Message);
+  Assert.AreEqual('TFarbe ist eine Aufzählung und kein Interface (wie E2205).', Found[2].Message);
+  Assert.AreEqual('Basis.IBasis steht schon in der Liste der Interfaces (wie E2208).', Found[3].Message);
+  Assert.AreEqual(7, Found[3].Range.StartPos.Line);
+end;
+
+procedure TInterfaceDeclarationInvalidTests.SilentCases;
+begin
+  // Alias, unbekannter Typ, erster Eintrag einer Klasse, bedingte Zweige, dispinterface.
+  Assert.AreEqual(0, Integer(Length(InterfaceFindings(Kunden('  IKunde = interface(TAlias)'#10'  end;'#10 +
+    '  IAnders = interface(IUnbekannt)'#10'  end;'#10'  TDienst = class(TKlasse, TAlias, IUnbekannt)'#10'  end;'#10 +
+    '  ISchalter = interface'#10'  {$IFDEF ALT}'#10'    FAlt: Integer;'#10'  {$ENDIF}'#10'  end;'#10 +
+    '  IDisp = dispinterface'#10'    [''{00000000-0000-0000-0000-000000000001}'']'#10 +
+    '    property Wert: Integer readonly dispid 1;'#10'  end;'#10)))));
+end;
+
+procedure TInterfaceDeclarationInvalidTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Kunden('  IKunde = interface'#10'    FName: string;'#10'  end;'#10);
+  Assert.AreEqual(1, Integer(Length(InterfaceFindings(Source, '', 'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(InterfaceFindings(Source, '{"rules": {"interface-declaration-invalid": "off"}}',
+    'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(InterfaceFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(InterfaceFindings(Source,
+    '{"rules": {"interface-declaration-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TMessageMethodInvalidTests);
+  TDUnitX.RegisterTestFixture(TInterfaceDeclarationInvalidTests);
 
 end.

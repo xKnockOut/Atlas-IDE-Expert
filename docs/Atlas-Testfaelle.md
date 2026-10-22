@@ -4165,3 +4165,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; Unit mit `uses Winapi.Messa
 | MW6 | `message 0`, `message -151` | „Die Nachrichtennummer 0 von … muss mindestens 1 sein (wie E2139).“ |
 | MW7 | `"message-method-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | MW8 | Abgleich mit Delphi: MW1, MW4, MW6 übersetzen | dcc meldet E2140, E2138, E2139 an denselben Stellen; für MW2 (WM_MOVE), MW3 und MW5 (untypisiert) nichts |
+
+## Unzulässige Deklaration in einem Interface (#1075)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IZ1 | Das Beispiel aus #1075: `IKunde = interface` mit `FName: string;` und `function GetName: string;` | Fehler `interface-declaration-invalid` an `FName`: „Interfaces dürfen keine Felder haben (wie E2209).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| IZ2 | `private` im Interface, `procedure A; virtual;` | „Die Direktive private …“ bzw. „Die Direktive virtual ist in Interfaces nicht erlaubt (wie E2210).“; `stdcall`, `safecall` und `overload` bleiben still |
+| IZ3 | `property X: Integer read GetX stored False;`, `… default 0;`, `… nodefault;` | „Die Klausel stored ist in Interfaces nicht erlaubt (wie E2207).“ usw.; `property Items[…] … ; default;` bleibt still |
+| IZ4 | `IKunde = interface(IBasis)` mit `property Name: string read GetName;`, wobei Name und GetName nur in IBasis stehen | E2206 am Namen („… ist schon in IBasis deklariert …“) und E2370 an `GetName` („GetName stammt aus IBasis …“) |
+| IZ5 | `IFalsch = interface(TKlasse)`; `TDienst = class(TInterfacedObject, TPunkt, IBasis, IBasis)` | E2205 an `TKlasse` und `TPunkt`, E2208 am zweiten `IBasis` |
+| IZ6 | Feld in `{$IFDEF}`, Alias als Vorfahr, unbekannter Typ, `dispinterface` mit `readonly dispid 1` | Keine Meldung |
+| IZ7 | `"interface-declaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| IZ8 | Abgleich mit Delphi: IZ1 bis IZ5 übersetzen | dcc meldet E2209, E2210, E2207, E2206, E2370, E2205 und E2208 an denselben Stellen; für IZ6 nichts |

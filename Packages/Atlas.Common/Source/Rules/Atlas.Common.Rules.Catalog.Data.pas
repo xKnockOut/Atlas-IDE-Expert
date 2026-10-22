@@ -2366,6 +2366,25 @@ begin
     '        "E2139",' + #10 +
     '        "E2140"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "interface-declaration-invalid",' + #10 +
+    '      "name": "Invalid declaration in an interface",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "An interface type declares something interfaces cannot have: fields (like E2209), visibility sections or method directives such as virtual, dynamic, abstract, override, message o' + 'r reintroduce (like E2210), the property clauses stored, nodefault or default with a value (like E2207; default; after an array property is fine), a property an ancestor interface already declares (li' + 'ke E2206) or a property accessor that only the ancestor interface declares (like E2370). A class, record or enumeration as the ancestor of an interface or in the interface list of a class is reported ' + 'as well (like E2205), and so is the same interface twice in that list (like E2208). Types are resolved through the uses clauses; aliases, unknown types, dispinterfaces and declarations inside conditio' + 'nal branches stay silent.",' + #10 +
+    '      "bad": "IKunde = interface\n  FName: string;\n  function GetName: string;\nend;",' + #10 +
+    '      "good": "IKunde = interface\n  function GetName: string;\n  property Name: string read GetName;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2205",' + #10 +
+    '        "E2206",' + #10 +
+    '        "E2207",' + #10 +
+    '        "E2208",' + #10 +
+    '        "E2209",' + #10 +
+    '        "E2210",' + #10 +
+    '        "E2370"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3557,6 +3576,11 @@ begin
     '      "id": "message-method-invalid",' + #10 +
     '      "name": "message-Methode falsch deklariert",' + #10 +
     '      "description": "Eine message-Prozedur einer Klasse hat nicht genau einen var-Parameter (wie E2138; der Typ wird nicht geprüft, ein untypisierter var-Parameter ist in Ordnung), ihre Nachrichtennu' + 'mmer ist kleiner als 1 (wie E2139) oder eine frühere message-Methode derselben Klasse behandelt schon dieselbe Nummer (wie E2140, meist nach Kopieren). Nummern gelten als gleich, wenn ihre Werte bekan' + 'nt sind (Zahlen, Konstanten aus dem Index) oder die Ausdrücke gleich lauten. Methoden in sich ausschließenden {$IF}-Zweigen sind nicht doppelt; dieselbe Nummer in einem Nachfahren überschreibt den Han' + 'dler und ist erlaubt. Korrektur für E2138: einen einzelnen Parameter zu var machen, sonst die Liste durch (var Msg: TMessage) ersetzen; der Rumpf in derselben Datei wird mit angepasst."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "interface-declaration-invalid",' + #10 +
+    '      "name": "Unzulässige Deklaration in einem Interface",' + #10 +
+    '      "description": "Ein Interface deklariert etwas, das Interfaces nicht haben dürfen: Felder (wie E2209), Sichtbarkeitsabschnitte oder Methodendirektiven wie virtual, dynamic, abstract, override, m' + 'essage oder reintroduce (wie E2210), die Property-Klauseln stored, nodefault oder default mit Wert (wie E2207; default; hinter einer Array-Property ist erlaubt), eine Property, die ein Vorfahr-Interfa' + 'ce schon deklariert (wie E2206), oder einen Property-Accessor, den nur das Vorfahr-Interface deklariert (wie E2370). Ebenso gemeldet werden eine Klasse, ein Record oder eine Aufzählung als Vorfahr ein' + 'es Interfaces oder in der Interface-Liste einer Klasse (wie E2205) und dasselbe Interface zweimal in dieser Liste (wie E2208). Typen werden über die uses-Klauseln aufgelöst; Aliase, unbekannte Typen, ' + 'dispinterface und Deklarationen in bedingten Zweigen bleiben still."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

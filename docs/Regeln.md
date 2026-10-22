@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 18 |
+| [Compiler vorab](#gruppe-compiler) | 19 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -149,6 +149,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`inaccessible-member`](#inaccessible-member) | Zugriff auf ein nicht sichtbares Mitglied | Bug | Fehler |
 | [`unused-private-member`](#unused-private-member) | Privates Mitglied wird nie verwendet | Code Smell | Hinweis |
 | [`message-method-invalid`](#message-method-invalid) | message-Methode falsch deklariert | Bug | Fehler |
+| [`interface-declaration-invalid`](#interface-declaration-invalid) | Unzulässige Deklaration in einem Interface | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4626,4 +4627,31 @@ Richtig:
 ```pascal
 procedure WMSize(var Msg: TWMSize); message WM_SIZE;
 procedure WMMove(var Msg: TWMMove); message WM_MOVE;
+```
+
+<a id="interface-declaration-invalid"></a>
+### interface-declaration-invalid
+
+**Unzulässige Deklaration in einem Interface** · Bug · Fehler · Gruppe Compiler vorab
+
+Ein Interface deklariert etwas, das Interfaces nicht haben dürfen: Felder (wie E2209), Sichtbarkeitsabschnitte oder Methodendirektiven wie virtual, dynamic, abstract, override, message oder reintroduce (wie E2210), die Property-Klauseln stored, nodefault oder default mit Wert (wie E2207; default; hinter einer Array-Property ist erlaubt), eine Property, die ein Vorfahr-Interface schon deklariert (wie E2206), oder einen Property-Accessor, den nur das Vorfahr-Interface deklariert (wie E2370). Ebenso gemeldet werden eine Klasse, ein Record oder eine Aufzählung als Vorfahr eines Interfaces oder in der Interface-Liste einer Klasse (wie E2205) und dasselbe Interface zweimal in dieser Liste (wie E2208). Typen werden über die uses-Klauseln aufgelöst; Aliase, unbekannte Typen, dispinterface und Deklarationen in bedingten Zweigen bleiben still.
+
+Entspricht der Compilermeldung `E2205`, `E2206`, `E2207`, `E2208`, `E2209`, `E2210`, `E2370`.
+
+Mit Treffer:
+
+```pascal
+IKunde = interface
+  FName: string;
+  function GetName: string;
+end;
+```
+
+Richtig:
+
+```pascal
+IKunde = interface
+  function GetName: string;
+  property Name: string read GetName;
+end;
 ```
