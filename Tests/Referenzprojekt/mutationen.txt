@@ -66,3 +66,4 @@ global-variable | Ref.Daten.Suche.pas | \nimplementation | \nvar\n  LetzteSuche:
 commented-out-code | Ref.Daten.Suche.pas | FAnbieter := AAnbieter; | FAnbieter := AAnbieter;\n  // if Assigned(AAnbieter) then\n  //   FAnbieter := AAnbieter\n  // else\n  //   FAnbieter := nil;
 queue-nil-in-package | Ref.Komponenten.Anzeige.pas | FWert := AValue;\n    Invalidate; | FWert := AValue;\n    TThread.Queue(nil, Invalidate);
 ota-notifier-not-removed | Ref.Komponenten.Registrierung.pas | RegisterComponents('Referenz', [TRefAnzeige]); | RegisterComponents('Referenz', [TRefAnzeige]);\n  (BorlandIDEServices as IOTAServices).AddNotifier(TRefNotifier.Create);
+dunitx-test-without-assert | Ref.Daten.Suche.pas | \nimplementation | \ntype\n  TSucheTests = class\n  public\n    [Test]\n    procedure Leer;\n  end;\n\nimplementation\n\nprocedure TSucheTests.Leer;\nbegin\n  TKundenSuche.Suchen('x');\nend;

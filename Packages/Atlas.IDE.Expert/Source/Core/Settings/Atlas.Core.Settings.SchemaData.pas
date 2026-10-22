@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1717] of string = (
+  Lines: array[0..1725] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -264,6 +264,14 @@ const
     '                },',
     '                "default": ["Destroy", "BeforeDestruction"],',
     '                "description": "Nur field-free-without-nil: Methoden, in denen Free ohne nil erlaubt ist (#917). Destruktoren und Methoden mit [TearDown] gelten immer."',
+    '              },',
+    '              "assertPatterns": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "default": ["Assert.*", "WillRaise*", "Check*"],',
+    '                "description": "Nur dunitx-test-without-assert (#945): Aufrufe, die als Prüfung zählen, als Muster mit * und ?; ersetzt die Vorgabe. System.Assert und Klassen mit Assert im Namen zähle' + 'n immer."',
     '              },',
     '              "ignoreTypes": {',
     '                "type": "array",',

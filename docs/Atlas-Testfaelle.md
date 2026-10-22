@@ -3574,3 +3574,17 @@ Voraussetzung: Server läuft; Unit eines Experten mit `procedure Register;` und 
 | ON6 | `AModule.AddNotifier(…)` mit Parameter `AModule` | Meldung ohne Korrektur |
 | ON7 | Auf der Seite „Prüfregeln“ `registerPairs` = `[{"open": "AddWizard", "close": "RemoveWizard"}]` | Nur `AddWizard` ohne `RemoveWizard` wird gemeldet |
 | ON8 | `"ota-notifier-not-removed": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## DUnitX-Test ohne Assert (#945)
+
+Voraussetzung: Server läuft; Testunit mit `[Test] procedure TImportTests.LeereDateiWirdGelesen;`, deren Rumpf nur `FImport.Laden('leer.csv');` enthält.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DA1 | Testunit öffnen | Hinweis `dunitx-test-without-assert` am Methodennamen in der Klasse: „Der Test prüft nichts; er ist immer grün.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| DA2 | Alt+Enter, „Assert.Pass; als Platzhalter einfügen“ | `Assert.Pass;` vor dem `end` des Rumpfs, die Meldung verschwindet |
+| DA3 | Alt+Enter, „Zur Methode springen“ | Cursor steht am Rumpf `TImportTests.LeereDateiWirdGelesen` |
+| DA4 | Prüfung in einer privaten Hilfsmethode der Klasse bzw. einer Routine der Unit, `TRuleAssert.Reports(…)` oder `CheckEquals(…)` | Keine Meldung |
+| DA5 | `[WillRaise(EImport)]` bzw. `[Ignore]` am Test | Keine Meldung |
+| DA6 | Option „assertPatterns“ = `["Expect"]`, Rumpf `Expect(Laden).ToBe(1);` | Keine Meldung; `CheckEquals` zählt dann nicht mehr |
+| DA7 | `"dunitx-test-without-assert": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

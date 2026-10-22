@@ -176,7 +176,7 @@ const
     'component-palette-icon,component-setter-without-invalidate,confusable-identifier,' +
     'constructor-on-instance,control-char,declared-not-implemented,deprecated-symbol,deref-before-nil-check,destroy-called-directly,destroy-without-override,' +
     'dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,' +
-    'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,dictionary-get-without-check,duplicate-condition,duplicate-interface-guid,' +
+    'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,dictionary-get-without-check,dunitx-test-without-assert,duplicate-condition,duplicate-interface-guid,' +
     'empty-except,empty-statement,exception-freed,exception-in-destructor,exception-not-raised,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,forbidden-uses,' +
     'foreign-form-control-access,form-field-type-mismatch,form-field-without-object,' +
     'form-object-without-field,format-without-settings,generic-exception-raised,hides-virtual,' +
@@ -224,7 +224,7 @@ begin
     'security-weak-crypto',
     ActiveRules('security'));
   Assert.AreEqual('bool-compare,boolean-assign-if,case-insensitive-compare,commented-out-code,component-fixed-pixels,component-hardcoded-color,component-palette-icon,' +
-    'component-setter-without-invalidate,deprecated-symbol,dfm-property,empty-except,forbidden-uses,' +
+    'component-setter-without-invalidate,deprecated-symbol,dfm-property,dunitx-test-without-assert,empty-except,forbidden-uses,' +
     'foreign-form-control-access,format-without-settings,generic-exception-raised,implicit-package-import,' +
     'metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
     'metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,' +
