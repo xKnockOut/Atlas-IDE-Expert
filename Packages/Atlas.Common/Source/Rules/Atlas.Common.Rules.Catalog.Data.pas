@@ -1667,6 +1667,16 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "legacy-tlist",' + #10 +
+    '      "name": "Non-generic list with cast",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "information",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A non-generic TList (System.Classes) or TObjectList (System.Contnrs) whose items are read with a cast: T(List[I]), T(List.Items[I]), T(List.First), List[I] as T and so on. TList<' + 'T> and TObjectList<T> from System.Generics.Collections check the type at compile time and need no cast. The rule reports once per list, at its declaration when it is in this file, otherwise at the fir' + 'st cast; with several target types, all of them are named. Only when name resolution finds the list type and the target type for sure; casts to Pointer are ignored. Off by default; for code that must ' + 'still compile with old Delphi versions, use exclude. Stacks and queues follow in #1106, the quick fix in #1105.",' + #10 +
+    '      "bad": "FPositionen: TList;\n...\nPos := TPosition(FPositionen[I]);",' + #10 +
+    '      "good": "FPositionen: TList<TPosition>;\n...\nPos := FPositionen[I];"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "global-variable",' + #10 +
     '      "name": "Global variable in interface",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -3192,6 +3202,11 @@ begin
     '          "description": "Auch Felder von Records melden."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "legacy-tlist",' + #10 +
+    '      "name": "Ungenerische Liste mit Cast",' + #10 +
+    '      "description": "Eine ungenerische TList (System.Classes) oder TObjectList (System.Contnrs), deren Elemente mit Cast gelesen werden: T(Liste[I]), T(Liste.Items[I]), T(Liste.First), Liste[I] as T ' + 'usw. TList<T> und TObjectList<T> aus System.Generics.Collections prüfen den Typ beim Übersetzen und brauchen keinen Cast. Die Regel meldet je Liste einmal, an ihrer Deklaration, wenn sie in der Datei ' + 'steht, sonst am ersten Cast; bei mehreren Zieltypen nennt sie alle. Nur wenn die Namensauflösung Listentyp und Zieltyp sicher findet; Casts auf Pointer zählen nicht. Standard aus; für Code, der noch m' + 'it alten Delphi-Versionen übersetzen muss, über exclude abschaltbar. Stapel und Warteschlangen folgen in #1106, die Schnellkorrektur in #1105."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "global-variable",' + #10 +

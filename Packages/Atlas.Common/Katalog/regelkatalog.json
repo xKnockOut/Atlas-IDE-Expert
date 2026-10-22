@@ -1647,6 +1647,16 @@
       ]
     },
     {
+      "id": "legacy-tlist",
+      "name": "Non-generic list with cast",
+      "category": "code-smell",
+      "severity": "information",
+      "group": "style",
+      "description": "A non-generic TList (System.Classes) or TObjectList (System.Contnrs) whose items are read with a cast: T(List[I]), T(List.Items[I]), T(List.First), List[I] as T and so on. TList<T> and TObjectList<T> from System.Generics.Collections check the type at compile time and need no cast. The rule reports once per list, at its declaration when it is in this file, otherwise at the first cast; with several target types, all of them are named. Only when name resolution finds the list type and the target type for sure; casts to Pointer are ignored. Off by default; for code that must still compile with old Delphi versions, use exclude. Stacks and queues follow in #1106, the quick fix in #1105.",
+      "bad": "FPositionen: TList;\n...\nPos := TPosition(FPositionen[I]);",
+      "good": "FPositionen: TList<TPosition>;\n...\nPos := FPositionen[I];"
+    },
+    {
       "id": "global-variable",
       "name": "Global variable in interface",
       "category": "code-smell",

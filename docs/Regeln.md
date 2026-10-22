@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 28 |
+| [Stil und Metriken](#gruppe-style) | 29 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -253,6 +253,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`metric-unit-length`](#metric-unit-length) | Unit zu lang | Code Smell | Hinweis |
 | [`metric-uses-count`](#metric-uses-count) | Zu viele Units im uses | Code Smell | Hinweis |
 | [`public-field`](#public-field) | Öffentliches Feld | Code Smell | Hinweis |
+| [`legacy-tlist`](#legacy-tlist) | Ungenerische Liste mit Cast | Code Smell | Information |
 | [`global-variable`](#global-variable) | Globale Variable im interface | Code Smell | Hinweis |
 | [`commented-out-code`](#commented-out-code) | Auskommentierter Code | Code Smell | Hinweis |
 
@@ -3391,6 +3392,29 @@ private
 public
   property Name: string read FName write FName;
 end;
+```
+
+<a id="legacy-tlist"></a>
+### legacy-tlist
+
+**Ungenerische Liste mit Cast** · Code Smell · Information · Gruppe Stil und Metriken
+
+Eine ungenerische TList (System.Classes) oder TObjectList (System.Contnrs), deren Elemente mit Cast gelesen werden: T(Liste[I]), T(Liste.Items[I]), T(Liste.First), Liste[I] as T usw. TList<T> und TObjectList<T> aus System.Generics.Collections prüfen den Typ beim Übersetzen und brauchen keinen Cast. Die Regel meldet je Liste einmal, an ihrer Deklaration, wenn sie in der Datei steht, sonst am ersten Cast; bei mehreren Zieltypen nennt sie alle. Nur wenn die Namensauflösung Listentyp und Zieltyp sicher findet; Casts auf Pointer zählen nicht. Standard aus; für Code, der noch mit alten Delphi-Versionen übersetzen muss, über exclude abschaltbar. Stapel und Warteschlangen folgen in #1106, die Schnellkorrektur in #1105.
+
+Mit Treffer:
+
+```pascal
+FPositionen: TList;
+...
+Pos := TPosition(FPositionen[I]);
+```
+
+Richtig:
+
+```pascal
+FPositionen: TList<TPosition>;
+...
+Pos := FPositionen[I];
 ```
 
 <a id="global-variable"></a>
