@@ -32,6 +32,10 @@
 //                     Rumpf, der die Schleife fortsetzt (#963); Delete, MoveBy,
 //                     Last, Close und FindNext zählen mit. Wird Q im Rumpf
 //                     weitergegeben, bleibt die Regel still.
+//   dataset-edit-without-post
+//                     Q.Edit, Q.Append bzw. Q.Insert ohne folgendes Post, Cancel
+//                     oder CheckBrowseMode in der Routine (#964); still, wenn
+//                     eine andere Routine der Unit Q postet oder Q weitergegeben wird.
 // Grundlage ist der Syntaxbaum: if, while, for, for-in und with ohne Rumpf
 // bzw. mit leerem Block; das Schlüsselwort davor sucht die Regel in den Token.
 
@@ -85,6 +89,12 @@ type
   end;
 
   TDatasetLoopWithoutNextRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TDatasetEditWithoutPostRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1091,6 +1101,34 @@ begin
   end;
 end;
 
+/// <summary>Methode bzw. Routine einer Aufrufanweisung (Break, Q.Next, Q.Insert(…)); AReceiver ist der Text vor
+/// dem Punkt, AArguments die Zahl der Argumente. '' bei anderen Anweisungen.</summary>
+function StatementCall(const AText: string; ANode: TSyntaxNode; out AReceiver: string;
+  out AArguments: Integer): string;
+var
+  Target: TSyntaxNode;
+begin
+  Result := '';
+  AReceiver := '';
+  AArguments := 0;
+  if (ANode.Kind <> TSyntaxKind.CallStatement) or (ANode.ChildCount = 0) then
+    Exit;
+  Target := ANode[0];
+  if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount > 0) then
+  begin
+    AArguments := Target.ChildCount - 1;
+    Target := Target[0];
+  end;
+  if Target.Kind = TSyntaxKind.MemberAccess then
+  begin
+    if Target.ChildCount > 0 then
+      AReceiver := Copy(AText, Target[0].StartOffset + 1, Target[0].EndOffset - Target[0].StartOffset);
+    Result := Target.Name;
+  end
+  else if Target.Kind = TSyntaxKind.Identifier then
+    Result := Target.Name;
+end;
+
 { TDatasetLoopWithoutNextRule }
 
 const
@@ -1114,26 +1152,11 @@ var
     Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
   end;
 
-  // Name der Anweisung ohne Klammern: Break, Exit, Continue, Q.Next …
   function StatementName(ANode: TSyntaxNode; out AReceiver: string): string;
   var
-    Target: TSyntaxNode;
+    Arguments: Integer;
   begin
-    Result := '';
-    AReceiver := '';
-    if (ANode.Kind <> TSyntaxKind.CallStatement) or (ANode.ChildCount = 0) then
-      Exit;
-    Target := ANode[0];
-    if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount > 0) then
-      Target := Target[0];
-    if Target.Kind = TSyntaxKind.MemberAccess then
-    begin
-      if Target.ChildCount > 0 then
-        AReceiver := NodeText(Target[0]);
-      Result := Target.Name;
-    end
-    else if Target.Kind = TSyntaxKind.Identifier then
-      Result := Target.Name;
+    Result := StatementCall(AContext.Text, ANode, AReceiver, Arguments);
   end;
 
   function IsAdvance(ANode: TSyntaxNode): Boolean;
@@ -1298,6 +1321,164 @@ begin
   Visit(AContext.Tree.Root);
 end;
 
+{ TDatasetEditWithoutPostRule }
+
+const
+  DatasetEditMethods: array[0..2] of string = ('Edit', 'Append', 'Insert');
+  // Methoden, die den Bearbeitungsmodus beenden.
+  DatasetPostMethods: array[0..2] of string = ('Post', 'Cancel', 'CheckBrowseMode');
+
+function TDatasetEditWithoutPostRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('dataset-edit-without-post', TRuleSeverity.Warning, 'Edit oder Append ohne Post');
+end;
+
+procedure TDatasetEditWithoutPostRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Lines: TArray<string>;
+  LineBreak: string;
+  Routines: TArray<TSyntaxNode>;
+
+  function NodeText(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  // Beendet ANode (oder ein Nachfahr ab AFrom) den Bearbeitungsmodus von ADataSet?
+  function Ends(ANode: TSyntaxNode; const ADataSet: string; AFrom: Integer): Boolean;
+  var
+    Index, Arguments: Integer;
+    Receiver, Name: string;
+  begin
+    if ANode.StartOffset >= AFrom then
+    begin
+      Name := StatementCall(AContext.Text, ANode, Receiver, Arguments);
+      if SameText(Receiver, ADataSet) and MatchText(Name, DatasetPostMethods) then
+        Exit(True);
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      if (ANode[Index].EndOffset > AFrom) and Ends(ANode[Index], ADataSet, AFrom) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Kommt ADataSet ab AFrom als Wert vor (Argument, Zuweisung), nicht nur als Empfänger (Q.X, Q['X'])?
+  function Escapes(ANode, AParent: TSyntaxNode; const ADataSet: string; AFrom: Integer): Boolean;
+  var
+    Index: Integer;
+  begin
+    if (ANode.StartOffset >= AFrom) and (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+      SameText(NodeText(ANode), ADataSet) then
+      Exit(not ((AParent <> nil) and (AParent.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess]) and
+        (AParent[0] = ANode)));
+    if (ANode.StartOffset >= AFrom) and (ANode.Kind = TSyntaxKind.WithStatement) then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if (ANode[Index].EndOffset > AFrom) and Escapes(ANode[Index], ANode, ADataSet, AFrom) then
+        Exit(True);
+    Result := False;
+  end;
+
+  function UsesDataSet(ANode: TSyntaxNode; const ADataSet: string): Boolean;
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and SameText(NodeText(ANode), ADataSet) then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if UsesDataSet(ANode[Index], ADataSet) then
+        Exit(True);
+    Result := False;
+  end;
+
+  function OwnLine(ANode: TSyntaxNode): Boolean;
+  var
+    Rest: string;
+  begin
+    Rest := Trim(Copy(Lines[ANode.EndPos.Line], ANode.EndPos.Character + 1, MaxInt));
+    Result := (Trim(Copy(Lines[ANode.StartPos.Line], 1, ANode.StartPos.Character)) = '') and
+      ((Rest = '') or (Rest = ';')) and (ANode.EndPos.Line < High(Lines));
+  end;
+
+  // Korrektur: die folgenden Anweisungen, die die Datenmenge benutzen, in try … Post … except Cancel; raise; end.
+  function PostFix(AStatement: TSyntaxNode; const ADataSet: string): TArray<TRuleFix>;
+  var
+    List: TSyntaxNode;
+    Index, Position, Last, Line: Integer;
+    Indent, Step, Text: string;
+  begin
+    Result := nil;
+    List := AStatement.Parent;
+    if (List = nil) or not OwnLine(AStatement) then
+      Exit;
+    Position := -1;
+    for Index := 0 to List.ChildCount - 1 do
+      if List[Index] = AStatement then
+        Position := Index;
+    Last := Position;
+    while (Last + 1 < List.ChildCount) and (List[Last + 1].Kind in [TSyntaxKind.AssignStatement,
+      TSyntaxKind.CallStatement]) and UsesDataSet(List[Last + 1], ADataSet) and OwnLine(List[Last + 1]) do
+      Inc(Last);
+    if (Position < 0) or (Last = Position) then
+      Exit;
+    Indent := TTextLines.IndentOf(Lines[AStatement.StartPos.Line]);
+    Step := TRoutineBody.IndentUnit(AContext.Formatting);
+    Text := Indent + 'try' + LineBreak;
+    for Line := List[Position + 1].StartPos.Line to List[Last].EndPos.Line do
+      Text := Text + Step + Lines[Line] + LineBreak;
+    Text := Text + Indent + Step + ADataSet + '.Post;' + LineBreak + Indent + 'except' + LineBreak + Indent + Step +
+      ADataSet + '.Cancel;' + LineBreak + Indent + Step + 'raise;' + LineBreak + Indent + 'end;' + LineBreak;
+    Result := [TRuleFix.Create(Format('%s.Post mit try … except Cancel ergänzen', [ADataSet]), [TRuleEdit.Create(
+      TTextRange.Create(List[Position + 1].StartPos.Line, 0, List[Last].EndPos.Line + 1, 0), Text)])];
+  end;
+
+  // Beendet eine andere Routine der Unit den Bearbeitungsmodus (Bearbeiten-/Speichern-Knopf)?
+  function EndedElsewhere(ARoutine: TSyntaxNode; const ADataSet: string): Boolean;
+  var
+    Other: TSyntaxNode;
+  begin
+    for Other in Routines do
+      if (Other <> ARoutine) and Ends(Other, ADataSet, 0) then
+        Exit(True);
+    Result := False;
+  end;
+
+  procedure Visit(ANode, ARoutine: TSyntaxNode);
+  var
+    Index, Arguments: Integer;
+    Receiver, Name: string;
+  begin
+    if ANode.Kind = TSyntaxKind.RoutineDecl then
+      ARoutine := ANode;
+    if (ARoutine <> nil) and (ANode.Kind = TSyntaxKind.CallStatement) then
+    begin
+      Name := StatementCall(AContext.Text, ANode, Receiver, Arguments);
+      if (Receiver <> '') and (Arguments = 0) and MatchText(Name, DatasetEditMethods) and
+        not Ends(ARoutine, Receiver, ANode.EndOffset) and not Escapes(ARoutine, nil, Receiver, ANode.EndOffset) and
+        not EndedElsewhere(ARoutine, Receiver) then
+        AReport.Add(TTextRange.Create(ANode[0].EndPos.Line, ANode[0].EndPos.Character - Length(Name),
+          ANode[0].EndPos.Line, ANode[0].EndPos.Character), Format('Nach %s fehlt Post oder Cancel; die Änderung ' +
+          'bleibt offen.', [Name]), TRuleConfidence.Medium, PostFix(ANode, Receiver));
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index], ARoutine);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  Routines := nil;
+  AContext.Tree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if ANode.Kind = TSyntaxKind.RoutineDecl then
+        Routines := Routines + [ANode];
+      Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
+    end);
+  Visit(AContext.Tree.Root, nil);
+end;
+
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TEmptyStatementRule.Create);
@@ -1306,6 +1487,7 @@ begin
   ARegistry.Register(TCollectionModifiedInLoopRule.Create);
   ARegistry.Register(TCaseMissingEnumValueRule.Create);
   ARegistry.Register(TDatasetLoopWithoutNextRule.Create);
+  ARegistry.Register(TDatasetEditWithoutPostRule.Create);
 end;
 
 end.

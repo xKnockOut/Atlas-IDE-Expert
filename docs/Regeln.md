@@ -9,7 +9,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Fehler finden](#gruppe-find-bugs) | 56 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
-| [Datenbank](#gruppe-database) | 1 |
+| [Datenbank](#gruppe-database) | 2 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -121,6 +121,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | Regel | Name | Kategorie | Schweregrad |
 |---|---|---|---|
 | [`dataset-loop-without-next`](#dataset-loop-without-next) | Datenmengen-Schleife ohne Next | Bug | Fehler |
+| [`dataset-edit-without-post`](#dataset-edit-without-post) | Edit oder Append ohne Post | Bug | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4030,4 +4031,33 @@ begin
   Summe := Summe + qryPositionen.FieldByName('Betrag').AsCurrency;
   qryPositionen.Next;
 end;
+```
+
+<a id="dataset-edit-without-post"></a>
+### dataset-edit-without-post
+
+**Edit oder Append ohne Post** · Bug · Warnung · Gruppe Datenbank
+
+Nach Edit, Append oder Insert (ohne Argumente) einer Datenmenge ruft dieselbe Routine weder Post noch Cancel (noch CheckBrowseMode) auf. Die Änderung bleibt offen und geht beim Scrollen still verloren oder wird später unerwartet gespeichert; bei einer Exception dazwischen bricht sie niemand ab. Still, wenn eine andere Routine der Unit dieselbe Datenmenge postet oder abbricht (Bearbeiten-Knopf mit eigenem Speichern-Knopf), und wenn die Datenmenge nach Edit weitergegeben wird (Argument, Zuweisung, with). Konfidenz mittel. Korrektur: die folgenden Anweisungen, die die Datenmenge benutzen, in try … except einschließen, mit Post am Ende des try-Teils und Cancel; raise; im except-Teil.
+
+Mit Treffer:
+
+```pascal
+tblKunde.Edit;
+tblKunde.FieldByName('Status').AsInteger := Ord(ksAktiv);
+Protokollieren;
+```
+
+Richtig:
+
+```pascal
+tblKunde.Edit;
+try
+  tblKunde.FieldByName('Status').AsInteger := Ord(ksAktiv);
+  tblKunde.Post;
+except
+  tblKunde.Cancel;
+  raise;
+end;
+Protokollieren;
 ```
