@@ -49,6 +49,7 @@ uses
 function Routine(const AName: string; ALine, ALength, ADepth, ACyclomatic, ACognitive,
   AParameters: Integer): TRoutineMetrics;
 begin
+  Result := Default(TRoutineMetrics);
   Result.Name := AName;
   Result.NameRange := TTextRange.Create(ALine, 10, ALine, 10 + Length(AName));
   Result.Range := TTextRange.Create(ALine, 0, ALine + ALength + 1, 4);
@@ -123,7 +124,8 @@ begin
   Assert.Contains(Json, '"name": "TFoo.Big"');
   Assert.Contains(Json, '"line": 21');
   Assert.Contains(Json, '"character": 11');
-  Assert.Contains(Json, '"values": {"length": 75, "nesting": 5, "cyclomatic": 17, "cognitive": 20, "parameters": 2}');
+  Assert.Contains(Json, '"values": {"length": 75, "nesting": 5, "cyclomatic": 17, "cognitive": 20, "parameters": 2, ' +
+    '"operands": 0, "locals": 0, "exits": 0}');
   Assert.Contains(Json, '"exceeded": ["length", "nesting", "cyclomatic", "cognitive"]');
 end;
 
@@ -133,7 +135,8 @@ var
 begin
   Json := TMetricsReport.Json(SampleFiles, TMetricLimits.Default);
   Assert.Contains(Json, '{"format": 1, ');
-  Assert.Contains(Json, '"limits": {"length": 60, "nesting": 4, "cyclomatic": 15, "cognitive": 15, "parameters": 6}');
+  Assert.Contains(Json, '"limits": {"length": 60, "nesting": 4, "cyclomatic": 15, "cognitive": 15, "parameters": 6, ' +
+    '"operands": 5, "locals": 12, "exits": 4}');
   Assert.Contains(Json, '"summary": {"files": 2, "methods": 3, "overLimits": 2, "average": {"length": 30.3');
   Assert.Contains(Json, '{"file": "Source/Helper.pas", "methods": [{"name": "Helper"');
   Assert.Contains(Json, '"exceeded": ["parameters"]');
@@ -148,8 +151,9 @@ begin
   Assert.Contains(Text, '2 Dateien, 3 Methoden, davon 2 über mindestens einem Grenzwert.');
   Assert.Contains(Text, '| zyklomatisch | 15 | 6,7 | 17 | 1 |');
   Assert.Contains(Text, '## Über einem Grenzwert');
-  Assert.Contains(Text, '| TFoo.Big | Source/Foo.pas | 21 | **75** | **5** | **17** | **20** | 2 |');
-  Assert.Contains(Text, '| Helper | Source/Helper.pas | 8 | 6 | 0 | 1 | 0 | **7** |');
+  Assert.Contains(Text, '| TFoo.Big | Source/Foo.pas | 21 | **75** | **5** | **17** | **20** | 2 | 0 | 0 | 0 |');
+  Assert.Contains(Text, '| Helper | Source/Helper.pas | 8 | 6 | 0 | 1 | 0 | **7** | 0 | 0 | 0 |');
+  Assert.Contains(Text, '| lokale Variablen | 12 | 0,0 | 0 | 0 |');
   Assert.IsTrue(Pos('| TFoo.Big', Text) < Pos('| Helper', Text), 'meiste Überschreitungen zuerst');
   Assert.Contains(Text, '## Komplexeste Methoden');
   Assert.Contains(Text, '| Source/Foo.pas | 2 | 42,5 | 17 | 20 | 1 |');
@@ -175,11 +179,14 @@ var
   Values: TMetricValues;
 begin
   Values := Routine('A', 0, 12, 2, 4, 3, 2).Values;
-  Assert.AreEqual('12 Zeilen · Tiefe 2 · zyklomatisch 4 · kognitiv 3 · 2 Parameter',
-    TMetricsReport.LensTitle(Values, TMetricLimits.Default));
+  Assert.AreEqual('12 Zeilen · Tiefe 2 · zyklomatisch 4 · kognitiv 3 · 2 Parameter · Operanden 0 · 0 lokale · ' +
+    '0 Ausstiege', TMetricsReport.LensTitle(Values, TMetricLimits.Default));
   Values[TMetricKind.Cyclomatic] := 17;
-  Assert.AreEqual('12 Zeilen · Tiefe 2 · zyklomatisch 17 (> 15) · kognitiv 3 · 2 Parameter',
-    TMetricsReport.LensTitle(Values, TMetricLimits.Default));
+  Values[TMetricKind.BooleanOperands] := 6;
+  Values[TMetricKind.LocalCount] := 3;
+  Values[TMetricKind.ExitPoints] := 5;
+  Assert.AreEqual('12 Zeilen · Tiefe 2 · zyklomatisch 17 (> 15) · kognitiv 3 · 2 Parameter · Operanden 6 (> 5) · ' +
+    '3 lokale · 5 Ausstiege (> 4)', TMetricsReport.LensTitle(Values, TMetricLimits.Default));
 end;
 
 procedure TMetricsReportTests.LimitsDefaultsFromSpecification;
@@ -193,6 +200,10 @@ begin
   Assert.AreEqual(15, Limits.Values[TMetricKind.Cyclomatic]);
   Assert.AreEqual(15, Limits.Values[TMetricKind.Cognitive]);
   Assert.AreEqual(6, Limits.Values[TMetricKind.ParameterCount]);
+  Assert.AreEqual(5, Limits.Values[TMetricKind.BooleanOperands]);
+  Assert.AreEqual(12, Limits.Values[TMetricKind.LocalCount]);
+  Assert.AreEqual(4, Limits.Values[TMetricKind.ExitPoints]);
+  Assert.AreEqual(5, Limits.Structure[TStructureKind.InheritanceDepth]);
   Assert.IsFalse(Limits.Exceeds(TMetricKind.Cyclomatic, 15), 'der Grenzwert selbst ist erlaubt');
   Assert.IsTrue(Limits.Exceeds(TMetricKind.Cyclomatic, 16));
   Values := Routine('A', 0, 61, 0, 1, 0, 0).Values;

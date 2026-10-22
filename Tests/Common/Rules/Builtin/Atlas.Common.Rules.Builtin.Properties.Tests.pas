@@ -3,6 +3,8 @@
 // Tests der Regel property-accessor-invalid (#1001): fehlende und falsche
 // Getter, Setter und Felder hinter read/write, Klassen-Properties,
 // Feldselektoren, Vorfahren aus dem Index, Korrektur und Einstellungen.
+// write-only-property (#978): Beispiel, Korrektur read FName, Properties ohne
+// Typ, allowAttributes samt Parserprüfung, Abschalten.
 
 interface
 
@@ -31,6 +33,14 @@ type
     procedure AccessorAncestorsFromIndex;
     [Test]
     procedure AccessorOptions;
+    [Test]
+    procedure WriteOnlyReported;
+    [Test]
+    procedure WriteOnlyFix;
+    [Test]
+    procedure WriteOnlySilentCases;
+    [Test]
+    procedure WriteOnlyOptions;
   end;
 
 implementation
@@ -43,6 +53,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Properties,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Configuration.Parser,
   Atlas.Tests.RuleAssert;
 
 /// <summary>Unit mit einer Klasse TKunde aus AMembers; ABodies im implementation-Teil.</summary>
@@ -317,6 +329,83 @@ begin
     '{"rules": {"property-accessor-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
   Assert.AreEqual(1, Integer(Length(Findings(Source,
     '{"rules": {"property-accessor-invalid": {"exclude": ["Alt/*.pas"]}}}', 'Source/Kunden.pas'))));
+end;
+
+function WriteOnly(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TWriteOnlyPropertyRule.Create, ASource);
+end;
+
+function WriteOnly(const ASource, AConfig: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TWriteOnlyPropertyRule.Create, ASource, AConfig);
+end;
+
+procedure TPropertyRulesTests.WriteOnlyReported;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Assert.IsFalse(TWriteOnlyPropertyRule.Create.Descriptor.Experimental, 'Standard an');
+  Found := WriteOnly(Kunden('  private'#10'    procedure SetPasswort(const Value: string);'#10'  public'#10 +
+    '    property Passwort: string write SetPasswort;'#10, ''));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Property Passwort hat kein read.', Found[0].Message);
+  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(13, Found[0].Range.StartPos.Character);
+  // Ohne passendes Feld keine Korrektur.
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  // Auch Array-Properties, Interfaces und Klassen-Properties.
+  Assert.AreEqual(3, Integer(Length(WriteOnly('unit U;'#10'interface'#10'type'#10'  IKunde = interface'#10 +
+    '    procedure SetName(const Value: string);'#10'    property Name: string write SetName;'#10'  end;'#10 +
+    '  TListe = class'#10'    property Werte[I: Integer]: string write SetWert;'#10 +
+    '    class property Zaehler: Integer write FZaehler;'#10'  end;'#10'implementation'#10'end.'))));
+end;
+
+procedure TPropertyRulesTests.WriteOnlyFix;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Kunden('  private'#10'    FPasswort: string;'#10'    procedure SetPasswort(const Value: string);'#10 +
+    '  public'#10'    property Passwort: string write SetPasswort;'#10, '');
+  Found := WriteOnly(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('read FPasswort ergänzen', Found[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Found[0].Fixes[0]);
+  Assert.AreEqual(StringReplace(Source, 'string write', 'string read FPasswort write', []), Fixed);
+  TRuleAssert.Silent(TWriteOnlyPropertyRule.Create, Fixed);
+  // Feld mit anderem Typ: keine Korrektur.
+  Source := StringReplace(Source, 'FPasswort: string;', 'FPasswort: TBytes;', []);
+  Assert.AreEqual(0, Integer(Length(WriteOnly(Source)[0].Fixes)));
+end;
+
+procedure TPropertyRulesTests.WriteOnlySilentCases;
+begin
+  // read vorhanden, neu veröffentlichte Property ohne Typ, Property ohne read und write.
+  TRuleAssert.Silent(TWriteOnlyPropertyRule.Create, Kunden('  public'#10 +
+    '    property Name: string read FName write FName;'#10'    property Caption write SetCaption;'#10 +
+    '    property Tag;'#10'    property Lesen: Integer read FLesen;'#10, ''));
+end;
+
+procedure TPropertyRulesTests.WriteOnlyOptions;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Kunden('  public'#10'    [Geheim]'#10'    property Passwort: string write SetPasswort;'#10 +
+    '    [Schluessel(1), GeheimAttribute]'#10'    property Pin: string write SetPin;'#10, '');
+  Assert.AreEqual(2, Integer(Length(WriteOnly(Source))));
+  Assert.AreEqual(0, Integer(Length(WriteOnly(Source,
+    '{"rules": {"write-only-property": {"allowAttributes": ["GeheimAttribute"]}}}'))));
+  Assert.AreEqual(1, Integer(Length(WriteOnly(Source,
+    '{"rules": {"write-only-property": {"allowAttributes": ["Schluessel"]}}}'))));
+  Assert.AreEqual(0, Integer(Length(WriteOnly(Source, '{"rules": {"write-only-property": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TWriteOnlyPropertyRule.Create, Source,
+    '{"rules": {"write-only-property": {"exclude": ["Alt/**"]}}}', 'Alt/Kunden.pas'))));
+  TConfigurationParser.Parse('{"rules": {"write-only-property": {"allowAttributes": "Geheim"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"allowAttributes" muss eine Liste von Texten sein', Issues[0].Message);
 end;
 
 initialization

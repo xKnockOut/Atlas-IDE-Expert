@@ -1,7 +1,8 @@
 ﻿unit Atlas.Core.Editor.Metrics.Tests;
 
 // Tests der Code Lens mit Code-Metriken im Plugin (#66): Antwort des Servers
-// lesen, Beschriftung mit Grenzwert, Zeile wiedererkennen.
+// lesen, Beschriftung mit Grenzwert, Zeile wiedererkennen; #980: Operanden,
+// lokale Variablen, Ausstiege und Vererbungstiefe neben den Membern.
 
 interface
 
@@ -16,6 +17,8 @@ type
     procedure ReadsServerAnswer;
     [Test]
     procedure ReadsStructure;
+    [Test]
+    procedure InheritanceDepthBesideMembers;
     [Test]
     procedure InvalidAnswerIsOffAndEmpty;
     [Test]
@@ -40,9 +43,9 @@ uses
 
 const
   Answer = '{"enabled": false, "limits": {"length": 60, "nesting": 4, "cyclomatic": 15, "cognitive": 15, ' +
-    '"parameters": 6}, "file": "Main.pas", "methods": [' +
+    '"parameters": 6, "operands": 5, "locals": 12, "exits": 4}, "file": "Main.pas", "methods": [' +
     '{"name": "TFoo.Run", "line": 12, "character": 15, "values": {"length": 7, "nesting": 1, "cyclomatic": 17, ' +
-    '"cognitive": 3, "parameters": 2}, "exceeded": ["cyclomatic"]}, ' +
+    '"cognitive": 3, "parameters": 2, "operands": 6, "locals": 3, "exits": 1}, "exceeded": ["cyclomatic"]}, ' +
     '{"name": "Ohne Zeile"}, 42, ' +
     '{"name": "Help", "line": 30, "values": {"length": 2}}]}';
 
@@ -65,6 +68,9 @@ begin
   Result[TAtlasMetric.Cyclomatic] := 'zyklomatisch %d';
   Result[TAtlasMetric.Cognitive] := 'kognitiv %d';
   Result[TAtlasMetric.Parameters] := '%d Parameter';
+  Result[TAtlasMetric.Operands] := 'Operanden %d';
+  Result[TAtlasMetric.Locals] := '%d lokale';
+  Result[TAtlasMetric.Exits] := '%d Ausstiege';
 end;
 
 { TAtlasEditorMetricsTests }
@@ -116,6 +122,31 @@ begin
   Assert.AreEqual(0, Integer(Length(Parse(Answer).Structures)), 'ältere Server ohne "structure"');
 end;
 
+procedure TAtlasEditorMetricsTests.InheritanceDepthBesideMembers;
+var
+  Metrics: TAtlasFileMetrics;
+  Formats: TAtlasStructureFormats;
+begin
+  Metrics := Parse('{"structure": [{"kind": "classSize", "name": "TfrmHaupt", "line": 8, "value": 87, ' +
+    '"limit": 40}, {"kind": "inheritanceDepth", "name": "TfrmHaupt", "line": 8, "value": 3, "limit": 5}, ' +
+    '{"kind": "inheritanceDepth", "name": "TDialog", "line": 20, "value": 6, "limit": 5, "atLeast": true}], ' +
+    '"methods": []}');
+  Assert.AreEqual(3, Integer(Length(Metrics.Structures)));
+  Assert.AreEqual(2, Integer(Length(Metrics.StructuresAt(7))), 'Member und Vererbungstiefe in einer Zeile');
+  Assert.IsFalse(Metrics.Structures[1].AtLeast);
+  Assert.IsTrue(Metrics.Structures[2].AtLeast);
+  Formats[TAtlasStructureMetric.ClassSize] := '%d Member';
+  Formats[TAtlasStructureMetric.UnitLength] := '%d Zeilen';
+  Formats[TAtlasStructureMetric.UsesCount] := '%d Units im uses';
+  Formats[TAtlasStructureMetric.InheritanceDepth] := 'Vererbungstiefe %d';
+  Assert.AreEqual('87 Member (> 40) · Vererbungstiefe 3', TAtlasMetricsLens.StructureCaption(Metrics.StructuresAt(7),
+    Formats, 'Vererbungstiefe mindestens %d', '%s (> %d)'));
+  Assert.AreEqual('Vererbungstiefe mindestens 6 (> 5)', TAtlasMetricsLens.StructureCaption(Metrics.StructuresAt(19),
+    Formats, 'Vererbungstiefe mindestens %d', '%s (> %d)'));
+  Assert.AreEqual(0, Integer(Length(Metrics.StructuresAt(0))));
+  Assert.AreEqual('inheritanceDepth', TAtlasMetricsLens.StructureKey(TAtlasStructureMetric.InheritanceDepth));
+end;
+
 procedure TAtlasEditorMetricsTests.InvalidAnswerIsOffAndEmpty;
 var
   Metrics: TAtlasFileMetrics;
@@ -148,10 +179,12 @@ var
   Metrics: TAtlasFileMetrics;
 begin
   Metrics := Parse(Answer);
-  Assert.AreEqual('7 Zeilen · Tiefe 1 · zyklomatisch 17 (> 15) · kognitiv 3 · 2 Parameter',
-    TAtlasMetricsLens.Caption(Metrics.Methods[0], Metrics.Limits, GermanFormats, '%s (> %d)'));
-  Assert.AreEqual('2 Zeilen · Tiefe 0 · zyklomatisch 0 · kognitiv 0 · 0 Parameter',
-    TAtlasMetricsLens.Caption(Metrics.Methods[1], Metrics.Limits, GermanFormats, '%s (> %d)'));
+  Assert.AreEqual('7 Zeilen · Tiefe 1 · zyklomatisch 17 (> 15) · kognitiv 3 · 2 Parameter · Operanden 6 (> 5) · ' +
+    '3 lokale · 1 Ausstiege', TAtlasMetricsLens.Caption(Metrics.Methods[0], Metrics.Limits, GermanFormats,
+    '%s (> %d)'));
+  Assert.AreEqual('2 Zeilen · Tiefe 0 · zyklomatisch 0 · kognitiv 0 · 0 Parameter · Operanden 0 · 0 lokale · ' +
+    '0 Ausstiege', TAtlasMetricsLens.Caption(Metrics.Methods[1], Metrics.Limits, GermanFormats, '%s (> %d)'));
+  Assert.AreEqual('exits', TAtlasMetricsLens.Key(TAtlasMetric.Exits));
   Assert.IsTrue(TAtlasMetricsLens.Exceeds(Metrics.Methods[0], Metrics.Limits));
   Assert.IsFalse(TAtlasMetricsLens.Exceeds(Metrics.Methods[1], Metrics.Limits));
   Assert.AreEqual('cognitive', TAtlasMetricsLens.Key(TAtlasMetric.Cognitive));

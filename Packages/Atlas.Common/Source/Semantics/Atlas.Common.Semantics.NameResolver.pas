@@ -397,6 +397,11 @@ type
     function UnqualifyType(const AText: string; const AOwnUnit: string = ''): string;
     /// <summary>Name (Typ, Routine, Konstante …) so aufgelöst, wie er in AFromUnit stünde (cref, #654).</summary>
     function ResolveNameFrom(const AFromUnit: TUnitIndex; const AName: string; out AResult: TResolvedSymbol): Boolean;
+    /// <summary>Ziel eines cref von AFromUnit aus (#654, #979): Typ, Typ.Mitglied, Mitglied von AContainer oder
+    /// globaler Name. Parameterlisten wie in "TFoo.Bar(System.Int32)" zählen nicht; das Präfix "M:" usw. entfernt
+    /// der Aufrufer (TXmlDoc.NormalizeCref).</summary>
+    function LocateCref(const AFromUnit: TUnitIndex; const AContainer, ACref: string;
+      out AResult: TResolvedSymbol): Boolean;
     /// <summary>Mitglied AName von AType oder dem nächsten Vorfahren, der es deklariert, ohne Rücksicht auf die
     /// Sichtbarkeit (Doku-Vererbung, #654). Die Deklaration im Typ geht dem Rumpf vor.</summary>
     function DeclaredMember(const AType: TResolvedSymbol; const AName: string; out AResult: TResolvedSymbol): Boolean;
@@ -3037,6 +3042,42 @@ begin
   FClassState := 0;
   // Helfer- und Vorfahren-Cache bleiben (Code-Review P-17): Ihre Schlüssel enthalten Unit und Abschnitt.
   Result := LookupGlobal(AFromUnit, AName, True, False, AResult);
+end;
+
+function TNameResolver.LocateCref(const AFromUnit: TUnitIndex; const AContainer, ACref: string;
+  out AResult: TResolvedSymbol): Boolean;
+var
+  Name, TypePart, Member: string;
+  Dot: Integer;
+  Owner: TResolvedSymbol;
+begin
+  Result := False;
+  AResult := NoResult;
+  Name := Trim(ACref);
+  // Parameterliste weg: "TFoo.Bar(System.Int32)" → "TFoo.Bar".
+  if Pos('(', Name) > 0 then
+    Name := Trim(Copy(Name, 1, Pos('(', Name) - 1));
+  if Name = '' then
+    Exit;
+  // Typ (auch qualifiziert, z. B. System.Classes.TList).
+  if ResolveTypeFrom(AFromUnit, Name, AResult) and not AResult.Builtin and AResult.IsType then
+    Exit(True);
+  // Typ.Mitglied
+  Dot := LastDelimiter('.', Name);
+  if Dot > 0 then
+  begin
+    TypePart := Copy(Name, 1, Dot - 1);
+    Member := Copy(Name, Dot + 1, MaxInt);
+    if ResolveTypeFrom(AFromUnit, TypePart, Owner) and not Owner.Builtin and
+      DeclaredMember(Owner, Member, AResult) then
+      Exit(True);
+  end;
+  // Mitglied der eigenen Klasse.
+  if (AContainer <> '') and (Dot = 0) and ResolveTypeFrom(AFromUnit, AContainer, Owner) and
+    DeclaredMember(Owner, Name, AResult) then
+    Exit(True);
+  // Globale Routine, Konstante, Variable.
+  Result := ResolveNameFrom(AFromUnit, Name, AResult) and (AResult.FileName <> '');
 end;
 
 function TNameResolver.DeclaredMember(const AType: TResolvedSymbol; const AName: string;

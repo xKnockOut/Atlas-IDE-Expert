@@ -26,7 +26,7 @@ type
 implementation
 
 uses
-  System.StrUtils;
+  Atlas.Common.Index.LibraryUnits;
 
 type
   TRelease = record
@@ -41,8 +41,6 @@ const
     (Version: '20.0'; Name: 'Rio'), (Version: '21.0'; Name: 'Sydney'), (Version: '22.0'; Name: 'Alexandria'),
     (Version: '23.0'; Name: 'Athens'), (Version: '37.0'; Name: 'Florence'));
 
-  LibraryPrefixes: array[0..11] of string = ('System', 'Vcl', 'Winapi', 'Data', 'Xml', 'Soap', 'Datasnap',
-    'FireDAC', 'REST', 'Web', 'IBX', 'FMX');
 
 class function TDocWiki.ReleaseName(const ADelphiVersion: string): string;
 var
@@ -55,13 +53,8 @@ begin
 end;
 
 class function TDocWiki.IsLibraryUnit(const AUnitName: string): Boolean;
-var
-  Prefix: string;
 begin
-  for Prefix in LibraryPrefixes do
-    if SameText(AUnitName, Prefix) or StartsText(Prefix + '.', AUnitName) then
-      Exit(True);
-  Result := False;
+  Result := TLibraryUnits.IsLibraryUnit(AUnitName);
 end;
 
 class function TDocWiki.Url(const ADelphiVersion, AUnitName, AContainer, AName: string): string;

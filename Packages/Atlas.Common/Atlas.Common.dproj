@@ -128,6 +128,7 @@
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.SymbolIndex.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.NameIndex.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.LibraryUnits.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Cache.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.CacheHousekeeping.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Memory.pas"/>
@@ -416,6 +417,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.PublicMembers.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ConsideredUsed.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ProjectFiles.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.pas"/>

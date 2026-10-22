@@ -474,6 +474,26 @@
       "description": "Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen. Standardmäßig aus."
     },
     {
+      "id": "setlength-in-loop",
+      "name": "Array wächst in der Schleife um je ein Element",
+      "description": "SetLength(A, Length(A) + 1) in einer Schleife kopiert das dynamische Array bei jedem Durchlauf. Die Regel meldet nur, wenn A sicher ein dynamisches Array ist (array of, TArray<T>, ein Array-Typ der Datei oder ein bekannter RTL-Typ wie TBytes), nie bei Strings. In einer for-Schleife ist die Anzahl bekannt: Die Meldung nennt sie, und ist A eine lokale Variable, die vor der Schleife nicht benutzt und darin nur als A[High(A)] bzw. A[Length(A) - 1] beschrieben wird, setzt die Schnellkorrektur die Länge einmal vor der Schleife und indiziert mit der Schleifenvariable. Sonst die Werte in einer TList<T> sammeln."
+    },
+    {
+      "id": "managed-param-without-const",
+      "name": "Verwalteter Parameter ohne const",
+      "description": "Ein Wertparameter vom Typ String, Interface, dynamisches oder offenes Array oder ein Record der Datei ab minRecordSize Byte, den die Routine nie verändert. Jeder Aufruf zahlt Referenzzählung bzw. Kopie; const spart beides. Verändert heißt: zugewiesen, ein Teil zugewiesen (Zeichen, Felder, Elemente), an var oder out übergeben, @Parameter, Methodenaufruf an einem Record, Laufvariable einer for-Schleife. Die Regel meldet nur, wenn das sicher ist: Aufrufe mit unbekannter Signatur (Methoden ohne Symbolindex, Überladungen), with-Blöcke, Einfangen in anonymen Methoden, inherited ohne Namen und asm lassen sie schweigen. Virtuelle, dynamische, abstrakte und message-Methoden, Aufrufkonventionen, external- und exportierte Routinen, Methoden von Klassen mit Interfaces, published-Methoden und als Wert benutzte Methoden (Ereignisse, @Routine, Formulardatei) bleiben außen vor, weil ihre Signatur von außen vorgegeben ist; Overrides nur mit ignoreOverrides = false und dann ohne Korrektur. Die Korrektur ergänzt const in Rumpf und Deklaration und teilt Parametergruppen bei Bedarf. Verweise als Methodenzeiger in anderen Units sieht die Regel nicht; die meldet nach der Korrektur der Compiler.",
+      "options": [
+        {
+          "name": "minRecordSize",
+          "description": "Record-Parameter ab dieser Größe in Byte melden."
+        },
+        {
+          "name": "ignoreOverrides",
+          "description": "Overrides nicht melden; ihre Signatur gibt der Vorfahr vor."
+        }
+      ]
+    },
+    {
       "id": "bool-compare",
       "name": "Vergleich mit True oder False",
       "description": "Ein Vergleich eines Boolean mit True oder False ist überflüssig; den Ausdruck oder not direkt verwenden."
@@ -555,6 +575,39 @@
         {
           "name": "max",
           "description": "Höchstens so viele Parameter."
+        }
+      ]
+    },
+    {
+      "id": "metric-boolean-operands",
+      "name": "Bedingung mit zu vielen Operanden",
+      "description": "Eine Bedingung von if, while, until oder einem Bedingungsausdruck verknüpft mehr Operanden mit and, or und xor als der Grenzwert (Vorgabe 5); Klammern und not zählen nicht, ein Vergleich oder Aufruf ist ein Operand. Der Befund steht auf der Bedingung. Schnellkorrektur „Bedingung in Funktion auslagern“ (#50) macht aus der ganzen Bedingung eine Funktion mit Ergebnis Boolean (Methode der Klasse bzw. Routine vor der umgebenden), die gelesenen lokalen Namen werden const-Parameter. Erscheint auch in der Metrik-Linse.",
+      "options": [
+        {
+          "name": "max",
+          "description": "Höchstens so viele Operanden in einer Bedingung."
+        }
+      ]
+    },
+    {
+      "id": "metric-local-count",
+      "name": "Zu viele lokale Variablen",
+      "description": "Die Routine deklariert mehr lokale Variablen als der Grenzwert (Vorgabe 12): Namen im var-Abschnitt, Inline-Variablen und for var. Lokale Routinen und anonyme Methoden zählen für sich. Viele lokale Variablen heißen meist, dass die Routine mehreres tut; Teile in eigene Methoden auslagern. Erscheint auch in der Metrik-Linse.",
+      "options": [
+        {
+          "name": "max",
+          "description": "Höchstens so viele lokale Variablen."
+        }
+      ]
+    },
+    {
+      "id": "metric-exit-points",
+      "name": "Zu viele Ausstiege",
+      "description": "Die Routine wird öfter mit Exit und raise verlassen als der Grenzwert (Vorgabe 4); Exit(Wert) und raise; im except zählen mit. Lokale Routinen und anonyme Methoden zählen für sich. Viele Ausstiege machen den Ablauf schwer lesbar; Wächter zusammenfassen oder Teile auslagern. Erscheint auch in der Metrik-Linse.",
+      "options": [
+        {
+          "name": "max",
+          "description": "Höchstens so viele Exit und raise."
         }
       ]
     },
@@ -912,6 +965,17 @@
       ]
     },
     {
+      "id": "metric-inheritance-depth",
+      "name": "Zu tiefe Vererbung",
+      "description": "Die Klasse hat mehr eigene Vorfahren als der Grenzwert (Vorgabe 5). Vorfahren aus RTL, VCL, FMX und anderen Bibliotheken zählen nicht (am Unit-Namen oder weil der Index sie aus dem Bibliothekspfad nachgeladen hat), TObject ebenso. Vorfahren werden in der Datei und im Symbolindex gesucht. Bricht die Kette an einem unbekannten Vorfahren ab, bevor sie eine Bibliothek erreicht, ist der Wert eine Untergrenze und die Meldung sagt „mindestens“; gemeldet wird nur, wenn schon sie über der Grenze liegt. Units einer Bibliothek selbst werden nicht geprüft. Der Befund steht auf dem Klassennamen; die Metrik-Linse zeigt die Tiefe neben den Membern.",
+      "options": [
+        {
+          "name": "max",
+          "description": "Höchstens so viele eigene Vorfahren."
+        }
+      ]
+    },
+    {
       "id": "public-field",
       "name": "Öffentliches Feld",
       "description": "Felder im public- oder published-Abschnitt einer Klasse. Der Abschnitt ohne Sichtbarkeitswort zählt nur bei Klassen ohne Vorfahren oder mit TObject, weil der Formulardesigner dort seine Felder anlegt. Records sind ausgenommen, außer mit includeRecords; class var wird nicht gemeldet. Standard aus. Schnellkorrektur: Feld kapseln legt das Feld als FName in einen private-Abschnitt am Ende der Klasse und ergänzt im alten Abschnitt property Name read FName write FName; Zugriffe von außen bleiben gültig.",
@@ -951,6 +1015,42 @@
         {
           "name": "minLines",
           "description": "Mindestzahl aufeinanderfolgender auskommentierter Codezeilen."
+        }
+      ]
+    },
+    {
+      "id": "default-parameter",
+      "name": "Standardparameter statt Überladung",
+      "description": "Ein Parameter mit Vorgabewert (Anzahl: Integer = 10). Für Teams, die Überladungen bevorzugen: Vorgabewerte landen beim Aufrufer im Code, ändern sich nicht mit der Bibliothek und vertragen sich schlecht mit Überladungen. Gemeldet wird einmal je Deklaration (Klassenmitglied, interface-Teil, forward oder eine Routine nur im implementation-Teil); der Rumpf zu einer Deklaration nicht noch einmal. Die Schnellkorrektur fügt vor der Deklaration je weggelassenem Standardparameter am Ende eine Überladung ein, die mit dem Vorgabewert weiterreicht, entfernt die Vorgabewerte (auch im Rumpf wiederholte) und ergänzt overload. Keine Korrektur, wenn die Signatur von außen vorgegeben ist (virtual, dynamic, abstract, override, message, external, Interface-Typen), der Name als Wert benutzt wird (@Routine, Methodenzeiger), es schon eine gleichnamige Überladung gibt, in bedingter Übersetzung oder wenn der Rumpf nicht eindeutig zu finden ist."
+    },
+    {
+      "id": "empty-routine",
+      "name": "Leere Methode",
+      "description": "Eine Methode oder Routine, deren Rumpf weder eine Anweisung noch einen Kommentar (noch eine Compiler-Direktive) enthält. Entweder fehlt der Inhalt oder die Methode kann weg. Nicht gemeldet werden virtuelle und dynamische Methoden (Ersatz für abstract in Basisklassen), Nachrichten-Handler, Methoden von Klassen mit Interfaces (der Compiler verlangt jede Interface-Methode), Ereignis-Handler, die in der Formulardatei stehen (die IDE entfernt leere beim Speichern), und Rümpfe mit Kommentar, etwa Überschreibungen, die bewusst nichts tun. Schnellkorrekturen: Kommentar zwischen begin und end einfügen; Methode entfernen (Deklaration samt XML-Doku und Rumpf) nur bei privaten Methoden und Routinen ohne Deklaration im interface-Teil, die sonst nirgends in der Datei vorkommen und keine Signatur von außen erfüllen."
+    },
+    {
+      "id": "write-only-property",
+      "name": "Property ohne read",
+      "description": "Eine Property hat write, aber kein read. Sie lässt sich nicht im Objektinspektor anzeigen, nicht im Debugger lesen und verwirrt Aufrufer. Properties ohne Typ bleiben außen vor (sie veröffentlichen eine geerbte Property neu, deren read vom Vorfahren kommt), ebenso Properties mit einem Attribut aus allowAttributes (mit oder ohne Endung Attribute). Schnellkorrektur: read FName ergänzen, wenn der Typ ein Feld FName gleichen Typs deklariert. Das Lesen einer solchen Property meldet readonly-property-assigned.",
+      "options": [
+        {
+          "name": "allowAttributes",
+          "description": "Attribute, die eine Property ohne read erlauben."
+        }
+      ]
+    },
+    {
+      "id": "xmldoc-mismatch",
+      "name": "XMLDoc passt nicht zur Signatur",
+      "description": "Ein ///-Kommentar passt nicht zu seiner Deklaration oder ist kein wohlgeformtes XML, wie die Compilerwarnungen W1201 bis W1208 mit eingeschalteter XML-Dokumentation. Gemeldet werden: <param> zu einem Parameter, den es nicht gibt; fehlende <param>, wenn der Block überhaupt Parameter beschreibt (wie W1208, „but other parameters do“); mit checkReturns <returns> an einer Routine ohne Ergebnis und fehlendes <returns> an einer Funktion, deren Block Parameter beschreibt. <inheritdoc/> ergänzt, was fehlt. Außerdem '<' und '&' außerhalb von Tags und Entitäten, unbekannte Entitäten, Attributwerte ohne Anführungszeichen, nicht geschlossene und überzählige Endtags sowie cref-Ziele, die es nicht gibt (W1206, nur mit Index und wenn jede Unit aus uses bekannt ist; generische Ziele, Unit-Namen und Typen mit unbekannten Vorfahren bleiben still). Mit requirePublic zusätzlich public- und published-Methoden und -Properties von Typen im interface ohne ///-Kommentar (nicht override, nicht Properties ohne Typ). Schnellkorrekturen: unbekannte <param> der Reihe nach auf die fehlenden umbenennen, die übrigen als leere Zeilen in Signaturreihenfolge ergänzen, überzählige <param> und <returns> an Prozeduren entfernen; Zeichen maskieren, Anführungszeichen setzen, Endtag ergänzen oder entfernen, ein fremdes leeres Tag wie TList<T> als Text schreiben; cref auf das ähnlichste Symbol setzen; Kommentargerüst erzeugen.",
+      "options": [
+        {
+          "name": "requirePublic",
+          "description": "Öffentliche Member ohne XMLDoc melden."
+        },
+        {
+          "name": "checkReturns",
+          "description": "<returns> prüfen."
         }
       ]
     },

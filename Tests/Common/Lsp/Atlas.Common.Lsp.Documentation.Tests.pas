@@ -273,19 +273,18 @@ procedure TLspDocumentationTests.LocatesTypesMembersAndGlobals;
 var
   Found: TResolvedSymbol;
 begin
-  Assert.IsTrue(TLspDocumentation.Locate(FResolver, MainUnit, '', 'TBasis', Found));
+  Assert.IsTrue(FResolver.LocateCref(MainUnit, '', 'TBasis', Found));
   Assert.AreEqual('TBasis', Found.Name);
-  Assert.IsTrue(TLspDocumentation.Locate(FResolver, MainUnit, '', 'TBasis.Paint(System.Int32)', Found));
+  Assert.IsTrue(FResolver.LocateCref(MainUnit, '', 'TBasis.Paint(System.Int32)', Found));
   Assert.AreEqual('Paint', Found.Name);
   Assert.AreEqual(BaseFile, Found.FileName);
-  Assert.IsTrue(TLspDocumentation.Locate(FResolver, MainUnit, 'TBasis', 'Breite', Found), 'Eigenes Mitglied');
+  Assert.IsTrue(FResolver.LocateCref(MainUnit, 'TBasis', 'Breite', Found), 'Eigenes Mitglied');
   Assert.AreEqual('Breite', Found.Name);
-  Assert.IsTrue(TLspDocumentation.Locate(FResolver, MainUnit, '', 'Zaehler', Found), 'Globale Variable');
+  Assert.IsTrue(FResolver.LocateCref(MainUnit, '', 'Zaehler', Found), 'Globale Variable');
   Assert.AreEqual(MainFile, Found.FileName);
-  Assert.IsFalse(TLspDocumentation.Locate(FResolver, MainUnit, '', 'Unbekannt', Found));
-  Assert.IsFalse(TLspDocumentation.Locate(FResolver, MainUnit, '', '  ', Found));
-  Assert.IsFalse(TLspDocumentation.Locate(nil, MainUnit, '', 'TBasis', Found));
-  Assert.IsFalse(TLspDocumentation.Locate(FResolver, MainUnit, '', 'Integer', Found), 'Eingebaute Typen nicht');
+  Assert.IsFalse(FResolver.LocateCref(MainUnit, '', 'Unbekannt', Found));
+  Assert.IsFalse(FResolver.LocateCref(MainUnit, '', '  ', Found));
+  Assert.IsFalse(FResolver.LocateCref(MainUnit, '', 'Integer', Found), 'Eingebaute Typen nicht');
 end;
 
 procedure TLspDocumentationTests.TargetsResolveRefsAndExceptions;
