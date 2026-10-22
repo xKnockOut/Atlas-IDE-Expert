@@ -84,7 +84,8 @@ type
     // 24: Helfer mit Vorfahr (class helper (TBase) for T, #848), {$SCOPEDENUMS ON} je Aufzählung und Wert und
     // Mitglieder aus {$I} im Klassenrumpf (#849), Routinen hinter asm-Blöcken mit @@End (#861), Konstanten
     // hinter Steuerzeichen wie ^C (#862). Die Kette #847–#862 zählte getrennt 19–22.
-    const FormatVersion = 24;
+    // 25: Methodenzuordnungen IFoo.Bar=Baz je Klasse statt als Mitglied (#849 mit #1000 und #1040).
+    const FormatVersion = 25;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;
@@ -454,6 +455,7 @@ begin
   AWriter.WriteVar(ATable.IndexOf(ASymbol.DeprecatedText));
   AWriter.WriteVar(ATable.IndexOf(ASymbol.VariantBranch));
   WriteList(AWriter, ATable, ASymbol.InlineRefs);
+  WriteList(AWriter, ATable, ASymbol.Resolutions);
 end;
 
 procedure WriteUsage(AWriter: TCacheWriter; ATable: TStringTable; const AUsage: TIndexUsage);
@@ -664,6 +666,7 @@ begin
   Result.DeprecatedText := AReader.ReadString(AStrings);
   Result.VariantBranch := AReader.ReadString(AStrings);
   Result.InlineRefs := AReader.ReadList(AStrings);
+  Result.Resolutions := AReader.ReadList(AStrings);
 end;
 
 function ReadUsage(var AReader: TCacheReader; const AStrings: TArray<string>): TIndexUsage;

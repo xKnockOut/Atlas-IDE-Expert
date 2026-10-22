@@ -55,6 +55,9 @@ type
     FScopedOffsets: TArray<Integer>;
     FScopedOn: TArray<Boolean>;
     FScopedKnown: Boolean;
+    /// <summary>Nummer des Typs in FSymbols, dessen Rumpf AddMembers gerade liest; -1 ohne. Methodenzuordnungen
+    /// landen in seinen Resolutions.</summary>
+    FResolutionOwner: Integer;
     /// <summary>Gilt {$SCOPEDENUMS ON} an AOffset?</summary>
     function ScopedAt(AOffset: Integer): Boolean;
     function IsDefaultProperty(ANode: TSyntaxNode): Boolean;
@@ -78,6 +81,8 @@ type
     function SummaryOf(ANode: TSyntaxNode): string;
     procedure AddNames(ANode: TSyntaxNode; const AContainer: string; AKind: TIndexSymbolKind);
     procedure AddType(ADecl: TSyntaxNode; const AContainer: string);
+    /// <summary>Hängt die Methodenzuordnung AHeader als "IFoo.Bar=Baz" an die Resolutions des Typs an.</summary>
+    procedure AddResolution(AHeader: TSyntaxNode);
     procedure AddMembers(ABody: TSyntaxNode; const AContainer: string);
     procedure AddDeclarations(ANode: TSyntaxNode);
     procedure AddRoutine(ANode: TSyntaxNode);
@@ -210,6 +215,7 @@ begin
   FTokens := ATokens;
   FSymbols := TList<TIndexSymbol>.Create;
   FForwards := TList<Integer>.Create;
+  FResolutionOwner := -1;
 end;
 
 destructor TIndexExtractor.Destroy;
@@ -832,8 +838,10 @@ begin
       TSyntaxKind.PropertyDecl:
         Add(Child, Child.Name, AContainer, TIndexSymbolKind.Property_);
       TSyntaxKind.RoutineHeader:
-        // Methodenzuordnung procedure IFoo.Bar = MyBar ist kein Mitglied (#849).
-        if not Child.IsMethodResolution then
+        // Methodenzuordnung procedure IFoo.Bar = MyBar ist kein Mitglied (#849), sondern steht am Typ.
+        if Child.IsMethodResolution then
+          AddResolution(Child)
+        else
         begin
           if IsConstructor(Child) then
             Kind := TIndexSymbolKind.Constructor_
@@ -853,6 +861,7 @@ var
   Ancestors: TList<string>;
   Qualified, AncestorArgs: string;
   Visibility: TIndexVisibility;
+  Owner, Count: Integer;
 begin
   Body := nil;
   AncestorArgs := '';
@@ -895,6 +904,7 @@ begin
     FAncestorArgs := AncestorArgs;
     FForward := (Body <> nil) and (Body.Kind = TSyntaxKind.ForwardType);
     FScoped := (Kind = TIndexSymbolKind.EnumType) and ScopedAt(ADecl.StartOffset);
+    Count := FSymbols.Count;
     try
       Add(ADecl, ADecl.Name, AContainer, Kind, Ancestors.ToArray);
     finally
@@ -928,12 +938,28 @@ begin
     // Verschachtelte Typen haben ihre eigene Sichtbarkeit; danach gilt wieder die äußere.
     Visibility := FVisibility;
     FVisibility := TIndexVisibility.Public;
+    Owner := FResolutionOwner;
+    FResolutionOwner := -1;
+    if FSymbols.Count > Count then
+      FResolutionOwner := Count;
     try
       AddMembers(Body, Qualified);
     finally
       FVisibility := Visibility;
+      FResolutionOwner := Owner;
     end;
   end;
+end;
+
+procedure TIndexExtractor.AddResolution(AHeader: TSyntaxNode);
+var
+  Symbol: TIndexSymbol;
+begin
+  if (FResolutionOwner < 0) or (AHeader.Name = '') or (AHeader.ResolutionTarget = '') then
+    Exit;
+  Symbol := FSymbols[FResolutionOwner];
+  Symbol.Resolutions := Symbol.Resolutions + [AHeader.Name + '=' + AHeader.ResolutionTarget];
+  FSymbols[FResolutionOwner] := Symbol;
 end;
 
 procedure TIndexExtractor.AddRoutine(ANode: TSyntaxNode);

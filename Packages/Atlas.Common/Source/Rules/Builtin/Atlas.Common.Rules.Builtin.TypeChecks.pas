@@ -995,20 +995,14 @@ var
     Resolutions := TStringList.Create;
     Seen := TStringList.Create;
     try
-      // Methoden im Rumpf der Klasse; "function IExport.Lesen = LesenIntern" als Zuordnung.
+      // Methoden im Rumpf der Klasse; Zuordnungen "function IExport.Lesen = LesenIntern" stehen an der Klasse.
       for Member in Local.Symbols do
         if SameText(Member.Container, AClass.Name) and (Member.Kind = TIndexSymbolKind.Method) and
           Inside(Member.SelectionRange, AClass.Range) then
-        begin
-          if Pos('.', Member.Name) > 0 then
-          begin
-            Target := Member.Signature;
-            if Pos('=', Target) > 0 then
-              Resolutions.Values[LowerCase(Member.Name)] := Trim(Copy(Target, Pos('=', Target) + 1, MaxInt));
-          end
-          else
-            Methods.Add(Member);
-        end;
+          Methods.Add(Member);
+      for Target in AClass.Resolutions do
+        Resolutions.Values[LowerCase(Copy(Target, 1, Pos('=', Target) - 1))] := Copy(Target, Pos('=', Target) + 1,
+          MaxInt);
       for Name in AClass.Ancestors do
       begin
         if not Resolver.ResolveTypeFrom(Local, Name, Ancestor) or

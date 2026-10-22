@@ -83,6 +83,10 @@ type
     /// "!Name" = Zugriff auf ein strict private-Mitglied der eigenen Klasse. nil = keine inline-Routine, nicht
     /// einbettbar (asm, with, verschachtelte Routinen) oder ohne solche Verweise.</summary>
     InlineRefs: TArray<string>;
+    /// <summary>Nur bei Klassen und Records: Methodenzuordnungen im Rumpf als "IFoo.Bar=Baz" in Reihenfolge der
+    /// Deklaration. Sie sind keine eigenen Mitglieder (#849), zählen aber als Implementierung der
+    /// Interface-Methode (interface-not-implemented, hresult-integer-mix).</summary>
+    Resolutions: TArray<string>;
     /// <summary>XMLDoc-Kurztext: Klartext von &lt;summary&gt; aus den ///-Zeilen darüber, eine Zeile,
     /// höchstens TIndexSymbol.MaxSummary Zeichen; '' ohne Doku (#492).</summary>
     Summary: string;

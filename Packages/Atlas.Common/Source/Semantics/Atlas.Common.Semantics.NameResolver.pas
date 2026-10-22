@@ -3521,13 +3521,15 @@ begin
       Bindings := Unqualified(Current.Bindings);
       for Symbol in IntfUnit.Symbols do
         if SameText(Symbol.Container, Current.QualifiedName) and (Symbol.Kind in RoutineKinds) then
-        begin
-          if Pos('.', Symbol.Name) > 0 then
-            Resolutions.AddOrSetValue(LowerCase(BareTypeName(Copy(Symbol.Name, 1, LastDelimiter('.', Symbol.Name) - 1)) +
-              Copy(Symbol.Name, LastDelimiter('.', Symbol.Name), MaxInt)), True)
-          else
-            Implemented.AddOrSetValue(KeyOf(Symbol, Bindings), True);
-        end;
+          Implemented.AddOrSetValue(KeyOf(Symbol, Bindings), True)
+        else if SameText(Symbol.QualifiedName, Current.QualifiedName) then
+          for Name in Symbol.Resolutions do
+          begin
+            // "IFoo.Bar=Baz": Schlüssel ifoo.bar ohne Unit-Präfix vor IFoo.
+            Key := Copy(Name, 1, Pos('=', Name) - 1);
+            Resolutions.AddOrSetValue(LowerCase(BareTypeName(Copy(Key, 1, LastDelimiter('.', Key) - 1)) +
+              Copy(Key, LastDelimiter('.', Key), MaxInt)), True);
+          end;
       if AncestorOf(Current, Ancestor) and (Ancestor.SymbolKind <> TIndexSymbolKind.InterfaceType) then
       begin
         Current := Ancestor;

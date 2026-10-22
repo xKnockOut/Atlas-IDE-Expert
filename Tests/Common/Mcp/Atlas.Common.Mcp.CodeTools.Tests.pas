@@ -298,9 +298,11 @@ end;
 
 procedure TMcpCodeToolsTests.CheckCodeUsesProjectDefines;
 const
+  // Der WIN64-Zweig ist sonst sauber: Datei und Unit heißen gleich, X ruft sich nicht selbst auf.
+  ZielFile = 'C:\P\Ziel.pas';
   Win64Unit =
     'unit Ziel;'#10'interface'#10'implementation'#10'procedure X;'#10'begin'#10 +
-    '{$IFDEF WIN64}'#10'  X;'#10'{$ELSE}'#10'  if then'#10'{$ENDIF}'#10'end;'#10'end.';
+    '{$IFDEF WIN64}'#10'  Exit;'#10'{$ELSE}'#10'  if then'#10'{$ENDIF}'#10'end;'#10'end.';
 var
   Tools: TMcpCodeTools;
   Win64: TCheckSourceFunc;
@@ -320,17 +322,17 @@ begin
   Tools := NewTools;
   try
     // Ohne Projekt gelten Win32 und Delphi 13: Der {$ELSE}-Zweig ist aktiv und kaputt.
-    Assert.Contains(Tools.CheckCode(BuiltinRules, TServerSettings.Default, 'C:\P', MainFile, Win64Unit, 0, 0),
+    Assert.Contains(Tools.CheckCode(BuiltinRules, TServerSettings.Default, 'C:\P', ZielFile, Win64Unit, 0, 0),
       '[syntax]');
     Tools.CheckSource := Win64;
-    Assert.Contains(Tools.CheckCode(BuiltinRules, TServerSettings.Default, 'C:\P', MainFile, Win64Unit, 0, 0),
+    Assert.Contains(Tools.CheckCode(BuiltinRules, TServerSettings.Default, 'C:\P', ZielFile, Win64Unit, 0, 0),
       'Keine Befunde');
   finally
     Tools.Free;
   end;
-  Assert.Contains(TMcpCodeTools.Diagnostics(BuiltinRules, TServerSettings.Default, 'C:\P', ['C:\P\Ziel.pas'],
+  Assert.Contains(TMcpCodeTools.Diagnostics(BuiltinRules, TServerSettings.Default, 'C:\P', [ZielFile],
     ReadWin64), '[syntax]');
-  Assert.Contains(TMcpCodeTools.Diagnostics(BuiltinRules, TServerSettings.Default, 'C:\P', ['C:\P\Ziel.pas'],
+  Assert.Contains(TMcpCodeTools.Diagnostics(BuiltinRules, TServerSettings.Default, 'C:\P', [ZielFile],
     ReadWin64, Win64), '0 Befunde');
 end;
 

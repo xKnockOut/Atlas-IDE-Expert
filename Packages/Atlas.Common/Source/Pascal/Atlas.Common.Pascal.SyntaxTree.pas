@@ -100,6 +100,9 @@ type
     /// <summary>Routinenkopf einer Methodenzuordnung "procedure IFoo.Bar = MyBar;" (#849): kein eigenes
     /// Mitglied; das Ziel steht als Identifier unter der Direktive "resolution".</summary>
     function IsMethodResolution: Boolean;
+    /// <summary>Ziel einer Methodenzuordnung (MyBar bei "procedure IFoo.Bar = MyBar;"); '' sonst oder ohne Ziel.
+    /// </summary>
+    function ResolutionTarget: string;
     /// <summary>Qualifizierter Name der Typdeklarationen über diesem Knoten (TAussen.TInnen), Self
     /// eingeschlossen; '' außerhalb eines Typs.</summary>
     function EnclosingTypeName: string;
@@ -268,6 +271,24 @@ begin
     if (Children[Index].Kind = TSyntaxKind.Directive) and (Children[Index].Name = 'resolution') then
       Exit(True);
   Result := False;
+end;
+
+function TSyntaxNode.ResolutionTarget: string;
+var
+  Index: Integer;
+  Clause: TSyntaxNode;
+begin
+  for Index := 0 to ChildCount - 1 do
+  begin
+    Clause := Children[Index];
+    if (Clause.Kind = TSyntaxKind.Directive) and (Clause.Name = 'resolution') then
+    begin
+      if (Clause.ChildCount > 0) and (Clause[0].Kind = TSyntaxKind.Identifier) then
+        Exit(Clause[0].Name);
+      Break;
+    end;
+  end;
+  Result := '';
 end;
 
 function TSyntaxNode.EnclosingTypeName: string;
