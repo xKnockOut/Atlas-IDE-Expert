@@ -1774,6 +1774,24 @@
       "description": "An item of a TObjectList/TObjectList<T> (OwnsObjects, default True) or of a TObjectDictionary with doOwnsValues is freed with Free, FreeAndNil, Destroy or DisposeOf, directly (List[I].Free, List.Items[I].Free) or through a variable taken from List[I], List.First/Last or a for-in loop over the list or Dictionary.Values. The list frees the item itself on Delete, Remove, Clear, an assignment to List[I], or at the latest when it is freed: a double free. A list is owning when the unit creates it that way (TObjectList without False, TObjectDictionary with doOwnsValues) or declares it as TObjectList without creating it, and no OwnsObjects := False follows. Extract in the same routine keeps the rule silent. High confidence. Quick fixes: remove the Free (the whole loop when it only frees), Delete or Remove instead of Free, Extract instead of Remove.",
       "bad": "Auftraege := TObjectList<TAuftrag>.Create;\n…\nAuftraege[I].Free;\nAuftraege.Delete(I);",
       "good": "Auftraege := TObjectList<TAuftrag>.Create;\n…\nAuftraege.Delete(I);"
+    },
+    {
+      "id": "create-without-assignment",
+      "name": "Object created and lost at once",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "TStringList.Create; as a statement of its own: the object is created but stored nowhere and never freed (memory leak). Silent for components with an owner (first argument Self, Owner, AOwner, Application, or a TComponent descendant with an argument other than nil), threads (they free themselves with FreeOnTerminate), records, unknown classes with arguments and classes listed in selfRegistering. High confidence. Quick fix: assign to a new local variable and wrap the following statements of the block in try/finally with Free.",
+      "bad": "procedure TImport.Starten;\nbegin\n  TImportProtokoll.Create;\n  Laden;\nend;",
+      "good": "procedure TImport.Starten;\nvar\n  ImportProtokoll: TImportProtokoll;\nbegin\n  ImportProtokoll := TImportProtokoll.Create;\n  try\n    Laden;\n  finally\n    ImportProtokoll.Free;\n  end;\nend;",
+      "options": [
+        {
+          "name": "selfRegistering",
+          "type": "string-list",
+          "default": [],
+          "description": "Classes that register themselves in their constructor, as patterns with * and ?; Create as a statement stays silent for them."
+        }
+      ]
     }
   ]
 }

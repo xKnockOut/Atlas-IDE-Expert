@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 48 |
+| [Fehler finden](#gruppe-find-bugs) | 49 |
 | [Exceptions](#gruppe-exceptions) | 6 |
 | [Threads](#gruppe-threads) | 9 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -72,6 +72,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`dictionary-get-without-check`](#dictionary-get-without-check) | Dictionary-Zugriff ohne Prüfung des Schlüssels | Bug | Hinweis |
 | [`event-call-without-assigned`](#event-call-without-assigned) | Ereignis ohne Assigned-Prüfung aufgerufen | Bug | Warnung |
 | [`owned-item-freed`](#owned-item-freed) | Element einer besitzenden Liste zusätzlich freigegeben | Bug | Fehler |
+| [`create-without-assignment`](#create-without-assignment) | Objekt erzeugt und sofort verloren | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -3552,4 +3553,41 @@ Richtig:
 Auftraege := TObjectList<TAuftrag>.Create;
 …
 Auftraege.Delete(I);
+```
+
+<a id="create-without-assignment"></a>
+### create-without-assignment
+
+**Objekt erzeugt und sofort verloren** · Bug · Warnung · Gruppe Fehler finden
+
+TStringList.Create; als eigene Anweisung: Das Objekt wird erzeugt, aber nirgends gespeichert und nie freigegeben (Speicherleck). Still bleiben Komponenten mit Owner (erstes Argument Self, Owner, AOwner, Application oder ein Nachfahr von TComponent mit einem Argument ungleich nil), Threads (geben sich mit FreeOnTerminate selbst frei), Records, unbekannte Klassen mit Argumenten und Klassen aus selfRegistering. Sicherheit hoch. Korrektur: Zuweisung an eine neue lokale Variable, die folgenden Anweisungen des Blocks in try/finally mit Free.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `selfRegistering` | string-list | `[]` | Klassen, die sich im Konstruktor selbst registrieren, als Muster mit * und ?; Create als Anweisung bleibt für sie still. |
+
+Mit Treffer:
+
+```pascal
+procedure TImport.Starten;
+begin
+  TImportProtokoll.Create;
+  Laden;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TImport.Starten;
+var
+  ImportProtokoll: TImportProtokoll;
+begin
+  ImportProtokoll := TImportProtokoll.Create;
+  try
+    Laden;
+  finally
+    ImportProtokoll.Free;
+  end;
+end;
 ```

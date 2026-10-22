@@ -2,6 +2,8 @@
 
 // Tests der Regel owned-item-freed (#947): Freigabe von Elementen besitzender Listen
 // und Dictionarys, Besitz aus Erzeugung und OwnsObjects, Elementvariablen, Korrekturen, Optionen.
+// Tests der Regel create-without-assignment (#948): erzeugte und sofort verlorene Objekte,
+// Owner, Threads, selfRegistering, Korrektur mit try/finally.
 
 interface
 
@@ -30,6 +32,18 @@ type
     procedure OffAndExclude;
     [Test]
     procedure CreatesOwning;
+    [Test]
+    procedure CreateIssueExampleReported;
+    [Test]
+    procedure CreateFixAssignsWithTryFinally;
+    [Test]
+    procedure CreateOwnersAndThreadsAreSilent;
+    [Test]
+    procedure CreateSelfRegisteringOption;
+    [Test]
+    procedure CreateOffAndExclude;
+    [Test]
+    procedure CreateNames;
   end;
 
 implementation
@@ -38,6 +52,7 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
@@ -292,6 +307,162 @@ begin
   Assert.IsTrue(IsDictionary);
   Assert.IsFalse(TOwnedItemFreedRule.CreatesOwning('TObjectDictionary', '[doOwnsKeys]', IsDictionary));
   Assert.IsFalse(TOwnedItemFreedRule.CreatesOwning('TObjectDictionary', '', IsDictionary));
+end;
+
+function Import(const ABody: string): string;
+begin
+  Result :=
+    'unit Import;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TImportProtokoll = class'#10 +
+    '  end;'#10 +
+    '  TImport = class'#10 +
+    '    procedure Starten;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TImport.Starten;'#10 +
+    'begin'#10 +
+    ABody +
+    'end;'#10 +
+    'end.';
+end;
+
+procedure TOwnershipRulesTests.CreateIssueExampleReported;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create,
+    Import('  TImportProtokoll.Create;'#10'  Laden;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('create-without-assignment', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Das erzeugte TImportProtokoll wird nirgends gespeichert und nie freigegeben (Speicherleck).',
+    Findings[0].Message);
+  Assert.AreEqual(11, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(25, Findings[0].Range.EndPos.Character);
+  // Gespeichert, weitergegeben oder sofort benutzt: still.
+  TRuleAssert.Silent(TCreateWithoutAssignmentRule.Create, Import('  FProtokoll := TImportProtokoll.Create;'#10));
+  TRuleAssert.Silent(TCreateWithoutAssignmentRule.Create, Import('  FListe.Add(TImportProtokoll.Create);'#10));
+  TRuleAssert.Silent(TCreateWithoutAssignmentRule.Create, Import('  TImportProtokoll.Create.Free;'#10));
+  TRuleAssert.Silent(TCreateWithoutAssignmentRule.Create, Import('  inherited Create;'#10));
+  TRuleAssert.Silent(TCreateWithoutAssignmentRule.Create, Import('  FFabrik.Create;'#10));
+  // Records belegen keinen Heap.
+  TRuleAssert.Silent(TCreateWithoutAssignmentRule.Create, StringReplace(Import('  TImportProtokoll.Create(1);'#10),
+    '  TImportProtokoll = class', '  TImportProtokoll = record', []));
+  // Unbekannte Klasse ohne Argumente: gemeldet, mit Unit-Präfix und generisch ebenso.
+  TRuleAssert.Reports(TCreateWithoutAssignmentRule.Create, Import('  System.Classes.TStringList.Create;'#10));
+  Findings := TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, Import('  TList<Integer>.Create();'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Das erzeugte TList<Integer> wird nirgends gespeichert und nie freigegeben (Speicherleck).',
+    Findings[0].Message);
+end;
+
+procedure TOwnershipRulesTests.CreateFixAssignsWithTryFinally;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Import('  TImportProtokoll.Create;'#10'  Laden;'#10'  Melden;'#10);
+  Findings := TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('An ImportProtokoll zuweisen und in try/finally freigeben', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(StringReplace(Import('  ImportProtokoll := TImportProtokoll.Create;'#10'  try'#10 +
+    '    Laden;'#10'    Melden;'#10'  finally'#10'    ImportProtokoll.Free;'#10'  end;'#10),
+    'procedure TImport.Starten;'#10'begin', 'procedure TImport.Starten;'#10'var'#10 +
+    '  ImportProtokoll: TImportProtokoll;'#10'begin', []), Fixed);
+  AssertParses(Fixed);
+  TRuleAssert.Silent(TCreateWithoutAssignmentRule.Create, Fixed);
+  // Letzte Anweisung: leerer try-Block; vergebener Name bekommt eine Nummer.
+  Source := Import('  ImportProtokoll := 1;'#10'  TImportProtokoll.Create;'#10);
+  Findings := TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, Source);
+  Assert.AreEqual('An ImportProtokoll2 zuweisen und in try/finally freigeben', Findings[0].Fixes[0].Title);
+  AssertParses(ApplyFix(Source, Findings[0].Fixes[0]));
+  // In einer Zeile mit anderer Anweisung keine Korrektur.
+  Findings := TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create,
+    Import('  if X then TImportProtokoll.Create;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TOwnershipRulesTests.CreateOwnersAndThreadsAreSilent;
+const
+  Source =
+    'unit Formular;'#10 +
+    'interface'#10 +
+    'uses Vcl.StdCtrls, System.Classes;'#10 +
+    'type'#10 +
+    '  TKnopf = class(TButton)'#10 +
+    '  end;'#10 +
+    '  TArbeiter = class(TThread)'#10 +
+    '  end;'#10 +
+    '  TMerker = class'#10 +
+    '    constructor Create(A: Integer);'#10 +
+    '  end;'#10 +
+    '  TFormular = class(TForm)'#10 +
+    '    procedure Anlegen;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TMerker.Create(A: Integer);'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'procedure TFormular.Anlegen;'#10 +
+    'begin'#10 +
+    '  TButton.Create(Self);'#10 +
+    '  TKnopf.Create(Panel1);'#10 +
+    '  TArbeiter.Create(False);'#10 +
+    '  TRegistrierung.Create(Menue);'#10 +
+    '  TMerker.Create(1);'#10 +
+    '  TKnopf.Create(nil);'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Gemeldet: TMerker (bekannte Klasse ohne Owner) und TKnopf.Create(nil).
+  Findings := TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, Source);
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(24, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(25, Findings[1].Range.StartPos.Line);
+end;
+
+procedure TOwnershipRulesTests.CreateSelfRegisteringOption;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Import('  TImportProtokoll.Create;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, Source,
+    '{"rules": {"create-without-assignment": {"selfRegistering": ["TImport*"]}}}'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, Source,
+    '{"rules": {"create-without-assignment": {"selfRegistering": ["TExpert"]}}}'))));
+  TConfigurationParser.Parse('{"rules": {"create-without-assignment": {"selfRegistering": "TExpert"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+procedure TOwnershipRulesTests.CreateOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Import('  TImportProtokoll.Create;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, Source,
+    '{"rules": {"create-without-assignment": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, Source,
+    '{"rules": {"create-without-assignment": {"exclude": ["Source/*.pas"]}}}', 'Source/Import.pas'))));
+end;
+
+procedure TOwnershipRulesTests.CreateNames;
+begin
+  Assert.IsTrue(TCreateWithoutAssignmentRule.LooksLikeType('TStringList'));
+  Assert.IsTrue(TCreateWithoutAssignmentRule.LooksLikeType('EImport'));
+  Assert.IsFalse(TCreateWithoutAssignmentRule.LooksLikeType('FFabrik'));
+  Assert.IsFalse(TCreateWithoutAssignmentRule.LooksLikeType('Termin'));
+  Assert.AreEqual('StringList', TCreateWithoutAssignmentRule.VariableName('System.Classes.TStringList'));
+  Assert.AreEqual('List', TCreateWithoutAssignmentRule.VariableName('TList<Integer>'));
+  Assert.AreEqual('Termin', TCreateWithoutAssignmentRule.VariableName('Termin'));
 end;
 
 initialization
