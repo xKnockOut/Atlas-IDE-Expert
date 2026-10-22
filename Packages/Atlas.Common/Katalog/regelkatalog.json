@@ -2367,6 +2367,20 @@
       "compilerCodes": [
         "E2012"
       ]
+    },
+    {
+      "id": "for-in-not-enumerable",
+      "name": "for-in over a type without enumerator",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A for-in loop runs over a type that cannot be enumerated: a number, pointer, character or Boolean, or a class, record or interface without a public GetEnumerator, also not inherited or from a helper (like E2430); or the enumerator returned by GetEnumerator lacks a public MoveNext or Current (like E2431). Strings, arrays and sets are fine. Reported only when the type and all its ancestors are known; generic types and unknown types stay silent. No quick fix; if the type has Count, the message suggests an indexed loop.",
+      "bad": "for F in Felder.Dataset do",
+      "good": "for F in Felder do",
+      "compilerCodes": [
+        "E2430",
+        "E2431"
+      ]
     }
   ]
 }

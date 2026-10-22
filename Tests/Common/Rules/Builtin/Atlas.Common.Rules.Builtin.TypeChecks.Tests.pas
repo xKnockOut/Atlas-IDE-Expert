@@ -86,6 +86,19 @@ type
   end;
 
   [TestFixture]
+  TForInNotEnumerableTests = class
+  public
+    [Test]
+    procedure IssueExample;
+    [Test]
+    procedure NumbersRecordsAndIncompleteEnumerators;
+    [Test]
+    procedure EnumerableAndUnknownTypesAreSilent;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
   TLocalRoutineAsCallbackTests = class
   public
     [Test]
@@ -275,6 +288,11 @@ begin
   Found := False;
   for Rule in BuiltinRules do
     if Rule.Descriptor.Id = ConditionNotBooleanRuleId then
+      Found := True;
+  Assert.IsTrue(Found);
+  Found := False;
+  for Rule in BuiltinRules do
+    if Rule.Descriptor.Id = ForInNotEnumerableRuleId then
       Found := True;
   Assert.IsTrue(Found);
 end;
@@ -752,11 +770,90 @@ begin
     '{"rules": {"condition-not-boolean": {"exclude": ["Source/*.pas"]}}}', 'Source/Bedingungen.pas'))));
 end;
 
+{ TForInNotEnumerableTests }
+
+function ForInFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TForInNotEnumerableRule.Create, ASource, SystemIndex, '', 'Schleifen.pas');
+end;
+
+function ForInFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TForInNotEnumerableRule.Create, ASource, SystemIndex, AConfig, APath);
+end;
+
+/// <summary>Typen mit und ohne Enumerator; AStatements stehen in Laufen (ab Zeile 45).</summary>
+function Schleifen(const AStatements: string): string;
+begin
+  Result := 'unit Schleifen;'#10'interface'#10'type'#10'  TDataSet = class'#10'  end;'#10'  TFeld = class'#10 +
+    '  end;'#10'  TFeldEnumerator = class'#10'  public'#10'    function MoveNext: Boolean;'#10 +
+    '    function GetCurrent: TFeld;'#10'    property Current: TFeld read GetCurrent;'#10'  end;'#10 +
+    '  TFields = class'#10'  public'#10'    Dataset: TDataSet;'#10'    Count: Integer;'#10 +
+    '    function GetEnumerator: TFeldEnumerator;'#10'  end;'#10'  TOhneCurrent = class'#10'  public'#10 +
+    '    function MoveNext: Boolean;'#10'  end;'#10'  THalb = class'#10'  public'#10 +
+    '    function GetEnumerator: TOhneCurrent;'#10'  end;'#10'  TListe = class(TFields)'#10'  end;'#10 +
+    '  TMitCount = class'#10'  public'#10'    Count: Integer;'#10'  end;'#10'  TPunkt = record'#10 +
+    '    X: Integer;'#10'  end;'#10'  TFremd = class(TUnbekannt)'#10'  end;'#10'implementation'#10 +
+    'procedure Laufen(Felder: TFields; Halb: THalb; Liste: TListe; MitCount: TMitCount; Punkt: TPunkt; ' +
+    'Fremd: TFremd; N: Integer; S: string; A: array of Integer);'#10'var'#10'  O: TObject;'#10'  I: Integer;'#10 +
+    '  C: Char;'#10'begin'#10 + AStatements + 'end;'#10'end.';
+end;
+
+procedure TForInNotEnumerableTests.IssueExample;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := ForInFindings(Schleifen('  for O in Felder.Dataset do'#10'    O.Free;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(ForInNotEnumerableRuleId, Found[0].RuleId);
+  Assert.AreEqual('TDataSet hat keinen Enumerator; for-in ist hier nicht möglich (wie E2430).', Found[0].Message);
+  Assert.AreEqual(45, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(11, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+end;
+
+procedure TForInNotEnumerableTests.NumbersRecordsAndIncompleteEnumerators;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := ForInFindings(Schleifen('  for O in MitCount do'#10'    O.Free;'#10'  for I in N do'#10'    Inc(I);'#10 +
+    '  for O in Punkt do'#10'    O.Free;'#10'  for O in Halb do'#10'    O.Free;'#10));
+  Assert.AreEqual(4, Integer(Length(Found)));
+  Assert.AreEqual('TMitCount hat keinen Enumerator; for-in ist hier nicht möglich; stattdessen über Count mit ' +
+    'Index durchlaufen (wie E2430).', Found[0].Message);
+  Assert.AreEqual('Integer hat keinen Enumerator; for-in ist hier nicht möglich (wie E2430).', Found[1].Message);
+  Assert.AreEqual('TPunkt hat keinen Enumerator; for-in ist hier nicht möglich (wie E2430).', Found[2].Message);
+  Assert.AreEqual('Der Enumerator TOhneCurrent von THalb hat kein öffentliches Current; for-in ist hier nicht ' +
+    'möglich (wie E2431).', Found[3].Message);
+end;
+
+procedure TForInNotEnumerableTests.EnumerableAndUnknownTypesAreSilent;
+begin
+  Assert.AreEqual(0, Integer(Length(ForInFindings(Schleifen('  for O in Felder do'#10'    O.Free;'#10 +
+    '  for O in Liste do'#10'    O.Free;'#10'  for C in S do'#10'    Inc(I);'#10'  for I in A do'#10 +
+    '    Inc(I);'#10'  for O in Fremd do'#10'    O.Free;'#10'  for O in Unbekannt do'#10'    O.Free;'#10)))));
+end;
+
+procedure TForInNotEnumerableTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Schleifen('  for O in Felder.Dataset do'#10'    O.Free;'#10);
+  Assert.AreEqual(1, Integer(Length(ForInFindings(Source, '', 'Source/Schleifen.pas'))));
+  Assert.AreEqual(0, Integer(Length(ForInFindings(Source, '{"rules": {"for-in-not-enumerable": "off"}}',
+    'Source/Schleifen.pas'))));
+  Assert.AreEqual(0, Integer(Length(ForInFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/Schleifen.pas'))));
+  Assert.AreEqual(0, Integer(Length(ForInFindings(Source,
+    '{"rules": {"for-in-not-enumerable": {"exclude": ["Source/*.pas"]}}}', 'Source/Schleifen.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TDynamicArrayMisuseTests);
   TDUnitX.RegisterTestFixture(TLocalRoutineAsCallbackTests);
   TDUnitX.RegisterTestFixture(THresultIntegerMixTests);
   TDUnitX.RegisterTestFixture(TInvalidVarArgumentTests);
   TDUnitX.RegisterTestFixture(TConditionNotBooleanTests);
+  TDUnitX.RegisterTestFixture(TForInNotEnumerableTests);
 
 end.

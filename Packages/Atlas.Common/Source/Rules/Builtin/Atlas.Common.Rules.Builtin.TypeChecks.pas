@@ -44,6 +44,14 @@
 //                     Zeiger, Klasse, Interface, String oder Zeichen (wie E2012,
 //                     #1069). Korrektur: "<> 0" (Alternative "> 0"), "<> nil"
 //                     (Alternative Assigned), "<> ''" bzw. "<> #0" ergänzen.
+//   for-in-not-enumerable
+//                     for-in über einen Typ ohne Enumerator: Zahl, Zeiger,
+//                     Zeichen, Boolean oder Klasse, Record bzw. Interface ohne
+//                     GetEnumerator (wie E2430), bzw. ein Enumerator ohne MoveNext
+//                     oder Current (wie E2431) (#1034). Gemeldet nur, wenn alle
+//                     Vorfahren bekannt sind; generische Typen bleiben still.
+//                     Keine Korrektur; bei Count der Hinweis auf eine Schleife
+//                     mit Index.
 
 interface
 
@@ -58,6 +66,7 @@ const
   HresultIntegerMixRuleId = 'hresult-integer-mix';
   InvalidVarArgumentRuleId = 'invalid-var-argument';
   ConditionNotBooleanRuleId = 'condition-not-boolean';
+  ForInNotEnumerableRuleId = 'for-in-not-enumerable';
 
 type
   TDynamicArrayMisuseRule = class(TInterfacedObject, IRule)
@@ -87,6 +96,12 @@ type
   end;
 
   TConditionNotBooleanRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TForInNotEnumerableRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1464,6 +1479,134 @@ begin
   end;
 end;
 
+{ TForInNotEnumerableRule }
+
+function TForInNotEnumerableRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(ForInNotEnumerableRuleId, TRuleSeverity.Error, 'for-in über einen Typ ohne Enumerator');
+end;
+
+procedure TForInNotEnumerableRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Resolver: TNameResolver;
+  FileName: string;
+  Node: TSyntaxNode;
+
+  /// <summary>Sind alle Vorfahren von AType bekannt (bis TObject bzw. IInterface)? Nur dann steht fest, dass
+  /// ein Mitglied fehlt.</summary>
+  function AncestorsKnown(const AType: TResolvedSymbol): Boolean;
+  var
+    Current, Ancestor: TResolvedSymbol;
+    Depth: Integer;
+  begin
+    Current := AType;
+    for Depth := 0 to MaxAliasDepth do
+    begin
+      if (Current.SymbolKind = TIndexSymbolKind.RecordType) or SameText(Current.Name, 'TObject') or
+        SameText(Current.Name, 'IInterface') then
+        Exit(True);
+      if not Resolver.AncestorOf(Current, Ancestor) then
+        // Ohne eigene Angabe ist der Vorfahr TObject bzw. IInterface, auch wenn sie nicht im Index stehen.
+        Exit(Length(Current.Ancestors) = 0);
+      Current := Ancestor;
+    end;
+    Result := False;
+  end;
+
+  /// <summary>Kann der Typ sicher kein for-in? AMessage nennt den Grund.</summary>
+  function NotEnumerable(const AType: TResolvedSymbol; out AMessage: string): Boolean;
+  var
+    Method, Enumerator, Member: TResolvedSymbol;
+    MethodUnit: TUnitIndex;
+    Missing, Hint: string;
+  begin
+    Result := False;
+    if AType.Builtin then
+    begin
+      // Strings, Arrays und Mengen kann for-in; Zahlen, Zeiger, Zeichen und Boolean nicht.
+      Result := MatchText(AType.Name, ConditionIntegerTypes) or MatchText(AType.Name, ConditionFloatTypes) or
+        MatchText(AType.Name, ConditionPointerTypes) or MatchText(AType.Name, ['Boolean', 'Char', 'AnsiChar',
+        'WideChar']);
+      if Result then
+        AMessage := Format('%s hat keinen Enumerator; for-in ist hier nicht möglich (wie E2430).', [AType.Name]);
+      Exit;
+    end;
+    if not (AType.SymbolKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.RecordType,
+      TIndexSymbolKind.InterfaceType]) then
+      Exit;
+    if not Resolver.FindMember(AType, 'GetEnumerator', Method) then
+    begin
+      if not AncestorsKnown(AType) then
+        Exit;
+      Hint := '';
+      if Resolver.FindMember(AType, 'Count', Member) then
+        Hint := '; stattdessen über Count mit Index durchlaufen';
+      AMessage := Format('%s hat keinen Enumerator; for-in ist hier nicht möglich%s (wie E2430).', [AType.Name,
+        Hint]);
+      Exit(True);
+    end;
+    // GetEnumerator gibt es: Der Enumerator braucht MoveNext und Current (wie E2431).
+    if (Method.TypeName = '') or (Method.TypeArgs <> '') or not Resolver.DeclaringUnit(Method, MethodUnit) or
+      not Resolver.ResolveTypeFrom(MethodUnit, Method.TypeName, Enumerator) or Enumerator.Builtin or
+      not (Enumerator.SymbolKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.RecordType,
+      TIndexSymbolKind.InterfaceType]) or (Enumerator.TypeParams <> '') then
+      Exit;
+    Missing := '';
+    if not Resolver.FindMember(Enumerator, 'MoveNext', Member) then
+      Missing := 'MoveNext'
+    else if not Resolver.FindMember(Enumerator, 'Current', Member) then
+      Missing := 'Current';
+    if (Missing = '') or not AncestorsKnown(Enumerator) then
+      Exit;
+    AMessage := Format('Der Enumerator %s von %s hat kein öffentliches %s; for-in ist hier nicht möglich ' +
+      '(wie E2431).', [Enumerator.Name, AType.Name, Missing]);
+    Result := True;
+  end;
+
+  procedure CheckLoop(ALoop: TSyntaxNode);
+  var
+    Collection: TSyntaxNode;
+    Symbol, TypeInfo: TResolvedSymbol;
+    TypeFound: Boolean;
+    Index: Integer;
+    Message: string;
+  begin
+    Collection := nil;
+    for Index := 0 to ALoop.ChildCount - 1 do
+      if ALoop[Index].Kind <> TSyntaxKind.TypeReference then
+      begin
+        Collection := ALoop[Index];
+        Break;
+      end;
+    if (Collection = nil) or not (Collection.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess,
+      TSyntaxKind.Call, TSyntaxKind.IndexAccess, TSyntaxKind.Dereference]) or
+      not Resolver.NodeType(AContext.Tree, FileName, Collection, Symbol, TypeInfo, TypeFound) or not TypeFound or
+      Symbol.IsType or (Symbol.Condition <> '') or (Symbol.VariantBranch <> '') or (TypeInfo.TypeParams <> '') then
+      Exit;
+    if NotEnumerable(TypeInfo, Message) then
+      AReport.Add(TTextRange.Create(Collection.StartPos, Collection.EndPos), Message, TRuleConfidence.High);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, ' in') then
+    Exit;
+  FileName := ResolverFileName(AContext);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  try
+    Resolver.Namespaces := AContext.Namespaces;
+    Resolver.PinTree(AContext.Tree, FileName);
+    try
+      for Node in PreOrder(AContext.Tree.Root) do
+        if Node.Kind = TSyntaxKind.ForInStatement then
+          CheckLoop(Node);
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
 procedure RegisterTypeCheckRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDynamicArrayMisuseRule.Create);
@@ -1471,6 +1614,7 @@ begin
   ARegistry.Register(THresultIntegerMixRule.Create);
   ARegistry.Register(TInvalidVarArgumentRule.Create);
   ARegistry.Register(TConditionNotBooleanRule.Create);
+  ARegistry.Register(TForInNotEnumerableRule.Create);
 end;
 
 end.

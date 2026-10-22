@@ -2387,6 +2387,20 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "E2012"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "for-in-not-enumerable",' + #10 +
+    '      "name": "for-in over a type without enumerator",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A for-in loop runs over a type that cannot be enumerated: a number, pointer, character or Boolean, or a class, record or interface without a public GetEnumerator, also not inheri' + 'ted or from a helper (like E2430); or the enumerator returned by GetEnumerator lacks a public MoveNext or Current (like E2431). Strings, arrays and sets are fine. Reported only when the type and all i' + 'ts ancestors are known; generic types and unknown types stay silent. No quick fix; if the type has Count, the message suggests an indexed loop.",' + #10 +
+    '      "bad": "for F in Felder.Dataset do",' + #10 +
+    '      "good": "for F in Felder do",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2430",' + #10 +
+    '        "E2431"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3582,6 +3596,11 @@ begin
     '      "id": "condition-not-boolean",' + #10 +
     '      "name": "Bedingung ist kein Boolean",' + #10 +
     '      "description": "Die Bedingung von if, while, until oder eines bedingten Ausdrucks hat sicher einen Typ, der kein Boolean ist: Zahl, Zeiger, Klasse, Interface, String oder Zeichen (wie E2012). An' + 'ders als C verlangt Delphi einen Boolean. Gemeldet nur bei sicher bekanntem Typ; Boolean-Typen wie LongBool, Aufzählungen, Aliase und unbekannte Typen bleiben still. Korrektur: <> 0 (Alternative > 0),' + ' <> nil (Alternative Assigned), <> '''' bzw. <> #0 ergänzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "for-in-not-enumerable",' + #10 +
+    '      "name": "for-in über einen Typ ohne Enumerator",' + #10 +
+    '      "description": "Eine for-in-Schleife läuft über einen Typ, der sich nicht aufzählen lässt: Zahl, Zeiger, Zeichen oder Boolean, oder eine Klasse, ein Record bzw. Interface ohne öffentliches GetEn' + 'umerator, auch nicht geerbt oder aus einem Helper (wie E2430); oder der Enumerator aus GetEnumerator hat kein öffentliches MoveNext bzw. Current (wie E2431). Strings, Arrays und Mengen gehen. Gemeldet' + ' nur, wenn der Typ und alle Vorfahren bekannt sind; generische und unbekannte Typen bleiben still. Keine Korrektur; hat der Typ Count, nennt die Meldung eine Schleife mit Index."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
