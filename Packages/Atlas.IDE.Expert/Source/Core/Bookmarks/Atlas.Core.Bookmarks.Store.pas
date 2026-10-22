@@ -2,8 +2,9 @@
 
 // Benannte Lesezeichen (#622), ohne VCL und Open Tools API: Liste je Projekt
 // (Anlegen, Umbenennen, Löschen, Umsortieren, Filtern, Wiederfinden) und die
-// Ablage. Ergänzt die zehn nummerierten Lesezeichen der IDE, die davon
-// unberührt bleiben.
+// Ablage. Dieselbe Liste hält die schnellen Lesezeichen (#1104, Art Quick,
+// nummeriert 1–9 oder unnummeriert, ohne Namen); ihre Befehle stehen in
+// Atlas.Core.Bookmarks.Quick.
 //
 // Ein Lesezeichen merkt sich Datei, Methode (voller Name wie
 // TKunde.Laden, dazu die Parametertypen für Überladungen), den Abstand der
@@ -37,18 +38,23 @@
 // .defekt daneben; eine beim Lesen gesperrte merkt sich die Liste
 // (KeptFile), und Save überschreibt sie nicht.
 //
-// Format 1 (UTF-8 ohne BOM; Zeiten in UTC wie "2026-10-15T09:30:00Z"):
+// Format 2 (UTF-8 ohne BOM; Zeiten in UTC wie "2026-10-15T09:30:00Z"):
 //   {
-//     "format": 1,
+//     "format": 2,
 //     "project": "Demo.dproj",
 //     "bookmarks": [
 //       {"id": "5f0c…", "name": "Rundung prüfen", "file": "Source/Kunde.pas",
 //        "method": "TKunde.Runde", "signature": "double", "offset": 2,
 //        "line": 42, "lineText": "Result := Round(X * 100) / 100;",
 //        "before": ["begin", "…"], "after": ["end;", "…"],
-//        "created": "…", "lost": true}
+//        "created": "…", "lost": true},
+//       {"id": "9a1d…", "kind": "quick", "number": 3, "file": "…", "line": 33, …}
 //     ]
 //   }
+// "kind" ist "named" (#622, Vorgabe) oder "quick" (#1104); "number" (1–9)
+// fehlt bei unnummerierten, "name" bei schnellen ohne Namen. Format 1 (ohne
+// "kind" und "number") liest diese Fassung unverändert als benannte
+// Lesezeichen; das nächste Speichern schreibt Format 2.
 // Die Reihenfolge der Liste ist die der Lesezeichen (sortiert per Ziehen).
 // "line" zählt ab 1 (wie im Editor); "method", "signature" und "offset" nur
 // innerhalb einer Methode; "lost" nur bei nicht gefundenen Lesezeichen.
@@ -66,10 +72,20 @@ uses
   Atlas.Core.Editor.MethodToggle;
 
 type
+  {$SCOPEDENUMS ON}
+  /// <summary>Named: benanntes Lesezeichen (#622); Quick: schnelles Lesezeichen aus dem Zeilenrand oder per Taste
+  /// (#1104), nummeriert oder unnummeriert, meist ohne Namen.</summary>
+  TAtlasBookmarkKind = (Named, Quick);
+  {$SCOPEDENUMS OFF}
+
   TAtlasBookmark = record
     /// <summary>Eindeutig in der Liste (GUID ohne Klammern, klein).</summary>
     Id: string;
+    /// <summary>Bei schnellen Lesezeichen leer, bis man ihnen einen Namen gibt.</summary>
     Name: string;
+    Kind: TAtlasBookmarkKind;
+    /// <summary>1–9 bei nummerierten Lesezeichen, sonst 0.</summary>
+    Number: Integer;
     /// <summary>Vollständiger Pfad der Datei.</summary>
     FileName: string;
     /// <summary>Voller Name der Methode, z. B. TKunde.Laden; leer außerhalb einer Methode.</summary>
@@ -89,6 +105,10 @@ type
     function Line: Integer;
     /// <summary>Zeilenvorschau: der normierte Zeilentext.</summary>
     function Preview: string;
+    /// <summary>Name, ohne Namen der kurze Methodenname, sonst „Datei.pas:Zeile“ (#1104).</summary>
+    function DisplayName: string;
+    /// <summary>Ohne eigenen Namen (DisplayName ist dann abgeleitet und wird grau gezeigt).</summary>
+    function Unnamed: Boolean;
   end;
 
   /// <summary>Lesezeichen eines Projekts in der Reihenfolge der Liste.</summary>
@@ -114,7 +134,10 @@ type
     /// <summary>Neues Lesezeichen AName an ALine von AText (Text der Datei), am Ende der Liste; liefert seine
     /// Kennung.</summary>
     function Add(const AFileName, AText: string; ALine: Integer; const AName: string; ANowUtc: TDateTime): string;
-    /// <summary>Name ändern; False ohne dieses Lesezeichen oder mit leerem Namen.</summary>
+    /// <summary>Index des Lesezeichens mit Nummer ANumber (1–9); -1 ohne.</summary>
+    function IndexOfNumber(ANumber: Integer): Integer;
+    /// <summary>Name ändern; False ohne dieses Lesezeichen oder mit leerem Namen. Ein schnelles Lesezeichen wird
+    /// dabei zum benannten (#1104) und behält seine Nummer.</summary>
     function Rename(const AId, AName: string): Boolean;
     function Remove(const AId: string): Boolean;
     /// <summary>Ziehen in der Liste: AId vor ABeforeId stellen ('' = ans Ende). False, wenn sich nichts ändert.
@@ -133,8 +156,8 @@ type
 
   TAtlasBookmarks = class
   public const
-    /// <summary>Format, das diese Fassung liest und schreibt.</summary>
-    Format = 1;
+    /// <summary>Format, das diese Fassung liest und schreibt (2: Art und Nummer, #1104).</summary>
+    Format = 2;
     /// <summary>Lokale Datei neben der .dproj (nicht eingecheckt).</summary>
     LocalFileName = '.atlas-bookmarks.json';
     /// <summary>Datei des Teams neben der .dproj (bookmarks.shared).</summary>
@@ -202,8 +225,9 @@ uses
 const
   // Bekannte Felder; alles andere bleibt beim Schreiben erhalten.
   TopKeys: array[0..2] of string = ('format', 'project', 'bookmarks');
-  MarkKeys: array[0..11] of string = ('id', 'name', 'file', 'method', 'signature', 'offset', 'line', 'lineText',
-    'before', 'after', 'created', 'lost');
+  MarkKeys: array[0..13] of string = ('id', 'name', 'kind', 'number', 'file', 'method', 'signature', 'offset',
+    'line', 'lineText', 'before', 'after', 'created', 'lost');
+  KindNames: array[TAtlasBookmarkKind] of string = ('named', 'quick');
   ExcludeComment = '# Atlas: persönliche Lesezeichen (#622)';
 
 { TAtlasBookmark }
@@ -216,6 +240,28 @@ end;
 function TAtlasBookmark.Preview: string;
 begin
   Result := Anchor.Text;
+end;
+
+function TAtlasBookmark.Unnamed: Boolean;
+begin
+  Result := Trim(Name) = '';
+end;
+
+/// <summary>Dateiname ohne Ordner; unabhängig vom Trennzeichen des Systems.</summary>
+function ShortName(const AFileName: string): string; forward;
+
+function TAtlasBookmark.DisplayName: string;
+var
+  Dot: Integer;
+begin
+  if not Unnamed then
+    Exit(Name);
+  Result := Method;
+  Dot := LastDelimiter('.', Result);
+  if Dot > 0 then
+    Result := Copy(Result, Dot + 1, MaxInt);
+  if Result = '' then
+    Result := ShortName(FileName) + ':' + IntToStr(Line + 1);
 end;
 
 { TAtlasBookmarkList }
@@ -238,6 +284,18 @@ begin
   Result := -1;
   for Index := 0 to High(Bookmarks) do
     if SameText(Bookmarks[Index].Id, AId) then
+      Exit(Index);
+end;
+
+function TAtlasBookmarkList.IndexOfNumber(ANumber: Integer): Integer;
+var
+  Index: Integer;
+begin
+  Result := -1;
+  if ANumber <= 0 then
+    Exit;
+  for Index := 0 to High(Bookmarks) do
+    if Bookmarks[Index].Number = ANumber then
       Exit(Index);
 end;
 
@@ -313,8 +371,10 @@ var
 begin
   Index := IndexOf(AId);
   Result := (Index >= 0) and (Trim(AName) <> '');
-  if Result then
-    Bookmarks[Index].Name := Trim(AName);
+  if not Result then
+    Exit;
+  Bookmarks[Index].Name := Trim(AName);
+  Bookmarks[Index].Kind := TAtlasBookmarkKind.Named;
 end;
 
 function TAtlasBookmarkList.Remove(const AId: string): Boolean;
@@ -494,7 +554,6 @@ begin
     end;
 end;
 
-/// <summary>Dateiname ohne Ordner; unabhängig vom Trennzeichen des Systems.</summary>
 function ShortName(const AFileName: string): string;
 var
   Index: Integer;
@@ -516,7 +575,7 @@ begin
   Words := LowerCase(Trim(APattern)).Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
   for Index := 0 to High(Bookmarks) do
   begin
-    Haystack := LowerCase(Bookmarks[Index].Name + #10 + ShortName(Bookmarks[Index].FileName) + #10 +
+    Haystack := LowerCase(Bookmarks[Index].DisplayName + #10 + ShortName(Bookmarks[Index].FileName) + #10 +
       Bookmarks[Index].Method + #10 + Bookmarks[Index].Preview);
     Matches := True;
     for Part in Words do
@@ -708,6 +767,12 @@ begin
     Exit;
   AMark.FileName := FromStored(AMark.FileName, AFolder);
   AMark.Name := TextOf(AObject, 'name');
+  // Format 1 kennt nur benannte Lesezeichen; unbekannte Arten gelten ebenfalls als benannt.
+  if SameText(TextOf(AObject, 'kind'), KindNames[TAtlasBookmarkKind.Quick]) then
+    AMark.Kind := TAtlasBookmarkKind.Quick;
+  AMark.Number := NumberOf(AObject, 'number', 0);
+  if (AMark.Number < 1) or (AMark.Number > 9) then
+    AMark.Number := 0;
   AMark.Method := TextOf(AObject, 'method');
   AMark.Signature := TextOf(AObject, 'signature');
   AMark.Offset := Max(0, NumberOf(AObject, 'offset', 0));
@@ -718,7 +783,8 @@ begin
   AMark.Created := TAtlasProjectSummaries.TimeOf(TextOf(AObject, 'created'));
   AMark.Lost := FlagOf(AObject, 'lost');
   AMark.Extra := ExtraOf(AObject);
-  if Trim(AMark.Name) = '' then
+  // Benannte ohne Namen: Datei und Zeile; schnelle bleiben ohne Namen (DisplayName).
+  if (AMark.Kind = TAtlasBookmarkKind.Named) and (Trim(AMark.Name) = '') then
     AMark.Name := ShortName(AMark.FileName) + ':' + IntToStr(AMark.Line + 1);
 end;
 
@@ -728,7 +794,11 @@ var
 begin
   Result := TJSONObject.Create;
   Result.AddPair('id', AMark.Id);
-  Result.AddPair('name', AMark.Name);
+  if (AMark.Kind = TAtlasBookmarkKind.Named) or not AMark.Unnamed then
+    Result.AddPair('name', AMark.Name);
+  Result.AddPair('kind', KindNames[AMark.Kind]);
+  if AMark.Number > 0 then
+    Result.AddPair('number', TJSONNumber.Create(AMark.Number));
   Result.AddPair('file', ToStored(AMark.FileName, AFolder));
   if AMark.Method <> '' then
   begin

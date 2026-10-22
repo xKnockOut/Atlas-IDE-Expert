@@ -20,7 +20,9 @@
 //   „Lesezeichen setzen…“ (#622, Strg+Alt+K) und des Erzeugen-Menüs (#719,
 //   Alt+Einfg) und von „Element ausblenden …“ (#628, Strg+.) und von Zeilen
 //   verschieben und duplizieren (#634, Alt+↑/↓, Umschalt+Alt+↑/↓) und der Mehrfachmarken (#589, Strg+D,
-//   Strg+K Strg+D, Alt+Umschalt+I, Strg+Alt+↑/↓). Ist eine Funktion
+//   Strg+K Strg+D, Alt+Umschalt+I, Strg+Alt+↑/↓) und der schnellen
+//   Lesezeichen (#1104: Strg+Umschalt+K, Strg+Umschalt+1…9, Strg+1…9 auch auf
+//   der Seite „Tastenkonflikte“, dazu nächstes/voriges Lesezeichen). Ist eine Funktion
 //   abgeschaltet, steht ihr Eintrag mit Disabled in der Liste: Atlas belegt die
 //   Taste dann nicht, also ist sie auch kein Konflikt.
 // Kürzel sind TShortCut-Werte (Word) wie in Vcl.Menus.
@@ -41,7 +43,9 @@ type
   /// Willkommensseite „Öffnen und bauen“ und „Tests“ (#764), „Element ausblenden …“ (#628), nächster und voriger
   /// Befund (#509), „Schnell öffnen“ (#503), Zurück, Vor und letzte Bearbeitungsstelle (#504) sowie Definition und
   /// Referenzen einblenden (#505), das Fenster „Atlas-Prüfung“ (#909) und die Abschnittssprünge zum interface- und
-  /// implementation-Teil (#1101). Neue Funktionen
+  /// implementation-Teil (#1101). Schnelle Lesezeichen (#1104): QuickBookmark (Strg+Umschalt+K), QuickBookmarkSet
+  /// und QuickBookmarkJump (je eine Zeile für die Tasten 1–9, Key ist die Taste für 1) stehen mit eigener Wahl auch
+  /// auf der Seite „Tastenkonflikte“; NextBookmark und PreviousBookmark nur in der Übersicht. Neue Funktionen
   /// nur hinten anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht.</summary>
   TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle, DiagnosticMode, CodeActions,
     ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
@@ -52,7 +56,8 @@ type
     DuplicateLinesDown, CompleteStatement, MultiCursorNext, MultiCursorSkip, MultiCursorLineEnds,
     MultiCursorAbove, MultiCursorBelow, Search, SearchNext, SearchPrevious,
     SearchMethod, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove, Unwrap, ProblemsWindow,
-    SectionInterface, SectionImplementation);
+    SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
+    PreviousBookmark);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -150,7 +155,15 @@ begin
     Create(TAtlasKeyFunction.Completion, Word(ASettings.CompletionKey), ASettings.CompletionKeyPriority),
     Create(TAtlasKeyFunction.Signature, Word(ASettings.SignatureKey), ASettings.SignatureKeyPriority),
     Create(TAtlasKeyFunction.QuickToggle, Word(ASettings.QuickToggleKey), ASettings.QuickToggleKeyPriority),
-    Create(TAtlasKeyFunction.DiagnosticMode, Word(ASettings.DiagnosticModeKey), ASettings.DiagnosticModeKeyPriority)];
+    Create(TAtlasKeyFunction.DiagnosticMode, Word(ASettings.DiagnosticModeKey), ASettings.DiagnosticModeKeyPriority),
+    // Schnelle Lesezeichen (#1104): Die Tasten gehören in der IDE den Lesezeichen bzw. der Faltung; Atlas nimmt sie
+    // mit Vorrang, „anderer Belegung überlassen“ gibt sie zurück. Wartezeit 0 = Strg+Umschalt+K bleibt bei der IDE.
+    Create(TAtlasKeyFunction.QuickBookmark, Word(ASettings.QuickBookmarkKey), ASettings.QuickBookmarkKeyPriority,
+      ASettings.QuickBookmarks and (ASettings.QuickBookmarkChordWait > 0)),
+    Create(TAtlasKeyFunction.QuickBookmarkSet, Word(ASettings.QuickBookmarkSetKey),
+      ASettings.QuickBookmarkSetKeyPriority, ASettings.QuickBookmarks and ASettings.QuickBookmarksNumberedKeys),
+    Create(TAtlasKeyFunction.QuickBookmarkJump, Word(ASettings.QuickBookmarkJumpKey),
+      ASettings.QuickBookmarkJumpKeyPriority, ASettings.QuickBookmarks and ASettings.QuickBookmarksNumberedKeys)];
 end;
 
 class function TAtlasKeyEntry.AllFromSettings(const ASettings: TAtlasPluginSettings): TArray<TAtlasKeyEntry>;
@@ -253,7 +266,10 @@ begin
       ASettings.Problems and ASettings.ProblemsWindow),
     // Abschnittssprünge (#1101): wirken auch ohne Editorleiste; ohne Taste nichts belegt.
     Create(TAtlasKeyFunction.SectionInterface, Word(ASettings.GotoInterfaceKey), Shared),
-    Create(TAtlasKeyFunction.SectionImplementation, Word(ASettings.GotoImplementationKey), Shared)];
+    Create(TAtlasKeyFunction.SectionImplementation, Word(ASettings.GotoImplementationKey), Shared),
+    // Nächstes/voriges Lesezeichen (#1104): Vorgabe ohne Taste.
+    Create(TAtlasKeyFunction.NextBookmark, Word(ASettings.NextBookmarkKey), Shared, ASettings.QuickBookmarks),
+    Create(TAtlasKeyFunction.PreviousBookmark, Word(ASettings.PreviousBookmarkKey), Shared, ASettings.QuickBookmarks)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -403,6 +419,25 @@ begin
         ASettings.GotoInterfaceKey := Entry.Key;
       TAtlasKeyFunction.SectionImplementation:
         ASettings.GotoImplementationKey := Entry.Key;
+      TAtlasKeyFunction.QuickBookmark:
+        begin
+          ASettings.QuickBookmarkKey := Entry.Key;
+          ASettings.QuickBookmarkKeyPriority := Entry.Priority;
+        end;
+      TAtlasKeyFunction.QuickBookmarkSet:
+        begin
+          ASettings.QuickBookmarkSetKey := Entry.Key;
+          ASettings.QuickBookmarkSetKeyPriority := Entry.Priority;
+        end;
+      TAtlasKeyFunction.QuickBookmarkJump:
+        begin
+          ASettings.QuickBookmarkJumpKey := Entry.Key;
+          ASettings.QuickBookmarkJumpKeyPriority := Entry.Priority;
+        end;
+      TAtlasKeyFunction.NextBookmark:
+        ASettings.NextBookmarkKey := Entry.Key;
+      TAtlasKeyFunction.PreviousBookmark:
+        ASettings.PreviousBookmarkKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;
@@ -466,6 +501,8 @@ end;
 { TAtlasKeyConflicts }
 
 class function TAtlasKeyConflicts.KnownIdeKeys: TArray<TAtlasKeyOwner>;
+var
+  Digit: Integer;
 begin
   Result := [TAtlasKeyOwner.Create(scCtrl or scShift or Ord('P'), 'IDE: Tastaturmakro abspielen'),
     TAtlasKeyOwner.Create(scCtrl or scShift or Ord('R'), 'IDE: Tastaturmakro aufzeichnen'),
@@ -474,7 +511,14 @@ begin
     TAtlasKeyOwner.Create(scShift or scAlt or $26, 'IDE: Spaltenblock nach oben markieren'),
     TAtlasKeyOwner.Create(scShift or scAlt or $28, 'IDE: Spaltenblock nach unten markieren'), // VK_DOWN
     // Anweisung vervollständigen (#697) nimmt Strg+Umschalt+Enter mit Vorrang.
-    TAtlasKeyOwner.Create(scCtrl or scShift or $0D, 'IDE: Referenzen suchen')]; // VK_RETURN
+    TAtlasKeyOwner.Create(scCtrl or scShift or $0D, 'IDE: Referenzen suchen'), // VK_RETURN
+    // Schnelle Lesezeichen (#1104): erster Teil der Faltungsakkorde.
+    TAtlasKeyOwner.Create(scCtrl or scShift or Ord('K'), 'IDE: Faltung (Strg+Umschalt+K, dann U, E, A, T, O …)')];
+  // Lesezeichen 0–9 der IDE; 0 bleibt immer bei ihr.
+  for Digit := 0 to 9 do
+    Result := Result + [TAtlasKeyOwner.Create(scCtrl or scShift or (Ord('0') + Digit),
+      'IDE: Lesezeichen ' + IntToStr(Digit) + ' umschalten'), TAtlasKeyOwner.Create(scCtrl or (Ord('0') + Digit),
+      'IDE: Zu Lesezeichen ' + IntToStr(Digit) + ' springen')];
 end;
 
 class function TAtlasKeyConflicts.OwnerOf(AShortCut: Word; const AKeys: TArray<TAtlasKeyOwner>): string;

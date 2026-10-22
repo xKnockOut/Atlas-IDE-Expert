@@ -73,7 +73,9 @@ type
     /// <summary>Symbole aus Include-Dateien hinter {$I} (#860).</summary>
     InlayDefineHints,
     /// <summary>Codes von Steuerzeichen wie ^C (#862).</summary>
-    InlayCharHints);
+    InlayCharHints,
+    /// <summary>Marker der schnellen Lesezeichen links der Zeilennummern (#1104).</summary>
+    QuickBookmarks);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -200,6 +202,8 @@ begin
       Result := Make(AElement, 'InlayDefineHints', AllScopes, True, False);
     TAtlasDrawnElement.InlayCharHints:
       Result := Make(AElement, 'InlayCharHints', AllScopes, True, False);
+    TAtlasDrawnElement.QuickBookmarks:
+      Result := Make(AElement, 'QuickBookmarksGutter', AllScopes, False, True);
   else
     Result := Make(AElement, '', [], False, False);
   end;

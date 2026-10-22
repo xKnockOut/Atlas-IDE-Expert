@@ -180,7 +180,8 @@ begin
   Settings := TAtlasPluginSettings.Defaults;
   Settings.EditorKeysPriority := True;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
-  // Jede Funktion genau einmal, die ersten sechs wie auf der Seite „Tastenkonflikte“.
+  // Jede Funktion genau einmal, die ersten neun wie auf der Seite „Tastenkonflikte“ (sechs, dazu drei der schnellen
+  // Lesezeichen, #1104).
   Assert.AreEqual(Ord(High(TAtlasKeyFunction)) + 1, Integer(Length(Entries)));
   for Func := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
   begin
@@ -191,10 +192,11 @@ begin
     Assert.IsTrue(Found, 'Funktion ' + IntToStr(Ord(Func)));
   end;
   Assert.AreEqual(Ord(TAtlasKeyFunction.DiagnosticMode), Ord(Entries[5].Func));
-  Assert.AreEqual($800D, Integer(Entries[6].Key), 'Code-Aktionen: Alt+Enter');
-  Assert.IsTrue(Entries[6].Priority, 'Editorbefehle: gemeinsamer Vorrang');
-  Assert.AreEqual(CtrlE, Integer(Entries[13].Key), 'Suchfeld der Willkommensseite: Strg+E');
-  Assert.IsTrue(Entries[13].Priority, 'Das Suchfeld nimmt die Taste auf der Willkommensseite immer');
+  Assert.AreEqual(Ord(TAtlasKeyFunction.QuickBookmarkJump), Ord(Entries[8].Func));
+  Assert.AreEqual($800D, Integer(Entries[9].Key), 'Code-Aktionen: Alt+Enter');
+  Assert.IsTrue(Entries[9].Priority, 'Editorbefehle: gemeinsamer Vorrang');
+  Assert.AreEqual(CtrlE, Integer(Entries[16].Key), 'Suchfeld der Willkommensseite: Strg+E');
+  Assert.IsTrue(Entries[16].Priority, 'Das Suchfeld nimmt die Taste auf der Willkommensseite immer');
   Assert.AreEqual(CtrlShiftP, Integer(Entries[0].Key), 'Befehlspalette #502');
 end;
 
@@ -414,6 +416,14 @@ begin
   Assert.AreEqual(0, Integer(EntryOf(Entries, TAtlasKeyFunction.SectionImplementation).Key));
   Assert.AreEqual('Atlas.GotoInterface', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SectionInterface));
   Assert.AreEqual('Atlas.GotoImplementation', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SectionImplementation));
+  // Schnelle Lesezeichen (#1104): Strg+Umschalt+K, Strg+Umschalt+1, Strg+1; nächstes/voriges ohne Vorgabe.
+  Assert.AreEqual($604B, Integer(EntryOf(Entries, TAtlasKeyFunction.QuickBookmark).Key));
+  Assert.AreEqual($6031, Integer(EntryOf(Entries, TAtlasKeyFunction.QuickBookmarkSet).Key));
+  Assert.AreEqual($4031, Integer(EntryOf(Entries, TAtlasKeyFunction.QuickBookmarkJump).Key));
+  Assert.AreEqual(0, Integer(EntryOf(Entries, TAtlasKeyFunction.NextBookmark).Key));
+  Assert.AreEqual('Atlas.QuickBookmarkToggle', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.QuickBookmark));
+  Assert.AreEqual('Atlas.NextBookmark', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NextBookmark));
+  Assert.AreEqual('Atlas.PreviousBookmark', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.PreviousBookmark));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
   Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearch).Priority);

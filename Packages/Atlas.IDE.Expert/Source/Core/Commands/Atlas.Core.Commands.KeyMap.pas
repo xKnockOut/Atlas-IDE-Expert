@@ -366,6 +366,12 @@ begin
       Result := 'Atlas.GotoInterface';
     TAtlasKeyFunction.SectionImplementation:
       Result := 'Atlas.GotoImplementation';
+    TAtlasKeyFunction.QuickBookmark:
+      Result := 'Atlas.QuickBookmarkToggle';
+    TAtlasKeyFunction.NextBookmark:
+      Result := 'Atlas.NextBookmark';
+    TAtlasKeyFunction.PreviousBookmark:
+      Result := 'Atlas.PreviousBookmark';
   else
     Result := '';
   end;

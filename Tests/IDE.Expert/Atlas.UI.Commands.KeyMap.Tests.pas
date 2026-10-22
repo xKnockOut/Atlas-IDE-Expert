@@ -307,6 +307,10 @@ begin
   Assert.AreEqual('Fenster „Atlas-Prüfung“', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.ProblemsWindow));
   Assert.AreEqual('Zum interface-Teil', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.SectionInterface));
   Assert.AreEqual('Zum implementation-Teil', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.SectionImplementation));
+  Assert.AreEqual('Lesezeichen 1–9 setzen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.QuickBookmarkSet));
+  Assert.AreEqual('Zu Lesezeichen 1–9 springen',
+    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.QuickBookmarkJump));
+  Assert.AreEqual('Nächstes Lesezeichen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NextBookmark));
   Assert.AreEqual('Zeilen darunter duplizieren',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.DuplicateLinesDown));
   // #764: Schnellaktionen der Willkommensseite.

@@ -577,6 +577,7 @@ begin
   Assert.AreEqual('Minimap', TAtlasGuard.FeatureName(TAtlasFeature.Minimap));
   Assert.AreEqual('Gehe zu Definition', TAtlasGuard.FeatureName(TAtlasFeature.GoToDefinition));
   Assert.AreEqual('Editorleiste', TAtlasGuard.FeatureName(TAtlasFeature.EditorToolbar));
+  Assert.AreEqual('Schnelle Lesezeichen', TAtlasGuard.FeatureName(TAtlasFeature.QuickBookmarks));
 end;
 
 procedure TAtlasGuardTests.SlowProviderLogsOncePerInterval;

@@ -21,6 +21,9 @@ type
     /// <summary>#1101: Atlas-Editorleiste, Lage, Belegung, Rücksprung, Text, Tasten der Abschnittssprünge.</summary>
     [Test]
     procedure EditorToolbarOptions;
+    /// <summary>Schnelle Lesezeichen (#1104): Vorgaben laut Issue, Grenzen, Speichern und Laden.</summary>
+    [Test]
+    procedure QuickBookmarkOptions;
     [Test]
     procedure SaveAndLoadRoundTrip;
     [Test]
@@ -2076,6 +2079,73 @@ begin
   Assert.IsTrue(Loaded.EditorToolbarLabels);
   Assert.AreEqual($6049, Loaded.GotoInterfaceKey);
   Assert.AreEqual($604D, Loaded.GotoImplementationKey);
+end;
+
+procedure TAtlasPluginSettingsTests.QuickBookmarkOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.QuickBookmarks);
+  Assert.IsTrue(Settings.QuickBookmarksGutter);
+  Assert.IsTrue(Settings.QuickBookmarksGutterClick);
+  Assert.IsTrue(Settings.QuickBookmarksNumberedKeys);
+  Assert.AreEqual($604B, Settings.QuickBookmarkKey, 'Strg+Umschalt+K');
+  Assert.IsTrue(Settings.QuickBookmarkKeyPriority);
+  Assert.AreEqual(800, Settings.QuickBookmarkChordWait);
+  Assert.AreEqual($6031, Settings.QuickBookmarkSetKey, 'Strg+Umschalt+1');
+  Assert.AreEqual($4031, Settings.QuickBookmarkJumpKey, 'Strg+1');
+  Assert.AreEqual('project', Settings.QuickBookmarksScope);
+  Assert.IsTrue(Settings.QuickBookmarksImportIde);
+  Assert.AreEqual(0, Settings.NextBookmarkKey, 'ohne voreingestellte Taste');
+  Assert.AreEqual(0, Settings.PreviousBookmarkKey);
+  Settings.QuickBookmarkChordWait := 99999;
+  Settings.QuickBookmarksScope := 'FILE';
+  Settings.QuickBookmarkKey := -1;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MaxQuickChordWait, Settings.QuickBookmarkChordWait);
+  Assert.AreEqual('file', Settings.QuickBookmarksScope);
+  Assert.AreEqual(0, Settings.QuickBookmarkKey);
+  Settings.QuickBookmarksScope := 'irgendwo';
+  Settings.QuickBookmarkChordWait := -5;
+  Settings.Normalize;
+  Assert.AreEqual('project', Settings.QuickBookmarksScope);
+  Assert.AreEqual(0, Settings.QuickBookmarkChordWait);
+  Settings.QuickBookmarks := False;
+  Settings.QuickBookmarksGutter := False;
+  Settings.QuickBookmarksGutterClick := False;
+  Settings.QuickBookmarksNumberedKeys := False;
+  Settings.QuickBookmarkKey := $604C;
+  Settings.QuickBookmarkKeyPriority := False;
+  Settings.QuickBookmarkChordWait := 500;
+  Settings.QuickBookmarkSetKey := $C031;
+  Settings.QuickBookmarkSetKeyPriority := False;
+  Settings.QuickBookmarkJumpKey := $8031;
+  Settings.QuickBookmarkJumpKeyPriority := False;
+  Settings.QuickBookmarksScope := 'file';
+  Settings.QuickBookmarksImportIde := False;
+  Settings.NextBookmarkKey := $4071;
+  Settings.PreviousBookmarkKey := $6071;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.QuickBookmarks);
+  Assert.IsFalse(Loaded.QuickBookmarksGutter);
+  Assert.IsFalse(Loaded.QuickBookmarksGutterClick);
+  Assert.IsFalse(Loaded.QuickBookmarksNumberedKeys);
+  Assert.AreEqual($604C, Loaded.QuickBookmarkKey);
+  Assert.IsFalse(Loaded.QuickBookmarkKeyPriority);
+  Assert.AreEqual(500, Loaded.QuickBookmarkChordWait);
+  Assert.AreEqual($C031, Loaded.QuickBookmarkSetKey);
+  Assert.IsFalse(Loaded.QuickBookmarkSetKeyPriority);
+  Assert.AreEqual($8031, Loaded.QuickBookmarkJumpKey);
+  Assert.IsFalse(Loaded.QuickBookmarkJumpKeyPriority);
+  Assert.AreEqual('file', Loaded.QuickBookmarksScope);
+  Assert.IsFalse(Loaded.QuickBookmarksImportIde);
+  Assert.AreEqual($4071, Loaded.NextBookmarkKey);
+  Assert.AreEqual($6071, Loaded.PreviousBookmarkKey);
 end;
 
 initialization
