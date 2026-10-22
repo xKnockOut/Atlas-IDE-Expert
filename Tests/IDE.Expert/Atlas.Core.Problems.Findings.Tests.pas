@@ -33,6 +33,9 @@ type
     procedure ColumnClickSortsAndSecondClickReverses;
     [Test]
     procedure FiltersByKindCategoryTextAndCompiler;
+    /// <summary>#1024: Spalte „Compiler“ und Meldung ohne „(wie E2035)“.</summary>
+    [Test]
+    procedure CompilerColumnText;
     [Test]
     procedure ScopeLimitsFiles;
     [Test]
@@ -245,6 +248,26 @@ begin
   finally
     View.Free;
   end;
+end;
+
+procedure TAtlasFindingsTests.CompilerColumnText;
+var
+  Item: TAtlasFinding;
+begin
+  Item := Default(TAtlasFinding);
+  Item.Problem := Problem(1, 'argument-count-mismatch', 'X erwartet 1 Argumente (wie E2035).',
+    TAtlasProblemSeverity.Error);
+  Assert.AreEqual('', Item.CompilerText);
+  Item.Problem.CompilerCodes := ['E2034', 'E2035'];
+  Assert.AreEqual('E2034, E2035', Item.CompilerText);
+  Item.Problem.Confirmed := True;
+  Item.Problem.ConfirmedCode := 'E2035';
+  Assert.AreEqual('E2035 ' + #$00B7 + ' Atlas + dcc', Item.CompilerText);
+  Assert.AreEqual('X erwartet 1 Argumente (wie E2035).', Item.MessageText(True));
+  Assert.AreEqual('X erwartet 1 Argumente.', Item.MessageText(False));
+  Item.Problem := Problem(1, 'W1036', 'Variable nicht initialisiert', TAtlasProblemSeverity.Warning);
+  Item.Problem.Source := TAtlasProblem.CompilerSource;
+  Assert.AreEqual('W1036', Item.CompilerText);
 end;
 
 procedure TAtlasFindingsTests.FiltersByKindCategoryTextAndCompiler;
@@ -530,17 +553,21 @@ var
   Columns: TArray<TAtlasFindingColumnState>;
 begin
   Columns := TAtlasFindings.ParseColumns('');
-  Assert.AreEqual(7, Integer(Length(Columns)));
-  Assert.AreEqual('icon,kind,category,message,line,location,rule', TAtlasFindings.FormatColumns(Columns));
+  Assert.AreEqual(8, Integer(Length(Columns)));
+  Assert.AreEqual('icon,kind,category,message,line,location,rule,compiler', TAtlasFindings.FormatColumns(Columns));
   Columns := TAtlasFindings.ParseColumns('rule:120, -message, -kind, unbekannt, location:80, rule');
   Assert.IsTrue(Columns[0].Column = TAtlasFindingColumn.Rule);
   Assert.AreEqual(120, Columns[0].Width);
   Assert.IsFalse(Columns[1].Visible);
   // Art ist Pflicht: bleibt sichtbar.
   Assert.IsTrue(Columns[2].Visible);
-  Assert.AreEqual('rule:120,-message,kind,location:80,icon,category,line', TAtlasFindings.FormatColumns(Columns));
+  Assert.AreEqual('rule:120,-message,kind,location:80,icon,category,line,compiler',
+    TAtlasFindings.FormatColumns(Columns));
   Assert.IsTrue(TAtlasFindings.IsMandatory(TAtlasFindingColumn.Location));
   Assert.IsFalse(TAtlasFindings.IsMandatory(TAtlasFindingColumn.Message));
+  Assert.IsFalse(TAtlasFindings.IsMandatory(TAtlasFindingColumn.Compiler), 'Spalte Compiler abwählbar (#1024)');
+  Assert.AreEqual('-compiler,icon,kind,category,message,line,location,rule',
+    TAtlasFindings.FormatColumns(TAtlasFindings.ParseColumns('-compiler')));
 end;
 
 procedure TAtlasFindingsTests.ScopeAndGroupingNames;

@@ -24,6 +24,10 @@ type
     procedure TearDown;
     [Test]
     procedure GroupMasterLocksTable;
+    /// <summary>#1024: „Regeln der Stufe T prüfen“ nur in der Gruppe „Compiler vorab“, als Option des
+    /// Gruppenschlüssels; der Hauptschalter sperrt ihn.</summary>
+    [Test]
+    procedure CompilerGroupTypeLevel;
     [Test]
     procedure SearchAndGroupChoiceFilter;
     [Test]
@@ -108,6 +112,35 @@ begin
     Editor.Master.Checked := True;
     Assert.AreEqual('', Editor.RulesJson);
     Assert.IsTrue(Editor.List.Enabled);
+  finally
+    Host.Free;
+    Catalog.Free;
+  end;
+end;
+
+procedure TAtlasRulesEditorTests.CompilerGroupTypeLevel;
+var
+  Host: TForm;
+  Catalog: TJSONValue;
+  Editor: TAtlasRulesEditor;
+begin
+  Catalog := TJSONObject.ParseJSONValue(CatalogText);
+  Host := TForm.CreateNew(nil);
+  try
+    Editor := NewEditor(Host, 'threads', Catalog, '', '');
+    Assert.IsFalse(Editor.TypeLevel.Visible, 'nur in der Gruppe Compiler vorab');
+    Editor.Free;
+    Editor := NewEditor(Host, 'compiler', Catalog, '{"group:compiler": {"typeLevel": "off"}}', '');
+    Assert.IsTrue(Editor.TypeLevel.Visible);
+    Assert.IsFalse(Editor.TypeLevel.Checked);
+    Assert.IsTrue(Editor.Master.Checked);
+    Editor.TypeLevel.Checked := True;
+    Assert.AreEqual('', Editor.RulesJson);
+    Editor.TypeLevel.Checked := False;
+    Editor.Master.Checked := False;
+    Assert.AreEqual('{"group:compiler":{"typeLevel":"off","severity":"off"}}', Editor.RulesJson);
+    Assert.IsFalse(Editor.TypeLevel.Enabled, 'Hauptschalter aus sperrt auch die Stufe T');
+    Assert.IsFalse(Editor.TypeLevel.Checked);
   finally
     Host.Free;
     Catalog.Free;

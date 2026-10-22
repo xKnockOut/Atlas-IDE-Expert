@@ -28,6 +28,8 @@ type
     [Test]
     procedure GroupSwitchDisablesAllRulesOfGroup;
     [Test]
+    procedure CompilerGroupTypeLevel;
+    [Test]
     procedure ExcludeByGlobInRuleOptions;
     [Test]
     procedure ExcludeByUnitNameInRuleOptions;
@@ -79,6 +81,7 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Configuration.Parser,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
@@ -293,6 +296,30 @@ begin
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create, Source,
     '{ "rules": { "group:exceptions": "off" } }'))));
   Assert.IsTrue(TRuleEngine.GroupOff('EMPTY-EXCEPT', TServerSettings.Default) = False);
+end;
+
+procedure TRuleEngineTests.CompilerGroupTypeLevel;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // Gruppe „Compiler vorab“ (#1024): argument-count-mismatch hat Stufe T, comparison-as-statement Stufe A.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('argument-count-mismatch'), Source,
+    '{ "rules": { "group:compiler": { "typeLevel": "off" } } }'))), 'Stufe T aus');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('comparison-as-statement'), Source,
+    '{ "rules": { "group:compiler": { "typeLevel": "off" } } }'))), 'Stufe A bleibt');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('argument-count-mismatch'), Source,
+    '{ "rules": { "group:compiler": { "typeLevel": "certain" } } }'))), 'certain');
+  // Hauptschalter auch als Objekt.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('comparison-as-statement'), Source,
+    '{ "rules": { "group:compiler": { "severity": "off", "typeLevel": "certain" } } }'))), 'Objekt mit off');
+  // Andere Gruppen kennen typeLevel nicht; ohne Katalog keine Stufe.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create, Source,
+    '{ "rules": { "group:compiler": { "typeLevel": "off" } } }'))));
+  TConfigurationParser.Parse('{"rules": {"group:compiler": {"typeLevel": "nie"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"typeLevel" muss "certain" oder "off" sein', Issues[0].Message);
+  TConfigurationParser.Parse('{"rules": {"group:compiler": {"typeLevel": "off"}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
 end;
 
 procedure TRuleEngineTests.ExcludeByGlobInRuleOptions;

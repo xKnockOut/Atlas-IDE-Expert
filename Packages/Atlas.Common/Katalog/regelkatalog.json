@@ -8,7 +8,8 @@
       "group": "find-bugs",
       "description": "The parser could not read the source code.",
       "bad": "procedure Foo;\nbegin\n  if X then\nend;",
-      "good": "procedure Foo;\nbegin\n  if X then\n    Bar;\nend;"
+      "good": "procedure Foo;\nbegin\n  if X then\n    Bar;\nend;",
+      "level": "A"
     },
     {
       "id": "unused-suppression",
@@ -704,7 +705,8 @@
       "group": "find-bugs",
       "description": "The loop starts at the upper bound (High, Count - 1) and ends at the lower one, but uses to. It never runs; downto was meant.",
       "bad": "for I := High(A) to Low(A) do\n  Save(A[I]);",
-      "good": "for I := High(A) downto Low(A) do\n  Save(A[I]);"
+      "good": "for I := High(A) downto Low(A) do\n  Save(A[I]);",
+      "level": "A"
     },
     {
       "id": "exception-not-raised",
@@ -1080,7 +1082,8 @@
       "group": "style",
       "description": "A routine, type, constant or member marked deprecated, platform or experimental is used (like compiler warnings W1000, W1002 and W1003). The editor strikes the name through; the message carries the reason from deprecated 'reason'. The declaration and the head of its implementation are not reported.",
       "bad": "procedure Old; deprecated 'Use New';\n...\nOld;",
-      "good": "procedure New;\n...\nNew;"
+      "good": "procedure New;\n...\nNew;",
+      "level": "B"
     },
     {
       "id": "implicit-package-import",
@@ -2061,7 +2064,8 @@
         "E2037",
         "E2211",
         "E2065"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "interface-not-implemented",
@@ -2076,7 +2080,8 @@
         "E2291",
         "E2211",
         "E2265"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "uses-unit-not-found",
@@ -2101,7 +2106,8 @@
           "default": "project",
           "description": "Where units are searched: project (like the compiler: project, search paths of the .dproj, library paths, .pas and .dcu), atlas (what Atlas knows: index and browsing paths of the installation) or both."
         }
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "unresolved-attribute",
@@ -2115,7 +2121,8 @@
       "compilerCodes": [
         "W1074",
         "E2289"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "comparison-as-statement",
@@ -2128,7 +2135,8 @@
       "good": "Result := 0;",
       "compilerCodes": [
         "E2014"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "duplicate-case-label",
@@ -2142,7 +2150,8 @@
       "compilerCodes": [
         "E2030",
         "E2027"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "field-after-method",
@@ -2155,7 +2164,8 @@
       "good": "TKunde = class\nprivate\n  FName: string;\n  function GetName: string;\nend;",
       "compilerCodes": [
         "E2169"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "overload-directive-missing",
@@ -2171,7 +2181,8 @@
         "E2267",
         "E2252",
         "E2301"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "duplicate-declaration",
@@ -2192,7 +2203,8 @@
           "default": true,
           "description": "Report duplicate entries in uses clauses."
         }
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "conditional-directive-unbalanced",
@@ -2212,7 +2224,8 @@
         "W1078",
         "W1079",
         "E2573"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "override-target-missing",
@@ -2228,7 +2241,8 @@
         "E2170",
         "E2352",
         "E2353"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "abstract-class-instantiated",
@@ -2242,7 +2256,8 @@
       "compilerCodes": [
         "W1020",
         "E2402"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "property-accessor-invalid",
@@ -2264,7 +2279,8 @@
         "E2459",
         "E2461",
         "E2562"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "assign-to-property-member",
@@ -2278,7 +2294,8 @@
       "compilerCodes": [
         "E2064",
         "E2453"
-      ]
+      ],
+      "level": "T"
     },
     {
       "id": "readonly-property-assigned",
@@ -2292,7 +2309,8 @@
       "compilerCodes": [
         "E2129",
         "E2130"
-      ]
+      ],
+      "level": "T"
     },
     {
       "id": "argument-count-mismatch",
@@ -2306,7 +2324,8 @@
       "compilerCodes": [
         "E2034",
         "E2035"
-      ]
+      ],
+      "level": "T"
     }
   ]
 }

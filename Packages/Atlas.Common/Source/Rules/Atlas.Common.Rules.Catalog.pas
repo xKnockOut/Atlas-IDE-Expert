@@ -5,7 +5,10 @@
 // Übersetzungen liegen als Overlay daneben (regelkatalog.de.json) und
 // überschreiben nur Name und Beschreibung. SARIF nutzt immer den englischen
 // Katalog, damit Fingerabdrücke in GitHub Code Scanning stabil bleiben.
-// "compilerCodes" nennt Compilermeldungen, denen eine Regel entspricht (#938).
+// "compilerCodes" nennt Compilermeldungen, denen eine Regel entspricht (#938),
+// "level" die Stufe einer Regel der Gruppe „Compiler vorab“ (#1024): A = Parser
+// genügt, B = Namensauflösung über Units, T = braucht Ausdruckstypen; nur
+// Stufe T lässt sich über "group:compiler": {"typeLevel": "off"} abschalten.
 
 interface
 
@@ -45,6 +48,8 @@ type
     Options: TArray<TRuleOption>;
     /// <summary>Compilermeldungen, denen die Regel entspricht, z. B. F2069 (#938); nil = keine.</summary>
     CompilerCodes: TArray<string>;
+    /// <summary>Stufe "A", "B" oder "T" (#1024); '' ohne Angabe.</summary>
+    Level: string;
   end;
 
   ERuleCatalog = class(Exception);
@@ -258,6 +263,9 @@ begin
         raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat keine gültige Gruppe', [Entry.Id]);
       Entry.Options := OptionsOf(Item, Entry.Id);
       Entry.CompilerCodes := CompilerCodesOf(Item, Entry.Id);
+      Entry.Level := StringOf(Item, 'level');
+      if (Entry.Level <> '') and (Entry.Level <> 'A') and (Entry.Level <> 'B') and (Entry.Level <> 'T') then
+        raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat eine ungültige Stufe "%s"', [Entry.Id, Entry.Level]);
       FEntries.Add(Entry);
     end;
   finally

@@ -137,6 +137,10 @@ type
     Suppress: string;
     Configure: string;
     Stale: string;
+    /// <summary>Zusatz eines vom Build bestätigten Befunds (#1024): „vom Compiler bestätigt“; mit Code
+    /// „vom Compiler bestätigt (%s)“.</summary>
+    Confirmed: string;
+    ConfirmedCode: string;
     /// <summary>Statt des Werts, solange der Debugger noch auswertet (#891).</summary>
     DebugPending: string;
     /// <summary>published-Mitglieder (#110): Format mit %d, %d für Properties und Ereignisse; Schalter,
@@ -205,6 +209,8 @@ type
     HasSelection: Boolean;
     /// <summary>Aktionszeile unter Regelbefunden (hover.problemActions, #909).</summary>
     ProblemActions: Boolean;
+    /// <summary>problems.showCompilerCode aus (#1024): Meldungen ohne „(wie E2035)“, Bestätigung ohne Code.</summary>
+    HideCompilerCode: Boolean;
   end;
 
   TAtlasHoverLayout = record
@@ -893,7 +899,10 @@ begin
     if IsRule then
     begin
       SeverityPill(Problem);
-      Block(Problem.Message, FColors.Text, 3);
+      if FInput.HideCompilerCode then
+        Block(TAtlasProblem.WithoutCompilerCode(Problem.Message), FColors.Text, 3)
+      else
+        Block(Problem.Message, FColors.Text, 3);
       FLeft := Scale(20);
     end
     else
@@ -905,12 +914,19 @@ begin
       Caption := FInput.Texts.SourceInactive
     else
     begin
-      // „Atlas · loop-off-by-one“, „dcc · W1036“; Syntaxfehler ohne Code nur mit der Herkunft.
+      // „Atlas · loop-off-by-one“, „dcc · W1036“; Syntaxfehler ohne Code nur mit der Herkunft. Vom Build
+      // bestätigt (#1024): „Atlas + dcc · argument-count-mismatch · vom Compiler bestätigt (E2035)“.
       Caption := Problem.Source;
       if Caption = '' then
         Caption := FInput.Texts.SourceAtlas;
+      if Problem.Confirmed then
+        Caption := TAtlasProblem.ConfirmedSource;
       if Problem.Code <> '' then
         Caption := Caption + ' · ' + Problem.Code;
+      if Problem.Confirmed and (FInput.HideCompilerCode or (Problem.ConfirmedCode = '')) then
+        Caption := Caption + ' · ' + FInput.Texts.Confirmed
+      else if Problem.Confirmed then
+        Caption := Caption + ' · ' + Format(FInput.Texts.ConfirmedCode, [Problem.ConfirmedCode]);
     end;
     if Problem.Stale then
       Caption := Caption + ' · ' + FInput.Texts.Stale;

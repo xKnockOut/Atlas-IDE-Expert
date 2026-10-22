@@ -5,7 +5,9 @@
 // Hauptknoten (alle Regeln mit Suche) und in je einem Knoten pro Gruppe.
 //   - Oben die Suche über Name, ID und Kategorie (nur ohne feste Gruppe) und die
 //     Auswahl der Gruppe, darunter der Hauptschalter „Regeln der Gruppe … prüfen“
-//     ("group:<gruppe>": "off"). Aus sperrt die Tabelle und alle Felder.
+//     ("group:<gruppe>": "off"). Aus sperrt die Tabelle und alle Felder. In der
+//     Gruppe „Compiler vorab“ darunter „Regeln der Stufe T prüfen“ (#1024,
+//     "group:compiler": {"typeLevel": "off"}).
 //   - Tabelle: Schalter an/aus, Regel-ID, Name, Kategorie bzw. Gruppe,
 //     Schweregrad, Ausnahmen. Werte der anderen Ebene stehen als „(global: …)“.
 //   - Unter der Tabelle die markierte Regel: Name, Marke „Experimentell“ (#834),
@@ -48,6 +50,7 @@ type
     FSearch: TEdit;
     FGroupChoice: TComboBox;
     FMaster: TCheckBox;
+    FTypeLevel: TCheckBox;
     FStatus: TLabel;
     FList: TListView;
     FDetails: TAtlasRulesBox;
@@ -91,6 +94,7 @@ type
     procedure SearchChange(Sender: TObject);
     procedure GroupChoiceChange(Sender: TObject);
     procedure MasterClick(Sender: TObject);
+    procedure TypeLevelClick(Sender: TObject);
     procedure ListSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
     procedure ListChecked(Sender: TObject; Item: TListItem);
     procedure SeverityChange(Sender: TObject);
@@ -125,6 +129,8 @@ type
     property Search: TEdit read FSearch;
     property GroupChoice: TComboBox read FGroupChoice;
     property Master: TCheckBox read FMaster;
+    /// <summary>Stufe T der Gruppe „Compiler vorab“ (#1024); nur in dieser Gruppe sichtbar.</summary>
+    property TypeLevel: TCheckBox read FTypeLevel;
     property Status: TLabel read FStatus;
     property List: TListView read FList;
     property Details: TAtlasRulesBox read FDetails;
@@ -201,6 +207,15 @@ begin
   FMaster.Visible := False;
   FMaster.OnClick := MasterClick;
   Stack(Self, FMaster);
+
+  FTypeLevel := TCheckBox.Create(Self);
+  FTypeLevel.Height := 20;
+  FTypeLevel.Visible := False;
+  FTypeLevel.Caption := TAtlasStrings.Text(TAtlasTextId.RulesTypeLevel);
+  FTypeLevel.AlignWithMargins := True;
+  FTypeLevel.Margins.SetBounds(18, 0, 0, 0);
+  FTypeLevel.OnClick := TypeLevelClick;
+  Stack(Self, FTypeLevel);
 
   FStatus := AddLabel(Self, '');
   FStatus.Font.Color := clGrayText;
@@ -525,12 +540,14 @@ end;
 procedure TAtlasRulesEditor.UpdateMaster;
 begin
   FMaster.Visible := Group <> '';
+  FTypeLevel.Visible := SameText(Group, TAtlasRuleTable.CompilerGroup);
   if Group = '' then
     Exit;
   FMaster.Caption := TAtlasStrings.Fmt(TAtlasTextId.RulesGroupMaster, [GroupCaption(Group)]);
   FFilling := True;
   try
     FMaster.Checked := not GroupOff;
+    FTypeLevel.Checked := not SameText(TAtlasRuleTable.GroupOption(FRulesJson, Group, 'typeLevel'), 'off');
   finally
     FFilling := False;
   end;
@@ -553,6 +570,7 @@ var
 begin
   // Hauptschalter aus: Tabelle und alle Felder gesperrt (wie #890); ohne Auswahl nur die Beschreibung.
   IsOn := not GroupOff;
+  FTypeLevel.Enabled := IsOn;
   FList.Enabled := IsOn;
   SetTree(FDetails, IsOn and (SelectedRow >= 0));
   FTitle.Enabled := True;
@@ -779,6 +797,18 @@ begin
   if FFilling or (Group = '') then
     Exit;
   Apply(TAtlasRuleTable.WithGroup(FRulesJson, Group, FMaster.Checked));
+end;
+
+procedure TAtlasRulesEditor.TypeLevelClick(Sender: TObject);
+var
+  Value: string;
+begin
+  if FFilling or (Group = '') then
+    Exit;
+  Value := '';
+  if not FTypeLevel.Checked then
+    Value := 'off';
+  Apply(TAtlasRuleTable.WithGroupOption(FRulesJson, Group, 'typeLevel', Value));
 end;
 
 procedure TAtlasRulesEditor.ListSelect(Sender: TObject; Item: TListItem; Selected: Boolean);

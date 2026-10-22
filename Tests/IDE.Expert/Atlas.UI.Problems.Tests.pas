@@ -118,10 +118,17 @@ begin
   Host := TForm.CreateNew(nil);
   try
     Frame := NewFrame(Host);
-    // Icon, Art, Kategorie, Meldung, Zeile, Stelle, Regel.
-    Assert.AreEqual(7, Integer(Frame.List.Columns.Count));
+    // Icon, Art, Kategorie, Meldung, Zeile, Stelle, Regel, Compiler (#1024).
+    Assert.AreEqual(8, Integer(Frame.List.Columns.Count));
     Assert.AreEqual('Art', Frame.List.Columns[1].Caption);
     Assert.AreEqual('Regel', Frame.List.Columns[6].Caption);
+    Assert.AreEqual('Compiler', Frame.List.Columns[7].Caption);
+    // problems.showCompilerCode aus: ohne Spalte Compiler, Layout bleibt gemerkt.
+    Frame.ShowCompilerCode := False;
+    Assert.AreEqual(7, Integer(Frame.List.Columns.Count));
+    Assert.Contains(Frame.ColumnsText, 'compiler');
+    Frame.ShowCompilerCode := True;
+    Assert.AreEqual(8, Integer(Frame.List.Columns.Count));
     // Nach Datei: Kunde.pas (2), dann ihre Befunde, dann Lager.pas (1) und sein Befund.
     Assert.AreEqual(5, Integer(Frame.List.Items.Count));
     Assert.AreEqual(#$25BE' Kunde.pas (2)', Frame.List.Items[0].SubItems[0]);
@@ -285,7 +292,7 @@ begin
       end;
     Frame.ApplySettings(TAtlasFindingScope.Group, TAtlasFindingGrouping.None, 'rule,kind:90,-message', False);
     // Pflichtspalten bleiben, Meldung ist aus, Regel steht vorn (Reihenfolge der Anzeige).
-    Assert.AreEqual(6, Integer(Frame.List.Columns.Count));
+    Assert.AreEqual(7, Integer(Frame.List.Columns.Count));
     Assert.Contains(Frame.ColumnsText, '-message');
     Assert.Contains(Frame.ColumnsText, 'kind:90');
     Assert.IsTrue(Frame.ColumnsText.StartsWith('rule'), Frame.ColumnsText);

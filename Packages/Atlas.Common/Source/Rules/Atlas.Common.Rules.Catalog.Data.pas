@@ -28,7 +28,8 @@ begin
     '      "group": "find-bugs",' + #10 +
     '      "description": "The parser could not read the source code.",' + #10 +
     '      "bad": "procedure Foo;\nbegin\n  if X then\nend;",' + #10 +
-    '      "good": "procedure Foo;\nbegin\n  if X then\n    Bar;\nend;"' + #10 +
+    '      "good": "procedure Foo;\nbegin\n  if X then\n    Bar;\nend;",' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unused-suppression",' + #10 +
@@ -724,7 +725,8 @@ begin
     '      "group": "find-bugs",' + #10 +
     '      "description": "The loop starts at the upper bound (High, Count - 1) and ends at the lower one, but uses to. It never runs; downto was meant.",' + #10 +
     '      "bad": "for I := High(A) to Low(A) do\n  Save(A[I]);",' + #10 +
-    '      "good": "for I := High(A) downto Low(A) do\n  Save(A[I]);"' + #10 +
+    '      "good": "for I := High(A) downto Low(A) do\n  Save(A[I]);",' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "exception-not-raised",' + #10 +
@@ -1100,7 +1102,8 @@ begin
     '      "group": "style",' + #10 +
     '      "description": "A routine, type, constant or member marked deprecated, platform or experimental is used (like compiler warnings W1000, W1002 and W1003). The editor strikes the name through; the ' + 'message carries the reason from deprecated ''reason''. The declaration and the head of its implementation are not reported.",' + #10 +
     '      "bad": "procedure Old; deprecated ''Use New'';\n...\nOld;",' + #10 +
-    '      "good": "procedure New;\n...\nNew;"' + #10 +
+    '      "good": "procedure New;\n...\nNew;",' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "implicit-package-import",' + #10 +
@@ -2081,7 +2084,8 @@ begin
     '        "E2037",' + #10 +
     '        "E2211",' + #10 +
     '        "E2065"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "interface-not-implemented",' + #10 +
@@ -2096,7 +2100,8 @@ begin
     '        "E2291",' + #10 +
     '        "E2211",' + #10 +
     '        "E2265"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "uses-unit-not-found",' + #10 +
@@ -2121,7 +2126,8 @@ begin
     '          "default": "project",' + #10 +
     '          "description": "Where units are searched: project (like the compiler: project, search paths of the .dproj, library paths, .pas and .dcu), atlas (what Atlas knows: index and browsing paths of' + ' the installation) or both."' + #10 +
     '        }' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unresolved-attribute",' + #10 +
@@ -2135,7 +2141,8 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "W1074",' + #10 +
     '        "E2289"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "comparison-as-statement",' + #10 +
@@ -2148,7 +2155,8 @@ begin
     '      "good": "Result := 0;",' + #10 +
     '      "compilerCodes": [' + #10 +
     '        "E2014"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "duplicate-case-label",' + #10 +
@@ -2162,7 +2170,8 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "E2030",' + #10 +
     '        "E2027"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "field-after-method",' + #10 +
@@ -2175,7 +2184,8 @@ begin
     '      "good": "TKunde = class\nprivate\n  FName: string;\n  function GetName: string;\nend;",' + #10 +
     '      "compilerCodes": [' + #10 +
     '        "E2169"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "overload-directive-missing",' + #10 +
@@ -2191,7 +2201,8 @@ begin
     '        "E2267",' + #10 +
     '        "E2252",' + #10 +
     '        "E2301"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "duplicate-declaration",' + #10 +
@@ -2212,7 +2223,8 @@ begin
     '          "default": true,' + #10 +
     '          "description": "Report duplicate entries in uses clauses."' + #10 +
     '        }' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "conditional-directive-unbalanced",' + #10 +
@@ -2232,7 +2244,8 @@ begin
     '        "W1078",' + #10 +
     '        "W1079",' + #10 +
     '        "E2573"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "override-target-missing",' + #10 +
@@ -2248,7 +2261,8 @@ begin
     '        "E2170",' + #10 +
     '        "E2352",' + #10 +
     '        "E2353"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "abstract-class-instantiated",' + #10 +
@@ -2262,7 +2276,8 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "W1020",' + #10 +
     '        "E2402"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "property-accessor-invalid",' + #10 +
@@ -2284,7 +2299,8 @@ begin
     '        "E2459",' + #10 +
     '        "E2461",' + #10 +
     '        "E2562"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "assign-to-property-member",' + #10 +
@@ -2298,7 +2314,8 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "E2064",' + #10 +
     '        "E2453"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "T"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "readonly-property-assigned",' + #10 +
@@ -2312,7 +2329,8 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "E2129",' + #10 +
     '        "E2130"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "T"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "argument-count-mismatch",' + #10 +
@@ -2326,7 +2344,8 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "E2034",' + #10 +
     '        "E2035"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "T"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

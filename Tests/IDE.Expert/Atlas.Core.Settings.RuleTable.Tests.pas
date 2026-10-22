@@ -23,6 +23,8 @@ type
     [Test]
     procedure GroupSwitchWritesAndRemovesKey;
     [Test]
+    procedure GroupOptionKeepsSwitchAndBack;
+    [Test]
     procedure FilterByGroupAndText;
     [Test]
     procedure EffectiveSeverityFallsBackToGlobalAndDefault;
@@ -142,6 +144,29 @@ begin
   Rules := TAtlasRuleTable.WithGroup(Rules, 'style', True);
   Assert.AreEqual('{"no-with":"error"}', Rules);
   Assert.IsFalse(TAtlasRuleTable.GroupOff('', 'style'));
+end;
+
+procedure TAtlasRuleTableTests.GroupOptionKeepsSwitchAndBack;
+var
+  Rules: string;
+begin
+  // #1024: "typeLevel" der Gruppe „Compiler vorab“ macht den Schlüssel zum Objekt; der Hauptschalter bleibt.
+  Rules := TAtlasRuleTable.WithGroupOption('{"group:compiler": "off"}', 'compiler', 'typeLevel', 'off');
+  Assert.AreEqual('{"group:compiler":{"severity":"off","typeLevel":"off"}}', Rules);
+  Assert.IsTrue(TAtlasRuleTable.GroupOff(Rules, 'compiler'));
+  Assert.AreEqual('off', TAtlasRuleTable.GroupOption(Rules, 'compiler', 'typeLevel'));
+  Rules := TAtlasRuleTable.WithGroup(Rules, 'compiler', True);
+  Assert.AreEqual('{"group:compiler":{"typeLevel":"off"}}', Rules);
+  Assert.IsFalse(TAtlasRuleTable.GroupOff(Rules, 'compiler'));
+  Rules := TAtlasRuleTable.WithGroup(Rules, 'compiler', False);
+  Rules := TAtlasRuleTable.WithGroupOption(Rules, 'compiler', 'typeLevel', '');
+  Assert.AreEqual('{"group:compiler":"off"}', Rules);
+  Assert.AreEqual('', TAtlasRuleTable.GroupOption(Rules, 'compiler', 'typeLevel'));
+  Assert.AreEqual('off', TAtlasRuleTable.GroupOption(Rules, 'compiler', 'severity'));
+  Rules := TAtlasRuleTable.WithGroup(Rules, 'compiler', True);
+  Assert.AreEqual('', Rules);
+  Assert.AreEqual(1, Integer(Length(TAtlasRuleTable.Rows(nil,
+    '{"group:compiler": {"typeLevel": "off"}, "no-with": "error"}'))));
 end;
 
 procedure TAtlasRuleTableTests.FilterByGroupAndText;

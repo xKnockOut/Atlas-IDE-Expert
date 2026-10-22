@@ -830,6 +830,8 @@ var
   Data: TJSONObject;
   Entry: TRuleCatalogEntry;
   Fix: TRuleFix;
+  Codes: TJSONArray;
+  Code: string;
 begin
   case AFinding.Severity of
     TRuleSeverity.Error:
@@ -857,6 +859,14 @@ begin
   begin
     Data.AddPair('category', TRuleCatalog.CategoryName(Entry.Category));
     Data.AddPair('group', TRuleCatalog.GroupName(Entry.Group));
+    // Gruppe „Compiler vorab“ (#1024): Codes für den Abgleich mit dcc und die Spalte „Compiler“ im Plugin.
+    if Length(Entry.CompilerCodes) > 0 then
+    begin
+      Codes := TJSONArray.Create;
+      for Code in Entry.CompilerCodes do
+        Codes.Add(Code);
+      Data.AddPair('compilerCodes', Codes);
+    end;
   end;
   // Wie Rules.CodeActions: bevorzugt ist nur die erste Korrektur, wenn sie keine Alternative ist.
   if Length(AFinding.Fixes) > 0 then

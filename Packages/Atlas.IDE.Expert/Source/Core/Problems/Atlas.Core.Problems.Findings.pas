@@ -7,7 +7,9 @@
 //   Hinweise und Testmeldungen), Art aus dem Schweregrad (error → Error,
 //   warning → Warnung, information/hint → Info), Kategorie aus dem Katalog
 //   bzw. „Compiler“ für dcc, Zeilentext ohne Einrückung, Spalten-Layout als
-//   Text für problems.window.columns.
+//   Text für problems.window.columns. Spalte „Compiler“ (#1024): Code der
+//   Compilermeldung bzw. die Codes, denen die Regel entspricht, mit
+//   „Atlas + dcc“, wenn der letzte Build den Befund bestätigt.
 // - TAtlasFindingsView: Filter (Bereich, Arten, Kategorie, Text, Compiler),
 //   Gruppierung (keine, Datei, Regel, Kategorie), Sortierung (Vorgabe Art,
 //   Datei, Zeile; Klick auf eine Spalte sortiert nach ihr, zweiter Klick
@@ -29,7 +31,7 @@ type
   /// <summary>Spalte „Art“: Error (auch Bug), Warnung, Info (information und hint).</summary>
   TAtlasFindingKind = (Error, Warning, Info);
   TAtlasFindingCategory = (Bug, Vulnerability, CodeSmell, SecurityHotspot, Compiler, Other);
-  TAtlasFindingColumn = (Icon, Kind, Category, Message, Line, Location, Rule);
+  TAtlasFindingColumn = (Icon, Kind, Category, Message, Line, Location, Rule, Compiler);
   TAtlasFindingScope = (CurrentFile, Project, Group);
   TAtlasFindingGrouping = (None, ByFile, ByRule, ByCategory);
   {$SCOPEDENUMS OFF}
@@ -50,6 +52,11 @@ type
     function ShortLine(AMax: Integer): string;
     /// <summary>Regel-ID bzw. Meldungsnummer des Compilers.</summary>
     function Rule: string;
+    /// <summary>Spalte „Compiler“ (#1024): "E2035", "E2034, E2035" oder "E2035 · Atlas + dcc" bei einem vom
+    /// Build bestätigten Befund; '' ohne Code.</summary>
+    function CompilerText: string;
+    /// <summary>Meldung; ohne AShowCompilerCode (problems.showCompilerCode aus) ohne „(wie E2035)“.</summary>
+    function MessageText(AShowCompilerCode: Boolean): string;
   end;
 
   TAtlasFindingColumnState = record
@@ -114,7 +121,9 @@ type
     /// <summary>Zeilentext in der Spalte „Zeile“; länger mit „…“, der Tooltip zeigt die ganze Zeile.</summary>
     LineMax = 80;
     ColumnNames: array[TAtlasFindingColumn] of string = ('icon', 'kind', 'category', 'message', 'line',
-      'location', 'rule');
+      'location', 'rule', 'compiler');
+    /// <summary>Marke eines vom Compiler bestätigten Befunds (#1024).</summary>
+    ConfirmedMark = TAtlasProblem.ConfirmedSource;
     ScopeNames: array[TAtlasFindingScope] of string = ('file', 'project', 'group');
     GroupingNames: array[TAtlasFindingGrouping] of string = ('none', 'file', 'rule', 'category');
   public
@@ -240,6 +249,20 @@ end;
 function TAtlasFinding.Rule: string;
 begin
   Result := Problem.Code;
+end;
+
+function TAtlasFinding.CompilerText: string;
+begin
+  Result := Problem.CompilerCodeText;
+  if Problem.Confirmed then
+    Result := Result + ' ' + #$00B7 + ' ' + TAtlasFindings.ConfirmedMark;
+end;
+
+function TAtlasFinding.MessageText(AShowCompilerCode: Boolean): string;
+begin
+  Result := Problem.Message;
+  if not AShowCompilerCode then
+    Result := TAtlasProblem.WithoutCompilerCode(Result);
 end;
 
 { TAtlasFindingColumnState }
@@ -446,7 +469,7 @@ end;
 
 class function TAtlasFindings.IsMandatory(AColumn: TAtlasFindingColumn): Boolean;
 begin
-  Result := not (AColumn in [TAtlasFindingColumn.Message, TAtlasFindingColumn.Rule]);
+  Result := not (AColumn in [TAtlasFindingColumn.Message, TAtlasFindingColumn.Rule, TAtlasFindingColumn.Compiler]);
 end;
 
 class function TAtlasFindings.ParseColumns(const AText: string): TArray<TAtlasFindingColumnState>;
@@ -689,6 +712,8 @@ begin
         end;
       TAtlasFindingColumn.Rule:
         Result := CompareText(A.Problem.Code, B.Problem.Code);
+      TAtlasFindingColumn.Compiler:
+        Result := CompareText(A.CompilerText, B.CompilerText);
     end;
     if FSortDescending then
       Result := -Result;

@@ -308,6 +308,22 @@ begin
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":["X2069"]}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":["F206"]}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":[2069]}]}');
+  // Stufe der Compilerregeln (#1024).
+  Catalog := TRuleCatalog.Create('{"rules":[{"id":"x","category":"bug","severity":"error","level":"T"},' +
+    '{"id":"y","category":"bug","severity":"error"}]}');
+  try
+    Assert.IsTrue(Catalog.TryFind('x', Entry));
+    Assert.AreEqual('T', Entry.Level);
+    Assert.IsTrue(Catalog.TryFind('y', Entry));
+    Assert.AreEqual('', Entry.Level);
+  finally
+    Catalog.Free;
+  end;
+  ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","level":"C"}]}');
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('argument-count-mismatch', Entry));
+  Assert.AreEqual('T', Entry.Level);
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('duplicate-case-label', Entry));
+  Assert.AreEqual('B', Entry.Level);
 end;
 
 procedure TRuleCatalogTests.RejectsOptionWithUnknownType;

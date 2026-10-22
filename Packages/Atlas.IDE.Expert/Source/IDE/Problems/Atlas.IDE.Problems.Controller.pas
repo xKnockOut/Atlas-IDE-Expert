@@ -605,6 +605,8 @@ begin
       Publish;
       Exit;
     end;
+    // Bestätigte Compilermeldungen zusammenführen (problems.compilerMerge, #1024); ändert nur bei Wechsel.
+    FStore.CompilerMerge := not SameText(TAtlasIdeSettings.Current.ProblemsCompilerMerge, 'both');
     View := nil;
     // Ohne Fokus ändert sich der Puffer nur über Neuladen, das den Stand ohnehin als veraltet markiert:
     // dann weder Puffer lesen noch abgleichen (P-04). Freigeben, Stoppen und Veröffentlichen laufen weiter.

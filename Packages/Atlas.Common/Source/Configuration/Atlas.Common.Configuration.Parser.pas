@@ -291,6 +291,10 @@ begin
             ReportNode(Value[Inner], Format('"%s" muss eine Liste von Zahlen sein', [Value.Keys[Inner]]))
           else if (IndexStr(Value.Keys[Inner], StringRuleOptions) >= 0) and (Value[Inner].Kind <> TJsonKind.String_) then
             ReportNode(Value[Inner], Format('"%s" muss ein Text sein', [Value.Keys[Inner]]))
+          // Stufe T der Gruppe „Compiler vorab“ (#1024).
+          else if (Value.Keys[Inner] = 'typeLevel') and
+            ((Value[Inner].Kind <> TJsonKind.String_) or (IndexStr(Value[Inner].Value, ['certain', 'off']) < 0)) then
+            ReportNode(Value[Inner], '"typeLevel" muss "certain" oder "off" sein')
           // Suchquelle von uses-unit-not-found (#1016).
           else if (Value.Keys[Inner] = 'searchPaths') and
             (IndexStr(Value[Inner].Value, ['project', 'atlas', 'both']) < 0) then
