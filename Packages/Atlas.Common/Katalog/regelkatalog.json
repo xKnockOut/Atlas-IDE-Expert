@@ -2337,6 +2337,23 @@
       "compilerCodes": [
         "X1008"
       ]
+    },
+    {
+      "id": "invalid-var-argument",
+      "name": "Invalid argument for a var or out parameter",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A var or out parameter receives something that is not a variable: a string element for a character parameter (like E2354), a constant, a const parameter, a property or a function result (like E2197), a constant for an open array (like E2192), Slice (like E2454) or an expression (like E2036). Reported only for routines without overloads whose header is known from the file or the index; built-in routines such as Inc or Move and untyped var parameters accept more and stay silent. Typed constants count as constants unless {$J+} is set. Quick fix: pass a local variable of the parameter type, and write it back for string elements and properties with write.",
+      "bad": "procedure Erhoehen(var Zeichen: Char);\n…\nErhoehen(Zeile[1]);",
+      "good": "Zeichen := Zeile[1];\nErhoehen(Zeichen);\nZeile[1] := Zeichen;",
+      "compilerCodes": [
+        "E2354",
+        "E2197",
+        "E2192",
+        "E2454",
+        "E2036"
+      ]
     }
   ]
 }

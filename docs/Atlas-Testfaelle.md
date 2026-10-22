@@ -4165,3 +4165,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
 | YH6 | Passende Typen, gleichnamige Überladungen mit anderen Parametern, Varianten in `{$IFDEF}`-Zweigen, von denen eine passt | Keine Meldung |
 | YH7 | `"hresult-integer-mix": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | YH8 | Abgleich mit Delphi: YH1, YH3, YH4 übersetzen | dcc meldet X1008 (bzw. die Warnung „Integer and HRESULT interchanged“) an denselben Stellen; in der Meldungsliste von Atlas erscheint der Code X1008 als Warnung |
+
+## Ungültiges Argument für var- und out-Parameter (#1037)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| YV1 | `procedure Erhoehen(var Zeichen: Char);` und `Erhoehen(Zeile[1]);` mit `Zeile: string` (das Beispiel `Inc(Zeile[1])` aus #1037 nimmt der Compiler an, weil `Inc` eingebaut ist) | Fehler `invalid-var-argument` an `Zeile[1]`: „Ein String-Element kann nicht an einen var-Parameter übergeben werden (wie E2354).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| YV2 | Schnellkorrektur „Über eine lokale Variable Wert übergeben“, danach Strg+Z | `Wert: Char;` im var-Abschnitt, davor `Wert := Zeile[1];`, danach `Zeile[1] := Wert;`; keine Meldung mehr, kompiliert; ein Undo-Schritt nimmt es zurück |
+| YV3 | An `procedure Zaehlen(var Ziel: Integer)`: eine Konstante, eine typisierte Konstante, einen const-Parameter, eine Property ohne write, `Doppelt(2)` und `5` übergeben | Je eine Meldung „… ist keine Variable und kann nicht an einen var-Parameter übergeben werden (wie E2197).“ |
+| YV4 | An `procedure Fuellen(var Werte: array of Integer)`: eine Konstante, `[1, 2]` und `Slice(Feld, 2)`; an `Zaehlen` den Ausdruck `Zahl + 1` | „… als offenes Array … (wie E2192)“, „Slice ist für einen var-Parameter nicht erlaubt … (wie E2454)“ bzw. „… kein Ausdruck (wie E2036)“ |
+| YV5 | Property mit write an einen var-Parameter, Korrektur anwenden | Die Korrektur schreibt nach dem Aufruf `Zeile.Text := Wert;` zurück; bei einem out-Parameter ohne Zuweisung davor |
+| YV6 | Variablen, Feldelemente, `Inc(Zahl)`, `Move(S[1], …)`, untypisierte var-Parameter, Typumwandlung `Integer(Zahl)`, überladene Routinen aus einer anderen Unit, typisierte Konstante unter `{$J+}` | Keine Meldung |
+| YV7 | `"invalid-var-argument": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| YV8 | Abgleich mit Delphi: YV1, YV3 und YV4 übersetzen | dcc meldet an denselben Stellen Fehler; die Codes in den Meldungen stimmen (E2354, E2197, E2192, E2454, E2036); Abweichungen im Code bitte notieren |

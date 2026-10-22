@@ -1173,6 +1173,11 @@
       "id": "hresult-integer-mix",
       "name": "Integer und HRESULT vertauscht",
       "description": "Eine Klasse implementiert eine Interface-Methode mit HRESULT-Ergebnis über eine Methode mit Integer- (bzw. LongInt-) Ergebnis oder umgekehrt (wie X1008). Beide sind 32 Bit groß, deshalb fällt es nicht auf; die Bedeutung der Werte (S_FALSE als Erfolg) geht aber verloren; wichtig für COM- und OTA-Code. Zugeordnet wird über Name und Parametertypen samt Zuordnungen wie function IFoo.Bar = Baz; Interfaces samt ihren Vorfahren kommen aus der Datei bzw. dem Index. Stehen Varianten in bedingten Zweigen, meldet die Regel nur, wenn jede Variante abweicht. Korrektur: den Ergebnistyp in Deklaration und Implementierung an das Interface angleichen."
+    },
+    {
+      "id": "invalid-var-argument",
+      "name": "Ungültiges Argument für einen var- oder out-Parameter",
+      "description": "Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: ein String-Element für einen Zeichen-Parameter (wie E2354), eine Konstante, einen const-Parameter, eine Property oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192), Slice (wie E2454) oder einen Ausdruck (wie E2036). Gemeldet nur für Routinen ohne Überladungen, deren Kopf aus der Datei oder dem Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {$J+}. Korrektur: eine lokale Variable vom Typ des Parameters übergeben, bei String-Elementen und Properties mit write mit Rückschreiben."
     }
   ]
 }
