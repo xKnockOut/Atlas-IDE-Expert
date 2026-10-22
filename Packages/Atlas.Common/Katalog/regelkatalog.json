@@ -1812,6 +1812,16 @@
           "description": "Messages that may be handled without inherited; replaces the default."
         }
       ]
+    },
+    {
+      "id": "string-index-base",
+      "name": "String index from 0 or Pos result compared with -1",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "The classic string routines count from 1: Copy(S, 0, N) and Insert(T, S, 0) only work like 1 by chance, Delete(S, 0, N) deletes nothing. The string must be known: declared type in the file, literal, or .Text/.Caption; dynamic arrays (0-based) stay silent. Pos, PosEx and AnsiPos return 0 for no match: Pos(...) > -1, >= 0 and <> -1 are always true, = -1 and < 0 never. Conversely S.IndexOf(...) > 0 or >= 1 misses a match at the start, < 1 or <= 0 counts it as not found (medium confidence; LastIndexOf stays silent, where > 0 usually means \"not at the start\"). High confidence for Delete and Pos. Quick fix: start value 1 or the corrected comparison (> 0, = 0, >= 0, < 0).",
+      "bad": "if Pos(';', Zeile) > -1 then\n  Felder := Copy(Zeile, 0, Pos(';', Zeile) - 1);",
+      "good": "if Pos(';', Zeile) > 0 then\n  Felder := Copy(Zeile, 1, Pos(';', Zeile) - 1);"
     }
   ]
 }
