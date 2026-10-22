@@ -3169,6 +3169,17 @@ Voraussetzung: Atlas geladen, Server läuft, ein Projekt mit einigen Units offen
 | ES5 | Unit im Editor ändern und speichern (Strg+S), während der Server sie gerade liest (z. B. kurz nach dem Öffnen eines großen Projekts) | Die IDE speichert ohne Meldung „Datei kann nicht erstellt werden“ |
 | ES6 | Testlauf `Atlas.Tests.exe` | Grün, darunter `ReplacesFileHeldOpenByOthers`, `KeepsFileLockedByOthers`, `ReadAllBytesDoesNotBlockReplace` (TAtlasTextFileTests), `TWindowsSharedReadTests` und `LoadsThroughPlatformReader`, `ReadsWhileSomeoneWrites` (TFileEncodingDefaultTests) |
 
+## Ein Schreiber je Index-Cache (Bericht N1)
+
+Voraussetzung: Zwei Projekte, die unterschiedliche VCL-Units verwenden (z. B. eines mit `Vcl.Grids`, eines mit `Vcl.ComCtrls`), Server-Log an (`--log`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IC1 | Index löschen, beide Projekte in einer Projektgruppe öffnen, warten, bis der Index fertig ist; IDE schließen und neu starten | Beim zweiten Start kommen die Units beider Projekte aus dem Cache (Statuszeile „Index“, „aus dem Cache“); im Log keine Warnung „Index-Cache … nicht geschrieben“ |
+| IC2 | Zwei IDEs gleichzeitig starten, in jeder eines der Projekte; nach dem Index beide schließen, eine IDE mit dem anderen Projekt neu öffnen | Die Bibliotheks-Units des anderen Projekts kommen aus dem Cache, nichts wird doppelt eingelesen |
+| IC3 | Während eine IDE indiziert, `%LOCALAPPDATA%\Atlas\Index\<Version>\Bibliothek\<Hash>\index.atlasidx.lock` in PowerShell exklusiv öffnen (`$f = [IO.File]::Open($pfad, 'Open', 'ReadWrite', 'None')`), 35 Sekunden warten, dann `$f.Close()` | Im Server-Log „Index-Cache (Bibliothek) nicht geschrieben: Schreibsperre nicht erhalten“, ohne Pfad; der nächste Aufbau schreibt den Cache wieder |
+| IC4 | Testlauf `Atlas.Tests.exe` | Grün, darunter `ServiceKeepsLibraryUnitsOfOtherWriters`, `ServiceWaitsForLibraryWriteLock`, `ServiceReportsUnwrittenCache`, `DiskWriteLockIsExclusive` |
+
 ## Gliederung beim Start und Kontextwechsel ohne Zugriffsverletzung
 
 Voraussetzung: experimentelles `editor.stickyScroll` an (wie bei Marco), Brotkrumen an; IDE frisch gestartet, eine Gruppe mit mehreren Plattformen.

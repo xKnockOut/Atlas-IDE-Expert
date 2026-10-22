@@ -18,6 +18,9 @@ type
     FReads: Integer;
     FFailReads: Boolean;
     FFailWrites: Boolean;
+    FRefuseWrites: Boolean;
+    FLocked: TDictionary<string, Boolean>;
+    FAfterRead: TProc<string>;
   public
     constructor Create;
     destructor Destroy; override;
@@ -26,12 +29,21 @@ type
     function ReadText(const AFileName: string; out AText: string): Boolean;
     function WriteText(const AFileName, AText: string): Boolean;
     function ReadBytes(const AFileName: string; out ABytes: TBytes): Boolean;
-    function WriteBytes(const AFileName: string; const ABytes: TBytes): Boolean;
+    function WriteBytes(const AFileName: string; const ABytes: TBytes; out AError: string): Boolean; overload;
+    /// <summary>Für Tests, die den Grund nicht brauchen.</summary>
+    function WriteBytes(const AFileName: string; const ABytes: TBytes): Boolean; overload;
+    function TryLockWrite(const AFileName: string): IInterface;
+    /// <summary>Gibt eine Sperre aus TryLockWrite frei.</summary>
+    procedure Unlock(const AFileName: string);
     procedure Delete(const AFileName: string);
     property Reads: Integer read FReads write FReads;
     /// <summary>ReadBytes bzw. WriteBytes lösen EInOutError aus (Cache nicht lesbar/schreibbar).</summary>
     property FailReads: Boolean read FFailReads write FFailReads;
     property FailWrites: Boolean read FFailWrites write FFailWrites;
+    /// <summary>WriteBytes liefert False mit Grund, wie TDiskIndexFileSystem bei einem Fehler.</summary>
+    property RefuseWrites: Boolean read FRefuseWrites write FRefuseWrites;
+    /// <summary>Nach jedem ReadBytes mit dem Dateinamen, außerhalb der Sperre (ein anderer Schreiber).</summary>
+    property AfterRead: TProc<string> read FAfterRead write FAfterRead;
   end;
 
   [TestFixture]
@@ -161,6 +173,16 @@ type
     procedure ReadOnlyServiceWaitsForOtherWriter;
     [Test]
     procedure ServiceSharesLibraryCache;
+    /// <summary>Ergänzt ein anderer Schreiber den Bibliotheks-Cache, nachdem dieser Aufbau ihn gelesen hat,
+    /// bleiben dessen Units erhalten (Bericht N1).</summary>
+    [Test]
+    procedure ServiceKeepsLibraryUnitsOfOtherWriters;
+    /// <summary>Hält ein anderer die Schreibsperre des Bibliotheks-Caches, wartet der Aufbau darauf.</summary>
+    [Test]
+    procedure ServiceWaitsForLibraryWriteLock;
+    /// <summary>Ein nicht geschriebener Cache wird gemeldet statt verschluckt (Bericht N1).</summary>
+    [Test]
+    procedure ServiceReportsUnwrittenCache;
     [Test]
     procedure ReadOnlyServiceStopsWaitingAfterLimit;
     [Test]
@@ -312,10 +334,12 @@ begin
   FTexts := TDictionary<string, string>.Create;
   FBytes := TDictionary<string, TBytes>.Create;
   FStamps := TDictionary<string, Int64>.Create;
+  FLocked := TDictionary<string, Boolean>.Create;
 end;
 
 destructor TMemoryIndexFileSystem.Destroy;
 begin
+  FLocked.Free;
   FStamps.Free;
   FBytes.Free;
   FTexts.Free;
@@ -369,6 +393,8 @@ begin
 end;
 
 function TMemoryIndexFileSystem.ReadBytes(const AFileName: string; out ABytes: TBytes): Boolean;
+var
+  After: TProc<string>;
 begin
   if FFailReads then
     raise EInOutError.Create('simuliert');
@@ -376,20 +402,84 @@ begin
   try
     Inc(FReads);
     Result := FBytes.TryGetValue(UpperCase(AFileName), ABytes);
+    After := FAfterRead;
+  finally
+    TMonitor.Exit(Self);
+  end;
+  if Assigned(After) then
+    After(AFileName);
+end;
+
+function TMemoryIndexFileSystem.WriteBytes(const AFileName: string; const ABytes: TBytes;
+  out AError: string): Boolean;
+begin
+  AError := '';
+  if FFailWrites then
+    raise EInOutError.Create('simuliert');
+  if FRefuseWrites then
+  begin
+    AError := 'simuliert';
+    Exit(False);
+  end;
+  TMonitor.Enter(Self);
+  try
+    FBytes.AddOrSetValue(UpperCase(AFileName), ABytes);
+    FStamps.AddOrSetValue(UpperCase(AFileName), 1);
+    Result := True;
   finally
     TMonitor.Exit(Self);
   end;
 end;
 
 function TMemoryIndexFileSystem.WriteBytes(const AFileName: string; const ABytes: TBytes): Boolean;
+var
+  Error: string;
 begin
-  if FFailWrites then
-    raise EInOutError.Create('simuliert');
+  Result := WriteBytes(AFileName, ABytes, Error);
+end;
+
+type
+  /// <summary>Sperre aus TMemoryIndexFileSystem.TryLockWrite; gibt beim Freigeben frei.</summary>
+  TMemoryWriteLock = class(TInterfacedObject)
+  private
+    FFiles: TMemoryIndexFileSystem;
+    FFileName: string;
+  public
+    constructor Create(AFiles: TMemoryIndexFileSystem; const AFileName: string);
+    destructor Destroy; override;
+  end;
+
+constructor TMemoryWriteLock.Create(AFiles: TMemoryIndexFileSystem; const AFileName: string);
+begin
+  inherited Create;
+  FFiles := AFiles;
+  FFileName := AFileName;
+end;
+
+destructor TMemoryWriteLock.Destroy;
+begin
+  FFiles.Unlock(FFileName);
+  inherited;
+end;
+
+function TMemoryIndexFileSystem.TryLockWrite(const AFileName: string): IInterface;
+begin
   TMonitor.Enter(Self);
   try
-    FBytes.AddOrSetValue(UpperCase(AFileName), ABytes);
-    FStamps.AddOrSetValue(UpperCase(AFileName), 1);
-    Result := True;
+    if FLocked.ContainsKey(UpperCase(AFileName)) then
+      Exit(nil);
+    FLocked.Add(UpperCase(AFileName), True);
+  finally
+    TMonitor.Exit(Self);
+  end;
+  Result := TMemoryWriteLock.Create(Self, AFileName);
+end;
+
+procedure TMemoryIndexFileSystem.Unlock(const AFileName: string);
+begin
+  TMonitor.Enter(Self);
+  try
+    FLocked.Remove(UpperCase(AFileName));
   finally
     TMonitor.Exit(Self);
   end;
@@ -1960,6 +2050,156 @@ begin
   Assert.AreEqual(3, FromCache, 'nur die Projekt-Units neu eingelesen');
 end;
 
+/// <summary>Namen der Units im Cache AData, groß geschrieben und sortiert, mit Komma getrennt.</summary>
+function CachedNames(const AData: TBytes): string;
+var
+  Names: TStringList;
+  UnitIndex: TUnitIndex;
+begin
+  Names := TStringList.Create;
+  try
+    for UnitIndex in TIndexCache.Deserialize(AData) do
+      Names.Add(UpperCase(ExtractFileName(UnitIndex.FileName)));
+    Names.Sort;
+    Result := Names.CommaText;
+  finally
+    Names.Free;
+  end;
+end;
+
+procedure TIndexBuilderTests.ServiceKeepsLibraryUnitsOfOtherWriters;
+const
+  LibraryCache = 'C:\Cache\bibliothek.json';
+var
+  Other: ISymbolIndex;
+  Builder: TIndexBuilder;
+  Foreign, Data: TBytes;
+  Service: TIndexService;
+  Request: TIndexRequest;
+begin
+  // Was ein anderer Prozess schreibt: F aus der Bibliothek, die dieses Projekt nicht braucht.
+  Other := TSymbolIndex.Create;
+  Builder := TIndexBuilder.Create(Other, FFileSystem, nil, Resolve);
+  try
+    Builder.Build(nil, nil, ['C:\Lib\F.pas'], nil, nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Foreign := TIndexCache.Serialize(Other.Units);
+  Other := nil;
+  // Gleich nachdem dieser Aufbau den Cache (noch leer) gelesen hat, schreibt der andere.
+  FFiles.AfterRead :=
+    procedure(AFileName: string)
+    begin
+      if SameText(AFileName, LibraryCache) then
+      begin
+        FFiles.AfterRead := nil;
+        FFiles.WriteBytes(LibraryCache, Foreign);
+      end;
+    end;
+  Service := TIndexService.Create(FIndex, FFileSystem);
+  try
+    Request := Default(TIndexRequest);
+    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    Request.ResolveUnit := Resolve;
+    Request.CacheFile := 'C:\Cache\projekt.json';
+    Request.LibraryCacheFile := LibraryCache;
+    Service.Start(Request);
+    Service.WaitFor;
+  finally
+    Service.Free;
+  end;
+  FFiles.AfterRead := nil;
+  Assert.IsTrue(FFileSystem.ReadBytes(LibraryCache, Data));
+  // Vorher überschrieb der Aufbau den Stand des anderen: nur B, C, D.
+  Assert.AreEqual('B.PAS,C.PAS,D.PAS,F.PAS', CachedNames(Data));
+end;
+
+procedure TIndexBuilderTests.ServiceWaitsForLibraryWriteLock;
+const
+  LibraryCache = 'C:\Cache\bibliothek.json';
+var
+  Held: IInterface;
+  Releaser: TThread;
+  Service: TIndexService;
+  Request: TIndexRequest;
+  Data: TBytes;
+  NotWritten: string;
+begin
+  // Ein anderer schreibt gerade und gibt die Sperre nach kurzer Zeit frei.
+  Held := FFileSystem.TryLockWrite(LibraryCache);
+  Assert.IsTrue(Held <> nil);
+  Assert.IsTrue(FFileSystem.TryLockWrite(LibraryCache) = nil, 'nur ein Schreiber');
+  Releaser := TThread.CreateAnonymousThread(
+    procedure
+    begin
+      TThread.Sleep(300);
+      Held := nil;
+    end);
+  Releaser.FreeOnTerminate := False;
+  NotWritten := '';
+  Service := TIndexService.Create(FIndex, FFileSystem);
+  try
+    Service.OnCacheNotWritten :=
+      procedure(const AFileName, AReason: string)
+      begin
+        NotWritten := AReason;
+      end;
+    Request := Default(TIndexRequest);
+    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    Request.ResolveUnit := Resolve;
+    Request.CacheFile := 'C:\Cache\projekt.json';
+    Request.LibraryCacheFile := LibraryCache;
+    Releaser.Start;
+    Service.Start(Request);
+    Service.WaitFor;
+  finally
+    Service.Free;
+    Releaser.WaitFor;
+    Releaser.Free;
+  end;
+  Assert.AreEqual('', NotWritten);
+  Assert.IsTrue(FFileSystem.ReadBytes(LibraryCache, Data));
+  Assert.AreEqual('B.PAS,C.PAS,D.PAS', CachedNames(Data));
+end;
+
+procedure TIndexBuilderTests.ServiceReportsUnwrittenCache;
+var
+  Service: TIndexService;
+  Request: TIndexRequest;
+  Reported: TStringList;
+begin
+  FFiles.RefuseWrites := True;
+  Reported := TStringList.Create;
+  try
+    Service := TIndexService.Create(FIndex, FFileSystem);
+    try
+      Service.OnCacheNotWritten :=
+        procedure(const AFileName, AReason: string)
+        begin
+          TMonitor.Enter(Reported);
+          try
+            Reported.Add(AFileName + '=' + AReason);
+          finally
+            TMonitor.Exit(Reported);
+          end;
+        end;
+      Request := Default(TIndexRequest);
+      Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+      Request.ResolveUnit := Resolve;
+      Request.CacheFile := 'C:\Cache\index.json';
+      Service.Start(Request);
+      Service.WaitFor;
+    finally
+      Service.Free;
+    end;
+    Assert.IsTrue(Reported.Count > 0, 'gemeldet');
+    Assert.AreEqual('C:\Cache\index.json=simuliert', Reported[0]);
+  finally
+    Reported.Free;
+  end;
+end;
+
 procedure TIndexBuilderTests.ReadOnlyServiceWaitsForOtherWriter;
 const
   CacheFile = 'C:\Cache\index.json';
@@ -1986,7 +2226,7 @@ begin
     procedure
     begin
       TThread.Sleep(300);
-      FFileSystem.WriteBytes(CacheFile, CacheData);
+      FFiles.WriteBytes(CacheFile, CacheData);
       Busy := False;
     end);
   Writer.FreeOnTerminate := False;
