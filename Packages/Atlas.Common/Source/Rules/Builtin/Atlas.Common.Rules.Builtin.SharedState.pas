@@ -5,6 +5,9 @@
 //                              eine Variable von außerhalb (Summe := Summe + …, Inc/Dec) oder verändert eine
 //                              Sammlung von außerhalb (Liste.Add, Delete, Clear …) ohne Sperre (#1058). Typen aus
 //                              "threadSafeTypes" (Vorgabe TThreadList, TThreadedQueue) gelten als threadsicher.
+//   thread-unsafe-increment    Inc, Dec, X := X + 1 bzw. X := X - 1 auf einer globalen Variablen in TThread.Execute,
+//                              auf einem Feld oder einer globalen Variablen im Rumpf von TTask.Run/Create/Future
+//                              außerhalb von Schleifen und von TThread.CreateAnonymousThread (#1059).
 //
 // Von außerhalb heißt: kein Parameter, keine lokale Variable und keine Inline-Variable der anonymen Methode
 // selbst. Gemeldet wird nur, wenn der Name sicher aufgelöst ist (Variable oder Parameter der umgebenden Routine,
@@ -31,6 +34,12 @@ type
     class function DefaultThreadSafeTypes: TArray<string>; static;
   end;
 
+  TThreadUnsafeIncrementRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterSharedStateRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -41,6 +50,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Rules.Builtin.Concurrency,
+  Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Text.Lines;
@@ -52,6 +63,7 @@ type
   /// der Methode, globale Variable der Unit.</summary>
   TNameScope = (Unknown, Local, Field, Global);
 {$SCOPEDENUMS OFF}
+  TNameScopes = set of TNameScope;
 
   /// <summary>Ein ungeschützter Schreibzugriff auf AName.</summary>
   TSharedWrite = record
@@ -513,9 +525,115 @@ begin
   end;
 end;
 
+{ TThreadUnsafeIncrementRule }
+
+function TThreadUnsafeIncrementRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('thread-unsafe-increment', TRuleSeverity.Warning,
+    'Zähler im Thread ohne TInterlocked');
+end;
+
+procedure TThreadUnsafeIncrementRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  State: TSharedState;
+  Ancestry: TAncestry;
+  Classes: TArray<string>;
+
+  /// <summary>Erbt AOwner von TThread (über Klassen der Unit oder über den Index)?</summary>
+  function IsThreadClass(const AOwner: string): Boolean;
+  begin
+    Result := MatchText(AOwner, Classes);
+    if not Result and (AContext.Index <> nil) then
+    begin
+      if Ancestry = nil then
+        Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
+      Result := Ancestry.DescendsFrom(AOwner, 'TThread');
+    end;
+  end;
+
+  procedure Report(AMethod, ARoutine: TSyntaxNode; AScopes: TNameScopes);
+  var
+    Write: TSharedWrite;
+    Verb, What, TypeName: string;
+  begin
+    for Write in State.Writes(AMethod, False) do
+    begin
+      if not (State.Resolve(ARoutine, Write.Name, TypeName) in AScopes) then
+        Continue;
+      // Nur Zähler: Inc/Dec und X := X ± 1.
+      if (Write.Kind = TWriteKind.Assign) and not ((Write.Operation <> '') and (Trim(Write.Amount) = '1')) then
+        Continue;
+      Verb := 'erhöht';
+      if MatchText(Write.Operation, ['Dec', '-']) then
+        Verb := 'verringert';
+      What := 'Inc ist nicht atomar';
+      if SameText(Write.Operation, 'Dec') then
+        What := 'Dec ist nicht atomar'
+      else if Write.Kind = TWriteKind.Assign then
+        What := Write.Name + ' := ' + Write.Name + ' ' + Write.Operation + ' 1 ist nicht atomar';
+      AReport.Add(TTextRange.Create(Write.Statement.StartPos, Write.Statement.EndPos),
+        Format('%s wird aus mehreren Threads ohne Sperre %s; %s.', [Write.Name, Verb, What]), TRuleConfidence.Medium,
+        State.InterlockedFix(Write, TypeName));
+    end;
+  end;
+
+  procedure Visit(ANode, ARoutine: TSyntaxNode; AInLoop: Boolean);
+  var
+    Index: Integer;
+    Method: TSyntaxNode;
+    Owner: string;
+  begin
+    if ANode.Kind = TSyntaxKind.RoutineDecl then
+    begin
+      ARoutine := ANode;
+      AInLoop := False;
+      // TArbeiter.Execute einer Thread-Klasse.
+      if (LastDelimiter('.', ANode.Name) > 0) and SameText(Copy(ANode.Name, LastDelimiter('.', ANode.Name) + 1,
+        MaxInt), 'Execute') then
+      begin
+        Owner := Copy(ANode.Name, 1, LastDelimiter('.', ANode.Name) - 1);
+        // Eigene Felder schreibt nur der Thread selbst; geteilt sind globale Variablen.
+        if IsThreadClass(Owner) then
+          Report(ANode, ANode, [TNameScope.Global]);
+      end;
+    end
+    else if ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+      TSyntaxKind.RepeatStatement] then
+      AInLoop := True
+    else if ANode.Kind = TSyntaxKind.Call then
+    begin
+      Method := AnonymousArgument(ANode);
+      // TTask in Schleifen und TParallel.For meldet parallel-for-shared-write.
+      if (Method <> nil) and ((not AInLoop and IsCallOf(ANode, 'TTask', ['Run', 'Create', 'Future'])) or
+        IsCallOf(ANode, 'TThread', ['CreateAnonymousThread'])) then
+        // Eingefangene lokale Variablen schreibt nur dieser eine Thread neben dem Aufrufer; Felder und globale
+        // Variablen teilen sich alle Aufrufe.
+        Report(Method, ARoutine, [TNameScope.Field, TNameScope.Global]);
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index], ARoutine, AInLoop and (ANode.Kind <> TSyntaxKind.AnonymousMethod));
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or
+    not (ContainsText(AContext.Text, 'Inc') or ContainsText(AContext.Text, 'Dec') or
+    ContainsText(AContext.Text, '+ 1') or ContainsText(AContext.Text, '- 1')) then
+    Exit;
+  Classes := ThreadClasses(AContext.Tree.Root);
+  Ancestry := nil;
+  State := TSharedState.Create(AContext);
+  try
+    Visit(AContext.Tree.Root, nil, False);
+  finally
+    State.Free;
+    Ancestry.Free;
+  end;
+end;
+
 procedure RegisterSharedStateRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TParallelForSharedWriteRule.Create);
+  ARegistry.Register(TThreadUnsafeIncrementRule.Create);
 end;
 
 end.

@@ -8,7 +8,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|
 | [Fehler finden](#gruppe-find-bugs) | 56 |
 | [Exceptions](#gruppe-exceptions) | 8 |
-| [Threads](#gruppe-threads) | 14 |
+| [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 4 |
 | [Compiler vorab](#gruppe-compiler) | 15 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
@@ -116,6 +116,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`anonymous-thread-not-started`](#anonymous-thread-not-started) | Anonymer Thread nie gestartet | Bug | Warnung |
 | [`task-exception-unobserved`](#task-exception-unobserved) | Exception in TTask geht verloren | Code Smell | Hinweis |
 | [`parallel-for-shared-write`](#parallel-for-shared-write) | Gemeinsame Variable in TParallel.For geschrieben | Bug | Warnung |
+| [`thread-unsafe-increment`](#thread-unsafe-increment) | Zähler im Thread ohne TInterlocked | Bug | Warnung |
 
 <a id="gruppe-database"></a>
 ### Datenbank
@@ -4675,4 +4676,31 @@ TParallel.For(0, High(Werte), procedure(I: Integer)
   begin
     TInterlocked.Add(Summe, Werte[I]);
   end);
+```
+
+<a id="thread-unsafe-increment"></a>
+### thread-unsafe-increment
+
+**Zähler im Thread ohne TInterlocked** · Bug · Warnung · Gruppe Threads
+
+Inc, Dec, X := X + 1 oder X := X - 1 ohne Sperre auf einer globalen Variablen in Execute eines TThread-Nachfahren bzw. auf einem Feld oder einer globalen Variablen im Rumpf von TTask.Run/Create/Future außerhalb von Schleifen und von TThread.CreateAnonymousThread. Inc ist nicht atomar: zählen mehrere Threads gleichzeitig, gehen Erhöhungen verloren. Thread-Klassen kommen aus der Unit (auch über Zwischenklassen) und aus dem Index. Eigene Felder des Threads in Execute und eingefangene lokale Variablen eines einzelnen Tasks haben nur einen Schreiber und bleiben still, ebenso Rümpfe mit Sperre (TMonitor, Enter, Acquire, Lock, LockList, BeginWrite, TInterlocked) und verschachtelte anonyme Methoden (Synchronize, Queue). Tasks in Schleifen und TParallel.For meldet parallel-for-shared-write. Sicherheit mittel. Korrektur: TInterlocked.Increment/Decrement/Add bei Integer, Int64 und Cardinal (ergänzt System.SyncObjs).
+
+Mit Treffer:
+
+```pascal
+procedure TArbeiter.Execute;
+begin
+  while not Terminated do
+    if Holen then Inc(GVerarbeitet);
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TArbeiter.Execute;
+begin
+  while not Terminated do
+    if Holen then TInterlocked.Increment(GVerarbeitet);
+end;
 ```

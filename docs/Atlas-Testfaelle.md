@@ -4193,3 +4193,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt; eine Unit mit `uses System.
 | PW6 | Eigene Variable der anonymen Methode, `Werte[I] := …`, Rumpf mit `Sperre.Enter … Leave` oder `TMonitor`, Zugriff in `TThread.Synchronize`, geerbtes Feld aus einer anderen Unit | Keine Meldung |
 | PW7 | `TThreadList<Integer>.Add` bzw. `TThreadedQueue.Enqueue`; dann `"threadSafeTypes": []`; dann eigener Typ in `threadSafeTypes` | Erst keine Meldung, mit leerer Liste eine Meldung; eigener Typ bleibt still |
 | PW8 | `"parallel-for-shared-write": "off"`, `"group:threads": "off"` bzw. `exclude` | Keine Meldung |
+
+## Zähler im Thread ohne TInterlocked (#1059)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; eine Unit mit einer Klasse `TArbeiter = class(TThread)` und einer globalen Variablen `GVerarbeitet: Integer`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IZ1 | Das Beispiel aus #1059: `procedure TArbeiter.Execute; begin while not Terminated do if Holen then Inc(GVerarbeitet); end;` | Warnung `thread-unsafe-increment` an `Inc(GVerarbeitet)`: „GVerarbeitet wird aus mehreren Threads ohne Sperre erhöht; Inc ist nicht atomar.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| IZ2 | Schnellkorrektur „TInterlocked.Increment(GVerarbeitet) verwenden“, danach Strg+Z | Zeile wird `TInterlocked.Increment(GVerarbeitet);`, `System.SyncObjs` steht in den uses, keine Meldung mehr; ein Undo-Schritt |
+| IZ3 | `GVerarbeitet := GVerarbeitet + 1`, `Dec(GVerarbeitet)`, `Inc(GVerarbeitet, 5)`; Thread-Klasse über eine Zwischenklasse bzw. mit Vorfahr aus einer anderen Unit | Je eine Meldung; Korrekturen `Increment`, `Decrement`, `TInterlocked.Add(GVerarbeitet, 5)` |
+| IZ4 | In einer Formularmethode `TTask.Run(procedure begin Inc(FAnzahl) end)` bzw. `TThread.CreateAnonymousThread(procedure begin FAnzahl := FAnzahl + 1 end).Start` | Je eine Meldung |
+| IZ5 | `Inc(FEigene)` (Feld des Threads) in Execute, eingefangene lokale Variable eines einzelnen Tasks, Rumpf mit `TMonitor` oder `TInterlocked`, `Inc` in `Synchronize`, `Execute` einer Klasse ohne TThread, `X := X + 2` | Keine Meldung |
+| IZ6 | Task in einer `for`-Schleife mit `Inc(FAnzahl)` | Nur `parallel-for-shared-write`, nicht diese Regel |
+| IZ7 | `"thread-unsafe-increment": "off"`, `"group:threads": "off"` bzw. `exclude` | Keine Meldung |

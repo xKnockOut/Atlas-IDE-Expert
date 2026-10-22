@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.SharedState.Tests;
 
-// Tests der Thread-Regeln aus Builtin.SharedState: parallel-for-shared-write (#1058).
+// Tests der Thread-Regeln aus Builtin.SharedState: parallel-for-shared-write (#1058) und thread-unsafe-increment
+// (#1059).
 
 interface
 
@@ -31,6 +32,18 @@ type
     procedure ParallelThreadSafeTypes;
     [Test]
     procedure ParallelOffAndExclude;
+    [Test]
+    procedure IncrementIssueExample;
+    [Test]
+    procedure IncrementFixUsesInterlocked;
+    [Test]
+    procedure IncrementVariants;
+    [Test]
+    procedure IncrementTasksAndAnonymousThreads;
+    [Test]
+    procedure IncrementSilentCases;
+    [Test]
+    procedure IncrementOffAndExclude;
   end;
 
 implementation
@@ -40,6 +53,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
@@ -108,6 +124,41 @@ function ParallelFindings(const AVar, ABody: string; const AConfigJson: string =
 begin
   Result := TRuleAssert.Findings(TParallelForSharedWriteRule.Create, Rechnen('System.Threading', AVar, ABody),
     AConfigJson);
+end;
+
+/// <summary>Unit Arbeit mit einer Thread-Klasse TArbeiter und der globalen Variablen GVerarbeitet.</summary>
+function Arbeit(const ABody: string): string;
+begin
+  Result :=
+    'unit Arbeit;'#10 +
+    'interface'#10 +
+    'uses System.Classes, System.SyncObjs;'#10 +
+    'type'#10 +
+    '  TArbeiter = class(TThread)'#10 +
+    '  private'#10 +
+    '    FEigene: Integer;'#10 +
+    '    function Holen: Boolean;'#10 +
+    '  protected'#10 +
+    '    procedure Execute; override;'#10 +
+    '  end;'#10 +
+    'var'#10 +
+    '  GVerarbeitet: Integer;'#10 +
+    '  GSumme: Double;'#10 +
+    'implementation'#10 +
+    'function TArbeiter.Holen: Boolean;'#10 +
+    'begin'#10 +
+    '  Result := not Terminated;'#10 +
+    'end;'#10 +
+    'procedure TArbeiter.Execute;'#10 +
+    'begin'#10 +
+    ABody +
+    'end;'#10 +
+    'end.';
+end;
+
+function IncrementFindings(const ABody: string; const AConfigJson: string = ''): TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Arbeit(ABody), AConfigJson);
 end;
 
 /// <summary>Formular-Unit, deren Methode Starten ABody ausführt (Feld FAnzahl, globale GZaehler).</summary>
@@ -296,7 +347,7 @@ const
 begin
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TParallelForSharedWriteRule.Create,
     Starter('var'#10'  J: Integer;'#10, InLoop)))));
-  // Ein einzelner Task läuft nur einmal parallel zum Aufrufer.
+  // Ein einzelner Task meldet thread-unsafe-increment.
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TParallelForSharedWriteRule.Create,
     Starter('', Single)))));
 end;
@@ -371,6 +422,134 @@ begin
     'Source/Rechnen.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TParallelForSharedWriteRule.Create, Source,
     '{"rules": {"parallel-for-shared-write": {"exclude": ["Source/*.pas"]}}}', 'Source/Rechnen.pas'))));
+end;
+
+procedure TSharedStateRulesTests.IncrementIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := IncrementFindings('  while not Terminated do'#10'    if Holen then Inc(GVerarbeitet);'#10);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('thread-unsafe-increment', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('GVerarbeitet wird aus mehreren Threads ohne Sperre erhöht; Inc ist nicht atomar.',
+    Findings[0].Message);
+  Assert.AreEqual(22, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(18, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(35, Findings[0].Range.EndPos.Character);
+end;
+
+procedure TSharedStateRulesTests.IncrementFixUsesInterlocked;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Arbeit('  while not Terminated do'#10'    if Holen then Inc(GVerarbeitet);'#10);
+  Findings := TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('TInterlocked.Increment(GVerarbeitet) verwenden', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(Arbeit('  while not Terminated do'#10'    if Holen then TInterlocked.Increment(GVerarbeitet);'#10),
+    Fixed);
+  AssertParses(Fixed);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Fixed))));
+end;
+
+procedure TSharedStateRulesTests.IncrementVariants;
+var
+  Findings: TArray<TRuleFinding>;
+  Source: string;
+  Index: ISymbolIndex;
+begin
+  Findings := IncrementFindings('  GVerarbeitet := GVerarbeitet + 1;'#10'  Dec(GVerarbeitet);'#10 +
+    '  GVerarbeitet := GVerarbeitet - 1;'#10'  Inc(GVerarbeitet, 5);'#10);
+  Assert.AreEqual(4, Integer(Length(Findings)));
+  Assert.AreEqual('GVerarbeitet wird aus mehreren Threads ohne Sperre erhöht; ' +
+    'GVerarbeitet := GVerarbeitet + 1 ist nicht atomar.', Findings[0].Message);
+  Assert.AreEqual('TInterlocked.Increment(GVerarbeitet) verwenden', Findings[0].Fixes[0].Title);
+  Assert.AreEqual('GVerarbeitet wird aus mehreren Threads ohne Sperre verringert; Dec ist nicht atomar.',
+    Findings[1].Message);
+  Assert.AreEqual('TInterlocked.Decrement(GVerarbeitet) verwenden', Findings[1].Fixes[0].Title);
+  Assert.AreEqual('TInterlocked.Decrement(GVerarbeitet) verwenden', Findings[2].Fixes[0].Title);
+  Assert.AreEqual('TInterlocked.Add(GVerarbeitet, 5) verwenden', Findings[3].Fixes[0].Title);
+  // Double: Meldung ohne Korrektur.
+  Findings := IncrementFindings('  GSumme := GSumme + 1;'#10);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Erbt über eine Zwischenklasse der Unit von TThread.
+  Source := StringReplace(Arbeit('  Inc(GVerarbeitet);'#10), '  TArbeiter = class(TThread)',
+    '  TBasis = class(TThread)'#10'  end;'#10'  TArbeiter = class(TBasis)', []);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Source))));
+  // Vorfahr in einer anderen Unit: nur mit Index bekannt.
+  Source := StringReplace(Arbeit('  Inc(GVerarbeitet);'#10), 'class(TThread)', 'class(TBasisThread)', []);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Source))));
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText('unit Basis;'#10'interface'#10'uses System.Classes;'#10'type'#10 +
+    '  TBasisThread = class(TThread)'#10'  end;'#10'implementation'#10'end.', 'C:\Basis\Basis.pas', nil));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TThreadUnsafeIncrementRule.Create, Source, Index, '',
+    ''))));
+end;
+
+procedure TSharedStateRulesTests.IncrementTasksAndAnonymousThreads;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Starter('',
+    '  TTask.Run(procedure'#10'    begin'#10'      Inc(FAnzahl);'#10'      Inc(GZaehler);'#10'    end);'#10));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('FAnzahl wird aus mehreren Threads ohne Sperre erhöht; Inc ist nicht atomar.', Findings[0].Message);
+  Assert.AreEqual('GZaehler wird aus mehreren Threads ohne Sperre erhöht; Inc ist nicht atomar.',
+    Findings[1].Message);
+  Assert.AreEqual('TInterlocked.Increment(GZaehler) verwenden', Findings[1].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Starter('',
+    '  TThread.CreateAnonymousThread(procedure'#10'    begin'#10'      FAnzahl := FAnzahl + 1;'#10 +
+    '    end).Start;'#10)))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Starter('',
+    '  TTask.Future<Integer>(function: Integer'#10'    begin'#10'      Dec(FAnzahl);'#10'      Result := 0;'#10 +
+    '    end);'#10)))));
+end;
+
+procedure TSharedStateRulesTests.IncrementSilentCases;
+begin
+  // Eigenes Feld des Threads, lokale Variable, Sperre, andere Zuweisungen.
+  Assert.AreEqual(0, Integer(Length(IncrementFindings('  Inc(FEigene);'#10'  FEigene := FEigene + 1;'#10))));
+  Assert.AreEqual(0, Integer(Length(IncrementFindings('  TInterlocked.Increment(GVerarbeitet);'#10))));
+  Assert.AreEqual(0, Integer(Length(IncrementFindings('  System.TMonitor.Enter(Self);'#10 +
+    '  Inc(GVerarbeitet);'#10'  System.TMonitor.Exit(Self);'#10))));
+  Assert.AreEqual(0, Integer(Length(IncrementFindings('  GVerarbeitet := GVerarbeitet + 2;'#10 +
+    '  GVerarbeitet := 0;'#10))));
+  // Im Hauptthread über Synchronize.
+  Assert.AreEqual(0, Integer(Length(IncrementFindings('  Synchronize(procedure'#10'    begin'#10 +
+    '      Inc(GVerarbeitet);'#10'    end);'#10))));
+  // Execute einer Klasse, die nicht von TThread erbt.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create,
+    StringReplace(Arbeit('  Inc(GVerarbeitet);'#10), 'class(TThread)', 'class(TObject)', [])))));
+  // Eingefangene lokale Variable eines einzelnen Tasks.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Starter(
+    'var'#10'  Lokal: Integer;'#10,
+    '  TTask.Run(procedure'#10'    begin'#10'      Inc(Lokal);'#10'    end);'#10)))));
+  // Task in einer Schleife meldet parallel-for-shared-write.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Starter(
+    'var'#10'  J: Integer;'#10,
+    '  for J := 1 to 4 do'#10'    TTask.Run(procedure'#10'      begin'#10'        Inc(FAnzahl);'#10 +
+    '      end);'#10)))));
+  // Methode außerhalb eines Threads.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Starter('',
+    '  Inc(FAnzahl);'#10'  Inc(GZaehler);'#10)))));
+end;
+
+procedure TSharedStateRulesTests.IncrementOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Arbeit('  Inc(GVerarbeitet);'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Source,
+    '{"rules": {"thread-unsafe-increment": "off"}}'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Source, '',
+    'Source/Arbeit.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Source,
+    '{"rules": {"thread-unsafe-increment": {"exclude": ["Source/*.pas"]}}}', 'Source/Arbeit.pas'))));
 end;
 
 initialization
