@@ -81,3 +81,4 @@ form-access-before-create | Ref.Formulare.Haupt.pas | Suche.OnSuchen := SucheAus
 except-handler-order | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nprocedure LeseZahl(const AText: string);\nbegin\n  try\n    StrToInt(AText);\n  except\n    on E: Exception do\n      Exit;\n    on E: EConvertError do\n      Exit;\n  end;\nend;
 reraise-exception-object | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nprocedure LeseWert(const AText: string);\nbegin\n  try\n    StrToInt(AText);\n  except\n    on E: EConvertError do\n      raise E;\n  end;\nend;
 blocking-call-in-main-thread | Ref.Formulare.Haupt.pas | Formular.ShowModal; | Sleep(500);\n    Formular.ShowModal;
+thread-loop-without-terminated | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\ntype\n  TAbfrage = class(TThread)\n  protected\n    procedure Execute; override;\n  end;\n\nprocedure TAbfrage.Execute;\nbegin\n  while True do\n    Sleep(1000);\nend;

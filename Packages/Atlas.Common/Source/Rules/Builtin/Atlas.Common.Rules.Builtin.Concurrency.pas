@@ -25,6 +25,8 @@
 //   blocking-call-in-main-thread        Sleep, WaitFor, WaitForSingleObject, WaitForMultipleObjects und Wait
 //                                       in Methoden von Formularen und Frames sowie in Ereignis-Handlern
 //                                       (#959); kurzes Sleep unter "maxSleepMs" nur in Warteschleifen.
+//   thread-loop-without-terminated      while/repeat ohne Terminated in Execute eines Threads und in Methoden,
+//                                       die nur von dort kommen (#960); nur Endlos- und Warteschleifen.
 //
 // Ein Thread mit Free ohne Terminate und WaitFor wird nicht gemeldet:
 // TThread.Destroy ruft beides selbst auf.
@@ -118,6 +120,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
     /// <summary>Position des Timeouts unter den Argumenten von ACall (ab 0); -1 ohne Timeout.</summary>
     class function TimeoutArgument(const ACall: string): Integer; static;
+  end;
+
+  TThreadLoopWithoutTerminatedRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
   TQueueNilInPackageRule = class(TInterfacedObject, IRule)
@@ -1732,6 +1740,213 @@ begin
   end;
 end;
 
+{ TThreadLoopWithoutTerminatedRule }
+
+const
+  ThreadWaitCalls: array[0..6] of string = ('Sleep', 'WaitFor', 'WaitForSingleObject', 'WaitForMultipleObjects',
+    'MsgWaitForMultipleObjects', 'Wait', 'Yield');
+
+function TThreadLoopWithoutTerminatedRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('thread-loop-without-terminated', TRuleSeverity.Warning,
+    'Thread-Schleife ohne Terminated');
+end;
+
+procedure TThreadLoopWithoutTerminatedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Routines: TArray<TSyntaxNode>;
+  Names: TArray<TArray<string>>;
+
+  function IsConstant(ANode: TSyntaxNode; const AValue: string): Boolean;
+  begin
+    Result := (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.Literal]) and SameText(ANode.Name, AValue);
+  end;
+
+  // Alle Bezeichner (auch hinter einem Punkt), ohne anonyme Methoden.
+  procedure CollectNames(ANode: TSyntaxNode; var ANames: TArray<string>);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.AnonymousMethod then
+      Exit;
+    if (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and not InList(ANames, ANode.Name) then
+      ANames := ANames + [ANode.Name];
+    for Index := 0 to ANode.ChildCount - 1 do
+      CollectNames(ANode[Index], ANames);
+  end;
+
+  function MentionsAny(ANode: TSyntaxNode; const ACandidates: array of string): Boolean;
+  var
+    Found: TArray<string>;
+    Name: string;
+  begin
+    Found := nil;
+    CollectNames(ANode, Found);
+    for Name in ACandidates do
+      if InList(Found, Name) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Execute und die Methoden der Klasse, die nur aus Execute heraus (auch über andere solche Methoden) kommen.
+  function ThreadRoutines(const AClass: string): TArray<TSyntaxNode>;
+  var
+    Reached: TArray<Integer>;
+    Index, Other, Count: Integer;
+    Method: string;
+    Only: Boolean;
+
+    function IsReached(AIndex: Integer): Boolean;
+    var
+      Item: Integer;
+    begin
+      for Item in Reached do
+        if Item = AIndex then
+          Exit(True);
+      Result := False;
+    end;
+
+  begin
+    Result := nil;
+    Reached := nil;
+    for Index := 0 to High(Routines) do
+      if SameText(Routines[Index].Name, AClass + '.Execute') then
+        Reached := Reached + [Index];
+    if Reached = nil then
+      Exit;
+    repeat
+      Count := Length(Reached);
+      for Index := 0 to High(Routines) do
+      begin
+        if IsReached(Index) or not SameText(ClassPart(Routines[Index].Name), AClass) then
+          Continue;
+        Method := MethodPart(Routines[Index].Name);
+        Only := False;
+        for Other := 0 to High(Routines) do
+          if (Other <> Index) and InList(Names[Other], Method) then
+          begin
+            Only := IsReached(Other);
+            if not Only then
+              Break;
+          end;
+        if Only then
+          Reached := Reached + [Index];
+      end;
+    until Count = Length(Reached);
+    for Index in Reached do
+      Result := Result + [Routines[Index]];
+  end;
+
+  function Fix(ALoop: TSyntaxNode): TArray<TRuleFix>;
+  var
+    Condition: TSyntaxNode;
+    Text, Replacement: string;
+  begin
+    if ALoop.Kind = TSyntaxKind.WhileStatement then
+      Condition := ALoop[0]
+    else
+      Condition := ALoop[ALoop.ChildCount - 1];
+    Text := SourceText(AContext.Text, Condition);
+    if Condition.Kind = TSyntaxKind.BinaryExpr then
+      Text := '(' + Text + ')';
+    if ALoop.Kind = TSyntaxKind.WhileStatement then
+    begin
+      if IsConstant(Condition, 'True') then
+        Replacement := 'not Terminated'
+      else
+        Replacement := Text + ' and not Terminated';
+    end
+    else if IsConstant(Condition, 'False') then
+      Replacement := 'Terminated'
+    else
+      Replacement := Text + ' or Terminated';
+    Result := [TRuleFix.Create('Terminated in die Schleifenbedingung aufnehmen',
+      [TRuleEdit.Create(NodeRange(Condition), Replacement)])];
+  end;
+
+  function HasMethod(const AName: string): Boolean;
+  var
+    Routine: TSyntaxNode;
+  begin
+    for Routine in Routines do
+      if SameText(Routine.Name, AName) then
+        Exit(True);
+    Result := False;
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    Infinite: Boolean;
+    Keyword: string;
+  begin
+    if ANode.Kind = TSyntaxKind.AnonymousMethod then
+      Exit;
+    if (ANode.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement]) and (ANode.ChildCount >= 2) and
+      not MentionsAny(ANode, ['Terminated', 'CheckTerminated']) then
+    begin
+      if ANode.Kind = TSyntaxKind.WhileStatement then
+      begin
+        Infinite := IsConstant(ANode[0], 'True');
+        Keyword := 'while';
+      end
+      else
+      begin
+        Infinite := IsConstant(ANode[ANode.ChildCount - 1], 'False');
+        Keyword := 'repeat';
+      end;
+      // Endlosschleife oder Warteschleife: beide laufen weiter, bis jemand Terminated prüft.
+      if Infinite or MentionsAny(ANode, ThreadWaitCalls) then
+        AReport.Add(TTextRange.Create(ANode.StartPos, TTextPosition.Create(ANode.StartPos.Line,
+          ANode.StartPos.Character + Length(Keyword))), 'Die Schleife prüft Terminated nicht; der Thread lässt ' +
+          'sich nicht beenden.', TRuleConfidence.High, Fix(ANode));
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+var
+  Ancestry: TAncestry;
+  Classes: TArray<string>;
+  Index: Integer;
+  Owner: string;
+  Routine: TSyntaxNode;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'Execute') then
+    Exit;
+  Routines := nil;
+  AContext.Tree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if ANode.Kind = TSyntaxKind.RoutineDecl then
+        Routines := Routines + [ANode];
+      Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
+    end);
+  SetLength(Names, Length(Routines));
+  for Index := 0 to High(Routines) do
+  begin
+    Names[Index] := nil;
+    CollectNames(Routines[Index], Names[Index]);
+  end;
+  Classes := SharedThreadClasses(AContext);
+  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
+  try
+    for Routine in Routines do
+    begin
+      Owner := ClassPart(Routine.Name);
+      if (Owner <> '') and not InList(Classes, Owner) and Ancestry.DescendsFrom(Owner, 'TThread') then
+        Classes := Classes + [Owner];
+    end;
+  finally
+    Ancestry.Free;
+  end;
+  for Owner in Classes do
+    // Mit TerminatedSet beendet die Klasse ihre Schleifen auf eigenem Weg (Ereignis, Flag).
+    if not HasMethod(Owner + '.TerminatedSet') then
+      for Routine in ThreadRoutines(Owner) do
+        Visit(Routine);
+end;
+
 procedure RegisterConcurrencyRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TThreadVclAccessRule.Create);
@@ -1744,6 +1959,7 @@ begin
   ARegistry.Register(TProcessMessagesInLoopRule.Create);
   ARegistry.Register(TQueueNilInPackageRule.Create);
   ARegistry.Register(TBlockingCallInMainThreadRule.Create);
+  ARegistry.Register(TThreadLoopWithoutTerminatedRule.Create);
 end;
 
 end.

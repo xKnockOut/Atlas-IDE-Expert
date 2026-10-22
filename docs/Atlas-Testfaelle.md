@@ -3783,3 +3783,17 @@ Voraussetzung: Server läuft; VCL-Projekt mit Formular `TfrmHaupt` und Thread-Fe
 | BC5 | `Sleep(10)`, `WaitForSingleObject(H, 0)`, `Sleep` in `TThread.Execute`, in einer anonymen Methode oder in einer Klasse ohne Formular und ohne Sender | Keine Meldung |
 | BC6 | `"maxSleepMs": 1000` bzw. `5`; `"calls": ["Pause"]` | `Sleep(500)` still bzw. auch `Sleep(10)` gemeldet; nur noch `Pause(…)` gemeldet; Einstellungsseite zeigt beide Optionen unter der Regel |
 | BC7 | `"blocking-call-in-main-thread": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Thread-Schleife ohne Terminated (#960)
+
+Voraussetzung: Server läuft; Unit mit `TPoller = class(TThread)` und `procedure Execute; override;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TL1 | In `Execute`: `while True do begin Abfragen; Sleep(1000); end;` | Warnung `thread-loop-without-terminated` auf `while`: „Die Schleife prüft Terminated nicht; der Thread lässt sich nicht beenden.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| TL2 | Schnellkorrektur „Terminated in die Schleifenbedingung aufnehmen“, danach Strg+Z | `while not Terminated do`, Meldung weg; ein Undo-Schritt stellt es wieder her (**Abnahme**) |
+| TL3 | `while not FFertig do FEreignis.WaitFor(500);`, `repeat … until False;`, `repeat Sleep(10) until A or B;` | Je eine Warnung; Korrektur ergibt `… and not Terminated`, `until Terminated`, `until (A or B) or Terminated` |
+| TL4 | Schleife in einer privaten Methode, die nur `Execute` aufruft | Warnung; ruft eine Routine außerhalb der Klasse die Methode auch auf, keine Meldung |
+| TL5 | `if Terminated then Exit;` im Rumpf, `CheckTerminated`, `for`-Schleife, `while I < Count do Inc(I)`, anonyme Methode, Klasse mit `TerminatedSet` | Keine Meldung |
+| TL6 | Programm mit dem Thread aus TL1 schließen, mit und ohne Korrektur | Ohne Korrektur hängt das Beenden in `WaitFor`, mit Korrektur endet es sofort |
+| TL7 | `"thread-loop-without-terminated": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
