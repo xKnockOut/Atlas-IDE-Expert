@@ -301,6 +301,27 @@
       ]
     },
     {
+      "id": "duplicate-assignment",
+      "name": "Field or property assigned twice",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "The same field or property (Panel.Left, Self.FWert, P^.X) gets a value twice in a row without being read or anything being called in between; usually the second line should have a different target (Left/Top). Between the two only assignments to other objects with values that call nothing and do not name the target may stand; the second value must not read the target. Local variables are covered by unused-assignment, targets with an index or a call do not count. Silent for a False/True toggle (it often triggers something, like Active), for a second assignment compiled only under an additional condition ({$IFDEF DEBUG}), for different branches of the same {$IFDEF} and for properties from allowProperties. If the counterpart (Left/Top, Width/Height …) is missing from the sequence, the message suggests it. High confidence. No quick fix; jump to the first assignment.",
+      "bad": "Panel.Left := 8;\nPanel.Left := 40;\nPanel.Width := 200;",
+      "good": "Panel.Left := 8;\nPanel.Top := 40;\nPanel.Width := 200;",
+      "options": [
+        {
+          "name": "allowProperties",
+          "type": "string-list",
+          "default": [
+            "Visible",
+            "Enabled"
+          ],
+          "description": "Properties where setting twice may be intended (setter with side effects), patterns with * and ?."
+        }
+      ]
+    },
+    {
       "id": "declared-not-implemented",
       "name": "Declared but not implemented",
       "category": "bug",

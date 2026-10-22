@@ -106,3 +106,4 @@ raw-memory-leak | Ref.Komponenten.Anzeige.pas | Anzeigetext: string;\nbegin\n  C
 stringlist-objects-leak | Ref.Formulare.Haupt.pas | KundenListe.Items.Add(Kunde); | KundenListe.Items.AddObject(Kunde, TStringList.Create);
 inherited-order | Ref.Sprache.Merkmale.pas | FElemente.Free;\n  inherited; | inherited;\n  FElemente.Free;
 inherited-wrong-method | Ref.Formulare.Detail.pas | procedure TDetailFormular.Initialisieren;\nbegin\n  inherited; | procedure TDetailFormular.Initialisieren;\nbegin\n  inherited Loaded;
+duplicate-assignment | Ref.Formulare.Basis.pas | begin\n  TitelLabel.Caption := Caption; | begin\n  TitelLabel.Left := 8;\n  TitelLabel.Left := 40;\n  TitelLabel.Caption := Caption;

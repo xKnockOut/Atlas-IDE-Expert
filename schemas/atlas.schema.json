@@ -424,6 +424,14 @@
                 "default": [],
                 "description": "Nur sql-write-without-where: Tabellen, die absichtlich ganz geleert bzw. geändert werden, mit oder ohne Schema (#966)."
               },
+              "allowProperties": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["Visible", "Enabled"],
+                "description": "Nur duplicate-assignment: Properties, bei denen doppeltes Setzen gewollt sein kann (Setter mit Nebenwirkung), Muster mit * und ? (#1051)."
+              },
               "searchPaths": {
                 "type": "string",
                 "enum": ["project", "atlas", "both"],
