@@ -427,6 +427,14 @@
                 "default": true,
                 "description": "Nur managed-param-without-const: Overrides nicht melden, ihre Signatur gibt der Vorfahr vor (#975)."
               },
+              "allowAttributes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur write-only-property: Attribute, die eine Property ohne read erlauben, mit oder ohne Endung Attribute (#978)."
+              },
               "allowTables": {
                 "type": "array",
                 "items": {

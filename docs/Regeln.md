@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 30 |
+| [Stil und Metriken](#gruppe-style) | 31 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -259,6 +259,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`commented-out-code`](#commented-out-code) | Auskommentierter Code | Code Smell | Hinweis |
 | [`default-parameter`](#default-parameter) | Standardparameter statt Überladung | Code Smell | Warnung |
 | [`empty-routine`](#empty-routine) | Leere Methode | Code Smell | Hinweis |
+| [`write-only-property`](#write-only-property) | Property ohne read | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -3549,6 +3550,29 @@ procedure TImport.Pruefen;
 begin
   // Absichtlich leer.
 end;
+```
+
+<a id="write-only-property"></a>
+### write-only-property
+
+**Property ohne read** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine Property hat write, aber kein read. Sie lässt sich nicht im Objektinspektor anzeigen, nicht im Debugger lesen und verwirrt Aufrufer. Properties ohne Typ bleiben außen vor (sie veröffentlichen eine geerbte Property neu, deren read vom Vorfahren kommt), ebenso Properties mit einem Attribut aus allowAttributes (mit oder ohne Endung Attribute). Schnellkorrektur: read FName ergänzen, wenn der Typ ein Feld FName gleichen Typs deklariert. Das Lesen einer solchen Property meldet readonly-property-assigned.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowAttributes` | string-list | `[]` | Attribute, die eine Property ohne read erlauben. |
+
+Mit Treffer:
+
+```pascal
+property Passwort: string write SetPasswort;
+```
+
+Richtig:
+
+```pascal
+property Passwort: string read FPasswort write SetPasswort;
 ```
 
 <a id="queue-nil-in-package"></a>

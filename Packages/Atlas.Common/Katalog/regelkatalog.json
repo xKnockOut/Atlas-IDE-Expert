@@ -1737,6 +1737,24 @@
       "good": "procedure TImport.Pruefen;\nbegin\n  // Absichtlich leer.\nend;"
     },
     {
+      "id": "write-only-property",
+      "name": "Property without read",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "A property has write but no read. It cannot be shown in the Object Inspector or read in the debugger and confuses callers. Properties without a type are skipped (they republish an inherited property whose read comes from the ancestor), as are properties with an attribute from allowAttributes (with or without the Attribute suffix). Quick fix: add read FName when the type declares a field FName of the same type. Reading such a property is reported by readonly-property-assigned.",
+      "bad": "property Passwort: string write SetPasswort;",
+      "good": "property Passwort: string read FPasswort write SetPasswort;",
+      "options": [
+        {
+          "name": "allowAttributes",
+          "type": "string-list",
+          "default": [],
+          "description": "Attributes that allow a property without read."
+        }
+      ]
+    },
+    {
       "id": "queue-nil-in-package",
       "name": "TThread.Queue(nil, …) in a package",
       "category": "bug",

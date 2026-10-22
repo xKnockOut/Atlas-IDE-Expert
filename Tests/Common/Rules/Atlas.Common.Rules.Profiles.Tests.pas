@@ -192,7 +192,7 @@ const
     'thread-use-after-free-on-terminate,thread-vcl-access,threadvar-managed,transaction-without-rollback,type-used-before-declaration,' +
     'unchecked-conversion,unchecked-enum-cast,unneeded-forward-declaration,unreachable-code,unresolved-attribute,unresolved-identifier,' +
     'unused-assignment,unused-local,unused-parameter,use-after-free,uses-unit-not-found,virtual-instead-of-override,with-statement,' +
-    'writeln-in-gui-app';
+    'write-only-property,writeln-in-gui-app';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
   // strict schaltet experimentelle Regeln ein (#146): security-path-traversal (#149), file-header und
@@ -230,7 +230,7 @@ begin
     'metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,' +
     'null-compare,processmessages-in-loop,redundant-assigned-free,reraise-exception-object,setlength-in-loop,shadowed-name,slash-command,task-exception-unobserved,thread-resume-suspend,unneeded-forward-declaration,' +
     'unused-assignment,unused-local,' +
-    'unused-parameter,with-statement',
+    'unused-parameter,with-statement,write-only-property',
     ActiveRules('style'));
 end;
 
