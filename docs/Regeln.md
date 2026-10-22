@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 57 |
+| [Fehler finden](#gruppe-find-bugs) | 58 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
@@ -83,6 +83,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`createprocess-readonly-commandline`](#createprocess-readonly-commandline) | CreateProcess mit unveränderlicher Befehlszeile | Bug | Fehler |
 | [`form-access-before-create`](#form-access-before-create) | Zugriff auf ein Formular, das noch nicht erzeugt ist | Bug | Warnung |
 | [`constant-condition`](#constant-condition) | Bedingung ist immer gleich | Bug | Warnung |
+| [`infinite-loop`](#infinite-loop) | Schleife ohne Ausgang | Bug | Fehler |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -4566,4 +4567,31 @@ Richtig:
 ```pascal
 if Count > 0 then
   Process;
+```
+
+<a id="infinite-loop"></a>
+### infinite-loop
+
+**Schleife ohne Ausgang** · Bug · Fehler · Gruppe Fehler finden
+
+while True do, repeat … until False oder eine andere Schleife, deren Bedingung sie nie beendet, ohne Ausgang im Rumpf: kein Break (ein Break in einer inneren Schleife verlässt nur diese), Exit, raise, goto, Halt, Abort oder RunError, kein Aufruf einer Routine der Datei, die eine Ausnahme auslöst oder das Programm beendet, und keine Prüfung von Terminated (Thread-Schleifen prüft thread-loop-without-terminated). Anonyme Methoden im Rumpf zählen nicht. Die Aktion springt zum Schleifenkopf.
+
+Mit Treffer:
+
+```pascal
+while True do
+begin
+  Line := Reader.ReadLine;
+  Process(Line);
+end;
+```
+
+Richtig:
+
+```pascal
+while not Reader.EndOfStream do
+begin
+  Line := Reader.ReadLine;
+  Process(Line);
+end;
 ```

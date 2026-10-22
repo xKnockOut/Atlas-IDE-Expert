@@ -11,6 +11,17 @@
 //                       einem Zweig von {$IF…} und solche aus anderen Units gelten
 //                       als unbekannt. Korrektur bei if: toten Zweig entfernen
 //                       bzw. die Bedingung entfernen (Zweig bleibt).
+//   infinite-loop       while mit immer wahrer bzw. repeat mit immer falscher
+//                       Bedingung ohne Ausgang im Rumpf (#1042): kein Break (in
+//                       verschachtelten Schleifen zählt es nicht), Exit, raise,
+//                       goto, Halt, Abort oder RunError, kein Aufruf einer
+//                       Routine der Datei, die eine Ausnahme auslöst bzw. das
+//                       Programm beendet, und keine Prüfung von Terminated (dafür
+//                       thread-loop-without-terminated). Anonyme Methoden im
+//                       Rumpf zählen nicht. Steht die Schleife im try-Teil eines
+//                       try … except derselben Routine, endet sie gewollt über
+//                       eine Ausnahme (lesen bis EJsonRpcTransportClosed) und
+//                       bleibt still. Aktion: Sprung zum Schleifenkopf.
 
 interface
 
@@ -20,9 +31,16 @@ uses
 
 const
   ConstantConditionRuleId = 'constant-condition';
+  InfiniteLoopRuleId = 'infinite-loop';
 
 type
   TConstantConditionRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TInfiniteLoopRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -90,6 +108,16 @@ type
     /// <summary>Steht in der Bedingung ANode oder direkt davor bzw. dahinter eine Direktive (bedingter Teil)?</summary>
     function Conditional(ANode: TSyntaxNode): Boolean;
   end;
+
+/// <summary>Dateiname für die Namensauflösung: Pfad, sonst relativer Pfad, sonst Unit-Name.</summary>
+function RuleFileName(const AContext: TRuleContext): string;
+begin
+  Result := AContext.FileName;
+  if Result = '' then
+    Result := AContext.RelativePath;
+  if Result = '' then
+    Result := AContext.UnitName + '.pas';
+end;
 
 { TConstantValue }
 
@@ -531,11 +559,7 @@ var
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
     Exit;
-  FileName := AContext.FileName;
-  if FileName = '' then
-    FileName := AContext.RelativePath;
-  if FileName = '' then
-    FileName := AContext.UnitName + '.pas';
+  FileName := RuleFileName(AContext);
   Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
   try
     Resolver.Namespaces := AContext.Namespaces;
@@ -553,9 +577,235 @@ begin
   end;
 end;
 
+{ TInfiniteLoopRule }
+
+const
+  // Aufrufe, die die Schleife verlassen: über die Routine, das Programm oder eine Ausnahme.
+  LeavingCalls: array[0..4] of string = ('Exit', 'Halt', 'Abort', 'RunError', 'ExitProcess');
+  // Aufrufe, die das Programm beenden oder eine Ausnahme auslösen.
+  RaisingCalls: array[0..3] of string = ('Halt', 'Abort', 'RunError', 'ExitProcess');
+
+function TInfiniteLoopRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(InfiniteLoopRuleId, TRuleSeverity.Error, 'Schleife ohne Ausgang');
+end;
+
+/// <summary>Letzter Teil des Namens einer Routine: "TFoo.Bar" → "Bar".</summary>
+function ShortName(const AName: string): string;
+var
+  Dot: Integer;
+begin
+  Result := AName;
+  Dot := Result.LastIndexOf('.');
+  if Dot >= 0 then
+    Result := Copy(Result, Dot + 2, MaxInt);
+end;
+
+/// <summary>Name eines Aufrufs (Bezeichner, Kette X.Name, Name(…)); '' sonst.</summary>
+function CalledName(ANode: TSyntaxNode): string;
+begin
+  Result := '';
+  if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) then
+    ANode := ANode[0];
+  if ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess] then
+    Result := ANode.Name;
+end;
+
+/// <summary>Löst ANode (ohne anonyme Methoden) eine Ausnahme aus oder beendet das Programm, direkt oder über
+/// eine Routine aus ARaising?</summary>
+function Raises(ANode: TSyntaxNode; ARaising: TDictionary<string, Boolean>): Boolean;
+var
+  Index: Integer;
+  Name: string;
+begin
+  if ANode.Kind = TSyntaxKind.AnonymousMethod then
+    Exit(False);
+  if ANode.Kind = TSyntaxKind.RaiseStatement then
+    Exit(True);
+  if ANode.Kind in [TSyntaxKind.Call, TSyntaxKind.Identifier] then
+  begin
+    Name := CalledName(ANode);
+    if MatchText(Name, RaisingCalls) or ((Name <> '') and ARaising.ContainsKey(LowerCase(Name))) then
+      Exit(True);
+  end;
+  for Index := 0 to ANode.ChildCount - 1 do
+    if Raises(ANode[Index], ARaising) then
+      Exit(True);
+  Result := False;
+end;
+
+/// <summary>Kurznamen (klein) der Routinen der Datei, die eine Ausnahme auslösen oder das Programm beenden.</summary>
+function RaisingRoutines(ATree: TSyntaxTree): TDictionary<string, Boolean>;
+var
+  Routines: TList<TSyntaxNode>;
+  Changed: Boolean;
+  Routine: TSyntaxNode;
+
+  procedure Collect(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.RoutineDecl then
+      Routines.Add(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Collect(ANode[Index]);
+  end;
+
+begin
+  Result := TDictionary<string, Boolean>.Create;
+  Routines := TList<TSyntaxNode>.Create;
+  try
+    if ATree.Root <> nil then
+      Collect(ATree.Root);
+    // Bis nichts mehr dazukommt: A ruft B, B löst aus.
+    repeat
+      Changed := False;
+      for Routine in Routines do
+        if not Result.ContainsKey(LowerCase(ShortName(Routine.Name))) and (Routine.FindChild(TSyntaxKind.Block) <> nil) and
+          Raises(Routine.FindChild(TSyntaxKind.Block), Result) then
+        begin
+          Result.Add(LowerCase(ShortName(Routine.Name)), True);
+          Changed := True;
+        end;
+    until not Changed;
+  finally
+    Routines.Free;
+  end;
+end;
+
+/// <summary>Hat ANode einen Ausgang aus der Schleife? AInner: ANode liegt in einer inneren Schleife, ein Break
+/// verlässt nur diese.</summary>
+function HasExit(ANode: TSyntaxNode; AInner: Boolean; ARaising: TDictionary<string, Boolean>): Boolean;
+var
+  Index: Integer;
+  Name: string;
+  Inner: Boolean;
+begin
+  case ANode.Kind of
+    TSyntaxKind.AnonymousMethod:
+      Exit(False);
+    TSyntaxKind.RaiseStatement, TSyntaxKind.GotoStatement:
+      Exit(True);
+    TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call:
+      begin
+        Name := CalledName(ANode);
+        if SameText(Name, 'Terminated') or MatchText(Name, LeavingCalls) or
+          ((Name <> '') and ARaising.ContainsKey(LowerCase(Name))) then
+          Exit(True);
+        if SameText(Name, 'Break') and not AInner then
+          Exit(True);
+      end;
+  end;
+  Inner := AInner or (ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement,
+    TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement]);
+  for Index := 0 to ANode.ChildCount - 1 do
+    if HasExit(ANode[Index], Inner, ARaising) then
+      Exit(True);
+  Result := False;
+end;
+
+/// <summary>Steht ANode im try-Teil eines try … except derselben Routine?</summary>
+function InTryExcept(ANode: TSyntaxNode): Boolean;
+var
+  Child, Parent: TSyntaxNode;
+begin
+  Child := ANode;
+  Parent := ANode.Parent;
+  while (Parent <> nil) and not (Parent.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) do
+  begin
+    if (Parent.Kind = TSyntaxKind.TryStatement) and (Child.Kind <> TSyntaxKind.ExceptBlock) and
+      (Child.Kind <> TSyntaxKind.FinallyBlock) and (Parent.FindChild(TSyntaxKind.ExceptBlock) <> nil) then
+      Exit(True);
+    Child := Parent;
+    Parent := Parent.Parent;
+  end;
+  Result := False;
+end;
+
+procedure TInfiniteLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Values: TConditionValues;
+  Resolver: TNameResolver;
+  Raising: TDictionary<string, Boolean>;
+  FileName: string;
+
+  function Endless(ALoop: TSyntaxNode): Boolean;
+  var
+    Index, First, Last: Integer;
+    Value: TConstantValue;
+  begin
+    Result := False;
+    if ALoop.ChildCount = 0 then
+      Exit;
+    if ALoop.Kind = TSyntaxKind.WhileStatement then
+    begin
+      Value := Values.Evaluate(ALoop[0]);
+      if (Value.Kind <> TConstantKind.Bool) or not Value.Bool or Values.Conditional(ALoop[0]) then
+        Exit;
+      First := 1;
+      Last := ALoop.ChildCount - 1;
+    end
+    else
+    begin
+      Value := Values.Evaluate(ALoop[ALoop.ChildCount - 1]);
+      if (Value.Kind <> TConstantKind.Bool) or Value.Bool or Values.Conditional(ALoop[ALoop.ChildCount - 1]) then
+        Exit;
+      First := 0;
+      Last := ALoop.ChildCount - 2;
+    end;
+    for Index := First to Last do
+      if HasExit(ALoop[Index], False, Raising) then
+        Exit;
+    Result := not InTryExcept(ALoop);
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    Condition: TSyntaxNode;
+  begin
+    if (ANode.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement]) and Endless(ANode) then
+    begin
+      if ANode.Kind = TSyntaxKind.WhileStatement then
+        AReport.Add(TTextRange.Create(ANode.StartPos, ANode[0].EndPos),
+          'Die Schleife hat keinen Ausgang (kein Break, Exit oder raise).', TRuleConfidence.High)
+      else
+      begin
+        Condition := ANode[ANode.ChildCount - 1];
+        AReport.Add(NodeRange(Condition), 'Die Schleife hat keinen Ausgang (kein Break, Exit oder raise).',
+          TRuleConfidence.High, [TRuleFix.Jump('Zum Schleifenkopf springen', ANode.StartPos)]);
+      end;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  FileName := RuleFileName(AContext);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  try
+    Resolver.Namespaces := AContext.Namespaces;
+    Resolver.PinTree(AContext.Tree, FileName);
+    Values := TConditionValues.Create(AContext.Tree, AContext.Text, FileName, Resolver, nil);
+    Raising := RaisingRoutines(AContext.Tree);
+    try
+      Visit(AContext.Tree.Root);
+    finally
+      Raising.Free;
+      Values.Free;
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
 procedure RegisterConditionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TConstantConditionRule.Create);
+  ARegistry.Register(TInfiniteLoopRule.Create);
 end;
 
 end.
