@@ -675,7 +675,8 @@ type
     RulesGroupForms, RulesGroupArchitecture, RulesGroupStyle, RulesGroupPackages, RulesGroupInternal,
     RulesProfilesNode, RulesProfilesText, RulesProjectButton, SettingsProblemsWindow, SettingsProblemsWindowScope,
     SettingsProblemsWindowGroupBy, SettingsProblemsWindowCompiler, SettingsProblemsWindowFollowCursor,
-    SettingsProblemsLive, SettingsHoverProblemActions, MetricsLensMembers, MetricsLensUses);
+    SettingsProblemsLive, SettingsHoverProblemActions, MetricsLensMembers, MetricsLensUses,
+    MetricsLensOperands, MetricsLensLocals, MetricsLensExits, MetricsLensInheritance, MetricsLensInheritanceAtLeast);
 
   TAtlasStrings = class
   private class var
@@ -2132,7 +2133,12 @@ const
      'Laufende Prüfung beim Tippen (aus: nur beim Speichern)',
      'Aktionszeile unter Befunden im Hover',
      '%d Member',
-     '%d Units im uses'),
+     '%d Units im uses',
+     'Operanden %d',
+     '%d lokale',
+     '%d Ausstiege',
+     'Vererbungstiefe %d',
+     'Vererbungstiefe mindestens %d'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3497,7 +3503,12 @@ const
      'Check while typing (off: only on save)',
      'Action row below findings in the hover',
      '%d members',
-     '%d units in uses'));
+     '%d units in uses',
+     'operands %d',
+     '%d locals',
+     '%d exits',
+     'inheritance depth %d',
+     'inheritance depth at least %d'));
 
 { TAtlasStrings }
 

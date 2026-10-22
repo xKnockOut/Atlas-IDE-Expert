@@ -2,7 +2,8 @@
 
 // Tests für Extrahieren (#50, Teil A): Methode extrahieren mit Parametern nach
 // Datenfluss, Ablehnungen (Exit, Result, Teilauswahl, Break), Variable
-// einführen (inline, var-Abschnitt, alle Vorkommen) und Konstante extrahieren.
+// einführen (inline, var-Abschnitt, alle Vorkommen), Konstante extrahieren und
+// Bedingung in Funktion auslagern (#980).
 // Die Auswahl steht in den Texten zwischen « und ».
 
 interface
@@ -40,6 +41,12 @@ type
     procedure ExtractConstantInRoutineAndUnit;
     [Test]
     procedure ExtractConstantRejectsNonLiterals;
+    [Test]
+    procedure ExtractConditionAsMethod;
+    [Test]
+    procedure ExtractConditionAsRoutineWithConstant;
+    [Test]
+    procedure ExtractConditionRejectsWritesAndPartialSelection;
   end;
 
 implementation
@@ -159,6 +166,19 @@ begin
     begin
       Result := TExtractRefactoring.ExtractConstant(AText, ATree, ARange, Options(True), AUnit, AAction);
     end, ATitle);
+end;
+
+function Condition(const AMarked: string; out AReason: string): string;
+var
+  Title, Reason: string;
+begin
+  Reason := '';
+  Result := Apply(AMarked,
+    function(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange; out AAction: TCodeAction): Boolean
+    begin
+      Result := TExtractRefactoring.ExtractCondition(AText, ATree, ARange, Options(True), AAction, Reason);
+    end, Title);
+  AReason := Reason;
 end;
 
 procedure AssertParses(const AText: string);
@@ -679,6 +699,154 @@ begin
     '  X = «5»;',
     'implementation',
     'end.']), False, Title));
+end;
+
+procedure TExtractTests.ExtractConditionAsMethod;
+var
+  Reason, Result_: string;
+begin
+  // Methode der Klasse: Deklaration im private-Abschnitt, gelesene Namen als const-Parameter, Felder bleiben.
+  Result_ := Condition(Join([
+    'unit U;',
+    'interface',
+    'type',
+    '  TKasse = class',
+    '  private',
+    '    FOffen: Boolean;',
+    '  public',
+    '    procedure Buche(Betrag: Currency);',
+    '  end;',
+    'implementation',
+    'procedure TKasse.Buche(Betrag: Currency);',
+    'var',
+    '  Grenze: Currency;',
+    'begin',
+    '  Grenze := 100;',
+    '  while «FOffen and (Betrag > 0) and (Betrag < Grenze)» do',
+    '    Betrag := Betrag - 1;',
+    'end;',
+    'end.']), Reason);
+  Assert.AreEqual(Join([
+    'unit U;',
+    'interface',
+    'type',
+    '  TKasse = class',
+    '  private',
+    '    FOffen: Boolean;',
+    '    function ExtractedCondition(const Betrag: Currency; const Grenze: Currency): Boolean;',
+    '  public',
+    '    procedure Buche(Betrag: Currency);',
+    '  end;',
+    'implementation',
+    'function TKasse.ExtractedCondition(const Betrag: Currency; const Grenze: Currency): Boolean;',
+    'begin',
+    '  Result := FOffen and (Betrag > 0) and (Betrag < Grenze);',
+    'end;',
+    '',
+    'procedure TKasse.Buche(Betrag: Currency);',
+    'var',
+    '  Grenze: Currency;',
+    'begin',
+    '  Grenze := 100;',
+    '  while ExtractedCondition(Betrag, Grenze) do',
+    '    Betrag := Betrag - 1;',
+    'end;',
+    'end.']), Result_, Reason);
+  AssertParses(Result_);
+end;
+
+procedure TExtractTests.ExtractConditionAsRoutineWithConstant;
+var
+  Reason, Result_: string;
+begin
+  // Ohne Klasse eine Routine davor; lokale Konstanten werden mitkopiert, Klammern um die ganze Bedingung fallen.
+  Result_ := Condition(Join([
+    'program P;',
+    'procedure Run(A: Integer);',
+    'const',
+    '  Max = 10;',
+    'begin',
+    '  repeat',
+    '    Inc(A);',
+    '  until «(A > Max) or (A = 0)»;',
+    'end;',
+    'begin',
+    'end.']), Reason);
+  Assert.AreEqual(Join([
+    'program P;',
+    'function ExtractedCondition(const A: Integer): Boolean;',
+    'const',
+    '  Max = 10;',
+    'begin',
+    '  Result := (A > Max) or (A = 0);',
+    'end;',
+    '',
+    'procedure Run(A: Integer);',
+    'const',
+    '  Max = 10;',
+    'begin',
+    '  repeat',
+    '    Inc(A);',
+    '  until ExtractedCondition(A);',
+    'end;',
+    'begin',
+    'end.']), Result_, Reason);
+  AssertParses(Result_);
+  Result_ := Condition(Join([
+    'program P;',
+    'procedure Run(A: Integer);',
+    'begin',
+    '  if «(A > 1)» then',
+    '    Exit;',
+    'end;',
+    'begin',
+    'end.']), Reason);
+  Assert.Contains(Result_, '  Result := A > 1;');
+  Assert.Contains(Result_, '  if ExtractedCondition(A) then');
+end;
+
+procedure TExtractTests.ExtractConditionRejectsWritesAndPartialSelection;
+var
+  Reason: string;
+begin
+  // Ein var-Argument ändert A: die Funktion bekäme es nur als const.
+  Assert.AreEqual('-', Condition(Join([
+    'program P;',
+    'function Lies(var X: Integer): Boolean;',
+    'begin',
+    '  Result := True;',
+    'end;',
+    'procedure Run(A: Integer);',
+    'begin',
+    '  if «Lies(A) and (A > 0)» then',
+    '    Exit;',
+    'end;',
+    'begin',
+    'end.']), Reason));
+  Assert.AreEqual('die Bedingung ändert A', Reason);
+  // Nur ein Teil der Bedingung.
+  Assert.AreEqual('-', Condition(Join([
+    'program P;',
+    'procedure Run(A, B: Integer);',
+    'begin',
+    '  if «(A > 0) and (B > 0)» or (A = B) then',
+    '    Exit;',
+    'end;',
+    'begin',
+    'end.']), Reason));
+  Assert.AreEqual('keine ganze Bedingung', Reason);
+  // Result ist in der neuen Funktion ein anderes.
+  Assert.AreEqual('-', Condition(Join([
+    'program P;',
+    'function Run(A: Integer): Boolean;',
+    'begin',
+    '  Result := A > 0;',
+    '  if «Result and (A < 9)» then',
+    '    Exit;',
+    'end;',
+    'begin',
+    'end.']), Reason));
+  Assert.AreEqual('Result in der Bedingung', Reason);
 end;
 
 initialization

@@ -1086,6 +1086,60 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "metric-boolean-operands",' + #10 +
+    '      "name": "Condition with too many operands",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A condition of if, while, until or a conditional expression joins more operands with and, or and xor than the limit (default 5); parentheses and not are looked through, a compari' + 'son or call counts as one operand. The finding sits on the condition. Quick fix: Extract condition to function (#50) turns the whole condition into a Boolean function (a method of the class or a routi' + 'ne before the current one) with the local names it reads as const parameters. Also shown in the metrics lens.",' + #10 +
+    '      "bad": "if (Kunde.Aktiv) and (Kunde.Land = ''DE'') and (Betrag > 0) and\n   (not Gesperrt) and (Datum >= Start) and (Datum <= Ende) then",' + #10 +
+    '      "good": "if IstBuchbar(Kunde, Betrag, Gesperrt, Datum, Start, Ende) then",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 5,' + #10 +
+    '          "description": "Highest allowed number of operands in one condition."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-local-count",' + #10 +
+    '      "name": "Too many local variables",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "The routine declares more local variables than the limit (default 12): names in its var section, inline variables and for var loops. Local routines and anonymous methods count on' + ' their own. Many locals usually mean the routine does several things; extract parts into own methods. Also shown in the metrics lens.",' + #10 +
+    '      "bad": "procedure Abschluss;\nvar\n  Summe, Netto, Steuer, Rabatt, Skonto, Porto: Currency;\n  Kunde, Konto, Beleg, Datei, Zeile, Text, Pfad: string;",' + #10 +
+    '      "good": "procedure Abschluss;\nvar\n  Beleg: TBeleg;\nbegin\n  Beleg := BerechneBeleg;\n  SchreibeBeleg(Beleg);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 12,' + #10 +
+    '          "description": "Highest allowed number of local variables."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-exit-points",' + #10 +
+    '      "name": "Too many exit points",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "The routine leaves more often through Exit and raise than the limit (default 4); Exit(Value) and a bare raise in an except block count too. Local routines and anonymous methods c' + 'ount on their own. Many exits make the flow hard to follow; combine guard clauses or extract parts. Also shown in the metrics lens.",' + #10 +
+    '      "bad": "if A = nil then Exit;\nif B = nil then Exit;\nif not Valid then raise EError.Create(''...'');\nif Done then Exit(True);\nif Cancel then Exit(False);",' + #10 +
+    '      "good": "if not Ready(A, B) then\n  Exit;\nResult := Process(A, B);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 4,' + #10 +
+    '          "description": "Highest allowed number of Exit and raise statements."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "todo-comment",' + #10 +
     '      "name": "Open TODO comment",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -1679,6 +1733,24 @@ begin
     '          "type": "integer",' + #10 +
     '          "default": 30,' + #10 +
     '          "description": "Maximum number of units in all uses clauses."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-inheritance-depth",' + #10 +
+    '      "name": "Inheritance too deep",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "The class has more ancestors of its own than the limit (default 5). Ancestors from RTL, VCL, FMX and other libraries do not count (by unit name or because the index loaded them f' + 'rom the library path), nor does TObject. Ancestors are looked up in the file and in the symbol index. If the chain breaks at an unknown ancestor before reaching a library, the value is a lower bound a' + 'nd the message says at least; it is only reported when that bound already exceeds the limit. Units of a library itself are not checked. The finding sits on the class name; the metrics lens shows the d' + 'epth next to the member count.",' + #10 +
+    '      "bad": "TBasis = class(TForm) ... TStufe6 = class(TStufe5)  { 6 own ancestors }",' + #10 +
+    '      "good": "TStufe2 = class(TBasis)\n  FDruck: IDruck;  { composition instead of more levels }",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 5,' + #10 +
+    '          "description": "Highest allowed number of own ancestors."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +
@@ -2994,6 +3066,39 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "metric-boolean-operands",' + #10 +
+    '      "name": "Bedingung mit zu vielen Operanden",' + #10 +
+    '      "description": "Eine Bedingung von if, while, until oder einem Bedingungsausdruck verknüpft mehr Operanden mit and, or und xor als der Grenzwert (Vorgabe 5); Klammern und not zählen nicht, ein V' + 'ergleich oder Aufruf ist ein Operand. Der Befund steht auf der Bedingung. Schnellkorrektur „Bedingung in Funktion auslagern“ (#50) macht aus der ganzen Bedingung eine Funktion mit Ergebnis Boolean (Me' + 'thode der Klasse bzw. Routine vor der umgebenden), die gelesenen lokalen Namen werden const-Parameter. Erscheint auch in der Metrik-Linse.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "description": "Höchstens so viele Operanden in einer Bedingung."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-local-count",' + #10 +
+    '      "name": "Zu viele lokale Variablen",' + #10 +
+    '      "description": "Die Routine deklariert mehr lokale Variablen als der Grenzwert (Vorgabe 12): Namen im var-Abschnitt, Inline-Variablen und for var. Lokale Routinen und anonyme Methoden zählen für' + ' sich. Viele lokale Variablen heißen meist, dass die Routine mehreres tut; Teile in eigene Methoden auslagern. Erscheint auch in der Metrik-Linse.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "description": "Höchstens so viele lokale Variablen."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-exit-points",' + #10 +
+    '      "name": "Zu viele Ausstiege",' + #10 +
+    '      "description": "Die Routine wird öfter mit Exit und raise verlassen als der Grenzwert (Vorgabe 4); Exit(Wert) und raise; im except zählen mit. Lokale Routinen und anonyme Methoden zählen für sic' + 'h. Viele Ausstiege machen den Ablauf schwer lesbar; Wächter zusammenfassen oder Teile auslagern. Erscheint auch in der Metrik-Linse.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "description": "Höchstens so viele Exit und raise."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "todo-comment",' + #10 +
     '      "name": "Offener TODO-Kommentar",' + #10 +
     '      "description": "Ein Kommentar beginnt mit einer Marke für offene Arbeit: // TODO, // FIXME oder das Format der IDE-To-Do-Liste { TODO 1 -oPerson -cKategorie : Text }. Der Hinweis zeigt Marke, Pr' + 'iorität, Kategorie, Person und Text, damit offene Arbeit in der Problemliste erscheint. In der Vorgabe aus; in atlas.json einschalten, z. B. \"rules\": {\"todo-comment\": {\"severity\": \"hint\"}}. Er' + 'ledigte Einträge ({ DONE … }) meldet die Regel nie. Die Option keywords legt die Marken fest (Vorgabe [\"TODO\", \"FIXME\"]); sie gilt auch für get_todos und --todos.",' + #10 +
@@ -3305,6 +3410,17 @@ begin
     '        {' + #10 +
     '          "name": "max",' + #10 +
     '          "description": "Höchstzahl der Units in allen uses-Klauseln."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-inheritance-depth",' + #10 +
+    '      "name": "Zu tiefe Vererbung",' + #10 +
+    '      "description": "Die Klasse hat mehr eigene Vorfahren als der Grenzwert (Vorgabe 5). Vorfahren aus RTL, VCL, FMX und anderen Bibliotheken zählen nicht (am Unit-Namen oder weil der Index sie aus d' + 'em Bibliothekspfad nachgeladen hat), TObject ebenso. Vorfahren werden in der Datei und im Symbolindex gesucht. Bricht die Kette an einem unbekannten Vorfahren ab, bevor sie eine Bibliothek erreicht, i' + 'st der Wert eine Untergrenze und die Meldung sagt „mindestens“; gemeldet wird nur, wenn schon sie über der Grenze liegt. Units einer Bibliothek selbst werden nicht geprüft. Der Befund steht auf dem Kl' + 'assennamen; die Metrik-Linse zeigt die Tiefe neben den Membern.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "description": "Höchstens so viele eigene Vorfahren."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +

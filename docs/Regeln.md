@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 32 |
+| [Stil und Metriken](#gruppe-style) | 36 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -244,6 +244,9 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`metric-cyclomatic-complexity`](#metric-cyclomatic-complexity) | Zyklomatische Komplexität zu hoch | Code Smell | Hinweis |
 | [`metric-cognitive-complexity`](#metric-cognitive-complexity) | Kognitive Komplexität zu hoch | Code Smell | Hinweis |
 | [`metric-parameter-count`](#metric-parameter-count) | Zu viele Parameter | Code Smell | Hinweis |
+| [`metric-boolean-operands`](#metric-boolean-operands) | Bedingung mit zu vielen Operanden | Code Smell | Hinweis |
+| [`metric-local-count`](#metric-local-count) | Zu viele lokale Variablen | Code Smell | Hinweis |
+| [`metric-exit-points`](#metric-exit-points) | Zu viele Ausstiege | Code Smell | Hinweis |
 | [`todo-comment`](#todo-comment) | Offener TODO-Kommentar | Code Smell | Hinweis |
 | [`deprecated-symbol`](#deprecated-symbol) | Veraltetes Symbol | Code Smell | Hinweis |
 | [`unneeded-forward-declaration`](#unneeded-forward-declaration) | Überflüssige Forward-Deklaration | Code Smell | Hinweis |
@@ -254,6 +257,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`metric-class-size`](#metric-class-size) | Klasse mit zu vielen Membern | Code Smell | Hinweis |
 | [`metric-unit-length`](#metric-unit-length) | Unit zu lang | Code Smell | Hinweis |
 | [`metric-uses-count`](#metric-uses-count) | Zu viele Units im uses | Code Smell | Hinweis |
+| [`metric-inheritance-depth`](#metric-inheritance-depth) | Zu tiefe Vererbung | Code Smell | Hinweis |
 | [`public-field`](#public-field) | Öffentliches Feld | Code Smell | Hinweis |
 | [`global-variable`](#global-variable) | Globale Variable im interface | Code Smell | Hinweis |
 | [`commented-out-code`](#commented-out-code) | Auskommentierter Code | Code Smell | Hinweis |
@@ -2411,6 +2415,90 @@ Richtig:
 procedure Book(const AAddress: TAddress; const AOrder: TOrder);
 ```
 
+<a id="metric-boolean-operands"></a>
+### metric-boolean-operands
+
+**Bedingung mit zu vielen Operanden** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine Bedingung von if, while, until oder einem Bedingungsausdruck verknüpft mehr Operanden mit and, or und xor als der Grenzwert (Vorgabe 5); Klammern und not zählen nicht, ein Vergleich oder Aufruf ist ein Operand. Der Befund steht auf der Bedingung. Schnellkorrektur „Bedingung in Funktion auslagern“ (#50) macht aus der ganzen Bedingung eine Funktion mit Ergebnis Boolean (Methode der Klasse bzw. Routine vor der umgebenden), die gelesenen lokalen Namen werden const-Parameter. Erscheint auch in der Metrik-Linse.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `max` | integer | `5` | Höchstens so viele Operanden in einer Bedingung. |
+
+Mit Treffer:
+
+```pascal
+if (Kunde.Aktiv) and (Kunde.Land = 'DE') and (Betrag > 0) and
+   (not Gesperrt) and (Datum >= Start) and (Datum <= Ende) then
+```
+
+Richtig:
+
+```pascal
+if IstBuchbar(Kunde, Betrag, Gesperrt, Datum, Start, Ende) then
+```
+
+<a id="metric-local-count"></a>
+### metric-local-count
+
+**Zu viele lokale Variablen** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Die Routine deklariert mehr lokale Variablen als der Grenzwert (Vorgabe 12): Namen im var-Abschnitt, Inline-Variablen und for var. Lokale Routinen und anonyme Methoden zählen für sich. Viele lokale Variablen heißen meist, dass die Routine mehreres tut; Teile in eigene Methoden auslagern. Erscheint auch in der Metrik-Linse.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `max` | integer | `12` | Höchstens so viele lokale Variablen. |
+
+Mit Treffer:
+
+```pascal
+procedure Abschluss;
+var
+  Summe, Netto, Steuer, Rabatt, Skonto, Porto: Currency;
+  Kunde, Konto, Beleg, Datei, Zeile, Text, Pfad: string;
+```
+
+Richtig:
+
+```pascal
+procedure Abschluss;
+var
+  Beleg: TBeleg;
+begin
+  Beleg := BerechneBeleg;
+  SchreibeBeleg(Beleg);
+```
+
+<a id="metric-exit-points"></a>
+### metric-exit-points
+
+**Zu viele Ausstiege** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Die Routine wird öfter mit Exit und raise verlassen als der Grenzwert (Vorgabe 4); Exit(Wert) und raise; im except zählen mit. Lokale Routinen und anonyme Methoden zählen für sich. Viele Ausstiege machen den Ablauf schwer lesbar; Wächter zusammenfassen oder Teile auslagern. Erscheint auch in der Metrik-Linse.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `max` | integer | `4` | Höchstens so viele Exit und raise. |
+
+Mit Treffer:
+
+```pascal
+if A = nil then Exit;
+if B = nil then Exit;
+if not Valid then raise EError.Create('...');
+if Done then Exit(True);
+if Cancel then Exit(False);
+```
+
+Richtig:
+
+```pascal
+if not Ready(A, B) then
+  Exit;
+Result := Process(A, B);
+```
+
 <a id="todo-comment"></a>
 ### todo-comment
 
@@ -3421,6 +3509,30 @@ Richtig:
 ```pascal
 uses
   { 12 units; reports in Kasse.Berichte }
+```
+
+<a id="metric-inheritance-depth"></a>
+### metric-inheritance-depth
+
+**Zu tiefe Vererbung** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Die Klasse hat mehr eigene Vorfahren als der Grenzwert (Vorgabe 5). Vorfahren aus RTL, VCL, FMX und anderen Bibliotheken zählen nicht (am Unit-Namen oder weil der Index sie aus dem Bibliothekspfad nachgeladen hat), TObject ebenso. Vorfahren werden in der Datei und im Symbolindex gesucht. Bricht die Kette an einem unbekannten Vorfahren ab, bevor sie eine Bibliothek erreicht, ist der Wert eine Untergrenze und die Meldung sagt „mindestens“; gemeldet wird nur, wenn schon sie über der Grenze liegt. Units einer Bibliothek selbst werden nicht geprüft. Der Befund steht auf dem Klassennamen; die Metrik-Linse zeigt die Tiefe neben den Membern.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `max` | integer | `5` | Höchstens so viele eigene Vorfahren. |
+
+Mit Treffer:
+
+```pascal
+TBasis = class(TForm) ... TStufe6 = class(TStufe5)  { 6 own ancestors }
+```
+
+Richtig:
+
+```pascal
+TStufe2 = class(TBasis)
+  FDruck: IDruck;  { composition instead of more levels }
 ```
 
 <a id="public-field"></a>

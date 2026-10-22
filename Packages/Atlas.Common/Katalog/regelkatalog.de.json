@@ -563,6 +563,39 @@
       ]
     },
     {
+      "id": "metric-boolean-operands",
+      "name": "Bedingung mit zu vielen Operanden",
+      "description": "Eine Bedingung von if, while, until oder einem Bedingungsausdruck verknüpft mehr Operanden mit and, or und xor als der Grenzwert (Vorgabe 5); Klammern und not zählen nicht, ein Vergleich oder Aufruf ist ein Operand. Der Befund steht auf der Bedingung. Schnellkorrektur „Bedingung in Funktion auslagern“ (#50) macht aus der ganzen Bedingung eine Funktion mit Ergebnis Boolean (Methode der Klasse bzw. Routine vor der umgebenden), die gelesenen lokalen Namen werden const-Parameter. Erscheint auch in der Metrik-Linse.",
+      "options": [
+        {
+          "name": "max",
+          "description": "Höchstens so viele Operanden in einer Bedingung."
+        }
+      ]
+    },
+    {
+      "id": "metric-local-count",
+      "name": "Zu viele lokale Variablen",
+      "description": "Die Routine deklariert mehr lokale Variablen als der Grenzwert (Vorgabe 12): Namen im var-Abschnitt, Inline-Variablen und for var. Lokale Routinen und anonyme Methoden zählen für sich. Viele lokale Variablen heißen meist, dass die Routine mehreres tut; Teile in eigene Methoden auslagern. Erscheint auch in der Metrik-Linse.",
+      "options": [
+        {
+          "name": "max",
+          "description": "Höchstens so viele lokale Variablen."
+        }
+      ]
+    },
+    {
+      "id": "metric-exit-points",
+      "name": "Zu viele Ausstiege",
+      "description": "Die Routine wird öfter mit Exit und raise verlassen als der Grenzwert (Vorgabe 4); Exit(Wert) und raise; im except zählen mit. Lokale Routinen und anonyme Methoden zählen für sich. Viele Ausstiege machen den Ablauf schwer lesbar; Wächter zusammenfassen oder Teile auslagern. Erscheint auch in der Metrik-Linse.",
+      "options": [
+        {
+          "name": "max",
+          "description": "Höchstens so viele Exit und raise."
+        }
+      ]
+    },
+    {
       "id": "todo-comment",
       "name": "Offener TODO-Kommentar",
       "description": "Ein Kommentar beginnt mit einer Marke für offene Arbeit: // TODO, // FIXME oder das Format der IDE-To-Do-Liste { TODO 1 -oPerson -cKategorie : Text }. Der Hinweis zeigt Marke, Priorität, Kategorie, Person und Text, damit offene Arbeit in der Problemliste erscheint. In der Vorgabe aus; in atlas.json einschalten, z. B. \"rules\": {\"todo-comment\": {\"severity\": \"hint\"}}. Erledigte Einträge ({ DONE … }) meldet die Regel nie. Die Option keywords legt die Marken fest (Vorgabe [\"TODO\", \"FIXME\"]); sie gilt auch für get_todos und --todos.",
@@ -874,6 +907,17 @@
         {
           "name": "max",
           "description": "Höchstzahl der Units in allen uses-Klauseln."
+        }
+      ]
+    },
+    {
+      "id": "metric-inheritance-depth",
+      "name": "Zu tiefe Vererbung",
+      "description": "Die Klasse hat mehr eigene Vorfahren als der Grenzwert (Vorgabe 5). Vorfahren aus RTL, VCL, FMX und anderen Bibliotheken zählen nicht (am Unit-Namen oder weil der Index sie aus dem Bibliothekspfad nachgeladen hat), TObject ebenso. Vorfahren werden in der Datei und im Symbolindex gesucht. Bricht die Kette an einem unbekannten Vorfahren ab, bevor sie eine Bibliothek erreicht, ist der Wert eine Untergrenze und die Meldung sagt „mindestens“; gemeldet wird nur, wenn schon sie über der Grenze liegt. Units einer Bibliothek selbst werden nicht geprüft. Der Befund steht auf dem Klassennamen; die Metrik-Linse zeigt die Tiefe neben den Membern.",
+      "options": [
+        {
+          "name": "max",
+          "description": "Höchstens so viele eigene Vorfahren."
         }
       ]
     },

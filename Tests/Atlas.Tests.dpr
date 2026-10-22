@@ -62,6 +62,7 @@ uses
   Atlas.Common.Index.Tests in 'Common\Index\Atlas.Common.Index.Tests.pas',
   Atlas.Common.Index.NameIndex.Tests in 'Common\Index\Atlas.Common.Index.NameIndex.Tests.pas',
   Atlas.Common.Index.Files.Tests in 'Common\Index\Atlas.Common.Index.Files.Tests.pas',
+  Atlas.Common.Index.LibraryUnits.Tests in 'Common\Index\Atlas.Common.Index.LibraryUnits.Tests.pas',
   Atlas.Common.Index.CacheHousekeeping.Tests in 'Common\Index\Atlas.Common.Index.CacheHousekeeping.Tests.pas',
   Atlas.Common.Index.Processes.Tests in 'Common\Index\Atlas.Common.Index.Processes.Tests.pas',
   Atlas.Common.Index.Adapters.Processes.Tests in 'Common\Index\Atlas.Common.Index.Adapters.Processes.Tests.pas',

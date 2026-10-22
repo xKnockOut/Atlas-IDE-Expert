@@ -1066,6 +1066,60 @@
       ]
     },
     {
+      "id": "metric-boolean-operands",
+      "name": "Condition with too many operands",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "A condition of if, while, until or a conditional expression joins more operands with and, or and xor than the limit (default 5); parentheses and not are looked through, a comparison or call counts as one operand. The finding sits on the condition. Quick fix: Extract condition to function (#50) turns the whole condition into a Boolean function (a method of the class or a routine before the current one) with the local names it reads as const parameters. Also shown in the metrics lens.",
+      "bad": "if (Kunde.Aktiv) and (Kunde.Land = 'DE') and (Betrag > 0) and\n   (not Gesperrt) and (Datum >= Start) and (Datum <= Ende) then",
+      "good": "if IstBuchbar(Kunde, Betrag, Gesperrt, Datum, Start, Ende) then",
+      "options": [
+        {
+          "name": "max",
+          "type": "integer",
+          "default": 5,
+          "description": "Highest allowed number of operands in one condition."
+        }
+      ]
+    },
+    {
+      "id": "metric-local-count",
+      "name": "Too many local variables",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "The routine declares more local variables than the limit (default 12): names in its var section, inline variables and for var loops. Local routines and anonymous methods count on their own. Many locals usually mean the routine does several things; extract parts into own methods. Also shown in the metrics lens.",
+      "bad": "procedure Abschluss;\nvar\n  Summe, Netto, Steuer, Rabatt, Skonto, Porto: Currency;\n  Kunde, Konto, Beleg, Datei, Zeile, Text, Pfad: string;",
+      "good": "procedure Abschluss;\nvar\n  Beleg: TBeleg;\nbegin\n  Beleg := BerechneBeleg;\n  SchreibeBeleg(Beleg);",
+      "options": [
+        {
+          "name": "max",
+          "type": "integer",
+          "default": 12,
+          "description": "Highest allowed number of local variables."
+        }
+      ]
+    },
+    {
+      "id": "metric-exit-points",
+      "name": "Too many exit points",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "The routine leaves more often through Exit and raise than the limit (default 4); Exit(Value) and a bare raise in an except block count too. Local routines and anonymous methods count on their own. Many exits make the flow hard to follow; combine guard clauses or extract parts. Also shown in the metrics lens.",
+      "bad": "if A = nil then Exit;\nif B = nil then Exit;\nif not Valid then raise EError.Create('...');\nif Done then Exit(True);\nif Cancel then Exit(False);",
+      "good": "if not Ready(A, B) then\n  Exit;\nResult := Process(A, B);",
+      "options": [
+        {
+          "name": "max",
+          "type": "integer",
+          "default": 4,
+          "description": "Highest allowed number of Exit and raise statements."
+        }
+      ]
+    },
+    {
       "id": "todo-comment",
       "name": "Open TODO comment",
       "category": "code-smell",
@@ -1659,6 +1713,24 @@
           "type": "integer",
           "default": 30,
           "description": "Maximum number of units in all uses clauses."
+        }
+      ]
+    },
+    {
+      "id": "metric-inheritance-depth",
+      "name": "Inheritance too deep",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "The class has more ancestors of its own than the limit (default 5). Ancestors from RTL, VCL, FMX and other libraries do not count (by unit name or because the index loaded them from the library path), nor does TObject. Ancestors are looked up in the file and in the symbol index. If the chain breaks at an unknown ancestor before reaching a library, the value is a lower bound and the message says at least; it is only reported when that bound already exceeds the limit. Units of a library itself are not checked. The finding sits on the class name; the metrics lens shows the depth next to the member count.",
+      "bad": "TBasis = class(TForm) ... TStufe6 = class(TStufe5)  { 6 own ancestors }",
+      "good": "TStufe2 = class(TBasis)\n  FDruck: IDruck;  { composition instead of more levels }",
+      "options": [
+        {
+          "name": "max",
+          "type": "integer",
+          "default": 5,
+          "description": "Highest allowed number of own ancestors."
         }
       ]
     },

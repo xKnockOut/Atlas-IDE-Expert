@@ -2,7 +2,8 @@
 
 // Tests der Zählweise der Code-Metriken (#66) mit festen Beispielmethoden:
 // case-Zweige, and/or in Bedingungen, except on, Schleifen, Tiefe, kognitive
-// Komplexität, Codezeilen ohne Kommentare und Parameter.
+// Komplexität, Codezeilen ohne Kommentare und Parameter; #980: Operanden einer
+// Bedingung, lokale Variablen, Ausstiege und die Liste der Bedingungen.
 
 interface
 
@@ -51,12 +52,24 @@ type
     procedure NamesAndRanges;
     [Test]
     procedure SkipsForwardAndAsm;
+    [Test]
+    procedure OperandsOfLargestCondition;
+    [Test]
+    procedure OperandsThroughParensAndNot;
+    [Test]
+    procedure LocalsCountVarInlineAndForVar;
+    [Test]
+    procedure ExitsCountExitAndRaise;
+    [Test]
+    procedure ConditionsListedByPosition;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Metrics.Calculator;
 
@@ -303,6 +316,88 @@ begin
     'end;'#10'procedure F;'#10'begin'#10'end;'));
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual('F', Found[0].Name);
+end;
+
+procedure TMetricsCalculatorTests.OperandsOfLargestCondition;
+var
+  Metrics: TRoutineMetrics;
+begin
+  Metrics := Body('  if A and B then X;'#10'  while (C or D) and E and F do Y;'#10'  repeat Z until G xor H;');
+  Assert.AreEqual(4, Value(Metrics, TMetricKind.BooleanOperands), 'größte Bedingung: while');
+  Assert.AreEqual(1, Value(Body('  if A then X;'), TMetricKind.BooleanOperands));
+  Assert.AreEqual(0, Value(Body('  X := A and B and C;'), TMetricKind.BooleanOperands), 'keine Bedingung');
+  Assert.AreEqual(3, Value(Body('  Y := if A and B and C then 1 else 2;'), TMetricKind.BooleanOperands),
+    'Bedingungsausdruck');
+end;
+
+procedure TMetricsCalculatorTests.OperandsThroughParensAndNot;
+begin
+  // not (A and B) und (C or (D and E)): fünf Glieder; Vergleiche und Aufrufe sind je ein Operand.
+  Assert.AreEqual(5, Value(Body('  if not (A and B) and (C or (D and E)) then X;'), TMetricKind.BooleanOperands));
+  Assert.AreEqual(2, Value(Body('  if (Liste.Count > 0) and Pruefe(A or B) then X;'), TMetricKind.BooleanOperands),
+    'or im Argument gehört nicht zur Bedingung');
+end;
+
+procedure TMetricsCalculatorTests.LocalsCountVarInlineAndForVar;
+var
+  Found: TArray<TRoutineMetrics>;
+  Item: TRoutineMetrics;
+  Checked: Integer;
+begin
+  // P: A, B, C, D, E, I, S = 7; klassisches for C zählt nicht doppelt. Inner hat X und Y, die anonyme Methode
+  // zählt für sich.
+  Found := TMetricsCalculator.ForText(InUnit('procedure P;'#10'var'#10'  A, B: Integer;'#10'  C: string;'#10 +
+    '  procedure Inner;'#10'  var'#10'    X: Integer;'#10'  begin'#10'    var Y := 1;'#10'  end;'#10'begin'#10 +
+    '  var D, E: Integer;'#10'  for var I := 0 to 1 do'#10'    Inner;'#10'  for var S in Liste do'#10 +
+    '    Call(procedure'#10'      begin'#10'        var Z := 2;'#10'      end);'#10'  for C := 1 to 2 do;'#10 +
+    'end;'));
+  Checked := 0;
+  for Item in Found do
+    if Item.Name = 'P' then
+    begin
+      Assert.AreEqual(7, Value(Item, TMetricKind.LocalCount));
+      Inc(Checked);
+    end
+    else if Item.Name = 'P.Inner' then
+    begin
+      Assert.AreEqual(2, Value(Item, TMetricKind.LocalCount));
+      Inc(Checked);
+    end;
+  Assert.AreEqual(2, Checked);
+end;
+
+procedure TMetricsCalculatorTests.ExitsCountExitAndRaise;
+var
+  Metrics: TRoutineMetrics;
+begin
+  Metrics := Only('function F(A: Integer): Integer;'#10'begin'#10'  if A = 0 then Exit;'#10 +
+    '  if A = 1 then Exit(1);'#10'  try'#10'    if A < 0 then raise EFehler.Create(''x'');'#10'  except'#10 +
+    '    raise;'#10'  end;'#10'  Call(procedure begin Exit; end);'#10'  Result := ExitCode;'#10'end;');
+  Assert.AreEqual(4, Value(Metrics, TMetricKind.ExitPoints), 'Exit, Exit(1), raise, raise; ohne anonyme Methode');
+  Assert.AreEqual(0, Value(Body('  X := 1;'), TMetricKind.ExitPoints));
+end;
+
+procedure TMetricsCalculatorTests.ConditionsListedByPosition;
+var
+  Conditions: TArray<TConditionMetrics>;
+  Tree: TSyntaxTree;
+begin
+  Tree := TPascalParser.Parse(InUnit('procedure P;'#10'begin'#10'  if A and B then'#10'    while C do'#10 +
+    '      X;'#10'  repeat'#10'  until D or E or F;'#10'end;'));
+  try
+    Conditions := TMetricsCalculator.Conditions(Tree);
+  finally
+    Tree.Free;
+  end;
+  Assert.AreEqual(3, Integer(Length(Conditions)));
+  Assert.AreEqual(2, Conditions[0].Operands);
+  Assert.AreEqual(5, Conditions[0].Range.StartPos.Line);
+  Assert.AreEqual(5, Conditions[0].Range.StartPos.Character);
+  Assert.AreEqual(12, Conditions[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Conditions[1].Operands);
+  Assert.AreEqual(3, Conditions[2].Operands);
+  Assert.AreEqual(9, Conditions[2].Range.StartPos.Line);
+  Assert.IsTrue(Conditions[0].StartOffset < Conditions[0].EndOffset);
 end;
 
 initialization

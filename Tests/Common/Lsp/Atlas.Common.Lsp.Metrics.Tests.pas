@@ -22,6 +22,8 @@ type
     procedure UnknownModeIsRejected;
     [Test]
     procedure ProjectUrisMeanSummary;
+    [Test]
+    procedure FileValuesWithInheritanceDepth;
   end;
 
 implementation
@@ -34,6 +36,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
+  Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Lsp.Metrics;
 
 const
@@ -42,6 +45,9 @@ const
   MainText = 'unit Main;'#10'interface'#10'implementation'#10'procedure Run(A, B: Integer);'#10'begin'#10 +
     '  if A > B then'#10'    Exit;'#10'end;'#10'end.';
   HelperText = 'unit Helper;'#10'interface'#10'implementation'#10'procedure Help;'#10'begin'#10'end;'#10'end.';
+  ClassFile = 'C:\P\Klassen.pas';
+  ClassText = 'unit Klassen;'#10'interface'#10'type'#10'  TA = class'#10'  end;'#10'  TB = class(TA)'#10'  end;'#10 +
+    '  TC = class(TUnbekannt)'#10'  end;'#10'implementation'#10'end.';
 
 function NewMetrics(const AConfig: string): TLspMetrics;
 begin
@@ -65,6 +71,8 @@ begin
         AText := MainText
       else if SameText(AFileName, HelperFile) then
         AText := HelperText
+      else if SameText(AFileName, ClassFile) then
+        AText := ClassText
       else
         Result := False;
     end);
@@ -113,7 +121,8 @@ begin
   try
     Text := Run(Metrics, MainFile, '');
     Assert.Contains(Text, '"enabled":false');
-    Assert.Contains(Text, '"parameters":1}');
+    Assert.Contains(Text, '"parameters":1,"operands":5,"locals":12,"exits":4}');
+    Assert.Contains(Text, '"operands":1,"locals":0,"exits":1}');
     Assert.Contains(Text, '"file":"Main.pas"');
     Assert.Contains(Text, '"name":"Run","line":4,"character":11');
     Assert.Contains(Text, '"cyclomatic":2');
@@ -184,6 +193,27 @@ begin
   Assert.IsTrue(TLspMetrics.IsProject('C:\P'));
   Assert.IsTrue(TLspMetrics.IsProject(''));
   Assert.IsFalse(TLspMetrics.IsProject('C:\P\Main.pas'));
+end;
+
+procedure TLspMetricsTests.FileValuesWithInheritanceDepth;
+var
+  Metrics: TLspMetrics;
+  Text: string;
+begin
+  Metrics := NewMetrics('{}');
+  try
+    // Ohne Index keine Vererbungstiefe.
+    Text := Run(Metrics, ClassFile, '');
+    Assert.DoesNotContain(Text, 'inheritanceDepth');
+    Metrics.Index := TSymbolIndex.Create;
+    Text := Run(Metrics, ClassFile, '');
+    Assert.Contains(Text, '{"kind":"inheritanceDepth","name":"TB","line":6,"character":3,"value":1,"limit":5}');
+    // TA hat keine eigenen Vorfahren, TC nur einen unbekannten: beide fehlen.
+    Assert.DoesNotContain(Text, '"inheritanceDepth","name":"TA"');
+    Assert.DoesNotContain(Text, '"inheritanceDepth","name":"TC"');
+  finally
+    Metrics.Free;
+  end;
 end;
 
 initialization

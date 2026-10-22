@@ -97,6 +97,7 @@
         <DCCReference Include="Common\Index\Atlas.Common.Index.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.NameIndex.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Files.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.LibraryUnits.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.CacheHousekeeping.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Processes.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Adapters.Processes.Tests.pas"/>

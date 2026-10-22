@@ -239,14 +239,27 @@ begin
     Assert.AreEqual('0 Member', Entries[3].Title);
     Assert.AreEqual(12, Entries[4].Range.StartPos.Line);
     Assert.AreEqual(10, Entries[4].Range.StartPos.Character);
-    Assert.AreEqual('4 Zeilen · Tiefe 0 · zyklomatisch 1 · kognitiv 0 · 1 Parameter', Entries[4].Title);
+    Assert.AreEqual('4 Zeilen · Tiefe 0 · zyklomatisch 1 · kognitiv 0 · 1 Parameter · Operanden 0 · 0 lokale · ' +
+      '0 Ausstiege', Entries[4].Title);
     Assert.AreEqual(20, Entries[6].Range.StartPos.Line);
     Limits := TMetricLimits.Default;
     Limits.Values[TMetricKind.MethodLength] := 3;
     Limits.Structure[TStructureKind.ClassSize] := 2;
     Entries := TLspCodeLens.MetricLenses(Tree, Limits);
     Assert.AreEqual('3 Member (> 2)', Entries[2].Title);
-    Assert.AreEqual('4 Zeilen (> 3) · Tiefe 0 · zyklomatisch 1 · kognitiv 0 · 1 Parameter', Entries[4].Title);
+    Assert.AreEqual('4 Zeilen (> 3) · Tiefe 0 · zyklomatisch 1 · kognitiv 0 · 1 Parameter · Operanden 0 · ' +
+      '0 lokale · 0 Ausstiege', Entries[4].Title);
+    // Mit Index die Vererbungstiefe (#980): TFoo erbt von TBasis aus der Unit Basis, TKind von TFoo.
+    Entries := TLspCodeLens.MetricLenses(Tree, TMetricLimits.Default, FIndex, 'C:\P\Haupt.pas');
+    Assert.AreEqual(9, Integer(Length(Entries)));
+    Assert.AreEqual('Vererbungstiefe 1', Entries[7].Title);
+    Assert.AreEqual(4, Entries[7].Range.StartPos.Line);
+    Assert.AreEqual('Vererbungstiefe 2', Entries[8].Title);
+    Assert.AreEqual(9, Entries[8].Range.StartPos.Line);
+    // Ohne Basis im Index bricht die Kette ab: Untergrenze, TFoo ohne bekannte eigene Vorfahren fehlt.
+    Entries := TLspCodeLens.MetricLenses(Tree, TMetricLimits.Default, nil, 'C:\P\Haupt.pas');
+    Assert.AreEqual(8, Integer(Length(Entries)));
+    Assert.AreEqual('Vererbungstiefe mindestens 1', Entries[7].Title);
   finally
     Tree.Free;
   end;

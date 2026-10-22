@@ -1174,6 +1174,8 @@ begin
   FCodeLens.Attach(FDispatcher);
   FMetrics := TLspMetrics.Create(MetricsSourceFor,
     ReadSourceText);
+  // Vererbungstiefe in der Metrik-Linse des Plugins (#980).
+  FMetrics.Index := FIndex;
   // Gleiche Quelle wie die Metriken: Einstellungen, Wurzel und Dateien des Projektmodells (#14).
   FTodos := TLspTodos.Create(MetricsSourceFor,
     ReadSourceText);
