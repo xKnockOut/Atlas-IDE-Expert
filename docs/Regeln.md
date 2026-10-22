@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 62 |
+| [Fehler finden](#gruppe-find-bugs) | 63 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
@@ -65,6 +65,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`inherited-order`](#inherited-order) | inherited an der falschen Stelle | Bug | Warnung |
 | [`inherited-wrong-method`](#inherited-wrong-method) | inherited ruft eine andere Methode | Bug | Warnung |
 | [`getter-side-effect`](#getter-side-effect) | Getter verändert den Zustand | Code Smell | Warnung |
+| [`equals-without-gethashcode`](#equals-without-gethashcode) | Equals ohne GetHashCode | Bug | Warnung |
 | [`destroy-called-directly`](#destroy-called-directly) | Destroy statt Free aufgerufen | Bug | Warnung |
 | [`managed-type-raw-memory`](#managed-type-raw-memory) | FillChar, Move oder GetMem auf verwaltete Typen | Bug | Fehler |
 | [`pchar-of-temporary`](#pchar-of-temporary) | PChar auf einen temporären String | Bug | Warnung |
@@ -2915,6 +2916,30 @@ function TZaehler.GetWert: Integer;
 begin
   Result := FWert;
 end;
+```
+
+<a id="equals-without-gethashcode"></a>
+### equals-without-gethashcode
+
+**Equals ohne GetHashCode** · Bug · Warnung · Gruppe Fehler finden
+
+Eine Klasse überschreibt Equals, aber nicht GetHashCode (oder umgekehrt). In TDictionary und THashSet mit Standard-Comparer finden gleiche Objekte sich dann nicht. Still, wenn ein Vorfahr das Gegenstück überschreibt, wenn die Vorfahrenkette nicht vollständig bekannt ist und bei Equals ohne override. Gilt ebenso für Records der Datei mit class operator Equal, die als Schlüssel von TDictionary, TObjectDictionary, THashSet oder TMultiMap ohne Comparer dienen (Create ohne Argumente oder nur mit Konstanten wie Kapazität oder Besitz): Der Standard-Comparer vergleicht Records Byte für Byte, was nur bei Feldern vom Typ string, Variant, Gleitkomma, Interface oder TArray falsch ist; Records mit nur ordinalen Feldern bleiben still. Konfidenz hoch. Schnellkorrektur für Klassen: GetHashCode hinter Equals deklarieren und hinter dem Rumpf von Equals mit THashBobJenkins über die eigenen Felder umsetzen, die Equals vergleicht (ohne Groß-/Kleinschreibung über LowerCase, wenn Equals SameText nutzt), System.Hash in uses ergänzen.
+
+Mit Treffer:
+
+```pascal
+  TKundenNr = class
+    function Equals(Obj: TObject): Boolean; override;
+  end;
+```
+
+Richtig:
+
+```pascal
+  TKundenNr = class
+    function Equals(Obj: TObject): Boolean; override;
+    function GetHashCode: Integer; override;
+  end;
 ```
 
 <a id="destroy-called-directly"></a>

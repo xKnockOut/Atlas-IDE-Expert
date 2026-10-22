@@ -1346,6 +1346,16 @@
       ]
     },
     {
+      "id": "equals-without-gethashcode",
+      "name": "Equals without GetHashCode",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "A class overrides Equals but not GetHashCode (or the other way round). In TDictionary and THashSet with the default comparer equal objects then do not find each other. Silent when an ancestor overrides the counterpart, when the ancestor chain is not known completely and for Equals without override. Also applies to records of the file with class operator Equal used as keys of TDictionary, TObjectDictionary, THashSet or TMultiMap without a comparer (Create without arguments or only with constants such as capacity or ownership): the default comparer compares records byte by byte, which is only wrong for fields of type string, Variant, floating point, interface or TArray; records with only such ordinal fields stay silent. High confidence. Quick fix for classes: declare GetHashCode after Equals and implement it after the body of Equals with THashBobJenkins over the own fields that Equals compares (case-insensitively via LowerCase when Equals uses SameText), adding System.Hash to uses.",
+      "bad": "  TKundenNr = class\n    function Equals(Obj: TObject): Boolean; override;\n  end;",
+      "good": "  TKundenNr = class\n    function Equals(Obj: TObject): Boolean; override;\n    function GetHashCode: Integer; override;\n  end;"
+    },
+    {
       "id": "destroy-called-directly",
       "name": "Destroy called instead of Free",
       "category": "bug",

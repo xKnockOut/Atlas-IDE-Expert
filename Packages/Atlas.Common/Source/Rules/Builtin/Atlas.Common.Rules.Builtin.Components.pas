@@ -30,6 +30,12 @@
 //                                        angelegtes Objekt an eine Methode eines Felds (FListe.Add(T.Create));
 //                                        Lazy-Initialisierung (if prüft, was der Zweig zuweist) ist mit
 //                                        "allowLazyInit" (Standard true) erlaubt; geerbte Felder über TAncestry
+//   equals-without-gethashcode           Equals ohne GetHashCode überschrieben oder umgekehrt (#1053), still,
+//                                        wenn ein Vorfahr das Gegenstück überschreibt oder die Kette unbekannt
+//                                        ist; Korrektur GetHashCode über THashBobJenkins mit den Feldern aus
+//                                        Equals. Records der Datei mit class operator Equal und Feldern, die der
+//                                        Byte-Vergleich falsch vergleicht (string, Variant, Gleitkomma,
+//                                        Interface, TArray), als Schlüssel von TDictionary/THashSet ohne Comparer
 //
 // Die Komponentenregeln prüfen nur Klassen, deren Vorfahrenkette (Datei, Symbolindex) eine
 // bekannte VCL-Basisklasse erreicht. Teil B (nicht registriert, Design-Time-Units
@@ -118,6 +124,15 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TEqualsWithoutGetHashCodeRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Hashwert des Felds AField vom Typ ATypeName, verkettet mit AInitial; ACompare ist die Funktion, in
+    /// der Equals das Feld vergleicht (SameText: ohne Groß-/Kleinschreibung, also auch der Hashwert).</summary>
+    class function HashExpression(const AField, ATypeName, ACompare, AInitial: string): string; static;
+  end;
+
 procedure RegisterComponentRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -133,6 +148,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
+  Atlas.Common.Editing.UsesClause,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Text.Lines;
 
@@ -1871,6 +1887,288 @@ begin
   end;
 end;
 
+{ TEqualsWithoutGetHashCodeRule }
+
+const
+  // Feldtypen, bei denen der Standard-Comparer für Records (Byte für Byte) nicht zu Equal passt.
+  BinaryUnsafeTypes: array[0..12] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString',
+    'RawByteString', 'UTF8String', 'ShortString', 'Variant', 'OleVariant', 'Double', 'Single', 'Extended', 'Real');
+  // Generische Sammlungen, deren erster Typparameter der Schlüssel ist.
+  HashedCollections: array[0..3] of string = ('TDictionary', 'TObjectDictionary', 'THashSet', 'TMultiMap');
+
+function TEqualsWithoutGetHashCodeRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('equals-without-gethashcode', TRuleSeverity.Warning,
+    'Equals ohne GetHashCode');
+end;
+
+/// <summary>Kopf AName im Klassen- bzw. Record-Rumpf ABody; nil ohne.</summary>
+function MemberHeader(ABody: TSyntaxNode; const AName: string): TSyntaxNode;
+var
+  Index: Integer;
+begin
+  for Index := 0 to ABody.ChildCount - 1 do
+    if (ABody[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(ABody[Index].Name, AName) then
+      Exit(ABody[Index]);
+  Result := nil;
+end;
+
+/// <summary>Typ des Felds AName im Rumpf ABody (Field "A,B" mit TypeReference); '' ohne.</summary>
+function FieldTypeName(ABody: TSyntaxNode; const AName: string): string;
+var
+  Index: Integer;
+  Name: string;
+  TypeRef: TSyntaxNode;
+begin
+  for Index := 0 to ABody.ChildCount - 1 do
+    if ABody[Index].Kind = TSyntaxKind.Field then
+      for Name in ABody[Index].Name.Split([',']) do
+        if SameText(Trim(Name), AName) then
+        begin
+          TypeRef := ABody[Index].FindChild(TSyntaxKind.TypeReference);
+          if TypeRef = nil then
+            Exit('');
+          Exit(TypeRef.Name);
+        end;
+  Result := '';
+end;
+
+class function TEqualsWithoutGetHashCodeRule.HashExpression(const AField, ATypeName, ACompare,
+  AInitial: string): string;
+var
+  Value: string;
+begin
+  if MatchText(ATypeName, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString', 'UTF8String']) then
+  begin
+    // Vergleicht Equals ohne Groß-/Kleinschreibung, muss der Hashwert es ebenso tun.
+    Value := AField;
+    if MatchText(ACompare, ['SameText', 'CompareText']) then
+      Value := 'LowerCase(' + AField + ')'
+    else if MatchText(ACompare, ['AnsiSameText', 'AnsiCompareText']) then
+      Value := 'AnsiLowerCase(' + AField + ')';
+    Result := Format('THashBobJenkins.GetHashValue(%s, %s)', [Value, AInitial]);
+  end
+  else
+    Result := Format('THashBobJenkins.GetHashValue(%s, SizeOf(%s), %s)', [AField, AField, AInitial]);
+end;
+
+procedure TEqualsWithoutGetHashCodeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Model: TComponentModel;
+  Cache: IRuleDerivedCache;
+
+  // Überschreibt ein Vorfahr (ohne TObject) die Methode AName? AKnown: die Kette ist bekannt.
+  function AncestorOverrides(const AClass, AName: string; out AKnown: Boolean): Boolean;
+  var
+    Chain: TArray<TSymbolLocation>;
+    Location: TSymbolLocation;
+    Member: TIndexSymbol;
+    ObjectMissing: Boolean;
+  begin
+    Result := False;
+    Chain := Model.FAncestry.Ancestors(AClass, AKnown, ObjectMissing);
+    for Location in Chain do
+      if not SameText(Location.Symbol.Name, 'TObject') then
+        for Member in Model.FAncestry.Methods(Location) do
+          if SameText(Member.Name, AName) and Member.HasDirective('override') then
+            Exit(True);
+  end;
+
+  // Eigene Felder in der Reihenfolge, in der Equals sie nennt, je mit dem Vergleich (SameText …), in dem sie stehen.
+  procedure CollectFields(ANode: TSyntaxNode; const AFields: TArray<string>; var ANames, ACompares: TArray<string>);
+  var
+    Index: Integer;
+    Compare: string;
+  begin
+    if (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and IsIn(ANode.Name, AFields) and
+      not IsIn(ANode.Name, ANames) then
+    begin
+      Compare := '';
+      if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] <> ANode) then
+        Compare := ANode.Parent.Name;
+      ANames := ANames + [ANode.Name];
+      ACompares := ACompares + [Compare];
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      CollectFields(ANode[Index], AFields, ANames, ACompares);
+  end;
+
+  // Korrektur: GetHashCode hinter Equals deklarieren und hinter dem Rumpf von Equals umsetzen.
+  function HashFix(const AInfo: TClassInfo; AHeader: TSyntaxNode; out AFix: TRuleFix): Boolean;
+  var
+    Method, Equals_: TMethodImpl;
+    Found: Boolean;
+    Names, Compares: TArray<string>;
+    Index: Integer;
+    Body, Initial: string;
+    Edit, UsesEdit: TRuleEdit;
+    Edits: TArray<TRuleEdit>;
+    Position: TTextPosition;
+  begin
+    Result := False;
+    Found := False;
+    for Method in Model.Methods do
+      if SameText(Method.ClassName, AInfo.Name) and SameText(Method.MethodName, 'Equals') then
+      begin
+        Equals_ := Method;
+        Found := True;
+      end;
+    if not Found then
+      Exit;
+    Names := nil;
+    Compares := nil;
+    CollectFields(Equals_.Block, OwnFields(AInfo), Names, Compares);
+    if Names = nil then
+      Exit;
+    Body := '';
+    Initial := '0';
+    for Index := 0 to High(Names) do
+    begin
+      Body := Body + '  Result := ' + HashExpression(Names[Index], FieldTypeName(AInfo.Body, Names[Index]),
+        Compares[Index], Initial) + ';' + Model.FLineBreak;
+      Initial := 'Result';
+    end;
+    // Edits in Textreihenfolge: Deklaration, uses der Implementierung, Rumpf.
+    Position := TTextPosition.Create(AHeader.EndPos.Line + 1, 0);
+    Edits := [TRuleEdit.Create(TTextRange.Create(Position, Position), StringOfChar(' ', AHeader.StartPos.Character) +
+      'function GetHashCode: Integer; override;' + Model.FLineBreak)];
+    if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(AContext.Tree.Tokens), 'System.Hash', AContext.Namespaces) and
+      TUsesClauses.AddUnit(AContext.Tree.Tokens, Equals_.Decl.StartOffset, 'System.Hash', Model.FLineBreak,
+      UsesEdit) then
+    begin
+      if UsesEdit.Range.StartPos.Line < AHeader.StartPos.Line then
+        Edits := [UsesEdit] + Edits
+      else
+        Edits := Edits + [UsesEdit];
+    end;
+    Position := TTextPosition.Create(Equals_.Decl.EndPos.Line + 1, 0);
+    Edit := TRuleEdit.Create(TTextRange.Create(Position, Position), Model.FLineBreak + 'function ' + AInfo.Name +
+      '.GetHashCode: Integer;' + Model.FLineBreak + 'begin' + Model.FLineBreak + Body + 'end;' + Model.FLineBreak);
+    Edits := Edits + [Edit];
+    AFix := TRuleFix.Create(Format('GetHashCode mit %s überschreiben (THashBobJenkins)',
+      [string.Join(', ', Names)]), Edits);
+    Result := True;
+  end;
+
+  procedure CheckClasses;
+  var
+    Info: TClassInfo;
+    Header: TSyntaxNode;
+    HasEquals, HasHash, Known: Boolean;
+    Fix: TRuleFix;
+    Fixes: TArray<TRuleFix>;
+  begin
+    for Info in Model.Classes do
+    begin
+      HasEquals := Model.DeclaredWith(Info, 'Equals', 'override');
+      HasHash := Model.DeclaredWith(Info, 'GetHashCode', 'override');
+      if HasEquals = HasHash then
+        Continue;
+      if HasEquals then
+      begin
+        if AncestorOverrides(Info.Name, 'GetHashCode', Known) or not Known then
+          Continue;
+        Header := MemberHeader(Info.Body, 'Equals');
+        Fixes := nil;
+        if HashFix(Info, Header, Fix) then
+          Fixes := [Fix];
+        AReport.Add(TTextRange.Create(Header.StartPos, Header.EndPos), 'Equals ist überschrieben, GetHashCode ' +
+          'nicht; als Schlüssel in TDictionary finden sich gleiche Objekte nicht.', TRuleConfidence.High, Fixes);
+      end
+      else
+      begin
+        if AncestorOverrides(Info.Name, 'Equals', Known) or not Known then
+          Continue;
+        Header := MemberHeader(Info.Body, 'GetHashCode');
+        AReport.Add(TTextRange.Create(Header.StartPos, Header.EndPos), 'GetHashCode ist überschrieben, Equals ' +
+          'nicht; als Schlüssel in TDictionary gelten gleiche Objekte weiter als verschieden.', TRuleConfidence.High);
+      end;
+    end;
+  end;
+
+  // Records der Datei mit class operator Equal und einem Feld, das der Byte-Vergleich falsch vergleicht.
+  procedure CollectRecords(ANode: TSyntaxNode; var ANames: TArray<string>);
+  var
+    Index: Integer;
+    Body, Header: TSyntaxNode;
+    TypeName: string;
+    Unsafe: Boolean;
+  begin
+    if ANode.Kind = TSyntaxKind.TypeDecl then
+    begin
+      Body := ANode.FindChild(TSyntaxKind.RecordType);
+      if Body <> nil then
+      begin
+        Header := MemberHeader(Body, 'Equal');
+        Unsafe := False;
+        for Index := 0 to Body.ChildCount - 1 do
+          if Body[Index].Kind = TSyntaxKind.Field then
+          begin
+            TypeName := FieldTypeName(Body, Trim(Body[Index].Name.Split([','])[0]));
+            if MatchText(TypeName, BinaryUnsafeTypes) or SameText(TypeName, 'TArray') or
+              ((Length(TypeName) > 1) and (TypeName[1] = 'I') and CharInSet(TypeName[2], ['A'..'Z'])) then
+              Unsafe := True;
+          end;
+        if (Header <> nil) and ContainsText(Model.NodeText(Header), 'operator') and Unsafe then
+          ANames := ANames + [ANode.Name];
+      end;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      CollectRecords(ANode[Index], ANames);
+  end;
+
+  // Argumente ohne möglichen Comparer: nur Literale und Mengen (Kapazität, Besitz).
+  function OnlyConstants(ACall: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    for Index := 1 to ACall.ChildCount - 1 do
+      if not (ACall[Index].Kind in [TSyntaxKind.Literal, TSyntaxKind.SetConstructor]) then
+        Exit(False);
+    Result := True;
+  end;
+
+  procedure CheckCreates(ANode: TSyntaxNode; const ARecords: TArray<string>);
+  var
+    Index: Integer;
+    Collection, Args: TSyntaxNode;
+    Key: string;
+  begin
+    if (ANode.Kind = TSyntaxKind.MemberAccess) and SameText(ANode.Name, 'Create') and (ANode.ChildCount = 1) and
+      (ANode[0].Kind = TSyntaxKind.MemberAccess) and IsIn(ANode[0].Name, HashedCollections) then
+    begin
+      Collection := ANode[0];
+      Args := Collection.FindChild(TSyntaxKind.GenericArgs);
+      Key := '';
+      if (Args <> nil) and (Args.ChildCount > 0) then
+        Key := Args[0].Name;
+      if (Key <> '') and IsIn(Key, ARecords) and (not ((ANode.Parent <> nil) and
+        (ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] = ANode)) or OnlyConstants(ANode.Parent)) then
+        AReport.Add(TTextRange.Create(Collection.StartPos, Collection.EndPos), Format('%s hat class operator ' +
+          'Equal, %s vergleicht Schlüssel ohne Comparer aber Byte für Byte; gleiche Schlüssel finden sich nicht.',
+          [Key, Collection.Name]), TRuleConfidence.High);
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      CheckCreates(ANode[Index], ARecords);
+  end;
+
+var
+  Records: TArray<string>;
+begin
+  Cache := TRuleDerived.Open(AContext);
+  if not Prepare(Cache, AContext, Model) then
+    Exit;
+  if ContainsText(AContext.Text, 'Equals') or ContainsText(AContext.Text, 'GetHashCode') then
+    CheckClasses;
+  if ContainsText(AContext.Text, 'operator') then
+  begin
+    Records := nil;
+    CollectRecords(AContext.Tree.Root, Records);
+    if Records <> nil then
+      CheckCreates(AContext.Tree.Root, Records);
+  end;
+end;
+
 procedure RegisterComponentRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TMissingInheritedRule.Create);
@@ -1878,6 +2176,7 @@ begin
   ARegistry.Register(TInheritedOrderRule.Create);
   ARegistry.Register(TInheritedWrongMethodRule.Create);
   ARegistry.Register(TGetterSideEffectRule.Create);
+  ARegistry.Register(TEqualsWithoutGetHashCodeRule.Create);
   ARegistry.Register(TComponentMissingInheritedRule.Create);
   ARegistry.Register(TComponentDefaultMismatchRule.Create);
   ARegistry.Register(TComponentMissingFreeNotificationRule.Create);
