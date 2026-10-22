@@ -17,6 +17,18 @@
 //   werden kurz markiert (IsNew). Auswahl und Aufklappzustand hängen an
 //   Schlüsseln, die nicht von der Zeile abhängen: Sie bleiben erhalten, wenn
 //   die Zeilen beim Tippen mitwandern oder neue Ergebnisse kommen.
+// - Offene Units zuerst (#1108, problems.window.openFirst): Die Stufe (aktive
+//   Unit, geöffnete Units, nicht geöffnete Units) ist der erste
+//   Sortierschlüssel, die Spaltensortierung gilt innerhalb der Stufe. Bei
+//   Gruppierung nach Datei steht die Gruppe der aktiven Unit angepinnt oben,
+//   darunter Trennzeilen „Geöffnet“ und „Nicht geöffnet“ mit den Gruppen
+//   alphabetisch; ohne Gruppierung dieselben drei Abschnitte als Trennzeilen;
+//   bei Regel oder Kategorie nur die Reihenfolge innerhalb jeder Gruppe.
+//   Nicht geöffnete Units ausgegraut, normal oder ausgeblendet
+//   (problems.window.closedUnits); die aktive Unit auf Wunsch auch ohne
+//   Befunde (problems.window.showCleanActive). Trennzeilen sind weder Gruppen
+//   noch Befunde: nicht klappbar, nicht wählbar, nicht in Visible, Step,
+//   SelectAt und beim Kopieren. .pas und .dfm/.fmx einer Unit zählen als eine.
 
 interface
 
@@ -34,6 +46,10 @@ type
   TAtlasFindingColumn = (Icon, Kind, Category, Message, Line, Location, Rule, Compiler);
   TAtlasFindingScope = (CurrentFile, Project, Group);
   TAtlasFindingGrouping = (None, ByFile, ByRule, ByCategory);
+  /// <summary>Stufe einer Datei (#1108): Datei des oberen Editors, in der IDE geöffnet, nicht geöffnet.</summary>
+  TAtlasFindingTier = (Active, Open, Closed);
+  /// <summary>Darstellung nicht geöffneter Units (problems.window.closedUnits).</summary>
+  TAtlasClosedUnits = (Dimmed, Normal, Hidden);
   {$SCOPEDENUMS OFF}
   TAtlasFindingKinds = set of TAtlasFindingKind;
 
@@ -46,6 +62,8 @@ type
     LineText: string;
     /// <summary>Datei, Regel, Meldung und laufende Nummer: unabhängig von der Zeile.</summary>
     Key: string;
+    /// <summary>Stufe der Datei (#1108); setzt TAtlasFindingsView aus den geöffneten Dateien.</summary>
+    Tier: TAtlasFindingTier;
     /// <summary>"Unit1.pas:12:5" (1-basiert).</summary>
     function Location: string;
     /// <summary>Zeilentext, gekürzt auf AMax Zeichen mit „…“.</summary>
@@ -74,6 +92,15 @@ type
     Infos: Integer;
     /// <summary>Dateien mit sichtbaren Befunden.</summary>
     Files: Integer;
+    /// <summary>Offene Units zuerst (#1108): Units der aktiven und geöffneten Stufe mit sichtbaren Befunden und
+    /// deren Befunde; sonst 0.</summary>
+    OpenUnits: Integer;
+    OpenFindings: Integer;
+    /// <summary>Nicht geöffnete Units mit sichtbaren Befunden und deren Befunde; sonst 0.</summary>
+    ClosedUnits: Integer;
+    ClosedFindings: Integer;
+    /// <summary>Nicht geöffnete Units, deren Befunde problems.window.closedUnits = hidden ausblendet.</summary>
+    HiddenUnits: Integer;
     function Total: Integer;
     function OfKind(AKind: TAtlasFindingKind): Integer;
   end;
@@ -114,6 +141,20 @@ type
     Finding: Integer;
     /// <summary>Befund kam mit der letzten Aktualisierung neu dazu.</summary>
     IsNew: Boolean;
+    /// <summary>Trennzeile (#1108): „Geöffnet“, „Nicht geöffnet“, ohne Gruppierung auch die aktive Unit; weder
+    /// Gruppe noch Befund. Caption = Datei der aktiven Unit, Count = Befunde, Units = Units des Abschnitts.</summary>
+    IsSection: Boolean;
+    Units: Integer;
+    /// <summary>Stufe der Zeile; nur mit Offene-zuerst aussagekräftig.</summary>
+    Tier: TAtlasFindingTier;
+    /// <summary>Zeile der aktiven Unit: hinterlegt, Gruppe mit Nadel.</summary>
+    Pinned: Boolean;
+    /// <summary>Zeile einer nicht geöffneten Unit: ausgegraut (problems.window.closedUnits = dimmed).</summary>
+    Dimmed: Boolean;
+    /// <summary>Aktive Unit ohne Befunde (problems.window.showCleanActive): Trennzeile „Keine Befunde“ bzw. „wird
+    /// geprüft …“ (Checking), solange der Server die Datei noch nicht geliefert hat.</summary>
+    IsCleanActive: Boolean;
+    Checking: Boolean;
   end;
 
   TAtlasFindings = class
@@ -126,7 +167,12 @@ type
     ConfirmedMark = TAtlasProblem.ConfirmedSource;
     ScopeNames: array[TAtlasFindingScope] of string = ('file', 'project', 'group');
     GroupingNames: array[TAtlasFindingGrouping] of string = ('none', 'file', 'rule', 'category');
+    ClosedUnitsNames: array[TAtlasClosedUnits] of string = ('dimmed', 'normal', 'hidden');
   public
+    /// <summary>Vergleichsschlüssel einer Datei (#1108): Kleinbuchstaben, Formular (.dfm/.fmx) als seine .pas.
+    /// </summary>
+    class function UnitKey(const AFileName: string): string; static;
+    class function TryParseClosedUnits(const AText: string; out AValue: TAtlasClosedUnits): Boolean; static;
     class function KindOf(ASeverity: TAtlasProblemSeverity): TAtlasFindingKind; static;
     /// <summary>dcc = Compiler; sonst nach data.category ("bug", "vulnerability", "code-smell",
     /// "security-hotspot"), ohne Kategorie Other.</summary>
@@ -175,18 +221,45 @@ type
     FVisible: TArray<Integer>;
     FRows: TArray<TAtlasFindingRow>;
     FSelectedKey: string;
+    FOpenFirst: Boolean;
+    FClosedUnits: TAtlasClosedUnits;
+    FShowCleanActive: Boolean;
+    FActiveFile: string;
+    FActiveKey: string;
+    FActiveChecked: Boolean;
+    FOpenKeys: TDictionary<string, Boolean>;
     procedure Rebuild;
     procedure SetFilter(const AValue: TAtlasFindingFilter);
     procedure SetGrouping(AValue: TAtlasFindingGrouping);
+    procedure SetOpenFirst(AValue: Boolean);
+    procedure SetClosedUnits(AValue: TAtlasClosedUnits);
+    procedure SetShowCleanActive(AValue: Boolean);
     function GroupKeyOf(const AFinding: TAtlasFinding): string;
     function Compare(const A, B: TAtlasFinding): Integer;
     function GetSelectedRow: Integer;
+    function TierOf(const AFileName: string): TAtlasFindingTier;
+    procedure AssignTiers;
+    /// <summary>Wird AFinding wegen problems.window.closedUnits = hidden ausgeblendet?</summary>
+    function HiddenByTier(const AFinding: TAtlasFinding): Boolean;
+    /// <summary>Zeile für AFinding mit Stufe, Nadel und Grau.</summary>
+    function FindingRow(AIndex: Integer; const AGroupKey: string): TAtlasFindingRow;
+    /// <summary>Trennzeile der Stufe ATier über die Befunde AMembers.</summary>
+    function SectionRow(ATier: TAtlasFindingTier; const AMembers: TArray<Integer>): TAtlasFindingRow;
+    /// <summary>Zeile „Keine Befunde“ der aktiven Unit, wenn sie gezeigt werden soll.</summary>
+    function CleanActiveRow(out ARow: TAtlasFindingRow): Boolean;
+    function IsActiveInScope: Boolean;
   public
     constructor Create;
     destructor Destroy; override;
     /// <summary>Neuer Stand aus dem Speicher. Befunde, deren Schlüssel vorher fehlte, sind neu (nicht beim ersten
     /// Füllen).</summary>
     procedure SetFindings(const AFindings: TArray<TAtlasFinding>);
+    /// <summary>Offene Units zuerst (#1108): AActive = Datei des oberen Editors ('' = keine), AOpen = alle in der
+    /// IDE geöffneten Dateien; AActiveChecked = der Server hat die aktive Datei schon geliefert (sonst zeigt die
+    /// Zeile ohne Befunde „wird geprüft …“).</summary>
+    procedure SetOpenFiles(const AActive: string; const AOpen: TArray<string>; AActiveChecked: Boolean);
+    /// <summary>Wirkt die Stufe gerade? Offene-zuerst an und Bereich nicht „Aktuelle Datei“.</summary>
+    function TiersActive: Boolean;
     /// <summary>Markierung „neu“ entfernen (nach dem kurzen Hervorheben).</summary>
     procedure ClearNew;
     /// <summary>Klick auf den Spaltenkopf: nach AColumn sortieren, beim zweiten Klick absteigend.</summary>
@@ -220,6 +293,13 @@ type
     property SortDescending: Boolean read FSortDescending;
     property SortCustom: Boolean read FSortCustom;
     property SelectedKey: string read FSelectedKey write FSelectedKey;
+    /// <summary>problems.window.openFirst; im Modell Vorgabe aus, die Einstellung hat Vorgabe an.</summary>
+    property OpenFirst: Boolean read FOpenFirst write SetOpenFirst;
+    /// <summary>problems.window.closedUnits (Vorgabe ausgegraut).</summary>
+    property ClosedUnits: TAtlasClosedUnits read FClosedUnits write SetClosedUnits;
+    /// <summary>problems.window.showCleanActive (Vorgabe an).</summary>
+    property ShowCleanActive: Boolean read FShowCleanActive write SetShowCleanActive;
+    property ActiveFile: string read FActiveFile;
     /// <summary>-1 ohne Auswahl oder wenn der gewählte Befund nicht sichtbar ist.</summary>
     property SelectedRow: Integer read GetSelectedRow;
   end;
@@ -560,6 +640,30 @@ begin
   Result := False;
 end;
 
+class function TAtlasFindings.UnitKey(const AFileName: string): string;
+var
+  Extension: string;
+begin
+  Result := AnsiLowerCase(AFileName);
+  Extension := ExtractFileExt(Result);
+  if (Extension = '.dfm') or (Extension = '.fmx') then
+    Result := ChangeFileExt(Result, '.pas');
+end;
+
+class function TAtlasFindings.TryParseClosedUnits(const AText: string; out AValue: TAtlasClosedUnits): Boolean;
+var
+  Value: TAtlasClosedUnits;
+begin
+  for Value := Low(TAtlasClosedUnits) to High(TAtlasClosedUnits) do
+    if SameText(AText, ClosedUnitsNames[Value]) then
+    begin
+      AValue := Value;
+      Exit(True);
+    end;
+  AValue := TAtlasClosedUnits.Dimmed;
+  Result := False;
+end;
+
 class function TAtlasFindings.AsText(const AFindings: TArray<TAtlasFinding>): string;
 const
   KindWords: array[TAtlasFindingKind] of string = ('error', 'warning', 'info');
@@ -594,10 +698,16 @@ begin
   FCollapsed := TDictionary<string, Boolean>.Create;
   FKnown := TDictionary<string, Boolean>.Create;
   FNew := TDictionary<string, Boolean>.Create;
+  FOpenKeys := TDictionary<string, Boolean>.Create;
+  // Aus, bis die IDE-Schicht die Einstellung setzt: so verhält sich das Modell ohne Stufen genau wie #909.
+  FOpenFirst := False;
+  FClosedUnits := TAtlasClosedUnits.Dimmed;
+  FShowCleanActive := True;
 end;
 
 destructor TAtlasFindingsView.Destroy;
 begin
+  FOpenKeys.Free;
   FNew.Free;
   FKnown.Free;
   FCollapsed.Free;
@@ -618,6 +728,78 @@ begin
   for Finding in AFindings do
     FKnown.AddOrSetValue(Finding.Key, True);
   FFilled := True;
+  AssignTiers;
+  Rebuild;
+end;
+
+procedure TAtlasFindingsView.SetOpenFiles(const AActive: string; const AOpen: TArray<string>;
+  AActiveChecked: Boolean);
+var
+  FileName: string;
+begin
+  FActiveFile := AActive;
+  FActiveKey := '';
+  if AActive <> '' then
+    FActiveKey := TAtlasFindings.UnitKey(AActive);
+  // Das Formular steht für seine Unit: Angezeigt wird die .pas.
+  if FActiveKey <> AnsiLowerCase(AActive) then
+    FActiveFile := ChangeFileExt(AActive, '.pas');
+  FActiveChecked := AActiveChecked;
+  FOpenKeys.Clear;
+  for FileName in AOpen do
+    if FileName <> '' then
+      FOpenKeys.AddOrSetValue(TAtlasFindings.UnitKey(FileName), True);
+  AssignTiers;
+  Rebuild;
+end;
+
+function TAtlasFindingsView.TierOf(const AFileName: string): TAtlasFindingTier;
+var
+  Key: string;
+begin
+  Key := TAtlasFindings.UnitKey(AFileName);
+  if (FActiveKey <> '') and (Key = FActiveKey) then
+    Result := TAtlasFindingTier.Active
+  else if FOpenKeys.ContainsKey(Key) then
+    Result := TAtlasFindingTier.Open
+  else
+    Result := TAtlasFindingTier.Closed;
+end;
+
+procedure TAtlasFindingsView.AssignTiers;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(FFindings) do
+    FFindings[Index].Tier := TierOf(FFindings[Index].FileName);
+end;
+
+function TAtlasFindingsView.TiersActive: Boolean;
+begin
+  Result := FOpenFirst and (FFilter.Scope <> TAtlasFindingScope.CurrentFile);
+end;
+
+function TAtlasFindingsView.HiddenByTier(const AFinding: TAtlasFinding): Boolean;
+begin
+  Result := TiersActive and (FClosedUnits = TAtlasClosedUnits.Hidden) and
+    (AFinding.Tier = TAtlasFindingTier.Closed);
+end;
+
+procedure TAtlasFindingsView.SetOpenFirst(AValue: Boolean);
+begin
+  FOpenFirst := AValue;
+  Rebuild;
+end;
+
+procedure TAtlasFindingsView.SetClosedUnits(AValue: TAtlasClosedUnits);
+begin
+  FClosedUnits := AValue;
+  Rebuild;
+end;
+
+procedure TAtlasFindingsView.SetShowCleanActive(AValue: Boolean);
+begin
+  FShowCleanActive := AValue;
   Rebuild;
 end;
 
@@ -690,6 +872,14 @@ end;
 
 function TAtlasFindingsView.Compare(const A, B: TAtlasFinding): Integer;
 begin
+  // Offene Units zuerst (#1108): Die Stufe kommt vor jeder Spalte; ein Klick auf den Spaltenkopf sortiert nur
+  // innerhalb der Stufe.
+  if TiersActive then
+  begin
+    Result := Ord(A.Tier) - Ord(B.Tier);
+    if Result <> 0 then
+      Exit;
+  end;
   Result := 0;
   if FSortCustom then
   begin
@@ -722,6 +912,69 @@ begin
     Result := CompareDefault(A, B);
 end;
 
+function TAtlasFindingsView.IsActiveInScope: Boolean;
+var
+  Name: string;
+begin
+  if FActiveKey = '' then
+    Exit(False);
+  if (FFilter.Scope = TAtlasFindingScope.CurrentFile) or (FFilter.Files = nil) then
+    Exit(True);
+  for Name in FFilter.Files do
+    if TAtlasFindings.UnitKey(Name) = FActiveKey then
+      Exit(True);
+  Result := False;
+end;
+
+function TAtlasFindingsView.FindingRow(AIndex: Integer; const AGroupKey: string): TAtlasFindingRow;
+begin
+  Result := Default(TAtlasFindingRow);
+  Result.GroupKey := AGroupKey;
+  Result.Finding := AIndex;
+  Result.IsNew := FNew.ContainsKey(FFindings[AIndex].Key);
+  Result.Tier := FFindings[AIndex].Tier;
+  if TiersActive then
+  begin
+    Result.Pinned := Result.Tier = TAtlasFindingTier.Active;
+    Result.Dimmed := (Result.Tier = TAtlasFindingTier.Closed) and (FClosedUnits = TAtlasClosedUnits.Dimmed);
+  end;
+end;
+
+function TAtlasFindingsView.SectionRow(ATier: TAtlasFindingTier; const AMembers: TArray<Integer>): TAtlasFindingRow;
+var
+  Index: Integer;
+  Units: TDictionary<string, Boolean>;
+begin
+  Result := Default(TAtlasFindingRow);
+  Result.IsSection := True;
+  Result.Finding := -1;
+  Result.Tier := ATier;
+  Result.Pinned := ATier = TAtlasFindingTier.Active;
+  Result.Dimmed := (ATier = TAtlasFindingTier.Closed) and (FClosedUnits = TAtlasClosedUnits.Dimmed);
+  Result.Count := Length(AMembers);
+  Units := TDictionary<string, Boolean>.Create;
+  try
+    for Index in AMembers do
+      Units.AddOrSetValue(TAtlasFindings.UnitKey(FFindings[Index].FileName), True);
+    Result.Units := Units.Count;
+  finally
+    Units.Free;
+  end;
+  if ATier = TAtlasFindingTier.Active then
+    Result.Caption := ExtractFileName(FActiveFile);
+end;
+
+function TAtlasFindingsView.CleanActiveRow(out ARow: TAtlasFindingRow): Boolean;
+begin
+  ARow := Default(TAtlasFindingRow);
+  Result := TiersActive and FShowCleanActive and IsActiveInScope;
+  if not Result then
+    Exit;
+  ARow := SectionRow(TAtlasFindingTier.Active, nil);
+  ARow.IsCleanActive := True;
+  ARow.Checking := not FActiveChecked;
+end;
+
 procedure TAtlasFindingsView.Rebuild;
 var
   Index: Integer;
@@ -730,14 +983,18 @@ var
   Members: TObjectDictionary<string, TList<Integer>>;
   Key: string;
   Row: TAtlasFindingRow;
-  Collapsed: Boolean;
+  Collapsed, Tiers, HasActive: Boolean;
   Member: Integer;
   First: TAtlasFinding;
+  Tier: TAtlasFindingTier;
+  OfTier: array[TAtlasFindingTier] of TArray<Integer>;
+  Started: array[TAtlasFindingTier] of Boolean;
 begin
+  Tiers := TiersActive;
   Order := TList<Integer>.Create;
   try
     for Index := 0 to High(FFindings) do
-      if FFilter.Matches(FFindings[Index]) then
+      if FFilter.Matches(FFindings[Index]) and not HiddenByTier(FFindings[Index]) then
         Order.Add(Index);
     Order.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
@@ -745,15 +1002,34 @@ begin
         Result := Compare(FFindings[A], FFindings[B]);
       end));
     FRows := nil;
+    for Tier := Low(TAtlasFindingTier) to High(TAtlasFindingTier) do
+    begin
+      OfTier[Tier] := nil;
+      Started[Tier] := False;
+    end;
+    HasActive := False;
+    for Index in Order do
+    begin
+      Tier := FFindings[Index].Tier;
+      OfTier[Tier] := OfTier[Tier] + [Index];
+      if Tier = TAtlasFindingTier.Active then
+        HasActive := True;
+    end;
     if FGrouping = TAtlasFindingGrouping.None then
     begin
       FVisible := Order.ToArray;
+      // Ohne Gruppierung (#1108): die drei Stufen als Trennzeilen, die aktive Unit auch ohne Befunde.
+      if Tiers and not HasActive and CleanActiveRow(Row) then
+        FRows := FRows + [Row];
       for Index in FVisible do
       begin
-        Row := Default(TAtlasFindingRow);
-        Row.Finding := Index;
-        Row.IsNew := FNew.ContainsKey(FFindings[Index].Key);
-        FRows := FRows + [Row];
+        Tier := FFindings[Index].Tier;
+        if Tiers and not Started[Tier] then
+        begin
+          Started[Tier] := True;
+          FRows := FRows + [SectionRow(Tier, OfTier[Tier])];
+        end;
+        FRows := FRows + [FindingRow(Index, '')];
       end;
       Exit;
     end;
@@ -770,7 +1046,9 @@ begin
         end;
         Members[Key].Add(Index);
       end;
-      // Gruppen nach Datei, Regel bzw. Kategorie; innerhalb der Gruppe die gewählte Sortierung.
+      // Gruppen nach Datei, Regel bzw. Kategorie; innerhalb der Gruppe die gewählte Sortierung. Nach Datei mit
+      // Offene-zuerst (#1108) kommt die Stufe vor dem Namen: aktive Unit, geöffnete und nicht geöffnete je
+      // alphabetisch, damit beim Editorwechsel nur die angepinnte Gruppe springt.
       Groups.Sort(TComparer<string>.Construct(
         function(const A, B: string): Integer
         var
@@ -778,27 +1056,47 @@ begin
         begin
           FirstA := FFindings[Members[A][0]];
           FirstB := FFindings[Members[B][0]];
-          case FGrouping of
-            TAtlasFindingGrouping.ByFile:
-              Result := CompareText(ExtractFileName(FirstA.FileName), ExtractFileName(FirstB.FileName));
-            TAtlasFindingGrouping.ByRule:
-              Result := CompareText(FirstA.Problem.Code, FirstB.Problem.Code);
-          else
-            Result := Ord(FirstA.Category) - Ord(FirstB.Category);
-          end;
+          Result := 0;
+          if Tiers and (FGrouping = TAtlasFindingGrouping.ByFile) then
+            Result := Ord(FirstA.Tier) - Ord(FirstB.Tier);
+          if Result = 0 then
+            case FGrouping of
+              TAtlasFindingGrouping.ByFile:
+                Result := CompareText(ExtractFileName(FirstA.FileName), ExtractFileName(FirstB.FileName));
+              TAtlasFindingGrouping.ByRule:
+                Result := CompareText(FirstA.Problem.Code, FirstB.Problem.Code);
+            else
+              Result := Ord(FirstA.Category) - Ord(FirstB.Category);
+            end;
           if Result = 0 then
             Result := CompareText(A, B);
         end));
       FVisible := nil;
+      if Tiers and (FGrouping = TAtlasFindingGrouping.ByFile) and not HasActive and CleanActiveRow(Row) then
+        FRows := FRows + [Row];
       for Key in Groups do
       begin
         First := FFindings[Members[Key][0]];
+        // Trennzeilen „Geöffnet“ und „Nicht geöffnet“ nur nach Datei; bei Regel und Kategorie würden sie sich in
+        // jeder Gruppe wiederholen.
+        if Tiers and (FGrouping = TAtlasFindingGrouping.ByFile) and (First.Tier <> TAtlasFindingTier.Active) and
+          not Started[First.Tier] then
+        begin
+          Started[First.Tier] := True;
+          FRows := FRows + [SectionRow(First.Tier, OfTier[First.Tier])];
+        end;
         Row := Default(TAtlasFindingRow);
         Row.IsGroup := True;
         Row.GroupKey := Key;
         Row.Finding := -1;
         Row.Count := Members[Key].Count;
         Row.Category := First.Category;
+        if Tiers and (FGrouping = TAtlasFindingGrouping.ByFile) then
+        begin
+          Row.Tier := First.Tier;
+          Row.Pinned := First.Tier = TAtlasFindingTier.Active;
+          Row.Dimmed := (First.Tier = TAtlasFindingTier.Closed) and (FClosedUnits = TAtlasClosedUnits.Dimmed);
+        end;
         case FGrouping of
           TAtlasFindingGrouping.ByFile:
             Row.Caption := ExtractFileName(First.FileName);
@@ -816,11 +1114,7 @@ begin
           FVisible := FVisible + [Member];
           if Collapsed then
             Continue;
-          Row := Default(TAtlasFindingRow);
-          Row.GroupKey := Key;
-          Row.Finding := Member;
-          Row.IsNew := FNew.ContainsKey(FFindings[Member].Key);
-          FRows := FRows + [Row];
+          FRows := FRows + [FindingRow(Member, Key)];
         end;
       end;
     finally
@@ -856,15 +1150,40 @@ end;
 function TAtlasFindingsView.Counts: TAtlasFindingCounts;
 var
   Finding: TAtlasFinding;
-  Files: TDictionary<string, Boolean>;
+  Files, OpenUnits, ClosedUnits, HiddenUnits: TDictionary<string, Boolean>;
+  Tiers: Boolean;
 begin
   Result := Default(TAtlasFindingCounts);
+  Tiers := TiersActive;
   Files := TDictionary<string, Boolean>.Create;
+  OpenUnits := TDictionary<string, Boolean>.Create;
+  ClosedUnits := TDictionary<string, Boolean>.Create;
+  HiddenUnits := TDictionary<string, Boolean>.Create;
   try
     for Finding in FFindings do
     begin
       if not FFilter.MatchesExceptKind(Finding) then
         Continue;
+      // Ausgegraut ist reine Darstellung und zählt mit; ausgeblendet zählt nicht (#1108).
+      if HiddenByTier(Finding) then
+      begin
+        if Finding.Kind in FFilter.Kinds then
+          HiddenUnits.AddOrSetValue(TAtlasFindings.UnitKey(Finding.FileName), True);
+        Continue;
+      end;
+      if Tiers and (Finding.Kind in FFilter.Kinds) then
+      begin
+        if Finding.Tier = TAtlasFindingTier.Closed then
+        begin
+          ClosedUnits.AddOrSetValue(TAtlasFindings.UnitKey(Finding.FileName), True);
+          Inc(Result.ClosedFindings);
+        end
+        else
+        begin
+          OpenUnits.AddOrSetValue(TAtlasFindings.UnitKey(Finding.FileName), True);
+          Inc(Result.OpenFindings);
+        end;
+      end;
       case Finding.Kind of
         TAtlasFindingKind.Error:
           Inc(Result.Errors);
@@ -877,7 +1196,13 @@ begin
         Files.AddOrSetValue(AnsiLowerCase(Finding.FileName), True);
     end;
     Result.Files := Files.Count;
+    Result.OpenUnits := OpenUnits.Count;
+    Result.ClosedUnits := ClosedUnits.Count;
+    Result.HiddenUnits := HiddenUnits.Count;
   finally
+    HiddenUnits.Free;
+    ClosedUnits.Free;
+    OpenUnits.Free;
     Files.Free;
   end;
 end;
@@ -902,6 +1227,9 @@ procedure TAtlasFindingsView.Select(ARow: Integer);
 begin
   if (ARow < 0) or (ARow > High(FRows)) then
     FSelectedKey := ''
+  else if FRows[ARow].IsSection then
+    // Trennzeilen sind nicht wählbar: Die Auswahl bleibt, wo sie war.
+    Exit
   else if FRows[ARow].IsGroup then
     FSelectedKey := 'group:' + FRows[ARow].GroupKey
   else
@@ -916,7 +1244,9 @@ begin
   if FSelectedKey = '' then
     Exit;
   for Index := 0 to High(FRows) do
-    if FRows[Index].IsGroup then
+    if FRows[Index].IsSection then
+      Continue
+    else if FRows[Index].IsGroup then
     begin
       if FSelectedKey = 'group:' + FRows[Index].GroupKey then
         Exit(Index);
@@ -931,7 +1261,7 @@ var
 begin
   AFinding := Default(TAtlasFinding);
   Row := GetSelectedRow;
-  Result := (Row >= 0) and not FRows[Row].IsGroup;
+  Result := (Row >= 0) and not FRows[Row].IsGroup and not FRows[Row].IsSection;
   if Result then
     AFinding := FFindings[FRows[Row].Finding];
 end;
@@ -1008,7 +1338,7 @@ begin
   try
     for Row in ARows do
     begin
-      if (Row < 0) or (Row > High(FRows)) then
+      if (Row < 0) or (Row > High(FRows)) or FRows[Row].IsSection then
         Continue;
       if not FRows[Row].IsGroup then
         Add(FRows[Row].Finding)

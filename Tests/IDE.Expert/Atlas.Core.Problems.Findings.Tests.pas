@@ -3,6 +3,8 @@
 // Tests für das Modell des Fensters „Atlas-Prüfung“ (#909): Art und Kategorie,
 // Befunde aus dem Speicher, Filter, Gruppierung, Sortierung, Zähler, Auswahl
 // und Aufklappzustand über Aktualisierungen, mitwandernde Zeilen, Spalten.
+// Offene Units zuerst (#1108): Stufen je Gruppierung, Trennzeilen, Grau,
+// Ausblenden, aktive Unit ohne Befunde, Formulare, Farben.
 
 interface
 
@@ -62,6 +64,38 @@ type
     procedure CheckedCountCountsDeliveredFiles;
     [Test]
     procedure CopyTextUsesCompilerFormat;
+    /// <summary>#1108: aktive Unit angepinnt, Trennzeilen, geöffnete und nicht geöffnete Gruppen alphabetisch.
+    /// </summary>
+    [Test]
+    procedure TiersOrderFileGroups;
+    [Test]
+    procedure TiersWithoutGroupingAreSections;
+    [Test]
+    procedure TiersInsideRuleAndCategoryGroups;
+    [Test]
+    procedure ColumnSortWorksInsideTiers;
+    [Test]
+    procedure SwitchingEditorMovesOnlyPinnedGroup;
+    [Test]
+    procedure SectionsAreSkippedBySelectionStepAndCopy;
+    [Test]
+    procedure ClosedUnitsDimmedNormalHidden;
+    [Test]
+    procedure CleanActiveUnitShowsWithoutFindings;
+    [Test]
+    procedure SelectionAndCollapseSurviveResort;
+    [Test]
+    procedure FormFilePinsItsUnitIgnoringCase;
+    [Test]
+    procedure OpenFirstOffKeepsOrderOf909;
+    [Test]
+    procedure CurrentFileScopeHasNoSections;
+    [Test]
+    procedure ProjectScopeLimitsClosedUnits;
+    [Test]
+    procedure ClosedUnitsNames;
+    [Test]
+    procedure DimmedColorsStayReadable;
   end;
 
 implementation
@@ -70,7 +104,10 @@ uses
   System.SysUtils,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
-  Atlas.Core.Problems.Findings;
+  Atlas.Core.Problems.Findings,
+  Atlas.Core.Style.Color,
+  Atlas.Core.Style.Palette,
+  Atlas.Core.Problems.Colors;
 
 function Problem(ALine: Integer; const ACode, AMessage: string; ASeverity: TAtlasProblemSeverity): TAtlasProblem;
 begin
@@ -608,6 +645,404 @@ begin
   Assert.AreEqual('B.pas:10:3: warning [empty-except] Leer'#13#10 +
     'B.pas:4:3: error [syntax] Fehlt'#13#10'    X := 1;'#13#10, TAtlasFindings.AsText(Items));
   Assert.AreEqual('', TAtlasFindings.AsText(nil));
+end;
+
+/// <summary>Z aktiv, A und B geöffnet, C und D nicht geöffnet; je Datei zwei Befunde (Fehler, Warnung).</summary>
+function TierSample: TArray<TAtlasFinding>;
+var
+  Name: string;
+begin
+  Result := nil;
+  for Name in ['C', 'Z', 'B', 'D', 'A'] do
+    Result := Result + TAtlasFindings.FromProblems('C:\P\' + Name + '.pas',
+      [Problem(5, 'empty-except', 'Leer', TAtlasProblemSeverity.Warning),
+      Problem(2, 'syntax', 'Fehlt', TAtlasProblemSeverity.Error)], nil);
+end;
+
+function TierView: TAtlasFindingsView;
+begin
+  Result := TAtlasFindingsView.Create;
+  Result.OpenFirst := True;
+  Result.SetFindings(TierSample);
+  Result.SetOpenFiles('C:\P\Z.pas', ['C:\P\Z.pas', 'C:\P\B.pas', 'C:\P\A.pas', 'C:\P\Leer.pas'], True);
+end;
+
+/// <summary>Zeilen als Text: G=Gruppe, S=Trennzeile, F=Befund; dahinter Name bzw. Stelle, * = angepinnt,
+/// ~ = ausgegraut.</summary>
+function RowsText(AView: TAtlasFindingsView): string;
+var
+  Row: TAtlasFindingRow;
+  Part: string;
+begin
+  Result := '';
+  for Row in AView.Rows do
+  begin
+    if Row.IsSection then
+    begin
+      Part := 'S' + IntToStr(Ord(Row.Tier)) + ':' + Row.Caption + ':' + IntToStr(Row.Units) + '/' +
+        IntToStr(Row.Count);
+      if Row.IsCleanActive then
+        Part := Part + ':clean';
+    end
+    else if Row.IsGroup then
+      Part := 'G:' + Row.Caption
+    else
+      Part := 'F:' + AView.Finding(Row.Finding).Location;
+    if Row.Pinned then
+      Part := Part + '*';
+    if Row.Dimmed then
+      Part := Part + '~';
+    Result := Result + Part + ' ';
+  end;
+  Result := Result.Trim;
+end;
+
+procedure TAtlasFindingsTests.TiersOrderFileGroups;
+var
+  View: TAtlasFindingsView;
+begin
+  View := TierView;
+  try
+    Assert.AreEqual('G:Z.pas* F:Z.pas:3:3* F:Z.pas:6:3* ' +
+      'S1::2/4 G:A.pas F:A.pas:3:3 F:A.pas:6:3 G:B.pas F:B.pas:3:3 F:B.pas:6:3 ' +
+      'S2::2/4~ G:C.pas~ F:C.pas:3:3~ F:C.pas:6:3~ G:D.pas~ F:D.pas:3:3~ F:D.pas:6:3~', RowsText(View));
+    Assert.IsTrue(View.Rows[0].Tier = TAtlasFindingTier.Active);
+    Assert.IsTrue(View.Finding(View.Rows[1].Finding).Tier = TAtlasFindingTier.Active);
+    Assert.IsTrue(View.Finding(View.Rows[5].Finding).Tier = TAtlasFindingTier.Open);
+    Assert.IsTrue(View.Rows[11].Tier = TAtlasFindingTier.Closed);
+    Assert.IsTrue(View.Finding(View.Rows[12].Finding).Tier = TAtlasFindingTier.Closed);
+  finally
+    View.Free;
+  end;
+end;
+
+procedure TAtlasFindingsTests.TiersWithoutGroupingAreSections;
+var
+  View: TAtlasFindingsView;
+  Items: TArray<TAtlasFinding>;
+begin
+  View := TierView;
+  try
+    View.Grouping := TAtlasFindingGrouping.None;
+    // Innerhalb der Stufe die Vorgabe Art, Datei, Zeile.
+    Assert.AreEqual('S0:Z.pas:1/2* F:Z.pas:3:3* F:Z.pas:6:3* ' +
+      'S1::2/4 F:A.pas:3:3 F:B.pas:3:3 F:A.pas:6:3 F:B.pas:6:3 ' +
+      'S2::2/4~ F:C.pas:3:3~ F:D.pas:3:3~ F:C.pas:6:3~ F:D.pas:6:3~', RowsText(View));
+    Items := View.Visible;
+    Assert.AreEqual(10, Integer(Length(Items)));
+    Assert.AreEqual('Z.pas:3:3', Items[0].Location);
+    Assert.IsFalse(TAtlasFindings.AsText(Items).Contains('Geöffnet'));
+  finally
+    View.Free;
+  end;
+end;
+
+procedure TAtlasFindingsTests.TiersInsideRuleAndCategoryGroups;
+var
+  View: TAtlasFindingsView;
+begin
+  View := TierView;
+  try
+    View.Grouping := TAtlasFindingGrouping.ByRule;
+    Assert.AreEqual('G:empty-except F:Z.pas:6:3* F:A.pas:6:3 F:B.pas:6:3 F:C.pas:6:3~ F:D.pas:6:3~ ' +
+      'G:syntax F:Z.pas:3:3* F:A.pas:3:3 F:B.pas:3:3 F:C.pas:3:3~ F:D.pas:3:3~', RowsText(View));
+    View.Grouping := TAtlasFindingGrouping.ByCategory;
+    Assert.AreEqual('G:code-smell F:Z.pas:3:3* F:Z.pas:6:3* F:A.pas:3:3 F:B.pas:3:3 F:A.pas:6:3 F:B.pas:6:3 ' +
+      'F:C.pas:3:3~ F:D.pas:3:3~ F:C.pas:6:3~ F:D.pas:6:3~', RowsText(View));
+  finally
+    View.Free;
+  end;
+end;
+
+procedure TAtlasFindingsTests.ColumnSortWorksInsideTiers;
+var
+  View: TAtlasFindingsView;
+begin
+  View := TierView;
+  try
+    View.Grouping := TAtlasFindingGrouping.None;
+    View.SortBy(TAtlasFindingColumn.Location);
+    View.SortBy(TAtlasFindingColumn.Location);
+    Assert.IsTrue(View.SortDescending);
+    Assert.AreEqual('S0:Z.pas:1/2* F:Z.pas:6:3* F:Z.pas:3:3* ' +
+      'S1::2/4 F:B.pas:6:3 F:B.pas:3:3 F:A.pas:6:3 F:A.pas:3:3 ' +
+      'S2::2/4~ F:D.pas:6:3~ F:D.pas:3:3~ F:C.pas:6:3~ F:C.pas:3:3~', RowsText(View));
+    View.ResetSort;
+    Assert.AreEqual('Z.pas:3:3', View.Visible[0].Location);
+    Assert.AreEqual('A.pas:3:3', View.Visible[2].Location);
+  finally
+    View.Free;
+  end;
+end;
+
+procedure TAtlasFindingsTests.SwitchingEditorMovesOnlyPinnedGroup;
+var
+  View: TAtlasFindingsView;
+begin
+  View := TierView;
+  try
+    View.SetOpenFiles('C:\P\B.pas', ['C:\P\Z.pas', 'C:\P\B.pas', 'C:\P\A.pas'], True);
+    // B steht oben, Z rückt alphabetisch unter A; A bleibt, wo es war.
+    Assert.AreEqual('G:B.pas* F:B.pas:3:3* F:B.pas:6:3* ' +
+      'S1::2/4 G:A.pas F:A.pas:3:3 F:A.pas:6:3 G:Z.pas F:Z.pas:3:3 F:Z.pas:6:3 ' +
+      'S2::2/4~ G:C.pas~ F:C.pas:3:3~ F:C.pas:6:3~ G:D.pas~ F:D.pas:3:3~ F:D.pas:6:3~', RowsText(View));
+    // Unit schließen: rutscht nach „Nicht geöffnet“.
+    View.SetOpenFiles('C:\P\B.pas', ['C:\P\B.pas', 'C:\P\A.pas'], True);
+    Assert.AreEqual('G:B.pas* F:B.pas:3:3* F:B.pas:6:3* S1::1/2 G:A.pas F:A.pas:3:3 F:A.pas:6:3 ' +
+      'S2::3/6~ G:C.pas~ F:C.pas:3:3~ F:C.pas:6:3~ G:D.pas~ F:D.pas:3:3~ F:D.pas:6:3~ ' +
+      'G:Z.pas~ F:Z.pas:3:3~ F:Z.pas:6:3~', RowsText(View));
+  finally
+    View.Free;
+  end;
+end;
+
+procedure TAtlasFindingsTests.SectionsAreSkippedBySelectionStepAndCopy;
+var
+  View: TAtlasFindingsView;
+  Item: TAtlasFinding;
+  Rows: TArray<TAtlasFindingRow>;
+begin
+  View := TierView;
+  try
+    View.Grouping := TAtlasFindingGrouping.None;
+    Rows := View.Rows;
+    Assert.IsTrue(Rows[3].IsSection);
+    Assert.IsFalse(Rows[3].IsGroup);
+    View.Select(2);
+    View.Select(3);
+    // Die Trennzeile ist nicht wählbar: Die Auswahl bleibt auf dem Befund davor.
+    Assert.AreEqual(2, View.SelectedRow);
+    View.Toggle(3);
+    Assert.AreEqual(Integer(Length(Rows)), Integer(Length(View.Rows)));
+    Assert.IsTrue(View.Step(True, Item));
+    Assert.AreEqual('A.pas:3:3', Item.Location);
+    Assert.AreEqual(4, View.SelectedRow);
+    Assert.AreEqual(0, Integer(Length(View.FindingsOfRows([0, 3, 8]))));
+    Assert.AreEqual(1, Integer(Length(View.FindingsOfRows([0, 3, 4]))));
+    Assert.IsTrue(View.SelectAt('C:\P\C.pas', 2));
+    Assert.AreEqual(9, View.SelectedRow);
+  finally
+    View.Free;
+  end;
+end;
+
+procedure TAtlasFindingsTests.ClosedUnitsDimmedNormalHidden;
+var
+  View: TAtlasFindingsView;
+  Counts: TAtlasFindingCounts;
+begin
+  View := TierView;
+  try
+    Counts := View.Counts;
+    Assert.AreEqual(10, Counts.Total);
+    Assert.AreEqual(3, Counts.OpenUnits);
+    Assert.AreEqual(6, Counts.OpenFindings);
+    Assert.AreEqual(2, Counts.ClosedUnits);
+    Assert.AreEqual(4, Counts.ClosedFindings);
+    Assert.AreEqual(0, Counts.HiddenUnits);
+    View.ClosedUnits := TAtlasClosedUnits.Normal;
+    Assert.AreEqual('S2::2/4 G:C.pas F:C.pas:3:3 F:C.pas:6:3 G:D.pas F:D.pas:3:3 F:D.pas:6:3',
+      RowsText(View).Substring(RowsText(View).IndexOf('S2')));
+    View.ClosedUnits := TAtlasClosedUnits.Hidden;
+    Assert.AreEqual('G:Z.pas* F:Z.pas:3:3* F:Z.pas:6:3* ' +
+      'S1::2/4 G:A.pas F:A.pas:3:3 F:A.pas:6:3 G:B.pas F:B.pas:3:3 F:B.pas:6:3', RowsText(View));
+    Counts := View.Counts;
+    // Ausgeblendet zählt nicht mit, auch nicht auf den Umschaltern.
+    Assert.AreEqual(6, Counts.Total);
+    Assert.AreEqual(3, Counts.Warnings);
+    Assert.AreEqual(0, Counts.ClosedUnits);
+    Assert.AreEqual(2, Counts.HiddenUnits);
+    Assert.AreEqual(3, Counts.Files);
+    Assert.AreEqual(6, Integer(Length(View.Visible)));
+  finally
+    View.Free;
+  end;
+end;
+
+procedure TAtlasFindingsTests.CleanActiveUnitShowsWithoutFindings;
+var
+  View: TAtlasFindingsView;
+  Counts: TAtlasFindingCounts;
+begin
+  View := TierView;
+  try
+    View.SetOpenFiles('C:\P\Sauber.pas', ['C:\P\Sauber.pas', 'C:\P\A.pas'], False);
+    Assert.IsTrue(RowsText(View).StartsWith('S0:Sauber.pas:0/0:clean* S1::1/2 G:A.pas '), RowsText(View));
+    Assert.IsTrue(View.Rows[0].Checking);
+    View.SetOpenFiles('C:\P\Sauber.pas', ['C:\P\Sauber.pas', 'C:\P\A.pas'], True);
+    Assert.IsFalse(View.Rows[0].Checking);
+    Assert.IsTrue(View.Rows[0].IsCleanActive);
+    Counts := View.Counts;
+    Assert.AreEqual(10, Counts.Total);
+    Assert.AreEqual(5, Counts.Files);
+    View.Grouping := TAtlasFindingGrouping.None;
+    Assert.IsTrue(RowsText(View).StartsWith('S0:Sauber.pas:0/0:clean* S1::1/2 F:A.pas:3:3 '), RowsText(View));
+    View.Grouping := TAtlasFindingGrouping.ByRule;
+    Assert.IsTrue(RowsText(View).StartsWith('G:empty-except '), RowsText(View));
+    View.Grouping := TAtlasFindingGrouping.ByFile;
+    View.ShowCleanActive := False;
+    Assert.IsTrue(RowsText(View).StartsWith('S1::1/2 G:A.pas '), RowsText(View));
+  finally
+    View.Free;
+  end;
+end;
+
+procedure TAtlasFindingsTests.SelectionAndCollapseSurviveResort;
+var
+  View: TAtlasFindingsView;
+  Item: TAtlasFinding;
+  Key: string;
+begin
+  View := TierView;
+  try
+    View.SetExpanded('file:c:\p\c.pas', False);
+    View.Select(5);
+    Assert.IsTrue(View.SelectedFinding(Item));
+    Key := Item.Key;
+    Assert.AreEqual('A.pas:3:3', Item.Location);
+    View.SetFindings(TierSample);
+    View.SetOpenFiles('C:\P\A.pas', ['C:\P\A.pas', 'C:\P\C.pas'], True);
+    Assert.IsTrue(View.SelectedFinding(Item));
+    Assert.AreEqual(Key, Item.Key);
+    Assert.AreEqual(1, View.SelectedRow);
+    // C ist jetzt geöffnet und bleibt zugeklappt.
+    Assert.IsTrue(RowsText(View).Contains('S1::1/2 G:C.pas S2'), RowsText(View));
+  finally
+    View.Free;
+  end;
+end;
+
+procedure TAtlasFindingsTests.FormFilePinsItsUnitIgnoringCase;
+var
+  View: TAtlasFindingsView;
+begin
+  View := TierView;
+  try
+    View.SetOpenFiles('c:\p\b.DFM', ['C:\P\b.dfm', 'C:\P\A.PAS'], True);
+    Assert.IsTrue(RowsText(View).StartsWith('G:B.pas* F:B.pas:3:3* F:B.pas:6:3* S1::1/2 G:A.pas '),
+      RowsText(View));
+    Assert.AreEqual('c:\p\b.pas', View.ActiveFile);
+    Assert.AreEqual('c:\p\b.pas', TAtlasFindings.UnitKey('C:\P\B.dfm'));
+    Assert.AreEqual('c:\p\b.pas', TAtlasFindings.UnitKey('C:\P\B.FMX'));
+    Assert.AreEqual('c:\p\b.inc', TAtlasFindings.UnitKey('C:\P\B.inc'));
+  finally
+    View.Free;
+  end;
+end;
+
+procedure TAtlasFindingsTests.OpenFirstOffKeepsOrderOf909;
+var
+  View, Plain: TAtlasFindingsView;
+  Grouping: TAtlasFindingGrouping;
+begin
+  View := TierView;
+  Plain := TAtlasFindingsView.Create;
+  try
+    View.OpenFirst := False;
+    Plain.SetFindings(TierSample);
+    for Grouping := Low(TAtlasFindingGrouping) to High(TAtlasFindingGrouping) do
+    begin
+      View.Grouping := Grouping;
+      Plain.Grouping := Grouping;
+      Assert.AreEqual(RowsText(Plain), RowsText(View));
+    end;
+    Assert.IsFalse(RowsText(View).Contains('*'));
+    Assert.AreEqual(0, View.Counts.OpenUnits);
+  finally
+    Plain.Free;
+    View.Free;
+  end;
+end;
+
+procedure TAtlasFindingsTests.CurrentFileScopeHasNoSections;
+var
+  View: TAtlasFindingsView;
+  Filter: TAtlasFindingFilter;
+begin
+  View := TierView;
+  try
+    Filter := View.Filter;
+    Filter.Scope := TAtlasFindingScope.CurrentFile;
+    Filter.CurrentFile := 'C:\P\Z.pas';
+    View.Filter := Filter;
+    Assert.IsFalse(View.TiersActive);
+    Assert.AreEqual('G:Z.pas F:Z.pas:3:3 F:Z.pas:6:3', RowsText(View));
+  finally
+    View.Free;
+  end;
+end;
+
+procedure TAtlasFindingsTests.ProjectScopeLimitsClosedUnits;
+var
+  View: TAtlasFindingsView;
+  Filter: TAtlasFindingFilter;
+begin
+  View := TierView;
+  try
+    Filter := View.Filter;
+    Filter.Scope := TAtlasFindingScope.Project;
+    Filter.Files := ['C:\P\Z.pas', 'C:\P\A.pas', 'C:\P\C.pas'];
+    View.Filter := Filter;
+    Assert.AreEqual('G:Z.pas* F:Z.pas:3:3* F:Z.pas:6:3* S1::1/2 G:A.pas F:A.pas:3:3 F:A.pas:6:3 ' +
+      'S2::1/2~ G:C.pas~ F:C.pas:3:3~ F:C.pas:6:3~', RowsText(View));
+    // Aktive Unit außerhalb des Projekts: keine Zeile „Keine Befunde“.
+    View.SetOpenFiles('C:\Fremd\X.pas', ['C:\Fremd\X.pas'], True);
+    Assert.IsTrue(RowsText(View).StartsWith('S2::'), RowsText(View));
+  finally
+    View.Free;
+  end;
+end;
+
+procedure TAtlasFindingsTests.ClosedUnitsNames;
+var
+  Value: TAtlasClosedUnits;
+begin
+  Assert.IsTrue(TAtlasFindings.TryParseClosedUnits('hidden', Value));
+  Assert.IsTrue(Value = TAtlasClosedUnits.Hidden);
+  Assert.IsTrue(TAtlasFindings.TryParseClosedUnits('Normal', Value));
+  Assert.IsTrue(Value = TAtlasClosedUnits.Normal);
+  Assert.IsFalse(TAtlasFindings.TryParseClosedUnits('grau', Value));
+  Assert.IsTrue(Value = TAtlasClosedUnits.Dimmed);
+  Assert.AreEqual('dimmed', TAtlasFindings.ClosedUnitsNames[TAtlasClosedUnits.Dimmed]);
+end;
+
+procedure TAtlasFindingsTests.DimmedColorsStayReadable;
+var
+  Back, Text, Dimmed: TAtlasColor;
+  Backs: array[0..3] of TAtlasColor;
+  Texts: array[0..3] of TAtlasColor;
+  Index: Integer;
+  Error, Warn: TAtlasColor;
+begin
+  Backs[0] := TAtlasColorMath.FromHex('#FFFFFF');
+  Texts[0] := TAtlasColorMath.FromHex('#1F2328');
+  Backs[1] := TAtlasColorMath.FromHex('#1A1E25');
+  Texts[1] := TAtlasColorMath.FromHex('#E6E8EB');
+  Backs[2] := TAtlasColorMath.FromHex('#2B2B2B');
+  Texts[2] := TAtlasColorMath.FromHex('#C8C8C8');
+  Backs[3] := TAtlasColorMath.FromHex('#F0F0F0');
+  Texts[3] := TAtlasColorMath.FromHex('#707070');
+  for Index := 0 to High(Backs) do
+  begin
+    Back := Backs[Index];
+    Text := Texts[Index];
+    Dimmed := DimmedTextColor(Text, Back);
+    Assert.IsTrue(TAtlasColorMath.Contrast(Dimmed, Back) >= AtlasDimmedMinContrast - 0.01,
+      TAtlasColorMath.ToHex(Dimmed));
+    // Ausgegraut heißt: weniger Kontrast als der Text, solange das Maß es erlaubt; zu blasser Text wird kräftiger.
+    if TAtlasColorMath.Contrast(Text, Back) >= AtlasDimmedMinContrast then
+      Assert.IsTrue(TAtlasColorMath.Contrast(Dimmed, Back) <= TAtlasColorMath.Contrast(Text, Back) + 0.01);
+  end;
+  Assert.AreNotEqual(TAtlasColorMath.ToHex(Texts[0]), TAtlasColorMath.ToHex(DimmedTextColor(Texts[0], Backs[0])));
+  // Symbole bleiben unterscheidbar.
+  Error := DimmedIconColor($003C3CD8, Backs[0]);
+  Warn := DimmedIconColor($0020A8F0, Backs[0]);
+  Assert.IsTrue(TAtlasColorMath.DeltaE2000(Error, Warn) > 10);
+  Assert.AreNotEqual(TAtlasColorMath.ToHex($003C3CD8), TAtlasColorMath.ToHex(Error));
+  // Angepinnt: hell etwa #EEF4FB.
+  Assert.IsTrue(TAtlasColorMath.DeltaE2000(PinnedBackColor(Backs[0]), TAtlasColorMath.FromHex('#EEF4FB')) < 3,
+    TAtlasColorMath.ToHex(PinnedBackColor(Backs[0])));
+  Assert.IsTrue(TAtlasColorMath.IsDark(PinnedBackColor(Backs[1])));
 end;
 
 initialization

@@ -300,6 +300,13 @@ type
     ProblemsWindowCompiler: Boolean;
     /// <summary>Eintrag zur Cursorzeile im Fenster markieren.</summary>
     ProblemsWindowFollowCursor: Boolean;
+    /// <summary>Offene Units zuerst (#1108): aktive Unit oben angepinnt, geöffnete darunter, nicht geöffnete danach;
+    /// Hauptschalter von ProblemsWindowClosedUnits und ProblemsWindowShowCleanActive.</summary>
+    ProblemsWindowOpenFirst: Boolean;
+    /// <summary>Nicht geöffnete Units: 'dimmed' (Vorgabe, ausgegraut), 'normal' (nur einsortiert), 'hidden'.</summary>
+    ProblemsWindowClosedUnits: string;
+    /// <summary>Aktive Unit auch ohne Befunde oben zeigen („Keine Befunde“ bzw. „wird geprüft …“).</summary>
+    ProblemsWindowShowCleanActive: Boolean;
     /// <summary>Bestätigt der Build einen Atlas-Befund (gleiche Zeile, gleicher Code, #1024): 'merge' (Vorgabe)
     /// zeigt nur den Atlas-Befund mit Marke „Atlas + dcc“, 'both' beide Meldungen.</summary>
     ProblemsCompilerMerge: string;
@@ -1247,6 +1254,9 @@ begin
   Result.ProblemsWindowColumns := '';
   Result.ProblemsWindowCompiler := False;
   Result.ProblemsWindowFollowCursor := True;
+  Result.ProblemsWindowOpenFirst := True;
+  Result.ProblemsWindowClosedUnits := 'dimmed';
+  Result.ProblemsWindowShowCleanActive := True;
   Result.ProblemsCompilerMerge := 'merge';
   Result.ProblemsShowCompilerCode := True;
   Result.ProblemsWindowKey := $C050; // Strg+Alt+P
@@ -1690,6 +1700,7 @@ begin
   InlineDiagnostics := Choice(InlineDiagnostics, ['errors', 'off', 'errorsAndWarnings', 'all']);
   ProblemsWindowScope := Choice(ProblemsWindowScope, ['group', 'file', 'project']);
   ProblemsWindowGroupBy := Choice(ProblemsWindowGroupBy, ['file', 'none', 'rule', 'category']);
+  ProblemsWindowClosedUnits := Choice(ProblemsWindowClosedUnits, ['dimmed', 'normal', 'hidden']);
   ProblemsCompilerMerge := Choice(ProblemsCompilerMerge, ['merge', 'both']);
   ProblemsWindowKey := EnsureRange(ProblemsWindowKey, 0, $FFFF);
   NextProblemKey := EnsureRange(NextProblemKey, 0, $FFFF);
@@ -1810,6 +1821,11 @@ begin
   ProblemsWindowCompiler := AStore.ReadInteger('ProblemsWindowCompiler', BoolValue(Default.ProblemsWindowCompiler)) <> 0;
   ProblemsWindowFollowCursor := AStore.ReadInteger('ProblemsWindowFollowCursor',
     BoolValue(Default.ProblemsWindowFollowCursor)) <> 0;
+  ProblemsWindowOpenFirst := AStore.ReadInteger('ProblemsWindowOpenFirst',
+    BoolValue(Default.ProblemsWindowOpenFirst)) <> 0;
+  ProblemsWindowClosedUnits := AStore.ReadString('ProblemsWindowClosedUnits', Default.ProblemsWindowClosedUnits);
+  ProblemsWindowShowCleanActive := AStore.ReadInteger('ProblemsWindowShowCleanActive',
+    BoolValue(Default.ProblemsWindowShowCleanActive)) <> 0;
   ProblemsCompilerMerge := AStore.ReadString('ProblemsCompilerMerge', Default.ProblemsCompilerMerge);
   ProblemsShowCompilerCode := AStore.ReadInteger('ProblemsShowCompilerCode',
     BoolValue(Default.ProblemsShowCompilerCode)) <> 0;
@@ -2222,6 +2238,9 @@ begin
   AStore.WriteString('ProblemsWindowColumns', ProblemsWindowColumns);
   AStore.WriteInteger('ProblemsWindowCompiler', BoolValue(ProblemsWindowCompiler));
   AStore.WriteInteger('ProblemsWindowFollowCursor', BoolValue(ProblemsWindowFollowCursor));
+  AStore.WriteInteger('ProblemsWindowOpenFirst', BoolValue(ProblemsWindowOpenFirst));
+  AStore.WriteString('ProblemsWindowClosedUnits', ProblemsWindowClosedUnits);
+  AStore.WriteInteger('ProblemsWindowShowCleanActive', BoolValue(ProblemsWindowShowCleanActive));
   AStore.WriteString('ProblemsCompilerMerge', ProblemsCompilerMerge);
   AStore.WriteInteger('ProblemsShowCompilerCode', BoolValue(ProblemsShowCompilerCode));
   AStore.WriteInteger('ProblemsWindowKey', ProblemsWindowKey);

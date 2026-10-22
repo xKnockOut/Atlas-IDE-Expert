@@ -38,6 +38,10 @@ type
     procedure LiveAndPausedAndStatus;
     [Test]
     procedure ExplainDialogShowsExamples;
+    /// <summary>#1108: aktive Unit angepinnt, Trennzeile, nicht geöffnete ausgegraut, ↓ springt über die
+    /// Trennzeile, Knopf „Offene zuerst“.</summary>
+    [Test]
+    procedure OpenFirstPinsDimsAndSkipsSections;
   end;
 
 implementation
@@ -191,6 +195,52 @@ begin
     Assert.IsTrue(Frame.EmptyLabel.Visible);
     Frame.FilterEdit.Text := '';
     Assert.AreEqual(3, Integer(Frame.List.Items.Count));
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TAtlasProblemsFrameTests.OpenFirstPinsDimsAndSkipsSections;
+var
+  Host: TForm;
+  Frame: TAtlasProblemsFrame;
+  Key: Word;
+  Saved: Boolean;
+begin
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := NewFrame(Host);
+    Frame.ApplyTierSettings(True, TAtlasClosedUnits.Dimmed, True);
+    Assert.IsTrue(Frame.OpenFirst);
+    Assert.IsTrue(Frame.OpenFirstButton.Down);
+    Frame.SetOpenFiles('C:\P\Lager.pas', ['C:\P\Lager.pas'], True);
+    Assert.AreEqual(6, Integer(Frame.List.Items.Count));
+    Assert.AreEqual(#$25BE' '#$D83D#$DCCC' Lager.pas (1) '#$00B7' aktiver Editor', Frame.List.Items[0].SubItems[0]);
+    Assert.AreEqual(1, Frame.List.Items[1].ImageIndex, 'aktive Unit mit normalem Symbol');
+    Assert.AreEqual('Nicht geöffnet '#$00B7' 1 Units '#$00B7' 2 Befunde', Frame.List.Items[2].SubItems[0]);
+    Assert.AreEqual(-1, Frame.List.Items[2].ImageIndex, 'Trennzeile ohne Symbol');
+    Assert.AreEqual(#$25BE' Kunde.pas (2) '#$00B7' nicht geöffnet', Frame.List.Items[3].SubItems[0]);
+    Assert.AreEqual(3, Frame.List.Items[4].ImageIndex, 'ausgegrautes Fehlersymbol');
+    // ↓ von der letzten Zeile der aktiven Unit springt über die Trennzeile.
+    Frame.List.ItemIndex := 1;
+    Frame.View.Select(1);
+    Key := VK_DOWN;
+    Frame.List.OnKeyDown(Frame.List, Key, []);
+    Assert.AreEqual(0, Integer(Key));
+    Assert.AreEqual(3, Frame.List.ItemIndex);
+    // Knopf aus: wie #909, und die Einstellung wird gespeichert.
+    Saved := False;
+    Frame.OnLayout :=
+      procedure
+      begin
+        Saved := True;
+      end;
+    Frame.OpenFirstButton.Down := False;
+    Frame.OpenFirstButton.OnClick(Frame.OpenFirstButton);
+    Assert.IsTrue(Saved);
+    Assert.IsFalse(Frame.OpenFirst);
+    Assert.AreEqual(5, Integer(Frame.List.Items.Count));
+    Assert.AreEqual(#$25BE' Kunde.pas (2)', Frame.List.Items[0].SubItems[0]);
   finally
     Host.Free;
   end;
