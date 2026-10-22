@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Units.Tests;
 
 // Tests der Regeln für Unit-Kopf, uses und Dateiende: unit-name-mismatch
-// (#990), text-after-final-end (#991).
+// (#990), text-after-final-end (#991), exports-invalid (#1077).
 
 interface
 
@@ -32,6 +32,20 @@ type
     procedure TextAfterAllowComments;
     [Test]
     procedure TextAfterOptions;
+    [Test]
+    procedure ExportsIssueExample;
+    [Test]
+    procedure ExportsDuplicateVariants;
+    [Test]
+    procedure ExportsNotExportable;
+    [Test]
+    procedure ExportsLocalScope;
+    [Test]
+    procedure ExportsSilentCases;
+    [Test]
+    procedure ExportsEntries;
+    [Test]
+    procedure ExportsOptions;
   end;
 
 implementation
@@ -41,6 +55,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
@@ -126,6 +141,18 @@ function Kunde(const ATail: string): string;
 begin
   Result := 'unit Kunde;'#10'interface'#10'implementation'#10'procedure TKunde.Laden;'#10'begin'#10'end;'#10 +
     'end.' + ATail;
+end;
+
+function Werkzeug(const ADeclarations, AExports: string): string;
+begin
+  Result := 'library Werkzeug;'#10'procedure Initialisieren; stdcall;'#10'begin'#10'end;'#10 +
+    'procedure Berechnen; stdcall;'#10'begin'#10'end;'#10 + ADeclarations + 'exports'#10 + AExports + ';'#10 +
+    'begin'#10'end.';
+end;
+
+function ExportFindings(const ASource: string): TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.Findings(TExportsInvalidRule.Create, ASource);
 end;
 
 /// <summary>Wendet ein Edit innerhalb einer Zeile an (Zeilen aus #10).</summary>
@@ -354,6 +381,132 @@ begin
     '{"rules": {"group:compiler": "off"}}', 'Source/Kunde.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTextAfterFinalEndRule.Create, Source,
     '{"rules": {"text-after-final-end": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunde.pas'))));
+end;
+
+procedure TUnitRulesTests.ExportsIssueExample;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Werkzeug('', '  Initialisieren,'#10'  Berechnen,'#10'  Initialisieren');
+  Found := ExportFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Initialisieren wird zweimal exportiert (wie E2287).', Found[0].Message);
+  Assert.AreEqual(10, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Found[0].Range.StartPos.Character);
+  Assert.AreEqual('Doppelten Eintrag entfernen', Found[0].Fixes[0].Title);
+  Fixed := ApplyAny(Source, Found[0].Fixes[0].Edits[0]);
+  Assert.AreEqual(Werkzeug('', '  Initialisieren,'#10'  Berechnen'), Fixed);
+  Assert.AreEqual(0, Integer(Length(ExportFindings(Fixed))));
+end;
+
+procedure TUnitRulesTests.ExportsDuplicateVariants;
+var
+  Found: TArray<TRuleFinding>;
+  Source: string;
+begin
+  // Gleicher Exportname über name '…', auch in zwei Klauseln.
+  Found := ExportFindings(Werkzeug('exports Initialisieren name ''Start'';'#10, '  Berechnen name ''Start'''));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Der Name ''Start'' wird zweimal exportiert (wie E2287).', Found[0].Message);
+  // Einziger Eintrag seiner Klausel: Die Korrektur entfernt die Klausel.
+  Source := Werkzeug('exports Berechnen;'#10, '  Berechnen');
+  Found := ExportFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(StringReplace(Source, 'exports'#10'  Berechnen;', '', []),
+    ApplyAny(Source, Found[0].Fixes[0].Edits[0]));
+  // Doppelter erster Eintrag einer späteren Klausel: entfernt bis zum nächsten Eintrag.
+  Source := Werkzeug('exports Berechnen;'#10, 'Berechnen, Initialisieren');
+  Found := ExportFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(Werkzeug('exports Berechnen;'#10, 'Initialisieren'), ApplyAny(Source, Found[0].Fixes[0].Edits[0]));
+  // Groß-/Kleinschreibung zählt bei Bezeichnern nicht, bei Exportnamen schon.
+  Assert.AreEqual(1, Integer(Length(ExportFindings(Werkzeug('', 'Berechnen, berechnen')))));
+  Assert.AreEqual(0, Integer(Length(ExportFindings(Werkzeug('', 'Berechnen name ''A'', Initialisieren name ''a''')))));
+end;
+
+procedure TUnitRulesTests.ExportsNotExportable;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := ExportFindings(Werkzeug('threadvar'#10'  Zaehler: Integer;'#10, 'Zaehler'));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Die threadvar Zaehler kann nicht exportiert werden (wie E2276).', Found[0].Message);
+  Found := ExportFindings(Werkzeug('procedure Intern; local;'#10'begin'#10'end;'#10, 'Intern'));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Intern ist mit local deklariert und kann nicht exportiert werden (wie E2276).', Found[0].Message);
+  Found := ExportFindings(Werkzeug('var'#10'  Zaehler: Integer;'#10'const'#10'  Version = 3;'#10'type'#10 +
+    '  TRueckruf = procedure;'#10, 'Zaehler, Version, TRueckruf'));
+  Assert.AreEqual(3, Integer(Length(Found)));
+  Assert.AreEqual('Zaehler ist keine Prozedur oder Funktion und kann nicht exportiert werden (wie E2121).',
+    Found[0].Message);
+  Assert.AreEqual('TRueckruf ist keine Prozedur oder Funktion und kann nicht exportiert werden (wie E2121).',
+    Found[2].Message);
+  // Variable eines Prozedurtyps bleibt eine Variable.
+  Assert.AreEqual(1, Integer(Length(ExportFindings(Werkzeug('var'#10'  Rueckruf: procedure;'#10, 'Rueckruf')))));
+end;
+
+procedure TUnitRulesTests.ExportsLocalScope;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := ExportFindings('library Werkzeug;'#10'procedure Starten;'#10'exports Starten;'#10'begin'#10'end;'#10 +
+    'begin'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('exports ist nur auf globaler Ebene erlaubt (wie E2191).', Found[0].Message);
+  Assert.AreEqual(2, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(0, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(7, Found[0].Range.EndPos.Character);
+end;
+
+procedure TUnitRulesTests.ExportsSilentCases;
+begin
+  // Überladene Routinen mit Parametern, unterschiedliche Exportnamen, Namen aus anderen Units und mit Punkt.
+  TRuleAssert.Silent(TExportsInvalidRule.Create, Werkzeug('',
+    'Initialisieren, Berechnen name ''Rechnen'', Berechnen name ''Rechnen2'' index 2, Fremd, Fremd.Start, ' +
+    'Teilen(A: Integer), Teilen(A: Double) name ''TeilenD'''));
+  // Exportname als Ausdruck: kein Vergleich.
+  TRuleAssert.Silent(TExportsInvalidRule.Create, Werkzeug('', 'Initialisieren name Praefix + ''A'', ' +
+    'Berechnen name Praefix + ''A'''));
+  // Zwei Einträge in sich ausschließenden Zweigen.
+  TRuleAssert.Silent(TExportsInvalidRule.Create, Werkzeug('', '{$IFDEF WIN64}'#10'  Berechnen name ''B'''#10 +
+    '{$ELSE}'#10'  Initialisieren name ''B'''#10'{$ENDIF}'));
+  // exports im interface einer Unit mit der Routine aus dem implementation-Teil.
+  TRuleAssert.Silent(TExportsInvalidRule.Create, 'unit Dienst;'#10'interface'#10'procedure Start; stdcall;'#10 +
+    'exports Start;'#10'implementation'#10'procedure Start;'#10'begin'#10'end;'#10'end.');
+end;
+
+procedure TUnitRulesTests.ExportsEntries;
+var
+  Tokens: TArray<TPascalToken>;
+  Entries: TArray<TExportEntry>;
+begin
+  Tokens := TPascalLexer.Tokenize('exports A.B(X: Integer) name ''Ab'' index 3, C resident, D name P + ''x'';');
+  Entries := TExportsInvalidRule.Entries(Tokens, 0, High(Tokens));
+  Assert.AreEqual(3, Integer(Length(Entries)));
+  Assert.AreEqual('A.B', Entries[0].Name);
+  Assert.AreEqual('(X:INTEGER)', Entries[0].Parameters);
+  Assert.AreEqual('Ab', Entries[0].ExportName);
+  Assert.IsTrue(Entries[0].HasNameClause);
+  Assert.AreEqual('C', Entries[1].Name);
+  Assert.IsFalse(Entries[1].HasNameClause);
+  Assert.AreEqual('D', Entries[2].Name);
+  Assert.IsTrue(Entries[2].HasNameClause);
+  Assert.AreEqual('', Entries[2].ExportName);
+end;
+
+procedure TUnitRulesTests.ExportsOptions;
+var
+  Source: string;
+begin
+  Source := Werkzeug('', 'Berechnen, Berechnen');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TExportsInvalidRule.Create, Source, '', 'Werkzeug.dpr'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TExportsInvalidRule.Create, Source,
+    '{"rules": {"exports-invalid": "off"}}', 'Werkzeug.dpr'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TExportsInvalidRule.Create, Source,
+    '{"rules": {"group:compiler": "off"}}', 'Werkzeug.dpr'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TExportsInvalidRule.Create, Source,
+    '{"rules": {"exports-invalid": {"exclude": ["Werkzeug.dpr"]}}}', 'Werkzeug.dpr'))));
 end;
 
 initialization
