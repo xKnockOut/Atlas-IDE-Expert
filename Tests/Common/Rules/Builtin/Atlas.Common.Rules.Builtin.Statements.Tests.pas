@@ -1061,6 +1061,9 @@ begin
     '    1: A;'#10'{$ELSEIF Defined(TEST)}'#10'    1: B;'#10'{$ELSE}'#10'    1: C;'#10'{$ENDIF}'#10'  end;'#10));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang('  case Zahl of'#10 +
     '    1: A;'#10'{$IFDEF DEBUG}'#10'    1: B;'#10'{$ENDIF}'#10'  end;'#10)))));
+  // Die frühere Marke nur unter DEBUG: ohne DEBUG übersetzt der Compiler fehlerfrei.
+  TRuleAssert.Silent(TDuplicateCaseLabelRule.Create, Vorgang('  case Zahl of'#10'{$IFDEF DEBUG}'#10 +
+    '    1: A;'#10'{$ENDIF}'#10'    1: B;'#10'  end;'#10));
   TRuleAssert.Silent(TDuplicateCaseLabelRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  TArt = (aEins = 1, aAuch = 1);'#10'implementation'#10'procedure P(A: TArt);'#10'begin'#10 +
     '  case A of'#10'    aEins: X;'#10'    aAuch: Y;'#10'  end;'#10'end;'#10'end.');

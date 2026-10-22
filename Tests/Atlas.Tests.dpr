@@ -71,6 +71,7 @@ uses
   Atlas.Common.Semantics.ControlFlow.Tests in 'Common\Semantics\Atlas.Common.Semantics.ControlFlow.Tests.pas',
   Atlas.Common.Semantics.Recursion.Tests in 'Common\Semantics\Atlas.Common.Semantics.Recursion.Tests.pas',
   Atlas.Common.Semantics.OrdinalConstants.Tests in 'Common\Semantics\Atlas.Common.Semantics.OrdinalConstants.Tests.pas',
+  Atlas.Common.Pascal.ConditionalBranches.Tests in 'Common\Pascal\Atlas.Common.Pascal.ConditionalBranches.Tests.pas',
   Atlas.Common.Semantics.NameResolver.Tests in 'Common\Semantics\Atlas.Common.Semantics.NameResolver.Tests.pas',
   Atlas.Common.Semantics.Attributes.Tests in 'Common\Semantics\Atlas.Common.Semantics.Attributes.Tests.pas',
   Atlas.Common.Semantics.NameResolverStage2.Tests in 'Common\Semantics\Atlas.Common.Semantics.NameResolverStage2.Tests.pas',

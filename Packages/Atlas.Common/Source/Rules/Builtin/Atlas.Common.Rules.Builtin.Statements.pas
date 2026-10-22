@@ -52,6 +52,8 @@
 //                     Semantics.OrdinalConstants aus, Namen löst TNameResolver auf;
 //                     Unbekanntes vergleicht die Regel nur über den Text. Die
 //                     Korrektur entfernt den späteren Wert bzw. dessen Zweig.
+//                     Bedingte Zweige über Pascal.ConditionalBranches: gemeldet
+//                     wird nur, wenn die frühere Marke immer mit übersetzt wird.
 // Grundlage ist der Syntaxbaum: if, while, for, for-in und with ohne Rumpf
 // bzw. mit leerem Block; das Schlüsselwort davor sucht die Regel in den Token.
 
@@ -164,6 +166,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Text.Lines,
@@ -2101,62 +2104,6 @@ end;
 
 { TDuplicateCaseLabelRule }
 
-/// <summary>Zweige bedingter Übersetzung je Token: "3.0/5.1" heißt Zweig 0 des {$IF} Nummer 3, darin
-/// Zweig 1 ({$ELSE}) des {$IF} Nummer 5; '' außerhalb. Leer, wenn die Datei keine Bedingungen hat.</summary>
-function BranchPaths(const ATokens: TTokens): TArray<string>;
-var
-  Stack: TArray<string>;
-  Index, Next, Dot: Integer;
-  Text, Path: string;
-begin
-  Result := nil;
-  Stack := nil;
-  Next := 0;
-  Path := '';
-  for Index := 0 to High(ATokens) do
-  begin
-    if ATokens[Index].Kind = TPascalTokenKind.Directive then
-    begin
-      Text := UpperCase(TPascalLexer.DirectiveName(ATokens[Index].Text));
-      if (Text = 'IF') or (Text = 'IFDEF') or (Text = 'IFNDEF') or (Text = 'IFOPT') then
-      begin
-        if Result = nil then
-          SetLength(Result, Length(ATokens));
-        Stack := Stack + [IntToStr(Next) + '.0'];
-        Inc(Next);
-      end
-      else if ((Text = 'ELSE') or (Text = 'ELSEIF')) and (Stack <> nil) then
-      begin
-        Dot := Pos('.', Stack[High(Stack)]);
-        Stack[High(Stack)] := Copy(Stack[High(Stack)], 1, Dot) +
-          IntToStr(StrToIntDef(Copy(Stack[High(Stack)], Dot + 1, MaxInt), 0) + 1);
-      end
-      else if ((Text = 'ENDIF') or (Text = 'IFEND')) and (Stack <> nil) then
-        SetLength(Stack, Length(Stack) - 1);
-      Path := string.Join('/', Stack);
-    end;
-    if Result <> nil then
-      Result[Index] := Path;
-  end;
-end;
-
-/// <summary>Schließen sich die Zweige APath und AOther aus (verschiedene Zweige desselben {$IF})?</summary>
-function ExclusiveBranches(const APath, AOther: string): Boolean;
-var
-  Mine, Theirs: TArray<string>;
-  Part, Other: string;
-begin
-  Result := False;
-  if (APath = '') or (AOther = '') or (APath = AOther) then
-    Exit;
-  Mine := APath.Split(['/']);
-  Theirs := AOther.Split(['/']);
-  for Part in Mine do
-    for Other in Theirs do
-      if (Copy(Part, 1, Pos('.', Part)) = Copy(Other, 1, Pos('.', Other))) and (Part <> Other) then
-        Exit(True);
-end;
-
 type
   /// <summary>Eine Marke: Token AFirst..ALast, ausgewertet als Bereich Low..High (Known) oder nur über den Text.</summary>
   TCaseLabel = record
@@ -2264,8 +2211,10 @@ var
 
   function Overlaps(const A, B: TCaseLabel): Boolean;
   begin
-    // {$IFDEF A} 1: … {$ELSE} 1: … {$ENDIF}: nie beide übersetzt.
-    if (Paths <> nil) and ExclusiveBranches(Paths[A.First], Paths[B.First]) then
+    // Nur wenn A immer mit übersetzt wird, sobald B übersetzt wird: {$IFDEF X} 1: … {$ELSE} 1: …
+    // {$ENDIF} stößt nie zusammen, 1: … {$IFDEF X} 1: … {$ENDIF} dagegen unter X immer.
+    if not TConditionalBranches.Implies(TConditionalBranches.PathAt(Paths, B.First),
+      TConditionalBranches.PathAt(Paths, A.First)) then
       Exit(False);
     if A.Known and B.Known then
       Result := (A.Lowest <= B.Highest) and (B.Lowest <= A.Highest)
@@ -2375,7 +2324,7 @@ begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
     Exit;
   Tokens := AContext.Tree.Tokens;
-  Paths := BranchPaths(Tokens);
+  Paths := TConditionalBranches.Paths(Tokens);
   FileName := AContext.FileName;
   if FileName = '' then
     FileName := AContext.RelativePath;

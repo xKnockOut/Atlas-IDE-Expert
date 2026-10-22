@@ -2136,12 +2136,25 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "Two labels of a case statement cover the same value (like E2030), also through ranges (1..5 and 3), constants with the same value, characters ('a' and #97) and enumeration ranges. The same applies to the labels of a variant record part (like E2027). Values are computed from numbers, characters, constants and enumeration values via name resolution; labels whose value is unknown are only compared by their text. Labels in different branches of the same {$IF} never clash. Quick fix: remove the duplicate value from the later branch, or the whole branch when it was its only label; a partial range overlap is reported without a fix.",
+      "description": "Two labels of a case statement cover the same value (like E2030), also through ranges (1..5 and 3), constants with the same value, characters ('a' and #97) and enumeration ranges. The same applies to the labels of a variant record part (like E2027). Values are computed from numbers, characters, constants and enumeration values via name resolution; labels whose value is unknown are only compared by their text. A label is only reported when the earlier one is compiled whenever it is: different branches of the same {$IF} never clash. Quick fix: remove the duplicate value from the later branch, or the whole branch when it was its only label; a partial range overlap is reported without a fix.",
       "bad": "case Status of\n  stNeu, stOffen: Bearbeiten;\n  stGeschlossen: Archivieren;\n  stOffen: Erinnern;\nend;",
       "good": "case Status of\n  stNeu, stOffen: Bearbeiten;\n  stGeschlossen: Archivieren;\nend;",
       "compilerCodes": [
         "E2030",
         "E2027"
+      ]
+    },
+    {
+      "id": "field-after-method",
+      "name": "Field after methods in the same section",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "Within a visibility section of a class, object or record, a field declaration follows a method or property. Delphi requires fields first or a new section or var (E2169); FPC accepts it. Quick fixes: move the field with its attributes and comments to the start of the section, or put var in front of it. In records var comes first because moving changes the memory layout. A field is only reported when a method before it is compiled whenever the field is; with conditional branches in between only var is offered.",
+      "bad": "TKunde = class\nprivate\n  function GetName: string;\n  FName: string;\nend;",
+      "good": "TKunde = class\nprivate\n  FName: string;\n  function GetName: string;\nend;",
+      "compilerCodes": [
+        "E2169"
       ]
     }
   ]

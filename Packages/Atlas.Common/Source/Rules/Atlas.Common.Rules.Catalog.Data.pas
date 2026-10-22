@@ -2156,12 +2156,25 @@ begin
     '      "category": "bug",' + #10 +
     '      "severity": "error",' + #10 +
     '      "group": "compiler",' + #10 +
-    '      "description": "Two labels of a case statement cover the same value (like E2030), also through ranges (1..5 and 3), constants with the same value, characters (''a'' and #97) and enumeration ranges' + '. The same applies to the labels of a variant record part (like E2027). Values are computed from numbers, characters, constants and enumeration values via name resolution; labels whose value is unknow' + 'n are only compared by their text. Labels in different branches of the same {$IF} never clash. Quick fix: remove the duplicate value from the later branch, or the whole branch when it was its only lab' + 'el; a partial range overlap is reported without a fix.",' + #10 +
+    '      "description": "Two labels of a case statement cover the same value (like E2030), also through ranges (1..5 and 3), constants with the same value, characters (''a'' and #97) and enumeration ranges' + '. The same applies to the labels of a variant record part (like E2027). Values are computed from numbers, characters, constants and enumeration values via name resolution; labels whose value is unknow' + 'n are only compared by their text. A label is only reported when the earlier one is compiled whenever it is: different branches of the same {$IF} never clash. Quick fix: remove the duplicate value fro' + 'm the later branch, or the whole branch when it was its only label; a partial range overlap is reported without a fix.",' + #10 +
     '      "bad": "case Status of\n  stNeu, stOffen: Bearbeiten;\n  stGeschlossen: Archivieren;\n  stOffen: Erinnern;\nend;",' + #10 +
     '      "good": "case Status of\n  stNeu, stOffen: Bearbeiten;\n  stGeschlossen: Archivieren;\nend;",' + #10 +
     '      "compilerCodes": [' + #10 +
     '        "E2030",' + #10 +
     '        "E2027"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "field-after-method",' + #10 +
+    '      "name": "Field after methods in the same section",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Within a visibility section of a class, object or record, a field declaration follows a method or property. Delphi requires fields first or a new section or var (E2169); FPC acce' + 'pts it. Quick fixes: move the field with its attributes and comments to the start of the section, or put var in front of it. In records var comes first because moving changes the memory layout. A fiel' + 'd is only reported when a method before it is compiled whenever the field is; with conditional branches in between only var is offered.",' + #10 +
+    '      "bad": "TKunde = class\nprivate\n  function GetName: string;\n  FName: string;\nend;",' + #10 +
+    '      "good": "TKunde = class\nprivate\n  FName: string;\n  function GetName: string;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2169"' + #10 +
     '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
@@ -3281,7 +3294,12 @@ begin
     '    {' + #10 +
     '      "id": "duplicate-case-label",' + #10 +
     '      "name": "Doppelte case-Marke",' + #10 +
-    '      "description": "Zwei Marken einer case-Anweisung decken denselben Wert ab (wie E2030), auch über Bereiche (1..5 und 3), Konstanten mit gleichem Wert, Zeichen (''a'' und #97) und Bereiche von Aufzä' + 'hlungswerten. Gleiches gilt für die Marken eines varianten Record-Teils (wie E2027). Die Werte ergeben sich aus Zahlen, Zeichen, Konstanten und Aufzählungswerten über die Namensauflösung; Marken mit u' + 'nbekanntem Wert vergleicht die Regel nur über den Text. Marken in verschiedenen Zweigen desselben {$IF} stoßen nie zusammen. Korrektur: den doppelten Wert aus dem späteren Zweig entfernen bzw. den gan' + 'zen Zweig, wenn es seine einzige Marke war; eine teilweise Überschneidung von Bereichen meldet die Regel ohne Korrektur."' + #10 +
+    '      "description": "Zwei Marken einer case-Anweisung decken denselben Wert ab (wie E2030), auch über Bereiche (1..5 und 3), Konstanten mit gleichem Wert, Zeichen (''a'' und #97) und Bereiche von Aufzä' + 'hlungswerten. Gleiches gilt für die Marken eines varianten Record-Teils (wie E2027). Die Werte ergeben sich aus Zahlen, Zeichen, Konstanten und Aufzählungswerten über die Namensauflösung; Marken mit u' + 'nbekanntem Wert vergleicht die Regel nur über den Text. Gemeldet wird eine Marke nur, wenn die frühere immer mit übersetzt wird: verschiedene Zweige desselben {$IF} stoßen nie zusammen. Korrektur: den' + ' doppelten Wert aus dem späteren Zweig entfernen bzw. den ganzen Zweig, wenn es seine einzige Marke war; eine teilweise Überschneidung von Bereichen meldet die Regel ohne Korrektur."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "field-after-method",' + #10 +
+    '      "name": "Feld nach Methoden im selben Abschnitt",' + #10 +
+    '      "description": "In einem Sichtbarkeitsabschnitt einer Klasse, eines Objekts oder Records folgt eine Felddeklaration auf eine Methode oder Property. Delphi verlangt Felder zuerst oder einen neuen' + ' Abschnitt bzw. var (E2169); FPC übersetzt das. Korrekturen: das Feld samt Attributen und Kommentaren an den Anfang des Abschnitts verschieben oder var davor setzen. In Records steht var vorn, weil da' + 's Verschieben das Speicherlayout ändert. Gemeldet wird ein Feld nur, wenn eine Methode davor immer mit übersetzt wird, wenn das Feld übersetzt wird; mit bedingten Zweigen dazwischen gibt es nur var."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
