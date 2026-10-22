@@ -29,6 +29,14 @@
 //                     als unsicher. Korrekturen: fehlende Einträge mit Platzhalter
 //                     ergänzen (Name des Aufzählungswerts als Kommentar), Felder in
 //                     die Reihenfolge der Deklaration bringen.
+//   case-selector-not-ordinal
+//                     case über einen nicht ordinalen Ausdruck (#1067, wie E2001):
+//                     Strings, Gleitkommazahlen, Klassen und Interfaces; for-Schleife
+//                     mit nicht ordinaler Zählvariable (wie E2032); case-Marken und
+//                     Array-Grenzen, die Variablen, Felder, Properties, Parameter oder
+//                     typisierte Konstanten sind (wie E2026). Korrektur bei Strings
+//                     mit lauter String-Marken: case IndexStr(S, […]) of mit den
+//                     Positionen als Marken, System.StrUtils in uses.
 
 interface
 
@@ -39,6 +47,7 @@ uses
 const
   ComparisonAlwaysConstantRuleId = 'comparison-always-constant';
   ConstantInitializerMismatchRuleId = 'constant-initializer-mismatch';
+  CaseSelectorNotOrdinalRuleId = 'case-selector-not-ordinal';
 
 type
   TComparisonAlwaysConstantRule = class(TInterfacedObject, IRule)
@@ -62,6 +71,14 @@ type
     class function BuiltinIndexCount(const ATypeName: string): Int64; static;
   end;
 
+  TCaseSelectorNotOrdinalRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Ist der eingebaute Typ ATypeName sicher nicht ordinal (Strings, Gleitkommazahlen)?</summary>
+    class function NotOrdinal(const ATypeName: string): Boolean; static;
+  end;
+
 procedure RegisterTypedExpressionRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -77,7 +94,9 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.ConstantValues;
+  Atlas.Common.Semantics.ConstantValues,
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Text.Lines;
 
 type
   /// <summary>Gemeinsamer Rahmen der Regeln: Namensauflösung über den gepinnten Baum, Konstantenwerte und die
@@ -862,10 +881,270 @@ begin
   end;
 end;
 
+{ TCaseSelectorNotOrdinalRule }
+
+function TCaseSelectorNotOrdinalRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(CaseSelectorNotOrdinalRuleId, TRuleSeverity.Error,
+    'case oder for über einen nicht ordinalen Typ');
+end;
+
+class function TCaseSelectorNotOrdinalRule.NotOrdinal(const ATypeName: string): Boolean;
+begin
+  Result := MatchText(ATypeName, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'ShortString',
+    'RawByteString', 'UTF8String', 'Double', 'Single', 'Extended', 'Real', 'Currency', 'Comp', 'Real48']);
+end;
+
+procedure TCaseSelectorNotOrdinalRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Scope: TTypedScope;
+  Tokens: TArray<TPascalToken>;
+
+  /// <summary>Name des Typs, wenn ATypeInfo sicher nicht ordinal ist; '' sonst.</summary>
+  function NonOrdinalName(const ATypeInfo: TResolvedSymbol): string;
+  begin
+    Result := '';
+    if not ATypeInfo.Found then
+      Exit;
+    if (ATypeInfo.Builtin or SameText(ATypeInfo.UnitName, 'System')) and NotOrdinal(ATypeInfo.Name) then
+      Result := ATypeInfo.Name
+    else if not ATypeInfo.Builtin and (ATypeInfo.SymbolKind in [TIndexSymbolKind.ClassType,
+      TIndexSymbolKind.InterfaceType]) then
+      Result := ATypeInfo.Name;
+  end;
+
+  /// <summary>Korrektur case IndexStr(S, ['a', 'b']) of, wenn jede Marke ein String-Literal ist.</summary>
+  function IndexStrFix(ACase: TSyntaxNode; const ATypeName: string; out AFix: TRuleFix): Boolean;
+  var
+    ItemIndex, LabelIndex, Position: Integer;
+    Item, Labeled, Selector: TSyntaxNode;
+    Literals: TArray<string>;
+    Edits: TArray<TTextEdit>;
+    UsesEdit: TTextEdit;
+  begin
+    Result := False;
+    if not MatchText(ATypeName, ['string', 'UnicodeString']) then
+      Exit;
+    Selector := ACase[0];
+    Literals := nil;
+    Edits := nil;
+    Position := 0;
+    for ItemIndex := 1 to ACase.ChildCount - 1 do
+    begin
+      Item := ACase[ItemIndex];
+      if Item.Kind <> TSyntaxKind.CaseItem then
+        Continue;
+      for LabelIndex := 0 to Item.ChildCount - 2 do
+      begin
+        Labeled := Item[LabelIndex];
+        if (Labeled.Kind <> TSyntaxKind.Literal) or not StartsStr('''', Labeled.Name) then
+          Exit;
+        Literals := Literals + [Scope.Text(Labeled)];
+        Edits := Edits + [TTextEdit.Create(TTextRange.Create(Labeled.StartPos, Labeled.EndPos), IntToStr(Position))];
+        Inc(Position);
+      end;
+    end;
+    if Literals = nil then
+      Exit;
+    Edits := [TTextEdit.Create(TTextRange.Create(Selector.StartPos, Selector.EndPos), Format('IndexStr(%s, [%s])',
+      [Scope.Text(Selector), string.Join(', ', Literals)]))] + Edits;
+    if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(Tokens), 'System.StrUtils', AContext.Namespaces) then
+    begin
+      if not TUsesClauses.AddUnit(Tokens, ACase.StartOffset, 'System.StrUtils', TTextLines.LineBreakOf(AContext.Text),
+        UsesEdit) then
+        Exit;
+      Edits := Edits + [UsesEdit];
+    end;
+    AFix := TRuleFix.Create('In case IndexStr(…) of umwandeln', Edits);
+    Result := True;
+  end;
+
+  procedure CheckCase(ANode: TSyntaxNode);
+  var
+    Selector: TSyntaxNode;
+    Symbol, TypeInfo: TResolvedSymbol;
+    Name: string;
+    Fix: TRuleFix;
+    Fixes: TArray<TRuleFix>;
+  begin
+    if ANode.ChildCount = 0 then
+      Exit;
+    Selector := Unwrapped(ANode[0]);
+    if not Scope.SureType(Selector, Symbol, TypeInfo) then
+      Exit;
+    Name := NonOrdinalName(TypeInfo);
+    if Name = '' then
+      Exit;
+    Fixes := nil;
+    if IndexStrFix(ANode, Name, Fix) then
+      Fixes := [Fix];
+    AReport.Add(TTextRange.Create(ANode[0].StartPos, ANode[0].EndPos), Format(
+      'case braucht einen ordinalen Typ; %s ist %s (wie E2001).', [Scope.Text(ANode[0]), Name]),
+      TRuleConfidence.High, Fixes);
+  end;
+
+  procedure CheckFor(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    Variable: TPascalToken;
+    Owner, TypeInfo: TResolvedSymbol;
+    TypeFound: Boolean;
+    Name: string;
+  begin
+    // for [var] I [: Typ] := …: der Name ist das erste Bezeichner-Token nach for bzw. var.
+    Index := TConstantValues.TokenFrom(Tokens, ANode.StartOffset);
+    while (Index <= High(Tokens)) and (Tokens[Index].Kind <> TPascalTokenKind.Identifier) do
+      Inc(Index);
+    if (Index > High(Tokens)) or not SameText(Tokens[Index].Text, ANode.Name) then
+      Exit;
+    Variable := Tokens[Index];
+    if (ANode.ChildCount > 0) and (ANode[0].Kind = TSyntaxKind.TypeReference) then
+    begin
+      // for var X: Double := …
+      if (ANode[0].ChildCount > 0) or (Pos('.', ANode[0].Name) > 0) then
+        Exit;
+      if NotOrdinal(ANode[0].Name) then
+        Name := ANode[0].Name
+      else
+      begin
+        if not Scope.Resolver.ChainType(AContext.Tree, Scope.FileName, [ANode[0].Name], ANode[0].StartOffset, Owner,
+          TypeInfo, TypeFound) or not TypeFound or not Scope.DeclarationSure(Owner, ANode) then
+          Exit;
+        Name := NonOrdinalName(TypeInfo);
+      end;
+    end
+    else
+    begin
+      if not Scope.Resolver.ChainType(AContext.Tree, Scope.FileName, [ANode.Name], Variable.Offset, Owner, TypeInfo,
+        TypeFound) or not TypeFound or Owner.IsType or not Scope.DeclarationSure(Owner, ANode) then
+        Exit;
+      Name := NonOrdinalName(TypeInfo);
+    end;
+    if Name <> '' then
+      AReport.Add(TTextRange.Create(Variable.StartPos, Variable.EndPos), Format(
+        'for braucht eine ordinale Zählvariable; %s ist %s (wie E2032).', [ANode.Name, Name]), TRuleConfidence.High);
+  end;
+
+  /// <summary>"eine Variable", "ein Feld" … wenn ASymbol sicher keine echte Konstante ist; '' sonst.</summary>
+  function NotConstant(const ASymbol: TResolvedSymbol): string;
+  begin
+    Result := '';
+    if ASymbol.IsParameter then
+      Result := 'ein Parameter'
+    else
+      case ASymbol.SymbolKind of
+        TIndexSymbolKind.Variable:
+          Result := 'eine Variable';
+        TIndexSymbolKind.Field:
+          Result := 'ein Feld';
+        TIndexSymbolKind.Property_:
+          Result := 'eine Property';
+        TIndexSymbolKind.Constant:
+          if ASymbol.TypeName <> '' then
+            Result := 'eine typisierte Konstante';
+      end;
+  end;
+
+  /// <summary>Meldet AExpr (case-Marke bzw. Arraygrenze), wenn es ein Name für etwas Veränderliches ist.</summary>
+  procedure CheckConstant(AExpr: TSyntaxNode; const AWhat: string);
+  var
+    Symbol, TypeInfo: TResolvedSymbol;
+    TypeFound: Boolean;
+    Kind: string;
+  begin
+    if AExpr.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess] then
+    begin
+      if not Scope.Resolver.NodeType(AContext.Tree, Scope.FileName, AExpr, Symbol, TypeInfo, TypeFound) then
+        Exit;
+    end
+    else if (AExpr.Kind = TSyntaxKind.TypeReference) and (AExpr.ChildCount = 0) and (Pos('.', AExpr.Name) = 0) then
+      Symbol := Scope.Resolver.Resolve(AContext.Tree, Scope.FileName, AExpr.StartPos)
+    else
+      Exit;
+    if not Symbol.Found or (Symbol.Kind = TResolvedKind.UnitName) or not Scope.DeclarationSure(Symbol, AExpr) then
+      Exit;
+    Kind := NotConstant(Symbol);
+    if Kind <> '' then
+      AReport.Add(TTextRange.Create(AExpr.StartPos, AExpr.EndPos), Format('%s %s ist %s, keine Konstante (wie E2026).',
+        [AWhat, Scope.Text(AExpr), Kind]), TRuleConfidence.High);
+  end;
+
+  procedure CheckLabels(ANode: TSyntaxNode);
+  var
+    ItemIndex, LabelIndex: Integer;
+    Item, Labeled: TSyntaxNode;
+  begin
+    for ItemIndex := 1 to ANode.ChildCount - 1 do
+    begin
+      Item := ANode[ItemIndex];
+      if Item.Kind <> TSyntaxKind.CaseItem then
+        Continue;
+      for LabelIndex := 0 to Item.ChildCount - 2 do
+      begin
+        Labeled := Item[LabelIndex];
+        if (Labeled.Kind = TSyntaxKind.RangeExpr) and (Labeled.ChildCount = 2) then
+        begin
+          CheckConstant(Unwrapped(Labeled[0]), 'Die case-Marke');
+          CheckConstant(Unwrapped(Labeled[1]), 'Die case-Marke');
+        end
+        else
+          CheckConstant(Unwrapped(Labeled), 'Die case-Marke');
+      end;
+    end;
+  end;
+
+  procedure CheckBounds(AArray: TSyntaxNode);
+  var
+    Index: Integer;
+    Bound: TSyntaxNode;
+  begin
+    for Index := 0 to AArray.ChildCount - 2 do
+    begin
+      Bound := AArray[Index];
+      if (Bound.Kind = TSyntaxKind.SubrangeType) and (Bound.ChildCount = 2) then
+      begin
+        CheckConstant(Unwrapped(Bound[0]), 'Die Arraygrenze');
+        CheckConstant(Unwrapped(Bound[1]), 'Die Arraygrenze');
+      end;
+    end;
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    case ANode.Kind of
+      TSyntaxKind.CaseStatement:
+        begin
+          CheckCase(ANode);
+          CheckLabels(ANode);
+        end;
+      TSyntaxKind.ForStatement:
+        CheckFor(ANode);
+      TSyntaxKind.ArrayType:
+        CheckBounds(ANode);
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Scope := TTypedScope.Create(AContext);
+  try
+    Visit(AContext.Tree.Root);
+  finally
+    Scope.Free;
+  end;
+end;
+
 procedure RegisterTypedExpressionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TComparisonAlwaysConstantRule.Create);
   ARegistry.Register(TConstantInitializerMismatchRule.Create);
+  ARegistry.Register(TCaseSelectorNotOrdinalRule.Create);
 end;
 
 end.

@@ -2342,6 +2342,21 @@ begin
     '        "E2072",' + #10 +
     '        "E2083"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "case-selector-not-ordinal",' + #10 +
+    '      "name": "case or for without an ordinal type",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "case over an expression that is not ordinal (like E2001): strings, floating point numbers, classes and interfaces; a for loop whose counter is not ordinal (like E2032); case labe' + 'ls and array bounds that are variables, fields, properties, parameters or typed constants instead of constants (like E2026). The rule only reports when the type is known for sure and its declaration i' + 's always compiled together with the statement. Quick fix for strings whose labels are all string literals: case IndexStr(S, [...]) of with the positions as labels, System.StrUtils is added to uses.",' + #10 +
+    '      "bad": "case Befehl of ''start'': Starten; ''stop'': Stoppen; end;  // Befehl: string",' + #10 +
+    '      "good": "case IndexStr(Befehl, [''start'', ''stop'']) of 0: Starten; 1: Stoppen; end;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2001",' + #10 +
+    '        "E2032",' + #10 +
+    '        "E2026"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3522,6 +3537,11 @@ begin
     '      "id": "constant-initializer-mismatch",' + #10 +
     '      "name": "Initialisierung einer Konstanten passt nicht",' + #10 +
     '      "description": "Eine typisierte Konstante oder initialisierte Variable vom statischen Array-Typ hat mehr oder weniger Elemente als ihr Indexbereich (wie E2072), typisch nach einem neuen Wert in ' + 'einer Aufzählung (array[TStatus] of string); geprüft je Dimension und auch für benannte Array-Typen der Datei. Ebenso Record-Konstanten, deren Felder in anderer Reihenfolge als deklariert stehen (wie ' + 'E2083). Indexbereiche: Teilbereiche mit konstanten Grenzen, Aufzählungen ohne eigene Werte, Boolean, Byte, Char usw. Deklarationen mit bedingten Direktiven gelten als unsicher. Korrekturen: fehlende E' + 'inträge mit Platzhalter ergänzen (Name des Aufzählungswerts als Kommentar), Felder in die Reihenfolge der Deklaration bringen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "case-selector-not-ordinal",' + #10 +
+    '      "name": "case oder for ohne ordinalen Typ",' + #10 +
+    '      "description": "case über einen nicht ordinalen Ausdruck (wie E2001): Strings, Gleitkommazahlen, Klassen und Interfaces; for-Schleife mit nicht ordinaler Zählvariable (wie E2032); case-Marken un' + 'd Array-Grenzen, die Variablen, Felder, Properties, Parameter oder typisierte Konstanten statt Konstanten sind (wie E2026). Gemeldet wird nur bei sicher bekanntem Typ, dessen Deklaration immer mit der' + ' Anweisung übersetzt wird. Korrektur bei Strings mit lauter String-Literalen als Marken: case IndexStr(S, […]) of mit den Positionen als Marken, System.StrUtils kommt in die uses."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

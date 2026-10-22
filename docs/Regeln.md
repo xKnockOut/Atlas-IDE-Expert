@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 17 |
+| [Compiler vorab](#gruppe-compiler) | 18 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -148,6 +148,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
 | [`comparison-always-constant`](#comparison-always-constant) | Vergleich immer wahr oder immer falsch | Bug | Warnung |
 | [`constant-initializer-mismatch`](#constant-initializer-mismatch) | Initialisierung einer Konstanten passt nicht | Bug | Fehler |
+| [`case-selector-not-ordinal`](#case-selector-not-ordinal) | case oder for ohne ordinalen Typ | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4584,4 +4585,25 @@ Richtig:
 
 ```pascal
 StatusText: array[TStatus] of string = ('Neu', 'Offen', 'Geschlossen', ''{stArchiviert});
+```
+
+<a id="case-selector-not-ordinal"></a>
+### case-selector-not-ordinal
+
+**case oder for ohne ordinalen Typ** · Bug · Fehler · Gruppe Compiler vorab
+
+case über einen nicht ordinalen Ausdruck (wie E2001): Strings, Gleitkommazahlen, Klassen und Interfaces; for-Schleife mit nicht ordinaler Zählvariable (wie E2032); case-Marken und Array-Grenzen, die Variablen, Felder, Properties, Parameter oder typisierte Konstanten statt Konstanten sind (wie E2026). Gemeldet wird nur bei sicher bekanntem Typ, dessen Deklaration immer mit der Anweisung übersetzt wird. Korrektur bei Strings mit lauter String-Literalen als Marken: case IndexStr(S, […]) of mit den Positionen als Marken, System.StrUtils kommt in die uses.
+
+Entspricht der Compilermeldung `E2001`, `E2032`, `E2026`.
+
+Mit Treffer:
+
+```pascal
+case Befehl of 'start': Starten; 'stop': Stoppen; end;  // Befehl: string
+```
+
+Richtig:
+
+```pascal
+case IndexStr(Befehl, ['start', 'stop']) of 0: Starten; 1: Stoppen; end;
 ```
