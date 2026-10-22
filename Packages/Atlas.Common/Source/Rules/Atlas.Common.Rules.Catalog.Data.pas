@@ -2345,6 +2345,22 @@ begin
     '        "E2568",' + #10 +
     '        "E2571"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unresolved-type",' + #10 +
+    '      "name": "Type in a declaration not found",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A type name in a declaration (field, parameter, result, ancestor, interface list, variable, type argument) is not declared (like E2003, for the target of a pointer type like E256' + '4) or is not a type (like E2005). Complements unresolved-identifier, which only checks statements. Same preconditions as unresolved-attribute: System in the symbol index, every unit from uses known, n' + 'ot inside {$IF…} blocks. Type parameters, names the file declares as a type anywhere (also nested) and names the index knows as a nested type (inherited inner types) are not reported. Quick fix: add t' + 'he unit that declares the type (with the same number of type parameters) to uses.",' + #10 +
+    '      "bad": "uses\n  System.SysUtils;\ntype\n  TKunden = TObjectList<TKunde>;",' + #10 +
+    '      "good": "uses\n  System.SysUtils, System.Generics.Collections;\ntype\n  TKunden = TObjectList<TKunde>;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2564",' + #10 +
+    '        "E2563",' + #10 +
+    '        "E2005",' + #10 +
+    '        "E2003"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3525,6 +3541,11 @@ begin
     '      "id": "generic-constraint-violated",' + #10 +
     '      "name": "Typargument verletzt eine Einschränkung",' + #10 +
     '      "description": "Ein Typargument erfüllt die Einschränkung seines Typparameters nicht: class (wie E2511), record (wie E2512), constructor (wie E2513), ein Interface (wie E2514) oder eine Basiskla' + 'sse (wie E2515). In Methoden eines generischen Typs dieser Datei meldet die Regel außerdem T.Create ohne constructor-Einschränkung (wie E2568) und Methodenaufrufe auf Werten eines Typparameters ganz o' + 'hne Einschränkung (wie E2571). Den generischen Typ löst die Namensauflösung samt Zahl der Typparameter auf, seine Einschränkungen stammen aus seiner Deklaration in der Datei oder im Symbolindex. Argum' + 'ente, die selbst Typparameter sind, Aliase und Typen mit unvollständiger Vorfahrenkette meldet die Regel nicht. Korrektur für einen Typparameter dieser Datei, der allein in seiner Gruppe steht: die Ei' + 'nschränkung ergänzen (T: class, constructor bzw. T: class)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unresolved-type",' + #10 +
+    '      "name": "Typ in einer Deklaration nicht gefunden",' + #10 +
+    '      "description": "Ein Typname in einer Deklaration (Feld, Parameter, Ergebnis, Vorfahr, Interface-Liste, Variable, Typargument) ist nicht deklariert (wie E2003, beim Ziel eines Zeigertyps wie E256' + '4) oder kein Typ (wie E2005). Ergänzt unresolved-identifier, das nur Anweisungen prüft. Dieselben Vorbedingungen wie bei unresolved-attribute: System im Symbolindex, alle Units aus uses bekannt, nicht' + ' in {$IF…}-Blöcken. Typparameter, Namen, die die Datei irgendwo als Typ deklariert (auch verschachtelt), und Namen, die der Index als verschachtelten Typ kennt (geerbte innere Typen), meldet die Regel' + ' nicht. Korrektur: die Unit, die den Typ (mit gleich vielen Typparametern) deklariert, in uses aufnehmen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

@@ -25,6 +25,15 @@
 // im Index, wenn eine Unit aus uses nicht im Index steht (sie könnte das
 // Attribut deklarieren), in {$IF…}-Blöcken und bei unbekannten Vorfahren bleibt
 // die Regel still; Attribute des Compilers (Weak, Unsafe, Ref …) zählen immer.
+//
+// unresolved-type (#1031, wie E2003, E2564, E2005): Ein Typname in einer
+// Deklaration (Feld, Parameter, Ergebnis, Vorfahr, Interface-Liste, Variable,
+// Typargument) lässt sich nicht auflösen bzw. bezeichnet keinen Typ. Dieselben
+// Vorbedingungen wie bei unresolved-attribute (System im Index, alle Units aus
+// uses bekannt, nicht in {$IF…}); außerdem still bei Typparametern, Namen, die
+// die Datei irgendwo als Typ deklariert (auch verschachtelt), und Namen, die der
+// Index als verschachtelten Typ kennt (geerbte innere Typen). Korrektur: die
+// Unit, die den Typ im Index deklariert, in uses aufnehmen.
 
 interface
 
@@ -70,6 +79,17 @@ type
     class function Suggestions(const AName: string; const AKnown: TArray<string>): TArray<string>; static;
     /// <summary>Kleinste Ersetzung, die AOld in ANew verwandelt (gemeinsamer Anfang und Schluss bleiben).</summary>
     class function DiffEdit(const AOld, ANew: string): TTextEdit; static;
+  end;
+
+  TUnresolvedTypeRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Units, die den Typ AName auf oberster Ebene deklarieren (bei AArity &gt; 0 mit so vielen
+    /// Typparametern), ohne AOwnUnit und ohne Units, die eine andere Kandidatin im interface weiterreichen;
+    /// sortiert.</summary>
+    class function DeclaringUnits(const AIndex: ISymbolIndex; const AName, AOwnUnit: string;
+      AArity: Integer): TArray<string>; static;
   end;
 
 procedure RegisterUnresolvedRules(ARegistry: TRuleRegistry);
@@ -671,11 +691,217 @@ begin
   end;
 end;
 
+{ TUnresolvedTypeRule }
+
+const
+  // Typen, die der Compiler kennt, ohne dass System.pas sie deklariert.
+  CompilerTypes: array[0..7] of string = ('ByteBool', 'WordBool', 'LongBool', 'Comp', 'Real48', 'OpenString',
+    'PShortString', 'Extended80');
+  TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+    TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType, TIndexSymbolKind.EnumType,
+    TIndexSymbolKind.TypeAlias];
+
+function TUnresolvedTypeRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('unresolved-type', TRuleSeverity.Error, 'Typ in einer Deklaration nicht gefunden');
+end;
+
+class function TUnresolvedTypeRule.DeclaringUnits(const AIndex: ISymbolIndex; const AName, AOwnUnit: string;
+  AArity: Integer): TArray<string>;
+var
+  Candidates: TList<string>;
+  Location: TSymbolLocation;
+  Name, Other: string;
+  Found: TUnitIndex;
+  Used: Boolean;
+  Arity: Integer;
+begin
+  Result := nil;
+  if AIndex = nil then
+    Exit;
+  Candidates := TList<string>.Create;
+  try
+    for Location in AIndex.FindSymbols(AName) do
+    begin
+      if (Location.Symbol.Container <> '') or not (Location.Symbol.Kind in TypeKinds) or
+        not Location.Symbol.InInterface or SameText(Location.UnitName, AOwnUnit) or
+        Candidates.Contains(Location.UnitName) then
+        Continue;
+      Arity := 0;
+      if Location.Symbol.TypeParams <> '' then
+        Arity := Length(Location.Symbol.TypeParams.Split([',']));
+      if Arity = AArity then
+        Candidates.Add(Location.UnitName);
+    end;
+    // Fassade vor Quelle wie bei unresolved-attribute.
+    for Name in Candidates do
+    begin
+      Used := False;
+      for Other in Candidates do
+        if not SameText(Other, Name) and AIndex.FindUnit(Other, Found) and
+          (IndexText(Name, Found.InterfaceUses) >= 0) then
+          Used := True;
+      if not Used then
+        Result := Result + [Name];
+    end;
+    TArray.Sort<string>(Result);
+  finally
+    Candidates.Free;
+  end;
+end;
+
+procedure TUnresolvedTypeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Resolver: TNameResolver;
+  Lines: TArray<Boolean>;
+  LineBreak, OwnUnit: string;
+  Level: TRuleConfidence;
+  // Typnamen und Typparameter der Datei: gelten als bekannt.
+  Declared: TDictionary<string, Boolean>;
+
+  procedure Collect(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ForwardType]) and (ANode.Name <> '') then
+      Declared.AddOrSetValue(LowerCase(ANode.Name), True)
+    else if ANode.Kind = TSyntaxKind.GenericParams then
+      for Index := 0 to ANode.ChildCount - 1 do
+        Declared.AddOrSetValue(LowerCase(ANode[Index].Name), True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Collect(ANode[Index]);
+  end;
+
+  /// <summary>Kennt der Index AName als verschachtelten Typ (geerbte innere Typen sind ohne Präfix sichtbar)?
+  /// </summary>
+  function NestedSomewhere(const AName: string): Boolean;
+  var
+    Location: TSymbolLocation;
+  begin
+    for Location in AContext.Index.FindSymbols(AName) do
+      if (Location.Symbol.Container <> '') and (Location.Symbol.Kind in TypeKinds) then
+        Exit(True);
+    Result := False;
+  end;
+
+  procedure CheckReference(ANode: TSyntaxNode);
+  var
+    Names: TArray<string>;
+    Bare, Message, UnitName: string;
+    Resolved: TResolvedSymbol;
+    Units: TArray<string>;
+    Fixes: TArray<TRuleFix>;
+    Fix: TRuleFix;
+    Edit: TTextEdit;
+    Args: TSyntaxNode;
+    Arity, Index: Integer;
+    Range: TTextRange;
+  begin
+    // Der Anfang eines Teilbereichs (MinWert..MaxWert) ist ein Ausdruck, kein Typ.
+    if (ANode.Name = '') or MatchText(ANode.Name, ['string', 'file', 'const']) or
+      ((ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.SubrangeType)) then
+      Exit;
+    Names := ANode.Name.Split(['.']);
+    Bare := Names[High(Names)];
+    if TNameResolver.IsBuiltinTypeName(Bare) or MatchText(Bare, CompilerTypes) or
+      Declared.ContainsKey(LowerCase(Bare)) then
+      Exit;
+    Resolved := Resolver.ResolveChain(AContext.Tree, AContext.RelativePath, Names, ANode.StartOffset);
+    // Den Namen selbst markieren, ohne Typargumente.
+    Range := TTextRange.Create(ANode.StartPos, TTextPosition.Create(ANode.StartPos.Line,
+      ANode.StartPos.Character + Length(ANode.Name)));
+    if Resolved.Found then
+    begin
+      // Gefunden, aber kein Typ: Variable, Konstante, Routine (E2005).
+      if (Resolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) and not Resolved.IsType and
+        (Resolved.SymbolKind in [TIndexSymbolKind.Constant, TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
+        TIndexSymbolKind.Property_, TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) then
+        AReport.Add(Range, Format('%s ist kein Typ (wie E2005).', [ANode.Name]), Level);
+      Exit;
+    end;
+    if Resolver.HasUnknownAncestor or Resolver.IsUnitPrefix(ANode.Name) or NestedSomewhere(Bare) then
+      Exit;
+    Arity := 0;
+    Args := ANode.FindChild(TSyntaxKind.GenericArgs);
+    if Args <> nil then
+      Arity := Args.ChildCount;
+    Units := nil;
+    if Length(Names) = 1 then
+      Units := DeclaringUnits(AContext.Index, Bare, OwnUnit, Arity);
+    Message := Format('Typ %s ist nicht deklariert', [ANode.Name]);
+    if Length(Units) = 1 then
+      Message := Message + Format('; %s fehlt in uses', [Units[0]])
+    else if Length(Units) > 1 then
+      Message := Message + Format('; in Frage kommen %s', [Alternatives(Units)]);
+    // Ziel eines Zeigertyps (PFoo = ^TFoo) meldet der Compiler als undefinierten Typ.
+    if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.PointerType) then
+      Message := Message + ' (wie E2564).'
+    else
+      Message := Message + ' (wie E2003).';
+    Fixes := nil;
+    for UnitName in Units do
+      if TUsesClauses.AddUnit(AContext.Tree.Tokens, ANode.StartOffset, UnitName, LineBreak, Edit) then
+      begin
+        Fix := TRuleFix.Create(Format('uses %s ergänzen', [UnitName]), [Edit]);
+        Fixes := Fixes + [Fix];
+      end;
+    if Length(Fixes) > 1 then
+      for Index := 0 to High(Fixes) do
+        Fixes[Index].Alternative := True;
+    AReport.Add(Range, Message, Level, Fixes);
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind in [TSyntaxKind.AsmBlock, TSyntaxKind.WithStatement, TSyntaxKind.Error] then
+      Exit;
+    if (ANode.Kind = TSyntaxKind.TypeReference) and not ((ANode.StartPos.Line <= High(Lines)) and
+      Lines[ANode.StartPos.Line]) then
+      CheckReference(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+var
+  Token: TPascalToken;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not TUnresolvedNames.Available(AContext.Index) or
+    not UsesKnown(AContext) then
+    Exit;
+  Lines := ConditionalLines(AContext.Tree.Tokens);
+  LineBreak := TTextLines.LineBreakOf(AContext.Text);
+  OwnUnit := TUsesClauses.OwnName(AContext.Tree.Tokens);
+  // Mit Include-Dateien kann der Typ dort deklariert sein.
+  Level := TRuleConfidence.High;
+  for Token in AContext.Tree.Tokens do
+    if (Token.Kind = TPascalTokenKind.Directive) and (StartsText('{$I ', Token.Text) or
+      StartsText('{$INCLUDE ', Token.Text)) then
+      Level := TRuleConfidence.Medium;
+  Declared := TDictionary<string, Boolean>.Create;
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  try
+    Collect(AContext.Tree.Root);
+    Resolver.Namespaces := AContext.Namespaces;
+    Resolver.PinTree(AContext.Tree, AContext.RelativePath);
+    try
+      Visit(AContext.Tree.Root);
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+    Declared.Free;
+  end;
+end;
+
 procedure RegisterUnresolvedRules(ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TUnresolvedIdentifierRule.Create);
   ARegistry.Register(TUsesUnitNotFoundRule.Create);
   ARegistry.Register(TUnresolvedAttributeRule.Create);
+  ARegistry.Register(TUnresolvedTypeRule.Create);
 end;
 
 end.
