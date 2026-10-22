@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 19 |
+| [Compiler vorab](#gruppe-compiler) | 20 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -150,6 +150,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`reraise-outside-handler`](#reraise-outside-handler) | raise ohne Argument außerhalb eines Handlers | Bug | Fehler |
 | [`label-misuse`](#label-misuse) | Sprungmarke falsch verwendet | Bug | Fehler |
 | [`for-variable-misuse`](#for-variable-misuse) | Schleifenvariable verändert oder nicht lokal | Bug | Fehler |
+| [`for-variable-after-loop`](#for-variable-after-loop) | Schleifenvariable nach der Schleife gelesen | Bug | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4656,4 +4657,35 @@ begin
     Inc(I);
   Inc(I);
 end;
+```
+
+<a id="for-variable-after-loop"></a>
+### for-variable-after-loop
+
+**Schleifenvariable nach der Schleife gelesen** · Bug · Warnung · Gruppe Compiler vorab
+
+Nach einer for-Schleife, die normal endet (ohne Break), ist die Schleifenvariable undefiniert. Die Regel meldet das erste Lesen der Variable auf einem Weg vom normalen Schleifenende, bevor ihr erneut zugewiesen wird (wie W1037). Geprüft werden nur einfache lokale Variablen der Routine; for var, Felder, globale Variablen, Lesen nur im Rumpf, Argumente von Routinen, die out-Parameter sein könnten, und Routinen mit unvollständigem Ablaufgraphen bleiben still. Korrektur: auf eine while-Schleife umstellen, deren Zähler danach einen festen Wert hat.
+
+Entspricht der Compilermeldung `W1037`.
+
+Mit Treffer:
+
+```pascal
+for I := 0 to High(Werte) do
+  if Werte[I] = Gesucht then
+    Break;
+Gefunden := I <= High(Werte);
+```
+
+Richtig:
+
+```pascal
+I := 0;
+while I <= High(Werte) do
+begin
+  if Werte[I] = Gesucht then
+    Break;
+  Inc(I);
+end;
+Gefunden := I <= High(Werte);
 ```

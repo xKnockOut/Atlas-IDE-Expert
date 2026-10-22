@@ -2351,6 +2351,19 @@
         "W1015",
         "E1019"
       ]
+    },
+    {
+      "id": "for-variable-after-loop",
+      "name": "Loop variable read after the loop",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "After a for loop that ends normally (without Break), the loop variable is undefined. The rule reports the first read of the variable on a path from the normal loop exit, before it is assigned again (like W1037). Only simple local variables of the routine are checked; for var loops, fields, globals, reads only inside the body, arguments of routines that might be out parameters, and routines whose control flow is incomplete stay silent. Quick fix: convert to a while loop, where the counter has a defined value afterwards.",
+      "bad": "for I := 0 to High(Werte) do\n  if Werte[I] = Gesucht then\n    Break;\nGefunden := I <= High(Werte);",
+      "good": "I := 0;\nwhile I <= High(Werte) do\nbegin\n  if Werte[I] = Gesucht then\n    Break;\n  Inc(I);\nend;\nGefunden := I <= High(Werte);",
+      "compilerCodes": [
+        "W1037"
+      ]
     }
   ]
 }
