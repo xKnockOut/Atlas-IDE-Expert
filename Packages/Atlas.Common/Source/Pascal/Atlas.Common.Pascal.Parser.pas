@@ -1184,7 +1184,10 @@ end;
 
 function TParser.IsRoutineStart: Boolean;
 begin
-  Result := IsKw(['procedure', 'function', 'constructor', 'destructor']) or IsIdentText('operator') or
+  // operator ohne class (FPC: operator := (…), operator Add(…)), aber nicht Operator: string bzw.
+  // Operator, Art: string – das sind Felder oder Variablen.
+  Result := IsKw(['procedure', 'function', 'constructor', 'destructor']) or
+    (IsIdentText('operator') and not PeekToken(1).IsSymbol(':') and not PeekToken(1).IsSymbol(',')) or
     (IsKw('class') and (PeekIsKw(1, 'procedure') or PeekIsKw(1, 'function') or PeekIsKw(1, 'constructor') or
       PeekIsKw(1, 'destructor') or PeekToken(1).IsKeyword('operator') or
       ((PeekToken(1).Kind = TPascalTokenKind.Identifier) and SameWord(PeekToken(1).Text, 'operator'))));
