@@ -4135,3 +4135,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
 | YD7 | `New(P)`/`Dispose(P)` mit `P: PPunkt`, `R := New(TWerte, 3)`, `SetLength(Werte, 3)`, `Dispose(Offen)` mit offenem Array-Parameter, eigene Prozedur `New` in der Unit | Keine Meldung |
 | YD8 | `"dynamic-array-misuse": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | YD9 | Abgleich mit Delphi: YD1, YD3 bis YD6 übersetzen | dcc meldet E2256, E2255, E2246, E2308 bzw. E2307 an denselben Stellen, für YD7 nichts (offenes Array: eigener Fehler, den die Regel nicht meldet) |
+
+## Lokale Routine als Prozedurvariable (#1039)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| YL1 | Das Beispiel aus #1039: in `TListe.Sortieren` eine lokale `function Vergleich(A, B: Pointer): Integer` und `FListe.Sort(Vergleich);` mit `FListe: TList` | Fehler `local-routine-as-callback` an `Vergleich`: „Die lokale Funktion Vergleich kann nicht als Prozedurvariable übergeben werden (wie E2094).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| YL2 | Schnellkorrektur „Vergleich als Routine der Unit auslagern“, danach Strg+Z | Die Funktion steht ohne Einrückung direkt vor `procedure TListe.Sortieren`, keine Meldung mehr, kompiliert; ein Undo-Schritt nimmt es zurück |
+| YL3 | Lokale `procedure Melden;` und `Aktion := Melden;` mit `Aktion: TProcedure` | „Die lokale Prozedur Melden kann keiner Prozedurvariablen zugewiesen werden (wie E2094).“ |
+| YL4 | Wie YL1, aber `Vergleich` liest ein Feld der Klasse ohne `Self.` bzw. eine lokale Variable von `Sortieren` | Meldung wie YL1, aber ohne Korrektur |
+| YL5 | `const Adresse: Pointer = @Wert;` in einer Routine mit lokaler Variable `Wert` | „Die Adresse des lokalen Symbols Wert ist keine Konstante (wie E2278).“ |
+| YL6 | Aufrufe `Vergleich(nil, nil)`, `@Vergleich` an einen `Pointer`, lokale Prozedur an ein Ereignis (`of object`) bzw. an `TProc`, Routine der Unit an `Sort` | Keine Meldung (Ereignis und `TProc` meldet der Compiler mit anderen Codes) |
+| YL7 | `"local-routine-as-callback": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| YL8 | Abgleich mit Delphi: YL1, YL3, YL5 übersetzen | dcc meldet E2094 bzw. E2278 an denselben Stellen, für YL6 nicht E2094 |

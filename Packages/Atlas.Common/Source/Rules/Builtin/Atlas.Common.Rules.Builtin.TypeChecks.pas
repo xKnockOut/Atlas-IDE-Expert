@@ -9,6 +9,16 @@
 //                     (wie E2307), und New(TArrayTyp) ohne Länge (wie E2308)
 //                     (#1038). Korrekturen: Dispose(A) wird A := nil, New(A)
 //                     wird SetLength(A, 1).
+//   local-routine-as-callback
+//                     Eine lokale (verschachtelte) Routine wird einer Variablen
+//                     bzw. einem Parameter eines prozeduralen Typs ohne of object
+//                     zugewiesen (wie E2094), oder ihre bzw. die Adresse einer
+//                     lokalen Variablen steht in einer typisierten Konstante der
+//                     Routine (wie E2278) (#1039). Gemeldet nur, wenn der Zieltyp
+//                     sicher ein solcher Typ ist (Methodenzeiger und anonyme
+//                     Methoden meldet der Compiler anders). Korrektur: die Routine
+//                     als Routine der Unit vor die umgebende Routine verschieben,
+//                     wenn sie nichts aus ihr nutzt.
 
 interface
 
@@ -19,9 +29,16 @@ uses
 
 const
   DynamicArrayMisuseRuleId = 'dynamic-array-misuse';
+  LocalRoutineAsCallbackRuleId = 'local-routine-as-callback';
 
 type
   TDynamicArrayMisuseRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TLocalRoutineAsCallbackRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -33,12 +50,16 @@ implementation
 
 uses
   System.SysUtils,
+  System.Classes,
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Semantics.NameResolver;
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Semantics.SystemIntrinsics,
+  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Text.Lines;
 
 const
   // Dynamische Arrays der RTL, auch wenn ihre Unit nicht im Index steht.
@@ -46,6 +67,9 @@ const
     'TObjectDynArray', 'TWordDynArray', 'TCardinalDynArray', 'TInt64DynArray', 'TDoubleDynArray',
     'TBooleanDynArray');
   MaxAliasDepth = 16;
+  // Prozedurale Typen der RTL ohne of object, auch wenn ihre Unit nicht im Index steht.
+  RtlPlainProcedureTypes: array[0..3] of string = ('TListSortCompare', 'TStringListSortCompare',
+    'TThreadFunc', 'TFarProc');
 
 /// <summary>Dateiname für die Namensauflösung wie in den übrigen Regeln.</summary>
 function ResolverFileName(const AContext: TRuleContext): string;
@@ -223,6 +247,113 @@ begin
     Name := DeclaredTypeText(AContext, Current);
   end;
   Result := False;
+end;
+
+/// <summary>Ist der Typtext, so wie er in AFromUnit steht, ein prozeduraler Typ ohne of object und ohne
+/// reference to (procedure(...), function(...): T bzw. ein Alias darauf)? False, wenn es nicht sicher feststeht.
+/// </summary>
+function IsPlainProcedureType(AResolver: TNameResolver; const AContext: TRuleContext; const AFromUnit: TUnitIndex;
+  const ATypeName: string): Boolean;
+var
+  Name: string;
+  Current: TResolvedSymbol;
+  FromUnit: TUnitIndex;
+  Depth: Integer;
+begin
+  Name := NormalizedType(ATypeName);
+  FromUnit := AFromUnit;
+  for Depth := 0 to MaxAliasDepth do
+  begin
+    if StartsText('procedure', Name) or StartsText('function', Name) then
+      Exit(not ContainsText(Name, ' of object'));
+    if (Name = '') or (Pos(' ', Name) > 0) or (Pos('<', Name) > 0) or (Pos('^', Name) > 0) then
+      Exit(False);
+    if not AResolver.ResolveTypeFrom(FromUnit, Name, Current) then
+      Exit(MatchText(Copy(Name, LastDelimiter('.', Name) + 1, MaxInt), RtlPlainProcedureTypes));
+    if Current.Builtin or (Current.SymbolKind <> TIndexSymbolKind.TypeAlias) or
+      not AResolver.DeclaringUnit(Current, FromUnit) then
+      Exit(False);
+    Name := DeclaredTypeText(AContext, Current);
+  end;
+  Result := False;
+end;
+
+/// <summary>Parameter der Routine ASymbol in Reihenfolge, je Name ein Eintrag: aus dem Kopf im Index bzw. für
+/// lokale Routinen aus dem Baum. False bei Überladungen oder unbekanntem Kopf.</summary>
+function RoutineParams(const AContext: TRuleContext; const ASymbol: TResolvedSymbol;
+  out AParams: TArray<TSignatureParameter>): Boolean;
+var
+  Signature: string;
+  Open, Close, Depth, Index: Integer;
+  Header, Parameters, Node: TSyntaxNode;
+  Name: string;
+  Parameter: TSignatureParameter;
+begin
+  AParams := nil;
+  Result := False;
+  if (Length(ASymbol.Overloads) > 0) or (Length(ASymbol.VariantParams) > 1) then
+    Exit;
+  Signature := ASymbol.Signature;
+  if Signature <> '' then
+  begin
+    Open := Pos('(', Signature);
+    Close := 0;
+    if Open > 0 then
+    begin
+      Depth := 0;
+      for Index := Open to Length(Signature) do
+        if Signature[Index] = '(' then
+          Inc(Depth)
+        else if Signature[Index] = ')' then
+        begin
+          Dec(Depth);
+          if Depth = 0 then
+          begin
+            Close := Index;
+            Break;
+          end;
+        end;
+      if Close = 0 then
+        Exit;
+      AParams := TChangeSignature.ParseParameters(Copy(Signature, Open + 1, Close - Open - 1));
+    end;
+    Exit(True);
+  end;
+  if (ASymbol.Kind <> TResolvedKind.Local) or (AContext.Tree = nil) then
+    Exit;
+  Header := nil;
+  for Node in PreOrder(AContext.Tree.Root) do
+    if (Node.Kind = TSyntaxKind.RoutineHeader) and Covers(Node, ASymbol.SelectionRange.StartPos) then
+      Header := Node;
+  if Header = nil then
+    Exit;
+  Parameters := Header.FindChild(TSyntaxKind.Parameters);
+  if Parameters <> nil then
+    for Index := 0 to Parameters.ChildCount - 1 do
+    begin
+      Node := Parameters[Index];
+      if Node.Kind <> TSyntaxKind.Parameter then
+        Continue;
+      for Name in Node.Name.Split([',']) do
+      begin
+        Parameter := Default(TSignatureParameter);
+        Parameter.Name := Trim(Name);
+        Parameter.Group := Index;
+        Parameter.TypeName := NodeTypeText(AContext.Text, Node);
+        case Node.Modifier of
+          TParameterModifier.ConstParam:
+            Parameter.Modifier := 'const';
+          TParameterModifier.VarParam:
+            Parameter.Modifier := 'var';
+          TParameterModifier.OutParam:
+            Parameter.Modifier := 'out';
+          TParameterModifier.ConstRefParam:
+            Parameter.Modifier := 'constref';
+        end;
+        AParams := AParams + [Parameter];
+      end;
+    end;
+  Result := True;
 end;
 
 /// <summary>Unit, in der ein aufgelöstes Symbol steht (bei lokalen Namen die geprüfte Datei).</summary>
@@ -407,9 +538,270 @@ begin
   end;
 end;
 
+{ TLocalRoutineAsCallbackRule }
+
+function TLocalRoutineAsCallbackRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(LocalRoutineAsCallbackRuleId, TRuleSeverity.Error,
+    'Lokale Routine als Prozedurvariable');
+end;
+
+procedure TLocalRoutineAsCallbackRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Resolver: TNameResolver;
+  FileName, LineBreak: string;
+  Local: TUnitIndex;
+  Nodes: TArray<TSyntaxNode>;
+  Nested: TList<TSyntaxNode>;
+  Names: TStringList;
+  Lines: TArray<string>;
+  Node, Parent: TSyntaxNode;
+  HasConstants: Boolean;
+
+  function OuterRoutine(ANode: TSyntaxNode): TSyntaxNode;
+  begin
+    Result := ANode.Parent;
+    while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
+      Result := Result.Parent;
+  end;
+
+  /// <summary>Verschachtelte Routine, deren Kopf ASymbol deklariert; nil, wenn ASymbol keine ist.</summary>
+  function NestedOf(const ASymbol: TResolvedSymbol): TSyntaxNode;
+  var
+    Candidate, Header: TSyntaxNode;
+  begin
+    Result := nil;
+    if (ASymbol.Kind <> TResolvedKind.Local) or (ASymbol.SymbolKind <> TIndexSymbolKind.Routine) then
+      Exit;
+    for Candidate in Nested do
+    begin
+      Header := Candidate.FindChild(TSyntaxKind.RoutineHeader);
+      if (Header <> nil) and Covers(Header, ASymbol.SelectionRange.StartPos) then
+        Exit(Candidate);
+    end;
+  end;
+
+  /// <summary>Typ des Ziels ATarget einer Zuweisung als Text samt Unit.</summary>
+  function TargetType(ATarget: TSyntaxNode; out AText: string; out AUnit: TUnitIndex): Boolean;
+  var
+    Symbol, TypeInfo: TResolvedSymbol;
+    TypeFound: Boolean;
+  begin
+    Result := Resolver.NodeType(AContext.Tree, FileName, ATarget, Symbol, TypeInfo, TypeFound) and
+      (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
+      SymbolUnit(Resolver, Local, Symbol, AUnit);
+    if Result then
+      AText := DeclaredTypeText(AContext, Symbol);
+  end;
+
+  /// <summary>Typ des Parameters an Stelle AArgument (0 = erstes Argument) des Aufrufs ACall.</summary>
+  function ParameterType(ACall: TSyntaxNode; AArgument: Integer; out AText: string; out AUnit: TUnitIndex): Boolean;
+  var
+    Symbol, TypeInfo: TResolvedSymbol;
+    TypeFound: Boolean;
+    Params: TArray<TSignatureParameter>;
+  begin
+    Result := Resolver.NodeType(AContext.Tree, FileName, ACall, Symbol, TypeInfo, TypeFound) and
+      (Symbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_]) and
+      RoutineParams(AContext, Symbol, Params) and (AArgument < Length(Params)) and
+      SymbolUnit(Resolver, Local, Symbol, AUnit);
+    if Result then
+      AText := Params[AArgument].TypeName;
+  end;
+
+  /// <summary>Nutzt ARoutine nur eigene Namen und Namen außerhalb der umgebenden Routine (keine Mitglieder
+  /// der Klasse ohne Präfix, keine lokalen Namen weiter außen)? Dann darf sie auf Unit-Ebene stehen.</summary>
+  function SelfContained(ARoutine: TSyntaxNode): Boolean;
+  var
+    Inner: TSyntaxNode;
+    Symbol, TypeInfo: TResolvedSymbol;
+    TypeFound: Boolean;
+  begin
+    for Inner in PreOrder(ARoutine) do
+    begin
+      if (Inner.Kind <> TSyntaxKind.Identifier) or ((Inner.Parent <> nil) and
+        (Inner.Parent.Kind = TSyntaxKind.MemberAccess) and (Inner.Parent.ChildCount > 0) and
+        (Inner.Parent[0] <> Inner)) then
+        Continue;
+      if not Resolver.NodeType(AContext.Tree, FileName, Inner, Symbol, TypeInfo, TypeFound) then
+      begin
+        if TSystemIntrinsics.IsKnown(Inner.Name) then
+          Continue;
+        Exit(False);
+      end;
+      if Symbol.Kind = TResolvedKind.Local then
+      begin
+        if not Covers(ARoutine, Symbol.SelectionRange.StartPos) then
+          Exit(False);
+      end
+      else if (Symbol.Kind = TResolvedKind.Symbol) and (Symbol.Container <> '') and not Symbol.IsType then
+        Exit(False);
+    end;
+    Result := True;
+  end;
+
+  /// <summary>Korrektur: ARoutine als Routine der Unit direkt vor die umgebende Routine stellen.</summary>
+  function MoveFix(ARoutine: TSyntaxNode; out AFix: TRuleFix): Boolean;
+  var
+    Outer: TSyntaxNode;
+    First, Last, Line: Integer;
+    Indent, Text: string;
+  begin
+    Result := False;
+    Outer := OuterRoutine(ARoutine);
+    // Nur eine Ebene tief: Bei tieferer Schachtelung bräuchte die mittlere Routine sie weiter.
+    if (Outer = nil) or (OuterRoutine(Outer) <> nil) or not SelfContained(ARoutine) then
+      Exit;
+    First := ARoutine.StartPos.Line;
+    Last := ARoutine.EndPos.Line;
+    if (Last > High(Lines)) or (Trim(Copy(Lines[First], 1, ARoutine.StartPos.Character)) <> '') or
+      (Trim(Copy(Lines[Last], ARoutine.EndPos.Character + 1, MaxInt)) <> '') then
+      Exit;
+    Indent := TTextLines.IndentOf(Lines[First]);
+    Text := '';
+    for Line := First to Last do
+      if StartsStr(Indent, Lines[Line]) then
+        Text := Text + Copy(Lines[Line], Length(Indent) + 1, MaxInt) + LineBreak
+      else
+        Text := Text + TrimLeft(Lines[Line]) + LineBreak;
+    AFix := TRuleFix.Create(Format('%s als Routine der Unit auslagern', [ARoutine.Name]), [
+      TTextEdit.Create(TTextRange.Create(Outer.StartPos.Line, 0, Outer.StartPos.Line, 0), Text + LineBreak),
+      TTextEdit.Create(TTextRange.Create(First, 0, Last + 1, 0), '')]);
+    Result := True;
+  end;
+
+  procedure Report(AName: TSyntaxNode; ARoutine: TSyntaxNode; AAssigned: Boolean);
+  var
+    Kind, Message: string;
+    Fix: TRuleFix;
+    Fixes: TArray<TRuleFix>;
+    Header: TSyntaxNode;
+  begin
+    Kind := 'Prozedur';
+    Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    if (Header <> nil) and StartsText('function', Trim(NodeText(AContext, Header))) then
+      Kind := 'Funktion';
+    if AAssigned then
+      Message := Format('Die lokale %s %s kann keiner Prozedurvariablen zugewiesen werden (wie E2094).',
+        [Kind, ARoutine.Name])
+    else
+      Message := Format('Die lokale %s %s kann nicht als Prozedurvariable übergeben werden (wie E2094).',
+        [Kind, ARoutine.Name]);
+    Fixes := nil;
+    if MoveFix(ARoutine, Fix) then
+      Fixes := [Fix];
+    AReport.Add(TTextRange.Create(AName.StartPos, AName.EndPos), Message, TRuleConfidence.High, Fixes);
+  end;
+
+  procedure CheckName(AName: TSyntaxNode);
+  var
+    Symbol, TypeInfo: TResolvedSymbol;
+    TypeFound: Boolean;
+    Routine: TSyntaxNode;
+    TypeText: string;
+    FromUnit: TUnitIndex;
+    Argument, Index: Integer;
+  begin
+    Parent := AName.Parent;
+    if (Parent = nil) or not (Parent.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.Call]) or
+      (Parent[0] = AName) then
+      Exit;
+    if not Resolver.NodeType(AContext.Tree, FileName, AName, Symbol, TypeInfo, TypeFound) then
+      Exit;
+    Routine := NestedOf(Symbol);
+    if Routine = nil then
+      Exit;
+    if Parent.Kind = TSyntaxKind.AssignStatement then
+    begin
+      if TargetType(Parent[0], TypeText, FromUnit) and IsPlainProcedureType(Resolver, AContext, FromUnit, TypeText)
+      then
+        Report(AName, Routine, True);
+      Exit;
+    end;
+    Argument := -1;
+    for Index := 1 to Parent.ChildCount - 1 do
+      if Parent[Index] = AName then
+        Argument := Index - 1;
+    if (Argument >= 0) and ParameterType(Parent, Argument, TypeText, FromUnit) and
+      IsPlainProcedureType(Resolver, AContext, FromUnit, TypeText) then
+      Report(AName, Routine, False);
+  end;
+
+  /// <summary>@X in einer typisierten Konstante einer Routine mit X lokaler Variable bzw. Parameter
+  /// (wie E2278).</summary>
+  procedure CheckConstant(AConst: TSyntaxNode);
+  var
+    Inner, Outer: TSyntaxNode;
+    Symbol, TypeInfo: TResolvedSymbol;
+    TypeFound: Boolean;
+  begin
+    Outer := OuterRoutine(AConst);
+    if (Outer = nil) or (AConst.FindChild(TSyntaxKind.TypeReference) = nil) and
+      (AConst.FindChild(TSyntaxKind.PointerType) = nil) then
+      Exit;
+    for Inner in PreOrder(AConst) do
+      if (Inner.Kind = TSyntaxKind.AddressOf) and (Inner.ChildCount = 1) and
+        (Inner[0].Kind = TSyntaxKind.Identifier) and
+        Resolver.NodeType(AContext.Tree, FileName, Inner[0], Symbol, TypeInfo, TypeFound) and
+        (Symbol.Kind = TResolvedKind.Local) and (Symbol.SymbolKind = TIndexSymbolKind.Variable) and
+        Covers(Outer, Symbol.SelectionRange.StartPos) then
+        AReport.Add(TTextRange.Create(Inner.StartPos, Inner.EndPos),
+          Format('Die Adresse des lokalen Symbols %s ist keine Konstante (wie E2278).', [Inner[0].Name]),
+          TRuleConfidence.High);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Nodes := PreOrder(AContext.Tree.Root);
+  Nested := TList<TSyntaxNode>.Create;
+  Names := TStringList.Create;
+  try
+    Names.CaseSensitive := False;
+    Names.Sorted := True;
+    Names.Duplicates := dupIgnore;
+    HasConstants := False;
+    for Node in Nodes do
+      if (Node.Kind = TSyntaxKind.RoutineDecl) and (OuterRoutine(Node) <> nil) then
+      begin
+        Nested.Add(Node);
+        Names.Add(Node.Name);
+      end
+      else if Node.Kind = TSyntaxKind.ConstDecl then
+        HasConstants := True;
+    if (Nested.Count = 0) and not HasConstants then
+      Exit;
+    FileName := ResolverFileName(AContext);
+    Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+    if LineBreak = '' then
+      LineBreak := sLineBreak;
+    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+    try
+      Resolver.Namespaces := AContext.Namespaces;
+      Resolver.PinTree(AContext.Tree, FileName);
+      try
+        Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
+        for Node in Nodes do
+          if (Node.Kind = TSyntaxKind.Identifier) and (Names.IndexOf(Node.Name) >= 0) then
+            CheckName(Node)
+          else if Node.Kind = TSyntaxKind.ConstDecl then
+            CheckConstant(Node);
+      finally
+        Resolver.UnpinTree;
+      end;
+    finally
+      Resolver.Free;
+    end;
+  finally
+    Names.Free;
+    Nested.Free;
+  end;
+end;
+
 procedure RegisterTypeCheckRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDynamicArrayMisuseRule.Create);
+  ARegistry.Register(TLocalRoutineAsCallbackRule.Create);
 end;
 
 end.

@@ -1163,6 +1163,11 @@
       "id": "dynamic-array-misuse",
       "name": "New, Dispose oder SetLength falsch für dynamische Arrays",
       "description": "New (wie E2255) oder Dispose (wie E2256) auf einem dynamischen Array, SetLength ohne Länge (wie E2246), New mit Länge auf einem Typ, der kein dynamisches Array ist (wie E2307), und New(TArrayTyp) ohne Länge (wie E2308). Häufig in altem Code, der von Zeigern auf dynamische Arrays umgestellt wurde. Die Regel meldet nur, wenn die Namensauflösung Variable bzw. Typ sicher kennt; Aliase werden verfolgt (TWerte = array of Double), TBytes und die übrigen dynamischen Arrays der RTL gelten auch ohne Index; offene Array-Parameter und Zeiger bleiben still. Korrekturen: Dispose(A) wird A := nil, New(A) wird SetLength(A, 1)."
+    },
+    {
+      "id": "local-routine-as-callback",
+      "name": "Lokale Routine als Prozedurvariable",
+      "description": "Eine lokale (verschachtelte) Routine wird einer Variablen oder einem Parameter eines prozeduralen Typs ohne of object zugewiesen (wie E2094), oder eine typisierte Konstante einer Routine nimmt die Adresse einer lokalen Variablen (wie E2278). Gemeint ist meist eine anonyme Methode oder eine Routine der Unit. Die Regel meldet nur, wenn die Namensauflösung den Zieltyp sicher kennt; Methodenzeiger und Methodenreferenzen bleiben still, weil der Compiler sie mit anderen Codes meldet, ebenso @Routine (ein untypisierter Zeiger). Korrektur: die Routine als Routine der Unit vor die umgebende Routine verschieben, wenn sie nichts aus ihr nutzt (keine lokalen Namen weiter außen, keine Klassenmitglieder ohne Präfix)."
     }
   ]
 }
