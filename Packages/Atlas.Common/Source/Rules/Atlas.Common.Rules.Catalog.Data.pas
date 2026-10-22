@@ -2379,6 +2379,16 @@ begin
     '          "description": "Longest literal in the place of the text that is still taken as swapped."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "integer-division-to-float",' + #10 +
+    '      "name": "Integer division assigned to a floating-point number",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "Average := Sum div Count with Average: Double: div cuts off the fraction before the value is assigned. Also Percent := Part div Total * 100, Result of a function with a floating-' + 'point result and var X: Double := A div B. The div is searched through parentheses, signs and + - * /, not inside calls (Round(A div B)), indexes, mod or comparisons. The target must be a variable, fi' + 'eld (also Self.X) or Result whose type Single, Double, Extended, Real, Currency … is declared in the file. TDateTime, TDate and TTime stay silent (whole days are usually intended there), as do assignm' + 'ents inside with and Trunc(A) div Trunc(B) (also Round, Floor, Ceil: explicitly converted, so integer division is intended). High confidence. Quick fix: replace div with / (same precedence).",' + #10 +
+    '      "bad": "var Average: Double;\n…\nAverage := Sum div Count;",' + #10 +
+    '      "good": "var Average: Double;\n…\nAverage := Sum / Count;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3586,6 +3596,11 @@ begin
     '          "description": "Längstes Literal an der Stelle des Textes, das noch als vertauscht gilt."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "integer-division-to-float",' + #10 +
+    '      "name": "Ganzzahldivision an Gleitkommazahl",' + #10 +
+    '      "description": "Schnitt := Summe div Anzahl mit Schnitt: Double: div schneidet die Nachkommastellen ab, bevor zugewiesen wird. Ebenso Prozent := Teil div Gesamt * 100, Result einer Funktion mit ' + 'Gleitkommaergebnis und var X: Double := A div B. Gesucht wird durch Klammern, Vorzeichen und + - * / hindurch, nicht in Aufrufen (Round(A div B)), Indizes, mod oder Vergleichen. Das Ziel muss eine Var' + 'iable, ein Feld (auch Self.X) oder Result sein, deren Typ Single, Double, Extended, Real, Currency … in der Datei deklariert ist. TDateTime, TDate und TTime bleiben still (ganze Tage sind dort meist g' + 'ewollt), ebenso Zuweisungen in with und Trunc(A) div Trunc(B) (auch Round, Floor, Ceil: ausdrücklich gewandelt, also gewollt ganzzahlig). Konfidenz hoch. Schnellkorrektur: div durch / ersetzen (gleich' + 'er Vorrang)."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

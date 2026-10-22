@@ -23,6 +23,12 @@
 //                         (bis maxLiteralLength Zeichen, Vorgabe 3), an der Stelle des Teils sicher ein String
 //                         (deklarierter Typ, .Text/.Caption, String-Funktion, Verkettung). Zeichen bleiben stumm:
 //                         Pos(C, ';,') prüft bewusst, ob C einer der Trenner ist.
+//   integer-division-to-float
+//                         Schnitt := Summe div Anzahl mit Schnitt: Double (#1046): div schneidet ab, bevor zugewiesen
+//                         wird; auch Teil div Gesamt * 100, Result und var X: Double := …. Gesucht wird durch Klammern
+//                         und + - * / hindurch, nicht in Aufrufen (Round(A div B)). Ziel mit in der Datei deklariertem
+//                         Gleitkommatyp; TDateTime bleibt stumm (ganze Tage sind dort meist gewollt), ebenso with
+//                         und Trunc(A) div Trunc(B) (ausdrücklich gewandelt, also gewollt ganzzahlig).
 
 interface
 
@@ -36,6 +42,7 @@ const
   StringIndexBaseRuleId = 'string-index-base';
   NullCompareRuleId = 'null-compare';
   PosArgumentsSwappedRuleId = 'pos-arguments-swapped';
+  IntegerDivisionToFloatRuleId = 'integer-division-to-float';
 
 type
   TOperatorPrecedenceRule = class(TInterfacedObject, IRule)
@@ -73,6 +80,14 @@ type
     /// <summary>Zeichenzahl eines Literals aus '…'- und #n-Teilen ('''' zählt als ein Zeichen); -1, wenn
     /// ALiteral kein solches Literal ist.</summary>
     class function LiteralLength(const ALiteral: string): Integer; static;
+  end;
+
+  TIntegerDivisionToFloatRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Gleitkommatyp mit Nachkommastellen (Double, Single, Extended, Real, Currency …), ohne TDateTime.</summary>
+    class function IsFractional(const AType: string): Boolean; static;
   end;
 
 procedure RegisterExpressionRules(const ARegistry: TRuleRegistry);
@@ -1266,6 +1281,175 @@ begin
   end;
 end;
 
+{ TIntegerDivisionToFloatRule }
+
+function TIntegerDivisionToFloatRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(IntegerDivisionToFloatRuleId, TRuleSeverity.Warning,
+    'Ganzzahldivision an Gleitkommazahl');
+end;
+
+class function TIntegerDivisionToFloatRule.IsFractional(const AType: string): Boolean;
+begin
+  // TDateTime, TDate und TTime nicht: A div B als ganze Tage ist dort meist gewollt; Comp ist ganzzahlig.
+  Result := MatchText(Trim(AType), ['Single', 'Double', 'Extended', 'Real', 'Real48', 'Float32', 'Float64',
+    'Currency', 'System.Single', 'System.Double', 'System.Extended', 'System.Currency']);
+end;
+
+procedure TIntegerDivisionToFloatRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Types: TDeclaredTypes;
+
+  // Typ des Funktionsergebnisses der Routine um ANode; '' ohne Funktion.
+  function ResultType(ANode: TSyntaxNode): string;
+  var
+    Header, Reference: TSyntaxNode;
+  begin
+    Result := '';
+    while (ANode <> nil) and not (ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) do
+      ANode := ANode.Parent;
+    if (ANode = nil) or (ANode.Kind <> TSyntaxKind.RoutineDecl) then
+      Exit;
+    Header := ANode.FindChild(TSyntaxKind.RoutineHeader);
+    if Header = nil then
+      Exit;
+    Reference := Header.FindChild(TSyntaxKind.TypeReference);
+    if Reference <> nil then
+      Result := Trim(Copy(AContext.Text, Reference.StartOffset + 1, Reference.EndOffset - Reference.StartOffset));
+  end;
+
+  // Steht ANode in einem with-Block? Dann kann der Name ein Feld des with-Objekts sein.
+  function InWith(ANode: TSyntaxNode): Boolean;
+  begin
+    while ANode <> nil do
+    begin
+      if ANode.Kind = TSyntaxKind.WithStatement then
+        Exit(True);
+      ANode := ANode.Parent;
+    end;
+    Result := False;
+  end;
+
+  // Das Schlüsselwort div zwischen den Operanden von ADivision.
+  function DivToken(ADivision: TSyntaxNode; out AToken: TPascalToken): Boolean;
+  var
+    Index: Integer;
+  begin
+    for Index := 0 to High(Tokens) do
+      if (Tokens[Index].Offset >= ADivision[0].EndOffset) and (Tokens[Index].Offset < ADivision[1].StartOffset) and
+        Tokens[Index].IsKeyword('div') then
+      begin
+        AToken := Tokens[Index];
+        Exit(True);
+      end;
+    Result := False;
+  end;
+
+  // Trunc(X), Round(X), Floor(X), Ceil(X): Wer Gleitkommazahlen ausdrücklich in Ganzzahlen wandelt und dann
+  // mit div teilt, will die ganzzahlige Division (Trunc(A) div Trunc(B) im Präprozessor).
+  function IsExplicitInteger(AOperand: TSyntaxNode): Boolean;
+  begin
+    while (AOperand.Kind = TSyntaxKind.ParenExpr) and (AOperand.ChildCount = 1) do
+      AOperand := AOperand[0];
+    Result := (AOperand.Kind = TSyntaxKind.Call) and (AOperand.ChildCount > 0) and
+      (AOperand[0].Kind = TSyntaxKind.Identifier) and MatchText(AOperand[0].Name, ['Trunc', 'Round', 'Floor', 'Ceil']);
+  end;
+
+  // div in AExpression, deren Ergebnis ungekürzt in die Gleitkommazahl fließt: durch Klammern, Vorzeichen und
+  // + - * / hindurch, nicht in Aufrufe, Indizes, mod oder Vergleiche.
+  procedure Search(AExpression: TSyntaxNode; const ATarget, AType: string);
+  var
+    Token: TPascalToken;
+    Index: Integer;
+  begin
+    case AExpression.Kind of
+      TSyntaxKind.ParenExpr, TSyntaxKind.UnaryExpr:
+        if (AExpression.Kind = TSyntaxKind.ParenExpr) or (AExpression.Name = '-') or (AExpression.Name = '+') then
+          for Index := 0 to AExpression.ChildCount - 1 do
+            Search(AExpression[Index], ATarget, AType);
+      TSyntaxKind.BinaryExpr:
+        if SameText(AExpression.Name, 'div') and (AExpression.ChildCount = 2) then
+        begin
+          if not IsExplicitInteger(AExpression[0]) and not IsExplicitInteger(AExpression[1]) and
+            DivToken(AExpression, Token) then
+            AReport.Add(TTextRange.Create(AExpression.StartPos, AExpression.EndPos),
+              Format('div rechnet ganzzahlig; %s ist %s und verliert die Nachkommastellen.', [ATarget, AType]),
+              TRuleConfidence.High, [TRuleFix.Create('div durch / ersetzen',
+              [TRuleEdit.Create(TTextRange.Create(Token.StartPos, Token.EndPos), '/')])]);
+        end
+        else if MatchStr(AExpression.Name, ['+', '-', '*', '/']) then
+          for Index := 0 to AExpression.ChildCount - 1 do
+            Search(AExpression[Index], ATarget, AType);
+    end;
+  end;
+
+  procedure CheckAssignment(ANode: TSyntaxNode);
+  var
+    Target: TSyntaxNode;
+    Name, TypeName: string;
+  begin
+    if (ANode.ChildCount <> 2) or InWith(ANode) then
+      Exit;
+    Target := ANode[0];
+    // Self.X wie X.
+    if (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount = 1) and
+      (Target[0].Kind = TSyntaxKind.Identifier) and SameText(Target[0].Name, 'Self') then
+      Name := Target.Name
+    else if Target.Kind = TSyntaxKind.Identifier then
+      Name := Target.Name
+    else
+      Exit;
+    if SameText(Name, 'Result') then
+    begin
+      TypeName := Types.DeclaredType(Name, Target.StartPos);
+      if TypeName = '' then
+        TypeName := ResultType(ANode);
+    end
+    else
+      TypeName := Types.DeclaredType(Name, Target.StartPos);
+    if IsFractional(TypeName) then
+      Search(ANode[1], Name, TypeName);
+  end;
+
+  // var Schnitt: Double := Summe div Anzahl;
+  procedure CheckInlineVar(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    TypeName: string;
+  begin
+    if (ANode.ChildCount <> 2) or (Pos(',', ANode.Name) > 0) or (ANode[0].Kind <> TSyntaxKind.TypeReference) then
+      Exit;
+    TypeName := Trim(Copy(AContext.Text, ANode[0].StartOffset + 1, ANode[0].EndOffset - ANode[0].StartOffset));
+    if IsFractional(TypeName) then
+      for Index := 1 to ANode.ChildCount - 1 do
+        Search(ANode[Index], Trim(ANode.Name), TypeName);
+  end;
+
+  procedure Walk(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.AssignStatement then
+      CheckAssignment(ANode)
+    else if ANode.Kind = TSyntaxKind.InlineVar then
+      CheckInlineVar(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Walk(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  try
+    Walk(AContext.Tree.Root);
+  finally
+    Types.Free;
+  end;
+end;
+
 procedure RegisterExpressionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TOperatorPrecedenceRule.Create);
@@ -1273,6 +1457,7 @@ begin
   ARegistry.Register(TStringIndexBaseRule.Create);
   ARegistry.Register(TNullCompareRule.Create);
   ARegistry.Register(TPosArgumentsSwappedRule.Create);
+  ARegistry.Register(TIntegerDivisionToFloatRule.Create);
 end;
 
 end.

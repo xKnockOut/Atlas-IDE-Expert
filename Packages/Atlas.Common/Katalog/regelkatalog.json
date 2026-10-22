@@ -2359,6 +2359,16 @@
           "description": "Longest literal in the place of the text that is still taken as swapped."
         }
       ]
+    },
+    {
+      "id": "integer-division-to-float",
+      "name": "Integer division assigned to a floating-point number",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "Average := Sum div Count with Average: Double: div cuts off the fraction before the value is assigned. Also Percent := Part div Total * 100, Result of a function with a floating-point result and var X: Double := A div B. The div is searched through parentheses, signs and + - * /, not inside calls (Round(A div B)), indexes, mod or comparisons. The target must be a variable, field (also Self.X) or Result whose type Single, Double, Extended, Real, Currency … is declared in the file. TDateTime, TDate and TTime stay silent (whole days are usually intended there), as do assignments inside with and Trunc(A) div Trunc(B) (also Round, Floor, Ceil: explicitly converted, so integer division is intended). High confidence. Quick fix: replace div with / (same precedence).",
+      "bad": "var Average: Double;\n…\nAverage := Sum div Count;",
+      "good": "var Average: Double;\n…\nAverage := Sum / Count;"
     }
   ]
 }
