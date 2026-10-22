@@ -91,6 +91,8 @@ type
     procedure LicenseAskedAgainAfterChangeOrUninstall;
     [Test]
     procedure InstallCopiesLicense;
+    [Test]
+    procedure InstallCopiesMapFilesWhenPresent;
   end;
 
 implementation
@@ -846,6 +848,27 @@ begin
     Assert.IsTrue(Sys.FileExists(Target + '\LICENSE'));
     Assert.IsTrue(Installer.Uninstall([], False));
     Assert.IsFalse(Sys.FileExists(Target + '\' + TSetupLicense.FileName));
+  finally
+    Installer.Free;
+  end;
+end;
+
+procedure TSetupInstallerTests.InstallCopiesMapFilesWhenPresent;
+var
+  Sys: TFakeSystem;
+  Keep: ISetupSystem;
+  Installer: TSetupInstaller;
+begin
+  // Map-Dateien für Stacktraces mit Unit und Zeile: neben Server und BPL, nur wenn im Paket.
+  Sys := Prepared;
+  Keep := Sys;
+  Sys.Files.Add(Source + '\Win64\Atlas.IDE.Expert290.map');
+  Installer := TSetupInstaller.Create(Keep, Paths, '1.0.0');
+  try
+    Assert.IsTrue(Installer.Install(Installer.Detect));
+    Assert.IsTrue(Sys.FileExists(Target + '\AtlasServer.map'));
+    Assert.IsTrue(Sys.FileExists(Target + '\Win64\Atlas.IDE.Expert290.map'));
+    Assert.IsFalse(Sys.FileExists(Target + '\Win32\Atlas.IDE.Expert290.map'));
   finally
     Installer.Free;
   end;

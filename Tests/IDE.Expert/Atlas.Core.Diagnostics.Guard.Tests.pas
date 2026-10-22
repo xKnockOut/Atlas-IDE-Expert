@@ -38,6 +38,10 @@ type
     procedure ProviderFuseTripsOnlyThatProvider;
     [Test]
     procedure LogLineIsShortSingleLineWithVersion;
+    [Test]
+    procedure ErrorLineCarriesStackFromHook;
+    [Test]
+    procedure FailingStackHookKeepsErrorLine;
   end;
 
 implementation
@@ -71,6 +75,7 @@ procedure TAtlasGuardTests.TearDown;
 begin
   TAtlasGuard.Fuse.ResetAll;
   TAtlasGuard.OnWarning := nil;
+  TAtlasGuard.StackOf := nil;
   TAtlasGuard.RotatingLog.Folder := FOldFolder;
   if TDirectory.Exists(FFolder) then
     TDirectory.Delete(FFolder, True);
@@ -282,6 +287,52 @@ begin
   Assert.IsFalse(Text.Contains(StringOfChar('x', TAtlasGuard.MaxMessageLength)), 'Meldung gekürzt');
   Assert.AreEqual(1, Integer(Length(Text.Trim.Split([sLineBreak]))), 'eine Zeile ohne Stack-Trace-Anbieter');
   Assert.AreEqual('a b', TAtlasGuard.SafeMessage(' a'#13#10'b '));
+end;
+
+procedure TAtlasGuardTests.ErrorLineCarriesStackFromHook;
+var
+  Text: string;
+  Seen: Exception;
+begin
+  // Ohne E.StackTrace liefert der Mitschnitt des Plugins die Rahmen; er bekommt die behandelte Ausnahme.
+  Seen := nil;
+  TAtlasGuard.StackOf :=
+    function(E: Exception): string
+    begin
+      Seen := E;
+      Result := 'Atlas.IDE.Expert370.bpl+$10 Atlas.IDE.Editor.Minimap.Paint (Minimap.pas:12)' + sLineBreak +
+        'rtl370.bpl+$20';
+    end;
+  TAtlasGuard.Run(TAtlasFeature.Hover,
+    procedure
+    begin
+      raise EInvalidOpException.Create('kaputt');
+    end);
+  Assert.IsTrue(Seen <> nil, 'Haken aufgerufen');
+  Text := TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8);
+  Assert.Contains(Text, '  Stack: Atlas.IDE.Expert370.bpl+$10 Atlas.IDE.Editor.Minimap.Paint (Minimap.pas:12)');
+  Assert.Contains(Text, sLineBreak + '  rtl370.bpl+$20');
+end;
+
+procedure TAtlasGuardTests.FailingStackHookKeepsErrorLine;
+var
+  Text: string;
+begin
+  TAtlasGuard.StackOf :=
+    function(E: Exception): string
+    begin
+      if E <> nil then
+        raise EInvalidOpException.Create('Map kaputt');
+      Result := '';
+    end;
+  TAtlasGuard.Run(TAtlasFeature.Hover,
+    procedure
+    begin
+      raise EInvalidOpException.Create('eigentlicher Fehler');
+    end);
+  Text := TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8);
+  Assert.Contains(Text, 'EInvalidOpException: eigentlicher Fehler');
+  Assert.Contains(Text, 'Stack: nicht verfügbar (EInvalidOpException)');
 end;
 
 initialization

@@ -65,6 +65,7 @@
         <DCCReference Include="Text\Atlas.Text.Checkin.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.DUnitX.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.TestResults.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.MapFile.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.Logger.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.StreamSink.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.RotatingFileStream.Tests.pas"/>
@@ -88,7 +89,6 @@
         <DCCReference Include="Windows\Projects\Atlas.Windows.Projects.DelphiInstallation.Tests.pas"/>
         <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.Tests.pas"/>
         <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.Backend.Tests.pas"/>
-        <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.MapFile.Tests.pas"/>
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.StackGuard.Tests.pas"/>
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.Tests.pas"/>
         <DCCReference Include="Windows\Compiler\Atlas.Windows.Compiler.Adapters.ProcessRunner.Tests.pas"/>
@@ -499,6 +499,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.Events.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Hangs.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.Hangs.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.StackRing.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.StackRing.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.ExternalChanges.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Files.ExternalChanges.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.TextDiff.pas"/>

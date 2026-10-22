@@ -12,8 +12,10 @@
 //   Fehlern in 5 Minuten fällt nur diese Quelle aus, die übrigen laufen weiter.
 // - TAtlasRotatingLog: Protokoll unter %LOCALAPPDATA%\Atlas\Logs, höchstens
 //   5 Dateien à 1 MB. Jede Fehlerzeile nennt Atlas-Version, Feature bzw.
-//   Quelle, Fehlerklasse, Meldung (eine Zeile, gekürzt) und den Stack-Trace,
-//   wenn ein Stack-Trace-Anbieter installiert ist; nie Quelltext aus dem Editor.
+//   Quelle, Fehlerklasse, Meldung (eine Zeile, gekürzt) und den Stack-Trace;
+//   nie Quelltext aus dem Editor. Den Stack-Trace liefert Exception.StackTrace
+//   (falls ein Anbieter installiert ist), sonst der Haken StackOf
+//   (Atlas.IDE.Diagnostics.StackCapture: Mitschnitt beim Auslösen).
 
 interface
 
@@ -83,6 +85,8 @@ type
   end;
 
   TAtlasGuardMessage = reference to procedure(const AText: string);
+  /// <summary>Stacktrace zur gerade behandelten Ausnahme; '' ohne.</summary>
+  TAtlasGuardStackFunc = reference to function(E: Exception): string;
 
   TAtlasGuard = class
   private class var
@@ -90,6 +94,7 @@ type
     FLog: TAtlasRotatingLog;
     FOnWarning: TAtlasGuardMessage;
     FOnFailure: TProc<TAtlasFeature>;
+    FStackOf: TAtlasGuardStackFunc;
     class procedure Warn(const AText: string); static;
     class function ErrorLine(const AWhere: string; E: Exception): string; static;
   public
@@ -124,6 +129,8 @@ type
     /// <summary>Nach jedem gezählten Fehler eines Features, aus jedem Thread (Startmarke des abgesicherten
     /// Starts, #722).</summary>
     class property OnFailure: TProc<TAtlasFeature> read FOnFailure write FOnFailure;
+    /// <summary>Stacktrace für Fehlerzeilen, wenn E.StackTrace leer ist (im except-Block aufgerufen).</summary>
+    class property StackOf: TAtlasGuardStackFunc read FStackOf write FStackOf;
     class property Fuse: TAtlasFuse read FFuse;
     class property RotatingLog: TAtlasRotatingLog read FLog;
   end;
@@ -372,6 +379,7 @@ end;
 class destructor TAtlasGuard.Destroy;
 begin
   FOnWarning := nil;
+  FStackOf := nil;
   FreeAndNil(FLog);
   FreeAndNil(FFuse);
 end;
@@ -427,8 +435,16 @@ var
 begin
   Result := Format('Atlas %s · Fehler in %s: %s: %s', [TAtlasPluginVersion.Version, AWhere, E.ClassName,
     SafeMessage(E.Message)]);
-  // Nur mit installiertem Stack-Trace-Anbieter (z. B. JCL, madExcept) gefüllt.
+  // E.StackTrace nur mit installiertem Anbieter (JCL, madExcept); sonst der Mitschnitt des Plugins.
   Trace := Trim(E.StackTrace);
+  if (Trace = '') and Assigned(FStackOf) then
+    try
+      Trace := Trim(FStackOf(E));
+    except
+      // Sicherheitsnetz: Ein Fehler beim Auflösen darf die Fehlerzeile selbst nicht verhindern.
+      on Inner: Exception do
+        Trace := 'nicht verfügbar (' + Inner.ClassName + ')';
+    end;
   if Trace <> '' then
     Result := Result + sLineBreak + '  Stack: ' + StringReplace(Trace, sLineBreak, sLineBreak + '  ', [rfReplaceAll]);
 end;

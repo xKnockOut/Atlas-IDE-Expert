@@ -4,10 +4,10 @@
 // entfernen. Nur über ISetupSystem, ohne Windows und VCL.
 // Ablage (je Benutzer, ohne Administratorrechte):
 //   <InstallDir>\AtlasServer.exe, AtlasSetup.exe, LICENSE, EULA.txt, THIRD-PARTY-NOTICES.md,
-//     whatsnew.json (#756), tips.json (#757)
+//     whatsnew.json (#756), tips.json (#757), AtlasServer.map (falls im Paket)
 //   <InstallDir>\Beispiele\… (#756, #757), <InstallDir>\Tipps\….png (#757),
 //   <InstallDir>\Doku\….html (#766, lokale Doku für „Atlas-Doku“)
-//   <InstallDir>\Win32\Atlas.IDE.Expert<Suffix>.bpl, <InstallDir>\Win64\…
+//   <InstallDir>\Win32\Atlas.IDE.Expert<Suffix>.bpl (+ .map, falls im Paket), <InstallDir>\Win64\…
 // Die Quelle (SourceDir, der Ordner des Installers) hat denselben Aufbau.
 // Eine IDE wird nur angeboten, wenn ihre Version unterstützt ist und die
 // passende BPL in der Quelle liegt.
@@ -64,9 +64,10 @@ type
     DisplayName = 'Atlas IDE Expert';
     Publisher = 'Atlas';
     /// <summary>Dateien neben den BPLs; whatsnew.json für die Karte „Neu in Atlas“ (#756), tips.json für die
-    /// Karte „Atlas entdecken“ und die Tastenkürzel-Tipps (#757), EULA.txt für die Zustimmung im Installer.</summary>
-    CommonFiles: array[0..6] of string = (ServerExe, SetupExe, 'LICENSE', 'EULA.txt', 'THIRD-PARTY-NOTICES.md',
-      'whatsnew.json', 'tips.json');
+    /// Karte „Atlas entdecken“ und die Tastenkürzel-Tipps (#757), EULA.txt für die Zustimmung im Installer,
+    /// AtlasServer.map für Stacktraces mit Unit und Zeile im Absturzprotokoll des Servers.</summary>
+    CommonFiles: array[0..7] of string = (ServerExe, SetupExe, 'LICENSE', 'EULA.txt', 'THIRD-PARTY-NOTICES.md',
+      'whatsnew.json', 'tips.json', 'AtlasServer.map');
     /// <summary>Beispieldateien für „Ausprobieren“ der Karten „Neu in Atlas“ (#756) und „Atlas entdecken“ (#757);
     /// ersetzt bei jeder Installation den ganzen Ordner.</summary>
     SamplesFolder = 'Beispiele';
@@ -332,6 +333,14 @@ begin
       Continue;
     FSystem.CopyFile(Source, Target);
     Report(TSetupStepKind.FileCopied, Join(TSetupIdes.PlatformFolder(Ide.Platform), Ide.PackageFileName));
+    // Map-Datei neben der BPL (optional): Die Sicherung des Plugins löst ihre Stacktraces damit in Unit und Zeile auf.
+    Source := ChangeFileExt(Source, '.map');
+    if FSystem.FileExists(Source) then
+    begin
+      FSystem.CopyFile(Source, ChangeFileExt(Target, '.map'));
+      Report(TSetupStepKind.FileCopied, Join(TSetupIdes.PlatformFolder(Ide.Platform),
+        ChangeFileExt(Ide.PackageFileName, '.map')));
+    end;
   end;
 end;
 

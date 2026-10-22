@@ -114,6 +114,7 @@ uses
   Atlas.IDE.Notifications.Service,
   Atlas.Core.Diagnostics.SafeMode,
   Atlas.IDE.Diagnostics.SafeMode,
+  Atlas.IDE.Diagnostics.StackCapture,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Diagnostics.TimeLimit,
@@ -3744,6 +3745,8 @@ begin
   TAtlasMainThread.Start;
   TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
   TAtlasGuard.OnWarning := GuardWarning;
+  // Stacktraces für jede Fehlerzeile der Sicherung: ohne sie lässt sich kein Fehler bis zur Codezeile verfolgen.
+  TAtlasIdeStackCapture.Install;
   TAtlasStrings.Language := IdeLanguage;
   // Versionsverwaltung (#571): Aufrufe im Hintergrund; fehlt git bzw. svn, einmal eine Zeile.
   TAtlasIdeVcs.Start(MessageLine, VcsBackend);
@@ -3989,6 +3992,11 @@ begin
       procedure
       begin
         FreeAndNil(Features);
+      end);
+    Teardown.Step('StackCapture',
+      procedure
+      begin
+        TAtlasIdeStackCapture.Uninstall;
       end);
   finally
     TAtlasGuard.Log(Format('Atlas entladen in %d ms; Hintergrund-Threads beendet: %s; Fehler beim Abbau: %s',
