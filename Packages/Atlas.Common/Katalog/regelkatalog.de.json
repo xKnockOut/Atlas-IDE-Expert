@@ -947,6 +947,17 @@
           "description": "Klassen, die sich im Konstruktor selbst registrieren, als Muster mit * und ?; Create als Anweisung bleibt für sie still."
         }
       ]
+    },
+    {
+      "id": "message-handler-without-inherited",
+      "name": "Message-Handler ohne inherited",
+      "description": "Eine Methode mit message WM_… oder CM_… ruft weder inherited noch DefaultHandler (bzw. DefWindowProc, CallWindowProc) auf. Die Standardbehandlung der VCL bzw. von Windows fällt weg: kein Neuausrichten bei WM_SIZE, kein Schließen bei WM_CLOSE, kein Zeichnen bei WM_PAINT. Die Meldung nennt für gängige Nachrichten die Folge. Still bleiben Klassen ohne Vorfahr, Nachrichten aus swallow (Vorgabe WM_ERASEBKGND) und Handler, die Msg.Result selbst setzen (bewusste Antwort wie MA_NOACTIVATE). Sicherheit mittel. Korrektur: inherited; am Anfang einfügen.",
+      "options": [
+        {
+          "name": "swallow",
+          "description": "Nachrichten, die ohne inherited behandelt werden dürfen; ersetzt die Vorgabe."
+        }
+      ]
     }
   ]
 }

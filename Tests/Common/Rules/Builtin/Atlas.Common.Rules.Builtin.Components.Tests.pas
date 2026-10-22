@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Components.Tests;
 
-// Tests für die Komponentenregeln (#55, Teil A) und missing-inherited (#919).
+// Tests für die Komponentenregeln (#55, Teil A) und missing-inherited (#919) sowie message-handler-without-inherited (#949).
 
 interface
 
@@ -52,6 +52,14 @@ type
     procedure MissingInheritedComponentsNoDoubleReport;
     [Test]
     procedure MissingInheritedMethodsOptionOffAndExclude;
+    [Test]
+    procedure MessageHandlerIssueExample;
+    [Test]
+    procedure MessageHandlerSilentCases;
+    [Test]
+    procedure MessageHandlerConsequences;
+    [Test]
+    procedure MessageHandlerSwallowOffAndExclude;
   end;
 
 implementation
@@ -62,6 +70,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Configuration.Parser,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Builtin.Components,
   Atlas.Tests.RuleAssert;
 
@@ -423,6 +433,112 @@ begin
     '{"rules": {"missing-inherited": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMissingInheritedRule.Create, ExportUnit,
     '{"rules": {"missing-inherited": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
+end;
+
+function Haupt(const AMessage, ABody: string): string;
+begin
+  Result :=
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'uses Winapi.Messages, Vcl.Forms;'#10 +
+    'type'#10 +
+    '  TfrmHaupt = class(TForm)'#10 +
+    '  private'#10 +
+    '    procedure WMSize(var Msg: TWMSize); message ' + AMessage + ';'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TfrmHaupt.WMSize(var Msg: TWMSize);'#10 +
+    'begin'#10 +
+    ABody +
+    'end;'#10 +
+    'end.';
+end;
+
+procedure TComponentRulesTests.MessageHandlerIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+  Tree: TSyntaxTree;
+begin
+  Source := Haupt('WM_SIZE', '  AnordnungAnpassen;'#10);
+  Findings := TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('message-handler-without-inherited', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('WMSize ruft inherited nicht auf; die VCL passt Ausrichtung und Anker nicht mehr an.',
+    Findings[0].Message);
+  Assert.AreEqual(9, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(20, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('"inherited;" am Anfang einfügen', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(Haupt('WM_SIZE', '  inherited;'#10'  AnordnungAnpassen;'#10), Fixed);
+  Tree := TPascalParser.Parse(Fixed);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create, Fixed);
+end;
+
+procedure TComponentRulesTests.MessageHandlerSilentCases;
+begin
+  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create,
+    Haupt('WM_SIZE', '  AnordnungAnpassen;'#10'  inherited WMSize(Msg);'#10));
+  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create,
+    Haupt('WM_SIZE', '  DefaultHandler(Msg);'#10));
+  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create,
+    Haupt('WM_SIZE', '  Msg.Result := DefWindowProc(Handle, Msg.Msg, 0, 0);'#10));
+  // Vorgabe von swallow: WM_ERASEBKGND.
+  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create, Haupt('WM_ERASEBKGND', '  Zeichnen;'#10));
+  // Der Handler beantwortet die Nachricht selbst.
+  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create, Haupt('WM_MOUSEACTIVATE',
+    '  Msg.Result := MA_NOACTIVATE;'#10));
+  // Ohne Vorfahr behandelt TObject nichts.
+  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create, StringReplace(Haupt('WM_SIZE',
+    '  AnordnungAnpassen;'#10), 'TfrmHaupt = class(TForm)', 'TfrmHaupt = class', []));
+  // Ohne message keine Meldung.
+  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create, StringReplace(Haupt('WM_SIZE',
+    '  AnordnungAnpassen;'#10), ' message WM_SIZE;', ';', []));
+end;
+
+procedure TComponentRulesTests.MessageHandlerConsequences;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, Haupt('WM_CLOSE', '  Speichern;'#10));
+  Assert.AreEqual('WMSize ruft inherited nicht auf; das Fenster schließt nicht mehr.', Findings[0].Message);
+  Findings := TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create,
+    Haupt('Winapi.Messages.WM_PAINT', '  Zeichnen;'#10));
+  Assert.AreEqual('WMSize ruft inherited nicht auf; die VCL zeichnet das Steuerelement nicht mehr.',
+    Findings[0].Message);
+  Assert.AreEqual('die Standardbehandlung der VCL entfällt',
+    TMessageHandlerWithoutInheritedRule.Consequence('CM_TEXTCHANGED'));
+  Assert.AreEqual('die Standardbehandlung von Windows bzw. der VCL entfällt',
+    TMessageHandlerWithoutInheritedRule.Consequence('WM_USER_FERTIG'));
+  Assert.AreEqual('Mausereignisse wie OnClick und OnMouseDown entfallen',
+    TMessageHandlerWithoutInheritedRule.Consequence('WM_LBUTTONDOWN'));
+end;
+
+procedure TComponentRulesTests.MessageHandlerSwallowOffAndExclude;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Haupt('WM_SIZE', '  AnordnungAnpassen;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, Source,
+    '{"rules": {"message-handler-without-inherited": {"swallow": ["WM_SIZE"]}}}'))));
+  // Eigene Liste ersetzt die Vorgabe: WM_ERASEBKGND wird dann gemeldet.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create,
+    Haupt('WM_ERASEBKGND', '  Zeichnen;'#10),
+    '{"rules": {"message-handler-without-inherited": {"swallow": ["WM_SIZE"]}}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, Source,
+    '{"rules": {"message-handler-without-inherited": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, Source,
+    '{"rules": {"message-handler-without-inherited": {"exclude": ["Source/*.pas"]}}}', 'Source/Haupt.pas'))));
+  TConfigurationParser.Parse('{"rules": {"message-handler-without-inherited": {"swallow": "WM_SIZE"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
 initialization

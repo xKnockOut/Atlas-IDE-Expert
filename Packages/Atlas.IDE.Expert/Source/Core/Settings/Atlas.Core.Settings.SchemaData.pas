@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1733] of string = (
+  Lines: array[0..1741] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -280,6 +280,14 @@ const
     '                },',
     '                "default": [],',
     '                "description": "Nur create-without-assignment (#948): Klassen, die sich im Konstruktor selbst registrieren (Muster mit * und ?); TKlasse.Create; bleibt für sie still."',
+    '              },',
+    '              "swallow": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "default": ["WM_ERASEBKGND"],',
+    '                "description": "Nur message-handler-without-inherited (#949): Nachrichten, die ohne inherited behandelt werden dürfen (WM_…, CM_…); ersetzt die Vorgabe."',
     '              },',
     '              "ignoreTypes": {',
     '                "type": "array",',

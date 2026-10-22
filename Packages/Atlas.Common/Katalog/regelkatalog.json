@@ -1792,6 +1792,26 @@
           "description": "Classes that register themselves in their constructor, as patterns with * and ?; Create as a statement stays silent for them."
         }
       ]
+    },
+    {
+      "id": "message-handler-without-inherited",
+      "name": "Message handler without inherited",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "A method with message WM_... or CM_... calls neither inherited nor DefaultHandler (or DefWindowProc, CallWindowProc). The default handling of the VCL or Windows is lost: no realignment on WM_SIZE, no closing on WM_CLOSE, no painting on WM_PAINT. The message names the consequence for common messages. Silent for classes without an ancestor, for messages listed in swallow (default WM_ERASEBKGND) and for handlers that set Msg.Result themselves (deliberate answer such as MA_NOACTIVATE). Medium confidence. Quick fix: insert inherited; at the start.",
+      "bad": "procedure TfrmHaupt.WMSize(var Msg: TWMSize);\nbegin\n  AnordnungAnpassen;\nend;",
+      "good": "procedure TfrmHaupt.WMSize(var Msg: TWMSize);\nbegin\n  inherited;\n  AnordnungAnpassen;\nend;",
+      "options": [
+        {
+          "name": "swallow",
+          "type": "string-list",
+          "default": [
+            "WM_ERASEBKGND"
+          ],
+          "description": "Messages that may be handled without inherited; replaces the default."
+        }
+      ]
     }
   ]
 }

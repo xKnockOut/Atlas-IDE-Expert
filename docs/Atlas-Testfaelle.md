@@ -3632,3 +3632,17 @@ Voraussetzung: Server läuft; `procedure TImport.Starten;` mit `TImportProtokoll
 | CW5 | `FProtokoll := TImportProtokoll.Create;`, `FListe.Add(TImportProtokoll.Create);` | Keine Meldung |
 | CW6 | Auf der Seite „Prüfregeln“ `selfRegistering` = `["TImport*"]` | Keine Meldung für `TImportProtokoll.Create;` |
 | CW7 | `"create-without-assignment": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Message-Handler ohne inherited (#949)
+
+Voraussetzung: Server läuft; Formular `TfrmHaupt` mit `procedure WMSize(var Msg: TWMSize); message WM_SIZE;`, dessen Rumpf nur `AnordnungAnpassen;` enthält.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MH1 | Unit öffnen | Warnung `message-handler-without-inherited` am Methodennamen im Rumpf: „WMSize ruft inherited nicht auf; die VCL passt Ausrichtung und Anker nicht mehr an.“, Sicherheit mittel; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| MH2 | Alt+Enter, „"inherited;" am Anfang einfügen“ | `inherited;` als erste Anweisung; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| MH3 | Gleicher Handler mit `message WM_CLOSE` bzw. `WM_PAINT` | Meldung „… das Fenster schließt nicht mehr.“ bzw. „… die VCL zeichnet das Steuerelement nicht mehr.“ |
+| MH4 | Rumpf mit `DefaultHandler(Msg);` bzw. `Msg.Result := MA_NOACTIVATE;` | Keine Meldung |
+| MH5 | Handler für `WM_ERASEBKGND` ohne `inherited` | Keine Meldung (Vorgabe von `swallow`) |
+| MH6 | Auf der Seite „Prüfregeln“ `swallow` = `["WM_SIZE"]` | Keine Meldung für `WMSize`; `WM_ERASEBKGND` wird jetzt gemeldet |
+| MH7 | `"message-handler-without-inherited": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
