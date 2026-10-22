@@ -227,6 +227,11 @@
                 "default": true,
                 "description": "Nur empty-statement: leere Blöcke begin … end mit Kommentar darin nicht melden (#912)."
               },
+              "allowInProgram": {
+                "type": "boolean",
+                "default": false,
+                "description": "Nur global-formatsettings-modified: Zuweisungen an die globale FormatSettings in der .dpr erlauben, etwa einmal beim Programmstart (#1089)."
+              },
               "countNames": {
                 "type": "array",
                 "items": {

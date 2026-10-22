@@ -2329,6 +2329,24 @@
           "description": "Additional open/close pairs as \"Open>Close\" or {\"open\": …, \"close\": …}; the open function returns the handle, the close procedure takes it as its only argument."
         }
       ]
+    },
+    {
+      "id": "global-formatsettings-modified",
+      "name": "Global FormatSettings is modified",
+      "category": "bug",
+      "severity": "warning",
+      "group": "robustness",
+      "description": "Assignment to the global FormatSettings or one of its fields (also to the deprecated global variables DecimalSeparator, ShortDateFormat, ThousandSeparator … of older Delphi versions). This changes the formatting for the whole application, for every package in the same process (in an IDE plugin the IDE itself) and for all threads, and is not thread-safe; it is often a workaround to force a dot as decimal separator. Reported only when the name is surely the variable from System.SysUtils: no local declaration, no member of the class or its ancestors (silent when the chain of ancestors ends at an unknown class), not inside with. Complements format-without-settings, which reports formatting calls without settings. High confidence. Quick fix when the routine changes the global settings only once and formats something afterwards: declare a local TFormatSettings (TFormatSettings.Invariant for DecimalSeparator := '.', otherwise a copy of FormatSettings with the changed field) and pass it to the formatting calls that follow. With allowInProgram on, assignments in the .dpr are allowed.",
+      "bad": "procedure TExport.Schreiben;\nbegin\n  FormatSettings.DecimalSeparator := '.';\n  Zeile := FloatToStr(Betrag);\nend;",
+      "good": "procedure TExport.Schreiben;\nvar\n  FS: TFormatSettings;\nbegin\n  FS := TFormatSettings.Invariant;\n  Zeile := FloatToStr(Betrag, FS);\nend;",
+      "options": [
+        {
+          "name": "allowInProgram",
+          "type": "boolean",
+          "default": false,
+          "description": "Allow the assignments in the .dpr, for example once at program start."
+        }
+      ]
     }
   ]
 }

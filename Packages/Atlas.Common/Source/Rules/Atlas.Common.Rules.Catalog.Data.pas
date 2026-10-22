@@ -2349,6 +2349,24 @@ begin
     '          "description": "Additional open/close pairs as \"Open>Close\" or {\"open\": …, \"close\": …}; the open function returns the handle, the close procedure takes it as its only argument."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "global-formatsettings-modified",' + #10 +
+    '      "name": "Global FormatSettings is modified",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "robustness",' + #10 +
+    '      "description": "Assignment to the global FormatSettings or one of its fields (also to the deprecated global variables DecimalSeparator, ShortDateFormat, ThousandSeparator … of older Delphi versi' + 'ons). This changes the formatting for the whole application, for every package in the same process (in an IDE plugin the IDE itself) and for all threads, and is not thread-safe; it is often a workarou' + 'nd to force a dot as decimal separator. Reported only when the name is surely the variable from System.SysUtils: no local declaration, no member of the class or its ancestors (silent when the chain of' + ' ancestors ends at an unknown class), not inside with. Complements format-without-settings, which reports formatting calls without settings. High confidence. Quick fix when the routine changes the glo' + 'bal settings only once and formats something afterwards: declare a local TFormatSettings (TFormatSettings.Invariant for DecimalSeparator := ''.'', otherwise a copy of FormatSettings with the changed fie' + 'ld) and pass it to the formatting calls that follow. With allowInProgram on, assignments in the .dpr are allowed.",' + #10 +
+    '      "bad": "procedure TExport.Schreiben;\nbegin\n  FormatSettings.DecimalSeparator := ''.'';\n  Zeile := FloatToStr(Betrag);\nend;",' + #10 +
+    '      "good": "procedure TExport.Schreiben;\nvar\n  FS: TFormatSettings;\nbegin\n  FS := TFormatSettings.Invariant;\n  Zeile := FloatToStr(Betrag, FS);\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowInProgram",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": false,' + #10 +
+    '          "description": "Allow the assignments in the .dpr, for example once at program start."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3539,6 +3557,17 @@ begin
     '        {' + #10 +
     '          "name": "pairs",' + #10 +
     '          "description": "Zusätzliche Paare aus Öffnen und Schließen als \"Oeffnen>Schliessen\" oder {\"open\": …, \"close\": …}; die Öffnen-Funktion liefert das Handle, die Schließen-Prozedur bekommt' + ' es als einziges Argument."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "global-formatsettings-modified",' + #10 +
+    '      "name": "Globale FormatSettings wird verändert",' + #10 +
+    '      "description": "Zuweisung an die globale FormatSettings oder eines ihrer Felder (auch an die veralteten globalen Variablen DecimalSeparator, ShortDateFormat, ThousandSeparator … älterer Delphi-V' + 'ersionen). Das ändert die Formatierung für die ganze Anwendung, für alle Packages im selben Prozess (im IDE-Plugin die IDE selbst) und für alle Threads und ist nicht threadsicher; häufig eine Notlösun' + 'g, um einen Punkt als Dezimaltrenner zu erzwingen. Gemeldet wird nur, wenn der Name sicher die Variable aus System.SysUtils ist: keine lokale Deklaration, kein Mitglied der Klasse oder ihrer Vorfahren' + ' (still, wenn die Kette der Vorfahren an einer unbekannten Klasse endet), nicht in with. Ergänzt format-without-settings, das Formatierungsaufrufe ohne Settings meldet. Konfidenz hoch. Schnellkorrektu' + 'r, wenn die Routine die globalen Settings nur einmal ändert und danach etwas formatiert: lokale TFormatSettings anlegen (TFormatSettings.Invariant bei DecimalSeparator := ''.'', sonst eine Kopie von For' + 'matSettings mit dem geänderten Feld) und an die folgenden Formatierungsaufrufe übergeben. Mit allowInProgram sind die Zuweisungen in der .dpr erlaubt.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowInProgram",' + #10 +
+    '          "description": "Zuweisungen in der .dpr erlauben, etwa einmal beim Programmstart."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    }' + #10 +

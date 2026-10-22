@@ -11,7 +11,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
 | [Compiler vorab](#gruppe-compiler) | 15 |
-| [Robustheit und Muster](#gruppe-robustness) | 3 |
+| [Robustheit und Muster](#gruppe-robustness) | 4 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
@@ -157,6 +157,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`random-without-randomize`](#random-without-randomize) | Random ohne Randomize | Code Smell | Hinweis |
 | [`format-without-settings`](#format-without-settings) | Formatierung abhängig vom Gebietsschema | Code Smell | Hinweis |
 | [`null-compare`](#null-compare) | Vergleich mit Null statt VarIsNull oder IsNull | Code Smell | Warnung |
+| [`global-formatsettings-modified`](#global-formatsettings-modified) | Globale FormatSettings wird verändert | Bug | Warnung |
 
 <a id="gruppe-performance"></a>
 ### Performance
@@ -4617,5 +4618,38 @@ try
   ReadFile(H, Puffer, SizeOf(Puffer), Gelesen, nil);
 finally
   CloseHandle(H);
+end;
+```
+
+<a id="global-formatsettings-modified"></a>
+### global-formatsettings-modified
+
+**Globale FormatSettings wird verändert** · Bug · Warnung · Gruppe Robustheit und Muster
+
+Zuweisung an die globale FormatSettings oder eines ihrer Felder (auch an die veralteten globalen Variablen DecimalSeparator, ShortDateFormat, ThousandSeparator … älterer Delphi-Versionen). Das ändert die Formatierung für die ganze Anwendung, für alle Packages im selben Prozess (im IDE-Plugin die IDE selbst) und für alle Threads und ist nicht threadsicher; häufig eine Notlösung, um einen Punkt als Dezimaltrenner zu erzwingen. Gemeldet wird nur, wenn der Name sicher die Variable aus System.SysUtils ist: keine lokale Deklaration, kein Mitglied der Klasse oder ihrer Vorfahren (still, wenn die Kette der Vorfahren an einer unbekannten Klasse endet), nicht in with. Ergänzt format-without-settings, das Formatierungsaufrufe ohne Settings meldet. Konfidenz hoch. Schnellkorrektur, wenn die Routine die globalen Settings nur einmal ändert und danach etwas formatiert: lokale TFormatSettings anlegen (TFormatSettings.Invariant bei DecimalSeparator := '.', sonst eine Kopie von FormatSettings mit dem geänderten Feld) und an die folgenden Formatierungsaufrufe übergeben. Mit allowInProgram sind die Zuweisungen in der .dpr erlaubt.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowInProgram` | boolean | `false` | Zuweisungen in der .dpr erlauben, etwa einmal beim Programmstart. |
+
+Mit Treffer:
+
+```pascal
+procedure TExport.Schreiben;
+begin
+  FormatSettings.DecimalSeparator := '.';
+  Zeile := FloatToStr(Betrag);
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TExport.Schreiben;
+var
+  FS: TFormatSettings;
+begin
+  FS := TFormatSettings.Invariant;
+  Zeile := FloatToStr(Betrag, FS);
 end;
 ```

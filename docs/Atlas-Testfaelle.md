@@ -4151,3 +4151,19 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `uses Winapi.W
 | HL7 | `"handle-leak": {"pairs": ["MeinOeffnen>MeinSchliessen"]}` und `H := MeinOeffnen(1); Benutzen;` | Meldung „H wird nie mit MeinSchliessen geschlossen (Handle-Leck).“; ohne die Option keine Meldung; `"pairs": ["kaputt"]` meldet die Einstellungsprüfung |
 | HL8 | `"handle-leak": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
 | HL9 | Abgleich mit Windows: Fall HL1 1000-mal aufrufen, Taskmanager-Spalte „Handles“ beobachten | Ohne Korrektur steigt die Zahl um etwa 2000; mit Korrektur bleibt sie stabil |
+
+## Globale FormatSettings wird verändert (#1089)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `uses System.SysUtils;` und einer Klasse `TExport` mit den Feldern `FBetrag: Double; FZeile: string;` und der Methode `procedure Schreiben;` mit den Zeilen `FormatSettings.DecimalSeparator := '.';` und `FZeile := FloatToStr(FBetrag);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GF1 | Unit öffnen | Warnung `global-formatsettings-modified` an `FormatSettings.DecimalSeparator := '.'`: „Ändert den Dezimaltrenner für die ganze Anwendung und alle Threads; eine lokale TFormatSettings verwenden.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| GF2 | Glühbirne „Lokale TFormatSettings anlegen und übergeben“, danach Strg+Z | `var FS: TFormatSettings;` vor `begin`, `FS := TFormatSettings.Invariant;` statt der Zuweisung, `FloatToStr(FBetrag, FS)`; Meldung weg; kompiliert; ein Undo-Schritt stellt alles her (**Abnahme**) |
+| GF3 | Zuweisung ändern in `FormatSettings.ShortDateFormat := 'dd.mm.yyyy';` und `FZeile := DateToStr(Date);` | Meldung „Ändert das kurze Datumsformat …“; die Korrektur legt `FS := FormatSettings;` und `FS.ShortDateFormat := 'dd.mm.yyyy';` an und übergibt `FS` an `DateToStr` |
+| GF4 | Alten Wert merken und im `finally` zurücksetzen (`Alt := FormatSettings.DecimalSeparator; … finally FormatSettings.DecimalSeparator := Alt;`) | Zwei Meldungen, keine Glühbirne |
+| GF5 | In `TForm1.FormCreate` eines VCL-Formulars `FormatSettings.DecimalSeparator := '.';` | Meldung (TForm hat kein gleichnamiges Mitglied) |
+| GF6 | Lokale Variable `FormatSettings: TFormatSettings` bzw. Feld `DecimalSeparator` in der eigenen Klasse; Lesen `X := FormatSettings.DecimalSeparator`; Zuweisung in `with … do` | Keine Meldung |
+| GF7 | In der .dpr vor `Application.Initialize` `FormatSettings.DecimalSeparator := '.';`, dann `"global-formatsettings-modified": {"allowInProgram": true}` | Ohne Option Meldung, mit Option keine; in Units bleibt die Meldung |
+| GF8 | `"global-formatsettings-modified": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| GF9 | Abgleich mit Delphi: GF1 übersetzen, im IDE-Plugin ausführen und danach in der IDE eine Zahl im Objektinspektor eingeben | Ohne Korrektur zeigt die IDE danach Punkt statt Komma; mit Korrektur bleibt das Komma |
