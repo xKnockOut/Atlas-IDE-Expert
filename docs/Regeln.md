@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 52 |
+| [Fehler finden](#gruppe-find-bugs) | 53 |
 | [Exceptions](#gruppe-exceptions) | 6 |
 | [Threads](#gruppe-threads) | 9 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -76,6 +76,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`message-handler-without-inherited`](#message-handler-without-inherited) | Message-Handler ohne inherited | Bug | Warnung |
 | [`string-index-base`](#string-index-base) | String-Index ab 0 oder Pos-Ergebnis mit -1 verglichen | Bug | Warnung |
 | [`delimited-text-without-strict`](#delimited-text-without-strict) | DelimitedText ohne StrictDelimiter | Bug | Warnung |
+| [`self-as-interface-in-constructor`](#self-as-interface-in-constructor) | Self während der Konstruktion als Interface weitergegeben | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -3666,4 +3667,31 @@ Richtig:
 Teile.Delimiter := ';';
 Teile.StrictDelimiter := True;
 Teile.DelimitedText := Zeile;
+```
+
+<a id="self-as-interface-in-constructor"></a>
+### self-as-interface-in-constructor
+
+**Self während der Konstruktion als Interface weitergegeben** · Bug · Warnung · Gruppe Fehler finden
+
+Self wird als Interface weitergegeben, während die Referenzzählung das Objekt schon freigeben kann. Gemeldet werden nur zwei echte Fehlerfälle: (1) Eine Klasse mit eigener Referenzzählung (ein _Release in der Klassenkette gibt das Objekt frei, keine Klasse überschreibt NewInstance, die Kette ist bis TObject bekannt) gibt Self im Konstruktor oder in AfterConstruction als Interface weiter: Der Zähler steigt von 0 auf 1 und fällt wieder auf 0, das Objekt wird freigegeben, bevor die Konstruktion endet. (2) Ein Nachfahr von TInterfacedObject gibt Self in AfterConstruction nach inherited als Interface weiter: inherited AfterConstruction hat den Schutzzähler aus NewInstance schon abgebaut. Im Konstruktor eines TInterfacedObject-Nachfahren ist Self geschützt, die Regel bleibt still. Als Weitergabe zählen Self as IX, IX(Self), ein Argument, dessen Parameter in allen bekannten Überladungen ein Interface ist, und die Zuweisung an eine Interface-Variable. Sicherheit hoch. Korrektur in Fall 2: die Anweisung vor inherited verschieben.
+
+Mit Treffer:
+
+```pascal
+procedure TBeobachter.AfterConstruction;
+begin
+  inherited;
+  FQuelle.Anmelden(Self);
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TBeobachter.AfterConstruction;
+begin
+  FQuelle.Anmelden(Self);
+  inherited;
+end;
 ```

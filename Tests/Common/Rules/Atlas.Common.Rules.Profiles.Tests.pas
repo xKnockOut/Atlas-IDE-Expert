@@ -187,7 +187,7 @@ const
     'possibly-uninitialized,processmessages-in-loop,queue-nil-in-package,raise-in-finally,redundant-assigned-free,' +
     'result-not-set,' +
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
-    'security-tls-verification-disabled,security-weak-crypto,self-assignment,setter-recursion,shadowed-name,sizeof-pointer,' +
+    'security-tls-verification-disabled,security-weak-crypto,self-as-interface-in-constructor,self-assignment,setter-recursion,shadowed-name,sizeof-pointer,' +
     'slash-command,string-index-base,stringlist-unsorted,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-resume-suspend,' +
     'thread-use-after-free-on-terminate,thread-vcl-access,threadvar-managed,type-used-before-declaration,' +
     'unchecked-conversion,unneeded-forward-declaration,unreachable-code,unresolved-identifier,' +
@@ -213,7 +213,7 @@ begin
     'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,' +
     'missing-inherited,operator-precedence,ota-notifier-not-removed,out-param-read,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,' +
     'possibly-uninitialized,queue-nil-in-package,raise-in-finally,result-not-set,security-command-injection,' +
-    'security-sql-injection,security-tls-verification-disabled,self-assignment,setter-recursion,sizeof-pointer,' +
+    'security-sql-injection,security-tls-verification-disabled,self-as-interface-in-constructor,self-assignment,setter-recursion,sizeof-pointer,' +
     'string-index-base,stringlist-unsorted,synchronize-in-destructor,thread-free-with-free-on-terminate,' +
     'thread-use-after-free-on-terminate,' +
     'thread-vcl-access,threadvar-managed,type-used-before-declaration,unchecked-conversion,unreachable-code,unresolved-identifier,use-after-free,' +
