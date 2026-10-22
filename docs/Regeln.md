@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 5 |
+| [Compiler vorab](#gruppe-compiler) | 6 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -136,6 +136,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`uses-unit-not-found`](#uses-unit-not-found) | Unit in uses nicht gefunden | Bug | Fehler |
 | [`unresolved-attribute`](#unresolved-attribute) | Attribut nicht gefunden und still ignoriert | Bug | Fehler |
 | [`comparison-as-statement`](#comparison-as-statement) | Vergleich statt Zuweisung als Anweisung | Bug | Fehler |
+| [`duplicate-case-label`](#duplicate-case-label) | Doppelte case-Marke | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4263,4 +4264,32 @@ Richtig:
 
 ```pascal
 Result := 0;
+```
+
+<a id="duplicate-case-label"></a>
+### duplicate-case-label
+
+**Doppelte case-Marke** · Bug · Fehler · Gruppe Compiler vorab
+
+Zwei Marken einer case-Anweisung decken denselben Wert ab (wie E2030), auch über Bereiche (1..5 und 3), Konstanten mit gleichem Wert, Zeichen ('a' und #97) und Bereiche von Aufzählungswerten. Gleiches gilt für die Marken eines varianten Record-Teils (wie E2027). Die Werte ergeben sich aus Zahlen, Zeichen, Konstanten und Aufzählungswerten über die Namensauflösung; Marken mit unbekanntem Wert vergleicht die Regel nur über den Text. Marken in verschiedenen Zweigen desselben {$IF} stoßen nie zusammen. Korrektur: den doppelten Wert aus dem späteren Zweig entfernen bzw. den ganzen Zweig, wenn es seine einzige Marke war; eine teilweise Überschneidung von Bereichen meldet die Regel ohne Korrektur.
+
+Entspricht der Compilermeldung `E2030`, `E2027`.
+
+Mit Treffer:
+
+```pascal
+case Status of
+  stNeu, stOffen: Bearbeiten;
+  stGeschlossen: Archivieren;
+  stOffen: Erinnern;
+end;
+```
+
+Richtig:
+
+```pascal
+case Status of
+  stNeu, stOffen: Bearbeiten;
+  stGeschlossen: Archivieren;
+end;
 ```

@@ -2149,6 +2149,20 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "E2014"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "duplicate-case-label",' + #10 +
+    '      "name": "Duplicate case label",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Two labels of a case statement cover the same value (like E2030), also through ranges (1..5 and 3), constants with the same value, characters (''a'' and #97) and enumeration ranges' + '. The same applies to the labels of a variant record part (like E2027). Values are computed from numbers, characters, constants and enumeration values via name resolution; labels whose value is unknow' + 'n are only compared by their text. Labels in different branches of the same {$IF} never clash. Quick fix: remove the duplicate value from the later branch, or the whole branch when it was its only lab' + 'el; a partial range overlap is reported without a fix.",' + #10 +
+    '      "bad": "case Status of\n  stNeu, stOffen: Bearbeiten;\n  stGeschlossen: Archivieren;\n  stOffen: Erinnern;\nend;",' + #10 +
+    '      "good": "case Status of\n  stNeu, stOffen: Bearbeiten;\n  stGeschlossen: Archivieren;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2030",' + #10 +
+    '        "E2027"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3263,6 +3277,11 @@ begin
     '      "id": "comparison-as-statement",' + #10 +
     '      "name": "Vergleich statt Zuweisung als Anweisung",' + #10 +
     '      "description": "Ein Vergleich wie Result = 0; oder FAktiv = True; steht als eigene Anweisung; gemeint war :=. Delphi meldet E2014 erst beim Übersetzen. Bei = mit zuweisbarer linker Seite (Variab' + 'le, Feld, Element, Ziel eines Zeigers) ersetzt die Korrektur = durch :=. Andere Vergleiche und Ausdrücke, deren Wert verfällt (A <> B;, A + B;, not A;, ein Literal), meldet die Regel ohne Korrektur, e' + 'benso einen Aufruf links."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "duplicate-case-label",' + #10 +
+    '      "name": "Doppelte case-Marke",' + #10 +
+    '      "description": "Zwei Marken einer case-Anweisung decken denselben Wert ab (wie E2030), auch über Bereiche (1..5 und 3), Konstanten mit gleichem Wert, Zeichen (''a'' und #97) und Bereiche von Aufzä' + 'hlungswerten. Gleiches gilt für die Marken eines varianten Record-Teils (wie E2027). Die Werte ergeben sich aus Zahlen, Zeichen, Konstanten und Aufzählungswerten über die Namensauflösung; Marken mit u' + 'nbekanntem Wert vergleicht die Regel nur über den Text. Marken in verschiedenen Zweigen desselben {$IF} stoßen nie zusammen. Korrektur: den doppelten Wert aus dem späteren Zweig entfernen bzw. den gan' + 'zen Zweig, wenn es seine einzige Marke war; eine teilweise Überschneidung von Bereichen meldet die Regel ohne Korrektur."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

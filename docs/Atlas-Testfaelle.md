@@ -3958,3 +3958,19 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | VA5 | `if Result = 0 then Exit;`, `FAktiv := Result = 0;`, `Assert.AreEqual<Integer>(1, 2);` | Keine Meldung |
 | VA6 | `"comparison-as-statement": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
 | VA7 | Abgleich mit Delphi: VA1, VA3 und VA4 übersetzen | dcc meldet E2014 an denselben Stellen, für VA5 nichts |
+
+## Doppelte case-Marke (#983)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DK1 | Das Beispiel aus #983: `stOffen` in zwei Zweigen | Fehler `duplicate-case-label` am zweiten `stOffen`: „stOffen kommt schon in Zeile … vor (wie E2030).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| DK2 | Schnellkorrektur „Zweig mit doppeltem Wert entfernen“, danach Strg+Z | Der spätere Zweig verschwindet samt Semikolon; ein Undo-Schritt stellt ihn wieder her |
+| DK3 | `stNeu: A; stOffen, stNeu: B;` und Korrektur „Doppelten Wert aus dem späteren Zweig entfernen“ | Nur `stNeu` im zweiten Zweig verschwindet, `stOffen: B;` bleibt |
+| DK4 | `1..5: A; 3: B;`, `const Max = 5;` mit `Max: A; 5: B;`, `'a': A; #97: B;`, `stNeu..stOffen` und `TStatus.stOffen` | Je eine Meldung „liegt schon in“ bzw. „hat denselben Wert wie“ |
+| DK5 | `1..5: A; 4..8: B;` | „4..8 überschneidet sich mit 1..5 …“ ohne Korrektur |
+| DK6 | Varianter Record `case Art: Integer of 0: (…); 1, 2: (…); 2: (…);` | „2 kommt schon in Zeile … vor (wie E2027).“ |
+| DK7 | `{$IFDEF DEBUG} 1: A; {$ELSE} 1: B; {$ENDIF}`; Konstante aus einer Unit ohne Quelltext; Aufzählung mit eigenen Werten | Keine Meldung |
+| DK8 | `"duplicate-case-label": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| DK9 | Abgleich mit Delphi: DK1, DK4, DK5 und DK6 übersetzen | dcc meldet E2030 bzw. E2027 an denselben Stellen, für DK7 nichts |

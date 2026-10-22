@@ -1878,8 +1878,8 @@ procedure TParser.ParseCase(AParent: TSyntaxNode);
 var
   Start: Integer;
   Node: TSyntaxNode;
-  ItemStart: Integer;
-  Item: TSyntaxNode;
+  ItemStart, LabelStart: Integer;
+  Item, Element: TSyntaxNode;
   Before: Integer;
 begin
   Start := NodeStart;
@@ -1894,11 +1894,17 @@ begin
     ItemStart := NodeStart;
     Item := StartNode(TSyntaxKind.CaseItem);
     Node.Add(Item);
-    // Marken: 1, 2..5, 'a':
+    // Marken: 1, 2..5, 'a': ein Bereich wird ein RangeExpr wie in Mengen (#983).
     repeat
-      ParseExpression(Item);
+      LabelStart := NodeStart;
+      Element := ParseExpression(Item);
       if AcceptSym('..') then
-        ParseExpression(Item);
+      begin
+        Item.Extract(Element);
+        Element := Binary('..', Element, ParseExpression(nil), LabelStart);
+        Element.Kind := TSyntaxKind.RangeExpr;
+        Item.Add(Element);
+      end;
     until not AcceptSym(',');
     ExpectSym(':');
     ParseStatement(Item);
