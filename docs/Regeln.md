@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 16 |
+| [Compiler vorab](#gruppe-compiler) | 17 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -147,6 +147,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`assign-to-property-member`](#assign-to-property-member) | Zuweisung an ein Feld eines Property-Records | Bug | Fehler |
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
 | [`anonymous-capture-invalid`](#anonymous-capture-invalid) | Anonyme Methode erfasst, was sie nicht erfassen darf | Bug | Fehler |
+| [`operator-declaration-invalid`](#operator-declaration-invalid) | Operator falsch deklariert | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4571,5 +4572,30 @@ begin
   CountCopy := Count;
   TTask.Run(procedure begin Inc(CountCopy); end);
   Count := CountCopy;
+end;
+```
+
+<a id="operator-declaration-invalid"></a>
+### operator-declaration-invalid
+
+**Operator falsch deklariert** · Bug · Fehler · Gruppe Compiler vorab
+
+Ein class operator in einem Record oder einer Klasse ist so deklariert, wie Delphi es ablehnt: unbekannter Operatorname (wie E2393), falsche Parameterzahl (E2517), eigener Typ fehlt in den Parametern (E2518) bzw. bei Implicit/Explicit in Parametern und Ergebnis (E2521), Inc/Dec mit anderem Ergebnistyp als dem ersten Parameter (E2519), Vergleichsoperator ohne Boolean-Ergebnis (E2520), Umwandlung in oder aus einem Vorfahren (E2522, Kette innerhalb der Datei) oder Assign ohne var vor dem ersten Parameter (E2464). Typen gelten als gleich, wenn ihre Namen ohne Unit-Präfix und Typargumente übereinstimmen; Aliase des eigenen Typs in der Datei halten die Regel still, True, False und OnesComplement gelten als bekannt. Korrekturen: nächstliegender Operatorname, Boolean als Ergebnis, Ergebnis wie der erste Parameter, var vor dem ersten Parameter, Parameterliste nach Vorlage; jeweils in Deklaration und Rumpf.
+
+Entspricht der Compilermeldung `E2393`, `E2464`, `E2517`, `E2518`, `E2519`, `E2520`, `E2521`, `E2522`.
+
+Mit Treffer:
+
+```pascal
+TGeld = record
+  class operator Equal(const A, B: TGeld): Integer;
+end;
+```
+
+Richtig:
+
+```pascal
+TGeld = record
+  class operator Equal(const A, B: TGeld): Boolean;
 end;
 ```

@@ -2326,6 +2326,26 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "E2555"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "operator-declaration-invalid",' + #10 +
+    '      "name": "Operator declared incorrectly",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A class operator in a record or class is declared in a way Delphi rejects: unknown operator name (like E2393), wrong number of parameters (E2517), own type missing from the param' + 'eters (E2518) or from parameters and result for Implicit/Explicit (E2521), Inc/Dec with a result type other than the first parameter (E2519), comparison operator without a Boolean result (E2520), conv' + 'ersion to or from an ancestor (E2522, chain within the file) or Assign without var before the first parameter (E2464). Types count as equal when their names match without unit prefix and type argument' + 's; aliases of the own type declared in the file keep the rule silent, and True, False and OnesComplement are accepted. Quick fixes: nearest operator name, Boolean as result, result like the first para' + 'meter, var before the first parameter, parameter list from the template; each in the declaration and the implementation.",' + #10 +
+    '      "bad": "TGeld = record\n  class operator Equal(const A, B: TGeld): Integer;\nend;",' + #10 +
+    '      "good": "TGeld = record\n  class operator Equal(const A, B: TGeld): Boolean;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2393",' + #10 +
+    '        "E2464",' + #10 +
+    '        "E2517",' + #10 +
+    '        "E2518",' + #10 +
+    '        "E2519",' + #10 +
+    '        "E2520",' + #10 +
+    '        "E2521",' + #10 +
+    '        "E2522"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3501,6 +3521,11 @@ begin
     '      "id": "anonymous-capture-invalid",' + #10 +
     '      "name": "Anonyme Methode erfasst, was sie nicht erfassen darf",' + #10 +
     '      "description": "Eine anonyme Methode greift auf einen var-, out- oder untypisierten Parameter oder auf Result einer umgebenden Routine bzw. anonymen Funktion zu (wie E2555). Der Name wird von in' + 'nen nach außen aufgelöst (Parameter, var/const/type, lokale Routinen, Inline-Variablen, for var); in with und asm bleibt die Regel still, Deklarationen in Zweigen bedingter Übersetzung, die die Stelle' + ' ausschließen, zählen nicht. Korrektur: Wert vor der Anweisung in eine lokale Variable kopieren, in der anonymen Methode nur diese verwenden und nach der Anweisung zurückschreiben, wenn die Methode si' + 'e zuweist."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "operator-declaration-invalid",' + #10 +
+    '      "name": "Operator falsch deklariert",' + #10 +
+    '      "description": "Ein class operator in einem Record oder einer Klasse ist so deklariert, wie Delphi es ablehnt: unbekannter Operatorname (wie E2393), falsche Parameterzahl (E2517), eigener Typ fe' + 'hlt in den Parametern (E2518) bzw. bei Implicit/Explicit in Parametern und Ergebnis (E2521), Inc/Dec mit anderem Ergebnistyp als dem ersten Parameter (E2519), Vergleichsoperator ohne Boolean-Ergebnis ' + '(E2520), Umwandlung in oder aus einem Vorfahren (E2522, Kette innerhalb der Datei) oder Assign ohne var vor dem ersten Parameter (E2464). Typen gelten als gleich, wenn ihre Namen ohne Unit-Präfix und ' + 'Typargumente übereinstimmen; Aliase des eigenen Typs in der Datei halten die Regel still, True, False und OnesComplement gelten als bekannt. Korrekturen: nächstliegender Operatorname, Boolean als Erge' + 'bnis, Ergebnis wie der erste Parameter, var vor dem ersten Parameter, Parameterliste nach Vorlage; jeweils in Deklaration und Rumpf."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
