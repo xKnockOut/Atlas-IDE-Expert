@@ -1717,6 +1717,16 @@
       ]
     },
     {
+      "id": "default-parameter",
+      "name": "Default parameter instead of overload",
+      "category": "code-smell",
+      "severity": "warning",
+      "group": "style",
+      "description": "A parameter with a default value (Count: Integer = 10). For teams that prefer overloads: default values end up compiled into the caller, do not change with the library and do not mix well with overloads. Reported once per declaration (class member, interface section, forward or a routine only in the implementation part); the body of a declaration is not reported again. The quick fix inserts one overload per omitted trailing default parameter before the declaration, each forwarding with the default value, removes the default values (also repeated ones in the body) and adds overload. No fix when the signature is given from outside (virtual, dynamic, abstract, override, message, external, interface types), when the name is used as a value (@Routine, method pointer), when an overload of the same name exists, inside conditional compilation, or when the body cannot be found unambiguously.",
+      "bad": "procedure Exportieren(const Datei: string; MitKopf: Boolean = True);",
+      "good": "procedure Exportieren(const Datei: string); overload;\nprocedure Exportieren(const Datei: string; MitKopf: Boolean); overload;"
+    },
+    {
       "id": "queue-nil-in-package",
       "name": "TThread.Queue(nil, …) in a package",
       "category": "bug",

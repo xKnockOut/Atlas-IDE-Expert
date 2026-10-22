@@ -13,6 +13,9 @@
 // overload-directive-missing (#987): Beispiel mit Korrektur, E2267, E2252,
 // E2301, Routinen der Unit über interface und implementation, verschachtelte
 // Routinen, stille Fälle (var, Generika, Operatoren, forward, {$IF}-Zweige).
+// default-parameter (#976): Beispiel mit Überladungen in Deklaration und Rumpf,
+// Methoden mit mehreren Standardwerten, Routinen nur im implementation-Teil,
+// Meldung ohne Korrektur bei vorgegebener Signatur, Abschalten.
 // duplicate-declaration (#988): Beispiel mit Korrekturen, Bereiche (Routine,
 // Typ, Record mit variantem Teil, Unit), uses mit checkUses, stille Fälle und
 // Optionen.
@@ -102,6 +105,16 @@ type
     procedure DuplicateDeclarationSilentCases;
     [Test]
     procedure DuplicateDeclarationOptions;
+    [Test]
+    procedure DefaultParameterReportedWithFix;
+    [Test]
+    procedure DefaultParameterMethodWithSeveral;
+    [Test]
+    procedure DefaultParameterImplementationOnly;
+    [Test]
+    procedure DefaultParameterWithoutFix;
+    [Test]
+    procedure DefaultParameterSwitchedOff;
   end;
 
 implementation
@@ -843,6 +856,135 @@ begin
     'Alt/U.pas'))));
   TConfigurationParser.Parse('{"rules": {"duplicate-declaration": {"checkUses": "ja"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+const
+  DefaultOn = '{"rules": {"default-parameter": "warning"}}';
+
+function DefaultFindings(const ASource: string): TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.Findings(TDefaultParameterRule.Create, ASource, DefaultOn);
+end;
+
+/// <summary>Wendet die einzige Korrektur an; das Ergebnis muss fehlerfrei parsen.</summary>
+function DefaultFixed(const ASource: string): string;
+var
+  Findings: TArray<TRuleFinding>;
+  Tree: TSyntaxTree;
+begin
+  Findings := DefaultFindings(ASource);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Result := TChangeSignature.ApplyEdits(ASource, Findings[0].Fixes[0].Edits);
+  Tree := TPascalParser.Parse(Result);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), Result);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TDeclarationRulesTests.DefaultParameterReportedWithFix;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Assert.IsTrue(TDefaultParameterRule.Create.Descriptor.Experimental, 'Standard aus');
+  Source := 'unit U;'#10'interface'#10'procedure Exportieren(const Datei: string; MitKopf: Boolean = True);'#10 +
+    'implementation'#10'procedure Exportieren(const Datei: string; MitKopf: Boolean);'#10'begin'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDefaultParameterRule.Create, Source))));
+  Findings := DefaultFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Standardparameter; eine Überladung ohne MitKopf hält den Vorgabewert in der Bibliothek.',
+    Findings[0].Message);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual('unit U;'#10'interface'#10'procedure Exportieren(const Datei: string); overload;'#10 +
+    'procedure Exportieren(const Datei: string; MitKopf: Boolean); overload;'#10'implementation'#10 +
+    'procedure Exportieren(const Datei: string);'#10'begin'#10'  Exportieren(Datei, True);'#10'end;'#10#10 +
+    'procedure Exportieren(const Datei: string; MitKopf: Boolean);'#10'begin'#10'end;'#10'end.',
+    DefaultFixed(Source));
+  // Die korrigierte Form meldet nichts mehr.
+  Assert.AreEqual(0, Integer(Length(DefaultFindings(DefaultFixed(Source)))));
+end;
+
+procedure TDeclarationRulesTests.DefaultParameterMethodWithSeveral;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Der Rumpf wiederholt einen Standardwert; er fällt weg.
+  Source := ClassUnit('  public'#10'    function Summe(A: Integer; B: Integer = 1; C: Integer = 2): Integer;',
+    'function TRechner.Summe(A: Integer; B: Integer = 1; C: Integer = 2): Integer;'#10'begin'#10 +
+    '  Result := A + B + C;'#10'end;', 'TRechner = class');
+  Findings := DefaultFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Standardparameter; Überladungen ohne B und C halten die Vorgabewerte in der Bibliothek.',
+    Findings[0].Message);
+  Assert.AreEqual(ClassUnit('  public'#10'    function Summe(A: Integer): Integer; overload;'#10 +
+    '    function Summe(A: Integer; B: Integer): Integer; overload;'#10 +
+    '    function Summe(A: Integer; B: Integer; C: Integer): Integer; overload;',
+    'function TRechner.Summe(A: Integer): Integer;'#10'begin'#10'  Result := Summe(A, 1, 2);'#10'end;'#10#10 +
+    'function TRechner.Summe(A: Integer; B: Integer): Integer;'#10'begin'#10'  Result := Summe(A, B, 2);'#10 +
+    'end;'#10#10'function TRechner.Summe(A: Integer; B: Integer; C: Integer): Integer;'#10'begin'#10 +
+    '  Result := A + B + C;'#10'end;', 'TRechner = class'), DefaultFixed(Source));
+end;
+
+procedure TDeclarationRulesTests.DefaultParameterImplementationOnly;
+var
+  Source: string;
+begin
+  Source := 'unit U;'#10'interface'#10'implementation'#10'function Teil(const S: string; N: Integer = 3): string;'#10 +
+    'begin'#10'  Result := Copy(S, 1, N);'#10'end;'#10'end.';
+  Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'function Teil(const S: string): string; overload;'#10 +
+    'begin'#10'  Result := Teil(S, 3);'#10'end;'#10#10'function Teil(const S: string; N: Integer): string; overload;'#10 +
+    'begin'#10'  Result := Copy(S, 1, N);'#10'end;'#10'end.', DefaultFixed(Source));
+end;
+
+procedure TDeclarationRulesTests.DefaultParameterWithoutFix;
+const
+  Cases: array[0..4] of string = (
+    // virtual: Nachfahren überschreiben genau diese Signatur.
+    'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'    procedure P(A: Integer = 0); virtual;'#10'  end;'#10 +
+    'implementation'#10'procedure TFoo.P(A: Integer);'#10'begin'#10'end;'#10'end.',
+    // Interface: jede Klasse müsste beide Überladungen umsetzen.
+    'unit U;'#10'interface'#10'type'#10'  IFoo = interface'#10'    procedure P(A: Integer = 0);'#10'  end;'#10 +
+    'implementation'#10'end.',
+    // Als Wert benutzt: @P wäre mehrdeutig.
+    'unit U;'#10'interface'#10'implementation'#10'procedure P(A: Integer = 0);'#10'begin'#10'end;'#10 +
+    'procedure Q;'#10'begin'#10'  Zeiger := @P;'#10'end;'#10'end.',
+    // Es gibt schon eine Überladung.
+    'unit U;'#10'interface'#10'procedure P(A: Integer = 0); overload;'#10'procedure P(const S: string); overload;'#10 +
+    'implementation'#10'procedure P(A: Integer);'#10'begin'#10'end;'#10'procedure P(const S: string);'#10'begin'#10 +
+    'end;'#10'end.',
+    // Bedingte Übersetzung.
+    'unit U;'#10'interface'#10'{$IFDEF DEBUG}'#10'procedure P(A: Integer = 0);'#10'{$ENDIF}'#10'implementation'#10 +
+    '{$IFDEF DEBUG}'#10'procedure P(A: Integer);'#10'begin'#10'end;'#10'{$ENDIF}'#10'end.');
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  for Source in Cases do
+  begin
+    Findings := DefaultFindings(Source);
+    Assert.AreEqual(1, Integer(Length(Findings)), Source);
+    Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)), Source);
+  end;
+  // Ohne Standardwert keine Meldung; der Rumpf zur Deklaration zählt nicht doppelt.
+  Assert.AreEqual(0, Integer(Length(DefaultFindings('unit U;'#10'interface'#10'procedure P(A: Integer);'#10 +
+    'implementation'#10'procedure P(A: Integer);'#10'begin'#10'end;'#10'end.'))));
+end;
+
+procedure TDeclarationRulesTests.DefaultParameterSwitchedOff;
+var
+  Source: string;
+begin
+  Source := 'unit U;'#10'interface'#10'implementation'#10'procedure P(A: Integer = 0);'#10'begin'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDefaultParameterRule.Create, Source,
+    '{"rules": {"default-parameter": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDefaultParameterRule.Create, Source,
+    '{"rules": {"default-parameter": {"severity": "warning", "exclude": ["Alt/**"]}}}', 'Alt/U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDefaultParameterRule.Create, Source,
+    '{"rules": {"default-parameter": {"severity": "warning", "exclude": ["Alt/**"]}}}', 'Neu/U.pas'))));
 end;
 
 initialization

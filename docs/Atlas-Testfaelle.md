@@ -4148,3 +4148,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt, `"managed-param-without-con
 | JK6 | Methode `virtual`, `override`, `published`, Ereignis-Handler aus der .dfm, `OnText := M` im Code, Klasse mit Interface, `stdcall`/`external`/`exports` | Keine Meldung; mit `"ignoreOverrides": false` meldet die Regel das Override ohne Korrektur |
 | JK7 | Record mit `X, Y: Integer` (8 Byte), `Integer`- und `TObject`-Parameter; danach `"minRecordSize": 8` | Erst keine Meldung; mit 8 wird der Record gemeldet |
 | JK8 | `"managed-param-without-const": "off"`, `"group:performance": "off"` bzw. `exclude` | Keine Meldung |
+
+## Standardparameter statt Überladung (#976)
+
+Voraussetzung: Server läuft in der IDE mit Projekt, `"default-parameter": "warning"` (Standard aus).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JD1 | Das Beispiel aus #976: `procedure Exportieren(const Datei: string; MitKopf: Boolean = True);` im interface, Rumpf im implementation-Teil | Warnung `default-parameter` an `MitKopf: Boolean = True`: „Standardparameter; eine Überladung ohne MitKopf hält den Vorgabewert in der Bibliothek.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**); am Rumpf keine zweite Meldung |
+| JD2 | Schnellkorrektur „Überladungen statt Standardparameter“, übersetzen, danach Strg+Z | Im interface `procedure Exportieren(const Datei: string); overload;` und `procedure Exportieren(const Datei: string; MitKopf: Boolean); overload;`; im implementation-Teil davor der neue Rumpf mit `Exportieren(Datei, True);`; übersetzt; ein Undo-Schritt stellt alles wieder her |
+| JD3 | Methode `function Summe(A: Integer; B: Integer = 1; C: Integer = 2): Integer;` einer Klasse, Rumpf wiederholt `= 1` und `= 2`; Korrektur | Meldung „… Überladungen ohne B und C halten die Vorgabewerte …“; drei Überladungen mit `overload`, zwei neue Rümpfe mit `Result := Summe(A, 1, 2)` bzw. `Summe(A, B, 2)`; im alten Rumpf keine Vorgabewerte mehr |
+| JD4 | Routine nur im implementation-Teil mit Standardparameter; Korrektur | Neue Routine mit `overload;` direkt davor, die alte bekommt `overload;` |
+| JD5 | `virtual`, Interface-Typ, `Zeiger := @P`, schon vorhandene Überladung, Deklaration in `{$IFDEF}` | Meldung ohne Korrektur |
+| JD6 | `"default-parameter": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |

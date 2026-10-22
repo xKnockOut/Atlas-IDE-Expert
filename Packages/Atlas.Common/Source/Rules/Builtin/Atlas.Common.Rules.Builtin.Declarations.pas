@@ -25,6 +25,10 @@
 //                              zählen; bricht die Kette der Vorfahrklassen ab,
 //                              bleibt die Regel still (TNameResolver.
 //                              MissingInterfaceMembers mit AComplete)
+//   default-parameter          Parameter mit Vorgabewert (#976, Standard aus);
+//                              Korrektur: je weggelassenem Standardparameter
+//                              eine Überladung, die mit dem Vorgabewert
+//                              weiterreicht
 //
 // Den Abgleich (auch über Überladungen) liefert TClassCompletion.Unmatched aus
 // #42; Paare mit abweichendem Kopf ordnet TClassCompletion.Pairs zu. Sie meldet
@@ -96,10 +100,17 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TDefaultParameterRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 const
   FieldAfterMethodRuleId = 'field-after-method';
   DuplicateDeclarationRuleId = 'duplicate-declaration';
   OverloadDirectiveMissingRuleId = 'overload-directive-missing';
+  DefaultParameterRuleId = 'default-parameter';
 
 procedure RegisterDeclarationRules(const ARegistry: TRuleRegistry);
 
@@ -114,6 +125,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
+  Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Rules.Options,
@@ -523,7 +535,7 @@ class function TSignatureMismatchRule.Differences(const ADeclaration, ABody: TSi
 
 var
   Index: Integer;
-  Decl, Body: TSignatureParameter;
+  Decl, Body: Atlas.Common.Editing.ClassCompletion.TSignatureParameter;
 begin
   Result := nil;
   if (ADeclaration.Kind <> '') and (ABody.Kind <> '') and (ADeclaration.Kind <> ABody.Kind) then
@@ -1456,6 +1468,353 @@ begin
   Names := nil;
 end;
 
+{ TDefaultParameterRule }
+
+function TDefaultParameterRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(DefaultParameterRuleId, TRuleSeverity.Warning,
+    'Standardparameter statt Überladung', True);
+end;
+
+type
+  TChangeParameters = TArray<Atlas.Common.Editing.ChangeSignature.TSignatureParameter>;
+
+procedure TDefaultParameterRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Paths: TArray<string>;
+  Lines: TArray<string>;
+  LineBreak: string;
+  Bodies, Calls: TArray<TSyntaxNode>;
+
+  // Bezeichner des Namens im Kopf (beim Rumpf TFoo.Bar der letzte Teil); -1 ohne.
+  function NameToken(AHeader: TSyntaxNode): Integer;
+  var
+    Index: Integer;
+    Name: string;
+  begin
+    Name := BareName(AHeader.Name);
+    Result := -1;
+    for Index := TokenAtOffset(Tokens, AHeader.StartOffset) to High(Tokens) do
+    begin
+      if (Tokens[Index].Offset >= AHeader.EndOffset) or Tokens[Index].IsSymbol('(') or Tokens[Index].IsSymbol(':') or
+        Tokens[Index].IsSymbol(';') then
+        Break;
+      if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, Name) then
+        Result := Index;
+    end;
+  end;
+
+  // Modifizierer und Typen ohne Namen und Standardwerte, kleingeschrieben.
+  function ParamKey(const AParameters: TChangeParameters): string;
+  var
+    Index: Integer;
+  begin
+    Result := '';
+    for Index := 0 to High(AParameters) do
+      Result := Result + LowerCase(AParameters[Index].Modifier + ' ' + AParameters[Index].TypeName) + ';';
+  end;
+
+  function IndentAt(AToken: Integer): string;
+  begin
+    Result := '';
+    if Tokens[AToken].StartPos.Line <= High(Lines) then
+      Result := TTextLines.IndentOf(Lines[Tokens[AToken].StartPos.Line]);
+  end;
+
+  function Conditional(const AHeader: TSignatureHeader): Boolean;
+  begin
+    Result := TConditionalBranches.PathAt(Paths, AHeader.StartToken) <> '';
+  end;
+
+  // Rumpf zur Deklaration: gleicher (qualifizierter) Name und gleiche Parameter, ohne Parameterliste nur eindeutig.
+  function BodyOf(const AName: string; const ADecl: TSignatureHeader; out ABody: TSignatureHeader;
+    out ABodyNode: TSyntaxNode): Boolean;
+  var
+    Node: TSyntaxNode;
+    Candidate: TSignatureHeader;
+    Count: Integer;
+  begin
+    Result := False;
+    Count := 0;
+    ABody := Default(TSignatureHeader);
+    ABodyNode := nil;
+    for Node in Bodies do
+      if SameText(StringReplace(Node.Name, ' ', '', [rfReplaceAll]), AName) and
+        TChangeSignature.ReadHeader(AContext.Text, Tokens, NameToken(Node), Candidate) and
+        (Candidate.StartToken > ADecl.LastToken) then
+        if (Candidate.OpenToken < 0) or (ParamKey(Candidate.Parameters) = ParamKey(ADecl.Parameters)) then
+        begin
+          Inc(Count);
+          ABody := Candidate;
+          ABodyNode := Node;
+          Result := True;
+        end;
+    Result := Result and (Count = 1);
+  end;
+
+  // Steht der Name irgendwo nicht als Aufruf (Methodenzeiger, @Routine)? Dann wäre er nach der Korrektur mehrdeutig.
+  function UsedAsValue(const AName: string): Boolean;
+  var
+    Node: TSyntaxNode;
+  begin
+    for Node in Calls do
+      if SameText(Node.Name, AName) and (Node.Parent <> nil) and (Node.Parent.Kind <> TSyntaxKind.CallStatement) and
+        not ((Node.Parent.Kind = TSyntaxKind.Call) and (Node.Parent[0] = Node)) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // " = Wert" hinter den Parametern des Kopfs AHeader entfernen; Zeilenumbrüche der Liste bleiben.
+  function DefaultRemovals(AHeader: TSyntaxNode): TArray<TRuleEdit>;
+  var
+    Params, Param: TSyntaxNode;
+    Index: Integer;
+  begin
+    Result := nil;
+    Params := AHeader.FindChild(TSyntaxKind.Parameters);
+    if Params <> nil then
+      for Index := 0 to Params.ChildCount - 1 do
+      begin
+        Param := Params[Index];
+        if (Param.Kind = TSyntaxKind.Parameter) and (Param.ChildCount > 1) then
+          Result := Result + [TRuleEdit.Create(TTextRange.Create(Param[0].EndPos, Param[Param.ChildCount - 1].EndPos),
+            '')];
+      end;
+  end;
+
+  // Neue Routinen bzw. Köpfe vor ADecl: je eine Überladung ohne die letzten Standardparameter.
+  function Fix(const ADecl: TSignatureHeader; ADeclNode: TSyntaxNode; AHasBody: Boolean;
+    const ABody: TSignatureHeader; ABodyNode: TSyntaxNode; ADeclIsBody: Boolean; AFirst: Integer): TArray<TRuleEdit>;
+  var
+    Count, Index: Integer;
+    Prefix: TChangeParameters;
+    Changes: TArray<TParameterChange>;
+    Parameter: Atlas.Common.Editing.ChangeSignature.TSignatureParameter;
+    Indent, Declarations, Routines, Name: string;
+
+    function Routine(const AHeader: TSignatureHeader; const AQualified, ADirectives: string): string;
+    begin
+      Result := TChangeSignature.HeaderText(AHeader, AQualified, Prefix, False) + ADirectives + LineBreak + 'begin' +
+        LineBreak + '  ' + TChangeSignature.ForwardCall(AHeader, Prefix, Changes) + LineBreak + 'end;' + LineBreak +
+        LineBreak;
+    end;
+
+  begin
+    Indent := IndentAt(ADecl.StartToken);
+    Name := BareName(ADecl.QualifiedName);
+    Declarations := '';
+    Routines := '';
+    for Count := AFirst to High(ADecl.Parameters) do
+    begin
+      Prefix := Copy(ADecl.Parameters, 0, Count);
+      Changes := nil;
+      for Index := 0 to High(ADecl.Parameters) do
+      begin
+        Parameter := ADecl.Parameters[Index];
+        if Index < Count then
+          Changes := Changes + [TParameterChange.Kept(Index, Parameter.Name)]
+        else
+          Changes := Changes + [TParameterChange.Added(Parameter.Name, Parameter.TypeName, Parameter.Modifier,
+            Parameter.DefaultValue)];
+      end;
+      if ADeclIsBody then
+        Declarations := Declarations + Routine(ADecl, ADecl.QualifiedName,
+          TChangeSignature.OverloadDirectives(ADecl, False)) + Indent
+      else
+      begin
+        Declarations := Declarations + TChangeSignature.HeaderText(ADecl, Name, Prefix, False) +
+          TChangeSignature.OverloadDirectives(ADecl, False) + LineBreak + Indent;
+        if AHasBody then
+          Routines := Routines + Routine(ABody, ABody.QualifiedName, '');
+      end;
+    end;
+    Result := [TRuleEdit.Create(TTextRange.Create(Tokens[ADecl.StartToken].StartPos, Tokens[ADecl.StartToken].StartPos),
+      Declarations)] + DefaultRemovals(ADeclNode);
+    if not ADecl.HasDirective('overload') then
+      Result := Result + [TRuleEdit.Create(TTextRange.Create(Tokens[ADecl.EndToken].EndPos,
+        Tokens[ADecl.EndToken].EndPos), ' overload;')];
+    if AHasBody then
+    begin
+      Result := Result + [TRuleEdit.Create(TTextRange.Create(Tokens[ABody.StartToken].StartPos,
+        Tokens[ABody.StartToken].StartPos), Routines)];
+      // Ein im Rumpf wiederholter Standardwert fällt ebenfalls weg.
+      Result := Result + DefaultRemovals(ABodyNode);
+    end;
+  end;
+
+  // Vorfahren, Nachfahren oder Aufrufer von außen geben die Signatur vor.
+  function SignatureGiven(const AHeader: TSignatureHeader): Boolean;
+  var
+    Directive: string;
+  begin
+    for Directive in AHeader.Directives do
+      if MatchText(Directive, ['virtual', 'dynamic', 'abstract', 'override', 'external', 'export']) or
+        StartsText('message ', Directive) or StartsText('external ', Directive) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Meldet die Deklaration AHeader; AScope: andere Köpfe desselben Bereichs, AType: Typ bei Methoden.
+  procedure CheckHeader(AHeader: TSyntaxNode; const AScope: TArray<TSyntaxNode>; AType: TSyntaxNode);
+  var
+    Decl, Body: TSignatureHeader;
+    Params, Node, BodyNode: TSyntaxNode;
+    First, Index: Integer;
+    Names: TArray<string>;
+    Message, Qualified: string;
+    HasBody, DeclIsBody, CanFix: Boolean;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Params := AHeader.FindChild(TSyntaxKind.Parameters);
+    if (Params = nil) or not TChangeSignature.ReadHeader(AContext.Text, Tokens, NameToken(AHeader), Decl) then
+      Exit;
+    First := -1;
+    Names := nil;
+    for Index := 0 to High(Decl.Parameters) do
+      if Decl.Parameters[Index].DefaultValue <> '' then
+      begin
+        if First < 0 then
+          First := Index;
+        Names := Names + [Decl.Parameters[Index].Name];
+      end;
+    if First < 0 then
+      Exit;
+    if Length(Names) = 1 then
+      Message := Format('Standardparameter; eine Überladung ohne %s hält den Vorgabewert in der Bibliothek.',
+        [Names[0]])
+    else
+      Message := Format('Standardparameter; Überladungen ohne %s halten die Vorgabewerte in der Bibliothek.',
+        [JoinedList(Names)]);
+    // Korrektur nur, wo die neuen Überladungen sicher eindeutig sind und niemand die Signatur vorgibt.
+    CanFix := not Conditional(Decl) and not UsedAsValue(BareName(AHeader.Name)) and
+      ((AType = nil) or (AType.Kind <> TSyntaxKind.InterfaceType)) and not SignatureGiven(Decl);
+    for Node in AScope do
+      if (Node <> AHeader) and SameText(BareName(Node.Name), BareName(AHeader.Name)) then
+        CanFix := False;
+    HasBody := False;
+    Body := Default(TSignatureHeader);
+    BodyNode := nil;
+    DeclIsBody := (AHeader.Parent <> nil) and (AHeader.Parent.Kind = TSyntaxKind.RoutineDecl) and
+      (AHeader.Parent.FindChild(TSyntaxKind.Block) <> nil);
+    if CanFix and not DeclIsBody then
+    begin
+      Qualified := BareName(AHeader.Name);
+      if AType <> nil then
+      begin
+        // Verschachtelte und generische Typen: Rumpf nicht sicher zuzuordnen.
+        if (AType.Parent = nil) or (AType.Parent.Kind <> TSyntaxKind.TypeDecl) or (AType.Parent.Parent = nil) or
+          (AType.Parent.Parent.Kind <> TSyntaxKind.TypeSection) or (Pos('<', AType.Parent.Name) > 0) then
+          CanFix := False
+        else
+          Qualified := AType.Parent.Name + '.' + Qualified;
+      end;
+      HasBody := CanFix and BodyOf(Qualified, Decl, Body, BodyNode);
+      CanFix := HasBody and not Conditional(Body);
+    end;
+    Fixes := nil;
+    if CanFix then
+      Fixes := [TRuleFix.Create('Überladungen statt Standardparameter',
+        Fix(Decl, AHeader, HasBody, Body, BodyNode, DeclIsBody, First))];
+    for Index := 0 to Params.ChildCount - 1 do
+      if (Params[Index].Kind = TSyntaxKind.Parameter) and (Params[Index].ChildCount > 1) then
+      begin
+        AReport.Add(TTextRange.Create(Params[Index].StartPos, Params[Params.ChildCount - 1].EndPos), Message,
+          TRuleConfidence.High, Fixes);
+        Break;
+      end;
+  end;
+
+  // Köpfe von Routinen direkt unter ANode; Rümpfe zu einer früheren Deklaration zählen nicht.
+  procedure CheckRoutines(ANode: TSyntaxNode; var AScope: TArray<TSyntaxNode>);
+  var
+    Index: Integer;
+    Header: TSyntaxNode;
+  begin
+    if ANode = nil then
+      Exit;
+    for Index := 0 to ANode.ChildCount - 1 do
+      if ANode[Index].Kind = TSyntaxKind.RoutineDecl then
+      begin
+        Header := ANode[Index].FindChild(TSyntaxKind.RoutineHeader);
+        if (Header <> nil) and (Pos('.', Header.Name) = 0) then
+          AScope := AScope + [Header];
+      end;
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Scope, Declared: TArray<TSyntaxNode>;
+    Header, Other: TSyntaxNode;
+    Index: Integer;
+    IsBody: Boolean;
+    Decl, Earlier: TSignatureHeader;
+  begin
+    Scope := nil;
+    Declared := nil;
+    case ANode.Kind of
+      TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
+      TSyntaxKind.HelperType:
+        begin
+          for Index := 0 to ANode.ChildCount - 1 do
+            if ANode[Index].Kind = TSyntaxKind.RoutineHeader then
+              Scope := Scope + [ANode[Index]];
+          for Header in Scope do
+            CheckHeader(Header, Scope, ANode);
+        end;
+      TSyntaxKind.UnitFile, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile, TSyntaxKind.RoutineDecl:
+        begin
+          if ANode.Kind = TSyntaxKind.UnitFile then
+          begin
+            CheckRoutines(ANode.FindChild(TSyntaxKind.InterfaceSection), Scope);
+            CheckRoutines(ANode.FindChild(TSyntaxKind.ImplementationSection), Scope);
+          end
+          else
+            CheckRoutines(ANode, Scope);
+          for Header in Scope do
+          begin
+            // Rumpf zu einer früheren Deklaration (interface, forward) mit gleichen Parametern.
+            IsBody := False;
+            if (Header.Parent.FindChild(TSyntaxKind.Block) <> nil) and
+              TChangeSignature.ReadHeader(AContext.Text, Tokens, NameToken(Header), Decl) then
+              for Other in Scope do
+                if (Other <> Header) and (Other.Parent.FindChild(TSyntaxKind.Block) = nil) and
+                  SameText(Other.Name, Header.Name) and (Other.StartOffset < Header.StartOffset) and
+                  TChangeSignature.ReadHeader(AContext.Text, Tokens, NameToken(Other), Earlier) and
+                  ((Decl.OpenToken < 0) or (ParamKey(Decl.Parameters) = ParamKey(Earlier.Parameters))) then
+                  IsBody := True;
+            if not IsBody then
+              Declared := Declared + [Header];
+          end;
+          for Header in Declared do
+            CheckHeader(Header, Declared, nil);
+        end;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Paths := TConditionalBranches.Paths(Tokens);
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  Bodies := nil;
+  Calls := nil;
+  AContext.Tree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if (ANode.Kind = TSyntaxKind.RoutineHeader) and (ANode.Parent <> nil) and
+        (ANode.Parent.Kind = TSyntaxKind.RoutineDecl) and (ANode.Parent.FindChild(TSyntaxKind.Block) <> nil) then
+        Bodies := Bodies + [ANode]
+      else if ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess] then
+        Calls := Calls + [ANode];
+      Result := True;
+    end);
+  Visit(AContext.Tree.Root);
+end;
+
 procedure RegisterDeclarationRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDeclaredNotImplementedRule.Create);
@@ -1465,6 +1824,7 @@ begin
   ARegistry.Register(TFieldAfterMethodRule.Create);
   ARegistry.Register(TOverloadDirectiveMissingRule.Create);
   ARegistry.Register(TDuplicateDeclarationRule.Create);
+  ARegistry.Register(TDefaultParameterRule.Create);
 end;
 
 end.
