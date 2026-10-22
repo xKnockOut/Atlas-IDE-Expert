@@ -4151,3 +4151,20 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | VS7 | `{$WARNINGS OFF}`; `{$WARN SYMBOL_DEPRECATED OFF}` in `{$IFDEF DEBUG}` und Aufruf danach außerhalb | Keine Meldung |
 | VS8 | `"kinds": ["platfrom"]` in atlas.json | Konfigurationsfehler „"kinds" darf nur "deprecated", "experimental", "platform" und "library" enthalten“ |
 | VS9 | Abgleich mit Delphi: VS1, VS3, VS4 übersetzen (Plattformwarnungen in den Projektoptionen an) | dcc meldet W1002, W1000 bzw. W1006 an denselben Stellen; mit VS5 und VS7 nichts |
+
+## Syntaxfehler mit Compilercode (#1022)
+
+Voraussetzung: Server läuft in der IDE; eine Unit des Projekts ist offen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SC1 | Das Beispiel aus #1022: `if Gueltig then`, `Speichern;`, `else`, `Verwerfen;` | Fehler `syntax` am `;`: „';' vor 'else' ist nicht erlaubt (wie E2153).“ als Wellenlinie, im Befund-Hover („Atlas · syntax“, ohne „Unterdrücken“) und im Fenster „Atlas-Prüfung“ (**Abnahme**) |
+| SC2 | Schnellkorrektur „';' entfernen“ (Alt+Enter im Hover), danach Strg+Z | Code wie im Issue nach der Korrektur, keine Meldung mehr; ein Undo-Schritt. Mit „Beim Speichern korrigieren“ (source.fixAll) entfernt Speichern das `;` |
+| SC3 | `case X of 1: if A then B;`, `else C;`, `end;` und `on E: Exception do if A then B;`, `else C;` | Keine Meldung: das else gehört zu case bzw. except |
+| SC4 | `B := 1` ohne `;` vor einer weiteren Zeile; dann `B := 1 2;` | „';' fehlt (wie E2066).“ am Zeilenende mit Korrektur „';' ergänzen“; bzw. „Operator oder ';' fehlt (wie E2066).“ |
+| SC5 | `S := 'abc;` in einer Zeile; `{ offen` vor dem Rest der Unit | Nur „Unvollständiger String (wie E2052).“ bzw. nur „Unerwartetes Dateiende im Kommentar ab Zeile N (wie E2057).“, keine Folgefehler; Korrekturen schließen String bzw. Kommentar |
+| SC6 | Im interface: `procedure P: Integer;`, `function F;`, `procedure Q(A);`, `label L;`, `begin` vor implementation; `var A, B: Integer = 0;` | E2025, E2023, E2067, E2049, E2050 und E2196 mit Text wie in docs/Regeln.md; die Kurzform `function F;` in der Implementierung zu einer Deklaration mit Ergebnistyp bleibt still |
+| SC7 | In einer Routine: `var I: Integer = 0;`, `type TLokal = class end;`, `goto Ende;` ohne label | E2195, E2061 und E2031; `type TPunkt = record … end;` und `TKlasse = class of TObject;` lokal still |
+| SC8 | `uses System.;`, `strict public`, `class FWert: Integer;`, `try … end;` ohne except, `for := 1 to 3 do` | E2372, E2375, E2357, E2125 und E2088 |
+| SC9 | `"rules": {"syntax": "off"}` bzw. `"group:compiler": "off"` in atlas.json, SC1 wiederholen | Keine Meldung; die uses-Hinweise (#621) bleiben trotzdem aus, solange der Code nicht parst |
+| SC10 | Abgleich mit Delphi: SC1, SC4–SC8 je einzeln übersetzen | dcc meldet an denselben Stellen dieselben Codes; besonders prüfen: E2058–E2061 (Typ im var-Abschnitt bzw. lokal), E2088, E2357, E2372 und E2375, deren genaue Fälle die Doku nicht beschreibt. Abweichungen als Kommentar an #1022 |

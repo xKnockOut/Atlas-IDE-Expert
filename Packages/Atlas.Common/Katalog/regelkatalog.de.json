@@ -3,7 +3,7 @@
     {
       "id": "syntax",
       "name": "Syntaxfehler",
-      "description": "Der Parser konnte den Quelltext nicht lesen."
+      "description": "Der Quelltext lässt sich nicht lesen. Die Meldung nennt wie der Compiler, was erwartet und was gefunden wurde („';' erwartet, aber 'end' gefunden (wie E2029).“), und trägt den Compilercode: fehlendes ';' (E2066 zwischen Anweisungen, E2029 in Deklarationen), ';' vor else (E2153), offener String (E2052) oder Kommentar mit Startzeile (E2057), Anweisungen im interface-Teil (E2050), Bezeichner nach einem Punkt am Ende (E2372), strict ohne private oder protected (E2375), class vor etwas anderem als einer Routine (E2357), try ohne except oder finally (E2125), for ohne Variable (E2088). Prüfungen am fertigen Baum: procedure mit Ergebnistyp (E2025), Deklaration einer function ohne Ergebnistyp (E2023; die Kurzform der Implementierung ist erlaubt), Wertparameter ohne Typ (E2067), lokale Variable mit Anfangswert (E2195) oder mehrere Variablen mit einem Anfangswert (E2196), Klassen-, Interface- oder Objekttyp im var-Abschnitt (E2060, E2058) oder lokal in einer Routine (E2061, E2059), label im interface-Teil (E2049) und goto auf eine nicht deklarierte Marke (E2031). Nach einem offenen String oder Kommentar fallen die Folgefehler weg, weil der Compiler dort abbricht. Inaktive {$IFDEF}-Zweige werden nicht gemeldet. Korrekturen: ';' vor else entfernen (sicher, auch beim Speichern), ';' ergänzen, String schließen, Kommentar am Ende seiner ersten Zeile schließen."
     },
     {
       "id": "unused-suppression",

@@ -198,6 +198,7 @@
         <DCCReference Include="Windows\Process\Atlas.Windows.Process.Instances.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Lexer.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Parser.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.SyntaxChecks.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TreeCache.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ActiveBranches.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.VariantRecords.Tests.pas"/>

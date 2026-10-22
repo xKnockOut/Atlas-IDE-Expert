@@ -14,7 +14,7 @@
     { "expect": { "method": "textDocument/publishDiagnostics", "params": {
         "uri": "file:///c%3A/Projekt/P.dpr", "version": 1,
         "diagnostics": [ { "range": { "start": { "line": 2, "character": 8 }, "end": { "line": 2, "character": 8 } },
-                           "severity": 1, "source": "Atlas", "message": "\";\" fehlt" } ] } } },
+                           "severity": 1, "source": "Atlas", "message": "';' fehlt (wie E2066)." } ] } } },
     { "send": { "jsonrpc": "2.0", "id": 2, "method": "textDocument/documentSymbol", "params": { "textDocument": { "uri": "file:///c%3A/Projekt/P.dpr" } } } },
     { "expect": { "id": 2, "result": [ { "name": "P" } ] } },
     { "send": { "jsonrpc": "2.0", "method": "textDocument/didClose", "params": { "textDocument": { "uri": "file:///c%3A/Projekt/P.dpr" } } } },

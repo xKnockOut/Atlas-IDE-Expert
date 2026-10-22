@@ -25,10 +25,34 @@ begin
     '      "name": "Syntax error",' + #10 +
     '      "category": "bug",' + #10 +
     '      "severity": "error",' + #10 +
-    '      "group": "find-bugs",' + #10 +
-    '      "description": "The parser could not read the source code.",' + #10 +
-    '      "bad": "procedure Foo;\nbegin\n  if X then\nend;",' + #10 +
-    '      "good": "procedure Foo;\nbegin\n  if X then\n    Bar;\nend;"' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The source code does not parse. The message says, like the compiler, what was expected and what was found (\"'';'' expected but ''end'' found (like E2029).\") and carries the compile' + 'r code: missing '';'' (E2066 between statements, E2029 in declarations), '';'' before else (E2153), unterminated string (E2052) or comment with its start line (E2057), statements in the interface part (E2' + '050), identifier after a trailing dot (E2372), strict without private or protected (E2375), class before something other than a routine (E2357), try without except or finally (E2125), for without a va' + 'riable (E2088). Checks on the finished tree: procedure with a result type (E2025), function declaration without one (E2023; the short form of an implementation is fine), value parameter without a type' + ' (E2067), initialised local variable (E2195) or several variables with one initial value (E2196), class, interface or object type in a var section (E2060, E2058) or local to a routine (E2061, E2059), ' + 'label in the interface part (E2049) and goto to an undeclared label (E2031). After an unterminated string or comment the follow-up errors are dropped, as the compiler stops there. Inactive {$IFDEF} br' + 'anches are not reported. Quick fixes: remove '';'' before else (safe, also on save), add '';'', close the string, close the comment at the end of its first line.",' + #10 +
+    '      "bad": "if Gueltig then\n  Speichern;\nelse\n  Verwerfen;",' + #10 +
+    '      "good": "if Gueltig then\n  Speichern\nelse\n  Verwerfen;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2023",' + #10 +
+    '        "E2025",' + #10 +
+    '        "E2029",' + #10 +
+    '        "E2031",' + #10 +
+    '        "E2049",' + #10 +
+    '        "E2050",' + #10 +
+    '        "E2052",' + #10 +
+    '        "E2057",' + #10 +
+    '        "E2058",' + #10 +
+    '        "E2059",' + #10 +
+    '        "E2060",' + #10 +
+    '        "E2061",' + #10 +
+    '        "E2066",' + #10 +
+    '        "E2067",' + #10 +
+    '        "E2088",' + #10 +
+    '        "E2125",' + #10 +
+    '        "E2153",' + #10 +
+    '        "E2195",' + #10 +
+    '        "E2196",' + #10 +
+    '        "E2357",' + #10 +
+    '        "E2372",' + #10 +
+    '        "E2375"' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unused-suppression",' + #10 +
@@ -2366,7 +2390,7 @@ begin
     '    {' + #10 +
     '      "id": "syntax",' + #10 +
     '      "name": "Syntaxfehler",' + #10 +
-    '      "description": "Der Parser konnte den Quelltext nicht lesen."' + #10 +
+    '      "description": "Der Quelltext lässt sich nicht lesen. Die Meldung nennt wie der Compiler, was erwartet und was gefunden wurde („'';'' erwartet, aber ''end'' gefunden (wie E2029).“), und trägt den Co' + 'mpilercode: fehlendes '';'' (E2066 zwischen Anweisungen, E2029 in Deklarationen), '';'' vor else (E2153), offener String (E2052) oder Kommentar mit Startzeile (E2057), Anweisungen im interface-Teil (E2050' + '), Bezeichner nach einem Punkt am Ende (E2372), strict ohne private oder protected (E2375), class vor etwas anderem als einer Routine (E2357), try ohne except oder finally (E2125), for ohne Variable (' + 'E2088). Prüfungen am fertigen Baum: procedure mit Ergebnistyp (E2025), Deklaration einer function ohne Ergebnistyp (E2023; die Kurzform der Implementierung ist erlaubt), Wertparameter ohne Typ (E2067)' + ', lokale Variable mit Anfangswert (E2195) oder mehrere Variablen mit einem Anfangswert (E2196), Klassen-, Interface- oder Objekttyp im var-Abschnitt (E2060, E2058) oder lokal in einer Routine (E2061, ' + 'E2059), label im interface-Teil (E2049) und goto auf eine nicht deklarierte Marke (E2031). Nach einem offenen String oder Kommentar fallen die Folgefehler weg, weil der Compiler dort abbricht. Inaktiv' + 'e {$IFDEF}-Zweige werden nicht gemeldet. Korrekturen: '';'' vor else entfernen (sicher, auch beim Speichern), '';'' ergänzen, String schließen, Kommentar am Ende seiner ersten Zeile schließen."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unused-suppression",' + #10 +

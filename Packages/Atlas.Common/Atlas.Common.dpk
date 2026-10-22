@@ -368,6 +368,7 @@ contains
   Atlas.Common.Pascal.Contract in 'Source\Pascal\Atlas.Common.Pascal.Contract.pas',
   Atlas.Common.Pascal.Lexer in 'Source\Pascal\Atlas.Common.Pascal.Lexer.pas',
   Atlas.Common.Pascal.SyntaxTree in 'Source\Pascal\Atlas.Common.Pascal.SyntaxTree.pas',
+  Atlas.Common.Pascal.SyntaxChecks in 'Source\Pascal\Atlas.Common.Pascal.SyntaxChecks.pas',
   Atlas.Common.Pascal.Parser in 'Source\Pascal\Atlas.Common.Pascal.Parser.pas',
   Atlas.Common.Pascal.TreeCache in 'Source\Pascal\Atlas.Common.Pascal.TreeCache.pas',
   Atlas.Common.Pascal.IncludeFiles in 'Source\Pascal\Atlas.Common.Pascal.IncludeFiles.pas',

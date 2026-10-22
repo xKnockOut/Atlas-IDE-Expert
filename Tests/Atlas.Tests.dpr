@@ -182,6 +182,7 @@ uses
   Atlas.Common.Lsp.Configuration.Tests in 'Common\Lsp\Atlas.Common.Lsp.Configuration.Tests.pas',
   Atlas.Common.Lsp.SettingsCommands.Tests in 'Common\Lsp\Atlas.Common.Lsp.SettingsCommands.Tests.pas',
   Atlas.Common.Pascal.Parser.Tests in 'Common\Pascal\Atlas.Common.Pascal.Parser.Tests.pas',
+  Atlas.Common.Pascal.SyntaxChecks.Tests in 'Common\Pascal\Atlas.Common.Pascal.SyntaxChecks.Tests.pas',
   Atlas.Common.Pascal.TreeCache.Tests in 'Common\Pascal\Atlas.Common.Pascal.TreeCache.Tests.pas',
   Atlas.Common.Pascal.ActiveBranches.Tests in 'Common\Pascal\Atlas.Common.Pascal.ActiveBranches.Tests.pas',
   Atlas.Common.Pascal.VariantRecords.Tests in 'Common\Pascal\Atlas.Common.Pascal.VariantRecords.Tests.pas',
