@@ -27,7 +27,8 @@ type
     FInlineVars: TList<TSyntaxNode>;
     function TypeText(ANode: TSyntaxNode): string;
     procedure AddNames(AScope: TScope; ANode: TSyntaxNode);
-    procedure Walk(ANode: TSyntaxNode; const AClassName: string);
+    /// <summary>Sammelt die Deklarationen aus dem Baum; iterativ mit eigenem Rahmenstapel (Bericht M1).</summary>
+    procedure Walk(ARoot: TSyntaxNode);
     function RoutineAt(const APosition: TTextPosition): TSyntaxNode;
   public
     constructor Create(ATree: TSyntaxTree; const AText: string);
@@ -69,7 +70,7 @@ begin
   FRoutines := TList<TSyntaxNode>.Create;
   FInlineVars := TList<TSyntaxNode>.Create;
   if (ATree <> nil) and (ATree.Root <> nil) then
-    Walk(ATree.Root, '');
+    Walk(ATree.Root);
 end;
 
 destructor TDeclaredTypes.Destroy;
@@ -110,65 +111,109 @@ begin
       AScope.AddOrSetValue(LowerCase(Trim(Name)), TypeName);
 end;
 
-procedure TDeclaredTypes.Walk(ANode: TSyntaxNode; const AClassName: string);
+type
+  /// <summary>Rahmen von TDeclaredTypes.Walk: Knoten, Klasse, in der er liegt, und nächstes Kind.</summary>
+  TDeclaredTypesFrame = record
+    Node: TSyntaxNode;
+    OwnerClass: string;
+    Next: Integer;
+  end;
+
+procedure TDeclaredTypes.Walk(ARoot: TSyntaxNode);
 var
-  Index, Inner: Integer;
-  Child, Header, Params: TSyntaxNode;
+  Frames: TList<TDeclaredTypesFrame>;
+  Frame: TDeclaredTypesFrame;
+  Top, Inner: Integer;
+  Node, Child, Header, Params: TSyntaxNode;
+  OwnerClass: string;
   Scope: TScope;
-begin
-  for Index := 0 to ANode.ChildCount - 1 do
+
+  procedure Enter(ANode: TSyntaxNode; const AOwnerClass: string);
+  var
+    Entry: TDeclaredTypesFrame;
   begin
-    Child := ANode[Index];
-    case Child.Kind of
-      TSyntaxKind.TypeDecl:
-        Walk(Child, Child.Name);
-      TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType:
-        begin
-          if not FClassScopes.TryGetValue(LowerCase(AClassName), Scope) then
+    Entry.Node := ANode;
+    Entry.OwnerClass := AOwnerClass;
+    Entry.Next := 0;
+    Frames.Add(Entry);
+  end;
+
+begin
+  // Früher rekursiv je Kind; lange Ausdrucksketten sprengten so den Stapel (Bericht M1). Der Rahmenstapel geht
+  // die Kinder in derselben Reihenfolge durch wie die Rekursion: Routinen stehen in FRoutines in
+  // Quelltextreihenfolge, wie RoutineAt es braucht.
+  Frames := TList<TDeclaredTypesFrame>.Create;
+  try
+    Enter(ARoot, '');
+    while Frames.Count > 0 do
+    begin
+      Top := Frames.Count - 1;
+      Frame := Frames[Top];
+      if Frame.Next >= Frame.Node.ChildCount then
+      begin
+        Frames.Delete(Top);
+        Continue;
+      end;
+      Node := Frame.Node;
+      OwnerClass := Frame.OwnerClass;
+      Child := Node[Frame.Next];
+      Inc(Frame.Next);
+      Frames[Top] := Frame;
+      case Child.Kind of
+        TSyntaxKind.TypeDecl:
+          Enter(Child, Child.Name);
+        TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType:
+          begin
+            if not FClassScopes.TryGetValue(LowerCase(OwnerClass), Scope) then
+            begin
+              Scope := TScope.Create;
+              FClassScopes.Add(LowerCase(OwnerClass), Scope);
+            end;
+            for Inner := 0 to Child.ChildCount - 1 do
+              if Child[Inner].Kind = TSyntaxKind.Field then
+                AddNames(Scope, Child[Inner]);
+            // Sichtbarkeitsabschnitte rückwärts auf den Stapel: Sie kommen in Quelltextreihenfolge dran.
+            for Inner := Child.ChildCount - 1 downto 0 do
+              if Child[Inner].Kind = TSyntaxKind.Visibility then
+                Enter(Child[Inner], OwnerClass);
+          end;
+        TSyntaxKind.Field:
+          if FClassScopes.TryGetValue(LowerCase(OwnerClass), Scope) then
+            AddNames(Scope, Child);
+        TSyntaxKind.VarSection:
+          for Inner := 0 to Child.ChildCount - 1 do
+            if Child[Inner].Kind = TSyntaxKind.VarDecl then
+              if (Node.Kind = TSyntaxKind.RoutineDecl) and FRoutineScopes.TryGetValue(Node, Scope) then
+                AddNames(Scope, Child[Inner])
+              else
+                AddNames(FUnitScope, Child[Inner]);
+        TSyntaxKind.RoutineDecl:
           begin
             Scope := TScope.Create;
-            FClassScopes.Add(LowerCase(AClassName), Scope);
+            FRoutineScopes.Add(Child, Scope);
+            FRoutines.Add(Child);
+            Header := Child.FindChild(TSyntaxKind.RoutineHeader);
+            if Header <> nil then
+            begin
+              Params := Header.FindChild(TSyntaxKind.Parameters);
+              if Params <> nil then
+                for Inner := 0 to Params.ChildCount - 1 do
+                  if Params[Inner].Kind = TSyntaxKind.Parameter then
+                    AddNames(Scope, Params[Inner]);
+            end;
+            Enter(Child, '');
           end;
-          for Inner := 0 to Child.ChildCount - 1 do
-            if Child[Inner].Kind = TSyntaxKind.Field then
-              AddNames(Scope, Child[Inner])
-            else if Child[Inner].Kind = TSyntaxKind.Visibility then
-              Walk(Child[Inner], AClassName);
-        end;
-      TSyntaxKind.Field:
-        if FClassScopes.TryGetValue(LowerCase(AClassName), Scope) then
-          AddNames(Scope, Child);
-      TSyntaxKind.VarSection:
-        for Inner := 0 to Child.ChildCount - 1 do
-          if Child[Inner].Kind = TSyntaxKind.VarDecl then
-            if (ANode.Kind = TSyntaxKind.RoutineDecl) and FRoutineScopes.TryGetValue(ANode, Scope) then
-              AddNames(Scope, Child[Inner])
-            else
-              AddNames(FUnitScope, Child[Inner]);
-      TSyntaxKind.RoutineDecl:
-        begin
-          Scope := TScope.Create;
-          FRoutineScopes.Add(Child, Scope);
-          FRoutines.Add(Child);
-          Header := Child.FindChild(TSyntaxKind.RoutineHeader);
-          if Header <> nil then
+        TSyntaxKind.InlineVar:
           begin
-            Params := Header.FindChild(TSyntaxKind.Parameters);
-            if Params <> nil then
-              for Inner := 0 to Params.ChildCount - 1 do
-                if Params[Inner].Kind = TSyntaxKind.Parameter then
-                  AddNames(Scope, Params[Inner]);
+            FInlineVars.Add(Child);
+            Enter(Child, OwnerClass);
           end;
-          Walk(Child, '');
-        end;
-      TSyntaxKind.InlineVar:
-        begin
-          FInlineVars.Add(Child);
-          Walk(Child, AClassName);
-        end;
-    else
-      Walk(Child, AClassName);
+      else
+        Enter(Child, OwnerClass);
+      end;
     end;
+  finally
+    Frames.Free;
   end;
 end;
 

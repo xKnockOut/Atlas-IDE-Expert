@@ -299,6 +299,7 @@ uses
   Atlas.Common.Rules.Builtin.Unused.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unused.Tests.pas',
   Atlas.Common.Rules.Builtin.Declarations.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Tests.pas',
   Atlas.Common.Rules.Builtin.Inheritance.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Inheritance.Tests.pas',
+  Atlas.Common.Rules.Builtin.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Tests.pas',
   Atlas.Common.Rules.Builtin.Capture.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Capture.Tests.pas',
   Atlas.Common.Rules.Builtin.Components.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Components.Tests.pas',
   Atlas.Core.Settings.OverviewKinds in '..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.OverviewKinds.pas',

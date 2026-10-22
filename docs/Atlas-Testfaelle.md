@@ -3106,7 +3106,7 @@ Voraussetzung: Einstellungen auf Vorgabe, Diagnoselog an; Projektgruppe `Atlas.g
 | SN1 | IDE mit der Gruppe 10 Minuten offen lassen, ohne zu tippen | Keine Benachrichtigung „Server neu gestartet“ (**Abnahme**) |
 | SN2 | Diagnoselog des Laufs (`%LOCALAPPDATA%\Atlas\Logs\Diagnose\diag-<Datum>-<pid>.log`) öffnen | Keine Zeile `workspace/diagnostic … error:EStackOverflow`; am Ende des Laufs steht eine `run end`-Zeile (**Abnahme**) |
 | SN3 | `Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data.pas` öffnen | Befunde erscheinen wie bei anderen Units, kein Fehler im Log |
-| SN4 | In einer eigenen Unit `X := 1 - 1 - 1 …` mit 1200 Gliedern schreiben (Testprojekt) und speichern | Kein Absturz; die Prüfregeln melden für diese Unit nichts, im Diagnoselog steht `deepUnits=1 deepUnit=unit#N deepUnitDepth=…` |
+| SN4 | In einer eigenen Unit `X := 1 - 1 - 1 …` mit 1200 Gliedern schreiben (Testprojekt) und speichern | Kein Absturz; die Prüfregeln melden für diese Unit wie für jede andere, keine `deepUnit`-Zeile im Diagnoselog (seit Bericht M1 greift die Grenze erst ab 100000 Ebenen, siehe TV2) |
 | SN5 | Kommandozeile: `AtlasServer.exe --check` über die Gruppe (Abschnitt „Linter mode“ im README) | Läuft durch alle Units ohne Absturz; dieselben Befunde wie vor #1094 |
 | SN6 | Testlauf `Atlas.Tests.exe` | Grün, darunter `SecondOverflowInSameThreadIsCaughtAgain` (drei Stapelüberläufe im selben Thread werden abgefangen, der Prozess lebt) |
 
@@ -3127,6 +3127,19 @@ Voraussetzung: Einstellungen auf Vorgabe, ein Projekt offen, Atlas-Feld in der S
 | SK9 | Zwei IDEs gleichzeitig offen, in beiden arbeiten | Beide Server schreiben in dieselbe `server-stderr.log`, keine Fehlermeldung, kein Start scheitert |
 | SK10 | IDE mit Englisch als Sprache, SK3 | „Server crashed repeatedly“, Knöpfe „Restart server“, „Create bug report…“, „Open log“ |
 | SK11 | Testlauf `Atlas.Tests.exe` | Grün, darunter `EndReportsExitCodeAndStderr` (Exit-Code 3 und eine Zeile stderr von `cmd.exe`) und `CloseInfoNamesLastAndOpenRequests` |
+
+## Prüfregeln bei tief verschachtelten Ausdrücken (Bericht M1)
+
+Voraussetzung: Einstellungen auf Vorgabe, Diagnoselog an, ein Testprojekt offen. Die Units entstehen in PowerShell im Projektordner, z. B. für 20000 Glieder:
+`'unit Tief; interface implementation procedure P; var X: Integer; begin X := 1' + (' - 1' * 20000) + '; with TObject.Create do Free; end; end.' | Set-Content Tief.pas`
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TV1 | `Tief.pas` mit 20000 Gliedern dem Projekt hinzufügen und öffnen | Kein Absturz, keine Benachrichtigung „Server neu gestartet“; im Problemfenster der Befund `with-statement` in der Zeile mit `with`; kein `unit-too-deep`; im Diagnoselog keine `deepUnit`-Zeile (**Abnahme**) |
+| TV2 | Dasselbe mit 100100 Gliedern (`Tief2.pas`) | Problemfenster: genau ein Hinweis `unit-too-deep` „Die Prüfregeln laufen für diese Unit nicht: Der Syntaxbaum ist 100… Ebenen tief (Grenze 100000). Die tiefste Stelle liegt hier; …“ am ersten `1` der Kette; kein `with-statement`; im Diagnoselog `deepUnits=1 deepUnit=… deepUnitDepth=…` (**Abnahme**) |
+| TV3 | In `atlas.json` `{"rules": {"unit-too-deep": "off"}}`, `Tief2.pas` erneut prüfen lassen | Kein Hinweis mehr; die Unit bleibt ohne Befunde |
+| TV4 | `AtlasServer.exe --check` über das Projekt aus TV1 | Läuft ohne Absturz durch; `Tief.pas` mit `with-statement`, `Tief2.pas` mit `unit-too-deep` |
+| TV5 | Testlauf `Atlas.Tests.exe` | Grün, darunter `AllRulesHandleDeepTrees` und `EngineChecksDeepUnit` (TBuiltinRulesTests), `TooDeepTreeSkipsRules` und `TooDeepHintCanBeSwitchedOff` (TRuleEngineTests), `WalkAndSearchOfDeepTreeNeedLittleStack` und `DeepestIsFirstNodeAtGreatestDepth` (TSyntaxTreeTests) |
 
 ## Gliederung beim Start und Kontextwechsel ohne Zugriffsverletzung
 

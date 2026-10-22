@@ -147,29 +147,26 @@ end;
 
 /// <summary>Liegt APosition im Rumpf (begin … end) einer Routine?</summary>
 function InStatements(ATree: TSyntaxTree; const APosition: TTextPosition): Boolean;
-
-  function Search(ANode: TSyntaxNode): Boolean;
-  var
-    Index: Integer;
-    Child: TSyntaxNode;
-  begin
-    for Index := 0 to ANode.ChildCount - 1 do
-    begin
-      Child := ANode[Index];
-      if (Child.Kind = TSyntaxKind.Block) and
-        ((Child.StartPos.Line < APosition.Line) or ((Child.StartPos.Line = APosition.Line) and
-        (Child.StartPos.Character <= APosition.Character))) and
-        ((Child.EndPos.Line > APosition.Line) or ((Child.EndPos.Line = APosition.Line) and
-        (Child.EndPos.Character > APosition.Character))) then
-        Exit(True);
-      if Search(Child) then
-        Exit(True);
-    end;
-    Result := False;
-  end;
-
+var
+  Root: TSyntaxNode;
+  Position: TTextPosition;
 begin
-  Result := (ATree.Root <> nil) and Search(ATree.Root);
+  Root := ATree.Root;
+  if Root = nil then
+    Exit(False);
+  Position := APosition;
+  // Iterativ (Bericht M1). Die Wurzel selbst zählt wie früher nicht.
+  Result := Root.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if (ANode.Kind = TSyntaxKind.Block) and (ANode <> Root) and
+        ((ANode.StartPos.Line < Position.Line) or ((ANode.StartPos.Line = Position.Line) and
+        (ANode.StartPos.Character <= Position.Character))) and
+        ((ANode.EndPos.Line > Position.Line) or ((ANode.EndPos.Line = Position.Line) and
+        (ANode.EndPos.Character > Position.Character))) then
+        Result := TSyntaxSearchStep.Found;
+    end) <> nil;
 end;
 
 { TInt32MulOverflowRule }

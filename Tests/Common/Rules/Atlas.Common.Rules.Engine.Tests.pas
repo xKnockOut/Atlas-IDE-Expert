@@ -79,9 +79,12 @@ type
     /// <summary>#1094: Ein abgefangener Stapelüberlauf stellt die Schutzseite wieder her.</summary>
     [Test]
     procedure OverflowInRuleRestoresStackGuard;
-    /// <summary>#1094: Zu tiefe Syntaxbäume prüfen die Regeln nicht; das Diagnoselog nennt die Unit.</summary>
+    /// <summary>#1094, Bericht M1: Zu tiefe Syntaxbäume prüfen die Regeln nicht; das Diagnoselog nennt die Unit,
+    /// und die Unit bekommt den Hinweis unit-too-deep an der tiefsten Stelle.</summary>
     [Test]
     procedure TooDeepTreeSkipsRules;
+    [Test]
+    procedure TooDeepHintCanBeSwitchedOff;
   end;
 
 implementation
@@ -790,13 +793,26 @@ begin
   finally
     Tree.Free;
   end;
-  Assert.AreEqual(0, Integer(Length(Findings)));
+  // Statt der Regeln nur der Hinweis, am ersten Glied der Kette ("  Marker := 1" in Zeile 6).
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(UnitTooDeepRuleId, Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(12, Findings[0].Range.StartPos.Character);
+  Assert.IsTrue(Pos(IntToStr(Depth), Findings[0].Message) > 0, Findings[0].Message);
+  Findings := nil;
   Joined := JoinNotes(Notes);
   Assert.Contains(Joined, ' deepUnits=1 ');
   Assert.Contains(Joined, ' deepUnit=unit#5 ');
   Assert.Contains(Joined, ' deepUnitDepth=' + IntToStr(Depth) + ' ');
   // Flache Bäume prüfen die Regeln wie bisher.
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create, DeepSource(10)))));
+end;
+
+procedure TRuleEngineTests.TooDeepHintCanBeSwitchedOff;
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create,
+    DeepSource(TRuleEngine.MaxTreeDepth + 200), '{"rules": {"unit-too-deep": "off"}}'))));
 end;
 
 initialization

@@ -443,32 +443,7 @@ var
   Options: TRoleImportOptions;
   OwnName: string;
   InterfaceNode: TSyntaxNode;
-
-  procedure Visit(ANode: TSyntaxNode);
-  var
-    Index: Integer;
-    ClassNode, Ancestor: TSyntaxNode;
-  begin
-    if ANode.Kind = TSyntaxKind.TypeDecl then
-    begin
-      ClassNode := ANode.FindChild(TSyntaxKind.ClassType);
-      if ClassNode = nil then
-        Exit;
-      Ancestor := ClassNode.FindChild(TSyntaxKind.TypeReference);
-      if (Ancestor <> nil) and IsExceptionName(Ancestor.Name) then
-        Exit;
-      for Index := 0 to High(Options.Allow) do
-        if MatchesGlob(Options.Allow[Index], OwnName + '.' + ANode.Name) then
-          Exit;
-      AReport.Add(TTextRange.Create(ANode.StartPos.Line, ANode.StartPos.Character, ANode.StartPos.Line,
-        ANode.StartPos.Character + Length(ANode.Name)), Format('%s ist eine Klasse in einer Contract-Unit; ' +
-        'Contract enthält nur Records, Interfaces, Aufzählungen und Ausnahmen (Konzept 7.1)', [ANode.Name]));
-      Exit;
-    end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
-  end;
-
+  Report: IRuleReport;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
     Exit;
@@ -480,8 +455,32 @@ begin
     TArchitectureRole.Contract then
     Exit;
   InterfaceNode := AContext.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
-  if InterfaceNode <> nil then
-    Visit(InterfaceNode);
+  if InterfaceNode = nil then
+    Exit;
+  Report := AReport;
+  // Iterativ (Bericht M1): Konstanten im interface können lange Ausdrücke enthalten.
+  InterfaceNode.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    var
+      Index: Integer;
+      ClassNode, Ancestor: TSyntaxNode;
+    begin
+      Result := ANode.Kind <> TSyntaxKind.TypeDecl;
+      if Result then
+        Exit;
+      ClassNode := ANode.FindChild(TSyntaxKind.ClassType);
+      if ClassNode = nil then
+        Exit;
+      Ancestor := ClassNode.FindChild(TSyntaxKind.TypeReference);
+      if (Ancestor <> nil) and IsExceptionName(Ancestor.Name) then
+        Exit;
+      for Index := 0 to High(Options.Allow) do
+        if MatchesGlob(Options.Allow[Index], OwnName + '.' + ANode.Name) then
+          Exit;
+      Report.Add(TTextRange.Create(ANode.StartPos.Line, ANode.StartPos.Character, ANode.StartPos.Line,
+        ANode.StartPos.Character + Length(ANode.Name)), Format('%s ist eine Klasse in einer Contract-Unit; ' +
+        'Contract enthält nur Records, Interfaces, Aufzählungen und Ausnahmen (Konzept 7.1)', [ANode.Name]));
+    end);
 end;
 
 procedure RegisterArchitectureRules(const ARegistry: TRuleRegistry);

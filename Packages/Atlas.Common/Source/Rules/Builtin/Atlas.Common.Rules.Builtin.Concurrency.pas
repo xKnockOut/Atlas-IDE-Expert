@@ -80,6 +80,7 @@ implementation
 
 uses
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Derived;
@@ -178,17 +179,41 @@ begin
     TSyntaxKind.ExceptBlock, TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection];
 end;
 
+/// <summary>Anweisungslisten in ARoot in Baumreihenfolge. Iterativ gesammelt (Bericht M1), damit die Regeln sie
+/// ohne eigene Rekursion prüfen.</summary>
+function StatementLists(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
+var
+  Found: TList<TSyntaxNode>;
+begin
+  Found := TList<TSyntaxNode>.Create;
+  try
+    ARoot.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        if IsStatementList(ANode) then
+          Found.Add(ANode);
+        Result := True;
+      end);
+    Result := Found.ToArray;
+  finally
+    Found.Free;
+  end;
+end;
+
 /// <summary>True, wenn ANode oder ein Nachfahre den Bezeichner AName benutzt.</summary>
 function Mentions(ANode: TSyntaxNode; const AName: string): Boolean;
 var
-  Index: Integer;
+  Name: string;
 begin
-  if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, AName) then
-    Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if Mentions(ANode[Index], AName) then
-      Exit(True);
-  Result := False;
+  Name := AName;
+  // Iterativ (Bericht M1).
+  Result := ANode.Search(
+    function(AVisited: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if (AVisited.Kind = TSyntaxKind.Identifier) and SameText(AVisited.Name, Name) then
+        Exit(TSyntaxSearchStep.Found);
+      Result := TSyntaxSearchStep.Descend;
+    end) <> nil;
 end;
 
 /// <summary>Klassenteil eines Routinennamens: "TA" in "TA.Destroy", sonst ''.</summary>
@@ -211,31 +236,6 @@ end;
 function ThreadClasses(ARoot: TSyntaxNode): TArray<string>;
 var
   Names, Parents: TArray<string>;
-
-  procedure Collect(ANode: TSyntaxNode);
-  var
-    Index: Integer;
-    ClassNode, Ancestor: TSyntaxNode;
-  begin
-    if ANode.Kind = TSyntaxKind.TypeDecl then
-    begin
-      ClassNode := ANode.FindChild(TSyntaxKind.ClassType);
-      if ClassNode <> nil then
-      begin
-        Ancestor := ClassNode.FindChild(TSyntaxKind.TypeReference);
-        if Ancestor <> nil then
-        begin
-          Names := Names + [ANode.Name];
-          Parents := Parents + [Ancestor.Name];
-        end;
-      end;
-      Exit;
-    end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Collect(ANode[Index]);
-  end;
-
-var
   Index: Integer;
   Changed: Boolean;
 begin
@@ -244,7 +244,24 @@ begin
   Parents := nil;
   if ARoot = nil then
     Exit;
-  Collect(ARoot);
+  // Iterativ (Bericht M1): Der Lauf geht auch durch lange Ausdrucksketten.
+  ARoot.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    var
+      ClassNode, Ancestor: TSyntaxNode;
+    begin
+      Result := ANode.Kind <> TSyntaxKind.TypeDecl;
+      if Result then
+        Exit;
+      ClassNode := ANode.FindChild(TSyntaxKind.ClassType);
+      if ClassNode = nil then
+        Exit;
+      Ancestor := ClassNode.FindChild(TSyntaxKind.TypeReference);
+      if Ancestor = nil then
+        Exit;
+      Names := Names + [ANode.Name];
+      Parents := Parents + [Ancestor.Name];
+    end);
   // Fixpunkt über Zwischenklassen der Unit.
   repeat
     Changed := False;
@@ -311,31 +328,32 @@ begin
     'VCL-Zugriff aus einem Thread ohne Synchronize oder Queue');
 end;
 
+/// <summary>Erster VCL-Zugriff in ANode außerhalb von Synchronize/Queue, sonst nil.</summary>
+function FindVclAccess(ANode: TSyntaxNode): TSyntaxNode;
+begin
+  // Iterativ (Bericht M1).
+  Result := ANode.Search(
+    function(AVisited: TSyntaxNode): TSyntaxSearchStep
+    var
+      Call: TMethodCall;
+    begin
+      if TryMethodCall(AVisited, Call) and (SameText(Call.Method, 'Synchronize') or SameText(Call.Method, 'Queue')) then
+        Exit(TSyntaxSearchStep.Skip);
+      if (AVisited.Kind = TSyntaxKind.Call) and (AVisited.ChildCount > 0) and
+        (SameText(AVisited.Name, 'Synchronize') or SameText(AVisited.Name, 'Queue')) then
+        Exit(TSyntaxSearchStep.Skip);
+      if (AVisited.Kind = TSyntaxKind.Identifier) and (InList(VclGlobals, AVisited.Name) or
+        InList(VclDialogs, AVisited.Name)) then
+        Exit(TSyntaxSearchStep.Found);
+      Result := TSyntaxSearchStep.Descend;
+    end);
+end;
+
 procedure TThreadVclAccessRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Threads: TArray<string>;
-
-  // Erster VCL-Zugriff in ANode außerhalb von Synchronize/Queue, sonst nil.
-  function FindAccess(ANode: TSyntaxNode): TSyntaxNode;
-  var
-    Index: Integer;
-    Call: TMethodCall;
-  begin
-    if TryMethodCall(ANode, Call) and (SameText(Call.Method, 'Synchronize') or SameText(Call.Method, 'Queue')) then
-      Exit(nil);
-    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) and
-      (SameText(ANode.Name, 'Synchronize') or SameText(ANode.Name, 'Queue')) then
-      Exit(nil);
-    if (ANode.Kind = TSyntaxKind.Identifier) and (InList(VclGlobals, ANode.Name) or InList(VclDialogs, ANode.Name)) then
-      Exit(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-    begin
-      Result := FindAccess(ANode[Index]);
-      if Result <> nil then
-        Exit;
-    end;
-    Result := nil;
-  end;
+  Bodies: TList<TSyntaxNode>;
+  Body: TSyntaxNode;
 
   procedure CheckBody(ABody: TSyntaxNode);
   var
@@ -346,7 +364,7 @@ var
     for Index := 0 to ABody.ChildCount - 1 do
     begin
       Statement := ABody[Index];
-      Access := FindAccess(Statement);
+      Access := FindVclAccess(Statement);
       if Access = nil then
         Continue;
       if (Statement.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement]) then
@@ -364,59 +382,57 @@ var
     end;
   end;
 
-  // Anonyme Methoden als Argument von CreateAnonymousThread, TTask.Run/Create/Future.
-  procedure VisitAnonymous(ANode: TSyntaxNode);
-  var
-    Index, Arg: Integer;
-    Call: TSyntaxNode;
-    Name: string;
-    Body: TSyntaxNode;
-  begin
-    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 1) then
-    begin
-      Call := ANode[0];
-      Name := '';
-      if (Call.Kind = TSyntaxKind.MemberAccess) and (Call.ChildCount = 1) then
-        Name := LowerCase(VariableName(Call[0]) + '.' + Call.Name);
-      if (Name = 'tthread.createanonymousthread') or (Name = 'ttask.run') or (Name = 'ttask.create') or
-        (Name = 'ttask.future') then
-        for Arg := 1 to ANode.ChildCount - 1 do
-          if ANode[Arg].Kind = TSyntaxKind.AnonymousMethod then
-          begin
-            Body := ANode[Arg].FindChild(TSyntaxKind.Block);
-            if Body <> nil then
-              CheckBody(Body);
-          end;
-    end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      VisitAnonymous(ANode[Index]);
-  end;
-
-  procedure VisitRoutines(ANode: TSyntaxNode);
-  var
-    Index: Integer;
-    Body: TSyntaxNode;
-  begin
-    if ANode.Kind = TSyntaxKind.RoutineDecl then
-    begin
-      if SameText(MethodPart(ANode.Name), 'Execute') and InList(Threads, ClassPart(ANode.Name)) then
-      begin
-        Body := ANode.FindChild(TSyntaxKind.Block);
-        if Body <> nil then
-          CheckBody(Body);
-      end;
-      Exit;
-    end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      VisitRoutines(ANode[Index]);
-  end;
-
 begin
   if AContext.Tree = nil then
     Exit;
   Threads := SharedThreadClasses(AContext);
-  VisitRoutines(AContext.Tree.Root);
-  VisitAnonymous(AContext.Tree.Root);
+  // Iterativ (Bericht M1): erst die Rümpfe sammeln, dann prüfen.
+  Bodies := TList<TSyntaxNode>.Create;
+  try
+    // Execute der Thread-Klassen; eingebettete Routinen darin zählen nicht.
+    AContext.Tree.Root.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      var
+        Found: TSyntaxNode;
+      begin
+        Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
+        if Result or not SameText(MethodPart(ANode.Name), 'Execute') or
+          not InList(Threads, ClassPart(ANode.Name)) then
+          Exit;
+        Found := ANode.FindChild(TSyntaxKind.Block);
+        if Found <> nil then
+          Bodies.Add(Found);
+      end);
+    // Anonyme Methoden als Argument von CreateAnonymousThread, TTask.Run/Create/Future.
+    AContext.Tree.Root.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      var
+        Arg: Integer;
+        Call, Found: TSyntaxNode;
+        Name: string;
+      begin
+        Result := True;
+        if (ANode.Kind <> TSyntaxKind.Call) or (ANode.ChildCount <= 1) then
+          Exit;
+        Call := ANode[0];
+        Name := '';
+        if (Call.Kind = TSyntaxKind.MemberAccess) and (Call.ChildCount = 1) then
+          Name := LowerCase(VariableName(Call[0]) + '.' + Call.Name);
+        if (Name = 'tthread.createanonymousthread') or (Name = 'ttask.run') or (Name = 'ttask.create') or
+          (Name = 'ttask.future') then
+          for Arg := 1 to ANode.ChildCount - 1 do
+            if ANode[Arg].Kind = TSyntaxKind.AnonymousMethod then
+            begin
+              Found := ANode[Arg].FindChild(TSyntaxKind.Block);
+              if Found <> nil then
+                Bodies.Add(Found);
+            end;
+      end);
+    for Body in Bodies do
+      CheckBody(Body);
+  finally
+    Bodies.Free;
+  end;
 end;
 
 { TLockWithoutFinallyRule }
@@ -483,24 +499,24 @@ end;
 
 /// <summary>True, wenn ein Finally-Block von ATry die Freigabe mit demselben Schlüssel enthält.</summary>
 function ReleasesIn(const AText: string; ATry: TSyntaxNode; const ARelease, AKey: string): Boolean;
-
-  function Search(ANode: TSyntaxNode): Boolean;
-  var
-    Index: Integer;
-  begin
-    if IsRelease(AText, ANode, ARelease, AKey) then
-      Exit(True);
-    for Index := 0 to ANode.ChildCount - 1 do
-      if Search(ANode[Index]) then
-        Exit(True);
-    Result := False;
-  end;
-
 var
   Final: TSyntaxNode;
+  Text, Release, Key: string;
 begin
   Final := ATry.FindChild(TSyntaxKind.FinallyBlock);
-  Result := (Final <> nil) and Search(Final);
+  if Final = nil then
+    Exit(False);
+  Text := AText;
+  Release := ARelease;
+  Key := AKey;
+  // Iterativ (Bericht M1).
+  Result := Final.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if IsRelease(Text, ANode, Release, Key) then
+        Exit(TSyntaxSearchStep.Found);
+      Result := TSyntaxSearchStep.Descend;
+    end) <> nil;
 end;
 
 procedure TLockWithoutFinallyRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -568,21 +584,14 @@ var
     end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
-  var
-    Index: Integer;
-  begin
-    if IsStatementList(ANode) then
-      CheckList(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
-  end;
-
+var
+  List: TSyntaxNode;
 begin
   if AContext.Tree = nil then
     Exit;
   Pairs := LockPairs(AContext.Options);
-  Visit(AContext.Tree.Root);
+  for List in StatementLists(AContext.Tree.Root) do
+    CheckList(List);
 end;
 
 { Gemeinsam für FreeOnTerminate }
@@ -666,19 +675,13 @@ procedure TThreadUseAfterFreeOnTerminateRule.Check(const AContext: TRuleContext;
     end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
-  var
-    Index: Integer;
-  begin
-    if IsStatementList(ANode) then
-      CheckList(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
-  end;
-
+var
+  List: TSyntaxNode;
 begin
-  if AContext.Tree <> nil then
-    Visit(AContext.Tree.Root);
+  if AContext.Tree = nil then
+    Exit;
+  for List in StatementLists(AContext.Tree.Root) do
+    CheckList(List);
 end;
 
 { TThreadFreeWithFreeOnTerminateRule }
@@ -715,19 +718,13 @@ procedure TThreadFreeWithFreeOnTerminateRule.Check(const AContext: TRuleContext;
     end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
-  var
-    Index: Integer;
-  begin
-    if IsStatementList(ANode) then
-      CheckList(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
-  end;
-
+var
+  List: TSyntaxNode;
 begin
-  if AContext.Tree <> nil then
-    Visit(AContext.Tree.Root);
+  if AContext.Tree = nil then
+    Exit;
+  for List in StatementLists(AContext.Tree.Root) do
+    CheckList(List);
 end;
 
 { TSynchronizeInDestructorRule }
@@ -738,23 +735,23 @@ begin
     'Synchronize im Destruktor eines Threads');
 end;
 
+type
+  /// <summary>Eintrag der Suche in TSynchronizeInDestructorRule: Knoten und Tiefe der Aufrufe.</summary>
+  TCallDepthEntry = record
+    Node: TSyntaxNode;
+    Depth: Integer;
+  end;
+
+function CallDepthEntry(ANode: TSyntaxNode; ADepth: Integer): TCallDepthEntry;
+begin
+  Result.Node := ANode;
+  Result.Depth := ADepth;
+end;
+
 procedure TSynchronizeInDestructorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Threads: TArray<string>;
   Routines: TArray<TSyntaxNode>;
-
-  procedure CollectRoutines(ANode: TSyntaxNode);
-  var
-    Index: Integer;
-  begin
-    if ANode.Kind = TSyntaxKind.RoutineDecl then
-    begin
-      Routines := Routines + [ANode];
-      Exit;
-    end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      CollectRoutines(ANode[Index]);
-  end;
 
   function FindMethod(const AClass, AMethod: string): TSyntaxNode;
   var
@@ -766,42 +763,53 @@ var
     Result := nil;
   end;
 
-  procedure Search(ANode: TSyntaxNode; const AClass: string; ADepth: Integer);
+  procedure Search(ABody: TSyntaxNode; const AClass: string);
   var
+    Pending: TStack<TCallDepthEntry>;
+    Entry: TCallDepthEntry;
     Index: Integer;
     Call: TMethodCall;
-    Callee, Body: TSyntaxNode;
+    Node, Callee, Body: TSyntaxNode;
   begin
-    if ANode.Kind = TSyntaxKind.AnonymousMethod then
-      Exit;
-    if ((ANode.Kind = TSyntaxKind.MemberAccess) or (ANode.Kind = TSyntaxKind.Identifier)) and
-      SameText(ANode.Name, 'Synchronize') then
-    begin
-      AReport.Add(NameRange(ANode), 'Synchronize im Destruktor eines Threads: der Hauptthread wartet in WaitFor, ' +
-        'der Thread auf Synchronize; beide verklemmen sich', TRuleConfidence.Medium);
-      Exit;
-    end;
-    // Eine Ebene tief in Methoden derselben Klasse, die der Destruktor aufruft.
-    if (ADepth = 0) and TryMethodCall(ANode, Call) and
-      ((Call.Receiver = nil) or SameText(VariableName(Call.Receiver), 'Self')) then
-    begin
-      Callee := FindMethod(AClass, Call.Method);
-      if Callee <> nil then
+    // Iterativ mit eigenem Stapel (Bericht M1); die Kinder rückwärts darauf, damit die Reihenfolge der Treffer die
+    // der früheren Rekursion bleibt.
+    Pending := TStack<TCallDepthEntry>.Create;
+    try
+      Pending.Push(CallDepthEntry(ABody, 0));
+      while Pending.Count > 0 do
       begin
+        Entry := Pending.Pop;
+        Node := Entry.Node;
+        if Node.Kind = TSyntaxKind.AnonymousMethod then
+          Continue;
+        if ((Node.Kind = TSyntaxKind.MemberAccess) or (Node.Kind = TSyntaxKind.Identifier)) and
+          SameText(Node.Name, 'Synchronize') then
+        begin
+          AReport.Add(NameRange(Node), 'Synchronize im Destruktor eines Threads: der Hauptthread wartet in WaitFor, ' +
+            'der Thread auf Synchronize; beide verklemmen sich', TRuleConfidence.Medium);
+          Continue;
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(CallDepthEntry(Node[Index], Entry.Depth));
+        if Entry.Depth > 0 then
+          Continue;
+        // Eine Ebene tief in Methoden derselben Klasse, die der Destruktor aufruft; zuletzt auf den Stapel, damit
+        // sie wie früher vor den Kindern des Aufrufs drankommen.
+        Callee := nil;
+        if TryMethodCall(Node, Call) and ((Call.Receiver = nil) or SameText(VariableName(Call.Receiver), 'Self')) then
+          Callee := FindMethod(AClass, Call.Method)
+        else if (Node.Kind = TSyntaxKind.CallStatement) and (Node.ChildCount = 1) and
+          (Node[0].Kind = TSyntaxKind.Identifier) then
+          Callee := FindMethod(AClass, Node[0].Name);
+        if Callee = nil then
+          Continue;
         Body := Callee.FindChild(TSyntaxKind.Block);
         if Body <> nil then
-          Search(Body, AClass, 1);
+          Pending.Push(CallDepthEntry(Body, 1));
       end;
-    end
-    else if (ADepth = 0) and (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount = 1) and
-      (ANode[0].Kind = TSyntaxKind.Identifier) then
-    begin
-      Callee := FindMethod(AClass, ANode[0].Name);
-      if (Callee <> nil) and (Callee.FindChild(TSyntaxKind.Block) <> nil) then
-        Search(Callee.FindChild(TSyntaxKind.Block), AClass, 1);
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Search(ANode[Index], AClass, ADepth);
   end;
 
 var
@@ -813,13 +821,20 @@ begin
   if Threads = nil then
     Exit;
   Routines := nil;
-  CollectRoutines(AContext.Tree.Root);
+  // Iterativ (Bericht M1); eingebettete Routinen zählen nicht als Methoden.
+  AContext.Tree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
+      if not Result then
+        Routines := Routines + [ANode];
+    end);
   for Routine in Routines do
     if (Pos('destructor', NodeText(AContext.Text, Routine)) = 1) and InList(Threads, ClassPart(Routine.Name)) then
     begin
       Body := Routine.FindChild(TSyntaxKind.Block);
       if Body <> nil then
-        Search(Body, ClassPart(Routine.Name), 0);
+        Search(Body, ClassPart(Routine.Name));
     end;
 end;
 
@@ -832,31 +847,31 @@ begin
 end;
 
 procedure TThreadResumeSuspendRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-
-  procedure Visit(ANode: TSyntaxNode);
-  var
-    Index: Integer;
-    Call: TMethodCall;
-    Range: TTextRange;
-  begin
-    // Nur X.Resume/X.Suspend ohne Argumente: Resume(…) gehört zu anderen Klassen.
-    if TryMethodCall(ANode, Call) and (Call.Call = nil) and (Call.Receiver <> nil) then
+var
+  Report: IRuleReport;
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Report := AReport;
+  // Iterativ (Bericht M1).
+  AContext.Tree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    var
+      Call: TMethodCall;
+      Range: TTextRange;
     begin
+      Result := True;
+      // Nur X.Resume/X.Suspend ohne Argumente: Resume(…) gehört zu anderen Klassen.
+      if not TryMethodCall(ANode, Call) or (Call.Call <> nil) or (Call.Receiver = nil) then
+        Exit;
       Range := NameRange(Call.Member);
       if SameText(Call.Method, 'Resume') then
-        AReport.Add(Range, 'TThread.Resume ist veraltet; einen erzeugten Thread mit Start starten',
+        Report.Add(Range, 'TThread.Resume ist veraltet; einen erzeugten Thread mit Start starten',
           TRuleConfidence.High, [TRuleFix.Create('Durch Start ersetzen', [TRuleEdit.Create(Range, 'Start')], True)])
       else if SameText(Call.Method, 'Suspend') then
-        AReport.Add(Range, 'TThread.Suspend ist veraltet und kann den Thread mitten in einer Sperre anhalten; ' +
+        Report.Add(Range, 'TThread.Suspend ist veraltet und kann den Thread mitten in einer Sperre anhalten; ' +
           'stattdessen mit einem Ereignis (TEvent) warten', TRuleConfidence.High);
-    end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
-  end;
-
-begin
-  if AContext.Tree <> nil then
-    Visit(AContext.Tree.Root);
+    end);
 end;
 
 procedure RegisterConcurrencyRules(const ARegistry: TRuleRegistry);

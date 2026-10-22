@@ -181,36 +181,40 @@ begin
 end;
 
 procedure TComponentModel.Collect(ANode: TSyntaxNode);
-var
-  Index, Dot: Integer;
-  Info: TClassInfo;
-  Method: TMethodImpl;
 begin
-  if ANode.Kind = TSyntaxKind.TypeDecl then
-  begin
-    Info.Name := ANode.Name;
-    Info.Body := ANode.FindChild(TSyntaxKind.ClassType);
-    if Info.Body <> nil then
-      FClasses.Add(Info);
-  end
-  else if ANode.Kind = TSyntaxKind.RoutineDecl then
-  begin
-    Dot := LastDelimiter('.', ANode.Name);
-    Method.Block := ANode.FindChild(TSyntaxKind.Block);
-    if (Dot > 0) and (Method.Block <> nil) then
+  // Iterativ (Bericht M1).
+  ANode.Walk(
+    function(AVisited: TSyntaxNode): Boolean
+    var
+      Dot: Integer;
+      Info: TClassInfo;
+      Method: TMethodImpl;
     begin
-      Method.ClassName := Copy(ANode.Name, 1, Dot - 1);
-      if Pos('<', Method.ClassName) > 0 then
-        Method.ClassName := Copy(Method.ClassName, 1, Pos('<', Method.ClassName) - 1);
-      Method.MethodName := Copy(ANode.Name, Dot + 1, MaxInt);
-      Method.Decl := ANode;
-      FMethods.Add(Method);
-    end;
-    // Lokale Routinen gehören nicht zur Klasse.
-    Exit;
-  end;
-  for Index := 0 to ANode.ChildCount - 1 do
-    Collect(ANode[Index]);
+      Result := True;
+      if AVisited.Kind = TSyntaxKind.TypeDecl then
+      begin
+        Info.Name := AVisited.Name;
+        Info.Body := AVisited.FindChild(TSyntaxKind.ClassType);
+        if Info.Body <> nil then
+          FClasses.Add(Info);
+      end
+      else if AVisited.Kind = TSyntaxKind.RoutineDecl then
+      begin
+        Dot := LastDelimiter('.', AVisited.Name);
+        Method.Block := AVisited.FindChild(TSyntaxKind.Block);
+        if (Dot > 0) and (Method.Block <> nil) then
+        begin
+          Method.ClassName := Copy(AVisited.Name, 1, Dot - 1);
+          if Pos('<', Method.ClassName) > 0 then
+            Method.ClassName := Copy(Method.ClassName, 1, Pos('<', Method.ClassName) - 1);
+          Method.MethodName := Copy(AVisited.Name, Dot + 1, MaxInt);
+          Method.Decl := AVisited;
+          FMethods.Add(Method);
+        end;
+        // Lokale Routinen gehören nicht zur Klasse.
+        Result := False;
+      end;
+    end);
 end;
 
 function TComponentModel.IsComponent(const AClassName: string): Boolean;
@@ -526,25 +530,32 @@ end;
 /// <summary>Zuweisung an AField im Block (Feld oder Self.Feld); der zugewiesene Ausdruck.</summary>
 function FindAssignment(ANode: TSyntaxNode; const AField: string; out AValue: TSyntaxNode): Boolean;
 var
-  Index: Integer;
-  Target: TSyntaxNode;
+  Field: string;
+  Found: TSyntaxNode;
 begin
-  if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and SameText(ANode.Name, AField) then
-  begin
-    Target := ANode[0];
-    if (Target.Kind = TSyntaxKind.Identifier) or ((Target.Kind = TSyntaxKind.MemberAccess) and
-      (Target.ChildCount = 1) and (Target[0].Kind = TSyntaxKind.Identifier) and SameText(Target[0].Name, 'Self')) then
+  Field := AField;
+  // Iterativ (Bericht M1); out-Parameter lassen sich nicht in der anonymen Methode verwenden.
+  Found := ANode.Search(
+    function(AVisited: TSyntaxNode): TSyntaxSearchStep
+    var
+      Target: TSyntaxNode;
     begin
-      AValue := ANode[1];
-      Exit(True);
-    end;
-  end;
-  if ANode.Kind = TSyntaxKind.AnonymousMethod then
-    Exit(False);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if FindAssignment(ANode[Index], AField, AValue) then
-      Exit(True);
-  Result := False;
+      if (AVisited.Kind = TSyntaxKind.AssignStatement) and (AVisited.ChildCount = 2) and
+        SameText(AVisited.Name, Field) then
+      begin
+        Target := AVisited[0];
+        if (Target.Kind = TSyntaxKind.Identifier) or ((Target.Kind = TSyntaxKind.MemberAccess) and
+          (Target.ChildCount = 1) and (Target[0].Kind = TSyntaxKind.Identifier) and
+          SameText(Target[0].Name, 'Self')) then
+          Exit(TSyntaxSearchStep.Found);
+      end;
+      if AVisited.Kind = TSyntaxKind.AnonymousMethod then
+        Exit(TSyntaxSearchStep.Skip);
+      Result := TSyntaxSearchStep.Descend;
+    end);
+  Result := Found <> nil;
+  if Result then
+    AValue := Found[1];
 end;
 
 /// <summary>Gleicher Wert? Zahlen werden verglichen ($-Hex wie dezimal), sonst der Text.</summary>
@@ -775,14 +786,17 @@ end;
 
 procedure CollectPixels(ANode: TSyntaxNode; AList: TList<TSyntaxNode>);
 var
-  Index: Integer;
+  List: TList<TSyntaxNode>;
 begin
-  if ANode.Kind = TSyntaxKind.AnonymousMethod then
-    Exit;
-  if IsPixelLiteral(ANode) and not Excluded(ANode) then
-    AList.Add(ANode);
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectPixels(ANode[Index], AList);
+  List := AList;
+  // Iterativ (Bericht M1).
+  ANode.Walk(
+    function(AVisited: TSyntaxNode): Boolean
+    begin
+      Result := AVisited.Kind <> TSyntaxKind.AnonymousMethod;
+      if Result and IsPixelLiteral(AVisited) and not Excluded(AVisited) then
+        List.Add(AVisited);
+    end);
 end;
 
 procedure TComponentFixedPixelsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -841,23 +855,28 @@ end;
 
 procedure CollectColors(ANode: TSyntaxNode; AList: TList<TSyntaxNode>);
 var
-  Index: Integer;
+  List: TList<TSyntaxNode>;
 begin
-  if ANode.Kind = TSyntaxKind.AnonymousMethod then
-    Exit;
-  // RGB(…) und TColor(…)
-  if (ANode.Kind = TSyntaxKind.Call) and IsIn(ANode.Name, ['RGB', 'TColor']) then
-  begin
-    AList.Add(ANode);
-    Exit;
-  end;
-  // $00BBGGRR oder eine Zahl, die einer …Color-Eigenschaft zugewiesen wird
-  if (ANode.Kind = TSyntaxKind.Literal) and (ANode.Name <> '') and CharInSet(ANode.Name[1], ['$', '0'..'9']) and
-    (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.AssignStatement) and
-    EndsText('Color', ANode.Parent.Name) then
-    AList.Add(ANode);
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectColors(ANode[Index], AList);
+  List := AList;
+  // Iterativ (Bericht M1).
+  ANode.Walk(
+    function(AVisited: TSyntaxNode): Boolean
+    begin
+      Result := AVisited.Kind <> TSyntaxKind.AnonymousMethod;
+      if not Result then
+        Exit;
+      // RGB(…) und TColor(…)
+      if (AVisited.Kind = TSyntaxKind.Call) and IsIn(AVisited.Name, ['RGB', 'TColor']) then
+      begin
+        List.Add(AVisited);
+        Exit(False);
+      end;
+      // $00BBGGRR oder eine Zahl, die einer …Color-Eigenschaft zugewiesen wird
+      if (AVisited.Kind = TSyntaxKind.Literal) and (AVisited.Name <> '') and
+        CharInSet(AVisited.Name[1], ['$', '0'..'9']) and (AVisited.Parent <> nil) and
+        (AVisited.Parent.Kind = TSyntaxKind.AssignStatement) and EndsText('Color', AVisited.Parent.Name) then
+        List.Add(AVisited);
+    end);
 end;
 
 procedure TComponentHardcodedColorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

@@ -444,6 +444,34 @@ begin
   Result := (ANode.StartOffset <= AOffset) and (AOffset <= ANode.EndOffset);
 end;
 
+/// <summary>Legt die Kinder von ANode bis vor das erste, das hinter AOffset beginnt, rückwärts auf APending:
+/// So kommen sie in Quelltextreihenfolge wieder herunter wie in der früheren Rekursion (Bericht M1).</summary>
+procedure PushChildrenBefore(APending: TStack<TSyntaxNode>; ANode: TSyntaxNode; AOffset: Integer);
+var
+  Count, Index: Integer;
+begin
+  Count := 0;
+  while (Count < ANode.ChildCount) and (ANode[Count].StartOffset <= AOffset) do
+    Inc(Count);
+  for Index := Count - 1 downto 0 do
+    APending.Push(ANode[Index]);
+end;
+
+/// <summary>Legt die Kinder von ANode, die vor AOffset beginnen und nicht vor AOffset enden, rückwärts auf
+/// APending (Bericht M1).</summary>
+procedure PushChildrenAround(APending: TStack<TSyntaxNode>; ANode: TSyntaxNode; AOffset: Integer);
+var
+  Index: Integer;
+  Child: TSyntaxNode;
+begin
+  for Index := ANode.ChildCount - 1 downto 0 do
+  begin
+    Child := ANode[Index];
+    if (Child.StartOffset < AOffset) and (AOffset <= Child.EndOffset) then
+      APending.Push(Child);
+  end;
+end;
+
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
   if A.Line <> B.Line then
@@ -1488,31 +1516,26 @@ begin
 end;
 
 function TNameResolver.LocalOverloads(const ASymbol: TResolvedSymbol): TArray<TResolvedSymbol>;
-
-  function Search(ANode: TSyntaxNode): TSyntaxNode;
-  var
-    Index: Integer;
-  begin
-    if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.StartPos = ASymbol.Range.StartPos) and
-      SameText(ANode.Name, ASymbol.Name) then
-      Exit(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-    begin
-      Result := Search(ANode[Index]);
-      if Result <> nil then
-        Exit;
-    end;
-    Result := nil;
-  end;
-
 var
   Node, Parent, Sibling: TSyntaxNode;
   Index: Integer;
+  StartPos: TTextPosition;
+  Name: string;
 begin
   Result := [ASymbol];
   if (ASymbol.Kind <> TResolvedKind.Local) or (ASymbol.SymbolKind <> TIndexSymbolKind.Routine) or (FTree = nil) then
     Exit;
-  Node := Search(FTree.Root);
+  StartPos := ASymbol.Range.StartPos;
+  Name := ASymbol.Name;
+  // Iterativ (Bericht M1).
+  Node := FTree.Root.Search(
+    function(AVisited: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if (AVisited.Kind = TSyntaxKind.RoutineDecl) and (AVisited.StartPos = StartPos) and
+        SameText(AVisited.Name, Name) then
+        Exit(TSyntaxSearchStep.Found);
+      Result := TSyntaxSearchStep.Descend;
+    end);
   if (Node = nil) or (Node.Parent = nil) then
     Exit;
   Parent := Node.Parent;
@@ -1633,36 +1656,40 @@ end;
 function TNameResolver.LookupInlineVars(ANode: TSyntaxNode; const AName: string;
   out AResult: TResolvedSymbol): Boolean;
 var
-  Index: Integer;
+  Pending: TStack<TSyntaxNode>;
   Child: TSyntaxNode;
   Name: string;
 begin
-  // Inline-Variablen gelten ab ihrer Deklaration; verschachtelte Routinen nicht durchsuchen.
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    Child := ANode[Index];
-    if Child.StartOffset > FOffset then
-      Break;
-    if Child.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
+  // Inline-Variablen gelten ab ihrer Deklaration; verschachtelte Routinen nicht durchsuchen. Iterativ mit eigenem
+  // Stapel (Bericht M1): Der Weg zum Cursor kann durch lange Ausdrucksketten führen.
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    PushChildrenBefore(Pending, ANode, FOffset);
+    while Pending.Count > 0 do
     begin
-      for Name in Child.Name.Split([',']) do
-        if SameText(Name.Trim, AName) then
+      Child := Pending.Pop;
+      if Child.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
+      begin
+        for Name in Child.Name.Split([',']) do
+          if SameText(Name.Trim, AName) then
+          begin
+            AResult := FromNode(Child, Name.Trim, TIndexSymbolKind.Variable, False);
+            Exit(True);
+          end;
+      end
+      else if (Child.Kind <> TSyntaxKind.RoutineDecl) and Contains(Child, FOffset) then
+      begin
+        // for var I := ...: gilt nur in der Schleife.
+        if (Child.Kind = TSyntaxKind.ForStatement) and SameText(Child.Name, AName) and IsForVar(Child) then
         begin
-          AResult := FromNode(Child, Name.Trim, TIndexSymbolKind.Variable, False);
+          AResult := FromNode(Child, Child.Name, TIndexSymbolKind.Variable, False);
           Exit(True);
         end;
-    end
-    else if (Child.Kind <> TSyntaxKind.RoutineDecl) and Contains(Child, FOffset) then
-    begin
-      // for var I := ...: gilt nur in der Schleife.
-      if (Child.Kind = TSyntaxKind.ForStatement) and SameText(Child.Name, AName) and IsForVar(Child) then
-      begin
-        AResult := FromNode(Child, Child.Name, TIndexSymbolKind.Variable, False);
-        Exit(True);
+        PushChildrenBefore(Pending, Child, FOffset);
       end;
-      if LookupInlineVars(Child, AName, AResult) then
-        Exit(True);
     end;
+  finally
+    Pending.Free;
   end;
   Result := False;
 end;
@@ -1862,56 +1889,47 @@ begin
 end;
 
 function TNameResolver.FindReceiver(AEndOffset: Integer): TSyntaxNode;
-
-  function Search(ANode: TSyntaxNode): TSyntaxNode;
-  var
-    Index: Integer;
-    Child: TSyntaxNode;
-  begin
-    // Äußerster Ausdruck, der genau vor dem Punkt endet.
-    if (ANode.Kind in ExpressionKinds) and (ANode.EndOffset = AEndOffset) then
-      Exit(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-    begin
-      Child := ANode[Index];
-      if (Child.StartOffset < AEndOffset) and (AEndOffset <= Child.EndOffset) then
-      begin
-        Result := Search(Child);
-        if Result <> nil then
-          Exit;
-      end;
-    end;
-    Result := nil;
-  end;
-
+var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
 begin
-  Result := Search(FTree.Root);
+  // Äußerster Ausdruck, der genau vor dem Punkt endet. Iterativ mit eigenem Stapel (Bericht M1).
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(FTree.Root);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if (Node.Kind in ExpressionKinds) and (Node.EndOffset = AEndOffset) then
+        Exit(Node);
+      PushChildrenAround(Pending, Node, AEndOffset);
+    end;
+  finally
+    Pending.Free;
+  end;
+  Result := nil;
 end;
 
 function TNameResolver.FindCall(ACalleeEnd: Integer): TSyntaxNode;
-
-  function Search(ANode: TSyntaxNode): TSyntaxNode;
-  var
-    Index: Integer;
-    Child: TSyntaxNode;
-  begin
-    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) and (ANode[0].EndOffset = ACalleeEnd) then
-      Exit(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-    begin
-      Child := ANode[Index];
-      if (Child.StartOffset < ACalleeEnd) and (ACalleeEnd <= Child.EndOffset) then
-      begin
-        Result := Search(Child);
-        if Result <> nil then
-          Exit;
-      end;
-    end;
-    Result := nil;
-  end;
-
+var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
 begin
-  Result := Search(FTree.Root);
+  // Iterativ mit eigenem Stapel (Bericht M1).
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(FTree.Root);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) and (Node[0].EndOffset = ACalleeEnd) then
+        Exit(Node);
+      PushChildrenAround(Pending, Node, ACalleeEnd);
+    end;
+  finally
+    Pending.Free;
+  end;
+  Result := nil;
 end;
 
 function TNameResolver.ArgTypes(ANode: TSyntaxNode; AFirst: Integer): TArray<string>;
@@ -2519,24 +2537,28 @@ end;
 procedure TNameResolver.CollectInlineVars(ANode: TSyntaxNode; AList: TList<TResolvedSymbol>;
   ASeen: TDictionary<string, Boolean>);
 var
-  Index: Integer;
+  Pending: TStack<TSyntaxNode>;
   Child: TSyntaxNode;
   Name: string;
 begin
-  // Wie LookupInlineVars: nur bis zum Cursor, nicht in verschachtelte Routinen.
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    Child := ANode[Index];
-    if Child.StartOffset > FOffset then
-      Break;
-    if Child.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
+  // Wie LookupInlineVars: nur bis zum Cursor, nicht in verschachtelte Routinen; iterativ (Bericht M1).
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    PushChildrenBefore(Pending, ANode, FOffset);
+    while Pending.Count > 0 do
     begin
-      if Child.EndOffset <= FOffset then
-        for Name in Child.Name.Split([',']) do
-          AddCandidate(AList, ASeen, FromNode(Child, Name.Trim, TIndexSymbolKind.Variable, False));
-    end
-    else if (Child.Kind <> TSyntaxKind.RoutineDecl) and Contains(Child, FOffset) then
-      CollectInlineVars(Child, AList, ASeen);
+      Child := Pending.Pop;
+      if Child.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
+      begin
+        if Child.EndOffset <= FOffset then
+          for Name in Child.Name.Split([',']) do
+            AddCandidate(AList, ASeen, FromNode(Child, Name.Trim, TIndexSymbolKind.Variable, False));
+      end
+      else if (Child.Kind <> TSyntaxKind.RoutineDecl) and Contains(Child, FOffset) then
+        PushChildrenBefore(Pending, Child, FOffset);
+    end;
+  finally
+    Pending.Free;
   end;
 end;
 

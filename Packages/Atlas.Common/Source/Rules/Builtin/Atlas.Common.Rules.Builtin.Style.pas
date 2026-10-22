@@ -61,6 +61,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
@@ -120,20 +121,23 @@ end;
 /// <summary>Liegt APosition in einem begin … end?</summary>
 function InStatements(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
 var
-  Index: Integer;
-  Child: TSyntaxNode;
+  Root: TSyntaxNode;
+  Position: TTextPosition;
 begin
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    Child := ANode[Index];
-    if not (Before(Child.StartPos, APosition) and Before(APosition, Child.EndPos)) then
-      Continue;
-    if Child.Kind = TSyntaxKind.Block then
-      Exit(True);
-    if InStatements(Child, APosition) then
-      Exit(True);
-  end;
-  Result := False;
+  Root := ANode;
+  Position := APosition;
+  // Iterativ (Bericht M1): Der Weg zur Position kann durch lange Ausdrucksketten führen.
+  Result := ANode.Search(
+    function(AVisited: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if AVisited = Root then
+        Exit(TSyntaxSearchStep.Descend);
+      if not (Before(AVisited.StartPos, Position) and Before(Position, AVisited.EndPos)) then
+        Exit(TSyntaxSearchStep.Skip);
+      if AVisited.Kind = TSyntaxKind.Block then
+        Exit(TSyntaxSearchStep.Found);
+      Result := TSyntaxSearchStep.Descend;
+    end) <> nil;
 end;
 
 /// <summary>Text der Tokens AFirst..ALast ohne Kommentare, mit einem Leerzeichen wo im Quelltext Abstand war.</summary>
@@ -321,50 +325,79 @@ begin
   Result := TRuleDescriptor.Create('raise-in-finally', TRuleSeverity.Warning, 'raise in einem finally-Block');
 end;
 
-procedure VisitFinally(ANode: TSyntaxNode; AInFinally: Boolean; const AReport: IRuleReport);
-var
-  Index: Integer;
-  Child: TSyntaxNode;
-  HasExcept: Boolean;
+type
+  /// <summary>Eintrag von VisitFinally: Knoten und ob er in einem finally-Block liegt.</summary>
+  TFinallyEntry = record
+    Node: TSyntaxNode;
+    InFinally: Boolean;
+  end;
+
+function FinallyEntry(ANode: TSyntaxNode; AInFinally: Boolean): TFinallyEntry;
 begin
-  if ANode.Kind = TSyntaxKind.RaiseStatement then
-  begin
-    if AInFinally then
-      AReport.Add(TTextRange.Create(ANode.StartPos, TTextPosition.Create(ANode.StartPos.Line,
-        ANode.StartPos.Character + Length('raise'))), 'raise im finally-Block überdeckt eine laufende Ausnahme',
-        TRuleConfidence.High);
-    Exit;
-  end;
-  // Anonyme Methoden und eingebettete Routinen laufen später bzw. eigenständig.
-  if ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
-    AInFinally := False;
-  if ANode.Kind = TSyntaxKind.TryStatement then
-  begin
-    HasExcept := False;
-    for Index := 0 to ANode.ChildCount - 1 do
-      if ANode[Index].Kind = TSyntaxKind.ExceptBlock then
-        HasExcept := True;
-    for Index := 0 to ANode.ChildCount - 1 do
+  Result.Node := ANode;
+  Result.InFinally := AInFinally;
+end;
+
+procedure VisitFinally(ARoot: TSyntaxNode; const AReport: IRuleReport);
+var
+  Pending: TStack<TFinallyEntry>;
+  Entry: TFinallyEntry;
+  Node, Child: TSyntaxNode;
+  Index: Integer;
+  InFinally, HasExcept: Boolean;
+begin
+  // Iterativ (Bericht M1) mit eigenem Stapel; die Kinder rückwärts darauf, damit die Reihenfolge der Treffer die der
+  // früheren Rekursion bleibt.
+  Pending := TStack<TFinallyEntry>.Create;
+  try
+    Pending.Push(FinallyEntry(ARoot, False));
+    while Pending.Count > 0 do
     begin
-      Child := ANode[Index];
-      if Child.Kind = TSyntaxKind.FinallyBlock then
-        VisitFinally(Child, True, AReport)
-      else if Child.Kind = TSyntaxKind.ExceptBlock then
-        VisitFinally(Child, AInFinally, AReport)
-      else
-        // Im try-Teil fängt ein eigenes except die Ausnahme ab.
-        VisitFinally(Child, AInFinally and not HasExcept, AReport);
+      Entry := Pending.Pop;
+      Node := Entry.Node;
+      InFinally := Entry.InFinally;
+      if Node.Kind = TSyntaxKind.RaiseStatement then
+      begin
+        if InFinally then
+          AReport.Add(TTextRange.Create(Node.StartPos, TTextPosition.Create(Node.StartPos.Line,
+            Node.StartPos.Character + Length('raise'))), 'raise im finally-Block überdeckt eine laufende Ausnahme',
+            TRuleConfidence.High);
+        Continue;
+      end;
+      // Anonyme Methoden und eingebettete Routinen laufen später bzw. eigenständig.
+      if Node.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+        InFinally := False;
+      if Node.Kind = TSyntaxKind.TryStatement then
+      begin
+        HasExcept := False;
+        for Index := 0 to Node.ChildCount - 1 do
+          if Node[Index].Kind = TSyntaxKind.ExceptBlock then
+            HasExcept := True;
+        for Index := Node.ChildCount - 1 downto 0 do
+        begin
+          Child := Node[Index];
+          if Child.Kind = TSyntaxKind.FinallyBlock then
+            Pending.Push(FinallyEntry(Child, True))
+          else if Child.Kind = TSyntaxKind.ExceptBlock then
+            Pending.Push(FinallyEntry(Child, InFinally))
+          else
+            // Im try-Teil fängt ein eigenes except die Ausnahme ab.
+            Pending.Push(FinallyEntry(Child, InFinally and not HasExcept));
+        end;
+        Continue;
+      end;
+      for Index := Node.ChildCount - 1 downto 0 do
+        Pending.Push(FinallyEntry(Node[Index], InFinally));
     end;
-    Exit;
+  finally
+    Pending.Free;
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
-    VisitFinally(ANode[Index], AInFinally, AReport);
 end;
 
 procedure TRaiseInFinallyRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   if (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) then
-    VisitFinally(AContext.Tree.Root, False, AReport);
+    VisitFinally(AContext.Tree.Root, AReport);
 end;
 
 { TRedundantParensRule }
@@ -446,7 +479,8 @@ begin
   Result := -1;
 end;
 
-procedure VisitBlocks(ANode: TSyntaxNode; const ATokens: TTokens; const AReport: IRuleReport);
+/// <summary>Meldet begin/end um eine einzelne Anweisung unter den Kindern von ANode (nicht tiefer).</summary>
+procedure CheckBlocks(ANode: TSyntaxNode; const ATokens: TTokens; const AReport: IRuleReport);
 var
   Index, First, Last, BodyFirst, BodyLast: Integer;
   Child, Statement: TSyntaxNode;
@@ -455,7 +489,6 @@ begin
   for Index := 0 to ANode.ChildCount - 1 do
   begin
     Child := ANode[Index];
-    VisitBlocks(Child, ATokens, AReport);
     if (Child.Kind <> TSyntaxKind.Block) or (Child.ChildCount <> 1) or not (ANode.Kind in [TSyntaxKind.IfStatement,
       TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement, TSyntaxKind.WithStatement,
       TSyntaxKind.CaseItem, TSyntaxKind.CaseElse, TSyntaxKind.ExceptionHandler]) then
@@ -494,9 +527,21 @@ begin
 end;
 
 procedure TRedundantBeginEndRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TTokens;
+  Report: IRuleReport;
 begin
-  if (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) then
-    VisitBlocks(AContext.Tree.Root, AContext.Tree.Tokens, AReport);
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Report := AReport;
+  // Iterativ (Bericht M1): Jeder Knoten prüft seine Kinder; die Treffer sortiert die Engine nach Position.
+  AContext.Tree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      CheckBlocks(ANode, Tokens, Report);
+      Result := True;
+    end);
 end;
 
 { TWithStatementRule }
@@ -506,27 +551,31 @@ begin
   Result := TRuleDescriptor.Create('with-statement', TRuleSeverity.Hint, 'with-Anweisung');
 end;
 
-procedure VisitWith(ANode: TSyntaxNode; const ATokens: TTokens; const AReport: IRuleReport);
-var
-  Index, Keyword: Integer;
-begin
-  if ANode.Kind = TSyntaxKind.WithStatement then
-  begin
-    // Gemeldet wird das Schlüsselwort; die Aktion "with auflösen" liefert #50.
-    Keyword := TokenIndexAt(ATokens, ANode.StartPos);
-    if (Keyword >= 0) and ATokens[Keyword].IsKeyword('with') then
-      AReport.Add(RangeOf(ATokens, Keyword, Keyword),
-        'with verdeckt, zu welchem Objekt ein Bezeichner gehört; besser den Ausdruck ausschreiben',
-        TRuleConfidence.High);
-  end;
-  for Index := 0 to ANode.ChildCount - 1 do
-    VisitWith(ANode[Index], ATokens, AReport);
-end;
-
 procedure TWithStatementRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TTokens;
+  Report: IRuleReport;
 begin
-  if (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) then
-    VisitWith(AContext.Tree.Root, AContext.Tree.Tokens, AReport);
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Report := AReport;
+  // Iterativ (Bericht M1).
+  AContext.Tree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    var
+      Keyword: Integer;
+    begin
+      Result := True;
+      if ANode.Kind <> TSyntaxKind.WithStatement then
+        Exit;
+      // Gemeldet wird das Schlüsselwort; die Aktion "with auflösen" liefert #50.
+      Keyword := TokenIndexAt(Tokens, ANode.StartPos);
+      if (Keyword >= 0) and Tokens[Keyword].IsKeyword('with') then
+        Report.Add(RangeOf(Tokens, Keyword, Keyword),
+          'with verdeckt, zu welchem Objekt ein Bezeichner gehört; besser den Ausdruck ausschreiben',
+          TRuleConfidence.High);
+    end);
 end;
 
 procedure RegisterStyleRules(const ARegistry: TRuleRegistry);
