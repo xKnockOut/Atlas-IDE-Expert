@@ -4119,3 +4119,15 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## GetMem oder New ohne Freigabe (#1047)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JM1 | Das Beispiel aus #1047: lokale Variable `Puffer: PByte`, `GetMem(Puffer, Groesse);`, danach `Strom.ReadBuffer(Puffer^, Groesse);` und `Ergebnis := Pruefsumme(Puffer, Groesse);` | Warnung `raw-memory-leak` an `GetMem(Puffer, Groesse)`: „Puffer wird mit GetMem angelegt, aber nie freigegeben.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JM2 | Schnellkorrektur „try … finally FreeMem(Puffer) end einfügen“, danach Strg+Z | Die folgenden Anweisungen stehen in `try … finally FreeMem(Puffer); end;`, keine Meldung mehr; ein Undo-Schritt |
+| JM3 | `New(Satz)` bzw. `Text := StrAlloc(N)` ohne Freigabe | Meldung mit New bzw. StrAlloc; Korrektur mit `Dispose(Satz)` bzw. `StrDispose(Text)` |
+| JM4 | Mit `FreeMem(P)` ohne try/finally, `ReallocMem(P, 0)`, `Result := P`, `FListe.Add(P)`, `@P`, P in einer anonymen Methode oder lokalen Routine | Keine Meldung von `raw-memory-leak` (ohne try/finally meldet `pair-without-finally`) |
+| JM5 | `"raw-memory-leak": "off"` bzw. `exclude` mit der Datei | Keine Meldung |

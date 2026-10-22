@@ -6,6 +6,8 @@
 // Owner, Threads, selfRegistering, Korrektur mit try/finally.
 // Tests der Regel self-as-interface-in-constructor (#950): eigene Referenzzählung im Konstruktor,
 // TInterfacedObject nach inherited AfterConstruction, Formen der Weitergabe, Korrektur.
+// Tests der Regel raw-memory-leak (#1047): Beispiel mit Korrektur, Belegungen und Freigaben,
+// Weitergabe, stille Fälle, Abschalten.
 
 interface
 
@@ -54,6 +56,19 @@ type
     procedure SelfAsInterfaceAfterConstruction;
     [Test]
     procedure SelfAsInterfaceOffAndExclude;
+  end;
+
+  [TestFixture]
+  TRawMemoryLeakTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure AllocatorsAndReleases;
+    [Test]
+    procedure EscapesAreSilent;
+    [Test]
+    procedure OffAndExclude;
   end;
 
 implementation
@@ -629,7 +644,128 @@ begin
   Assert.IsFalse(TSelfAsInterfaceInConstructorRule.IsInterfaceType('Integer'));
 end;
 
+{ TRawMemoryLeakTests }
+
+function Puffer(const AVars, ABody: string): string;
+begin
+  Result :=
+    'unit Pruefung;'#10 +
+    'interface'#10 +
+    'uses System.Classes;'#10 +
+    'implementation'#10 +
+    'function Pruefsumme(P: Pointer; N: Integer): Integer;'#10 +
+    'begin'#10 +
+    '  Result := N;'#10 +
+    'end;'#10 +
+    'function Lesen(Strom: TStream; Groesse: Integer): Integer;'#10 +
+    'var'#10 +
+    AVars +
+    'begin'#10 +
+    ABody +
+    'end;'#10 +
+    'end.';
+end;
+
+procedure TRawMemoryLeakTests.IssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Puffer('  Puffer: PByte;'#10, '  GetMem(Puffer, Groesse);'#10'  Strom.ReadBuffer(Puffer^, Groesse);'#10 +
+    '  Result := Pruefsumme(Puffer, Groesse);'#10);
+  Findings := TRuleAssert.Findings(TRawMemoryLeakRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('raw-memory-leak', Findings[0].RuleId);
+  Assert.AreEqual('Puffer wird mit GetMem angelegt, aber nie freigegeben.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(12, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('try … finally FreeMem(Puffer) end einfügen', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(Puffer('  Puffer: PByte;'#10, '  GetMem(Puffer, Groesse);'#10'  try'#10 +
+    '    Strom.ReadBuffer(Puffer^, Groesse);'#10'    Result := Pruefsumme(Puffer, Groesse);'#10'  finally'#10 +
+    '    FreeMem(Puffer);'#10'  end;'#10), Fixed);
+  AssertParses(Fixed);
+  TRuleAssert.Silent(TRawMemoryLeakRule.Create, Fixed);
+end;
+
+procedure TRawMemoryLeakTests.AllocatorsAndReleases;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TRawMemoryLeakRule.Create, Puffer('  Satz: PSatz;'#10,
+    '  New(Satz);'#10'  Satz^.Wert := 1;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Satz wird mit New angelegt, aber nie freigegeben.', Findings[0].Message);
+  Assert.AreEqual('try … finally Dispose(Satz) end einfügen', Findings[0].Fixes[0].Title);
+  Findings := TRuleAssert.Findings(TRawMemoryLeakRule.Create, Puffer('  Text: PChar;'#10,
+    '  Text := StrAlloc(Groesse);'#10'  Result := Pruefsumme(PByte(Text) + 1, Groesse);'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Text wird mit StrAlloc angelegt, aber nie freigegeben.', Findings[0].Message);
+  Assert.AreEqual('try … finally StrDispose(Text) end einfügen', Findings[0].Fixes[0].Title);
+  Source := Puffer('  Text: PChar;'#10, '  Text := StrAlloc(Groesse);'#10);
+  Findings := TRuleAssert.Findings(TRawMemoryLeakRule.Create, Source);
+  // Letzte Anweisung: leerer try-Block.
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.IsTrue(Pos('  try'#10'  finally'#10'    StrDispose(Text);'#10, Fixed) > 0, Fixed);
+  AssertParses(Fixed);
+  TRuleAssert.Reports(TRawMemoryLeakRule.Create, Puffer('  P: Pointer;'#10, '  P := AllocMem(Groesse);'#10));
+  // Freigegeben, auch ohne try/finally (das meldet pair-without-finally) oder über ReallocMem(P, 0).
+  TRuleAssert.Silent(TRawMemoryLeakRule.Create, Puffer('  P: Pointer;'#10,
+    '  GetMem(P, Groesse);'#10'  Strom.ReadBuffer(P^, Groesse);'#10'  FreeMem(P);'#10));
+  TRuleAssert.Silent(TRawMemoryLeakRule.Create, Puffer('  P: Pointer;'#10,
+    '  GetMem(P, Groesse);'#10'  if Groesse > 0 then'#10'    ReallocMem(P, 0);'#10));
+  TRuleAssert.Silent(TRawMemoryLeakRule.Create, Puffer('  Satz: PSatz;'#10,
+    '  New(Satz);'#10'  try'#10'  finally'#10'    Dispose(Satz);'#10'  end;'#10));
+  // Eigene Freigaberoutine.
+  TRuleAssert.Silent(TRawMemoryLeakRule.Create, Puffer('  P: Pointer;'#10,
+    '  GetMem(P, Groesse);'#10'  PufferFreigeben(P);'#10));
+end;
+
+procedure TRawMemoryLeakTests.EscapesAreSilent;
+begin
+  // Zurückgegeben, in einem Feld oder einer Liste gespeichert, Adresse weitergegeben, eingefangen.
+  TRuleAssert.Silent(TRawMemoryLeakRule.Create, Puffer('  P: Pointer;'#10,
+    '  GetMem(P, Groesse);'#10'  Exit(Integer(P));'#10));
+  TRuleAssert.Silent(TRawMemoryLeakRule.Create, Puffer('  P: Pointer;'#10,
+    '  GetMem(P, Groesse);'#10'  FDaten := P;'#10));
+  TRuleAssert.Silent(TRawMemoryLeakRule.Create, Puffer('  P: Pointer;'#10,
+    '  GetMem(P, Groesse);'#10'  FListe.Add(P);'#10));
+  TRuleAssert.Silent(TRawMemoryLeakRule.Create, Puffer('  P: Pointer;'#10,
+    '  GetMem(P, Groesse);'#10'  Merken(@P);'#10));
+  TRuleAssert.Silent(TRawMemoryLeakRule.Create, Puffer('  P: Pointer;'#10,
+    '  GetMem(P, Groesse);'#10'  TThread.Queue(nil, procedure begin Pruefsumme(P, 1); end);'#10));
+  // Neu zugewiesen, absolute oder in einer lokalen Routine benutzt.
+  TRuleAssert.Silent(TRawMemoryLeakRule.Create, Puffer('  P, Q: Pointer;'#10,
+    '  GetMem(P, Groesse);'#10'  Q := P;'#10));
+  TRuleAssert.Silent(TRawMemoryLeakRule.Create, Puffer('  P: Pointer;'#10'  A: NativeInt absolute P;'#10,
+    '  GetMem(P, Groesse);'#10));
+  TRuleAssert.Silent(TRawMemoryLeakRule.Create, Puffer('  P: Pointer;'#10 +
+    '  procedure Aufraeumen;'#10'  begin'#10'    FreeMem(P);'#10'  end;'#10,
+    '  GetMem(P, Groesse);'#10'  Aufraeumen;'#10));
+  // Felder und Parameter sind nicht Sache der Regel.
+  TRuleAssert.Silent(TRawMemoryLeakRule.Create, Puffer('  I: Integer;'#10, '  GetMem(FPuffer, Groesse);'#10));
+end;
+
+procedure TRawMemoryLeakTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Puffer('  P: Pointer;'#10, '  GetMem(P, Groesse);'#10);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TRawMemoryLeakRule.Create, Source, '',
+    'Source/Pruefung.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRawMemoryLeakRule.Create, Source,
+    '{"rules": {"raw-memory-leak": "off"}}', 'Source/Pruefung.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRawMemoryLeakRule.Create, Source,
+    '{"rules": {"raw-memory-leak": {"exclude": ["Source/*.pas"]}}}', 'Source/Pruefung.pas'))));
+  Assert.AreEqual('FreeMem', TRawMemoryLeakRule.ReleaseFor('AllocMem'));
+  Assert.AreEqual('FreeMemory', TRawMemoryLeakRule.ReleaseFor('GetMemory'));
+  Assert.AreEqual('', TRawMemoryLeakRule.ReleaseFor('Unbekannt'));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TOwnershipRulesTests);
+  TDUnitX.RegisterTestFixture(TRawMemoryLeakTests);
 
 end.
