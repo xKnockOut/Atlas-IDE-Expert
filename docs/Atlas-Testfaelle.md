@@ -4131,3 +4131,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | JM3 | `New(Satz)` bzw. `Text := StrAlloc(N)` ohne Freigabe | Meldung mit New bzw. StrAlloc; Korrektur mit `Dispose(Satz)` bzw. `StrDispose(Text)` |
 | JM4 | Mit `FreeMem(P)` ohne try/finally, `ReallocMem(P, 0)`, `Result := P`, `FListe.Add(P)`, `@P`, P in einer anonymen Methode oder lokalen Routine | Keine Meldung von `raw-memory-leak` (ohne try/finally meldet `pair-without-finally`) |
 | JM5 | `"raw-memory-leak": "off"` bzw. `exclude` mit der Datei | Keine Meldung |
+
+## Objekte in einer TStringList ohne Besitz (#1048)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JS1 | Das Beispiel aus #1048: `FKunden := TStringList.Create;` im Konstruktor, `FKunden.AddObject(K.Name, TKunde.Create(K));` in einer Methode | Warnung `stringlist-objects-leak` am AddObject: „FKunden besitzt die Objekte nicht; die TKunde-Objekte werden nie freigegeben.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JS2 | Schnellkorrektur „TStringList.Create(True) setzen“, danach Strg+Z | Die Erzeugung lautet `TStringList.Create(True)`, keine Meldung mehr; ein Undo-Schritt |
+| JS3 | `TStringList.Create(dupIgnore, True, False)` statt `Create` | Korrektur „OwnsObjects := True setzen“ fügt die Zeile nach der Erzeugung ein |
+| JS4 | `LbKunden.Items.AddObject(K.Name, TKunde.Create(K))` mit `LbKunden: TListBox` | Meldung „LbKunden.Items besitzt die Objekte nicht; …“ ohne Korrektur |
+| JS5 | Im Destruktor `for I := 0 to FKunden.Count - 1 do FKunden.Objects[I].Free;`, `TStringList.Create(True)`, `OwnsObjects := True`, `TButton.Create(Self)` als Objekt | Keine Meldung |
+| JS6 | `"stringlist-objects-leak": "off"` bzw. `exclude` mit der Datei | Keine Meldung |

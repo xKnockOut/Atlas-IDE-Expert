@@ -8,6 +8,8 @@
 // TInterfacedObject nach inherited AfterConstruction, Formen der Weitergabe, Korrektur.
 // Tests der Regel raw-memory-leak (#1047): Beispiel mit Korrektur, Belegungen und Freigaben,
 // Weitergabe, stille Fälle, Abschalten.
+// Tests der Regel stringlist-objects-leak (#1048): Beispiel mit Korrektur, lokale Variable, Steuerelemente,
+// besitzende Listen, Freigabe und Weitergabe, Abschalten.
 
 interface
 
@@ -67,6 +69,21 @@ type
     procedure AllocatorsAndReleases;
     [Test]
     procedure EscapesAreSilent;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TStringListObjectsLeakTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure OtherConstructorsAndLocals;
+    [Test]
+    procedure ControlItems;
+    [Test]
+    procedure OwningOrReleasedIsSilent;
     [Test]
     procedure OffAndExclude;
   end;
@@ -764,8 +781,156 @@ begin
   Assert.AreEqual('', TRawMemoryLeakRule.ReleaseFor('Unbekannt'));
 end;
 
+{ TStringListObjectsLeakTests }
+
+/// <summary>Klasse TKundenListe mit FKunden: TStringList; ACreate erzeugt die Liste, ABody füllt sie.</summary>
+function Kundenliste(const ACreate, ABody, AExtra: string): string;
+begin
+  Result :=
+    'unit Kundenliste;'#10 +
+    'interface'#10 +
+    'uses System.Classes, Vcl.StdCtrls;'#10 +
+    'type'#10 +
+    '  TKunde = class'#10 +
+    '    Name: string;'#10 +
+    '    constructor Create(AQuelle: TKunde);'#10 +
+    '  end;'#10 +
+    '  TKundenListe = class'#10 +
+    '    FKunden: TStringList;'#10 +
+    '    LbKunden: TListBox;'#10 +
+    '    constructor Create;'#10 +
+    '    destructor Destroy; override;'#10 +
+    '    procedure Laden(K: TKunde);'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TKunde.Create(AQuelle: TKunde);'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'constructor TKundenListe.Create;'#10 +
+    'begin'#10 +
+    '  ' + ACreate + #10 +
+    'end;'#10 +
+    'destructor TKundenListe.Destroy;'#10 +
+    'begin'#10 +
+    AExtra +
+    '  FKunden.Free;'#10 +
+    '  inherited;'#10 +
+    'end;'#10 +
+    'procedure TKundenListe.Laden(K: TKunde);'#10 +
+    ABody +
+    'end;'#10 +
+    'end.';
+end;
+
+procedure TStringListObjectsLeakTests.IssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Kundenliste('FKunden := TStringList.Create;', 'begin'#10'  FKunden.AddObject(K.Name, TKunde.Create(K));'#10,
+    '');
+  Findings := TRuleAssert.Findings(TStringListObjectsLeakRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('stringlist-objects-leak', Findings[0].RuleId);
+  Assert.AreEqual('FKunden besitzt die Objekte nicht; die TKunde-Objekte werden nie freigegeben.',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(30, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('TStringList.Create(True) setzen', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(Kundenliste('FKunden := TStringList.Create(True);',
+    'begin'#10'  FKunden.AddObject(K.Name, TKunde.Create(K));'#10, ''), Fixed);
+  AssertParses(Fixed);
+  TRuleAssert.Silent(TStringListObjectsLeakRule.Create, Fixed);
+  // Mit leeren Klammern und mit False ebenso.
+  Findings := TRuleAssert.Findings(TStringListObjectsLeakRule.Create, Kundenliste('FKunden := TStringList.Create(False);',
+    'begin'#10'  FKunden.InsertObject(0, K.Name, TKunde.Create(nil));'#10, ''));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(Kundenliste('FKunden := TStringList.Create(True);',
+    'begin'#10'  FKunden.InsertObject(0, K.Name, TKunde.Create(nil));'#10, ''),
+    ApplyFix(Kundenliste('FKunden := TStringList.Create(False);',
+    'begin'#10'  FKunden.InsertObject(0, K.Name, TKunde.Create(nil));'#10, ''), Findings[0].Fixes[0]));
+end;
+
+procedure TStringListObjectsLeakTests.OtherConstructorsAndLocals;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Konstruktor mit anderen Argumenten: OwnsObjects nach der Erzeugung.
+  Source := Kundenliste('FKunden := TStringList.Create(dupIgnore, True, False);',
+    'var'#10'  Neu: TKunde;'#10'begin'#10'  Neu := TKunde.Create(K);'#10'  FKunden.AddObject(Neu.Name, Neu);'#10, '');
+  Findings := TRuleAssert.Findings(TStringListObjectsLeakRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('FKunden besitzt die Objekte nicht; die TKunde-Objekte werden nie freigegeben.',
+    Findings[0].Message);
+  Assert.AreEqual('OwnsObjects := True setzen', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.IsTrue(Pos('  FKunden := TStringList.Create(dupIgnore, True, False);'#10'  FKunden.OwnsObjects := True;'#10,
+    Fixed) > 0, Fixed);
+  AssertParses(Fixed);
+  TRuleAssert.Silent(TStringListObjectsLeakRule.Create, Fixed);
+  // Die lokale Variable wird anderswo gespeichert oder freigegeben: still.
+  TRuleAssert.Silent(TStringListObjectsLeakRule.Create, Kundenliste('FKunden := TStringList.Create;',
+    'var'#10'  Neu: TKunde;'#10'begin'#10'  Neu := TKunde.Create(K);'#10'  FKunden.AddObject(Neu.Name, Neu);'#10 +
+    '  FAlle.Add(Neu);'#10, ''));
+  // Vorhandene Objekte (Parameter) gehören jemand anderem.
+  TRuleAssert.Silent(TStringListObjectsLeakRule.Create, Kundenliste('FKunden := TStringList.Create;',
+    'begin'#10'  FKunden.AddObject(K.Name, K);'#10, ''));
+end;
+
+procedure TStringListObjectsLeakTests.ControlItems;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TStringListObjectsLeakRule.Create, Kundenliste('FKunden := nil;',
+    'begin'#10'  LbKunden.Items.AddObject(K.Name, TKunde.Create(K));'#10, ''));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('LbKunden.Items besitzt die Objekte nicht; die TKunde-Objekte werden nie freigegeben.',
+    Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Im Destruktor über Items.Objects freigegeben: still.
+  TRuleAssert.Silent(TStringListObjectsLeakRule.Create, Kundenliste('FKunden := nil;',
+    'begin'#10'  LbKunden.Items.AddObject(K.Name, TKunde.Create(K));'#10,
+    '  for var I := 0 to LbKunden.Items.Count - 1 do'#10'    LbKunden.Items.Objects[I].Free;'#10));
+end;
+
+procedure TStringListObjectsLeakTests.OwningOrReleasedIsSilent;
+const
+  Add = 'begin'#10'  FKunden.AddObject(K.Name, TKunde.Create(K));'#10;
+begin
+  TRuleAssert.Silent(TStringListObjectsLeakRule.Create, Kundenliste('FKunden := TStringList.Create(True);', Add, ''));
+  TRuleAssert.Silent(TStringListObjectsLeakRule.Create, Kundenliste('FKunden := TStringList.Create; ' +
+    'FKunden.OwnsObjects := True;', Add, ''));
+  TRuleAssert.Silent(TStringListObjectsLeakRule.Create, Kundenliste('FKunden := TStringList.Create;', Add,
+    '  for var I := 0 to FKunden.Count - 1 do'#10'    TKunde(FKunden.Objects[I]).Free;'#10));
+  // Eigene Freigaberoutine bzw. weitergegebene Liste.
+  TRuleAssert.Silent(TStringListObjectsLeakRule.Create, Kundenliste('FKunden := TStringList.Create;', Add,
+    '  ObjekteFreigeben(FKunden);'#10));
+  // Komponenten mit Owner.
+  TRuleAssert.Silent(TStringListObjectsLeakRule.Create, Kundenliste('FKunden := TStringList.Create;',
+    'begin'#10'  FKunden.AddObject(K.Name, TButton.Create(Self));'#10, ''));
+  // Unbekannte Liste (nicht in der Unit erzeugt).
+  TRuleAssert.Silent(TStringListObjectsLeakRule.Create, Kundenliste('FKunden := Fabrik.Liste;', Add, ''));
+end;
+
+procedure TStringListObjectsLeakTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Kundenliste('FKunden := TStringList.Create;', 'begin'#10'  FKunden.AddObject(K.Name, TKunde.Create(K));'#10,
+    '');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringListObjectsLeakRule.Create, Source,
+    '{"rules": {"stringlist-objects-leak": "off"}}', 'Source/Kundenliste.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringListObjectsLeakRule.Create, Source,
+    '{"rules": {"stringlist-objects-leak": {"exclude": ["Source/*.pas"]}}}', 'Source/Kundenliste.pas'))));
+  Assert.AreEqual('fkunden.items', TStringListObjectsLeakRule.KeyOf('Self.FKunden. Items'));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TOwnershipRulesTests);
   TDUnitX.RegisterTestFixture(TRawMemoryLeakTests);
+  TDUnitX.RegisterTestFixture(TStringListObjectsLeakTests);
 
 end.
