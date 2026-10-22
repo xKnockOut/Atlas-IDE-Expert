@@ -34,6 +34,10 @@ type
     /// ARelativePath.</summary>
     class function AutoCreateFindings(ARule: IRule; const ASource, AFormText: string; const AForms: TArray<string>;
       const AConfigJson, ARelativePath: string): TArray<TRuleFinding>; static;
+    /// <summary>Treffer von ARule auf ASource als Datei AFileName (absolut) mit der Unit-Suche AUnits (#1016),
+    /// Einstellungen aus AConfigJson ('' = Vorgaben) unter ARelativePath.</summary>
+    class function UnitFindings(ARule: IRule; const ASource, AFileName: string; const AUnits: IRuleUnitLookup;
+      const AConfigJson, ARelativePath: string): TArray<TRuleFinding>; static;
     /// <summary>Positiver Testfall: genau ACount Treffer.</summary>
     class procedure Reports(ARule: IRule; const ASource: string; ACount: Integer = 1); static;
     /// <summary>Negativer Testfall: kein Treffer.</summary>
@@ -180,6 +184,32 @@ begin
     Context.Tree := Tree;
     Context.FormText := AFormText;
     Context.AutoCreateForms := AForms;
+    Result := TRuleEngine.Run([ARule], Settings, Context);
+  finally
+    Tree.Free;
+  end;
+end;
+
+class function TRuleAssert.UnitFindings(ARule: IRule; const ASource, AFileName: string;
+  const AUnits: IRuleUnitLookup; const AConfigJson, ARelativePath: string): TArray<TRuleFinding>;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+begin
+  if AConfigJson = '' then
+    Settings := TServerSettings.Default
+  else
+    Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  Tree := TPascalParser.Parse(ASource);
+  try
+    Context := Default(TRuleContext);
+    Context.RelativePath := ARelativePath;
+    Context.FileName := AFileName;
+    Context.Text := ASource;
+    Context.Tree := Tree;
+    Context.Units := AUnits;
     Result := TRuleEngine.Run([ARule], Settings, Context);
   finally
     Tree.Free;

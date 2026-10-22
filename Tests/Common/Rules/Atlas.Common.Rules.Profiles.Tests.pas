@@ -191,7 +191,7 @@ const
     'slash-command,sql-write-without-where,string-index-base,stringlist-unsorted,synchronize-in-destructor,task-exception-unobserved,thread-free-with-free-on-terminate,thread-loop-without-terminated,thread-resume-suspend,' +
     'thread-use-after-free-on-terminate,thread-vcl-access,threadvar-managed,transaction-without-rollback,type-used-before-declaration,' +
     'unchecked-conversion,unchecked-enum-cast,unneeded-forward-declaration,unreachable-code,unresolved-identifier,' +
-    'unused-assignment,unused-local,unused-parameter,use-after-free,virtual-instead-of-override,with-statement,' +
+    'unused-assignment,unused-local,unused-parameter,use-after-free,uses-unit-not-found,virtual-instead-of-override,with-statement,' +
     'writeln-in-gui-app';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
@@ -216,7 +216,7 @@ begin
     'security-sql-injection,security-tls-verification-disabled,self-as-interface-in-constructor,self-assignment,setter-recursion,signature-mismatch,sizeof-pointer,' +
     'sql-write-without-where,string-index-base,stringlist-unsorted,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-loop-without-terminated,' +
     'thread-use-after-free-on-terminate,' +
-    'thread-vcl-access,threadvar-managed,transaction-without-rollback,type-used-before-declaration,unchecked-conversion,unchecked-enum-cast,unreachable-code,unresolved-identifier,use-after-free,' +
+    'thread-vcl-access,threadvar-managed,transaction-without-rollback,type-used-before-declaration,unchecked-conversion,unchecked-enum-cast,unreachable-code,unresolved-identifier,use-after-free,uses-unit-not-found,' +
     'virtual-instead-of-override,writeln-in-gui-app',
     ActiveRules('fast'));
   Assert.AreEqual('bidi-control,confusable-identifier,invisible-char,security-command-injection,security-insecure-http,' +

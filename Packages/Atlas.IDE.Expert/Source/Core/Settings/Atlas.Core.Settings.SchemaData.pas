@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1741] of string = (
+  Lines: array[0..1755] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -424,6 +424,20 @@ const
     '                "type": "boolean",',
     '                "default": false,',
     '                "description": "Nur global-variable: auch die Formularvariablen des Designers melden (#941)."',
+    '              },',
+    '              "allowTables": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "default": [],',
+    '                "description": "Nur sql-write-without-where: Tabellen, die absichtlich ganz geleert bzw. geändert werden, mit oder ohne Schema (#966)."',
+    '              },',
+    '              "searchPaths": {',
+    '                "type": "string",',
+    '                "enum": ["project", "atlas", "both"],',
+    '                "default": "project",',
+    '                "description": "Nur uses-unit-not-found: wo nach Units gesucht wird (#1016). project: wie der Compiler (Projekt, Suchpfade der .dproj, Bibliothekspfade der Installation, .pas und .dcu)' + '; atlas: was Atlas kennt (Index, Quellpfade der Installation); both: beides."',
     '              }',
     '            }',
     '          }',

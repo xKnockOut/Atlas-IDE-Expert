@@ -320,6 +320,7 @@ begin
     Context.ReadFile := Rules.ReadFile;
     Context.FileName := Rules.FileName;
     Context.PackageProvides := Rules.PackageProvides;
+    Context.Units := Rules.Units;
     Context.Application := Rules.Application;
     Context.ProjectName := Rules.ProjectName;
     Context.AutoCreateForms := Rules.AutoCreateForms;

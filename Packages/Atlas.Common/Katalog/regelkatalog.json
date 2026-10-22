@@ -2077,6 +2077,31 @@
         "E2211",
         "E2265"
       ]
+    },
+    {
+      "id": "uses-unit-not-found",
+      "name": "Unit in uses not found",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A unit in uses or contains is found neither in the project nor in the folders the compiler searches: folder of the using file, project folder, search paths and DCU output folder of the .dproj, library paths of the installation, each as .pas or .dcu and with every unit scope name in front (SysUtils → System.SysUtils); in packages also the units of the required packages (like F2613). Also reported: a file from in '…' that does not exist (F1026), a package from requires found neither as .dpk nor as .dcp (E2202), a unit that uses itself (F2092), and once a missing unit System, i.e. a missing library path, instead of one finding per unit (F1027). Entries inside {$IF} blocks are skipped; without a known installation, with an open macro in a search path or with a required package of unknown content the rule stays silent. The message names similar units. Quick fixes: use the unit with its namespace (Forms → Vcl.Forms) or a similarly written unit, or add the folder below the project that holds the unit to DCC_UnitSearchPath of the base configuration in the .dproj.",
+      "bad": "uses\n  System.SysUtils, Vcl.Forms, Kunden.Daten, Rechnungs.Druck;",
+      "good": "uses\n  System.SysUtils, Vcl.Forms, Kunden.Daten, Rechnung.Druck;",
+      "compilerCodes": [
+        "F2613",
+        "F1027",
+        "F1026",
+        "E2202",
+        "F2092"
+      ],
+      "options": [
+        {
+          "name": "searchPaths",
+          "type": "string",
+          "default": "project",
+          "description": "Where units are searched: project (like the compiler: project, search paths of the .dproj, library paths, .pas and .dcu), atlas (what Atlas knows: index and browsing paths of the installation) or both."
+        }
+      ]
     }
   ]
 }

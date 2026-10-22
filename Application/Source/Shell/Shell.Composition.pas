@@ -3893,6 +3893,8 @@ begin
       AContext.Baseline := Workspace.Baseline;
       AContext.Namespaces := Workspace.Namespaces;
       Locator := Workspace.PackageLocator;
+      // Unit-Suche wie beim Compiler für uses-unit-not-found (#1016).
+      AContext.Units := Workspace.UnitLookup;
       HasProject := Workspace.Project(Project);
     end;
   finally
