@@ -4202,3 +4202,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index.
 | JX6 | Mit Compiler-Option „XML-Dokumentation erzeugen“ im Referenzprojekt übersetzen und mit den Meldungen vergleichen | Jede W1201–W1208 des Compilers hat einen Befund an derselben Stelle; Befunde werden zusammengeführt wie in #1024 |
 | JX7 | `"requirePublic": true`; öffentliche Methode ohne `///`, override-Methode, `property Tag;` | Meldung „Öffentliches Mitglied … hat keinen Doku-Kommentar.“ nur an der ersten; Korrektur erzeugt das Gerüst wie nach `///`. Funktion mit Doku ohne `<returns>` meldet jetzt „<returns> fehlt.“ |
 | JX8 | `"xmldoc-mismatch": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
+
+## Weitere Metriken: Bedingung, lokale Variablen, Ausstiege, Vererbungstiefe (#980)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index; Metrik-Linse (`codeLens.metrics`) an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JM1 | Das Beispiel aus #980: `if (Kunde.Aktiv) and (Kunde.Land = 'DE') and (Betrag > 0) and (not Gesperrt) and (Datum >= Start) and (Datum <= Ende) then` | Hinweis `metric-boolean-operands` auf der ganzen Bedingung: „Bedingung mit 6 Operanden (Grenze 5).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover mit Aktionszeile (**Abnahme**) |
+| JM2 | Schnellkorrektur „Bedingung in Funktion auslagern“, danach Strg+Z | In einer Methode: `function ExtractedCondition(const …): Boolean;` im private-Abschnitt und als Rumpf vor der Methode, die Bedingung wird zu `if ExtractedCondition(Kunde, Betrag, …) then`; außerhalb von Klassen eine Routine davor. Übersetzt ohne Fehler, keine Meldung mehr; ein Undo-Schritt. Ändert die Bedingung etwas (var-Argument) oder steht `Result` darin: keine Korrektur, nur die Meldung |
+| JM3 | Routine mit 13 lokalen Variablen (var-Abschnitt, `var X := …`, `for var I := …`); lokale Routine und anonyme Methode mit eigenen Variablen | `metric-local-count` am Routinennamen: „Methode … hat 13 lokale Variablen (Grenze 12) …“; Variablen der lokalen Routine und der anonymen Methode zählen nicht mit |
+| JM4 | Routine mit fünf `Exit`/`Exit(Wert)`/`raise`; `Exit` in einer anonymen Methode | `metric-exit-points`: „Methode … hat 5 Ausstiege mit Exit oder raise (Grenze 4) …“; das `Exit` der anonymen Methode zählt nicht |
+| JM5 | Kette `TStufe1 = class(TForm)` bis `TStufe6`, Klassen in zwei Units des Projekts verteilt | Linse über `TStufe6`: „… Member · Vererbungstiefe 6“, Meldung `metric-inheritance-depth` „TStufe6 hat Vererbungstiefe 6 ohne RTL und VCL (Grenze 5).“; TForm und die VCL-Vorfahren zählen nicht. Klassen aus einer Komponentenbibliothek (Bibliothekspfad) zählen ebenso nicht |
+| JM6 | Vorfahr aus einer Unit, die nicht im Index steht | Linse „Vererbungstiefe mindestens n“; Meldung nur, wenn schon die bekannten Vorfahren über der Grenze liegen |
+| JM7 | Metrik-Linse über einer Methode | „… · 2 Parameter · Operanden 6 (> 5) · 3 lokale · 1 Ausstiege“; Werte über der Grenze farbig. Auf Englisch: „operands 6 (> 5) · 3 locals · 1 exits“ |
+| JM8 | `"metric-boolean-operands": {"max": 6}`, `"metric-local-count": "off"`, `"metric-exit-points": {"exclude": ["Alt/*.pas"]}`, `"group:style": "off"` | Beispiel aus JM1 meldet nichts mehr; keine lokale-Variablen-Meldung; keine Ausstiege-Meldung in `Alt/`; mit der Gruppe aus keine der vier Regeln |

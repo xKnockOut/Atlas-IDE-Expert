@@ -6,7 +6,8 @@
 // Argumente: [uri, mode]
 //   - URI einer Quelltextdatei, mode fehlt oder "file":
 //       {"enabled": true, "limits": {…}, "structure": […], "file": "Source/Main.pas", "methods": […]}
-//     Die Methoden und "structure" (Member je Klasse, Zeilen und Units im uses, #939) haben das Format aus
+//     Die Methoden und "structure" (Member je Klasse, Zeilen und Units im uses, #939, mit Index die
+//     Vererbungstiefe, #980) haben das Format aus
 //     Atlas.Common.Metrics.Report (Zeilen ab 1); "enabled" ist die Einstellung codeLens.metrics.
 //   - URI eines Projekts (.dproj, .dpr, .dpk), eines Ordners oder null, dazu mode
 //       "summary"  → {"format": 1, "limits": {…}, "summary": {…}}
@@ -21,6 +22,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Metrics.Collector;
 
 type
@@ -48,6 +50,7 @@ type
     FCollector: TMetricsCollector;
     FSourceFor: TLspMetricsSourceFunc;
     FReadText: TMetricsReadText;
+    FIndex: ISymbolIndex;
   public
     constructor Create(const ASourceFor: TLspMetricsSourceFunc; const AReadText: TMetricsReadText);
     destructor Destroy; override;
@@ -62,6 +65,8 @@ type
     /// <summary>True für .dproj, .dpr, .dpk und Ordner (Endung leer): Bericht über das Projekt.</summary>
     class function IsProject(const AFileName: string): Boolean; static;
     property Collector: TMetricsCollector read FCollector;
+    /// <summary>Symbolindex für die Vererbungstiefe in "structure" (#980); nil ohne.</summary>
+    property Index: ISymbolIndex read FIndex write FIndex;
   end;
 
 implementation
@@ -72,6 +77,9 @@ uses
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Metrics.Calculator,
   Atlas.Common.Metrics.Report,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Builtin.Metrics;
 
 { TLspMetrics }
@@ -122,6 +130,8 @@ var
   Text, Methods, Structure: string;
   Limits: TMetricLimits;
   FileItem: TFileMetrics;
+  Tree: TSyntaxTree;
+  Items: TArray<TStructureMetrics>;
 begin
   Structure := '[]';
   Limits := TMetricRules.Limits(ASource.Settings);
@@ -129,8 +139,17 @@ begin
   begin
     FileItem := TFileMetrics.Create(TMetricsCollector.RelativePath(ASource.Root, AFileName),
       FCollector.FileRoutines(AFileName, Text));
-    // Aufbau (#939): Member je Klasse, Zeilen und Units im uses für die Metrik-Linse des Plugins.
-    Structure := TMetricsReport.StructureJson(TMetricsCalculator.StructureForText(Text), Limits);
+    // Aufbau (#939): Member je Klasse, Zeilen und Units im uses für die Metrik-Linse des Plugins; mit Index auch
+    // die Vererbungstiefe (#980).
+    Tree := TSyntaxTreeCache.Parse(Text);
+    try
+      Items := TMetricsCalculator.Structure(Tree);
+      if FIndex <> nil then
+        Items := Items + TMetricRules.InheritanceDepths(Tree, FIndex, TIndexExtractor.Extract(Tree, AFileName));
+    finally
+      Tree.Free;
+    end;
+    Structure := TMetricsReport.StructureJson(Items, Limits);
   end
   else
     FileItem := TFileMetrics.Create(TMetricsCollector.RelativePath(ASource.Root, AFileName), nil);

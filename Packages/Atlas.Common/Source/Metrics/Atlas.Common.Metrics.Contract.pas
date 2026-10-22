@@ -12,6 +12,14 @@
 //     case, Schleifen und except; +1 für else und else if; +1 je Folge
 //     gleicher logischer Operatoren in einer Bedingung; +1 für goto.
 //   - Parameteranzahl: Namen in der Parameterliste.
+//   - Operanden einer Bedingung (#980): Glieder der and/or/xor-Kette in
+//     der Bedingung eines if, while, until oder Bedingungsausdrucks, durch
+//     Klammern und not hindurch; je Routine die größte Bedingung.
+//   - Lokale Variablen (#980): Namen im var-Abschnitt der Routine, Inline-
+//     Variablen und for var; lokale Routinen und anonyme Methoden zählen
+//     für sich.
+//   - Ausstiege (#980): Exit und raise im Rumpf (auch raise; im except),
+//     ohne lokale Routinen und anonyme Methoden.
 // Kennzahlen des Aufbaus (#939):
 //   - Klassengröße: Member einer Klasse (auch object): Feldnamen, Methoden,
 //     Properties mit eigenem Typ und class var; Hochstufungen wie
@@ -19,6 +27,10 @@
 //   - Unit-Länge: Zeilen bis zum letzten Token (end.).
 //   - uses-Anzahl: Units in allen uses-Klauseln (interface und
 //     implementation).
+//   - Vererbungstiefe (#980): Vorfahren einer Klasse, die nicht aus RTL,
+//     VCL oder anderen Bibliotheken stammen; braucht den Index und steht
+//     darum nicht in TMetricsCalculator.Structure, sondern in
+//     TMetricRules.InheritanceDepths (Atlas.Common.Rules.Builtin.Metrics).
 //   Unit-Länge und uses-Anzahl nur für Units: Das uses eines Programms oder
 //   einer Bibliothek zählt die Units des Projekts auf.
 // Grenzwerte (Vorgaben aus der Spezifikation, Abschnitt 4.13) stehen in
@@ -32,12 +44,13 @@ uses
   Atlas.Common.Documents.Contract;
 
 type
-  TMetricKind = (MethodLength, NestingDepth, Cyclomatic, Cognitive, ParameterCount);
+  TMetricKind = (MethodLength, NestingDepth, Cyclomatic, Cognitive, ParameterCount, BooleanOperands, LocalCount,
+    ExitPoints);
 
   TMetricValues = array[TMetricKind] of Integer;
 
   /// <summary>Kennzahlen des Aufbaus einer Unit (#939).</summary>
-  TStructureKind = (ClassSize, UnitLength, UsesCount);
+  TStructureKind = (ClassSize, UnitLength, UsesCount, InheritanceDepth);
 
   TStructureValues = array[TStructureKind] of Integer;
 
@@ -46,8 +59,9 @@ type
     Values: TMetricValues;
     /// <summary>Grenzwerte des Aufbaus (#939).</summary>
     Structure: TStructureValues;
-    /// <summary>60 Zeilen, Tiefe 4, zyklomatisch 15, kognitiv 15, 6 Parameter; 40 Member je Klasse,
-    /// 2000 Zeilen je Unit, 30 Units im uses.</summary>
+    /// <summary>60 Zeilen, Tiefe 4, zyklomatisch 15, kognitiv 15, 6 Parameter, 5 Operanden je Bedingung,
+    /// 12 lokale Variablen, 4 Ausstiege; 40 Member je Klasse, 2000 Zeilen je Unit, 30 Units im uses,
+    /// Vererbungstiefe 5.</summary>
     class function Default: TMetricLimits; static;
     /// <summary>True, wenn AValue über dem Grenzwert von AKind liegt.</summary>
     function Exceeds(AKind: TMetricKind; AValue: Integer): Boolean;
@@ -65,6 +79,19 @@ type
     /// <summary>Name in der Deklaration bzw. im Kopf der Unit; bei UsesCount das Schlüsselwort uses.</summary>
     NameRange: TTextRange;
     Value: Integer;
+    /// <summary>Value ist nur eine Untergrenze: Die Vererbungskette bricht an einem unbekannten Vorfahren ab
+    /// (#980).</summary>
+    AtLeast: Boolean;
+  end;
+
+  /// <summary>Eine Bedingung mit ihren Operanden (#980).</summary>
+  TConditionMetrics = record
+    /// <summary>Ganze Bedingung.</summary>
+    Range: TTextRange;
+    /// <summary>Offsets im Text (0-basiert, Ende exklusiv), z. B. für „Bedingung in Funktion auslagern“.</summary>
+    StartOffset: Integer;
+    EndOffset: Integer;
+    Operands: Integer;
   end;
 
   /// <summary>Kennzahlen einer Routine mit Rumpf.</summary>
@@ -89,7 +116,8 @@ type
   // Record statt Klasse: ein Contract enthält nur Werttypen und Interfaces (Konzept 7.1, Code-Review A-12).
   TMetrics = record
   public
-    /// <summary>Kennung in JSON und Bericht: length, nesting, cyclomatic, cognitive, parameters.</summary>
+    /// <summary>Kennung in JSON und Bericht: length, nesting, cyclomatic, cognitive, parameters, operands, locals,
+    /// exits.</summary>
     class function Key(AKind: TMetricKind): string; static;
     /// <summary>Kurzname auf Deutsch, z. B. „zyklomatisch“.</summary>
     class function Caption(AKind: TMetricKind): string; static;
@@ -111,9 +139,13 @@ begin
   Result.Values[TMetricKind.Cyclomatic] := 15;
   Result.Values[TMetricKind.Cognitive] := 15;
   Result.Values[TMetricKind.ParameterCount] := 6;
+  Result.Values[TMetricKind.BooleanOperands] := 5;
+  Result.Values[TMetricKind.LocalCount] := 12;
+  Result.Values[TMetricKind.ExitPoints] := 4;
   Result.Structure[TStructureKind.ClassSize] := 40;
   Result.Structure[TStructureKind.UnitLength] := 2000;
   Result.Structure[TStructureKind.UsesCount] := 30;
+  Result.Structure[TStructureKind.InheritanceDepth] := 5;
 end;
 
 function TMetricLimits.ExceedsStructure(AKind: TStructureKind; AValue: Integer): Boolean;
@@ -157,8 +189,14 @@ begin
       Result := 'cyclomatic';
     TMetricKind.Cognitive:
       Result := 'cognitive';
+    TMetricKind.ParameterCount:
+      Result := 'parameters';
+    TMetricKind.BooleanOperands:
+      Result := 'operands';
+    TMetricKind.LocalCount:
+      Result := 'locals';
   else
-    Result := 'parameters';
+    Result := 'exits';
   end;
 end;
 
@@ -173,8 +211,14 @@ begin
       Result := 'zyklomatisch';
     TMetricKind.Cognitive:
       Result := 'kognitiv';
+    TMetricKind.ParameterCount:
+      Result := 'Parameter';
+    TMetricKind.BooleanOperands:
+      Result := 'Operanden';
+    TMetricKind.LocalCount:
+      Result := 'lokale Variablen';
   else
-    Result := 'Parameter';
+    Result := 'Ausstiege';
   end;
 end;
 

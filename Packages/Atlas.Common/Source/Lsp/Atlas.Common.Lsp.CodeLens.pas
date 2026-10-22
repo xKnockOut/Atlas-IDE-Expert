@@ -6,7 +6,8 @@
 //   - "3 Nachfahren" bei Klassen und Interfaces,
 //   - "behandelt WM_PAINT (… auch in TWinControl)" bei Klassen mit Message-Handlern,
 //   - Code-Metriken über jeder implementierten Methode (#66, Einstellung codeLens.metrics):
-//     "12 Zeilen · Tiefe 2 · zyklomatisch 4 · kognitiv 3 · 2 Parameter"; ohne Klickziel.
+//     "12 Zeilen · Tiefe 2 · zyklomatisch 4 · kognitiv 3 · 2 Parameter · Operanden 2 · 3 lokale · 1 Ausstiege";
+//     über Klassen Member und mit Index die Vererbungstiefe ohne RTL und VCL (#939, #980); ohne Klickziel.
 // Ein Klick ruft atlas.showLocations im Editor auf (Argumente: URI, Position, Locations).
 
 interface
@@ -76,7 +77,12 @@ type
       const AFileName: string; const AReadText: TReferenceReadText): TArray<TCodeLensEntry>; static;
     /// <summary>Metrik-Linse über dem Namen jeder implementierten Methode (#66), über jeder Klasse (Member), über
     /// dem Unit-Namen (Zeilen) und über dem ersten uses (Units im uses, #939); der Aufbau zuerst.</summary>
-    class function MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits): TArray<TCodeLensEntry>; static;
+    class function MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits): TArray<TCodeLensEntry>;
+      overload; static;
+    /// <summary>Wie oben, dazu die Vererbungstiefe jeder Klasse mit eigenen Vorfahren über AIndex (#980); AFileName
+    /// für den Index der Datei.</summary>
+    class function MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits; const AIndex: ISymbolIndex;
+      const AFileName: string): TArray<TCodeLensEntry>; overload; static;
     /// <summary>Nächster Vorfahr von AType, der die Routine AName deklariert (auch für die Zeilenleiste #768);
     /// AOwner ist sein Name, ATarget die Deklaration. False, wenn keiner im Index steht.</summary>
     class function OverriddenAncestor(AResolver: TNameResolver; const AIndex: ISymbolIndex;
@@ -106,7 +112,8 @@ uses
   Atlas.Common.Lsp.MessageHandlers,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Metrics.Calculator,
-  Atlas.Common.Metrics.Report;
+  Atlas.Common.Metrics.Report,
+  Atlas.Common.Rules.Builtin.Metrics;
 
 const
   RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
@@ -364,6 +371,23 @@ begin
   end;
 end;
 
+class function TLspCodeLens.MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits;
+  const AIndex: ISymbolIndex; const AFileName: string): TArray<TCodeLensEntry>;
+var
+  Item: TStructureMetrics;
+  Entry: TCodeLensEntry;
+begin
+  Result := MetricLenses(ATree, ALimits);
+  for Item in TMetricRules.InheritanceDepths(ATree, AIndex, TIndexExtractor.Extract(ATree, AFileName)) do
+  begin
+    Entry := Default(TCodeLensEntry);
+    Entry.Kind := TCodeLensKind.Metrics;
+    Entry.Range := Item.NameRange;
+    Entry.Title := TMetricsReport.StructureLensPart(Item, ALimits);
+    Result := Result + [Entry];
+  end;
+end;
+
 class function TLspCodeLens.ResolveReferences(AResolver: TNameResolver; const AIndex: ISymbolIndex;
   ATree: TSyntaxTree; const AFileName: string; const AEntry: TCodeLensEntry; const AFiles: TArray<string>;
   const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TCodeLensEntry;
@@ -465,7 +489,7 @@ begin
     for Entry in Lenses(Resolver, FIndex, Tree, FileName, FReadText) do
       TJSONArray(Result).AddElement(ToJson(Entry, FileName));
     if Assigned(FMetricsFor) and FMetricsFor(Uri, Limits) then
-      for Entry in MetricLenses(Tree, Limits) do
+      for Entry in MetricLenses(Tree, Limits, FIndex, FileName) do
         TJSONArray(Result).AddElement(ToJson(Entry, FileName));
   finally
     Resolver.Free;
