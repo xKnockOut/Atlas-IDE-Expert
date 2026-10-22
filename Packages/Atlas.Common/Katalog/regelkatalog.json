@@ -2385,6 +2385,21 @@
         "E2064",
         "E2197"
       ]
+    },
+    {
+      "id": "string-length-limit",
+      "name": "String limit exceeded",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "A string literal is truncated to fit a string[N] or ShortString target: assignment, typed constant or initialised variable, also via own aliases, string[Constant] and fields from other units (like W1014). Before Delphi 12 (delphiVersion below 23) a quoted literal may have at most 255 characters (like E2056), and a resourcestring may have at most 4096 characters, literals joined with + included (like E2381); both are errors. Characters are counted as written, '' and #13 count as one. Quick fixes: declare the target as string (single variable or typed constant of the same file; record fields keep their size); split the literal into pieces of 255 characters joined with +.",
+      "bad": "var Kennung: string[8];\n…\nKennung := 'KUNDE-2026-0001';",
+      "good": "var Kennung: string;\n…\nKennung := 'KUNDE-2026-0001';",
+      "compilerCodes": [
+        "W1014",
+        "E2056",
+        "E2381"
+      ]
     }
   ]
 }

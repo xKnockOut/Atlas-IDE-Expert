@@ -2405,6 +2405,21 @@ begin
     '        "E2064",' + #10 +
     '        "E2197"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "string-length-limit",' + #10 +
+    '      "name": "String limit exceeded",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A string literal is truncated to fit a string[N] or ShortString target: assignment, typed constant or initialised variable, also via own aliases, string[Constant] and fields from' + ' other units (like W1014). Before Delphi 12 (delphiVersion below 23) a quoted literal may have at most 255 characters (like E2056), and a resourcestring may have at most 4096 characters, literals join' + 'ed with + included (like E2381); both are errors. Characters are counted as written, '''' and #13 count as one. Quick fixes: declare the target as string (single variable or typed constant of the same f' + 'ile; record fields keep their size); split the literal into pieces of 255 characters joined with +.",' + #10 +
+    '      "bad": "var Kennung: string[8];\n…\nKennung := ''KUNDE-2026-0001'';",' + #10 +
+    '      "good": "var Kennung: string;\n…\nKennung := ''KUNDE-2026-0001'';",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1014",' + #10 +
+    '        "E2056",' + #10 +
+    '        "E2381"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3606,6 +3621,11 @@ begin
     '      "id": "typed-constant-modified",' + #10 +
     '      "name": "Typisierte Konstante verändert",' + #10 +
     '      "description": "Einer typisierten Konstante (const Zaehler: Integer = 0) wird etwas zugewiesen (wie W1017, auch einem Element oder Record-Feld davon), oder sie wird als var- oder out-Argument üb' + 'ergeben, auch an Inc, Dec, Include, Exclude, Delete, SetLength und ähnliche (wie W1016). Gemeint war meist eine Variable; übersetzbar ist das nur mit {$J+}. Gilt vor der Deklaration in derselben Datei' + ' {$J-} bzw. {$WRITEABLECONST OFF}, meldet Atlas einen Fehler (wie E2064 bzw. E2197). Dazu 0 als Wert einer Zeigerkonstante oder einer initialisierten Zeigervariable (wie W1013). Korrekturen: eine Kons' + 'tante auf Unit-Ebene in eine Variable mit Initialwert umwandeln (der const-Abschnitt wird bei Bedarf geteilt; lokale typisierte Konstanten behalten ihren Wert zwischen Aufrufen und bekommen keine Korr' + 'ektur); nil statt 0 schreiben."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "string-length-limit",' + #10 +
+    '      "name": "String-Grenze überschritten",' + #10 +
+    '      "description": "Ein String-Literal wird an ein Ziel vom Typ string[N] oder ShortString gekürzt: Zuweisung, typisierte Konstante oder initialisierte Variable, auch über eigene Aliase, string[Kons' + 'tante] und Felder aus anderen Units (wie W1014). Vor Delphi 12 (delphiVersion unter 23) darf ein Literal in Anführungszeichen höchstens 255 Zeichen haben (wie E2056), und ein resourcestring höchstens ' + '4096 Zeichen, mit + verbundene Literale eingerechnet (wie E2381); beides sind Fehler. Gezählt wird wie geschrieben, '''' und #13 zählen als ein Zeichen. Korrekturen: das Ziel als string deklarieren (ein' + 'zelne Variable oder typisierte Konstante derselben Datei; Record-Felder behalten ihre Größe); das Literal in Stücke zu 255 Zeichen teilen, verbunden mit +."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
