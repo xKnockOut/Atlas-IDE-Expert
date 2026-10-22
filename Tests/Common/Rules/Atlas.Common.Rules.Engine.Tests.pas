@@ -71,6 +71,19 @@ type
     procedure RunClearsOwnCache;
     [Test]
     procedure RunKeepsCallerCache;
+    /// <summary>#1094: Eine Regel, die eine Ausnahme wirft, kostet nur ihre eigenen Treffer; das
+    /// Diagnoselog nennt Regel, Unit und Ausnahmeklasse.</summary>
+    [Test]
+    procedure FailingRuleKeepsOtherFindings;
+    /// <summary>#1094: Ist die Anfrage abgebrochen, geht die Ausnahme einer Regel weiter wie bisher.</summary>
+    [Test]
+    procedure FailingRuleAfterCancelStillRaises;
+    /// <summary>#1094: Ein abgefangener Stapelüberlauf stellt die Schutzseite wieder her.</summary>
+    [Test]
+    procedure OverflowInRuleRestoresStackGuard;
+    /// <summary>#1094: Zu tiefe Syntaxbäume prüfen die Regeln nicht; das Diagnoselog nennt die Unit.</summary>
+    [Test]
+    procedure TooDeepTreeSkipsRules;
   end;
 
 implementation
@@ -88,7 +101,12 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Diagnostics.RequestScope,
+  Atlas.Common.Diagnostics.StackGuard,
   Atlas.Tests.RuleAssert;
+
+type
+  /// <summary>Gleichnamig zur veralteten RTL-Klasse (W1000): Atlas erkennt den Überlauf am Namen.</summary>
+  EStackOverflow = class(Exception);
 
 type
   /// <summary>Beispielregel: meldet jeden Bezeichner "Marker".</summary>
@@ -186,6 +204,74 @@ begin
     begin
       Result := TProbe.Create;
     end);
+end;
+
+type
+  /// <summary>Meldet einen Treffer und wirft dann eine Ausnahme der Klasse AError (#1094).</summary>
+  TFailingRule = class(TInterfacedObject, IRule)
+  private
+    FId: string;
+    FError: ExceptClass;
+    FBefore: TProc;
+  public
+    constructor Create(const AId: string; AError: ExceptClass); overload;
+    constructor Create(const AId: string; AError: ExceptClass; const ABefore: TProc); overload;
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+constructor TFailingRule.Create(const AId: string; AError: ExceptClass);
+begin
+  Create(AId, AError, nil);
+end;
+
+constructor TFailingRule.Create(const AId: string; AError: ExceptClass; const ABefore: TProc);
+begin
+  inherited Create;
+  FId := AId;
+  FError := AError;
+  FBefore := ABefore;
+end;
+
+function TFailingRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(FId, TRuleSeverity.Warning, 'Scheitert immer');
+end;
+
+procedure TFailingRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  if Assigned(FBefore) then
+    FBefore();
+  AReport.Add(TTextRange.Create(0, 0, 0, 4), 'halber Treffer');
+  raise FError.Create('Regel gescheitert');
+end;
+
+function JoinNotes(const ANotes: TRequestNotes): string;
+var
+  Note: string;
+begin
+  Result := ' ';
+  for Note in ANotes.Notes do
+    Result := Result + Note + ' ';
+end;
+
+/// <summary>Prozedur mit einer Kette aus ACount Subtraktionen: linkslastig und so tief wie lang.</summary>
+function DeepSource(ACount: Integer): string;
+var
+  Builder: TStringBuilder;
+  Index: Integer;
+begin
+  Builder := TStringBuilder.Create;
+  try
+    Builder.Append('unit U;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10);
+    Builder.Append('  Marker := 1');
+    for Index := 1 to ACount do
+      Builder.Append(' - 1');
+    Builder.Append(';'#13#10'end;'#13#10'end.');
+    Result := Builder.ToString;
+  finally
+    Builder.Free;
+  end;
 end;
 
 const
@@ -593,6 +679,143 @@ begin
   finally
     Tree.Free;
   end;
+end;
+
+procedure TRuleEngineTests.FailingRuleKeepsOtherFindings;
+var
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+  Findings: TArray<TRuleFinding>;
+  Notes: TRequestNotes;
+  Joined: string;
+begin
+  Tree := TPascalParser.Parse(Source);
+  try
+    Context := Default(TRuleContext);
+    Context.Text := Source;
+    Context.Tree := Tree;
+    TRequestDiagnostics.Open;
+    try
+      TRequestDiagnostics.Subject('unit#3');
+      Findings := TRuleEngine.Run([TFailingRule.Create('kaputt', EArgumentException), TMarkerRule.Create],
+        TServerSettings.Default, Context);
+    finally
+      Notes := TRequestDiagnostics.Close;
+    end;
+  finally
+    Tree.Free;
+  end;
+  Assert.AreEqual(1, Integer(Length(Findings)), 'nur der Treffer der heilen Regel');
+  Assert.AreEqual('marker', Findings[0].RuleId);
+  Joined := JoinNotes(Notes);
+  Assert.Contains(Joined, ' failedRules=1 ');
+  Assert.Contains(Joined, ' failRule=kaputt ');
+  Assert.Contains(Joined, ' failRuleUnit=unit#3 ');
+  Assert.Contains(Joined, ' failRuleClass=EArgumentException ');
+  Assert.AreEqual('', Notes.Rule, 'keine Regel mehr offen');
+  Findings := nil;
+end;
+
+procedure TRuleEngineTests.FailingRuleAfterCancelStillRaises;
+var
+  Stop: Boolean;
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+begin
+  Stop := False;
+  Tree := TPascalParser.Parse(Source);
+  try
+    Context := Default(TRuleContext);
+    Context.Text := Source;
+    Context.Tree := Tree;
+    Context.Cancelled :=
+      function: Boolean
+      begin
+        Result := Stop;
+      end;
+    Assert.WillRaise(
+      procedure
+      begin
+        TRuleEngine.Run([
+          TFailingRule.Create('kaputt', EArgumentException,
+            procedure
+            begin
+              Stop := True;
+            end)], TServerSettings.Default, Context);
+      end, EArgumentException);
+  finally
+    Context.Cancelled := nil;
+    Tree.Free;
+  end;
+end;
+
+procedure TRuleEngineTests.OverflowInRuleRestoresStackGuard;
+var
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+  Findings: TArray<TRuleFinding>;
+  Restores: Integer;
+begin
+  Restores := 0;
+  TStackGuard.Restore :=
+    procedure
+    begin
+      Inc(Restores);
+    end;
+  try
+    Tree := TPascalParser.Parse(Source);
+    try
+      Context := Default(TRuleContext);
+      Context.Text := Source;
+      Context.Tree := Tree;
+      Findings := TRuleEngine.Run([TFailingRule.Create('tief', EStackOverflow), TMarkerRule.Create],
+        TServerSettings.Default, Context);
+    finally
+      Tree.Free;
+    end;
+  finally
+    TStackGuard.Restore := nil;
+  end;
+  Assert.AreEqual(1, Restores);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('marker', Findings[0].RuleId);
+  Findings := nil;
+end;
+
+procedure TRuleEngineTests.TooDeepTreeSkipsRules;
+var
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+  Text, Joined: string;
+  Findings: TArray<TRuleFinding>;
+  Notes: TRequestNotes;
+  Depth: Integer;
+begin
+  Text := DeepSource(TRuleEngine.MaxTreeDepth + 200);
+  Tree := TPascalParser.Parse(Text);
+  try
+    Depth := Tree.Depth;
+    Assert.IsTrue(Depth > TRuleEngine.MaxTreeDepth, 'Subtraktion bleibt linkslastig');
+    Context := Default(TRuleContext);
+    Context.Text := Text;
+    Context.Tree := Tree;
+    TRequestDiagnostics.Open;
+    try
+      TRequestDiagnostics.Subject('unit#5');
+      Findings := TRuleEngine.Run([TMarkerRule.Create], TServerSettings.Default, Context);
+    finally
+      Notes := TRequestDiagnostics.Close;
+    end;
+  finally
+    Tree.Free;
+  end;
+  Assert.AreEqual(0, Integer(Length(Findings)));
+  Joined := JoinNotes(Notes);
+  Assert.Contains(Joined, ' deepUnits=1 ');
+  Assert.Contains(Joined, ' deepUnit=unit#5 ');
+  Assert.Contains(Joined, ' deepUnitDepth=' + IntToStr(Depth) + ' ');
+  // Flache Bäume prüfen die Regeln wie bisher.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create, DeepSource(10)))));
 end;
 
 initialization

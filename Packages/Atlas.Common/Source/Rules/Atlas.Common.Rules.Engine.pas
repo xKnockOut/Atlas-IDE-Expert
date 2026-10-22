@@ -34,6 +34,13 @@
 // AContext.Cancelled und bricht mit ERuleCheckCancelled ab. Früher lief eine
 // abgebrochene oder überholte Prüfung bis zum Ende weiter (bis 240 s). Die
 // langsamste Regel ab SlowRuleMs geht als slowRule/slowRuleMs ins Diagnoselog.
+//
+// Robustheit (#1094): Ist der Syntaxbaum tiefer als MaxTreeDepth, laufen die
+// Regeln für diese Datei nicht; viele Regeln steigen rekursiv ab und würden den
+// Stapel des Threads sprengen. Die Datei steht dann als deepUnit im
+// Diagnoselog. Wirft eine Regel eine Ausnahme, laufen die übrigen weiter; die
+// Regel steht mit Unit und Ausnahmeklasse als failRule im Diagnoselog. Nur der
+// Abbruch (ERuleCheckCancelled) beendet den Lauf.
 
 interface
 
@@ -52,6 +59,9 @@ type
   public const
     /// <summary>Ab dieser Dauer nennt das Diagnoselog die Regel.</summary>
     SlowRuleMs = 100;
+    /// <summary>Tiefere Syntaxbäume prüfen die Regeln nicht (Stapelschutz, #1094). Ein Baum mit 3000
+    /// Ebenen läuft mit allen Regeln noch in 1 MB Stapel; reale Units bleiben unter 100.</summary>
+    MaxTreeDepth = 1000;
   public
     /// <summary>Wirksamer Schweregrad einer Regel; Off = nicht ausführen.</summary>
     class function EffectiveSeverity(const ARule: TRuleDescriptor;
@@ -79,6 +89,7 @@ uses
   System.Diagnostics,
   System.Generics.Defaults,
   Atlas.Common.Diagnostics.RequestScope,
+  Atlas.Common.Diagnostics.StackGuard,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Derived,
@@ -299,6 +310,8 @@ var
   AfterIds: TList<string>;
   AfterSeverities: TList<TRuleSeverity>;
   AfterContexts: TList<TRuleContext>;
+  Before: Integer;
+  Failed: Boolean;
 begin
   if (AContext.RelativePath <> '') and ASettings.IsExcluded(AContext.RelativePath) then
     Exit(nil);
@@ -309,6 +322,11 @@ begin
     if ASettings.ExcludeTests then
       Exit(nil);
     Settings.Profile := ASettings.TestProfile;
+  end;
+  if (AContext.Tree <> nil) and (AContext.Tree.Depth > MaxTreeDepth) then
+  begin
+    TRequestDiagnostics.TreeTooDeep(AContext.Tree.Depth);
+    Exit(nil);
   end;
   MinConfidence := TRuleProfiles.MinConfidence(Settings, Settings.Profile);
   // Ein Ableitungscache für alle Regeln des Laufs (Review P-03); ein vom Aufrufer
@@ -354,8 +372,30 @@ begin
         raise ERuleCheckCancelled.Create('Prüfung abgebrochen');
       Report := TRuleReport.Create(Descriptor.Id, Severity, Findings);
       Watch := TStopwatch.StartNew;
-      Rule.Check(Context, Report);
+      TRequestDiagnostics.CurrentRule(Descriptor.Id);
+      Before := Findings.Count;
+      Failed := False;
+      try
+        Rule.Check(Context, Report);
+      except
+        on ERuleCheckCancelled do
+          raise;
+        on E: Exception do
+        begin
+          // Abgebrochen wird weiter wie bisher; sonst kostet eine scheiternde Regel nur ihre eigenen
+          // Treffer (#1094).
+          if Assigned(AContext.Cancelled) and AContext.Cancelled() then
+            raise;
+          Findings.Count := Before;
+          TStackGuard.AfterError(E);
+          TRequestDiagnostics.RuleFailed(Descriptor.Id, E.ClassName);
+          Failed := True;
+        end;
+      end;
+      TRequestDiagnostics.CurrentRule('');
       Report := nil;
+      if Failed then
+        Continue;
       Elapsed := Watch.ElapsedMilliseconds;
       if Elapsed >= SlowRuleMs then
         TRequestDiagnostics.Slowest('slowRule', Descriptor.Id, Integer(Elapsed));
@@ -373,7 +413,23 @@ begin
     for Index := 0 to Afters.Count - 1 do
     begin
       Report := TRuleReport.Create(AfterIds[Index], AfterSeverities[Index], Findings);
-      Afters[Index].CheckFindings(AfterContexts[Index], Findings.ToArray, RanIds.ToArray, Report);
+      TRequestDiagnostics.CurrentRule(AfterIds[Index]);
+      Before := Findings.Count;
+      try
+        Afters[Index].CheckFindings(AfterContexts[Index], Findings.ToArray, RanIds.ToArray, Report);
+      except
+        on ERuleCheckCancelled do
+          raise;
+        on E: Exception do
+        begin
+          if Assigned(AContext.Cancelled) and AContext.Cancelled() then
+            raise;
+          Findings.Count := Before;
+          TStackGuard.AfterError(E);
+          TRequestDiagnostics.RuleFailed(AfterIds[Index], E.ClassName);
+        end;
+      end;
+      TRequestDiagnostics.CurrentRule('');
       Report := nil;
     end;
 

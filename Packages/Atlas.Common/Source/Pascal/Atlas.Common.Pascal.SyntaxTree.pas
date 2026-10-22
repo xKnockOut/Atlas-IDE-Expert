@@ -6,6 +6,8 @@
 // stehen in Knoten der Art Error, Fehler in Diagnostics.
 // Parameter tragen ihren Modifizierer (const, var, out, constref) in
 // Modifier; die Datenflussanalyse braucht ihn für Aufrufe (#143).
+// Depth liefert die größte Tiefe des Baums; rekursive Auswertungen wie die
+// Prüfregeln prüfen damit, ob der Stapel reicht (#1094).
 
 interface
 
@@ -109,10 +111,15 @@ type
     FRoot: TSyntaxNode;
     FTokens: TArray<TPascalToken>;
     FDiagnostics: TArray<TSyntaxDiagnostic>;
+    // 0 = noch nicht bestimmt.
+    FDepth: Integer;
   public
     constructor Create(ARoot: TSyntaxNode; const ATokens: TArray<TPascalToken>;
       const ADiagnostics: TArray<TSyntaxDiagnostic>);
     destructor Destroy; override;
+    /// <summary>Größte Zahl von Knoten auf einem Weg von der Wurzel zu einem Blatt (Wurzel allein = 1).
+    /// Iterativ bestimmt und gemerkt; auch für sehr tiefe Bäume sicher.</summary>
+    function Depth: Integer;
     property Root: TSyntaxNode read FRoot;
     /// <summary>Alle Token einschließlich Kommentaren und Direktiven.</summary>
     property Tokens: TArray<TPascalToken> read FTokens;
@@ -246,6 +253,46 @@ destructor TSyntaxTree.Destroy;
 begin
   FRoot.Free;
   inherited;
+end;
+
+type
+  TDepthEntry = record
+    Node: TSyntaxNode;
+    Depth: Integer;
+  end;
+
+function DepthEntry(ANode: TSyntaxNode; ADepth: Integer): TDepthEntry;
+begin
+  Result.Node := ANode;
+  Result.Depth := ADepth;
+end;
+
+function TSyntaxTree.Depth: Integer;
+var
+  Pending: TStack<TDepthEntry>;
+  Item: TDepthEntry;
+  Index, Found: Integer;
+begin
+  // Gleichzeitige Aufrufe aus mehreren Threads rechnen denselben Wert; das Merken ist unkritisch.
+  if (FDepth > 0) or (FRoot = nil) then
+    Exit(FDepth);
+  Found := 0;
+  Pending := TStack<TDepthEntry>.Create;
+  try
+    Pending.Push(DepthEntry(FRoot, 1));
+    while Pending.Count > 0 do
+    begin
+      Item := Pending.Pop;
+      if Item.Depth > Found then
+        Found := Item.Depth;
+      for Index := 0 to Item.Node.ChildCount - 1 do
+        Pending.Push(DepthEntry(Item.Node[Index], Item.Depth + 1));
+    end;
+  finally
+    Pending.Free;
+  end;
+  FDepth := Found;
+  Result := Found;
 end;
 
 end.

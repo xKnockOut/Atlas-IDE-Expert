@@ -25,6 +25,19 @@ type
     // RTL legt bei erster Benutzung Singletons an (Kodierungen, Pfad-/Registry-Hilfen); kein Leck des Testcodes.
     [IgnoreMemoryLeaks]
     procedure LongChainsDoNotOverflowStack;
+    /// <summary>#1094: Lange Ketten von + (and, or, xor) werden ausgeglichen gebaut; Reihenfolge und
+    /// Bereiche der Operanden bleiben erhalten.</summary>
+    [Test]
+    procedure LongConcatenationIsBalanced;
+    /// <summary>#1094: Kurze Ketten und nicht assoziative Operatoren bleiben linkslastig wie bisher.</summary>
+    [Test]
+    procedure ShortChainsStayLeftDeep;
+    /// <summary>#1094: Eine Verkettung wie in Rules.Catalog.Data.pas läuft mit allen eingebauten Regeln in
+    /// 512 KB Stapel. Vorher lief hier der Stapel über und der Server startete neu.</summary>
+    [Test]
+    // RTL legt bei erster Benutzung Singletons an (Kodierungen, Pfad-/Registry-Hilfen); kein Leck des Testcodes.
+    [IgnoreMemoryLeaks]
+    procedure LongConcatenationPassesAllRulesInSmallStack;
     [Test]
     // RTL legt bei erster Benutzung Singletons an (Kodierungen, Pfad-/Registry-Hilfen); kein Leck des Testcodes.
     [IgnoreMemoryLeaks]
@@ -41,6 +54,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.IOUtils,
   System.Diagnostics,
   System.JSON,
@@ -50,7 +64,12 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.DocumentSymbols,
-  Atlas.Common.Lsp.FoldingRanges;
+  Atlas.Common.Lsp.FoldingRanges,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Builtin,
+  Atlas.Common.Rules.Checker,
+  Atlas.Tests.SmallStack;
 
 const
   FuzzSeed = 20261007;
@@ -261,6 +280,180 @@ begin
   finally
     Tree.Free;
   end;
+end;
+
+/// <summary>'1' + '2' + … mit ACount Gliedern, jedes eine eigene Zahl.</summary>
+function NumberChain(ACount: Integer; const AOperator: string): string;
+var
+  Builder: TStringBuilder;
+  Index: Integer;
+begin
+  Builder := TStringBuilder.Create;
+  try
+    Builder.Append('1');
+    for Index := 2 to ACount do
+      Builder.Append(' ').Append(AOperator).Append(' ').Append(Index);
+    Result := Builder.ToString;
+  finally
+    Builder.Free;
+  end;
+end;
+
+function ProcedureWith(const AExpression: string): string;
+begin
+  Result := 'unit U;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10 +
+    '  X := ' + AExpression + ';'#13#10'end;'#13#10'end.';
+end;
+
+function FirstOfKind(ANode: TSyntaxNode; AKind: TSyntaxKind): TSyntaxNode;
+var
+  Found: TSyntaxNode;
+begin
+  Found := nil;
+  ANode.Walk(
+    function(AVisited: TSyntaxNode): Boolean
+    begin
+      if (Found = nil) and (AVisited.Kind = AKind) then
+        Found := AVisited;
+      Result := Found = nil;
+    end);
+  Result := Found;
+end;
+
+function TextOf(const AText: string; ANode: TSyntaxNode): string;
+begin
+  Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+end;
+
+procedure TPascalParserRobustnessTests.LongConcatenationIsBalanced;
+const
+  Count = 5000;
+var
+  Expression, Text: string;
+  Tree: TSyntaxTree;
+  Root: TSyntaxNode;
+  Literals: TList<string>;
+  Index: Integer;
+  RangesOk: Boolean;
+begin
+  Expression := NumberChain(Count, '+');
+  Text := ProcedureWith(Expression);
+  Tree := TPascalParser.Parse(Text);
+  Literals := TList<string>.Create;
+  try
+    Assert.AreEqual<NativeInt>(0, Length(Tree.Diagnostics));
+    // Linkslastig wären es über 5000 Ebenen.
+    Assert.IsTrue(Tree.Depth < 40, 'Tiefe ' + IntToStr(Tree.Depth));
+    Root := FirstOfKind(Tree.Root, TSyntaxKind.BinaryExpr);
+    Assert.IsNotNull(Root);
+    Assert.AreEqual(Expression, TextOf(Text, Root), 'Bereich des ganzen Ausdrucks');
+    RangesOk := True;
+    Root.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      var
+        Part: string;
+      begin
+        if ANode.Kind = TSyntaxKind.Literal then
+          Literals.Add(TextOf(Text, ANode))
+        else if ANode.Kind = TSyntaxKind.BinaryExpr then
+        begin
+          // Jeder Teilbaum umfasst genau eine zusammenhängende Folge von Gliedern.
+          Part := TextOf(Text, ANode);
+          if (ANode.Name <> '+') or not CharInSet(Part[1], ['0'..'9']) or
+            not CharInSet(Part[Length(Part)], ['0'..'9']) or
+            (ANode.StartOffset <> ANode.Children[0].StartOffset) or
+            (ANode.EndOffset <> ANode.Children[1].EndOffset) then
+            RangesOk := False;
+        end;
+        Result := True;
+      end);
+    Assert.IsTrue(RangesOk, 'Bereiche der Teilbäume');
+    Assert.AreEqual(Integer(Count), Integer(Literals.Count));
+    for Index := 0 to Literals.Count - 1 do
+      Assert.AreEqual(IntToStr(Index + 1), Literals[Index], 'Reihenfolge der Glieder');
+  finally
+    Literals.Free;
+    Tree.Free;
+  end;
+end;
+
+procedure TPascalParserRobustnessTests.ShortChainsStayLeftDeep;
+var
+  Text: string;
+  Tree: TSyntaxTree;
+  Root: TSyntaxNode;
+begin
+  // a + b + c = (a + b) + c
+  Text := ProcedureWith('a + b + c');
+  Tree := TPascalParser.Parse(Text);
+  try
+    Root := FirstOfKind(Tree.Root, TSyntaxKind.BinaryExpr);
+    Assert.AreEqual('a + b + c', TextOf(Text, Root));
+    Assert.AreEqual(Ord(TSyntaxKind.BinaryExpr), Ord(Root.Children[0].Kind));
+    Assert.AreEqual('a + b', TextOf(Text, Root.Children[0]));
+    Assert.AreEqual('c', Root.Children[1].Name);
+  finally
+    Tree.Free;
+  end;
+  // Gemischt: a - b + c - d = ((a - b) + c) - d
+  Text := ProcedureWith('a - b + c - d');
+  Tree := TPascalParser.Parse(Text);
+  try
+    Root := FirstOfKind(Tree.Root, TSyntaxKind.BinaryExpr);
+    Assert.AreEqual('-', Root.Name);
+    Assert.AreEqual('a - b + c', TextOf(Text, Root.Children[0]));
+    Assert.AreEqual('+', Root.Children[0].Name);
+    Assert.AreEqual('a - b', TextOf(Text, Root.Children[0].Children[0]));
+  finally
+    Tree.Free;
+  end;
+  // Nicht assoziativ: auch lange Ketten bleiben linkslastig.
+  Text := ProcedureWith(NumberChain(100, '-'));
+  Tree := TPascalParser.Parse(Text);
+  try
+    Assert.IsTrue(Tree.Depth > 100, 'Tiefe ' + IntToStr(Tree.Depth));
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TPascalParserRobustnessTests.LongConcatenationPassesAllRulesInSmallStack;
+var
+  Builder: TStringBuilder;
+  Index, Destroys: Integer;
+  Text, Failure: string;
+  Findings: TArray<TRuleFinding>;
+  Finding: TRuleFinding;
+begin
+  // Wie Rules.Catalog.Data.pas: eine Klasse und eine Funktion mit sehr langer String-Verkettung.
+  Builder := TStringBuilder.Create;
+  try
+    Builder.Append('unit Katalog;'#13#10'interface'#13#10'type'#13#10 +
+      '  TKatalog = class'#13#10'  public'#13#10'    destructor Destroy;'#13#10'  end;'#13#10 +
+      'function Daten: string;'#13#10'implementation'#13#10 +
+      'destructor TKatalog.Destroy;'#13#10'begin'#13#10'  inherited;'#13#10'end;'#13#10 +
+      'function Daten: string;'#13#10'begin'#13#10'  Result := ''a''');
+    for Index := 1 to 5000 do
+      Builder.Append(' + #10 + ''z').Append(Index).Append('''');
+    Builder.Append(';'#13#10'end;'#13#10'end.');
+    Text := Builder.ToString;
+  finally
+    Builder.Free;
+  end;
+  Findings := nil;
+  Failure := TSmallStack.Run(512,
+    procedure
+    begin
+      Findings := TFileChecker.CheckText(BuiltinRules, TServerSettings.Default, 'Katalog.pas', Text);
+    end);
+  Assert.AreEqual('', Failure, 'kein Stapelüberlauf');
+  // Die Vererbungsregeln melden weiter, was sie vorher meldeten.
+  Destroys := 0;
+  for Finding in Findings do
+    if Finding.RuleId = 'destroy-without-override' then
+      Inc(Destroys);
+  Assert.AreEqual(1, Destroys);
+  Findings := nil;
 end;
 
 procedure TPascalParserRobustnessTests.ParsesDelphiSourceCorpus;
