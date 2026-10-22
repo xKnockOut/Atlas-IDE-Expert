@@ -1218,6 +1218,53 @@
       "description": "Zuweisung an eine Property ohne write (wie E2129) bzw. Lesen einer Property ohne read (wie E2130). Die Regel meldet nur, wenn die Namensauflösung die Property sicher findet; Neudeklarationen ohne read und write (property Caption;) gelten als unbekannt. Korrekturen: Count := 0 wird Clear, wenn der Typ Clear hat; in einer Methode der deklarierenden Klasse das Feld hinter read zuweisen; für eine Property dieser Datei den Setter anlegen und write ergänzen."
     },
     {
+      "id": "constant-condition",
+      "name": "Bedingung ist immer gleich",
+      "description": "Die Bedingung von if, while oder until steht fest: True, False, Vergleiche von Zahlen und untypisierte Konstanten der Datei, auch über and, or, xor und not (X or True ist immer wahr, X and False immer falsch). Der Zweig ist toter Code oder läuft immer. while True do und repeat … until False gelten als gewollte Endlosschleifen (deren Ausgang prüft infinite-loop). Konstanten aus switchConstants, Konstanten in einem Zweig von {$IF…} und Konstanten aus anderen Units gelten als unbekannt. Korrektur bei if: toten Zweig bzw. die Bedingung entfernen.",
+      "options": [
+        {
+          "name": "switchConstants",
+          "description": "Konstanten, die bewusst als Schalter dienen; Bedingungen darauf werden nicht gemeldet."
+        }
+      ]
+    },
+    {
+      "id": "infinite-loop",
+      "name": "Schleife ohne Ausgang",
+      "description": "while True do, repeat … until False oder eine andere Schleife, deren Bedingung sie nie beendet, ohne Ausgang im Rumpf: kein Break (ein Break in einer inneren Schleife verlässt nur diese), Exit, raise, goto, Halt, Abort oder RunError, kein Aufruf einer Routine der Datei, die eine Ausnahme auslöst oder das Programm beendet, und keine Prüfung von Terminated (Thread-Schleifen prüft thread-loop-without-terminated). Anonyme Methoden im Rumpf zählen nicht. Die Aktion springt zum Schleifenkopf."
+    },
+    {
+      "id": "loop-condition-unchanged",
+      "name": "Schleifenbedingung ändert sich im Rumpf nie",
+      "description": "Keine Variable der while- bzw. until-Bedingung ändert sich im Rumpf: keine Zuweisung, kein Inc/Dec, kein Argument (möglicherweise var), kein Methoden- oder Mitgliedszugriff auf das Objekt der Bedingung, keine for-Schleife darüber. Typisch ist das vergessene Inc(I) oder Next. Gemeldet wird nur, wenn jede Variable der Bedingung eine lokale Variable oder ein Wertparameter der Routine ist und mindestens eine direkt (nicht nur als X.Eigenschaft) vorkommt. Still bleiben Bedingungen mit Funktionsaufrufen, Feldern, globalen Variablen, var- und out-Parametern und Terminated, außerdem Schleifen mit Ausgang (Break, Exit, raise …), Warteschleifen (Sleep, ProcessMessages …), with, Aufrufen lokaler Routinen und Variablen, die eine anonyme Methode erfasst. Änderungen über X[…] zählen nur, wenn die Bedingung X[…] liest."
+    },
+    {
+      "id": "unconditional-recursion",
+      "name": "Rekursion ohne Abbruch",
+      "description": "Eine Routine ruft sich auf jedem Pfad selbst auf, bevor sie zurückkehren kann: Es gibt keinen Pfad ohne Selbstaufruf und kein Exit oder raise davor. Ergebnis ist ein Stapelüberlauf. Pfade ohne Aufruf sind: if ohne else bzw. case ohne else, der Rumpf von while und for, die rechte Seite von and/or, Zweige von if-Ausdrücken und anonyme Methoden. Getter und Setter der eigenen Property meldet setter-recursion; überladene Routinen bleiben still (der Aufruf kann eine andere Überladung treffen). Das Randsymbol aus #623 zeigt jede Rekursion."
+    },
+    {
+      "id": "pos-arguments-swapped",
+      "name": "Argumente von Pos vertauscht",
+      "description": "Pos(Text, ';'): Pos, PosEx, AnsiPos, StartsText, StartsStr, EndsText und EndsStr (auch mit Ansi-Präfix) erwarten zuerst den gesuchten Teil, dann den Text; ContainsText und ContainsStr erwarten zuerst den Text. Gemeldet, wenn an der Stelle des Textes ein kurzes Literal steht (bis maxLiteralLength Zeichen, Vorgabe 3; '' zählt als ein Zeichen, #9 ebenso) und an der Stelle des Teils sicher ein String: eine Variable oder ein Feld mit in der Datei deklariertem String-Typ, .Text oder .Caption, eine String-Funktion der RTL (Trim, UpperCase, LeftStr, Format …) oder eine Verkettung mit einem String-Teil. Zeichen bleiben still, weil Pos(C, ';,') bewusst prüft, ob C einer der Trenner ist; ebenso unbekannte Typen, zwei Literale und Methoden anderer Objekte (Liste.Pos). Konfidenz mittel. Schnellkorrektur: Argumente in einer Änderung tauschen; Kommentare dazwischen bleiben.",
+      "options": [
+        {
+          "name": "maxLiteralLength",
+          "description": "Längstes Literal an der Stelle des Textes, das noch als vertauscht gilt."
+        }
+      ]
+    },
+    {
+      "id": "integer-division-to-float",
+      "name": "Ganzzahldivision an Gleitkommazahl",
+      "description": "Schnitt := Summe div Anzahl mit Schnitt: Double: div schneidet die Nachkommastellen ab, bevor zugewiesen wird. Ebenso Prozent := Teil div Gesamt * 100, Result einer Funktion mit Gleitkommaergebnis und var X: Double := A div B. Gesucht wird durch Klammern, Vorzeichen und + - * / hindurch, nicht in Aufrufen (Round(A div B)), Indizes, mod oder Vergleichen. Das Ziel muss eine Variable, ein Feld (auch Self.X) oder Result sein, deren Typ Single, Double, Extended, Real, Currency … in der Datei deklariert ist. TDateTime, TDate und TTime bleiben still (ganze Tage sind dort meist gewollt), ebenso Zuweisungen in with und Trunc(A) div Trunc(B) (auch Round, Floor, Ceil: ausdrücklich gewandelt, also gewollt ganzzahlig). Konfidenz hoch. Schnellkorrektur: div durch / ersetzen (gleicher Vorrang)."
+    },
+    {
+      "id": "empty-finally",
+      "name": "Leerer finally-Block",
+      "description": "Ein finally-Block ohne Anweisung: Meist ist die Freigabe beim Umbau verloren gegangen. Steht direkt vor try X := T….Create, nennt die Meldung X.Free. Ein Block mit erklärendem Kommentar gilt als bewusst und wird nicht gemeldet (wie bei empty-except); ein Block mit Compiler-Direktive ebenso nicht, weil ein anderer Zweig Code enthalten kann. Konfidenz hoch. Schnellkorrektur: try, finally und end entfernen und den Rumpf ausrücken (wenn try, finally und end je allein auf ihrer Zeile stehen); als einzige Anweisung eines if-, while-, for-, with- oder case-Zweigs mit mehreren Anweisungen im Rumpf wird aus try begin."
+    },
+    {
       "id": "form-resource-missing",
       "name": "Formular-Unit ohne {$R *.dfm}",
       "description": "Neben der Unit liegt eine .dfm bzw. .fmx, die Unit deklariert die Klasse ihres Wurzelobjekts, aber keine {$R …}-Direktive bindet eine Formulardatei ein: Beim Erzeugen des Formulars folgt EResNotFound. Umgekehrt meldet die Regel ein {$R *.dfm} bzw. {$R Name.dfm}, dessen Datei neben der Unit fehlt (der Compiler bricht mit F1026 ab). Eine Direktive in einem beliebigen Zweig der bedingten Übersetzung zählt als eingebunden. Still bleibt die Regel, wenn die Klasse der Formulardatei nicht in der Unit steht und wenn sie keine Dateien neben der Unit sieht. Korrektur: {$R *.dfm} (bzw. {$R *.fmx}) nach implementation einfügen."

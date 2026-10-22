@@ -48,9 +48,9 @@ const
   BooleanRuleOptions: array[0..7] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
     'includeRecords', 'includeFormVariables', 'checkUses', 'allowLazyInit');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  StringListRuleOptions: array[0..16] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+  StringListRuleOptions: array[0..17] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
-    'allowTables', 'types', 'allowProperties', 'threadSafeTypes');
+    'allowTables', 'types', 'allowProperties', 'threadSafeTypes', 'switchConstants');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
   NumberListRuleOptions: array[0..0] of string = ('allowed');
   /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
@@ -279,6 +279,10 @@ begin
           else if (Value.Keys[Inner] = 'maxSleepMs') and not ((Value[Inner].Kind = TJsonKind.Number) and
             TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 0)) then
             ReportNode(Value[Inner], '"maxSleepMs" muss eine ganze Zahl ab 0 sein')
+          // Höchstlänge des vertauschten Literals von pos-arguments-swapped (#1045).
+          else if (Value.Keys[Inner] = 'maxLiteralLength') and not ((Value[Inner].Kind = TJsonKind.Number) and
+            TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 1)) then
+            ReportNode(Value[Inner], '"maxLiteralLength" muss eine ganze Zahl ab 1 sein')
           // Marken der Regel todo-comment (#68); die Regel und get_todos lesen sie aus den Optionen.
           else if Value.Keys[Inner] = 'keywords' then
             CheckTodoKeywords(Value[Inner])
