@@ -3756,3 +3756,16 @@ Voraussetzung: Server läuft; Unit mit `try … except` und mehreren `on`-Handle
 | EH5 | Zweimal `on E: EConvertError` | „Nie erreicht: EConvertError wird schon in Zeile … behandelt.“, keine Korrektur |
 | EH6 | Spezielle Handler vor `Exception`; unverwandte Klassen (`EConvertError`, `EInOutError`) | Keine Meldung |
 | EH7 | `"except-handler-order": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## raise E statt raise im Handler (#958)
+
+Voraussetzung: Server läuft; Unit mit `try … except on E: … do`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RR1 | Im Handler `on E: EDatenbank do begin Protokoll(E.Message); raise E; end;` | Warnung `reraise-exception-object` auf `raise E`: „raise E löst das Objekt neu aus: Absprungstelle (ExceptAddr) und Aufrufliste zeigen danach auf diesen Handler …“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| RR2 | Schnellkorrektur „raise E; durch raise; ersetzen“, danach Strg+Z | Aus `raise E;` wird `raise;`, Meldung weg; ein Undo-Schritt stellt es wieder her (**Abnahme**) |
+| RR3 | Programm mit madExcept oder JclDebug, Ausnahme im try-Teil, Handler mit `raise E;` bzw. `raise;` | Mit `raise E;` zeigt der Bericht auf den Handler, mit `raise;` auf die ursprüngliche Stelle |
+| RR4 | `raise E at ReturnAddress` im Handler | Warnung ohne Korrektur |
+| RR5 | `raise;`, `raise EEingabe.Create(E.Message)`, `on EInOutError do`, `AcquireExceptionObject` im Handler, `E := …` vor `raise E`, `raise E` in einer anonymen Methode | Keine Meldung |
+| RR6 | `"reraise-exception-object": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

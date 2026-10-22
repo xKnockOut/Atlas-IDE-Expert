@@ -40,6 +40,14 @@ type
     procedure ExceptHandlerOrderSilentCases;
     [Test]
     procedure ExceptHandlerOrderOffAndExclude;
+    [Test]
+    procedure ReraiseIssueExample;
+    [Test]
+    procedure ReraiseVariants;
+    [Test]
+    procedure ReraiseSilentCases;
+    [Test]
+    procedure ReraiseOffAndExclude;
   end;
 
 implementation
@@ -285,6 +293,76 @@ begin
     '{"rules": {"except-handler-order": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Source,
     '{"rules": {"except-handler-order": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
+end;
+
+procedure TExceptionRulesTests.ReraiseIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Handler('    on E: EDatenbank do'#10'    begin'#10'      Protokoll(E.Message);'#10'      raise E;'#10 +
+    '    end;'#10);
+  Findings := TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('reraise-exception-object', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('raise E löst das Objekt neu aus: Absprungstelle (ExceptAddr) und Aufrufliste zeigen danach auf ' +
+    'diesen Handler statt auf den ursprünglichen Fehler; raise; wirft die Exception unverändert weiter.',
+    Findings[0].Message);
+  Assert.AreEqual(11, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(6, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(13, Findings[0].Range.EndPos.Character);
+  Assert.AreEqual('raise E; durch raise; ersetzen', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Handler('    on E: EDatenbank do'#10'    begin'#10'      Protokoll(E.Message);'#10 +
+    '      raise;'#10'    end;'#10), Fixed);
+  TRuleAssert.Silent(TReraiseExceptionObjectRule.Create, Fixed);
+end;
+
+procedure TExceptionRulesTests.ReraiseVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Ohne begin, vor else, im inneren try, mit at (ohne Korrektur), anderer Name.
+  Findings := TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, Handler(
+    '    on Fehler: EConvertError do raise Fehler'#10'  else'#10'    raise;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Findings := TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, Handler(
+    '    on E: Exception do'#10'    begin'#10'      try'#10'        Aufraeumen;'#10'      except'#10 +
+    '        on F: EInOutError do'#10'          raise E;'#10'      end;'#10'      raise E at ReturnAddress;'#10 +
+    '    end;'#10));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
+end;
+
+procedure TExceptionRulesTests.ReraiseSilentCases;
+begin
+  // raise;, neue Exception, Handler ohne Namen, AcquireExceptionObject, neu zugewiesen, anonyme Methode, außerhalb.
+  TRuleAssert.Silent(TReraiseExceptionObjectRule.Create, Handler('    on E: EDatenbank do'#10'      raise;'#10 +
+    '    on E: EConvertError do'#10'      raise EEingabe.Create(E.Message);'#10'    on EInOutError do'#10 +
+    '      raise E;'#10));
+  TRuleAssert.Silent(TReraiseExceptionObjectRule.Create, Handler('    on E: EDatenbank do'#10'    begin'#10 +
+    '      AcquireExceptionObject;'#10'      Merken(E);'#10'      raise E;'#10'    end;'#10));
+  TRuleAssert.Silent(TReraiseExceptionObjectRule.Create, Handler('    on E: EDatenbank do'#10'    begin'#10 +
+    '      E := EDatenbank.Create(''Neu'');'#10'      raise E;'#10'    end;'#10));
+  TRuleAssert.Silent(TReraiseExceptionObjectRule.Create, Handler('    on E: EDatenbank do'#10 +
+    '      TThread.Queue(nil, procedure begin raise E; end);'#10));
+  TRuleAssert.Silent(TReraiseExceptionObjectRule.Create, InRoutine('  E := EDatenbank.Create(''x'');'#10 +
+    '  raise E;'));
+end;
+
+procedure TExceptionRulesTests.ReraiseOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Handler('    on E: EDatenbank do'#10'      raise E;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, Source,
+    '{"rules": {"reraise-exception-object": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, Source,
+    '{"rules": {"reraise-exception-object": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
 end;
 
 initialization

@@ -7,7 +7,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | Gruppe | Regeln |
 |---|---|
 | [Fehler finden](#gruppe-find-bugs) | 56 |
-| [Exceptions](#gruppe-exceptions) | 7 |
+| [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 9 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
@@ -93,6 +93,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`raise-in-finally`](#raise-in-finally) | raise in einem finally-Block | Bug | Warnung |
 | [`exception-in-destructor`](#exception-in-destructor) | raise im Destruktor | Bug | Warnung |
 | [`except-handler-order`](#except-handler-order) | Allgemeiner Exception-Handler vor speziellem | Bug | Warnung |
+| [`reraise-exception-object`](#reraise-exception-object) | raise E statt raise im Handler | Code Smell | Warnung |
 
 <a id="gruppe-threads"></a>
 ### Threads
@@ -3821,5 +3822,36 @@ except
     ShowMessage('Ungültige Zahl');
   on E: Exception do
     Protokoll(E.Message);
+end;
+```
+
+<a id="reraise-exception-object"></a>
+### reraise-exception-object
+
+**raise E statt raise im Handler** · Code Smell · Warnung · Gruppe Exceptions
+
+raise E; in einem Handler on E: … löst das gefangene Exception-Objekt als neues raise aus. Die RTL gibt das Objekt nicht doppelt frei, aber die Ausnahme beginnt jetzt im Handler: ExceptAddr und die Aufrufliste von Werkzeugen wie madExcept oder JclDebug zeigen auf den Handler statt auf den ursprünglichen Fehler, die Absprungstelle geht verloren. raise; wirft die aktuelle Exception unverändert weiter. Auch raise E at … wird gemeldet, dann ohne Korrektur. Still, wenn der Handler das Objekt mit AcquireExceptionObject übernimmt oder der Variablen ein neues Objekt zuweist, in anonymen Methoden und bei Handlern ohne Variablennamen. Konfidenz hoch. Korrektur: raise E; → raise;.
+
+Mit Treffer:
+
+```pascal
+except
+  on E: EDatenbank do
+  begin
+    Protokoll(E.Message);
+    raise E;
+  end;
+end;
+```
+
+Richtig:
+
+```pascal
+except
+  on E: EDatenbank do
+  begin
+    Protokoll(E.Message);
+    raise;
+  end;
 end;
 ```
