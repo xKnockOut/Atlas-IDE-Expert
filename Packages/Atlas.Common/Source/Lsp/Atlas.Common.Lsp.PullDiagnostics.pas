@@ -118,6 +118,9 @@ type
     /// gerade eine andere Anfrage denselben Stand, wartet es auf deren Ergebnis. ACancellation darf nil sein.</summary>
     function CachedDiagnose(const AUri, AResultId: string; const ADocument: ITextDocument;
       const ACancellation: IJsonRpcCancellationToken): TJSONArray;
+    /// <summary>Wie CachedDiagnose; scheitert die Prüfung der Datei, leere Befunde und weiter (#1094).</summary>
+    function DiagnoseOrSkip(const AUri, AResultId: string; const ADocument: ITextDocument;
+      const ACancellation: IJsonRpcCancellationToken): TJSONArray;
     /// <summary>True: Der Aufrufer rechnet AKey jetzt selbst. False mit ACached: Befunde aus dem
     /// Speicher (gehören dem Aufrufer). False ohne: Eine andere Anfrage rechnet gerade.</summary>
     function Claim(const AUri, AResultId, AKey: string; out ACached: TJSONArray): Boolean;
@@ -374,6 +377,25 @@ begin
   end;
 end;
 
+function TLspPullDiagnostics.DiagnoseOrSkip(const AUri, AResultId: string; const ADocument: ITextDocument;
+  const ACancellation: IJsonRpcCancellationToken): TJSONArray;
+begin
+  try
+    Result := CachedDiagnose(AUri, AResultId, ADocument, ACancellation);
+  except
+    on E: Exception do
+    begin
+      if not CanSkip(E, ACancellation) then
+        raise;
+      // Datei überspringen (#1094): leer melden, bis sie sich ändert; die übrigen weiter prüfen.
+      TStackGuard.AfterError(E);
+      TRequestDiagnostics.UnitFailed(E.ClassName);
+      TInterlocked.Increment(FSkipped);
+      Result := TJSONArray.Create;
+    end;
+  end;
+end;
+
 function TLspPullDiagnostics.CachedDiagnose(const AUri, AResultId: string; const ADocument: ITextDocument;
   const ACancellation: IJsonRpcCancellationToken): TJSONArray;
 var
@@ -557,20 +579,7 @@ begin
       Disk := TTextDocument.Create(Uri, 'objectpascal', 0, Text);
       // Erst prüfen, dann den Bericht anlegen: Ein Abbruch hinterlässt so kein Objekt.
       TRequestDiagnostics.Subject(LabelOf(FileName));
-      try
-        Items := CachedDiagnose(Uri, ResultId, Disk, ACancellation);
-      except
-        on E: Exception do
-        begin
-          if not CanSkip(E, ACancellation) then
-            raise;
-          // Datei überspringen (#1094): leer melden, bis sie sich ändert; die übrigen weiter prüfen.
-          TStackGuard.AfterError(E);
-          TRequestDiagnostics.UnitFailed(E.ClassName);
-          TInterlocked.Increment(FSkipped);
-          Items := TJSONArray.Create;
-        end;
-      end;
+      Items := DiagnoseOrSkip(Uri, ResultId, Disk, ACancellation);
       Report := TJSONObject.Create;
       Report.AddPair('uri', Uri);
       Report.AddPair('version', TJSONNull.Create);

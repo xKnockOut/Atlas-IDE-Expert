@@ -368,7 +368,7 @@ begin
         Result := True;
       end);
     Assert.IsTrue(RangesOk, 'Bereiche der Teilbäume');
-    Assert.AreEqual(Count, Literals.Count);
+    Assert.AreEqual(Integer(Count), Integer(Literals.Count));
     for Index := 0 to Literals.Count - 1 do
       Assert.AreEqual(IntToStr(Index + 1), Literals[Index], 'Reihenfolge der Glieder');
   finally

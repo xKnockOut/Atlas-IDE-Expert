@@ -28,6 +28,10 @@ uses
   System.SysUtils,
   Atlas.Common.Diagnostics.StackGuard;
 
+type
+  /// <summary>Gleichnamig zur veralteten RTL-Klasse (W1000): IsOverflow erkennt den Überlauf am Namen.</summary>
+  EStackOverflow = class(Exception);
+
 procedure TStackGuardTests.RestoreNothing;
 begin
   TStackGuard.Restore := nil;

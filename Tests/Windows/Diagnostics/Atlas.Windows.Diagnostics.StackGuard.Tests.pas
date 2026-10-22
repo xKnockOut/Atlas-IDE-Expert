@@ -70,8 +70,11 @@ begin
         try
           Exhaust(0);
         except
-          on E: EStackOverflow do
+          on E: Exception do
           begin
+            // Nicht „on E: EStackOverflow“: In Delphi 13 veraltet (W1000).
+            if not TStackGuard.IsOverflow(E) then
+              raise;
             Inc(Caught);
             TStackGuard.AfterError(E);
           end;

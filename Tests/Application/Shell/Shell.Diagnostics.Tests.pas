@@ -81,6 +81,10 @@ uses
   Shell.Diagnostics;
 
 type
+  /// <summary>Gleichnamig zur veralteten RTL-Klasse (W1000): Atlas erkennt den Überlauf am Namen.</summary>
+  EStackOverflow = class(Exception);
+
+type
   /// <summary>Sammelt die Logeinträge als Text.</summary>
   TCaptureSink = class(TInterfacedObject, ILogSink)
   public
