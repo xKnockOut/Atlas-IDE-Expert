@@ -58,6 +58,7 @@ type
     FOnOpenChildren: TAtlasCrumbMenuEvent;
     FOnJump: TAtlasCrumbJumpEvent;
     FOnLeave: TProc;
+    FOnDisabled: TProc;
     function Scale(AValue: Integer): Integer;
     function BadgeWidth: Integer;
     function CrumbWidth(AIndex: Integer): Integer;
@@ -72,6 +73,7 @@ type
     function TrailingSeparator: Boolean;
     procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
+    procedure WMEnable(var Message: TWMEnable); message WM_ENABLE;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
   protected
     procedure Paint; override;
@@ -117,6 +119,9 @@ type
     property OnOpenChildren: TAtlasCrumbMenuEvent read FOnOpenChildren write FOnOpenChildren;
     property OnJump: TAtlasCrumbJumpEvent read FOnJump write FOnJump;
     property OnLeave: TProc read FOnLeave write FOnLeave;
+    /// <summary>Das Fenster der Leiste wurde gesperrt (WM_ENABLE mit False, über VCL oder EnableWindow); ein
+    /// gesperrtes Fenster bekommt keine Maus, die Klicks landen beim Elternfenster.</summary>
+    property OnDisabled: TProc read FOnDisabled write FOnDisabled;
   end;
 
 implementation
@@ -645,6 +650,13 @@ begin
     Exit;
   end;
   Key := 0;
+end;
+
+procedure TAtlasBreadcrumbBar.WMEnable(var Message: TWMEnable);
+begin
+  inherited;
+  if not Message.Enabled and Assigned(FOnDisabled) then
+    FOnDisabled();
 end;
 
 procedure TAtlasBreadcrumbBar.WMGetDlgCode(var Message: TWMGetDlgCode);

@@ -3,7 +3,8 @@
 // Brotkrumenleiste (#590), Darstellung: feste Höhe, Hinweis ohne Glieder,
 // Trefferprüfung, Menü nur für Glieder mit Geschwistern, Tastatur (←/→/↓/
 // Esc) und Kürzen von vorn bei schmaler Leiste; „›“ mit Kindermenü,
-// Springen per Strg+Klick und Strg+Enter.
+// Springen per Strg+Klick und Strg+Enter; Meldung, wenn das Fenster der Leiste
+// von außen gesperrt wird.
 
 interface
 
@@ -40,6 +41,9 @@ type
     procedure SeparatorOpensChildren;
     [Test]
     procedure CtrlClickAndCtrlEnterJump;
+    /// <summary>EnableWindow(False) von außen (wie VCL Enabled := False) meldet OnDisabled; Freigeben nicht.</summary>
+    [Test]
+    procedure ReportsWhenItsWindowIsDisabled;
   end;
 
 implementation
@@ -346,5 +350,25 @@ end;
 
 initialization
   TDUnitX.RegisterTestFixture(TAtlasBreadcrumbBarTests);
+
+procedure TAtlasBreadcrumbBarTests.ReportsWhenItsWindowIsDisabled;
+var
+  Calls: Integer;
+begin
+  Calls := 0;
+  FBar.OnDisabled :=
+    procedure
+    begin
+      Inc(Calls);
+    end;
+  FBar.HandleNeeded;
+  EnableWindow(FBar.Handle, False);
+  Assert.AreEqual(1, Calls, 'gesperrt');
+  EnableWindow(FBar.Handle, True);
+  Assert.AreEqual(1, Calls, 'Freigeben meldet nichts');
+  FBar.Enabled := False;
+  Assert.AreEqual(2, Calls, 'über VCL gesperrt');
+  FBar.OnDisabled := nil;
+end;
 
 end.

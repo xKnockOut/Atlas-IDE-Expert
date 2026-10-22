@@ -602,12 +602,24 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Geprüft in der Cloud:** FPC-trunk: 14 Kern-Tests der Suche grün (4 neu). Prüfskripte grün (PackageDependencies, Delphi12, ConsoleOutput, MainThreadQueue, DocComments, TestCoverage, Update-ConfigDoc -Check). **Nicht gebaut:** VCL- und IDE-Teile (`Atlas.UI.Search.Bar.Tests` mit 5 Tests nur unter Delphi).
 - **In der IDE prüfen (SU1–SU16 in `docs/Atlas-Testfaelle.md`):** ob die IDE Tasten im Suchfeld abfängt (Strg+C/V, Pfeile, Esc), ob `ShowMessageView` den Fokus nimmt und das Zurücksetzen auf die Leiste greift, Lage der Leiste unter dem Editor (über der Statuszeile) und mit Minimap/Übersichtsleiste, Thema der Kästchen.
 
-## Brotkrumenleiste bleibt nach einer Weile stehen (22.10.2026, Branch `claude/project-thread-blplxd` von main 40b789ea, ungebaut)
-- **Meldung (Marco):** Die Leiste lässt sich nach einer Zeit nicht mehr bedienen.
-- **Ursache:** Takt, Sprung und Menü liefen über `TAtlasGuard.Run(TAtlasFeature.EditorCommands, …)`. Diese Sicherung teilen sich rund 40 Units (Minimap, mitlaufender Kopf, Mehrfachcursor …). Drei Fehler einer beliebigen davon in 5 Minuten (atlas.log vom 22.10.: „Fehler in Editorbefehle: EAccessViolation … AnsiLowerCase“ aus `TStickyState.Tick`, behoben in Entwurfs-PR #1097) schalteten auch die Leiste ab: Der Takt lief nicht mehr, Klicks wurden in `Later`/`Run` verworfen, der alte Pfad blieb stehen.
-- **Fix:** Neues `TAtlasFeature.Breadcrumbs` („Brotkrumenleiste“, am Ende der Aufzählung, Namen in der Startmarke bleiben gültig); Schema `editor.breadcrumbs` mit `x-feature` Breadcrumbs. Bei ausgelöster Sicherung zeigt die Leiste `BreadcrumbsDisabled`, Zustand und Leisten bleiben (Install/ApplySettings fragen nur noch die Einstellung), nach „Abgeschaltete Funktionen einschalten“ zeichnet der nächste Takt neu. `Probe` vergisst das Fenster, wenn die Maus die Leiste verlässt, und holt sie beim nächsten Überfahren wieder nach vorn.
-- **Geprüft:** Prüfskripte grün, `Update-ConfigDoc.ps1`; FPC-Harness `Atlas.Core.Diagnostics.Guard.Tests` (neu `BreadcrumbsHaveTheirOwnFuse`), `Atlas.UI.Strings.Tests`, `Atlas.Core.Outline.Breadcrumbs.Tests` grün.
-- **Offen bei Marco:** Delphi-Build 0/0/0, Testfälle BK24/BK25. Die Zugriffsverletzung selbst behebt #1097.
+## Brotkrumenleiste bleibt nach einer Weile stehen (22.10.2026, Branch `claude/project-thread-blplxd` von main 40b789ea, PR #1098, ungebaut)
+- **Meldung (Marco):** Die Leiste lässt sich nach einer Zeit nicht mehr bedienen. Marco wünscht ausdrücklich Ursachen- statt Symptombekämpfung.
+- **Befund im atlas.log vom 22.10.:**
+  - Die Absturzsicherung hat **nicht** ausgelöst.
+  - Um 06:24:32 kommt die Maus an der Leiste an.
+  - Um 06:27:39 meldet `WindowFromPoint` „TPanel EditorPanel“ über der Leiste. `BringToFront` half nicht, und bis zum Neustart um 06:31 kam keine Maus mehr an. Am 21.10. um 22:44 und 22:45 geschah dasselbe.
+  - Außerdem: `ELspClientError` „Keine Antwort auf textDocument/documentSymbol innerhalb von 2000 ms“ aus `TAtlasIdeOutlineCache.Load` lief als Ausnahme in die Takte. Die AV in AnsiLowerCase (#1097) trat ebenfalls auf.
+- **Ursachen und Änderungen:**
+  - Zeitgrenze: `Load` fängt `ELspClientError` ab und behandelt sie wie „keine Antwort“; der alte Stand bleibt, Atlas fragt nach `RetryMs` neu.
+  - #1097 (Branch `claude/project-thread-bnnpvx`) ist hineingemergt.
+  - Maus kommt nicht an: Liefert `WindowFromPoint` das Elternfenster, ist das Fenster der Leiste gesperrt, ausgeblendet oder an einem anderen Elternfenster, oder es gehört einem fremden Thread. `Probe` prüft das jetzt bei jedem Takt (`WindowProblem`), protokolliert die Ursache mit der Elternkette und behebt sie: freigeben, zeigen oder neu anlegen. Beim fremden Thread wird nur protokolliert, weil `DestroyWindow` dort scheitert.
+  - Die Leiste meldet `WM_ENABLE(False)` (`OnDisabled`). Atlas protokolliert dann bis zu dreimal den Aufrufer mit Stack, damit feststeht, wer sperrt.
+  - Sicherheitsnetz: eigenes `TAtlasFeature.Breadcrumbs` statt `EditorCommands`, mit Hinweis in der Leiste, wenn es auslöst.
+- **Geprüft:**
+  - Prüfskripte grün.
+  - Im FPC-Harness sind Guard (ohne `LogRotatesAtLimit`, FPC kennt `TFile.GetSize` nicht), LoadGuard und Strings grün.
+  - Die VCL-Testunit `Atlas.UI.Outline.Breadcrumbs.Tests` (neu `ReportsWhenItsWindowIsDisabled`) lässt sich unter FPC nicht übersetzen.
+- **Offen bei Marco:** Delphi-Build 0/0/0, Testfälle BK24 bis BK27. Danach die neuen „Brotkrumen:“-Zeilen aus atlas.log auswerten; sie nennen die genaue Ursache.
 
 ## Brotkrumenleiste überarbeiten (21.10.2026, Branch `claude/project-thread-blplxd` von `feature/v1.1.0-suche-unitsuche` d983ebf1)
 - **Wunsch von Marco:** Leiste im dunklen Thema in IDE-Farben statt schwarz; über die Leiste navigieren; die immer leeren Comboboxen der IDE („Typ suchen“/„Methode suchen“) füllen oder abschalten.

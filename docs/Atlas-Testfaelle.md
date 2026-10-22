@@ -2461,6 +2461,8 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | BK23 | `editor.breadcrumbsHideIdeToolbar` aus bzw. `editor.breadcrumbs` aus bzw. Atlas entladen | Navigationsleiste der IDE ist wieder an alter Stelle (unter den Reitern, über dem Editor) |
 | BK24 | IDE eine Weile benutzen (Reiter wechseln, Plattform umstellen, tippen), dann auf Glieder und „›“ klicken | Leiste reagiert weiterhin; fällt eine andere Funktion unter „Editorbefehle“ aus, bleibt die Leiste bedienbar |
 | BK25 | Brotkrumenleiste durch Fehler abgeschaltet (atlas.log: „Brotkrumen: durch die Sicherung abgeschaltet“), dann Atlas › Abgeschaltete Funktionen einschalten | Leiste zeigt zuerst den Hinweis „Brotkrumenleiste nach Fehlern abgeschaltet …“, nach dem Einschalten wieder den Pfad am Caret und ist bedienbar |
+| BK26 | Mit eingeschalteter Leiste arbeiten (Reiter, Design-Ansicht und zurück, Debuggen, Dialoge), danach auf ein Glied klicken | Menü öffnet sich. Steht in atlas.log „Brotkrumen: Fenster ist gesperrt/ausgeblendet …“, „Maus landet bei …“ oder „Fenster der Leiste wird gesperrt“ mit Aufrufer, die Zeilen an Claude geben |
+| BK27 | Server beschäftigt (z. B. Index-Aufbau), Leiste und mitlaufender Kopf an | Kein Eintrag „Fehler in Editorbefehle: ELspClientError … documentSymbol“; stattdessen „Gliederung: keine Antwort vom Server …“, Leiste behält den alten Pfad |
 
 ## Extrahieren, case und with (#50)
 
