@@ -23,6 +23,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Pascal.Contract,
@@ -90,31 +91,51 @@ end;
 
 { /task }
 
+type
+  /// <summary>Offener Knoten in LocalNames; InSection = im var-Abschnitt der Routine.</summary>
+  TLocalNamesEntry = record
+    Node: TSyntaxNode;
+    InSection: Boolean;
+  end;
+
+function LocalNamesEntry(ANode: TSyntaxNode; AInSection: Boolean): TLocalNamesEntry;
+begin
+  Result.Node := ANode;
+  Result.InSection := AInSection;
+end;
+
 /// <summary>Lokale Variablen von ARoutine: var-Abschnitt und Inline-Variablen vor Zeile ABefore.</summary>
 function LocalNames(ARoutine: TSyntaxNode; ABefore: Integer): TArray<string>;
 var
-  Names: TArray<string>;
-
-  procedure Collect(ANode: TSyntaxNode; AInSection: Boolean);
-  var
-    Index: Integer;
-  begin
-    if ANode.StartPos.Line >= ABefore then
-      Exit;
-    if ((ANode.Kind = TSyntaxKind.VarDecl) and AInSection) or (ANode.Kind = TSyntaxKind.InlineVar) then
-      if (ANode.Name <> '') and not MatchText(ANode.Name, Names) then
-        Names := Names + [ANode.Name];
-    // Anonyme Methoden und lokale Routinen haben eigene Variablen.
-    if (ANode <> ARoutine) and (ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl]) then
-      Exit;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Collect(ANode[Index], AInSection or ((ANode = ARoutine) and (ANode[Index].Kind = TSyntaxKind.VarSection)));
-  end;
-
+  Pending: TStack<TLocalNamesEntry>;
+  Entry: TLocalNamesEntry;
+  Node: TSyntaxNode;
+  Index: Integer;
 begin
-  Names := nil;
-  Collect(ARoutine, False);
-  Result := Names;
+  // Eigener Stapel statt Rekursion (Bericht M1), in derselben Reihenfolge.
+  Result := nil;
+  Pending := TStack<TLocalNamesEntry>.Create;
+  try
+    Pending.Push(LocalNamesEntry(ARoutine, False));
+    while Pending.Count > 0 do
+    begin
+      Entry := Pending.Pop;
+      Node := Entry.Node;
+      if Node.StartPos.Line >= ABefore then
+        Continue;
+      if ((Node.Kind = TSyntaxKind.VarDecl) and Entry.InSection) or (Node.Kind = TSyntaxKind.InlineVar) then
+        if (Node.Name <> '') and not MatchText(Node.Name, Result) then
+          Result := Result + [Node.Name];
+      // Anonyme Methoden und lokale Routinen haben eigene Variablen.
+      if (Node <> ARoutine) and (Node.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl]) then
+        Continue;
+      for Index := Node.ChildCount - 1 downto 0 do
+        Pending.Push(LocalNamesEntry(Node[Index],
+          Entry.InSection or ((Node = ARoutine) and (Node[Index].Kind = TSyntaxKind.VarSection))));
+    end;
+  finally
+    Pending.Free;
+  end;
 end;
 
 /// <summary>Ziele der Zuweisungen und von Inc/Dec in ATokens.</summary>
@@ -259,18 +280,21 @@ end;
 
 function FindFor(ANode: TSyntaxNode; ALine: Integer): TSyntaxNode;
 var
-  Index: Integer;
+  Root: TSyntaxNode;
+  Line: Integer;
 begin
-  if (ANode.Kind = TSyntaxKind.ForStatement) and (ANode.StartPos.Line = ALine) then
-    Exit(ANode);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if (ANode[Index].StartPos.Line <= ALine) and (ANode[Index].EndPos.Line >= ALine) then
+  Root := ANode;
+  Line := ALine;
+  // Search statt Rekursion (Bericht M1); unter ANode nur Knoten, die ALine überdecken.
+  Result := ANode.Search(
+    function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin
-      Result := FindFor(ANode[Index], ALine);
-      if Result <> nil then
-        Exit;
-    end;
-  Result := nil;
+      if (ACandidate <> Root) and ((ACandidate.StartPos.Line > Line) or (ACandidate.EndPos.Line < Line)) then
+        Exit(TSyntaxSearchStep.Skip);
+      Result := TSyntaxSearchStep.Descend;
+      if (ACandidate.Kind = TSyntaxKind.ForStatement) and (ACandidate.StartPos.Line = Line) then
+        Result := TSyntaxSearchStep.Found;
+    end);
 end;
 
 /// <summary>Quelltext von ANode aus ALines.</summary>

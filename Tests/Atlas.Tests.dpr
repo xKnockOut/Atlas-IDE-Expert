@@ -99,6 +99,7 @@ uses
   Atlas.Common.Lsp.Hierarchies.Tests in 'Common\Lsp\Atlas.Common.Lsp.Hierarchies.Tests.pas',
   Atlas.Common.Lsp.Implementations.Tests in 'Common\Lsp\Atlas.Common.Lsp.Implementations.Tests.pas',
   Atlas.Common.Lsp.InlayHints.Tests in 'Common\Lsp\Atlas.Common.Lsp.InlayHints.Tests.pas',
+  Atlas.Common.Lsp.DeepTrees.Tests in 'Common\Lsp\Atlas.Common.Lsp.DeepTrees.Tests.pas',
   Atlas.Common.Lsp.CodeLens.Tests in 'Common\Lsp\Atlas.Common.Lsp.CodeLens.Tests.pas',
   Atlas.Common.Lsp.OverrideMarks.Tests in 'Common\Lsp\Atlas.Common.Lsp.OverrideMarks.Tests.pas',
   Atlas.Common.Metrics.Calculator.Tests in 'Common\Metrics\Atlas.Common.Metrics.Calculator.Tests.pas',

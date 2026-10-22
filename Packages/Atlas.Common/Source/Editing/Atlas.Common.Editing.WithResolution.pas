@@ -154,25 +154,30 @@ end;
 
 procedure CollectIdentifiers(ANode: TSyntaxNode; AList: TList<TSyntaxNode>);
 var
-  Index: Integer;
+  List: TList<TSyntaxNode>;
 begin
-  if ANode.Kind = TSyntaxKind.Identifier then
-    AList.Add(ANode);
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectIdentifiers(ANode[Index], AList);
+  List := AList;
+  // Walk statt Rekursion (Bericht M1).
+  ANode.Walk(
+    function(AChild: TSyntaxNode): Boolean
+    begin
+      if AChild.Kind = TSyntaxKind.Identifier then
+        List.Add(AChild);
+      Result := True;
+    end);
 end;
 
 /// <summary>Kette aus Namen und Indizes (A, A.B, A[I], Self): wird unverändert vorangestellt.</summary>
 function IsSimple(ANode: TSyntaxNode): Boolean;
+var
+  Node: TSyntaxNode;
 begin
-  case ANode.Kind of
-    TSyntaxKind.Identifier:
-      Result := True;
-    TSyntaxKind.MemberAccess, TSyntaxKind.Dereference, TSyntaxKind.IndexAccess:
-      Result := (ANode.ChildCount > 0) and IsSimple(ANode[0]);
-  else
-    Result := False;
-  end;
+  // Schleife statt Rekursion (Bericht M1).
+  Node := ANode;
+  while (Node.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Dereference, TSyntaxKind.IndexAccess]) and
+    (Node.ChildCount > 0) do
+    Node := Node[0];
+  Result := Node.Kind = TSyntaxKind.Identifier;
 end;
 
 /// <summary>Name der Variablen für einen Typ: TKunde → Kunde, sonst Item.</summary>

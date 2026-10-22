@@ -874,22 +874,24 @@ end;
 
 function FindRoutine(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
 var
-  Index: Integer;
-  Child: TSyntaxNode;
+  Root: TSyntaxNode;
+  Offset: Integer;
 begin
-  Result := nil;
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    Child := ANode[Index];
-    if (Child.StartOffset > AOffset) or (AOffset > Child.EndOffset) then
-      Continue;
-    // Die äußerste Routine, deren Kopf hier steht.
-    if Child.Kind = TSyntaxKind.RoutineDecl then
-      Exit(Child);
-    Result := FindRoutine(Child, AOffset);
-    if Result <> nil then
-      Exit;
-  end;
+  Root := ANode;
+  Offset := AOffset;
+  // Search statt Rekursion (Bericht M1); unter ANode nur Knoten, die AOffset enthalten.
+  Result := ANode.Search(
+    function(ACandidate: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if ACandidate = Root then
+        Exit(TSyntaxSearchStep.Descend);
+      if (ACandidate.StartOffset > Offset) or (Offset > ACandidate.EndOffset) then
+        Exit(TSyntaxSearchStep.Skip);
+      // Die äußerste Routine, deren Kopf hier steht.
+      if ACandidate.Kind = TSyntaxKind.RoutineDecl then
+        Exit(TSyntaxSearchStep.Found);
+      Result := TSyntaxSearchStep.Descend;
+    end);
 end;
 
 class function TChangeSignature.BodyEnd(ATree: TSyntaxTree; const AHeader: TSignatureHeader): Integer;

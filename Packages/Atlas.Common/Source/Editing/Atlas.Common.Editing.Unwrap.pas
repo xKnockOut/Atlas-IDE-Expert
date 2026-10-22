@@ -168,18 +168,21 @@ end;
 
 function CountRaises(ANode: TSyntaxNode): Integer;
 var
-  Index: Integer;
+  Count: Integer;
 begin
   Result := 0;
   if ANode = nil then
     Exit;
-  if ANode.Kind = TSyntaxKind.RaiseStatement then
-    Inc(Result);
-  // Ein raise in einer anonymen Methode gehört nicht zum except-Teil.
-  if ANode.Kind = TSyntaxKind.AnonymousMethod then
-    Exit;
-  for Index := 0 to ANode.ChildCount - 1 do
-    Inc(Result, CountRaises(ANode[Index]));
+  Count := 0;
+  // Walk statt Rekursion (Bericht M1). Ein raise in einer anonymen Methode gehört nicht zum except-Teil.
+  ANode.Walk(
+    function(AChild: TSyntaxNode): Boolean
+    begin
+      if AChild.Kind = TSyntaxKind.RaiseStatement then
+        Inc(Count);
+      Result := AChild.Kind <> TSyntaxKind.AnonymousMethod;
+    end);
+  Result := Count;
 end;
 
 { TUnwrapOptions }

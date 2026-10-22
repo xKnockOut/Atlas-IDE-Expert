@@ -66,6 +66,9 @@ const
     TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineHeader, TSyntaxKind.RoutineDecl];
   RoutineWords: array[0..4] of string = ('function', 'procedure', 'constructor', 'destructor', 'operator');
 
+type
+  TSyntaxKinds = set of TSyntaxKind;
+
 /// <summary>Teile von AText an ASeparator auf Klammertiefe 0.</summary>
 function SplitTop(const AText: string; ASeparator: Char): TArray<string>;
 var
@@ -211,17 +214,31 @@ begin
     Result := Result + [AIndent + '/// <returns></returns>'];
 end;
 
-function FindDeclaration(ANode: TSyntaxNode; ALine: Integer): Boolean;
+/// <summary>Erster Knoten einer der Arten AKinds, der in Zeile ALine beginnt; nil sonst. Search statt
+/// Rekursion (Bericht M1); unter ANode nur Knoten, die ALine überdecken.</summary>
+function NodeAt(ANode: TSyntaxNode; ALine: Integer; const AKinds: TSyntaxKinds): TSyntaxNode; overload;
 var
-  Index: Integer;
+  Root: TSyntaxNode;
+  Line: Integer;
+  Kinds: TSyntaxKinds;
 begin
-  if (ANode.Kind in DeclarationKinds) and (ANode.StartPos.Line = ALine) then
-    Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if (ANode[Index].StartPos.Line <= ALine) and (ANode[Index].EndPos.Line >= ALine) and
-      FindDeclaration(ANode[Index], ALine) then
-      Exit(True);
-  Result := False;
+  Root := ANode;
+  Line := ALine;
+  Kinds := AKinds;
+  Result := ANode.Search(
+    function(ACandidate: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if (ACandidate <> Root) and ((ACandidate.StartPos.Line > Line) or (ACandidate.EndPos.Line < Line)) then
+        Exit(TSyntaxSearchStep.Skip);
+      Result := TSyntaxSearchStep.Descend;
+      if (ACandidate.Kind in Kinds) and (ACandidate.StartPos.Line = Line) then
+        Result := TSyntaxSearchStep.Found;
+    end);
+end;
+
+function FindDeclaration(ANode: TSyntaxNode; ALine: Integer): Boolean;
+begin
+  Result := NodeAt(ANode, ALine, DeclarationKinds) <> nil;
 end;
 
 /// <summary>Beginnt in Zeile ALine eine Deklaration (Typ, Konstante, Variable, Feld, Property, Routine)?</summary>
@@ -242,20 +259,9 @@ begin
 end;
 
 /// <summary>Knoten der Art AKind, der in Zeile ALine beginnt; nil sonst.</summary>
-function NodeAt(ANode: TSyntaxNode; ALine: Integer; AKind: TSyntaxKind): TSyntaxNode;
-var
-  Index: Integer;
+function NodeAt(ANode: TSyntaxNode; ALine: Integer; AKind: TSyntaxKind): TSyntaxNode; overload;
 begin
-  if (ANode.Kind = AKind) and (ANode.StartPos.Line = ALine) then
-    Exit(ANode);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if (ANode[Index].StartPos.Line <= ALine) and (ANode[Index].EndPos.Line >= ALine) then
-    begin
-      Result := NodeAt(ANode[Index], ALine, AKind);
-      if Result <> nil then
-        Exit;
-    end;
-  Result := nil;
+  Result := NodeAt(ANode, ALine, [AKind]);
 end;
 
 /// <summary>Typdeklaration AName unter ANode, durch Abschnitte und Typrümpfe, nicht in andere Typen hinein.

@@ -66,6 +66,14 @@ type
   /// <summary>Besuch eines Knotens für TSyntaxNode.Search.</summary>
   TSyntaxNodeSearch = reference to function(ANode: TSyntaxNode): TSyntaxSearchStep;
 
+  /// <summary>Eintrag eines eigenen Stapels für Läufe, die einen Knoten nach seinen Kindern prüfen (Post-Order,
+  /// Bericht M1): Done = die Kinder sind schon durchlaufen.</summary>
+  TSyntaxPostOrderEntry = record
+    Node: TSyntaxNode;
+    Done: Boolean;
+    class function Create(ANode: TSyntaxNode; ADone: Boolean): TSyntaxPostOrderEntry; static;
+  end;
+
   TSyntaxNode = class
   private
     FKind: TSyntaxKind;
@@ -154,6 +162,14 @@ uses
 function SyntaxKindName(AKind: TSyntaxKind): string;
 begin
   Result := GetEnumName(TypeInfo(TSyntaxKind), Ord(AKind));
+end;
+
+{ TSyntaxPostOrderEntry }
+
+class function TSyntaxPostOrderEntry.Create(ANode: TSyntaxNode; ADone: Boolean): TSyntaxPostOrderEntry;
+begin
+  Result.Node := ANode;
+  Result.Done := ADone;
 end;
 
 { TSyntaxNode }

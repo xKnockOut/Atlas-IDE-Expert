@@ -575,23 +575,27 @@ end;
 
 function IsDeclaredIn(ANode: TSyntaxNode; const AName: string): Boolean;
 var
-  Index: Integer;
-  Part: string;
+  Name: string;
 begin
-  if ANode.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl, TSyntaxKind.Field,
-    TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader, TSyntaxKind.Parameter,
-    TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
-    for Part in ANode.Name.Split([',', '.']) do
-      if SameText(Bare(Trim(Part)), AName) then
-        Exit(True);
-  // Aufzählungswerte stehen als Bezeichner im EnumType.
-  if (ANode.Kind = TSyntaxKind.Identifier) and (ANode.Parent <> nil) and
-    (ANode.Parent.Kind = TSyntaxKind.EnumType) and SameText(ANode.Name, AName) then
-    Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if IsDeclaredIn(ANode[Index], AName) then
-      Exit(True);
-  Result := False;
+  Name := AName;
+  // Search statt Rekursion (Bericht M1).
+  Result := ANode.Search(
+    function(ACandidate: TSyntaxNode): TSyntaxSearchStep
+    var
+      Part: string;
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if ACandidate.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl, TSyntaxKind.Field,
+        TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader, TSyntaxKind.Parameter,
+        TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
+        for Part in ACandidate.Name.Split([',', '.']) do
+          if SameText(Bare(Trim(Part)), Name) then
+            Exit(TSyntaxSearchStep.Found);
+      // Aufzählungswerte stehen als Bezeichner im EnumType.
+      if (ACandidate.Kind = TSyntaxKind.Identifier) and (ACandidate.Parent <> nil) and
+        (ACandidate.Parent.Kind = TSyntaxKind.EnumType) and SameText(ACandidate.Name, Name) then
+        Result := TSyntaxSearchStep.Found;
+    end) <> nil;
 end;
 
 class function TUsesActions.MissingUnits(const ATokens: TArray<TPascalToken>; ATree: TSyntaxTree;

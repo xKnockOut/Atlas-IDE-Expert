@@ -351,23 +351,29 @@ end;
 /// und Konstanten der Methoden samt Result und Self.</summary>
 procedure CollectOwnNames(ANode: TSyntaxNode; ANames: TDictionary<string, Boolean>);
 var
-  Index: Integer;
-  Name: string;
+  Names: TDictionary<string, Boolean>;
 begin
-  case ANode.Kind of
-    TSyntaxKind.Field, TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineHeader, TSyntaxKind.TypeDecl,
-    TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl, TSyntaxKind.Parameter, TSyntaxKind.InlineVar,
-    TSyntaxKind.InlineConst, TSyntaxKind.RoutineDecl:
-      for Name in ANode.Name.Split([',']) do
-        if (Trim(Name) <> '') and (Pos('.', Name) = 0) then
-          ANames.AddOrSetValue(LowerCase(Trim(Name)), True);
-    TSyntaxKind.GenericParams:
-      for Index := 0 to ANode.ChildCount - 1 do
-        ANames.AddOrSetValue(LowerCase(ANode[Index].Name), True);
-  end;
-  // Laufvariablen „for var I“ stehen als InlineVar im for.
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectOwnNames(ANode[Index], ANames);
+  Names := ANames;
+  // Walk statt Rekursion (Bericht M1). Laufvariablen „for var I“ stehen als InlineVar im for.
+  ANode.Walk(
+    function(AChild: TSyntaxNode): Boolean
+    var
+      Index: Integer;
+      Name: string;
+    begin
+      case AChild.Kind of
+        TSyntaxKind.Field, TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineHeader, TSyntaxKind.TypeDecl,
+        TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl, TSyntaxKind.Parameter, TSyntaxKind.InlineVar,
+        TSyntaxKind.InlineConst, TSyntaxKind.RoutineDecl:
+          for Name in AChild.Name.Split([',']) do
+            if (Trim(Name) <> '') and (Pos('.', Name) = 0) then
+              Names.AddOrSetValue(LowerCase(Trim(Name)), True);
+        TSyntaxKind.GenericParams:
+          for Index := 0 to AChild.ChildCount - 1 do
+            Names.AddOrSetValue(LowerCase(AChild[Index].Name), True);
+      end;
+      Result := True;
+    end);
 end;
 
 /// <summary>Name eines Attributs: [Weak] bzw. [Fixture('x')].</summary>
@@ -389,23 +395,34 @@ type
 
 procedure CollectNeeds(ANode: TSyntaxNode; var ANeeds: TArray<TNeed>);
 var
-  Index: Integer;
-  Need: TNeed;
+  Needs: TList<TNeed>;
 begin
-  Need.Node := ANode;
-  Need.Names := nil;
-  case ANode.Kind of
-    TSyntaxKind.Identifier:
-      if (ANode.Parent = nil) or (ANode.Parent.Kind <> TSyntaxKind.GenericParams) then
-        Need.Names := [CleanName(ANode.Name)];
-    TSyntaxKind.TypeReference:
-      if ANode.Name <> '' then
-        Need.Names := ANode.Name.Split(['.']);
+  // Walk statt Rekursion (Bericht M1).
+  Needs := TList<TNeed>.Create;
+  try
+    ANode.Walk(
+      function(AChild: TSyntaxNode): Boolean
+      var
+        Need: TNeed;
+      begin
+        Need.Node := AChild;
+        Need.Names := nil;
+        case AChild.Kind of
+          TSyntaxKind.Identifier:
+            if (AChild.Parent = nil) or (AChild.Parent.Kind <> TSyntaxKind.GenericParams) then
+              Need.Names := [CleanName(AChild.Name)];
+          TSyntaxKind.TypeReference:
+            if AChild.Name <> '' then
+              Need.Names := AChild.Name.Split(['.']);
+        end;
+        if Need.Names <> nil then
+          Needs.Add(Need);
+        Result := True;
+      end);
+    ANeeds := ANeeds + Needs.ToArray;
+  finally
+    Needs.Free;
   end;
-  if Need.Names <> nil then
-    ANeeds := ANeeds + [Need];
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectNeeds(ANode[Index], ANeeds);
 end;
 
 /// <summary>Namen aller uses-Einträge eines Abschnitts.</summary>

@@ -208,20 +208,33 @@ end;
 /// <summary>Innerste Routine mit Rumpf, die APosition enthält; nil außerhalb von Routinen.</summary>
 function EnclosingRoutine(ANode: TSyntaxNode; const APosition: TTextPosition): TSyntaxNode;
 var
+  Pending: TStack<TSyntaxPostOrderEntry>;
+  Entry: TSyntaxPostOrderEntry;
   Index: Integer;
-  Child, Inner: TSyntaxNode;
 begin
+  // Eigener Stapel statt Rekursion (Bericht M1): Der Weg zur Position kann durch tiefe Ausdrücke führen.
+  // Wie früher zuerst die Kinder eines Knotens, dann der Knoten selbst; Geschwister in ihrer Reihenfolge.
   Result := nil;
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    Child := ANode[Index];
-    if not RangeContains(NodeRange(Child), APosition) then
-      Continue;
-    Inner := EnclosingRoutine(Child, APosition);
-    if Inner <> nil then
-      Exit(Inner);
-    if (Child.Kind = TSyntaxKind.RoutineDecl) and (Child.FindChild(TSyntaxKind.Block) <> nil) then
-      Exit(Child);
+  Pending := TStack<TSyntaxPostOrderEntry>.Create;
+  try
+    Pending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
+    while Pending.Count > 0 do
+    begin
+      Entry := Pending.Pop;
+      if Entry.Done then
+      begin
+        if (Entry.Node <> ANode) and (Entry.Node.Kind = TSyntaxKind.RoutineDecl) and
+          (Entry.Node.FindChild(TSyntaxKind.Block) <> nil) then
+          Exit(Entry.Node);
+        Continue;
+      end;
+      Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node, True));
+      for Index := Entry.Node.ChildCount - 1 downto 0 do
+        if RangeContains(NodeRange(Entry.Node[Index]), APosition) then
+          Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node[Index], False));
+    end;
+  finally
+    Pending.Free;
   end;
 end;
 
@@ -262,25 +275,27 @@ end;
 /// <summary>Rumpf zur Routine AItem: gleicher Name mit Typ-Präfix bzw. dieselbe Startposition.</summary>
 function FindBody(ANode: TSyntaxNode; const AItem: THierarchyItem): TSyntaxNode;
 var
-  Index: Integer;
-  Child: TSyntaxNode;
-  Qualified: string;
+  Root: TSyntaxNode;
+  Qualified, Name: string;
+  Start: TTextPosition;
 begin
-  Result := nil;
   if AItem.Container <> '' then
     Qualified := AItem.Container + '.' + AItem.Name
   else
     Qualified := AItem.Name;
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    Child := ANode[Index];
-    if (Child.Kind = TSyntaxKind.RoutineDecl) and (Child.FindChild(TSyntaxKind.Block) <> nil) and
-      (SameText(Child.Name, Qualified) or (Child.StartPos = AItem.Range.StartPos) and SameText(Child.Name, AItem.Name)) then
-      Exit(Child);
-    Result := FindBody(Child, AItem);
-    if Result <> nil then
-      Exit;
-  end;
+  Name := AItem.Name;
+  Start := AItem.Range.StartPos;
+  Root := ANode;
+  // Search statt Rekursion (Bericht M1); ANode selbst zählt wie früher nicht.
+  Result := ANode.Search(
+    function(ACandidate: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if (ACandidate <> Root) and (ACandidate.Kind = TSyntaxKind.RoutineDecl) and
+        (ACandidate.FindChild(TSyntaxKind.Block) <> nil) and (SameText(ACandidate.Name, Qualified) or
+        (ACandidate.StartPos = Start) and SameText(ACandidate.Name, Name)) then
+        Result := TSyntaxSearchStep.Found;
+    end);
 end;
 
 /// <summary>Deklaration, deren Name an APosition steht (z. B. Methode in der Klasse).</summary>

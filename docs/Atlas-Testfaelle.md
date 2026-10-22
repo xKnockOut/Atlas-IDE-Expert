@@ -3138,8 +3138,9 @@ Voraussetzung: Einstellungen auf Vorgabe, Diagnoselog an, ein Testprojekt offen.
 | TV1 | `Tief.pas` mit 20000 Gliedern dem Projekt hinzufügen und öffnen | Kein Absturz, keine Benachrichtigung „Server neu gestartet“; im Problemfenster der Befund `with-statement` in der Zeile mit `with`; kein `unit-too-deep`; im Diagnoselog keine `deepUnit`-Zeile (**Abnahme**) |
 | TV2 | Dasselbe mit 100100 Gliedern (`Tief2.pas`) | Problemfenster: genau ein Hinweis `unit-too-deep` „Die Prüfregeln laufen für diese Unit nicht: Der Syntaxbaum ist 100… Ebenen tief (Grenze 100000). Die tiefste Stelle liegt hier; …“ am ersten `1` der Kette; kein `with-statement`; im Diagnoselog `deepUnits=1 deepUnit=… deepUnitDepth=…` (**Abnahme**) |
 | TV3 | In `atlas.json` `{"rules": {"unit-too-deep": "off"}}`, `Tief2.pas` erneut prüfen lassen | Kein Hinweis mehr; die Unit bleibt ohne Befunde |
+| TV3a | In `Tief.pas` (TV1) Maus über ein `1` mitten in der Kette, Strg+Klick auf `P`, Inlay Hints und Endmarken an | Kein Absturz, keine Benachrichtigung „Server neu gestartet“; Hover und Hinweise wie in anderen Units |
 | TV4 | `AtlasServer.exe --check` über das Projekt aus TV1 | Läuft ohne Absturz durch; `Tief.pas` mit `with-statement`, `Tief2.pas` mit `unit-too-deep` |
-| TV5 | Testlauf `Atlas.Tests.exe` | Grün, darunter `AllRulesHandleDeepTrees` und `EngineChecksDeepUnit` (TBuiltinRulesTests), `TooDeepTreeSkipsRules` und `TooDeepHintCanBeSwitchedOff` (TRuleEngineTests), `WalkAndSearchOfDeepTreeNeedLittleStack` und `DeepestIsFirstNodeAtGreatestDepth` (TSyntaxTreeTests) |
+| TV5 | Testlauf `Atlas.Tests.exe` | Grün, darunter `AllRulesHandleDeepTrees` und `EngineChecksDeepUnit` (TBuiltinRulesTests), `TooDeepTreeSkipsRules` und `TooDeepHintCanBeSwitchedOff` (TRuleEngineTests), `WalkAndSearchOfDeepTreeNeedLittleStack` und `DeepestIsFirstNodeAtGreatestDepth` (TSyntaxTreeTests), `WalkersHandleDeepTrees` (TLspDeepTreeTests) |
 
 ## Gliederung beim Start und Kontextwechsel ohne Zugriffsverletzung
 

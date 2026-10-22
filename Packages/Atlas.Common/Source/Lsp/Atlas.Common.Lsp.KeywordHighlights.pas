@@ -376,22 +376,42 @@ end;
 /// <summary>Innerster Knoten einer der Arten, der AOffset enthält; ohne Grenzen zu überschreiten.</summary>
 function Innermost(ANode: TSyntaxNode; AOffset: Integer; const AKinds, ABoundaries: TSyntaxKinds): TSyntaxNode;
 var
+  Pending: TStack<TSyntaxPostOrderEntry>;
+  Entry: TSyntaxPostOrderEntry;
   Index: Integer;
-  Child, Found: TSyntaxNode;
+  Child: TSyntaxNode;
 begin
+  // Eigener Stapel statt Rekursion (Bericht M1): Der Weg zum Offset kann durch tiefe Ausdrücke führen.
+  // Ein Knoten wird nach seinen Kindern geprüft; eine Grenze beendet wie früher die Suche unter ihren
+  // Geschwistern, die Vorfahren werden danach noch geprüft.
   Result := nil;
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    Child := ANode[Index];
-    if (AOffset < Child.StartOffset) or (AOffset >= Child.EndOffset) then
-      Continue;
-    Found := Innermost(Child, AOffset, AKinds, ABoundaries);
-    if Found <> nil then
-      Exit(Found);
-    if Child.Kind in AKinds then
-      Exit(Child);
-    if Child.Kind in ABoundaries then
-      Exit(nil);
+  Pending := TStack<TSyntaxPostOrderEntry>.Create;
+  try
+    Pending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
+    while Pending.Count > 0 do
+    begin
+      Entry := Pending.Pop;
+      if not Entry.Done then
+      begin
+        Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node, True));
+        for Index := Entry.Node.ChildCount - 1 downto 0 do
+        begin
+          Child := Entry.Node[Index];
+          if (AOffset >= Child.StartOffset) and (AOffset < Child.EndOffset) then
+            Pending.Push(TSyntaxPostOrderEntry.Create(Child, False));
+        end;
+        Continue;
+      end;
+      if Entry.Node = ANode then
+        Continue;
+      if Entry.Node.Kind in AKinds then
+        Exit(Entry.Node);
+      if Entry.Node.Kind in ABoundaries then
+        while (Pending.Count > 0) and not Pending.Peek.Done do
+          Pending.Pop;
+    end;
+  finally
+    Pending.Free;
   end;
 end;
 
@@ -402,25 +422,26 @@ end;
 
 function InNested(ARoutine: TSyntaxNode; AOffset: Integer): Boolean;
 
-  function Visit(ANode: TSyntaxNode): Boolean;
-  var
-    Index: Integer;
-    Child: TSyntaxNode;
-  begin
-    for Index := 0 to ANode.ChildCount - 1 do
-    begin
-      Child := ANode[Index];
-      if (AOffset < Child.StartOffset) or (AOffset >= Child.EndOffset) then
-        Continue;
-      if Child.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
-        Exit(True);
-      Exit(Visit(Child));
-    end;
-    Result := False;
-  end;
-
+var
+  Node, Child: TSyntaxNode;
+  Index: Integer;
 begin
-  Result := Visit(ARoutine);
+  // Schleife statt Rekursion (Bericht M1): dem ersten Kind folgen, das AOffset enthält.
+  Result := False;
+  Node := ARoutine;
+  while Node <> nil do
+  begin
+    Child := nil;
+    for Index := 0 to Node.ChildCount - 1 do
+      if (AOffset >= Node[Index].StartOffset) and (AOffset < Node[Index].EndOffset) then
+      begin
+        Child := Node[Index];
+        Break;
+      end;
+    if (Child <> nil) and (Child.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
+      Exit(True);
+    Node := Child;
+  end;
 end;
 
 /// <summary>Ausstiegspunkte der Routine bzw. anonymen Methode ARoutine.</summary>
@@ -492,23 +513,27 @@ end;
 /// <summary>RoutineDecl mit Rumpf, in deren Kopf AOffset liegt.</summary>
 function RoutineOfHeader(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
 var
-  Index: Integer;
-  Header: TSyntaxNode;
+  Root: TSyntaxNode;
+  Offset: Integer;
 begin
-  if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.Block) <> nil) then
-  begin
-    Header := ANode.FindChild(TSyntaxKind.RoutineHeader);
-    if (Header <> nil) and (AOffset >= Header.StartOffset) and (AOffset < Header.EndOffset) then
-      Exit(ANode);
-  end;
-  for Index := 0 to ANode.ChildCount - 1 do
-    if (AOffset >= ANode[Index].StartOffset) and (AOffset < ANode[Index].EndOffset) then
+  Root := ANode;
+  Offset := AOffset;
+  // Search statt Rekursion (Bericht M1); unter ANode nur Knoten, die AOffset enthalten.
+  Result := ANode.Search(
+    function(ACandidate: TSyntaxNode): TSyntaxSearchStep
+    var
+      Header: TSyntaxNode;
     begin
-      Result := RoutineOfHeader(ANode[Index], AOffset);
-      if Result <> nil then
-        Exit;
-    end;
-  Result := nil;
+      if (ACandidate <> Root) and ((Offset < ACandidate.StartOffset) or (Offset >= ACandidate.EndOffset)) then
+        Exit(TSyntaxSearchStep.Skip);
+      Result := TSyntaxSearchStep.Descend;
+      if (ACandidate.Kind = TSyntaxKind.RoutineDecl) and (ACandidate.FindChild(TSyntaxKind.Block) <> nil) then
+      begin
+        Header := ACandidate.FindChild(TSyntaxKind.RoutineHeader);
+        if (Header <> nil) and (Offset >= Header.StartOffset) and (Offset < Header.EndOffset) then
+          Result := TSyntaxSearchStep.Found;
+      end;
+    end);
 end;
 
 function ShortName(const AName: string): string;

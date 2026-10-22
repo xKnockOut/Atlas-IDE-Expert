@@ -86,19 +86,33 @@ end;
 
 function FindClass(ANode: TSyntaxNode; ALine: Integer): TSyntaxNode;
 var
+  Pending: TStack<TSyntaxPostOrderEntry>;
+  Entry: TSyntaxPostOrderEntry;
   Index: Integer;
 begin
+  // Eigener Stapel statt Rekursion (Bericht M1); die innerste Klasse gewinnt, also die Kinder vor dem Knoten.
   Result := nil;
-  if (ANode.StartPos.Line > ALine) or (ANode.EndPos.Line < ALine) then
-    Exit;
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    Result := FindClass(ANode[Index], ALine);
-    if Result <> nil then
-      Exit;
+  Pending := TStack<TSyntaxPostOrderEntry>.Create;
+  try
+    Pending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
+    while Pending.Count > 0 do
+    begin
+      Entry := Pending.Pop;
+      if Entry.Done then
+      begin
+        if Entry.Node.Kind = TSyntaxKind.ClassType then
+          Exit(Entry.Node);
+        Continue;
+      end;
+      if (Entry.Node.StartPos.Line > ALine) or (Entry.Node.EndPos.Line < ALine) then
+        Continue;
+      Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node, True));
+      for Index := Entry.Node.ChildCount - 1 downto 0 do
+        Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node[Index], False));
+    end;
+  finally
+    Pending.Free;
   end;
-  if ANode.Kind = TSyntaxKind.ClassType then
-    Result := ANode;
 end;
 
 /// <summary>-1 öffnet, +1 schließt, 0 sonst; AOther bei {$ELSE}.</summary>

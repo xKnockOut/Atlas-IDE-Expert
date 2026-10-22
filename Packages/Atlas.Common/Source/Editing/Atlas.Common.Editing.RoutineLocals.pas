@@ -71,24 +71,34 @@ uses
 
 class procedure TRoutineLocals.CollectKind(ANode: TSyntaxNode; AKind: TSyntaxKind; AList: TList<TSyntaxNode>);
 var
-  Index: Integer;
+  Kind: TSyntaxKind;
+  List: TList<TSyntaxNode>;
 begin
-  if ANode.Kind = AKind then
-    AList.Add(ANode);
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectKind(ANode[Index], AKind, AList);
+  Kind := AKind;
+  List := AList;
+  // Walk statt Rekursion (Bericht M1).
+  ANode.Walk(
+    function(AChild: TSyntaxNode): Boolean
+    begin
+      if AChild.Kind = Kind then
+        List.Add(AChild);
+      Result := True;
+    end);
 end;
 
 class function TRoutineLocals.HasKind(ANode: TSyntaxNode; AKind: TSyntaxKind): Boolean;
 var
-  Index: Integer;
+  Kind: TSyntaxKind;
 begin
-  if ANode.Kind = AKind then
-    Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if HasKind(ANode[Index], AKind) then
-      Exit(True);
-  Result := False;
+  Kind := AKind;
+  // Search statt Rekursion (Bericht M1).
+  Result := ANode.Search(
+    function(AChild: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if AChild.Kind = Kind then
+        Result := TSyntaxSearchStep.Found;
+    end) <> nil;
 end;
 
 class function TRoutineLocals.IsInlineFor(const ATokens: TArray<TPascalToken>; AFor: TSyntaxNode): Boolean;

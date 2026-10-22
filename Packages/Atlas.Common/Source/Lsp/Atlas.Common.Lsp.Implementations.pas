@@ -170,17 +170,23 @@ end;
 function EnclosingRoutineName(ANode: TSyntaxNode; AOffset: Integer): string;
 var
   Index: Integer;
-  Child: TSyntaxNode;
+  Node, Child: TSyntaxNode;
 begin
-  // Äußerste Routine: bei verschachtelten Routinen gilt die Methode.
-  for Index := 0 to ANode.ChildCount - 1 do
+  // Äußerste Routine: bei verschachtelten Routinen gilt die Methode. Schleife statt Rekursion (Bericht M1):
+  // dem ersten Kind folgen, das AOffset enthält.
+  Node := ANode;
+  while Node <> nil do
   begin
-    Child := ANode[Index];
-    if (Child.StartOffset > AOffset) or (AOffset > Child.EndOffset) then
-      Continue;
-    if Child.Kind = TSyntaxKind.RoutineDecl then
+    Child := nil;
+    for Index := 0 to Node.ChildCount - 1 do
+      if (Node[Index].StartOffset <= AOffset) and (AOffset <= Node[Index].EndOffset) then
+      begin
+        Child := Node[Index];
+        Break;
+      end;
+    if (Child <> nil) and (Child.Kind = TSyntaxKind.RoutineDecl) then
       Exit(Child.Name);
-    Exit(EnclosingRoutineName(Child, AOffset));
+    Node := Child;
   end;
   Result := '';
 end;
