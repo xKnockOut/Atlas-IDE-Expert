@@ -3382,3 +3382,16 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Routine mit `Screen.Cur
 | PF4 | `Liste.BeginUpdate; Liste.EndUpdate;` direkt hintereinander bzw. mit `try`/`finally` | Keine Meldung |
 | PF5 | `"pair-without-finally": {"pairs": [{"open": "Einfrieren", "close": "Auftauen"}]}` und `Anzeige.Einfrieren; Lesen; Anzeige.Auftauen;` | Meldung „Auftauen steht nicht im finally; … bleibt der Zustand hängen.“ |
 | PF6 | `"pair-without-finally": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Application.ProcessMessages in Schleifen (#931)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; VCL-Formular mit Knopf `StartButton` und Methode `TForm1.Warten` mit `while not Fertig do begin Schritt; Application.ProcessMessages; end;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PQ1 | Unit öffnen | Hinweis `processmessages-in-loop` an `Application.ProcessMessages`: „ProcessMessages in der Schleife erlaubt Wiedereintritt (zweiter Klick, Formular schließen). Besser die Arbeit in einen Thread oder TTask auslagern oder den Auslöser bis zum Ende sperren.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover, keine Glühbirne (**Abnahme**) |
+| PQ2 | In `StartButtonClick(Sender: TObject)` ohne Schleife `Application.ProcessMessages;` schreiben | Hinweis „ProcessMessages im Ereignis-Handler erlaubt Wiedereintritt …“ |
+| PQ3 | `Application.ProcessMessages` in `TTask.Run(procedure begin … end)` bzw. in einer Routine ohne Schleife und ohne Sender | Keine Meldung |
+| PQ4 | `"processmessages-in-loop": {"allowIn": ["Warten"]}` bzw. `["TForm1.Warten"]` | Keine Meldung in `Warten`; in anderen Methoden weiter |
+| PQ5 | `"processmessages-in-loop": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| PQ6 | Einstellungsseite „Prüfregeln“, Gruppe „Threads“ | Regel mit Schweregrad Hinweis und Option `allowIn` als Liste |

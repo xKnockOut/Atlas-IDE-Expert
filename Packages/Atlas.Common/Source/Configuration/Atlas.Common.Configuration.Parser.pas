@@ -47,8 +47,8 @@ const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
   BooleanRuleOptions: array[0..1] of string = ('allowCommented', 'requireElse');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  StringListRuleOptions: array[0..4] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
-    'methods');
+  StringListRuleOptions: array[0..5] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+    'methods', 'allowIn');
   /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
   StringRuleOptions: array[0..1] of string = ('template', 'replacement');
 

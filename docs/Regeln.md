@@ -8,7 +8,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|
 | [Fehler finden](#gruppe-find-bugs) | 44 |
 | [Exceptions](#gruppe-exceptions) | 6 |
-| [Threads](#gruppe-threads) | 7 |
+| [Threads](#gruppe-threads) | 8 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
 | [Performance](#gruppe-performance) | 3 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -93,6 +93,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`synchronize-in-destructor`](#synchronize-in-destructor) | Synchronize im Destruktor eines Threads | Bug | Warnung |
 | [`thread-resume-suspend`](#thread-resume-suspend) | Veraltetes TThread.Resume/Suspend | Code Smell | Warnung |
 | [`threadvar-managed`](#threadvar-managed) | threadvar mit verwaltetem Typ | Bug | Warnung |
+| [`processmessages-in-loop`](#processmessages-in-loop) | Application.ProcessMessages in Schleifen | Code Smell | Hinweis |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -3011,4 +3012,38 @@ finally
   Tabelle.EnableControls;
   Screen.Cursor := crDefault;
 end;
+```
+
+<a id="processmessages-in-loop"></a>
+### processmessages-in-loop
+
+**Application.ProcessMessages in Schleifen** · Code Smell · Hinweis · Gruppe Threads
+
+Application.ProcessMessages in einer for-, while- oder repeat-Schleife oder direkt in einem Ereignis-Handler (Methode mit Parameter Sender) öffnet die Tür für Wiedereintritt: Der Benutzer klickt erneut, schließt das Formular oder startet den Vorgang doppelt. Aufrufe in anonymen Methoden überlässt die Regel thread-vcl-access; ProcessMessages anderer Objekte zählt nicht. Konfidenz mittel, keine Schnellkorrektur: die Arbeit in einen Thread oder TTask auslagern oder den Auslöser bis zum Ende sperren. Die Option allowIn nennt Methoden, in denen es erlaubt ist.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowIn` | string-list | `[]` | Methoden, in denen ProcessMessages erlaubt ist, als Name oder Klasse.Name. |
+
+Mit Treffer:
+
+```pascal
+while not Done do
+begin
+  Step;
+  Application.ProcessMessages;
+end;
+```
+
+Richtig:
+
+```pascal
+StartButton.Enabled := False;
+TTask.Run(
+  procedure
+  begin
+    while not Done do
+      Step;
+    TThread.Queue(nil, procedure begin StartButton.Enabled := True; end);
+  end);
 ```
