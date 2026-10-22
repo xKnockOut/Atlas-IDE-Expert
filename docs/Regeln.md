@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 8 |
+| [Compiler vorab](#gruppe-compiler) | 9 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -139,6 +139,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`duplicate-case-label`](#duplicate-case-label) | Doppelte case-Marke | Bug | Fehler |
 | [`field-after-method`](#field-after-method) | Feld nach Methoden im selben Abschnitt | Bug | Fehler |
 | [`overload-directive-missing`](#overload-directive-missing) | Überladung ohne overload oder mit gleicher Signatur | Bug | Fehler |
+| [`duplicate-declaration`](#duplicate-declaration) | Bezeichner doppelt deklariert | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4346,4 +4347,33 @@ Richtig:
 ```pascal
 procedure Laden(const Datei: string); overload;
 procedure Laden(Strom: TStream); overload;
+```
+
+<a id="duplicate-declaration"></a>
+### duplicate-declaration
+
+**Bezeichner doppelt deklariert** · Bug · Fehler · Gruppe Compiler vorab
+
+Ein Bezeichner ist im selben Gültigkeitsbereich zweimal deklariert (wie E2004): lokale Variable, Konstante, Typ oder Label und ein Parameter der Routine, zwei Felder, ein Feld und eine Methode oder Property eines Typs, zwei Typen, Konstante und Variable der Unit über interface und implementation hinweg. Ebenso eine Unit doppelt in uses oder in den uses-Klauseln von interface und implementation zugleich (Option checkUses). Überladungen und Rümpfe von Routinen, eine Vorwärtsdeklaration und ihr Typ, TList neben TList<T> und Deklarationen in verschiedenen Zweigen desselben {$IF} zählen nicht. Korrektur: zweite Deklaration entfernen (den ganzen var-, const-, type- oder label-Abschnitt, wenn sie seine einzige war; bei uses den doppelten Eintrag); keine bei Parametern, Methoden und Properties.
+
+Entspricht der Compilermeldung `E2004`.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `checkUses` | boolean | `true` | Doppelte Einträge in uses-Klauseln melden. |
+
+Mit Treffer:
+
+```pascal
+procedure TRechnung.Summieren(Betrag: Currency);
+var
+  Betrag: Currency;
+begin
+```
+
+Richtig:
+
+```pascal
+procedure TRechnung.Summieren(Betrag: Currency);
+begin
 ```

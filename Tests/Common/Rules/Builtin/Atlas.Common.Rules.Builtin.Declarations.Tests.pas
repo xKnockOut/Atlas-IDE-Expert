@@ -13,6 +13,9 @@
 // overload-directive-missing (#987): Beispiel mit Korrektur, E2267, E2252,
 // E2301, Routinen der Unit über interface und implementation, verschachtelte
 // Routinen, stille Fälle (var, Generika, Operatoren, forward, {$IF}-Zweige).
+// duplicate-declaration (#988): Beispiel mit Korrekturen, Bereiche (Routine,
+// Typ, Record mit variantem Teil, Unit), uses mit checkUses, stille Fälle und
+// Optionen.
 
 interface
 
@@ -89,6 +92,16 @@ type
     procedure OverloadSilentCases;
     [Test]
     procedure OverloadOffAndExclude;
+    [Test]
+    procedure DuplicateDeclarationIssueExample;
+    [Test]
+    procedure DuplicateDeclarationScopes;
+    [Test]
+    procedure DuplicateDeclarationUses;
+    [Test]
+    procedure DuplicateDeclarationSilentCases;
+    [Test]
+    procedure DuplicateDeclarationOptions;
   end;
 
 implementation
@@ -96,6 +109,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
@@ -706,6 +720,129 @@ begin
     '{"rules": {"group:compiler": "off"}}', 'Kunden.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(Members),
     '{"rules": {"overload-directive-missing": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Kunden.pas'))));
+end;
+
+function Rechnung(const ADeclarations: string): string;
+begin
+  Result := 'unit Rechnungen;'#10'interface'#10'implementation'#10 +
+    'procedure TRechnung.Summieren(Betrag: Currency);'#10 + ADeclarations + 'begin'#10'end;'#10'end.';
+end;
+
+procedure TDeclarationRulesTests.DuplicateDeclarationIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+  Text: string;
+begin
+  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('var'#10'  Betrag: Currency;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(DuplicateDeclarationRuleId, Findings[0].RuleId);
+  Assert.AreEqual('Betrag ist schon als Parameter deklariert (wie E2004).', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  // Einzige Variable: der var-Abschnitt geht mit.
+  Assert.AreEqual('Zweite Deklaration entfernen', Findings[0].Fixes[0].Title);
+  Text := TChangeSignature.ApplyEdits(Rechnung('var'#10'  Betrag: Currency;'#10), Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Rechnung(''), Text);
+  TRuleAssert.Silent(TDuplicateDeclarationRule.Create, Text);
+  // Unter mehreren: nur die Zeile bzw. der Name.
+  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('var'#10'  Summe: Currency;'#10 +
+    '  Betrag: Currency;'#10));
+  Assert.AreEqual(Rechnung('var'#10'  Summe: Currency;'#10), TChangeSignature.ApplyEdits(Rechnung('var'#10 +
+    '  Summe: Currency;'#10'  Betrag: Currency;'#10), Findings[0].Fixes[0].Edits));
+  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('var'#10'  Betrag, Summe: Currency;'#10));
+  Assert.AreEqual(Rechnung('var'#10'  Summe: Currency;'#10), TChangeSignature.ApplyEdits(Rechnung('var'#10 +
+    '  Betrag, Summe: Currency;'#10), Findings[0].Fixes[0].Edits));
+  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('var'#10'  Summe, Betrag: Currency;'#10));
+  Assert.AreEqual(Rechnung('var'#10'  Summe: Currency;'#10), TChangeSignature.ApplyEdits(Rechnung('var'#10 +
+    '  Summe, Betrag: Currency;'#10), Findings[0].Fixes[0].Edits));
+end;
+
+procedure TDeclarationRulesTests.DuplicateDeclarationScopes;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Konstante und Variable, Typ und Label in einer Routine; zwei Parameter.
+  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('label'#10'  Weiter, Weiter;'#10 +
+    'const'#10'  Satz = 19;'#10'type'#10'  TSatz = Integer;'#10'var'#10'  Satz: Integer;'#10'  TSatz: Integer;'#10));
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual('Weiter ist schon als Label deklariert (wie E2004).', Findings[0].Message);
+  Assert.AreEqual('Satz ist schon als Konstante deklariert (wie E2004).', Findings[1].Message);
+  Assert.AreEqual('TSatz ist schon als Typ deklariert (wie E2004).', Findings[2].Message);
+  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'procedure P(A: Integer; var A: string);'#10'begin'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Felder, Methode und Property eines Typs; varianter Teil eines Records.
+  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TKunde = class'#10'    FName, FOrt: string;'#10'  private'#10'    FName: string;'#10'    function Ort: string;'#10 +
+    '    property Ort: string read FOrt;'#10'  end;'#10'  TForm = record'#10'    Art: Integer;'#10 +
+    '    case Integer of'#10'      0: (Art: Byte);'#10'  end;'#10'implementation'#10'end.');
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual('FName ist schon als Feld deklariert (wie E2004).', Findings[0].Message);
+  Assert.AreEqual('Ort ist schon als Methode deklariert (wie E2004).', Findings[1].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
+  Assert.AreEqual('Art ist schon als Feld deklariert (wie E2004).', Findings[2].Message);
+  // Unit: interface und implementation sind ein Bereich.
+  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, 'unit U;'#10'interface'#10'var'#10 +
+    '  Zaehler: Integer;'#10'implementation'#10'type'#10'  Zaehler = Integer;'#10'procedure Zaehler;'#10'begin'#10 +
+    'end;'#10'end.');
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('Zaehler ist schon als Variable deklariert (wie E2004).', Findings[0].Message);
+  Assert.AreEqual('Zaehler ist schon als Variable deklariert (wie E2004).', Findings[1].Message);
+end;
+
+procedure TDeclarationRulesTests.DuplicateDeclarationUses;
+const
+  Source = 'unit U;'#10'interface'#10'uses'#10'  System.SysUtils, System.Classes, System.SysUtils;'#10 +
+    'implementation'#10'uses'#10'  System.Classes;'#10'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Source);
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('Unit System.SysUtils steht schon in uses (wie E2004).', Findings[0].Message);
+  Assert.AreEqual('Unit System.Classes steht schon im uses des interface (wie E2004).', Findings[1].Message);
+  Assert.AreEqual('Doppelten Eintrag entfernen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  System.SysUtils, System.Classes;'#10 +
+    'implementation'#10'uses'#10'  System.Classes;'#10'end.', TChangeSignature.ApplyEdits(Source,
+    Findings[0].Fixes[0].Edits));
+  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  System.SysUtils, System.Classes, System.SysUtils;'#10 +
+    'implementation'#10'end.', TChangeSignature.ApplyEdits(Source, Findings[1].Fixes[0].Edits));
+  // checkUses = false schaltet nur diesen Teil ab.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Source,
+    '{"rules": {"duplicate-declaration": {"checkUses": false}}}', 'U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDuplicateDeclarationRule.Create,
+    Rechnung('var'#10'  Betrag: Currency;'#10), '{"rules": {"duplicate-declaration": {"checkUses": false}}}',
+    'U.pas'))));
+end;
+
+procedure TDeclarationRulesTests.DuplicateDeclarationSilentCases;
+begin
+  // Überladungen und Rümpfe, Vorwärtsdeklaration, TList neben TList<T>, Feld und gleichnamiger
+  // Parameter einer Methode, lokale Variable wie ein Feld, {$IFDEF}/{$ELSE}.
+  TRuleAssert.Silent(TDuplicateDeclarationRule.Create, 'unit U;'#10'interface'#10'uses'#10'  System.SysUtils;'#10 +
+    'type'#10'  TKunde = class;'#10'  TListe<T> = class'#10'  end;'#10'  TListe = class'#10'  end;'#10 +
+    '  TKunde = class'#10'    FName: string;'#10'    procedure Setzen(FName: string); overload;'#10 +
+    '    procedure Setzen(A: Integer); overload;'#10'  end;'#10'procedure Global;'#10'implementation'#10 +
+    'procedure Global;'#10'begin'#10'end;'#10'procedure TKunde.Setzen(FName: string);'#10'var'#10'  A: Integer;'#10 +
+    'begin'#10'end;'#10'procedure TKunde.Setzen(A: Integer);'#10'begin'#10'end;'#10'{$IFDEF DEBUG}'#10'var'#10 +
+    '  Stufe: Integer;'#10'{$ELSE}'#10'const'#10'  Stufe = 0;'#10'{$ENDIF}'#10'end.');
+end;
+
+procedure TDeclarationRulesTests.DuplicateDeclarationOptions;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateDeclarationRule.Create,
+    Rechnung('var'#10'  Betrag: Currency;'#10), '{"rules": {"duplicate-declaration": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateDeclarationRule.Create,
+    Rechnung('var'#10'  Betrag: Currency;'#10), '{"rules": {"group:compiler": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateDeclarationRule.Create,
+    Rechnung('var'#10'  Betrag: Currency;'#10), '{"rules": {"duplicate-declaration": {"exclude": ["Alt/*.pas"]}}}',
+    'Alt/U.pas'))));
+  TConfigurationParser.Parse('{"rules": {"duplicate-declaration": {"checkUses": "ja"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
 initialization
