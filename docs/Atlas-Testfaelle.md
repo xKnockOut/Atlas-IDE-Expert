@@ -3474,3 +3474,18 @@ Voraussetzung: Server läuft; in `atlas.json` `"minConfidence": "low"` und `"rul
 | MN4 | Zahlen in `const`, Array-Grenzen `array[0..41]`, Teilbereich `1..31`, Zeichen `#13#10`, `X * 2 + 1 - 100` | Keine Meldung |
 | MN5 | Einstellungsseite „Prüfregeln“, Option „allowed“ der Regel auf `42` setzen | Keine Meldung mehr an `42`; `0`, `1` usw. werden jetzt gemeldet; eine Eingabe wie `zwei` lehnt das Feld ab |
 | MN6 | `"magic-number": "off"`, ohne `minConfidence` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Zeile zu lang (#938)
+
+Voraussetzung: Server läuft; in `atlas.json` `"rules": { "line-length": "hint" }` (die Regel ist experimentell und steht auf `off`); Routine mit `Ergebnis := Rechner.Berechne(Kunde.Rabattstufe, Bestellung.Positionen, Lager.Verfuegbarkeit(Artikel), Steuer.Satz(Land));` mit zwei Leerzeichen Einrückung (123 Zeichen).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LL1 | Unit öffnen | Hinweis `line-length` ab Spalte 121 bis zum Zeilenende: „Zeile hat 123 Zeichen (Grenze 120).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover; die Markierung beginnt am Lineal (#710) (**Abnahme**) |
+| LL2 | Glühbirne, „Zeile umbrechen“ | Umbruch hinter `Lager.Verfuegbarkeit(Artikel),`, die Fortsetzung `Steuer.Satz(Land));` eine Ebene tiefer; die Meldung verschwindet; ein Strg+Z stellt die Zeile wieder her (**Abnahme**) |
+| LL3 | Option „max“ auf der Einstellungsseite „Prüfregeln“ auf 40, `Summe := Erster + Zweiter + Dritter + Vierter + Fuenfter + Sechster;` | Meldung „Zeile hat 70 Zeichen (Grenze 40).“; Korrektur bricht vor `+ Vierter` um |
+| LL4 | Zeile, die nur wegen eines langen Strings zu lang ist; dann Option „ignoreStrings“ aus | Erst keine Meldung, danach Meldung |
+| LL5 | Zeile mit langem Kommentar am Ende; dann Option „ignoreComments“ an | Erst Meldung, danach keine |
+| LL6 | Zeile mit Tabs, `"format": { "indentSize": 8 }` | Tabs zählen bis zur nächsten Tabstelle (8er-Schritte) |
+| LL7 | Konstante mit 1400 Zeichen langem String in einer Zeile, `max` 5000 | Fehler (rot): „Zeile mit 1412 Zeichen; der Compiler bricht über 1023 Zeichen ab (wie F2069).“; `/explain line-length` und `docs/Regeln.md` nennen „Entspricht der Compilermeldung F2069.“ (**Abnahme**) |
+| LL8 | `"line-length": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung, auch nicht bei LL7 |

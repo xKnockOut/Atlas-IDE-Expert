@@ -1540,6 +1540,39 @@
           "description": "Numbers that are never reported."
         }
       ]
+    },
+    {
+      "id": "line-length",
+      "name": "Line too long",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "Lines longer than the limit max (default 120 characters, matching the rulers from #710). Tabs count up to the next tab stop of format.indentSize. Lines that are only too long because of a string or, with ignoreComments, a comment are not reported. Lines over 1023 characters are always reported as an error regardless of max, because the compiler stops there (F2069). Off by default. Quick fix: Wrap line after commas or before binary operators, where the pieces then fit.",
+      "bad": "Ergebnis := Rechner.Berechne(Kunde.Rabattstufe, Bestellung.Positionen, Lager.Verfuegbarkeit(Artikel), Steuer.Satz(Land));",
+      "good": "Ergebnis := Rechner.Berechne(Kunde.Rabattstufe, Bestellung.Positionen, Lager.Verfuegbarkeit(Artikel),\n  Steuer.Satz(Land));",
+      "compilerCodes": [
+        "F2069"
+      ],
+      "options": [
+        {
+          "name": "max",
+          "type": "integer",
+          "default": 120,
+          "description": "Maximum line length in characters."
+        },
+        {
+          "name": "ignoreStrings",
+          "type": "boolean",
+          "default": true,
+          "description": "Do not report lines that are only too long because of a string."
+        },
+        {
+          "name": "ignoreComments",
+          "type": "boolean",
+          "default": false,
+          "description": "Do not report lines that are only too long because of a comment."
+        }
+      ]
     }
   ]
 }

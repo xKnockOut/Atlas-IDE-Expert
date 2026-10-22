@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1662] of string = (
+  Lines: array[0..1672] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -138,7 +138,7 @@ const
     '              "max": {',
     '                "type": "integer",',
     '                "minimum": 1,',
-    '                "description": "Nur metric-* (#66): Grenzwert der Kennzahl; darüber meldet die Regel die Methode. Vorgaben: Länge 60, Tiefe 4, zyklomatisch 15, kognitiv 15, Parameter 6."',
+    '                "description": "Nur metric-* (#66): Grenzwert der Kennzahl; darüber meldet die Regel die Methode. Vorgaben: Länge 60, Tiefe 4, zyklomatisch 15, kognitiv 15, Parameter 6. Bei line-lengt' + 'h (#938) die Höchstlänge einer Zeile, Vorgabe 120."',
     '              },',
     '              "keywords": {',
     '                "type": "array",',
@@ -345,6 +345,16 @@ const
     '                },',
     '                "default": [0, 1, -1, 2, 10, 100],',
     '                "description": "Nur magic-number: Zahlen, die nie gemeldet werden (#937)."',
+    '              },',
+    '              "ignoreStrings": {',
+    '                "type": "boolean",',
+    '                "default": true,',
+    '                "description": "Nur line-length: Zeilen, die nur wegen eines Strings zu lang sind, nicht melden (#938)."',
+    '              },',
+    '              "ignoreComments": {',
+    '                "type": "boolean",',
+    '                "default": false,',
+    '                "description": "Nur line-length: Zeilen, die nur wegen eines Kommentars zu lang sind, nicht melden (#938)."',
     '              }',
     '            }',
     '          }',

@@ -1560,6 +1560,39 @@ begin
     '          "description": "Numbers that are never reported."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "line-length",' + #10 +
+    '      "name": "Line too long",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "Lines longer than the limit max (default 120 characters, matching the rulers from #710). Tabs count up to the next tab stop of format.indentSize. Lines that are only too long bec' + 'ause of a string or, with ignoreComments, a comment are not reported. Lines over 1023 characters are always reported as an error regardless of max, because the compiler stops there (F2069). Off by def' + 'ault. Quick fix: Wrap line after commas or before binary operators, where the pieces then fit.",' + #10 +
+    '      "bad": "Ergebnis := Rechner.Berechne(Kunde.Rabattstufe, Bestellung.Positionen, Lager.Verfuegbarkeit(Artikel), Steuer.Satz(Land));",' + #10 +
+    '      "good": "Ergebnis := Rechner.Berechne(Kunde.Rabattstufe, Bestellung.Positionen, Lager.Verfuegbarkeit(Artikel),\n  Steuer.Satz(Land));",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "F2069"' + #10 +
+    '      ],' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 120,' + #10 +
+    '          "description": "Maximum line length in characters."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "ignoreStrings",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Do not report lines that are only too long because of a string."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "ignoreComments",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": false,' + #10 +
+    '          "description": "Do not report lines that are only too long because of a comment."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2374,6 +2407,25 @@ begin
     '        {' + #10 +
     '          "name": "allowed",' + #10 +
     '          "description": "Zahlen, die nie gemeldet werden."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "line-length",' + #10 +
+    '      "name": "Zeile zu lang",' + #10 +
+    '      "description": "Zeilen über der Grenze max (Vorgabe 120 Zeichen, passend zu den Linealen aus #710). Tabs zählen bis zur nächsten Tabstelle nach format.indentSize. Zeilen, die nur wegen eines Str' + 'ings oder, mit ignoreComments, eines Kommentars zu lang sind, werden nicht gemeldet. Zeilen über 1023 Zeichen meldet die Regel unabhängig von max immer als Fehler, weil der Compiler dort abbricht (F20' + '69). Standard aus. Schnellkorrektur: Zeile umbrechen hinter Kommas bzw. vor zweistelligen Operatoren, wenn die Stücke danach passen.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "description": "Höchstlänge einer Zeile in Zeichen."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "ignoreStrings",' + #10 +
+    '          "description": "Zeilen, die nur wegen eines Strings zu lang sind, nicht melden."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "ignoreComments",' + #10 +
+    '          "description": "Zeilen, die nur wegen eines Kommentars zu lang sind, nicht melden."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    }' + #10 +
