@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 28 |
+| [Stil und Metriken](#gruppe-style) | 29 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -258,6 +258,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`public-field`](#public-field) | Öffentliches Feld | Code Smell | Hinweis |
 | [`global-variable`](#global-variable) | Globale Variable im interface | Code Smell | Hinweis |
 | [`commented-out-code`](#commented-out-code) | Auskommentierter Code | Code Smell | Hinweis |
+| [`now-for-elapsed-time`](#now-for-elapsed-time) | Laufzeit mit Now gemessen | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -4616,4 +4617,27 @@ Richtig:
 Reg.RootKey := HKEY_CURRENT_USER;
 Reg.OpenKey('Software\Firma\Programm', True);
 Reg.WriteString('Sprache', Sprache);
+```
+
+<a id="now-for-elapsed-time"></a>
+### now-for-elapsed-time
+
+**Laufzeit mit Now gemessen** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine Variable, der Now zugewiesen wird und die in derselben Routine danach in Now - Start, Ende - Start oder MilliSecondsBetween, SecondsBetween, MinutesBetween, HoursBetween, DaysBetween bzw. den …Span-Funktionen vorkommt: Die Laufzeit wird mit der Uhrzeit gemessen, grob aufgelöst und falsch bei Zeitumstellung oder Uhrabgleich. TStopwatch ist genau und monoton. Zuweisungen in einer anderen Routine (Felder) und im anderen Zweig von {$IFDEF} bleiben still. Konfidenz hoch. Schnellkorrektur, wenn die Variable eine lokale TDateTime ist (auch var Start := Now) und nur für MilliSecondsBetween, SecondsBetween oder MinutesBetween mit Now dient: TStopwatch.StartNew und ElapsedMilliseconds (div 1000 bzw. div 60000), die Variable heißt danach Uhr, wenn der Name frei ist, System.Diagnostics kommt ins uses.
+
+Mit Treffer:
+
+```pascal
+Start := Now;
+Importieren;
+Log(MilliSecondsBetween(Now, Start).ToString + ' ms');
+```
+
+Richtig:
+
+```pascal
+Uhr := TStopwatch.StartNew;
+Importieren;
+Log(Uhr.ElapsedMilliseconds.ToString + ' ms');
 ```

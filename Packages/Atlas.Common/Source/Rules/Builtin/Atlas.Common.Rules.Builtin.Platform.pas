@@ -6,6 +6,7 @@
 //   load-without-encoding          TStrings.LoadFromFile/SaveToFile und TFile.ReadAllText ohne Kodierung:
 //                                  ohne BOM gilt die ANSI-Codepage des Rechners (#1061)
 //   registry-hklm-write            TRegistry mit RootKey HKEY_LOCAL_MACHINE und schreibendem Zugriff (#1062)
+//   now-for-elapsed-time           Laufzeit mit Now gemessen statt mit TStopwatch (#1063)
 // Die Anwendungsart liefert TRuleContext.Application (TWritelnInGuiAppRule.ApplicationKind); eine Unit mit
 // einer Klasse, die von TService erbt, gilt auch ohne Projekt als Dienst.
 
@@ -19,6 +20,7 @@ const
   UiCallInConsoleOrServiceRuleId = 'ui-call-in-console-or-service';
   LoadWithoutEncodingRuleId = 'load-without-encoding';
   RegistryHklmWriteRuleId = 'registry-hklm-write';
+  NowForElapsedTimeRuleId = 'now-for-elapsed-time';
 
 type
   TUiCallInConsoleOrServiceRule = class(TInterfacedObject, IRule)
@@ -39,6 +41,12 @@ type
   end;
 
   TRegistryHklmWriteRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TNowForElapsedTimeRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -545,11 +553,224 @@ begin
     CheckRoutine(Routine);
 end;
 
+{ TNowForElapsedTimeRule }
+
+const
+  // DateUtils-Funktionen, die den Abstand zweier Zeitpunkte liefern.
+  BetweenFunctions: array[0..9] of string = ('MilliSecondsBetween', 'SecondsBetween', 'MinutesBetween',
+    'HoursBetween', 'MilliSecondSpan', 'SecondSpan', 'MinuteSpan', 'HourSpan', 'DaysBetween', 'DaySpan');
+  // Die Korrektur ersetzt nur diese, mit dem passenden Teiler für ElapsedMilliseconds.
+  StopwatchFunctions: array[0..2] of string = ('MilliSecondsBetween', 'SecondsBetween', 'MinutesBetween');
+  StopwatchDivisors: array[0..2] of string = ('', ' div 1000', ' div 60000');
+
+type
+  /// <summary>Zuweisung "Start := Now" bzw. "var Start := Now" in einer Routine.</summary>
+  TNowStart = record
+    Name: string;
+    Node: TSyntaxNode;
+  end;
+
+function TNowForElapsedTimeRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(NowForElapsedTimeRuleId, TRuleSeverity.Hint, 'Laufzeit mit Now gemessen');
+end;
+
+procedure TNowForElapsedTimeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TTokens;
+  Paths: TArray<string>;
+
+  // Now, Now() oder SysUtils.Now
+  function IsNow(ANode: TSyntaxNode): Boolean;
+  begin
+    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 1) then
+      ANode := ANode[0];
+    Result := IsName(ANode, 'Now') and IsQualifiedName(ANode);
+  end;
+
+  function InsideAny(AOffset: Integer; const ANodes: TArray<TSyntaxNode>): Boolean;
+  var
+    Node: TSyntaxNode;
+  begin
+    for Node in ANodes do
+      if (AOffset >= Node.StartOffset) and (AOffset < Node.EndOffset) then
+        Exit(True);
+    Result := False;
+  end;
+
+  procedure CheckRoutine(ARoutine: TSyntaxNode);
+  var
+    Starts: TArray<TNowStart>;
+    Measures: TArray<TSyntaxNode>;
+    Index, Start: Integer;
+    Found: TArray<TRuleFix>;
+    Node: TSyntaxNode;
+    Item: TNowStart;
+
+    // Variable AName, der vor AAt in einem nicht ausschließenden Zweig Now zugewiesen wurde: Index, sonst -1.
+    function StartOf(ANode, AAt: TSyntaxNode): Integer;
+    var
+      Item: Integer;
+    begin
+      Result := -1;
+      if ANode.Kind <> TSyntaxKind.Identifier then
+        Exit;
+      for Item := 0 to High(Starts) do
+        if SameText(Starts[Item].Name, ANode.Name) and (Starts[Item].Node.StartOffset < AAt.StartOffset) and
+          not TConditionalBranches.Exclusive(PathOf(Paths, Tokens, Starts[Item].Node), PathOf(Paths, Tokens, AAt)) then
+          Result := Item;
+    end;
+
+    // Now - Start, Ende - Start, MilliSecondsBetween(Now, Start): Index des Starts, sonst -1.
+    function MeasuredStart(ANode: TSyntaxNode): Integer;
+    var
+      A, B: TSyntaxNode;
+    begin
+      Result := -1;
+      if (ANode.Kind = TSyntaxKind.BinaryExpr) and (ANode.Name = '-') and (ANode.ChildCount = 2) then
+      begin
+        A := ANode[0];
+        B := ANode[1];
+      end
+      else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 3) and IsQualifiedName(ANode[0]) and
+        MatchText(ANode[0].Name, BetweenFunctions) then
+      begin
+        A := ANode[1];
+        B := ANode[2];
+      end
+      else
+        Exit;
+      if IsNow(A) or (StartOf(A, ANode) >= 0) then
+        Result := StartOf(B, ANode);
+      if (Result < 0) and (IsNow(B) or (StartOf(B, ANode) >= 0)) then
+        Result := StartOf(A, ANode);
+    end;
+
+    // Korrektur nur, wenn Start eine lokale TDateTime-Variable allein für Messungen wie
+    // MilliSecondsBetween(Now, Start) ist.
+    function Fixes(AStart: Integer): TArray<TRuleFix>;
+    var
+      Decl, TypeNode, Use, Value, Node: TSyntaxNode;
+      Measured: TArray<TSyntaxNode>;
+      Edits: TArray<TRuleEdit>;
+      Extra: TTextEdit;
+      Name, NewName: string;
+      Item: Integer;
+      Clean: Boolean;
+    begin
+      Result := nil;
+      Name := Starts[AStart].Name;
+      for Item := 0 to High(Starts) do
+        if (Item <> AStart) and SameText(Starts[Item].Name, Name) then
+          Exit;
+      Decl := nil;
+      for Node in NodesOf(ARoutine, True) do
+        if (Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar]) and SameText(Node.Name, Name) then
+          Decl := Node;
+      if Decl = nil then
+        Exit;
+      TypeNode := Decl.FindChild(TSyntaxKind.TypeReference);
+      if (TypeNode <> nil) and not SameText(TypeNode.Name, 'TDateTime') then
+        Exit;
+      if (Decl.Kind = TSyntaxKind.VarDecl) and (TypeNode = nil) then
+        Exit;
+      if (Decl.Kind = TSyntaxKind.InlineVar) and (Decl <> Starts[AStart].Node) then
+        Exit;
+      // Jede andere Erwähnung muss eine Messung sein, die sich umschreiben lässt.
+      Measured := nil;
+      Clean := True;
+      for Node in NodesOf(ARoutine, True) do
+      begin
+        if InsideAny(Node.StartOffset, Measured) then
+          Continue;
+        if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount = 3) and IsQualifiedName(Node[0]) and
+          (IndexText(Node[0].Name, StopwatchFunctions) >= 0) and IsNow(Node[1]) and
+          (Node[2].Kind = TSyntaxKind.Identifier) and SameText(Node[2].Name, Name) then
+          Measured := Measured + [Node]
+        else if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, Name) and
+          not ((Node.Parent = Starts[AStart].Node) and (Node.Parent[0] = Node)) then
+          Clean := False;
+      end;
+      if not Clean or (Measured = nil) then
+        Exit;
+      // Wie im Issue heißt Start danach Uhr, wenn der Name in der Datei frei ist.
+      NewName := 'Uhr';
+      for Item := 0 to High(Tokens) do
+        if (Tokens[Item].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Item].Text, NewName) then
+          NewName := Name;
+      Edits := nil;
+      if TypeNode <> nil then
+        Edits := Edits + [TRuleEdit.Create(NodeRange(TypeNode), 'TStopwatch')];
+      Value := Starts[AStart].Node[Starts[AStart].Node.ChildCount - 1];
+      Edits := Edits + [TRuleEdit.Create(NodeRange(Value), 'TStopwatch.StartNew')];
+      for Use in Measured do
+        Edits := Edits + [TRuleEdit.Create(NodeRange(Use), NewName + '.ElapsedMilliseconds' +
+          StopwatchDivisors[IndexText(Use[0].Name, StopwatchFunctions)])];
+      if not SameText(NewName, Name) then
+        for Item := TokenAt(Tokens, ARoutine.StartOffset) to High(Tokens) do
+        begin
+          if Tokens[Item].Offset >= ARoutine.EndOffset then
+            Break;
+          if (Tokens[Item].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Item].Text, Name) and
+            not InsideAny(Tokens[Item].Offset, Measured) then
+            Edits := Edits + [TRuleEdit.Create(TTextRange.Create(Tokens[Item].StartPos, Tokens[Item].EndPos),
+              NewName)];
+        end;
+      if UsesEdit(AContext, Tokens, ARoutine.StartOffset, 'System.Diagnostics', Extra) then
+        Edits := Edits + [Extra];
+      Result := [TRuleFix.Create('In TStopwatch umwandeln', Edits)];
+    end;
+
+  begin
+    Starts := nil;
+    Measures := nil;
+    for Node in NodesOf(ARoutine, True) do
+      if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and
+        (Node[0].Kind = TSyntaxKind.Identifier) and IsNow(Node[1]) then
+      begin
+        Item.Name := Node[0].Name;
+        Item.Node := Node;
+        Starts := Starts + [Item];
+      end
+      else if (Node.Kind = TSyntaxKind.InlineVar) and (Pos(',', Node.Name) = 0) and (Node.ChildCount > 0) and
+        IsNow(Node[Node.ChildCount - 1]) then
+      begin
+        Item.Name := Node.Name;
+        Item.Node := Node;
+        Starts := Starts + [Item];
+      end;
+    if Starts = nil then
+      Exit;
+    // Teilausdrücke einer Messung nicht noch einmal melden.
+    for Node in NodesOf(ARoutine, True) do
+      if not InsideAny(Node.StartOffset, Measures) and (MeasuredStart(Node) >= 0) then
+        Measures := Measures + [Node];
+    for Index := 0 to High(Measures) do
+    begin
+      Start := MeasuredStart(Measures[Index]);
+      Found := Fixes(Start);
+      AReport.Add(NodeRange(Measures[Index]), 'Laufzeit mit Now gemessen; TStopwatch ist genauer und unabhängig ' +
+        'von der Uhrzeit.', TRuleConfidence.High, Found);
+    end;
+  end;
+
+var
+  Routine: TSyntaxNode;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Paths := TConditionalBranches.Paths(Tokens);
+  for Routine in TRuleDerived.Routines(TRuleDerived.Open(AContext), AContext) do
+    CheckRoutine(Routine);
+end;
+
 procedure RegisterPlatformRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TUiCallInConsoleOrServiceRule.Create);
   ARegistry.Register(TLoadWithoutEncodingRule.Create);
   ARegistry.Register(TRegistryHklmWriteRule.Create);
+  ARegistry.Register(TNowForElapsedTimeRule.Create);
 end;
 
 end.

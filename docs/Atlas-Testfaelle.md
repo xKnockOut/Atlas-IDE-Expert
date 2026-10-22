@@ -4159,3 +4159,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | HL4 | Nur lesen (`OpenKeyReadOnly`, `ReadString`, `OpenKey(…, False)`), `RootKey := HKEY_CURRENT_USER` vor dem Schreiben, Schreiben im `{$ELSE}`-Zweig, Schreiben auf einem anderen Objekt | Keine Meldung |
 | HL5 | `"registry-hklm-write": "off"`, `"group:robustness": "off"` bzw. `exclude` mit dem Ordner des Installers | Keine Meldung |
 | HL6 | Programm ohne Administratorrechte starten und HL1 ausführen | Bestätigt die Meldung: Zugriff verweigert oder Wert unter `VirtualStore` |
+
+## Laufzeit mit Now gemessen (#1063)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZM1 | Das Beispiel aus #1063: `Start: TDateTime;`, `Start := Now; Importieren; Log(MilliSecondsBetween(Now, Start).ToString + ' ms');` | Hinweis `now-for-elapsed-time` an `MilliSecondsBetween(Now, Start)`: „Laufzeit mit Now gemessen; TStopwatch ist genauer und unabhängig von der Uhrzeit.“; im Fenster „Atlas-Prüfung“ (Gruppe Stil und Metriken) und im Befund-Hover (**Abnahme**) |
+| ZM2 | Schnellkorrektur „In TStopwatch umwandeln“, danach Strg+Z | `Uhr: TStopwatch;`, `Uhr := TStopwatch.StartNew;`, `Log(Uhr.ElapsedMilliseconds.ToString + ' ms');`, `System.Diagnostics` im uses; kompiliert; ein Undo-Schritt nimmt alles zurück |
+| ZM3 | `var T := Now; …; Sekunden := SecondsBetween(Now, T);` in einer Unit, die `Uhr` schon benutzt | Korrektur behält den Namen `T`: `var T := TStopwatch.StartNew;` und `T.ElapsedMilliseconds div 1000` |
+| ZM4 | `Ende := Now; Dauer := Ende - Start;` bzw. `if Now - FBeginn > 1 / 24 then` | Meldung ohne Korrektur |
+| ZM5 | Zeitstempel ohne Messung (`Erstellt := Now; Speichern(Erstellt)`), `FStart := Now` in einer anderen Methode, `Start := Now` nur im `{$IFDEF}`-Zweig und die Messung im `{$ELSE}`-Zweig | Keine Meldung |
+| ZM6 | `"now-for-elapsed-time": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
