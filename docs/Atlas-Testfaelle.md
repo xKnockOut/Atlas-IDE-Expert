@@ -4119,3 +4119,21 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## Fehler in einem konstanten Ausdruck (#992)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QK1 | Das Beispiel aus #992: `const MaxEintraege = 100; Seiten = 0; ProSeite = MaxEintraege div Seiten;` | Fehler `constant-expression-error` an `MaxEintraege div Seiten`: „Division durch null in einem konstanten Ausdruck (Seiten = 0, wie E2098).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| QK2 | `Seiten = 5` | Keine Meldung |
+| QK3 | `const Riesig = 1000000 * 1000000 * 1000000 * 1000;` | „Überlauf in einem konstanten Ausdruck: Das Ergebnis passt in keinen Ganzzahltyp (wie E2099).“ |
+| QK4 | `type TFeld = array[5..1] of Integer;` | „Die Untergrenze 5 liegt über der Obergrenze 1 (wie E2011).“ |
+| QK5 | `const Grenze: Byte = 300;`, in einer Routine `B := 300` mit `B: Byte`, `type TProzent = 0..100;` und `Anteil := 150` | Warnung „300 liegt außerhalb des Bereichs von Byte (0..255, wie W1012).“ bzw. „… von TProzent (0..100, …)“ |
+| QK6 | `const Maske = $1FFFFFFFFFFFFFFFF;` | „Ganzzahlkonstante zu groß: … passt nicht in 64 Bit (wie E2102).“ |
+| QK7 | Konstante `Keine = 0` in einer anderen Unit des Projekts, hier `A = 100 div Keine` | Meldung wie QK1 mit „Keine = 0“ |
+| QK8 | `{$IFDEF KLEIN} Seiten = 0; {$ELSE} Seiten = 5; {$ENDIF}` und danach `ProSeite = 100 div Seiten` | Keine Meldung (Wert hängt von der Konfiguration ab) |
+| QK9 | `High(Int64) + 1`, `I div C` mit Variablen, `1 / 2` | Keine Meldung |
+| QK10 | `"constant-expression-error": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| QK11 | Abgleich mit Delphi: QK1, QK3 bis QK6 übersetzen | dcc meldet E2098, E2099, E2011, W1012 (bei der typisierten Konstante ggf. als Fehler) bzw. E2102 an denselben Stellen, für QK2, QK8 und QK9 nichts |
