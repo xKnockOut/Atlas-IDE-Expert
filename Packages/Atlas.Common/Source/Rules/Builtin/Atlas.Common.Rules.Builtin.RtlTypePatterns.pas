@@ -18,6 +18,8 @@
 //                            ist nach der Anweisung weg
 //   stringlist-unsorted      Find oder Duplicates := dupIgnore/dupError auf einer TStringList, die in der
 //                            Datei erzeugt, aber nie sortiert wird (#925)
+//   writeln-in-gui-app       Write, Writeln, Read oder Readln auf die Standardein- oder -ausgabe in einem
+//                            Programm ohne Konsole (#926): E/A-Fehler 104 bzw. 105 zur Laufzeit
 // Bezeichner, deren Typ in der Datei nicht deklariert ist, lösen keinen Treffer aus.
 
 interface
@@ -89,6 +91,20 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TWritelnInGuiAppRule = class(TInterfacedObject, IRule)
+  public const
+    DefaultReplacement = 'OutputDebugString';
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Anwendungsart aus DCC_ConsoleTarget der .dproj und dem Text der .dpr: Console bei
+    /// "true" oder {$APPTYPE CONSOLE}, Gui bei einem program ohne Konsole, sonst Unknown
+    /// (library, package, kein Text).</summary>
+    class function ApplicationKind(const AConsoleTarget, AMainSource: string): TRuleApplicationKind; static;
+    /// <summary>Option "replacement" aus den Regeloptionen; ohne Angabe OutputDebugString.</summary>
+    class function Replacement(const AOptions: string): string; static;
+  end;
+
 /// <summary>Registriert die typbasierten Regeln für RTL-Muster.</summary>
 procedure RegisterRtlTypePatternRules(const ARegistry: TRuleRegistry);
 
@@ -97,12 +113,15 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Editing.UsesClause,
   Atlas.Text.Lines;
 
 type
@@ -1615,6 +1634,339 @@ begin
       ReportUses(Facts[Index]);
 end;
 
+{ TWritelnInGuiAppRule }
+
+const
+  ConsoleRoutines: array[0..3] of string = ('Write', 'Writeln', 'Read', 'Readln');
+  StandardFiles: array[0..2] of string = ('Output', 'ErrOutput', 'Input');
+  FileTypes: array[0..2] of string = ('Text', 'TextFile', 'File');
+  IntegerTypes: array[0..13] of string = ('Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt',
+    'Byte', 'Word', 'ShortInt', 'SmallInt', 'LongInt', 'LongWord', 'Int32', 'UInt32');
+  FloatTypes: array[0..5] of string = ('Double', 'Single', 'Extended', 'Real', 'Currency', 'TDateTime');
+  // Funktionen, die einen String liefern; dazu alle *ToStr und *ToHex.
+  StringFunctions: array[0..14] of string = ('Format', 'Trim', 'TrimLeft', 'TrimRight', 'UpperCase', 'LowerCase',
+    'QuotedStr', 'Copy', 'StringOfChar', 'StringReplace', 'ExtractFileName', 'ExtractFilePath', 'Concat',
+    'ParamStr', 'GetCurrentDir');
+
+function TWritelnInGuiAppRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('writeln-in-gui-app', TRuleSeverity.Warning, 'Writeln in einem Programm ohne Konsole');
+end;
+
+class function TWritelnInGuiAppRule.ApplicationKind(const AConsoleTarget, AMainSource: string): TRuleApplicationKind;
+var
+  Tokens: TArray<TPascalToken>;
+  Token: TPascalToken;
+  First: Boolean;
+  Directive: string;
+begin
+  if SameText(Trim(AConsoleTarget), 'true') then
+    Exit(TRuleApplicationKind.Console);
+  Result := TRuleApplicationKind.Unknown;
+  Tokens := TPascalLexer.Tokenize(AMainSource);
+  First := True;
+  for Token in Tokens do
+    case Token.Kind of
+      TPascalTokenKind.Directive:
+        begin
+          // {$APPTYPE CONSOLE} oder (*$APPTYPE CONSOLE*), auch in {$IFDEF}: dann gilt Konsole.
+          Directive := UpperCase(Token.Text);
+          Directive := StringReplace(StringReplace(Directive, '(*$', '', []), '{$', '', []);
+          if StartsText('APPTYPE', Trim(Directive)) and ContainsText(Directive, 'CONSOLE') then
+            Exit(TRuleApplicationKind.Console);
+        end;
+      TPascalTokenKind.Comment:
+        ;
+    else
+      if First then
+      begin
+        First := False;
+        if Token.IsKeyword('program') then
+          Result := TRuleApplicationKind.Gui
+        else
+          Exit(TRuleApplicationKind.Unknown);
+      end;
+    end;
+end;
+
+class function TWritelnInGuiAppRule.Replacement(const AOptions: string): string;
+var
+  Value: TJSONValue;
+begin
+  Result := DefaultReplacement;
+  if Trim(AOptions) = '' then
+    Exit;
+  Value := TJSONObject.ParseJSONValue(AOptions);
+  try
+    if (Value is TJSONObject) and TJSONObject(Value).TryGetValue<string>('replacement', Result) and
+      (Trim(Result) = '') then
+      Result := DefaultReplacement;
+  finally
+    Value.Free;
+  end;
+  Result := Trim(Result);
+end;
+
+procedure TWritelnInGuiAppRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Types: TDeclaredTypes;
+  Tokens: TTokens;
+  Declared: TArray<string>;
+  ReplacementText: string;
+  NeedsSysUtils: Boolean;
+
+  function Text(ANode: TSyntaxNode): string;
+  begin
+    Result := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+  end;
+
+  // Namen der Routinen, die die Unit selbst deklariert (letzter Teil von TKlasse.Write).
+  procedure CollectDeclared(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    Name: string;
+  begin
+    if ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader] then
+    begin
+      Name := ANode.Name;
+      if Pos('.', Name) > 0 then
+        Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+      Declared := Declared + [Name];
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      CollectDeclared(ANode[Index]);
+  end;
+
+  function DeclaredTypeOf(ANode: TSyntaxNode): string;
+  begin
+    Result := '';
+    if ANode.Kind = TSyntaxKind.Identifier then
+      Result := Types.DeclaredType(ANode.Name, ANode.StartPos);
+  end;
+
+  // Die Prüfung "if IsConsole then" zeigt, dass der Aufruf gewollt ist.
+  function MentionsIsConsole(ANode: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, 'IsConsole') then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if MentionsIsConsole(ANode[Index]) then
+        Exit(True);
+    Result := False;
+  end;
+
+  function Guarded(ANode: TSyntaxNode): Boolean;
+  var
+    Parent: TSyntaxNode;
+  begin
+    Parent := ANode.Parent;
+    while Parent <> nil do
+    begin
+      if (Parent.Kind in [TSyntaxKind.IfStatement, TSyntaxKind.WhileStatement]) and (Parent.ChildCount > 0) and
+        MentionsIsConsole(Parent[0]) then
+        Exit(True);
+      Parent := Parent.Parent;
+    end;
+    Result := False;
+  end;
+
+  // Innerhalb einer Methode: Read und Write können Methoden der Klasse sein (TStream.Read).
+  function InMethod(ANode: TSyntaxNode): Boolean;
+  var
+    Parent: TSyntaxNode;
+  begin
+    Parent := ANode.Parent;
+    while Parent <> nil do
+    begin
+      if (Parent.Kind = TSyntaxKind.RoutineDecl) and (Pos('.', Parent.Name) > 0) then
+        Exit(True);
+      Parent := Parent.Parent;
+    end;
+    Result := False;
+  end;
+
+  // Argument als String-Ausdruck für die Korrektur; '' wenn der Typ nicht sicher ist.
+  function AsString(ANode: TSyntaxNode): string;
+  var
+    TypeName: string;
+  begin
+    Result := '';
+    case ANode.Kind of
+      TSyntaxKind.Literal:
+        if (ANode.Name <> '') and CharInSet(ANode.Name[1], ['''', '#']) then
+          Result := Text(ANode)
+        else
+          Result := QuotedStr(Text(ANode));
+      TSyntaxKind.Identifier:
+        begin
+          TypeName := DeclaredTypeOf(ANode);
+          if MatchText(TypeName, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'ShortString', 'Char',
+            'WideChar', 'AnsiChar', 'TFileName']) then
+            Result := ANode.Name
+          else if MatchText(TypeName, IntegerTypes) then
+          begin
+            Result := 'IntToStr(' + ANode.Name + ')';
+            NeedsSysUtils := True;
+          end
+          else if MatchText(TypeName, FloatTypes) then
+          begin
+            Result := 'FloatToStr(' + ANode.Name + ')';
+            NeedsSysUtils := True;
+          end
+          else if SameText(TypeName, 'Boolean') then
+          begin
+            Result := 'BoolToStr(' + ANode.Name + ', True)';
+            NeedsSysUtils := True;
+          end;
+        end;
+      TSyntaxKind.Call:
+        if EndsText('ToStr', ANode.Name) or EndsText('ToHex', ANode.Name) or MatchText(ANode.Name, StringFunctions) then
+          Result := Text(ANode);
+      TSyntaxKind.BinaryExpr:
+        if (ANode.Name = '+') and (ANode.ChildCount = 2) and (AsString(ANode[0]) = Text(ANode[0])) and
+          (AsString(ANode[1]) = Text(ANode[1])) then
+          Result := Text(ANode);
+      TSyntaxKind.ParenExpr:
+        if (ANode.ChildCount = 1) and (AsString(ANode[0]) <> '') then
+          Result := '(' + AsString(ANode[0]) + ')';
+    end;
+  end;
+
+  // Breitenangaben wie X:5:2 lassen sich nicht in einen String übertragen.
+  function HasWidth(ACall: TSyntaxNode): Boolean;
+  var
+    Token: TPascalToken;
+  begin
+    for Token in Tokens do
+      if (Token.Offset >= ACall.StartOffset) and (Token.Offset < ACall.EndOffset) and Token.IsSymbol(':') then
+        Exit(True);
+    Result := False;
+  end;
+
+  function Fixes(ACall: TSyntaxNode; AFirst: Integer): TArray<TRuleFix>;
+  var
+    Index: Integer;
+    Part, Expression, NewText, Name: string;
+    Edits: TArray<TRuleEdit>;
+    UsesEdit: TTextEdit;
+    Used: TArray<string>;
+  begin
+    Result := nil;
+    if (ACall.Kind <> TSyntaxKind.Call) or (AFirst >= ACall.ChildCount) or HasWidth(ACall) then
+      Exit;
+    NeedsSysUtils := False;
+    Expression := '';
+    for Index := AFirst to ACall.ChildCount - 1 do
+    begin
+      Part := AsString(ACall[Index]);
+      if Part = '' then
+        Exit;
+      if Expression <> '' then
+        Expression := Expression + ' + ';
+      Expression := Expression + Part;
+    end;
+    if Pos('%s', ReplacementText) > 0 then
+      NewText := StringReplace(ReplacementText, '%s', Expression, [])
+    else if SameText(ReplacementText, TWritelnInGuiAppRule.DefaultReplacement) then
+      NewText := ReplacementText + '(PChar(' + Expression + '))'
+    else
+      NewText := ReplacementText + '(' + Expression + ')';
+    Edits := [TRuleEdit.Create(TTextRange.Create(ACall.StartPos, ACall.EndPos), NewText)];
+    Used := TUsesClauses.UsedUnits(Tokens);
+    if SameText(ReplacementText, TWritelnInGuiAppRule.DefaultReplacement) and
+      not TUsesClauses.IsUsed(Used, 'Winapi.Windows', AContext.Namespaces) and
+      TUsesClauses.AddUnit(Tokens, ACall.StartOffset, 'Winapi.Windows', TTextLines.LineBreakOf(AContext.Text),
+      UsesEdit) then
+      Edits := Edits + [UsesEdit];
+    if NeedsSysUtils and not TUsesClauses.IsUsed(Used, 'System.SysUtils', AContext.Namespaces) and
+      TUsesClauses.AddUnit(Tokens, ACall.StartOffset, 'System.SysUtils', TTextLines.LineBreakOf(AContext.Text),
+      UsesEdit) then
+      Edits := Edits + [UsesEdit];
+    Name := ReplacementText;
+    if Pos('(', Name) > 0 then
+      Name := Trim(Copy(Name, 1, Pos('(', Name) - 1));
+    Result := [TRuleFix.Create(Format('Durch %s ersetzen', [Name]), Edits)];
+  end;
+
+  procedure CheckCall(ANode, ACallee: TSyntaxNode);
+  var
+    Name, TypeName: string;
+    First: Integer;
+    Reading: Boolean;
+    Found: TArray<TRuleFix>;
+  begin
+    Name := ACallee.Name;
+    if not MatchText(Name, ConsoleRoutines) or MatchText(Name, Declared) then
+      Exit;
+    if (SameText(Name, 'Write') or SameText(Name, 'Read')) and InMethod(ANode) then
+      Exit;
+    First := 1;
+    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 1) then
+    begin
+      // Erstes Argument eine Datei: kein Konsolenzugriff.
+      if (ANode[1].Kind = TSyntaxKind.Identifier) and MatchText(ANode[1].Name, StandardFiles) then
+        First := 2
+      else
+      begin
+        TypeName := DeclaredTypeOf(ANode[1]);
+        if MatchText(TypeName, FileTypes) or StartsText('file ', TypeName) then
+          Exit;
+        if (ANode[1].Kind = TSyntaxKind.Identifier) and (TypeName = '') and (ANode.ChildCount > 2) then
+          Exit;
+      end;
+    end;
+    if Guarded(ANode) then
+      Exit;
+    Reading := SameText(Name, 'Read') or SameText(Name, 'Readln');
+    if Reading then
+    begin
+      Found := nil;
+      AReport.Add(TTextRange.Create(ACallee.StartPos, ACallee.EndPos), Format('Das Projekt hat keine Konsole; ' +
+        '%s löst zur Laufzeit E/A-Fehler 104 aus.', [Text(ACallee)]), TRuleConfidence.High, Found);
+    end
+    else
+      AReport.Add(TTextRange.Create(ACallee.StartPos, ACallee.EndPos), Format('Das Projekt hat keine Konsole; ' +
+        '%s löst zur Laufzeit E/A-Fehler 105 aus.', [Text(ACallee)]), TRuleConfidence.High, Fixes(ANode, First));
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) and (ANode[0].Kind = TSyntaxKind.Identifier) then
+      CheckCall(ANode, ANode[0])
+    else if (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount = 1) and
+      (ANode[0].Kind = TSyntaxKind.Identifier) then
+      CheckCall(ANode[0], ANode[0]);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+var
+  Kind: TRuleApplicationKind;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Kind := AContext.Application;
+  // Ohne Projekt nur die .dpr selbst: program ohne {$APPTYPE CONSOLE}.
+  if Kind = TRuleApplicationKind.Unknown then
+    Kind := ApplicationKind('', AContext.Text);
+  if Kind <> TRuleApplicationKind.Gui then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  ReplacementText := Replacement(AContext.Options);
+  Declared := nil;
+  CollectDeclared(AContext.Tree.Root);
+  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  try
+    Visit(AContext.Tree.Root);
+  finally
+    Types.Free;
+  end;
+end;
+
 procedure RegisterRtlTypePatternRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TInt32MulOverflowRule.Create);
@@ -1627,6 +1979,7 @@ begin
   ARegistry.Register(TThreadvarManagedRule.Create);
   ARegistry.Register(TPCharOfTemporaryRule.Create);
   ARegistry.Register(TStringListUnsortedRule.Create);
+  ARegistry.Register(TWritelnInGuiAppRule.Create);
 end;
 
 end.

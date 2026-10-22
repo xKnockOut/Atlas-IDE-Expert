@@ -3316,3 +3316,17 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Routine mit `Namen := T
 | SL5 | `Namen.Insert(0, Suche);` ergänzen | Meldung bleibt, die Glühbirne bietet nur noch IndexOf an |
 | SL6 | `Namen.Sort;`, `TStringList.Create(dupIgnore, True, False)` bzw. `Fuellen(Namen);` | Keine Meldung |
 | SL7 | `"stringlist-unsorted": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Writeln in einem Programm ohne Konsole (#926)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; VCL-Projekt ohne `{$APPTYPE CONSOLE}` geladen; im Formular `procedure TfrmHaupt.btnStartClick` mit `Writeln('Start: ', TimeToStr(Now));`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WG1 | Unit öffnen | Warnung `writeln-in-gui-app` an `Writeln`: „Das Projekt hat keine Konsole; Writeln löst zur Laufzeit E/A-Fehler 105 aus.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| WG2 | Glühbirne, „Durch OutputDebugString ersetzen“ | `OutputDebugString(PChar('Start: ' + TimeToStr(Now)));`, `Winapi.Windows` im uses; kompiliert; Ausgabe im Ereignisprotokoll der IDE (**Abnahme**) |
+| WG3 | `Readln;` ergänzen | Meldung „… Readln löst zur Laufzeit E/A-Fehler 104 aus.“ ohne Korrektur |
+| WG4 | `"writeln-in-gui-app": {"replacement": "Log.Info"}` in atlas.json | Korrektur heißt „Durch Log.Info ersetzen“ und schreibt `Log.Info('Start: ' + TimeToStr(Now));` |
+| WG5 | Dieselbe Unit in einem Konsolenprojekt (`{$APPTYPE CONSOLE}` oder Linker-Option „Konsolenanwendung erzeugen“) | Keine Meldung |
+| WG6 | `if IsConsole then Writeln(...)` bzw. `Writeln(F, ...)` mit `F: TextFile` | Keine Meldung |
+| WG7 | `"writeln-in-gui-app": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

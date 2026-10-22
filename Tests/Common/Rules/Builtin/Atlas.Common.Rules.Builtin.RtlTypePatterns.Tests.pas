@@ -4,7 +4,7 @@
 // für die deklarierten Typen, auf denen sie aufbauen; zuletzt
 // managed-type-raw-memory (#921) mit Records, Aliassen, Zeigern, Index und
 // Korrekturen, threadvar-managed (#922), pchar-of-temporary (#923) und
-// stringlist-unsorted (#925).
+// stringlist-unsorted (#925) und writeln-in-gui-app (#926).
 
 interface
 
@@ -55,6 +55,16 @@ type
     procedure StringListUnsortedVariants;
     [Test]
     procedure StringListUnsortedSilentCases;
+    [Test]
+    procedure WritelnInGuiAppIssueExample;
+    [Test]
+    procedure WritelnInGuiAppApplicationKind;
+    [Test]
+    procedure WritelnInGuiAppVariants;
+    [Test]
+    procedure WritelnInGuiAppSilentCases;
+    [Test]
+    procedure WritelnInGuiAppOptions;
   end;
 
 implementation
@@ -68,6 +78,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
+  Atlas.Common.Configuration.Parser,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
@@ -489,6 +500,128 @@ begin
   TRuleAssert.Silent(TStringListUnsortedRule.Create, Lister('', '  Namen.Find(Suche, Index);'));
   TRuleAssert.Silent(TStringListUnsortedRule.Create, Lister('', '  Namen := TStringList.Create;'#10 +
     '  Namen.Duplicates := dupAccept;'#10'  Index := Namen.IndexOf(Suche);'));
+end;
+
+function GuiUnit(const ABody: string): string;
+begin
+  Result := 'unit Haupt;'#10'interface'#10'uses'#10'  Vcl.Forms;'#10'type'#10'  TfrmHaupt = class(TForm)'#10 +
+    '    procedure btnStartClick(Sender: TObject);'#10'  end;'#10'implementation'#10'uses'#10 +
+    '  System.SysUtils;'#10'procedure TfrmHaupt.btnStartClick(Sender: TObject);'#10'begin'#10 + ABody + #10 +
+    'end;'#10'end.';
+end;
+
+function GuiProgram(const AVars, ABody: string): string;
+begin
+  Result := 'program Werkzeug;'#10'uses'#10'  Vcl.Forms;'#10 + AVars + 'begin'#10 + ABody + #10'end.';
+end;
+
+procedure TRtlTypePatternRulesTests.WritelnInGuiAppIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := GuiUnit('  Writeln(''Start: '', TimeToStr(Now));');
+  Findings := TRuleAssert.ApplicationFindings(TWritelnInGuiAppRule.Create, Source, TRuleApplicationKind.Gui);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Das Projekt hat keine Konsole; Writeln löst zur Laufzeit E/A-Fehler 105 aus.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Durch OutputDebugString ersetzen', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.IsTrue(Pos('  OutputDebugString(PChar(''Start: '' + TimeToStr(Now)));', Fixed) > 0, Fixed);
+  Assert.IsTrue(Pos('Winapi.Windows', Fixed) > 0, 'uses ergänzt: ' + Fixed);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ApplicationFindings(TWritelnInGuiAppRule.Create, Fixed,
+    TRuleApplicationKind.Gui))));
+  // Konsolenprojekt und Unit ohne Projekt: keine Meldung.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ApplicationFindings(TWritelnInGuiAppRule.Create, Source,
+    TRuleApplicationKind.Console))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ApplicationFindings(TWritelnInGuiAppRule.Create, Source,
+    TRuleApplicationKind.Unknown))));
+end;
+
+procedure TRtlTypePatternRulesTests.WritelnInGuiAppApplicationKind;
+begin
+  Assert.AreEqual(Ord(TRuleApplicationKind.Gui), Ord(TWritelnInGuiAppRule.ApplicationKind('',
+    'program P;'#10'uses Vcl.Forms;'#10'{$R *.res}'#10'begin'#10'end.')));
+  Assert.AreEqual(Ord(TRuleApplicationKind.Console), Ord(TWritelnInGuiAppRule.ApplicationKind('',
+    'program P;'#10'{$APPTYPE CONSOLE}'#10'begin'#10'end.')));
+  Assert.AreEqual(Ord(TRuleApplicationKind.Console), Ord(TWritelnInGuiAppRule.ApplicationKind('',
+    'program P;'#10'{$IFNDEF TESTINSIGHT}'#10'{$apptype console}'#10'{$ENDIF}'#10'begin'#10'end.')));
+  Assert.AreEqual(Ord(TRuleApplicationKind.Console), Ord(TWritelnInGuiAppRule.ApplicationKind('true',
+    'program P;'#10'begin'#10'end.')));
+  // Auskommentiert zählt nicht.
+  Assert.AreEqual(Ord(TRuleApplicationKind.Gui), Ord(TWritelnInGuiAppRule.ApplicationKind('false',
+    '// Werkzeug'#10'program P;'#10'// {$APPTYPE CONSOLE}'#10'begin'#10'end.')));
+  Assert.AreEqual(Ord(TRuleApplicationKind.Unknown), Ord(TWritelnInGuiAppRule.ApplicationKind('',
+    'library L;'#10'begin'#10'end.')));
+  Assert.AreEqual(Ord(TRuleApplicationKind.Unknown), Ord(TWritelnInGuiAppRule.ApplicationKind('', '')));
+end;
+
+procedure TRtlTypePatternRulesTests.WritelnInGuiAppVariants;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Die .dpr selbst ohne Projekt; Readln ohne Korrektur, Output fällt weg, Zahl über IntToStr.
+  Source := GuiProgram('var'#10'  Anzahl: Integer;'#10, '  Writeln(Output, ''Anzahl: '', Anzahl);'#10 +
+    '  Readln;'#10'  Write(Anzahl:5);');
+  Findings := TRuleAssert.Findings(TWritelnInGuiAppRule.Create, Source);
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.IsTrue(Pos('OutputDebugString(PChar(''Anzahl: '' + IntToStr(Anzahl)))',
+    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits)) > 0);
+  Assert.IsTrue(Pos('System.SysUtils', TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits)) > 0,
+    'IntToStr braucht SysUtils');
+  Assert.AreEqual('Das Projekt hat keine Konsole; Readln löst zur Laufzeit E/A-Fehler 104 aus.', Findings[1].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
+  Assert.AreEqual(0, Integer(Length(Findings[2].Fixes)), 'Breitenangabe: keine Korrektur');
+  // Unbekannter Typ: Meldung ohne Korrektur.
+  Findings := TRuleAssert.Findings(TWritelnInGuiAppRule.Create, GuiProgram('', '  Writeln(Fremd);'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TRtlTypePatternRulesTests.WritelnInGuiAppSilentCases;
+begin
+  // Konsolenprogramm, Textdatei, IsConsole, eigene Routine Writeln, Write als Methode, Stream.Read.
+  TRuleAssert.Silent(TWritelnInGuiAppRule.Create, 'program P;'#10'{$APPTYPE CONSOLE}'#10'begin'#10 +
+    '  Writeln(''x'');'#10'end.');
+  TRuleAssert.Silent(TWritelnInGuiAppRule.Create, GuiProgram('var'#10'  F: TextFile;'#10,
+    '  Writeln(F, ''x'');'#10'  Writeln(F);'));
+  TRuleAssert.Silent(TWritelnInGuiAppRule.Create, GuiProgram('', '  if IsConsole then'#10'    Writeln(''x'');'));
+  TRuleAssert.Silent(TWritelnInGuiAppRule.Create, GuiProgram('procedure Writeln(const S: string);'#10'begin'#10 +
+    'end;'#10, '  Writeln(''x'');'));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ApplicationFindings(TWritelnInGuiAppRule.Create,
+    GuiUnit('  Write(Buffer, 4);'#10'  Stream.Read(Buffer, 4);'#10'  Log.Writeln(''x'');'),
+    TRuleApplicationKind.Gui))));
+  TRuleAssert.Silent(TWritelnInGuiAppRule.Create, 'library L;'#10'begin'#10'  Writeln(''x'');'#10'end.');
+end;
+
+procedure TRtlTypePatternRulesTests.WritelnInGuiAppOptions;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := GuiProgram('', '  Writeln(''Start'');');
+  Findings := TRuleAssert.Findings(TWritelnInGuiAppRule.Create, Source,
+    '{"rules": {"writeln-in-gui-app": {"replacement": "Log.Info"}}}', 'Werkzeug.dpr');
+  Assert.AreEqual('Durch Log.Info ersetzen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(GuiProgram('', '  Log.Info(''Start'');'), TChangeSignature.ApplyEdits(Source,
+    Findings[0].Fixes[0].Edits));
+  Findings := TRuleAssert.Findings(TWritelnInGuiAppRule.Create, Source,
+    '{"rules": {"writeln-in-gui-app": {"replacement": "Logger.Log(TLogLevel.Info, %s)"}}}', 'Werkzeug.dpr');
+  Assert.AreEqual('Durch Logger.Log ersetzen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(GuiProgram('', '  Logger.Log(TLogLevel.Info, ''Start'');'), TChangeSignature.ApplyEdits(Source,
+    Findings[0].Fixes[0].Edits));
+  Assert.AreEqual('OutputDebugString', TWritelnInGuiAppRule.Replacement(''));
+  Assert.AreEqual('OutputDebugString', TWritelnInGuiAppRule.Replacement('{"replacement": " "}'));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TWritelnInGuiAppRule.Create, Source,
+    '{"rules": {"writeln-in-gui-app": "off"}}', 'Werkzeug.dpr'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TWritelnInGuiAppRule.Create, Source,
+    '{"rules": {"writeln-in-gui-app": {"exclude": ["Alt/*.dpr"]}}}', 'Alt/Werkzeug.dpr'))));
+  TConfigurationParser.Parse('{"rules": {"writeln-in-gui-app": {"replacement": ["Log.Info"]}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"replacement" muss ein Text sein', Issues[0].Message);
 end;
 
 initialization

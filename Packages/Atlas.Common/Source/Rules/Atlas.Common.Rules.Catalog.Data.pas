@@ -1357,6 +1357,24 @@ begin
     '      "description": "Find on a TStringList or THashedStringList that is created in the unit but never sorted: Find searches binary and returns wrong results on an unsorted list. The same holds for Du' + 'plicates := dupIgnore or dupError, which only works on sorted lists. Sorted counts as Sorted := True (or any value other than False), Sort, CustomSort, Create(Duplicates, True, ...) and with List do. ' + 'A list passed to a routine or assigned to another variable stays silent. Locals are tracked per routine, fields across the unit. Medium confidence. Quick fixes: Sorted := True after the creation (not ' + 'offered when the list uses Insert, Move or Exchange, which raise on sorted lists) and, for if List.Find(S, I) then, I := List.IndexOf(S) with if I >= 0.",' + #10 +
     '      "bad": "Namen := TStringList.Create;\nNamen.LoadFromFile(Datei);\nif Namen.Find(Suche, Index) then\n  Namen.Delete(Index);",' + #10 +
     '      "good": "Namen := TStringList.Create;\nNamen.Sorted := True;\nNamen.LoadFromFile(Datei);\nif Namen.Find(Suche, Index) then\n  Namen.Delete(Index);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "writeln-in-gui-app",' + #10 +
+    '      "name": "Writeln in a program without console",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "Write, Writeln, Read or Readln on standard input or output in a program without a console: at run time Writeln raises EInOutError (I/O error 105), Readln I/O error 104. The appli' + 'cation type comes from DCC_ConsoleTarget in the .dproj and {$APPTYPE CONSOLE} in the .dpr (also inside {$IFDEF}); units are only checked when they belong to the loaded project, a .dpr without project ' + 'on its own. Libraries and packages stay silent. Calls with a text file as first argument, calls under if IsConsole, routines of the same name declared in the unit and Read/Write inside methods (TStrea' + 'm.Read) are exempt. High confidence. Quick fix for Write and Writeln: replace with OutputDebugString(PChar(...)) and add Winapi.Windows; numbers and Boolean go through IntToStr, FloatToStr and BoolToS' + 'tr. Option replacement sets another target, e.g. Log.Info or Logger.Log(TLogLevel.Info, %s). No fix for width specifiers (X:5) or arguments of unknown type.",' + #10 +
+    '      "bad": "procedure TfrmHaupt.btnStartClick(Sender: TObject);\nbegin\n  Writeln(''Start: '', TimeToStr(Now));\nend;",' + #10 +
+    '      "good": "procedure TfrmHaupt.btnStartClick(Sender: TObject);\nbegin\n  OutputDebugString(PChar(''Start: '' + TimeToStr(Now)));\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "replacement",' + #10 +
+    '          "type": "string",' + #10 +
+    '          "default": "OutputDebugString",' + #10 +
+    '          "description": "Replacement for Write and Writeln in the quick fix; %s stands for the text."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2067,6 +2085,17 @@ begin
     '      "id": "stringlist-unsorted",' + #10 +
     '      "name": "Find oder Duplicates auf einer unsortierten TStringList",' + #10 +
     '      "description": "Find auf einer TStringList oder THashedStringList, die in der Unit erzeugt, aber nie sortiert wird: Find sucht binär und liefert auf einer unsortierten Liste falsche Ergebnisse. ' + 'Ebenso wirkt Duplicates := dupIgnore oder dupError nur bei sortierten Listen. Als sortiert gelten Sorted := True (oder jeder Wert außer False), Sort, CustomSort, Create(Duplicates, True, ...) und with' + ' Liste do. Eine Liste, die an eine Routine übergeben oder einer anderen Variablen zugewiesen wird, bleibt still. Lokale Variablen gelten je Routine, Felder in der ganzen Unit. Konfidenz mittel. Schnel' + 'lkorrekturen: Sorted := True nach dem Erzeugen (nicht, wenn die Liste Insert, Move oder Exchange benutzt, die bei sortierten Listen eine Ausnahme auslösen) und bei if Liste.Find(S, I) then die Form I ' + ':= Liste.IndexOf(S) mit if I >= 0."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "writeln-in-gui-app",' + #10 +
+    '      "name": "Writeln in einem Programm ohne Konsole",' + #10 +
+    '      "description": "Write, Writeln, Read oder Readln auf die Standardein- oder -ausgabe in einem Programm ohne Konsole: zur Laufzeit löst Writeln EInOutError aus (E/A-Fehler 105), Readln E/A-Fehler ' + '104. Die Anwendungsart kommt aus DCC_ConsoleTarget der .dproj und {$APPTYPE CONSOLE} der .dpr (auch in {$IFDEF}); Units werden nur geprüft, wenn sie zum geladenen Projekt gehören, eine .dpr ohne Proje' + 'kt für sich. Bibliotheken und Packages bleiben still. Ausgenommen sind Aufrufe mit einer Textdatei als erstem Argument, Aufrufe unter if IsConsole, gleichnamige Routinen der Unit und Read/Write in Met' + 'hoden (TStream.Read). Konfidenz hoch. Schnellkorrektur für Write und Writeln: Ersatz durch OutputDebugString(PChar(...)) und Winapi.Windows im uses; Zahlen und Boolean über IntToStr, FloatToStr und Bo' + 'olToStr. Die Option replacement setzt ein anderes Ziel, z. B. Log.Info oder Logger.Log(TLogLevel.Info, %s). Keine Korrektur bei Breitenangaben (X:5) oder Argumenten unbekannten Typs.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "replacement",' + #10 +
+    '          "description": "Ersatz für Write und Writeln in der Schnellkorrektur; %s steht für den Text."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

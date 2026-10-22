@@ -94,6 +94,11 @@ type
     procedure Clear;
   end;
 
+  /// <summary>Art der Anwendung, zu der die Datei gehört (#926): mit oder ohne Konsole.</summary>
+{$SCOPEDENUMS ON}
+  TRuleApplicationKind = (Unknown, Console, Gui);
+{$SCOPEDENUMS OFF}
+
   /// <summary>Alles, was eine Regel über die geprüfte Datei wissen darf.</summary>
   TRuleContext = record
     /// <summary>Pfad relativ zum Ordner der Konfiguration, '' wenn unbekannt.</summary>
@@ -144,6 +149,8 @@ type
     FileName: string;
     /// <summary>Inhalt der Packages aus requires (#46); nil = unbekannt, Package-Prüfungen schweigen.</summary>
     PackageProvides: TRulePackageProvides;
+    /// <summary>Anwendungsart des Projekts, zu dem die Datei gehört (#926); Unknown ohne Projekt.</summary>
+    Application: TRuleApplicationKind;
   end;
 
   /// <summary>Sammelt die Treffer einer Regel. Ohne Angabe gilt Konfidenz High.</summary>
