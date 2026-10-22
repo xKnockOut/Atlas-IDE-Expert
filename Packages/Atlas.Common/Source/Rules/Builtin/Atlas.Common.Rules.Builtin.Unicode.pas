@@ -5,6 +5,8 @@
 //   invisible-char        unsichtbare und Nullbreiten-Zeichen
 //   control-char          NUL- und Steuerzeichen, U+FFFD und ungültige UTF-8-Bytes
 //   confusable-identifier Bezeichner mit Zeichen, die lateinischen gleichen
+//   file-encoding-unsupported  UTF-32-Datei (F2438) oder Zeichen im Code, die der Compiler
+//                         nicht annimmt (E2038), etwa typografische Anführungszeichen (#1085)
 //
 // Konfidenz nach Ort und Art: Einbettungen und Überschreibungen
 // (U+202A–U+202E, U+2066–U+2069) hoch, ausgeglichen in einem String mit
@@ -26,6 +28,14 @@
 // Ungültige UTF-8-Bytes: control-char liest die Datei über ReadFile und
 // meldet die Fehlstellen aus TFileEncoding.InvalidUtf8 mit Zeile und Spalte,
 // sofern der gelesene Text dem geprüften entspricht.
+//
+// file-encoding-unsupported: UTF-32 erkennt die BOM der über ReadFile gelesenen Bytes; dann meldet
+// control-char die Unit nicht, weil ihr Text falsch dekodiert ist. E2038 nur außerhalb von Strings,
+// Kommentaren, Direktiven, asm-Blöcken und {$IF…}-Zweigen und nur für sichere Fälle: ASCII ! " ? \ ` | ~
+// sowie Satz- und Sonderzeichen jenseits von ASCII (keine Buchstaben, Ziffern, Verbinder wie U+203F;
+// Steuer-, Format- und Leerzeichen melden die anderen Regeln). Ein Paar Anführungszeichen auf einer
+// Zeile wird zum String; einzelne Zeichen mit eindeutigem ASCII-Gegenstück (– × ≤ …) werden ersetzt.
+// Eine UTF-32-Datei lässt sich nicht mit einer Textänderung umkodieren: keine Korrektur (#894).
 
 interface
 
@@ -62,6 +72,15 @@ type
     class function LatinOf(C: Char): Char; static;
   end;
 
+  TFileEncodingUnsupportedRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Nimmt der Compiler das Zeichen außerhalb von Strings und Kommentaren sicher nicht an (E2038)?
+    /// Satz- und Sonderzeichen, nie Buchstaben, Ziffern oder Verbinder.</summary>
+    class function IsIllegal(ACode: Integer): Boolean; static;
+  end;
+
 /// <summary>Registriert alle Unicode-Regeln.</summary>
 procedure RegisterUnicodeRules(const ARegistry: TRuleRegistry);
 
@@ -74,6 +93,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.FormModel,
@@ -717,6 +737,14 @@ begin
   Result := StringReplace(AText, #13, '', [rfReplaceAll]);
 end;
 
+/// <summary>Bytes der Datei AFileName (neben der Unit) über ReadFile; False, wenn sie nicht lesbar ist.</summary>
+function ReadBytes(const AContext: TRuleContext; const AFileName: string; out ABytes: TBytes): Boolean;
+begin
+  ABytes := nil;
+  Result := (AFileName <> '') and Assigned(AContext.ReadFile) and
+    AContext.ReadFile(ExtractFileName(StringReplace(AFileName, '/', '\', [rfReplaceAll])), ABytes);
+end;
+
 /// <summary>Fehlstellen in den Bytes von AFileName, wenn ihr Text AText ist; sonst nil.</summary>
 function InvalidBytes(const AContext: TRuleContext; const AFileName, AText: string): TArray<TInvalidUtf8>;
 var
@@ -724,8 +752,7 @@ var
   Format: TFileFormat;
 begin
   Result := nil;
-  if (AFileName = '') or not Assigned(AContext.ReadFile) or
-    not AContext.ReadFile(ExtractFileName(StringReplace(AFileName, '/', '\', [rfReplaceAll])), Bytes) then
+  if not ReadBytes(AContext, AFileName, Bytes) then
     Exit;
   if TFileEncoding.IsBinaryForm(Bytes) then
     Exit;
@@ -773,8 +800,14 @@ var
   Covered: Boolean;
   Cache: IRuleDerivedCache;
   Range: TTextRange;
+  Bytes: TBytes;
+  Utf32: Boolean;
 begin
-  Invalid := InvalidBytes(AContext, AContext.RelativePath, AContext.Text);
+  // Eine UTF-32-Datei ist als Text falsch dekodiert (lauter NUL); das meldet file-encoding-unsupported.
+  Utf32 := ReadBytes(AContext, AContext.RelativePath, Bytes) and TFileEncoding.HasUtf32Bom(Bytes);
+  Invalid := nil;
+  if not Utf32 then
+    Invalid := InvalidBytes(AContext, AContext.RelativePath, AContext.Text);
   if not Verified(Invalid, AContext.Text) then
     Invalid := nil;
   for Item in Invalid do
@@ -784,6 +817,8 @@ begin
   // U+FFFD an einer schon gemeldeten Fehlstelle nicht doppelt melden.
   for Run in RunsOf(TCharRule.Control, AContext) do
   begin
+    if Utf32 then
+      Break;
     Covered := False;
     for Hit in Run.Hits do
       for Item in Invalid do
@@ -806,6 +841,286 @@ begin
   for Item in Invalid do
     AReport.Add(Range, Format('Formulardatei, Zeile %d, Spalte %d: ungültiges UTF-8-Byte $%s',
       [Item.Position.Line + 1, Item.Position.Character + 1, IntToHex(Item.Value, 2)]));
+end;
+
+{ TFileEncodingUnsupportedRule }
+
+type
+  {$SCOPEDENUMS ON}
+  TQuoteKind = (None, Typographic, Double);
+  {$SCOPEDENUMS OFF}
+
+  /// <summary>Ein Zeichen im Code, das der Compiler nicht annimmt.</summary>
+  TIllegalChar = record
+    Code: Integer;
+    /// <summary>Offset ab 0 im Text.</summary>
+    Offset: Integer;
+    /// <summary>UTF-16-Einheiten: 2 bei einem Ersatzpaar.</summary>
+    Size: Integer;
+    Pos: TTextPosition;
+    Quote: TQuoteKind;
+    /// <summary>Index des Tokens.</summary>
+    Token: Integer;
+  end;
+
+class function TFileEncodingUnsupportedRule.IsIllegal(ACode: Integer): Boolean;
+begin
+  case ACode of
+    Ord('!'), Ord('"'), Ord('?'), Ord('\'), Ord('`'), Ord('|'), Ord('~'),
+    $A1..$A9, $AB, $AC, $AE..$B1, $B4, $B6..$B8, $BB, $BF, $D7, $F7,
+    // Allgemeine Interpunktion ohne die Verbinder U+203F, U+2040, U+2054 und ohne Zeilen-/Absatztrenner.
+    $2010..$2027, $2030..$203E, $2041..$2053, $2055..$205E,
+    // Währungen, Pfeile, mathematische und technische Zeichen, Rahmen, Formen, Symbole, Dingbats.
+    $20A0..$20C0, $2190..$23FF, $2500..$27FF, $2900..$2BFF,
+    // CJK-Interpunktion und Vollbreiten-ASCII ohne den Verbinder U+FF3F.
+    $3001..$3003, $3008..$3011, $3014..$301F,
+    $FF01..$FF0F, $FF1A..$FF20, $FF3B..$FF3E, $FF40, $FF5B..$FF65,
+    // Emoji und Symbole jenseits der BMP.
+    $1F000..$1FAFF:
+      Result := True;
+  else
+    Result := False;
+  end;
+end;
+
+/// <summary>Code des Zeichens an AIndex (ab 1), Ersatzpaare zusammengefasst; ASize = 1 oder 2.</summary>
+function CodeAt(const AText: string; AIndex: Integer; out ASize: Integer): Integer;
+var
+  Trail: Integer;
+begin
+  Result := Ord(AText[AIndex]);
+  ASize := 1;
+  if (Result < $D800) or (Result > $DBFF) or (AIndex >= Length(AText)) then
+    Exit;
+  Trail := Ord(AText[AIndex + 1]);
+  if (Trail < $DC00) or (Trail > $DFFF) then
+    Exit;
+  Result := $10000 + ((Result - $D800) shl 10) + (Trail - $DC00);
+  ASize := 2;
+end;
+
+function HasIllegalChar(const AText: string): Boolean;
+var
+  Index, Size: Integer;
+begin
+  Index := 1;
+  while Index <= Length(AText) do
+  begin
+    if TFileEncodingUnsupportedRule.IsIllegal(CodeAt(AText, Index, Size)) then
+      Exit(True);
+    Inc(Index, Size);
+  end;
+  Result := False;
+end;
+
+function QuoteKindOf(ACode: Integer): TQuoteKind;
+begin
+  case ACode of
+    $22:
+      Result := TQuoteKind.Double;
+    $AB, $BB, $2018..$201F, $2039, $203A:
+      Result := TQuoteKind.Typographic;
+  else
+    Result := TQuoteKind.None;
+  end;
+end;
+
+/// <summary>Schließt AClose das mit AOpen begonnene Zitat? Deutsch „…“ ‚…‘ »…« ›…‹, englisch “…” ‘…’,
+/// französisch «…» ‹…›, ASCII "…".</summary>
+function Closes(AOpen, AClose: Integer): Boolean;
+begin
+  case AOpen of
+    $22:
+      Result := AClose = $22;
+    $201E, $201C, $201F:
+      Result := (AClose = $201C) or (AClose = $201D);
+    $201A, $2018, $201B:
+      Result := (AClose = $2018) or (AClose = $2019);
+    $BB:
+      Result := AClose = $AB;
+    $AB:
+      Result := AClose = $BB;
+    $203A:
+      Result := AClose = $2039;
+    $2039:
+      Result := AClose = $203A;
+  else
+    Result := False;
+  end;
+end;
+
+/// <summary>Eindeutiges ASCII-Gegenstück; '' ohne.</summary>
+function AsciiOf(ACode: Integer): string;
+begin
+  case ACode of
+    $2010..$2015, $2212:
+      Result := '-';
+    $D7:
+      Result := '*';
+    $F7:
+      Result := '/';
+    $2260:
+      Result := '<>';
+    $2264:
+      Result := '<=';
+    $2265:
+      Result := '>=';
+    $FF01..$FF5E:
+      begin
+        Result := Chr(ACode - $FEE0);
+        if Pos(Result, '+-*/=<>[].,():;^@') = 0 then
+          Result := '';
+      end;
+  else
+    Result := '';
+  end;
+end;
+
+/// <summary>Zeichen im Code außerhalb von asm-Blöcken und {$IF…}-Zweigen, die der Compiler nicht annimmt.</summary>
+function IllegalChars(const ATokens: TArray<TPascalToken>): TArray<TIllegalChar>;
+var
+  Paths: TArray<string>;
+  Index, Position, Size, Count: Integer;
+  InAsm: Boolean;
+  Token: TPascalToken;
+  Item: TIllegalChar;
+begin
+  Result := nil;
+  Count := 0;
+  Paths := TConditionalBranches.Paths(ATokens);
+  InAsm := False;
+  for Index := 0 to High(ATokens) do
+  begin
+    Token := ATokens[Index];
+    // Im Assembler gelten andere Zeichen, etwa "…" als String; der Parser endet den Block am nächsten end.
+    if Token.IsKeyword('asm') then
+      InAsm := True
+    else if Token.IsKeyword('end') then
+      InAsm := False;
+    if InAsm or (TConditionalBranches.PathAt(Paths, Index) <> '') or
+      not (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Unknown]) then
+      Continue;
+    Position := 1;
+    while Position <= Length(Token.Text) do
+    begin
+      Item.Code := CodeAt(Token.Text, Position, Size);
+      if TFileEncodingUnsupportedRule.IsIllegal(Item.Code) then
+      begin
+        Item.Offset := Token.Offset + Position - 1;
+        Item.Size := Size;
+        Item.Pos := TTextPosition.Create(Token.StartPos.Line, Token.StartPos.Character + Position - 1);
+        Item.Quote := QuoteKindOf(Item.Code);
+        Item.Token := Index;
+        if Count = Length(Result) then
+          SetLength(Result, Count * 2 + 4);
+        Result[Count] := Item;
+        Inc(Count);
+      end;
+      Inc(Position, Size);
+    end;
+  end;
+  SetLength(Result, Count);
+end;
+
+/// <summary>Stehen zwischen den Tokens AFirst und ALast nur Code-Tokens? Sonst begänne im Zitat ein String
+/// oder Kommentar, und die Korrektur änderte seine Bedeutung.</summary>
+function OnlyCodeBetween(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): Boolean;
+var
+  Index: Integer;
+begin
+  for Index := AFirst + 1 to ALast - 1 do
+    if not (ATokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword,
+      TPascalTokenKind.Number, TPascalTokenKind.Symbol, TPascalTokenKind.Unknown]) then
+      Exit(False);
+  Result := True;
+end;
+
+/// <summary>Index des schließenden Anführungszeichens zu AChars[AOpen] auf derselben Zeile; -1 ohne.</summary>
+function ClosingQuote(const AChars: TArray<TIllegalChar>; AOpen: Integer;
+  const ATokens: TArray<TPascalToken>): Integer;
+var
+  Index: Integer;
+begin
+  for Index := AOpen + 1 to High(AChars) do
+  begin
+    if AChars[Index].Pos.Line <> AChars[AOpen].Pos.Line then
+      Break;
+    if Closes(AChars[AOpen].Code, AChars[Index].Code) then
+    begin
+      if OnlyCodeBetween(ATokens, AChars[AOpen].Token, AChars[Index].Token) then
+        Exit(Index);
+      Break;
+    end;
+  end;
+  Result := -1;
+end;
+
+function TFileEncodingUnsupportedRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('file-encoding-unsupported', TRuleSeverity.Error,
+    'Datei in UTF-32 oder Zeichen im Code, die der Compiler nicht annimmt (wie F2438, E2038)');
+end;
+
+procedure TFileEncodingUnsupportedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+const
+  TypographicMessage = 'Typografische Anführungszeichen sind im Quelltext nicht erlaubt (wie E2038).';
+  DoubleMessage = 'Doppelte Anführungszeichen sind im Quelltext nicht erlaubt, Strings stehen in '' (wie E2038).';
+var
+  Bytes: TBytes;
+  Chars: TArray<TIllegalChar>;
+  Index, Closing: Integer;
+  Range: TTextRange;
+  Literal, MessageText, Ascii: string;
+  Fixes: TArray<TRuleFix>;
+begin
+  if ReadBytes(AContext, AContext.RelativePath, Bytes) and TFileEncoding.HasUtf32Bom(Bytes) then
+  begin
+    // Der Text ist dann falsch dekodiert; weitere Meldungen wären Folgefehler.
+    AReport.Add(TTextRange.Create(TTextPosition.Create(0, 0), TTextPosition.Create(0, 1)),
+      'Die Datei ist UTF-32 kodiert; der Compiler liest nur UTF-8, UTF-16 und ANSI (wie F2438). ' +
+      'In UTF-8 mit BOM speichern.', TRuleConfidence.High);
+    Exit;
+  end;
+  if AContext.Tree = nil then
+    Exit;
+  Chars := IllegalChars(AContext.Tree.Tokens);
+  Index := 0;
+  while Index <= High(Chars) do
+  begin
+    Closing := -1;
+    if Chars[Index].Quote <> TQuoteKind.None then
+      Closing := ClosingQuote(Chars, Index, AContext.Tree.Tokens);
+    Fixes := nil;
+    if Closing >= 0 then
+    begin
+      Range := TTextRange.Create(Chars[Index].Pos, TTextPosition.Create(Chars[Closing].Pos.Line,
+        Chars[Closing].Pos.Character + Chars[Closing].Size));
+      Literal := QuotedStr(Copy(AContext.Text, Chars[Index].Offset + Chars[Index].Size + 1,
+        Chars[Closing].Offset - Chars[Index].Offset - Chars[Index].Size));
+      Fixes := [TRuleFix.Create(Format('Durch den String %s ersetzen', [Literal]),
+        [TRuleEdit.Create(Range, Literal)])];
+      Index := Closing;
+    end
+    else
+    begin
+      Range := TTextRange.Create(Chars[Index].Pos, TTextPosition.Create(Chars[Index].Pos.Line,
+        Chars[Index].Pos.Character + Chars[Index].Size));
+      Ascii := AsciiOf(Chars[Index].Code);
+      if Ascii <> '' then
+        Fixes := [TRuleFix.Create(Format('Durch "%s" ersetzen', [Ascii]), [TRuleEdit.Create(Range, Ascii)])];
+    end;
+    case Chars[Index].Quote of
+      TQuoteKind.Typographic:
+        MessageText := TypographicMessage;
+      TQuoteKind.Double:
+        MessageText := DoubleMessage;
+    else
+      MessageText := Format('Zeichen ''%s'' (#$%s) ist im Quelltext nicht erlaubt (wie E2038).',
+        [Copy(AContext.Text, Chars[Index].Offset + 1, Chars[Index].Size), IntToHex(Chars[Index].Code, 4)]);
+    end;
+    AReport.Add(Range, MessageText, TRuleConfidence.High, Fixes);
+    Inc(Index);
+  end;
 end;
 
 { TConfusableIdentifierRule }
@@ -898,7 +1213,8 @@ begin
     Exit;
   for Token in AContext.Tree.Tokens do
   begin
-    if Token.Kind <> TPascalTokenKind.Identifier then
+    // Satz- und Sonderzeichen machen keinen Bezeichner; das meldet file-encoding-unsupported.
+    if (Token.Kind <> TPascalTokenKind.Identifier) or HasIllegalChar(Token.Text) then
       Continue;
     Scripts := [];
     NonAscii := False;
@@ -947,6 +1263,7 @@ begin
   ARegistry.Register(TInvisibleCharRule.Create);
   ARegistry.Register(TControlCharRule.Create);
   ARegistry.Register(TConfusableIdentifierRule.Create);
+  ARegistry.Register(TFileEncodingUnsupportedRule.Create);
 end;
 
 end.

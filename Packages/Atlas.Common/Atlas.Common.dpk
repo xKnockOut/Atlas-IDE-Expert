@@ -331,6 +331,7 @@ contains
   Atlas.Common.Rules.Builtin.Constants in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Constants.pas',
   Atlas.Common.Rules.Builtin.Database in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Database.pas',
   Atlas.Common.Rules.Builtin.Directives in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Directives.pas',
+  Atlas.Common.Rules.Builtin.Units in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Units.pas',
   Atlas.Common.Rules.Builtin.Properties in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Properties.pas',
   Atlas.Common.Rules.Builtin.Calls in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Calls.pas',
   Atlas.Common.Rules.Builtin.Jumps in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Jumps.pas',

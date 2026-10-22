@@ -65,6 +65,26 @@ type
     procedure PlainAnsiFileIsNoInvalidUtf8;
     [Test]
     procedure InvalidUtf8InForm;
+    [Test]
+    procedure TypographicQuotesBecomeString;
+    [Test]
+    procedure GermanQuotesKeepApostropheInside;
+    [Test]
+    procedure DoubleQuotesBecomeString;
+    [Test]
+    procedure QuoteWithStringInsideHasNoFix;
+    [Test]
+    procedure DashGetsAsciiFixQuestionMarkNone;
+    [Test]
+    procedure EmojiIsOneFinding;
+    [Test]
+    procedure StringsCommentsAndLettersAreAllowed;
+    [Test]
+    procedure ConditionalBranchAndAsmAreSkipped;
+    [Test]
+    procedure Utf32FileIsReportedOnce;
+    [Test]
+    procedure ConfusableSkipsIdentifierWithQuote;
   end;
 
 implementation
@@ -234,7 +254,8 @@ begin
   Registry := TRuleRegistry.Create;
   try
     RegisterUnicodeRules(Registry);
-    Assert.AreEqual(4, Integer(Length(Registry.Rules)));
+    Assert.AreEqual(5, Integer(Length(Registry.Rules)));
+    Assert.IsTrue(Registry.Find('file-encoding-unsupported', Rule));
     Assert.IsTrue(Registry.Find('bidi-control', Rule));
     Assert.IsTrue(Registry.Find('confusable-identifier', Rule));
   finally
@@ -463,6 +484,136 @@ begin
   Findings := Run(TControlCharRule.Create, FormUnit, Form, nil, Data, '');
   Assert.AreEqual(1, Integer(Length(Findings)), Form);
   Assert.Contains(Findings[0].Message, 'Zeile 2, Spalte 14');
+end;
+
+{ file-encoding-unsupported (#1085) }
+
+function Routine(const AStatement: string): string;
+begin
+  Result := UnitWith('procedure P;'#13#10'var'#13#10'  Titel: string;'#13#10'begin'#13#10'  ' + AStatement +
+    #13#10'end;');
+end;
+
+procedure TUnicodeRuleTests.TypographicQuotesBecomeString;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Routine('Titel := ' + Char($201A) + 'Bericht' + Char($2018) + ';');
+  Findings := TRuleAssert.Findings(TFileEncodingUnsupportedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Typografische Anführungszeichen sind im Quelltext nicht erlaubt (wie E2038).', Findings[0].Message);
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(11, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(20, Findings[0].Range.EndPos.Character);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Fixed := Apply(Source, Findings[0].Fixes[0].Edits[0]);
+  Assert.AreEqual(Routine('Titel := ''Bericht'';'), Fixed);
+  TRuleAssert.Silent(TFileEncodingUnsupportedRule.Create, Fixed);
+end;
+
+procedure TUnicodeRuleTests.GermanQuotesKeepApostropheInside;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // „Peter’s Bericht“: das ’ gehört in den String, das Paar ist „ … “.
+  Source := Routine('Titel := ' + Char($201E) + 'Peter' + Char($2019) + 's Bericht' + Char($201C) + ';');
+  Findings := TRuleAssert.Findings(TFileEncodingUnsupportedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(Routine('Titel := ''Peter' + Char($2019) + 's Bericht'';'),
+    Apply(Source, Findings[0].Fixes[0].Edits[0]));
+end;
+
+procedure TUnicodeRuleTests.DoubleQuotesBecomeString;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Routine('Titel := "Bericht";');
+  Findings := TRuleAssert.Findings(TFileEncodingUnsupportedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.Contains(Findings[0].Message, 'Doppelte');
+  Assert.AreEqual(Routine('Titel := ''Bericht'';'), Apply(Source, Findings[0].Fixes[0].Edits[0]));
+end;
+
+procedure TUnicodeRuleTests.QuoteWithStringInsideHasNoFix;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // "Don't": im Zitat beginnt ein String; ihn umzubauen änderte die Bedeutung.
+  Findings := TRuleAssert.Findings(TFileEncodingUnsupportedRule.Create,
+    Routine('Titel := ' + Char($201C) + 'a'' + ''b' + Char($201D) + ';'));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TUnicodeRuleTests.DashGetsAsciiFixQuestionMarkNone;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Routine('Titel := IntToStr(4 ' + Char($2013) + ' 2) ?;');
+  Findings := TRuleAssert.Findings(TFileEncodingUnsupportedRule.Create, Source);
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('Zeichen ''' + Char($2013) + ''' (#$2013) ist im Quelltext nicht erlaubt (wie E2038).',
+    Findings[0].Message);
+  Assert.AreEqual(Routine('Titel := IntToStr(4 - 2) ?;'), Apply(Source, Findings[0].Fixes[0].Edits[0]));
+  Assert.Contains(Findings[1].Message, '''?''');
+  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
+end;
+
+procedure TUnicodeRuleTests.EmojiIsOneFinding;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TFileEncodingUnsupportedRule.Create,
+    Routine('Titel := ''a''; ' + Char($D83D) + Char($DE00)));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.Contains(Findings[0].Message, '#$1F600');
+  Assert.AreEqual(2, Findings[0].Range.EndPos.Character - Findings[0].Range.StartPos.Character);
+end;
+
+procedure TUnicodeRuleTests.StringsCommentsAndLettersAreAllowed;
+begin
+  TRuleAssert.Silent(TFileEncodingUnsupportedRule.Create, Routine('Titel := ''' + Char($201E) + 'x' +
+    Char($201C) + ' ' + Char($2013) + ' ? "y"''; // ' + Char($201A) + 'z' + Char($2018) + ' ?'#13#10 +
+    '  { ' + Char($00AB) + ' } Gr' + Char($00F6) + Char($00DF) + 'e := 1; ' + Char($03BB) + ' := 2; Wert' +
+    Char($203F) + 'X := 3;'));
+end;
+
+procedure TUnicodeRuleTests.ConditionalBranchAndAsmAreSkipped;
+begin
+  TRuleAssert.Silent(TFileEncodingUnsupportedRule.Create, UnitWith('procedure P;'#13#10'begin'#13#10 +
+    '  {$IFDEF FPC} Titel := ' + Char($201A) + 'a' + Char($2018) + '; {$ENDIF}'#13#10 +
+    '  asm'#13#10'    db "x"'#13#10'  end;'#13#10'end;'));
+end;
+
+procedure TUnicodeRuleTests.Utf32FileIsReportedOnce;
+var
+  Data: TBytes;
+  Source: string;
+  Format: TFileFormat;
+  Findings: TArray<TRuleFinding>;
+begin
+  Data := Bytes([$FF, $FE, 0, 0, Ord('u'), 0, 0, 0, Ord('n'), 0, 0, 0, Ord('i'), 0, 0, 0, Ord('t'), 0, 0, 0]);
+  Source := TFileEncoding.Decode(Data, Format);
+  Findings := Run(TFileEncodingUnsupportedRule.Create, Source, '', Data, nil, '');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.Contains(Findings[0].Message, 'F2438');
+  Assert.AreEqual(0, Findings[0].Range.StartPos.Line);
+  // Die NUL des falsch dekodierten Textes sind Folgefehler, control-char schweigt.
+  Assert.AreEqual(0, Integer(Length(Run(TControlCharRule.Create, Source, '', Data, nil, ''))));
+  // UTF-8 ist in Ordnung.
+  Data := TEncoding.UTF8.GetBytes(UnitWith(''));
+  Assert.AreEqual(0, Integer(Length(Run(TFileEncodingUnsupportedRule.Create, UnitWith(''), '', Data, nil, ''))));
+end;
+
+procedure TUnicodeRuleTests.ConfusableSkipsIdentifierWithQuote;
+begin
+  TRuleAssert.Silent(TConfusableIdentifierRule.Create, Routine('Titel := ' + Char($201A) + 'Bericht' +
+    Char($2018) + ';'));
 end;
 
 initialization

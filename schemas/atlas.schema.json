@@ -435,6 +435,11 @@
                 "default": true,
                 "description": "Nur duplicate-declaration: doppelte Einträge in uses-Klauseln melden (#988)."
               },
+              "allowComments": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur text-after-final-end: Kommentare und Direktiven nach end. erlauben (#991)."
+              },
               "allowTables": {
                 "type": "array",
                 "items": {

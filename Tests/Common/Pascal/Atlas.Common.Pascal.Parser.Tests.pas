@@ -53,6 +53,8 @@ type
     procedure StopsEarlyWhenCancelled;
     [Test]
     procedure KeepsUnknownDirectiveAsDirective;
+    [Test]
+    procedure KeepsLocalExportsClause;
   end;
 
 implementation
@@ -588,6 +590,23 @@ begin
     AssertNoDiagnostics(Tree);
     Assert.AreEqual('overide', FindFirst(Tree.Root, TSyntaxKind.Directive).Name);
     Assert.AreEqual(0, CountKind(Tree.Root, TSyntaxKind.Field));
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TPascalParserTests.KeepsLocalExportsClause;
+var
+  Tree: TSyntaxTree;
+  Clause: TSyntaxNode;
+begin
+  // exports in lokalen Deklarationen (E2191 des Compilers) ist kein Syntaxfehler.
+  Tree := TPascalParser.Parse(Lines(['library L;', 'procedure A;', 'exports A;', 'begin', 'end;', 'begin', 'end.']));
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+    Clause := FindFirst(Tree.Root, TSyntaxKind.ExportsClause);
+    Assert.IsNotNull(Clause);
+    Assert.IsTrue(Clause.Parent.Kind = TSyntaxKind.RoutineDecl);
   finally
     Tree.Free;
   end;
