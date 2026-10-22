@@ -2313,6 +2313,20 @@ begin
     '        "E2129",' + #10 +
     '        "E2130"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "argument-count-mismatch",' + #10 +
+    '      "name": "Wrong number of arguments",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A call passes more arguments than the routine has parameters (like E2034) or fewer than its parameters without default value (like E2035), also as a statement without parentheses' + '. Checked only when the name resolves to exactly one routine: overloads, varargs, typecasts, variables of procedural type, System identifiers without source and declarations in conditional branches ar' + 'e left to the compiler (E2250). A function called with too many arguments is only reported when its result type is known and not procedural. Quick fix: Signature help opens the parameter hint inside t' + 'he parentheses (adds () when missing).",' + #10 +
+    '      "bad": "Versenden(Kunde.Mail, ''Rechnung'');",' + #10 +
+    '      "good": "Versenden(Kunde.Mail, ''Rechnung'', Text);",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2034",' + #10 +
+    '        "E2035"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3483,6 +3497,11 @@ begin
     '      "id": "readonly-property-assigned",' + #10 +
     '      "name": "Zuweisung an eine Property ohne write",' + #10 +
     '      "description": "Zuweisung an eine Property ohne write (wie E2129) bzw. Lesen einer Property ohne read (wie E2130). Die Regel meldet nur, wenn die Namensauflösung die Property sicher findet; Neud' + 'eklarationen ohne read und write (property Caption;) gelten als unbekannt. Korrekturen: Count := 0 wird Clear, wenn der Typ Clear hat; in einer Methode der deklarierenden Klasse das Feld hinter read z' + 'uweisen; für eine Property dieser Datei den Setter anlegen und write ergänzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "argument-count-mismatch",' + #10 +
+    '      "name": "Falsche Anzahl Argumente",' + #10 +
+    '      "description": "Ein Aufruf übergibt mehr Argumente, als die Routine Parameter hat (wie E2034), oder weniger als Parameter ohne Standardwert (wie E2035), auch als Anweisung ohne Klammern. Geprüft' + ' wird nur, wenn der Name sicher genau eine Routine meint: Überladungen, varargs, Typumwandlungen, Variablen prozeduralen Typs, Bezeichner von System ohne Quelltext und Deklarationen in bedingten Zweig' + 'en bleiben beim Compiler (E2250). Eine Funktion mit zu vielen Argumenten meldet die Regel nur bei bekanntem, nicht prozeduralem Ergebnistyp. Korrektur: Signaturhilfe öffnen setzt die Schreibmarke in d' + 'ie Klammern und öffnet den Parameter-Hint (ergänzt () bei Bedarf)."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

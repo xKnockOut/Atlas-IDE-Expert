@@ -10,7 +10,9 @@
 //   in die Zwischenablage, atlas.openFile öffnet die Datei der URI im ersten
 //   Argument (Testunit, #274/#189), atlas.goToPosition setzt den Cursor im
 //   oberen Editor auf Zeile und Zeichen aus den Argumenten (Sprung zur
-//   Freigabe, #915), atlas.changeSignature (#100) und
+//   Freigabe, #915), atlas.showSignatureHelp setzt ihn ebenso und öffnet
+//   den Parameter-Hint (OnSignatureHelp, setzt die Composition; #1007),
+//   atlas.changeSignature (#100) und
 //   atlas.moveClass (#103) öffnen ihren Dialog, alle anderen gehen als
 //   workspace/executeCommand an den Server.
 // - Auswahl erweitern und verkleinern (textDocument/selectionRange).
@@ -84,6 +86,7 @@ type
     FProblemsOf: TAtlasProblemsOfFunc;
     FStepList: TFunc<Boolean, Boolean>;
     FOnPlaceholders: TAtlasPlaceholdersProc;
+    FOnSignatureHelp: TProc;
   private
     class function Session: TLspSession; static;
     class procedure Say(const AText: string); static;
@@ -153,6 +156,9 @@ type
     /// <summary>Platzhalter-Modus für ///-Gerüste (#88); setzt die Composition, nil = nur der Cursor in die
     /// Zusammenfassung.</summary>
     class property OnPlaceholders: TAtlasPlaceholdersProc read FOnPlaceholders write FOnPlaceholders;
+    /// <summary>Parameter-Hint an der Schreibmarke öffnen (atlas.showSignatureHelp, #1007); setzt die Composition,
+    /// nil = nur der Sprung.</summary>
+    class property OnSignatureHelp: TProc read FOnSignatureHelp write FOnSignatureHelp;
   end;
 
 implementation
@@ -208,6 +214,7 @@ const
   CopyTextCommand = 'atlas.copyText';
   OpenFileCommand = 'atlas.openFile';
   GoToPositionCommand = 'atlas.goToPosition';
+  ShowSignatureHelpCommand = 'atlas.showSignatureHelp';
   QualifiedNameCommand = 'atlas.server.qualifiedName';
   TestUnitCommand = 'atlas.server.testUnit';
 
@@ -597,6 +604,7 @@ begin
   FMessage := nil;
   FProblemsOf := nil;
   FOnPlaceholders := nil;
+  FOnSignatureHelp := nil;
 end;
 
 class procedure TAtlasIdeEditorCommands.EnsureContextMenus;
@@ -1302,6 +1310,23 @@ begin
       if (Arguments is TJSONArray) and (TJSONArray(Arguments).Count > 1) then
         TAtlasIdeNavigation.GoToPosition(StrToIntDef(TJSONArray(Arguments).Items[0].Value, 0),
           StrToIntDef(TJSONArray(Arguments).Items[1].Value, 0));
+    finally
+      Arguments.Free;
+    end;
+    Exit;
+  end;
+  if ACommand = ShowSignatureHelpCommand then
+  begin
+    // Client-Befehl: wie atlas.goToPosition, danach der Parameter-Hint an der Stelle (#1007).
+    Arguments := TJSONObject.ParseJSONValue(AArgumentsJson);
+    try
+      if (Arguments is TJSONArray) and (TJSONArray(Arguments).Count > 1) then
+      begin
+        TAtlasIdeNavigation.GoToPosition(StrToIntDef(TJSONArray(Arguments).Items[0].Value, 0),
+          StrToIntDef(TJSONArray(Arguments).Items[1].Value, 0));
+        if Assigned(FOnSignatureHelp) then
+          FOnSignatureHelp();
+      end;
     finally
       Arguments.Free;
     end;

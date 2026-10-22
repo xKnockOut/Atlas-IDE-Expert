@@ -41,6 +41,8 @@ const
   /// <summary>Client-Befehl, der den Cursor im Dokument der Aktion auf Zeile (erstes Argument) und Zeichen
   /// (zweites Argument, beide 0-basiert) setzt (#915).</summary>
   GoToPositionCommand = 'atlas.goToPosition';
+  /// <summary>Wie GoToPositionCommand; danach öffnet der Client den Parameter-Hint an der Stelle (#1007).</summary>
+  ShowSignatureHelpCommand = 'atlas.showSignatureHelp';
   /// <summary>Kennungen der uses-Aktionen für den Hover des Plugins (#621), in data.tag.</summary>
   UsesRemoveTag = 'uses.remove';
   UsesRemoveAllTag = 'uses.removeAll';

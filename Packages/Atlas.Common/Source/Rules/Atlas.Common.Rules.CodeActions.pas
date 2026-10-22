@@ -102,10 +102,12 @@ begin
       Action.Title := Fix.Title;
       Action.Kind := QuickFixKind;
       AddFixEdits(Action, Fix);
-      // Sprung zu einer anderen Stelle der Datei (#915), z. B. zur Freigabe.
+      // Sprung zu einer anderen Stelle der Datei (#915), z. B. zur Freigabe; mit Parameter-Hint (#1007).
       if Fix.HasJump then
       begin
         Action.Command := GoToPositionCommand;
+        if Fix.OpensSignature then
+          Action.Command := ShowSignatureHelpCommand;
         Action.CommandArguments := [IntToStr(Fix.JumpTo.Line), IntToStr(Fix.JumpTo.Character)];
       end;
       Action.IsPreferred := First and not Fix.Alternative;

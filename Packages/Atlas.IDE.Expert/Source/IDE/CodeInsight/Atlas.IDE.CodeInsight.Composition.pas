@@ -2213,6 +2213,13 @@ begin
       if TAtlasProblemsController.Current <> nil then
         Result := TAtlasProblemsController.Current.ForFile(AFileName);
     end;
+  // Schnellkorrektur „Signaturhilfe öffnen“ (#1007): nach dem Sprung der Parameter-Hint wie mit der Taste.
+  TAtlasIdeEditorCommands.OnSignatureHelp :=
+    procedure
+    begin
+      if Manager <> nil then
+        Manager.OpenSignature;
+    end;
   // ///-Gerüst (#88): Tab springt durch die Beschreibungen, wie bei Code-Vorlagen.
   TAtlasIdeEditorCommands.OnPlaceholders :=
     procedure(const AView: IOTAEditView; const ABefore: string; AOffset: Integer;
