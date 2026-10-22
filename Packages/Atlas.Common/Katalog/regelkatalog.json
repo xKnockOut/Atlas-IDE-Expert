@@ -1279,6 +1279,16 @@
       ]
     },
     {
+      "id": "inherited-order",
+      "name": "inherited in the wrong place",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "In a destructor, inherited (inherited; or inherited Destroy) stands as a statement of the method body before a later statement frees a field of the class itself (F.Free, F.DisposeOf, FreeAndNil(F), also with Self.): the ancestor may still call virtual methods that need the field. Classes whose chain contains a class with Thread in its name stay silent, because TThread.Destroy waits for Execute and belongs at the start there. In a constructor, the statements before inherited access a field or property inherited from an ancestor (resolved through the file and the index; own fields, parameters and local variables do not count), while the ancestor is not set up yet. missing-inherited reports a missing inherited; this rule the order. Medium confidence. Quick fix: move inherited to the end of the destructor or the start of the constructor; not when the arguments of inherited Create use local variables set before.",
+      "bad": "destructor TExport.Destroy;\nbegin\n  inherited;\n  FDatei.Free;\nend;",
+      "good": "destructor TExport.Destroy;\nbegin\n  FDatei.Free;\n  inherited;\nend;"
+    },
+    {
       "id": "destroy-called-directly",
       "name": "Destroy called instead of Free",
       "category": "bug",

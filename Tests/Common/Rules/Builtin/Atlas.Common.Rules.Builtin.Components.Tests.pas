@@ -1,6 +1,8 @@
 ﻿unit Atlas.Common.Rules.Builtin.Components.Tests;
 
 // Tests für die Komponentenregeln (#55, Teil A) und missing-inherited (#919) sowie message-handler-without-inherited (#949).
+// inherited-order (#1049): Destruktor mit Korrektur, Threads, Konstruktor mit geerbter Property, stille Fälle,
+// Abschalten.
 
 interface
 
@@ -60,6 +62,21 @@ type
     procedure MessageHandlerConsequences;
     [Test]
     procedure MessageHandlerSwallowOffAndExclude;
+  end;
+
+  [TestFixture]
+  TInheritedOrderTests = class
+  public
+    [Test]
+    procedure DestructorIssueExampleWithFix;
+    [Test]
+    procedure DestructorSilentCases;
+    [Test]
+    procedure ConstructorAccessBeforeInherited;
+    [Test]
+    procedure ConstructorSilentCases;
+    [Test]
+    procedure OffAndExclude;
   end;
 
 implementation
@@ -541,7 +558,105 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
+{ TInheritedOrderTests }
+
+/// <summary>TExport erbt von TBasisExport (Property Name); ACtor und ADtor sind die Rümpfe.</summary>
+function Exporte(const AParent, ACtor, ADtor: string): string;
+begin
+  Result := 'unit Exporte;'#10'interface'#10'type'#10'  TBasisExport = class'#10'  private'#10 +
+    '    FName: string;'#10'  public'#10'    constructor Create(const AName: string);'#10 +
+    '    destructor Destroy; override;'#10'    property Name: string read FName write FName;'#10'  end;'#10 +
+    '  TExport = class(' + AParent + ')'#10'  private'#10'    FDatei, FPuffer: TObject;'#10'  public'#10 +
+    '    constructor Create;'#10'    destructor Destroy; override;'#10'  end;'#10'implementation'#10 +
+    'constructor TBasisExport.Create(const AName: string);'#10'begin'#10'end;'#10 +
+    'destructor TBasisExport.Destroy;'#10'begin'#10'  inherited;'#10'end;'#10 +
+    'constructor TExport.Create;'#10'begin'#10 + ACtor + 'end;'#10 +
+    'destructor TExport.Destroy;'#10'begin'#10 + ADtor + 'end;'#10'end.';
+end;
+
+procedure TInheritedOrderTests.DestructorIssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Exporte('TBasisExport', '  inherited Create(''x'');'#10, '  inherited;'#10'  FDatei.Free;'#10);
+  Findings := TRuleAssert.Findings(TInheritedOrderRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('inherited-order', Findings[0].RuleId);
+  Assert.AreEqual('inherited vor dem Freigeben der eigenen Felder; der Vorfahr kann noch auf FDatei zugreifen.',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(32, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual('inherited an das Ende des Destruktors verschieben', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(Exporte('TBasisExport', '  inherited Create(''x'');'#10, '  FDatei.Free;'#10'  inherited;'#10), Fixed);
+  TRuleAssert.Silent(TInheritedOrderRule.Create, Fixed);
+  // FreeAndNil, Self. und inherited Destroy ebenso.
+  TRuleAssert.Reports(TInheritedOrderRule.Create, Exporte('TBasisExport', '',
+    '  inherited Destroy;'#10'  if True then'#10'    FreeAndNil(Self.FPuffer);'#10));
+end;
+
+procedure TInheritedOrderTests.DestructorSilentCases;
+begin
+  // Richtige Reihenfolge, fremde Objekte, inherited in try/finally.
+  TRuleAssert.Silent(TInheritedOrderRule.Create, Exporte('TBasisExport', '', '  FDatei.Free;'#10'  inherited;'#10));
+  TRuleAssert.Silent(TInheritedOrderRule.Create, Exporte('TBasisExport', '', '  inherited;'#10'  Protokoll.Free;'#10));
+  TRuleAssert.Silent(TInheritedOrderRule.Create, Exporte('TBasisExport', '',
+    '  try'#10'    FDatei.Free;'#10'  finally'#10'    inherited;'#10'  end;'#10));
+  // Threads warten in Destroy auf das Ende von Execute: dort gehört inherited an den Anfang.
+  TRuleAssert.Silent(TInheritedOrderRule.Create, Exporte('TThread', '', '  inherited;'#10'  FDatei.Free;'#10));
+end;
+
+procedure TInheritedOrderTests.ConstructorAccessBeforeInherited;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Exporte('TBasisExport', '  Name := ''Export'';'#10'  inherited Create(''x'');'#10, '  inherited;'#10);
+  Findings := TRuleAssert.Findings(TInheritedOrderRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Create greift vor inherited auf Name aus TBasisExport zu; der Vorfahr ist noch nicht angelegt.',
+    Findings[0].Message);
+  Assert.AreEqual(28, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual('inherited an den Anfang des Konstruktors verschieben', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(Exporte('TBasisExport', '  inherited Create(''x'');'#10'  Name := ''Export'';'#10, '  inherited;'#10),
+    Fixed);
+  TRuleAssert.Silent(TInheritedOrderRule.Create, Fixed);
+  // Self.FName ebenso; inherited Create mit vorher gesetzter lokaler Variable: ohne Korrektur.
+  Findings := TRuleAssert.Findings(TInheritedOrderRule.Create, StringReplace(Exporte('TBasisExport',
+    '  Text := Self.FName;'#10'  inherited Create(Text);'#10, ''), 'constructor TExport.Create;'#10'begin',
+    'constructor TExport.Create;'#10'var'#10'  Text: string;'#10'begin', []));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TInheritedOrderTests.ConstructorSilentCases;
+begin
+  // Eigene Felder vor inherited setzen ist üblich und erlaubt.
+  TRuleAssert.Silent(TInheritedOrderRule.Create, Exporte('TBasisExport',
+    '  FDatei := nil;'#10'  inherited Create(''x'');'#10'  Name := ''Export'';'#10, ''));
+  // Parameter, lokale Variablen und unbekannte Vorfahren.
+  TRuleAssert.Silent(TInheritedOrderRule.Create, Exporte('TUnbekannt',
+    '  Name := ''Export'';'#10'  inherited Create(''x'');'#10, ''));
+  TRuleAssert.Silent(TInheritedOrderRule.Create, StringReplace(Exporte('TBasisExport',
+    '  Name := ''Export'';'#10'  inherited Create(Name);'#10, ''), 'constructor TExport.Create;'#10'begin',
+    'constructor TExport.Create;'#10'var'#10'  Name: string;'#10'begin', []));
+end;
+
+procedure TInheritedOrderTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Exporte('TBasisExport', '', '  inherited;'#10'  FDatei.Free;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedOrderRule.Create, Source,
+    '{"rules": {"inherited-order": "off"}}', 'Source/Exporte.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedOrderRule.Create, Source,
+    '{"rules": {"inherited-order": {"exclude": ["Source/*.pas"]}}}', 'Source/Exporte.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TComponentRulesTests);
+  TDUnitX.RegisterTestFixture(TInheritedOrderTests);
 
 end.

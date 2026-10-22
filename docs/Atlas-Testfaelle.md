@@ -4144,3 +4144,15 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | JS4 | `LbKunden.Items.AddObject(K.Name, TKunde.Create(K))` mit `LbKunden: TListBox` | Meldung „LbKunden.Items besitzt die Objekte nicht; …“ ohne Korrektur |
 | JS5 | Im Destruktor `for I := 0 to FKunden.Count - 1 do FKunden.Objects[I].Free;`, `TStringList.Create(True)`, `OwnsObjects := True`, `TButton.Create(Self)` als Objekt | Keine Meldung |
 | JS6 | `"stringlist-objects-leak": "off"` bzw. `exclude` mit der Datei | Keine Meldung |
+
+## inherited an der falschen Stelle (#1049)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JO1 | Das Beispiel aus #1049: `destructor TExport.Destroy; begin inherited; FDatei.Free; end;` mit Feld `FDatei` in TExport | Warnung `inherited-order` an `inherited`: „inherited vor dem Freigeben der eigenen Felder; der Vorfahr kann noch auf FDatei zugreifen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JO2 | Schnellkorrektur „inherited an das Ende des Destruktors verschieben“, danach Strg+Z | `FDatei.Free;` steht vor `inherited;`, keine Meldung mehr; ein Undo-Schritt |
+| JO3 | Formular-Konstruktor `constructor TMeinForm.Create(AOwner: TComponent); begin Caption := 'Test'; inherited Create(AOwner); end;` | Meldung „Create greift vor inherited auf Caption aus TControl zu; …“ (Klasse je nach Index); Korrektur verschiebt inherited an den Anfang |
+| JO4 | Thread-Nachfahr mit `inherited;` vor `FListe.Free;` im Destruktor, eigene Felder vor `inherited Create` gesetzt, `inherited` in `finally` | Keine Meldung |
+| JO5 | `"inherited-order": "off"` bzw. `exclude` mit der Datei | Keine Meldung |
