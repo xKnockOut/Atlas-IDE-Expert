@@ -4905,3 +4905,88 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | EF4 | Ohne Create davor; `try Lesen; finally end;` in einer Zeile | Meldung „… die Freigabe fehlt oder try … finally ist überflüssig.“; in einer Zeile ohne Schnellkorrektur |
 | EF5 | finally mit `// Freigabe übernimmt der Besitzer`, mit `{$IFDEF DEBUG}…{$ENDIF}`, mit `Liste.Free;`; leeres except | Keine Meldung von `empty-finally` |
 | EF6 | `"empty-finally": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
+
+## Dialog in Konsolenprogramm oder Dienst (#1060)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KD1 | Das Beispiel aus #1060: Dienstanwendung (Datei › Neu › Weitere › Dienstanwendung), in `ServiceExecute` `if not Verbinden then ShowMessage('Keine Verbindung');` | Warnung `ui-call-in-console-or-service` an `ShowMessage`: „ShowMessage in einem Windows-Dienst blockiert unsichtbar; protokollieren statt anzeigen.“; im Fenster „Atlas-Prüfung“ (Gruppe Robustheit und Muster) und im Befund-Hover (**Abnahme**) |
+| KD2 | `ShowMessage` durch `LogMessage('Keine Verbindung', EVENTLOG_ERROR_TYPE)` ersetzen | Keine Meldung |
+| KD3 | Eine weitere Unit ohne `TService` im selben Dienstprojekt mit `MessageDlg(…)` | Dieselbe Meldung für `MessageDlg`; `Writeln` in dieser Unit meldet zusätzlich `writeln-in-gui-app` |
+| KD4 | Konsolenprogramm (`{$APPTYPE CONSOLE}`) mit `ShowMessage`, `InputBox`, `Application.MessageBox` und `TDialogService.ShowMessage` | Je eine Meldung „… in einem Konsolenprogramm wartet auf einen Klick, wenn das Programm unbeaufsichtigt läuft; …“ |
+| KD5 | DLL-Projekt (`library`) ohne Formular mit `ShowMessage` | Meldung „… in einer DLL ohne Formulare blockiert, wenn der Host keine Oberfläche hat …“ mit mittlerer Konfidenz |
+| KD6 | GUI-Programm, DLL mit Formular, Formular-Unit im Konsolenprogramm, `if not IsConsole then ShowMessage(…)`, eigene Routine `ShowMessage` in der Unit, `Log.ShowMessage(…)` | Keine Meldung |
+| KD7 | `"ui-call-in-console-or-service": "off"`, `"group:robustness": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Text laden oder speichern ohne Kodierung (#1061)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LK1 | Das Beispiel aus #1061: `Zeilen: TStringList` und `Zeilen.LoadFromFile(Pfad);` | Warnung `load-without-encoding` an `Zeilen.LoadFromFile`: „LoadFromFile ohne Kodierung liest Dateien ohne BOM mit der ANSI-Codepage.“; im Fenster „Atlas-Prüfung“ (Gruppe Robustheit und Muster) und im Befund-Hover (**Abnahme**) |
+| LK2 | Schnellkorrektur „TEncoding.UTF8 ergänzen“, danach Strg+Z | Zeile wird `Zeilen.LoadFromFile(Pfad, TEncoding.UTF8);`, fehlt `System.SysUtils`, wird es ergänzt; danach keine Meldung; ein Undo-Schritt nimmt es zurück |
+| LK3 | `Memo1.Lines.SaveToFile(Pfad)`, `Abfrage.SQL.LoadFromStream(Strom)`, `TFile.ReadAllText(Pfad)` | Je eine Meldung; bei `SaveToFile` „… schreibt mit der ANSI-Codepage; Umlaute gehen auf anderen Rechnern verloren.“ |
+| LK4 | `"load-without-encoding": {"defaultEncoding": "Unicode"}` in `atlas.json`, Korrektur an LK1 | `TEncoding.Unicode` wird eingesetzt; `"defaultEncoding": "Latin1"` meldet die Konfiguration als Fehler |
+| LK5 | `Bild.LoadFromFile` (TBitmap), `Puffer.SaveToFile` (TMemoryStream), `TFile.WriteAllText`, `TStreamReader.Create(Pfad)`, `Zeilen.DefaultEncoding := TEncoding.UTF8` vor dem Laden, `SaveToFile` nach `LoadFromFile(Pfad, TEncoding.UTF8)` | Keine Meldung |
+| LK6 | `"load-without-encoding": "off"`, `"group:robustness": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Schreiben nach HKEY_LOCAL_MACHINE (#1062)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HL1 | Das Beispiel aus #1062: `Reg.RootKey := HKEY_LOCAL_MACHINE; Reg.OpenKey('Software\Firma\Programm', True); Reg.WriteString('Sprache', Sprache);` | Hinweis `registry-hklm-write` an `HKEY_LOCAL_MACHINE`: „Schreiben nach HKEY_LOCAL_MACHINE braucht Administratorrechte; ohne sie schlägt es fehl oder landet in der Virtualisierung.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| HL2 | Schnellkorrektur „HKEY_CURRENT_USER verwenden“, danach Strg+Z | `Reg.RootKey := HKEY_CURRENT_USER;`, danach keine Meldung; ein Undo-Schritt |
+| HL3 | Nur `R.DeleteValue('Alt')` bzw. `R.CreateKey(…)` nach dem RootKey | Je eine Meldung |
+| HL4 | Nur lesen (`OpenKeyReadOnly`, `ReadString`, `OpenKey(…, False)`), `RootKey := HKEY_CURRENT_USER` vor dem Schreiben, Schreiben im `{$ELSE}`-Zweig, Schreiben auf einem anderen Objekt | Keine Meldung |
+| HL5 | `"registry-hklm-write": "off"`, `"group:robustness": "off"` bzw. `exclude` mit dem Ordner des Installers | Keine Meldung |
+| HL6 | Programm ohne Administratorrechte starten und HL1 ausführen | Bestätigt die Meldung: Zugriff verweigert oder Wert unter `VirtualStore` |
+
+## Laufzeit mit Now gemessen (#1063)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZM1 | Das Beispiel aus #1063: `Start: TDateTime;`, `Start := Now; Importieren; Log(MilliSecondsBetween(Now, Start).ToString + ' ms');` | Hinweis `now-for-elapsed-time` an `MilliSecondsBetween(Now, Start)`: „Laufzeit mit Now gemessen; TStopwatch ist genauer und unabhängig von der Uhrzeit.“; im Fenster „Atlas-Prüfung“ (Gruppe Stil und Metriken) und im Befund-Hover (**Abnahme**) |
+| ZM2 | Schnellkorrektur „In TStopwatch umwandeln“, danach Strg+Z | `Uhr: TStopwatch;`, `Uhr := TStopwatch.StartNew;`, `Log(Uhr.ElapsedMilliseconds.ToString + ' ms');`, `System.Diagnostics` im uses; kompiliert; ein Undo-Schritt nimmt alles zurück |
+| ZM3 | `var T := Now; …; Sekunden := SecondsBetween(Now, T);` in einer Unit, die `Uhr` schon benutzt | Korrektur behält den Namen `T`: `var T := TStopwatch.StartNew;` und `T.ElapsedMilliseconds div 1000` |
+| ZM4 | `Ende := Now; Dauer := Ende - Start;` bzw. `if Now - FBeginn > 1 / 24 then` | Meldung ohne Korrektur |
+| ZM5 | Zeitstempel ohne Messung (`Erstellt := Now; Speichern(Erstellt)`), `FStart := Now` in einer anderen Methode, `Start := Now` nur im `{$IFDEF}`-Zweig und die Messung im `{$ELSE}`-Zweig | Keine Meldung |
+| ZM6 | `"now-for-elapsed-time": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
+
+## Geldbetrag als Gleitkommazahl (#1064)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; in `atlas.json` `"minConfidence": "low"` und `"money-as-float": "hint"`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GF1 | Das Beispiel aus #1064: `TPosition = record Menge: Integer; Preis: Double; end;` | Hinweis `money-as-float` an `Preis`: „Preis ist Double; Currency rechnet Cent-Beträge exakt.“; im Fenster „Atlas-Prüfung“ (Gruppe Stil und Metriken) und im Befund-Hover (**Abnahme**) |
+| GF2 | Schnellkorrektur „Typ in Currency ändern“, danach Strg+Z | `Preis: Currency;`, danach keine Meldung; ein Undo-Schritt nimmt es zurück |
+| GF3 | Methode `procedure Buchen(const ABetrag: Double);` in einer Klasse, Rumpf in derselben Unit; Korrektur an `ABetrag` | Eine Meldung (nicht doppelt am Rumpf); Deklaration und Rumpf heißen danach `const ABetrag: Currency`; kompiliert |
+| GF4 | `FNetto: Double;` mit `property Netto: Double read FNetto write FNetto;`, Korrektur am Feld | Feld und Property werden `Currency`; bei `write SetNetto` keine Korrektur |
+| GF5 | `GesamtPreis`, `Nettobetrag`, `Preise`, `var Summe: Real`, `var Brutto: Single := 0` | Je eine Meldung |
+| GF6 | `SteuerSatz: Double`, `PreisFaktor: Double`, `NettoGewicht: Double`, `Preis: Currency`, `Betrag: Int64` | Keine Meldung |
+| GF7 | `"namePatterns": ["Kosten"]` | Nur noch `Kosten: Double` wird gemeldet |
+| GF8 | `"checkRound": true` und `Anzahl := Round(Preis * 100);` | Zusätzlich „Round rundet Preis auf die nächste gerade Zahl (2,5 wird 2); …“ |
+| GF9 | `class function Lighten(AColor: TColor; AAmount: Double): TColor;` in einem Farbtyp ohne Geldbezug; dann im selben Typ ein Feld `Rabatt: Integer` | Zuerst keine Meldung (Amount ist mehrdeutig); mit dem Geldbezug eine Meldung an `AAmount` |
+| GF10 | Ohne Einstellung bzw. `"money-as-float": "off"`, `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Lange if-Kette über denselben String (#1066)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; in `atlas.json` `"string-if-chain": "hint"`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SK1 | Das Beispiel aus #1066: `if Befehl = 'neu' then Neu else if Befehl = 'oeffnen' then Oeffnen else if Befehl = 'speichern' then Speichern else if Befehl = 'beenden' then Beenden;` | Hinweis `string-if-chain` am ersten `if`: „Vier Vergleiche desselben Strings; case IndexStr(Befehl, [...]) ist kürzer.“; im Fenster „Atlas-Prüfung“ (Gruppe Stil und Metriken) und im Befund-Hover (**Abnahme**) |
+| SK2 | Schnellkorrektur „In case IndexStr(…) umwandeln“, danach Strg+Z | `case IndexStr(Befehl, ['neu', 'oeffnen', 'speichern', 'beenden']) of 0: Neu; 1: Oeffnen; 2: Speichern; 3: Beenden; end;`, `System.StrUtils` im uses; kompiliert und verhält sich gleich; ein Undo-Schritt nimmt alles zurück |
+| SK3 | Kette mit `SameText(Befehl, 'neu') or SameText(Befehl, 'new')`, einem `begin … end`-Zweig und abschließendem `else Fehler(Befehl)` | Meldung mit `IndexText`; Korrektur ergibt `0, 1: Neu;`, den Block unter seiner Marke und `else Fehler(Befehl);` |
+| SK4 | Kette, deren Kopf etwas anderes prüft (`if Bereit then … else if Edit1.Text = 'a' then …` mit fünf Vergleichen) | Meldung „Fünf Vergleiche …“ am zweiten `if`; Korrektur ergibt `else case IndexStr(Edit1.Text, …) of` |
+| SK5 | Gemischt `=` und `SameText`, ein Literal doppelt, ein Kommentar zwischen zwei Zweigen | Meldung ohne Korrektur |
+| SK6 | Drei Vergleiche, verschiedene Variablen, `and` in einer Bedingung, `Lesen() = 'a'`, Zahlenvergleiche, ein Zweig nur unter `{$IFDEF DEBUG}` (dann nur drei) | Keine Meldung |
+| SK7 | `"string-if-chain": {"min": 3}` bzw. `{"min": 5}`; `{"min": 1}` | Drei Vergleiche werden gemeldet bzw. das Beispiel nicht mehr; `min` 1 meldet die Konfiguration als Fehler |
+| SK8 | Ohne Einstellung, `"string-if-chain": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

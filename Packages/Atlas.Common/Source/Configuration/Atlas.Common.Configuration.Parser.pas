@@ -45,16 +45,17 @@ uses
 
 const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
-  BooleanRuleOptions: array[0..7] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
-    'includeRecords', 'includeFormVariables', 'checkUses', 'allowLazyInit');
+  BooleanRuleOptions: array[0..8] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
+    'includeRecords', 'includeFormVariables', 'checkUses', 'allowLazyInit', 'checkRound');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  StringListRuleOptions: array[0..17] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+  StringListRuleOptions: array[0..18] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
-    'allowTables', 'types', 'allowProperties', 'threadSafeTypes', 'switchConstants');
+    'allowTables', 'types', 'allowProperties', 'threadSafeTypes', 'switchConstants', 'namePatterns');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
   NumberListRuleOptions: array[0..0] of string = ('allowed');
   /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
-  StringRuleOptions: array[0..4] of string = ('template', 'replacement', 'wrapper', 'okMarker', 'searchPaths');
+  StringRuleOptions: array[0..5] of string = ('template', 'replacement', 'wrapper', 'okMarker', 'searchPaths',
+    'defaultEncoding');
 
 type
   TValidator = class
@@ -275,6 +276,10 @@ begin
           else if (Value.Keys[Inner] = 'minLines') and not ((Value[Inner].Kind = TJsonKind.Number) and
             TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 1)) then
             ReportNode(Value[Inner], '"minLines" muss eine ganze Zahl ab 1 sein')
+          // Mindestzahl der Vergleiche von string-if-chain (#1066).
+          else if (Value.Keys[Inner] = 'min') and not ((Value[Inner].Kind = TJsonKind.Number) and
+            TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 2)) then
+            ReportNode(Value[Inner], '"min" muss eine ganze Zahl ab 2 sein')
           // Kürzeste gemeldete Wartezeit von blocking-call-in-main-thread (#959).
           else if (Value.Keys[Inner] = 'maxSleepMs') and not ((Value[Inner].Kind = TJsonKind.Number) and
             TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 0)) then
@@ -309,6 +314,12 @@ begin
           else if (Value.Keys[Inner] = 'searchPaths') and
             (IndexStr(Value[Inner].Value, ['project', 'atlas', 'both']) < 0) then
             ReportNode(Value[Inner], '"searchPaths" muss "project", "atlas" oder "both" sein')
+          // Kodierung der Korrektur von load-without-encoding (#1061).
+          else if (Value.Keys[Inner] = 'defaultEncoding') and
+            (IndexText(Value[Inner].Value, ['UTF8', 'Unicode', 'BigEndianUnicode', 'ANSI', 'ASCII', 'UTF7',
+            'Default']) < 0) then
+            ReportNode(Value[Inner],
+              '"defaultEncoding" muss UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 oder Default sein')
           // Transaktionspaare von transaction-without-rollback (#965).
           else if (Value.Keys[Inner] = 'pairs') and (Rule.Id = 'transaction-without-rollback') then
           begin

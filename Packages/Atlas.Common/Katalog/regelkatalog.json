@@ -2422,6 +2422,105 @@
       "level": "T"
     },
     {
+      "id": "ui-call-in-console-or-service",
+      "name": "Dialog in a console program or service",
+      "category": "bug",
+      "severity": "warning",
+      "group": "robustness",
+      "description": "ShowMessage, ShowMessageFmt, MessageDlg, TaskMessageDlg, InputBox, InputQuery, Application.MessageBox or TDialogService in a program with {$APPTYPE CONSOLE} (or DCC_ConsoleTarget in the .dproj), in a Windows service or in a DLL without forms. In a service the dialog blocks invisibly; a console program waits for a click nobody sees when it runs unattended. A service is a unit with a class derived from TService, or any unit of a project whose .dpr uses Vcl.SvcMgr without Vcl.Forms. A DLL without forms is a library whose .dpr lists no form and does not use Vcl.Forms; there the rule reports with medium confidence, because only the host decides whether there is a user interface. Units with a form file, calls under if IsConsole and routines of the same name declared in the unit stay silent. Counterpart of writeln-in-gui-app. High confidence. No quick fix: log the message instead of showing it.",
+      "bad": "procedure TDatenDienst.ServiceExecute(Sender: TService);\nbegin\n  if not Verbinden then\n    ShowMessage('Keine Verbindung');\nend;",
+      "good": "procedure TDatenDienst.ServiceExecute(Sender: TService);\nbegin\n  if not Verbinden then\n    LogMessage('Keine Verbindung', EVENTLOG_ERROR_TYPE);\nend;"
+    },
+    {
+      "id": "load-without-encoding",
+      "name": "Loading or saving text without an encoding",
+      "category": "bug",
+      "severity": "warning",
+      "group": "robustness",
+      "description": "LoadFromFile, SaveToFile, LoadFromStream or SaveToStream of a TStrings (TStringList, Memo.Lines, ListBox.Items, Query.SQL) and TFile.ReadAllText or TFile.ReadAllLines without an encoding: a file without BOM is read with the ANSI code page of the machine, and SaveToFile writes ANSI, so umlauts get lost between machines. The receiver must be a declared string list or a Lines, Items, SQL or Strings property; bitmaps, streams and datasets stay silent. Also silent when the list sets DefaultEncoding anywhere in the unit or was loaded with an encoding earlier in the same routine (SaveToFile then keeps that encoding). TFile.WriteAllText, TStreamReader and TStreamWriter already default to UTF-8 and are not reported. Medium confidence. Quick fix: add TEncoding.UTF8 (option defaultEncoding) as the last argument and System.SysUtils to uses.",
+      "bad": "Zeilen.LoadFromFile(Pfad);",
+      "good": "Zeilen.LoadFromFile(Pfad, TEncoding.UTF8);",
+      "options": [
+        {
+          "name": "defaultEncoding",
+          "type": "string",
+          "default": "UTF8",
+          "description": "TEncoding property the quick fix inserts: UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 or Default."
+        }
+      ]
+    },
+    {
+      "id": "registry-hklm-write",
+      "name": "Writing to HKEY_LOCAL_MACHINE",
+      "category": "bug",
+      "severity": "hint",
+      "group": "robustness",
+      "description": "RootKey := HKEY_LOCAL_MACHINE on a TRegistry followed in the same routine by a writing access on the same object: OpenKey(…, True), CreateKey, Write…, DeleteKey, DeleteValue, RenameValue, MoveKey, SaveKey or RestoreKey. Without administrator rights this fails or silently lands in the registry virtualization. Use HKEY_CURRENT_USER for user settings; exclude installer code through exclude. Reading (OpenKeyReadOnly, Read…, OpenKey(…, False)), another RootKey before the write and writes in the other branch of {$IFDEF} stay silent. High confidence. Quick fix: RootKey := HKEY_CURRENT_USER.",
+      "bad": "Reg.RootKey := HKEY_LOCAL_MACHINE;\nReg.OpenKey('Software\\Firma\\Programm', True);\nReg.WriteString('Sprache', Sprache);",
+      "good": "Reg.RootKey := HKEY_CURRENT_USER;\nReg.OpenKey('Software\\Firma\\Programm', True);\nReg.WriteString('Sprache', Sprache);"
+    },
+    {
+      "id": "now-for-elapsed-time",
+      "name": "Elapsed time measured with Now",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "A variable set to Now and later used in Now - Start, End - Start or MilliSecondsBetween, SecondsBetween, MinutesBetween, HoursBetween, DaysBetween or the …Span functions in the same routine: it measures elapsed time with the wall clock, which is coarse and wrong across daylight saving changes or clock synchronisation. TStopwatch is precise and monotonic. Assignments in another routine (fields) and in the other branch of {$IFDEF} stay silent. High confidence. Quick fix when the variable is a local TDateTime (also var Start := Now) used only for MilliSecondsBetween, SecondsBetween or MinutesBetween with Now: TStopwatch.StartNew and ElapsedMilliseconds (div 1000 or div 60000), the variable becomes Uhr when the name is free, System.Diagnostics is added to uses.",
+      "bad": "Start := Now;\nImportieren;\nLog(MilliSecondsBetween(Now, Start).ToString + ' ms');",
+      "good": "Uhr := TStopwatch.StartNew;\nImportieren;\nLog(Uhr.ElapsedMilliseconds.ToString + ' ms');"
+    },
+    {
+      "id": "money-as-float",
+      "name": "Money amount as floating point",
+      "category": "bug",
+      "severity": "hint",
+      "group": "style",
+      "description": "Field, variable, parameter or property whose name denotes a money amount (option namePatterns) with type Double, Single, Extended or Real: binary floating point rounds cent amounts wrongly (0.1 + 0.2), Currency calculates them exactly. The last part of the name counts (GesamtPreis, Nettobetrag, FNetto, Preise; not NettoGewicht); rates, factors, quotas, shares (Steuersatz, PriceFactor) and checksums stay silent. Ambiguous words (Amount, Summe, Sum, Total: a quantity or sum of anything) only count with a money context in the type or routine: another money name, Currency or words like Cent, Euro, Rabatt, Invoice, Payment, Kosten (Lighten(AColor, AAmount: Double) stays silent). Off by default and low confidence: it shows up once the rule is switched on and minConfidence is low. Quick fix when all names of the declaration are money amounts: type Currency, for parameters also in the header of the implementation, for fields and properties also the property or the field behind read and write; no fix when a getter or setter would have to change too. With checkRound the rule also reports Round with a money amount in the argument (banker's rounding: 2.5 becomes 2).",
+      "bad": "TPosition = record\n  Menge: Integer;\n  Preis: Double;\nend;",
+      "good": "TPosition = record\n  Menge: Integer;\n  Preis: Currency;\nend;",
+      "options": [
+        {
+          "name": "namePatterns",
+          "type": "string-list",
+          "default": [
+            "Betrag",
+            "Preis",
+            "Summe",
+            "Netto",
+            "Brutto",
+            "Steuer",
+            "Amount",
+            "Price"
+          ],
+          "description": "Name parts that denote a money amount; plurals included."
+        },
+        {
+          "name": "checkRound",
+          "type": "boolean",
+          "default": false,
+          "description": "Also report Round on money amounts."
+        }
+      ]
+    },
+    {
+      "id": "string-if-chain",
+      "name": "Long if chain over the same string",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "An if … else if chain that compares the same string (identifier or A.B, no function calls) with at least min literals: S = 'x', 'x' = S, SameText(S, 'x'), also combined with or, in at least two branches (a single if with or stays silent). case IndexStr(S, [...]) of or a dictionary is shorter and faster. Only comparisons that are always compiled together with the head count ({$IFDEF} branches inside the chain do not). Off by default, high confidence. Quick fix as in the code action if chain to case (#646): case IndexStr(…) of, IndexText(…) for SameText, comparisons joined with or share one label, the rest of the chain becomes else, System.StrUtils is added to uses. No fix when comments or directives sit between the branches, a literal appears twice or = and SameText are mixed.",
+      "bad": "if Befehl = 'neu' then Neu\nelse if Befehl = 'oeffnen' then Oeffnen\nelse if Befehl = 'speichern' then Speichern\nelse if Befehl = 'beenden' then Beenden;",
+      "good": "case IndexStr(Befehl, ['neu', 'oeffnen', 'speichern', 'beenden']) of\n  0: Neu;\n  1: Oeffnen;\n  2: Speichern;\n  3: Beenden;\nend;",
+      "options": [
+        {
+          "name": "min",
+          "type": "integer",
+          "default": 4,
+          "description": "Number of comparisons of the same string from which the rule reports; at least 2."
+        }
+      ]
+    },
+    {
       "id": "constant-condition",
       "name": "Condition is always the same",
       "category": "bug",
