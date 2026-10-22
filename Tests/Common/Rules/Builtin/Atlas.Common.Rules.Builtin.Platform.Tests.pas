@@ -31,6 +31,12 @@ type
     procedure EncodingSilentCases;
     [Test]
     procedure EncodingOptions;
+    [Test]
+    procedure RegistryIssueExample;
+    [Test]
+    procedure RegistrySilentCases;
+    [Test]
+    procedure RegistryOptions;
   end;
 
 implementation
@@ -245,6 +251,57 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.AreEqual('"defaultEncoding" muss UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 oder Default sein',
     Issues[0].Message);
+end;
+
+{ registry-hklm-write }
+
+procedure TPlatformRulesTests.RegistryIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Routine('', '  Reg.RootKey := HKEY_LOCAL_MACHINE;'#10'  Reg.OpenKey(''Software\Firma\Programm'', True);'#10 +
+    '  Reg.WriteString(''Sprache'', Sprache);');
+  Findings := TRuleAssert.Findings(TRegistryHklmWriteRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Schreiben nach HKEY_LOCAL_MACHINE braucht Administratorrechte; ohne sie schlägt es fehl oder ' +
+    'landet in der Virtualisierung.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual('HKEY_CURRENT_USER verwenden', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.IsTrue(Pos('Reg.RootKey := HKEY_CURRENT_USER;', Fixed) > 0, Fixed);
+  TRuleAssert.Silent(TRegistryHklmWriteRule.Create, Fixed);
+  // Nur WriteInteger, ohne OpenKey.
+  TRuleAssert.Reports(TRegistryHklmWriteRule.Create, Routine('', '  R.RootKey := HKEY_LOCAL_MACHINE;'#10 +
+    '  R.DeleteValue(''Alt'');'));
+end;
+
+procedure TPlatformRulesTests.RegistrySilentCases;
+begin
+  // Nur lesen, OpenKey ohne Anlegen, anderes Objekt, RootKey vor dem Schreiben zurückgesetzt.
+  TRuleAssert.Silent(TRegistryHklmWriteRule.Create, Routine('', '  Reg.RootKey := HKEY_LOCAL_MACHINE;'#10 +
+    '  if Reg.OpenKeyReadOnly(''Software\Firma'') then'#10'    Pfad := Reg.ReadString(''Pfad'');'#10 +
+    '  Reg.OpenKey(''Software\Firma'', False);'#10'  Andere.WriteString(''a'', ''b'');'));
+  TRuleAssert.Silent(TRegistryHklmWriteRule.Create, Routine('', '  Reg.RootKey := HKEY_LOCAL_MACHINE;'#10 +
+    '  Pfad := Reg.ReadString(''Pfad'');'#10'  Reg.RootKey := HKEY_CURRENT_USER;'#10 +
+    '  Reg.WriteString(''Pfad'', Pfad);'));
+  // Schreiben nur im anderen Zweig der bedingten Übersetzung.
+  TRuleAssert.Silent(TRegistryHklmWriteRule.Create, Routine('', '{$IFDEF INSTALLER}'#10 +
+    '  Reg.RootKey := HKEY_LOCAL_MACHINE;'#10'  Pfad := Reg.ReadString(''Pfad'');'#10'{$ELSE}'#10 +
+    '  Reg.WriteString(''Pfad'', Pfad);'#10'{$ENDIF}'));
+end;
+
+procedure TPlatformRulesTests.RegistryOptions;
+var
+  Source: string;
+begin
+  Source := Routine('', '  Reg.RootKey := HKEY_LOCAL_MACHINE;'#10'  Reg.WriteBool(''Aktiv'', True);');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TRegistryHklmWriteRule.Create, Source, '',
+    'Setup/Werkzeug.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRegistryHklmWriteRule.Create, Source,
+    '{"rules": {"registry-hklm-write": "off"}}', 'Setup/Werkzeug.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRegistryHklmWriteRule.Create, Source,
+    '{"rules": {"registry-hklm-write": {"exclude": ["Setup/**"]}}}', 'Setup/Werkzeug.pas'))));
 end;
 
 initialization

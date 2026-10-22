@@ -2341,6 +2341,16 @@ begin
     '          "description": "TEncoding property the quick fix inserts: UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 or Default."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "registry-hklm-write",' + #10 +
+    '      "name": "Writing to HKEY_LOCAL_MACHINE",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "robustness",' + #10 +
+    '      "description": "RootKey := HKEY_LOCAL_MACHINE on a TRegistry followed in the same routine by a writing access on the same object: OpenKey(…, True), CreateKey, Write…, DeleteKey, DeleteValue, Ren' + 'ameValue, MoveKey, SaveKey or RestoreKey. Without administrator rights this fails or silently lands in the registry virtualization. Use HKEY_CURRENT_USER for user settings; exclude installer code thro' + 'ugh exclude. Reading (OpenKeyReadOnly, Read…, OpenKey(…, False)), another RootKey before the write and writes in the other branch of {$IFDEF} stay silent. High confidence. Quick fix: RootKey := HKEY_C' + 'URRENT_USER.",' + #10 +
+    '      "bad": "Reg.RootKey := HKEY_LOCAL_MACHINE;\nReg.OpenKey(''Software\\Firma\\Programm'', True);\nReg.WriteString(''Sprache'', Sprache);",' + #10 +
+    '      "good": "Reg.RootKey := HKEY_CURRENT_USER;\nReg.OpenKey(''Software\\Firma\\Programm'', True);\nReg.WriteString(''Sprache'', Sprache);"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3527,6 +3537,11 @@ begin
     '          "description": "Property von TEncoding, die die Schnellkorrektur einsetzt: UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 oder Default."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "registry-hklm-write",' + #10 +
+    '      "name": "Schreiben nach HKEY_LOCAL_MACHINE",' + #10 +
+    '      "description": "RootKey := HKEY_LOCAL_MACHINE auf einer TRegistry, danach in derselben Routine ein schreibender Zugriff auf dasselbe Objekt: OpenKey(…, True), CreateKey, Write…, DeleteKey, Delet' + 'eValue, RenameValue, MoveKey, SaveKey oder RestoreKey. Ohne Administratorrechte schlägt das fehl oder landet still in der Virtualisierung der Registry. Für Benutzereinstellungen HKEY_CURRENT_USER verw' + 'enden; Installer-Code über exclude ausnehmen. Lesen (OpenKeyReadOnly, Read…, OpenKey(…, False)), ein anderer RootKey vor dem Schreiben und Schreiben im anderen Zweig von {$IFDEF} bleiben still. Konfid' + 'enz hoch. Schnellkorrektur: RootKey := HKEY_CURRENT_USER."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

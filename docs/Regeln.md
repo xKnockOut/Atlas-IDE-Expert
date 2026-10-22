@@ -11,7 +11,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
 | [Compiler vorab](#gruppe-compiler) | 15 |
-| [Robustheit und Muster](#gruppe-robustness) | 5 |
+| [Robustheit und Muster](#gruppe-robustness) | 6 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
@@ -157,6 +157,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`null-compare`](#null-compare) | Vergleich mit Null statt VarIsNull oder IsNull | Code Smell | Warnung |
 | [`ui-call-in-console-or-service`](#ui-call-in-console-or-service) | Dialog in Konsolenprogramm oder Dienst | Bug | Warnung |
 | [`load-without-encoding`](#load-without-encoding) | Text laden oder speichern ohne Kodierung | Bug | Warnung |
+| [`registry-hklm-write`](#registry-hklm-write) | Schreiben nach HKEY_LOCAL_MACHINE | Bug | Hinweis |
 
 <a id="gruppe-performance"></a>
 ### Performance
@@ -4592,4 +4593,27 @@ Richtig:
 
 ```pascal
 Zeilen.LoadFromFile(Pfad, TEncoding.UTF8);
+```
+
+<a id="registry-hklm-write"></a>
+### registry-hklm-write
+
+**Schreiben nach HKEY_LOCAL_MACHINE** · Bug · Hinweis · Gruppe Robustheit und Muster
+
+RootKey := HKEY_LOCAL_MACHINE auf einer TRegistry, danach in derselben Routine ein schreibender Zugriff auf dasselbe Objekt: OpenKey(…, True), CreateKey, Write…, DeleteKey, DeleteValue, RenameValue, MoveKey, SaveKey oder RestoreKey. Ohne Administratorrechte schlägt das fehl oder landet still in der Virtualisierung der Registry. Für Benutzereinstellungen HKEY_CURRENT_USER verwenden; Installer-Code über exclude ausnehmen. Lesen (OpenKeyReadOnly, Read…, OpenKey(…, False)), ein anderer RootKey vor dem Schreiben und Schreiben im anderen Zweig von {$IFDEF} bleiben still. Konfidenz hoch. Schnellkorrektur: RootKey := HKEY_CURRENT_USER.
+
+Mit Treffer:
+
+```pascal
+Reg.RootKey := HKEY_LOCAL_MACHINE;
+Reg.OpenKey('Software\Firma\Programm', True);
+Reg.WriteString('Sprache', Sprache);
+```
+
+Richtig:
+
+```pascal
+Reg.RootKey := HKEY_CURRENT_USER;
+Reg.OpenKey('Software\Firma\Programm', True);
+Reg.WriteString('Sprache', Sprache);
 ```
