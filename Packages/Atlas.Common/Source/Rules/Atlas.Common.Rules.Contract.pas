@@ -37,6 +37,12 @@ type
   /// damit Editing die Textänderung ohne Abhängigkeit von Rules nutzen kann (A-11).</summary>
   TRuleEdit = TTextEdit;
 
+  /// <summary>Edits einer weiteren Datei einer Korrektur (#1105).</summary>
+  TRuleFileEdits = record
+    FileName: string;
+    Edits: TArray<TRuleEdit>;
+  end;
+
   /// <summary>Code-Aktion zu einem Treffer.</summary>
   TRuleFix = record
     Title: string;
@@ -53,6 +59,9 @@ type
     /// z. B. zur Freigabe bei use-after-free. Edits bleiben leer.</summary>
     HasJump: Boolean;
     JumpTo: TTextPosition;
+    /// <summary>Edits in weiteren Dateien zusätzlich zu FileName, z. B. Verwendungen eines öffentlichen Felds in
+    /// anderen Units (#1105); nil = keine. Solche Korrekturen sind nie Safe.</summary>
+    OtherFiles: TArray<TRuleFileEdits>;
     constructor Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean = False);
     /// <summary>Aktion, die nur zu ATarget springt (#915).</summary>
     class function Jump(const ATitle: string; const ATarget: TTextPosition): TRuleFix; static;

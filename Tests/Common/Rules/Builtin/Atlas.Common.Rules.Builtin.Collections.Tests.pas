@@ -5,6 +5,9 @@
 // Variable und Parameter, mehrere Zieltypen, Deklaration in einer anderen
 // Unit, stille Fälle (generische Liste, ohne Cast, Pointer, eigene Klasse
 // TList, unbekannte Typen) und Einstellungen (Standard aus, off, exclude).
+// Schnellkorrektur (#1105): Umwandlung samt Ergebnis, Grund im Befund-Hover,
+// Deklaration und Verwendungen in anderen Units der Projektgruppe. Die
+// einzelnen Gründe ohne Korrektur prüft Atlas.Common.Editing.GenericLists.Tests.
 
 interface
 
@@ -29,23 +32,55 @@ type
     procedure SilentCases;
     [Test]
     procedure Settings;
+    [Test]
+    procedure FixConvertsTheList;
+    [Test]
+    procedure NoFixGivesReasonInHover;
+    [Test]
+    procedure FixInDeclaringUnitOfOtherUnit;
+    [Test]
+    procedure FixFromUnitWithTheCast;
+    [Test]
+    procedure PropertyLeadsToField;
+    [Test]
+    procedure OtherUnitsWithoutProject;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
+  System.Generics.Collections,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Configuration.Parser,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Engine,
+  Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Rules.Builtin.Collections,
   Atlas.Tests.RuleAssert;
 
 const
   RuleOn = '{"rules": {"legacy-tlist": "info"}}';
 
-function RtlIndex: ISymbolIndex;
+const
+  LagerFile = 'C:\Projekt\Lager.pas';
+  AuftraegeFile = 'C:\Projekt\Auftraege.pas';
+
+type
+  TProjectFile = record
+    Name: string;
+    Text: string;
+  end;
+
+/// <summary>System, System.Classes, System.Contnrs und System.Generics.Collections als Stubs.</summary>
+function BaseIndex: ISymbolIndex;
 begin
   Result := TSymbolIndex.Create;
   Result.AddUnit(TIndexExtractor.ExtractText('unit System;'#10'interface'#10'type'#10'  TObject = class'#10 +
@@ -69,6 +104,11 @@ begin
     '    function First: T;'#10'    property Items[Index: Integer]: T read GetItem; default;'#10'  end;'#10 +
     '  TObjectList<T: class> = class(TList<T>)'#10'  end;'#10 +
     'implementation'#10'end.', 'C:\BDS\source\System.Generics.Collections.pas', nil));
+end;
+
+function RtlIndex: ISymbolIndex;
+begin
+  Result := BaseIndex;
   Result.AddUnit(TIndexExtractor.ExtractText('unit Lager;'#10'interface'#10'uses'#10'  System.Classes;'#10 +
     'type'#10'  TLager = class'#10'  public'#10'    Regale: TList;'#10'  end;'#10'implementation'#10'end.',
     'C:\Projekt\Lager.pas', nil));
@@ -94,6 +134,96 @@ begin
     '  I: Integer;'#10'  Pos: TPosition;'#10'  Obj: TObject;'#10'begin'#10 + AStatements + 'end;'#10'end.';
 end;
 
+function ProjectFile(const AName, AText: string): TProjectFile;
+begin
+  Result.Name := AName;
+  Result.Text := AText;
+end;
+
+/// <summary>Treffer für ACheck in einer Anwendung aus AFiles, mit Projektdateien wie im Server (#1102).</summary>
+function ProjectFindings(const AFiles: TArray<TProjectFile>; const ACheck: string;
+  AComplete: Boolean): TArray<TRuleFinding>;
+var
+  Texts: TDictionary<string, string>;
+  Index: ISymbolIndex;
+  Entry: TProjectFile;
+  Project: TRuleProject;
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+  Text: string;
+  Complete: Boolean;
+begin
+  Complete := AComplete;
+  Texts := TDictionary<string, string>.Create;
+  try
+    Index := BaseIndex;
+    Project := Default(TRuleProject);
+    Project.FileName := 'C:\Projekt\App.dproj';
+    Project.Kind := TRuleProjectKind.Application;
+    for Entry in AFiles do
+    begin
+      Texts.AddOrSetValue(UpperCase(Entry.Name), Entry.Text);
+      Index.AddUnit(TIndexExtractor.ExtractText(Entry.Text, Entry.Name, nil));
+      Project.Sources := Project.Sources + [Entry.Name];
+    end;
+    Settings := TConfigurationParser.Parse(RuleOn, Issues);
+    Texts.TryGetValue(UpperCase(ACheck), Text);
+    Tree := TSyntaxTreeCache.Parse(Text);
+    try
+      Context := Default(TRuleContext);
+      Context.FileName := ACheck;
+      Context.RelativePath := ExtractFileName(ACheck);
+      Context.UnitName := ChangeFileExt(ExtractFileName(ACheck), '');
+      Context.Text := Text;
+      Context.Tree := Tree;
+      Context.Index := Index;
+      Context.ProjectFiles := TRuleProjectFiles.Create([Project], Index,
+        function(const AFileName: string; out AText: string): Boolean
+        begin
+          Result := Texts.TryGetValue(UpperCase(AFileName), AText);
+        end,
+        function(out AReason: string): Boolean
+        begin
+          Result := Complete;
+          if not Complete then
+            AReason := 'Index läuft (1 von 2 Units)';
+        end);
+      Result := TRuleEngine.Run([TLegacyTListRule.Create], Settings, Context);
+      Context.ProjectFiles := nil;
+    finally
+      Tree.Free;
+    end;
+  finally
+    Texts.Free;
+  end;
+end;
+
+/// <summary>Lager mit TRegal und dem öffentlichen Feld Regale: TList (bzw. ADeclaration in TLager).</summary>
+function LagerText(const ADeclaration: string): string;
+begin
+  Result := 'unit Lager;'#10'interface'#10'uses'#10'  System.Classes;'#10'type'#10'  TRegal = class'#10'  end;'#10 +
+    '  TLager = class'#10 + ADeclaration + '    constructor Create;'#10'  end;'#10'implementation'#10 +
+    'constructor TLager.Create;'#10'begin'#10'  Regale := TList.Create;'#10'end;'#10'end.';
+end;
+
+/// <summary>Auftraege liest Lager.Regale mit Cast; AMore sind weitere Anweisungen.</summary>
+function AuftraegeText(const AMore: string): string;
+begin
+  Result := 'unit Auftraege;'#10'interface'#10'uses'#10'  Lager;'#10'implementation'#10 +
+    'procedure Lesen(L: TLager);'#10'var'#10'  R: TRegal;'#10'begin'#10'  R := TRegal(L.Regale[0]);'#10 + AMore +
+    'end;'#10'end.';
+end;
+
+const
+  PublicRegale = '  public'#10'    Regale: TList;'#10;
+
+procedure AssertContains(const AText, APart: string);
+begin
+  Assert.IsTrue(Pos(APart, AText) > 0, Format('"%s" fehlt in:'#10'%s', [APart, AText]));
+end;
+
 procedure TLegacyTListTests.IssueExample;
 var
   Found: TArray<TRuleFinding>;
@@ -105,7 +235,9 @@ begin
   // An der Deklaration des Felds.
   Assert.AreEqual(9, Found[0].Range.StartPos.Line);
   Assert.AreEqual(4, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  // Schnellkorrektur (#1105).
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('In TList<TPosition> umwandeln', Found[0].Fixes[0].Title);
   // Mit System.Generics.Collections hinter System.Classes bleibt TList die ungenerische Klasse.
   Assert.AreEqual(1, Integer(Length(Findings(Auftrag('System.Classes, System.Generics.Collections', 'TList',
     '  Pos := TPosition(FPositionen[I]);'#10)))));
@@ -236,6 +368,129 @@ begin
     '{"rules": {"legacy-tlist": {"severity": "info", "exclude": ["Source/*.pas"]}}}', 'Source/Auftraege.pas'))));
   Assert.AreEqual(1, Integer(Length(Findings(Source,
     '{"rules": {"legacy-tlist": {"severity": "info", "exclude": ["Alt/*.pas"]}}}', 'Source/Auftraege.pas'))));
+end;
+
+procedure TLegacyTListTests.FixConvertsTheList;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Auftrag('System.Classes', 'TList', '  FPositionen := TList.Create;'#10 +
+    '  Pos := TPosition(FPositionen[I]);'#10'  Pos := FPositionen.First as TPosition;'#10);
+  Found := Findings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('', Found[0].Details);
+  // Nur diese Datei, alle Typen bekannt: auch für source.fixAll.
+  Assert.IsTrue(Found[0].Fixes[0].Safe);
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes[0].OtherFiles)));
+  Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
+  AssertContains(Fixed, '  System.Classes,'#10'  System.Generics.Collections;'#10);
+  AssertContains(Fixed, '    FPositionen: TList<TPosition>;'#10);
+  AssertContains(Fixed, '  FPositionen := TList<TPosition>.Create;'#10);
+  AssertContains(Fixed, '  Pos := FPositionen[I];'#10'  Pos := FPositionen.First;'#10);
+  // Das Ergebnis meldet die Regel nicht mehr.
+  Assert.AreEqual(0, Integer(Length(Findings(Fixed))));
+end;
+
+procedure TLegacyTListTests.NoFixGivesReasonInHover;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := Findings(Auftrag('System.Classes', 'TList', '  FPositionen.Sort(Vergleichen);'#10 +
+    '  Pos := TPosition(FPositionen[I]);'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  Assert.IsTrue(StartsStr('Keine Schnellkorrektur: ', Found[0].Details), Found[0].Details);
+  AssertContains(Found[0].Details, 'TListSortCompare');
+  // Verschiedene Casts derselben Liste.
+  Found := Findings(Auftrag('System.Classes', 'TList', '  Pos := TPosition(FPositionen[0]);'#10 +
+    '  Obj := TObject(FPositionen[1]);'#10));
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  AssertContains(Found[0].Details, 'TPosition');
+end;
+
+procedure TLegacyTListTests.FixInDeclaringUnitOfOtherUnit;
+var
+  Files: TArray<TProjectFile>;
+  Found: TArray<TRuleFinding>;
+  Fix: TRuleFix;
+begin
+  // Das öffentliche Feld wird in Auftraege gelesen: beide Units ändern sich, also nicht Safe.
+  Files := [ProjectFile(LagerFile, LagerText(PublicRegale)), ProjectFile(AuftraegeFile, AuftraegeText(''))];
+  Found := ProjectFindings(Files, LagerFile, True);
+  Assert.AreEqual(0, Integer(Length(Found)), 'Lager selbst liest nicht mit Cast');
+  Found := ProjectFindings(Files, AuftraegeFile, True);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)), Found[0].Details);
+  Fix := Found[0].Fixes[0];
+  Assert.AreEqual('In TList<TRegal> umwandeln', Fix.Title);
+  Assert.IsFalse(Fix.Safe);
+  AssertContains(TChangeSignature.ApplyEdits(Files[1].Text, Fix.Edits), '  R := L.Regale[0];'#10);
+  Assert.AreEqual(1, Integer(Length(Fix.OtherFiles)));
+  Assert.AreEqual(LagerFile, Fix.OtherFiles[0].FileName);
+  AssertContains(TChangeSignature.ApplyEdits(Files[0].Text, Fix.OtherFiles[0].Edits),
+    '  System.Classes,'#10'  System.Generics.Collections;'#10);
+  AssertContains(TChangeSignature.ApplyEdits(Files[0].Text, Fix.OtherFiles[0].Edits),
+    '    Regale: TList<TRegal>;'#10);
+  AssertContains(TChangeSignature.ApplyEdits(Files[0].Text, Fix.OtherFiles[0].Edits),
+    '  Regale := TList<TRegal>.Create;'#10);
+end;
+
+procedure TLegacyTListTests.FixFromUnitWithTheCast;
+var
+  Files: TArray<TProjectFile>;
+  Found: TArray<TRuleFinding>;
+begin
+  // Eine weitere Unit nutzt Sort: keine Korrektur, der Grund nennt es.
+  Files := [ProjectFile(LagerFile, LagerText(PublicRegale)),
+    ProjectFile(AuftraegeFile, AuftraegeText('  L.Regale.Sort(Vergleichen);'#10))];
+  Found := ProjectFindings(Files, AuftraegeFile, True);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  AssertContains(Found[0].Details, 'TListSortCompare');
+  // Projekt noch nicht fertig geladen.
+  Files := [ProjectFile(LagerFile, LagerText(PublicRegale)), ProjectFile(AuftraegeFile, AuftraegeText(''))];
+  Found := ProjectFindings(Files, AuftraegeFile, False);
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  AssertContains(Found[0].Details, 'Index läuft');
+end;
+
+procedure TLegacyTListTests.PropertyLeadsToField;
+var
+  Files: TArray<TProjectFile>;
+  Found: TArray<TRuleFinding>;
+  Fixed: string;
+begin
+  // L.Regale ist eine Property, die das private Feld liest: umgewandelt werden Feld und Property.
+  Files := [ProjectFile(LagerFile, LagerText('  private'#10'    FRegale: TList;'#10'  public'#10 +
+    '    property Regale: TList read FRegale;'#10).Replace('  Regale := TList.Create;', '  FRegale := TList.Create;')),
+    ProjectFile(AuftraegeFile, AuftraegeText(''))];
+  Found := ProjectFindings(Files, AuftraegeFile, True);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)), Found[0].Details);
+  Fixed := TChangeSignature.ApplyEdits(Files[0].Text, Found[0].Fixes[0].OtherFiles[0].Edits);
+  AssertContains(Fixed, '    FRegale: TList<TRegal>;'#10);
+  AssertContains(Fixed, '    property Regale: TList<TRegal> read FRegale;'#10);
+  AssertContains(Fixed, '  FRegale := TList<TRegal>.Create;'#10);
+end;
+
+procedure TLegacyTListTests.OtherUnitsWithoutProject;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  // Ohne Projekt (Linter): Die Deklaration in Lager lässt sich nicht ändern, der Grund steht im Hover.
+  Found := Findings('unit Auftraege;'#10'interface'#10'uses'#10'  System.Classes, Lager;'#10'type'#10 +
+    '  TPosition = class'#10'  end;'#10'implementation'#10'procedure Lesen(L: TLager);'#10'var'#10 +
+    '  Pos: TPosition;'#10'begin'#10'  Pos := TPosition(L.Regale[0]);'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  AssertContains(Found[0].Details, 'ohne geladenes Projekt');
+  // Öffentliches Feld dieser Unit: andere Units sind ohne Projekt nicht prüfbar.
+  Found := Findings(Auftrag('System.Classes', 'TList', '  Pos := TPosition(FPositionen[I]);'#10).Replace(
+    '  private'#10'    FPositionen', '  public'#10'    FPositionen'));
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  AssertContains(Found[0].Details, 'in anderen Units sichtbar');
 end;
 
 initialization
