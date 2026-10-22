@@ -80,6 +80,11 @@ type
     /// False, wenn die Klasse nicht passt oder AFields leer ist.</summary>
     class function Edits(ATree: TSyntaxTree; const AText: string; const AFields: TArray<TOwnedField>;
       AStyle: TFreeFieldsStyle; out AEdits: TArray<TTextEdit>): Boolean; static;
+    /// <summary>AStatements in den Destruktor der Klasse AClassName (Kopfzeile ALine): vor das erste inherited,
+    /// sonst vor "end"; fehlt er, wird er hinter dem letzten Konstruktor angelegt (#944). False ohne Klasse oder
+    /// ohne Destruktor und Konstruktor.</summary>
+    class function DestructorEdits(ATree: TSyntaxTree; const AText, AClassName: string; ALine: Integer;
+      const AStatements: TArray<string>; out AEdits: TArray<TTextEdit>): Boolean; static;
     /// <summary>Auf der Deklaration eines nicht freigegebenen Felds „Im Destruktor freigeben“ (nur mit
     /// AWithFieldAction) und, ab zwei Feldern, die Aktion für die ganze Klasse; auf der Kopfzeile der Klasse
     /// „Alle eigenen Objekte freigeben (n)“.</summary>
@@ -1011,22 +1016,14 @@ end;
 class function TFreeFields.Edits(ATree: TSyntaxTree; const AText: string; const AFields: TArray<TOwnedField>;
   AStyle: TFreeFieldsStyle; out AEdits: TArray<TTextEdit>): Boolean;
 var
-  Decl: TSyntaxNode;
-  Place: TDestructorPlace;
-  Lines, Statements: TArray<string>;
-  LineBreak, Body, Indent, Line: string;
+  Statements: TArray<string>;
   Order: TArray<Integer>;
   Index, Other, Swap: Integer;
-  Edit: TTextEdit;
 begin
   AEdits := nil;
   Result := False;
   if (ATree = nil) or (Length(AFields) = 0) then
     Exit;
-  Decl := FindClassDecl(ATree, AFields[0].ClassName, AFields[0].ClassLine);
-  if Decl = nil then
-    Exit;
-  Lines := TTextLines.SplitLines(AText, LineBreak);
   // Umgekehrte Erzeugungsreihenfolge.
   Order := nil;
   for Index := 0 to High(AFields) do
@@ -1042,10 +1039,30 @@ begin
   Statements := nil;
   for Index in Order do
     Statements := Statements + [Statement(AFields[Index].Name, AStyle)];
+  Result := DestructorEdits(ATree, AText, AFields[0].ClassName, AFields[0].ClassLine, Statements, AEdits);
+end;
+
+class function TFreeFields.DestructorEdits(ATree: TSyntaxTree; const AText, AClassName: string; ALine: Integer;
+  const AStatements: TArray<string>; out AEdits: TArray<TTextEdit>): Boolean;
+var
+  Decl: TSyntaxNode;
+  Place: TDestructorPlace;
+  Lines: TArray<string>;
+  LineBreak, Body, Indent, Line: string;
+  Edit: TTextEdit;
+begin
+  AEdits := nil;
+  Result := False;
+  if (ATree = nil) or (ATree.Root = nil) or (Length(AStatements) = 0) then
+    Exit;
+  Decl := FindClassDecl(ATree, AClassName, ALine);
+  if Decl = nil then
+    Exit;
+  Lines := TTextLines.SplitLines(AText, LineBreak);
   Place := PlaceOf(ATree, AText, Decl);
   if Place.Body <> nil then
   begin
-    AEdits := [BodyEdit(Lines, Place.Body, Statements, LineBreak)];
+    AEdits := [BodyEdit(Lines, Place.Body, AStatements, LineBreak)];
     Exit(True);
   end;
   if Place.LastConstructor = nil then
@@ -1059,7 +1076,7 @@ begin
   Indent := StringOfChar(' ', Place.LastConstructor.StartPos.Character);
   Body := Indent + Format('destructor %s.Destroy;', [Qualifier(AText, Place.LastConstructor, Decl.Name)]) +
     LineBreak + Indent + 'begin';
-  for Line in Statements do
+  for Line in AStatements do
     Body := Body + LineBreak + Indent + '  ' + Line;
   Body := Body + LineBreak + Indent + '  inherited;' + LineBreak + Indent + 'end;';
   AEdits := AEdits + [InsertAt(Place.LastConstructor.EndPos, LineBreak + LineBreak + Body)];

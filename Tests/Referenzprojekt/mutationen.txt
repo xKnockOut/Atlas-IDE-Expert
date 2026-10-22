@@ -65,3 +65,4 @@ public-field | Ref.Komponenten.Anzeige.pas |   public\n    constructor Create | 
 global-variable | Ref.Daten.Suche.pas | \nimplementation | \nvar\n  LetzteSuche: string;\n\nimplementation
 commented-out-code | Ref.Daten.Suche.pas | FAnbieter := AAnbieter; | FAnbieter := AAnbieter;\n  // if Assigned(AAnbieter) then\n  //   FAnbieter := AAnbieter\n  // else\n  //   FAnbieter := nil;
 queue-nil-in-package | Ref.Komponenten.Anzeige.pas | FWert := AValue;\n    Invalidate; | FWert := AValue;\n    TThread.Queue(nil, Invalidate);
+ota-notifier-not-removed | Ref.Komponenten.Registrierung.pas | RegisterComponents('Referenz', [TRefAnzeige]); | RegisterComponents('Referenz', [TRefAnzeige]);\n  (BorlandIDEServices as IOTAServices).AddNotifier(TRefNotifier.Create);

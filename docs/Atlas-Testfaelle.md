@@ -3559,3 +3559,18 @@ Voraussetzung: Server läuft; ein Package-Projekt (`.dproj` mit `.dpk`) ist gela
 | QN6 | Auf der Seite „Prüfregeln“ `wrapper` = `Haupt.Einreihen` und `okMarker` = `ui-ok` | Korrektur schreibt `Haupt.Einreihen(…)`; `// ui-ok` nimmt die Zeile aus |
 | QN7 | `atlas --check` auf den Ordner des Packages | Meldung in der Package-Unit, wie im Editor |
 | QN8 | `"queue-nil-in-package": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## IDE-Notifier ohne RemoveNotifier (#944)
+
+Voraussetzung: Server läuft; Unit eines Experten mit `procedure Register;` und darin `(BorlandIDEServices as IOTAServices).AddNotifier(TSpeicherNotifier.Create);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ON1 | Unit öffnen | Warnung `ota-notifier-not-removed` auf `AddNotifier`: „Der Index von AddNotifier wird nicht gemerkt; ohne RemoveNotifier ruft die IDE nach dem Entladen ins Leere.“, Sicherheit mittel; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| ON2 | Alt+Enter, „Index merken und RemoveNotifier in finalization ergänzen“ | `var NotifierIndex: Integer = -1;` vor `Register`, Zuweisung im Aufruf, `initialization`/`finalization` mit `RemoveNotifier(NotifierIndex)`; übersetzt, keine Meldung mehr (**Abnahme**) |
+| ON3 | Gleicher Aufruf im Konstruktor einer Klasse, Alt+Enter | „Index in ein Feld legen und RemoveNotifier im Destruktor ergänzen“: `FNotifierIndex` im private-Abschnitt, `RemoveNotifier(FNotifierIndex)` im (neu angelegten) Destruktor vor `inherited` |
+| ON4 | `FIndex := Services.AddNotifier(…)` ohne `RemoveNotifier(FIndex)` | Meldung „Der Index FIndex von AddNotifier geht nie an RemoveNotifier …“, Korrektur „RemoveNotifier im Destruktor ergänzen“ |
+| ON5 | `RegisterPackageWizard(TWizard.Create)` in `Register` | Keine Meldung |
+| ON6 | `AModule.AddNotifier(…)` mit Parameter `AModule` | Meldung ohne Korrektur |
+| ON7 | Auf der Seite „Prüfregeln“ `registerPairs` = `[{"open": "AddWizard", "close": "RemoveWizard"}]` | Nur `AddWizard` ohne `RemoveWizard` wird gemeldet |
+| ON8 | `"ota-notifier-not-removed": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

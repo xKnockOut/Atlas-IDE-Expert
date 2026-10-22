@@ -1705,6 +1705,33 @@
           "description": "Comment that exempts a line."
         }
       ]
+    },
+    {
+      "id": "ota-notifier-not-removed",
+      "name": "IDE notifier without RemoveNotifier",
+      "category": "bug",
+      "severity": "warning",
+      "group": "packages",
+      "description": "AddNotifier on IOTAServices, IOTAEditorServices, IOTAModule and so on (or another pair from registerPairs) whose index never reaches RemoveNotifier: the call is a statement without assignment, or the variable it is assigned to is never passed to RemoveNotifier in the unit (in finalization, a destructor or Destroyed). The IDE then calls the notifier after the package is unloaded, in memory that no longer holds the code. Register… calls inside the procedure Register are exempt: the IDE removes those wizards itself. Medium confidence. Quick fix in methods: keep the index in a field (FNotifierIndex in the private section) and add RemoveNotifier to the destructor, which is created if missing; in procedures of the unit: a global variable initialized with -1 and RemoveNotifier in finalization. No quick fix when the receiver is a parameter or local variable.",
+      "bad": "procedure Register;\nbegin\n  (BorlandIDEServices as IOTAServices).AddNotifier(TSpeicherNotifier.Create);\nend;",
+      "good": "var\n  NotifierIndex: Integer = -1;\n\nprocedure Register;\nbegin\n  NotifierIndex := (BorlandIDEServices as IOTAServices).AddNotifier(TSpeicherNotifier.Create);\nend;\n\ninitialization\n\nfinalization\n  if NotifierIndex >= 0 then\n    (BorlandIDEServices as IOTAServices).RemoveNotifier(NotifierIndex);",
+      "options": [
+        {
+          "name": "registerPairs",
+          "type": "json",
+          "default": [
+            {
+              "open": "AddNotifier",
+              "close": "RemoveNotifier"
+            },
+            {
+              "open": "RegisterPackageWizard",
+              "close": "RemoveWizard"
+            }
+          ],
+          "description": "Pairs of the Open Tools API as [{\"open\": \"AddNotifier\", \"close\": \"RemoveNotifier\"}]; replaces the default."
+        }
+      ]
     }
   ]
 }

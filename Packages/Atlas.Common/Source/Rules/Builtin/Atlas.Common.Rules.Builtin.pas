@@ -42,6 +42,7 @@ uses
   Atlas.Common.Rules.Builtin.ForwardDeclarations,
   Atlas.Common.Rules.Builtin.FreeFields,
   Atlas.Common.Rules.Builtin.Packages,
+  Atlas.Common.Rules.Builtin.OpenTools,
   Atlas.Common.Rules.Builtin.Expressions,
   Atlas.Common.Rules.Builtin.Statements,
   Atlas.Common.Rules.Builtin.Unresolved;
@@ -81,6 +82,7 @@ begin
     RegisterForwardDeclarationRules(Registry);
     RegisterFreeFieldRules(Registry);
     RegisterPackageRules(Registry);
+    RegisterOpenToolsRules(Registry);
     RegisterExpressionRules(Registry);
     RegisterStatementRules(Registry);
     Result := Registry.Rules;

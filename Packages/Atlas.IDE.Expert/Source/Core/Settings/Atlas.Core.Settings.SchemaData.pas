@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1697] of string = (
+  Lines: array[0..1717] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -280,6 +280,26 @@ const
     '                },',
     '                "default": ["Create", "Destroy", "AfterConstruction", "BeforeDestruction"],',
     '                "description": "Nur missing-inherited: geprüfte Methoden (#919). Create steht für alle Konstruktoren, deren Name mit Create beginnt."',
+    '              },',
+    '              "registerPairs": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "object",',
+    '                  "required": ["open", "close"],',
+    '                  "additionalProperties": false,',
+    '                  "properties": {',
+    '                    "open": {',
+    '                      "type": "string",',
+    '                      "description": "Anmeldung, deren Ergebnis der Index ist, z. B. AddNotifier."',
+    '                    },',
+    '                    "close": {',
+    '                      "type": "string",',
+    '                      "description": "Abmeldung, die den Index erhält, z. B. RemoveNotifier."',
+    '                    }',
+    '                  }',
+    '                },',
+    '                "default": [{"open": "AddNotifier", "close": "RemoveNotifier"}, {"open": "RegisterPackageWizard", "close": "RemoveWizard"}],',
+    '                "description": "Nur ota-notifier-not-removed (#944): Paare der Open Tools API aus Anmeldung und Abmeldung; ersetzt die Vorgabe."',
     '              },',
     '              "pairs": {',
     '                "type": "array",',
