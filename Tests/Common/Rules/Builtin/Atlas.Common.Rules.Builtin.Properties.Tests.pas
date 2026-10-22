@@ -345,7 +345,7 @@ procedure TPropertyRulesTests.WriteOnlyReported;
 var
   Found: TArray<TRuleFinding>;
 begin
-  Assert.IsFalse(TWriteOnlyPropertyRule.Create.Descriptor.Experimental, 'Standard an');
+  Assert.IsFalse((TWriteOnlyPropertyRule.Create as IRule).Descriptor.Experimental, 'Standard an');
   Found := WriteOnly(Kunden('  private'#10'    procedure SetPasswort(const Value: string);'#10'  public'#10 +
     '    property Passwort: string write SetPasswort;'#10, ''));
   Assert.AreEqual(1, Integer(Length(Found)));

@@ -646,6 +646,8 @@ begin
     Favorites.Free;
     TDirectory.Delete(Folder, True);
   end;
+  // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
+  TAtlasDataFile.ForgetReports;
 end;
 
 initialization

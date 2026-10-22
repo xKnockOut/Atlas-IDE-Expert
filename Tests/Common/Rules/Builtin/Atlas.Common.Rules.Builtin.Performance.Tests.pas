@@ -185,7 +185,7 @@ procedure TPerformanceRulesTests.SetLengthInLoopReportedWithCount;
 var
   Findings: TArray<TRuleFinding>;
 begin
-  Assert.IsFalse(TSetLengthInLoopRule.Create.Descriptor.Experimental, 'Standard an');
+  Assert.IsFalse((TSetLengthInLoopRule.Create as IRule).Descriptor.Experimental, 'Standard an');
   Findings := SetLengthFindings('  Namen: TArray<string>;'#10'  I: Integer;', IssueBody);
   Assert.AreEqual(1, Integer(Length(Findings)));
   Assert.AreEqual('SetLength in der Schleife kopiert Namen bei jedem Durchlauf; die Anzahl Liste.Count ist ' +
@@ -345,7 +345,7 @@ var
   Source, Expected: string;
   Findings: TArray<TRuleFinding>;
 begin
-  Assert.IsTrue(TManagedParamWithoutConstRule.Create.Descriptor.Experimental, 'Standard aus');
+  Assert.IsTrue((TManagedParamWithoutConstRule.Create as IRule).Descriptor.Experimental, 'Standard aus');
   Source := ManagedUnit(Header, Body);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TManagedParamWithoutConstRule.Create, Source))));
   Findings := ManagedFindings(Source);

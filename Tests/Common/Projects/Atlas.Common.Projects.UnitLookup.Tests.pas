@@ -96,7 +96,9 @@ begin
     Result := Result + [Name];
 end;
 
-function Answer(const ALookup: IRuleUnitLookup; const AName: string): TRuleUnitAnswer;
+// Ohne const: Aufrufer übergeben TUnitLookup.Create(...) direkt; nur so zählt Delphi die Referenz und gibt das
+// Objekt wieder frei.
+function Answer(ALookup: IRuleUnitLookup; const AName: string): TRuleUnitAnswer;
 begin
   Result := ALookup.Find(AName, '', 'C:\P\Main.pas', [TRuleUnitSource.Project]);
 end;
@@ -206,7 +208,7 @@ begin
     [TRuleUnitSource.Project, TRuleUnitSource.Atlas])));
   // Nur Atlas ohne Index: keine Aussage.
   Data.IndexKnows := nil;
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord(TUnitLookup.Create(Data).Find('Gibt.Es.Nicht', '',
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord((TUnitLookup.Create(Data) as IRuleUnitLookup).Find('Gibt.Es.Nicht', '',
     'C:\P\Main.pas', [TRuleUnitSource.Atlas])));
 end;
 
@@ -251,7 +253,7 @@ begin
   Assert.AreEqual('C:\P\App.dproj', FileName);
   Assert.AreEqual('<Project/>', Text);
   Data.PackageExists := nil;
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord(TUnitLookup.Create(Data).FindPackage('Fehlend')));
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord((TUnitLookup.Create(Data) as IRuleUnitLookup).FindPackage('Fehlend')));
 end;
 
 initialization

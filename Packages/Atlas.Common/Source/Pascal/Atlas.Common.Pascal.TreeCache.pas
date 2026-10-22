@@ -77,6 +77,10 @@ type
     class procedure IncludesChanged; static;
     /// <summary>Parst ohne Cache; der Aufrufer gibt den Baum frei.</summary>
     class function Parse(const AText: string; const ACancellation: IPascalCancellation = nil): TSyntaxTree; static;
+    /// <summary>Wie Parse, aus den aktiven Zweigen unter AOptions (Dateiname, Include-Resolver, #860); AProcessed
+    /// erhält den Präprozessor-Lauf.</summary>
+    class function ParseActive(const AText: string; const AOptions: TPreprocessorOptions;
+      const ACancellation: IPascalCancellation; out AProcessed: TPreprocessorResult): TSyntaxTree; static;
     /// <summary>Anzahl der Parse-Läufe über Get seit Programmstart, für Tests und Status.</summary>
     class function ParseCount: Integer; static;
   end;
@@ -395,6 +399,12 @@ end;
 class function TSyntaxTreeCache.Parse(const AText: string; const ACancellation: IPascalCancellation): TSyntaxTree;
 begin
   Result := TPascalParser.Parse(AText, ACancellation);
+end;
+
+class function TSyntaxTreeCache.ParseActive(const AText: string; const AOptions: TPreprocessorOptions;
+  const ACancellation: IPascalCancellation; out AProcessed: TPreprocessorResult): TSyntaxTree;
+begin
+  Result := TPascalParser.ParseActive(AText, AOptions, ACancellation, AProcessed);
 end;
 
 class function TSyntaxTreeCache.ParseCount: Integer;

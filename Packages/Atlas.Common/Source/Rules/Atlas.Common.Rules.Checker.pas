@@ -117,7 +117,7 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Engine;
 
@@ -296,7 +296,7 @@ begin
     Exit(nil);
   // Baum nur aus den aktiven Zweigen wie im Editor: Inaktive Zweige erzeugen keine Syntaxfehler und keine
   // Regeltreffer.
-  Tree := TPascalParser.ParseActive(AText, ASource.Options, nil, Processed);
+  Tree := TSyntaxTreeCache.ParseActive(AText, ASource.Options, nil, Processed);
   try
     AScopes := TFindingScopes.FromTree(Tree);
     // Der Baum enthält nur die aktiven Zweige: Inaktive erzeugen keine Syntaxfehler.

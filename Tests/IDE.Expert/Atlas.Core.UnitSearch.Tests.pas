@@ -497,6 +497,8 @@ begin
     System.SysUtils.DeleteFile(FileName);
     System.SysUtils.DeleteFile(FileName + TAtlasDataFile.DefectExtension);
   end;
+  // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
+  TAtlasDataFile.ForgetReports;
 end;
 
 initialization

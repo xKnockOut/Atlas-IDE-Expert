@@ -27,4 +27,11 @@
   - Felder nach Methoden im selben Klassenabschnitt (E2169).
   - Fehlende Units für Inline-Funktionen (H2443): `System.Generics.Collections` bei `TJSONArray`/`TJSONObject`, `Winapi.Windows` bei `RenameFile`.
   - Tests: string- und Array-Felder im `TearDown` leeren, sonst meldet der Leckmonitor.
+  - Methode direkt auf `TXyz.Create` eines `TInterfacedObject` (`TRegel.Create.Descriptor`): Das Objekt wird nie freigegeben. `(TRegel.Create as IRule).Descriptor` schreiben.
+  - Array-Literal vorn in einem Ausdruck ohne Typkontext (`Lines(['a'] + Body)`) liest Delphi als Menge: `TArray<string>.Create('a') + Body`.
+  - Zeilen über 1023 Zeichen (F2069), auch in erzeugten Units: lange Literale umbrechen.
+  - Zwei öffentliche Typen gleichen Namens in einem Package verdecken sich je nach uses-Reihenfolge.
+  - `TArray.Sort`/`TList.Sort` sind nicht stabil: bei Gleichstand eindeutig weitersortieren.
+  - Gleitkomma an Int64-Grenzen: Double hat 53 Bit Mantisse (FPC rechnet unter x86 mit Extended).
+  - Referenzprojekt und Mutationen: `{$IFDEF WIN32}`/`WIN64`-Zweige sind unter Windows anders aktiv als unter Linux.
   - Zeilenenden CRLF.

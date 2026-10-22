@@ -258,7 +258,7 @@ begin
   Source := 'unit Kunden;'#10'interface'#10'type'#10'  TKunde = class'#10'  public'#10 +
     '    destructor destroy; override;'#10'  end;'#10'implementation'#10'end.';
   // Standard aus (#1021).
-  Assert.IsTrue(TOverrideCaseMismatchRule.Create.Descriptor.Experimental);
+  Assert.IsTrue((TOverrideCaseMismatchRule.Create as IRule).Descriptor.Experimental);
   Assert.AreEqual(0, Integer(Length(Findings(Source, '', 'Source/Kunden.pas'))));
   Assert.AreEqual(1, Integer(Length(Findings(Source, Enabled, 'Source/Kunden.pas'))));
   Assert.AreEqual(0, Integer(Length(Findings(Source,
