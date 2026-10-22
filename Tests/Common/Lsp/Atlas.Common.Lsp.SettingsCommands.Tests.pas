@@ -189,7 +189,7 @@ begin
       if Rule.GetValue<string>('id') = 'redundant-begin-end' then
       begin
         Overrides := Rule.GetValue<TJSONArray>('overriddenBy');
-        Assert.AreEqual(1, Overrides.Count);
+        Assert.AreEqual(1, Integer(Overrides.Count));
         Assert.AreEqual('missing-begin-end', Overrides.Items[0].Value);
       end;
       if Rule.GetValue<string>('id') = 'syntax' then

@@ -1971,6 +1971,7 @@ begin
   Bind('HoverProblemActions', FHoverProblemActions);
   Bind('Notes', FNotes);
   Bind('BookmarksNamed', FBookmarksNamed);
+  Bind('QuickBookmarksGutter', FQuickBookmarksGutter);
   Bind('PairColors', FPairColors);
   Bind('PairGuides', FPairGuides);
   Bind('PairOwners', FPairOwners);

@@ -697,7 +697,9 @@ type
     EditorToolbarPositionAbove, EditorToolbarPositionInline, EditorToolbarRestoreDefault, EditorToolbarNoKey,
     EditorToolbarFindings, SettingsEditorToolbar, SettingsEditorToolbarItems, SettingsEditorToolbarReturnButton,
     SettingsEditorToolbarCustomize, EditorToolbarOk, EditorToolbarCancel,
-    SettingsQuickBookmarks, SettingsQuickBookmarksGutter, SettingsQuickBookmarksGutterClick, SettingsQuickBookmarksNumberedKeys, SettingsQuickBookmarkChordWait, SettingsQuickBookmarksScope, SettingsQuickBookmarksScopeProject, SettingsQuickBookmarksScopeFile, SettingsQuickBookmarksImportIde, QuickBookmarkToggleCommand, NextBookmarkCommand, PreviousBookmarkCommand, QuickBookmarkSetCommand, QuickBookmarkJumpCommand, QuickBookmarkSetN, QuickBookmarkJumpN, QuickBookmarkNotAssigned, QuickBookmarkNotFound, QuickBookmarkOtherFile, QuickBookmarkNoneInFile, QuickBookmarkTipTitle, QuickBookmarkTipUnnumbered, QuickBookmarkTipMore, QuickBookmarkTipJump, QuickBookmarkTipFree, QuickBookmarkMenuNumber, QuickBookmarkMenuNumberUsed, QuickBookmarkMenuName, QuickBookmarkMenuRemove, QuickBookmarkMenuRemoveFile, QuickBookmarkMenuWindow, QuickBookmarkImported, QuickBookmarkChordFailed, QuickBookmarkDisabled, BookmarksColumnNumber, BookmarksOnlyFile);
+    SettingsQuickBookmarks, SettingsQuickBookmarksGutter, SettingsQuickBookmarksGutterClick, SettingsQuickBookmarksNumberedKeys, SettingsQuickBookmarkChordWait, SettingsQuickBookmarksScope, SettingsQuickBookmarksScopeProject, SettingsQuickBookmarksScopeFile, SettingsQuickBookmarksImportIde, QuickBookmarkToggleCommand, NextBookmarkCommand, PreviousBookmarkCommand, QuickBookmarkSetCommand, QuickBookmarkJumpCommand, QuickBookmarkSetN, QuickBookmarkJumpN, QuickBookmarkNotAssigned, QuickBookmarkNotFound, QuickBookmarkOtherFile, QuickBookmarkNoneInFile, QuickBookmarkTipTitle, QuickBookmarkTipUnnumbered, QuickBookmarkTipMore, QuickBookmarkTipJump, QuickBookmarkTipFree, QuickBookmarkMenuNumber, QuickBookmarkMenuNumberUsed, QuickBookmarkMenuName, QuickBookmarkMenuRemove, QuickBookmarkMenuRemoveFile, QuickBookmarkMenuWindow, QuickBookmarkImported, QuickBookmarkChordFailed, QuickBookmarkDisabled, BookmarksColumnNumber, BookmarksOnlyFile,
+    // Element „Schnelle Lesezeichen“ im Menü „Ausblenden“ (#1104).
+    ElementQuickBookmarks, ElementQuickBookmarksPlural);
 
   TAtlasStrings = class
   private class var
@@ -2284,7 +2286,7 @@ const
      'Faltungsakkord Strg+Umschalt+K, %s ließ sich nicht an die IDE weiterreichen.',
      'Schnelle Lesezeichen sind ausgeschaltet (bookmarks.quick).',
      'Nr.',
-     'nur diese Datei'),
+     'nur diese Datei', 'Marker eines schnellen Lesezeichens', 'Marker der schnellen Lesezeichen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3775,7 +3777,7 @@ const
      'Folding chord Ctrl+Shift+K, %s could not be passed on to the IDE.',
      'Quick bookmarks are switched off (bookmarks.quick).',
      'No.',
-     'this file only'));
+     'this file only', 'quick bookmark marker', 'quick bookmark markers'));
 
 { TAtlasStrings }
 

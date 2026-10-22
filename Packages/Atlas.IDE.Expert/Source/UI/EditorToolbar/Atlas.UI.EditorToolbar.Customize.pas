@@ -108,6 +108,7 @@ implementation
 
 uses
   System.Math,
+  System.UITypes,
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.UI.Strings,

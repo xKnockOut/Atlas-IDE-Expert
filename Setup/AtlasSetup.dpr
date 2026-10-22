@@ -36,6 +36,7 @@ uses
   Atlas.Core.Settings.History in '..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.History.pas',
   Atlas.Core.Settings.Catalog in '..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.Catalog.pas',
   Atlas.Core.Settings.Transfer in '..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.Transfer.pas',
+  Atlas.Core.Settings.ToolbarItems in '..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.ToolbarItems.pas',
   Setup.Core.Contract in 'Source\Core\Setup.Core.Contract.pas',
   Setup.Core.Ides in 'Source\Core\Setup.Core.Ides.pas',
   Setup.Core.Installer in 'Source\Core\Setup.Core.Installer.pas',

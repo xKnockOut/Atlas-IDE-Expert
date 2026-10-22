@@ -169,6 +169,30 @@ begin
     Result := CompareText(A.RuleId, B.RuleId);
 end;
 
+/// <summary>AFindings nach CompareFindings, bei Gleichstand in Meldereihenfolge (Delphis Sort ist nicht stabil:
+/// {$R-,Q-} meldet zwei Treffer derselben Regel an derselben Stelle).</summary>
+function SortedFindings(const AFindings: TArray<TRuleFinding>): TArray<TRuleFinding>;
+var
+  Items: TArray<TRuleFinding>;
+  Order: TArray<Integer>;
+  Index: Integer;
+begin
+  Items := AFindings;
+  SetLength(Order, Length(Items));
+  for Index := 0 to High(Order) do
+    Order[Index] := Index;
+  TArray.Sort<Integer>(Order, TComparer<Integer>.Construct(
+    function(const A, B: Integer): Integer
+    begin
+      Result := CompareFindings(Items[A], Items[B]);
+      if Result = 0 then
+        Result := A - B;
+    end));
+  SetLength(Result, Length(Items));
+  for Index := 0 to High(Order) do
+    Result[Index] := Items[Order[Index]];
+end;
+
 { TRuleReport }
 
 constructor TRuleReport.Create(const ARuleId: string; ASeverity: TRuleSeverity; AFindings: TList<TRuleFinding>);
@@ -628,8 +652,7 @@ begin
         end;
     end;
 
-    Kept.Sort(TComparer<TRuleFinding>.Construct(CompareFindings));
-    Result := Kept.ToArray;
+    Result := SortedFindings(Kept.ToArray);
   finally
     // Gibt Graphen und Modelle frei, bevor der Aufrufer den Baum freigibt, und bricht
     // Referenzzyklen über Kontextkopien in abgelegten Objekten.

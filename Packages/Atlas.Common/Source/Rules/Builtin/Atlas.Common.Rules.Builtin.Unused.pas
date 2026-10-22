@@ -1399,7 +1399,6 @@ var
     if HasDirectiveIn(Header, ['message']) then
       Exit;
     Member := nil;
-    TypeBody := nil;
     Visibility := '';
     if IsMethod then
     begin

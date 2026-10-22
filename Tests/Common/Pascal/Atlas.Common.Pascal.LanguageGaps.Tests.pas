@@ -365,7 +365,7 @@ var
   U: TUnitIndex;
   Symbol: TIndexSymbol;
 begin
-  U := TIndexExtractor.ExtractText(CaseNine, MainFile, nil, IncludeFiles);
+  U := TIndexExtractor.ExtractText(CaseNine, MainFile, nil, IncludeFiles());
   Symbol := SymbolOf(U, 'TFoo', 'A');
   Assert.IsTrue(Symbol.Kind = TIndexSymbolKind.Method);
   Assert.AreEqual('C:\P\members.inc', Symbol.FileName);
@@ -625,7 +625,7 @@ begin
   U := TIndexExtractor.ExtractText(IncludeValue, MainFile, nil);
   Assert.AreEqual('SYNOPSE_FRAMEWORK_VERSION = {$I mormot.commit.inc}',
     SymbolOf(U, '', 'SYNOPSE_FRAMEWORK_VERSION').Signature);
-  U := TIndexExtractor.ExtractText(IncludeValue, MainFile, nil, IncludeFiles);
+  U := TIndexExtractor.ExtractText(IncludeValue, MainFile, nil, IncludeFiles());
   Assert.AreEqual('SYNOPSE_FRAMEWORK_VERSION = ''2.3.11221''', SymbolOf(U, '', 'SYNOPSE_FRAMEWORK_VERSION').Signature);
   Assert.AreEqual(1, Integer(Length(U.Includes)));
 end;

@@ -16,7 +16,14 @@ const
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
-    '  "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDAT' + 'A%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht ' + 'exportiert, nicht zurückgesetzt, nicht markiert); x-machine: gilt nur für diesen Rechner (nicht exportiert); x-path: Pfad (Benutzerordner als Pfadmakro, sonst ausgelassen); x-secret: Zugangsdaten; x-f' + 'ormerKeys: frühere Schlüssel, die der Import umrechnet; x-format \"shortcut\": Tastenkürzel (TShortCut) für die Anzeige; x-team: Pfad in der Projektdatei .atlas, deren Wert die Einstellung überdeckt; ' + 'x-project: Pfad in atlas.json, dessen Wert sie überdeckt; x-quickToggle, x-caption, x-captionEn, x-drawing, x-feature: Schnellschalter (#604); x-experimental: experimentelle Funktion (#834), Vorgabe a' + 'us, wirkt nur mit experimental.enabled. x-parent (#890): x-key des Hauptschalters (boolesch), der die Einstellung auf der Optionsseite sperrt, \"\" = keiner; ohne x-parent gilt die Präfixregel (längst' + 'es Präfix P mit boolescher Einstellung P oder P.enabled); x-node (#890): Unterpunkt im Baum der Optionsseite (Kennung aus x-nodes), \"\" = Hauptknoten des Reiters; ohne x-node erbt die Einstellung den' + ' Unterpunkt ihres Hauptschalters. Neue Plugin-Einstellung: Eintrag hier (mit x-key, x-area, x-page), Feld in TAtlasPluginSettings, Test; dann pwsh Tools/Update-ConfigDoc.ps1.",',
+    '  "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDAT' +
+      'A%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht ' +
+      'exportiert, nicht zurückgesetzt, nicht markiert); x-machine: gilt nur für diesen Rechner (nicht exportiert); x-path: Pfad (Benutzerordner als Pfadmakro, sonst ausgelassen); x-secret: Zugangsdaten; x-f' +
+      'ormerKeys: frühere Schlüssel, die der Import umrechnet; x-format \"shortcut\": Tastenkürzel (TShortCut) für die Anzeige; x-team: Pfad in der Projektdatei .atlas, deren Wert die Einstellung überdeckt; ' +
+      'x-project: Pfad in atlas.json, dessen Wert sie überdeckt; x-quickToggle, x-caption, x-captionEn, x-drawing, x-feature: Schnellschalter (#604); x-experimental: experimentelle Funktion (#834), Vorgabe a' +
+      'us, wirkt nur mit experimental.enabled. x-parent (#890): x-key des Hauptschalters (boolesch), der die Einstellung auf der Optionsseite sperrt, \"\" = keiner; ohne x-parent gilt die Präfixregel (längst' +
+      'es Präfix P mit boolescher Einstellung P oder P.enabled); x-node (#890): Unterpunkt im Baum der Optionsseite (Kennung aus x-nodes), \"\" = Hauptknoten des Reiters; ohne x-node erbt die Einstellung den' +
+      ' Unterpunkt ihres Hauptschalters. Neue Plugin-Einstellung: Eintrag hier (mit x-key, x-area, x-page), Feld in TAtlasPluginSettings, Test; dann pwsh Tools/Update-ConfigDoc.ps1.",',
     '  "x-version": 1,',
     '  "x-areas": {',
     '    "editor": {',
@@ -1220,7 +1227,8 @@ const
     '      "x-node": ""',
     '    },',
     '    "QuickBookmarks": {',
-    '      "description": "Schnelle Lesezeichen, nummeriert (1–9) und unnummeriert: Marker in einer eigenen Spalte links der Zeilennummern, Strg+Umschalt+1…9 setzt, Strg+1…9 springt, Strg+Umschalt+K setzt ' + 'unnummerierte. Gleiche Ablage und gleiches Mitwandern wie die benannten Lesezeichen. Aus = keine Spalte, alle Tasten gehören wieder der IDE; die gespeicherten Lesezeichen bleiben.",',
+    '      "description": "Schnelle Lesezeichen, nummeriert (1–9) und unnummeriert: Marker in einer eigenen Spalte links der Zeilennummern, Strg+Umschalt+1…9 setzt, Strg+1…9 springt, Strg+Umschalt+K setzt ' +
+      'unnummerierte. Gleiche Ablage und gleiches Mitwandern wie die benannten Lesezeichen. Aus = keine Spalte, alle Tasten gehören wieder der IDE; die gespeicherten Lesezeichen bleiben.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "bookmarks.quick",',
@@ -1235,7 +1243,8 @@ const
     '      "x-issue": "#1104"',
     '    },',
     '    "QuickBookmarksGutter": {',
-    '      "description": "Spalte links der Zeilennummern mit den Markern (Band in der Warnfarbe, bei nummerierten mit Ziffer); die Zeilennummer einer Zeile mit Lesezeichen wird hell. Rechtsklick öffnet da' + 's Menü der Spalte.",',
+    '      "description": "Spalte links der Zeilennummern mit den Markern (Band in der Warnfarbe, bei nummerierten mit Ziffer); die Zeilennummer einer Zeile mit Lesezeichen wird hell. Rechtsklick öffnet da' +
+      's Menü der Spalte.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "bookmarks.quick.gutter",',
@@ -1288,7 +1297,8 @@ const
     '      "x-node": ""',
     '    },',
     '    "QuickBookmarkChordWait": {',
-    '      "description": "Wartezeit in ms auf den zweiten Teil der Faltungsakkorde nach Strg+Umschalt+K (U, E, A, T, O …); folgt ein Faltungsbuchstabe, geht die ganze Folge an die IDE. 0 = Atlas belegt St' + 'rg+Umschalt+K nicht.",',
+    '      "description": "Wartezeit in ms auf den zweiten Teil der Faltungsakkorde nach Strg+Umschalt+K (U, E, A, T, O …); folgt ein Faltungsbuchstabe, geht die ganze Folge an die IDE. 0 = Atlas belegt St' +
+      'rg+Umschalt+K nicht.",',
     '      "type": "integer",',
     '      "default": 800,',
     '      "x-key": "bookmarks.quick.chordWait",',
@@ -1426,7 +1436,8 @@ const
     '      "x-area": "editor",',
     '      "x-page": "Units suchen",',
     '      "x-control": "Kontrollkästchen",',
-    '      "description": "Atlas-Suche ersetzt die IDE-Suche: Strg+F öffnet die Suchleiste unter dem Editor (Bereich Methode, Unit, Auswahl; Groß-/Kleinschreibung, ganzes Wort, Bezeichner statt Text), F3/U' + 'mschalt+F3 springen zum nächsten/vorigen Treffer der letzten Atlas-Suche; aus = Suchen der IDE wie bisher",',
+    '      "description": "Atlas-Suche ersetzt die IDE-Suche: Strg+F öffnet die Suchleiste unter dem Editor (Bereich Methode, Unit, Auswahl; Groß-/Kleinschreibung, ganzes Wort, Bezeichner statt Text), F3/U' +
+      'mschalt+F3 springen zum nächsten/vorigen Treffer der letzten Atlas-Suche; aus = Suchen der IDE wie bisher",',
     '      "x-issue": "#878"',
     '    },',
     '    "SearchResultsInMessages": {',
@@ -1436,7 +1447,8 @@ const
     '      "x-area": "editor",',
     '      "x-page": "Units suchen",',
     '      "x-control": "Kontrollkästchen",',
-    '      "description": "Treffer der Atlas-Suche im Reiter „Atlas-Suche“ des Fensters Meldungen auflisten (Enter bzw. „In Meldungen“ in der Suchleiste; Doppelklick springt zum Treffer); aus = nur Markier' + 'ungen und Zähler in der Leiste",',
+    '      "description": "Treffer der Atlas-Suche im Reiter „Atlas-Suche“ des Fensters Meldungen auflisten (Enter bzw. „In Meldungen“ in der Suchleiste; Doppelklick springt zum Treffer); aus = nur Markier' +
+      'ungen und Zähler in der Leiste",',
     '      "x-issue": "#878"',
     '    },',
     '    "SearchKey": {',
@@ -1581,7 +1593,8 @@ const
     '    "ProblemsWindowColumns": {',
     '      "type": "string",',
     '      "default": "",',
-    '      "description": "Sichtbare Spalten, Reihenfolge und Breite, z. B. \"kind:70,category,message:300,-rule\" (\"-\" = ausgeblendet; Icon, Art, Kategorie, Zeile und Stelle bleiben sichtbar); leer = al' + 'le.",',
+    '      "description": "Sichtbare Spalten, Reihenfolge und Breite, z. B. \"kind:70,category,message:300,-rule\" (\"-\" = ausgeblendet; Icon, Art, Kategorie, Zeile und Stelle bleiben sichtbar); leer = al' +
+      'le.",',
     '      "x-key": "problems.window.columns",',
     '      "x-area": "rules",',
     '      "x-page": "Prüfregeln",',
@@ -1609,7 +1622,8 @@ const
     '    "ProblemsWindowOpenFirst": {',
     '      "type": "boolean",',
     '      "default": true,',
-    '      "description": "Offene Units zuerst: die Unit des aktiven Editors oben angepinnt, darunter die übrigen in der IDE geöffneten Units, danach die nicht geöffneten; aus = Reihenfolge wie bisher. Hau' + 'ptschalter von problems.window.closedUnits und problems.window.showCleanActive.",',
+    '      "description": "Offene Units zuerst: die Unit des aktiven Editors oben angepinnt, darunter die übrigen in der IDE geöffneten Units, danach die nicht geöffneten; aus = Reihenfolge wie bisher. Hau' +
+      'ptschalter von problems.window.closedUnits und problems.window.showCleanActive.",',
     '      "x-key": "problems.window.openFirst",',
     '      "x-area": "rules",',
     '      "x-feature": "Problems",',
@@ -1868,7 +1882,8 @@ const
     '      "x-parent": "codeActions.methodToggle"',
     '    },',
     '    "JumpToMatch": {',
-    '      "description": "Sprung zum Gegenstück: begin ⇄ end, try → finally/except → end, repeat ⇄ until, Klammern, {$IFDEF} → {$ELSE} → {$ENDIF} und Methodenname Deklaration ⇄ Implementierung; aus = beid' + 'e Tasten bleiben frei.",',
+    '      "description": "Sprung zum Gegenstück: begin ⇄ end, try → finally/except → end, repeat ⇄ until, Klammern, {$IFDEF} → {$ELSE} → {$ENDIF} und Methodenname Deklaration ⇄ Implementierung; aus = beid' +
+      'e Tasten bleiben frei.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "keys.jumpToMatch",',
@@ -1901,7 +1916,8 @@ const
     '      "x-issue": "#635"',
     '    },',
     '    "MoveLines": {',
-    '      "description": "Zeilen verschieben (Alt+↑/↓) und duplizieren (Umschalt+Alt+↑/↓), über Blockgrenzen mit angepasstem Einzug; auf einem Methodenkopf ohne Markierung die ganze Methode. Aus = die Tas' + 'ten bleiben der IDE.",',
+    '      "description": "Zeilen verschieben (Alt+↑/↓) und duplizieren (Umschalt+Alt+↑/↓), über Blockgrenzen mit angepasstem Einzug; auf einem Methodenkopf ohne Markierung die ganze Methode. Aus = die Tas' +
+      'ten bleiben der IDE.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "keys.moveLines",',
@@ -1956,7 +1972,8 @@ const
     '      "x-issue": "#634"',
     '    },',
     '    "ToggleBlockComment": {',
-    '      "description": "Blockkommentar umschalten (Umschalt+Alt+A): setzt die Markierung in { … } bzw. (* … *) oder nimmt einen umgebenden Blockkommentar weg; ohne Markierung die Anweisung bzw. Zeile am' + ' Cursor. Direktiven {$…} bleiben Direktiven. Ergänzt das zeilenweise // der IDE (Strg+/). Aus = Befehl und Kürzel frei.",',
+    '      "description": "Blockkommentar umschalten (Umschalt+Alt+A): setzt die Markierung in { … } bzw. (* … *) oder nimmt einen umgebenden Blockkommentar weg; ohne Markierung die Anweisung bzw. Zeile am' +
+      ' Cursor. Direktiven {$…} bleiben Direktiven. Ergänzt das zeilenweise // der IDE (Strg+/). Aus = Befehl und Kürzel frei.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "keys.toggleBlockComment",',
@@ -2034,7 +2051,9 @@ const
     '      "x-issue": "#703"',
     '    },',
     '    "NewLineAround": {',
-    '      "description": "Neue Zeile ober- oder unterhalb: Umschalt+Enter fügt unter der Cursorzeile eine Zeile ein, Strg+Alt+Enter darüber, ohne die Zeile zu teilen. Einzug eine Ebene tiefer nach then, d' + 'o, begin, try, else, of, repeat und Sichtbarkeiten, vor end, until, except, finally und else so tief wie der Blockinhalt; Kommentare werden wie beim Enter fortgesetzt, solange editor.continueComments ' + 'an ist. Ein Rückgängig-Schritt. Aus = die Tasten gehören der IDE.",',
+    '      "description": "Neue Zeile ober- oder unterhalb: Umschalt+Enter fügt unter der Cursorzeile eine Zeile ein, Strg+Alt+Enter darüber, ohne die Zeile zu teilen. Einzug eine Ebene tiefer nach then, d' +
+      'o, begin, try, else, of, repeat und Sichtbarkeiten, vor end, until, except, finally und else so tief wie der Blockinhalt; Kommentare werden wie beim Enter fortgesetzt, solange editor.continueComments ' +
+      'an ist. Ein Rückgängig-Schritt. Aus = die Tasten gehören der IDE.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "keys.newLineAround",',
@@ -2068,7 +2087,8 @@ const
     '      "x-issue": "#700"',
     '    },',
     '    "NewLineAroundStatementAware": {',
-    '      "description": "Mehrzeilige Anweisungen (etwa ein Aufruf mit Argumenten in Folgezeilen) als Ganzes: Die neue Zeile kommt hinter das Ende bzw. vor den Anfang der Anweisung, mit dem Einzug ihrer e' + 'rsten Zeile. Aus = immer neben der Cursorzeile mit deren Einzug.",',
+    '      "description": "Mehrzeilige Anweisungen (etwa ein Aufruf mit Argumenten in Folgezeilen) als Ganzes: Die neue Zeile kommt hinter das Ende bzw. vor den Anfang der Anweisung, mit dem Einzug ihrer e' +
+      'rsten Zeile. Aus = immer neben der Cursorzeile mit deren Einzug.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "keys.newLineAround.statementAware",',
@@ -2080,7 +2100,10 @@ const
     '      "x-issue": "#700"',
     '    },',
     '    "Unwrap": {',
-    '      "description": "Umschließung entfernen: Strg+Umschalt+Entf im Inneren eines Blocks zeigt die umschließenden Konstrukte am Cursor (begin … end, try … finally/except, if … then [… else], with, for' + ', while, repeat, {$IFDEF} und {$REGION}), das innerste zuerst, höchstens fünf. Beim Überfahren hebt Atlas hervor, was bleibt (grün) und was entfällt (rot, durchgestrichen); nach der Wahl bleibt nur de' + 'r Rumpf, eine Ebene ausgerückt, als ein Rückgängig-Schritt. Varianten: finally-Teil behalten oder verwerfen, then- oder else-Zweig behalten; bei with werden die Bezüge ausgeschrieben. Aus = Kürzel fre' + 'i, kein Menüeintrag.",',
+    '      "description": "Umschließung entfernen: Strg+Umschalt+Entf im Inneren eines Blocks zeigt die umschließenden Konstrukte am Cursor (begin … end, try … finally/except, if … then [… else], with, for' +
+      ', while, repeat, {$IFDEF} und {$REGION}), das innerste zuerst, höchstens fünf. Beim Überfahren hebt Atlas hervor, was bleibt (grün) und was entfällt (rot, durchgestrichen); nach der Wahl bleibt nur de' +
+      'r Rumpf, eine Ebene ausgerückt, als ein Rückgängig-Schritt. Varianten: finally-Teil behalten oder verwerfen, then- oder else-Zweig behalten; bei with werden die Bezüge ausgeschrieben. Aus = Kürzel fre' +
+      'i, kein Menüeintrag.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "keys.unwrap",',
@@ -2104,7 +2127,8 @@ const
     '      "x-issue": "#657"',
     '    },',
     '    "ContinueComments": {',
-    '      "description": "Kommentar beim Enter fortsetzen: Nach einer //- oder ///-Zeile bekommt die neue Zeile Einrückung und Präfix, in einem offenen { … }- bzw. (* … *)-Block den Einzug. Enter auf eine' + 'r Zeile nur mit Präfix beendet den Kommentar; Strg+Z nimmt nur das Präfix zurück.",',
+    '      "description": "Kommentar beim Enter fortsetzen: Nach einer //- oder ///-Zeile bekommt die neue Zeile Einrückung und Präfix, in einem offenen { … }- bzw. (* … *)-Block den Einzug. Enter auf eine' +
+      'r Zeile nur mit Präfix beendet den Kommentar; Strg+Z nimmt nur das Präfix zurück.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "editor.continueComments",',
@@ -2134,7 +2158,8 @@ const
     '      "x-issue": "#696"',
     '    },',
     '    "CompleteStatement": {',
-    '      "description": "Anweisung vervollständigen (Strg+Umschalt+Enter): schließt Klammern und Strings, ergänzt then/do/of, begin/end, end; nach case, finally/except nach try, until nach repeat und das' + ' Semikolon; bei Methodendeklarationen den Rumpf. Ist nichts zu ergänzen, steht der Cursor in einer neuen Zeile darunter. Aus = die Taste bleibt der IDE.",',
+    '      "description": "Anweisung vervollständigen (Strg+Umschalt+Enter): schließt Klammern und Strings, ergänzt then/do/of, begin/end, end; nach case, finally/except nach try, until nach repeat und das' +
+      ' Semikolon; bei Methodendeklarationen den Rumpf. Ist nichts zu ergänzen, steht der Cursor in einer neuen Zeile darunter. Aus = die Taste bleibt der IDE.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "editor.completeStatement",',
@@ -2193,7 +2218,8 @@ const
     '      "x-issue": "#697"',
     '    },',
     '    "FormatCode": {',
-    '      "description": "Befehl „Formatieren“ (Strg+Umschalt+Alt+F, Menü Atlas, Kontextmenü, Befehlspalette): formatiert die ganze Datei bzw. die Zeilen der Auswahl nach den Regeln unter format in atlas.' + 'json und .editorconfig. RAD Studio 13 hat keinen eigenen Formatierer mehr; Strg+D gehört den Mehrfachmarken. Aus = Befehl und Taste fehlen.",',
+    '      "description": "Befehl „Formatieren“ (Strg+Umschalt+Alt+F, Menü Atlas, Kontextmenü, Befehlspalette): formatiert die ganze Datei bzw. die Zeilen der Auswahl nach den Regeln unter format in atlas.' +
+      'json und .editorconfig. RAD Studio 13 hat keinen eigenen Formatierer mehr; Strg+D gehört den Mehrfachmarken. Aus = Befehl und Taste fehlen.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "editor.format",',
@@ -2215,7 +2241,8 @@ const
     '      "x-issue": "#43"',
     '    },',
     '    "ContinuePattern": {',
-    '      "description": "Nach Enter die nächste Zeile eines erkannten Musters als Schattentext vorschlagen (Zahlen-, Zeichen- und Aufzählungsfolgen, nummerierte Bezeichner); Tab übernimmt, Weitertippen v' + 'erwirft.",',
+    '      "description": "Nach Enter die nächste Zeile eines erkannten Musters als Schattentext vorschlagen (Zahlen-, Zeichen- und Aufzählungsfolgen, nummerierte Bezeichner); Tab übernimmt, Weitertippen v' +
+      'erwirft.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "editor.continuePattern",',
@@ -2239,7 +2266,9 @@ const
     '      "x-issue": "#671"',
     '    },',
     '    "MultiCursor": {',
-    '      "description": "Mehrere Einfügemarken: Alt+Klick setzt bzw. entfernt eine Marke, Strg+D markiert das Wort bzw. das nächste Vorkommen, Alt+Umschalt+I setzt Marken an die Zeilenenden der Markierun' + 'g, Strg+Alt+↑/↓ eine Marke darüber bzw. darunter. Tippen, Löschen, Einfügen und Bewegen wirken an allen Marken, ein Tastendruck ist ein Rückgängig-Schritt; Esc oder ein einfacher Klick beendet. Aus = ' + 'die Tasten bleiben der IDE.",',
+    '      "description": "Mehrere Einfügemarken: Alt+Klick setzt bzw. entfernt eine Marke, Strg+D markiert das Wort bzw. das nächste Vorkommen, Alt+Umschalt+I setzt Marken an die Zeilenenden der Markierun' +
+      'g, Strg+Alt+↑/↓ eine Marke darüber bzw. darunter. Tippen, Löschen, Einfügen und Bewegen wirken an allen Marken, ein Tastendruck ist ein Rückgängig-Schritt; Esc oder ein einfacher Klick beendet. Aus = ' +
+      'die Tasten bleiben der IDE.",',
     '      "type": "boolean",',
     '      "default": false,',
     '      "x-key": "editor.multiCursor",',
@@ -2255,7 +2284,10 @@ const
     '      "x-issue": "#589"',
     '    },',
     '    "LinkedEditing": {',
-    '      "description": "Bezeichner live mitziehen: Tippt oder löscht man im Namen einer lokalen Variable, eines Parameters, einer lokalen Konstante, einer Inline- oder Schleifenvariable, ändern sich all' + 'e Vorkommen in derselben Routine mit (ohne vorheriges Markieren). Das bearbeitete Vorkommen ist durchgezogen eingerahmt, die übrigen gestrichelt, dazu „4 Vorkommen“. Felder, Methoden, Typen und global' + 'e Symbole bleiben beim Umbenennen über den Server. Ein reserviertes Wort oder ein in der Routine schon sichtbarer Name färbt die Rahmen rot; Esc stellt dann den alten Namen wieder her. Enter, Esc, Ver' + 'lassen des Namens oder Dateiwechsel beenden; Strg+Z stellt alle Vorkommen auf einmal zurück.",',
+    '      "description": "Bezeichner live mitziehen: Tippt oder löscht man im Namen einer lokalen Variable, eines Parameters, einer lokalen Konstante, einer Inline- oder Schleifenvariable, ändern sich all' +
+      'e Vorkommen in derselben Routine mit (ohne vorheriges Markieren). Das bearbeitete Vorkommen ist durchgezogen eingerahmt, die übrigen gestrichelt, dazu „4 Vorkommen“. Felder, Methoden, Typen und global' +
+      'e Symbole bleiben beim Umbenennen über den Server. Ein reserviertes Wort oder ein in der Routine schon sichtbarer Name färbt die Rahmen rot; Esc stellt dann den alten Namen wieder her. Enter, Esc, Ver' +
+      'lassen des Namens oder Dateiwechsel beenden; Strg+Z stellt alle Vorkommen auf einmal zurück.",',
     '      "type": "boolean",',
     '      "default": false,',
     '      "x-key": "editor.linkedEditing",',
@@ -2369,7 +2401,9 @@ const
     '      "x-issue": "#696"',
     '    },',
     '    "WrapSelection": {',
-    '      "description": "Markierung beim Tippen umschließen: Ist Text markiert und tippt man ein öffnendes Zeichen, kommt die Markierung zwischen das Zeichenpaar (( … ), [ … ], '' … '' mit verdoppelten H' + 'ochkommas, { … }, < … > hinter einem Typnamen), statt überschrieben zu werden. { über ganze Zeilen setzt { und } auf eigene Zeilen, mit } in der Markierung (* … *). Die Markierung bleibt auf dem Text,' + ' ein Rückgängig-Schritt; Spaltenblock und mehrere Einfügemarken je Zeile bzw. Marke. Ohne Markierung keine Änderung.",',
+    '      "description": "Markierung beim Tippen umschließen: Ist Text markiert und tippt man ein öffnendes Zeichen, kommt die Markierung zwischen das Zeichenpaar (( … ), [ … ], '' … '' mit verdoppelten H' +
+      'ochkommas, { … }, < … > hinter einem Typnamen), statt überschrieben zu werden. { über ganze Zeilen setzt { und } auf eigene Zeilen, mit } in der Markierung (* … *). Die Markierung bleibt auf dem Text,' +
+      ' ein Rückgängig-Schritt; Spaltenblock und mehrere Einfügemarken je Zeile bzw. Marke. Ohne Markierung keine Änderung.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "editor.wrapSelection",',
@@ -2920,7 +2954,8 @@ const
     '      "x-page": "Units suchen"',
     '    },',
     '    "QuickOpen": {',
-    '      "description": "Datei und Symbol schnell öffnen (Strg+P): unscharfe Suche über Projekt, Projektgruppe und Suchpfad; @ Symbole der Datei, # Symbole im Projekt, :123 Zeile, Datei:123 Datei in Zeil' + 'e.",',
+    '      "description": "Datei und Symbol schnell öffnen (Strg+P): unscharfe Suche über Projekt, Projektgruppe und Suchpfad; @ Symbole der Datei, # Symbole im Projekt, :123 Zeile, Datei:123 Datei in Zeil' +
+      'e.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "quickOpen.enabled",',
@@ -2954,7 +2989,8 @@ const
     '      "x-issue": "#503"',
     '    },',
     '    "NavHistory": {',
-    '      "description": "Navigationsverlauf über Dateien: Sprünge (andere Datei oder mehr als 10 Zeilen) und Bearbeitungsstellen merken; Zurück, Vor, letzte Bearbeitungsstelle und Liste. Höchstens 100 Ei' + 'nträge, nur für die laufende Sitzung.",',
+    '      "description": "Navigationsverlauf über Dateien: Sprünge (andere Datei oder mehr als 10 Zeilen) und Bearbeitungsstellen merken; Zurück, Vor, letzte Bearbeitungsstelle und Liste. Höchstens 100 Ei' +
+      'nträge, nur für die laufende Sitzung.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "navHistory.enabled",',
@@ -3001,7 +3037,8 @@ const
     '      "x-issue": "#504"',
     '    },',
     '    "Peek": {',
-    '      "description": "Definition einblenden (Alt+F12) und Referenzen einblenden (Umschalt+Alt+F12): Quelltext des Ziels in einem Fenster unter der Zeile, ohne die Datei zu wechseln; bei mehreren Ziele' + 'n eine Liste links. Nur lesen.",',
+    '      "description": "Definition einblenden (Alt+F12) und Referenzen einblenden (Umschalt+Alt+F12): Quelltext des Ziels in einem Fenster unter der Zeile, ohne die Datei zu wechseln; bei mehreren Ziele' +
+      'n eine Liste links. Nur lesen.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "peek.enabled",',
@@ -3057,7 +3094,8 @@ const
     '      "x-issue": "#505"',
     '    },',
     '    "Outline": {',
-    '      "description": "Andockbares Fenster „Gliederung“: Typen mit Feldern, Methoden und Eigenschaften sowie globale Routinen, Konstanten und Variablen der aktiven Unit, mit Suche, Filter nach Sichtbar' + 'keit und Art und Markierung nicht implementierter Methoden.",',
+    '      "description": "Andockbares Fenster „Gliederung“: Typen mit Feldern, Methoden und Eigenschaften sowie globale Routinen, Konstanten und Variablen der aktiven Unit, mit Suche, Filter nach Sichtbar' +
+      'keit und Art und Markierung nicht implementierter Methoden.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "outline.enabled",',
@@ -3122,7 +3160,8 @@ const
     '      "x-issue": "#590"',
     '    },',
     '    "BreadcrumbsIdeColors": {',
-    '      "description": "Brotkrumenleiste in den Farben der IDE-Werkzeugleisten (Fläche und Schrift aus dem IDE-Thema) statt der Atlas-Palette; im dunklen Thema also wie die Navigationsleiste darüber sta' + 'tt fast schwarz.",',
+    '      "description": "Brotkrumenleiste in den Farben der IDE-Werkzeugleisten (Fläche und Schrift aus dem IDE-Thema) statt der Atlas-Palette; im dunklen Thema also wie die Navigationsleiste darüber sta' +
+      'tt fast schwarz.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "editor.breadcrumbsIdeColors",',
@@ -3131,7 +3170,8 @@ const
     '      "x-issue": "#590"',
     '    },',
     '    "BreadcrumbsHideIdeToolbar": {',
-    '      "description": "Navigationsleiste der IDE („Typ suchen“, „Methode suchen“) ausblenden, solange die Brotkrumenleiste an ist. Die Brotkrumenleiste ersetzt sie: Das Unit-Glied listet alle Typen und' + ' Routinen der Unit, „›“ hinter einem Typ seine Mitglieder.",',
+    '      "description": "Navigationsleiste der IDE („Typ suchen“, „Methode suchen“) ausblenden, solange die Brotkrumenleiste an ist. Die Brotkrumenleiste ersetzt sie: Das Unit-Glied listet alle Typen und' +
+      ' Routinen der Unit, „›“ hinter einem Typ seine Mitglieder.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "editor.breadcrumbsHideIdeToolbar",',
@@ -3140,7 +3180,8 @@ const
     '      "x-issue": "#590"',
     '    },',
     '    "EditorToolbar": {',
-    '      "description": "Atlas-Editorleiste: eine Zeile mit Symbolen über dem Editor, vorn „Zum interface-Teil“ und „Zum implementation-Teil“ samt Rücksprung, dahinter weitere Atlas-Befehle (frei belegba' + 'r, Überlauf »). Aus = keine Leiste; die Befehle bleiben in Menü, Palette und Tasten.",',
+    '      "description": "Atlas-Editorleiste: eine Zeile mit Symbolen über dem Editor, vorn „Zum interface-Teil“ und „Zum implementation-Teil“ samt Rücksprung, dahinter weitere Atlas-Befehle (frei belegba' +
+      'r, Überlauf »). Aus = keine Leiste; die Befehle bleiben in Menü, Palette und Tasten.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "editor.toolbar",',
@@ -3161,7 +3202,8 @@ const
     '        "inBreadcrumbs"',
     '      ],',
     '      "default": "belowBreadcrumbs",',
-    '      "description": "Lage der Editorleiste: unter der Brotkrumenleiste (belowBreadcrumbs), darüber (aboveBreadcrumbs) oder rechts in derselben Zeile ohne zusätzliche Höhe (inBreadcrumbs). Ist die Bro' + 'tkrumenleiste aus, steht die Editorleiste allein über dem Editor.",',
+    '      "description": "Lage der Editorleiste: unter der Brotkrumenleiste (belowBreadcrumbs), darüber (aboveBreadcrumbs) oder rechts in derselben Zeile ohne zusätzliche Höhe (inBreadcrumbs). Ist die Bro' +
+      'tkrumenleiste aus, steht die Editorleiste allein über dem Editor.",',
     '      "x-key": "editor.toolbar.position",',
     '      "x-area": "editor",',
     '      "x-page": "Editor",',
@@ -3171,8 +3213,10 @@ const
     '    },',
     '    "EditorToolbarItems": {',
     '      "type": "string",',
-    '      "default": "Atlas.GotoInterface,Atlas.GotoImplementation,|,Atlas.NavBack,Atlas.NavForward,Atlas.ToggleMethod,Atlas.SwitchTestUnit,|,Atlas.UnitSearch,Atlas.FindMethod,|,Atlas.CodeActions,Atlas.Fo' + 'rmatCode,Atlas.ProblemsWindow,Atlas.CommandPalette",',
-    '      "description": "Knöpfe der Editorleiste in Reihenfolge: Befehlskennungen der Befehlspalette, durch Komma getrennt, „|“ = Trennstrich; leer = keine Knöpfe. Bearbeitet über „Leiste anpassen …“ (Za' + 'hnrad, Rechtsklick, Optionsseite).",',
+    '      "default": "Atlas.GotoInterface,Atlas.GotoImplementation,|,Atlas.NavBack,Atlas.NavForward,Atlas.ToggleMethod,Atlas.SwitchTestUnit,|,Atlas.UnitSearch,Atlas.FindMethod,|,Atlas.CodeActions,Atlas.Fo' +
+      'rmatCode,Atlas.ProblemsWindow,Atlas.CommandPalette",',
+    '      "description": "Knöpfe der Editorleiste in Reihenfolge: Befehlskennungen der Befehlspalette, durch Komma getrennt, „|“ = Trennstrich; leer = keine Knöpfe. Bearbeitet über „Leiste anpassen …“ (Za' +
+      'hnrad, Rechtsklick, Optionsseite).",',
     '      "x-key": "editor.toolbar.items",',
     '      "x-area": "editor",',
     '      "x-page": "Editor",',
@@ -3201,7 +3245,9 @@ const
     '      "x-issue": "#1101"',
     '    },',
     '    "StickyScroll": {',
-    '      "description": "Mitlaufender Kopf: Die Kopfzeilen der umgebenden Klasse bzw. des Records und der Routinen bleiben oben im Editor stehen, bis der Block endet. Verschachtelte Routinen stapeln sich' + ' (die äußere oben); im Rumpf der äußeren Routine steht nur ihr Kopf. Bei mehr Ebenen als erlaubt bleibt die innerste sichtbar, die äußeren werden zu einer Zeile „A › B › C“ zusammengefasst. Mehrzeilig' + 'e Köpfe werden mit „(…)“ auf eine Zeile gekürzt. Klick auf eine Kopfzeile springt dorthin.",',
+    '      "description": "Mitlaufender Kopf: Die Kopfzeilen der umgebenden Klasse bzw. des Records und der Routinen bleiben oben im Editor stehen, bis der Block endet. Verschachtelte Routinen stapeln sich' +
+      ' (die äußere oben); im Rumpf der äußeren Routine steht nur ihr Kopf. Bei mehr Ebenen als erlaubt bleibt die innerste sichtbar, die äußeren werden zu einer Zeile „A › B › C“ zusammengefasst. Mehrzeilig' +
+      'e Köpfe werden mit „(…)“ auf eine Zeile gekürzt. Klick auf eine Kopfzeile springt dorthin.",',
     '      "type": "boolean",',
     '      "default": false,',
     '      "x-key": "editor.stickyScroll",',
@@ -3229,7 +3275,8 @@ const
     '      "x-issue": "#506"',
     '    },',
     '    "Minimap": {',
-    '      "description": "Minimap neben der Scrollleiste: verkleinerte Ansicht der ganzen Datei mit dem sichtbaren Bereich als Schieber; Ziehen scrollt den Editor, Klick springt bzw. scrollt. Gefaltete Be' + 'reiche nehmen eine Zeile ein, lange Dateien werden gestaucht. Läuft nur mit experimental.enabled. Sind Atlas- und IDE-Minimap zugleich sichtbar, weist Atlas einmal darauf hin.",',
+    '      "description": "Minimap neben der Scrollleiste: verkleinerte Ansicht der ganzen Datei mit dem sichtbaren Bereich als Schieber; Ziehen scrollt den Editor, Klick springt bzw. scrollt. Gefaltete Be' +
+      'reiche nehmen eine Zeile ein, lange Dateien werden gestaucht. Läuft nur mit experimental.enabled. Sind Atlas- und IDE-Minimap zugleich sichtbar, weist Atlas einmal darauf hin.",',
     '      "type": "boolean",',
     '      "default": false,',
     '      "x-key": "editor.minimap",',
@@ -3383,7 +3430,8 @@ const
     '      "x-issue": "#590"',
     '    },',
     '    "GitGutter": {',
-    '      "description": "Änderungsmarken in der Rinne: grün hinzugefügt, blau geändert, rotes Dreieck gelöscht gegenüber dem Stand im Repository (Git HEAD, SVN BASE); Klick zeigt den alten Stand mit „Zur' + 'ücksetzen“. Ohne Arbeitskopie oder ohne git bzw. svn still aus.",',
+    '      "description": "Änderungsmarken in der Rinne: grün hinzugefügt, blau geändert, rotes Dreieck gelöscht gegenüber dem Stand im Repository (Git HEAD, SVN BASE); Klick zeigt den alten Stand mit „Zur' +
+      'ücksetzen“. Ohne Arbeitskopie oder ohne git bzw. svn still aus.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "editor.gitGutter",',
@@ -3413,7 +3461,8 @@ const
     '      "x-issue": "#507"',
     '    },',
     '    "GutterColumn": {',
-    '      "description": "Eigene Atlas-Spalte in der Zeilenleiste rechts neben den Zeilennummern, je Zeile höchstens ein Symbol: Fehler ✕, Warnung ▲, Hinweis ●, Code-Aktionen der Cursorzeile ◆, überschrei' + 'bt ↑, wird überschrieben ↓. Klick zeigt Meldung und Korrekturen, öffnet die Code-Aktionen bzw. springt zur Methode oder listet die überschreibenden Methoden. Aus = keine Spalte.",',
+    '      "description": "Eigene Atlas-Spalte in der Zeilenleiste rechts neben den Zeilennummern, je Zeile höchstens ein Symbol: Fehler ✕, Warnung ▲, Hinweis ●, Code-Aktionen der Cursorzeile ◆, überschrei' +
+      'bt ↑, wird überschrieben ↓. Klick zeigt Meldung und Korrekturen, öffnet die Code-Aktionen bzw. springt zur Methode oder listet die überschreibenden Methoden. Aus = keine Spalte.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "editor.gutterColumn",',
@@ -3465,7 +3514,8 @@ const
     '      "x-issue": "#768"',
     '    },',
     '    "SelectionMatches": {',
-    '      "description": "Markiert man einen Text in einer Zeile, hinterlegt Atlas alle gleichen Stellen im sichtbaren Bereich, zeigt sie in der Übersichtsleiste und die Anzahl („3 Treffer“) hinter der Ma' + 'rkierung. Rein textuell, auch in Strings und Kommentaren. Aus = keine Hervorhebung, F3 wie in der IDE.",',
+    '      "description": "Markiert man einen Text in einer Zeile, hinterlegt Atlas alle gleichen Stellen im sichtbaren Bereich, zeigt sie in der Übersichtsleiste und die Anzahl („3 Treffer“) hinter der Ma' +
+      'rkierung. Rein textuell, auch in Strings und Kommentaren. Aus = keine Hervorhebung, F3 wie in der IDE.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "highlight.selectionMatches",',
@@ -3563,7 +3613,8 @@ const
     '      "x-issue": "#507"',
     '    },',
     '    "OverviewRuler": {',
-    '      "description": "Übersichtsleiste rechts neben der Scrollleiste: Marken für die ganze Datei (Fehler und Warnungen, Treffer des markierten Texts, Änderungen, Haltepunkte, Lesezeichen, Cursor); Kli' + 'ck springt zur Stelle, Überfahren zeigt die Zeile.",',
+    '      "description": "Übersichtsleiste rechts neben der Scrollleiste: Marken für die ganze Datei (Fehler und Warnungen, Treffer des markierten Texts, Änderungen, Haltepunkte, Lesezeichen, Cursor); Kli' +
+      'ck springt zur Stelle, Überfahren zeigt die Zeile.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "editor.overviewRuler",',

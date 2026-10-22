@@ -78,7 +78,7 @@ begin
   Points(Self).Jumped(FileB, 5, 5, '');
   Assert.IsFalse(Points(Self).Find(FileB, Point));
   Points(Self).Jumped('', 1, 2, '');
-  Assert.AreEqual(1, Points(Self).Count);
+  Assert.AreEqual(1, Integer(Points(Self).Count));
 end;
 
 procedure TAtlasReturnPointsTests.LinesAboveMoveThePoint;
@@ -131,17 +131,17 @@ var
 begin
   Points(Self).Jumped(FileA, 213, 2, '');
   Points(Self).Jumped(FileB, 50, 3, '');
-  Assert.AreEqual(2, Points(Self).Count);
+  Assert.AreEqual(2, Integer(Points(Self).Count));
   Assert.IsTrue(Points(Self).Find(UpperCase(FileB), Point), 'Dateiname ohne Groß-/Kleinschreibung');
   Assert.AreEqual(50, Point.Line);
   Points(Self).KeepOnly([FileA]);
   Assert.IsFalse(Points(Self).Find(FileB, Point), 'Datei geschlossen');
   Assert.IsTrue(Points(Self).Find(FileA, Point));
   Points(Self).Forget(FileA);
-  Assert.AreEqual(0, Points(Self).Count);
+  Assert.AreEqual(0, Integer(Points(Self).Count));
   Points(Self).Jumped(FileA, 9, 2, '');
   Points(Self).Clear;
-  Assert.AreEqual(0, Points(Self).Count);
+  Assert.AreEqual(0, Integer(Points(Self).Count));
 end;
 
 procedure TAtlasReturnPointsTests.ContextIsTheEnclosingMethod;

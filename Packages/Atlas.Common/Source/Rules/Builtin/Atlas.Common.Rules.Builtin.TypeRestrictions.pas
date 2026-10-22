@@ -418,7 +418,6 @@ var
   Index, Last: Integer;
   Name: string;
 begin
-  Result := -1;
   Name := AHeader.Name;
   if LastDelimiter('.', Name) > 0 then
     Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);

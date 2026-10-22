@@ -962,7 +962,6 @@ var
   var
     Position, Depth: Integer;
   begin
-    Result := -1;
     Position := AFirst;
     while IsWord(Position) do
     begin

@@ -61,6 +61,7 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.FormFields,
   Atlas.Common.Rules.GoldenCorpus,
+  Atlas.Common.Rules.Catalog,
   Atlas.Common.Projects.PackageReader,
   System.StrUtils;
 
@@ -341,12 +342,24 @@ end;
 function MutationSettings(const ADescriptor: TRuleDescriptor): TServerSettings;
 var
   Setting: TRuleSetting;
+  Entry: TRuleCatalogEntry;
+  Other: string;
 begin
   Result := TServerSettings.Default;
   Setting := Default(TRuleSetting);
   Setting.Id := ADescriptor.Id;
   Setting.Severity := ADescriptor.DefaultSeverity;
   Result.Rules := Result.Rules + [Setting];
+  // Gegenregeln (#1025) aus: Solange eine an ist, läuft die Regel nicht (redundant-begin-end neben
+  // missing-begin-end).
+  if TRuleCatalog.Shared.TryFind(ADescriptor.Id, Entry) then
+    for Other in Entry.OverriddenBy do
+    begin
+      Setting := Default(TRuleSetting);
+      Setting.Id := Other;
+      Setting.Severity := TRuleSeverity.Off;
+      Result.Rules := Result.Rules + [Setting];
+    end;
   Result.MinConfidence := TRuleConfidence.Low;
   Result.MinConfidenceGiven := True;
 end;

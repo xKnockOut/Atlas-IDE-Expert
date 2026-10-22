@@ -42,7 +42,7 @@ type
   end;
 
   /// <summary>Ein Parameter eines Methodenkopfs (#996).</summary>
-  TSignatureParameter = record
+  TShapeParameter = record
     /// <summary>const, var, out, constref oder '' (Kleinbuchstaben).</summary>
     Modifier: string;
     Name: string;
@@ -54,7 +54,7 @@ type
   TSignatureShape = record
     /// <summary>procedure, function, constructor, destructor oder operator.</summary>
     Kind: string;
-    Parameters: TArray<TSignatureParameter>;
+    Parameters: TArray<TShapeParameter>;
     /// <summary>Ergebnistyp wie geschrieben; '' ohne.</summary>
     ResultType: string;
     /// <summary>Aufrufkonvention in Kleinbuchstaben (stdcall, cdecl …); '' ohne Angabe.</summary>
@@ -538,11 +538,11 @@ const
   Kinds: array[0..4] of string = ('constructor', 'destructor', 'operator', 'function', 'procedure');
 
 /// <summary>Parameter einer Gruppe "const A, B: string = ''" einzeln.</summary>
-function GroupParameters(const AGroup: string): TArray<TSignatureParameter>;
+function GroupParameters(const AGroup: string): TArray<TShapeParameter>;
 var
   Group, Names, TypeName, Modifier, Name: string;
   Equals, Colon, Space: Integer;
-  Parameter: TSignatureParameter;
+  Parameter: TShapeParameter;
 begin
   Result := nil;
   Group := AGroup;

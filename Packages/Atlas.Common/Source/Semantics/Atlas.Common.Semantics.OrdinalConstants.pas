@@ -185,6 +185,14 @@ begin
     FailWith(TOrdinalStatus.Overflow);
     Exit;
   end;
+  // Unter Low(Int64) ist es sicher ein Überlauf. Exakt prüfen: Double hat dort zu wenig Stellen
+  // (Low(Int64) - 10 ergäbe wieder Low(Int64)).
+  if ((AOperation = '+') and (ARight < 0) and (ALeft < Low(Int64) - ARight)) or
+    ((AOperation = '-') and (ARight > 0) and (ALeft < Low(Int64) + ARight)) then
+  begin
+    FailWith(TOrdinalStatus.Overflow);
+    Exit;
+  end;
   // Knapp an den Grenzen meldet die Überlaufprüfung EIntOverflow; Run macht daraus "unbekannt".
   if AOperation = '+' then
     Result := ALeft + ARight

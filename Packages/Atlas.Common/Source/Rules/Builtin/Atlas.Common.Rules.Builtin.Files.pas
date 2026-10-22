@@ -267,7 +267,6 @@ begin
       Result := not Mixed;
       if Mixed then
         Exit;
-      Value := nil;
       if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
         (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, AName) then
         Value := ANode[1]
