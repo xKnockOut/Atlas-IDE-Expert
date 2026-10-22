@@ -16,6 +16,9 @@
 //                                       oder einer abstract-Klasse (E2402) (#999)
 //   inherited-abstract-call             inherited Name(…) auf eine im Vorfahren abstrakte Methode (E2373,
 //                                       #1026); die Methode löst TNameResolver samt Überladungen auf
+//   class-reference-nonvirtual-constructor  Create über eine Klassenreferenz (class of TBasis), deren
+//                                       Konstruktor nicht virtuell ist (E2391, #1032); läuft immer der
+//                                       Konstruktor der Basisklasse
 //
 // Vorfahren werden zuerst in der Datei, dann im Symbolindex gesucht (auch RTL
 // und VCL, soweit eingelesen). Ist ein Vorfahr nicht auflösbar oder mehrdeutig,
@@ -148,6 +151,14 @@ type
     class function IsAbstractSignature(const ASignature: string): Boolean; static;
   end;
 
+  TClassReferenceNonvirtualConstructorRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Zieltyp aus "TPluginKlasse = class of TPlugin"; '' ohne class of.</summary>
+    class function ClassRefTarget(const ASignature: string): string; static;
+  end;
+
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -161,6 +172,7 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Unused,
+  Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Semantics.NameResolver,
@@ -1968,6 +1980,246 @@ begin
   end;
 end;
 
+{ TClassReferenceNonvirtualConstructorRule }
+
+function TClassReferenceNonvirtualConstructorRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('class-reference-nonvirtual-constructor', TRuleSeverity.Warning,
+    'Konstruktor über Klassenreferenz nicht virtuell (wie E2391)');
+end;
+
+class function TClassReferenceNonvirtualConstructorRule.ClassRefTarget(const ASignature: string): string;
+var
+  Words: TArray<string>;
+  Index: Integer;
+begin
+  Result := '';
+  Words := ASignature.Replace(';', ' ').Split([' ', #9, #10, #13, '='], TStringSplitOptions.ExcludeEmpty);
+  for Index := 0 to High(Words) - 2 do
+    if SameText(Words[Index], 'class') and SameText(Words[Index + 1], 'of') then
+      Exit(Words[Index + 2]);
+end;
+
+procedure TClassReferenceNonvirtualConstructorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Cache: IRuleDerivedCache;
+  Ancestry: TAncestry;
+  Resolver: TNameResolver;
+  FileName: string;
+  Local: TUnitIndex;
+  Tokens: TArray<TPascalToken>;
+  Paths: TArray<string>;
+  Methods: TArray<TMethodDecl>;
+  MethodsRead: Boolean;
+  Calls: TArray<TSyntaxNode>;
+
+  function IsLocal(const AFileName: string): Boolean;
+  begin
+    Result := (AFileName = '') or SameText(AFileName, FileName);
+  end;
+
+  /// <summary>Unit, in der ein Symbol aus AFileName steht: die geprüfte Datei oder der Index.</summary>
+  function UnitFor(const AFileName: string; out AUnit: TUnitIndex): Boolean;
+  begin
+    Result := True;
+    if IsLocal(AFileName) then
+      AUnit := Local
+    else
+      Result := (AContext.Index <> nil) and AContext.Index.FindFile(AFileName, AUnit);
+  end;
+
+  /// <summary>Zweig der bedingten Übersetzung an APosition ('' ohne {$IF…}).</summary>
+  function PathAt(const APosition: TTextPosition): string;
+  var
+    Low, High, Middle: Integer;
+  begin
+    Result := '';
+    if Paths = nil then
+      Exit;
+    Low := 0;
+    High := Length(Tokens) - 1;
+    while Low < High do
+    begin
+      Middle := (Low + High) div 2;
+      if (Tokens[Middle].StartPos.Line < APosition.Line) or ((Tokens[Middle].StartPos.Line = APosition.Line) and
+        (Tokens[Middle].StartPos.Character < APosition.Character)) then
+        Low := Middle + 1
+      else
+        High := Middle;
+    end;
+    Result := TConditionalBranches.PathAt(Paths, Low);
+  end;
+
+  /// <summary>Steht die Deklaration sicher, wo der Aufruf an ACall übersetzt wird? Aus dem Index ohne Bedingung,
+  /// in der Datei in demselben oder einem umschließenden Zweig.</summary>
+  function Certain(const AFileName, ACondition: string; const ADeclaration: TTextPosition; ACall: TSyntaxNode):
+    Boolean;
+  begin
+    if ACondition <> '' then
+      Exit(False);
+    Result := not IsLocal(AFileName) or TConditionalBranches.Implies(PathAt(ACall.StartPos), PathAt(ADeclaration));
+  end;
+
+  function ClassMethodsOnce: TArray<TMethodDecl>;
+  begin
+    if not MethodsRead then
+    begin
+      Methods := ClassMethods(AContext, Ancestry);
+      MethodsRead := True;
+    end;
+    Result := Methods;
+  end;
+
+  /// <summary>Korrektur, wenn der Konstruktor in dieser Datei steht: virtual an ihn, override an die
+  /// gleichlautenden Konstruktoren der Nachfahren in dieser Datei.</summary>
+  function VirtualFix(const AConstructor: TIndexSymbol; out AFix: TRuleFix): Boolean;
+  var
+    Method: TMethodDecl;
+    Fix: TRuleFix;
+    Edits: TArray<TRuleEdit>;
+    Found: Boolean;
+  begin
+    Result := False;
+    Found := False;
+    Edits := nil;
+    for Method in ClassMethodsOnce do
+      if (Method.Keyword = 'constructor') and (Method.Symbol.SelectionRange.StartPos =
+        AConstructor.SelectionRange.StartPos) then
+      begin
+        if not AppendDirective(AContext, Method, 'virtual', Fix) then
+          Exit;
+        Edits := Edits + Fix.Edits;
+        Found := True;
+      end;
+    if not Found then
+      Exit;
+    for Method in ClassMethodsOnce do
+      if (Method.Keyword = 'constructor') and SameText(Method.Symbol.Name, AConstructor.Name) and
+        not SameText(Method.ClassName, AConstructor.Container) and not Settled(Method) and
+        SameSignature(Method.Symbol, AConstructor) and Ancestry.DescendsFrom(Method.ClassName,
+        AConstructor.Container) and AppendDirective(AContext, Method, 'override', Fix) then
+        Edits := Edits + Fix.Edits;
+    if Length(Edits) > 1 then
+      AFix := TRuleFix.Create(Format('virtual an %s.%s, override in den Nachfahren', [AConstructor.Container,
+        AConstructor.Name]), Edits)
+    else
+      AFix := TRuleFix.Create(Format('virtual an %s.%s', [AConstructor.Container, AConstructor.Name]), Edits);
+    Result := True;
+  end;
+
+  procedure CheckCall(AAccess: TSyntaxNode);
+  var
+    Symbol, RefType, Base, Member: TResolvedSymbol;
+    TypeFound: Boolean;
+    Target: string;
+    TypeUnit, MemberUnit: TUnitIndex;
+    Candidate, Matching, Owner: TIndexSymbol;
+    Matches, Args: Integer;
+    OwnerFound: Boolean;
+    Fix: TRuleFix;
+    Fixes: TArray<TRuleFix>;
+  begin
+    // Der Empfänger ist ein Wert (Variable, Feld, Parameter, Funktion), dessen Typ class of … ist.
+    if not Resolver.NodeType(AContext.Tree, FileName, AAccess[0], Symbol, RefType, TypeFound) or not TypeFound or
+      Symbol.IsType or not Symbol.Found or RefType.Builtin or (RefType.SymbolKind <> TIndexSymbolKind.ClassType) then
+      Exit;
+    Target := ClassRefTarget(RefType.Signature);
+    if (Target = '') or not Certain(Symbol.FileName, Symbol.Condition, Symbol.SelectionRange.StartPos, AAccess) or
+      not Certain(RefType.FileName, RefType.Condition, RefType.SelectionRange.StartPos, AAccess) or
+      not UnitFor(RefType.FileName, TypeUnit) or not Resolver.ResolveTypeFrom(TypeUnit, Target, Base) or
+      (Base.SymbolKind <> TIndexSymbolKind.ClassType) then
+      Exit;
+    // Der nächste Typ der Kette, der Create deklariert, samt seiner Überladungen.
+    if not Resolver.FindMember(Base, AAccess.Name, Member) or Member.IsHelper or
+      (Member.SymbolKind <> TIndexSymbolKind.Constructor_) or not UnitFor(Member.FileName, MemberUnit) then
+      Exit;
+    Args := 0;
+    if (AAccess.Parent <> nil) and (AAccess.Parent.Kind = TSyntaxKind.Call) and (AAccess.Parent[0] = AAccess) then
+      Args := AAccess.Parent.ChildCount - 1;
+    // Die Klasse, in der Member deklariert ist: Rümpfe (constructor TPlugin.Create) stehen außerhalb.
+    OwnerFound := False;
+    for Owner in MemberUnit.Symbols do
+      if (Owner.Kind = TIndexSymbolKind.ClassType) and SameText(Owner.QualifiedName, Member.Container) and
+        ContainsLine(Owner.Range, Member.Range.StartPos.Line) then
+      begin
+        OwnerFound := True;
+        Break;
+      end;
+    if not OwnerFound then
+      Exit;
+    Matches := 0;
+    Matching := Default(TIndexSymbol);
+    for Candidate in MemberUnit.Symbols do
+      if (Candidate.Kind = TIndexSymbolKind.Constructor_) and SameText(Candidate.Name, Member.Name) and
+        SameText(Candidate.Container, Member.Container) and
+        ContainsLine(Owner.Range, Candidate.Range.StartPos.Line) then
+      begin
+        if not Certain(Member.FileName, Candidate.Condition, Candidate.SelectionRange.StartPos, AAccess) then
+          Exit;
+        if (Args < Candidate.MinArgs) or ((Candidate.MaxArgs >= 0) and (Args > Candidate.MaxArgs)) then
+          Continue;
+        // Eine passende virtuelle Überladung genügt, damit die Regel schweigt.
+        if Candidate.IsVirtual or Candidate.HasDirective('virtual') or Candidate.HasDirective('dynamic') or
+          Candidate.HasDirective('override') or Candidate.HasDirective('abstract') then
+          Exit;
+        Inc(Matches);
+        Matching := Candidate;
+      end;
+    if Matches = 0 then
+      Exit;
+    Fixes := nil;
+    if (Matches = 1) and IsLocal(Member.FileName) and VirtualFix(Matching, Fix) then
+      Fixes := [Fix];
+    AReport.Add(TTextRange.Create(AAccess.StartPos, AAccess.EndPos), Format('%s.%s ist nicht virtuell; über die ' +
+      'Klassenreferenz läuft immer %s.%s (wie E2391).', [Member.Container, Member.Name, Member.Container,
+      Member.Name]), TRuleConfidence.High, Fixes);
+  end;
+
+var
+  Node: TSyntaxNode;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Calls := nil;
+  AContext.Tree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and SameText(ANode.Name, 'Create') then
+        Calls := Calls + [ANode];
+      Result := True;
+    end);
+  if Calls = nil then
+    Exit;
+  Cache := TRuleDerived.Open(AContext);
+  Tokens := AContext.Tree.Tokens;
+  Paths := TConditionalBranches.Paths(Tokens);
+  MethodsRead := False;
+  FileName := AContext.FileName;
+  if FileName = '' then
+    FileName := AContext.RelativePath;
+  if FileName = '' then
+    FileName := AContext.UnitName + '.pas';
+  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
+  try
+    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+    try
+      Resolver.Namespaces := AContext.Namespaces;
+      Resolver.PinTree(AContext.Tree, FileName);
+      try
+        Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
+        for Node in Calls do
+          CheckCall(Node);
+      finally
+        Resolver.UnpinTree;
+      end;
+    finally
+      Resolver.Free;
+    end;
+  finally
+    Ancestry.Free;
+  end;
+end;
+
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDestroyWithoutOverrideRule.Create);
@@ -1978,6 +2230,7 @@ begin
   ARegistry.Register(TOverrideTargetMissingRule.Create);
   ARegistry.Register(TAbstractClassInstantiatedRule.Create);
   ARegistry.Register(TInheritedAbstractCallRule.Create);
+  ARegistry.Register(TClassReferenceNonvirtualConstructorRule.Create);
 end;
 
 end.

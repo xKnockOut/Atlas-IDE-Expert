@@ -74,6 +74,14 @@ type
     procedure InheritedAbstractSilentCases;
     [Test]
     procedure InheritedAbstractOptions;
+    [Test]
+    procedure ClassRefConstructorIssueExample;
+    [Test]
+    procedure ClassRefConstructorFromIndex;
+    [Test]
+    procedure ClassRefConstructorSilentCases;
+    [Test]
+    procedure ClassRefConstructorOptions;
   end;
 
 implementation
@@ -751,6 +759,136 @@ begin
     '{"rules": {"group:compiler": "off"}}', 'U.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedAbstractCallRule.Create, Source,
     '{"rules": {"inherited-abstract-call": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+end;
+
+/// <summary>Das Beispiel aus #1032: TPlugin mit statischem Create, TSpezial deklariert ein eigenes; ADirektiven
+/// steht hinter beiden Konstruktoren, ACall im Rumpf von Neu.</summary>
+function Plugins(const ABasis, ASpezial, ACall: string): string;
+begin
+  Result := 'unit Plugins;'#10'interface'#10'type'#10'  TPluginKlasse = class of TPlugin;'#10 +
+    '  TPlugin = class'#10'  public'#10'    constructor Create;' + ABasis + #10'  end;'#10 +
+    '  TSpezial = class(TPlugin)'#10'  public'#10'    constructor Create;' + ASpezial + #10'  end;'#10 +
+    'function Neu(Klasse: TPluginKlasse): TPlugin;'#10'implementation'#10 +
+    'constructor TPlugin.Create;'#10'begin'#10'end;'#10'constructor TSpezial.Create;'#10'begin'#10'end;'#10 +
+    'function Neu(Klasse: TPluginKlasse): TPlugin;'#10'begin'#10 + ACall + 'end;'#10'end.';
+end;
+
+/// <summary>AText mit allen Änderungen von AFix, hinterste zuerst.</summary>
+function Applied(const AText: string; const AFix: TRuleFix): string;
+var
+  Index, Later: Integer;
+  Edits: TArray<TRuleEdit>;
+  Edit: TRuleEdit;
+begin
+  Edits := Copy(AFix.Edits);
+  for Index := 0 to High(Edits) - 1 do
+    for Later := Index + 1 to High(Edits) do
+      if OffsetOf(AText, Edits[Later].Range.StartPos) > OffsetOf(AText, Edits[Index].Range.StartPos) then
+      begin
+        Edit := Edits[Index];
+        Edits[Index] := Edits[Later];
+        Edits[Later] := Edit;
+      end;
+  Result := AText;
+  for Edit in Edits do
+    Result := Copy(Result, 1, OffsetOf(Result, Edit.Range.StartPos) - 1) + Edit.NewText +
+      Copy(Result, OffsetOf(Result, Edit.Range.EndPos), MaxInt);
+end;
+
+procedure TInheritanceRulesTests.ClassRefConstructorIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Plugins('', '', '  Result := Klasse.Create;'#10);
+  Findings := TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TPlugin.Create ist nicht virtuell; über die Klassenreferenz läuft immer TPlugin.Create ' +
+    '(wie E2391).', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(22, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(12, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(22, Findings[0].Range.EndPos.Line);
+  Assert.AreEqual(25, Findings[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('virtual an TPlugin.Create, override in den Nachfahren', Findings[0].Fixes[0].Title);
+  Fixed := Applied(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(Plugins(' virtual;', ' override;', '  Result := Klasse.Create;'#10), Fixed);
+  TRuleAssert.Silent(TClassReferenceNonvirtualConstructorRule.Create, Fixed);
+  // Mit Argumenten, über ein Feld und als Anweisung ebenso.
+  Findings := TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, 'unit U;'#10'interface'#10 +
+    'type'#10'  TTeil = class'#10'  public'#10'    constructor Create(ANummer: Integer);'#10'  end;'#10 +
+    '  TTeilKlasse = class of TTeil;'#10'  TFabrik = class'#10'  private'#10'    FKlasse: TTeilKlasse;'#10 +
+    '  public'#10'    procedure Baue;'#10'  end;'#10'implementation'#10 +
+    'constructor TTeil.Create(ANummer: Integer);'#10'begin'#10'end;'#10'procedure TFabrik.Baue;'#10'begin'#10 +
+    '  FKlasse.Create(1).Free;'#10'  Self.FKlasse.Create(2);'#10'end;'#10'end.');
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('virtual an TTeil.Create', Findings[0].Fixes[0].Title);
+end;
+
+procedure TInheritanceRulesTests.ClassRefConstructorFromIndex;
+const
+  BasisSource = 'unit Basis;'#10'interface'#10'type'#10'  TDienst = class'#10'  public'#10 +
+    '    constructor Create;'#10'  end;'#10'  TDienstKlasse = class of TDienst;'#10 +
+    '  TBauteil = class'#10'  public'#10'    constructor Create(AOwner: TObject); virtual;'#10'  end;'#10 +
+    '  TBauteilKlasse = class of TBauteil;'#10'function Klasse: TDienstKlasse;'#10'implementation'#10 +
+    'constructor TDienst.Create;'#10'begin'#10'end;'#10'constructor TBauteil.Create(AOwner: TObject);'#10 +
+    'begin'#10'end;'#10'function Klasse: TDienstKlasse;'#10'begin'#10'  Result := TDienst;'#10'end;'#10'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Klassenreferenz und Konstruktor aus einer anderen Unit: gemeldet, ohne Korrektur; auch über eine Funktion.
+  Findings := TRuleAssert.IndexFindings(TClassReferenceNonvirtualConstructorRule.Create, 'unit U;'#10 +
+    'interface'#10'uses Basis;'#10'procedure Lauf(K: TDienstKlasse; B: TBauteilKlasse);'#10'implementation'#10 +
+    'procedure Lauf(K: TDienstKlasse; B: TBauteilKlasse);'#10'begin'#10'  K.Create.Free;'#10 +
+    '  B.Create(nil).Free;'#10'  Klasse.Create.Free;'#10'end;'#10'end.', IndexWith([BasisSource]), '', 'U.pas');
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('TDienst.Create ist nicht virtuell; über die Klassenreferenz läuft immer TDienst.Create ' +
+    '(wie E2391).', Findings[0].Message);
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(9, Findings[1].Range.StartPos.Line);
+end;
+
+procedure TInheritanceRulesTests.ClassRefConstructorSilentCases;
+begin
+  // Virtueller Konstruktor mit override in den Nachfahren, Create direkt an der Klasse.
+  TRuleAssert.Silent(TClassReferenceNonvirtualConstructorRule.Create, Plugins(' virtual;', ' override;',
+    '  Result := Klasse.Create;'#10'  TPlugin.Create.Free;'#10'  TSpezial.Create.Free;'#10));
+  // Create auf einer Instanz (constructor-on-instance) und eine passende virtuelle Überladung.
+  TRuleAssert.Silent(TClassReferenceNonvirtualConstructorRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TA = class'#10'  public'#10'    constructor Create; overload; virtual;'#10 +
+    '    constructor Create(X: Integer); overload;'#10'  end;'#10'  TAKlasse = class of TA;'#10 +
+    'implementation'#10'constructor TA.Create;'#10'begin'#10'end;'#10'constructor TA.Create(X: Integer);'#10 +
+    'begin'#10'end;'#10'procedure Lauf(K: TAKlasse; A: TA);'#10'begin'#10'  K.Create.Free;'#10 +
+    '  A.Create;'#10'end;'#10'end.');
+  // Unbekannter Vorfahr ohne eigenes Create, unbekannte Klassenreferenz.
+  TRuleAssert.Silent(TClassReferenceNonvirtualConstructorRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TB = class(TUnbekannt)'#10'  end;'#10'  TBKlasse = class of TB;'#10'implementation'#10 +
+    'procedure Lauf(K: TBKlasse; F: TFremdKlasse);'#10'begin'#10'  K.Create.Free;'#10'  F.Create.Free;'#10 +
+    'end;'#10'end.');
+  // Die Variable ist nur in einem Zweig der bedingten Übersetzung eine Klassenreferenz.
+  TRuleAssert.Silent(TClassReferenceNonvirtualConstructorRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TC = class'#10'  public'#10'    constructor Create;'#10'  end;'#10'  TCKlasse = class of TC;'#10 +
+    'implementation'#10'constructor TC.Create;'#10'begin'#10'end;'#10'var'#10'{$IFDEF NEU}'#10 +
+    '  K: TCKlasse;'#10'{$ELSE}'#10'  K: TC;'#10'{$ENDIF}'#10'procedure Lauf;'#10'begin'#10 +
+    '  K.Create;'#10'end;'#10'end.');
+end;
+
+procedure TInheritanceRulesTests.ClassRefConstructorOptions;
+var
+  Source: string;
+begin
+  Source := Plugins('', '', '  Result := Klasse.Create;'#10);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, Source,
+    '', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, Source,
+    '{"rules": {"class-reference-nonvirtual-constructor": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, Source,
+    '{"rules": {"group:compiler": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, Source,
+    '{"rules": {"class-reference-nonvirtual-constructor": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
 initialization
