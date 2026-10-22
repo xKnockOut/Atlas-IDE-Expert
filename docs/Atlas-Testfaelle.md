@@ -4119,3 +4119,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## Vergleich immer wahr oder immer falsch (#1011)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VK1 | Das Beispiel aus #1011: `var Rest: Cardinal;` und `while Rest >= 0 do Dec(Rest);` | Warnung `comparison-always-constant` an `Rest >= 0`: „Rest ist Cardinal; Rest >= 0 ist immer wahr, die Schleife endet nie (wie W1022).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| VK2 | `B: Byte` mit `if B > 255`, `if 256 <= B`, `if B < 0`, `if B = 300` | Je „… ist immer falsch (wie W1021).“ |
+| VK3 | `B: Byte`, `case B of 1, 300: …; 256..300: …; 250..400: … end` | Meldung an `300` und `256..300` „… liegt außerhalb des Bereichs von Byte; der Zweig wird nie ausgeführt (wie W1018).“, nicht an `250..400` |
+| VK4 | Property `Saldo: Cardinal` einer Klasse aus einer anderen Unit, `if Konto.Saldo < 0` | „Konto.Saldo ist Cardinal; Konto.Saldo < 0 ist immer falsch (wie W1021).“ |
+| VK5 | `I >= 0` mit Integer, `C > 0` mit Cardinal, `B < 255`, `Length(S) < 0`, `C - 1 >= 0`, Teilbereich `1..5` mit `> 5`, NativeInt mit `< 2147483648` | Keine Meldung |
+| VK8 | Deklaration in `{$IFDEF X} Rest: Integer; {$ELSE} Rest: Cardinal; {$ENDIF}`, danach `if Rest >= 0` | Keine Meldung: Der Typ hängt vom Zweig ab (dcc meldet ohne X trotzdem W1022) |
+| VK6 | `"comparison-always-constant": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| VK7 | Abgleich mit Delphi: VK1 bis VK5 übersetzen (Win32 und Win64) | dcc meldet W1022, W1021 bzw. W1018 an denselben Stellen, für VK5 nichts; meldet dcc für `Length(S) < 0` oder einen Teilbereich doch eine Warnung, den Fall im Issue nachtragen |

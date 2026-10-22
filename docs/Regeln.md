@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 15 |
+| [Compiler vorab](#gruppe-compiler) | 16 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -146,6 +146,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`property-accessor-invalid`](#property-accessor-invalid) | Getter oder Setter einer Property ungültig | Bug | Fehler |
 | [`assign-to-property-member`](#assign-to-property-member) | Zuweisung an ein Feld eines Property-Records | Bug | Fehler |
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
+| [`comparison-always-constant`](#comparison-always-constant) | Vergleich immer wahr oder immer falsch | Bug | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4540,4 +4541,25 @@ Richtig:
 
 ```pascal
 Liste.Clear;
+```
+
+<a id="comparison-always-constant"></a>
+### comparison-always-constant
+
+**Vergleich immer wahr oder immer falsch** · Bug · Warnung · Gruppe Compiler vorab
+
+Vergleich einer Variablen, eines Feldes, einer Property oder eines Funktionsergebnisses vom eingebauten Ganzzahltyp mit einer Konstanten außerhalb bzw. am Rand des Wertebereichs (wie W1021, W1022): Cardinal >= 0 ist immer wahr, Byte > 255 immer falsch. Ebenso case-Marken außerhalb des Bereichs des case-Ausdrucks (wie W1018). Gemeldet wird nur bei sicher bekanntem Typ, dessen Deklaration immer mit dem Vergleich übersetzt wird. NativeInt, LongInt und ihre vorzeichenlosen Gegenstücke gelten mit dem weitesten Bereich aller Plattformen; Teilbereichstypen und Length(…) meldet die Regel nicht, weil dcc dort nicht warnt.
+
+Entspricht der Compilermeldung `W1021`, `W1022`, `W1018`.
+
+Mit Treffer:
+
+```pascal
+while Rest >= 0 do  // Rest: Cardinal
+```
+
+Richtig:
+
+```pascal
+while Rest > 0 do
 ```

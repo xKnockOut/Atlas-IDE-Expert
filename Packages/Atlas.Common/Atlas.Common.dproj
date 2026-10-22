@@ -350,6 +350,7 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Recursion.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.OrdinalConstants.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ConstantValues.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ConditionalBranches.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.DirectiveNames.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.pas"/>
@@ -388,6 +389,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Database.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Directives.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Properties.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypedExpressions.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.pas"/>

@@ -2313,6 +2313,21 @@ begin
     '        "E2129",' + #10 +
     '        "E2130"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "comparison-always-constant",' + #10 +
+    '      "name": "Comparison always true or always false",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A comparison of a variable, field, property or function result of a built-in integer type with a constant outside or at the edge of its value range (like W1021, W1022): Cardinal ' + '>= 0 is always true, Byte > 255 always false. Case labels outside the range of the case expression are reported as well (like W1018). The rule only reports when the type is known for sure and its decl' + 'aration is always compiled together with the comparison. NativeInt, LongInt and their unsigned counterparts count with the widest range of all platforms; subrange types and Length(...) are not reporte' + 'd because dcc does not warn there.",' + #10 +
+    '      "bad": "while Rest >= 0 do  // Rest: Cardinal",' + #10 +
+    '      "good": "while Rest > 0 do",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1021",' + #10 +
+    '        "W1022",' + #10 +
+    '        "W1018"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3483,6 +3498,11 @@ begin
     '      "id": "readonly-property-assigned",' + #10 +
     '      "name": "Zuweisung an eine Property ohne write",' + #10 +
     '      "description": "Zuweisung an eine Property ohne write (wie E2129) bzw. Lesen einer Property ohne read (wie E2130). Die Regel meldet nur, wenn die Namensauflösung die Property sicher findet; Neud' + 'eklarationen ohne read und write (property Caption;) gelten als unbekannt. Korrekturen: Count := 0 wird Clear, wenn der Typ Clear hat; in einer Methode der deklarierenden Klasse das Feld hinter read z' + 'uweisen; für eine Property dieser Datei den Setter anlegen und write ergänzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "comparison-always-constant",' + #10 +
+    '      "name": "Vergleich immer wahr oder immer falsch",' + #10 +
+    '      "description": "Vergleich einer Variablen, eines Feldes, einer Property oder eines Funktionsergebnisses vom eingebauten Ganzzahltyp mit einer Konstanten außerhalb bzw. am Rand des Wertebereichs ' + '(wie W1021, W1022): Cardinal >= 0 ist immer wahr, Byte > 255 immer falsch. Ebenso case-Marken außerhalb des Bereichs des case-Ausdrucks (wie W1018). Gemeldet wird nur bei sicher bekanntem Typ, dessen ' + 'Deklaration immer mit dem Vergleich übersetzt wird. NativeInt, LongInt und ihre vorzeichenlosen Gegenstücke gelten mit dem weitesten Bereich aller Plattformen; Teilbereichstypen und Length(…) meldet d' + 'ie Regel nicht, weil dcc dort nicht warnt."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

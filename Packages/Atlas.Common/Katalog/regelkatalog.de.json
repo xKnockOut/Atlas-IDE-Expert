@@ -1158,6 +1158,11 @@
       "id": "readonly-property-assigned",
       "name": "Zuweisung an eine Property ohne write",
       "description": "Zuweisung an eine Property ohne write (wie E2129) bzw. Lesen einer Property ohne read (wie E2130). Die Regel meldet nur, wenn die Namensauflösung die Property sicher findet; Neudeklarationen ohne read und write (property Caption;) gelten als unbekannt. Korrekturen: Count := 0 wird Clear, wenn der Typ Clear hat; in einer Methode der deklarierenden Klasse das Feld hinter read zuweisen; für eine Property dieser Datei den Setter anlegen und write ergänzen."
+    },
+    {
+      "id": "comparison-always-constant",
+      "name": "Vergleich immer wahr oder immer falsch",
+      "description": "Vergleich einer Variablen, eines Feldes, einer Property oder eines Funktionsergebnisses vom eingebauten Ganzzahltyp mit einer Konstanten außerhalb bzw. am Rand des Wertebereichs (wie W1021, W1022): Cardinal >= 0 ist immer wahr, Byte > 255 immer falsch. Ebenso case-Marken außerhalb des Bereichs des case-Ausdrucks (wie W1018). Gemeldet wird nur bei sicher bekanntem Typ, dessen Deklaration immer mit dem Vergleich übersetzt wird. NativeInt, LongInt und ihre vorzeichenlosen Gegenstücke gelten mit dem weitesten Bereich aller Plattformen; Teilbereichstypen und Length(…) meldet die Regel nicht, weil dcc dort nicht warnt."
     }
   ]
 }

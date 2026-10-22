@@ -49,7 +49,7 @@
 //                     Zwei Marken einer case-Anweisung (wie E2030) bzw. eines
 //                     varianten Record-Teils (wie E2027) decken denselben Wert ab,
 //                     auch über Bereiche und Konstanten (#983). Die Werte rechnet
-//                     Semantics.OrdinalConstants aus, Namen löst TNameResolver auf;
+//                     Semantics.ConstantValues aus, Namen löst TNameResolver auf;
 //                     Unbekanntes vergleicht die Regel nur über den Text. Die
 //                     Korrektur entfernt den späteren Wert bzw. dessen Zweig.
 //                     Bedingte Zweige über Pascal.ConditionalBranches: gemeldet
@@ -200,8 +200,7 @@ uses
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.OrdinalConstants,
-  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.RoutineBody,
@@ -1934,214 +1933,6 @@ begin
   Visit(AContext.Tree.Root);
 end;
 
-{ TCaseLabelValues }
-
-type
-  /// <summary>Werte der Marken einer case-Anweisung bzw. eines varianten Teils (#983): Zahlen,
-  /// Zeichen, Konstanten und Aufzählungswerte über die Namensauflösung.</summary>
-  TCaseLabelValues = class
-  private
-    FTree: TSyntaxTree;
-    FTokens: TTokens;
-    FFileName: string;
-    FIndex: ISymbolIndex;
-    FResolver: TNameResolver;
-    FLookup: TOrdinalNameLookup;
-    FDepth: Integer;
-    function OwnerUnit(const ASymbol: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
-    function TokenAt(const APosition: TTextPosition): Integer;
-    function EnumOrdinal(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
-    function ConstantValue(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
-    function ForeignValue(const AOwner: TUnitIndex; const ASymbol: TIndexSymbol; out AValue: Int64): Boolean;
-  public
-    constructor Create(ATree: TSyntaxTree; const AFileName: string; const AIndex: ISymbolIndex;
-      AResolver: TNameResolver);
-    function NameValue(const ANames: TArray<string>; ATokenIndex: Integer; out AValue: Int64): Boolean;
-    function Evaluate(AFirst, ALast: Integer; out AValue: Int64): Boolean;
-  end;
-
-constructor TCaseLabelValues.Create(ATree: TSyntaxTree; const AFileName: string; const AIndex: ISymbolIndex;
-  AResolver: TNameResolver);
-begin
-  inherited Create;
-  FTree := ATree;
-  FTokens := ATree.Tokens;
-  FFileName := AFileName;
-  FIndex := AIndex;
-  FResolver := AResolver;
-  // Fängt nur Self, keinen Verweis auf sich selbst.
-  FLookup :=
-    function(const ANames: TArray<string>; ATokenIndex: Integer; out AValue: Int64): Boolean
-    begin
-      Result := NameValue(ANames, ATokenIndex, AValue);
-    end;
-end;
-
-function TCaseLabelValues.Evaluate(AFirst, ALast: Integer; out AValue: Int64): Boolean;
-begin
-  Result := TOrdinalConstants.Evaluate(FTokens, AFirst, ALast, FLookup, AValue);
-end;
-
-function TCaseLabelValues.OwnerUnit(const ASymbol: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
-begin
-  if (ASymbol.Kind = TResolvedKind.Local) or (ASymbol.FileName = '') or SameText(ASymbol.FileName, FFileName) then
-  begin
-    AUnit := FResolver.ExtractedUnit(FTree, FFileName);
-    Exit(True);
-  end;
-  Result := (FIndex <> nil) and FIndex.FindFile(ASymbol.FileName, AUnit);
-end;
-
-function TCaseLabelValues.TokenAt(const APosition: TTextPosition): Integer;
-var
-  Low, High, Middle: Integer;
-begin
-  // Erstes Token, das an APosition oder dahinter beginnt.
-  Low := 0;
-  High := Length(FTokens);
-  while Low < High do
-  begin
-    Middle := (Low + High) div 2;
-    if (FTokens[Middle].StartPos.Line < APosition.Line) or ((FTokens[Middle].StartPos.Line = APosition.Line) and
-      (FTokens[Middle].StartPos.Character < APosition.Character)) then
-      Low := Middle + 1
-    else
-      High := Middle;
-  end;
-  Result := Low;
-end;
-
-function TCaseLabelValues.EnumOrdinal(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
-var
-  Owner: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Position: Int64;
-  Signature: string;
-begin
-  // Position in der Aufzählung; mit eigenen Werten (a = 3) nur über den Namen vergleichbar.
-  Result := False;
-  AValue := 0;
-  if (ASymbol.Container = '') or not OwnerUnit(ASymbol, Owner) then
-    Exit;
-  for Symbol in Owner.Symbols do
-    if (Symbol.Kind = TIndexSymbolKind.EnumType) and SameText(Symbol.QualifiedName, ASymbol.Container) then
-    begin
-      Signature := Symbol.Signature;
-      if (Signature = '') or (Pos('=', Copy(Signature, Pos('(', Signature) + 1, MaxInt)) > 0) or
-        Signature.EndsWith('…') then
-        Exit;
-    end;
-  Position := 0;
-  for Symbol in Owner.Symbols do
-    if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, ASymbol.Container) then
-    begin
-      if SameText(Symbol.Name, ASymbol.Name) then
-      begin
-        AValue := Position;
-        Exit(True);
-      end;
-      Inc(Position);
-    end;
-end;
-
-function TCaseLabelValues.ForeignValue(const AOwner: TUnitIndex; const ASymbol: TIndexSymbol;
-  out AValue: Int64): Boolean;
-var
-  Tokens: TTokens;
-  Index, Last: Integer;
-  Lookup: TOrdinalNameLookup;
-  Owner: TUnitIndex;
-begin
-  // "Max = Basis + 1" aus der Signatur; Namen darin gelten in der Unit der Konstanten.
-  Result := False;
-  AValue := 0;
-  if ASymbol.Signature.EndsWith('…') then
-    Exit;
-  Tokens := TPascalLexer.Tokenize(ASymbol.Signature);
-  Index := DepthZero(Tokens, 0, Length(Tokens), '=', False);
-  if Index < 0 then
-    Exit;
-  Last := High(Tokens);
-  if (Last > Index) and Tokens[Last].IsSymbol(';') then
-    Dec(Last);
-  Owner := AOwner;
-  Lookup :=
-    function(const AParts: TArray<string>; AAt: Integer; out AResult: Int64): Boolean
-    var
-      Resolved: TResolvedSymbol;
-    begin
-      AResult := 0;
-      Result := (Length(AParts) = 1) and FResolver.ResolveNameFrom(Owner, AParts[0], Resolved) and
-        Resolved.Found;
-      if not Result then
-        Exit;
-      if Resolved.SymbolKind = TIndexSymbolKind.EnumMember then
-        Result := EnumOrdinal(Resolved, AResult)
-      else if Resolved.SymbolKind = TIndexSymbolKind.Constant then
-        Result := ConstantValue(Resolved, AResult)
-      else
-        Result := False;
-    end;
-  Result := TOrdinalConstants.Evaluate(Tokens, Index + 1, Last, Lookup, AValue);
-end;
-
-function TCaseLabelValues.ConstantValue(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
-var
-  Owner: TUnitIndex;
-  Symbol: TIndexSymbol;
-  First, Last, Equals: Integer;
-begin
-  Result := False;
-  AValue := 0;
-  // Konstanten, die aufeinander verweisen, enden hier.
-  if FDepth >= 8 then
-    Exit;
-  Inc(FDepth);
-  try
-    if (ASymbol.Kind = TResolvedKind.Local) or (ASymbol.FileName = '') or SameText(ASymbol.FileName, FFileName) then
-    begin
-      // Deklaration im eigenen Baum: Ausdruck hinter "=" bis vor das Semikolon.
-      First := TokenAt(ASymbol.Range.StartPos);
-      Last := TokenAt(ASymbol.Range.EndPos) - 1;
-      if (First > High(FTokens)) or (Last < First) then
-        Exit;
-      if FTokens[Last].IsSymbol(';') then
-        Dec(Last);
-      Equals := DepthZero(FTokens, First, Last + 1, '=', False);
-      if Equals < 0 then
-        Exit;
-      Result := Evaluate(Equals + 1, Last, AValue);
-      Exit;
-    end;
-    if not OwnerUnit(ASymbol, Owner) then
-      Exit;
-    for Symbol in Owner.Symbols do
-      if (Symbol.Kind = TIndexSymbolKind.Constant) and SameText(Symbol.Name, ASymbol.Name) and
-        (Symbol.Range.StartPos.Line = ASymbol.Range.StartPos.Line) and
-        (Symbol.Range.StartPos.Character = ASymbol.Range.StartPos.Character) then
-        Exit(ForeignValue(Owner, Symbol, AValue));
-  finally
-    Dec(FDepth);
-  end;
-end;
-
-function TCaseLabelValues.NameValue(const ANames: TArray<string>; ATokenIndex: Integer; out AValue: Int64): Boolean;
-var
-  Resolved: TResolvedSymbol;
-begin
-  Result := False;
-  AValue := 0;
-  if (ATokenIndex < 0) or (ATokenIndex > High(FTokens)) then
-    Exit;
-  Resolved := FResolver.ResolveChain(FTree, FFileName, ANames, FTokens[ATokenIndex].Offset);
-  if not Resolved.Found then
-    Exit;
-  if Resolved.SymbolKind = TIndexSymbolKind.EnumMember then
-    Result := EnumOrdinal(Resolved, AValue)
-  else if Resolved.SymbolKind = TIndexSymbolKind.Constant then
-    Result := ConstantValue(Resolved, AValue);
-end;
-
 { TDuplicateCaseLabelRule }
 
 type
@@ -2168,7 +1959,7 @@ end;
 procedure TDuplicateCaseLabelRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Tokens: TTokens;
-  Values: TCaseLabelValues;
+  Values: TConstantValues;
   Paths: TArray<string>;
 
   function LabelText(const ALabel: TCaseLabel): string;
@@ -2375,7 +2166,7 @@ begin
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
-      Values := TCaseLabelValues.Create(AContext.Tree, FileName, AContext.Index, Resolver);
+      Values := TConstantValues.Create(AContext.Tree, FileName, AContext.Index, Resolver);
       try
         Visit(AContext.Tree.Root);
       finally
