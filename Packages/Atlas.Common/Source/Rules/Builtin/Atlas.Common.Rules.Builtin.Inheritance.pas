@@ -12,6 +12,8 @@
 //   override-target-missing             override ohne passende virtuelle Methode im Vorfahren (E2137),
 //                                       auf eine statische (E2170) oder finale (E2352), Ableiten von
 //                                       einer sealed-Klasse (E2353) (#997)
+//   abstract-class-instantiated         Create auf einer Klasse mit offenen abstrakten Methoden (W1020)
+//                                       oder einer abstract-Klasse (E2402) (#999)
 //
 // Vorfahren werden zuerst in der Datei, dann im Symbolindex gesucht (auch RTL
 // und VCL, soweit eingelesen). Ist ein Vorfahr nicht auflösbar oder mehrdeutig,
@@ -71,6 +73,8 @@ type
     /// <summary>Vorfahren von ATypeName vom direkten an aufwärts (#997). AComplete: die Kette reicht bis TObject;
     /// AObjectMissing: TObject selbst steht weder in der Datei noch im Index.</summary>
     function Ancestors(const ATypeName: string; out AComplete, AObjectMissing: Boolean): TArray<TSymbolLocation>;
+    /// <summary>Klasse AName aus der Datei oder eindeutig aus dem Index (#999).</summary>
+    function FindClass(const AName: string; out AType: TSymbolLocation): Boolean;
     /// <summary>Methoden, Konstruktoren und Destruktoren der Klasse AType (#997).</summary>
     function Methods(const AType: TSymbolLocation): TArray<TIndexSymbol>;
     /// <summary>Ist AName in der Datei oder im Index als Typalias deklariert (type TModus = Integer)?</summary>
@@ -117,6 +121,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TAbstractClassInstantiatedRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -130,6 +140,8 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Unused,
+  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Editing.ClassActions,
   Atlas.Text.Fuzzy;
 
 function TMethodDecl.Has(const ADirective: string): Boolean;
@@ -268,6 +280,11 @@ begin
       Name := BareName(Location.Symbol.Ancestors[0]);
     Inc(Depth);
   end;
+end;
+
+function TAncestry.FindClass(const AName: string; out AType: TSymbolLocation): Boolean;
+begin
+  Result := FindType(AName, AType);
 end;
 
 function TAncestry.IsDeclaredType(const AName: string): Boolean;
@@ -1558,6 +1575,181 @@ begin
   end;
 end;
 
+{ TAbstractClassInstantiatedRule }
+
+function TAbstractClassInstantiatedRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('abstract-class-instantiated', TRuleSeverity.Warning,
+    'Instanz einer Klasse mit abstrakten Methoden');
+end;
+
+/// <summary>Steht abstract in der Signatur einer Klasse ("TForm = class abstract(TBasis)")?</summary>
+function IsAbstractClass(const ASymbol: TIndexSymbol): Boolean;
+var
+  Words: TArray<string>;
+  Index: Integer;
+begin
+  Words := LowerCase(ASymbol.Signature).Split([' ', '(', ')', '<', '>', '=', ';'], TStringSplitOptions.ExcludeEmpty);
+  for Index := 0 to High(Words) - 1 do
+    if (Words[Index] = 'class') and (Words[Index + 1] = 'abstract') then
+      Exit(True);
+  Result := False;
+end;
+
+procedure TAbstractClassInstantiatedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+const
+  MaxNamed = 5;
+var
+  Cache: IRuleDerivedCache;
+  Ancestry: TAncestry;
+  Tokens: TArray<TPascalToken>;
+  Actions: TClassActionContext;
+
+  /// <summary>Abstrakte Methoden von AType und seinen Vorfahren, die keine nähere Stufe neu deklariert.</summary>
+  function OpenMethods(const AType: TSymbolLocation; out AOwners: TArray<string>): TArray<TIndexSymbol>;
+  var
+    Chain: TArray<TSymbolLocation>;
+    Location: TSymbolLocation;
+    Symbol: TIndexSymbol;
+    Seen, Level: TArray<string>;
+    Key: string;
+    Complete, ObjectMissing: Boolean;
+  begin
+    Result := nil;
+    AOwners := nil;
+    Seen := nil;
+    Chain := [AType] + Ancestry.Ancestors(AType.Symbol.Name, Complete, ObjectMissing);
+    for Location in Chain do
+    begin
+      Level := nil;
+      for Symbol in Ancestry.Methods(Location) do
+      begin
+        // Überladungen unterscheidet die Zahl der Parameter; gleich viele gelten als dieselbe Methode.
+        Key := LowerCase(Symbol.Name) + '/' + IntToStr(Symbol.MaxArgs);
+        if Symbol.HasDirective('abstract') and (IndexText(Key, Seen) < 0) then
+        begin
+          Result := Result + [Symbol];
+          AOwners := AOwners + [Location.Symbol.Name];
+        end;
+        Level := Level + [Key];
+      end;
+      Seen := Seen + Level;
+    end;
+  end;
+
+  /// <summary>Klassenname vor ".Create" an Token AIndex (dem Punkt); -1 ohne.</summary>
+  function ClassBefore(ADot: Integer): Integer;
+  var
+    Index, Depth: Integer;
+  begin
+    Index := ADot - 1;
+    // TListe<T>.Create
+    if (Index >= 0) and (Tokens[Index].Text = '>') then
+    begin
+      Depth := 0;
+      while Index >= 0 do
+      begin
+        if Tokens[Index].Text = '>' then
+          Inc(Depth)
+        else if Tokens[Index].Text = '<' then
+        begin
+          Dec(Depth);
+          if Depth = 0 then
+            Break;
+        end;
+        Dec(Index);
+      end;
+      Dec(Index);
+    end;
+    Result := -1;
+    if (Index < 0) or (Tokens[Index].Kind <> TPascalTokenKind.Identifier) then
+      Exit;
+    // constructor TForm.Create: der Kopf eines Rumpfs.
+    if (Index > 0) and (Tokens[Index - 1].Kind = TPascalTokenKind.Keyword) and MatchText(Tokens[Index - 1].Text,
+      ['constructor', 'procedure', 'function', 'destructor']) then
+      Exit;
+    Result := Index;
+  end;
+
+  procedure CheckCall(AName, ACreate: Integer);
+  var
+    Location: TSymbolLocation;
+    Open: TArray<TIndexSymbol>;
+    Owners, Names: TArray<string>;
+    Index: Integer;
+    Range: TTextRange;
+    Fixes: TArray<TRuleFix>;
+    Action: TCodeAction;
+    Listed: string;
+  begin
+    if not Ancestry.FindClass(Tokens[AName].Text, Location) then
+      Exit;
+    Range := TTextRange.Create(Tokens[AName].StartPos, Tokens[ACreate].EndPos);
+    if IsAbstractClass(Location.Symbol) then
+    begin
+      AReport.Add(Range, Format('%s ist als abstract deklariert; davon lässt sich keine Instanz erzeugen ' +
+        '(wie E2402).', [Location.Symbol.Name]), TRuleConfidence.High);
+      Exit;
+    end;
+    Open := OpenMethods(Location, Owners);
+    if Open = nil then
+      Exit;
+    Names := nil;
+    Fixes := nil;
+    for Index := 0 to High(Open) do
+    begin
+      if Length(Names) < MaxNamed then
+        if SameText(Owners[Index], Location.Symbol.Name) then
+          Names := Names + [Open[Index].Name]
+        else
+          Names := Names + [Owners[Index] + '.' + Open[Index].Name];
+      // Geerbte abstrakte Methoden einer Klasse dieser Datei: dort überschreiben.
+      if (Location.FileName = '') and not SameText(Owners[Index], Location.Symbol.Name) and
+        TClassActions.OverrideMethod(AContext.Text, Location.Symbol.Range.StartPos.Line, Open[Index].Name, Actions,
+        Action) then
+        Fixes := Fixes + [TRuleFix.Create(Format('%s in %s überschreiben', [Open[Index].Name,
+          Location.Symbol.Name]), Action.Edits)];
+    end;
+    for Index := 1 to High(Fixes) do
+      Fixes[Index].Alternative := True;
+    Listed := string.Join(', ', Names);
+    if Length(Open) > MaxNamed then
+      Listed := Listed + Format(' und %d weitere', [Length(Open) - MaxNamed]);
+    if Length(Open) = 1 then
+      AReport.Add(Range, Format('%s hat die abstrakte Methode %s; der Aufruf löst EAbstractError aus (wie W1020).',
+        [Location.Symbol.Name, Listed]), TRuleConfidence.High, Fixes)
+    else
+      AReport.Add(Range, Format('%s hat die abstrakten Methoden %s; ihr Aufruf löst EAbstractError aus ' +
+        '(wie W1020).', [Location.Symbol.Name, Listed]), TRuleConfidence.High, Fixes);
+  end;
+
+var
+  Index, Name: Integer;
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Cache := TRuleDerived.Open(AContext);
+  Tokens := TRuleDerived.CodeTokens(Cache, AContext);
+  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
+  try
+    Actions := TClassActionContext.Default;
+    Actions.Index := AContext.Index;
+    Actions.Namespaces := AContext.Namespaces;
+    Actions.DelphiVersion := AContext.DelphiVersion;
+    Actions.Style := AContext.Formatting;
+    for Index := 1 to High(Tokens) do
+      if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, 'Create') and
+        (Tokens[Index - 1].Text = '.') then
+      begin
+        Name := ClassBefore(Index - 1);
+        if Name >= 0 then
+          CheckCall(Name, Index);
+      end;
+  finally
+    Ancestry.Free;
+  end;
+end;
+
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDestroyWithoutOverrideRule.Create);
@@ -1566,6 +1758,7 @@ begin
   ARegistry.Register(TVirtualInsteadOfOverrideRule.Create);
   ARegistry.Register(TShadowedNameRule.Create);
   ARegistry.Register(TOverrideTargetMissingRule.Create);
+  ARegistry.Register(TAbstractClassInstantiatedRule.Create);
 end;
 
 end.

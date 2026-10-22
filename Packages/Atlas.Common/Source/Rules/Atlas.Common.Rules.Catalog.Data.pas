@@ -2249,6 +2249,20 @@ begin
     '        "E2352",' + #10 +
     '        "E2353"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "abstract-class-instantiated",' + #10 +
+    '      "name": "Instance of a class with abstract methods",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Create on a class that declares or inherits abstract methods without overriding them (like W1020), or on a class declared abstract (like E2402). Calling an abstract method raises' + ' EAbstractError at run time; the message names the open methods. Classes are looked up in the file and in the symbol index; overloads with the same number of parameters count as one method. Calls on c' + 'lass references, inherited Create and constructor bodies are not checked. Quick fix for a class of this file that inherits the abstract methods: override them there (like the code action \"override\")' + '.",' + #10 +
+    '      "bad": "Form := TForm.Create;\nGesamt := Gesamt + Form.Flaeche;",' + #10 +
+    '      "good": "Form := TKreis.Create;\nGesamt := Gesamt + Form.Flaeche;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1020",' + #10 +
+    '        "E2402"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3399,6 +3413,11 @@ begin
     '      "id": "override-target-missing",' + #10 +
     '      "name": "override ohne passende virtuelle Methode",' + #10 +
     '      "description": "Eine Methode mit override, zu der kein Vorfahr eine virtuelle (oder dynamic, abstract) Methode mit gleichem Namen und gleichen Parametern hat (wie E2137): oft ein Tippfehler (Des' + 'tory) oder im Vorfahren geänderte Parameter. Die Meldung nennt die nächstliegende virtuelle Methode des Vorfahren („dort heißt es Ausfuehren(const Modus: TModus)“) bzw. einen ähnlichen Namen. Außerdem' + ': override auf eine statische Methode (wie E2170), auf eine finale (wie E2352) und Ableiten von einer sealed-Klasse (wie E2353). Vorfahren sucht die Regel in der Datei und im Symbolindex; bricht die K' + 'ette an einer unbekannten Klasse ab, bleibt sie still. Ohne System im Index gelten die virtuellen Methoden von TObject als vorhanden. Typparameter generischer Vorfahren, Typaliase und Synonyme wie Lon' + 'gint passen. Korrektur: Signatur des Vorfahren in Deklaration und Implementierung übernehmen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "abstract-class-instantiated",' + #10 +
+    '      "name": "Instanz einer Klasse mit abstrakten Methoden",' + #10 +
+    '      "description": "Create auf einer Klasse, die abstrakte Methoden deklariert oder erbt, ohne sie zu überschreiben (wie W1020), oder auf einer als abstract deklarierten Klasse (wie E2402). Der Aufr' + 'uf einer abstrakten Methode löst zur Laufzeit EAbstractError aus; die Meldung nennt die offenen Methoden. Klassen sucht die Regel in der Datei und im Symbolindex; Überladungen mit gleicher Parameterza' + 'hl gelten als eine Methode. Aufrufe über Klassenreferenzen, inherited Create und Konstruktor-Rümpfe prüft sie nicht. Korrektur für eine Klasse dieser Datei, die die abstrakten Methoden erbt: dort über' + 'schreiben (wie die Code-Aktion „überschreiben“)."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

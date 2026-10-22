@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 11 |
+| [Compiler vorab](#gruppe-compiler) | 12 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -142,6 +142,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`duplicate-declaration`](#duplicate-declaration) | Bezeichner doppelt deklariert | Bug | Fehler |
 | [`conditional-directive-unbalanced`](#conditional-directive-unbalanced) | Bedingte Direktiven unvollständig oder unbekannt | Bug | Fehler |
 | [`override-target-missing`](#override-target-missing) | override ohne passende virtuelle Methode | Bug | Fehler |
+| [`abstract-class-instantiated`](#abstract-class-instantiated) | Instanz einer Klasse mit abstrakten Methoden | Bug | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4437,4 +4438,27 @@ TImportDienst = class(TDienst)
 protected
   procedure Ausfuehren(const Modus: TModus); override;
 end;
+```
+
+<a id="abstract-class-instantiated"></a>
+### abstract-class-instantiated
+
+**Instanz einer Klasse mit abstrakten Methoden** · Bug · Warnung · Gruppe Compiler vorab
+
+Create auf einer Klasse, die abstrakte Methoden deklariert oder erbt, ohne sie zu überschreiben (wie W1020), oder auf einer als abstract deklarierten Klasse (wie E2402). Der Aufruf einer abstrakten Methode löst zur Laufzeit EAbstractError aus; die Meldung nennt die offenen Methoden. Klassen sucht die Regel in der Datei und im Symbolindex; Überladungen mit gleicher Parameterzahl gelten als eine Methode. Aufrufe über Klassenreferenzen, inherited Create und Konstruktor-Rümpfe prüft sie nicht. Korrektur für eine Klasse dieser Datei, die die abstrakten Methoden erbt: dort überschreiben (wie die Code-Aktion „überschreiben“).
+
+Entspricht der Compilermeldung `W1020`, `E2402`.
+
+Mit Treffer:
+
+```pascal
+Form := TForm.Create;
+Gesamt := Gesamt + Form.Flaeche;
+```
+
+Richtig:
+
+```pascal
+Form := TKreis.Create;
+Gesamt := Gesamt + Form.Flaeche;
 ```

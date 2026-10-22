@@ -55,6 +55,16 @@ type
     procedure OverrideTargetFromIndex;
     [Test]
     procedure OverrideTargetOptions;
+    [Test]
+    procedure AbstractInstantiatedIssueExample;
+    [Test]
+    procedure AbstractInstantiatedInheritedWithFix;
+    [Test]
+    procedure AbstractInstantiatedAbstractClassAndIndex;
+    [Test]
+    procedure AbstractInstantiatedSilentCases;
+    [Test]
+    procedure AbstractInstantiatedOptions;
   end;
 
 implementation
@@ -512,6 +522,111 @@ begin
     '{"rules": {"group:compiler": "off"}}', 'U.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Source,
     '{"rules": {"override-target-missing": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+end;
+
+function Formen(const AKreis, ABody: string): string;
+begin
+  Result := 'unit Formen;'#10'interface'#10'type'#10'  TForm = class'#10'  public'#10 +
+    '    function Flaeche: Double; virtual; abstract;'#10'    function Name: string; virtual;'#10'  end;'#10 +
+    '  TKreis = class(TForm)'#10'  public'#10 + AKreis + '  end;'#10'implementation'#10 +
+    'function TForm.Name: string;'#10'begin'#10'  Result := '''';'#10'end;'#10 +
+    'procedure Rechnen;'#10'var'#10'  Form: TForm;'#10'  Gesamt: Double;'#10'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+procedure TInheritanceRulesTests.AbstractInstantiatedIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, Formen('',
+    '  Form := TForm.Create;'#10'  Gesamt := Gesamt + Form.Flaeche;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TForm hat die abstrakte Methode Flaeche; der Aufruf löst EAbstractError aus (wie W1020).',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(21, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(10, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(22, Findings[0].Range.EndPos.Character);
+  // Die korrigierte Form: eine konkrete Unterklasse.
+  TRuleAssert.Silent(TAbstractClassInstantiatedRule.Create, Formen(
+    '    function Flaeche: Double; override;'#10, '  Form := TKreis.Create;'#10));
+end;
+
+procedure TInheritanceRulesTests.AbstractInstantiatedInheritedWithFix;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, Formen(
+    '    function Name: string; override;'#10, '  Form := TKreis.Create;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TKreis hat die abstrakte Methode TForm.Flaeche; der Aufruf löst EAbstractError aus (wie W1020).',
+    Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Flaeche in TKreis überschreiben', Findings[0].Fixes[0].Title);
+  Assert.IsTrue(Pos('function Flaeche: Double; override;', Findings[0].Fixes[0].Edits[0].NewText) > 0,
+    Findings[0].Fixes[0].Edits[0].NewText);
+  // Mehrere offene Methoden in einer Meldung.
+  Findings := TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TA = class'#10'  public'#10'    procedure Eins; virtual; abstract;'#10 +
+    '    procedure Zwei(X: Integer); virtual; abstract;'#10'  end;'#10'implementation'#10 +
+    'procedure P;'#10'begin'#10'  TA.Create.Free;'#10'end;'#10'end.');
+  Assert.AreEqual('TA hat die abstrakten Methoden Eins, Zwei; ihr Aufruf löst EAbstractError aus (wie W1020).',
+    Findings[0].Message);
+end;
+
+procedure TInheritanceRulesTests.AbstractInstantiatedAbstractClassAndIndex;
+const
+  ListenSource = 'unit Listen;'#10'interface'#10'type'#10'  TListe = class'#10'  protected'#10 +
+    '    function Get(Index: Integer): string; virtual; abstract;'#10'  end;'#10 +
+    '  TFeste = class(TListe)'#10'  protected'#10'    function Get(Index: Integer): string; override;'#10 +
+    '  end;'#10'implementation'#10'function TFeste.Get(Index: Integer): string;'#10'begin'#10'end;'#10'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TBasis = class abstract'#10'  end;'#10'implementation'#10'procedure P;'#10'begin'#10 +
+    '  TBasis.Create.Free;'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TBasis ist als abstract deklariert; davon lässt sich keine Instanz erzeugen (wie E2402).',
+    Findings[0].Message);
+  // Klassen aus dem Index; geerbte Methoden fremder Units ohne Korrektur.
+  Findings := Run(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'uses Listen;'#10 +
+    'implementation'#10'procedure P;'#10'begin'#10'  TListe.Create.Free;'#10'  TFeste.Create.Free;'#10'end;'#10 +
+    'end.', IndexWith([ListenSource]));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TListe hat die abstrakte Methode Get; der Aufruf löst EAbstractError aus (wie W1020).',
+    Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TInheritanceRulesTests.AbstractInstantiatedSilentCases;
+begin
+  // Konstruktor-Rumpf, inherited, unbekannte Klasse, Klassenreferenz.
+  TRuleAssert.Silent(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TA = class'#10'  public'#10'    constructor Create;'#10'    procedure Eins; virtual; abstract;'#10 +
+    '  end;'#10'  TAKlasse = class of TA;'#10'implementation'#10'constructor TA.Create;'#10'begin'#10 +
+    '  inherited Create;'#10'end;'#10'procedure P(K: TAKlasse);'#10'begin'#10'  K.Create.Free;'#10 +
+    '  TUnbekannt.Create.Free;'#10'end;'#10'end.');
+  // Überschrieben in einer Zwischenklasse; Überladung mit gleicher Parameterzahl.
+  TRuleAssert.Silent(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TA = class'#10'  public'#10'    procedure Eins(X: Integer); virtual; abstract;'#10'  end;'#10 +
+    '  TB = class(TA)'#10'  public'#10'    procedure Eins(X: Integer); override;'#10'  end;'#10 +
+    '  TC = class(TB)'#10'  end;'#10'implementation'#10'procedure TB.Eins(X: Integer);'#10'begin'#10'end;'#10 +
+    'procedure P;'#10'begin'#10'  TC.Create.Free;'#10'end;'#10'end.');
+end;
+
+procedure TInheritanceRulesTests.AbstractInstantiatedOptions;
+var
+  Source: string;
+begin
+  Source := Formen('', '  Form := TForm.Create;'#10);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, Source, '',
+    'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, Source,
+    '{"rules": {"abstract-class-instantiated": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, Source,
+    '{"rules": {"group:compiler": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, Source,
+    '{"rules": {"abstract-class-instantiated": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
 initialization
