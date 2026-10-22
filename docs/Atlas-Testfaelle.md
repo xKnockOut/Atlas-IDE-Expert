@@ -4149,7 +4149,8 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | QD3 | `procedure Rand(const Links, Rechts: Integer = 4);` und Schnellkorrektur | „Links, Rechts: Standardwerte gibt es nur für einzeln deklarierte Parameter (wie E2237).“; danach `const Links: Integer = 4; const Rechts: Integer = 4` |
 | QD4 | `procedure Zaehlen(var Anzahl: Integer = 0);`, `out Fehler: string = ''` | „Anzahl ist ein var-Parameter und kann keinen Standardwert haben (wie E2239).“ bzw. out |
 | QD5 | `procedure Zeigen(const Ort: TPoint = …);` mit einem Record | „Parameter vom Typ TPoint können keinen Standardwert haben (wie E2268).“ |
+| QD10 | `type TZeichen = set of AnsiChar;` und `procedure Trennen(Zeichen: TZeichen = ['a']);`, ebenso `set of 0..40` | Fehler „TZeichen ist eine Menge über 4 Byte; Standardwerte gibt es nur für ordinale, Zeiger- und kleine Mengentypen (wie E2146).“ (mittlere Konfidenz); `set of TFarbe` mit drei Werten und `set of 0..31` still |
 | QD6 | `type TRechnen = procedure(A: Integer = 1; B: Integer);` | Meldung wie QD1 an `B` |
 | QD7 | Standardwerte am Ende, `Double = 0.5`, `TZiel = nil`, Implementierung ohne Standardwerte | Keine Meldung |
 | QD8 | `"default-parameter-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
-| QD9 | Abgleich mit Delphi: QD1, QD3 bis QD6 übersetzen | dcc meldet E2238, E2237, E2239 bzw. E2268 an denselben Stellen, für QD7 nichts |
+| QD9 | Abgleich mit Delphi: QD1, QD3 bis QD6 und QD10 übersetzen | dcc meldet E2238, E2237, E2239, E2268 bzw. E2146 an denselben Stellen, für QD7 und die kleinen Mengen aus QD10 nichts; meldet dcc bei QD10 nichts, die Mengenprüfung in der Regel entfernen und im Issue vermerken |

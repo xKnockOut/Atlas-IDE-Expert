@@ -2337,14 +2337,15 @@ begin
     '      "category": "bug",' + #10 +
     '      "severity": "error",' + #10 +
     '      "group": "compiler",' + #10 +
-    '      "description": "Default values the compiler rejects: several names sharing one default value (A, B: Integer = 0, like E2237), a parameter without a default value after one with a default value (' + 'like E2238), var and out parameters with a default value (like E2239) and records or static arrays with a default value (like E2268). Applies to routines, methods and procedural types. Quick fixes: de' + 'clare the parameters one by one; move the parameters with a default value to the end, also in the matching declaration or implementation header of the same file (calls are not changed).",' + #10 +
+    '      "description": "Default values the compiler rejects: several names sharing one default value (A, B: Integer = 0, like E2237), a parameter without a default value after one with a default value (' + 'like E2238), var and out parameters with a default value (like E2239) records or static arrays with a default value (like E2268) and sets larger than 4 bytes with a default value (like E2146, only sma' + 'll sets are allowed; medium confidence). Applies to routines, methods and procedural types. Quick fixes: declare the parameters one by one; move the parameters with a default value to the end, also in' + ' the matching declaration or implementation header of the same file (calls are not changed).",' + #10 +
     '      "bad": "procedure Senden(const Text: string = ''''; Ziel: TZiel);",' + #10 +
     '      "good": "procedure Senden(Ziel: TZiel; const Text: string = '''');",' + #10 +
     '      "compilerCodes": [' + #10 +
     '        "E2237",' + #10 +
     '        "E2238",' + #10 +
     '        "E2239",' + #10 +
-    '        "E2268"' + #10 +
+    '        "E2268",' + #10 +
+    '        "E2146"' + #10 +
     '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
@@ -3525,7 +3526,7 @@ begin
     '    {' + #10 +
     '      "id": "default-parameter-invalid",' + #10 +
     '      "name": "Unzulässiger Standardwert eines Parameters",' + #10 +
-    '      "description": "Standardwerte, die der Compiler ablehnt: mehrere Namen mit einem gemeinsamen Standardwert (A, B: Integer = 0, wie E2237), ein Parameter ohne Standardwert nach einem mit Standardw' + 'ert (wie E2238), var- und out-Parameter mit Standardwert (wie E2239) sowie Records oder statische Arrays mit Standardwert (wie E2268). Gilt für Routinen, Methoden und Prozedurtypen. Korrekturen: Param' + 'eter einzeln deklarieren; Parameter mit Standardwert ans Ende verschieben, auch im zugehörigen Kopf der Deklaration bzw. Implementierung derselben Datei (Aufrufe ändert sie nicht)."' + #10 +
+    '      "description": "Standardwerte, die der Compiler ablehnt: mehrere Namen mit einem gemeinsamen Standardwert (A, B: Integer = 0, wie E2237), ein Parameter ohne Standardwert nach einem mit Standardw' + 'ert (wie E2238), var- und out-Parameter mit Standardwert (wie E2239) Records oder statische Arrays mit Standardwert (wie E2268) sowie Mengen über 4 Byte mit Standardwert (wie E2146, erlaubt sind nur k' + 'leine Mengen; mittlere Konfidenz). Gilt für Routinen, Methoden und Prozedurtypen. Korrekturen: Parameter einzeln deklarieren; Parameter mit Standardwert ans Ende verschieben, auch im zugehörigen Kopf ' + 'der Deklaration bzw. Implementierung derselben Datei (Aufrufe ändert sie nicht)."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

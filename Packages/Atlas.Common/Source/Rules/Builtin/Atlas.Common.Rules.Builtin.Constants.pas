@@ -15,7 +15,9 @@
 //                              (A, B: Integer = 0, E2237), Parameter ohne
 //                              Standardwert nach einem mit (E2238), var- und
 //                              out-Parameter mit Standardwert (E2239), Records
-//                              und statische Arrays mit Standardwert (E2268).
+//                              und statische Arrays mit Standardwert (E2268),
+//                              Mengen über 4 Byte mit Standardwert (E2146, nur
+//                              "kleine Mengen" sind erlaubt; mittlere Konfidenz).
 //                              Korrekturen: Parameter einzeln deklarieren;
 //                              Parameter mit Standardwert ans Ende verschieben,
 //                              auch im zugehörigen Kopf derselben Datei
@@ -57,6 +59,7 @@ procedure RegisterConstantRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  System.StrUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
@@ -548,15 +551,8 @@ var
     Result := True;
   end;
 
-  /// <summary>Records und statische Arrays haben keine Standardwerte (E2268).</summary>
-  function NoDefaultType(ATypeNode: TSyntaxNode; out ATypeName: string): Boolean;
-  var
-    TypeSymbol: TResolvedSymbol;
+  procedure EnsureResolver;
   begin
-    Result := False;
-    ATypeName := ATypeNode.Name;
-    if (ATypeNode.Kind <> TSyntaxKind.TypeReference) or (ATypeNode.ChildCount > 0) or (Pos('<', ATypeName) > 0) then
-      Exit;
     // Erst hier die Namensauflösung: Die meisten Dateien haben keinen Standardwert mit eigenem Typ.
     if Resolver = nil then
     begin
@@ -564,12 +560,90 @@ var
       Resolver.Namespaces := AContext.Namespaces;
       Resolver.PinTree(AContext.Tree, FileName);
     end;
-    TypeSymbol := Resolver.ResolveType(AContext.Tree, FileName, ATypeNode.StartPos);
-    if not TypeSymbol.Found then
+  end;
+
+  /// <summary>Text hinter "=" einer Typsignatur, ohne Semikolon; '' bei gekürzten Signaturen.</summary>
+  function TypeBody(const ASignature: string): string;
+  var
+    Equals: Integer;
+  begin
+    Result := '';
+    Equals := Pos('=', ASignature);
+    if (Equals = 0) or ASignature.EndsWith('…') then
       Exit;
-    Result := (TypeSymbol.SymbolKind = TIndexSymbolKind.RecordType) or
-      ((TypeSymbol.SymbolKind = TIndexSymbolKind.TypeAlias) and
-      (Pos('array[', LowerCase(StringReplace(TypeSymbol.Signature, ' ', '', [rfReplaceAll]))) > 0));
+    Result := Trim(Copy(ASignature, Equals + 1, MaxInt));
+    if Result.EndsWith(';') then
+      Result := Trim(Copy(Result, 1, Length(Result) - 1));
+  end;
+
+  /// <summary>Anzahl der Werte einer Aufzählung "(a, b, c)"; 0, wenn es keine ist.</summary>
+  function EnumCount(const ABody: string): Integer;
+  begin
+    Result := 0;
+    if ABody.StartsWith('(') and ABody.EndsWith(')') then
+      Result := Length(ABody.Split([',']));
+  end;
+
+  /// <summary>Belegt eine Menge mit dem Basistyp ABase sicher mehr als 4 Byte (keine "kleine Menge")?</summary>
+  function LargeBase(const ABase: string): Boolean;
+  var
+    Base: string;
+    Dots: Integer;
+    Lowest, Highest: Int64;
+    Enum: TResolvedSymbol;
+  begin
+    Base := LowerCase(Trim(ABase));
+    if (Base = 'ansichar') or (Base = 'char') or (Base = 'widechar') or (Base = 'byte') or (Base = 'word') then
+      Exit(True);
+    if EnumCount(Base) > 0 then
+      Exit(EnumCount(Base) > 32);
+    Dots := Pos('..', Base);
+    if Dots > 0 then
+    begin
+      // Größe in Byte wie beim Compiler: von Low div 8 bis High div 8.
+      Result := TOrdinalConstants.Evaluate(Copy(ABase, 1, Dots - 1), nil, Lowest) and
+        TOrdinalConstants.Evaluate(Copy(ABase, Dots + 2, MaxInt), nil, Highest) and (Lowest >= 0) and
+        (Highest div 8 - Lowest div 8 + 1 > 4);
+      Exit;
+    end;
+    Result := Resolver.ResolveTypeFrom(Resolver.ExtractedUnit(AContext.Tree, FileName), Trim(ABase), Enum) and
+      (Enum.SymbolKind = TIndexSymbolKind.EnumType) and (EnumCount(TypeBody(Enum.Signature)) > 32);
+  end;
+
+  /// <summary>Typ eines Parameters mit Standardwert; eingebaute einfache Typen (string, Integer …) brauchen
+  /// keine Auflösung.</summary>
+  function ParameterType(ATypeNode: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
+  var
+    Name: string;
+  begin
+    Result := False;
+    Name := LowerCase(ATypeNode.Name);
+    if (ATypeNode.Kind <> TSyntaxKind.TypeReference) or (ATypeNode.ChildCount > 0) or (Pos('<', Name) > 0) or
+      (IndexText(Name, ['string', 'unicodestring', 'ansistring', 'widestring', 'shortstring', 'integer',
+      'cardinal', 'int64', 'uint64', 'nativeint', 'nativeuint', 'byte', 'word', 'smallint', 'shortint',
+      'longint', 'longword', 'boolean', 'char', 'ansichar', 'widechar', 'double', 'single', 'extended',
+      'currency', 'real', 'pointer', 'pchar', 'tobject', 'tclass', 'variant', 'tdatetime']) >= 0) then
+      Exit;
+    EnsureResolver;
+    AType := Resolver.ResolveType(AContext.Tree, FileName, ATypeNode.StartPos);
+    Result := AType.Found;
+  end;
+
+  /// <summary>Records und statische Arrays haben keine Standardwerte (E2268).</summary>
+  function NoDefaultType(const AType: TResolvedSymbol): Boolean;
+  begin
+    Result := (AType.SymbolKind = TIndexSymbolKind.RecordType) or
+      ((AType.SymbolKind = TIndexSymbolKind.TypeAlias) and
+      (Pos('array[', LowerCase(StringReplace(AType.Signature, ' ', '', [rfReplaceAll]))) > 0));
+  end;
+
+  /// <summary>Mengentyp, der mehr als 4 Byte belegt (E2146).</summary>
+  function LargeSetType(const AType: TResolvedSymbol): Boolean;
+  var
+    Body: string;
+  begin
+    Body := TypeBody(AType.Signature);
+    Result := StartsText('set of ', Body) and LargeBase(Copy(Body, Length('set of ') + 1, MaxInt));
   end;
 
   procedure CheckParameters(AParameters: TSyntaxNode);
@@ -578,7 +652,8 @@ var
     Parameter: TSyntaxNode;
     SeenDefault, Moved: Boolean;
     Names: TArray<string>;
-    Name, TypeName, Text: string;
+    Name, Text: string;
+    ParamType: TResolvedSymbol;
     Fix: TRuleFix;
     Fixes: TArray<TRuleFix>;
   begin
@@ -611,9 +686,16 @@ var
         if Parameter.Modifier in [TParameterModifier.VarParam, TParameterModifier.OutParam] then
           AReport.Add(NodeRange(Parameter), Format('%s ist ein %s-Parameter und kann keinen Standardwert haben ' +
             '(wie E2239).', [Parameter.Name, Trim(ModifierText(Parameter))]), TRuleConfidence.High)
-        else if NoDefaultType(Parameter[0], TypeName) then
-          AReport.Add(NodeRange(Parameter), Format('Parameter vom Typ %s können keinen Standardwert haben ' +
-            '(wie E2268).', [TypeName]), TRuleConfidence.High);
+        else if ParameterType(Parameter[0], ParamType) then
+        begin
+          if NoDefaultType(ParamType) then
+            AReport.Add(NodeRange(Parameter), Format('Parameter vom Typ %s können keinen Standardwert haben ' +
+              '(wie E2268).', [Parameter[0].Name]), TRuleConfidence.High)
+          else if LargeSetType(ParamType) then
+            AReport.Add(NodeRange(Parameter), Format('%s ist eine Menge über 4 Byte; Standardwerte gibt es nur ' +
+              'für ordinale, Zeiger- und kleine Mengentypen (wie E2146).', [Parameter[0].Name]),
+              TRuleConfidence.Medium);
+        end;
       end
       else if SeenDefault then
       begin
