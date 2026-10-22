@@ -142,6 +142,8 @@ uses
   Atlas.Common.Rules.Builtin.DefaultProperty.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DefaultProperty.Tests.pas',
   Atlas.Common.Rules.Builtin.OverrideCase.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.OverrideCase.Tests.pas',
   Atlas.Common.Rules.Builtin.Published.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Published.Tests.pas',
+  Atlas.Common.Rules.Builtin.Visibility.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Visibility.Tests.pas',
+  Atlas.Common.Rules.Builtin.TypeDeclarations.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeDeclarations.Tests.pas',
   Atlas.Common.Rules.Builtin.Unresolved.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas',
   Atlas.Common.Projects.UnitLookup.Tests in 'Common\Projects\Atlas.Common.Projects.UnitLookup.Tests.pas',
   Atlas.Common.Rules.Builtin.Packages.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas',

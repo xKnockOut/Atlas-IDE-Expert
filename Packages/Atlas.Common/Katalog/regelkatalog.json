@@ -2467,6 +2467,114 @@
       "level": "T"
     },
     {
+      "id": "inaccessible-member",
+      "name": "Access to a member that is not visible",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "Access A.B to a member that is not visible at that point: private or strict private of another unit or class (like E2361), protected or strict protected outside the declaring unit and its descendants (like E2362, E2389). Inside a class method or static method, an instance field, method or property of the class is not reachable (like E2124). A property that refers to a private member of an ancestor in the same unit is reported as a warning (like W1045). The rule only reports when name resolution knows the receiver and its type for sure and finds the member only without regard to visibility; protected members stay visible through a class declared in the same unit (TAccess(Control).Click). Declarations in conditional branches, methods of helpers and nested types stay silent.",
+      "bad": "class function TKonfig.Standard: TKonfig;\nbegin\n  Result := TKonfig.Create;\n  Result.Pfad := FBasisPfad;\nend;",
+      "good": "class function TKonfig.Standard: TKonfig;\nbegin\n  Result := TKonfig.Create;\n  Result.Pfad := Result.FBasisPfad;\nend;",
+      "compilerCodes": [
+        "E2361",
+        "E2362",
+        "E2389",
+        "E2124",
+        "W1045"
+      ]
+    },
+    {
+      "id": "unused-private-member",
+      "name": "Private member never used",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "compiler",
+      "description": "A private or strict private field, method, constant or property is never used in the unit (like H2219, which the compiler only reports for methods; fields too unless includeFields is off). Any occurrence of the name as an identifier counts as a use, also in inactive conditional branches and behind read/write; declarations and method headers do not. Exempt: methods with message, virtual, dynamic, override or abstract, methods of types that implement interfaces, constructors and destructors, members with attributes (RTTI), names from the form file and units with include files. Quick fix: remove the declaration (with its /// documentation) and the body of a method; not when several members share the declaration or the method is overloaded.",
+      "bad": "  TImport = class\n  private\n    FAltFormat: Boolean;\n    procedure KonvertiereAlt;\n  end;",
+      "good": "  TImport = class\n  private\n  end;",
+      "compilerCodes": [
+        "H2219"
+      ],
+      "options": [
+        {
+          "name": "includeFields",
+          "type": "boolean",
+          "default": true,
+          "description": "Also report private fields that are never used (the compiler reports only methods)."
+        }
+      ]
+    },
+    {
+      "id": "message-method-invalid",
+      "name": "Message method declared incorrectly",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A message procedure of a class does not have exactly one var parameter (like E2138; the parameter type is not checked, an untyped var parameter is fine), its message number is less than 1 (like E2139), or an earlier message method of the same class already handles the same number (like E2140, usually after copying). Numbers count as equal when their values are known (numbers, constants from the index) or when the expressions are the same text. Methods in mutually exclusive {$IF} branches are not duplicates; the same number in a descendant overrides the handler and is fine. Quick fix for E2138: make a single parameter var, otherwise replace the list with (var Msg: TMessage); the method body in the same file is adjusted as well.",
+      "bad": "procedure WMSize(var Msg: TWMSize); message WM_SIZE;\nprocedure WMGroesse(var Msg: TWMSize); message WM_SIZE;",
+      "good": "procedure WMSize(var Msg: TWMSize); message WM_SIZE;\nprocedure WMMove(var Msg: TWMMove); message WM_MOVE;",
+      "compilerCodes": [
+        "E2138",
+        "E2139",
+        "E2140"
+      ]
+    },
+    {
+      "id": "interface-declaration-invalid",
+      "name": "Invalid declaration in an interface",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "An interface type declares something interfaces cannot have: fields (like E2209), visibility sections or method directives such as virtual, dynamic, abstract, override, message or reintroduce (like E2210), the property clauses stored, nodefault or default with a value (like E2207; default; after an array property is fine), a property an ancestor interface already declares (like E2206) or a property accessor that only the ancestor interface declares (like E2370). A class, record or enumeration as the ancestor of an interface or in the interface list of a class is reported as well (like E2205), and so is the same interface twice in that list (like E2208). Types are resolved through the uses clauses; aliases, unknown types, dispinterfaces and declarations inside conditional branches stay silent.",
+      "bad": "IKunde = interface\n  FName: string;\n  function GetName: string;\nend;",
+      "good": "IKunde = interface\n  function GetName: string;\n  property Name: string read GetName;\nend;",
+      "compilerCodes": [
+        "E2205",
+        "E2206",
+        "E2207",
+        "E2208",
+        "E2209",
+        "E2210",
+        "E2370"
+      ]
+    },
+    {
+      "id": "implements-clause-invalid",
+      "name": "Invalid implements clause",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "Delegation with implements breaks one of its fixed rules: implements only in classes (like E2258), only on properties of class or interface type (like E2259; reported for built-in types, records and enumerations), not together with index (like E2260), only on readable properties (like E2261), the getter without a calling convention other than register (like E2262) and not dynamic or message (like E2263), each interface implemented by one property only (like E2257) and no method resolution clause for an interface implemented that way (like E2264). Types are resolved through the uses clauses; unknown types, aliases and properties in conditional branches stay silent.",
+      "bad": "property Logger: ILogger write FLogger implements ILogger;",
+      "good": "property Logger: ILogger read FLogger write FLogger implements ILogger;",
+      "compilerCodes": [
+        "E2257",
+        "E2258",
+        "E2259",
+        "E2260",
+        "E2261",
+        "E2262",
+        "E2263",
+        "E2264"
+      ]
+    },
+    {
+      "id": "calling-convention-required",
+      "name": "Calling convention does not fit",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "The compiler prescribes the calling convention here: constructors and destructors of a class only with register (like E2236), getters and setters of published properties as well (like E2270), and varargs only with cdecl (like E2277 for external routines, otherwise E2591). Explicit register is fine; class constructors, accessors outside published sections and inherited accessors stay silent. Quick fix: remove the convention in the declaration and in the method body of the same file, or set cdecl for varargs.",
+      "bad": "function Formatieren(Muster: PAnsiChar): Integer; stdcall; varargs; external 'msvcrt.dll';",
+      "good": "function Formatieren(Muster: PAnsiChar): Integer; cdecl; varargs; external 'msvcrt.dll';",
+      "compilerCodes": [
+        "E2236",
+        "E2270",
+        "E2277",
+        "E2591"
+      ]
+    },
+    {
       "id": "abstract-declaration-invalid",
       "name": "abstract, final or static combined wrongly",
       "category": "bug",

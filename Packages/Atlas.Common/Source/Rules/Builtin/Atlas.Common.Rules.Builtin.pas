@@ -65,6 +65,8 @@ uses
   Atlas.Common.Rules.Builtin.Inlining,
   Atlas.Common.Rules.Builtin.MethodDirectives,
   Atlas.Common.Rules.Builtin.Published,
+  Atlas.Common.Rules.Builtin.Visibility,
+  Atlas.Common.Rules.Builtin.TypeDeclarations,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -125,6 +127,8 @@ begin
     RegisterInliningRules(Registry);
     RegisterMethodDirectiveRules(Registry);
     RegisterPublishedRules(Registry);
+    RegisterVisibilityRules(Registry);
+    RegisterTypeDeclarationRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

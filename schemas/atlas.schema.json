@@ -425,6 +425,11 @@
                 "default": false,
                 "description": "Nur global-variable: auch die Formularvariablen des Designers melden (#941)."
               },
+              "includeFields": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur unused-private-member: auch nie verwendete private Felder melden; der Compiler meldet nur Methoden (#1020)."
+              },
               "checkUses": {
                 "type": "boolean",
                 "default": true,

@@ -6,8 +6,9 @@
 // TOrdinalConstants; Check sagt dazu, ob ein Ausdruck sicher durch null teilt
 // oder überläuft. Bei Check gilt eine Konstante aus einem {$IF}-Zweig nur,
 // wenn die geprüfte Stelle in demselben Zweig steht (Pascal.ConditionalBranches),
-// sonst bleibt der Ausdruck unbekannt. Früher Teil von Rules.Builtin.Statements
-// (duplicate-case-label).
+// sonst bleibt der Ausdruck unbekannt. Dazu die Wertebereiche der eingebauten
+// ganzzahligen Typen und die Werte einer Aufzählung in ihrer Reihenfolge
+// (#1011, #1015). Früher Teil von Rules.Builtin.Statements (duplicate-case-label).
 
 interface
 
@@ -39,15 +40,18 @@ type
     function EnumOrdinal(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
     function ForeignValue(const AOwner: TUnitIndex; const ASymbol: TIndexSymbol; out AValue: Int64): Boolean;
   public
+    /// <summary>AResolver muss ATree (AFileName) gepinnt haben, solange die Werte gefragt werden.</summary>
     constructor Create(ATree: TSyntaxTree; const AFileName: string; const AIndex: ISymbolIndex;
       AResolver: TNameResolver);
     /// <summary>Wert der Namenskette ANames, deren erstes Token in den Token des Baums an ATokenIndex steht:
-    /// Konstante oder Aufzählungswert (Position in der Aufzählung).</summary>
+    /// Konstante ohne Typ oder Aufzählungswert (Position, nur ohne eigene Werte wie a = 3).</summary>
     function NameValue(const ANames: TArray<string>; ATokenIndex: Integer; out AValue: Int64): Boolean;
     /// <summary>Wert der Konstanten ASymbol (aus der Namensauflösung).</summary>
     function ConstantValue(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
     /// <summary>Wert der Token AFirst..ALast des Baums; False, wenn nicht sicher auswertbar.</summary>
     function Evaluate(AFirst, ALast: Integer; out AValue: Int64): Boolean;
+    /// <summary>Wert des Ausdrucks ANode aus dem Baum; False auch für nil.</summary>
+    function EvaluateNode(ANode: TSyntaxNode; out AValue: Int64): Boolean;
     /// <summary>Wie Evaluate mit Grund (#992); Konstanten aus {$IF}-Zweigen nur, wenn die Stelle sie sicher
     /// mit übersetzt.</summary>
     function Check(AFirst, ALast: Integer; out AValue: Int64): TOrdinalStatus; overload;
@@ -55,12 +59,23 @@ type
     function Check(ANode: TSyntaxNode; out AValue: Int64): TOrdinalStatus; overload;
     /// <summary>Erstes und letztes Token des Knotens ANode; False bei leerem Bereich.</summary>
     function TokenRange(ANode: TSyntaxNode; out AFirst, ALast: Integer): Boolean;
+    /// <summary>Werte der Aufzählung AEnum (Typ aus der Namensauflösung) in ihrer Reihenfolge; False, wenn die
+    /// Aufzählung unbekannt ist, eigene Werte hat (a = 3), Werte unter einer Bedingung stehen (Condition im Index;
+    /// die Extraktion aus dem Baum setzt sie nicht) oder ihre Signatur gekürzt ist.</summary>
+    function EnumMembers(const AEnum: TResolvedSymbol; out ANames: TArray<string>): Boolean;
+    /// <summary>Wertebereich des eingebauten ganzzahligen Typs ATypeName auf jeder Plattform: NativeInt,
+    /// LongInt und ihre vorzeichenlosen Gegenstücke mit dem weitesten Bereich (64 Bit), UInt64 bis High(Int64).
+    /// False für andere Typen.</summary>
+    class function IntegerRange(const ATypeName: string; out ALow, AHigh: Int64): Boolean; static;
+    /// <summary>Erstes Token ab AOffset (Index), Length(ATokens) ohne.</summary>
+    class function TokenFrom(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer; static;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.ConditionalBranches;
 
@@ -269,27 +284,132 @@ begin
     Result := ConstantValue(Resolved, AValue);
 end;
 
-function TConstantValues.TokenRange(ANode: TSyntaxNode; out AFirst, ALast: Integer): Boolean;
+class function TConstantValues.TokenFrom(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 var
   Lower, Upper, Middle: Integer;
 begin
-  // Erstes Token ab dem Knotenanfang, letztes vor dem Knotenende.
   Lower := 0;
-  Upper := Length(FTokens);
+  Upper := Length(ATokens);
   while Lower < Upper do
   begin
     Middle := (Lower + Upper) div 2;
-    if FTokens[Middle].Offset < ANode.StartOffset then
+    if ATokens[Middle].Offset < AOffset then
       Lower := Middle + 1
     else
       Upper := Middle;
   end;
-  AFirst := Lower;
-  ALast := AFirst - 1;
-  while (ALast + 1 <= High(FTokens)) and (FTokens[ALast + 1].Offset < ANode.EndOffset) do
-    Inc(ALast);
+  Result := Lower;
+end;
+
+function TConstantValues.TokenRange(ANode: TSyntaxNode; out AFirst, ALast: Integer): Boolean;
+begin
+  // Erstes Token ab dem Knotenanfang, letztes vor dem Knotenende.
+  AFirst := TokenFrom(FTokens, ANode.StartOffset);
+  ALast := TokenFrom(FTokens, ANode.EndOffset) - 1;
   Result := ALast >= AFirst;
 end;
+
+function TConstantValues.EvaluateNode(ANode: TSyntaxNode; out AValue: Int64): Boolean;
+var
+  First, Last: Integer;
+begin
+  AValue := 0;
+  Result := (ANode <> nil) and TokenRange(ANode, First, Last) and Evaluate(First, Last, AValue);
+end;
+
+function TConstantValues.EnumMembers(const AEnum: TResolvedSymbol; out ANames: TArray<string>): Boolean;
+var
+  Owner: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Signature, Container: string;
+  Known: Boolean;
+begin
+  ANames := nil;
+  Result := False;
+  if (AEnum.SymbolKind <> TIndexSymbolKind.EnumType) or not OwnerUnit(AEnum, Owner) then
+    Exit;
+  Container := AEnum.QualifiedName;
+  Known := False;
+  for Symbol in Owner.Symbols do
+    if (Symbol.Kind = TIndexSymbolKind.EnumType) and SameText(Symbol.QualifiedName, Container) then
+    begin
+      Signature := Symbol.Signature;
+      // Eigene Werte (a = 3) oder gekürzte Signatur: Positionen und Anzahl sind nicht sicher.
+      if (Signature = '') or (Pos('=', Copy(Signature, Pos('(', Signature) + 1, MaxInt)) > 0) or
+        Signature.EndsWith('…') then
+        Exit;
+      Known := True;
+    end;
+  if not Known then
+    Exit;
+  for Symbol in Owner.Symbols do
+    if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, Container) then
+    begin
+      // Werte in {$IFDEF}: Anzahl und Positionen hängen von der Konfiguration ab.
+      if Symbol.Condition <> '' then
+      begin
+        ANames := nil;
+        Exit;
+      end;
+      ANames := ANames + [Symbol.Name];
+    end;
+  Result := Length(ANames) > 0;
+end;
+
+class function TConstantValues.IntegerRange(const ATypeName: string; out ALow, AHigh: Int64): Boolean;
+begin
+  Result := True;
+  case IndexText(ATypeName, ['Byte', 'UInt8', 'ShortInt', 'Int8', 'Word', 'UInt16', 'SmallInt', 'Int16',
+    'Cardinal', 'UInt32', 'FixedUInt', 'Integer', 'Int32', 'FixedInt', 'Int64', 'UInt64', 'NativeInt', 'LongInt',
+    'NativeUInt', 'LongWord']) of
+    0, 1:
+      begin
+        ALow := 0;
+        AHigh := 255;
+      end;
+    2, 3:
+      begin
+        ALow := -128;
+        AHigh := 127;
+      end;
+    4, 5:
+      begin
+        ALow := 0;
+        AHigh := 65535;
+      end;
+    6, 7:
+      begin
+        ALow := -32768;
+        AHigh := 32767;
+      end;
+    8, 9, 10:
+      begin
+        ALow := 0;
+        AHigh := 4294967295;
+      end;
+    11, 12, 13:
+      begin
+        ALow := -2147483648;
+        AHigh := 2147483647;
+      end;
+    14, 16, 17:
+      begin
+        // NativeInt und LongInt: auf 64-Bit-Plattformen (LongInt unter Linux, iOS) wie Int64.
+        ALow := Low(Int64);
+        AHigh := High(Int64);
+      end;
+    15, 18, 19:
+      begin
+        ALow := 0;
+        AHigh := High(Int64);
+      end;
+  else
+    ALow := 0;
+    AHigh := 0;
+    Result := False;
+  end;
+end;
+
 
 function TConstantValues.Check(AFirst, ALast: Integer; out AValue: Int64): TOrdinalStatus;
 begin

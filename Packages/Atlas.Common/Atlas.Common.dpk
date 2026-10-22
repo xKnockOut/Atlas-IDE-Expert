@@ -343,6 +343,8 @@ contains
   Atlas.Common.Rules.Builtin.Inlining in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Inlining.pas',
   Atlas.Common.Rules.Builtin.MethodDirectives in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.MethodDirectives.pas',
   Atlas.Common.Rules.Builtin.Published in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Published.pas',
+  Atlas.Common.Rules.Builtin.Visibility in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Visibility.pas',
+  Atlas.Common.Rules.Builtin.TypeDeclarations in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeDeclarations.pas',
   Atlas.Common.Rules.Builtin.Packages in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.pas',
   Atlas.Common.Rules.Builtin.OpenTools in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.pas',
   Atlas.Common.Rules.Builtin.Testing in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.pas',

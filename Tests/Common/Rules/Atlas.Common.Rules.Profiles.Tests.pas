@@ -169,7 +169,7 @@ end;
 procedure TRuleProfilesTests.BuiltinProfilesActivateExpectedRules;
 const
   Threads = 'thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,thread-vcl-access';
-  All = 'abstract-class-instantiated,abstract-declaration-invalid,anonymous-thread-not-started,argument-count-mismatch,assert-side-effect,assign-to-property-member,bidi-control,blocking-call-in-main-thread,bool-compare,boolean-assign-if,captured-loop-variable,case-insensitive-compare,case-missing-enum-value,char-to-pchar,' +
+  All = 'abstract-class-instantiated,abstract-declaration-invalid,anonymous-thread-not-started,argument-count-mismatch,assert-side-effect,assign-to-property-member,bidi-control,blocking-call-in-main-thread,bool-compare,boolean-assign-if,calling-convention-required,captured-loop-variable,case-insensitive-compare,case-missing-enum-value,char-to-pchar,' +
     'class-reference-nonvirtual-constructor,collection-modified-in-loop,commented-out-code,comparison-as-statement,' +
     'component-create-without-override,component-default-mismatch,component-fixed-pixels,' +
     'component-hardcoded-color,component-missing-free-notification,component-missing-inherited,' +
@@ -180,9 +180,9 @@ const
     'empty-except,empty-finally,empty-statement,equals-without-gethashcode,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,for-in-not-enumerable,for-variable-after-loop,for-variable-misuse,forbidden-uses,' +
     'foreign-form-control-access,form-access-before-create,form-autocreate-and-manual,form-field-type-mismatch,form-field-without-object,' +
     'form-object-without-field,form-resource-missing,format-without-settings,generic-constraint-violated,generic-exception-raised,getter-side-effect,hides-virtual,' +
-    'hresult-integer-mix,ifthen-side-effect,implemented-not-declared,implicit-package-import,infinite-loop,inherited-abstract-call,inherited-form-handler-without-inherited,inherited-order,inherited-wrong-method,inline-not-expanded,int32-mul-overflow,integer-division-to-float,interface-guid,interface-not-implemented,' +
+    'hresult-integer-mix,ifthen-side-effect,implemented-not-declared,implements-clause-invalid,implicit-package-import,inaccessible-member,infinite-loop,inherited-abstract-call,inherited-form-handler-without-inherited,inherited-order,inherited-wrong-method,inline-not-expanded,int32-mul-overflow,integer-division-to-float,interface-declaration-invalid,interface-guid,interface-not-implemented,' +
     'invalid-var-argument,invisible-char,jump-outside-allowed-scope,label-misuse,' +
-    'load-without-encoding,local-routine-as-callback,lock-without-finally,loop-condition-unchanged,loop-off-by-one,managed-type-raw-memory,member-hides-ancestor,message-handler-without-inherited,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,' +
+    'load-without-encoding,local-routine-as-callback,lock-without-finally,loop-condition-unchanged,loop-off-by-one,managed-type-raw-memory,member-hides-ancestor,message-handler-without-inherited,message-method-invalid,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,' +
     'metric-method-length,metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-inherited,now-for-elapsed-time,null-compare,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,parallel-for-shared-write,pchar-of-temporary,pos-arguments-swapped,' +
     'possibly-uninitialized,processmessages-in-loop,property-accessor-invalid,property-redeclaration-invalid,published-type-invalid,queue-nil-in-package,raise-in-finally,raw-memory-leak,readonly-property-assigned,redundant-assigned-free,registry-hklm-write,reraise-exception-object,reraise-outside-handler,' +
     'result-not-set,' +
@@ -191,7 +191,7 @@ const
     'slash-command,sql-write-without-where,string-index-base,string-length-limit,stringlist-objects-leak,stringlist-unsorted,synchronize-in-destructor,task-exception-unobserved,thread-free-with-free-on-terminate,thread-loop-without-terminated,thread-resume-suspend,' +
     'thread-unsafe-increment,thread-use-after-free-on-terminate,thread-vcl-access,threadvar-managed,transaction-without-rollback,type-used-before-declaration,typed-constant-modified,' +
     'ui-call-in-console-or-service,unchecked-conversion,unchecked-enum-cast,unconditional-recursion,unneeded-forward-declaration,unreachable-code,unresolved-attribute,unresolved-identifier,unresolved-type,unsatisfied-forward,' +
-    'unused-assignment,unused-local,unused-parameter,use-after-free,uses-unit-not-found,virtual-instead-of-override,with-statement,' +
+    'unused-assignment,unused-local,unused-parameter,unused-private-member,use-after-free,uses-unit-not-found,virtual-instead-of-override,with-statement,' +
     'writeln-in-gui-app';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
@@ -202,7 +202,7 @@ begin
     'catch-all-without-raise', 'file-header', 'global-variable', 'hardcoded-string',
     'line-length', 'loop-invariant-call', 'magic-number', 'missing-begin-update', 'narrowing-assignment', 'public-field', 'random-without-randomize', 'redundant-begin-end',
     'redundant-parens', 'security-path-traversal', 'string-concat-in-loop', 'todo-comment']), ActiveRules('strict'));
-  Assert.AreEqual('abstract-class-instantiated,abstract-declaration-invalid,anonymous-thread-not-started,argument-count-mismatch,assert-side-effect,assign-to-property-member,bidi-control,captured-loop-variable,case-missing-enum-value,char-to-pchar,' +
+  Assert.AreEqual('abstract-class-instantiated,abstract-declaration-invalid,anonymous-thread-not-started,argument-count-mismatch,assert-side-effect,assign-to-property-member,bidi-control,calling-convention-required,captured-loop-variable,case-missing-enum-value,char-to-pchar,' +
     'class-reference-nonvirtual-constructor,collection-modified-in-loop,comparison-as-statement,' +
     'component-create-without-override,component-default-mismatch,component-missing-free-notification,' +
     'component-missing-inherited,condition-not-boolean,conditional-directive-unbalanced,constant-condition,constant-expression-error,constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,default-parameter-invalid,default-property-invalid,delimited-text-without-strict,' +
@@ -210,7 +210,7 @@ begin
     'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,dictionary-get-without-check,directive-typo,' +
     'duplicate-assignment,duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,dynamic-array-misuse,empty-statement,equals-without-gethashcode,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,for-in-not-enumerable,for-variable-after-loop,for-variable-misuse,' +
     'form-access-before-create,form-autocreate-and-manual,form-field-type-mismatch,form-field-without-object,form-object-without-field,form-resource-missing,generic-constraint-violated,hides-virtual,' +
-    'hresult-integer-mix,ifthen-side-effect,implemented-not-declared,infinite-loop,inherited-abstract-call,inherited-form-handler-without-inherited,inherited-order,inherited-wrong-method,int32-mul-overflow,integer-division-to-float,interface-guid,interface-not-implemented,invalid-var-argument,jump-outside-allowed-scope,label-misuse,load-without-encoding,local-routine-as-callback,lock-without-finally,loop-condition-unchanged,loop-off-by-one,managed-type-raw-memory,member-hides-ancestor,message-handler-without-inherited,' +
+    'hresult-integer-mix,ifthen-side-effect,implemented-not-declared,implements-clause-invalid,inaccessible-member,infinite-loop,inherited-abstract-call,inherited-form-handler-without-inherited,inherited-order,inherited-wrong-method,int32-mul-overflow,integer-division-to-float,interface-declaration-invalid,interface-guid,interface-not-implemented,invalid-var-argument,jump-outside-allowed-scope,label-misuse,load-without-encoding,local-routine-as-callback,lock-without-finally,loop-condition-unchanged,loop-off-by-one,managed-type-raw-memory,member-hides-ancestor,message-handler-without-inherited,message-method-invalid,' +
     'missing-inherited,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,parallel-for-shared-write,pchar-of-temporary,pos-arguments-swapped,' +
     'possibly-uninitialized,property-accessor-invalid,property-redeclaration-invalid,published-type-invalid,queue-nil-in-package,raise-in-finally,raw-memory-leak,readonly-property-assigned,registry-hklm-write,reraise-outside-handler,result-not-set,security-command-injection,' +
     'security-sql-injection,security-tls-verification-disabled,self-as-interface-in-constructor,self-assignment,self-free-in-event-handler,setter-recursion,signature-mismatch,signed-unsigned-mix,sizeof-pointer,' +
@@ -230,7 +230,7 @@ begin
     'metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,' +
     'now-for-elapsed-time,null-compare,processmessages-in-loop,redundant-assigned-free,reraise-exception-object,shadowed-name,slash-command,task-exception-unobserved,thread-resume-suspend,unneeded-forward-declaration,' +
     'unused-assignment,unused-local,' +
-    'unused-parameter,with-statement',
+    'unused-parameter,unused-private-member,with-statement',
     ActiveRules('style'));
 end;
 
