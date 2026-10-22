@@ -20,6 +20,8 @@
 // assign-to-property-member (#1005): Beispiel mit Korrektur samt uses,
 // Default-Property, Funktionsergebnis, Konstante, stille Fälle (Feld hinter
 // der Property, Record-Variable, Klassen), Abschalten.
+// readonly-property-assigned (#1006): Beispiel mit Clear, Feld in der eigenen
+// Methode, Setter anlegen, Lesen ohne read, stille Fälle, Abschalten.
 
 interface
 
@@ -141,6 +143,21 @@ type
     procedure ConstantIsReported;
     [Test]
     procedure WritableTargetsAreSilent;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TReadonlyPropertyAssignedTests = class
+  public
+    [Test]
+    procedure IssueExampleWithClear;
+    [Test]
+    procedure OwnClassFieldAndSetterFixes;
+    [Test]
+    procedure ReadWithoutRead;
+    [Test]
+    procedure WritablePropertiesAreSilent;
     [Test]
     procedure OffAndExclude;
   end;
@@ -1262,8 +1279,137 @@ begin
     '{"rules": {"assign-to-property-member": {"exclude": ["Source/*.pas"]}}}', 'Source/Rahmen.pas'))));
 end;
 
+{ TReadonlyPropertyAssignedTests }
+
+function ListIndex: ISymbolIndex;
+begin
+  Result := TSymbolIndex.Create;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit System;'#10'interface'#10'type'#10'  TObject = class'#10 +
+    '  end;'#10'implementation'#10'end.', 'C:\BDS\source\System.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText('unit System.Classes;'#10'interface'#10'type'#10 +
+    '  TStrings = class'#10'  protected'#10'    function GetCount: Integer; virtual;'#10 +
+    '    function GetText: string;'#10'    procedure SetText(const Value: string);'#10'  public'#10 +
+    '    procedure Clear; virtual;'#10'    property Count: Integer read GetCount;'#10 +
+    '    property Text: string read GetText write SetText;'#10'  end;'#10'  TStringList = class(TStrings)'#10 +
+    '  end;'#10'implementation'#10'function TStrings.GetCount: Integer;'#10'begin'#10'end;'#10 +
+    'function TStrings.GetText: string;'#10'begin'#10'end;'#10'procedure TStrings.SetText(const Value: string);'#10 +
+    'begin'#10'end;'#10'procedure TStrings.Clear;'#10'begin'#10'end;'#10'end.', 'C:\BDS\source\System.Classes.pas',
+    nil));
+end;
+
+function ReadonlyFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TReadonlyPropertyAssignedRule.Create, ASource, ListIndex, '', 'Kunden.pas');
+end;
+
+function ReadonlyFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TReadonlyPropertyAssignedRule.Create, ASource, ListIndex, AConfig, APath);
+end;
+
+function Kundenliste(const AStatements: string): string;
+begin
+  Result := 'unit Kunden;'#10'interface'#10'uses'#10'  System.Classes;'#10'implementation'#10 +
+    'procedure Leeren(Liste: TStrings);'#10'begin'#10 + AStatements + 'end;'#10'end.';
+end;
+
+/// <summary>Klasse TKunde mit Name (read FName), Kennung (read GetKennung) und Passwort (nur write).</summary>
+function Kunde(const ABody: string): string;
+begin
+  Result := 'unit Kunden;'#10'interface'#10'type'#10'  TKunde = class'#10'  private'#10'    FName: string;'#10 +
+    '    function GetKennung: Integer;'#10'    procedure SetPasswort(const Value: string);'#10'  public'#10 +
+    '    procedure Umbenennen;'#10'    property Name: string read FName;'#10 +
+    '    property Kennung: Integer read GetKennung;'#10'    property Passwort: string write SetPasswort;'#10 +
+    '  end;'#10'implementation'#10'function TKunde.GetKennung: Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10 +
+    'procedure TKunde.SetPasswort(const Value: string);'#10'begin'#10'end;'#10 +
+    'procedure TKunde.Umbenennen;'#10'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+procedure TReadonlyPropertyAssignedTests.IssueExampleWithClear;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Kundenliste('  Liste.Count := 0;'#10);
+  Found := ReadonlyFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('TStrings.Count hat kein write (wie E2129); zum Leeren Clear aufrufen.', Found[0].Message);
+  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('Clear aufrufen', Found[0].Fixes[0].Title);
+  Fixed := ApplyAll(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('  Liste.Clear;'#10, Fixed) > 0, Fixed);
+  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(Fixed))), Fixed);
+  // Andere Werte: ohne Clear-Hinweis.
+  Found := ReadonlyFindings(Kundenliste('  Liste.Count := 3;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('TStrings.Count hat kein write (wie E2129).', Found[0].Message);
+end;
+
+procedure TReadonlyPropertyAssignedTests.OwnClassFieldAndSetterFixes;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Kunde('  Name := ''Neu'';'#10);
+  Found := ReadonlyFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('TKunde.Name hat kein write (wie E2129).', Found[0].Message);
+  Assert.AreEqual(2, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('Feld FName zuweisen', Found[0].Fixes[0].Title);
+  Fixed := ApplyAll(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('  FName := ''Neu'';'#10, Fixed) > 0, Fixed);
+  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(Fixed))), Fixed);
+  Assert.AreEqual('SetName anlegen und write ergänzen', Found[0].Fixes[1].Title);
+  Assert.IsTrue(Found[0].Fixes[1].Alternative);
+  Fixed := ApplyAll(Source, Found[0].Fixes[1]);
+  Assert.IsTrue(Pos('property Name: string read FName write SetName;', Fixed) > 0, Fixed);
+  Assert.IsTrue(Pos('procedure SetName(const Value: string);', Fixed) > 0, Fixed);
+  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(Fixed))), Fixed);
+  // Getter statt Feld: nur der Setter.
+  Found := ReadonlyFindings(Kunde('  Self.Kennung := 4;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('SetKennung anlegen und write ergänzen', Found[0].Fixes[0].Title);
+end;
+
+procedure TReadonlyPropertyAssignedTests.ReadWithoutRead;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := ReadonlyFindings(Kunde('  if Passwort = '''' then'#10'    Passwort := ''geheim'';'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('TKunde.Passwort hat kein read (wie E2130).', Found[0].Message);
+  Assert.AreEqual(24, Found[0].Range.StartPos.Line);
+end;
+
+procedure TReadonlyPropertyAssignedTests.WritablePropertiesAreSilent;
+begin
+  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(Kundenliste('  Liste.Text := '''';'#10 +
+    '  if Liste.Count = 0 then'#10'    Liste.Clear;'#10'  Unbekannt.Count := 0;'#10)))));
+  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(Kunde('  FName := Name;'#10'  Passwort := Name;'#10)))));
+  // Gleichnamige lokale Variable verdeckt die Property.
+  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(Kundenliste('  Count := 0;'#10).Replace('begin'#10,
+    'var'#10'  Count: Integer;'#10'begin'#10)))));
+end;
+
+procedure TReadonlyPropertyAssignedTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Kundenliste('  Liste.Count := 0;'#10);
+  Assert.AreEqual(1, Integer(Length(ReadonlyFindings(Source, '', 'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(Source, '{"rules": {"readonly-property-assigned": "off"}}',
+    'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(Source,
+    '{"rules": {"readonly-property-assigned": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TStatementRulesTests);
   TDUnitX.RegisterTestFixture(TAssignToPropertyMemberTests);
+  TDUnitX.RegisterTestFixture(TReadonlyPropertyAssignedTests);
 
 end.

@@ -4105,3 +4105,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | XK6 | `Rahmen.Font.Size := 9`, `Rahmen.BoundsRect := R`, Record-Variable `R.Left := 1`, Property mit `read FFeld` | Keine Meldung |
 | XK7 | `"assign-to-property-member": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | XK8 | Abgleich mit Delphi: XK1, XK3 bis XK5 übersetzen | dcc meldet E2064 an denselben Stellen, für XK6 nichts; kommt E2453 vor, den Fall im Issue nachtragen |
+
+## Zuweisung an eine Property ohne write (#1006)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RO1 | Das Beispiel aus #1006: `Liste.Count := 0;` mit `Liste: TStrings` | Fehler `readonly-property-assigned` an `Liste.Count`: „TStrings.Count hat kein write (wie E2129); zum Leeren Clear aufrufen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| RO2 | Schnellkorrektur „Clear aufrufen“, danach Strg+Z | Zeile wird `Liste.Clear;`, keine Meldung mehr; ein Undo-Schritt |
+| RO3 | Eigene Klasse mit `property Name: string read FName;`, in einer Methode `Name := 'Neu';` | Meldung „TKunde.Name hat kein write (wie E2129).“; Korrekturen „Feld FName zuweisen“ und „SetName anlegen und write ergänzen“ (Setter in private bzw. nach `completion.accessorSection`) |
+| RO4 | `property Passwort: string write SetPasswort;` und `if Passwort = '' then` | „TKunde.Passwort hat kein read (wie E2130).“ |
+| RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
+| RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
