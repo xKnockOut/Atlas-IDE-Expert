@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 40 |
+| [Fehler finden](#gruppe-find-bugs) | 41 |
 | [Exceptions](#gruppe-exceptions) | 5 |
 | [Threads](#gruppe-threads) | 7 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -64,6 +64,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`pchar-of-temporary`](#pchar-of-temporary) | PChar auf einen temporären String | Bug | Warnung |
 | [`out-param-read`](#out-param-read) | out-Parameter gelesen, bevor er gesetzt ist | Bug | Warnung |
 | [`stringlist-unsorted`](#stringlist-unsorted) | Find oder Duplicates auf einer unsortierten TStringList | Bug | Warnung |
+| [`writeln-in-gui-app`](#writeln-in-gui-app) | Writeln in einem Programm ohne Konsole | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -2854,4 +2855,33 @@ Namen.Sorted := True;
 Namen.LoadFromFile(Datei);
 if Namen.Find(Suche, Index) then
   Namen.Delete(Index);
+```
+
+<a id="writeln-in-gui-app"></a>
+### writeln-in-gui-app
+
+**Writeln in einem Programm ohne Konsole** · Bug · Warnung · Gruppe Fehler finden
+
+Write, Writeln, Read oder Readln auf die Standardein- oder -ausgabe in einem Programm ohne Konsole: zur Laufzeit löst Writeln EInOutError aus (E/A-Fehler 105), Readln E/A-Fehler 104. Die Anwendungsart kommt aus DCC_ConsoleTarget der .dproj und {$APPTYPE CONSOLE} der .dpr (auch in {$IFDEF}); Units werden nur geprüft, wenn sie zum geladenen Projekt gehören, eine .dpr ohne Projekt für sich. Bibliotheken und Packages bleiben still. Ausgenommen sind Aufrufe mit einer Textdatei als erstem Argument, Aufrufe unter if IsConsole, gleichnamige Routinen der Unit und Read/Write in Methoden (TStream.Read). Konfidenz hoch. Schnellkorrektur für Write und Writeln: Ersatz durch OutputDebugString(PChar(...)) und Winapi.Windows im uses; Zahlen und Boolean über IntToStr, FloatToStr und BoolToStr. Die Option replacement setzt ein anderes Ziel, z. B. Log.Info oder Logger.Log(TLogLevel.Info, %s). Keine Korrektur bei Breitenangaben (X:5) oder Argumenten unbekannten Typs.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `replacement` | string | `"OutputDebugString"` | Ersatz für Write und Writeln in der Schnellkorrektur; %s steht für den Text. |
+
+Mit Treffer:
+
+```pascal
+procedure TfrmHaupt.btnStartClick(Sender: TObject);
+begin
+  Writeln('Start: ', TimeToStr(Now));
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TfrmHaupt.btnStartClick(Sender: TObject);
+begin
+  OutputDebugString(PChar('Start: ' + TimeToStr(Now)));
+end;
 ```

@@ -320,6 +320,7 @@ begin
     Context.ReadFile := Rules.ReadFile;
     Context.FileName := Rules.FileName;
     Context.PackageProvides := Rules.PackageProvides;
+    Context.Application := Rules.Application;
     Findings := TRuleEngine.Run(Rules.Rules, Rules.Settings, Context);
   end;
   HasCompletion := WantsEditing and TClassCompletion.MissingBodies(Tree, Document.Text, Range.StartPos, Completion);

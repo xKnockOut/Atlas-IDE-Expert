@@ -74,6 +74,8 @@ type
     /// <summary>Absoluter Pfad und Inhalt der requires-Packages für Package-Prüfungen (#46).</summary>
     FileName: string;
     PackageProvides: TRulePackageProvides;
+    /// <summary>Anwendungsart des Projekts der Datei (#926); Unknown ohne Projekt.</summary>
+    Application: TRuleApplicationKind;
     /// <summary>Abbruch zwischen den Prüfregeln; nil = nie. Setzt Compute.</summary>
     Cancelled: TRuleCancelled;
   end;
@@ -1002,6 +1004,7 @@ begin
   Context.ReadFile := ARules.ReadFile;
   Context.FileName := ARules.FileName;
   Context.PackageProvides := ARules.PackageProvides;
+  Context.Application := ARules.Application;
   Context.Cancelled := ARules.Cancelled;
   Result := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
 end;

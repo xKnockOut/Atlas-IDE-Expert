@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1592] of string = (
+  Lines: array[0..1597] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -275,6 +275,11 @@ const
     '                },',
     '                "default": ["Create", "Destroy", "AfterConstruction", "BeforeDestruction"],',
     '                "description": "Nur missing-inherited: geprüfte Methoden (#919). Create steht für alle Konstruktoren, deren Name mit Create beginnt."',
+    '              },',
+    '              "replacement": {',
+    '                "type": "string",',
+    '                "default": "OutputDebugString",',
+    '                "description": "Nur writeln-in-gui-app: Ersatz für Write und Writeln in der Schnellkorrektur (#926), z. B. \"Log.Info\" oder mit Platzhalter \"Logger.Log(TLogLevel.Info, %s)\"."',
     '              }',
     '            }',
     '          }',

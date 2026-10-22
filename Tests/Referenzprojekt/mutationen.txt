@@ -45,3 +45,4 @@ threadvar-managed | Ref.Sprache.Merkmale.pas | { TDezimalFormatierer } | threadv
 pchar-of-temporary | Ref.Formulare.Haupt.pas | Formular.ShowModal; | Formular.ShowModal;\n    Caption := PChar(IntToStr(Tag));
 out-param-read | Ref.Sprache.Merkmale.pas | { TDezimalFormatierer } | procedure Anhaengen(out Text: string);\nbegin\n  Text := Text + 'x';\nend;\n\n{ TDezimalFormatierer }
 stringlist-unsorted | Ref.Sprache.Merkmale.pas | { TDezimalFormatierer } | procedure Suchen(const S: string);\nvar\n  L: TStringList;\n  I: Integer;\nbegin\n  L := TStringList.Create;\n  if L.Find(S, I) then\n    L.Delete(I);\n  L.Free;\nend;\n\n{ TDezimalFormatierer }
+writeln-in-gui-app | ../RefApp.dpr | Application.Initialize; | Application.Initialize;\n  Writeln('Start');

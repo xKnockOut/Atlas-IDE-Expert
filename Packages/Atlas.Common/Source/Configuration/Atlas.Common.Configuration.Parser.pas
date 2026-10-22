@@ -49,6 +49,8 @@ const
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
   StringListRuleOptions: array[0..4] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods');
+  /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
+  StringRuleOptions: array[0..1] of string = ('template', 'replacement');
 
 type
   TValidator = class
@@ -237,7 +239,9 @@ begin
           else if (IndexStr(Value.Keys[Inner], BooleanRuleOptions) >= 0) and (Value[Inner].Kind <> TJsonKind.Boolean_) then
             ReportNode(Value[Inner], Format('"%s" muss true oder false sein', [Value.Keys[Inner]]))
           else if (IndexStr(Value.Keys[Inner], StringListRuleOptions) >= 0) and not IsStringList(Value[Inner]) then
-            ReportNode(Value[Inner], Format('"%s" muss eine Liste von Texten sein', [Value.Keys[Inner]]));
+            ReportNode(Value[Inner], Format('"%s" muss eine Liste von Texten sein', [Value.Keys[Inner]]))
+          else if (IndexStr(Value.Keys[Inner], StringRuleOptions) >= 0) and (Value[Inner].Kind <> TJsonKind.String_) then
+            ReportNode(Value[Inner], Format('"%s" muss ein Text sein', [Value.Keys[Inner]]));
         Rule.Options := Copy(FText, Value.Start + 1, Value.Stop - Value.Start);
       end
       else

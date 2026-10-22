@@ -261,6 +261,11 @@
                 },
                 "default": ["Create", "Destroy", "AfterConstruction", "BeforeDestruction"],
                 "description": "Nur missing-inherited: geprüfte Methoden (#919). Create steht für alle Konstruktoren, deren Name mit Create beginnt."
+              },
+              "replacement": {
+                "type": "string",
+                "default": "OutputDebugString",
+                "description": "Nur writeln-in-gui-app: Ersatz für Write und Writeln in der Schnellkorrektur (#926), z. B. \"Log.Info\" oder mit Platzhalter \"Logger.Log(TLogLevel.Info, %s)\"."
               }
             }
           }
