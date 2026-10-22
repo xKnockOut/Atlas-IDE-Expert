@@ -2326,6 +2326,36 @@
         "E2521",
         "E2522"
       ]
+    },
+    {
+      "id": "generic-declaration-invalid",
+      "name": "Generic declaration not allowed",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A generic declaration that Delphi rejects: class and record constraints together (like E2507), a constraint twice (E2603), record together with constructor (E2516), a class type next to class or record (E2552), two class types (E2553), a constraint type that is neither class nor interface (E2510); type parameters on an enumeration, set, subrange, pointer, class reference, alias or helper (E2508), on a destructor or class constructor (E2528), an operator (E2529), a global routine (E2530), a virtual, dynamic, message or override method (E2533) or an interface method (E2535); class of a parameterized type (E2548), a generic class derived from TCustomAttribute (E2549), a parameterized type as attribute (E2565); a type parameter that hides one of the enclosing type (H2509); a call with a number of type arguments no overload has (E2551, classes and records of the file with their ancestors in the file); a method of a generic type or a generic method declared in the interface section that uses a symbol of the implementation section (E2506; silent inside with and when the ancestor chain is not known). Types count only when they are built in or declared in the file; unknown types keep the rule silent. Local procedures in generic methods (E2570) are not reported until a check against Delphi 12/13 confirms that they are still rejected.",
+      "bad": "procedure Swap<T>(var A, B: T);",
+      "good": "type\n  TSwap = record\n    class procedure Swap<T>(var A, B: T); static;\n  end;",
+      "compilerCodes": [
+        "E2506",
+        "E2507",
+        "E2508",
+        "E2510",
+        "E2516",
+        "E2528",
+        "E2529",
+        "E2530",
+        "E2533",
+        "E2535",
+        "E2548",
+        "E2549",
+        "E2551",
+        "E2552",
+        "E2553",
+        "E2565",
+        "E2603",
+        "H2509"
+      ]
     }
   ]
 }

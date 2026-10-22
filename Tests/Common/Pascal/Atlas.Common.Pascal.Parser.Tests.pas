@@ -228,11 +228,14 @@ end;
 procedure TPascalParserTests.ParsesGenericsAndAttributes;
 var
   Tree: TSyntaxTree;
+  Params: TSyntaxNode;
 begin
   Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
     '  [Attr(''x''), Other]',
     '  TList<T: class, constructor> = class(TEnumerable<T>)',
     '    function Map<R>(const F: TFunc<T, R>): TList<R>;',
+    '  end;',
+    '  TPaar<K: class, TBasis; V: IFoo, constructor> = class',
     '  end;',
     'implementation',
     'procedure X;',
@@ -247,6 +250,14 @@ begin
     Assert.IsTrue(CountKind(Tree.Root, TSyntaxKind.GenericParams) >= 2);
     Assert.IsTrue(CountKind(Tree.Root, TSyntaxKind.GenericArgs) >= 1);
     Assert.AreEqual('<', FindFirst(Tree.Root, TSyntaxKind.BinaryExpr).Name);
+    // Typen aus Einschränkungen sind keine Typparameter (#1029).
+    Params := FindFirst(Tree.Root, TSyntaxKind.GenericParams);
+    Assert.AreEqual(1, Params.ChildCount);
+    Assert.AreEqual('T', Params[0].Name);
+    Params := FindFirst(FindFirst(Tree.Root, TSyntaxKind.TypeSection)[2], TSyntaxKind.GenericParams);
+    Assert.AreEqual(2, Params.ChildCount);
+    Assert.AreEqual('K', Params[0].Name);
+    Assert.AreEqual('V', Params[1].Name);
   finally
     Tree.Free;
   end;

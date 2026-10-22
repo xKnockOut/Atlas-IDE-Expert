@@ -2346,6 +2346,36 @@ begin
     '        "E2521",' + #10 +
     '        "E2522"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "generic-declaration-invalid",' + #10 +
+    '      "name": "Generic declaration not allowed",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A generic declaration that Delphi rejects: class and record constraints together (like E2507), a constraint twice (E2603), record together with constructor (E2516), a class type ' + 'next to class or record (E2552), two class types (E2553), a constraint type that is neither class nor interface (E2510); type parameters on an enumeration, set, subrange, pointer, class reference, ali' + 'as or helper (E2508), on a destructor or class constructor (E2528), an operator (E2529), a global routine (E2530), a virtual, dynamic, message or override method (E2533) or an interface method (E2535)' + '; class of a parameterized type (E2548), a generic class derived from TCustomAttribute (E2549), a parameterized type as attribute (E2565); a type parameter that hides one of the enclosing type (H2509)' + '; a call with a number of type arguments no overload has (E2551, classes and records of the file with their ancestors in the file); a method of a generic type or a generic method declared in the inter' + 'face section that uses a symbol of the implementation section (E2506; silent inside with and when the ancestor chain is not known). Types count only when they are built in or declared in the file; unk' + 'nown types keep the rule silent. Local procedures in generic methods (E2570) are not reported until a check against Delphi 12/13 confirms that they are still rejected.",' + #10 +
+    '      "bad": "procedure Swap<T>(var A, B: T);",' + #10 +
+    '      "good": "type\n  TSwap = record\n    class procedure Swap<T>(var A, B: T); static;\n  end;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2506",' + #10 +
+    '        "E2507",' + #10 +
+    '        "E2508",' + #10 +
+    '        "E2510",' + #10 +
+    '        "E2516",' + #10 +
+    '        "E2528",' + #10 +
+    '        "E2529",' + #10 +
+    '        "E2530",' + #10 +
+    '        "E2533",' + #10 +
+    '        "E2535",' + #10 +
+    '        "E2548",' + #10 +
+    '        "E2549",' + #10 +
+    '        "E2551",' + #10 +
+    '        "E2552",' + #10 +
+    '        "E2553",' + #10 +
+    '        "E2565",' + #10 +
+    '        "E2603",' + #10 +
+    '        "H2509"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3526,6 +3556,11 @@ begin
     '      "id": "operator-declaration-invalid",' + #10 +
     '      "name": "Operator falsch deklariert",' + #10 +
     '      "description": "Ein class operator in einem Record oder einer Klasse ist so deklariert, wie Delphi es ablehnt: unbekannter Operatorname (wie E2393), falsche Parameterzahl (E2517), eigener Typ fe' + 'hlt in den Parametern (E2518) bzw. bei Implicit/Explicit in Parametern und Ergebnis (E2521), Inc/Dec mit anderem Ergebnistyp als dem ersten Parameter (E2519), Vergleichsoperator ohne Boolean-Ergebnis ' + '(E2520), Umwandlung in oder aus einem Vorfahren (E2522, Kette innerhalb der Datei) oder Assign ohne var vor dem ersten Parameter (E2464). Typen gelten als gleich, wenn ihre Namen ohne Unit-Präfix und ' + 'Typargumente übereinstimmen; Aliase des eigenen Typs in der Datei halten die Regel still, True, False und OnesComplement gelten als bekannt. Korrekturen: nächstliegender Operatorname, Boolean als Erge' + 'bnis, Ergebnis wie der erste Parameter, var vor dem ersten Parameter, Parameterliste nach Vorlage; jeweils in Deklaration und Rumpf."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "generic-declaration-invalid",' + #10 +
+    '      "name": "Generische Deklaration unzulässig",' + #10 +
+    '      "description": "Eine generische Deklaration, die Delphi ablehnt: Einschränkungen class und record zugleich (wie E2507), eine Einschränkung doppelt (E2603), record zusammen mit constructor (E2516' + '), eine Klasse neben class bzw. record (E2552), zwei Klassen (E2553), ein Einschränkungstyp, der weder Klasse noch Interface ist (E2510); Typparameter an Aufzählung, Menge, Teilbereich, Zeiger, Klasse' + 'nreferenz, Alias oder Helfer (E2508), an Destruktor oder Klassenkonstruktor (E2528), Operator (E2529), globaler Routine (E2530), virtueller, dynamischer, message- oder override-Methode (E2533) oder In' + 'terface-Methode (E2535); class of eines parametrisierten Typs (E2548), generische Klasse, die von TCustomAttribute erbt (E2549), parametrisierter Typ als Attribut (E2565); ein Typparameter, der einen ' + 'des umgebenden Typs verdeckt (H2509); ein Aufruf mit einer Zahl Typargumente, die keine Überladung hat (E2551, Klassen und Records der Datei mit Vorfahren aus der Datei); eine Methode eines generische' + 'n Typs oder eine generische Methode aus dem interface-Teil, die ein Symbol des implementation-Teils verwendet (E2506; still in with und wenn die Vorfahrenkette nicht bekannt ist). Typen zählen nur, we' + 'nn sie eingebaut oder in der Datei deklariert sind; unbekannte Typen halten die Regel still. Lokale Prozeduren in generischen Methoden (E2570) meldet die Regel erst, wenn der Abgleich mit Delphi 12/13' + ' bestätigt, dass sie noch abgelehnt werden."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

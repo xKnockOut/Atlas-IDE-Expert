@@ -799,10 +799,13 @@ var
   Start: Integer;
   Node: TSyntaxNode;
   Depth: Integer;
+  InConstraints: Boolean;
 begin
   // <T>, <K, V>, <T: class, constructor>, <T: IFoo; U>. Liefert True, wenn
   // der Lexer ">=" gelesen hat (TFoo<T>=class), das "=" also schon verbraucht ist.
+  // Nach ":" folgen bis zum nächsten ";" Einschränkungen, keine Typparameter.
   Result := False;
+  InConstraints := False;
   Start := NodeStart;
   Node := StartNode(TSyntaxKind.GenericParams);
   AParent.Add(Node);
@@ -828,7 +831,13 @@ begin
     end
     else if IsSym('=') or IsSym('(') or IsSym(')') or IsKw(['begin', 'end']) then
       Break
-    else if IsIdent and (Depth = 1) and (PeekIsSym(-1, '<') or PeekIsSym(-1, ',') or PeekIsSym(-1, ';')) then
+    else if (Depth = 1) and (IsSym(':') or IsSym(';')) then
+    begin
+      InConstraints := IsSym(':');
+      Advance;
+    end
+    else if IsIdent and (Depth = 1) and not InConstraints and (PeekIsSym(-1, '<') or PeekIsSym(-1, ',') or
+      PeekIsSym(-1, ';')) then
       Node.Add(Leaf(TSyntaxKind.Identifier, Current.Text))
     else
       Advance;
