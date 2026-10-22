@@ -4133,3 +4133,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | NM5 | In der .dpr `Kunden.Model in 'Kunden.Daten.pas'`, die Datei deklariert `unit Kunden.Daten;` | Fehler am uses-Eintrag „Kunden.Model in 'Kunden.Daten.pas': die Datei deklariert die Unit Kunden.Daten (wie E2085).“; Korrektur „In Kunden.Daten ändern“ |
 | NM6 | `"unit-name-mismatch": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | NM7 | Abgleich mit Delphi: NM1 und NM5 übersetzen | dcc meldet E1038/W1038 bzw. E2085 an denselben Stellen, für NM3 nichts |
+
+## Text nach dem abschließenden end. (#991)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NE1 | Das Beispiel aus #991: hinter `end.` eine Leerzeile und `procedure TKunde.Speichern;` mit `begin` | Warnung `text-after-final-end` über den Code hinter `end.`: „Code nach end. wird nicht übersetzt (wie W1011).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| NE2 | Schnellkorrektur „Text nach end. entfernen“, danach Strg+Z | Die Datei endet mit `end.`, keine Meldung mehr; ein Undo-Schritt |
+| NE3 | Hinter `end.` nur `// Ende`, `{ Notiz }` oder `{$ENDIF}` | Keine Meldung |
+| NE4 | Wie NE3 mit `"text-after-final-end": {"allowComments": false}` | „Kommentar nach end. wird nicht übersetzt (wie W1011).“ |
+| NE5 | Halb getippte Methode (fehlendes `end;`) vor dem Dateiende | Keine Meldung, solange der Parser Fehler meldet |
+| NE6 | Seite *Prüfregeln › Compiler vorab*, Regel `text-after-final-end` | Option `allowComments` als Kontrollkästchen |
+| NE7 | `"text-after-final-end": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| NE8 | Abgleich mit Delphi: NE1 und NE3 übersetzen | dcc meldet W1011 für NE1, für NE3 nichts |

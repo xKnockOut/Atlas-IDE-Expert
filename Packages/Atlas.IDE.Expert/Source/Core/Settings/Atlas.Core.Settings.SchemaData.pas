@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1760] of string = (
+  Lines: array[0..1765] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -429,6 +429,11 @@ const
     '                "type": "boolean",',
     '                "default": true,',
     '                "description": "Nur duplicate-declaration: doppelte Einträge in uses-Klauseln melden (#988)."',
+    '              },',
+    '              "allowComments": {',
+    '                "type": "boolean",',
+    '                "default": true,',
+    '                "description": "Nur text-after-final-end: Kommentare und Direktiven nach end. erlauben (#991)."',
     '              },',
     '              "allowTables": {',
     '                "type": "array",',

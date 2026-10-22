@@ -1163,6 +1163,17 @@
       "id": "unit-name-mismatch",
       "name": "Unit-Name passt nicht zum Dateinamen",
       "description": "Der Name hinter unit weicht vom Dateinamen ab, meist nach dem Umbenennen der Datei außerhalb der IDE (wie E1038, W1038). Groß-/Kleinschreibung zählt nicht, Punkte im Namen schon. In Programmen, Bibliotheken und Packages wird außerdem ein Eintrag uses X in 'Datei.pas' gemeldet, dessen Datei eine andere Unit deklariert (wie E2085); die Regel liest dazu die Datei. Programme, Bibliotheken und Packages selbst vergleicht sie nicht mit dem Dateinamen, weil der Compiler das auch nicht tut. {$WARN UNIT_NAME_MISMATCH OFF} oder {$WARNINGS OFF} vor dem Unit-Namen schaltet die Regel wie den Compiler ab. Korrekturen: Unit-Namen an den Dateinamen anpassen (die Datei umbenennen bleibt Sache der IDE) bzw. den uses-Eintrag auf die Unit der Datei ändern."
+    },
+    {
+      "id": "text-after-final-end",
+      "name": "Text nach dem abschließenden end.",
+      "description": "Nach dem abschließenden end. einer Unit, eines Programms, einer Bibliothek oder eines Packages steht noch Quelltext. Der Compiler ignoriert ihn (wie W1011); meist ist es Code, der beim Einfügen ans Dateiende geraten ist und nie übersetzt wird. Kommentare und Direktiven werden nicht gemeldet (Option allowComments). Die Regel sucht das abschließende end. hinter dem letzten Abschnitt des Syntaxbaums und schweigt, solange der Parser Fehler meldet oder end. in einem {$IF…}-Zweig steht; {$WARNINGS OFF} vor end. schaltet sie ab. Schnellkorrektur: Text nach end. entfernen.",
+      "options": [
+        {
+          "name": "allowComments",
+          "description": "Kommentare und Direktiven nach end. erlauben."
+        }
+      ]
     }
   ]
 }
