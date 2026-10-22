@@ -62,6 +62,11 @@ type
     /// <summary>Elemente der Unit-Ebene (Typen, Routinen, Konstanten, Variablen) in Quelltextreihenfolge; Rümpfe
     /// mit Deklaration nur einmal.</summary>
     class function UnitMembers(const ANodes: TAtlasOutlineNodes): TArray<Integer>; static;
+    /// <summary>Alle Methoden und Routinen der Unit in Quelltextreihenfolge, ohne lokale Routinen; Rümpfe mit
+    /// Deklaration nur einmal (als Deklaration). Für „Methode suchen“ der Editorleiste (#1101).</summary>
+    class function Routines(const ANodes: TAtlasOutlineNodes): TArray<Integer>; static;
+    /// <summary>Name mit Besitzer: Methoden einer Klasse als „TFoo.Bar“, sonst der Name.</summary>
+    class function QualifiedName(const ANodes: TAtlasOutlineNodes; ANode: Integer): string; static;
     /// <summary>Kinder von ANode: Mitglieder eines Typs bzw. lokale Routinen im Rumpf einer Routine.</summary>
     class function Children(const ANodes: TAtlasOutlineNodes; ANode: Integer): TArray<Integer>; static;
     /// <summary>Name ohne Besitzer: "TFoo.Bar" → "Bar".</summary>
@@ -402,6 +407,41 @@ begin
     if ANodes[Index].Hidden or IsSection(ANodes[Index]) or ((Parent >= 0) and not IsSection(ANodes[Parent])) then
       Continue;
     Result := Result + [Index];
+  end;
+end;
+
+class function TAtlasBreadcrumbs.Routines(const ANodes: TAtlasOutlineNodes): TArray<Integer>;
+var
+  Index, Parent: Integer;
+begin
+  Result := nil;
+  for Index := 0 to High(ANodes) do
+  begin
+    if ANodes[Index].Hidden or ANodes[Index].InBody or not IsRoutine(ANodes[Index]) then
+      Continue;
+    // Lokale Routinen (Eltern ist eine Routine) nicht.
+    Parent := ANodes[Index].Parent;
+    if (Parent >= 0) and IsRoutine(ANodes[Parent]) then
+      Continue;
+    Result := Result + [Index];
+  end;
+end;
+
+class function TAtlasBreadcrumbs.QualifiedName(const ANodes: TAtlasOutlineNodes; ANode: Integer): string;
+var
+  Owner: Integer;
+begin
+  if (ANode < 0) or (ANode > High(ANodes)) then
+    Exit('');
+  Result := ANodes[ANode].Name;
+  // Rümpfe tragen den Besitzer schon im Namen („TFoo.Bar“).
+  if Pos('.', Result) > 0 then
+    Exit;
+  Owner := ANodes[ANode].Parent;
+  while (Owner >= 0) and (ANodes[Owner].Category = TAtlasOutlineCategory.TypeDecl) do
+  begin
+    Result := ANodes[Owner].Name + '.' + Result;
+    Owner := ANodes[Owner].Parent;
   end;
 end;
 

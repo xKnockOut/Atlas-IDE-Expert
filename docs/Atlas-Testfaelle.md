@@ -2498,6 +2498,31 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | BK26 | Mit eingeschalteter Leiste arbeiten (Reiter, Design-Ansicht und zurück, Debuggen, Dialoge), danach auf ein Glied klicken | Menü öffnet sich. Steht in atlas.log „Brotkrumen: Fenster ist gesperrt/ausgeblendet …“, „Maus landet bei … ; Ursache: …“ oder „Fenster der Leiste wird gesperrt“ mit Aufrufer, die Zeilen an Claude geben; die Ursache nach „Ursache:“ entscheidet, was an der Wurzel zu beheben ist (Bericht M2) |
 | BK27 | Server beschäftigt (z. B. Index-Aufbau), Leiste und mitlaufender Kopf an | Kein Eintrag „Fehler in Editorbefehle: ELspClientError … documentSymbol“; stattdessen „Gliederung: keine Antwort vom Server …“, Leiste behält den alten Pfad |
 | BK28 | „Navigationssymbolleiste anzeigen“ in den Editoroptionen selbst ausschalten, dann `editor.breadcrumbsHideIdeToolbar` an und wieder aus | Die Option bleibt aus: Atlas schaltet nur zurück, was es selbst ausgeschaltet hat (Bericht M3) |
+
+## Atlas-Editorleiste (#1101)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EL1 | uKundeForm öffnen | Unter der Brotkrumenleiste eine Zeile mit 16-px-Symbolen: interface, implementation, \|, Zurück, Vor, Deklaration ⇄ Implementierung, Unit ⇄ Testunit, \|, Units suchen, Methode suchen, \|, Code-Aktionen, Formatieren, Probleme, Befehlspalette; rechts das Zahnrad. Höhe 24 px bei 100 % |
+| EL2 | Caret in eine Methode im implementation-Teil | Knopf „implementation“ hervorgehoben (Akzentfarbe); im interface entsprechend „interface“ |
+| EL3 | In `btnSpeichernClick` (Zeile 214) auf „interface“ klicken | Caret auf dem Schlüsselwort interface, die Zeile steht im oberen Drittel; hinter den Abschnittssymbolen erscheint „↩ 214“, Tooltip „Zurück zu Zeile 214 · TfrmKunde.btnSpeichernClick“ |
+| EL4 | Danach „implementation“, dann „↩ 214“ | Zweiter Sprung ändert den Rücksprung nicht (erster Ausgangspunkt bleibt); „↩ 214“ führt in Zeile 214 zurück, der Knopf verschwindet |
+| EL5 | Nach EL3 zwei Zeilen im interface einfügen | Knopf zeigt „↩ 216“ und führt dorthin |
+| EL6 | Nach EL3 Alt+← (Navigationsverlauf) | Zurück in Zeile 214, der Rücksprung-Knopf verschwindet ebenfalls |
+| EL7 | .dpr oder .inc öffnen | interface/implementation gesperrt, Tooltip „Diese Datei hat keinen interface-/implementation-Teil“; die übrigen Knöpfe arbeiten |
+| EL8 | Datei mit Befunden aktiv | Punkt am Symbol „Probleme“, Tooltip nennt die Zahl der Befunde; ohne Befunde kein Punkt |
+| EL9 | Navigationsverlauf leer bzw. ganz vorn | „Vor“ gedämpft, Klick tut nichts |
+| EL10 | Editorfenster schmal ziehen | Hintere Knöpfe wandern in „»“ (Reihenfolge bleibt, keine Trennstriche am Rand); interface, implementation und „↩“ bleiben immer sichtbar; die Höhe ändert sich nie |
+| EL11 | Rechtsklick auf die Leiste bzw. Zahnrad bzw. »  › „Leiste anpassen …“ | Dialog: links verfügbare Palettenbefehle samt Trennstrich, rechts die Leiste mit Symbolen; →, ←, ↑, ↓, Doppelklick, „Text neben den Symbolen“, Position, „Standard wiederherstellen“; OK wirkt sofort ohne Neustart |
+| EL12 | Im Dialog „Umbenennen“ hinzufügen | Neuer Knopf mit dem Buchstaben „U“ (kein eigenes Symbol); Klick führt den Befehl aus wie die Palette |
+| EL13 | Position „in der Brotkrumenzeile“ | Die Symbole stehen rechts in der Brotkrumenzeile, die Glieder links davon kürzen sich vorn („…“); ohne Brotkrumenleiste steht die Leiste oben |
+| EL14 | Position „über der Brotkrumenleiste“ | Reihenfolge über dem Editor: Editorleiste, dann Brotkrumen |
+| EL15 | Methode suchen (Knopf, Palette oder Menü Atlas › Navigation) | Popup mit allen Routinen der Datei als `TfrmKunde.btnSpeichernClick`, die Methode am Caret vorgewählt, Filter beim Tippen; Enter springt zur Implementierung, Umschalt+Enter zur Deklaration |
+| EL16 | `editor.toolbar` aus | Leisten verschwinden, der Editor bekommt die Zeile zurück; „Zum interface-Teil“ usw. arbeiten weiter über Palette, Menü, Kontextmenü und `keys.gotoInterface`/`keys.gotoImplementation` |
+| EL17 | Ohne Leiste: Palette › „Zum interface-Teil“, dann Palette › „Zurück zum Ausgangspunkt des Abschnittssprungs“ | Sprung und Rücksprung wie mit Leiste |
+| EL18 | Dunkles Thema; `editor.breadcrumbsIdeColors` an bzw. aus | Leiste in den Farben der IDE-Werkzeugleisten bzw. der Atlas-Palette wie die Brotkrumen; Wechsel ohne Neustart |
+| EL19 | 150 % und 200 % Skalierung | Symbole scharf und geglättet, 24 bzw. 32 px, Leiste eine Zeile |
+| EL20 | Leiste durch einen Fehler abgeschaltet (atlas.log „Editorleiste: durch die Sicherung abgeschaltet“), dann Atlas › Abgeschaltete Funktionen einschalten | Leiste verschwindet und kommt ohne Neustart zurück |
 | BK29 | Gegenprobe zur Zugriffsverletzung beim Beenden (`rtl370`, `TEditWindow.Notification`): Brotkrumen an, atlas.log nennt „über die Option … der IDE“, IDE dreimal beenden | Tritt die Zugriffsverletzung nicht mehr auf, war das Umhängen die Ursache; tritt sie weiter auf, liegt sie nicht am Umhängen (Bericht M3) |
 
 ## Extrahieren, case und with (#50)

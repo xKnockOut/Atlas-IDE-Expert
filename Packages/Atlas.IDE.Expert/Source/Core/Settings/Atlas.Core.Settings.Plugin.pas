@@ -314,6 +314,10 @@ type
     ProblemsShowCompilerCode: Boolean;
     /// <summary>Fenster öffnen (TShortCut, 0 = keins; Vorgabe Strg+Alt+P).</summary>
     ProblemsWindowKey: Integer;
+    /// <summary>Kürzel „Zum interface-Teil“ (#1101, keys.gotoInterface); 0 = keins.</summary>
+    GotoInterfaceKey: Integer;
+    /// <summary>Kürzel „Zum implementation-Teil“ (#1101, keys.gotoImplementation); 0 = keins.</summary>
+    GotoImplementationKey: Integer;
     /// <summary>Laufende Prüfung beim Tippen (#909); aus = Prüfung der offenen Datei nur beim Speichern.</summary>
     ProblemsLive: Boolean;
     /// <summary>Aktionszeile im Befund-Hover (#909): Schnellkorrektur, für diese Zeile unterdrücken, Regel einstellen.
@@ -638,6 +642,18 @@ type
     /// <summary>Navigationsleiste der IDE („Typ suchen“/„Methode suchen“) ausblenden, solange die
     /// Brotkrumenleiste an ist (editor.breadcrumbsHideIdeToolbar).</summary>
     BreadcrumbsHideIdeToolbar: Boolean;
+    /// <summary>Atlas-Editorleiste mit Symbolen über dem Editor (#1101, editor.toolbar); Hauptschalter.</summary>
+    EditorToolbar: Boolean;
+    /// <summary>Lage zur Brotkrumenleiste: belowBreadcrumbs, aboveBreadcrumbs oder inBreadcrumbs (#1101,
+    /// editor.toolbar.position).</summary>
+    EditorToolbarPosition: string;
+    /// <summary>Knöpfe in Reihenfolge: Befehlskennungen, durch Komma getrennt, „|“ = Trennstrich (#1101,
+    /// editor.toolbar.items); leer = keine Knöpfe.</summary>
+    EditorToolbarItems: string;
+    /// <summary>Knopf „Zurück zu Zeile …“ nach Abschnittssprüngen (#1101, editor.toolbar.returnButton).</summary>
+    EditorToolbarReturnButton: Boolean;
+    /// <summary>Text neben den Symbolen (#1101, editor.toolbar.labels).</summary>
+    EditorToolbarLabels: Boolean;
     /// <summary>Mitlaufender Kopf (#506, editor.stickyScroll, experimentell).</summary>
     StickyScroll: Boolean;
     /// <summary>Höchstzahl seiner Zeilen, MinStickyLines bis MaxStickyLines (#506,
@@ -998,7 +1014,8 @@ uses
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Build.OpenBuild,
   Atlas.Core.Settings.OverviewKinds,
-  Atlas.Core.Notifications.Sources;
+  Atlas.Core.Notifications.Sources,
+  Atlas.Core.Settings.ToolbarItems;
 
 const
   /// <summary>Reihen des Projektverlaufs (#758) wie TAtlasProjectSummaries.TrendKeys (Test prüft Gleichheit).</summary>
@@ -1260,6 +1277,8 @@ begin
   Result.ProblemsCompilerMerge := 'merge';
   Result.ProblemsShowCompilerCode := True;
   Result.ProblemsWindowKey := $C050; // Strg+Alt+P
+  Result.GotoInterfaceKey := 0;
+  Result.GotoImplementationKey := 0;
   Result.ProblemsLive := True;
   Result.HoverProblemActions := True;
   Result.InlineDiagnostics := 'errors';
@@ -1396,6 +1415,11 @@ begin
   Result.BreadcrumbsShowUnit := False;
   Result.BreadcrumbsIdeColors := True;
   Result.BreadcrumbsHideIdeToolbar := True;
+  Result.EditorToolbar := True;
+  Result.EditorToolbarPosition := 'belowBreadcrumbs';
+  Result.EditorToolbarItems := TAtlasToolbarItems.DefaultText;
+  Result.EditorToolbarReturnButton := True;
+  Result.EditorToolbarLabels := False;
   Result.StickyScroll := False;
   Result.StickyScrollMaxLines := 3;
   Result.Minimap := False;
@@ -1674,6 +1698,8 @@ begin
   PeekDefinitionKey := EnsureRange(PeekDefinitionKey, 0, $FFFF);
   PeekReferencesKey := EnsureRange(PeekReferencesKey, 0, $FFFF);
   BreadcrumbsKey := EnsureRange(BreadcrumbsKey, 0, $FFFF);
+  EditorToolbarPosition := Choice(EditorToolbarPosition, ['belowBreadcrumbs', 'aboveBreadcrumbs', 'inBreadcrumbs']);
+  EditorToolbarItems := TAtlasToolbarItems.Normalize(EditorToolbarItems);
   NextChangeKey := EnsureRange(NextChangeKey, 0, $FFFF);
   PreviousChangeKey := EnsureRange(PreviousChangeKey, 0, $FFFF);
   OverviewRulerKinds := TAtlasOverviewKindNames.Normalize(OverviewRulerKinds);
@@ -1703,6 +1729,8 @@ begin
   ProblemsWindowClosedUnits := Choice(ProblemsWindowClosedUnits, ['dimmed', 'normal', 'hidden']);
   ProblemsCompilerMerge := Choice(ProblemsCompilerMerge, ['merge', 'both']);
   ProblemsWindowKey := EnsureRange(ProblemsWindowKey, 0, $FFFF);
+  GotoInterfaceKey := EnsureRange(GotoInterfaceKey, 0, $FFFF);
+  GotoImplementationKey := EnsureRange(GotoImplementationKey, 0, $FFFF);
   NextProblemKey := EnsureRange(NextProblemKey, 0, $FFFF);
   PreviousProblemKey := EnsureRange(PreviousProblemKey, 0, $FFFF);
   SearchKey := EnsureRange(SearchKey, 0, $FFFF);
@@ -1830,6 +1858,8 @@ begin
   ProblemsShowCompilerCode := AStore.ReadInteger('ProblemsShowCompilerCode',
     BoolValue(Default.ProblemsShowCompilerCode)) <> 0;
   ProblemsWindowKey := AStore.ReadInteger('ProblemsWindowKey', Default.ProblemsWindowKey);
+  GotoInterfaceKey := AStore.ReadInteger('GotoInterfaceKey', Default.GotoInterfaceKey);
+  GotoImplementationKey := AStore.ReadInteger('GotoImplementationKey', Default.GotoImplementationKey);
   ProblemsLive := AStore.ReadInteger('ProblemsLive', BoolValue(Default.ProblemsLive)) <> 0;
   HoverProblemActions := AStore.ReadInteger('HoverProblemActions', BoolValue(Default.HoverProblemActions)) <> 0;
   InlineDiagnostics := AStore.ReadString('InlineDiagnostics', Default.InlineDiagnostics);
@@ -1983,6 +2013,12 @@ begin
   BreadcrumbsIdeColors := AStore.ReadInteger('BreadcrumbsIdeColors', BoolValue(Default.BreadcrumbsIdeColors)) <> 0;
   BreadcrumbsHideIdeToolbar := AStore.ReadInteger('BreadcrumbsHideIdeToolbar',
     BoolValue(Default.BreadcrumbsHideIdeToolbar)) <> 0;
+  EditorToolbar := AStore.ReadInteger('EditorToolbar', BoolValue(Default.EditorToolbar)) <> 0;
+  EditorToolbarPosition := AStore.ReadString('EditorToolbarPosition', Default.EditorToolbarPosition);
+  EditorToolbarItems := AStore.ReadString('EditorToolbarItems', Default.EditorToolbarItems);
+  EditorToolbarReturnButton := AStore.ReadInteger('EditorToolbarReturnButton',
+    BoolValue(Default.EditorToolbarReturnButton)) <> 0;
+  EditorToolbarLabels := AStore.ReadInteger('EditorToolbarLabels', BoolValue(Default.EditorToolbarLabels)) <> 0;
   StickyScroll := AStore.ReadInteger('StickyScroll', BoolValue(Default.StickyScroll)) <> 0;
   StickyScrollMaxLines := AStore.ReadInteger('StickyScrollMaxLines', Default.StickyScrollMaxLines);
   Minimap := AStore.ReadInteger('Minimap', BoolValue(Default.Minimap)) <> 0;
@@ -2244,6 +2280,8 @@ begin
   AStore.WriteString('ProblemsCompilerMerge', ProblemsCompilerMerge);
   AStore.WriteInteger('ProblemsShowCompilerCode', BoolValue(ProblemsShowCompilerCode));
   AStore.WriteInteger('ProblemsWindowKey', ProblemsWindowKey);
+  AStore.WriteInteger('GotoInterfaceKey', GotoInterfaceKey);
+  AStore.WriteInteger('GotoImplementationKey', GotoImplementationKey);
   AStore.WriteInteger('ProblemsLive', BoolValue(ProblemsLive));
   AStore.WriteInteger('HoverProblemActions', BoolValue(HoverProblemActions));
   AStore.WriteString('InlineDiagnostics', InlineDiagnostics);
@@ -2377,6 +2415,11 @@ begin
   AStore.WriteInteger('BreadcrumbsShowUnit', BoolValue(BreadcrumbsShowUnit));
   AStore.WriteInteger('BreadcrumbsIdeColors', BoolValue(BreadcrumbsIdeColors));
   AStore.WriteInteger('BreadcrumbsHideIdeToolbar', BoolValue(BreadcrumbsHideIdeToolbar));
+  AStore.WriteInteger('EditorToolbar', BoolValue(EditorToolbar));
+  AStore.WriteString('EditorToolbarPosition', EditorToolbarPosition);
+  AStore.WriteString('EditorToolbarItems', EditorToolbarItems);
+  AStore.WriteInteger('EditorToolbarReturnButton', BoolValue(EditorToolbarReturnButton));
+  AStore.WriteInteger('EditorToolbarLabels', BoolValue(EditorToolbarLabels));
   AStore.WriteInteger('StickyScroll', BoolValue(StickyScroll));
   AStore.WriteInteger('StickyScrollMaxLines', StickyScrollMaxLines);
   AStore.WriteInteger('Minimap', BoolValue(Minimap));

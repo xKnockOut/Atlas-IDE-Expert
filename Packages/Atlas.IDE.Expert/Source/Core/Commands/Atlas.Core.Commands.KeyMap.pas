@@ -362,6 +362,10 @@ begin
       Result := 'Atlas.Unwrap';
     TAtlasKeyFunction.ProblemsWindow:
       Result := 'Atlas.ProblemsWindow';
+    TAtlasKeyFunction.SectionInterface:
+      Result := 'Atlas.GotoInterface';
+    TAtlasKeyFunction.SectionImplementation:
+      Result := 'Atlas.GotoImplementation';
   else
     Result := '';
   end;

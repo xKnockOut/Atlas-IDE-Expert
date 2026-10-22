@@ -616,6 +616,16 @@
         <DCCReference Include="Source\IDE\Notifications\Atlas.IDE.Notifications.Service.pas"/>
         <DCCReference Include="Source\Core\Dock\Atlas.Core.Dock.Plan.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DockWindow.pas"/>
+        <DCCReference Include="Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.Sections.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.ToolbarItems.pas"/>
+        <DCCReference Include="Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.Icons.pas"/>
+        <DCCReference Include="Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.Layout.pas"/>
+        <DCCReference Include="Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.ReturnPoint.pas"/>
+        <DCCReference Include="Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.Glyphs.pas"/>
+        <DCCReference Include="Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Glyphs.pas"/>
+        <DCCReference Include="Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Bar.pas"/>
+        <DCCReference Include="Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Customize.pas"/>
+        <DCCReference Include="Source\IDE\EditorToolbar\Atlas.IDE.EditorToolbar.Service.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

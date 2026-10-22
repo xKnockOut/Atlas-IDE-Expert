@@ -409,6 +409,11 @@ begin
   // Fenster „Atlas-Prüfung“ (#909): Strg+Alt+P.
   Assert.AreEqual($C050, Integer(EntryOf(Entries, TAtlasKeyFunction.ProblemsWindow).Key));
   Assert.AreEqual('Atlas.ProblemsWindow', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.ProblemsWindow));
+  // Abschnittssprünge (#1101): ohne Vorgabetaste, Kennungen wie die Knöpfe der Editorleiste.
+  Assert.AreEqual(0, Integer(EntryOf(Entries, TAtlasKeyFunction.SectionInterface).Key));
+  Assert.AreEqual(0, Integer(EntryOf(Entries, TAtlasKeyFunction.SectionImplementation).Key));
+  Assert.AreEqual('Atlas.GotoInterface', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SectionInterface));
+  Assert.AreEqual('Atlas.GotoImplementation', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SectionImplementation));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
   Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearch).Priority);

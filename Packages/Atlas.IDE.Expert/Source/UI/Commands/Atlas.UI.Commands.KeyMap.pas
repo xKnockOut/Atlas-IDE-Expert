@@ -340,6 +340,10 @@ begin
       Id := TAtlasTextId.UnwrapCommand;
     TAtlasKeyFunction.ProblemsWindow:
       Id := TAtlasTextId.ProblemsWindowCommand;
+    TAtlasKeyFunction.SectionInterface:
+      Id := TAtlasTextId.GotoInterfaceCommand;
+    TAtlasKeyFunction.SectionImplementation:
+      Id := TAtlasTextId.GotoImplementationCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

@@ -76,6 +76,8 @@ uses
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Outline.Breadcrumbs,
+  Atlas.IDE.EditorToolbar.Service,
+  Atlas.UI.EditorToolbar.Customize,
   Atlas.IDE.Outline.StickyScroll,
   Atlas.IDE.Editor.LineChanges,
   Atlas.Core.Editor.LineMove,
@@ -1237,6 +1239,21 @@ begin
   // Brotkrumenleiste (#590): Fokus auf das letzte Glied; nur sichtbar, solange editor.breadcrumbs an ist.
   Add('Atlas.Breadcrumbs', TAtlasTextId.BreadcrumbsCommand,
     Guarded(TAtlasFeature.Breadcrumbs, TAtlasIdeBreadcrumbs.Focus), BreadcrumbsVisible);
+  // Atlas-Editorleiste (#1101): Abschnittssprünge, Rücksprung und „Methode suchen“ auch ohne Leiste.
+  Add('Atlas.GotoInterface', TAtlasTextId.GotoInterfaceCommand,
+    Guarded(TAtlasFeature.EditorToolbar, TAtlasIdeEditorToolbar.GotoInterface));
+  Add('Atlas.GotoImplementation', TAtlasTextId.GotoImplementationCommand,
+    Guarded(TAtlasFeature.EditorToolbar, TAtlasIdeEditorToolbar.GotoImplementation));
+  Add('Atlas.GotoUses', TAtlasTextId.GotoUsesCommand,
+    Guarded(TAtlasFeature.EditorToolbar, TAtlasIdeEditorToolbar.GotoUses));
+  Add('Atlas.GotoInitialization', TAtlasTextId.GotoInitializationCommand,
+    Guarded(TAtlasFeature.EditorToolbar, TAtlasIdeEditorToolbar.GotoInitialization));
+  Add('Atlas.ReturnFromSection', TAtlasTextId.ReturnFromSectionCommand,
+    Guarded(TAtlasFeature.EditorToolbar, TAtlasIdeEditorToolbar.ReturnFromSection));
+  Add('Atlas.FindMethod', TAtlasTextId.FindMethodCommand,
+    Guarded(TAtlasFeature.EditorToolbar, TAtlasIdeEditorToolbar.FindMethod));
+  Add('Atlas.EditorToolbarCustomize', TAtlasTextId.EditorToolbarCustomizeCommand,
+    Guarded(TAtlasFeature.EditorToolbar, TAtlasIdeEditorToolbar.Customize));
   // Sprung zum Gegenstück (#635); nur sichtbar, solange keys.jumpToMatch an ist.
   Add('Atlas.JumpToMatch', TAtlasTextId.JumpToMatchCommand, Guarded(TAtlasFeature.EditorCommands, JumpToMatch),
     JumpToMatchVisible);
@@ -2111,6 +2128,11 @@ begin
     begin
       TAtlasIdeDiscover.UnblockAll;
     end;
+  Hooks.ToolbarCommands :=
+    function: TArray<TAtlasToolbarCommandInfo>
+    begin
+      Result := TAtlasIdeEditorToolbar.CommandInfos;
+    end;
   Hooks.ServerPath :=
     function: string
     var
@@ -2212,6 +2234,62 @@ begin
       if Manager <> nil then
         Manager.Report(AText);
     end);
+end;
+
+/// <summary>Atlas-Editorleiste (#1101): Palette, Befunde, Verlauf und Meldungen über Hooks (kein Feature-Zyklus).
+/// Die Palette entsteht später (StartPalette); die Hooks fragen sie erst beim Aufruf.</summary>
+procedure StartEditorToolbar;
+var
+  Hooks: TAtlasIdeEditorToolbar.THooks;
+begin
+  Hooks := Default(TAtlasIdeEditorToolbar.THooks);
+  Hooks.Commands :=
+    function: TArray<TAtlasCommand>
+    begin
+      Result := nil;
+      if Palette <> nil then
+        Result := Palette.AtlasCommands;
+    end;
+  Hooks.Execute :=
+    procedure(AId: string)
+    begin
+      if Palette <> nil then
+        Palette.Execute(AId);
+    end;
+  Hooks.ShowPalette :=
+    procedure
+    begin
+      if Palette <> nil then
+        Palette.Show;
+    end;
+  Hooks.ShortCutOf :=
+    function(AId: string): string
+    begin
+      Result := TAtlasIdeKeyMap.AtlasShortCut(AId);
+    end;
+  Hooks.FindingsOf :=
+    function(AFileName: string): Integer
+    begin
+      Result := 0;
+      if TAtlasProblemsController.Current <> nil then
+        Result := Length(TAtlasProblemsController.Current.ForFile(AFileName));
+    end;
+  Hooks.CanGoBack :=
+    function: Boolean
+    begin
+      Result := (TAtlasIdeNavHistory.History <> nil) and (TAtlasIdeNavHistory.History.BackCount > 0);
+    end;
+  Hooks.CanGoForward :=
+    function: Boolean
+    begin
+      Result := (TAtlasIdeNavHistory.History <> nil) and (TAtlasIdeNavHistory.History.ForwardCount > 0);
+    end;
+  Hooks.Message :=
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end;
+  TAtlasIdeEditorToolbar.Install(Hooks);
 end;
 
 procedure StartCommands;
@@ -2322,6 +2400,8 @@ begin
     end);
   TAtlasIdeOutline.Install;
   TAtlasIdeBreadcrumbs.Install;
+  // Atlas-Editorleiste (#1101) nach den Brotkrumen (Position „in der Brotkrumenzeile“).
+  StartEditorToolbar;
   // Mitlaufender Kopf (#506) aus demselben Gliederungsstand.
   TAtlasIdeStickyScroll.Install;
   // Änderungsmarken und Zeilenhistorie (#507).
@@ -2475,6 +2555,7 @@ begin
   TAtlasIdeQuickOpen.Uninstall;
   TAtlasIdePeek.Uninstall;
   TAtlasIdeStickyScroll.Uninstall;
+  TAtlasIdeEditorToolbar.Uninstall;
   TAtlasIdeBreadcrumbs.Uninstall;
   TAtlasIdeMinimap.Uninstall;
   TAtlasIdeOverviewRuler.Uninstall;
@@ -3975,6 +4056,7 @@ begin
       TAtlasIdeProblems.ThemeChanged;
       TAtlasIdeOutline.ThemeChanged;
       TAtlasIdeBreadcrumbs.ThemeChanged;
+      TAtlasIdeEditorToolbar.ThemeChanged;
       TAtlasIdeSearch.ThemeChanged;
       TAtlasIdeLineChanges.ThemeChanged;
       TAtlasIdeOverviewRuler.ThemeChanged;
@@ -4024,6 +4106,8 @@ begin
       TAtlasIdeOutline.ApplySettings;
       // editor.breadcrumbs* (#590).
       TAtlasIdeBreadcrumbs.ApplySettings;
+      // editor.toolbar* (#1101).
+      TAtlasIdeEditorToolbar.ApplySettings;
       // search.resultsInMessages (#878).
       TAtlasIdeSearch.ApplySettings;
       // editor.stickyScroll* (#506).

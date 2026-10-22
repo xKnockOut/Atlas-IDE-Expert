@@ -90,6 +90,8 @@ type
     [Test]
     procedure StickyScrollRoundTrip;
     [Test]
+    procedure EditorToolbarRoundTrip;
+    [Test]
     procedure WelcomeSettingsRoundTrip;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
@@ -2088,6 +2090,32 @@ begin
     Page.SaveTo(Saved);
     Assert.IsTrue(Saved.StickyScroll);
     Assert.AreEqual(2, Saved.StickyScrollMaxLines);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.EditorToolbarRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // #1101: Position als Auswahl, Belegung als Text (beim Speichern bereinigt), „Leiste anpassen …“ vorhanden.
+  Settings := TAtlasPluginSettings.Defaults;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.AreEqual(Settings.EditorToolbarItems, Page.EditorToolbarItemsEdit.Text);
+    Assert.AreEqual(0, Page.EditorToolbarPositionBox.Choice);
+    Assert.IsNotNull(Page.EditorToolbarCustomizeButton);
+    Page.EditorToolbarPositionBox.Choice := 2;
+    Page.EditorToolbarItemsEdit.Text := ' Atlas.NavBack , | , | ';
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.AreEqual('inBreadcrumbs', Saved.EditorToolbarPosition);
+    Assert.AreEqual('Atlas.NavBack', Saved.EditorToolbarItems);
+    Assert.IsTrue(Saved.EditorToolbar);
+    Assert.IsTrue(Saved.EditorToolbarReturnButton);
   finally
     Page.Free;
   end;

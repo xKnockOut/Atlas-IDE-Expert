@@ -35,6 +35,8 @@ type
     procedure UnitCrumbListsUnitMembers;
     [Test]
     procedure ChildrenOfTypesAndRoutines;
+    [Test]
+    procedure RoutinesForFindMethod;
   end;
 
 implementation
@@ -313,6 +315,29 @@ begin
   Assert.AreEqual(0, Integer(Length(TAtlasBreadcrumbs.Children(List, Find(List, 'SpaltenBreite')))));
   Assert.AreEqual(0, Integer(Length(TAtlasBreadcrumbs.Children(List, -1))));
   Assert.AreEqual(0, Integer(Length(TAtlasBreadcrumbs.Children(List, Length(List)))));
+end;
+
+procedure TAtlasBreadcrumbsTests.RoutinesForFindMethod;
+var
+  List: TAtlasOutlineNodes;
+  Item: Integer;
+  Names: string;
+begin
+  List := Nodes;
+  // „Methode suchen“ der Editorleiste (#1101): Methoden mit Besitzer, Routinen, keine lokalen Routinen und
+  // keine Rümpfe doppelt.
+  Names := '';
+  for Item in TAtlasBreadcrumbs.Routines(List) do
+  begin
+    if Names <> '' then
+      Names := Names + ',';
+    Names := Names + TAtlasBreadcrumbs.QualifiedName(List, Item);
+  end;
+  Assert.AreEqual('TfrmKunde.btnSpeichernClick,TfrmKunde.SpeichereAdresse,TfrmKunde.SpaltenBreite,' +
+    'TfrmKunde.Display,TfrmKunde.TInner.Tief,Hilfe', Names);
+  Assert.AreEqual('', TAtlasBreadcrumbs.QualifiedName(List, -1));
+  Assert.AreEqual('TAndere', TAtlasBreadcrumbs.QualifiedName(List, Find(List, 'TAndere')));
+  Assert.AreEqual(0, Integer(Length(TAtlasBreadcrumbs.Routines(nil))));
 end;
 
 initialization

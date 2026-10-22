@@ -18,6 +18,9 @@ type
     /// <summary>#1108: offene Units zuerst, nicht geöffnete Units, aktive Unit ohne Befunde.</summary>
     [Test]
     procedure ProblemsWindowOpenFirstOptions;
+    /// <summary>#1101: Atlas-Editorleiste, Lage, Belegung, Rücksprung, Text, Tasten der Abschnittssprünge.</summary>
+    [Test]
+    procedure EditorToolbarOptions;
     [Test]
     procedure SaveAndLoadRoundTrip;
     [Test]
@@ -150,7 +153,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Schema,
   Atlas.Core.Settings.SchemaData,
-  Atlas.Core.Settings.Scopes;
+  Atlas.Core.Settings.Scopes,
+  Atlas.Core.Settings.ToolbarItems;
 
 type
   TMemoryStore = class(TInterfacedObject, IAtlasSettingsStore)
@@ -2027,6 +2031,51 @@ begin
   Assert.IsFalse(Loaded.ProblemsWindowOpenFirst);
   Assert.AreEqual('normal', Loaded.ProblemsWindowClosedUnits);
   Assert.IsFalse(Loaded.ProblemsWindowShowCleanActive);
+end;
+
+procedure TAtlasPluginSettingsTests.EditorToolbarOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.EditorToolbar);
+  Assert.AreEqual('belowBreadcrumbs', Settings.EditorToolbarPosition);
+  Assert.AreEqual(TAtlasToolbarItems.DefaultText, Settings.EditorToolbarItems);
+  Assert.IsTrue(Settings.EditorToolbarReturnButton);
+  Assert.IsFalse(Settings.EditorToolbarLabels);
+  Assert.AreEqual(0, Settings.GotoInterfaceKey, 'keine Taste');
+  Assert.AreEqual(0, Settings.GotoImplementationKey, 'keine Taste');
+  Settings.EditorToolbarPosition := 'INBREADCRUMBS';
+  Settings.EditorToolbarItems := '|, Atlas.GotoInterface ,|,|,Atlas.NavBack,Atlas.navback,|';
+  Settings.GotoInterfaceKey := $1FFFF;
+  Settings.GotoImplementationKey := -3;
+  Settings.Normalize;
+  Assert.AreEqual('inBreadcrumbs', Settings.EditorToolbarPosition);
+  Assert.AreEqual('Atlas.GotoInterface,|,Atlas.NavBack', Settings.EditorToolbarItems);
+  Assert.AreEqual($FFFF, Settings.GotoInterfaceKey);
+  Assert.AreEqual(0, Settings.GotoImplementationKey);
+  Settings.EditorToolbarPosition := 'oben';
+  Settings.Normalize;
+  Assert.AreEqual('belowBreadcrumbs', Settings.EditorToolbarPosition, 'Unbekanntes = Vorgabe');
+  Settings.EditorToolbar := False;
+  Settings.EditorToolbarPosition := 'aboveBreadcrumbs';
+  Settings.EditorToolbarItems := '';
+  Settings.EditorToolbarReturnButton := False;
+  Settings.EditorToolbarLabels := True;
+  Settings.GotoInterfaceKey := $6049;
+  Settings.GotoImplementationKey := $604D;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.EditorToolbar);
+  Assert.AreEqual('aboveBreadcrumbs', Loaded.EditorToolbarPosition);
+  Assert.AreEqual('', Loaded.EditorToolbarItems, 'alle Knöpfe entfernt bleibt leer');
+  Assert.IsFalse(Loaded.EditorToolbarReturnButton);
+  Assert.IsTrue(Loaded.EditorToolbarLabels);
+  Assert.AreEqual($6049, Loaded.GotoInterfaceKey);
+  Assert.AreEqual($604D, Loaded.GotoImplementationKey);
 end;
 
 initialization
