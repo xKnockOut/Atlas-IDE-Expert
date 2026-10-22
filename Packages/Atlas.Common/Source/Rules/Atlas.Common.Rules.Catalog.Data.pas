@@ -1747,6 +1747,16 @@ begin
     '      "good": "procedure Exportieren(const Datei: string); overload;\nprocedure Exportieren(const Datei: string; MitKopf: Boolean); overload;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "empty-routine",' + #10 +
+    '      "name": "Empty routine",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A method or routine whose body has neither a statement nor a comment (nor a compiler directive). Either the content is missing or the method can go. Not reported: virtual and dyn' + 'amic methods (a stand-in for abstract in base classes), message handlers, methods of classes that list interfaces (the compiler requires every interface method), event handlers named in the form file ' + '(the IDE removes empty ones when saving) and bodies with a comment, such as overrides that deliberately do nothing. Quick fixes: insert a comment between begin and end; remove the method (declaration ' + 'with its XML doc and body) only for private methods and routines without a declaration in the interface part that occur nowhere else in the file and fulfil no signature from outside.",' + #10 +
+    '      "bad": "procedure TImport.Pruefen;\nbegin\nend;",' + #10 +
+    '      "good": "procedure TImport.Pruefen;\nbegin\n  // Absichtlich leer.\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "queue-nil-in-package",' + #10 +
     '      "name": "TThread.Queue(nil, …) in a package",' + #10 +
     '      "category": "bug",' + #10 +
@@ -3283,6 +3293,11 @@ begin
     '      "id": "default-parameter",' + #10 +
     '      "name": "Standardparameter statt Überladung",' + #10 +
     '      "description": "Ein Parameter mit Vorgabewert (Anzahl: Integer = 10). Für Teams, die Überladungen bevorzugen: Vorgabewerte landen beim Aufrufer im Code, ändern sich nicht mit der Bibliothek und ' + 'vertragen sich schlecht mit Überladungen. Gemeldet wird einmal je Deklaration (Klassenmitglied, interface-Teil, forward oder eine Routine nur im implementation-Teil); der Rumpf zu einer Deklaration ni' + 'cht noch einmal. Die Schnellkorrektur fügt vor der Deklaration je weggelassenem Standardparameter am Ende eine Überladung ein, die mit dem Vorgabewert weiterreicht, entfernt die Vorgabewerte (auch im ' + 'Rumpf wiederholte) und ergänzt overload. Keine Korrektur, wenn die Signatur von außen vorgegeben ist (virtual, dynamic, abstract, override, message, external, Interface-Typen), der Name als Wert benut' + 'zt wird (@Routine, Methodenzeiger), es schon eine gleichnamige Überladung gibt, in bedingter Übersetzung oder wenn der Rumpf nicht eindeutig zu finden ist."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "empty-routine",' + #10 +
+    '      "name": "Leere Methode",' + #10 +
+    '      "description": "Eine Methode oder Routine, deren Rumpf weder eine Anweisung noch einen Kommentar (noch eine Compiler-Direktive) enthält. Entweder fehlt der Inhalt oder die Methode kann weg. Nich' + 't gemeldet werden virtuelle und dynamische Methoden (Ersatz für abstract in Basisklassen), Nachrichten-Handler, Methoden von Klassen mit Interfaces (der Compiler verlangt jede Interface-Methode), Erei' + 'gnis-Handler, die in der Formulardatei stehen (die IDE entfernt leere beim Speichern), und Rümpfe mit Kommentar, etwa Überschreibungen, die bewusst nichts tun. Schnellkorrekturen: Kommentar zwischen b' + 'egin und end einfügen; Methode entfernen (Deklaration samt XML-Doku und Rumpf) nur bei privaten Methoden und Routinen ohne Deklaration im interface-Teil, die sonst nirgends in der Datei vorkommen und ' + 'keine Signatur von außen erfüllen."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "queue-nil-in-package",' + #10 +

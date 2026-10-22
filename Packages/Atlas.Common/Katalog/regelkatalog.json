@@ -1727,6 +1727,16 @@
       "good": "procedure Exportieren(const Datei: string); overload;\nprocedure Exportieren(const Datei: string; MitKopf: Boolean); overload;"
     },
     {
+      "id": "empty-routine",
+      "name": "Empty routine",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "A method or routine whose body has neither a statement nor a comment (nor a compiler directive). Either the content is missing or the method can go. Not reported: virtual and dynamic methods (a stand-in for abstract in base classes), message handlers, methods of classes that list interfaces (the compiler requires every interface method), event handlers named in the form file (the IDE removes empty ones when saving) and bodies with a comment, such as overrides that deliberately do nothing. Quick fixes: insert a comment between begin and end; remove the method (declaration with its XML doc and body) only for private methods and routines without a declaration in the interface part that occur nowhere else in the file and fulfil no signature from outside.",
+      "bad": "procedure TImport.Pruefen;\nbegin\nend;",
+      "good": "procedure TImport.Pruefen;\nbegin\n  // Absichtlich leer.\nend;"
+    },
+    {
       "id": "queue-nil-in-package",
       "name": "TThread.Queue(nil, …) in a package",
       "category": "bug",

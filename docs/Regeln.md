@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 29 |
+| [Stil und Metriken](#gruppe-style) | 30 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -258,6 +258,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`global-variable`](#global-variable) | Globale Variable im interface | Code Smell | Hinweis |
 | [`commented-out-code`](#commented-out-code) | Auskommentierter Code | Code Smell | Hinweis |
 | [`default-parameter`](#default-parameter) | Standardparameter statt Überladung | Code Smell | Warnung |
+| [`empty-routine`](#empty-routine) | Leere Methode | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -3524,6 +3525,30 @@ Richtig:
 ```pascal
 procedure Exportieren(const Datei: string); overload;
 procedure Exportieren(const Datei: string; MitKopf: Boolean); overload;
+```
+
+<a id="empty-routine"></a>
+### empty-routine
+
+**Leere Methode** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine Methode oder Routine, deren Rumpf weder eine Anweisung noch einen Kommentar (noch eine Compiler-Direktive) enthält. Entweder fehlt der Inhalt oder die Methode kann weg. Nicht gemeldet werden virtuelle und dynamische Methoden (Ersatz für abstract in Basisklassen), Nachrichten-Handler, Methoden von Klassen mit Interfaces (der Compiler verlangt jede Interface-Methode), Ereignis-Handler, die in der Formulardatei stehen (die IDE entfernt leere beim Speichern), und Rümpfe mit Kommentar, etwa Überschreibungen, die bewusst nichts tun. Schnellkorrekturen: Kommentar zwischen begin und end einfügen; Methode entfernen (Deklaration samt XML-Doku und Rumpf) nur bei privaten Methoden und Routinen ohne Deklaration im interface-Teil, die sonst nirgends in der Datei vorkommen und keine Signatur von außen erfüllen.
+
+Mit Treffer:
+
+```pascal
+procedure TImport.Pruefen;
+begin
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TImport.Pruefen;
+begin
+  // Absichtlich leer.
+end;
 ```
 
 <a id="queue-nil-in-package"></a>
