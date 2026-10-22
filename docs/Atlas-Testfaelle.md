@@ -4197,3 +4197,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | JG5 | Lokale Variable mit Feldnamen, Methode ohne Property, Änderung in einer anonymen Methode | Keine Meldung |
 | JG6 | Optionsseite: Auswahlfeld umstellen, Seite wechseln und zurück, speichern | Die Auswahl bleibt erhalten (`TAtlasChoiceBox` sichert sie in `DestroyWnd`) |
 | JG7 | `"getter-side-effect": "off"` bzw. `exclude` mit der Datei | Keine Meldung |
+
+## Equals ohne GetHashCode (#1053)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JH1 | Das Beispiel aus #1053: `TKundenNr = class` mit Feldern `FNummer: Integer; FName: string;` und `function Equals(Obj: TObject): Boolean; override;`, Equals vergleicht FNummer und mit `SameText` FName | Warnung `equals-without-gethashcode` an der Deklaration: „Equals ist überschrieben, GetHashCode nicht; als Schlüssel in TDictionary finden sich gleiche Objekte nicht.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JH2 | Schnellkorrektur „GetHashCode mit FNummer, FName überschreiben (THashBobJenkins)“, übersetzen, danach Strg+Z | Deklaration `function GetHashCode: Integer; override;` hinter Equals, Rumpf hinter Equals mit `THashBobJenkins.GetHashValue(FNummer, SizeOf(FNummer), 0)` und `GetHashValue(LowerCase(FName), Result)`, `System.Hash` in uses; übersetzt ohne Fehler, Warnungen und Hinweise; keine Meldung mehr; ein Undo-Schritt |
+| JH3 | Nur `GetHashCode` überschrieben | Meldung „GetHashCode ist überschrieben, Equals nicht; …“ ohne Korrektur |
+| JH4 | Vorfahr der Datei überschreibt beides, unbekannter Vorfahr, `Equals` mit `reintroduce` statt override | Keine Meldung |
+| JH5 | Record `TSchluessel` mit `Name: string` und `class operator Equal`, `TDictionary<TSchluessel, Integer>.Create` bzw. `THashSet<TSchluessel>.Create(10)` | Meldung an `TDictionary<…>`: „TSchluessel hat class operator Equal, TDictionary vergleicht Schlüssel ohne Comparer aber Byte für Byte; …“ |
+| JH6 | Wie JH5 mit Comparer im Create, ohne Operator oder mit nur Integer-Feldern | Keine Meldung |
+| JH7 | `"equals-without-gethashcode": "off"` bzw. `exclude` mit der Datei | Keine Meldung |

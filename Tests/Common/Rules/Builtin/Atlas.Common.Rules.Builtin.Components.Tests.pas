@@ -7,6 +7,8 @@
 // Abschalten.
 // getter-side-effect (#1052): Beispiel, Arten der Änderung, geerbte Felder, Lazy-Initialisierung mit Option
 // allowLazyInit samt Parser, stille Fälle, Abschalten.
+// equals-without-gethashcode (#1053): Beispiel mit Korrektur, Gegenrichtung, Vorfahren, Records als Schlüssel,
+// Hashausdrücke, Abschalten.
 
 interface
 
@@ -111,6 +113,25 @@ type
     procedure LazyInitOption;
     [Test]
     procedure SilentCases;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TEqualsWithoutGetHashCodeTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure GetHashCodeWithoutEquals;
+    [Test]
+    procedure AncestorsAndSilentCases;
+    [Test]
+    procedure FixNeedsEqualsBodyWithFields;
+    [Test]
+    procedure RecordKeys;
+    [Test]
+    procedure HashExpressions;
     [Test]
     procedure OffAndExclude;
   end;
@@ -915,10 +936,167 @@ begin
     '{"rules": {"getter-side-effect": {"exclude": ["Source/*.pas"]}}}', 'Source/Zaehler.pas'))));
 end;
 
+{ TEqualsWithoutGetHashCodeTests }
+
+/// <summary>TKundenNr überschreibt Equals über FNummer und FName; AMembers ergänzt die Klasse, AMore die
+/// Implementierung, AParent den Vorfahren ('' = keiner).</summary>
+function KundenNr(const AMembers, AMore, AParent: string): string;
+var
+  Parent: string;
+begin
+  Parent := '';
+  if AParent <> '' then
+    Parent := '(' + AParent + ')';
+  Result := 'unit Kunden;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'type'#10 +
+    '  TKundenNr = class' + Parent + #10'  private'#10'    FNummer: Integer;'#10'    FName: string;'#10'  public'#10 +
+    '    function Equals(Obj: TObject): Boolean; override;'#10 + AMembers + '  end;'#10'implementation'#10 +
+    'function TKundenNr.Equals(Obj: TObject): Boolean;'#10'begin'#10 +
+    '  Result := (Obj is TKundenNr) and (TKundenNr(Obj).FNummer = FNummer) and SameText(TKundenNr(Obj).FName, FName);'#10 +
+    'end;'#10 + AMore + 'end.';
+end;
+
+function HashFindings(const ASource: string; const AConfig: string = ''; const APath: string = ''):
+  TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.Findings(TEqualsWithoutGetHashCodeRule.Create, ASource, AConfig, APath);
+end;
+
+procedure TEqualsWithoutGetHashCodeTests.IssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := KundenNr('', '', '');
+  Findings := HashFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('equals-without-gethashcode', Findings[0].RuleId);
+  Assert.AreEqual('Equals ist überschrieben, GetHashCode nicht; als Schlüssel in TDictionary finden sich gleiche ' +
+    'Objekte nicht.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('GetHashCode mit FNummer, FName überschreiben (THashBobJenkins)', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.IsTrue(Pos('    function Equals(Obj: TObject): Boolean; override;'#10 +
+    '    function GetHashCode: Integer; override;'#10'  end;', Fixed) > 0, Fixed);
+  Assert.IsTrue(Pos('end;'#10#10'function TKundenNr.GetHashCode: Integer;'#10'begin'#10 +
+    '  Result := THashBobJenkins.GetHashValue(FNummer, SizeOf(FNummer), 0);'#10 +
+    '  Result := THashBobJenkins.GetHashValue(LowerCase(FName), Result);'#10'end;'#10'end.', Fixed) > 0, Fixed);
+  Assert.IsTrue(Pos('System.Hash', Fixed) > 0, Fixed);
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Fixed);
+end;
+
+procedure TEqualsWithoutGetHashCodeTests.GetHashCodeWithoutEquals;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := StringReplace(KundenNr('', '', ''), 'function Equals(Obj: TObject): Boolean; override;',
+    'function GetHashCode: Integer; override;', []);
+  Findings := HashFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('GetHashCode ist überschrieben, Equals nicht; als Schlüssel in TDictionary gelten gleiche ' +
+    'Objekte weiter als verschieden.', Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TEqualsWithoutGetHashCodeTests.AncestorsAndSilentCases;
+var
+  Basis: string;
+begin
+  // Beides überschrieben.
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, KundenNr('    function GetHashCode: Integer; override;'#10,
+    'function TKundenNr.GetHashCode: Integer;'#10'begin'#10'  Result := FNummer;'#10'end;'#10, ''));
+  // Ein Vorfahr der Datei überschreibt beides; ein unbekannter Vorfahr gibt keine Aussage.
+  Basis := StringReplace(KundenNr('', '', 'TBasis'), '  TKundenNr = class(TBasis)',
+    '  TBasis = class'#10'  public'#10'    function Equals(Obj: TObject): Boolean; override;'#10 +
+    '    function GetHashCode: Integer; override;'#10'  end;'#10 +
+    '  TKundenNr = class(TBasis)', []);
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Basis);
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, KundenNr('', '', 'TUnbekannt'));
+  // Eigenes Equals ohne override ist nicht TObject.Equals.
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, StringReplace(KundenNr('', '', ''),
+    'function Equals(Obj: TObject): Boolean; override;', 'function Equals(Obj: TObject): Boolean; reintroduce;', []));
+end;
+
+procedure TEqualsWithoutGetHashCodeTests.FixNeedsEqualsBodyWithFields;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Equals vergleicht keine eigenen Felder: Meldung ohne Korrektur.
+  Findings := HashFindings(StringReplace(KundenNr('', '', ''),
+    '(Obj is TKundenNr) and (TKundenNr(Obj).FNummer = FNummer) and SameText(TKundenNr(Obj).FName, FName)',
+    'Obj = Self', []));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+/// <summary>Record TSchluessel mit AFields und class operator Equal (AOperator = False: ohne), Schlüssel in ACode.</summary>
+function Schluessel(const AFields, ACode: string; AOperator: Boolean): string;
+var
+  Operator_: string;
+begin
+  Operator_ := '';
+  if AOperator then
+    Operator_ := '    class operator Equal(const A, B: TSchluessel): Boolean;'#10;
+  Result := 'unit Schluessel;'#10'interface'#10'uses'#10'  System.Generics.Collections;'#10'type'#10 +
+    '  TSchluessel = record'#10 + AFields + Operator_ + '  end;'#10'implementation'#10'procedure Zaehlen;'#10 +
+    'var'#10'  D: TDictionary<TSchluessel, Integer>;'#10'begin'#10 + ACode + 'end;'#10'end.';
+end;
+
+procedure TEqualsWithoutGetHashCodeTests.RecordKeys;
+var
+  Findings: TArray<TRuleFinding>;
+const
+  Fields = '    Name: string;'#10'    Nr: Integer;'#10;
+begin
+  Findings := HashFindings(Schluessel(Fields, '  D := TDictionary<TSchluessel, Integer>.Create;'#10, True));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TSchluessel hat class operator Equal, TDictionary vergleicht Schlüssel ohne Comparer aber Byte ' +
+    'für Byte; gleiche Schlüssel finden sich nicht.', Findings[0].Message);
+  Assert.AreEqual(15, Findings[0].Range.StartPos.Line);
+  // Kapazität und Mengen sind kein Comparer.
+  Assert.AreEqual(2, Integer(Length(HashFindings(Schluessel(Fields,
+    '  THashSet<TSchluessel>.Create(10).Free;'#10'  D := TObjectDictionary<TSchluessel, Integer>.Create([]);'#10,
+    True)))));
+  // Mit Comparer, ohne Operator, nur Ganzzahlfelder (Byte-Vergleich passt), Schlüssel nicht als erster Typ.
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Schluessel(Fields,
+    '  D := TDictionary<TSchluessel, Integer>.Create(TSchluesselComparer.Create);'#10, True));
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Schluessel(Fields,
+    '  D := TDictionary<TSchluessel, Integer>.Create;'#10, False));
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Schluessel('    Nr, Teil: Integer;'#10,
+    '  D := TDictionary<TSchluessel, Integer>.Create;'#10, True));
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Schluessel(Fields,
+    '  TDictionary<Integer, TSchluessel>.Create.Free;'#10, True));
+end;
+
+procedure TEqualsWithoutGetHashCodeTests.HashExpressions;
+begin
+  Assert.AreEqual('THashBobJenkins.GetHashValue(FNr, SizeOf(FNr), 0)',
+    TEqualsWithoutGetHashCodeRule.HashExpression('FNr', 'Integer', '', '0'));
+  Assert.AreEqual('THashBobJenkins.GetHashValue(FName, Result)',
+    TEqualsWithoutGetHashCodeRule.HashExpression('FName', 'string', 'SameStr', 'Result'));
+  Assert.AreEqual('THashBobJenkins.GetHashValue(AnsiLowerCase(FName), 0)',
+    TEqualsWithoutGetHashCodeRule.HashExpression('FName', 'UnicodeString', 'AnsiSameText', '0'));
+end;
+
+procedure TEqualsWithoutGetHashCodeTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := KundenNr('', '', '');
+  Assert.AreEqual(0, Integer(Length(HashFindings(Source, '{"rules": {"equals-without-gethashcode": "off"}}',
+    'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(HashFindings(Source,
+    '{"rules": {"equals-without-gethashcode": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TComponentRulesTests);
   TDUnitX.RegisterTestFixture(TInheritedOrderTests);
   TDUnitX.RegisterTestFixture(TInheritedWrongMethodTests);
   TDUnitX.RegisterTestFixture(TGetterSideEffectTests);
+  TDUnitX.RegisterTestFixture(TEqualsWithoutGetHashCodeTests);
 
 end.

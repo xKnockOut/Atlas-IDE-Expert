@@ -1366,6 +1366,16 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "equals-without-gethashcode",' + #10 +
+    '      "name": "Equals without GetHashCode",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "A class overrides Equals but not GetHashCode (or the other way round). In TDictionary and THashSet with the default comparer equal objects then do not find each other. Silent whe' + 'n an ancestor overrides the counterpart, when the ancestor chain is not known completely and for Equals without override. Also applies to records of the file with class operator Equal used as keys of ' + 'TDictionary, TObjectDictionary, THashSet or TMultiMap without a comparer (Create without arguments or only with constants such as capacity or ownership): the default comparer compares records byte by ' + 'byte, which is only wrong for fields of type string, Variant, floating point, interface or TArray; records with only such ordinal fields stay silent. High confidence. Quick fix for classes: declare Ge' + 'tHashCode after Equals and implement it after the body of Equals with THashBobJenkins over the own fields that Equals compares (case-insensitively via LowerCase when Equals uses SameText), adding Syst' + 'em.Hash to uses.",' + #10 +
+    '      "bad": "  TKundenNr = class\n    function Equals(Obj: TObject): Boolean; override;\n  end;",' + #10 +
+    '      "good": "  TKundenNr = class\n    function Equals(Obj: TObject): Boolean; override;\n    function GetHashCode: Integer; override;\n  end;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "destroy-called-directly",' + #10 +
     '      "name": "Destroy called instead of Free",' + #10 +
     '      "category": "bug",' + #10 +
@@ -3118,6 +3128,11 @@ begin
     '          "description": "Lazy-Initialisierung im Getter erlauben (if FListe = nil then FListe := …)."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "equals-without-gethashcode",' + #10 +
+    '      "name": "Equals ohne GetHashCode",' + #10 +
+    '      "description": "Eine Klasse überschreibt Equals, aber nicht GetHashCode (oder umgekehrt). In TDictionary und THashSet mit Standard-Comparer finden gleiche Objekte sich dann nicht. Still, wenn ei' + 'n Vorfahr das Gegenstück überschreibt, wenn die Vorfahrenkette nicht vollständig bekannt ist und bei Equals ohne override. Gilt ebenso für Records der Datei mit class operator Equal, die als Schlüssel' + ' von TDictionary, TObjectDictionary, THashSet oder TMultiMap ohne Comparer dienen (Create ohne Argumente oder nur mit Konstanten wie Kapazität oder Besitz): Der Standard-Comparer vergleicht Records By' + 'te für Byte, was nur bei Feldern vom Typ string, Variant, Gleitkomma, Interface oder TArray falsch ist; Records mit nur ordinalen Feldern bleiben still. Konfidenz hoch. Schnellkorrektur für Klassen: G' + 'etHashCode hinter Equals deklarieren und hinter dem Rumpf von Equals mit THashBobJenkins über die eigenen Felder umsetzen, die Equals vergleicht (ohne Groß-/Kleinschreibung über LowerCase, wenn Equals' + ' SameText nutzt), System.Hash in uses ergänzen."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "destroy-called-directly",' + #10 +
