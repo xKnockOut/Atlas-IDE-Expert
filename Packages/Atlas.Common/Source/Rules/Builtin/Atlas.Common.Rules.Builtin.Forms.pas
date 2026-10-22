@@ -20,6 +20,13 @@
 //                           Vorfahren kommen über den Index (Datei der Klasse) bzw. die Units der uses-Liste neben
 //                           der Unit (ReadFile); die Kette folgt inherited-Wurzeln bis zu einer object-Wurzel.
 //                           Andere Handlernamen gelten als bewusster Ersatz. Korrektur: inherited; nach begin.
+//   self-free-in-event-handler  Free, Destroy, DisposeOf oder FreeAndNil auf Self bzw. auf die globale Variable der
+//                           eigenen Formularklasse als Anweisung in einem Ereignis-Handler des Formulars (#1057):
+//                           Nach der Rückkehr greift die VCL noch auf das Objekt zu. Handler sind die Methoden
+//                           aus der Formulardatei und Methoden mit Sender: TObject; Formular heißt Wurzelklasse
+//                           der Formulardatei mit ClientWidth/ClientHeight bzw. Vorfahr TForm/TCustomForm (Rahmen
+//                           und Datenmodule haben kein Release). Anweisungen in anonymen Methoden und with-Blöcken
+//                           zählen nicht. Korrektur: Release, in OnClose (var Action: TCloseAction) Action := caFree.
 
 interface
 
@@ -45,6 +52,12 @@ type
   end;
 
   TInheritedFormHandlerRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TSelfFreeInEventHandlerRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -709,11 +722,162 @@ begin
   end;
 end;
 
+{ TSelfFreeInEventHandlerRule }
+
+function TSelfFreeInEventHandlerRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('self-free-in-event-handler', TRuleSeverity.Error,
+    'Formular gibt sich im eigenen Ereignis frei');
+end;
+
+procedure TSelfFreeInEventHandlerRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Document: TDfmDocument;
+  Events: TArray<TFormEvent>;
+  ClassName, Parent: string;
+  IsForm: Boolean;
+  Variables: TArray<string>;
+  Prop: TDfmProperty;
+  ClassNode: TSyntaxNode;
+  Symbol: TIndexSymbol;
+
+  function NodeText(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  // Gibt die Anweisung das Formular selbst frei?
+  function FreesSelf(const AStatement: string): Boolean;
+  var
+    Text, Name: string;
+  begin
+    Text := LowerCase(StringReplace(StringReplace(StringReplace(AStatement, ' ', '', [rfReplaceAll]), #9, '',
+      [rfReplaceAll]), ';', '', [rfReplaceAll]));
+    Text := StringReplace(StringReplace(Text, #13, '', [rfReplaceAll]), #10, '', [rfReplaceAll]);
+    if MatchStr(Text, ['free', 'self.free', 'destroy', 'self.destroy', 'disposeof', 'self.disposeof',
+      'freeandnil(self)']) then
+      Exit(True);
+    for Name in Variables do
+      if MatchStr(Text, [LowerCase(Name) + '.free', LowerCase(Name) + '.destroy', LowerCase(Name) + '.disposeof',
+        'freeandnil(' + LowerCase(Name) + ')']) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Ereignis der Formulardatei, das AMethod als Handler hat; '' ohne.
+  function EventOf(const AMethod: string): string;
+  var
+    Event: TFormEvent;
+  begin
+    for Event in Events do
+      if SameText(Event.Handler, AMethod) then
+        Exit(Event.Event);
+    Result := '';
+  end;
+
+  procedure CheckRoutine(ARoutine: TSyntaxNode);
+  var
+    Method, Event, Header, What, Replacement, Title: string;
+    Body: TSyntaxNode;
+    Statements: TArray<TSyntaxNode>;
+    Statement: TSyntaxNode;
+    IsClose: Boolean;
+  begin
+    if not StartsText(ClassName + '.', ARoutine.Name) then
+      Exit;
+    Method := Copy(ARoutine.Name, Length(ClassName) + 2, MaxInt);
+    if Pos('.', Method) > 0 then
+      Exit;
+    Body := ARoutine.FindChild(TSyntaxKind.Block);
+    if Body = nil then
+      Exit;
+    Header := LowerCase(StringReplace(Copy(AContext.Text, ARoutine.StartOffset + 1, Body.StartOffset -
+      ARoutine.StartOffset), ' ', '', [rfReplaceAll]));
+    Event := EventOf(Method);
+    if (Event = '') and not ContainsStr(Header, 'sender:tobject') then
+      Exit;
+    IsClose := ContainsStr(Header, 'varaction:tcloseaction');
+    Statements := nil;
+    Body.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        if ANode.Kind = TSyntaxKind.CallStatement then
+          Statements := Statements + [ANode];
+        // Anonyme Methoden laufen später, with lenkt Free auf ein anderes Objekt um.
+        Result := not (ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.WithStatement,
+          TSyntaxKind.RoutineDecl]);
+      end);
+    What := 'Ereignis-Handler';
+    if StartsText('On', Event) and (Length(Event) > 2) then
+      What := Copy(Event, 3, MaxInt) + '-Handler';
+    for Statement in Statements do
+    begin
+      if not FreesSelf(NodeText(Statement)) then
+        Continue;
+      Replacement := 'Release';
+      Title := 'Free durch Release ersetzen';
+      if IsClose then
+      begin
+        Replacement := 'Action := caFree';
+        Title := 'Durch Action := caFree ersetzen';
+      end;
+      AReport.Add(TTextRange.Create(Statement.StartPos, Statement.EndPos),
+        Format('Das Formular gibt sich im eigenen %s frei; die VCL greift danach noch darauf zu.', [What]),
+        TRuleConfidence.High, [TRuleFix.Create(Title, [TRuleEdit.Create(TTextRange.Create(Statement.StartPos,
+        Statement.EndPos), Replacement)], True)]);
+    end;
+  end;
+
+var
+  Routine: TSyntaxNode;
+  Cache: IRuleDerivedCache;
+begin
+  if (AContext.FormText = '') or (AContext.Tree = nil) or (AContext.Tree.Root = nil) or
+    not (ContainsText(AContext.Text, 'Free') or ContainsText(AContext.Text, 'Destroy') or
+    ContainsText(AContext.Text, 'DisposeOf')) then
+    Exit;
+  Document := TDfmParser.Parse(AContext.FormText);
+  try
+    if Document.Root = nil then
+      Exit;
+    ClassName := Document.Root.TypeName;
+    IsForm := False;
+    for Prop in Document.Root.Properties do
+      if SameText(Prop.Name, 'ClientWidth') or SameText(Prop.Name, 'ClientHeight') then
+        IsForm := True;
+    Events := nil;
+    CollectEvents(Document.Root, True, ClassName, Events);
+  finally
+    Document.Free;
+  end;
+  ClassNode := FindClassDecl(AContext.Tree.Root, ClassName);
+  if ClassNode = nil then
+    Exit;
+  if (ClassNode.ChildCount > 0) and (ClassNode[0].Kind = TSyntaxKind.TypeReference) then
+  begin
+    Parent := ClassNode[0].Name;
+    if MatchText(Parent, ['TForm', 'TCustomForm', 'Vcl.Forms.TForm', 'FMX.Forms.TForm']) then
+      IsForm := True
+    else if MatchText(Parent, ['TFrame', 'TDataModule', 'Vcl.Forms.TFrame', 'System.Classes.TDataModule']) then
+      IsForm := False;
+  end;
+  if not IsForm then
+    Exit;
+  Cache := TRuleDerived.Open(AContext);
+  Variables := nil;
+  for Symbol in TRuleDerived.UnitIndex(Cache, AContext).Symbols do
+    if (Symbol.Kind = TIndexSymbolKind.Variable) and (Symbol.Container = '') and SameText(Symbol.TypeName, ClassName) then
+      Variables := Variables + [Symbol.Name];
+  for Routine in TRuleDerived.Routines(Cache, AContext) do
+    CheckRoutine(Routine);
+end;
+
 procedure RegisterFormRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TFormResourceMissingRule.Create);
   ARegistry.Register(TFormAutoCreateAndManualRule.Create);
   ARegistry.Register(TInheritedFormHandlerRule.Create);
+  ARegistry.Register(TSelfFreeInEventHandlerRule.Create);
 end;
 
 end.

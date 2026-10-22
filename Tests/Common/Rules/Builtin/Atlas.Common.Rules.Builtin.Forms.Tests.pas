@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Forms.Tests;
 
 // Tests der Formularregeln aus Builtin.Forms: form-resource-missing (#1054), form-autocreate-and-manual (#1055),
-// inherited-form-handler-without-inherited (#1056).
+// inherited-form-handler-without-inherited (#1056), self-free-in-event-handler (#1057).
 
 interface
 
@@ -52,6 +52,18 @@ type
     procedure InheritedHandlerAncestorFromIndex;
     [Test]
     procedure InheritedHandlerOffAndExclude;
+    [Test]
+    procedure SelfFreeIssueExample;
+    [Test]
+    procedure SelfFreeFixUsesRelease;
+    [Test]
+    procedure SelfFreeVariants;
+    [Test]
+    procedure SelfFreeOnCloseUsesCaFree;
+    [Test]
+    procedure SelfFreeSilentCases;
+    [Test]
+    procedure SelfFreeOffAndExclude;
   end;
 
 implementation
@@ -243,6 +255,51 @@ begin
   Result := TRuleAssert.ContextFindings(TInheritedFormHandlerRule.Create, FilesContext(ASource, AFormText, ANames,
     ATexts), '');
 end;
+
+const
+  MeldungDfm =
+    'object frmMeldung: TfrmMeldung'#10 +
+    '  Caption = ''Meldung'''#10 +
+    '  ClientHeight = 120'#10 +
+    '  ClientWidth = 300'#10 +
+    '  OnClose = FormClose'#10 +
+    '  object btnOK: TButton'#10 +
+    '    OnClick = btnOKClick'#10 +
+    '  end'#10 +
+    'end'#10;
+
+function Meldung(const AHeader, ABody: string): string;
+begin
+  Result :=
+    'unit Meldung;'#10 +
+    'interface'#10 +
+    'uses System.Classes, Vcl.Forms, Vcl.StdCtrls;'#10 +
+    'type'#10 +
+    '  TfrmMeldung = class(TForm)'#10 +
+    '    btnOK: TButton;'#10 +
+    '    procedure btnOKClick(Sender: TObject);'#10 +
+    '    procedure FormClose(Sender: TObject; var Action: TCloseAction);'#10 +
+    '    procedure Aufraeumen;'#10 +
+    '    procedure Weiter(Sender: TObject);'#10 +
+    '  end;'#10 +
+    'var'#10 +
+    '  frmMeldung: TfrmMeldung;'#10 +
+    'implementation'#10 +
+    '{$R *.dfm}'#10 +
+    AHeader + #10 +
+    'begin'#10 +
+    ABody +
+    'end;'#10 +
+    'end.';
+end;
+
+function SelfFreeFindings(const AHeader, ABody: string): TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.FormFindings(TSelfFreeInEventHandlerRule.Create, Meldung(AHeader, ABody), MeldungDfm);
+end;
+
+const
+  ClickHeader = 'procedure TfrmMeldung.btnOKClick(Sender: TObject);';
 
 function ApplyFix(const AText: string; const AFix: TRuleFix): string;
 var
@@ -614,6 +671,120 @@ begin
     '{"rules": {"inherited-form-handler-without-inherited": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TInheritedFormHandlerRule.Create, Context,
     '{"rules": {"inherited-form-handler-without-inherited": {"exclude": ["Source/*.pas"]}}}'))));
+end;
+
+procedure TFormRulesTests.SelfFreeIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := SelfFreeFindings(ClickHeader, '  Free;'#10);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('self-free-in-event-handler', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Das Formular gibt sich im eigenen Click-Handler frei; die VCL greift danach noch darauf zu.',
+    Findings[0].Message);
+  Assert.AreEqual(17, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(6, Findings[0].Range.EndPos.Character);
+end;
+
+procedure TFormRulesTests.SelfFreeFixUsesRelease;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+  Tree: TSyntaxTree;
+begin
+  Source := Meldung(ClickHeader, '  Free;'#10);
+  Findings := TRuleAssert.FormFindings(TSelfFreeInEventHandlerRule.Create, Source, MeldungDfm);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Free durch Release ersetzen', Findings[0].Fixes[0].Title);
+  Assert.IsTrue(Findings[0].Fixes[0].Safe);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(Meldung(ClickHeader, '  Release;'#10), Fixed);
+  Tree := TPascalParser.Parse(Fixed);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(TSelfFreeInEventHandlerRule.Create, Fixed,
+    MeldungDfm))));
+end;
+
+procedure TFormRulesTests.SelfFreeVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Assert.AreEqual(1, Integer(Length(SelfFreeFindings(ClickHeader, '  Self.Free;'#10))));
+  Assert.AreEqual(1, Integer(Length(SelfFreeFindings(ClickHeader, '  FreeAndNil(Self);'#10))));
+  Assert.AreEqual(1, Integer(Length(SelfFreeFindings(ClickHeader, '  frmMeldung.Free;'#10))));
+  Assert.AreEqual(1, Integer(Length(SelfFreeFindings(ClickHeader, '  FreeAndNil(frmMeldung);'#10))));
+  Assert.AreEqual(1, Integer(Length(SelfFreeFindings(ClickHeader, '  Destroy;'#10))));
+  Assert.AreEqual(1, Integer(Length(SelfFreeFindings(ClickHeader, '  if btnOK.Tag = 1 then'#10'    Free;'#10))));
+  // Handler, der im Code zugewiesen wird (Sender: TObject), ohne Eintrag in der Formulardatei.
+  Findings := SelfFreeFindings('procedure TfrmMeldung.Weiter(Sender: TObject);', '  Free;'#10);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Das Formular gibt sich im eigenen Ereignis-Handler frei; die VCL greift danach noch darauf zu.',
+    Findings[0].Message);
+end;
+
+procedure TFormRulesTests.SelfFreeOnCloseUsesCaFree;
+var
+  Source, Header: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Header := 'procedure TfrmMeldung.FormClose(Sender: TObject; var Action: TCloseAction);';
+  Source := Meldung(Header, '  Free;'#10);
+  Findings := TRuleAssert.FormFindings(TSelfFreeInEventHandlerRule.Create, Source, MeldungDfm);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Das Formular gibt sich im eigenen Close-Handler frei; die VCL greift danach noch darauf zu.',
+    Findings[0].Message);
+  Assert.AreEqual('Durch Action := caFree ersetzen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(Meldung(Header, '  Action := caFree;'#10), ApplyFix(Source, Findings[0].Fixes[0]));
+end;
+
+procedure TFormRulesTests.SelfFreeSilentCases;
+const
+  RahmenDfm =
+    'object Rahmen: TRahmen'#10 +
+    '  Width = 200'#10 +
+    '  Height = 100'#10 +
+    '  object btnOK: TButton'#10 +
+    '    OnClick = btnOKClick'#10 +
+    '  end'#10 +
+    'end'#10;
+begin
+  // Keine Ereignismethode, Release, andere Objekte.
+  Assert.AreEqual(0, Integer(Length(SelfFreeFindings('procedure TfrmMeldung.Aufraeumen;', '  Free;'#10))));
+  Assert.AreEqual(0, Integer(Length(SelfFreeFindings(ClickHeader, '  Release;'#10))));
+  Assert.AreEqual(0, Integer(Length(SelfFreeFindings(ClickHeader, '  btnOK.Free;'#10))));
+  // Später im Hauptthread bzw. auf das Objekt des with-Blocks.
+  Assert.AreEqual(0, Integer(Length(SelfFreeFindings(ClickHeader, '  TThread.ForceQueue(nil,'#10 +
+    '    procedure'#10'    begin'#10'      Free;'#10'    end);'#10))));
+  Assert.AreEqual(0, Integer(Length(SelfFreeFindings(ClickHeader, '  with TStringList.Create do'#10'    Free;'#10))));
+  // Rahmen haben kein Release.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(TSelfFreeInEventHandlerRule.Create,
+    StringReplace(StringReplace(Meldung(ClickHeader, '  Free;'#10), 'TfrmMeldung', 'TRahmen', [rfReplaceAll]),
+    'class(TForm)', 'class(TFrame)', []), RahmenDfm))));
+  // Ohne Formulardatei keine Aussage.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSelfFreeInEventHandlerRule.Create,
+    Meldung(ClickHeader, '  Free;'#10)))));
+end;
+
+procedure TFormRulesTests.SelfFreeOffAndExclude;
+var
+  Context: TRuleContext;
+begin
+  Context := Default(TRuleContext);
+  Context.RelativePath := 'Source/Meldung.pas';
+  Context.Text := Meldung(ClickHeader, '  Free;'#10);
+  Context.FormText := MeldungDfm;
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.ContextFindings(TSelfFreeInEventHandlerRule.Create, Context, ''))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TSelfFreeInEventHandlerRule.Create, Context,
+    '{"rules": {"self-free-in-event-handler": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TSelfFreeInEventHandlerRule.Create, Context,
+    '{"rules": {"self-free-in-event-handler": {"exclude": ["Source/*.pas"]}}}'))));
 end;
 
 initialization

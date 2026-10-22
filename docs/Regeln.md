@@ -15,7 +15,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
-| [Formulare und Daten](#gruppe-forms) | 13 |
+| [Formulare und Daten](#gruppe-forms) | 14 |
 | [Architektur](#gruppe-architecture) | 3 |
 | [Stil und Metriken](#gruppe-style) | 28 |
 | [Packages und Tests](#gruppe-packages) | 3 |
@@ -215,6 +215,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`form-resource-missing`](#form-resource-missing) | Formular-Unit ohne {$R *.dfm} | Bug | Fehler |
 | [`form-autocreate-and-manual`](#form-autocreate-and-manual) | Formular automatisch und zusätzlich von Hand erzeugt | Bug | Warnung |
 | [`inherited-form-handler-without-inherited`](#inherited-form-handler-without-inherited) | Ereignis-Handler im geerbten Formular ohne inherited | Bug | Warnung |
+| [`self-free-in-event-handler`](#self-free-in-event-handler) | Formular gibt sich im eigenen Ereignis frei | Bug | Fehler |
 
 <a id="gruppe-architecture"></a>
 ### Architektur
@@ -4618,5 +4619,30 @@ procedure TfrmKundeBearbeiten.btnSpeichernClick(Sender: TObject);
 begin
   inherited;
   FKunde.Speichern;
+end;
+```
+
+<a id="self-free-in-event-handler"></a>
+### self-free-in-event-handler
+
+**Formular gibt sich im eigenen Ereignis frei** · Bug · Fehler · Gruppe Formulare und Daten
+
+Free, Destroy, DisposeOf oder FreeAndNil auf Self bzw. auf die globale Variable der eigenen Formularklasse als Anweisung in einem Ereignis-Handler des Formulars oder eines seiner Controls. Nach der Rückkehr greift die VCL noch auf das Objekt zu: Zugriffsverletzung. Richtig ist Release oder Action := caFree in OnClose. Ereignis-Handler sind die Methoden aus der Formulardatei und Methoden mit einem Parameter Sender: TObject; ein Formular ist die Wurzelklasse der Formulardatei mit ClientWidth bzw. ClientHeight oder eine direkt von TForm bzw. TCustomForm abgeleitete Klasse (Rahmen und Datenmodule haben kein Release). Anweisungen in anonymen Methoden und with-Blöcken zählen nicht. Still ohne Formulardatei. Sicherheit hoch. Korrektur: Free durch Release ersetzen, in OnClose (var Action: TCloseAction) durch Action := caFree.
+
+Mit Treffer:
+
+```pascal
+procedure TfrmMeldung.btnOKClick(Sender: TObject);
+begin
+  Free;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TfrmMeldung.btnOKClick(Sender: TObject);
+begin
+  Release;
 end;
 ```
