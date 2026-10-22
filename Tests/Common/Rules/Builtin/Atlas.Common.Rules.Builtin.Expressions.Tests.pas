@@ -2,7 +2,8 @@
 
 // Tests der Regel operator-precedence (#911): not vor in und Vergleichen bei
 // Aufzählungen und Ganzzahlen, Klammern als Korrektur, keine Meldung bei
-// Boolean, unbekanntem Typ und geklammerter Form, Abschalten und Ausnahmen.
+// Boolean, unbekanntem Typ und geklammerter Form, Abschalten und Ausnahmen;
+// duplicate-condition (#928).
 
 interface
 
@@ -29,6 +30,12 @@ type
     procedure OffAndExcludeSilence;
     [Test]
     procedure RuleIsRegistered;
+    [Test]
+    procedure DuplicateConditionIssueExample;
+    [Test]
+    procedure DuplicateConditionVariants;
+    [Test]
+    procedure DuplicateConditionSilentCases;
   end;
 
 implementation
@@ -160,6 +167,67 @@ begin
     if Rule.Descriptor.Id = OperatorPrecedenceRuleId then
       Found := True;
   Assert.IsTrue(Found);
+end;
+
+function Stufen(const ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'implementation'#10 +
+    'procedure Einstufen(Betrag: Integer; Wert: Double; A, B: Boolean);'#10'var'#10'  Stufe: Integer;'#10 +
+    'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+procedure TExpressionRulesTests.DuplicateConditionIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TDuplicateConditionRule.Create, Stufen('  if Betrag > 1000 then'#10 +
+    '    Stufe := 3'#10'  else if Betrag > 500 then'#10'    Stufe := 2'#10'  else if Betrag  >  1000 then'#10 +
+    '    Stufe := 1;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Gleiche Bedingung wie in Zeile 8; dieser Zweig wird nie erreicht.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(11, Findings[0].Range.StartPos.Line);
+  Assert.IsTrue(Findings[0].Fixes[0].HasJump);
+  Assert.AreEqual(7, Findings[0].Fixes[0].JumpTo.Line);
+  TRuleAssert.Silent(TDuplicateConditionRule.Create, Stufen('  if Betrag > 1000 then'#10'    Stufe := 3'#10 +
+    '  else if Betrag > 500 then'#10'    Stufe := 2'#10'  else if Betrag > 100 then'#10'    Stufe := 1;'));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateConditionRule.Create,
+    Stufen('  if A and A then'#10'    Exit;'), '{"rules": {"duplicate-condition": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateConditionRule.Create,
+    Stufen('  if A and A then'#10'    Exit;'), '{"rules": {"duplicate-condition": {"exclude": ["Alt/*.pas"]}}}',
+    'Alt/U.pas'))));
+end;
+
+procedure TExpressionRulesTests.DuplicateConditionVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Gleiche Zweige, A and B and a, X = X.
+  Findings := TRuleAssert.Findings(TDuplicateConditionRule.Create, Stufen('  if A then'#10'    Stufe := 1'#10 +
+    '  else'#10'    Stufe := 1;'#10'  if A and (B and a) then'#10'    Exit;'#10'  if Betrag = Betrag then'#10 +
+    '    Exit;'#10'  if Betrag < (Betrag) then'#10'    Exit;'));
+  Assert.AreEqual(4, Integer(Length(Findings)));
+  Assert.AreEqual('then- und else-Zweig sind gleich; die Bedingung hat keine Wirkung.', Findings[0].Message);
+  Assert.AreEqual('a steht zweimal in derselben and-Verknüpfung; vermutlich ein Kopierfehler.', Findings[1].Message);
+  Assert.AreEqual('Betrag wird mit sich selbst verglichen; das Ergebnis ist immer True.', Findings[2].Message);
+  Assert.AreEqual('Betrag wird mit sich selbst verglichen; das Ergebnis ist immer False.', Findings[3].Message);
+end;
+
+procedure TExpressionRulesTests.DuplicateConditionSilentCases;
+begin
+  // NaN-Prüfung, Lesen aus einem Strom, verschiedene Operatoren, else-if mit begin.
+  TRuleAssert.Silent(TDuplicateConditionRule.Create, Stufen('  if Wert <> Wert then'#10'    Exit;'#10 +
+    '  if Leser.Next = ''x'' then'#10'    Stufe := 1'#10'  else if Leser.Next = ''x'' then'#10'    Stufe := 2;'#10 +
+    '  if A and B or A then'#10'    Exit;'#10'  if A then'#10'    Stufe := 1'#10'  else'#10'    Stufe := 2;'#10 +
+    '  if A then'#10'    Stufe := 1'#10'  else'#10'  begin'#10'    if A then'#10'      Stufe := 2;'#10'  end;'));
+  // Aufruf mit var-Parameter dazwischen, Singleton-Vergleich.
+  TRuleAssert.Silent(TDuplicateConditionRule.Create, Stufen('  if Take(Stufe, ''.'') and Take(Stufe, ''.'') then'#10 +
+    '    Exit;'#10'  if (Betrag = 0) and not Pruefen(Betrag) and (Betrag = 0) then'#10'    Exit;'#10 +
+    '  if TKatalog.Shared = TKatalog.Shared then'#10'    Exit;'));
+  // Reine Funktionen zählen weiter.
+  TRuleAssert.Reports(TDuplicateConditionRule.Create, Stufen('  if SameText(S, ''a'') or SameText(S, ''a'') then'#10 +
+    '    Exit;'));
 end;
 
 initialization

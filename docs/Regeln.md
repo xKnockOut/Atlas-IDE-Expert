@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 41 |
+| [Fehler finden](#gruppe-find-bugs) | 42 |
 | [Exceptions](#gruppe-exceptions) | 6 |
 | [Threads](#gruppe-threads) | 7 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -65,6 +65,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`out-param-read`](#out-param-read) | out-Parameter gelesen, bevor er gesetzt ist | Bug | Warnung |
 | [`stringlist-unsorted`](#stringlist-unsorted) | Find oder Duplicates auf einer unsortierten TStringList | Bug | Warnung |
 | [`writeln-in-gui-app`](#writeln-in-gui-app) | Writeln in einem Programm ohne Konsole | Bug | Warnung |
+| [`duplicate-condition`](#duplicate-condition) | Doppelte Bedingung oder gleiche Zweige | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -2914,4 +2915,33 @@ begin
     Schliessen;
   inherited;
 end;
+```
+
+<a id="duplicate-condition"></a>
+### duplicate-condition
+
+**Doppelte Bedingung oder gleiche Zweige** · Bug · Warnung · Gruppe Fehler finden
+
+Dieselbe Bedingung zweimal in einer if … else if-Kette (der spätere Zweig wird nie erreicht), gleiche then- und else-Zweige, derselbe Operand zweimal in einer and-, or- oder xor-Kette und Vergleiche eines Ausdrucks mit sich selbst (X = X, X < X). Meist ein Kopierfehler. Verglichen werden die Token ohne Leerraum, Kommentare und Groß-/Kleinschreibung. Ketten mit Aufrufen, die Zustand ändern können (alles außer SameText, Length, Assigned, Pos und ähnlichen reinen Funktionen, dazu Read, Next, Pop, Random …), bleiben still, ebenso Gleitkomma-Vergleiche mit sich selbst (NaN-Prüfung X <> X) und Vergleiche über Klassenmitglieder wie TFoo.Shared = TFoo.Shared. Konfidenz hoch. Keine Schnellkorrektur; die Aktion springt zum ersten Vorkommen.
+
+Mit Treffer:
+
+```pascal
+if Betrag > 1000 then
+  Stufe := 3
+else if Betrag > 500 then
+  Stufe := 2
+else if Betrag > 1000 then
+  Stufe := 1;
+```
+
+Richtig:
+
+```pascal
+if Betrag > 1000 then
+  Stufe := 3
+else if Betrag > 500 then
+  Stufe := 2
+else if Betrag > 100 then
+  Stufe := 1;
 ```

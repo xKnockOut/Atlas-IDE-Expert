@@ -3343,3 +3343,16 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Klasse `TSitzung` mit `
 | ED4 | Im except-Teil `raise;` ergänzen | Meldung am `raise` |
 | ED5 | `raise` in einer eingebetteten Prozedur des Destruktors | Keine Meldung |
 | ED6 | `"exception-in-destructor": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Doppelte Bedingung oder gleiche Zweige (#928)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Routine mit `if Betrag > 1000 then Stufe := 3 else if Betrag > 500 then Stufe := 2 else if Betrag > 1000 then Stufe := 1;` über mehrere Zeilen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DQ1 | Unit öffnen | Warnung `duplicate-condition` an der dritten Bedingung: „Gleiche Bedingung wie in Zeile N; dieser Zweig wird nie erreicht.“ (N = Zeile des ersten if); im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| DQ2 | Glühbirne, „Zum ersten Vorkommen springen“ | Cursor steht auf der ersten Bedingung (**Abnahme**) |
+| DQ3 | `if A then X := 1 else X := 1;` | Meldung „then- und else-Zweig sind gleich; die Bedingung hat keine Wirkung.“ |
+| DQ4 | `if A and B and A then` bzw. `if Betrag = Betrag then` | Meldung „A steht zweimal in derselben and-Verknüpfung …“ bzw. „Betrag wird mit sich selbst verglichen; das Ergebnis ist immer True.“ |
+| DQ5 | `if Leser.Next = 'x' then … else if Leser.Next = 'x' then`, `Wert <> Wert` mit `Wert: Double` | Keine Meldung |
+| DQ6 | `"duplicate-condition": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

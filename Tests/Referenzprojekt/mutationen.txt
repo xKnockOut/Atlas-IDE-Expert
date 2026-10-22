@@ -47,3 +47,4 @@ out-param-read | Ref.Sprache.Merkmale.pas | { TDezimalFormatierer } | procedure 
 stringlist-unsorted | Ref.Sprache.Merkmale.pas | { TDezimalFormatierer } | procedure Suchen(const S: string);\nvar\n  L: TStringList;\n  I: Integer;\nbegin\n  L := TStringList.Create;\n  if L.Find(S, I) then\n    L.Delete(I);\n  L.Free;\nend;\n\n{ TDezimalFormatierer }
 writeln-in-gui-app | ../RefApp.dpr | Application.Initialize; | Application.Initialize;\n  Writeln('Start');
 exception-in-destructor | Ref.Sprache.Merkmale.pas |   FElemente.Free; |   if FElemente.Count > 0 then\n    raise EInvalidOperation.Create('Stapel nicht leer');\n  FElemente.Free;
+duplicate-condition | Ref.Komponenten.Anzeige.pas | if (Operation = opRemove) and (AComponent = FVerknuepft) then | if (Operation = opRemove) and (Operation = opRemove) then
