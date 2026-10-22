@@ -2331,6 +2331,24 @@ begin
     '          "description": "Only report when the constructor calls something that can raise before it creates the field."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "handle-leak",' + #10 +
+    '      "name": "Windows handle is not closed",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "A Windows handle in a local variable is not closed with its counterpart on some path to the end of the routine: CreateFile, CreateEvent, CreateMutex, OpenProcess, CreateProcess (' + 'hProcess, hThread) and CreateToolhelp32Snapshot with CloseHandle, FindFirstFile with FindClose, RegOpenKeyEx/RegCreateKeyEx with RegCloseKey, LoadLibrary with FreeLibrary, GetDC with ReleaseDC, Create' + 'Pen/CreateBrush/CreateFont/CreateBitmap with DeleteObject, CreateCompatibleDC with DeleteDC and others. Returning the handle, storing it in a field or global, passing it to an unknown routine or captu' + 'ring it in an anonymous method counts as handing it on. Branches in which an if check says the open failed (H = 0, H = INVALID_HANDLE_VALUE, RegOpenKeyEx(...) <> ERROR_SUCCESS) and exception paths (se' + 'e pair-without-finally) do not count. The option pairs adds your own pairs. Medium confidence. Quick fix when the handle is never closed: wrap the statements after the open in try … finally with the c' + 'lose call, or append the close call when the open is the last statement.",' + #10 +
+    '      "bad": "H := CreateFile(PChar(Datei), GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);\nif H = INVALID_HANDLE_VALUE then\n  RaiseLastOSError;\nReadFile(H, Puffer, SizeOf(Puffer), Gelesen, nil);",' + #10 +
+    '      "good": "H := CreateFile(PChar(Datei), GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);\nif H = INVALID_HANDLE_VALUE then\n  RaiseLastOSError;\ntry\n  ReadFile(H, Puffer, SizeOf(Puffer), Gelesen, nil' + ');\nfinally\n  CloseHandle(H);\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "pairs",' + #10 +
+    '          "type": "json",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Additional open/close pairs as \"Open>Close\" or {\"open\": …, \"close\": …}; the open function returns the handle, the close procedure takes it as its only argument."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3510,6 +3528,17 @@ begin
     '        {' + #10 +
     '          "name": "onlyAfterRaisingCode",' + #10 +
     '          "description": "Nur melden, wenn der Konstruktor vor dem Anlegen des Felds etwas aufruft, das eine Exception werfen kann."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "handle-leak",' + #10 +
+    '      "name": "Windows-Handle wird nicht geschlossen",' + #10 +
+    '      "description": "Ein Windows-Handle in einer lokalen Variablen wird auf einem Weg zum Ende der Routine nicht mit dem passenden Gegenstück geschlossen: CreateFile, CreateEvent, CreateMutex, OpenPr' + 'ocess, CreateProcess (hProcess, hThread) und CreateToolhelp32Snapshot mit CloseHandle, FindFirstFile mit FindClose, RegOpenKeyEx/RegCreateKeyEx mit RegCloseKey, LoadLibrary mit FreeLibrary, GetDC mit ' + 'ReleaseDC, CreatePen/CreateBrush/CreateFont/CreateBitmap mit DeleteObject, CreateCompatibleDC mit DeleteDC und weitere. Zurückgeben, Speichern in einem Feld oder einer globalen Variablen, Übergabe an ' + 'eine unbekannte Routine und Verwenden in einer anonymen Methode gelten als Weitergabe. Zweige, in denen eine if-Prüfung sagt, dass das Öffnen misslang (H = 0, H = INVALID_HANDLE_VALUE, RegOpenKeyEx(..' + '.) <> ERROR_SUCCESS), und Ausnahmewege (siehe pair-without-finally) zählen nicht. Die Option pairs ergänzt eigene Paare. Konfidenz mittel. Schnellkorrektur, wenn das Handle nie geschlossen wird: die A' + 'nweisungen nach dem Öffnen in try … finally mit dem Schließen einschließen bzw. das Schließen anhängen, wenn das Öffnen die letzte Anweisung ist.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "pairs",' + #10 +
+    '          "description": "Zusätzliche Paare aus Öffnen und Schließen als \"Oeffnen>Schliessen\" oder {\"open\": …, \"close\": …}; die Öffnen-Funktion liefert das Handle, die Schließen-Prozedur bekommt' + ' es als einziges Argument."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    }' + #10 +

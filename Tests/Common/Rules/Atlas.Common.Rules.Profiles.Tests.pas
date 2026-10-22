@@ -179,7 +179,7 @@ const
     'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,dictionary-get-without-check,dunitx-test-without-assert,duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,' +
     'empty-except,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,forbidden-uses,' +
     'foreign-form-control-access,form-access-before-create,form-field-type-mismatch,form-field-without-object,' +
-    'form-object-without-field,format-without-settings,generic-exception-raised,hides-virtual,' +
+    'form-object-without-field,format-without-settings,generic-exception-raised,handle-leak,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,implicit-package-import,int32-mul-overflow,interface-guid,interface-not-implemented,' +
     'invisible-char,' +
     'lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,' +
@@ -209,7 +209,7 @@ begin
     'deref-before-nil-check,destroy-called-directly,destroy-without-override,destructor-not-nil-safe,dfm-circular-datasource,dfm-control-field-type-mismatch,' +
     'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,dictionary-get-without-check,' +
     'duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,' +
-    'form-access-before-create,form-field-type-mismatch,form-field-without-object,form-object-without-field,hides-virtual,' +
+    'form-access-before-create,form-field-type-mismatch,form-field-without-object,form-object-without-field,handle-leak,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,interface-not-implemented,lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,' +
     'missing-inherited,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,' +
     'possibly-uninitialized,property-accessor-invalid,queue-nil-in-package,raise-in-finally,readonly-property-assigned,result-not-set,security-command-injection,' +

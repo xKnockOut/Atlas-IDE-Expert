@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 57 |
+| [Fehler finden](#gruppe-find-bugs) | 58 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
@@ -83,6 +83,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`createprocess-readonly-commandline`](#createprocess-readonly-commandline) | CreateProcess mit unveränderlicher Befehlszeile | Bug | Fehler |
 | [`form-access-before-create`](#form-access-before-create) | Zugriff auf ein Formular, das noch nicht erzeugt ist | Bug | Warnung |
 | [`destructor-not-nil-safe`](#destructor-not-nil-safe) | Destruktor benutzt Felder, die nil sein können | Bug | Warnung |
+| [`handle-leak`](#handle-leak) | Windows-Handle wird nicht geschlossen | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -4583,5 +4584,38 @@ begin
   FZeilen.Free;
   FStrom.Free;
   inherited;
+end;
+```
+
+<a id="handle-leak"></a>
+### handle-leak
+
+**Windows-Handle wird nicht geschlossen** · Bug · Warnung · Gruppe Fehler finden
+
+Ein Windows-Handle in einer lokalen Variablen wird auf einem Weg zum Ende der Routine nicht mit dem passenden Gegenstück geschlossen: CreateFile, CreateEvent, CreateMutex, OpenProcess, CreateProcess (hProcess, hThread) und CreateToolhelp32Snapshot mit CloseHandle, FindFirstFile mit FindClose, RegOpenKeyEx/RegCreateKeyEx mit RegCloseKey, LoadLibrary mit FreeLibrary, GetDC mit ReleaseDC, CreatePen/CreateBrush/CreateFont/CreateBitmap mit DeleteObject, CreateCompatibleDC mit DeleteDC und weitere. Zurückgeben, Speichern in einem Feld oder einer globalen Variablen, Übergabe an eine unbekannte Routine und Verwenden in einer anonymen Methode gelten als Weitergabe. Zweige, in denen eine if-Prüfung sagt, dass das Öffnen misslang (H = 0, H = INVALID_HANDLE_VALUE, RegOpenKeyEx(...) <> ERROR_SUCCESS), und Ausnahmewege (siehe pair-without-finally) zählen nicht. Die Option pairs ergänzt eigene Paare. Konfidenz mittel. Schnellkorrektur, wenn das Handle nie geschlossen wird: die Anweisungen nach dem Öffnen in try … finally mit dem Schließen einschließen bzw. das Schließen anhängen, wenn das Öffnen die letzte Anweisung ist.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `pairs` | json | `[]` | Zusätzliche Paare aus Öffnen und Schließen als "Oeffnen>Schliessen" oder {"open": …, "close": …}; die Öffnen-Funktion liefert das Handle, die Schließen-Prozedur bekommt es als einziges Argument. |
+
+Mit Treffer:
+
+```pascal
+H := CreateFile(PChar(Datei), GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);
+if H = INVALID_HANDLE_VALUE then
+  RaiseLastOSError;
+ReadFile(H, Puffer, SizeOf(Puffer), Gelesen, nil);
+```
+
+Richtig:
+
+```pascal
+H := CreateFile(PChar(Datei), GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);
+if H = INVALID_HANDLE_VALUE then
+  RaiseLastOSError;
+try
+  ReadFile(H, Puffer, SizeOf(Puffer), Gelesen, nil);
+finally
+  CloseHandle(H);
 end;
 ```

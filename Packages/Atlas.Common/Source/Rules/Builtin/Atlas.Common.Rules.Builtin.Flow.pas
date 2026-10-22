@@ -46,6 +46,20 @@
 //                             auf diesem Weg nicht. Mit onlyAfterRaisingCode
 //                             aus zählt jedes im Konstruktor angelegte Feld.
 //                             Korrektur: if Assigned(FFeld) then davor.
+//   handle-leak               Ein Windows-Handle aus CreateFile, CreateEvent,
+//                             OpenProcess, CreateProcess (hProcess, hThread),
+//                             FindFirstFile, RegOpenKeyEx, LoadLibrary, GetDC,
+//                             GDI-Objekten … in einer lokalen Variablen wird
+//                             auf einem Weg zum Ende der Routine nicht mit dem
+//                             passenden Gegenstück geschlossen (#1088). Die
+//                             Paare stehen in BuiltinHandlePairs, eigene über
+//                             die Option pairs. Zurückgeben, Speichern und
+//                             Übergabe an unbekannte Routinen gelten als
+//                             Weitergabe; Zweige, in denen das Öffnen laut
+//                             if-Prüfung misslang, und Ausnahmewege
+//                             (pair-without-finally) zählen nicht. Korrektur:
+//                             die Anweisungen danach in try … finally mit dem
+//                             Schließen einschließen.
 //   out-param-read            out-Parameter wird gelesen, bevor die Routine ihn
 //                             setzt (#924); bei verwalteten Typen hat ihn der
 //                             Aufrufer schon geleert. Korrektur out -> var in
@@ -116,6 +130,15 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  THandleLeakRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Paare "Öffnen|Ort|Schließen" aus der Tabelle und der Option pairs ("Öffnen>Schließen" oder
+    /// {"open", "close"}).</summary>
+    class function Pairs(const AOptions: string): TArray<string>; static;
+  end;
+
   TOutParamReadRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
@@ -128,6 +151,7 @@ const
   DerefBeforeNilCheckRuleId = 'deref-before-nil-check';
   FieldFreeWithoutNilRuleId = 'field-free-without-nil';
   DestructorNotNilSafeRuleId = 'destructor-not-nil-safe';
+  HandleLeakRuleId = 'handle-leak';
 
 /// <summary>Wird AName in ABlock so benutzt, dass der Kontrollfluss die Zuweisung nicht sieht?</summary>
 function HasOpaqueUse(ABlock: TSyntaxNode; const AName: string): Boolean;
@@ -138,6 +162,8 @@ implementation
 
 uses
   System.StrUtils,
+  System.JSON,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Configuration.Contract,
@@ -1959,6 +1985,726 @@ begin
   end;
 end;
 
+{ THandleLeakRule }
+
+const
+  /// <summary>Öffnen|Ort|Schließen: Ort r = Ergebnis, Zahlen = out-Argumente (ab 0), Zahl:Feld,Feld = Felder
+  /// eines Record-Arguments (CreateProcess). Im Schließen steht %h für das Handle, %0 für das erste Argument
+  /// des Öffnens. Namen mit A/W am Ende gelten mit.</summary>
+  BuiltinHandlePairs: array[0..64] of string = (
+    'CreateFile|r|CloseHandle(%h)', 'CreateEvent|r|CloseHandle(%h)', 'CreateEventEx|r|CloseHandle(%h)',
+    'CreateMutex|r|CloseHandle(%h)', 'CreateSemaphore|r|CloseHandle(%h)', 'CreateWaitableTimer|r|CloseHandle(%h)',
+    'CreateThread|r|CloseHandle(%h)', 'CreateRemoteThread|r|CloseHandle(%h)', 'OpenProcess|r|CloseHandle(%h)',
+    'OpenThread|r|CloseHandle(%h)', 'OpenEvent|r|CloseHandle(%h)', 'OpenMutex|r|CloseHandle(%h)',
+    'OpenSemaphore|r|CloseHandle(%h)', 'CreateFileMapping|r|CloseHandle(%h)', 'OpenFileMapping|r|CloseHandle(%h)',
+    'CreateNamedPipe|r|CloseHandle(%h)', 'CreateMailslot|r|CloseHandle(%h)',
+    'CreateToolhelp32Snapshot|r|CloseHandle(%h)', 'CreateJobObject|r|CloseHandle(%h)',
+    'OpenProcessToken|2|CloseHandle(%h)', 'OpenThreadToken|3|CloseHandle(%h)', 'DuplicateToken|2|CloseHandle(%h)',
+    'CreatePipe|0,1|CloseHandle(%h)', 'CreateProcess|9:hProcess,hThread|CloseHandle(%h)',
+    'CreateProcessAsUser|10:hProcess,hThread|CloseHandle(%h)', 'FindFirstFile|r|FindClose(%h)',
+    'FindFirstFileEx|r|FindClose(%h)', 'FindFirstChangeNotification|r|FindCloseChangeNotification(%h)',
+    'LoadLibrary|r|FreeLibrary(%h)', 'LoadLibraryEx|r|FreeLibrary(%h)', 'GetDC|r|ReleaseDC(%0, %h)',
+    'GetWindowDC|r|ReleaseDC(%0, %h)', 'GetDCEx|r|ReleaseDC(%0, %h)', 'CreateCompatibleDC|r|DeleteDC(%h)',
+    'CreateDC|r|DeleteDC(%h)', 'CreateIC|r|DeleteDC(%h)', 'CreatePen|r|DeleteObject(%h)',
+    'CreatePenIndirect|r|DeleteObject(%h)', 'ExtCreatePen|r|DeleteObject(%h)', 'CreateFont|r|DeleteObject(%h)',
+    'CreateFontIndirect|r|DeleteObject(%h)', 'CreateSolidBrush|r|DeleteObject(%h)',
+    'CreateHatchBrush|r|DeleteObject(%h)', 'CreatePatternBrush|r|DeleteObject(%h)',
+    'CreateBrushIndirect|r|DeleteObject(%h)', 'CreateBitmap|r|DeleteObject(%h)',
+    'CreateCompatibleBitmap|r|DeleteObject(%h)', 'CreateDIBitmap|r|DeleteObject(%h)',
+    'CreateDIBSection|r|DeleteObject(%h)', 'CreateRectRgn|r|DeleteObject(%h)',
+    'CreateRectRgnIndirect|r|DeleteObject(%h)', 'CreateRoundRectRgn|r|DeleteObject(%h)',
+    'CreateEllipticRgn|r|DeleteObject(%h)', 'CreatePolygonRgn|r|DeleteObject(%h)',
+    'CreatePalette|r|DeleteObject(%h)', 'CreateIcon|r|DestroyIcon(%h)', 'CreateIconIndirect|r|DestroyIcon(%h)',
+    'CopyIcon|r|DestroyIcon(%h)', 'ExtractIcon|r|DestroyIcon(%h)', 'OpenSCManager|r|CloseServiceHandle(%h)',
+    'OpenService|r|CloseServiceHandle(%h)', 'CreateService|r|CloseServiceHandle(%h)',
+    'RegOpenKeyEx|4|RegCloseKey(%h)', 'RegCreateKeyEx|7|RegCloseKey(%h)', 'MapViewOfFile|r|UnmapViewOfFile(%h)');
+  /// <summary>Routinen, die ein Handle nur benutzen und es nicht übernehmen; jede andere Übergabe zählt als
+  /// Weitergabe.</summary>
+  HandleUsers: array[0..75] of string = ('WaitForSingleObject', 'WaitForSingleObjectEx', 'WaitForInputIdle',
+    'MsgWaitForMultipleObjects', 'SignalObjectAndWait', 'ReadFile', 'WriteFile', 'ReadFileEx', 'WriteFileEx',
+    'GetFileSize', 'GetFileSizeEx', 'SetFilePointer', 'SetFilePointerEx', 'SetEndOfFile', 'FlushFileBuffers',
+    'GetFileTime', 'SetFileTime', 'GetFileType', 'GetFileInformationByHandle', 'LockFile', 'UnlockFile',
+    'LockFileEx', 'UnlockFileEx', 'DeviceIoControl', 'GetOverlappedResult', 'SetEvent', 'ResetEvent', 'PulseEvent',
+    'ReleaseMutex', 'ReleaseSemaphore', 'SetWaitableTimer', 'CancelWaitableTimer', 'TerminateProcess',
+    'TerminateThread', 'GetExitCodeProcess', 'GetExitCodeThread', 'ResumeThread', 'SuspendThread',
+    'SetThreadPriority', 'GetProcessTimes', 'GetProcessId', 'GetThreadId', 'QueryFullProcessImageName',
+    'GetModuleFileNameEx', 'GetTokenInformation', 'AdjustTokenPrivileges', 'FindNextFile',
+    'FindNextChangeNotification', 'Process32First', 'Process32Next', 'Module32First', 'Module32Next',
+    'Thread32First', 'Thread32Next', 'PeekNamedPipe', 'ConnectNamedPipe', 'DisconnectNamedPipe', 'GetProcAddress',
+    'RegQueryValueEx', 'RegSetValueEx', 'RegEnumKeyEx', 'RegEnumValue', 'RegDeleteValue', 'RegQueryInfoKey',
+    'RegDeleteKey', 'SelectObject', 'GetObject', 'GetDeviceCaps', 'BitBlt', 'StretchBlt', 'TextOut', 'DrawText',
+    'FillRect', 'FrameRect', 'FillRgn', 'PatBlt');
+
+type
+  /// <summary>Paar aus Tabelle oder Option.</summary>
+  THandlePair = record
+    Open: string;
+    /// <summary>'r' für das Ergebnis, sonst Argumente wie '4', '0,1' oder '9:hProcess,hThread'.</summary>
+    Where: string;
+    Close: string;
+  end;
+
+  /// <summary>Ein geöffnetes Handle: Pfad (H, PI.hProcess) und Schließen.</summary>
+  TOpenedHandle = record
+    Path: string;
+    /// <summary>Wurzel des Pfads (PI bei PI.hProcess); Weitergabe der Wurzel gibt auch das Handle weiter.</summary>
+    Root: string;
+    CloseName: string;
+    CloseText: string;
+  end;
+
+function THandleLeakRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(HandleLeakRuleId, TRuleSeverity.Warning, 'Windows-Handle wird nicht geschlossen');
+end;
+
+class function THandleLeakRule.Pairs(const AOptions: string): TArray<string>;
+var
+  Value, List, Item: TJSONValue;
+  Open, Close: string;
+begin
+  Result := nil;
+  for Open in BuiltinHandlePairs do
+    Result := Result + [Open];
+  if Trim(AOptions) = '' then
+    Exit;
+  Value := TJSONObject.ParseJSONValue(AOptions);
+  try
+    if not (Value is TJSONObject) then
+      Exit;
+    List := TJSONObject(Value).GetValue('pairs');
+    if not (List is TJSONArray) then
+      Exit;
+    for Item in TJSONArray(List) do
+    begin
+      Open := '';
+      Close := '';
+      // "MeinOeffnen>MeinSchliessen" bzw. {"open": "MeinOeffnen", "close": "MeinSchliessen"}.
+      if (Item is TJSONString) and (Pos('>', Item.Value) > 1) then
+      begin
+        Open := Trim(Copy(Item.Value, 1, Pos('>', Item.Value) - 1));
+        Close := Trim(Copy(Item.Value, Pos('>', Item.Value) + 1, MaxInt));
+      end
+      else if Item is TJSONObject then
+      begin
+        if not TJSONObject(Item).TryGetValue<string>('open', Open) or
+          not TJSONObject(Item).TryGetValue<string>('close', Close) then
+          Continue;
+        Open := Trim(Open);
+        Close := Trim(Close);
+      end;
+      if (Open <> '') and (Close <> '') and IsValidIdent(Open, True) and IsValidIdent(Close, True) then
+        Result := Result + [Open + '|r|' + Close + '(%h)'];
+    end;
+  finally
+    Value.Free;
+  end;
+end;
+
+procedure THandleLeakRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Table: TArray<THandlePair>;
+  Cache: IRuleDerivedCache;
+  Graph: TControlFlowGraph;
+  Locals: TArray<string>;
+  LineBreak: string;
+
+  function Text(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  function Contains(const AList: TArray<string>; const AName: string): Boolean;
+  var
+    Item: string;
+  begin
+    for Item in AList do
+      if SameText(Item, AName) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Name einer aufgerufenen Routine ohne Unit-Präfix (Winapi.Windows.CloseHandle).
+  function CallName(ACall: TSyntaxNode): string;
+  var
+    Callee: TSyntaxNode;
+  begin
+    Result := '';
+    if (ACall.Kind <> TSyntaxKind.Call) or (ACall.ChildCount = 0) then
+      Exit;
+    Callee := ACall[0];
+    if Callee.Kind = TSyntaxKind.Identifier then
+      Result := Callee.Name
+    else if (Callee.Kind = TSyntaxKind.MemberAccess) and (Callee.ChildCount = 1) and
+      MatchText(Trim(Text(Callee[0])), ['Windows', 'Winapi.Windows', 'ShellAPI', 'Winapi.ShellAPI', 'TlHelp32',
+      'Winapi.TlHelp32', 'WinSvc', 'Winapi.WinSvc']) then
+      Result := Callee.Name;
+  end;
+
+  // Gleicher Name, auch mit A/W-Endung (CreateFileW).
+  function SameRoutine(const AName, ATableName: string): Boolean;
+  begin
+    Result := SameText(AName, ATableName) or ((Length(AName) = Length(ATableName) + 1) and
+      StartsText(ATableName, AName) and CharInSet(AName[Length(AName)], ['A', 'W']));
+  end;
+
+  function PairOf(const AName: string; out APair: THandlePair): Boolean;
+  var
+    Pair: THandlePair;
+  begin
+    for Pair in Table do
+      if SameRoutine(AName, Pair.Open) then
+      begin
+        APair := Pair;
+        Exit(True);
+      end;
+    Result := False;
+  end;
+
+  // Pfad eines Ausdrucks: H, PI.hProcess; sonst ''.
+  function PathOf(ANode: TSyntaxNode): string;
+  begin
+    Result := '';
+    if ANode.Kind = TSyntaxKind.Identifier then
+      Result := ANode.Name
+    else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
+      (ANode[0].Kind = TSyntaxKind.Identifier) then
+      Result := ANode[0].Name + '.' + ANode.Name;
+  end;
+
+  function CloseText(const APair: THandlePair; ACall: TSyntaxNode; const APath: string): string;
+  begin
+    Result := StringReplace(APair.Close, '%h', APath, [rfReplaceAll]);
+    if (Pos('%0', Result) > 0) and (ACall.ChildCount > 1) then
+      Result := StringReplace(Result, '%0', Trim(Text(ACall[1])), [rfReplaceAll]);
+  end;
+
+  // Handles, die ACall öffnet; ATarget ist das Ziel einer Zuweisung (nil ohne).
+  function Opened(ACall: TSyntaxNode; const ATarget: string; out AHandles: TArray<TOpenedHandle>): Boolean;
+  var
+    Pair: THandlePair;
+    Handle: TOpenedHandle;
+    Part, Arg, Field: string;
+    Parts, Fields: TArray<string>;
+    Index: Integer;
+  begin
+    AHandles := nil;
+    if not PairOf(CallName(ACall), Pair) then
+      Exit(False);
+    Handle.CloseName := Copy(Pair.Close, 1, Pos('(', Pair.Close) - 1);
+    if Pair.Where = 'r' then
+    begin
+      if (ATarget <> '') and Contains(Locals, ATarget) then
+      begin
+        Handle.Path := ATarget;
+        Handle.Root := ATarget;
+        Handle.CloseText := CloseText(Pair, ACall, Handle.Path);
+        AHandles := [Handle];
+      end;
+    end
+    else
+    begin
+      Fields := nil;
+      Part := Pair.Where;
+      if Pos(':', Part) > 0 then
+      begin
+        Fields := Copy(Part, Pos(':', Part) + 1, MaxInt).Split([',']);
+        Part := Copy(Part, 1, Pos(':', Part) - 1);
+      end;
+      Parts := Part.Split([',']);
+      for Part in Parts do
+      begin
+        Index := StrToIntDef(Part, -1) + 1;
+        if (Index < 1) or (Index >= ACall.ChildCount) then
+          Continue;
+        Arg := PathOf(ACall[Index]);
+        if (Arg = '') or (Pos('.', Arg) > 0) or not Contains(Locals, Arg) then
+          Continue;
+        Handle.Root := Arg;
+        if Fields = nil then
+        begin
+          Handle.Path := Arg;
+          Handle.CloseText := CloseText(Pair, ACall, Handle.Path);
+          AHandles := AHandles + [Handle];
+        end
+        else
+          for Field in Fields do
+          begin
+            Handle.Path := Arg + '.' + Field;
+            Handle.CloseText := CloseText(Pair, ACall, Handle.Path);
+            AHandles := AHandles + [Handle];
+          end;
+      end;
+    end;
+    Result := AHandles <> nil;
+  end;
+
+  // Was ein Knoten selbst auswertet: einfache Anweisungen ganz, bei if, case und Schleifen die Bedingung bzw.
+  // der Kopf, with ganz (with H do … gibt das Handle weiter).
+  function Parts(ANode: TFlowNode): TArray<TSyntaxNode>;
+  begin
+    Result := nil;
+    if ANode.Syntax = nil then
+      Exit;
+    if ANode.Syntax.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement, TSyntaxKind.RaiseStatement,
+      TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.WithStatement] then
+      Result := [ANode.Syntax]
+    else if ANode.Kind = TFlowNodeKind.Condition then
+      Result := OwnParts(ANode.Syntax);
+  end;
+
+  // Schließt E das Handle (CloseHandle(PI.hProcess), ReleaseDC(Wnd, DC))?
+  function Closes(E: TSyntaxNode; const AHandle: TOpenedHandle): Boolean;
+  var
+    Index: Integer;
+  begin
+    if E.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+      Exit(False);
+    if (E.Kind = TSyntaxKind.Call) and SameRoutine(CallName(E), AHandle.CloseName) then
+      for Index := 1 to E.ChildCount - 1 do
+        if SameText(PathOf(E[Index]), AHandle.Path) then
+          Exit(True);
+    for Index := 0 to E.ChildCount - 1 do
+      if Closes(E[Index], AHandle) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Kommt das Handle (oder seine Wurzel) in E vor?
+  function Mentions(E: TSyntaxNode; const AHandle: TOpenedHandle): Boolean;
+  var
+    Index: Integer;
+  begin
+    if (E.Kind = TSyntaxKind.Identifier) and SameText(E.Name, AHandle.Root) and
+      ((E.Parent = nil) or (E.Parent.Kind <> TSyntaxKind.MemberAccess) or (E.Parent[0] <> E) or
+      SameText(PathOf(E.Parent), AHandle.Path) or (Pos('.', AHandle.Path) = 0)) then
+      Exit(True);
+    for Index := 0 to E.ChildCount - 1 do
+      if Mentions(E[Index], AHandle) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Ist E das Handle selbst, seine Wurzel (PI) oder eine Typumwandlung davon (THandle(H), (H))?
+  function IsHandleValue(E: TSyntaxNode; const AHandle: TOpenedHandle): Boolean;
+  begin
+    if SameText(PathOf(E), AHandle.Path) or ((E.Kind = TSyntaxKind.Identifier) and SameText(E.Name, AHandle.Root)) then
+      Exit(True);
+    if (E.Kind = TSyntaxKind.ParenExpr) and (E.ChildCount = 1) then
+      Exit(IsHandleValue(E[0], AHandle));
+    Result := (E.Kind = TSyntaxKind.Call) and (E.ChildCount = 2) and (E[0].Kind = TSyntaxKind.Identifier) and
+      MatchText(E[0].Name, ['THandle', 'HWND', 'HMODULE', 'HKEY', 'HDC', 'HGDIOBJ', 'Integer', 'Cardinal', 'NativeInt',
+      'NativeUInt', 'Pointer', 'UIntPtr', 'IntPtr']) and IsHandleValue(E[1], AHandle);
+  end;
+
+  // Gibt E das Handle weiter: Zuweisung an ein anderes Ziel, Exit(H), Übergabe an eine unbekannte Routine,
+  // with, anonyme Methode?
+  function PassesOn(E: TSyntaxNode; const AHandle: TOpenedHandle; AOpenCall: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+    Name: string;
+  begin
+    Result := False;
+    if E.Kind = TSyntaxKind.AnonymousMethod then
+      Exit(Mentions(E, AHandle));
+    if E.Kind = TSyntaxKind.RoutineDecl then
+      Exit;
+    if (E.Kind = TSyntaxKind.AssignStatement) and (E.ChildCount = 2) and IsHandleValue(E[1], AHandle) then
+      Exit(True);
+    // @Funktion := GetProcAddress(Modul, …) in eine Variable außerhalb der Routine: Das Modul muss geladen
+    // bleiben, solange jemand den Zeiger aufrufen kann.
+    if (E.Kind = TSyntaxKind.AssignStatement) and (E.ChildCount = 2) and (E[1].Kind = TSyntaxKind.Call) and
+      SameRoutine(CallName(E[1]), 'GetProcAddress') and Mentions(E[1], AHandle) and
+      not Contains(Locals, RootName(E[0])) then
+      Exit(True);
+    if (E.Kind = TSyntaxKind.InlineVar) and (E.ChildCount > 0) and IsHandleValue(E[E.ChildCount - 1], AHandle) then
+      Exit(True);
+    if (E.Kind = TSyntaxKind.WithStatement) and Mentions(E, AHandle) then
+      Exit(True);
+    if (E.Kind = TSyntaxKind.Call) and (E <> AOpenCall) then
+    begin
+      Name := CallName(E);
+      if SameText(Name, 'Exit') or not (MatchText(Name, HandleUsers) or SameRoutine(Name, AHandle.CloseName) or
+        MatchText(Name, ['Win32Check', 'CheckOSError', 'Assigned', 'Ord', 'Integer', 'Cardinal', 'NativeInt',
+        'NativeUInt', 'THandle', 'IntToStr', 'IntToHex', 'Format'])) then
+        for Index := 1 to E.ChildCount - 1 do
+          if Mentions(E[Index], AHandle) then
+            Exit(True);
+    end;
+    for Index := 0 to E.ChildCount - 1 do
+      if PassesOn(E[Index], AHandle, AOpenCall) then
+        Exit(True);
+  end;
+
+  function IsFailureValue(E: TSyntaxNode): Boolean;
+  begin
+    Result := ((E.Kind = TSyntaxKind.Literal) and MatchText(E.Name, ['0', 'nil'])) or
+      ((E.Kind = TSyntaxKind.Identifier) and MatchText(E.Name, ['INVALID_HANDLE_VALUE', 'nil'])) or
+      ((E.Kind = TSyntaxKind.Call) and (E.ChildCount = 2) and (E[1].Kind = TSyntaxKind.Literal) and
+      (E[1].Name = '0'));
+  end;
+
+  // Bedeutet "E ist wahr", dass das Öffnen gelang (1), misslang (-1), oder ist es unklar (0)?
+  function Success(E: TSyntaxNode; const AHandle: TOpenedHandle; AOpenCall: TSyntaxNode): Integer;
+  var
+    Index, Part: Integer;
+  begin
+    Result := 0;
+    if E.Kind = TSyntaxKind.ParenExpr then
+    begin
+      if E.ChildCount = 1 then
+        Result := Success(E[0], AHandle, AOpenCall);
+      Exit;
+    end;
+    if (E.Kind = TSyntaxKind.UnaryExpr) and SameText(E.Name, 'not') and (E.ChildCount = 1) then
+      Exit(-Success(E[0], AHandle, AOpenCall));
+    // if CreateProcess(…) then, Win32Check(…)
+    if E = AOpenCall then
+      Exit(1);
+    if (E.Kind = TSyntaxKind.BinaryExpr) and (E.ChildCount = 2) then
+    begin
+      if MatchText(E.Name, ['=', '<>']) then
+        for Index := 0 to 1 do
+          if (SameText(PathOf(E[Index]), AHandle.Path) or (E[Index] = AOpenCall)) then
+          begin
+            // RegOpenKeyEx(…) = ERROR_SUCCESS
+            if (E[1 - Index].Kind = TSyntaxKind.Identifier) and SameText(E[1 - Index].Name, 'ERROR_SUCCESS') then
+            begin
+              if E.Name = '=' then
+                Exit(1);
+              Exit(-1);
+            end;
+            if IsFailureValue(E[1 - Index]) then
+            begin
+              if E.Name = '=' then
+                Exit(-1);
+              Exit(1);
+            end;
+          end;
+      if SameText(E.Name, 'and') then
+        for Index := 0 to 1 do
+          if Success(E[Index], AHandle, AOpenCall) > 0 then
+            Exit(1);
+      if SameText(E.Name, 'or') then
+        for Index := 0 to 1 do
+        begin
+          Part := Success(E[Index], AHandle, AOpenCall);
+          if Part < 0 then
+            Exit(-1);
+        end;
+    end;
+  end;
+
+  function InRange(AInner, AOuter: TSyntaxNode): Boolean;
+  begin
+    Result := (AInner <> nil) and (AOuter <> nil) and (AInner.StartOffset >= AOuter.StartOffset) and
+      (AInner.EndOffset <= AOuter.EndOffset);
+  end;
+
+  // Nachfolger, denen der Weg mit offenem Handle folgt: bei if über die Prüfung des Handles nur der Zweig, in
+  // dem das Öffnen gelang.
+  function Followed(ANode: TFlowNode; const AHandle: TOpenedHandle; AOpenCall: TSyntaxNode): TArray<TFlowNode>;
+  var
+    Next: TFlowNode;
+    Condition, ThenPart: TSyntaxNode;
+    Index, Verdict: Integer;
+    IsThen: Boolean;
+  begin
+    Result := nil;
+    Verdict := 0;
+    ThenPart := nil;
+    if (ANode.Kind = TFlowNodeKind.Condition) and (ANode.Syntax.Kind = TSyntaxKind.IfStatement) then
+    begin
+      Condition := nil;
+      for Index := 0 to ANode.Syntax.ChildCount - 1 do
+        if not (ANode.Syntax[Index].Kind in FlowStatementKinds) then
+        begin
+          if Condition = nil then
+            Condition := ANode.Syntax[Index];
+        end
+        else if ThenPart = nil then
+          ThenPart := ANode.Syntax[Index];
+      if Condition <> nil then
+        Verdict := Success(Condition, AHandle, AOpenCall);
+    end;
+    for Next in ANode.Successors do
+    begin
+      if ANode.IsImplicitRaiseEdge(Next) or (Next = Graph.RaiseExit) then
+        Continue;
+      if Verdict <> 0 then
+      begin
+        IsThen := (Next.Syntax <> nil) and InRange(Next.Syntax, ThenPart);
+        if IsThen <> (Verdict > 0) then
+          Continue;
+      end;
+      Result := Result + [Next];
+    end;
+  end;
+
+  // Erreicht ein Weg vom Öffnen das normale Ende, ohne das Handle zu schließen oder weiterzugeben?
+  function LeaksFrom(AOpen: TFlowNode; const AHandle: TOpenedHandle; AOpenCall: TSyntaxNode): Boolean;
+  var
+    Visited: TArray<Boolean>;
+    Queue: TArray<TFlowNode>;
+    Head: Integer;
+    Current: TFlowNode;
+    Part: TSyntaxNode;
+    Stop: Boolean;
+  begin
+    Result := False;
+    SetLength(Visited, Graph.Nodes.Count);
+    Queue := Followed(AOpen, AHandle, AOpenCall);
+    Head := 0;
+    while Head < Length(Queue) do
+    begin
+      Current := Queue[Head];
+      Inc(Head);
+      if Visited[Current.Index] or (Current = AOpen) then
+        Continue;
+      Visited[Current.Index] := True;
+      if Current = Graph.ExitNode then
+        Exit(True);
+      Stop := False;
+      if Current.Syntax <> nil then
+        for Part in Parts(Current) do
+          if Closes(Part, AHandle) or PassesOn(Part, AHandle, AOpenCall) then
+            Stop := True;
+      // Neue Zuweisung an das Handle: das alte wird hier nicht weiter verfolgt.
+      if not Stop and (Current.Syntax <> nil) and (Current.Syntax.Kind = TSyntaxKind.AssignStatement) and
+        (Current.Syntax.ChildCount = 2) and SameText(PathOf(Current.Syntax[0]), AHandle.Path) then
+        Stop := True;
+      if Stop then
+        Continue;
+      Queue := Queue + Followed(Current, AHandle, AOpenCall);
+    end;
+  end;
+
+  // Schließt die Routine das Handle irgendwo (im Rumpf, ohne eingebettete Routinen)?
+  function ClosedAnywhere(ARoutine: TSyntaxNode; const AHandle: TOpenedHandle): Boolean;
+  var
+    Body: TSyntaxNode;
+  begin
+    Body := ARoutine.FindChild(TSyntaxKind.Block);
+    Result := (Body <> nil) and Closes(Body, AHandle);
+  end;
+
+  // Einrückung vor ANode; False, wenn davor in der Zeile noch Code steht.
+  function Indent(ANode: TSyntaxNode; out AIndent: string; out ALineStart: Integer): Boolean;
+  var
+    Start: Integer;
+  begin
+    Start := ANode.StartOffset;
+    while (Start > 0) and CharInSet(AContext.Text[Start], [' ', #9]) do
+      Dec(Start);
+    AIndent := Copy(AContext.Text, Start + 1, ANode.StartOffset - Start);
+    ALineStart := Start;
+    Result := (Start = 0) or CharInSet(AContext.Text[Start], [#10, #13]);
+  end;
+
+  function PositionAt(AOffset: Integer): TTextPosition;
+  var
+    Index, Line, LineStart: Integer;
+  begin
+    Line := 0;
+    LineStart := 0;
+    for Index := 1 to AOffset do
+      if AContext.Text[Index] = #10 then
+      begin
+        Inc(Line);
+        LineStart := Index;
+      end;
+    Result := TTextPosition.Create(Line, AOffset - LineStart);
+  end;
+
+  // Korrektur: die Anweisungen nach dem Öffnen bis zum Ende ihres Blocks in try … finally Schließen end.
+  function WrapFix(AStatement: TSyntaxNode; const AHandles: TArray<TOpenedHandle>): TArray<TRuleFix>;
+  var
+    Block, First, Last: TSyntaxNode;
+    Position, Index, LineStart: Integer;
+    Outer, Body, Closing, Line: string;
+    Lines: TArray<string>;
+  begin
+    Result := nil;
+    Block := AStatement.Parent;
+    if (Block = nil) or (Block.Kind <> TSyntaxKind.Block) then
+      Exit;
+    Position := -1;
+    for Index := 0 to Block.ChildCount - 1 do
+      if Block[Index] = AStatement then
+        Position := Index;
+    if Position < 0 then
+      Exit;
+    Closing := '';
+    // Umgekehrte Reihenfolge: zuletzt geöffnet, zuerst geschlossen (PI.hThread vor PI.hProcess).
+    for Index := High(AHandles) downto 0 do
+      Closing := Closing + '%s  ' + AHandles[Index].CloseText + ';' + LineBreak;
+    if not Indent(AStatement, Outer, LineStart) then
+      Exit;
+    Closing := StringReplace(Closing, '%s', Outer, [rfReplaceAll]);
+    if Position = Block.ChildCount - 1 then
+    begin
+      // Nichts danach: nur das Schließen anhängen.
+      Body := '';
+      for Index := High(AHandles) downto 0 do
+        Body := Body + ';' + LineBreak + Outer + AHandles[Index].CloseText;
+      Result := [TRuleFix.Create(Format('%s ergänzen', [AHandles[0].CloseName]),
+        [TRuleEdit.Create(TTextRange.Create(AStatement.EndPos, AStatement.EndPos), Body)])];
+      Exit;
+    end;
+    First := Block[Position + 1];
+    Last := Block[Block.ChildCount - 1];
+    if (First.Kind = TSyntaxKind.EmptyStatement) or not Indent(First, Body, LineStart) then
+      Exit;
+    Body := '';
+    Lines := Copy(AContext.Text, LineStart + 1, Last.EndOffset - LineStart).Replace(#13#10, #10).Split([#10]);
+    for Line in Lines do
+      if Trim(Line) = '' then
+        Body := Body + LineBreak
+      else
+        Body := Body + '  ' + Line + LineBreak;
+    // Die letzte Anweisung endet vor ihrem Semikolon; das alte Semikolon steht danach hinter end.
+    if not Body.TrimRight.EndsWith(';') then
+      Body := Body.TrimRight + ';' + LineBreak;
+    Result := [TRuleFix.Create(Format('In try … finally %s einschließen', [AHandles[0].CloseName]),
+      [TRuleEdit.Create(TTextRange.Create(PositionAt(LineStart), Last.EndPos),
+      Outer + 'try' + LineBreak + Body + Outer + 'finally' + LineBreak + Closing + Outer + 'end')])];
+  end;
+
+  function CollectLocals(ARoutine: TSyntaxNode): TArray<string>;
+
+    procedure Visit(E: TSyntaxNode; ATop: Boolean);
+    var
+      Index: Integer;
+      Name: string;
+    begin
+      if not ATop and (E.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
+        Exit;
+      if E.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar] then
+        for Name in E.Name.Split([',']) do
+          Result := Result + [Trim(Name)];
+      for Index := 0 to E.ChildCount - 1 do
+        Visit(E[Index], False);
+    end;
+
+  begin
+    Result := nil;
+    Visit(ARoutine, True);
+  end;
+
+  // Aufrufe in E, die Handles öffnen; ATarget ist das Ziel der Zuweisung.
+  procedure CollectOpens(E: TSyntaxNode; var ACalls: TArray<TSyntaxNode>; var ATargets: TArray<string>);
+  var
+    Index: Integer;
+    Pair: THandlePair;
+  begin
+    if E.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+      Exit;
+    if (E.Kind = TSyntaxKind.Call) and PairOf(CallName(E), Pair) then
+    begin
+      ACalls := ACalls + [E];
+      ATargets := ATargets + [''];
+    end;
+    for Index := 0 to E.ChildCount - 1 do
+      CollectOpens(E[Index], ACalls, ATargets);
+  end;
+
+var
+  Routine, Part, Statement: TSyntaxNode;
+  Node: TFlowNode;
+  Calls: TArray<TSyntaxNode>;
+  Targets: TArray<string>;
+  Handles, Leaked: TArray<TOpenedHandle>;
+  Handle: TOpenedHandle;
+  Index, First: Integer;
+  Pair: string;
+  Names, Message, Verb: string;
+  Never: Boolean;
+  Item: THandlePair;
+  Fixes: TArray<TRuleFix>;
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Table := nil;
+  for Pair in Pairs(AContext.Options) do
+  begin
+    Item.Open := Copy(Pair, 1, Pos('|', Pair) - 1);
+    Item.Where := Copy(Pair, Pos('|', Pair) + 1, MaxInt);
+    Item.Close := Copy(Item.Where, Pos('|', Item.Where) + 1, MaxInt);
+    Item.Where := Copy(Item.Where, 1, Pos('|', Item.Where) - 1);
+    Table := Table + [Item];
+  end;
+  LineBreak := #10;
+  if Pos(#13#10, AContext.Text) > 0 then
+    LineBreak := #13#10;
+  Cache := TRuleDerived.Open(AContext);
+  for Routine in TRuleDerived.Routines(Cache, AContext) do
+  begin
+    Locals := CollectLocals(Routine);
+    if Locals = nil then
+      Continue;
+    Graph := TRuleDerived.Graph(Cache, AContext, Routine);
+    if not Graph.Complete then
+      Continue;
+    for Node in Graph.Nodes do
+    begin
+      if (Node.Syntax = nil) or not (Node.Kind in [TFlowNodeKind.Statement, TFlowNodeKind.Condition]) then
+        Continue;
+      Calls := nil;
+      Targets := nil;
+      // with: die Anweisungen darin sind eigene Knoten.
+      if Node.Syntax.Kind = TSyntaxKind.WithStatement then
+        Continue;
+      for Part in Parts(Node) do
+      begin
+        First := Length(Calls);
+        CollectOpens(Part, Calls, Targets);
+        // H := CreateFile(…) bzw. var H := CreateFile(…): das Ziel nimmt das Handle auf.
+        for Index := First to High(Calls) do
+          if (Part.Kind = TSyntaxKind.AssignStatement) and (Part.ChildCount = 2) and (Calls[Index] = Part[1]) and
+            (Part[0].Kind = TSyntaxKind.Identifier) then
+            Targets[Index] := Part[0].Name
+          else if (Part.Kind = TSyntaxKind.InlineVar) and (Calls[Index].Parent = Part) then
+            Targets[Index] := Trim(Part.Name);
+      end;
+      for Index := 0 to High(Calls) do
+      begin
+        if not Opened(Calls[Index], Targets[Index], Handles) then
+          Continue;
+        Leaked := nil;
+        Never := True;
+        for Handle in Handles do
+          if LeaksFrom(Node, Handle, Calls[Index]) then
+          begin
+            Leaked := Leaked + [Handle];
+            Never := Never and not ClosedAnywhere(Routine, Handle);
+          end;
+        if Leaked = nil then
+          Continue;
+        Names := '';
+        for Handle in Leaked do
+        begin
+          if Names <> '' then
+            Names := Names + ' und ';
+          Names := Names + Handle.Path;
+        end;
+        Verb := 'wird';
+        if Length(Leaked) > 1 then
+          Verb := 'werden';
+        if Never then
+          Message := Format('%s %s nie mit %s geschlossen (Handle-Leck).', [Names, Verb, Leaked[0].CloseName])
+        else
+          Message := Format('%s %s nicht auf jedem Weg mit %s geschlossen (Handle-Leck).',
+            [Names, Verb, Leaked[0].CloseName]);
+        Fixes := nil;
+        Statement := Node.Syntax;
+        if Never and (Node.Kind = TFlowNodeKind.Statement) and (Statement.StartPos.Line = Statement.EndPos.Line) then
+          Fixes := WrapFix(Statement, Leaked);
+        AReport.Add(NodeRange(Calls[Index]), Message, TRuleConfidence.Medium, Fixes);
+      end;
+    end;
+  end;
+end;
+
 { TOutParamReadRule }
 
 function TOutParamReadRule.Descriptor: TRuleDescriptor;
@@ -2175,6 +2921,7 @@ begin
   ARegistry.Register(TDerefBeforeNilCheckRule.Create);
   ARegistry.Register(TFieldFreeWithoutNilRule.Create);
   ARegistry.Register(TDestructorNotNilSafeRule.Create);
+  ARegistry.Register(THandleLeakRule.Create);
   ARegistry.Register(TOutParamReadRule.Create);
 end;
 

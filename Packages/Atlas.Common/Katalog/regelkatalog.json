@@ -2311,6 +2311,24 @@
           "description": "Only report when the constructor calls something that can raise before it creates the field."
         }
       ]
+    },
+    {
+      "id": "handle-leak",
+      "name": "Windows handle is not closed",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "A Windows handle in a local variable is not closed with its counterpart on some path to the end of the routine: CreateFile, CreateEvent, CreateMutex, OpenProcess, CreateProcess (hProcess, hThread) and CreateToolhelp32Snapshot with CloseHandle, FindFirstFile with FindClose, RegOpenKeyEx/RegCreateKeyEx with RegCloseKey, LoadLibrary with FreeLibrary, GetDC with ReleaseDC, CreatePen/CreateBrush/CreateFont/CreateBitmap with DeleteObject, CreateCompatibleDC with DeleteDC and others. Returning the handle, storing it in a field or global, passing it to an unknown routine or capturing it in an anonymous method counts as handing it on. Branches in which an if check says the open failed (H = 0, H = INVALID_HANDLE_VALUE, RegOpenKeyEx(...) <> ERROR_SUCCESS) and exception paths (see pair-without-finally) do not count. The option pairs adds your own pairs. Medium confidence. Quick fix when the handle is never closed: wrap the statements after the open in try … finally with the close call, or append the close call when the open is the last statement.",
+      "bad": "H := CreateFile(PChar(Datei), GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);\nif H = INVALID_HANDLE_VALUE then\n  RaiseLastOSError;\nReadFile(H, Puffer, SizeOf(Puffer), Gelesen, nil);",
+      "good": "H := CreateFile(PChar(Datei), GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);\nif H = INVALID_HANDLE_VALUE then\n  RaiseLastOSError;\ntry\n  ReadFile(H, Puffer, SizeOf(Puffer), Gelesen, nil);\nfinally\n  CloseHandle(H);\nend;",
+      "options": [
+        {
+          "name": "pairs",
+          "type": "json",
+          "default": [],
+          "description": "Additional open/close pairs as \"Open>Close\" or {\"open\": …, \"close\": …}; the open function returns the handle, the close procedure takes it as its only argument."
+        }
+      ]
     }
   ]
 }
