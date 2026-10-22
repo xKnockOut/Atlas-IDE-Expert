@@ -8,6 +8,10 @@
 // Bewegung löst nie eine Anfrage aus. Bleibt die Antwort leer, obwohl es
 // vorher Knoten gab (Syntaxfehler), bleibt der letzte gültige Stand. Die
 // letzten Dateien bleiben gemerkt, ein Wechsel zurück fragt nicht neu.
+// Antwortet der Server nicht rechtzeitig (ELspClientError), ist das kein
+// Fehler des Aufrufers: Der alte Stand bleibt, später neu versuchen. Früher
+// lief die Ausnahme bis in den Takt von Brotkrumen und mitlaufendem Kopf und
+// zählte dort für die Absturzsicherung.
 // Während einer Abfrage (Sitzung holen, Server starten, auf documentSymbol
 // warten) kann der Manager alle Stände vergessen oder ein weiterer Takt
 // einsteigen; Entfernen und Leeren hält TAtlasOutlineLoadGuard bis zum Ende
@@ -58,6 +62,8 @@ uses
   Winapi.Windows,
   System.JSON,
   System.Generics.Collections,
+  Atlas.Core.Lsp.Client,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Outline.LoadGuard,
   Atlas.IDE.Foundation.EditorSnapshot;
 
@@ -137,8 +143,18 @@ begin
     AEntry.RetryAt := GetTickCount64 + RetryMs;
     Exit;
   end;
-  Session.Sync(AEntry.FileName, ASnapshot.Text);
-  Response := Session.DocumentSymbolTree(AEntry.FileName, RequestTimeoutMs);
+  try
+    Session.Sync(AEntry.FileName, ASnapshot.Text);
+    Response := Session.DocumentSymbolTree(AEntry.FileName, RequestTimeoutMs);
+  except
+    // Zeitgrenze, Fehlerantwort oder beendete Verbindung: wie keine Antwort.
+    on E: ELspClientError do
+    begin
+      TAtlasGuard.Log('Gliederung: keine Antwort vom Server (' + TAtlasGuard.SafeMessage(E.Message) +
+        '); alter Stand bleibt');
+      Response := nil;
+    end;
+  end;
   try
     if Response = nil then
     begin
