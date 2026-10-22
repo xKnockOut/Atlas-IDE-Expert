@@ -1140,8 +1140,9 @@ begin
       NoBody := True;
   if AWithBody and not NoBody then
   begin
-    // Lokale Deklarationen, dann der Rumpf.
-    while not AtEnd and (IsKw(['type', 'const', 'resourcestring', 'var', 'threadvar', 'label']) or
+    // Lokale Deklarationen, dann der Rumpf. exports ist hier ein Fehler des Compilers (E2191), aber kein
+    // Syntaxfehler: Der Baum behält die Klausel, damit exports-invalid sie melden kann.
+    while not AtEnd and (IsKw(['type', 'const', 'resourcestring', 'var', 'threadvar', 'label', 'exports']) or
       IsRoutineStart or IsSym('[')) do
       ParseDeclaration(Node);
     if IsKw('asm') then

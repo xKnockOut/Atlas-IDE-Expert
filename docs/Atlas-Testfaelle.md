@@ -4148,3 +4148,19 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | NE6 | Seite *Prüfregeln › Compiler vorab*, Regel `text-after-final-end` | Option `allowComments` als Kontrollkästchen |
 | NE7 | `"text-after-final-end": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | NE8 | Abgleich mit Delphi: NE1 und NE3 übersetzen | dcc meldet W1011 für NE1, für NE3 nichts |
+
+## exports-Klausel unzulässig (#1077)
+
+Voraussetzung: Server läuft in der IDE; eine Bibliothek (`library`) mit zwei exportierten Routinen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| XP1 | Das Beispiel aus #1077: `exports Initialisieren, Berechnen, Initialisieren;` | Fehler `exports-invalid` am zweiten `Initialisieren`: „Initialisieren wird zweimal exportiert (wie E2287).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| XP2 | Schnellkorrektur „Doppelten Eintrag entfernen“, danach Strg+Z | `exports Initialisieren, Berechnen;`, keine Meldung mehr; ein Undo-Schritt |
+| XP3 | `Berechnen name 'Start'` und in einer zweiten Klausel `Initialisieren name 'Start'` | „Der Name 'Start' wird zweimal exportiert (wie E2287).“ |
+| XP4 | `threadvar Zaehler: Integer;` bzw. `procedure Intern; local;` exportieren | „Die threadvar Zaehler kann nicht exportiert werden (wie E2276).“ bzw. „Intern ist mit local deklariert …“ |
+| XP5 | Eine globale Variable, Konstante oder einen Typ exportieren | „… ist keine Prozedur oder Funktion und kann nicht exportiert werden (wie E2121).“ |
+| XP6 | `exports Starten;` in den lokalen Deklarationen einer Prozedur | „exports ist nur auf globaler Ebene erlaubt (wie E2191).“ am Wort `exports`; keine Syntaxfehlermeldung |
+| XP7 | Überladene Routinen mit Parameterliste und eigenem `name`, Einträge in `{$IFDEF}`/`{$ELSE}` | Keine Meldung |
+| XP8 | `"exports-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| XP9 | Abgleich mit Delphi: XP1, XP3–XP6 übersetzen | dcc meldet E2287, E2276, E2121 bzw. E2191 an denselben Stellen, für XP7 nichts (E2287 ist laut docwiki „nicht verwendet“; bitte prüfen, was dcc bei XP1 tatsächlich meldet) |

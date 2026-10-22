@@ -2349,6 +2349,22 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "W1011"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "exports-invalid",' + #10 +
+    '      "name": "Invalid exports clause",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "An exports clause inside a routine (like E2191), the export of a threadvar or of a routine declared local (like E2276), of a variable, constant or type (like E2121), or the same ' + 'entry or export name twice (like E2287). Names are only resolved against global declarations of the file; names from other units and names with a dot stay silent, as do two entries in mutually exclusi' + 've {$IF…} branches. Overloaded routines with different parameter lists or export names count as different entries. Complements dll-export-unsafe (#973). Quick fix: remove the duplicate entry.",' + #10 +
+    '      "bad": "exports\n  Initialisieren,\n  Berechnen,\n  Initialisieren;",' + #10 +
+    '      "good": "exports\n  Initialisieren,\n  Berechnen;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2191",' + #10 +
+    '        "E2276",' + #10 +
+    '        "E2121",' + #10 +
+    '        "E2287"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3535,6 +3551,11 @@ begin
     '          "description": "Kommentare und Direktiven nach end. erlauben."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "exports-invalid",' + #10 +
+    '      "name": "exports-Klausel unzulässig",' + #10 +
+    '      "description": "Eine exports-Klausel in einer Routine (wie E2191), der Export einer threadvar oder einer mit local deklarierten Routine (wie E2276), einer Variablen, Konstanten oder eines Typs (' + 'wie E2121) oder derselbe Eintrag bzw. Exportname zweimal (wie E2287). Namen löst die Regel nur gegen globale Deklarationen der Datei auf; Namen aus anderen Units und Namen mit Punkt bleiben still, ebe' + 'nso zwei Einträge in sich ausschließenden {$IF…}-Zweigen. Überladene Routinen mit verschiedenen Parameterlisten oder Exportnamen gelten als verschiedene Einträge. Ergänzt dll-export-unsafe (#973). Sch' + 'nellkorrektur: doppelten Eintrag entfernen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

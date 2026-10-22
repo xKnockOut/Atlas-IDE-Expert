@@ -2329,6 +2329,22 @@
       "compilerCodes": [
         "W1011"
       ]
+    },
+    {
+      "id": "exports-invalid",
+      "name": "Invalid exports clause",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "An exports clause inside a routine (like E2191), the export of a threadvar or of a routine declared local (like E2276), of a variable, constant or type (like E2121), or the same entry or export name twice (like E2287). Names are only resolved against global declarations of the file; names from other units and names with a dot stay silent, as do two entries in mutually exclusive {$IF…} branches. Overloaded routines with different parameter lists or export names count as different entries. Complements dll-export-unsafe (#973). Quick fix: remove the duplicate entry.",
+      "bad": "exports\n  Initialisieren,\n  Berechnen,\n  Initialisieren;",
+      "good": "exports\n  Initialisieren,\n  Berechnen;",
+      "compilerCodes": [
+        "E2191",
+        "E2276",
+        "E2121",
+        "E2287"
+      ]
     }
   ]
 }
