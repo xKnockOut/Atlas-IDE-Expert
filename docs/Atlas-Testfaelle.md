@@ -4179,3 +4179,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt; `guid-syntax-invalid` steht
 | GU5 | `IID_Logger: TGUID = '{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6X}';`, eine GUID mit vier Blöcken, ein erster Block mit 7 Zeichen | „Die GUID enthält „X“, das ist keine Hexadezimalziffer (wie E2204).“, „Die GUID hat 4 statt 5 Blöcke …“, „Der erste Block der GUID hat 7 statt 8 Zeichen …“ |
 | GU6 | Gültige GUID (auch in Kleinbuchstaben), GUID über eine Konstante `[IID_Logger]`, verkettete Konstante, Attribut `[Beschreibung('kurz')]` | Keine Meldung |
 | GU7 | `"guid-syntax-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+
+## Untypisierter Zeiger umgeht die Referenzzählung (#1081)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; `untyped-pointer-refcount` steht auf der Vorgabe (Warnung).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZR1 | Feld `FBesitzer: IBesitzer;`, in einer Methode `Pointer(FBesitzer) := Pointer(Besitzer);` (Beispiel aus #1081) | Warnung an `Pointer(FBesitzer)`: „Die Zuweisung über Pointer umgeht die Referenzzählung (wie W1070); besser [weak] FBesitzer.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover |
+| ZR2 | Projekt bauen | Der Compiler meldet W1070 an derselben Stelle; Fenster zeigt Quelle „Atlas + dcc“. Meldet der Compiler unter Win32/Win64 nichts, bitte notieren (Abgleich #1024) |
+| ZR3 | Alt+Enter: „[weak] FBesitzer verwenden“, danach Strg+Z; dann „[unsafe] FBesitzer verwenden“ | `[weak] FBesitzer: IBesitzer;` und `FBesitzer := Besitzer;`; übersetzt ohne W1070; ein Undo-Schritt. Bzw. `[unsafe]` |
+| ZR4 | `Pointer(FBesitzer) := nil;`, `Pointer(FAnderer) := P;` mit `P: Pointer`, `Pointer(L) := nil;` mit lokaler Variable `L: IBesitzer` | Je eine Warnung; Korrektur nur beim ersten (`FBesitzer := nil`), die anderen ohne Korrektur |
+| ZR5 | `Pointer(FObjekt) := nil` (TObject), `Pointer(FText) := nil` (string), `P := Pointer(FBesitzer)`, `if Pointer(FBesitzer) = nil`, Feld mit `[weak]` oder `[unsafe]`, unbekannter Typ | Keine Meldung |
+| ZR6 | `"untyped-pointer-refcount": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |

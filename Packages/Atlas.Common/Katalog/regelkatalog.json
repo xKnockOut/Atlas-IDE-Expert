@@ -2375,6 +2375,19 @@
       "compilerCodes": [
         "E2204"
       ]
+    },
+    {
+      "id": "untyped-pointer-refcount",
+      "name": "Untyped pointer bypasses reference counting",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "An interface is assigned through a typecast to Pointer (Pointer(FIntf) := P, like W1070). Reference counting does not take part: the object is freed too early or never. The rule reports only when name resolution knows the interface type for sure; strings are not reported, as Delphi warns about them only under NEXTGEN. Fields that already carry [weak] or [unsafe] stay silent. Quick fixes for a field of this file with Pointer(Y) or nil on the right: mark the field [weak] or [unsafe] and assign without Pointer.",
+      "bad": "Pointer(FBesitzer) := Pointer(Besitzer);",
+      "good": "[weak] FBesitzer: IBesitzer;\n…\nFBesitzer := Besitzer;",
+      "compilerCodes": [
+        "W1070"
+      ]
     }
   ]
 }

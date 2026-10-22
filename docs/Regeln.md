@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 18 |
+| [Compiler vorab](#gruppe-compiler) | 19 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -149,6 +149,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`inherited-constructor-after-try`](#inherited-constructor-after-try) | Geerbter Konstruktor erst im try-Block | Bug | Hinweis |
 | [`variant-record-managed-field`](#variant-record-managed-field) | Verwalteter Typ im varianten Teil eines Records | Bug | Fehler |
 | [`guid-syntax-invalid`](#guid-syntax-invalid) | GUID mit falscher Schreibweise | Bug | Fehler |
+| [`untyped-pointer-refcount`](#untyped-pointer-refcount) | Untypisierter Zeiger umgeht die Referenzzählung | Bug | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4662,4 +4663,27 @@ Richtig:
 ```pascal
 ILogger = interface
   ['{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C}']
+```
+
+<a id="untyped-pointer-refcount"></a>
+### untyped-pointer-refcount
+
+**Untypisierter Zeiger umgeht die Referenzzählung** · Bug · Warnung · Gruppe Compiler vorab
+
+Ein Interface wird über eine Typumwandlung nach Pointer zugewiesen (Pointer(FIntf) := P, wie W1070). Die Referenzzählung läuft dann nicht mit: das Objekt wird zu früh freigegeben oder nie. Die Regel meldet nur, wenn die Namensauflösung den Interface-Typ sicher kennt; Strings meldet sie nicht, weil Delphi bei ihnen nur unter NEXTGEN warnt. Felder mit [weak] oder [unsafe] bleiben still. Korrekturen für ein Feld dieser Datei mit Pointer(Y) oder nil rechts: das Feld mit [weak] bzw. [unsafe] auszeichnen und ohne Pointer zuweisen.
+
+Entspricht der Compilermeldung `W1070`.
+
+Mit Treffer:
+
+```pascal
+Pointer(FBesitzer) := Pointer(Besitzer);
+```
+
+Richtig:
+
+```pascal
+[weak] FBesitzer: IBesitzer;
+…
+FBesitzer := Besitzer;
 ```
