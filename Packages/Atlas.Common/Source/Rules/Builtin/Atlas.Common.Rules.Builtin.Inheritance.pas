@@ -9,6 +9,9 @@
 //   virtual-instead-of-override         virtual statt override bei gleicher Signatur
 //   shadowed-name                       Parameter oder lokale Variable heißt wie ein Feld, eine
 //                                       Property (auch geerbt) oder eine globale Variable der Unit (#934)
+//   override-target-missing             override ohne passende virtuelle Methode im Vorfahren (E2137),
+//                                       auf eine statische (E2170) oder finale (E2352), Ableiten von
+//                                       einer sealed-Klasse (E2353) (#997)
 //
 // Vorfahren werden zuerst in der Datei, dann im Symbolindex gesucht (auch RTL
 // und VCL, soweit eingelesen). Ist ein Vorfahr nicht auflösbar oder mehrdeutig,
@@ -65,6 +68,16 @@ type
     /// <summary>Feld oder Property AName in ATypeName oder einem Vorfahren, das dort sichtbar ist (#934).
     /// Bricht die Kette ab, steht in AUnresolved der Vorfahr, der weder in der Datei noch im Index steht.</summary>
     function FindMember(const ATypeName, AName: string; out AMember: TIndexSymbol; out AUnresolved: string): Boolean;
+    /// <summary>Vorfahren von ATypeName vom direkten an aufwärts (#997). AComplete: die Kette reicht bis TObject;
+    /// AObjectMissing: TObject selbst steht weder in der Datei noch im Index.</summary>
+    function Ancestors(const ATypeName: string; out AComplete, AObjectMissing: Boolean): TArray<TSymbolLocation>;
+    /// <summary>Methoden, Konstruktoren und Destruktoren der Klasse AType (#997).</summary>
+    function Methods(const AType: TSymbolLocation): TArray<TIndexSymbol>;
+    /// <summary>Ist AName in der Datei oder im Index als Typalias deklariert (type TModus = Integer)?</summary>
+    function IsTypeAlias(const AName: string): Boolean;
+    /// <summary>Ist AName in der Datei oder im Index als eigener Typ deklariert (Klasse, Record, Aufzählung,
+    /// Interface), also kein Alias?</summary>
+    function IsDeclaredType(const AName: string): Boolean;
     property Local: TUnitIndex read FLocal;
   end;
 
@@ -98,6 +111,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TOverrideTargetMissingRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -110,7 +129,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.Unused;
+  Atlas.Common.Rules.Builtin.Unused,
+  Atlas.Text.Fuzzy;
 
 function TMethodDecl.Has(const ADirective: string): Boolean;
 begin
@@ -187,7 +207,7 @@ begin
   Result := Found;
 end;
 
-function TAncestry.MethodsOf(const AType: TSymbolLocation; const AName: string): TArray<TIndexSymbol>;
+function TAncestry.Methods(const AType: TSymbolLocation): TArray<TIndexSymbol>;
 var
   Symbols: TArray<TIndexSymbol>;
   Symbol: TIndexSymbol;
@@ -202,9 +222,85 @@ begin
     Exit;
   for Symbol in Symbols do
     if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and
-      SameText(Symbol.Container, AType.Symbol.Name) and SameText(Symbol.Name, AName) and
+      SameText(Symbol.Container, AType.Symbol.Name) and
       ContainsLine(AType.Symbol.Range, Symbol.Range.StartPos.Line) then
       Result := Result + [Symbol];
+end;
+
+function TAncestry.MethodsOf(const AType: TSymbolLocation; const AName: string): TArray<TIndexSymbol>;
+var
+  Symbol: TIndexSymbol;
+begin
+  Result := nil;
+  for Symbol in Methods(AType) do
+    if SameText(Symbol.Name, AName) then
+      Result := Result + [Symbol];
+end;
+
+function TAncestry.Ancestors(const ATypeName: string; out AComplete, AObjectMissing: Boolean): TArray<TSymbolLocation>;
+var
+  Name: string;
+  Location: TSymbolLocation;
+  Depth: Integer;
+begin
+  Result := nil;
+  AComplete := False;
+  AObjectMissing := False;
+  Name := ParentOf(ATypeName);
+  Depth := 0;
+  while (Name <> '') and (Depth < 64) do
+  begin
+    if not FindType(Name, Location) then
+    begin
+      AObjectMissing := SameText(Name, 'TObject');
+      AComplete := AObjectMissing;
+      Exit;
+    end;
+    Result := Result + [Location];
+    if SameText(Name, 'TObject') then
+    begin
+      AComplete := True;
+      Exit;
+    end;
+    if Length(Location.Symbol.Ancestors) = 0 then
+      Name := 'TObject'
+    else
+      Name := BareName(Location.Symbol.Ancestors[0]);
+    Inc(Depth);
+  end;
+end;
+
+function TAncestry.IsDeclaredType(const AName: string): Boolean;
+const
+  Kinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+    TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType];
+var
+  Symbol: TIndexSymbol;
+  Location: TSymbolLocation;
+begin
+  for Symbol in FLocal.Symbols do
+    if (Symbol.Kind in Kinds) and (Symbol.Container = '') and SameText(Symbol.Name, AName) then
+      Exit(True);
+  if FIndex <> nil then
+    for Location in FIndex.FindSymbols(AName) do
+      if (Location.Symbol.Kind in Kinds) and (Location.Symbol.Container = '') then
+        Exit(True);
+  Result := False;
+end;
+
+function TAncestry.IsTypeAlias(const AName: string): Boolean;
+var
+  Symbol: TIndexSymbol;
+  Location: TSymbolLocation;
+begin
+  for Symbol in FLocal.Symbols do
+    if (Symbol.Kind = TIndexSymbolKind.TypeAlias) and SameText(Symbol.Name, AName) then
+      Exit(True);
+  if FIndex <> nil then
+    for Location in FIndex.FindSymbols(AName) do
+      if Location.Symbol.Kind = TIndexSymbolKind.TypeAlias then
+        Exit(True);
+  Result := False;
 end;
 
 function TAncestry.HasConstructor(const ATypeName: string): Boolean;
@@ -1000,6 +1096,468 @@ begin
   end;
 end;
 
+{ TOverrideTargetMissingRule }
+
+const
+  // Virtuelle Instanzmethoden von TObject, falls System nicht im Index steht.
+  ObjectVirtualNames: array[0..9] of string = ('AfterConstruction', 'BeforeDestruction', 'Dispatch',
+    'DefaultHandler', 'FreeInstance', 'Destroy', 'SafeCallException', 'ToString', 'Equals', 'GetHashCode');
+  // Gleiche Typen unter anderem Namen: Name=Grundname.
+  TypeSynonyms: array[0..17] of string = ('longint=integer', 'int32=integer', 'longword=cardinal',
+    'uint32=cardinal', 'dword=cardinal', 'unicodestring=string', 'widechar=char', 'pwidechar=pchar',
+    'intptr=nativeint', 'uintptr=nativeuint', 'int16=smallint', 'int8=shortint', 'uint8=byte', 'uint16=word',
+    'real=double', 'tobject=tobject', 'system.tobject=tobject', 'hresult=hresult');
+  // Eingebaute Typen, die sicher kein Alias eines anderen sind.
+  BuiltinTypes: array[0..25] of string = ('integer', 'cardinal', 'int64', 'uint64', 'string', 'ansistring',
+    'shortstring', 'widestring', 'char', 'ansichar', 'boolean', 'double', 'single', 'extended', 'currency', 'byte',
+    'word', 'smallint', 'shortint', 'pointer', 'variant', 'tobject', 'nativeint', 'nativeuint', 'pchar',
+    'tdatetime');
+
+type
+  /// <summary>Gleichnamige Methode eines Vorfahren für override-target-missing (#997).</summary>
+  TOverrideCandidate = record
+    TypeName: string;
+    Symbol: TIndexSymbol;
+    /// <summary>procedure, function, constructor oder destructor aus der Signatur.</summary>
+    Keyword: string;
+    /// <summary>Kopf ab dem Namen ohne Direktiven, z. B. "Ausfuehren(const Modus: TModus)".</summary>
+    Head: string;
+  end;
+
+  /// <summary>Vergleich zweier Köpfe: gleich, nur Typen anders, anders gebaut.</summary>
+  TOverrideMatch = (Same, OtherTypes, Different);
+
+function CanonicalType(const AName: string): string;
+var
+  Pair: string;
+begin
+  Result := LowerCase(BareName(AName));
+  for Pair in TypeSynonyms do
+    if StartsStr(Result + '=', Pair) then
+      Exit(Copy(Pair, Length(Result) + 2, MaxInt));
+end;
+
+/// <summary>Schlüsselwort und Kopf ab dem Namen aus einer Signatur wie "procedure Foo(A: Integer); virtual;".
+/// </summary>
+function SplitSignature(const ASignature: string; out AKeyword, AHead: string): Boolean;
+var
+  Text: string;
+  Index, Depth: Integer;
+begin
+  Text := Trim(ASignature);
+  AKeyword := LowerCase(Copy(Text, 1, Pos(' ', Text + ' ') - 1));
+  AHead := '';
+  Result := MatchText(AKeyword, ['procedure', 'function', 'constructor', 'destructor']);
+  if not Result then
+    Exit;
+  Text := Trim(Copy(Text, Length(AKeyword) + 1, MaxInt));
+  Depth := 0;
+  for Index := 1 to Length(Text) do
+    case Text[Index] of
+      '(', '[':
+        Inc(Depth);
+      ')', ']':
+        Dec(Depth);
+      ';':
+        if Depth = 0 then
+        begin
+          AHead := Trim(Copy(Text, 1, Index - 1));
+          Exit;
+        end;
+    end;
+  AHead := Text;
+end;
+
+/// <summary>Kopf ohne Standardwerte der Parameter, für den Rumpf.</summary>
+function WithoutDefaults(const AHead: string): string;
+var
+  Index, Depth: Integer;
+  Skipping: Boolean;
+  Quoted: Boolean;
+begin
+  Result := '';
+  Depth := 0;
+  Skipping := False;
+  Quoted := False;
+  for Index := 1 to Length(AHead) do
+  begin
+    if AHead[Index] = '''' then
+      Quoted := not Quoted;
+    if not Quoted then
+      case AHead[Index] of
+        '(', '[':
+          Inc(Depth);
+        ')', ']':
+          begin
+            Dec(Depth);
+            if Depth = 0 then
+              Skipping := False;
+          end;
+        ';':
+          if Depth = 1 then
+            Skipping := False;
+        '=':
+          if Depth = 1 then
+            Skipping := True;
+      end;
+    if not Skipping then
+      Result := Result + AHead[Index];
+  end;
+  Result := StringReplace(Result, ' ;', ';', [rfReplaceAll]);
+  Result := StringReplace(Result, ' )', ')', [rfReplaceAll]);
+end;
+
+function TOverrideTargetMissingRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('override-target-missing', TRuleSeverity.Error,
+    'override ohne passende virtuelle Methode im Vorfahren');
+end;
+
+procedure TOverrideTargetMissingRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Cache: IRuleDerivedCache;
+  Ancestry: TAncestry;
+  Tokens: TArray<TPascalToken>;
+
+  function Wildcards(const AClassName: string; const AChain: TArray<TSymbolLocation>): TArray<string>;
+  var
+    Location: TSymbolLocation;
+    Symbol: TIndexSymbol;
+    Name: string;
+  begin
+    Result := nil;
+    for Location in AChain do
+      for Name in SplitString(Location.Symbol.TypeParams, ',') do
+        if Trim(Name) <> '' then
+          Result := Result + [Trim(Name)];
+    for Symbol in Ancestry.Local.Symbols do
+      if (Symbol.Kind = TIndexSymbolKind.ClassType) and SameText(Symbol.Name, AClassName) then
+        for Name in SplitString(Symbol.TypeParams, ',') do
+          if Trim(Name) <> '' then
+            Result := Result + [Trim(Name)];
+  end;
+
+  function SameType(const A, B: string; const AWildcards: TArray<string>): Boolean;
+  begin
+    Result := (CanonicalType(A) = CanonicalType(B)) or MatchText(BareName(A), AWildcards) or
+      MatchText(BareName(B), AWildcards);
+    // Ein Alias der Datei oder des Index kann auf den anderen Typ zeigen: keine Aussage.
+    if not Result and (A <> '') and (B <> '') then
+      Result := Ancestry.IsTypeAlias(BareName(A)) or Ancestry.IsTypeAlias(BareName(B));
+  end;
+
+  /// <summary>Steht der Typ sicher für sich (eingebaut oder als Klasse, Record, Aufzählung deklariert)?</summary>
+  function Known(const AName: string): Boolean;
+  begin
+    Result := MatchText(CanonicalType(AName), BuiltinTypes) or Ancestry.IsDeclaredType(BareName(AName));
+  end;
+
+  /// <summary>Wie Compare; ACertain: alle abweichenden Typen stehen sicher für sich.</summary>
+  function CompareTypes(const AMethod: TMethodDecl; const ACandidate: TOverrideCandidate;
+    const AWildcards: TArray<string>; out ACertain: Boolean): TOverrideMatch;
+  var
+    Index: Integer;
+
+    procedure Differ(const A, B: string);
+    begin
+      Result := TOverrideMatch.OtherTypes;
+      ACertain := ACertain and Known(A) and Known(B);
+    end;
+
+  begin
+    ACertain := True;
+    if (ACandidate.Keyword <> AMethod.Keyword) or (AMethod.Symbol.MaxArgs <> ACandidate.Symbol.MaxArgs) or
+      (Length(AMethod.Symbol.ParamTypes) <> Length(ACandidate.Symbol.ParamTypes)) or
+      ((AMethod.Symbol.TypeName = '') <> (ACandidate.Symbol.TypeName = '')) then
+      Exit(TOverrideMatch.Different);
+    Result := TOverrideMatch.Same;
+    for Index := 0 to High(AMethod.Symbol.ParamTypes) do
+      if (AMethod.Symbol.ParamTypes[Index] = '') <> (ACandidate.Symbol.ParamTypes[Index] = '') then
+        Exit(TOverrideMatch.Different)
+      else if not SameType(AMethod.Symbol.ParamTypes[Index], ACandidate.Symbol.ParamTypes[Index], AWildcards) then
+        Differ(AMethod.Symbol.ParamTypes[Index], ACandidate.Symbol.ParamTypes[Index]);
+    if not SameType(AMethod.Symbol.TypeName, ACandidate.Symbol.TypeName, AWildcards) then
+      Differ(AMethod.Symbol.TypeName, ACandidate.Symbol.TypeName);
+  end;
+
+  function Compare(const AMethod: TMethodDecl; const ACandidate: TOverrideCandidate;
+    const AWildcards: TArray<string>): TOverrideMatch;
+  var
+    Certain: Boolean;
+  begin
+    Result := CompareTypes(AMethod, ACandidate, AWildcards, Certain);
+  end;
+
+  /// <summary>Gleichnamige, im Nachfahren sichtbare Methoden der Vorfahren, der nächste zuerst.</summary>
+  function Candidates(const AChain: TArray<TSymbolLocation>; const AName: string): TArray<TOverrideCandidate>;
+  var
+    Location: TSymbolLocation;
+    Symbol: TIndexSymbol;
+    Item: TOverrideCandidate;
+  begin
+    Result := nil;
+    for Location in AChain do
+      for Symbol in Ancestry.Methods(Location) do
+      begin
+        if (AName <> '') and not SameText(Symbol.Name, AName) then
+          Continue;
+        // strict private sieht kein Nachfahre, private nur einer in derselben Unit.
+        if (Symbol.Visibility = TIndexVisibility.StrictPrivate) or ((Location.FileName <> '') and
+          (Symbol.Visibility = TIndexVisibility.Private)) then
+          Continue;
+        if StartsText('class ', Symbol.Signature) then
+          Continue;
+        Item.TypeName := Location.Symbol.Name;
+        Item.Symbol := Symbol;
+        if not SplitSignature(Symbol.Signature, Item.Keyword, Item.Head) then
+          Continue;
+        Result := Result + [Item];
+      end;
+  end;
+
+  /// <summary>Index des Tokens, das bei AOffset beginnt; -1 ohne.</summary>
+  function TokenIndex(AOffset: Integer): Integer;
+  var
+    Index: Integer;
+  begin
+    for Index := 0 to High(Tokens) do
+      if Tokens[Index].Offset = AOffset then
+        Exit(Index);
+    Result := -1;
+  end;
+
+  /// <summary>Erstes ";" auf Klammertiefe 0 ab dem Token AFrom; -1 ohne.</summary>
+  function HeadEnd(AFrom: Integer): Integer;
+  var
+    Index, Depth: Integer;
+  begin
+    Depth := 0;
+    for Index := AFrom to High(Tokens) do
+      if (Tokens[Index].Kind = TPascalTokenKind.Symbol) and ((Tokens[Index].Text = '(') or
+        (Tokens[Index].Text = '[')) then
+        Inc(Depth)
+      else if (Tokens[Index].Kind = TPascalTokenKind.Symbol) and ((Tokens[Index].Text = ')') or
+        (Tokens[Index].Text = ']')) then
+        Dec(Depth)
+      else if (Depth = 0) and (Tokens[Index].Kind = TPascalTokenKind.Symbol) and (Tokens[Index].Text = ';') then
+        Exit(Index);
+    Result := -1;
+  end;
+
+  /// <summary>Kopf des einzigen Rumpfs AClassName.AName: Index des Schlüsselworts; -1 ohne oder bei mehreren.
+  /// </summary>
+  function BodyStart(const AClassName, AName: string): Integer;
+  var
+    Index: Integer;
+  begin
+    Result := -1;
+    for Index := 1 to High(Tokens) - 2 do
+      if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AClassName) and
+        (Tokens[Index + 1].Text = '.') and SameText(Tokens[Index + 2].Text, AName) and
+        (Tokens[Index - 1].Kind = TPascalTokenKind.Keyword) and MatchText(Tokens[Index - 1].Text, ['procedure',
+        'function', 'constructor', 'destructor']) then
+      begin
+        if Result >= 0 then
+          Exit(-1);
+        Result := Index - 1;
+      end;
+  end;
+
+  /// <summary>Übernimmt Schlüsselwort und Kopf von ACandidate in Deklaration und, wenn eindeutig, Rumpf.</summary>
+  function AdoptFix(const AMethod: TMethodDecl; const ACandidate: TOverrideCandidate; out AFix: TRuleFix): Boolean;
+  var
+    First, Last, Body, BodyLast: Integer;
+    Edits: TArray<TRuleEdit>;
+  begin
+    AFix := Default(TRuleFix);
+    First := TokenIndex(AMethod.Header.StartOffset);
+    Result := First >= 0;
+    if not Result then
+      Exit;
+    Last := HeadEnd(First);
+    Result := Last > First;
+    if not Result then
+      Exit;
+    Edits := [TRuleEdit.Create(TTextRange.Create(Tokens[First].StartPos, Tokens[Last].StartPos),
+      ACandidate.Keyword + ' ' + ACandidate.Head)];
+    Body := BodyStart(AMethod.ClassName, AMethod.Symbol.Name);
+    if Body > Last then
+    begin
+      BodyLast := HeadEnd(Body);
+      if BodyLast > Body then
+        Edits := Edits + [TRuleEdit.Create(TTextRange.Create(Tokens[Body].StartPos, Tokens[BodyLast].StartPos),
+          ACandidate.Keyword + ' ' + AMethod.ClassName + '.' + WithoutDefaults(ACandidate.Head))];
+    end;
+    AFix := TRuleFix.Create(Format('Signatur von %s.%s übernehmen', [ACandidate.TypeName, ACandidate.Symbol.Name]),
+      Edits);
+  end;
+
+  function OwnHead(const AMethod: TMethodDecl): string;
+  var
+    Types: TArray<string>;
+    Index: Integer;
+  begin
+    SetLength(Types, Length(AMethod.Symbol.ParamTypes));
+    for Index := 0 to High(Types) do
+      Types[Index] := AMethod.Symbol.ParamTypes[Index];
+    Result := AMethod.Symbol.Name + '(' + string.Join(', ', Types) + ')';
+    if AMethod.Symbol.TypeName <> '' then
+      Result := Result + ': ' + AMethod.Symbol.TypeName;
+  end;
+
+  procedure CheckMethod(const AMethod: TMethodDecl);
+  var
+    Chain: TArray<TSymbolLocation>;
+    Complete, ObjectMissing, Generic: Boolean;
+    Found, Virtuals: TArray<TOverrideCandidate>;
+    Candidate, Best: TOverrideCandidate;
+    Match, BestMatch: TOverrideMatch;
+    Certain, BestCertain: Boolean;
+    Names: TArray<string>;
+    Typo: string;
+    Fix: TRuleFix;
+    Confidence: TRuleConfidence;
+    Fixes: TArray<TRuleFix>;
+    Any: Boolean;
+  begin
+    Chain := Ancestry.Ancestors(AMethod.ClassName, Complete, ObjectMissing);
+    Names := Wildcards(AMethod.ClassName, Chain);
+    Found := Candidates(Chain, AMethod.Symbol.Name);
+    // Die nächste virtuelle Methode mit gleichem Kopf ist das Ziel.
+    for Candidate in Found do
+      if Candidate.Symbol.IsVirtual and (Compare(AMethod, Candidate, Names) = TOverrideMatch.Same) then
+      begin
+        if Candidate.Symbol.HasDirective('final') then
+          AReport.Add(AMethod.Symbol.SelectionRange, Format('%s.%s ist final und lässt sich nicht überschreiben ' +
+            '(wie E2352).', [Candidate.TypeName, Candidate.Symbol.Name]), TRuleConfidence.High);
+        Exit;
+      end;
+    if ObjectMissing and MatchText(AMethod.Symbol.Name, ObjectVirtualNames) then
+      Exit;
+    if not Complete then
+      Exit;
+    for Candidate in Found do
+      if Compare(AMethod, Candidate, Names) = TOverrideMatch.Same then
+      begin
+        AReport.Add(AMethod.Symbol.SelectionRange, Format('%s.%s ist nicht virtuell; override braucht virtual ' +
+          'oder dynamic im Vorfahren (wie E2170).', [Candidate.TypeName, Candidate.Symbol.Name]),
+          TRuleConfidence.High);
+        Exit;
+      end;
+    // Virtuelle Methode gleichen Namens mit anderem Kopf: die ähnlichste der nächsten Stufe.
+    Any := False;
+    Best := Default(TOverrideCandidate);
+    BestMatch := TOverrideMatch.Different;
+    BestCertain := True;
+    for Candidate in Found do
+      if Candidate.Symbol.IsVirtual then
+      begin
+        Match := CompareTypes(AMethod, Candidate, Names, Certain);
+        if not Any or (Match < BestMatch) then
+        begin
+          Best := Candidate;
+          BestMatch := Match;
+          BestCertain := Certain;
+          Any := True;
+        end;
+      end;
+    Generic := Names <> nil;
+    if Any then
+    begin
+      Confidence := TRuleConfidence.High;
+      // Nur andere Typen: sicher nur, wenn keiner ein unbekannter Alias sein kann.
+      if (BestMatch = TOverrideMatch.OtherTypes) and not BestCertain then
+        Confidence := TRuleConfidence.Medium;
+      Fixes := nil;
+      if not Generic and AdoptFix(AMethod, Best, Fix) then
+        Fixes := [Fix];
+      AReport.Add(AMethod.Symbol.SelectionRange, Format('%s hat kein virtuelles %s; dort heißt es %s (wie E2137).',
+        [Best.TypeName, OwnHead(AMethod), Best.Head]), Confidence, Fixes);
+      Exit;
+    end;
+    // Kein gleichnamiger Kandidat: Tippfehler im Namen (Destory)?
+    Virtuals := nil;
+    Names := nil;
+    for Candidate in Candidates(Chain, '') do
+      if Candidate.Symbol.IsVirtual and (Candidate.Keyword = AMethod.Keyword) then
+      begin
+        Virtuals := Virtuals + [Candidate];
+        Names := Names + [Candidate.Symbol.Name];
+      end;
+    if ObjectMissing then
+      for Typo in ObjectVirtualNames do
+        Names := Names + [Typo];
+    Typo := TTextFuzzy.Closest(AMethod.Symbol.Name, Names);
+    Fixes := nil;
+    for Candidate in Virtuals do
+      if (Typo <> '') and SameText(Candidate.Symbol.Name, Typo) and not Generic and (Fixes = nil) and
+        AdoptFix(AMethod, Candidate, Fix) then
+        Fixes := [Fix];
+    if (Typo <> '') and (Fixes = nil) and SameText(Typo, 'Destroy') and (AMethod.Keyword = 'destructor') then
+    begin
+      Candidate := Default(TOverrideCandidate);
+      Candidate.TypeName := 'TObject';
+      Candidate.Symbol.Name := 'Destroy';
+      Candidate.Keyword := 'destructor';
+      Candidate.Head := 'Destroy';
+      if AdoptFix(AMethod, Candidate, Fix) then
+        Fixes := [Fix];
+    end;
+    if Typo <> '' then
+      AReport.Add(AMethod.Symbol.SelectionRange, Format('Kein Vorfahr von %s hat ein virtuelles %s; gemeint ist ' +
+        'wohl %s (wie E2137).', [AMethod.ClassName, AMethod.Symbol.Name, Typo]), TRuleConfidence.High, Fixes)
+    else
+      AReport.Add(AMethod.Symbol.SelectionRange, Format('Kein Vorfahr von %s hat ein virtuelles %s (wie E2137).',
+        [AMethod.ClassName, AMethod.Symbol.Name]), TRuleConfidence.High);
+  end;
+
+  /// <summary>E2353: Vorfahr mit sealed in der Signatur ("TBasis = class sealed").</summary>
+  procedure CheckSealed;
+  var
+    Symbol: TIndexSymbol;
+    Chain: TArray<TSymbolLocation>;
+    Complete, ObjectMissing: Boolean;
+    Words: TArray<string>;
+    Index: Integer;
+  begin
+    for Symbol in Ancestry.Local.Symbols do
+    begin
+      if (Symbol.Kind <> TIndexSymbolKind.ClassType) or (Symbol.Container <> '') or (Symbol.Ancestors = nil) then
+        Continue;
+      Chain := Ancestry.Ancestors(Symbol.Name, Complete, ObjectMissing);
+      if Chain = nil then
+        Continue;
+      Words := LowerCase(Chain[0].Symbol.Signature).Split([' ', '(', ')', '<', '>', '=', ';'],
+        TStringSplitOptions.ExcludeEmpty);
+      for Index := 0 to High(Words) - 1 do
+        if (Words[Index] = 'class') and ((Words[Index + 1] = 'sealed') or ((Words[Index + 1] = 'abstract') and
+          (Index + 2 <= High(Words)) and (Words[Index + 2] = 'sealed'))) then
+        begin
+          AReport.Add(Symbol.SelectionRange, Format('%s ist sealed; davon lässt sich nicht ableiten (wie E2353).',
+            [Chain[0].Symbol.Name]), TRuleConfidence.High);
+          Break;
+        end;
+    end;
+  end;
+
+var
+  Method: TMethodDecl;
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Cache := TRuleDerived.Open(AContext);
+  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
+  try
+    for Method in ClassMethods(AContext, Ancestry) do
+      if Method.Has('override') then
+        CheckMethod(Method);
+    CheckSealed;
+  finally
+    Ancestry.Free;
+  end;
+end;
+
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDestroyWithoutOverrideRule.Create);
@@ -1007,6 +1565,7 @@ begin
   ARegistry.Register(THidesVirtualRule.Create);
   ARegistry.Register(TVirtualInsteadOfOverrideRule.Create);
   ARegistry.Register(TShadowedNameRule.Create);
+  ARegistry.Register(TOverrideTargetMissingRule.Create);
 end;
 
 end.

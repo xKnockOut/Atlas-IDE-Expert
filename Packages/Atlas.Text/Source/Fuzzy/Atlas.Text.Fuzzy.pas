@@ -21,11 +21,19 @@ type
     /// anschließend oder auf einem Wortanfang ("stl" → TStringList, nicht "myLis" →
     /// ERROR_TOO_MANY_LINKS). Ohne Groß/Klein; leeres Muster passt.</summary>
     class function MatchesBoundedSubsequence(const APattern, AName: string): Boolean; static;
+    /// <summary>Editierabstand nach Levenshtein ohne Groß-/Kleinschreibung; über ALimit hinaus ALimit + 1.</summary>
+    class function EditDistance(const A, B: string; ALimit: Integer): Integer; static;
+    /// <summary>Nächstliegender Name aus ACandidates für einen Tippfehler (#989, #997): höchstens zwei Zeichen
+    /// anders und weniger als die Hälfte von AName, bei Gleichstand der erste; '' ohne passenden Namen oder
+    /// wenn AName selbst vorkommt.</summary>
+    class function Closest(const AName: string; const ACandidates: TArray<string>): string; static;
   end;
 
 implementation
 
 uses
+  System.SysUtils,
+  System.Math,
   System.Character;
 
 { TTextFuzzy }
@@ -91,6 +99,56 @@ begin
   for NameIndex := 1 to Length(AName) do
     if Reached[NameIndex] then
       Exit(True);
+end;
+
+class function TTextFuzzy.EditDistance(const A, B: string; ALimit: Integer): Integer;
+var
+  Left, Right: string;
+  Row, Next: TArray<Integer>;
+  I, J, Best: Integer;
+begin
+  Left := LowerCase(A);
+  Right := LowerCase(B);
+  if Abs(Length(Left) - Length(Right)) > ALimit then
+    Exit(ALimit + 1);
+  SetLength(Row, Length(Right) + 1);
+  SetLength(Next, Length(Right) + 1);
+  for J := 0 to Length(Right) do
+    Row[J] := J;
+  for I := 1 to Length(Left) do
+  begin
+    Next[0] := I;
+    Best := Next[0];
+    for J := 1 to Length(Right) do
+    begin
+      Next[J] := Min(Min(Row[J] + 1, Next[J - 1] + 1), Row[J - 1] + Ord(Left[I] <> Right[J]));
+      Best := Min(Best, Next[J]);
+    end;
+    if Best > ALimit then
+      Exit(ALimit + 1);
+    Row := Copy(Next);
+  end;
+  Result := Row[Length(Right)];
+end;
+
+class function TTextFuzzy.Closest(const AName: string; const ACandidates: TArray<string>): string;
+var
+  Candidate: string;
+  Best, Value: Integer;
+begin
+  Result := '';
+  Best := Min(3, (Length(AName) + 1) div 2);
+  for Candidate in ACandidates do
+  begin
+    Value := EditDistance(AName, Candidate, Best);
+    if Value = 0 then
+      Exit('');
+    if Value < Best then
+    begin
+      Best := Value;
+      Result := Candidate;
+    end;
+  end;
 end;
 
 end.

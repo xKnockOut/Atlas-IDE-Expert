@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 10 |
+| [Compiler vorab](#gruppe-compiler) | 11 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -141,6 +141,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`overload-directive-missing`](#overload-directive-missing) | Überladung ohne overload oder mit gleicher Signatur | Bug | Fehler |
 | [`duplicate-declaration`](#duplicate-declaration) | Bezeichner doppelt deklariert | Bug | Fehler |
 | [`conditional-directive-unbalanced`](#conditional-directive-unbalanced) | Bedingte Direktiven unvollständig oder unbekannt | Bug | Fehler |
+| [`override-target-missing`](#override-target-missing) | override ohne passende virtuelle Methode | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4405,4 +4406,35 @@ Richtig:
 {$ENDIF}
 
 procedure TDienst.Starten;
+```
+
+<a id="override-target-missing"></a>
+### override-target-missing
+
+**override ohne passende virtuelle Methode** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine Methode mit override, zu der kein Vorfahr eine virtuelle (oder dynamic, abstract) Methode mit gleichem Namen und gleichen Parametern hat (wie E2137): oft ein Tippfehler (Destory) oder im Vorfahren geänderte Parameter. Die Meldung nennt die nächstliegende virtuelle Methode des Vorfahren („dort heißt es Ausfuehren(const Modus: TModus)“) bzw. einen ähnlichen Namen. Außerdem: override auf eine statische Methode (wie E2170), auf eine finale (wie E2352) und Ableiten von einer sealed-Klasse (wie E2353). Vorfahren sucht die Regel in der Datei und im Symbolindex; bricht die Kette an einer unbekannten Klasse ab, bleibt sie still. Ohne System im Index gelten die virtuellen Methoden von TObject als vorhanden. Typparameter generischer Vorfahren, Typaliase und Synonyme wie Longint passen. Korrektur: Signatur des Vorfahren in Deklaration und Implementierung übernehmen.
+
+Entspricht der Compilermeldung `E2137`, `E2170`, `E2352`, `E2353`.
+
+Mit Treffer:
+
+```pascal
+TDienst = class
+protected
+  procedure Ausfuehren(const Modus: TModus); virtual;
+end;
+TImportDienst = class(TDienst)
+protected
+  procedure Ausfuehren(Modus: Integer); override;
+end;
+```
+
+Richtig:
+
+```pascal
+TImportDienst = class(TDienst)
+protected
+  procedure Ausfuehren(const Modus: TModus); override;
+end;
 ```

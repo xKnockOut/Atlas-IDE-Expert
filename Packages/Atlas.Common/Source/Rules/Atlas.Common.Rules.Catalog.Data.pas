@@ -2233,6 +2233,22 @@ begin
     '        "W1079",' + #10 +
     '        "E2573"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "override-target-missing",' + #10 +
+    '      "name": "override without a matching virtual method",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A method marked override for which no ancestor has a virtual (or dynamic, abstract) method with the same name and parameters (like E2137): often a typo (Destory) or parameters ch' + 'anged in the ancestor. The message names the closest virtual method of the ancestor (\"there it is Ausfuehren(const Modus: TModus)\") or a similar name. Also: override on a static method (like E2170),' + ' on a final one (like E2352), and deriving from a sealed class (like E2353). Ancestors are looked up in the file and in the symbol index; when the chain breaks at an unknown class the rule stays silen' + 't. Without System in the index the virtual methods of TObject count as present. Type parameters of generic ancestors, type aliases and synonyms such as Longint match. Quick fix: take over the ancestor' + '''s signature in the declaration and the implementation.",' + #10 +
+    '      "bad": "TDienst = class\nprotected\n  procedure Ausfuehren(const Modus: TModus); virtual;\nend;\nTImportDienst = class(TDienst)\nprotected\n  procedure Ausfuehren(Modus: Integer); override;\nend' + ';",' + #10 +
+    '      "good": "TImportDienst = class(TDienst)\nprotected\n  procedure Ausfuehren(const Modus: TModus); override;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2137",' + #10 +
+    '        "E2170",' + #10 +
+    '        "E2352",' + #10 +
+    '        "E2353"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3378,6 +3394,11 @@ begin
     '      "id": "conditional-directive-unbalanced",' + #10 +
     '      "name": "Bedingte Direktiven unvollständig oder unbekannt",' + #10 +
     '      "description": "Ein {$IFDEF}, {$IFNDEF}, {$IFOPT} oder {$IF}, das nie geschlossen wird, sodass der Rest der Datei an seiner Bedingung hängt (wie E2095, bei {$IF} E2280); {$ELSE}, {$ELSEIF}, {$EN' + 'DIF} oder {$IFEND} ohne passendes {$IF…} oder nach {$ELSE} (wie E2279); {$IFDEF}, {$IFNDEF}, {$DEFINE} oder {$UNDEF} ohne gültiges Symbol (wie E2173); eine unbekannte Direktive oder ein unbekannter {$' + 'WARN}-Bezeichner (wie W1030), mit dem nächstliegenden bekannten Namen als Korrektur; {$POPOPT} ohne {$PUSHOPT} (wie W1078) oder {$PUSHOPT} ohne {$POPOPT} (wie W1079); ein ungültiger Wert für {$ALIGN} ' + 'bzw. {$A} (wie E2573). Unbekannte Namen prüft die Regel nicht in Zweigen, deren Bedingung FPC abfragt, {$PUSHOPT}/{$POPOPT} nur, wenn keines davon in einem bedingten Zweig steht. Korrekturen: {$ENDIF}' + ' vor der ersten Leerzeile hinter dem offenen Block ergänzen, überzählige Direktive entfernen, Tippfehler korrigieren."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "override-target-missing",' + #10 +
+    '      "name": "override ohne passende virtuelle Methode",' + #10 +
+    '      "description": "Eine Methode mit override, zu der kein Vorfahr eine virtuelle (oder dynamic, abstract) Methode mit gleichem Namen und gleichen Parametern hat (wie E2137): oft ein Tippfehler (Des' + 'tory) oder im Vorfahren geänderte Parameter. Die Meldung nennt die nächstliegende virtuelle Methode des Vorfahren („dort heißt es Ausfuehren(const Modus: TModus)“) bzw. einen ähnlichen Namen. Außerdem' + ': override auf eine statische Methode (wie E2170), auf eine finale (wie E2352) und Ableiten von einer sealed-Klasse (wie E2353). Vorfahren sucht die Regel in der Datei und im Symbolindex; bricht die K' + 'ette an einer unbekannten Klasse ab, bleibt sie still. Ohne System im Index gelten die virtuellen Methoden von TObject als vorhanden. Typparameter generischer Vorfahren, Typaliase und Synonyme wie Lon' + 'gint passen. Korrektur: Signatur des Vorfahren in Deklaration und Implementierung übernehmen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

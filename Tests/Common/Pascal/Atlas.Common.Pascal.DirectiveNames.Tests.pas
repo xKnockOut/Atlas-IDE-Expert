@@ -28,7 +28,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Pascal.DirectiveNames;
+  Atlas.Common.Pascal.DirectiveNames,
+  Atlas.Text.Fuzzy;
 
 procedure TDirectiveNamesTests.BodyAndLeadingName;
 begin
@@ -61,12 +62,12 @@ end;
 
 procedure TDirectiveNamesTests.ClosestFindsTypos;
 begin
-  Assert.AreEqual('IFDEF', TDirectiveNames.Closest('IFDEFF', TDirectiveNames.Directives));
-  Assert.AreEqual('ENDIF', TDirectiveNames.Closest('ENDIFF', TDirectiveNames.Directives));
-  Assert.AreEqual('SYMBOL_PLATFORM', TDirectiveNames.Closest('SYMBOL_PLATFROM', TDirectiveNames.Warnings));
-  Assert.AreEqual('', TDirectiveNames.Closest('XYZZY', TDirectiveNames.Directives));
+  Assert.AreEqual('IFDEF', TTextFuzzy.Closest('IFDEFF', TDirectiveNames.Directives));
+  Assert.AreEqual('ENDIF', TTextFuzzy.Closest('ENDIFF', TDirectiveNames.Directives));
+  Assert.AreEqual('SYMBOL_PLATFORM', TTextFuzzy.Closest('SYMBOL_PLATFROM', TDirectiveNames.Warnings));
+  Assert.AreEqual('', TTextFuzzy.Closest('XYZZY', TDirectiveNames.Directives));
   // Kurze Namen: höchstens die Hälfte darf abweichen.
-  Assert.AreEqual('', TDirectiveNames.Closest('IX', TDirectiveNames.Directives));
+  Assert.AreEqual('', TTextFuzzy.Closest('IX', TDirectiveNames.Directives));
 end;
 
 procedure TDirectiveNamesTests.ListsHaveNoDuplicates;

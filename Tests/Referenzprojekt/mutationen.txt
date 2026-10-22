@@ -97,3 +97,4 @@ field-after-method | Ref.Daten.Suche.pas | class function Suchen(const AName: st
 overload-directive-missing | Ref.Daten.Suche.pas | class procedure Anmelden(const AAnbieter: TFunc<string, TArray<string>>); static; | class procedure Anmelden(const AAnbieter: TFunc<string, TArray<string>>); static;\n    class procedure Anmelden; static;
 duplicate-declaration | Ref.Sprache.Merkmale.pas | function SummeQuadrate(const AWerte: TArray<Integer>): Integer;\nbegin | function SummeQuadrate(const AWerte: TArray<Integer>): Integer;\nvar\n  AWerte: Integer;\nbegin
 conditional-directive-unbalanced | Ref.Sprache.Merkmale.pas | Result := 'Andere';\n  {$ENDIF} | Result := 'Andere';
+override-target-missing | Ref.Sprache.Merkmale.pas | destructor Destroy; override; | destructor Destroi; override;

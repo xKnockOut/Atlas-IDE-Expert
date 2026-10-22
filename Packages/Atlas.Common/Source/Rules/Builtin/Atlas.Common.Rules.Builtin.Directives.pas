@@ -43,7 +43,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.DirectiveNames;
+  Atlas.Common.Pascal.DirectiveNames,
+  Atlas.Text.Fuzzy;
 
 type
   /// <summary>Offenes {$IF…} mit seiner Kette aus {$ELSEIF}/{$ELSE}.</summary>
@@ -253,7 +254,7 @@ var
   begin
     if InFpcBranch or TDirectiveNames.IsDirective(AName) then
       Exit;
-    Closest := TDirectiveNames.Closest(AName, TDirectiveNames.Directives);
+    Closest := TTextFuzzy.Closest(AName, TDirectiveNames.Directives);
     if (Closest <> '') and ReplaceFix(AIndex, AName, Closest, '{$' + Closest + '}', 1, Fix) then
       AReport.Add(RangeOf(AIndex), Format('Unbekannte Direktive {$%s}; gemeint ist wohl {$%s} (wie W1030).',
         [AName, Closest]), TRuleConfidence.High, [Fix])
@@ -270,7 +271,7 @@ var
     Id := TDirectiveNames.LeadingName(ARest);
     if (Id = '') or InFpcBranch or TDirectiveNames.IsWarning(Id) then
       Exit;
-    Closest := TDirectiveNames.Closest(Id, TDirectiveNames.Warnings);
+    Closest := TTextFuzzy.Closest(Id, TDirectiveNames.Warnings);
     if (Closest <> '') and ReplaceFix(AIndex, Id, Closest, Closest, AFrom, Fix) then
       AReport.Add(RangeOf(AIndex), Format('Unbekannte Warnung %s in {$WARN}; gemeint ist wohl %s (wie W1030).',
         [Id, Closest]), TRuleConfidence.High, [Fix])
