@@ -183,7 +183,7 @@ const
     'ifthen-side-effect,implemented-not-declared,implicit-package-import,int32-mul-overflow,interface-guid,' +
     'invisible-char,' +
     'lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,' +
-    'metric-method-length,metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-inherited,operator-precedence,ota-notifier-not-removed,out-param-read,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,' +
+    'metric-method-length,metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-inherited,null-compare,operator-precedence,ota-notifier-not-removed,out-param-read,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,' +
     'possibly-uninitialized,processmessages-in-loop,queue-nil-in-package,raise-in-finally,redundant-assigned-free,' +
     'result-not-set,' +
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
@@ -228,7 +228,7 @@ begin
     'foreign-form-control-access,format-without-settings,generic-exception-raised,implicit-package-import,' +
     'metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
     'metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,' +
-    'processmessages-in-loop,redundant-assigned-free,shadowed-name,slash-command,thread-resume-suspend,unneeded-forward-declaration,' +
+    'null-compare,processmessages-in-loop,redundant-assigned-free,shadowed-name,slash-command,thread-resume-suspend,unneeded-forward-declaration,' +
     'unused-assignment,unused-local,' +
     'unused-parameter,with-statement',
     ActiveRules('style'));

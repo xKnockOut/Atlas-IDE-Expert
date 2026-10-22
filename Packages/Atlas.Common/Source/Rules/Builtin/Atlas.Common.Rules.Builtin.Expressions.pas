@@ -14,6 +14,10 @@
 //                         Literal, .Text/.Caption) und Pos(…) verglichen mit -1 bzw. >= 0 (#951); umgekehrt
 //                         S.IndexOf(…) > 0 bzw. < 1 (nullbasiert, -1 bei keinem Treffer; LastIndexOf nicht,
 //                         dort ist "> 0" meist bewusst).
+//   null-compare          X = Null bzw. X <> Null (#953): Das Ergebnis hängt von NullEqualityRule ab (Vorgabe
+//                         ncrLoose vergleicht wie erwartet, ncrStrict liefert nie wahr, ncrError eine Exception).
+//                         Korrektur: Feld.IsNull bei X.Value auf FieldByName/FindField/Fields[…]/Params bzw.
+//                         einem Feld vom Typ T…Field/T…Param, sonst VarIsNull(X); bei <> mit not.
 
 interface
 
@@ -25,6 +29,7 @@ const
   OperatorPrecedenceRuleId = 'operator-precedence';
   DuplicateConditionRuleId = 'duplicate-condition';
   StringIndexBaseRuleId = 'string-index-base';
+  NullCompareRuleId = 'null-compare';
 
 type
   TOperatorPrecedenceRule = class(TInterfacedObject, IRule)
@@ -45,6 +50,14 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
     /// <summary>Ist AType ein String-Typ (string, AnsiString, ShortString, String[n] …)?</summary>
     class function IsStringType(const AType: string): Boolean; static;
+  end;
+
+  TNullCompareRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Ist AType ein Datenbankfeld oder Parameter (TField, TStringField, TParam, TFDParam …)?</summary>
+    class function IsDataType(const AType: string): Boolean; static;
   end;
 
 procedure RegisterExpressionRules(const ARegistry: TRuleRegistry);
@@ -771,11 +784,233 @@ begin
   end;
 end;
 
+{ TNullCompareRule }
+
+function TNullCompareRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(NullCompareRuleId, TRuleSeverity.Warning,
+    'Vergleich mit Null statt VarIsNull oder IsNull');
+end;
+
+class function TNullCompareRule.IsDataType(const AType: string): Boolean;
+var
+  Name: string;
+begin
+  Name := Copy(Trim(AType), LastDelimiter('.', Trim(AType)) + 1, MaxInt);
+  Result := (Length(Name) > 1) and (Name[1] = 'T') and (EndsText('Field', Name) or EndsText('Param', Name));
+end;
+
+procedure TNullCompareRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TTokens;
+  Code: TArray<Integer>;
+  Types: TDeclaredTypes;
+
+  function Token(APosition: Integer): TPascalToken;
+  begin
+    Result := Tokens[Code[APosition]];
+  end;
+
+  function IsSym(APosition: Integer; const ASymbol: string): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and Token(APosition).IsSymbol(ASymbol);
+  end;
+
+  function IsKey(APosition: Integer; const AKeyword: string): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and Token(APosition).IsKeyword(AKeyword);
+  end;
+
+  function IsWord(APosition: Integer): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and
+      (Token(APosition).Kind = TPascalTokenKind.Identifier);
+  end;
+
+  function IsName(APosition: Integer; const AName: string): Boolean;
+  begin
+    Result := IsWord(APosition) and SameText(Token(APosition).Text, AName);
+  end;
+
+  function TextOf(AFirst, ALast: Integer): string;
+  begin
+    Result := Copy(AContext.Text, Token(AFirst).Offset + 1,
+      Token(ALast).Offset + Length(Token(ALast).Text) - Token(AFirst).Offset);
+  end;
+
+  // Erstes Token der Kette (A, A.B, A(…), A[…]), die bei ALast endet; -1 bei anderen Ausdrücken.
+  function ChainStart(ALast: Integer): Integer;
+  var
+    Position, Depth: Integer;
+  begin
+    Result := -1;
+    Position := ALast;
+    while Position >= 0 do
+    begin
+      if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
+      begin
+        Depth := 0;
+        repeat
+          if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
+            Inc(Depth)
+          else if Token(Position).IsSymbol('(') or Token(Position).IsSymbol('[') then
+            Dec(Depth);
+          Dec(Position);
+        until (Depth = 0) or (Position < 0);
+        if Position < 0 then
+          Exit;
+      end;
+      if not IsWord(Position) then
+        Exit;
+      if not IsSym(Position - 1, '.') then
+        Exit(Position);
+      Dec(Position, 2);
+    end;
+  end;
+
+  // Letztes Token der Kette ab AFirst; -1, wenn dort keine beginnt.
+  function ChainEnd(AFirst: Integer): Integer;
+  var
+    Position, Depth: Integer;
+  begin
+    Result := -1;
+    Position := AFirst;
+    while IsWord(Position) do
+    begin
+      Result := Position;
+      Inc(Position);
+      while IsSym(Position, '(') or IsSym(Position, '[') do
+      begin
+        Depth := 0;
+        repeat
+          if Token(Position).IsSymbol('(') or Token(Position).IsSymbol('[') then
+            Inc(Depth)
+          else if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
+            Dec(Depth);
+          Inc(Position);
+        until (Depth = 0) or (Position > High(Code));
+        if Depth <> 0 then
+          Exit(-1);
+        Result := Position - 1;
+      end;
+      if not IsSym(Position, '.') then
+        Exit;
+      Inc(Position);
+    end;
+    Result := -1;
+  end;
+
+  // Vor dem Vergleich: Anfang einer Bedingung oder eines Arguments (sonst bindet ein Operator anders).
+  function OpensExpression(APosition: Integer): Boolean;
+  begin
+    Result := IsSym(APosition, '(') or IsSym(APosition, ',') or IsSym(APosition, ':=') or IsKey(APosition, 'if') or
+      IsKey(APosition, 'while') or IsKey(APosition, 'until') or IsKey(APosition, 'not');
+  end;
+
+  // Nach dem Vergleich: Ende der Bedingung oder des Arguments.
+  function ClosesExpression(APosition: Integer): Boolean;
+  begin
+    Result := (APosition > High(Code)) or IsSym(APosition, ')') or IsSym(APosition, ',') or
+      IsSym(APosition, ';') or IsKey(APosition, 'then') or IsKey(APosition, 'do') or IsKey(APosition, 'else') or
+      IsKey(APosition, 'end');
+  end;
+
+  // Ist die Kette AFirst..ALast "X.Value" auf einem Feld oder Parameter? ABase liefert X.
+  function DataValue(AFirst, ALast: Integer; out ABase: string): Boolean;
+  var
+    Position: Integer;
+  begin
+    Result := False;
+    if (ALast - AFirst < 2) or not IsName(ALast, 'Value') or not IsSym(ALast - 1, '.') then
+      Exit;
+    ABase := TextOf(AFirst, ALast - 2);
+    // FieldByName('…'), FindField, Fields[…], ParamByName, Params[…] in der Kette.
+    for Position := AFirst to ALast - 2 do
+      if IsName(Position, 'FieldByName') or IsName(Position, 'FindField') or IsName(Position, 'ParamByName') or
+        IsName(Position, 'FindParam') or ((IsName(Position, 'Fields') or IsName(Position, 'Params')) and
+        IsSym(Position + 1, '[')) then
+        Exit(True);
+    // Feld mit deklariertem Typ TStringField, TIntegerField, TParam …
+    Result := (ALast - 2 = AFirst) and IsDataType(Types.DeclaredType(Token(AFirst).Text, Token(AFirst).StartPos));
+  end;
+
+  procedure ReportAt(AFirst, ALast, AOperator, AExprFirst, AExprLast: Integer);
+  var
+    Base, Replacement, Message, Prefix: string;
+  begin
+    if Token(AOperator).IsSymbol('<>') then
+      Prefix := 'not '
+    else
+      Prefix := '';
+    if DataValue(AExprFirst, AExprLast, Base) then
+    begin
+      Replacement := Prefix + Base + '.IsNull';
+      Message := 'Der Vergleich mit Null hängt von NullEqualityRule ab (ncrStrict: nie wahr, ncrError: ' +
+        'Exception); IsNull prüft das Feld unabhängig davon.';
+    end
+    else
+    begin
+      Replacement := Prefix + 'VarIsNull(' + TextOf(AExprFirst, AExprLast) + ')';
+      Message := 'Der Vergleich mit Null hängt von NullEqualityRule ab (ncrStrict: nie wahr, ncrError: ' +
+        'Exception); VarIsNull prüft den Wert unabhängig davon.';
+    end;
+    // "not X = Null" bindet als "(not X) = Null": dann keine Korrektur, die Bedeutung ist unklar.
+    if IsKey(AFirst - 1, 'not') then
+      AReport.Add(TTextRange.Create(Token(AFirst).StartPos, Token(ALast).EndPos), Message)
+    else
+      AReport.Add(TTextRange.Create(Token(AFirst).StartPos, Token(ALast).EndPos), Message,
+        [TRuleFix.Create(Format('Durch "%s" ersetzen', [Replacement]),
+        [TRuleEdit.Create(TTextRange.Create(Token(AFirst).StartPos, Token(ALast).EndPos), Replacement)])]);
+  end;
+
+  procedure CheckAt(APosition: Integer);
+  var
+    First, Last: Integer;
+  begin
+    // X = Null bzw. X <> Null
+    if IsSym(APosition - 1, '=') or IsSym(APosition - 1, '<>') then
+    begin
+      First := ChainStart(APosition - 2);
+      if (First >= 0) and OpensExpression(First - 1) and ClosesExpression(APosition + 1) then
+        ReportAt(First, APosition, APosition - 1, First, APosition - 2);
+    end
+    // Null = X bzw. Null <> X
+    else if (IsSym(APosition + 1, '=') or IsSym(APosition + 1, '<>')) and OpensExpression(APosition - 1) then
+    begin
+      Last := ChainEnd(APosition + 2);
+      if (Last >= 0) and ClosesExpression(Last + 1) then
+        ReportAt(APosition, Last, APosition + 1, APosition + 2, Last);
+    end;
+  end;
+
+var
+  Index, Position: Integer;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'Null') then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Code := nil;
+  for Index := 0 to High(Tokens) do
+    if not IsTrivia(Tokens[Index]) then
+      Code := Code + [Index];
+  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  try
+    for Position := 0 to High(Code) do
+      // Null als Wert: nicht Teil einer Kette (X.Null) und kein Aufruf.
+      if IsName(Position, 'Null') and not IsSym(Position - 1, '.') and not IsSym(Position + 1, '.') and
+        not IsSym(Position + 1, '(') then
+        CheckAt(Position);
+  finally
+    Types.Free;
+  end;
+end;
+
 procedure RegisterExpressionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TOperatorPrecedenceRule.Create);
   ARegistry.Register(TDuplicateConditionRule.Create);
   ARegistry.Register(TStringIndexBaseRule.Create);
+  ARegistry.Register(TNullCompareRule.Create);
 end;
 
 end.
