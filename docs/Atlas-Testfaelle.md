@@ -4057,3 +4057,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | OT8 | Typ im Nachfahren unbekannt (Unit fehlt in uses) | Meldung nur mit mittlerer Konfidenz (Warnung) |
 | OT9 | `"override-target-missing": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
 | OT10 | Abgleich mit Delphi: OT1, OT3 bis OT5 übersetzen | dcc meldet E2137, E2170, E2352 bzw. E2353 an denselben Stellen, für OT6 und OT7 nichts |
+
+## Instanz einer Klasse mit abstrakten Methoden (#999)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AI1 | Das Beispiel aus #999: `TForm` mit `function Flaeche: Double; virtual; abstract;`, dann `Form := TForm.Create;` | Warnung `abstract-class-instantiated` an `TForm.Create`: „TForm hat die abstrakte Methode Flaeche; der Aufruf löst EAbstractError aus (wie W1020).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| AI2 | `TKreis = class(TForm)` ohne `Flaeche`, `TKreis.Create`; Schnellkorrektur „Flaeche in TKreis überschreiben“, danach Strg+Z | Meldung nennt `TForm.Flaeche`; die Korrektur legt Deklaration und Rumpf mit `override` an, danach keine Meldung; ein Undo-Schritt nimmt es zurück |
+| AI3 | Klasse mit zwei offenen abstrakten Methoden | Eine Meldung „… hat die abstrakten Methoden Eins, Zwei; ihr Aufruf …“ |
+| AI4 | `TBasis = class abstract`, `TBasis.Create` | „TBasis ist als abstract deklariert; davon lässt sich keine Instanz erzeugen (wie E2402).“ |
+| AI5 | `TStrings.Create` (RTL im Index) | Meldung mit den abstrakten Methoden von TStrings (Get, GetCount …); `TStringList.Create` bleibt still |
+| AI6 | Konstruktor-Rumpf `constructor TA.Create`, `inherited Create`, Klassenreferenz `K.Create`, unbekannte Klasse | Keine Meldung |
+| AI7 | `"abstract-class-instantiated": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| AI8 | Abgleich mit Delphi: AI1, AI3 bis AI5 übersetzen | dcc meldet W1020 (je abstrakte Methode) bzw. E2402 an denselben Aufrufen, für AI6 nichts |

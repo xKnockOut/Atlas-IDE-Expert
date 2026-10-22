@@ -2229,6 +2229,20 @@
         "E2352",
         "E2353"
       ]
+    },
+    {
+      "id": "abstract-class-instantiated",
+      "name": "Instance of a class with abstract methods",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "Create on a class that declares or inherits abstract methods without overriding them (like W1020), or on a class declared abstract (like E2402). Calling an abstract method raises EAbstractError at run time; the message names the open methods. Classes are looked up in the file and in the symbol index; overloads with the same number of parameters count as one method. Calls on class references, inherited Create and constructor bodies are not checked. Quick fix for a class of this file that inherits the abstract methods: override them there (like the code action \"override\").",
+      "bad": "Form := TForm.Create;\nGesamt := Gesamt + Form.Flaeche;",
+      "good": "Form := TKreis.Create;\nGesamt := Gesamt + Form.Flaeche;",
+      "compilerCodes": [
+        "W1020",
+        "E2402"
+      ]
     }
   ]
 }
