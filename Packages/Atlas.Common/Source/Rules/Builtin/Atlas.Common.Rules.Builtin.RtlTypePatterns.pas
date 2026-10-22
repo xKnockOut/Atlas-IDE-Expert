@@ -8,6 +8,9 @@
 //   float-equality           Gleitkommavergleich mit = oder <> (nicht mit 0)
 //   constructor-on-instance  Konstruktor auf einer Variablen statt auf der Klasse
 //   format-without-settings  Format mit %f/%n/%m/%g/%e, FloatToStr, StrToDate … ohne TFormatSettings
+//   managed-type-raw-memory  FillChar, ZeroMemory, Move, CopyMemory, GetMem oder FreeMem auf Variablen,
+//                            deren Typ Strings, Interfaces, dynamische Arrays oder Variants enthält
+//                            (#921). Records und Aliasse werden in der Datei und im Index aufgelöst.
 // Bezeichner, deren Typ in der Datei nicht deklariert ist, lösen keinen Treffer aus.
 
 interface
@@ -55,6 +58,12 @@ type
     class function HasLocaleSpecifier(const AFormat: string): Boolean; static;
   end;
 
+  TManagedTypeRawMemoryRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 /// <summary>Registriert die typbasierten Regeln für RTL-Muster.</summary>
 procedure RegisterRtlTypePatternRules(const ARegistry: TRuleRegistry);
 
@@ -67,7 +76,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.DeclaredTypes;
+  Atlas.Common.Pascal.DeclaredTypes,
+  Atlas.Common.Index.Contract;
 
 type
   TTokens = TArray<TPascalToken>;
@@ -521,6 +531,460 @@ begin
   end;
 end;
 
+{ TManagedTypeRawMemoryRule }
+
+const
+  // RTL-Records mit verwalteten Feldern, auch ohne Index.
+  ManagedStringRecords: array[0..2] of string = ('TFormatSettings', 'TSearchRec', 'TWin32FindData');
+  ManagedInterfaceRecords: array[0..1] of string = ('TValue', 'TRttiContext');
+  DynamicArrayNames: array[0..5] of string = ('TBytes', 'TStringDynArray', 'TIntegerDynArray', 'TStringArray',
+    'TArray', 'TObjectDynArray');
+
+type
+  /// <summary>Löst Typnamen der Datei und des Index auf und sagt, ob sie verwaltete Teile enthalten.</summary>
+  TManagedTypes = class
+  private
+    FTree: TSyntaxTree;
+    FText: string;
+    FIndex: ISymbolIndex;
+    function TypeDecl(const AName: string): TSyntaxNode;
+    function NodeTypeText(ANode: TSyntaxNode): string;
+    function FieldsManaged(ARecord: TSyntaxNode; ADepth: Integer): string;
+    function IndexManaged(const AName: string; ADepth: Integer): string;
+  public
+    constructor Create(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex);
+    /// <summary>'Strings', 'Interfaces', 'dynamische Arrays' oder 'Variants', wenn ATypeName solche Teile
+    /// hat; '' sonst oder wenn der Typ unbekannt ist.</summary>
+    function Managed(const ATypeName: string; ADepth: Integer): string;
+    /// <summary>Zieltyp eines Zeigertyps (^TRec oder PRec = ^TRec in der Datei); '' sonst.</summary>
+    function Pointee(const ATypeName: string): string;
+    /// <summary>Ist ATypeName selbst ein String, Interface, dynamisches Array oder Variant?</summary>
+    function IsPrimitive(const ATypeName: string): Boolean;
+  end;
+
+constructor TManagedTypes.Create(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex);
+begin
+  inherited Create;
+  FTree := ATree;
+  FText := AText;
+  FIndex := AIndex;
+end;
+
+function TManagedTypes.TypeDecl(const AName: string): TSyntaxNode;
+var
+  Found: TSyntaxNode;
+  Name: string;
+begin
+  Found := nil;
+  Name := AName;
+  FTree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      Result := Found = nil;
+      if Result and (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, Name) then
+        Found := ANode;
+    end);
+  Result := Found;
+end;
+
+function TManagedTypes.NodeTypeText(ANode: TSyntaxNode): string;
+var
+  Index: Integer;
+  Child: TSyntaxNode;
+begin
+  Result := '';
+  for Index := 0 to ANode.ChildCount - 1 do
+  begin
+    Child := ANode[Index];
+    if Child.Kind in [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.PointerType,
+      TSyntaxKind.RecordType, TSyntaxKind.ClassType, TSyntaxKind.InterfaceType, TSyntaxKind.ClassOfType,
+      TSyntaxKind.SetType, TSyntaxKind.EnumType, TSyntaxKind.ProcedureType, TSyntaxKind.SubrangeType] then
+      Exit(Trim(Copy(FText, Child.StartOffset + 1, Child.EndOffset - Child.StartOffset)));
+  end;
+end;
+
+function TManagedTypes.FieldsManaged(ARecord: TSyntaxNode; ADepth: Integer): string;
+var
+  Index: Integer;
+  Child: TSyntaxNode;
+begin
+  Result := '';
+  for Index := 0 to ARecord.ChildCount - 1 do
+  begin
+    Child := ARecord[Index];
+    // Verschachtelte Typdeklarationen sind keine Felder.
+    if Child.Kind = TSyntaxKind.TypeDecl then
+      Continue;
+    if Child.Kind = TSyntaxKind.Field then
+      Result := Managed(NodeTypeText(Child), ADepth + 1)
+    else if not (Child.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl]) then
+      Result := FieldsManaged(Child, ADepth);
+    if Result <> '' then
+      Exit;
+  end;
+end;
+
+function TManagedTypes.IndexManaged(const AName: string; ADepth: Integer): string;
+var
+  Location: TSymbolLocation;
+  UnitIndex: TUnitIndex;
+  Symbol: TIndexSymbol;
+begin
+  Result := '';
+  if FIndex = nil then
+    Exit;
+  for Location in FIndex.FindSymbols(AName) do
+  begin
+    if Location.Symbol.Container <> '' then
+      Continue;
+    case Location.Symbol.Kind of
+      TIndexSymbolKind.InterfaceType:
+        Exit('Interfaces');
+      TIndexSymbolKind.TypeAlias:
+        Exit(Managed(Location.Symbol.TypeName, ADepth + 1));
+      TIndexSymbolKind.RecordType:
+        begin
+          if not FIndex.FindFile(Location.FileName, UnitIndex) then
+            Exit;
+          for Symbol in UnitIndex.Symbols do
+            if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, AName) then
+            begin
+              Result := Managed(Symbol.TypeName, ADepth + 1);
+              if Result <> '' then
+                Exit;
+            end;
+          Exit;
+        end;
+    else
+      Exit;
+    end;
+  end;
+end;
+
+function TManagedTypes.IsPrimitive(const ATypeName: string): Boolean;
+var
+  Name: string;
+begin
+  Name := Trim(ATypeName);
+  Result := MatchText(Name, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString', 'UTF8String',
+    'Variant', 'OleVariant', 'IInterface', 'IUnknown', 'IDispatch']) or MatchText(Name, DynamicArrayNames) or
+    StartsText('array of', Name) or StartsText('TArray<', Name);
+end;
+
+function TManagedTypes.Managed(const ATypeName: string; ADepth: Integer): string;
+var
+  Name, Element: string;
+  Decl, Body: TSyntaxNode;
+  Index: Integer;
+begin
+  Result := '';
+  Name := Trim(ATypeName);
+  if (Name = '') or (ADepth > 16) then
+    Exit;
+  if MatchText(Name, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString', 'UTF8String']) then
+    Exit('Strings');
+  if MatchText(Name, ['Variant', 'OleVariant']) then
+    Exit('Variants');
+  if MatchText(Name, ['IInterface', 'IUnknown', 'IDispatch']) then
+    Exit('Interfaces');
+  if StartsText('array of', Name) or StartsText('TArray<', Name) or MatchText(Name, DynamicArrayNames) then
+    Exit('dynamische Arrays');
+  // Statisches Array: verwaltet, wenn die Elemente es sind.
+  if StartsText('array', Name) then
+  begin
+    Index := Pos(' of ', LowerCase(Name));
+    if Index = 0 then
+      Exit;
+    Element := Copy(Name, Index + 4, MaxInt);
+    Exit(Managed(Element, ADepth + 1));
+  end;
+  if MatchText(Name, ManagedStringRecords) then
+    Exit('Strings');
+  if MatchText(Name, ManagedInterfaceRecords) then
+    Exit('Interfaces');
+  if Pos('<', Name) > 0 then
+    Exit;
+  Decl := TypeDecl(Name);
+  if Decl = nil then
+    Exit(IndexManaged(Name, ADepth));
+  Body := Decl.FindChild(TSyntaxKind.RecordType);
+  if Body <> nil then
+    Exit(FieldsManaged(Body, ADepth));
+  if Decl.FindChild(TSyntaxKind.InterfaceType) <> nil then
+    Exit('Interfaces');
+  if (Decl.FindChild(TSyntaxKind.TypeReference) <> nil) or (Decl.FindChild(TSyntaxKind.ArrayType) <> nil) then
+    Result := Managed(NodeTypeText(Decl), ADepth + 1);
+end;
+
+function TManagedTypes.Pointee(const ATypeName: string): string;
+var
+  Name: string;
+  Decl: TSyntaxNode;
+begin
+  Result := '';
+  Name := Trim(ATypeName);
+  if StartsText('^', Name) then
+    Exit(Trim(Copy(Name, 2, MaxInt)));
+  if (Name = '') or (Pos('<', Name) > 0) then
+    Exit;
+  Decl := TypeDecl(Name);
+  if (Decl <> nil) and (Decl.FindChild(TSyntaxKind.PointerType) <> nil) then
+  begin
+    Result := NodeTypeText(Decl);
+    if StartsText('^', Result) then
+      Result := Trim(Copy(Result, 2, MaxInt))
+    else
+      Result := '';
+  end;
+end;
+
+function TManagedTypeRawMemoryRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('managed-type-raw-memory', TRuleSeverity.Error,
+    'FillChar, Move oder GetMem auf verwaltete Typen');
+end;
+
+procedure TManagedTypeRawMemoryRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TTokens;
+  Types: TDeclaredTypes;
+  Managed: TManagedTypes;
+  Index, Call, Open, Close: Integer;
+  Starts, Stops: TArray<Integer>;
+  Routine: string;
+
+  // Argumente auf oberster Ebene: Start- und Endtoken.
+  procedure SplitArguments;
+  var
+    Inner, Depth, First: Integer;
+  begin
+    Starts := nil;
+    Stops := nil;
+    Depth := 0;
+    First := NextCode(Tokens, Open + 1);
+    for Inner := Open + 1 to Close do
+      if (Inner = Close) or ((Depth = 0) and Tokens[Inner].IsSymbol(',')) then
+      begin
+        if First < Inner then
+        begin
+          Starts := Starts + [First];
+          Stops := Stops + [PreviousCode(Tokens, Inner)];
+        end;
+        First := NextCode(Tokens, Inner + 1);
+      end
+      else if Tokens[Inner].IsSymbol('(') or Tokens[Inner].IsSymbol('[') then
+        Inc(Depth)
+      else if Tokens[Inner].IsSymbol(')') or Tokens[Inner].IsSymbol(']') then
+        Dec(Depth);
+  end;
+
+  // Argument AIndex als X, @X oder X^: Name (Tokenindex) und ob dereferenziert; -1 sonst.
+  function Target(AArgument: Integer; out ADeref: Boolean): Integer;
+  var
+    First, Last: Integer;
+  begin
+    Result := -1;
+    ADeref := False;
+    if AArgument > High(Starts) then
+      Exit;
+    First := Starts[AArgument];
+    Last := Stops[AArgument];
+    if Tokens[First].IsSymbol('@') then
+      First := NextCode(Tokens, First + 1);
+    if (Last > First) and Tokens[Last].IsSymbol('^') and (NextCode(Tokens, First + 1) = Last) then
+    begin
+      ADeref := True;
+      Last := First;
+    end;
+    if (First = Last) and (Tokens[First].Kind = TPascalTokenKind.Identifier) then
+      Result := First;
+  end;
+
+  // Typ der Daten hinter dem Argument; bei AAsPointer (GetMem, FreeMem, X^) der Zieltyp des Zeigers.
+  function DataType(AName: Integer; AAsPointer: Boolean): string;
+  begin
+    Result := Types.DeclaredType(Tokens[AName].Text, Tokens[AName].StartPos);
+    if AAsPointer then
+      Result := Managed.Pointee(Result);
+  end;
+
+  function Subject(const ATypeName, AKind: string): string;
+  begin
+    if Managed.IsPrimitive(ATypeName) then
+      Result := Format('%s ist ein verwalteter Typ', [ATypeName])
+    else
+      Result := Format('%s enthält %s', [ATypeName, AKind]);
+  end;
+
+  // Anweisung: davor ;, begin, then, else, do, try, finally, except oder repeat; danach ;, end oder else.
+  function IsStatement: Boolean;
+  var
+    Before, After: Integer;
+  begin
+    Before := PreviousCode(Tokens, Call);
+    After := NextCode(Tokens, Close + 1);
+    Result := (Before >= 0) and (Tokens[Before].IsSymbol(';') or Tokens[Before].IsKeyword('begin') or
+      Tokens[Before].IsKeyword('then') or Tokens[Before].IsKeyword('else') or Tokens[Before].IsKeyword('do') or
+      Tokens[Before].IsKeyword('try') or Tokens[Before].IsKeyword('finally') or Tokens[Before].IsKeyword('except') or
+      Tokens[Before].IsKeyword('repeat')) and (After <= High(Tokens)) and (Tokens[After].IsSymbol(';') or
+      Tokens[After].IsKeyword('end') or Tokens[After].IsKeyword('else'));
+  end;
+
+  // Argument ist SizeOf(X) oder SizeOf(T) mit X bzw. T wie angegeben.
+  function IsSizeOf(AArgument: Integer; const AName, ATypeName: string): Boolean;
+  var
+    First, Inner, Last: Integer;
+  begin
+    Result := False;
+    if AArgument > High(Starts) then
+      Exit;
+    First := Starts[AArgument];
+    Inner := NextCode(Tokens, NextCode(Tokens, First + 1) + 1);
+    Last := Stops[AArgument];
+    Result := SameText(Tokens[First].Text, 'SizeOf') and (NextCode(Tokens, Inner + 1) = Last) and
+      Tokens[Last].IsSymbol(')') and (SameText(Tokens[Inner].Text, AName) or SameText(Tokens[Inner].Text, ATypeName));
+  end;
+
+  function IsZero(AArgument: Integer): Boolean;
+  begin
+    Result := (AArgument <= High(Starts)) and (Starts[AArgument] = Stops[AArgument]) and
+      MatchText(Tokens[Starts[AArgument]].Text, ['0', '#0', '$0', '$00']);
+  end;
+
+  procedure Report(const ATypeName, AKind, AText: string; const AFixes: TArray<TRuleFix>);
+  begin
+    AReport.Add(RangeOf(Tokens, Call, Close), Format('%s; %s %s', [Subject(ATypeName, AKind), Routine, AText]),
+      TRuleConfidence.High, AFixes);
+  end;
+
+  procedure CheckOverwrite;
+  var
+    Name: Integer;
+    Deref: Boolean;
+    TypeName, Kind: string;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Name := Target(0, Deref);
+    if Name < 0 then
+      Exit;
+    TypeName := DataType(Name, Deref);
+    Kind := Managed.Managed(TypeName, 0);
+    if Kind = '' then
+      Exit;
+    Fixes := nil;
+    // FillChar(X, SizeOf(X), 0) bzw. ZeroMemory(@X, SizeOf(X)): X := Default(T).
+    if IsStatement and not Deref and IsSizeOf(1, Tokens[Name].Text, TypeName) and
+      (SameText(Routine, 'ZeroMemory') or IsZero(2)) then
+      Fixes := [TRuleFix.Create(Format('%s := Default(%s)', [Tokens[Name].Text, TypeName]),
+        [TRuleEdit.Create(RangeOf(Tokens, Call, Close), Format('%s := Default(%s)', [Tokens[Name].Text,
+        TypeName]))], True)];
+    Report(TypeName, Kind, 'überschreibt die Referenzen ohne Freigabe (Leck, ggf. Zugriffsverletzung).',
+      Fixes);
+  end;
+
+  procedure CheckCopy(ASource, ADestination: Integer);
+  var
+    Source, Destination: Integer;
+    SourceDeref, DestinationDeref: Boolean;
+    SourceType, DestinationType, Kind, TypeName: string;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Source := Target(ASource, SourceDeref);
+    Destination := Target(ADestination, DestinationDeref);
+    SourceType := '';
+    DestinationType := '';
+    if Source >= 0 then
+      SourceType := DataType(Source, SourceDeref);
+    if Destination >= 0 then
+      DestinationType := DataType(Destination, DestinationDeref);
+    TypeName := DestinationType;
+    Kind := Managed.Managed(DestinationType, 0);
+    if Kind = '' then
+    begin
+      TypeName := SourceType;
+      Kind := Managed.Managed(SourceType, 0);
+    end;
+    if Kind = '' then
+      Exit;
+    Fixes := nil;
+    // Move(A, B, SizeOf(T)) mit gleichem Typ: B := A.
+    if IsStatement and (Source >= 0) and (Destination >= 0) and not SourceDeref and not DestinationDeref and
+      SameText(SourceType, DestinationType) and IsSizeOf(2, Tokens[Source].Text, SourceType) then
+      Fixes := [TRuleFix.Create(Format('%s := %s', [Tokens[Destination].Text, Tokens[Source].Text]),
+        [TRuleEdit.Create(RangeOf(Tokens, Call, Close), Format('%s := %s', [Tokens[Destination].Text,
+        Tokens[Source].Text]))], True)];
+    Report(TypeName, Kind, 'kopiert die Referenzen ohne Referenzzählung (doppelte Freigabe, ' +
+      'ggf. Zugriffsverletzung).', Fixes);
+  end;
+
+  procedure CheckMemory(AAllocate: Boolean);
+  var
+    Name: Integer;
+    Deref: Boolean;
+    TypeName, Kind, Replacement: string;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Name := Target(0, Deref);
+    if (Name < 0) or Deref then
+      Exit;
+    TypeName := DataType(Name, True);
+    Kind := Managed.Managed(TypeName, 0);
+    if Kind = '' then
+      Exit;
+    Fixes := nil;
+    if AAllocate then
+      Replacement := Format('New(%s)', [Tokens[Name].Text])
+    else
+      Replacement := Format('Dispose(%s)', [Tokens[Name].Text]);
+    // GetMem(P, SizeOf(T)) bzw. FreeMem(P) oder FreeMem(P, SizeOf(T)): New bzw. Dispose.
+    if IsStatement and ((Length(Starts) = 1) and not AAllocate or IsSizeOf(1, '', TypeName)) then
+      Fixes := [TRuleFix.Create(Replacement, [TRuleEdit.Create(RangeOf(Tokens, Call, Close), Replacement)], True)];
+    if AAllocate then
+      Report(TypeName, Kind, 'lässt die Referenzen uninitialisiert (Zugriffsverletzung beim ersten ' +
+        'Zuweisen); New oder Initialize verwenden.', Fixes)
+    else
+      Report(TypeName, Kind, 'gibt die Referenzen nicht frei (Leck); Dispose oder Finalize verwenden.', Fixes);
+  end;
+
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  Managed := TManagedTypes.Create(AContext.Tree, AContext.Text, AContext.Index);
+  try
+    for Index := 0 to High(Tokens) do
+    begin
+      if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or not MatchText(Tokens[Index].Text, ['FillChar',
+        'ZeroMemory', 'FillMemory', 'Move', 'CopyMemory', 'GetMem', 'FreeMem']) then
+        Continue;
+      // Methoden anderer Objekte (Stream.Move) sind nicht gemeint.
+      if (PreviousCode(Tokens, Index) >= 0) and Tokens[PreviousCode(Tokens, Index)].IsSymbol('.') then
+        Continue;
+      Open := NextCode(Tokens, Index + 1);
+      if (Open > High(Tokens)) or not Tokens[Open].IsSymbol('(') then
+        Continue;
+      Close := Closing(Tokens, Open);
+      if Close < 0 then
+        Continue;
+      Call := Index;
+      SplitArguments;
+      Routine := Tokens[Index].Text;
+      if MatchText(Routine, ['FillChar', 'ZeroMemory', 'FillMemory']) then
+        CheckOverwrite
+      else if SameText(Routine, 'Move') then
+        CheckCopy(0, 1)
+      else if SameText(Routine, 'CopyMemory') then
+        CheckCopy(1, 0)
+      else
+        CheckMemory(SameText(Routine, 'GetMem'));
+    end;
+  finally
+    Managed.Free;
+    Types.Free;
+  end;
+end;
+
 procedure RegisterRtlTypePatternRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TInt32MulOverflowRule.Create);
@@ -529,6 +993,7 @@ begin
   ARegistry.Register(TFloatEqualityRule.Create);
   ARegistry.Register(TConstructorOnInstanceRule.Create);
   ARegistry.Register(TFormatWithoutSettingsRule.Create);
+  ARegistry.Register(TManagedTypeRawMemoryRule.Create);
 end;
 
 end.

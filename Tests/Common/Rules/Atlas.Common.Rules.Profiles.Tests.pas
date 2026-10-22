@@ -182,7 +182,7 @@ const
     'form-object-without-field,format-without-settings,generic-exception-raised,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,implicit-package-import,int32-mul-overflow,interface-guid,' +
     'invisible-char,' +
-    'lock-without-finally,loop-off-by-one,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
+    'lock-without-finally,loop-off-by-one,managed-type-raw-memory,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
     'metric-nesting-depth,metric-parameter-count,missing-inherited,operator-precedence,owned-field-free-unclear,' +
     'possibly-uninitialized,raise-in-finally,redundant-assigned-free,' +
     'result-not-set,' +
@@ -209,7 +209,7 @@ begin
     'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,' +
     'duplicate-interface-guid,empty-statement,exception-freed,exception-not-raised,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,' +
     'form-field-type-mismatch,form-field-without-object,form-object-without-field,hides-virtual,' +
-    'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,lock-without-finally,loop-off-by-one,' +
+    'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,lock-without-finally,loop-off-by-one,managed-type-raw-memory,' +
     'missing-inherited,operator-precedence,owned-field-free-unclear,' +
     'possibly-uninitialized,raise-in-finally,result-not-set,security-command-injection,' +
     'security-sql-injection,security-tls-verification-disabled,self-assignment,setter-recursion,sizeof-pointer,' +
