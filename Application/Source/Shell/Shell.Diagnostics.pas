@@ -82,6 +82,9 @@ type
     procedure AllowMethods(const AMethods: TArray<string>);
     /// <summary>Ordner der Delphi-Installation: Units darunter erscheinen mit Namen.</summary>
     procedure SetLibraryRoots(const ARoots: TArray<string>);
+    /// <summary>Anonymes Kennzeichen einer Quelldatei für das Diagnoselog (#1094): "unit#N", unter einem
+    /// Bibliothekspfad der Unit-Name.</summary>
+    function FileLabel(const AFileName: string): string;
     property Log: IDiagnosticLog read FLog;
     /// <summary>Fortschritt des Indexaufbaus in Prozent, -1 ohne Aufbau.</summary>
     property IndexLoading: TFunc<Integer> read FIndexLoading write FIndexLoading;
@@ -255,6 +258,11 @@ begin
   FFolder.EndRun;
 end;
 
+function TShellDiagnostics.FileLabel(const AFileName: string): string;
+begin
+  Result := FIds.UnitLabel(ChangeFileExt(ExtractFileName(AFileName), ''), AFileName);
+end;
+
 function TShellDiagnostics.LibraryCount: Integer;
 var
   Generation: Int64;
@@ -400,6 +408,11 @@ begin
   end;
   if Parallel <> '' then
     Notes.Notes := Notes.Notes + ['parallel=' + Parallel];
+  // Bei einem Fehler noch offen (#1094): die Unit und die Regel, an denen die Anfrage scheiterte.
+  if Notes.Subject <> '' then
+    Notes.Notes := Notes.Notes + ['unit=' + Notes.Subject];
+  if Notes.Rule <> '' then
+    Notes.Notes := Notes.Notes + ['rule=' + Notes.Rule];
   if FEnded or not FLog.Enabled then
     Exit;
   Request := Default(TDiagnosticRequest);

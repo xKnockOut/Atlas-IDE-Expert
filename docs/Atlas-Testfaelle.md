@@ -3095,3 +3095,16 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit einigen Bef
 | AP24 | Server beenden, Optionen öffnen | Seite zeigt „Ohne laufenden Server fehlt der Regelkatalog; hier stehen nur die eingestellten Regeln.“ und nur diese Regeln |
 | AP25 | Knoten „Profile und Baseline“ | Knopf „Projekt-Einstellungen…“, Baseline-Stand, „Aktualisieren“ und „Löschen“ arbeiten |
 | AP26 | Oberfläche auf Englisch | Fenster, Tooltip und Seite englisch, Katalogtexte englisch |
+
+## Keine Server-Neustarts durch tiefe Ausdrücke (#1094)
+
+Voraussetzung: Einstellungen auf Vorgabe, Diagnoselog an; Projektgruppe `Atlas.groupproj` geöffnet, aktives Projekt `Tests/Atlas.Tests.dproj` (Win64), alle Dateien der Gruppe geschlossen bis auf zwei.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SN1 | IDE mit der Gruppe 10 Minuten offen lassen, ohne zu tippen | Keine Benachrichtigung „Server neu gestartet“ (**Abnahme**) |
+| SN2 | Diagnoselog des Laufs (`%LOCALAPPDATA%\Atlas\Logs\Diagnose\diag-<Datum>-<pid>.log`) öffnen | Keine Zeile `workspace/diagnostic … error:EStackOverflow`; am Ende des Laufs steht eine `run end`-Zeile (**Abnahme**) |
+| SN3 | `Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data.pas` öffnen | Befunde erscheinen wie bei anderen Units, kein Fehler im Log |
+| SN4 | In einer eigenen Unit `X := 1 - 1 - 1 …` mit 1200 Gliedern schreiben (Testprojekt) und speichern | Kein Absturz; die Prüfregeln melden für diese Unit nichts, im Diagnoselog steht `deepUnits=1 deepUnit=unit#N deepUnitDepth=…` |
+| SN5 | Kommandozeile: `AtlasServer.exe --check` über die Gruppe (Abschnitt „Linter mode“ im README) | Läuft durch alle Units ohne Absturz; dieselben Befunde wie vor #1094 |
+| SN6 | Testlauf `Atlas.Tests.exe` | Grün, darunter `SecondOverflowInSameThreadIsCaughtAgain` (drei Stapelüberläufe im selben Thread werden abgefangen, der Prozess lebt) |

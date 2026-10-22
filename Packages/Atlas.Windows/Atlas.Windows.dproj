@@ -75,6 +75,7 @@
         <DCCReference Include="Source\Diagnostics\Atlas.Windows.Diagnostics.DebugOutput.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Windows.Diagnostics.Adapters.DebugOutputSink.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Windows.Diagnostics.StackTrace.pas"/>
+        <DCCReference Include="Source\Diagnostics\Atlas.Windows.Diagnostics.StackGuard.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Windows.Diagnostics.ProcessInfo.pas"/>
         <DCCReference Include="Source\Process\Atlas.Windows.Process.ParentWatcher.pas"/>
         <DCCReference Include="Source\Process\Atlas.Windows.Process.Instances.pas"/>

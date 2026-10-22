@@ -32,6 +32,9 @@ type
     /// <summary>Slowest behält die längste Dauer samt Namen (langsamste Prüfregel).</summary>
     [Test]
     procedure RequestScopeKeepsSlowest;
+    /// <summary>#1094: Unit und Regel bleiben bis zum Ende offen, Fehlschläge stehen als Notiz.</summary>
+    [Test]
+    procedure RequestScopeNamesFailingUnitAndRule;
     [Test]
     procedure FormatsRequestLine;
     [Test]
@@ -309,6 +312,34 @@ begin
   TRequestDiagnostics.Slowest('slowRule', 'gleich', 900);
   Notes := TRequestDiagnostics.Close;
   Assert.AreEqual('slowRule=lang slowRuleMs=900', string.Join(' ', Notes.Notes));
+end;
+
+procedure TDiagnosticLogTests.RequestScopeNamesFailingUnitAndRule;
+var
+  Notes: TRequestNotes;
+begin
+  TRequestDiagnostics.Open;
+  TRequestDiagnostics.Subject('unit#4');
+  TRequestDiagnostics.CurrentRule('hides-virtual');
+  TRequestDiagnostics.RuleFailed('hides-virtual', 'EStackOverflow');
+  TRequestDiagnostics.CurrentRule('');
+  TRequestDiagnostics.UnitFailed('EAccessViolation');
+  TRequestDiagnostics.Subject('unit#9');
+  TRequestDiagnostics.TreeTooDeep(1200);
+  TRequestDiagnostics.CurrentRule('empty-except');
+  Notes := TRequestDiagnostics.Close;
+  Assert.AreEqual('failedRules=1 failRule=hides-virtual failRuleUnit=unit#4 failRuleClass=EStackOverflow ' +
+    'failedUnits=1 failUnit=unit#4 failUnitClass=EAccessViolation deepUnits=1 deepUnit=unit#9 deepUnitDepth=1200',
+    string.Join(' ', Notes.Notes));
+  // Beim Schließen noch offen: so nennt das Diagnoselog bei einem Fehler Unit und Regel.
+  Assert.AreEqual('unit#9', Notes.Subject);
+  Assert.AreEqual('empty-except', Notes.Rule);
+  // Ohne offenen Bereich wirkungslos.
+  TRequestDiagnostics.Subject('unit#1');
+  TRequestDiagnostics.RuleFailed('x', 'Exception');
+  Notes := TRequestDiagnostics.Close;
+  Assert.AreEqual('', Notes.Subject);
+  Assert.AreEqual<NativeInt>(0, Length(Notes.Notes));
 end;
 
 procedure TDiagnosticLogTests.RequestScopeWithoutOpenDoesNothing;

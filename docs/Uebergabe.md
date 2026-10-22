@@ -675,18 +675,15 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
   - Andere Sitzungen starten über Claude-Compile eigene IDEs ohne Parameter; hängende davon beim Beenden = Beyond-Compare-Absturz (#1091).
 - Offen: Atlas schreibt seit 21.10. 21:29 nicht mehr in `%LOCALAPPDATA%\Atlas\Logs\atlas.log` und aktualisiert `Session\safemode.json` nicht (Sitzungsdatei wird geschrieben). Ursache unbekannt; Datei nicht gesperrt.
 
-## Server startet alle 1–2 Minuten neu (21.10.2026 abends, morgen weiter)
-- Benachrichtigung „Server neu gestartet“ etwa alle 90 s (Projektgruppe Atlas.groupproj, aktives Projekt Atlas.Tests).
-- Diagnoselogs `%LOCALAPPDATA%\Atlas\Logs\Diagnose\diag-*.log`: `workspace/diagnostic ... error:EStackOverflow` alle ~15 s, nach einigen davon endet der Prozess ohne Endzeile; das Plugin startet ihn neu. Erster Fehler je Lauf mit `missingUnits=1 ... resolve unitNotFound`. Einzeldokumente (`textDocument/diagnostic`) laufen.
-- Stapel noch nicht erfasst: cdb (x64) mit `sxe sov` am Server angehängt, vor dem Treffer auf Marcos Wunsch abgebrochen (dabei Server beendet, das Plugin startet ihn neu). Skript: Scratchpad `cdb-sov.txt` (`cdb -p <pid> -logo cdb-sov.log -cf cdb-sov.txt`).
-- Verdacht: eine Regel oder die Namensauflösung über alle Units rekursiert endlos (neu seit den heutigen Merges: #845 aktive Zweige, #846 variante Records, #715 Boolean umkehren u. a.).
-- Server-Speicher ~0,9–1,25 GB.
+## Server startet alle 1–2 Minuten neu (#1094, behoben, gemergt und gebaut: siehe unten)
+- **Ursache:** keine Endlosrekursion bei fehlenden Units (`missingUnits=1 … unitNotFound` war nur Begleitnotiz). `Rules.Catalog.Data.pas` hat eine String-Verkettung mit rund 1800 Gliedern; der Parser baute sie linkslastig (Baumtiefe ~3600). `ClassMethods` in `Rules.Builtin.Inheritance` (vier Vererbungsregeln) lief mit einem lokalen `Visit` rekursiv durch den ganzen Baum, jeder Rahmen mit allen Locals der Klassenauswertung. Bei 1 MB Thread-Stapel (Win64-Vorgabe) lief das über. Die Datei blieb vorn in der Restliste, daher die Folgefehler nach ~80 ms; nach einigen Überläufen fehlte die Schutzseite, und Windows beendete den Prozess.
+- **Nachgestellt** unter FPC (Harness im Scratchpad): alter Stand mit 1 MB Stapel stürzt genau bei `Catalog.Data.pas` ab, neuer Stand nicht; alle 818 Units des Repos liefern alt (8 MB) und neu dieselben 2895 Befunde (Regel, Bereich, Text).
+- **Behoben:** Parser gleicht Ketten assoziativer Operatoren ab 32 Gliedern aus (`TParser.ChainOperand`/`FlushRun`/`BalancedRun`); `ClassMethods.Visit` steigt nur in Deklarationscontainer ab; `TFindingScopes.Collect` nicht mehr in Anweisungen und Ausdrücke.
+- **Robuster:** `TSyntaxTree.Depth` (iterativ, gemerkt); `TRuleEngine.MaxTreeDepth = 1000` überspringt die Regeln (`deepUnit=`); jede Regel in try/except (`failRule=`, `failRuleUnit=`, `failRuleClass=`), Abbruch geht weiter durch; `workspace/diagnostic` überspringt eine scheiternde Unit (`failUnit=`, leere Befunde bis zur nächsten Änderung); Fehlerzeilen tragen `unit=unit#N` und `rule=`; `TStackGuard`/`TWindowsStackGuard` setzt nach einem abgefangenen Überlauf die Schutzseite neu (`_resetstkoflw` aus msvcrt.dll); `{$MAXSTACKSIZE $00800000}` in `AtlasServer.dpr`.
+- **Offen:** Delphi-Build Win64-Gruppe 0/0/0 und Tests; besonders `TThread.Create(True, Stapelgröße)` in `Tests/Support/Atlas.Tests.SmallStack.pas` und der Test `SecondOverflowInSameThreadIsCaughtAgain` (läuft absichtlich dreimal über). Handtest SN1–SN6 in `docs/Atlas-Testfaelle.md`.
+- **Überschneidung:** `Atlas.Common.Pascal.Parser.pas` ändert auch die Restpunkte-Kette (#845–#862); beim Zusammenführen auf `ParseSimpleExpression`/`ParseTerm` achten.
 
-## Atlas-Prüfung und Seite Prüfregeln (#909, 21.10.2026, Branch `feature/909-atlas-pruefung` von main, ungebaut)
-- Regelkatalog mit Gruppe und Optionen je Regel (`Update-RuleCatalog.ps1` prüft beides), `atlas.server.settingsCatalog` liefert Gruppe, Beschreibung, Beispiele, Optionen; `"group:<gruppe>": "off"` in `rules` schaltet eine Gruppe ab (Rules.Engine).
-- Fenster „Atlas-Prüfung“ (`Atlas.Core.Problems.Findings`, `Atlas.UI.Problems.Frame/Explain`, `Atlas.IDE.Problems.Window/Service`), Strg+Alt+P.
-- Befund-Hover mit Pille, Regelzeile, Aktionszeile (`hover.problemActions`).
-- Seite Prüfregeln: `Atlas.UI.Settings.Rules` (`TAtlasRulesEditor`), Bereich im Optionsbaum mit Knoten `rules.profiles` und `rules.group.<id>`; Projektdialog nutzt denselben Editor.
-- Unter FPC getestet: RuleTable, Hover.Layout, Findings. VCL-Tests (`Atlas.UI.Settings.Rules.Tests`, Page.Tests) nur mit Delphi.
-- Risiken beim ersten Delphi-Build: `TListView.OnItemChecked`, AutoSize des Editors, `HandleNeeded` der Editoren auf verborgenen Seiten.
-- Handtest AP1–AP26 in `docs/Atlas-Testfaelle.md`. Danach folgen die Unter-Issues (#910 ff.) als Kette auf diesem Branch.
+## #1094 gemergt (22.10.2026 früh, main 71a90abe)
+- Branch `claude/project-thread-q604al` (Cloud-Thread): Ursache war `Rules.Catalog.Data.pas` mit ~1800 per `+` verketteten Strings; linkslastiger Ausdrucksbaum (Tiefe ~3600), rekursive Vererbungsregeln → Stapelüberlauf. Parser balanciert lange Ketten, Engine begrenzt Tiefe und isoliert scheiternde Regeln, `workspace/diagnostic` überspringt scheiternde Units, Schutzseite wird wiederhergestellt, Server mit 8 MB Stapel.
+- Delphi-Nacharbeit: E2532 im Parser-Test, W1036/H2077 in `PullDiagnostics` (neue Methode `DiagnoseOrSkip`), W1000: `EStackOverflow` ist in Delphi 13 veraltet → `TStackGuard.IsOverflow` prüft den Klassennamen, Tests mit gleichnamiger eigener Klasse.
+- Win64 0/0/0, 5361 Tests grün, Win32-Plugin sauber. Delphi neu gestartet. #1094 noch offen, bis Marco bestätigt, dass die Neustarts weg sind.

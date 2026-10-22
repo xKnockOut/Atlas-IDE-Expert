@@ -32,6 +32,13 @@
 // des Dokuments (ContentModified) beendet die Prüfung, statt sie bis zu vier
 // Minuten weiterlaufen zu lassen. Fragen mehrere Anfragen dieselbe Datei im
 // selben Stand an, rechnet nur die erste; die übrigen warten auf ihr Ergebnis.
+//
+// Robustheit (#1094): Scheitert die Prüfung einer Datei mit einer Ausnahme,
+// die kein Abbruch ist, überspringt workspace/diagnostic die Datei (leere
+// Befunde bis zur nächsten Änderung) und prüft die übrigen weiter. Früher
+// brach jede Anfrage an derselben Datei ab, und nach einigen Stapelüberläufen
+// starb der Server. Vor jeder Datei geht ihr anonymes Kennzeichen (FileLabel)
+// an das Diagnoselog; ein Fehler nennt so Unit und Regel.
 
 interface
 
@@ -56,6 +63,8 @@ type
   TPullBusy = reference to function: Boolean;
   /// <summary>Aktuelles Zeitlimit des Watchdogs für Anfragen in ms (0 = keines).</summary>
   TPullTimeout = reference to function: Cardinal;
+  /// <summary>Anonymes Kennzeichen einer Datei für das Diagnoselog, z. B. "unit#12"; nie Pfad oder Name.</summary>
+  TPullFileLabel = reference to function(const AFileName: string): string;
 
   TLspPullDiagnostics = class
   public const
@@ -102,10 +111,15 @@ type
     // Laufende Berechnungen: Uri + #0 + Ergebnis-Id. Unter FCacheLock.
     FRunning: TDictionary<string, Boolean>;
     FComputed: Integer;
+    FSkipped: Integer;
+    FFileLabel: TPullFileLabel;
     function IsBusy: Boolean;
     /// <summary>Befunde zu ADocument im Stand AResultId, aus dem Speicher oder neu berechnet. Rechnet
     /// gerade eine andere Anfrage denselben Stand, wartet es auf deren Ergebnis. ACancellation darf nil sein.</summary>
     function CachedDiagnose(const AUri, AResultId: string; const ADocument: ITextDocument;
+      const ACancellation: IJsonRpcCancellationToken): TJSONArray;
+    /// <summary>Wie CachedDiagnose; scheitert die Prüfung der Datei, leere Befunde und weiter (#1094).</summary>
+    function DiagnoseOrSkip(const AUri, AResultId: string; const ADocument: ITextDocument;
       const ACancellation: IJsonRpcCancellationToken): TJSONArray;
     /// <summary>True: Der Aufrufer rechnet AKey jetzt selbst. False mit ACached: Befunde aus dem
     /// Speicher (gehören dem Aufrufer). False ohne: Eine andere Anfrage rechnet gerade.</summary>
@@ -118,6 +132,7 @@ type
     procedure WakeAll;
     /// <summary>Zeitrahmen dieser Anfrage aus RequestTimeout; High(Cardinal) ohne Limit.</summary>
     function TimeLimit: Cardinal;
+    function LabelOf(const AFileName: string): string;
     function HandleDocument(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function CollectWorkspace(const APrevious: TDictionary<string, string>;
       const ACancellation: IJsonRpcCancellationToken; ABudgetMs: Int64; out AComplete: Boolean): TJSONArray;
@@ -156,6 +171,10 @@ type
     property RequestTimeout: TPullTimeout read FRequestTimeout write FRequestTimeout;
     /// <summary>Anzahl tatsächlich berechneter Dateibefunde (für Tests und das Diagnoselog).</summary>
     property Computed: Integer read FComputed;
+    /// <summary>Anzahl Dateien, die workspace/diagnostic nach einem Fehler übersprungen hat (#1094).</summary>
+    property Skipped: Integer read FSkipped;
+    /// <summary>Kennzeichen je Datei für das Diagnoselog; ohne Provider steht dort "unit".</summary>
+    property FileLabel: TPullFileLabel read FFileLabel write FFileLabel;
   end;
 
 implementation
@@ -163,6 +182,7 @@ implementation
 uses
   System.Diagnostics,
   Atlas.Common.Diagnostics.RequestScope,
+  Atlas.Common.Diagnostics.StackGuard,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.TextDocument;
@@ -253,6 +273,21 @@ begin
     Result := AWaitMs;
 end;
 
+function TLspPullDiagnostics.LabelOf(const AFileName: string): string;
+begin
+  Result := 'unit';
+  if Assigned(FFileLabel) then
+    Result := FFileLabel(AFileName);
+end;
+
+/// <summary>True, wenn workspace/diagnostic die Datei nach AError überspringen darf: kein Abbruch der
+/// Anfrage und kein Protokollfehler.</summary>
+function CanSkip(const AError: Exception; const ACancellation: IJsonRpcCancellationToken): Boolean;
+begin
+  Result := not ((AError is ERuleCheckCancelled) or (AError is EJsonRpcError) or
+    ((ACancellation <> nil) and ACancellation.IsCancellationRequested));
+end;
+
 function TLspPullDiagnostics.TimeLimit: Cardinal;
 begin
   if Assigned(FRequestTimeout) then
@@ -339,6 +374,25 @@ begin
     Result := Params.GetValue('diagnostics').Clone as TJSONArray;
   finally
     Params.Free;
+  end;
+end;
+
+function TLspPullDiagnostics.DiagnoseOrSkip(const AUri, AResultId: string; const ADocument: ITextDocument;
+  const ACancellation: IJsonRpcCancellationToken): TJSONArray;
+begin
+  try
+    Result := CachedDiagnose(AUri, AResultId, ADocument, ACancellation);
+  except
+    on E: Exception do
+    begin
+      if not CanSkip(E, ACancellation) then
+        raise;
+      // Datei überspringen (#1094): leer melden, bis sie sich ändert; die übrigen weiter prüfen.
+      TStackGuard.AfterError(E);
+      TRequestDiagnostics.UnitFailed(E.ClassName);
+      TInterlocked.Increment(FSkipped);
+      Result := TJSONArray.Create;
+    end;
   end;
 end;
 
@@ -462,8 +516,10 @@ begin
     Result.AddPair('items', TJSONArray.Create)
   else
   begin
+    TRequestDiagnostics.Subject(LabelOf(FileName));
     try
       Result.AddPair('items', CachedDiagnose(AUri, ResultId, Document, ACancellation));
+      TRequestDiagnostics.Subject('');
     except
       Result.Free;
       raise;
@@ -522,7 +578,8 @@ begin
       // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
       Disk := TTextDocument.Create(Uri, 'objectpascal', 0, Text);
       // Erst prüfen, dann den Bericht anlegen: Ein Abbruch hinterlässt so kein Objekt.
-      Items := CachedDiagnose(Uri, ResultId, Disk, ACancellation);
+      TRequestDiagnostics.Subject(LabelOf(FileName));
+      Items := DiagnoseOrSkip(Uri, ResultId, Disk, ACancellation);
       Report := TJSONObject.Create;
       Report.AddPair('uri', Uri);
       Report.AddPair('version', TJSONNull.Create);
@@ -532,6 +589,7 @@ begin
       Result.AddElement(Report);
       APrevious.AddOrSetValue(Uri, ResultId);
     end;
+    TRequestDiagnostics.Subject('');
   except
     Result.Free;
     raise;

@@ -50,6 +50,13 @@ type
     // Die Test-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
     [IgnoreMemoryLeaks]
     procedure SecondWorkspaceRequestWakesOnChange;
+    /// <summary>#1094: Scheitert eine Datei, überspringt workspace/diagnostic sie und prüft die übrigen; das
+    /// Diagnoselog nennt die Unit anonym.</summary>
+    [Test]
+    procedure WorkspaceSkipsFailingFile;
+    /// <summary>#1094: Endet textDocument/diagnostic mit einem Fehler, bleibt die Unit für das Diagnoselog offen.</summary>
+    [Test]
+    procedure DocumentErrorKeepsUnitForLog;
   end;
 
 implementation
@@ -70,7 +77,8 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Lsp.SyntaxDiagnostics,
-  Atlas.Common.Lsp.PullDiagnostics;
+  Atlas.Common.Lsp.PullDiagnostics,
+  Atlas.Common.Diagnostics.RequestScope;
 
 const
   OpenFile = 'C:\P\Offen.pas';
@@ -580,6 +588,123 @@ begin
     end;
     Assert.IsTrue((FirstMs >= 0) and (FirstMs < 1000), IntToStr(FirstMs));
     Assert.IsTrue((SecondMs >= 0) and (SecondMs < 1000), IntToStr(SecondMs));
+  finally
+    Fixture.Done;
+  end;
+end;
+
+const
+  FailingFile = 'C:\P\Kaputt.pas';
+
+/// <summary>Regeln für alle Dateien; für FailingFile scheitert schon das Bereitstellen.</summary>
+function FailingRules: TRuleContextProvider;
+begin
+  Result :=
+    function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+    begin
+      if SameText(TDocumentUris.ToPath(AUri), FailingFile) then
+        raise EArgumentException.Create('Unit kaputt');
+      AContext := Default(TRuleCheckContext);
+      AContext.Settings := TServerSettings.Default;
+      Result := True;
+    end;
+end;
+
+function LabelOfFile(const AFileName: string): string;
+begin
+  Result := 'unit#2';
+  if SameText(AFileName, FailingFile) then
+    Result := 'unit#1';
+end;
+
+procedure TLspPullDiagnosticsTests.WorkspaceSkipsFailingFile;
+var
+  Store: IDocumentStore;
+  Diagnostics: TLspSyntaxDiagnostics;
+  Pull: TLspPullDiagnostics;
+  Result_: TJSONValue;
+  Items: TJSONArray;
+  Notes: TRequestNotes;
+  Joined: string;
+begin
+  Store := TDocumentStore.Create;
+  Diagnostics := TLspSyntaxDiagnostics.Create(Store, nil, 0);
+  Pull := nil;
+  try
+    Diagnostics.PullMode := True;
+    Diagnostics.RuleProvider := FailingRules();
+    // Die kaputte Datei steht vorn: früher scheiterte daran jede Anfrage, bis der Server starb.
+    Pull := TLspPullDiagnostics.Create(Store, Diagnostics, nil,
+      function: TArray<string>
+      begin
+        Result := [FailingFile, ClosedFile];
+      end,
+      function(const AFileName: string; out AStamp: Int64): Boolean
+      begin
+        AStamp := 42;
+        Result := True;
+      end,
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        AText := Broken;
+        Result := True;
+      end);
+    Pull.WaitMs := 0;
+    Pull.FileLabel := LabelOfFile;
+    TRequestDiagnostics.Open;
+    try
+      Result_ := Pull.WorkspaceReport(nil, Token);
+    finally
+      Notes := TRequestDiagnostics.Close;
+    end;
+    try
+      Items := (Result_ as TJSONObject).GetValue<TJSONArray>('items');
+      Assert.AreEqual(2, Integer(Items.Count));
+      Assert.AreEqual(TDocumentUris.FromPath(FailingFile), Items.Items[0].GetValue<string>('uri'));
+      Assert.AreEqual(0, Integer(Items.Items[0].GetValue<TJSONArray>('items').Count), 'übersprungen');
+      Assert.AreEqual(TDocumentUris.FromPath(ClosedFile), Items.Items[1].GetValue<string>('uri'));
+      Assert.IsTrue(Items.Items[1].GetValue<TJSONArray>('items').Count > 0, 'die nächste Datei läuft weiter');
+    finally
+      Result_.Free;
+    end;
+    Assert.AreEqual(1, Pull.Skipped);
+    Joined := ' ' + string.Join(' ', Notes.Notes) + ' ';
+    Assert.Contains(Joined, ' failedUnits=1 ');
+    Assert.Contains(Joined, ' failUnit=unit#1 ');
+    Assert.Contains(Joined, ' failUnitClass=EArgumentException ');
+    Assert.DoesNotContain(Joined, 'Kaputt.pas');
+    Assert.AreEqual('', Notes.Subject, 'nach dem Lauf keine Unit mehr offen');
+  finally
+    Pull.Free;
+    Diagnostics.Free;
+  end;
+end;
+
+procedure TLspPullDiagnosticsTests.DocumentErrorKeepsUnitForLog;
+var
+  Fixture: TFixture;
+  Notes: TRequestNotes;
+begin
+  Fixture.Init;
+  try
+    Fixture.Diagnostics.RuleProvider :=
+      function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+      begin
+        AContext := Default(TRuleCheckContext);
+        raise EArgumentException.Create('Unit kaputt');
+      end;
+    Fixture.Pull.FileLabel := LabelOfFile;
+    TRequestDiagnostics.Open;
+    try
+      Assert.WillRaise(
+        procedure
+        begin
+          Fixture.Pull.DocumentReport(TDocumentUris.FromPath(OpenFile), '', Token).Free;
+        end, EArgumentException);
+    finally
+      Notes := TRequestDiagnostics.Close;
+    end;
+    Assert.AreEqual('unit#2', Notes.Subject);
   finally
     Fixture.Done;
   end;

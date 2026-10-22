@@ -517,6 +517,7 @@ uses
   Atlas.Windows.Documents.PathCanonicalizer,
   Atlas.Windows.Diagnostics.Adapters.DebugOutputSink,
   Atlas.Windows.Diagnostics.StackTrace,
+  Atlas.Windows.Diagnostics.StackGuard,
   Atlas.Common.Logging.RotatingFileStream,
   Atlas.Windows.Editing.SystemColors,
   Atlas.Common.Projects.Contract,
@@ -721,6 +722,14 @@ begin
     function: Boolean
     begin
       Result := ProjectIndexPending;
+    end;
+  // Unit im Diagnoselog nur anonym (#1094); das Diagnoselog entsteht erst später.
+  FPullDiagnostics.FileLabel :=
+    function(const AFileName: string): string
+    begin
+      Result := 'unit';
+      if FDiagnostics <> nil then
+        Result := FDiagnostics.FileLabel(AFileName);
     end;
   // Long-Polling endet vor dem Zeitlimit des Watchdogs (Code-Review P-14).
   FPullDiagnostics.RequestTimeout :=
@@ -4527,6 +4536,9 @@ begin
   Tracing := nil;
   // Stacktraces für das Absturzprotokoll (Exception.StackTrace).
   TStackTrace.Install;
+  // Nach einem abgefangenen Stapelüberlauf die Schutzseite neu setzen (#1094); sonst beendet der
+  // nächste Überlauf den Prozess.
+  TWindowsStackGuard.Install;
   LoggerImpl := TLogger.Create;
   Logger := LoggerImpl;
   LoggerImpl.AddSink(TDebugOutputLogSink.Create, TLogLevel.Debug);
