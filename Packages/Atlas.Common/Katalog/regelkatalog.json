@@ -2365,6 +2365,26 @@
         "E2210",
         "E2370"
       ]
+    },
+    {
+      "id": "implements-clause-invalid",
+      "name": "Invalid implements clause",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "Delegation with implements breaks one of its fixed rules: implements only in classes (like E2258), only on properties of class or interface type (like E2259; reported for built-in types, records and enumerations), not together with index (like E2260), only on readable properties (like E2261), the getter without a calling convention other than register (like E2262) and not dynamic or message (like E2263), each interface implemented by one property only (like E2257) and no method resolution clause for an interface implemented that way (like E2264). Types are resolved through the uses clauses; unknown types, aliases and properties in conditional branches stay silent.",
+      "bad": "property Logger: ILogger write FLogger implements ILogger;",
+      "good": "property Logger: ILogger read FLogger write FLogger implements ILogger;",
+      "compilerCodes": [
+        "E2257",
+        "E2258",
+        "E2259",
+        "E2260",
+        "E2261",
+        "E2262",
+        "E2263",
+        "E2264"
+      ]
     }
   ]
 }

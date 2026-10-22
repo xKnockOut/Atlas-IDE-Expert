@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 19 |
+| [Compiler vorab](#gruppe-compiler) | 20 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -150,6 +150,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`unused-private-member`](#unused-private-member) | Privates Mitglied wird nie verwendet | Code Smell | Hinweis |
 | [`message-method-invalid`](#message-method-invalid) | message-Methode falsch deklariert | Bug | Fehler |
 | [`interface-declaration-invalid`](#interface-declaration-invalid) | Unzulässige Deklaration in einem Interface | Bug | Fehler |
+| [`implements-clause-invalid`](#implements-clause-invalid) | implements-Klausel unzulässig | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4654,4 +4655,25 @@ IKunde = interface
   function GetName: string;
   property Name: string read GetName;
 end;
+```
+
+<a id="implements-clause-invalid"></a>
+### implements-clause-invalid
+
+**implements-Klausel unzulässig** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine Delegation mit implements verletzt eine ihrer festen Regeln: implements nur in Klassen (wie E2258), nur an Properties mit Klassen- oder Interface-Typ (wie E2259; gemeldet für eingebaute Typen, Records und Aufzählungen), nicht zusammen mit index (wie E2260), nur an lesbaren Properties (wie E2261), der Getter ohne andere Aufrufkonvention als register (wie E2262) und nicht dynamic oder message (wie E2263), jedes Interface nur über eine Property (wie E2257) und keine Methodenzuordnung für ein so umgesetztes Interface (wie E2264). Typen werden über die uses-Klauseln aufgelöst; unbekannte Typen, Aliase und Properties in bedingten Zweigen bleiben still.
+
+Entspricht der Compilermeldung `E2257`, `E2258`, `E2259`, `E2260`, `E2261`, `E2262`, `E2263`, `E2264`.
+
+Mit Treffer:
+
+```pascal
+property Logger: ILogger write FLogger implements ILogger;
+```
+
+Richtig:
+
+```pascal
+property Logger: ILogger read FLogger write FLogger implements ILogger;
 ```

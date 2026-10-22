@@ -10,6 +10,10 @@
 // und Accessoren aus Vorfahr-Interfaces (E2206, E2370), Klassen und Records
 // als Interfaces und doppelte Einträge (E2205, E2208), stille Fälle und die
 // Einstellungen.
+// implements-clause-invalid (#1076): Beispiel aus dem Issue (E2261), Typ,
+// index und Getter (E2259, E2260, E2262, E2263), doppelte Interfaces und
+// Methodenzuordnungen (E2257, E2264), implements außerhalb von Klassen
+// (E2258), stille Fälle und die Einstellungen.
 
 interface
 
@@ -47,6 +51,23 @@ type
     procedure InheritedPropertiesAndAccessors;
     [Test]
     procedure ClassesAsInterfacesAndDuplicates;
+    [Test]
+    procedure SilentCases;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TImplementsClauseInvalidTests = class
+  public
+    [Test]
+    procedure IssueExampleWithoutRead;
+    [Test]
+    procedure TypeIndexAndGetter;
+    [Test]
+    procedure DuplicatesAndMethodResolutions;
+    [Test]
+    procedure OutsideOfClasses;
     [Test]
     procedure SilentCases;
     [Test]
@@ -399,8 +420,139 @@ begin
     '{"rules": {"interface-declaration-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
 end;
 
+{ TImplementsClauseInvalidTests }
+
+/// <summary>Meldungen der Treffer, eine je Zeile (für Fehlermeldungen der Tests).</summary>
+function Messages(const AFound: TArray<TRuleFinding>): string;
+var
+  Finding: TRuleFinding;
+begin
+  Result := '';
+  for Finding in AFound do
+    Result := Result + Finding.Message + #10;
+end;
+
+function ImplementsFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TImplementsClauseInvalidRule.Create, ASource, BasisIndex, '', 'Kunden.pas');
+end;
+
+function ImplementsFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TImplementsClauseInvalidRule.Create, ASource, BasisIndex, AConfig, APath);
+end;
+
+/// <summary>Unit Kunden mit den Interfaces IA bis ID und TDienst (TInterfacedObject, AList) mit AMembers.</summary>
+function Dienst(const AList, AMembers: string): string;
+begin
+  Result := Kunden('  IA = interface'#10'  end;'#10'  IB = interface'#10'  end;'#10'  IC = interface'#10'  end;'#10 +
+    '  ID = interface'#10'  end;'#10'  TDienst = class(TInterfacedObject, ' + AList + ')'#10 + AMembers + '  end;'#10);
+end;
+
+procedure TImplementsClauseInvalidTests.IssueExampleWithoutRead;
+var
+  Found: TArray<TRuleFinding>;
+  Line: string;
+begin
+  Line := '    property Basis: IBasis write FBasis implements IBasis;';
+  Found := ImplementsFindings(Kunden('  TDienst = class(TInterfacedObject, IBasis)'#10'    FBasis: IBasis;'#10 +
+    Line + #10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('implements braucht eine lesbare Property (wie E2261).', Found[0].Message);
+  Assert.AreEqual(Integer(Ord(TRuleSeverity.Error)), Integer(Ord(Found[0].Severity)));
+  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(Pos('implements', Line) - 1, Found[0].Range.StartPos.Character);
+  // Korrigierte Form.
+  Assert.AreEqual(0, Integer(Length(ImplementsFindings(Kunden('  TDienst = class(TInterfacedObject, IBasis)'#10 +
+    '    FBasis: IBasis;'#10'    property Basis: IBasis read FBasis write FBasis implements IBasis;'#10 +
+    '  end;'#10)))));
+end;
+
+procedure TImplementsClauseInvalidTests.TypeIndexAndGetter;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := ImplementsFindings(Dienst('IA, IB, IC, ID', '    FZahl: Integer;'#10'    FPunkt: TPunkt;'#10 +
+    '    function GetB: IB; cdecl;'#10'    function GetC(I: Integer): IC;'#10'    function GetD: ID; dynamic;'#10 +
+    '    property Zahl: Integer read FZahl implements IA;'#10'    property B: IB read GetB implements IB;'#10 +
+    '    property C: IC index 1 read GetC implements IC;'#10'    property D: ID read GetD implements ID;'#10 +
+    '    property Punkt: TPunkt read FPunkt implements IBasis;'#10));
+  Assert.AreEqual(5, Integer(Length(Found)), Messages(Found));
+  Assert.AreEqual('implements ist nur an Properties mit Klassen- oder Interface-Typ erlaubt, Integer ist keiner ' +
+    '(wie E2259).', Found[0].Message);
+  Assert.AreEqual(19, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(19, Found[0].Range.StartPos.Character);
+  Assert.AreEqual('Der Getter GetB einer implements-Property darf nicht cdecl sein, nur register (wie E2262).',
+    Found[1].Message);
+  Assert.AreEqual(20, Found[1].Range.StartPos.Line);
+  Assert.AreEqual('implements ist nicht zusammen mit index erlaubt (wie E2260).', Found[2].Message);
+  Assert.AreEqual('Der Getter GetD einer implements-Property darf nicht dynamic sein (wie E2263).', Found[3].Message);
+  // Record als Typ.
+  Assert.AreEqual('implements ist nur an Properties mit Klassen- oder Interface-Typ erlaubt, TPunkt ist keiner ' +
+    '(wie E2259).', Found[4].Message);
+end;
+
+procedure TImplementsClauseInvalidTests.DuplicatesAndMethodResolutions;
+var
+  Found: TArray<TRuleFinding>;
+  Line: string;
+begin
+  Line := '    property A2: IA read FA implements IA, IB;';
+  Found := ImplementsFindings(Dienst('IA, IB, IC', '    FA: IA;'#10'    procedure Tun;'#10 +
+    '    property A1: IA read FA implements IA;'#10 + Line + #10'    procedure IB.Machen = Tun;'#10 +
+    '    procedure IC.Machen = Tun;'#10));
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('IA wird schon von A1 per implements umgesetzt (wie E2257).', Found[0].Message);
+  Assert.AreEqual(17, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(Pos('IA, IB', Line) - 1, Found[0].Range.StartPos.Character);
+  Assert.AreEqual('Für IB gibt es die implements-Property A2; Methodenzuordnungen sind dann nicht erlaubt ' +
+    '(wie E2264).', Found[1].Message);
+  Assert.AreEqual(18, Found[1].Range.StartPos.Line);
+  Assert.AreEqual(14, Found[1].Range.StartPos.Character);
+end;
+
+procedure TImplementsClauseInvalidTests.OutsideOfClasses;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := ImplementsFindings(Kunden('  IA = interface'#10'    function GetA: IA;'#10 +
+    '    property A: IA read GetA implements IA;'#10'  end;'#10'  TWert = record'#10'    FA: IA;'#10 +
+    '    property A: IA read FA implements IA;'#10'  end;'#10));
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('implements ist nur in Klassen erlaubt (wie E2258).', Found[0].Message);
+  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(11, Found[1].Range.StartPos.Line);
+end;
+
+procedure TImplementsClauseInvalidTests.SilentCases;
+begin
+  // Unbekannter Typ, Alias, Klasse, register, Feld als Getter, generisches Interface, bedingter Zweig.
+  Assert.AreEqual(0, Integer(Length(ImplementsFindings(Dienst('IA, IB, IC, ID, IBasis', '    FX: TUnbekannt;'#10 +
+    '    FAlias: TAlias;'#10'    FKlasse: TKlasse;'#10'    function GetD: ID; register;'#10 +
+    '    property X: TUnbekannt read FX implements IA;'#10'    property Alias: TAlias read FAlias implements IBasis;'#10 +
+    '    property Klasse: TKlasse read FKlasse implements IB;'#10'    property D: ID read GetD implements ID;'#10 +
+    '  {$IFDEF ALT}'#10'    property C: IC read FX write FX index 2 implements IC;'#10'  {$ENDIF}'#10 +
+    '    property Liste: IList<Integer> read FListe implements IList<Integer>;'#10)))));
+end;
+
+procedure TImplementsClauseInvalidTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Kunden('  TDienst = class(TInterfacedObject, IBasis)'#10'    FBasis: IBasis;'#10 +
+    '    property Basis: IBasis write FBasis implements IBasis;'#10'  end;'#10);
+  Assert.AreEqual(1, Integer(Length(ImplementsFindings(Source, '', 'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(ImplementsFindings(Source, '{"rules": {"implements-clause-invalid": "off"}}',
+    'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(ImplementsFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(ImplementsFindings(Source,
+    '{"rules": {"implements-clause-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TMessageMethodInvalidTests);
   TDUnitX.RegisterTestFixture(TInterfaceDeclarationInvalidTests);
+  TDUnitX.RegisterTestFixture(TImplementsClauseInvalidTests);
 
 end.

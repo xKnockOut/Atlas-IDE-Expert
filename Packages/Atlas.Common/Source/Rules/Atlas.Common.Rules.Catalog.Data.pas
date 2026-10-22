@@ -2385,6 +2385,26 @@ begin
     '        "E2210",' + #10 +
     '        "E2370"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "implements-clause-invalid",' + #10 +
+    '      "name": "Invalid implements clause",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Delegation with implements breaks one of its fixed rules: implements only in classes (like E2258), only on properties of class or interface type (like E2259; reported for built-i' + 'n types, records and enumerations), not together with index (like E2260), only on readable properties (like E2261), the getter without a calling convention other than register (like E2262) and not dyn' + 'amic or message (like E2263), each interface implemented by one property only (like E2257) and no method resolution clause for an interface implemented that way (like E2264). Types are resolved throug' + 'h the uses clauses; unknown types, aliases and properties in conditional branches stay silent.",' + #10 +
+    '      "bad": "property Logger: ILogger write FLogger implements ILogger;",' + #10 +
+    '      "good": "property Logger: ILogger read FLogger write FLogger implements ILogger;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2257",' + #10 +
+    '        "E2258",' + #10 +
+    '        "E2259",' + #10 +
+    '        "E2260",' + #10 +
+    '        "E2261",' + #10 +
+    '        "E2262",' + #10 +
+    '        "E2263",' + #10 +
+    '        "E2264"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3581,6 +3601,11 @@ begin
     '      "id": "interface-declaration-invalid",' + #10 +
     '      "name": "Unzulässige Deklaration in einem Interface",' + #10 +
     '      "description": "Ein Interface deklariert etwas, das Interfaces nicht haben dürfen: Felder (wie E2209), Sichtbarkeitsabschnitte oder Methodendirektiven wie virtual, dynamic, abstract, override, m' + 'essage oder reintroduce (wie E2210), die Property-Klauseln stored, nodefault oder default mit Wert (wie E2207; default; hinter einer Array-Property ist erlaubt), eine Property, die ein Vorfahr-Interfa' + 'ce schon deklariert (wie E2206), oder einen Property-Accessor, den nur das Vorfahr-Interface deklariert (wie E2370). Ebenso gemeldet werden eine Klasse, ein Record oder eine Aufzählung als Vorfahr ein' + 'es Interfaces oder in der Interface-Liste einer Klasse (wie E2205) und dasselbe Interface zweimal in dieser Liste (wie E2208). Typen werden über die uses-Klauseln aufgelöst; Aliase, unbekannte Typen, ' + 'dispinterface und Deklarationen in bedingten Zweigen bleiben still."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "implements-clause-invalid",' + #10 +
+    '      "name": "implements-Klausel unzulässig",' + #10 +
+    '      "description": "Eine Delegation mit implements verletzt eine ihrer festen Regeln: implements nur in Klassen (wie E2258), nur an Properties mit Klassen- oder Interface-Typ (wie E2259; gemeldet fü' + 'r eingebaute Typen, Records und Aufzählungen), nicht zusammen mit index (wie E2260), nur an lesbaren Properties (wie E2261), der Getter ohne andere Aufrufkonvention als register (wie E2262) und nicht ' + 'dynamic oder message (wie E2263), jedes Interface nur über eine Property (wie E2257) und keine Methodenzuordnung für ein so umgesetztes Interface (wie E2264). Typen werden über die uses-Klauseln aufge' + 'löst; unbekannte Typen, Aliase und Properties in bedingten Zweigen bleiben still."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
