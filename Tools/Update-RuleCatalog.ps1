@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Erzeugt aus dem Regelkatalog die eingebettete Unit und die Benutzerdokumentation.
 
@@ -91,7 +91,7 @@ foreach ($Rule in $Base.rules) {
     # Compilermeldungen, denen die Regel entspricht (#938), z. B. F2069.
     if ($Rule.PSObject.Properties.Name -contains 'compilerCodes') {
         foreach ($Code in @($Rule.compilerCodes)) {
-            if ([string]$Code -cnotmatch '^[EFWH]\d{4}$') {
+            if ([string]$Code -cnotmatch '^[EFWHX]\d{4}$') {
                 $Problems.Add("Regel '$($Rule.id)': ungültiger Compilercode '$Code'")
             }
         }

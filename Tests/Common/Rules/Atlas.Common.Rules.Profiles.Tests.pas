@@ -173,16 +173,16 @@ const
     'class-reference-nonvirtual-constructor,collection-modified-in-loop,commented-out-code,comparison-as-statement,' +
     'component-create-without-override,component-default-mismatch,component-fixed-pixels,' +
     'component-hardcoded-color,component-missing-free-notification,component-missing-inherited,' +
-    'component-palette-icon,component-setter-without-invalidate,conditional-directive-unbalanced,confusable-identifier,' +
+    'component-palette-icon,component-setter-without-invalidate,condition-not-boolean,conditional-directive-unbalanced,confusable-identifier,' +
     'constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,delimited-text-without-strict,deprecated-symbol,deref-before-nil-check,destroy-called-directly,destroy-without-override,' +
     'dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,' +
-    'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,dictionary-get-without-check,dunitx-test-without-assert,duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,' +
-    'empty-except,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,for-variable-after-loop,for-variable-misuse,forbidden-uses,' +
+    'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,dictionary-get-without-check,dunitx-test-without-assert,duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,dynamic-array-misuse,' +
+    'empty-except,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,for-in-not-enumerable,for-variable-after-loop,for-variable-misuse,forbidden-uses,' +
     'foreign-form-control-access,form-access-before-create,form-field-type-mismatch,form-field-without-object,' +
     'form-object-without-field,format-without-settings,generic-constraint-violated,generic-exception-raised,hides-virtual,' +
-    'ifthen-side-effect,implemented-not-declared,implicit-package-import,inherited-abstract-call,int32-mul-overflow,interface-guid,interface-not-implemented,' +
-    'invisible-char,jump-outside-allowed-scope,label-misuse,' +
-    'lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,' +
+    'hresult-integer-mix,ifthen-side-effect,implemented-not-declared,implicit-package-import,inherited-abstract-call,int32-mul-overflow,interface-guid,interface-not-implemented,' +
+    'invalid-var-argument,invisible-char,jump-outside-allowed-scope,label-misuse,' +
+    'local-routine-as-callback,lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,' +
     'metric-method-length,metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-inherited,null-compare,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,' +
     'possibly-uninitialized,processmessages-in-loop,property-accessor-invalid,queue-nil-in-package,raise-in-finally,readonly-property-assigned,redundant-assigned-free,reraise-exception-object,reraise-outside-handler,' +
     'result-not-set,' +
@@ -205,12 +205,12 @@ begin
   Assert.AreEqual('abstract-class-instantiated,anonymous-thread-not-started,argument-count-mismatch,assert-side-effect,assign-to-property-member,bidi-control,captured-loop-variable,case-missing-enum-value,char-to-pchar,' +
     'class-reference-nonvirtual-constructor,collection-modified-in-loop,comparison-as-statement,' +
     'component-create-without-override,component-default-mismatch,component-missing-free-notification,' +
-    'component-missing-inherited,conditional-directive-unbalanced,constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,delimited-text-without-strict,' +
+    'component-missing-inherited,condition-not-boolean,conditional-directive-unbalanced,constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,delimited-text-without-strict,' +
     'deref-before-nil-check,destroy-called-directly,destroy-without-override,dfm-circular-datasource,dfm-control-field-type-mismatch,' +
     'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,dictionary-get-without-check,' +
-    'duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,for-variable-after-loop,for-variable-misuse,' +
+    'duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,dynamic-array-misuse,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,for-in-not-enumerable,for-variable-after-loop,for-variable-misuse,' +
     'form-access-before-create,form-field-type-mismatch,form-field-without-object,form-object-without-field,generic-constraint-violated,hides-virtual,' +
-    'ifthen-side-effect,implemented-not-declared,inherited-abstract-call,int32-mul-overflow,interface-guid,interface-not-implemented,jump-outside-allowed-scope,label-misuse,lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,' +
+    'hresult-integer-mix,ifthen-side-effect,implemented-not-declared,inherited-abstract-call,int32-mul-overflow,interface-guid,interface-not-implemented,invalid-var-argument,jump-outside-allowed-scope,label-misuse,local-routine-as-callback,lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,' +
     'missing-inherited,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,' +
     'possibly-uninitialized,property-accessor-invalid,queue-nil-in-package,raise-in-finally,readonly-property-assigned,reraise-outside-handler,result-not-set,security-command-injection,' +
     'security-sql-injection,security-tls-verification-disabled,self-as-interface-in-constructor,self-assignment,setter-recursion,signature-mismatch,sizeof-pointer,' +

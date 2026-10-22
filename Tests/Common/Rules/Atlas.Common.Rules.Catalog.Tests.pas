@@ -304,8 +304,11 @@ begin
   // Eingebauter Katalog: line-length entspricht F2069 (#938).
   Assert.IsTrue(TRuleCatalog.Shared.TryFind('line-length', Entry));
   Assert.AreEqual('F2069', string.Join(',', Entry.CompilerCodes));
+  // X-Codes (Vorab-Prüfungen des Compilers, #1040) sind gültig.
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('hresult-integer-mix', Entry));
+  Assert.AreEqual('X1008', string.Join(',', Entry.CompilerCodes));
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":"F2069"}]}');
-  ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":["X2069"]}]}');
+  ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":["Y2069"]}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":["F206"]}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":[2069]}]}');
   // Stufe der Compilerregeln (#1024).
