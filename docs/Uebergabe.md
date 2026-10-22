@@ -800,3 +800,10 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Neue Option `includeFields` für unused-private-member (Schema, Parser, Doku erzeugt).
 - Unter FPC getestet (Regeltests, Golden-Korpus, Profile); Scan über alle Repo-Quellen und das Referenzprojekt ohne Fehlalarme. Handtests NS1–NS9, UV1–UV8, MW1–MW8, IZ1–IZ8, IK1–IK8, AK1–AK8 in `docs/Atlas-Testfaelle.md`; die Issues bleiben bis dahin offen.
 - Beim ersten Delphi-Build prüfen: Konstanten-Arrays mit `MatchText` (`InterfaceForbiddenDirectives`, `ForeignConventions`, `PropertySpecifiers`), `case` über `TIndexSymbolKind` mit `else`.
+
+## Compiler-Regeln mit Ausdruckstypen (#1011, #1015, #1067, #1080, 22.10.2026, Kette ab `feature/1006-readonly-property-assigned`, ungebaut)
+- Kette: `feature/1011-comparison-always-constant` → `feature/1015-constant-initializer-mismatch` → `feature/1067-case-selector-not-ordinal` → `feature/1080-suspicious-string-pointer-cast`; nichts in main, Issues bleiben bis zum Handtest offen.
+- Neue Unit `Atlas.Common.Semantics.ConstantValues` (`TConstantValues`: Konstanten auswerten, Aufzählungswerte in Reihenfolge, Wertebereiche der Ganzzahltypen); ersetzt die frühere `TCaseLabelValues` in `Rules.Builtin.Statements`.
+- Neue Unit `Atlas.Common.Rules.Builtin.TypedExpressions` mit dem gemeinsamen Rahmen `TTypedScope` (`SureType`, `DeclarationSure` über `TConditionalBranches.Implies`) und den Regeln `comparison-always-constant`, `constant-initializer-mismatch`, `case-selector-not-ordinal`, `suspicious-string-pointer-cast`.
+- Marco: Offensichtlich Falsches auch melden, wenn dcc schweigt (`Length(S) < 0`). Nicht gemeldet werden `string(PAnsiChar)` (wandelt korrekt um) und `PWideChar(TBytes)` (kann gewollt sein), obwohl #1080 sie nennt.
+- Unter FPC grün: TypedExpressions-, ConstantValues-, Profiles-, Catalog- und Golden-Tests; alle Prüfskripte ohne Befund. Handtests VK1–VK9, KI1–KI9, CN1–CN8, ZW1–ZW9.

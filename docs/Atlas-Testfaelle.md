@@ -5251,3 +5251,66 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | AK6 | `register` ausdrücklich, `class constructor`, `cdecl; varargs` | Keine Meldung |
 | AK7 | `"calling-convention-required": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | AK8 | Abgleich mit Delphi: AK1, AK3, AK4, AK5 übersetzen | dcc meldet E2277, E2591, E2236 und E2270 an denselben Stellen; für AK6 nichts |
+
+## Vergleich immer wahr oder immer falsch (#1011)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VK1 | Das Beispiel aus #1011: `var Rest: Cardinal;` und `while Rest >= 0 do Dec(Rest);` | Warnung `comparison-always-constant` an `Rest >= 0`: „Rest ist Cardinal; Rest >= 0 ist immer wahr, die Schleife endet nie (wie W1022).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| VK2 | `B: Byte` mit `if B > 255`, `if 256 <= B`, `if B < 0`, `if B = 300` | Je „… ist immer falsch (wie W1021).“ |
+| VK3 | `B: Byte`, `case B of 1, 300: …; 256..300: …; 250..400: … end` | Meldung an `300` und `256..300` „… liegt außerhalb des Bereichs von Byte; der Zweig wird nie ausgeführt (wie W1018).“, nicht an `250..400` |
+| VK4 | Property `Saldo: Cardinal` einer Klasse aus einer anderen Unit, `if Konto.Saldo < 0` | „Konto.Saldo ist Cardinal; Konto.Saldo < 0 ist immer falsch (wie W1021).“ |
+| VK5 | `I >= 0` mit Integer, `C > 0` mit Cardinal, `B < 255`, `Length(S) > 0`, `C - 1 >= 0`, Teilbereich `1..5` mit `> 5`, NativeInt mit `< 2147483648` | Keine Meldung |
+| VK8 | Deklaration in `{$IFDEF X} Rest: Integer; {$ELSE} Rest: Cardinal; {$ENDIF}`, danach `if Rest >= 0` | Keine Meldung: Der Typ hängt vom Zweig ab (dcc meldet ohne X trotzdem W1022) |
+| VK6 | `"comparison-always-constant": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| VK7 | Abgleich mit Delphi: VK1 bis VK5 übersetzen (Win32 und Win64) | dcc meldet W1022, W1021 bzw. W1018 an denselben Stellen, für VK5 nichts; meldet dcc für einen Teilbereich doch eine Warnung, den Fall im Issue nachtragen |
+| VK9 | `if Length(S) < 0`, `if Length(Liste) >= 0` (dynamisches Array) | „Length(S) ist nie negativ; Length(S) < 0 ist immer falsch (dcc meldet das nicht).“ bzw. „… immer wahr …“; dcc selbst meldet hier nichts |
+
+## Initialisierung einer Konstanten passt nicht (#1015)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KI1 | Das Beispiel aus #1015: `TStatus = (stNeu, stOffen, stGeschlossen, stArchiviert)` und `StatusText: array[TStatus] of string = ('Neu', 'Offen', 'Geschlossen');` | Fehler `constant-initializer-mismatch` an der Klammer: „TStatus hat 4 Werte, die Konstante 3 Einträge; stArchiviert fehlt (wie E2072).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| KI2 | Schnellkorrektur „Fehlende Einträge mit Platzhalter ergänzen“, danach Strg+Z | Wird `('Neu', 'Offen', 'Geschlossen', ''{stArchiviert})`, keine Meldung mehr; ein Undo-Schritt |
+| KI3 | `array[0..2] of Integer = (1, 2, 3, 4)`, `array[Boolean] of string = ('Nein')`, `array[0..1, 0..2] of Integer = ((1, 2, 3), (4, 5))` | „0..2 hat 3 Werte, die Konstante 4 Einträge (wie E2072).“, „Boolean hat 2 Werte …“, „0..2 hat 3 Werte, die Konstante 2 Einträge …“ an der inneren Klammer |
+| KI4 | `TNamen = array[TStatus] of string;` und `Namen: TNamen = ('a', 'b', 'c', 'd', 'e');` | „TStatus hat 4 Werte, die Konstante 5 Einträge (wie E2072).“ |
+| KI5 | Aufzählung `TFarbe` aus einer anderen Unit des Projekts, `array[TFarbe] of string` mit einem Eintrag zu wenig | Meldung mit dem fehlenden Namen |
+| KI6 | `TPunkt = record X, Y: Integer; end;` und `Ursprung: TPunkt = (Y: 0; X: 0);`, Schnellkorrektur | „X steht in TPunkt vor Y; die Felder müssen in der Reihenfolge der Deklaration stehen (wie E2083).“; Korrektur ergibt `(X: 0; Y: 0)` |
+| KI7 | Passende Konstanten, `array of Integer`, `array[0..2] of Char = 'abc'`, Einträge in `{$IFDEF}`, Aufzählung mit bedingtem Wert, varianter Record, unbekannter Indextyp | Keine Meldung |
+| KI8 | `"constant-initializer-mismatch": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| KI9 | Abgleich mit Delphi: KI1, KI3, KI4, KI6 übersetzen | dcc meldet E2072 bzw. E2083 an denselben Stellen, für KI7 nichts |
+
+## case oder for ohne ordinalen Typ (#1067)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CN1 | Das Beispiel aus #1067: `var Befehl: string;` und `case Befehl of 'start': Starten; 'stop': Stoppen; end;` | Fehler `case-selector-not-ordinal` an `Befehl`: „case braucht einen ordinalen Typ; Befehl ist string (wie E2001).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| CN2 | Schnellkorrektur „In case IndexStr(…) of umwandeln“ in einer Unit ohne `System.StrUtils`, danach Strg+Z | Wird `case IndexStr(Befehl, ['start', 'stop']) of 0: …; 1: …`, `System.StrUtils` steht in den uses, keine Meldung mehr; ein Undo-Schritt |
+| CN3 | `case Wert of` mit `Wert: Double`, mit einem Objekt (`TObject`) und mit einem Interface | Je „case braucht einen ordinalen Typ; … (wie E2001).“, keine IndexStr-Korrektur |
+| CN4 | `var F: Double; for F := 1 to 3 do`, Inline-`for var D: Double := 1 to 3 do` | „for braucht eine ordinale Zählvariable; F ist Double (wie E2032).“ |
+| CN5 | `var Grenze: Integer;` mit `case I of Grenze: …`, typisierte Konstante `Max: Integer = 3` als Marke, `A: array[0..Grenze] of Byte` | „Die case-Marke Grenze ist eine Variable, keine Konstante (wie E2026).“, „… ist eine typisierte Konstante …“, „Die Arraygrenze Grenze ist eine Variable …“ |
+| CN6 | case über Integer, Char, Aufzählung, Teilbereich; Marken aus `const N = 3`, `Ord('A')`, `Low(TFarbe)`; Typ unbekannt oder Deklaration in `{$IFDEF}` | Keine Meldung |
+| CN7 | `"case-selector-not-ordinal": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| CN8 | Abgleich mit Delphi: CN1, CN3, CN4, CN5 übersetzen | dcc meldet E2001, E2032 bzw. E2026 an denselben Stellen, für CN6 nichts |
+
+## Zeiger und Zeichenbreite eines Strings passen nicht zusammen (#1080)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZW1 | Das Beispiel aus #1080: `var Pfad: AnsiString;` und `DeleteFile(PChar(Pfad));` | Warnung `suspicious-string-pointer-cast` an `PChar(Pfad)`: „PChar zeigt auf WideChar, Pfad ist AnsiString; die API liest Datenmüll (wie W1044).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| ZW2 | Schnellkorrektur „Pfad als string deklarieren“, danach Strg+Z | Wird `var Pfad: string;`, keine Meldung mehr; ein Undo-Schritt |
+| ZW3 | Die Alternativen „In string umwandeln: PChar(string(…))“ und „Passenden Zeigertyp verwenden: PAnsiChar“ | Ergeben `PChar(string(Pfad))` bzw. `PAnsiChar(Pfad)`, jeweils ohne Meldung |
+| ZW4 | `var S: string;` und `PAnsiChar(S)`, ebenso mit WideString und UnicodeString | „PAnsiChar zeigt auf AnsiChar, S ist string; die API liest nur das erste Zeichen (wie W1044).“; Korrekturen `PAnsiChar(AnsiString(S))` und `PChar(S)` |
+| ZW5 | `R: RawByteString`, `U: UTF8String`, `PChar(R)`, `PWideChar(U)`, `PChar(UTF8Encode(S))` | Je eine Meldung mit dem Typ aus System; beim Funktionsergebnis keine Deklarationskorrektur |
+| ZW6 | Parameter `const Ziel: AnsiString`, Feld `FName: AnsiString`, `A, B: AnsiString` jeweils in `PChar(…)` | Meldung, aber ohne „… als string deklarieren“ |
+| ZW7 | `PChar(S)` mit string, `PAnsiChar(A)` mit AnsiString, `PChar('abc')`, `string(P)` mit `P: PAnsiChar`, `PWideChar(Bytes)` mit TBytes, unbekannter Typ, `PChar(S + A)`, Deklaration in `{$IFDEF}` mit anderem Typ im `{$ELSE}` | Keine Meldung |
+| ZW8 | `"suspicious-string-pointer-cast": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| ZW9 | Abgleich mit Delphi: ZW1, ZW4, ZW5 übersetzen | dcc meldet W1044 an denselben Stellen, für ZW7 nichts |

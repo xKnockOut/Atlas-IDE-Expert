@@ -49,7 +49,7 @@
 //                     Zwei Marken einer case-Anweisung (wie E2030) bzw. eines
 //                     varianten Record-Teils (wie E2027) decken denselben Wert ab,
 //                     auch über Bereiche und Konstanten (#983). Die Werte rechnet
-//                     Semantics.OrdinalConstants aus, Namen löst TNameResolver auf;
+//                     Semantics.ConstantValues aus, Namen löst TNameResolver auf;
 //                     Unbekanntes vergleicht die Regel nur über den Text. Die
 //                     Korrektur entfernt den späteren Wert bzw. dessen Zweig.
 //                     Bedingte Zweige über Pascal.ConditionalBranches: gemeldet
@@ -201,7 +201,6 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ConstantValues,
-  Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.RoutineBody,
