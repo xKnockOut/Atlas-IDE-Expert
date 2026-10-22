@@ -413,7 +413,7 @@ type
     FOnBaselineDelete: TFunc<string>;
     FBaselineInfo: TLabel;
     FRulesProject: TButton;
-    FBaselineUpdate: TButton;
+    FBaselineUpdateButton: TButton;
     FBaselineDelete: TButton;
     FUndoKey: TEdit;
     FRedoKey: TEdit;
@@ -3266,7 +3266,7 @@ begin
   FBaselineInfo.Caption := TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineNone);
   FBaselineInfo.Top := 4000;
   Row := AddRow(5000);
-  FBaselineUpdate := AddButton(Row, TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineUpdate), 0,
+  FBaselineUpdateButton := AddButton(Row, TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineUpdate), 0,
     BaselineUpdateClick);
   FBaselineDelete := AddButton(Row, TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineDelete), 216,
     BaselineDeleteClick);

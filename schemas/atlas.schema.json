@@ -411,6 +411,11 @@
                 "default": false,
                 "description": "Nur global-variable: auch die Formularvariablen des Designers melden (#941)."
               },
+              "checkUses": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur duplicate-declaration: doppelte Einträge in uses-Klauseln melden (#988)."
+              },
               "allowTables": {
                 "type": "array",
                 "items": {

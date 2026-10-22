@@ -2172,6 +2172,27 @@
         "E2252",
         "E2301"
       ]
+    },
+    {
+      "id": "duplicate-declaration",
+      "name": "Identifier declared twice",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "An identifier is declared twice in the same scope (like E2004): a local variable, constant, type or label and a parameter of the routine, two fields, a field and a method or property of a type, two types, a constant and a variable of the unit across interface and implementation. Likewise a unit twice in uses or in the uses clauses of interface and implementation at once (option checkUses). Overloads and bodies of routines, a forward declaration and its type, TList next to TList<T> and declarations in different branches of the same {$IF} do not count. Quick fix: remove the second declaration (the whole var, const, type or label section when it was its only one; for uses the duplicate entry); none for parameters, methods and properties.",
+      "bad": "procedure TRechnung.Summieren(Betrag: Currency);\nvar\n  Betrag: Currency;\nbegin",
+      "good": "procedure TRechnung.Summieren(Betrag: Currency);\nbegin",
+      "compilerCodes": [
+        "E2004"
+      ],
+      "options": [
+        {
+          "name": "checkUses",
+          "type": "boolean",
+          "default": true,
+          "description": "Report duplicate entries in uses clauses."
+        }
+      ]
     }
   ]
 }

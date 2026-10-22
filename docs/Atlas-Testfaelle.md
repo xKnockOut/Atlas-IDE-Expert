@@ -4004,3 +4004,20 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | OV6 | `var` gegen Wertparameter, generische Variante, `class operator Implicit` zweimal, Rumpf zu `forward`, gleichnamige Methoden in zwei Klassen, Routinen in `{$IFDEF}`/`{$ELSE}` | Keine Meldung |
 | OV7 | `"overload-directive-missing": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
 | OV8 | Abgleich mit Delphi: OV1, OV3, OV4 und OV5 übersetzen | dcc meldet E2254, E2267, E2252 bzw. E2301 an denselben Stellen, für OV6 nichts |
+
+## Bezeichner doppelt deklariert (#988)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DD1 | Das Beispiel aus #988: Parameter `Betrag` und lokale Variable `Betrag` | Fehler `duplicate-declaration` an der Variable: „Betrag ist schon als Parameter deklariert (wie E2004).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| DD2 | Schnellkorrektur „Zweite Deklaration entfernen“, danach Strg+Z | Variable samt leerem `var` weg; mit weiteren Variablen nur die Zeile bzw. der Name; ein Undo-Schritt stellt es wieder her |
+| DD3 | Konstante und Variable gleichen Namens in einer Routine; zwei gleiche Labels; zwei Parameter gleichen Namens | Je eine Meldung; bei Parametern ohne Korrektur |
+| DD4 | Zwei Felder gleichen Namens in verschiedenen Abschnitten einer Klasse; Methode und Property gleichen Namens; Feld im varianten Teil eines Records wie ein anderes Feld | Je eine Meldung |
+| DD5 | Variable im interface, Typ und Routine gleichen Namens in der implementation | Zwei Meldungen „… schon als Variable deklariert“ |
+| DD6 | `System.SysUtils` zweimal in uses; `System.Classes` in interface- und implementation-uses | „Unit … steht schon in uses“ bzw. „… im uses des interface“; Korrektur entfernt den Eintrag bzw. die ganze uses-Klausel |
+| DD7 | `"checkUses": false` | Keine Meldung für uses, die übrigen bleiben |
+| DD8 | Überladungen und Rümpfe, Vorwärtsdeklaration, `TListe` neben `TListe<T>`, Feld und gleichnamiger Parameter einer Methode, `{$IFDEF}`/`{$ELSE}` | Keine Meldung |
+| DD9 | `"duplicate-declaration": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| DD10 | Abgleich mit Delphi: DD1, DD3 bis DD6 übersetzen | dcc meldet E2004 an denselben Stellen, für DD8 nichts |

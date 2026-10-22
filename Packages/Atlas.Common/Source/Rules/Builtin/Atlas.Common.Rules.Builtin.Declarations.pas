@@ -15,6 +15,10 @@
 //                              Bereichs ohne overload (#987, wie E2254,
 //                              E2267) oder mit gleichen Parametern (E2252,
 //                              E2301); Korrektur: overload; anhängen
+//   duplicate-declaration      Bezeichner im selben Bereich zweimal deklariert
+//                              (#988, wie E2004): Parameter und lokale
+//                              Deklarationen, Mitglieder eines Typs, die Unit
+//                              über interface und implementation, uses
 //                              (#1000, wie E2291), bzw. Zuordnung IFoo.Bar = Baz
 //                              für ein nicht genanntes Interface (wie E2265).
 //                              Geerbte Methoden, Zuordnungen und implements
@@ -86,8 +90,15 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TDuplicateDeclarationRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 const
   FieldAfterMethodRuleId = 'field-after-method';
+  DuplicateDeclarationRuleId = 'duplicate-declaration';
   OverloadDirectiveMissingRuleId = 'overload-directive-missing';
 
 procedure RegisterDeclarationRules(const ARegistry: TRuleRegistry);
@@ -105,6 +116,7 @@ uses
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Rules.Options,
   Atlas.Text.Lines;
 
 /// <summary>Zeilen innerhalb von {$IF…}…{$ENDIF}: Element I gilt für Zeile I.</summary>
@@ -196,6 +208,42 @@ begin
     Result := TRuleConfidence.Medium
   else
     Result := TRuleConfidence.High;
+end;
+
+/// <summary>Erstes Token ab AOffset (Index), High + 1 ohne.</summary>
+function TokenAtOffset(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
+var
+  Low, High, Middle: Integer;
+begin
+  Low := 0;
+  High := Length(ATokens);
+  while Low < High do
+  begin
+    Middle := (Low + High) div 2;
+    if ATokens[Middle].Offset < AOffset then
+      Low := Middle + 1
+    else
+      High := Middle;
+  end;
+  Result := Low;
+end;
+
+/// <summary>Steht vor APosition in ihrer Zeile nur Leerraum?</summary>
+function BlankBefore(const ALines: TArray<string>; const APosition: TTextPosition): Boolean;
+begin
+  Result := (APosition.Line < Length(ALines)) and (Trim(Copy(ALines[APosition.Line], 1, APosition.Character)) = '');
+end;
+
+/// <summary>Steht hinter APosition in ihrer Zeile nur Leerraum oder ein //-Kommentar?</summary>
+function BlankAfter(const ALines: TArray<string>; const APosition: TTextPosition): Boolean;
+var
+  Rest: string;
+begin
+  Result := False;
+  if APosition.Line >= Length(ALines) then
+    Exit;
+  Rest := Trim(Copy(ALines[APosition.Line], APosition.Character + 1, MaxInt));
+  Result := (Rest = '') or Rest.StartsWith('//');
 end;
 
 { TDeclaredNotImplementedRule }
@@ -562,20 +610,8 @@ var
   Paths: TArray<string>;
 
   function FirstToken(ANode: TSyntaxNode): Integer;
-  var
-    Low, High, Middle: Integer;
   begin
-    Low := 0;
-    High := Length(Tokens);
-    while Low < High do
-    begin
-      Middle := (Low + High) div 2;
-      if Tokens[Middle].Offset < ANode.StartOffset then
-        Low := Middle + 1
-      else
-        High := Middle;
-    end;
-    Result := Low;
+    Result := TokenAtOffset(Tokens, ANode.StartOffset);
   end;
 
   function PathOf(ANode: TSyntaxNode): string;
@@ -585,18 +621,12 @@ var
 
   function OnlySpaceBefore(const APosition: TTextPosition): Boolean;
   begin
-    Result := (APosition.Line < Length(Lines)) and (Trim(Copy(Lines[APosition.Line], 1, APosition.Character)) = '');
+    Result := BlankBefore(Lines, APosition);
   end;
 
   function OnlyCommentAfter(const APosition: TTextPosition): Boolean;
-  var
-    Rest: string;
   begin
-    Result := False;
-    if APosition.Line >= Length(Lines) then
-      Exit;
-    Rest := Trim(Copy(Lines[APosition.Line], APosition.Character + 1, MaxInt));
-    Result := (Rest = '') or Rest.StartsWith('//');
+    Result := BlankAfter(Lines, APosition);
   end;
 
   // Erstes Kind des Blocks um ABody[AIndex]: davorstehende Attribute gehören dazu.
@@ -751,20 +781,8 @@ var
   Paths: TArray<string>;
 
   function FirstToken(ANode: TSyntaxNode): Integer;
-  var
-    Low, High, Middle: Integer;
   begin
-    Low := 0;
-    High := Length(Tokens);
-    while Low < High do
-    begin
-      Middle := (Low + High) div 2;
-      if Tokens[Middle].Offset < ANode.StartOffset then
-        Low := Middle + 1
-      else
-        High := Middle;
-    end;
-    Result := Low;
+    Result := TokenAtOffset(Tokens, ANode.StartOffset);
   end;
 
   function NodeKey(ANode: TSyntaxNode): string;
@@ -1029,6 +1047,415 @@ begin
   Visit(AContext.Tree.Root);
 end;
 
+{ TDuplicateDeclarationRule }
+
+function TDuplicateDeclarationRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(DuplicateDeclarationRuleId, TRuleSeverity.Error, 'Bezeichner doppelt deklariert');
+end;
+
+type
+  /// <summary>Ein deklarierter Name für duplicate-declaration (#988).</summary>
+  TDeclaredName = record
+    Name: string;
+    /// <summary>Vergleichsschlüssel: Name in Kleinbuchstaben, bei generischen Typen mit Zahl der Typparameter.</summary>
+    Key: string;
+    /// <summary>Art für die Meldung: Parameter, Variable, Konstante, Typ, Label, Routine, Feld, Methode, Property.</summary>
+    Kind: string;
+    /// <summary>Deklarationsknoten (VarDecl, Field, TypeDecl …) bzw. LabelSection oder UsedUnit.</summary>
+    Node: TSyntaxNode;
+    /// <summary>Umgebender Abschnitt (VarSection …) oder nil.</summary>
+    Section: TSyntaxNode;
+    /// <summary>Position unter den Namen des Knotens (A, B: Integer) und deren Zahl.</summary>
+    NameIndex: Integer;
+    NameCount: Integer;
+    Token: Integer;
+    Path: string;
+    IsRoutine: Boolean;
+  end;
+
+procedure TDuplicateDeclarationRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Lines: TArray<string>;
+  LineBreak: string;
+  Paths: TArray<string>;
+  Names: TArray<TDeclaredName>;
+
+  // Erstes Token AName im Knoten ANode; -1 ohne.
+  function NameToken(ANode: TSyntaxNode; const AName: string): Integer;
+  var
+    Index: Integer;
+  begin
+    for Index := TokenAtOffset(Tokens, ANode.StartOffset) to High(Tokens) do
+    begin
+      if Tokens[Index].Offset >= ANode.EndOffset then
+        Break;
+      if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AName) then
+        Exit(Index);
+    end;
+    Result := -1;
+  end;
+
+  procedure AddName(ANode, ASection: TSyntaxNode; const AName, AKind: string; AIndex, ACount, AToken: Integer;
+    AIsRoutine: Boolean);
+  var
+    Entry: TDeclaredName;
+    Generic: TSyntaxNode;
+  begin
+    if (AName = '') or (Pos('.', AName) > 0) or (AToken < 0) then
+      Exit;
+    Entry := Default(TDeclaredName);
+    Entry.Name := AName;
+    Entry.Key := LowerCase(AName);
+    // TList und TList<T> dürfen nebeneinander stehen.
+    Generic := nil;
+    if ANode.Kind = TSyntaxKind.TypeDecl then
+      Generic := ANode.FindChild(TSyntaxKind.GenericParams);
+    if Generic <> nil then
+      Entry.Key := Entry.Key + '<' + IntToStr(Generic.ChildCount) + '>';
+    Entry.Kind := AKind;
+    Entry.Node := ANode;
+    Entry.Section := ASection;
+    Entry.NameIndex := AIndex;
+    Entry.NameCount := ACount;
+    Entry.Token := AToken;
+    Entry.Path := TConditionalBranches.PathAt(Paths, AToken);
+    Entry.IsRoutine := AIsRoutine;
+    Names := Names + [Entry];
+  end;
+
+  // A, B: Integer: je Name ein Eintrag; die Token stehen in der Reihenfolge der Namen.
+  procedure AddNames(ANode, ASection: TSyntaxNode; const AKind: string);
+  var
+    Parts: TArray<string>;
+    Index, Token, From: Integer;
+  begin
+    Parts := ANode.Name.Split([',']);
+    From := TokenAtOffset(Tokens, ANode.StartOffset);
+    for Index := 0 to High(Parts) do
+    begin
+      Token := From;
+      while (Token <= High(Tokens)) and (Tokens[Token].Offset < ANode.EndOffset) and
+        not ((Tokens[Token].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Token].Text, Trim(Parts[Index]))) do
+        Inc(Token);
+      if (Token > High(Tokens)) or (Tokens[Token].Offset >= ANode.EndOffset) then
+        Exit;
+      AddName(ANode, ASection, Trim(Parts[Index]), AKind, Index, Length(Parts), Token, False);
+      From := Token + 1;
+    end;
+  end;
+
+  // label L1, L2; über die Token.
+  procedure AddLabels(ASection: TSyntaxNode);
+  var
+    Index, Count, Position: Integer;
+  begin
+    Count := 0;
+    for Index := TokenAtOffset(Tokens, ASection.StartOffset) to High(Tokens) do
+    begin
+      if Tokens[Index].Offset >= ASection.EndOffset then
+        Break;
+      if Tokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number] then
+        Inc(Count);
+    end;
+    Position := 0;
+    for Index := TokenAtOffset(Tokens, ASection.StartOffset) to High(Tokens) do
+    begin
+      if Tokens[Index].Offset >= ASection.EndOffset then
+        Break;
+      if Tokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number] then
+      begin
+        AddName(ASection, ASection, Tokens[Index].Text, 'Label', Position, Count, Index, False);
+        Inc(Position);
+      end;
+    end;
+  end;
+
+  // Ein Deklarationsabschnitt, eine Routine oder Labels.
+  procedure AddSection(AChild: TSyntaxNode);
+  var
+    Inner: Integer;
+    Header: TSyntaxNode;
+  begin
+    case AChild.Kind of
+      TSyntaxKind.VarSection:
+        for Inner := 0 to AChild.ChildCount - 1 do
+          if AChild[Inner].Kind = TSyntaxKind.VarDecl then
+            AddNames(AChild[Inner], AChild, 'Variable');
+      TSyntaxKind.ConstSection:
+        for Inner := 0 to AChild.ChildCount - 1 do
+          if AChild[Inner].Kind = TSyntaxKind.ConstDecl then
+            AddNames(AChild[Inner], AChild, 'Konstante');
+      TSyntaxKind.TypeSection:
+        for Inner := 0 to AChild.ChildCount - 1 do
+          // Die Vorwärtsdeklaration TFoo = class; und ihre volle Deklaration sind ein Typ.
+          if (AChild[Inner].Kind = TSyntaxKind.TypeDecl) and (AChild[Inner].FindChild(TSyntaxKind.ForwardType) = nil) then
+            AddName(AChild[Inner], AChild, AChild[Inner].Name, 'Typ', 0, 1, NameToken(AChild[Inner], AChild[Inner].Name),
+              False);
+      TSyntaxKind.LabelSection:
+        AddLabels(AChild);
+      TSyntaxKind.RoutineDecl:
+        begin
+          Header := AChild.FindChild(TSyntaxKind.RoutineHeader);
+          if Header <> nil then
+            AddName(AChild, nil, Header.Name, 'Routine', 0, 1, NameToken(Header, Header.Name), True);
+        end;
+    end;
+  end;
+
+  procedure AddSections(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    for Index := 0 to ANode.ChildCount - 1 do
+      AddSection(ANode[Index]);
+  end;
+
+  procedure AddMembers(ABody: TSyntaxNode);
+  var
+    Index, Inner: Integer;
+    Child: TSyntaxNode;
+  begin
+    for Index := 0 to ABody.ChildCount - 1 do
+    begin
+      Child := ABody[Index];
+      case Child.Kind of
+        TSyntaxKind.Field:
+          AddNames(Child, nil, 'Feld');
+        TSyntaxKind.RoutineHeader:
+          AddName(Child, nil, Child.Name, 'Methode', 0, 1, NameToken(Child, Child.Name), True);
+        TSyntaxKind.PropertyDecl:
+          AddName(Child, nil, Child.Name, 'Property', 0, 1, NameToken(Child, Child.Name), False);
+        TSyntaxKind.VarSection:
+          for Inner := 0 to Child.ChildCount - 1 do
+            if Child[Inner].Kind = TSyntaxKind.VarDecl then
+              AddNames(Child[Inner], Child, 'Feld');
+        TSyntaxKind.ConstSection, TSyntaxKind.TypeSection:
+          AddSection(Child);
+        // Varianter Teil: Selektorfeld und die Felder der Zweige gehören zum Record.
+        TSyntaxKind.VariantPart, TSyntaxKind.CaseItem, TSyntaxKind.Visibility:
+          AddMembers(Child);
+      end;
+    end;
+  end;
+
+  // Löscht die Zeilen von ANode, wenn er allein auf ihnen steht.
+  function LinesEdit(ANode: TSyntaxNode; out AEdit: TRuleEdit): Boolean;
+  begin
+    Result := BlankBefore(Lines, ANode.StartPos) and BlankAfter(Lines, ANode.EndPos) and
+      (ANode.EndPos.Line + 1 < Length(Lines));
+    if Result then
+      AEdit := TRuleEdit.Create(TTextRange.Create(ANode.StartPos.Line, 0, ANode.EndPos.Line + 1, 0), '');
+  end;
+
+  // Name aus einer Liste A, B, C bzw. ganze Deklaration (samt Abschnitt, wenn sie dessen einzige ist).
+  function RemovalFix(const AEntry: TDeclaredName; out AFix: TRuleFix): Boolean;
+  var
+    Edit: TRuleEdit;
+    Next, Previous: Integer;
+  begin
+    Result := False;
+    AFix := Default(TRuleFix);
+    if AEntry.NameCount > 1 then
+    begin
+      if AEntry.NameIndex < AEntry.NameCount - 1 then
+      begin
+        // "B, " bis zum nächsten Namen.
+        Next := AEntry.Token + 1;
+        while (Next <= High(Tokens)) and not Tokens[Next].IsSymbol(',') do
+          Inc(Next);
+        Inc(Next);
+        while (Next <= High(Tokens)) and (Tokens[Next].Kind = TPascalTokenKind.Comment) do
+          Inc(Next);
+        if Next > High(Tokens) then
+          Exit;
+        Edit := TRuleEdit.Create(TTextRange.Create(Tokens[AEntry.Token].StartPos, Tokens[Next].StartPos), '');
+      end
+      else
+      begin
+        // ", C" ab dem Ende des Namens davor.
+        Previous := AEntry.Token - 1;
+        while (Previous >= 0) and not Tokens[Previous].IsSymbol(',') do
+          Dec(Previous);
+        Dec(Previous);
+        while (Previous >= 0) and (Tokens[Previous].Kind = TPascalTokenKind.Comment) do
+          Dec(Previous);
+        if Previous < 0 then
+          Exit;
+        Edit := TRuleEdit.Create(TTextRange.Create(Tokens[Previous].EndPos, Tokens[AEntry.Token].EndPos), '');
+      end;
+    end
+    else if (AEntry.Section <> nil) and (AEntry.Section.ChildCount = 1) then
+    begin
+      // Einzige Deklaration: der Abschnitt (var, const, type, label) geht mit.
+      if not LinesEdit(AEntry.Section, Edit) then
+        Exit;
+    end
+    else if not LinesEdit(AEntry.Node, Edit) then
+      Exit;
+    AFix := TRuleFix.Create('Zweite Deklaration entfernen', [Edit]);
+    Result := True;
+  end;
+
+  procedure CheckNames;
+  var
+    Later, Earlier: Integer;
+    Fix: TRuleFix;
+    Fixes: TArray<TRuleFix>;
+  begin
+    for Later := 1 to High(Names) do
+      for Earlier := 0 to Later - 1 do
+        if (Names[Earlier].Key = Names[Later].Key) and not (Names[Earlier].IsRoutine and Names[Later].IsRoutine) and
+          TConditionalBranches.Implies(Names[Later].Path, Names[Earlier].Path) then
+        begin
+          Fixes := nil;
+          if (Names[Later].Kind <> 'Parameter') and not Names[Later].IsRoutine and
+            (Names[Later].Kind <> 'Property') and RemovalFix(Names[Later], Fix) then
+            Fixes := [Fix];
+          AReport.Add(TTextRange.Create(Tokens[Names[Later].Token].StartPos, Tokens[Names[Later].Token].EndPos),
+            Format('%s ist schon als %s deklariert (wie E2004).', [Names[Later].Name, Names[Earlier].Kind]),
+            TRuleConfidence.High, Fixes);
+          Break;
+        end;
+  end;
+
+  procedure CheckRoutine(ADecl: TSyntaxNode);
+  var
+    Header, Parameters: TSyntaxNode;
+    Index: Integer;
+  begin
+    // Nur Rümpfe: Parameter und lokale Deklarationen teilen einen Bereich.
+    if ADecl.FindChild(TSyntaxKind.Block) = nil then
+      Exit;
+    Names := nil;
+    Header := ADecl.FindChild(TSyntaxKind.RoutineHeader);
+    if Header <> nil then
+    begin
+      Parameters := Header.FindChild(TSyntaxKind.Parameters);
+      if Parameters <> nil then
+        for Index := 0 to Parameters.ChildCount - 1 do
+          if Parameters[Index].Kind = TSyntaxKind.Parameter then
+            AddNames(Parameters[Index], nil, 'Parameter');
+    end;
+    AddSections(ADecl);
+    CheckNames;
+  end;
+
+  // uses-Einträge der Datei: interface und implementation zusammen.
+  procedure CheckUses;
+  var
+    Clauses: TArray<TSyntaxNode>;
+    Clause, Previous, Next: TSyntaxNode;
+    Index, Later, Earlier: Integer;
+    Entries: TArray<TSyntaxNode>;
+    Edit: TRuleEdit;
+    Fixes: TArray<TRuleFix>;
+    Range: TTextRange;
+
+    procedure Collect(ANode: TSyntaxNode);
+    var
+      Inner: Integer;
+    begin
+      for Inner := 0 to ANode.ChildCount - 1 do
+        if ANode[Inner].Kind = TSyntaxKind.UsesClause then
+          Clauses := Clauses + [ANode[Inner]]
+        else if ANode[Inner].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] then
+          Collect(ANode[Inner]);
+    end;
+
+  begin
+    Clauses := nil;
+    Collect(AContext.Tree.Root);
+    Entries := nil;
+    for Clause in Clauses do
+      for Index := 0 to Clause.ChildCount - 1 do
+        if Clause[Index].Kind = TSyntaxKind.UsedUnit then
+          Entries := Entries + [Clause[Index]];
+    for Later := 1 to High(Entries) do
+      for Earlier := 0 to Later - 1 do
+        if SameText(Entries[Earlier].Name, Entries[Later].Name) and
+          TConditionalBranches.Implies(TConditionalBranches.PathAt(Paths, TokenAtOffset(Tokens,
+          Entries[Later].StartOffset)), TConditionalBranches.PathAt(Paths, TokenAtOffset(Tokens,
+          Entries[Earlier].StartOffset))) then
+        begin
+          // ", X" bzw. "X, " entfernen; der einzige Eintrag nimmt die ganze uses-Klausel mit.
+          Clause := Entries[Later].Parent;
+          Previous := nil;
+          Next := nil;
+          for Index := 0 to Clause.ChildCount - 1 do
+            if Clause[Index] = Entries[Later] then
+            begin
+              if (Index > 0) and (Clause[Index - 1].Kind = TSyntaxKind.UsedUnit) then
+                Previous := Clause[Index - 1];
+              if (Index < Clause.ChildCount - 1) and (Clause[Index + 1].Kind = TSyntaxKind.UsedUnit) then
+                Next := Clause[Index + 1];
+            end;
+          Fixes := nil;
+          if Previous <> nil then
+            Fixes := [TRuleFix.Create('Doppelten Eintrag entfernen', [TRuleEdit.Create(TTextRange.Create(
+              Previous.EndPos, Entries[Later].EndPos), '')], True)]
+          else if Next <> nil then
+            Fixes := [TRuleFix.Create('Doppelten Eintrag entfernen', [TRuleEdit.Create(TTextRange.Create(
+              Entries[Later].StartPos, Next.StartPos), '')], True)]
+          else if LinesEdit(Clause, Edit) then
+            Fixes := [TRuleFix.Create('Doppelten Eintrag entfernen', [Edit], True)];
+          Range := TTextRange.Create(Entries[Later].StartPos, Entries[Later].EndPos);
+          if Entries[Earlier].Parent = Entries[Later].Parent then
+            AReport.Add(Range, Format('Unit %s steht schon in uses (wie E2004).', [Entries[Later].Name]),
+              TRuleConfidence.High, Fixes)
+          else
+            AReport.Add(Range, Format('Unit %s steht schon im uses des interface (wie E2004).', [Entries[Later].Name]),
+              TRuleConfidence.High, Fixes);
+          Break;
+        end;
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    case ANode.Kind of
+      TSyntaxKind.RoutineDecl:
+        CheckRoutine(ANode);
+      TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
+      TSyntaxKind.HelperType:
+        begin
+          Names := nil;
+          AddMembers(ANode);
+          CheckNames;
+        end;
+      TSyntaxKind.UnitFile:
+        begin
+          Names := nil;
+          for Index := 0 to ANode.ChildCount - 1 do
+            if ANode[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] then
+              AddSections(ANode[Index]);
+          CheckNames;
+        end;
+      TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile:
+        begin
+          Names := nil;
+          AddSections(ANode);
+          CheckNames;
+        end;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  Paths := TConditionalBranches.Paths(Tokens);
+  Visit(AContext.Tree.Root);
+  if TRuleOptions.Bool(AContext.Options, 'checkUses', True) then
+    CheckUses;
+  Names := nil;
+end;
+
 procedure RegisterDeclarationRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDeclaredNotImplementedRule.Create);
@@ -1037,6 +1464,7 @@ begin
   ARegistry.Register(TInterfaceNotImplementedRule.Create);
   ARegistry.Register(TFieldAfterMethodRule.Create);
   ARegistry.Register(TOverloadDirectiveMissingRule.Create);
+  ARegistry.Register(TDuplicateDeclarationRule.Create);
 end;
 
 end.
