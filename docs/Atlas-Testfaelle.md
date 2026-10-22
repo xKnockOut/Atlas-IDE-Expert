@@ -4197,3 +4197,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt, in `atlas.json` `"rules": {
 | JS6 | Gleiche Schreibweise, `reintroduce`, unbekannter Vorfahr, protected gegen strict protected, Parameter gleichen Namens im inline-Rumpf, `with` | Keine Meldung |
 | JS7 | Ohne Eintrag in `atlas.json`, mit `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | JS8 | Abgleich mit Delphi: JS1, JS3 bis JS5 übersetzen, einmal normal und einmal mit C++-Ausgabe (`-JPHNE`) | dcc meldet H2365, H2269, H2367 bzw. H2440 an denselben Stellen, für JS6 nichts; dabei notieren, wann dcc H2368 und H2369 meldet, damit sie nachgezogen werden können |
+
+## default-Property falsch deklariert oder fehlt (#1073)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JD1 | Das Beispiel aus #1073: `property Name: string read FName; default;` | Fehler `default-property-invalid` an `default`: „default ist nur an Array-Properties erlaubt (wie E2132).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JD2 | Zwei Properties `Items[I: Integer]` und `Texte[I: Integer]`, beide mit `default;` | „… hat schon die default-Property Items mit denselben Indextypen (wie E2131).“ an der zweiten |
+| JD3 | `Items[I: Integer]` und `Named[const N: string]`, beide `default;` | Keine Meldung (Überladung über den Indextyp) |
+| JD4 | Eigene Klasse ohne default-Property, im Rumpf `L[0] := nil;` | „TListe hat keine default-Property; L[…] braucht eine (wie E2149).“ |
+| JD5 | `TStringList`-Variable `L[0]`, `string`- und Array-Indizes, Array-Property `L.Kinder[0]`, Klasse mit unbekanntem Vorfahren | Keine Meldung |
+| JD6 | `"default-property-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| JD7 | Abgleich mit Delphi: JD1, JD2 und JD4 übersetzen | dcc meldet E2132, E2131 bzw. E2149 an denselben Stellen, für JD3 und JD5 nichts |

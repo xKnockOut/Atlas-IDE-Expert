@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 20 |
+| [Compiler vorab](#gruppe-compiler) | 21 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -151,6 +151,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`member-hides-ancestor`](#member-hides-ancestor) | Member verdeckt einen Member des Vorfahren | Bug | Warnung |
 | [`published-type-invalid`](#published-type-invalid) | Unzulässiges Mitglied im published-Abschnitt | Bug | Fehler |
 | [`override-case-mismatch`](#override-case-mismatch) | Schreibweise oder Sichtbarkeit weicht vom Vorfahren ab | Code Smell | Hinweis |
+| [`default-property-invalid`](#default-property-invalid) | default-Property falsch deklariert oder fehlt | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4694,5 +4695,30 @@ Richtig:
 ```pascal
 TKunde = class
   destructor Destroy; override;
+end;
+```
+
+<a id="default-property-invalid"></a>
+### default-property-invalid
+
+**default-Property falsch deklariert oder fehlt** · Bug · Fehler · Gruppe Compiler vorab
+
+default; hinter einer Property ohne Indexparameter (wie E2132), eine zweite default-Property derselben Klasse mit denselben Indextypen (wie E2131; Überladung über den Indextyp ist erlaubt) oder Obj[I] auf einer Klasse, die in ihrer ganzen Vorfahrenkette keine default-Property hat (wie E2149). Den Typ von Obj ermittelt die Namensauflösung; nicht auflösbare Typen, abgebrochene Vorfahrenketten und Klassen mit einem Class-Helper in der Unit bleiben still. Neudeklarationen ohne Typ (property Items; default;) übernehmen den Index des Vorfahren und werden nicht geprüft.
+
+Entspricht der Compilermeldung `E2131`, `E2132`, `E2149`.
+
+Mit Treffer:
+
+```pascal
+TListe = class
+  property Name: string read FName; default;
+end;
+```
+
+Richtig:
+
+```pascal
+TListe = class
+  property Items[I: Integer]: string read GetItem; default;
 end;
 ```

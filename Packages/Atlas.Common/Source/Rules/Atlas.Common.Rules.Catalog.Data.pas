@@ -2403,6 +2403,21 @@ begin
     '        "H2269",' + #10 +
     '        "H2367"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "default-property-invalid",' + #10 +
+    '      "name": "default property declared wrongly or missing",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "default; behind a property without index parameters (like E2132), a second default property of the same class with the same index types (like E2131; overloading by index type is ' + 'allowed), or Obj[I] on a class that has no default property in its whole ancestor chain (like E2149). The type of Obj is resolved by name resolution; unresolvable types, broken ancestor chains and cla' + 'sses with a class helper in the unit stay silent. Property redeclarations without a type (property Items; default;) take the index from the ancestor and are not checked.",' + #10 +
+    '      "bad": "TListe = class\n  property Name: string read FName; default;\nend;",' + #10 +
+    '      "good": "TListe = class\n  property Items[I: Integer]: string read GetItem; default;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2131",' + #10 +
+    '        "E2132",' + #10 +
+    '        "E2149"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3604,6 +3619,11 @@ begin
     '      "id": "override-case-mismatch",' + #10 +
     '      "name": "Schreibweise oder Sichtbarkeit weicht vom Vorfahren ab",' + #10 +
     '      "description": "Eine überschreibende Methode schreibt ihren Namen anders als der Vorfahr (destructor destroy, wie H2365) oder ist weniger sichtbar als die überschriebene Methode (wie H2269, nur ' + 'für Klassen im interface-Teil; verglichen werden die Stufen privat, geschützt, öffentlich), ein Getter oder Setter heißt Get<Property> bzw. Set<Property>, ist aber anders geschrieben (wie H2367), oder' + ' eine inline-Methode greift auf ein Mitglied zu, das weniger sichtbar ist als sie selbst, sodass der Compiler sie außerhalb der Klasse nicht einsetzen kann (wie H2440). Wichtig für C++Builder-Nutzer d' + 'er Units und für einheitlichen Code. Die Docwiki führt H2269 und H2367 als X2269 und X2367, weil sich ihre Stufe umstellen lässt; dcc meldet sie standardmäßig als Hinweis. H2368 und H2369 deckt die Re' + 'gel nicht ab, weil nicht dokumentiert ist, wann dcc sie meldet. Standardmäßig aus; in atlas.json einschalten. Korrekturen: Schreibweise vom Vorfahr übernehmen, Zugriffsmethode umbenennen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "default-property-invalid",' + #10 +
+    '      "name": "default-Property falsch deklariert oder fehlt",' + #10 +
+    '      "description": "default; hinter einer Property ohne Indexparameter (wie E2132), eine zweite default-Property derselben Klasse mit denselben Indextypen (wie E2131; Überladung über den Indextyp is' + 't erlaubt) oder Obj[I] auf einer Klasse, die in ihrer ganzen Vorfahrenkette keine default-Property hat (wie E2149). Den Typ von Obj ermittelt die Namensauflösung; nicht auflösbare Typen, abgebrochene ' + 'Vorfahrenketten und Klassen mit einem Class-Helper in der Unit bleiben still. Neudeklarationen ohne Typ (property Items; default;) übernehmen den Index des Vorfahren und werden nicht geprüft."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

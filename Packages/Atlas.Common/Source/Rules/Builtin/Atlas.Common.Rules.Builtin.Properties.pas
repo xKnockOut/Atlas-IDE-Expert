@@ -14,6 +14,11 @@
 //                              ein Feld, das kein Record ist (E2459), auf ein
 //                              Mitglied, das kein Feld ist (E2461), oder auf
 //                              ein fehlendes Feld (E2562).
+//   default-property-invalid   default falsch (#1073): an einer Property ohne
+//                              Index (E2132), zweite default-Property mit
+//                              denselben Indextypen (E2131), Obj[I] auf einer
+//                              Klasse ohne default-Property in ihrer ganzen
+//                              Vorfahrenkette (E2149, Typ über TNameResolver).
 //
 // Die Regel liest read/write aus den Token der Property und sucht die Namen
 // im Index der Datei und über TAncestry in den Vorfahren. Bricht die Kette der
@@ -35,9 +40,16 @@ uses
 
 const
   PropertyAccessorInvalidRuleId = 'property-accessor-invalid';
+  DefaultPropertyInvalidRuleId = 'default-property-invalid';
 
 type
   TPropertyAccessorInvalidRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TDefaultPropertyInvalidRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -54,6 +66,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.DirectiveNames,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Editing.CodeActions,
@@ -621,9 +635,191 @@ begin
   end;
 end;
 
+{ TDefaultPropertyInvalidRule }
+
+function TDefaultPropertyInvalidRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(DefaultPropertyInvalidRuleId, TRuleSeverity.Error,
+    'default-Property falsch deklariert oder fehlt');
+end;
+
+procedure TDefaultPropertyInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Cache: IRuleDerivedCache;
+  Ancestry: TAncestry;
+  Tokens: TArray<TPascalToken>;
+  Resolver: TNameResolver;
+  FileName: string;
+
+  /// <summary>Token "default" hinter dem Semikolon der Property ASymbol; -1 ohne.</summary>
+  function DefaultToken(const ASymbol: TIndexSymbol): Integer;
+  var
+    Index: Integer;
+  begin
+    for Index := 0 to High(Tokens) - 1 do
+    begin
+      if (Tokens[Index].StartPos.Line < ASymbol.Range.StartPos.Line) or
+        (Tokens[Index].StartPos.Line > ASymbol.Range.EndPos.Line) then
+        Continue;
+      if Tokens[Index].IsSymbol(';') and IsWord(Tokens[Index + 1], 'default') then
+        Exit(Index + 1);
+    end;
+    Result := -1;
+  end;
+
+  function SameIndexTypes(const A, B: TIndexSymbol): Boolean;
+  var
+    Index: Integer;
+  begin
+    Result := Length(A.ParamTypes) = Length(B.ParamTypes);
+    if Result then
+      for Index := 0 to High(A.ParamTypes) do
+        if not Ancestry.SameType(A.ParamTypes[Index], B.ParamTypes[Index], nil) then
+          Exit(False);
+  end;
+
+  /// <summary>E2132 (default an einer Property ohne Index) und E2131 (zweite default-Property mit gleichen
+  /// Indextypen) aus dem Index der Datei.</summary>
+  procedure CheckDeclarations;
+  var
+    Symbol, Earlier: TIndexSymbol;
+    Seen: TArray<TIndexSymbol>;
+    Token: Integer;
+    Range: TTextRange;
+  begin
+    Seen := nil;
+    for Symbol in Ancestry.Local.Symbols do
+    begin
+      if (Symbol.Kind <> TIndexSymbolKind.Property_) or not Symbol.IsDefault or (Symbol.Container = '') or
+        Symbol.Unavailable then
+        Continue;
+      Token := DefaultToken(Symbol);
+      if Token < 0 then
+        Continue;
+      Range := TTextRange.Create(Tokens[Token].StartPos, Tokens[Token].EndPos);
+      // Ohne Typ übernimmt eine Neudeklaration (property Items; default;) die Indexparameter des Vorfahren.
+      if (Symbol.MaxArgs = 0) and (Symbol.TypeName <> '') then
+      begin
+        AReport.Add(Range, 'default ist nur an Array-Properties erlaubt (wie E2132).', TRuleConfidence.High);
+        Continue;
+      end;
+      for Earlier in Seen do
+        if SameText(Earlier.Container, Symbol.Container) and (Symbol.TypeName <> '') and
+          (Earlier.TypeName <> '') and SameIndexTypes(Earlier, Symbol) then
+        begin
+          AReport.Add(Range, Format('%s hat schon die default-Property %s mit denselben Indextypen (wie E2131).',
+            [Symbol.Container, Earlier.Name]), TRuleConfidence.High);
+          Break;
+        end;
+      Seen := Seen + [Symbol];
+    end;
+  end;
+
+  /// <summary>Hat die Klasse ATypeName (oder ein Vorfahr) eine default-Property? False ohne sichere Aussage.</summary>
+  function LacksDefault(const ATypeName: string): Boolean;
+  var
+    Own: TSymbolLocation;
+    Chain: TArray<TSymbolLocation>;
+    Location: TSymbolLocation;
+    Member, Symbol: TIndexSymbol;
+    Complete, ObjectMissing: Boolean;
+  begin
+    Result := False;
+    if not Ancestry.FindClass(ATypeName, Own) or (Own.Symbol.Kind <> TIndexSymbolKind.ClassType) then
+      Exit;
+    Chain := [Own] + Ancestry.Ancestors(Own.Symbol.Name, Complete, ObjectMissing);
+    if not Complete then
+      Exit;
+    for Location in Chain do
+      for Member in Ancestry.Members(Location) do
+        if (Member.Kind = TIndexSymbolKind.Property_) and Member.IsDefault then
+          Exit;
+    // Ein Class-Helper der Datei könnte die default-Property liefern.
+    for Symbol in Ancestry.Local.Symbols do
+      if Symbol.Kind = TIndexSymbolKind.HelperType then
+        for Location in Chain do
+          if ContainsText(' ' + Symbol.Signature + ' ', ' ' + Location.Symbol.Name + ' ') or
+            ContainsText(Symbol.Signature, ' ' + Location.Symbol.Name + ')') then
+            Exit;
+    Result := True;
+  end;
+
+  /// <summary>E2149: Obj[I] auf einer Klasse ohne default-Property.</summary>
+  procedure CheckAccess(ANode: TSyntaxNode);
+  var
+    Base: TSyntaxNode;
+    Symbol, TypeInfo: TResolvedSymbol;
+    TypeFound: Boolean;
+  begin
+    Base := ANode[0];
+    if not (Base.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
+      TSyntaxKind.Call]) then
+      Exit;
+    if not Resolver.NodeType(AContext.Tree, FileName, Base, Symbol, TypeInfo, TypeFound) or not TypeFound or
+      Symbol.IsType or (TypeInfo.SymbolKind <> TIndexSymbolKind.ClassType) or TypeInfo.Builtin then
+      Exit;
+    // Bei einer Array-Property (Items[I]) ist Base selbst schon der indizierte Zugriff.
+    if (Symbol.SymbolKind = TIndexSymbolKind.Property_) and (Symbol.MaxArgs > 0) and
+      (Base.Kind <> TSyntaxKind.IndexAccess) then
+      Exit;
+    if not LacksDefault(TypeInfo.Name) then
+      Exit;
+    AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('%s hat keine default-Property; ' +
+      '%s[…] braucht eine (wie E2149).', [TypeInfo.Name, Symbol.Name]), TRuleConfidence.High);
+  end;
+
+  procedure VisitBodies;
+  var
+    Stack: TArray<TSyntaxNode>;
+    Node: TSyntaxNode;
+    Index: Integer;
+  begin
+    Stack := [AContext.Tree.Root];
+    while Stack <> nil do
+    begin
+      Node := Stack[High(Stack)];
+      SetLength(Stack, Length(Stack) - 1);
+      if (Node.Kind = TSyntaxKind.IndexAccess) and (Node.ChildCount > 1) then
+        CheckAccess(Node);
+      for Index := Node.ChildCount - 1 downto 0 do
+        Stack := Stack + [Node[Index]];
+    end;
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Cache := TRuleDerived.Open(AContext);
+  Tokens := TRuleDerived.CodeTokens(Cache, AContext);
+  FileName := AContext.FileName;
+  if FileName = '' then
+    FileName := AContext.RelativePath;
+  if FileName = '' then
+    FileName := AContext.UnitName + '.pas';
+  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
+  try
+    CheckDeclarations;
+    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+    try
+      Resolver.Namespaces := AContext.Namespaces;
+      Resolver.PinTree(AContext.Tree, FileName);
+      try
+        VisitBodies;
+      finally
+        Resolver.UnpinTree;
+      end;
+    finally
+      Resolver.Free;
+    end;
+  finally
+    Ancestry.Free;
+  end;
+end;
+
 procedure RegisterPropertyRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TPropertyAccessorInvalidRule.Create);
+  ARegistry.Register(TDefaultPropertyInvalidRule.Create);
 end;
 
 end.
