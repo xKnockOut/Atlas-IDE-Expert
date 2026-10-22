@@ -2313,6 +2313,25 @@ begin
     '        "E2129",' + #10 +
     '        "E2130"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "abstract-declaration-invalid",' + #10 +
+    '      "name": "abstract, final or static combined wrongly",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A method directive the compiler rejects: abstract without virtual, dynamic or override (like E2167), a body in the implementation section for an abstract method (like E2136), fin' + 'al on a method that is not virtual (like E2351), abstract together with final (like E2371), a class declared abstract sealed (like E2383, E2540) or static on an instance method or a virtual class meth' + 'od (like E2376). A body only counts for an abstract method when no non-abstract method of the same name in the same class is compiled with it (overloads, {$IFDEF} branches). Quick fixes: insert virtua' + 'l; before abstract, remove the body.",' + #10 +
+    '      "bad": "TForm = class\n  function Flaeche: Double; abstract;\nend;",' + #10 +
+    '      "good": "TForm = class\n  function Flaeche: Double; virtual; abstract;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2167",' + #10 +
+    '        "E2136",' + #10 +
+    '        "E2351",' + #10 +
+    '        "E2371",' + #10 +
+    '        "E2383",' + #10 +
+    '        "E2540",' + #10 +
+    '        "E2376"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3483,6 +3502,11 @@ begin
     '      "id": "readonly-property-assigned",' + #10 +
     '      "name": "Zuweisung an eine Property ohne write",' + #10 +
     '      "description": "Zuweisung an eine Property ohne write (wie E2129) bzw. Lesen einer Property ohne read (wie E2130). Die Regel meldet nur, wenn die Namensauflösung die Property sicher findet; Neud' + 'eklarationen ohne read und write (property Caption;) gelten als unbekannt. Korrekturen: Count := 0 wird Clear, wenn der Typ Clear hat; in einer Methode der deklarierenden Klasse das Feld hinter read z' + 'uweisen; für eine Property dieser Datei den Setter anlegen und write ergänzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "abstract-declaration-invalid",' + #10 +
+    '      "name": "abstract, final oder static falsch kombiniert",' + #10 +
+    '      "description": "Eine Methodendirektive, die der Compiler ablehnt: abstract ohne virtual, dynamic oder override (wie E2167), ein Rumpf im implementation-Teil zu einer abstrakten Methode (wie E213' + '6), final an einer nicht virtuellen Methode (wie E2351), abstract zusammen mit final (wie E2371), eine Klasse abstract sealed (wie E2383, E2540) oder static an einer Instanzmethode bzw. einer virtuell' + 'en Klassenmethode (wie E2376). Ein Rumpf zählt nur dann als Rumpf einer abstrakten Methode, wenn keine gleichnamige nicht abstrakte Methode derselben Klasse mit ihm übersetzt wird (Überladungen, {$IFD' + 'EF}-Zweige). Korrekturen: virtual; vor abstract einfügen, Rumpf entfernen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

@@ -4119,3 +4119,19 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## abstract, final oder static falsch kombiniert (#998)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JA1 | Das Beispiel aus #998: `function Flaeche: Double; abstract;` in `TForm = class` | Fehler `abstract-declaration-invalid` an `abstract`: „abstract nur zusammen mit virtual oder dynamic (wie E2167).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JA2 | Schnellkorrektur „"virtual;" vor abstract einfügen“, danach Strg+Z | Zeile wird `function Flaeche: Double; virtual; abstract;`, keine Meldung mehr; ein Undo-Schritt |
+| JA3 | `virtual; abstract;` und im implementation-Teil ein Rumpf `function TForm.Flaeche` | „TForm.Flaeche ist abstract und darf keinen Rumpf haben (wie E2136).“; Korrektur „Rumpf entfernen“ löscht den Rumpf samt Leerzeile |
+| JA4 | `procedure Speichern; final;` bzw. `virtual; abstract; final;` | Meldung wie E2351 bzw. E2371 an `final` |
+| JA5 | `TForm = class abstract sealed` | „Eine Klasse ist entweder abstract oder sealed, nicht beides (wie E2383).“ |
+| JA6 | `function Neu: TForm; static;` und `class function Neu: TForm; virtual; static;` | Meldung wie E2376 an `static` |
+| JA7 | `override; abstract;`, `virtual; final;`, `class function … static;` in Klasse und Record, abstrakte Überladung neben einer nicht abstrakten mit Rumpf, abstract nur in einem `{$IFDEF}`-Zweig | Keine Meldung |
+| JA8 | `"abstract-declaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| JA9 | Abgleich mit Delphi: JA1, JA3 bis JA6 übersetzen | dcc meldet E2167, E2136, E2351, E2371, E2383 bzw. E2376 an denselben Stellen, für JA7 nichts; meldet dcc für JA5 E2540 statt E2383, Meldungstext anpassen |

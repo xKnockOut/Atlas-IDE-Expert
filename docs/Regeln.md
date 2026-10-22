@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 15 |
+| [Compiler vorab](#gruppe-compiler) | 16 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -146,6 +146,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`property-accessor-invalid`](#property-accessor-invalid) | Getter oder Setter einer Property ungültig | Bug | Fehler |
 | [`assign-to-property-member`](#assign-to-property-member) | Zuweisung an ein Feld eines Property-Records | Bug | Fehler |
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
+| [`abstract-declaration-invalid`](#abstract-declaration-invalid) | abstract, final oder static falsch kombiniert | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4540,4 +4541,29 @@ Richtig:
 
 ```pascal
 Liste.Clear;
+```
+
+<a id="abstract-declaration-invalid"></a>
+### abstract-declaration-invalid
+
+**abstract, final oder static falsch kombiniert** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine Methodendirektive, die der Compiler ablehnt: abstract ohne virtual, dynamic oder override (wie E2167), ein Rumpf im implementation-Teil zu einer abstrakten Methode (wie E2136), final an einer nicht virtuellen Methode (wie E2351), abstract zusammen mit final (wie E2371), eine Klasse abstract sealed (wie E2383, E2540) oder static an einer Instanzmethode bzw. einer virtuellen Klassenmethode (wie E2376). Ein Rumpf zählt nur dann als Rumpf einer abstrakten Methode, wenn keine gleichnamige nicht abstrakte Methode derselben Klasse mit ihm übersetzt wird (Überladungen, {$IFDEF}-Zweige). Korrekturen: virtual; vor abstract einfügen, Rumpf entfernen.
+
+Entspricht der Compilermeldung `E2167`, `E2136`, `E2351`, `E2371`, `E2383`, `E2540`, `E2376`.
+
+Mit Treffer:
+
+```pascal
+TForm = class
+  function Flaeche: Double; abstract;
+end;
+```
+
+Richtig:
+
+```pascal
+TForm = class
+  function Flaeche: Double; virtual; abstract;
+end;
 ```

@@ -2293,6 +2293,25 @@
         "E2129",
         "E2130"
       ]
+    },
+    {
+      "id": "abstract-declaration-invalid",
+      "name": "abstract, final or static combined wrongly",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A method directive the compiler rejects: abstract without virtual, dynamic or override (like E2167), a body in the implementation section for an abstract method (like E2136), final on a method that is not virtual (like E2351), abstract together with final (like E2371), a class declared abstract sealed (like E2383, E2540) or static on an instance method or a virtual class method (like E2376). A body only counts for an abstract method when no non-abstract method of the same name in the same class is compiled with it (overloads, {$IFDEF} branches). Quick fixes: insert virtual; before abstract, remove the body.",
+      "bad": "TForm = class\n  function Flaeche: Double; abstract;\nend;",
+      "good": "TForm = class\n  function Flaeche: Double; virtual; abstract;\nend;",
+      "compilerCodes": [
+        "E2167",
+        "E2136",
+        "E2351",
+        "E2371",
+        "E2383",
+        "E2540",
+        "E2376"
+      ]
     }
   ]
 }
