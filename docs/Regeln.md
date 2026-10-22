@@ -8,7 +8,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|
 | [Fehler finden](#gruppe-find-bugs) | 56 |
 | [Exceptions](#gruppe-exceptions) | 8 |
-| [Threads](#gruppe-threads) | 13 |
+| [Threads](#gruppe-threads) | 14 |
 | [Datenbank](#gruppe-database) | 4 |
 | [Compiler vorab](#gruppe-compiler) | 15 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
@@ -115,6 +115,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`thread-loop-without-terminated`](#thread-loop-without-terminated) | Thread-Schleife ohne Terminated | Bug | Warnung |
 | [`anonymous-thread-not-started`](#anonymous-thread-not-started) | Anonymer Thread nie gestartet | Bug | Warnung |
 | [`task-exception-unobserved`](#task-exception-unobserved) | Exception in TTask geht verloren | Code Smell | Hinweis |
+| [`parallel-for-shared-write`](#parallel-for-shared-write) | Gemeinsame Variable in TParallel.For geschrieben | Bug | Warnung |
 
 <a id="gruppe-database"></a>
 ### Datenbank
@@ -4645,4 +4646,33 @@ procedure TfrmMeldung.btnOKClick(Sender: TObject);
 begin
   Release;
 end;
+```
+
+<a id="parallel-for-shared-write"></a>
+### parallel-for-shared-write
+
+**Gemeinsame Variable in TParallel.For geschrieben** · Bug · Warnung · Gruppe Threads
+
+Der Rumpf von TParallel.For bzw. eines TTask.Run/Create/Future, der in einer Schleife entsteht, schreibt eine Variable von außerhalb ohne Sperre: Summe := Summe + …, Inc/Dec oder eine andere Zuweisung, oder er verändert eine Sammlung von außerhalb (Add, Delete, Clear, Insert, Remove …). Die Durchläufe laufen gleichzeitig; Additionen gehen verloren oder die Liste wird beschädigt. Von außerhalb heißt: lokale Variable oder Parameter der umgebenden Routine, Feld ihrer Klasse oder globale Variable der Unit; Namen unbekannter Herkunft bleiben still. Rümpfe mit Sperre (TMonitor, Enter, Acquire, Lock, LockList, BeginWrite, TInterlocked), Zugriffe über Index (Werte[I] := …) und verschachtelte anonyme Methoden (Synchronize, Queue) zählen nicht. Typen aus threadSafeTypes gelten als threadsicher. Sicherheit mittel. Korrekturen: TInterlocked.Add/Increment/Decrement bei Integer, Int64 und Cardinal (ergänzt System.SyncObjs), System.TMonitor.Enter/Exit in try … finally um den Sammlungsaufruf.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `threadSafeTypes` | string-list | `["TThreadList","TThreadedQueue"]` | Typen, die als threadsicher gelten; ihre Sammlungsaufrufe bleiben still. |
+
+Mit Treffer:
+
+```pascal
+TParallel.For(0, High(Werte), procedure(I: Integer)
+  begin
+    Summe := Summe + Werte[I];
+  end);
+```
+
+Richtig:
+
+```pascal
+TParallel.For(0, High(Werte), procedure(I: Integer)
+  begin
+    TInterlocked.Add(Summe, Werte[I]);
+  end);
 ```

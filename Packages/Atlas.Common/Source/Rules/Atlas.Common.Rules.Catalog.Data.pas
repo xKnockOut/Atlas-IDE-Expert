@@ -2356,6 +2356,27 @@ begin
     '      "description": "Free, Destroy, DisposeOf or FreeAndNil on Self, or on the global variable of the form''s own class, as a statement in an event handler of the form or one of its controls. After th' + 'e handler returns, the VCL still accesses the object: access violation. Correct is Release, or Action := caFree in OnClose. Event handlers are the methods named in the form file and methods with a Sen' + 'der: TObject parameter; a form is the root class of the form file with ClientWidth or ClientHeight, or a class derived directly from TForm or TCustomForm (frames and data modules have no Release). Sta' + 'tements in anonymous methods and with blocks do not count. Silent without the form file. High confidence. Quick fix: replace Free with Release; in OnClose (var Action: TCloseAction) with Action := caF' + 'ree.",' + #10 +
     '      "bad": "procedure TfrmMeldung.btnOKClick(Sender: TObject);\nbegin\n  Free;\nend;",' + #10 +
     '      "good": "procedure TfrmMeldung.btnOKClick(Sender: TObject);\nbegin\n  Release;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "parallel-for-shared-write",' + #10 +
+    '      "name": "Shared variable written in TParallel.For",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "threads",' + #10 +
+    '      "description": "The body of TParallel.For, or of a TTask.Run/Create/Future started inside a loop, writes a variable from outside without a lock: Summe := Summe + …, Inc/Dec or another assignment' + ', or changes a collection from outside (Add, Delete, Clear, Insert, Remove …). The iterations run at the same time, so additions get lost or the list is corrupted. Outside means a local variable or pa' + 'rameter of the enclosing routine, a field of its class or a global variable of the unit; names of unknown origin stay silent. Bodies with a lock (TMonitor, Enter, Acquire, Lock, LockList, BeginWrite, ' + 'TInterlocked), writes through an index (Werte[I] := …) and nested anonymous methods (Synchronize, Queue) do not count. Types listed in threadSafeTypes count as thread-safe. Medium confidence. Quick fi' + 'xes: TInterlocked.Add/Increment/Decrement for Integer, Int64 and Cardinal (adds System.SyncObjs), System.TMonitor.Enter/Exit in try … finally around the collection call.",' + #10 +
+    '      "bad": "TParallel.For(0, High(Werte), procedure(I: Integer)\n  begin\n    Summe := Summe + Werte[I];\n  end);",' + #10 +
+    '      "good": "TParallel.For(0, High(Werte), procedure(I: Integer)\n  begin\n    TInterlocked.Add(Summe, Werte[I]);\n  end);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "threadSafeTypes",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "TThreadList",' + #10 +
+    '            "TThreadedQueue"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Types that count as thread-safe; their collection calls stay silent."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3546,6 +3567,17 @@ begin
     '      "id": "self-free-in-event-handler",' + #10 +
     '      "name": "Formular gibt sich im eigenen Ereignis frei",' + #10 +
     '      "description": "Free, Destroy, DisposeOf oder FreeAndNil auf Self bzw. auf die globale Variable der eigenen Formularklasse als Anweisung in einem Ereignis-Handler des Formulars oder eines seiner' + ' Controls. Nach der Rückkehr greift die VCL noch auf das Objekt zu: Zugriffsverletzung. Richtig ist Release oder Action := caFree in OnClose. Ereignis-Handler sind die Methoden aus der Formulardatei u' + 'nd Methoden mit einem Parameter Sender: TObject; ein Formular ist die Wurzelklasse der Formulardatei mit ClientWidth bzw. ClientHeight oder eine direkt von TForm bzw. TCustomForm abgeleitete Klasse (R' + 'ahmen und Datenmodule haben kein Release). Anweisungen in anonymen Methoden und with-Blöcken zählen nicht. Still ohne Formulardatei. Sicherheit hoch. Korrektur: Free durch Release ersetzen, in OnClose' + ' (var Action: TCloseAction) durch Action := caFree."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "parallel-for-shared-write",' + #10 +
+    '      "name": "Gemeinsame Variable in TParallel.For geschrieben",' + #10 +
+    '      "description": "Der Rumpf von TParallel.For bzw. eines TTask.Run/Create/Future, der in einer Schleife entsteht, schreibt eine Variable von außerhalb ohne Sperre: Summe := Summe + …, Inc/Dec oder' + ' eine andere Zuweisung, oder er verändert eine Sammlung von außerhalb (Add, Delete, Clear, Insert, Remove …). Die Durchläufe laufen gleichzeitig; Additionen gehen verloren oder die Liste wird beschädi' + 'gt. Von außerhalb heißt: lokale Variable oder Parameter der umgebenden Routine, Feld ihrer Klasse oder globale Variable der Unit; Namen unbekannter Herkunft bleiben still. Rümpfe mit Sperre (TMonitor,' + ' Enter, Acquire, Lock, LockList, BeginWrite, TInterlocked), Zugriffe über Index (Werte[I] := …) und verschachtelte anonyme Methoden (Synchronize, Queue) zählen nicht. Typen aus threadSafeTypes gelten ' + 'als threadsicher. Sicherheit mittel. Korrekturen: TInterlocked.Add/Increment/Decrement bei Integer, Int64 und Cardinal (ergänzt System.SyncObjs), System.TMonitor.Enter/Exit in try … finally um den Sam' + 'mlungsaufruf.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "threadSafeTypes",' + #10 +
+    '          "description": "Typen, die als threadsicher gelten; ihre Sammlungsaufrufe bleiben still."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

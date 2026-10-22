@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1760] of string = (
+  Lines: array[0..1768] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -437,6 +437,14 @@ const
     '                },',
     '                "default": [],',
     '                "description": "Nur sql-write-without-where: Tabellen, die absichtlich ganz geleert bzw. geändert werden, mit oder ohne Schema (#966)."',
+    '              },',
+    '              "threadSafeTypes": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "default": ["TThreadList", "TThreadedQueue"],',
+    '                "description": "Nur parallel-for-shared-write: Typen, die als threadsicher gelten; ihre Sammlungsaufrufe in TParallel.For bleiben still (#1058)."',
     '              },',
     '              "searchPaths": {',
     '                "type": "string",',
