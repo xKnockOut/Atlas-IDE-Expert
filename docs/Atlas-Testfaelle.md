@@ -4159,3 +4159,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | SV3 | Im Rumpf von SV1 jeweils `Inc(I)`, `I := I + 1`, `Lesen(I)`, `Liste.Delete(0)`, `for I := …` | Keine Meldung |
 | SV4 | Bedingung mit Funktionsaufruf, Feld (`while not FFertig`), var-Parameter, `Terminated`, nur `Liste.Count > 0`; Rumpf mit `Break`, `Sleep`, `with`, Aufruf einer lokalen Prozedur oder einer anonymen Methode, die `I` erfasst | Keine Meldung |
 | SV5 | `"loop-condition-unchanged": "off"`, `"group:find-bugs": "off"` bzw. `exclude` | Keine Meldung |
+
+## Rekursion ohne Abbruch (#1044)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RA1 | Das Beispiel aus #1044: `function TBaum.Tiefe(K: TKnoten): Integer; begin Result := 1 + Max(Tiefe(K.Links), Tiefe(K.Rechts)); end;` | Fehler `unconditional-recursion` am Namen `Tiefe` im Kopf: „Tiefe ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch (z. B. K = nil).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| RA2 | `function Fakultaet(N: Integer): Int64; begin Result := N * Fakultaet(N - 1); end;` | Hinweis „(z. B. N <= 0)“ |
+| RA3 | Aufruf in beiden Zweigen von if … else, in repeat, im try-Teil | Meldung wie RA1 |
+| RA4 | RA1 mit `if K = nil then Exit(0);` davor, Aufruf nur im then-Zweig, rechts von `and`, im Rumpf von while/for, in case ohne Aufruf im else, in einer anonymen Methode | Keine Meldung |
+| RA5 | `procedure Log(I: Integer); overload;` ruft `Log(IntToStr(I))`; Getter, der die eigene Property liest | Keine Meldung von `unconditional-recursion` (Getter: `setter-recursion`) |
+| RA6 | `"unconditional-recursion": "off"`, `"group:find-bugs": "off"` bzw. `exclude` | Keine Meldung |

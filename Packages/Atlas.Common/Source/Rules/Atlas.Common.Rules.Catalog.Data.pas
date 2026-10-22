@@ -2351,6 +2351,16 @@ begin
     '      "description": "No variable of the while or until condition changes in the body: no assignment, no Inc/Dec, no argument (possibly var), no method or member access on the object of the condition,' + ' no for loop over it. Typically a forgotten Inc(I) or Next. The rule only reports when every variable of the condition is a local variable or value parameter of the routine and at least one appears di' + 'rectly (not only as X.Property). Conditions with function calls, fields, global variables, var and out parameters and Terminated are not reported, nor loops with an exit (Break, Exit, raise …), waitin' + 'g loops (Sleep, ProcessMessages …), with, calls of local routines or variables captured by an anonymous method. Changes through X[…] count only when the condition reads X[…].",' + #10 +
     '      "bad": "I := 0;\nwhile I < List.Count do\nbegin\n  Check(List[I]);\nend;",' + #10 +
     '      "good": "I := 0;\nwhile I < List.Count do\nbegin\n  Check(List[I]);\n  Inc(I);\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unconditional-recursion",' + #10 +
+    '      "name": "Recursion without a stop",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "A routine calls itself on every path before it can return: there is no path without a self-call and no Exit or raise before it. The result is a stack overflow. Paths without a ca' + 'll are: an if without else or a case without else, the body of while and for, the right side of and/or, branches of if expressions and anonymous methods. Getters and setters of their own property are ' + 'reported by setter-recursion; overloaded routines stay silent (the call may go to another overload). The margin marker from #623 shows every recursion.",' + #10 +
+    '      "bad": "function TTree.Depth(N: TNode): Integer;\nbegin\n  Result := 1 + Max(Depth(N.Left), Depth(N.Right));\nend;",' + #10 +
+    '      "good": "function TTree.Depth(N: TNode): Integer;\nbegin\n  if N = nil then\n    Exit(0);\n  Result := 1 + Max(Depth(N.Left), Depth(N.Right));\nend;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3542,6 +3552,11 @@ begin
     '      "id": "loop-condition-unchanged",' + #10 +
     '      "name": "Schleifenbedingung ändert sich im Rumpf nie",' + #10 +
     '      "description": "Keine Variable der while- bzw. until-Bedingung ändert sich im Rumpf: keine Zuweisung, kein Inc/Dec, kein Argument (möglicherweise var), kein Methoden- oder Mitgliedszugriff auf d' + 'as Objekt der Bedingung, keine for-Schleife darüber. Typisch ist das vergessene Inc(I) oder Next. Gemeldet wird nur, wenn jede Variable der Bedingung eine lokale Variable oder ein Wertparameter der Ro' + 'utine ist und mindestens eine direkt (nicht nur als X.Eigenschaft) vorkommt. Still bleiben Bedingungen mit Funktionsaufrufen, Feldern, globalen Variablen, var- und out-Parametern und Terminated, außer' + 'dem Schleifen mit Ausgang (Break, Exit, raise …), Warteschleifen (Sleep, ProcessMessages …), with, Aufrufen lokaler Routinen und Variablen, die eine anonyme Methode erfasst. Änderungen über X[…] zähle' + 'n nur, wenn die Bedingung X[…] liest."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unconditional-recursion",' + #10 +
+    '      "name": "Rekursion ohne Abbruch",' + #10 +
+    '      "description": "Eine Routine ruft sich auf jedem Pfad selbst auf, bevor sie zurückkehren kann: Es gibt keinen Pfad ohne Selbstaufruf und kein Exit oder raise davor. Ergebnis ist ein Stapelüberla' + 'uf. Pfade ohne Aufruf sind: if ohne else bzw. case ohne else, der Rumpf von while und for, die rechte Seite von and/or, Zweige von if-Ausdrücken und anonyme Methoden. Getter und Setter der eigenen Pro' + 'perty meldet setter-recursion; überladene Routinen bleiben still (der Aufruf kann eine andere Überladung treffen). Das Randsymbol aus #623 zeigt jede Rekursion."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

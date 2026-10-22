@@ -4,6 +4,10 @@
 // eigenen Property als Fehler, Feld aus der Deklaration bzw. F<Name> als
 // Korrektur, keine Meldung ohne Falle, Unterdrückung, Abschalten, Ausnahmen,
 // frühere Kennung recursive-property-accessor und Registrierung.
+// unconditional-recursion (#1044): Beispiel aus dem Issue, Hinweise je
+// Parametertyp, Pfade mit Abbruch (if, case, Exit, Kurzschluss, Schleifen),
+// Aufruf auf jedem Pfad (if mit else, repeat, try), Überladungen, Getter
+// (setter-recursion), Abschalten und Ausnahmen.
 
 interface
 
@@ -36,6 +40,21 @@ type
     procedure AliasesMapFormerIds;
     [Test]
     procedure RuleIsRegistered;
+  end;
+
+  [TestFixture]
+  TUnconditionalRecursionTests = class
+  public
+    [Test]
+    procedure IssueExample;
+    [Test]
+    procedure HintsAndPaths;
+    [Test]
+    procedure StopsAreSilent;
+    [Test]
+    procedure OverloadsAndAccessorsAreSilent;
+    [Test]
+    procedure OffAndExclude;
   end;
 
 implementation
@@ -221,7 +240,106 @@ begin
   Assert.IsTrue(Found);
 end;
 
+{ TUnconditionalRecursionTests }
+
+function RecursionFindings(const ASource: string; const AConfig: string = ''; const APath: string = ''):
+  TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.Findings(TUnconditionalRecursionRule.Create, ASource, AConfig, APath);
+end;
+
+function Baum(const ABody: string): string;
+begin
+  Result := 'unit Baeume;'#10'interface'#10'type'#10'  TBaum = class'#10'    function Tiefe(K: TKnoten): Integer;'#10 +
+    '  end;'#10'implementation'#10'function TBaum.Tiefe(K: TKnoten): Integer;'#10'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+function Routine(const AHeader, ABody: string): string;
+begin
+  Result := 'unit Hilfen;'#10'interface'#10'implementation'#10 + AHeader + #10'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+procedure TUnconditionalRecursionTests.IssueExample;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := RecursionFindings(Baum('  Result := 1 + Max(Tiefe(K.Links), Tiefe(K.Rechts));'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(UnconditionalRecursionRuleId, Found[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
+  Assert.AreEqual('Tiefe ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch (z. B. K = nil).',
+    Found[0].Message);
+  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(15, Found[0].Range.StartPos.Character);
+end;
+
+procedure TUnconditionalRecursionTests.HintsAndPaths;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := RecursionFindings(Routine('function Fakultaet(N: Integer): Int64;', '  Result := N * Fakultaet(N - 1);'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Fakultaet ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch (z. B. N <= 0).',
+    Found[0].Message);
+  Found := RecursionFindings(Routine('function Summe(const W: TArray<Integer>): Integer;', '  Result := Summe(W);'#10));
+  Assert.AreEqual('Summe ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch (z. B. Length(W) = 0).',
+    Found[0].Message);
+  Found := RecursionFindings(Routine('procedure Warten;', '  Sleep(10);'#10'  Warten;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Warten ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch.', Found[0].Message);
+  // Aufruf in beiden Zweigen, in repeat, in try und im Vergleich einer while-Bedingung.
+  Assert.AreEqual(1, Integer(Length(RecursionFindings(Routine('procedure Laufen(A: Boolean);',
+    '  if A then'#10'    Laufen(False)'#10'  else'#10'    Laufen(True);'#10)))), 'if mit else');
+  Assert.AreEqual(1, Integer(Length(RecursionFindings(Routine('procedure Laufen(A: Boolean);',
+    '  repeat'#10'    Laufen(A);'#10'  until A;'#10)))), 'repeat');
+  Assert.AreEqual(1, Integer(Length(RecursionFindings(Routine('procedure Laufen(A: Boolean);',
+    '  try'#10'    Laufen(A);'#10'  finally'#10'    Aufraeumen;'#10'  end;'#10)))), 'try');
+end;
+
+procedure TUnconditionalRecursionTests.StopsAreSilent;
+const
+  Bodies: array[0..7] of string = (
+    '  if K = nil then'#10'    Exit(0);'#10'  Result := 1 + Max(Tiefe(K.Links), Tiefe(K.Rechts));'#10,
+    '  if K <> nil then'#10'    Result := 1 + Tiefe(K.Links)'#10'  else'#10'    Result := 0;'#10,
+    '  Result := 0;'#10'  if (K <> nil) and (Tiefe(K.Links) > 0) then'#10'    Result := 1;'#10,
+    '  Result := 0;'#10'  while K <> nil do'#10'    Result := Tiefe(K.Links);'#10,
+    '  case K.Art of'#10'    1: Result := Tiefe(K.Links);'#10'  else'#10'    Result := 0;'#10'  end;'#10,
+    '  if K = nil then'#10'    raise EArgumentNilException.Create(''K'');'#10'  Result := Tiefe(K.Links);'#10,
+    '  Result := 0;'#10'  for var I := 0 to K.Anzahl - 1 do'#10'    Result := Tiefe(K.Kind(I));'#10,
+    '  Result := 0;'#10'  TThread.Queue(nil, procedure begin Tiefe(K); end);'#10);
+var
+  Body: string;
+begin
+  for Body in Bodies do
+    Assert.AreEqual(0, Integer(Length(RecursionFindings(Baum(Body)))), Body);
+end;
+
+procedure TUnconditionalRecursionTests.OverloadsAndAccessorsAreSilent;
+begin
+  Assert.AreEqual(0, Integer(Length(RecursionFindings('unit Hilfen;'#10'interface'#10'implementation'#10 +
+    'procedure Log(const S: string); overload;'#10'begin'#10'  Writeln(S);'#10'end;'#10 +
+    'procedure Log(I: Integer); overload;'#10'begin'#10'  Log(IntToStr(I));'#10'end;'#10'end.'))));
+  // Getter der eigenen Property meldet setter-recursion.
+  Assert.AreEqual(0, Integer(Length(RecursionFindings(Header + 'function TFoo.GetName: string;'#10'begin'#10 +
+    '  Result := Name;'#10'end;'#10'end.'))));
+end;
+
+procedure TUnconditionalRecursionTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Baum('  Result := Tiefe(K.Links);'#10);
+  Assert.AreEqual(1, Integer(Length(RecursionFindings(Source, '', 'Source/Baeume.pas'))));
+  Assert.AreEqual(0, Integer(Length(RecursionFindings(Source, '{"rules": {"unconditional-recursion": "off"}}',
+    'Source/Baeume.pas'))));
+  Assert.AreEqual(0, Integer(Length(RecursionFindings(Source, '{"rules": {"group:find-bugs": "off"}}',
+    'Source/Baeume.pas'))));
+  Assert.AreEqual(0, Integer(Length(RecursionFindings(Source,
+    '{"rules": {"unconditional-recursion": {"exclude": ["Source/*.pas"]}}}', 'Source/Baeume.pas'))));
+end;
+
 initialization
+  TDUnitX.RegisterTestFixture(TUnconditionalRecursionTests);
   TDUnitX.RegisterTestFixture(TRecursionRulesTests);
 
 end.
