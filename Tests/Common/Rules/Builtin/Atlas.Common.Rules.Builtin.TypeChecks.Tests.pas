@@ -73,6 +73,19 @@ type
   end;
 
   [TestFixture]
+  TConditionNotBooleanTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure LoopsPointersStringsAndClasses;
+    [Test]
+    procedure BooleansAndUnknownTypesAreSilent;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
   TLocalRoutineAsCallbackTests = class
   public
     [Test]
@@ -257,6 +270,11 @@ begin
   Found := False;
   for Rule in BuiltinRules do
     if Rule.Descriptor.Id = InvalidVarArgumentRuleId then
+      Found := True;
+  Assert.IsTrue(Found);
+  Found := False;
+  for Rule in BuiltinRules do
+    if Rule.Descriptor.Id = ConditionNotBooleanRuleId then
       Found := True;
   Assert.IsTrue(Found);
 end;
@@ -642,10 +660,103 @@ begin
     '{"rules": {"invalid-var-argument": {"exclude": ["Source/*.pas"]}}}', 'Source/Zeilen.pas'))));
 end;
 
+{ TConditionNotBooleanTests }
+
+function ConditionFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TConditionNotBooleanRule.Create, ASource, SystemIndex, '', 'Bedingungen.pas');
+end;
+
+function ConditionFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TConditionNotBooleanRule.Create, ASource, SystemIndex, AConfig, APath);
+end;
+
+/// <summary>Liste mit Count, Rest und Leer; AStatements stehen in Pruefen (ab Zeile 24).</summary>
+function Bedingungen(const AStatements: string): string;
+begin
+  Result := 'unit Bedingungen;'#10'interface'#10'type'#10'  TListe = class'#10'  public'#10'    Count: Integer;'#10 +
+    '    function Rest: Int64;'#10'    function Leer: Boolean;'#10'  end;'#10'  PZahl = ^Integer;'#10 +
+    'implementation'#10'function TListe.Rest: Int64;'#10'begin'#10'  Result := 0;'#10'end;'#10 +
+    'function TListe.Leer: Boolean;'#10'begin'#10'  Result := Count = 0;'#10'end;'#10'procedure Verarbeiten;'#10 +
+    'begin'#10'end;'#10'procedure Pruefen(Liste: TListe; Zeiger: PZahl; P: Pointer; S: string; B: LongBool; ' +
+    'D: Double);'#10'begin'#10 + AStatements + 'end;'#10'end.';
+end;
+
+procedure TConditionNotBooleanTests.IssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Bedingungen('  if Liste.Count then'#10'    Verarbeiten;'#10);
+  Found := ConditionFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(ConditionNotBooleanRuleId, Found[0].RuleId);
+  Assert.AreEqual('Die Bedingung ist Integer, nicht Boolean (wie E2012).', Found[0].Message);
+  Assert.AreEqual(24, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(5, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(2, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('Liste.Count <> 0', Found[0].Fixes[0].Title);
+  Assert.IsFalse(Found[0].Fixes[0].Alternative);
+  Assert.AreEqual('Liste.Count > 0', Found[0].Fixes[1].Title);
+  Assert.IsTrue(Found[0].Fixes[1].Alternative);
+  Fixed := Apply(Source, Found[0].Fixes[1]);
+  Assert.AreEqual(Bedingungen('  if Liste.Count > 0 then'#10'    Verarbeiten;'#10), Fixed);
+  Assert.AreEqual(0, Integer(Length(ConditionFindings(Fixed))), Fixed);
+end;
+
+procedure TConditionNotBooleanTests.LoopsPointersStringsAndClasses;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := ConditionFindings(Bedingungen('  while Liste.Rest do'#10'    Verarbeiten;'#10'  repeat'#10 +
+    '    Verarbeiten;'#10'  until Zeiger;'#10'  if P then'#10'    Verarbeiten;'#10'  if (S) then'#10 +
+    '    Verarbeiten;'#10'  if D then'#10'    Verarbeiten;'#10'  if Liste then'#10'    Verarbeiten;'#10));
+  Assert.AreEqual(6, Integer(Length(Found)));
+  Assert.AreEqual('Die Bedingung ist Int64, nicht Boolean (wie E2012).', Found[0].Message);
+  Assert.AreEqual('Die Bedingung ist PZahl, nicht Boolean (wie E2012).', Found[1].Message);
+  Assert.AreEqual('Zeiger <> nil', Found[1].Fixes[0].Title);
+  Assert.AreEqual('Assigned(Zeiger)', Found[1].Fixes[1].Title);
+  Assert.AreEqual('Die Bedingung ist Pointer, nicht Boolean (wie E2012).', Found[2].Message);
+  Assert.AreEqual('Die Bedingung ist string, nicht Boolean (wie E2012).', Found[3].Message);
+  Assert.AreEqual('(S) <> ''''', Found[3].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(Found[3].Fixes)));
+  Assert.AreEqual('Die Bedingung ist Double, nicht Boolean (wie E2012).', Found[4].Message);
+  Assert.AreEqual('Die Bedingung ist TListe, nicht Boolean (wie E2012).', Found[5].Message);
+  Assert.AreEqual('Assigned(Liste)', Found[5].Fixes[1].Title);
+  // Bedingter Ausdruck (ab Delphi 13).
+  Found := ConditionFindings(Bedingungen('  D := if Liste.Count then 1 else 0;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Die Bedingung ist Integer, nicht Boolean (wie E2012).', Found[0].Message);
+end;
+
+procedure TConditionNotBooleanTests.BooleansAndUnknownTypesAreSilent;
+begin
+  Assert.AreEqual(0, Integer(Length(ConditionFindings(Bedingungen('  if B then'#10'    Verarbeiten;'#10 +
+    '  if Liste.Leer then'#10'    Verarbeiten;'#10'  if not Liste.Leer then'#10'    Verarbeiten;'#10 +
+    '  while (Liste.Count <> 0) and B do'#10'    Verarbeiten;'#10'  if Unbekannt then'#10'    Verarbeiten;'#10 +
+    '  repeat'#10'    Verarbeiten;'#10'  until Liste.Count > 3;'#10)))));
+end;
+
+procedure TConditionNotBooleanTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Bedingungen('  if Liste.Count then'#10'    Verarbeiten;'#10);
+  Assert.AreEqual(1, Integer(Length(ConditionFindings(Source, '', 'Source/Bedingungen.pas'))));
+  Assert.AreEqual(0, Integer(Length(ConditionFindings(Source, '{"rules": {"condition-not-boolean": "off"}}',
+    'Source/Bedingungen.pas'))));
+  Assert.AreEqual(0, Integer(Length(ConditionFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/Bedingungen.pas'))));
+  Assert.AreEqual(0, Integer(Length(ConditionFindings(Source,
+    '{"rules": {"condition-not-boolean": {"exclude": ["Source/*.pas"]}}}', 'Source/Bedingungen.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TDynamicArrayMisuseTests);
   TDUnitX.RegisterTestFixture(TLocalRoutineAsCallbackTests);
   TDUnitX.RegisterTestFixture(THresultIntegerMixTests);
   TDUnitX.RegisterTestFixture(TInvalidVarArgumentTests);
+  TDUnitX.RegisterTestFixture(TConditionNotBooleanTests);
 
 end.
