@@ -73,6 +73,7 @@ contains
   Atlas.Common.Projects.Selection in 'Source\Projects\Atlas.Common.Projects.Selection.pas',
   Atlas.Common.Projects.DprojEditor in 'Source\Projects\Atlas.Common.Projects.DprojEditor.pas',
   Atlas.Common.Projects.UnitResolver in 'Source\Projects\Atlas.Common.Projects.UnitResolver.pas',
+  Atlas.Common.Projects.UnitLookup in 'Source\Projects\Atlas.Common.Projects.UnitLookup.pas',
   Atlas.Common.Compiler.Contract in 'Source\Compiler\Atlas.Common.Compiler.Contract.pas',
   Atlas.Common.Compiler.OutputParser in 'Source\Compiler\Atlas.Common.Compiler.OutputParser.pas',
   Atlas.Common.Compiler.CommandLine in 'Source\Compiler\Atlas.Common.Compiler.CommandLine.pas',

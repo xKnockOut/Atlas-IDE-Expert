@@ -3909,3 +3909,23 @@ Voraussetzung: Server läuft; Unit mit `ILogger = interface` (Methoden `Info`, `
 | IN7 | Interface aus einer anderen Unit des Projekts (über `uses`) | Fehlende Methoden werden ebenso gemeldet |
 | IN8 | `"interface-not-implemented": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
 | IN9 | Abgleich mit Delphi: IN1, IN5 und IN6 übersetzen | dcc meldet E2291, E2211 bzw. E2265 an denselben Stellen |
+
+## Unit in uses nicht gefunden (#1016)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; Delphi-Installation bekannt (Bibliothekspfade).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UN1 | `uses System.SysUtils, Vcl.Forms, Kunden.Daten, Rechnungs.Druck;`, im Suchpfad liegt `Rechnung.Druck.pas` | Fehler `uses-unit-not-found` an `Rechnungs.Druck`: „Unit Rechnungs.Druck nicht gefunden; ähnlich: Rechnung.Druck (wie F2613).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| UN2 | Schnellkorrektur „Rechnung.Druck verwenden“, danach Strg+Z | Name ersetzt, Projekt übersetzt; ein Undo-Schritt stellt ihn wieder her |
+| UN3 | Projekt ohne Namespace `Vcl` (DCC_Namespace), `uses Forms;` | „Unit Forms nicht gefunden; ähnlich: Vcl.Forms (wie F2613).“, Korrektur „Vcl.Forms verwenden“ |
+| UN4 | Unit `Hilfen.pas` in einem Unterordner `Extra` des Projekts, der nicht im Suchpfad steht | „… sie liegt in Extra außerhalb der Suchpfade (wie F2613).“; Korrektur „Ordner Extra in den Suchpfad aufnehmen“ ändert nur die Zeile `DCC_UnitSearchPath` der Basis in der `.dproj`, danach übersetzt das Projekt |
+| UN5 | Units der RTL ohne Quelltext (nur `.dcu`, z. B. in der Starter-Edition), Komponenten aus dem Bibliothekspfad, `SysUtils` mit Namespace `System` | Keine Meldung |
+| UN6 | In der `.dpr` `Alt in 'Alt\Alt.pas'` mit nicht vorhandener Datei | „Datei Alt\Alt.pas für Alt nicht gefunden (wie F1026).“ |
+| UN7 | `.dpk` mit `requires vclfehlt;` | „Package vclfehlt nicht gefunden (wie E2202).“ |
+| UN8 | Unit nennt sich selbst in `uses` | „Haupt verwendet sich selbst (wie F2092).“, auch im Linter |
+| UN9 | Bibliothekspfad in den IDE-Optionen leeren | Eine Meldung „Unit System nicht gefunden; der Bibliothekspfad der Installation fehlt (wie F1027).“, keine je Unit |
+| UN10 | Unit in `{$IFDEF LINUX} … {$ENDIF}`; Suchpfad mit unbekanntem Makro `$(MEINE_LIB)` | Keine Meldung |
+| UN11 | `"searchPaths": "atlas"` bzw. `"both"`; `"searchPaths": "alles"` | Units aus dem Index bzw. den Quellpfaden gelten als gefunden; beim falschen Wert ein Konfigurationsfehler |
+| UN12 | `"uses-unit-not-found": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| UN13 | Abgleich mit Delphi: UN1, UN4, UN6, UN7, UN8, UN9 übersetzen; außerdem ein großes echtes Projekt öffnen | dcc meldet F2613, F1026, E2202, F2092 bzw. F1027 an denselben Stellen; im echten Projekt meldet Atlas nichts, was dcc nicht meldet |

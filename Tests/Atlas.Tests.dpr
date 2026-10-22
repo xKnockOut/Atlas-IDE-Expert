@@ -115,6 +115,8 @@ uses
   Atlas.Common.Rules.Builtin.Expressions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Expressions.Tests.pas',
   Atlas.Common.Rules.Builtin.Statements.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Statements.Tests.pas',
   Atlas.Common.Rules.Builtin.Database.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Database.Tests.pas',
+  Atlas.Common.Rules.Builtin.Unresolved.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas',
+  Atlas.Common.Projects.UnitLookup.Tests in 'Common\Projects\Atlas.Common.Projects.UnitLookup.Tests.pas',
   Atlas.Common.Rules.Builtin.Packages.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas',
   Atlas.Common.Rules.Builtin.OpenTools.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.Tests.pas',
   Atlas.Common.Rules.Builtin.Testing.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Tests.pas',

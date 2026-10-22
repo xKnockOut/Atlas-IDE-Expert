@@ -74,6 +74,8 @@ type
     /// <summary>Absoluter Pfad und Inhalt der requires-Packages für Package-Prüfungen (#46).</summary>
     FileName: string;
     PackageProvides: TRulePackageProvides;
+    /// <summary>Unit-Suche wie beim Compiler (#1016); nil = keine.</summary>
+    Units: IRuleUnitLookup;
     /// <summary>Anwendungsart des Projekts der Datei (#926); Unknown ohne Projekt.</summary>
     Application: TRuleApplicationKind;
     /// <summary>Name des Projekts ohne Endung (#943); '' ohne Projekt.</summary>
@@ -1008,6 +1010,7 @@ begin
   Context.ReadFile := ARules.ReadFile;
   Context.FileName := ARules.FileName;
   Context.PackageProvides := ARules.PackageProvides;
+  Context.Units := ARules.Units;
   Context.Application := ARules.Application;
   Context.ProjectName := ARules.ProjectName;
   Context.AutoCreateForms := ARules.AutoCreateForms;

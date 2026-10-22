@@ -54,7 +54,7 @@ const
   /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
   NumberListRuleOptions: array[0..0] of string = ('allowed');
   /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
-  StringRuleOptions: array[0..3] of string = ('template', 'replacement', 'wrapper', 'okMarker');
+  StringRuleOptions: array[0..4] of string = ('template', 'replacement', 'wrapper', 'okMarker', 'searchPaths');
 
 type
   TValidator = class
@@ -291,6 +291,10 @@ begin
             ReportNode(Value[Inner], Format('"%s" muss eine Liste von Zahlen sein', [Value.Keys[Inner]]))
           else if (IndexStr(Value.Keys[Inner], StringRuleOptions) >= 0) and (Value[Inner].Kind <> TJsonKind.String_) then
             ReportNode(Value[Inner], Format('"%s" muss ein Text sein', [Value.Keys[Inner]]))
+          // Suchquelle von uses-unit-not-found (#1016).
+          else if (Value.Keys[Inner] = 'searchPaths') and
+            (IndexStr(Value[Inner].Value, ['project', 'atlas', 'both']) < 0) then
+            ReportNode(Value[Inner], '"searchPaths" muss "project", "atlas" oder "both" sein')
           // Transaktionspaare von transaction-without-rollback (#965).
           else if (Value.Keys[Inner] = 'pairs') and (Rule.Id = 'transaction-without-rollback') then
           begin
