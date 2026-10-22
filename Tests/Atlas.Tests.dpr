@@ -9,6 +9,7 @@ uses
   // Muss als erste Unit stehen: zählt den Speicherrest beim Beenden (#177).
   Atlas.Common.Diagnostics.ShutdownLeaks,
   System.SysUtils,
+  System.IOUtils,
   {$IFDEF TESTINSIGHT}
   TestInsight.DUnitX,
   {$ELSE}
@@ -855,6 +856,10 @@ begin
   {$IFDEF DEBUG}
   TShutdownLeaks.Enable(ReportShutdownLeak);
   {$ENDIF}
+  // Protokoll der Absturzsicherung in einen eigenen Ordner: Die Tests lösen absichtlich Fehler aus („Fehler in
+  // Quelle Testquelle“), die sonst im atlas.log der installierten Atlas-Version landen und bei der Fehlersuche wie
+  // echte Fehler aussehen.
+  TAtlasGuard.RotatingLog.Folder := TPath.Combine(TPath.GetTempPath, 'AtlasTests' + PathDelim + 'Logs');
   RegisterLeakMonitor;
 {$IFDEF TESTINSIGHT}
   TestInsight.DUnitX.RunRegisteredTests;

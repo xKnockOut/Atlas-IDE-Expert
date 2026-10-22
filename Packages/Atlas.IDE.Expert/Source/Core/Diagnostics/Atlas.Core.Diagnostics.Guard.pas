@@ -20,6 +20,10 @@
 // - Sicherung je Quelle (Provider): ReportProvider zählt Fehler einer
 //   einzelnen Datenquelle, etwa der Vervollständigung vom Server; nach 3
 //   Fehlern in 5 Minuten fällt nur diese Quelle aus, die übrigen laufen weiter.
+// - Langsame Quelle: Eine Zeitüberschreitung ist kein Fehler und zählt nicht
+//   zur Sicherung (früher schaltete ein beschäftigter Rechner so Quellen ab).
+//   ReportProviderSlow schreibt je Quelle höchstens eine Zeile je
+//   SlowLogSeconds mit der Zahl der übergangenen Meldungen.
 // - TAtlasRotatingLog: Protokoll unter %LOCALAPPDATA%\Atlas\Logs, höchstens
 //   5 Dateien à 1 MB. Jede Fehlerzeile nennt Atlas-Version, Feature bzw.
 //   Quelle, Fehlerklasse, Meldung (eine Zeile, gekürzt) und den Stack-Trace;
@@ -72,6 +76,8 @@ type
     WindowMinutes = 5;
     /// <summary>Derselbe Fehler eines Features so kurz nach dem zuletzt gezählten zählt nicht erneut.</summary>
     RepeatMs = 1000;
+    /// <summary>Langsame Quelle: höchstens eine Protokollzeile je Quelle in diesem Abstand.</summary>
+    SlowLogSeconds = 60;
   private
     FFailures: array[TAtlasFeature] of TArray<TDateTime>;
     // Zuletzt gezählter Fehler je Feature (Schlüssel, Zeit) und übergangene Wiederholungen seitdem.
@@ -82,6 +88,9 @@ type
     FProviderFailures: TDictionary<string, TArray<TDateTime>>;
     // Kleingeschriebener Name → Name wie gemeldet.
     FProvidersTripped: TDictionary<string, string>;
+    // Langsame Quellen, kleingeschriebener Name → Zeit der letzten Protokollzeile bzw. seitdem übergangene.
+    FSlowLogged: TDictionary<string, TDateTime>;
+    FSlowSkipped: TDictionary<string, Integer>;
     FClock: TFunc<TDateTime>;
     FLock: TCriticalSection;
     /// <summary>Zählt einen Fehler zu AStamps; True, wenn es Limit Fehler im Zeitfenster sind.</summary>
@@ -104,6 +113,10 @@ type
     function ProviderTripped(const AName: string): Boolean;
     function TrippedProviders: TArray<string>;
     procedure ResetProvider(const AName: string);
+    /// <summary>Langsame Antwort der Quelle AName, kein Fehler: True, wenn eine Protokollzeile fällig ist (die
+    /// erste, danach höchstens eine je SlowLogSeconds). ASkipped: seit der letzten Zeile übergangene Meldungen.
+    /// </summary>
+    function ProviderSlow(const AName: string; out ASkipped: Integer): Boolean;
     /// <summary>Alle Features und Quellen.</summary>
     procedure ResetAll;
   end;
@@ -147,6 +160,9 @@ type
     /// <summary>Fehler der Quelle AName melden; nach 3 in 5 Minuten fällt nur sie aus.</summary>
     class procedure ReportProvider(const AName: string; E: Exception); overload; static;
     class procedure ReportProvider(const AName, AMessage: string); overload; static;
+    /// <summary>Quelle AName war zu langsam (Zeitlimit überschritten oder vorige Anfrage läuft noch): zählt nicht
+    /// zur Sicherung; eine Protokollzeile je Quelle und SlowLogSeconds mit der Zahl der übergangenen.</summary>
+    class procedure ReportProviderSlow(const AName, AText: string); static;
     /// <summary>Führt AProc für die Quelle AName geschützt aus; False bei Fehler oder abgeschalteter Quelle.</summary>
     class function RunProvider(const AName: string; const AProc: TProc): Boolean; static;
     class function ProviderDisabled(const AName: string): Boolean; static;
@@ -255,10 +271,14 @@ begin
   FLock := TCriticalSection.Create;
   FProviderFailures := TDictionary<string, TArray<TDateTime>>.Create;
   FProvidersTripped := TDictionary<string, string>.Create;
+  FSlowLogged := TDictionary<string, TDateTime>.Create;
+  FSlowSkipped := TDictionary<string, Integer>.Create;
 end;
 
 destructor TAtlasFuse.Destroy;
 begin
+  FSlowSkipped.Free;
+  FSlowLogged.Free;
   FProvidersTripped.Free;
   FProviderFailures.Free;
   FLock.Free;
@@ -348,6 +368,33 @@ begin
   end;
 end;
 
+function TAtlasFuse.ProviderSlow(const AName: string; out ASkipped: Integer): Boolean;
+var
+  Key: string;
+  Time, Logged: TDateTime;
+begin
+  Key := AnsiLowerCase(AName);
+  FLock.Enter;
+  try
+    Time := FClock;
+    if not FSlowSkipped.TryGetValue(Key, ASkipped) then
+      ASkipped := 0;
+    Result := not FSlowLogged.TryGetValue(Key, Logged) or (SecondsBetween(Time, Logged) >= SlowLogSeconds);
+    if Result then
+    begin
+      FSlowLogged.AddOrSetValue(Key, Time);
+      FSlowSkipped.AddOrSetValue(Key, 0);
+    end
+    else
+    begin
+      FSlowSkipped.AddOrSetValue(Key, ASkipped + 1);
+      ASkipped := 0;
+    end;
+  finally
+    FLock.Leave;
+  end;
+end;
+
 function TAtlasFuse.ProviderTripped(const AName: string): Boolean;
 begin
   FLock.Enter;
@@ -425,6 +472,8 @@ begin
   try
     FProvidersTripped.Clear;
     FProviderFailures.Clear;
+    FSlowLogged.Clear;
+    FSlowSkipped.Clear;
   finally
     FLock.Leave;
   end;
@@ -599,6 +648,19 @@ begin
   finally
     Error.Free;
   end;
+end;
+
+class procedure TAtlasGuard.ReportProviderSlow(const AName, AText: string);
+var
+  Skipped: Integer;
+  Suffix: string;
+begin
+  if (FFuse = nil) or not FFuse.ProviderSlow(AName, Skipped) then
+    Exit;
+  Suffix := '';
+  if Skipped > 0 then
+    Suffix := Format(' (dazu %d weitere seit der letzten Meldung)', [Skipped]);
+  Log(Format('Quelle %s langsam: %s%s; zählt nicht als Fehler', [AName, SafeMessage(AText), Suffix]));
 end;
 
 class function TAtlasGuard.RunProvider(const AName: string; const AProc: TProc): Boolean;

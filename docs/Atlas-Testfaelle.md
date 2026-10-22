@@ -668,14 +668,16 @@ Protokoll: `atlas.log` (Diagnosemodus an). Einen Fehler gezielt auszulösen geht
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| SF1 | Eine Stunde mit Minimap, mitlaufendem Kopf, Gliederung, Änderungsmarken und Mehrfachmarken arbeiten, danach `atlas.log` durchsuchen | Fehlerzeilen nennen die Funktion selbst („Fehler in Minimap“, „Fehler in Mitlaufender Kopf“ …); „Editorbefehle“ nur nach ausdrücklich aufgerufenen Befehlen (Zeilen verschieben, Formatieren, Blockkommentar, Neue Zeile, Gegenstück) |
-| SF2 | Tritt ein Fehler beim Zeichnen auf (SF1) | Höchstens eine Zeile je Sekunde für denselben Fehler; die nächste Zeile endet mit „(seit der letzten Meldung n Wiederholungen übergangen)“ |
-| SF3 | Eine Sicherung löst aus (Zeile „… nach 3 Fehlern in 5 Minuten abgeschaltet“) | In der Benachrichtigungszentrale (Strg+Umschalt+Alt+N) ein Fehlereintrag „<Funktion> nach Fehlern abgeschaltet“ mit der letzten Meldung und den Knöpfen „Wieder einschalten“ und „Protokoll öffnen“ |
-| SF4 | In SF3 „Protokoll öffnen“ | `atlas.log` öffnet sich im Editor der IDE |
-| SF5 | In SF3 „Wieder einschalten“ | Die Funktion arbeitet wieder ohne Neustart; Protokoll „<Funktion>: aus der Benachrichtigung wieder eingeschaltet“ |
-| SF6 | Nach SF3, solange die Funktion aus ist: Brotkrumen anklicken, Gliederung öffnen, F12, Strg+D, Kontextmenü › Atlas › Erzeugen, Code Lens | Alles außer der abgeschalteten Funktion arbeitet weiter (**Abnahme**) |
-| SF7 | IDE mit Englisch als Sprache, SF3 | Eintrag „<Funktion> switched off after errors“, Knöpfe „Switch on again“ und „Open log“ |
-| SF8 | Nach einem Absturz mit Fehlern einer Funktion (z. B. Minimap) abgesicherter Start (#722) | Der Vorschlag nennt den Schalter dieser Funktion, nicht pauschal die Editorbefehle |
+| SJ1 | Eine Stunde mit Minimap, mitlaufendem Kopf, Gliederung, Änderungsmarken und Mehrfachmarken arbeiten, danach `atlas.log` durchsuchen | Fehlerzeilen nennen die Funktion selbst („Fehler in Minimap“, „Fehler in Mitlaufender Kopf“ …); „Editorbefehle“ nur nach ausdrücklich aufgerufenen Befehlen (Zeilen verschieben, Formatieren, Blockkommentar, Neue Zeile, Gegenstück) |
+| SJ2 | Tritt ein Fehler beim Zeichnen auf (SJ1) | Höchstens eine Zeile je Sekunde für denselben Fehler; die nächste Zeile endet mit „(seit der letzten Meldung n Wiederholungen übergangen)“ |
+| SJ3 | Eine Sicherung löst aus (Zeile „… nach 3 Fehlern in 5 Minuten abgeschaltet“) | In der Benachrichtigungszentrale (Strg+Umschalt+Alt+N) ein Fehlereintrag „<Funktion> nach Fehlern abgeschaltet“ mit der letzten Meldung und den Knöpfen „Wieder einschalten“ und „Protokoll öffnen“ |
+| SJ4 | In SJ3 „Protokoll öffnen“ | `atlas.log` öffnet sich im Editor der IDE |
+| SJ5 | In SJ3 „Wieder einschalten“ | Die Funktion arbeitet wieder ohne Neustart; Protokoll „<Funktion>: aus der Benachrichtigung wieder eingeschaltet“ |
+| SJ6 | Nach SJ3, solange die Funktion aus ist: Brotkrumen anklicken, Gliederung öffnen, F12, Strg+D, Kontextmenü › Atlas › Erzeugen, Code Lens | Alles außer der abgeschalteten Funktion arbeitet weiter (**Abnahme**) |
+| SJ7 | IDE mit Englisch als Sprache, SJ3 | Eintrag „<Funktion> switched off after errors“, Knöpfe „Switch on again“ und „Open log“ |
+| SJ8 | Nach einem Absturz mit Fehlern einer Funktion (z. B. Minimap) abgesicherter Start (#722) | Der Vorschlag nennt den Schalter dieser Funktion, nicht pauschal die Editorbefehle |
+| SJ9 | Server neu aufbauen lassen (Atlas › Index neu aufbauen) und währenddessen in einer großen Unit (über 5000 Zeilen) zügig tippen, Strg+Leer und `(` für den Parameter-Hint | Vervollständigung und Parameter-Hint bleiben an; `atlas.log` enthält höchstens eine Zeile „Quelle … langsam: …; zählt nicht als Fehler“ je Quelle und Minute, keine Zeile „Quelle … nach 3 Fehlern … abgeschaltet“ (**Abnahme**) |
+| SJ10 | Wie SJ9, danach *Atlas › Abgeschaltete Funktionen einschalten* | Die Liste der abgeschalteten Quellen ist leer |
 
 ## Include-Dateien (#500)
 
