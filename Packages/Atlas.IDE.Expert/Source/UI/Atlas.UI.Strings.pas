@@ -675,7 +675,7 @@ type
     RulesGroupForms, RulesGroupArchitecture, RulesGroupStyle, RulesGroupPackages, RulesGroupInternal,
     RulesProfilesNode, RulesProfilesText, RulesProjectButton, SettingsProblemsWindow, SettingsProblemsWindowScope,
     SettingsProblemsWindowGroupBy, SettingsProblemsWindowCompiler, SettingsProblemsWindowFollowCursor,
-    SettingsProblemsLive, SettingsHoverProblemActions);
+    SettingsProblemsLive, SettingsHoverProblemActions, MetricsLensMembers, MetricsLensUses);
 
   TAtlasStrings = class
   private class var
@@ -2130,7 +2130,9 @@ const
      'Compilermeldungen im Fenster zeigen',
      'Eintrag zur Cursorzeile markieren',
      'Laufende Prüfung beim Tippen (aus: nur beim Speichern)',
-     'Aktionszeile unter Befunden im Hover'),
+     'Aktionszeile unter Befunden im Hover',
+     '%d Member',
+     '%d Units im uses'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3493,7 +3495,9 @@ const
      'Show compiler messages in the window',
      'Select the entry of the cursor line',
      'Check while typing (off: only on save)',
-     'Action row below findings in the hover'));
+     'Action row below findings in the hover',
+     '%d members',
+     '%d units in uses'));
 
 { TAtlasStrings }
 

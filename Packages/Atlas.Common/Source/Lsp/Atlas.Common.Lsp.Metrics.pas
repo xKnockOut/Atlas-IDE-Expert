@@ -5,9 +5,9 @@
 // Willkommensseite (#592, Projektverlauf #758).
 // Argumente: [uri, mode]
 //   - URI einer Quelltextdatei, mode fehlt oder "file":
-//       {"enabled": true, "limits": {…}, "file": "Source/Main.pas", "methods": […]}
-//     Die Methoden haben das Format aus Atlas.Common.Metrics.Report (Zeilen ab 1);
-//     "enabled" ist die Einstellung codeLens.metrics.
+//       {"enabled": true, "limits": {…}, "structure": […], "file": "Source/Main.pas", "methods": […]}
+//     Die Methoden und "structure" (Member je Klasse, Zeilen und Units im uses, #939) haben das Format aus
+//     Atlas.Common.Metrics.Report (Zeilen ab 1); "enabled" ist die Einstellung codeLens.metrics.
 //   - URI eines Projekts (.dproj, .dpr, .dpk), eines Ordners oder null, dazu mode
 //       "summary"  → {"format": 1, "limits": {…}, "summary": {…}}
 //       "json"     → vollständige Metrikdaten (TMetricsReport.Json)
@@ -70,6 +70,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Metrics.Contract,
+  Atlas.Common.Metrics.Calculator,
   Atlas.Common.Metrics.Report,
   Atlas.Common.Rules.Builtin.Metrics;
 
@@ -118,20 +119,25 @@ end;
 
 function TLspMetrics.FileJson(const AFileName: string; const ASource: TLspMetricsSource): string;
 var
-  Text, Methods: string;
+  Text, Methods, Structure: string;
   Limits: TMetricLimits;
   FileItem: TFileMetrics;
 begin
+  Structure := '[]';
   Limits := TMetricRules.Limits(ASource.Settings);
   if Assigned(FReadText) and FReadText(AFileName, Text) then
+  begin
     FileItem := TFileMetrics.Create(TMetricsCollector.RelativePath(ASource.Root, AFileName),
-      FCollector.FileRoutines(AFileName, Text))
+      FCollector.FileRoutines(AFileName, Text));
+    // Aufbau (#939): Member je Klasse, Zeilen und Units im uses für die Metrik-Linse des Plugins.
+    Structure := TMetricsReport.StructureJson(TMetricsCalculator.StructureForText(Text), Limits);
+  end
   else
     FileItem := TFileMetrics.Create(TMetricsCollector.RelativePath(ASource.Root, AFileName), nil);
   // {"file": …, "methods": […]} um "enabled" und "limits" ergänzt.
   Methods := TMetricsReport.FileJson(FileItem, Limits);
   Result := '{"enabled": ' + LowerCase(BoolToStr(ASource.Settings.Metrics and ASource.Settings.CodeLens.Metrics, True)) + ', "limits": ' +
-    TMetricsReport.LimitsJson(Limits) + ', ' + Copy(Methods, 2, MaxInt);
+    TMetricsReport.LimitsJson(Limits) + ', "structure": ' + Structure + ', ' + Copy(Methods, 2, MaxInt);
 end;
 
 function TLspMetrics.ProjectJson(const ASource: TLspMetricsSource; AMode: TLspMetricsMode): string;

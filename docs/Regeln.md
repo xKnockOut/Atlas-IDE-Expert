@@ -15,7 +15,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 22 |
+| [Stil und Metriken](#gruppe-style) | 25 |
 | [Packages und Tests](#gruppe-packages) | 1 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -198,6 +198,9 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`boolean-assign-if`](#boolean-assign-if) | if, das nur True oder False zuweist | Code Smell | Hinweis |
 | [`magic-number`](#magic-number) | Zahl ohne Namen im Code | Code Smell | Hinweis |
 | [`line-length`](#line-length) | Zeile zu lang | Code Smell | Hinweis |
+| [`metric-class-size`](#metric-class-size) | Klasse mit zu vielen Membern | Code Smell | Hinweis |
+| [`metric-unit-length`](#metric-unit-length) | Unit zu lang | Code Smell | Hinweis |
+| [`metric-uses-count`](#metric-uses-count) | Zu viele Units im uses | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -3224,4 +3227,81 @@ Richtig:
 ```pascal
 Ergebnis := Rechner.Berechne(Kunde.Rabattstufe, Bestellung.Positionen, Lager.Verfuegbarkeit(Artikel),
   Steuer.Satz(Land));
+```
+
+<a id="metric-class-size"></a>
+### metric-class-size
+
+**Klasse mit zu vielen Membern** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Die Klasse hat mehr Member als der Grenzwert (Vorgabe 40): Feldnamen, Methoden, Properties mit eigenem Typ und class var. Properties, die nur die Sichtbarkeit anheben (property Align;), und geschachtelte Typen zählen nicht; eine geschachtelte Klasse wird für sich gemessen. Erscheint auch in der Metrik-Linse über der Klasse. Die Klasse aufteilen oder Teile in Hilfsklassen auslagern; „Klasse in eigene Unit verschieben“ (#103) hilft, wenn auch die Unit voll ist.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `max` | integer | `40` | Höchstzahl der Member je Klasse. |
+
+Mit Treffer:
+
+```pascal
+type
+  TfrmHaupt = class(TForm)
+    { 87 members }
+  end;
+```
+
+Richtig:
+
+```pascal
+type
+  TfrmHaupt = class(TForm)
+    { 25 members; data access in TKundenDaten }
+  end;
+```
+
+<a id="metric-unit-length"></a>
+### metric-unit-length
+
+**Unit zu lang** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Die Unit hat mehr Zeilen als der Grenzwert (Vorgabe 2000), gezählt bis zum abschließenden end. Gemessen werden nur Units, keine Programme oder Packages. Erscheint auch in der Metrik-Linse über dem Unit-Namen. Klassen mit „Klasse in eigene Unit verschieben“ (#103) auslagern.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `max` | integer | `2000` | Höchstzahl der Zeilen je Unit. |
+
+Mit Treffer:
+
+```pascal
+unit Kasse.Haupt;  { 2140 lines }
+```
+
+Richtig:
+
+```pascal
+unit Kasse.Haupt;  { 900 lines; TBeleg in Kasse.Beleg }
+```
+
+<a id="metric-uses-count"></a>
+### metric-uses-count
+
+**Zu viele Units im uses** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Die Unit bindet mehr Units ein als der Grenzwert (Vorgabe 30), interface und implementation zusammen. Der Befund steht auf dem ersten uses. Programme und Bibliotheken werden nicht geprüft, weil ihr uses die Units des Projekts aufzählt. Erscheint auch in der Metrik-Linse über uses. Viele Abhängigkeiten heißen meist, dass die Unit zu viel tut; „Klasse in eigene Unit verschieben“ (#103) teilt sie.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `max` | integer | `30` | Höchstzahl der Units in allen uses-Klauseln. |
+
+Mit Treffer:
+
+```pascal
+uses
+  { 34 units in interface and implementation }
+```
+
+Richtig:
+
+```pascal
+uses
+  { 12 units; reports in Kasse.Berichte }
 ```

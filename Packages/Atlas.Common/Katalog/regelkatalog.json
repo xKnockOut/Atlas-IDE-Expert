@@ -1573,6 +1573,60 @@
           "description": "Do not report lines that are only too long because of a comment."
         }
       ]
+    },
+    {
+      "id": "metric-class-size",
+      "name": "Class with too many members",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "The class has more members than the limit (default 40): field names, methods, properties with their own type and class var. Properties that only raise visibility (property Align;) and nested types do not count; a nested class is measured on its own. Also shown in the metrics lens above the class. Split the class or move parts into helper classes; Move class to own unit (#103) helps when the unit is crowded too.",
+      "bad": "type\n  TfrmHaupt = class(TForm)\n    { 87 members }\n  end;",
+      "good": "type\n  TfrmHaupt = class(TForm)\n    { 25 members; data access in TKundenDaten }\n  end;",
+      "options": [
+        {
+          "name": "max",
+          "type": "integer",
+          "default": 40,
+          "description": "Maximum number of members per class."
+        }
+      ]
+    },
+    {
+      "id": "metric-unit-length",
+      "name": "Unit too long",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "The unit has more lines than the limit (default 2000), counted up to the final end. Only units are measured, not programs or packages. Also shown in the metrics lens above the unit name. Move classes into their own units with Move class to own unit (#103).",
+      "bad": "unit Kasse.Haupt;  { 2140 lines }",
+      "good": "unit Kasse.Haupt;  { 900 lines; TBeleg in Kasse.Beleg }",
+      "options": [
+        {
+          "name": "max",
+          "type": "integer",
+          "default": 2000,
+          "description": "Maximum number of lines per unit."
+        }
+      ]
+    },
+    {
+      "id": "metric-uses-count",
+      "name": "Too many units in uses",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "The unit uses more units than the limit (default 30), interface and implementation together. The finding sits on the first uses. Programs and libraries are not checked, because their uses lists the units of the project. Also shown in the metrics lens above uses. Many dependencies usually mean the unit does too much; Move class to own unit (#103) splits it.",
+      "bad": "uses\n  { 34 units in interface and implementation }",
+      "good": "uses\n  { 12 units; reports in Kasse.Berichte }",
+      "options": [
+        {
+          "name": "max",
+          "type": "integer",
+          "default": 30,
+          "description": "Maximum number of units in all uses clauses."
+        }
+      ]
     }
   ]
 }

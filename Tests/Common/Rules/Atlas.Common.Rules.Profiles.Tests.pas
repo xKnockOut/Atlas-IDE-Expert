@@ -182,8 +182,8 @@ const
     'form-object-without-field,format-without-settings,generic-exception-raised,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,implicit-package-import,int32-mul-overflow,interface-guid,' +
     'invisible-char,' +
-    'lock-without-finally,loop-off-by-one,managed-type-raw-memory,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
-    'metric-nesting-depth,metric-parameter-count,missing-inherited,operator-precedence,out-param-read,owned-field-free-unclear,pair-without-finally,pchar-of-temporary,' +
+    'lock-without-finally,loop-off-by-one,managed-type-raw-memory,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,' +
+    'metric-method-length,metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-inherited,operator-precedence,out-param-read,owned-field-free-unclear,pair-without-finally,pchar-of-temporary,' +
     'possibly-uninitialized,processmessages-in-loop,raise-in-finally,redundant-assigned-free,' +
     'result-not-set,' +
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
@@ -226,8 +226,8 @@ begin
   Assert.AreEqual('bool-compare,boolean-assign-if,case-insensitive-compare,component-fixed-pixels,component-hardcoded-color,component-palette-icon,' +
     'component-setter-without-invalidate,deprecated-symbol,dfm-property,empty-except,forbidden-uses,' +
     'foreign-form-control-access,format-without-settings,generic-exception-raised,implicit-package-import,' +
-    'metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,metric-nesting-depth,' +
-    'metric-parameter-count,' +
+    'metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
+    'metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,' +
     'processmessages-in-loop,redundant-assigned-free,shadowed-name,slash-command,thread-resume-suspend,unneeded-forward-declaration,' +
     'unused-assignment,unused-local,' +
     'unused-parameter,with-statement',

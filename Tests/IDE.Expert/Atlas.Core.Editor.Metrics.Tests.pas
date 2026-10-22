@@ -15,6 +15,8 @@ type
     [Test]
     procedure ReadsServerAnswer;
     [Test]
+    procedure ReadsStructure;
+    [Test]
     procedure InvalidAnswerIsOffAndEmpty;
     [Test]
     procedure MissingLimitsNeverExceed;
@@ -84,6 +86,34 @@ begin
   Assert.AreEqual(1, Metrics.IndexAt(29));
   Assert.AreEqual(0, Metrics.IndexAt(11));
   Assert.AreEqual(-1, Metrics.IndexAt(12));
+end;
+
+procedure TAtlasEditorMetricsTests.ReadsStructure;
+var
+  Metrics: TAtlasFileMetrics;
+  Formats: TAtlasStructureFormats;
+begin
+  Metrics := Parse('{"structure": [{"kind": "unitLength", "name": "Main", "line": 1, "value": 2140, ' +
+    '"limit": 2000}, {"kind": "usesCount", "name": "Main", "line": 3, "value": 12, "limit": 30}, ' +
+    '{"kind": "classSize", "name": "TfrmHaupt", "line": 8, "value": 87}, {"kind": "anders", "line": 9, ' +
+    '"value": 1}, {"kind": "classSize", "name": "Ohne Zeile", "value": 1}], "methods": []}');
+  Assert.AreEqual(3, Integer(Length(Metrics.Structures)), 'unbekannte Art und fehlende Zeile übergangen');
+  Assert.AreEqual(0, Metrics.StructureAt(0));
+  Assert.AreEqual(1, Metrics.StructureAt(2));
+  Assert.AreEqual(2, Metrics.StructureAt(7));
+  Assert.AreEqual(-1, Metrics.StructureAt(8));
+  Assert.AreEqual('TfrmHaupt', Metrics.Structures[2].Name);
+  Assert.AreEqual(MaxInt, Metrics.Structures[2].Limit, 'ohne Grenzwert nie überschritten');
+  Formats[TAtlasStructureMetric.ClassSize] := '%d Member';
+  Formats[TAtlasStructureMetric.UnitLength] := '%d Zeilen';
+  Formats[TAtlasStructureMetric.UsesCount] := '%d Units im uses';
+  Assert.AreEqual('2140 Zeilen (> 2000)', TAtlasMetricsLens.StructureCaption(Metrics.Structures[0], Formats,
+    '%s (> %d)'));
+  Assert.AreEqual('12 Units im uses', TAtlasMetricsLens.StructureCaption(Metrics.Structures[1], Formats,
+    '%s (> %d)'));
+  Assert.AreEqual('87 Member', TAtlasMetricsLens.StructureCaption(Metrics.Structures[2], Formats, '%s (> %d)'));
+  Assert.AreEqual('usesCount', TAtlasMetricsLens.StructureKey(TAtlasStructureMetric.UsesCount));
+  Assert.AreEqual(0, Integer(Length(Parse(Answer).Structures)), 'ältere Server ohne "structure"');
 end;
 
 procedure TAtlasEditorMetricsTests.InvalidAnswerIsOffAndEmpty;
