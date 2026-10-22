@@ -878,6 +878,17 @@
           "description": "Auch die Formularvariablen des Designers melden."
         }
       ]
+    },
+    {
+      "id": "commented-out-code",
+      "name": "Auskommentierter Code",
+      "description": "Mindestens minLines aufeinanderfolgende Kommentarzeilen (// je Zeile oder ein mehrzeiliger { }-Kommentar), die sich als Anweisungen, Deklarationen oder Klassenmitglieder parsen lassen. Prosa am Anfang und Ende des Blocks bleibt außen vor, mindestens die Hälfte der Zeilen muss nach Code aussehen (;, :=, begin, end, then, do). XMLDoc (///) und Kommentare vor dem ersten Token (Lizenzköpfe) meldet die Regel nie. Sicherheit mittel. Die Versionsverwaltung bewahrt den alten Code auf; die Korrektur entfernt die Zeilen.",
+      "options": [
+        {
+          "name": "minLines",
+          "description": "Mindestzahl aufeinanderfolgender auskommentierter Codezeilen."
+        }
+      ]
     }
   ]
 }

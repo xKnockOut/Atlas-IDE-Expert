@@ -1,4 +1,4 @@
-﻿# Atlas: Testfälle in der IDE
+# Atlas: Testfälle in der IDE
 
 Bei Delphi 12 heißen BPL und Protokoll `…290.bpl` und `…290.log` statt `…370`.
 
@@ -3530,3 +3530,17 @@ Voraussetzung: Server läuft; in `atlas.json` `"rules": { "global-variable": "hi
 | GV4 | Option „includeFormVariables“ auf der Seite „Prüfregeln“ an | Meldung an `frmHaupt` |
 | GV5 | `A, B: Integer;` und `threadvar Puffer: string;` im interface | Je eine Meldung für A, B und Puffer |
 | GV6 | `"global-variable": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Auskommentierter Code (#942)
+
+Voraussetzung: Server läuft; Unit mit drei auskommentierten Codezeilen im Rumpf einer Routine (`// if Kunde.Rabatt > 0 then`, `//   Preis := Preis * (1 - Kunde.Rabatt);`, `// Protokoll.Add('Rabatt: ' + FloatToStr(Kunde.Rabatt));`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CC1 | Unit öffnen | Hinweis `commented-out-code` über den drei Zeilen: „3 Zeilen auskommentierter Code; die Versionsverwaltung bewahrt ihn auf.“, Sicherheit mittel; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| CC2 | Alt+Enter, „Auskommentierten Code entfernen“ | Die drei Zeilen sind weg, der Code darum bleibt unverändert (**Abnahme**) |
+| CC3 | Drei Zeilen Prosa als `//`-Kommentar, XMLDoc mit `///` und der Lizenzkopf am Dateianfang | Keine Meldung |
+| CC4 | Beispiel im Kommentar hinter „So sieht es aus:“ bzw. in `<code>` | Keine Meldung |
+| CC5 | Code als mehrzeiliger `{ … }`-Kommentar | Eine Meldung; die Korrektur entfernt den ganzen Kommentar |
+| CC6 | Option „minLines“ auf 4 bzw. 2 | Bei 4 keine Meldung, bei 2 werden auch zwei Zeilen gemeldet |
+| CC7 | `"commented-out-code": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

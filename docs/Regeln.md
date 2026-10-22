@@ -15,7 +15,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 27 |
+| [Stil und Metriken](#gruppe-style) | 28 |
 | [Packages und Tests](#gruppe-packages) | 1 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -203,6 +203,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`metric-uses-count`](#metric-uses-count) | Zu viele Units im uses | Code Smell | Hinweis |
 | [`public-field`](#public-field) | Öffentliches Feld | Code Smell | Hinweis |
 | [`global-variable`](#global-variable) | Globale Variable im interface | Code Smell | Hinweis |
+| [`commented-out-code`](#commented-out-code) | Auskommentierter Code | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -3366,4 +3367,30 @@ function AktuellerBenutzer: TBenutzer;
 implementation
 var
   GBenutzer: TBenutzer;
+```
+
+<a id="commented-out-code"></a>
+### commented-out-code
+
+**Auskommentierter Code** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Mindestens minLines aufeinanderfolgende Kommentarzeilen (// je Zeile oder ein mehrzeiliger { }-Kommentar), die sich als Anweisungen, Deklarationen oder Klassenmitglieder parsen lassen. Prosa am Anfang und Ende des Blocks bleibt außen vor, mindestens die Hälfte der Zeilen muss nach Code aussehen (;, :=, begin, end, then, do). XMLDoc (///) und Kommentare vor dem ersten Token (Lizenzköpfe) meldet die Regel nie. Sicherheit mittel. Die Versionsverwaltung bewahrt den alten Code auf; die Korrektur entfernt die Zeilen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `minLines` | integer | `3` | Mindestzahl aufeinanderfolgender auskommentierter Codezeilen. |
+
+Mit Treffer:
+
+```pascal
+Speichern;
+// if Kunde.Aktiv then
+//   Kunde.Speichern;
+// Log('gespeichert');
+```
+
+Richtig:
+
+```pascal
+Speichern;
 ```

@@ -974,6 +974,12 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
   Parse('{"rules": {"metric-method-length": {"max": 2.5}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // minLines von commented-out-code (#942).
+  Parse('{"rules": {"commented-out-code": {"minLines": 5}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"commented-out-code": {"minLines": 0}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"minLines"');
 end;
 
 procedure TConfigurationParserTests.ChecksTodoKeywordsOption;
