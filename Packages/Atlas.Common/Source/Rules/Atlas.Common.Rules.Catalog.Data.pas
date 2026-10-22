@@ -1245,6 +1245,27 @@ begin
     '      "description": "X is dereferenced (X.Field, X.Method, X^) and only afterwards checked with Assigned(X), X <> nil or X = nil. Either the check is superfluous or the access before it can crash. Re' + 'ported only when every path to the check passes the access and X was not checked before; a new assignment, passing X to a routine and, for fields and global variables, any call in between end the path' + '. Medium confidence. When the check is an if without else directly after the access in the same block, the quick fix moves the access into it.",' + #10 +
     '      "bad": "Titel := Kunde.Name;\nif Assigned(Kunde) then\n  Anzeigen(Kunde);",' + #10 +
     '      "good": "if Assigned(Kunde) then\nbegin\n  Titel := Kunde.Name;\n  Anzeigen(Kunde);\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "field-free-without-nil",' + #10 +
+    '      "name": "Field freed, reference stays",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "FField.Free in a method outside the destructor, and a path to the end of the method does not set the field again. A later access or a second Free hits freed memory. Setting it ag' + 'ain means an assignment or the call of a method of the same class that assigns the field. Fields are those of the class declaration in the unit. Destructors, methods with [TearDown] or [TearDownFixtur' + 'e], methods only called from these and the methods from the option ignoreMethods are exempt. Medium confidence. Quick fix: FreeAndNil(FField).",' + #10 +
+    '      "bad": "procedure TImport.Zuruecksetzen;\nbegin\n  FCache.Free;\nend;",' + #10 +
+    '      "good": "procedure TImport.Zuruecksetzen;\nbegin\n  FreeAndNil(FCache);\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "ignoreMethods",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "Destroy",' + #10 +
+    '            "BeforeDestruction"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Methods in which Free without nil is allowed."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -1897,6 +1918,17 @@ begin
     '      "id": "deref-before-nil-check",' + #10 +
     '      "name": "Erst benutzt, dann auf nil geprüft",' + #10 +
     '      "description": "X wird dereferenziert (X.Feld, X.Methode, X^) und erst danach mit Assigned(X), X <> nil oder X = nil geprüft. Entweder ist die Prüfung überflüssig oder der Zugriff davor kann kna' + 'llen. Gemeldet wird nur, wenn jeder Weg zur Prüfung durch den Zugriff führt und X vorher nicht geprüft wurde; eine neue Zuweisung, die Übergabe von X an eine Routine und bei Feldern und globalen Varia' + 'blen jeder Aufruf dazwischen beenden den Weg. Konfidenz mittel. Ist die Prüfung ein if ohne else direkt nach dem Zugriff im selben Block, zieht die Schnellkorrektur den Zugriff hinein."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "field-free-without-nil",' + #10 +
+    '      "name": "Feld freigegeben, Verweis bleibt stehen",' + #10 +
+    '      "description": "FFeld.Free in einer Methode außerhalb des Destruktors, und ein Weg zum Ende der Methode setzt das Feld nicht neu. Ein späterer Zugriff oder ein zweites Free trifft freigegebenen ' + 'Speicher. Neu setzt eine Zuweisung oder der Aufruf einer Methode derselben Klasse, die das Feld zuweist. Felder sind die der Klassendeklaration in der Unit. Ausgenommen sind Destruktoren, Methoden mit' + ' [TearDown] oder [TearDownFixture], Methoden, die nur aus diesen aufgerufen werden, und die Methoden aus der Option ignoreMethods. Konfidenz mittel. Schnellkorrektur: FreeAndNil(FFeld).",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "ignoreMethods",' + #10 +
+    '          "description": "Methoden, in denen Free ohne nil erlaubt ist."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

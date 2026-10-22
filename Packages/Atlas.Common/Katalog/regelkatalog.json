@@ -1225,6 +1225,27 @@
       "description": "X is dereferenced (X.Field, X.Method, X^) and only afterwards checked with Assigned(X), X <> nil or X = nil. Either the check is superfluous or the access before it can crash. Reported only when every path to the check passes the access and X was not checked before; a new assignment, passing X to a routine and, for fields and global variables, any call in between end the path. Medium confidence. When the check is an if without else directly after the access in the same block, the quick fix moves the access into it.",
       "bad": "Titel := Kunde.Name;\nif Assigned(Kunde) then\n  Anzeigen(Kunde);",
       "good": "if Assigned(Kunde) then\nbegin\n  Titel := Kunde.Name;\n  Anzeigen(Kunde);\nend;"
+    },
+    {
+      "id": "field-free-without-nil",
+      "name": "Field freed, reference stays",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "FField.Free in a method outside the destructor, and a path to the end of the method does not set the field again. A later access or a second Free hits freed memory. Setting it again means an assignment or the call of a method of the same class that assigns the field. Fields are those of the class declaration in the unit. Destructors, methods with [TearDown] or [TearDownFixture], methods only called from these and the methods from the option ignoreMethods are exempt. Medium confidence. Quick fix: FreeAndNil(FField).",
+      "bad": "procedure TImport.Zuruecksetzen;\nbegin\n  FCache.Free;\nend;",
+      "good": "procedure TImport.Zuruecksetzen;\nbegin\n  FreeAndNil(FCache);\nend;",
+      "options": [
+        {
+          "name": "ignoreMethods",
+          "type": "string-list",
+          "default": [
+            "Destroy",
+            "BeforeDestruction"
+          ],
+          "description": "Methods in which Free without nil is allowed."
+        }
+      ]
     }
   ]
 }

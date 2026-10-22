@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 33 |
+| [Fehler finden](#gruppe-find-bugs) | 34 |
 | [Exceptions](#gruppe-exceptions) | 5 |
 | [Threads](#gruppe-threads) | 6 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -57,6 +57,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`collection-modified-in-loop`](#collection-modified-in-loop) | Liste in der eigenen Schleife verändert | Bug | Warnung |
 | [`use-after-free`](#use-after-free) | Objekt nach Free weiter benutzt | Bug | Fehler |
 | [`deref-before-nil-check`](#deref-before-nil-check) | Erst benutzt, dann auf nil geprüft | Bug | Warnung |
+| [`field-free-without-nil`](#field-free-without-nil) | Feld freigegeben, Verweis bleibt stehen | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -2643,5 +2644,34 @@ if Assigned(Kunde) then
 begin
   Titel := Kunde.Name;
   Anzeigen(Kunde);
+end;
+```
+
+<a id="field-free-without-nil"></a>
+### field-free-without-nil
+
+**Feld freigegeben, Verweis bleibt stehen** · Bug · Warnung · Gruppe Fehler finden
+
+FFeld.Free in einer Methode außerhalb des Destruktors, und ein Weg zum Ende der Methode setzt das Feld nicht neu. Ein späterer Zugriff oder ein zweites Free trifft freigegebenen Speicher. Neu setzt eine Zuweisung oder der Aufruf einer Methode derselben Klasse, die das Feld zuweist. Felder sind die der Klassendeklaration in der Unit. Ausgenommen sind Destruktoren, Methoden mit [TearDown] oder [TearDownFixture], Methoden, die nur aus diesen aufgerufen werden, und die Methoden aus der Option ignoreMethods. Konfidenz mittel. Schnellkorrektur: FreeAndNil(FFeld).
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `ignoreMethods` | string-list | `["Destroy","BeforeDestruction"]` | Methoden, in denen Free ohne nil erlaubt ist. |
+
+Mit Treffer:
+
+```pascal
+procedure TImport.Zuruecksetzen;
+begin
+  FCache.Free;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TImport.Zuruecksetzen;
+begin
+  FreeAndNil(FCache);
 end;
 ```

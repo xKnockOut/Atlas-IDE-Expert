@@ -3195,3 +3195,18 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Parameter `Kunde: TKund
 | DN6 | Feld `FKunde` statt Parameter, dazwischen ein Aufruf `Laden;` | Keine Meldung; ohne den Aufruf gemeldet |
 | DN7 | Befund-Hover und Fenster „Atlas-Prüfung“ | Gruppe „Fehler finden“, Konfidenz mittel, Aktionszeile mit der Korrektur aus DN2 |
 | DN8 | `"deref-before-nil-check": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Feld freigegeben, Verweis bleibt stehen (#917)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Klasse `TImport` mit Feld `FCache: TObject`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FN1 | `procedure TImport.Zuruecksetzen; begin FCache.Free; end;` | Gelbe Wellenlinie über `FCache.Free`: „FCache bleibt nach Free gesetzt; ein späterer Zugriff trifft freigegebenen Speicher.“ (**Abnahme**) |
+| FN2 | Alt+Enter „FreeAndNil(FCache)“ | `FreeAndNil(FCache);`; ein Strg+Z nimmt es zurück; keine Meldung mehr |
+| FN3 | Dasselbe im Destruktor bzw. in einer Methode, die nur der Destruktor aufruft | Keine Meldung |
+| FN4 | `FCache.Free; FCache := nil;` bzw. `FCache.Free; Laden;` (Laden setzt `FCache := TObject.Create`) | Keine Meldung |
+| FN5 | DUnitX-Testklasse: `[TearDown] procedure Aufraeumen;` mit `FListe.Free;` | Keine Meldung |
+| FN6 | `"field-free-without-nil": {"ignoreMethods": ["Zuruecksetzen"]}` | FN1 ohne Meldung; `BeforeDestruction` wird jetzt gemeldet |
+| FN7 | Befund-Hover und Fenster „Atlas-Prüfung“ | Gruppe „Fehler finden“, Konfidenz mittel, Aktionszeile mit der Korrektur aus FN2 |
+| FN8 | `"field-free-without-nil": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

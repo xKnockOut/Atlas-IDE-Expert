@@ -27,6 +27,14 @@
 //                             sie ändern). Steht die Prüfung als if ohne else
 //                             direkt nach dem Zugriff im selben Block, zieht die
 //                             Korrektur sie vor den Zugriff.
+//   field-free-without-nil    FFeld.Free in einer Methode außerhalb des
+//                             Destruktors, und ein Weg zum Ende der Methode
+//                             setzt das Feld nicht neu (#917). Neu setzt eine
+//                             Zuweisung oder der Aufruf einer Methode derselben
+//                             Klasse, die das Feld zuweist. Felder sind die der
+//                             Klassendeklaration in der Unit. Ausgenommen sind
+//                             die Methoden aus ignoreMethods (Vorgabe Destroy,
+//                             BeforeDestruction); Korrektur FreeAndNil(FFeld).
 //
 // Was der Graph nicht sieht, macht die Variable "unbekannt" und erzeugt keinen
 // Treffer: Übergabe als Argument (var/out-Parameter, SetLength, FillChar,
@@ -79,9 +87,18 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TFieldFreeWithoutNilRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Vorgabe der Option ignoreMethods.</summary>
+    class function DefaultIgnoreMethods: TArray<string>; static;
+  end;
+
 const
   UseAfterFreeRuleId = 'use-after-free';
   DerefBeforeNilCheckRuleId = 'deref-before-nil-check';
+  FieldFreeWithoutNilRuleId = 'field-free-without-nil';
 
 /// <summary>Wird AName in ABlock so benutzt, dass der Kontrollfluss die Zuweisung nicht sieht?</summary>
 function HasOpaqueUse(ABlock: TSyntaxNode; const AName: string): Boolean;
@@ -96,6 +113,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived;
 
 const
@@ -1113,6 +1131,293 @@ begin
   end;
 end;
 
+{ TFieldFreeWithoutNilRule }
+
+function TFieldFreeWithoutNilRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(FieldFreeWithoutNilRuleId, TRuleSeverity.Warning,
+    'Feld freigegeben, Verweis bleibt stehen');
+end;
+
+class function TFieldFreeWithoutNilRule.DefaultIgnoreMethods: TArray<string>;
+begin
+  Result := ['Destroy', 'BeforeDestruction'];
+end;
+
+/// <summary>Deklaration der Klasse AClassName (letzter Namensteil) unter ARoot; nil ohne.</summary>
+function FindClassType(ARoot: TSyntaxNode; const AClassName: string): TSyntaxNode;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  if (ARoot.Kind = TSyntaxKind.TypeDecl) and SameText(ARoot.Name, AClassName) then
+    Exit(ARoot.FindChild(TSyntaxKind.ClassType));
+  for Index := 0 to ARoot.ChildCount - 1 do
+    if not (ARoot[Index].Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.ImplementationSection]) then
+    begin
+      Result := FindClassType(ARoot[Index], AClassName);
+      if Result <> nil then
+        Exit;
+    end;
+end;
+
+/// <summary>Felder der Klassendeklaration AClass (ohne verschachtelte Typen).</summary>
+function ClassFields(AClass: TSyntaxNode): TArray<string>;
+
+  procedure Collect(E: TSyntaxNode);
+  var
+    Index: Integer;
+    Name: string;
+  begin
+    if E.Kind = TSyntaxKind.Field then
+      for Name in E.Name.Split([',']) do
+        Result := Result + [Trim(Name)];
+    for Index := 0 to E.ChildCount - 1 do
+      if E[Index].Kind <> TSyntaxKind.TypeSection then
+        Collect(E[Index]);
+  end;
+
+begin
+  Result := nil;
+  if AClass <> nil then
+    Collect(AClass);
+end;
+
+/// <summary>Methoden der Klassendeklaration AClass mit [TearDown] oder [TearDownFixture] (DUnitX).</summary>
+function TearDownMethods(AClass: TSyntaxNode): TArray<string>;
+
+  procedure Visit(E: TSyntaxNode);
+  var
+    Index: Integer;
+    Pending: Boolean;
+  begin
+    Pending := False;
+    for Index := 0 to E.ChildCount - 1 do
+      if E[Index].Kind = TSyntaxKind.Attribute then
+        Pending := Pending or MatchText(E[Index].Name, ['TearDown', 'TearDownFixture'])
+      else
+      begin
+        if Pending and (E[Index].Name <> '') then
+          Result := Result + [E[Index].Name];
+        Pending := False;
+        if E[Index].Kind = TSyntaxKind.Visibility then
+          Visit(E[Index]);
+      end;
+  end;
+
+begin
+  Result := nil;
+  if AClass <> nil then
+    Visit(AClass);
+end;
+
+procedure TFieldFreeWithoutNilRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Cache: IRuleDerivedCache;
+  Routines: TArray<TSyntaxNode>;
+  Routine, Target, Callee: TSyntaxNode;
+  Graph: TControlFlowGraph;
+  Node: TFlowNode;
+  Ignore, Fields, Locals, TearDowns: TArray<string>;
+  QualifiedClass, ClassName, Path: string;
+  Dot: Integer;
+
+  function Contains(const AList: TArray<string>; const AName: string): Boolean;
+  var
+    Item: string;
+  begin
+    for Item in AList do
+      if SameText(Item, AName) then
+        Exit(True);
+    Result := False;
+  end;
+
+  function Text(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  function MethodOf(ARoutine: TSyntaxNode): string;
+  begin
+    Result := Copy(ARoutine.Name, LastDelimiter('.', ARoutine.Name) + 1, MaxInt);
+  end;
+
+  // Destruktor, Methode aus ignoreMethods oder mit [TearDown].
+  function Releasing(ARoutine: TSyntaxNode): Boolean;
+  begin
+    Result := MatchText(MethodOf(ARoutine), Ignore) or StartsText('destructor', Trim(Text(ARoutine))) or
+      Contains(TearDowns, MethodOf(ARoutine));
+  end;
+
+  // Ruft ARoutine die Methode AName auf (AName; AName(…); Self.AName)?
+  function Calls(ARoutine: TSyntaxNode; const AName: string): Boolean;
+
+    function Visit(E: TSyntaxNode): Boolean;
+    var
+      Index: Integer;
+    begin
+      if ((E.Kind = TSyntaxKind.CallStatement) and (E.ChildCount > 0) and SameText(FreedPath(E[0]), AName)) or
+        ((E.Kind = TSyntaxKind.Call) and (E.ChildCount > 0) and SameText(FreedPath(E[0]), AName)) then
+        Exit(True);
+      for Index := 0 to E.ChildCount - 1 do
+        if Visit(E[Index]) then
+          Exit(True);
+      Result := False;
+    end;
+
+  begin
+    Result := Visit(ARoutine);
+  end;
+
+  // Wird die Methode nur aus freigebenden Methoden der Klasse aufgerufen (FreeFeatures aus Destroy)?
+  function OnlyCalledWhileReleasing(ARoutine: TSyntaxNode): Boolean;
+  var
+    Other: TSyntaxNode;
+    Callers: Integer;
+  begin
+    Callers := 0;
+    for Other in Routines do
+      if (Other <> ARoutine) and Calls(Other, MethodOf(ARoutine)) then
+      begin
+        if not StartsText(QualifiedClass + '.', Other.Name) or not Releasing(Other) then
+          Exit(False);
+        Inc(Callers);
+      end;
+    Result := Callers > 0;
+  end;
+
+  // Methode derselben Klasse, die APath zuweist.
+  function AssignerMethod(const AName, APath: string): Boolean;
+  var
+    Other: TSyntaxNode;
+  begin
+    for Other in Routines do
+      if SameText(Other.Name, QualifiedClass + '.' + AName) and SubtreeAssigns(Other, APath) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Ruft der Knoten eine Methode der Klasse auf, die APath neu setzt (Laden; Self.Laden; Laden(…))?
+  function CallsAssigner(ANode: TFlowNode; const APath: string): Boolean;
+
+    function Visit(E: TSyntaxNode): Boolean;
+    var
+      Index: Integer;
+      Name: string;
+    begin
+      Result := False;
+      Name := '';
+      if (E.Kind = TSyntaxKind.Call) and (E.ChildCount > 0) then
+        Name := FreedPath(E[0]);
+      if (Name <> '') and AssignerMethod(Name, APath) then
+        Exit(True);
+      for Index := 0 to E.ChildCount - 1 do
+        if Visit(E[Index]) then
+          Exit(True);
+    end;
+
+  var
+    Part: TSyntaxNode;
+  begin
+    Result := False;
+    if ANode.Syntax = nil then
+      Exit;
+    // Aufruf ohne Klammern: "Laden;" bzw. "Self.Laden;".
+    if (ANode.Syntax.Kind = TSyntaxKind.CallStatement) and (ANode.Syntax.ChildCount > 0) and
+      (FreedPath(ANode.Syntax[0]) <> '') and AssignerMethod(FreedPath(ANode.Syntax[0]), APath) then
+      Exit(True);
+    for Part in OwnParts(ANode.Syntax) do
+      if Visit(Part) then
+        Exit(True);
+  end;
+
+  // Erreicht ein Weg vom Free das normale Ende der Methode, ohne das Feld neu zu setzen?
+  function ReachesEnd(AFree: TFlowNode; const APath: string): Boolean;
+  var
+    Visited: TArray<Boolean>;
+    Queue: TArray<TFlowNode>;
+    Head: Integer;
+    Current, Next: TFlowNode;
+  begin
+    Result := False;
+    SetLength(Visited, Graph.Nodes.Count);
+    Queue := nil;
+    for Next in AFree.Successors do
+      if not AFree.IsImplicitRaiseEdge(Next) then
+        Queue := Queue + [Next];
+    Head := 0;
+    while Head < Length(Queue) do
+    begin
+      Current := Queue[Head];
+      Inc(Head);
+      if Visited[Current.Index] or (Current = AFree) then
+        Continue;
+      Visited[Current.Index] := True;
+      if Current = Graph.ExitNode then
+        Exit(True);
+      if AssignsPath(Current, APath) or CallsAssigner(Current, APath) then
+        Continue;
+      for Next in Current.Successors do
+        if not Visited[Next.Index] and not Current.IsImplicitRaiseEdge(Next) then
+          Queue := Queue + [Next];
+    end;
+  end;
+
+  // X.Free bzw. X.Free(); liefert X.
+  function FreeTarget(AStatement: TSyntaxNode): TSyntaxNode;
+  begin
+    Result := nil;
+    if (AStatement = nil) or (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount = 0) then
+      Exit;
+    Callee := AStatement[0];
+    if (Callee.Kind = TSyntaxKind.Call) and (Callee.ChildCount = 1) then
+      Callee := Callee[0];
+    if (Callee.Kind = TSyntaxKind.MemberAccess) and (Callee.ChildCount = 1) and SameText(Callee.Name, 'Free') then
+      Result := Callee[0];
+  end;
+
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Ignore := TRuleOptions.Strings(AContext.Options, 'ignoreMethods', DefaultIgnoreMethods);
+  Cache := TRuleDerived.Open(AContext);
+  Routines := TRuleDerived.Routines(Cache, AContext);
+  for Routine in Routines do
+  begin
+    Dot := LastDelimiter('.', Routine.Name);
+    if Dot = 0 then
+      Continue;
+    QualifiedClass := Copy(Routine.Name, 1, Dot - 1);
+    ClassName := Copy(QualifiedClass, LastDelimiter('.', QualifiedClass) + 1, MaxInt);
+    // TStapel<T>.Ablegen: die Deklaration heißt TStapel.
+    if Pos('<', ClassName) > 0 then
+      ClassName := Copy(ClassName, 1, Pos('<', ClassName) - 1);
+    Fields := ClassFields(FindClassType(AContext.Tree.Root, ClassName));
+    if Fields = nil then
+      Continue;
+    TearDowns := TearDownMethods(FindClassType(AContext.Tree.Root, ClassName));
+    if Releasing(Routine) or OnlyCalledWhileReleasing(Routine) then
+      Continue;
+    Locals := LocalNames(Routine);
+    Graph := TRuleDerived.Graph(Cache, AContext, Routine);
+    if not Graph.Complete then
+      Continue;
+    for Node in Graph.Nodes do
+    begin
+      if Node.Kind <> TFlowNodeKind.Statement then
+        Continue;
+      Target := FreeTarget(Node.Syntax);
+      Path := FreedPath(Target);
+      if (Path = '') or Contains(Locals, Path) or not Contains(Fields, Path) or not ReachesEnd(Node, Path) then
+        Continue;
+      AReport.Add(NodeRange(Node.Syntax), Format('%s bleibt nach Free gesetzt; ein späterer Zugriff trifft ' +
+        'freigegebenen Speicher.', [Path]), TRuleConfidence.Medium,
+        [TRuleFix.Create(Format('FreeAndNil(%s)', [Text(Target)]),
+        [TRuleEdit.Create(NodeRange(Node.Syntax), Format('FreeAndNil(%s)', [Text(Target)]))])]);
+    end;
+  end;
+end;
+
 procedure RegisterFlowRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TResultNotSetRule.Create);
@@ -1120,6 +1425,7 @@ begin
   ARegistry.Register(TUnreachableCodeRule.Create);
   ARegistry.Register(TUseAfterFreeRule.Create);
   ARegistry.Register(TDerefBeforeNilCheckRule.Create);
+  ARegistry.Register(TFieldFreeWithoutNilRule.Create);
 end;
 
 end.

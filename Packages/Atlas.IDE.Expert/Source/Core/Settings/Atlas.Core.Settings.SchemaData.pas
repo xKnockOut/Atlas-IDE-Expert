@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1568] of string = (
+  Lines: array[0..1576] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -251,6 +251,14 @@ const
     '                },',
     '                "default": ["Add", "Delete", "Remove", "Extract", "Clear", "Insert"],',
     '                "description": "Nur assert-side-effect und collection-modified-in-loop (#914): Methoden, die ihr Objekt bzw. die Liste verändern. Vorgabe: Add, Delete, Remove, Extract, Clear, Insert."',
+    '              },',
+    '              "ignoreMethods": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "default": ["Destroy", "BeforeDestruction"],',
+    '                "description": "Nur field-free-without-nil: Methoden, in denen Free ohne nil erlaubt ist (#917). Destruktoren und Methoden mit [TearDown] gelten immer."',
     '              }',
     '            }',
     '          }',
