@@ -3,6 +3,8 @@
 // Tests für die Performance-Regeln (#278): je Regel ein positiver und ein negativer Fall.
 // setlength-in-loop (#974): Beispiel des Issues samt Korrektur, Schleifen ohne bekannte Anzahl,
 // Strings und fremde Arrays, Korrektur nur bei frischer lokaler Variable, Abschalten.
+// managed-param-without-const (#975): Beispiel des Issues samt Korrektur in Deklaration und Rumpf,
+// Veränderungen und unsichere Fälle, vorgegebene Signaturen, Optionen, Namensauflösung über den Index.
 
 interface
 
@@ -41,6 +43,22 @@ type
     procedure SetLengthInLoopNoFixWhenArrayInUse;
     [Test]
     procedure SetLengthInLoopSwitchedOff;
+    [Test]
+    procedure ManagedParamReportedWithFix;
+    [Test]
+    procedure ManagedParamPartlyChanged;
+    [Test]
+    procedure ManagedParamChangesSilent;
+    [Test]
+    procedure ManagedParamKinds;
+    [Test]
+    procedure ManagedParamFixedSignatureSilent;
+    [Test]
+    procedure ManagedParamOptions;
+    [Test]
+    procedure ManagedParamCallsFromIndex;
+    [Test]
+    procedure ManagedParamSwitchedOff;
   end;
 
 implementation
@@ -48,6 +66,9 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Performance,
   Atlas.Common.Pascal.SyntaxTree,
@@ -293,6 +314,220 @@ begin
     '{"rules": {"setlength-in-loop": {"exclude": ["Alt/**"]}}}', 'Alt/U.pas'))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TSetLengthInLoopRule.Create, Source,
     '{"rules": {"setlength-in-loop": {"exclude": ["Alt/**"]}}}', 'Neu/U.pas'))));
+end;
+
+const
+  ManagedOn = '{"rules": {"managed-param-without-const": "hint"}}';
+  KundenDaten = 'type'#10'  TKundenDaten = record'#10'    Name: string;'#10'    Nummer: Int64;'#10'  end;'#10;
+
+/// <summary>Unit mit TKundenDaten, der Deklaration AHeader im interface und dem Rumpf ABody dazu.</summary>
+function ManagedUnit(const AHeader, ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10 + KundenDaten + AHeader + ';'#10'implementation'#10 + AHeader + ';'#10 +
+    'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+function ManagedFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TManagedParamWithoutConstRule.Create, ASource, ManagedOn);
+end;
+
+function ManagedFindings(const ASource, AConfigJson: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TManagedParamWithoutConstRule.Create, ASource, AConfigJson);
+end;
+
+procedure TPerformanceRulesTests.ManagedParamReportedWithFix;
+const
+  Header = 'function Formatieren(Text: string; Kunde: TKundenDaten): string';
+  Body = '  Result := Text + Kunde.Name;';
+var
+  Source, Expected: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Assert.IsTrue(TManagedParamWithoutConstRule.Create.Descriptor.Experimental, 'Standard aus');
+  Source := ManagedUnit(Header, Body);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TManagedParamWithoutConstRule.Create, Source))));
+  Findings := ManagedFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Text und Kunde werden nicht verändert; mit const entfallen Referenzzählung und Kopie.',
+    Findings[0].Message);
+  Expected := ManagedUnit('function Formatieren(const Text: string; const Kunde: TKundenDaten): string', Body);
+  Assert.AreEqual(Expected, Fixed(Source, Findings[0]));
+  // Die korrigierte Form wird nicht mehr gemeldet.
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(Expected))));
+end;
+
+procedure TPerformanceRulesTests.ManagedParamPartlyChanged;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Text wird verändert, Kunde nicht.
+  Findings := ManagedFindings(ManagedUnit('function F(Text: string; Kunde: TKundenDaten): string',
+    '  Text := Trim(Text);'#10'  Result := Text + Kunde.Name;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Kunde wird nicht verändert; mit const entfällt die Kopie.', Findings[0].Message);
+  // Gruppe: nur A bekommt const, die Gruppe wird geteilt.
+  Source := ManagedUnit('procedure P(A, B: string)', '  B := A;');
+  Findings := ManagedFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('A wird nicht verändert; mit const entfällt die Referenzzählung.', Findings[0].Message);
+  Assert.AreEqual(ManagedUnit('procedure P(const A: string; B: string)', '  B := A;'), Fixed(Source, Findings[0]));
+  // Lokale Routine ohne eigene Deklaration: nur der Kopf des Rumpfs ändert sich.
+  Source := 'unit U;'#10'interface'#10'implementation'#10'procedure P(S: string);'#10'begin'#10 +
+    '  Writeln(S);'#10'end;'#10'end.';
+  Findings := ManagedFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(StringReplace(Source, '(S:', '(const S:', []), Fixed(Source, Findings[0]));
+end;
+
+procedure TPerformanceRulesTests.ManagedParamChangesSilent;
+const
+  Changes: array[0..12] of string = (
+    '  Kunde.Name := Text;'#10'  Text := '''';',
+    '  Text[1] := ''x'';'#10'  Kunde.Nummer := 0;',
+    '  Delete(Text, 1, 1);'#10'  Kunde := Default(TKundenDaten);',
+    '  Aendern(Text, Kunde);',
+    '  Zeiger := @Kunde;'#10'  Zeiger := @Text;',
+    '  with Kunde do'#10'    Name := Text;'#10'  Text := '''';',
+    '  Proc := procedure begin Writeln(Text, Kunde.Name) end;',
+    '  Kunde.Leeren;'#10'  Text := '''';',
+    '  for Text in Liste do ;'#10'  Kunde.Adresse.Leeren;',
+    '  Obj.Mach(Text, Kunde);',
+    '  inherited;',
+    '  begin'#10'    var Text := 1;'#10'    var Kunde := 2;'#10'  end;',
+    '  asm'#10'  end;');
+var
+  Change: string;
+  Source: string;
+begin
+  for Change in Changes do
+  begin
+    Source := ManagedUnit('procedure P(Text: string; Kunde: TKundenDaten)', Change) +
+      #10'procedure Aendern(var S: string; var K: TKundenDaten); begin end;';
+    Source := StringReplace(Source, 'end.'#10'procedure Aendern', 'procedure Aendern', []) + #10'end.';
+    Assert.AreEqual(0, Integer(Length(ManagedFindings(Source))), Change);
+  end;
+end;
+
+procedure TPerformanceRulesTests.ManagedParamKinds;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Dynamische Arrays: lesen wird gemeldet; Elemente schreiben und SetLength verändern.
+  Findings := ManagedFindings(ManagedUnit('procedure P(A: TArray<Integer>)', '  Writeln(A[0]);'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(ManagedUnit('procedure P(A: TArray<Integer>)',
+    '  A[0] := 1;')))));
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(ManagedUnit('procedure P(A: TBytes)',
+    '  SetLength(A, 2);')))));
+  // Offene Arrays werden kopiert, Elemente gehören zum Wert.
+  Findings := ManagedFindings(ManagedUnit('procedure P(A: array of string)', '  Writeln(A[0]);'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('A wird nicht verändert; mit const entfällt die Kopie.', Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(ManagedUnit('procedure P(A: array of string)',
+    '  A[0] := '''';')))));
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(ManagedUnit('procedure P(A: array of const)', '')))));
+  // Interfaces: Methoden aufrufen ändert die Referenz nicht.
+  Findings := ManagedFindings(ManagedUnit('procedure P(Wert: IInterface)', '  Wert._AddRef;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Wert wird nicht verändert; mit const entfällt die Referenzzählung.', Findings[0].Message);
+  // Kleine Records, einfache Typen und Klassen kosten nichts.
+  Source := 'unit U;'#10'interface'#10'type'#10'  TPunkt = record X, Y: Integer; end;'#10 +
+    'procedure P(Punkt: TPunkt; Zahl: Integer; Liste: TObject);'#10'implementation'#10 +
+    'procedure P(Punkt: TPunkt; Zahl: Integer; Liste: TObject);'#10'begin'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(Source))));
+end;
+
+procedure TPerformanceRulesTests.ManagedParamFixedSignatureSilent;
+const
+  Members: array[0..4] of string = (
+    'TBasis = class'#10'  public'#10'    procedure M(S: string); virtual;',
+    'TBasis = class(TObject)'#10'  public'#10'    procedure M(S: string); override;',
+    'TBasis = class(TInterfacedObject, IInterface)'#10'  public'#10'    procedure M(S: string);',
+    'TBasis = class(TComponent)'#10'  published'#10'    procedure M(S: string);',
+    'TBasis = class(TComponent)'#10'    procedure M(S: string);');
+var
+  Member, Source: string;
+begin
+  for Member in Members do
+  begin
+    Source := 'unit U;'#10'interface'#10'type'#10'  ' + Member + #10'  end;'#10'implementation'#10 +
+      'procedure TBasis.M(S: string);'#10'begin'#10'end;'#10'end.';
+    Assert.AreEqual(0, Integer(Length(ManagedFindings(Source))), Member);
+  end;
+  // Methode als Ereignis zugewiesen bzw. in der Formulardatei.
+  Source := 'unit U;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10 +
+    '    procedure M(S: string);'#10'    procedure N;'#10'  end;'#10'implementation'#10 +
+    'procedure TBasis.M(S: string);'#10'begin'#10'end;'#10'procedure TBasis.N;'#10'begin'#10 +
+    '  OnText := M;'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(Source))));
+  Source := StringReplace(Source, '  OnText := M;'#10, '', []);
+  Assert.AreEqual(1, Integer(Length(ManagedFindings(Source))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(TManagedParamWithoutConstRule.Create, Source,
+    'object Basis: TBasis'#10'  OnText = M'#10'end'))));
+  // Methode ohne Parameterliste im Rumpf: Korrektur nur in der Klasse.
+  Source := StringReplace(Source, 'procedure TBasis.M(S: string);'#10'begin', 'procedure TBasis.M;'#10'begin', []);
+  Assert.AreEqual(StringReplace(Source, 'M(S:', 'M(const S:', []), Fixed(Source, ManagedFindings(Source)[0]));
+end;
+
+procedure TPerformanceRulesTests.ManagedParamOptions;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := ManagedUnit('procedure P(Kunde: TKundenDaten)', '  Writeln(Kunde.Name);');
+  Assert.AreEqual(1, Integer(Length(ManagedFindings(Source))));
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(Source,
+    '{"rules": {"managed-param-without-const": {"severity": "hint", "minRecordSize": 17}}}'))));
+  Assert.AreEqual(1, Integer(Length(ManagedFindings(Source,
+    '{"rules": {"managed-param-without-const": {"severity": "hint", "minRecordSize": 8}}}'))));
+  // ignoreOverrides: false meldet Overrides, aber ohne Korrektur (die Signatur gibt der Vorfahr vor).
+  Source := 'unit U;'#10'interface'#10'type'#10'  TBasis = class(TObject)'#10'  public'#10 +
+    '    procedure M(S: string); override;'#10'  end;'#10'implementation'#10 +
+    'procedure TBasis.M(S: string);'#10'begin'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(Source))));
+  Findings := ManagedFindings(Source,
+    '{"rules": {"managed-param-without-const": {"severity": "hint", "ignoreOverrides": false}}}');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('S wird nicht verändert; mit const entfällt die Referenzzählung (override: die Signatur des ' +
+    'Vorfahren mit ändern).', Findings[0].Message);
+end;
+
+procedure TPerformanceRulesTests.ManagedParamCallsFromIndex;
+var
+  Index: ISymbolIndex;
+  Source: string;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText('unit Hilfe;'#10'interface'#10 +
+    'procedure Lesen(const S: string);'#10'procedure Schreiben(var S: string);'#10'implementation'#10 +
+    'procedure Lesen(const S: string); begin end;'#10'procedure Schreiben(var S: string); begin end;'#10'end.',
+    'C:\Projekt\Hilfe.pas', nil));
+  Source := 'unit U;'#10'interface'#10'uses'#10'  Hilfe;'#10'procedure P(Text: string);'#10'implementation'#10 +
+    'procedure P(Text: string);'#10'begin'#10'  Lesen(Text);'#10'end;'#10'end.';
+  // Ohne Index ist die Übergabeart unbekannt: keine Meldung.
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(Source))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TManagedParamWithoutConstRule.Create, Source, Index,
+    ManagedOn, ''))));
+  Source := StringReplace(Source, '  Lesen(Text);', '  Schreiben(Text);', []);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TManagedParamWithoutConstRule.Create, Source, Index,
+    ManagedOn, ''))));
+end;
+
+procedure TPerformanceRulesTests.ManagedParamSwitchedOff;
+var
+  Source: string;
+begin
+  Source := ManagedUnit('procedure P(Text: string)', '  Writeln(Text);');
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(Source, '{"rules": {"managed-param-without-const": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TManagedParamWithoutConstRule.Create, Source,
+    '{"rules": {"managed-param-without-const": {"severity": "hint", "exclude": ["Alt/**"]}}}', 'Alt/U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TManagedParamWithoutConstRule.Create, Source,
+    '{"rules": {"managed-param-without-const": {"severity": "hint", "exclude": ["Alt/**"]}}}', 'Neu/U.pas'))));
 end;
 
 initialization

@@ -103,3 +103,4 @@ property-accessor-invalid | Ref.Daten.Kunden.pas | procedure Speichern(AId: Inte
 assign-to-property-member | Ref.Komponenten.Anzeige.pas |   Width := StandardBreite; |   StandardBreite := Width;
 readonly-property-assigned | Ref.Formulare.Suchrahmen.pas | read FOnSuchen write FOnSuchen;\n  end;\n\nimplementation\n\n{$R *.dfm}\n\nprocedure TSuchrahmen.SuchenButtonClick(Sender: TObject);\nbegin\n  if Assigned(FOnSuchen) then | write FOnSuchen;\n  end;\n\nimplementation\n\n{$R *.dfm}\n\nprocedure TSuchrahmen.SuchenButtonClick(Sender: TObject);\nbegin\n  if Assigned(OnSuchen) then
 setlength-in-loop | Ref.Daten.Kunden.pas | Result := Result + [Daten.FieldByName('Name').AsString]; | SetLength(Result, Length(Result) + 1);\n    Result[High(Result)] := Daten.FieldByName('Name').AsString;
+managed-param-without-const | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nfunction Gruss(AName: string): string;\nbegin\n  Result := 'Hallo ' + AName;\nend;

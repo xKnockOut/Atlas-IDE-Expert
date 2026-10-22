@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1760] of string = (
+  Lines: array[0..1771] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -429,6 +429,17 @@ const
     '                "type": "boolean",',
     '                "default": true,',
     '                "description": "Nur duplicate-declaration: doppelte Einträge in uses-Klauseln melden (#988)."',
+    '              },',
+    '              "minRecordSize": {',
+    '                "type": "integer",',
+    '                "minimum": 1,',
+    '                "default": 16,',
+    '                "description": "Nur managed-param-without-const: Record-Parameter ab dieser Größe in Byte melden (#975)."',
+    '              },',
+    '              "ignoreOverrides": {',
+    '                "type": "boolean",',
+    '                "default": true,',
+    '                "description": "Nur managed-param-without-const: Overrides nicht melden, ihre Signatur gibt der Vorfahr vor (#975)."',
     '              },',
     '              "allowTables": {',
     '                "type": "array",',

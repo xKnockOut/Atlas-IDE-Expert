@@ -12,7 +12,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Datenbank](#gruppe-database) | 4 |
 | [Compiler vorab](#gruppe-compiler) | 15 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
-| [Performance](#gruppe-performance) | 5 |
+| [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
@@ -165,6 +165,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`loop-invariant-call`](#loop-invariant-call) | Teurer Aufruf in der Schleifenbedingung | Code Smell | Hinweis |
 | [`missing-begin-update`](#missing-begin-update) | Hinzufügen in einer Schleife ohne BeginUpdate | Code Smell | Hinweis |
 | [`setlength-in-loop`](#setlength-in-loop) | Array wächst in der Schleife um je ein Element | Code Smell | Hinweis |
+| [`managed-param-without-const`](#managed-param-without-const) | Verwalteter Parameter ohne const | Code Smell | Hinweis |
 | [`case-insensitive-compare`](#case-insensitive-compare) | Vergleich über UpperCase oder LowerCase | Code Smell | Hinweis |
 
 <a id="gruppe-security"></a>
@@ -2097,6 +2098,36 @@ Richtig:
 SetLength(Namen, Liste.Count);
 for I := 0 to Liste.Count - 1 do
   Namen[I] := Liste[I].Name;
+```
+
+<a id="managed-param-without-const"></a>
+### managed-param-without-const
+
+**Verwalteter Parameter ohne const** · Code Smell · Hinweis · Gruppe Performance
+
+Ein Wertparameter vom Typ String, Interface, dynamisches oder offenes Array oder ein Record der Datei ab minRecordSize Byte, den die Routine nie verändert. Jeder Aufruf zahlt Referenzzählung bzw. Kopie; const spart beides. Verändert heißt: zugewiesen, ein Teil zugewiesen (Zeichen, Felder, Elemente), an var oder out übergeben, @Parameter, Methodenaufruf an einem Record, Laufvariable einer for-Schleife. Die Regel meldet nur, wenn das sicher ist: Aufrufe mit unbekannter Signatur (Methoden ohne Symbolindex, Überladungen), with-Blöcke, Einfangen in anonymen Methoden, inherited ohne Namen und asm lassen sie schweigen. Virtuelle, dynamische, abstrakte und message-Methoden, Aufrufkonventionen, external- und exportierte Routinen, Methoden von Klassen mit Interfaces, published-Methoden und als Wert benutzte Methoden (Ereignisse, @Routine, Formulardatei) bleiben außen vor, weil ihre Signatur von außen vorgegeben ist; Overrides nur mit ignoreOverrides = false und dann ohne Korrektur. Die Korrektur ergänzt const in Rumpf und Deklaration und teilt Parametergruppen bei Bedarf. Verweise als Methodenzeiger in anderen Units sieht die Regel nicht; die meldet nach der Korrektur der Compiler.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `minRecordSize` | integer | `16` | Record-Parameter ab dieser Größe in Byte melden. |
+| `ignoreOverrides` | boolean | `true` | Overrides nicht melden; ihre Signatur gibt der Vorfahr vor. |
+
+Mit Treffer:
+
+```pascal
+function Formatieren(Text: string; Kunde: TKundenDaten): string;
+begin
+  Result := Text + Kunde.Name;
+end;
+```
+
+Richtig:
+
+```pascal
+function Formatieren(const Text: string; const Kunde: TKundenDaten): string;
+begin
+  Result := Text + Kunde.Name;
+end;
 ```
 
 <a id="bool-compare"></a>

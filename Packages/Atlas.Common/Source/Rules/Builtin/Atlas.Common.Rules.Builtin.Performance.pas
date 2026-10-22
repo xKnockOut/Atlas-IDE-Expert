@@ -15,6 +15,14 @@
 //                             wenn A eine lokale Variable ist, die vorher nicht benutzt wird,
 //                             und A in der Schleife nur über A[High(A)] bzw. A[Length(A) - 1]
 //                             beschrieben wird.
+// Standardmäßig aus (#975):
+//   managed-param-without-const  String-, Interface-, Array- bzw. Record-Parameter (ab
+//                             minRecordSize Byte) ohne const, den die Routine sicher nicht
+//                             verändert; Übergabe an Aufrufe mit unbekannter Signatur, with,
+//                             anonyme Methoden und inherited ohne Namen lassen die Regel
+//                             schweigen. Vorgegebene Signaturen (virtual, Interfaces,
+//                             published, Ereignisse) bleiben außen vor. Die Korrektur
+//                             ergänzt const in Rumpf und Deklaration.
 // ParamByName in Schleifen und DisableControls gehören zu #70.
 
 interface
@@ -48,6 +56,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TManagedParamWithoutConstRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 /// <summary>Registriert die Performance-Regeln.</summary>
 procedure RegisterPerformanceRules(const ARegistry: TRuleRegistry);
 
@@ -56,12 +70,18 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Generics.Collections,
+  System.RegularExpressions,
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
+  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived;
 
 type
@@ -814,12 +834,725 @@ begin
   end;
 end;
 
+{ TManagedParamWithoutConstRule }
+
+const
+  ManagedParamRuleId = 'managed-param-without-const';
+  StringTypes: array[0..6] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString',
+    'UTF8String', 'ShortString');
+  KnownInterfaces: array[0..3] of string = ('IInterface', 'IUnknown', 'IDispatch', 'IInvokable');
+  /// <summary>Direktiven, bei denen die Signatur von außen vorgegeben ist (Vorfahr, Nachfahren, Aufrufer).</summary>
+  FixedSignatureDirectives: array[0..10] of string = ('virtual', 'dynamic', 'abstract', 'message', 'stdcall',
+    'cdecl', 'safecall', 'pascal', 'register', 'external', 'export');
+  /// <summary>Typumwandlungen, die das Argument nur lesen.</summary>
+  ValueCasts: array[0..9] of string = ('PChar', 'PWideChar', 'PAnsiChar', 'string', 'AnsiString', 'UTF8String',
+    'RawByteString', 'WideString', 'UnicodeString', 'Pointer');
+
+type
+  TSyntaxKinds = set of TSyntaxKind;
+
+{$SCOPEDENUMS ON}
+  /// <summary>Was eine Wertübergabe kostet.</summary>
+  TParamCost = (RefCount, Copy);
+
+  /// <summary>Wie die Routine einen Parameter benutzt.</summary>
+  TParamAccess = (Read, Modified, Undecided);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Ein Wertparameter, der für const in Frage kommt.</summary>
+  TParamCandidate = record
+    Name: string;
+    Cost: TParamCost;
+    /// <summary>Strings, Records, Arrays: Zuweisungen an Teile ändern den Wert (Interfaces: nur das Objekt).
+    /// </summary>
+    PartsAreValue: Boolean;
+    /// <summary>Feldnamen bei Records der Datei; andere Mitglieder (Methoden, Properties) können ändern.</summary>
+    Fields: TArray<string>;
+    IsRecord: Boolean;
+    /// <summary>Parameterknoten (Gruppe) und Stelle des Namens darin.</summary>
+    Group: TSyntaxNode;
+    Position: Integer;
+  end;
+
+/// <summary>Name ohne Typparameter: TListe&lt;T&gt; wird TListe.</summary>
+function WithoutTypeParams(const AName: string): string;
+var
+  Index, Depth: Integer;
+begin
+  Result := '';
+  Depth := 0;
+  for Index := 1 to Length(AName) do
+    if AName[Index] = '<' then
+      Inc(Depth)
+    else if AName[Index] = '>' then
+      Dec(Depth)
+    else if Depth = 0 then
+      Result := Result + AName[Index];
+end;
+
+/// <summary>Quelltext ohne Leerraum, klein geschrieben; für den Vergleich von Parameterlisten.</summary>
+function Squeezed(const AText: string): string;
+var
+  Index: Integer;
+begin
+  Result := '';
+  for Index := 1 to Length(AText) do
+    if AText[Index] > ' ' then
+      Result := Result + AText[Index];
+  Result := LowerCase(Result);
+end;
+
+function ParamsText(const AText: string; AHeader: TSyntaxNode): string;
+var
+  Params: TSyntaxNode;
+begin
+  Result := '';
+  Params := AHeader.FindChild(TSyntaxKind.Parameters);
+  if Params <> nil then
+    Result := Squeezed(NodeText(AText, Params));
+end;
+
+/// <summary>Knoten der Arten AKinds unter ARoot in Baumreihenfolge; Teilbäume der Arten ASkip werden übergangen.
+/// </summary>
+function NodesOf(ARoot: TSyntaxNode; const AKinds, ASkip: TSyntaxKinds): TArray<TSyntaxNode>;
+var
+  Found: TArray<TSyntaxNode>;
+begin
+  Found := nil;
+  ARoot.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if ANode.Kind in AKinds then
+        Found := Found + [ANode];
+      Result := (ANode = ARoot) or not (ANode.Kind in ASkip);
+    end);
+  Result := Found;
+end;
+
+/// <summary>Kopf der Deklaration zum Rumpf ARoutine: die Methode in ihrer Klasse bzw. die Routine im interface
+/// oder als forward, mit gleicher Parameterliste. nil ohne eigene Deklaration. AFound False, wenn eine Methode
+/// ihre Klasse nicht findet (dann ist nichts sicher). AVisibility: Abschnitt in der Klasse ('' = ohne Angabe);
+/// AClass: Typknoten der Klasse bzw. nil.</summary>
+function DeclarationOf(const AText: string; ARoot, ARoutine: TSyntaxNode; out AFound: Boolean;
+  out AVisibility: string; out AClass: TSyntaxNode): TSyntaxNode;
+var
+  Header, Container, Member: TSyntaxNode;
+  TypeName, Name, Params, Section: string;
+  Candidates: TArray<TSyntaxNode>;
+  Node: TSyntaxNode;
+  Index, Matches: Integer;
+begin
+  Result := nil;
+  AFound := True;
+  AVisibility := '';
+  AClass := nil;
+  Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if (Header = nil) or ((ARoutine.Parent <> nil) and (ARoutine.Parent.Kind = TSyntaxKind.RoutineDecl)) then
+    Exit;
+  Name := Header.Name;
+  TypeName := '';
+  if Pos('.', Name) > 0 then
+  begin
+    TypeName := WithoutTypeParams(Copy(Name, 1, LastDelimiter('.', Name) - 1));
+    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+  end;
+  Params := ParamsText(AText, Header);
+  Matches := 0;
+  if TypeName <> '' then
+  begin
+    for Node in NodesOf(ARoot, [TSyntaxKind.TypeDecl], [TSyntaxKind.Block, TSyntaxKind.RoutineDecl]) do
+      if SameText(WithoutTypeParams(Node.Name), TypeName) and (Node.ChildCount > 0) then
+      begin
+        Container := Node[Node.ChildCount - 1];
+        Section := '';
+        for Index := 0 to Container.ChildCount - 1 do
+        begin
+          Member := Container[Index];
+          if Member.Kind = TSyntaxKind.Visibility then
+            Section := LowerCase(Member.Name)
+          else if (Member.Kind = TSyntaxKind.RoutineHeader) and SameText(Member.Name, Name) then
+          begin
+            Inc(Matches);
+            if (Params = '') or (ParamsText(AText, Member) = Params) then
+            begin
+              Result := Member;
+              AVisibility := Section;
+              AClass := Container;
+            end;
+          end;
+        end;
+      end;
+    // Ohne Parameterliste im Rumpf ist die Überladung nicht eindeutig.
+    AFound := (Result <> nil) and ((Params <> '') or (Matches = 1));
+    if not AFound then
+      Result := nil;
+    Exit;
+  end;
+  Candidates := NodesOf(ARoot, [TSyntaxKind.RoutineDecl], [TSyntaxKind.Block, TSyntaxKind.RoutineDecl,
+    TSyntaxKind.TypeDecl]);
+  for Node in Candidates do
+    if (Node <> ARoutine) and (Node.FindChild(TSyntaxKind.Block) = nil) and (Node.ChildCount > 0) and
+      (Node[0].Kind = TSyntaxKind.RoutineHeader) and SameText(Node[0].Name, Name) and
+      (Node[0].StartOffset < Header.StartOffset) then
+    begin
+      Inc(Matches);
+      if (Params = '') or (ParamsText(AText, Node[0]) = Params) then
+        Result := Node[0];
+    end;
+  if (Result <> nil) and (Params = '') and (Matches > 1) then
+  begin
+    AFound := False;
+    Result := nil;
+  end;
+end;
+
+function HasDirective(AHeader: TSyntaxNode; const ANames: array of string): Boolean;
+var
+  Index: Integer;
+begin
+  if AHeader <> nil then
+    for Index := 0 to AHeader.ChildCount - 1 do
+      if (AHeader[Index].Kind = TSyntaxKind.Directive) and MatchText(AHeader[Index].Name, ANames) then
+        Exit(True);
+  Result := False;
+end;
+
+/// <summary>Modifizierer der Parameter einer Signatur je Name ('' bei Wertparametern); False ohne Klammern.
+/// </summary>
+function SignatureModes(const ASignature: string; out AModes: TArray<string>): Boolean;
+var
+  Open, Close, Depth, Index: Integer;
+  Parameter: TSignatureParameter;
+begin
+  AModes := nil;
+  Open := Pos('(', ASignature);
+  Close := 0;
+  Depth := 0;
+  if Open > 0 then
+    for Index := Open to Length(ASignature) do
+      if ASignature[Index] = '(' then
+        Inc(Depth)
+      else if ASignature[Index] = ')' then
+      begin
+        Dec(Depth);
+        if Depth = 0 then
+        begin
+          Close := Index;
+          Break;
+        end;
+      end;
+  Result := Close > 0;
+  if Result then
+    for Parameter in TChangeSignature.ParseParameters(Copy(ASignature, Open + 1, Close - Open - 1)) do
+      AModes := AModes + [LowerCase(Trim(Parameter.Modifier))];
+end;
+
+function RecordSize(const AText: string; ARecord: TSyntaxNode; const ARecords: TDictionary<string, TSyntaxNode>;
+  ADepth: Integer): Integer; forward;
+
+/// <summary>Größe eines Typs in Byte als Untergrenze (Win64, ohne Ausrichtung); -1 = unbekannt. ARecords: Records
+/// der Datei nach Namen (klein); ADepth schützt vor Zyklen.</summary>
+function TypeSize(const AText, ATypeName: string; const ARecords: TDictionary<string, TSyntaxNode>;
+  ADepth: Integer): Integer;
+const
+  Sizes: array[0..30] of string = ('Byte=1', 'Boolean=1', 'ByteBool=1', 'AnsiChar=1', 'ShortInt=1', 'Int8=1',
+    'UInt8=1', 'Word=2', 'SmallInt=2', 'Char=2', 'WideChar=2', 'WordBool=2', 'Int16=2', 'UInt16=2', 'Integer=4',
+    'Cardinal=4', 'LongInt=4', 'LongWord=4', 'Single=4', 'LongBool=4', 'Int32=4', 'UInt32=4', 'Int64=8',
+    'UInt64=8', 'Double=8', 'Currency=8', 'TDateTime=8', 'Comp=8', 'Extended=8', 'TDate=8', 'TTime=8');
+  Pointers: array[0..7] of string = ('Pointer', 'NativeInt', 'NativeUInt', 'string', 'UnicodeString', 'TObject',
+    'PChar', 'IInterface');
+var
+  Item: string;
+  Node: TSyntaxNode;
+begin
+  Result := -1;
+  for Item in Sizes do
+    if SameText(Copy(Item, 1, Pos('=', Item) - 1), ATypeName) then
+      Exit(StrToInt(Copy(Item, Pos('=', Item) + 1, MaxInt)));
+  if MatchText(ATypeName, Pointers) or StartsText('TArray<', ATypeName) then
+    Exit(8);
+  if (ADepth < 4) and ARecords.TryGetValue(LowerCase(ATypeName), Node) then
+    Result := RecordSize(AText, Node, ARecords, ADepth + 1);
+end;
+
+/// <summary>Summe der Feldgrößen eines Records der Datei; -1, wenn ein Feld unbekannt ist.</summary>
+function RecordSize(const AText: string; ARecord: TSyntaxNode; const ARecords: TDictionary<string, TSyntaxNode>;
+  ADepth: Integer): Integer;
+var
+  Index, Size, Count, LowBound, HighBound: Integer;
+  Field, TypeNode, Bounds: TSyntaxNode;
+begin
+  Result := 0;
+  for Index := 0 to ARecord.ChildCount - 1 do
+  begin
+    Field := ARecord[Index];
+    if Field.Kind = TSyntaxKind.VariantPart then
+      Exit(-1);
+    if Field.Kind <> TSyntaxKind.Field then
+      Continue;
+    if Field.ChildCount = 0 then
+      Exit(-1);
+    TypeNode := Field[0];
+    Count := 1;
+    if TypeNode.Kind = TSyntaxKind.ArrayType then
+    begin
+      // array[A..B] of T mit Zahlen als Grenzen
+      Bounds := TypeNode.FindChild(TSyntaxKind.SubrangeType);
+      if (Bounds = nil) or (Bounds.ChildCount <> 2) or not TryStrToInt(Bounds[0].Name, LowBound) or
+        not TryStrToInt(Bounds[1].Name, HighBound) or
+        (TypeNode[TypeNode.ChildCount - 1].Kind <> TSyntaxKind.TypeReference) then
+        Exit(-1);
+      Count := HighBound - LowBound + 1;
+      TypeNode := TypeNode[TypeNode.ChildCount - 1];
+    end;
+    if TypeNode.Kind <> TSyntaxKind.TypeReference then
+      Exit(-1);
+    Size := TypeSize(AText, Trim(NodeText(AText, TypeNode)), ARecords, ADepth);
+    if Size < 0 then
+      Exit(-1);
+    Inc(Result, Size * Count * Length(Field.Name.Split([','])));
+  end;
+end;
+
+/// <summary>Feldnamen eines Records (Gruppen aufgeteilt).</summary>
+function RecordFields(ARecord: TSyntaxNode): TArray<string>;
+var
+  Index: Integer;
+  Name: string;
+begin
+  Result := nil;
+  for Index := 0 to ARecord.ChildCount - 1 do
+    if ARecord[Index].Kind = TSyntaxKind.Field then
+      for Name in ARecord[Index].Name.Split([',']) do
+        Result := Result + [Trim(Name)];
+end;
+
+/// <summary>Wie ANode (Bezeichner des Parameters) den Parameter benutzt. Undecided mit ACall: Argument eines
+/// Aufrufs, dessen Signatur ALookup nicht kennt; AArgument ist die Stelle (ab 0).</summary>
+function ParamAccess(ANode: TSyntaxNode; const ACandidate: TParamCandidate; const ALookup: TFlowSignatureLookup;
+  out ACall: TSyntaxNode; out AArgument: Integer): TParamAccess;
+var
+  Node, Top, Parent: TSyntaxNode;
+  Index: Integer;
+  Mode: TFlowArgumentMode;
+begin
+  ACall := nil;
+  AArgument := -1;
+  Node := ANode.Parent;
+  while (Node <> nil) and (Node.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
+    // Anonyme Methoden fangen den Parameter ein; with-Ausdrücke binden ihn für den Rumpf.
+    if Node.Kind = TSyntaxKind.AnonymousMethod then
+      Exit(TParamAccess.Undecided);
+    if (Node.Kind = TSyntaxKind.WithStatement) and (Node.ChildCount > 1) and
+      (ANode.StartOffset < Node[Node.ChildCount - 1].StartOffset) then
+      Exit(TParamAccess.Undecided);
+    Node := Node.Parent;
+  end;
+  Parent := ANode.Parent;
+  if Parent.Kind = TSyntaxKind.AddressOf then
+    Exit(TParamAccess.Modified);
+  // Bei Records nur Felder; Methoden und Properties können den Wert ändern.
+  if ACandidate.IsRecord and (Parent.Kind = TSyntaxKind.MemberAccess) and (Parent[0] = ANode) and
+    not MatchText(Parent.Name, ACandidate.Fields) then
+    Exit(TParamAccess.Modified);
+  Top := ANode;
+  while (Top.Parent <> nil) and (Top.Parent.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
+    TSyntaxKind.Dereference]) and (Top.Parent[0] = Top) do
+    Top := Top.Parent;
+  Parent := Top.Parent;
+  Result := TParamAccess.Read;
+  if Parent = nil then
+    Exit;
+  if (Parent.Kind = TSyntaxKind.AssignStatement) and (Parent[0] = Top) then
+  begin
+    if (Top = ANode) or ACandidate.PartsAreValue then
+      Result := TParamAccess.Modified;
+    Exit;
+  end;
+  // Methode eines Feldes: Kunde.Adresse.Leeren
+  if ACandidate.IsRecord and (Top <> ANode) and ((Parent.Kind = TSyntaxKind.CallStatement) or
+    ((Parent.Kind = TSyntaxKind.Call) and (Parent[0] = Top))) then
+    Exit(TParamAccess.Modified);
+  if (Parent.Kind = TSyntaxKind.Call) and (Parent[0] <> Top) then
+  begin
+    Index := 0;
+    while (Index < Parent.ChildCount) and (Parent[Index] <> Top) do
+      Inc(Index);
+    Mode := TFlowArgumentMode.Unknown;
+    if Assigned(ALookup) then
+      Mode := ALookup(Parent, Index - 1);
+    case Mode of
+      TFlowArgumentMode.Value:
+        Result := TParamAccess.Read;
+      TFlowArgumentMode.Reference, TFlowArgumentMode.Output:
+        if (Top = ANode) or ACandidate.PartsAreValue then
+          Result := TParamAccess.Modified;
+    else
+      Result := TParamAccess.Undecided;
+      ACall := Parent;
+      AArgument := Index - 1;
+      // Ein Teil (A[I], Intf.Wert) ändert an einem var-Parameter den Wert nicht, wenn Teile keine Werte sind.
+      if (Top <> ANode) and not ACandidate.PartsAreValue then
+        Result := TParamAccess.Read;
+    end;
+  end;
+end;
+
+function TManagedParamWithoutConstRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(ManagedParamRuleId, TRuleSeverity.Hint,
+    'String-, Interface-, Array- oder Record-Parameter ohne const wird nicht verändert', True);
+end;
+
+procedure TManagedParamWithoutConstRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Cache: IRuleDerivedCache;
+  Lookup: TFlowSignatureLookup;
+  Resolver: TNameResolver;
+  Records: TDictionary<string, TSyntaxNode>;
+  Interfaces, DynArrays, Exported: TArray<string>;
+  MinRecordSize: Integer;
+  IgnoreOverrides: Boolean;
+  Root: TSyntaxNode;
+
+  function Range(AStart, AEnd: Integer): TTextRange;
+  begin
+    Result := TRuleDerived.OffsetRange(Cache, AContext, AStart, AEnd);
+  end;
+
+  /// <summary>Übergabeart über die Namensauflösung (Methoden, Routinen anderer Units, Typumwandlungen).</summary>
+  function ResolvedMode(ACall: TSyntaxNode; AArgument: Integer): TFlowArgumentMode;
+  var
+    Callee: TSyntaxNode;
+    Offset: Integer;
+    Symbol: TResolvedSymbol;
+    Modes: TArray<string>;
+  begin
+    Result := TFlowArgumentMode.Unknown;
+    Callee := ACall[0];
+    if (Callee.Kind = TSyntaxKind.Identifier) and MatchText(Callee.Name, ValueCasts) then
+      Exit(TFlowArgumentMode.Value);
+    if Callee.Kind = TSyntaxKind.Identifier then
+      Offset := Callee.StartOffset
+    else if Callee.Kind = TSyntaxKind.MemberAccess then
+      Offset := Callee.EndOffset - Length(Callee.Name)
+    else
+      Exit;
+    if (AContext.Index = nil) or not SameText(Copy(AContext.Text, Offset + 1, Length(Callee.Name)), Callee.Name) then
+      Exit;
+    if Resolver = nil then
+    begin
+      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+      Resolver.Namespaces := AContext.Namespaces;
+    end;
+    Symbol := Resolver.Resolve(AContext.Tree, AContext.RelativePath, TRuleDerived.PositionAt(Cache, AContext, Offset));
+    if not Symbol.Found then
+      Exit;
+    if Symbol.IsType then
+      Exit(TFlowArgumentMode.Value);
+    // Bei Überladungen ist nicht sicher, welche Variante gemeint ist.
+    if (Length(Symbol.Overloads) > 0) or (Length(Symbol.VariantParams) > 1) or
+      not SignatureModes(Symbol.Signature, Modes) or (AArgument >= Length(Modes)) then
+      Exit;
+    if ContainsText(' ' + Modes[AArgument] + ' ', ' var ') or ContainsText(' ' + Modes[AArgument] + ' ', ' out ') then
+      Result := TFlowArgumentMode.Reference
+    else
+      Result := TFlowArgumentMode.Value;
+  end;
+
+  function CandidateOf(AGroup: TSyntaxNode; APosition: Integer; out ACandidate: TParamCandidate): Boolean;
+  var
+    TypeText: string;
+    Node: TSyntaxNode;
+    Size: Integer;
+  begin
+    Result := False;
+    ACandidate := Default(TParamCandidate);
+    if (AGroup.Modifier <> TParameterModifier.None) or (AGroup.ChildCount = 0) then
+      Exit;
+    TypeText := Trim(NodeText(AContext.Text, AGroup[0]));
+    ACandidate.Name := Trim(AGroup.Name.Split([','])[APosition]);
+    ACandidate.Group := AGroup;
+    ACandidate.Position := APosition;
+    if MatchText(TypeText, StringTypes) then
+    begin
+      ACandidate.PartsAreValue := True;
+      if SameText(TypeText, 'ShortString') then
+        ACandidate.Cost := TParamCost.Copy;
+      Exit(True);
+    end;
+    if MatchText(TypeText, Interfaces) or MatchText(TypeText, KnownInterfaces) then
+      Exit(True);
+    if StartsText('array of ', TypeText) then
+    begin
+      if SameText(Trim(Copy(TypeText, 10, MaxInt)), 'const') then
+        Exit;
+      ACandidate.Cost := TParamCost.Copy;
+      ACandidate.PartsAreValue := True;
+      Exit(True);
+    end;
+    // Elemente eines const-Arrays lassen sich zwar schreiben, das ändert aber den Wert des Aufrufers.
+    if IsDynamicArrayType(TypeText, DynArrays) then
+    begin
+      ACandidate.PartsAreValue := True;
+      Exit(True);
+    end;
+    if Records.TryGetValue(LowerCase(TypeText), Node) then
+    begin
+      Size := RecordSize(AContext.Text, Node, Records, 0);
+      if (Size >= 0) and (Size >= MinRecordSize) then
+      begin
+        ACandidate.Cost := TParamCost.Copy;
+        ACandidate.PartsAreValue := True;
+        ACandidate.IsRecord := True;
+        ACandidate.Fields := RecordFields(Node);
+        Result := True;
+      end;
+    end;
+  end;
+
+  /// <summary>Routine wird als Wert benutzt (Methodenzeiger, @Routine, Formular, exports).</summary>
+  function UsedAsValue(const AName: string): Boolean;
+  var
+    Node: TSyntaxNode;
+  begin
+    Result := MatchText(AName, Exported) or
+      ((AContext.FormText <> '') and TRegEx.IsMatch(AContext.FormText, '\b' + AName + '\b', [roIgnoreCase]));
+    if Result then
+      Exit;
+    for Node in NodesOf(Root, [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess], []) do
+      if SameText(Node.Name, AName) and (Node.Parent <> nil) and not ((Node.Parent.Kind = TSyntaxKind.Call) and
+        (Node.Parent[0] = Node)) and (Node.Parent.Kind <> TSyntaxKind.CallStatement) then
+        Exit(True);
+  end;
+
+  /// <summary>Text der Gruppe mit const vor den Namen in AConst (Stellen); Gruppen werden bei Bedarf geteilt.
+  /// </summary>
+  function GroupEdit(AGroup: TSyntaxNode; const AConst: TArray<Boolean>): TRuleEdit;
+  var
+    Names: TArray<string>;
+    Text, TypeText, Part: string;
+    Index: Integer;
+    All: Boolean;
+  begin
+    Names := AGroup.Name.Split([',']);
+    All := True;
+    for Index := 0 to High(AConst) do
+      All := All and AConst[Index];
+    if All then
+      Exit(TRuleEdit.Create(Range(AGroup.StartOffset, AGroup.StartOffset), 'const '));
+    Text := NodeText(AContext.Text, AGroup);
+    TypeText := Trim(Copy(Text, Pos(':', Text) + 1, MaxInt));
+    Text := '';
+    for Index := 0 to High(Names) do
+    begin
+      Part := Trim(Names[Index]) + ': ' + TypeText;
+      if AConst[Index] then
+        Part := 'const ' + Part;
+      if Text <> '' then
+        Text := Text + '; ';
+      Text := Text + Part;
+    end;
+    Result := TRuleEdit.Create(Range(AGroup.StartOffset, AGroup.EndOffset), Text);
+  end;
+
+  procedure CheckRoutine(ARoutine: TSyntaxNode);
+  var
+    Header, Declaration, ClassNode, Params, DeclParams, Group, Node, Call: TSyntaxNode;
+    Visibility, Name, ShortName, Subject, Costs: string;
+    Found, IsOverride, HasRefCount, HasCopy: Boolean;
+    Candidates, Unchanged: TArray<TParamCandidate>;
+    Candidate: TParamCandidate;
+    Usages, Declared: TArray<TSyntaxNode>;
+    Index, Position, Argument: Integer;
+    Access: TParamAccess;
+    Names: TArray<string>;
+    Marks: TArray<Boolean>;
+    Edits: TArray<TRuleEdit>;
+  begin
+    Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    if (Header = nil) or (NodesOf(ARoutine, [TSyntaxKind.AsmBlock, TSyntaxKind.Error], []) <> nil) or
+      ContainsText(NodeText(AContext.Text, Header), '{$') then
+      Exit;
+    Declaration := DeclarationOf(AContext.Text, Root, ARoutine, Found, Visibility, ClassNode);
+    if not Found then
+      Exit;
+    IsOverride := HasDirective(Header, ['override']) or HasDirective(Declaration, ['override']);
+    if HasDirective(Header, FixedSignatureDirectives) or HasDirective(Declaration, FixedSignatureDirectives) or
+      (IsOverride and IgnoreOverrides) then
+      Exit;
+    if ClassNode <> nil then
+    begin
+      // Interfaces geben die Signatur vor; published (auch ohne Abschnitt bei Vorfahren) heißt Formular-Ereignis.
+      if (ClassNode.Kind = TSyntaxKind.ClassType) and ((Length(NodesOf(ClassNode, [TSyntaxKind.TypeReference],
+        [TSyntaxKind.RoutineHeader, TSyntaxKind.Field, TSyntaxKind.PropertyDecl])) > 1) or
+        (Visibility = 'published') or ((Visibility = '') and (ClassNode.FindChild(TSyntaxKind.TypeReference) <> nil)))
+        then
+        Exit;
+    end;
+    Name := Header.Name;
+    ShortName := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+    if UsedAsValue(ShortName) then
+      Exit;
+    // Bare inherited reicht alle Parameter weiter.
+    for Node in NodesOf(ARoutine, [TSyntaxKind.InheritedExpr], [TSyntaxKind.RoutineHeader]) do
+      if (Node.Name = '') and (Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.CallStatement) then
+        Exit;
+    Params := Header.FindChild(TSyntaxKind.Parameters);
+    DeclParams := nil;
+    if Declaration <> nil then
+      DeclParams := Declaration.FindChild(TSyntaxKind.Parameters);
+    if Params = nil then
+      Params := DeclParams;
+    if Params = nil then
+      Exit;
+    Candidates := nil;
+    for Index := 0 to Params.ChildCount - 1 do
+    begin
+      Group := Params[Index];
+      if Group.Kind <> TSyntaxKind.Parameter then
+        Continue;
+      for Position := 0 to High(Group.Name.Split([','])) do
+        if CandidateOf(Group, Position, Candidate) then
+          Candidates := Candidates + [Candidate];
+    end;
+    if Candidates = nil then
+      Exit;
+    Usages := nil;
+    Declared := nil;
+    for Index := 0 to ARoutine.ChildCount - 1 do
+      if ARoutine[Index] <> Header then
+      begin
+        Usages := Usages + NodesOf(ARoutine[Index], [TSyntaxKind.Identifier], []);
+        Declared := Declared + NodesOf(ARoutine[Index], [TSyntaxKind.Parameter, TSyntaxKind.VarDecl,
+          TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl, TSyntaxKind.InlineConst, TSyntaxKind.ForStatement,
+          TSyntaxKind.ForInStatement], []);
+      end;
+    Unchanged := nil;
+    for Candidate in Candidates do
+    begin
+      Access := TParamAccess.Read;
+      // Gleichnamige Deklarationen darunter verdecken den Parameter; for-Variable heißt verändert.
+      for Node in Declared do
+        if MatchText(Candidate.Name, Node.Name.Split([',', ' '])) then
+          Access := TParamAccess.Modified;
+      for Node in Usages do
+      begin
+        if Access <> TParamAccess.Read then
+          Break;
+        if not SameText(Node.Name, Candidate.Name) then
+          Continue;
+        Access := ParamAccess(Node, Candidate, Lookup, Call, Argument);
+        if (Access = TParamAccess.Undecided) and (Call <> nil) then
+          case ResolvedMode(Call, Argument) of
+            TFlowArgumentMode.Value:
+              Access := TParamAccess.Read;
+            TFlowArgumentMode.Reference, TFlowArgumentMode.Output:
+              Access := TParamAccess.Modified;
+          end;
+      end;
+      if Access = TParamAccess.Read then
+        Unchanged := Unchanged + [Candidate];
+    end;
+    if Unchanged = nil then
+      Exit;
+    Names := nil;
+    HasRefCount := False;
+    HasCopy := False;
+    for Candidate in Unchanged do
+    begin
+      Names := Names + [Candidate.Name];
+      HasRefCount := HasRefCount or (Candidate.Cost = TParamCost.RefCount);
+      HasCopy := HasCopy or (Candidate.Cost = TParamCost.Copy);
+    end;
+    if Length(Names) = 1 then
+      Subject := Names[0] + ' wird'
+    else
+      Subject := string.Join(', ', Copy(Names, 0, Length(Names) - 1)) + ' und ' + Names[High(Names)] + ' werden';
+    if HasRefCount and HasCopy then
+      Costs := 'entfallen Referenzzählung und Kopie'
+    else if HasRefCount then
+      Costs := 'entfällt die Referenzzählung'
+    else
+      Costs := 'entfällt die Kopie';
+    Edits := nil;
+    if not IsOverride then
+      for Index := 0 to Params.ChildCount - 1 do
+      begin
+        Group := Params[Index];
+        Marks := nil;
+        SetLength(Marks, Length(Group.Name.Split([','])));
+        Found := False;
+        for Candidate in Unchanged do
+          if Candidate.Group = Group then
+          begin
+            Marks[Candidate.Position] := True;
+            Found := True;
+          end;
+        if not Found then
+          Continue;
+        if Params <> DeclParams then
+          Edits := Edits + [GroupEdit(Group, Marks)];
+        // Gleiche Parameterliste: die Gruppe steht an derselben Stelle.
+        if (DeclParams <> nil) and (Index < DeclParams.ChildCount) then
+          Edits := Edits + [GroupEdit(DeclParams[Index], Marks)];
+      end;
+    if Edits <> nil then
+      AReport.Add(Range(Params.StartOffset, Params.EndOffset), Format('%s nicht verändert; mit const %s.',
+        [Subject, Costs]), [TRuleFix.Create('const ergänzen', Edits)])
+    else
+      AReport.Add(Range(Params.StartOffset, Params.EndOffset), Format('%s nicht verändert; mit const %s ' +
+        '(override: die Signatur des Vorfahren mit ändern).', [Subject, Costs]));
+  end;
+
+var
+  Node: TSyntaxNode;
+  Routine: TSyntaxNode;
+  Name: string;
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Root := AContext.Tree.Root;
+  MinRecordSize := TRuleOptions.Int(AContext.Options, 'minRecordSize', 16);
+  IgnoreOverrides := TRuleOptions.Bool(AContext.Options, 'ignoreOverrides', True);
+  Cache := TRuleDerived.Open(AContext);
+  Lookup := TRuleDerived.FlowSignatures(Cache, AContext);
+  DynArrays := DynamicArrayTypes(AContext.Text, Root);
+  Interfaces := nil;
+  Exported := nil;
+  Resolver := nil;
+  Records := TDictionary<string, TSyntaxNode>.Create;
+  try
+    for Node in NodesOf(Root, [TSyntaxKind.TypeDecl, TSyntaxKind.ExportsClause], [TSyntaxKind.Block]) do
+      if Node.Kind = TSyntaxKind.ExportsClause then
+      begin
+        for Name in TRegEx.Split(NodeText(AContext.Text, Node), '[^A-Za-z0-9_]+') do
+          if Name <> '' then
+            Exported := Exported + [Name];
+      end
+      else if Node.ChildCount > 0 then
+        case Node[Node.ChildCount - 1].Kind of
+          TSyntaxKind.InterfaceType:
+            Interfaces := Interfaces + [Node.Name];
+          TSyntaxKind.RecordType:
+            Records.AddOrSetValue(LowerCase(Node.Name), Node[Node.ChildCount - 1]);
+        end;
+    for Routine in TRuleDerived.Routines(Cache, AContext) do
+      CheckRoutine(Routine);
+  finally
+    Records.Free;
+    Resolver.Free;
+  end;
+end;
+
 procedure RegisterPerformanceRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TStringConcatInLoopRule.Create);
   ARegistry.Register(TLoopInvariantCallRule.Create);
   ARegistry.Register(TMissingBeginUpdateRule.Create);
   ARegistry.Register(TSetLengthInLoopRule.Create);
+  ARegistry.Register(TManagedParamWithoutConstRule.Create);
 end;
 
 end.
