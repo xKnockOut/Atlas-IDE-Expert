@@ -42,6 +42,9 @@ type
     FTogglesEnglish: Boolean;
     FTogglesBuilt: Boolean;
     FHistory: TAtlasSettingsHistory;
+    /// <summary>settings-history.json war beim Lesen gesperrt: SaveHistory überschreibt sie nicht (Bericht N3).
+    /// </summary>
+    FHistoryKept: Boolean;
     FOnChanged: TProc;
     FLoaded: Boolean;
     FExperimental: TArray<TAtlasCatalogEntry>;
@@ -136,6 +139,7 @@ uses
   Atlas.Core.Settings.Scopes,
   Atlas.Core.Settings.Experimental,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Files.DataFile,
   Atlas.UI.Strings;
 
 type
@@ -438,8 +442,9 @@ begin
     History.Push(FStored, Next, TTimeZone.Local.ToUniversalTime(Now), Next.SafeKeepSettingsHistory);
     SaveHistory;
   except
-    on Exception do
-      ;
+    // Der Grund steht einmal im Protokoll (ohne Pfad).
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten('Einstellungsverlauf', E);
   end;
   FStored := Next;
   FLoaded := True;
@@ -497,22 +502,27 @@ begin
   if FHistory = nil then
   begin
     FHistory := TAtlasSettingsHistory.Create;
-    try
-      if TFile.Exists(HistoryFile) then
-        FHistory.LoadJson(TFile.ReadAllText(HistoryFile, TEncoding.UTF8));
-    except
-      // Unlesbar: ohne gemerkte Stände weiter.
-      on Exception do
-        FHistory.Clear;
-    end;
+    // Fehlt, unbrauchbar (dann als .defekt beiseitegelegt) oder gesperrt: ohne gemerkte Stände weiter.
+    FHistoryKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(HistoryFile, 'Einstellungsverlauf',
+      function(const AText: string): Boolean
+      begin
+        Result := FHistory.LoadJson(AText);
+      end));
+    if FHistoryKept then
+      FHistory.Clear;
   end;
   Result := FHistory;
 end;
 
 class procedure TAtlasIdeSettings.SaveHistory;
+var
+  Snapshots: TAtlasSettingsHistory;
 begin
-  ForceDirectories(ExtractFileDir(HistoryFile));
-  TFile.WriteAllText(HistoryFile, History.ToJson, TEncoding.UTF8);
+  // Erst laden: Das setzt FHistoryKept.
+  Snapshots := History;
+  // Gesperrt gelesene Datei nicht mit den Ständen dieser Sitzung allein überschreiben.
+  if not FHistoryKept then
+    TAtlasDataFile.Write(HistoryFile, Snapshots.ToJson);
 end;
 
 class procedure TAtlasIdeSettings.Restore(AIndex: Integer);

@@ -345,11 +345,11 @@ begin
     Assert.AreEqual(3, Integer(Length(History.ChangedKeys(1, Third))));
     Loaded := TAtlasSettingsHistory.Create;
     try
-      Loaded.LoadJson(History.ToJson);
+      Assert.IsTrue(Loaded.LoadJson(History.ToJson));
       Assert.AreEqual(2, Integer(Loaded.Count));
       Assert.IsTrue(Loaded[1].Settings.PairColors);
       Assert.IsTrue(SameDateTime(History[0].ChangedAt, Loaded[0].ChangedAt));
-      Loaded.LoadJson('kaputt');
+      Assert.IsFalse(Loaded.LoadJson('kaputt'), 'keine Liste');
       Assert.AreEqual(0, Integer(Loaded.Count));
     finally
       Loaded.Free;
@@ -413,6 +413,12 @@ begin
     State := TAtlasSessionFiles.ReadState(Folder);
     Assert.AreEqual(2, State.CrashCount);
     Assert.IsTrue(State.SlowStart);
+    // Ersetzen in einem Schritt (Bericht N3): neuer Stand, keine Reste daneben.
+    State.CrashCount := 3;
+    TAtlasSessionFiles.WriteState(Folder, State);
+    Assert.AreEqual(3, TAtlasSessionFiles.ReadState(Folder).CrashCount);
+    Assert.IsFalse(TFile.Exists(TAtlasSessionFiles.StateFile(Folder) + '.tmp'), 'keine Zwischendatei');
+    Assert.IsFalse(TFile.Exists(TAtlasSessionFiles.StateFile(Folder) + '.bak'), 'keine Sicherung');
   finally
     if TDirectory.Exists(Folder) then
       TDirectory.Delete(Folder, True);

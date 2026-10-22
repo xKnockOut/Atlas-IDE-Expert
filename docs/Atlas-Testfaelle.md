@@ -3191,6 +3191,20 @@ Voraussetzung: `Atlas.Tests.exe` (Win64, Debug) mit `AtlasServer.exe` daneben, d
 | LP3 | Testlauf nur der Fixture `TJsonRpcConnectionTests` | Grün, darunter `RunReleasesReaderBeforeReturning` |
 | LP4 | Server in der IDE beenden (IDE schließen) mit `--log` | Im Server-Log keine Meldung „Nebenläufige Anfragen wurden beim Beenden nicht rechtzeitig fertig“; der Prozess endet wie bisher ohne Wartezeit |
 
+## Beschädigte Datendateien (Bericht N3)
+
+Voraussetzung: Atlas geladen, ein Projekt offen. Die Dateien liegen unter `%APPDATA%\Atlas` (`favorites.json`, `usage.json`, `palette.json`, `settings-history.json`, `generate-recent.txt`) bzw. `%LOCALAPPDATA%\Atlas` (`quickopen.json`, `unitsearch.json`, `projects\`, `startprofiles\`). Process Monitor (Sysinternals) hilft bei DD5.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DD1 | IDE schließen, in `favorites.json` den Inhalt durch `{kaputt` ersetzen; IDE starten, Vervollständigung öffnen und einen Eintrag als Favorit markieren | Neben der Datei liegt `favorites.json.defekt` mit `{kaputt`; in `atlas.log` einmal „Datendatei Favoriten: kein gültiger Inhalt; beiseitegelegt als *.defekt, Atlas beginnt sie neu“, ohne Pfad; `favorites.json` enthält danach den neuen Favoriten |
+| DD2 | Wie DD1 mit `palette.json` (Befehl über die Befehlspalette ausführen), `quickopen.json` (Schnell öffnen), `unitsearch.json` (Units suchen) und `settings-history.json` (Einstellung ändern) | Je eine `.defekt` daneben und eine Zeile mit der Art („Verlauf der Befehlspalette“, „Verlauf von Schnell öffnen“, „Zustand von Units suchen“, „Einstellungsverlauf“); die Funktionen arbeiten normal weiter |
+| DD3 | Gültige `favorites.json` mit Favoriten vor dem IDE-Start exklusiv sperren: in PowerShell `$f = [IO.File]::Open("$env:APPDATA\Atlas\favorites.json", 'Open', 'Read', 'None')`; IDE starten, Vervollständigung öffnen, einen Favoriten setzen; dann `$f.Close()` und die IDE schließen | In `atlas.log` einmal „Datendatei Favoriten: gesperrt oder nicht lesbar; sie bleibt in dieser Sitzung unverändert“; die Datei hat danach unverändert die alten Favoriten, keine `.defekt` |
+| DD4 | `.atlas-bookmarks.json` neben dem Projekt durch `{"bookmarks": [` ersetzen, Projekt öffnen, ein Lesezeichen setzen | `.atlas-bookmarks.json.defekt` daneben, die neue Datei enthält das neue Lesezeichen; Zeile „Datendatei Lesezeichen: kein gültiger Inhalt; …“ |
+| DD5 | Mehrmals schnell hintereinander Favoriten umschalten und Befehle über die Befehlspalette ausführen, mit Process Monitor (Filter „Path contains \Atlas\“) | Geschrieben wird in `*.atlas-tmp` und dann umbenannt (`SetRenameInformationFile`), kein `WriteFile` auf die Datei selbst; keine `.atlas-tmp` übrig; neue Dateien beginnen ohne BOM |
+| DD6 | `atlas-baseline.json` im Projektordner durch `{kaputt` ersetzen, dann *Baseline des Projekts aktualisieren* | Meldungsfenster: „Baseline: Die bisherige Datei war unbrauchbar und liegt jetzt als … atlas-baseline.json.defekt daneben.“; die neue `atlas-baseline.json` ist gültig |
+| DD7 | Testlauf `Atlas.Tests.exe` | Grün, darunter `TAtlasDataFileTests`, die zehn `BrokenFileSetAsideLockedFileKept`, `InvalidPreviousBaselineIsSetAside`, `InvalidPreviousBaselineIsReplacedWhenSetAsideFails` und `MarkerFilesFindCrashedSessions` |
+
 ## Gliederung beim Start und Kontextwechsel ohne Zugriffsverletzung
 
 Voraussetzung: experimentelles `editor.stickyScroll` an (wie bei Marco), Brotkrumen an; IDE frisch gestartet, eine Gruppe mit mehreren Plattformen.

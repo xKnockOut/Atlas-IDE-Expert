@@ -67,6 +67,7 @@ uses
   Vcl.Menus,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.TestUnit,
@@ -481,12 +482,9 @@ begin
   GroupInfo(Options.GroupFile, Options.ActiveProject, Options.Root);
   Search := TOpenSearch.Create;
   Search.State := TAtlasUnitSearchState.Create;
-  try
-    Search.State.LoadFromFile(StateFile);
-  except
-    on E: Exception do
-      TAtlasGuard.Log('Units suchen: Zustand nicht lesbar: ' + E.Message);
-  end;
+  // Fehlt, unbrauchbar oder gesperrt: Vorgaben; TAtlasDataFile legt Unbrauchbares beiseite und protokolliert
+  // ohne Pfad, eine gesperrte Datei schreibt SaveToFile nicht (Bericht N3).
+  Search.State.LoadFromFile(StateFile);
   Search.Target := TopFile;
   Search.Window := TAtlasUnitSearchWindow.CreateSearch(Application, Options, Search.State, TAtlasIdeStyle.Colors);
   Current := Search;
@@ -499,8 +497,9 @@ begin
       try
         Current.State.SaveToFile(StateFile);
       except
+        // Die Meldung kann den Pfad enthalten; ReportNotWritten nennt nur die Klasse.
         on E: Exception do
-          TAtlasGuard.Log('Units suchen: Zustand nicht gespeichert: ' + E.Message);
+          TAtlasDataFile.ReportNotWritten('Zustand von Units suchen', E);
       end;
       FreeAndNil(Current);
     end;

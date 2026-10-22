@@ -14,13 +14,16 @@
 //         "unit": "Data.DB", "signature": "procedure Open", "added": "2026-10-15T09:30:00"}]}
 //     Reihenfolge der Einträge = Reihenfolge des Anheftens; "type" ist leer bei Einträgen ohne Typ und Unit
 //     (etwa Code-Vorlagen); "added" ist Ortszeit ohne Zeitzone.
+//   - Lesen und Schreiben über TAtlasDataFile (Bericht N3): atomar ersetzt; eine unbrauchbare Datei liegt danach
+//     als favorites.json.defekt daneben, eine gesperrte bleibt unverändert und wird nicht überschrieben.
 
 interface
 
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Completion.Contract;
+  Atlas.Core.Completion.Contract,
+  Atlas.Core.Files.DataFile;
 
 {$SCOPEDENUMS ON}
 
@@ -60,6 +63,8 @@ type
   private
     FItems: TList<TAtlasFavorite>;
     FChanged: Boolean;
+    /// <summary>Vorhandene Datei, die LoadFromFile nicht lesen konnte: SaveToFile überschreibt sie nicht.</summary>
+    FKept: string;
     function IndexOf(const AKey: string): Integer;
     function TypeCount(const ATypeKey: string): Integer;
     /// <summary>Hängt AFavorite an, wenn der Schlüssel neu ist und der Typ Platz hat.</summary>
@@ -90,12 +95,14 @@ type
     /// <summary>Alle Favoriten in der Reihenfolge des Anheftens.</summary>
     function Items: TArray<TAtlasFavorite>;
     function ToJson: string;
-    /// <summary>Ersetzt den Inhalt durch AJson; Unlesbares ergibt eine leere Liste, ungültige Einträge,
-    /// doppelte und solche über MaxPerType je Typ fallen weg.</summary>
-    procedure Parse(const AJson: string);
-    /// <summary>Fehlende Datei: leer, kein Fehler.</summary>
-    procedure LoadFromFile(const AFileName: string);
-    procedure SaveToFile(const AFileName: string);
+    /// <summary>Ersetzt den Inhalt durch AJson; ungültige Einträge, doppelte und solche über MaxPerType je Typ
+    /// fallen weg. False (und leer), wenn AJson kein Objekt mit der Liste "favorites" ist.</summary>
+    function Parse(const AJson: string): Boolean;
+    /// <summary>Liest die Datei über TAtlasDataFile.Load; fehlt sie oder ist sie unbrauchbar, bleibt die Liste
+    /// leer. Ergebnis Kept: Die Datei bleibt unverändert, SaveToFile schreibt sie nicht.</summary>
+    function LoadFromFile(const AFileName: string): TAtlasDataLoad;
+    /// <summary>Schreibt atomar; False, wenn LoadFromFile die vorhandene Datei nicht lesen konnte.</summary>
+    function SaveToFile(const AFileName: string): Boolean;
     /// <summary>Seit dem Laden bzw. Speichern geändert.</summary>
     property Changed: Boolean read FChanged;
   end;
@@ -103,7 +110,6 @@ type
 implementation
 
 uses
-  System.IOUtils,
   System.JSON,
   Atlas.Core.Completion.Usage;
 
@@ -353,22 +359,18 @@ begin
   end;
 end;
 
-procedure TAtlasFavorites.Parse(const AJson: string);
+function TAtlasFavorites.Parse(const AJson: string): Boolean;
 var
   Root, List: TJSONValue;
   Value: TJSONValue;
   Entry: TJSONObject;
   Favorite: TAtlasFavorite;
 begin
+  Result := False;
   FItems.Clear;
   FChanged := False;
-  try
-    Root := TJSONObject.ParseJSONValue(AJson);
-  except
-    // Unlesbar: ohne Favoriten weiter, beim nächsten Speichern neu.
-    on Exception do
-      Exit;
-  end;
+  // Ungültiges JSON ergibt nil; was damit geschieht, entscheidet der Aufrufer (TAtlasDataFile.Load).
+  Root := TJSONObject.ParseJSONValue(AJson);
   if Root = nil then
     Exit;
   try
@@ -377,6 +379,7 @@ begin
     List := TJSONObject(Root).GetValue('favorites');
     if not (List is TJSONArray) then
       Exit;
+    Result := True;
     for Value in TJSONArray(List) do
     begin
       if not (Value is TJSONObject) then
@@ -396,19 +399,29 @@ begin
   end;
 end;
 
-procedure TAtlasFavorites.LoadFromFile(const AFileName: string);
+function TAtlasFavorites.LoadFromFile(const AFileName: string): TAtlasDataLoad;
 begin
   FItems.Clear;
   FChanged := False;
-  if not FileExists(AFileName) then
-    Exit;
-  Parse(TFile.ReadAllText(AFileName, TEncoding.UTF8));
+  FKept := '';
+  Result := TAtlasDataFile.Load(AFileName, 'Favoriten',
+    function(const AText: string): Boolean
+    begin
+      Result := Parse(AText);
+    end);
+  if not TAtlasDataFile.Writable(Result) then
+    FKept := AFileName;
+  // Unbrauchbarer Inhalt bleibt nicht halb geladen stehen.
+  if Result <> TAtlasDataLoad.Loaded then
+    FItems.Clear;
 end;
 
-procedure TAtlasFavorites.SaveToFile(const AFileName: string);
+function TAtlasFavorites.SaveToFile(const AFileName: string): Boolean;
 begin
-  ForceDirectories(ExtractFileDir(AFileName));
-  TFile.WriteAllText(AFileName, ToJson, TEncoding.UTF8);
+  Result := not SameFileName(AFileName, FKept);
+  if not Result then
+    Exit;
+  TAtlasDataFile.Write(AFileName, ToJson);
   FChanged := False;
 end;
 

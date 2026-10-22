@@ -24,7 +24,10 @@
 //
 // Antwort von atlas.updateBaseline (Format 1):
 //   {"format": 1, "file": "C:\\Projekte\\Kasse\\atlas-baseline.json",
-//    "previous": "none|valid|invalid", "skipped": 0, "total": 120, "files": 40,
+//    "previous": "none|valid|invalid",
+//    "setAside": "C:\\Projekte\\Kasse\\atlas-baseline.json.defekt" (nur nach
+//    "invalid": die unbrauchbare bisherige Datei, Bericht N3),
+//    "skipped": 0, "total": 120, "files": 40,
 //    "added": 3, "removed": 5, "unchanged": 117, "completed": 0,
 //    "orphaned": {"count": 2, "entries": [{"path": "Alt/U.pas", "count": 2}]}}
 
@@ -67,6 +70,9 @@ type
     FileName: string;
     /// <summary>"none", "valid" oder "invalid": bisherige Datei.</summary>
     Previous: string;
+    /// <summary>Voller Pfad, unter dem der Server eine unbrauchbare bisherige Baseline beiseitegelegt hat
+    /// (Bericht N3); '' sonst.</summary>
+    SetAside: string;
     Skipped: Integer;
     Total: Integer;
     Files: Integer;
@@ -339,6 +345,7 @@ begin
       Exit;
     AUpdate.FileName := TextOf(Root, 'file');
     AUpdate.Previous := TextOf(Root, 'previous');
+    AUpdate.SetAside := TextOf(Root, 'setAside');
     AUpdate.Skipped := NumberOf(Root, 'skipped', 0);
     AUpdate.Total := NumberOf(Root, 'total', 0);
     AUpdate.Files := NumberOf(Root, 'files', 0);

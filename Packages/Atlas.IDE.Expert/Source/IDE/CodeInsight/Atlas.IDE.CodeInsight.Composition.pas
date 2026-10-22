@@ -669,6 +669,9 @@ begin
     AUpdate.Added, AUpdate.Removed, AUpdate.Unchanged]));
   if AUpdate.Completed > 0 then
     MessageLine(TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateCompleted, [AUpdate.Completed]));
+  // Bericht N3: Die unbrauchbare bisherige Datei wurde nicht still ersetzt.
+  if AUpdate.SetAside <> '' then
+    MessageLine(TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateSetAside, [AUpdate.SetAside]));
 end;
 
 /// <summary>Lässt den Server (atlas.updateBaseline, #97) im Hintergrund alle Dateien von AFileName prüfen und die

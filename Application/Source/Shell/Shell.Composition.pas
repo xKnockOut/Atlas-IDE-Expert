@@ -455,6 +455,7 @@ uses
   System.Math,
   System.StrUtils,
   System.Diagnostics,
+  Atlas.Common.Index.Adapters.DiskFileSystem,
   Atlas.Common.Product.Version,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
@@ -2614,14 +2615,22 @@ begin
   Result.Write :=
     procedure(const AFileName, AText: string)
     var
-      Encoding: TEncoding;
+      Disk: IIndexFileSystem;
+      Error: string;
     begin
-      Encoding := TUTF8Encoding.Create(False);
-      try
-        TFile.WriteAllText(AFileName, AText, Encoding);
-      finally
-        Encoding.Free;
-      end;
+      // Atomar wie der Index-Cache (Bericht N3): Der Arbeitsbereich liest die Datei nach dem Zeitstempel und sah
+      // mit TFile.WriteAllText womöglich einen halben Stand; ein Abbruch hinterließ eine kaputte Baseline.
+      // UTF-8 ohne BOM wie bisher.
+      Disk := TDiskIndexFileSystem.Create;
+      if not Disk.WriteBytes(AFileName, TEncoding.UTF8.GetBytes(AText), Error) then
+        raise EInOutError.Create('Baseline nicht geschrieben (' + Error + ')');
+    end;
+  Result.SetAside :=
+    function(const AFileName: string; out ATarget: string): Boolean
+    begin
+      ATarget := AFileName + '.defekt';
+      // Eine ältere beiseitegelegte Datei wird in einem Schritt ersetzt: Die jüngere hat den neueren Stand.
+      Result := MoveFileEx(PChar(AFileName), PChar(ATarget), MOVEFILE_REPLACE_EXISTING);
     end;
 end;
 

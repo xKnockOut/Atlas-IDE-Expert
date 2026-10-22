@@ -6,7 +6,10 @@
 //   - fürs Fenster: Lage und Größe, Breite und Sichtbarkeit der Vorschau;
 //   - nur für die Sitzung, nicht gespeichert: von Hand auf- oder zugeklappte
 //     Abschnitte der Vorschau (#876).
-// Gespeichert als JSON (Datei unter %LOCALAPPDATA%\Atlas, setzt die IDE-Schicht).
+// Gespeichert als JSON (Datei unter %LOCALAPPDATA%\Atlas, setzt die IDE-Schicht),
+// gelesen und atomar geschrieben über TAtlasDataFile (Bericht N3): Eine
+// unbrauchbare Datei liegt danach als .defekt daneben, eine gesperrte bleibt
+// unverändert und wird nicht überschrieben.
 
 interface
 
@@ -15,7 +18,8 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Core.UnitSearch.Model,
-  Atlas.Core.UnitSearch.Sections;
+  Atlas.Core.UnitSearch.Sections,
+  Atlas.Core.Files.DataFile;
 
 type
   TAtlasUnitSearchState = class
@@ -29,6 +33,8 @@ type
     end;
   private
     FGroups: TDictionary<string, TGroupState>;
+    /// <summary>Vorhandene Datei, die LoadFromFile nicht lesen konnte: SaveToFile überschreibt sie nicht.</summary>
+    FKept: string;
     function GroupState(const AGroupFile: string): TGroupState;
   public
     /// <summary>Lage des Fensters; Width = 0 = noch keine.</summary>
@@ -47,15 +53,16 @@ type
     function Filters(const AGroupFile: string; out AOrigins: TAtlasUnitOrigins; out AKinds: TAtlasUnitKinds): Boolean;
     procedure SetFilters(const AGroupFile: string; AOrigins: TAtlasUnitOrigins; AKinds: TAtlasUnitKinds);
     function ToJson: string;
-    procedure LoadJson(const AText: string);
-    procedure LoadFromFile(const AFileName: string);
-    procedure SaveToFile(const AFileName: string);
+    /// <summary>Ersetzt den Zustand durch AText; False (und Vorgaben), wenn AText kein Objekt ist.</summary>
+    function LoadJson(const AText: string): Boolean;
+    /// <summary>Liest über TAtlasDataFile.Load; fehlt die Datei oder ist sie unbrauchbar, gelten die Vorgaben.
+    /// Ergebnis Kept: Die Datei bleibt unverändert, SaveToFile schreibt sie nicht.</summary>
+    function LoadFromFile(const AFileName: string): TAtlasDataLoad;
+    /// <summary>Schreibt atomar; False, wenn LoadFromFile die vorhandene Datei nicht lesen konnte.</summary>
+    function SaveToFile(const AFileName: string): Boolean;
   end;
 
 implementation
-
-uses
-  System.IOUtils;
 
 const
   OriginTexts: array[TAtlasUnitOrigin] of string = ('active', 'group', 'searchPath', 'library');
@@ -188,7 +195,7 @@ begin
   end;
 end;
 
-procedure TAtlasUnitSearchState.LoadJson(const AText: string);
+function TAtlasUnitSearchState.LoadJson(const AText: string): Boolean;
 var
   Root: TJSONValue;
   Window, Groups, Item: TJSONObject;
@@ -208,7 +215,8 @@ begin
   PreviewVisible := True;
   Root := TJSONObject.ParseJSONValue(AText);
   try
-    if not (Root is TJSONObject) then
+    Result := Root is TJSONObject;
+    if not Result then
       Exit;
     if TJSONObject(Root).TryGetValue<TJSONObject>('window', Window) then
     begin
@@ -249,18 +257,26 @@ begin
   end;
 end;
 
-procedure TAtlasUnitSearchState.LoadFromFile(const AFileName: string);
+function TAtlasUnitSearchState.LoadFromFile(const AFileName: string): TAtlasDataLoad;
 begin
-  if TFile.Exists(AFileName) then
-    LoadJson(TFile.ReadAllText(AFileName, TEncoding.UTF8))
-  else
+  FKept := '';
+  Result := TAtlasDataFile.Load(AFileName, 'Zustand von Units suchen',
+    function(const AText: string): Boolean
+    begin
+      Result := LoadJson(AText);
+    end);
+  if not TAtlasDataFile.Writable(Result) then
+    FKept := AFileName;
+  // Ohne gelesene Datei gelten die Vorgaben.
+  if Result <> TAtlasDataLoad.Loaded then
     LoadJson('');
 end;
 
-procedure TAtlasUnitSearchState.SaveToFile(const AFileName: string);
+function TAtlasUnitSearchState.SaveToFile(const AFileName: string): Boolean;
 begin
-  ForceDirectories(ExtractFileDir(AFileName));
-  TFile.WriteAllText(AFileName, ToJson, TEncoding.UTF8);
+  Result := not SameFileName(AFileName, FKept);
+  if Result then
+    TAtlasDataFile.Write(AFileName, ToJson);
 end;
 
 end.

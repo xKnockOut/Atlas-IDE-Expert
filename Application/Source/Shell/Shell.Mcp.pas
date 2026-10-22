@@ -122,6 +122,15 @@ begin
   end;
 end;
 
+/// <summary>Datei des Plugins (editor-dirty-&lt;pid&gt;.json), UTF-8 mit oder ohne BOM. Über TFileEncoding: teilt
+/// Löschen, damit das Plugin sie währenddessen atomar ersetzen kann (Bericht M5, N3).</summary>
+function ReadPluginFile(const AFileName: string): string;
+var
+  FileFormat: TFileFormat;
+begin
+  Result := TFileEncoding.LoadFromFile(AFileName, FileFormat);
+end;
+
 /// <summary>Im Editor der IDE ungespeichert geänderte Dateien: editor-dirty-<pid>.json je laufender IDE.</summary>
 function EditorDirtyFiles: TArray<string>;
 var
@@ -137,7 +146,7 @@ begin
     'editor-dirty-*.json') do
   begin
     try
-      Text := TFile.ReadAllText(FileName, TEncoding.UTF8);
+      Text := ReadPluginFile(FileName);
     except
       on Exception do
         Continue;
@@ -171,7 +180,7 @@ begin
     'editor-dirty-*.json') do
   begin
     try
-      Text := TFile.ReadAllText(FileName, TEncoding.UTF8);
+      Text := ReadPluginFile(FileName);
     except
       on Exception do
         Continue;
@@ -203,7 +212,7 @@ begin
     'editor-dirty-*.json') do
   begin
     try
-      Text := TFile.ReadAllText(FileName, TEncoding.UTF8);
+      Text := ReadPluginFile(FileName);
     except
       on Exception do
         Continue;

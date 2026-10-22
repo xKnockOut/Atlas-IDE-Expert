@@ -21,6 +21,10 @@ type
     procedure CleansCaptions;
     [Test]
     procedure HistoryRoundTrip;
+    /// <summary>Unbrauchbare Datei liegt danach als .defekt daneben; eine beim Lesen gesperrte wird nicht
+    /// überschrieben (Bericht N3).</summary>
+    [Test]
+    procedure BrokenFileSetAsideLockedFileKept;
     [Test]
     procedure KeepsListOrderForCodeActions;
     [Test]
@@ -31,7 +35,9 @@ implementation
 
 uses
   System.SysUtils,
+  System.Classes,
   System.IOUtils,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Commands.Palette;
 
 function Command(const AId, ACaption: string; const APath: string = ''): TAtlasCommand;
@@ -188,6 +194,38 @@ begin
   Assert.AreEqual(2, Integer(Length(Fake.Ids)));
   Assert.AreEqual('Atlas.Zwei', Fake.Ids[1]);
   Assert.AreEqual(1, Fake.Conditional);
+end;
+
+procedure TAtlasCommandPaletteTests.BrokenFileSetAsideLockedFileKept;
+var
+  History: TAtlasCommandHistory;
+  FileName: string;
+  Lock: TFileStream;
+begin
+  FileName := TPath.Combine(TPath.GetTempPath, 'atlas-palette-' + IntToStr(Random(MaxInt)) + '.json');
+  History := TAtlasCommandHistory.Create;
+  try
+    TFile.WriteAllText(FileName, '[1, 2]');
+    Assert.IsTrue(History.LoadFromFile(FileName) = TAtlasDataLoad.Renewed);
+    Assert.IsTrue(TFile.Exists(FileName + TAtlasDataFile.DefectExtension), 'beiseitegelegt');
+    History.Executed('A');
+    Assert.IsTrue(History.SaveToFile(FileName));
+    Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
+    try
+      Assert.IsTrue(History.LoadFromFile(FileName) = TAtlasDataLoad.Kept);
+    finally
+      Lock.Free;
+    end;
+    Assert.AreEqual(0, History.Boost('A'));
+    History.Executed('B');
+    Assert.IsFalse(History.SaveToFile(FileName), 'beim Lesen gesperrt: nicht überschreiben');
+    Assert.Contains(TFile.ReadAllText(FileName), '"A"');
+    Assert.DoesNotContain(TFile.ReadAllText(FileName), '"B"');
+  finally
+    History.Free;
+    System.SysUtils.DeleteFile(FileName);
+    System.SysUtils.DeleteFile(FileName + TAtlasDataFile.DefectExtension);
+  end;
 end;
 
 initialization

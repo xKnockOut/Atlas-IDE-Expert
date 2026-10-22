@@ -45,6 +45,10 @@ type
     procedure SaveAndLoadOnDisk;
     [Test]
     procedure SaveKeepsNewerFormatFile;
+    /// <summary>Unbrauchbare Datei liegt danach als .defekt daneben; eine beim Lesen gesperrte wird nicht
+    /// überschrieben (Bericht N3).</summary>
+    [Test]
+    procedure BrokenFileSetAsideLockedFileKept;
     [Test]
     procedure UpdateCreatesAndChanges;
     [Test]
@@ -80,10 +84,12 @@ implementation
 
 uses
   System.SysUtils,
+  System.Classes,
   System.IOUtils,
   System.JSON,
   System.Generics.Collections,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Projects.Summary;
 
 const
@@ -826,6 +832,37 @@ begin
   Assert.AreEqual(1, Read.Setup.UncertainUnitCount);
   Assert.AreEqual('A', string.Join('|', Read.Setup.SkippedMacros));
   Assert.IsTrue(Read.Setup.PathsClean);
+end;
+
+procedure TAtlasProjectSummaryTests.BrokenFileSetAsideLockedFileKept;
+var
+  Summary: TAtlasProjectSummary;
+  FileName: string;
+  Lock: TFileStream;
+begin
+  ForceDirectories(FFolder);
+  FileName := TAtlasProjectSummaries.FileFor(FFolder, Project);
+  TFile.WriteAllText(FileName, '{"format": 1, "check": {');
+  Assert.IsFalse(TAtlasProjectSummaries.Load(FFolder, Project, Summary));
+  Assert.AreEqual(Project, Summary.Project);
+  Assert.IsTrue(FileExists(FileName + TAtlasDataFile.DefectExtension), 'beiseitegelegt');
+  Assert.IsTrue(TAtlasProjectSummaries.Update(FFolder, Project,
+    procedure(var ASummary: TAtlasProjectSummary)
+    begin
+      ASummary.Hidden := True;
+    end), 'beginnt neu');
+  Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
+  try
+    Assert.IsFalse(TAtlasProjectSummaries.Update(FFolder, Project,
+      procedure(var ASummary: TAtlasProjectSummary)
+      begin
+        ASummary.Hidden := False;
+      end), 'gesperrt: nicht überschreiben');
+  finally
+    Lock.Free;
+  end;
+  Assert.IsTrue(TAtlasProjectSummaries.Load(FFolder, Project, Summary));
+  Assert.IsTrue(Summary.Hidden);
 end;
 
 initialization

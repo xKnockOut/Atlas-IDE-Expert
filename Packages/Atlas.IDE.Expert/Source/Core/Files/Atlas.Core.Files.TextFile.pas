@@ -71,6 +71,9 @@ type
     /// <summary>Überschreibt nie ein binäres Formular (EAtlasTextFileError). Ersetzt die Datei atomar;
     /// EAtlasTextFileError, wenn ein anderes Programm sie ohne FILE_SHARE_DELETE offen hält.</summary>
     class procedure Save(const AFileName: string; const AContent: TAtlasTextFileContent); static;
+    /// <summary>Ersetzt AFileName atomar durch ABytes wie Save, ohne die Prüfung auf binäre Formulare: für
+    /// Datendateien des Plugins (TAtlasDataFile, Bericht N3). Der Ordner muss vorhanden sein.</summary>
+    class procedure Replace(const AFileName: string; const ABytes: TBytes); static;
   end;
 
 implementation
@@ -360,16 +363,19 @@ begin
 end;
 
 class procedure TAtlasTextFile.Save(const AFileName: string; const AContent: TAtlasTextFileContent);
-var
-  Temporary: string;
-  Bytes: TBytes;
 begin
   if TFile.Exists(AFileName) and IsBinaryForm(ReadAllBytes(AFileName)) then
     raise EAtlasTextFileError.Create('binär gespeichertes Formular wird nicht überschrieben');
+  Replace(AFileName, Encode(AContent));
+end;
+
+class procedure TAtlasTextFile.Replace(const AFileName: string; const ABytes: TBytes);
+var
+  Temporary: string;
+begin
   // Erst vollständig daneben schreiben: Ein Abbruch hinterlässt nie eine halbe Datei.
   Temporary := AFileName + '.atlas-tmp';
-  Bytes := Encode(AContent);
-  TFile.WriteAllBytes(Temporary, Bytes);
+  TFile.WriteAllBytes(Temporary, ABytes);
   try
     ReplaceWith(Temporary, AFileName);
   except

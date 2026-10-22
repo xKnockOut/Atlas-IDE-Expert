@@ -58,6 +58,10 @@ type
     procedure HigherFormatIsNotOverwritten;
     [Test]
     procedure BrokenJsonStartsEmpty;
+    /// <summary>Unbrauchbare Datei liegt danach als .defekt daneben; eine beim Lesen gesperrte wird nicht
+    /// überschrieben (Bericht N3).</summary>
+    [Test]
+    procedure BrokenFileSetAsideLockedFileKept;
     [Test]
     procedure SavesAndLoadsFile;
     [Test]
@@ -91,6 +95,7 @@ uses
   System.JSON,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Commands.Usage,
   Atlas.Core.Commands.ShortcutTips;
 
@@ -847,6 +852,45 @@ begin
     end;
   finally
     Usage.Free;
+  end;
+end;
+
+procedure TAtlasCommandUsageTests.BrokenFileSetAsideLockedFileKept;
+var
+  Usage: TAtlasCommandUsage;
+  Folder, TipsFile, UsageFile: string;
+  Lock: TFileStream;
+begin
+  Folder := TPath.Combine(TPath.GetTempPath, 'atlas-usage-' + IntToStr(Random(MaxInt)));
+  TipsFile := TPath.Combine(Folder, 'shortcut-tips.json');
+  UsageFile := TPath.Combine(Folder, 'usage.json');
+  ForceDirectories(Folder);
+  Usage := TAtlasCommandUsage.Create;
+  try
+    TFile.WriteAllText(TipsFile, '{kaputt');
+    TFile.WriteAllText(UsageFile, '[1, 2]');
+    Usage.LoadFromFiles(TipsFile, UsageFile);
+    Assert.IsTrue(TFile.Exists(TipsFile + TAtlasDataFile.DefectExtension), 'Tipps beiseitegelegt');
+    Assert.IsTrue(TFile.Exists(UsageFile + TAtlasDataFile.DefectExtension), 'Zähler beiseitegelegt');
+    Assert.IsTrue(Usage.Writable);
+    Assert.IsTrue(Usage.CountsWritable);
+    Usage.Count('X', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
+    Assert.IsTrue(Usage.SaveCountsToFile(UsageFile));
+    Lock := TFileStream.Create(UsageFile, fmOpenRead or fmShareExclusive);
+    try
+      Usage.LoadFromFiles(TipsFile, UsageFile);
+    finally
+      Lock.Free;
+    end;
+    Assert.IsFalse(Usage.CountsWritable, 'beim Lesen gesperrt');
+    Assert.AreEqual(0, Usage.UseCount('X'));
+    Usage.Count('Y', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
+    Assert.IsFalse(Usage.SaveCountsToFile(UsageFile), 'nicht überschreiben');
+    Assert.Contains(TFile.ReadAllText(UsageFile), '"X"');
+    Assert.DoesNotContain(TFile.ReadAllText(UsageFile), '"Y"');
+  finally
+    Usage.Free;
+    TDirectory.Delete(Folder, True);
   end;
 end;
 

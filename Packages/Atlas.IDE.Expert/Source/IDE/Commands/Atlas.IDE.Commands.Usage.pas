@@ -108,7 +108,8 @@ begin
   try
     FUsage.LoadFromFiles(TipsFile, UsageFile);
   except
-    // Kaputte oder gesperrte Datei: leer weiter, die IDE merkt nichts.
+    // Netz: Kaputte oder gesperrte Dateien behandelt TAtlasDataFile selbst (Bericht N3, .defekt bzw. nicht
+    // überschreiben); hier landet nur Unerwartetes, und die IDE merkt nichts.
     on E: Exception do
       TAtlasGuard.Log('Nutzungszählung: Laden: ' + E.ClassName);
   end;

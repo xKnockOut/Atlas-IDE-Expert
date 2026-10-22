@@ -68,7 +68,8 @@ implementation
 uses
   System.Classes,
   System.IOUtils,
-  Atlas.Text.Chars;
+  Atlas.Text.Chars,
+  Atlas.Core.Files.TextFile;
 
 { TAtlasSnippetCatalog }
 
@@ -303,8 +304,9 @@ begin
     if not (Editable(Index) and Item.Changed) then
       Continue;
     FileName := TargetFile(AFolder, Index);
-    TFile.WriteAllText(FileName, StringReplace(TAtlasSnippets.ToFileText(Item.Snippet), #10, #13#10,
-      [rfReplaceAll]), TEncoding.UTF8);
+    // Atomar (Bericht N3): Ein Abbruch hinterlässt keine halbe Vorlage. UTF-8 mit BOM und CRLF wie bisher.
+    TAtlasTextFile.Replace(FileName, TEncoding.UTF8.GetPreamble + TEncoding.UTF8.GetBytes(
+      StringReplace(TAtlasSnippets.ToFileText(Item.Snippet), #10, #13#10, [rfReplaceAll])));
     Item.LoadedFile := FileName;
     Item.Snippet.FileName := FileName;
     Item.Changed := False;

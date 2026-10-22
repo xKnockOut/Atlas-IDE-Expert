@@ -47,6 +47,10 @@ type
     procedure ReadsPreview;
     [Test]
     procedure StateRoundTrip;
+    /// <summary>Unbrauchbare Datei liegt danach als .defekt daneben; eine beim Lesen gesperrte wird nicht
+    /// überschrieben (Bericht N3).</summary>
+    [Test]
+    procedure BrokenFileSetAsideLockedFileKept;
     [Test]
     procedure FiveThousandUnitsPerKeystroke;
   end;
@@ -54,10 +58,13 @@ type
 implementation
 
 uses
+  System.Classes,
+  System.IOUtils,
   System.JSON,
   System.Generics.Collections,
   System.Diagnostics,
-  System.Math;
+  System.Math,
+  Atlas.Core.Files.DataFile;
 
 const
   Root = 'C:\Arbeit\Atlas-IDE-Expert-claude-project-thread-j9xhhv';
@@ -375,7 +382,7 @@ begin
     State.PreviewWidth := 320;
     State.PreviewVisible := False;
     State.Sections[TAtlasPreviewSection.Types] := TAtlasSectionChoice.HandClosed;
-    Loaded.LoadJson(State.ToJson);
+    Assert.IsTrue(Loaded.LoadJson(State.ToJson));
     Assert.IsTrue(Loaded.Sections[TAtlasPreviewSection.Types] = TAtlasSectionChoice.Auto,
       'Abschnitte gelten nur für die Sitzung (#876)');
     Assert.AreEqual(2, Integer(Length(Loaded.Collapsed('c:\p\gruppe.groupproj', TAtlasUnitGrouping.Project))));
@@ -392,7 +399,7 @@ begin
     Loaded.SetCollapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Project, nil);
     Assert.AreEqual(0, Integer(Length(Loaded.Collapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Project))));
     Assert.AreEqual(1, Integer(Length(Loaded.Collapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Folder))));
-    Loaded.LoadJson('kein json');
+    Assert.IsFalse(Loaded.LoadJson('kein json'));
     Assert.AreEqual(0, Loaded.Width);
     Assert.IsTrue(Loaded.PreviewVisible);
   finally
@@ -459,6 +466,37 @@ begin
     Assert.IsTrue(Length(Order) > 0, Pattern);
   end;
   Assert.IsTrue(Worst < 50, Format('langsamster Tastendruck %d ms', [Worst]));
+end;
+
+procedure TAtlasUnitSearchTests.BrokenFileSetAsideLockedFileKept;
+var
+  State: TAtlasUnitSearchState;
+  FileName: string;
+  Lock: TFileStream;
+begin
+  FileName := TPath.Combine(TPath.GetTempPath, 'atlas-unitsearch-' + IntToStr(Random(MaxInt)) + '.json');
+  State := TAtlasUnitSearchState.Create;
+  try
+    TFile.WriteAllText(FileName, '[1, 2]');
+    Assert.IsTrue(State.LoadFromFile(FileName) = TAtlasDataLoad.Renewed);
+    Assert.IsTrue(TFile.Exists(FileName + TAtlasDataFile.DefectExtension), 'beiseitegelegt');
+    State.Width := 937;
+    Assert.IsTrue(State.SaveToFile(FileName));
+    Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
+    try
+      Assert.IsTrue(State.LoadFromFile(FileName) = TAtlasDataLoad.Kept);
+    finally
+      Lock.Free;
+    end;
+    Assert.AreEqual(0, State.Width);
+    State.Width := 400;
+    Assert.IsFalse(State.SaveToFile(FileName), 'beim Lesen gesperrt: nicht überschreiben');
+    Assert.Contains(TFile.ReadAllText(FileName), '937');
+  finally
+    State.Free;
+    System.SysUtils.DeleteFile(FileName);
+    System.SysUtils.DeleteFile(FileName + TAtlasDataFile.DefectExtension);
+  end;
 end;
 
 initialization
