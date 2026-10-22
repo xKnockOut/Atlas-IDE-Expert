@@ -3863,3 +3863,18 @@ Voraussetzung: Server läuft; Unit mit `Verbindung: TFDConnection`.
 | TR5 | `try … except on E: Exception do begin A.Rollback; raise; end; end`, `try try … except Rollback … end finally … end`, Rollback in einem anderen Ereignis-Handler | Keine Meldung |
 | TR6 | `"pairs": [{"start": "Beginnen", "commit": "Festschreiben", "rollback": "Verwerfen"}]` | `Db.Beginnen` gemeldet, `StartTransaction` nicht mehr; `"pairs": [{"open": …}]` meldet einen Konfigurationsfehler |
 | TR7 | `"transaction-without-rollback": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## UPDATE oder DELETE ohne WHERE (#966)
+
+Voraussetzung: Server läuft; Unit mit `qry: TFDQuery` bzw. Datenmodul mit Query in der Formulardatei.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SW1 | `qry.SQL.Text := 'DELETE FROM Warenkorb'; qry.ExecSQL;` | Warnung `sql-write-without-where` auf dem Literal: „DELETE ohne WHERE löscht alle Zeilen von Warenkorb.“; im Fenster „Atlas-Prüfung“ (Gruppe Datenbank) und im Befund-Hover, keine Schnellkorrektur (**Abnahme**) |
+| SW2 | `'UPDATE Kunden SET Gesperrt = 1'`; `SQL.Add('DELETE')` und `SQL.Add('FROM Log')`; `Cmd.CommandText := 'delete from Puffer'`; `Verbindung.ExecSQL('DELETE FROM Protokoll')` | je eine Warnung, bei UPDATE „… ändert alle Zeilen von Kunden.“ |
+| SW3 | `const SqlLeeren = 'DELETE FROM Warenkorb';` und `qry.SQL.Text := SqlLeeren;` | Warnung an `SqlLeeren` in der Zuweisung; mit folgendem `qry.SQL.Add('WHERE …')` keine |
+| SW4 | `Format('DELETE FROM %s', [Tabelle])` | Warnung „… alle Zeilen der Tabelle.“ mit mittlerer Konfidenz |
+| SW5 | Datenmodul: `qryLeeren` mit `SQL.Strings = ('DELETE FROM Warenkorb')` in der .dfm, Unit ändert das SQL nicht | Warnung am Feld `qryLeeren` „… (qryLeeren.SQL in der Formulardatei).“; mit `qryLeeren.SQL.Add('WHERE …')` in der Unit keine |
+| SW6 | `WHERE` in einem späteren `SQL.Add`, `INNER JOIN`, `DELETE TOP (10)`, `LIMIT`, `'DELETE FROM X ' + Bedingung`, `FilterSetzen(qry.SQL)`, Ergänzung in einer anderen Methode, `ShowMessage('Update fehlgeschlagen')` | Keine Meldung |
+| SW7 | `"allowTables": ["Puffer"]` | `DELETE FROM Puffer` und `DELETE FROM dbo.Puffer` still, andere Tabellen weiter gemeldet; `"allowTables": "Puffer"` meldet einen Konfigurationsfehler |
+| SW8 | `"sql-write-without-where": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

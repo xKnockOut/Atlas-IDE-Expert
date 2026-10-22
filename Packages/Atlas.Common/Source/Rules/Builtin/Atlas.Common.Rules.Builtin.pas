@@ -48,6 +48,7 @@ uses
   Atlas.Common.Rules.Builtin.Ownership,
   Atlas.Common.Rules.Builtin.Expressions,
   Atlas.Common.Rules.Builtin.Statements,
+  Atlas.Common.Rules.Builtin.Database,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -91,6 +92,7 @@ begin
     RegisterOwnershipRules(Registry);
     RegisterExpressionRules(Registry);
     RegisterStatementRules(Registry);
+    RegisterDatabaseRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

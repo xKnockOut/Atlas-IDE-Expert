@@ -2049,6 +2049,24 @@ begin
     '          "description": "Transaction methods per library as [{\"start\": …, \"commit\": …, \"rollback\": …}]; replaces the built-in pairs."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "sql-write-without-where",' + #10 +
+    '      "name": "UPDATE or DELETE without WHERE",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "database",' + #10 +
+    '      "description": "An UPDATE or DELETE without WHERE in a string literal, SQL.Text, SQL.Add, CommandText, the first argument of ExecSQL, ExecSQLScalar, ExecuteDirect or Execute, or in SQL.Strings/C' + 'ommandText of the form file. It affects every row of the table; usually the condition was forgotten. The rule assembles the SQL text per query within a routine (Clear and a new Text start over) and su' + 'bstitutes constants and local values. JOIN, TOP, LIMIT and ROWS restrict the rows as well; a WHERE in a subquery or comment does not count. Unknown parts behind the table name (variables, calls at the' + ' place of a clause) keep the statement silent; a dynamic table name reports with medium confidence. Silent when the routine passes the SQL on or another routine of the unit adds to it; form file SQL o' + 'nly counts when the unit does not change it. Literals outside SQL properties count only with DELETE or UPDATE in capitals, so message texts stay silent. High confidence, no quick fix; tables that are ' + 'emptied on purpose go into allowTables.",' + #10 +
+    '      "bad": "qry.SQL.Text := ''DELETE FROM Warenkorb'';\nqry.ExecSQL;",' + #10 +
+    '      "good": "qry.SQL.Text := ''DELETE FROM Warenkorb WHERE Kunde = :Kunde'';\nqry.ParamByName(''Kunde'').AsInteger := KundeId;\nqry.ExecSQL;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowTables",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Tables that are deliberately emptied or changed completely, with or without schema."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3119,6 +3137,17 @@ begin
     '        {' + #10 +
     '          "name": "pairs",' + #10 +
     '          "description": "Transaktionsmethoden je Bibliothek als [{\"start\": …, \"commit\": …, \"rollback\": …}]; ersetzt die eingebauten Paare."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "sql-write-without-where",' + #10 +
+    '      "name": "UPDATE oder DELETE ohne WHERE",' + #10 +
+    '      "description": "UPDATE oder DELETE ohne WHERE in einem String-Literal, in SQL.Text, SQL.Add, CommandText, im ersten Argument von ExecSQL, ExecSQLScalar, ExecuteDirect oder Execute oder in SQL.St' + 'rings/CommandText der Formulardatei. Das betrifft alle Zeilen der Tabelle; meist ist die Bedingung vergessen. Die Regel setzt den SQL-Text je Query innerhalb einer Routine zusammen (Clear und ein neue' + 'r Text beginnen von vorn) und setzt Konstanten und lokale Werte ein. JOIN, TOP, LIMIT und ROWS schränken die Zeilen ebenfalls ein; ein WHERE in einer Unterabfrage oder einem Kommentar zählt nicht. Unb' + 'ekannte Teile hinter dem Tabellennamen (Variablen, Aufrufe an der Stelle einer Klausel) lassen die Anweisung still; ein dynamischer Tabellenname meldet mit mittlerer Konfidenz. Still, wenn die Routine' + ' den SQL-Text weitergibt oder eine andere Routine der Unit ihn ergänzt; SQL der Formulardatei zählt nur, solange die Unit es nicht verändert. Literale außerhalb von SQL-Eigenschaften zählen nur mit DE' + 'LETE bzw. UPDATE in Großbuchstaben, damit Meldungstexte still bleiben. Konfidenz hoch, keine Korrektur; Tabellen, die absichtlich geleert werden, gehören in allowTables.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowTables",' + #10 +
+    '          "description": "Tabellen, die absichtlich ganz geleert bzw. geändert werden, mit oder ohne Schema."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    }' + #10 +

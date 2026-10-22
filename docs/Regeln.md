@@ -9,7 +9,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Fehler finden](#gruppe-find-bugs) | 56 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
-| [Datenbank](#gruppe-database) | 3 |
+| [Datenbank](#gruppe-database) | 4 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -123,6 +123,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`dataset-loop-without-next`](#dataset-loop-without-next) | Datenmengen-Schleife ohne Next | Bug | Fehler |
 | [`dataset-edit-without-post`](#dataset-edit-without-post) | Edit oder Append ohne Post | Bug | Warnung |
 | [`transaction-without-rollback`](#transaction-without-rollback) | Transaktion ohne Rollback | Bug | Warnung |
+| [`sql-write-without-where`](#sql-write-without-where) | UPDATE oder DELETE ohne WHERE | Bug | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4093,4 +4094,30 @@ except
   Verbindung.Rollback;
   raise;
 end;
+```
+
+<a id="sql-write-without-where"></a>
+### sql-write-without-where
+
+**UPDATE oder DELETE ohne WHERE** · Bug · Warnung · Gruppe Datenbank
+
+UPDATE oder DELETE ohne WHERE in einem String-Literal, in SQL.Text, SQL.Add, CommandText, im ersten Argument von ExecSQL, ExecSQLScalar, ExecuteDirect oder Execute oder in SQL.Strings/CommandText der Formulardatei. Das betrifft alle Zeilen der Tabelle; meist ist die Bedingung vergessen. Die Regel setzt den SQL-Text je Query innerhalb einer Routine zusammen (Clear und ein neuer Text beginnen von vorn) und setzt Konstanten und lokale Werte ein. JOIN, TOP, LIMIT und ROWS schränken die Zeilen ebenfalls ein; ein WHERE in einer Unterabfrage oder einem Kommentar zählt nicht. Unbekannte Teile hinter dem Tabellennamen (Variablen, Aufrufe an der Stelle einer Klausel) lassen die Anweisung still; ein dynamischer Tabellenname meldet mit mittlerer Konfidenz. Still, wenn die Routine den SQL-Text weitergibt oder eine andere Routine der Unit ihn ergänzt; SQL der Formulardatei zählt nur, solange die Unit es nicht verändert. Literale außerhalb von SQL-Eigenschaften zählen nur mit DELETE bzw. UPDATE in Großbuchstaben, damit Meldungstexte still bleiben. Konfidenz hoch, keine Korrektur; Tabellen, die absichtlich geleert werden, gehören in allowTables.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowTables` | string-list | `[]` | Tabellen, die absichtlich ganz geleert bzw. geändert werden, mit oder ohne Schema. |
+
+Mit Treffer:
+
+```pascal
+qry.SQL.Text := 'DELETE FROM Warenkorb';
+qry.ExecSQL;
+```
+
+Richtig:
+
+```pascal
+qry.SQL.Text := 'DELETE FROM Warenkorb WHERE Kunde = :Kunde';
+qry.ParamByName('Kunde').AsInteger := KundeId;
+qry.ExecSQL;
 ```
