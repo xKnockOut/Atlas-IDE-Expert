@@ -194,6 +194,9 @@ type
     /// <summary>Variablen der automatisch erzeugten Formulare und Datenmodule in der Reihenfolge der
     /// Application.CreateForm-Aufrufe der .dpr (#956); nil ohne Projekt.</summary>
     AutoCreateForms: TArray<string>;
+    /// <summary>Absoluter Pfad der .dpr, aus der AutoCreateForms stammt (#1055); '' ohne. Korrekturen in der
+    /// .dpr gibt es nur damit; gelesen wird sie über ReadFile.</summary>
+    ProjectMainSource: string;
     /// <summary>Formatierung aus den Einstellungen (format, #938): Tabbreite und Einrückung für Regeln, die
     /// Spalten zählen oder umbrechen; setzt TRuleEngine.Run. IndentSize 0 = nicht gesetzt.</summary>
     Formatting: TFormatStyle;

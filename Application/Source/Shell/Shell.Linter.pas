@@ -525,6 +525,8 @@ begin
         if Project.Name = '' then
           Project.AutoCreateForms := TFormAccessBeforeCreateRule.FormsOfProgram(Programs,
             ChangeFileExt(ExtractFileName(FileName), ''));
+        // Formulardatei und Dateien neben der Unit wie im Server (form-resource-missing, #1054).
+        Project.FileName := TPath.GetFullPath(FileName);
         Findings := TFileChecker.CheckText(Rules, Settings, RelativePath, Text, Project, Scopes);
         if AOptions.SuppressionStats then
           Stats.Add(Text, Findings);

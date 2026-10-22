@@ -412,6 +412,8 @@ begin
         if Project.Name = '' then
           Project.AutoCreateForms := TFormAccessBeforeCreateRule.FormsOfProgram(Programs,
             ChangeFileExt(Mutation.FileName, ''));
+        // Formulardatei neben der Unit wie im Linter (#1054).
+        Project.FileName := FileName;
         Detected := TGoldenCorpus.Detected(TFileChecker.CheckText(Rules, Settings, Mutation.FileName, Text, Project),
           TFileChecker.CheckText(Rules, Settings, Mutation.FileName, Mutated, Project), Mutation.RuleId);
         if not Detected then

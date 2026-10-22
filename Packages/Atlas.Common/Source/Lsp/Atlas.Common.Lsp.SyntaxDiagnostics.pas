@@ -82,6 +82,8 @@ type
     ProjectName: string;
     /// <summary>Automatisch erzeugte Formulare in der Reihenfolge der .dpr (#956); nil ohne Projekt.</summary>
     AutoCreateForms: TArray<string>;
+    /// <summary>Pfad der .dpr zu AutoCreateForms (#1055); '' ohne Projekt.</summary>
+    ProjectMainSource: string;
     /// <summary>Abbruch zwischen den Prüfregeln; nil = nie. Setzt Compute.</summary>
     Cancelled: TRuleCancelled;
   end;
@@ -1024,6 +1026,7 @@ begin
   Context.Application := ARules.Application;
   Context.ProjectName := ARules.ProjectName;
   Context.AutoCreateForms := ARules.AutoCreateForms;
+  Context.ProjectMainSource := ARules.ProjectMainSource;
   Context.Cancelled := ARules.Cancelled;
   Result := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
 end;
