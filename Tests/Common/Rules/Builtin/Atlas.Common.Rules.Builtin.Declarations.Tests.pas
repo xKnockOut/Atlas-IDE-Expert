@@ -102,6 +102,30 @@ type
     procedure DuplicateDeclarationSilentCases;
     [Test]
     procedure DuplicateDeclarationOptions;
+    [Test]
+    procedure VariantManagedIssueExample;
+    [Test]
+    procedure VariantManagedKinds;
+    [Test]
+    procedure VariantManagedMoveFixes;
+    [Test]
+    procedure VariantManagedGenericAndFile;
+    [Test]
+    procedure VariantManagedFromIndex;
+    [Test]
+    procedure VariantManagedSilentCases;
+    [Test]
+    procedure VariantManagedOffAndExclude;
+    [Test]
+    procedure TypeTooLargeIssueExample;
+    [Test]
+    procedure TypeTooLargeRecordsAndNames;
+    [Test]
+    procedure TypeTooLargeGenericInstance;
+    [Test]
+    procedure TypeTooLargeSilentCases;
+    [Test]
+    procedure TypeTooLargeOffAndExclude;
   end;
 
 implementation
@@ -115,6 +139,9 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Builtin.Declarations,
   Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Tests.RuleAssert;
 
 function ClassUnit(const AMembers, AImplementation: string; const AHead: string = 'TFoo = class'): string;
@@ -843,6 +870,242 @@ begin
     'Alt/U.pas'))));
   TConfigurationParser.Parse('{"rules": {"duplicate-declaration": {"checkUses": "ja"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+function Wert(const ABranches: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  TArt = (waZahl, waText);'#10'  TWert = record'#10 +
+    '    case Art: TArt of'#10 + ABranches + '  end;'#10'implementation'#10'end.';
+end;
+
+function Typen(const ATypes: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  TName = record'#10'    S: string;'#10'  end;'#10 +
+    '  TZaehler = record'#10'    N: Integer;'#10'    class operator Initialize(out ADest: TZaehler);'#10'  end;'#10 +
+    ATypes + 'implementation'#10'end.';
+end;
+
+procedure TDeclarationRulesTests.VariantManagedIssueExample;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+  Tree: TSyntaxTree;
+begin
+  Source := Wert('      waZahl: (Zahl: Double);'#10'      waText: (Text: string);'#10);
+  Findings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('variant-record-managed-field', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('string braucht Finalisierung und ist im varianten Teil nicht erlaubt (wie E2154).',
+    Findings[0].Message);
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(21, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(27, Findings[0].Range.EndPos.Character);
+  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('ShortString verwenden (höchstens 255 Zeichen)', Findings[0].Fixes[0].Title);
+  Assert.AreEqual('Text in den festen Teil verschieben', Findings[0].Fixes[1].Title);
+  Assert.AreEqual(Wert('      waZahl: (Zahl: Double);'#10'      waText: (Text: ShortString);'#10),
+    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+  Source := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[1].Edits);
+  Assert.AreEqual('unit U;'#10'interface'#10'type'#10'  TArt = (waZahl, waText);'#10'  TWert = record'#10 +
+    '    Text: string;'#10'    case Art: TArt of'#10'      waZahl: (Zahl: Double);'#10'      waText: ();'#10 +
+    '  end;'#10'implementation'#10'end.', Source);
+  Tree := TPascalParser.Parse(Source);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+  TRuleAssert.Silent(TVariantRecordManagedFieldRule.Create, Source);
+end;
+
+procedure TDeclarationRulesTests.VariantManagedKinds;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Typen('  TWert = record'#10 +
+    '    case Integer of'#10'      0: (A: array of Integer);'#10'      1: (B: TBytes);'#10'      2: (C: IInterface);'#10 +
+    '      3: (D: Variant);'#10'      4: (E: TName);'#10'      5: (F: array[0..1] of WideString);'#10 +
+    '      6: (G: TZaehler);'#10'  end;'#10));
+  Assert.AreEqual(7, Integer(Length(Findings)));
+  Assert.AreEqual('array of Integer braucht Finalisierung und ist im varianten Teil nicht erlaubt (wie E2154).',
+    Findings[0].Message);
+  Assert.AreEqual('TName braucht Finalisierung und ist im varianten Teil nicht erlaubt (wie E2154).',
+    Findings[4].Message);
+  Assert.AreEqual(1, Integer(Length(Findings[4].Fixes)));
+  Assert.AreEqual('TZaehler braucht Initialisierung und ist im varianten Teil nicht erlaubt (wie E2418).',
+    Findings[6].Message);
+end;
+
+procedure TDeclarationRulesTests.VariantManagedMoveFixes;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Letztes Feld eines Zweigs mit Vorgänger, Feld in der Mitte.
+  Source := Wert('      waZahl: (Zahl: Double; Name, Text: string);'#10'      waText: (Wert: string; N: Integer);'#10);
+  Findings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Source);
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('Name,Text in den festen Teil verschieben', Findings[0].Fixes[1].Title);
+  Assert.AreEqual(Wert('      waZahl: (Zahl: Double);'#10'      waText: (Wert: string; N: Integer);'#10).Replace(
+    '    case', '    Name, Text: string;'#10'    case'), TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[1].Edits));
+  Assert.AreEqual(Wert('      waZahl: (Zahl: Double; Name, Text: string);'#10'      waText: (N: Integer);'#10).Replace(
+    '    case', '    Wert: string;'#10'    case'), TChangeSignature.ApplyEdits(Source, Findings[1].Fixes[1].Edits));
+  // Verschachtelter varianter Teil: nur ShortString.
+  Findings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Wert('      waZahl: (Zahl: Double);'#10 +
+    '      waText: (case Boolean of'#10'        True: (Text: string));'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TDeclarationRulesTests.VariantManagedGenericAndFile;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Typen('  TBox<T> = record'#10'    case Integer of'#10'      0: (Wert: T);'#10'      1: (Zahl: Integer);'#10 +
+    '  end;'#10'  TDatei = file of string;'#10'  TZaehlerDatei = file of TZaehler;'#10);
+  Findings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Source);
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual('Typparameter T kann Finalisierung brauchen und ist im varianten Teil nicht erlaubt; ' +
+    'record-Einschränkung verwenden (wie E2569).', Findings[0].Message);
+  Assert.AreEqual('T: record einschränken', Findings[0].Fixes[1].Title);
+  TRuleAssert.Silent(TVariantRecordManagedFieldRule.Create, Typen('  TBox<T: record> = record'#10 +
+    '    case Integer of'#10'      0: (Wert: T);'#10'  end;'#10));
+  Assert.IsTrue(TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[1].Edits).Contains('TBox<T: record> = record'));
+  Assert.AreEqual('string braucht Finalisierung und ist in einem Dateityp nicht erlaubt (wie E2155).',
+    Findings[1].Message);
+  Assert.IsTrue(TChangeSignature.ApplyEdits(Source, Findings[1].Fixes[0].Edits).Contains('file of ShortString;'));
+  Assert.AreEqual('TZaehler braucht Initialisierung und ist in einem Dateityp nicht erlaubt (wie E2417).',
+    Findings[2].Message);
+  // <K, V> ohne Einschränkung: Meldung ohne Korrektur zum Einschränken.
+  Findings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Typen('  TPaar<K, V> = record'#10 +
+    '    case Integer of'#10'      0: (Schluessel: K);'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TDeclarationRulesTests.VariantManagedFromIndex;
+var
+  Index: ISymbolIndex;
+  Findings: TArray<TRuleFinding>;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText('unit Fremd;'#10'interface'#10'type'#10'  TFremd = record'#10 +
+    '    Name: string;'#10'  end;'#10'  TFremdZaehler = record'#10'    class operator Finalize(var ADest: TFremdZaehler);'#10 +
+    '  end;'#10'  TFremdZahl = record'#10'    N: Integer;'#10'  end;'#10'implementation'#10'end.', 'C:\P\Fremd.pas', nil));
+  Findings := TRuleAssert.IndexFindings(TVariantRecordManagedFieldRule.Create, 'unit U;'#10'interface'#10'uses'#10 +
+    '  Fremd;'#10'type'#10'  TWert = record'#10'    case Integer of'#10'      0: (A: TFremd);'#10 +
+    '      1: (B: TFremdZaehler);'#10'      2: (C: TFremdZahl);'#10'  end;'#10'implementation'#10'end.', Index, '', '');
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.IsTrue(Findings[0].Message.StartsWith('TFremd braucht Finalisierung'));
+  Assert.IsTrue(Findings[1].Message.StartsWith('TFremdZaehler braucht Initialisierung'));
+end;
+
+procedure TDeclarationRulesTests.VariantManagedSilentCases;
+begin
+  // Kurze Strings, einfache Typen, Klassen, Zeiger, unbekannte Typen, fester Teil, eingeschränkte Parameter.
+  TRuleAssert.Silent(TVariantRecordManagedFieldRule.Create, Typen('  TWert = record'#10'    Name: string;'#10 +
+    '    case Integer of'#10'      0: (A: ShortString);'#10'      1: (B: string[20]);'#10'      2: (C: Integer);'#10 +
+    '      3: (D: TObject);'#10'      4: (E: PChar);'#10'      5: (F: TUnbekannt);'#10'      6: (G: array[0..3] of Byte);'#10 +
+    '      7: (H: ^string);'#10'  end;'#10'  TBox<T: class; U: record> = record'#10'    W: T;'#10 +
+    '    case Integer of'#10'      0: (A: T);'#10'      1: (B: U);'#10'  end;'#10'  TDatei = file of Integer;'#10 +
+    '  TRoh = file;'#10'  TKurz = file of ShortString;'#10));
+end;
+
+procedure TDeclarationRulesTests.VariantManagedOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Wert('      waText: (Text: string);'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Source,
+    '{"rules": {"variant-record-managed-field": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Source,
+    '{"rules": {"variant-record-managed-field": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
+end;
+
+function Groesse(const ATypes: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10 + ATypes + 'implementation'#10'end.';
+end;
+
+procedure TDeclarationRulesTests.TypeTooLargeIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TTypeTooLargeRule.Create, Groesse('  TPuffer = array[0..High(Integer)] of Int64;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('type-too-large', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('TPuffer ist 16 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[0].Message);
+  Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(9, Findings[0].Range.EndPos.Character);
+  // Korrigierte Form: halber Indexbereich bzw. dynamisches Array.
+  TRuleAssert.Silent(TTypeTooLargeRule.Create, Groesse('  TPuffer = array[0..High(Integer) div 16] of Int64;'#10 +
+    '  TListe = array of Int64;'#10));
+end;
+
+procedure TDeclarationRulesTests.TypeTooLargeRecordsAndNames;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Konstanten, Aufzählung als Index, mehrdimensional, Record aus zwei großen Feldern, Variable, Folgefehler.
+  Findings := TRuleAssert.Findings(TTypeTooLargeRule.Create, 'unit U;'#10'interface'#10'const'#10 +
+    '  Anzahl = 1 shl 20;'#10'type'#10'  TFarbe = (Rot, Gruen, Blau);'#10 +
+    '  TBlock = array[0..Anzahl - 1] of Byte;'#10'  TFlaeche = array[TFarbe, 0..Anzahl - 1, Word] of Byte;'#10 +
+    '  TPaar = record'#10'    A, B: array[1..1024] of TBlock;'#10'  end;'#10'  TGross = record'#10 +
+    '    Paar: TPaar;'#10'  end;'#10'var'#10'  Feld: array[Integer] of Byte;'#10'implementation'#10'end.');
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual('TFlaeche ist 192 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[0].Message);
+  Assert.AreEqual('TPaar ist mindestens 2 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[1].Message);
+  Assert.AreEqual('Feld ist 4 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[2].Message);
+  // Unbekannte Teile zählen 0, Zeiger mindestens 4 Byte.
+  Findings := TRuleAssert.Findings(TTypeTooLargeRule.Create, Groesse('  TListe = array[0..$3FFFFFFF] of record'#10 +
+    '    Text: string;'#10'    Fremd: TUnbekannt;'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TListe ist mindestens 4 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[0].Message);
+  // Inneres Feld über der Grenze: dort gemeldet, der Record nicht noch einmal.
+  Findings := TRuleAssert.Findings(TTypeTooLargeRule.Create, Groesse('  TDaten = record'#10 +
+    '    A, B: array[0..MaxInt] of Int64;'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('A, B ist 16 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[0].Message);
+end;
+
+procedure TDeclarationRulesTests.TypeTooLargeGenericInstance;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TTypeTooLargeRule.Create, Groesse('  TFeld<T> = array[0..$FFFFFFF] of T;'#10 +
+    '  TKlein = TFeld<Byte>;'#10'  TGross = TFeld<Int64>;'#10'  THuelle = record'#10'    Werte: TFeld<Double>;'#10 +
+    '  end;'#10));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('TFeld<Int64> ist 2 GB groß; erlaubt sind 2 GB (wie E2543).', Findings[0].Message);
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual('TFeld<Double> ist 2 GB groß; erlaubt sind 2 GB (wie E2543).', Findings[1].Message);
+end;
+
+procedure TDeclarationRulesTests.TypeTooLargeSilentCases;
+begin
+  // Knapp unter 2 GB, dynamische Arrays, Klassen, unbekannte Grenzen, Index aus fremder Unit, typisierte Konstante.
+  TRuleAssert.Silent(TTypeTooLargeRule.Create, 'unit U;'#10'interface'#10'const'#10'  Grenze: Integer = MaxInt;'#10 +
+    'type'#10'  TFast = array[0..MaxInt - 1] of Byte;'#10'  TDyn = array of array of Int64;'#10 +
+    '  TKlasse = class'#10'    Werte: array[0..1000] of Int64;'#10'  end;'#10 +
+    '  TFremd = array[0..Fremd.Maximum] of Int64;'#10'  TTypisiert = array[0..Grenze] of Int64;'#10 +
+    '  TOffen<T> = array[0..MaxInt] of T;'#10'  TKurz = array[0..$FFFF] of string[200];'#10'implementation'#10'end.');
+end;
+
+procedure TDeclarationRulesTests.TypeTooLargeOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Groesse('  TPuffer = array[0..High(Integer)] of Int64;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTypeTooLargeRule.Create, Source,
+    '{"rules": {"type-too-large": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTypeTooLargeRule.Create, Source,
+    '{"rules": {"type-too-large": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
 end;
 
 initialization

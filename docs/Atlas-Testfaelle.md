@@ -5314,3 +5314,91 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
 | ZW7 | `PChar(S)` mit string, `PAnsiChar(A)` mit AnsiString, `PChar('abc')`, `string(P)` mit `P: PAnsiChar`, `PWideChar(Bytes)` mit TBytes, unbekannter Typ, `PChar(S + A)`, Deklaration in `{$IFDEF}` mit anderem Typ im `{$ELSE}` | Keine Meldung |
 | ZW8 | `"suspicious-string-pointer-cast": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | ZW9 | Abgleich mit Delphi: ZW1, ZW4, ZW5 übersetzen | dcc meldet W1044 an denselben Stellen, für ZW7 nichts |
+
+## Bedingung oder Schleife ohne begin … end (#1025)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; `missing-begin-end` steht auf der Vorgabe (an).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BB1 | Das Beispiel aus #1025 (`if Kunde.Gesperrt then … else …` und `for I := 0 to High(Werte) do …`, je ohne `begin … end`) | Drei Hinweise `missing-begin-end` an `if`, `else` und `for`: „if ohne begin … end“ usw.; im Fenster „Atlas-Prüfung“ und im Befund-Hover |
+| BB2 | Alt+Enter am `if`: „begin … end setzen“, danach Strg+Z | Nur dieser Rumpf bekommt `begin … end`; das `;` hinter `Protokoll.Warnung('Gesperrt')` steht im Block, vor `else` keins (übersetzt ohne E2153); ein Undo-Schritt |
+| BB3 | Alt+Enter: „begin … end in der ganzen Methode setzen“, dann in einer Unit mit zwei Routinen „… in der ganzen Datei setzen“ | Code wie im Issue nach der Korrektur, eingerückt nach `format.indentSize`; ein Undo-Schritt; danach keine Meldung mehr |
+| BB4 | `if A then X := 1 else X := 2;` in einer Zeile und `for I := 0 to 1 do if A then X := I;`, Korrektur für die Methode | Beide Rümpfe in eigenen Zeilen, `else` unter `if`, innen zuerst geschlossen; übersetzt |
+| BB5 | `else if`-Kette mit Blöcken, `repeat … until`, `case … end`, `if A then try … end`, `if A then ;`, Rumpf mit `{$IFDEF DEBUG} … {$ELSE} … {$ENDIF}` | Keine Meldung von `missing-begin-end` (die leere Anweisung meldet `empty-statement`) |
+| BB6 | In `atlas.json` `"missing-begin-end": {"statements": ["case"]}`, dann `{"allowSingleLineExit": true}` und `{"allowSameLine": true}` | Nur case-Zweige ohne Block („case-Zweig ohne begin … end“); dann kein Befund mehr für `if A then Exit;` in einer Zeile; dann keiner für eine Anweisung in derselben Zeile |
+| BB7 | `"redundant-begin-end": "hint"` setzen, `if A then begin Save; end;` | Keine Meldung von `redundant-begin-end`, solange `missing-begin-end` an ist; Seite Prüfregeln zeigt bei `redundant-begin-end` „Wird durch missing-begin-end übersteuert …“. Mit `"missing-begin-end": "off"` meldet `redundant-begin-end` wieder |
+| BB8 | `"missing-begin-end": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
+
+## Geerbter Konstruktor erst im try-Block (#1027)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; `inherited-constructor-after-try` steht auf der Vorgabe (Hinweis).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IK1 | Das Beispiel aus #1027 (`constructor TDienst.Create; begin try inherited Create; FListe := TList<TAuftrag>.Create; …`) | Hinweis `inherited-constructor-after-try` an `try`: „try vor dem Aufruf des geerbten Konstruktors; Self ist noch nicht initialisiert (wie H2505).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover mit „wie H2505“ |
+| IK2 | Projekt bauen | Der Compiler meldet H2505 an derselben Stelle; Fenster zeigt Quelle „Atlas + dcc“ |
+| IK3 | Alt+Enter: „inherited Create vor try ziehen“, danach Strg+Z | Code wie im Issue nach der Korrektur, `inherited Create;` in eigener Zeile vor `try`; übersetzt ohne H2505; ein Undo-Schritt |
+| IK4 | `try inherited; …` in einer Zeile, dann `try FListe := nil; inherited Create; …` | Erster Fall mit Korrektur (`inherited;` vor `try`); zweiter Fall gemeldet, aber ohne Korrektur |
+| IK5 | Verschachtelte `try`-Blöcke mit `inherited Create` im inneren | Nur das äußere `try` gemeldet |
+| IK6 | `{$IFDEF ALT} try inherited Create; finally end; {$ELSE} inherited Create; try finally end; {$ENDIF}` | Eine Meldung im ALT-Zweig, keine im anderen |
+| IK7 | `inherited Create;` vor `try`; `try … inherited Laden; …`; `try` in eingebetteter Prozedur oder anonymer Methode; `class constructor`; Methode statt Konstruktor | Keine Meldung |
+| IK8 | `"inherited-constructor-after-try": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+
+## Verwalteter Typ im varianten Teil eines Records (#1071)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; `variant-record-managed-field` steht auf der Vorgabe (Fehler).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VT1 | Das Beispiel aus #1071 (`TWert = record case Art: TArt of waZahl: (Zahl: Double); waText: (Text: string); end;`) | Fehler an `string`: „string braucht Finalisierung und ist im varianten Teil nicht erlaubt (wie E2154).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover |
+| VT2 | Projekt bauen | Der Compiler meldet E2154 an derselben Stelle; Fenster zeigt Quelle „Atlas + dcc“ |
+| VT3 | Alt+Enter: „Text in den festen Teil verschieben“, danach Strg+Z; dann „ShortString verwenden“ | `Text: string;` steht vor `case`, der Zweig wird `waText: ();`; übersetzt; ein Undo-Schritt. Bzw. `(Text: ShortString)` |
+| VT4 | Im varianten Teil `array of Integer`, `TBytes`, `IInterface`, `Variant`, ein Record mit String-Feld, `array[0..1] of WideString` | Je ein Fehler „… braucht Finalisierung …“ (wie E2154); Records aus anderen Units (über den Index) ebenso |
+| VT5 | Record mit `class operator Initialize` im varianten Teil; `TDatei = file of TZaehler` | „TZaehler braucht Initialisierung …“ (wie E2418 bzw. E2417) |
+| VT6 | `TBox<T> = record case Integer of 0: (Wert: T); end;`, Alt+Enter „T: record einschränken“ | Fehler wie E2569; nach der Korrektur `TBox<T: record>` und keine Meldung |
+| VT7 | `TDatei = file of string;`, Alt+Enter „ShortString verwenden“ | Fehler wie E2155; danach `file of ShortString` ohne Meldung |
+| VT8 | `ShortString`, `string[20]`, `Integer`, `TObject`, `PChar`, unbekannter Typ, String im festen Teil, `TBox<T: class>`, `file of Integer`, `file` | Keine Meldung |
+| VT9 | `"variant-record-managed-field": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+
+## GUID mit falscher Schreibweise (#1072)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; `guid-syntax-invalid` steht auf der Vorgabe (Fehler).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GU1 | Das Beispiel aus #1072 (`ILogger = interface ['{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6}']`) | Fehler am GUID-Literal: „Der letzte Block der GUID hat 11 statt 12 Zeichen (wie E2204).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover |
+| GU2 | Projekt bauen | Der Compiler meldet E2204 an derselben Stelle; Fenster zeigt Quelle „Atlas + dcc“ |
+| GU3 | Alt+Enter: „Neue GUID erzeugen“, danach Strg+Z | Gültige neue GUID in Großbuchstaben mit Klammern; übersetzt; ein Undo-Schritt |
+| GU4 | GUID ohne `{` und `}`, Alt+Enter „Geschweifte Klammern ergänzen“ | Meldung „Der GUID fehlen die geschweiften Klammern (wie E2204).“; die Korrektur behält die GUID und ergänzt nur die Klammern |
+| GU5 | `IID_Logger: TGUID = '{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6X}';`, eine GUID mit vier Blöcken, ein erster Block mit 7 Zeichen | „Die GUID enthält „X“, das ist keine Hexadezimalziffer (wie E2204).“, „Die GUID hat 4 statt 5 Blöcke …“, „Der erste Block der GUID hat 7 statt 8 Zeichen …“ |
+| GU6 | Gültige GUID (auch in Kleinbuchstaben), GUID über eine Konstante `[IID_Logger]`, verkettete Konstante, Attribut `[Beschreibung('kurz')]` | Keine Meldung |
+| GU7 | `"guid-syntax-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+
+## Untypisierter Zeiger umgeht die Referenzzählung (#1081)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; `untyped-pointer-refcount` steht auf der Vorgabe (Warnung).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZR1 | Feld `FBesitzer: IBesitzer;`, in einer Methode `Pointer(FBesitzer) := Pointer(Besitzer);` (Beispiel aus #1081) | Warnung an `Pointer(FBesitzer)`: „Die Zuweisung über Pointer umgeht die Referenzzählung (wie W1070); besser [weak] FBesitzer.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover |
+| ZR2 | Projekt bauen | Der Compiler meldet W1070 an derselben Stelle; Fenster zeigt Quelle „Atlas + dcc“. Meldet der Compiler unter Win32/Win64 nichts, bitte notieren (Abgleich #1024) |
+| ZR3 | Alt+Enter: „[weak] FBesitzer verwenden“, danach Strg+Z; dann „[unsafe] FBesitzer verwenden“ | `[weak] FBesitzer: IBesitzer;` und `FBesitzer := Besitzer;`; übersetzt ohne W1070; ein Undo-Schritt. Bzw. `[unsafe]` |
+| ZR4 | `Pointer(FBesitzer) := nil;`, `Pointer(FAnderer) := P;` mit `P: Pointer`, `Pointer(L) := nil;` mit lokaler Variable `L: IBesitzer` | Je eine Warnung; Korrektur nur beim ersten (`FBesitzer := nil`), die anderen ohne Korrektur |
+| ZR5 | `Pointer(FText) := nil` mit `FText: string` | Warnung „Die Zuweisung über Pointer umgeht die Referenzzählung des Strings FText (dcc meldet das nicht).“ ohne Korrektur; der Compiler meldet hier nichts |
+| ZR5a | `Pointer(FObjekt) := nil` (TObject), `Pointer(FWide) := nil` (WideString), `P := Pointer(FBesitzer)`, `if Pointer(FBesitzer) = nil`, Feld mit `[weak]` oder `[unsafe]`, unbekannter Typ | Keine Meldung |
+| ZR6 | `"untyped-pointer-refcount": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+
+## Typ überschreitet eine Größengrenze (#1083)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; `type-too-large` steht auf der Vorgabe (Fehler).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GG1 | Das Beispiel aus #1083 (`type TPuffer = array[0..High(Integer)] of Int64;`) | Fehler an `TPuffer`: „TPuffer ist 16 GB groß; erlaubt sind 2 GB (wie E2100).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover |
+| GG2 | Projekt bauen | Der Compiler meldet E2100 an derselben Stelle; Fenster zeigt Quelle „Atlas + dcc“ |
+| GG3 | `const Anzahl = 1 shl 20;` und `TFlaeche = array[TFarbe, 0..Anzahl - 1, Word] of Byte;` mit `TFarbe = (Rot, Gruen, Blau)`; `var Feld: array[Integer] of Byte;` | „TFlaeche ist 192 GB groß …“ und „Feld ist 4 GB groß …“ |
+| GG4 | Record aus zwei Feldern `array[1..1024] of TBlock` (je 1 GB); Record mit Feld `A, B: array[0..MaxInt] of Int64` | „TPaar ist mindestens 2 GB groß …“; im zweiten Fall nur „A, B ist 16 GB groß …“, der Record nicht zusätzlich |
+| GG5 | `TFeld<T> = array[0..$FFFFFFF] of T;`, dann `TGross = TFeld<Int64>;` und `TKlein = TFeld<Byte>;` | Fehler „TFeld<Int64> ist 2 GB groß …“ (wie E2543), nichts bei `TFeld<Byte>` und am generischen Typ selbst |
+| GG6 | `array[0..MaxInt - 1] of Byte`, `array of Int64`, Grenze aus fremder Unit oder typisierter Konstante, Feld in einer Klasse | Keine Meldung |
+| GG7 | `"type-too-large": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |

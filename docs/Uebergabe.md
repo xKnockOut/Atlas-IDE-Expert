@@ -807,3 +807,13 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Neue Unit `Atlas.Common.Rules.Builtin.TypedExpressions` mit dem gemeinsamen Rahmen `TTypedScope` (`SureType`, `DeclarationSure` über `TConditionalBranches.Implies`) und den Regeln `comparison-always-constant`, `constant-initializer-mismatch`, `case-selector-not-ordinal`, `suspicious-string-pointer-cast`.
 - Marco: Offensichtlich Falsches auch melden, wenn dcc schweigt (`Length(S) < 0`). Nicht gemeldet werden `string(PAnsiChar)` (wandelt korrekt um) und `PWideChar(TBytes)` (kann gewollt sein), obwohl #1080 sie nennt.
 - Unter FPC grün: TypedExpressions-, ConstantValues-, Profiles-, Catalog- und Golden-Tests; alle Prüfskripte ohne Befund. Handtests VK1–VK9, KI1–KI9, CN1–CN8, ZW1–ZW9.
+
+## Compilerregeln Kette K (22.10.2026, ab `feature/1006-readonly-property-assigned`, ungebaut)
+- Kette: `feature/1025-missing-begin-end` → `feature/1027-inherited-constructor-after-try` → `feature/1071-variant-record-managed-field` → `feature/1072-guid-syntax-invalid` → `feature/1081-untyped-pointer-refcount` → `feature/1083-type-too-large`. Nichts nach main; Handtest-Issues bleiben offen.
+- #1025 `missing-begin-end` (Builtin.Style): neues Katalogfeld `overriddenBy` und `TRuleEngine.OverridingRule`; `redundant-begin-end` startet nicht, solange `missing-begin-end` an ist. Bei Standard „an“ meldet die Regel über die Atlas-Quellen rund 32 000 Stellen; ob sie im eigenen `atlas.json` aus soll, ist mit Marco offen. Handtests BB1–BB8.
+- #1027 `inherited-constructor-after-try` (Builtin.Exceptions), Handtests IK1–IK8.
+- #1071 `variant-record-managed-field` (Builtin.Declarations); `TManagedTypes` liegt jetzt in der eigenen Unit `Atlas.Common.Rules.ManagedTypes` (mit `CustomManaged`). Handtests VT1–VT9.
+- #1072 `guid-syntax-invalid` (Builtin.General), Handtests GU1–GU7.
+- #1081 `untyped-pointer-refcount` (Builtin.Statements): Interfaces wie W1070, Strings mit „(dcc meldet das nicht)“ (Marcos Regel aus #1011). Handtests ZR1–ZR6; ZR2 prüft, ob dcc W1070 unter Win32/Win64 überhaupt meldet.
+- #1083 `type-too-large` (Builtin.Declarations, `TTypeSizes`): E2100 und E2543; E2419 nur .NET, nicht gemeldet. `TOrdinalConstants` kennt jetzt Low/High eingebauter Typen und MaxInt. Handtests GG1–GG7.
+- Beim Sammelbranch erwartete Konflikte: Katalog-JSON, Catalog.Data.pas, Regeln.md, Profiles.Tests, README, CHANGELOG, Architektur.md, Atlas-Testfaelle.md (beide Seiten behalten, Generatoren neu laufen lassen). Die neuen Regeln laufen ohne Rekursion durch den Baum.

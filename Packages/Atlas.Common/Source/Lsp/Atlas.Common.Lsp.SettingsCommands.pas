@@ -116,7 +116,7 @@ end;
 class function TLspSettingsCommands.Catalog(const AEntries: TArray<TRuleCatalogEntry>; const AGlobalFile: string;
   const AExperimental: TArray<string>): TJSONObject;
 var
-  Rules, Options: TJSONArray;
+  Rules, Options, Overrides: TJSONArray;
   Rule, OptionObject: TJSONObject;
   Entry: TRuleCatalogEntry;
   Option: TRuleOption;
@@ -151,6 +151,13 @@ begin
       Options.AddElement(OptionObject);
     end;
     Rule.AddPair('options', Options);
+    if Entry.OverriddenBy <> nil then
+    begin
+      Overrides := TJSONArray.Create;
+      for Id in Entry.OverriddenBy do
+        Overrides.Add(Id);
+      Rule.AddPair('overriddenBy', Overrides);
+    end;
     Experimental := False;
     for Id in AExperimental do
       if SameText(Id, Entry.Id) then

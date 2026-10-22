@@ -2849,8 +2849,6 @@ begin
   ARegistry.Register(TAbstractClassInstantiatedRule.Create);
   ARegistry.Register(TInheritedAbstractCallRule.Create);
   ARegistry.Register(TClassReferenceNonvirtualConstructorRule.Create);
-end;
-
   ARegistry.Register(TMemberHidesAncestorRule.Create);
   ARegistry.Register(TOverrideCaseMismatchRule.Create);
 end;

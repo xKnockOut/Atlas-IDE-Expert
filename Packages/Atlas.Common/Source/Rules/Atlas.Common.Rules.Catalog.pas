@@ -9,6 +9,8 @@
 // "level" die Stufe einer Regel der Gruppe „Compiler vorab“ (#1024): A = Parser
 // genügt, B = Namensauflösung über Units, T = braucht Ausdruckstypen; nur
 // Stufe T lässt sich über "group:compiler": {"typeLevel": "off"} abschalten.
+// "overriddenBy" nennt Gegenregeln: Ist eine davon an, meldet die Regel nichts
+// (#1025, z. B. redundant-begin-end bei missing-begin-end); Rules.Engine.
 
 interface
 
@@ -50,6 +52,8 @@ type
     CompilerCodes: TArray<string>;
     /// <summary>Stufe "A", "B" oder "T" (#1024); '' ohne Angabe.</summary>
     Level: string;
+    /// <summary>Gegenregeln (#1025): Ist eine davon an, meldet diese Regel nichts; nil = keine.</summary>
+    OverriddenBy: TArray<string>;
   end;
 
   ERuleCatalog = class(Exception);
@@ -199,6 +203,24 @@ begin
   end;
 end;
 
+function OverriddenByOf(AItem: TJSONObject; const AId: string): TArray<string>;
+var
+  Value, Item: TJSONValue;
+begin
+  Result := nil;
+  Value := AItem.GetValue('overriddenBy');
+  if Value = nil then
+    Exit;
+  if not (Value is TJSONArray) then
+    raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat ungültige "overriddenBy"', [AId]);
+  for Item in TJSONArray(Value) do
+  begin
+    if not (Item is TJSONString) or (Item is TJSONNumber) or (TJSONString(Item).Value = '') then
+      raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat eine ungültige Gegenregel', [AId]);
+    Result := Result + [TJSONString(Item).Value];
+  end;
+end;
+
 function RulesOf(ARoot: TJSONValue): TJSONArray;
 var
   Value: TJSONValue;
@@ -267,6 +289,7 @@ begin
       Entry.Level := StringOf(Item, 'level');
       if (Entry.Level <> '') and (Entry.Level <> 'A') and (Entry.Level <> 'B') and (Entry.Level <> 'T') then
         raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat eine ungültige Stufe "%s"', [Entry.Id, Entry.Level]);
+      Entry.OverriddenBy := OverriddenByOf(Item, Entry.Id);
       FEntries.Add(Entry);
     end;
   finally
@@ -369,6 +392,9 @@ begin
   if AEntry.CompilerCodes <> nil then
     Result := Result + ALineBreak + ALineBreak + 'Entspricht der Compilermeldung ' +
       string.Join(', ', AEntry.CompilerCodes) + '.';
+  if AEntry.OverriddenBy <> nil then
+    Result := Result + ALineBreak + ALineBreak + 'Schweigt, solange ' + string.Join(' oder ', AEntry.OverriddenBy) +
+      ' an ist.';
   Result := Result + ALineBreak + ALineBreak + 'Mehr: ' + HelpUri(AEntry.Id);
 end;
 

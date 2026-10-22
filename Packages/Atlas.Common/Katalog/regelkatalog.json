@@ -988,7 +988,10 @@
       "group": "style",
       "description": "A begin … end block that holds exactly one statement can be removed. Off by default.",
       "bad": "if Done then\nbegin\n  Exit;\nend;",
-      "good": "if Done then\n  Exit;"
+      "good": "if Done then\n  Exit;",
+      "overriddenBy": [
+        "missing-begin-end"
+      ]
     },
     {
       "id": "with-statement",
@@ -2465,6 +2468,112 @@
         "E2130"
       ],
       "level": "T"
+    },
+    {
+      "id": "missing-begin-end",
+      "name": "Condition or loop without begin … end",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "The body of if … then, else, for, while or with is a single statement without begin … end. With the rule, conditions and loops always have a block, so a second statement added later does not end up outside by accident. else if stays allowed (the inner if needs no block of its own); repeat … until, case … end, try … end and asm … end are blocks already. An empty statement (if X then ;) is reported by empty-statement. Bodies with {$IFDEF} are not reported. While the rule is on, redundant-begin-end reports nothing. Quick fixes: put begin … end around the statement, for the whole method or for the whole file, indented by the format settings; a ; before else moves into the block (no E2153).",
+      "bad": "if Kunde.Gesperrt then\n  Protokoll.Warnung('Gesperrt')\nelse\n  Speichern(Kunde);",
+      "good": "if Kunde.Gesperrt then\nbegin\n  Protokoll.Warnung('Gesperrt');\nend\nelse\nbegin\n  Speichern(Kunde);\nend;",
+      "options": [
+        {
+          "name": "statements",
+          "type": "string-list",
+          "default": [
+            "if",
+            "else",
+            "for",
+            "while",
+            "with"
+          ],
+          "description": "Checked statements; add case for the branches of case statements."
+        },
+        {
+          "name": "allowSingleLineExit",
+          "type": "boolean",
+          "default": false,
+          "description": "Allow Exit, Continue, Break and raise on the same line as the condition (if … then Exit;)."
+        },
+        {
+          "name": "allowSameLine",
+          "type": "boolean",
+          "default": false,
+          "description": "Allow a single statement on the same line as the condition or loop header."
+        }
+      ]
+    },
+    {
+      "id": "inherited-constructor-after-try",
+      "name": "Inherited constructor only inside try",
+      "category": "bug",
+      "severity": "hint",
+      "group": "compiler",
+      "description": "A constructor enters a try block before it has called the inherited constructor (like H2505). Self is not initialised there yet; an exception in the block can hit half-created fields. Calls count as the inherited constructor when they are inherited without a name, with the constructor's own name or with a name starting with Create. Branches of {$IFDEF} are checked separately. Quick fix when the call is the first statement of the try block: move it before try.",
+      "bad": "constructor TDienst.Create;\nbegin\n  try\n    inherited Create;\n    FListe := TList<TAuftrag>.Create;",
+      "good": "constructor TDienst.Create;\nbegin\n  inherited Create;\n  try\n    FListe := TList<TAuftrag>.Create;",
+      "compilerCodes": [
+        "H2505"
+      ]
+    },
+    {
+      "id": "variant-record-managed-field",
+      "name": "Managed type in the variant part of a record",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "The variant part of a record (case … of) holds a string, dynamic array, interface, Variant or a record with such fields (like E2154), a custom managed record with class operator Initialize or Finalize (like E2418), or a type parameter without record constraint (like E2569); likewise after file of (like E2155, E2417). Types are resolved in the file and the index; unknown types stay silent. Quick fixes: move the field before case into the fixed part, use ShortString, or constrain the type parameter with record.",
+      "bad": "TWert = record\n  case Art: TArt of\n    waZahl: (Zahl: Double);\n    waText: (Text: string);\nend;",
+      "good": "TWert = record\n  Text: string;\n  case Art: TArt of\n    waZahl: (Zahl: Double);\nend;",
+      "compilerCodes": [
+        "E2154",
+        "E2155",
+        "E2418",
+        "E2417",
+        "E2569"
+      ]
+    },
+    {
+      "id": "guid-syntax-invalid",
+      "name": "GUID with invalid syntax",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "The GUID of an interface or of a typed TGUID constant is not of the form '{8-4-4-4-12}' (like E2204): missing braces, wrong number or length of blocks, characters that are not hex digits, often after editing by hand. Only single literals are checked; concatenations and constants stay silent. Quick fixes: generate a new GUID; when only the braces are missing, add them. Complements interface-guid and duplicate-interface-guid.",
+      "bad": "ILogger = interface\n  ['{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6}']",
+      "good": "ILogger = interface\n  ['{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C}']",
+      "compilerCodes": [
+        "E2204"
+      ]
+    },
+    {
+      "id": "untyped-pointer-refcount",
+      "name": "Untyped pointer bypasses reference counting",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "An interface is assigned through a typecast to Pointer (Pointer(FIntf) := P, like W1070). Reference counting does not take part: the object is freed too early or never. The rule reports only when name resolution knows the interface type for sure; strings (string, AnsiString …) are reported as well, with the note \"dcc does not report this\", since Delphi warns about them only under NEXTGEN. Fields that already carry [weak] or [unsafe] stay silent. Quick fixes for an interface field of this file with Pointer(Y) or nil on the right: mark the field [weak] or [unsafe] and assign without Pointer.",
+      "bad": "Pointer(FBesitzer) := Pointer(Besitzer);",
+      "good": "[weak] FBesitzer: IBesitzer;\n…\nFBesitzer := Besitzer;",
+      "compilerCodes": [
+        "W1070"
+      ]
+    },
+    {
+      "id": "type-too-large",
+      "name": "Type exceeds a size limit",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A static array or record is 2 GB or larger (like E2100), or an instance of a generic type of this file is (like E2543). Atlas computes a lower bound from the declarations: index ranges via constant expressions, constants and enumerations of the file, built-in types, records from the index; unknown parts count as 0, so the rule reports only for sure. Only the innermost type that crosses the limit is reported. E2419 (records over 1 MB) applies only to Delphi for .NET and is not reported. No quick fix; use a dynamic array or a pointer instead.",
+      "bad": "type TPuffer = array[0..High(Integer)] of Int64;",
+      "good": "type TPuffer = array of Int64;",
+      "compilerCodes": [
+        "E2100",
+        "E2543"
+      ]
     },
     {
       "id": "comparison-always-constant",

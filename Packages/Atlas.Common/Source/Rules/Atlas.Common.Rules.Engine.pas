@@ -29,6 +29,11 @@
 // schaltet die Regeln der Stufe T (Katalogfeld "level") ab, "certain" (Vorgabe)
 // lässt sie laufen, sie melden dann nur bei sicher bekanntem Typ.
 //
+// Gegenregeln (#1025): Nennt der Katalog unter "overriddenBy" eine Regel, die
+// für die Datei an ist, läuft die übersteuerte Regel nicht (redundant-begin-end
+// schweigt, solange missing-begin-end an ist). Ob die Gegenregel selbst unter
+// den übergebenen Regeln ist, spielt keine Rolle: Es zählt die Einstellung.
+//
 // Regelprofile, Pfadregeln und das Ausnehmen von Test-Units (#146) wertet
 // TRuleProfiles aus; maßgeblich ist das Profil in ASettings.Profile, für
 // Test-Units und Testprojekte ASettings.TestProfile, falls gesetzt.
@@ -89,6 +94,10 @@ type
     class function CapSeverity(ASeverity: TRuleSeverity; AConfidence: TRuleConfidence): TRuleSeverity; static;
     /// <summary>True, wenn "exclude" in AOptions den Pfad oder die Unit trifft.</summary>
     class function IsExceptedByOptions(const AOptions, ARelativePath, AUnitName: string): Boolean; static;
+    /// <summary>Kennung der eingeschalteten Gegenregel, die ARuleId für diese Datei übersteuert (#1025); '' ohne.
+    /// Die Beschreibung der Gegenregel kommt aus ARules, sonst aus dem Katalog.</summary>
+    class function OverridingRule(const ARuleId: string; const ARules: TArray<IRule>; const ASettings: TServerSettings;
+      const ARelativePath, AUnitName: string): string; static;
     /// <summary>Alle Treffer der Regeln auf AContext, nach Zeile sortiert.</summary>
     class function Run(const ARules: TArray<IRule>; const ASettings: TServerSettings;
       const AContext: TRuleContext): TArray<TRuleFinding>; static;
@@ -339,6 +348,43 @@ begin
   end;
 end;
 
+class function TRuleEngine.OverridingRule(const ARuleId: string; const ARules: TArray<IRule>;
+  const ASettings: TServerSettings; const ARelativePath, AUnitName: string): string;
+var
+  Entry, Other: TRuleCatalogEntry;
+  Id: string;
+  Rule: IRule;
+  Descriptor: TRuleDescriptor;
+  Found, Enabled: Boolean;
+begin
+  Result := '';
+  if not TRuleCatalog.Shared.TryFind(ARuleId, Entry) then
+    Exit;
+  for Id in Entry.OverriddenBy do
+  begin
+    Found := False;
+    for Rule in ARules do
+      if SameText(Rule.Descriptor.Id, Id) then
+      begin
+        Descriptor := Rule.Descriptor;
+        Found := True;
+        Break;
+      end;
+    if not Found then
+    begin
+      if not TRuleCatalog.Shared.TryFind(Id, Other) then
+        Continue;
+      Descriptor := TRuleDescriptor.Create(Other.Id, Other.DefaultSeverity, Other.Name);
+    end;
+    if EffectiveSeverity(Descriptor, ASettings, ARelativePath, Enabled) = TRuleSeverity.Off then
+      Continue;
+    if (Descriptor.Experimental and not Enabled) or
+      IsExceptedByOptions(RuleOptions(Descriptor.Id, ASettings), ARelativePath, AUnitName) then
+      Continue;
+    Exit(Descriptor.Id);
+  end;
+end;
+
 class function TRuleEngine.Run(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const AContext: TRuleContext): TArray<TRuleFinding>;
 var
@@ -416,6 +462,8 @@ begin
       if Severity = TRuleSeverity.Off then
         Continue;
       if Descriptor.Experimental and not Enabled then
+        Continue;
+      if OverridingRule(Descriptor.Id, ARules, Settings, AContext.RelativePath, AContext.UnitName) <> '' then
         Continue;
       Context := Shared;
       if Context.DelphiVersion = '' then

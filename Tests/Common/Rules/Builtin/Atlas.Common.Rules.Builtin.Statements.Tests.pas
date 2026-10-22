@@ -162,6 +162,21 @@ type
     procedure OffAndExclude;
   end;
 
+  [TestFixture]
+  TUntypedPointerRefcountTests = class
+  public
+    [Test]
+    procedure IssueExample;
+    [Test]
+    procedure Variants;
+    [Test]
+    procedure Strings;
+    [Test]
+    procedure SilentCases;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
 implementation
 
 uses
@@ -1407,9 +1422,103 @@ begin
     '{"rules": {"readonly-property-assigned": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
 end;
 
+function Teil(const AFields, ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  IBesitzer = interface'#10 +
+    '    [''{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C}'']'#10'  end;'#10'  TTeil = class'#10'  private'#10 + AFields +
+    '  public'#10'    procedure Setzen(const Besitzer: IBesitzer);'#10'  end;'#10'implementation'#10 +
+    'procedure TTeil.Setzen(const Besitzer: IBesitzer);'#10 + ABody + 'end;'#10'end.';
+end;
+
+procedure TUntypedPointerRefcountTests.IssueExample;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Teil('    FBesitzer: IBesitzer;'#10, 'begin'#10'  Pointer(FBesitzer) := Pointer(Besitzer);'#10);
+  Findings := TRuleAssert.Findings(TUntypedPointerRefcountRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('untyped-pointer-refcount', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Die Zuweisung über Pointer umgeht die Referenzzählung (wie W1070); besser [weak] FBesitzer.',
+    Findings[0].Message);
+  Assert.AreEqual(15, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(20, Findings[0].Range.EndPos.Character);
+  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('[weak] FBesitzer verwenden', Findings[0].Fixes[0].Title);
+  Assert.AreEqual('[unsafe] FBesitzer verwenden', Findings[0].Fixes[1].Title);
+  Source := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Teil('    [weak] FBesitzer: IBesitzer;'#10, 'begin'#10'  FBesitzer := Besitzer;'#10), Source);
+  TRuleAssert.Silent(TUntypedPointerRefcountRule.Create, Source);
+end;
+
+procedure TUntypedPointerRefcountTests.Variants;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // nil rechts; IInterface; roher Zeiger rechts ohne Korrektur; lokale Variable ohne Korrektur; Self.F.
+  Source := Teil('    FBesitzer: IBesitzer;'#10'    FAnderer: IInterface;'#10, 'var'#10'  P: Pointer;'#10 +
+    '  L: IBesitzer;'#10'begin'#10'  Pointer(FBesitzer) := nil;'#10'  Pointer(FAnderer) := P;'#10 +
+    '  Pointer(L) := nil;'#10'  Pointer(Self.FBesitzer) := Pointer(Besitzer);'#10);
+  Findings := TRuleAssert.Findings(TUntypedPointerRefcountRule.Create, Source);
+  Assert.AreEqual(4, Integer(Length(Findings)));
+  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
+  Assert.IsTrue(TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[1].Edits).Contains(
+    '[unsafe] FBesitzer: IBesitzer;'#10'    FAnderer: IInterface;'));
+  Assert.IsTrue(TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[1].Edits).Contains('  FBesitzer := nil;'));
+  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
+  Assert.AreEqual(0, Integer(Length(Findings[2].Fixes)));
+  Assert.AreEqual('Die Zuweisung über Pointer umgeht die Referenzzählung (wie W1070); besser [weak] Self.FBesitzer.',
+    Findings[3].Message);
+end;
+
+procedure TUntypedPointerRefcountTests.Strings;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // dcc warnt bei Strings nur unter NEXTGEN; Atlas meldet sie mit Zusatz und ohne Korrektur.
+  Findings := TRuleAssert.Findings(TUntypedPointerRefcountRule.Create, Teil('    FText: string;'#10 +
+    '    FAnsi: AnsiString;'#10, 'begin'#10'  Pointer(FText) := nil;'#10'  Pointer(FAnsi) := Pointer(FText);'#10));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('Die Zuweisung über Pointer umgeht die Referenzzählung des Strings FText (dcc meldet das nicht).',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Die Zuweisung über Pointer umgeht die Referenzzählung des Strings FAnsi (dcc meldet das nicht).',
+    Findings[1].Message);
+end;
+
+procedure TUntypedPointerRefcountTests.SilentCases;
+begin
+  // Objekt, WideString, unbekannter Typ, Lesen über Pointer, Vergleich, Feld mit [weak]/[unsafe], mehrere Namen
+  // ohne Korrektur.
+  TRuleAssert.Silent(TUntypedPointerRefcountRule.Create, Teil('    FObjekt: TObject;'#10'    FText: WideString;'#10 +
+    '    FFremd: TUnbekannt;'#10'    FBesitzer: IBesitzer;'#10'    [weak] FSchwach: IBesitzer;'#10 +
+    '    [unsafe] FRoh: IBesitzer;'#10, 'var'#10'  P: Pointer;'#10'begin'#10'  Pointer(FObjekt) := nil;'#10 +
+    '  Pointer(FText) := nil;'#10'  Pointer(FFremd) := nil;'#10'  P := Pointer(FBesitzer);'#10 +
+    '  if Pointer(FBesitzer) = nil then'#10'    Exit;'#10'  Pointer(FSchwach) := nil;'#10'  Pointer(FRoh) := nil;'#10));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUntypedPointerRefcountRule.Create,
+    Teil('    FA, FB: IBesitzer;'#10, 'begin'#10'  Pointer(FA) := nil;'#10))[0].Fixes)));
+end;
+
+procedure TUntypedPointerRefcountTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Teil('    FBesitzer: IBesitzer;'#10, 'begin'#10'  Pointer(FBesitzer) := nil;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUntypedPointerRefcountRule.Create, Source,
+    '{"rules": {"untyped-pointer-refcount": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUntypedPointerRefcountRule.Create, Source,
+    '{"rules": {"untyped-pointer-refcount": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TStatementRulesTests);
   TDUnitX.RegisterTestFixture(TAssignToPropertyMemberTests);
   TDUnitX.RegisterTestFixture(TReadonlyPropertyAssignedTests);
+  TDUnitX.RegisterTestFixture(TUntypedPointerRefcountTests);
 
 end.

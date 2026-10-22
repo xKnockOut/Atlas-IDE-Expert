@@ -55,6 +55,9 @@ type
     Options: TArray<TAtlasRuleOption>;
     /// <summary>Muster aus "exclude" (Glob oder Unit-Name).</summary>
     Exclude: TArray<string>;
+    /// <summary>Regeln, die diese übersteuern (Katalog "overriddenBy", #1025): Ist eine davon an, meldet diese
+    /// nichts.</summary>
+    OverriddenBy: TArray<string>;
     /// <summary>Wirksamer Schweregrad: eingestellt, sonst global, sonst Vorgabe.</summary>
     function Effective: string;
     /// <summary>Regel meldet etwas (wirksamer Schweregrad nicht "off").</summary>
@@ -122,6 +125,9 @@ type
     /// <summary>Feldtext AText einer Option der Art AKind als JSON-Text; '' = Vorgabe (leeres Feld). False
     /// bei ungültiger Eingabe (keine Zahl, kein true/false, kein JSON).</summary>
     class function OptionJson(const AKind, AText: string; out AJson: string): Boolean; static;
+    /// <summary>Kennung der eingeschalteten Regel aus ARow.OverriddenBy, die ARow übersteuert (#1025); ''
+    /// ohne.</summary>
+    class function OverridingRule(const ARows: TArray<TAtlasRuleRow>; const ARow: TAtlasRuleRow): string; static;
     /// <summary>Muster als Feldtext, mit "; " getrennt.</summary>
     class function ListText(const AItems: TArray<string>): string; static;
     /// <summary>Feldtext an ";" geteilt, ohne Leerraum und leere Einträge.</summary>
@@ -323,7 +329,7 @@ end;
 
 class function TAtlasRuleTable.Rows(ACatalog: TJSONValue; const ARulesJson: string): TArray<TAtlasRuleRow>;
 var
-  Rules, Items, Item: TJSONValue;
+  Rules, Items, Item, Overrides, Overriding: TJSONValue;
   Row: TAtlasRuleRow;
   Pair: TJSONPair;
   Index: Integer;
@@ -354,6 +360,11 @@ begin
           Row.Good := TJSONObject(Item).GetValue<string>('good', '');
           Row.Experimental := TJSONObject(Item).GetValue<Boolean>('experimental', False);
           Row.Known := True;
+          Overrides := TJSONObject(Item).GetValue('overriddenBy');
+          if Overrides is TJSONArray then
+            for Overriding in TJSONArray(Overrides) do
+              if (Overriding is TJSONString) and not (Overriding is TJSONNumber) then
+                Row.OverriddenBy := Row.OverriddenBy + [Overriding.Value];
           ReadOptions(TJSONObject(Item).GetValue('options'), Row);
           if Rules is TJSONObject then
           begin
@@ -633,6 +644,19 @@ begin
   for Index := 0 to High(ARows) do
     if ((AGroup = '') or SameText(ARows[Index].Group, AGroup)) and ARows[Index].Matches(AText.Trim) then
       Result := Result + [Index];
+end;
+
+class function TAtlasRuleTable.OverridingRule(const ARows: TArray<TAtlasRuleRow>;
+  const ARow: TAtlasRuleRow): string;
+var
+  Id: string;
+  Index: Integer;
+begin
+  for Id in ARow.OverriddenBy do
+    for Index := 0 to High(ARows) do
+      if SameText(ARows[Index].Id, Id) and ARows[Index].Enabled then
+        Exit(ARows[Index].Id);
+  Result := '';
 end;
 
 class function TAtlasRuleTable.ListText(const AItems: TArray<string>): string;

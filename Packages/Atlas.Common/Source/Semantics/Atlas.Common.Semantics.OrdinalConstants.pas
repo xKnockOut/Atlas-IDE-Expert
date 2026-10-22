@@ -4,7 +4,7 @@
 // $hex, %binär, &oktal), Zeichen ('a', #13, #$0D), True und False, Klammern,
 // die Operatoren + - * div mod and or xor not shl shr sowie Ord, Chr, Succ,
 // Pred und Umwandlungen in ganzzahlige und Zeichentypen, dazu SizeOf, High und
-// Low für Typen fester Größe (#992). Namen (Konstanten, Aufzählungswerte) löst
+// Low für Typen fester Größe (#992, #1083), MaxInt und MaxLongint. Namen (Konstanten, Aufzählungswerte) löst
 // der Aufrufer über ALookup auf. Alles andere, auch Gleitkomma, Strings und
 // Überläufe, gilt als nicht auswertbar. Check sagt zusätzlich, ob der Ausdruck
 // sicher durch null teilt oder sicher überläuft (#992, wie E2098 und E2099):
@@ -499,6 +499,9 @@ begin
             Result := 1
           else if (Length(Names) = 1) and SameText(Name, 'False') then
             Result := 0
+          // Konstanten aus System mit festem Wert auf allen Plattformen (#1083).
+          else if (Length(Names) = 1) and (SameText(Name, 'MaxInt') or SameText(Name, 'MaxLongint')) then
+            Result := 2147483647
           else
             Fail;
         end;
@@ -538,9 +541,9 @@ begin
     Put(0, 65535, 2)
   else if (Name = 'smallint') or (Name = 'int16') then
     Put(-32768, 32767, 2)
-  else if (Name = 'integer') or (Name = 'int32') then
+  else if (Name = 'integer') or (Name = 'int32') or (Name = 'fixedint') then
     Put(-2147483648, 2147483647, 4)
-  else if (Name = 'cardinal') or (Name = 'uint32') or (Name = 'dword') then
+  else if (Name = 'cardinal') or (Name = 'uint32') or (Name = 'dword') or (Name = 'fixeduint') then
     Put(0, 4294967295, 4)
   else if Name = 'int64' then
     Put(Low(Int64), High(Int64), 8)
