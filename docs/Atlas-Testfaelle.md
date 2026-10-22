@@ -4130,7 +4130,8 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | VK2 | `B: Byte` mit `if B > 255`, `if 256 <= B`, `if B < 0`, `if B = 300` | Je „… ist immer falsch (wie W1021).“ |
 | VK3 | `B: Byte`, `case B of 1, 300: …; 256..300: …; 250..400: … end` | Meldung an `300` und `256..300` „… liegt außerhalb des Bereichs von Byte; der Zweig wird nie ausgeführt (wie W1018).“, nicht an `250..400` |
 | VK4 | Property `Saldo: Cardinal` einer Klasse aus einer anderen Unit, `if Konto.Saldo < 0` | „Konto.Saldo ist Cardinal; Konto.Saldo < 0 ist immer falsch (wie W1021).“ |
-| VK5 | `I >= 0` mit Integer, `C > 0` mit Cardinal, `B < 255`, `Length(S) < 0`, `C - 1 >= 0`, Teilbereich `1..5` mit `> 5`, NativeInt mit `< 2147483648` | Keine Meldung |
+| VK5 | `I >= 0` mit Integer, `C > 0` mit Cardinal, `B < 255`, `Length(S) > 0`, `C - 1 >= 0`, Teilbereich `1..5` mit `> 5`, NativeInt mit `< 2147483648` | Keine Meldung |
 | VK8 | Deklaration in `{$IFDEF X} Rest: Integer; {$ELSE} Rest: Cardinal; {$ENDIF}`, danach `if Rest >= 0` | Keine Meldung: Der Typ hängt vom Zweig ab (dcc meldet ohne X trotzdem W1022) |
 | VK6 | `"comparison-always-constant": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
-| VK7 | Abgleich mit Delphi: VK1 bis VK5 übersetzen (Win32 und Win64) | dcc meldet W1022, W1021 bzw. W1018 an denselben Stellen, für VK5 nichts; meldet dcc für `Length(S) < 0` oder einen Teilbereich doch eine Warnung, den Fall im Issue nachtragen |
+| VK7 | Abgleich mit Delphi: VK1 bis VK5 übersetzen (Win32 und Win64) | dcc meldet W1022, W1021 bzw. W1018 an denselben Stellen, für VK5 nichts; meldet dcc für einen Teilbereich doch eine Warnung, den Fall im Issue nachtragen |
+| VK9 | `if Length(S) < 0`, `if Length(Liste) >= 0` (dynamisches Array) | „Length(S) ist nie negativ; Length(S) < 0 ist immer falsch (dcc meldet das nicht).“ bzw. „… immer wahr …“; dcc selbst meldet hier nichts |
