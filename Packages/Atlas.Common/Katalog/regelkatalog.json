@@ -2336,6 +2336,27 @@
       "description": "Free, Destroy, DisposeOf or FreeAndNil on Self, or on the global variable of the form's own class, as a statement in an event handler of the form or one of its controls. After the handler returns, the VCL still accesses the object: access violation. Correct is Release, or Action := caFree in OnClose. Event handlers are the methods named in the form file and methods with a Sender: TObject parameter; a form is the root class of the form file with ClientWidth or ClientHeight, or a class derived directly from TForm or TCustomForm (frames and data modules have no Release). Statements in anonymous methods and with blocks do not count. Silent without the form file. High confidence. Quick fix: replace Free with Release; in OnClose (var Action: TCloseAction) with Action := caFree.",
       "bad": "procedure TfrmMeldung.btnOKClick(Sender: TObject);\nbegin\n  Free;\nend;",
       "good": "procedure TfrmMeldung.btnOKClick(Sender: TObject);\nbegin\n  Release;\nend;"
+    },
+    {
+      "id": "parallel-for-shared-write",
+      "name": "Shared variable written in TParallel.For",
+      "category": "bug",
+      "severity": "warning",
+      "group": "threads",
+      "description": "The body of TParallel.For, or of a TTask.Run/Create/Future started inside a loop, writes a variable from outside without a lock: Summe := Summe + …, Inc/Dec or another assignment, or changes a collection from outside (Add, Delete, Clear, Insert, Remove …). The iterations run at the same time, so additions get lost or the list is corrupted. Outside means a local variable or parameter of the enclosing routine, a field of its class or a global variable of the unit; names of unknown origin stay silent. Bodies with a lock (TMonitor, Enter, Acquire, Lock, LockList, BeginWrite, TInterlocked), writes through an index (Werte[I] := …) and nested anonymous methods (Synchronize, Queue) do not count. Types listed in threadSafeTypes count as thread-safe. Medium confidence. Quick fixes: TInterlocked.Add/Increment/Decrement for Integer, Int64 and Cardinal (adds System.SyncObjs), System.TMonitor.Enter/Exit in try … finally around the collection call.",
+      "bad": "TParallel.For(0, High(Werte), procedure(I: Integer)\n  begin\n    Summe := Summe + Werte[I];\n  end);",
+      "good": "TParallel.For(0, High(Werte), procedure(I: Integer)\n  begin\n    TInterlocked.Add(Summe, Werte[I]);\n  end);",
+      "options": [
+        {
+          "name": "threadSafeTypes",
+          "type": "string-list",
+          "default": [
+            "TThreadList",
+            "TThreadedQueue"
+          ],
+          "description": "Types that count as thread-safe; their collection calls stay silent."
+        }
+      ]
     }
   ]
 }

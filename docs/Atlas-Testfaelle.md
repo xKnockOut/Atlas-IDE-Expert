@@ -4178,3 +4178,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; Formular `TfrmMeldung` mit 
 | FS5 | `Release`, `btnOK.Free`, `Free` in `TThread.ForceQueue(nil, procedure begin Free end)`, `with TStringList.Create do Free`, Methode ohne `Sender`, Rahmen (TFrame) und Datenmodul | Keine Meldung |
 | FS6 | `"self-free-in-event-handler": "off"`, `"group:forms": "off"` bzw. `exclude` | Keine Meldung |
 | FS7 | Abgleich: FS1 ausführen und auf OK klicken | Zugriffsverletzung (bzw. FastMM-Meldung); nach FS2 schließt das Formular sauber |
+
+## Gemeinsame Variable in TParallel.For geschrieben (#1058)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; eine Unit mit `uses System.Threading`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PW1 | Das Beispiel aus #1058: lokale `Summe: Integer`, `TParallel.For(0, High(Werte), procedure(I: Integer) begin Summe := Summe + Werte[I]; end);` | Warnung `parallel-for-shared-write` an der Zuweisung: „Summe wird parallel ohne Sperre geschrieben; Additionen gehen verloren.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| PW2 | Schnellkorrektur „TInterlocked.Add(Summe, Werte[I]) verwenden“, danach Strg+Z | Zeile wird `TInterlocked.Add(Summe, Werte[I]);`, `System.SyncObjs` steht in den uses, keine Meldung mehr; ein Undo-Schritt |
+| PW3 | `Inc(Anzahl)`, `Rest := Rest - Werte[I]`, Feld `FSumme` bzw. globale Variable im Rumpf | Je eine Meldung; Korrekturen `TInterlocked.Increment`, `TInterlocked.Add(Rest, -(Werte[I]))`; bei `Double` Meldung ohne Korrektur |
+| PW4 | `Liste: TList<Integer>`, im Rumpf `if Werte[I] > 0 then Liste.Add(Werte[I]);`, Korrektur „Sperre mit TMonitor um Liste.Add legen“ | Meldung „… verändert (Add); die Sammlung kann beschädigt werden.“; danach `begin System.TMonitor.Enter(Liste); try … finally System.TMonitor.Exit(Liste); end; end` im if-Zweig, übersetzt |
+| PW5 | `for J := 1 to 4 do TTask.Run(procedure begin Inc(FAnzahl) end);` | Meldung; ein einzelner `TTask.Run` außerhalb einer Schleife nicht |
+| PW6 | Eigene Variable der anonymen Methode, `Werte[I] := …`, Rumpf mit `Sperre.Enter … Leave` oder `TMonitor`, Zugriff in `TThread.Synchronize`, geerbtes Feld aus einer anderen Unit | Keine Meldung |
+| PW7 | `TThreadList<Integer>.Add` bzw. `TThreadedQueue.Enqueue`; dann `"threadSafeTypes": []`; dann eigener Typ in `threadSafeTypes` | Erst keine Meldung, mit leerer Liste eine Meldung; eigener Typ bleibt still |
+| PW8 | `"parallel-for-shared-write": "off"`, `"group:threads": "off"` bzw. `exclude` | Keine Meldung |
