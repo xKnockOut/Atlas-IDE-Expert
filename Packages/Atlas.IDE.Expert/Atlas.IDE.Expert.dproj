@@ -562,6 +562,7 @@
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.Cache.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.Breadcrumbs.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas"/>
+        <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas"/>
         <DCCReference Include="Source\UI\Outline\Atlas.UI.Outline.Breadcrumbs.pas"/>
         <DCCReference Include="Source\UI\Outline\Atlas.UI.Outline.NavigationToolbar.pas"/>
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.Breadcrumbs.pas"/>

@@ -598,6 +598,8 @@ uses
   Atlas.Core.Outline.Breadcrumbs.Tests in 'IDE.Expert\Atlas.Core.Outline.Breadcrumbs.Tests.pas',
   Atlas.Core.Outline.StickyScroll in '..\Packages\Atlas.IDE.Expert\Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas',
   Atlas.Core.Outline.StickyScroll.Tests in 'IDE.Expert\Atlas.Core.Outline.StickyScroll.Tests.pas',
+  Atlas.Core.Outline.LoadGuard in '..\Packages\Atlas.IDE.Expert\Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas',
+  Atlas.Core.Outline.LoadGuard.Tests in 'IDE.Expert\Atlas.Core.Outline.LoadGuard.Tests.pas',
   Atlas.UI.Outline.Breadcrumbs in '..\Packages\Atlas.IDE.Expert\Source\UI\Outline\Atlas.UI.Outline.Breadcrumbs.pas',
   Atlas.UI.Outline.Breadcrumbs.Tests in 'IDE.Expert\Atlas.UI.Outline.Breadcrumbs.Tests.pas',
   Atlas.UI.Outline.NavigationToolbar in '..\Packages\Atlas.IDE.Expert\Source\UI\Outline\Atlas.UI.Outline.NavigationToolbar.pas',

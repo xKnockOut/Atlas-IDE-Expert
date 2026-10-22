@@ -3075,3 +3075,14 @@ Voraussetzung: Einstellungen auf Vorgabe, Diagnoselog an; Projektgruppe `Atlas.g
 | SN4 | In einer eigenen Unit `X := 1 - 1 - 1 …` mit 1200 Gliedern schreiben (Testprojekt) und speichern | Kein Absturz; die Prüfregeln melden für diese Unit nichts, im Diagnoselog steht `deepUnits=1 deepUnit=unit#N deepUnitDepth=…` |
 | SN5 | Kommandozeile: `AtlasServer.exe --check` über die Gruppe (Abschnitt „Linter mode“ im README) | Läuft durch alle Units ohne Absturz; dieselben Befunde wie vor #1094 |
 | SN6 | Testlauf `Atlas.Tests.exe` | Grün, darunter `SecondOverflowInSameThreadIsCaughtAgain` (drei Stapelüberläufe im selben Thread werden abgefangen, der Prozess lebt) |
+
+## Gliederung beim Start und Kontextwechsel ohne Zugriffsverletzung
+
+Voraussetzung: experimentelles `editor.stickyScroll` an (wie bei Marco), Brotkrumen an; IDE frisch gestartet, eine Gruppe mit mehreren Plattformen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GS1 | IDE starten, eine Pascal-Unit ist beim Start schon offen | In `%LOCALAPPDATA%\Atlas\Logs\atlas.log` keine Zeile „Fehler in Editorbefehle: EAccessViolation … AnsiLowerCase“ (**Abnahme**, 5 Starts) |
+| GS2 | Während der Server noch startet, Plattform Win32 ↔ Win64 wechseln | Kein Fehler; Gliederung, Brotkrumen und Sticky Scroll zeigen danach den Stand der neuen Plattform |
+| GS3 | Konfiguration Debug ↔ Release wechseln, Unit mit `{$IFDEF DEBUG}` offen | Gliederung baut sich neu auf, kein Fehler im Log |
+| GS4 | IDE beenden | Im Log „Atlas entladen …; Fehler beim Abbau: keine“ |
