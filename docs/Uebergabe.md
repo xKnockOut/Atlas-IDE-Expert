@@ -707,12 +707,6 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Branch `claude/project-thread-q604al` (Cloud-Thread): Ursache war `Rules.Catalog.Data.pas` mit ~1800 per `+` verketteten Strings; linkslastiger Ausdrucksbaum (Tiefe ~3600), rekursive Vererbungsregeln → Stapelüberlauf. Parser balanciert lange Ketten, Engine begrenzt Tiefe und isoliert scheiternde Regeln, `workspace/diagnostic` überspringt scheiternde Units, Schutzseite wird wiederhergestellt, Server mit 8 MB Stapel.
 - Delphi-Nacharbeit: E2532 im Parser-Test, W1036/H2077 in `PullDiagnostics` (neue Methode `DiagnoseOrSkip`), W1000: `EStackOverflow` ist in Delphi 13 veraltet → `TStackGuard.IsOverflow` prüft den Klassennamen, Tests mit gleichnamiger eigener Klasse.
 - Win64 0/0/0, 5361 Tests grün, Win32-Plugin sauber. Delphi neu gestartet. #1094 noch offen, bis Marco bestätigt, dass die Neustarts weg sind.
-## Server startet alle 1–2 Minuten neu (21.10.2026 abends, morgen weiter)
-- Benachrichtigung „Server neu gestartet“ etwa alle 90 s (Projektgruppe Atlas.groupproj, aktives Projekt Atlas.Tests).
-- Diagnoselogs `%LOCALAPPDATA%\Atlas\Logs\Diagnose\diag-*.log`: `workspace/diagnostic ... error:EStackOverflow` alle ~15 s, nach einigen davon endet der Prozess ohne Endzeile; das Plugin startet ihn neu. Erster Fehler je Lauf mit `missingUnits=1 ... resolve unitNotFound`. Einzeldokumente (`textDocument/diagnostic`) laufen.
-- Stapel noch nicht erfasst: cdb (x64) mit `sxe sov` am Server angehängt, vor dem Treffer auf Marcos Wunsch abgebrochen (dabei Server beendet, das Plugin startet ihn neu). Skript: Scratchpad `cdb-sov.txt` (`cdb -p <pid> -logo cdb-sov.log -cf cdb-sov.txt`).
-- Verdacht: eine Regel oder die Namensauflösung über alle Units rekursiert endlos (neu seit den heutigen Merges: #845 aktive Zweige, #846 variante Records, #715 Boolean umkehren u. a.).
-- Server-Speicher ~0,9–1,25 GB.
 
 ## Atlas-Prüfung und Seite Prüfregeln (#909, 21.10.2026, Branch `feature/909-atlas-pruefung` von main, ungebaut)
 - Regelkatalog mit Gruppe und Optionen je Regel (`Update-RuleCatalog.ps1` prüft beides), `atlas.server.settingsCatalog` liefert Gruppe, Beschreibung, Beispiele, Optionen; `"group:<gruppe>": "off"` in `rules` schaltet eine Gruppe ab (Rules.Engine).

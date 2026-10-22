@@ -25,11 +25,35 @@ begin
     '      "name": "Syntax error",' + #10 +
     '      "category": "bug",' + #10 +
     '      "severity": "error",' + #10 +
-    '      "group": "find-bugs",' + #10 +
-    '      "description": "The parser could not read the source code.",' + #10 +
-    '      "bad": "procedure Foo;\nbegin\n  if X then\nend;",' + #10 +
-    '      "good": "procedure Foo;\nbegin\n  if X then\n    Bar;\nend;",' + #10 +
-    '      "level": "A"' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The source code does not parse. The message says, like the compiler, what was expected and what was found (\"'';'' expected but ''end'' found (like E2029).\") and carries the compile' + 'r code: missing '';'' (E2066 between statements, E2029 in declarations), '';'' before else (E2153), unterminated string (E2052) or comment with its start line (E2057), statements in the interface part (E2' + '050), identifier after a trailing dot (E2372), strict without private or protected (E2375), class before something other than a routine (E2357), try without except or finally (E2125), for without a va' + 'riable (E2088). Checks on the finished tree: procedure with a result type (E2025), function declaration without one (E2023; the short form of an implementation is fine), value parameter without a type' + ' (E2067), initialised local variable (E2195) or several variables with one initial value (E2196), class, interface or object type in a var section (E2060, E2058) or local to a routine (E2061, E2059), ' + 'label in the interface part (E2049) and goto to an undeclared label (E2031). After an unterminated string or comment the follow-up errors are dropped, as the compiler stops there. Inactive {$IFDEF} br' + 'anches are not reported. Quick fixes: remove '';'' before else (safe, also on save), add '';'', close the string, close the comment at the end of its first line.",' + #10 +
+    '      "bad": "if Gueltig then\n  Speichern;\nelse\n  Verwerfen;",' + #10 +
+    '      "good": "if Gueltig then\n  Speichern\nelse\n  Verwerfen;",' + #10 +
+    '      "level": "A",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2023",' + #10 +
+    '        "E2025",' + #10 +
+    '        "E2029",' + #10 +
+    '        "E2031",' + #10 +
+    '        "E2049",' + #10 +
+    '        "E2050",' + #10 +
+    '        "E2052",' + #10 +
+    '        "E2057",' + #10 +
+    '        "E2058",' + #10 +
+    '        "E2059",' + #10 +
+    '        "E2060",' + #10 +
+    '        "E2061",' + #10 +
+    '        "E2066",' + #10 +
+    '        "E2067",' + #10 +
+    '        "E2088",' + #10 +
+    '        "E2125",' + #10 +
+    '        "E2153",' + #10 +
+    '        "E2195",' + #10 +
+    '        "E2196",' + #10 +
+    '        "E2357",' + #10 +
+    '        "E2372",' + #10 +
+    '        "E2375"' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unused-suppression",' + #10 +
@@ -56,6 +80,7 @@ begin
     '      "name": "Unit too deep to check",' + #10 +
     '      "category": "code-smell",' + #10 +
     '      "severity": "hint",' + #10 +
+    '      "group": "internal",' + #10 +
     '      "description": "The syntax tree of the unit is more than 100000 levels deep, so the rules do not run for it. Such trees only come from chains with as many terms, such as X := A - B - C - … The h' + 'int marks the deepest point; splitting the chain into partial expressions makes the unit checkable again.",' + #10 +
     '      "bad": "X := A - B - C - D - E; // … 100000 terms",' + #10 +
     '      "good": "Part := A - B - C;\nX := Part - D - E;"' + #10 +
@@ -752,11 +777,14 @@ begin
     '      "name": "for loop counts down with to",' + #10 +
     '      "category": "bug",' + #10 +
     '      "severity": "warning",' + #10 +
-    '      "group": "find-bugs",' + #10 +
-    '      "description": "The loop starts at the upper bound (High, Count - 1) and ends at the lower one, but uses to. It never runs; downto was meant.",' + #10 +
-    '      "bad": "for I := High(A) to Low(A) do\n  Save(A[I]);",' + #10 +
-    '      "good": "for I := High(A) downto Low(A) do\n  Save(A[I]);",' + #10 +
-    '      "level": "A"' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The loop starts at the upper bound (High, Count - 1) and ends at the lower one, but uses to. It never runs; downto was meant. Also reports loops with constant bounds that never r' + 'un, such as for I := 10 to 1, with signed, hexadecimal or character literals (like H2135). Equal bounds, expressions, named constants and ascending bounds stay silent. Quick fix: replace to with downt' + 'o.",' + #10 +
+    '      "bad": "for I := 10 to 1 do\n  Countdown(I);",' + #10 +
+    '      "good": "for I := 10 downto 1 do\n  Countdown(I);",' + #10 +
+    '      "level": "A",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "H2135"' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "exception-not-raised",' + #10 +
@@ -1015,7 +1043,10 @@ begin
     '      "group": "style",' + #10 +
     '      "description": "A begin … end block that holds exactly one statement can be removed. Off by default.",' + #10 +
     '      "bad": "if Done then\nbegin\n  Exit;\nend;",' + #10 +
-    '      "good": "if Done then\n  Exit;"' + #10 +
+    '      "good": "if Done then\n  Exit;",' + #10 +
+    '      "overriddenBy": [' + #10 +
+    '        "missing-begin-end"' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "with-statement",' + #10 +
@@ -1214,14 +1245,35 @@ begin
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "deprecated-symbol",' + #10 +
-    '      "name": "Deprecated symbol",' + #10 +
+    '      "name": "Deprecated or bound symbol",' + #10 +
     '      "category": "code-smell",' + #10 +
-    '      "severity": "hint",' + #10 +
-    '      "group": "style",' + #10 +
-    '      "description": "A routine, type, constant or member marked deprecated, platform or experimental is used (like compiler warnings W1000, W1002 and W1003). The editor strikes the name through; the ' + 'message carries the reason from deprecated ''reason''. The declaration and the head of its implementation are not reported.",' + #10 +
-    '      "bad": "procedure Old; deprecated ''Use New'';\n...\nOld;",' + #10 +
-    '      "good": "procedure New;\n...\nNew;",' + #10 +
-    '      "level": "B"' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A routine, type, constant or member marked deprecated, experimental, platform or library is used (like W1000, W1003, W1002, W1001), or a unit whose header carries one of these hi' + 'nts is listed in uses (like W1006, W1007, W1005, W1004). Reported only when the name resolves for sure. The editor strikes deprecated names through; the message carries the reason from deprecated ''rea' + 'son''. The declaration and the head of its implementation are not reported. Which kinds are reported is set by the option kinds (deprecated and experimental by default, as in most projects); the switch' + 'es {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} and so on and {$WARNINGS OFF} apply from their position like in the compiler; a switch in an {$IF} branch that is not surely ' + 'compiled with the position keeps it silent. Quick fix: replace with the name the reason gives (or, for IncludeTrailingBackslash and ExcludeTrailingBackslash, the platform-independent routine) when exa' + 'ctly one name fits, is visible at that position and is of the same kind. Without a project index only the symbols of the file itself are checked.",' + #10 +
+    '      "bad": "Pfad := IncludeTrailingBackslash(Basis) + Name;",' + #10 +
+    '      "good": "Pfad := IncludeTrailingPathDelimiter(Basis) + Name;",' + #10 +
+    '      "level": "B",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1000",' + #10 +
+    '        "W1001",' + #10 +
+    '        "W1002",' + #10 +
+    '        "W1003",' + #10 +
+    '        "W1004",' + #10 +
+    '        "W1005",' + #10 +
+    '        "W1006",' + #10 +
+    '        "W1007"' + #10 +
+    '      ],' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "kinds",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "deprecated",' + #10 +
+    '            "experimental"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Reported kinds: deprecated, experimental, platform, library (platform and library are off by default)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "implicit-package-import",' + #10 +
@@ -1862,6 +1914,26 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "legacy-tlist",' + #10 +
+    '      "name": "Non-generic list with cast",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "information",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A non-generic TList (System.Classes) or TObjectList (System.Contnrs) whose items are read with a cast: T(List[I]), T(List.Items[I]), T(List.First), List[I] as T and so on. TList<' + 'T> and TObjectList<T> from System.Generics.Collections check the type at compile time and need no cast. The rule reports once per list, at its declaration when it is in this file, otherwise at the fir' + 'st cast; with several target types, all of them are named. Only when name resolution finds the list type and the target type for sure; casts to Pointer are ignored. Off by default; for code that must ' + 'still compile with old Delphi versions, use exclude. Quick fix (#1105): converts the list to TList<T> or TObjectList<T> in one step: declaration, every Create (arguments are kept), every cast and Syst' + 'em.Generics.Collections in the uses clause; Contnrs is removed when nothing else uses it. Only when every read has the same cast and no member without a generic counterpart is used (Sort with TListSor' + 'tCompare, Assign with TListAssignOp, List), no Pointer or Integer values are stored, Add, Extract, Remove and IndexOf get T, and the list is not passed on. If the list is visible outside the unit, the' + ' fix also rewrites the other units of the project group or is not offered; \"fix all\" (source.fixAll) never applies such fixes. Otherwise the finding hover names the reason. Stacks and queues: legacy' + '-stack-queue.",' + #10 +
+    '      "bad": "FPositionen: TList;\n...\nPos := TPosition(FPositionen[I]);",' + #10 +
+    '      "good": "FPositionen: TList<TPosition>;\n...\nPos := FPositionen[I];"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "legacy-stack-queue",' + #10 +
+    '      "name": "Non-generic stack or queue with cast",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "information",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A non-generic TStack, TQueue, TObjectStack or TObjectQueue (System.Contnrs) whose items are read with a cast: T(Stack.Pop), T(Stack.Peek), Queue.Pop as T and so on. TStack<T>, TQ' + 'ueue<T>, TObjectStack<T> and TObjectQueue<T> from System.Generics.Collections check the type at compile time and need no cast. Like legacy-tlist, the rule reports once per stack or queue, at its decla' + 'ration when it is in this file, otherwise at the first cast; with several target types, all of them are named. Only when name resolution finds the type and the target type for sure; casts to Pointer a' + 're ignored. Off by default; for code that must still compile with old Delphi versions, use exclude. Quick fix: converts in one step like legacy-tlist; for queues Push becomes Enqueue and Pop becomes D' + 'equeue. TObjectStack<T> and TObjectQueue<T> own their objects, the Contnrs classes do not: the fix therefore creates them with Create(False) and reads with Extract, because Pop and Dequeue are procedu' + 'res there that free the object. Without a Create in the unit, with different casts or with members without a generic counterpart (AtLeast) there is no fix; the finding hover names the reason.",' + #10 +
+    '      "bad": "FOffen: TObjectStack;\n...\nKnoten := TKnoten(FOffen.Pop);",' + #10 +
+    '      "good": "FOffen: TObjectStack<TKnoten>;\n...\nFOffen := TObjectStack<TKnoten>.Create(False);\n...\nKnoten := FOffen.Extract;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "global-variable",' + #10 +
     '      "name": "Global variable in interface",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -2343,7 +2415,7 @@ begin
     '      "category": "bug",' + #10 +
     '      "severity": "warning",' + #10 +
     '      "group": "database",' + #10 +
-    '      "description": "An UPDATE or DELETE without WHERE in a string literal, SQL.Text, SQL.Add, CommandText, the first argument of ExecSQL, ExecSQLScalar, ExecuteDirect or Execute, or in SQL.Strings/C' + 'ommandText of the form file. It affects every row of the table; usually the condition was forgotten. The rule assembles the SQL text per query within a routine (Clear and a new Text start over) and su' + 'bstitutes constants and local values. JOIN, TOP, LIMIT and ROWS restrict the rows as well; a WHERE in a subquery or comment does not count. Unknown parts behind the table name (variables, calls at the' + ' place of a clause) keep the statement silent; a dynamic table name reports with medium confidence. Silent when the routine passes the SQL on or another routine of the unit adds to it; form file SQL o' + 'nly counts when the unit does not change it. Literals outside SQL properties count only with DELETE or UPDATE in capitals, so message texts stay silent. High confidence, no quick fix; tables that are ' + 'emptied on purpose go into allowTables.",' + #10 +
+    '      "description": "An UPDATE or DELETE without WHERE in a string literal, SQL.Text, SQL.Add, CommandText, the first argument of ExecSQL, ExecSQLScalar, Open, ExecuteDirect or Execute, or in SQL.Str' + 'ings/CommandText of the form file. It affects every row of the table; usually the condition was forgotten. The rule assembles the SQL text per query within a routine (Clear and a new Text start over) ' + 'and substitutes constants and local values. JOIN, TOP, LIMIT and ROWS restrict the rows as well; a WHERE in a subquery or comment does not count. Unknown parts behind the table name (variables, calls ' + 'at the place of a clause) keep the statement silent; a dynamic table name reports with medium confidence. Silent when the routine passes the SQL on or another routine of the unit adds to it; form file' + ' SQL only counts when the unit does not change it. Literals outside SQL properties count only with DELETE or UPDATE in capitals, so message texts stay silent. High confidence, no quick fix; tables tha' + 't are emptied on purpose go into allowTables.",' + #10 +
     '      "bad": "qry.SQL.Text := ''DELETE FROM Warenkorb'';\nqry.ExecSQL;",' + #10 +
     '      "good": "qry.SQL.Text := ''DELETE FROM Warenkorb WHERE Kunde = :Kunde'';\nqry.ParamByName(''Kunde'').AsInteger := KundeId;\nqry.ExecSQL;",' + #10 +
     '      "options": [' + #10 +
@@ -2617,6 +2689,1497 @@ begin
     '      "level": "T"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "sql-select-star",' + #10 +
+    '      "name": "SELECT * in code",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "database",' + #10 +
+    '      "description": "SELECT * or SELECT alias.* in a column list, in the same places as sql-write-without-where: string literals, SQL.Text, SQL.Add, CommandText, the first argument of ExecSQL, Open a' + 'nd similar calls, constants, local values and SQL.Strings/CommandText of the form file. New columns silently change the dataset, persistent fields no longer match, and more data is transferred than ne' + 'eded. Subqueries count; EXISTS (SELECT * …) and COUNT(*) stay silent, as does a column list from a variable. Literals outside SQL properties count only with SELECT in capitals and a FROM, so message t' + 'exts stay silent. Off by default (enable in the rules settings or with the strict profile). High confidence. Quick fix: when the star stands in a single literal and the dataset has persistent fields i' + 'n the form file, replace * with their FieldName list (without calculated and lookup fields).",' + #10 +
+    '      "bad": "qry.SQL.Text := ''SELECT * FROM Kunden WHERE Ort = :Ort'';",' + #10 +
+    '      "good": "qry.SQL.Text := ''SELECT Id, Name, Ort FROM Kunden WHERE Ort = :Ort'';"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "path-concat-without-delimiter",' + #10 +
+    '      "name": "Path joined without delimiter",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "robustness",' + #10 +
+    '      "description": "A folder without a trailing path delimiter is joined to a file or folder name with +: results of ExtractFileDir, ExcludeTrailingPathDelimiter, GetCurrentDir, GetHomePath, TPath.G' + 'etDocumentsPath and the other TPath.Get…Path folders, TPath.GetDirectoryName, TDirectory.GetCurrentDirectory and TDirectory.GetParent, called directly or held in a local variable that the routine only' + ' assigns such values to. The result is C:\\Datadatei.txt instead of C:\\Data\\datei.txt. ExtractFilePath, IncludeTrailingPathDelimiter and TPath.GetTempPath end with a delimiter and stay silent, as do' + ' delimiters, extensions (ExtractFileExt, ''.bak'') and texts that start with a space or punctuation. A literal name reports with high confidence, an identifier with medium confidence. A local variable p' + 'assed to a procedure other than ForceDirectories, FileExists and similar read-only calls may be changed there and stays silent. Quick fix: TPath.Combine(Folder, Name), adding System.IOUtils to uses.",' + #10 +
+    '      "bad": "Ordner := TPath.GetDocumentsPath;\nDatei := Ordner + ''export.csv'';",' + #10 +
+    '      "good": "Ordner := TPath.GetDocumentsPath;\nDatei := TPath.Combine(Ordner, ''export.csv'');"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "hardcoded-path",' + #10 +
+    '      "name": "Hard-coded file path",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "robustness",' + #10 +
+    '      "description": "A string literal with a drive letter (C:\\…, also with /) or a UNC path (\\\\server\\share\\…); paths under C:\\Users or C:\\Documents and Settings get their own message. On othe' + 'r computers the path is missing. Drive roots such as ''C:\\'' alone and the prefixes \\\\?\\ and \\\\.\\ stay silent, as do comments, test units and units listed in allowUnits (for example a unit with t' + 'he default paths of an installation). High confidence, no quick fix: take the path from TPath (GetDocumentsPath, GetHomePath, GetSharedDocumentsPath), the settings or an environment variable.",' + #10 +
+    '      "bad": "Protokoll.SaveToFile(''C:\\Users\\marco\\Desktop\\log.txt'');",' + #10 +
+    '      "good": "Protokoll.SaveToFile(TPath.Combine(TPath.GetDocumentsPath, ''log.txt''));",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowUnits",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Units in which hard-coded paths are allowed, by unit name; * at the end matches a prefix (App.Config*)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "filename-compare-case",' + #10 +
+    '      "name": "File names compared with =",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "robustness",' + #10 +
+    '      "description": "A comparison with = or <> where one side is a file or path name: the result of ExtractFileName, ExtractFilePath, ExtractFileDir, ExtractFileExt, ExpandFileName, ChangeFileExt and' + ' related System.SysUtils functions, of TPath.GetFileName, GetExtension, GetDirectoryName, GetFullPath, Combine and related methods, or a variable or property whose name ends in FileName, or Applicatio' + 'n.ExeName. On Windows Kunde.pas and kunde.PAS are the same file. Comparisons with an empty string, nil or a literal without letters stay silent, as does ExtractFileDir(X) = X (both sides come from the' + ' same text). Medium confidence. Quick fix: SameFileName(A, B), or not SameFileName(A, B) for <>; adds System.SysUtils to uses if needed.",' + #10 +
+    '      "bad": "if ExtractFileName(Datei) = ''Config.ini'' then",' + #10 +
+    '      "good": "if SameFileName(ExtractFileName(Datei), ''Config.ini'') then"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "initialization-not-finalized",' + #10 +
+    '      "name": "Object created at startup is not freed",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "robustness",' + #10 +
+    '      "description": "An object is created with TClass.Create in the initialization section and assigned to a unit variable, or created in a class constructor and assigned to a class var, but the unit' + ' never frees it (no Free, Destroy, DisposeOf, Release or FreeAndNil anywhere in the unit). FastMM reports a leak on shutdown; in packages the object stays behind on every unload. Interface and record ' + 'types, components with an owner (Application, Self, Owner) and objects the unit hands over stay silent: every mention of the variable must be harmless (member access, comparison with nil, Assigned, a ' + 'new Create or nil assignment); passing it as an argument, assigning it elsewhere, with, a property reading it or FreeOnTerminate silence the rule. For variables in the interface section and public cla' + 'ss vars the rule also stays silent when another indexed unit uses the name. High confidence. Quick fix: FreeAndNil at the end of finalization or in the class destructor; a missing finalization section' + ' or class destructor (declaration and body) is created and System.SysUtils is added to uses when needed.",' + #10 +
+    '      "bad": "initialization\n  GProtokoll := TProtokoll.Create;\nend.",' + #10 +
+    '      "good": "initialization\n  GProtokoll := TProtokoll.Create;\n\nfinalization\n  FreeAndNil(GProtokoll);\nend."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "compiler-warnings-disabled",' + #10 +
+    '      "name": "Compiler warnings or checks switched off up to the end of the unit",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "robustness",' + #10 +
+    '      "description": "{$WARNINGS OFF}, {$HINTS OFF}, {$WARN X OFF}, {$R-}, {$Q-} (also combined as {$R-,Q-}) or the long forms {$RANGECHECKS OFF} and {$OVERFLOWCHECKS OFF} without a later restore up t' + 'o the end of the unit. Messages and checks disappear far beyond the intended spot, and the 0/0/0 rule is bypassed. Any later ON, +, DEFAULT or ERROR for the same switch counts as a restore, also insid' + 'e {$IFOPT}/{$IFDEF} patterns, as does a later {$POPOPT}. A switch whose counterpart stands in another branch of the same {$IF} ({$IFDEF DEBUG}{$R+}{$ELSE}{$R-}{$ENDIF}) is a deliberate setting per con' + 'figuration and stays silent, as does a directive with no code after it; {$R *.dfm} is a resource, not a range check. Option allow lists switches that may stay off (warning names such as SYMBOL_PLATFOR' + 'M, WARNINGS, HINTS, R or RANGECHECKS, Q or OVERFLOWCHECKS). High confidence. Quick fix: insert the restore ({$WARNINGS ON}, {$WARN X DEFAULT}, {$R+} …) after the next block; for range and overflow che' + 'cks only individually, since {$R+} may switch on a check the project has off.",' + #10 +
+    '      "bad": "{$WARNINGS OFF}\nfunction AlteBerechnung(const Wert: Integer): Integer;\nbegin\n  Result := Wert * 2;\nend;",' + #10 +
+    '      "good": "{$WARNINGS OFF}\nfunction AlteBerechnung(const Wert: Integer): Integer;\nbegin\n  Result := Wert * 2;\nend;\n{$WARNINGS ON}",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allow",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Switches that may stay off up to the end of the unit: warning names for {$WARN} (SYMBOL_PLATFORM), WARNINGS, HINTS, R or RANGECHECKS, Q or OVERFLOWCHECKS; case is ignored."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dll-export-unsafe",' + #10 +
+    '      "name": "Exported routine not safe across DLL boundaries",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "robustness",' + #10 +
+    '      "description": "A routine of this file listed in exports has no calling convention (stdcall, cdecl, safecall, winapi or pascal; register is the Delphi convention) or takes or returns a string (s' + 'tring, UnicodeString, AnsiString, UTF8String, RawByteString), a dynamic array (TBytes, TArray<T>, …DynArray, array of T declared in the file), an object or an interface without GUID. Callers in other ' + 'languages or Delphi versions crash; strings and dynamic arrays live in the memory manager of the DLL. WideString, ShortString, PChar, open array parameters and records are fine. Objects are only recog' + 'nised for certain: classes of the file, of the index and common RTL classes; interfaces only from the file. Routines from other units and overloads that the exports entry does not pin down stay silent' + '. With ShareMem or SimpleShareMem in uses, strings and dynamic arrays are allowed (option allowShareMem). The finding sits on the exports entry; for strings it recommends PChar with buffer and length.' + ' High confidence. Quick fix: add stdcall to every header of the routine (only individually, since it changes the interface for existing callers).",' + #10 +
+    '      "bad": "function KundeName(Id: Integer): string;\n…\nexports\n  KundeName;",' + #10 +
+    '      "good": "function KundeName(Id: Integer; Puffer: PChar; Laenge: Integer): Integer; stdcall;\n…\nexports\n  KundeName;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowShareMem",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "With ShareMem or SimpleShareMem in uses, strings and dynamic arrays are allowed in exported routines."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "destructor-not-nil-safe",' + #10 +
+    '      "name": "Destructor uses fields that may be nil",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "If a constructor raises, Delphi calls the destructor right away, even though not all fields exist yet. Reported is an access in the destructor (or in a private method that only t' + 'he destructor calls) to a field such as FLines.Clear, FFile.Position or FLines[0], when a constructor of the class creates the field (TClass.Create) only after a call that can raise or only on some pa' + 'ths. The resulting access violation hides the original exception. Free, FreeAndNil, DisposeOf and accesses after Assigned(FField) or FField <> nil are nil-safe; BeforeDestruction does not run on this ' + 'path. Constructors of RTL classes that raise at most EOutOfMemory (TStringList.Create, TObjectList<T>.Create(True)), inherited Create and Supports do not count as raising. High confidence. Quick fix: ' + 'put if Assigned(FField) then in front of the statement. With onlyAfterRaisingCode off, every field created in the constructor counts.",' + #10 +
+    '      "bad": "constructor TImport.Create(const Datei: string);\nbegin\n  inherited Create;\n  FStrom := TFileStream.Create(Datei, fmOpenRead);\n  FZeilen := TStringList.Create;\nend;\n\ndestructor TIm' + 'port.Destroy;\nbegin\n  FZeilen.Clear;\n  FZeilen.Free;\n  FStrom.Free;\n  inherited;\nend;",' + #10 +
+    '      "good": "destructor TImport.Destroy;\nbegin\n  if Assigned(FZeilen) then\n    FZeilen.Clear;\n  FZeilen.Free;\n  FStrom.Free;\n  inherited;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "onlyAfterRaisingCode",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Only report when the constructor calls something that can raise before it creates the field."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "handle-leak",' + #10 +
+    '      "name": "Windows handle is not closed",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "A Windows handle in a local variable is not closed with its counterpart on some path to the end of the routine: CreateFile, CreateEvent, CreateMutex, OpenProcess, CreateProcess (' + 'hProcess, hThread) and CreateToolhelp32Snapshot with CloseHandle, FindFirstFile with FindClose, RegOpenKeyEx/RegCreateKeyEx with RegCloseKey, LoadLibrary with FreeLibrary, GetDC with ReleaseDC, Create' + 'Pen/CreateBrush/CreateFont/CreateBitmap with DeleteObject, CreateCompatibleDC with DeleteDC and others. Returning the handle, storing it in a field or global, passing it to an unknown routine or captu' + 'ring it in an anonymous method counts as handing it on. Branches in which an if check says the open failed (H = 0, H = INVALID_HANDLE_VALUE, RegOpenKeyEx(...) <> ERROR_SUCCESS) and exception paths (se' + 'e pair-without-finally) do not count. The option pairs adds your own pairs. Medium confidence. Quick fix when the handle is never closed: wrap the statements after the open in try … finally with the c' + 'lose call, or append the close call when the open is the last statement.",' + #10 +
+    '      "bad": "H := CreateFile(PChar(Datei), GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);\nif H = INVALID_HANDLE_VALUE then\n  RaiseLastOSError;\nReadFile(H, Puffer, SizeOf(Puffer), Gelesen, nil);",' + #10 +
+    '      "good": "H := CreateFile(PChar(Datei), GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);\nif H = INVALID_HANDLE_VALUE then\n  RaiseLastOSError;\ntry\n  ReadFile(H, Puffer, SizeOf(Puffer), Gelesen, nil' + ');\nfinally\n  CloseHandle(H);\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "pairs",' + #10 +
+    '          "type": "json",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Additional open/close pairs as \"Open>Close\" or {\"open\": …, \"close\": …}; the open function returns the handle, the close procedure takes it as its only argument."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "global-formatsettings-modified",' + #10 +
+    '      "name": "Global FormatSettings is modified",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "robustness",' + #10 +
+    '      "description": "Assignment to the global FormatSettings or one of its fields (also to the deprecated global variables DecimalSeparator, ShortDateFormat, ThousandSeparator … of older Delphi versi' + 'ons). This changes the formatting for the whole application, for every package in the same process (in an IDE plugin the IDE itself) and for all threads, and is not thread-safe; it is often a workarou' + 'nd to force a dot as decimal separator. Reported only when the name is surely the variable from System.SysUtils: no local declaration, no member of the class or its ancestors (silent when the chain of' + ' ancestors ends at an unknown class), not inside with. Complements format-without-settings, which reports formatting calls without settings. High confidence. Quick fix when the routine changes the glo' + 'bal settings only once and formats something afterwards: declare a local TFormatSettings (TFormatSettings.Invariant for DecimalSeparator := ''.'', otherwise a copy of FormatSettings with the changed fie' + 'ld) and pass it to the formatting calls that follow. With allowInProgram on, assignments in the .dpr are allowed.",' + #10 +
+    '      "bad": "procedure TExport.Schreiben;\nbegin\n  FormatSettings.DecimalSeparator := ''.'';\n  Zeile := FloatToStr(Betrag);\nend;",' + #10 +
+    '      "good": "procedure TExport.Schreiben;\nvar\n  FS: TFormatSettings;\nbegin\n  FS := TFormatSettings.Invariant;\n  Zeile := FloatToStr(Betrag, FS);\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowInProgram",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": false,' + #10 +
+    '          "description": "Allow the assignments in the .dpr, for example once at program start."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-interface-dangling",' + #10 +
+    '      "name": "Component stored as interface stays referenced after Free",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "A descendant of TComponent (form, frame, data module, own component) implements an interface, but TComponent does not count references. Reported is storing the object as an inter' + 'face in a field, a global variable or a list (FView as IObserver passed to Bus.Subscribe, FList.Add, Register, Anmelden …, assigned to a field or global, or added to a TList<IFoo>/TInterfaceList) when' + ' the same unit frees the object (Free, Release, DisposeOf, FreeAndNil) and nowhere unregisters it: FreeNotification on the object, another call on the same receiver with the object as argument (Unsubs' + 'cribe, Remove, Abmelden …), Clear, or another assignment to the same field. After the Free the stored interface points to freed memory. Silent for classes with their own _Release and when the chain of' + ' ancestors ends at an unknown class. Also reported, without a quick fix: descendants of TInterfacedObject that are stored this way and additionally freed with Free; the stored interface keeps a freed ' + 'object, and unregistering first would already free it. Medium confidence. Quick fix: insert the unregistration before the first Free (Receiver.Abmelden(…) when the receiver''s type has the counterpart,' + ' or Field := nil).",' + #10 +
+    '      "bad": "procedure TfrmHaupt.AnsichtOeffnen;\nbegin\n  FAnsicht := TfrmKunden.Create(Self);\n  Bus.Anmelden(FAnsicht as IBeobachter);\nend;\n\nprocedure TfrmHaupt.AnsichtSchliessen;\nbegin\n  FAn' + 'sicht.Free;\nend;",' + #10 +
+    '      "good": "procedure TfrmHaupt.AnsichtOeffnen;\nbegin\n  FAnsicht := TfrmKunden.Create(Self);\n  Bus.Anmelden(FAnsicht as IBeobachter);\nend;\n\nprocedure TfrmHaupt.AnsichtSchliessen;\nbegin\n  Bu' + 's.Abmelden(FAnsicht as IBeobachter);\n  FAnsicht.Free;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "componentClasses",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "TComponent"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Base classes without reference counting; with TComponent the known VCL and FMX classes (TForm, TFrame, TDataModule …) count as well."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unit-name-mismatch",' + #10 +
+    '      "name": "Unit name does not match the file name",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The name after unit differs from the file name, usually after renaming the file outside the IDE (like E1038, W1038). Case does not matter, dots in the name do. In a program, libr' + 'ary or package, an entry uses X in ''File.pas'' whose file declares a different unit is reported too (like E2085); the rule reads that file. Programs, libraries and packages themselves are not compared ' + 'with their file name, because the compiler does not either. {$WARN UNIT_NAME_MISMATCH OFF} or {$WARNINGS OFF} before the unit name silences the rule like the compiler. Quick fixes: change the unit nam' + 'e to the file name (renaming the file is up to the IDE), or change the uses entry to the unit the file declares.",' + #10 +
+    '      "bad": "// File: Kunden.Daten.pas\nunit Kunden.Model;\n\ninterface",' + #10 +
+    '      "good": "// File: Kunden.Daten.pas\nunit Kunden.Daten;\n\ninterface",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E1038",' + #10 +
+    '        "W1038",' + #10 +
+    '        "E2085"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "text-after-final-end",' + #10 +
+    '      "name": "Text after the final end.",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Source code after the final end. of a unit, program, library or package. The compiler ignores it (like W1011); usually it is code that ended up at the end of the file while pasti' + 'ng and is never compiled. Comments and directives are not reported (option allowComments). The rule finds the final end. behind the last section of the syntax tree and stays silent while the parser re' + 'ports errors or when end. is inside an {$IF…} branch; {$WARNINGS OFF} before end. silences it. Quick fix: remove the text after end.",' + #10 +
+    '      "bad": "end.\n\nprocedure TKunde.Speichern;\nbegin",' + #10 +
+    '      "good": "end.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowComments",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Allow comments and directives after end."' + #10 +
+    '        }' + #10 +
+    '      ],' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1011"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "exports-invalid",' + #10 +
+    '      "name": "Invalid exports clause",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "An exports clause inside a routine (like E2191), the export of a threadvar or of a routine declared local (like E2276), of a variable, constant or type (like E2121), or the same ' + 'entry or export name twice (like E2287). Names are only resolved against global declarations of the file; names from other units and names with a dot stay silent, as do two entries in mutually exclusi' + 've {$IF…} branches. Overloaded routines with different parameter lists or export names count as different entries. Complements dll-export-unsafe (#973). Quick fix: remove the duplicate entry.",' + #10 +
+    '      "bad": "exports\n  Initialisieren,\n  Berechnen,\n  Initialisieren;",' + #10 +
+    '      "good": "exports\n  Initialisieren,\n  Berechnen;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2191",' + #10 +
+    '        "E2276",' + #10 +
+    '        "E2121",' + #10 +
+    '        "E2287"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unit-name-conflict",' + #10 +
+    '      "name": "Unit name conflicts",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A unit is named like a unit reserved for the compiler, System or SysInit (like E2272), or {$NOINCLUDE X} names a unit the compiler does not know (like E2242); the latter needs th' + 'e project''s unit search and stays silent when it gives no sure answer. The RTL sources (source/rtl) are not checked. Not reported: E2447, W1051 and X2421 belong to the namespaces of .NET metadata, whi' + 'ch dcc32/dcc64 do not create; for E2399 the documentation gives no condition, and a unit Kunden next to Kunden.Daten compiles without error in Delphi (Spring.pas next to Spring.Collections.pas). Quick' + ' fix for {$NOINCLUDE}: use a similarly spelled known unit.",' + #10 +
+    '      "bad": "unit System;\n\ninterface",' + #10 +
+    '      "good": "unit Kunden.Systemdienste;\n\ninterface",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2272",' + #10 +
+    '        "E2242"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "implicit-variants-unit",' + #10 +
+    '      "name": "Variant without System.Variants in uses",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The unit uses Variant or OleVariant as a type without System.Variants in uses. The compiler then adds the unit silently (like W1040) and so changes the initialization order. The ' + 'rule counts type references in the syntax tree (variables, fields, parameters, results, type arguments); Variants in uses also counts inside an {$IF…} branch and without namespace. Silent in System, S' + 'ysInit and Variants themselves, when the file declares its own type Variant, and after {$WARN IMPLICIT_VARIANTS OFF}. Off by default (strict profile). Quick fix: add System.Variants to uses (Variants ' + 'when the unit names SysUtils or Classes without namespace).",' + #10 +
+    '      "bad": "uses\n  System.SysUtils;\n…\nvar Wert: Variant;",' + #10 +
+    '      "good": "uses\n  System.SysUtils, System.Variants;\n…\nvar Wert: Variant;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1040"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "file-encoding-unsupported",' + #10 +
+    '      "name": "Encoding or character the compiler does not read",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The file is UTF-32 encoded (like F2438; recognized by its byte order mark, no further findings then), or the code outside strings, comments and directives contains a character th' + 'e compiler rejects (like E2038): typographic quotes copied from a web page or a word processor, the ASCII characters ! \" ? \\ ` | ~ and punctuation, symbols and emoji beyond ASCII. Letters, digits an' + 'd connectors such as U+203F stay allowed in identifiers; asm blocks and {$IF…} branches are skipped; control, format and space characters are left to control-char and invisible-char. Quick fix: a pair' + ' of quotes on one line becomes a string literal; a single character with an unambiguous ASCII counterpart (– − × ÷ ≤ ≥ ≠, full-width ASCII) is replaced. A UTF-32 file has no quick fix; save it as UTF-' + '8 with BOM.",' + #10 +
+    '      "bad": "Titel := ‚Bericht‘;",' + #10 +
+    '      "good": "Titel := ''Bericht'';",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "F2438",' + #10 +
+    '        "E2038"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "anonymous-capture-invalid",' + #10 +
+    '      "name": "Anonymous method captures what it must not capture",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "An anonymous method uses a var, out or untyped parameter, or Result, of a surrounding routine or anonymous function (like E2555). The name is resolved from the inside out (parame' + 'ters, var/const/type, local routines, inline variables, for var); inside with and asm the rule stays silent, and declarations in conditional branches that exclude the location do not count. Quick fix:' + ' copy the value into a local variable before the statement, use only that variable in the anonymous method, and write it back after the statement when the method assigns it.",' + #10 +
+    '      "bad": "procedure Load(var Count: Integer);\nbegin\n  TTask.Run(procedure begin Inc(Count); end);\nend;",' + #10 +
+    '      "good": "procedure Load(var Count: Integer);\nvar\n  CountCopy: Integer;\nbegin\n  CountCopy := Count;\n  TTask.Run(procedure begin Inc(CountCopy); end);\n  Count := CountCopy;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2555"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "operator-declaration-invalid",' + #10 +
+    '      "name": "Operator declared incorrectly",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A class operator in a record or class is declared in a way Delphi rejects: unknown operator name (like E2393), wrong number of parameters (E2517), own type missing from the param' + 'eters (E2518) or from parameters and result for Implicit/Explicit (E2521), Inc/Dec with a result type other than the first parameter (E2519), comparison operator without a Boolean result (E2520), conv' + 'ersion to or from an ancestor (E2522, chain within the file) or Assign without var before the first parameter (E2464). Types count as equal when their names match without unit prefix and type argument' + 's; aliases of the own type declared in the file keep the rule silent, and True, False and OnesComplement are accepted. Quick fixes: nearest operator name, Boolean as result, result like the first para' + 'meter, var before the first parameter, parameter list from the template; each in the declaration and the implementation.",' + #10 +
+    '      "bad": "TGeld = record\n  class operator Equal(const A, B: TGeld): Integer;\nend;",' + #10 +
+    '      "good": "TGeld = record\n  class operator Equal(const A, B: TGeld): Boolean;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2393",' + #10 +
+    '        "E2464",' + #10 +
+    '        "E2517",' + #10 +
+    '        "E2518",' + #10 +
+    '        "E2519",' + #10 +
+    '        "E2520",' + #10 +
+    '        "E2521",' + #10 +
+    '        "E2522"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "generic-declaration-invalid",' + #10 +
+    '      "name": "Generic declaration not allowed",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A generic declaration that Delphi rejects: class and record constraints together (like E2507), a constraint twice (E2603), record together with constructor (E2516), a class type ' + 'next to class or record (E2552), two class types (E2553), a constraint type that is neither class nor interface (E2510); type parameters on an enumeration, set, subrange, pointer, class reference, ali' + 'as or helper (E2508), on a destructor or class constructor (E2528), an operator (E2529), a global routine (E2530), a virtual, dynamic, message or override method (E2533) or an interface method (E2535)' + '; class of a parameterized type (E2548), a generic class derived from TCustomAttribute (E2549), a parameterized type as attribute (E2565); a type parameter that hides one of the enclosing type (H2509)' + '; a call with a number of type arguments no overload has (E2551, classes and records of the file with their ancestors in the file); a method of a generic type or a generic method declared in the inter' + 'face section that uses a symbol of the implementation section (E2506; silent inside with and when the ancestor chain is not known). Types count only when they are built in or declared in the file; unk' + 'nown types keep the rule silent. Local procedures in generic methods (E2570) are not reported until a check against Delphi 12/13 confirms that they are still rejected.",' + #10 +
+    '      "bad": "procedure Swap<T>(var A, B: T);",' + #10 +
+    '      "good": "type\n  TSwap = record\n    class procedure Swap<T>(var A, B: T); static;\n  end;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2506",' + #10 +
+    '        "E2507",' + #10 +
+    '        "E2508",' + #10 +
+    '        "E2510",' + #10 +
+    '        "E2516",' + #10 +
+    '        "E2528",' + #10 +
+    '        "E2529",' + #10 +
+    '        "E2530",' + #10 +
+    '        "E2533",' + #10 +
+    '        "E2535",' + #10 +
+    '        "E2548",' + #10 +
+    '        "E2549",' + #10 +
+    '        "E2551",' + #10 +
+    '        "E2552",' + #10 +
+    '        "E2553",' + #10 +
+    '        "E2565",' + #10 +
+    '        "E2603",' + #10 +
+    '        "H2509"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "type-restriction-violated",' + #10 +
+    '      "name": "Language rule for records, inline and helpers violated",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Fixed language rules that only the compiler reports: virtual methods (like E2379) or other virtual directives (override, abstract, reintroduce, message, final; E2463) in records,' + ' parameterless constructors (E2394), constructors whose parameters all have defaults (E2471) and destructors (E2465) in records, class methods in records without static (E2398); in record helpers virt' + 'ual methods (E2598) and the other virtual directives (E2475); fields in helpers (class var is allowed, E2599), a destructor (E2295) or class constructor (E2358) in a class helper, a helper constructor' + ' whose first statement is not a call without arguments (E2296), a class helper descending from a helper whose type the new target does not descend from (E2294, only with a known ancestor chain), a hel' + 'per used as type of a declaration (E2527) or declared inside a generic type (E2589); several class constructors (E2359, exclusive conditional branches count once), class constructors with parameters (' + 'E2360) or virtual, dynamic or message (E2534); methods, properties, class members, types and constants in local or anonymous records (E2433 to E2437); inline on virtual or dynamic methods (E2425), on ' + 'constructors and destructors (E2442), with open array parameters (E2439), with an asm body (E2426), declared in the interface section and using a symbol of the implementation section (E2441), as local' + ' routine reading variables of the enclosing routine (E2449) or calling its own local routines (E2501); local, absolute or initialized threadvar (E2189, E2190, E2194). The checks apply to all supported' + ' Delphi versions (10 Seattle to 13). Option disabledChecks leaves out single codes. Quick fixes: remove the directive, add static.",' + #10 +
+    '      "bad": "TPoint2 = record\n  X, Y: Integer;\n  function Length: Double; virtual;\nend;",' + #10 +
+    '      "good": "TPoint2 = record\n  X, Y: Integer;\n  function Length: Double;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2189",' + #10 +
+    '        "E2190",' + #10 +
+    '        "E2194",' + #10 +
+    '        "E2294",' + #10 +
+    '        "E2295",' + #10 +
+    '        "E2296",' + #10 +
+    '        "E2358",' + #10 +
+    '        "E2359",' + #10 +
+    '        "E2360",' + #10 +
+    '        "E2379",' + #10 +
+    '        "E2394",' + #10 +
+    '        "E2398",' + #10 +
+    '        "E2425",' + #10 +
+    '        "E2426",' + #10 +
+    '        "E2433",' + #10 +
+    '        "E2434",' + #10 +
+    '        "E2435",' + #10 +
+    '        "E2436",' + #10 +
+    '        "E2437",' + #10 +
+    '        "E2439",' + #10 +
+    '        "E2441",' + #10 +
+    '        "E2442",' + #10 +
+    '        "E2449",' + #10 +
+    '        "E2463",' + #10 +
+    '        "E2465",' + #10 +
+    '        "E2471",' + #10 +
+    '        "E2475",' + #10 +
+    '        "E2501",' + #10 +
+    '        "E2527",' + #10 +
+    '        "E2534",' + #10 +
+    '        "E2589",' + #10 +
+    '        "E2598",' + #10 +
+    '        "E2599"' + #10 +
+    '      ],' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "disabledChecks",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Compiler codes the rule does not check, e.g. [\"E2425\"]."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "attribute-usage-invalid",' + #10 +
+    '      "name": "Attribute used incorrectly",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A compiler attribute is used where Delphi rejects it: [Weak] on a field or variable whose type is certainly neither a class nor an interface (built-in value types, records, enume' + 'rations, sets, arrays, pointer types of the file, aliases followed; like E2584), [Volatile] on a type, routine, method or property (E2325), Weak, Unsafe, Volatile or Ref twice on the same declaration ' + '(E2326; branches that exclude each other do not count), or an attribute argument that is certainly a variable or a routine of the file (E2448; visible before the attribute, not shadowed by a constant,' + ' type or other declaration of the same name). Custom attributes may be repeated; a type Weak or WeakAttribute declared in the file keeps the rule silent for that name. No quick fix.",' + #10 +
+    '      "bad": "TCounter = class\nprivate\n  [Weak] FCount: Integer;\nend;",' + #10 +
+    '      "good": "TCounter = class\nprivate\n  [Weak] FOwner: IInterface;\n  FCount: Integer;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2325",' + #10 +
+    '        "E2326",' + #10 +
+    '        "E2448",' + #10 +
+    '        "E2584"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "typeinfo-invalid",' + #10 +
+    '      "name": "TypeInfo or Default with an invalid argument",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "TypeInfo or Default receives a variable instead of a type (like E2133, E2537: parameters, local, inline and unit variables, fields, properties, Result, for and exception variable' + 's), TypeInfo receives a type without RTTI (enumeration with explicit values, file type, Text/TextFile; E2134), or Default receives a file type (E2538). Names are resolved from the inside out; inside w' + 'ith, in helpers, in methods of types outside the file, for declarations in other conditional branches and when the file or the index declares its own TypeInfo or Default the rule stays silent. Quick f' + 'ix: insert the variable''s declared type.",' + #10 +
+    '      "bad": "Name := GetEnumName(TypeInfo(Status), Ord(Status));",' + #10 +
+    '      "good": "Name := GetEnumName(TypeInfo(TStatus), Ord(Status));",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2133",' + #10 +
+    '        "E2134",' + #10 +
+    '        "E2537",' + #10 +
+    '        "E2538"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "missing-begin-end",' + #10 +
+    '      "name": "Condition or loop without begin … end",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "The body of if … then, else, for, while or with is a single statement without begin … end. With the rule, conditions and loops always have a block, so a second statement added la' + 'ter does not end up outside by accident. else if stays allowed (the inner if needs no block of its own); repeat … until, case … end, try … end and asm … end are blocks already. An empty statement (if ' + 'X then ;) is reported by empty-statement. Bodies with {$IFDEF} are not reported. While the rule is on, redundant-begin-end reports nothing. Quick fixes: put begin … end around the statement, for the w' + 'hole method or for the whole file, indented by the format settings; a ; before else moves into the block (no E2153).",' + #10 +
+    '      "bad": "if Kunde.Gesperrt then\n  Protokoll.Warnung(''Gesperrt'')\nelse\n  Speichern(Kunde);",' + #10 +
+    '      "good": "if Kunde.Gesperrt then\nbegin\n  Protokoll.Warnung(''Gesperrt'');\nend\nelse\nbegin\n  Speichern(Kunde);\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "statements",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "if",' + #10 +
+    '            "else",' + #10 +
+    '            "for",' + #10 +
+    '            "while",' + #10 +
+    '            "with"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Checked statements; add case for the branches of case statements."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "allowSingleLineExit",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": false,' + #10 +
+    '          "description": "Allow Exit, Continue, Break and raise on the same line as the condition (if … then Exit;)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "allowSameLine",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": false,' + #10 +
+    '          "description": "Allow a single statement on the same line as the condition or loop header."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inherited-constructor-after-try",' + #10 +
+    '      "name": "Inherited constructor only inside try",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A constructor enters a try block before it has called the inherited constructor (like H2505). Self is not initialised there yet; an exception in the block can hit half-created fi' + 'elds. Calls count as the inherited constructor when they are inherited without a name, with the constructor''s own name or with a name starting with Create. Branches of {$IFDEF} are checked separately.' + ' Quick fix when the call is the first statement of the try block: move it before try.",' + #10 +
+    '      "bad": "constructor TDienst.Create;\nbegin\n  try\n    inherited Create;\n    FListe := TList<TAuftrag>.Create;",' + #10 +
+    '      "good": "constructor TDienst.Create;\nbegin\n  inherited Create;\n  try\n    FListe := TList<TAuftrag>.Create;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "H2505"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "variant-record-managed-field",' + #10 +
+    '      "name": "Managed type in the variant part of a record",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The variant part of a record (case … of) holds a string, dynamic array, interface, Variant or a record with such fields (like E2154), a custom managed record with class operator ' + 'Initialize or Finalize (like E2418), or a type parameter without record constraint (like E2569); likewise after file of (like E2155, E2417). Types are resolved in the file and the index; unknown types' + ' stay silent. Quick fixes: move the field before case into the fixed part, use ShortString, or constrain the type parameter with record.",' + #10 +
+    '      "bad": "TWert = record\n  case Art: TArt of\n    waZahl: (Zahl: Double);\n    waText: (Text: string);\nend;",' + #10 +
+    '      "good": "TWert = record\n  Text: string;\n  case Art: TArt of\n    waZahl: (Zahl: Double);\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2154",' + #10 +
+    '        "E2155",' + #10 +
+    '        "E2418",' + #10 +
+    '        "E2417",' + #10 +
+    '        "E2569"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "guid-syntax-invalid",' + #10 +
+    '      "name": "GUID with invalid syntax",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The GUID of an interface or of a typed TGUID constant is not of the form ''{8-4-4-4-12}'' (like E2204): missing braces, wrong number or length of blocks, characters that are not he' + 'x digits, often after editing by hand. Only single literals are checked; concatenations and constants stay silent. Quick fixes: generate a new GUID; when only the braces are missing, add them. Complem' + 'ents interface-guid and duplicate-interface-guid.",' + #10 +
+    '      "bad": "ILogger = interface\n  [''{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6}'']",' + #10 +
+    '      "good": "ILogger = interface\n  [''{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C}'']",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2204"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "untyped-pointer-refcount",' + #10 +
+    '      "name": "Untyped pointer bypasses reference counting",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "An interface is assigned through a typecast to Pointer (Pointer(FIntf) := P, like W1070). Reference counting does not take part: the object is freed too early or never. The rule ' + 'reports only when name resolution knows the interface type for sure; strings (string, AnsiString …) are reported as well, with the note \"dcc does not report this\", since Delphi warns about them only' + ' under NEXTGEN. Fields that already carry [weak] or [unsafe] stay silent. Quick fixes for an interface field of this file with Pointer(Y) or nil on the right: mark the field [weak] or [unsafe] and ass' + 'ign without Pointer.",' + #10 +
+    '      "bad": "Pointer(FBesitzer) := Pointer(Besitzer);",' + #10 +
+    '      "good": "[weak] FBesitzer: IBesitzer;\n…\nFBesitzer := Besitzer;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1070"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "type-too-large",' + #10 +
+    '      "name": "Type exceeds a size limit",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A static array or record is 2 GB or larger (like E2100), or an instance of a generic type of this file is (like E2543). Atlas computes a lower bound from the declarations: index ' + 'ranges via constant expressions, constants and enumerations of the file, built-in types, records from the index; unknown parts count as 0, so the rule reports only for sure. Only the innermost type th' + 'at crosses the limit is reported. E2419 (records over 1 MB) applies only to Delphi for .NET and is not reported. No quick fix; use a dynamic array or a pointer instead.",' + #10 +
+    '      "bad": "type TPuffer = array[0..High(Integer)] of Int64;",' + #10 +
+    '      "good": "type TPuffer = array of Int64;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2100",' + #10 +
+    '        "E2543"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "comparison-always-constant",' + #10 +
+    '      "name": "Comparison always true or always false",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A comparison of a variable, field, property or function result of a built-in integer type with a constant outside or at the edge of its value range (like W1021, W1022): Cardinal ' + '>= 0 is always true, Byte > 255 always false. Case labels outside the range of the case expression are reported as well (like W1018). The rule only reports when the type is known for sure and its decl' + 'aration is always compiled together with the comparison. NativeInt, LongInt and their unsigned counterparts count with the widest range of all platforms; subrange types are not reported. Length(...) <' + ' 0 and Length(...) >= 0 are reported as well, although dcc does not warn there; the message says so.",' + #10 +
+    '      "bad": "while Rest >= 0 do  // Rest: Cardinal",' + #10 +
+    '      "good": "while Rest > 0 do",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1021",' + #10 +
+    '        "W1022",' + #10 +
+    '        "W1018"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "constant-initializer-mismatch",' + #10 +
+    '      "name": "Initializer of a constant does not match",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A typed constant or initialized variable of a static array type has more or fewer elements than its index range (like E2072), typically after adding a value to an enumeration (ar' + 'ray[TStatus] of string); checked per dimension and for named array types of the file. Record constants whose fields are in a different order than declared are reported as well (like E2083). Index rang' + 'es: subranges with constant bounds, enumerations without own values, Boolean, Byte, Char and so on. Declarations with conditional directives count as unsure. Quick fixes: add the missing entries with ' + 'a placeholder (name of the enumeration value as a comment), put the fields in the order of the declaration.",' + #10 +
+    '      "bad": "StatusText: array[TStatus] of string = (''Neu'', ''Offen'', ''Geschlossen'');  // TStatus has 4 values",' + #10 +
+    '      "good": "StatusText: array[TStatus] of string = (''Neu'', ''Offen'', ''Geschlossen'', ''''{stArchiviert});",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2072",' + #10 +
+    '        "E2083"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "case-selector-not-ordinal",' + #10 +
+    '      "name": "case or for without an ordinal type",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "case over an expression that is not ordinal (like E2001): strings, floating point numbers, classes and interfaces; a for loop whose counter is not ordinal (like E2032); case labe' + 'ls and array bounds that are variables, fields, properties, parameters or typed constants instead of constants (like E2026). The rule only reports when the type is known for sure and its declaration i' + 's always compiled together with the statement. Quick fix for strings whose labels are all string literals: case IndexStr(S, [...]) of with the positions as labels, System.StrUtils is added to uses.",' + #10 +
+    '      "bad": "case Befehl of ''start'': Starten; ''stop'': Stoppen; end;  // Befehl: string",' + #10 +
+    '      "good": "case IndexStr(Befehl, [''start'', ''stop'']) of 0: Starten; 1: Stoppen; end;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2001",' + #10 +
+    '        "E2032",' + #10 +
+    '        "E2026"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "suspicious-string-pointer-cast",' + #10 +
+    '      "name": "Pointer and character width of a string do not match",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "PChar or PWideChar on an AnsiString, RawByteString or UTF8String, and PAnsiChar on a string, UnicodeString or WideString (like W1044): pointer and character width do not match, a' + ' typical mistake after the Unicode migration; the API then reads garbage or only the first character. The rule only reports when the type of the argument is known for sure and its declaration is alway' + 's compiled together with the cast. string(PAnsiChar) converts correctly and a pointer to TBytes may be intended; both are not reported. Quick fixes: declare an own variable with the matching string ty' + 'pe (PChar(Pfad) with Pfad: AnsiString becomes Pfad: string), wrap the argument in string(...) or AnsiString(...), use the matching pointer type.",' + #10 +
+    '      "bad": "var Pfad: AnsiString; ... DeleteFile(PChar(Pfad));",' + #10 +
+    '      "good": "var Pfad: string; ... DeleteFile(PChar(Pfad));",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1044",' + #10 +
+    '        "W1048"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inaccessible-member",' + #10 +
+    '      "name": "Access to a member that is not visible",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Access A.B to a member that is not visible at that point: private or strict private of another unit or class (like E2361), protected or strict protected outside the declaring uni' + 't and its descendants (like E2362, E2389). Inside a class method or static method, an instance field, method or property of the class is not reachable (like E2124). A property that refers to a private' + ' member of an ancestor in the same unit is reported as a warning (like W1045). The rule only reports when name resolution knows the receiver and its type for sure and finds the member only without reg' + 'ard to visibility; protected members stay visible through a class declared in the same unit (TAccess(Control).Click). Declarations in conditional branches, methods of helpers and nested types stay sil' + 'ent.",' + #10 +
+    '      "bad": "class function TKonfig.Standard: TKonfig;\nbegin\n  Result := TKonfig.Create;\n  Result.Pfad := FBasisPfad;\nend;",' + #10 +
+    '      "good": "class function TKonfig.Standard: TKonfig;\nbegin\n  Result := TKonfig.Create;\n  Result.Pfad := Result.FBasisPfad;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2361",' + #10 +
+    '        "E2362",' + #10 +
+    '        "E2389",' + #10 +
+    '        "E2124",' + #10 +
+    '        "W1045"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-private-member",' + #10 +
+    '      "name": "Private member never used",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A private or strict private field, method, constant or property is never used in the unit (like H2219, which the compiler only reports for methods; fields too unless includeField' + 's is off). Any occurrence of the name as an identifier counts as a use, also in inactive conditional branches and behind read/write; declarations and method headers do not. Exempt: methods with messag' + 'e, virtual, dynamic, override or abstract, methods of types that implement interfaces, constructors and destructors, members with attributes (RTTI), names from the form file and units with include fil' + 'es. Quick fix: remove the declaration (with its /// documentation) and the body of a method; not when several members share the declaration or the method is overloaded.",' + #10 +
+    '      "bad": "  TImport = class\n  private\n    FAltFormat: Boolean;\n    procedure KonvertiereAlt;\n  end;",' + #10 +
+    '      "good": "  TImport = class\n  private\n  end;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "H2219"' + #10 +
+    '      ],' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "includeFields",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Also report private fields that are never used (the compiler reports only methods)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-public-member",' + #10 +
+    '      "name": "Public member never used in the project",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A public or published method, constant or property (optionally also protected members, fields and class variables, and unit-level routines and constants of the interface section)' + ' is used nowhere in the projects of the project group. The search is project-wide via the symbol index: only files whose index usages contain the name are parsed, and every occurrence is resolved by n' + 'ame resolution; an occurrence that cannot be resolved counts as a use. Names in form files (.dfm/.fmx) and in string literals count as uses. Considered used: interface implementations and members of i' + 'nterfaces, virtual, dynamic, override, abstract and message methods, constructors, destructors, operators, enumerators, default properties, implements, members with attributes, published members of TP' + 'ersistent descendants (streaming), of classes registered with RegisterComponents, RegisterClass or RegisterClasses and of test fixtures, published methods while a form file cannot be read, property ac' + 'cessors, exported routines, class helpers, members of classes with an unknown ancestor. Silent while projects are loading or the index is incomplete, when a file cannot be read, for units with include' + ' files and for units of packages or libraries (external users) unless projectKinds allows them. Quick fix: mark as intentionally public (lsp-ignore comment).",' + #10 +
+    '      "bad": "  TExport = class\n  public\n    procedure ExportiereAlsXml;\n  end;\n// ExportiereAlsXml is called nowhere in the project group",' + #10 +
+    '      "good": "  TExport = class\n  public\n    procedure ExportiereAlsJson; // called by TMainForm\n  end;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "visibilities",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "public",' + #10 +
+    '            "published"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Visibilities that are checked: public, published, protected."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "memberKinds",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "method",' + #10 +
+    '            "constant",' + #10 +
+    '            "property"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Member kinds that are checked: method, constant, property, field, classVar."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "projectKinds",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "application"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Project kinds whose units are checked: application, package, library. Packages and libraries have users outside the project group, so they are off by default."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "unitLevel",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Also check routines and constants declared in the interface section of a unit."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "scope",' + #10 +
+    '          "type": "string",' + #10 +
+    '          "default": "projectGroup",' + #10 +
+    '          "description": "Where uses are searched: projectGroup (all projects of the group) or project (only the projects of the file)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "testsCountAsUse",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Uses in test projects count; when off, a member used only by tests is reported as such."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "stringLiteralsCountAsUse",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "The name as a string literal (''Name'') counts as a use (RTTI, MethodAddress, scripts)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "keepAttributes",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Attributes on the member or its type that mark it as used, e.g. \"Keep\" or \"Api\"."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "keepPatterns",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Name patterns (* and ?) for members that are always considered used, e.g. \"TPlugin.*\" or \"*Callback\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "message-method-invalid",' + #10 +
+    '      "name": "Message method declared incorrectly",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A message procedure of a class does not have exactly one var parameter (like E2138; the parameter type is not checked, an untyped var parameter is fine), its message number is le' + 'ss than 1 (like E2139), or an earlier message method of the same class already handles the same number (like E2140, usually after copying). Numbers count as equal when their values are known (numbers,' + ' constants from the index) or when the expressions are the same text. Methods in mutually exclusive {$IF} branches are not duplicates; the same number in a descendant overrides the handler and is fine' + '. Quick fix for E2138: make a single parameter var, otherwise replace the list with (var Msg: TMessage); the method body in the same file is adjusted as well.",' + #10 +
+    '      "bad": "procedure WMSize(var Msg: TWMSize); message WM_SIZE;\nprocedure WMGroesse(var Msg: TWMSize); message WM_SIZE;",' + #10 +
+    '      "good": "procedure WMSize(var Msg: TWMSize); message WM_SIZE;\nprocedure WMMove(var Msg: TWMMove); message WM_MOVE;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2138",' + #10 +
+    '        "E2139",' + #10 +
+    '        "E2140"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "interface-declaration-invalid",' + #10 +
+    '      "name": "Invalid declaration in an interface",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "An interface type declares something interfaces cannot have: fields (like E2209), visibility sections or method directives such as virtual, dynamic, abstract, override, message o' + 'r reintroduce (like E2210), the property clauses stored, nodefault or default with a value (like E2207; default; after an array property is fine), a property an ancestor interface already declares (li' + 'ke E2206) or a property accessor that only the ancestor interface declares (like E2370). A class, record or enumeration as the ancestor of an interface or in the interface list of a class is reported ' + 'as well (like E2205), and so is the same interface twice in that list (like E2208). Types are resolved through the uses clauses; aliases, unknown types, dispinterfaces and declarations inside conditio' + 'nal branches stay silent.",' + #10 +
+    '      "bad": "IKunde = interface\n  FName: string;\n  function GetName: string;\nend;",' + #10 +
+    '      "good": "IKunde = interface\n  function GetName: string;\n  property Name: string read GetName;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2205",' + #10 +
+    '        "E2206",' + #10 +
+    '        "E2207",' + #10 +
+    '        "E2208",' + #10 +
+    '        "E2209",' + #10 +
+    '        "E2210",' + #10 +
+    '        "E2370"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "implements-clause-invalid",' + #10 +
+    '      "name": "Invalid implements clause",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Delegation with implements breaks one of its fixed rules: implements only in classes (like E2258), only on properties of class or interface type (like E2259; reported for built-i' + 'n types, records and enumerations), not together with index (like E2260), only on readable properties (like E2261), the getter without a calling convention other than register (like E2262) and not dyn' + 'amic or message (like E2263), each interface implemented by one property only (like E2257) and no method resolution clause for an interface implemented that way (like E2264). Types are resolved throug' + 'h the uses clauses; unknown types, aliases and properties in conditional branches stay silent.",' + #10 +
+    '      "bad": "property Logger: ILogger write FLogger implements ILogger;",' + #10 +
+    '      "good": "property Logger: ILogger read FLogger write FLogger implements ILogger;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2257",' + #10 +
+    '        "E2258",' + #10 +
+    '        "E2259",' + #10 +
+    '        "E2260",' + #10 +
+    '        "E2261",' + #10 +
+    '        "E2262",' + #10 +
+    '        "E2263",' + #10 +
+    '        "E2264"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "calling-convention-required",' + #10 +
+    '      "name": "Calling convention does not fit",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The compiler prescribes the calling convention here: constructors and destructors of a class only with register (like E2236), getters and setters of published properties as well ' + '(like E2270), and varargs only with cdecl (like E2277 for external routines, otherwise E2591). Explicit register is fine; class constructors, accessors outside published sections and inherited accesso' + 'rs stay silent. Quick fix: remove the convention in the declaration and in the method body of the same file, or set cdecl for varargs.",' + #10 +
+    '      "bad": "function Formatieren(Muster: PAnsiChar): Integer; stdcall; varargs; external ''msvcrt.dll'';",' + #10 +
+    '      "good": "function Formatieren(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2236",' + #10 +
+    '        "E2270",' + #10 +
+    '        "E2277",' + #10 +
+    '        "E2591"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "abstract-declaration-invalid",' + #10 +
+    '      "name": "abstract, final or static combined wrongly",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A method directive the compiler rejects: abstract without virtual, dynamic or override (like E2167), a body in the implementation section for an abstract method (like E2136), fin' + 'al on a method that is not virtual (like E2351), abstract together with final (like E2371), a class declared abstract sealed (like E2383, E2540) or static on an instance method or a virtual class meth' + 'od (like E2376). A body only counts for an abstract method when no non-abstract method of the same name in the same class is compiled with it (overloads, {$IFDEF} branches). Quick fixes: insert virtua' + 'l; before abstract, remove the body.",' + #10 +
+    '      "bad": "TForm = class\n  function Flaeche: Double; abstract;\nend;",' + #10 +
+    '      "good": "TForm = class\n  function Flaeche: Double; virtual; abstract;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2167",' + #10 +
+    '        "E2136",' + #10 +
+    '        "E2351",' + #10 +
+    '        "E2371",' + #10 +
+    '        "E2383",' + #10 +
+    '        "E2540",' + #10 +
+    '        "E2376"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unsatisfied-forward",' + #10 +
+    '      "name": "Forward declaration never satisfied",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A routine declared in the interface section or with forward has no body (like E2065), or a forward declaration TFoo = class; or IFoo = interface; is never completed in the same t' + 'ype section (like E2086, E2420). Methods are checked by declared-not-implemented. A body fits when it has the same name; with overload the number of parameters must match too. An external declaration ' + 'in the implementation section counts as a body. Declarations inside a {$IFDEF} branch are skipped; with include files the rule does not check routines. Quick fix: create an empty body before initializ' + 'ation or the final end.",' + #10 +
+    '      "bad": "interface\n\nfunction Pruefsumme(const Daten: TBytes): Cardinal;\n\nimplementation\n\nend.",' + #10 +
+    '      "good": "interface\n\nfunction Pruefsumme(const Daten: TBytes): Cardinal;\n\nimplementation\n\nfunction Pruefsumme(const Daten: TBytes): Cardinal;\nbegin\n  Result := 0;\nend;\n\nend.",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2065",' + #10 +
+    '        "E2086",' + #10 +
+    '        "E2420"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "member-hides-ancestor",' + #10 +
+    '      "name": "Member hides a member of the ancestor",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A property has the name of a field of an ancestor (like W1009), a field has the name of a field or property of an ancestor, or a non-virtual method has the name and parameters of' + ' a non-virtual method of an ancestor. Code that accesses the object through the ancestor type still sees the old member. Virtual methods are reported by hides-virtual, local names by shadowed-name. Re' + 'published properties (property Caption;), properties with a new type over an ancestor property, overload, reintroduce, constructors and class methods are not reported. Members the descendant cannot se' + 'e (private in another unit, strict private with ignoreStrictPrivate) are skipped; ancestors come from the file and the symbol index. Quick fix for fields and properties: rename the member in the class' + ' declaration and the bodies of its methods in this unit (FName becomes FKundeName).",' + #10 +
+    '      "bad": "TBasis = class\n  FName: string;\nend;\nTKunde = class(TBasis)\n  FName: string;\nend;",' + #10 +
+    '      "good": "TBasis = class\n  FName: string;\nend;\nTKunde = class(TBasis)\n  FKundeName: string;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1009"' + #10 +
+    '      ],' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "ignoreStrictPrivate",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Do not report hidden strict private members of the ancestor."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "published-type-invalid",' + #10 +
+    '      "name": "Invalid member in the published section",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A member behind an explicit published that the compiler rejects: a property of a record, array, pointer or plain procedural type (like E2188), of type Real48 (like E2186) or of a' + ' set larger than 4 bytes (like E2187), a field that is neither a class nor an interface (like E2217), more than one published overload (like E2266), a class property (like E2545) or a name with non-AS' + 'CII characters (like E2452). Types are resolved through the file and the index, aliases are followed; type parameters, unknown types and sections whose published is in another conditional branch than ' + 'the member stay silent. The section without visibility specifier is not checked, because the compiler silently demotes such members to public there. Quick fix: move the member into the public section.' + '",' + #10 +
+    '      "bad": "TKarte = class(TCustomControl)\npublished\n  property Mitte: TPointF read FMitte write SetMitte;\nend;",' + #10 +
+    '      "good": "TKarte = class(TCustomControl)\npublic\n  property Mitte: TPointF read FMitte write SetMitte;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2188",' + #10 +
+    '        "E2217",' + #10 +
+    '        "E2186",' + #10 +
+    '        "E2187",' + #10 +
+    '        "E2266",' + #10 +
+    '        "E2545",' + #10 +
+    '        "E2452"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "override-case-mismatch",' + #10 +
+    '      "name": "Spelling or visibility differs from the ancestor",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "An overriding method spells its name differently from the ancestor (destructor destroy, like H2365) or has a lower visibility than the overridden method (like H2269, only for cla' + 'sses in the interface section; visibilities are compared in tiers private, protected, public), a getter or setter is named Get<Property> or Set<Property> but spelled differently (like H2367), or an in' + 'line method accesses a member that is less visible than the method itself, so the compiler cannot expand it outside the class (like H2440). Matters for C++Builder users of the units and for consistent' + ' code. The docwiki lists H2269 and H2367 as X2269 and X2367 because their level can be changed; dcc reports them as hints by default. H2368 and H2369 are not covered, since it is not documented when d' + 'cc reports them. Off by default; switch it on in atlas.json. Quick fixes: adopt the ancestor''s spelling, rename the accessor.",' + #10 +
+    '      "bad": "TKunde = class\n  destructor destroy; override;\nend;",' + #10 +
+    '      "good": "TKunde = class\n  destructor Destroy; override;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "H2365",' + #10 +
+    '        "H2440",' + #10 +
+    '        "H2269",' + #10 +
+    '        "H2367"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "default-property-invalid",' + #10 +
+    '      "name": "default property declared wrongly or missing",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "default; behind a property without index parameters (like E2132), a second default property of the same class with the same index types (like E2131; overloading by index type is ' + 'allowed), or Obj[I] on a class that has no default property in its whole ancestor chain (like E2149). The type of Obj is resolved by name resolution; unresolvable types, broken ancestor chains and cla' + 'sses with a class helper in the unit stay silent. Property redeclarations without a type (property Items; default;) take the index from the ancestor and are not checked.",' + #10 +
+    '      "bad": "TListe = class\n  property Name: string read FName; default;\nend;",' + #10 +
+    '      "good": "TListe = class\n  property Items[I: Integer]: string read GetItem; default;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2131",' + #10 +
+    '        "E2132",' + #10 +
+    '        "E2149"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "property-redeclaration-invalid",' + #10 +
+    '      "name": "Redeclared property missing in the ancestor",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A property redeclaration without type such as property Caption; (to change the visibility or the default value) names a property that no ancestor has (like E2147), or the ancesto' + 'r''s property is not accessible from here: strict private, or private in another unit (like E2233). Only reported when the whole ancestor chain is known; a field or method of the same name and declarat' + 'ions in inactive conditional branches stay silent. Quick fix: use the most similar property name of the ancestors.",' + #10 +
+    '      "bad": "TMeinPanel = class(TCustomPanel)\npublished\n  property Captoin;\nend;",' + #10 +
+    '      "good": "TMeinPanel = class(TCustomPanel)\npublished\n  property Caption;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2147",' + #10 +
+    '        "E2233"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inline-not-expanded",' + #10 +
+    '      "name": "Inline function is not expanded",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A call of an inline routine from another unit that the compiler does not expand: its body needs a unit that is missing from uses here (like H2443, typically System.Generics.Colle' + 'ctions for TJSONObject.Count), it accesses a strict private member and the call is not inside a method of that class (like H2444), the calling routine is inline itself and the unit of the callee is on' + 'ly in the implementation uses (like H2445), or the unit of the callee uses this unit directly (like H2456) or through other units (like H2457). Calls, properties with an inline getter or setter and fo' + 'r-in loops (GetEnumerator, MoveNext, Current) are checked. The index records what each inline body refers to; the rule only reports what it resolves for sure (unknown references and members inherited ' + 'from other units stay silent). Silent with {$INLINE OFF} in the file. Quick fix: add the missing units to the uses clause of the section.",' + #10 +
+    '      "bad": "uses\n  System.JSON;\n...\nfor Wert in Feld as TJSONArray do",' + #10 +
+    '      "good": "uses\n  System.JSON, System.Generics.Collections;\n...\nfor Wert in Feld as TJSONArray do",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "H2443",' + #10 +
+    '        "H2444",' + #10 +
+    '        "H2445",' + #10 +
+    '        "H2456",' + #10 +
+    '        "H2457"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "directive-typo",' + #10 +
+    '      "name": "Unknown directive (typo)",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A word that is not a directive stands where a directive belongs: after the '';'' of a routine or method header (overide;, virutal;, overlaod;, stdcal;, reintroduces;) or after a pr' + 'operty, where only default is allowed (defualt;). The compiler stops there (like E2070). The message suggests the closest directive when at most two characters differ. Silent in {$IF} branches that te' + 'st FPC, which knows further directives such as nostackframe. Quick fix: replace with the suggested directive.",' + #10 +
+    '      "bad": "procedure Paint; overide;",' + #10 +
+    '      "good": "procedure Paint; override;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2070"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "ui-call-in-console-or-service",' + #10 +
+    '      "name": "Dialog in a console program or service",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "robustness",' + #10 +
+    '      "description": "ShowMessage, ShowMessageFmt, MessageDlg, TaskMessageDlg, InputBox, InputQuery, Application.MessageBox or TDialogService in a program with {$APPTYPE CONSOLE} (or DCC_ConsoleTarget' + ' in the .dproj), in a Windows service or in a DLL without forms. In a service the dialog blocks invisibly; a console program waits for a click nobody sees when it runs unattended. A service is a unit ' + 'with a class derived from TService, or any unit of a project whose .dpr uses Vcl.SvcMgr without Vcl.Forms. A DLL without forms is a library whose .dpr lists no form and does not use Vcl.Forms; there t' + 'he rule reports with medium confidence, because only the host decides whether there is a user interface. Units with a form file, calls under if IsConsole and routines of the same name declared in the ' + 'unit stay silent. Counterpart of writeln-in-gui-app. High confidence. No quick fix: log the message instead of showing it.",' + #10 +
+    '      "bad": "procedure TDatenDienst.ServiceExecute(Sender: TService);\nbegin\n  if not Verbinden then\n    ShowMessage(''Keine Verbindung'');\nend;",' + #10 +
+    '      "good": "procedure TDatenDienst.ServiceExecute(Sender: TService);\nbegin\n  if not Verbinden then\n    LogMessage(''Keine Verbindung'', EVENTLOG_ERROR_TYPE);\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "load-without-encoding",' + #10 +
+    '      "name": "Loading or saving text without an encoding",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "robustness",' + #10 +
+    '      "description": "LoadFromFile, SaveToFile, LoadFromStream or SaveToStream of a TStrings (TStringList, Memo.Lines, ListBox.Items, Query.SQL) and TFile.ReadAllText or TFile.ReadAllLines without an ' + 'encoding: a file without BOM is read with the ANSI code page of the machine, and SaveToFile writes ANSI, so umlauts get lost between machines. The receiver must be a declared string list or a Lines, I' + 'tems, SQL or Strings property; bitmaps, streams and datasets stay silent. Also silent when the list sets DefaultEncoding anywhere in the unit or was loaded with an encoding earlier in the same routine' + ' (SaveToFile then keeps that encoding). TFile.WriteAllText, TStreamReader and TStreamWriter already default to UTF-8 and are not reported. Medium confidence. Quick fix: add TEncoding.UTF8 (option defa' + 'ultEncoding) as the last argument and System.SysUtils to uses.",' + #10 +
+    '      "bad": "Zeilen.LoadFromFile(Pfad);",' + #10 +
+    '      "good": "Zeilen.LoadFromFile(Pfad, TEncoding.UTF8);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "defaultEncoding",' + #10 +
+    '          "type": "string",' + #10 +
+    '          "default": "UTF8",' + #10 +
+    '          "description": "TEncoding property the quick fix inserts: UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 or Default."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "registry-hklm-write",' + #10 +
+    '      "name": "Writing to HKEY_LOCAL_MACHINE",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "robustness",' + #10 +
+    '      "description": "RootKey := HKEY_LOCAL_MACHINE on a TRegistry followed in the same routine by a writing access on the same object: OpenKey(…, True), CreateKey, Write…, DeleteKey, DeleteValue, Ren' + 'ameValue, MoveKey, SaveKey or RestoreKey. Without administrator rights this fails or silently lands in the registry virtualization. Use HKEY_CURRENT_USER for user settings; exclude installer code thro' + 'ugh exclude. Reading (OpenKeyReadOnly, Read…, OpenKey(…, False)), another RootKey before the write and writes in the other branch of {$IFDEF} stay silent. High confidence. Quick fix: RootKey := HKEY_C' + 'URRENT_USER.",' + #10 +
+    '      "bad": "Reg.RootKey := HKEY_LOCAL_MACHINE;\nReg.OpenKey(''Software\\Firma\\Programm'', True);\nReg.WriteString(''Sprache'', Sprache);",' + #10 +
+    '      "good": "Reg.RootKey := HKEY_CURRENT_USER;\nReg.OpenKey(''Software\\Firma\\Programm'', True);\nReg.WriteString(''Sprache'', Sprache);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "now-for-elapsed-time",' + #10 +
+    '      "name": "Elapsed time measured with Now",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A variable set to Now and later used in Now - Start, End - Start or MilliSecondsBetween, SecondsBetween, MinutesBetween, HoursBetween, DaysBetween or the …Span functions in the s' + 'ame routine: it measures elapsed time with the wall clock, which is coarse and wrong across daylight saving changes or clock synchronisation. TStopwatch is precise and monotonic. Assignments in anothe' + 'r routine (fields) and in the other branch of {$IFDEF} stay silent. High confidence. Quick fix when the variable is a local TDateTime (also var Start := Now) used only for MilliSecondsBetween, Seconds' + 'Between or MinutesBetween with Now: TStopwatch.StartNew and ElapsedMilliseconds (div 1000 or div 60000), the variable becomes Uhr when the name is free, System.Diagnostics is added to uses.",' + #10 +
+    '      "bad": "Start := Now;\nImportieren;\nLog(MilliSecondsBetween(Now, Start).ToString + '' ms'');",' + #10 +
+    '      "good": "Uhr := TStopwatch.StartNew;\nImportieren;\nLog(Uhr.ElapsedMilliseconds.ToString + '' ms'');"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "money-as-float",' + #10 +
+    '      "name": "Money amount as floating point",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "Field, variable, parameter or property whose name denotes a money amount (option namePatterns) with type Double, Single, Extended or Real: binary floating point rounds cent amoun' + 'ts wrongly (0.1 + 0.2), Currency calculates them exactly. The last part of the name counts (GesamtPreis, Nettobetrag, FNetto, Preise; not NettoGewicht); rates, factors, quotas, shares (Steuersatz, Pri' + 'ceFactor) and checksums stay silent. Ambiguous words (Amount, Summe, Sum, Total: a quantity or sum of anything) only count with a money context in the type or routine: another money name, Currency or ' + 'words like Cent, Euro, Rabatt, Invoice, Payment, Kosten (Lighten(AColor, AAmount: Double) stays silent). Off by default and low confidence: it shows up once the rule is switched on and minConfidence i' + 's low. Quick fix when all names of the declaration are money amounts: type Currency, for parameters also in the header of the implementation, for fields and properties also the property or the field b' + 'ehind read and write; no fix when a getter or setter would have to change too. With checkRound the rule also reports Round with a money amount in the argument (banker''s rounding: 2.5 becomes 2).",' + #10 +
+    '      "bad": "TPosition = record\n  Menge: Integer;\n  Preis: Double;\nend;",' + #10 +
+    '      "good": "TPosition = record\n  Menge: Integer;\n  Preis: Currency;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "namePatterns",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "Betrag",' + #10 +
+    '            "Preis",' + #10 +
+    '            "Summe",' + #10 +
+    '            "Netto",' + #10 +
+    '            "Brutto",' + #10 +
+    '            "Steuer",' + #10 +
+    '            "Amount",' + #10 +
+    '            "Price"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Name parts that denote a money amount; plurals included."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "checkRound",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": false,' + #10 +
+    '          "description": "Also report Round on money amounts."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "string-if-chain",' + #10 +
+    '      "name": "Long if chain over the same string",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "An if … else if chain that compares the same string (identifier or A.B, no function calls) with at least min literals: S = ''x'', ''x'' = S, SameText(S, ''x''), also combined with or, ' + 'in at least two branches (a single if with or stays silent). case IndexStr(S, [...]) of or a dictionary is shorter and faster. Only comparisons that are always compiled together with the head count ({' + '$IFDEF} branches inside the chain do not). Off by default, high confidence. Quick fix as in the code action if chain to case (#646): case IndexStr(…) of, IndexText(…) for SameText, comparisons joined ' + 'with or share one label, the rest of the chain becomes else, System.StrUtils is added to uses. No fix when comments or directives sit between the branches, a literal appears twice or = and SameText ar' + 'e mixed.",' + #10 +
+    '      "bad": "if Befehl = ''neu'' then Neu\nelse if Befehl = ''oeffnen'' then Oeffnen\nelse if Befehl = ''speichern'' then Speichern\nelse if Befehl = ''beenden'' then Beenden;",' + #10 +
+    '      "good": "case IndexStr(Befehl, [''neu'', ''oeffnen'', ''speichern'', ''beenden'']) of\n  0: Neu;\n  1: Oeffnen;\n  2: Speichern;\n  3: Beenden;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "min",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 4,' + #10 +
+    '          "description": "Number of comparisons of the same string from which the rule reports; at least 2."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "constant-condition",' + #10 +
+    '      "name": "Condition is always the same",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "The condition of if, while or until is fixed: True, False, comparisons of numbers and untyped constants of the file, also through and, or, xor and not (X or True is always true, ' + 'X and False always false). The branch is dead code or always runs. while True do and repeat … until False count as deliberate endless loops (infinite-loop checks their exit). Constants listed in switc' + 'hConstants, constants inside a {$IF…} branch and constants from other units count as unknown. Quick fix for if: remove the dead branch or the condition.",' + #10 +
+    '      "bad": "if (Count > 0) or True then\n  Process;",' + #10 +
+    '      "good": "if Count > 0 then\n  Process;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "switchConstants",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Constants that deliberately serve as switches; conditions on them are not reported."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "infinite-loop",' + #10 +
+    '      "name": "Loop without exit",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "while True do, repeat … until False or another loop whose condition never ends it, without an exit in the body: no Break (a Break in a nested loop only leaves that loop), Exit, r' + 'aise, goto, Halt, Abort or RunError, no call of a routine of the file that raises an exception or ends the program, and no check of Terminated (thread loops are covered by thread-loop-without-terminat' + 'ed). Anonymous methods in the body do not count. The action jumps to the loop head.",' + #10 +
+    '      "bad": "while True do\nbegin\n  Line := Reader.ReadLine;\n  Process(Line);\nend;",' + #10 +
+    '      "good": "while not Reader.EndOfStream do\nbegin\n  Line := Reader.ReadLine;\n  Process(Line);\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "loop-condition-unchanged",' + #10 +
+    '      "name": "Loop condition never changes in the body",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "No variable of the while or until condition changes in the body: no assignment, no Inc/Dec, no argument (possibly var), no method or member access on the object of the condition,' + ' no for loop over it. Typically a forgotten Inc(I) or Next. The rule only reports when every variable of the condition is a local variable or value parameter of the routine and at least one appears di' + 'rectly (not only as X.Property). Conditions with function calls, fields, global variables, var and out parameters and Terminated are not reported, nor loops with an exit (Break, Exit, raise …), waitin' + 'g loops (Sleep, ProcessMessages …), with, calls of local routines or variables captured by an anonymous method. Changes through X[…] count only when the condition reads X[…].",' + #10 +
+    '      "bad": "I := 0;\nwhile I < List.Count do\nbegin\n  Check(List[I]);\nend;",' + #10 +
+    '      "good": "I := 0;\nwhile I < List.Count do\nbegin\n  Check(List[I]);\n  Inc(I);\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unconditional-recursion",' + #10 +
+    '      "name": "Recursion without a stop",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "A routine calls itself on every path before it can return: there is no path without a self-call and no Exit or raise before it. The result is a stack overflow. Paths without a ca' + 'll are: an if without else or a case without else, the body of while and for, the right side of and/or, branches of if expressions and anonymous methods. Getters and setters of their own property are ' + 'reported by setter-recursion; overloaded routines stay silent (the call may go to another overload). The margin marker from #623 shows every recursion.",' + #10 +
+    '      "bad": "function TTree.Depth(N: TNode): Integer;\nbegin\n  Result := 1 + Max(Depth(N.Left), Depth(N.Right));\nend;",' + #10 +
+    '      "good": "function TTree.Depth(N: TNode): Integer;\nbegin\n  if N = nil then\n    Exit(0);\n  Result := 1 + Max(Depth(N.Left), Depth(N.Right));\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "pos-arguments-swapped",' + #10 +
+    '      "name": "Arguments of Pos swapped",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "Pos(Text, '';''): Pos, PosEx, AnsiPos, StartsText, StartsStr, EndsText and EndsStr (also with Ansi prefix) expect the searched part first and the text second; ContainsText and Cont' + 'ainsStr expect the text first. Reported when a short literal (up to maxLiteralLength characters, default 3; '''' counts as one character, #9 as well) stands where the text belongs and a certain string s' + 'tands where the part belongs: a variable or field of a string type declared in the file, .Text or .Caption, a string function of the RTL (Trim, UpperCase, Copy-like LeftStr, Format …) or a concatenati' + 'on with a string part. Characters stay silent, because Pos(C, '';,'') deliberately checks whether C is one of the separators; so do unknown types, two literals and methods of other objects (Liste.Pos). ' + 'Medium confidence. Quick fix: swap the arguments in one edit; comments between them stay.",' + #10 +
+    '      "bad": "if Pos(Zeile, '';'') > 0 then",' + #10 +
+    '      "good": "if Pos('';'', Zeile) > 0 then",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "maxLiteralLength",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 3,' + #10 +
+    '          "description": "Longest literal in the place of the text that is still taken as swapped."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "integer-division-to-float",' + #10 +
+    '      "name": "Integer division assigned to a floating-point number",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "Average := Sum div Count with Average: Double: div cuts off the fraction before the value is assigned. Also Percent := Part div Total * 100, Result of a function with a floating-' + 'point result and var X: Double := A div B. The div is searched through parentheses, signs and + - * /, not inside calls (Round(A div B)), indexes, mod or comparisons. The target must be a variable, fi' + 'eld (also Self.X) or Result whose type Single, Double, Extended, Real, Currency … is declared in the file. TDateTime, TDate and TTime stay silent (whole days are usually intended there), as do assignm' + 'ents inside with and Trunc(A) div Trunc(B) (also Round, Floor, Ceil: explicitly converted, so integer division is intended). High confidence. Quick fix: replace div with / (same precedence).",' + #10 +
+    '      "bad": "var Average: Double;\n…\nAverage := Sum div Count;",' + #10 +
+    '      "good": "var Average: Double;\n…\nAverage := Sum / Count;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "empty-finally",' + #10 +
+    '      "name": "Empty finally block",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A finally block without statements: usually the release got lost during a rework. If the statement right before try is X := T….Create, the message names X.Free. A block with an e' + 'xplaining comment counts as deliberate and is not reported (as with empty-except); a block with a compiler directive is skipped as well, because another branch may contain code. High confidence. Quick' + ' fix: remove try, finally and end and outdent the body (when try, finally and end each stand on their own line); as the only statement of an if, while, for, with or case branch with several statements' + ' in the body, try becomes begin.",' + #10 +
+    '      "bad": "Liste := TStringList.Create;\ntry\n  Liste.LoadFromFile(Pfad);\nfinally\nend;",' + #10 +
+    '      "good": "Liste := TStringList.Create;\ntry\n  Liste.LoadFromFile(Pfad);\nfinally\n  Liste.Free;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "form-resource-missing",' + #10 +
+    '      "name": "Form unit without {$R *.dfm}",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "forms",' + #10 +
+    '      "description": "A .dfm or .fmx lies next to the unit and the unit declares the class of its root object, but no {$R …} directive includes a form file: creating the form raises EResNotFound. Conv' + 'ersely, a {$R *.dfm} or {$R Name.dfm} whose file does not exist next to the unit is reported (the compiler stops with F1026). A directive in any branch of conditional compilation counts as included. S' + 'ilent when the form file''s class is not declared in the unit and when the rule cannot see files next to the unit. Quick fix: insert {$R *.dfm} (or {$R *.fmx}) after implementation.",' + #10 +
+    '      "bad": "implementation\n\nprocedure TfrmKunde.FormShow(Sender: TObject);",' + #10 +
+    '      "good": "implementation\n\n{$R *.dfm}\n\nprocedure TfrmKunde.FormShow(Sender: TObject);",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "F1026"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "form-autocreate-and-manual",' + #10 +
+    '      "name": "Form created automatically and by hand",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "forms",' + #10 +
+    '      "description": "The .dpr creates a form with Application.CreateForm, and the code also assigns TfrmX.Create(…) to the same global variable. There are then two instances; the first one stays invi' + 'sible in memory. The automatically created forms come from the .dpr of the project the unit belongs to; when the rule can read the .dpr, the class must match the CreateForm call. Silent when the routi' + 'ne checks the variable (Assigned, comparison with nil) or frees it before (Free, FreeAndNil, Release), for local names and for fields of the own class with the same name, and for units without a proje' + 'ct. High confidence. Quick fix: remove the Application.CreateForm line from the .dpr (the form is then only created by the code).",' + #10 +
+    '      "bad": "// Projekt.dpr: Application.CreateForm(TfrmBericht, frmBericht);\nfrmBericht := TfrmBericht.Create(Application);\nfrmBericht.ShowModal;",' + #10 +
+    '      "good": "// Projekt.dpr without CreateForm for TfrmBericht\nfrmBericht := TfrmBericht.Create(Application);\nfrmBericht.ShowModal;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inherited-form-handler-without-inherited",' + #10 +
+    '      "name": "Event handler in an inherited form without inherited",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "forms",' + #10 +
+    '      "description": "With form inheritance, an ancestor form assigns a handler of the same name to the same event of the same component, but the handler in the descendant does not call inherited (any' + ' more). The IDE generates inherited; when the handler is created; once it is deleted, the logic of the ancestor is lost silently. The ancestor''s form file comes from the index (file of the class) or f' + 'rom the units in the uses clause next to the unit; the chain follows inherited forms up to the first form with object. Handlers with a different name count as a deliberate replacement. Silent without ' + 'the ancestor''s form file. High confidence. Quick fix: insert inherited; at the start.",' + #10 +
+    '      "bad": "procedure TfrmKundeBearbeiten.btnSpeichernClick(Sender: TObject);\nbegin\n  FKunde.Speichern;\nend;",' + #10 +
+    '      "good": "procedure TfrmKundeBearbeiten.btnSpeichernClick(Sender: TObject);\nbegin\n  inherited;\n  FKunde.Speichern;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "self-free-in-event-handler",' + #10 +
+    '      "name": "Form frees itself in its own event",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "forms",' + #10 +
+    '      "description": "Free, Destroy, DisposeOf or FreeAndNil on Self, or on the global variable of the form''s own class, as a statement in an event handler of the form or one of its controls. After th' + 'e handler returns, the VCL still accesses the object: access violation. Correct is Release, or Action := caFree in OnClose. Event handlers are the methods named in the form file and methods with a Sen' + 'der: TObject parameter; a form is the root class of the form file with ClientWidth or ClientHeight, or a class derived directly from TForm or TCustomForm (frames and data modules have no Release). Sta' + 'tements in anonymous methods and with blocks do not count. Silent without the form file. High confidence. Quick fix: replace Free with Release; in OnClose (var Action: TCloseAction) with Action := caF' + 'ree.",' + #10 +
+    '      "bad": "procedure TfrmMeldung.btnOKClick(Sender: TObject);\nbegin\n  Free;\nend;",' + #10 +
+    '      "good": "procedure TfrmMeldung.btnOKClick(Sender: TObject);\nbegin\n  Release;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "parallel-for-shared-write",' + #10 +
+    '      "name": "Shared variable written in TParallel.For",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "threads",' + #10 +
+    '      "description": "The body of TParallel.For, or of a TTask.Run/Create/Future started inside a loop, writes a variable from outside without a lock: Summe := Summe + …, Inc/Dec or another assignment' + ', or changes a collection from outside (Add, Delete, Clear, Insert, Remove …). The iterations run at the same time, so additions get lost or the list is corrupted. Outside means a local variable or pa' + 'rameter of the enclosing routine, a field of its class or a global variable of the unit; names of unknown origin stay silent. Bodies with a lock (TMonitor, Enter, Acquire, Lock, LockList, BeginWrite, ' + 'TInterlocked), writes through an index (Werte[I] := …) and nested anonymous methods (Synchronize, Queue) do not count. Types listed in threadSafeTypes count as thread-safe. Medium confidence. Quick fi' + 'xes: TInterlocked.Add/Increment/Decrement for Integer, Int64 and Cardinal (adds System.SyncObjs), System.TMonitor.Enter/Exit in try … finally around the collection call.",' + #10 +
+    '      "bad": "TParallel.For(0, High(Werte), procedure(I: Integer)\n  begin\n    Summe := Summe + Werte[I];\n  end);",' + #10 +
+    '      "good": "TParallel.For(0, High(Werte), procedure(I: Integer)\n  begin\n    TInterlocked.Add(Summe, Werte[I]);\n  end);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "threadSafeTypes",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "TThreadList",' + #10 +
+    '            "TThreadedQueue"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Types that count as thread-safe; their collection calls stay silent."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "thread-unsafe-increment",' + #10 +
+    '      "name": "Counter in a thread without TInterlocked",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "threads",' + #10 +
+    '      "description": "Inc, Dec, X := X + 1 or X := X - 1 without a lock on a global variable in Execute of a TThread descendant, or on a field or global variable in the body of TTask.Run/Create/Future' + ' outside loops and of TThread.CreateAnonymousThread. Inc is not atomic: when several threads count at the same time, increments get lost. Thread classes come from the unit (also through intermediate c' + 'lasses) and from the index. Own fields of the thread in Execute and captured local variables of a single task have only one writer and stay silent, as do bodies with a lock (TMonitor, Enter, Acquire, ' + 'Lock, LockList, BeginWrite, TInterlocked) and nested anonymous methods (Synchronize, Queue). Tasks inside loops and TParallel.For are reported by parallel-for-shared-write. Medium confidence. Quick fi' + 'x: TInterlocked.Increment/Decrement/Add for Integer, Int64 and Cardinal (adds System.SyncObjs).",' + #10 +
+    '      "bad": "procedure TArbeiter.Execute;\nbegin\n  while not Terminated do\n    if Holen then Inc(GVerarbeitet);\nend;",' + #10 +
+    '      "good": "procedure TArbeiter.Execute;\nbegin\n  while not Terminated do\n    if Holen then TInterlocked.Increment(GVerarbeitet);\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "constant-expression-error",' + #10 +
+    '      "name": "Error in a constant expression",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A constant expression divides by zero (like E2098), overflows beyond the range of Int64 and UInt64 (like E2099), a range has its low bound above its high bound (array[5..1], like' + ' E2011), a constant violates an integer type of fixed size or a subrange type (like W1012, reported as a warning; assignments only from values outside 0..127) or a hex, binary or octal literal needs m' + 'ore than 64 bits (like E2102). Atlas evaluates literals, constants (also from other units) and SizeOf/High/Low of types with a fixed size; a constant from an {$IF} branch only counts where the checked' + ' place is compiled together with it. Expressions with unknown parts stay silent.",' + #10 +
+    '      "bad": "const\n  Seiten = 0;\n  ProSeite = 100 div Seiten;",' + #10 +
+    '      "good": "const\n  Seiten = 5;\n  ProSeite = 100 div Seiten;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2098",' + #10 +
+    '        "E2099",' + #10 +
+    '        "E2011",' + #10 +
+    '        "W1012",' + #10 +
+    '        "E2102"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "default-parameter-invalid",' + #10 +
+    '      "name": "Invalid default value of a parameter",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Default values the compiler rejects: several names sharing one default value (A, B: Integer = 0, like E2237), a parameter without a default value after one with a default value (' + 'like E2238), var and out parameters with a default value (like E2239) records or static arrays with a default value (like E2268) and sets larger than 4 bytes with a default value (like E2146, only sma' + 'll sets are allowed; medium confidence). Applies to routines, methods and procedural types. Quick fixes: declare the parameters one by one; move the parameters with a default value to the end, also in' + ' the matching declaration or implementation header of the same file (calls are not changed).",' + #10 +
+    '      "bad": "procedure Senden(const Text: string = ''''; Ziel: TZiel);",' + #10 +
+    '      "good": "procedure Senden(Ziel: TZiel; const Text: string = '''');",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2237",' + #10 +
+    '        "E2238",' + #10 +
+    '        "E2239",' + #10 +
+    '        "E2268",' + #10 +
+    '        "E2146"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "signed-unsigned-mix",' + #10 +
+    '      "name": "Signed and unsigned mixed",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Comparison or arithmetic (+, -, *, div, mod) with one signed and one unsigned operand whose types are known for certain (variables, fields, properties, function results, own alia' + 'ses). With UInt64 the whole expression is computed unsigned and a negative value becomes a huge number (like W1073, comparison like W1023); with Cardinal/DWORD and a signed type up to 32 bits both ope' + 'rands are widened to Int64 (like W1023/W1024). Silent for Byte and Word, Cardinal with Int64, literals, constants, NativeInt/NativeUInt and unknown types. Medium confidence. Quick fix: convert the uns' + 'igned operand to Int64.",' + #10 +
+    '      "bad": "if Groesse + Delta < Grenze then  // Groesse: UInt64; Delta: Int64",' + #10 +
+    '      "good": "if Int64(Groesse) + Delta < Grenze then",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1023",' + #10 +
+    '        "W1024",' + #10 +
+    '        "W1073"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "narrowing-assignment",' + #10 +
+    '      "name": "Assignment with possible data loss",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "An assignment or an inline variable with a value whose type is wider than the target, without an explicit conversion: Int64 to Integer, NativeInt to Integer (Win64) and, via the ' + 'option types, e.g. Double to Single or Extended to Double. Like W1071 (integers), W1072 (floating point) and W1066 (Extended to Double); the compiler shows W1071 only when switched on. Only reported w' + 'hen both types are known for certain (variables, fields, properties, function results, own aliases and integer arithmetic built from them); literals and explicit conversions stay silent. Off by defaul' + 't; medium confidence. Quick fixes: convert explicitly; widen the type of the target''s declaration (single variable declared in the same file).",' + #10 +
+    '      "bad": "Anzahl := Strom.Size;  // Anzahl: Integer",' + #10 +
+    '      "good": "Anzahl := Integer(Strom.Size);",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1071",' + #10 +
+    '        "W1072",' + #10 +
+    '        "W1066"' + #10 +
+    '      ],' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "types",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "Int64>Integer",' + #10 +
+    '            "NativeInt>Integer"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Reported pairs source type>target type, e.g. Double>Single or Extended>Double."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "typed-constant-modified",' + #10 +
+    '      "name": "Typed constant modified",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A typed constant (const Counter: Integer = 0) is assigned (like W1017, also an element or a record field of it) or passed as a var or out argument, including Inc, Dec, Include, E' + 'xclude, Delete, SetLength and the like (like W1016). Usually a variable was meant; this only compiles with {$J+}. When {$J-} or {$WRITEABLECONST OFF} is in effect before the declaration in the same fi' + 'le, it is reported as an error (like E2064 or E2197). Also reports 0 as the value of a pointer constant or an initialised pointer variable (like W1013). Quick fixes: turn a unit-level constant into a ' + 'variable with an initial value (the const section is split if needed; local typed constants keep their value between calls and get no fix); write nil instead of 0.",' + #10 +
+    '      "bad": "const\n  Zaehler: Integer = 0;\n…\nInc(Zaehler);",' + #10 +
+    '      "good": "var\n  Zaehler: Integer = 0;\n…\nInc(Zaehler);",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1016",' + #10 +
+    '        "W1017",' + #10 +
+    '        "W1013",' + #10 +
+    '        "E2064",' + #10 +
+    '        "E2197"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "string-length-limit",' + #10 +
+    '      "name": "String limit exceeded",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A string literal is truncated to fit a string[N] or ShortString target: assignment, typed constant or initialised variable, also via own aliases, string[Constant] and fields from' + ' other units (like W1014). Before Delphi 12 (delphiVersion below 23) a quoted literal may have at most 255 characters (like E2056), and a resourcestring may have at most 4096 characters, literals join' + 'ed with + included (like E2381); both are errors. Characters are counted as written, '''' and #13 count as one. Quick fixes: declare the target as string (single variable or typed constant of the same f' + 'ile; record fields keep their size); split the literal into pieces of 255 characters joined with +.",' + #10 +
+    '      "bad": "var Kennung: string[8];\n…\nKennung := ''KUNDE-2026-0001'';",' + #10 +
+    '      "good": "var Kennung: string;\n…\nKennung := ''KUNDE-2026-0001'';",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1014",' + #10 +
+    '        "E2056",' + #10 +
+    '        "E2381"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dynamic-array-misuse",' + #10 +
+    '      "name": "New, Dispose or SetLength misused on a dynamic array",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "New (like E2255) or Dispose (like E2256) on a dynamic array, SetLength without a length (like E2246), New with a length on a type that is not a dynamic array (like E2307) and New' + '(TArrayType) without a length (like E2308). Typical for old code that switched from pointers to dynamic arrays. The rule only reports when name resolution knows the variable or type for sure; aliases ' + 'are followed (TValues = array of Double), TBytes and the other dynamic arrays of the RTL count even without an index; open array parameters and pointers stay silent. Quick fixes: Dispose(A) becomes A ' + ':= nil, New(A) becomes SetLength(A, 1).",' + #10 +
+    '      "bad": "Dispose(Werte);",' + #10 +
+    '      "good": "Werte := nil;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2255",' + #10 +
+    '        "E2256",' + #10 +
+    '        "E2246",' + #10 +
+    '        "E2307",' + #10 +
+    '        "E2308"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "local-routine-as-callback",' + #10 +
+    '      "name": "Local routine as procedure variable",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A local (nested) routine is assigned to a variable or passed to a parameter of a procedural type without of object (like E2094), or a typed constant of a routine takes the addres' + 's of a local variable (like E2278). Usually an anonymous method or a routine of the unit was meant. The rule only reports when name resolution knows the target type for sure; method pointers and metho' + 'd references stay silent because the compiler reports them with other codes, and so does @Routine (an untyped pointer). Quick fix: move the routine in front of the enclosing routine as a routine of th' + 'e unit, if it uses nothing from it (no local names further out, no class members without a prefix).",' + #10 +
+    '      "bad": "procedure TListe.Sortieren;\n  function Vergleich(A, B: Pointer): Integer;\n  begin\n    Result := 0;\n  end;\nbegin\n  FListe.Sort(Vergleich);\nend;",' + #10 +
+    '      "good": "function Vergleich(A, B: Pointer): Integer;\nbegin\n  Result := 0;\nend;\n\nprocedure TListe.Sortieren;\nbegin\n  FListe.Sort(Vergleich);\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2094",' + #10 +
+    '        "E2278"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "hresult-integer-mix",' + #10 +
+    '      "name": "Integer and HRESULT interchanged",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A class implements an interface method with an HRESULT result through a method with an Integer (or LongInt) result, or the other way round (like X1008). Both are 32 bits wide, so' + ' it goes unnoticed, but the meaning of the values (S_FALSE as success) is lost; important for COM and Open Tools API code. Methods are matched by name and parameter types, including resolution clauses' + ' such as function IFoo.Bar = Baz; interfaces and their ancestors come from the file or the index. If variants stand in conditional branches, the rule only reports when every variant differs. Quick fix' + ': align the result type in declaration and implementation with the interface.",' + #10 +
+    '      "bad": "IExport = interface\n  function Schreiben: HRESULT; stdcall;\nend;\n…\n  function Schreiben: Integer; stdcall;",' + #10 +
+    '      "good": "IExport = interface\n  function Schreiben: HRESULT; stdcall;\nend;\n…\n  function Schreiben: HRESULT; stdcall;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "X1008"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "invalid-var-argument",' + #10 +
+    '      "name": "Invalid argument for a var or out parameter",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A var or out parameter receives something that is not a variable: a string element for a character parameter (like E2354), a constant, a const parameter, a property or a function' + ' result (like E2197), a constant for an open array (like E2192), Slice (like E2454) or an expression (like E2036). Reported only for routines without overloads whose header is known from the file or t' + 'he index; built-in routines such as Inc or Move and untyped var parameters accept more and stay silent. Typed constants count as constants unless {$J+} is set. Quick fix: pass a local variable of the ' + 'parameter type, and write it back for string elements and properties with write.",' + #10 +
+    '      "bad": "procedure Erhoehen(var Zeichen: Char);\n…\nErhoehen(Zeile[1]);",' + #10 +
+    '      "good": "Zeichen := Zeile[1];\nErhoehen(Zeichen);\nZeile[1] := Zeichen;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2354",' + #10 +
+    '        "E2197",' + #10 +
+    '        "E2192",' + #10 +
+    '        "E2454",' + #10 +
+    '        "E2036"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "condition-not-boolean",' + #10 +
+    '      "name": "Condition is not Boolean",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The condition of if, while, until or a conditional expression has a type that is surely not Boolean: a number, a pointer, a class, an interface, a string or a character (like E20' + '12). Unlike C, Delphi needs a Boolean. Reported only when the type is certain; Boolean types such as LongBool, enumerations, aliases and unknown types stay silent. Quick fix: add <> 0 (alternative > 0' + '), <> nil (alternative Assigned), <> '''' or <> #0.",' + #10 +
+    '      "bad": "if Liste.Count then\n  Verarbeiten;",' + #10 +
+    '      "good": "if Liste.Count > 0 then\n  Verarbeiten;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2012"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "for-in-not-enumerable",' + #10 +
+    '      "name": "for-in over a type without enumerator",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A for-in loop runs over a type that cannot be enumerated: a number, pointer, character or Boolean, or a class, record or interface without a public GetEnumerator, also not inheri' + 'ted or from a helper (like E2430); or the enumerator returned by GetEnumerator lacks a public MoveNext or Current (like E2431). Strings, arrays and sets are fine. Reported only when the type and all i' + 'ts ancestors are known; generic types and unknown types stay silent. No quick fix; if the type has Count, the message suggests an indexed loop.",' + #10 +
+    '      "bad": "for F in Felder.Dataset do",' + #10 +
+    '      "good": "for F in Felder do",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2430",' + #10 +
+    '        "E2431"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inherited-abstract-call",' + #10 +
+    '      "name": "inherited calls an abstract method",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "inherited with an explicit method name, such as inherited Zeichnen(C), although the method is abstract in the ancestor (like E2373). A bare inherited; is skipped silently by the ' + 'compiler for abstract methods and is not reported. The method is resolved by name resolution including overloads; the rule only reports when every matching overload is abstract. Quick fix: remove the ' + 'call when it is a statement of its own in a begin…end block.",' + #10 +
+    '      "bad": "procedure TKreis.Zeichnen(C: TCanvas);\nbegin\n  inherited Zeichnen(C);\n  C.Ellipse(FRahmen);\nend;",' + #10 +
+    '      "good": "procedure TKreis.Zeichnen(C: TCanvas);\nbegin\n  C.Ellipse(FRahmen);\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2373"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "generic-constraint-violated",' + #10 +
+    '      "name": "Type argument violates a constraint",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A type argument does not satisfy the constraint of its type parameter: class (like E2511), record (like E2512), constructor (like E2513), an interface (like E2514) or a base clas' + 's (like E2515). Inside methods of a generic type of this file the rule also reports T.Create without a constructor constraint (like E2568) and method calls on values of a type parameter without any co' + 'nstraint (like E2571). The generic type is resolved by name resolution including the number of type parameters, its constraints come from its declaration in the file or in the symbol index. Arguments ' + 'that are type parameters themselves, aliases and types whose ancestry cannot be resolved are not reported. Quick fix for a type parameter of this file that stands alone in its group: add the constrain' + 't (T: class, constructor or T: class).",' + #10 +
+    '      "bad": "  TFabrik<T: class> = class\n    function Neu: T;\n  end;\n…\n  Result := T.Create;",' + #10 +
+    '      "good": "  TFabrik<T: class, constructor> = class\n    function Neu: T;\n  end;\n…\n  Result := T.Create;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2511",' + #10 +
+    '        "E2512",' + #10 +
+    '        "E2513",' + #10 +
+    '        "E2514",' + #10 +
+    '        "E2515",' + #10 +
+    '        "E2568",' + #10 +
+    '        "E2571"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unresolved-type",' + #10 +
+    '      "name": "Type in a declaration not found",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A type name in a declaration (field, parameter, result, ancestor, interface list, variable, type argument) is not declared (like E2003, for the target of a pointer type like E256' + '4) or is not a type (like E2005). Complements unresolved-identifier, which only checks statements. Same preconditions as unresolved-attribute: System in the symbol index, every unit from uses known, n' + 'ot inside {$IF…} blocks. Type parameters, names the file declares as a type anywhere (also nested) and names the index knows as a nested type (inherited inner types) are not reported. Quick fix: add t' + 'he unit that declares the type (with the same number of type parameters) to uses.",' + #10 +
+    '      "bad": "uses\n  System.SysUtils;\ntype\n  TKunden = TObjectList<TKunde>;",' + #10 +
+    '      "good": "uses\n  System.SysUtils, System.Generics.Collections;\ntype\n  TKunden = TObjectList<TKunde>;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2564",' + #10 +
+    '        "E2563",' + #10 +
+    '        "E2005",' + #10 +
+    '        "E2003"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "class-reference-nonvirtual-constructor",' + #10 +
+    '      "name": "Constructor called through a class reference is not virtual",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Create called through a class reference (class of TBasis) whose constructor is not virtual. On Win32 and Win64 this compiles silently but always runs the constructor of TBasis: f' + 'ields that descendants set up in their own constructors stay empty (like E2391). The receiver may be a variable, field, parameter or function result whose type is a class reference; the constructor is' + ' resolved by name resolution in the nearest class that declares it, including overloads by argument count. The rule stays silent when a matching overload is virtual, dynamic, override or abstract, whe' + 'n a declaration lies in another branch of conditional compilation, and when a type cannot be resolved. Quick fix when the constructor is declared in this file: virtual on it and override on the constr' + 'uctors with the same signature in descendants in this file.",' + #10 +
+    '      "bad": "type\n  TPluginKlasse = class of TPlugin;\n  TPlugin = class\n    constructor Create;\n  end;\n...\n  P := Klasse.Create;",' + #10 +
+    '      "good": "type\n  TPluginKlasse = class of TPlugin;\n  TPlugin = class\n    constructor Create; virtual;\n  end;\n  TSpezial = class(TPlugin)\n    constructor Create; override;\n  end;\n...\n  P ' + ':= Klasse.Create;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2391"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "jump-outside-allowed-scope",' + #10 +
+    '      "name": "Break, Continue or Exit in a place where it is not allowed",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Break or Continue outside a loop (like E2097), or Break, Continue or Exit that leave a finally block (like E2126). Delphi only reports both when compiling; it happens often after' + ' moving a loop body into a method of its own. A loop that lies entirely inside the finally block may use Break and Continue. Routines and anonymous methods start afresh: a Break in an anonymous method' + ' does not belong to the loop around it. Only plain calls are reported (not TMonitor.Exit(FLock)), and not when the file declares a routine or variable of that name. Quick fix outside a finally block: ' + 'replace Break with Exit.",' + #10 +
+    '      "bad": "if Eintrag.Treffer then\n  Break;",' + #10 +
+    '      "good": "if Eintrag.Treffer then\n  Exit;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2097",' + #10 +
+    '        "E2126"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "reraise-outside-handler",' + #10 +
+    '      "name": "raise without an argument outside a handler",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "raise; without an exception object is only allowed in an except block (like E2145); Delphi only reports it when compiling. It happens in a local procedure called from the handler' + ', in a finally block or after moving code. Routines and anonymous methods start afresh. The rule stays silent in anonymous methods inside an except block and in routines where the parser reports an er' + 'ror. No quick fix: raise a new exception (raise EImport.Create(…)) or move the code into the handler. reraise-exception-object covers raise E; inside the handler.",' + #10 +
+    '      "bad": "Protokoll.Fehler(''Import abgebrochen'');\nraise;",' + #10 +
+    '      "good": "Protokoll.Fehler(''Import abgebrochen'');\nraise EImportAbgebrochen.Create(''Import abgebrochen'');",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2145"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "label-misuse",' + #10 +
+    '      "name": "Label used incorrectly",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A label is set twice (like E2073), declared and jumped to but never set (E2074), set or jumped to without being declared in the current routine (E2093), or goto jumps into or out' + ' of a try block, also between the try part and its except or finally part (E2127). Delphi only reports these when compiling. Labels belong to one routine or the program block; a local procedure cannot' + ' jump to a label of the routine around it. Duplicate labels in conditional branches that exclude each other stay silent, as do routines with an asm block, because labels inside asm are not in the synt' + 'ax tree. No quick fix.",' + #10 +
+    '      "bad": "label Weiter;\nbegin\n  try\n    if Fertig then goto Weiter;\n  finally\n    Aufraeumen;\n  end;\nWeiter:\nend;",' + #10 +
+    '      "good": "begin\n  try\n    if Fertig then Exit;\n  finally\n    Aufraeumen;\n  end;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2073",' + #10 +
+    '        "E2074",' + #10 +
+    '        "E2093",' + #10 +
+    '        "E2127"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "for-variable-misuse",' + #10 +
+    '      "name": "Loop variable changed or not local",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The variable of a for loop is assigned in the body or changed with Inc/Dec (like E2081), passed as a var or out parameter to a routine of this file (like W1015), or is not a simp' + 'le local variable: a field of the own class, a global variable of the unit or a local variable of the enclosing routine (like E1019). Delphi only reports these when compiling. Parameters, unknown name' + 's and loops inside with statements stay silent, as do anonymous methods in the body and routines with parser errors. Quick fixes: convert to a while loop (not when the body uses Continue), or use for ' + 'var when the routine does not use the name otherwise.",' + #10 +
+    '      "bad": "for I := 0 to Zeilen.Count - 1 do\nbegin\n  if Zeilen[I] = '''' then\n    Inc(I);\nend;",' + #10 +
+    '      "good": "I := 0;\nwhile I <= Zeilen.Count - 1 do\nbegin\n  if Zeilen[I] = '''' then\n    Inc(I);\n  Inc(I);\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2081",' + #10 +
+    '        "W1015",' + #10 +
+    '        "E1019"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "for-variable-after-loop",' + #10 +
+    '      "name": "Loop variable read after the loop",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "After a for loop that ends normally (without Break), the loop variable is undefined. The rule reports the first read of the variable on a path from the normal loop exit, before i' + 't is assigned again (like W1037). Only simple local variables of the routine are checked; for var loops, fields, globals, reads only inside the body, arguments of routines that might be out parameters' + ', and routines whose control flow is incomplete stay silent. Quick fix: convert to a while loop, where the counter has a defined value afterwards.",' + #10 +
+    '      "bad": "for I := 0 to High(Werte) do\n  if Werte[I] = Gesucht then\n    Break;\nGefunden := I <= High(Werte);",' + #10 +
+    '      "good": "I := 0;\nwhile I <= High(Werte) do\nbegin\n  if Werte[I] = Gesucht then\n    Break;\n  Inc(I);\nend;\nGefunden := I <= High(Werte);",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1037"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "argument-count-mismatch",' + #10 +
     '      "name": "Wrong number of arguments",' + #10 +
     '      "category": "bug",' + #10 +
@@ -2645,7 +4208,7 @@ begin
     '    {' + #10 +
     '      "id": "syntax",' + #10 +
     '      "name": "Syntaxfehler",' + #10 +
-    '      "description": "Der Parser konnte den Quelltext nicht lesen."' + #10 +
+    '      "description": "Der Quelltext lässt sich nicht lesen. Die Meldung nennt wie der Compiler, was erwartet und was gefunden wurde („'';'' erwartet, aber ''end'' gefunden (wie E2029).“), und trägt den Co' + 'mpilercode: fehlendes '';'' (E2066 zwischen Anweisungen, E2029 in Deklarationen), '';'' vor else (E2153), offener String (E2052) oder Kommentar mit Startzeile (E2057), Anweisungen im interface-Teil (E2050' + '), Bezeichner nach einem Punkt am Ende (E2372), strict ohne private oder protected (E2375), class vor etwas anderem als einer Routine (E2357), try ohne except oder finally (E2125), for ohne Variable (' + 'E2088). Prüfungen am fertigen Baum: procedure mit Ergebnistyp (E2025), Deklaration einer function ohne Ergebnistyp (E2023; die Kurzform der Implementierung ist erlaubt), Wertparameter ohne Typ (E2067)' + ', lokale Variable mit Anfangswert (E2195) oder mehrere Variablen mit einem Anfangswert (E2196), Klassen-, Interface- oder Objekttyp im var-Abschnitt (E2060, E2058) oder lokal in einer Routine (E2061, ' + 'E2059), label im interface-Teil (E2049) und goto auf eine nicht deklarierte Marke (E2031). Nach einem offenen String oder Kommentar fallen die Folgefehler weg, weil der Compiler dort abbricht. Inaktiv' + 'e {$IFDEF}-Zweige werden nicht gemeldet. Korrekturen: '';'' vor else entfernen (sicher, auch beim Speichern), '';'' ergänzen, String schließen, Kommentar am Ende seiner ersten Zeile schließen."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unused-suppression",' + #10 +
@@ -3027,7 +4590,7 @@ begin
     '    {' + #10 +
     '      "id": "for-high-to-low",' + #10 +
     '      "name": "for-Schleife zählt mit to abwärts",' + #10 +
-    '      "description": "Die Schleife beginnt beim oberen Wert (High, Count - 1) und endet beim unteren, verwendet aber to. Sie läuft nie; gemeint war downto."' + #10 +
+    '      "description": "Die Schleife beginnt beim oberen Wert (High, Count - 1) und endet beim unteren, verwendet aber to. Sie läuft nie; gemeint war downto. Ebenso Schleifen mit konstanten Grenzen, die' + ' nie laufen, etwa for I := 10 to 1, auch mit Vorzeichen, Hex- oder Zeichenliteralen (wie H2135). Gleiche Grenzen, Ausdrücke, benannte Konstanten und aufsteigende Grenzen bleiben still. Korrektur: to d' + 'urch downto ersetzen."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "exception-not-raised",' + #10 +
@@ -3276,8 +4839,14 @@ begin
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "deprecated-symbol",' + #10 +
-    '      "name": "Veraltetes Symbol",' + #10 +
-    '      "description": "Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, platform oder experimental wird verwendet (wie Compilerwarnungen W1000, W1002 und W1003). Der Editor strei' + 'cht den Namen durch; die Meldung nennt den Grund aus deprecated ''Grund''. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet."' + #10 +
+    '      "name": "Veraltetes oder gebundenes Symbol",' + #10 +
+    '      "description": "Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, experimental, platform oder library wird verwendet (wie W1000, W1003, W1002, W1001), oder eine Unit, deren' + ' Kopf einen dieser Hinweise trägt, steht in uses (wie W1006, W1007, W1005, W1004). Gemeldet wird nur, was sicher aufgelöst ist. Der Editor streicht veraltete Namen durch; die Meldung nennt den Grund a' + 'us deprecated ''Grund''. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet. Welche Arten gemeldet werden, legt die Option kinds fest (Standard deprecated und experimental, wie mei' + 'st in Projekten); die Schalter {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} usw. und {$WARNINGS OFF} gelten ab ihrer Stelle wie beim Compiler; ein Schalter in einem {$IF}-Zw' + 'eig, der nicht sicher mit übersetzt wird, hält die Stelle still. Korrektur: durch den Namen aus dem Grund ersetzen (bei IncludeTrailingBackslash und ExcludeTrailingBackslash durch die plattformunabhän' + 'gige Routine), wenn genau ein Name passt, an der Stelle sichtbar ist und dieselbe Art hat. Ohne Projektindex prüft die Regel nur die Symbole der Datei selbst.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "kinds",' + #10 +
+    '          "description": "Gemeldete Arten: deprecated, experimental, platform, library (platform und library sind standardmäßig aus)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "implicit-package-import",' + #10 +
@@ -3623,6 +5192,16 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "legacy-tlist",' + #10 +
+    '      "name": "Ungenerische Liste mit Cast",' + #10 +
+    '      "description": "Eine ungenerische TList (System.Classes) oder TObjectList (System.Contnrs), deren Elemente mit Cast gelesen werden: T(Liste[I]), T(Liste.Items[I]), T(Liste.First), Liste[I] as T ' + 'usw. TList<T> und TObjectList<T> aus System.Generics.Collections prüfen den Typ beim Übersetzen und brauchen keinen Cast. Die Regel meldet je Liste einmal, an ihrer Deklaration, wenn sie in der Datei ' + 'steht, sonst am ersten Cast; bei mehreren Zieltypen nennt sie alle. Nur wenn die Namensauflösung Listentyp und Zieltyp sicher findet; Casts auf Pointer zählen nicht. Standard aus; für Code, der noch m' + 'it alten Delphi-Versionen übersetzen muss, über exclude abschaltbar. Schnellkorrektur (#1105): wandelt die Liste in einem Schritt in TList<T> bzw. TObjectList<T> um: Deklaration, jedes Create (Argumen' + 'te bleiben), jeden Cast und System.Generics.Collections im uses; Contnrs entfällt, wenn nichts anderes es braucht. Nur wenn alle Lesezugriffe denselben Cast haben, kein Mitglied ohne generisches Gegen' + 'stück vorkommt (Sort mit TListSortCompare, Assign mit TListAssignOp, List), keine Pointer- oder Integer-Werte in der Liste stehen, Add, Extract, Remove und IndexOf T bekommen und die Liste nicht weite' + 'rgegeben wird. Ist die Liste außerhalb der Unit sichtbar, schreibt die Korrektur die anderen Units der Projektgruppe mit um oder entfällt; solche Korrekturen wendet „Alle korrigieren“ (source.fixAll) ' + 'nie an. Sonst nennt der Befund-Hover den Grund. Stapel und Warteschlangen: legacy-stack-queue."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "legacy-stack-queue",' + #10 +
+    '      "name": "Ungenerischer Stapel oder ungenerische Warteschlange mit Cast",' + #10 +
+    '      "description": "Ein ungenerischer TStack, TQueue, TObjectStack oder TObjectQueue (System.Contnrs), dessen Elemente mit Cast gelesen werden: T(Stapel.Pop), T(Stapel.Peek), Schlange.Pop as T usw. ' + 'TStack<T>, TQueue<T>, TObjectStack<T> und TObjectQueue<T> aus System.Generics.Collections prüfen den Typ beim Übersetzen und brauchen keinen Cast. Wie legacy-tlist meldet die Regel je Stapel bzw. Wart' + 'eschlange einmal, an der Deklaration, wenn sie in der Datei steht, sonst am ersten Cast; bei mehreren Zieltypen nennt sie alle. Nur wenn die Namensauflösung Typ und Zieltyp sicher findet; Casts auf Po' + 'inter zählen nicht. Standard aus; für Code, der noch mit alten Delphi-Versionen übersetzen muss, über exclude abschaltbar. Schnellkorrektur: wandelt in einem Schritt um wie legacy-tlist; bei Warteschl' + 'angen wird Push zu Enqueue und Pop zu Dequeue. TObjectStack<T> und TObjectQueue<T> besitzen ihre Objekte, die Contnrs-Klassen nicht: Die Korrektur erzeugt sie deshalb mit Create(False) und liest mit E' + 'xtract, weil Pop und Dequeue dort Prozeduren sind, die das Objekt freigeben. Ohne Create in der Unit, mit verschiedenen Casts oder mit Mitgliedern ohne generisches Gegenstück (AtLeast) gibt es keine K' + 'orrektur; der Befund-Hover nennt den Grund."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "global-variable",' + #10 +
     '      "name": "Globale Variable im interface",' + #10 +
     '      "description": "var oder threadvar im interface-Teil einer Unit: Jede Unit, die sie einbindet, kann den Wert lesen und ändern. Die Formularvariable des Designers (frmHaupt: TfrmHaupt, bei Nachfa' + 'hren von TForm, TFrame, TDataModule oder jeder Klasse einer Unit mit Formulardatei) ist ausgenommen, außer mit includeFormVariables. Standard aus. Die Variable in den implementation-Teil verschieben u' + 'nd eine Funktion oder Property anbieten.",' + #10 +
@@ -3864,7 +5443,7 @@ begin
     '    {' + #10 +
     '      "id": "sql-write-without-where",' + #10 +
     '      "name": "UPDATE oder DELETE ohne WHERE",' + #10 +
-    '      "description": "UPDATE oder DELETE ohne WHERE in einem String-Literal, in SQL.Text, SQL.Add, CommandText, im ersten Argument von ExecSQL, ExecSQLScalar, ExecuteDirect oder Execute oder in SQL.St' + 'rings/CommandText der Formulardatei. Das betrifft alle Zeilen der Tabelle; meist ist die Bedingung vergessen. Die Regel setzt den SQL-Text je Query innerhalb einer Routine zusammen (Clear und ein neue' + 'r Text beginnen von vorn) und setzt Konstanten und lokale Werte ein. JOIN, TOP, LIMIT und ROWS schränken die Zeilen ebenfalls ein; ein WHERE in einer Unterabfrage oder einem Kommentar zählt nicht. Unb' + 'ekannte Teile hinter dem Tabellennamen (Variablen, Aufrufe an der Stelle einer Klausel) lassen die Anweisung still; ein dynamischer Tabellenname meldet mit mittlerer Konfidenz. Still, wenn die Routine' + ' den SQL-Text weitergibt oder eine andere Routine der Unit ihn ergänzt; SQL der Formulardatei zählt nur, solange die Unit es nicht verändert. Literale außerhalb von SQL-Eigenschaften zählen nur mit DE' + 'LETE bzw. UPDATE in Großbuchstaben, damit Meldungstexte still bleiben. Konfidenz hoch, keine Korrektur; Tabellen, die absichtlich geleert werden, gehören in allowTables.",' + #10 +
+    '      "description": "UPDATE oder DELETE ohne WHERE in einem String-Literal, in SQL.Text, SQL.Add, CommandText, im ersten Argument von ExecSQL, ExecSQLScalar, Open, ExecuteDirect oder Execute oder in ' + 'SQL.Strings/CommandText der Formulardatei. Das betrifft alle Zeilen der Tabelle; meist ist die Bedingung vergessen. Die Regel setzt den SQL-Text je Query innerhalb einer Routine zusammen (Clear und ei' + 'n neuer Text beginnen von vorn) und setzt Konstanten und lokale Werte ein. JOIN, TOP, LIMIT und ROWS schränken die Zeilen ebenfalls ein; ein WHERE in einer Unterabfrage oder einem Kommentar zählt nich' + 't. Unbekannte Teile hinter dem Tabellennamen (Variablen, Aufrufe an der Stelle einer Klausel) lassen die Anweisung still; ein dynamischer Tabellenname meldet mit mittlerer Konfidenz. Still, wenn die R' + 'outine den SQL-Text weitergibt oder eine andere Routine der Unit ihn ergänzt; SQL der Formulardatei zählt nur, solange die Unit es nicht verändert. Literale außerhalb von SQL-Eigenschaften zählen nur ' + 'mit DELETE bzw. UPDATE in Großbuchstaben, damit Meldungstexte still bleiben. Konfidenz hoch, keine Korrektur; Tabellen, die absichtlich geleert werden, gehören in allowTables.",' + #10 +
     '      "options": [' + #10 +
     '        {' + #10 +
     '          "name": "allowTables",' + #10 +
@@ -3958,6 +5537,615 @@ begin
     '      "id": "readonly-property-assigned",' + #10 +
     '      "name": "Zuweisung an eine Property ohne write",' + #10 +
     '      "description": "Zuweisung an eine Property ohne write (wie E2129) bzw. Lesen einer Property ohne read (wie E2130). Die Regel meldet nur, wenn die Namensauflösung die Property sicher findet; Neud' + 'eklarationen ohne read und write (property Caption;) gelten als unbekannt. Korrekturen: Count := 0 wird Clear, wenn der Typ Clear hat; in einer Methode der deklarierenden Klasse das Feld hinter read z' + 'uweisen; für eine Property dieser Datei den Setter anlegen und write ergänzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "sql-select-star",' + #10 +
+    '      "name": "SELECT * im Code",' + #10 +
+    '      "description": "SELECT * oder SELECT Alias.* in einer Spaltenliste, an denselben Stellen wie bei sql-write-without-where: String-Literale, SQL.Text, SQL.Add, CommandText, das erste Argument von ' + 'ExecSQL, Open und ähnlichen Aufrufen, Konstanten, lokale Werte und SQL.Strings/CommandText der Formulardatei. Neue Spalten ändern still die Datenmenge, persistente Felder passen nicht mehr, und es wer' + 'den mehr Daten übertragen als nötig. Unterabfragen zählen; EXISTS (SELECT * …) und COUNT(*) bleiben still, ebenso eine Spaltenliste aus einer Variablen. Literale außerhalb von SQL-Eigenschaften zählen' + ' nur mit SELECT in Großbuchstaben und einem FROM, damit Meldungstexte still bleiben. Standardmäßig aus (in den Regeleinstellungen oder mit dem Profil strict einschalten). Konfidenz hoch. Schnellkorrek' + 'tur: Steht der Stern in einem einzelnen Literal und hat die Datenmenge persistente Felder in der Formulardatei, ersetzt sie * durch deren FieldName-Liste (ohne berechnete und Nachschlagefelder)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "path-concat-without-delimiter",' + #10 +
+    '      "name": "Pfad ohne Trennzeichen zusammengesetzt",' + #10 +
+    '      "description": "Ein Ordner ohne abschließendes Trennzeichen wird mit + an einen Datei- oder Ordnernamen gehängt: Ergebnisse von ExtractFileDir, ExcludeTrailingPathDelimiter, GetCurrentDir, GetHo' + 'mePath, TPath.GetDocumentsPath und den übrigen TPath.Get…Path-Ordnern, TPath.GetDirectoryName, TDirectory.GetCurrentDirectory und TDirectory.GetParent, direkt aufgerufen oder in einer lokalen Variable' + 'n, der die Routine nur solche Werte zuweist. Das Ergebnis ist C:\\Datendatei.txt statt C:\\Daten\\datei.txt. ExtractFilePath, IncludeTrailingPathDelimiter und TPath.GetTempPath enden mit einem Trennze' + 'ichen und bleiben still, ebenso Trennzeichen, Endungen (ExtractFileExt, ''.bak'') und Texte, die mit Leerzeichen oder Satzzeichen beginnen. Ein Literal als Name meldet mit hoher, ein Bezeichner mit mitt' + 'lerer Konfidenz. Geht eine lokale Variable an eine Prozedur außer ForceDirectories, FileExists und ähnlichen lesenden Aufrufen, kann sie dort geändert werden und bleibt still. Schnellkorrektur: TPath.' + 'Combine(Ordner, Name), System.IOUtils wird in die uses eingetragen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "hardcoded-path",' + #10 +
+    '      "name": "Fester Dateipfad im Code",' + #10 +
+    '      "description": "Ein String-Literal mit Laufwerksbuchstaben (C:\\…, auch mit /) oder UNC-Pfad (\\\\server\\freigabe\\…); Pfade unter C:\\Users bzw. C:\\Documents and Settings bekommen eine eigene' + ' Meldung. Auf anderen Rechnern fehlt der Pfad. Laufwerkswurzeln wie ''C:\\'' allein und die Präfixe \\\\?\\ und \\\\.\\ bleiben still, ebenso Kommentare, Test-Units und Units aus allowUnits (z. B. eine ' + 'Unit mit den Standardpfaden einer Installation). Konfidenz hoch, keine Korrektur: den Pfad aus TPath (GetDocumentsPath, GetHomePath, GetSharedDocumentsPath), den Einstellungen oder einer Umgebungsvari' + 'ablen holen.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowUnits",' + #10 +
+    '          "description": "Units, in denen feste Pfade erlaubt sind, nach Unit-Namen; * am Ende passt auf ein Präfix (App.Config*)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "filename-compare-case",' + #10 +
+    '      "name": "Dateinamen mit = verglichen",' + #10 +
+    '      "description": "Ein Vergleich mit = oder <>, bei dem eine Seite ein Datei- oder Pfadname ist: das Ergebnis von ExtractFileName, ExtractFilePath, ExtractFileDir, ExtractFileExt, ExpandFileName, C' + 'hangeFileExt und verwandten Funktionen aus System.SysUtils, von TPath.GetFileName, GetExtension, GetDirectoryName, GetFullPath, Combine und verwandten Methoden oder eine Variable bzw. Eigenschaft, der' + 'en Name auf FileName endet, oder Application.ExeName. Unter Windows sind Kunde.pas und kunde.PAS dieselbe Datei. Vergleiche mit Leertext, nil oder einem Literal ohne Buchstaben bleiben still, ebenso E' + 'xtractFileDir(X) = X (beide Seiten stammen aus demselben Text). Konfidenz mittel. Korrektur: SameFileName(A, B), bei <> not SameFileName(A, B); ergänzt System.SysUtils in der uses-Klausel, falls nötig' + '."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "initialization-not-finalized",' + #10 +
+    '      "name": "Beim Start erzeugtes Objekt wird nicht freigegeben",' + #10 +
+    '      "description": "Ein Objekt wird in initialization mit TKlasse.Create erzeugt und einer Unit-Variablen zugewiesen oder in einem class constructor erzeugt und einer class var zugewiesen, aber die ' + 'Unit gibt es nirgends frei (kein Free, Destroy, DisposeOf, Release oder FreeAndNil in der ganzen Unit). FastMM meldet beim Beenden ein Leck; in Packages bleibt das Objekt bei jedem Entladen liegen. In' + 'terface- und Record-Typen, Komponenten mit Owner (Application, Self, Owner) und Objekte, die die Unit weitergibt, bleiben still: Jede Erwähnung der Variablen muss harmlos sein (Zugriff auf ein Mitglie' + 'd, Vergleich mit nil, Assigned, erneutes Create oder Zuweisung von nil); als Argument übergeben, anderswo zugewiesen, with, eine Property, die sie liest, oder FreeOnTerminate lassen die Regel schweige' + 'n. Bei Variablen aus dem interface-Abschnitt und öffentlichen class vars schweigt sie auch, wenn eine andere Unit im Index den Namen verwendet. Konfidenz hoch. Korrektur: FreeAndNil am Ende von finali' + 'zation bzw. im class destructor; fehlt der finalization-Abschnitt oder der class destructor (Deklaration und Rumpf), wird er angelegt, System.SysUtils kommt bei Bedarf in die uses-Klausel."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "compiler-warnings-disabled",' + #10 +
+    '      "name": "Compiler-Warnungen oder Prüfungen bis zum Ende der Unit abgeschaltet",' + #10 +
+    '      "description": "{$WARNINGS OFF}, {$HINTS OFF}, {$WARN X OFF}, {$R-}, {$Q-} (auch zusammen als {$R-,Q-}) oder die langen Formen {$RANGECHECKS OFF} und {$OVERFLOWCHECKS OFF} ohne spätere Wiederher' + 'stellung bis zum Ende der Unit. Meldungen und Prüfungen verschwinden weit über die gemeinte Stelle hinaus, die 0/0/0-Regel wird unterlaufen. Jedes spätere ON, +, DEFAULT oder ERROR für denselben Schal' + 'ter zählt als Wiederherstellung, auch in Mustern mit {$IFOPT}/{$IFDEF}, ebenso ein späteres {$POPOPT}. Ein Schalter, dessen Gegenstück in einem anderen Zweig desselben {$IF} steht ({$IFDEF DEBUG}{$R+}' + '{$ELSE}{$R-}{$ENDIF}), ist eine gewollte Einstellung je Konfiguration und bleibt still, ebenso eine Direktive ohne Code dahinter; {$R *.dfm} ist eine Ressource, keine Bereichsprüfung. Die Option allow' + ' nennt Schalter, die aus bleiben dürfen (Warnungsnamen wie SYMBOL_PLATFORM, WARNINGS, HINTS, R bzw. RANGECHECKS, Q bzw. OVERFLOWCHECKS). Konfidenz hoch. Korrektur: die Wiederherstellung ({$WARNINGS ON' + '}, {$WARN X DEFAULT}, {$R+} …) hinter dem nächsten Block einfügen; bei Bereichs- und Überlaufprüfung nur einzeln, weil {$R+} eine Prüfung einschalten kann, die das Projekt aus hat.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allow",' + #10 +
+    '          "description": "Schalter, die bis zum Ende der Unit aus bleiben dürfen: Warnungsnamen für {$WARN} (SYMBOL_PLATFORM), WARNINGS, HINTS, R bzw. RANGECHECKS, Q bzw. OVERFLOWCHECKS; ohne Groß-/Kl' + 'einschreibung."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dll-export-unsafe",' + #10 +
+    '      "name": "Exportierte Routine nicht sicher über DLL-Grenzen aufrufbar",' + #10 +
+    '      "description": "Eine in exports aufgeführte Routine dieser Datei hat keine Aufrufkonvention (stdcall, cdecl, safecall, winapi oder pascal; register ist die Delphi-Konvention) oder erwartet bzw. ' + 'liefert einen String (string, UnicodeString, AnsiString, UTF8String, RawByteString), ein dynamisches Array (TBytes, TArray<T>, …DynArray, array of T aus der Datei), ein Objekt oder ein Interface ohne ' + 'GUID. Aufrufer aus anderen Sprachen oder Delphi-Versionen stürzen ab; Strings und dynamische Arrays liegen im Speichermanager der DLL. WideString, ShortString, PChar, offene Array-Parameter und Record' + 's sind in Ordnung. Objekte erkennt die Regel nur sicher: Klassen der Datei, des Index und häufige RTL-Klassen; Interfaces nur aus der Datei. Routinen aus anderen Units und Überladungen, die der export' + 's-Eintrag nicht festlegt, bleiben still. Mit ShareMem oder SimpleShareMem in der uses-Klausel sind Strings und dynamische Arrays erlaubt (Option allowShareMem). Die Meldung steht am Eintrag in exports' + '; bei Strings empfiehlt sie PChar mit Puffer und Länge. Konfidenz hoch. Korrektur: stdcall in jedem Kopf der Routine ergänzen (nur einzeln, weil das die Schnittstelle für vorhandene Aufrufer ändert)."' + ',' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowShareMem",' + #10 +
+    '          "description": "Mit ShareMem oder SimpleShareMem in der uses-Klausel sind Strings und dynamische Arrays in exportierten Routinen erlaubt."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "destructor-not-nil-safe",' + #10 +
+    '      "name": "Destruktor benutzt Felder, die nil sein können",' + #10 +
+    '      "description": "Wirft ein Konstruktor, ruft Delphi sofort den Destruktor auf, obwohl noch nicht alle Felder angelegt sind. Gemeldet wird ein Zugriff im Destruktor (oder in einer privaten Methode' + ', die nur der Destruktor aufruft) auf ein Feld wie FZeilen.Clear, FDatei.Position oder FZeilen[0], wenn ein Konstruktor der Klasse das Feld (TKlasse.Create) erst nach einem Aufruf anlegt, der werfen k' + 'ann, oder nur auf manchen Wegen. Die Zugriffsverletzung verdeckt dann die eigentliche Exception. Free, FreeAndNil, DisposeOf und Zugriffe nach Assigned(FFeld) bzw. FFeld <> nil sind nil-sicher; Before' + 'Destruction läuft auf diesem Weg nicht. Konstruktoren von RTL-Klassen, die höchstens EOutOfMemory werfen (TStringList.Create, TObjectList<T>.Create(True)), inherited Create und Supports zählen nicht a' + 'ls werfend. Konfidenz hoch. Schnellkorrektur: if Assigned(FFeld) then vor die Anweisung setzen. Mit onlyAfterRaisingCode aus zählt jedes im Konstruktor angelegte Feld.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "onlyAfterRaisingCode",' + #10 +
+    '          "description": "Nur melden, wenn der Konstruktor vor dem Anlegen des Felds etwas aufruft, das eine Exception werfen kann."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "handle-leak",' + #10 +
+    '      "name": "Windows-Handle wird nicht geschlossen",' + #10 +
+    '      "description": "Ein Windows-Handle in einer lokalen Variablen wird auf einem Weg zum Ende der Routine nicht mit dem passenden Gegenstück geschlossen: CreateFile, CreateEvent, CreateMutex, OpenPr' + 'ocess, CreateProcess (hProcess, hThread) und CreateToolhelp32Snapshot mit CloseHandle, FindFirstFile mit FindClose, RegOpenKeyEx/RegCreateKeyEx mit RegCloseKey, LoadLibrary mit FreeLibrary, GetDC mit ' + 'ReleaseDC, CreatePen/CreateBrush/CreateFont/CreateBitmap mit DeleteObject, CreateCompatibleDC mit DeleteDC und weitere. Zurückgeben, Speichern in einem Feld oder einer globalen Variablen, Übergabe an ' + 'eine unbekannte Routine und Verwenden in einer anonymen Methode gelten als Weitergabe. Zweige, in denen eine if-Prüfung sagt, dass das Öffnen misslang (H = 0, H = INVALID_HANDLE_VALUE, RegOpenKeyEx(..' + '.) <> ERROR_SUCCESS), und Ausnahmewege (siehe pair-without-finally) zählen nicht. Die Option pairs ergänzt eigene Paare. Konfidenz mittel. Schnellkorrektur, wenn das Handle nie geschlossen wird: die A' + 'nweisungen nach dem Öffnen in try … finally mit dem Schließen einschließen bzw. das Schließen anhängen, wenn das Öffnen die letzte Anweisung ist.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "pairs",' + #10 +
+    '          "description": "Zusätzliche Paare aus Öffnen und Schließen als \"Oeffnen>Schliessen\" oder {\"open\": …, \"close\": …}; die Öffnen-Funktion liefert das Handle, die Schließen-Prozedur bekommt' + ' es als einziges Argument."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "global-formatsettings-modified",' + #10 +
+    '      "name": "Globale FormatSettings wird verändert",' + #10 +
+    '      "description": "Zuweisung an die globale FormatSettings oder eines ihrer Felder (auch an die veralteten globalen Variablen DecimalSeparator, ShortDateFormat, ThousandSeparator … älterer Delphi-V' + 'ersionen). Das ändert die Formatierung für die ganze Anwendung, für alle Packages im selben Prozess (im IDE-Plugin die IDE selbst) und für alle Threads und ist nicht threadsicher; häufig eine Notlösun' + 'g, um einen Punkt als Dezimaltrenner zu erzwingen. Gemeldet wird nur, wenn der Name sicher die Variable aus System.SysUtils ist: keine lokale Deklaration, kein Mitglied der Klasse oder ihrer Vorfahren' + ' (still, wenn die Kette der Vorfahren an einer unbekannten Klasse endet), nicht in with. Ergänzt format-without-settings, das Formatierungsaufrufe ohne Settings meldet. Konfidenz hoch. Schnellkorrektu' + 'r, wenn die Routine die globalen Settings nur einmal ändert und danach etwas formatiert: lokale TFormatSettings anlegen (TFormatSettings.Invariant bei DecimalSeparator := ''.'', sonst eine Kopie von For' + 'matSettings mit dem geänderten Feld) und an die folgenden Formatierungsaufrufe übergeben. Mit allowInProgram sind die Zuweisungen in der .dpr erlaubt.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowInProgram",' + #10 +
+    '          "description": "Zuweisungen in der .dpr erlauben, etwa einmal beim Programmstart."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-interface-dangling",' + #10 +
+    '      "name": "Komponente als Interface gespeichert und freigegeben",' + #10 +
+    '      "description": "Ein Nachfahr von TComponent (Formular, Frame, Datenmodul, eigene Komponente) implementiert ein Interface, aber TComponent zählt keine Referenzen. Gemeldet wird das Speichern des ' + 'Objekts als Interface in einem Feld, einer globalen Variablen oder einer Liste (FAnsicht as IBeobachter an Bus.Anmelden, FListe.Add, Register, Subscribe …, Zuweisung an ein Feld oder eine globale Vari' + 'able, Add in TList<IFoo>/TInterfaceList), wenn dieselbe Unit das Objekt freigibt (Free, Release, DisposeOf, FreeAndNil) und es nirgends abmeldet: FreeNotification auf dem Objekt, ein anderer Aufruf am' + ' selben Empfänger mit dem Objekt als Argument (Abmelden, Remove, Unsubscribe …), Clear oder eine weitere Zuweisung an dasselbe Feld. Nach der Freigabe zeigt das gespeicherte Interface ins Leere. Still' + ' bei Klassen mit eigenem _Release und wenn die Kette der Vorfahren an einer unbekannten Klasse endet. Ebenso gemeldet, ohne Schnellkorrektur: Nachfahren von TInterfacedObject, die so gespeichert und z' + 'usätzlich mit Free freigegeben werden; das gespeicherte Interface hält dann ein freigegebenes Objekt, und eine Abmeldung davor gäbe es schon frei. Konfidenz mittel. Schnellkorrektur: Abmeldung vor der' + ' ersten Freigabe einfügen (Empfänger.Abmelden(…), wenn der Typ des Empfängers das Gegenstück hat, bzw. Feld := nil).",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "componentClasses",' + #10 +
+    '          "description": "Basisklassen ohne Referenzzählung; mit TComponent zählen auch die bekannten VCL- und FMX-Klassen (TForm, TFrame, TDataModule …)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unit-name-mismatch",' + #10 +
+    '      "name": "Unit-Name passt nicht zum Dateinamen",' + #10 +
+    '      "description": "Der Name hinter unit weicht vom Dateinamen ab, meist nach dem Umbenennen der Datei außerhalb der IDE (wie E1038, W1038). Groß-/Kleinschreibung zählt nicht, Punkte im Namen schon.' + ' In Programmen, Bibliotheken und Packages wird außerdem ein Eintrag uses X in ''Datei.pas'' gemeldet, dessen Datei eine andere Unit deklariert (wie E2085); die Regel liest dazu die Datei. Programme, Bib' + 'liotheken und Packages selbst vergleicht sie nicht mit dem Dateinamen, weil der Compiler das auch nicht tut. {$WARN UNIT_NAME_MISMATCH OFF} oder {$WARNINGS OFF} vor dem Unit-Namen schaltet die Regel w' + 'ie den Compiler ab. Korrekturen: Unit-Namen an den Dateinamen anpassen (die Datei umbenennen bleibt Sache der IDE) bzw. den uses-Eintrag auf die Unit der Datei ändern."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "text-after-final-end",' + #10 +
+    '      "name": "Text nach dem abschließenden end.",' + #10 +
+    '      "description": "Nach dem abschließenden end. einer Unit, eines Programms, einer Bibliothek oder eines Packages steht noch Quelltext. Der Compiler ignoriert ihn (wie W1011); meist ist es Code, de' + 'r beim Einfügen ans Dateiende geraten ist und nie übersetzt wird. Kommentare und Direktiven werden nicht gemeldet (Option allowComments). Die Regel sucht das abschließende end. hinter dem letzten Absc' + 'hnitt des Syntaxbaums und schweigt, solange der Parser Fehler meldet oder end. in einem {$IF…}-Zweig steht; {$WARNINGS OFF} vor end. schaltet sie ab. Schnellkorrektur: Text nach end. entfernen.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowComments",' + #10 +
+    '          "description": "Kommentare und Direktiven nach end. erlauben."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "exports-invalid",' + #10 +
+    '      "name": "exports-Klausel unzulässig",' + #10 +
+    '      "description": "Eine exports-Klausel in einer Routine (wie E2191), der Export einer threadvar oder einer mit local deklarierten Routine (wie E2276), einer Variablen, Konstanten oder eines Typs (' + 'wie E2121) oder derselbe Eintrag bzw. Exportname zweimal (wie E2287). Namen löst die Regel nur gegen globale Deklarationen der Datei auf; Namen aus anderen Units und Namen mit Punkt bleiben still, ebe' + 'nso zwei Einträge in sich ausschließenden {$IF…}-Zweigen. Überladene Routinen mit verschiedenen Parameterlisten oder Exportnamen gelten als verschiedene Einträge. Ergänzt dll-export-unsafe (#973). Sch' + 'nellkorrektur: doppelten Eintrag entfernen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unit-name-conflict",' + #10 +
+    '      "name": "Unit-Name kollidiert",' + #10 +
+    '      "description": "Eine Unit heißt wie eine für den Compiler reservierte Unit, System oder SysInit (wie E2272), oder {$NOINCLUDE X} nennt eine Unit, die der Compiler nicht kennt (wie E2242); dafür ' + 'braucht die Regel die Unit-Suche des Projekts und schweigt ohne sichere Antwort. Die Quellen der RTL (source/rtl) prüft sie nicht. Nicht gemeldet: E2447, W1051 und X2421 gehören zu den Namensräumen de' + 'r .NET-Metadaten, die dcc32/dcc64 nicht erzeugt; für E2399 nennt die Dokumentation keine Bedingung, und eine Unit Kunden neben Kunden.Daten übersetzt Delphi ohne Fehler (Spring.pas neben Spring.Collec' + 'tions.pas). Schnellkorrektur für {$NOINCLUDE}: eine ähnlich geschriebene bekannte Unit einsetzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "implicit-variants-unit",' + #10 +
+    '      "name": "Variant ohne System.Variants in uses",' + #10 +
+    '      "description": "Die Unit verwendet Variant oder OleVariant als Typ, ohne System.Variants in uses zu haben. Der Compiler bindet die Unit dann still ein (wie W1040) und ändert damit die Initialisi' + 'erungsreihenfolge. Die Regel zählt Typangaben im Syntaxbaum (Variablen, Felder, Parameter, Ergebnisse, Typargumente); Variants in uses gilt auch in einem {$IF…}-Zweig und ohne Namespace. Still in Syst' + 'em, SysInit und Variants selbst, wenn die Datei einen eigenen Typ Variant deklariert, und nach {$WARN IMPLICIT_VARIANTS OFF}. Standardmäßig aus (Profil strict). Schnellkorrektur: System.Variants in us' + 'es aufnehmen (Variants, wenn die Unit SysUtils oder Classes ohne Namespace nennt)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "file-encoding-unsupported",' + #10 +
+    '      "name": "Kodierung oder Zeichen, die der Compiler nicht liest",' + #10 +
+    '      "description": "Die Datei ist UTF-32 kodiert (wie F2438; erkannt an der BOM, dann keine weiteren Meldungen), oder der Code außerhalb von Strings, Kommentaren und Direktiven enthält ein Zeichen, ' + 'das der Compiler ablehnt (wie E2038): typografische Anführungszeichen aus einer Webseite oder Textverarbeitung, die ASCII-Zeichen ! \" ? \\ ` | ~ sowie Satz- und Sonderzeichen und Emoji jenseits von A' + 'SCII. Buchstaben, Ziffern und Verbinder wie U+203F bleiben in Bezeichnern erlaubt; asm-Blöcke und {$IF…}-Zweige werden übersprungen; Steuer-, Format- und Leerzeichen melden control-char und invisible-' + 'char. Schnellkorrektur: ein Paar Anführungszeichen auf einer Zeile wird zum String; ein einzelnes Zeichen mit eindeutigem ASCII-Gegenstück (– − × ÷ ≤ ≥ ≠, Vollbreiten-ASCII) wird ersetzt. Eine UTF-32-' + 'Datei hat keine Schnellkorrektur; als UTF-8 mit BOM speichern."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "anonymous-capture-invalid",' + #10 +
+    '      "name": "Anonyme Methode erfasst, was sie nicht erfassen darf",' + #10 +
+    '      "description": "Eine anonyme Methode greift auf einen var-, out- oder untypisierten Parameter oder auf Result einer umgebenden Routine bzw. anonymen Funktion zu (wie E2555). Der Name wird von in' + 'nen nach außen aufgelöst (Parameter, var/const/type, lokale Routinen, Inline-Variablen, for var); in with und asm bleibt die Regel still, Deklarationen in Zweigen bedingter Übersetzung, die die Stelle' + ' ausschließen, zählen nicht. Korrektur: Wert vor der Anweisung in eine lokale Variable kopieren, in der anonymen Methode nur diese verwenden und nach der Anweisung zurückschreiben, wenn die Methode si' + 'e zuweist."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "operator-declaration-invalid",' + #10 +
+    '      "name": "Operator falsch deklariert",' + #10 +
+    '      "description": "Ein class operator in einem Record oder einer Klasse ist so deklariert, wie Delphi es ablehnt: unbekannter Operatorname (wie E2393), falsche Parameterzahl (E2517), eigener Typ fe' + 'hlt in den Parametern (E2518) bzw. bei Implicit/Explicit in Parametern und Ergebnis (E2521), Inc/Dec mit anderem Ergebnistyp als dem ersten Parameter (E2519), Vergleichsoperator ohne Boolean-Ergebnis ' + '(E2520), Umwandlung in oder aus einem Vorfahren (E2522, Kette innerhalb der Datei) oder Assign ohne var vor dem ersten Parameter (E2464). Typen gelten als gleich, wenn ihre Namen ohne Unit-Präfix und ' + 'Typargumente übereinstimmen; Aliase des eigenen Typs in der Datei halten die Regel still, True, False und OnesComplement gelten als bekannt. Korrekturen: nächstliegender Operatorname, Boolean als Erge' + 'bnis, Ergebnis wie der erste Parameter, var vor dem ersten Parameter, Parameterliste nach Vorlage; jeweils in Deklaration und Rumpf."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "generic-declaration-invalid",' + #10 +
+    '      "name": "Generische Deklaration unzulässig",' + #10 +
+    '      "description": "Eine generische Deklaration, die Delphi ablehnt: Einschränkungen class und record zugleich (wie E2507), eine Einschränkung doppelt (E2603), record zusammen mit constructor (E2516' + '), eine Klasse neben class bzw. record (E2552), zwei Klassen (E2553), ein Einschränkungstyp, der weder Klasse noch Interface ist (E2510); Typparameter an Aufzählung, Menge, Teilbereich, Zeiger, Klasse' + 'nreferenz, Alias oder Helfer (E2508), an Destruktor oder Klassenkonstruktor (E2528), Operator (E2529), globaler Routine (E2530), virtueller, dynamischer, message- oder override-Methode (E2533) oder In' + 'terface-Methode (E2535); class of eines parametrisierten Typs (E2548), generische Klasse, die von TCustomAttribute erbt (E2549), parametrisierter Typ als Attribut (E2565); ein Typparameter, der einen ' + 'des umgebenden Typs verdeckt (H2509); ein Aufruf mit einer Zahl Typargumente, die keine Überladung hat (E2551, Klassen und Records der Datei mit Vorfahren aus der Datei); eine Methode eines generische' + 'n Typs oder eine generische Methode aus dem interface-Teil, die ein Symbol des implementation-Teils verwendet (E2506; still in with und wenn die Vorfahrenkette nicht bekannt ist). Typen zählen nur, we' + 'nn sie eingebaut oder in der Datei deklariert sind; unbekannte Typen halten die Regel still. Lokale Prozeduren in generischen Methoden (E2570) meldet die Regel erst, wenn der Abgleich mit Delphi 12/13' + ' bestätigt, dass sie noch abgelehnt werden."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "type-restriction-violated",' + #10 +
+    '      "name": "Sprachregel für Records, Inline und Helfer verletzt",' + #10 +
+    '      "description": "Feste Sprachregeln, die erst der Compiler meldet: virtuelle Methoden (wie E2379) oder andere virtuelle Direktiven (override, abstract, reintroduce, message, final; E2463) in Reco' + 'rds, parameterlose Konstruktoren (E2394), Konstruktoren, deren Parameter alle Vorgabewerte haben (E2471), und Destruktoren (E2465) in Records, Klassenmethoden in Records ohne static (E2398); in Record' + '-Helfern virtuelle Methoden (E2598) und die übrigen virtuellen Direktiven (E2475); Felder in Helfern (class var ist erlaubt, E2599), Destruktor (E2295) oder Klassenkonstruktor (E2358) in einem Class-H' + 'elfer, ein Helfer-Konstruktor, dessen erster Befehl kein Aufruf ohne Argumente ist (E2296), ein Class-Helfer mit Vorfahr-Helfer für einen Typ, der nicht vom Typ des Vorfahren abstammt (E2294, nur bei ' + 'bekannter Vorfahrenkette), ein Helfer als Typ einer Deklaration (E2527) oder in einem generischen Typ (E2589); mehrere Klassenkonstruktoren (E2359, sich ausschließende bedingte Zweige zählen einmal), ' + 'Klassenkonstruktoren mit Parametern (E2360) oder virtual, dynamic bzw. message (E2534); Methoden, Properties, Klassenmitglieder, Typen und Konstanten in lokalen oder anonymen Records (E2433 bis E2437)' + '; inline an virtuellen oder dynamischen Methoden (E2425), an Konstruktoren und Destruktoren (E2442), mit offenen Array-Parametern (E2439), mit asm-Rumpf (E2426), im interface-Teil deklariert mit Symbo' + 'len des implementation-Teils (E2441), als lokale Routine mit Zugriff auf Variablen der umgebenden Routine (E2449) oder mit Aufruf eigener lokaler Routinen (E2501); lokale, absolute oder initialisierte' + ' threadvar (E2189, E2190, E2194). Die Prüfungen gelten für alle unterstützten Delphi-Versionen (10 Seattle bis 13). Option disabledChecks nimmt einzelne Codes aus. Korrekturen: Direktive entfernen, st' + 'atic ergänzen.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "disabledChecks",' + #10 +
+    '          "description": "Compilercodes, die die Regel nicht prüft, z. B. [\"E2425\"]."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "attribute-usage-invalid",' + #10 +
+    '      "name": "Attribut falsch verwendet",' + #10 +
+    '      "description": "Ein Attribut des Compilers steht dort, wo Delphi es ablehnt: [Weak] an einem Feld oder einer Variablen, deren Typ sicher weder Klasse noch Interface ist (eingebaute Werttypen, Re' + 'cords, Aufzählungen, Mengen, Arrays, Zeigertypen der Datei, Aliase verfolgt; wie E2584), [Volatile] an Typ, Routine, Methode oder Property (E2325), Weak, Unsafe, Volatile oder Ref doppelt an derselben' + ' Deklaration (E2326; sich ausschließende Zweige zählen nicht) oder ein Attributargument, das sicher eine Variable oder Routine der Datei ist (E2448; vor dem Attribut sichtbar, nicht durch eine gleichn' + 'amige Konstante, einen Typ oder eine andere Deklaration verdeckt). Eigene Attribute dürfen mehrfach stehen; ein Typ Weak bzw. WeakAttribute in der Datei macht die Regel für diesen Namen still. Keine S' + 'chnellkorrektur."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "typeinfo-invalid",' + #10 +
+    '      "name": "TypeInfo oder Default mit unzulässigem Argument",' + #10 +
+    '      "description": "TypeInfo oder Default bekommt eine Variable statt eines Typs (wie E2133, E2537: Parameter, lokale, Inline- und Unit-Variablen, Felder, Properties, Result, for- und Ausnahmevariab' + 'len), TypeInfo einen Typ ohne RTTI (Aufzählung mit festen Werten, Dateityp, Text/TextFile; E2134) oder Default einen Dateityp (E2538). Namen werden von innen nach außen aufgelöst; in with, in Helfern,' + ' in Methoden von Typen außerhalb der Datei, bei Deklarationen in anderen bedingten Zweigen und wenn Datei oder Index ein eigenes TypeInfo bzw. Default deklarieren, bleibt die Regel still. Korrektur: d' + 'en deklarierten Typ der Variablen einsetzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "missing-begin-end",' + #10 +
+    '      "name": "Bedingung oder Schleife ohne begin … end",' + #10 +
+    '      "description": "Der Rumpf von if … then, else, for, while oder with ist eine einzelne Anweisung ohne begin … end. Mit der Regel haben Bedingungen und Schleifen immer einen Block; eine später erg' + 'änzte zweite Anweisung landet so nicht versehentlich außerhalb. else if bleibt erlaubt (das innere if braucht keinen eigenen Block); repeat … until, case … end, try … end und asm … end sind schon Blöc' + 'ke. Eine leere Anweisung (if X then ;) meldet empty-statement. Rümpfe mit {$IFDEF} meldet die Regel nicht. Solange die Regel an ist, meldet redundant-begin-end nichts. Schnellkorrekturen: begin … end ' + 'um die Anweisung setzen, für die ganze Methode oder für die ganze Datei, eingerückt nach den Formatierungseinstellungen; ein ; vor else wandert in den Block (kein E2153).",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "statements",' + #10 +
+    '          "description": "Geprüfte Anweisungen; case für die Zweige von case-Anweisungen ergänzen."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "allowSingleLineExit",' + #10 +
+    '          "description": "Exit, Continue, Break und raise in derselben Zeile wie die Bedingung erlauben (if … then Exit;)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "allowSameLine",' + #10 +
+    '          "description": "Eine einzelne Anweisung in derselben Zeile wie Bedingung bzw. Schleifenkopf erlauben."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inherited-constructor-after-try",' + #10 +
+    '      "name": "Geerbter Konstruktor erst im try-Block",' + #10 +
+    '      "description": "Ein Konstruktor betritt einen try-Block, bevor er den geerbten Konstruktor aufgerufen hat (wie H2505). Self ist dort noch nicht initialisiert; eine Exception im Block kann auf ha' + 'lb erzeugte Felder treffen. Als geerbter Konstruktor gilt inherited ohne Namen, mit dem Namen des Konstruktors oder mit einem Namen, der mit Create beginnt. Zweige von {$IFDEF} werden getrennt geprüft' + '. Korrektur, wenn der Aufruf die erste Anweisung im try-Block ist: vor try ziehen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "variant-record-managed-field",' + #10 +
+    '      "name": "Verwalteter Typ im varianten Teil eines Records",' + #10 +
+    '      "description": "Im varianten Teil eines Records (case … of) steht ein String, ein dynamisches Array, ein Interface, ein Variant oder ein Record mit solchen Feldern (wie E2154), ein verwalteter R' + 'ecord mit class operator Initialize oder Finalize (wie E2418) oder ein Typparameter ohne record-Einschränkung (wie E2569); ebenso hinter file of (wie E2155, E2417). Typen werden in der Datei und im In' + 'dex aufgelöst; unbekannte bleiben still. Korrekturen: Feld vor case in den festen Teil verschieben, ShortString verwenden oder den Typparameter mit record einschränken."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "guid-syntax-invalid",' + #10 +
+    '      "name": "GUID mit falscher Schreibweise",' + #10 +
+    '      "description": "Die GUID eines Interfaces oder einer typisierten TGUID-Konstante hat nicht die Form ''{8-4-4-4-12}'' (wie E2204): fehlende Klammern, falsche Zahl oder Länge der Blöcke, Zeichen, di' + 'e keine Hexadezimalziffern sind, oft nach Hand-Bearbeitung. Geprüft werden nur einzelne Literale; Verkettungen und Konstanten bleiben still. Korrekturen: neue GUID erzeugen; fehlen nur die Klammern, s' + 'ie ergänzen. Ergänzt interface-guid und duplicate-interface-guid."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "untyped-pointer-refcount",' + #10 +
+    '      "name": "Untypisierter Zeiger umgeht die Referenzzählung",' + #10 +
+    '      "description": "Ein Interface wird über eine Typumwandlung nach Pointer zugewiesen (Pointer(FIntf) := P, wie W1070). Die Referenzzählung läuft dann nicht mit: das Objekt wird zu früh freigegeben' + ' oder nie. Die Regel meldet nur, wenn die Namensauflösung den Interface-Typ sicher kennt; Strings (string, AnsiString …) meldet sie ebenfalls, mit dem Zusatz „dcc meldet das nicht“, weil Delphi bei ih' + 'nen nur unter NEXTGEN warnt. Felder mit [weak] oder [unsafe] bleiben still. Korrekturen für ein Interface-Feld dieser Datei mit Pointer(Y) oder nil rechts: das Feld mit [weak] bzw. [unsafe] auszeichne' + 'n und ohne Pointer zuweisen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "type-too-large",' + #10 +
+    '      "name": "Typ überschreitet eine Größengrenze",' + #10 +
+    '      "description": "Ein statisches Array oder Record ist 2 GB groß oder größer (wie E2100), ebenso eine Instanz eines generischen Typs dieser Datei (wie E2543). Atlas rechnet eine untere Grenze aus ' + 'den Deklarationen: Indexbereiche über konstante Ausdrücke, Konstanten und Aufzählungen der Datei, eingebaute Typen, Records aus dem Index; Unbekanntes zählt 0, gemeldet wird also nur sicher. Gemeldet ' + 'wird nur der innerste Typ, der die Grenze überschreitet. E2419 (Records über 1 MB) gilt nur für Delphi für .NET und wird nicht gemeldet. Keine Korrektur; stattdessen ein dynamisches Array oder einen Z' + 'eiger verwenden."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "comparison-always-constant",' + #10 +
+    '      "name": "Vergleich immer wahr oder immer falsch",' + #10 +
+    '      "description": "Vergleich einer Variablen, eines Feldes, einer Property oder eines Funktionsergebnisses vom eingebauten Ganzzahltyp mit einer Konstanten außerhalb bzw. am Rand des Wertebereichs ' + '(wie W1021, W1022): Cardinal >= 0 ist immer wahr, Byte > 255 immer falsch. Ebenso case-Marken außerhalb des Bereichs des case-Ausdrucks (wie W1018). Gemeldet wird nur bei sicher bekanntem Typ, dessen ' + 'Deklaration immer mit dem Vergleich übersetzt wird. NativeInt, LongInt und ihre vorzeichenlosen Gegenstücke gelten mit dem weitesten Bereich aller Plattformen; Teilbereichstypen meldet die Regel nicht' + '. Length(…) < 0 und Length(…) >= 0 meldet sie ebenfalls, obwohl dcc dort nicht warnt; die Meldung sagt das dazu."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "constant-initializer-mismatch",' + #10 +
+    '      "name": "Initialisierung einer Konstanten passt nicht",' + #10 +
+    '      "description": "Eine typisierte Konstante oder initialisierte Variable vom statischen Array-Typ hat mehr oder weniger Elemente als ihr Indexbereich (wie E2072), typisch nach einem neuen Wert in ' + 'einer Aufzählung (array[TStatus] of string); geprüft je Dimension und auch für benannte Array-Typen der Datei. Ebenso Record-Konstanten, deren Felder in anderer Reihenfolge als deklariert stehen (wie ' + 'E2083). Indexbereiche: Teilbereiche mit konstanten Grenzen, Aufzählungen ohne eigene Werte, Boolean, Byte, Char usw. Deklarationen mit bedingten Direktiven gelten als unsicher. Korrekturen: fehlende E' + 'inträge mit Platzhalter ergänzen (Name des Aufzählungswerts als Kommentar), Felder in die Reihenfolge der Deklaration bringen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "case-selector-not-ordinal",' + #10 +
+    '      "name": "case oder for ohne ordinalen Typ",' + #10 +
+    '      "description": "case über einen nicht ordinalen Ausdruck (wie E2001): Strings, Gleitkommazahlen, Klassen und Interfaces; for-Schleife mit nicht ordinaler Zählvariable (wie E2032); case-Marken un' + 'd Array-Grenzen, die Variablen, Felder, Properties, Parameter oder typisierte Konstanten statt Konstanten sind (wie E2026). Gemeldet wird nur bei sicher bekanntem Typ, dessen Deklaration immer mit der' + ' Anweisung übersetzt wird. Korrektur bei Strings mit lauter String-Literalen als Marken: case IndexStr(S, […]) of mit den Positionen als Marken, System.StrUtils kommt in die uses."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "suspicious-string-pointer-cast",' + #10 +
+    '      "name": "Zeiger und Zeichenbreite eines Strings passen nicht zusammen",' + #10 +
+    '      "description": "PChar bzw. PWideChar auf einen AnsiString, RawByteString oder UTF8String und PAnsiChar auf einen string, UnicodeString oder WideString (wie W1044): Zeiger und Zeichenbreite passe' + 'n nicht zusammen, typisch nach der Unicode-Umstellung; die API liest dann Datenmüll bzw. nur das erste Zeichen. Gemeldet wird nur bei sicher bekanntem Typ des Arguments, dessen Deklaration immer mit d' + 'er Umwandlung übersetzt wird. string(PAnsiChar) wandelt korrekt um, ein Zeiger auf TBytes kann gewollt sein; beides meldet die Regel nicht. Korrekturen: eigene Variable mit passendem Stringtyp deklari' + 'eren (PChar(Pfad) mit Pfad: AnsiString wird Pfad: string), string(…) bzw. AnsiString(…) um das Argument, passenden Zeigertyp verwenden."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inaccessible-member",' + #10 +
+    '      "name": "Zugriff auf ein nicht sichtbares Mitglied",' + #10 +
+    '      "description": "Zugriff A.B auf ein Mitglied, das an der Stelle nicht sichtbar ist: private bzw. strict private einer anderen Unit oder Klasse (wie E2361), protected bzw. strict protected außerh' + 'alb der deklarierenden Unit und ihrer Nachfahren (wie E2362, E2389). In einer Klassenmethode oder statischen Methode sind Instanzfelder, -methoden und -Properties der Klasse nicht erreichbar (wie E212' + '4). Eine Property, die auf ein private-Mitglied eines Vorfahren derselben Unit verweist, meldet die Regel als Warnung (wie W1045). Gemeldet wird nur, wenn die Namensauflösung den Empfänger und seinen ' + 'Typ sicher kennt und das Mitglied erst ohne Rücksicht auf die Sichtbarkeit findet; protected-Mitglieder bleiben über eine Klasse der eigenen Unit sichtbar (TZugang(Control).Click). Deklarationen in be' + 'dingten Zweigen, Methoden von Helfern und verschachtelten Typen bleiben still."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-private-member",' + #10 +
+    '      "name": "Privates Mitglied wird nie verwendet",' + #10 +
+    '      "description": "Ein private- oder strict-private-Feld, eine Methode, Konstante oder Property kommt in der Unit nirgends vor (wie H2219, das der Compiler nur für Methoden meldet; Felder ebenso, a' + 'ußer includeFields ist aus). Jedes Vorkommen des Namens als Bezeichner zählt als Verwendung, auch in inaktiven bedingten Zweigen und hinter read/write; Deklarationen und Methodenköpfe zählen nicht. Au' + 'sgenommen: Methoden mit message, virtual, dynamic, override oder abstract, Methoden von Typen, die Interfaces umsetzen, Konstruktoren und Destruktoren, Mitglieder mit Attributen (RTTI), Namen aus der ' + 'Formulardatei und Units mit Include-Dateien. Korrektur: Deklaration (samt ///-Doku) und den Rumpf einer Methode entfernen; nicht, wenn sich mehrere Mitglieder die Deklaration teilen oder die Methode ü' + 'berladen ist.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "includeFields",' + #10 +
+    '          "description": "Auch nie verwendete private Felder melden (der Compiler meldet nur Methoden)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-public-member",' + #10 +
+    '      "name": "Öffentliches Mitglied wird im Projekt nie verwendet",' + #10 +
+    '      "description": "Eine public- oder published-Methode, -Konstante oder -Property (wahlweise auch protected-Mitglieder, Felder und Klassenvariablen sowie Routinen und Konstanten im interface-Abschn' + 'itt einer Unit) wird in den Projekten der Projektgruppe nirgends verwendet. Die Suche läuft projektweit über den Symbolindex: Nur Dateien, deren Verwendungen im Index den Namen enthalten, werden geles' + 'en, und jedes Vorkommen wird über die Namensauflösung zugeordnet; ein Vorkommen, das sich nicht auflösen lässt, zählt als Verwendung. Namen in Formulardateien (.dfm/.fmx) und in String-Literalen zähle' + 'n als Verwendung. Gelten als verwendet: Interface-Umsetzungen und Mitglieder von Interfaces, Methoden mit virtual, dynamic, override, abstract oder message, Konstruktoren, Destruktoren, Operatoren, En' + 'umeratoren, Default-Properties, implements, Mitglieder mit Attributen, published-Mitglieder von TPersistent-Nachfahren (Streaming), von Klassen aus RegisterComponents, RegisterClass oder RegisterClass' + 'es und von Testklassen, published-Methoden, solange eine Formulardatei nicht lesbar ist, Property-Zugriffsmethoden, exportierte Routinen, Klassenhelfer und Mitglieder von Klassen mit unbekanntem Vorfa' + 'hren. Still, solange Projekte laden oder der Index unvollständig ist, wenn eine Datei nicht lesbar ist, bei Units mit Include-Dateien und bei Units von Packages oder Bibliotheken (Nutzer außerhalb des' + ' Projekts), außer projectKinds lässt sie zu. Korrektur: als bewusst öffentlich markieren (lsp-ignore-Kommentar).",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "visibilities",' + #10 +
+    '          "description": "Geprüfte Sichtbarkeiten: public, published, protected."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "memberKinds",' + #10 +
+    '          "description": "Geprüfte Mitgliedsarten: method, constant, property, field, classVar."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "projectKinds",' + #10 +
+    '          "description": "Projektarten, deren Units geprüft werden: application, package, library. Packages und Bibliotheken haben Nutzer außerhalb der Projektgruppe und sind deshalb standardmäßig aus' + '."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "unitLevel",' + #10 +
+    '          "description": "Auch Routinen und Konstanten aus dem interface-Abschnitt einer Unit prüfen."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "scope",' + #10 +
+    '          "description": "Wo nach Verwendungen gesucht wird: projectGroup (alle Projekte der Gruppe) oder project (nur die Projekte der Datei)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "testsCountAsUse",' + #10 +
+    '          "description": "Verwendungen in Testprojekten zählen; ist es aus, wird ein Mitglied, das nur Tests verwenden, als solches gemeldet."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "stringLiteralsCountAsUse",' + #10 +
+    '          "description": "Der Name als String-Literal (''Name'') zählt als Verwendung (RTTI, MethodAddress, Skripte)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "keepAttributes",' + #10 +
+    '          "description": "Attribute am Mitglied oder seinem Typ, die es als verwendet markieren, z. B. \"Keep\" oder \"Api\"."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "keepPatterns",' + #10 +
+    '          "description": "Namensmuster (* und ?) für Mitglieder, die immer als verwendet gelten, z. B. \"TPlugin.*\" oder \"*Callback\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "message-method-invalid",' + #10 +
+    '      "name": "message-Methode falsch deklariert",' + #10 +
+    '      "description": "Eine message-Prozedur einer Klasse hat nicht genau einen var-Parameter (wie E2138; der Typ wird nicht geprüft, ein untypisierter var-Parameter ist in Ordnung), ihre Nachrichtennu' + 'mmer ist kleiner als 1 (wie E2139) oder eine frühere message-Methode derselben Klasse behandelt schon dieselbe Nummer (wie E2140, meist nach Kopieren). Nummern gelten als gleich, wenn ihre Werte bekan' + 'nt sind (Zahlen, Konstanten aus dem Index) oder die Ausdrücke gleich lauten. Methoden in sich ausschließenden {$IF}-Zweigen sind nicht doppelt; dieselbe Nummer in einem Nachfahren überschreibt den Han' + 'dler und ist erlaubt. Korrektur für E2138: einen einzelnen Parameter zu var machen, sonst die Liste durch (var Msg: TMessage) ersetzen; der Rumpf in derselben Datei wird mit angepasst."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "interface-declaration-invalid",' + #10 +
+    '      "name": "Unzulässige Deklaration in einem Interface",' + #10 +
+    '      "description": "Ein Interface deklariert etwas, das Interfaces nicht haben dürfen: Felder (wie E2209), Sichtbarkeitsabschnitte oder Methodendirektiven wie virtual, dynamic, abstract, override, m' + 'essage oder reintroduce (wie E2210), die Property-Klauseln stored, nodefault oder default mit Wert (wie E2207; default; hinter einer Array-Property ist erlaubt), eine Property, die ein Vorfahr-Interfa' + 'ce schon deklariert (wie E2206), oder einen Property-Accessor, den nur das Vorfahr-Interface deklariert (wie E2370). Ebenso gemeldet werden eine Klasse, ein Record oder eine Aufzählung als Vorfahr ein' + 'es Interfaces oder in der Interface-Liste einer Klasse (wie E2205) und dasselbe Interface zweimal in dieser Liste (wie E2208). Typen werden über die uses-Klauseln aufgelöst; Aliase, unbekannte Typen, ' + 'dispinterface und Deklarationen in bedingten Zweigen bleiben still."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "implements-clause-invalid",' + #10 +
+    '      "name": "implements-Klausel unzulässig",' + #10 +
+    '      "description": "Eine Delegation mit implements verletzt eine ihrer festen Regeln: implements nur in Klassen (wie E2258), nur an Properties mit Klassen- oder Interface-Typ (wie E2259; gemeldet fü' + 'r eingebaute Typen, Records und Aufzählungen), nicht zusammen mit index (wie E2260), nur an lesbaren Properties (wie E2261), der Getter ohne andere Aufrufkonvention als register (wie E2262) und nicht ' + 'dynamic oder message (wie E2263), jedes Interface nur über eine Property (wie E2257) und keine Methodenzuordnung für ein so umgesetztes Interface (wie E2264). Typen werden über die uses-Klauseln aufge' + 'löst; unbekannte Typen, Aliase und Properties in bedingten Zweigen bleiben still."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "calling-convention-required",' + #10 +
+    '      "name": "Aufrufkonvention passt nicht",' + #10 +
+    '      "description": "Der Compiler schreibt hier die Aufrufkonvention vor: Konstruktoren und Destruktoren einer Klasse nur mit register (wie E2236), Getter und Setter von published-Properties ebenso (' + 'wie E2270) und varargs nur mit cdecl (wie E2277 bei external-Routinen, sonst E2591). Ein ausdrückliches register ist in Ordnung; Klassenkonstruktoren, Accessoren außerhalb von published-Abschnitten un' + 'd geerbte Accessoren bleiben still. Korrektur: die Konvention in der Deklaration und im Rumpf derselben Datei entfernen bzw. bei varargs cdecl setzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "abstract-declaration-invalid",' + #10 +
+    '      "name": "abstract, final oder static falsch kombiniert",' + #10 +
+    '      "description": "Eine Methodendirektive, die der Compiler ablehnt: abstract ohne virtual, dynamic oder override (wie E2167), ein Rumpf im implementation-Teil zu einer abstrakten Methode (wie E213' + '6), final an einer nicht virtuellen Methode (wie E2351), abstract zusammen mit final (wie E2371), eine Klasse abstract sealed (wie E2383, E2540) oder static an einer Instanzmethode bzw. einer virtuell' + 'en Klassenmethode (wie E2376). Ein Rumpf zählt nur dann als Rumpf einer abstrakten Methode, wenn keine gleichnamige nicht abstrakte Methode derselben Klasse mit ihm übersetzt wird (Überladungen, {$IFD' + 'EF}-Zweige). Korrekturen: virtual; vor abstract einfügen, Rumpf entfernen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unsatisfied-forward",' + #10 +
+    '      "name": "Vorwärtsdeklaration nie aufgelöst",' + #10 +
+    '      "description": "Eine Routine aus dem interface-Teil oder mit forward hat keinen Rumpf (wie E2065), oder eine Vorwärtsdeklaration TFoo = class; bzw. IFoo = interface; wird im selben type-Abschnit' + 't nie vollständig deklariert (wie E2086, E2420). Methoden prüft declared-not-implemented. Ein Rumpf passt, wenn er gleich heißt; bei overload muss auch die Zahl der Parameter stimmen. Ein external im ' + 'implementation-Teil zählt als Rumpf. Deklarationen in einem {$IFDEF}-Zweig bleiben unbeachtet; mit Include-Dateien prüft die Regel keine Routinen. Korrektur: leeren Rumpf vor initialization bzw. dem a' + 'bschließenden end. anlegen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "member-hides-ancestor",' + #10 +
+    '      "name": "Member verdeckt einen Member des Vorfahren",' + #10 +
+    '      "description": "Eine Property heißt wie ein Feld eines Vorfahren (wie W1009), ein Feld wie ein Feld oder eine Property eines Vorfahren oder eine nicht virtuelle Methode hat Namen und Parameter e' + 'iner nicht virtuellen Methode eines Vorfahren. Code, der über den Vorfahrtyp zugreift, sieht weiter den alten Member. Virtuelle Methoden meldet hides-virtual, lokale Namen shadowed-name. Neu veröffent' + 'lichte Properties (property Caption;), Properties mit neuem Typ über einer Property des Vorfahren, overload, reintroduce, Konstruktoren und Klassenmethoden bleiben unbeanstandet. Member, die der Nachf' + 'ahre nicht sieht (private einer anderen Unit, strict private mit ignoreStrictPrivate), zählen nicht; Vorfahren kommen aus der Datei und dem Symbolindex. Korrektur für Felder und Properties: den Member' + ' in der Klassendeklaration und in den Rümpfen ihrer Methoden in dieser Unit umbenennen (aus FName wird FKundeName).",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "ignoreStrictPrivate",' + #10 +
+    '          "description": "Verdeckte strict private Member des Vorfahren nicht melden."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "published-type-invalid",' + #10 +
+    '      "name": "Unzulässiges Mitglied im published-Abschnitt",' + #10 +
+    '      "description": "Ein Mitglied hinter einem ausdrücklichen published, das der Compiler ablehnt: eine Property vom Typ Record, Array, Zeiger oder Prozedurtyp ohne of object (wie E2188), vom Typ Rea' + 'l48 (wie E2186) oder eine Menge über 4 Byte (wie E2187), ein Feld, das weder Klasse noch Interface ist (wie E2217), mehr als eine published-Überladung (wie E2266), eine Klassen-Property (wie E2545) od' + 'er ein Name mit Zeichen außerhalb von ASCII (wie E2452). Typen löst die Regel über die Datei und den Index auf und verfolgt Aliase; Typparameter, unbekannte Typen und Abschnitte, deren published in ei' + 'nem anderen Zweig der bedingten Übersetzung steht als das Mitglied, bleiben still. Den Abschnitt ohne Sichtbarkeitsangabe prüft sie nicht, weil der Compiler solche Mitglieder dort still zu public hera' + 'bstuft. Korrektur: das Mitglied in den public-Abschnitt verschieben."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "override-case-mismatch",' + #10 +
+    '      "name": "Schreibweise oder Sichtbarkeit weicht vom Vorfahren ab",' + #10 +
+    '      "description": "Eine überschreibende Methode schreibt ihren Namen anders als der Vorfahr (destructor destroy, wie H2365) oder ist weniger sichtbar als die überschriebene Methode (wie H2269, nur ' + 'für Klassen im interface-Teil; verglichen werden die Stufen privat, geschützt, öffentlich), ein Getter oder Setter heißt Get<Property> bzw. Set<Property>, ist aber anders geschrieben (wie H2367), oder' + ' eine inline-Methode greift auf ein Mitglied zu, das weniger sichtbar ist als sie selbst, sodass der Compiler sie außerhalb der Klasse nicht einsetzen kann (wie H2440). Wichtig für C++Builder-Nutzer d' + 'er Units und für einheitlichen Code. Die Docwiki führt H2269 und H2367 als X2269 und X2367, weil sich ihre Stufe umstellen lässt; dcc meldet sie standardmäßig als Hinweis. H2368 und H2369 deckt die Re' + 'gel nicht ab, weil nicht dokumentiert ist, wann dcc sie meldet. Standardmäßig aus; in atlas.json einschalten. Korrekturen: Schreibweise vom Vorfahr übernehmen, Zugriffsmethode umbenennen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "default-property-invalid",' + #10 +
+    '      "name": "default-Property falsch deklariert oder fehlt",' + #10 +
+    '      "description": "default; hinter einer Property ohne Indexparameter (wie E2132), eine zweite default-Property derselben Klasse mit denselben Indextypen (wie E2131; Überladung über den Indextyp is' + 't erlaubt) oder Obj[I] auf einer Klasse, die in ihrer ganzen Vorfahrenkette keine default-Property hat (wie E2149). Den Typ von Obj ermittelt die Namensauflösung; nicht auflösbare Typen, abgebrochene ' + 'Vorfahrenketten und Klassen mit einem Class-Helper in der Unit bleiben still. Neudeklarationen ohne Typ (property Items; default;) übernehmen den Index des Vorfahren und werden nicht geprüft."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "property-redeclaration-invalid",' + #10 +
+    '      "name": "Neu deklarierte Property fehlt im Vorfahren",' + #10 +
+    '      "description": "Eine Neudeklaration ohne Typ wie property Caption; (um Sichtbarkeit oder Standardwert zu ändern) nennt eine Property, die kein Vorfahr hat (wie E2147), oder die Property des Vorf' + 'ahren ist von hier aus nicht erreichbar: strict private oder private in einer anderen Unit (wie E2233). Gemeldet nur, wenn die ganze Vorfahrenkette bekannt ist; ein gleichnamiges Feld oder eine Method' + 'e und Deklarationen in inaktiven Zweigen bleiben still. Korrektur: den ähnlichsten Property-Namen der Vorfahren verwenden."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inline-not-expanded",' + #10 +
+    '      "name": "Inline-Funktion wird nicht eingebettet",' + #10 +
+    '      "description": "Aufruf einer inline-Routine aus einer anderen Unit, die der Compiler nicht einbettet: Ihr Rumpf braucht eine Unit, die hier in uses fehlt (wie H2443, typisch System.Generics.Coll' + 'ections bei TJSONObject.Count), er greift auf ein strict private-Mitglied zu und der Aufruf steht nicht in einer Methode dieser Klasse (wie H2444), die aufrufende Routine ist selbst inline und die Uni' + 't der gerufenen steht nur im uses des implementation-Teils (wie H2445), oder die Unit der gerufenen Routine verwendet diese Unit direkt (wie H2456) bzw. über andere Units (wie H2457). Geprüft werden A' + 'ufrufe, Properties mit inline-Getter bzw. -Setter und for-in (GetEnumerator, MoveNext, Current). Der Index merkt sich, worauf jeder inline-Rumpf verweist; die Regel meldet nur, was sie sicher auflöst ' + '(unbekannte Verweise und geerbte Mitglieder aus anderen Units bleiben stumm). Mit {$INLINE OFF} in der Datei schweigt sie. Korrektur: die fehlenden Units in das uses des Abschnitts aufnehmen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "directive-typo",' + #10 +
+    '      "name": "Unbekannte Direktive (Tippfehler)",' + #10 +
+    '      "description": "An der Stelle einer Direktive steht ein Wort, das keine ist: nach dem '';'' eines Routinen- oder Methodenkopfs (overide;, virutal;, overlaod;, stdcal;, reintroduces;) oder nach ein' + 'er Property, wo nur default erlaubt ist (defualt;). Der Compiler bricht dort ab (wie E2070). Die Meldung schlägt die ähnlichste Direktive vor, wenn höchstens zwei Zeichen abweichen. Still in {$IF}-Zwe' + 'igen, die FPC abfragen; FPC kennt weitere Direktiven wie nostackframe. Korrektur: durch die vorgeschlagene Direktive ersetzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "ui-call-in-console-or-service",' + #10 +
+    '      "name": "Dialog in Konsolenprogramm oder Dienst",' + #10 +
+    '      "description": "ShowMessage, ShowMessageFmt, MessageDlg, TaskMessageDlg, InputBox, InputQuery, Application.MessageBox oder TDialogService in einem Programm mit {$APPTYPE CONSOLE} (oder DCC_Conso' + 'leTarget in der .dproj), in einem Windows-Dienst oder in einer DLL ohne Formulare. Im Dienst blockiert der Dialog unsichtbar; ein Konsolenprogramm wartet auf einen Klick, den niemand sieht, wenn es un' + 'beaufsichtigt läuft. Als Dienst gilt eine Unit mit einer Klasse, die von TService erbt, oder jede Unit eines Projekts, dessen .dpr Vcl.SvcMgr ohne Vcl.Forms einbindet. Eine DLL ohne Formulare ist eine' + ' library, deren .dpr kein Formular aufführt und Vcl.Forms nicht einbindet; dort meldet die Regel mit mittlerer Konfidenz, weil erst der Host entscheidet, ob es eine Oberfläche gibt. Units mit Formular' + 'datei, Aufrufe unter if IsConsole und gleichnamige Routinen der Unit bleiben still. Gegenstück zu writeln-in-gui-app. Konfidenz hoch. Keine Schnellkorrektur: die Meldung protokollieren statt anzeigen.' + '"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "load-without-encoding",' + #10 +
+    '      "name": "Text laden oder speichern ohne Kodierung",' + #10 +
+    '      "description": "LoadFromFile, SaveToFile, LoadFromStream oder SaveToStream einer TStrings (TStringList, Memo.Lines, ListBox.Items, Query.SQL) sowie TFile.ReadAllText und TFile.ReadAllLines ohne ' + 'Kodierung: Eine Datei ohne BOM wird mit der ANSI-Codepage des Rechners gelesen, SaveToFile schreibt ANSI, und Umlaute gehen zwischen Rechnern verloren. Der Empfänger muss eine deklarierte Stringliste ' + 'oder eine Property Lines, Items, SQL oder Strings sein; Bilder, Streams und Datenmengen bleiben still. Ebenso still, wenn die Liste irgendwo in der Unit DefaultEncoding setzt oder in derselben Routine' + ' vorher mit Kodierung geladen wurde (SaveToFile behält diese Kodierung). TFile.WriteAllText, TStreamReader und TStreamWriter nehmen ohne Angabe schon UTF-8 und werden nicht gemeldet. Konfidenz mittel.' + ' Schnellkorrektur: TEncoding.UTF8 (Option defaultEncoding) als letztes Argument und System.SysUtils im uses ergänzen.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "defaultEncoding",' + #10 +
+    '          "description": "Property von TEncoding, die die Schnellkorrektur einsetzt: UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 oder Default."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "registry-hklm-write",' + #10 +
+    '      "name": "Schreiben nach HKEY_LOCAL_MACHINE",' + #10 +
+    '      "description": "RootKey := HKEY_LOCAL_MACHINE auf einer TRegistry, danach in derselben Routine ein schreibender Zugriff auf dasselbe Objekt: OpenKey(…, True), CreateKey, Write…, DeleteKey, Delet' + 'eValue, RenameValue, MoveKey, SaveKey oder RestoreKey. Ohne Administratorrechte schlägt das fehl oder landet still in der Virtualisierung der Registry. Für Benutzereinstellungen HKEY_CURRENT_USER verw' + 'enden; Installer-Code über exclude ausnehmen. Lesen (OpenKeyReadOnly, Read…, OpenKey(…, False)), ein anderer RootKey vor dem Schreiben und Schreiben im anderen Zweig von {$IFDEF} bleiben still. Konfid' + 'enz hoch. Schnellkorrektur: RootKey := HKEY_CURRENT_USER."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "now-for-elapsed-time",' + #10 +
+    '      "name": "Laufzeit mit Now gemessen",' + #10 +
+    '      "description": "Eine Variable, der Now zugewiesen wird und die in derselben Routine danach in Now - Start, Ende - Start oder MilliSecondsBetween, SecondsBetween, MinutesBetween, HoursBetween, Da' + 'ysBetween bzw. den …Span-Funktionen vorkommt: Die Laufzeit wird mit der Uhrzeit gemessen, grob aufgelöst und falsch bei Zeitumstellung oder Uhrabgleich. TStopwatch ist genau und monoton. Zuweisungen i' + 'n einer anderen Routine (Felder) und im anderen Zweig von {$IFDEF} bleiben still. Konfidenz hoch. Schnellkorrektur, wenn die Variable eine lokale TDateTime ist (auch var Start := Now) und nur für Mill' + 'iSecondsBetween, SecondsBetween oder MinutesBetween mit Now dient: TStopwatch.StartNew und ElapsedMilliseconds (div 1000 bzw. div 60000), die Variable heißt danach Uhr, wenn der Name frei ist, System.' + 'Diagnostics kommt ins uses."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "money-as-float",' + #10 +
+    '      "name": "Geldbetrag als Gleitkommazahl",' + #10 +
+    '      "description": "Feld, Variable, Parameter oder Property, deren Name einen Geldbetrag bezeichnet (Option namePatterns), mit dem Typ Double, Single, Extended oder Real: Binäres Gleitkomma rundet C' + 'ent-Beträge falsch (0.1 + 0.2), Currency rechnet sie exakt. Maßgeblich ist der letzte Namensteil (GesamtPreis, Nettobetrag, FNetto, Preise; nicht NettoGewicht); Sätze, Faktoren, Quoten, Anteile (Steue' + 'rsatz, PriceFactor) und Prüfsummen bleiben still. Mehrdeutige Wörter (Amount, Summe, Sum, Total: Menge bzw. Summe von irgendetwas) zählen nur mit Geldbezug in Typ bzw. Routine: ein anderer Geldname, C' + 'urrency oder Wörter wie Cent, Euro, Rabatt, Rechnung, Zahlung, Kosten (Lighten(AColor, AAmount: Double) bleibt still). Standard aus und niedrige Konfidenz: Treffer erscheinen, wenn die Regel eingescha' + 'ltet und minConfidence low ist. Schnellkorrektur, wenn alle Namen der Deklaration Geldbeträge sind: Typ Currency, bei Parametern auch im Kopf der Implementierung, bei Feldern und Properties auch die P' + 'roperty bzw. das Feld hinter read und write; keine Korrektur, wenn ein Getter oder Setter mitwandern müsste. Mit checkRound meldet die Regel zusätzlich Round mit einem Geldbetrag im Argument (Banker''s' + ' Rounding: 2,5 wird 2).",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "namePatterns",' + #10 +
+    '          "description": "Namensteile, die einen Geldbetrag bezeichnen; Mehrzahl eingeschlossen."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "checkRound",' + #10 +
+    '          "description": "Zusätzlich Round auf Geldbeträgen melden."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "string-if-chain",' + #10 +
+    '      "name": "Lange if-Kette über denselben String",' + #10 +
+    '      "description": "Eine if … else if-Kette vergleicht denselben String (Bezeichner oder A.B, keine Funktionsaufrufe) mit mindestens min Literalen: S = ''x'', ''x'' = S, SameText(S, ''x''), auch mit or ve' + 'rknüpft, in mindestens zwei Zweigen (ein einzelnes if mit or bleibt still). case IndexStr(S, [...]) of oder ein Dictionary ist kürzer und schneller. Es zählen nur Vergleiche, die immer zusammen mit de' + 'm Kopf übersetzt werden ({$IFDEF}-Zweige innerhalb der Kette nicht). Standard aus, Konfidenz hoch. Schnellkorrektur wie die Code-Aktion if-Kette in case umwandeln (#646): case IndexStr(…) of, IndexTex' + 't(…) bei SameText, mit or verknüpfte Vergleiche teilen sich eine Marke, der Rest der Kette wird zum else, System.StrUtils kommt ins uses. Keine Korrektur bei Kommentaren oder Direktiven zwischen den Z' + 'weigen, doppelten Literalen oder gemischtem = und SameText.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "min",' + #10 +
+    '          "description": "Ab so vielen Vergleichen desselben Strings meldet die Regel; mindestens 2."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "constant-condition",' + #10 +
+    '      "name": "Bedingung ist immer gleich",' + #10 +
+    '      "description": "Die Bedingung von if, while oder until steht fest: True, False, Vergleiche von Zahlen und untypisierte Konstanten der Datei, auch über and, or, xor und not (X or True ist immer w' + 'ahr, X and False immer falsch). Der Zweig ist toter Code oder läuft immer. while True do und repeat … until False gelten als gewollte Endlosschleifen (deren Ausgang prüft infinite-loop). Konstanten au' + 's switchConstants, Konstanten in einem Zweig von {$IF…} und Konstanten aus anderen Units gelten als unbekannt. Korrektur bei if: toten Zweig bzw. die Bedingung entfernen.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "switchConstants",' + #10 +
+    '          "description": "Konstanten, die bewusst als Schalter dienen; Bedingungen darauf werden nicht gemeldet."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "infinite-loop",' + #10 +
+    '      "name": "Schleife ohne Ausgang",' + #10 +
+    '      "description": "while True do, repeat … until False oder eine andere Schleife, deren Bedingung sie nie beendet, ohne Ausgang im Rumpf: kein Break (ein Break in einer inneren Schleife verlässt nu' + 'r diese), Exit, raise, goto, Halt, Abort oder RunError, kein Aufruf einer Routine der Datei, die eine Ausnahme auslöst oder das Programm beendet, und keine Prüfung von Terminated (Thread-Schleifen prü' + 'ft thread-loop-without-terminated). Anonyme Methoden im Rumpf zählen nicht. Die Aktion springt zum Schleifenkopf."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "loop-condition-unchanged",' + #10 +
+    '      "name": "Schleifenbedingung ändert sich im Rumpf nie",' + #10 +
+    '      "description": "Keine Variable der while- bzw. until-Bedingung ändert sich im Rumpf: keine Zuweisung, kein Inc/Dec, kein Argument (möglicherweise var), kein Methoden- oder Mitgliedszugriff auf d' + 'as Objekt der Bedingung, keine for-Schleife darüber. Typisch ist das vergessene Inc(I) oder Next. Gemeldet wird nur, wenn jede Variable der Bedingung eine lokale Variable oder ein Wertparameter der Ro' + 'utine ist und mindestens eine direkt (nicht nur als X.Eigenschaft) vorkommt. Still bleiben Bedingungen mit Funktionsaufrufen, Feldern, globalen Variablen, var- und out-Parametern und Terminated, außer' + 'dem Schleifen mit Ausgang (Break, Exit, raise …), Warteschleifen (Sleep, ProcessMessages …), with, Aufrufen lokaler Routinen und Variablen, die eine anonyme Methode erfasst. Änderungen über X[…] zähle' + 'n nur, wenn die Bedingung X[…] liest."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unconditional-recursion",' + #10 +
+    '      "name": "Rekursion ohne Abbruch",' + #10 +
+    '      "description": "Eine Routine ruft sich auf jedem Pfad selbst auf, bevor sie zurückkehren kann: Es gibt keinen Pfad ohne Selbstaufruf und kein Exit oder raise davor. Ergebnis ist ein Stapelüberla' + 'uf. Pfade ohne Aufruf sind: if ohne else bzw. case ohne else, der Rumpf von while und for, die rechte Seite von and/or, Zweige von if-Ausdrücken und anonyme Methoden. Getter und Setter der eigenen Pro' + 'perty meldet setter-recursion; überladene Routinen bleiben still (der Aufruf kann eine andere Überladung treffen). Das Randsymbol aus #623 zeigt jede Rekursion."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "pos-arguments-swapped",' + #10 +
+    '      "name": "Argumente von Pos vertauscht",' + #10 +
+    '      "description": "Pos(Text, '';''): Pos, PosEx, AnsiPos, StartsText, StartsStr, EndsText und EndsStr (auch mit Ansi-Präfix) erwarten zuerst den gesuchten Teil, dann den Text; ContainsText und Contai' + 'nsStr erwarten zuerst den Text. Gemeldet, wenn an der Stelle des Textes ein kurzes Literal steht (bis maxLiteralLength Zeichen, Vorgabe 3; '''' zählt als ein Zeichen, #9 ebenso) und an der Stelle des Te' + 'ils sicher ein String: eine Variable oder ein Feld mit in der Datei deklariertem String-Typ, .Text oder .Caption, eine String-Funktion der RTL (Trim, UpperCase, LeftStr, Format …) oder eine Verkettung' + ' mit einem String-Teil. Zeichen bleiben still, weil Pos(C, '';,'') bewusst prüft, ob C einer der Trenner ist; ebenso unbekannte Typen, zwei Literale und Methoden anderer Objekte (Liste.Pos). Konfidenz m' + 'ittel. Schnellkorrektur: Argumente in einer Änderung tauschen; Kommentare dazwischen bleiben.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "maxLiteralLength",' + #10 +
+    '          "description": "Längstes Literal an der Stelle des Textes, das noch als vertauscht gilt."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "integer-division-to-float",' + #10 +
+    '      "name": "Ganzzahldivision an Gleitkommazahl",' + #10 +
+    '      "description": "Schnitt := Summe div Anzahl mit Schnitt: Double: div schneidet die Nachkommastellen ab, bevor zugewiesen wird. Ebenso Prozent := Teil div Gesamt * 100, Result einer Funktion mit ' + 'Gleitkommaergebnis und var X: Double := A div B. Gesucht wird durch Klammern, Vorzeichen und + - * / hindurch, nicht in Aufrufen (Round(A div B)), Indizes, mod oder Vergleichen. Das Ziel muss eine Var' + 'iable, ein Feld (auch Self.X) oder Result sein, deren Typ Single, Double, Extended, Real, Currency … in der Datei deklariert ist. TDateTime, TDate und TTime bleiben still (ganze Tage sind dort meist g' + 'ewollt), ebenso Zuweisungen in with und Trunc(A) div Trunc(B) (auch Round, Floor, Ceil: ausdrücklich gewandelt, also gewollt ganzzahlig). Konfidenz hoch. Schnellkorrektur: div durch / ersetzen (gleich' + 'er Vorrang)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "empty-finally",' + #10 +
+    '      "name": "Leerer finally-Block",' + #10 +
+    '      "description": "Ein finally-Block ohne Anweisung: Meist ist die Freigabe beim Umbau verloren gegangen. Steht direkt vor try X := T….Create, nennt die Meldung X.Free. Ein Block mit erklärendem Ko' + 'mmentar gilt als bewusst und wird nicht gemeldet (wie bei empty-except); ein Block mit Compiler-Direktive ebenso nicht, weil ein anderer Zweig Code enthalten kann. Konfidenz hoch. Schnellkorrektur: tr' + 'y, finally und end entfernen und den Rumpf ausrücken (wenn try, finally und end je allein auf ihrer Zeile stehen); als einzige Anweisung eines if-, while-, for-, with- oder case-Zweigs mit mehreren An' + 'weisungen im Rumpf wird aus try begin."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "form-resource-missing",' + #10 +
+    '      "name": "Formular-Unit ohne {$R *.dfm}",' + #10 +
+    '      "description": "Neben der Unit liegt eine .dfm bzw. .fmx, die Unit deklariert die Klasse ihres Wurzelobjekts, aber keine {$R …}-Direktive bindet eine Formulardatei ein: Beim Erzeugen des Formula' + 'rs folgt EResNotFound. Umgekehrt meldet die Regel ein {$R *.dfm} bzw. {$R Name.dfm}, dessen Datei neben der Unit fehlt (der Compiler bricht mit F1026 ab). Eine Direktive in einem beliebigen Zweig der ' + 'bedingten Übersetzung zählt als eingebunden. Still bleibt die Regel, wenn die Klasse der Formulardatei nicht in der Unit steht und wenn sie keine Dateien neben der Unit sieht. Korrektur: {$R *.dfm} (b' + 'zw. {$R *.fmx}) nach implementation einfügen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "form-autocreate-and-manual",' + #10 +
+    '      "name": "Formular automatisch und zusätzlich von Hand erzeugt",' + #10 +
+    '      "description": "Die .dpr erzeugt ein Formular mit Application.CreateForm, der Code weist derselben globalen Variablen zusätzlich TfrmX.Create(…) zu. Es gibt dann zwei Instanzen, die erste bleibt' + ' unsichtbar im Speicher. Die automatisch erzeugten Formulare kommen aus der .dpr des Projekts, zu dem die Unit gehört; kann die Regel die .dpr lesen, muss die Klasse zum CreateForm-Aufruf passen. Stil' + 'l bleibt sie, wenn die Routine die Variable prüft (Assigned, Vergleich mit nil) oder vorher freigibt (Free, FreeAndNil, Release), bei lokalen Namen und gleichnamigen Feldern der eigenen Klasse und bei' + ' Units ohne Projekt. Sicherheit hoch. Korrektur: die Zeile mit Application.CreateForm aus der .dpr entfernen (das Formular erzeugt dann nur noch der Code)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inherited-form-handler-without-inherited",' + #10 +
+    '      "name": "Ereignis-Handler im geerbten Formular ohne inherited",' + #10 +
+    '      "description": "Bei Formularvererbung belegt ein Vorfahr-Formular dasselbe Ereignis derselben Komponente mit einem gleichnamigen Handler, der Handler im Nachfahren ruft inherited aber nicht (meh' + 'r) auf. Die IDE erzeugt inherited; beim Anlegen; wird es gelöscht, fällt die Logik des Vorfahren still weg. Die Formulardatei des Vorfahren kommt aus dem Index (Datei der Klasse) bzw. aus den Units de' + 'r uses-Liste neben der Unit; die Kette folgt geerbten Formularen bis zum ersten Formular mit object. Handler mit anderem Namen gelten als bewusster Ersatz. Still ohne Formulardatei des Vorfahren. Sich' + 'erheit hoch. Korrektur: inherited; am Anfang einfügen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "self-free-in-event-handler",' + #10 +
+    '      "name": "Formular gibt sich im eigenen Ereignis frei",' + #10 +
+    '      "description": "Free, Destroy, DisposeOf oder FreeAndNil auf Self bzw. auf die globale Variable der eigenen Formularklasse als Anweisung in einem Ereignis-Handler des Formulars oder eines seiner' + ' Controls. Nach der Rückkehr greift die VCL noch auf das Objekt zu: Zugriffsverletzung. Richtig ist Release oder Action := caFree in OnClose. Ereignis-Handler sind die Methoden aus der Formulardatei u' + 'nd Methoden mit einem Parameter Sender: TObject; ein Formular ist die Wurzelklasse der Formulardatei mit ClientWidth bzw. ClientHeight oder eine direkt von TForm bzw. TCustomForm abgeleitete Klasse (R' + 'ahmen und Datenmodule haben kein Release). Anweisungen in anonymen Methoden und with-Blöcken zählen nicht. Still ohne Formulardatei. Sicherheit hoch. Korrektur: Free durch Release ersetzen, in OnClose' + ' (var Action: TCloseAction) durch Action := caFree."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "parallel-for-shared-write",' + #10 +
+    '      "name": "Gemeinsame Variable in TParallel.For geschrieben",' + #10 +
+    '      "description": "Der Rumpf von TParallel.For bzw. eines TTask.Run/Create/Future, der in einer Schleife entsteht, schreibt eine Variable von außerhalb ohne Sperre: Summe := Summe + …, Inc/Dec oder' + ' eine andere Zuweisung, oder er verändert eine Sammlung von außerhalb (Add, Delete, Clear, Insert, Remove …). Die Durchläufe laufen gleichzeitig; Additionen gehen verloren oder die Liste wird beschädi' + 'gt. Von außerhalb heißt: lokale Variable oder Parameter der umgebenden Routine, Feld ihrer Klasse oder globale Variable der Unit; Namen unbekannter Herkunft bleiben still. Rümpfe mit Sperre (TMonitor,' + ' Enter, Acquire, Lock, LockList, BeginWrite, TInterlocked), Zugriffe über Index (Werte[I] := …) und verschachtelte anonyme Methoden (Synchronize, Queue) zählen nicht. Typen aus threadSafeTypes gelten ' + 'als threadsicher. Sicherheit mittel. Korrekturen: TInterlocked.Add/Increment/Decrement bei Integer, Int64 und Cardinal (ergänzt System.SyncObjs), System.TMonitor.Enter/Exit in try … finally um den Sam' + 'mlungsaufruf.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "threadSafeTypes",' + #10 +
+    '          "description": "Typen, die als threadsicher gelten; ihre Sammlungsaufrufe bleiben still."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "thread-unsafe-increment",' + #10 +
+    '      "name": "Zähler im Thread ohne TInterlocked",' + #10 +
+    '      "description": "Inc, Dec, X := X + 1 oder X := X - 1 ohne Sperre auf einer globalen Variablen in Execute eines TThread-Nachfahren bzw. auf einem Feld oder einer globalen Variablen im Rumpf von T' + 'Task.Run/Create/Future außerhalb von Schleifen und von TThread.CreateAnonymousThread. Inc ist nicht atomar: zählen mehrere Threads gleichzeitig, gehen Erhöhungen verloren. Thread-Klassen kommen aus de' + 'r Unit (auch über Zwischenklassen) und aus dem Index. Eigene Felder des Threads in Execute und eingefangene lokale Variablen eines einzelnen Tasks haben nur einen Schreiber und bleiben still, ebenso R' + 'ümpfe mit Sperre (TMonitor, Enter, Acquire, Lock, LockList, BeginWrite, TInterlocked) und verschachtelte anonyme Methoden (Synchronize, Queue). Tasks in Schleifen und TParallel.For meldet parallel-for' + '-shared-write. Sicherheit mittel. Korrektur: TInterlocked.Increment/Decrement/Add bei Integer, Int64 und Cardinal (ergänzt System.SyncObjs)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "constant-expression-error",' + #10 +
+    '      "name": "Fehler in einem konstanten Ausdruck",' + #10 +
+    '      "description": "Ein konstanter Ausdruck teilt durch null (wie E2098), läuft über den Bereich von Int64 und UInt64 hinaus (wie E2099), ein Bereich hat die Untergrenze über der Obergrenze (array[5' + '..1], wie E2011), eine Konstante verletzt einen ganzzahligen Typ fester Größe oder einen Teilbereichstyp (wie W1012, als Warnung; bei Zuweisungen nur Werte außerhalb von 0..127) oder ein Hex-, Binär- ' + 'oder Oktalliteral braucht mehr als 64 Bit (wie E2102). Atlas wertet Literale, Konstanten (auch aus anderen Units) und SizeOf/High/Low von Typen fester Größe aus; eine Konstante aus einem {$IF}-Zweig z' + 'ählt nur, wo die geprüfte Stelle mit ihr zusammen übersetzt wird. Ausdrücke mit unbekannten Teilen bleiben still."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "default-parameter-invalid",' + #10 +
+    '      "name": "Unzulässiger Standardwert eines Parameters",' + #10 +
+    '      "description": "Standardwerte, die der Compiler ablehnt: mehrere Namen mit einem gemeinsamen Standardwert (A, B: Integer = 0, wie E2237), ein Parameter ohne Standardwert nach einem mit Standardw' + 'ert (wie E2238), var- und out-Parameter mit Standardwert (wie E2239) Records oder statische Arrays mit Standardwert (wie E2268) sowie Mengen über 4 Byte mit Standardwert (wie E2146, erlaubt sind nur k' + 'leine Mengen; mittlere Konfidenz). Gilt für Routinen, Methoden und Prozedurtypen. Korrekturen: Parameter einzeln deklarieren; Parameter mit Standardwert ans Ende verschieben, auch im zugehörigen Kopf ' + 'der Deklaration bzw. Implementierung derselben Datei (Aufrufe ändert sie nicht)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "signed-unsigned-mix",' + #10 +
+    '      "name": "Vorzeichenbehaftet und vorzeichenlos gemischt",' + #10 +
+    '      "description": "Vergleich oder Rechnung (+, -, *, div, mod) mit einem vorzeichenbehafteten und einem vorzeichenlosen Operanden, deren Typen sicher bekannt sind (Variablen, Felder, Properties, Fu' + 'nktionsergebnisse, eigene Aliase). Mit UInt64 wird der ganze Ausdruck vorzeichenlos gerechnet, ein negativer Wert wird zu einer riesigen Zahl (wie W1073, beim Vergleich wie W1023); mit Cardinal/DWORD ' + 'und einem vorzeichenbehafteten Typ bis 32 Bit werden beide Operanden auf Int64 erweitert (wie W1023/W1024). Still bei Byte und Word, Cardinal mit Int64, Literalen, Konstanten, NativeInt/NativeUInt und' + ' unbekannten Typen. Mittlere Konfidenz. Korrektur: den vorzeichenlosen Operanden in Int64 umwandeln."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "narrowing-assignment",' + #10 +
+    '      "name": "Zuweisung mit möglichem Datenverlust",' + #10 +
+    '      "description": "Eine Zuweisung oder Inline-Variable mit einem Wert, dessen Typ breiter ist als das Ziel, ohne ausdrückliche Umwandlung: Int64 an Integer, NativeInt an Integer (Win64) und über di' + 'e Option types z. B. Double an Single oder Extended an Double. Wie W1071 (Ganzzahlen), W1072 (Gleitkomma) und W1066 (Extended an Double); der Compiler zeigt W1071 nur, wenn man es einschaltet. Gemelde' + 't wird nur, wenn beide Typen sicher bekannt sind (Variablen, Felder, Properties, Funktionsergebnisse, eigene Aliase und ganzzahlige Rechnungen daraus); Literale und ausdrückliche Umwandlungen bleiben ' + 'still. Standardmäßig aus; mittlere Konfidenz. Korrekturen: ausdrücklich umwandeln; den Typ der Deklaration des Ziels vergrößern (einzelne Variable aus derselben Datei).",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "types",' + #10 +
+    '          "description": "Gemeldete Paare Quelltyp>Zieltyp, z. B. Double>Single oder Extended>Double."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "typed-constant-modified",' + #10 +
+    '      "name": "Typisierte Konstante verändert",' + #10 +
+    '      "description": "Einer typisierten Konstante (const Zaehler: Integer = 0) wird etwas zugewiesen (wie W1017, auch einem Element oder Record-Feld davon), oder sie wird als var- oder out-Argument üb' + 'ergeben, auch an Inc, Dec, Include, Exclude, Delete, SetLength und ähnliche (wie W1016). Gemeint war meist eine Variable; übersetzbar ist das nur mit {$J+}. Gilt vor der Deklaration in derselben Datei' + ' {$J-} bzw. {$WRITEABLECONST OFF}, meldet Atlas einen Fehler (wie E2064 bzw. E2197). Dazu 0 als Wert einer Zeigerkonstante oder einer initialisierten Zeigervariable (wie W1013). Korrekturen: eine Kons' + 'tante auf Unit-Ebene in eine Variable mit Initialwert umwandeln (der const-Abschnitt wird bei Bedarf geteilt; lokale typisierte Konstanten behalten ihren Wert zwischen Aufrufen und bekommen keine Korr' + 'ektur); nil statt 0 schreiben."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "string-length-limit",' + #10 +
+    '      "name": "String-Grenze überschritten",' + #10 +
+    '      "description": "Ein String-Literal wird an ein Ziel vom Typ string[N] oder ShortString gekürzt: Zuweisung, typisierte Konstante oder initialisierte Variable, auch über eigene Aliase, string[Kons' + 'tante] und Felder aus anderen Units (wie W1014). Vor Delphi 12 (delphiVersion unter 23) darf ein Literal in Anführungszeichen höchstens 255 Zeichen haben (wie E2056), und ein resourcestring höchstens ' + '4096 Zeichen, mit + verbundene Literale eingerechnet (wie E2381); beides sind Fehler. Gezählt wird wie geschrieben, '''' und #13 zählen als ein Zeichen. Korrekturen: das Ziel als string deklarieren (ein' + 'zelne Variable oder typisierte Konstante derselben Datei; Record-Felder behalten ihre Größe); das Literal in Stücke zu 255 Zeichen teilen, verbunden mit +."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dynamic-array-misuse",' + #10 +
+    '      "name": "New, Dispose oder SetLength falsch für dynamische Arrays",' + #10 +
+    '      "description": "New (wie E2255) oder Dispose (wie E2256) auf einem dynamischen Array, SetLength ohne Länge (wie E2246), New mit Länge auf einem Typ, der kein dynamisches Array ist (wie E2307), u' + 'nd New(TArrayTyp) ohne Länge (wie E2308). Häufig in altem Code, der von Zeigern auf dynamische Arrays umgestellt wurde. Die Regel meldet nur, wenn die Namensauflösung Variable bzw. Typ sicher kennt; A' + 'liase werden verfolgt (TWerte = array of Double), TBytes und die übrigen dynamischen Arrays der RTL gelten auch ohne Index; offene Array-Parameter und Zeiger bleiben still. Korrekturen: Dispose(A) wir' + 'd A := nil, New(A) wird SetLength(A, 1)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "local-routine-as-callback",' + #10 +
+    '      "name": "Lokale Routine als Prozedurvariable",' + #10 +
+    '      "description": "Eine lokale (verschachtelte) Routine wird einer Variablen oder einem Parameter eines prozeduralen Typs ohne of object zugewiesen (wie E2094), oder eine typisierte Konstante einer' + ' Routine nimmt die Adresse einer lokalen Variablen (wie E2278). Gemeint ist meist eine anonyme Methode oder eine Routine der Unit. Die Regel meldet nur, wenn die Namensauflösung den Zieltyp sicher ken' + 'nt; Methodenzeiger und Methodenreferenzen bleiben still, weil der Compiler sie mit anderen Codes meldet, ebenso @Routine (ein untypisierter Zeiger). Korrektur: die Routine als Routine der Unit vor die' + ' umgebende Routine verschieben, wenn sie nichts aus ihr nutzt (keine lokalen Namen weiter außen, keine Klassenmitglieder ohne Präfix)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "hresult-integer-mix",' + #10 +
+    '      "name": "Integer und HRESULT vertauscht",' + #10 +
+    '      "description": "Eine Klasse implementiert eine Interface-Methode mit HRESULT-Ergebnis über eine Methode mit Integer- (bzw. LongInt-) Ergebnis oder umgekehrt (wie X1008). Beide sind 32 Bit groß, ' + 'deshalb fällt es nicht auf; die Bedeutung der Werte (S_FALSE als Erfolg) geht aber verloren; wichtig für COM- und OTA-Code. Zugeordnet wird über Name und Parametertypen samt Zuordnungen wie function I' + 'Foo.Bar = Baz; Interfaces samt ihren Vorfahren kommen aus der Datei bzw. dem Index. Stehen Varianten in bedingten Zweigen, meldet die Regel nur, wenn jede Variante abweicht. Korrektur: den Ergebnistyp' + ' in Deklaration und Implementierung an das Interface angleichen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "invalid-var-argument",' + #10 +
+    '      "name": "Ungültiges Argument für einen var- oder out-Parameter",' + #10 +
+    '      "description": "Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: ein String-Element für einen Zeichen-Parameter (wie E2354), eine Konstante, einen const-Parameter, eine Propert' + 'y oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192), Slice (wie E2454) oder einen Ausdruck (wie E2036). Gemeldet nur für Routinen ohne Überladungen, deren Kopf a' + 'us der Datei oder dem Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {' + '$J+}. Korrektur: eine lokale Variable vom Typ des Parameters übergeben, bei String-Elementen und Properties mit write mit Rückschreiben."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "condition-not-boolean",' + #10 +
+    '      "name": "Bedingung ist kein Boolean",' + #10 +
+    '      "description": "Die Bedingung von if, while, until oder eines bedingten Ausdrucks hat sicher einen Typ, der kein Boolean ist: Zahl, Zeiger, Klasse, Interface, String oder Zeichen (wie E2012). An' + 'ders als C verlangt Delphi einen Boolean. Gemeldet nur bei sicher bekanntem Typ; Boolean-Typen wie LongBool, Aufzählungen, Aliase und unbekannte Typen bleiben still. Korrektur: <> 0 (Alternative > 0),' + ' <> nil (Alternative Assigned), <> '''' bzw. <> #0 ergänzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "for-in-not-enumerable",' + #10 +
+    '      "name": "for-in über einen Typ ohne Enumerator",' + #10 +
+    '      "description": "Eine for-in-Schleife läuft über einen Typ, der sich nicht aufzählen lässt: Zahl, Zeiger, Zeichen oder Boolean, oder eine Klasse, ein Record bzw. Interface ohne öffentliches GetEn' + 'umerator, auch nicht geerbt oder aus einem Helper (wie E2430); oder der Enumerator aus GetEnumerator hat kein öffentliches MoveNext bzw. Current (wie E2431). Strings, Arrays und Mengen gehen. Gemeldet' + ' nur, wenn der Typ und alle Vorfahren bekannt sind; generische und unbekannte Typen bleiben still. Keine Korrektur; hat der Typ Count, nennt die Meldung eine Schleife mit Index."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inherited-abstract-call",' + #10 +
+    '      "name": "inherited ruft eine abstrakte Methode auf",' + #10 +
+    '      "description": "inherited mit ausdrücklichem Methodennamen, etwa inherited Zeichnen(C), obwohl die Methode im Vorfahren abstract ist (wie E2373). Ein bloßes inherited; übergeht der Compiler bei ' + 'abstrakten Methoden still; das meldet die Regel nicht. Die Methode löst die Namensauflösung samt Überladungen auf; gemeldet wird nur, wenn jede passende Überladung abstrakt ist. Korrektur: den Aufruf ' + 'entfernen, wenn er als eigene Anweisung in einem begin…end steht."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "generic-constraint-violated",' + #10 +
+    '      "name": "Typargument verletzt eine Einschränkung",' + #10 +
+    '      "description": "Ein Typargument erfüllt die Einschränkung seines Typparameters nicht: class (wie E2511), record (wie E2512), constructor (wie E2513), ein Interface (wie E2514) oder eine Basiskla' + 'sse (wie E2515). In Methoden eines generischen Typs dieser Datei meldet die Regel außerdem T.Create ohne constructor-Einschränkung (wie E2568) und Methodenaufrufe auf Werten eines Typparameters ganz o' + 'hne Einschränkung (wie E2571). Den generischen Typ löst die Namensauflösung samt Zahl der Typparameter auf, seine Einschränkungen stammen aus seiner Deklaration in der Datei oder im Symbolindex. Argum' + 'ente, die selbst Typparameter sind, Aliase und Typen mit unvollständiger Vorfahrenkette meldet die Regel nicht. Korrektur für einen Typparameter dieser Datei, der allein in seiner Gruppe steht: die Ei' + 'nschränkung ergänzen (T: class, constructor bzw. T: class)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unresolved-type",' + #10 +
+    '      "name": "Typ in einer Deklaration nicht gefunden",' + #10 +
+    '      "description": "Ein Typname in einer Deklaration (Feld, Parameter, Ergebnis, Vorfahr, Interface-Liste, Variable, Typargument) ist nicht deklariert (wie E2003, beim Ziel eines Zeigertyps wie E256' + '4) oder kein Typ (wie E2005). Ergänzt unresolved-identifier, das nur Anweisungen prüft. Dieselben Vorbedingungen wie bei unresolved-attribute: System im Symbolindex, alle Units aus uses bekannt, nicht' + ' in {$IF…}-Blöcken. Typparameter, Namen, die die Datei irgendwo als Typ deklariert (auch verschachtelt), und Namen, die der Index als verschachtelten Typ kennt (geerbte innere Typen), meldet die Regel' + ' nicht. Korrektur: die Unit, die den Typ (mit gleich vielen Typparametern) deklariert, in uses aufnehmen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "class-reference-nonvirtual-constructor",' + #10 +
+    '      "name": "Konstruktor über Klassenreferenz nicht virtuell",' + #10 +
+    '      "description": "Create über eine Klassenreferenz (class of TBasis), deren Konstruktor nicht virtual ist. Unter Win32 und Win64 übersetzt das ohne Meldung, erzeugt aber immer über den Konstruktor' + ' von TBasis: Felder, die Nachfahren in ihren eigenen Konstruktoren setzen, bleiben leer (wie E2391). Der Empfänger kann eine Variable, ein Feld, ein Parameter oder ein Funktionsergebnis vom Typ einer ' + 'Klassenreferenz sein; den Konstruktor löst die Namensauflösung in der nächsten Klasse auf, die ihn deklariert, Überladungen nach Zahl der Argumente. Still, wenn eine passende Überladung virtual, dynam' + 'ic, override oder abstract ist, wenn eine Deklaration in einem anderen Zweig der bedingten Übersetzung steht und wenn ein Typ nicht auflösbar ist. Korrektur, wenn der Konstruktor in dieser Datei steht' + ': virtual an ihn und override an die gleichlautenden Konstruktoren der Nachfahren in dieser Datei."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "jump-outside-allowed-scope",' + #10 +
+    '      "name": "Break, Continue oder Exit an unzulässiger Stelle",' + #10 +
+    '      "description": "Break oder Continue außerhalb einer Schleife (wie E2097) bzw. Break, Continue oder Exit, die einen finally-Block verlassen (wie E2126). Delphi meldet beides erst beim Übersetzen;' + ' häufig nach dem Herausziehen eines Schleifenrumpfs in eine eigene Methode. Eine Schleife ganz im finally-Block darf Break und Continue verwenden. Routinen und anonyme Methoden beginnen neu: Ein Break' + ' in einer anonymen Methode gehört nicht zur Schleife um sie herum. Gemeldet werden nur einfache Aufrufe (nicht TMonitor.Exit(FLock)) und nicht, wenn die Datei eine Routine oder Variable dieses Namens ' + 'deklariert. Korrektur außerhalb eines finally-Blocks: Break durch Exit ersetzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "reraise-outside-handler",' + #10 +
+    '      "name": "raise ohne Argument außerhalb eines Handlers",' + #10 +
+    '      "description": "raise; ohne Exception-Objekt ist nur in einem except-Block erlaubt (wie E2145); Delphi meldet es erst beim Übersetzen. Es passiert in einer lokalen Prozedur, die aus dem Handler ' + 'gerufen wird, in einem finally-Block oder nach dem Verschieben von Code. Routinen und anonyme Methoden beginnen neu. Still bleibt die Regel in anonymen Methoden innerhalb eines except-Blocks und in Ro' + 'utinen, in denen der Parser einen Fehler meldet. Keine Korrektur: eine neue Exception auslösen (raise EImport.Create(…)) oder den Code in den Handler verschieben. raise E; im Handler meldet reraise-ex' + 'ception-object."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "label-misuse",' + #10 +
+    '      "name": "Sprungmarke falsch verwendet",' + #10 +
+    '      "description": "Eine Marke ist doppelt gesetzt (wie E2073), deklariert und angesprungen, aber nie gesetzt (E2074), gesetzt oder angesprungen, ohne in der aktuellen Routine deklariert zu sein (E2' + '093), oder goto springt in einen try-Block hinein oder aus ihm heraus, auch zwischen try-Teil und except bzw. finally (E2127). Delphi meldet das erst beim Übersetzen. Marken gehören zu einer Routine b' + 'zw. zum Programmblock; eine lokale Prozedur kann keine Marke der umgebenden Routine anspringen. Doppelte Marken in bedingten Zweigen, die sich ausschließen, bleiben still, ebenso Routinen mit asm-Bloc' + 'k, weil Marken im asm nicht im Syntaxbaum stehen. Keine Korrektur."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "for-variable-misuse",' + #10 +
+    '      "name": "Schleifenvariable verändert oder nicht lokal",' + #10 +
+    '      "description": "Der Variablen einer for-Schleife wird im Rumpf zugewiesen oder sie wird mit Inc/Dec verändert (wie E2081), sie wird als var- bzw. out-Parameter an eine Routine dieser Datei überg' + 'eben (wie W1015) oder sie ist keine einfache lokale Variable: Feld der eigenen Klasse, globale Variable der Unit oder lokale Variable der umgebenden Routine (wie E1019). Delphi meldet das erst beim Üb' + 'ersetzen. Parameter, unbekannte Namen und Schleifen in with-Anweisungen bleiben still, ebenso anonyme Methoden im Rumpf und Routinen mit Parserfehlern. Korrekturen: auf eine while-Schleife umstellen (' + 'nicht bei Continue im Rumpf) bzw. for var verwenden, wenn die Routine den Namen sonst nicht benutzt."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "for-variable-after-loop",' + #10 +
+    '      "name": "Schleifenvariable nach der Schleife gelesen",' + #10 +
+    '      "description": "Nach einer for-Schleife, die normal endet (ohne Break), ist die Schleifenvariable undefiniert. Die Regel meldet das erste Lesen der Variable auf einem Weg vom normalen Schleifene' + 'nde, bevor ihr erneut zugewiesen wird (wie W1037). Geprüft werden nur einfache lokale Variablen der Routine; for var, Felder, globale Variablen, Lesen nur im Rumpf, Argumente von Routinen, die out-Par' + 'ameter sein könnten, und Routinen mit unvollständigem Ablaufgraphen bleiben still. Korrektur: auf eine while-Schleife umstellen, deren Zähler danach einen festen Wert hat."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "argument-count-mismatch",' + #10 +

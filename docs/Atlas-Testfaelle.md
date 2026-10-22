@@ -3115,6 +3115,7 @@ Voraussetzung: Einstellungen auf Vorgabe, Diagnoselog an; Projektgruppe `Atlas.g
 | SN4 | In einer eigenen Unit `X := 1 - 1 - 1 …` mit 1200 Gliedern schreiben (Testprojekt) und speichern | Kein Absturz; die Prüfregeln melden für diese Unit wie für jede andere, keine `deepUnit`-Zeile im Diagnoselog (seit Bericht M1 greift die Grenze erst ab 100000 Ebenen, siehe TV2) |
 | SN5 | Kommandozeile: `AtlasServer.exe --check` über die Gruppe (Abschnitt „Linter mode“ im README) | Läuft durch alle Units ohne Absturz; dieselben Befunde wie vor #1094 |
 | SN6 | Testlauf `Atlas.Tests.exe` | Grün, darunter `SecondOverflowInSameThreadIsCaughtAgain` (drei Stapelüberläufe im selben Thread werden abgefangen, der Prozess lebt) |
+
 ## Fenster „Atlas-Prüfung“ und Seite „Prüfregeln“ (#909)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit einigen Befunden (z. B. leerer `except`-Block, magische Zahl, W1036 nach dem Übersetzen).
@@ -4225,7 +4226,6 @@ Voraussetzung: wie JT; in `atlas.json` `"legacy-stack-queue": "info"` (Standard 
 | SQ11 | Ohne Eintrag in `atlas.json`, mit `"legacy-stack-queue": "off"` bzw. `exclude` mit dem Pfad der Unit | Keine Meldung |
 | SQ12 | Abgleich mit Delphi: SQ1 übersetzen, dann die Ergebnisse von SQ3, SQ5 und SQ6 | dcc meldet für SQ1 nichts (reine Stilprüfung); die umgewandelten Units übersetzen mit 0 Fehlern, 0 Warnungen, 0 Hinweisen |
 
-## Zugriff auf ein nicht sichtbares Mitglied (#1008)
 
 Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 
@@ -5712,14 +5712,6 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `IBeobachter =
 | KD7 | `TfrmKunden` von einer eigenen Basis `TMeineBasis` ableiten, die nicht im Projekt steht; dann `"component-interface-dangling": {"componentClasses": ["TMeineBasis"]}` | Ohne Option keine Meldung, mit Option „TfrmKunden ist ein TMeineBasis ohne Referenzzählung; …“ |
 | KD8 | `"component-interface-dangling": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
 | KD9 | Abgleich mit Delphi: KD1 übersetzen, `AnsichtOeffnen`, `AnsichtSchliessen`, danach `Bus` ein `Melden` an alle schicken lassen | Ohne Korrektur Zugriffsverletzung beim Aufruf über das gespeicherte Interface; mit Korrektur keine |
-| UV1 | Das Beispiel aus #1020: `TImport` mit `private FAltFormat: Boolean; procedure KonvertiereAlt;`, beide nirgends verwendet | Hinweise `unused-private-member` an beiden Namen: „Privates Feld FAltFormat wird nie verwendet (wie H2219).“ und „Private Methode KonvertiereAlt wird nie verwendet (wie H2219).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
-| UV2 | Schnellkorrektur „KonvertiereAlt entfernen“, danach Strg+Z | Deklaration samt ///-Doku und Rumpf in implementation sind weg; ein Undo-Schritt stellt beides wieder her |
-| UV3 | Private Konstante und Property ohne Verwendung; `FA, FB: Integer` mit nur `FB` verwendet | Meldungen für Konstante, Property und `FA` (bei `FA` ohne Korrektur) |
-| UV4 | Mitglied nur in einem `{$IFDEF}`-Zweig, hinter `read` einer Property oder über `Self.` verwendet | Keine Meldung |
-| UV5 | `message`-Methode, `override`-Methode, Feld mit `[Weak]`, Methode einer Klasse mit Interface, Komponente aus der .dfm, Unit mit `{$I …}` | Keine Meldung |
-| UV6 | `"unused-private-member": {"includeFields": false}` | Nur noch Methoden, Konstanten und Properties |
-| UV7 | `"unused-private-member": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
-| UV8 | Abgleich mit Delphi: UV1 übersetzen | dcc meldet H2219 für `KonvertiereAlt` an derselben Stelle (für Felder meldet dcc nichts); für UV4 und UV5 nichts |
 
 ## Öffentliches Mitglied im Projekt nie verwendet (#1102)
 
