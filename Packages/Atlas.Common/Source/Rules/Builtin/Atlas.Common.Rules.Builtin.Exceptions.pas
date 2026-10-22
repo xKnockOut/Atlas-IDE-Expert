@@ -5,6 +5,7 @@
 //   catch-all-without-raise     on E: Exception do ohne raise; nur für Bibliothekscode,
 //                               deshalb Standard aus und über Profile/Pfadregeln einzuschalten (#146)
 //   exception-freed             Exception-Objekt nach raise bzw. im Handler zusätzlich freigegeben
+//   exception-in-destructor     raise in einem Destruktor, das kein except im Destruktor abfängt (#927)
 // Der leere except-Block bleibt bei empty-except (#56).
 
 interface
@@ -27,6 +28,12 @@ type
   end;
 
   TExceptionFreedRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TExceptionInDestructorRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -357,11 +364,127 @@ begin
   end;
 end;
 
+{ TExceptionInDestructorRule }
+
+function TExceptionInDestructorRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('exception-in-destructor', TRuleSeverity.Warning, 'raise im Destruktor');
+end;
+
+procedure TExceptionInDestructorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  RoutineName: string;
+  // Offset des ersten inherited im Destruktor; MaxInt ohne.
+  InheritedOffset: Integer;
+
+  function RoutineText(ANode: TSyntaxNode): string;
+  begin
+    Result := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+  end;
+
+  function IsDestructor(ARoutine: TSyntaxNode): Boolean;
+  var
+    Head: string;
+  begin
+    Head := RoutineText(ARoutine);
+    if StartsText('class', Head) then
+      Head := TrimLeft(Copy(Head, Length('class') + 1, MaxInt));
+    Result := StartsText('destructor', Head) and ((Length(Head) = Length('destructor')) or
+      CharInSet(Head[Length('destructor') + 1], [' ', #9, #10, #13]));
+  end;
+
+  // Erstes inherited im Destruktor, ohne eingebettete Routinen und anonyme Methoden.
+  procedure FindInherited(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+      Exit;
+    if (ANode.Kind = TSyntaxKind.InheritedExpr) and (ANode.StartOffset < InheritedOffset) then
+      InheritedOffset := ANode.StartOffset;
+    for Index := 0 to ANode.ChildCount - 1 do
+      FindInherited(ANode[Index]);
+  end;
+
+  // AActive: eine Ausnahme an dieser Stelle verlässt den Destruktor.
+  procedure Visit(ANode: TSyntaxNode; AActive: Boolean);
+  var
+    Index: Integer;
+    Child: TSyntaxNode;
+    HasExcept: Boolean;
+    Message: string;
+  begin
+    if ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+      Exit;
+    if ANode.Kind = TSyntaxKind.RaiseStatement then
+    begin
+      if not AActive then
+        Exit;
+      if ANode.StartOffset < InheritedOffset then
+        Message := Format('raise im Destruktor: inherited %s läuft nicht mehr, Felder bleiben liegen.',
+          [RoutineName])
+      else
+        Message := Format('raise im Destruktor: die Ausnahme verlässt %s, der Aufrufer erwartet eine ' +
+          'Freigabe ohne Ausnahme.', [RoutineName]);
+      AReport.Add(TTextRange.Create(ANode.StartPos, TTextPosition.Create(ANode.StartPos.Line,
+        ANode.StartPos.Character + Length('raise'))), Message, TRuleConfidence.High);
+      Exit;
+    end;
+    if ANode.Kind = TSyntaxKind.TryStatement then
+    begin
+      HasExcept := False;
+      for Index := 0 to ANode.ChildCount - 1 do
+        if ANode[Index].Kind = TSyntaxKind.ExceptBlock then
+          HasExcept := True;
+      for Index := 0 to ANode.ChildCount - 1 do
+      begin
+        Child := ANode[Index];
+        // Im try-Teil fängt ein eigenes except die Ausnahme ab; except- und finally-Teil nicht.
+        if Child.Kind in [TSyntaxKind.ExceptBlock, TSyntaxKind.FinallyBlock] then
+          Visit(Child, AActive)
+        else
+          Visit(Child, AActive and not HasExcept);
+      end;
+      Exit;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index], AActive);
+  end;
+
+  procedure Search(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    Body: TSyntaxNode;
+  begin
+    if (ANode.Kind = TSyntaxKind.RoutineDecl) and IsDestructor(ANode) then
+    begin
+      RoutineName := ANode.Name;
+      if LastDelimiter('.', RoutineName) > 0 then
+        RoutineName := Copy(RoutineName, LastDelimiter('.', RoutineName) + 1, MaxInt);
+      Body := ANode.FindChild(TSyntaxKind.Block);
+      if Body <> nil then
+      begin
+        InheritedOffset := MaxInt;
+        FindInherited(Body);
+        Visit(Body, True);
+      end;
+    end;
+    // Auch eingebettete Routinen und Klassen in Routinen.
+    for Index := 0 to ANode.ChildCount - 1 do
+      Search(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) then
+    Search(AContext.Tree.Root);
+end;
+
 procedure RegisterExceptionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TGenericExceptionRaisedRule.Create);
   ARegistry.Register(TCatchAllWithoutRaiseRule.Create);
   ARegistry.Register(TExceptionFreedRule.Create);
+  ARegistry.Register(TExceptionInDestructorRule.Create);
 end;
 
 end.

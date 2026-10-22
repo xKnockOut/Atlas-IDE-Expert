@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Exceptions.Tests;
 
-// Tests für die Exception-Regeln (#277): je Regel ein positiver und ein negativer Fall.
+// Tests für die Exception-Regeln (#277): je Regel ein positiver und ein negativer Fall;
+// exception-in-destructor (#927).
 
 interface
 
@@ -25,6 +26,12 @@ type
     procedure FreedAfterRaiseReported;
     [Test]
     procedure NoDoubleFreeSilent;
+    [Test]
+    procedure ExceptionInDestructorIssueExample;
+    [Test]
+    procedure ExceptionInDestructorVariants;
+    [Test]
+    procedure ExceptionInDestructorSilentCases;
   end;
 
 implementation
@@ -114,6 +121,70 @@ begin
     '  Liste.Free;'#10'  raise EKunde.Create(''X'');'));
   TRuleAssert.Silent(TExceptionFreedRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
     'procedure A;'#10'begin'#10'  raise E;'#10'end;'#10'procedure B;'#10'begin'#10'  E.Free;'#10'end;'#10'end.');
+end;
+
+function Sitzung(const ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  TSitzung = class'#10'    FOffen: Boolean;'#10 +
+    '    destructor Destroy; override;'#10'  end;'#10'implementation'#10'destructor TSitzung.Destroy;'#10 +
+    'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+procedure TExceptionRulesTests.ExceptionInDestructorIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TExceptionInDestructorRule.Create, Sitzung('  if FOffen then'#10 +
+    '    raise ESitzung.Create(''Sitzung noch offen'');'#10'  inherited;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('raise im Destruktor: inherited Destroy läuft nicht mehr, Felder bleiben liegen.',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(11, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(4, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Korrigiert: Zustand protokollieren statt auslösen.
+  TRuleAssert.Silent(TExceptionInDestructorRule.Create, Sitzung('  if FOffen then'#10 +
+    '    Schliessen;'#10'  inherited;'));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TExceptionInDestructorRule.Create,
+    Sitzung('  raise ESitzung.Create(''x'');'), '{"rules": {"exception-in-destructor": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TExceptionInDestructorRule.Create,
+    Sitzung('  raise ESitzung.Create(''x'');'), '{"rules": {"exception-in-destructor": {"exclude": ["Alt/*.pas"]}}}',
+    'Alt/U.pas'))));
+end;
+
+procedure TExceptionRulesTests.ExceptionInDestructorVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Nach inherited, im finally, erneutes raise im except-Teil, class destructor.
+  Findings := TRuleAssert.Findings(TExceptionInDestructorRule.Create, Sitzung('  try'#10'    Speichern;'#10 +
+    '  finally'#10'    inherited;'#10'  end;'#10'  if FOffen then'#10'    raise ESitzung.Create(''x'');'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('raise im Destruktor: die Ausnahme verlässt Destroy, der Aufrufer erwartet eine Freigabe ohne ' +
+    'Ausnahme.', Findings[0].Message);
+  TRuleAssert.Reports(TExceptionInDestructorRule.Create, Sitzung('  try'#10'    Speichern;'#10'  finally'#10 +
+    '    raise ESitzung.Create(''x'');'#10'  end;'));
+  TRuleAssert.Reports(TExceptionInDestructorRule.Create, Sitzung('  try'#10'    Speichern;'#10'  except'#10 +
+    '    Protokoll;'#10'    raise;'#10'  end;'));
+  TRuleAssert.Reports(TExceptionInDestructorRule.Create, 'unit U;'#10'interface'#10'type'#10'  TListe = class'#10 +
+    '    class destructor Destroy;'#10'  end;'#10'implementation'#10'class destructor TListe.Destroy;'#10 +
+    'begin'#10'  raise EListe.Create(''x'');'#10'end;'#10'end.');
+end;
+
+procedure TExceptionRulesTests.ExceptionInDestructorSilentCases;
+begin
+  // Abgefangen im try-Teil, andere Methode, eingebettete Routine und anonyme Methode.
+  TRuleAssert.Silent(TExceptionInDestructorRule.Create, Sitzung('  try'#10'    if FOffen then'#10 +
+    '      raise ESitzung.Create(''x'');'#10'  except'#10'    on E: ESitzung do'#10'      Protokoll(E);'#10'  end;'#10 +
+    '  inherited;'));
+  TRuleAssert.Silent(TExceptionInDestructorRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'procedure TSitzung.Schliessen;'#10'begin'#10'  raise ESitzung.Create(''x'');'#10'end;'#10'end.');
+  TRuleAssert.Silent(TExceptionInDestructorRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'destructor TSitzung.Destroy;'#10'  procedure Pruefen;'#10'  begin'#10'    raise ESitzung.Create(''x'');'#10 +
+    '  end;'#10'begin'#10'  FAufgabe := procedure'#10'    begin'#10'      raise ESitzung.Create(''x'');'#10 +
+    '    end;'#10'  inherited;'#10'end;'#10'end.');
 end;
 
 initialization

@@ -3330,3 +3330,16 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; VCL-Projekt ohne `{$APP
 | WG5 | Dieselbe Unit in einem Konsolenprojekt (`{$APPTYPE CONSOLE}` oder Linker-Option „Konsolenanwendung erzeugen“) | Keine Meldung |
 | WG6 | `if IsConsole then Writeln(...)` bzw. `Writeln(F, ...)` mit `F: TextFile` | Keine Meldung |
 | WG7 | `"writeln-in-gui-app": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## raise im Destruktor (#927)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Klasse `TSitzung` mit `destructor Destroy; override;` und im Rumpf `if FOffen then raise ESitzung.Create('Sitzung noch offen');` vor `inherited;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ED1 | Unit öffnen | Warnung `exception-in-destructor` am `raise`: „raise im Destruktor: inherited Destroy läuft nicht mehr, Felder bleiben liegen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| ED2 | `raise` hinter `inherited;` verschieben | Meldung „raise im Destruktor: die Ausnahme verlässt Destroy, der Aufrufer erwartet eine Freigabe ohne Ausnahme.“ |
+| ED3 | `raise` in `try … except on E: ESitzung do Protokoll(E); end;` einschließen | Keine Meldung |
+| ED4 | Im except-Teil `raise;` ergänzen | Meldung am `raise` |
+| ED5 | `raise` in einer eingebetteten Prozedur des Destruktors | Keine Meldung |
+| ED6 | `"exception-in-destructor": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

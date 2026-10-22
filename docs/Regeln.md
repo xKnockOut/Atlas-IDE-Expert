@@ -7,7 +7,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | Gruppe | Regeln |
 |---|---|
 | [Fehler finden](#gruppe-find-bugs) | 41 |
-| [Exceptions](#gruppe-exceptions) | 5 |
+| [Exceptions](#gruppe-exceptions) | 6 |
 | [Threads](#gruppe-threads) | 7 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
 | [Performance](#gruppe-performance) | 3 |
@@ -76,6 +76,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`catch-all-without-raise`](#catch-all-without-raise) | Exception-Handler ohne erneutes raise | Code Smell | Warnung |
 | [`exception-freed`](#exception-freed) | Exception-Objekt manuell freigegeben | Bug | Fehler |
 | [`raise-in-finally`](#raise-in-finally) | raise in einem finally-Block | Bug | Warnung |
+| [`exception-in-destructor`](#exception-in-destructor) | raise im Destruktor | Bug | Warnung |
 
 <a id="gruppe-threads"></a>
 ### Threads
@@ -2883,5 +2884,34 @@ Richtig:
 procedure TfrmHaupt.btnStartClick(Sender: TObject);
 begin
   OutputDebugString(PChar('Start: ' + TimeToStr(Now)));
+end;
+```
+
+<a id="exception-in-destructor"></a>
+### exception-in-destructor
+
+**raise im Destruktor** · Bug · Warnung · Gruppe Exceptions
+
+raise in einem Destruktor (auch class destructor), das kein except im Destruktor abfängt. Die Ausnahme bricht die Freigabe ab: inherited Destroy läuft nicht mehr, das Objekt bleibt halb freigegeben, und in einem finally des Aufrufers überdeckt sie die ursprüngliche Ausnahme. Ein raise im try-Teil eines try..except ist abgefangen; raise im except- oder finally-Teil, auch ein erneutes raise;, wird gemeldet. Eingebettete Routinen und anonyme Methoden sind ausgenommen. Aufrufen, die ihrerseits auslösen, folgt die Regel nicht. Konfidenz hoch. Keine Schnellkorrektur: den Zustand protokollieren oder ohne Ausnahme freigeben.
+
+Mit Treffer:
+
+```pascal
+destructor TSitzung.Destroy;
+begin
+  if FOffen then
+    raise ESitzung.Create('Sitzung noch offen');
+  inherited;
+end;
+```
+
+Richtig:
+
+```pascal
+destructor TSitzung.Destroy;
+begin
+  if FOffen then
+    Schliessen;
+  inherited;
 end;
 ```

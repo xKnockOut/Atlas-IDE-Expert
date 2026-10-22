@@ -1355,6 +1355,16 @@
           "description": "Replacement for Write and Writeln in the quick fix; %s stands for the text."
         }
       ]
+    },
+    {
+      "id": "exception-in-destructor",
+      "name": "raise in a destructor",
+      "category": "bug",
+      "severity": "warning",
+      "group": "exceptions",
+      "description": "raise in a destructor (also class destructor) that no except inside the destructor catches. The exception aborts the destruction: inherited Destroy no longer runs, the object stays half freed, and in a finally of the caller it hides the original exception. A raise in the try part of a try..except is caught; raise in the except or finally part, including a bare raise; to re-raise, is reported. Nested routines and anonymous methods are exempt. Calls that raise are not followed. High confidence. No quick fix: log the state or release it without an exception.",
+      "bad": "destructor TSitzung.Destroy;\nbegin\n  if FOffen then\n    raise ESitzung.Create('Sitzung noch offen');\n  inherited;\nend;",
+      "good": "destructor TSitzung.Destroy;\nbegin\n  if FOffen then\n    Schliessen;\n  inherited;\nend;"
     }
   ]
 }
