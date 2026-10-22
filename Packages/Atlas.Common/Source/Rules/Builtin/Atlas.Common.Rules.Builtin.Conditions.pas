@@ -22,6 +22,20 @@
 //                       try … except derselben Routine, endet sie gewollt über
 //                       eine Ausnahme (lesen bis EJsonRpcTransportClosed) und
 //                       bleibt still. Aktion: Sprung zum Schleifenkopf.
+//   loop-condition-unchanged
+//                       Keine Variable der while- bzw. until-Bedingung ändert sich
+//                       im Rumpf (#1043): typisch das vergessene Inc(I). Gemeldet
+//                       nur, wenn jede Variable der Bedingung eine lokale Variable
+//                       bzw. ein Wertparameter der Routine ist und mindestens eine
+//                       direkt (nicht nur über X.Eigenschaft) vorkommt. Still bei
+//                       Aufrufen in der Bedingung, Feldern, globalen Variablen,
+//                       var-/out-Parametern, Terminated, with im Rumpf, Ausgängen
+//                       (wie infinite-loop), Warteschleifen (Sleep, ProcessMessages
+//                       …), Aufrufen lokaler Routinen und Variablen, die eine
+//                       anonyme Methode erfasst. Als Änderung gilt: Zuweisung,
+//                       Argument eines Aufrufs (var möglich), X.Methode bzw. jeder
+//                       Zugriff X.Name im Rumpf, @X und for X; über X[…] nur, wenn
+//                       die Bedingung X[…] liest.
 
 interface
 
@@ -32,6 +46,7 @@ uses
 const
   ConstantConditionRuleId = 'constant-condition';
   InfiniteLoopRuleId = 'infinite-loop';
+  LoopConditionUnchangedRuleId = 'loop-condition-unchanged';
 
 type
   TConstantConditionRule = class(TInterfacedObject, IRule)
@@ -41,6 +56,12 @@ type
   end;
 
   TInfiniteLoopRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TLoopConditionUnchangedRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -802,10 +823,367 @@ begin
   end;
 end;
 
+{ TLoopConditionUnchangedRule }
+
+const
+  // Warteschleifen: Ein anderer Thread oder eine Nachricht ändert den Zustand.
+  WaitingCalls: array[0..8] of string = ('Sleep', 'ProcessMessages', 'WaitFor', 'Yield', 'SpinWait',
+    'WaitForSingleObject', 'WaitForMultipleObjects', 'CheckSynchronize', 'HandleMessage');
+
+type
+  /// <summary>Variable der Bedingung: Plain = kommt direkt vor (nicht nur X.Name), Indexed = X[…] in der
+  /// Bedingung.</summary>
+  TLoopVariable = record
+    Name: string;
+    Plain: Boolean;
+    Indexed: Boolean;
+  end;
+
+function TLoopConditionUnchangedRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(LoopConditionUnchangedRuleId, TRuleSeverity.Warning,
+    'Schleifenbedingung ändert sich im Rumpf nie');
+end;
+
+function Before(const A, B: TTextPosition): Boolean;
+begin
+  Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character <= B.Character));
+end;
+
+/// <summary>Erster Bezeichner einer Kette X.A[…].B^ bzw. (X); nil, wenn die Kette nicht mit einem Bezeichner
+/// beginnt. AViaIndex: direkt auf den Bezeichner folgt [ ].</summary>
+function ChainRoot(ANode: TSyntaxNode; out AViaIndex: Boolean): TSyntaxNode;
+var
+  Previous: TSyntaxNode;
+begin
+  AViaIndex := False;
+  Previous := nil;
+  Result := ANode;
+  while (Result <> nil) and (Result.ChildCount > 0) and ((Result.Kind in [TSyntaxKind.MemberAccess,
+    TSyntaxKind.IndexAccess, TSyntaxKind.Call, TSyntaxKind.Dereference]) or
+    ((Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1))) do
+  begin
+    Previous := Result;
+    Result := Result[0];
+  end;
+  if (Result = nil) or (Result.Kind <> TSyntaxKind.Identifier) then
+    Exit(nil);
+  AViaIndex := (Previous <> nil) and (Previous.Kind = TSyntaxKind.IndexAccess);
+end;
+
+/// <summary>Enthält der Teilbaum einen Knoten der Art AKind?</summary>
+function Contains(ANode: TSyntaxNode; AKind: TSyntaxKind): Boolean;
+var
+  Index: Integer;
+begin
+  if ANode.Kind = AKind then
+    Exit(True);
+  for Index := 0 to ANode.ChildCount - 1 do
+    if Contains(ANode[Index], AKind) then
+      Exit(True);
+  Result := False;
+end;
+
+/// <summary>Kommt im Teilbaum ein Bezeichner aus ANames vor (auch als Aufruf)?</summary>
+function Mentions(ANode: TSyntaxNode; const ANames: array of string): Boolean;
+var
+  Index: Integer;
+begin
+  if (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and MatchText(ANode.Name, ANames) then
+    Exit(True);
+  for Index := 0 to ANode.ChildCount - 1 do
+    if Mentions(ANode[Index], ANames) then
+      Exit(True);
+  Result := False;
+end;
+
+procedure TLoopConditionUnchangedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Resolver: TNameResolver;
+  Raising: TDictionary<string, Boolean>;
+  FileName: string;
+
+  function Routine(ANode: TSyntaxNode): TSyntaxNode;
+  begin
+    Result := ANode.Parent;
+    while (Result <> nil) and not (Result.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) do
+      Result := Result.Parent;
+  end;
+
+  // Lokale Routinen (Namen) innerhalb von ARoutine.
+  function NestedRoutines(ARoutine: TSyntaxNode): TArray<string>;
+  var
+    Names: TArray<string>;
+
+    procedure Collect(ANode: TSyntaxNode);
+    var
+      Index: Integer;
+    begin
+      for Index := 0 to ANode.ChildCount - 1 do
+      begin
+        if ANode[Index].Kind = TSyntaxKind.RoutineDecl then
+          Names := Names + [ShortName(ANode[Index].Name)];
+        Collect(ANode[Index]);
+      end;
+    end;
+
+  begin
+    Names := nil;
+    Collect(ARoutine);
+    Result := Names;
+  end;
+
+  // Werden Namen aus ANames in einer anonymen Methode von ARoutine erfasst?
+  function Captured(ANode: TSyntaxNode; const ANames: TArray<string>): Boolean;
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.AnonymousMethod then
+      Exit(Mentions(ANode, ANames));
+    for Index := 0 to ANode.ChildCount - 1 do
+      if Captured(ANode[Index], ANames) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Parameter-Knoten, dessen Bereich APosition enthält; nil sonst.
+  function ParameterAt(ANode: TSyntaxNode; const APosition: TTextPosition): TSyntaxNode;
+  var
+    Index: Integer;
+  begin
+    Result := nil;
+    if not Before(ANode.StartPos, APosition) or not Before(APosition, ANode.EndPos) then
+      Exit;
+    if ANode.Kind = TSyntaxKind.Parameter then
+      Exit(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+    begin
+      Result := ParameterAt(ANode[Index], APosition);
+      if Result <> nil then
+        Exit;
+    end;
+  end;
+
+  // Variablen der Bedingung; False, wenn die Bedingung etwas enthält, das die Regel nicht beurteilt.
+  function ConditionVariables(ACondition, ARoutine: TSyntaxNode; out AVariables: TArray<TLoopVariable>): Boolean;
+  var
+    Failed: Boolean;
+
+    procedure Add(ANode: TSyntaxNode);
+    var
+      Resolved: TResolvedSymbol;
+      Parameter: TSyntaxNode;
+      Index: Integer;
+      Plain, Indexed: Boolean;
+    begin
+      if MatchText(ANode.Name, ['True', 'False', 'nil']) then
+        Exit;
+      if SameText(ANode.Name, 'Self') or SameText(ANode.Name, 'Terminated') then
+      begin
+        Failed := True;
+        Exit;
+      end;
+      Resolved := Resolver.ResolveChain(AContext.Tree, FileName, [ANode.Name], ANode.StartOffset);
+      if not Resolved.Found then
+      begin
+        Failed := True;
+        Exit;
+      end;
+      if Resolved.SymbolKind in [TIndexSymbolKind.Constant, TIndexSymbolKind.EnumMember] then
+        Exit;
+      // Nur Variablen und Wertparameter, die in dieser Routine deklariert sind.
+      if (Resolved.Kind <> TResolvedKind.Local) or (Resolved.SymbolKind <> TIndexSymbolKind.Variable) or
+        not Before(ARoutine.StartPos, Resolved.Range.StartPos) or not Before(Resolved.Range.EndPos, ARoutine.EndPos) then
+      begin
+        Failed := True;
+        Exit;
+      end;
+      if Resolved.IsParameter then
+      begin
+        Parameter := ParameterAt(ARoutine, Resolved.SelectionRange.StartPos);
+        if (Parameter = nil) or (Parameter.Modifier in [TParameterModifier.VarParam, TParameterModifier.OutParam,
+          TParameterModifier.ConstRefParam]) then
+        begin
+          Failed := True;
+          Exit;
+        end;
+      end;
+      Plain := (ANode.Parent = nil) or not ((ANode.Parent.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
+        TSyntaxKind.Dereference]) and (ANode.Parent.ChildCount > 0) and (ANode.Parent[0] = ANode));
+      Indexed := (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.IndexAccess) and (ANode.Parent[0] = ANode);
+      for Index := 0 to High(AVariables) do
+        if SameText(AVariables[Index].Name, ANode.Name) then
+        begin
+          AVariables[Index].Plain := AVariables[Index].Plain or Plain;
+          AVariables[Index].Indexed := AVariables[Index].Indexed or Indexed;
+          Exit;
+        end;
+      SetLength(AVariables, Length(AVariables) + 1);
+      AVariables[High(AVariables)].Name := ANode.Name;
+      AVariables[High(AVariables)].Plain := Plain;
+      AVariables[High(AVariables)].Indexed := Indexed;
+    end;
+
+    procedure Walk(ANode: TSyntaxNode);
+    var
+      Index: Integer;
+    begin
+      if Failed then
+        Exit;
+      if ANode.Kind in [TSyntaxKind.Call, TSyntaxKind.AnonymousMethod, TSyntaxKind.InheritedExpr,
+        TSyntaxKind.Error] then
+      begin
+        Failed := True;
+        Exit;
+      end;
+      if ANode.Kind = TSyntaxKind.Identifier then
+        Add(ANode);
+      for Index := 0 to ANode.ChildCount - 1 do
+        Walk(ANode[Index]);
+    end;
+
+  begin
+    AVariables := nil;
+    Failed := False;
+    Walk(ACondition);
+    Result := not Failed and (AVariables <> nil);
+  end;
+
+  // Ändert ANode die Variable AVariable?
+  function Changes(ANode: TSyntaxNode; const AVariable: TLoopVariable): Boolean;
+  var
+    Index: Integer;
+    Root: TSyntaxNode;
+    ViaIndex: Boolean;
+
+    function IsChange(AExpression: TSyntaxNode): Boolean;
+    begin
+      Root := ChainRoot(AExpression, ViaIndex);
+      Result := (Root <> nil) and SameText(Root.Name, AVariable.Name) and (not ViaIndex or AVariable.Indexed);
+    end;
+
+  begin
+    case ANode.Kind of
+      TSyntaxKind.AssignStatement:
+        if (ANode.ChildCount > 0) and IsChange(ANode[0]) then
+          Exit(True);
+      TSyntaxKind.Call:
+        for Index := 1 to ANode.ChildCount - 1 do
+          if IsChange(ANode[Index]) then
+            Exit(True);
+      TSyntaxKind.MemberAccess, TSyntaxKind.AddressOf:
+        // X.Methode, X.Eigenschaft (Getter können ändern), @X.
+        if (ANode.ChildCount > 0) and IsChange(ANode[0]) and not ViaIndex then
+          Exit(True);
+      TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement:
+        if SameText(ANode.Name, AVariable.Name) then
+          Exit(True);
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      if Changes(ANode[Index], AVariable) then
+        Exit(True);
+    Result := False;
+  end;
+
+  function Message(const AVariables: TArray<TLoopVariable>): string;
+  var
+    Index: Integer;
+  begin
+    Result := AVariables[0].Name;
+    for Index := 1 to High(AVariables) do
+      if Index = High(AVariables) then
+        Result := Result + ' und ' + AVariables[Index].Name
+      else
+        Result := Result + ', ' + AVariables[Index].Name;
+    if Length(AVariables) = 1 then
+      Result := Result + ' wird im Rumpf nie verändert; die Schleife endet nicht.'
+    else
+      Result := Result + ' werden im Rumpf nie verändert; die Schleife endet nicht.';
+  end;
+
+  procedure CheckLoop(ALoop: TSyntaxNode);
+  var
+    Condition, Owner: TSyntaxNode;
+    Variables: TArray<TLoopVariable>;
+    Variable: TLoopVariable;
+    Body: TArray<TSyntaxNode>;
+    Index: Integer;
+    AnyPlain: Boolean;
+    Names: TArray<string>;
+  begin
+    Owner := Routine(ALoop);
+    if (Owner = nil) or (Owner.Kind <> TSyntaxKind.RoutineDecl) or (ALoop.ChildCount < 2) then
+      Exit;
+    if ALoop.Kind = TSyntaxKind.WhileStatement then
+    begin
+      Condition := ALoop[0];
+      Body := [ALoop[1]];
+    end
+    else
+    begin
+      Condition := ALoop[ALoop.ChildCount - 1];
+      Body := nil;
+      for Index := 0 to ALoop.ChildCount - 2 do
+        Body := Body + [ALoop[Index]];
+    end;
+    if not ConditionVariables(Condition, Owner, Variables) then
+      Exit;
+    AnyPlain := False;
+    Names := nil;
+    for Variable in Variables do
+    begin
+      AnyPlain := AnyPlain or Variable.Plain;
+      Names := Names + [Variable.Name];
+    end;
+    if not AnyPlain or Captured(Owner, Names) then
+      Exit;
+    for Index := 0 to High(Body) do
+    begin
+      if HasExit(Body[Index], False, Raising) or Mentions(Body[Index], WaitingCalls) or
+        Mentions(Body[Index], NestedRoutines(Owner)) or Contains(Body[Index], TSyntaxKind.WithStatement) then
+        Exit;
+      for Variable in Variables do
+        if Changes(Body[Index], Variable) then
+          Exit;
+    end;
+    AReport.Add(NodeRange(Condition), Message(Variables), TRuleConfidence.Medium);
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement] then
+      CheckLoop(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  FileName := RuleFileName(AContext);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  try
+    Resolver.Namespaces := AContext.Namespaces;
+    Resolver.PinTree(AContext.Tree, FileName);
+    Raising := RaisingRoutines(AContext.Tree);
+    try
+      Visit(AContext.Tree.Root);
+    finally
+      Raising.Free;
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
 procedure RegisterConditionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TConstantConditionRule.Create);
   ARegistry.Register(TInfiniteLoopRule.Create);
+  ARegistry.Register(TLoopConditionUnchangedRule.Create);
 end;
 
 end.

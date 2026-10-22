@@ -2321,6 +2321,16 @@
       "description": "while True do, repeat … until False or another loop whose condition never ends it, without an exit in the body: no Break (a Break in a nested loop only leaves that loop), Exit, raise, goto, Halt, Abort or RunError, no call of a routine of the file that raises an exception or ends the program, and no check of Terminated (thread loops are covered by thread-loop-without-terminated). Anonymous methods in the body do not count. The action jumps to the loop head.",
       "bad": "while True do\nbegin\n  Line := Reader.ReadLine;\n  Process(Line);\nend;",
       "good": "while not Reader.EndOfStream do\nbegin\n  Line := Reader.ReadLine;\n  Process(Line);\nend;"
+    },
+    {
+      "id": "loop-condition-unchanged",
+      "name": "Loop condition never changes in the body",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "No variable of the while or until condition changes in the body: no assignment, no Inc/Dec, no argument (possibly var), no method or member access on the object of the condition, no for loop over it. Typically a forgotten Inc(I) or Next. The rule only reports when every variable of the condition is a local variable or value parameter of the routine and at least one appears directly (not only as X.Property). Conditions with function calls, fields, global variables, var and out parameters and Terminated are not reported, nor loops with an exit (Break, Exit, raise …), waiting loops (Sleep, ProcessMessages …), with, calls of local routines or variables captured by an anonymous method. Changes through X[…] count only when the condition reads X[…].",
+      "bad": "I := 0;\nwhile I < List.Count do\nbegin\n  Check(List[I]);\nend;",
+      "good": "I := 0;\nwhile I < List.Count do\nbegin\n  Check(List[I]);\n  Inc(I);\nend;"
     }
   ]
 }

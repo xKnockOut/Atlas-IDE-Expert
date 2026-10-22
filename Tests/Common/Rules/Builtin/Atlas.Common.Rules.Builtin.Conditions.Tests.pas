@@ -8,6 +8,10 @@
 // Ausgänge (Break, Exit, raise, Halt, Routine der Datei mit raise, Terminated),
 // try-Teil eines try … except, Break nur in innerer Schleife bzw. Exit nur in
 // anonymer Methode, Abschalten.
+// loop-condition-unchanged (#1043): Beispiel aus dem Issue, eine Variable,
+// repeat, Änderungen (Inc, Zuweisung, Argument, Methode, X[…]), stille Fälle
+// (Aufruf, Feld, var-Parameter, Ausgang, Warteschleife, anonyme Methode,
+// lokale Routine, nur X.Eigenschaft), Abschalten.
 
 interface
 
@@ -45,6 +49,21 @@ type
     procedure ExitsAreSilent;
     [Test]
     procedure InnerBreakDoesNotCount;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TLoopConditionUnchangedTests = class
+  public
+    [Test]
+    procedure IssueExample;
+    [Test]
+    procedure SingleVariableAndRepeat;
+    [Test]
+    procedure ChangesAreSilent;
+    [Test]
+    procedure UnknownConditionsAreSilent;
     [Test]
     procedure OffAndExclude;
   end;
@@ -283,8 +302,100 @@ begin
     'Source/Daten.pas'))));
 end;
 
+{ TLoopConditionUnchangedTests }
+
+function UnchangedFindings(const ASource: string; const AConfig: string = ''; const APath: string = ''):
+  TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.Findings(TLoopConditionUnchangedRule.Create, ASource, AConfig, APath);
+end;
+
+function Schleife(const AStatements: string): string;
+begin
+  Result := 'unit Daten;'#10'interface'#10'type'#10'  TPruefer = class'#10'    FFertig: Boolean;'#10 +
+    '    procedure Pruefen(Liste: TStringList; var Fertig: Boolean);'#10'  end;'#10'implementation'#10 +
+    'procedure TPruefer.Pruefen(Liste: TStringList; var Fertig: Boolean);'#10'var'#10'  I: Integer;'#10 +
+    '  Werte: TArray<Integer>;'#10'begin'#10 + AStatements + 'end;'#10'end.';
+end;
+
+procedure TLoopConditionUnchangedTests.IssueExample;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := UnchangedFindings(Schleife('  I := 0;'#10'  while I < Liste.Count do'#10'  begin'#10 +
+    '    Pruefe(Liste[I]);'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(LoopConditionUnchangedRuleId, Found[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Found[0].Confidence));
+  Assert.AreEqual('I und Liste werden im Rumpf nie verändert; die Schleife endet nicht.', Found[0].Message);
+  Assert.AreEqual(14, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(8, Found[0].Range.StartPos.Character);
+end;
+
+procedure TLoopConditionUnchangedTests.SingleVariableAndRepeat;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := UnchangedFindings(Schleife('  repeat'#10'    Pruefe(Liste[0]);'#10'  until I > 10;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('I wird im Rumpf nie verändert; die Schleife endet nicht.', Found[0].Message);
+  Assert.AreEqual(15, Found[0].Range.StartPos.Line);
+end;
+
+procedure TLoopConditionUnchangedTests.ChangesAreSilent;
+const
+  Bodies: array[0..7] of string = ('Inc(I);', 'I := I + 1;', 'Lesen(I);', 'Liste.Delete(0);',
+    'Pruefe(Liste.Count);', 'for I := 0 to 3 do Pruefe(I);', 'Werte[0] := 0;', 'Dec(Werte[0]);');
+var
+  Body: string;
+begin
+  for Body in Bodies do
+    Assert.AreEqual(0, Integer(Length(UnchangedFindings(Schleife('  while (I < Liste.Count) and (Werte[0] > 0) do'#10 +
+      '    ' + Body + #10)))), Body);
+end;
+
+procedure TLoopConditionUnchangedTests.UnknownConditionsAreSilent;
+const
+  Loops: array[0..9] of string = (
+    '  while I < Anzahl(Liste) do'#10'    Pruefe(Liste[I]);'#10,
+    '  while not FFertig do'#10'    Pruefe(Liste[I]);'#10,
+    '  while not Fertig do'#10'    Pruefe(Liste[I]);'#10,
+    '  while I < 10 do'#10'    if Liste[I] = '''' then'#10'      Break;'#10,
+    '  while I < 10 do'#10'    Sleep(10);'#10,
+    '  while I < 10 do'#10'    TThread.Queue(nil, procedure begin Inc(I); end);'#10,
+    '  while Liste.Count > 0 do'#10'    Pruefe(Liste[0]);'#10,
+    '  while I < 10 do'#10'    with Liste do'#10'      Pruefe(Text);'#10,
+    '  while not Terminated do'#10'    Pruefe(Liste[0]);'#10,
+    '  while True do'#10'    Pruefe(Liste[0]);'#10);
+var
+  Loop: string;
+begin
+  for Loop in Loops do
+    Assert.AreEqual(0, Integer(Length(UnchangedFindings(Schleife(Loop)))), Loop);
+  // Lokale Routine kann I ändern.
+  Assert.AreEqual(0, Integer(Length(UnchangedFindings(Schleife('  while I < 10 do'#10'    Weiter;'#10).Replace(
+    '  Werte: TArray<Integer>;'#10, '  Werte: TArray<Integer>;'#10'  procedure Weiter;'#10'  begin'#10'    Inc(I);'#10 +
+    '  end;'#10)))));
+end;
+
+procedure TLoopConditionUnchangedTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Schleife('  while I < Liste.Count do'#10'    Pruefe(Liste[I]);'#10);
+  Assert.AreEqual(1, Integer(Length(UnchangedFindings(Source, '', 'Source/Daten.pas'))));
+  Assert.AreEqual(0, Integer(Length(UnchangedFindings(Source, '{"rules": {"loop-condition-unchanged": "off"}}',
+    'Source/Daten.pas'))));
+  Assert.AreEqual(0, Integer(Length(UnchangedFindings(Source, '{"rules": {"group:find-bugs": "off"}}',
+    'Source/Daten.pas'))));
+  Assert.AreEqual(0, Integer(Length(UnchangedFindings(Source,
+    '{"rules": {"loop-condition-unchanged": {"exclude": ["Source/*.pas"]}}}', 'Source/Daten.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TConstantConditionTests);
   TDUnitX.RegisterTestFixture(TInfiniteLoopTests);
+  TDUnitX.RegisterTestFixture(TLoopConditionUnchangedTests);
 
 end.
