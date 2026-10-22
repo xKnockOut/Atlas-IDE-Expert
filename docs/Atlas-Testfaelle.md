@@ -4147,3 +4147,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | RQ4 | `raise;` in einer anonymen Methode innerhalb eines except | Keine Meldung (Lage unklar) |
 | RQ5 | `"reraise-outside-handler": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RQ6 | Abgleich mit Delphi: RQ1, RQ2 und RQ4 übersetzen | dcc meldet E2145 an den Stellen aus RQ1 und RQ2, für RQ3 nichts; das Ergebnis für RQ4 in der Regel nachtragen |
+
+## Sprungmarke falsch verwendet (#995)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LJ1 | Das Beispiel aus #995: `label Weiter;`, im try-Teil `if Fertig then goto Weiter;`, `Weiter:` nach dem `end` des try | Fehler `label-misuse` an `goto Weiter`: „goto Weiter verlässt einen try-Block (wie E2127).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| LJ2 | `goto Innen` vor dem try, `Innen:` im try-Teil; `goto Handler` aus dem try-Teil zu `Handler:` im except | „goto Innen springt in einen try-Block (wie E2127).“ und „goto Handler springt in einen except-Block (wie E2127).“ |
+| LJ3 | `label Doppelt;` mit zweimal `Doppelt:` | „Marke Doppelt ist bereits gesetzt (wie E2073).“ an der zweiten Marke |
+| LJ4 | `label Fehlt;` und `goto Fehlt;` ohne `Fehlt:` | „Marke Fehlt wird angesprungen, aber nie gesetzt (wie E2074).“ an der Deklaration |
+| LJ5 | `goto Anders;` ohne Deklaration; lokale Prozedur mit `goto Ende` auf eine Marke der äußeren Routine | „Marke Anders ist in dieser Routine nicht deklariert (wie E2093).“ bzw. für Ende |
+| LJ6 | Richtige Marken, `goto 007` auf `7:`, dieselbe Marke in `{$IFDEF}`/`{$ELSE}`, Marke im asm-Block, goto innerhalb eines except | Keine Meldung |
+| LJ7 | `"label-misuse": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| LJ8 | Abgleich mit Delphi: LJ1 bis LJ5 übersetzen | dcc meldet E2127, E2073, E2074 bzw. E2093 an denselben Stellen, für LJ6 nichts |
