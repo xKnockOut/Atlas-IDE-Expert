@@ -5,7 +5,8 @@
 // managed-type-raw-memory (#921) mit Records, Aliassen, Zeigern, Index und
 // Korrekturen, threadvar-managed (#922), pchar-of-temporary (#923) und
 // stringlist-unsorted (#925), writeln-in-gui-app (#926), unchecked-conversion (#932) und
-// dictionary-get-without-check (#933), delimited-text-without-strict (#952), unchecked-enum-cast (#954).
+// dictionary-get-without-check (#933), delimited-text-without-strict (#952), unchecked-enum-cast (#954),
+// createprocess-readonly-commandline (#955).
 
 interface
 
@@ -96,6 +97,14 @@ type
     procedure UncheckedEnumCastSilentCases;
     [Test]
     procedure UncheckedEnumCastOffAndExclude;
+    [Test]
+    procedure CreateProcessIssueExample;
+    [Test]
+    procedure CreateProcessVariants;
+    [Test]
+    procedure CreateProcessSilentCases;
+    [Test]
+    procedure CreateProcessOffAndExclude;
   end;
 
 implementation
@@ -999,6 +1008,106 @@ begin
     '{"rules": {"unchecked-enum-cast": {"exclude": ["Source/*.pas"]}}}', 'Source/Auftrag.pas'))));
   TConfigurationParser.Parse('{"rules": {"unchecked-enum-cast": {"sources": "LeseZahl"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+function Starten(const AVars, ABody: string): string;
+begin
+  Result := 'unit Start;'#10'interface'#10'implementation'#10'uses Winapi.Windows;'#10'const'#10 +
+    '  Editor = ''notepad.exe'';'#10'procedure Oeffnen(const Datei: string);'#10'var'#10 +
+    '  SI: TStartupInfo;'#10'  PI: TProcessInformation;'#10 + AVars + 'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+procedure TRtlTypePatternRulesTests.CreateProcessIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+  Tree: TSyntaxTree;
+begin
+  Source := Starten('', '  CreateProcess(nil, PChar(''notepad.exe '' + Datei), nil, nil, False, 0, nil, nil, SI, PI);'#10);
+  Findings := TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('createprocess-readonly-commandline', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('CreateProcess schreibt in die Befehlszeile; ist der andere Teil leer, liefert die Verkettung ' +
+    'das konstante Literal, das nicht beschreibbar ist.', Findings[0].Message);
+  Assert.AreEqual(11, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(27, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('Befehlszeile in eine lokale Variable kopieren und UniqueString aufrufen', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Starten('  Befehl: string;'#10, '  Befehl := ''notepad.exe '' + Datei;'#10 +
+    '  UniqueString(Befehl);'#10 +
+    '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'#10), Fixed);
+  Tree := TPascalParser.Parse(Fixed);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+  TRuleAssert.Silent(TCreateProcessReadonlyCommandLineRule.Create, Fixed);
+end;
+
+procedure TRtlTypePatternRulesTests.CreateProcessVariants;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Literal, Konstante, in if-Bedingung.
+  Findings := TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Starten('',
+    '  CreateProcess(nil, PChar(''notepad.exe''), nil, nil, False, 0, nil, nil, SI, PI);'#10 +
+    '  if not CreateProcessW(nil, PWideChar(Editor), nil, nil, False, 0, nil, nil, SI, PI) then'#10 +
+    '    RaiseLastOSError;'#10));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('CreateProcess schreibt in die Befehlszeile; ein konstanter String ist nicht beschreibbar.',
+    Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(Findings[1].Fixes)));
+  // Variable mit Literal: UniqueString davor.
+  Source := Starten('  Befehl: string;'#10, '  Befehl := Editor;'#10 +
+    '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'#10);
+  Findings := TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('CreateProcess schreibt in die Befehlszeile; Befehl kann auf einen konstanten String verweisen ' +
+    'und ist ohne UniqueString nicht beschreibbar.', Findings[0].Message);
+  Assert.AreEqual(Starten('  Befehl: string;'#10, '  Befehl := Editor;'#10'  UniqueString(Befehl);'#10 +
+    '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'#10),
+    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+  // Parameter: mittlere Konfidenz; CreateProcessAsUser an dritter Stelle.
+  Findings := TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Starten('',
+    '  CreateProcessAsUser(0, nil, PChar(Datei), nil, nil, False, 0, nil, nil, SI, PI);'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  // In einer Schleifenbedingung keine Korrektur.
+  Findings := TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Starten('',
+    '  while not CreateProcess(nil, PChar(''x''), nil, nil, False, 0, nil, nil, SI, PI) do Sleep(10);'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TRtlTypePatternRulesTests.CreateProcessSilentCases;
+begin
+  // Beschreibbare Puffer: UniqueString, Funktionsergebnis, mehrteilige Verkettung, Ansi-Fassung, nil.
+  TRuleAssert.Silent(TCreateProcessReadonlyCommandLineRule.Create, Starten('  Befehl: string;'#10,
+    '  Befehl := Editor;'#10'  UniqueString(Befehl);'#10 +
+    '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'#10 +
+    '  CreateProcess(nil, PChar(Format(''%s %s'', [Editor, Datei])), nil, nil, False, 0, nil, nil, SI, PI);'#10 +
+    '  CreateProcess(nil, PChar(''"'' + Datei + ''"''), nil, nil, False, 0, nil, nil, SI, PI);'#10 +
+    '  CreateProcessA(nil, PAnsiChar(''notepad.exe''), nil, nil, False, 0, nil, nil, SI, PI);'#10 +
+    '  CreateProcess(PChar(Editor), nil, nil, nil, False, 0, nil, nil, SI, PI);'#10 +
+    '  ShellExecute(0, nil, PChar(Editor), nil, nil, 0);'#10));
+  Assert.AreEqual(1, TCreateProcessReadonlyCommandLineRule.CommandLineIndex('CreateProcessW'));
+  Assert.AreEqual(2, TCreateProcessReadonlyCommandLineRule.CommandLineIndex('CreateProcessAsUser'));
+  Assert.AreEqual(-1, TCreateProcessReadonlyCommandLineRule.CommandLineIndex('CreateProcessA'));
+end;
+
+procedure TRtlTypePatternRulesTests.CreateProcessOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Starten('', '  CreateProcess(nil, PChar(Editor), nil, nil, False, 0, nil, nil, SI, PI);'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Source,
+    '{"rules": {"createprocess-readonly-commandline": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Source,
+    '{"rules": {"createprocess-readonly-commandline": {"exclude": ["Source/*.pas"]}}}', 'Source/Start.pas'))));
 end;
 
 initialization

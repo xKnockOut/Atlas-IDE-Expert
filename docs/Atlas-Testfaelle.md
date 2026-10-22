@@ -3715,3 +3715,17 @@ Voraussetzung: Server läuft; Unit mit `TStatus = (stNeu, stOffen, stFertig, stS
 | EC5 | Aufzählung mit eigenen Werten (`sfEins = 1, sfZwei = 2`) in `case TStufe(StrToInt(Zeile)) of` | Hinweis mit Bereich `Ord(Low(TStufe))..Ord(High(TStufe))`, ohne Korrektur |
 | EC6 | `"sources": ["LeseZahl"]` und `TStatus(LeseZahl)` bzw. `TStatus(qry.FieldByName(…).AsInteger)` | Erstes gemeldet, zweites nicht (**Abnahme** Option) |
 | EC7 | `"unchecked-enum-cast": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## CreateProcess mit unveränderlicher Befehlszeile (#955)
+
+Voraussetzung: Server läuft; Routine mit `SI: TStartupInfo; PI: TProcessInformation;` und Parameter `const Datei: string`, Konstante `Editor = 'notepad.exe'`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CP1 | `CreateProcess(nil, PChar('notepad.exe ' + Datei), nil, nil, False, 0, nil, nil, SI, PI);` | Fehler `createprocess-readonly-commandline` auf der Befehlszeile: „CreateProcess schreibt in die Befehlszeile; ist der andere Teil leer, liefert die Verkettung das konstante Literal, das nicht beschreibbar ist.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| CP2 | Alt+Enter, „Befehlszeile in eine lokale Variable kopieren und UniqueString aufrufen“ | `Befehl: string`, `Befehl := …; UniqueString(Befehl);` vor dem Aufruf, `PChar(Befehl)`; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| CP3 | `PChar('notepad.exe')` bzw. `PWideChar(Editor)` in `if not CreateProcessW(…) then` | Fehler „ein konstanter String ist nicht beschreibbar“; Korrektur fügt vor dem `if` ein |
+| CP4 | `Befehl := Editor;` und danach `PChar(Befehl)` | Fehler; Korrektur „UniqueString(Befehl) davor aufrufen“ |
+| CP5 | `CreateProcessAsUser(0, nil, PChar(Datei), …)` | Fehler mit mittlerer Konfidenz (Parameter kann ein Literal sein) |
+| CP6 | `UniqueString(Befehl)` vor dem Aufruf, `PChar(Format(…))`, `PChar('"' + Datei + '"')`, `CreateProcessA`, `PChar(Editor)` als lpApplicationName | Keine Meldung |
+| CP7 | `"createprocess-readonly-commandline": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

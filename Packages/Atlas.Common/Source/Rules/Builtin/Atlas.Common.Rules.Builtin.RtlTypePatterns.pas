@@ -39,6 +39,13 @@
 //                            nicht gelesen (geprüft) wird (#954). EnsureRange/Min/Max im Argument gelten als
 //                            Prüfung. Korrektur bei direkter Quelle: Hilfsvariable, InRange-Prüfung mit raise
 //                            EConvertError davor, System.Math in uses
+//   createprocess-readonly-commandline
+//                            CreateProcess(W) bzw. CreateProcessAsUser(W) mit PChar(…) als Befehlszeile, die auf
+//                            schreibgeschützten Speicher zeigen kann (#955): Literal oder Konstante, Verkettung aus
+//                            genau einem Literal und einem Wert (ist er leer, bleibt das Literal), eine Variable mit
+//                            einer solchen letzten Zuweisung ohne UniqueString danach, ein String-Parameter (mittlere
+//                            Konfidenz). CreateProcessW schreibt in den Puffer. Korrektur: lokale Kopie mit
+//                            UniqueString bzw. UniqueString(Variable) vor der Anweisung
 // Bezeichner, deren Typ in der Datei nicht deklariert ist, lösen keinen Treffer aus.
 
 interface
@@ -145,6 +152,15 @@ type
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TCreateProcessReadonlyCommandLineRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Stelle der Befehlszeile (ab 0) bei CreateProcess, CreateProcessW, CreateProcessAsUser(W); -1 sonst.
+    /// </summary>
+    class function CommandLineIndex(const AName: string): Integer; static;
   end;
 
   TUncheckedEnumCastRule = class(TInterfacedObject, IRule)
@@ -2920,6 +2936,279 @@ begin
       CheckCast(Position);
 end;
 
+{ TCreateProcessReadonlyCommandLineRule }
+
+type
+  /// <summary>Warum die Befehlszeile nicht beschreibbar ist.</summary>
+{$SCOPEDENUMS ON}
+  TCommandLineKind = (None, Constant, Concatenation, Variable, Parameter);
+{$SCOPEDENUMS OFF}
+
+function TCreateProcessReadonlyCommandLineRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('createprocess-readonly-commandline', TRuleSeverity.Error,
+    'CreateProcess mit unveränderlicher Befehlszeile');
+end;
+
+class function TCreateProcessReadonlyCommandLineRule.CommandLineIndex(const AName: string): Integer;
+begin
+  // CreateProcessA kopiert die Befehlszeile selbst in einen Puffer; nur die Unicode-Fassung schreibt hinein.
+  if MatchText(AName, ['CreateProcess', 'CreateProcessW']) then
+    Result := 1
+  else if MatchText(AName, ['CreateProcessAsUser', 'CreateProcessAsUserW']) then
+    Result := 2
+  else
+    Result := -1;
+end;
+
+procedure TCreateProcessReadonlyCommandLineRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Types: TDeclaredTypes;
+  Local: TUnitIndex;
+  LineBreak: string;
+
+  function Text(ANode: TSyntaxNode): string;
+  begin
+    Result := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+  end;
+
+  function IsStringLiteral(ANode: TSyntaxNode): Boolean;
+  begin
+    Result := (ANode.Kind = TSyntaxKind.Literal) and (ANode.Name <> '') and CharInSet(ANode.Name[1], ['''', '#']);
+  end;
+
+  function IsUnicodeString(const AType: string): Boolean;
+  begin
+    Result := MatchText(Trim(AType), ['string', 'UnicodeString', 'System.string', 'System.UnicodeString']);
+  end;
+
+  // Konstante (auch typisierte) aus Datei oder Index; eine gleichnamige Variable der Datei verdeckt sie.
+  function IsConstant(ANode: TSyntaxNode): Boolean;
+  var
+    Symbol: TIndexSymbol;
+    Location: TSymbolLocation;
+  begin
+    for Symbol in Local.Symbols do
+      if (Symbol.Kind = TIndexSymbolKind.Constant) and SameText(Symbol.Name, ANode.Name) then
+        Exit(True);
+    if Types.DeclaredType(ANode.Name, ANode.StartPos) <> '' then
+      Exit(False);
+    if AContext.Index <> nil then
+      for Location in AContext.Index.FindSymbols(ANode.Name) do
+        if Location.Symbol.Kind = TIndexSymbolKind.Constant then
+          Exit(True);
+    Result := False;
+  end;
+
+  // Literal oder Konstante: zeigt auf schreibgeschützten Speicher (Referenzzähler -1).
+  function IsReadonly(ANode: TSyntaxNode): Boolean;
+  begin
+    while (ANode.Kind = TSyntaxKind.ParenExpr) and (ANode.ChildCount = 1) do
+      ANode := ANode[0];
+    Result := IsStringLiteral(ANode) or ((ANode.Kind = TSyntaxKind.Identifier) and IsConstant(ANode));
+  end;
+
+  procedure Operands(ANode: TSyntaxNode; var AList: TArray<TSyntaxNode>);
+  begin
+    if (ANode.Kind = TSyntaxKind.BinaryExpr) and (ANode.Name = '+') and (ANode.ChildCount = 2) then
+    begin
+      Operands(ANode[0], AList);
+      Operands(ANode[1], AList);
+    end
+    else
+      AList := AList + [ANode];
+  end;
+
+  // 'notepad.exe ' + Datei: Ist Datei leer, liefert die Verkettung das Literal selbst zurück.
+  function IsLiteralConcatenation(ANode: TSyntaxNode): Boolean;
+  var
+    List: TArray<TSyntaxNode>;
+  begin
+    List := nil;
+    Operands(ANode, List);
+    Result := (Length(List) = 2) and (IsReadonly(List[0]) <> IsReadonly(List[1]));
+  end;
+
+  function Classify(ANode: TSyntaxNode): TCommandLineKind;
+  begin
+    if IsReadonly(ANode) then
+      Result := TCommandLineKind.Constant
+    else if (ANode.Kind = TSyntaxKind.BinaryExpr) and IsLiteralConcatenation(ANode) then
+      Result := TCommandLineKind.Concatenation
+    else
+      Result := TCommandLineKind.None;
+  end;
+
+  // Parameter AName der Routine (Name, Modifizierer)?
+  function FindParameter(ARoutine: TSyntaxNode; const AName: string): TSyntaxNode;
+  var
+    Header, Params: TSyntaxNode;
+    Index: Integer;
+    Name: string;
+  begin
+    Result := nil;
+    Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    if Header = nil then
+      Exit;
+    Params := Header.FindChild(TSyntaxKind.Parameters);
+    if Params = nil then
+      Exit;
+    for Index := 0 to Params.ChildCount - 1 do
+      for Name in SplitString(Params[Index].Name, ',') do
+        if SameText(Trim(Name), AName) then
+          Exit(Params[Index]);
+  end;
+
+  // Letzte Zuweisung an AName vor AOffset in ANode (Baumreihenfolge) und UniqueString(AName) danach.
+  procedure Assignments(ANode: TSyntaxNode; const AName: string; AOffset: Integer; var ALast: TSyntaxNode;
+    var AUnique: Integer);
+  var
+    Index: Integer;
+  begin
+    if ANode.StartOffset >= AOffset then
+      Exit;
+    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
+      (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, AName) then
+      ALast := ANode;
+    if (ANode.Kind = TSyntaxKind.Call) and SameText(ANode.Name, 'UniqueString') and (ANode.ChildCount = 2) and
+      (ANode[1].Kind = TSyntaxKind.Identifier) and SameText(ANode[1].Name, AName) then
+      AUnique := ANode.StartOffset;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Assignments(ANode[Index], AName, AOffset, ALast, AUnique);
+  end;
+
+  function ClassifyIdentifier(ARoutine, ANode: TSyntaxNode; AOffset: Integer): TCommandLineKind;
+  var
+    Last: TSyntaxNode;
+    Unique: Integer;
+  begin
+    Result := TCommandLineKind.None;
+    if not IsUnicodeString(Types.DeclaredType(ANode.Name, ANode.StartPos)) then
+      Exit;
+    Last := nil;
+    Unique := -1;
+    Assignments(ARoutine, ANode.Name, AOffset, Last, Unique);
+    if Last <> nil then
+    begin
+      if (Unique < Last.StartOffset) and (Classify(Last[1]) <> TCommandLineKind.None) then
+        Result := TCommandLineKind.Variable;
+    end
+    else if (Unique < 0) and (FindParameter(ARoutine, ANode.Name) <> nil) then
+      Result := TCommandLineKind.Parameter;
+  end;
+
+  // Anweisung in einer Anweisungsliste, vor der die Korrektur einfügen darf; nil in Schleifenbedingungen.
+  function StatementOf(ANode: TSyntaxNode): TSyntaxNode;
+  begin
+    Result := ANode.Parent;
+    while (Result <> nil) and not (TRoutineBody.IsStatement(Result) and TRoutineBody.InList(Result)) do
+    begin
+      if Result.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement,
+        TSyntaxKind.ForInStatement, TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+        Exit(nil);
+      Result := Result.Parent;
+    end;
+    if (Result <> nil) and (Result.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement,
+      TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) then
+      Result := nil;
+  end;
+
+  function Fixes(ARoutine, AValue: TSyntaxNode; AKind: TCommandLineKind): TArray<TRuleFix>;
+  var
+    Statement: TSyntaxNode;
+    Name, Indent: string;
+  begin
+    Result := nil;
+    Statement := StatementOf(AValue);
+    if Statement = nil then
+      Exit;
+    if AKind = TCommandLineKind.Variable then
+    begin
+      Result := [TRuleFix.Create('UniqueString(' + AValue.Name + ') davor aufrufen',
+        [TRoutineBody.InsertBefore(AContext.Text, Statement, 'UniqueString(' + AValue.Name + ');')])];
+      Exit;
+    end;
+    Name := TRoutineBody.UniqueName(AContext.Tree.Tokens, 'Befehl');
+    Indent := TTextLines.IndentOf(AContext.Text, Statement.StartPos.Line);
+    Result := [TRuleFix.Create('Befehlszeile in eine lokale Variable kopieren und UniqueString aufrufen',
+      [TRoutineBody.AddVariable(AContext.Text, ARoutine, Name, 'string', AContext.Formatting),
+      TRoutineBody.InsertBefore(AContext.Text, Statement, Name + ' := ' + Text(AValue) + ';' + LineBreak + Indent +
+      'UniqueString(' + Name + ');'),
+      TTextEdit.Create(TTextRange.Create(AValue.StartPos, AValue.EndPos), Name)])];
+  end;
+
+  procedure CheckCall(ACall: TSyntaxNode);
+  var
+    Index: Integer;
+    Argument, Value, Routine: TSyntaxNode;
+    Kind: TCommandLineKind;
+    Message: string;
+    Confidence: TRuleConfidence;
+  begin
+    Index := CommandLineIndex(ACall.Name);
+    if (Index < 0) or (ACall.ChildCount <= Index + 1) then
+      Exit;
+    Argument := ACall[Index + 1];
+    if (Argument.Kind <> TSyntaxKind.Call) or not MatchText(Argument.Name, ['PChar', 'PWideChar']) or
+      (Argument.ChildCount <> 2) then
+      Exit;
+    Value := Argument[1];
+    Routine := TRoutineBody.RoutineAt(AContext.Tree, ACall.StartOffset);
+    Kind := Classify(Value);
+    if (Kind = TCommandLineKind.None) and (Value.Kind = TSyntaxKind.Identifier) and (Routine <> nil) then
+      Kind := ClassifyIdentifier(Routine, Value, ACall.StartOffset);
+    Confidence := TRuleConfidence.High;
+    case Kind of
+      TCommandLineKind.Constant:
+        Message := ACall.Name + ' schreibt in die Befehlszeile; ein konstanter String ist nicht beschreibbar.';
+      TCommandLineKind.Concatenation:
+        Message := ACall.Name + ' schreibt in die Befehlszeile; ist der andere Teil leer, liefert die Verkettung ' +
+          'das konstante Literal, das nicht beschreibbar ist.';
+      TCommandLineKind.Variable:
+        Message := Format('%s schreibt in die Befehlszeile; %s kann auf einen konstanten String verweisen und ist ohne ' +
+          'UniqueString nicht beschreibbar.', [ACall.Name, Value.Name]);
+      TCommandLineKind.Parameter:
+        begin
+          Message := Format('%s schreibt in die Befehlszeile; der Parameter %s kann ein konstanter String sein und ' +
+            'ist ohne UniqueString nicht beschreibbar.', [ACall.Name, Value.Name]);
+          Confidence := TRuleConfidence.Medium;
+        end;
+    else
+      Exit;
+    end;
+    if Routine = nil then
+      AReport.Add(TTextRange.Create(Value.StartPos, Value.EndPos), Message, Confidence)
+    else
+      AReport.Add(TTextRange.Create(Value.StartPos, Value.EndPos), Message, Confidence,
+        Fixes(Routine, Value, Kind));
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.Call then
+      CheckCall(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+var
+  Cache: IRuleDerivedCache;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'CreateProcess') then
+    Exit;
+  LineBreak := TTextLines.LineBreakOf(AContext.Text);
+  Cache := TRuleDerived.Open(AContext);
+  Local := TRuleDerived.UnitIndex(Cache, AContext);
+  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  try
+    Visit(AContext.Tree.Root);
+  finally
+    Types.Free;
+  end;
+end;
+
 procedure RegisterRtlTypePatternRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TInt32MulOverflowRule.Create);
@@ -2937,6 +3226,7 @@ begin
   ARegistry.Register(TUncheckedConversionRule.Create);
   ARegistry.Register(TDictionaryGetWithoutCheckRule.Create);
   ARegistry.Register(TUncheckedEnumCastRule.Create);
+  ARegistry.Register(TCreateProcessReadonlyCommandLineRule.Create);
 end;
 
 end.
