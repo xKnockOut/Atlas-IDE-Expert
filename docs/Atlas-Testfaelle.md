@@ -4169,3 +4169,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | JW4 | Konstruktor mit `inherited CreateNew(nil)`, Methode ohne override, `inherited; inherited Laden;`, `X := inherited Caption` | Keine Meldung |
 | JW5 | `"inherited-wrong-method": {"allowed": ["Speichern>Laden"]}` | Keine Meldung; `"allowed": [1]` meldet die Einstellungsprüfung „"allowed" muss eine Liste von Texten sein“ |
 | JW6 | `"inherited-wrong-method": "off"` bzw. `exclude` mit der Datei | Keine Meldung |
+
+## Feld oder Property zweimal gesetzt (#1051)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JD1 | Das Beispiel aus #1051 in einer Methode: `Panel.Left := 8; Panel.Left := 40; Panel.Width := 200;` | Warnung `duplicate-assignment` an der zweiten `Panel.Left`: „Panel.Left wird in Zeile … schon gesetzt; gemeint ist vermutlich Panel.Top.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JD2 | Aktion „Zur ersten Zuweisung springen“ | Cursor steht auf der ersten Zuweisung |
+| JD3 | Zweite Zeile zu `Panel.Top := 40;` ändern; dann `Panel.Top := 1;` davor und zweimal `Panel.Left` | Keine Meldung; danach Meldung „… der erste Wert geht ungelesen verloren.“ ohne Vermutung |
+| JD4 | Dazwischen `X := Panel.Left;`, ein Aufruf, `Panel.Align := alNone;` oder ein `if`; zweiter Wert `Panel.Left + 4`; lokale Variable zweimal | Keine Meldung |
+| JD5 | `Q.Active := False; Q.Active := True;`, `{$IFDEF X} Caption := 'a'; {$ELSE} Caption := 'b'; {$ENDIF}` und `Caption := 'A'; {$IFDEF DEBUG} Caption := 'B'; {$ENDIF}` | Keine Meldung |
+| JD6 | `Panel.Visible := True;` zweimal; dann `"duplicate-assignment": {"allowProperties": ["Cap*"]}` und `Caption` zweimal | Erst keine Meldung (Standard Visible, Enabled); mit der Option Meldung bei Visible, keine bei Caption; `"allowProperties": [1]` meldet „"allowProperties" muss eine Liste von Texten sein“ |
+| JD7 | `"duplicate-assignment": "off"` bzw. `exclude` mit der Datei | Keine Meldung |
