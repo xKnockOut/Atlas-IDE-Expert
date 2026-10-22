@@ -11,6 +11,8 @@
 //   managed-type-raw-memory  FillChar, ZeroMemory, Move, CopyMemory, GetMem oder FreeMem auf Variablen,
 //                            deren Typ Strings, Interfaces, dynamische Arrays oder Variants enthält
 //                            (#921). Records und Aliasse werden in der Datei und im Index aufgelöst.
+//   threadvar-managed        threadvar mit verwaltetem Typ: Delphi finalisiert ihn am Thread-Ende
+//                            nicht (#922)
 // Bezeichner, deren Typ in der Datei nicht deklariert ist, lösen keinen Treffer aus.
 
 interface
@@ -59,6 +61,12 @@ type
   end;
 
   TManagedTypeRawMemoryRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TThreadvarManagedRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -985,6 +993,72 @@ begin
   end;
 end;
 
+{ TThreadvarManagedRule }
+
+function TThreadvarManagedRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('threadvar-managed', TRuleSeverity.Warning, 'threadvar mit verwaltetem Typ');
+end;
+
+procedure TThreadvarManagedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TTokens;
+  Managed: TManagedTypes;
+
+  procedure CheckDecl(ADecl: TSyntaxNode);
+  var
+    TypeName, Kind, Name, Shown: string;
+    Index: Integer;
+  begin
+    TypeName := Managed.NodeTypeText(ADecl);
+    Kind := Managed.Managed(TypeName, 0);
+    if Kind = '' then
+      Exit;
+    Shown := TypeName;
+    if not Managed.IsPrimitive(TypeName) then
+      Shown := Format('%s (enthält %s)', [TypeName, Kind]);
+    for Name in SplitString(ADecl.Name, ',') do
+      for Index := 0 to High(Tokens) do
+      begin
+        if Tokens[Index].Offset >= ADecl.EndOffset then
+          Break;
+        if (Tokens[Index].Offset >= ADecl.StartOffset) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) and
+          SameText(Tokens[Index].Text, Trim(Name)) then
+        begin
+          AReport.Add(RangeOf(Tokens, Index, Index), Format('threadvar mit %s wird beim Thread-Ende nicht ' +
+            'finalisiert (Leck je Thread).', [Shown]), TRuleConfidence.High);
+          Break;
+        end;
+      end;
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.VarSection) and SameText(ANode.Name, 'threadvar') then
+    begin
+      for Index := 0 to ANode.ChildCount - 1 do
+        if ANode[Index].Kind = TSyntaxKind.VarDecl then
+          CheckDecl(ANode[Index]);
+      Exit;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Managed := TManagedTypes.Create(AContext.Tree, AContext.Text, AContext.Index);
+  try
+    Visit(AContext.Tree.Root);
+  finally
+    Managed.Free;
+  end;
+end;
+
 procedure RegisterRtlTypePatternRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TInt32MulOverflowRule.Create);
@@ -994,6 +1068,7 @@ begin
   ARegistry.Register(TConstructorOnInstanceRule.Create);
   ARegistry.Register(TFormatWithoutSettingsRule.Create);
   ARegistry.Register(TManagedTypeRawMemoryRule.Create);
+  ARegistry.Register(TThreadvarManagedRule.Create);
 end;
 
 end.

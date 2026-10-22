@@ -3,7 +3,7 @@
 // Tests für die typbasierten Regeln zu RTL-Mustern aus #153, Stufe 2, und
 // für die deklarierten Typen, auf denen sie aufbauen; zuletzt
 // managed-type-raw-memory (#921) mit Records, Aliassen, Zeigern, Index und
-// Korrekturen.
+// Korrekturen, und threadvar-managed (#922).
 
 interface
 
@@ -40,6 +40,8 @@ type
     procedure ManagedRawMemorySilentCases;
     [Test]
     procedure ManagedRawMemoryOffAndExclude;
+    [Test]
+    procedure ThreadvarManaged;
   end;
 
 implementation
@@ -290,6 +292,38 @@ begin
     '{"rules": {"managed-type-raw-memory": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, Source,
     '{"rules": {"managed-type-raw-memory": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
+end;
+
+procedure TRtlTypePatternRulesTests.ThreadvarManaged;
+const
+  Head = 'unit U;'#10'interface'#10'type'#10'  TMeldung = record'#10'    Text: string;'#10'  end;'#10 +
+    'implementation'#10;
+var
+  Findings: TArray<TRuleFinding>;
+  Source: string;
+begin
+  Source := Head + 'threadvar'#10'  LetzteMeldung: string;'#10'  Zaehler: Integer;'#10 +
+    '  Meldung, Vorige: TMeldung;'#10'end.';
+  Findings := TRuleAssert.Findings(TThreadvarManagedRule.Create, Source);
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual('threadvar mit string wird beim Thread-Ende nicht finalisiert (Leck je Thread).',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual('threadvar mit TMeldung (enthält Strings) wird beim Thread-Ende nicht finalisiert (Leck je ' +
+    'Thread).', Findings[1].Message);
+  Assert.AreEqual(10, Findings[2].Range.StartPos.Line);
+  Assert.AreEqual(11, Findings[2].Range.StartPos.Character);
+  // Korrigiert: Zeiger auf einen Puffer bzw. normale var mit string.
+  TRuleAssert.Silent(TThreadvarManagedRule.Create, Head + 'threadvar'#10'  LetzteMeldung: PChar;'#10 +
+    'var'#10'  Global: string;'#10'end.');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadvarManagedRule.Create, Source,
+    '{"rules": {"threadvar-managed": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadvarManagedRule.Create, Source,
+    '{"rules": {"threadvar-managed": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+  Assert.AreEqual(3, Integer(Length(TRuleAssert.Findings(TThreadvarManagedRule.Create, Source,
+    '{"rules": {"threadvar-managed": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
 end;
 
 initialization

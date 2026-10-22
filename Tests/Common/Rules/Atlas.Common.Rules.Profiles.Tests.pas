@@ -189,7 +189,7 @@ const
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
     'security-tls-verification-disabled,security-weak-crypto,self-assignment,setter-recursion,sizeof-pointer,' +
     'slash-command,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-resume-suspend,' +
-    'thread-use-after-free-on-terminate,thread-vcl-access,type-used-before-declaration,' +
+    'thread-use-after-free-on-terminate,thread-vcl-access,threadvar-managed,type-used-before-declaration,' +
     'unneeded-forward-declaration,unreachable-code,unresolved-identifier,' +
     'unused-assignment,unused-local,unused-parameter,use-after-free,virtual-instead-of-override,with-statement';
 begin
@@ -214,7 +214,7 @@ begin
     'possibly-uninitialized,raise-in-finally,result-not-set,security-command-injection,' +
     'security-sql-injection,security-tls-verification-disabled,self-assignment,setter-recursion,sizeof-pointer,' +
     'synchronize-in-destructor,thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,' +
-    'thread-vcl-access,type-used-before-declaration,unreachable-code,unresolved-identifier,use-after-free,' +
+    'thread-vcl-access,threadvar-managed,type-used-before-declaration,unreachable-code,unresolved-identifier,use-after-free,' +
     'virtual-instead-of-override',
     ActiveRules('fast'));
   Assert.AreEqual('bidi-control,confusable-identifier,invisible-char,security-command-injection,security-insecure-http,' +
