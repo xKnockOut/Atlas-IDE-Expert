@@ -793,6 +793,17 @@
       "id": "case-insensitive-compare",
       "name": "Vergleich über UpperCase oder LowerCase",
       "description": "UpperCase(A) = UpperCase(B), LowerCase(A) <> 'x', AnsiUpperCase(...) oder A.ToUpper = B.ToUpper erzeugt zwei Strings für einen Vergleich. SameText (AnsiSameText bei den Ansi-Funktionen und den Unicode-String-Helfern) ist kürzer und schneller. Ein Literal zählt nur, wenn die Umwandlung es nicht ändert; UpperCase(A) = LowerCase(B) und UpperCase(A) = 'ja' bleiben unberührt, weil das andere Fehler sind. Ersetzt nicht die String-Helper-Modernisierung aus #71. Konfidenz hoch. Schnellkorrektur: SameText(A, B) bzw. not SameText(A, B)."
+    },
+    {
+      "id": "magic-number",
+      "name": "Zahl ohne Namen im Code",
+      "description": "Zahlenliterale (dezimal, $hex, Gleitkomma, mit Vorzeichen) in Anweisungen, außerhalb von const-Abschnitten, Typen, Array-Grenzen und Teilbereichen. Erlaubte Werte sind einstellbar; DFM-Koordinaten und Tests lassen sich über exclude ausnehmen. Standard aus und niedrige Konfidenz: Treffer erscheinen, wenn die Regel eingeschaltet und minConfidence low ist. Schnellkorrektur: Konstante einführen (#50) im const-Abschnitt der Routine.",
+      "options": [
+        {
+          "name": "allowed",
+          "description": "Zahlen, die nie gemeldet werden."
+        }
+      ]
     }
   ]
 }

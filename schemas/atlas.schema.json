@@ -323,6 +323,14 @@
                 },
                 "default": ["Text", "Cells", "Lines"],
                 "description": "Nur unchecked-conversion: Eigenschaften, die als Benutzereingabe gelten, z. B. Text in Edit.Text oder Cells in Grid.Cells[…] (#932)."
+              },
+              "allowed": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "default": [0, 1, -1, 2, 10, 100],
+                "description": "Nur magic-number: Zahlen, die nie gemeldet werden (#937)."
               }
             }
           }

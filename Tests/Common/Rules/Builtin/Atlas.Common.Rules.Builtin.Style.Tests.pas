@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Style.Tests;
 
 // Tests für die Stilregeln (#104): je Regel positiv, negativ und Schnellkorrektur; boolean-assign-if (#935),
-// case-insensitive-compare (#936).
+// case-insensitive-compare (#936) und magic-number (#937).
 
 interface
 
@@ -52,6 +52,12 @@ type
     procedure CaseInsensitiveCompareVariants;
     [Test]
     procedure CaseInsensitiveCompareSilentCases;
+    [Test]
+    procedure MagicNumberIssueExample;
+    [Test]
+    procedure MagicNumberVariantsAndOptions;
+    [Test]
+    procedure MagicNumberSilentCases;
   end;
 
 implementation
@@ -62,6 +68,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Style,
+  Atlas.Common.Configuration.Parser,
   Atlas.Tests.RuleAssert;
 
 const
@@ -339,6 +346,63 @@ begin
   TRuleAssert.Silent(TCaseInsensitiveCompareRule.Create, InRoutine('  S, T: string;',
     '  B := UpperCase(S) = LowerCase(T);'#10'  B := UpperCase(S) = ''ja'';'#10'  B := UpperCase(S) = T;'#10 +
     '  S := UpperCase(T);'#10'  B := SameText(S, T);'#10'  B := UpperCase(S) < UpperCase(T);'));
+end;
+
+const
+  // Niedrige Konfidenz: erst mit minConfidence low sichtbar.
+  MagicOn = '{ "minConfidence": "low", "rules": { "magic-number": "hint" } }';
+
+procedure TStyleRulesTests.MagicNumberIssueExample;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := InRoutine('  Tage: Integer;', '  if Tage > 42 then'#10'    Mahnen;');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMagicNumberRule.Create, Source))), 'Standard aus');
+  Findings := TRuleAssert.Findings(TMagicNumberRule.Create, Source, MagicOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Zahl 42 ohne Namen; als Konstante wird klar, was sie bedeutet.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Konstante einführen', Findings[0].Fixes[0].Title);
+  Source := Fixed(Source, Findings);
+  Assert.IsTrue(Pos('NewConstant = 42;', Source) > 0, Source);
+  Assert.IsTrue(Pos('if Tage > NewConstant then', Source) > 0, Source);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMagicNumberRule.Create, Source, MagicOn))));
+end;
+
+procedure TStyleRulesTests.MagicNumberVariantsAndOptions;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := InRoutine('  X: Double;', '  X := -7 * 3.5 + $FF;'#10'  Warten(1000);'#10'  X := 2 * 10 - 1;');
+  Findings := TRuleAssert.Findings(TMagicNumberRule.Create, Source, MagicOn);
+  Assert.AreEqual(4, Integer(Length(Findings)));
+  Assert.AreEqual('Zahl -7 ohne Namen; als Konstante wird klar, was sie bedeutet.', Findings[0].Message);
+  Assert.AreEqual('Zahl 3.5 ohne Namen; als Konstante wird klar, was sie bedeutet.', Findings[1].Message);
+  Assert.AreEqual('Zahl $FF ohne Namen; als Konstante wird klar, was sie bedeutet.', Findings[2].Message);
+  Assert.AreEqual('Zahl 1000 ohne Namen; als Konstante wird klar, was sie bedeutet.', Findings[3].Message);
+  Findings := TRuleAssert.Findings(TMagicNumberRule.Create, Source,
+    '{ "minConfidence": "low", "rules": { "magic-number": { "severity": "hint", "allowed": [1000, -7, 255, 3.5] } } }');
+  Assert.AreEqual(3, Integer(Length(Findings)), '2 und 10 nicht mehr erlaubt');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMagicNumberRule.Create, Source,
+    '{ "minConfidence": "low", "rules": { "magic-number": { "severity": "hint", "exclude": ["Tests/*.pas"] } } }',
+    'Tests/U.pas'))));
+end;
+
+procedure TStyleRulesTests.MagicNumberSilentCases;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // Konstanten, Array-Grenzen, Teilbereiche, erlaubte Werte, Zeichen und Strings.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMagicNumberRule.Create, 'unit U;'#10'interface'#10'const'#10'  Grenze = 42;'#10'type'#10 +
+    '  TFeld = array[0..41] of Integer;'#10'  TTag = 1..31;'#10'implementation'#10'procedure P;'#10'const'#10 +
+    '  Tage = 30;'#10'var'#10'  A: array[0..9] of Byte;'#10'begin'#10'  if X > Grenze then'#10'    X := 0;'#10 +
+    '  S := ''42'' + #13#10;'#10'  X := X * 2 + 1 - 100;'#10'  var B: array[0..4] of Byte;'#10'end;'#10'end.',
+    MagicOn))));
+  TConfigurationParser.Parse('{"rules": {"magic-number": {"allowed": ["42"]}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"allowed" muss eine Liste von Zahlen sein', Issues[0].Message);
 end;
 
 initialization

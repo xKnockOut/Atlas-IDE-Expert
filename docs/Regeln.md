@@ -15,7 +15,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 20 |
+| [Stil und Metriken](#gruppe-style) | 21 |
 | [Packages und Tests](#gruppe-packages) | 1 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -196,6 +196,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`unneeded-forward-declaration`](#unneeded-forward-declaration) | Überflüssige Forward-Deklaration | Code Smell | Hinweis |
 | [`shadowed-name`](#shadowed-name) | Lokaler Name verdeckt Feld oder Property | Code Smell | Hinweis |
 | [`boolean-assign-if`](#boolean-assign-if) | if, das nur True oder False zuweist | Code Smell | Hinweis |
+| [`magic-number`](#magic-number) | Zahl ohne Namen im Code | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -3166,4 +3167,32 @@ Richtig:
 
 ```pascal
 if SameText(Land, Standard) then
+```
+
+<a id="magic-number"></a>
+### magic-number
+
+**Zahl ohne Namen im Code** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Zahlenliterale (dezimal, $hex, Gleitkomma, mit Vorzeichen) in Anweisungen, außerhalb von const-Abschnitten, Typen, Array-Grenzen und Teilbereichen. Erlaubte Werte sind einstellbar; DFM-Koordinaten und Tests lassen sich über exclude ausnehmen. Standard aus und niedrige Konfidenz: Treffer erscheinen, wenn die Regel eingeschaltet und minConfidence low ist. Schnellkorrektur: Konstante einführen (#50) im const-Abschnitt der Routine.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowed` | number-list | `[0,1,-1,2,10,100]` | Zahlen, die nie gemeldet werden. |
+
+Mit Treffer:
+
+```pascal
+if Tage > 42 then
+  Mahnen;
+```
+
+Richtig:
+
+```pascal
+const
+  Mahnfrist = 42;
+...
+if Tage > Mahnfrist then
+  Mahnen;
 ```

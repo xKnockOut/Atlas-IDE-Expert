@@ -1515,6 +1515,31 @@
       "description": "UpperCase(A) = UpperCase(B), LowerCase(A) <> 'x', AnsiUpperCase(...) or A.ToUpper = B.ToUpper creates two strings for one comparison. SameText (AnsiSameText for the Ansi functions and the Unicode string helpers) is shorter and faster. A literal is only accepted if the conversion does not change it; UpperCase(A) = LowerCase(B) and UpperCase(A) = 'ja' are left alone because they are different mistakes. Does not replace the string helper modernisation of #71. High confidence. Quick fix: SameText(A, B) or not SameText(A, B).",
       "bad": "if UpperCase(Land) = UpperCase(Standard) then",
       "good": "if SameText(Land, Standard) then"
+    },
+    {
+      "id": "magic-number",
+      "name": "Number without a name in code",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "Number literals (decimal, $hex, floating point, with sign) in statements, outside const sections, types, array bounds and subranges. Allowed values are configurable; DFM coordinates and tests can be excluded through exclude. Off by default and low confidence: it shows up once the rule is switched on and minConfidence is low. Quick fix: Introduce constant (#50) in the const section of the routine.",
+      "bad": "if Tage > 42 then\n  Mahnen;",
+      "good": "const\n  Mahnfrist = 42;\n...\nif Tage > Mahnfrist then\n  Mahnen;",
+      "options": [
+        {
+          "name": "allowed",
+          "type": "number-list",
+          "default": [
+            0,
+            1,
+            -1,
+            2,
+            10,
+            100
+          ],
+          "description": "Numbers that are never reported."
+        }
+      ]
     }
   ]
 }

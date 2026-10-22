@@ -16,6 +16,8 @@ type
     class function Int(const AOptions, AName: string; ADefault: Integer): Integer; static;
     /// <summary>Liste von Texten AName aus AOptions, sonst ADefault.</summary>
     class function Strings(const AOptions, AName: string; const ADefault: TArray<string>): TArray<string>; static;
+    /// <summary>Liste von Zahlen AName aus AOptions, sonst ADefault (#937).</summary>
+    class function Numbers(const AOptions, AName: string; const ADefault: TArray<Double>): TArray<Double>; static;
   end;
 
 implementation
@@ -89,6 +91,25 @@ begin
         // TJSONNumber erbt von TJSONString: Zahlen gehören nicht in eine Textliste.
         if (Item is TJSONString) and not (Item is TJSONNumber) then
           Result := Result + [Item.Value];
+    end;
+  finally
+    Value.Free;
+  end;
+end;
+
+class function TRuleOptions.Numbers(const AOptions, AName: string; const ADefault: TArray<Double>): TArray<Double>;
+var
+  Value, Item: TJSONValue;
+begin
+  Result := ADefault;
+  Value := Member(AOptions, AName);
+  try
+    if Value is TJSONArray then
+    begin
+      Result := nil;
+      for Item in TJSONArray(Value) do
+        if Item is TJSONNumber then
+          Result := Result + [TJSONNumber(Item).AsDouble];
     end;
   finally
     Value.Free;
