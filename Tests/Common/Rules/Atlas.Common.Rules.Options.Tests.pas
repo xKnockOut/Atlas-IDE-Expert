@@ -18,6 +18,8 @@ type
     procedure IntReadsValueOrDefault;
     [Test]
     procedure StringsReadsListOrDefault;
+    [Test]
+    procedure NumbersReadsListOrDefault;
   end;
 
 implementation
@@ -59,6 +61,21 @@ begin
   Items := TRuleOptions.Strings('{}', 'ignore', ['x']);
   Assert.AreEqual(1, Integer(Length(Items)));
   Assert.AreEqual('x', Items[0]);
+end;
+
+procedure TRuleOptionsTests.NumbersReadsListOrDefault;
+var
+  Items: TArray<Double>;
+begin
+  Items := TRuleOptions.Numbers('{"allowed": [0, -1, 2.5, "3"]}', 'allowed', [7]);
+  Assert.AreEqual(3, Integer(Length(Items)));
+  Assert.AreEqual(Double(-1), Items[1]);
+  Assert.AreEqual(Double(2.5), Items[2]);
+  Items := TRuleOptions.Numbers('{"allowed": []}', 'allowed', [7]);
+  Assert.AreEqual(0, Integer(Length(Items)), 'leere Liste ersetzt die Vorgabe');
+  Items := TRuleOptions.Numbers('{"allowed": "1"}', 'allowed', [7]);
+  Assert.AreEqual(1, Integer(Length(Items)), 'falscher Typ');
+  Assert.AreEqual(Double(7), Items[0]);
 end;
 
 initialization

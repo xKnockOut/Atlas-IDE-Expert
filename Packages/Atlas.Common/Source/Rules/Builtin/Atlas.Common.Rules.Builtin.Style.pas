@@ -11,6 +11,9 @@
 //                            Korrektur X := B, X := not B bzw. Exit(B) (#935)
 //   case-insensitive-compare UpperCase(A) = UpperCase(B), LowerCase(A) = 'x', A.ToUpper = B.ToUpper …;
 //                            Korrektur SameText bzw. AnsiSameText (#936)
+//   magic-number             Zahlenliteral in Anweisungen außerhalb von const, Typen und Array-Grenzen,
+//                            nicht in der Option "allowed" (Standard aus, niedrige Konfidenz); Korrektur
+//                            „Konstante einführen“ aus #50 (#937)
 // Exit, Break und Continue aus einem finally-Block lehnt der Compiler selbst ab;
 // dafür gibt es keine eigene Regel.
 
@@ -70,6 +73,14 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TMagicNumberRule = class(TInterfacedObject, IRule)
+  public const
+    DefaultAllowed: array[0..5] of Double = (0, 1, -1, 2, 10, 100);
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterStyleRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -77,11 +88,15 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Math,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.DeclaredTypes;
+  Atlas.Common.Pascal.DeclaredTypes,
+  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Editing.Extract,
+  Atlas.Common.Rules.Options;
 
 type
   TTokens = TArray<TPascalToken>;
@@ -855,6 +870,112 @@ begin
     Visit(AContext.Tree.Root);
 end;
 
+{ TMagicNumberRule }
+
+function TMagicNumberRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('magic-number', TRuleSeverity.Hint, 'Zahl ohne Namen im Code', True);
+end;
+
+procedure TMagicNumberRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Allowed: TArray<Double>;
+  Settings: TFormatSettings;
+
+  function Text(ANode: TSyntaxNode): string;
+  begin
+    Result := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+  end;
+
+  // Wert eines Zahlenliterals (dezimal, $hex, Gleitkomma); False bei Strings und Zeichen (#13).
+  function NumberValue(const ALiteral: string; out AValue: Double): Boolean;
+  var
+    Hex: Int64;
+  begin
+    Result := False;
+    if ALiteral = '' then
+      Exit;
+    if ALiteral[1] = '$' then
+    begin
+      Result := TryStrToInt64(ALiteral, Hex);
+      AValue := Hex;
+    end
+    else if CharInSet(ALiteral[1], ['0'..'9']) then
+      Result := TryStrToFloat(ALiteral, AValue, Settings);
+  end;
+
+  function IsAllowed(AValue: Double): Boolean;
+  var
+    Value: Double;
+  begin
+    for Value in Allowed do
+      if SameValue(Value, AValue) then
+        Exit(True);
+    Result := False;
+  end;
+
+  procedure CheckLiteral(ALiteral: TSyntaxNode);
+  var
+    Node: TSyntaxNode;
+    Value: Double;
+    Action: TCodeAction;
+    Fixes: TArray<TRuleFix>;
+  begin
+    if not NumberValue(Text(ALiteral), Value) then
+      Exit;
+    Node := ALiteral;
+    // -5: das Vorzeichen gehört zur Zahl.
+    if (Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.UnaryExpr) and (Node.Parent.Name = '-') and
+      (Node.Parent.ChildCount = 1) then
+    begin
+      Node := Node.Parent;
+      Value := -Value;
+    end;
+    if IsAllowed(Value) then
+      Exit;
+    Fixes := nil;
+    if TExtractRefactoring.ExtractConstant(AContext.Text, AContext.Tree, TTextRange.Create(Node.StartPos, Node.EndPos),
+      TExtractOptions.Default, False, Action) then
+      Fixes := [TRuleFix.Create('Konstante einführen', Action.Edits)];
+    AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), Format('Zahl %s ohne Namen; als Konstante wird klar, ' +
+      'was sie bedeutet.', [Text(Node)]), TRuleConfidence.Low, Fixes);
+  end;
+
+  procedure Visit(ANode: TSyntaxNode; AInBody: Boolean);
+  var
+    Index: Integer;
+  begin
+    case ANode.Kind of
+      // Konstanten, Typen, Array-Grenzen und Teilbereiche haben ihren Namen schon.
+      TSyntaxKind.ConstSection, TSyntaxKind.ConstDecl, TSyntaxKind.InlineConst, TSyntaxKind.TypeSection,
+      TSyntaxKind.TypeDecl, TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.SubrangeType,
+      TSyntaxKind.SetType, TSyntaxKind.EnumType, TSyntaxKind.VarSection, TSyntaxKind.Attribute,
+      TSyntaxKind.AsmBlock, TSyntaxKind.RoutineHeader:
+        Exit;
+      TSyntaxKind.Block:
+        AInBody := True;
+      TSyntaxKind.Literal:
+        if AInBody then
+          CheckLiteral(ANode);
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index], AInBody);
+  end;
+
+var
+  Defaults: TArray<Double>;
+  Value: Double;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Defaults := nil;
+  for Value in DefaultAllowed do
+    Defaults := Defaults + [Value];
+  Allowed := TRuleOptions.Numbers(AContext.Options, 'allowed', Defaults);
+  Settings := TFormatSettings.Invariant;
+  Visit(AContext.Tree.Root, False);
+end;
+
 procedure RegisterStyleRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TBoolCompareRule.Create);
@@ -865,6 +986,7 @@ begin
   ARegistry.Register(TWithStatementRule.Create);
   ARegistry.Register(TBooleanAssignIfRule.Create);
   ARegistry.Register(TCaseInsensitiveCompareRule.Create);
+  ARegistry.Register(TMagicNumberRule.Create);
 end;
 
 end.

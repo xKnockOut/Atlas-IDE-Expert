@@ -207,6 +207,7 @@ begin
   Assert.AreEqual('Prefix', TAtlasRuleTable.OptionText(Option('string', '"Prefix"', '')));
   Assert.AreEqual('true', TAtlasRuleTable.OptionText(Option('boolean', 'false', 'true')));
   Assert.AreEqual('{"a":1}', TAtlasRuleTable.OptionText(Option('json', '', '{"a":1}')));
+  Assert.AreEqual('0; 1; -1', TAtlasRuleTable.OptionText(Option('number-list', '[0,1,-1]', '')));
   Assert.AreEqual('', TAtlasRuleTable.OptionText(Option('json', '', '')));
 end;
 
@@ -224,6 +225,9 @@ begin
   Assert.AreEqual('"a\"b"', Json);
   Assert.IsTrue(TAtlasRuleTable.OptionJson('string-list', '0; 1;; 2 ', Json));
   Assert.AreEqual('["0","1","2"]', Json);
+  Assert.IsTrue(TAtlasRuleTable.OptionJson('number-list', '0; -1; 2.5', Json));
+  Assert.AreEqual('[0,-1,2.5]', Json);
+  Assert.IsFalse(TAtlasRuleTable.OptionJson('number-list', '1; zwei', Json));
   Assert.IsTrue(TAtlasRuleTable.OptionJson('json', '{"a": 1}', Json));
   Assert.AreEqual('{"a":1}', Json);
   Assert.IsFalse(TAtlasRuleTable.OptionJson('json', '{a', Json));

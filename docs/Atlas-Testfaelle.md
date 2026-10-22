@@ -3461,3 +3461,16 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Routine mit `if UpperCa
 | CV4 | `S.ToUpper = Name.ToUpper` bzw. `AnsiUpperCase(S) = 'JA'` | Korrektur mit `AnsiSameText` |
 | CV5 | `UpperCase(S) = 'ja'` bzw. `UpperCase(S) = LowerCase(T)` | Keine Meldung (andere Fehler) |
 | CV6 | `"case-insensitive-compare": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Zahl ohne Namen im Code (#937)
+
+Voraussetzung: Server läuft; in `atlas.json` `"minConfidence": "low"` und `"rules": { "magic-number": "hint" }` (die Regel ist experimentell und steht auf `off`); Routine mit `if Tage > 42 then Mahnen;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MN1 | Unit öffnen | Hinweis `magic-number` an `42`: „Zahl 42 ohne Namen; als Konstante wird klar, was sie bedeutet.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| MN2 | Glühbirne, „Konstante einführen“ | Konstante mit dem Wert 42 im const-Abschnitt, `if Tage > NewConstant then`; Umbenennen läuft an; ein Strg+Z stellt den Vergleich wieder her (**Abnahme**) |
+| MN3 | `X := -7 * 3.5 + $FF;` | Drei Meldungen: `-7` (mit Vorzeichen), `3.5` und `$FF` |
+| MN4 | Zahlen in `const`, Array-Grenzen `array[0..41]`, Teilbereich `1..31`, Zeichen `#13#10`, `X * 2 + 1 - 100` | Keine Meldung |
+| MN5 | Einstellungsseite „Prüfregeln“, Option „allowed“ der Regel auf `42` setzen | Keine Meldung mehr an `42`; `0`, `1` usw. werden jetzt gemeldet; eine Eingabe wie `zwei` lehnt das Feld ab |
+| MN6 | `"magic-number": "off"`, ohne `minConfidence` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

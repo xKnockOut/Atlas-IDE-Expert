@@ -22,7 +22,7 @@ type
   /// <summary>Option einer Regel aus dem Katalog; Werte als JSON-Text.</summary>
   TAtlasRuleOption = record
     Name: string;
-    /// <summary>"integer", "string", "string-list" oder "json".</summary>
+    /// <summary>"integer", "string", "string-list", "number-list" (#937) oder "json".</summary>
     Kind: string;
     /// <summary>Vorgabe als JSON-Text; '' = keine.</summary>
     DefaultJson: string;
@@ -593,7 +593,8 @@ begin
   try
     if (Value is TJSONString) and not (Value is TJSONNumber) then
       Result := TJSONString(Value).Value
-    else if (Value is TJSONArray) and SameText(AOption.Kind, 'string-list') then
+    else if (Value is TJSONArray) and (SameText(AOption.Kind, 'string-list') or
+      SameText(AOption.Kind, 'number-list')) then
     begin
       Items := nil;
       for Item in TJSONArray(Value) do
@@ -612,6 +613,7 @@ class function TAtlasRuleTable.OptionJson(const AKind, AText: string; out AJson:
 var
   Text, Item: string;
   Number: Int64;
+  Float: Double;
   Value: TJSONValue;
   Items: TJSONArray;
 begin
@@ -647,6 +649,25 @@ begin
     try
       for Item in ParseList(Text) do
         Items.Add(Item);
+      AJson := Items.ToJSON;
+    finally
+      Items.Free;
+    end;
+  end
+  // Zahlen mit Punkt als Dezimaltrenner; ganze Zahlen bleiben ganz (#937).
+  else if SameText(AKind, 'number-list') then
+  begin
+    Items := TJSONArray.Create;
+    try
+      for Item in ParseList(Text) do
+      begin
+        if not TryStrToFloat(Item, Float, TFormatSettings.Invariant) then
+          Exit(False);
+        if (Frac(Float) = 0) and (Abs(Float) < 1E15) then
+          Items.AddElement(TJSONNumber.Create(Trunc(Float)))
+        else
+          Items.AddElement(TJSONNumber.Create(Float));
+      end;
       AJson := Items.ToJSON;
     finally
       Items.Free;

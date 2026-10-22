@@ -45,12 +45,17 @@ implementation
 uses
   System.SysUtils;
 
+const
+  StandardBreite = 120;
+  StandardHoehe = 32;
+  TextAbstand = 4;
+
 constructor TRefAnzeige.Create(AOwner: TComponent);
 begin
   inherited;
   FStil := asRahmen;
-  Width := 120;
-  Height := 32;
+  Width := StandardBreite;
+  Height := StandardHoehe;
 end;
 
 procedure TRefAnzeige.SetStil(const AValue: TAnzeigeStil);
@@ -98,7 +103,7 @@ begin
   if FStil <> asFlach then
     Canvas.Rectangle(ClientRect);
   Anzeigetext := Format('%s: %d', [FBeschriftung, FWert]);
-  Canvas.TextOut(4, (Height - Canvas.TextHeight(Anzeigetext)) div 2, Anzeigetext);
+  Canvas.TextOut(TextAbstand, (Height - Canvas.TextHeight(Anzeigetext)) div 2, Anzeigetext);
 end;
 
 end.

@@ -22,7 +22,7 @@ type
   /// <summary>Eine Option einer Regel in "rules.&lt;id&gt;" (#909).</summary>
   TRuleOption = record
     Name: string;
-    /// <summary>"integer", "boolean", "string", "string-list" oder "json".</summary>
+    /// <summary>"integer", "boolean", "string", "string-list", "number-list" (#937) oder "json".</summary>
     Kind: string;
     /// <summary>Vorgabe als JSON-Text, z. B. 60, ["TODO"] oder "".</summary>
     DefaultJson: string;
@@ -93,7 +93,7 @@ const
   CategoryNames: array[TRuleCategory] of string = ('bug', 'vulnerability', 'code-smell', 'security-hotspot');
   GroupNames: array[TRuleGroup] of string = ('find-bugs', 'exceptions', 'threads', 'database', 'compiler',
     'robustness', 'performance', 'security', 'components', 'forms', 'architecture', 'style', 'packages', 'internal');
-  OptionKinds: array[0..4] of string = ('integer', 'boolean', 'string', 'string-list', 'json');
+  OptionKinds: array[0..5] of string = ('integer', 'boolean', 'string', 'string-list', 'number-list', 'json');
 
 var
   SharedLock: TCriticalSection;

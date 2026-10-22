@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1654] of string = (
+  Lines: array[0..1662] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -337,6 +337,14 @@ const
     '                },',
     '                "default": ["Text", "Cells", "Lines"],',
     '                "description": "Nur unchecked-conversion: Eigenschaften, die als Benutzereingabe gelten, z. B. Text in Edit.Text oder Cells in Grid.Cells[…] (#932)."',
+    '              },',
+    '              "allowed": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "number"',
+    '                },',
+    '                "default": [0, 1, -1, 2, 10, 100],',
+    '                "description": "Nur magic-number: Zahlen, die nie gemeldet werden (#937)."',
     '              }',
     '            }',
     '          }',

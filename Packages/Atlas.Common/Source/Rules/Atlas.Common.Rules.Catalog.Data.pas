@@ -1535,6 +1535,31 @@ begin
     '      "description": "UpperCase(A) = UpperCase(B), LowerCase(A) <> ''x'', AnsiUpperCase(...) or A.ToUpper = B.ToUpper creates two strings for one comparison. SameText (AnsiSameText for the Ansi function' + 's and the Unicode string helpers) is shorter and faster. A literal is only accepted if the conversion does not change it; UpperCase(A) = LowerCase(B) and UpperCase(A) = ''ja'' are left alone because the' + 'y are different mistakes. Does not replace the string helper modernisation of #71. High confidence. Quick fix: SameText(A, B) or not SameText(A, B).",' + #10 +
     '      "bad": "if UpperCase(Land) = UpperCase(Standard) then",' + #10 +
     '      "good": "if SameText(Land, Standard) then"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "magic-number",' + #10 +
+    '      "name": "Number without a name in code",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "Number literals (decimal, $hex, floating point, with sign) in statements, outside const sections, types, array bounds and subranges. Allowed values are configurable; DFM coordina' + 'tes and tests can be excluded through exclude. Off by default and low confidence: it shows up once the rule is switched on and minConfidence is low. Quick fix: Introduce constant (#50) in the const se' + 'ction of the routine.",' + #10 +
+    '      "bad": "if Tage > 42 then\n  Mahnen;",' + #10 +
+    '      "good": "const\n  Mahnfrist = 42;\n...\nif Tage > Mahnfrist then\n  Mahnen;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowed",' + #10 +
+    '          "type": "number-list",' + #10 +
+    '          "default": [' + #10 +
+    '            0,' + #10 +
+    '            1,' + #10 +
+    '            -1,' + #10 +
+    '            2,' + #10 +
+    '            10,' + #10 +
+    '            100' + #10 +
+    '          ],' + #10 +
+    '          "description": "Numbers that are never reported."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2340,6 +2365,17 @@ begin
     '      "id": "case-insensitive-compare",' + #10 +
     '      "name": "Vergleich über UpperCase oder LowerCase",' + #10 +
     '      "description": "UpperCase(A) = UpperCase(B), LowerCase(A) <> ''x'', AnsiUpperCase(...) oder A.ToUpper = B.ToUpper erzeugt zwei Strings für einen Vergleich. SameText (AnsiSameText bei den Ansi-Funk' + 'tionen und den Unicode-String-Helfern) ist kürzer und schneller. Ein Literal zählt nur, wenn die Umwandlung es nicht ändert; UpperCase(A) = LowerCase(B) und UpperCase(A) = ''ja'' bleiben unberührt, weil' + ' das andere Fehler sind. Ersetzt nicht die String-Helper-Modernisierung aus #71. Konfidenz hoch. Schnellkorrektur: SameText(A, B) bzw. not SameText(A, B)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "magic-number",' + #10 +
+    '      "name": "Zahl ohne Namen im Code",' + #10 +
+    '      "description": "Zahlenliterale (dezimal, $hex, Gleitkomma, mit Vorzeichen) in Anweisungen, außerhalb von const-Abschnitten, Typen, Array-Grenzen und Teilbereichen. Erlaubte Werte sind einstellba' + 'r; DFM-Koordinaten und Tests lassen sich über exclude ausnehmen. Standard aus und niedrige Konfidenz: Treffer erscheinen, wenn die Regel eingeschaltet und minConfidence low ist. Schnellkorrektur: Kons' + 'tante einführen (#50) im const-Abschnitt der Routine.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowed",' + #10 +
+    '          "description": "Zahlen, die nie gemeldet werden."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

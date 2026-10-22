@@ -59,7 +59,7 @@ $GroupNames = [ordered]@{
     'architecture' = 'Architektur'; 'style' = 'Stil und Metriken'; 'packages' = 'Packages und Tests'
     'internal' = 'Atlas intern'
 }
-$OptionKinds = @('integer', 'boolean', 'string', 'string-list', 'json')
+$OptionKinds = @('integer', 'boolean', 'string', 'string-list', 'number-list', 'json')
 
 # Vollständigkeit der Einträge
 foreach ($Rule in $Base.rules) {

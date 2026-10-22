@@ -56,3 +56,4 @@ dictionary-get-without-check | Ref.Daten.Suche.pas | class procedure TKundenSuch
 shadowed-name | Ref.Formulare.Detail.pas | procedure TDetailFormular.Initialisieren; | procedure TDetailFormular.Initialisieren;\nvar\n  NameEdit: string;
 boolean-assign-if | Ref.Formulare.Haupt.pas |   Suche.OnSuchen := SucheAusfuehren; |   Suche.OnSuchen := SucheAusfuehren;\n  if KundenListe.Count = 0 then\n    DetailButton.Enabled := False\n  else\n    DetailButton.Enabled := True;
 case-insensitive-compare | Ref.Formulare.Haupt.pas |   Suche.OnSuchen := SucheAusfuehren; |   Suche.OnSuchen := SucheAusfuehren;\n  if UpperCase(Caption) = UpperCase(Name) then\n    Caption := '';
+magic-number | Ref.Daten.Suche.pas | Result := FAnbieter(AName) | Result := FAnbieter(Copy(AName, 1, 40))

@@ -49,6 +49,8 @@ const
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
   StringListRuleOptions: array[0..8] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore');
+  /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
+  NumberListRuleOptions: array[0..0] of string = ('allowed');
   /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
   StringRuleOptions: array[0..1] of string = ('template', 'replacement');
 
@@ -195,6 +197,17 @@ begin
 end;
 
 /// <summary>Array, dessen Einträge alle Texte sind.</summary>
+function IsNumberList(ANode: TJsonNode): Boolean;
+var
+  Index: Integer;
+begin
+  Result := ANode.Kind = TJsonKind.Array_;
+  if Result then
+    for Index := 0 to ANode.Count - 1 do
+      if ANode[Index].Kind <> TJsonKind.Number then
+        Exit(False);
+end;
+
 function IsStringList(ANode: TJsonNode): Boolean;
 var
   Index: Integer;
@@ -263,6 +276,8 @@ begin
             ReportNode(Value[Inner], Format('"%s" muss true oder false sein', [Value.Keys[Inner]]))
           else if (IndexStr(Value.Keys[Inner], StringListRuleOptions) >= 0) and not IsStringList(Value[Inner]) then
             ReportNode(Value[Inner], Format('"%s" muss eine Liste von Texten sein', [Value.Keys[Inner]]))
+          else if (IndexStr(Value.Keys[Inner], NumberListRuleOptions) >= 0) and not IsNumberList(Value[Inner]) then
+            ReportNode(Value[Inner], Format('"%s" muss eine Liste von Zahlen sein', [Value.Keys[Inner]]))
           else if (IndexStr(Value.Keys[Inner], StringRuleOptions) >= 0) and (Value[Inner].Kind <> TJsonKind.String_) then
             ReportNode(Value[Inner], Format('"%s" muss ein Text sein', [Value.Keys[Inner]]))
           else if (Value.Keys[Inner] = 'pairs') and not IsPairList(Value[Inner]) then
