@@ -1288,7 +1288,7 @@ begin
       FAdapters.NewSignatureSource(
         function: TLspSession
         begin
-          // Aufgerufen im Zeitlimit-Arbeiter (#493): nur eine laufende Sitzung, nie ein Start (A-01).
+          // Im Hauptthread beim Öffnen des Hints: nur eine laufende Sitzung, nie ein Start (A-01).
           Result := RunningSession;
         end),
       function: Boolean

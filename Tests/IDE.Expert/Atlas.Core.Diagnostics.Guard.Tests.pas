@@ -54,6 +54,10 @@ type
     /// <summary>Jede sichtbare Funktion hat eine eigene Sicherung mit eigenem Namen.</summary>
     [Test]
     procedure FeaturesHaveDistinctNames;
+    /// <summary>Langsame Quelle: kein Fehler, eine Protokollzeile je Quelle und Minute mit der Zahl der übergangenen.
+    /// </summary>
+    [Test]
+    procedure SlowProviderLogsOncePerInterval;
   end;
 
 implementation
@@ -471,6 +475,41 @@ begin
   end;
   Assert.AreEqual('Minimap', TAtlasGuard.FeatureName(TAtlasFeature.Minimap));
   Assert.AreEqual('Gehe zu Definition', TAtlasGuard.FeatureName(TAtlasFeature.GoToDefinition));
+end;
+
+procedure TAtlasGuardTests.SlowProviderLogsOncePerInterval;
+var
+  Fuse: TAtlasFuse;
+  Clock: TDateTime;
+  Skipped: Integer;
+  Text: string;
+begin
+  Clock := EncodeDateTime(2026, 10, 22, 12, 0, 0, 0);
+  Fuse := TAtlasFuse.Create(
+    function: TDateTime
+    begin
+      Result := Clock;
+    end);
+  try
+    Assert.IsTrue(Fuse.ProviderSlow('Wörter', Skipped), 'die erste Meldung wird protokolliert');
+    Assert.AreEqual(0, Skipped);
+    Clock := IncSecond(Clock, 10);
+    Assert.IsFalse(Fuse.ProviderSlow('wörter', Skipped), 'Name ohne Groß-/Kleinschreibung');
+    Assert.IsFalse(Fuse.ProviderSlow('Wörter', Skipped));
+    Assert.IsTrue(Fuse.ProviderSlow('Andere', Skipped), 'je Quelle getrennt');
+    Clock := IncSecond(Clock, TAtlasFuse.SlowLogSeconds);
+    Assert.IsTrue(Fuse.ProviderSlow('Wörter', Skipped));
+    Assert.AreEqual(2, Skipped, 'die übergangenen seit der letzten Zeile');
+    Assert.IsFalse(Fuse.ProviderTripped('Wörter'), 'langsam ist kein Fehler');
+  finally
+    Fuse.Free;
+  end;
+  TAtlasGuard.ReportProviderSlow('Wörter', 'keine Antwort innerhalb von 200 ms');
+  TAtlasGuard.ReportProviderSlow('Wörter', 'keine Antwort innerhalb von 200 ms');
+  Text := TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8);
+  Assert.AreEqual(1, Integer(Length(Text.Trim.Split([sLineBreak]))));
+  Assert.Contains(Text, 'Quelle Wörter langsam: keine Antwort innerhalb von 200 ms; zählt nicht als Fehler');
+  Assert.IsFalse(TAtlasGuard.ProviderDisabled('Wörter'));
 end;
 
 initialization
