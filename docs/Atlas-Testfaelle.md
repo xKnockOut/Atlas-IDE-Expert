@@ -3408,3 +3408,16 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; VCL-Formular mit `edtMe
 | UK4 | Zeile in `try … except … end` setzen bzw. `StrToIntDef(edtMenge.Text, 0)` schreiben | Keine Meldung; mit `try … finally` weiter gemeldet |
 | UK5 | `"unchecked-conversion": {"sources": ["Text", "AsString"]}` und `Menge := StrToInt(Query.Params[0].AsString);` | Hinweis; mit `"functions": ["StrToFloat"]` verschwindet der Hinweis auf `StrToInt` |
 | UK6 | `"unchecked-conversion": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Dictionary-Zugriff ohne Prüfung des Schlüssels (#933)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Methode mit den lokalen Variablen `Preise: TDictionary<string, Double>` und `Preis: Double` sowie der Zeile `Preis := Preise[Artikel.Nummer];`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DG1 | Unit öffnen | Hinweis `dictionary-get-without-check` an `Preise[Artikel.Nummer]`: „Schlüssel wird nicht geprüft; fehlt er, löst der Zugriff EListError aus.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| DG2 | Glühbirne, „In TryGetValue umschreiben“ | `if not Preise.TryGetValue(Artikel.Nummer, Preis) then` und eingerückt `Preis := 0;`; ein Strg+Z stellt die Zeile wieder her; kompiliert (**Abnahme**) |
+| DG3 | Davor `if Preise.ContainsKey(Artikel.Nummer) then` setzen | Keine Meldung |
+| DG4 | `for var Name in Preise.Keys do Anzeigen(Preise[Name]);` bzw. `Preise.Add('A', 1);` davor | Keine Meldung |
+| DG5 | `TObjectDictionary<string, TArtikel>` mit `Teil := Lager['A1'];` (`Teil: TArtikel`) | Hinweis; Korrektur setzt `Teil := Default(TArtikel)` |
+| DG6 | `"dictionary-get-without-check": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

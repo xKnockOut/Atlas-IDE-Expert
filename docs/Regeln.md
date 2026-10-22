@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 45 |
+| [Fehler finden](#gruppe-find-bugs) | 46 |
 | [Exceptions](#gruppe-exceptions) | 6 |
 | [Threads](#gruppe-threads) | 8 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -69,6 +69,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`case-missing-enum-value`](#case-missing-enum-value) | case über Aufzählung ohne alle Werte | Bug | Warnung |
 | [`pair-without-finally`](#pair-without-finally) | Paarige Aufrufe ohne try/finally | Bug | Warnung |
 | [`unchecked-conversion`](#unchecked-conversion) | Umwandlung einer Benutzereingabe ohne Prüfung | Bug | Hinweis |
+| [`dictionary-get-without-check`](#dictionary-get-without-check) | Dictionary-Zugriff ohne Prüfung des Schlüssels | Bug | Hinweis |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -3072,4 +3073,24 @@ Richtig:
 ```pascal
 if not TryStrToInt(edtMenge.Text, Menge) then
   raise EConvertError.Create('Menge ist keine Zahl');
+```
+
+<a id="dictionary-get-without-check"></a>
+### dictionary-get-without-check
+
+**Dictionary-Zugriff ohne Prüfung des Schlüssels** · Bug · Hinweis · Gruppe Fehler finden
+
+Dict[Key] bzw. Dict.Items[Key] wird auf einem TDictionary oder TObjectDictionary (auch über einen Typalias der Datei) gelesen, obwohl weder ContainsKey noch TryGetValue denselben Schlüssel vorher in der Routine geprüft hat. Still bleibt die Regel, wenn die Routine das Dictionary vorher selbst füllt (Add, AddOrSetValue, TryAdd, Dict[K] := ...) oder der Schlüssel aus Keys bzw. den Paaren stammt (for K in Dict.Keys, Namen := Dict.Keys.ToArray, for Pair in Dict mit K := Pair.Key). Fehlt der Schlüssel, folgt EListError. Konfidenz mittel. Schnellkorrektur für X := Dict[Key]; als eigene Anweisung, wenn X eine Variable vom Wertetyp ist: if not Dict.TryGetValue(Key, X) then X := 0 (bzw. '', False, Default(T)).
+
+Mit Treffer:
+
+```pascal
+Preis := Preise[Artikel.Nummer];
+```
+
+Richtig:
+
+```pascal
+if not Preise.TryGetValue(Artikel.Nummer, Preis) then
+  Preis := 0;
 ```

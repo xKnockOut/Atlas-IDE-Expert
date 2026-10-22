@@ -1484,6 +1484,16 @@ begin
     '          "description": "Properties that count as user input."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dictionary-get-without-check",' + #10 +
+    '      "name": "Dictionary access without key check",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "Dict[Key] or Dict.Items[Key] is read on a TDictionary or TObjectDictionary (also through a type alias of the file) although neither ContainsKey nor TryGetValue checked the same k' + 'ey earlier in the routine. The rule stays silent when the routine fills the dictionary itself beforehand (Add, AddOrSetValue, TryAdd, Dict[K] := ...) or when the key stems from Keys or the pairs (for ' + 'K in Dict.Keys, Names := Dict.Keys.ToArray, for Pair in Dict with K := Pair.Key). A missing key raises EListError. Medium confidence. Quick fix for X := Dict[Key]; as its own statement, when X is a va' + 'riable of the value type: if not Dict.TryGetValue(Key, X) then X := 0 (or '''', False, Default(T)).",' + #10 +
+    '      "bad": "Preis := Preise[Artikel.Nummer];",' + #10 +
+    '      "good": "if not Preise.TryGetValue(Artikel.Nummer, Preis) then\n  Preis := 0;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2263,6 +2273,11 @@ begin
     '          "description": "Eigenschaften, die als Benutzereingabe gelten."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dictionary-get-without-check",' + #10 +
+    '      "name": "Dictionary-Zugriff ohne Prüfung des Schlüssels",' + #10 +
+    '      "description": "Dict[Key] bzw. Dict.Items[Key] wird auf einem TDictionary oder TObjectDictionary (auch über einen Typalias der Datei) gelesen, obwohl weder ContainsKey noch TryGetValue denselben' + ' Schlüssel vorher in der Routine geprüft hat. Still bleibt die Regel, wenn die Routine das Dictionary vorher selbst füllt (Add, AddOrSetValue, TryAdd, Dict[K] := ...) oder der Schlüssel aus Keys bzw. ' + 'den Paaren stammt (for K in Dict.Keys, Namen := Dict.Keys.ToArray, for Pair in Dict mit K := Pair.Key). Fehlt der Schlüssel, folgt EListError. Konfidenz mittel. Schnellkorrektur für X := Dict[Key]; al' + 's eigene Anweisung, wenn X eine Variable vom Wertetyp ist: if not Dict.TryGetValue(Key, X) then X := 0 (bzw. '''', False, Default(T))."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

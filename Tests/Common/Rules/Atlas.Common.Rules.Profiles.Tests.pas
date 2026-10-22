@@ -176,7 +176,7 @@ const
     'component-palette-icon,component-setter-without-invalidate,confusable-identifier,' +
     'constructor-on-instance,control-char,declared-not-implemented,deprecated-symbol,deref-before-nil-check,destroy-called-directly,destroy-without-override,' +
     'dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,' +
-    'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,duplicate-condition,duplicate-interface-guid,' +
+    'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,dictionary-get-without-check,duplicate-condition,duplicate-interface-guid,' +
     'empty-except,empty-statement,exception-freed,exception-in-destructor,exception-not-raised,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,forbidden-uses,' +
     'foreign-form-control-access,form-field-type-mismatch,form-field-without-object,' +
     'form-object-without-field,format-without-settings,generic-exception-raised,hides-virtual,' +
@@ -207,7 +207,7 @@ begin
     'component-create-without-override,component-default-mismatch,component-missing-free-notification,' +
     'component-missing-inherited,constructor-on-instance,control-char,declared-not-implemented,' +
     'deref-before-nil-check,destroy-called-directly,destroy-without-override,dfm-circular-datasource,dfm-control-field-type-mismatch,' +
-    'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,' +
+    'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,dictionary-get-without-check,' +
     'duplicate-condition,duplicate-interface-guid,empty-statement,exception-freed,exception-in-destructor,exception-not-raised,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,' +
     'form-field-type-mismatch,form-field-without-object,form-object-without-field,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,lock-without-finally,loop-off-by-one,managed-type-raw-memory,' +
