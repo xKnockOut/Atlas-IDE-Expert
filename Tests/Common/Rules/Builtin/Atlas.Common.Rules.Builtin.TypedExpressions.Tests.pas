@@ -9,6 +9,9 @@
 // Einträge, Teilbereiche, Boolean, mehrere Dimensionen, benannte Array-Typen,
 // Aufzählungen aus dem Index, Record-Felder in falscher Reihenfolge, bedingte
 // Einträge, stille Fälle, Abschalten.
+// case-selector-not-ordinal (#1067): Beispiel mit IndexStr-Korrektur samt
+// uses, Gleitkomma und Klassen, for mit Double, case-Marken und Arraygrenzen
+// aus Variablen, stille Fälle, Abschalten.
 
 interface
 
@@ -60,10 +63,28 @@ type
     procedure OffAndExclude;
   end;
 
+  [TestFixture]
+  TCaseSelectorNotOrdinalTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure FloatsAndClasses;
+    [Test]
+    procedure ForWithFloatCounter;
+    [Test]
+    procedure VariablesAsConstants;
+    [Test]
+    procedure OrdinalAndUnknownAreSilent;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
 implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.TypedExpressions,
@@ -460,8 +481,171 @@ begin
     '{"rules": {"constant-initializer-mismatch": {"exclude": ["Source/*.pas"]}}}', 'Source/Status.pas'))));
 end;
 
+{ TCaseSelectorNotOrdinalTests }
+
+function CaseFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TCaseSelectorNotOrdinalRule.Create, ASource);
+end;
+
+function CaseFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TCaseSelectorNotOrdinalRule.Create, ASource, AConfig, APath);
+end;
+
+/// <summary>Unit Befehle mit uses AUses ('' = keins) und der Routine Ausfuehren(Befehl: string).</summary>
+function Befehle(const AUses, ABody: string): string;
+begin
+  Result := 'unit Befehle;'#10'interface'#10'implementation'#10;
+  if AUses <> '' then
+    Result := Result + 'uses'#10'  ' + AUses + ';'#10;
+  Result := Result + 'procedure Ausfuehren(const Befehl: string);'#10'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+/// <summary>Wendet alle Edits an (mehrzeilig), von hinten nach vorn nach Position sortiert.</summary>
+function AppliedAll(const AText: string; const AFix: TRuleFix): string;
+var
+  Edits: TArray<TRuleEdit>;
+  Index, Inner: Integer;
+  Swap: TRuleEdit;
+
+  function OffsetOf(const APosition: TTextPosition): Integer;
+  var
+    Line, Offset: Integer;
+  begin
+    Offset := 1;
+    for Line := 1 to APosition.Line do
+      Offset := Pos(#10, AText, Offset) + 1;
+    Result := Offset + APosition.Character;
+  end;
+
+begin
+  Edits := Copy(AFix.Edits);
+  for Index := 0 to High(Edits) do
+    for Inner := Index + 1 to High(Edits) do
+      if OffsetOf(Edits[Inner].Range.StartPos) > OffsetOf(Edits[Index].Range.StartPos) then
+      begin
+        Swap := Edits[Index];
+        Edits[Index] := Edits[Inner];
+        Edits[Inner] := Swap;
+      end;
+  Result := AText;
+  for Index := 0 to High(Edits) do
+    Result := Copy(Result, 1, OffsetOf(Edits[Index].Range.StartPos) - 1) + Edits[Index].NewText +
+      Copy(Result, OffsetOf(Edits[Index].Range.EndPos), MaxInt);
+end;
+
+procedure TCaseSelectorNotOrdinalTests.IssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Befehle('', '  case Befehl of'#10'    ''neu'': Neu;'#10'    ''ende'': Beenden;'#10'  end;'#10);
+  Found := CaseFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(CaseSelectorNotOrdinalRuleId, Found[0].RuleId);
+  Assert.AreEqual('case braucht einen ordinalen Typ; Befehl ist string (wie E2001).', Found[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
+  Assert.AreEqual(5, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(7, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('In case IndexStr(…) of umwandeln', Found[0].Fixes[0].Title);
+  Fixed := AppliedAll(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('  case IndexStr(Befehl, [''neu'', ''ende'']) of'#10'    0: Neu;'#10'    1: Beenden;'#10, Fixed) > 0,
+    Fixed);
+  Assert.IsTrue(Pos('uses'#10'  System.StrUtils;', Fixed) > 0, Fixed);
+  Assert.AreEqual(0, Integer(Length(CaseFindings(Fixed))), Fixed);
+  // System.StrUtils schon eingebunden, mehrere Marken je Zweig.
+  Source := Befehle('System.SysUtils, System.StrUtils', '  case Befehl of'#10'    ''a'', ''b'': Neu;'#10 +
+    '    ''c'': Beenden;'#10'  else'#10'    Exit;'#10'  end;'#10);
+  Found := CaseFindings(Source);
+  Fixed := AppliedAll(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('case IndexStr(Befehl, [''a'', ''b'', ''c'']) of'#10'    0, 1: Neu;'#10'    2: Beenden;', Fixed) > 0,
+    Fixed);
+  Assert.AreEqual(1, Integer(Pos('System.StrUtils', Fixed) > 0) * Integer(Length(Fixed.Split(['StrUtils'])) - 1));
+  // Keine String-Literale als Marken: keine Korrektur.
+  Found := CaseFindings(Befehle('', '  case Befehl of'#10'    Name: Neu;'#10'  end;'#10));
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+end;
+
+procedure TCaseSelectorNotOrdinalTests.FloatsAndClasses;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := CaseFindings('unit Werte;'#10'interface'#10'type'#10'  TKunde = class'#10'  end;'#10'implementation'#10 +
+    'procedure Pruefen(Wert: Double; Kunde: TKunde; Breit: AnsiString);'#10'begin'#10'  case Wert of'#10 +
+    '    1: Exit;'#10'  end;'#10'  case Kunde of'#10'    nil: Exit;'#10'  end;'#10'  case Breit of'#10 +
+    '    ''x'': Exit;'#10'  end;'#10'end;'#10'end.');
+  Assert.AreEqual(3, Integer(Length(Found)));
+  Assert.AreEqual('case braucht einen ordinalen Typ; Wert ist Double (wie E2001).', Found[0].Message);
+  Assert.AreEqual('case braucht einen ordinalen Typ; Kunde ist TKunde (wie E2001).', Found[1].Message);
+  Assert.AreEqual('case braucht einen ordinalen Typ; Breit ist AnsiString (wie E2001).', Found[2].Message);
+  // IndexStr nur für string.
+  Assert.AreEqual(0, Integer(Length(Found[2].Fixes)));
+end;
+
+procedure TCaseSelectorNotOrdinalTests.ForWithFloatCounter;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := CaseFindings('unit Schleifen;'#10'interface'#10'implementation'#10'procedure Laufen;'#10'var'#10 +
+    '  X: Double;'#10'  I: Integer;'#10'begin'#10'  for X := 1 to 10 do'#10'    Exit;'#10 +
+    '  for var Y: Single := 1 to 3 do'#10'    Exit;'#10'  for I := 1 to 10 do'#10'    Exit;'#10 +
+    '  for var J := 1 to 3 do'#10'    Exit;'#10'end;'#10'end.');
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('for braucht eine ordinale Zählvariable; X ist Double (wie E2032).', Found[0].Message);
+  Assert.AreEqual(8, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(6, Found[0].Range.StartPos.Character);
+  Assert.AreEqual('for braucht eine ordinale Zählvariable; Y ist Single (wie E2032).', Found[1].Message);
+end;
+
+procedure TCaseSelectorNotOrdinalTests.VariablesAsConstants;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := CaseFindings('unit Marken;'#10'interface'#10'type'#10'  TBox = class'#10'    FMax: Integer;'#10 +
+    '    procedure Pruefen(Wert, Grenze: Integer);'#10'  end;'#10'const'#10'  Fest = 3;'#10 +
+    '  Getippt: Integer = 4;'#10'var'#10'  Global: Integer;'#10'  Puffer: array[0..Global] of Byte;'#10 +
+    'implementation'#10'procedure TBox.Pruefen(Wert, Grenze: Integer);'#10'begin'#10'  case Wert of'#10 +
+    '    Fest: Exit;'#10'    Getippt: Exit;'#10'    Grenze: Exit;'#10'    FMax: Exit;'#10'    1..Global: Exit;'#10 +
+    '  end;'#10'end;'#10'end.');
+  Assert.AreEqual(5, Integer(Length(Found)), Messages(Found));
+  Assert.AreEqual('Die Arraygrenze Global ist eine Variable, keine Konstante (wie E2026).', Found[0].Message);
+  Assert.AreEqual('Die case-Marke Getippt ist eine typisierte Konstante, keine Konstante (wie E2026).',
+    Found[1].Message);
+  Assert.AreEqual('Die case-Marke Grenze ist ein Parameter, keine Konstante (wie E2026).', Found[2].Message);
+  Assert.AreEqual('Die case-Marke FMax ist ein Feld, keine Konstante (wie E2026).', Found[3].Message);
+  Assert.AreEqual('Die case-Marke Global ist eine Variable, keine Konstante (wie E2026).', Found[4].Message);
+end;
+
+procedure TCaseSelectorNotOrdinalTests.OrdinalAndUnknownAreSilent;
+begin
+  Assert.AreEqual('', Messages(CaseFindings('unit Ruhig;'#10'interface'#10'type'#10 +
+    '  TFarbe = (fRot, fBlau);'#10'const'#10'  Max = 5;'#10'type'#10'  TFeld = array[0..Max] of Integer;'#10 +
+    'implementation'#10'procedure Pruefen(I: Integer; C: Char; F: TFarbe; U: TUnbekannt; B: Boolean);'#10 +
+    'begin'#10'  case I of'#10'    1, Max: Exit;'#10'    Ord(''a'')..Ord(''z''): Exit;'#10'  end;'#10 +
+    '  case C of'#10'    ''a''..''z'': Exit;'#10'  end;'#10'  case F of'#10'    fRot: Exit;'#10'  end;'#10 +
+    '  case U of'#10'    1: Exit;'#10'  end;'#10'  case B of'#10'    True: Exit;'#10'  end;'#10 +
+    '  for var K := Low(TFeld) to High(TFeld) do'#10'    Exit;'#10'end;'#10'end.')));
+end;
+
+procedure TCaseSelectorNotOrdinalTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Befehle('', '  case Befehl of'#10'    ''neu'': Exit;'#10'  end;'#10);
+  Assert.AreEqual(1, Integer(Length(CaseFindings(Source, '', 'Source/Befehle.pas'))));
+  Assert.AreEqual(0, Integer(Length(CaseFindings(Source, '{"rules": {"case-selector-not-ordinal": "off"}}',
+    'Source/Befehle.pas'))));
+  Assert.AreEqual(0, Integer(Length(CaseFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/Befehle.pas'))));
+  Assert.AreEqual(0, Integer(Length(CaseFindings(Source,
+    '{"rules": {"case-selector-not-ordinal": {"exclude": ["Source/*.pas"]}}}', 'Source/Befehle.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TComparisonAlwaysConstantTests);
   TDUnitX.RegisterTestFixture(TConstantInitializerMismatchTests);
+  TDUnitX.RegisterTestFixture(TCaseSelectorNotOrdinalTests);
 
 end.

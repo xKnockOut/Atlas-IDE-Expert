@@ -2322,6 +2322,21 @@
         "E2072",
         "E2083"
       ]
+    },
+    {
+      "id": "case-selector-not-ordinal",
+      "name": "case or for without an ordinal type",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "case over an expression that is not ordinal (like E2001): strings, floating point numbers, classes and interfaces; a for loop whose counter is not ordinal (like E2032); case labels and array bounds that are variables, fields, properties, parameters or typed constants instead of constants (like E2026). The rule only reports when the type is known for sure and its declaration is always compiled together with the statement. Quick fix for strings whose labels are all string literals: case IndexStr(S, [...]) of with the positions as labels, System.StrUtils is added to uses.",
+      "bad": "case Befehl of 'start': Starten; 'stop': Stoppen; end;  // Befehl: string",
+      "good": "case IndexStr(Befehl, ['start', 'stop']) of 0: Starten; 1: Stoppen; end;",
+      "compilerCodes": [
+        "E2001",
+        "E2032",
+        "E2026"
+      ]
     }
   ]
 }

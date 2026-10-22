@@ -4151,3 +4151,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | KI7 | Passende Konstanten, `array of Integer`, `array[0..2] of Char = 'abc'`, Einträge in `{$IFDEF}`, Aufzählung mit bedingtem Wert, varianter Record, unbekannter Indextyp | Keine Meldung |
 | KI8 | `"constant-initializer-mismatch": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | KI9 | Abgleich mit Delphi: KI1, KI3, KI4, KI6 übersetzen | dcc meldet E2072 bzw. E2083 an denselben Stellen, für KI7 nichts |
+
+## case oder for ohne ordinalen Typ (#1067)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CN1 | Das Beispiel aus #1067: `var Befehl: string;` und `case Befehl of 'start': Starten; 'stop': Stoppen; end;` | Fehler `case-selector-not-ordinal` an `Befehl`: „case braucht einen ordinalen Typ; Befehl ist string (wie E2001).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| CN2 | Schnellkorrektur „In case IndexStr(…) of umwandeln“ in einer Unit ohne `System.StrUtils`, danach Strg+Z | Wird `case IndexStr(Befehl, ['start', 'stop']) of 0: …; 1: …`, `System.StrUtils` steht in den uses, keine Meldung mehr; ein Undo-Schritt |
+| CN3 | `case Wert of` mit `Wert: Double`, mit einem Objekt (`TObject`) und mit einem Interface | Je „case braucht einen ordinalen Typ; … (wie E2001).“, keine IndexStr-Korrektur |
+| CN4 | `var F: Double; for F := 1 to 3 do`, Inline-`for var D: Double := 1 to 3 do` | „for braucht eine ordinale Zählvariable; F ist Double (wie E2032).“ |
+| CN5 | `var Grenze: Integer;` mit `case I of Grenze: …`, typisierte Konstante `Max: Integer = 3` als Marke, `A: array[0..Grenze] of Byte` | „Die case-Marke Grenze ist eine Variable, keine Konstante (wie E2026).“, „… ist eine typisierte Konstante …“, „Die Arraygrenze Grenze ist eine Variable …“ |
+| CN6 | case über Integer, Char, Aufzählung, Teilbereich; Marken aus `const N = 3`, `Ord('A')`, `Low(TFarbe)`; Typ unbekannt oder Deklaration in `{$IFDEF}` | Keine Meldung |
+| CN7 | `"case-selector-not-ordinal": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| CN8 | Abgleich mit Delphi: CN1, CN3, CN4, CN5 übersetzen | dcc meldet E2001, E2032 bzw. E2026 an denselben Stellen, für CN6 nichts |
