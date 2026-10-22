@@ -2325,6 +2325,113 @@
       "level": "T"
     },
     {
+      "id": "constant-expression-error",
+      "name": "Error in a constant expression",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A constant expression divides by zero (like E2098), overflows beyond the range of Int64 and UInt64 (like E2099), a range has its low bound above its high bound (array[5..1], like E2011), a constant violates an integer type of fixed size or a subrange type (like W1012, reported as a warning; assignments only from values outside 0..127) or a hex, binary or octal literal needs more than 64 bits (like E2102). Atlas evaluates literals, constants (also from other units) and SizeOf/High/Low of types with a fixed size; a constant from an {$IF} branch only counts where the checked place is compiled together with it. Expressions with unknown parts stay silent.",
+      "bad": "const\n  Seiten = 0;\n  ProSeite = 100 div Seiten;",
+      "good": "const\n  Seiten = 5;\n  ProSeite = 100 div Seiten;",
+      "compilerCodes": [
+        "E2098",
+        "E2099",
+        "E2011",
+        "W1012",
+        "E2102"
+      ]
+    },
+    {
+      "id": "default-parameter-invalid",
+      "name": "Invalid default value of a parameter",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "Default values the compiler rejects: several names sharing one default value (A, B: Integer = 0, like E2237), a parameter without a default value after one with a default value (like E2238), var and out parameters with a default value (like E2239) records or static arrays with a default value (like E2268) and sets larger than 4 bytes with a default value (like E2146, only small sets are allowed; medium confidence). Applies to routines, methods and procedural types. Quick fixes: declare the parameters one by one; move the parameters with a default value to the end, also in the matching declaration or implementation header of the same file (calls are not changed).",
+      "bad": "procedure Senden(const Text: string = ''; Ziel: TZiel);",
+      "good": "procedure Senden(Ziel: TZiel; const Text: string = '');",
+      "compilerCodes": [
+        "E2237",
+        "E2238",
+        "E2239",
+        "E2268",
+        "E2146"
+      ]
+    },
+    {
+      "id": "signed-unsigned-mix",
+      "name": "Signed and unsigned mixed",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "Comparison or arithmetic (+, -, *, div, mod) with one signed and one unsigned operand whose types are known for certain (variables, fields, properties, function results, own aliases). With UInt64 the whole expression is computed unsigned and a negative value becomes a huge number (like W1073, comparison like W1023); with Cardinal/DWORD and a signed type up to 32 bits both operands are widened to Int64 (like W1023/W1024). Silent for Byte and Word, Cardinal with Int64, literals, constants, NativeInt/NativeUInt and unknown types. Medium confidence. Quick fix: convert the unsigned operand to Int64.",
+      "bad": "if Groesse + Delta < Grenze then  // Groesse: UInt64; Delta: Int64",
+      "good": "if Int64(Groesse) + Delta < Grenze then",
+      "compilerCodes": [
+        "W1023",
+        "W1024",
+        "W1073"
+      ]
+    },
+    {
+      "id": "narrowing-assignment",
+      "name": "Assignment with possible data loss",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "An assignment or an inline variable with a value whose type is wider than the target, without an explicit conversion: Int64 to Integer, NativeInt to Integer (Win64) and, via the option types, e.g. Double to Single or Extended to Double. Like W1071 (integers), W1072 (floating point) and W1066 (Extended to Double); the compiler shows W1071 only when switched on. Only reported when both types are known for certain (variables, fields, properties, function results, own aliases and integer arithmetic built from them); literals and explicit conversions stay silent. Off by default; medium confidence. Quick fixes: convert explicitly; widen the type of the target's declaration (single variable declared in the same file).",
+      "bad": "Anzahl := Strom.Size;  // Anzahl: Integer",
+      "good": "Anzahl := Integer(Strom.Size);",
+      "compilerCodes": [
+        "W1071",
+        "W1072",
+        "W1066"
+      ],
+      "options": [
+        {
+          "name": "types",
+          "type": "string-list",
+          "default": [
+            "Int64>Integer",
+            "NativeInt>Integer"
+          ],
+          "description": "Reported pairs source type>target type, e.g. Double>Single or Extended>Double."
+        }
+      ]
+    },
+    {
+      "id": "typed-constant-modified",
+      "name": "Typed constant modified",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "A typed constant (const Counter: Integer = 0) is assigned (like W1017, also an element or a record field of it) or passed as a var or out argument, including Inc, Dec, Include, Exclude, Delete, SetLength and the like (like W1016). Usually a variable was meant; this only compiles with {$J+}. When {$J-} or {$WRITEABLECONST OFF} is in effect before the declaration in the same file, it is reported as an error (like E2064 or E2197). Also reports 0 as the value of a pointer constant or an initialised pointer variable (like W1013). Quick fixes: turn a unit-level constant into a variable with an initial value (the const section is split if needed; local typed constants keep their value between calls and get no fix); write nil instead of 0.",
+      "bad": "const\n  Zaehler: Integer = 0;\n…\nInc(Zaehler);",
+      "good": "var\n  Zaehler: Integer = 0;\n…\nInc(Zaehler);",
+      "compilerCodes": [
+        "W1016",
+        "W1017",
+        "W1013",
+        "E2064",
+        "E2197"
+      ]
+    },
+    {
+      "id": "string-length-limit",
+      "name": "String limit exceeded",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "A string literal is truncated to fit a string[N] or ShortString target: assignment, typed constant or initialised variable, also via own aliases, string[Constant] and fields from other units (like W1014). Before Delphi 12 (delphiVersion below 23) a quoted literal may have at most 255 characters (like E2056), and a resourcestring may have at most 4096 characters, literals joined with + included (like E2381); both are errors. Characters are counted as written, '' and #13 count as one. Quick fixes: declare the target as string (single variable or typed constant of the same file; record fields keep their size); split the literal into pieces of 255 characters joined with +.",
+      "bad": "var Kennung: string[8];\n…\nKennung := 'KUNDE-2026-0001';",
+      "good": "var Kennung: string;\n…\nKennung := 'KUNDE-2026-0001';",
+      "compilerCodes": [
+        "W1014",
+        "E2056",
+        "E2381"
+      ]
+    },
+    {
       "id": "dynamic-array-misuse",
       "name": "New, Dispose or SetLength misused on a dynamic array",
       "category": "bug",

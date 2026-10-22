@@ -25,6 +25,10 @@ type
     procedure NamesThroughLookup;
     [Test]
     procedure NotEvaluable;
+    [Test]
+    procedure SizeOfHighLowOfFixedTypes;
+    [Test]
+    procedure CheckGivesReason;
   end;
 
 implementation
@@ -133,6 +137,42 @@ begin
   Unknown('$7FFFFFFFFFFFFFFF * 2');
   Unknown('99999999999999999999');
   Unknown('Foo');
+end;
+
+procedure TOrdinalConstantsTests.SizeOfHighLowOfFixedTypes;
+begin
+  Assert.AreEqual(Int64(255), ValueOf('High(Byte)'));
+  Assert.AreEqual(Int64(-128), ValueOf('Low(ShortInt)'));
+  Assert.AreEqual(Int64(4), ValueOf('SizeOf(Integer)'));
+  Assert.AreEqual(Int64(8), ValueOf('SizeOf(Double)'));
+  Assert.AreEqual(Int64(2), ValueOf('SizeOf(Char)'));
+  Assert.AreEqual(Int64(High(Int64)), ValueOf('High(Int64)'));
+  Assert.AreEqual(Int64(16), ValueOf('SizeOf(Int64) * 2'));
+  // Plattformabhängig oder unbekannt.
+  Unknown('SizeOf(NativeInt)');
+  Unknown('SizeOf(Pointer)');
+  Unknown('High(UInt64)');
+  Unknown('High(Double)');
+  Unknown('SizeOf(TKunde)');
+end;
+
+procedure TOrdinalConstantsTests.CheckGivesReason;
+var
+  Value: Int64;
+begin
+  Assert.AreEqual(Ord(TOrdinalStatus.Value), Ord(TOrdinalConstants.Check('6 div 2', nil, Value)));
+  Assert.AreEqual(Int64(3), Value);
+  Assert.AreEqual(Ord(TOrdinalStatus.DivisionByZero), Ord(TOrdinalConstants.Check('100 div 0', nil, Value)));
+  Assert.AreEqual(Ord(TOrdinalStatus.DivisionByZero), Ord(TOrdinalConstants.Check('100 mod (2 - 2)', nil, Value)));
+  Assert.AreEqual(Ord(TOrdinalStatus.Overflow), Ord(TOrdinalConstants.Check('1000000 * 1000000 * 1000000 * 1000',
+    nil, Value)));
+  Assert.AreEqual(Ord(TOrdinalStatus.Overflow), Ord(TOrdinalConstants.Check('Low(Int64) - 10', nil, Value)));
+  // Passt noch in UInt64: Delphi rechnet es vorzeichenlos, Atlas weiß es nicht sicher.
+  Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('High(Int64) + 1', nil, Value)));
+  Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('$7FFFFFFFFFFFFFFF * 2', nil, Value)));
+  // Unbekannter linker Teil: kein Grund.
+  Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('Foo div 0', nil, Value)));
+  Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('1.5', nil, Value)));
 end;
 
 initialization

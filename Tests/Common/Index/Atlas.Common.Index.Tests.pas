@@ -68,6 +68,9 @@ type
     /// <summary>Mitglieder in bedingten Teilen eines Klassenrumpfs (#476).</summary>
     [Test]
     procedure RecordsConditionsOfMembers;
+    /// <summary>string[N] behält die Länge in der Signatur, der Typname bleibt string (#1036).</summary>
+    [Test]
+    procedure KeepsShortStringLengthInSignature;
     /// <summary>Routinen nur im implementation-Teil unter einem nicht geltenden Zweig (#476).</summary>
     [Test]
     procedure RecordsUnavailableImplementationRoutines;
@@ -650,6 +653,24 @@ begin
   Assert.AreEqual('TNur64=WIN64;', Missing);
   Assert.IsTrue(U.Unavailable[0].InInterface);
   Assert.IsTrue(U.Unavailable[0].Kind = TIndexSymbolKind.ClassType);
+end;
+
+procedure TIndexExtractorTests.KeepsShortStringLengthInSignature;
+var
+  U: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Found: string;
+begin
+  U := TIndexExtractor.ExtractText('unit Satz;'#10'interface'#10'const'#10'  Laenge = 4;'#10'type'#10 +
+    '  TSatz = record'#10'    Kennung: string[8];'#10'    Kurz: string[Laenge];'#10'    Name: string;'#10 +
+    '    Liste: TList<string>;'#10'  end;'#10'var'#10'  Global: string [ 5 ];'#10'implementation'#10'end.',
+    'Satz.pas', nil);
+  Found := '';
+  for Symbol in U.Symbols do
+    if Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Variable] then
+      Found := Found + Symbol.Signature + '|' + Symbol.TypeName + #10;
+  Assert.AreEqual('Kennung: string[8]|string'#10'Kurz: string[Laenge]|string'#10'Name: string|string'#10 +
+    'Liste: TList<string>|TList'#10'Global: string[5]|string'#10, Found);
 end;
 
 procedure TIndexExtractorTests.RecordsConditionsOfMembers;
