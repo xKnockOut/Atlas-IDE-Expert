@@ -11,7 +11,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 5 |
 | [Compiler vorab](#gruppe-compiler) | 15 |
-| [Robustheit und Muster](#gruppe-robustness) | 4 |
+| [Robustheit und Muster](#gruppe-robustness) | 5 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
@@ -157,6 +157,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`format-without-settings`](#format-without-settings) | Formatierung abhängig vom Gebietsschema | Code Smell | Hinweis |
 | [`null-compare`](#null-compare) | Vergleich mit Null statt VarIsNull oder IsNull | Code Smell | Warnung |
 | [`path-concat-without-delimiter`](#path-concat-without-delimiter) | Pfad ohne Trennzeichen zusammengesetzt | Bug | Warnung |
+| [`hardcoded-path`](#hardcoded-path) | Fester Dateipfad im Code | Code Smell | Hinweis |
 
 <a id="gruppe-performance"></a>
 ### Performance
@@ -4582,4 +4583,27 @@ Richtig:
 ```pascal
 Ordner := TPath.GetDocumentsPath;
 Datei := TPath.Combine(Ordner, 'export.csv');
+```
+
+<a id="hardcoded-path"></a>
+### hardcoded-path
+
+**Fester Dateipfad im Code** · Code Smell · Hinweis · Gruppe Robustheit und Muster
+
+Ein String-Literal mit Laufwerksbuchstaben (C:\…, auch mit /) oder UNC-Pfad (\\server\freigabe\…); Pfade unter C:\Users bzw. C:\Documents and Settings bekommen eine eigene Meldung. Auf anderen Rechnern fehlt der Pfad. Laufwerkswurzeln wie 'C:\' allein und die Präfixe \\?\ und \\.\ bleiben still, ebenso Kommentare, Test-Units und Units aus allowUnits (z. B. eine Unit mit den Standardpfaden einer Installation). Konfidenz hoch, keine Korrektur: den Pfad aus TPath (GetDocumentsPath, GetHomePath, GetSharedDocumentsPath), den Einstellungen oder einer Umgebungsvariablen holen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowUnits` | string-list | `[]` | Units, in denen feste Pfade erlaubt sind, nach Unit-Namen; * am Ende passt auf ein Präfix (App.Config*). |
+
+Mit Treffer:
+
+```pascal
+Protokoll.SaveToFile('C:\Users\marco\Desktop\log.txt');
+```
+
+Richtig:
+
+```pascal
+Protokoll.SaveToFile(TPath.Combine(TPath.GetDocumentsPath, 'log.txt'));
 ```

@@ -4147,3 +4147,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | PC5 | `Ordner := TPath.GetDocumentsPath; if … then Ordner := IncludeTrailingPathDelimiter(Ordner); Datei := Ordner + 'x';` | Keine Meldung |
 | PC6 | `"path-concat-without-delimiter": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |
 | PC7 | Echtlauf: im Beispiel aus PC1 die Datei schreiben | Datei landet ohne Korrektur als `Documentsexport.csv` im Benutzerordner, mit Korrektur in `Documents` |
+
+## Fester Dateipfad im Code (#969)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HP1 | Das Beispiel aus #969: `Protokoll.SaveToFile('C:\Users\marco\Desktop\log.txt');` in einer Unit ohne Test-Framework | Hinweis `hardcoded-path` am Literal: „Fester Benutzerpfad; auf anderen Rechnern gibt es ihn nicht.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| HP2 | `'D:\Daten\Kunden.db'`, `'c:/Programme/Tool.exe'` | „Fester Dateipfad; auf anderen Rechnern fehlt er womöglich.“ |
+| HP3 | `'\\nas\Logs\log.txt'` | „Fester Netzwerkpfad; auf anderen Rechnern und ohne Netzwerk fehlt er womöglich.“ |
+| HP4 | `'C:\'`, `'\\?\' + Pfad`, `'\\.\COM3'`, `'Logs\log.txt'`, Pfad nur im Kommentar | Keine Meldung |
+| HP5 | Dasselbe Literal in einer DUnitX-Test-Unit | Keine Meldung |
+| HP6 | Konstante `'C:\ProgramData\Atlas'` in `App.Pfade`, dann `"hardcoded-path": {"allowUnits": ["App.*"]}` | Erst Meldung, danach keine; auf der Seite „Prüfregeln“ steht `allowUnits` unter der Regel |
+| HP7 | `"hardcoded-path": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |
