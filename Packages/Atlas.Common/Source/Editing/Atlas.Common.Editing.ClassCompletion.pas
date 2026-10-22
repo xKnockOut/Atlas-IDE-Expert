@@ -14,10 +14,12 @@
 // Methoden ohne Rumpf und Rümpfe ohne Deklaration. AddDeclaration ergänzt eine
 // fehlende Deklaration im private-Abschnitt des Typs.
 //
-// SignatureFixes (#100) gleicht Deklaration und Rumpf an, deren Parameter,
-// Modifizierer oder Rückgabetyp voneinander abweichen. Zugeordnet wird über
-// Name und Parameteranzahl; ist das nicht eindeutig, gibt es keine Aktion.
-// Standardwerte bleiben nur in der Deklaration.
+// Pairs (#996) ordnet Deklarationen und Rümpfe ohne Gegenstück einander zu,
+// deren Köpfe abweichen: gleicher Typ und Name, bei Überladungen die
+// nächstliegende Deklaration (Parameteranzahl, dann Typen, Namen und
+// Modifizierer); ist sie nicht eindeutig, bleibt das Paar aus. PairFixes (#100)
+// gleicht Rumpf und Deklaration in beide Richtungen an, auch die
+// Aufrufkonvention. Standardwerte bleiben nur in der Deklaration.
 
 interface
 
@@ -39,6 +41,35 @@ type
     Header: string;
   end;
 
+  /// <summary>Ein Parameter eines Methodenkopfs (#996).</summary>
+  TSignatureParameter = record
+    /// <summary>const, var, out, constref oder '' (Kleinbuchstaben).</summary>
+    Modifier: string;
+    Name: string;
+    /// <summary>Typ wie geschrieben; '' bei untypisierten Parametern.</summary>
+    TypeName: string;
+  end;
+
+  /// <summary>Zerlegter Kopf einer Methode (#996).</summary>
+  TSignatureShape = record
+    /// <summary>procedure, function, constructor, destructor oder operator.</summary>
+    Kind: string;
+    Parameters: TArray<TSignatureParameter>;
+    /// <summary>Ergebnistyp wie geschrieben; '' ohne.</summary>
+    ResultType: string;
+    /// <summary>Aufrufkonvention in Kleinbuchstaben (stdcall, cdecl …); '' ohne Angabe.</summary>
+    Convention: string;
+    ConventionRange: TTextRange;
+  end;
+
+  /// <summary>Deklaration und Rumpf gleichen Namens, deren Köpfe voneinander abweichen (#996).</summary>
+  TSignaturePair = record
+    Declaration: TUnmatchedMethod;
+    Body: TUnmatchedMethod;
+    DeclarationShape: TSignatureShape;
+    BodyShape: TSignatureShape;
+  end;
+
   TClassCompletion = class
   public
     /// <summary>Methoden ohne Gegenstück in Typen dieser Datei. Abstrakte, externe und forward-
@@ -52,12 +83,16 @@ type
     /// <summary>Aktion für fehlende Rümpfe an APosition; False, wenn nichts fehlt.</summary>
     class function MissingBodies(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition;
       out AAction: TCodeAction): Boolean; static;
-    /// <summary>Zu einer Methode ohne Gegenstück mit eindeutigem Partner gleichen Namens und gleicher
-    /// Parameteranzahl auf der anderen Seite: "Implementierung an Deklaration angleichen" und
-    /// "Deklaration an Implementierung angleichen" (#100). False ohne eindeutigen Partner.
-    /// Liefert Code-Aktionen statt TRuleFix, damit Editing ohne Rules auskommt (A-11); die Regeln
-    /// in Rules.Builtin.Declarations machen daraus alternative Korrekturen.</summary>
-    class function SignatureFixes(ATree: TSyntaxTree; const AText: string; const AMethod: TUnmatchedMethod;
+    /// <summary>Zerlegt den Kopf der Methode ASymbol; False, wenn er sich nicht lesen lässt.</summary>
+    class function Shape(ATree: TSyntaxTree; const AText: string; const ASymbol: TIndexSymbol;
+      out AShape: TSignatureShape): Boolean; static;
+    /// <summary>Paare aus Unmatched: Deklaration und Rumpf desselben Typs und Namens, bei Überladungen nur
+    /// wechselseitig eindeutig nächstliegende (#996).</summary>
+    class function Pairs(ATree: TSyntaxTree; const AText: string): TArray<TSignaturePair>; static;
+    /// <summary>"Implementierung an die Deklaration angleichen" und "Deklaration an die Implementierung
+    /// angleichen" (#100) für APair. Liefert Code-Aktionen statt TRuleFix, damit Editing ohne Rules
+    /// auskommt (A-11); die Regel signature-mismatch macht daraus Korrekturen.</summary>
+    class function PairFixes(ATree: TSyntaxTree; const AText: string; const APair: TSignaturePair;
       out AFixes: TArray<TCodeAction>): Boolean; static;
     /// <summary>Fügt den Rumpf ABody (ohne Zeilenumbruch am Ende) für einen Typ dieser Datei ein: hinter die
     /// letzte vorhandene Methode des Typs, sonst vor initialization, finalization bzw. "end." (#443).</summary>
@@ -70,6 +105,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Math,
   System.Generics.Collections,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.Contract,
@@ -208,6 +244,26 @@ begin
   if (Open = 0) or (Close < Open) then
     Exit('');
   Result := '(' + NormalizedParameters(Copy(ASignature, Open + 1, Close - Open - 1)) + ')';
+end;
+
+/// <summary>Ergebnistyp hinter der Parameterliste als Schlüsselteil ("|integer"); '' ohne. Rümpfe dürfen ihn
+/// weglassen, dann passt der Rumpf über den Namen allein.</summary>
+function ResultKey(const ASignature: string): string;
+var
+  Index, Depth: Integer;
+begin
+  Depth := 0;
+  for Index := 1 to Length(ASignature) do
+    case ASignature[Index] of
+      '(', '[', '<':
+        Inc(Depth);
+      ')', ']', '>':
+        Dec(Depth);
+      ':':
+        if Depth = 0 then
+          Exit('|' + LowerCase(StringReplace(Trim(Copy(ASignature, Index + 1, MaxInt)), ' ', '', [rfReplaceAll])));
+    end;
+  Result := '';
 end;
 
 function HasWord(const AText, AWord: string): Boolean;
@@ -473,62 +529,288 @@ begin
   Result := JoinGroups(Groups, After);
 end;
 
-{ TClassCompletion }
+const
+  Conventions: array[0..5] of string = ('register', 'pascal', 'cdecl', 'stdcall', 'safecall', 'winapi');
+  Directives: array[0..20] of string = ('overload', 'inline', 'static', 'virtual', 'dynamic', 'override',
+    'abstract', 'reintroduce', 'final', 'message', 'deprecated', 'platform', 'experimental', 'library', 'assembler',
+    'varargs', 'external', 'forward', 'unsafe', 'dispid', 'export');
+  Modifiers: array[0..3] of string = ('constref', 'const', 'var', 'out');
+  Kinds: array[0..4] of string = ('constructor', 'destructor', 'operator', 'function', 'procedure');
 
-class function TClassCompletion.SignatureFixes(ATree: TSyntaxTree; const AText: string;
-  const AMethod: TUnmatchedMethod; out AFixes: TArray<TCodeAction>): Boolean;
+/// <summary>Parameter einer Gruppe "const A, B: string = ''" einzeln.</summary>
+function GroupParameters(const AGroup: string): TArray<TSignatureParameter>;
 var
-  Items: TArray<TUnmatchedMethod>;
-  Item, Partner, Decl, Body: TUnmatchedMethod;
-  Partners, Same: Integer;
-  DeclRange, BodyRange: TTextRange;
-  DeclTail, BodyTail: string;
-  Fix: TCodeAction;
+  Group, Names, TypeName, Modifier, Name: string;
+  Equals, Colon, Space: Integer;
+  Parameter: TSignatureParameter;
 begin
-  AFixes := nil;
-  Result := False;
-  Items := Unmatched(ATree, AText);
-  Partners := 0;
-  Same := 0;
-  Partner := Default(TUnmatchedMethod);
-  for Item in Items do
+  Result := nil;
+  Group := AGroup;
+  Equals := DefaultPos(Group);
+  if Equals > 0 then
+    Group := Copy(Group, 1, Equals - 1);
+  Colon := Pos(':', Group);
+  if Colon > 0 then
   begin
-    if not SameText(Item.TypeName, AMethod.TypeName) or not SameText(Item.Symbol.Name, AMethod.Symbol.Name) or
-      (Item.Symbol.MaxArgs <> AMethod.Symbol.MaxArgs) then
-      Continue;
-    if Item.Declared = AMethod.Declared then
-      Inc(Same)
-    else
-    begin
-      Inc(Partners);
-      Partner := Item;
-    end;
-  end;
-  // Mehrdeutig (Überladungen gleicher Länge) oder ohne Gegenstück: nichts anbieten.
-  if (Partners <> 1) or (Same <> 1) then
-    Exit;
-  if AMethod.Declared then
-  begin
-    Decl := AMethod;
-    Body := Partner;
+    Names := Trim(Copy(Group, 1, Colon - 1));
+    TypeName := Trim(Copy(Group, Colon + 1, MaxInt));
   end
   else
   begin
-    Decl := Partner;
-    Body := AMethod;
+    Names := Trim(Group);
+    TypeName := '';
   end;
-  if not SignatureTail(ATree, AText, Decl.Symbol, DeclRange, DeclTail) or
-    not SignatureTail(ATree, AText, Body.Symbol, BodyRange, BodyTail) then
+  // Attribute wie [ref] stehen vor den Namen.
+  if Pos(']', Names) > 0 then
+    Names := Trim(Copy(Names, LastDelimiter(']', Names) + 1, MaxInt));
+  Modifier := '';
+  Space := Pos(' ', Names);
+  if (Space > 0) and MatchText(Copy(Names, 1, Space - 1), Modifiers) then
+  begin
+    Modifier := LowerCase(Copy(Names, 1, Space - 1));
+    Names := Trim(Copy(Names, Space + 1, MaxInt));
+  end;
+  while Pos('  ', TypeName) > 0 do
+    TypeName := StringReplace(TypeName, '  ', ' ', [rfReplaceAll]);
+  for Name in SplitTopLevel(Names, ',') do
+  begin
+    Parameter.Modifier := Modifier;
+    Parameter.Name := Trim(Name);
+    Parameter.TypeName := TypeName;
+    Result := Result + [Parameter];
+  end;
+end;
+
+function SameTypeName(const A, B: string): Boolean;
+begin
+  Result := SameText(StringReplace(A, ' ', '', [rfReplaceAll]), StringReplace(B, ' ', '', [rfReplaceAll]));
+end;
+
+/// <summary>Nähe zweier Köpfe für die Zuordnung bei Überladungen; höher = ähnlicher.</summary>
+function Closeness(const ADeclaration, ABody: TSignatureShape): Integer;
+var
+  Index: Integer;
+begin
+  Result := 0;
+  if Length(ADeclaration.Parameters) = Length(ABody.Parameters) then
+    Inc(Result, 100);
+  for Index := 0 to Min(High(ADeclaration.Parameters), High(ABody.Parameters)) do
+  begin
+    if SameTypeName(ADeclaration.Parameters[Index].TypeName, ABody.Parameters[Index].TypeName) then
+      Inc(Result, 10);
+    if SameText(ADeclaration.Parameters[Index].Name, ABody.Parameters[Index].Name) then
+      Inc(Result, 5);
+    if ADeclaration.Parameters[Index].Modifier = ABody.Parameters[Index].Modifier then
+      Inc(Result, 1);
+  end;
+  if SameTypeName(ADeclaration.ResultType, ABody.ResultType) then
+    Inc(Result, 3);
+  if ADeclaration.Kind = ABody.Kind then
+    Inc(Result, 3);
+end;
+
+/// <summary>Aufrufkonvention aus den Direktiven hinter dem Kopf ("overload; stdcall; …"); '' ohne.</summary>
+function ConventionOfRest(const ARest: string): string;
+var
+  Part, Word: string;
+  Space: Integer;
+begin
+  Result := '';
+  for Part in SplitTopLevel(ARest, ';') do
+  begin
+    Word := LowerCase(Trim(Part));
+    Space := Pos(' ', Word);
+    if Space > 0 then
+      Word := Copy(Word, 1, Space - 1);
+    if MatchText(Word, Conventions) then
+      Exit(Word);
+    if not MatchText(Word, Directives) then
+      Exit;
+  end;
+end;
+
+/// <summary>Weicht die ausdrücklich angegebene Konvention des Rumpfs von der Deklaration ab?</summary>
+function ConventionDiffers(const ABody, ADeclaration: string): Boolean;
+var
+  Declaration: string;
+begin
+  Declaration := ADeclaration;
+  if Declaration = '' then
+    Declaration := 'register';
+  Result := (ABody <> '') and (ABody <> Declaration);
+end;
+
+{ TClassCompletion }
+
+class function TClassCompletion.Shape(ATree: TSyntaxTree; const AText: string; const ASymbol: TIndexSymbol;
+  out AShape: TSignatureShape): Boolean;
+var
+  Tokens: TArray<TPascalToken>;
+  Range: TTextRange;
+  Tail, After, Group, Header, Rest, Word: string;
+  Groups: TArray<string>;
+  Index, Depth: Integer;
+begin
+  AShape := Default(TSignatureShape);
+  Result := SignatureTail(ATree, AText, ASymbol, Range, Tail);
+  if not Result then
     Exit;
+  Header := Signature(RangeText(TTextLines.SplitLines(AText), ASymbol.Range), Rest);
+  for Word in Kinds do
+    if HasWord(Header, Word) then
+    begin
+      AShape.Kind := Word;
+      Break;
+    end;
+  if SplitParameters(Tail, Groups, After) then
+    for Group in Groups do
+      AShape.Parameters := AShape.Parameters + GroupParameters(Group);
+  After := Trim(After);
+  if StartsStr(':', After) then
+    AShape.ResultType := Trim(Copy(After, 2, MaxInt));
+  // Direktiven hinter dem Kopf: "; overload; stdcall;"
+  Tokens := ATree.Tokens;
+  Index := 0;
+  while (Index <= High(Tokens)) and not (Tokens[Index].EndPos = Range.EndPos) do
+    Inc(Index);
+  Inc(Index);
+  while Index <= High(Tokens) do
+  begin
+    while (Index <= High(Tokens)) and (Tokens[Index].Kind = TPascalTokenKind.Comment) do
+      Inc(Index);
+    if (Index > High(Tokens)) or not Tokens[Index].IsSymbol(';') then
+      Break;
+    Inc(Index);
+    while (Index <= High(Tokens)) and (Tokens[Index].Kind = TPascalTokenKind.Comment) do
+      Inc(Index);
+    if Index > High(Tokens) then
+      Break;
+    if MatchText(Tokens[Index].Text, Conventions) then
+    begin
+      AShape.Convention := LowerCase(Tokens[Index].Text);
+      AShape.ConventionRange := TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos);
+    end
+    else if not MatchText(Tokens[Index].Text, Directives) then
+      Break;
+    // Argumente wie message WM_PAINT oder deprecated 'Grund' überspringen.
+    Depth := 0;
+    while (Index < High(Tokens)) and not ((Depth = 0) and Tokens[Index + 1].IsSymbol(';')) do
+    begin
+      if Tokens[Index].IsSymbol('(') then
+        Inc(Depth)
+      else if Tokens[Index].IsSymbol(')') then
+        Dec(Depth);
+      Inc(Index);
+    end;
+    Inc(Index);
+  end;
+end;
+
+class function TClassCompletion.Pairs(ATree: TSyntaxTree; const AText: string): TArray<TSignaturePair>;
+var
+  Items: TArray<TUnmatchedMethod>;
+  Shapes: TArray<TSignatureShape>;
+  Valid: TArray<Boolean>;
+  Index, Other: Integer;
+  Pair: TSignaturePair;
+
+  function Candidate(A, B: Integer): Boolean;
+  begin
+    Result := (A <> B) and Valid[A] and Valid[B] and (Items[A].Declared <> Items[B].Declared) and
+      SameText(Items[A].TypeName, Items[B].TypeName) and SameText(Items[A].Symbol.Name, Items[B].Symbol.Name);
+  end;
+
+  function Score(A, B: Integer): Integer;
+  begin
+    if Items[A].Declared then
+      Result := Closeness(Shapes[A], Shapes[B])
+    else
+      Result := Closeness(Shapes[B], Shapes[A]);
+  end;
+
+  /// <summary>Eindeutig nächstliegender Partner von A; -1 ohne oder bei Gleichstand.</summary>
+  function Best(A: Integer): Integer;
+  var
+    B, Top, Count: Integer;
+  begin
+    Result := -1;
+    Top := -1;
+    Count := 0;
+    for B := 0 to High(Items) do
+      if Candidate(A, B) then
+        if Score(A, B) > Top then
+        begin
+          Top := Score(A, B);
+          Result := B;
+          Count := 1;
+        end
+        else if Score(A, B) = Top then
+          Inc(Count);
+    if Count <> 1 then
+      Result := -1;
+  end;
+
+begin
+  Result := nil;
+  Items := Unmatched(ATree, AText);
+  SetLength(Shapes, Length(Items));
+  SetLength(Valid, Length(Items));
+  for Index := 0 to High(Items) do
+    Valid[Index] := Shape(ATree, AText, Items[Index].Symbol, Shapes[Index]);
+  for Index := 0 to High(Items) do
+  begin
+    if Items[Index].Declared then
+      Continue;
+    Other := Best(Index);
+    if (Other < 0) or (Best(Other) <> Index) then
+      Continue;
+    Pair.Declaration := Items[Other];
+    Pair.Body := Items[Index];
+    Pair.DeclarationShape := Shapes[Other];
+    Pair.BodyShape := Shapes[Index];
+    Result := Result + [Pair];
+  end;
+end;
+
+class function TClassCompletion.PairFixes(ATree: TSyntaxTree; const AText: string; const APair: TSignaturePair;
+  out AFixes: TArray<TCodeAction>): Boolean;
+var
+  DeclRange, BodyRange: TTextRange;
+  DeclTail, BodyTail, DeclTailText, Convention: string;
+  Fix: TCodeAction;
+  Name: string;
+begin
+  AFixes := nil;
+  Result := SignatureTail(ATree, AText, APair.Declaration.Symbol, DeclRange, DeclTail) and
+    SignatureTail(ATree, AText, APair.Body.Symbol, BodyRange, BodyTail);
+  if not Result then
+    Exit;
+  Name := APair.Body.Symbol.Name;
   Fix := Default(TCodeAction);
   Fix.Kind := QuickFixKind;
-  Fix.Title := Format('Implementierung von %s an die Deklaration angleichen', [AMethod.Symbol.Name]);
+  Fix.Title := Format('Implementierung von %s an die Deklaration angleichen', [Name]);
   Fix.Edits := [TTextEdit.Create(BodyRange, WithoutDefaults(DeclTail))];
+  // Eine abweichende Konvention im Rumpf übernimmt die der Deklaration (ohne Angabe register).
+  if (APair.BodyShape.Convention <> '') and (APair.BodyShape.Convention <> APair.DeclarationShape.Convention) then
+  begin
+    Convention := APair.DeclarationShape.Convention;
+    if Convention = '' then
+      Convention := 'register';
+    Fix.Edits := Fix.Edits + [TTextEdit.Create(APair.BodyShape.ConventionRange, Convention)];
+  end;
   AFixes := AFixes + [Fix];
-  Fix.Title := Format('Deklaration von %s an die Implementierung angleichen', [AMethod.Symbol.Name]);
-  Fix.Edits := [TTextEdit.Create(DeclRange, WithDefaultsOf(BodyTail, DeclTail))];
+  Fix.Title := Format('Deklaration von %s an die Implementierung angleichen', [Name]);
+  DeclTailText := WithDefaultsOf(BodyTail, DeclTail);
+  Fix.Edits := nil;
+  if (APair.BodyShape.Convention <> '') and (APair.BodyShape.Convention <> APair.DeclarationShape.Convention) then
+  begin
+    if APair.DeclarationShape.Convention <> '' then
+      Fix.Edits := [TTextEdit.Create(APair.DeclarationShape.ConventionRange, APair.BodyShape.Convention)]
+    else
+      DeclTailText := DeclTailText + '; ' + APair.BodyShape.Convention;
+  end;
+  Fix.Edits := [TTextEdit.Create(DeclRange, DeclTailText)] + Fix.Edits;
   AFixes := AFixes + [Fix];
-  Result := True;
 end;
 
 
@@ -538,7 +820,7 @@ var
   UnitIndex: TUnitIndex;
   TypeSymbol, Symbol: TIndexSymbol;
   Declarations, Bodies: TList<TIndexSymbol>;
-  BodyKeys: TList<string>;
+  BodyKeys, BodyConventions: TList<string>;
   TypeName, Rest, Header, Key: string;
   Index: Integer;
   Item: TUnmatchedMethod;
@@ -549,6 +831,7 @@ begin
   Declarations := TList<TIndexSymbol>.Create;
   Bodies := TList<TIndexSymbol>.Create;
   BodyKeys := TList<string>.Create;
+  BodyConventions := TList<string>.Create;
   try
     for TypeSymbol in UnitIndex.Symbols do
     begin
@@ -563,6 +846,7 @@ begin
       Declarations.Clear;
       Bodies.Clear;
       BodyKeys.Clear;
+      BodyConventions.Clear;
       for Symbol in UnitIndex.Symbols do
       begin
         if not (Symbol.Kind in MethodKinds) or not SameText(Symbol.Container, TypeName) then
@@ -572,7 +856,9 @@ begin
         else
         begin
           Bodies.Add(Symbol);
-          BodyKeys.Add(LowerCase(Symbol.Name) + ParameterKey(Signature(RangeText(Lines, Symbol.Range), Rest)));
+          Header := Signature(RangeText(Lines, Symbol.Range), Rest);
+          BodyKeys.Add(LowerCase(Symbol.Name) + ParameterKey(Header) + ResultKey(Header));
+          BodyConventions.Add(ConventionOfRest(Rest));
         end;
       end;
       for Symbol in Declarations do
@@ -580,14 +866,18 @@ begin
         Header := Signature(RangeText(Lines, Symbol.Range), Rest);
         if HasWord(Rest, 'abstract') or HasWord(Rest, 'external') or HasWord(Rest, 'forward') then
           Continue;
-        Key := LowerCase(Symbol.Name) + ParameterKey(Header);
+        Key := LowerCase(Symbol.Name) + ParameterKey(Header) + ResultKey(Header);
         Index := BodyKeys.IndexOf(Key);
         // Ohne Parameterliste im Rumpf passt er zur ersten Deklaration gleichen Namens.
         if Index < 0 then
           Index := BodyKeys.IndexOf(LowerCase(Symbol.Name));
+        // Eine andere ausdrückliche Aufrufkonvention im Rumpf passt nicht (E2037).
+        if (Index >= 0) and ConventionDiffers(BodyConventions[Index], ConventionOfRest(Rest)) then
+          Index := -1;
         if Index >= 0 then
         begin
           BodyKeys.Delete(Index);
+          BodyConventions.Delete(Index);
           Bodies.Delete(Index);
           Continue;
         end;
@@ -608,6 +898,7 @@ begin
       end;
     end;
   finally
+    BodyConventions.Free;
     BodyKeys.Free;
     Bodies.Free;
     Declarations.Free;

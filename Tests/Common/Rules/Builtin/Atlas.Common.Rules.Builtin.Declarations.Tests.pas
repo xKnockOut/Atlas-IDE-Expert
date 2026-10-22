@@ -1,7 +1,9 @@
 ﻿unit Atlas.Common.Rules.Builtin.Declarations.Tests;
 
 // Tests für declared-not-implemented und implemented-not-declared (#124) sowie
-// das Angleichen abweichender Signaturen (#100).
+// signature-mismatch (#996) mit dem Angleichen abweichender Köpfe (#100):
+// Beispiel aus dem Issue, Anzahl, Ergebnistyp, Namen, Modifizierer,
+// Aufrufkonvention, nächstliegende Überladung, Abschalten und Ausnahmen.
 
 interface
 
@@ -42,6 +44,12 @@ type
     procedure DefaultsStayInDeclaration;
     [Test]
     procedure AmbiguousOverloadOffersNoAlignment;
+    [Test]
+    procedure SignatureMismatchIssueExample;
+    [Test]
+    procedure SignatureMismatchVariants;
+    [Test]
+    procedure SignatureMismatchOffAndExclude;
   end;
 
 implementation
@@ -191,18 +199,22 @@ begin
     'unit U;'#10'interface'#10'implementation'#10'procedure Hilfe;'#10'begin'#10'end;'#10'end.');
 end;
 
-/// <summary>Wendet eine einzeilige Korrektur an (Zeilen mit #10).</summary>
-function ApplyFix(const AText: string; const AFix: TRuleFix): string;
+/// <summary>Wendet alle Edits einer Korrektur an (jedes Edit in einer Zeile, von hinten nach vorn).</summary>
+function ApplyAll(const AText: string; const AFix: TRuleFix): string;
 var
   Lines: TArray<string>;
   Edit: TRuleEdit;
   Line: string;
+  Index: Integer;
 begin
-  Edit := AFix.Edits[0];
   Lines := AText.Split([#10]);
-  Line := Lines[Edit.Range.StartPos.Line];
-  Lines[Edit.Range.StartPos.Line] := Copy(Line, 1, Edit.Range.StartPos.Character) + Edit.NewText +
-    Copy(Line, Edit.Range.EndPos.Character + 1, MaxInt);
+  for Index := High(AFix.Edits) downto 0 do
+  begin
+    Edit := AFix.Edits[Index];
+    Line := Lines[Edit.Range.StartPos.Line];
+    Lines[Edit.Range.StartPos.Line] := Copy(Line, 1, Edit.Range.StartPos.Character) + Edit.NewText +
+      Copy(Line, Edit.Range.EndPos.Character + 1, MaxInt);
+  end;
   Result := string.Join(#10, Lines);
 end;
 
@@ -211,17 +223,12 @@ var
   Source: string;
   Findings: TArray<TRuleFinding>;
 begin
-  // refactoring.syncSignatures aus (#100): Meldung bleibt, nur "Rumpf erzeugen" wird angeboten.
+  // refactoring.syncSignatures aus (#100): Meldung bleibt, ohne Angleich-Aktionen.
   Source := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;');
-  Findings := TRuleAssert.Findings(TDeclaredNotImplementedRule.Create, Source,
+  Findings := TRuleAssert.Findings(TSignatureMismatchRule.Create, Source,
     '{"refactoring": {"syncSignatures": false}}');
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.Contains(Findings[0].Message, 'andere Signatur');
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Findings := TRuleAssert.Findings(TImplementedNotDeclaredRule.Create, Source,
-    '{"refactoring": {"syncSignatures": false}}');
-  // Nur noch "Deklaration ergänzen".
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
 end;
 
 procedure TDeclarationRulesTests.ModifierMismatchAlignsBothWays;
@@ -230,23 +237,23 @@ var
   Findings: TArray<TRuleFinding>;
 begin
   Source := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;');
-  Findings := TRuleAssert.Findings(TDeclaredNotImplementedRule.Create, Source);
+  Findings := TRuleAssert.Findings(TSignatureMismatchRule.Create, Source);
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.Contains(Findings[0].Message, 'andere Signatur');
-  // Zwei Angleich-Aktionen vor "Rumpf erzeugen", alle gleichrangig.
-  Assert.AreEqual(3, Integer(Length(Findings[0].Fixes)));
-  Assert.IsTrue(Findings[0].Fixes[0].Alternative and Findings[0].Fixes[1].Alternative and
-    Findings[0].Fixes[2].Alternative);
+  Assert.AreEqual('Foo weicht von der Deklaration ab: A mit const (wie E2037).', Findings[0].Message);
+  // Rumpf angleichen zuerst, die Deklaration als zweite Aktion.
+  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
+  Assert.IsFalse(Findings[0].Fixes[0].Alternative);
+  Assert.IsTrue(Findings[0].Fixes[1].Alternative);
   Assert.AreEqual(ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(A: Integer);'#10'begin'#10'end;'),
-    ApplyFix(Source, Findings[0].Fixes[0]));
+    ApplyAll(Source, Findings[0].Fixes[0]));
   Assert.AreEqual(ClassUnit('    procedure Foo(const A: Integer);',
-    'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;'), ApplyFix(Source, Findings[0].Fixes[1]));
-  TRuleAssert.Silent(TDeclaredNotImplementedRule.Create, ApplyFix(Source, Findings[0].Fixes[0]));
-  TRuleAssert.Silent(TImplementedNotDeclaredRule.Create, ApplyFix(Source, Findings[0].Fixes[1]));
-  Assert.IsTrue(ParsesCleanly(ApplyFix(Source, Findings[0].Fixes[1])));
-  // Die Gegenseite bietet dieselben Aktionen.
-  Findings := TRuleAssert.Findings(TImplementedNotDeclaredRule.Create, Source);
-  Assert.AreEqual(3, Integer(Length(Findings[0].Fixes)));
+    'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;'), ApplyAll(Source, Findings[0].Fixes[1]));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ApplyAll(Source, Findings[0].Fixes[0]));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ApplyAll(Source, Findings[0].Fixes[1]));
+  Assert.IsTrue(ParsesCleanly(ApplyAll(Source, Findings[0].Fixes[1])));
+  // Die beiden anderen Regeln schweigen: es fehlt kein Name.
+  TRuleAssert.Silent(TDeclaredNotImplementedRule.Create, Source);
+  TRuleAssert.Silent(TImplementedNotDeclaredRule.Create, Source);
 end;
 
 procedure TDeclarationRulesTests.DefaultsStayInDeclaration;
@@ -256,9 +263,94 @@ var
 begin
   Source := ClassUnit('    function Bar(A: Integer = 5; B: string = ''x;y''): Boolean;',
     'function TFoo.Bar(const A: Integer; B: string): Boolean;'#10'begin'#10'end;');
-  Findings := TRuleAssert.Findings(TDeclaredNotImplementedRule.Create, Source);
+  Findings := TRuleAssert.Findings(TSignatureMismatchRule.Create, Source);
   Assert.AreEqual('(A: Integer; B: string): Boolean', Findings[0].Fixes[0].Edits[0].NewText);
   Assert.AreEqual('(const A: Integer = 5; B: string = ''x;y''): Boolean', Findings[0].Fixes[1].Edits[0].NewText);
+end;
+
+procedure TDeclarationRulesTests.SignatureMismatchIssueExample;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := ClassUnit('    procedure Buchen(const Betrag: Currency; Datum: TDate);',
+    'procedure TKonto.Buchen(Betrag: Currency; Datum: TDateTime);'#10'begin'#10'end;', 'TKonto = class');
+  Findings := TRuleAssert.Findings(TSignatureMismatchRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('signature-mismatch', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Buchen weicht von der Deklaration ab: Betrag ohne const, Datum TDateTime statt TDate (wie E2037).',
+    Findings[0].Message);
+  // Gemeldet am Namen im Kopf der Implementierung.
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(17, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(ClassUnit('    procedure Buchen(const Betrag: Currency; Datum: TDate);',
+    'procedure TKonto.Buchen(const Betrag: Currency; Datum: TDate);'#10'begin'#10'end;', 'TKonto = class'),
+    ApplyAll(Source, Findings[0].Fixes[0]));
+  // Korrigierte Form und naheliegender Negativfall: anders gruppiert, ohne Parameterliste im Rumpf.
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ApplyAll(Source, Findings[0].Fixes[0]));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit('    procedure Buchen(const A, B: Currency);',
+    'procedure TKonto.Buchen(const A: Currency; const B: Currency);'#10'begin'#10'end;', 'TKonto = class'));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit('    procedure Buchen(const A: Currency);',
+    'procedure TKonto.Buchen;'#10'begin'#10'end;', 'TKonto = class'));
+end;
+
+procedure TDeclarationRulesTests.SignatureMismatchVariants;
+var
+  Findings: TArray<TRuleFinding>;
+  Source: string;
+begin
+  Assert.AreEqual('Foo weicht von der Deklaration ab: 2 statt 1 Parameter (wie E2037).',
+    TRuleAssert.Findings(TSignatureMismatchRule.Create, ClassUnit('    procedure Foo(A: Integer);',
+    'procedure TFoo.Foo(A: Integer; B: Integer);'#10'begin'#10'end;'))[0].Message);
+  Assert.AreEqual('Foo weicht von der Deklaration ab: Ergebnis Int64 statt Integer (wie E2037).',
+    TRuleAssert.Findings(TSignatureMismatchRule.Create, ClassUnit('    function Foo: Integer;',
+    'function TFoo.Foo: Int64;'#10'begin'#10'end;'))[0].Message);
+  Assert.AreEqual('Foo weicht von der Deklaration ab: Wert statt A, Wert var statt out (wie E2037).',
+    TRuleAssert.Findings(TSignatureMismatchRule.Create, ClassUnit('    procedure Foo(out A: Integer);',
+    'procedure TFoo.Foo(var Wert: Integer);'#10'begin'#10'end;'))[0].Message);
+  // Aufrufkonvention: weglassen ist erlaubt, eine andere Angabe nicht.
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit('    procedure Foo(A: Integer); stdcall;',
+    'procedure TFoo.Foo(A: Integer);'#10'begin'#10'end;'));
+  Source := ClassUnit('    procedure Foo(A: Integer); stdcall;', 'procedure TFoo.Foo(A: Integer); cdecl;'#10'begin'#10'end;');
+  Findings := TRuleAssert.Findings(TSignatureMismatchRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Foo weicht von der Deklaration ab: cdecl statt stdcall (wie E2037).', Findings[0].Message);
+  Assert.AreEqual(ClassUnit('    procedure Foo(A: Integer); stdcall;',
+    'procedure TFoo.Foo(A: Integer); stdcall;'#10'begin'#10'end;'), ApplyAll(Source, Findings[0].Fixes[0]));
+  Assert.AreEqual(ClassUnit('    procedure Foo(A: Integer); cdecl;',
+    'procedure TFoo.Foo(A: Integer); cdecl;'#10'begin'#10'end;'), ApplyAll(Source, Findings[0].Fixes[1]));
+  Source := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(A: Integer); stdcall;'#10'begin'#10'end;');
+  Findings := TRuleAssert.Findings(TSignatureMismatchRule.Create, Source);
+  Assert.AreEqual('Foo weicht von der Deklaration ab: stdcall statt register (wie E2037).', Findings[0].Message);
+  Assert.AreEqual(ClassUnit('    procedure Foo(A: Integer); stdcall;',
+    'procedure TFoo.Foo(A: Integer); stdcall;'#10'begin'#10'end;'), ApplyAll(Source, Findings[0].Fixes[1]));
+  // Überladung: verglichen wird mit der nächstliegenden Deklaration.
+  Findings := TRuleAssert.Findings(TSignatureMismatchRule.Create, ClassUnit(
+    '    procedure Foo(A: Integer); overload;'#10'    procedure Foo(A, B: string); overload;',
+    'procedure TFoo.Foo(A: Integer);'#10'begin'#10'end;'#10'procedure TFoo.Foo(A: string; B: Integer);'#10 +
+    'begin'#10'end;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Foo weicht von der Deklaration ab: B Integer statt string (wie E2037).', Findings[0].Message);
+end;
+
+procedure TDeclarationRulesTests.SignatureMismatchOffAndExclude;
+var
+  Source: string;
+begin
+  Source := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSignatureMismatchRule.Create, Source,
+    '{"rules": {"signature-mismatch": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSignatureMismatchRule.Create, Source,
+    '{"rules": {"group:compiler": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSignatureMismatchRule.Create, Source,
+    '{"rules": {"signature-mismatch": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
+  // Ein fehlender Name bleibt bei den anderen Regeln.
+  Source := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Bar(A: Integer);'#10'begin'#10'end;');
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, Source);
+  TRuleAssert.Reports(TDeclaredNotImplementedRule.Create, Source);
+  TRuleAssert.Reports(TImplementedNotDeclaredRule.Create, Source);
 end;
 
 procedure TDeclarationRulesTests.AmbiguousOverloadOffersNoAlignment;

@@ -3878,3 +3878,18 @@ Voraussetzung: Server läuft; Unit mit `qry: TFDQuery` bzw. Datenmodul mit Query
 | SW6 | `WHERE` in einem späteren `SQL.Add`, `INNER JOIN`, `DELETE TOP (10)`, `LIMIT`, `'DELETE FROM X ' + Bedingung`, `FilterSetzen(qry.SQL)`, Ergänzung in einer anderen Methode, `ShowMessage('Update fehlgeschlagen')` | Keine Meldung |
 | SW7 | `"allowTables": ["Puffer"]` | `DELETE FROM Puffer` und `DELETE FROM dbo.Puffer` still, andere Tabellen weiter gemeldet; `"allowTables": "Puffer"` meldet einen Konfigurationsfehler |
 | SW8 | `"sql-write-without-where": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Implementierung weicht von der Deklaration ab (#996)
+
+Voraussetzung: Server läuft; Unit mit Klasse `TKonto`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SM1 | Deklaration `procedure Buchen(const Betrag: Currency; Datum: TDate);`, Rumpf `procedure TKonto.Buchen(Betrag: Currency; Datum: TDateTime);` | Fehler `signature-mismatch` am Namen im Rumpf: „Buchen weicht von der Deklaration ab: Betrag ohne const, Datum TDateTime statt TDate (wie E2037).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover; keine Meldung von `declared-not-implemented` oder `implemented-not-declared` (**Abnahme**) |
+| SM2 | Schnellkorrektur „Implementierung von Buchen an die Deklaration angleichen“, danach Strg+Z | Rumpf `(const Betrag: Currency; Datum: TDate)`, Code übersetzt; ein Undo-Schritt stellt es wieder her (**Abnahme**) |
+| SM3 | Zweite Aktion „Deklaration von Buchen an die Implementierung angleichen“ | Deklaration übernimmt den Kopf des Rumpfs, Standardwerte bleiben |
+| SM4 | `function Foo: Integer;` gegen `function TFoo.Foo: Int64;`; `stdcall` in der Deklaration, `cdecl` im Rumpf; zwei Parameter statt einem | je eine Meldung „Ergebnis Int64 statt Integer“, „cdecl statt stdcall“, „2 statt 1 Parameter“ |
+| SM5 | Überladungen `Foo(A: Integer)` und `Foo(A, B: string)`, Rümpfe `Foo(A: Integer)` und `Foo(A: string; B: Integer)` | eine Meldung „B Integer statt string“ |
+| SM6 | Rumpf ohne Parameterliste, Rumpf ohne `stdcall`, anders gruppierte Parameter (`const A, B` gegen `const A; const B`) | Keine Meldung |
+| SM7 | `"signature-mismatch": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei; `refactoring.syncSignatures` = `false` | Keine Meldung bzw. Meldung ohne Korrekturen |
+| SM8 | Abgleich mit Delphi: SM1, SM4 und SM5 übersetzen | dcc meldet an denselben Stellen E2037 |

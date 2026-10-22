@@ -326,7 +326,7 @@ begin
     '      "category": "bug",' + #10 +
     '      "severity": "error",' + #10 +
     '      "group": "find-bugs",' + #10 +
-    '      "description": "A method is declared in a class, record or object but has no body in the implementation section. The compiler reports this only when compiling (E2065).",' + #10 +
+    '      "description": "A method is declared in a class, record or object but has no body in the implementation section. The compiler reports this only when compiling (E2065). A body of the same name wi' + 'th a different header is reported by signature-mismatch instead.",' + #10 +
     '      "bad": "type\n  TFoo = class\n    procedure Run;\n  end;\n\nimplementation\n\nend.",' + #10 +
     '      "good": "type\n  TFoo = class\n    procedure Run;\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;\n\nend."' + #10 +
     '    },' + #10 +
@@ -336,7 +336,7 @@ begin
     '      "category": "bug",' + #10 +
     '      "severity": "error",' + #10 +
     '      "group": "find-bugs",' + #10 +
-    '      "description": "A method body TFoo.Bar has no matching declaration in the type.",' + #10 +
+    '      "description": "A method body TFoo.Bar has no declaration of that name in the type. A declaration of the same name with a different header is reported by signature-mismatch instead.",' + #10 +
     '      "bad": "type\n  TFoo = class\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;",' + #10 +
     '      "good": "type\n  TFoo = class\n  private\n    procedure Run;\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;"' + #10 +
     '    },' + #10 +
@@ -2067,6 +2067,21 @@ begin
     '          "description": "Tables that are deliberately emptied or changed completely, with or without schema."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "signature-mismatch",' + #10 +
+    '      "name": "Implementation differs from declaration",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The header in the implementation section has different parameters (count, name, type, const/var/out), a different result type, procedure instead of function or a different callin' + 'g convention than the declaration in the type (like E2037). With overloads the nearest declaration is compared (parameter count, then types, names and modifiers); if that is not unique, declared-not-i' + 'mplemented and implemented-not-declared report both sides instead. A body may omit the parameter list, the result type and the calling convention. Methods inside {$IF} blocks are skipped; with include' + ' files the confidence is medium. Quick fix: align the implementation header with the declaration, or, as the second action, the declaration with the implementation (default values stay in the declarat' + 'ion). Off with refactoring.syncSignatures = false only removes the quick fixes.",' + #10 +
+    '      "bad": "procedure Buchen(const Betrag: Currency; Datum: TDate);\n…\nprocedure TKonto.Buchen(Betrag: Currency; Datum: TDateTime);",' + #10 +
+    '      "good": "procedure Buchen(const Betrag: Currency; Datum: TDate);\n…\nprocedure TKonto.Buchen(const Betrag: Currency; Datum: TDate);",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2037",' + #10 +
+    '        "E2211",' + #10 +
+    '        "E2065"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2246,12 +2261,12 @@ begin
     '    {' + #10 +
     '      "id": "declared-not-implemented",' + #10 +
     '      "name": "Deklariert, aber nicht implementiert",' + #10 +
-    '      "description": "Eine Methode ist in einer Klasse, einem Record oder Objekt deklariert, hat aber keinen Rumpf im implementation-Abschnitt. Der Compiler meldet das erst beim Kompilieren (E2065)."' + #10 +
+    '      "description": "Eine Methode ist in einer Klasse, einem Record oder Objekt deklariert, hat aber keinen Rumpf im implementation-Abschnitt. Der Compiler meldet das erst beim Kompilieren (E2065). E' + 'inen Rumpf gleichen Namens mit anderem Kopf meldet stattdessen signature-mismatch."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "implemented-not-declared",' + #10 +
     '      "name": "Implementiert, aber nicht deklariert",' + #10 +
-    '      "description": "Ein Methodenrumpf TFoo.Bar hat keine passende Deklaration im Typ."' + #10 +
+    '      "description": "Ein Methodenrumpf TFoo.Bar hat keine Deklaration dieses Namens im Typ. Eine gleichnamige Deklaration mit anderem Kopf meldet stattdessen signature-mismatch."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "destroy-without-override",' + #10 +
@@ -3150,6 +3165,11 @@ begin
     '          "description": "Tabellen, die absichtlich ganz geleert bzw. geändert werden, mit oder ohne Schema."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "signature-mismatch",' + #10 +
+    '      "name": "Implementierung weicht von der Deklaration ab",' + #10 +
+    '      "description": "Der Kopf im implementation-Teil hat andere Parameter (Anzahl, Name, Typ, const/var/out), einen anderen Ergebnistyp, procedure statt function oder eine andere Aufrufkonvention als' + ' die Deklaration im Typ (wie E2037). Bei Überladungen wird die nächstliegende Deklaration verglichen (Parameteranzahl, dann Typen, Namen und Modifizierer); ist sie nicht eindeutig, melden declared-not' + '-implemented und implemented-not-declared beide Seiten. Ein Rumpf darf Parameterliste, Ergebnistyp und Aufrufkonvention weglassen. Methoden in {$IF}-Blöcken werden übergangen; mit Include-Dateien ist ' + 'die Konfidenz mittel. Korrektur: Kopf der Implementierung an die Deklaration angleichen oder als zweite Aktion die Deklaration an die Implementierung (Standardwerte bleiben in der Deklaration). refact' + 'oring.syncSignatures = false entfernt nur die Korrekturen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

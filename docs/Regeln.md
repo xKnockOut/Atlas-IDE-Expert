@@ -10,6 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
+| [Compiler vorab](#gruppe-compiler) | 1 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -124,6 +125,13 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`dataset-edit-without-post`](#dataset-edit-without-post) | Edit oder Append ohne Post | Bug | Warnung |
 | [`transaction-without-rollback`](#transaction-without-rollback) | Transaktion ohne Rollback | Bug | Warnung |
 | [`sql-write-without-where`](#sql-write-without-where) | UPDATE oder DELETE ohne WHERE | Bug | Warnung |
+
+<a id="gruppe-compiler"></a>
+### Compiler vorab
+
+| Regel | Name | Kategorie | Schweregrad |
+|---|---|---|---|
+| [`signature-mismatch`](#signature-mismatch) | Implementierung weicht von der Deklaration ab | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -821,7 +829,7 @@ end;
 
 **Deklariert, aber nicht implementiert** · Bug · Fehler · Gruppe Fehler finden
 
-Eine Methode ist in einer Klasse, einem Record oder Objekt deklariert, hat aber keinen Rumpf im implementation-Abschnitt. Der Compiler meldet das erst beim Kompilieren (E2065).
+Eine Methode ist in einer Klasse, einem Record oder Objekt deklariert, hat aber keinen Rumpf im implementation-Abschnitt. Der Compiler meldet das erst beim Kompilieren (E2065). Einen Rumpf gleichen Namens mit anderem Kopf meldet stattdessen signature-mismatch.
 
 Mit Treffer:
 
@@ -858,7 +866,7 @@ end.
 
 **Implementiert, aber nicht deklariert** · Bug · Fehler · Gruppe Fehler finden
 
-Ein Methodenrumpf TFoo.Bar hat keine passende Deklaration im Typ.
+Ein Methodenrumpf TFoo.Bar hat keine Deklaration dieses Namens im Typ. Eine gleichnamige Deklaration mit anderem Kopf meldet stattdessen signature-mismatch.
 
 Mit Treffer:
 
@@ -4120,4 +4128,29 @@ Richtig:
 qry.SQL.Text := 'DELETE FROM Warenkorb WHERE Kunde = :Kunde';
 qry.ParamByName('Kunde').AsInteger := KundeId;
 qry.ExecSQL;
+```
+
+<a id="signature-mismatch"></a>
+### signature-mismatch
+
+**Implementierung weicht von der Deklaration ab** · Bug · Fehler · Gruppe Compiler vorab
+
+Der Kopf im implementation-Teil hat andere Parameter (Anzahl, Name, Typ, const/var/out), einen anderen Ergebnistyp, procedure statt function oder eine andere Aufrufkonvention als die Deklaration im Typ (wie E2037). Bei Überladungen wird die nächstliegende Deklaration verglichen (Parameteranzahl, dann Typen, Namen und Modifizierer); ist sie nicht eindeutig, melden declared-not-implemented und implemented-not-declared beide Seiten. Ein Rumpf darf Parameterliste, Ergebnistyp und Aufrufkonvention weglassen. Methoden in {$IF}-Blöcken werden übergangen; mit Include-Dateien ist die Konfidenz mittel. Korrektur: Kopf der Implementierung an die Deklaration angleichen oder als zweite Aktion die Deklaration an die Implementierung (Standardwerte bleiben in der Deklaration). refactoring.syncSignatures = false entfernt nur die Korrekturen.
+
+Entspricht der Compilermeldung `E2037`, `E2211`, `E2065`.
+
+Mit Treffer:
+
+```pascal
+procedure Buchen(const Betrag: Currency; Datum: TDate);
+…
+procedure TKonto.Buchen(Betrag: Currency; Datum: TDateTime);
+```
+
+Richtig:
+
+```pascal
+procedure Buchen(const Betrag: Currency; Datum: TDate);
+…
+procedure TKonto.Buchen(const Betrag: Currency; Datum: TDate);
 ```
