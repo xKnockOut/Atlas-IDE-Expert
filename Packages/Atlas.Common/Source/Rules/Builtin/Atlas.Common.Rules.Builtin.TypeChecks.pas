@@ -38,6 +38,12 @@
 //                     ohne eingebaute Routinen (Inc, Move ... nehmen mehr an).
 //                     Korrektur: über eine lokale Variable übergeben, bei
 //                     String-Elementen und Properties mit write mit Rückschreiben.
+//   condition-not-boolean
+//                     Die Bedingung von if, while, until bzw. eines bedingten
+//                     Ausdrucks hat sicher einen Typ, der kein Boolean ist: Zahl,
+//                     Zeiger, Klasse, Interface, String oder Zeichen (wie E2012,
+//                     #1069). Korrektur: "<> 0" (Alternative "> 0"), "<> nil"
+//                     (Alternative Assigned), "<> ''" bzw. "<> #0" ergänzen.
 
 interface
 
@@ -51,6 +57,7 @@ const
   LocalRoutineAsCallbackRuleId = 'local-routine-as-callback';
   HresultIntegerMixRuleId = 'hresult-integer-mix';
   InvalidVarArgumentRuleId = 'invalid-var-argument';
+  ConditionNotBooleanRuleId = 'condition-not-boolean';
 
 type
   TDynamicArrayMisuseRule = class(TInterfacedObject, IRule)
@@ -74,6 +81,12 @@ type
   end;
 
   TInvalidVarArgumentRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TConditionNotBooleanRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -106,6 +119,14 @@ const
   // Prozedurale Typen der RTL ohne of object, auch wenn ihre Unit nicht im Index steht.
   RtlPlainProcedureTypes: array[0..3] of string = ('TListSortCompare', 'TStringListSortCompare',
     'TThreadFunc', 'TFarProc');
+  // Eingebaute Typen, die als Bedingung E2012 auslösen (condition-not-boolean).
+  ConditionIntegerTypes: array[0..19] of string = ('Integer', 'Cardinal', 'ShortInt', 'SmallInt', 'LongInt',
+    'Int64', 'Byte', 'Word', 'LongWord', 'UInt64', 'NativeInt', 'NativeUInt', 'Int8', 'Int16', 'Int32', 'UInt8',
+    'UInt16', 'UInt32', 'FixedInt', 'FixedUInt');
+  ConditionFloatTypes: array[0..5] of string = ('Single', 'Double', 'Extended', 'Real', 'Currency', 'Comp');
+  ConditionPointerTypes: array[0..4] of string = ('Pointer', 'PChar', 'PAnsiChar', 'PWideChar', 'PByte');
+  ConditionStringTypes: array[0..6] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString',
+    'ShortString', 'RawByteString', 'UTF8String');
 
 type
   /// <summary>Art eines unzulässigen Arguments für einen var- bzw. out-Parameter (invalid-var-argument).</summary>
@@ -1338,12 +1359,118 @@ begin
   end;
 end;
 
+{ TConditionNotBooleanRule }
+
+function TConditionNotBooleanRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(ConditionNotBooleanRuleId, TRuleSeverity.Error, 'Bedingung ist kein Boolean');
+end;
+
+procedure TConditionNotBooleanRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Resolver: TNameResolver;
+  FileName: string;
+  Local: TUnitIndex;
+  Node: TSyntaxNode;
+
+  /// <summary>Vergleich, der aus dem Wert vom Typ AType eine Bedingung macht ('<> 0', '<> nil' ...); '' ohne
+  /// sicheren Typ.</summary>
+  function Comparison(const AType: TResolvedSymbol): string;
+  var
+    FromUnit: TUnitIndex;
+  begin
+    Result := '';
+    if AType.Builtin then
+    begin
+      if MatchText(AType.Name, ConditionIntegerTypes) or MatchText(AType.Name, ConditionFloatTypes) then
+        Result := '<> 0'
+      else if MatchText(AType.Name, ConditionPointerTypes) then
+        Result := '<> nil'
+      else if MatchText(AType.Name, ConditionStringTypes) then
+        Result := '<> '''''
+      else if MatchText(AType.Name, ['Char', 'AnsiChar', 'WideChar']) then
+        Result := '<> #0';
+    end
+    else if AType.SymbolKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType] then
+      Result := '<> nil'
+    else if (AType.SymbolKind = TIndexSymbolKind.TypeAlias) and SymbolUnit(Resolver, Local, AType, FromUnit) and
+      StartsStr('^', DeclaredTypeText(AContext, AType)) then
+      // Typisierter Zeiger (PZahl = ^Integer).
+      Result := '<> nil';
+  end;
+
+  /// <summary>Korrektur: die Bedingung ACondition durch ANewText ersetzen.</summary>
+  function Replacement(ACondition: TSyntaxNode; const ANewText: string; AAlternative: Boolean): TRuleFix;
+  begin
+    Result := TRuleFix.Create(ANewText, [TTextEdit.Create(TTextRange.Create(ACondition.StartPos, ACondition.EndPos),
+      ANewText)]);
+    Result.Alternative := AAlternative;
+  end;
+
+  procedure CheckCondition(ACondition: TSyntaxNode);
+  var
+    Inner: TSyntaxNode;
+    Symbol, TypeInfo: TResolvedSymbol;
+    TypeFound: Boolean;
+    Compare, Text: string;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Inner := ACondition;
+    while (Inner.Kind = TSyntaxKind.ParenExpr) and (Inner.ChildCount = 1) do
+      Inner := Inner[0];
+    if not (Inner.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
+      TSyntaxKind.IndexAccess, TSyntaxKind.Dereference]) or
+      not Resolver.NodeType(AContext.Tree, FileName, Inner, Symbol, TypeInfo, TypeFound) or not TypeFound or
+      Symbol.IsType or (Symbol.Condition <> '') or (Symbol.VariantBranch <> '') then
+      Exit;
+    Compare := Comparison(TypeInfo);
+    if Compare = '' then
+      Exit;
+    Text := NodeText(AContext, ACondition);
+    Fixes := [Replacement(ACondition, Text + ' ' + Compare, False)];
+    if Compare = '<> nil' then
+      Fixes := Fixes + [Replacement(ACondition, Format('Assigned(%s)', [Text]), True)]
+    else if MatchText(TypeInfo.Name, ConditionIntegerTypes) then
+      Fixes := Fixes + [Replacement(ACondition, Text + ' > 0', True)];
+    AReport.Add(TTextRange.Create(ACondition.StartPos, ACondition.EndPos),
+      Format('Die Bedingung ist %s, nicht Boolean (wie E2012).', [TypeInfo.Name]), TRuleConfidence.High, Fixes);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  FileName := ResolverFileName(AContext);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  try
+    Resolver.Namespaces := AContext.Namespaces;
+    Resolver.PinTree(AContext.Tree, FileName);
+    try
+      Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
+      for Node in PreOrder(AContext.Tree.Root) do
+        case Node.Kind of
+          TSyntaxKind.IfStatement, TSyntaxKind.WhileStatement, TSyntaxKind.IfExpr:
+            if Node.ChildCount > 0 then
+              CheckCondition(Node[0]);
+          TSyntaxKind.RepeatStatement:
+            // Die Bedingung hinter until ist das letzte Kind.
+            if Node.ChildCount > 0 then
+              CheckCondition(Node[Node.ChildCount - 1]);
+        end;
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
 procedure RegisterTypeCheckRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDynamicArrayMisuseRule.Create);
   ARegistry.Register(TLocalRoutineAsCallbackRule.Create);
   ARegistry.Register(THresultIntegerMixRule.Create);
   ARegistry.Register(TInvalidVarArgumentRule.Create);
+  ARegistry.Register(TConditionNotBooleanRule.Create);
 end;
 
 end.

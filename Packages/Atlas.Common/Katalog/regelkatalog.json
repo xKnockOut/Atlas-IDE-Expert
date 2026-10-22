@@ -2354,6 +2354,19 @@
         "E2454",
         "E2036"
       ]
+    },
+    {
+      "id": "condition-not-boolean",
+      "name": "Condition is not Boolean",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "The condition of if, while, until or a conditional expression has a type that is surely not Boolean: a number, a pointer, a class, an interface, a string or a character (like E2012). Unlike C, Delphi needs a Boolean. Reported only when the type is certain; Boolean types such as LongBool, enumerations, aliases and unknown types stay silent. Quick fix: add <> 0 (alternative > 0), <> nil (alternative Assigned), <> '' or <> #0.",
+      "bad": "if Liste.Count then\n  Verarbeiten;",
+      "good": "if Liste.Count > 0 then\n  Verarbeiten;",
+      "compilerCodes": [
+        "E2012"
+      ]
     }
   ]
 }

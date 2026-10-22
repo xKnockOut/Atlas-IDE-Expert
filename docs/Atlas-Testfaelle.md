@@ -4180,3 +4180,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
 | YV6 | Variablen, Feldelemente, `Inc(Zahl)`, `Move(S[1], …)`, untypisierte var-Parameter, Typumwandlung `Integer(Zahl)`, überladene Routinen aus einer anderen Unit, typisierte Konstante unter `{$J+}` | Keine Meldung |
 | YV7 | `"invalid-var-argument": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | YV8 | Abgleich mit Delphi: YV1, YV3 und YV4 übersetzen | dcc meldet an denselben Stellen Fehler; die Codes in den Meldungen stimmen (E2354, E2197, E2192, E2454, E2036); Abweichungen im Code bitte notieren |
+
+## Bedingung ist kein Boolean (#1069)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| YB1 | Das Beispiel aus #1069: `if Liste.Count then Verarbeiten;` mit `Liste: TList` | Fehler `condition-not-boolean` an `Liste.Count`: „Die Bedingung ist Integer, nicht Boolean (wie E2012).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| YB2 | Schnellkorrektur „Liste.Count > 0“ (Alternative) bzw. „Liste.Count <> 0“, danach Strg+Z | `if Liste.Count > 0 then` bzw. `<> 0`; keine Meldung mehr, kompiliert; ein Undo-Schritt nimmt es zurück |
+| YB3 | `while Rest do` mit `Rest: Int64`, `repeat … until Zeiger;` mit `Zeiger: PInteger`, `if Objekt then`, `if S then` mit `S: string` | Je eine Meldung mit dem Typ (Int64, PInteger, Klasse, string); bei Zeigern und Objekten die Korrekturen „<> nil“ und „Assigned(…)“ |
+| YB4 | Bedingter Ausdruck `X := if Anzahl then 1 else 0;` (Delphi 13) | Meldung wie YB1 |
+| YB5 | `if Flag then` mit `Flag: Boolean`, `LongBool` bzw. `BOOL`, `if not Liste.IsEmpty then`, `if A and B then` mit Booleans, Variant als Bedingung, unbekannter Bezeichner | Keine Meldung |
+| YB6 | `"condition-not-boolean": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| YB7 | Abgleich mit Delphi: YB1, YB3 übersetzen | dcc meldet E2012 an denselben Stellen, für YB5 nicht |

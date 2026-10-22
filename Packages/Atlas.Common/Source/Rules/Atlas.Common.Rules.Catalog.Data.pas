@@ -2374,6 +2374,19 @@ begin
     '        "E2454",' + #10 +
     '        "E2036"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "condition-not-boolean",' + #10 +
+    '      "name": "Condition is not Boolean",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The condition of if, while, until or a conditional expression has a type that is surely not Boolean: a number, a pointer, a class, an interface, a string or a character (like E20' + '12). Unlike C, Delphi needs a Boolean. Reported only when the type is certain; Boolean types such as LongBool, enumerations, aliases and unknown types stay silent. Quick fix: add <> 0 (alternative > 0' + '), <> nil (alternative Assigned), <> '''' or <> #0.",' + #10 +
+    '      "bad": "if Liste.Count then\n  Verarbeiten;",' + #10 +
+    '      "good": "if Liste.Count > 0 then\n  Verarbeiten;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2012"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3564,6 +3577,11 @@ begin
     '      "id": "invalid-var-argument",' + #10 +
     '      "name": "Ungültiges Argument für einen var- oder out-Parameter",' + #10 +
     '      "description": "Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: ein String-Element für einen Zeichen-Parameter (wie E2354), eine Konstante, einen const-Parameter, eine Propert' + 'y oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192), Slice (wie E2454) oder einen Ausdruck (wie E2036). Gemeldet nur für Routinen ohne Überladungen, deren Kopf a' + 'us der Datei oder dem Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {' + '$J+}. Korrektur: eine lokale Variable vom Typ des Parameters übergeben, bei String-Elementen und Properties mit write mit Rückschreiben."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "condition-not-boolean",' + #10 +
+    '      "name": "Bedingung ist kein Boolean",' + #10 +
+    '      "description": "Die Bedingung von if, while, until oder eines bedingten Ausdrucks hat sicher einen Typ, der kein Boolean ist: Zahl, Zeiger, Klasse, Interface, String oder Zeichen (wie E2012). An' + 'ders als C verlangt Delphi einen Boolean. Gemeldet nur bei sicher bekanntem Typ; Boolean-Typen wie LongBool, Aufzählungen, Aliase und unbekannte Typen bleiben still. Korrektur: <> 0 (Alternative > 0),' + ' <> nil (Alternative Assigned), <> '''' bzw. <> #0 ergänzen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

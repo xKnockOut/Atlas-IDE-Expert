@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 19 |
+| [Compiler vorab](#gruppe-compiler) | 20 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -150,6 +150,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`local-routine-as-callback`](#local-routine-as-callback) | Lokale Routine als Prozedurvariable | Bug | Fehler |
 | [`hresult-integer-mix`](#hresult-integer-mix) | Integer und HRESULT vertauscht | Bug | Warnung |
 | [`invalid-var-argument`](#invalid-var-argument) | Ungültiges Argument für einen var- oder out-Parameter | Bug | Fehler |
+| [`condition-not-boolean`](#condition-not-boolean) | Bedingung ist kein Boolean | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4655,4 +4656,27 @@ Richtig:
 Zeichen := Zeile[1];
 Erhoehen(Zeichen);
 Zeile[1] := Zeichen;
+```
+
+<a id="condition-not-boolean"></a>
+### condition-not-boolean
+
+**Bedingung ist kein Boolean** · Bug · Fehler · Gruppe Compiler vorab
+
+Die Bedingung von if, while, until oder eines bedingten Ausdrucks hat sicher einen Typ, der kein Boolean ist: Zahl, Zeiger, Klasse, Interface, String oder Zeichen (wie E2012). Anders als C verlangt Delphi einen Boolean. Gemeldet nur bei sicher bekanntem Typ; Boolean-Typen wie LongBool, Aufzählungen, Aliase und unbekannte Typen bleiben still. Korrektur: <> 0 (Alternative > 0), <> nil (Alternative Assigned), <> '' bzw. <> #0 ergänzen.
+
+Entspricht der Compilermeldung `E2012`.
+
+Mit Treffer:
+
+```pascal
+if Liste.Count then
+  Verarbeiten;
+```
+
+Richtig:
+
+```pascal
+if Liste.Count > 0 then
+  Verarbeiten;
 ```
