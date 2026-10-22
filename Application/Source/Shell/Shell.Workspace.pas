@@ -1111,7 +1111,8 @@ var
     if Seen.ContainsKey(AnsiUpperCase(AFileName)) or not FileExists(AFileName) then
       Exit;
     Seen.Add(AnsiUpperCase(AFileName), True);
-    Survey.Add(TFile.ReadAllBytes(AFileName));
+    // Über TFileEncoding: teilt Löschen, damit das Plugin die Unit währenddessen ersetzen kann (Bericht M5).
+    Survey.Add(TFileEncoding.ReadAllBytes(AFileName));
   end;
 
 begin

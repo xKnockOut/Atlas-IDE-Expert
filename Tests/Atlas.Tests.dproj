@@ -181,6 +181,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IndexRefresh.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WorkspaceFolders.Tests.pas"/>
         <DCCReference Include="Windows\Documents\Atlas.Windows.Documents.PathCanonicalizer.Tests.pas"/>
+        <DCCReference Include="Windows\Documents\Atlas.Windows.Documents.SharedRead.Tests.pas"/>
         <DCCReference Include="Windows\Documents\Atlas.Windows.Documents.FileWatcher.Tests.pas"/>
         <DCCReference Include="Windows\Process\Atlas.Windows.Process.Instances.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Lexer.Tests.pas"/>
