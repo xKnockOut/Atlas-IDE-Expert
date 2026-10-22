@@ -29,8 +29,11 @@
 // - editor.breadcrumbsIdeColors: Fläche und Schrift wie die Werkzeugleisten
 //   des IDE-Themas (TAtlasIdeStyle.ChromeColors), sonst Atlas-Palette.
 // - editor.breadcrumbsHideIdeToolbar: Die Navigationsleiste der IDE („Typ
-//   suchen“/„Methode suchen“) ist ausgeblendet, solange die Leiste an ist
-//   (TAtlasNavigationToolbar); aus oder beim Entladen kommt sie zurück.
+//   suchen“/„Methode suchen“) ist ausgeblendet, solange die Leiste an ist;
+//   aus oder beim Entladen kommt sie zurück. Ausgeblendet wird über die
+//   IDE-Option „Navigationssymbolleiste anzeigen“ (TAtlasIdeNavigationOption,
+//   Bericht M3). Nur wenn die IDE keine solche Option hat, hängt
+//   TAtlasNavigationToolbar die Leiste um (Netz).
 // Abgrenzung zum mitlaufenden Kopf (#506) und zum Gliederungsfenster (#537):
 // docs/Architektur.md. Nur im Hauptthread.
 
@@ -76,6 +79,7 @@ uses
   Atlas.UI.Commands.Palette,
   Atlas.UI.Outline.Breadcrumbs,
   Atlas.UI.Outline.NavigationToolbar,
+  Atlas.IDE.Outline.NavigationOption,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
@@ -115,6 +119,8 @@ type
     FShown: Boolean;
     FActiveBar: TAtlasBreadcrumbBar;
     FToolbars: TAtlasNavigationToolbar;
+    /// <summary>Blendet die IDE die Navigationsleiste über ihre Option aus? Dann hängt Atlas nichts um.</summary>
+    FToolbarByIde: Boolean;
     /// <summary>Fenster, das zuletzt unter der Maus über der Leiste lag (Diagnose).</summary>
     FProbed: HWND;
     /// <summary>Zeigen die Leisten gerade den Hinweis „abgeschaltet“?</summary>
@@ -186,7 +192,8 @@ var
   Bar: TAtlasBreadcrumbBar;
 begin
   FTimer.Free;
-  // Navigationsleisten der IDE zurückhängen.
+  // Navigationsleisten der IDE wieder zeigen: Option zurück, wenn Atlas sie ausgeschaltet hatte, bzw. zurückhängen.
+  TAtlasIdeNavigationOption.Apply(False);
   FToolbars.Free;
   // Leisten selbst freigeben; der Wächter darf dabei nicht mehr zurückschreiben.
   FWatcher.FState := nil;
@@ -211,15 +218,20 @@ begin
 end;
 
 procedure TBreadcrumbsState.Reset;
+var
+  Hide: Boolean;
 begin
   FFileName := '';
   FStamp := 0;
   FShown := False;
   FLine := -1;
   FCharacter := -1;
-  // Farben und Navigationsleiste der IDE nach geänderten Einstellungen.
+  // Farben und Navigationsleiste der IDE nach geänderten Einstellungen. Die Leiste blendet die IDE über ihre
+  // Option aus (Bericht M3); umgehängt wird nur ohne diese Option (Netz).
   ApplyTheme;
-  if not TAtlasIdeSettings.Current.BreadcrumbsHideIdeToolbar then
+  Hide := TAtlasIdeSettings.Current.BreadcrumbsHideIdeToolbar;
+  FToolbarByIde := TAtlasIdeNavigationOption.Apply(Hide);
+  if FToolbarByIde or not Hide then
     FToolbars.RestoreAll;
 end;
 
@@ -241,8 +253,11 @@ begin
     Bar.SetColors(Colors);
 end;
 
+/// <summary>Netz, nur ohne Option der IDE (siehe Reset): Navigationsleiste in ein eigenes Panel umhängen.</summary>
 procedure TBreadcrumbsState.ApplyToolbar(AParent: TWinControl);
 begin
+  if FToolbarByIde then
+    Exit;
   if TAtlasIdeSettings.Current.BreadcrumbsHideIdeToolbar then
     FToolbars.Apply(AParent, True);
 end;
@@ -752,7 +767,10 @@ begin
   FreeAndNil(FState);
   // Auch bei ausgelöster Sicherung: Die Leiste zeigt dann den Hinweis (ShowDisabled).
   if Enabled then
-    FState := TBreadcrumbsState.Create;
+    FState := TBreadcrumbsState.Create
+  else
+    // Hatte Atlas die Navigationsleiste ausgeblendet und die IDE endete ohne Entladen: wieder zeigen.
+    TAtlasIdeNavigationOption.Apply(False);
 end;
 
 class procedure TAtlasIdeBreadcrumbs.Uninstall;

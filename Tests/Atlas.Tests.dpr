@@ -607,6 +607,8 @@ uses
   Atlas.Core.Outline.StickyScroll.Tests in 'IDE.Expert\Atlas.Core.Outline.StickyScroll.Tests.pas',
   Atlas.Core.Outline.LoadGuard in '..\Packages\Atlas.IDE.Expert\Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas',
   Atlas.Core.Outline.LoadGuard.Tests in 'IDE.Expert\Atlas.Core.Outline.LoadGuard.Tests.pas',
+  Atlas.Core.Outline.NavigationOption in '..\Packages\Atlas.IDE.Expert\Source\Core\Outline\Atlas.Core.Outline.NavigationOption.pas',
+  Atlas.Core.Outline.NavigationOption.Tests in 'IDE.Expert\Atlas.Core.Outline.NavigationOption.Tests.pas',
   Atlas.UI.Outline.Breadcrumbs in '..\Packages\Atlas.IDE.Expert\Source\UI\Outline\Atlas.UI.Outline.Breadcrumbs.pas',
   Atlas.UI.Outline.Breadcrumbs.Tests in 'IDE.Expert\Atlas.UI.Outline.Breadcrumbs.Tests.pas',
   Atlas.UI.Outline.NavigationToolbar in '..\Packages\Atlas.IDE.Expert\Source\UI\Outline\Atlas.UI.Outline.NavigationToolbar.pas',
