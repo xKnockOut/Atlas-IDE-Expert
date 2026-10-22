@@ -2323,6 +2323,119 @@ begin
     '        "E2129",' + #10 +
     '        "E2130"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inaccessible-member",' + #10 +
+    '      "name": "Access to a member that is not visible",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Access A.B to a member that is not visible at that point: private or strict private of another unit or class (like E2361), protected or strict protected outside the declaring uni' + 't and its descendants (like E2362, E2389). Inside a class method or static method, an instance field, method or property of the class is not reachable (like E2124). A property that refers to a private' + ' member of an ancestor in the same unit is reported as a warning (like W1045). The rule only reports when name resolution knows the receiver and its type for sure and finds the member only without reg' + 'ard to visibility; protected members stay visible through a class declared in the same unit (TAccess(Control).Click). Declarations in conditional branches, methods of helpers and nested types stay sil' + 'ent.",' + #10 +
+    '      "bad": "class function TKonfig.Standard: TKonfig;\nbegin\n  Result := TKonfig.Create;\n  Result.Pfad := FBasisPfad;\nend;",' + #10 +
+    '      "good": "class function TKonfig.Standard: TKonfig;\nbegin\n  Result := TKonfig.Create;\n  Result.Pfad := Result.FBasisPfad;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2361",' + #10 +
+    '        "E2362",' + #10 +
+    '        "E2389",' + #10 +
+    '        "E2124",' + #10 +
+    '        "W1045"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-private-member",' + #10 +
+    '      "name": "Private member never used",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A private or strict private field, method, constant or property is never used in the unit (like H2219, which the compiler only reports for methods; fields too unless includeField' + 's is off). Any occurrence of the name as an identifier counts as a use, also in inactive conditional branches and behind read/write; declarations and method headers do not. Exempt: methods with messag' + 'e, virtual, dynamic, override or abstract, methods of types that implement interfaces, constructors and destructors, members with attributes (RTTI), names from the form file and units with include fil' + 'es. Quick fix: remove the declaration (with its /// documentation) and the body of a method; not when several members share the declaration or the method is overloaded.",' + #10 +
+    '      "bad": "  TImport = class\n  private\n    FAltFormat: Boolean;\n    procedure KonvertiereAlt;\n  end;",' + #10 +
+    '      "good": "  TImport = class\n  private\n  end;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "H2219"' + #10 +
+    '      ],' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "includeFields",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Also report private fields that are never used (the compiler reports only methods)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-public-member",' + #10 +
+    '      "name": "Public member never used in the project",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A public or published method, constant or property (optionally also protected members, fields and class variables, and unit-level routines and constants of the interface section)' + ' is used nowhere in the projects of the project group. The search is project-wide via the symbol index: only files whose index usages contain the name are parsed, and every occurrence is resolved by n' + 'ame resolution; an occurrence that cannot be resolved counts as a use. Names in form files (.dfm/.fmx) and in string literals count as uses. Considered used: interface implementations and members of i' + 'nterfaces, virtual, dynamic, override, abstract and message methods, constructors, destructors, operators, enumerators, default properties, implements, members with attributes, published members of TP' + 'ersistent descendants (streaming), of classes registered with RegisterComponents, RegisterClass or RegisterClasses and of test fixtures, published methods while a form file cannot be read, property ac' + 'cessors, exported routines, class helpers, members of classes with an unknown ancestor. Silent while projects are loading or the index is incomplete, when a file cannot be read, for units with include' + ' files and for units of packages or libraries (external users) unless projectKinds allows them. Quick fix: mark as intentionally public (lsp-ignore comment).",' + #10 +
+    '      "bad": "  TExport = class\n  public\n    procedure ExportiereAlsXml;\n  end;\n// ExportiereAlsXml is called nowhere in the project group",' + #10 +
+    '      "good": "  TExport = class\n  public\n    procedure ExportiereAlsJson; // called by TMainForm\n  end;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "visibilities",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "public",' + #10 +
+    '            "published"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Visibilities that are checked: public, published, protected."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "memberKinds",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "method",' + #10 +
+    '            "constant",' + #10 +
+    '            "property"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Member kinds that are checked: method, constant, property, field, classVar."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "projectKinds",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "application"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Project kinds whose units are checked: application, package, library. Packages and libraries have users outside the project group, so they are off by default."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "unitLevel",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Also check routines and constants declared in the interface section of a unit."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "scope",' + #10 +
+    '          "type": "string",' + #10 +
+    '          "default": "projectGroup",' + #10 +
+    '          "description": "Where uses are searched: projectGroup (all projects of the group) or project (only the projects of the file)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "testsCountAsUse",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Uses in test projects count; when off, a member used only by tests is reported as such."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "stringLiteralsCountAsUse",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "The name as a string literal (''Name'') counts as a use (RTTI, MethodAddress, scripts)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "keepAttributes",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Attributes on the member or its type that mark it as used, e.g. \"Keep\" or \"Api\"."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "keepPatterns",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Name patterns (* and ?) for members that are always considered used, e.g. \"TPlugin.*\" or \"*Callback\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3498,6 +3611,65 @@ begin
     '      "id": "readonly-property-assigned",' + #10 +
     '      "name": "Zuweisung an eine Property ohne write",' + #10 +
     '      "description": "Zuweisung an eine Property ohne write (wie E2129) bzw. Lesen einer Property ohne read (wie E2130). Die Regel meldet nur, wenn die Namensauflösung die Property sicher findet; Neud' + 'eklarationen ohne read und write (property Caption;) gelten als unbekannt. Korrekturen: Count := 0 wird Clear, wenn der Typ Clear hat; in einer Methode der deklarierenden Klasse das Feld hinter read z' + 'uweisen; für eine Property dieser Datei den Setter anlegen und write ergänzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inaccessible-member",' + #10 +
+    '      "name": "Zugriff auf ein nicht sichtbares Mitglied",' + #10 +
+    '      "description": "Zugriff A.B auf ein Mitglied, das an der Stelle nicht sichtbar ist: private bzw. strict private einer anderen Unit oder Klasse (wie E2361), protected bzw. strict protected außerh' + 'alb der deklarierenden Unit und ihrer Nachfahren (wie E2362, E2389). In einer Klassenmethode oder statischen Methode sind Instanzfelder, -methoden und -Properties der Klasse nicht erreichbar (wie E212' + '4). Eine Property, die auf ein private-Mitglied eines Vorfahren derselben Unit verweist, meldet die Regel als Warnung (wie W1045). Gemeldet wird nur, wenn die Namensauflösung den Empfänger und seinen ' + 'Typ sicher kennt und das Mitglied erst ohne Rücksicht auf die Sichtbarkeit findet; protected-Mitglieder bleiben über eine Klasse der eigenen Unit sichtbar (TZugang(Control).Click). Deklarationen in be' + 'dingten Zweigen, Methoden von Helfern und verschachtelten Typen bleiben still."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-private-member",' + #10 +
+    '      "name": "Privates Mitglied wird nie verwendet",' + #10 +
+    '      "description": "Ein private- oder strict-private-Feld, eine Methode, Konstante oder Property kommt in der Unit nirgends vor (wie H2219, das der Compiler nur für Methoden meldet; Felder ebenso, a' + 'ußer includeFields ist aus). Jedes Vorkommen des Namens als Bezeichner zählt als Verwendung, auch in inaktiven bedingten Zweigen und hinter read/write; Deklarationen und Methodenköpfe zählen nicht. Au' + 'sgenommen: Methoden mit message, virtual, dynamic, override oder abstract, Methoden von Typen, die Interfaces umsetzen, Konstruktoren und Destruktoren, Mitglieder mit Attributen (RTTI), Namen aus der ' + 'Formulardatei und Units mit Include-Dateien. Korrektur: Deklaration (samt ///-Doku) und den Rumpf einer Methode entfernen; nicht, wenn sich mehrere Mitglieder die Deklaration teilen oder die Methode ü' + 'berladen ist.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "includeFields",' + #10 +
+    '          "description": "Auch nie verwendete private Felder melden (der Compiler meldet nur Methoden)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-public-member",' + #10 +
+    '      "name": "Öffentliches Mitglied wird im Projekt nie verwendet",' + #10 +
+    '      "description": "Eine public- oder published-Methode, -Konstante oder -Property (wahlweise auch protected-Mitglieder, Felder und Klassenvariablen sowie Routinen und Konstanten im interface-Abschn' + 'itt einer Unit) wird in den Projekten der Projektgruppe nirgends verwendet. Die Suche läuft projektweit über den Symbolindex: Nur Dateien, deren Verwendungen im Index den Namen enthalten, werden geles' + 'en, und jedes Vorkommen wird über die Namensauflösung zugeordnet; ein Vorkommen, das sich nicht auflösen lässt, zählt als Verwendung. Namen in Formulardateien (.dfm/.fmx) und in String-Literalen zähle' + 'n als Verwendung. Gelten als verwendet: Interface-Umsetzungen und Mitglieder von Interfaces, Methoden mit virtual, dynamic, override, abstract oder message, Konstruktoren, Destruktoren, Operatoren, En' + 'umeratoren, Default-Properties, implements, Mitglieder mit Attributen, published-Mitglieder von TPersistent-Nachfahren (Streaming), von Klassen aus RegisterComponents, RegisterClass oder RegisterClass' + 'es und von Testklassen, published-Methoden, solange eine Formulardatei nicht lesbar ist, Property-Zugriffsmethoden, exportierte Routinen, Klassenhelfer und Mitglieder von Klassen mit unbekanntem Vorfa' + 'hren. Still, solange Projekte laden oder der Index unvollständig ist, wenn eine Datei nicht lesbar ist, bei Units mit Include-Dateien und bei Units von Packages oder Bibliotheken (Nutzer außerhalb des' + ' Projekts), außer projectKinds lässt sie zu. Korrektur: als bewusst öffentlich markieren (lsp-ignore-Kommentar).",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "visibilities",' + #10 +
+    '          "description": "Geprüfte Sichtbarkeiten: public, published, protected."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "memberKinds",' + #10 +
+    '          "description": "Geprüfte Mitgliedsarten: method, constant, property, field, classVar."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "projectKinds",' + #10 +
+    '          "description": "Projektarten, deren Units geprüft werden: application, package, library. Packages und Bibliotheken haben Nutzer außerhalb der Projektgruppe und sind deshalb standardmäßig aus' + '."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "unitLevel",' + #10 +
+    '          "description": "Auch Routinen und Konstanten aus dem interface-Abschnitt einer Unit prüfen."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "scope",' + #10 +
+    '          "description": "Wo nach Verwendungen gesucht wird: projectGroup (alle Projekte der Gruppe) oder project (nur die Projekte der Datei)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "testsCountAsUse",' + #10 +
+    '          "description": "Verwendungen in Testprojekten zählen; ist es aus, wird ein Mitglied, das nur Tests verwenden, als solches gemeldet."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "stringLiteralsCountAsUse",' + #10 +
+    '          "description": "Der Name als String-Literal (''Name'') zählt als Verwendung (RTTI, MethodAddress, Skripte)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "keepAttributes",' + #10 +
+    '          "description": "Attribute am Mitglied oder seinem Typ, die es als verwendet markieren, z. B. \"Keep\" oder \"Api\"."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "keepPatterns",' + #10 +
+    '          "description": "Namensmuster (* und ?) für Mitglieder, die immer als verwendet gelten, z. B. \"TPlugin.*\" oder \"*Callback\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

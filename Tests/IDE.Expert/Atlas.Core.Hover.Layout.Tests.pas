@@ -683,6 +683,13 @@ begin
   Layout := Build(HoverInput);
   Assert.AreEqual('', ActionCodes(Layout));
   Assert.AreEqual(-1, Layout.FixProblem);
+  // Zusatz der Regel als eigene Zeile unter Herkunft und Regel (#1102).
+  Assert.AreEqual(0, Pos('Durchsucht', TextsOf(Layout, TAtlasHoverItemKind.Text)));
+  HoverView.Problems[0].Details := 'Durchsucht: 3 Dateien der Projektgruppe';
+  HoverInput.View := HoverView;
+  Layout := Build(HoverInput);
+  Assert.IsTrue(Pos('Atlas · empty-routine|Durchsucht: 3 Dateien der Projektgruppe|',
+    TextsOf(Layout, TAtlasHoverItemKind.Text)) > 0, TextsOf(Layout, TAtlasHoverItemKind.Text));
 end;
 
 procedure THoverLayoutTests.NextProblemHitCycles;

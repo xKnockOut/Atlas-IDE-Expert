@@ -43,6 +43,14 @@ wird. Mehrere Regeln werden mit Komma getrennt. Zeilen mit
 nicht anschlagen darf. Ein Werkzeug für #152 kann so Treffer und
 Fehlalarme zählen, ohne Zeilennummern zu pflegen.
 
+Projektweite Regeln brauchen alle Units des Projekts und laufen deshalb nicht
+im Golden-Korpus je Datei. Ihre Treffer tragen `// ERWARTET-PROJEKT: <regel-id>`.
+Für `unused-public-member` (#1102) prüft
+`TUnusedPublicMemberTests.ReferenceProjectMatchesMarkers` RefApp als Ganzes:
+genau die markierten Zeilen müssen gemeldet werden, jede weitere Meldung ist ein
+Fehlalarm. `TKundenSuche.Anmelden` ist markiert, weil nur RefDaten es aufruft und
+RefDaten nicht zu RefApp gehört.
+
 ## Marker-IDs und zuständige Regeln
 
 | Marker-ID | Stand |

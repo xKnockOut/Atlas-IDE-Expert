@@ -52,6 +52,8 @@ uses
   Atlas.Common.Rules.Builtin.Directives,
   Atlas.Common.Rules.Builtin.Properties,
   Atlas.Common.Rules.Builtin.Collections,
+  Atlas.Common.Rules.Builtin.Visibility,
+  Atlas.Common.Rules.Builtin.PublicMembers,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -99,6 +101,8 @@ begin
     RegisterDirectiveRules(Registry);
     RegisterPropertyRules(Registry);
     RegisterCollectionRules(Registry);
+    RegisterVisibilityRules(Registry);
+    RegisterPublicMemberRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

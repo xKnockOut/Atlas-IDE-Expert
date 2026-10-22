@@ -2303,6 +2303,119 @@
         "E2129",
         "E2130"
       ]
+    },
+    {
+      "id": "inaccessible-member",
+      "name": "Access to a member that is not visible",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "Access A.B to a member that is not visible at that point: private or strict private of another unit or class (like E2361), protected or strict protected outside the declaring unit and its descendants (like E2362, E2389). Inside a class method or static method, an instance field, method or property of the class is not reachable (like E2124). A property that refers to a private member of an ancestor in the same unit is reported as a warning (like W1045). The rule only reports when name resolution knows the receiver and its type for sure and finds the member only without regard to visibility; protected members stay visible through a class declared in the same unit (TAccess(Control).Click). Declarations in conditional branches, methods of helpers and nested types stay silent.",
+      "bad": "class function TKonfig.Standard: TKonfig;\nbegin\n  Result := TKonfig.Create;\n  Result.Pfad := FBasisPfad;\nend;",
+      "good": "class function TKonfig.Standard: TKonfig;\nbegin\n  Result := TKonfig.Create;\n  Result.Pfad := Result.FBasisPfad;\nend;",
+      "compilerCodes": [
+        "E2361",
+        "E2362",
+        "E2389",
+        "E2124",
+        "W1045"
+      ]
+    },
+    {
+      "id": "unused-private-member",
+      "name": "Private member never used",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "compiler",
+      "description": "A private or strict private field, method, constant or property is never used in the unit (like H2219, which the compiler only reports for methods; fields too unless includeFields is off). Any occurrence of the name as an identifier counts as a use, also in inactive conditional branches and behind read/write; declarations and method headers do not. Exempt: methods with message, virtual, dynamic, override or abstract, methods of types that implement interfaces, constructors and destructors, members with attributes (RTTI), names from the form file and units with include files. Quick fix: remove the declaration (with its /// documentation) and the body of a method; not when several members share the declaration or the method is overloaded.",
+      "bad": "  TImport = class\n  private\n    FAltFormat: Boolean;\n    procedure KonvertiereAlt;\n  end;",
+      "good": "  TImport = class\n  private\n  end;",
+      "compilerCodes": [
+        "H2219"
+      ],
+      "options": [
+        {
+          "name": "includeFields",
+          "type": "boolean",
+          "default": true,
+          "description": "Also report private fields that are never used (the compiler reports only methods)."
+        }
+      ]
+    },
+    {
+      "id": "unused-public-member",
+      "name": "Public member never used in the project",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "A public or published method, constant or property (optionally also protected members, fields and class variables, and unit-level routines and constants of the interface section) is used nowhere in the projects of the project group. The search is project-wide via the symbol index: only files whose index usages contain the name are parsed, and every occurrence is resolved by name resolution; an occurrence that cannot be resolved counts as a use. Names in form files (.dfm/.fmx) and in string literals count as uses. Considered used: interface implementations and members of interfaces, virtual, dynamic, override, abstract and message methods, constructors, destructors, operators, enumerators, default properties, implements, members with attributes, published members of TPersistent descendants (streaming), of classes registered with RegisterComponents, RegisterClass or RegisterClasses and of test fixtures, published methods while a form file cannot be read, property accessors, exported routines, class helpers, members of classes with an unknown ancestor. Silent while projects are loading or the index is incomplete, when a file cannot be read, for units with include files and for units of packages or libraries (external users) unless projectKinds allows them. Quick fix: mark as intentionally public (lsp-ignore comment).",
+      "bad": "  TExport = class\n  public\n    procedure ExportiereAlsXml;\n  end;\n// ExportiereAlsXml is called nowhere in the project group",
+      "good": "  TExport = class\n  public\n    procedure ExportiereAlsJson; // called by TMainForm\n  end;",
+      "options": [
+        {
+          "name": "visibilities",
+          "type": "string-list",
+          "default": [
+            "public",
+            "published"
+          ],
+          "description": "Visibilities that are checked: public, published, protected."
+        },
+        {
+          "name": "memberKinds",
+          "type": "string-list",
+          "default": [
+            "method",
+            "constant",
+            "property"
+          ],
+          "description": "Member kinds that are checked: method, constant, property, field, classVar."
+        },
+        {
+          "name": "projectKinds",
+          "type": "string-list",
+          "default": [
+            "application"
+          ],
+          "description": "Project kinds whose units are checked: application, package, library. Packages and libraries have users outside the project group, so they are off by default."
+        },
+        {
+          "name": "unitLevel",
+          "type": "boolean",
+          "default": true,
+          "description": "Also check routines and constants declared in the interface section of a unit."
+        },
+        {
+          "name": "scope",
+          "type": "string",
+          "default": "projectGroup",
+          "description": "Where uses are searched: projectGroup (all projects of the group) or project (only the projects of the file)."
+        },
+        {
+          "name": "testsCountAsUse",
+          "type": "boolean",
+          "default": true,
+          "description": "Uses in test projects count; when off, a member used only by tests is reported as such."
+        },
+        {
+          "name": "stringLiteralsCountAsUse",
+          "type": "boolean",
+          "default": true,
+          "description": "The name as a string literal ('Name') counts as a use (RTTI, MethodAddress, scripts)."
+        },
+        {
+          "name": "keepAttributes",
+          "type": "string-list",
+          "default": [],
+          "description": "Attributes on the member or its type that mark it as used, e.g. \"Keep\" or \"Api\"."
+        },
+        {
+          "name": "keepPatterns",
+          "type": "string-list",
+          "default": [],
+          "description": "Name patterns (* and ?) for members that are always considered used, e.g. \"TPlugin.*\" or \"*Callback\"."
+        }
+      ]
     }
   ]
 }

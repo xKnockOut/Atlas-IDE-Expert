@@ -4134,3 +4134,53 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index; in `atlas.jso
 | JT6 | Korrigierte Form `TList<TPosition>` mit `Pos := FPositionen[I]`, `TList` ohne Cast (`Count`, `Add`), `Pointer(L[I])`, `TStringList.Objects[I]` mit Cast | Keine Meldung |
 | JT7 | Ohne Eintrag in `atlas.json`, mit `"legacy-tlist": "off"` bzw. `exclude` mit dem Pfad der Unit | Keine Meldung |
 | JT8 | Abgleich mit Delphi: JT1 bis JT3 übersetzen | dcc meldet nichts (die Regel ist reine Stilprüfung); nach Umstellen auf `TList<TPosition>` ohne Cast übersetzt es mit 0 Fehlern, 0 Warnungen, 0 Hinweisen |
+## Zugriff auf ein nicht sichtbares Mitglied (#1008)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NS1 | Das Beispiel aus #1008: in `class function TKonfig.Standard` die Zeile `Result.Pfad := FBasisPfad;` | Fehler `inaccessible-member` an `FBasisPfad`: „FBasisPfad ist ein Instanzfeld und in der Klassenmethode Standard nicht erreichbar (wie E2124).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| NS2 | In einer Klassenmethode bzw. `class function …; static;` eine Instanzmethode (`Free`) und eine Instanz-Property aufrufen | Je eine Meldung „… ist eine Instanzmethode …“ bzw. „… eine Instanz-Property …“ (wie E2124) |
+| NS3 | `Result.FBasisPfad`, `class var` lesen, `Create` aufrufen, `with Result do Pfad := …` in der Klassenmethode | Keine Meldung |
+| NS4 | In einer Unit ohne Bezug zu `TControl`: `Control.Click` (protected in Vcl.Controls) | „TControl.Click ist protected und hier nicht sichtbar (wie E2362).“ |
+| NS5 | Dieselbe Zeile in einer Methode eines Nachfahren von `TControl` bzw. als `TZugang(Control).Click` mit `TZugang = class(TControl)` in der eigenen Unit | Keine Meldung |
+| NS6 | Zwei Klassen in einer Unit, die zweite greift auf ein `strict private`-Feld der ersten zu; danach dasselbe mit `private` | Erst „… ist strict private und hier nicht sichtbar (wie E2361).“, mit `private` keine Meldung |
+| NS7 | `TKind = class(TBasis)` in derselben Unit mit `property Wert: Integer read FWert;`, `FWert` private in `TBasis` | Warnung an `Wert`: „Die Property Wert verweist auf TBasis.FWert, das im Vorfahren private ist (wie W1045).“ |
+| NS8 | `"inaccessible-member": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| NS9 | Abgleich mit Delphi: NS1, NS2, NS4, NS6, NS7 übersetzen | dcc meldet E2124, E2362, E2361 bzw. W1045 an denselben Stellen, für NS3 und NS5 nichts |
+
+## Privates Mitglied nie verwendet (#1020)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UV1 | Das Beispiel aus #1020: `TImport` mit `private FAltFormat: Boolean; procedure KonvertiereAlt;`, beide nirgends verwendet | Hinweise `unused-private-member` an beiden Namen: „Privates Feld FAltFormat wird nie verwendet (wie H2219).“ und „Private Methode KonvertiereAlt wird nie verwendet (wie H2219).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| UV2 | Schnellkorrektur „KonvertiereAlt entfernen“, danach Strg+Z | Deklaration samt ///-Doku und Rumpf in implementation sind weg; ein Undo-Schritt stellt beides wieder her |
+| UV3 | Private Konstante und Property ohne Verwendung; `FA, FB: Integer` mit nur `FB` verwendet | Meldungen für Konstante, Property und `FA` (bei `FA` ohne Korrektur) |
+| UV4 | Mitglied nur in einem `{$IFDEF}`-Zweig, hinter `read` einer Property oder über `Self.` verwendet | Keine Meldung |
+| UV5 | `message`-Methode, `override`-Methode, Feld mit `[Weak]`, Methode einer Klasse mit Interface, Komponente aus der .dfm, Unit mit `{$I …}` | Keine Meldung |
+| UV6 | `"unused-private-member": {"includeFields": false}` | Nur noch Methoden, Konstanten und Properties |
+| UV7 | `"unused-private-member": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| UV8 | Abgleich mit Delphi: UV1 übersetzen | dcc meldet H2219 für `KonvertiereAlt` an derselben Stelle (für Felder meldet dcc nichts); für UV4 und UV5 nichts |
+
+## Öffentliches Mitglied im Projekt nie verwendet (#1102)
+
+Voraussetzung: Server läuft in der IDE mit einer Projektgruppe aus Anwendung und Testprojekt; Index fertig aufgebaut.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OM1 | Das Beispiel aus #1102: `TKundenService` mit `public const MaxKunden`, `procedure ExportiereAlsXml`, `property LetzterFehler`, keines davon in einer Unit der Gruppe verwendet | Hinweise `unused-public-member`: „Öffentliche Methode TKundenService.ExportiereAlsXml wird im Projekt nirgends verwendet.“, ebenso für Konstante und Property; im Fenster „Atlas-Prüfung“ (Gruppe Stil) und im Befund-Hover mit der Zeile „Durchsucht: … Dateien und … Formulare der Projektgruppe“ (**Abnahme**) |
+| OM2 | `S.ExportiereAlsXml('x')` in einer anderen Unit der Anwendung ergänzen, speichern, zurück zur Service-Unit | Die Meldung für `ExportiereAlsXml` verschwindet; nach Entfernen des Aufrufs kommt sie wieder |
+| OM3 | Gleichnamige Methode einer anderen Klasse aufrufen; Methode ruft sich nur selbst rekursiv auf | Meldung bleibt in beiden Fällen |
+| OM4 | Aufruf nur im Testprojekt; dann `"unused-public-member": {"testsCountAsUse": false}` | Erst keine Meldung, dann „… wird nur in <Testprojekt> verwendet.“ |
+| OM5 | Methode, die ein Interface umsetzt; `override`-Methode; published-Property einer TComponent; Ereignis-Handler aus der .dfm; Name als `'ExportiereAlsXml'` im Code; Attribut aus `keepAttributes`; Muster aus `keepPatterns` | Keine Meldung |
+| OM6 | Unit eines Packages bzw. einer DLL der Gruppe | Keine Meldung; mit `"projectKinds": ["application", "package", "library"]` wieder Meldungen |
+| OM7 | IDE neu starten, Service-Unit öffnen, solange der Index noch aufgebaut wird | Keine Meldung, bis der Index fertig ist; die Statuszeile des Fensters „Atlas-Prüfung“ zeigt so lange „Projektweite Regeln warten auf den Index (… %)“; danach erscheinen die OM1-Meldungen ohne Neuöffnen |
+| OM12 | Published-Methode einer Klasse, die eine andere Unit mit `RegisterClasses([…])` registriert; eine Formulardatei des Projekts ist gesperrt bzw. unlesbar | Keine Meldung für published-Mitglieder der registrierten Klasse bzw. für published-Methoden, solange die Formulardatei nicht lesbar ist |
+| OM13 | `unused-private-member` (#1020) an einer privaten Methode einer Klasse mit Interface, die keine Interface-Methode umsetzt (Vorfahren im Index) | Meldung; ist ein Vorfahr nicht im Index, bleibt die Regel wie bisher still |
+| OM8 | `"visibilities": ["protected"]`, `"memberKinds": ["field"]`, `"unitLevel": false`, `"scope": "project"` | Nur noch die gewählten Sichtbarkeiten bzw. Arten; ohne unitLevel keine Routinen und Konstanten aus dem interface-Abschnitt; mit scope project zählen Verwendungen anderer Projekte nicht |
+| OM9 | Schnellkorrektur „Als bewusst öffentlich markieren (lsp-ignore)“ | Über der Deklaration steht `// lsp-ignore: unused-public-member`; die Meldung ist weg |
+| OM10 | `"unused-public-member": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
+| OM11 | Großes Projekt (mehrere hundert Units): Service-Unit bearbeiten | Keine spürbare Verzögerung der Diagnosen; im Diagnoselog keine Zeitüberschreitung der Regel |
