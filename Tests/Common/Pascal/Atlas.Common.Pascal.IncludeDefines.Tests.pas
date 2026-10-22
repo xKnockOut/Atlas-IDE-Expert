@@ -43,6 +43,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.TextDocument,
   Atlas.Common.Configuration.Contract,
@@ -111,12 +112,12 @@ begin
   DefsText := '{$DEFINE FOO}';
   // Ohne Resolver gilt FOO nicht: das zweite uses ist ein Fehler.
   Assert.IsTrue(DiagnosticCount(Accepted, TPascalPreprocessor.EditorOptions(nil)) > 0, 'ohne Resolver');
-  Assert.AreEqual(0, DiagnosticCount(Accepted, TPascalPreprocessor.EditorOptions(nil, MainFile, Resolver)),
+  Assert.AreEqual(0, DiagnosticCount(Accepted, TPascalPreprocessor.EditorOptions(nil, MainFile, Resolver())),
     'mit defs.inc');
   // Der Fall aus dem Issue: beide Zweige gültig, keine Diagnose.
   Assert.AreEqual(0, DiagnosticCount('unit U;'#10'interface'#10'{$I defs.inc}'#10 +
     '{$IFDEF FOO} uses A; {$ENDIF} {$IFNDEF FOO} uses B; {$ENDIF}'#10'implementation'#10'end.',
-    TPascalPreprocessor.EditorOptions(nil, MainFile, Resolver)));
+    TPascalPreprocessor.EditorOptions(nil, MainFile, Resolver())));
 end;
 
 procedure TIncludeDefinesTests.SharedTreeReadsIncludesAndRefreshes;
@@ -132,7 +133,7 @@ begin
   TSyntaxTreeCache.SetIncludeProvider(
     function(const AUri: string): TIncludeResolver
     begin
-      Result := Resolver;
+      Result := Resolver();
     end);
   Shared := TSyntaxTreeCache.Get(Document);
   Assert.AreEqual(0, Integer(Length(Shared.Tree.Diagnostics)), 'mit defs.inc');
@@ -155,7 +156,7 @@ var
 begin
   DefsText := '{$DEFINE FOO}';
   Tree := TPascalParser.ParseActive(Accepted + #10'{$I fehlt.inc}', TPascalPreprocessor.EditorOptions(nil,
-    MainFile, Resolver), nil, Processed);
+    MainFile, Resolver()), nil, Processed);
   try
     Regions := TLspInactiveRegions.Regions(Processed, True, Issues);
     Assert.AreEqual(1, Integer(Length(Regions)));
@@ -194,7 +195,7 @@ begin
     TPascalPreprocessor.PredefinedSymbols('Win64', 37), nil)), 'Win64');
   DefsText := '{$DEFINE FOO}';
   Assert.IsTrue(SyntaxFindings(Accepted, TCheckSource.Default) > 0, 'ohne Include-Dateien');
-  Assert.AreEqual(0, SyntaxFindings(Accepted, TCheckSource.Create(MainFile, nil, Resolver)), 'mit defs.inc');
+  Assert.AreEqual(0, SyntaxFindings(Accepted, TCheckSource.Create(MainFile, nil, Resolver())), 'mit defs.inc');
 end;
 
 procedure TIncludeDefinesTests.InlayHintNamesUsedIncludeSymbols;
@@ -216,7 +217,7 @@ var
 begin
   // UNUSED prüft die Unit nicht, GONE hebt die Include-Datei wieder auf.
   DefsText := '{$DEFINE FOO}'#10'{$DEFINE UNUSED}'#10'{$DEFINE GONE}'#10'{$DEFINE BAR}'#10'{$UNDEF GONE}';
-  Tree := TPascalParser.ParseActive(Source, TPascalPreprocessor.EditorOptions(nil, MainFile, Resolver), nil,
+  Tree := TPascalParser.ParseActive(Source, TPascalPreprocessor.EditorOptions(nil, MainFile, Resolver()), nil,
     Processed);
   try
     Settings := TInlayHintSettings.Default;
@@ -232,7 +233,7 @@ begin
     Json := TLspInlayHints.ToJson(Hints);
     try
       Assert.AreEqual('defs.inc', Json.Items[0].GetValue<string>('data.includeDefines.file'));
-      Assert.AreEqual(2, Json.Items[0].GetValue<TJSONArray>('data.includeDefines.names').Count);
+      Assert.AreEqual(2, Integer(Json.Items[0].GetValue<TJSONArray>('data.includeDefines.names').Count));
       Assert.IsNull((Json.Items[0] as TJSONObject).GetValue('kind'), 'ohne kind wie Endmarken');
     finally
       Json.Free;

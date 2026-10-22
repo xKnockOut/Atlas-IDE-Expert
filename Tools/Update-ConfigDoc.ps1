@@ -622,7 +622,8 @@ function Pascal-Lines([string] $Name, [string] $Source) {
         for ($At = 0; $At -lt $Escaped.Length; $At += 200) { $Pieces += "'" + $Escaped.Substring($At, [Math]::Min(200, $Escaped.Length - $At)) + "'" }
         if ($Pieces.Count -eq 0) { $Pieces = @("''") }
         $End = if ($Index -eq $Lines.Count - 1) { ');' } else { ',' }
-        $Result += '    ' + ($Pieces -join ' + ') + $End
+        # Jedes Stück in eine eigene Zeile: Delphi bricht bei mehr als 1023 Zeichen je Zeile ab (F2069).
+        $Result += '    ' + ($Pieces -join " +`r`n      ") + $End
     }
     return $Result
 }

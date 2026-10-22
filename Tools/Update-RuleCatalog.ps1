@@ -144,7 +144,8 @@ function ConvertTo-DelphiLiteral([string] $Text) {
         $Chunks = for ($I = 0; $I -lt [Math]::Max(1, $Line.Length); $I += 200) {
             "'" + ($Line.Substring($I, [Math]::Min(200, $Line.Length - $I)) -replace "'", "''") + "'"
         }
-        ($Chunks -join ' + ') + ' + #10'
+        # Jedes Stück in eine eigene Zeile: Delphi bricht bei mehr als 1023 Zeichen je Zeile ab (F2069).
+        ($Chunks -join " +`r`n    ") + ' + #10'
     }
     '    ' + ($Parts -join " +`r`n    ")
 }

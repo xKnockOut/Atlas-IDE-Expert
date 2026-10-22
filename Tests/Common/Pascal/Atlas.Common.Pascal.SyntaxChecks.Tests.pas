@@ -161,7 +161,9 @@ begin
   SetLength(Body, Length(ABody));
   for Index := 0 to High(ABody) do
     Body[Index] := ABody[Index];
-  Result := Lines(['program P;', 'var', '  A: Boolean;', '  B: Integer;', 'begin'] + Body + ['end.']);
+  // Mit TArray beginnen: Ein Literal vorn läse Delphi als Menge (E2001).
+  Result := Lines(TArray<string>.Create('program P;', 'var', '  A: Boolean;', '  B: Integer;', 'begin') + Body +
+    ['end.']);
 end;
 
 function InUnit(const AInterface, AImplementation: array of string): string;

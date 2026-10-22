@@ -15,7 +15,9 @@ const
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
-    '  "description": "Einstellungen für Atlas. Jeder Schlüssel hat genau einen Ort (x-scope): \"project\" in atlas.json im Projektordner (Atlas › Projekt-Einstellungen), \"global\" in %APPDATA%\\Atlas\\se' + 'ttings.json für alle Projekte (Tools › Optionen › Atlas). \"both\" an beiden Orten: Die globale Datei gilt für alle Projekte, atlas.json übersteuert je Glied (rules: je Regel). Ein Schlüssel am falsch' + 'en Ort wird ignoriert und gemeldet.",',
+    '  "description": "Einstellungen für Atlas. Jeder Schlüssel hat genau einen Ort (x-scope): \"project\" in atlas.json im Projektordner (Atlas › Projekt-Einstellungen), \"global\" in %APPDATA%\\Atlas\\se' +
+      'ttings.json für alle Projekte (Tools › Optionen › Atlas). \"both\" an beiden Orten: Die globale Datei gilt für alle Projekte, atlas.json übersteuert je Glied (rules: je Regel). Ein Schlüssel am falsch' +
+      'en Ort wird ignoriert und gemeldet.",',
     '  "type": "object",',
     '  "properties": {',
     '    "$schema": {',
@@ -24,7 +26,9 @@ const
     '    "delphiVersion": {',
     '      "type": "string",',
     '      "pattern": "^[0-9]+(\\.[0-9]+)?$",',
-    '      "description": "Delphi-Version als Produktnummer (\"13\", \"12\", \"10.4\") oder wie in der Registry (\"37.0\" für Delphi 13, \"23.0\" für Delphi 12). Leer: passend zur ProjectVersion der .dproj' + ', sonst die nächsthöhere, sonst die neueste installierte Version. Ist die eingestellte Version nicht installiert, warnt das Serverprotokoll mit der Stelle in settings.json, und die automatische Wahl g' + 'reift. In der IDE gilt immer die laufende IDE.",',
+    '      "description": "Delphi-Version als Produktnummer (\"13\", \"12\", \"10.4\") oder wie in der Registry (\"37.0\" für Delphi 13, \"23.0\" für Delphi 12). Leer: passend zur ProjectVersion der .dproj' +
+      ', sonst die nächsthöhere, sonst die neueste installierte Version. Ist die eingestellte Version nicht installiert, warnt das Serverprotokoll mit der Stelle in settings.json, und die automatische Wahl g' +
+      'reift. In der IDE gilt immer die laufende IDE.",',
     '      "examples": [',
     '        "37.0",',
     '        "23.0"',
@@ -58,7 +62,8 @@ const
     '        "windows-1252",',
     '        "windows-1250"',
     '      ],',
-    '      "description": "Vorgabe-Kodierung für Dateien ohne BOM, wenn die Erkennung nicht entscheidet (reines ASCII, ungültiges UTF-8): \"utf-8\" oder eine ANSI-Codepage wie \"windows-1250\". Binäre Form' + 'ulare werden nie geändert.",',
+    '      "description": "Vorgabe-Kodierung für Dateien ohne BOM, wenn die Erkennung nicht entscheidet (reines ASCII, ungültiges UTF-8): \"utf-8\" oder eine ANSI-Codepage wie \"windows-1250\". Binäre Form' +
+      'ulare werden nie geändert.",',
     '      "x-scope": "project",',
     '      "x-page": "Allgemein",',
     '      "x-control": "Auswahl",',
@@ -98,7 +103,10 @@ const
     '    },',
     '    "rules": {',
     '      "type": "object",',
-    '      "description": "Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit \"severity\" und Optionen. Hauptschalter je Gruppe der Einstellungsseite (#909): \"group:<gruppe>\": \"off\"' + ' schaltet alle Regeln der Gruppe ab (Gruppen siehe Regeln.md, z. B. \"group:threads\"). Die Gruppe „Compiler vorab“ nimmt auch ein Objekt (#1024): \"group:compiler\": {\"severity\": \"off\", \"typeLev' + 'el\": \"off\"}; \"typeLevel\": \"off\" schaltet nur die Regeln der Stufe T ab, die Ausdruckstypen brauchen (Stufen siehe Regeln.md). Die Konfidenz eines Treffers begrenzt den Schweregrad auch hier: Be' + 'i mittlerer Konfidenz bleibt ein Treffer höchstens eine Warnung, bei niedriger höchstens ein Hinweis, auch mit \"error\".",',
+    '      "description": "Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit \"severity\" und Optionen. Hauptschalter je Gruppe der Einstellungsseite (#909): \"group:<gruppe>\": \"off\"' +
+      ' schaltet alle Regeln der Gruppe ab (Gruppen siehe Regeln.md, z. B. \"group:threads\"). Die Gruppe „Compiler vorab“ nimmt auch ein Objekt (#1024): \"group:compiler\": {\"severity\": \"off\", \"typeLev' +
+      'el\": \"off\"}; \"typeLevel\": \"off\" schaltet nur die Regeln der Stufe T ab, die Ausdruckstypen brauchen (Stufen siehe Regeln.md). Die Konfidenz eines Treffers begrenzt den Schweregrad auch hier: Be' +
+      'i mittlerer Konfidenz bleibt ein Treffer höchstens eine Warnung, bei niedriger höchstens ein Hinweis, auch mit \"error\".",',
     '      "additionalProperties": {',
     '        "oneOf": [',
     '          {',
@@ -138,7 +146,9 @@ const
     '              "max": {',
     '                "type": "integer",',
     '                "minimum": 1,',
-    '                "description": "Nur metric-* (#66): Grenzwert der Kennzahl; darüber meldet die Regel die Methode. Vorgaben: Länge 60, Tiefe 4, zyklomatisch 15, kognitiv 15, Parameter 6; metric-class-s' + 'ize 40 Member, metric-unit-length 2000 Zeilen, metric-uses-count 30 Units (#939); metric-boolean-operands 5 Operanden, metric-local-count 12 lokale Variablen, metric-exit-points 4 Ausstiege, metric-in' + 'heritance-depth 5 Vorfahren (#980). Bei line-length (#938) die Höchstlänge einer Zeile, Vorgabe 120."',
+    '                "description": "Nur metric-* (#66): Grenzwert der Kennzahl; darüber meldet die Regel die Methode. Vorgaben: Länge 60, Tiefe 4, zyklomatisch 15, kognitiv 15, Parameter 6; metric-class-s' +
+      'ize 40 Member, metric-unit-length 2000 Zeilen, metric-uses-count 30 Units (#939); metric-boolean-operands 5 Operanden, metric-local-count 12 lokale Variablen, metric-exit-points 4 Ausstiege, metric-in' +
+      'heritance-depth 5 Vorfahren (#980). Bei line-length (#938) die Höchstlänge einer Zeile, Vorgabe 120."',
     '              },',
     '              "minLines": {',
     '                "type": "integer",',
@@ -157,14 +167,16 @@ const
     '                  "pattern": "^[A-Za-z]+$"',
     '                },',
     '                "default": ["TODO", "FIXME"],',
-    '                "description": "Nur todo-comment (#68): Marken offener TODO-Einträge (nur Buchstaben, Groß-/Kleinschreibung egal), z. B. [\"TODO\", \"FIXME\", \"HACK\"]. Erledigt ist immer DONE. Gilt ' + 'auch, wenn die Regel aus ist, für get_todos, atlas.server.todos und --todos. Vorgabe: TODO und FIXME."',
+    '                "description": "Nur todo-comment (#68): Marken offener TODO-Einträge (nur Buchstaben, Groß-/Kleinschreibung egal), z. B. [\"TODO\", \"FIXME\", \"HACK\"]. Erledigt ist immer DONE. Gilt ' +
+      'auch, wenn die Regel aus ist, für get_todos, atlas.server.todos und --todos. Vorgabe: TODO und FIXME."',
     '              },',
     '              "prefixes": {',
     '                "type": "array",',
     '                "items": {',
     '                  "type": "string"',
     '                },',
-    '                "description": "Nur architecture-role-import und architecture-contract-content (Code-Review A-12): Präfixe der Ausgabeartefakte nach dem Rollenkonzept (Ausgabeartefakt.Feature.Rolle.Sa' + 'che), z. B. \"Atlas.Common\". Ohne Angabe melden die Regeln nichts."',
+    '                "description": "Nur architecture-role-import und architecture-contract-content (Code-Review A-12): Präfixe der Ausgabeartefakte nach dem Rollenkonzept (Ausgabeartefakt.Feature.Rolle.Sa' +
+      'che), z. B. \"Atlas.Common\". Ohne Angabe melden die Regeln nichts."',
     '              },',
     '              "hostRoles": {',
     '                "type": "array",',
@@ -178,7 +190,8 @@ const
     '                "items": {',
     '                  "type": "string"',
     '                },',
-    '                "description": "Nur architecture-role-import und architecture-contract-content: genehmigte Ausnahmen, bei architecture-role-import \"Quelle -> Ziel\" (beide Globs), bei architecture-co' + 'ntract-content \"Unit.Typ\" als Glob."',
+    '                "description": "Nur architecture-role-import und architecture-contract-content: genehmigte Ausnahmen, bei architecture-role-import \"Quelle -> Ziel\" (beide Globs), bei architecture-co' +
+      'ntract-content \"Unit.Typ\" als Glob."',
     '              },',
     '              "layers": {',
     '                "type": "array",',
@@ -216,7 +229,8 @@ const
     '                "items": {',
     '                  "type": "string"',
     '                },',
-    '                "description": "Nur unused-local, unused-parameter, unused-assignment und shadowed-name (#934): Namensmuster (* und ?), die nie gemeldet werden. Bei shadowed-name ohne Angabe Sender un' + 'd Value."',
+    '                "description": "Nur unused-local, unused-parameter, unused-assignment und shadowed-name (#934): Namensmuster (* und ?), die nie gemeldet werden. Bei shadowed-name ohne Angabe Sender un' +
+      'd Value."',
     '              },',
     '              "deferredApis": {',
     '                "type": "array",',
@@ -290,7 +304,8 @@ const
     '                  "type": "string"',
     '                },',
     '                "default": ["Assert.*", "WillRaise*", "Check*"],',
-    '                "description": "Nur dunitx-test-without-assert (#945): Aufrufe, die als Prüfung zählen, als Muster mit * und ?; ersetzt die Vorgabe. System.Assert und Klassen mit Assert im Namen zähle' + 'n immer."',
+    '                "description": "Nur dunitx-test-without-assert (#945): Aufrufe, die als Prüfung zählen, als Muster mit * und ?; ersetzt die Vorgabe. System.Assert und Klassen mit Assert im Namen zähle' +
+      'n immer."',
     '              },',
     '              "selfRegistering": {',
     '                "type": "array",',
@@ -306,7 +321,8 @@ const
     '                  "type": "string"',
     '                },',
     '                "default": ["TComponent"],',
-    '                "description": "Nur component-interface-dangling (#1090): Basisklassen ohne Referenzzählung; ihre Nachfahren als Interface zu speichern und dann freizugeben wird gemeldet. Mit TCompone' + 'nt zählen auch die bekannten VCL- und FMX-Klassen (TForm, TFrame, TDataModule …)."',
+    '                "description": "Nur component-interface-dangling (#1090): Basisklassen ohne Referenzzählung; ihre Nachfahren als Interface zu speichern und dann freizugeben wird gemeldet. Mit TCompone' +
+      'nt zählen auch die bekannten VCL- und FMX-Klassen (TForm, TFrame, TDataModule …)."',
     '              },',
     '              "swallow": {',
     '                "type": "array",',
@@ -387,12 +403,15 @@ const
     '                  ]',
     '                },',
     '                "default": [],',
-    '                "description": "Nur pair-without-finally und handle-leak: weitere Paare neben den eingebauten. pair-without-finally: Objekte mit open und close (DisableControls/EnableControls, BeginUp' + 'date/EndUpdate, FindFirst/FindClose, Reset/CloseFile, GetMem/FreeMem, Screen.Cursor; #930). handle-leak: Texte \"Öffnen>Schließen\" oder Objekte mit open und close; das Handle ist das Ergebnis des Öff' + 'nens und das erste Argument des Schließens (#1088)."',
+    '                "description": "Nur pair-without-finally und handle-leak: weitere Paare neben den eingebauten. pair-without-finally: Objekte mit open und close (DisableControls/EnableControls, BeginUp' +
+      'date/EndUpdate, FindFirst/FindClose, Reset/CloseFile, GetMem/FreeMem, Screen.Cursor; #930). handle-leak: Texte \"Öffnen>Schließen\" oder Objekte mit open und close; das Handle ist das Ergebnis des Öff' +
+      'nens und das erste Argument des Schließens (#1088)."',
     '              },',
     '              "onlyAfterRaisingCode": {',
     '                "type": "boolean",',
     '                "default": true,',
-    '                "description": "Nur destructor-not-nil-safe: nur melden, wenn der Konstruktor vor dem Anlegen des Felds etwas aufruft, das eine Exception werfen kann; aus zählt jedes im Konstruktor an' + 'gelegte Feld (#1087)."',
+    '                "description": "Nur destructor-not-nil-safe: nur melden, wenn der Konstruktor vor dem Anlegen des Felds etwas aufruft, das eine Exception werfen kann; aus zählt jedes im Konstruktor an' +
+      'gelegte Feld (#1087)."',
     '              },',
     '              "requireElse": {',
     '                "type": "boolean",',
@@ -402,7 +421,8 @@ const
     '              "wrapper": {',
     '                "type": "string",',
     '                "default": "TAtlasMainThread.Queue",',
-    '                "description": "Nur queue-nil-in-package (#943): Ersatz für TThread.Queue(nil, …) in der Schnellkorrektur; bei ForceQueue wird aus …Queue …ForceQueue. Mit Klammer steht der Text so vor' + ' den übrigen Argumenten, z. B. \"TAtlasMainThread.Queue(TAtlasFeature.Hover, \"."',
+    '                "description": "Nur queue-nil-in-package (#943): Ersatz für TThread.Queue(nil, …) in der Schnellkorrektur; bei ForceQueue wird aus …Queue …ForceQueue. Mit Klammer steht der Text so vor' +
+      ' den übrigen Argumenten, z. B. \"TAtlasMainThread.Queue(TAtlasFeature.Hover, \"."',
     '              },',
     '              "okMarker": {',
     '                "type": "string",',
@@ -444,7 +464,8 @@ const
     '                  "type": ["number", "string"]',
     '                },',
     '                "default": [0, 1, -1, 2, 10, 100],',
-    '                "description": "magic-number: Zahlen, die nie gemeldet werden (#937). inherited-wrong-method: erlaubte Paare \"Methode>geerbte Methode\" (Muster mit * und ?), z. B. \"Speichern>Pruefen' + '\" (#1050); ohne Angabe keine."',
+    '                "description": "magic-number: Zahlen, die nie gemeldet werden (#937). inherited-wrong-method: erlaubte Paare \"Methode>geerbte Methode\" (Muster mit * und ?), z. B. \"Speichern>Pruefen' +
+      '\" (#1050); ohne Angabe keine."',
     '              },',
     '              "ignoreStrings": {',
     '                "type": "boolean",',
@@ -496,7 +517,8 @@ const
     '                  "enum": ["application", "package", "library"]',
     '                },',
     '                "default": ["application"],',
-    '                "description": "Nur unused-public-member (#1102): Projektarten, deren Units geprüft werden. Packages und Bibliotheken haben Nutzer außerhalb der Projektgruppe und sind deshalb standard' + 'mäßig aus."',
+    '                "description": "Nur unused-public-member (#1102): Projektarten, deren Units geprüft werden. Packages und Bibliotheken haben Nutzer außerhalb der Projektgruppe und sind deshalb standard' +
+      'mäßig aus."',
     '              },',
     '              "unitLevel": {',
     '                "type": "boolean",',
@@ -635,7 +657,8 @@ const
     '                "type": "string",',
     '                "enum": ["project", "atlas", "both"],',
     '                "default": "project",',
-    '                "description": "Nur uses-unit-not-found: wo nach Units gesucht wird (#1016). project: wie der Compiler (Projekt, Suchpfade der .dproj, Bibliothekspfade der Installation, .pas und .dcu)' + '; atlas: was Atlas kennt (Index, Quellpfade der Installation); both: beides."',
+    '                "description": "Nur uses-unit-not-found: wo nach Units gesucht wird (#1016). project: wie der Compiler (Projekt, Suchpfade der .dproj, Bibliothekspfade der Installation, .pas und .dcu)' +
+      '; atlas: was Atlas kennt (Index, Quellpfade der Installation); both: beides."',
     '              },',
     '              "switchConstants": {',
     '                "type": "array",',
@@ -686,7 +709,8 @@ const
     '      "x-issue": "#41"',
     '    },',
     '    "profile": {',
-    '      "description": "Regelprofil: standard, fast (nur Bugs und Schwachstellen), strict (experimentelle Regeln an, minConfidence low), security, style oder ein eigenes aus \"profiles\". Als Objekt get' + 'rennt für Editor und Kommandozeile.",',
+    '      "description": "Regelprofil: standard, fast (nur Bugs und Schwachstellen), strict (experimentelle Regeln an, minConfidence low), security, style oder ein eigenes aus \"profiles\". Als Objekt get' +
+      'rennt für Editor und Kommandozeile.",',
     '      "default": "standard",',
     '      "oneOf": [',
     '        {',
@@ -761,7 +785,8 @@ const
     '    },',
     '    "overrides": {',
     '      "type": "array",',
-    '      "description": "Pfadregeln: Schweregrade für Dateien, die eines der Glob-Muster treffen, z. B. Tests oder generierten Code herabstufen. Regel-ID \"*\" steht für alle Regeln; spätere Einträge hab' + 'en Vorrang.",',
+    '      "description": "Pfadregeln: Schweregrade für Dateien, die eines der Glob-Muster treffen, z. B. Tests oder generierten Code herabstufen. Regel-ID \"*\" steht für alle Regeln; spätere Einträge hab' +
+      'en Vorrang.",',
     '      "items": {',
     '        "type": "object",',
     '        "required": [',
@@ -824,7 +849,8 @@ const
     '        "onSave": {',
     '          "type": "boolean",',
     '          "default": false,',
-    '          "description": "Nach dem Speichern einer Quelldatei das Projekt im Hintergrund kompilieren und die Meldungen anzeigen. Nur mit dem Kommandozeilen-Compiler; über die IDE (backend ide) kompili' + 'ert Atlas wegen ihrer Startzeit nur auf den Befehl „Projekt kompilieren“ (atlas.server.compile)."',
+    '          "description": "Nach dem Speichern einer Quelldatei das Projekt im Hintergrund kompilieren und die Meldungen anzeigen. Nur mit dem Kommandozeilen-Compiler; über die IDE (backend ide) kompili' +
+      'ert Atlas wegen ihrer Startzeit nur auf den Befehl „Projekt kompilieren“ (atlas.server.compile)."',
     '        },',
     '        "backend": {',
     '          "type": "string",',
@@ -836,13 +862,17 @@ const
     '          ],',
     '          "default": "auto",',
     '          "x-control": "Auswahl",',
-    '          "description": "Weg zum Compiler. auto: Atlas erkennt vorher je Delphi-Installation, ob dcc32/dcc64 vorhanden und nutzbar ist (die Starter und Community Edition melden einen Lizenztext statt' + ' zu kompilieren), merkt sich das und nimmt dann dcc, sonst ide (wenn ideCommand eingerichtet ist), sonst off. dcc: nur der Kommandozeilen-Compiler. ide: eine eigene IDE über cc.ps1 (ideCommand), immer' + ' mit eigener Instanz; die IDE des Benutzers wird nie angesprochen. off: Atlas kompiliert nie selbst. Ist kein Compiler nutzbar, meldet Atlas das einmal mit Grund und Ausweg, zeigt es im Status (atlas.' + 'server.status) und der Befehl „Projekt kompilieren“ antwortet mit dem Grund."',
+    '          "description": "Weg zum Compiler. auto: Atlas erkennt vorher je Delphi-Installation, ob dcc32/dcc64 vorhanden und nutzbar ist (die Starter und Community Edition melden einen Lizenztext statt' +
+      ' zu kompilieren), merkt sich das und nimmt dann dcc, sonst ide (wenn ideCommand eingerichtet ist), sonst off. dcc: nur der Kommandozeilen-Compiler. ide: eine eigene IDE über cc.ps1 (ideCommand), immer' +
+      ' mit eigener Instanz; die IDE des Benutzers wird nie angesprochen. off: Atlas kompiliert nie selbst. Ist kein Compiler nutzbar, meldet Atlas das einmal mit Grund und Ausweg, zeigt es im Status (atlas.' +
+      'server.status) und der Befehl „Projekt kompilieren“ antwortet mit dem Grund."',
     '        },',
     '        "ideCommand": {',
     '          "type": "string",',
     '          "default": "",',
     '          "x-control": "Datei wählen",',
-    '          "description": "Pfad zu cc.ps1 (Claude-Compile) für den Weg über die IDE; leer = nicht eingerichtet. Atlas startet damit eine eigene Scratch-IDE (-Instance), nutzt sie für weitere Läufe wied' + 'er und beendet sie mit dem Server.",',
+    '          "description": "Pfad zu cc.ps1 (Claude-Compile) für den Weg über die IDE; leer = nicht eingerichtet. Atlas startet damit eine eigene Scratch-IDE (-Instance), nutzt sie für weitere Läufe wied' +
+      'er und beendet sie mit dem Server.",',
     '          "examples": [',
     '            "C:\\Projekte\\IDE-Plugins\\Claude-Compile\\cc.ps1"',
     '          ]',
@@ -868,7 +898,8 @@ const
     '            "off"',
     '          ],',
     '          "default": "auto",',
-    '          "description": "auto: nach gefundener Arbeitskopie (.git oder .svn, die nächstliegende gilt, bei Gleichstand Git). git bzw. svn: nur diese Art. off: ohne Versionsverwaltung. Git und SVN über' + ' die Kommandozeile (git bzw. svn, TortoiseSVN mit Kommandozeilenwerkzeugen genügt); fehlt das Programm, meldet Atlas das einmal und arbeitet ohne Versionsangaben weiter."',
+    '          "description": "auto: nach gefundener Arbeitskopie (.git oder .svn, die nächstliegende gilt, bei Gleichstand Git). git bzw. svn: nur diese Art. off: ohne Versionsverwaltung. Git und SVN über' +
+      ' die Kommandozeile (git bzw. svn, TortoiseSVN mit Kommandozeilenwerkzeugen genügt); fehlt das Programm, meldet Atlas das einmal und arbeitet ohne Versionsangaben weiter."',
     '        }',
     '      },',
     '      "x-scope": "global",',
@@ -930,24 +961,28 @@ const
     '        "keywords": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Schlüsselwörter passend zur Stelle vorschlagen (in Anweisungen begin, try …, im Klassenrumpf property, private …, nach \":\" string, array …), sobald ein Zeichen getippt ist.' + '"',
+    '          "description": "Schlüsselwörter passend zur Stelle vorschlagen (in Anweisungen begin, try …, im Klassenrumpf property, private …, nach \":\" string, array …), sobald ein Zeichen getippt ist.' +
+      '"',
     '        },',
     '        "postfixTemplates": {',
     '          "x-area": "snippets",',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Postfix-Vorlagen hinter einem Ausdruck anbieten: Liste.for wird zu for var Item in Liste do, FKunde.notnil zu if Assigned(FKunde) then, dazu tryf, ifa, fmt, nil, not, if, for' + 'in, free, try, var, exit und eigene Vorlagen mit \"postfix: true\"."',
+    '          "description": "Postfix-Vorlagen hinter einem Ausdruck anbieten: Liste.for wird zu for var Item in Liste do, FKunde.notnil zu if Assigned(FKunde) then, dazu tryf, ifa, fmt, nil, not, if, for' +
+      'in, free, try, var, exit und eigene Vorlagen mit \"postfix: true\"."',
     '        },',
     '        "genericConstraints": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Nach \"TObjectList<\" nur Typen vorschlagen, die die Constraints des Typparameters erfüllen (class, record, constructor, Interface oder Klasse), mit Überschrift „T: class · n' + 'ur Klassen“ und den ausgeblendeten Arten in der Fußzeile."',
+    '          "description": "Nach \"TObjectList<\" nur Typen vorschlagen, die die Constraints des Typparameters erfüllen (class, record, constructor, Interface oder Klasse), mit Überschrift „T: class · n' +
+      'ur Klassen“ und den ausgeblendeten Arten in der Fußzeile."',
     '        },',
     '        "createAccessors": {',
     '          "x-scope": "project",',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Nach read bzw. write einer Eigenschaftsdeklaration oben in der Liste „Feld FName anlegen“, „GetName anlegen“ und „SetName anlegen“ anbieten: Feld im private-Abschnitt (strict' + ' private, wenn die Klasse ihn nutzt), Methoden im Abschnitt nach accessorSection, Setter mit Änderungsprüfung."',
+    '          "description": "Nach read bzw. write einer Eigenschaftsdeklaration oben in der Liste „Feld FName anlegen“, „GetName anlegen“ und „SetName anlegen“ anbieten: Feld im private-Abschnitt (strict' +
+      ' private, wenn die Klasse ihn nutzt), Methoden im Abschnitt nach accessorSection, Setter mit Änderungsprüfung."',
     '        },',
     '        "accessorSection": {',
     '          "x-scope": "project",',
@@ -962,7 +997,8 @@ const
     '        "resourceStrings": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Strg+Leertaste in einem String-Literal bietet „Als resourcestring auslagern“ an: Name aus den ersten Wörtern (S + CamelCase, Umlaute ersetzt), Eintrag im resourcestring-Absch' + 'nitt; gibt es den Text schon, zusätzlich „Vorhandenen verwenden“. Nicht in Konstanten, Attributen, case-Marken und Parametervorgaben."',
+    '          "description": "Strg+Leertaste in einem String-Literal bietet „Als resourcestring auslagern“ an: Name aus den ersten Wörtern (S + CamelCase, Umlaute ersetzt), Eintrag im resourcestring-Absch' +
+      'nitt; gibt es den Text schon, zusätzlich „Vorhandenen verwenden“. Nicht in Konstanten, Attributen, case-Marken und Parametervorgaben."',
     '        },',
     '        "resourceStringUnit": {',
     '          "x-scope": "project",',
@@ -974,7 +1010,9 @@ const
     '          "type": "string",',
     '          "enum": ["off", "helper", "function"],',
     '          "default": "off",',
-    '          "description": "Passt ein Eintrag nicht zum erwarteten Typ (Zuweisung, Argument), schlägt Atlas die übliche Umwandlung als weiteren Eintrag direkt über dem Original vor, etwa Count.ToString ' + 'für eine String-Zuweisung: Zahl, Boolean, Datum und Aufzählung nach string, string nach Zahl. helper: Helper-Stil (X.ToString, X.ToInteger), wo es einen gibt, sonst Funktion; function: Funktionsstil (' + 'IntToStr(X), StrToInt(X)); off: aus. Benötigte Units kommen ins uses. Für Gleitkomma nach Ganzzahl nur ein Hinweis auf Round und Trunc im Detailpanel.",',
+    '          "description": "Passt ein Eintrag nicht zum erwarteten Typ (Zuweisung, Argument), schlägt Atlas die übliche Umwandlung als weiteren Eintrag direkt über dem Original vor, etwa Count.ToString ' +
+      'für eine String-Zuweisung: Zahl, Boolean, Datum und Aufzählung nach string, string nach Zahl. helper: Helper-Stil (X.ToString, X.ToInteger), wo es einen gibt, sonst Funktion; function: Funktionsstil (' +
+      'IntToStr(X), StrToInt(X)); off: aus. Benötigte Units kommen ins uses. Für Gleitkomma nach Ganzzahl nur ein Hinweis auf Round und Trunc im Detailpanel.",',
     '          "x-experimental": true,',
     '          "x-offValue": "off",',
     '          "x-issue": "#490"',
@@ -982,33 +1020,41 @@ const
     '        "assignAllFields": {',
     '          "type": "boolean",',
     '          "default": false,',
-    '          "description": "Hinter einem Record- oder Klassenausdruck mit Punkt am Anfang einer Anweisung (Opts.) steht „Alle Felder zuweisen (n)“ ganz oben: je öffentlich beschreibbarem Feld und jeder ' + 'Property eine Zeile Opts.Feld := Platzhalter; in Deklarationsreihenfolge, mit 0, '''', False, nil oder dem ersten Aufzählungswert als Vorgabe im Platzhalter-Modus. Felder, die die folgenden Zeilen sch' + 'on zuweisen, fallen weg. Bei mehr als 15 Feldern zuerst eine Liste mit Kontrollkästchen.",',
+    '          "description": "Hinter einem Record- oder Klassenausdruck mit Punkt am Anfang einer Anweisung (Opts.) steht „Alle Felder zuweisen (n)“ ganz oben: je öffentlich beschreibbarem Feld und jeder ' +
+      'Property eine Zeile Opts.Feld := Platzhalter; in Deklarationsreihenfolge, mit 0, '''', False, nil oder dem ersten Aufzählungswert als Vorgabe im Platzhalter-Modus. Felder, die die folgenden Zeilen sch' +
+      'on zuweisen, fallen weg. Bei mehr als 15 Feldern zuerst eine Liste mit Kontrollkästchen.",',
     '          "x-experimental": true,',
     '          "x-issue": "#491"',
     '        },',
     '        "usesDetails": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Im uses-Abschnitt: schon eingebundene Units ausblenden (die Fußzeile nennt sie), Units nach Projekt, RTL/VCL und Drittanbietern gruppieren, Kurzformen auf den Namespace ergän' + 'zen (Classes → System.Classes), Units aus dem anderen Abschnitt mit „bereits im interface-Teil“ bzw. „… implementation-Teil“ und im interface-Teil Units mit Zirkelbezug markieren; im Detailpanel Pfad ' + 'und die ersten exportierten Typen. Aus: alle Units des Index als schlichte Liste.",',
+    '          "description": "Im uses-Abschnitt: schon eingebundene Units ausblenden (die Fußzeile nennt sie), Units nach Projekt, RTL/VCL und Drittanbietern gruppieren, Kurzformen auf den Namespace ergän' +
+      'zen (Classes → System.Classes), Units aus dem anderen Abschnitt mit „bereits im interface-Teil“ bzw. „… implementation-Teil“ und im interface-Teil Units mit Zirkelbezug markieren; im Detailpanel Pfad ' +
+      'und die ersten exportierten Typen. Aus: alle Units des Index als schlichte Liste.",',
     '          "x-issue": "#469"',
     '        },',
     '        "inheritedCall": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Nach „inherited “ zuerst den vollständigen Aufruf der gleichnamigen Vorfahrmethode mit den Parametern der eigenen Methode anbieten (Marke „gleiche Parameter“), dann ihre übri' + 'gen Überladungen, in Konstruktoren und Destruktoren auch die übrigen Konstruktoren bzw. Destruktoren der Vorfahren. Abstrakte Vorfahrmethoden fehlen, die Fußzeile nennt sie. In Funktionen ergänzt die ' + 'Übernahme „Result := “, wenn vor inherited nichts in der Zeile steht. Aus: nur die Namen der Vorfahrmethoden.",',
+    '          "description": "Nach „inherited “ zuerst den vollständigen Aufruf der gleichnamigen Vorfahrmethode mit den Parametern der eigenen Methode anbieten (Marke „gleiche Parameter“), dann ihre übri' +
+      'gen Überladungen, in Konstruktoren und Destruktoren auch die übrigen Konstruktoren bzw. Destruktoren der Vorfahren. Abstrakte Vorfahrmethoden fehlen, die Fußzeile nennt sie. In Funktionen ergänzt die ' +
+      'Übernahme „Result := “, wenn vor inherited nichts in der Zeile steht. Aus: nur die Namen der Vorfahrmethoden.",',
     '          "x-issue": "#482"',
     '        },',
     '        "sameNameVariants": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Kommt ein Name in mehreren Units vor, jede Variante mit ihrer Unit zeigen; die Variante, die der Compiler nach den uses wählt (letzte Unit gewinnt), steht zuerst mit „aktiv“,' + ' das Detailpanel nennt alle Units, die den Namen deklarieren. Aus: nur die aktive Variante.",',
+    '          "description": "Kommt ein Name in mehreren Units vor, jede Variante mit ihrer Unit zeigen; die Variante, die der Compiler nach den uses wählt (letzte Unit gewinnt), steht zuerst mit „aktiv“,' +
+      ' das Detailpanel nennt alle Units, die den Namen deklarieren. Aus: nur die aktive Variante.",',
     '          "x-issue": "#475"',
     '        },',
     '        "sameNameInsert": {',
     '          "type": "string",',
     '          "enum": ["prefix", "uses"],',
     '          "default": "prefix",',
-    '          "description": "Übernahme einer nicht aktiven Variante: prefix fügt den Unit-Präfix ein (Vcl.Graphics.TBitmap), uses verschiebt die Unit in ihrer uses-Liste nach hinten bzw. ergänzt sie; das' + ' Detailpanel warnt dann, dass andere Stellen ihre Bedeutung ändern können.",',
+    '          "description": "Übernahme einer nicht aktiven Variante: prefix fügt den Unit-Präfix ein (Vcl.Graphics.TBitmap), uses verschiebt die Unit in ihrer uses-Liste nach hinten bzw. ergänzt sie; das' +
+      ' Detailpanel warnt dann, dass andere Stellen ihre Bedeutung ändern können.",',
     '          "x-issue": "#475"',
     '        },',
     '        "showFmxUnits": {',
@@ -1020,7 +1066,8 @@ const
     '        "nameSuggestions": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "An der Namensposition einer Deklaration mit bekanntem Typ (var-Abschnitt, Inline-var, Feld, Parameter) Namen aus dem Typ vorschlagen: TCustomerList ergibt Customers, Customer' + 'List und List, mit F, A bzw. L, wenn mindestens 60 % der Deklarationen dieser Art im Projekt das Präfix tragen oder die Projektdatei .atlas es unter naming vorgibt."',
+    '          "description": "An der Namensposition einer Deklaration mit bekanntem Typ (var-Abschnitt, Inline-var, Feld, Parameter) Namen aus dem Typ vorschlagen: TCustomerList ergibt Customers, Customer' +
+      'List und List, mit F, A bzw. L, wenn mindestens 60 % der Deklarationen dieser Art im Projekt das Präfix tragen oder die Projektdatei .atlas es unter naming vorgibt."',
     '        }',
     '      },',
     '      "x-scope": "global",',
@@ -1037,7 +1084,8 @@ const
     '        "inlineVar": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Inline-Variablen (for var Item in …, var Name := …) erzeugen, wenn die Delphi-Version sie kennt (ab 10.3). Aus: Atlas trägt die Variable in den var-Abschnitt der Routine ein.' + '"',
+    '          "description": "Inline-Variablen (for var Item in …, var Name := …) erzeugen, wenn die Delphi-Version sie kennt (ab 10.3). Aus: Atlas trägt die Variable in den var-Abschnitt der Routine ein.' +
+      '"',
     '        },',
     '        "changeSignature": {',
     '          "type": "boolean",',
@@ -1049,7 +1097,8 @@ const
     '          "type": "string",',
     '          "enum": ["overload", "updateCallers"],',
     '          "default": "overload",',
-    '          "description": "Neue Parameter: overload behält die alte Signatur als Überladung, die mit dem angegebenen Wert weiterreicht (Aufrufer bleiben); updateCallers ändert alle Aufrufer. Interface-' + 'Methoden und gebundene Handler gehen nur mit updateCallers. Standardwerte erzeugt Atlas nie.",',
+    '          "description": "Neue Parameter: overload behält die alte Signatur als Überladung, die mit dem angegebenen Wert weiterreicht (Aufrufer bleiben); updateCallers ändert alle Aufrufer. Interface-' +
+      'Methoden und gebundene Handler gehen nur mit updateCallers. Standardwerte erzeugt Atlas nie.",',
     '          "x-issue": "#100"',
     '        },',
     '        "virtualOverload": {',
@@ -1067,13 +1116,15 @@ const
     '        "forwardDeclaration": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Typen, die im type-Abschnitt vor ihrer Deklaration benutzt werden, melden und „Forward-Deklaration ergänzen“, „type-Blöcke zusammenlegen“ bzw. „Deklaration nach oben verschie' + 'ben“ anbieten; überflüssige Forward-Deklarationen melden.",',
+    '          "description": "Typen, die im type-Abschnitt vor ihrer Deklaration benutzt werden, melden und „Forward-Deklaration ergänzen“, „type-Blöcke zusammenlegen“ bzw. „Deklaration nach oben verschie' +
+      'ben“ anbieten; überflüssige Forward-Deklarationen melden.",',
     '          "x-issue": "#685"',
     '        },',
     '        "propertyFromAccessors": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Code-Aktionen „Property X anlegen“ auf einer Zugriffsmethode und „Fehlende Properties anlegen (n)“ auf der Kopfzeile einer Klasse: Zu Methoden wie GetX/SetX (auch indiziert, ' + 'IsX/HasX für Boolean) ohne Property X legt Atlas die Property an, mit read FX, wenn der Getter nur das Feld liefert. Vorschau vor dem Übernehmen.",',
+    '          "description": "Code-Aktionen „Property X anlegen“ auf einer Zugriffsmethode und „Fehlende Properties anlegen (n)“ auf der Kopfzeile einer Klasse: Zu Methoden wie GetX/SetX (auch indiziert, ' +
+      'IsX/HasX für Boolean) ohne Property X legt Atlas die Property an, mit read FX, wenn der Getter nur das Feld liefert. Vorschau vor dem Übernehmen.",',
     '          "x-issue": "#682"',
     '        },',
     '        "propertyFromAccessorsPrefixes": {',
@@ -1090,7 +1141,8 @@ const
     '          "type": "string",',
     '          "enum": ["ask", "always", "never"],',
     '          "default": "ask",',
-    '          "description": "Aufrufe im ganzen Projekt auf die Property umstellen (X.GetCaption → X.Caption, X.SetCaption(V) → X.Caption := V); Übergaben als Methodenzeiger bleiben. ask: beide Aktionen a' + 'nbieten, mit und ohne Umstellen; always: immer umstellen; never: nie.",',
+    '          "description": "Aufrufe im ganzen Projekt auf die Property umstellen (X.GetCaption → X.Caption, X.SetCaption(V) → X.Caption := V); Übergaben als Methodenzeiger bleiben. ask: beide Aktionen a' +
+      'nbieten, mit und ohne Umstellen; always: immer umstellen; never: nie.",',
     '          "x-control": "Auswahl",',
     '          "x-issue": "#682"',
     '        },',
@@ -1106,14 +1158,17 @@ const
     '          "type": "string",',
     '          "enum": ["off", "private", "protected"],',
     '          "default": "off",',
-    '          "description": "Zugriffsmethoden nach dem Anlegen nach private bzw. protected verschieben, wenn sie danach außerhalb ihrer Klasse nicht mehr benutzt werden (virtuelle und überschriebene blei' + 'ben). off: nie.",',
+    '          "description": "Zugriffsmethoden nach dem Anlegen nach private bzw. protected verschieben, wenn sie danach außerhalb ihrer Klasse nicht mehr benutzt werden (virtuelle und überschriebene blei' +
+      'ben). off: nie.",',
     '          "x-control": "Auswahl",',
     '          "x-issue": "#682"',
     '        },',
     '        "freeFields": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Im Konstruktor (oder einer von ihm aufgerufenen privaten Methode) mit TKlasse.Create erzeugte Objektfelder, die die Klasse nirgends freigibt, melden (field-not-freed, bis #91' + '8 owned-field-not-freed) und die Code-Aktionen „Im Destruktor freigeben“ am Feld und „Alle eigenen Objekte freigeben (n)“ an der Klasse anbieten. Fehlt der Destruktor, legt Atlas ihn mit override und ' + 'inherited an. Ausgenommen sind Komponenten mit Owner sowie Interface- und Record-Felder; zurückgegebene oder weitergereichte Felder meldet Atlas als unklar (owned-field-free-unclear).",',
+    '          "description": "Im Konstruktor (oder einer von ihm aufgerufenen privaten Methode) mit TKlasse.Create erzeugte Objektfelder, die die Klasse nirgends freigibt, melden (field-not-freed, bis #91' +
+      '8 owned-field-not-freed) und die Code-Aktionen „Im Destruktor freigeben“ am Feld und „Alle eigenen Objekte freigeben (n)“ an der Klasse anbieten. Fehlt der Destruktor, legt Atlas ihn mit override und ' +
+      'inherited an. Ausgenommen sind Komponenten mit Owner sowie Interface- und Record-Felder; zurückgegebene oder weitergereichte Felder meldet Atlas als unklar (owned-field-free-unclear).",',
     '          "x-issue": "#666"',
     '        },',
     '        "freeFieldsStyle": {',
@@ -1127,7 +1182,9 @@ const
     '        "invertBoolean": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Code-Aktion „Bedeutung umkehren (X → Y)“ auf einer Boolean-Variablen, einem Feld, einer Konstanten, einer Property, einem Parameter oder einer Boolean-Funktion des Projekts: ' + 'neuer Name mit der Gegenbedeutung, jede Stelle so verneint, dass das Programm gleich bleibt (X := True → Y := False, if not X → if Y, X = False → Y). Funktionen liefern im Rumpf das Gegenteil, Propert' + 'ies nehmen Feld, Getter, Setter und default mit, Überschreibungen und Interfaces folgen. Vorschau mit Warnungen (var/out-Übergaben, @X, Zeichenketten für RTTI), je Datei ein Rückgängig-Schritt.",',
+    '          "description": "Code-Aktion „Bedeutung umkehren (X → Y)“ auf einer Boolean-Variablen, einem Feld, einer Konstanten, einer Property, einem Parameter oder einer Boolean-Funktion des Projekts: ' +
+      'neuer Name mit der Gegenbedeutung, jede Stelle so verneint, dass das Programm gleich bleibt (X := True → Y := False, if not X → if Y, X = False → Y). Funktionen liefern im Rumpf das Gegenteil, Propert' +
+      'ies nehmen Feld, Getter, Setter und default mit, Überschreibungen und Interfaces folgen. Vorschau mit Warnungen (var/out-Übergaben, @X, Zeichenketten für RTTI), je Datei ein Rückgängig-Schritt.",',
     '          "x-issue": "#715"',
     '        },',
     '        "invertBooleanAntonyms": {',
@@ -1136,7 +1193,8 @@ const
     '            "type": "string"',
     '          },',
     '          "default": {},',
-    '          "description": "Eigene Gegensatzpaare für den Namensvorschlag, z. B. {\"Verbose\": \"Silent\"}; gelten in beiden Richtungen und vor den eingebauten (Hidden ↔ Visible, Enabled ↔ Disabled, IsE' + 'mpty ↔ HasItems, Valid ↔ Invalid, Locked ↔ Unlocked …).",',
+    '          "description": "Eigene Gegensatzpaare für den Namensvorschlag, z. B. {\"Verbose\": \"Silent\"}; gelten in beiden Richtungen und vor den eingebauten (Hidden ↔ Visible, Enabled ↔ Disabled, IsE' +
+      'mpty ↔ HasItems, Valid ↔ Invalid, Locked ↔ Unlocked …).",',
     '          "x-control": "Tabelle (Name, Gegenteil)",',
     '          "x-issue": "#715"',
     '        },',
@@ -1150,56 +1208,68 @@ const
     '        "invertBooleanIncludeDfm": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Published Properties auch in den Formularen (.dfm, .fmx) der Klasse und ihrer Nachfahren umkehren: Name und Wert (Hidden = True → Visible = False); der default der Property w' + 'ird mit umgedreht. Aus: Formulare bleiben, die Vorschau warnt.",',
+    '          "description": "Published Properties auch in den Formularen (.dfm, .fmx) der Klasse und ihrer Nachfahren umkehren: Name und Wert (Hidden = True → Visible = False); der default der Property w' +
+      'ird mit umgedreht. Aus: Formulare bleiben, die Vorschau warnt.",',
     '          "x-issue": "#715"',
     '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Code-Aktion „try/finally ergänzen“ nach X := TFoo.Create(…) für lokale Variablen (bei Result: try/except, das nur im Fehlerfall freigibt). Der try-Block schließt die folgende' + 'n Anweisungen bis zum Blockende bzw. bis zum Ende der Auswahl ein.",',
+    '          "description": "Code-Aktion „try/finally ergänzen“ nach X := TFoo.Create(…) für lokale Variablen (bei Result: try/except, das nur im Fehlerfall freigibt). Der try-Block schließt die folgende' +
+      'n Anweisungen bis zum Blockende bzw. bis zum Ende der Auswahl ein.",',
     '          "x-issue": "#42"',
     '        },',
     '        "classActions": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Code-Aktionen in einer Klassendeklaration: „Getter, Setter und Feld erzeugen“ auf einer Property ohne read/write, „Methoden von IFoo implementieren“ und „Name überschreiben“ ' + 'für virtuelle Methoden der Vorfahren.",',
+    '          "description": "Code-Aktionen in einer Klassendeklaration: „Getter, Setter und Feld erzeugen“ auf einer Property ohne read/write, „Methoden von IFoo implementieren“ und „Name überschreiben“ ' +
+      'für virtuelle Methoden der Vorfahren.",',
     '          "x-issue": "#42"',
     '        },',
     '        "explicitType": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Code-Aktion „Typ ausschreiben“ auf dem Namen von var X := …, const X = … und for var X in … ohne Typangabe: fügt den abgeleiteten Typ ein (var Count: Integer := Lines.Count) ' + 'und trägt seine Unit bei Bedarf ins uses ein.",',
+    '          "description": "Code-Aktion „Typ ausschreiben“ auf dem Namen von var X := …, const X = … und for var X in … ohne Typangabe: fügt den abgeleiteten Typ ein (var Count: Integer := Lines.Count) ' +
+      'und trägt seine Unit bei Bedarf ins uses ein.",',
     '          "x-issue": "#453"',
     '        },',
     '        "extract": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Code-Aktionen „Methode extrahieren“ (markierte Anweisungen werden eine neue Methode bzw. Routine; Parameter nach Datenfluss: nur gelesen const, geschrieben und danach gelesen' + ' var bzw. out, nur innen lokale Variable), „Variable einführen“ (auch für alle textgleichen Vorkommen im Block) und „Konstante extrahieren“ (in der Routine oder in der Unit). Inline-Variable oder var-' + 'Abschnitt nach inlineVar.",',
+    '          "description": "Code-Aktionen „Methode extrahieren“ (markierte Anweisungen werden eine neue Methode bzw. Routine; Parameter nach Datenfluss: nur gelesen const, geschrieben und danach gelesen' +
+      ' var bzw. out, nur innen lokale Variable), „Variable einführen“ (auch für alle textgleichen Vorkommen im Block) und „Konstante extrahieren“ (in der Routine oder in der Unit). Inline-Variable oder var-' +
+      'Abschnitt nach inlineVar.",',
     '          "x-issue": "#50"',
     '        },',
     '        "completeCase": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Code-Aktion „case vervollständigen“: ergänzt bei case über einem Aufzählungstyp genau die fehlenden Werte als leere Zweige in Deklarationsreihenfolge. Mit else heißt sie „Feh' + 'lende Werte vor else ergänzen“ und ist nicht die bevorzugte Aktion.",',
+    '          "description": "Code-Aktion „case vervollständigen“: ergänzt bei case über einem Aufzählungstyp genau die fehlenden Werte als leere Zweige in Deklarationsreihenfolge. Mit else heißt sie „Feh' +
+      'lende Werte vor else ergänzen“ und ist nicht die bevorzugte Aktion.",',
     '          "x-issue": "#50"',
     '        },',
     '        "resolveWith": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Code-Aktion „with auflösen“: Bezeichner im with-Rumpf, die zu einem Mitglied eines with-Ausdrucks gehören, bekommen diesen Ausdruck vorangestellt (innerstes Element zuerst); ' + 'aufwendige Ausdrücke vom Klassentyp kommen vorher in eine lokale Variable. Ist ein Bezeichner nicht eindeutig auflösbar, gibt es die Aktion nicht.",',
+    '          "description": "Code-Aktion „with auflösen“: Bezeichner im with-Rumpf, die zu einem Mitglied eines with-Ausdrucks gehören, bekommen diesen Ausdruck vorangestellt (innerstes Element zuerst); ' +
+      'aufwendige Ausdrücke vom Klassentyp kommen vorher in eine lokale Variable. Ist ein Bezeichner nicht eindeutig auflösbar, gibt es die Aktion nicht.",',
     '          "x-issue": "#50"',
     '        },',
     '        "inline": {',
     '          "type": "boolean",',
     '          "default": false,',
-    '          "description": "Code-Aktionen „Variable einbetten“ und „Methode einbetten“ auf einer lokalen Variablen bzw. einem Aufruf: Die Variable verschwindet, ihre Stellen bekommen den Ausdruck; der A' + 'ufruf wird durch den Rumpf ersetzt (lokale Namen eindeutig umbenannt, Argumente eingesetzt oder in Hilfsvariablen, Mitglieder mit dem Empfänger, das Ergebnis direkt oder in einer Variablen wie AddResu' + 'lt). Angeboten nur, wenn Datenfluss und Namensauflösung zeigen, dass sich die Bedeutung nicht ändert. Hilfsvariablen als Inline-Variable oder im var-Abschnitt nach refactoring.inlineVar.",',
+    '          "description": "Code-Aktionen „Variable einbetten“ und „Methode einbetten“ auf einer lokalen Variablen bzw. einem Aufruf: Die Variable verschwindet, ihre Stellen bekommen den Ausdruck; der A' +
+      'ufruf wird durch den Rumpf ersetzt (lokale Namen eindeutig umbenannt, Argumente eingesetzt oder in Hilfsvariablen, Mitglieder mit dem Empfänger, das Ergebnis direkt oder in einer Variablen wie AddResu' +
+      'lt). Angeboten nur, wenn Datenfluss und Namensauflösung zeigen, dass sich die Bedeutung nicht ändert. Hilfsvariablen als Inline-Variable oder im var-Abschnitt nach refactoring.inlineVar.",',
     '          "x-experimental": true,',
     '          "x-issue": "#103"',
     '        },',
     '        "moveClass": {',
     '          "type": "boolean",',
     '          "default": false,',
-    '          "description": "Code-Aktion „Klasse in eigene Unit verschieben …“ auf der ersten Zeile einer Klassen- oder Record-Deklaration: Die Deklaration samt Attributen, Kommentar und Methodenrümpfen ' + 'kommt in eine neue Unit neben der alten (Name aus dem Klassennamen ohne T, im Dialog änderbar). Die neue Unit steht danach in .dpr bzw. .dpk und .dproj; ihre uses entstehen aus den benötigten Namen, u' + 'nd alle Units, die die Klasse verwenden, binden sie ein. Nicht angeboten bei Zugriff auf Namen aus dem implementation-Teil der alten Unit, Kreisverweis, Formularklassen und bedingter Übersetzung.",',
+    '          "description": "Code-Aktion „Klasse in eigene Unit verschieben …“ auf der ersten Zeile einer Klassen- oder Record-Deklaration: Die Deklaration samt Attributen, Kommentar und Methodenrümpfen ' +
+      'kommt in eine neue Unit neben der alten (Name aus dem Klassennamen ohne T, im Dialog änderbar). Die neue Unit steht danach in .dpr bzw. .dpk und .dproj; ihre uses entstehen aus den benötigten Namen, u' +
+      'nd alle Units, die die Klasse verwenden, binden sie ein. Nicht angeboten bei Zugriff auf Namen aus dem implementation-Teil der alten Unit, Kreisverweis, Formularklassen und bedingter Übersetzung.",',
     '          "x-experimental": true,',
     '          "x-issue": "#103"',
     '        },',
@@ -1207,7 +1277,9 @@ const
     '          "type": "string",',
     '          "enum": ["ask", "off"],',
     '          "default": "off",',
-    '          "description": "Nach dem Umbenennen einer Unit in der Projektverwaltung (die IDE passt nur .dpr und .dproj an) meldet Atlas in der Benachrichtigungszentrale, wie viele Units den alten Namen ' + 'noch verwenden, und bietet an, uses-Einträge und qualifizierte Bezeichner (Alt.TKlasse) im Projekt oder in der Projektgruppe nachzuziehen, mit Vorschau und rückgängig machbar. ask: anbieten; off: aus.' + '",',
+    '          "description": "Nach dem Umbenennen einer Unit in der Projektverwaltung (die IDE passt nur .dpr und .dproj an) meldet Atlas in der Benachrichtigungszentrale, wie viele Units den alten Namen ' +
+      'noch verwenden, und bietet an, uses-Einträge und qualifizierte Bezeichner (Alt.TKlasse) im Projekt oder in der Projektgruppe nachzuziehen, mit Vorschau und rückgängig machbar. ask: anbieten; off: aus.' +
+      '",',
     '          "x-experimental": true,',
     '          "x-offValue": "off",',
     '          "x-issue": "#512"',
@@ -1215,7 +1287,9 @@ const
     '        "createMethod": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Methode aus Aufruf anlegen: Nach \"(\" hinter einem unbekannten Namen und mit Strg+Leer auf einem solchen Aufruf bietet Atlas an, die Methode (in einer Methode der Klasse) bz' + 'w. freie Routine anzulegen; bei Obj.Name(…) in der Klasse von Obj, sofern sie zum Projekt gehört (auch als Code-Aktion). Parametertypen aus den Argumenten, Rückgabetyp aus der Zuweisung bzw. dem erwar' + 'teten Typ; ohne Zuweisung eine Prozedur.",',
+    '          "description": "Methode aus Aufruf anlegen: Nach \"(\" hinter einem unbekannten Namen und mit Strg+Leer auf einem solchen Aufruf bietet Atlas an, die Methode (in einer Methode der Klasse) bz' +
+      'w. freie Routine anzulegen; bei Obj.Name(…) in der Klasse von Obj, sofern sie zum Projekt gehört (auch als Code-Aktion). Parametertypen aus den Argumenten, Rückgabetyp aus der Zuweisung bzw. dem erwar' +
+      'teten Typ; ohne Zuweisung eine Prozedur.",',
     '          "x-issue": "#472"',
     '        },',
     '        "createMethodSection": {',
@@ -1262,7 +1336,8 @@ const
     '        "docComment": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Gerüst des Dokumentationskommentars nach dem dritten / über einer Deklaration erzeugen (summary, typeparam, param, returns), dazu die Code-Aktionen „Dokumentationskommentar e' + 'rzeugen“ und „Dokumentation an die Signatur anpassen“. Überzählige param werden dabei als <!-- entfernt: Name --> markiert, nicht gelöscht. false: /// bleibt, wie getippt.",',
+    '          "description": "Gerüst des Dokumentationskommentars nach dem dritten / über einer Deklaration erzeugen (summary, typeparam, param, returns), dazu die Code-Aktionen „Dokumentationskommentar e' +
+      'rzeugen“ und „Dokumentation an die Signatur anpassen“. Überzählige param werden dabei als <!-- entfernt: Name --> markiert, nicht gelöscht. false: /// bleibt, wie getippt.",',
     '          "x-issue": "#88"',
     '        }',
     '      },',
@@ -1275,7 +1350,8 @@ const
     '    "metrics": {',
     '      "type": "boolean",',
     '      "default": true,',
-    '      "description": "Kennzahlen überhaupt: false schaltet die Kennzahlen über den Methoden (codeLens.metrics) und alle Regeln metric-* für alle Projekte ab. Ein Projekt übersteuert das je Regel, inde' + 'm es sie in atlas.json unter \"rules\" ausdrücklich setzt, z. B. \"metric-method-length\": \"warning\".",',
+    '      "description": "Kennzahlen überhaupt: false schaltet die Kennzahlen über den Methoden (codeLens.metrics) und alle Regeln metric-* für alle Projekte ab. Ein Projekt übersteuert das je Regel, inde' +
+      'm es sie in atlas.json unter \"rules\" ausdrücklich setzt, z. B. \"metric-method-length\": \"warning\".",',
     '      "x-scope": "global",',
     '      "x-area": "editor",',
     '      "x-page": "Editor",',
@@ -1290,7 +1366,8 @@ const
     '        "enabled": {',
     '          "type": "boolean",',
     '          "default": false,',
-    '          "description": "Hauptschalter: false = keine experimentelle Funktion wirkt, auch wenn ihr eigener Schalter an ist; die Einzelschalter behalten ihren Wert. true = die Einzelschalter (Kennzeic' + 'hen „Experimentell“, Vorgabe aus) gelten.",',
+    '          "description": "Hauptschalter: false = keine experimentelle Funktion wirkt, auch wenn ihr eigener Schalter an ist; die Einzelschalter behalten ihren Wert. true = die Einzelschalter (Kennzeic' +
+      'hen „Experimentell“, Vorgabe aus) gelten.",',
     '          "x-issue": "#834"',
     '        }',
     '      },',
@@ -1326,7 +1403,8 @@ const
     '        "logCall": {',
     '          "type": "string",',
     '          "default": "",',
-    '          "description": "Protokollaufruf für /log, /except und /measure: ein Routinenname wie \"Log.Debug\" bekommt den Text als Argument, {text} setzt ihn an diese Stelle, z. B. \"Logger.Send(TLogLe' + 'vel.Debug, {text})\". Leer: OutputDebugString(PChar(…)).",',
+    '          "description": "Protokollaufruf für /log, /except und /measure: ein Routinenname wie \"Log.Debug\" bekommt den Text als Argument, {text} setzt ihn an diese Stelle, z. B. \"Logger.Send(TLogLe' +
+      'vel.Debug, {text})\". Leer: OutputDebugString(PChar(…)).",',
     '          "x-issue": "#304"',
     '        },',
     '        "componentPalette": {',
@@ -1384,7 +1462,8 @@ const
     '        "namespace"',
     '      ],',
     '      "default": false,',
-    '      "description": "\"uses aufräumen\" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder \"alphabetic\" alphabetisch, \"namespace\" nach Namespace gruppiert (System, Vcl, .' + '.. und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units.",',
+    '      "description": "\"uses aufräumen\" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder \"alphabetic\" alphabetisch, \"namespace\" nach Namespace gruppiert (System, Vcl, .' +
+      '.. und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units.",',
     '      "x-scope": "project",',
     '      "x-page": "Eingabehilfen",',
     '      "x-control": "Auswahl",',
@@ -1405,7 +1484,8 @@ const
     '    "dfmPropertyRules": {',
     '      "type": "array",',
     '      "default": [],',
-    '      "description": "Eigenschaftsregeln für Formulardateien: Vorgaben für Komponenten-Properties, gemeldet als dfm-property am Feld der Komponente in der Unit. Nicht gespeicherte Properties gelten mi' + 't ihrem default-Wert.",',
+    '      "description": "Eigenschaftsregeln für Formulardateien: Vorgaben für Komponenten-Properties, gemeldet als dfm-property am Feld der Komponente in der Unit. Nicht gespeicherte Properties gelten mi' +
+      't ihrem default-Wert.",',
     '      "items": {',
     '        "type": "object",',
     '        "additionalProperties": false,',
@@ -1413,7 +1493,8 @@ const
     '        "properties": {',
     '          "class": { "type": "string", "description": "Komponentenklasse, z. B. TLabel." },',
     '          "property": { "type": "string", "description": "Property-Pfad, auch Font.Name (nur gespeicherte Werte)." },',
-    '          "condition": { "type": "string", "enum": ["=", "<>", "contains", "notContains", "empty", "notEmpty"], "default": "=", "description": "Bedingung; contains und notContains für Mengen und Strin' + 'gs." },',
+    '          "condition": { "type": "string", "enum": ["=", "<>", "contains", "notContains", "empty", "notEmpty"], "default": "=", "description": "Bedingung; contains und notContains für Mengen und Strin' +
+      'gs." },',
     '          "value": { "type": "string", "description": "Sollwert wie in der DFM, z. B. True, poScreenCenter, dgRowSelect." },',
     '          "message": { "type": "string", "description": "Meldung; ohne Angabe aus Klasse, Property und Bedingung gebildet." },',
     '          "severity": { "type": "string", "enum": ["off", "hint", "info", "warning", "error"], "default": "warning", "description": "Schweregrad der Meldung." },',
@@ -1431,7 +1512,8 @@ const
     '      "type": "integer",',
     '      "minimum": 0,',
     '      "default": 768,',
-    '      "description": "Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst die Verwendungen ausgelagert (sie bleiben im Cache auf der Platte), dann Bibliotheks-Units (RTL, VC' + 'L) und zuletzt Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt.",',
+    '      "description": "Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst die Verwendungen ausgelagert (sie bleiben im Cache auf der Platte), dann Bibliotheks-Units (RTL, VC' +
+      'L) und zuletzt Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt.",',
     '      "x-scope": "global",',
     '      "x-area": "general",',
     '      "x-page": "Speicher",',
@@ -1440,7 +1522,8 @@ const
     '    },',
     '    "index": {',
     '      "type": "object",',
-    '      "description": "Umfang des Symbolindex. Standard: alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und alle Units der Bibliotheks- und Suchpfade der Delphi-Installation, auch we' + 'nn keine Unit sie einbindet. Reihenfolge: aktives Projekt, übrige Projekte, Suchpfade, Bibliothek; alles im Hintergrund, die Bibliothek aus dem gemeinsamen Cache.",',
+    '      "description": "Umfang des Symbolindex. Standard: alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und alle Units der Bibliotheks- und Suchpfade der Delphi-Installation, auch we' +
+      'nn keine Unit sie einbindet. Reihenfolge: aktives Projekt, übrige Projekte, Suchpfade, Bibliothek; alles im Hintergrund, die Bibliothek aus dem gemeinsamen Cache.",',
     '      "additionalProperties": false,',
     '      "properties": {',
     '        "projectGroup": {',
@@ -1466,14 +1549,16 @@ const
     '        "removeOrphans": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Index-Caches gelöschter Projekte (z. B. entfernter Branch-Ordner) und Caches im alten Format beim Laden eines Projekts löschen. Liegt das Projekt auf einem gerade nicht verbu' + 'ndenen Laufwerk, bleibt der Cache."',
+    '          "description": "Index-Caches gelöschter Projekte (z. B. entfernter Branch-Ordner) und Caches im alten Format beim Laden eines Projekts löschen. Liegt das Projekt auf einem gerade nicht verbu' +
+      'ndenen Laufwerk, bleibt der Cache."',
     '        },',
     '        "cacheMaxAgeDays": {',
     '          "type": "integer",',
     '          "minimum": 0,',
     '          "maximum": 3650,',
     '          "default": 14,',
-    '          "description": "Index-Caches löschen, die so viele Tage nicht benutzt wurden (Laden des Projekts zählt als Benutzung); 0 = aus. Das betrifft auch die Bibliotheks-Caches deinstallierter Delph' + 'i-Versionen."',
+    '          "description": "Index-Caches löschen, die so viele Tage nicht benutzt wurden (Laden des Projekts zählt als Benutzung); 0 = aus. Das betrifft auch die Bibliotheks-Caches deinstallierter Delph' +
+      'i-Versionen."',
     '        },',
     '        "cacheMaxMb": {',
     '          "type": "integer",',
@@ -1510,7 +1595,8 @@ const
     '    },',
     '    "diagnostics": {',
     '      "type": "object",',
-    '      "description": "Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichner' + 'namen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben.",',
+    '      "description": "Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichner' +
+      'namen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben.",',
     '      "additionalProperties": false,',
     '      "properties": {',
     '        "log": {',
@@ -1628,7 +1714,8 @@ const
     '        "metrics": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Kennzahlen über jeder Methode: Länge in Codezeilen, Verschachtelungstiefe, zyklomatische und kognitive Komplexität, Parameteranzahl. Die Grenzwerte stehen bei den Regeln metr' + 'ic-* unter \"max\"."',
+    '          "description": "Kennzahlen über jeder Methode: Länge in Codezeilen, Verschachtelungstiefe, zyklomatische und kognitive Komplexität, Parameteranzahl. Die Grenzwerte stehen bei den Regeln metr' +
+      'ic-* unter \"max\"."',
     '        }',
     '      },',
     '      "x-scope": "global",',
@@ -1639,7 +1726,8 @@ const
     '    },',
     '    "hints": {',
     '      "type": "object",',
-    '      "description": "Anzeige von XMLDoc-Kommentaren (///) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku immer vollständig auf; die Werte steu' + 'ern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas.",',
+    '      "description": "Anzeige von XMLDoc-Kommentaren (///) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku immer vollständig auf; die Werte steu' +
+      'ern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas.",',
     '      "additionalProperties": false,',
     '      "properties": {',
     '        "xmlDocExpand": {',
@@ -1650,7 +1738,8 @@ const
     '            "expanded"',
     '          ],',
     '          "default": "last",',
-    '          "description": "XMLDoc beim Öffnen (#770): \"collapsed\" zeigt nur Deklaration, Summary und „Mehr anzeigen“, \"last\" wie zuletzt in dieser Sitzung (getrennt für Tooltip und Detailpanel, nac' + 'h dem Neustart zugeklappt), \"expanded\" alle Abschnitte mit Überschrift (Parameter, Rückgabe, Ausnahmen, Hinweise, Beispiel …).",',
+    '          "description": "XMLDoc beim Öffnen (#770): \"collapsed\" zeigt nur Deklaration, Summary und „Mehr anzeigen“, \"last\" wie zuletzt in dieser Sitzung (getrennt für Tooltip und Detailpanel, nac' +
+      'h dem Neustart zugeklappt), \"expanded\" alle Abschnitte mit Überschrift (Parameter, Rückgabe, Ausnahmen, Hinweise, Beispiel …).",',
     '          "x-plugin": "XmlDocExpand"',
     '        },',
     '        "xmlDocFull": {',
@@ -1667,7 +1756,8 @@ const
     '        "publishedMembers": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Hover über einer Komponentenklasse (#110): published-Properties und Ereignisse samt geerbter in Tabellen mit Typ, Vorgabe (default, implizit, nodefault, stored) und deklarier' + 'ender Klasse, Filter für geerbte und nur mit Vorgabe, die Standard-Property einer Array-Property und „Liste kopieren“ mit Strg+C. Aus: nur Deklaration, Doku und Vererbung.",',
+    '          "description": "Hover über einer Komponentenklasse (#110): published-Properties und Ereignisse samt geerbter in Tabellen mit Typ, Vorgabe (default, implizit, nodefault, stored) und deklarier' +
+      'ender Klasse, Filter für geerbte und nur mit Vorgabe, die Standard-Property einer Array-Property und „Liste kopieren“ mit Strg+C. Aus: nur Deklaration, Doku und Vererbung.",',
     '          "x-issue": "#110"',
     '        }',
     '      },',
@@ -1679,19 +1769,23 @@ const
     '    },',
     '    "directives": {',
     '      "type": "object",',
-    '      "description": "Hilfen in Compiler-Direktiven: Vervollständigung und Hover für Direktiven wie {$R+} oder {$WARN …} und für bedingte Symbole in {$IFDEF}, {$IFNDEF}, {$IF Defined(…)}, {$DEFINE} un' + 'd {$UNDEF}.",',
+    '      "description": "Hilfen in Compiler-Direktiven: Vervollständigung und Hover für Direktiven wie {$R+} oder {$WARN …} und für bedingte Symbole in {$IFDEF}, {$IFNDEF}, {$IF Defined(…)}, {$DEFINE} un' +
+      'd {$UNDEF}.",',
     '      "additionalProperties": false,',
     '      "properties": {',
     '        "completion": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "In {$ die Direktivennamen, nach {$WARN die Warnungsbezeichner und nach {$IFDEF, {$IFNDEF, {$DEFINE, {$UNDEF und in Defined( die bedingten Symbole vorschlagen, jeweils mit Her' + 'kunft (Konfiguration, Plattform, Compiler-Vorgabe, {$DEFINE} mit Zeile).",',
+    '          "description": "In {$ die Direktivennamen, nach {$WARN die Warnungsbezeichner und nach {$IFDEF, {$IFNDEF, {$DEFINE, {$UNDEF und in Defined( die bedingten Symbole vorschlagen, jeweils mit Her' +
+      'kunft (Konfiguration, Plattform, Compiler-Vorgabe, {$DEFINE} mit Zeile).",',
     '          "x-issue": "#102"',
     '        },',
     '        "hover": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Hover über Schaltern wie {$R+} erklärt die Direktive mit DocWiki-Link; über {$IFDEF X} und Co. nennt er, ob X an dieser Stelle aktiv ist und wo es definiert wird (Projekt, Ko' + 'nfiguration und Plattform aus der .dproj, Compiler-Vorgabe, {$DEFINE} mit Datei und Zeile, auch aus Include-Dateien). Über {$IF}, {$ELSEIF} und {$IFOPT} nennt er den Wert der Bedingung mit Teilwerten ' + 'und Herkunft (SizeOf nach Zielplattform, RTLVersion111 nach Delphi-Version, Declared aus dem Index, Schalter aus der .dproj oder einem {$R-} davor), über {$PUSHOPT}/{$POPOPT} das Gegenstück (#847).",',
+    '          "description": "Hover über Schaltern wie {$R+} erklärt die Direktive mit DocWiki-Link; über {$IFDEF X} und Co. nennt er, ob X an dieser Stelle aktiv ist und wo es definiert wird (Projekt, Ko' +
+      'nfiguration und Plattform aus der .dproj, Compiler-Vorgabe, {$DEFINE} mit Datei und Zeile, auch aus Include-Dateien). Über {$IF}, {$ELSEIF} und {$IFOPT} nennt er den Wert der Bedingung mit Teilwerten ' +
+      'und Herkunft (SizeOf nach Zielplattform, RTLVersion111 nach Delphi-Version, Declared aus dem Index, Schalter aus der .dproj oder einem {$R-} davor), über {$PUSHOPT}/{$POPOPT} das Gegenstück (#847).",',
     '          "x-issue": "#102"',
     '        }',
     '      },',
@@ -1836,7 +1930,8 @@ const
     '        "globalSettings": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Der MCP-Server liest wie der LSP-Server und der Linter die globale Datei %APPDATA%\\Atlas\\settings.json (z. B. mcp.disabledTools, Index, Hints). false: nur atlas.json, etwa ' + 'für reproduzierbare Ergebnisse im Team.",',
+    '          "description": "Der MCP-Server liest wie der LSP-Server und der Linter die globale Datei %APPDATA%\\Atlas\\settings.json (z. B. mcp.disabledTools, Index, Hints). false: nur atlas.json, etwa ' +
+      'für reproduzierbare Ergebnisse im Team.",',
     '          "x-scope": "project",',
     '          "x-page": "MCP",',
     '          "x-control": "Kontrollkästchen in den Projekt-Einstellungen (Seite MCP)"',
@@ -1917,7 +2012,8 @@ const
     '        "reindent": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Zeilen nach der Blockstruktur einrücken (begin/end, try, case, repeat, Abschnitte). Ausgeschaltet bleibt die vorhandene Einrückung und nur Tabs und Leerzeichen werden umgerec' + 'hnet."',
+    '          "description": "Zeilen nach der Blockstruktur einrücken (begin/end, try, case, repeat, Abschnitte). Ausgeschaltet bleibt die vorhandene Einrückung und nur Tabs und Leerzeichen werden umgerec' +
+      'hnet."',
     '        },',
     '        "beginPlacement": {',
     '          "type": "string",',

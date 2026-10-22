@@ -484,7 +484,6 @@ class function TConstantExpressionErrorRule.TooLargeLiteral(const ATokenText: st
 var
   Text: string;
   Bits, Index, Digit: Integer;
-  Significant: Boolean;
 begin
   Result := False;
   Text := StringReplace(ATokenText, '_', '', [rfReplaceAll]);
@@ -501,34 +500,28 @@ begin
     Exit;
   end;
   // Führende Nullen zählen nicht; danach bestimmt die erste Ziffer, wie viele Bits sie belegt.
-  Significant := False;
-  Digit := 0;
   for Index := 2 to Length(Text) do
   begin
-    if not Significant and (Text[Index] = '0') then
+    if Text[Index] = '0' then
       Continue;
-    if not Significant then
-    begin
-      Significant := True;
-      case Text[Index] of
-        '0'..'9':
-          Digit := Ord(Text[Index]) - Ord('0');
-        'a'..'f':
-          Digit := Ord(Text[Index]) - Ord('a') + 10;
-        'A'..'F':
-          Digit := Ord(Text[Index]) - Ord('A') + 10;
-      else
-        Exit;
-      end;
-      // Bits der ersten Ziffer plus volle Bits aller weiteren.
-      Bits := Bits * (Length(Text) - Index);
-      while Digit > 0 do
-      begin
-        Inc(Bits);
-        Digit := Digit shr 1;
-      end;
-      Exit(Bits > 64);
+    case Text[Index] of
+      '0'..'9':
+        Digit := Ord(Text[Index]) - Ord('0');
+      'a'..'f':
+        Digit := Ord(Text[Index]) - Ord('a') + 10;
+      'A'..'F':
+        Digit := Ord(Text[Index]) - Ord('A') + 10;
+    else
+      Exit;
     end;
+    // Bits der ersten Ziffer plus volle Bits aller weiteren.
+    Bits := Bits * (Length(Text) - Index);
+    while Digit > 0 do
+    begin
+      Inc(Bits);
+      Digit := Digit shr 1;
+    end;
+    Exit(Bits > 64);
   end;
 end;
 
@@ -1928,7 +1921,6 @@ var
     Node: TSyntaxNode;
   begin
     // Iterativ (Bericht M1): an der Zugriffskette entlang nach links.
-    Result := False;
     Node := ANode;
     while True do
       case Node.Kind of

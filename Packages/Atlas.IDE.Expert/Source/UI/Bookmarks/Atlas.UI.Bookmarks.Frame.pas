@@ -596,7 +596,7 @@ begin
   if FShown[Item.Index].Lost then
     Sender.Canvas.Font.Color := clGrayText
   else
-    Sender.Canvas.Font.Color := Sender.Font.Color;
+    Sender.Canvas.Font.Color := FList.Font.Color;
 end;
 
 procedure TAtlasBookmarksFrame.MenuPopup(Sender: TObject);

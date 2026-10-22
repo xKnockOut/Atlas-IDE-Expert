@@ -316,7 +316,6 @@ var
     Base := Trim(ABase);
     if (Base = '') or (ADepth > 8) then
       Exit;
-    Count := -1;
     if Base[1] = '(' then
     begin
       if Pos('=', Base) > 0 then

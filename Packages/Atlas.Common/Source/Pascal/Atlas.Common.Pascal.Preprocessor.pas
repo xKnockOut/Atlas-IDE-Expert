@@ -828,7 +828,7 @@ begin
   // Sonst der Index; ohne Treffer bleibt es unbekannt (die Unit kann noch fehlen).
   Provider := FOptions.Declared;
   if not Assigned(Provider) then
-    Provider := CurrentDeclaredProvider;
+    Provider := CurrentDeclaredProvider();
   if Assigned(Provider) and Provider(AName) then
   begin
     AOrigin := 'Index';

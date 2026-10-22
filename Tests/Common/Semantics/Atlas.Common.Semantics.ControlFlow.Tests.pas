@@ -590,7 +590,7 @@ begin
     Assert.IsFalse(NodeNamed(F, 'Vorher').MayRaise, 'außerhalb von try');
     Assert.AreEqual(0, ImplicitEdges(NodeNamed(F, 'Vorher')));
     Assert.IsTrue(NodeNamed(F, 'A').MayRaise);
-    Assert.AreEqual(2, NodeNamed(F, 'A').Successors.Count);
+    Assert.AreEqual(2, Integer(NodeNamed(F, 'A').Successors.Count));
     Assert.AreEqual(1, ImplicitEdges(NodeNamed(F, 'A')), 'A: Weg zum except');
     Assert.AreEqual(1, ImplicitEdges(NodeNamed(F, 'D')), 'D: Weg zur finally-Kopie für Ausnahmen');
     Assert.IsFalse(NodeNamed(F, 'E').MayRaise, 'finally liegt außerhalb des try-Teils');

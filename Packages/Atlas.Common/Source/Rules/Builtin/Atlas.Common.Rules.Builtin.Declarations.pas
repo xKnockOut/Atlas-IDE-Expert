@@ -593,7 +593,7 @@ class function TSignatureMismatchRule.Differences(const ADeclaration, ABody: TSi
 
 var
   Index: Integer;
-  Decl, Body: Atlas.Common.Editing.ClassCompletion.TSignatureParameter;
+  Decl, Body: TShapeParameter;
 begin
   Result := nil;
   if (ADeclaration.Kind <> '') and (ABody.Kind <> '') and (ADeclaration.Kind <> ABody.Kind) then

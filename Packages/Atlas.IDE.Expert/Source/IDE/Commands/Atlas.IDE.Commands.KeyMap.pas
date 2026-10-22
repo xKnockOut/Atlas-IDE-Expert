@@ -138,7 +138,11 @@ const
     // Umschließung entfernen (#657): Editorbefehl.
     3,
     // Fenster „Atlas-Prüfung“ (#909): Editorbefehl.
-    3);
+    3,
+    // Abschnittsknöpfe der Editorleiste (#1101): Editorbefehle.
+    3, 3,
+    // Schnelle Lesezeichen (#1104): Editorbefehle.
+    3, 3, 3, 3, 3);
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>
