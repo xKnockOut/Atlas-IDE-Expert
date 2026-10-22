@@ -69,6 +69,7 @@ uses
   Atlas.Common.Rules.Builtin.TypeDeclarations,
   Atlas.Common.Rules.Builtin.TypedExpressions,
   Atlas.Common.Rules.Builtin.TypeRestrictions,
+  Atlas.Common.Rules.Builtin.Units,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -133,6 +134,7 @@ begin
     RegisterTypeDeclarationRules(Registry);
     RegisterTypedExpressionRules(Registry);
     RegisterTypeRestrictionRules(Registry);
+    RegisterUnitRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

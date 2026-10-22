@@ -124,6 +124,9 @@ type
     class function ParseCodePage(const AText: string; out ACodePage: Integer): Boolean; static;
     /// <summary>Binäres Formular (beginnt mit TPF0 bzw. der Ressourcen-Kennung).</summary>
     class function IsBinaryForm(const ABytes: TBytes): Boolean; static;
+    /// <summary>Beginnt mit der BOM von UTF-32 LE (FF FE 00 00) oder BE (00 00 FE FF)? Der Compiler liest diese
+    /// Kodierung nicht (F2438, #1085); DetectEncoding hält UTF-32 LE sonst für UTF-16 LE.</summary>
+    class function HasUtf32Bom(const ABytes: TBytes): Boolean; static;
     /// <summary>
     /// Fehlstellen in UTF-8 (#150), je eine für eine zu kurze oder ungültige Folge, mit Stelle im Text, den
     /// Decode mit AFormat liefert: bei UTF-8 dort ein U+FFFD, bei ANSI ein Zeichen je Byte. ANSI-Dateien
@@ -650,6 +653,13 @@ end;
 class function TFileEncoding.IsBinaryForm(const ABytes: TBytes): Boolean;
 begin
   Result := TTextEncodingProbe.IsBinaryForm(ABytes);
+end;
+
+class function TFileEncoding.HasUtf32Bom(const ABytes: TBytes): Boolean;
+begin
+  Result := (Length(ABytes) >= 4) and
+    (((ABytes[0] = $FF) and (ABytes[1] = $FE) and (ABytes[2] = 0) and (ABytes[3] = 0)) or
+    ((ABytes[0] = 0) and (ABytes[1] = 0) and (ABytes[2] = $FE) and (ABytes[3] = $FF)));
 end;
 
 class function TFileEncoding.NormalizeLineBreaks(const AText: string; AStyle: TLineBreakStyle): string;

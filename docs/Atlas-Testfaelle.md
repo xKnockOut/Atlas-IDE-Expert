@@ -5506,3 +5506,92 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | TJ7 | Eigene Funktion `Default(A: Integer)` bzw. eigener Typ `Text` in der Unit | Keine Meldung |
 | TJ8 | `"typeinfo-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | TJ9 | Abgleich mit Delphi 12 und 13: TJ1 und TJ3 bis TJ5 übersetzen | dcc meldet dieselben Codes an denselben Stellen, für die stillen Fälle nichts |
+
+## Unit-Name passt nicht zum Dateinamen (#990)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NM1 | Das Beispiel aus #990: Datei `Kunden.Daten.pas` mit `unit Kunden.Model;` | Fehler `unit-name-mismatch` am Unit-Namen: „Unit-Name Kunden.Model passt nicht zur Datei Kunden.Daten.pas (wie E1038).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| NM2 | Schnellkorrektur „Unit-Namen in Kunden.Daten ändern“, danach Strg+Z | Kopf wird `unit Kunden.Daten;`, keine Meldung mehr; ein Undo-Schritt |
+| NM3 | `unit kunden.daten;` in `Kunden.Daten.pas`; `program Werkzeug;` in `Projekt1.dpr` | Keine Meldung |
+| NM4 | `{$WARN UNIT_NAME_MISMATCH OFF}` vor `unit Kunden.Model;` | Keine Meldung |
+| NM5 | In der .dpr `Kunden.Model in 'Kunden.Daten.pas'`, die Datei deklariert `unit Kunden.Daten;` | Fehler am uses-Eintrag „Kunden.Model in 'Kunden.Daten.pas': die Datei deklariert die Unit Kunden.Daten (wie E2085).“; Korrektur „In Kunden.Daten ändern“ |
+| NM6 | `"unit-name-mismatch": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| NM7 | Abgleich mit Delphi: NM1 und NM5 übersetzen | dcc meldet E1038/W1038 bzw. E2085 an denselben Stellen, für NM3 nichts |
+
+## Text nach dem abschließenden end. (#991)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NE1 | Das Beispiel aus #991: hinter `end.` eine Leerzeile und `procedure TKunde.Speichern;` mit `begin` | Warnung `text-after-final-end` über den Code hinter `end.`: „Code nach end. wird nicht übersetzt (wie W1011).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| NE2 | Schnellkorrektur „Text nach end. entfernen“, danach Strg+Z | Die Datei endet mit `end.`, keine Meldung mehr; ein Undo-Schritt |
+| NE3 | Hinter `end.` nur `// Ende`, `{ Notiz }` oder `{$ENDIF}` | Keine Meldung |
+| NE4 | Wie NE3 mit `"text-after-final-end": {"allowComments": false}` | „Kommentar nach end. wird nicht übersetzt (wie W1011).“ |
+| NE5 | Halb getippte Methode (fehlendes `end;`) vor dem Dateiende | Keine Meldung, solange der Parser Fehler meldet |
+| NE6 | Seite *Prüfregeln › Compiler vorab*, Regel `text-after-final-end` | Option `allowComments` als Kontrollkästchen |
+| NE7 | `"text-after-final-end": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| NE8 | Abgleich mit Delphi: NE1 und NE3 übersetzen | dcc meldet W1011 für NE1, für NE3 nichts |
+
+## exports-Klausel unzulässig (#1077)
+
+Voraussetzung: Server läuft in der IDE; eine Bibliothek (`library`) mit zwei exportierten Routinen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| XP1 | Das Beispiel aus #1077: `exports Initialisieren, Berechnen, Initialisieren;` | Fehler `exports-invalid` am zweiten `Initialisieren`: „Initialisieren wird zweimal exportiert (wie E2287).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| XP2 | Schnellkorrektur „Doppelten Eintrag entfernen“, danach Strg+Z | `exports Initialisieren, Berechnen;`, keine Meldung mehr; ein Undo-Schritt |
+| XP3 | `Berechnen name 'Start'` und in einer zweiten Klausel `Initialisieren name 'Start'` | „Der Name 'Start' wird zweimal exportiert (wie E2287).“ |
+| XP4 | `threadvar Zaehler: Integer;` bzw. `procedure Intern; local;` exportieren | „Die threadvar Zaehler kann nicht exportiert werden (wie E2276).“ bzw. „Intern ist mit local deklariert …“ |
+| XP5 | Eine globale Variable, Konstante oder einen Typ exportieren | „… ist keine Prozedur oder Funktion und kann nicht exportiert werden (wie E2121).“ |
+| XP6 | `exports Starten;` in den lokalen Deklarationen einer Prozedur | „exports ist nur auf globaler Ebene erlaubt (wie E2191).“ am Wort `exports`; keine Syntaxfehlermeldung |
+| XP7 | Überladene Routinen mit Parameterliste und eigenem `name`, Einträge in `{$IFDEF}`/`{$ELSE}` | Keine Meldung |
+| XP8 | `"exports-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| XP9 | Abgleich mit Delphi: XP1, XP3–XP6 übersetzen | dcc meldet E2287, E2276, E2121 bzw. E2191 an denselben Stellen, für XP7 nichts (E2287 ist laut docwiki „nicht verwendet“; bitte prüfen, was dcc bei XP1 tatsächlich meldet) |
+
+## Unit-Name kollidiert (#1079)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; Unit-Suche kennt die Bibliothekspfade.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NK1 | Neue Unit `System.pas` mit `unit System;` | Fehler `unit-name-conflict` am Unit-Namen: „Der Unit-Name System ist für den Compiler reserviert (wie E2272).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| NK2 | Wie NK1 mit `unit SysInit;` | Dieselbe Meldung für SysInit |
+| NK3 | `System.pas` der RTL öffnen (`source\rtl\sys`) | Keine Meldung |
+| NK4 | `{$NOINCLUDE Kunden.Datn}` in einer Unit, im Projekt gibt es `Kunden.Daten` | „{$NOINCLUDE Kunden.Datn}: Kunden.Datn ist keine bekannte Unit (wie E2242).“; Korrektur „Kunden.Daten verwenden“, ein Undo-Schritt |
+| NK5 | Das Beispiel aus #1079: `unit Kunden;` neben `Kunden.Daten.pas` und `Kunden.Ansicht.pas` | Keine Meldung; Delphi übersetzt das ohne E2399 (bitte gegenprüfen) |
+| NK6 | `"unit-name-conflict": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| NK7 | Abgleich mit Delphi: NK1, NK4 und NK5 übersetzen | dcc meldet E2272 bzw. E2242 an denselben Stellen, für NK5 nichts |
+
+## Variant ohne System.Variants in uses (#1082)
+
+Voraussetzung: Server läuft in der IDE; in `atlas.json` `"implicit-variants-unit": "hint"` (standardmäßig aus) oder Profil `strict`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IV1 | Das Beispiel aus #1082: `uses System.SysUtils;` und `var Wert: Variant;` | Hinweis `implicit-variants-unit` an `Variant`: „Variant wird ohne System.Variants in uses verwendet (wie W1040).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| IV2 | Schnellkorrektur „System.Variants in uses aufnehmen“, danach Strg+Z | `System.Variants` steht im uses des Abschnitts, keine Meldung mehr; ein Undo-Schritt |
+| IV3 | Unit mit `uses SysUtils, Classes;` (ohne Namespace) | Korrektur heißt „Variants in uses aufnehmen“ |
+| IV4 | `OleVariant`-Parameter, `TList<Variant>` | Meldung an der ersten Typangabe |
+| IV5 | `System.Variants` im uses (auch in `{$IFDEF}`), `{$WARN IMPLICIT_VARIANTS OFF}`, eigener `type Variant = …` | Keine Meldung |
+| IV6 | Ohne Eintrag in `atlas.json` | Keine Meldung (Regel ist aus) |
+| IV7 | `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| IV8 | Abgleich mit Delphi: IV1 übersetzen | dcc meldet W1040 für die Unit, nach IV2 nicht mehr |
+
+## Kodierung oder Zeichen, die der Compiler nicht liest (#1085)
+
+Voraussetzung: Server läuft in der IDE; Regel `file-encoding-unsupported` ist standardmäßig an (Fehler).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KO1 | Das Beispiel aus #1085: `Titel := ‚Bericht‘;` (aus einer Webseite kopiert) | Fehler `file-encoding-unsupported` über `‚Bericht‘`: „Typografische Anführungszeichen sind im Quelltext nicht erlaubt (wie E2038).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| KO2 | Schnellkorrektur „Durch den String 'Bericht' ersetzen“, danach Strg+Z | `Titel := 'Bericht';`, keine Meldung mehr; ein Undo-Schritt |
+| KO3 | `„Peter’s Bericht“`, `“Text”`, `»Text«`, `"Text"` | Je eine Meldung über das Paar; die Korrektur macht einen String daraus, das `’` bleibt im String |
+| KO4 | `X := 4 – 2;` (Halbgeviertstrich), `A × B`, `A ≤ B`, ein Emoji im Code, ein `?` | Je eine Meldung mit Zeichen und Code (#$2013 …); Korrektur `-`, `*`, `<=`; Emoji und `?` ohne Korrektur |
+| KO5 | Dieselben Zeichen in Strings, Kommentaren, `{$IFDEF FPC}`-Zweigen und asm-Blöcken; Bezeichner `Größe`, `λ` | Keine Meldung |
+| KO6 | Unit als UTF-32 LE speichern (z. B. mit einem Editor, der UTF-32 kann) und in der IDE öffnen | Eine Meldung in Zeile 1: „Die Datei ist UTF-32 kodiert … (wie F2438)“; keine NUL-Meldungen von `control-char` |
+| KO7 | `"file-encoding-unsupported": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| KO8 | Abgleich mit Delphi: KO1, KO4 und KO6 übersetzen | dcc meldet E2038 („Illegal character in input file“) bzw. F2438 an denselben Stellen, KO5 übersetzt ohne E2038; jedes von Atlas gemeldete Zeichen ist auch für dcc ein Fehler |
