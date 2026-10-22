@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 16 |
+| [Compiler vorab](#gruppe-compiler) | 17 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -147,6 +147,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`assign-to-property-member`](#assign-to-property-member) | Zuweisung an ein Feld eines Property-Records | Bug | Fehler |
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
 | [`inherited-constructor-after-try`](#inherited-constructor-after-try) | Geerbter Konstruktor erst im try-Block | Bug | Hinweis |
+| [`variant-record-managed-field`](#variant-record-managed-field) | Verwalteter Typ im varianten Teil eines Records | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4608,4 +4609,33 @@ begin
   inherited Create;
   try
     FListe := TList<TAuftrag>.Create;
+```
+
+<a id="variant-record-managed-field"></a>
+### variant-record-managed-field
+
+**Verwalteter Typ im varianten Teil eines Records** · Bug · Fehler · Gruppe Compiler vorab
+
+Im varianten Teil eines Records (case … of) steht ein String, ein dynamisches Array, ein Interface, ein Variant oder ein Record mit solchen Feldern (wie E2154), ein verwalteter Record mit class operator Initialize oder Finalize (wie E2418) oder ein Typparameter ohne record-Einschränkung (wie E2569); ebenso hinter file of (wie E2155, E2417). Typen werden in der Datei und im Index aufgelöst; unbekannte bleiben still. Korrekturen: Feld vor case in den festen Teil verschieben, ShortString verwenden oder den Typparameter mit record einschränken.
+
+Entspricht der Compilermeldung `E2154`, `E2155`, `E2418`, `E2417`, `E2569`.
+
+Mit Treffer:
+
+```pascal
+TWert = record
+  case Art: TArt of
+    waZahl: (Zahl: Double);
+    waText: (Text: string);
+end;
+```
+
+Richtig:
+
+```pascal
+TWert = record
+  Text: string;
+  case Art: TArt of
+    waZahl: (Zahl: Double);
+end;
 ```

@@ -2345,6 +2345,23 @@
       "compilerCodes": [
         "H2505"
       ]
+    },
+    {
+      "id": "variant-record-managed-field",
+      "name": "Managed type in the variant part of a record",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "The variant part of a record (case … of) holds a string, dynamic array, interface, Variant or a record with such fields (like E2154), a custom managed record with class operator Initialize or Finalize (like E2418), or a type parameter without record constraint (like E2569); likewise after file of (like E2155, E2417). Types are resolved in the file and the index; unknown types stay silent. Quick fixes: move the field before case into the fixed part, use ShortString, or constrain the type parameter with record.",
+      "bad": "TWert = record\n  case Art: TArt of\n    waZahl: (Zahl: Double);\n    waText: (Text: string);\nend;",
+      "good": "TWert = record\n  Text: string;\n  case Art: TArt of\n    waZahl: (Zahl: Double);\nend;",
+      "compilerCodes": [
+        "E2154",
+        "E2155",
+        "E2418",
+        "E2417",
+        "E2569"
+      ]
     }
   ]
 }

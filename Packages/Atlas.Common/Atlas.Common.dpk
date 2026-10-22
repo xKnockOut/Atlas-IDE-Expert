@@ -103,6 +103,7 @@ contains
   Atlas.Common.Index.Service in 'Source\Index\Atlas.Common.Index.Service.pas',
   Atlas.Common.Rules.Contract in 'Source\Rules\Atlas.Common.Rules.Contract.pas',
   Atlas.Common.Rules.Derived in 'Source\Rules\Atlas.Common.Rules.Derived.pas',
+  Atlas.Common.Rules.ManagedTypes in 'Source\Rules\Atlas.Common.Rules.ManagedTypes.pas',
   Atlas.Common.Rules.Registry in 'Source\Rules\Atlas.Common.Rules.Registry.pas',
   Atlas.Common.Rules.Suppressions in 'Source\Rules\Atlas.Common.Rules.Suppressions.pas',
   Atlas.Common.Rules.Engine in 'Source\Rules\Atlas.Common.Rules.Engine.pas',

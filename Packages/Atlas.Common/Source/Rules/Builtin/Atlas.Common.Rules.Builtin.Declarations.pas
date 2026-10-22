@@ -25,6 +25,17 @@
 //                              zählen; bricht die Kette der Vorfahrklassen ab,
 //                              bleibt die Regel still (TNameResolver.
 //                              MissingInterfaceMembers mit AComplete)
+//   variant-record-managed-field
+//                              Verwalteter Typ im varianten Teil eines Records
+//                              (#1071): String, dynamisches Array, Interface,
+//                              Variant oder Record mit solchen Feldern (wie
+//                              E2154), verwalteter Record mit class operator
+//                              Initialize/Finalize (wie E2418), Typparameter
+//                              ohne Einschränkung (wie E2569); ebenso hinter
+//                              file of (wie E2155, E2417). Typen über Datei und
+//                              Index (Rules.ManagedTypes), unbekannte bleiben
+//                              still. Korrekturen: Feld in den festen Teil vor
+//                              case, ShortString, record-Einschränkung
 //
 // Den Abgleich (auch über Überladungen) liefert TClassCompletion.Unmatched aus
 // #42; Paare mit abweichendem Kopf ordnet TClassCompletion.Pairs zu. Sie meldet
@@ -96,6 +107,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TVariantRecordManagedFieldRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 const
   FieldAfterMethodRuleId = 'field-after-method';
   DuplicateDeclarationRuleId = 'duplicate-declaration';
@@ -117,6 +134,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Rules.Options,
+  Atlas.Common.Rules.ManagedTypes,
   Atlas.Text.Lines;
 
 /// <summary>Zeilen innerhalb von {$IF…}…{$ENDIF}: Element I gilt für Zeile I.</summary>
@@ -1456,6 +1474,261 @@ begin
   Names := nil;
 end;
 
+{ TVariantRecordManagedFieldRule }
+
+function TVariantRecordManagedFieldRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('variant-record-managed-field', TRuleSeverity.Error,
+    'Verwalteter Typ im varianten Teil eines Records');
+end;
+
+procedure TVariantRecordManagedFieldRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+const
+  TypeKinds = [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.PointerType, TSyntaxKind.RecordType,
+    TSyntaxKind.ClassType, TSyntaxKind.InterfaceType, TSyntaxKind.ClassOfType, TSyntaxKind.SetType,
+    TSyntaxKind.EnumType, TSyntaxKind.ProcedureType, TSyntaxKind.SubrangeType, TSyntaxKind.FileType];
+var
+  Tokens: TArray<TPascalToken>;
+  Lines: TArray<string>;
+  LineBreak: string;
+  Types: TManagedTypes;
+
+  function IsCode(AIndex: Integer): Boolean;
+  begin
+    Result := not (Tokens[AIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]);
+  end;
+
+  function NodeText(ANode: TSyntaxNode): string;
+  begin
+    Result := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+  end;
+
+  function TypeNode(ANode: TSyntaxNode): TSyntaxNode;
+  var
+    Index: Integer;
+  begin
+    for Index := 0 to ANode.ChildCount - 1 do
+      if ANode[Index].Kind in TypeKinds then
+        Exit(ANode[Index]);
+    Result := nil;
+  end;
+
+  // Token des Typparameters AName ohne Einschränkung in der umgebenden generischen Deklaration; -1 sonst.
+  // AAlone: einziger Name seiner Gruppe (nur dann lässt sich ": record" anhängen).
+  function UnconstrainedParam(ANode: TSyntaxNode; const AName: string; out AAlone: Boolean): Integer;
+  var
+    Decl, Params: TSyntaxNode;
+    Index, Last, Group, Depth: Integer;
+    Found, Constrained: Boolean;
+  begin
+    Result := -1;
+    AAlone := False;
+    Decl := ANode.Parent;
+    while Decl <> nil do
+    begin
+      Params := nil;
+      if Decl.Kind = TSyntaxKind.TypeDecl then
+        Params := Decl.FindChild(TSyntaxKind.GenericParams);
+      if Params <> nil then
+      begin
+        // Gruppen durch ; getrennt; Namen vor dem :, Einschränkungen dahinter.
+        Index := TokenAtOffset(Tokens, Params.StartOffset) + 1;
+        Last := TokenAtOffset(Tokens, Params.EndOffset);
+        while Index < Last do
+        begin
+          Found := False;
+          Constrained := False;
+          Group := 0;
+          Depth := 0;
+          Result := -1;
+          while Index < Last do
+          begin
+            if not IsCode(Index) then
+            begin
+              Inc(Index);
+              Continue;
+            end;
+            if Tokens[Index].IsSymbol('<') then
+              Inc(Depth)
+            else if Tokens[Index].IsSymbol('>') then
+              Dec(Depth)
+            else if (Depth = 0) and Tokens[Index].IsSymbol(';') then
+              Break
+            else if (Depth = 0) and Tokens[Index].IsSymbol(':') then
+              Constrained := True
+            else if not Constrained and (Tokens[Index].Kind = TPascalTokenKind.Identifier) then
+            begin
+              Inc(Group);
+              if SameText(Tokens[Index].Text, AName) then
+              begin
+                Found := True;
+                Result := Index;
+              end;
+            end;
+            Inc(Index);
+          end;
+          if Found then
+          begin
+            AAlone := Group = 1;
+            if Constrained then
+              Result := -1;
+            Exit;
+          end;
+          Inc(Index);
+        end;
+        Result := -1;
+      end;
+      Decl := Decl.Parent;
+    end;
+  end;
+
+  // Feld vor das case des varianten Teils verschieben: einfügen vor case, im Zweig samt Trenner löschen.
+  function MoveToFixedPart(AField, APart: TSyntaxNode): TRuleFix;
+  var
+    Item: TSyntaxNode;
+    Text: string;
+    Position, Remove: Integer;
+    CaseToken, First, Last: Integer;
+    Removal: TTextRange;
+  begin
+    Result := Default(TRuleFix);
+    Item := AField.Parent;
+    Position := 0;
+    while Item[Position] <> AField do
+      Inc(Position);
+    Text := NodeText(AField);
+    if Text.EndsWith(';') then
+      Text := TrimRight(Copy(Text, 1, Length(Text) - 1));
+    First := TokenAtOffset(Tokens, AField.StartOffset);
+    Last := TokenAtOffset(Tokens, AField.EndOffset) - 1;
+    if Tokens[Last].IsSymbol(';') and (Position < Item.ChildCount - 1) then
+      // Bis vor das nächste Feld.
+      Removal := TTextRange.Create(Tokens[First].StartPos, Item[Position + 1].StartPos)
+    else if Position > 0 then
+    begin
+      // Letztes Feld: ab dem ; des vorigen.
+      Remove := First - 1;
+      while (Remove > 0) and not IsCode(Remove) do
+        Dec(Remove);
+      if not Tokens[Remove].IsSymbol(';') then
+        Exit;
+      Removal := TTextRange.Create(Tokens[Remove].StartPos, Tokens[Last].EndPos);
+    end
+    else
+      Removal := TTextRange.Create(Tokens[First].StartPos, Tokens[Last].EndPos);
+    CaseToken := TokenAtOffset(Tokens, APart.StartOffset);
+    Result := TRuleFix.Create(Format('%s in den festen Teil verschieben', [AField.Name]),
+      [TRuleEdit.Create(TTextRange.Create(Tokens[CaseToken].StartPos, Tokens[CaseToken].StartPos),
+      Text + ';' + LineBreak + TTextLines.IndentOf(Lines[Tokens[CaseToken].StartPos.Line])),
+      TRuleEdit.Create(Removal, '')], False);
+  end;
+
+  function ShortStringFix(ATypeNode: TSyntaxNode): TArray<TRuleFix>;
+  begin
+    Result := nil;
+    if MatchText(NodeText(ATypeNode), ['string', 'AnsiString', 'UnicodeString', 'WideString', 'RawByteString',
+      'UTF8String']) then
+      Result := [TRuleFix.Create('ShortString verwenden (höchstens 255 Zeichen)',
+        [TRuleEdit.Create(TTextRange.Create(ATypeNode.StartPos, ATypeNode.EndPos), 'ShortString')], False)];
+  end;
+
+  procedure CheckField(AField: TSyntaxNode);
+  var
+    TypeRef, Part: TSyntaxNode;
+    TypeText, Kind: string;
+    Param: Integer;
+    Alone: Boolean;
+    Fixes: TArray<TRuleFix>;
+    Moved: TRuleFix;
+  begin
+    TypeRef := TypeNode(AField);
+    if TypeRef = nil then
+      Exit;
+    TypeText := NodeText(TypeRef);
+    Part := AField.Parent.Parent;
+    Fixes := nil;
+    // Nur der äußerste variante Teil hat einen festen Teil davor.
+    if Part.Parent.Kind = TSyntaxKind.RecordType then
+    begin
+      Moved := MoveToFixedPart(AField, Part);
+      if Moved.Title <> '' then
+        Fixes := [Moved];
+    end;
+    Param := UnconstrainedParam(AField, TypeText, Alone);
+    if Param >= 0 then
+    begin
+      if Alone then
+        Fixes := Fixes + [TRuleFix.Create(Format('%s: record einschränken', [TypeText]),
+          [TRuleEdit.Create(TTextRange.Create(Tokens[Param].EndPos, Tokens[Param].EndPos), ': record')], False)];
+      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos), Format('Typparameter %s kann ' +
+        'Finalisierung brauchen und ist im varianten Teil nicht erlaubt; record-Einschränkung verwenden ' +
+        '(wie E2569).', [TypeText]), TRuleConfidence.High, Fixes);
+      Exit;
+    end;
+    Kind := Types.Managed(TypeText, 0);
+    if Kind <> '' then
+      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos), Format('%s braucht Finalisierung und ist ' +
+        'im varianten Teil nicht erlaubt (wie E2154).', [TypeText]), TRuleConfidence.High,
+        ShortStringFix(TypeRef) + Fixes)
+    else if Types.CustomManaged(TypeText, 0) then
+      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos), Format('%s braucht Initialisierung und ' +
+        'ist im varianten Teil nicht erlaubt (wie E2418).', [TypeText]), TRuleConfidence.High, Fixes);
+  end;
+
+  procedure CheckFile(AFile: TSyntaxNode);
+  var
+    TypeRef: TSyntaxNode;
+    TypeText: string;
+  begin
+    TypeRef := TypeNode(AFile);
+    if TypeRef = nil then
+      Exit;
+    TypeText := NodeText(TypeRef);
+    if Types.Managed(TypeText, 0) <> '' then
+      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos), Format('%s braucht Finalisierung und ist ' +
+        'in einem Dateityp nicht erlaubt (wie E2155).', [TypeText]), TRuleConfidence.High, ShortStringFix(TypeRef))
+    else if Types.CustomManaged(TypeText, 0) then
+      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos), Format('%s braucht Initialisierung und ' +
+        'ist in einem Dateityp nicht erlaubt (wie E2417).', [TypeText]), TRuleConfidence.High, nil);
+  end;
+
+var
+  Stack: TArray<TSyntaxNode>;
+  Count, Index: Integer;
+  Node: TSyntaxNode;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  Types := TManagedTypes.Create(AContext.Tree, AContext.Text, AContext.Index);
+  try
+    // Ohne Rekursion durch den Baum (#1094).
+    SetLength(Stack, 64);
+    Stack[0] := AContext.Tree.Root;
+    Count := 1;
+    while Count > 0 do
+    begin
+      Dec(Count);
+      Node := Stack[Count];
+      if (Node.Kind = TSyntaxKind.Field) and (Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.CaseItem) and
+        (Node.Parent.Parent <> nil) and (Node.Parent.Parent.Kind = TSyntaxKind.VariantPart) then
+        CheckField(Node)
+      else if Node.Kind = TSyntaxKind.FileType then
+        CheckFile(Node);
+      if Count + Node.ChildCount > Length(Stack) then
+        SetLength(Stack, 2 * (Count + Node.ChildCount));
+      for Index := Node.ChildCount - 1 downto 0 do
+      begin
+        Stack[Count] := Node[Index];
+        Inc(Count);
+      end;
+    end;
+  finally
+    Types.Free;
+  end;
+end;
+
 procedure RegisterDeclarationRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDeclaredNotImplementedRule.Create);
@@ -1465,6 +1738,7 @@ begin
   ARegistry.Register(TFieldAfterMethodRule.Create);
   ARegistry.Register(TOverloadDirectiveMissingRule.Create);
   ARegistry.Register(TDuplicateDeclarationRule.Create);
+  ARegistry.Register(TVariantRecordManagedFieldRule.Create);
 end;
 
 end.
