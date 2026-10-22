@@ -7,6 +7,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Regel `operator-declaration-invalid` (#1030, Gruppe Compiler vorab): class operator mit unbekanntem Namen, falscher Parameterzahl, ohne den eigenen Typ, mit falschem Ergebnis, Umwandlung in einen Vorfahren oder Assign ohne var (wie E2393, E2464, E2517–E2522); Korrekturen in Deklaration und Rumpf.
 - Regel `anonymous-capture-invalid` (#1035, Gruppe „Compiler vorab“, wie E2555): „Der var-Parameter Anzahl kann nicht erfasst werden (wie E2555).“; ebenso out- und untypisierte Parameter und Result einer umgebenden Funktion. Korrektur: Wert vor der Anweisung in eine lokale Variable kopieren, in der anonymen Methode diese verwenden und danach zurückschreiben.
 - Regel `readonly-property-assigned` (#1006, Gruppe „Compiler vorab“, wie E2129, E2130): „TStrings.Count hat kein write (wie E2129); zum Leeren Clear aufrufen.“; ebenso Lesen einer Property ohne read. Korrekturen: Clear statt Count := 0, in der eigenen Klasse das Feld hinter read, für Properties der Datei Setter anlegen und write ergänzen. `TNameResolver.FindMember` ist jetzt öffentlich.
 - Regel `assign-to-property-member` (#1005, Gruppe „Compiler vorab“, wie E2064): „BoundsRect liefert eine Kopie; die Zuweisung an Left hat keine Wirkung (wie E2064).“; ebenso Default- und Array-Properties, Funktionsergebnisse und untypisierte Konstanten. Korrektur: über eine lokale Variable zuweisen und zurückschreiben, Unit des Typs in uses. Neu in der Namensauflösung: `TNameResolver.NodeType` und `PropertyReadsField`.

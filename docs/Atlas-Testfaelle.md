@@ -4133,3 +4133,20 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | EF5 | Lokale Prozedur in `Laden`, die eine anonyme Methode mit `Anzahl` startet | Meldung wie EF1; ohne anonyme Methode keine |
 | EF6 | `"anonymous-capture-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | EF7 | Abgleich mit Delphi: EF1 und EF3 übersetzen | dcc meldet E2555 an denselben Stellen, für EF4 nichts |
+
+## Operator falsch deklariert (#1030)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; Unit mit `TGeld = record Betrag: Currency; … end;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OD1 | Das Beispiel aus #1030: `class operator Equal(const A, B: TGeld): Integer;` mit Rumpf | Fehler `operator-declaration-invalid` am Namen `Equal`: „Equal muss Boolean liefern (wie E2520).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| OD2 | Schnellkorrektur „Boolean als Ergebnis“, danach Strg+Z | `Boolean` in Deklaration und Rumpf `TGeld.Equal`; keine Meldung mehr; ein Undo-Schritt |
+| OD3 | `class operator Substract(const A, B: TGeld): TGeld;` | „Unbekannter Operator Substract; gemeint ist wohl Subtract (wie E2393).“, Korrektur „In Subtract umbenennen“ ändert Deklaration und Rumpf |
+| OD4 | `class operator Negative(const A, B: TGeld): TGeld;` und `class operator Add(const A: TGeld): TGeld;` | „Der Operator Negative muss 1 Parameter haben (wie E2517).“ mit Korrektur „Parameter nach Vorlage: (const A: TGeld)“; für Add 2 Parameter |
+| OD5 | `class operator Add(A, B: Integer): TGeld;` und `class operator Implicit(A: Integer): string;` | „… muss TGeld in mindestens einem Parameter haben (wie E2518).“ bzw. „Implicit muss TGeld als Parameter oder Ergebnis haben (wie E2521).“ |
+| OD6 | `class operator Inc(const A: TGeld): Integer;`; in einer Klasse `TKind = class(TBasis)` ein `class operator Implicit(A: TKind): TBasis;` | „Inc muss denselben Typ liefern wie den ersten Parameter, hier TGeld (wie E2519).“ mit Korrektur „TGeld als Ergebnis“; „Implicit darf nicht in den Vorfahren TBasis oder aus ihm umwandeln (wie E2522).“ |
+| OD7 | `class operator Assign(const Dest: TGeld; const [ref] Src: TGeld);` | „Der erste Parameter von Assign muss ein var-Parameter sein (wie E2464).“, Korrektur „var vor den ersten Parameter setzen“ |
+| OD8 | Richtige Operatoren (Add, Equal mit Boolean, Implicit nach Integer, Initialize/Finalize, True/False), Parametertyp aus fremder Unit, Alias `TMoney = TGeld` | Keine Meldung |
+| OD9 | `"operator-declaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| OD10 | Abgleich mit Delphi: OD1 bis OD7 übersetzen | dcc meldet E2520, E2393, E2517, E2518, E2521, E2519, E2522, E2464 an denselben Stellen, für OD8 nichts |

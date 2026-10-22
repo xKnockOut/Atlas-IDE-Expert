@@ -2306,6 +2306,26 @@
       "compilerCodes": [
         "E2555"
       ]
+    },
+    {
+      "id": "operator-declaration-invalid",
+      "name": "Operator declared incorrectly",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A class operator in a record or class is declared in a way Delphi rejects: unknown operator name (like E2393), wrong number of parameters (E2517), own type missing from the parameters (E2518) or from parameters and result for Implicit/Explicit (E2521), Inc/Dec with a result type other than the first parameter (E2519), comparison operator without a Boolean result (E2520), conversion to or from an ancestor (E2522, chain within the file) or Assign without var before the first parameter (E2464). Types count as equal when their names match without unit prefix and type arguments; aliases of the own type declared in the file keep the rule silent, and True, False and OnesComplement are accepted. Quick fixes: nearest operator name, Boolean as result, result like the first parameter, var before the first parameter, parameter list from the template; each in the declaration and the implementation.",
+      "bad": "TGeld = record\n  class operator Equal(const A, B: TGeld): Integer;\nend;",
+      "good": "TGeld = record\n  class operator Equal(const A, B: TGeld): Boolean;\nend;",
+      "compilerCodes": [
+        "E2393",
+        "E2464",
+        "E2517",
+        "E2518",
+        "E2519",
+        "E2520",
+        "E2521",
+        "E2522"
+      ]
     }
   ]
 }
