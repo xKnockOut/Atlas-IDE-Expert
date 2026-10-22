@@ -7,7 +7,10 @@
 // Schleife), Abschalten und Ausnahmen; deref-before-nil-check (#916):
 // Beispiel mit Korrektur, Feld mit und ohne Aufruf dazwischen, stille Muster
 // (Prüfung davor, neue Zuweisung, X := X.Next, Prüfung im selben Ausdruck,
-// Schleife), Rumpf mit begin … end, else ohne Korrektur, Abschalten.
+// Schleife), Rumpf mit begin … end, else ohne Korrektur, Abschalten;
+// field-free-without-nil (#917): Beispiel mit Korrektur FreeAndNil, Zweig,
+// stille Muster (Destruktor, := nil, Methode setzt neu, lokale Variable),
+// Option ignoreMethods, Abschalten und Ausnahmen.
 
 interface
 
@@ -68,6 +71,12 @@ type
     procedure DerefBeforeNilCheckSilentCases;
     [Test]
     procedure DerefBeforeNilCheckFieldsAndOff;
+    [Test]
+    procedure FieldFreeWithoutNilReportsWithFix;
+    [Test]
+    procedure FieldFreeWithoutNilSilentCases;
+    [Test]
+    procedure FieldFreeIgnoreMethodsAndOff;
   end;
 
 implementation
@@ -86,6 +95,7 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Configuration.Parser,
   Atlas.Tests.RuleAssert;
 
 function Routine(const ABody: string; const AHeader: string = 'function F: Integer;';
@@ -486,6 +496,121 @@ begin
     '{"rules": {"deref-before-nil-check": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Source,
     '{"rules": {"deref-before-nil-check": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
+end;
+
+function ClassUnit(const AImplementation: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  TImport = class'#10'  private'#10'    FCache: TObject;'#10 +
+    '    FListe: TList;'#10'    procedure Laden;'#10'    procedure Zuruecksetzen;'#10'  public'#10 +
+    '    destructor Destroy; override;'#10'  end;'#10'implementation'#10 + AImplementation + 'end.';
+end;
+
+procedure TFlowRulesTests.FieldFreeWithoutNilReportsWithFix;
+const
+  Body = 'procedure TImport.Zuruecksetzen;'#10'begin'#10'  FCache.Free;'#10'end;'#10;
+  Fixed = 'procedure TImport.Zuruecksetzen;'#10'begin'#10'  FreeAndNil(FCache);'#10'end;'#10;
+var
+  Findings: TArray<TRuleFinding>;
+  Text: string;
+  Tree: TSyntaxTree;
+  Rule: IRule;
+  Found: Boolean;
+begin
+  Findings := TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(Body));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(FieldFreeWithoutNilRuleId, Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('FCache bleibt nach Free gesetzt; ein späterer Zugriff trifft freigegebenen Speicher.',
+    Findings[0].Message);
+  Assert.AreEqual(15, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('FreeAndNil(FCache)', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  Text := TChangeSignature.ApplyEdits(ClassUnit(Body), Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(ClassUnit(Fixed), Text);
+  Tree := TPascalParser.Parse(Text);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Ergebnis parst fehlerfrei');
+  finally
+    Tree.Free;
+  end;
+  TRuleAssert.Silent(TFieldFreeWithoutNilRule.Create, Text);
+  // Nur in einem Zweig, Self.FFeld und Free().
+  Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(
+    'procedure TImport.Zuruecksetzen;'#10'begin'#10'  if FListe = nil then'#10'    Self.FCache.Free'#10 +
+    '  else'#10'    FCache := nil;'#10'  FListe.Free();'#10'end;'#10)))));
+  // Generische Klasse.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create,
+    'unit U;'#10'interface'#10'type'#10'  TStapel<T> = class'#10'  private'#10'    FElemente: TList<T>;'#10 +
+    '    procedure Leeren;'#10'  end;'#10'implementation'#10 +
+    'procedure TStapel<T>.Leeren;'#10'begin'#10'  FElemente.Free;'#10'end;'#10'end.'))));
+  Found := False;
+  for Rule in BuiltinRules do
+    if Rule.Descriptor.Id = FieldFreeWithoutNilRuleId then
+      Found := True;
+  Assert.IsTrue(Found, FieldFreeWithoutNilRuleId);
+end;
+
+procedure TFlowRulesTests.FieldFreeWithoutNilSilentCases;
+begin
+  TRuleAssert.Silent(TFieldFreeWithoutNilRule.Create, ClassUnit(
+    // Destruktor und ein neues Objekt bzw. nil danach.
+    'destructor TImport.Destroy;'#10'begin'#10'  FCache.Free;'#10'  FListe.Free;'#10'  inherited;'#10'end;'#10 +
+    'procedure TImport.Zuruecksetzen;'#10'begin'#10'  FCache.Free;'#10'  FCache := nil;'#10 +
+    '  FListe.Free;'#10'  FListe := TList.Create;'#10'end;'#10));
+  TRuleAssert.Silent(TFieldFreeWithoutNilRule.Create, ClassUnit(
+    // Eine Methode derselben Klasse setzt das Feld neu.
+    'procedure TImport.Laden;'#10'begin'#10'  FCache := TObject.Create;'#10'end;'#10 +
+    'procedure TImport.Zuruecksetzen;'#10'begin'#10'  FCache.Free;'#10'  Laden;'#10'end;'#10));
+  TRuleAssert.Silent(TFieldFreeWithoutNilRule.Create, ClassUnit(
+    // Lokale Variable, FreeAndNil, Routine ohne Klasse.
+    'procedure TImport.Zuruecksetzen;'#10'var'#10'  FCache: TObject;'#10'begin'#10'  FCache := nil;'#10 +
+    '  FCache.Free;'#10'  FreeAndNil(FListe);'#10'end;'#10 +
+    'procedure Aufraeumen(FCache: TObject);'#10'begin'#10'  FCache.Free;'#10'end;'#10));
+  TRuleAssert.Silent(TFieldFreeWithoutNilRule.Create, ClassUnit(
+    // Nur aus dem Destruktor aufgerufen.
+    'procedure TImport.Zuruecksetzen;'#10'begin'#10'  FCache.Free;'#10'end;'#10 +
+    'destructor TImport.Destroy;'#10'begin'#10'  Zuruecksetzen;'#10'  inherited;'#10'end;'#10));
+  // Auch anderswo aufgerufen: gemeldet.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(
+    'procedure TImport.Zuruecksetzen;'#10'begin'#10'  FCache.Free;'#10'end;'#10 +
+    'procedure TImport.Laden;'#10'begin'#10'  Zuruecksetzen;'#10'end;'#10 +
+    'destructor TImport.Destroy;'#10'begin'#10'  Zuruecksetzen;'#10'  inherited;'#10'end;'#10)))));
+  // DUnitX: [TearDown] gibt frei, [Setup] legt neu an.
+  TRuleAssert.Silent(TFieldFreeWithoutNilRule.Create,
+    'unit U;'#10'interface'#10'type'#10'  TTests = class'#10'  private'#10'    FListe: TList;'#10'  public'#10 +
+    '    [TearDown]'#10'    procedure Aufraeumen;'#10'  end;'#10'implementation'#10 +
+    'procedure TTests.Aufraeumen;'#10'begin'#10'  FListe.Free;'#10'end;'#10'end.');
+end;
+
+procedure TFlowRulesTests.FieldFreeIgnoreMethodsAndOff;
+const
+  Body = 'procedure TImport.BeforeDestruction;'#10'begin'#10'  FCache.Free;'#10'end;'#10 +
+    'procedure TImport.Zuruecksetzen;'#10'begin'#10'  FListe.Free;'#10'end;'#10;
+var
+  Findings: TArray<TRuleFinding>;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Findings := TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(Body));
+  Assert.AreEqual(1, Integer(Length(Findings)), 'Vorgabe: BeforeDestruction ausgenommen');
+  Assert.AreEqual('FListe bleibt nach Free gesetzt; ein späterer Zugriff trifft freigegebenen Speicher.',
+    Findings[0].Message);
+  Findings := TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(Body),
+    '{"rules": {"field-free-without-nil": {"ignoreMethods": ["Zuruecksetzen"]}}}', 'U.pas');
+  Assert.AreEqual(1, Integer(Length(Findings)), 'Option ersetzt die Vorgabe');
+  Assert.AreEqual('FCache bleibt nach Free gesetzt; ein späterer Zugriff trifft freigegebenen Speicher.',
+    Findings[0].Message);
+  Assert.AreEqual(2, Integer(Length(TFieldFreeWithoutNilRule.DefaultIgnoreMethods)));
+  TConfigurationParser.Parse('{"rules": {"field-free-without-nil": {"ignoreMethods": "Destroy"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"ignoreMethods" muss eine Liste von Texten sein', Issues[0].Message);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(Body),
+    '{"rules": {"field-free-without-nil": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(Body),
+    '{"rules": {"field-free-without-nil": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(Body),
+    '{"rules": {"field-free-without-nil": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
 end;
 
 initialization

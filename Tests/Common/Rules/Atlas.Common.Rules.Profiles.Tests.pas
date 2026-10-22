@@ -177,7 +177,7 @@ const
     'constructor-on-instance,control-char,declared-not-implemented,deprecated-symbol,deref-before-nil-check,destroy-without-override,' +
     'dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,' +
     'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,duplicate-interface-guid,' +
-    'empty-except,empty-statement,exception-freed,exception-not-raised,float-equality,for-high-to-low,forbidden-uses,' +
+    'empty-except,empty-statement,exception-freed,exception-not-raised,field-free-without-nil,float-equality,for-high-to-low,forbidden-uses,' +
     'foreign-form-control-access,form-field-type-mismatch,form-field-without-object,' +
     'form-object-without-field,format-without-settings,generic-exception-raised,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,implicit-package-import,int32-mul-overflow,interface-guid,' +
@@ -207,7 +207,7 @@ begin
     'component-missing-inherited,constructor-on-instance,control-char,declared-not-implemented,' +
     'deref-before-nil-check,destroy-without-override,dfm-circular-datasource,dfm-control-field-type-mismatch,' +
     'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,' +
-    'duplicate-interface-guid,empty-statement,exception-freed,exception-not-raised,float-equality,for-high-to-low,' +
+    'duplicate-interface-guid,empty-statement,exception-freed,exception-not-raised,field-free-without-nil,float-equality,for-high-to-low,' +
     'form-field-type-mismatch,form-field-without-object,form-object-without-field,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,lock-without-finally,loop-off-by-one,' +
     'operator-precedence,owned-field-free-unclear,owned-field-not-freed,' +

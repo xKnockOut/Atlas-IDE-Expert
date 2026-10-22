@@ -36,3 +36,4 @@ loop-off-by-one | Ref.Pruefung.Verstoesse.pas | for I := High(AWerte) to Low(AWe
 collection-modified-in-loop | Ref.Sprache.Merkmale.pas | FElemente.Free; | for var Element in FElemente do FElemente.Remove(Element);\n  FElemente.Free;
 use-after-free | Ref.Formulare.Haupt.pas |     Formular.Free;\n  end; |     Formular.Free;\n  end;\n  Caption := Formular.Caption;
 deref-before-nil-check | Ref.Formulare.Haupt.pas | Formular.ShowModal; | Formular.ShowModal;\n    if Assigned(Formular) then\n      Caption := Formular.Caption;
+field-free-without-nil | Ref.Sprache.Merkmale.pas | FElemente.Add(AElement); | FElemente.Free;
