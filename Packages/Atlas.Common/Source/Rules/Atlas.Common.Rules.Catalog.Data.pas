@@ -2328,6 +2328,20 @@ begin
     '        "W1022",' + #10 +
     '        "W1018"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "constant-initializer-mismatch",' + #10 +
+    '      "name": "Initializer of a constant does not match",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A typed constant or initialized variable of a static array type has more or fewer elements than its index range (like E2072), typically after adding a value to an enumeration (ar' + 'ray[TStatus] of string); checked per dimension and for named array types of the file. Record constants whose fields are in a different order than declared are reported as well (like E2083). Index rang' + 'es: subranges with constant bounds, enumerations without own values, Boolean, Byte, Char and so on. Declarations with conditional directives count as unsure. Quick fixes: add the missing entries with ' + 'a placeholder (name of the enumeration value as a comment), put the fields in the order of the declaration.",' + #10 +
+    '      "bad": "StatusText: array[TStatus] of string = (''Neu'', ''Offen'', ''Geschlossen'');  // TStatus has 4 values",' + #10 +
+    '      "good": "StatusText: array[TStatus] of string = (''Neu'', ''Offen'', ''Geschlossen'', ''''{stArchiviert});",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2072",' + #10 +
+    '        "E2083"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3503,6 +3517,11 @@ begin
     '      "id": "comparison-always-constant",' + #10 +
     '      "name": "Vergleich immer wahr oder immer falsch",' + #10 +
     '      "description": "Vergleich einer Variablen, eines Feldes, einer Property oder eines Funktionsergebnisses vom eingebauten Ganzzahltyp mit einer Konstanten außerhalb bzw. am Rand des Wertebereichs ' + '(wie W1021, W1022): Cardinal >= 0 ist immer wahr, Byte > 255 immer falsch. Ebenso case-Marken außerhalb des Bereichs des case-Ausdrucks (wie W1018). Gemeldet wird nur bei sicher bekanntem Typ, dessen ' + 'Deklaration immer mit dem Vergleich übersetzt wird. NativeInt, LongInt und ihre vorzeichenlosen Gegenstücke gelten mit dem weitesten Bereich aller Plattformen; Teilbereichstypen meldet die Regel nicht' + '. Length(…) < 0 und Length(…) >= 0 meldet sie ebenfalls, obwohl dcc dort nicht warnt; die Meldung sagt das dazu."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "constant-initializer-mismatch",' + #10 +
+    '      "name": "Initialisierung einer Konstanten passt nicht",' + #10 +
+    '      "description": "Eine typisierte Konstante oder initialisierte Variable vom statischen Array-Typ hat mehr oder weniger Elemente als ihr Indexbereich (wie E2072), typisch nach einem neuen Wert in ' + 'einer Aufzählung (array[TStatus] of string); geprüft je Dimension und auch für benannte Array-Typen der Datei. Ebenso Record-Konstanten, deren Felder in anderer Reihenfolge als deklariert stehen (wie ' + 'E2083). Indexbereiche: Teilbereiche mit konstanten Grenzen, Aufzählungen ohne eigene Werte, Boolean, Byte, Char usw. Deklarationen mit bedingten Direktiven gelten als unsicher. Korrekturen: fehlende E' + 'inträge mit Platzhalter ergänzen (Name des Aufzählungswerts als Kommentar), Felder in die Reihenfolge der Deklaration bringen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

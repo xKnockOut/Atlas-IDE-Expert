@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 16 |
+| [Compiler vorab](#gruppe-compiler) | 17 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -147,6 +147,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`assign-to-property-member`](#assign-to-property-member) | Zuweisung an ein Feld eines Property-Records | Bug | Fehler |
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
 | [`comparison-always-constant`](#comparison-always-constant) | Vergleich immer wahr oder immer falsch | Bug | Warnung |
+| [`constant-initializer-mismatch`](#constant-initializer-mismatch) | Initialisierung einer Konstanten passt nicht | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4562,4 +4563,25 @@ Richtig:
 
 ```pascal
 while Rest > 0 do
+```
+
+<a id="constant-initializer-mismatch"></a>
+### constant-initializer-mismatch
+
+**Initialisierung einer Konstanten passt nicht** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine typisierte Konstante oder initialisierte Variable vom statischen Array-Typ hat mehr oder weniger Elemente als ihr Indexbereich (wie E2072), typisch nach einem neuen Wert in einer Aufzählung (array[TStatus] of string); geprüft je Dimension und auch für benannte Array-Typen der Datei. Ebenso Record-Konstanten, deren Felder in anderer Reihenfolge als deklariert stehen (wie E2083). Indexbereiche: Teilbereiche mit konstanten Grenzen, Aufzählungen ohne eigene Werte, Boolean, Byte, Char usw. Deklarationen mit bedingten Direktiven gelten als unsicher. Korrekturen: fehlende Einträge mit Platzhalter ergänzen (Name des Aufzählungswerts als Kommentar), Felder in die Reihenfolge der Deklaration bringen.
+
+Entspricht der Compilermeldung `E2072`, `E2083`.
+
+Mit Treffer:
+
+```pascal
+StatusText: array[TStatus] of string = ('Neu', 'Offen', 'Geschlossen');  // TStatus has 4 values
+```
+
+Richtig:
+
+```pascal
+StatusText: array[TStatus] of string = ('Neu', 'Offen', 'Geschlossen', ''{stArchiviert});
 ```

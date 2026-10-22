@@ -43,7 +43,8 @@ type
     /// <summary>Wert des Ausdrucks ANode aus dem Baum.</summary>
     function EvaluateNode(ANode: TSyntaxNode; out AValue: Int64): Boolean;
     /// <summary>Werte der Aufzählung AEnum (Typ aus der Namensauflösung) in ihrer Reihenfolge; False, wenn die
-    /// Aufzählung unbekannt ist, eigene Werte hat (a = 3) oder ihre Signatur gekürzt ist.</summary>
+    /// Aufzählung unbekannt ist, eigene Werte hat (a = 3), Werte unter einer Bedingung stehen (Condition im Index;
+    /// die Extraktion aus dem Baum setzt sie nicht) oder ihre Signatur gekürzt ist.</summary>
     function EnumMembers(const AEnum: TResolvedSymbol; out ANames: TArray<string>): Boolean;
     /// <summary>Wertebereich des eingebauten ganzzahligen Typs ATypeName auf jeder Plattform: NativeInt,
     /// LongInt und ihre vorzeichenlosen Gegenstücke mit dem weitesten Bereich (64 Bit), UInt64 bis High(Int64).
@@ -193,7 +194,15 @@ begin
     Exit;
   for Symbol in Owner.Symbols do
     if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, Container) then
+    begin
+      // Werte in {$IFDEF}: Anzahl und Positionen hängen von der Konfiguration ab.
+      if Symbol.Condition <> '' then
+      begin
+        ANames := nil;
+        Exit;
+      end;
       ANames := ANames + [Symbol.Name];
+    end;
   Result := Length(ANames) > 0;
 end;
 

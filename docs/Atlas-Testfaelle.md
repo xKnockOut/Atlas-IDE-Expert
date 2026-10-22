@@ -4135,3 +4135,19 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | VK6 | `"comparison-always-constant": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | VK7 | Abgleich mit Delphi: VK1 bis VK5 übersetzen (Win32 und Win64) | dcc meldet W1022, W1021 bzw. W1018 an denselben Stellen, für VK5 nichts; meldet dcc für einen Teilbereich doch eine Warnung, den Fall im Issue nachtragen |
 | VK9 | `if Length(S) < 0`, `if Length(Liste) >= 0` (dynamisches Array) | „Length(S) ist nie negativ; Length(S) < 0 ist immer falsch (dcc meldet das nicht).“ bzw. „… immer wahr …“; dcc selbst meldet hier nichts |
+
+## Initialisierung einer Konstanten passt nicht (#1015)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KI1 | Das Beispiel aus #1015: `TStatus = (stNeu, stOffen, stGeschlossen, stArchiviert)` und `StatusText: array[TStatus] of string = ('Neu', 'Offen', 'Geschlossen');` | Fehler `constant-initializer-mismatch` an der Klammer: „TStatus hat 4 Werte, die Konstante 3 Einträge; stArchiviert fehlt (wie E2072).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| KI2 | Schnellkorrektur „Fehlende Einträge mit Platzhalter ergänzen“, danach Strg+Z | Wird `('Neu', 'Offen', 'Geschlossen', ''{stArchiviert})`, keine Meldung mehr; ein Undo-Schritt |
+| KI3 | `array[0..2] of Integer = (1, 2, 3, 4)`, `array[Boolean] of string = ('Nein')`, `array[0..1, 0..2] of Integer = ((1, 2, 3), (4, 5))` | „0..2 hat 3 Werte, die Konstante 4 Einträge (wie E2072).“, „Boolean hat 2 Werte …“, „0..2 hat 3 Werte, die Konstante 2 Einträge …“ an der inneren Klammer |
+| KI4 | `TNamen = array[TStatus] of string;` und `Namen: TNamen = ('a', 'b', 'c', 'd', 'e');` | „TStatus hat 4 Werte, die Konstante 5 Einträge (wie E2072).“ |
+| KI5 | Aufzählung `TFarbe` aus einer anderen Unit des Projekts, `array[TFarbe] of string` mit einem Eintrag zu wenig | Meldung mit dem fehlenden Namen |
+| KI6 | `TPunkt = record X, Y: Integer; end;` und `Ursprung: TPunkt = (Y: 0; X: 0);`, Schnellkorrektur | „X steht in TPunkt vor Y; die Felder müssen in der Reihenfolge der Deklaration stehen (wie E2083).“; Korrektur ergibt `(X: 0; Y: 0)` |
+| KI7 | Passende Konstanten, `array of Integer`, `array[0..2] of Char = 'abc'`, Einträge in `{$IFDEF}`, Aufzählung mit bedingtem Wert, varianter Record, unbekannter Indextyp | Keine Meldung |
+| KI8 | `"constant-initializer-mismatch": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| KI9 | Abgleich mit Delphi: KI1, KI3, KI4, KI6 übersetzen | dcc meldet E2072 bzw. E2083 an denselben Stellen, für KI7 nichts |
