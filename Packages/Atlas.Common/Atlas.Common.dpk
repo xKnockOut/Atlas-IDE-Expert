@@ -347,6 +347,7 @@ contains
   Atlas.Common.Rules.Builtin.Visibility in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Visibility.pas',
   Atlas.Common.Rules.Builtin.TypeDeclarations in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeDeclarations.pas',
   Atlas.Common.Rules.Builtin.TypedExpressions in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypedExpressions.pas',
+  Atlas.Common.Rules.Builtin.TypeRestrictions in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeRestrictions.pas',
   Atlas.Common.Rules.Builtin.Packages in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.pas',
   Atlas.Common.Rules.Builtin.OpenTools in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.pas',
   Atlas.Common.Rules.Builtin.Testing in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.pas',

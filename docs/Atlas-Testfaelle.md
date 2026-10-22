@@ -5402,3 +5402,107 @@ Voraussetzung: Server läuft in der IDE mit Projekt; `type-too-large` steht auf 
 | GG5 | `TFeld<T> = array[0..$FFFFFFF] of T;`, dann `TGross = TFeld<Int64>;` und `TKlein = TFeld<Byte>;` | Fehler „TFeld<Int64> ist 2 GB groß …“ (wie E2543), nichts bei `TFeld<Byte>` und am generischen Typ selbst |
 | GG6 | `array[0..MaxInt - 1] of Byte`, `array of Int64`, Grenze aus fremder Unit oder typisierter Konstante, Feld in einer Klasse | Keine Meldung |
 | GG7 | `"type-too-large": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+
+## Anonyme Methode erfasst, was sie nicht erfassen darf (#1035)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EF1 | Das Beispiel aus #1035: `procedure Laden(var Anzahl: Integer);` mit `TTask.Run(procedure begin Inc(Anzahl); end);` | Fehler `anonymous-capture-invalid` an `Anzahl` in der anonymen Methode: „Der var-Parameter Anzahl kann nicht erfasst werden (wie E2555).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| EF2 | Schnellkorrektur „Wert in die lokale Variable AnzahlKopie kopieren“, danach Strg+Z | `var AnzahlKopie: Integer;`, davor `AnzahlKopie := Anzahl;`, in der anonymen Methode `Inc(AnzahlKopie)`, danach `Anzahl := AnzahlKopie;`; keine Meldung mehr; ein Undo-Schritt |
+| EF3 | `out`-Parameter, untypisierter Parameter (`const Daten`), `function Lesen: string;` mit `TThread.Synchronize(nil, procedure begin Result := Edit1.Text; end);` | Meldungen „Der out-Parameter …“, „Der untypisierte Parameter …“ (ohne Korrektur), „Result der umgebenden Funktion kann nicht erfasst werden (wie E2555).“ mit Korrektur über `Ergebnis` |
+| EF4 | `Result` in einer anonymen Funktion (`function: Integer begin Result := 42; end`), gleichnamiger Parameter oder Inline-Variable der anonymen Methode, `const`-Parameter, lokale Variable, `with Liste do … Anzahl` | Keine Meldung |
+| EF5 | Lokale Prozedur in `Laden`, die eine anonyme Methode mit `Anzahl` startet | Meldung wie EF1; ohne anonyme Methode keine |
+| EF6 | `"anonymous-capture-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| EF7 | Abgleich mit Delphi: EF1 und EF3 übersetzen | dcc meldet E2555 an denselben Stellen, für EF4 nichts |
+
+## Operator falsch deklariert (#1030)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; Unit mit `TGeld = record Betrag: Currency; … end;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OD1 | Das Beispiel aus #1030: `class operator Equal(const A, B: TGeld): Integer;` mit Rumpf | Fehler `operator-declaration-invalid` am Namen `Equal`: „Equal muss Boolean liefern (wie E2520).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| OD2 | Schnellkorrektur „Boolean als Ergebnis“, danach Strg+Z | `Boolean` in Deklaration und Rumpf `TGeld.Equal`; keine Meldung mehr; ein Undo-Schritt |
+| OD3 | `class operator Substract(const A, B: TGeld): TGeld;` | „Unbekannter Operator Substract; gemeint ist wohl Subtract (wie E2393).“, Korrektur „In Subtract umbenennen“ ändert Deklaration und Rumpf |
+| OD4 | `class operator Negative(const A, B: TGeld): TGeld;` und `class operator Add(const A: TGeld): TGeld;` | „Der Operator Negative muss 1 Parameter haben (wie E2517).“ mit Korrektur „Parameter nach Vorlage: (const A: TGeld)“; für Add 2 Parameter |
+| OD5 | `class operator Add(A, B: Integer): TGeld;` und `class operator Implicit(A: Integer): string;` | „… muss TGeld in mindestens einem Parameter haben (wie E2518).“ bzw. „Implicit muss TGeld als Parameter oder Ergebnis haben (wie E2521).“ |
+| OD6 | `class operator Inc(const A: TGeld): Integer;`; in einer Klasse `TKind = class(TBasis)` ein `class operator Implicit(A: TKind): TBasis;` | „Inc muss denselben Typ liefern wie den ersten Parameter, hier TGeld (wie E2519).“ mit Korrektur „TGeld als Ergebnis“; „Implicit darf nicht in den Vorfahren TBasis oder aus ihm umwandeln (wie E2522).“ |
+| OD7 | `class operator Assign(const Dest: TGeld; const [ref] Src: TGeld);` | „Der erste Parameter von Assign muss ein var-Parameter sein (wie E2464).“, Korrektur „var vor den ersten Parameter setzen“ |
+| OD8 | Richtige Operatoren (Add, Equal mit Boolean, Implicit nach Integer, Initialize/Finalize, True/False), Parametertyp aus fremder Unit, Alias `TMoney = TGeld` | Keine Meldung |
+| OD9 | `"operator-declaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| OD10 | Abgleich mit Delphi: OD1 bis OD7 übersetzen | dcc meldet E2520, E2393, E2517, E2518, E2521, E2519, E2522, E2464 an denselben Stellen, für OD8 nichts |
+
+## Generische Deklaration unzulässig (#1029)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GD1 | Das Beispiel aus #1029: im interface-Teil `procedure Tauschen<T>(var A, B: T);` | Fehler `generic-declaration-invalid` an `Tauschen<T>`: „Globale Routinen dürfen keine Typparameter haben; als class-Methode eines Records deklarieren (wie E2530).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| GD2 | Als `class procedure Tauschen<T>(var A, B: T); static;` in `TTausch = record` verschieben | Keine Meldung |
+| GD3 | `TA<T: class, record>`, `TA<T: class, constructor, constructor>`, `TA<T: record, constructor>`, `TA<T: class, TBasis>` (TBasis Klasse der Unit), `TA<T: TEins, TZwei>`, `TA<T: Integer>`, `M<T: TPunkt>` (TPunkt Record) | Meldungen wie E2507, E2603, E2516, E2552, E2553 und zweimal E2510, jeweils an der Einschränkung |
+| GD4 | `TE<T> = (eA, eB);`, `TL<T> = TList<T>;`, `TZ<T> = ^Integer;`, `TM<T> = set of Byte;`, `TH<T> = class helper for TObject` | Je „Der Typ … darf keine Typparameter haben; …“ (wie E2508) am Typnamen |
+| GD5 | In einer Klasse `class operator Add<T>`, `destructor Destroy<T>;`, `class constructor Create<T>;`, `procedure Laden<T>; virtual;`, `procedure Lesen<T>(A: T); override;`; im Interface `procedure Schreiben<T>(A: T);` | Meldungen wie E2529, E2528 (zweimal), E2533 (an `virtual` bzw. `override`), E2535 |
+| GD6 | `TListeKlasse = class of TListe<Integer>;`, `TNamen<T> = class(TCustomAttribute)`, Attribut `[TMarke<Integer>]` | Meldungen wie E2548, E2549, E2565 |
+| GD7 | `TListe<T> = class procedure Hinzu<T>(A: T); end;` | „Der Typparameter T verdeckt den gleichnamigen Typparameter von TListe (wie H2509).“ |
+| GD8 | Klasse mit `F<T>` und `F<T, U>`, in einer Methode `F<Integer, string, Byte>(2)` bzw. `TA.F<Integer, Byte, Word>(1)` | „F hat keine Variante mit 3 Typparametern; deklariert: F<T>, F<T, U> (wie E2551).“; mit 1 oder 2 Typargumenten keine Meldung |
+| GD9 | `TListe<T> = class` im interface-Teil, im implementation-Teil `const Grenze = 10;` und `TListe<T>.Pruefen` verwendet `Grenze` | „TListe.Pruefen gehört zu einem generischen Typ …, darf Grenze aus dem implementation-Teil nicht verwenden (wie E2506).“; mit einem Feld `Grenze` in TListe, einer lokalen Variable `Grenze`, in `with` oder bei einer nicht generischen Klasse keine Meldung |
+| GD10 | Erlaubtes: `T: class, constructor`, `T: TComponent, IFoo, constructor`, `TArr<T> = array of T`, `TP<T> = reference to procedure(A: T)`, generischer Konstruktor, `class function Neu<T>: T; static;` | Keine Meldung |
+| GD11 | `"generic-declaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| GD12 | Abgleich mit Delphi: GD1 und GD3 bis GD9 übersetzen; zusätzlich eine lokale Prozedur in `TListe<T>.Pruefen` | dcc meldet dieselben Codes an denselben Stellen, für GD2 und GD10 nichts; meldet dcc für die lokale Prozedur E2570, ergänzt die Regel diesen Fall |
+
+## Sprachregel für Records, Inline und Helfer verletzt (#994)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TB1 | Das Beispiel aus #994: `TPunkt = record X, Y: Integer; function Laenge: Double; virtual; end;` | Fehler `type-restriction-violated` an `virtual`: „Records erlauben keine virtuellen Methoden (wie E2379).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| TB2 | Schnellkorrektur „virtual entfernen“, danach Strg+Z | `function Laenge: Double;`; keine Meldung mehr; ein Undo-Schritt |
+| TB3 | Im Record `procedure A; override;`, `constructor Create;`, `constructor Neu(X: Integer = 0);`, `destructor Destroy;`, `class procedure C;` | Meldungen wie E2463, E2394, E2471, E2465, E2398; Korrektur „static ergänzen“ ergibt `class procedure C; static;` |
+| TB4 | Lokaler Record in einer Prozedur bzw. `var R: record … end;` mit Methode, Property, `class var`, `type` und `const` | Meldungen wie E2433, E2434, E2435, E2436, E2437; nur Felder: keine Meldung |
+| TB5 | `class helper for TList` mit Feld, `var`-Feld, `destructor Destroy; override;`, `class constructor Init;`, Konstruktor, dessen Rumpf mit einer Zuweisung beginnt; `record helper for Integer` mit `virtual` bzw. `message`; `var Falsch: TListHelfer;` | Meldungen wie E2599 (zweimal), E2295, E2358, E2296, E2598, E2475, E2527; `class var` im Helfer und Konstruktor, der mit `Create;` beginnt: keine Meldung |
+| TB6 | `TBH = class helper for TListe`, `class helper (TBH) for TAnders` (TAnders erbt nicht von TListe); Helfer als verschachtelter Typ in `TG<T> = class` | Meldungen wie E2294 und E2589; `class helper (TBH) for TKind` mit `TKind = class(TListe)` bleibt still |
+| TB7 | `class constructor Init(A: Integer);`, zweiter `class constructor Zwei; virtual;` | Meldungen wie E2360, E2359, E2534; zwei Klassenkonstruktoren in `{$IFDEF}`/`{$ELSE}`: keine Meldung |
+| TB8 | `procedure V; virtual; inline;`, `constructor Create; inline;`, `function Summe(const A: array of Integer): Integer; inline;`, inline-Methode mit asm-Rumpf, inline-Methode aus dem interface-Teil mit einer Konstanten des implementation-Teils | Meldungen wie E2425, E2442, E2439, E2426, E2441; Korrektur „inline entfernen“ |
+| TB9 | `function Aussen: Integer; inline;` mit lokaler Funktion `Hilfe`, die sie aufruft; lokale `function Mitte: Integer; inline;`, die einen Parameter der umgebenden Prozedur liest | Meldungen wie E2501 und E2449; lokale inline-Funktion mit eigenem gleichnamigen Parameter: keine Meldung |
+| TB10 | `threadvar Zaehler: Integer = 3;`, `threadvar Alias: Integer absolute Zaehler;`, `threadvar` in einer Prozedur | Meldungen wie E2194, E2190, E2189 |
+| TB11 | `"type-restriction-violated": {"disabledChecks": ["E2379"]}` beim Beispiel; `"disabledChecks": "E2379"` | Keine Meldung für E2379, andere Codes bleiben; die Zeichenkette statt Liste meldet die Einstellungsprüfung |
+| TB12 | `"type-restriction-violated": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| TB13 | Abgleich mit Delphi 12 und 13: TB1 und TB3 bis TB10 übersetzen | dcc meldet dieselben Codes an denselben Stellen, für die stillen Fälle nichts |
+
+## Attribut falsch verwendet (#1033)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AW1 | Das Beispiel aus #1033: in einer Klasse `[Weak] FZaehler: Integer;` | Fehler `attribute-usage-invalid` an `Weak`: „[Weak] ist nur an Klassen- und Interface-Referenzen erlaubt; FZaehler hat den Typ Integer (wie E2584).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| AW2 | `[Weak]` an Feldern vom Typ eines Records, einer Aufzählung, `array of TObject`, `string`, eines Alias `TZahl = Integer` und an einer lokalen Variablen | Je eine Meldung wie E2584 |
+| AW3 | `[Weak]` an `TObject`, `IInterface`, einem Typ aus einer anderen Unit, `TList<Integer>`, `Pointer`, `TNotifyEvent`, einem `reference to`-Typ und an einem `var`-Parameter; `[Unsafe] FWert: Integer;` | Keine Meldung |
+| AW4 | `[Weak, Weak] FA: TObject;`, `[Unsafe] [Unsafe] FB: IInterface;`, `[Volatile, Volatile] Zaehler: Integer;` | Je eine Meldung wie E2326 am zweiten Attribut |
+| AW5 | Zweimal `[TestCase(…)]` an einer Testmethode; `{$IFDEF X}[Weak]{$ELSE}[Weak]{$ENDIF} FA: TObject;` | Keine Meldung |
+| AW6 | `[Volatile]` an einem Typ, einer Methode und einer Property; `[Volatile]` an Feld, globaler Variable und Parameter | Meldungen wie E2325 für Typ, Methode und Property; sonst keine |
+| AW7 | `var Grenze: Integer;` und `function Standard: string;` vor der Klasse, darin `[Bereich(1, Grenze + 1)]`, `[Bereich(Standard(), 2)]`, `[Name(Standard)]` | Je eine Meldung wie E2448 |
+| AW8 | `[Bereich(Oben, SizeOf(Grenze))]` mit Konstante `Oben`, `[Typ(TypeInfo(TKonfig))]`; Klassenkonstante gleichen Namens wie die Variable; Variable erst nach der Klasse bzw. nur in `{$IFDEF X}`; Feld als Argument | Keine Meldung |
+| AW9 | Eigener Typ `WeakAttribute = class(TCustomAttribute)` in der Unit, dann `[Weak] FZahl: Integer;` | Keine Meldung |
+| AW10 | `"attribute-usage-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| AW11 | Abgleich mit Delphi 12 und 13: AW1, AW2, AW4, AW6, AW7 übersetzen; dazu `[Ref]` an einem Feld und `[Weak]` an einem Typ bzw. einer Methode | dcc meldet dieselben Codes an denselben Stellen, für die stillen Fälle nichts. Meldet dcc für `[Ref]` am Feld oder `[Weak]` an Typ bzw. Methode E2325, die Regel um diese Ziele erweitern (bisher still, weil nicht abgeglichen) |
+
+## TypeInfo oder Default mit unzulässigem Argument (#1084)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TJ1 | Das Beispiel aus #1084: `function StatusName(Status: TStatus): string;` mit `Result := GetEnumName(TypeInfo(Status), Ord(Status));` | Fehler `typeinfo-invalid` an `Status`: „TypeInfo erwartet einen Typ, Status ist eine Variable; gemeint ist TypeInfo(TStatus) (wie E2133).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| TJ2 | Schnellkorrektur „TypeInfo(TStatus) einsetzen“, danach Strg+Z | `GetEnumName(TypeInfo(TStatus), Ord(Status))`; keine Meldung mehr; ein Undo-Schritt |
+| TJ3 | In einer Methode `Default(Wert)` mit Parameter, `TypeInfo(FListe)` mit Feld, Inline-Variable, `Default(Result)`, Unit-Variable, `for var I`, `on E: Exception`, Parameter einer anonymen Methode, untypisierter `var`-Parameter | Meldungen wie E2537 bzw. E2133, jeweils mit Korrektur auf den deklarierten Typ; beim untypisierten Parameter ohne Korrektur |
+| TJ4 | `TStatus = (Aus = 1, An = 5);` und Alias darauf mit `TypeInfo(…)`; `TypeInfo(TextFile)`, `TypeInfo` eines `file of Integer` | Meldungen wie E2134 |
+| TJ5 | `Default(Text);`, `Default(File);`, `Default(TDatei)` mit `TDatei = file of Integer` | Meldungen wie E2538; `Default(File)` erzeugt keinen Syntaxfehler mehr |
+| TJ6 | `TypeInfo(TFarbe)` ohne feste Werte, `Default(TFarbe)`, `TypeInfo(TList<Integer>)`, `TypeInfo(T)` in `TBox<T>`, `with Q do TypeInfo(Wert)`, Methode eines Typs aus einer anderen Unit, lokaler Typ, Konstante, Variable nur in `{$IFDEF X}` | Keine Meldung |
+| TJ7 | Eigene Funktion `Default(A: Integer)` bzw. eigener Typ `Text` in der Unit | Keine Meldung |
+| TJ8 | `"typeinfo-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| TJ9 | Abgleich mit Delphi 12 und 13: TJ1 und TJ3 bis TJ5 übersetzen | dcc meldet dieselben Codes an denselben Stellen, für die stillen Fälle nichts |

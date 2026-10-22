@@ -2470,6 +2470,154 @@
       "level": "T"
     },
     {
+      "id": "anonymous-capture-invalid",
+      "name": "Anonymous method captures what it must not capture",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "An anonymous method uses a var, out or untyped parameter, or Result, of a surrounding routine or anonymous function (like E2555). The name is resolved from the inside out (parameters, var/const/type, local routines, inline variables, for var); inside with and asm the rule stays silent, and declarations in conditional branches that exclude the location do not count. Quick fix: copy the value into a local variable before the statement, use only that variable in the anonymous method, and write it back after the statement when the method assigns it.",
+      "bad": "procedure Load(var Count: Integer);\nbegin\n  TTask.Run(procedure begin Inc(Count); end);\nend;",
+      "good": "procedure Load(var Count: Integer);\nvar\n  CountCopy: Integer;\nbegin\n  CountCopy := Count;\n  TTask.Run(procedure begin Inc(CountCopy); end);\n  Count := CountCopy;\nend;",
+      "compilerCodes": [
+        "E2555"
+      ]
+    },
+    {
+      "id": "operator-declaration-invalid",
+      "name": "Operator declared incorrectly",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A class operator in a record or class is declared in a way Delphi rejects: unknown operator name (like E2393), wrong number of parameters (E2517), own type missing from the parameters (E2518) or from parameters and result for Implicit/Explicit (E2521), Inc/Dec with a result type other than the first parameter (E2519), comparison operator without a Boolean result (E2520), conversion to or from an ancestor (E2522, chain within the file) or Assign without var before the first parameter (E2464). Types count as equal when their names match without unit prefix and type arguments; aliases of the own type declared in the file keep the rule silent, and True, False and OnesComplement are accepted. Quick fixes: nearest operator name, Boolean as result, result like the first parameter, var before the first parameter, parameter list from the template; each in the declaration and the implementation.",
+      "bad": "TGeld = record\n  class operator Equal(const A, B: TGeld): Integer;\nend;",
+      "good": "TGeld = record\n  class operator Equal(const A, B: TGeld): Boolean;\nend;",
+      "compilerCodes": [
+        "E2393",
+        "E2464",
+        "E2517",
+        "E2518",
+        "E2519",
+        "E2520",
+        "E2521",
+        "E2522"
+      ]
+    },
+    {
+      "id": "generic-declaration-invalid",
+      "name": "Generic declaration not allowed",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A generic declaration that Delphi rejects: class and record constraints together (like E2507), a constraint twice (E2603), record together with constructor (E2516), a class type next to class or record (E2552), two class types (E2553), a constraint type that is neither class nor interface (E2510); type parameters on an enumeration, set, subrange, pointer, class reference, alias or helper (E2508), on a destructor or class constructor (E2528), an operator (E2529), a global routine (E2530), a virtual, dynamic, message or override method (E2533) or an interface method (E2535); class of a parameterized type (E2548), a generic class derived from TCustomAttribute (E2549), a parameterized type as attribute (E2565); a type parameter that hides one of the enclosing type (H2509); a call with a number of type arguments no overload has (E2551, classes and records of the file with their ancestors in the file); a method of a generic type or a generic method declared in the interface section that uses a symbol of the implementation section (E2506; silent inside with and when the ancestor chain is not known). Types count only when they are built in or declared in the file; unknown types keep the rule silent. Local procedures in generic methods (E2570) are not reported until a check against Delphi 12/13 confirms that they are still rejected.",
+      "bad": "procedure Swap<T>(var A, B: T);",
+      "good": "type\n  TSwap = record\n    class procedure Swap<T>(var A, B: T); static;\n  end;",
+      "compilerCodes": [
+        "E2506",
+        "E2507",
+        "E2508",
+        "E2510",
+        "E2516",
+        "E2528",
+        "E2529",
+        "E2530",
+        "E2533",
+        "E2535",
+        "E2548",
+        "E2549",
+        "E2551",
+        "E2552",
+        "E2553",
+        "E2565",
+        "E2603",
+        "H2509"
+      ]
+    },
+    {
+      "id": "type-restriction-violated",
+      "name": "Language rule for records, inline and helpers violated",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "Fixed language rules that only the compiler reports: virtual methods (like E2379) or other virtual directives (override, abstract, reintroduce, message, final; E2463) in records, parameterless constructors (E2394), constructors whose parameters all have defaults (E2471) and destructors (E2465) in records, class methods in records without static (E2398); in record helpers virtual methods (E2598) and the other virtual directives (E2475); fields in helpers (class var is allowed, E2599), a destructor (E2295) or class constructor (E2358) in a class helper, a helper constructor whose first statement is not a call without arguments (E2296), a class helper descending from a helper whose type the new target does not descend from (E2294, only with a known ancestor chain), a helper used as type of a declaration (E2527) or declared inside a generic type (E2589); several class constructors (E2359, exclusive conditional branches count once), class constructors with parameters (E2360) or virtual, dynamic or message (E2534); methods, properties, class members, types and constants in local or anonymous records (E2433 to E2437); inline on virtual or dynamic methods (E2425), on constructors and destructors (E2442), with open array parameters (E2439), with an asm body (E2426), declared in the interface section and using a symbol of the implementation section (E2441), as local routine reading variables of the enclosing routine (E2449) or calling its own local routines (E2501); local, absolute or initialized threadvar (E2189, E2190, E2194). The checks apply to all supported Delphi versions (10 Seattle to 13). Option disabledChecks leaves out single codes. Quick fixes: remove the directive, add static.",
+      "bad": "TPoint2 = record\n  X, Y: Integer;\n  function Length: Double; virtual;\nend;",
+      "good": "TPoint2 = record\n  X, Y: Integer;\n  function Length: Double;\nend;",
+      "compilerCodes": [
+        "E2189",
+        "E2190",
+        "E2194",
+        "E2294",
+        "E2295",
+        "E2296",
+        "E2358",
+        "E2359",
+        "E2360",
+        "E2379",
+        "E2394",
+        "E2398",
+        "E2425",
+        "E2426",
+        "E2433",
+        "E2434",
+        "E2435",
+        "E2436",
+        "E2437",
+        "E2439",
+        "E2441",
+        "E2442",
+        "E2449",
+        "E2463",
+        "E2465",
+        "E2471",
+        "E2475",
+        "E2501",
+        "E2527",
+        "E2534",
+        "E2589",
+        "E2598",
+        "E2599"
+      ],
+      "options": [
+        {
+          "name": "disabledChecks",
+          "type": "string-list",
+          "default": [],
+          "description": "Compiler codes the rule does not check, e.g. [\"E2425\"]."
+        }
+      ]
+    },
+    {
+      "id": "attribute-usage-invalid",
+      "name": "Attribute used incorrectly",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A compiler attribute is used where Delphi rejects it: [Weak] on a field or variable whose type is certainly neither a class nor an interface (built-in value types, records, enumerations, sets, arrays, pointer types of the file, aliases followed; like E2584), [Volatile] on a type, routine, method or property (E2325), Weak, Unsafe, Volatile or Ref twice on the same declaration (E2326; branches that exclude each other do not count), or an attribute argument that is certainly a variable or a routine of the file (E2448; visible before the attribute, not shadowed by a constant, type or other declaration of the same name). Custom attributes may be repeated; a type Weak or WeakAttribute declared in the file keeps the rule silent for that name. No quick fix.",
+      "bad": "TCounter = class\nprivate\n  [Weak] FCount: Integer;\nend;",
+      "good": "TCounter = class\nprivate\n  [Weak] FOwner: IInterface;\n  FCount: Integer;\nend;",
+      "compilerCodes": [
+        "E2325",
+        "E2326",
+        "E2448",
+        "E2584"
+      ]
+    },
+    {
+      "id": "typeinfo-invalid",
+      "name": "TypeInfo or Default with an invalid argument",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "TypeInfo or Default receives a variable instead of a type (like E2133, E2537: parameters, local, inline and unit variables, fields, properties, Result, for and exception variables), TypeInfo receives a type without RTTI (enumeration with explicit values, file type, Text/TextFile; E2134), or Default receives a file type (E2538). Names are resolved from the inside out; inside with, in helpers, in methods of types outside the file, for declarations in other conditional branches and when the file or the index declares its own TypeInfo or Default the rule stays silent. Quick fix: insert the variable's declared type.",
+      "bad": "Name := GetEnumName(TypeInfo(Status), Ord(Status));",
+      "good": "Name := GetEnumName(TypeInfo(TStatus), Ord(Status));",
+      "compilerCodes": [
+        "E2133",
+        "E2134",
+        "E2537",
+        "E2538"
+      ]
+    },
+    {
       "id": "missing-begin-end",
       "name": "Condition or loop without begin … end",
       "category": "code-smell",

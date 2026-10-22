@@ -817,3 +817,11 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - #1081 `untyped-pointer-refcount` (Builtin.Statements): Interfaces wie W1070, Strings mit „(dcc meldet das nicht)“ (Marcos Regel aus #1011). Handtests ZR1–ZR6; ZR2 prüft, ob dcc W1070 unter Win32/Win64 überhaupt meldet.
 - #1083 `type-too-large` (Builtin.Declarations, `TTypeSizes`): E2100 und E2543; E2419 nur .NET, nicht gemeldet. `TOrdinalConstants` kennt jetzt Low/High eingebauter Typen und MaxInt. Handtests GG1–GG7.
 - Beim Sammelbranch erwartete Konflikte: Katalog-JSON, Catalog.Data.pas, Regeln.md, Profiles.Tests, README, CHANGELOG, Architektur.md, Atlas-Testfaelle.md (beide Seiten behalten, Generatoren neu laufen lassen). Die neuen Regeln laufen ohne Rekursion durch den Baum.
+
+## Compiler vorab: sechs Regeln (#1035, #1030, #1029, #994, #1033, #1084; 22.10.2026, ungebaut)
+- Kette auf `feature/1006-readonly-property-assigned` (912a9065): `feature/1035-anonymous-capture-invalid` → `feature/1030-operator-declaration-invalid` → `feature/1029-generic-declaration-invalid` → `feature/994-type-restriction-violated` → `feature/1033-attribute-usage-invalid` → `feature/1084-typeinfo-invalid`. Nichts in main, Issues offen (Handtest).
+- `anonymous-capture-invalid` in `Builtin.Capture`, die übrigen fünf in `Builtin.TypeRestrictions` (gemeinsam `TRoutineHead`, `TFileTypes`, `TImplementationSymbols`, `TDeclarationNames`).
+- Parser: Typen in Generics-Einschränkungen sind keine Typparameter mehr (Cache-Format 20, #1029); `class helper (TBasis) for T` und `record helper (…) for T` sind Helfer (#994); `file` im Ausdruck ist ein Typname wie `string` (#1084).
+- Option `disabledChecks` für `type-restriction-violated` (Schema, Parser, Katalog).
+- Bewusst still bis zum Abgleich mit dcc: E2570 (GD12), `[Ref]` am Feld und `[Weak]` an Typ oder Methode (AW11), `[Weak]` an `Pointer`. Alle Fälle stehen in den Handtests EF, OD, GD, TB, AW und TJ; dort zuerst die Abgleich-Zeilen (EF7, OD10, GD12, TB13, AW11, TJ9) mit Delphi 12 und 13 übersetzen.
+- Unter FPC: alle Tests der Regeln grün, Scan über 2714 Dateien (Atlas und BetterDelphiLSP) ohne Fehlalarm, jede Mutation in `mutationen.txt` von Hand geprüft (der Golden-Korpus läuft unter FPC wegen des Regex-UTF-8-Fehlers nicht).
