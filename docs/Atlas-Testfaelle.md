@@ -4168,3 +4168,18 @@ Voraussetzung: Server läuft in der IDE; eine Unit des Projekts ist offen.
 | SC8 | `uses System.;`, `strict public`, `class FWert: Integer;`, `try … end;` ohne except, `for := 1 to 3 do` | E2372, E2375, E2357, E2125 und E2088 |
 | SC9 | `"rules": {"syntax": "off"}` bzw. `"group:compiler": "off"` in atlas.json, SC1 wiederholen | Keine Meldung; die uses-Hinweise (#621) bleiben trotzdem aus, solange der Code nicht parst |
 | SC10 | Abgleich mit Delphi: SC1, SC4–SC8 je einzeln übersetzen | dcc meldet an denselben Stellen dieselben Codes; besonders prüfen: E2058–E2061 (Typ im var-Abschnitt bzw. lokal), E2088, E2357, E2372 und E2375, deren genaue Fälle die Doku nicht beschreibt. Abweichungen als Kommentar an #1022 |
+
+## Unbekannte Direktive wie E2070 (#1068)
+
+Voraussetzung: Server läuft in der IDE; eine Unit mit Klasse ist offen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UD1 | Das Beispiel aus #1068: `procedure Paint; overide;` in einer Klasse | Fehler `directive-typo` an `overide`: „Unbekannte Direktive overide; gemeint ist override (wie E2070).“ als Wellenlinie, im Befund-Hover und im Fenster „Atlas-Prüfung“; kein Syntaxfehler daneben (**Abnahme**) |
+| UD2 | Schnellkorrektur „Durch override ersetzen“, danach Strg+Z | Zeile wird `procedure Paint; override;`, keine Meldung mehr; ein Undo-Schritt |
+| UD3 | `virutal;`, `overlaod;`, `stdcal;` an einer freien Prozedur, `REINTRODUCES;` | Je eine Meldung mit virtual, overload, stdcall bzw. REINTRODUCE |
+| UD4 | `property Items[I: Integer]: string read Get; defualt;` | „Unbekannte Direktive defualt; gemeint ist default (wie E2070).“ |
+| UD5 | `procedure Paint; Zeichnen;` | „Unbekannte Direktive Zeichnen (wie E2070).“ ohne Korrektur |
+| UD6 | `{$IFDEF FPC} nostackframe; {$ENDIF}` nach einem Prozedurkopf | Keine Meldung |
+| UD7 | `"rules": {"directive-typo": "off"}`, `"group:compiler": "off"` bzw. `"directive-typo": {"exclude": ["Source/*.pas"]}` | Keine Meldung (in den ausgenommenen Dateien) |
+| UD8 | Abgleich mit Delphi: UD1, UD3, UD4 und UD5 übersetzen | dcc meldet E2070 an denselben Stellen; bei UD4 prüfen, ob Delphi E2070 oder einen anderen Code nennt (Abweichung als Kommentar an #1068) |

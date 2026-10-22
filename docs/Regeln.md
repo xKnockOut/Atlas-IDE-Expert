@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 18 |
+| [Compiler vorab](#gruppe-compiler) | 19 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -148,6 +148,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`assign-to-property-member`](#assign-to-property-member) | Zuweisung an ein Feld eines Property-Records | Bug | Fehler |
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
 | [`inline-not-expanded`](#inline-not-expanded) | Inline-Funktion wird nicht eingebettet | Code Smell | Hinweis |
+| [`directive-typo`](#directive-typo) | Unbekannte Direktive (Tippfehler) | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4571,4 +4572,25 @@ uses
   System.JSON, System.Generics.Collections;
 ...
 for Wert in Feld as TJSONArray do
+```
+
+<a id="directive-typo"></a>
+### directive-typo
+
+**Unbekannte Direktive (Tippfehler)** · Bug · Fehler · Gruppe Compiler vorab
+
+An der Stelle einer Direktive steht ein Wort, das keine ist: nach dem ';' eines Routinen- oder Methodenkopfs (overide;, virutal;, overlaod;, stdcal;, reintroduces;) oder nach einer Property, wo nur default erlaubt ist (defualt;). Der Compiler bricht dort ab (wie E2070). Die Meldung schlägt die ähnlichste Direktive vor, wenn höchstens zwei Zeichen abweichen. Still in {$IF}-Zweigen, die FPC abfragen; FPC kennt weitere Direktiven wie nostackframe. Korrektur: durch die vorgeschlagene Direktive ersetzen.
+
+Entspricht der Compilermeldung `E2070`.
+
+Mit Treffer:
+
+```pascal
+procedure Paint; overide;
+```
+
+Richtig:
+
+```pascal
+procedure Paint; override;
 ```

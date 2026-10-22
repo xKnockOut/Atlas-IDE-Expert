@@ -45,6 +45,8 @@ type
     procedure KeepsTokensIncludingComments;
     [Test]
     procedure StopsEarlyWhenCancelled;
+    [Test]
+    procedure KeepsUnknownDirectiveAsDirective;
   end;
 
 implementation
@@ -483,6 +485,22 @@ begin
     end;
   finally
     Text.Free;
+  end;
+end;
+
+procedure TPascalParserTests.KeepsUnknownDirectiveAsDirective;
+var
+  Tree: TSyntaxTree;
+begin
+  // overide; ist ein Tippfehler an der Stelle einer Direktive (#1068): kein Feld, kein Folgefehler.
+  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type', '  TFoo = class',
+    '    procedure Paint; overide;', '    procedure Q;', '  end;', 'implementation', 'end.']));
+  try
+    AssertNoDiagnostics(Tree);
+    Assert.AreEqual('overide', FindFirst(Tree.Root, TSyntaxKind.Directive).Name);
+    Assert.AreEqual(0, CountKind(Tree.Root, TSyntaxKind.Field));
+  finally
+    Tree.Free;
   end;
 end;
 

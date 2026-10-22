@@ -2355,6 +2355,19 @@
         "H2456",
         "H2457"
       ]
+    },
+    {
+      "id": "directive-typo",
+      "name": "Unknown directive (typo)",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A word that is not a directive stands where a directive belongs: after the ';' of a routine or method header (overide;, virutal;, overlaod;, stdcal;, reintroduces;) or after a property, where only default is allowed (defualt;). The compiler stops there (like E2070). The message suggests the closest directive when at most two characters differ. Silent in {$IF} branches that test FPC, which knows further directives such as nostackframe. Quick fix: replace with the suggested directive.",
+      "bad": "procedure Paint; overide;",
+      "good": "procedure Paint; override;",
+      "compilerCodes": [
+        "E2070"
+      ]
     }
   ]
 }

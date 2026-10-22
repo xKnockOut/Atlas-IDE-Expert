@@ -67,6 +67,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Pascal.SyntaxChecks;
 
 type
@@ -228,13 +229,6 @@ const
   RelationalOperators: array[0..5] of string = ('=', '<>', '<', '>', '<=', '>=');
   AdditiveSymbols: array[0..1] of string = ('+', '-');
   MultiplicativeSymbols: array[0..1] of string = ('*', '/');
-  // Direktiven nach Routinenköpfen, ohne Groß-/Kleinschreibung.
-  RoutineDirectives: array[0..31] of string = (
-    'abstract', 'assembler', 'cdecl', 'deprecated', 'dispid', 'dynamic', 'experimental',
-    'export', 'external', 'far', 'final', 'forward', 'inline', 'library', 'local',
-    'message', 'near', 'noreturn', 'overload', 'override', 'pascal', 'platform',
-    'register', 'reintroduce', 'safecall', 'static', 'stdcall', 'unsafe', 'varargs',
-    'virtual', 'winapi', 'delayed');
   /// <summary>Höchste Verschachtelungstiefe; schützt vor Stapelüberlauf bei kaputtem Code.</summary>
   MaxNesting = 256;
   CallingConventions: array[0..5] of string = ('stdcall', 'cdecl', 'pascal', 'register', 'safecall', 'winapi');
@@ -1243,7 +1237,10 @@ var
   Word: string;
 begin
   // overload; virtual; abstract; external 'dll' name 'x'; message WM_X; ...
-  while IsIdent and InWords(Current.Text, RoutineDirectives) or IsKw(['inline', 'library']) do
+  // Ein anderes Wort mit ';' dahinter kann an dieser Stelle nur eine Direktive sein, meist ein Tippfehler
+  // (overide;): Es wird ein Directive-Knoten mit dem Wort, die Regel directive-typo meldet es (#1068).
+  while (IsIdent and (TDirectiveNames.IsRoutineDirective(Current.Text) or PeekIsSym(1, ';'))) or
+    IsKw(['inline', 'library']) do
   begin
     Start := NodeStart;
     Word := LowerCase(Current.Text);
@@ -1740,8 +1737,8 @@ end;
 
 procedure TParser.ParseProperty(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  Start, DirectiveStart: Integer;
+  Node, Directive: TSyntaxNode;
 begin
   // property Name[Index: Integer]: Typ read GetX write SetX default 0; default;
   Start := NodeStart;
@@ -1760,6 +1757,18 @@ begin
   if IsIdentText('default') and PeekIsSym(1, ';') then
   begin
     Advance;
+    Advance;
+  end
+  else if IsIdent and PeekIsSym(1, ';') then
+  begin
+    // property … ; defualt; – an dieser Stelle steht nur default, ein anderes Wort ist ein Tippfehler
+    // (#1068, Regel directive-typo).
+    DirectiveStart := NodeStart;
+    Directive := StartNode(TSyntaxKind.Directive);
+    Directive.Name := LowerCase(Current.Text);
+    Node.Add(Directive);
+    Advance;
+    FinishNode(Directive, DirectiveStart);
     Advance;
   end;
   FinishNode(Node, Start);

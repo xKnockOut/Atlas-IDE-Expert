@@ -6,6 +6,10 @@
 // meldet (wie W1030). Die Listen enthalten alles, was Delphi 12 und 13 kennen,
 // auch Direktiven ohne Hovertext (C++-Ausgabe, PE-Kopf, Linux-Bibliotheken).
 //
+// Dazu die Direktiven nach Routinenköpfen (overload, virtual, stdcall …): Der
+// Parser erkennt sie daran, die Regel directive-typo (#1068) meldet andere
+// Wörter an ihrer Stelle (wie E2070).
+//
 // Kurzschalter aus einem Buchstaben ({$R+}, {$A8}, {$M 16384,1048576}) gelten
 // immer als bekannt, ebenso {$YD}; Delphi kennt fast jeden Buchstaben.
 
@@ -26,6 +30,10 @@ type
     class function Warnings: TArray<string>; static;
     /// <summary>Ist AName ein Bezeichner für {$WARN …} (ohne Groß-/Kleinschreibung)?</summary>
     class function IsWarning(const AName: string): Boolean; static;
+    /// <summary>Alle Direktiven nach Routinenköpfen in Kleinbuchstaben (overload, virtual, stdcall …).</summary>
+    class function RoutineDirectives: TArray<string>; static;
+    /// <summary>Ist AName eine Direktive nach Routinenköpfen (ohne Groß-/Kleinschreibung)?</summary>
+    class function IsRoutineDirective(const AName: string): Boolean; static;
   end;
 
 implementation
@@ -50,6 +58,14 @@ const
     'STACKFRAMES', 'STRINGCHECKS', 'STRONGLINKTYPES', 'TEXTBLOCK', 'TSAWARE', 'TYPEDADDRESS', 'TYPEINFO', 'UNDEF',
     'UNSAFECODE', 'VARPROPSETTER', 'VARSTRINGCHECKS', 'WARN', 'WARNINGS', 'WEAKLINKRTTI', 'WEAKPACKAGEUNIT',
     'WRITEABLECONST', 'YD', 'ZEROBASEDSTRINGS');
+
+  // Direktiven nach Routinenköpfen, ohne Groß-/Kleinschreibung; library und inline sind auch Schlüsselwörter.
+  RoutineDirectiveNames: array[0..31] of string = (
+    'abstract', 'assembler', 'cdecl', 'deprecated', 'dispid', 'dynamic', 'experimental',
+    'export', 'external', 'far', 'final', 'forward', 'inline', 'library', 'local',
+    'message', 'near', 'noreturn', 'overload', 'override', 'pascal', 'platform',
+    'register', 'reintroduce', 'safecall', 'static', 'stdcall', 'unsafe', 'varargs',
+    'virtual', 'winapi', 'delayed');
 
   WarningNames: array[0..80] of string = (
     'ASG_TO_TYPED_CONST', 'BAD_GLOBAL_SYMBOL', 'BOUNDS_ERROR', 'CASE_LABEL_RANGE', 'COMBINING_SIGNED_UNSIGNED',
@@ -122,6 +138,20 @@ end;
 class function TDirectiveNames.IsWarning(const AName: string): Boolean;
 begin
   Result := MatchText(AName, WarningNames);
+end;
+
+class function TDirectiveNames.RoutineDirectives: TArray<string>;
+var
+  Index: Integer;
+begin
+  SetLength(Result, Length(RoutineDirectiveNames));
+  for Index := 0 to High(RoutineDirectiveNames) do
+    Result[Index] := RoutineDirectiveNames[Index];
+end;
+
+class function TDirectiveNames.IsRoutineDirective(const AName: string): Boolean;
+begin
+  Result := MatchText(AName, RoutineDirectiveNames);
 end;
 
 end.

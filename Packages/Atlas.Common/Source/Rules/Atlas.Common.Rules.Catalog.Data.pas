@@ -2375,6 +2375,19 @@ begin
     '        "H2456",' + #10 +
     '        "H2457"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "directive-typo",' + #10 +
+    '      "name": "Unknown directive (typo)",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A word that is not a directive stands where a directive belongs: after the '';'' of a routine or method header (overide;, virutal;, overlaod;, stdcal;, reintroduces;) or after a pr' + 'operty, where only default is allowed (defualt;). The compiler stops there (like E2070). The message suggests the closest directive when at most two characters differ. Silent in {$IF} branches that te' + 'st FPC, which knows further directives such as nostackframe. Quick fix: replace with the suggested directive.",' + #10 +
+    '      "bad": "procedure Paint; overide;",' + #10 +
+    '      "good": "procedure Paint; override;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2070"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3556,6 +3569,11 @@ begin
     '      "id": "inline-not-expanded",' + #10 +
     '      "name": "Inline-Funktion wird nicht eingebettet",' + #10 +
     '      "description": "Aufruf einer inline-Routine aus einer anderen Unit, die der Compiler nicht einbettet: Ihr Rumpf braucht eine Unit, die hier in uses fehlt (wie H2443, typisch System.Generics.Coll' + 'ections bei TJSONObject.Count), er greift auf ein strict private-Mitglied zu und der Aufruf steht nicht in einer Methode dieser Klasse (wie H2444), die aufrufende Routine ist selbst inline und die Uni' + 't der gerufenen steht nur im uses des implementation-Teils (wie H2445), oder die Unit der gerufenen Routine verwendet diese Unit direkt (wie H2456) bzw. über andere Units (wie H2457). Geprüft werden A' + 'ufrufe, Properties mit inline-Getter bzw. -Setter und for-in (GetEnumerator, MoveNext, Current). Der Index merkt sich, worauf jeder inline-Rumpf verweist; die Regel meldet nur, was sie sicher auflöst ' + '(unbekannte Verweise und geerbte Mitglieder aus anderen Units bleiben stumm). Mit {$INLINE OFF} in der Datei schweigt sie. Korrektur: die fehlenden Units in das uses des Abschnitts aufnehmen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "directive-typo",' + #10 +
+    '      "name": "Unbekannte Direktive (Tippfehler)",' + #10 +
+    '      "description": "An der Stelle einer Direktive steht ein Wort, das keine ist: nach dem '';'' eines Routinen- oder Methodenkopfs (overide;, virutal;, overlaod;, stdcal;, reintroduces;) oder nach ein' + 'er Property, wo nur default erlaubt ist (defualt;). Der Compiler bricht dort ab (wie E2070). Die Meldung schlägt die ähnlichste Direktive vor, wenn höchstens zwei Zeichen abweichen. Still in {$IF}-Zwe' + 'igen, die FPC abfragen; FPC kennt weitere Direktiven wie nostackframe. Korrektur: durch die vorgeschlagene Direktive ersetzen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
