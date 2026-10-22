@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Inheritance.Tests;
 
-// Tests für die Vererbungsregeln (#125).
+// Tests für die Vererbungsregeln (#125) und shadowed-name (#934).
 
 interface
 
@@ -33,6 +33,16 @@ type
     procedure VirtualInsteadOfOverrideReplacesDirective;
     [Test]
     procedure NewVirtualMethodIsSilent;
+    [Test]
+    procedure ShadowedNameIssueExample;
+    [Test]
+    procedure ShadowedNameFieldsLocalsAndGlobals;
+    [Test]
+    procedure ShadowedNameFromIndexAndVisibility;
+    [Test]
+    procedure ShadowedNameSilentCases;
+    [Test]
+    procedure ShadowedNameOptions;
   end;
 
 implementation
@@ -48,6 +58,8 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Configuration.Parser,
   Atlas.Tests.RuleAssert;
 
 const
@@ -213,6 +225,103 @@ procedure TInheritanceRulesTests.NewVirtualMethodIsSilent;
 begin
   TRuleAssert.Silent(TVirtualInsteadOfOverrideRule.Create, ClassUnit('    procedure Neu; virtual;'));
   TRuleAssert.Silent(THidesVirtualRule.Create, ClassUnit('    procedure Neu; virtual;'));
+end;
+
+function Kunde(const AParam, ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  TfrmKunde = class(TForm)'#10'  public'#10 +
+    '    procedure Laden(const ' + AParam + ': string);'#10'  end;'#10'implementation'#10 +
+    'procedure TfrmKunde.Laden(const ' + AParam + ': string);'#10'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+procedure TInheritanceRulesTests.ShadowedNameIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Kunde('Caption', '  Caption := Caption + '' (geladen)'';');
+  Findings := TRuleAssert.Findings(TShadowedNameRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Parameter Caption verdeckt die Property TfrmKunde.Caption; die Zuweisung ändert nur den ' +
+    'Parameter.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual('In ACaption umbenennen', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Kunde('ACaption', '  ACaption := ACaption + '' (geladen)'';'), Fixed);
+  TRuleAssert.Silent(TShadowedNameRule.Create, Fixed);
+end;
+
+procedure TInheritanceRulesTests.ShadowedNameFieldsLocalsAndGlobals;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TShadowedNameRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TBasis = class'#10'  private'#10'    FWert: Integer;'#10'  protected'#10'    property Wert: Integer read FWert;'#10 +
+    '  end;'#10'  TKonto = class(TBasis)'#10'  private'#10'    FStand: Integer;'#10'  public'#10 +
+    '    procedure Buchen(Betrag: Integer);'#10'  end;'#10'var'#10'  Protokoll: TStringList;'#10 +
+    'implementation'#10'procedure TKonto.Buchen(Betrag: Integer);'#10'var'#10'  FStand, Wert: Integer;'#10 +
+    'begin'#10'  var Protokoll := 1;'#10'  FStand := Betrag;'#10'end;'#10'end.');
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual('Lokale Variable FStand verdeckt das Feld TKonto.FStand; die Zuweisung ändert nur die lokale ' +
+    'Variable.', Findings[0].Message);
+  Assert.AreEqual('In LFStand umbenennen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual('Lokale Variable Wert verdeckt die Property TKonto.Wert.', Findings[1].Message);
+  Assert.AreEqual('Lokale Variable Protokoll verdeckt die globale Variable Protokoll.', Findings[2].Message);
+end;
+
+procedure TInheritanceRulesTests.ShadowedNameFromIndexAndVisibility;
+const
+  BaseSource = 'unit Basis;'#10'interface'#10'type'#10'  TFremd = class'#10'  private'#10 +
+    '    FGeheim: Integer;'#10'  protected'#10'    FSichtbar: Integer;'#10'  public'#10 +
+    '    property Name: string read FName;'#10'  end;'#10'implementation'#10'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := Run(TShadowedNameRule.Create, 'unit U;'#10'interface'#10'type'#10'  TMeins = class(TFremd)'#10 +
+    '    procedure Tun(Name: string; FGeheim, FSichtbar: Integer);'#10'  end;'#10'implementation'#10 +
+    'procedure TMeins.Tun(Name: string; FGeheim, FSichtbar: Integer);'#10'begin'#10'end;'#10'end.',
+    IndexWith([BaseSource]));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('Parameter Name verdeckt die Property TMeins.Name.', Findings[0].Message);
+  Assert.AreEqual('Parameter FSichtbar verdeckt das Feld TMeins.FSichtbar.', Findings[1].Message);
+end;
+
+procedure TInheritanceRulesTests.ShadowedNameSilentCases;
+begin
+  // Korrigierte Form, Ereignis-Handler mit Sender, Self.Caption, Routine ohne Klasse, unbekannter Vorfahr.
+  TRuleAssert.Silent(TShadowedNameRule.Create, Kunde('ACaption', '  Self.Caption := ACaption;'));
+  TRuleAssert.Silent(TShadowedNameRule.Create, 'unit U;'#10'interface'#10'type'#10'  TForm1 = class(TForm)'#10 +
+    '    procedure FormClose(Sender: TObject; var Action: TCloseAction);'#10'  end;'#10'implementation'#10 +
+    'procedure TForm1.FormClose(Sender: TObject; var Action: TCloseAction);'#10'begin'#10'end;'#10 +
+    'procedure Frei(Caption: string);'#10'var'#10'  Name: string;'#10'begin'#10'end;'#10 +
+    'procedure TUnbekannt.Tun(Caption: string);'#10'begin'#10'end;'#10'end.');
+end;
+
+procedure TInheritanceRulesTests.ShadowedNameOptions;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Kunde('Caption', '  Caption := Caption + '' (geladen)'';');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, Source,
+    '{"rules": {"shadowed-name": {"ignore": ["Cap*"]}}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, Source,
+    '{"rules": {"shadowed-name": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, Source,
+    '{"rules": {"shadowed-name": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+  // Ohne Vorgabe "Value" wird der Setter-Parameter gemeldet.
+  Source := 'unit U;'#10'interface'#10'type'#10'  TA = class'#10'    FValue: Integer;'#10 +
+    '    procedure SetX(Value: Integer);'#10'  end;'#10'implementation'#10 +
+    'procedure TA.SetX(Value: Integer);'#10'begin'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, Source))));
+  Source := StringReplace(Source, 'FValue', 'Value', []);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, Source))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, Source,
+    '{"rules": {"shadowed-name": {"ignore": []}}}', 'U.pas'))));
+  TConfigurationParser.Parse('{"rules": {"shadowed-name": {"ignore": "Value"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
 initialization

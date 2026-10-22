@@ -1474,6 +1474,27 @@
       "description": "Dict[Key] or Dict.Items[Key] is read on a TDictionary or TObjectDictionary (also through a type alias of the file) although neither ContainsKey nor TryGetValue checked the same key earlier in the routine. The rule stays silent when the routine fills the dictionary itself beforehand (Add, AddOrSetValue, TryAdd, Dict[K] := ...) or when the key stems from Keys or the pairs (for K in Dict.Keys, Names := Dict.Keys.ToArray, for Pair in Dict with K := Pair.Key). A missing key raises EListError. Medium confidence. Quick fix for X := Dict[Key]; as its own statement, when X is a variable of the value type: if not Dict.TryGetValue(Key, X) then X := 0 (or '', False, Default(T)).",
       "bad": "Preis := Preise[Artikel.Nummer];",
       "good": "if not Preise.TryGetValue(Artikel.Nummer, Preis) then\n  Preis := 0;"
+    },
+    {
+      "id": "shadowed-name",
+      "name": "Local name shadows field or property",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "A parameter, local or inline variable has the same name as a field or property of the class (also inherited and visible there, resolved through the file and the symbol index) or as a global variable of the unit declared before the routine. Especially treacherous in form methods: Caption, Name, Tag, Left. If VCL is not in the index, the members of TComponent and TControl are known when the ancestor chain ends at a VCL base class. Parameters of event handlers (with Sender) are skipped because the event type dictates the signature. High confidence. Quick fix: rename to AName (parameter, also in the declaration) or LName (local variable) within the routine. Option ignore lists name patterns that are never reported (default Sender, Value).",
+      "bad": "procedure TfrmKunde.Laden(const Caption: string);\nbegin\n  Caption := Caption + ' (geladen)';\nend;",
+      "good": "procedure TfrmKunde.Laden(const ACaption: string);\nbegin\n  Caption := ACaption + ' (geladen)';\nend;",
+      "options": [
+        {
+          "name": "ignore",
+          "type": "string-list",
+          "default": [
+            "Sender",
+            "Value"
+          ],
+          "description": "Name patterns (* and ?) that are never reported."
+        }
+      ]
     }
   ]
 }

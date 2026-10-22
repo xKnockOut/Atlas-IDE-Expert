@@ -9,7 +9,7 @@ result-not-set | Ref.Sprache.Merkmale.pas | Result := FElemente.Count; | FElemen
 empty-except | Ref.Sprache.Merkmale.pas | FElemente.Add(AElement); | try FElemente.Add(AElement); except end;
 with-statement | Ref.Sprache.Merkmale.pas | Result := Self = ''; | with Self do Result := IsEmpty;
 unreachable-code | Ref.Sprache.Merkmale.pas | Result := IntToStr(AWert); | Exit(''); Result := IntToStr(AWert);
-unused-local | Ref.Komponenten.Anzeige.pas | Text: string; | Text, Rest: string;
+unused-local | Ref.Komponenten.Anzeige.pas | Anzeigetext: string; | Anzeigetext, Rest: string;
 bidi-control | Ref.Sprache.Merkmale.pas | Result := 'Win64'; | Result := 'Win‮64';
 invisible-char | Ref.Sprache.Merkmale.pas | Result := 'Win32'; | Result := 'Win​32';
 control-char | Ref.Sprache.Merkmale.pas | Result := 'Andere'; | Result := 'And\u0000ere';
@@ -53,3 +53,4 @@ pair-without-finally | Ref.Formulare.Haupt.pas | procedure THauptFormular.Detail
 processmessages-in-loop | Ref.Formulare.Haupt.pas |       KundenListe.Items.Add(Kunde); |     begin\n      KundenListe.Items.Add(Kunde);\n      Application.ProcessMessages;\n    end;
 unchecked-conversion | Ref.Formulare.Detail.pas |   Anzeige.Wert := Length(NameEdit.Text); |   Anzeige.Wert := StrToInt(NameEdit.Text);
 dictionary-get-without-check | Ref.Daten.Suche.pas | class procedure TKundenSuche.Anmelden(const AAnbieter: TFunc<string, TArray<string>>); | function Nachschlagen(Liste: TDictionary<Integer, string>; AId: Integer): string;\nbegin\n  Result := Liste[AId];\nend;\n\nclass procedure TKundenSuche.Anmelden(const AAnbieter: TFunc<string, TArray<string>>);
+shadowed-name | Ref.Formulare.Detail.pas | procedure TDetailFormular.Initialisieren; | procedure TDetailFormular.Initialisieren;\nvar\n  NameEdit: string;

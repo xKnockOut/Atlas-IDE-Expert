@@ -91,14 +91,14 @@ end;
 
 procedure TRefAnzeige.Paint;
 var
-  Text: string;
+  Anzeigetext: string;
 begin
   Canvas.Brush.Color := Color;
   Canvas.FillRect(ClientRect);
   if FStil <> asFlach then
     Canvas.Rectangle(ClientRect);
-  Text := Format('%s: %d', [FBeschriftung, FWert]);
-  Canvas.TextOut(4, (Height - Canvas.TextHeight(Text)) div 2, Text);
+  Anzeigetext := Format('%s: %d', [FBeschriftung, FWert]);
+  Canvas.TextOut(4, (Height - Canvas.TextHeight(Anzeigetext)) div 2, Anzeigetext);
 end;
 
 end.

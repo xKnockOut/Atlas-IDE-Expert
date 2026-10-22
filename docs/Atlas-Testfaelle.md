@@ -3421,3 +3421,17 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Methode mit den lokalen
 | DG4 | `for var Name in Preise.Keys do Anzeigen(Preise[Name]);` bzw. `Preise.Add('A', 1);` davor | Keine Meldung |
 | DG5 | `TObjectDictionary<string, TArtikel>` mit `Teil := Lager['A1'];` (`Teil: TArtikel`) | Hinweis; Korrektur setzt `Teil := Default(TArtikel)` |
 | DG6 | `"dictionary-get-without-check": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Lokaler Name verdeckt Feld oder Property (#934)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; VCL-Formular `TfrmKunde` mit der Methode `procedure Laden(const Caption: string);` und im Rumpf `Caption := Caption + ' (geladen)';`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SN1 | Unit öffnen | Hinweis `shadowed-name` am Parameter `Caption` im Methodenkopf: „Parameter Caption verdeckt die Property TfrmKunde.Caption; die Zuweisung ändert nur den Parameter.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| SN2 | Glühbirne, „In ACaption umbenennen“ | Parameter in Deklaration und Rumpf heißt `ACaption`, `Caption := ACaption + …` bleibt; ein Strg+Z macht alles rückgängig; kompiliert |
+| SN3 | Lokale Variable `Left: Integer` in einer Formularmethode | Hinweis „Lokale Variable Left verdeckt die Property …“; Korrektur „In LLeft umbenennen“ |
+| SN4 | Feld `FStand` in der Klasse und lokale Variable `FStand` bzw. globale Variable `Protokoll` und lokale `var Protokoll := 1;` | Hinweis „… verdeckt das Feld …“ bzw. „… verdeckt die globale Variable Protokoll.“ |
+| SN5 | `FormClose(Sender: TObject; var Action: TCloseAction)` bzw. Setter mit `Value` | Keine Meldung |
+| SN6 | `"shadowed-name": {"ignore": ["Cap*"]}` | Keine Meldung zu `Caption` |
+| SN7 | `"shadowed-name": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

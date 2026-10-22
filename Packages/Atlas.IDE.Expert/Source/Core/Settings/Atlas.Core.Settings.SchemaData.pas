@@ -206,7 +206,7 @@ const
     '                "items": {',
     '                  "type": "string"',
     '                },',
-    '                "description": "Nur unused-local, unused-parameter und unused-assignment: Namensmuster (* und ?), die nie gemeldet werden."',
+    '                "description": "Nur unused-local, unused-parameter, unused-assignment und shadowed-name (#934): Namensmuster (* und ?), die nie gemeldet werden. Bei shadowed-name ohne Angabe Sender un' + 'd Value."',
     '              },',
     '              "deferredApis": {',
     '                "type": "array",',
