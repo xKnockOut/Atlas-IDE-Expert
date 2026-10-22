@@ -23,6 +23,14 @@ type
     procedure UiCallSilentCases;
     [Test]
     procedure UiCallOptions;
+    [Test]
+    procedure EncodingIssueExample;
+    [Test]
+    procedure EncodingVariants;
+    [Test]
+    procedure EncodingSilentCases;
+    [Test]
+    procedure EncodingOptions;
   end;
 
 implementation
@@ -162,6 +170,81 @@ begin
     '{"rules": {"ui-call-in-console-or-service": "off"}}', 'Dienst/DatenDienst.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUiCallInConsoleOrServiceRule.Create, Source,
     '{"rules": {"ui-call-in-console-or-service": {"exclude": ["Dienst/*"]}}}', 'Dienst/DatenDienst.pas'))));
+end;
+
+{ load-without-encoding }
+
+procedure TPlatformRulesTests.EncodingIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Routine('var'#10'  Zeilen: TStringList;'#10, '  Zeilen.LoadFromFile(Pfad);');
+  Findings := TRuleAssert.Findings(TLoadWithoutEncodingRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('LoadFromFile ohne Kodierung liest Dateien ohne BOM mit der ANSI-Codepage.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('TEncoding.UTF8 ergänzen', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Routine('var'#10'  Zeilen: TStringList;'#10, '  Zeilen.LoadFromFile(Pfad, TEncoding.UTF8);'), Fixed);
+  TRuleAssert.Silent(TLoadWithoutEncodingRule.Create, Fixed);
+end;
+
+procedure TPlatformRulesTests.EncodingVariants;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // SaveToFile, Memo.Lines, Query.SQL, TFile.ReadAllText; System.SysUtils fehlt im uses.
+  Source := 'unit U;'#10'interface'#10'implementation'#10'uses'#10'  System.IOUtils;'#10'procedure P;'#10 +
+    'var'#10'  Liste: TStrings;'#10'begin'#10'  Liste.SaveToFile(Pfad);'#10'  Memo1.Lines.LoadFromFile(Pfad);'#10 +
+    '  Abfrage.SQL.LoadFromStream(Strom);'#10'  Text := TFile.ReadAllText(Pfad);'#10'end;'#10'end.';
+  Findings := TRuleAssert.Findings(TLoadWithoutEncodingRule.Create, Source);
+  Assert.AreEqual(4, Integer(Length(Findings)));
+  Assert.AreEqual('SaveToFile ohne Kodierung schreibt mit der ANSI-Codepage; Umlaute gehen auf anderen Rechnern ' +
+    'verloren.', Findings[0].Message);
+  Assert.AreEqual('TFile.ReadAllText ohne Kodierung liest Dateien ohne BOM mit der ANSI-Codepage.',
+    Findings[3].Message);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[3].Fixes[0].Edits);
+  Assert.IsTrue(Pos('TFile.ReadAllText(Pfad, TEncoding.UTF8)', Fixed) > 0, Fixed);
+  Assert.IsTrue(Pos('System.SysUtils', Fixed) > 0, 'uses ergänzt: ' + Fixed);
+end;
+
+procedure TPlatformRulesTests.EncodingSilentCases;
+begin
+  // Mit Kodierung, DefaultEncoding gesetzt, Speichern nach Laden mit Kodierung.
+  TRuleAssert.Silent(TLoadWithoutEncodingRule.Create, Routine('var'#10'  Zeilen: TStringList;'#10,
+    '  Zeilen.LoadFromFile(Pfad, TEncoding.UTF8);'#10'  Zeilen.SaveToFile(Pfad);'));
+  TRuleAssert.Silent(TLoadWithoutEncodingRule.Create, Routine('var'#10'  Zeilen: TStringList;'#10,
+    '  Zeilen.DefaultEncoding := TEncoding.UTF8;'#10'  Zeilen.LoadFromFile(Pfad);'));
+  // Andere Typen: Bilder, Streams, Datenmengen, unbekannter Typ; TFile.WriteAllText und TStreamReader nehmen UTF-8.
+  TRuleAssert.Silent(TLoadWithoutEncodingRule.Create, Routine('var'#10'  Bild: TBitmap;'#10'  Puffer: TMemoryStream;'#10,
+    '  Bild.LoadFromFile(Pfad);'#10'  Puffer.SaveToFile(Pfad);'#10'  Tabelle.SaveToFile(Pfad);'#10 +
+    '  TFile.WriteAllText(Pfad, Text);'#10'  Leser := TStreamReader.Create(Pfad);'#10 +
+    '  Text := TFile.ReadAllText(Pfad, TEncoding.UTF8);'));
+end;
+
+procedure TPlatformRulesTests.EncodingOptions;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Routine('var'#10'  Zeilen: TStringList;'#10, '  Zeilen.LoadFromFile(Pfad);');
+  Findings := TRuleAssert.Findings(TLoadWithoutEncodingRule.Create, Source,
+    '{"rules": {"load-without-encoding": {"defaultEncoding": "unicode"}}}', 'Werkzeug.pas');
+  Assert.AreEqual('TEncoding.Unicode ergänzen', Findings[0].Fixes[0].Title);
+  Assert.IsTrue(Pos('LoadFromFile(Pfad, TEncoding.Unicode)', TChangeSignature.ApplyEdits(Source,
+    Findings[0].Fixes[0].Edits)) > 0);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLoadWithoutEncodingRule.Create, Source,
+    '{"rules": {"load-without-encoding": "off"}}', 'Werkzeug.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLoadWithoutEncodingRule.Create, Source,
+    '{"rules": {"load-without-encoding": {"exclude": ["Werkzeug"]}}}', 'Werkzeug.pas'))));
+  TConfigurationParser.Parse('{"rules": {"load-without-encoding": {"defaultEncoding": "Latin1"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"defaultEncoding" muss UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 oder Default sein',
+    Issues[0].Message);
 end;
 
 initialization

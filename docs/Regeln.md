@@ -11,7 +11,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
 | [Compiler vorab](#gruppe-compiler) | 15 |
-| [Robustheit und Muster](#gruppe-robustness) | 4 |
+| [Robustheit und Muster](#gruppe-robustness) | 5 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
@@ -156,6 +156,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`format-without-settings`](#format-without-settings) | Formatierung abhängig vom Gebietsschema | Code Smell | Hinweis |
 | [`null-compare`](#null-compare) | Vergleich mit Null statt VarIsNull oder IsNull | Code Smell | Warnung |
 | [`ui-call-in-console-or-service`](#ui-call-in-console-or-service) | Dialog in Konsolenprogramm oder Dienst | Bug | Warnung |
+| [`load-without-encoding`](#load-without-encoding) | Text laden oder speichern ohne Kodierung | Bug | Warnung |
 
 <a id="gruppe-performance"></a>
 ### Performance
@@ -4568,4 +4569,27 @@ begin
   if not Verbinden then
     LogMessage('Keine Verbindung', EVENTLOG_ERROR_TYPE);
 end;
+```
+
+<a id="load-without-encoding"></a>
+### load-without-encoding
+
+**Text laden oder speichern ohne Kodierung** · Bug · Warnung · Gruppe Robustheit und Muster
+
+LoadFromFile, SaveToFile, LoadFromStream oder SaveToStream einer TStrings (TStringList, Memo.Lines, ListBox.Items, Query.SQL) sowie TFile.ReadAllText und TFile.ReadAllLines ohne Kodierung: Eine Datei ohne BOM wird mit der ANSI-Codepage des Rechners gelesen, SaveToFile schreibt ANSI, und Umlaute gehen zwischen Rechnern verloren. Der Empfänger muss eine deklarierte Stringliste oder eine Property Lines, Items, SQL oder Strings sein; Bilder, Streams und Datenmengen bleiben still. Ebenso still, wenn die Liste irgendwo in der Unit DefaultEncoding setzt oder in derselben Routine vorher mit Kodierung geladen wurde (SaveToFile behält diese Kodierung). TFile.WriteAllText, TStreamReader und TStreamWriter nehmen ohne Angabe schon UTF-8 und werden nicht gemeldet. Konfidenz mittel. Schnellkorrektur: TEncoding.UTF8 (Option defaultEncoding) als letztes Argument und System.SysUtils im uses ergänzen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `defaultEncoding` | string | `"UTF8"` | Property von TEncoding, die die Schnellkorrektur einsetzt: UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 oder Default. |
+
+Mit Treffer:
+
+```pascal
+Zeilen.LoadFromFile(Pfad);
+```
+
+Richtig:
+
+```pascal
+Zeilen.LoadFromFile(Pfad, TEncoding.UTF8);
 ```

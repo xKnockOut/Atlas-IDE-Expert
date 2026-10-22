@@ -2303,6 +2303,24 @@
       "description": "ShowMessage, ShowMessageFmt, MessageDlg, TaskMessageDlg, InputBox, InputQuery, Application.MessageBox or TDialogService in a program with {$APPTYPE CONSOLE} (or DCC_ConsoleTarget in the .dproj), in a Windows service or in a DLL without forms. In a service the dialog blocks invisibly; a console program waits for a click nobody sees when it runs unattended. A service is a unit with a class derived from TService, or any unit of a project whose .dpr uses Vcl.SvcMgr without Vcl.Forms. A DLL without forms is a library whose .dpr lists no form and does not use Vcl.Forms; there the rule reports with medium confidence, because only the host decides whether there is a user interface. Units with a form file, calls under if IsConsole and routines of the same name declared in the unit stay silent. Counterpart of writeln-in-gui-app. High confidence. No quick fix: log the message instead of showing it.",
       "bad": "procedure TDatenDienst.ServiceExecute(Sender: TService);\nbegin\n  if not Verbinden then\n    ShowMessage('Keine Verbindung');\nend;",
       "good": "procedure TDatenDienst.ServiceExecute(Sender: TService);\nbegin\n  if not Verbinden then\n    LogMessage('Keine Verbindung', EVENTLOG_ERROR_TYPE);\nend;"
+    },
+    {
+      "id": "load-without-encoding",
+      "name": "Loading or saving text without an encoding",
+      "category": "bug",
+      "severity": "warning",
+      "group": "robustness",
+      "description": "LoadFromFile, SaveToFile, LoadFromStream or SaveToStream of a TStrings (TStringList, Memo.Lines, ListBox.Items, Query.SQL) and TFile.ReadAllText or TFile.ReadAllLines without an encoding: a file without BOM is read with the ANSI code page of the machine, and SaveToFile writes ANSI, so umlauts get lost between machines. The receiver must be a declared string list or a Lines, Items, SQL or Strings property; bitmaps, streams and datasets stay silent. Also silent when the list sets DefaultEncoding anywhere in the unit or was loaded with an encoding earlier in the same routine (SaveToFile then keeps that encoding). TFile.WriteAllText, TStreamReader and TStreamWriter already default to UTF-8 and are not reported. Medium confidence. Quick fix: add TEncoding.UTF8 (option defaultEncoding) as the last argument and System.SysUtils to uses.",
+      "bad": "Zeilen.LoadFromFile(Pfad);",
+      "good": "Zeilen.LoadFromFile(Pfad, TEncoding.UTF8);",
+      "options": [
+        {
+          "name": "defaultEncoding",
+          "type": "string",
+          "default": "UTF8",
+          "description": "TEncoding property the quick fix inserts: UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 or Default."
+        }
+      ]
     }
   ]
 }

@@ -3,6 +3,8 @@
 // Regeln für Annahmen über die Laufzeitumgebung (#909, Runde 67):
 //   ui-call-in-console-or-service  ShowMessage, MessageDlg, InputBox usw. in einem Konsolenprogramm, einem
 //                                  Windows-Dienst oder einer DLL ohne Formulare (#1060)
+//   load-without-encoding          TStrings.LoadFromFile/SaveToFile und TFile.ReadAllText ohne Kodierung:
+//                                  ohne BOM gilt die ANSI-Codepage des Rechners (#1061)
 // Die Anwendungsart liefert TRuleContext.Application (TWritelnInGuiAppRule.ApplicationKind); eine Unit mit
 // einer Klasse, die von TService erbt, gilt auch ohne Projekt als Dienst.
 
@@ -14,9 +16,21 @@ uses
 
 const
   UiCallInConsoleOrServiceRuleId = 'ui-call-in-console-or-service';
+  LoadWithoutEncodingRuleId = 'load-without-encoding';
 
 type
   TUiCallInConsoleOrServiceRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TLoadWithoutEncodingRule = class(TInterfacedObject, IRule)
+  public const
+    DefaultEncoding = 'UTF8';
+    /// <summary>Klassen-Properties von TEncoding, die die Option defaultEncoding erlaubt.</summary>
+    Encodings: array[0..6] of string = ('UTF8', 'Unicode', 'BigEndianUnicode', 'ANSI', 'ASCII', 'UTF7',
+      'Default');
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -292,9 +306,143 @@ begin
   Visit(AContext.Tree.Root);
 end;
 
+{ TLoadWithoutEncodingRule }
+
+const
+  TextFileMethods: array[0..3] of string = ('LoadFromFile', 'SaveToFile', 'LoadFromStream', 'SaveToStream');
+  // Typen, deren LoadFromFile/SaveToFile Text mit TEncoding lesen bzw. schreiben.
+  StringListTypes: array[0..5] of string = ('TStrings', 'TStringList', 'THashedStringList', 'TMemoStrings',
+    'TRichEditStrings', 'TAnsiStringList');
+  // Properties der VCL- und FireDAC-Komponenten vom Typ TStrings.
+  StringListProperties: array[0..3] of string = ('Lines', 'Items', 'SQL', 'Strings');
+  // TFile-Methoden, die ohne BOM TEncoding.Default lesen; WriteAllText und TStreamReader nehmen UTF-8.
+  ReadAllMethods: array[0..1] of string = ('ReadAllText', 'ReadAllLines');
+
+function TLoadWithoutEncodingRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(LoadWithoutEncodingRuleId, TRuleSeverity.Warning,
+    'Text laden oder speichern ohne Kodierung');
+end;
+
+procedure TLoadWithoutEncodingRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Types: TDeclaredTypes;
+  Tokens: TTokens;
+  Encoding: string;
+
+  // Empfänger von LoadFromFile ist sicher eine Stringliste.
+  function IsStringList(AReceiver: TSyntaxNode): Boolean;
+  var
+    TypeName: string;
+  begin
+    case AReceiver.Kind of
+      TSyntaxKind.Identifier:
+        begin
+          TypeName := Types.DeclaredType(AReceiver.Name, AReceiver.StartPos);
+          Result := MatchText(TypeName, StringListTypes);
+        end;
+      TSyntaxKind.MemberAccess:
+        Result := MatchText(AReceiver.Name, StringListProperties);
+    else
+      Result := False;
+    end;
+  end;
+
+  function RoutineOf(ANode: TSyntaxNode): TSyntaxNode;
+  begin
+    Result := ANode.Parent;
+    while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
+      Result := Result.Parent;
+  end;
+
+  // Empfänger.DefaultEncoding := … in der Datei oder Laden mit Kodierung vor ACall in derselben Routine.
+  function EncodingKnown(ACall: TSyntaxNode; const AReceiver: string): Boolean;
+  var
+    Node, Routine: TSyntaxNode;
+  begin
+    for Node in NodesOf(AContext.Tree.Root, False) do
+      if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and
+        (Node[0].Kind = TSyntaxKind.MemberAccess) and SameText(Node[0].Name, 'DefaultEncoding') and
+        (Node[0].ChildCount = 1) and SameText(NodeText(AContext, Node[0][0]), AReceiver) then
+        Exit(True);
+    Routine := RoutineOf(ACall);
+    if Routine <> nil then
+      // LoadFromFile(Datei, Kodierung) merkt sich die Kodierung für SaveToFile.
+      for Node in NodesOf(Routine, True) do
+        if (Node.Kind = TSyntaxKind.Call) and (Node.StartOffset < ACall.StartOffset) and (Node.ChildCount = 3) and
+          (Node[0].Kind = TSyntaxKind.MemberAccess) and StartsText('LoadFrom', Node[0].Name) and
+          (Node[0].ChildCount = 1) and SameText(NodeText(AContext, Node[0][0]), AReceiver) then
+          Exit(True);
+    Result := False;
+  end;
+
+  function Fix(ACall: TSyntaxNode): TArray<TRuleFix>;
+  var
+    Last: TSyntaxNode;
+    Edits: TArray<TRuleEdit>;
+    Extra: TTextEdit;
+  begin
+    Last := ACall[ACall.ChildCount - 1];
+    Edits := [TRuleEdit.Create(TTextRange.Create(Last.EndPos, Last.EndPos), ', TEncoding.' + Encoding)];
+    if UsesEdit(AContext, Tokens, ACall.StartOffset, 'System.SysUtils', Extra) then
+      Edits := Edits + [Extra];
+    Result := [TRuleFix.Create(Format('TEncoding.%s ergänzen', [Encoding]), Edits)];
+  end;
+
+  procedure CheckCall(ACall: TSyntaxNode);
+  var
+    Callee: TSyntaxNode;
+    Method, Receiver: string;
+  begin
+    Callee := ACall[0];
+    if (Callee.Kind <> TSyntaxKind.MemberAccess) or (Callee.ChildCount <> 1) or (ACall.ChildCount <> 2) then
+      Exit;
+    Method := Callee.Name;
+    if MatchText(Method, ReadAllMethods) and IsQualifiedName(Callee[0]) and IsName(Callee[0], 'TFile') then
+    begin
+      AReport.Add(NodeRange(Callee), Format('TFile.%s ohne Kodierung liest Dateien ohne BOM mit der ' +
+        'ANSI-Codepage.', [Method]), TRuleConfidence.Medium, Fix(ACall));
+      Exit;
+    end;
+    if not MatchText(Method, TextFileMethods) or not IsStringList(Callee[0]) then
+      Exit;
+    Receiver := NodeText(AContext, Callee[0]);
+    if StartsText('Load', Method) then
+    begin
+      if not EncodingKnown(ACall, Receiver) then
+        AReport.Add(NodeRange(Callee), Format('%s ohne Kodierung liest Dateien ohne BOM mit der ANSI-Codepage.',
+          [Method]), TRuleConfidence.Medium, Fix(ACall));
+    end
+    else if not EncodingKnown(ACall, Receiver) then
+      AReport.Add(NodeRange(Callee), Format('%s ohne Kodierung schreibt mit der ANSI-Codepage; Umlaute gehen ' +
+        'auf anderen Rechnern verloren.', [Method]), TRuleConfidence.Medium, Fix(ACall));
+  end;
+
+var
+  Node: TSyntaxNode;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Encoding := TRuleOptions.Text(AContext.Options, 'defaultEncoding', DefaultEncoding);
+  if IndexText(Encoding, Encodings) < 0 then
+    Encoding := DefaultEncoding
+  else
+    Encoding := Encodings[IndexText(Encoding, Encodings)];
+  Tokens := AContext.Tree.Tokens;
+  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  try
+    for Node in NodesOf(AContext.Tree.Root, False) do
+      if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) then
+        CheckCall(Node);
+  finally
+    Types.Free;
+  end;
+end;
+
 procedure RegisterPlatformRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TUiCallInConsoleOrServiceRule.Create);
+  ARegistry.Register(TLoadWithoutEncodingRule.Create);
 end;
 
 end.

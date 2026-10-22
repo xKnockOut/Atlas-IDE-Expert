@@ -2323,6 +2323,24 @@ begin
     '      "description": "ShowMessage, ShowMessageFmt, MessageDlg, TaskMessageDlg, InputBox, InputQuery, Application.MessageBox or TDialogService in a program with {$APPTYPE CONSOLE} (or DCC_ConsoleTarget' + ' in the .dproj), in a Windows service or in a DLL without forms. In a service the dialog blocks invisibly; a console program waits for a click nobody sees when it runs unattended. A service is a unit ' + 'with a class derived from TService, or any unit of a project whose .dpr uses Vcl.SvcMgr without Vcl.Forms. A DLL without forms is a library whose .dpr lists no form and does not use Vcl.Forms; there t' + 'he rule reports with medium confidence, because only the host decides whether there is a user interface. Units with a form file, calls under if IsConsole and routines of the same name declared in the ' + 'unit stay silent. Counterpart of writeln-in-gui-app. High confidence. No quick fix: log the message instead of showing it.",' + #10 +
     '      "bad": "procedure TDatenDienst.ServiceExecute(Sender: TService);\nbegin\n  if not Verbinden then\n    ShowMessage(''Keine Verbindung'');\nend;",' + #10 +
     '      "good": "procedure TDatenDienst.ServiceExecute(Sender: TService);\nbegin\n  if not Verbinden then\n    LogMessage(''Keine Verbindung'', EVENTLOG_ERROR_TYPE);\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "load-without-encoding",' + #10 +
+    '      "name": "Loading or saving text without an encoding",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "robustness",' + #10 +
+    '      "description": "LoadFromFile, SaveToFile, LoadFromStream or SaveToStream of a TStrings (TStringList, Memo.Lines, ListBox.Items, Query.SQL) and TFile.ReadAllText or TFile.ReadAllLines without an ' + 'encoding: a file without BOM is read with the ANSI code page of the machine, and SaveToFile writes ANSI, so umlauts get lost between machines. The receiver must be a declared string list or a Lines, I' + 'tems, SQL or Strings property; bitmaps, streams and datasets stay silent. Also silent when the list sets DefaultEncoding anywhere in the unit or was loaded with an encoding earlier in the same routine' + ' (SaveToFile then keeps that encoding). TFile.WriteAllText, TStreamReader and TStreamWriter already default to UTF-8 and are not reported. Medium confidence. Quick fix: add TEncoding.UTF8 (option defa' + 'ultEncoding) as the last argument and System.SysUtils to uses.",' + #10 +
+    '      "bad": "Zeilen.LoadFromFile(Pfad);",' + #10 +
+    '      "good": "Zeilen.LoadFromFile(Pfad, TEncoding.UTF8);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "defaultEncoding",' + #10 +
+    '          "type": "string",' + #10 +
+    '          "default": "UTF8",' + #10 +
+    '          "description": "TEncoding property the quick fix inserts: UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 or Default."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3498,6 +3516,17 @@ begin
     '      "id": "ui-call-in-console-or-service",' + #10 +
     '      "name": "Dialog in Konsolenprogramm oder Dienst",' + #10 +
     '      "description": "ShowMessage, ShowMessageFmt, MessageDlg, TaskMessageDlg, InputBox, InputQuery, Application.MessageBox oder TDialogService in einem Programm mit {$APPTYPE CONSOLE} (oder DCC_Conso' + 'leTarget in der .dproj), in einem Windows-Dienst oder in einer DLL ohne Formulare. Im Dienst blockiert der Dialog unsichtbar; ein Konsolenprogramm wartet auf einen Klick, den niemand sieht, wenn es un' + 'beaufsichtigt läuft. Als Dienst gilt eine Unit mit einer Klasse, die von TService erbt, oder jede Unit eines Projekts, dessen .dpr Vcl.SvcMgr ohne Vcl.Forms einbindet. Eine DLL ohne Formulare ist eine' + ' library, deren .dpr kein Formular aufführt und Vcl.Forms nicht einbindet; dort meldet die Regel mit mittlerer Konfidenz, weil erst der Host entscheidet, ob es eine Oberfläche gibt. Units mit Formular' + 'datei, Aufrufe unter if IsConsole und gleichnamige Routinen der Unit bleiben still. Gegenstück zu writeln-in-gui-app. Konfidenz hoch. Keine Schnellkorrektur: die Meldung protokollieren statt anzeigen.' + '"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "load-without-encoding",' + #10 +
+    '      "name": "Text laden oder speichern ohne Kodierung",' + #10 +
+    '      "description": "LoadFromFile, SaveToFile, LoadFromStream oder SaveToStream einer TStrings (TStringList, Memo.Lines, ListBox.Items, Query.SQL) sowie TFile.ReadAllText und TFile.ReadAllLines ohne ' + 'Kodierung: Eine Datei ohne BOM wird mit der ANSI-Codepage des Rechners gelesen, SaveToFile schreibt ANSI, und Umlaute gehen zwischen Rechnern verloren. Der Empfänger muss eine deklarierte Stringliste ' + 'oder eine Property Lines, Items, SQL oder Strings sein; Bilder, Streams und Datenmengen bleiben still. Ebenso still, wenn die Liste irgendwo in der Unit DefaultEncoding setzt oder in derselben Routine' + ' vorher mit Kodierung geladen wurde (SaveToFile behält diese Kodierung). TFile.WriteAllText, TStreamReader und TStreamWriter nehmen ohne Angabe schon UTF-8 und werden nicht gemeldet. Konfidenz mittel.' + ' Schnellkorrektur: TEncoding.UTF8 (Option defaultEncoding) als letztes Argument und System.SysUtils im uses ergänzen.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "defaultEncoding",' + #10 +
+    '          "description": "Property von TEncoding, die die Schnellkorrektur einsetzt: UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 oder Default."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

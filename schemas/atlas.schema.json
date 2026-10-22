@@ -429,6 +429,12 @@
                 "enum": ["project", "atlas", "both"],
                 "default": "project",
                 "description": "Nur uses-unit-not-found: wo nach Units gesucht wird (#1016). project: wie der Compiler (Projekt, Suchpfade der .dproj, Bibliothekspfade der Installation, .pas und .dcu); atlas: was Atlas kennt (Index, Quellpfade der Installation); both: beides."
+              },
+              "defaultEncoding": {
+                "type": "string",
+                "enum": ["UTF8", "Unicode", "BigEndianUnicode", "ANSI", "ASCII", "UTF7", "Default"],
+                "default": "UTF8",
+                "description": "Nur load-without-encoding: Kodierung, die die Korrektur einsetzt (TEncoding.<Wert>) (#1061)."
               }
             }
           }
