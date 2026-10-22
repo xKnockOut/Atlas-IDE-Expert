@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 15 |
+| [Compiler vorab](#gruppe-compiler) | 16 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -146,6 +146,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`property-accessor-invalid`](#property-accessor-invalid) | Getter oder Setter einer Property ungültig | Bug | Fehler |
 | [`assign-to-property-member`](#assign-to-property-member) | Zuweisung an ein Feld eines Property-Records | Bug | Fehler |
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
+| [`anonymous-capture-invalid`](#anonymous-capture-invalid) | Anonyme Methode erfasst, was sie nicht erfassen darf | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4540,4 +4541,35 @@ Richtig:
 
 ```pascal
 Liste.Clear;
+```
+
+<a id="anonymous-capture-invalid"></a>
+### anonymous-capture-invalid
+
+**Anonyme Methode erfasst, was sie nicht erfassen darf** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine anonyme Methode greift auf einen var-, out- oder untypisierten Parameter oder auf Result einer umgebenden Routine bzw. anonymen Funktion zu (wie E2555). Der Name wird von innen nach außen aufgelöst (Parameter, var/const/type, lokale Routinen, Inline-Variablen, for var); in with und asm bleibt die Regel still, Deklarationen in Zweigen bedingter Übersetzung, die die Stelle ausschließen, zählen nicht. Korrektur: Wert vor der Anweisung in eine lokale Variable kopieren, in der anonymen Methode nur diese verwenden und nach der Anweisung zurückschreiben, wenn die Methode sie zuweist.
+
+Entspricht der Compilermeldung `E2555`.
+
+Mit Treffer:
+
+```pascal
+procedure Load(var Count: Integer);
+begin
+  TTask.Run(procedure begin Inc(Count); end);
+end;
+```
+
+Richtig:
+
+```pascal
+procedure Load(var Count: Integer);
+var
+  CountCopy: Integer;
+begin
+  CountCopy := Count;
+  TTask.Run(procedure begin Inc(CountCopy); end);
+  Count := CountCopy;
+end;
 ```
