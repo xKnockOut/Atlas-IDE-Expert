@@ -2336,6 +2336,21 @@
         "E2093",
         "E2127"
       ]
+    },
+    {
+      "id": "for-variable-misuse",
+      "name": "Loop variable changed or not local",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "The variable of a for loop is assigned in the body or changed with Inc/Dec (like E2081), passed as a var or out parameter to a routine of this file (like W1015), or is not a simple local variable: a field of the own class, a global variable of the unit or a local variable of the enclosing routine (like E1019). Delphi only reports these when compiling. Parameters, unknown names and loops inside with statements stay silent, as do anonymous methods in the body and routines with parser errors. Quick fixes: convert to a while loop (not when the body uses Continue), or use for var when the routine does not use the name otherwise.",
+      "bad": "for I := 0 to Zeilen.Count - 1 do\nbegin\n  if Zeilen[I] = '' then\n    Inc(I);\nend;",
+      "good": "I := 0;\nwhile I <= Zeilen.Count - 1 do\nbegin\n  if Zeilen[I] = '' then\n    Inc(I);\n  Inc(I);\nend;",
+      "compilerCodes": [
+        "E2081",
+        "W1015",
+        "E1019"
+      ]
     }
   ]
 }

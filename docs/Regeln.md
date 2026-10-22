@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 18 |
+| [Compiler vorab](#gruppe-compiler) | 19 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -149,6 +149,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`jump-outside-allowed-scope`](#jump-outside-allowed-scope) | Break, Continue oder Exit an unzulässiger Stelle | Bug | Fehler |
 | [`reraise-outside-handler`](#reraise-outside-handler) | raise ohne Argument außerhalb eines Handlers | Bug | Fehler |
 | [`label-misuse`](#label-misuse) | Sprungmarke falsch verwendet | Bug | Fehler |
+| [`for-variable-misuse`](#for-variable-misuse) | Schleifenvariable verändert oder nicht lokal | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4623,5 +4624,36 @@ begin
   finally
     Aufraeumen;
   end;
+end;
+```
+
+<a id="for-variable-misuse"></a>
+### for-variable-misuse
+
+**Schleifenvariable verändert oder nicht lokal** · Bug · Fehler · Gruppe Compiler vorab
+
+Der Variablen einer for-Schleife wird im Rumpf zugewiesen oder sie wird mit Inc/Dec verändert (wie E2081), sie wird als var- bzw. out-Parameter an eine Routine dieser Datei übergeben (wie W1015) oder sie ist keine einfache lokale Variable: Feld der eigenen Klasse, globale Variable der Unit oder lokale Variable der umgebenden Routine (wie E1019). Delphi meldet das erst beim Übersetzen. Parameter, unbekannte Namen und Schleifen in with-Anweisungen bleiben still, ebenso anonyme Methoden im Rumpf und Routinen mit Parserfehlern. Korrekturen: auf eine while-Schleife umstellen (nicht bei Continue im Rumpf) bzw. for var verwenden, wenn die Routine den Namen sonst nicht benutzt.
+
+Entspricht der Compilermeldung `E2081`, `W1015`, `E1019`.
+
+Mit Treffer:
+
+```pascal
+for I := 0 to Zeilen.Count - 1 do
+begin
+  if Zeilen[I] = '' then
+    Inc(I);
+end;
+```
+
+Richtig:
+
+```pascal
+I := 0;
+while I <= Zeilen.Count - 1 do
+begin
+  if Zeilen[I] = '' then
+    Inc(I);
+  Inc(I);
 end;
 ```
