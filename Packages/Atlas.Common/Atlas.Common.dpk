@@ -338,6 +338,8 @@ contains
   Atlas.Common.Rules.Builtin.Forms in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Forms.pas',
   Atlas.Common.Rules.Builtin.SharedState in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.SharedState.pas',
   Atlas.Common.Rules.Builtin.Conditions in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Conditions.pas',
+  Atlas.Common.Rules.Builtin.Platform in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Platform.pas',
+  Atlas.Common.Rules.Builtin.Idioms in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Idioms.pas',
   Atlas.Common.Rules.Builtin.Packages in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.pas',
   Atlas.Common.Rules.Builtin.OpenTools in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.pas',
   Atlas.Common.Rules.Builtin.Testing in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.pas',

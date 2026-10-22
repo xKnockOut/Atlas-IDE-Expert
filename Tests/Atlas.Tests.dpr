@@ -133,6 +133,8 @@ uses
   Atlas.Common.Rules.Builtin.Forms.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Forms.Tests.pas',
   Atlas.Common.Rules.Builtin.SharedState.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.SharedState.Tests.pas',
   Atlas.Common.Rules.Builtin.Conditions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Conditions.Tests.pas',
+  Atlas.Common.Rules.Builtin.Platform.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Platform.Tests.pas',
+  Atlas.Common.Rules.Builtin.Idioms.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Idioms.Tests.pas',
   Atlas.Common.Rules.Builtin.Unresolved.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas',
   Atlas.Common.Projects.UnitLookup.Tests in 'Common\Projects\Atlas.Common.Projects.UnitLookup.Tests.pas',
   Atlas.Common.Rules.Builtin.Packages.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas',

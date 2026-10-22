@@ -60,6 +60,8 @@ uses
   Atlas.Common.Rules.Builtin.Forms,
   Atlas.Common.Rules.Builtin.SharedState,
   Atlas.Common.Rules.Builtin.Conditions,
+  Atlas.Common.Rules.Builtin.Platform,
+  Atlas.Common.Rules.Builtin.Idioms,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -115,6 +117,8 @@ begin
     RegisterFormRules(Registry);
     RegisterSharedStateRules(Registry);
     RegisterConditionRules(Registry);
+    RegisterPlatformRules(Registry);
+    RegisterIdiomRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;
