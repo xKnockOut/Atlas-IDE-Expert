@@ -687,3 +687,12 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Branch `claude/project-thread-q604al` (Cloud-Thread): Ursache war `Rules.Catalog.Data.pas` mit ~1800 per `+` verketteten Strings; linkslastiger Ausdrucksbaum (Tiefe ~3600), rekursive Vererbungsregeln → Stapelüberlauf. Parser balanciert lange Ketten, Engine begrenzt Tiefe und isoliert scheiternde Regeln, `workspace/diagnostic` überspringt scheiternde Units, Schutzseite wird wiederhergestellt, Server mit 8 MB Stapel.
 - Delphi-Nacharbeit: E2532 im Parser-Test, W1036/H2077 in `PullDiagnostics` (neue Methode `DiagnoseOrSkip`), W1000: `EStackOverflow` ist in Delphi 13 veraltet → `TStackGuard.IsOverflow` prüft den Klassennamen, Tests mit gleichnamiger eigener Klasse.
 - Win64 0/0/0, 5361 Tests grün, Win32-Plugin sauber. Delphi neu gestartet. #1094 noch offen, bis Marco bestätigt, dass die Neustarts weg sind.
+
+## #909 Atlas-Prüfung in main (22.10.2026 abends, main 6cb28cbb)
+- Branch `feature/909-atlas-pruefung` (Cloud, nur unter FPC geprüft) mit main gemergt und für Delphi lauffähig gemacht: `TAtlasRulesBox` fehlte, doppeltes `FBaselineUpdate`, fehlender `BindOrder`-Eintrag `ProblemsWindow`, private `LoadGlobal`/`SaveGlobal`; Regel-Editor brauchte im Konstruktor ein Fenster; `SetLocked` der Einstellungsseite schaltete die Regeltabelle wieder ein.
+- Tests: gemeinsamer Regelkatalog (`TRuleCatalog.Shared`) im Leckmonitor vorgewärmt; Aufwärmläufe Regel-Editor und Suchleiste. 5427 Tests grün, 0/0/0.
+- Fenster „Atlas-Prüfung“: *Ansicht › Atlas › Prüfung*, Strg+Alt+P.
+- Bauen im Worktree `wt-map` ohne Marcos Delphi zu schließen: Scratchpad `wtplugin.ps1` (ein Projekt, `-Repo`), `wtgroup.ps1` (Win64-Gruppe + Tests, `-Dpr` aus dem Worktree), `wtrt.ps1` (einzelne Testunits). Nur selbst gestartete Build-IDEs beenden.
+- `Tools/Build-Test.ps1` ist kaputt: `Invoke-Cc` übergibt `-Project` als Text statt als Parameter (Array-Splatting).
+- Nächster Schritt: `claude/project-thread-lssjeo` (Symptom-Audit H1–N4; Navigationsleiste über IDE-Option, Protokoll-Schreibfehler, Server-Neustartschleife, AnsiLowerCase-AV) nach main, Fast-Forward auf den alten main möglich, jetzt mit #909 zu mergen.
+- Beim Beenden hängen IDEs weiterhin oft im Beyond-Compare-Absturz (#1091, `TEditWindow.Notification`); `lssjeo` M3 vermutet das Umhängen der Navigationsleiste als Auslöser.
