@@ -4,6 +4,7 @@
 //   unused-local        lokale Variable wird nirgends verwendet (wie H2164)
 //   unused-parameter    Parameter wird im Rumpf nicht verwendet
 //   unused-assignment   zugewiesener Wert wird nie gelesen (wie H2077)
+//   duplicate-assignment  Feld oder Property zweimal hintereinander gesetzt (#1051)
 //
 // Verwendung ist jedes Vorkommen des Namens in der Routine, auch in lokalen
 // Routinen und anonymen Methoden, sowie "absolute Name" im var-Abschnitt.
@@ -21,6 +22,18 @@
 //
 // Option aller drei Regeln: {"ignore": ["Dummy*", "_*"]} nimmt Namen nach
 // Muster aus (* und ? als Platzhalter).
+//
+// duplicate-assignment vergleicht Zuweisungen derselben Anweisungsfolge an
+// Felder, Properties und Mitglieder (Panel.Left, Self.FWert, P^.X, Feld der
+// eigenen Klasse ohne Self); lokale Variablen deckt unused-assignment ab.
+// Dazwischen dürfen nur Zuweisungen an andere Objekte stehen, deren Werte
+// nichts aufrufen und das Ziel nicht nennen; der zweite Wert darf das Ziel
+// nicht lesen und nichts aufrufen. Ziele mit Index oder Aufruf zählen nicht.
+// Still bleibt der Wechsel False/True (stößt bei Active, Open … etwas an),
+// eine zweite Zuweisung, die nur unter einer weiteren Bedingung übersetzt
+// wird ({$IFDEF DEBUG} Caption := …), und Properties aus allowProperties
+// (Muster, Standard Visible, Enabled). Fehlt das Gegenstück (Left/Top,
+// Width/Height …) in der Folge, nennt die Meldung es als Vermutung.
 
 interface
 
@@ -49,6 +62,16 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TDuplicateAssignmentRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Ziel als Schlüssel ("Panel.Font.Size", "P^.X", Self. entfällt); '' bei Index, Aufruf und anderem.</summary>
+    class function TargetKey(ANode: TSyntaxNode): string; static;
+    /// <summary>Gegenstück für den Hinweis (Left zu Top, Height zu Width …); '' ohne.</summary>
+    class function Counterpart(const AName: string): string; static;
+  end;
+
 /// <summary>Passt AName auf das Muster? * steht für beliebig viele, ? für genau ein Zeichen;
 /// ohne Groß-/Kleinschreibung.</summary>
 function MatchesWildcard(const AName, APattern: string): Boolean;
@@ -65,6 +88,9 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Flow;
 
@@ -871,11 +897,264 @@ begin
   end;
 end;
 
+{ TDuplicateAssignmentRule }
+
+const
+  // Gegenstücke für den Hinweis "gemeint ist vermutlich …" (Left/Top vertauscht beim Kopieren).
+  CounterpartPairs: array[0..9, 0..1] of string = (('Left', 'Top'), ('Width', 'Height'), ('Right', 'Bottom'),
+    ('X', 'Y'), ('Min', 'Max'), ('MinValue', 'MaxValue'), ('ClientWidth', 'ClientHeight'), ('Row', 'Col'),
+    ('MinWidth', 'MinHeight'), ('MaxWidth', 'MaxHeight'));
+  // Knoten, deren Kinder nacheinander ausgeführte Anweisungen sind.
+  StatementLists = [TSyntaxKind.Block, TSyntaxKind.RepeatStatement, TSyntaxKind.TryStatement, TSyntaxKind.ExceptBlock,
+    TSyntaxKind.FinallyBlock, TSyntaxKind.CaseElse, TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection];
+
+function TDuplicateAssignmentRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('duplicate-assignment', TRuleSeverity.Warning,
+    'Feld oder Property wird zweimal gesetzt');
+end;
+
+class function TDuplicateAssignmentRule.TargetKey(ANode: TSyntaxNode): string;
+var
+  Base: string;
+begin
+  Result := '';
+  if ANode.Kind = TSyntaxKind.Identifier then
+    Result := ANode.Name
+  else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) then
+  begin
+    Base := TargetKey(ANode[0]);
+    if SameText(Base, 'Self') then
+      Result := ANode.Name
+    else if Base <> '' then
+      Result := Base + '.' + ANode.Name;
+  end
+  else if (ANode.Kind = TSyntaxKind.Dereference) and (ANode.ChildCount = 1) then
+  begin
+    Base := TargetKey(ANode[0]);
+    if Base <> '' then
+      Result := Base + '^';
+  end;
+end;
+
+class function TDuplicateAssignmentRule.Counterpart(const AName: string): string;
+var
+  Index: Integer;
+begin
+  for Index := Low(CounterpartPairs) to High(CounterpartPairs) do
+    if SameText(CounterpartPairs[Index, 0], AName) then
+      Exit(CounterpartPairs[Index, 1])
+    else if SameText(CounterpartPairs[Index, 1], AName) then
+      Exit(CounterpartPairs[Index, 0]);
+  Result := '';
+end;
+
+/// <summary>Teile des Schlüssels "Panel.Font.Size" bzw. "P^.X" ohne ^.</summary>
+function KeyParts(const AKey: string): TArray<string>;
+begin
+  Result := StringReplace(AKey, '^', '', [rfReplaceAll]).Split(['.']);
+end;
+
+/// <summary>Kommt unter ANode ein Bezeichner aus AParts vor, ein Aufruf oder etwas, das Code ausführt?
+/// Dann kann der Ausdruck den ersten Wert lesen.</summary>
+function MayRead(ANode: TSyntaxNode; const AParts: TArray<string>): Boolean;
+var
+  Index: Integer;
+begin
+  if ANode.Kind in [TSyntaxKind.Call, TSyntaxKind.InheritedExpr, TSyntaxKind.AnonymousMethod] then
+    Exit(True);
+  if (ANode.Kind = TSyntaxKind.Identifier) and MatchText(ANode.Name, AParts) then
+    Exit(True);
+  for Index := 0 to ANode.ChildCount - 1 do
+    if MayRead(ANode[Index], AParts) then
+      Exit(True);
+  Result := False;
+end;
+
+/// <summary>Lokale Namen von ARoutine und umschließenden Routinen: Variablen, Parameter, Result, Routinenname.</summary>
+function LocalNames(ANode: TSyntaxNode): TArray<string>;
+var
+  Section, Parameters: TSyntaxNode;
+  InlineVars: TArray<TSyntaxNode>;
+  Index, Inner: Integer;
+begin
+  Result := nil;
+  while ANode <> nil do
+  begin
+    if ANode.Kind = TSyntaxKind.RoutineDecl then
+    begin
+      Result := Result + ['Result', ShortName(ANode.Name)];
+      for Index := 0 to ANode.ChildCount - 1 do
+      begin
+        Section := ANode[Index];
+        if Section.Kind = TSyntaxKind.VarSection then
+          for Inner := 0 to Section.ChildCount - 1 do
+            Result := Result + SplitNames(Section[Inner].Name)
+        else if Section.Kind = TSyntaxKind.RoutineHeader then
+        begin
+          Parameters := Section.FindChild(TSyntaxKind.Parameters);
+          if Parameters <> nil then
+            for Inner := 0 to Parameters.ChildCount - 1 do
+              Result := Result + SplitNames(Parameters[Inner].Name);
+        end
+        else if Section.Kind = TSyntaxKind.Block then
+        begin
+          InlineVars := nil;
+          CollectInlineVars(Section, InlineVars);
+          for Inner := 0 to High(InlineVars) do
+            Result := Result + SplitNames(InlineVars[Inner].Name);
+        end;
+      end;
+    end;
+    ANode := ANode.Parent;
+  end;
+end;
+
+function IsBooleanLiteral(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.Identifier) and (SameText(ANode.Name, 'True') or SameText(ANode.Name, 'False'));
+end;
+
+procedure TDuplicateAssignmentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Paths, Allowed: TArray<string>;
+
+  function PathOf(ANode: TSyntaxNode): string;
+  begin
+    Result := TConditionalBranches.PathAt(Paths, TRoutineBody.TokenAt(Tokens, ANode.StartOffset));
+  end;
+
+  function NodeText(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  // Wurzel des Schlüssels: einfache Bezeichner gehören zu Self (Feld oder Property der eigenen Klasse).
+  function RootOf(const AKey: string): string;
+  begin
+    if Pos('.', AKey) = 0 then
+      Result := 'Self'
+    else
+      Result := KeyParts(AKey)[0];
+  end;
+
+  // Sucht ab AFirst + 1 die nächste Zuweisung an dasselbe Ziel; dazwischen nur Zuweisungen an andere Objekte,
+  // deren Werte nichts aufrufen und das Ziel nicht nennen.
+  procedure CheckFrom(AParent: TSyntaxNode; AFirst: Integer; const AKey: string);
+  var
+    First, Second: TSyntaxNode;
+    Parts: TArray<string>;
+    Index, Other: Integer;
+    Key, Hint, Name, Display, Swapped: string;
+    Mentioned: Boolean;
+  begin
+    First := AParent[AFirst];
+    Parts := KeyParts(AKey);
+    for Index := AFirst + 1 to AParent.ChildCount - 1 do
+    begin
+      Second := AParent[Index];
+      if (Second.Kind <> TSyntaxKind.AssignStatement) or (Second.ChildCount < 2) then
+        Exit;
+      Key := TargetKey(Second[0]);
+      if Key = '' then
+        Exit;
+      if not SameText(Key, AKey) then
+      begin
+        if SameText(RootOf(Key), RootOf(AKey)) or MayRead(Second[1], Parts) then
+          Exit;
+        Continue;
+      end;
+      // Der zweite Wert darf den ersten nicht lesen; False/True im Wechsel stößt oft etwas an (Active, Open).
+      if MayRead(Second[1], Parts) or
+        (IsBooleanLiteral(First[1]) and IsBooleanLiteral(Second[1]) and not SameText(First[1].Name, Second[1].Name)) then
+        Exit;
+      // Bedingte Übersetzung: nur melden, wenn die zweite Zuweisung immer mit der ersten übersetzt wird.
+      if not TConditionalBranches.Implies(PathOf(First), PathOf(Second)) then
+        Exit;
+      Name := Parts[High(Parts)];
+      Display := NodeText(Second[0]);
+      Hint := 'der erste Wert geht ungelesen verloren';
+      if Counterpart(Name) <> '' then
+      begin
+        Swapped := Copy(AKey, 1, Length(AKey) - Length(Name)) + Counterpart(Name);
+        Mentioned := False;
+        for Other := 0 to AParent.ChildCount - 1 do
+          if (AParent[Other].Kind = TSyntaxKind.AssignStatement) and (AParent[Other].ChildCount > 0) and
+            SameText(TargetKey(AParent[Other][0]), Swapped) then
+            Mentioned := True;
+        if not Mentioned then
+          Hint := 'gemeint ist vermutlich ' + Copy(Display, 1, Length(Display) - Length(Name)) + Counterpart(Name);
+      end;
+      AReport.Add(TTextRange.Create(Second[0].StartPos, Second[0].EndPos),
+        Format('%s wird in Zeile %d schon gesetzt; %s.', [Display, First.StartPos.Line + 1, Hint]),
+        TRuleConfidence.High, [TRuleFix.Jump('Zur ersten Zuweisung springen', First.StartPos)]);
+      Exit;
+    end;
+  end;
+
+  function IsAllowed(const AKey: string): Boolean;
+  var
+    Parts: TArray<string>;
+    Pattern: string;
+  begin
+    Parts := KeyParts(AKey);
+    for Pattern in Allowed do
+      if MatchesWildcard(Parts[High(Parts)], Trim(Pattern)) then
+        Exit(True);
+    Result := False;
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    Child: TSyntaxNode;
+    Key: string;
+    Locals: TArray<string>;
+    LocalsKnown: Boolean;
+  begin
+    LocalsKnown := False;
+    for Index := 0 to ANode.ChildCount - 1 do
+    begin
+      Child := ANode[Index];
+      // Nur Anweisungsfolgen; then- und else-Zweig eines if stehen auch nebeneinander.
+      if (ANode.Kind in StatementLists) and (Child.Kind = TSyntaxKind.AssignStatement) and (Child.ChildCount >= 2) then
+      begin
+        Key := TargetKey(Child[0]);
+        if (Key = '') or IsAllowed(Key) then
+          Continue;
+        // Lokale Variablen deckt unused-assignment ab.
+        if Pos('.', Key) + Pos('^', Key) = 0 then
+        begin
+          if not LocalsKnown then
+          begin
+            Locals := LocalNames(ANode);
+            LocalsKnown := True;
+          end;
+          if MatchText(Key, Locals) then
+            Continue;
+        end;
+        CheckFrom(ANode, Index, Key);
+      end;
+      Visit(Child);
+    end;
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or (Pos(':=', AContext.Text) = 0) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Paths := TConditionalBranches.Paths(Tokens);
+  Allowed := TRuleOptions.Strings(AContext.Options, 'allowProperties', ['Visible', 'Enabled']);
+  Visit(AContext.Tree.Root);
+end;
+
 procedure RegisterUnusedRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TUnusedLocalRule.Create);
   ARegistry.Register(TUnusedParameterRule.Create);
   ARegistry.Register(TUnusedAssignmentRule.Create);
+  ARegistry.Register(TDuplicateAssignmentRule.Create);
 end;
 
 end.

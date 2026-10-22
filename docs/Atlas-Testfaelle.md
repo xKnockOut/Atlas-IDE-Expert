@@ -4634,3 +4634,95 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | QL7 | Passende Literale, `string`, `AnsiString`, Zuweisung einer Variablen an `string[8]` | Keine Meldung |
 | QL8 | `"string-length-limit": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | QL9 | Abgleich mit Delphi: QL1, QL3, QL4, QL6 übersetzen (QL5 mit Delphi 11 oder älter) | dcc meldet W1014, E2381 bzw. E2056 an denselben Stellen, für QL7 nichts |
+
+## GetMem oder New ohne Freigabe (#1047)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JM1 | Das Beispiel aus #1047: lokale Variable `Puffer: PByte`, `GetMem(Puffer, Groesse);`, danach `Strom.ReadBuffer(Puffer^, Groesse);` und `Ergebnis := Pruefsumme(Puffer, Groesse);` | Warnung `raw-memory-leak` an `GetMem(Puffer, Groesse)`: „Puffer wird mit GetMem angelegt, aber nie freigegeben.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JM2 | Schnellkorrektur „try … finally FreeMem(Puffer) end einfügen“, danach Strg+Z | Die folgenden Anweisungen stehen in `try … finally FreeMem(Puffer); end;`, keine Meldung mehr; ein Undo-Schritt |
+| JM3 | `New(Satz)` bzw. `Text := StrAlloc(N)` ohne Freigabe | Meldung mit New bzw. StrAlloc; Korrektur mit `Dispose(Satz)` bzw. `StrDispose(Text)` |
+| JM4 | Mit `FreeMem(P)` ohne try/finally, `ReallocMem(P, 0)`, `Result := P`, `FListe.Add(P)`, `@P`, P in einer anonymen Methode oder lokalen Routine | Keine Meldung von `raw-memory-leak` (ohne try/finally meldet `pair-without-finally`) |
+| JM5 | `"raw-memory-leak": "off"` bzw. `exclude` mit der Datei | Keine Meldung |
+
+## Objekte in einer TStringList ohne Besitz (#1048)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JS1 | Das Beispiel aus #1048: `FKunden := TStringList.Create;` im Konstruktor, `FKunden.AddObject(K.Name, TKunde.Create(K));` in einer Methode | Warnung `stringlist-objects-leak` am AddObject: „FKunden besitzt die Objekte nicht; die TKunde-Objekte werden nie freigegeben.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JS2 | Schnellkorrektur „TStringList.Create(True) setzen“, danach Strg+Z | Die Erzeugung lautet `TStringList.Create(True)`, keine Meldung mehr; ein Undo-Schritt |
+| JS3 | `TStringList.Create(dupIgnore, True, False)` statt `Create` | Korrektur „OwnsObjects := True setzen“ fügt die Zeile nach der Erzeugung ein |
+| JS4 | `LbKunden.Items.AddObject(K.Name, TKunde.Create(K))` mit `LbKunden: TListBox` | Meldung „LbKunden.Items besitzt die Objekte nicht; …“ ohne Korrektur |
+| JS5 | Im Destruktor `for I := 0 to FKunden.Count - 1 do FKunden.Objects[I].Free;`, `TStringList.Create(True)`, `OwnsObjects := True`, `TButton.Create(Self)` als Objekt | Keine Meldung |
+| JS6 | `"stringlist-objects-leak": "off"` bzw. `exclude` mit der Datei | Keine Meldung |
+
+## inherited an der falschen Stelle (#1049)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JO1 | Das Beispiel aus #1049: `destructor TExport.Destroy; begin inherited; FDatei.Free; end;` mit Feld `FDatei` in TExport | Warnung `inherited-order` an `inherited`: „inherited vor dem Freigeben der eigenen Felder; der Vorfahr kann noch auf FDatei zugreifen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JO2 | Schnellkorrektur „inherited an das Ende des Destruktors verschieben“, danach Strg+Z | `FDatei.Free;` steht vor `inherited;`, keine Meldung mehr; ein Undo-Schritt |
+| JO3 | Formular-Konstruktor `constructor TMeinForm.Create(AOwner: TComponent); begin Caption := 'Test'; inherited Create(AOwner); end;` | Meldung „Create greift vor inherited auf Caption aus TControl zu; …“ (Klasse je nach Index); Korrektur verschiebt inherited an den Anfang |
+| JO4 | Thread-Nachfahr mit `inherited;` vor `FListe.Free;` im Destruktor, eigene Felder vor `inherited Create` gesetzt, `inherited` in `finally` | Keine Meldung |
+| JO5 | `"inherited-order": "off"` bzw. `exclude` mit der Datei | Keine Meldung |
+
+## inherited ruft eine andere Methode (#1050)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JW1 | Das Beispiel aus #1050: `procedure TKundenForm.Speichern; begin inherited Laden; Protokollieren; end;` mit `Speichern; override;` | Warnung `inherited-wrong-method` an `inherited Laden`: „Speichern ruft inherited Laden auf; gemeint ist vermutlich inherited Speichern.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JW2 | Schnellkorrektur „inherited Speichern aufrufen“, danach Strg+Z | Zeile wird `inherited Speichern;`, keine Meldung mehr; ein Undo-Schritt |
+| JW3 | `inherited Schreiben('x')` in `Speichern` ohne Parameter | Meldung ohne Korrektur |
+| JW4 | Konstruktor mit `inherited CreateNew(nil)`, Methode ohne override, `inherited; inherited Laden;`, `X := inherited Caption` | Keine Meldung |
+| JW5 | `"inherited-wrong-method": {"allowed": ["Speichern>Laden"]}` | Keine Meldung; `"allowed": [1]` meldet die Einstellungsprüfung „"allowed" muss eine Liste von Texten sein“ |
+| JW6 | `"inherited-wrong-method": "off"` bzw. `exclude` mit der Datei | Keine Meldung |
+
+## Feld oder Property zweimal gesetzt (#1051)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JD1 | Das Beispiel aus #1051 in einer Methode: `Panel.Left := 8; Panel.Left := 40; Panel.Width := 200;` | Warnung `duplicate-assignment` an der zweiten `Panel.Left`: „Panel.Left wird in Zeile … schon gesetzt; gemeint ist vermutlich Panel.Top.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JD2 | Aktion „Zur ersten Zuweisung springen“ | Cursor steht auf der ersten Zuweisung |
+| JD3 | Zweite Zeile zu `Panel.Top := 40;` ändern; dann `Panel.Top := 1;` davor und zweimal `Panel.Left` | Keine Meldung; danach Meldung „… der erste Wert geht ungelesen verloren.“ ohne Vermutung |
+| JD4 | Dazwischen `X := Panel.Left;`, ein Aufruf, `Panel.Align := alNone;` oder ein `if`; zweiter Wert `Panel.Left + 4`; lokale Variable zweimal | Keine Meldung |
+| JD5 | `Q.Active := False; Q.Active := True;`, `{$IFDEF X} Caption := 'a'; {$ELSE} Caption := 'b'; {$ENDIF}` und `Caption := 'A'; {$IFDEF DEBUG} Caption := 'B'; {$ENDIF}` | Keine Meldung |
+| JD6 | `Panel.Visible := True;` zweimal; dann `"duplicate-assignment": {"allowProperties": ["Cap*"]}` und `Caption` zweimal | Erst keine Meldung (Standard Visible, Enabled); mit der Option Meldung bei Visible, keine bei Caption; `"allowProperties": [1]` meldet „"allowProperties" muss eine Liste von Texten sein“ |
+| JD7 | `"duplicate-assignment": "off"` bzw. `exclude` mit der Datei | Keine Meldung |
+
+## Getter verändert den Zustand (#1052)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JG1 | Das Beispiel aus #1052: `property Wert: Integer read GetWert;` mit `function TZaehler.GetWert: Integer; begin Inc(FAbrufe); Result := FWert; end;` | Warnung `getter-side-effect` an `FAbrufe`: „Der Getter GetWert verändert FAbrufe; schon das Anzeigen im Debugger ändert den Zustand.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JG2 | Im Getter `Self.FWert := 1`, `Dec(FAbrufe)` zweimal, `FListe.Add(TObject.Create)`, ein geerbtes Feld | Je Feld eine Meldung, auch für das geerbte |
+| JG3 | `if FListe = nil then FListe := TList.Create;`, `if Result = nil then begin Result := …; FListe := Result; end;`, `if FAbrufe = 0 then begin FWert := 42; FAbrufe := 1; end;` | Keine Meldung (Lazy-Initialisierung) |
+| JG4 | `"getter-side-effect": {"allowLazyInit": false}` | Die Fälle aus JG3 werden gemeldet; `"allowLazyInit": "ja"` meldet die Einstellungsprüfung „"allowLazyInit" muss true oder false sein“ |
+| JG5 | Lokale Variable mit Feldnamen, Methode ohne Property, Änderung in einer anonymen Methode | Keine Meldung |
+| JG6 | Optionsseite: Auswahlfeld umstellen, Seite wechseln und zurück, speichern | Die Auswahl bleibt erhalten (`TAtlasChoiceBox` sichert sie in `DestroyWnd`) |
+| JG7 | `"getter-side-effect": "off"` bzw. `exclude` mit der Datei | Keine Meldung |
+
+## Equals ohne GetHashCode (#1053)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JH1 | Das Beispiel aus #1053: `TKundenNr = class` mit Feldern `FNummer: Integer; FName: string;` und `function Equals(Obj: TObject): Boolean; override;`, Equals vergleicht FNummer und mit `SameText` FName | Warnung `equals-without-gethashcode` an der Deklaration: „Equals ist überschrieben, GetHashCode nicht; als Schlüssel in TDictionary finden sich gleiche Objekte nicht.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JH2 | Schnellkorrektur „GetHashCode mit FNummer, FName überschreiben (THashBobJenkins)“, übersetzen, danach Strg+Z | Deklaration `function GetHashCode: Integer; override;` hinter Equals, Rumpf hinter Equals mit `THashBobJenkins.GetHashValue(FNummer, SizeOf(FNummer), 0)` und `GetHashValue(LowerCase(FName), Result)`, `System.Hash` in uses; übersetzt ohne Fehler, Warnungen und Hinweise; keine Meldung mehr; ein Undo-Schritt |
+| JH3 | Nur `GetHashCode` überschrieben | Meldung „GetHashCode ist überschrieben, Equals nicht; …“ ohne Korrektur |
+| JH4 | Vorfahr der Datei überschreibt beides, unbekannter Vorfahr, `Equals` mit `reintroduce` statt override | Keine Meldung |
+| JH5 | Record `TSchluessel` mit `Name: string` und `class operator Equal`, `TDictionary<TSchluessel, Integer>.Create` bzw. `THashSet<TSchluessel>.Create(10)` | Meldung an `TDictionary<…>`: „TSchluessel hat class operator Equal, TDictionary vergleicht Schlüssel ohne Comparer aber Byte für Byte; …“ |
+| JH6 | Wie JH5 mit Comparer im Create, ohne Operator oder mit nur Integer-Feldern | Keine Meldung |
+| JH7 | `"equals-without-gethashcode": "off"` bzw. `exclude` mit der Datei | Keine Meldung |

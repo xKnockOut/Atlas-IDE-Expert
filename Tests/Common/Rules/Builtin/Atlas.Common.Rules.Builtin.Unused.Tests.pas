@@ -1,6 +1,9 @@
 ﻿unit Atlas.Common.Rules.Builtin.Unused.Tests;
 
-// Tests für unused-local, unused-parameter und unused-assignment (#91).
+// Tests für unused-local, unused-parameter und unused-assignment (#91) sowie
+// duplicate-assignment (#1051): Beispiel mit Sprung, Gegenstück im Hinweis, Ziele
+// (Self., Felder, Zeiger), stille Fälle (Lesen, Aufruf, lokale Variablen,
+// False/True, bedingte Zweige), Option allowProperties, Abschalten und exclude.
 
 interface
 
@@ -60,11 +63,33 @@ type
     procedure WildcardMatching;
   end;
 
+  [TestFixture]
+  TDuplicateAssignmentTests = class
+  public
+    [Test]
+    procedure IssueExampleWithJump;
+    [Test]
+    procedure CounterpartOnlyWhenMissing;
+    [Test]
+    procedure TargetsAndKeys;
+    [Test]
+    procedure ReadOrCallInBetweenIsSilent;
+    [Test]
+    procedure SilentCases;
+    [Test]
+    procedure ConditionalBranches;
+    [Test]
+    procedure AllowPropertiesOption;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
 implementation
 
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Unused,
   Atlas.Tests.RuleAssert;
@@ -306,7 +331,171 @@ begin
   Assert.IsFalse(MatchesWildcard('Used', 'X*'));
 end;
 
+{ TDuplicateAssignmentTests }
+
+/// <summary>Methode TForm1.Init mit ABody; AVars als var-Abschnitt.</summary>
+function Formular(const ABody: string; const AVars: string = ''): string;
+begin
+  Result := Routine(ABody, 'procedure TForm1.Init;', AVars);
+end;
+
+function DuplicateCount(const ASource: string; const AConfig: string = ''): Integer;
+begin
+  Result := Length(TRuleAssert.Findings(TDuplicateAssignmentRule.Create, ASource, AConfig));
+end;
+
+procedure TDuplicateAssignmentTests.IssueExampleWithJump;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TDuplicateAssignmentRule.Create,
+    Formular('  Panel.Left := 8;'#10'  Panel.Left := 40;'#10'  Panel.Width := 200;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('duplicate-assignment', Findings[0].RuleId);
+  Assert.AreEqual('Panel.Left wird in Zeile 6 schon gesetzt; gemeint ist vermutlich Panel.Top.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(12, Findings[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.IsTrue(Findings[0].Fixes[0].HasJump);
+  Assert.AreEqual(5, Findings[0].Fixes[0].JumpTo.Line);
+  // Die korrigierte Form ist still.
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Formular('  Panel.Left := 8;'#10'  Panel.Top := 40;'#10'  Panel.Width := 200;'));
+end;
+
+procedure TDuplicateAssignmentTests.CounterpartOnlyWhenMissing;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Top wird schon gesetzt: keine Vermutung, nur der Verlust.
+  Findings := TRuleAssert.Findings(TDuplicateAssignmentRule.Create,
+    Formular('  Panel.Top := 1;'#10'  Panel.Left := 8;'#10'  Panel.Left := 40;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Panel.Left wird in Zeile 7 schon gesetzt; der erste Wert geht ungelesen verloren.',
+    Findings[0].Message);
+  // Ohne Gegenstück in der Tabelle.
+  Findings := TRuleAssert.Findings(TDuplicateAssignmentRule.Create,
+    Formular('  Caption := ''A'';'#10'  Caption := ''B'';'));
+  Assert.AreEqual('Caption wird in Zeile 6 schon gesetzt; der erste Wert geht ungelesen verloren.',
+    Findings[0].Message);
+  Findings := TRuleAssert.Findings(TDuplicateAssignmentRule.Create,
+    Formular('  Bild.Height := 8;'#10'  Bild.height := 40;'));
+  Assert.AreEqual('Bild.height wird in Zeile 6 schon gesetzt; gemeint ist vermutlich Bild.Width.',
+    Findings[0].Message);
+  Assert.AreEqual('Top', TDuplicateAssignmentRule.Counterpart('left'));
+  Assert.AreEqual('Width', TDuplicateAssignmentRule.Counterpart('Height'));
+  Assert.AreEqual('', TDuplicateAssignmentRule.Counterpart('Caption'));
+end;
+
+procedure TDuplicateAssignmentTests.TargetsAndKeys;
+begin
+  // Self.FWert und FWert sind dasselbe Ziel, ebenso Zeiger und verschachtelte Mitglieder.
+  Assert.AreEqual(1, DuplicateCount(Formular('  Self.FWert := -1;'#10'  FWert := 2;')));
+  Assert.AreEqual(1, DuplicateCount(Formular('  P^.X := nil;'#10'  P^.X := Q;')));
+  Assert.AreEqual(1, DuplicateCount(Formular('  Panel.Font.Size := 8;'#10'  Panel.Font.Size := 10;')));
+  Assert.AreEqual(1, DuplicateCount(Formular('  with Panel do'#10'  begin'#10'    Left := 1;'#10 +
+    '    Left := 2;'#10'  end;')));
+  // Mitglieder lokaler Records zählen, im initialization-Abschnitt ebenso.
+  Assert.AreEqual(1, DuplicateCount(Formular('  R.Left := 1;'#10'  R.Left := 2;', 'var'#10'  R: TRect;'#10)));
+  Assert.AreEqual(1, DuplicateCount('unit U;'#10'interface'#10'implementation'#10'initialization'#10 +
+    '  Application.Title := ''A'';'#10'  Application.Title := ''B'';'#10'end.'));
+  // Zuweisungen an andere Objekte mit festen Werten dazwischen.
+  Assert.AreEqual(1, DuplicateCount(Formular('  Panel.Left := 8;'#10'  Knopf.Left := 3;'#10'  Panel.Left := 40;')));
+end;
+
+procedure TDuplicateAssignmentTests.ReadOrCallInBetweenIsSilent;
+begin
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Formular('  Panel.Left := 8;'#10'  X := Panel.Left;'#10'  Panel.Left := 40;'));
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Formular('  Panel.Left := 8;'#10'  Ausrichten;'#10'  Panel.Left := 40;'));
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Formular('  Panel.Left := 8;'#10'  Knopf.Left := Berechne(1);'#10'  Panel.Left := 40;'));
+  // Der zweite Wert liest das Ziel oder ruft etwas auf.
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Formular('  Panel.Left := 8;'#10'  Panel.Left := Panel.Left + 4;'));
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Formular('  FWert := 8;'#10'  FWert := Doppelt(1);'));
+  // Andere Property desselben Objekts dazwischen: ihr Setter kann den Wert lesen.
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Formular('  Panel.Left := 8;'#10'  Panel.Align := alNone;'#10'  Panel.Left := 40;'));
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Formular('  FWert := 8;'#10'  Anzahl := 1;'#10'  FWert := 40;'));
+  // if, Schleifen und andere Anweisungen unterbrechen die Folge.
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Formular('  Panel.Left := 8;'#10'  if A then'#10'    B := 1;'#10'  Panel.Left := 40;'));
+end;
+
+procedure TDuplicateAssignmentTests.SilentCases;
+begin
+  // Lokale Variablen, Parameter und Result deckt unused-assignment ab.
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Formular('  I := 1;'#10'  I := 2;', 'var'#10'  I: Integer;'#10));
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Routine('  Result := 1;'#10'  Result := 2;'#10'  AWert := 1;'#10'  AWert := 2;', 'function F(var AWert: Integer): Integer;'));
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Routine('  var I := 1;'#10'  I := 2;'#10'  I := 3;', 'procedure P;'));
+  // Ziele mit Index oder Aufruf.
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Formular('  Liste[0] := 1;'#10'  Liste[0] := 2;'#10'  Gib.X := 1;'#10'  Gib().X := 2;'));
+  // False/True im Wechsel stößt etwas an; derselbe Wert zweimal wird gemeldet.
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Formular('  Abfrage.Active := False;'#10'  Abfrage.Active := True;'));
+  Assert.AreEqual(1, DuplicateCount(Formular('  Abfrage.Active := True;'#10'  Abfrage.Active := True;')));
+  // then- und else-Zweig, verschiedene Anweisungsfolgen.
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Formular('  if A then'#10'    Panel.Left := 8'#10'  else'#10'    Panel.Left := 40;'));
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Formular('  Panel.Left := 8;'#10'  begin'#10'    Panel.Left := 40;'#10'  end;'));
+end;
+
+procedure TDuplicateAssignmentTests.ConditionalBranches;
+begin
+  // Zweige desselben {$IFDEF} schließen sich aus.
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Formular('  {$IFDEF X}'#10'  Caption := ''a'';'#10'  {$ELSE}'#10'  Caption := ''b'';'#10'  {$ENDIF}'));
+  // Überschreiben nur unter einer Bedingung ist gewollt.
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Formular('  Caption := ''Atlas'';'#10'  {$IFDEF DEBUG}'#10'  Caption := ''Atlas (Debug)'';'#10'  {$ENDIF}'));
+  // Bedingte erste Zuweisung wird immer überschrieben.
+  Assert.AreEqual(1, DuplicateCount(
+    Formular('  {$IFDEF DEBUG}'#10'  Caption := ''Atlas (Debug)'';'#10'  {$ENDIF}'#10'  Caption := ''Atlas'';')));
+end;
+
+procedure TDuplicateAssignmentTests.AllowPropertiesOption;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // Standard: Visible und Enabled dürfen doppelt gesetzt werden.
+  TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
+    Formular('  Panel.Visible := True;'#10'  Panel.Visible := True;'#10'  Enabled := True;'#10'  Enabled := True;'));
+  Assert.AreEqual(1, DuplicateCount(Formular('  Panel.Visible := True;'#10'  Panel.Visible := True;'),
+    '{"rules": {"duplicate-assignment": {"allowProperties": ["Cap*"]}}}'));
+  Assert.AreEqual(0, DuplicateCount(Formular('  Panel.Caption := ''A'';'#10'  Panel.Caption := ''B'';'),
+    '{"rules": {"duplicate-assignment": {"allowProperties": ["cap*"]}}}'));
+  TConfigurationParser.Parse('{"rules": {"duplicate-assignment": {"allowProperties": [1]}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"allowProperties" muss eine Liste von Texten sein', Issues[0].Message);
+  TConfigurationParser.Parse('{"rules": {"duplicate-assignment": {"allowProperties": ["Visible"]}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+end;
+
+procedure TDuplicateAssignmentTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Formular('  Panel.Left := 8;'#10'  Panel.Left := 40;');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateAssignmentRule.Create, Source,
+    '{"rules": {"duplicate-assignment": "off"}}', 'Source/U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateAssignmentRule.Create, Source,
+    '{"rules": {"duplicate-assignment": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TUnusedRulesTests);
+  TDUnitX.RegisterTestFixture(TDuplicateAssignmentTests);
 
 end.

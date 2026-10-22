@@ -16,8 +16,28 @@
 //                                        DefaultHandler, DefWindowProc oder CallWindowProc
 //                                        (#949); Nachrichten aus "swallow" und Handler, die
 //                                        Msg.Result selbst setzen, bleiben still
+//   inherited-order                      inherited an der falschen Stelle (#1049): im Destruktor vor
+//                                        dem Freigeben eigener Felder (nicht bei Threads, deren
+//                                        Destroy auf den Thread wartet), im Konstruktor nach einem
+//                                        Zugriff auf ein geerbtes Feld bzw. eine geerbte Property
+//                                        (über TAncestry.FindMember); Korrektur verschiebt inherited
+//   inherited-wrong-method               inherited Laden in der überschriebenen Methode Speichern
+//                                        (#1050), meist nach Kopieren; nur Aufrufe (Anweisung oder
+//                                        mit Klammern), nicht in Konstruktoren, nicht wenn die Methode
+//                                        auch sich selbst geerbt aufruft; Ausnahmen über "allowed"
+//   getter-side-effect                   read-Methode einer Property ändert Felder oder Properties des
+//                                        Objekts (#1052): Zuweisung, Inc/Dec/Include/Exclude oder ein neu
+//                                        angelegtes Objekt an eine Methode eines Felds (FListe.Add(T.Create));
+//                                        Lazy-Initialisierung (if prüft, was der Zweig zuweist) ist mit
+//                                        "allowLazyInit" (Standard true) erlaubt; geerbte Felder über TAncestry
+//   equals-without-gethashcode           Equals ohne GetHashCode überschrieben oder umgekehrt (#1053), still,
+//                                        wenn ein Vorfahr das Gegenstück überschreibt oder die Kette unbekannt
+//                                        ist; Korrektur GetHashCode über THashBobJenkins mit den Feldern aus
+//                                        Equals. Records der Datei mit class operator Equal und Feldern, die der
+//                                        Byte-Vergleich falsch vergleicht (string, Variant, Gleitkomma,
+//                                        Interface, TArray), als Schlüssel von TDictionary/THashSet ohne Comparer
 //
-// Geprüft werden nur Klassen, deren Vorfahrenkette (Datei, Symbolindex) eine
+// Die Komponentenregeln prüfen nur Klassen, deren Vorfahrenkette (Datei, Symbolindex) eine
 // bekannte VCL-Basisklasse erreicht. Teil B (nicht registriert, Design-Time-Units
 // in Runtime-Packages) braucht Package-Dateien und folgt getrennt.
 
@@ -83,6 +103,36 @@ type
     class function Consequence(const AMessage: string): string; static;
   end;
 
+  TInheritedOrderRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TInheritedWrongMethodRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Erlaubt die Option allowed (Paare "Methode&gt;geerbte Methode", Muster mit * und ?) den Aufruf
+    /// inherited AInherited in AMethod?</summary>
+    class function Allowed(const APairs: TArray<string>; const AMethod, AInherited: string): Boolean; static;
+  end;
+
+  TGetterSideEffectRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TEqualsWithoutGetHashCodeRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Hashwert des Felds AField vom Typ ATypeName, verkettet mit AInitial; ACompare ist die Funktion, in
+    /// der Equals das Feld vergleicht (SameText: ohne Groß-/Kleinschreibung, also auch der Hashwert).</summary>
+    class function HashExpression(const AField, ATypeName, ACompare, AInitial: string): string; static;
+  end;
+
 procedure RegisterComponentRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -98,6 +148,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
+  Atlas.Common.Editing.UsesClause,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Text.Lines;
 
@@ -1218,10 +1269,933 @@ begin
   end;
 end;
 
+{ TInheritedOrderRule }
+
+function TInheritedOrderRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('inherited-order', TRuleSeverity.Warning, 'inherited an der falschen Stelle');
+end;
+
+/// <summary>Ist AStatement ein Aufruf von inherited (inherited; inherited Name; inherited Name(…))?</summary>
+function IsInheritedCall(AStatement: TSyntaxNode; out AName: string): Boolean;
+var
+  Node: TSyntaxNode;
+begin
+  Result := False;
+  AName := '';
+  if (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount <> 1) then
+    Exit;
+  Node := AStatement[0];
+  if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) then
+    Node := Node[0];
+  if Node.Kind <> TSyntaxKind.InheritedExpr then
+    Exit;
+  AName := Node.Name;
+  Result := True;
+end;
+
+/// <summary>Namen der Felder der Klasse (auch "FA, FB: T").</summary>
+function OwnFields(const AClass: TClassInfo): TArray<string>;
+var
+  Index: Integer;
+  Name: string;
+begin
+  Result := nil;
+  for Index := 0 to AClass.Body.ChildCount - 1 do
+    if AClass.Body[Index].Kind = TSyntaxKind.Field then
+      for Name in AClass.Body[Index].Name.Split([',']) do
+        if Trim(Name) <> '' then
+          Result := Result + [Trim(Name)];
+end;
+
+/// <summary>Namen der Felder, Properties und Methoden der Klasse selbst.</summary>
+function OwnMembers(const AClass: TClassInfo): TArray<string>;
+var
+  Index: Integer;
+begin
+  Result := OwnFields(AClass);
+  for Index := 0 to AClass.Body.ChildCount - 1 do
+    if AClass.Body[Index].Kind in [TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineHeader] then
+      Result := Result + [AClass.Body[Index].Name];
+end;
+
+/// <summary>Parameter und lokale Variablen (var-Abschnitte) einer Methode.</summary>
+function MethodLocalNames(const AMethod: TMethodImpl): TArray<string>;
+var
+  Header, Section: TSyntaxNode;
+  Index, Inner: Integer;
+  Name: string;
+begin
+  Result := nil;
+  Header := AMethod.Decl.FindChild(TSyntaxKind.RoutineHeader);
+  if Header <> nil then
+  begin
+    Section := Header.FindChild(TSyntaxKind.Parameters);
+    if Section <> nil then
+      for Index := 0 to Section.ChildCount - 1 do
+        for Name in Section[Index].Name.Split([',']) do
+          Result := Result + [Trim(Name)];
+  end;
+  for Index := 0 to AMethod.Decl.ChildCount - 1 do
+    if AMethod.Decl[Index].Kind = TSyntaxKind.VarSection then
+      for Inner := 0 to AMethod.Decl[Index].ChildCount - 1 do
+        for Name in AMethod.Decl[Index][Inner].Name.Split([',']) do
+          Result := Result + [Trim(Name)];
+end;
+
+/// <summary>Bezeichner F bzw. Self.F als Ziel einer Freigabe: F.Free, F.DisposeOf, F.Destroy, FreeAndNil(F).</summary>
+function FreedName(ANode: TSyntaxNode): string;
+var
+  Target: TSyntaxNode;
+begin
+  Result := '';
+  Target := nil;
+  if (ANode.Kind = TSyntaxKind.MemberAccess) and IsIn(ANode.Name, ['Free', 'DisposeOf', 'Destroy']) and
+    (ANode.ChildCount = 1) then
+    Target := ANode[0]
+  else if (ANode.Kind = TSyntaxKind.Call) and IsIn(ANode.Name, ['FreeAndNil', 'Dispose', 'FreeMem']) and
+    (ANode.ChildCount = 2) then
+    Target := ANode[1];
+  if Target = nil then
+    Exit;
+  if (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount = 1) and
+    (Target[0].Kind = TSyntaxKind.Identifier) and SameText(Target[0].Name, 'Self') then
+    Exit(Target.Name);
+  if Target.Kind = TSyntaxKind.Identifier then
+    Result := Target.Name;
+end;
+
+/// <summary>Erstes freigegebenes eigenes Feld in ANode, '' ohne.</summary>
+function FirstFreedField(ANode: TSyntaxNode; const AFields: TArray<string>): string;
+var
+  Index: Integer;
+begin
+  Result := FreedName(ANode);
+  if (Result <> '') and IsIn(Result, AFields) then
+    Exit;
+  Result := '';
+  if ANode.Kind = TSyntaxKind.AnonymousMethod then
+    Exit;
+  for Index := 0 to ANode.ChildCount - 1 do
+  begin
+    Result := FirstFreedField(ANode[Index], AFields);
+    if Result <> '' then
+      Exit;
+  end;
+end;
+
+procedure TInheritedOrderRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Model: TComponentModel;
+  Cache: IRuleDerivedCache;
+  Lines: TArray<string>;
+  LineBreak: string;
+
+  function FindClassInfo(const AName: string; out AInfo: TClassInfo): Boolean;
+  var
+    Info: TClassInfo;
+  begin
+    for Info in Model.Classes do
+      if SameText(Info.Name, AName) then
+      begin
+        AInfo := Info;
+        Exit(True);
+      end;
+    Result := False;
+  end;
+
+  // Wartet der Destruktor eines Vorfahren auf etwas (TThread.Destroy beendet und erwartet den Thread)?
+  function WaitsInDestructor(const AClassName: string): Boolean;
+  var
+    Name: string;
+    Depth: Integer;
+  begin
+    Name := AClassName;
+    for Depth := 0 to 63 do
+    begin
+      if ContainsText(Name, 'Thread') then
+        Exit(True);
+      if (Name = '') or SameText(Name, 'TObject') then
+        Break;
+      Name := Model.FAncestry.ParentOf(Name);
+    end;
+    Result := False;
+  end;
+
+  // Steht AStatement allein in seinen Zeilen (höchstens mit ";")?
+  function OwnLines(AStatement: TSyntaxNode): Boolean;
+  begin
+    Result := (AStatement.EndPos.Line <= High(Lines)) and
+      (Trim(Copy(Lines[AStatement.StartPos.Line], 1, AStatement.StartPos.Character)) = '') and
+      IsIn(Trim(Copy(Lines[AStatement.EndPos.Line], AStatement.EndPos.Character + 1, MaxInt)), ['', ';']);
+  end;
+
+  // inherited ans Ende bzw. an den Anfang: Zeilen der Anweisung entfernen, Text neu einfügen.
+  function MoveFix(ABlock, AStatement: TSyntaxNode; AToEnd: Boolean; out AFix: TRuleFix): Boolean;
+  var
+    Insert, Remove: TRuleEdit;
+    Text: string;
+  begin
+    Result := False;
+    if not OwnLines(AStatement) then
+      Exit;
+    Text := Model.NodeText(AStatement) + ';';
+    if AToEnd then
+      Result := Model.InsertBeforeEnd(ABlock, Text, Insert)
+    else
+      Result := Model.InsertAfterBegin(ABlock, Text, Insert);
+    if not Result then
+      Exit;
+    Remove := TRuleEdit.Create(TTextRange.Create(AStatement.StartPos.Line, 0, AStatement.EndPos.Line + 1, 0), '');
+    if AToEnd then
+      AFix := TRuleFix.Create('inherited an das Ende des Destruktors verschieben', [Remove, Insert])
+    else
+      AFix := TRuleFix.Create('inherited an den Anfang des Konstruktors verschieben', [Insert, Remove]);
+  end;
+
+  procedure CheckDestructor(const AMethod: TMethodImpl; const AInfo: TClassInfo);
+  var
+    Index, Later: Integer;
+    Statement: TSyntaxNode;
+    Name, Field: string;
+    Fix: TRuleFix;
+  begin
+    if WaitsInDestructor(AInfo.Name) then
+      Exit;
+    for Index := 0 to AMethod.Block.ChildCount - 1 do
+    begin
+      Statement := AMethod.Block[Index];
+      if not IsInheritedCall(Statement, Name) then
+        Continue;
+      if (Name <> '') and not SameText(Name, AMethod.MethodName) then
+        Exit;
+      for Later := Index + 1 to AMethod.Block.ChildCount - 1 do
+      begin
+        Field := FirstFreedField(AMethod.Block[Later], OwnFields(AInfo));
+        if Field = '' then
+          Continue;
+        if MoveFix(AMethod.Block, Statement, True, Fix) then
+          AReport.Add(TTextRange.Create(Statement.StartPos, Statement.EndPos),
+            Format('inherited vor dem Freigeben der eigenen Felder; der Vorfahr kann noch auf %s zugreifen.',
+            [Field]), TRuleConfidence.Medium, [Fix])
+        else
+          AReport.Add(TTextRange.Create(Statement.StartPos, Statement.EndPos),
+            Format('inherited vor dem Freigeben der eigenen Felder; der Vorfahr kann noch auf %s zugreifen.',
+            [Field]), TRuleConfidence.Medium);
+        Exit;
+      end;
+      Exit;
+    end;
+  end;
+
+  // Erstes geerbtes Feld bzw. erste geerbte Property in ANode (F, Self.F); nil ohne.
+  function FirstInheritedAccess(ANode: TSyntaxNode; const AParent: string; const AExcluded: TArray<string>;
+    out AName, AOwner: string): TSyntaxNode;
+  var
+    Index: Integer;
+    Name, Unresolved: string;
+    Member: TIndexSymbol;
+  begin
+    Result := nil;
+    if ANode.Kind = TSyntaxKind.AnonymousMethod then
+      Exit;
+    Name := '';
+    if (ANode.Kind = TSyntaxKind.Identifier) and not ((ANode.Parent <> nil) and
+      (ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] = ANode)) then
+      Name := ANode.Name
+    else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
+      (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Self') then
+      Name := ANode.Name;
+    if (Name <> '') and not SameText(Name, 'Self') and not IsIn(Name, AExcluded) and
+      Model.FAncestry.FindMember(AParent, Name, Member, Unresolved) and
+      (Member.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
+    begin
+      AName := Name;
+      AOwner := Member.Container;
+      Exit(ANode);
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+    begin
+      Result := FirstInheritedAccess(ANode[Index], AParent, AExcluded, AName, AOwner);
+      if Result <> nil then
+        Exit;
+    end;
+  end;
+
+  // Verwenden die Argumente von inherited Create(…) lokale Variablen, die die Anweisungen davor setzen?
+  function ArgumentsUseLocals(ANode: TSyntaxNode; const ALocals: TArray<string>): Boolean;
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.Identifier) and IsIn(ANode.Name, ALocals) then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if ArgumentsUseLocals(ANode[Index], ALocals) then
+        Exit(True);
+    Result := False;
+  end;
+
+  procedure CheckConstructor(const AMethod: TMethodImpl; const AInfo: TClassInfo);
+  var
+    Index, Earlier: Integer;
+    Statement, Access: TSyntaxNode;
+    Name, Member, Owner, Parent: string;
+    Locals, Excluded: TArray<string>;
+    Fix: TRuleFix;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Parent := DeclaredParent(AInfo);
+    if (Parent = '') or SameText(Parent, 'TObject') or Model.HasToken(AMethod.Block, ['with']) then
+      Exit;
+    Locals := MethodLocalNames(AMethod);
+    Excluded := Locals + OwnMembers(AInfo);
+    for Index := 0 to AMethod.Block.ChildCount - 1 do
+    begin
+      Statement := AMethod.Block[Index];
+      if not IsInheritedCall(Statement, Name) then
+        Continue;
+      for Earlier := 0 to Index - 1 do
+      begin
+        Access := FirstInheritedAccess(AMethod.Block[Earlier], Parent, Excluded, Member, Owner);
+        if Access = nil then
+          Continue;
+        Fixes := nil;
+        if not ArgumentsUseLocals(Statement, Locals) and MoveFix(AMethod.Block, Statement, False, Fix) then
+          Fixes := [Fix];
+        AReport.Add(TTextRange.Create(Access.StartPos, Access.EndPos),
+          Format('%s greift vor inherited auf %s aus %s zu; der Vorfahr ist noch nicht angelegt.',
+          [AMethod.MethodName, Member, Owner]), TRuleConfidence.Medium, Fixes);
+        Exit;
+      end;
+      Exit;
+    end;
+  end;
+
+var
+  Method: TMethodImpl;
+  Info: TClassInfo;
+  Source: string;
+begin
+  Cache := TRuleDerived.Open(AContext);
+  if not Prepare(Cache, AContext, Model) or not ContainsText(AContext.Text, 'inherited') then
+    Exit;
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  for Method in Model.Methods do
+  begin
+    if not FindClassInfo(Method.ClassName, Info) then
+      Continue;
+    Source := TrimLeft(Model.NodeText(Method.Decl));
+    if StartsText('destructor', Source) then
+      CheckDestructor(Method, Info)
+    else if StartsText('constructor', Source) then
+      CheckConstructor(Method, Info);
+  end;
+end;
+
+{ TInheritedWrongMethodRule }
+
+function TInheritedWrongMethodRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('inherited-wrong-method', TRuleSeverity.Warning,
+    'inherited ruft eine andere Methode');
+end;
+
+class function TInheritedWrongMethodRule.Allowed(const APairs: TArray<string>;
+  const AMethod, AInherited: string): Boolean;
+var
+  Pair: string;
+  Separator: Integer;
+begin
+  for Pair in APairs do
+  begin
+    Separator := Pos('>', Pair);
+    if (Separator > 0) and MatchesGlob(Trim(Copy(Pair, 1, Separator - 1)), AMethod) and
+      MatchesGlob(Trim(Copy(Pair, Separator + 1, MaxInt)), AInherited) then
+      Exit(True);
+  end;
+  Result := False;
+end;
+
+procedure TInheritedWrongMethodRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Model: TComponentModel;
+  Cache: IRuleDerivedCache;
+  Pairs: TArray<string>;
+
+  function FindClassInfo(const AName: string; out AInfo: TClassInfo): Boolean;
+  var
+    Info: TClassInfo;
+  begin
+    for Info in Model.Classes do
+      if SameText(Info.Name, AName) then
+      begin
+        AInfo := Info;
+        Exit(True);
+      end;
+    Result := False;
+  end;
+
+  // Aufrufe inherited Name bzw. inherited Name(…) als Anweisung oder mit Klammern; nur sie sind sicher Methoden
+  // (inherited Caption ohne Klammern kann eine Property sein).
+  procedure CollectCalls(ANode: TSyntaxNode; var ACalls: TArray<TSyntaxNode>; var ASameName: Boolean;
+    const AMethodName: string);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.InheritedExpr then
+    begin
+      if (ANode.Name = '') or SameText(ANode.Name, AMethodName) then
+        ASameName := True
+      else if (ANode.Parent <> nil) and ((ANode.Parent.Kind = TSyntaxKind.CallStatement) or
+        ((ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] = ANode))) then
+        ACalls := ACalls + [ANode];
+    end;
+    if ANode.Kind = TSyntaxKind.AnonymousMethod then
+      Exit;
+    for Index := 0 to ANode.ChildCount - 1 do
+      CollectCalls(ANode[Index], ACalls, ASameName, AMethodName);
+  end;
+
+  // Anzahl der Parameter im Kopf der Methode (A, B: Integer zählt zwei).
+  function ParameterCount(const AMethod: TMethodImpl): Integer;
+  var
+    Header, Section: TSyntaxNode;
+    Index: Integer;
+  begin
+    Result := 0;
+    Header := AMethod.Decl.FindChild(TSyntaxKind.RoutineHeader);
+    if Header = nil then
+      Exit;
+    Section := Header.FindChild(TSyntaxKind.Parameters);
+    if Section <> nil then
+      for Index := 0 to Section.ChildCount - 1 do
+        Inc(Result, Length(Section[Index].Name.Split([','])));
+  end;
+
+var
+  Method: TMethodImpl;
+  Info: TClassInfo;
+  Calls: TArray<TSyntaxNode>;
+  Call: TSyntaxNode;
+  SameName: Boolean;
+  Arguments: Integer;
+  Source, Message: string;
+  Fixes: TArray<TRuleFix>;
+begin
+  Cache := TRuleDerived.Open(AContext);
+  if not Prepare(Cache, AContext, Model) or not ContainsText(AContext.Text, 'inherited') then
+    Exit;
+  Pairs := TRuleOptions.Strings(AContext.Options, 'allowed', nil);
+  for Method in Model.Methods do
+  begin
+    // Konstruktoren dürfen jeden geerbten Konstruktor aufrufen (inherited Create(nil)).
+    Source := TrimLeft(Model.NodeText(Method.Decl));
+    if StartsText('constructor', Source) or StartsText('class ', Source) or
+      not FindClassInfo(Method.ClassName, Info) or not Model.DeclaredWith(Info, Method.MethodName, 'override') then
+      Continue;
+    Calls := nil;
+    SameName := False;
+    CollectCalls(Method.Block, Calls, SameName, Method.MethodName);
+    // Ruft die Methode auch sich selbst im Vorfahren auf, ist der andere Aufruf gewollt.
+    if SameName then
+      Continue;
+    for Call in Calls do
+    begin
+      if Allowed(Pairs, Method.MethodName, Call.Name) then
+        Continue;
+      Message := Format('%s ruft inherited %s auf; gemeint ist vermutlich inherited %s.',
+        [Method.MethodName, Call.Name, Method.MethodName]);
+      Fixes := nil;
+      // Mit gleicher Zahl an Argumenten wie Parametern passt der eigene Name.
+      Arguments := 0;
+      if Call.Parent.Kind = TSyntaxKind.Call then
+        Arguments := Call.Parent.ChildCount - 1;
+      if Arguments = ParameterCount(Method) then
+        Fixes := [TRuleFix.Create(Format('inherited %s aufrufen', [Method.MethodName]),
+          [TRuleEdit.Create(TTextRange.Create(Call.StartPos, Call.EndPos), 'inherited ' + Method.MethodName)])];
+      AReport.Add(TTextRange.Create(Call.StartPos, Call.EndPos), Message, TRuleConfidence.High, Fixes);
+    end;
+  end;
+end;
+
+{ TGetterSideEffectRule }
+
+function TGetterSideEffectRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('getter-side-effect', TRuleSeverity.Warning, 'Getter verändert den Zustand');
+end;
+
+/// <summary>F bzw. Self.F als Ziel; '' sonst.</summary>
+function SelfMemberName(ANode: TSyntaxNode): string;
+begin
+  Result := '';
+  if ANode.Kind = TSyntaxKind.Identifier then
+    Result := ANode.Name
+  else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
+    (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Self') then
+    Result := ANode.Name;
+end;
+
+/// <summary>Namen (F, Self.F, Result, lokale Variablen), denen unter ANode zugewiesen wird.</summary>
+procedure CollectAssignedNames(ANode: TSyntaxNode; var ANames: TArray<string>);
+var
+  Index: Integer;
+  Name: string;
+begin
+  if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount > 0) then
+  begin
+    Name := SelfMemberName(ANode[0]);
+    if Name <> '' then
+      ANames := ANames + [Name];
+  end;
+  for Index := 0 to ANode.ChildCount - 1 do
+    CollectAssignedNames(ANode[Index], ANames);
+end;
+
+/// <summary>Nennt ANode einen der Namen (F oder Self.F)?</summary>
+function MentionsName(ANode: TSyntaxNode; const ANames: TArray<string>): Boolean;
+var
+  Index: Integer;
+  Name: string;
+begin
+  Name := SelfMemberName(ANode);
+  if (Name <> '') and IsIn(Name, ANames) then
+    Exit(True);
+  for Index := 0 to ANode.ChildCount - 1 do
+    if MentionsName(ANode[Index], ANames) then
+      Exit(True);
+  Result := False;
+end;
+
+/// <summary>Enthält ANode einen Konstruktoraufruf (X.Create, X.Create(…))?</summary>
+function ContainsCreate(ANode: TSyntaxNode): Boolean;
+var
+  Index: Integer;
+begin
+  if (ANode.Kind = TSyntaxKind.MemberAccess) and StartsText('Create', ANode.Name) then
+    Exit(True);
+  for Index := 0 to ANode.ChildCount - 1 do
+    if ContainsCreate(ANode[Index]) then
+      Exit(True);
+  Result := False;
+end;
+
+/// <summary>Lazy-Initialisierung: Ein umschließendes if (bis ARoot) prüft in der Bedingung etwas, das im Zweig
+/// mit ANode zugewiesen wird (if FListe = nil then FListe := …, if Result = nil then … FX := Result).</summary>
+function IsLazyInit(ANode, ARoot: TSyntaxNode): Boolean;
+var
+  Branch, Condition: TSyntaxNode;
+  AssignedNames: TArray<string>;
+begin
+  Branch := ANode;
+  while (Branch <> nil) and (Branch <> ARoot) and (Branch.Parent <> nil) do
+  begin
+    Condition := nil;
+    if (Branch.Parent.Kind = TSyntaxKind.IfStatement) and (Branch.Parent.ChildCount > 1) and
+      (Branch.Parent[0] <> Branch) then
+      Condition := Branch.Parent[0];
+    if Condition <> nil then
+    begin
+      AssignedNames := nil;
+      CollectAssignedNames(Branch, AssignedNames);
+      if MentionsName(Condition, AssignedNames) then
+        Exit(True);
+    end;
+    Branch := Branch.Parent;
+  end;
+  Result := False;
+end;
+
+procedure TGetterSideEffectRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Model: TComponentModel;
+  Cache: IRuleDerivedCache;
+  AllowLazyInit: Boolean;
+  Info: TClassInfo;
+  Parent: string;
+  Members, Locals, Reported: TArray<string>;
+
+  // Feld oder Property des Objekts: eigene aus der Klasse, geerbte über TAncestry.
+  function IsState(const AName: string): Boolean;
+  var
+    Member: TIndexSymbol;
+    Unresolved: string;
+  begin
+    if (AName = '') or SameText(AName, 'Result') or SameText(AName, 'Self') or IsIn(AName, Locals) then
+      Exit(False);
+    if IsIn(AName, Members) then
+      Exit(True);
+    Result := (Parent <> '') and Model.FAncestry.FindMember(Parent, AName, Member, Unresolved) and
+      (Member.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]);
+  end;
+
+  // Geändertes Mitglied an ANode: Ziel einer Zuweisung, Inc/Dec/Include/Exclude, Methode eines Felds mit neu
+  // angelegtem Objekt als Argument (FListe.Add(TEintrag.Create)); nil ohne.
+  function ChangedTarget(ANode: TSyntaxNode): TSyntaxNode;
+  var
+    Index: Integer;
+  begin
+    Result := nil;
+    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount > 0) then
+      Result := ANode[0]
+    else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 1) and
+      (ANode[0].Kind = TSyntaxKind.Identifier) and IsIn(ANode[0].Name, ['Inc', 'Dec', 'Include', 'Exclude']) then
+      Result := ANode[1]
+    else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 1) and
+      (ANode[0].Kind = TSyntaxKind.MemberAccess) and (ANode[0].ChildCount = 1) then
+      for Index := 1 to ANode.ChildCount - 1 do
+        if ContainsCreate(ANode[Index]) then
+          Exit(ANode[0][0]);
+  end;
+
+  procedure Visit(ANode, ARoot: TSyntaxNode; const AGetter: string);
+  var
+    Target: TSyntaxNode;
+    Name: string;
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.AnonymousMethod then
+      Exit;
+    Target := ChangedTarget(ANode);
+    if Target <> nil then
+    begin
+      Name := SelfMemberName(Target);
+      if IsState(Name) and not IsIn(Name, Reported) and not (AllowLazyInit and IsLazyInit(ANode, ARoot)) then
+      begin
+        Reported := Reported + [Name];
+        AReport.Add(TTextRange.Create(Target.StartPos, Target.EndPos),
+          Format('Der Getter %s verändert %s; schon das Anzeigen im Debugger ändert den Zustand.', [AGetter, Name]),
+          TRuleConfidence.Medium);
+      end;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index], ARoot, AGetter);
+  end;
+
+var
+  Prop: TPropertyInfo;
+  Method: TMethodImpl;
+  Getters: TArray<string>;
+  Index: Integer;
+begin
+  Cache := TRuleDerived.Open(AContext);
+  if not Prepare(Cache, AContext, Model) then
+    Exit;
+  AllowLazyInit := TRuleOptions.Bool(AContext.Options, 'allowLazyInit', True);
+  for Info in Model.Classes do
+  begin
+    Getters := nil;
+    for Prop in Model.Properties(Info) do
+      if (Prop.ReadName <> '') and not IsIn(Prop.ReadName, Getters) then
+        Getters := Getters + [Prop.ReadName];
+    if Getters = nil then
+      Continue;
+    Parent := DeclaredParent(Info);
+    Members := OwnFields(Info);
+    for Index := 0 to Info.Body.ChildCount - 1 do
+      if Info.Body[Index].Kind = TSyntaxKind.PropertyDecl then
+        Members := Members + [Info.Body[Index].Name];
+    for Method in Model.Methods do
+      if SameText(Method.ClassName, Info.Name) and IsIn(Method.MethodName, Getters) and
+        not Model.HasToken(Method.Block, ['with']) then
+      begin
+        Locals := MethodLocalNames(Method);
+        Reported := nil;
+        Visit(Method.Block, Method.Block, Method.MethodName);
+      end;
+  end;
+end;
+
+{ TEqualsWithoutGetHashCodeRule }
+
+const
+  // Feldtypen, bei denen der Standard-Comparer für Records (Byte für Byte) nicht zu Equal passt.
+  BinaryUnsafeTypes: array[0..12] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString',
+    'RawByteString', 'UTF8String', 'ShortString', 'Variant', 'OleVariant', 'Double', 'Single', 'Extended', 'Real');
+  // Generische Sammlungen, deren erster Typparameter der Schlüssel ist.
+  HashedCollections: array[0..3] of string = ('TDictionary', 'TObjectDictionary', 'THashSet', 'TMultiMap');
+
+function TEqualsWithoutGetHashCodeRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('equals-without-gethashcode', TRuleSeverity.Warning,
+    'Equals ohne GetHashCode');
+end;
+
+/// <summary>Kopf AName im Klassen- bzw. Record-Rumpf ABody; nil ohne.</summary>
+function MemberHeader(ABody: TSyntaxNode; const AName: string): TSyntaxNode;
+var
+  Index: Integer;
+begin
+  for Index := 0 to ABody.ChildCount - 1 do
+    if (ABody[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(ABody[Index].Name, AName) then
+      Exit(ABody[Index]);
+  Result := nil;
+end;
+
+/// <summary>Typ des Felds AName im Rumpf ABody (Field "A,B" mit TypeReference); '' ohne.</summary>
+function FieldTypeName(ABody: TSyntaxNode; const AName: string): string;
+var
+  Index: Integer;
+  Name: string;
+  TypeRef: TSyntaxNode;
+begin
+  for Index := 0 to ABody.ChildCount - 1 do
+    if ABody[Index].Kind = TSyntaxKind.Field then
+      for Name in ABody[Index].Name.Split([',']) do
+        if SameText(Trim(Name), AName) then
+        begin
+          TypeRef := ABody[Index].FindChild(TSyntaxKind.TypeReference);
+          if TypeRef = nil then
+            Exit('');
+          Exit(TypeRef.Name);
+        end;
+  Result := '';
+end;
+
+class function TEqualsWithoutGetHashCodeRule.HashExpression(const AField, ATypeName, ACompare,
+  AInitial: string): string;
+var
+  Value: string;
+begin
+  if MatchText(ATypeName, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString', 'UTF8String']) then
+  begin
+    // Vergleicht Equals ohne Groß-/Kleinschreibung, muss der Hashwert es ebenso tun.
+    Value := AField;
+    if MatchText(ACompare, ['SameText', 'CompareText']) then
+      Value := 'LowerCase(' + AField + ')'
+    else if MatchText(ACompare, ['AnsiSameText', 'AnsiCompareText']) then
+      Value := 'AnsiLowerCase(' + AField + ')';
+    Result := Format('THashBobJenkins.GetHashValue(%s, %s)', [Value, AInitial]);
+  end
+  else
+    Result := Format('THashBobJenkins.GetHashValue(%s, SizeOf(%s), %s)', [AField, AField, AInitial]);
+end;
+
+procedure TEqualsWithoutGetHashCodeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Model: TComponentModel;
+  Cache: IRuleDerivedCache;
+
+  // Überschreibt ein Vorfahr (ohne TObject) die Methode AName? AKnown: die Kette ist bekannt.
+  function AncestorOverrides(const AClass, AName: string; out AKnown: Boolean): Boolean;
+  var
+    Chain: TArray<TSymbolLocation>;
+    Location: TSymbolLocation;
+    Member: TIndexSymbol;
+    ObjectMissing: Boolean;
+  begin
+    Result := False;
+    Chain := Model.FAncestry.Ancestors(AClass, AKnown, ObjectMissing);
+    for Location in Chain do
+      if not SameText(Location.Symbol.Name, 'TObject') then
+        for Member in Model.FAncestry.Methods(Location) do
+          if SameText(Member.Name, AName) and Member.HasDirective('override') then
+            Exit(True);
+  end;
+
+  // Eigene Felder in der Reihenfolge, in der Equals sie nennt, je mit dem Vergleich (SameText …), in dem sie stehen.
+  procedure CollectFields(ANode: TSyntaxNode; const AFields: TArray<string>; var ANames, ACompares: TArray<string>);
+  var
+    Index: Integer;
+    Compare: string;
+  begin
+    if (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and IsIn(ANode.Name, AFields) and
+      not IsIn(ANode.Name, ANames) then
+    begin
+      Compare := '';
+      if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] <> ANode) then
+        Compare := ANode.Parent.Name;
+      ANames := ANames + [ANode.Name];
+      ACompares := ACompares + [Compare];
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      CollectFields(ANode[Index], AFields, ANames, ACompares);
+  end;
+
+  // Korrektur: GetHashCode hinter Equals deklarieren und hinter dem Rumpf von Equals umsetzen.
+  function HashFix(const AInfo: TClassInfo; AHeader: TSyntaxNode; out AFix: TRuleFix): Boolean;
+  var
+    Method, Equals_: TMethodImpl;
+    Found: Boolean;
+    Names, Compares: TArray<string>;
+    Index: Integer;
+    Body, Initial: string;
+    Edit, UsesEdit: TRuleEdit;
+    Edits: TArray<TRuleEdit>;
+    Position: TTextPosition;
+  begin
+    Result := False;
+    Found := False;
+    for Method in Model.Methods do
+      if SameText(Method.ClassName, AInfo.Name) and SameText(Method.MethodName, 'Equals') then
+      begin
+        Equals_ := Method;
+        Found := True;
+      end;
+    if not Found then
+      Exit;
+    Names := nil;
+    Compares := nil;
+    CollectFields(Equals_.Block, OwnFields(AInfo), Names, Compares);
+    if Names = nil then
+      Exit;
+    Body := '';
+    Initial := '0';
+    for Index := 0 to High(Names) do
+    begin
+      Body := Body + '  Result := ' + HashExpression(Names[Index], FieldTypeName(AInfo.Body, Names[Index]),
+        Compares[Index], Initial) + ';' + Model.FLineBreak;
+      Initial := 'Result';
+    end;
+    // Edits in Textreihenfolge: Deklaration, uses der Implementierung, Rumpf.
+    Position := TTextPosition.Create(AHeader.EndPos.Line + 1, 0);
+    Edits := [TRuleEdit.Create(TTextRange.Create(Position, Position), StringOfChar(' ', AHeader.StartPos.Character) +
+      'function GetHashCode: Integer; override;' + Model.FLineBreak)];
+    if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(AContext.Tree.Tokens), 'System.Hash', AContext.Namespaces) and
+      TUsesClauses.AddUnit(AContext.Tree.Tokens, Equals_.Decl.StartOffset, 'System.Hash', Model.FLineBreak,
+      UsesEdit) then
+    begin
+      if UsesEdit.Range.StartPos.Line < AHeader.StartPos.Line then
+        Edits := [UsesEdit] + Edits
+      else
+        Edits := Edits + [UsesEdit];
+    end;
+    Position := TTextPosition.Create(Equals_.Decl.EndPos.Line + 1, 0);
+    Edit := TRuleEdit.Create(TTextRange.Create(Position, Position), Model.FLineBreak + 'function ' + AInfo.Name +
+      '.GetHashCode: Integer;' + Model.FLineBreak + 'begin' + Model.FLineBreak + Body + 'end;' + Model.FLineBreak);
+    Edits := Edits + [Edit];
+    AFix := TRuleFix.Create(Format('GetHashCode mit %s überschreiben (THashBobJenkins)',
+      [string.Join(', ', Names)]), Edits);
+    Result := True;
+  end;
+
+  procedure CheckClasses;
+  var
+    Info: TClassInfo;
+    Header: TSyntaxNode;
+    HasEquals, HasHash, Known: Boolean;
+    Fix: TRuleFix;
+    Fixes: TArray<TRuleFix>;
+  begin
+    for Info in Model.Classes do
+    begin
+      HasEquals := Model.DeclaredWith(Info, 'Equals', 'override');
+      HasHash := Model.DeclaredWith(Info, 'GetHashCode', 'override');
+      if HasEquals = HasHash then
+        Continue;
+      if HasEquals then
+      begin
+        if AncestorOverrides(Info.Name, 'GetHashCode', Known) or not Known then
+          Continue;
+        Header := MemberHeader(Info.Body, 'Equals');
+        Fixes := nil;
+        if HashFix(Info, Header, Fix) then
+          Fixes := [Fix];
+        AReport.Add(TTextRange.Create(Header.StartPos, Header.EndPos), 'Equals ist überschrieben, GetHashCode ' +
+          'nicht; als Schlüssel in TDictionary finden sich gleiche Objekte nicht.', TRuleConfidence.High, Fixes);
+      end
+      else
+      begin
+        if AncestorOverrides(Info.Name, 'Equals', Known) or not Known then
+          Continue;
+        Header := MemberHeader(Info.Body, 'GetHashCode');
+        AReport.Add(TTextRange.Create(Header.StartPos, Header.EndPos), 'GetHashCode ist überschrieben, Equals ' +
+          'nicht; als Schlüssel in TDictionary gelten gleiche Objekte weiter als verschieden.', TRuleConfidence.High);
+      end;
+    end;
+  end;
+
+  // Records der Datei mit class operator Equal und einem Feld, das der Byte-Vergleich falsch vergleicht.
+  procedure CollectRecords(ANode: TSyntaxNode; var ANames: TArray<string>);
+  var
+    Index: Integer;
+    Body, Header: TSyntaxNode;
+    TypeName: string;
+    Unsafe: Boolean;
+  begin
+    if ANode.Kind = TSyntaxKind.TypeDecl then
+    begin
+      Body := ANode.FindChild(TSyntaxKind.RecordType);
+      if Body <> nil then
+      begin
+        Header := MemberHeader(Body, 'Equal');
+        Unsafe := False;
+        for Index := 0 to Body.ChildCount - 1 do
+          if Body[Index].Kind = TSyntaxKind.Field then
+          begin
+            TypeName := FieldTypeName(Body, Trim(Body[Index].Name.Split([','])[0]));
+            if MatchText(TypeName, BinaryUnsafeTypes) or SameText(TypeName, 'TArray') or
+              ((Length(TypeName) > 1) and (TypeName[1] = 'I') and CharInSet(TypeName[2], ['A'..'Z'])) then
+              Unsafe := True;
+          end;
+        if (Header <> nil) and ContainsText(Model.NodeText(Header), 'operator') and Unsafe then
+          ANames := ANames + [ANode.Name];
+      end;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      CollectRecords(ANode[Index], ANames);
+  end;
+
+  // Argumente ohne möglichen Comparer: nur Literale und Mengen (Kapazität, Besitz).
+  function OnlyConstants(ACall: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    for Index := 1 to ACall.ChildCount - 1 do
+      if not (ACall[Index].Kind in [TSyntaxKind.Literal, TSyntaxKind.SetConstructor]) then
+        Exit(False);
+    Result := True;
+  end;
+
+  procedure CheckCreates(ANode: TSyntaxNode; const ARecords: TArray<string>);
+  var
+    Index: Integer;
+    Collection, Args: TSyntaxNode;
+    Key: string;
+  begin
+    if (ANode.Kind = TSyntaxKind.MemberAccess) and SameText(ANode.Name, 'Create') and (ANode.ChildCount = 1) and
+      (ANode[0].Kind = TSyntaxKind.MemberAccess) and IsIn(ANode[0].Name, HashedCollections) then
+    begin
+      Collection := ANode[0];
+      Args := Collection.FindChild(TSyntaxKind.GenericArgs);
+      Key := '';
+      if (Args <> nil) and (Args.ChildCount > 0) then
+        Key := Args[0].Name;
+      if (Key <> '') and IsIn(Key, ARecords) and (not ((ANode.Parent <> nil) and
+        (ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] = ANode)) or OnlyConstants(ANode.Parent)) then
+        AReport.Add(TTextRange.Create(Collection.StartPos, Collection.EndPos), Format('%s hat class operator ' +
+          'Equal, %s vergleicht Schlüssel ohne Comparer aber Byte für Byte; gleiche Schlüssel finden sich nicht.',
+          [Key, Collection.Name]), TRuleConfidence.High);
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      CheckCreates(ANode[Index], ARecords);
+  end;
+
+var
+  Records: TArray<string>;
+begin
+  Cache := TRuleDerived.Open(AContext);
+  if not Prepare(Cache, AContext, Model) then
+    Exit;
+  if ContainsText(AContext.Text, 'Equals') or ContainsText(AContext.Text, 'GetHashCode') then
+    CheckClasses;
+  if ContainsText(AContext.Text, 'operator') then
+  begin
+    Records := nil;
+    CollectRecords(AContext.Tree.Root, Records);
+    if Records <> nil then
+      CheckCreates(AContext.Tree.Root, Records);
+  end;
+end;
+
 procedure RegisterComponentRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TMissingInheritedRule.Create);
   ARegistry.Register(TMessageHandlerWithoutInheritedRule.Create);
+  ARegistry.Register(TInheritedOrderRule.Create);
+  ARegistry.Register(TInheritedWrongMethodRule.Create);
+  ARegistry.Register(TGetterSideEffectRule.Create);
+  ARegistry.Register(TEqualsWithoutGetHashCodeRule.Create);
   ARegistry.Register(TComponentMissingInheritedRule.Create);
   ARegistry.Register(TComponentDefaultMismatchRule.Create);
   ARegistry.Register(TComponentMissingFreeNotificationRule.Create);

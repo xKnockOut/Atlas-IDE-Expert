@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 56 |
+| [Fehler finden](#gruppe-find-bugs) | 63 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
@@ -30,6 +30,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`result-not-set`](#result-not-set) | Funktionsergebnis eventuell nicht gesetzt | Bug | Warnung |
 | [`possibly-uninitialized`](#possibly-uninitialized) | Variable eventuell nicht initialisiert | Bug | Warnung |
 | [`unreachable-code`](#unreachable-code) | Unerreichbarer Code | Bug | Warnung |
+| [`duplicate-assignment`](#duplicate-assignment) | Feld oder Property wird zweimal gesetzt | Bug | Warnung |
 | [`declared-not-implemented`](#declared-not-implemented) | Deklariert, aber nicht implementiert | Bug | Fehler |
 | [`implemented-not-declared`](#implemented-not-declared) | Implementiert, aber nicht deklariert | Bug | Fehler |
 | [`destroy-without-override`](#destroy-without-override) | Destroy ohne override | Bug | Warnung |
@@ -61,6 +62,10 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`deref-before-nil-check`](#deref-before-nil-check) | Erst benutzt, dann auf nil geprüft | Bug | Warnung |
 | [`field-free-without-nil`](#field-free-without-nil) | Feld freigegeben, Verweis bleibt stehen | Bug | Warnung |
 | [`missing-inherited`](#missing-inherited) | Konstruktor oder Destruktor ohne inherited | Bug | Warnung |
+| [`inherited-order`](#inherited-order) | inherited an der falschen Stelle | Bug | Warnung |
+| [`inherited-wrong-method`](#inherited-wrong-method) | inherited ruft eine andere Methode | Bug | Warnung |
+| [`getter-side-effect`](#getter-side-effect) | Getter verändert den Zustand | Code Smell | Warnung |
+| [`equals-without-gethashcode`](#equals-without-gethashcode) | Equals ohne GetHashCode | Bug | Warnung |
 | [`destroy-called-directly`](#destroy-called-directly) | Destroy statt Free aufgerufen | Bug | Warnung |
 | [`managed-type-raw-memory`](#managed-type-raw-memory) | FillChar, Move oder GetMem auf verwaltete Typen | Bug | Fehler |
 | [`pchar-of-temporary`](#pchar-of-temporary) | PChar auf einen temporären String | Bug | Warnung |
@@ -75,6 +80,8 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`event-call-without-assigned`](#event-call-without-assigned) | Ereignis ohne Assigned-Prüfung aufgerufen | Bug | Warnung |
 | [`owned-item-freed`](#owned-item-freed) | Element einer besitzenden Liste zusätzlich freigegeben | Bug | Fehler |
 | [`create-without-assignment`](#create-without-assignment) | Objekt erzeugt und sofort verloren | Bug | Warnung |
+| [`raw-memory-leak`](#raw-memory-leak) | GetMem oder New ohne Freigabe | Bug | Warnung |
+| [`stringlist-objects-leak`](#stringlist-objects-leak) | Objekte in einer TStringList ohne Besitz | Bug | Warnung |
 | [`message-handler-without-inherited`](#message-handler-without-inherited) | Message-Handler ohne inherited | Bug | Warnung |
 | [`string-index-base`](#string-index-base) | String-Index ab 0 oder Pos-Ergebnis mit -1 verglichen | Bug | Warnung |
 | [`delimited-text-without-strict`](#delimited-text-without-strict) | DelimitedText ohne StrictDelimiter | Bug | Warnung |
@@ -839,6 +846,33 @@ begin
   I := Calc;
   Bar(I);
 end;
+```
+
+<a id="duplicate-assignment"></a>
+### duplicate-assignment
+
+**Feld oder Property wird zweimal gesetzt** · Bug · Warnung · Gruppe Fehler finden
+
+Dasselbe Feld oder dieselbe Property (Panel.Left, Self.FWert, P^.X) bekommt zweimal hintereinander einen Wert, ohne dass dazwischen gelesen oder etwas aufgerufen wird; meist sollte die zweite Zeile ein anderes Ziel haben (Left/Top). Dazwischen dürfen nur Zuweisungen an andere Objekte stehen, deren Werte nichts aufrufen und das Ziel nicht nennen; der zweite Wert darf das Ziel nicht lesen. Lokale Variablen deckt unused-assignment ab, Ziele mit Index oder Aufruf zählen nicht. Still beim Wechsel False/True (stößt oft etwas an, etwa Active), bei einer zweiten Zuweisung, die nur unter einer weiteren Bedingung übersetzt wird ({$IFDEF DEBUG}), bei verschiedenen Zweigen desselben {$IFDEF} und bei Properties aus allowProperties. Fehlt das Gegenstück (Left/Top, Width/Height …) in der Folge, nennt die Meldung es als Vermutung. Konfidenz hoch. Keine Schnellkorrektur; Sprung zur ersten Zuweisung.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowProperties` | string-list | `["Visible","Enabled"]` | Properties, bei denen doppeltes Setzen gewollt sein kann (Setter mit Nebenwirkung), Muster mit * und ?. |
+
+Mit Treffer:
+
+```pascal
+Panel.Left := 8;
+Panel.Left := 40;
+Panel.Width := 200;
+```
+
+Richtig:
+
+```pascal
+Panel.Left := 8;
+Panel.Top := 40;
+Panel.Width := 200;
 ```
 
 <a id="declared-not-implemented"></a>
@@ -2803,6 +2837,118 @@ begin
 end;
 ```
 
+<a id="inherited-order"></a>
+### inherited-order
+
+**inherited an der falschen Stelle** · Bug · Warnung · Gruppe Fehler finden
+
+Im Destruktor steht inherited (inherited; bzw. inherited Destroy) als Anweisung des Rumpfs vor einer späteren Anweisung, die ein Feld der Klasse selbst freigibt (F.Free, F.DisposeOf, FreeAndNil(F), auch mit Self.): Der Vorfahr kann noch virtuelle Methoden aufrufen, die das Feld brauchen. Klassen, in deren Kette eine Klasse mit Thread im Namen steht, bleiben still, denn TThread.Destroy wartet auf Execute und gehört dort an den Anfang. Im Konstruktor greifen die Anweisungen vor inherited auf ein Feld oder eine Property eines Vorfahren zu (aufgelöst über Datei und Index; eigene Felder, Parameter und lokale Variablen zählen nicht), solange der Vorfahr noch nicht angelegt ist. missing-inherited meldet fehlendes inherited, diese Regel die Reihenfolge. Konfidenz mittel. Schnellkorrektur: inherited an das Ende des Destruktors bzw. den Anfang des Konstruktors verschieben; nicht, wenn die Argumente von inherited Create vorher gesetzte lokale Variablen verwenden.
+
+Mit Treffer:
+
+```pascal
+destructor TExport.Destroy;
+begin
+  inherited;
+  FDatei.Free;
+end;
+```
+
+Richtig:
+
+```pascal
+destructor TExport.Destroy;
+begin
+  FDatei.Free;
+  inherited;
+end;
+```
+
+<a id="inherited-wrong-method"></a>
+### inherited-wrong-method
+
+**inherited ruft eine andere Methode** · Bug · Warnung · Gruppe Fehler finden
+
+In der überschriebenen Methode Speichern steht inherited Laden(…) statt inherited Speichern(…), meist nach Kopieren einer Methode. Es zählen nur Aufrufe (inherited Name als Anweisung oder mit Klammern); inherited Caption ohne Klammern kann eine Property sein. Still in Konstruktoren (inherited Create(nil), CreateNew), in Methoden ohne override und wenn die Methode auch sich selbst im Vorfahren aufruft (inherited; bzw. inherited Speichern), denn dann ist der andere Aufruf gewollt. Paare aus der Option allowed bleiben still. Konfidenz hoch. Schnellkorrektur: den Namen durch den eigenen ersetzen, wenn die Zahl der Argumente zu ihren Parametern passt.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowed` | string-list | `[]` | Erlaubte Paare "Methode>geerbte Methode", Muster mit * und ?, z. B. "Speichern>Pruefen". |
+
+Mit Treffer:
+
+```pascal
+procedure TKundenForm.Speichern;
+begin
+  inherited Laden;
+  Protokollieren;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TKundenForm.Speichern;
+begin
+  inherited Speichern;
+  Protokollieren;
+end;
+```
+
+<a id="getter-side-effect"></a>
+### getter-side-effect
+
+**Getter verändert den Zustand** · Code Smell · Warnung · Gruppe Fehler finden
+
+Die read-Methode einer Property weist Feldern oder Properties des eigenen Objekts zu (FAbrufe, Self.FWert, auch geerbte Felder), ruft Inc/Dec/Include/Exclude darauf auf oder übergibt ein neu angelegtes Objekt an eine Methode eines Felds (FListe.Add(TEintrag.Create)). Der Debugger wertet Getter beim Anzeigen aus und ändert so den Zustand. Lazy-Initialisierung ist erlaubt: Ein umschließendes if prüft etwas, das sein Zweig zuweist (if FListe = nil then FListe := …, if Result = nil then … FListe := Result, if not FGeladen then … FGeladen := True). Still bei lokalen Variablen mit dem Namen eines Felds, Result, Methoden ohne Property und anonymen Methoden. Eine Meldung je Getter und Feld. Konfidenz mittel. Keine Schnellkorrektur.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowLazyInit` | boolean | `true` | Lazy-Initialisierung im Getter erlauben (if FListe = nil then FListe := …). |
+
+Mit Treffer:
+
+```pascal
+function TZaehler.GetWert: Integer;
+begin
+  Inc(FAbrufe);
+  Result := FWert;
+end;
+```
+
+Richtig:
+
+```pascal
+function TZaehler.GetWert: Integer;
+begin
+  Result := FWert;
+end;
+```
+
+<a id="equals-without-gethashcode"></a>
+### equals-without-gethashcode
+
+**Equals ohne GetHashCode** · Bug · Warnung · Gruppe Fehler finden
+
+Eine Klasse überschreibt Equals, aber nicht GetHashCode (oder umgekehrt). In TDictionary und THashSet mit Standard-Comparer finden gleiche Objekte sich dann nicht. Still, wenn ein Vorfahr das Gegenstück überschreibt, wenn die Vorfahrenkette nicht vollständig bekannt ist und bei Equals ohne override. Gilt ebenso für Records der Datei mit class operator Equal, die als Schlüssel von TDictionary, TObjectDictionary, THashSet oder TMultiMap ohne Comparer dienen (Create ohne Argumente oder nur mit Konstanten wie Kapazität oder Besitz): Der Standard-Comparer vergleicht Records Byte für Byte, was nur bei Feldern vom Typ string, Variant, Gleitkomma, Interface oder TArray falsch ist; Records mit nur ordinalen Feldern bleiben still. Konfidenz hoch. Schnellkorrektur für Klassen: GetHashCode hinter Equals deklarieren und hinter dem Rumpf von Equals mit THashBobJenkins über die eigenen Felder umsetzen, die Equals vergleicht (ohne Groß-/Kleinschreibung über LowerCase, wenn Equals SameText nutzt), System.Hash in uses ergänzen.
+
+Mit Treffer:
+
+```pascal
+  TKundenNr = class
+    function Equals(Obj: TObject): Boolean; override;
+  end;
+```
+
+Richtig:
+
+```pascal
+  TKundenNr = class
+    function Equals(Obj: TObject): Boolean; override;
+    function GetHashCode: Integer; override;
+  end;
+```
+
 <a id="destroy-called-directly"></a>
 ### destroy-called-directly
 
@@ -3644,6 +3790,56 @@ begin
     ImportProtokoll.Free;
   end;
 end;
+```
+
+<a id="raw-memory-leak"></a>
+### raw-memory-leak
+
+**GetMem oder New ohne Freigabe** · Bug · Warnung · Gruppe Fehler finden
+
+Eine lokale Variable erhält Speicher über GetMem, AllocMem, ReallocMem, GetMemory, New, StrAlloc oder StrNew, die Routine gibt ihn aber nie mit FreeMem, FreeMemory, Dispose, StrDispose oder ReallocMem(P, 0) frei, und der Zeiger verlässt die Routine nicht: weder zurückgegeben (Result, Exit) noch einer anderen Variablen oder einem Feld zugewiesen, nicht über seine Adresse (@P) weitergegeben, keiner Methode übergeben, die ihn behält (Add, Insert, Push …), nicht von einer anonymen Methode eingefangen und nicht in einer lokalen Routine benutzt. Zum Lesen oder Füllen weitergeben (Pruefsumme(P, N), Strom.ReadBuffer(P^, N)) ist erlaubt; eine Routine mit Free, Frei, Release, Dispose, Destroy oder Dealloc im Namen gilt als Freigabe. Eine Freigabe ohne try/finally meldet pair-without-finally. Konfidenz mittel. Schnellkorrektur: die folgenden Anweisungen des Blocks in try … finally mit der passenden Freigabe einschließen.
+
+Mit Treffer:
+
+```pascal
+GetMem(Puffer, Groesse);
+Strom.ReadBuffer(Puffer^, Groesse);
+Ergebnis := Pruefsumme(Puffer, Groesse);
+```
+
+Richtig:
+
+```pascal
+GetMem(Puffer, Groesse);
+try
+  Strom.ReadBuffer(Puffer^, Groesse);
+  Ergebnis := Pruefsumme(Puffer, Groesse);
+finally
+  FreeMem(Puffer);
+end;
+```
+
+<a id="stringlist-objects-leak"></a>
+### stringlist-objects-leak
+
+**Objekte in einer TStringList ohne Besitz** · Bug · Warnung · Gruppe Fehler finden
+
+AddObject oder InsertObject legt ein neu erzeugtes Objekt (T.Create(…) direkt oder eine so erzeugte lokale Variable, die sonst nur gelesen wird) in eine TStringList (oder THashedStringList), die die Unit ohne OwnsObjects erzeugt, oder in die Items eines Felds vom Typ TListBox, TComboBox, TCheckListBox, TComboBoxEx oder TColorListBox; niemand gibt diese Objekte frei. Besitzend ist eine Liste mit TStringList.Create(True) oder OwnsObjects := True. Still, wenn eine Routine der Unit Liste.Objects[…] liest und etwas freigibt, wenn die Liste weitergegeben wird (ObjekteFreigeben(Liste), anderswo zugewiesen), wenn das Objekt einen Owner hat (Self, Owner, AOwner, Application oder ein Nachfahr von TComponent mit Argument) und bei Listen, die nicht in der Unit erzeugt werden. Konfidenz mittel. Schnellkorrektur: TStringList.Create(True) (auch statt Create(False)), bei anderen Konstruktoren OwnsObjects := True nach der Erzeugung; für Items von Steuerelementen keine.
+
+Mit Treffer:
+
+```pascal
+FKunden := TStringList.Create;
+…
+FKunden.AddObject(K.Name, TKunde.Create(K));
+```
+
+Richtig:
+
+```pascal
+FKunden := TStringList.Create(True);
+…
+FKunden.AddObject(K.Name, TKunde.Create(K));
 ```
 
 <a id="message-handler-without-inherited"></a>

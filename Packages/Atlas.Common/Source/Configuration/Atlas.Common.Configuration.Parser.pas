@@ -45,12 +45,12 @@ uses
 
 const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
-  BooleanRuleOptions: array[0..6] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
-    'includeRecords', 'includeFormVariables', 'checkUses');
+  BooleanRuleOptions: array[0..7] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
+    'includeRecords', 'includeFormVariables', 'checkUses', 'allowLazyInit');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  StringListRuleOptions: array[0..14] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+  StringListRuleOptions: array[0..15] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
-    'allowTables', 'types');
+    'allowTables', 'types', 'allowProperties');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
   NumberListRuleOptions: array[0..0] of string = ('allowed');
   /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
@@ -287,6 +287,12 @@ begin
             ReportNode(Value[Inner], Format('"%s" muss true oder false sein', [Value.Keys[Inner]]))
           else if (IndexStr(Value.Keys[Inner], StringListRuleOptions) >= 0) and not IsStringList(Value[Inner]) then
             ReportNode(Value[Inner], Format('"%s" muss eine Liste von Texten sein', [Value.Keys[Inner]]))
+          // allowed von inherited-wrong-method (#1050) sind Paare "Methode>geerbte Methode", sonst Zahlen.
+          else if (Value.Keys[Inner] = 'allowed') and (Rule.Id = 'inherited-wrong-method') then
+          begin
+            if not IsStringList(Value[Inner]) then
+              ReportNode(Value[Inner], '"allowed" muss eine Liste von Texten sein');
+          end
           else if (IndexStr(Value.Keys[Inner], NumberListRuleOptions) >= 0) and not IsNumberList(Value[Inner]) then
             ReportNode(Value[Inner], Format('"%s" muss eine Liste von Zahlen sein', [Value.Keys[Inner]]))
           else if (IndexStr(Value.Keys[Inner], StringRuleOptions) >= 0) and (Value[Inner].Kind <> TJsonKind.String_) then

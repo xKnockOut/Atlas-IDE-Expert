@@ -331,6 +331,27 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "duplicate-assignment",' + #10 +
+    '      "name": "Field or property assigned twice",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "The same field or property (Panel.Left, Self.FWert, P^.X) gets a value twice in a row without being read or anything being called in between; usually the second line should have ' + 'a different target (Left/Top). Between the two only assignments to other objects with values that call nothing and do not name the target may stand; the second value must not read the target. Local va' + 'riables are covered by unused-assignment, targets with an index or a call do not count. Silent for a False/True toggle (it often triggers something, like Active), for a second assignment compiled only' + ' under an additional condition ({$IFDEF DEBUG}), for different branches of the same {$IFDEF} and for properties from allowProperties. If the counterpart (Left/Top, Width/Height …) is missing from the ' + 'sequence, the message suggests it. High confidence. No quick fix; jump to the first assignment.",' + #10 +
+    '      "bad": "Panel.Left := 8;\nPanel.Left := 40;\nPanel.Width := 200;",' + #10 +
+    '      "good": "Panel.Left := 8;\nPanel.Top := 40;\nPanel.Width := 200;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowProperties",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "Visible",' + #10 +
+    '            "Enabled"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Properties where setting twice may be intended (setter with side effects), patterns with * and ?."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "declared-not-implemented",' + #10 +
     '      "name": "Declared but not implemented",' + #10 +
     '      "category": "bug",' + #10 +
@@ -1311,6 +1332,62 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "inherited-order",' + #10 +
+    '      "name": "inherited in the wrong place",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "In a destructor, inherited (inherited; or inherited Destroy) stands as a statement of the method body before a later statement frees a field of the class itself (F.Free, F.Dispos' + 'eOf, FreeAndNil(F), also with Self.): the ancestor may still call virtual methods that need the field. Classes whose chain contains a class with Thread in its name stay silent, because TThread.Destroy' + ' waits for Execute and belongs at the start there. In a constructor, the statements before inherited access a field or property inherited from an ancestor (resolved through the file and the index; own' + ' fields, parameters and local variables do not count), while the ancestor is not set up yet. missing-inherited reports a missing inherited; this rule the order. Medium confidence. Quick fix: move inhe' + 'rited to the end of the destructor or the start of the constructor; not when the arguments of inherited Create use local variables set before.",' + #10 +
+    '      "bad": "destructor TExport.Destroy;\nbegin\n  inherited;\n  FDatei.Free;\nend;",' + #10 +
+    '      "good": "destructor TExport.Destroy;\nbegin\n  FDatei.Free;\n  inherited;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inherited-wrong-method",' + #10 +
+    '      "name": "inherited calls a different method",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "In the overridden method Speichern there is inherited Laden(…) instead of inherited Speichern(…), usually after copying a method. Only calls count (inherited Name as a statement ' + 'or with parentheses); inherited Caption without parentheses may be a property. Silent in constructors (inherited Create(nil), CreateNew), in methods without override and when the method also calls its' + 'elf in the ancestor (inherited; or inherited Speichern), which makes the other call intentional. Pairs from the option allowed stay silent. High confidence. Quick fix: replace the name with the method' + '''s own, when the number of arguments matches its parameters.",' + #10 +
+    '      "bad": "procedure TKundenForm.Speichern;\nbegin\n  inherited Laden;\n  Protokollieren;\nend;",' + #10 +
+    '      "good": "procedure TKundenForm.Speichern;\nbegin\n  inherited Speichern;\n  Protokollieren;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowed",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Allowed pairs \"Method>inherited method\", patterns with * and ?, e.g. \"Speichern>Pruefen\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "getter-side-effect",' + #10 +
+    '      "name": "Getter changes the state",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "The read method of a property assigns fields or properties of its own object (FAbrufe, Self.FWert, inherited fields as well), calls Inc/Dec/Include/Exclude on them or passes a ne' + 'wly created object to a method of a field (FListe.Add(TEintrag.Create)). The debugger evaluates getters when displaying them and so changes the state. Lazy initialization is allowed: an enclosing if t' + 'ests something that its branch assigns (if FListe = nil then FListe := …, if Result = nil then … FListe := Result, if not FGeladen then … FGeladen := True). Local variables with the same name as a fie' + 'ld, Result, methods without a property and anonymous methods stay silent. One message per getter and field. Medium confidence. No quick fix.",' + #10 +
+    '      "bad": "function TZaehler.GetWert: Integer;\nbegin\n  Inc(FAbrufe);\n  Result := FWert;\nend;",' + #10 +
+    '      "good": "function TZaehler.GetWert: Integer;\nbegin\n  Result := FWert;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowLazyInit",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Allow lazy initialization in the getter (if FListe = nil then FListe := …)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "equals-without-gethashcode",' + #10 +
+    '      "name": "Equals without GetHashCode",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "A class overrides Equals but not GetHashCode (or the other way round). In TDictionary and THashSet with the default comparer equal objects then do not find each other. Silent whe' + 'n an ancestor overrides the counterpart, when the ancestor chain is not known completely and for Equals without override. Also applies to records of the file with class operator Equal used as keys of ' + 'TDictionary, TObjectDictionary, THashSet or TMultiMap without a comparer (Create without arguments or only with constants such as capacity or ownership): the default comparer compares records byte by ' + 'byte, which is only wrong for fields of type string, Variant, floating point, interface or TArray; records with only such ordinal fields stay silent. High confidence. Quick fix for classes: declare Ge' + 'tHashCode after Equals and implement it after the body of Equals with THashBobJenkins over the own fields that Equals compares (case-insensitively via LowerCase when Equals uses SameText), adding Syst' + 'em.Hash to uses.",' + #10 +
+    '      "bad": "  TKundenNr = class\n    function Equals(Obj: TObject): Boolean; override;\n  end;",' + #10 +
+    '      "good": "  TKundenNr = class\n    function Equals(Obj: TObject): Boolean; override;\n    function GetHashCode: Integer; override;\n  end;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "destroy-called-directly",' + #10 +
     '      "name": "Destroy called instead of Free",' + #10 +
     '      "category": "bug",' + #10 +
@@ -1824,6 +1901,26 @@ begin
     '          "description": "Classes that register themselves in their constructor, as patterns with * and ?; Create as a statement stays silent for them."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "raw-memory-leak",' + #10 +
+    '      "name": "GetMem or New without release",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "A local variable receives memory from GetMem, AllocMem, ReallocMem, GetMemory, New, StrAlloc or StrNew, but the routine never releases it with FreeMem, FreeMemory, Dispose, StrDi' + 'spose or ReallocMem(P, 0), and the pointer neither leaves the routine nor is stored: not returned (Result, Exit), not assigned to another variable or field, not passed by address (@P), not handed to a' + ' method that keeps it (Add, Insert, Push …), not captured by an anonymous method and not used in a local routine. Passing the pointer to read or fill it (Checksum(P, N), Stream.ReadBuffer(P^, N)) is f' + 'ine; a routine whose name contains Free, Frei, Release, Dispose, Destroy or Dealloc counts as the release. A release without try/finally is reported by pair-without-finally. Medium confidence. Quick f' + 'ix: wrap the following statements of the block in try … finally with the matching release.",' + #10 +
+    '      "bad": "GetMem(Puffer, Groesse);\nStrom.ReadBuffer(Puffer^, Groesse);\nErgebnis := Pruefsumme(Puffer, Groesse);",' + #10 +
+    '      "good": "GetMem(Puffer, Groesse);\ntry\n  Strom.ReadBuffer(Puffer^, Groesse);\n  Ergebnis := Pruefsumme(Puffer, Groesse);\nfinally\n  FreeMem(Puffer);\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "stringlist-objects-leak",' + #10 +
+    '      "name": "Objects in a TStringList without ownership",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "AddObject or InsertObject puts a newly created object (T.Create(…) directly, or a local variable created that way and otherwise only read) into a TStringList (or THashedStringLis' + 't) that the unit creates without OwnsObjects, or into the Items of a TListBox, TComboBox, TCheckListBox, TComboBoxEx or TColorListBox field; nobody frees these objects. A list is owning with TStringLi' + 'st.Create(True) or OwnsObjects := True. Silent when a routine of the unit reads List.Objects[…] and frees something, when the list is passed on (FreeObjects(List), assigned elsewhere), when the object' + ' has an owner (Self, Owner, AOwner, Application or a TComponent descendant with an argument) and for lists not created in the unit. Medium confidence. Quick fix: TStringList.Create(True) (also instead' + ' of Create(False)), with other constructors OwnsObjects := True after the creation; none for control items.",' + #10 +
+    '      "bad": "FKunden := TStringList.Create;\n…\nFKunden.AddObject(K.Name, TKunde.Create(K));",' + #10 +
+    '      "good": "FKunden := TStringList.Create(True);\n…\nFKunden.AddObject(K.Name, TKunde.Create(K));"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "message-handler-without-inherited",' + #10 +
@@ -2537,6 +2634,17 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "duplicate-assignment",' + #10 +
+    '      "name": "Feld oder Property wird zweimal gesetzt",' + #10 +
+    '      "description": "Dasselbe Feld oder dieselbe Property (Panel.Left, Self.FWert, P^.X) bekommt zweimal hintereinander einen Wert, ohne dass dazwischen gelesen oder etwas aufgerufen wird; meist soll' + 'te die zweite Zeile ein anderes Ziel haben (Left/Top). Dazwischen dürfen nur Zuweisungen an andere Objekte stehen, deren Werte nichts aufrufen und das Ziel nicht nennen; der zweite Wert darf das Ziel ' + 'nicht lesen. Lokale Variablen deckt unused-assignment ab, Ziele mit Index oder Aufruf zählen nicht. Still beim Wechsel False/True (stößt oft etwas an, etwa Active), bei einer zweiten Zuweisung, die nu' + 'r unter einer weiteren Bedingung übersetzt wird ({$IFDEF DEBUG}), bei verschiedenen Zweigen desselben {$IFDEF} und bei Properties aus allowProperties. Fehlt das Gegenstück (Left/Top, Width/Height …) i' + 'n der Folge, nennt die Meldung es als Vermutung. Konfidenz hoch. Keine Schnellkorrektur; Sprung zur ersten Zuweisung.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowProperties",' + #10 +
+    '          "description": "Properties, bei denen doppeltes Setzen gewollt sein kann (Setter mit Nebenwirkung), Muster mit * und ?."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "declared-not-implemented",' + #10 +
     '      "name": "Deklariert, aber nicht implementiert",' + #10 +
     '      "description": "Eine Methode ist in einer Klasse, einem Record oder Objekt deklariert, hat aber keinen Rumpf im implementation-Abschnitt. Der Compiler meldet das erst beim Kompilieren (E2065). E' + 'inen Rumpf gleichen Namens mit anderem Kopf meldet stattdessen signature-mismatch."' + #10 +
@@ -3042,6 +3150,38 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "inherited-order",' + #10 +
+    '      "name": "inherited an der falschen Stelle",' + #10 +
+    '      "description": "Im Destruktor steht inherited (inherited; bzw. inherited Destroy) als Anweisung des Rumpfs vor einer späteren Anweisung, die ein Feld der Klasse selbst freigibt (F.Free, F.Dispos' + 'eOf, FreeAndNil(F), auch mit Self.): Der Vorfahr kann noch virtuelle Methoden aufrufen, die das Feld brauchen. Klassen, in deren Kette eine Klasse mit Thread im Namen steht, bleiben still, denn TThrea' + 'd.Destroy wartet auf Execute und gehört dort an den Anfang. Im Konstruktor greifen die Anweisungen vor inherited auf ein Feld oder eine Property eines Vorfahren zu (aufgelöst über Datei und Index; eig' + 'ene Felder, Parameter und lokale Variablen zählen nicht), solange der Vorfahr noch nicht angelegt ist. missing-inherited meldet fehlendes inherited, diese Regel die Reihenfolge. Konfidenz mittel. Schn' + 'ellkorrektur: inherited an das Ende des Destruktors bzw. den Anfang des Konstruktors verschieben; nicht, wenn die Argumente von inherited Create vorher gesetzte lokale Variablen verwenden."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inherited-wrong-method",' + #10 +
+    '      "name": "inherited ruft eine andere Methode",' + #10 +
+    '      "description": "In der überschriebenen Methode Speichern steht inherited Laden(…) statt inherited Speichern(…), meist nach Kopieren einer Methode. Es zählen nur Aufrufe (inherited Name als Anwei' + 'sung oder mit Klammern); inherited Caption ohne Klammern kann eine Property sein. Still in Konstruktoren (inherited Create(nil), CreateNew), in Methoden ohne override und wenn die Methode auch sich se' + 'lbst im Vorfahren aufruft (inherited; bzw. inherited Speichern), denn dann ist der andere Aufruf gewollt. Paare aus der Option allowed bleiben still. Konfidenz hoch. Schnellkorrektur: den Namen durch ' + 'den eigenen ersetzen, wenn die Zahl der Argumente zu ihren Parametern passt.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowed",' + #10 +
+    '          "description": "Erlaubte Paare \"Methode>geerbte Methode\", Muster mit * und ?, z. B. \"Speichern>Pruefen\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "getter-side-effect",' + #10 +
+    '      "name": "Getter verändert den Zustand",' + #10 +
+    '      "description": "Die read-Methode einer Property weist Feldern oder Properties des eigenen Objekts zu (FAbrufe, Self.FWert, auch geerbte Felder), ruft Inc/Dec/Include/Exclude darauf auf oder über' + 'gibt ein neu angelegtes Objekt an eine Methode eines Felds (FListe.Add(TEintrag.Create)). Der Debugger wertet Getter beim Anzeigen aus und ändert so den Zustand. Lazy-Initialisierung ist erlaubt: Ein ' + 'umschließendes if prüft etwas, das sein Zweig zuweist (if FListe = nil then FListe := …, if Result = nil then … FListe := Result, if not FGeladen then … FGeladen := True). Still bei lokalen Variablen ' + 'mit dem Namen eines Felds, Result, Methoden ohne Property und anonymen Methoden. Eine Meldung je Getter und Feld. Konfidenz mittel. Keine Schnellkorrektur.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowLazyInit",' + #10 +
+    '          "description": "Lazy-Initialisierung im Getter erlauben (if FListe = nil then FListe := …)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "equals-without-gethashcode",' + #10 +
+    '      "name": "Equals ohne GetHashCode",' + #10 +
+    '      "description": "Eine Klasse überschreibt Equals, aber nicht GetHashCode (oder umgekehrt). In TDictionary und THashSet mit Standard-Comparer finden gleiche Objekte sich dann nicht. Still, wenn ei' + 'n Vorfahr das Gegenstück überschreibt, wenn die Vorfahrenkette nicht vollständig bekannt ist und bei Equals ohne override. Gilt ebenso für Records der Datei mit class operator Equal, die als Schlüssel' + ' von TDictionary, TObjectDictionary, THashSet oder TMultiMap ohne Comparer dienen (Create ohne Argumente oder nur mit Konstanten wie Kapazität oder Besitz): Der Standard-Comparer vergleicht Records By' + 'te für Byte, was nur bei Feldern vom Typ string, Variant, Gleitkomma, Interface oder TArray falsch ist; Records mit nur ordinalen Feldern bleiben still. Konfidenz hoch. Schnellkorrektur für Klassen: G' + 'etHashCode hinter Equals deklarieren und hinter dem Rumpf von Equals mit THashBobJenkins über die eigenen Felder umsetzen, die Equals vergleicht (ohne Groß-/Kleinschreibung über LowerCase, wenn Equals' + ' SameText nutzt), System.Hash in uses ergänzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "destroy-called-directly",' + #10 +
     '      "name": "Destroy statt Free aufgerufen",' + #10 +
     '      "description": "Obj.Destroy wird direkt als Anweisung aufgerufen. Ist Obj nil, knallt der Aufruf; Free prüft vorher auf nil und ist der übliche Weg, ein Objekt freizugeben. inherited Destroy und' + ' Aufrufe eines Destruktors mit Argumenten sind ausgenommen. Konfidenz hoch. Schnellkorrektur: aus Destroy wird Free."' + #10 +
@@ -3319,6 +3459,16 @@ begin
     '          "description": "Klassen, die sich im Konstruktor selbst registrieren, als Muster mit * und ?; Create als Anweisung bleibt für sie still."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "raw-memory-leak",' + #10 +
+    '      "name": "GetMem oder New ohne Freigabe",' + #10 +
+    '      "description": "Eine lokale Variable erhält Speicher über GetMem, AllocMem, ReallocMem, GetMemory, New, StrAlloc oder StrNew, die Routine gibt ihn aber nie mit FreeMem, FreeMemory, Dispose, StrD' + 'ispose oder ReallocMem(P, 0) frei, und der Zeiger verlässt die Routine nicht: weder zurückgegeben (Result, Exit) noch einer anderen Variablen oder einem Feld zugewiesen, nicht über seine Adresse (@P) ' + 'weitergegeben, keiner Methode übergeben, die ihn behält (Add, Insert, Push …), nicht von einer anonymen Methode eingefangen und nicht in einer lokalen Routine benutzt. Zum Lesen oder Füllen weitergebe' + 'n (Pruefsumme(P, N), Strom.ReadBuffer(P^, N)) ist erlaubt; eine Routine mit Free, Frei, Release, Dispose, Destroy oder Dealloc im Namen gilt als Freigabe. Eine Freigabe ohne try/finally meldet pair-wi' + 'thout-finally. Konfidenz mittel. Schnellkorrektur: die folgenden Anweisungen des Blocks in try … finally mit der passenden Freigabe einschließen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "stringlist-objects-leak",' + #10 +
+    '      "name": "Objekte in einer TStringList ohne Besitz",' + #10 +
+    '      "description": "AddObject oder InsertObject legt ein neu erzeugtes Objekt (T.Create(…) direkt oder eine so erzeugte lokale Variable, die sonst nur gelesen wird) in eine TStringList (oder THashed' + 'StringList), die die Unit ohne OwnsObjects erzeugt, oder in die Items eines Felds vom Typ TListBox, TComboBox, TCheckListBox, TComboBoxEx oder TColorListBox; niemand gibt diese Objekte frei. Besitzend' + ' ist eine Liste mit TStringList.Create(True) oder OwnsObjects := True. Still, wenn eine Routine der Unit Liste.Objects[…] liest und etwas freigibt, wenn die Liste weitergegeben wird (ObjekteFreigeben(' + 'Liste), anderswo zugewiesen), wenn das Objekt einen Owner hat (Self, Owner, AOwner, Application oder ein Nachfahr von TComponent mit Argument) und bei Listen, die nicht in der Unit erzeugt werden. Kon' + 'fidenz mittel. Schnellkorrektur: TStringList.Create(True) (auch statt Create(False)), bei anderen Konstruktoren OwnsObjects := True nach der Erzeugung; für Items von Steuerelementen keine."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "message-handler-without-inherited",' + #10 +
