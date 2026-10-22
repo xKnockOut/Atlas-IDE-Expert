@@ -175,6 +175,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Baseline.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SemanticTokens.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WorkspaceSymbols.Tests.pas"/>

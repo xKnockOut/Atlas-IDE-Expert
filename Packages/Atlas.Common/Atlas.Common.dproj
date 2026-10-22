@@ -385,6 +385,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Conventions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InactiveRegions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceFolders.pas"/>

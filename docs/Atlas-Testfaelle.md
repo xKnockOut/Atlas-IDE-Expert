@@ -3603,3 +3603,18 @@ Voraussetzung: Server läuft; Unit mit `TZaehler`, Feld `FOnChange: TNotifyEvent
 | EA6 | Feld `FReadText: TFunc<string, string>`, das der Konstruktor mit `FReadText := AReadText` belegt | Keine Meldung (Abhängigkeit, kein Ereignis) |
 | EA7 | `if FWert > 0 then FOnChange(Self);` in einer Zeile | Warnung ohne Korrektur |
 | EA8 | `"event-call-without-assigned": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Element einer besitzenden Liste freigegeben (#947)
+
+Voraussetzung: Server läuft; Routine mit `Auftraege := TObjectList<TAuftrag>.Create;`, darunter `Auftraege[I].Free;` und `Auftraege.Delete(I);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OI1 | Unit öffnen | Fehler `owned-item-freed` auf `Auftraege[I].Free`: „Auftraege besitzt seine Elemente (OwnsObjects); Delete gibt das Element ein zweites Mal frei.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| OI2 | Alt+Enter, „Free entfernen“ | Die Zeile mit `Free` verschwindet, `Auftraege.Delete(I);` bleibt; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| OI3 | `Auftraege.Delete(I);` entfernen, nur `Auftraege[I].Free;` | Meldung „… die Liste gibt das Element beim Freigeben ein zweites Mal frei.“, Korrektur „Delete statt Free“ ergibt `Auftraege.Delete(I);` |
+| OI4 | `for Auftrag in Auftraege do Auftrag.Free;` vor `Auftraege.Clear;` | Meldung mit „Clear“; „Free entfernen“ nimmt die ganze Schleife weg |
+| OI5 | `Auftrag := Auftraege[I]; Auftraege.Remove(Auftrag); Auftrag.Free;` | Meldung mit „Remove“; Alternative „Extract statt Remove“ ersetzt `Remove` durch `Extract` |
+| OI6 | `TObjectList<TAuftrag>.Create(False)`, `Auftraege.OwnsObjects := False` oder `Extract` in der Routine | Keine Meldung |
+| OI7 | Feld `FKunden := TObjectDictionary<string, TKunde>.Create([doOwnsValues]);`, in einer Methode `FKunden[AName].Free;` | Meldung „FKunden besitzt seine Werte (doOwnsValues) …“, Korrektur „Remove statt Free“; ohne `doOwnsValues` keine Meldung |
+| OI8 | `"owned-item-freed": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

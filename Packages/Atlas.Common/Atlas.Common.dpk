@@ -325,6 +325,7 @@ contains
   Atlas.Common.Rules.Builtin.OpenTools in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.pas',
   Atlas.Common.Rules.Builtin.Testing in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.pas',
   Atlas.Common.Rules.Builtin.Events in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.pas',
+  Atlas.Common.Rules.Builtin.Ownership in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.pas',
   Atlas.Common.Rules.Conventions in 'Source\Rules\Atlas.Common.Rules.Conventions.pas',
   Atlas.Common.Lsp.InactiveRegions in 'Source\Lsp\Atlas.Common.Lsp.InactiveRegions.pas',
   Atlas.Common.Lsp.WorkspaceFolders in 'Source\Lsp\Atlas.Common.Lsp.WorkspaceFolders.pas',

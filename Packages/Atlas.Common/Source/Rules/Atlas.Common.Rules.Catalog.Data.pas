@@ -1784,6 +1784,16 @@ begin
     '      "description": "FOnChange(Self) or OnChange(Self) is called in a method of the class without Assigned(FOnChange) or FOnChange <> nil guarding the call: without a handler an access violation foll' + 'ows. Events are fields and properties of the class with a method pointer or reference type (procedure ... of object, reference to ..., TNotifyEvent, TProc/TFunc, types ending in Event, procedural type' + 's of the unit or the index). Guards: the then branch of a condition with Assigned (also while), the else branch of not Assigned, \"Assigned(F) and\" before the call, or \"if not Assigned(F) then Exit/' + 'raise\" before it, including a flag variable or a parameterless method of the class whose Result contains Assigned(F). Fields that a constructor sets to a value (injected dependencies such as FReadTex' + 't := AReadText), properties reading them and local names that shadow the event stay silent. High confidence. Quick fix: wrap the call in \"if Assigned(F) then\" when it is a statement of its own in a ' + 'block.",' + #10 +
     '      "bad": "procedure TZaehler.Erhoehen;\nbegin\n  Inc(FWert);\n  FOnChange(Self);\nend;",' + #10 +
     '      "good": "procedure TZaehler.Erhoehen;\nbegin\n  Inc(FWert);\n  if Assigned(FOnChange) then\n    FOnChange(Self);\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "owned-item-freed",' + #10 +
+    '      "name": "Item of an owning list freed as well",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "An item of a TObjectList/TObjectList<T> (OwnsObjects, default True) or of a TObjectDictionary with doOwnsValues is freed with Free, FreeAndNil, Destroy or DisposeOf, directly (Li' + 'st[I].Free, List.Items[I].Free) or through a variable taken from List[I], List.First/Last or a for-in loop over the list or Dictionary.Values. The list frees the item itself on Delete, Remove, Clear, ' + 'an assignment to List[I], or at the latest when it is freed: a double free. A list is owning when the unit creates it that way (TObjectList without False, TObjectDictionary with doOwnsValues) or decla' + 'res it as TObjectList without creating it, and no OwnsObjects := False follows. Extract in the same routine keeps the rule silent. High confidence. Quick fixes: remove the Free (the whole loop when it' + ' only frees), Delete or Remove instead of Free, Extract instead of Remove.",' + #10 +
+    '      "bad": "Auftraege := TObjectList<TAuftrag>.Create;\n…\nAuftraege[I].Free;\nAuftraege.Delete(I);",' + #10 +
+    '      "good": "Auftraege := TObjectList<TAuftrag>.Create;\n…\nAuftraege.Delete(I);"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2727,6 +2737,11 @@ begin
     '      "id": "event-call-without-assigned",' + #10 +
     '      "name": "Ereignis ohne Assigned-Prüfung aufgerufen",' + #10 +
     '      "description": "FOnChange(Self) oder OnChange(Self) wird in einer Methode der Klasse aufgerufen, ohne dass Assigned(FOnChange) oder FOnChange <> nil den Aufruf schützt: Ohne Handler folgt eine Z' + 'ugriffsverletzung. Ereignisse sind Felder und Properties der Klasse mit Methodenzeiger- oder Referenztyp (procedure … of object, reference to …, TNotifyEvent, TProc/TFunc, Typen auf Event, prozedurale' + ' Typen der Unit oder des Index). Schutz: der then-Zweig einer Bedingung mit Assigned (auch while), der else-Zweig von not Assigned, \"Assigned(F) and\" vor dem Aufruf oder \"if not Assigned(F) then Ex' + 'it/raise\" davor, auch über einen Merker oder eine Methode der Klasse ohne Parameter, deren Result Assigned(F) enthält. Still bleiben Felder, die ein Konstruktor mit einem Wert belegt (eingereichte Ab' + 'hängigkeiten wie FReadText := AReadText), Properties darauf und gleichnamige lokale Namen. Sicherheit hoch. Korrektur: den Aufruf in \"if Assigned(F) then\" einschließen, wenn er als eigene Anweisung ' + 'in einem Block steht."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "owned-item-freed",' + #10 +
+    '      "name": "Element einer besitzenden Liste zusätzlich freigegeben",' + #10 +
+    '      "description": "Ein Element einer TObjectList/TObjectList<T> (OwnsObjects, Vorgabe True) oder eines TObjectDictionary mit doOwnsValues wird mit Free, FreeAndNil, Destroy oder DisposeOf freigegeb' + 'en, direkt (Liste[I].Free, Liste.Items[I].Free) oder über eine Variable aus Liste[I], Liste.First/Last oder einer for-in-Schleife über die Liste bzw. Dictionary.Values. Die Liste gibt das Element selb' + 'st frei: bei Delete, Remove, Clear, einer Zuweisung an Liste[I] oder spätestens beim Freigeben, also doppelt. Besitzend ist eine Liste, wenn die Unit sie so erzeugt (TObjectList ohne False, TObjectDic' + 'tionary mit doOwnsValues) oder ohne Erzeugung als TObjectList deklariert, und kein OwnsObjects := False folgt. Extract in derselben Routine lässt die Regel schweigen. Sicherheit hoch. Korrekturen: Fre' + 'e entfernen (die ganze Schleife, wenn sie nur freigibt), Delete bzw. Remove statt Free, Extract statt Remove."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
