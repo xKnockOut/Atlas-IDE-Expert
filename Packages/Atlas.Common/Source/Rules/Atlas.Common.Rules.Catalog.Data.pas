@@ -2313,6 +2313,20 @@ begin
     '        "E2129",' + #10 +
     '        "E2130"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "jump-outside-allowed-scope",' + #10 +
+    '      "name": "Break, Continue or Exit in a place where it is not allowed",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Break or Continue outside a loop (like E2097), or Break, Continue or Exit that leave a finally block (like E2126). Delphi only reports both when compiling; it happens often after' + ' moving a loop body into a method of its own. A loop that lies entirely inside the finally block may use Break and Continue. Routines and anonymous methods start afresh: a Break in an anonymous method' + ' does not belong to the loop around it. Only plain calls are reported (not TMonitor.Exit(FLock)), and not when the file declares a routine or variable of that name. Quick fix outside a finally block: ' + 'replace Break with Exit.",' + #10 +
+    '      "bad": "if Eintrag.Treffer then\n  Break;",' + #10 +
+    '      "good": "if Eintrag.Treffer then\n  Exit;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2097",' + #10 +
+    '        "E2126"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3483,6 +3497,11 @@ begin
     '      "id": "readonly-property-assigned",' + #10 +
     '      "name": "Zuweisung an eine Property ohne write",' + #10 +
     '      "description": "Zuweisung an eine Property ohne write (wie E2129) bzw. Lesen einer Property ohne read (wie E2130). Die Regel meldet nur, wenn die Namensauflösung die Property sicher findet; Neud' + 'eklarationen ohne read und write (property Caption;) gelten als unbekannt. Korrekturen: Count := 0 wird Clear, wenn der Typ Clear hat; in einer Methode der deklarierenden Klasse das Feld hinter read z' + 'uweisen; für eine Property dieser Datei den Setter anlegen und write ergänzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "jump-outside-allowed-scope",' + #10 +
+    '      "name": "Break, Continue oder Exit an unzulässiger Stelle",' + #10 +
+    '      "description": "Break oder Continue außerhalb einer Schleife (wie E2097) bzw. Break, Continue oder Exit, die einen finally-Block verlassen (wie E2126). Delphi meldet beides erst beim Übersetzen;' + ' häufig nach dem Herausziehen eines Schleifenrumpfs in eine eigene Methode. Eine Schleife ganz im finally-Block darf Break und Continue verwenden. Routinen und anonyme Methoden beginnen neu: Ein Break' + ' in einer anonymen Methode gehört nicht zur Schleife um sie herum. Gemeldet werden nur einfache Aufrufe (nicht TMonitor.Exit(FLock)) und nicht, wenn die Datei eine Routine oder Variable dieses Namens ' + 'deklariert. Korrektur außerhalb eines finally-Blocks: Break durch Exit ersetzen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
