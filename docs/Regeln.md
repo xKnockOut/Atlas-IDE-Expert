@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 16 |
+| [Compiler vorab](#gruppe-compiler) | 17 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -147,6 +147,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`assign-to-property-member`](#assign-to-property-member) | Zuweisung an ein Feld eines Property-Records | Bug | Fehler |
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
 | [`constant-expression-error`](#constant-expression-error) | Fehler in einem konstanten Ausdruck | Bug | Fehler |
+| [`default-parameter-invalid`](#default-parameter-invalid) | Unzulässiger Standardwert eines Parameters | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4566,4 +4567,25 @@ Richtig:
 const
   Seiten = 5;
   ProSeite = 100 div Seiten;
+```
+
+<a id="default-parameter-invalid"></a>
+### default-parameter-invalid
+
+**Unzulässiger Standardwert eines Parameters** · Bug · Fehler · Gruppe Compiler vorab
+
+Standardwerte, die der Compiler ablehnt: mehrere Namen mit einem gemeinsamen Standardwert (A, B: Integer = 0, wie E2237), ein Parameter ohne Standardwert nach einem mit Standardwert (wie E2238), var- und out-Parameter mit Standardwert (wie E2239) sowie Records oder statische Arrays mit Standardwert (wie E2268). Gilt für Routinen, Methoden und Prozedurtypen. Korrekturen: Parameter einzeln deklarieren; Parameter mit Standardwert ans Ende verschieben, auch im zugehörigen Kopf der Deklaration bzw. Implementierung derselben Datei (Aufrufe ändert sie nicht).
+
+Entspricht der Compilermeldung `E2237`, `E2238`, `E2239`, `E2268`.
+
+Mit Treffer:
+
+```pascal
+procedure Senden(const Text: string = ''; Ziel: TZiel);
+```
+
+Richtig:
+
+```pascal
+procedure Senden(Ziel: TZiel; const Text: string = '');
 ```

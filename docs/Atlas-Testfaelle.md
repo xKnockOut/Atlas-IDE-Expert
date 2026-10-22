@@ -4137,3 +4137,19 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
 | QK9 | `High(Int64) + 1`, `I div C` mit Variablen, `1 / 2` | Keine Meldung |
 | QK10 | `"constant-expression-error": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | QK11 | Abgleich mit Delphi: QK1, QK3 bis QK6 übersetzen | dcc meldet E2098, E2099, E2011, W1012 (bei der typisierten Konstante ggf. als Fehler) bzw. E2102 an denselben Stellen, für QK2, QK8 und QK9 nichts |
+
+## Unzulässiger Standardwert eines Parameters (#993)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QD1 | Das Beispiel aus #993 als Methode einer Klasse: `procedure Senden(const Text: string = ''; Ziel: TZiel);` samt Implementierung ohne Standardwert | Fehler `default-parameter-invalid` an `Ziel: TZiel`: „Ziel braucht einen Standardwert, weil ein vorheriger Parameter einen hat (wie E2238).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| QD2 | Schnellkorrektur „Parameter mit Standardwert ans Ende verschieben“, danach Strg+Z | Deklaration wird `Senden(Ziel: TZiel; const Text: string = '')`, die Implementierung `Senden(Ziel: TZiel; const Text: string)`; keine Meldung mehr; ein Undo-Schritt |
+| QD3 | `procedure Rand(const Links, Rechts: Integer = 4);` und Schnellkorrektur | „Links, Rechts: Standardwerte gibt es nur für einzeln deklarierte Parameter (wie E2237).“; danach `const Links: Integer = 4; const Rechts: Integer = 4` |
+| QD4 | `procedure Zaehlen(var Anzahl: Integer = 0);`, `out Fehler: string = ''` | „Anzahl ist ein var-Parameter und kann keinen Standardwert haben (wie E2239).“ bzw. out |
+| QD5 | `procedure Zeigen(const Ort: TPoint = …);` mit einem Record | „Parameter vom Typ TPoint können keinen Standardwert haben (wie E2268).“ |
+| QD6 | `type TRechnen = procedure(A: Integer = 1; B: Integer);` | Meldung wie QD1 an `B` |
+| QD7 | Standardwerte am Ende, `Double = 0.5`, `TZiel = nil`, Implementierung ohne Standardwerte | Keine Meldung |
+| QD8 | `"default-parameter-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| QD9 | Abgleich mit Delphi: QD1, QD3 bis QD6 übersetzen | dcc meldet E2238, E2237, E2239 bzw. E2268 an denselben Stellen, für QD7 nichts |

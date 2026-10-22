@@ -2330,6 +2330,22 @@ begin
     '        "W1012",' + #10 +
     '        "E2102"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "default-parameter-invalid",' + #10 +
+    '      "name": "Invalid default value of a parameter",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Default values the compiler rejects: several names sharing one default value (A, B: Integer = 0, like E2237), a parameter without a default value after one with a default value (' + 'like E2238), var and out parameters with a default value (like E2239) and records or static arrays with a default value (like E2268). Applies to routines, methods and procedural types. Quick fixes: de' + 'clare the parameters one by one; move the parameters with a default value to the end, also in the matching declaration or implementation header of the same file (calls are not changed).",' + #10 +
+    '      "bad": "procedure Senden(const Text: string = ''''; Ziel: TZiel);",' + #10 +
+    '      "good": "procedure Senden(Ziel: TZiel; const Text: string = '''');",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2237",' + #10 +
+    '        "E2238",' + #10 +
+    '        "E2239",' + #10 +
+    '        "E2268"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3505,6 +3521,11 @@ begin
     '      "id": "constant-expression-error",' + #10 +
     '      "name": "Fehler in einem konstanten Ausdruck",' + #10 +
     '      "description": "Ein konstanter Ausdruck teilt durch null (wie E2098), läuft über den Bereich von Int64 und UInt64 hinaus (wie E2099), ein Bereich hat die Untergrenze über der Obergrenze (array[5' + '..1], wie E2011), eine Konstante verletzt einen ganzzahligen Typ fester Größe oder einen Teilbereichstyp (wie W1012, als Warnung; bei Zuweisungen nur Werte außerhalb von 0..127) oder ein Hex-, Binär- ' + 'oder Oktalliteral braucht mehr als 64 Bit (wie E2102). Atlas wertet Literale, Konstanten (auch aus anderen Units) und SizeOf/High/Low von Typen fester Größe aus; eine Konstante aus einem {$IF}-Zweig z' + 'ählt nur, wo die geprüfte Stelle mit ihr zusammen übersetzt wird. Ausdrücke mit unbekannten Teilen bleiben still."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "default-parameter-invalid",' + #10 +
+    '      "name": "Unzulässiger Standardwert eines Parameters",' + #10 +
+    '      "description": "Standardwerte, die der Compiler ablehnt: mehrere Namen mit einem gemeinsamen Standardwert (A, B: Integer = 0, wie E2237), ein Parameter ohne Standardwert nach einem mit Standardw' + 'ert (wie E2238), var- und out-Parameter mit Standardwert (wie E2239) sowie Records oder statische Arrays mit Standardwert (wie E2268). Gilt für Routinen, Methoden und Prozedurtypen. Korrekturen: Param' + 'eter einzeln deklarieren; Parameter mit Standardwert ans Ende verschieben, auch im zugehörigen Kopf der Deklaration bzw. Implementierung derselben Datei (Aufrufe ändert sie nicht)."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

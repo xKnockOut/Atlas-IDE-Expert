@@ -10,6 +10,16 @@
 //                              Typs fester Größe bzw. eines Teilbereichstyps
 //                              (W1012) und Hex-, Binär- oder Oktalliterale
 //                              über 64 Bit (E2102).
+//   default-parameter-invalid  Unzulässiger Standardwert eines Parameters
+//                              (#993): mehrere Namen mit einem Standardwert
+//                              (A, B: Integer = 0, E2237), Parameter ohne
+//                              Standardwert nach einem mit (E2238), var- und
+//                              out-Parameter mit Standardwert (E2239), Records
+//                              und statische Arrays mit Standardwert (E2268).
+//                              Korrekturen: Parameter einzeln deklarieren;
+//                              Parameter mit Standardwert ans Ende verschieben,
+//                              auch im zugehörigen Kopf derselben Datei
+//                              (Deklaration bzw. Implementierung).
 //
 // Ausgewertet wird mit Semantics.ConstantValues (Literale, Konstanten auch aus
 // anderen Units, SizeOf/High/Low von Typen fester Größe). Konstanten aus einem
@@ -24,6 +34,7 @@ uses
 
 const
   ConstantExpressionErrorRuleId = 'constant-expression-error';
+  DefaultParameterInvalidRuleId = 'default-parameter-invalid';
 
 type
   TConstantExpressionErrorRule = class(TInterfacedObject, IRule)
@@ -33,6 +44,12 @@ type
     /// <summary>Ist das Zahl-Token ATokenText ein Hex-, Binär- oder Oktalliteral, das nicht in 64 Bit passt
     /// (wie E2102)? Dezimalzahlen macht Delphi zu Gleitkommazahlen, sie zählen nicht.</summary>
     class function TooLargeLiteral(const ATokenText: string): Boolean; static;
+  end;
+
+  TDefaultParameterInvalidRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
 procedure RegisterConstantRules(const ARegistry: TRuleRegistry);
@@ -352,9 +369,300 @@ begin
   end;
 end;
 
+{ TDefaultParameterInvalidRule }
+
+function TDefaultParameterInvalidRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(DefaultParameterInvalidRuleId, TRuleSeverity.Error,
+    'Unzulässiger Standardwert eines Parameters');
+end;
+
+/// <summary>Hat der Parameter einen Standardwert? Kinder sind Typ und Wert; ohne Typ gibt es keinen Wert.</summary>
+function HasDefault(AParameter: TSyntaxNode): Boolean;
+begin
+  Result := AParameter.ChildCount >= 2;
+end;
+
+procedure TDefaultParameterInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  FileName: string;
+  Resolver: TNameResolver;
+
+  function NodeText(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  function NodeRange(ANode: TSyntaxNode): TTextRange;
+  begin
+    Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
+  end;
+
+  /// <summary>Text des Parameters ab dem Typ ("Integer = 0") und der Modifizierer davor.</summary>
+  function TypeAndDefault(AParameter: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, AParameter[0].StartOffset + 1, AParameter.EndOffset - AParameter[0].StartOffset);
+  end;
+
+  function ModifierText(AParameter: TSyntaxNode): string;
+  begin
+    case AParameter.Modifier of
+      TParameterModifier.ConstParam:
+        Result := 'const ';
+      TParameterModifier.VarParam:
+        Result := 'var ';
+      TParameterModifier.OutParam:
+        Result := 'out ';
+      TParameterModifier.ConstRefParam:
+        Result := 'constref ';
+    else
+      Result := '';
+    end;
+  end;
+
+  /// <summary>Name der Routine mit Klasse (TKunde.Senden); '' bei Prozedurtypen.</summary>
+  function QualifiedRoutine(AParameters: TSyntaxNode): string;
+  var
+    Header, Node: TSyntaxNode;
+  begin
+    Result := '';
+    Header := AParameters.Parent;
+    if (Header = nil) or (Header.Kind <> TSyntaxKind.RoutineHeader) then
+      Exit;
+    Result := Header.Name;
+    Node := Header.Parent;
+    while (Node <> nil) and not (Node.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl,
+      TSyntaxKind.ImplementationSection]) do
+      Node := Node.Parent;
+    if (Node <> nil) and (Node.Kind = TSyntaxKind.TypeDecl) then
+      Result := Node.Name + '.' + Result;
+  end;
+
+  function NamesKey(AParameters: TSyntaxNode): string;
+  var
+    Index: Integer;
+  begin
+    Result := '';
+    for Index := 0 to AParameters.ChildCount - 1 do
+      if AParameters[Index].Kind = TSyntaxKind.Parameter then
+        Result := Result + LowerCase(AParameters[Index].Name) + ';';
+  end;
+
+  function FindPaired(ANode, AParameters: TSyntaxNode; const AName, AKey: string): TSyntaxNode;
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.Parameters) and (ANode <> AParameters) and
+      SameText(QualifiedRoutine(ANode), AName) and (NamesKey(ANode) = AKey) then
+      Exit(ANode);
+    Result := nil;
+    Index := 0;
+    while (Result = nil) and (Index < ANode.ChildCount) do
+    begin
+      Result := FindPaired(ANode[Index], AParameters, AName, AKey);
+      Inc(Index);
+    end;
+  end;
+
+  /// <summary>Der zugehörige Kopf in derselben Datei: Deklaration zur Implementierung und umgekehrt.</summary>
+  function PairedParameters(AParameters: TSyntaxNode): TSyntaxNode;
+  var
+    Name: string;
+  begin
+    Result := nil;
+    Name := QualifiedRoutine(AParameters);
+    if Name <> '' then
+      Result := FindPaired(AContext.Tree.Root, AParameters, Name, NamesKey(AParameters));
+  end;
+
+  /// <summary>Parameterliste mit den Parametern ohne Standardwert zuerst; die Standardwerte stehen nur in
+  /// ADefaults (Parameter mit Wert in der Liste, die sie trägt), damit der zugehörige Kopf mitzieht.</summary>
+  function Reordered(AParameters: TSyntaxNode; const ADefaults: string): string;
+  var
+    Index: Integer;
+    Parameter: TSyntaxNode;
+    Front, Back: TArray<string>;
+  begin
+    Front := nil;
+    Back := nil;
+    for Index := 0 to AParameters.ChildCount - 1 do
+    begin
+      Parameter := AParameters[Index];
+      if Parameter.Kind <> TSyntaxKind.Parameter then
+        Continue;
+      if Pos(';' + LowerCase(Parameter.Name) + ';', ADefaults) > 0 then
+        Back := Back + [NodeText(Parameter)]
+      else
+        Front := Front + [NodeText(Parameter)];
+    end;
+    Result := string.Join('; ', Front + Back);
+  end;
+
+  function ListRange(AParameters: TSyntaxNode; out ARange: TTextRange): Boolean;
+  var
+    Index: Integer;
+    First, Last: TSyntaxNode;
+  begin
+    First := nil;
+    Last := nil;
+    for Index := 0 to AParameters.ChildCount - 1 do
+      if AParameters[Index].Kind = TSyntaxKind.Parameter then
+      begin
+        if First = nil then
+          First := AParameters[Index];
+        Last := AParameters[Index];
+      end;
+    Result := First <> nil;
+    if Result then
+      ARange := TTextRange.Create(First.StartPos, Last.EndPos);
+  end;
+
+  function MoveFix(AParameters: TSyntaxNode; out AFix: TRuleFix): Boolean;
+  var
+    Defaults: string;
+    Index: Integer;
+    Range: TTextRange;
+    Paired: TSyntaxNode;
+    Edits: TArray<TRuleEdit>;
+  begin
+    // Parameter einzeln und ohne Kommentare dazwischen, sonst lieber keine Korrektur.
+    Result := False;
+    Defaults := ';';
+    for Index := 0 to AParameters.ChildCount - 1 do
+      if AParameters[Index].Kind = TSyntaxKind.Parameter then
+      begin
+        if Pos(',', AParameters[Index].Name) > 0 then
+          Exit;
+        if HasDefault(AParameters[Index]) then
+          Defaults := Defaults + LowerCase(AParameters[Index].Name) + ';';
+      end
+      else
+        Exit;
+    if not ListRange(AParameters, Range) then
+      Exit;
+    Edits := [TTextEdit.Create(Range, Reordered(AParameters, Defaults))];
+    Paired := PairedParameters(AParameters);
+    if (Paired <> nil) and ListRange(Paired, Range) then
+      Edits := Edits + [TTextEdit.Create(Range, Reordered(Paired, Defaults))];
+    AFix := TRuleFix.Create('Parameter mit Standardwert ans Ende verschieben', Edits);
+    Result := True;
+  end;
+
+  /// <summary>Records und statische Arrays haben keine Standardwerte (E2268).</summary>
+  function NoDefaultType(ATypeNode: TSyntaxNode; out ATypeName: string): Boolean;
+  var
+    TypeSymbol: TResolvedSymbol;
+  begin
+    Result := False;
+    ATypeName := ATypeNode.Name;
+    if (ATypeNode.Kind <> TSyntaxKind.TypeReference) or (ATypeNode.ChildCount > 0) or (Pos('<', ATypeName) > 0) then
+      Exit;
+    // Erst hier die Namensauflösung: Die meisten Dateien haben keinen Standardwert mit eigenem Typ.
+    if Resolver = nil then
+    begin
+      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+      Resolver.Namespaces := AContext.Namespaces;
+      Resolver.PinTree(AContext.Tree, FileName);
+    end;
+    TypeSymbol := Resolver.ResolveType(AContext.Tree, FileName, ATypeNode.StartPos);
+    if not TypeSymbol.Found then
+      Exit;
+    Result := (TypeSymbol.SymbolKind = TIndexSymbolKind.RecordType) or
+      ((TypeSymbol.SymbolKind = TIndexSymbolKind.TypeAlias) and
+      (Pos('array[', LowerCase(StringReplace(TypeSymbol.Signature, ' ', '', [rfReplaceAll]))) > 0));
+  end;
+
+  procedure CheckParameters(AParameters: TSyntaxNode);
+  var
+    Index: Integer;
+    Parameter: TSyntaxNode;
+    SeenDefault, Moved: Boolean;
+    Names: TArray<string>;
+    Name, TypeName, Text: string;
+    Fix: TRuleFix;
+    Fixes: TArray<TRuleFix>;
+  begin
+    SeenDefault := False;
+    Moved := False;
+    for Index := 0 to AParameters.ChildCount - 1 do
+    begin
+      Parameter := AParameters[Index];
+      if Parameter.Kind <> TSyntaxKind.Parameter then
+        Continue;
+      if HasDefault(Parameter) then
+      begin
+        SeenDefault := True;
+        Names := Parameter.Name.Split([',']);
+        if Length(Names) > 1 then
+        begin
+          // A, B: Integer = 0 wird A: Integer = 0; B: Integer = 0.
+          Text := '';
+          for Name in Names do
+          begin
+            if Text <> '' then
+              Text := Text + '; ';
+            Text := Text + ModifierText(Parameter) + Trim(Name) + ': ' + TypeAndDefault(Parameter);
+          end;
+          AReport.Add(NodeRange(Parameter), Format('%s: Standardwerte gibt es nur für einzeln deklarierte ' +
+            'Parameter (wie E2237).', [StringReplace(Parameter.Name, ',', ', ', [rfReplaceAll])]),
+            TRuleConfidence.High, [TRuleFix.Create('Parameter einzeln deklarieren',
+            [TTextEdit.Create(NodeRange(Parameter), Text)])]);
+        end;
+        if Parameter.Modifier in [TParameterModifier.VarParam, TParameterModifier.OutParam] then
+          AReport.Add(NodeRange(Parameter), Format('%s ist ein %s-Parameter und kann keinen Standardwert haben ' +
+            '(wie E2239).', [Parameter.Name, Trim(ModifierText(Parameter))]), TRuleConfidence.High)
+        else if NoDefaultType(Parameter[0], TypeName) then
+          AReport.Add(NodeRange(Parameter), Format('Parameter vom Typ %s können keinen Standardwert haben ' +
+            '(wie E2268).', [TypeName]), TRuleConfidence.High);
+      end
+      else if SeenDefault then
+      begin
+        Fixes := nil;
+        // Die Korrektur nur am ersten betroffenen Parameter; sie ordnet die ganze Liste.
+        if not Moved and MoveFix(AParameters, Fix) then
+          Fixes := [Fix];
+        Moved := True;
+        AReport.Add(NodeRange(Parameter), Format('%s braucht einen Standardwert, weil ein vorheriger Parameter ' +
+          'einen hat (wie E2238).', [StringReplace(Parameter.Name, ',', ', ', [rfReplaceAll])]),
+          TRuleConfidence.High, Fixes);
+      end;
+    end;
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.Parameters then
+      CheckParameters(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  FileName := AContext.FileName;
+  if FileName = '' then
+    FileName := AContext.RelativePath;
+  if FileName = '' then
+    FileName := AContext.UnitName + '.pas';
+  Resolver := nil;
+  try
+    Visit(AContext.Tree.Root);
+  finally
+    if Resolver <> nil then
+    begin
+      Resolver.UnpinTree;
+      Resolver.Free;
+    end;
+  end;
+end;
+
 procedure RegisterConstantRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TConstantExpressionErrorRule.Create);
+  ARegistry.Register(TDefaultParameterInvalidRule.Create);
 end;
 
 end.
