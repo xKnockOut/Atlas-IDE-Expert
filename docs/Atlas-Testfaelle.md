@@ -4146,3 +4146,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | LK4 | `"load-without-encoding": {"defaultEncoding": "Unicode"}` in `atlas.json`, Korrektur an LK1 | `TEncoding.Unicode` wird eingesetzt; `"defaultEncoding": "Latin1"` meldet die Konfiguration als Fehler |
 | LK5 | `Bild.LoadFromFile` (TBitmap), `Puffer.SaveToFile` (TMemoryStream), `TFile.WriteAllText`, `TStreamReader.Create(Pfad)`, `Zeilen.DefaultEncoding := TEncoding.UTF8` vor dem Laden, `SaveToFile` nach `LoadFromFile(Pfad, TEncoding.UTF8)` | Keine Meldung |
 | LK6 | `"load-without-encoding": "off"`, `"group:robustness": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Schreiben nach HKEY_LOCAL_MACHINE (#1062)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HL1 | Das Beispiel aus #1062: `Reg.RootKey := HKEY_LOCAL_MACHINE; Reg.OpenKey('Software\Firma\Programm', True); Reg.WriteString('Sprache', Sprache);` | Hinweis `registry-hklm-write` an `HKEY_LOCAL_MACHINE`: „Schreiben nach HKEY_LOCAL_MACHINE braucht Administratorrechte; ohne sie schlägt es fehl oder landet in der Virtualisierung.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| HL2 | Schnellkorrektur „HKEY_CURRENT_USER verwenden“, danach Strg+Z | `Reg.RootKey := HKEY_CURRENT_USER;`, danach keine Meldung; ein Undo-Schritt |
+| HL3 | Nur `R.DeleteValue('Alt')` bzw. `R.CreateKey(…)` nach dem RootKey | Je eine Meldung |
+| HL4 | Nur lesen (`OpenKeyReadOnly`, `ReadString`, `OpenKey(…, False)`), `RootKey := HKEY_CURRENT_USER` vor dem Schreiben, Schreiben im `{$ELSE}`-Zweig, Schreiben auf einem anderen Objekt | Keine Meldung |
+| HL5 | `"registry-hklm-write": "off"`, `"group:robustness": "off"` bzw. `exclude` mit dem Ordner des Installers | Keine Meldung |
+| HL6 | Programm ohne Administratorrechte starten und HL1 ausführen | Bestätigt die Meldung: Zugriff verweigert oder Wert unter `VirtualStore` |

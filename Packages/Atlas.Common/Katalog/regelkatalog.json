@@ -2321,6 +2321,16 @@
           "description": "TEncoding property the quick fix inserts: UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 or Default."
         }
       ]
+    },
+    {
+      "id": "registry-hklm-write",
+      "name": "Writing to HKEY_LOCAL_MACHINE",
+      "category": "bug",
+      "severity": "hint",
+      "group": "robustness",
+      "description": "RootKey := HKEY_LOCAL_MACHINE on a TRegistry followed in the same routine by a writing access on the same object: OpenKey(…, True), CreateKey, Write…, DeleteKey, DeleteValue, RenameValue, MoveKey, SaveKey or RestoreKey. Without administrator rights this fails or silently lands in the registry virtualization. Use HKEY_CURRENT_USER for user settings; exclude installer code through exclude. Reading (OpenKeyReadOnly, Read…, OpenKey(…, False)), another RootKey before the write and writes in the other branch of {$IFDEF} stay silent. High confidence. Quick fix: RootKey := HKEY_CURRENT_USER.",
+      "bad": "Reg.RootKey := HKEY_LOCAL_MACHINE;\nReg.OpenKey('Software\\Firma\\Programm', True);\nReg.WriteString('Sprache', Sprache);",
+      "good": "Reg.RootKey := HKEY_CURRENT_USER;\nReg.OpenKey('Software\\Firma\\Programm', True);\nReg.WriteString('Sprache', Sprache);"
     }
   ]
 }

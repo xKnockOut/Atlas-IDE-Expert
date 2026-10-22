@@ -5,6 +5,7 @@
 //                                  Windows-Dienst oder einer DLL ohne Formulare (#1060)
 //   load-without-encoding          TStrings.LoadFromFile/SaveToFile und TFile.ReadAllText ohne Kodierung:
 //                                  ohne BOM gilt die ANSI-Codepage des Rechners (#1061)
+//   registry-hklm-write            TRegistry mit RootKey HKEY_LOCAL_MACHINE und schreibendem Zugriff (#1062)
 // Die Anwendungsart liefert TRuleContext.Application (TWritelnInGuiAppRule.ApplicationKind); eine Unit mit
 // einer Klasse, die von TService erbt, gilt auch ohne Projekt als Dienst.
 
@@ -17,6 +18,7 @@ uses
 const
   UiCallInConsoleOrServiceRuleId = 'ui-call-in-console-or-service';
   LoadWithoutEncodingRuleId = 'load-without-encoding';
+  RegistryHklmWriteRuleId = 'registry-hklm-write';
 
 type
   TUiCallInConsoleOrServiceRule = class(TInterfacedObject, IRule)
@@ -31,6 +33,12 @@ type
     /// <summary>Klassen-Properties von TEncoding, die die Option defaultEncoding erlaubt.</summary>
     Encodings: array[0..6] of string = ('UTF8', 'Unicode', 'BigEndianUnicode', 'ANSI', 'ASCII', 'UTF7',
       'Default');
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TRegistryHklmWriteRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -439,10 +447,109 @@ begin
   end;
 end;
 
+{ TRegistryHklmWriteRule }
+
+const
+  // Methoden von TRegistry, die schreiben; OpenKey nur mit CanCreate = True.
+  RegistryWrites: array[0..16] of string = ('CreateKey', 'DeleteKey', 'DeleteValue', 'RenameValue', 'MoveKey',
+    'WriteString', 'WriteExpandString', 'WriteInteger', 'WriteBool', 'WriteFloat', 'WriteCurrency', 'WriteDate',
+    'WriteTime', 'WriteDateTime', 'WriteBinaryData', 'SaveKey', 'RestoreKey');
+
+function TRegistryHklmWriteRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(RegistryHklmWriteRuleId, TRuleSeverity.Hint, 'Schreiben nach HKEY_LOCAL_MACHINE');
+end;
+
+procedure TRegistryHklmWriteRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TTokens;
+  Paths: TArray<string>;
+
+  function IsRootKeyAssign(ANode: TSyntaxNode): Boolean;
+  begin
+    Result := (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
+      (ANode[0].Kind = TSyntaxKind.MemberAccess) and SameText(ANode[0].Name, 'RootKey') and
+      (ANode[0].ChildCount = 1);
+  end;
+
+  // Reg.WriteString(…), Reg.OpenKey(…, True): Empfänger als Text, sonst ''.
+  function WriteReceiver(ANode: TSyntaxNode): string;
+  var
+    Callee: TSyntaxNode;
+  begin
+    Result := '';
+    if (ANode.Kind <> TSyntaxKind.Call) or (ANode.ChildCount = 0) then
+      Exit;
+    Callee := ANode[0];
+    if (Callee.Kind <> TSyntaxKind.MemberAccess) or (Callee.ChildCount <> 1) then
+      Exit;
+    if MatchText(Callee.Name, RegistryWrites) or (SameText(Callee.Name, 'OpenKey') and (ANode.ChildCount = 3) and
+      IsName(ANode[2], 'True')) then
+      Result := NodeText(AContext, Callee[0]);
+  end;
+
+  procedure CheckRoutine(ARoutine: TSyntaxNode);
+  var
+    Events: TArray<TSyntaxNode>;
+    Index, Later: Integer;
+    Assign, Event: TSyntaxNode;
+    Receiver: string;
+    Written: Boolean;
+  begin
+    // Zuweisungen an RootKey und schreibende Aufrufe in Reihenfolge des Quelltexts.
+    Events := nil;
+    // Lokale Routinen prüft CheckRoutine für sich.
+    for Event in NodesOf(ARoutine, True) do
+      if IsRootKeyAssign(Event) or (WriteReceiver(Event) <> '') then
+        Events := Events + [Event];
+    for Index := 0 to High(Events) do
+    begin
+      Assign := Events[Index];
+      if not IsRootKeyAssign(Assign) or not IsName(Assign[1], 'HKEY_LOCAL_MACHINE') then
+        Continue;
+      Receiver := NodeText(AContext, Assign[0][0]);
+      Written := False;
+      for Later := Index + 1 to High(Events) do
+      begin
+        Event := Events[Later];
+        // Ein neuer RootKey, der immer mit dieser Zuweisung übersetzt wird, gilt für alles danach.
+        if IsRootKeyAssign(Event) then
+        begin
+          if SameText(NodeText(AContext, Event[0][0]), Receiver) and
+            TConditionalBranches.Implies(PathOf(Paths, Tokens, Event), PathOf(Paths, Tokens, Assign)) then
+            Break;
+        end
+        else if SameText(WriteReceiver(Event), Receiver) and
+          not TConditionalBranches.Exclusive(PathOf(Paths, Tokens, Event), PathOf(Paths, Tokens, Assign)) then
+        begin
+          Written := True;
+          Break;
+        end;
+      end;
+      if Written then
+        AReport.Add(NodeRange(Assign[1]), 'Schreiben nach HKEY_LOCAL_MACHINE braucht Administratorrechte; ' +
+          'ohne sie schlägt es fehl oder landet in der Virtualisierung.', TRuleConfidence.High,
+          [TRuleFix.Create('HKEY_CURRENT_USER verwenden', [TRuleEdit.Create(NodeRange(Assign[1]),
+          'HKEY_CURRENT_USER')])]);
+    end;
+  end;
+
+var
+  Routine: TSyntaxNode;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Paths := TConditionalBranches.Paths(Tokens);
+  for Routine in TRuleDerived.Routines(TRuleDerived.Open(AContext), AContext) do
+    CheckRoutine(Routine);
+end;
+
 procedure RegisterPlatformRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TUiCallInConsoleOrServiceRule.Create);
   ARegistry.Register(TLoadWithoutEncodingRule.Create);
+  ARegistry.Register(TRegistryHklmWriteRule.Create);
 end;
 
 end.
