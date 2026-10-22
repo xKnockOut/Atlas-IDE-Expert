@@ -14,6 +14,9 @@
 //                                       EndUpdate, FindFirst/FindClose, Reset/CloseFile, GetMem/FreeMem und
 //                                       Screen.Cursor := … ohne try/finally (#930); die Sperrpaare bleiben
 //                                       bei lock-without-finally. Erweiterbar über die Option "pairs".
+//   processmessages-in-loop             Application.ProcessMessages in einer Schleife oder direkt in einem
+//                                       Ereignis-Handler (Methode mit Parameter Sender) öffnet die Tür für
+//                                       Wiedereintritt (#931); Ausnahmen über die Option "allowIn".
 //
 // Ein Thread mit Free ohne Terminate und WaitFor wird nicht gemeldet:
 // TThread.Destroy ruft beides selbst auf.
@@ -95,6 +98,12 @@ type
     class function Pairs(const AOptions: string): TArray<TStatePair>; static;
   end;
 
+  TProcessMessagesInLoopRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 /// <summary>Klassen der Unit, die direkt oder über Klassen der Unit von TThread erben.</summary>
 function ThreadClasses(ARoot: TSyntaxNode): TArray<string>;
 
@@ -108,7 +117,8 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Derived;
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Rules.Options;
 
 type
   /// <summary>Aufruf X.M, X.M(…) oder M(…) als Anweisung.</summary>
@@ -1277,6 +1287,105 @@ begin
     Visit(AContext.Tree.Root);
 end;
 
+{ TProcessMessagesInLoopRule }
+
+const
+  ProcessMessagesAdvice = ' Besser die Arbeit in einen Thread oder TTask auslagern oder den Auslöser bis zum ' +
+    'Ende sperren.';
+
+function TProcessMessagesInLoopRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('processmessages-in-loop', TRuleSeverity.Hint,
+    'Application.ProcessMessages in Schleifen');
+end;
+
+procedure TProcessMessagesInLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  AllowIn: TArray<string>;
+
+  function Allowed(const ARoutineName: string): Boolean;
+  var
+    Name: string;
+  begin
+    for Name in AllowIn do
+      if SameText(Name, ARoutineName) or SameText(Name, MethodPart(ARoutineName)) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Methode mit einem Parameter Sender: OnClick, OnTimer und Verwandte.
+  function IsEventHandler(ARoutine: TSyntaxNode): Boolean;
+  var
+    Header, Params: TSyntaxNode;
+    Index: Integer;
+    Name: string;
+  begin
+    Result := False;
+    if Pos('.', ARoutine.Name) = 0 then
+      Exit;
+    Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    if Header = nil then
+      Exit;
+    Params := Header.FindChild(TSyntaxKind.Parameters);
+    if Params = nil then
+      Exit;
+    for Index := 0 to Params.ChildCount - 1 do
+      if Params[Index].Kind = TSyntaxKind.Parameter then
+        for Name in SplitString(Params[Index].Name, ',') do
+          if SameText(Trim(Name), 'Sender') then
+            Exit(True);
+  end;
+
+  function IsProcessMessages(ANode: TSyntaxNode): Boolean;
+  var
+    Call: TMethodCall;
+  begin
+    Result := TryMethodCall(ANode, Call) and SameText(Call.Method, 'ProcessMessages') and
+      (Call.Receiver <> nil) and SameText(MethodPart(NodeText(AContext.Text, Call.Receiver)), 'application');
+  end;
+
+  procedure Visit(ANode: TSyntaxNode; ALoops: Integer; AHandler, AAllowed: Boolean);
+  var
+    Index: Integer;
+    Loops: Integer;
+  begin
+    case ANode.Kind of
+      TSyntaxKind.RoutineDecl:
+        begin
+          AHandler := IsEventHandler(ANode);
+          AAllowed := Allowed(ANode.Name);
+          ALoops := 0;
+        end;
+      // Anonyme Methoden laufen später oder in einem Thread (dort meldet thread-vcl-access).
+      TSyntaxKind.AnonymousMethod:
+        Exit;
+      TSyntaxKind.CallStatement:
+        if not AAllowed and IsProcessMessages(ANode) then
+        begin
+          if ALoops > 0 then
+            AReport.Add(NodeRange(ANode), 'ProcessMessages in der Schleife erlaubt Wiedereintritt (zweiter Klick, ' +
+              'Formular schließen).' + ProcessMessagesAdvice, TRuleConfidence.Medium)
+          else if AHandler then
+            AReport.Add(NodeRange(ANode), 'ProcessMessages im Ereignis-Handler erlaubt Wiedereintritt (zweiter ' +
+              'Klick, Formular schließen).' + ProcessMessagesAdvice, TRuleConfidence.Medium);
+          Exit;
+        end;
+    end;
+    Loops := ALoops;
+    if ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+      TSyntaxKind.RepeatStatement] then
+      Inc(Loops);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index], Loops, AHandler, AAllowed);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  AllowIn := TRuleOptions.Strings(AContext.Options, 'allowIn', nil);
+  Visit(AContext.Tree.Root, 0, False, False);
+end;
+
 procedure RegisterConcurrencyRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TThreadVclAccessRule.Create);
@@ -1286,6 +1395,7 @@ begin
   ARegistry.Register(TSynchronizeInDestructorRule.Create);
   ARegistry.Register(TThreadResumeSuspendRule.Create);
   ARegistry.Register(TPairWithoutFinallyRule.Create);
+  ARegistry.Register(TProcessMessagesInLoopRule.Create);
 end;
 
 end.

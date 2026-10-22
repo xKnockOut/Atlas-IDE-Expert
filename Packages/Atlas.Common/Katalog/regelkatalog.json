@@ -1411,6 +1411,24 @@
           "description": "Additional pairs as [{\"open\": \"Freeze\", \"close\": \"Thaw\"}], optionally with openArg/closeArg."
         }
       ]
+    },
+    {
+      "id": "processmessages-in-loop",
+      "name": "Application.ProcessMessages in loops",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "threads",
+      "description": "Application.ProcessMessages inside a for, while or repeat loop, or directly in an event handler (a method with a Sender parameter), opens the door for re-entrancy: the user clicks again, closes the form or starts the operation twice. Calls inside anonymous methods are left to thread-vcl-access; other objects' ProcessMessages methods are ignored. Medium confidence, no quick fix: move the work to a thread or TTask, or disable the trigger until it is done. Option allowIn lists methods where it is allowed.",
+      "bad": "while not Done do\nbegin\n  Step;\n  Application.ProcessMessages;\nend;",
+      "good": "StartButton.Enabled := False;\nTTask.Run(\n  procedure\n  begin\n    while not Done do\n      Step;\n    TThread.Queue(nil, procedure begin StartButton.Enabled := True; end);\n  end);",
+      "options": [
+        {
+          "name": "allowIn",
+          "type": "string-list",
+          "default": [],
+          "description": "Methods in which ProcessMessages is allowed, as Name or Class.Name."
+        }
+      ]
     }
   ]
 }

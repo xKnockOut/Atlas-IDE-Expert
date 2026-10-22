@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1630] of string = (
+  Lines: array[0..1638] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -313,6 +313,14 @@ const
     '                "type": "string",',
     '                "default": "OutputDebugString",',
     '                "description": "Nur writeln-in-gui-app: Ersatz für Write und Writeln in der Schnellkorrektur (#926), z. B. \"Log.Info\" oder mit Platzhalter \"Logger.Log(TLogLevel.Info, %s)\"."',
+    '              },',
+    '              "allowIn": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "default": [],',
+    '                "description": "Nur processmessages-in-loop: Methoden, in denen Application.ProcessMessages erlaubt ist, als Name oder Klasse.Name (#931)."',
     '              }',
     '            }',
     '          }',

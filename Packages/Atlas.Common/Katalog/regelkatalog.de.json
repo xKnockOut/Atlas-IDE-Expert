@@ -741,6 +741,17 @@
           "description": "Weitere Paare als [{\"open\": \"Einfrieren\", \"close\": \"Auftauen\"}], wahlweise mit openArg/closeArg."
         }
       ]
+    },
+    {
+      "id": "processmessages-in-loop",
+      "name": "Application.ProcessMessages in Schleifen",
+      "description": "Application.ProcessMessages in einer for-, while- oder repeat-Schleife oder direkt in einem Ereignis-Handler (Methode mit Parameter Sender) öffnet die Tür für Wiedereintritt: Der Benutzer klickt erneut, schließt das Formular oder startet den Vorgang doppelt. Aufrufe in anonymen Methoden überlässt die Regel thread-vcl-access; ProcessMessages anderer Objekte zählt nicht. Konfidenz mittel, keine Schnellkorrektur: die Arbeit in einen Thread oder TTask auslagern oder den Auslöser bis zum Ende sperren. Die Option allowIn nennt Methoden, in denen es erlaubt ist.",
+      "options": [
+        {
+          "name": "allowIn",
+          "description": "Methoden, in denen ProcessMessages erlaubt ist, als Name oder Klasse.Name."
+        }
+      ]
     }
   ]
 }

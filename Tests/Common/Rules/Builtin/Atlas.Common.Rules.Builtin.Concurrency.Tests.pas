@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Concurrency.Tests;
 
-// Tests für die Nebenläufigkeitsregeln (#148) und pair-without-finally (#930).
+// Tests für die Nebenläufigkeitsregeln (#148), pair-without-finally (#930) und processmessages-in-loop (#931).
 
 interface
 
@@ -59,6 +59,14 @@ type
     procedure PairWithoutFinallySilentCases;
     [Test]
     procedure PairWithoutFinallyOptions;
+    [Test]
+    procedure ProcessMessagesInLoopIssueExample;
+    [Test]
+    procedure ProcessMessagesInEventHandler;
+    [Test]
+    procedure ProcessMessagesSilentCases;
+    [Test]
+    procedure ProcessMessagesOptions;
   end;
 
 implementation
@@ -379,6 +387,73 @@ begin
   TConfigurationParser.Parse('{"rules": {"pair-without-finally": {"pairs": [["Einfrieren", "Auftauen"]]}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.AreEqual('"pairs" muss eine Liste von Objekten mit "open" und "close" sein', Issues[0].Message);
+end;
+
+const
+  ProcessMessagesAdvice = ' Besser die Arbeit in einen Thread oder TTask auslagern oder den Auslöser bis zum ' +
+    'Ende sperren.';
+
+procedure TConcurrencyRulesTests.ProcessMessagesInLoopIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, Routine('  while not Fertig do'#10'  begin'#10 +
+    '    Schritt;'#10'    Application.ProcessMessages;'#10'  end;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('ProcessMessages in der Schleife erlaubt Wiedereintritt (zweiter Klick, Formular schließen).' +
+    ProcessMessagesAdvice, Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // for, repeat und Vcl.Forms.Application.
+  TRuleAssert.Reports(TProcessMessagesInLoopRule.Create, Routine('  for I := 0 to 9 do'#10 +
+    '    Vcl.Forms.Application.ProcessMessages;'#10'  repeat'#10'    if Abbruch then'#10 +
+    '      Application.ProcessMessages;'#10'  until Fertig;'), 2);
+end;
+
+procedure TConcurrencyRulesTests.ProcessMessagesInEventHandler;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, Routine('  Status.Caption := ''Lade …'';'#10 +
+    '  Application.ProcessMessages;'#10'  Laden;', 'procedure TForm1.LadenClick(Sender: TObject);'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('ProcessMessages im Ereignis-Handler erlaubt Wiedereintritt (zweiter Klick, Formular schließen).' +
+    ProcessMessagesAdvice, Findings[0].Message);
+end;
+
+procedure TConcurrencyRulesTests.ProcessMessagesSilentCases;
+begin
+  // Außerhalb von Schleife und Handler, im Thread (anonyme Methode), fremdes ProcessMessages,
+  // Schleife ohne ProcessMessages.
+  TRuleAssert.Silent(TProcessMessagesInLoopRule.Create, Routine('  Application.ProcessMessages;'#10 +
+    '  TTask.Run(procedure begin while True do Application.ProcessMessages; end);'#10 +
+    '  while not Fertig do'#10'    Warteschlange.ProcessMessages;'#10'  for I := 0 to 9 do'#10'    Schritt;'));
+  // Korrigierte Form: Arbeit im Thread, Knopf gesperrt.
+  TRuleAssert.Silent(TProcessMessagesInLoopRule.Create, Routine('  LadenButton.Enabled := False;'#10 +
+    '  TTask.Run(procedure begin while not Fertig do Schritt; end);',
+    'procedure TForm1.LadenClick(Sender: TObject);'));
+end;
+
+procedure TConcurrencyRulesTests.ProcessMessagesOptions;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Routine('  while not Fertig do'#10'    Application.ProcessMessages;', 'procedure TForm1.Warten;');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, Source,
+    '{"rules": {"processmessages-in-loop": {"allowIn": ["Warten"]}}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, Source,
+    '{"rules": {"processmessages-in-loop": {"allowIn": ["TForm1.Warten"]}}}', 'U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, Source,
+    '{"rules": {"processmessages-in-loop": {"allowIn": ["TForm2.Warten"]}}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, Source,
+    '{"rules": {"processmessages-in-loop": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, Source,
+    '{"rules": {"processmessages-in-loop": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+  TConfigurationParser.Parse('{"rules": {"processmessages-in-loop": {"allowIn": "Warten"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
 initialization
