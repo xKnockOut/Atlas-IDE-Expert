@@ -3448,3 +3448,16 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Funktion mit `if Betrag
 | BA4 | `if Gefunden then Exit(True);` und in der nächsten Zeile `Exit(False);` | Hinweis; Korrektur `Exit(Gefunden)` ersetzt beide Zeilen |
 | BA5 | Kommentar in einem Zweig bzw. eine zweite Anweisung im then-Zweig | Mit Kommentar Hinweis ohne Korrektur; mit zweiter Anweisung keine Meldung |
 | BA6 | `"boolean-assign-if": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Vergleich über UpperCase oder LowerCase (#936)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Routine mit `if UpperCase(Land) = UpperCase(Standard) then`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CV1 | Unit öffnen | Hinweis `case-insensitive-compare` am Vergleich: „Vergleich über UpperCase; SameText vergleicht ohne Zwischenstrings.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| CV2 | Glühbirne, „Durch SameText(Land, Standard) ersetzen“ | `if SameText(Land, Standard) then`; ein Strg+Z stellt den Vergleich wieder her (**Abnahme**) |
+| CV3 | `if LowerCase(S) <> 'ja' then` | Korrektur `if not SameText(S, 'ja') then` |
+| CV4 | `S.ToUpper = Name.ToUpper` bzw. `AnsiUpperCase(S) = 'JA'` | Korrektur mit `AnsiSameText` |
+| CV5 | `UpperCase(S) = 'ja'` bzw. `UpperCase(S) = LowerCase(T)` | Keine Meldung (andere Fehler) |
+| CV6 | `"case-insensitive-compare": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

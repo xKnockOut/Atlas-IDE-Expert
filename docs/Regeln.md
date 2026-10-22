@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 6 |
 | [Threads](#gruppe-threads) | 8 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
-| [Performance](#gruppe-performance) | 3 |
+| [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
@@ -113,6 +113,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`string-concat-in-loop`](#string-concat-in-loop) | String-Verkettung in einer Schleife | Code Smell | Hinweis |
 | [`loop-invariant-call`](#loop-invariant-call) | Teurer Aufruf in der Schleifenbedingung | Code Smell | Hinweis |
 | [`missing-begin-update`](#missing-begin-update) | Hinzufügen in einer Schleife ohne BeginUpdate | Code Smell | Hinweis |
+| [`case-insensitive-compare`](#case-insensitive-compare) | Vergleich über UpperCase oder LowerCase | Code Smell | Hinweis |
 
 <a id="gruppe-security"></a>
 ### Sicherheit
@@ -3146,4 +3147,23 @@ Richtig:
 
 ```pascal
 Result := Betrag > 0;
+```
+
+<a id="case-insensitive-compare"></a>
+### case-insensitive-compare
+
+**Vergleich über UpperCase oder LowerCase** · Code Smell · Hinweis · Gruppe Performance
+
+UpperCase(A) = UpperCase(B), LowerCase(A) <> 'x', AnsiUpperCase(...) oder A.ToUpper = B.ToUpper erzeugt zwei Strings für einen Vergleich. SameText (AnsiSameText bei den Ansi-Funktionen und den Unicode-String-Helfern) ist kürzer und schneller. Ein Literal zählt nur, wenn die Umwandlung es nicht ändert; UpperCase(A) = LowerCase(B) und UpperCase(A) = 'ja' bleiben unberührt, weil das andere Fehler sind. Ersetzt nicht die String-Helper-Modernisierung aus #71. Konfidenz hoch. Schnellkorrektur: SameText(A, B) bzw. not SameText(A, B).
+
+Mit Treffer:
+
+```pascal
+if UpperCase(Land) = UpperCase(Standard) then
+```
+
+Richtig:
+
+```pascal
+if SameText(Land, Standard) then
 ```
