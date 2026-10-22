@@ -4165,3 +4165,20 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | JV6 | `property Caption;`, Property mit neuem Typ über einer Property, `overload`, `reintroduce`, virtuelle Methoden, Konstruktoren, Klassenmethoden | Keine Meldung von `member-hides-ancestor` |
 | JV7 | `"member-hides-ancestor": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | JV8 | Abgleich mit Delphi: JV1, JV3, JV4 übersetzen | dcc meldet W1009 für JV3; meldet dcc für JV1 oder JV4 nichts, Konfidenz der Fälle senken bzw. im Issue nachtragen |
+
+## Unzulässiges Mitglied im published-Abschnitt (#1004)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JP1 | Das Beispiel aus #1004: `TKarte = class(TCustomControl)` mit `published` und `property Mitte: TPointF read FMitte write SetMitte;`, `System.Types` in uses | Fehler `published-type-invalid` an `TPointF`: „TPointF (Record) kann nicht published sein (wie E2188).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JP2 | Schnellkorrektur „In den public-Abschnitt verschieben“, danach Strg+Z | Die Property steht unter einem neuen `public` direkt vor `published` (bzw. am Ende eines unmittelbar davor stehenden `public`), keine Meldung mehr; ein Undo-Schritt |
+| JP3 | published-Properties vom Typ `TArray<Integer>`, eigenes `array of`, `PChar`, `^Integer`, `procedure(A: Integer)` | Je eine Meldung wie E2188 mit (Array), (Zeiger) bzw. (Prozedurtyp ohne "of object") |
+| JP4 | `property Alt: Real48`, `set of Byte`, Menge über eine Aufzählung mit 33 Werten, `set of 0..32` | Meldungen wie E2186 bzw. E2187; `set of 0..31` und `set of 8..39` ohne Meldung |
+| JP5 | published-Feld `FZahl: Integer;` und `FPunkt: TPoint;` | Meldung wie E2217; Feld vom Typ einer Klasse oder eines Interfaces ohne Meldung |
+| JP6 | Zwei published-Überladungen `procedure Laden; overload;` und `procedure Laden(const APfad: string); overload;` | Meldung wie E2266 an der zweiten; liegt sie in public oder im anderen `{$IFDEF}`-Zweig, keine Meldung |
+| JP7 | `class property Standard: Integer read FStandard;` bzw. `property Größe: Integer read FGroesse;` in published | Meldung wie E2545 bzw. E2452 |
+| JP8 | Dieselben Properties im Abschnitt ohne Angabe einer TPersistent-Klasse, in public, mit Typparameter `T`, mit unbekanntem Typ und mit `published` nur in einem `{$IFDEF}`-Zweig | Keine Meldung |
+| JP9 | `"published-type-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| JP10 | Abgleich mit Delphi: JP1, JP3 bis JP7 übersetzen | dcc meldet dieselben Codes an denselben Stellen, für JP8 nichts; weicht dcc ab (etwa bei Prozedurtypen oder Mengen), Regel anpassen |

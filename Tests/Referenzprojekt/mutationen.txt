@@ -105,3 +105,4 @@ readonly-property-assigned | Ref.Formulare.Suchrahmen.pas | read FOnSuchen write
 abstract-declaration-invalid | Ref.Daten.Suche.pas | class procedure Anmelden(const AAnbieter: TFunc<string, TArray<string>>); static; | procedure Anmelden(const AAnbieter: TFunc<string, TArray<string>>); static;
 unsatisfied-forward | Ref.Sprache.Merkmale.pas | function Zaehler: TZaehlerFunktion;\nbegin | function ZaehlerNeu: TZaehlerFunktion;\nbegin
 member-hides-ancestor | Ref.Sprache.Merkmale.pas |   TDezimalFormatierer = class(TInterfacedObject, IFormatierer) |   THuelleBasis = class\n    FWert: Integer;\n  end;\n  THuelle = class(THuelleBasis)\n    FWert: Integer;\n  end;\n  TDezimalFormatierer = class(TInterfacedObject, IFormatierer)
+published-type-invalid | Ref.Komponenten.Anzeige.pas |   published\n    property Stil: |   published\n    FZaehler: Integer;\n    property Stil:
