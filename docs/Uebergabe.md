@@ -690,3 +690,13 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Unter FPC getestet: RuleTable, Hover.Layout, Findings. VCL-Tests (`Atlas.UI.Settings.Rules.Tests`, Page.Tests) nur mit Delphi.
 - Risiken beim ersten Delphi-Build: `TListView.OnItemChecked`, AutoSize des Editors, `HandleNeeded` der Editoren auf verborgenen Seiten.
 - Handtest AP1–AP26 in `docs/Atlas-Testfaelle.md`. Danach folgen die Unter-Issues (#910 ff.) als Kette auf diesem Branch.
+
+## Compilerregeln #992, #993, #1012, #1013, #1014, #1036 (22.10.2026, Kette ab `feature/1006-readonly-property-assigned`, ungebaut)
+- Kette: `feature/992-constant-expression-error` → `feature/993-default-parameter-invalid` → `feature/1012-signed-unsigned-mix` → `feature/1013-narrowing-assignment` → `feature/1014-typed-constant-modified` → `feature/1036-string-length-limit`. Alle Regeln in `Atlas.Common.Rules.Builtin.Constants`, Tests in `…Builtin.Constants.Tests`.
+- Neu in Semantics: `Atlas.Common.Semantics.ConstantValues` (Konstanten der Datei und aus dem Index, `{$IF}`-Zweige über `Implies`); `TOrdinalConstants.Check` mit Grund (Division durch null, Überlauf), `SizeOf/High/Low` fester Typen.
+- `TTypedNames` ist der gemeinsame Vorfilter (Namen mit bestimmten Typen, auch Aliase) für `signed-unsigned-mix` und `narrowing-assignment`.
+- `narrowing-assignment` ist standardmäßig aus (Liste `strict` in Profiles.Tests), Option `types` in Schema und Parser. Eingeschaltet meldet sie 5 echte W1071-Fälle in `Atlas.Core.Welcome.Continue/Unsaved` (`Minutes: Int64` an `Integer`).
+- `typed-constant-modified` meldet mit `{$J-}` vor der Deklaration in derselben Datei E2064/E2197 als Fehler, sonst W1016/W1017 wie im Issue.
+- Ursachen behoben: Der Index behält `string[N]` in der Signatur von Feldern und Variablen (`TIndexExtractor.SignatureOf`, Test `KeepsShortStringLengthInSignature`). Typisierte Konstanten mit zusammengesetztem Typ (`array[0..1] of Integer`) haben im Index keinen `TypeName`; die neue Regel erkennt sie über die Signatur. Die ältere Prüfung `CheckConstant` in `Builtin.Statements` (E2064 für untypisierte Konstanten) prüft nur `TypeName = ''` und hält solche Konstanten noch für untypisiert.
+- `string-length-limit` meldet E2056 nur mit bekannter `delphiVersion` unter 23. Mit 22.0 hätte sie 8 Literale über 255 Zeichen in den Atlas-Quellen (Atlas setzt Delphi 12 voraus).
+- Handtests: QK (#992), QD (#993), QV (#1012), QE (#1013), QT (#1014), QL (#1036). Unter FPC grün: Constants.Tests (44), ConstantValues, OrdinalConstants, Profiles, GoldenCorpus (mit `CP=65001`), Configuration; Fehlalarmprüfung über 1377 Dateien mit Index.
