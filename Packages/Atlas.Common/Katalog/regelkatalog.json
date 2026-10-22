@@ -2341,6 +2341,39 @@
       "description": "A variable set to Now and later used in Now - Start, End - Start or MilliSecondsBetween, SecondsBetween, MinutesBetween, HoursBetween, DaysBetween or the …Span functions in the same routine: it measures elapsed time with the wall clock, which is coarse and wrong across daylight saving changes or clock synchronisation. TStopwatch is precise and monotonic. Assignments in another routine (fields) and in the other branch of {$IFDEF} stay silent. High confidence. Quick fix when the variable is a local TDateTime (also var Start := Now) used only for MilliSecondsBetween, SecondsBetween or MinutesBetween with Now: TStopwatch.StartNew and ElapsedMilliseconds (div 1000 or div 60000), the variable becomes Uhr when the name is free, System.Diagnostics is added to uses.",
       "bad": "Start := Now;\nImportieren;\nLog(MilliSecondsBetween(Now, Start).ToString + ' ms');",
       "good": "Uhr := TStopwatch.StartNew;\nImportieren;\nLog(Uhr.ElapsedMilliseconds.ToString + ' ms');"
+    },
+    {
+      "id": "money-as-float",
+      "name": "Money amount as floating point",
+      "category": "bug",
+      "severity": "hint",
+      "group": "style",
+      "description": "Field, variable, parameter or property whose name denotes a money amount (option namePatterns) with type Double, Single, Extended or Real: binary floating point rounds cent amounts wrongly (0.1 + 0.2), Currency calculates them exactly. The last part of the name counts (GesamtPreis, Nettobetrag, FNetto, Preise; not NettoGewicht); rates, factors, quotas, shares (Steuersatz, PriceFactor) and checksums stay silent. Off by default and low confidence: it shows up once the rule is switched on and minConfidence is low. Quick fix when all names of the declaration are money amounts: type Currency, for parameters also in the header of the implementation, for fields and properties also the property or the field behind read and write; no fix when a getter or setter would have to change too. With checkRound the rule also reports Round with a money amount in the argument (banker's rounding: 2.5 becomes 2).",
+      "bad": "TPosition = record\n  Menge: Integer;\n  Preis: Double;\nend;",
+      "good": "TPosition = record\n  Menge: Integer;\n  Preis: Currency;\nend;",
+      "options": [
+        {
+          "name": "namePatterns",
+          "type": "string-list",
+          "default": [
+            "Betrag",
+            "Preis",
+            "Summe",
+            "Netto",
+            "Brutto",
+            "Steuer",
+            "Amount",
+            "Price"
+          ],
+          "description": "Name parts that denote a money amount; plurals included."
+        },
+        {
+          "name": "checkRound",
+          "type": "boolean",
+          "default": false,
+          "description": "Also report Round on money amounts."
+        }
+      ]
     }
   ]
 }

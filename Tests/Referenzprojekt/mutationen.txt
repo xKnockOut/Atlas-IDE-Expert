@@ -106,3 +106,4 @@ ui-call-in-console-or-service | ../RefApp.dpr | Application.Initialize; | {$APPT
 load-without-encoding | Ref.Daten.Kunden.pas | FAbfrage.SQL.Text := 'SELECT Id, Name FROM Kunden WHERE Name LIKE :Name'; | FAbfrage.SQL.LoadFromFile('kunden.sql');
 registry-hklm-write | Ref.Sprache.Merkmale.pas | Result := 'Andere'; | Reg.RootKey := HKEY_LOCAL_MACHINE;\n  Reg.WriteString('Plattform', 'Andere');\n  Result := 'Andere';
 now-for-elapsed-time | Ref.Sprache.Merkmale.pas | Result := IntToStr(AWert); | Beginn := Now;\n  Result := FloatToStr(Now - Beginn);
+money-as-float | Ref.Daten.Verwendung.pas | function NeuerAuftrag(ANummer: Integer): TAuftrag;\nbegin | function NeuerAuftrag(ANummer: Integer): TAuftrag;\nvar\n  Brutto: Double;\nbegin

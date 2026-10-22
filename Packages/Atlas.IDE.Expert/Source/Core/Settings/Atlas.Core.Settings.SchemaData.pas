@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1766] of string = (
+  Lines: array[0..1779] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -449,6 +449,19 @@ const
     '                "enum": ["UTF8", "Unicode", "BigEndianUnicode", "ANSI", "ASCII", "UTF7", "Default"],',
     '                "default": "UTF8",',
     '                "description": "Nur load-without-encoding: Kodierung, die die Korrektur einsetzt (TEncoding.<Wert>) (#1061)."',
+    '              },',
+    '              "namePatterns": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "default": ["Betrag", "Preis", "Summe", "Netto", "Brutto", "Steuer", "Amount", "Price"],',
+    '                "description": "Nur money-as-float: Namensteile, die einen Geldbetrag bezeichnen; maßgeblich ist der letzte Teil des Namens, Mehrzahl eingeschlossen (#1064)."',
+    '              },',
+    '              "checkRound": {',
+    '                "type": "boolean",',
+    '                "default": false,',
+    '                "description": "Nur money-as-float: zusätzlich Round mit einem Geldbetrag im Argument melden (Banker''s Rounding) (#1064)."',
     '              }',
     '            }',
     '          }',

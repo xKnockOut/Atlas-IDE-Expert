@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 29 |
+| [Stil und Metriken](#gruppe-style) | 30 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -259,6 +259,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`global-variable`](#global-variable) | Globale Variable im interface | Code Smell | Hinweis |
 | [`commented-out-code`](#commented-out-code) | Auskommentierter Code | Code Smell | Hinweis |
 | [`now-for-elapsed-time`](#now-for-elapsed-time) | Laufzeit mit Now gemessen | Code Smell | Hinweis |
+| [`money-as-float`](#money-as-float) | Geldbetrag als Gleitkommazahl | Bug | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -4640,4 +4641,34 @@ Richtig:
 Uhr := TStopwatch.StartNew;
 Importieren;
 Log(Uhr.ElapsedMilliseconds.ToString + ' ms');
+```
+
+<a id="money-as-float"></a>
+### money-as-float
+
+**Geldbetrag als Gleitkommazahl** · Bug · Hinweis · Gruppe Stil und Metriken
+
+Feld, Variable, Parameter oder Property, deren Name einen Geldbetrag bezeichnet (Option namePatterns), mit dem Typ Double, Single, Extended oder Real: Binäres Gleitkomma rundet Cent-Beträge falsch (0.1 + 0.2), Currency rechnet sie exakt. Maßgeblich ist der letzte Namensteil (GesamtPreis, Nettobetrag, FNetto, Preise; nicht NettoGewicht); Sätze, Faktoren, Quoten, Anteile (Steuersatz, PriceFactor) und Prüfsummen bleiben still. Standard aus und niedrige Konfidenz: Treffer erscheinen, wenn die Regel eingeschaltet und minConfidence low ist. Schnellkorrektur, wenn alle Namen der Deklaration Geldbeträge sind: Typ Currency, bei Parametern auch im Kopf der Implementierung, bei Feldern und Properties auch die Property bzw. das Feld hinter read und write; keine Korrektur, wenn ein Getter oder Setter mitwandern müsste. Mit checkRound meldet die Regel zusätzlich Round mit einem Geldbetrag im Argument (Banker's Rounding: 2,5 wird 2).
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `namePatterns` | string-list | `["Betrag","Preis","Summe","Netto","Brutto","Steuer","Amount","Price"]` | Namensteile, die einen Geldbetrag bezeichnen; Mehrzahl eingeschlossen. |
+| `checkRound` | boolean | `false` | Zusätzlich Round auf Geldbeträgen melden. |
+
+Mit Treffer:
+
+```pascal
+TPosition = record
+  Menge: Integer;
+  Preis: Double;
+end;
+```
+
+Richtig:
+
+```pascal
+TPosition = record
+  Menge: Integer;
+  Preis: Currency;
+end;
 ```

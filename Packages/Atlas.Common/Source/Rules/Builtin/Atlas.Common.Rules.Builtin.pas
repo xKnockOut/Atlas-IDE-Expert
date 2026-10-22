@@ -52,6 +52,7 @@ uses
   Atlas.Common.Rules.Builtin.Directives,
   Atlas.Common.Rules.Builtin.Properties,
   Atlas.Common.Rules.Builtin.Platform,
+  Atlas.Common.Rules.Builtin.Idioms,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -99,6 +100,7 @@ begin
     RegisterDirectiveRules(Registry);
     RegisterPropertyRules(Registry);
     RegisterPlatformRules(Registry);
+    RegisterIdiomRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;
