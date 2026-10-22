@@ -2331,6 +2331,21 @@
           "description": "Also report private fields that are never used (the compiler reports only methods)."
         }
       ]
+    },
+    {
+      "id": "message-method-invalid",
+      "name": "Message method declared incorrectly",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A message procedure of a class does not have exactly one var parameter (like E2138; the parameter type is not checked, an untyped var parameter is fine), its message number is less than 1 (like E2139), or an earlier message method of the same class already handles the same number (like E2140, usually after copying). Numbers count as equal when their values are known (numbers, constants from the index) or when the expressions are the same text. Methods in mutually exclusive {$IF} branches are not duplicates; the same number in a descendant overrides the handler and is fine. Quick fix for E2138: make a single parameter var, otherwise replace the list with (var Msg: TMessage); the method body in the same file is adjusted as well.",
+      "bad": "procedure WMSize(var Msg: TWMSize); message WM_SIZE;\nprocedure WMGroesse(var Msg: TWMSize); message WM_SIZE;",
+      "good": "procedure WMSize(var Msg: TWMSize); message WM_SIZE;\nprocedure WMMove(var Msg: TWMMove); message WM_MOVE;",
+      "compilerCodes": [
+        "E2138",
+        "E2139",
+        "E2140"
+      ]
     }
   ]
 }

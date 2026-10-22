@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 17 |
+| [Compiler vorab](#gruppe-compiler) | 18 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -148,6 +148,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
 | [`inaccessible-member`](#inaccessible-member) | Zugriff auf ein nicht sichtbares Mitglied | Bug | Fehler |
 | [`unused-private-member`](#unused-private-member) | Privates Mitglied wird nie verwendet | Code Smell | Hinweis |
+| [`message-method-invalid`](#message-method-invalid) | message-Methode falsch deklariert | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4602,4 +4603,27 @@ Richtig:
   TImport = class
   private
   end;
+```
+
+<a id="message-method-invalid"></a>
+### message-method-invalid
+
+**message-Methode falsch deklariert** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine message-Prozedur einer Klasse hat nicht genau einen var-Parameter (wie E2138; der Typ wird nicht geprüft, ein untypisierter var-Parameter ist in Ordnung), ihre Nachrichtennummer ist kleiner als 1 (wie E2139) oder eine frühere message-Methode derselben Klasse behandelt schon dieselbe Nummer (wie E2140, meist nach Kopieren). Nummern gelten als gleich, wenn ihre Werte bekannt sind (Zahlen, Konstanten aus dem Index) oder die Ausdrücke gleich lauten. Methoden in sich ausschließenden {$IF}-Zweigen sind nicht doppelt; dieselbe Nummer in einem Nachfahren überschreibt den Handler und ist erlaubt. Korrektur für E2138: einen einzelnen Parameter zu var machen, sonst die Liste durch (var Msg: TMessage) ersetzen; der Rumpf in derselben Datei wird mit angepasst.
+
+Entspricht der Compilermeldung `E2138`, `E2139`, `E2140`.
+
+Mit Treffer:
+
+```pascal
+procedure WMSize(var Msg: TWMSize); message WM_SIZE;
+procedure WMGroesse(var Msg: TWMSize); message WM_SIZE;
+```
+
+Richtig:
+
+```pascal
+procedure WMSize(var Msg: TWMSize); message WM_SIZE;
+procedure WMMove(var Msg: TWMMove); message WM_MOVE;
 ```
