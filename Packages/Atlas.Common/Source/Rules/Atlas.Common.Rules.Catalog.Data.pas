@@ -2361,6 +2361,39 @@ begin
     '      "description": "A variable set to Now and later used in Now - Start, End - Start or MilliSecondsBetween, SecondsBetween, MinutesBetween, HoursBetween, DaysBetween or the …Span functions in the s' + 'ame routine: it measures elapsed time with the wall clock, which is coarse and wrong across daylight saving changes or clock synchronisation. TStopwatch is precise and monotonic. Assignments in anothe' + 'r routine (fields) and in the other branch of {$IFDEF} stay silent. High confidence. Quick fix when the variable is a local TDateTime (also var Start := Now) used only for MilliSecondsBetween, Seconds' + 'Between or MinutesBetween with Now: TStopwatch.StartNew and ElapsedMilliseconds (div 1000 or div 60000), the variable becomes Uhr when the name is free, System.Diagnostics is added to uses.",' + #10 +
     '      "bad": "Start := Now;\nImportieren;\nLog(MilliSecondsBetween(Now, Start).ToString + '' ms'');",' + #10 +
     '      "good": "Uhr := TStopwatch.StartNew;\nImportieren;\nLog(Uhr.ElapsedMilliseconds.ToString + '' ms'');"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "money-as-float",' + #10 +
+    '      "name": "Money amount as floating point",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "Field, variable, parameter or property whose name denotes a money amount (option namePatterns) with type Double, Single, Extended or Real: binary floating point rounds cent amoun' + 'ts wrongly (0.1 + 0.2), Currency calculates them exactly. The last part of the name counts (GesamtPreis, Nettobetrag, FNetto, Preise; not NettoGewicht); rates, factors, quotas, shares (Steuersatz, Pri' + 'ceFactor) and checksums stay silent. Off by default and low confidence: it shows up once the rule is switched on and minConfidence is low. Quick fix when all names of the declaration are money amounts' + ': type Currency, for parameters also in the header of the implementation, for fields and properties also the property or the field behind read and write; no fix when a getter or setter would have to c' + 'hange too. With checkRound the rule also reports Round with a money amount in the argument (banker''s rounding: 2.5 becomes 2).",' + #10 +
+    '      "bad": "TPosition = record\n  Menge: Integer;\n  Preis: Double;\nend;",' + #10 +
+    '      "good": "TPosition = record\n  Menge: Integer;\n  Preis: Currency;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "namePatterns",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "Betrag",' + #10 +
+    '            "Preis",' + #10 +
+    '            "Summe",' + #10 +
+    '            "Netto",' + #10 +
+    '            "Brutto",' + #10 +
+    '            "Steuer",' + #10 +
+    '            "Amount",' + #10 +
+    '            "Price"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Name parts that denote a money amount; plurals included."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "checkRound",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": false,' + #10 +
+    '          "description": "Also report Round on money amounts."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3557,6 +3590,21 @@ begin
     '      "id": "now-for-elapsed-time",' + #10 +
     '      "name": "Laufzeit mit Now gemessen",' + #10 +
     '      "description": "Eine Variable, der Now zugewiesen wird und die in derselben Routine danach in Now - Start, Ende - Start oder MilliSecondsBetween, SecondsBetween, MinutesBetween, HoursBetween, Da' + 'ysBetween bzw. den …Span-Funktionen vorkommt: Die Laufzeit wird mit der Uhrzeit gemessen, grob aufgelöst und falsch bei Zeitumstellung oder Uhrabgleich. TStopwatch ist genau und monoton. Zuweisungen i' + 'n einer anderen Routine (Felder) und im anderen Zweig von {$IFDEF} bleiben still. Konfidenz hoch. Schnellkorrektur, wenn die Variable eine lokale TDateTime ist (auch var Start := Now) und nur für Mill' + 'iSecondsBetween, SecondsBetween oder MinutesBetween mit Now dient: TStopwatch.StartNew und ElapsedMilliseconds (div 1000 bzw. div 60000), die Variable heißt danach Uhr, wenn der Name frei ist, System.' + 'Diagnostics kommt ins uses."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "money-as-float",' + #10 +
+    '      "name": "Geldbetrag als Gleitkommazahl",' + #10 +
+    '      "description": "Feld, Variable, Parameter oder Property, deren Name einen Geldbetrag bezeichnet (Option namePatterns), mit dem Typ Double, Single, Extended oder Real: Binäres Gleitkomma rundet C' + 'ent-Beträge falsch (0.1 + 0.2), Currency rechnet sie exakt. Maßgeblich ist der letzte Namensteil (GesamtPreis, Nettobetrag, FNetto, Preise; nicht NettoGewicht); Sätze, Faktoren, Quoten, Anteile (Steue' + 'rsatz, PriceFactor) und Prüfsummen bleiben still. Standard aus und niedrige Konfidenz: Treffer erscheinen, wenn die Regel eingeschaltet und minConfidence low ist. Schnellkorrektur, wenn alle Namen der' + ' Deklaration Geldbeträge sind: Typ Currency, bei Parametern auch im Kopf der Implementierung, bei Feldern und Properties auch die Property bzw. das Feld hinter read und write; keine Korrektur, wenn ei' + 'n Getter oder Setter mitwandern müsste. Mit checkRound meldet die Regel zusätzlich Round mit einem Geldbetrag im Argument (Banker''s Rounding: 2,5 wird 2).",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "namePatterns",' + #10 +
+    '          "description": "Namensteile, die einen Geldbetrag bezeichnen; Mehrzahl eingeschlossen."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "checkRound",' + #10 +
+    '          "description": "Zusätzlich Round auf Geldbeträgen melden."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

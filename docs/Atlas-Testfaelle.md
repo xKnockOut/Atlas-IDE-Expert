@@ -4172,3 +4172,19 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | ZM4 | `Ende := Now; Dauer := Ende - Start;` bzw. `if Now - FBeginn > 1 / 24 then` | Meldung ohne Korrektur |
 | ZM5 | Zeitstempel ohne Messung (`Erstellt := Now; Speichern(Erstellt)`), `FStart := Now` in einer anderen Methode, `Start := Now` nur im `{$IFDEF}`-Zweig und die Messung im `{$ELSE}`-Zweig | Keine Meldung |
 | ZM6 | `"now-for-elapsed-time": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
+
+## Geldbetrag als Gleitkommazahl (#1064)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; in `atlas.json` `"minConfidence": "low"` und `"money-as-float": "hint"`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GF1 | Das Beispiel aus #1064: `TPosition = record Menge: Integer; Preis: Double; end;` | Hinweis `money-as-float` an `Preis`: „Preis ist Double; Currency rechnet Cent-Beträge exakt.“; im Fenster „Atlas-Prüfung“ (Gruppe Stil und Metriken) und im Befund-Hover (**Abnahme**) |
+| GF2 | Schnellkorrektur „Typ in Currency ändern“, danach Strg+Z | `Preis: Currency;`, danach keine Meldung; ein Undo-Schritt nimmt es zurück |
+| GF3 | Methode `procedure Buchen(const ABetrag: Double);` in einer Klasse, Rumpf in derselben Unit; Korrektur an `ABetrag` | Eine Meldung (nicht doppelt am Rumpf); Deklaration und Rumpf heißen danach `const ABetrag: Currency`; kompiliert |
+| GF4 | `FNetto: Double;` mit `property Netto: Double read FNetto write FNetto;`, Korrektur am Feld | Feld und Property werden `Currency`; bei `write SetNetto` keine Korrektur |
+| GF5 | `GesamtPreis`, `Nettobetrag`, `Preise`, `var Summe: Real`, `var Brutto: Single := 0` | Je eine Meldung |
+| GF6 | `SteuerSatz: Double`, `PreisFaktor: Double`, `NettoGewicht: Double`, `Preis: Currency`, `Betrag: Int64` | Keine Meldung |
+| GF7 | `"namePatterns": ["Kosten"]` | Nur noch `Kosten: Double` wird gemeldet |
+| GF8 | `"checkRound": true` und `Anzahl := Round(Preis * 100);` | Zusätzlich „Round rundet Preis auf die nächste gerade Zahl (2,5 wird 2); …“ |
+| GF9 | Ohne Einstellung bzw. `"money-as-float": "off"`, `exclude` mit dem Pfad der Datei | Keine Meldung |
