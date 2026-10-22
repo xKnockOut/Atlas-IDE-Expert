@@ -3588,3 +3588,18 @@ Voraussetzung: Server läuft; Testunit mit `[Test] procedure TImportTests.LeereD
 | DA5 | `[WillRaise(EImport)]` bzw. `[Ignore]` am Test | Keine Meldung |
 | DA6 | Option „assertPatterns“ = `["Expect"]`, Rumpf `Expect(Laden).ToBe(1);` | Keine Meldung; `CheckEquals` zählt dann nicht mehr |
 | DA7 | `"dunitx-test-without-assert": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Ereignis ohne Assigned-Prüfung (#946)
+
+Voraussetzung: Server läuft; Unit mit `TZaehler`, Feld `FOnChange: TNotifyEvent`, Property `OnChange` und `procedure TZaehler.Erhoehen;` mit `Inc(FWert); FOnChange(Self);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EA1 | Unit öffnen | Warnung `event-call-without-assigned` auf `FOnChange`: „FOnChange kann nil sein; ohne Assigned-Prüfung folgt eine Zugriffsverletzung.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| EA2 | Alt+Enter, „In if Assigned(FOnChange) then einschließen“ | `if Assigned(FOnChange) then` mit eingerücktem Aufruf darunter; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| EA3 | `OnChange(Self);` bzw. `Self.FOnChange(Self);` statt `FOnChange(Self);` | Gleiche Warnung mit dem geschriebenen Namen |
+| EA4 | `if Assigned(FOnChange) and (FWert > 0) then FOnChange(Self);`, `if not Assigned(FOnChange) then Exit;` davor, `Assigned(FBusy) and FBusy()` | Keine Meldung |
+| EA5 | `Ok := … and Assigned(FOnChange); if not Ok then Exit;` bzw. Prüfmethode `function KannMelden: Boolean` mit `Result := … and Assigned(FOnChange)` | Keine Meldung |
+| EA6 | Feld `FReadText: TFunc<string, string>`, das der Konstruktor mit `FReadText := AReadText` belegt | Keine Meldung (Abhängigkeit, kein Ereignis) |
+| EA7 | `if FWert > 0 then FOnChange(Self);` in einer Zeile | Warnung ohne Korrektur |
+| EA8 | `"event-call-without-assigned": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

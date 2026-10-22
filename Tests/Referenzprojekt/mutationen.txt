@@ -67,3 +67,4 @@ commented-out-code | Ref.Daten.Suche.pas | FAnbieter := AAnbieter; | FAnbieter :
 queue-nil-in-package | Ref.Komponenten.Anzeige.pas | FWert := AValue;\n    Invalidate; | FWert := AValue;\n    TThread.Queue(nil, Invalidate);
 ota-notifier-not-removed | Ref.Komponenten.Registrierung.pas | RegisterComponents('Referenz', [TRefAnzeige]); | RegisterComponents('Referenz', [TRefAnzeige]);\n  (BorlandIDEServices as IOTAServices).AddNotifier(TRefNotifier.Create);
 dunitx-test-without-assert | Ref.Daten.Suche.pas | \nimplementation | \ntype\n  TSucheTests = class\n  public\n    [Test]\n    procedure Leer;\n  end;\n\nimplementation\n\nprocedure TSucheTests.Leer;\nbegin\n  TKundenSuche.Suchen('x');\nend;
+event-call-without-assigned | Ref.Formulare.Suchrahmen.pas | if Assigned(FOnSuchen) then\n    FOnSuchen(Self); | FOnSuchen(Self);
