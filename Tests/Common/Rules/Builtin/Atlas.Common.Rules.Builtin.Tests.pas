@@ -150,6 +150,8 @@ type
       const AFixes: TArray<TRuleFix>); overload;
     procedure AddWithSeverity(const ARange: TTextRange; const AMessage: string; ASeverity: TRuleSeverity;
       const AFixes: TArray<TRuleFix>);
+    procedure AddWithDetails(const ARange: TTextRange; const AMessage, ADetails: string;
+      AConfidence: TRuleConfidence; const AFixes: TArray<TRuleFix>);
   end;
 
 procedure TCountingReport.Add(const ARange: TTextRange; const AMessage: string);
@@ -175,6 +177,12 @@ end;
 
 procedure TCountingReport.AddWithSeverity(const ARange: TTextRange; const AMessage: string;
   ASeverity: TRuleSeverity; const AFixes: TArray<TRuleFix>);
+begin
+  Inc(Count);
+end;
+
+procedure TCountingReport.AddWithDetails(const ARange: TTextRange; const AMessage, ADetails: string;
+  AConfidence: TRuleConfidence; const AFixes: TArray<TRuleFix>);
 begin
   Inc(Count);
 end;

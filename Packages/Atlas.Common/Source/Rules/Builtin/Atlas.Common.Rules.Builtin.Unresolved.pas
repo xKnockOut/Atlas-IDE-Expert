@@ -847,7 +847,8 @@ var
   Token: TPascalToken;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not TUnresolvedNames.Available(AContext.Index) or
-    not UsesKnown(AContext) then
+    not TUnresolvedNames.UsesKnown(AContext.Index, TUsesClauses.UsedUnits(AContext.Tree.Tokens),
+    AContext.Namespaces, AContext.EnsureUnit) then
     Exit;
   Lines := ConditionalLines(AContext.Tree.Tokens);
   LineBreak := TTextLines.LineBreakOf(AContext.Text);
