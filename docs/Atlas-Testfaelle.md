@@ -4147,3 +4147,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | GC6 | `TList<T>` innerhalb eines generischen Typs, `TObjectList<TKunde>`, `T: constructor` mit `T.Create`, `T: TTier` mit `T.Create` | Keine Meldung |
 | GC7 | `"generic-constraint-violated": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | GC8 | Abgleich mit Delphi: GC1, GC3 bis GC5 übersetzen | dcc meldet die genannten Codes an denselben Stellen, für GC6 nichts; weicht ein Code ab (etwa E2003 statt E2571), den Fall im Issue nachtragen |
+
+## Unbekannter Typ (#1031)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NT1 | Das Beispiel aus #1031: `var K: TKunde;`, `TKunde` steht in Unit `Kunden`, die nicht in uses steht | Fehler `unresolved-type` an `TKunde`: „Typ TKunde ist nicht deklariert; Kunden fehlt in uses (wie E2003).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| NT2 | Schnellkorrektur „uses Kunden ergänzen“, danach Strg+Z | `Kunden` steht in uses, keine Meldung mehr; ein Undo-Schritt |
+| NT3 | Unbekannter Typ als Parameter, Rückgabe, Feld, Eigenschaft, Vorfahr, Typumwandlung `TKunde(X)` und in `TList<TKunde>` | Je eine Meldung am Typnamen |
+| NT4 | `var Z: ^TUnbekannt;` und `var V: Integer; W: V;` | Zeigerziel: Meldung wie E2564 (Code gegen dcc prüfen, siehe NT7); `W: V`: „V ist kein Typ (wie E2005).“ |
+| NT5 | Typen der Datei, Typparameter `T`, `TFormular.TEintrag` (verschachtelt), Teilbereich `MinWert..MaxWert`, Typ aus einer Unit außerhalb des Index, Vorfahr unbekannt, `{$IFDEF}`-Zweig | Keine Meldung |
+| NT6 | `"unresolved-type": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| NT7 | Abgleich mit Delphi: NT1, NT3, NT4 übersetzen | dcc meldet die genannten Codes; weicht der Code beim Zeigerziel ab (E2003 statt E2564), Meldung der Regel anpassen und im Issue nachtragen |

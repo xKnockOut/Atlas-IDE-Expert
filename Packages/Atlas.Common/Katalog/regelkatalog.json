@@ -2325,6 +2325,22 @@
         "E2568",
         "E2571"
       ]
+    },
+    {
+      "id": "unresolved-type",
+      "name": "Type in a declaration not found",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A type name in a declaration (field, parameter, result, ancestor, interface list, variable, type argument) is not declared (like E2003, for the target of a pointer type like E2564) or is not a type (like E2005). Complements unresolved-identifier, which only checks statements. Same preconditions as unresolved-attribute: System in the symbol index, every unit from uses known, not inside {$IF…} blocks. Type parameters, names the file declares as a type anywhere (also nested) and names the index knows as a nested type (inherited inner types) are not reported. Quick fix: add the unit that declares the type (with the same number of type parameters) to uses.",
+      "bad": "uses\n  System.SysUtils;\ntype\n  TKunden = TObjectList<TKunde>;",
+      "good": "uses\n  System.SysUtils, System.Generics.Collections;\ntype\n  TKunden = TObjectList<TKunde>;",
+      "compilerCodes": [
+        "E2564",
+        "E2563",
+        "E2005",
+        "E2003"
+      ]
     }
   ]
 }
