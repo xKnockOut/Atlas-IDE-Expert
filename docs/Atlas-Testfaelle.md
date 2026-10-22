@@ -3062,3 +3062,16 @@ Voraussetzung: `uses Winapi.Windows, Vcl.Graphics;`, VCL- und RTL-Quellen im Ind
 | GN7 | `completion.showFmxUnits` an | `TBitmap` aus FMX.Graphics erscheint; Enter fügt `FMX.Graphics.TBitmap` ein und ergänzt FMX.Graphics in den uses (Warnung im Panel) |
 | GN8 | `completion.sameNameVariants` aus | Nur `TBitmap` aus Vcl.Graphics, ohne „aktiv“, keine Fußzeile zu FMX (**Abnahme**) |
 | GN9 | Oberfläche auf Englisch | Marke „active“, „Declared in“, „… hidden“ |
+
+## Keine Server-Neustarts durch tiefe Ausdrücke (#1094)
+
+Voraussetzung: Einstellungen auf Vorgabe, Diagnoselog an; Projektgruppe `Atlas.groupproj` geöffnet, aktives Projekt `Tests/Atlas.Tests.dproj` (Win64), alle Dateien der Gruppe geschlossen bis auf zwei.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SN1 | IDE mit der Gruppe 10 Minuten offen lassen, ohne zu tippen | Keine Benachrichtigung „Server neu gestartet“ (**Abnahme**) |
+| SN2 | Diagnoselog des Laufs (`%LOCALAPPDATA%\Atlas\Logs\Diagnose\diag-<Datum>-<pid>.log`) öffnen | Keine Zeile `workspace/diagnostic … error:EStackOverflow`; am Ende des Laufs steht eine `run end`-Zeile (**Abnahme**) |
+| SN3 | `Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data.pas` öffnen | Befunde erscheinen wie bei anderen Units, kein Fehler im Log |
+| SN4 | In einer eigenen Unit `X := 1 - 1 - 1 …` mit 1200 Gliedern schreiben (Testprojekt) und speichern | Kein Absturz; die Prüfregeln melden für diese Unit nichts, im Diagnoselog steht `deepUnits=1 deepUnit=unit#N deepUnitDepth=…` |
+| SN5 | Kommandozeile: `AtlasServer.exe --check` über die Gruppe (Abschnitt „Linter mode“ im README) | Läuft durch alle Units ohne Absturz; dieselben Befunde wie vor #1094 |
+| SN6 | Testlauf `Atlas.Tests.exe` | Grün, darunter `SecondOverflowInSameThreadIsCaughtAgain` (drei Stapelüberläufe im selben Thread werden abgefangen, der Prozess lebt) |

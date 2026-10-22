@@ -19,6 +19,15 @@
 // kaputten Baum. Die Token der inaktiven Zweige bleiben in Tree.Tokens, Positionen
 // stimmen mit dem Text überein. ActiveDiagnostics liefert die Syntaxfehler dieses
 // Baums: inaktive Zweige dürfen Code eines anderen Compilers enthalten.
+//
+// Lange Operatorketten (#1094): a + b + c ist linksassoziativ und wird als
+// ((a + b) + c) gebaut. Erzeugte Units verketten aber Tausende Strings mit +;
+// der Baum wäre dann so tief wie die Kette lang, und rekursive Auswertungen
+// (Prüfregeln, Index) sprengten den Stapel. Ab BalancedRunFrom rechten
+// Operanden desselben assoziativen Operators (+, and, or, xor) entsteht
+// deshalb A + Ausgeglichen(x1 … xn) mit Tiefe log2(n). Reihenfolge der
+// Operanden und Bereiche der Knoten bleiben; kürzere Ketten und - * / div mod
+// usw. bleiben linkslastig wie bisher.
 
 interface
 
@@ -66,6 +75,20 @@ uses
 type
   /// <summary>Wo der Parser nach einem Fehler wieder aufsetzt.</summary>
   TRecovery = (Declarations, Members, Statements);
+
+  /// <summary>Rechter Operand einer Operatorkette mit seinen Token-Grenzen (EndIndex exklusiv).</summary>
+  TChainOperand = record
+    Node: TSyntaxNode;
+    StartIndex: Integer;
+    EndIndex: Integer;
+  end;
+
+  /// <summary>Folge desselben assoziativen Operators, die ParseSimpleExpression bzw. ParseTerm sammelt.</summary>
+  TOperatorRun = record
+    Operator: string;
+    Operands: TArray<TChainOperand>;
+    Count: Integer;
+  end;
 
   TParser = class
   private
@@ -195,6 +218,17 @@ type
     procedure ParseGenericArgs(AParent: TSyntaxNode);
     procedure ParseArguments(AParent: TSyntaxNode; const ACloser: string);
     function Binary(const AOperator: string; ALeft, ARight: TSyntaxNode; AStartIndex: Integer): TSyntaxNode;
+    /// <summary>Wie Binary, mit ausdrücklichem Ende (Token-Index exklusiv) statt der aktuellen Position.</summary>
+    function BinaryUpTo(const AOperator: string; ALeft, ARight: TSyntaxNode; AStartIndex,
+      AEndIndex: Integer): TSyntaxNode;
+    /// <summary>Ausgeglichener Teilbaum aus den Operanden ALow..AHigh von ARun.</summary>
+    function BalancedRun(const ARun: TOperatorRun; ALow, AHigh: Integer): TSyntaxNode;
+    /// <summary>Hängt die gesammelte Folge an ALeft (Anfang AStartIndex) und leert sie.</summary>
+    function FlushRun(ALeft: TSyntaxNode; AStartIndex: Integer; var ARun: TOperatorRun): TSyntaxNode;
+    /// <summary>Nimmt den Operanden ARight hinter AOperator auf: in die laufende Folge eines assoziativen
+    /// Operators oder sofort als BinaryExpr.</summary>
+    function ChainOperand(ALeft: TSyntaxNode; const AOperator: string; ARight: TSyntaxNode;
+      AStartIndex, AOperandStart: Integer; var ARun: TOperatorRun): TSyntaxNode;
   public
     constructor Create(const AText: string; const ACancellation: IPascalCancellation;
       const ASkip: TArray<TTextRange> = nil);
@@ -215,6 +249,11 @@ const
     'virtual', 'winapi', 'delayed');
   /// <summary>Höchste Verschachtelungstiefe; schützt vor Stapelüberlauf bei kaputtem Code.</summary>
   MaxNesting = 256;
+  /// <summary>Assoziative Operatoren, deren lange Folgen ausgeglichen gebaut werden.</summary>
+  AssociativeOperators: array[0..3] of string = ('+', 'and', 'or', 'xor');
+  /// <summary>Ab so vielen rechten Operanden desselben assoziativen Operators wird die Folge ausgeglichen
+  /// statt linkslastig gebaut; kürzere Folgen bleiben linkslastig.</summary>
+  BalancedRunFrom = 32;
   CallingConventions: array[0..5] of string = ('stdcall', 'cdecl', 'pascal', 'register', 'safecall', 'winapi');
   VisibilityWords: array[0..5] of string = ('private', 'protected', 'public', 'published', 'automated', 'strict');
   HintWords: array[0..3] of string = ('deprecated', 'platform', 'library', 'experimental');
@@ -2121,6 +2160,82 @@ begin
   FinishNode(Result, AStartIndex);
 end;
 
+function TParser.BinaryUpTo(const AOperator: string; ALeft, ARight: TSyntaxNode; AStartIndex,
+  AEndIndex: Integer): TSyntaxNode;
+var
+  First, Last: TPascalToken;
+begin
+  Result := StartNode(TSyntaxKind.BinaryExpr);
+  Result.Name := AOperator;
+  Result.Add(ALeft);
+  Result.Add(ARight);
+  // Wie FinishNode an der Stelle, als der Parser hinter dem letzten Operanden stand.
+  First := FTokens[AStartIndex];
+  Last := FTokens[AEndIndex - 1];
+  Result.SetRange(First.StartPos, Last.EndPos, First.Offset, Last.Offset + Length(Last.Text));
+end;
+
+function TParser.BalancedRun(const ARun: TOperatorRun; ALow, AHigh: Integer): TSyntaxNode;
+var
+  Middle: Integer;
+begin
+  if ALow = AHigh then
+    Exit(ARun.Operands[ALow].Node);
+  // Rekursionstiefe log2(Anzahl), auch bei Zehntausenden Operanden flach.
+  Middle := (ALow + AHigh) div 2;
+  Result := BinaryUpTo(ARun.Operator, BalancedRun(ARun, ALow, Middle), BalancedRun(ARun, Middle + 1, AHigh),
+    ARun.Operands[ALow].StartIndex, ARun.Operands[AHigh].EndIndex);
+end;
+
+function TParser.FlushRun(ALeft: TSyntaxNode; AStartIndex: Integer; var ARun: TOperatorRun): TSyntaxNode;
+var
+  Index: Integer;
+begin
+  Result := ALeft;
+  if ARun.Count = 0 then
+    Exit;
+  if ARun.Count < BalancedRunFrom then
+  begin
+    // Kurze Folge: linkslastig wie bisher, mit denselben Bereichen wie Binary.
+    for Index := 0 to ARun.Count - 1 do
+      Result := BinaryUpTo(ARun.Operator, Result, ARun.Operands[Index].Node, AStartIndex,
+        ARun.Operands[Index].EndIndex);
+  end
+  else
+    // Lange Folge desselben assoziativen Operators, etwa 'a' + #10 + 'b' + … in erzeugten Units:
+    // A + x1 + … + xn = A + (x1 + … + xn), der rechte Teil ausgeglichen. Linkslastig wäre der Baum so
+    // tief wie die Kette lang, und rekursive Auswertungen (Prüfregeln, Index) sprengten den Stapel.
+    Result := BinaryUpTo(ARun.Operator, Result, BalancedRun(ARun, 0, ARun.Count - 1), AStartIndex,
+      ARun.Operands[ARun.Count - 1].EndIndex);
+  ARun.Operator := '';
+  ARun.Operands := nil;
+  ARun.Count := 0;
+end;
+
+function TParser.ChainOperand(ALeft: TSyntaxNode; const AOperator: string; ARight: TSyntaxNode;
+  AStartIndex, AOperandStart: Integer; var ARun: TOperatorRun): TSyntaxNode;
+var
+  Operand: TChainOperand;
+begin
+  Result := ALeft;
+  if (ARun.Count > 0) and (ARun.Operator <> AOperator) then
+    Result := FlushRun(Result, AStartIndex, ARun);
+  // Nicht assoziativ (a - b - c) oder leerer Operand (fehlender Ausdruck): sofort anhängen wie bisher.
+  if not InWords(AOperator, AssociativeOperators) or (FIndex <= AOperandStart) then
+  begin
+    Result := FlushRun(Result, AStartIndex, ARun);
+    Exit(Binary(AOperator, Result, ARight, AStartIndex));
+  end;
+  Operand.Node := ARight;
+  Operand.StartIndex := AOperandStart;
+  Operand.EndIndex := FIndex;
+  ARun.Operator := AOperator;
+  if ARun.Count = Length(ARun.Operands) then
+    SetLength(ARun.Operands, 2 * ARun.Count + 8);
+  ARun.Operands[ARun.Count] := Operand;
+  Inc(ARun.Count);
+end;
+
 function TParser.ParseExpression(AParent: TSyntaxNode): TSyntaxNode;
 var
   Start: Integer;
@@ -2152,36 +2267,44 @@ end;
 
 function TParser.ParseSimpleExpression: TSyntaxNode;
 var
-  Start: Integer;
+  Start, OperandStart: Integer;
   Op: string;
+  Run: TOperatorRun;
 begin
   // + - or xor
   Start := NodeStart;
   Result := ParseTerm;
+  Run := Default(TOperatorRun);
   while (not AtEnd and (Current.Kind = TPascalTokenKind.Symbol) and InWords(Current.Text, AdditiveSymbols)) or
     IsKw(['or', 'xor']) do
   begin
     Op := LowerCase(Current.Text);
     Advance;
-    Result := Binary(Op, Result, ParseTerm, Start);
+    OperandStart := NodeStart;
+    Result := ChainOperand(Result, Op, ParseTerm, Start, OperandStart, Run);
   end;
+  Result := FlushRun(Result, Start, Run);
 end;
 
 function TParser.ParseTerm: TSyntaxNode;
 var
-  Start: Integer;
+  Start, OperandStart: Integer;
   Op: string;
+  Run: TOperatorRun;
 begin
   // * / div mod and shl shr as
   Start := NodeStart;
   Result := ParseFactor;
+  Run := Default(TOperatorRun);
   while (not AtEnd and (Current.Kind = TPascalTokenKind.Symbol) and InWords(Current.Text, MultiplicativeSymbols)) or
     IsKw(['div', 'mod', 'and', 'shl', 'shr', 'as']) do
   begin
     Op := LowerCase(Current.Text);
     Advance;
-    Result := Binary(Op, Result, ParseFactor, Start);
+    OperandStart := NodeStart;
+    Result := ChainOperand(Result, Op, ParseFactor, Start, OperandStart, Run);
   end;
+  Result := FlushRun(Result, Start, Run);
 end;
 
 function TParser.EnterNesting: Boolean;
