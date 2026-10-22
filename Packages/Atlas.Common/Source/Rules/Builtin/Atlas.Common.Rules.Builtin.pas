@@ -49,6 +49,7 @@ uses
   Atlas.Common.Rules.Builtin.Expressions,
   Atlas.Common.Rules.Builtin.Statements,
   Atlas.Common.Rules.Builtin.Database,
+  Atlas.Common.Rules.Builtin.Files,
   Atlas.Common.Rules.Builtin.Directives,
   Atlas.Common.Rules.Builtin.Properties,
   Atlas.Common.Rules.Builtin.Unresolved;
@@ -95,6 +96,7 @@ begin
     RegisterExpressionRules(Registry);
     RegisterStatementRules(Registry);
     RegisterDatabaseRules(Registry);
+    RegisterFileRules(Registry);
     RegisterDirectiveRules(Registry);
     RegisterPropertyRules(Registry);
     Result := Registry.Rules;

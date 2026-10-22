@@ -11,7 +11,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 5 |
 | [Compiler vorab](#gruppe-compiler) | 15 |
-| [Robustheit und Muster](#gruppe-robustness) | 3 |
+| [Robustheit und Muster](#gruppe-robustness) | 4 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
@@ -156,6 +156,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`random-without-randomize`](#random-without-randomize) | Random ohne Randomize | Code Smell | Hinweis |
 | [`format-without-settings`](#format-without-settings) | Formatierung abhängig vom Gebietsschema | Code Smell | Hinweis |
 | [`null-compare`](#null-compare) | Vergleich mit Null statt VarIsNull oder IsNull | Code Smell | Warnung |
+| [`path-concat-without-delimiter`](#path-concat-without-delimiter) | Pfad ohne Trennzeichen zusammengesetzt | Bug | Warnung |
 
 <a id="gruppe-performance"></a>
 ### Performance
@@ -4560,4 +4561,25 @@ Richtig:
 
 ```pascal
 qry.SQL.Text := 'SELECT Id, Name, Ort FROM Kunden WHERE Ort = :Ort';
+```
+
+<a id="path-concat-without-delimiter"></a>
+### path-concat-without-delimiter
+
+**Pfad ohne Trennzeichen zusammengesetzt** · Bug · Warnung · Gruppe Robustheit und Muster
+
+Ein Ordner ohne abschließendes Trennzeichen wird mit + an einen Datei- oder Ordnernamen gehängt: Ergebnisse von ExtractFileDir, ExcludeTrailingPathDelimiter, GetCurrentDir, GetHomePath, TPath.GetDocumentsPath und den übrigen TPath.Get…Path-Ordnern, TPath.GetDirectoryName, TDirectory.GetCurrentDirectory und TDirectory.GetParent, direkt aufgerufen oder in einer lokalen Variablen, der die Routine nur solche Werte zuweist. Das Ergebnis ist C:\Datendatei.txt statt C:\Daten\datei.txt. ExtractFilePath, IncludeTrailingPathDelimiter und TPath.GetTempPath enden mit einem Trennzeichen und bleiben still, ebenso Trennzeichen, Endungen (ExtractFileExt, '.bak') und Texte, die mit Leerzeichen oder Satzzeichen beginnen. Ein Literal als Name meldet mit hoher, ein Bezeichner mit mittlerer Konfidenz. Geht eine lokale Variable an eine Prozedur außer ForceDirectories, FileExists und ähnlichen lesenden Aufrufen, kann sie dort geändert werden und bleibt still. Schnellkorrektur: TPath.Combine(Ordner, Name), System.IOUtils wird in die uses eingetragen.
+
+Mit Treffer:
+
+```pascal
+Ordner := TPath.GetDocumentsPath;
+Datei := Ordner + 'export.csv';
+```
+
+Richtig:
+
+```pascal
+Ordner := TPath.GetDocumentsPath;
+Datei := TPath.Combine(Ordner, 'export.csv');
 ```
