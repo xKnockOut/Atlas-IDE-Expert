@@ -1775,6 +1775,40 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "xmldoc-mismatch",' + #10 +
+    '      "name": "XMLDoc does not match the signature",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A /// comment does not match its declaration or is not well-formed XML, like the compiler warnings W1201 to W1208 with XML documentation enabled. Reported: <param> for a paramete' + 'r that does not exist; missing <param> when the block describes parameters at all (like W1208, ''but other parameters do''); with checkReturns, <returns> on a routine without a result and missing <retur' + 'ns> on a function whose block describes parameters. <inheritdoc/> fills in what is missing. Also ''<'' and ''&'' outside tags and entities, unknown entities, attribute values without quotes, unclosed and ' + 'stray end tags, and cref targets that do not exist (W1206, only with an index and when every unit in uses is known; generic targets, unit names and types with unknown ancestors stay silent). With requ' + 'irePublic, public and published methods and properties of types in the interface section without a /// comment are reported too (not override, not properties without a type). Quick fixes: rename unkno' + 'wn <param> in order to the missing ones, add the rest as empty lines in signature order, remove surplus <param> and stray <returns>; escape the character, add quotes, add or remove the end tag, write ' + 'an unknown empty tag like TList<T> as text; set cref to the most similar symbol; generate the comment skeleton.",' + #10 +
+    '      "bad": "/// <summary>Sucht einen Kunden.</summary>\n/// <param name=\"Nummer\">Kundennummer</param>\nfunction Suchen(const Id: Integer; Aktive: Boolean): TKunde;",' + #10 +
+    '      "good": "/// <summary>Sucht einen Kunden.</summary>\n/// <param name=\"Id\">Kundennummer</param>\n/// <param name=\"Aktive\"></param>\nfunction Suchen(const Id: Integer; Aktive: Boolean): TKunde' + ';",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1201",' + #10 +
+    '        "W1202",' + #10 +
+    '        "W1203",' + #10 +
+    '        "W1204",' + #10 +
+    '        "W1205",' + #10 +
+    '        "W1206",' + #10 +
+    '        "W1207",' + #10 +
+    '        "W1208"' + #10 +
+    '      ],' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "requirePublic",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": false,' + #10 +
+    '          "description": "Also report public members without XMLDoc."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "checkReturns",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Check <returns>."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "queue-nil-in-package",' + #10 +
     '      "name": "TThread.Queue(nil, …) in a package",' + #10 +
     '      "category": "bug",' + #10 +
@@ -3325,6 +3359,21 @@ begin
     '        {' + #10 +
     '          "name": "allowAttributes",' + #10 +
     '          "description": "Attribute, die eine Property ohne read erlauben."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "xmldoc-mismatch",' + #10 +
+    '      "name": "XMLDoc passt nicht zur Signatur",' + #10 +
+    '      "description": "Ein ///-Kommentar passt nicht zu seiner Deklaration oder ist kein wohlgeformtes XML, wie die Compilerwarnungen W1201 bis W1208 mit eingeschalteter XML-Dokumentation. Gemeldet wer' + 'den: <param> zu einem Parameter, den es nicht gibt; fehlende <param>, wenn der Block überhaupt Parameter beschreibt (wie W1208, „but other parameters do“); mit checkReturns <returns> an einer Routine ' + 'ohne Ergebnis und fehlendes <returns> an einer Funktion, deren Block Parameter beschreibt. <inheritdoc/> ergänzt, was fehlt. Außerdem ''<'' und ''&'' außerhalb von Tags und Entitäten, unbekannte Entitäten' + ', Attributwerte ohne Anführungszeichen, nicht geschlossene und überzählige Endtags sowie cref-Ziele, die es nicht gibt (W1206, nur mit Index und wenn jede Unit aus uses bekannt ist; generische Ziele, ' + 'Unit-Namen und Typen mit unbekannten Vorfahren bleiben still). Mit requirePublic zusätzlich public- und published-Methoden und -Properties von Typen im interface ohne ///-Kommentar (nicht override, ni' + 'cht Properties ohne Typ). Schnellkorrekturen: unbekannte <param> der Reihe nach auf die fehlenden umbenennen, die übrigen als leere Zeilen in Signaturreihenfolge ergänzen, überzählige <param> und <ret' + 'urns> an Prozeduren entfernen; Zeichen maskieren, Anführungszeichen setzen, Endtag ergänzen oder entfernen, ein fremdes leeres Tag wie TList<T> als Text schreiben; cref auf das ähnlichste Symbol setze' + 'n; Kommentargerüst erzeugen.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "requirePublic",' + #10 +
+    '          "description": "Öffentliche Member ohne XMLDoc melden."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "checkReturns",' + #10 +
+    '          "description": "<returns> prüfen."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +

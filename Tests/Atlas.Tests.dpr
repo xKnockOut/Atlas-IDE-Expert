@@ -120,6 +120,7 @@ uses
   Atlas.Common.Rules.Builtin.Database.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Database.Tests.pas',
   Atlas.Common.Rules.Builtin.Directives.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Directives.Tests.pas',
   Atlas.Common.Rules.Builtin.Properties.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Properties.Tests.pas',
+  Atlas.Common.Rules.Builtin.XmlDoc.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.Tests.pas',
   Atlas.Common.Rules.Builtin.Unresolved.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas',
   Atlas.Common.Projects.UnitLookup.Tests in 'Common\Projects\Atlas.Common.Projects.UnitLookup.Tests.pas',
   Atlas.Common.Rules.Builtin.Packages.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas',

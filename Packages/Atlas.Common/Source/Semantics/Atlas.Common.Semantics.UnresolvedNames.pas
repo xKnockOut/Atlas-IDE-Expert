@@ -32,6 +32,10 @@ type
   public
     /// <summary>True, wenn der Index die Unit System kennt und die Prüfung damit aussagekräftig ist.</summary>
     class function Available(const AIndex: ISymbolIndex): Boolean; static;
+    /// <summary>Kennt der Index (oder AEnsureUnit) alle Units aus AUnits, auch über ANamespaces? Sonst kann ein
+    /// Name aus einer unbekannten Unit stammen, und die Prüfung schweigt.</summary>
+    class function UsesKnown(const AIndex: ISymbolIndex; const AUnits, ANamespaces: TArray<string>;
+      const AEnsureUnit: TEnsureUnitFunc): Boolean; static;
     /// <summary>Nicht auflösbare Namen in ATree, höchstens MaxNames.</summary>
     class function Find(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string): TArray<TUnresolvedName>; static;
     /// <summary>Vom Compiler eingebaute Routinen und Konstanten ohne Deklaration in System.pas.</summary>
@@ -68,6 +72,27 @@ var
   SystemUnit: TUnitIndex;
 begin
   Result := (AIndex <> nil) and AIndex.FindUnit('System', SystemUnit);
+end;
+
+class function TUnresolvedNames.UsesKnown(const AIndex: ISymbolIndex; const AUnits, ANamespaces: TArray<string>;
+  const AEnsureUnit: TEnsureUnitFunc): Boolean;
+var
+  Name, Namespace: string;
+  Found: TUnitIndex;
+  Known: Boolean;
+begin
+  for Name in AUnits do
+  begin
+    Known := AIndex.FindUnit(Name, Found);
+    for Namespace in ANamespaces do
+      if not Known then
+        Known := AIndex.FindUnit(Namespace + '.' + Name, Found);
+    if not Known and Assigned(AEnsureUnit) then
+      Known := AEnsureUnit(Name);
+    if not Known then
+      Exit(False);
+  end;
+  Result := True;
 end;
 
 class function TUnresolvedNames.Find(AResolver: TNameResolver; ATree: TSyntaxTree;

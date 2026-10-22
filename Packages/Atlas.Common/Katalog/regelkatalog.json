@@ -1755,6 +1755,40 @@
       ]
     },
     {
+      "id": "xmldoc-mismatch",
+      "name": "XMLDoc does not match the signature",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "A /// comment does not match its declaration or is not well-formed XML, like the compiler warnings W1201 to W1208 with XML documentation enabled. Reported: <param> for a parameter that does not exist; missing <param> when the block describes parameters at all (like W1208, 'but other parameters do'); with checkReturns, <returns> on a routine without a result and missing <returns> on a function whose block describes parameters. <inheritdoc/> fills in what is missing. Also '<' and '&' outside tags and entities, unknown entities, attribute values without quotes, unclosed and stray end tags, and cref targets that do not exist (W1206, only with an index and when every unit in uses is known; generic targets, unit names and types with unknown ancestors stay silent). With requirePublic, public and published methods and properties of types in the interface section without a /// comment are reported too (not override, not properties without a type). Quick fixes: rename unknown <param> in order to the missing ones, add the rest as empty lines in signature order, remove surplus <param> and stray <returns>; escape the character, add quotes, add or remove the end tag, write an unknown empty tag like TList<T> as text; set cref to the most similar symbol; generate the comment skeleton.",
+      "bad": "/// <summary>Sucht einen Kunden.</summary>\n/// <param name=\"Nummer\">Kundennummer</param>\nfunction Suchen(const Id: Integer; Aktive: Boolean): TKunde;",
+      "good": "/// <summary>Sucht einen Kunden.</summary>\n/// <param name=\"Id\">Kundennummer</param>\n/// <param name=\"Aktive\"></param>\nfunction Suchen(const Id: Integer; Aktive: Boolean): TKunde;",
+      "compilerCodes": [
+        "W1201",
+        "W1202",
+        "W1203",
+        "W1204",
+        "W1205",
+        "W1206",
+        "W1207",
+        "W1208"
+      ],
+      "options": [
+        {
+          "name": "requirePublic",
+          "type": "boolean",
+          "default": false,
+          "description": "Also report public members without XMLDoc."
+        },
+        {
+          "name": "checkReturns",
+          "type": "boolean",
+          "default": true,
+          "description": "Check <returns>."
+        }
+      ]
+    },
+    {
       "id": "queue-nil-in-package",
       "name": "TThread.Queue(nil, …) in a package",
       "category": "bug",
