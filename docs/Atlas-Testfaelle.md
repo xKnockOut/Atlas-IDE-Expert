@@ -4174,3 +4174,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | JE4 | Wie JE3, aber die Methode wird in der Unit aufgerufen bzw. steht im interface-Teil | Nur „Kommentar einfügen“ |
 | JE5 | Leere Methode mit Kommentar, `virtual`, `message WM_SIZE`, in einer Klasse mit Interface (z. B. ein Notifier der Open Tools API), `FormCreate` aus der .dfm, `asm end` | Keine Meldung |
 | JE6 | `"empty-routine": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
+
+## Property ohne read (#978)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JW1 | Das Beispiel aus #978: `property Passwort: string write SetPasswort;` in einer Klasse | Hinweis `write-only-property` am Namen: „Property Passwort hat kein read.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JW2 | Feld `FPasswort: string;` in der Klasse ergänzen; Schnellkorrektur „read FPasswort ergänzen“, danach Strg+Z | `property Passwort: string read FPasswort write SetPasswort;`, keine Meldung mehr; ein Undo-Schritt |
+| JW3 | Feld `FPasswort` mit anderem Typ | Meldung ohne Korrektur |
+| JW4 | `property Caption write SetCaption;` (ohne Typ), Property mit read | Keine Meldung |
+| JW5 | `[Geheim]` vor der Property, `"allowAttributes": ["Geheim"]` bzw. `["GeheimAttribute"]` | Keine Meldung; ohne Option Meldung |
+| JW6 | `"write-only-property": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |

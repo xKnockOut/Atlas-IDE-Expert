@@ -25,6 +25,11 @@
 // Korrektur: Folgt der fehlende Name der Konvention F<Name>, Get<Name> oder
 // Set<Name>, legt "FName anlegen" bzw. "GetName anlegen" das Mitglied an
 // (Erzeuger der Vervollständigung #467, completion.accessorSection).
+//
+// write-only-property (#978, Gruppe Stil und Metriken): Property mit write,
+// aber ohne read. Properties ohne Typ (neu veröffentlicht, read vom Vorfahren)
+// und mit einem Attribut aus allowAttributes bleiben außen vor. Korrektur
+// "read FName ergänzen", wenn der Typ ein Feld FName gleichen Typs hat.
 
 interface
 
@@ -35,9 +40,16 @@ uses
 
 const
   PropertyAccessorInvalidRuleId = 'property-accessor-invalid';
+  WriteOnlyPropertyRuleId = 'write-only-property';
 
 type
   TPropertyAccessorInvalidRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TWriteOnlyPropertyRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -54,6 +66,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.DirectiveNames,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Editing.CodeActions,
@@ -152,6 +166,82 @@ begin
   end;
 end;
 
+/// <summary>Quelltext von Token AFrom bis ATo (Code-Token).</summary>
+function SourceText(const AText: string; const ATokens: TArray<TPascalToken>; AFrom, ATo: Integer): string;
+begin
+  Result := Trim(Copy(AText, ATokens[AFrom].Offset + 1, ATokens[ATo].Offset + Length(ATokens[ATo].Text) -
+    ATokens[AFrom].Offset));
+end;
+
+/// <summary>Property ab dem Token "property" an AStart lesen (ATokens ohne Kommentare); False ohne Namen.</summary>
+function ParseProperty(const AText: string; const ATokens: TArray<TPascalToken>; AStart: Integer;
+  out AShape: TPropertyShape): Boolean;
+var
+  Index, Depth, Bracket, TypeStart: Integer;
+  Accessor: TPropertyAccessor;
+begin
+  AShape := Default(TPropertyShape);
+  Result := (AStart + 1 <= High(ATokens)) and (ATokens[AStart + 1].Kind = TPascalTokenKind.Identifier);
+  if not Result then
+    Exit;
+  Index := AStart + 2;
+  Depth := 0;
+  Bracket := -1;
+  TypeStart := -1;
+  while Index <= High(ATokens) do
+  begin
+    if ATokens[Index].IsSymbol('[') or ATokens[Index].IsSymbol('(') then
+    begin
+      if (Depth = 0) and ATokens[Index].IsSymbol('[') and (TypeStart < 0) then
+        Bracket := Index;
+      Inc(Depth);
+    end
+    else if ATokens[Index].IsSymbol(']') or ATokens[Index].IsSymbol(')') then
+    begin
+      Dec(Depth);
+      if (Depth = 0) and (Bracket >= 0) and (AShape.IndexText = '') and (Index > Bracket + 1) then
+        AShape.IndexText := SourceText(AText, ATokens, Bracket + 1, Index - 1);
+    end
+    else if Depth = 0 then
+    begin
+      if ATokens[Index].IsSymbol(';') then
+        Break;
+      if ATokens[Index].IsSymbol(':') and (TypeStart < 0) then
+        TypeStart := Index + 1
+      else if IsWord(ATokens[Index], 'read') or IsWord(ATokens[Index], 'write') or IsWord(ATokens[Index], 'index') or
+        IsWord(ATokens[Index], 'stored') or IsWord(ATokens[Index], 'default') or
+        IsWord(ATokens[Index], 'nodefault') or IsWord(ATokens[Index], 'implements') then
+      begin
+        if (TypeStart > 0) and (AShape.TypeText = '') and (Index > TypeStart) then
+          AShape.TypeText := SourceText(AText, ATokens, TypeStart, Index - 1);
+        if IsWord(ATokens[Index], 'index') then
+          AShape.HasIndex := True
+        else if (IsWord(ATokens[Index], 'read') or IsWord(ATokens[Index], 'write')) and (Index < High(ATokens)) and
+          (ATokens[Index + 1].Kind = TPascalTokenKind.Identifier) then
+        begin
+          Accessor := Default(TPropertyAccessor);
+          Accessor.IsWrite := IsWord(ATokens[Index], 'write');
+          Inc(Index);
+          Accessor.Name := ATokens[Index].Text;
+          Accessor.First := Index;
+          while (Index + 2 <= High(ATokens)) and ATokens[Index + 1].IsSymbol('.') and
+            (ATokens[Index + 2].Kind = TPascalTokenKind.Identifier) do
+          begin
+            Inc(Index, 2);
+            Accessor.Selectors := Accessor.Selectors + [ATokens[Index].Text];
+          end;
+          Accessor.Last := Index;
+          AShape.Accessors := AShape.Accessors + [Accessor];
+        end;
+      end;
+    end;
+    Inc(Index);
+  end;
+  if (TypeStart > 0) and (AShape.TypeText = '') and (Index > TypeStart) and (Index <= High(ATokens)) then
+    AShape.TypeText := SourceText(AText, ATokens, TypeStart, Index - 1);
+  AShape.SingleLine := (Index <= High(ATokens)) and (ATokens[Index].StartPos.Line = ATokens[AStart].StartPos.Line);
+end;
+
 function TPropertyAccessorInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(PropertyAccessorInvalidRuleId, TRuleSeverity.Error,
@@ -164,80 +254,6 @@ var
   Ancestry: TAncestry;
   Tokens: TArray<TPascalToken>;
   Actions: TClassActionContext;
-
-  function Source(AFrom, ATo: Integer): string;
-  begin
-    Result := Trim(Copy(AContext.Text, Tokens[AFrom].Offset + 1, Tokens[ATo].Offset + Length(Tokens[ATo].Text) -
-      Tokens[AFrom].Offset));
-  end;
-
-  /// <summary>Property ab dem Token "property" an AStart lesen; False ohne Namen.</summary>
-  function Parse(AStart: Integer; out AShape: TPropertyShape): Boolean;
-  var
-    Index, Depth, Bracket, TypeStart: Integer;
-    Accessor: TPropertyAccessor;
-  begin
-    AShape := Default(TPropertyShape);
-    Result := (AStart + 1 <= High(Tokens)) and (Tokens[AStart + 1].Kind = TPascalTokenKind.Identifier);
-    if not Result then
-      Exit;
-    Index := AStart + 2;
-    Depth := 0;
-    Bracket := -1;
-    TypeStart := -1;
-    while Index <= High(Tokens) do
-    begin
-      if Tokens[Index].IsSymbol('[') or Tokens[Index].IsSymbol('(') then
-      begin
-        if (Depth = 0) and Tokens[Index].IsSymbol('[') and (TypeStart < 0) then
-          Bracket := Index;
-        Inc(Depth);
-      end
-      else if Tokens[Index].IsSymbol(']') or Tokens[Index].IsSymbol(')') then
-      begin
-        Dec(Depth);
-        if (Depth = 0) and (Bracket >= 0) and (AShape.IndexText = '') and (Index > Bracket + 1) then
-          AShape.IndexText := Source(Bracket + 1, Index - 1);
-      end
-      else if Depth = 0 then
-      begin
-        if Tokens[Index].IsSymbol(';') then
-          Break;
-        if Tokens[Index].IsSymbol(':') and (TypeStart < 0) then
-          TypeStart := Index + 1
-        else if IsWord(Tokens[Index], 'read') or IsWord(Tokens[Index], 'write') or IsWord(Tokens[Index], 'index') or
-          IsWord(Tokens[Index], 'stored') or IsWord(Tokens[Index], 'default') or
-          IsWord(Tokens[Index], 'nodefault') or IsWord(Tokens[Index], 'implements') then
-        begin
-          if (TypeStart > 0) and (AShape.TypeText = '') and (Index > TypeStart) then
-            AShape.TypeText := Source(TypeStart, Index - 1);
-          if IsWord(Tokens[Index], 'index') then
-            AShape.HasIndex := True
-          else if (IsWord(Tokens[Index], 'read') or IsWord(Tokens[Index], 'write')) and (Index < High(Tokens)) and
-            (Tokens[Index + 1].Kind = TPascalTokenKind.Identifier) then
-          begin
-            Accessor := Default(TPropertyAccessor);
-            Accessor.IsWrite := IsWord(Tokens[Index], 'write');
-            Inc(Index);
-            Accessor.Name := Tokens[Index].Text;
-            Accessor.First := Index;
-            while (Index + 2 <= High(Tokens)) and Tokens[Index + 1].IsSymbol('.') and
-              (Tokens[Index + 2].Kind = TPascalTokenKind.Identifier) do
-            begin
-              Inc(Index, 2);
-              Accessor.Selectors := Accessor.Selectors + [Tokens[Index].Text];
-            end;
-            Accessor.Last := Index;
-            AShape.Accessors := AShape.Accessors + [Accessor];
-          end;
-        end;
-      end;
-      Inc(Index);
-    end;
-    if (TypeStart > 0) and (AShape.TypeText = '') and (Index > TypeStart) and (Index <= High(Tokens)) then
-      AShape.TypeText := Source(TypeStart, Index - 1);
-    AShape.SingleLine := (Index <= High(Tokens)) and (Tokens[Index].StartPos.Line = Tokens[AStart].StartPos.Line);
-  end;
 
   /// <summary>Bindet die Klasse AType Include-Dateien ein? Dann kennt die Datei nicht alle Mitglieder.</summary>
   function HasInclude(const AType: TIndexSymbol): Boolean;
@@ -572,7 +588,7 @@ var
     Complete, ObjectMissing: Boolean;
     Accessor: TPropertyAccessor;
   begin
-    if not Parse(AStart, Shape) or (Shape.Accessors = nil) then
+    if not ParseProperty(AContext.Text, Tokens, AStart, Shape) or (Shape.Accessors = nil) then
       Exit;
     Found := False;
     for Symbol in Ancestry.Local.Symbols do
@@ -621,9 +637,151 @@ begin
   end;
 end;
 
+{ TWriteOnlyPropertyRule }
+
+function TWriteOnlyPropertyRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(WriteOnlyPropertyRuleId, TRuleSeverity.Hint, 'Property mit write, aber ohne read');
+end;
+
+procedure TWriteOnlyPropertyRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Cache: IRuleDerivedCache;
+  Tokens: TArray<TPascalToken>;
+  Allowed: TArray<string>;
+  Declarations: TArray<TSyntaxNode>;
+
+  function AttributeName(const AName: string): string;
+  begin
+    Result := AName;
+    if EndsText('Attribute', Result) and (Length(Result) > Length('Attribute')) then
+      Result := Copy(Result, 1, Length(Result) - Length('Attribute'));
+  end;
+
+  // Attribute direkt vor der Property ([Name], [A, B(1)], auch vor class property).
+  function HasAllowedAttribute(AStart: Integer): Boolean;
+  var
+    Index, Depth: Integer;
+    Pattern: string;
+  begin
+    Result := False;
+    Index := AStart - 1;
+    if (Index >= 0) and IsWord(Tokens[Index], 'class') then
+      Dec(Index);
+    while (Index >= 0) and Tokens[Index].IsSymbol(']') do
+    begin
+      Depth := 0;
+      while Index >= 0 do
+      begin
+        if Tokens[Index].IsSymbol(']') or Tokens[Index].IsSymbol(')') then
+          Inc(Depth)
+        else if Tokens[Index].IsSymbol('[') or Tokens[Index].IsSymbol('(') then
+          Dec(Depth);
+        // Name am Anfang eines Attributs: hinter "[" oder "," auf Tiefe 1.
+        if (Depth = 1) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) and (Index > 0) and
+          (Tokens[Index - 1].IsSymbol('[') or Tokens[Index - 1].IsSymbol(',')) then
+          for Pattern in Allowed do
+            if SameText(AttributeName(Tokens[Index].Text), AttributeName(Pattern)) then
+              Exit(True);
+        Dec(Index);
+        if Depth = 0 then
+          Break;
+      end;
+    end;
+  end;
+
+  // Feld F<Name> mit gleichem Typ im Typ der Property.
+  function FieldFor(AStart: Integer; const AName, ATypeText: string): Boolean;
+  var
+    Declaration, Owner, Member: TSyntaxNode;
+    Index: Integer;
+    Name: string;
+  begin
+    Result := False;
+    Owner := nil;
+    for Declaration in Declarations do
+      if (Declaration.StartOffset <= Tokens[AStart].Offset) and (Declaration.EndOffset > Tokens[AStart].Offset) then
+        Owner := Declaration.Parent;
+    if (Owner = nil) or not (Owner.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType])
+      then
+      Exit;
+    for Index := 0 to Owner.ChildCount - 1 do
+    begin
+      Member := Owner[Index];
+      if (Member.Kind = TSyntaxKind.Field) and (Member.ChildCount > 0) then
+        for Name in Member.Name.Split([',']) do
+          if SameText(Trim(Name), 'F' + AName) and SameText(StringReplace(Trim(Copy(AContext.Text,
+            Member[0].StartOffset + 1, Member[0].EndOffset - Member[0].StartOffset)), ' ', '', [rfReplaceAll]),
+            StringReplace(ATypeText, ' ', '', [rfReplaceAll])) then
+            Exit(True);
+    end;
+  end;
+
+  procedure CheckProperty(AStart: Integer);
+  var
+    Shape: TPropertyShape;
+    Accessor, Writer: TPropertyAccessor;
+    HasRead, HasWrite: Boolean;
+    Name: string;
+    Fixes: TArray<TRuleFix>;
+    At: TTextPosition;
+  begin
+    // Ohne Typ wird eine geerbte Property neu veröffentlicht; ihr read kommt vom Vorfahren.
+    if not ParseProperty(AContext.Text, Tokens, AStart, Shape) or (Shape.TypeText = '') then
+      Exit;
+    HasRead := False;
+    HasWrite := False;
+    Writer := Default(TPropertyAccessor);
+    for Accessor in Shape.Accessors do
+      if Accessor.IsWrite then
+      begin
+        HasWrite := True;
+        Writer := Accessor;
+      end
+      else
+        HasRead := True;
+    if HasRead or not HasWrite or HasAllowedAttribute(AStart) then
+      Exit;
+    Name := Tokens[AStart + 1].Text;
+    Fixes := nil;
+    if FieldFor(AStart, Name, Shape.TypeText) then
+    begin
+      // Vor dem Wort write einfügen.
+      At := Tokens[Writer.First - 1].StartPos;
+      Fixes := [TRuleFix.Create(Format('read F%s ergänzen', [Name]),
+        [TRuleEdit.Create(TTextRange.Create(At, At), Format('read F%s ', [Name]))])];
+    end;
+    AReport.Add(TTextRange.Create(Tokens[AStart + 1].StartPos, Tokens[AStart + 1].EndPos),
+      Format('Property %s hat kein read.', [Name]), TRuleConfidence.High, Fixes);
+  end;
+
+var
+  Index: Integer;
+  Found: TArray<TSyntaxNode>;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Cache := TRuleDerived.Open(AContext);
+  Tokens := TRuleDerived.CodeTokens(Cache, AContext);
+  Allowed := TRuleOptions.Strings(AContext.Options, 'allowAttributes', nil);
+  Found := nil;
+  AContext.Tree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if ANode.Kind = TSyntaxKind.PropertyDecl then
+        Found := Found + [ANode];
+      Result := True;
+    end);
+  Declarations := Found;
+  for Index := 0 to High(Tokens) - 1 do
+    if IsWord(Tokens[Index], 'property') then
+      CheckProperty(Index);
+end;
+
 procedure RegisterPropertyRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TPropertyAccessorInvalidRule.Create);
+  ARegistry.Register(TWriteOnlyPropertyRule.Create);
 end;
 
 end.

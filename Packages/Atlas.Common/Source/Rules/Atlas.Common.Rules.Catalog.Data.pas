@@ -1757,6 +1757,24 @@ begin
     '      "good": "procedure TImport.Pruefen;\nbegin\n  // Absichtlich leer.\nend;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "write-only-property",' + #10 +
+    '      "name": "Property without read",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A property has write but no read. It cannot be shown in the Object Inspector or read in the debugger and confuses callers. Properties without a type are skipped (they republish a' + 'n inherited property whose read comes from the ancestor), as are properties with an attribute from allowAttributes (with or without the Attribute suffix). Quick fix: add read FName when the type decla' + 'res a field FName of the same type. Reading such a property is reported by readonly-property-assigned.",' + #10 +
+    '      "bad": "property Passwort: string write SetPasswort;",' + #10 +
+    '      "good": "property Passwort: string read FPasswort write SetPasswort;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowAttributes",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Attributes that allow a property without read."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "queue-nil-in-package",' + #10 +
     '      "name": "TThread.Queue(nil, …) in a package",' + #10 +
     '      "category": "bug",' + #10 +
@@ -3298,6 +3316,17 @@ begin
     '      "id": "empty-routine",' + #10 +
     '      "name": "Leere Methode",' + #10 +
     '      "description": "Eine Methode oder Routine, deren Rumpf weder eine Anweisung noch einen Kommentar (noch eine Compiler-Direktive) enthält. Entweder fehlt der Inhalt oder die Methode kann weg. Nich' + 't gemeldet werden virtuelle und dynamische Methoden (Ersatz für abstract in Basisklassen), Nachrichten-Handler, Methoden von Klassen mit Interfaces (der Compiler verlangt jede Interface-Methode), Erei' + 'gnis-Handler, die in der Formulardatei stehen (die IDE entfernt leere beim Speichern), und Rümpfe mit Kommentar, etwa Überschreibungen, die bewusst nichts tun. Schnellkorrekturen: Kommentar zwischen b' + 'egin und end einfügen; Methode entfernen (Deklaration samt XML-Doku und Rumpf) nur bei privaten Methoden und Routinen ohne Deklaration im interface-Teil, die sonst nirgends in der Datei vorkommen und ' + 'keine Signatur von außen erfüllen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "write-only-property",' + #10 +
+    '      "name": "Property ohne read",' + #10 +
+    '      "description": "Eine Property hat write, aber kein read. Sie lässt sich nicht im Objektinspektor anzeigen, nicht im Debugger lesen und verwirrt Aufrufer. Properties ohne Typ bleiben außen vor (s' + 'ie veröffentlichen eine geerbte Property neu, deren read vom Vorfahren kommt), ebenso Properties mit einem Attribut aus allowAttributes (mit oder ohne Endung Attribute). Schnellkorrektur: read FName e' + 'rgänzen, wenn der Typ ein Feld FName gleichen Typs deklariert. Das Lesen einer solchen Property meldet readonly-property-assigned.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowAttributes",' + #10 +
+    '          "description": "Attribute, die eine Property ohne read erlauben."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "queue-nil-in-package",' + #10 +

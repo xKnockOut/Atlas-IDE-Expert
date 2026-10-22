@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1771] of string = (
+  Lines: array[0..1779] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -440,6 +440,14 @@ const
     '                "type": "boolean",',
     '                "default": true,',
     '                "description": "Nur managed-param-without-const: Overrides nicht melden, ihre Signatur gibt der Vorfahr vor (#975)."',
+    '              },',
+    '              "allowAttributes": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "default": [],',
+    '                "description": "Nur write-only-property: Attribute, die eine Property ohne read erlauben, mit oder ohne Endung Attribute (#978)."',
     '              },',
     '              "allowTables": {',
     '                "type": "array",',
