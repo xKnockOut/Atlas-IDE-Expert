@@ -2307,6 +2307,19 @@
         "E2097",
         "E2126"
       ]
+    },
+    {
+      "id": "reraise-outside-handler",
+      "name": "raise without an argument outside a handler",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "raise; without an exception object is only allowed in an except block (like E2145); Delphi only reports it when compiling. It happens in a local procedure called from the handler, in a finally block or after moving code. Routines and anonymous methods start afresh. The rule stays silent in anonymous methods inside an except block and in routines where the parser reports an error. No quick fix: raise a new exception (raise EImport.Create(…)) or move the code into the handler. reraise-exception-object covers raise E; inside the handler.",
+      "bad": "Protokoll.Fehler('Import abgebrochen');\nraise;",
+      "good": "Protokoll.Fehler('Import abgebrochen');\nraise EImportAbgebrochen.Create('Import abgebrochen');",
+      "compilerCodes": [
+        "E2145"
+      ]
     }
   ]
 }

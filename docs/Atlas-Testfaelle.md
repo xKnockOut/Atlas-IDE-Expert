@@ -4134,3 +4134,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | JS6 | `Break` in einer anonymen Methode, die in einer Schleife steht | „Break außerhalb einer Schleife (wie E2097).“ |
 | JS7 | `"jump-outside-allowed-scope": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | JS8 | Abgleich mit Delphi: JS1, JS3, JS4, JS6 übersetzen | dcc meldet E2097 bzw. E2126 an denselben Stellen, für JS5 nichts |
+
+## raise ohne Argument außerhalb eines Handlers (#985)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RQ1 | Das Beispiel aus #985: `procedure TImport.Abbrechen;` mit `Protokoll.Fehler(…); raise;` | Fehler `reraise-outside-handler` an `raise`: „raise ohne Argument ist nur in einem except-Block erlaubt (wie E2145).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| RQ2 | Lokale Prozedur `Weiterwerfen` mit `raise;`, aufgerufen aus einem except; ebenso `raise;` im finally und in einer anonymen Methode außerhalb eines except | Je eine Meldung wie RQ1 |
+| RQ3 | `raise;` in `on E: … do`, im else-Teil, im except ohne Handler und in einem try … finally innerhalb des except; `raise EImport.Create(…)` außerhalb | Keine Meldung |
+| RQ4 | `raise;` in einer anonymen Methode innerhalb eines except | Keine Meldung (Lage unklar) |
+| RQ5 | `"reraise-outside-handler": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| RQ6 | Abgleich mit Delphi: RQ1, RQ2 und RQ4 übersetzen | dcc meldet E2145 an den Stellen aus RQ1 und RQ2, für RQ3 nichts; das Ergebnis für RQ4 in der Regel nachtragen |
