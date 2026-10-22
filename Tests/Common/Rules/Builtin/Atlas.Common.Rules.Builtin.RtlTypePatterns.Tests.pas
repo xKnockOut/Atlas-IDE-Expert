@@ -3,7 +3,8 @@
 // Tests für die typbasierten Regeln zu RTL-Mustern aus #153, Stufe 2, und
 // für die deklarierten Typen, auf denen sie aufbauen; zuletzt
 // managed-type-raw-memory (#921) mit Records, Aliassen, Zeigern, Index und
-// Korrekturen, threadvar-managed (#922) und pchar-of-temporary (#923).
+// Korrekturen, threadvar-managed (#922), pchar-of-temporary (#923) und
+// stringlist-unsorted (#925).
 
 interface
 
@@ -48,6 +49,12 @@ type
     procedure PCharOfTemporaryVariants;
     [Test]
     procedure PCharOfTemporarySilentCases;
+    [Test]
+    procedure StringListUnsortedIssueExample;
+    [Test]
+    procedure StringListUnsortedVariants;
+    [Test]
+    procedure StringListUnsortedSilentCases;
   end;
 
 implementation
@@ -388,6 +395,100 @@ begin
   TRuleAssert.Silent(TPCharOfTemporaryRule.Create, Copier('  Ziel := PChar(Pfad);'#10 +
     '  Ziel := PChar(''a'' + ''b'');'#10'  CopyFile(PChar(Pfad + ''.bak''), Ziel, False);'#10 +
     '  SendMessage(Handle, WM_USER, 0, LPARAM(PChar(Pfad + ''x'')));'#10'  Ziel := PChar(Ziel + 1);'));
+end;
+
+function Lister(const AVars, ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'implementation'#10'procedure Suchen(const Datei, Suche: string);'#10 +
+    'var'#10'  Namen: TStringList;'#10'  Index: Integer;'#10 + AVars + 'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+procedure TRtlTypePatternRulesTests.StringListUnsortedIssueExample;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Lister('', '  Namen := TStringList.Create;'#10'  Namen.LoadFromFile(Datei);'#10 +
+    '  if Namen.Find(Suche, Index) then'#10'    Namen.Delete(Index);'#10'  Namen.Free;');
+  Findings := TRuleAssert.Findings(TStringListUnsortedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Find setzt eine sortierte Liste voraus; Namen ist nicht sortiert.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Sorted := True nach dem Erzeugen ergänzen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(Lister('', '  Namen := TStringList.Create;'#10'  Namen.Sorted := True;'#10 +
+    '  Namen.LoadFromFile(Datei);'#10'  if Namen.Find(Suche, Index) then'#10'    Namen.Delete(Index);'#10 +
+    '  Namen.Free;'), TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+  TRuleAssert.Silent(TStringListUnsortedRule.Create, TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+  Assert.AreEqual('IndexOf statt Find verwenden', Findings[0].Fixes[1].Title);
+  Assert.AreEqual(Lister('', '  Namen := TStringList.Create;'#10'  Namen.LoadFromFile(Datei);'#10 +
+    '  Index := Namen.IndexOf(Suche);'#10'  if Index >= 0 then'#10'    Namen.Delete(Index);'#10'  Namen.Free;'),
+    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[1].Edits));
+  TRuleAssert.Silent(TStringListUnsortedRule.Create, TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[1].Edits));
+end;
+
+procedure TRtlTypePatternRulesTests.StringListUnsortedVariants;
+var
+  Findings: TArray<TRuleFinding>;
+  Source: string;
+begin
+  // Duplicates ohne Sorted, Find in while ohne IndexOf-Korrektur.
+  Findings := TRuleAssert.Findings(TStringListUnsortedRule.Create, Lister('', '  Namen := TStringList.Create;'#10 +
+    '  Namen.Duplicates := dupIgnore;'#10'  while Namen.Find(Suche, Index) do'#10'    Namen.Delete(Index);'));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('Duplicates wirkt nur bei sortierten Listen; Namen ist nicht sortiert.', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(Findings[1].Fixes)), 'while: nur Sorted');
+  // Insert verträgt kein Sorted: nur IndexOf.
+  Findings := TRuleAssert.Findings(TStringListUnsortedRule.Create, Lister('', '  Namen := TStringList.Create;'#10 +
+    '  Namen.Insert(0, Suche);'#10'  if Namen.Find(Suche, Index) then'#10'    Exit;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('IndexOf statt Find verwenden', Findings[0].Fixes[0].Title);
+  // Inline-Variable und Feld, das im Konstruktor erzeugt wird.
+  Findings := TRuleAssert.Findings(TStringListUnsortedRule.Create, Lister('',
+    '  var Liste := TStringList.Create;'#10'  if Liste.Find(Suche, Index) then'#10'    Exit;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Find setzt eine sortierte Liste voraus; Liste ist nicht sortiert.', Findings[0].Message);
+  Source := 'unit U;'#10'interface'#10'type'#10'  TCache = class'#10'    FNamen: TStringList;'#10 +
+    '    constructor Create;'#10'    function Hat(const S: string): Boolean;'#10'  end;'#10'implementation'#10 +
+    'constructor TCache.Create;'#10'begin'#10'  FNamen := TStringList.Create;'#10'end;'#10 +
+    'function TCache.Hat(const S: string): Boolean;'#10'var'#10'  I: Integer;'#10'begin'#10 +
+    '  Result := Self.FNamen.Find(S, I);'#10'end;'#10'end.';
+  Findings := TRuleAssert.Findings(TStringListUnsortedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Find setzt eine sortierte Liste voraus; FNamen ist nicht sortiert.', Findings[0].Message);
+  // Eine gleichnamige sortierte Variable in einer anderen Routine zählt nicht.
+  Findings := TRuleAssert.Findings(TStringListUnsortedRule.Create, Lister('',
+    '  Namen := TStringList.Create;'#10'  if Namen.Find(Suche, Index) then'#10'    Exit;'#10'end;'#10 +
+    'procedure Andere;'#10'var'#10'  Namen: TStringList;'#10'begin'#10'  Namen := TStringList.Create;'#10 +
+    '  Namen.Sorted := True;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringListUnsortedRule.Create,
+    Lister('', '  Namen := TStringList.Create;'#10'  Namen.Find(Suche, Index);'),
+    '{"rules": {"stringlist-unsorted": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringListUnsortedRule.Create,
+    Lister('', '  Namen := TStringList.Create;'#10'  Namen.Find(Suche, Index);'),
+    '{"rules": {"stringlist-unsorted": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+end;
+
+procedure TRtlTypePatternRulesTests.StringListUnsortedSilentCases;
+begin
+  // Sorted, sortierender Konstruktor, Sort, Weitergabe, with, Parameter ohne Erzeugen, dupAccept.
+  TRuleAssert.Silent(TStringListUnsortedRule.Create, Lister('', '  Namen := TStringList.Create;'#10 +
+    '  Namen.Sorted := True;'#10'  Namen.Find(Suche, Index);'));
+  TRuleAssert.Silent(TStringListUnsortedRule.Create, Lister('',
+    '  Namen := TStringList.Create(dupIgnore, True, False);'#10'  Namen.Find(Suche, Index);'));
+  TRuleAssert.Silent(TStringListUnsortedRule.Create, Lister('', '  Namen := TStringList.Create;'#10 +
+    '  Namen.Sort;'#10'  Namen.Find(Suche, Index);'));
+  TRuleAssert.Silent(TStringListUnsortedRule.Create, Lister('', '  Namen := TStringList.Create;'#10 +
+    '  Fuellen(Namen);'#10'  Namen.Find(Suche, Index);'));
+  TRuleAssert.Silent(TStringListUnsortedRule.Create, Lister('', '  Namen := TStringList.Create;'#10 +
+    '  with Namen do'#10'    Sorted := True;'#10'  Namen.Find(Suche, Index);'));
+  TRuleAssert.Silent(TStringListUnsortedRule.Create, Lister('', '  Namen.Find(Suche, Index);'));
+  TRuleAssert.Silent(TStringListUnsortedRule.Create, Lister('', '  Namen := TStringList.Create;'#10 +
+    '  Namen.Duplicates := dupAccept;'#10'  Index := Namen.IndexOf(Suche);'));
 end;
 
 initialization

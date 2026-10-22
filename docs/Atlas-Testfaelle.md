@@ -3302,3 +3302,17 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `procedure Anh
 | OP3 | Methode `procedure Weiter(out N: Integer);` mit `if N > 0 then` vor der Zuweisung | Meldung „… sein Wert ist hier undefiniert.“; Korrektur ändert nur die Deklaration dieser Klasse |
 | OP4 | Erst `S := '';`, dann `S := S + 'x';` bzw. `Lesen(P.X)` mit `out P: TPunkt` | Keine Meldung |
 | OP5 | `"out-param-read": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Find auf einer unsortierten TStringList (#925)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Routine mit `Namen := TStringList.Create;`, `Namen.LoadFromFile(Datei);` und `if Namen.Find(Suche, Index) then Namen.Delete(Index);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SL1 | Unit öffnen | Warnung `stringlist-unsorted` an `Namen.Find(Suche, Index)`: „Find setzt eine sortierte Liste voraus; Namen ist nicht sortiert.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| SL2 | Glühbirne, „Sorted := True nach dem Erzeugen ergänzen“ | Neue Zeile `Namen.Sorted := True;` direkt unter `TStringList.Create`; Meldung verschwindet (**Abnahme**) |
+| SL3 | Rückgängig, Glühbirne, „IndexOf statt Find verwenden“ | `Index := Namen.IndexOf(Suche);` vor dem `if`, Bedingung `Index >= 0`; kompiliert |
+| SL4 | `Namen.Duplicates := dupIgnore;` statt Find | Meldung „Duplicates wirkt nur bei sortierten Listen; Namen ist nicht sortiert.“ |
+| SL5 | `Namen.Insert(0, Suche);` ergänzen | Meldung bleibt, die Glühbirne bietet nur noch IndexOf an |
+| SL6 | `Namen.Sort;`, `TStringList.Create(dupIgnore, True, False)` bzw. `Fuellen(Namen);` | Keine Meldung |
+| SL7 | `"stringlist-unsorted": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

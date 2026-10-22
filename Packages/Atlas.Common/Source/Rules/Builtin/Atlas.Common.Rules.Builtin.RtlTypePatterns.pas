@@ -16,6 +16,8 @@
 //   pchar-of-temporary       PChar(S + '.bak'), PChar(IntToStr(N)) … in einer Variablen, einem Feld oder
 //                            Result gemerkt bzw. an PostMessage übergeben (#923): der temporäre String
 //                            ist nach der Anweisung weg
+//   stringlist-unsorted      Find oder Duplicates := dupIgnore/dupError auf einer TStringList, die in der
+//                            Datei erzeugt, aber nie sortiert wird (#925)
 // Bezeichner, deren Typ in der Datei nicht deklariert ist, lösen keinen Treffer aus.
 
 interface
@@ -76,6 +78,12 @@ type
   end;
 
   TPCharOfTemporaryRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TStringListUnsortedRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1279,6 +1287,334 @@ begin
   end;
 end;
 
+{ TStringListUnsortedRule }
+
+const
+  StringListClasses: array[0..1] of string = ('TStringList', 'THashedStringList');
+  // Aufrufe, die eine Liste nicht weitergeben: sie bleibt in der Hand der Routine.
+  NonEscapingCalls: array[0..2] of string = ('FreeAndNil', 'Assigned', 'Free');
+  // Methoden, die mit Sorted := True eine Ausnahme auslösen: dann keine Korrektur mit Sorted.
+  UnsortedOnlyMethods: array[0..2] of string = ('Insert', 'Move', 'Exchange');
+
+type
+  // Was die Regel über eine Liste (lokal je Routine, sonst Feld) gesammelt hat.
+  TStringListFacts = record
+    Creation: TSyntaxNode;
+    Sorted: Boolean;
+    UnsortedOnly: Boolean;
+    Hits: TArray<TSyntaxNode>;
+  end;
+
+function TStringListUnsortedRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('stringlist-unsorted', TRuleSeverity.Warning,
+    'Find oder Duplicates auf einer unsortierten TStringList');
+end;
+
+procedure TStringListUnsortedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Keys: TArray<string>;
+  Facts: TArray<TStringListFacts>;
+  Routines: TArray<TSyntaxNode>;
+  LineBreak: string;
+
+  function Text(ANode: TSyntaxNode): string;
+  begin
+    Result := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+  end;
+
+  // Name der Liste: X oder Self.X; sonst leer.
+  function BaseName(ANode: TSyntaxNode): string;
+  begin
+    Result := '';
+    if ANode = nil then
+      Exit;
+    if ANode.Kind = TSyntaxKind.Identifier then
+      Result := ANode.Name
+    else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
+      (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Self') then
+      Result := ANode.Name;
+  end;
+
+  // Deklariert die Routine AName als Variable (var-Abschnitt oder Inline-Variable)?
+  function DeclaresLocal(ANode: TSyntaxNode; const AName: string): Boolean;
+  var
+    Index: Integer;
+    Child: TSyntaxNode;
+    Name: string;
+  begin
+    Result := False;
+    for Index := 0 to ANode.ChildCount - 1 do
+    begin
+      Child := ANode[Index];
+      // Eingebettete Routinen haben eigene Variablen.
+      if Child.Kind = TSyntaxKind.RoutineDecl then
+        Continue;
+      if Child.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar] then
+        for Name in SplitString(Child.Name, ',') do
+          if SameText(Trim(Name), AName) then
+            Exit(True);
+      if DeclaresLocal(Child, AName) then
+        Exit(True);
+    end;
+  end;
+
+  // Schlüssel der Liste an ANode: Routine und Name für lokale Variablen, sonst der Feldname.
+  function KeyOf(ANode: TSyntaxNode; const AName: string): string;
+  var
+    Index: Integer;
+    Routine: TSyntaxNode;
+  begin
+    // Routines ist nach Start sortiert; die innerste umgebende Routine liegt hinten.
+    for Index := High(Routines) downto 0 do
+    begin
+      Routine := Routines[Index];
+      if (Routine.StartOffset <= ANode.StartOffset) and (Routine.EndOffset >= ANode.EndOffset) and
+        DeclaresLocal(Routine, AName) then
+        Exit(IntToStr(Routine.StartOffset) + ':' + LowerCase(AName));
+    end;
+    Result := 'F:' + LowerCase(AName);
+  end;
+
+  function FactIndex(const AKey: string): Integer;
+  var
+    Index: Integer;
+  begin
+    for Index := 0 to High(Keys) do
+      if Keys[Index] = AKey then
+        Exit(Index);
+    Result := Length(Keys);
+    SetLength(Keys, Result + 1);
+    SetLength(Facts, Result + 1);
+    Keys[Result] := AKey;
+    Facts[Result].Creation := nil;
+    Facts[Result].Sorted := False;
+    Facts[Result].UnsortedOnly := False;
+    Facts[Result].Hits := nil;
+  end;
+
+  // Index der Liste, auf die ANode (X oder Self.X) zeigt; -1 ohne Namen.
+  function ListOf(ANode: TSyntaxNode): Integer;
+  var
+    Name: string;
+  begin
+    Name := BaseName(ANode);
+    if Name = '' then
+      Exit(-1);
+    Result := FactIndex(KeyOf(ANode, Name));
+  end;
+
+  function IsFalse(ANode: TSyntaxNode): Boolean;
+  begin
+    Result := (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, 'False');
+  end;
+
+  // TStringList.Create(...); ASorted, wenn Create(Duplicates, Sorted, CaseSensitive) sortiert.
+  function IsCreation(AValue: TSyntaxNode; out ASorted: Boolean): Boolean;
+  var
+    Callee: TSyntaxNode;
+  begin
+    ASorted := False;
+    Callee := AValue;
+    if (AValue <> nil) and (AValue.Kind = TSyntaxKind.Call) and (AValue.ChildCount > 0) then
+      Callee := AValue[0];
+    Result := (Callee <> nil) and (Callee.Kind = TSyntaxKind.MemberAccess) and SameText(Callee.Name, 'Create') and
+      (Callee.ChildCount = 1) and (Callee[0].Kind = TSyntaxKind.Identifier) and
+      MatchText(Callee[0].Name, StringListClasses);
+    if Result and (AValue.Kind = TSyntaxKind.Call) and (AValue.ChildCount = 4) then
+      ASorted := not IsFalse(AValue[2]);
+  end;
+
+  procedure NoteCreation(AStatement: TSyntaxNode; AList: Integer; AValue: TSyntaxNode);
+  var
+    ConstructorSorted: Boolean;
+  begin
+    if (AList < 0) or not IsCreation(AValue, ConstructorSorted) then
+      Exit;
+    if Facts[AList].Creation = nil then
+      Facts[AList].Creation := AStatement;
+    if ConstructorSorted then
+      Facts[AList].Sorted := True;
+  end;
+
+  // Die Liste wird weitergegeben: was der Empfänger damit macht, ist unbekannt.
+  procedure NoteEscape(ANode: TSyntaxNode);
+  var
+    List: Integer;
+  begin
+    List := ListOf(ANode);
+    if List >= 0 then
+      Facts[List].Sorted := True;
+  end;
+
+  procedure VisitAssign(AStatement: TSyntaxNode);
+  var
+    Target, Value: TSyntaxNode;
+    List: Integer;
+  begin
+    Target := AStatement[0];
+    Value := AStatement[1];
+    NoteCreation(AStatement, ListOf(Target), Value);
+    NoteEscape(Value);
+    if (Target.Kind <> TSyntaxKind.MemberAccess) or (Target.ChildCount <> 1) then
+      Exit;
+    List := ListOf(Target[0]);
+    if List < 0 then
+      Exit;
+    if SameText(Target.Name, 'Sorted') and not IsFalse(Value) then
+      Facts[List].Sorted := True
+    else if SameText(Target.Name, 'Duplicates') and (Value.Kind = TSyntaxKind.Identifier) and
+      MatchText(Value.Name, ['dupIgnore', 'dupError']) then
+      Facts[List].Hits := Facts[List].Hits + [AStatement];
+  end;
+
+  // X.Methode oder X.Methode(...): Sortieren, Find und Methoden, die nur unsortiert gehen.
+  procedure VisitMember(AMember, ACall: TSyntaxNode);
+  var
+    List: Integer;
+  begin
+    if AMember.ChildCount <> 1 then
+      Exit;
+    List := ListOf(AMember[0]);
+    if List < 0 then
+      Exit;
+    if SameText(AMember.Name, 'Sort') or SameText(AMember.Name, 'CustomSort') then
+      Facts[List].Sorted := True;
+    if MatchText(AMember.Name, UnsortedOnlyMethods) then
+      Facts[List].UnsortedOnly := True;
+    if SameText(AMember.Name, 'Find') and (ACall <> nil) and (ACall.ChildCount = 3) then
+      Facts[List].Hits := Facts[List].Hits + [ACall];
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    Value: TSyntaxNode;
+  begin
+    case ANode.Kind of
+      TSyntaxKind.AssignStatement:
+        if ANode.ChildCount = 2 then
+          VisitAssign(ANode);
+      TSyntaxKind.InlineVar:
+        if (ANode.ChildCount > 0) and (Pos(',', ANode.Name) = 0) then
+        begin
+          Value := ANode[ANode.ChildCount - 1];
+          NoteEscape(Value);
+          NoteCreation(ANode, FactIndex(KeyOf(ANode, Trim(ANode.Name))), Value);
+        end;
+      TSyntaxKind.Call:
+        begin
+          if (ANode.ChildCount > 0) and (ANode[0].Kind = TSyntaxKind.MemberAccess) then
+            VisitMember(ANode[0], ANode);
+          // Als Argument übergeben: der Aufgerufene kann sortieren.
+          if not MatchText(ANode.Name, NonEscapingCalls) then
+            for Index := 1 to ANode.ChildCount - 1 do
+              NoteEscape(ANode[Index]);
+        end;
+      TSyntaxKind.CallStatement:
+        if (ANode.ChildCount = 1) and (ANode[0].Kind = TSyntaxKind.MemberAccess) then
+          VisitMember(ANode[0], nil);
+      TSyntaxKind.WithStatement:
+        // with X do Sorted := True ist nicht nachvollziehbar: als sortiert betrachten.
+        for Index := 0 to ANode.ChildCount - 2 do
+          NoteEscape(ANode[Index]);
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+  procedure CollectRoutines(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.RoutineDecl then
+      Routines := Routines + [ANode];
+    for Index := 0 to ANode.ChildCount - 1 do
+      CollectRoutines(ANode[Index]);
+  end;
+
+  function Indent(ANode: TSyntaxNode): string;
+  begin
+    Result := StringOfChar(' ', ANode.StartPos.Character);
+  end;
+
+  function ListName(const AFacts: TStringListFacts): string;
+  begin
+    if AFacts.Creation.Kind = TSyntaxKind.InlineVar then
+      Result := Trim(AFacts.Creation.Name)
+    else
+      Result := Text(AFacts.Creation[0]);
+  end;
+
+  // Sorted := True direkt nach dem Erzeugen; nur in einem Anweisungsblock.
+  function SortedFix(const AFacts: TStringListFacts): TArray<TRuleFix>;
+  var
+    Creation: TSyntaxNode;
+  begin
+    Result := nil;
+    Creation := AFacts.Creation;
+    if AFacts.UnsortedOnly or (Creation.Parent = nil) or (Creation.Parent.Kind <> TSyntaxKind.Block) then
+      Exit;
+    Result := [TRuleFix.Create('Sorted := True nach dem Erzeugen ergänzen',
+      [TRuleEdit.Create(TTextRange.Create(Creation.EndPos, Creation.EndPos),
+      ';' + LineBreak + Indent(Creation) + ListName(AFacts) + '.Sorted := True')])];
+  end;
+
+  // if X.Find(S, I) then: vorher I := X.IndexOf(S), im if I >= 0.
+  function IndexOfFix(AFind: TSyntaxNode): TArray<TRuleFix>;
+  var
+    Statement: TSyntaxNode;
+    IndexText: string;
+  begin
+    Result := nil;
+    Statement := AFind.Parent;
+    if (Statement = nil) or (Statement.Kind <> TSyntaxKind.IfStatement) or (Statement.ChildCount = 0) or
+      (Statement[0] <> AFind) or (Statement.Parent = nil) or (Statement.Parent.Kind <> TSyntaxKind.Block) then
+      Exit;
+    IndexText := Text(AFind[2]);
+    Result := [TRuleFix.Create('IndexOf statt Find verwenden',
+      [TRuleEdit.Create(TTextRange.Create(Statement.StartPos, Statement.StartPos),
+      Format('%s := %s.IndexOf(%s);', [IndexText, Text(AFind[0][0]), Text(AFind[1])]) + LineBreak +
+      Indent(Statement)),
+      TRuleEdit.Create(TTextRange.Create(AFind.StartPos, AFind.EndPos), IndexText + ' >= 0')])];
+  end;
+
+  procedure ReportUses(const AFacts: TStringListFacts);
+  var
+    Use: TSyntaxNode;
+    Name: string;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Name := ListName(AFacts);
+    for Use in AFacts.Hits do
+      if Use.Kind = TSyntaxKind.Call then
+      begin
+        Fixes := SortedFix(AFacts);
+        Fixes := Fixes + IndexOfFix(Use);
+        AReport.Add(TTextRange.Create(Use.StartPos, Use.EndPos), Format('Find setzt eine sortierte Liste voraus; ' +
+          '%s ist nicht sortiert.', [Name]), TRuleConfidence.Medium, Fixes);
+      end
+      else
+        AReport.Add(TTextRange.Create(Use.StartPos, Use.EndPos), Format('Duplicates wirkt nur bei sortierten ' +
+          'Listen; %s ist nicht sortiert.', [Name]), TRuleConfidence.Medium, SortedFix(AFacts));
+  end;
+
+var
+  Index: Integer;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  LineBreak := TTextLines.LineBreakOf(AContext.Text);
+  Keys := nil;
+  Facts := nil;
+  Routines := nil;
+  CollectRoutines(AContext.Tree.Root);
+  Visit(AContext.Tree.Root);
+  for Index := 0 to High(Facts) do
+    if (Facts[Index].Creation <> nil) and not Facts[Index].Sorted then
+      ReportUses(Facts[Index]);
+end;
+
 procedure RegisterRtlTypePatternRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TInt32MulOverflowRule.Create);
@@ -1290,6 +1626,7 @@ begin
   ARegistry.Register(TManagedTypeRawMemoryRule.Create);
   ARegistry.Register(TThreadvarManagedRule.Create);
   ARegistry.Register(TPCharOfTemporaryRule.Create);
+  ARegistry.Register(TStringListUnsortedRule.Create);
 end;
 
 end.
