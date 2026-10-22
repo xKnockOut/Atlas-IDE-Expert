@@ -62,21 +62,25 @@ end;
 function EnclosingRoutines(ANode: TSyntaxNode; const APosition: TTextPosition): TArray<string>;
 var
   Index: Integer;
-  Child: TSyntaxNode;
+  Node, Child: TSyntaxNode;
 begin
+  // Schleife statt Rekursion (Bericht M1): dem ersten Kind folgen, das APosition enthält.
   Result := nil;
-  for Index := 0 to ANode.ChildCount - 1 do
+  Node := ANode;
+  while Node <> nil do
   begin
-    Child := ANode[Index];
-    if Before(APosition, Child.StartPos) or not Before(APosition, Child.EndPos) then
-      Continue;
+    Child := nil;
+    for Index := 0 to Node.ChildCount - 1 do
+      if not Before(APosition, Node[Index].StartPos) and Before(APosition, Node[Index].EndPos) then
+      begin
+        Child := Node[Index];
+        Break;
+      end;
     // Der Name der Routine selbst gehört nicht zu ihrem Inhalt: erst ab dem Rumpf bzw. den Deklarationen.
-    if (Child.Kind = TSyntaxKind.RoutineDecl) and (Child.FindChild(TSyntaxKind.Block) <> nil) and
+    if (Child <> nil) and (Child.Kind = TSyntaxKind.RoutineDecl) and (Child.FindChild(TSyntaxKind.Block) <> nil) and
       (APosition.Line > Child.StartPos.Line) then
-      Result := [Child.Name] + EnclosingRoutines(Child, APosition)
-    else
-      Result := EnclosingRoutines(Child, APosition);
-    Exit;
+      Result := Result + [Child.Name];
+    Node := Child;
   end;
 end;
 
@@ -97,14 +101,20 @@ end;
 
 function InUses(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
 var
-  Index: Integer;
+  Position: TTextPosition;
 begin
-  if ANode.Kind = TSyntaxKind.UsesClause then
-    Exit(not Before(APosition, ANode.StartPos) and Before(APosition, ANode.EndPos));
-  for Index := 0 to ANode.ChildCount - 1 do
-    if InUses(ANode[Index], APosition) then
-      Exit(True);
-  Result := False;
+  Position := APosition;
+  // Search statt Rekursion (Bericht M1); in eine uses-Liste geht die Suche nicht weiter hinein.
+  Result := ANode.Search(
+    function(ACandidate: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if ACandidate.Kind <> TSyntaxKind.UsesClause then
+        Exit;
+      Result := TSyntaxSearchStep.Skip;
+      if not Before(Position, ACandidate.StartPos) and Before(Position, ACandidate.EndPos) then
+        Result := TSyntaxSearchStep.Found;
+    end) <> nil;
 end;
 
 /// <summary>Vollständiger Unit-Name (mit Punkten) aus einer uses-Liste an APosition; '' ohne.</summary>

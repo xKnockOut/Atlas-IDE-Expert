@@ -182,12 +182,19 @@ end;
 
 procedure CollectNodes(ANode: TSyntaxNode; const AKinds: TSyntaxKinds; AList: TList<TSyntaxNode>);
 var
-  Index: Integer;
+  Kinds: TSyntaxKinds;
+  List: TList<TSyntaxNode>;
 begin
-  if ANode.Kind in AKinds then
-    AList.Add(ANode);
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectNodes(ANode[Index], AKinds, AList);
+  Kinds := AKinds;
+  List := AList;
+  // Walk statt Rekursion (Bericht M1).
+  ANode.Walk(
+    function(AChild: TSyntaxNode): Boolean
+    begin
+      if AChild.Kind in Kinds then
+        List.Add(AChild);
+      Result := True;
+    end);
 end;
 
 /// <summary>Parametername aus "const A: Integer = 1" bzw. "A".</summary>

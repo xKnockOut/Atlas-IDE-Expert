@@ -218,60 +218,95 @@ end;
 /// <summary>Identifier bzw. MemberAccess, dessen Name AOffset..AEnd belegt; nil ohne.</summary>
 function NameNodeAt(ANode: TSyntaxNode; AOffset, AEnd: Integer): TSyntaxNode;
 var
+  Pending: TStack<TSyntaxPostOrderEntry>;
+  Entry: TSyntaxPostOrderEntry;
+  Node: TSyntaxNode;
   Index: Integer;
 begin
+  // Eigener Stapel statt Rekursion (Bericht M1); wie früher die Kinder vor dem Knoten selbst.
   Result := nil;
-  if (ANode.StartOffset > AOffset) or (ANode.EndOffset < AEnd) then
-    Exit;
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    Result := NameNodeAt(ANode[Index], AOffset, AEnd);
-    if Result <> nil then
-      Exit;
+  Pending := TStack<TSyntaxPostOrderEntry>.Create;
+  try
+    Pending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
+    while Pending.Count > 0 do
+    begin
+      Entry := Pending.Pop;
+      Node := Entry.Node;
+      if not Entry.Done then
+      begin
+        if (Node.StartOffset > AOffset) or (Node.EndOffset < AEnd) then
+          Continue;
+        Pending.Push(TSyntaxPostOrderEntry.Create(Node, True));
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(TSyntaxPostOrderEntry.Create(Node[Index], False));
+        Continue;
+      end;
+      if ((Node.Kind = TSyntaxKind.Identifier) and (Node.StartOffset = AOffset) and (Node.EndOffset = AEnd)) or
+        ((Node.Kind = TSyntaxKind.MemberAccess) and (Node.EndOffset = AEnd) and
+        (AEnd - Length(Node.Name) = AOffset)) then
+        Exit(Node);
+    end;
+  finally
+    Pending.Free;
   end;
-  if ((ANode.Kind = TSyntaxKind.Identifier) and (ANode.StartOffset = AOffset) and (ANode.EndOffset = AEnd)) or
-    ((ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.EndOffset = AEnd) and
-    (AEnd - Length(ANode.Name) = AOffset)) then
-    Result := ANode;
 end;
 
 /// <summary>Innerste Routine mit Rumpf, deren Deklaration AOffset enthält (auch var-Abschnitt); nil ohne.</summary>
 function RoutineContaining(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
 var
   Index: Integer;
-  Inner: TSyntaxNode;
+  Node, Child: TSyntaxNode;
 begin
+  // Schleife statt Rekursion (Bericht M1): dem ersten Kind folgen, das AOffset enthält; die letzte Routine
+  // auf dem Weg ist die innerste.
   Result := nil;
-  for Index := 0 to ANode.ChildCount - 1 do
-    if (ANode[Index].StartOffset <= AOffset) and (AOffset < ANode[Index].EndOffset) then
-    begin
-      if (ANode[Index].Kind = TSyntaxKind.RoutineDecl) and (TRoutineBody.BodyOf(ANode[Index]) <> nil) then
-        Result := ANode[Index];
-      Inner := RoutineContaining(ANode[Index], AOffset);
-      if Inner <> nil then
-        Result := Inner;
-      Exit;
-    end;
-end;
-
-function IsSimpleChain(ANode: TSyntaxNode): Boolean;
-begin
-  case ANode.Kind of
-    TSyntaxKind.Identifier:
-      Result := True;
-    TSyntaxKind.MemberAccess:
-      Result := IsSimpleChain(ANode[0]);
-  else
-    Result := False;
+  Node := ANode;
+  while Node <> nil do
+  begin
+    Child := nil;
+    for Index := 0 to Node.ChildCount - 1 do
+      if (Node[Index].StartOffset <= AOffset) and (AOffset < Node[Index].EndOffset) then
+      begin
+        Child := Node[Index];
+        Break;
+      end;
+    if (Child <> nil) and (Child.Kind = TSyntaxKind.RoutineDecl) and (TRoutineBody.BodyOf(Child) <> nil) then
+      Result := Child;
+    Node := Child;
   end;
 end;
 
-function ChainNames(ANode: TSyntaxNode): TArray<string>;
+function IsSimpleChain(ANode: TSyntaxNode): Boolean;
+var
+  Node: TSyntaxNode;
 begin
-  if ANode.Kind = TSyntaxKind.MemberAccess then
-    Result := ChainNames(ANode[0]) + [ANode.Name]
-  else
-    Result := [ANode.Name];
+  Node := ANode;
+  while Node.Kind = TSyntaxKind.MemberAccess do
+    Node := Node[0];
+  Result := Node.Kind = TSyntaxKind.Identifier;
+end;
+
+function ChainNames(ANode: TSyntaxNode): TArray<string>;
+var
+  Node: TSyntaxNode;
+  Count, Index: Integer;
+begin
+  // Schleife statt Rekursion (Bericht M1): A.B.C → [A, B, C].
+  Count := 0;
+  Node := ANode;
+  while Node.Kind = TSyntaxKind.MemberAccess do
+  begin
+    Inc(Count);
+    Node := Node[0];
+  end;
+  SetLength(Result, Count + 1);
+  Node := ANode;
+  for Index := Count downto 1 do
+  begin
+    Result[Index] := Node.Name;
+    Node := Node[0];
+  end;
+  Result[0] := Node.Name;
 end;
 
 /// <summary>Muss ein zusammengesetzter Ausdruck AExpression an der Stelle ATarget in Klammern?</summary>
@@ -475,30 +510,47 @@ end;
 /// <summary>Ausdruck nur aus Literalen, lokalen Namen, Operatoren und reinen Aufrufen darauf.</summary>
 function LocalOnly(ANode: TSyntaxNode; const ALocals: TArray<TLocal>): Boolean;
 var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
   Index, First: Integer;
 begin
-  case ANode.Kind of
-    TSyntaxKind.Literal:
-      Exit(True);
-    TSyntaxKind.Identifier:
-      Exit((TRoutineLocals.IndexOf(ALocals, ANode.Name, ANode.StartOffset) >= 0) or
-        MatchText(ANode.Name, ConstantNames));
-    TSyntaxKind.Call:
-      begin
-        if (ANode[0].Kind <> TSyntaxKind.Identifier) or not MatchText(ANode[0].Name, PureRoutines) then
-          Exit(False);
-        First := 1;
-      end;
-    TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr, TSyntaxKind.SetConstructor,
-    TSyntaxKind.RangeExpr, TSyntaxKind.IfExpr:
-      First := 0;
-  else
-    Exit(False);
-  end;
-  for Index := First to ANode.ChildCount - 1 do
-    if not LocalOnly(ANode[Index], ALocals) then
-      Exit(False);
+  // Eigener Stapel statt Rekursion (Bericht M1); jeder Knoten muss passen, die Reihenfolge ist gleich.
   Result := True;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      First := 0;
+      case Node.Kind of
+        TSyntaxKind.Literal:
+          Continue;
+        TSyntaxKind.Identifier:
+          begin
+            if (TRoutineLocals.IndexOf(ALocals, Node.Name, Node.StartOffset) < 0) and
+              not MatchText(Node.Name, ConstantNames) then
+              Exit(False);
+            Continue;
+          end;
+        TSyntaxKind.Call:
+          begin
+            if (Node[0].Kind <> TSyntaxKind.Identifier) or not MatchText(Node[0].Name, PureRoutines) then
+              Exit(False);
+            First := 1;
+          end;
+        TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr, TSyntaxKind.SetConstructor,
+        TSyntaxKind.RangeExpr, TSyntaxKind.IfExpr:
+          First := 0;
+      else
+        Exit(False);
+      end;
+      for Index := Node.ChildCount - 1 downto First do
+        Pending.Push(Node[Index]);
+    end;
+  finally
+    Pending.Free;
+  end;
 end;
 
 /// <summary>Wird zwischen AFrom und ATo etwas aufgerufen oder außer lokalen Variablen etwas geschrieben?</summary>
@@ -583,14 +635,17 @@ end;
 
 function UsesName(ANode: TSyntaxNode; const AName: string): Boolean;
 var
-  Index: Integer;
+  Name: string;
 begin
-  if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, AName) then
-    Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if UsesName(ANode[Index], AName) then
-      Exit(True);
-  Result := False;
+  Name := AName;
+  // Search statt Rekursion (Bericht M1).
+  Result := ANode.Search(
+    function(ACandidate: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if (ACandidate.Kind = TSyntaxKind.Identifier) and SameText(ACandidate.Name, Name) then
+        Result := TSyntaxSearchStep.Found;
+    end) <> nil;
 end;
 
 class function TInlineRefactoring.InlineVariable(const ASource: TInlineSource; const APosition: TTextPosition;

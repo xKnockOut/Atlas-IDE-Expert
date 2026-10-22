@@ -3,10 +3,9 @@
 {$APPTYPE CONSOLE}
 
 // 8 MB Stapel je Thread statt 1 MB (#1094). Netz, nicht Ursache: Seit Bericht M1
-// laufen die Prüfregeln iterativ, die Tiefe begrenzen Parser (MaxNesting) und
-// Regel-Engine (MaxTreeDepth, mit Hinweis unit-too-deep). Die Reserve bleibt für
-// Editing- und LSP-Läufer, die noch rekursiv sind. Belegt wird nur, was ein
-// Thread wirklich braucht.
+// laufen Prüfregeln, LSP und Editing iterativ über den Syntaxbaum, die Tiefe
+// begrenzen Parser (MaxNesting) und Regel-Engine (MaxTreeDepth, mit Hinweis
+// unit-too-deep). Belegt wird nur, was ein Thread wirklich braucht.
 {$MAXSTACKSIZE $00800000}
 
 uses
