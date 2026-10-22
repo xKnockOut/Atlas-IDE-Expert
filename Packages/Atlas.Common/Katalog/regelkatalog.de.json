@@ -1173,6 +1173,11 @@
       "id": "label-misuse",
       "name": "Sprungmarke falsch verwendet",
       "description": "Eine Marke ist doppelt gesetzt (wie E2073), deklariert und angesprungen, aber nie gesetzt (E2074), gesetzt oder angesprungen, ohne in der aktuellen Routine deklariert zu sein (E2093), oder goto springt in einen try-Block hinein oder aus ihm heraus, auch zwischen try-Teil und except bzw. finally (E2127). Delphi meldet das erst beim Übersetzen. Marken gehören zu einer Routine bzw. zum Programmblock; eine lokale Prozedur kann keine Marke der umgebenden Routine anspringen. Doppelte Marken in bedingten Zweigen, die sich ausschließen, bleiben still, ebenso Routinen mit asm-Block, weil Marken im asm nicht im Syntaxbaum stehen. Keine Korrektur."
+    },
+    {
+      "id": "for-variable-misuse",
+      "name": "Schleifenvariable verändert oder nicht lokal",
+      "description": "Der Variablen einer for-Schleife wird im Rumpf zugewiesen oder sie wird mit Inc/Dec verändert (wie E2081), sie wird als var- bzw. out-Parameter an eine Routine dieser Datei übergeben (wie W1015) oder sie ist keine einfache lokale Variable: Feld der eigenen Klasse, globale Variable der Unit oder lokale Variable der umgebenden Routine (wie E1019). Delphi meldet das erst beim Übersetzen. Parameter, unbekannte Namen und Schleifen in with-Anweisungen bleiben still, ebenso anonyme Methoden im Rumpf und Routinen mit Parserfehlern. Korrekturen: auf eine while-Schleife umstellen (nicht bei Continue im Rumpf) bzw. for var verwenden, wenn die Routine den Namen sonst nicht benutzt."
     }
   ]
 }

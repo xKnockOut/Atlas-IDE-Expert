@@ -4162,3 +4162,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | LJ6 | Richtige Marken, `goto 007` auf `7:`, dieselbe Marke in `{$IFDEF}`/`{$ELSE}`, Marke im asm-Block, goto innerhalb eines except | Keine Meldung |
 | LJ7 | `"label-misuse": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | LJ8 | Abgleich mit Delphi: LJ1 bis LJ5 übersetzen | dcc meldet E2127, E2073, E2074 bzw. E2093 an denselben Stellen, für LJ6 nichts |
+
+## Schleifenvariable verändert oder nicht lokal (#1009)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SV1 | Das Beispiel aus #1009: `for I := 0 to Zeilen.Count - 1 do` mit `Inc(I);` im Rumpf | Fehler `for-variable-misuse` an `I` in `Inc(I)`: „Schleifenvariable I darf im Rumpf nicht verändert werden (wie E2081).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| SV2 | Schnellkorrektur „Auf while-Schleife umstellen“, danach Strg+Z | `I := 0; while I <= Zeilen.Count - 1 do begin … Inc(I); end;`, keine Meldung mehr; ein Undo-Schritt |
+| SV3 | `I := 5;` im Rumpf; `downto` mit `Dec(I)`; Rumpf mit `Continue` | Meldung „… darf im Rumpf nicht zugewiesen werden (wie E2081).“; Korrektur mit `>=` und `Dec`; mit Continue keine Korrektur |
+| SV4 | Eigene `procedure Weiter(var N: Integer)` und `Weiter(I)` im Rumpf | „Schleifenvariable I wird als var-Parameter an Weiter übergeben (wie W1015).“ |
+| SV5 | `for FIndex := …` mit einem Feld, `for GZaehler := …` mit einer globalen Variablen, lokale Prozedur mit der Variablen der äußeren Routine | „Schleifenvariable FIndex ist ein Feld, keine einfache lokale Variable (wie E1019).“ usw.; Korrektur „for var FIndex verwenden“ nur, wenn die Routine den Namen sonst nicht benutzt |
+| SV6 | Lesen der Variablen, `Zeilen[I] := …`, `Zeilen.Delete(I)`, anonyme Methode im Rumpf, Schleife in `with`, Parameter als Schleifenvariable | Keine Meldung |
+| SV7 | `"for-variable-misuse": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| SV8 | Abgleich mit Delphi: SV1, SV3, SV4, SV5 übersetzen | dcc meldet E2081, W1015 bzw. E1019 an denselben Stellen, für SV6 nichts; abweichende Codes in der Regel nachtragen |

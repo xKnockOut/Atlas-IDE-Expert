@@ -2356,6 +2356,21 @@ begin
     '        "E2093",' + #10 +
     '        "E2127"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "for-variable-misuse",' + #10 +
+    '      "name": "Loop variable changed or not local",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The variable of a for loop is assigned in the body or changed with Inc/Dec (like E2081), passed as a var or out parameter to a routine of this file (like W1015), or is not a simp' + 'le local variable: a field of the own class, a global variable of the unit or a local variable of the enclosing routine (like E1019). Delphi only reports these when compiling. Parameters, unknown name' + 's and loops inside with statements stay silent, as do anonymous methods in the body and routines with parser errors. Quick fixes: convert to a while loop (not when the body uses Continue), or use for ' + 'var when the routine does not use the name otherwise.",' + #10 +
+    '      "bad": "for I := 0 to Zeilen.Count - 1 do\nbegin\n  if Zeilen[I] = '''' then\n    Inc(I);\nend;",' + #10 +
+    '      "good": "I := 0;\nwhile I <= Zeilen.Count - 1 do\nbegin\n  if Zeilen[I] = '''' then\n    Inc(I);\n  Inc(I);\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2081",' + #10 +
+    '        "W1015",' + #10 +
+    '        "E1019"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3541,6 +3556,11 @@ begin
     '      "id": "label-misuse",' + #10 +
     '      "name": "Sprungmarke falsch verwendet",' + #10 +
     '      "description": "Eine Marke ist doppelt gesetzt (wie E2073), deklariert und angesprungen, aber nie gesetzt (E2074), gesetzt oder angesprungen, ohne in der aktuellen Routine deklariert zu sein (E2' + '093), oder goto springt in einen try-Block hinein oder aus ihm heraus, auch zwischen try-Teil und except bzw. finally (E2127). Delphi meldet das erst beim Übersetzen. Marken gehören zu einer Routine b' + 'zw. zum Programmblock; eine lokale Prozedur kann keine Marke der umgebenden Routine anspringen. Doppelte Marken in bedingten Zweigen, die sich ausschließen, bleiben still, ebenso Routinen mit asm-Bloc' + 'k, weil Marken im asm nicht im Syntaxbaum stehen. Keine Korrektur."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "for-variable-misuse",' + #10 +
+    '      "name": "Schleifenvariable verändert oder nicht lokal",' + #10 +
+    '      "description": "Der Variablen einer for-Schleife wird im Rumpf zugewiesen oder sie wird mit Inc/Dec verändert (wie E2081), sie wird als var- bzw. out-Parameter an eine Routine dieser Datei überg' + 'eben (wie W1015) oder sie ist keine einfache lokale Variable: Feld der eigenen Klasse, globale Variable der Unit oder lokale Variable der umgebenden Routine (wie E1019). Delphi meldet das erst beim Üb' + 'ersetzen. Parameter, unbekannte Namen und Schleifen in with-Anweisungen bleiben still, ebenso anonyme Methoden im Rumpf und Routinen mit Parserfehlern. Korrekturen: auf eine while-Schleife umstellen (' + 'nicht bei Continue im Rumpf) bzw. for var verwenden, wenn die Routine den Namen sonst nicht benutzt."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
