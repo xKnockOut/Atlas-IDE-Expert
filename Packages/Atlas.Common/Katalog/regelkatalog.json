@@ -2849,7 +2849,8 @@
         "E1038",
         "W1038",
         "E2085"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "text-after-final-end",
@@ -2870,7 +2871,8 @@
       ],
       "compilerCodes": [
         "W1011"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "exports-invalid",
@@ -2886,7 +2888,8 @@
         "E2276",
         "E2121",
         "E2287"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "unit-name-conflict",
@@ -2900,7 +2903,8 @@
       "compilerCodes": [
         "E2272",
         "E2242"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "implicit-variants-unit",
@@ -2913,7 +2917,8 @@
       "good": "uses\n  System.SysUtils, System.Variants;\n…\nvar Wert: Variant;",
       "compilerCodes": [
         "W1040"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "file-encoding-unsupported",
@@ -2927,7 +2932,8 @@
       "compilerCodes": [
         "F2438",
         "E2038"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "anonymous-capture-invalid",
@@ -2940,7 +2946,8 @@
       "good": "procedure Load(var Count: Integer);\nvar\n  CountCopy: Integer;\nbegin\n  CountCopy := Count;\n  TTask.Run(procedure begin Inc(CountCopy); end);\n  Count := CountCopy;\nend;",
       "compilerCodes": [
         "E2555"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "operator-declaration-invalid",
@@ -2960,7 +2967,8 @@
         "E2520",
         "E2521",
         "E2522"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "generic-declaration-invalid",
@@ -2990,7 +2998,8 @@
         "E2565",
         "E2603",
         "H2509"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "type-restriction-violated",
@@ -3043,7 +3052,8 @@
           "default": [],
           "description": "Compiler codes the rule does not check, e.g. [\"E2425\"]."
         }
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "attribute-usage-invalid",
@@ -3059,7 +3069,8 @@
         "E2326",
         "E2448",
         "E2584"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "typeinfo-invalid",
@@ -3075,7 +3086,8 @@
         "E2134",
         "E2537",
         "E2538"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "missing-begin-end",
@@ -3124,7 +3136,8 @@
       "good": "constructor TDienst.Create;\nbegin\n  inherited Create;\n  try\n    FListe := TList<TAuftrag>.Create;",
       "compilerCodes": [
         "H2505"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "variant-record-managed-field",
@@ -3141,7 +3154,8 @@
         "E2418",
         "E2417",
         "E2569"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "guid-syntax-invalid",
@@ -3154,7 +3168,8 @@
       "good": "ILogger = interface\n  ['{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C}']",
       "compilerCodes": [
         "E2204"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "untyped-pointer-refcount",
@@ -3167,7 +3182,8 @@
       "good": "[weak] FBesitzer: IBesitzer;\n…\nFBesitzer := Besitzer;",
       "compilerCodes": [
         "W1070"
-      ]
+      ],
+      "level": "T"
     },
     {
       "id": "type-too-large",
@@ -3181,7 +3197,8 @@
       "compilerCodes": [
         "E2100",
         "E2543"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "comparison-always-constant",
@@ -3196,7 +3213,8 @@
         "W1021",
         "W1022",
         "W1018"
-      ]
+      ],
+      "level": "T"
     },
     {
       "id": "constant-initializer-mismatch",
@@ -3210,7 +3228,8 @@
       "compilerCodes": [
         "E2072",
         "E2083"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "case-selector-not-ordinal",
@@ -3225,7 +3244,8 @@
         "E2001",
         "E2032",
         "E2026"
-      ]
+      ],
+      "level": "T"
     },
     {
       "id": "suspicious-string-pointer-cast",
@@ -3239,7 +3259,8 @@
       "compilerCodes": [
         "W1044",
         "W1048"
-      ]
+      ],
+      "level": "T"
     },
     {
       "id": "inaccessible-member",
@@ -3256,7 +3277,8 @@
         "E2389",
         "E2124",
         "W1045"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "unused-private-member",
@@ -3277,7 +3299,8 @@
           "default": true,
           "description": "Also report private fields that are never used (the compiler reports only methods)."
         }
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "unused-public-member",
@@ -3367,7 +3390,8 @@
         "E2138",
         "E2139",
         "E2140"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "interface-declaration-invalid",
@@ -3386,7 +3410,8 @@
         "E2209",
         "E2210",
         "E2370"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "implements-clause-invalid",
@@ -3406,7 +3431,8 @@
         "E2262",
         "E2263",
         "E2264"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "calling-convention-required",
@@ -3422,7 +3448,8 @@
         "E2270",
         "E2277",
         "E2591"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "abstract-declaration-invalid",
@@ -3441,7 +3468,8 @@
         "E2383",
         "E2540",
         "E2376"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "unsatisfied-forward",
@@ -3456,7 +3484,8 @@
         "E2065",
         "E2086",
         "E2420"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "member-hides-ancestor",
@@ -3477,7 +3506,8 @@
           "default": true,
           "description": "Do not report hidden strict private members of the ancestor."
         }
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "published-type-invalid",
@@ -3496,7 +3526,8 @@
         "E2266",
         "E2545",
         "E2452"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "override-case-mismatch",
@@ -3512,7 +3543,8 @@
         "H2440",
         "H2269",
         "H2367"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "default-property-invalid",
@@ -3527,7 +3559,8 @@
         "E2131",
         "E2132",
         "E2149"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "property-redeclaration-invalid",
@@ -3541,7 +3574,8 @@
       "compilerCodes": [
         "E2147",
         "E2233"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "inline-not-expanded",
@@ -3558,7 +3592,8 @@
         "H2445",
         "H2456",
         "H2457"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "directive-typo",
@@ -3571,7 +3606,8 @@
       "good": "procedure Paint; override;",
       "compilerCodes": [
         "E2070"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "ui-call-in-console-or-service",
@@ -3847,7 +3883,8 @@
         "E2011",
         "W1012",
         "E2102"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "default-parameter-invalid",
@@ -3864,7 +3901,8 @@
         "E2239",
         "E2268",
         "E2146"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "signed-unsigned-mix",
@@ -3879,7 +3917,8 @@
         "W1023",
         "W1024",
         "W1073"
-      ]
+      ],
+      "level": "T"
     },
     {
       "id": "narrowing-assignment",
@@ -3905,7 +3944,8 @@
           ],
           "description": "Reported pairs source type>target type, e.g. Double>Single or Extended>Double."
         }
-      ]
+      ],
+      "level": "T"
     },
     {
       "id": "typed-constant-modified",
@@ -3922,7 +3962,8 @@
         "W1013",
         "E2064",
         "E2197"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "string-length-limit",
@@ -3937,7 +3978,8 @@
         "W1014",
         "E2056",
         "E2381"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "dynamic-array-misuse",
@@ -3954,7 +3996,8 @@
         "E2246",
         "E2307",
         "E2308"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "local-routine-as-callback",
@@ -3968,7 +4011,8 @@
       "compilerCodes": [
         "E2094",
         "E2278"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "hresult-integer-mix",
@@ -3981,7 +4025,8 @@
       "good": "IExport = interface\n  function Schreiben: HRESULT; stdcall;\nend;\n…\n  function Schreiben: HRESULT; stdcall;",
       "compilerCodes": [
         "X1008"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "invalid-var-argument",
@@ -3998,7 +4043,8 @@
         "E2192",
         "E2454",
         "E2036"
-      ]
+      ],
+      "level": "T"
     },
     {
       "id": "condition-not-boolean",
@@ -4011,7 +4057,8 @@
       "good": "if Liste.Count > 0 then\n  Verarbeiten;",
       "compilerCodes": [
         "E2012"
-      ]
+      ],
+      "level": "T"
     },
     {
       "id": "for-in-not-enumerable",
@@ -4025,7 +4072,8 @@
       "compilerCodes": [
         "E2430",
         "E2431"
-      ]
+      ],
+      "level": "T"
     },
     {
       "id": "inherited-abstract-call",
@@ -4038,7 +4086,8 @@
       "good": "procedure TKreis.Zeichnen(C: TCanvas);\nbegin\n  C.Ellipse(FRahmen);\nend;",
       "compilerCodes": [
         "E2373"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "generic-constraint-violated",
@@ -4057,7 +4106,8 @@
         "E2515",
         "E2568",
         "E2571"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "unresolved-type",
@@ -4073,7 +4123,8 @@
         "E2563",
         "E2005",
         "E2003"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "class-reference-nonvirtual-constructor",
@@ -4086,7 +4137,8 @@
       "good": "type\n  TPluginKlasse = class of TPlugin;\n  TPlugin = class\n    constructor Create; virtual;\n  end;\n  TSpezial = class(TPlugin)\n    constructor Create; override;\n  end;\n...\n  P := Klasse.Create;",
       "compilerCodes": [
         "E2391"
-      ]
+      ],
+      "level": "B"
     },
     {
       "id": "jump-outside-allowed-scope",
@@ -4100,7 +4152,8 @@
       "compilerCodes": [
         "E2097",
         "E2126"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "reraise-outside-handler",
@@ -4113,7 +4166,8 @@
       "good": "Protokoll.Fehler('Import abgebrochen');\nraise EImportAbgebrochen.Create('Import abgebrochen');",
       "compilerCodes": [
         "E2145"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "label-misuse",
@@ -4129,7 +4183,8 @@
         "E2074",
         "E2093",
         "E2127"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "for-variable-misuse",
@@ -4144,7 +4199,8 @@
         "E2081",
         "W1015",
         "E1019"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "for-variable-after-loop",
@@ -4157,7 +4213,8 @@
       "good": "I := 0;\nwhile I <= High(Werte) do\nbegin\n  if Werte[I] = Gesucht then\n    Break;\n  Inc(I);\nend;\nGefunden := I <= High(Werte);",
       "compilerCodes": [
         "W1037"
-      ]
+      ],
+      "level": "A"
     },
     {
       "id": "argument-count-mismatch",
