@@ -14,6 +14,10 @@
 //                                       einer sealed-Klasse (E2353) (#997)
 //   abstract-class-instantiated         Create auf einer Klasse mit offenen abstrakten Methoden (W1020)
 //                                       oder einer abstract-Klasse (E2402) (#999)
+//   member-hides-ancestor               Property heißt wie ein Feld des Vorfahren (W1009), Feld wie ein
+//                                       Feld oder eine Property, nicht virtuelle Methode wie eine gleich
+//                                       aufgebaute nicht virtuelle des Vorfahren (#1003); strict private
+//                                       des Vorfahren nur mit ignoreStrictPrivate = false
 //
 // Vorfahren werden zuerst in der Datei, dann im Symbolindex gesucht (auch RTL
 // und VCL, soweit eingelesen). Ist ein Vorfahr nicht auflösbar oder mehrdeutig,
@@ -136,6 +140,15 @@ type
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
+
+  TMemberHidesAncestorRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+const
+  MemberHidesAncestorRuleId = 'member-hides-ancestor';
 
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 
@@ -1795,6 +1808,207 @@ begin
   end;
 end;
 
+{ TMemberHidesAncestorRule }
+
+function TMemberHidesAncestorRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(MemberHidesAncestorRuleId, TRuleSeverity.Warning,
+    'Member verdeckt einen gleichnamigen Member des Vorfahren');
+end;
+
+procedure TMemberHidesAncestorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Cache: IRuleDerivedCache;
+  Ancestry: TAncestry;
+  Tokens: TArray<TPascalToken>;
+  IgnoreStrictPrivate: Boolean;
+
+  /// <summary>Sieht der Nachfahre den Member ASymbol des Vorfahren auf AType?</summary>
+  function Visible(const AType: TSymbolLocation; const ASymbol: TIndexSymbol): Boolean;
+  begin
+    if ASymbol.Visibility = TIndexVisibility.StrictPrivate then
+      Result := not IgnoreStrictPrivate and (AType.FileName = '')
+    else
+      Result := (ASymbol.Visibility <> TIndexVisibility.Private) or (AType.FileName = '');
+  end;
+
+  function IsClassMember(const ASymbol: TIndexSymbol): Boolean;
+  begin
+    Result := ASymbol.HasDirective('class') or StartsText('class ', ASymbol.Signature);
+  end;
+
+  /// <summary>Kann AOwn einen Member des Vorfahren verdecken? Neu veröffentlichte Properties (property Caption;),
+  /// Konstruktoren, Klassenmethoden und bewusst gelöste Fälle nicht.</summary>
+  function Candidate(const AOwn: TIndexSymbol): Boolean;
+  begin
+    Result := not AOwn.Unavailable;
+    if not Result then
+      Exit;
+    case AOwn.Kind of
+      TIndexSymbolKind.Field:
+        Result := True;
+      TIndexSymbolKind.Property_:
+        Result := (AOwn.TypeName <> '') and not IsClassMember(AOwn);
+      TIndexSymbolKind.Method:
+        Result := not IsClassMember(AOwn) and not AOwn.IsVirtual and not AOwn.HasDirective('reintroduce') and
+          not AOwn.HasDirective('overload') and not AOwn.HasDirective('message');
+    else
+      Result := False;
+    end;
+  end;
+
+  /// <summary>Kurzname der Klasse ohne führendes T ("TKunde" → "Kunde").</summary>
+  function ShortName(const AClassName: string): string;
+  begin
+    Result := AClassName;
+    if (Length(Result) > 1) and CharInSet(Result[1], ['T', 't']) and CharInSet(Result[2], ['A'..'Z']) then
+      Result := Copy(Result, 2, MaxInt);
+  end;
+
+  /// <summary>Korrektur: AOwn in der Klassendeklaration und in den Rümpfen der Klasse umbenennen. Zugriffe über einen
+  /// anderen Ausdruck (Obj.FName) und andere Units bleiben unverändert.</summary>
+  function RenameFix(const AClass: TIndexSymbol; const AOwn: TIndexSymbol): TArray<TRuleFix>;
+  var
+    NewName, Prefix: string;
+    Index, Inner, Body: Integer;
+    Edits: TArray<TRuleEdit>;
+    Bodies: TArray<TSyntaxNode>;
+    Section: TSyntaxNode;
+    InBody: Boolean;
+  begin
+    Result := nil;
+    if AOwn.Kind = TIndexSymbolKind.Field then
+    begin
+      Prefix := '';
+      if (Length(AOwn.Name) > 1) and CharInSet(AOwn.Name[1], ['F', 'f']) and CharInSet(AOwn.Name[2], ['A'..'Z']) then
+        Prefix := Copy(AOwn.Name, 1, 1);
+      NewName := Prefix + ShortName(AClass.Name) + Copy(AOwn.Name, Length(Prefix) + 1, MaxInt);
+    end
+    else
+      NewName := ShortName(AClass.Name) + AOwn.Name;
+    for Index := 0 to High(Tokens) do
+      if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, NewName) then
+        Exit;
+    // Rümpfe der Methoden der Klasse (TKunde.X) aus dem implementation-Teil.
+    Bodies := nil;
+    Section := AContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
+    if Section <> nil then
+      for Index := 0 to Section.ChildCount - 1 do
+        if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and
+          StartsText(AClass.Name + '.', Section[Index].Name) then
+          Bodies := Bodies + [Section[Index]];
+    Edits := nil;
+    for Index := 0 to High(Tokens) do
+    begin
+      if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or not SameText(Tokens[Index].Text, AOwn.Name) then
+        Continue;
+      InBody := False;
+      for Body := 0 to High(Bodies) do
+        InBody := InBody or ((Tokens[Index].Offset >= Bodies[Body].StartOffset) and
+          (Tokens[Index].Offset < Bodies[Body].EndOffset));
+      if not InBody and not ContainsLine(AClass.Range, Tokens[Index].StartPos.Line) then
+        Continue;
+      // Obj.FName: nur Self.FName zählt; im Rumpfkopf "procedure TKunde.Name" ist es der Methodenname.
+      if (Index > 0) and Tokens[Index - 1].IsSymbol('.') then
+      begin
+        Inner := Index - 2;
+        if (Inner < 0) or not SameText(Tokens[Inner].Text, 'Self') then
+          Continue;
+      end;
+      Edits := Edits + [TRuleEdit.Create(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos), NewName)];
+    end;
+    if Edits <> nil then
+      Result := [TRuleFix.Create(Format('In %s umbenennen (in dieser Unit)', [NewName]), Edits)];
+  end;
+
+  procedure CheckMember(const AClass: TIndexSymbol; const AOwn: TIndexSymbol; const AChain: TArray<TSymbolLocation>);
+  var
+    Level: Integer;
+    Symbol, Hidden: TIndexSymbol;
+    Any, Found: Boolean;
+    Confidence: TRuleConfidence;
+  begin
+    for Level := 0 to High(AChain) do
+    begin
+      Any := False;
+      Found := False;
+      for Symbol in Ancestry.Members(AChain[Level]) do
+      begin
+        if not SameText(Symbol.Name, AOwn.Name) then
+          Continue;
+        // Nur in einem inaktiven Zweig: keine Aussage.
+        if Symbol.Unavailable then
+          Exit;
+        if not Visible(AChain[Level], Symbol) then
+          Continue;
+        Any := True;
+        case AOwn.Kind of
+          TIndexSymbolKind.Field:
+            Found := Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_];
+          TIndexSymbolKind.Property_:
+            Found := Symbol.Kind = TIndexSymbolKind.Field;
+          TIndexSymbolKind.Method:
+            // Virtuelle Methoden meldet hides-virtual.
+            Found := (Symbol.Kind = TIndexSymbolKind.Method) and not Symbol.IsVirtual and not IsClassMember(Symbol) and
+              SameSignature(Symbol, AOwn);
+        end;
+        if Found then
+        begin
+          Hidden := Symbol;
+          Break;
+        end;
+      end;
+      if Found then
+      begin
+        Confidence := TRuleConfidence.High;
+        if AOwn.Kind = TIndexSymbolKind.Method then
+          Confidence := TRuleConfidence.Medium;
+        if AOwn.Kind = TIndexSymbolKind.Method then
+          AReport.Add(AOwn.SelectionRange, Format('%s verdeckt %s.%s (wie W1009).', [AOwn.Name,
+            AChain[Level].Symbol.Name, Hidden.Name]), Confidence)
+        else
+          AReport.Add(AOwn.SelectionRange, Format('%s verdeckt %s.%s (wie W1009).', [AOwn.Name,
+            AChain[Level].Symbol.Name, Hidden.Name]), Confidence, RenameFix(AClass, AOwn));
+        Exit;
+      end;
+      // Die nächste Stufe mit gleichnamigem Member entscheidet.
+      if Any then
+        Exit;
+    end;
+  end;
+
+var
+  Symbol, Member: TIndexSymbol;
+  Location: TSymbolLocation;
+  Chain: TArray<TSymbolLocation>;
+  Complete, ObjectMissing: Boolean;
+begin
+  if AContext.Tree = nil then
+    Exit;
+  IgnoreStrictPrivate := TRuleOptions.Bool(AContext.Options, 'ignoreStrictPrivate', True);
+  Cache := TRuleDerived.Open(AContext);
+  Tokens := TRuleDerived.CodeTokens(Cache, AContext);
+  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
+  try
+    for Symbol in Ancestry.Local.Symbols do
+    begin
+      if (Symbol.Kind <> TIndexSymbolKind.ClassType) or (Symbol.Container <> '') or Symbol.Unavailable or
+        (Symbol.Ancestors = nil) then
+        Continue;
+      Chain := Ancestry.Ancestors(Symbol.Name, Complete, ObjectMissing);
+      if Chain = nil then
+        Continue;
+      Location := Default(TSymbolLocation);
+      Location.Symbol := Symbol;
+      for Member in Ancestry.Members(Location) do
+        if Candidate(Member) then
+          CheckMember(Symbol, Member, Chain);
+    end;
+  finally
+    Ancestry.Free;
+  end;
+end;
+
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDestroyWithoutOverrideRule.Create);
@@ -1804,6 +2018,7 @@ begin
   ARegistry.Register(TShadowedNameRule.Create);
   ARegistry.Register(TOverrideTargetMissingRule.Create);
   ARegistry.Register(TAbstractClassInstantiatedRule.Create);
+  ARegistry.Register(TMemberHidesAncestorRule.Create);
 end;
 
 end.

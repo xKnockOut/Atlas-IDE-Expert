@@ -4150,3 +4150,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | JF6 | Rumpf ohne Parameterliste (`function Kurz;`), `external` im interface oder implementation, Deklaration in `{$IFDEF}`, Unit mit `{$I datei.inc}`, `EFehler = class(Exception);`, Methoden ohne Rumpf (meldet `declared-not-implemented`) | Keine Meldung von `unsatisfied-forward` |
 | JF7 | `"unsatisfied-forward": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | JF8 | Abgleich mit Delphi: JF1, JF3 bis JF5 übersetzen | dcc meldet E2065, E2086 bzw. E2420 an denselben Stellen, für JF6 nichts |
+
+## Member verdeckt einen Member des Vorfahren (#1003)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JV1 | Das Beispiel aus #1003: `TBasis` mit `FName: string;`, `TKunde = class(TBasis)` mit `FName: string;` | Warnung `member-hides-ancestor` an `FName` in `TKunde`: „FName verdeckt TBasis.FName (wie W1009).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JV2 | Schnellkorrektur „In FKundeName umbenennen (in dieser Unit)“, danach Strg+Z | Feld und Zugriffe in den Methoden von `TKunde` (auch `Self.FName`) heißen `FKundeName`; `TBasis(Self).FName` bleibt; ein Undo-Schritt |
+| JV3 | `property Wert: string read FText;` in `TKunde`, `Wert: Integer;` als Feld in `TBasis` | „Wert verdeckt TBasis.Wert (wie W1009).“ |
+| JV4 | Nicht virtuelle Methode `Speichern(const APfad: string)` in beiden Klassen | Meldung mit mittlerer Konfidenz, ohne Korrektur |
+| JV5 | Vorfahr aus einer anderen Unit: `private`-Feld gleichen Namens; `strict private` in derselben Unit | Keine Meldung; mit `"ignoreStrictPrivate": false` Meldung für `strict private` |
+| JV6 | `property Caption;`, Property mit neuem Typ über einer Property, `overload`, `reintroduce`, virtuelle Methoden, Konstruktoren, Klassenmethoden | Keine Meldung von `member-hides-ancestor` |
+| JV7 | `"member-hides-ancestor": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| JV8 | Abgleich mit Delphi: JV1, JV3, JV4 übersetzen | dcc meldet W1009 für JV3; meldet dcc für JV1 oder JV4 nichts, Konfidenz der Fälle senken bzw. im Issue nachtragen |
