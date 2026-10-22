@@ -7,6 +7,8 @@
 //                                       ohne override in TComponent-Nachfahren
 //   hides-virtual                       Methode verdeckt eine virtuelle des Vorfahren
 //   virtual-instead-of-override         virtual statt override bei gleicher Signatur
+//   shadowed-name                       Parameter oder lokale Variable heißt wie ein Feld, eine
+//                                       Property (auch geerbt) oder eine globale Variable der Unit (#934)
 //
 // Vorfahren werden zuerst in der Datei, dann im Symbolindex gesucht (auch RTL
 // und VCL, soweit eingelesen). Ist ein Vorfahr nicht auflösbar oder mehrdeutig,
@@ -60,6 +62,9 @@ type
     function HasConstructor(const ATypeName: string): Boolean;
     /// <summary>Nächste gleichnamige Methode in den Vorfahren, falls sie virtuell ist.</summary>
     function InheritedVirtual(const AMethod: TMethodDecl): TInherited;
+    /// <summary>Feld oder Property AName in ATypeName oder einem Vorfahren, das dort sichtbar ist (#934).
+    /// Bricht die Kette ab, steht in AUnresolved der Vorfahr, der weder in der Datei noch im Index steht.</summary>
+    function FindMember(const ATypeName, AName: string; out AMember: TIndexSymbol; out AUnresolved: string): Boolean;
     property Local: TUnitIndex read FLocal;
   end;
 
@@ -87,6 +92,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TShadowedNameRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -97,7 +108,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Rules.Derived;
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Rules.Options,
+  Atlas.Common.Rules.Builtin.Unused;
 
 function TMethodDecl.Has(const ADirective: string): Boolean;
 begin
@@ -617,12 +630,383 @@ begin
   end;
 end;
 
+{ TShadowedNameRule }
+
+const
+  ShadowDefaultIgnore: array[0..1] of string = ('Sender', 'Value');
+  // Ohne VCL im Index: Mitglieder von TComponent bzw. TControl, wenn die Kette an einer dieser Klassen abbricht.
+  ComponentClasses: array[0..1] of string = ('TComponent', 'TDataModule');
+  ComponentMembers: array[0..5] of string = ('Name', 'Tag', 'Owner', 'ComponentCount', 'ComponentIndex',
+    'Components');
+  ControlClasses: array[0..14] of string = ('TControl', 'TWinControl', 'TCustomControl', 'TGraphicControl', 'TForm',
+    'TCustomForm', 'TFrame', 'TCustomFrame', 'TScrollingWinControl', 'TPanel', 'TCustomPanel', 'TScrollBox',
+    'TPageControl', 'TTabSheet', 'TGroupBox');
+  ControlMembers: array[0..20] of string = ('Left', 'Top', 'Width', 'Height', 'Caption', 'Text', 'Hint', 'Visible',
+    'Enabled', 'Color', 'Font', 'Parent', 'Align', 'Anchors', 'Cursor', 'ShowHint', 'PopupMenu', 'ClientWidth',
+    'ClientHeight', 'Action', 'Constraints');
+
+function TAncestry.FindMember(const ATypeName, AName: string; out AMember: TIndexSymbol;
+  out AUnresolved: string): Boolean;
+var
+  Name: string;
+  Location: TSymbolLocation;
+  Symbols: TArray<TIndexSymbol>;
+  Symbol: TIndexSymbol;
+  UnitIndex: TUnitIndex;
+  Depth: Integer;
+  Visible: Boolean;
+begin
+  AMember := Default(TIndexSymbol);
+  AUnresolved := '';
+  Name := ATypeName;
+  Depth := 0;
+  while (Name <> '') and (Depth < 64) do
+  begin
+    if not FindType(Name, Location) then
+    begin
+      AUnresolved := Name;
+      Exit(False);
+    end;
+    if Location.FileName = '' then
+      Symbols := FLocal.Symbols
+    else if (FIndex <> nil) and FIndex.FindFile(Location.FileName, UnitIndex) then
+      Symbols := UnitIndex.Symbols
+    else
+      Symbols := nil;
+    for Symbol in Symbols do
+      if (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
+        SameText(Symbol.Container, Location.Symbol.Name) and SameText(Symbol.Name, AName) and
+        ContainsLine(Location.Symbol.Range, Symbol.Range.StartPos.Line) then
+      begin
+        // private ist nur in derselben Unit sichtbar, strict private nur in der Klasse selbst.
+        Visible := (Depth = 0) or ((Location.FileName = '') and (Symbol.Visibility <> TIndexVisibility.StrictPrivate)) or
+          not (Symbol.Visibility in [TIndexVisibility.Private, TIndexVisibility.StrictPrivate]);
+        if Visible then
+        begin
+          AMember := Symbol;
+          Exit(True);
+        end;
+      end;
+    if Length(Location.Symbol.Ancestors) = 0 then
+      Break;
+    Name := BareName(Location.Symbol.Ancestors[0]);
+    Inc(Depth);
+  end;
+  Result := False;
+end;
+
+function TShadowedNameRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('shadowed-name', TRuleSeverity.Hint,
+    'Lokaler Name verdeckt Feld, Property oder globale Variable');
+end;
+
+procedure TShadowedNameRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Ancestry: TAncestry;
+  Ignore: TArray<string>;
+  Tokens: TArray<TPascalToken>;
+
+  function SplitNames(const ANames: string): TArray<string>;
+  var
+    Name: string;
+  begin
+    Result := nil;
+    for Name in SplitString(ANames, ',') do
+      if Trim(Name) <> '' then
+        Result := Result + [Trim(Name)];
+  end;
+
+  // Bezeichner-Token AName in ANode, die nicht hinter einem Punkt stehen (Self.Caption bleibt).
+  function NameTokens(ANode: TSyntaxNode; const AName: string): TArray<Integer>;
+  var
+    Index, Previous: Integer;
+  begin
+    Result := nil;
+    for Index := 0 to High(Tokens) do
+    begin
+      if Tokens[Index].Offset >= ANode.EndOffset then
+        Break;
+      if (Tokens[Index].Offset < ANode.StartOffset) or
+        not (Tokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) or
+        not SameText(Tokens[Index].Text, AName) then
+        Continue;
+      Previous := Index - 1;
+      while (Previous >= 0) and (Tokens[Previous].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+        Dec(Previous);
+      if (Previous >= 0) and Tokens[Previous].IsSymbol('.') then
+        Continue;
+      Result := Result + [Index];
+    end;
+  end;
+
+  function TokenRange(AIndex: Integer): TTextRange;
+  begin
+    Result := TTextRange.Create(Tokens[AIndex].StartPos, Tokens[AIndex].EndPos);
+  end;
+
+  function Assigned_(ANode: TSyntaxNode; const AName: string): Boolean;
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
+      (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, AName) then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if Assigned_(ANode[Index], AName) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Deklaration der Methode in der Klasse: Kopf mit gleichem Namen und demselben Parameter an derselben Stelle.
+  function DeclarationHeader(const AClassName, AMethod, AParam: string; AParamIndex: Integer): TSyntaxNode;
+
+    function Search(ANode: TSyntaxNode; AInClass: Boolean): TSyntaxNode;
+    var
+      Index, Position: Integer;
+      Params: TSyntaxNode;
+      Name: string;
+    begin
+      Result := nil;
+      if ANode.Kind = TSyntaxKind.TypeDecl then
+        AInClass := SameText(ANode.Name, AClassName);
+      if AInClass and (ANode.Kind = TSyntaxKind.RoutineHeader) and SameText(ANode.Name, AMethod) then
+      begin
+        Params := ANode.FindChild(TSyntaxKind.Parameters);
+        Position := 0;
+        if Params <> nil then
+          for Index := 0 to Params.ChildCount - 1 do
+            if Params[Index].Kind = TSyntaxKind.Parameter then
+              for Name in SplitNames(Params[Index].Name) do
+              begin
+                if (Position = AParamIndex) and SameText(Name, AParam) then
+                  Exit(ANode);
+                Inc(Position);
+              end;
+        Exit;
+      end;
+      if ANode.Kind in [TSyntaxKind.ImplementationSection, TSyntaxKind.RoutineDecl] then
+        Exit;
+      for Index := 0 to ANode.ChildCount - 1 do
+      begin
+        Result := Search(ANode[Index], AInClass);
+        if Result <> nil then
+          Exit;
+      end;
+    end;
+
+  begin
+    Result := Search(AContext.Tree.Root, False);
+  end;
+
+  // Globale Variable der Unit vor ARoutine.
+  function GlobalVariable(ARoutine: TSyntaxNode; const AName: string): Boolean;
+  var
+    Symbol: TIndexSymbol;
+  begin
+    for Symbol in Ancestry.Local.Symbols do
+      if (Symbol.Kind = TIndexSymbolKind.Variable) and (Symbol.Container = '') and SameText(Symbol.Name, AName) and
+        (Symbol.Range.StartPos.Line < ARoutine.StartPos.Line) then
+        Exit(True);
+    Result := False;
+  end;
+
+  procedure CheckName(ARoutine: TSyntaxNode; const AClassName, AName: string; AIsParameter: Boolean;
+    ADeclaration: TSyntaxNode; AParamIndex: Integer);
+  var
+    Member: TIndexSymbol;
+    Unresolved, What, Kind, NewName, Message, Pattern: string;
+    Found: Boolean;
+    Header: TSyntaxNode;
+    Positions: TArray<Integer>;
+    Index: Integer;
+    Edits: TArray<TRuleEdit>;
+    Fixes: TArray<TRuleFix>;
+  begin
+    for Pattern in Ignore do
+      if MatchesWildcard(AName, Pattern) then
+        Exit;
+    Found := False;
+    Kind := '';
+    if AClassName <> '' then
+    begin
+      Found := Ancestry.FindMember(AClassName, AName, Member, Unresolved);
+      if Found then
+      begin
+        if Member.Kind = TIndexSymbolKind.Field then
+          Kind := 'das Feld ' + AClassName + '.' + Member.Name
+        else
+          Kind := 'die Property ' + AClassName + '.' + Member.Name;
+      end
+      else if (MatchText(Unresolved, ComponentClasses) or MatchText(Unresolved, ControlClasses)) and
+        MatchText(AName, ComponentMembers) then
+      begin
+        Found := True;
+        Kind := 'die Property ' + AClassName + '.' + AName;
+      end
+      else if MatchText(Unresolved, ControlClasses) and MatchText(AName, ControlMembers) then
+      begin
+        Found := True;
+        Kind := 'die Property ' + AClassName + '.' + AName;
+      end;
+    end;
+    if not Found and GlobalVariable(ARoutine, AName) then
+    begin
+      Found := True;
+      Kind := 'die globale Variable ' + AName;
+    end;
+    if not Found then
+      Exit;
+    if AIsParameter then
+      What := 'Parameter'
+    else
+      What := 'Lokale Variable';
+    Message := Format('%s %s verdeckt %s', [What, AName, Kind]);
+    if Assigned_(ARoutine, AName) then
+    begin
+      if AIsParameter then
+        Message := Message + '; die Zuweisung ändert nur den Parameter.'
+      else
+        Message := Message + '; die Zuweisung ändert nur die lokale Variable.';
+    end
+    else
+      Message := Message + '.';
+    // Umbenennen: AName für Parameter, LName für lokale Variablen; alle Vorkommen in der Routine.
+    if AIsParameter then
+      NewName := 'A' + AName
+    else
+      NewName := 'L' + AName;
+    Fixes := nil;
+    Positions := NameTokens(ARoutine, AName);
+    Header := nil;
+    if AIsParameter and (AClassName <> '') then
+      Header := DeclarationHeader(AClassName, Copy(ARoutine.Name, LastDelimiter('.', ARoutine.Name) + 1, MaxInt),
+        AName, AParamIndex);
+    if (NameTokens(ARoutine, NewName) = nil) and ((Header = nil) or (NameTokens(Header, NewName) = nil)) then
+    begin
+      Edits := nil;
+      for Index in Positions do
+        Edits := Edits + [TRuleEdit.Create(TokenRange(Index), NewName)];
+      if Header <> nil then
+        for Index in NameTokens(Header, AName) do
+          Edits := Edits + [TRuleEdit.Create(TokenRange(Index), NewName)];
+      Fixes := [TRuleFix.Create(Format('In %s umbenennen', [NewName]), Edits)];
+    end;
+    for Index in NameTokens(ADeclaration, AName) do
+    begin
+      AReport.Add(TokenRange(Index), Message, TRuleConfidence.High, Fixes);
+      Exit;
+    end;
+  end;
+
+  procedure CheckRoutine(ARoutine: TSyntaxNode; const AClassName: string);
+  var
+    Header, Params, Child: TSyntaxNode;
+    Index, Inner, Position: Integer;
+    Name, ClassName: string;
+    HasSender: Boolean;
+
+    procedure CheckInline(ANode: TSyntaxNode);
+    var
+      Item: Integer;
+      InlineName: string;
+    begin
+      if ANode.Kind = TSyntaxKind.InlineVar then
+        for InlineName in SplitNames(ANode.Name) do
+          CheckName(ARoutine, ClassName, InlineName, False, ANode, -1);
+      if ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+        Exit;
+      for Item := 0 to ANode.ChildCount - 1 do
+        CheckInline(ANode[Item]);
+    end;
+
+  begin
+    ClassName := AClassName;
+    if (ClassName = '') and (Pos('.', ARoutine.Name) > 0) then
+    begin
+      ClassName := Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1);
+      ClassName := Copy(ClassName, LastDelimiter('.', ClassName) + 1, MaxInt);
+    end;
+    Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    Params := nil;
+    if Header <> nil then
+      Params := Header.FindChild(TSyntaxKind.Parameters);
+    // Ereignis-Handler (mit Sender): die Signatur gibt der Ereignistyp vor, z. B. FormClose(…; var Action).
+    HasSender := False;
+    if Params <> nil then
+      for Index := 0 to Params.ChildCount - 1 do
+        if Params[Index].Kind = TSyntaxKind.Parameter then
+          for Name in SplitNames(Params[Index].Name) do
+            HasSender := HasSender or SameText(Name, 'Sender');
+    if (Params <> nil) and not HasSender then
+    begin
+      Position := 0;
+      for Index := 0 to Params.ChildCount - 1 do
+        if Params[Index].Kind = TSyntaxKind.Parameter then
+          for Name in SplitNames(Params[Index].Name) do
+          begin
+            CheckName(ARoutine, ClassName, Name, True, Params[Index], Position);
+            Inc(Position);
+          end;
+    end;
+    for Index := 0 to ARoutine.ChildCount - 1 do
+    begin
+      Child := ARoutine[Index];
+      if Child.Kind = TSyntaxKind.VarSection then
+      begin
+        for Inner := 0 to Child.ChildCount - 1 do
+          if Child[Inner].Kind = TSyntaxKind.VarDecl then
+            for Name in SplitNames(Child[Inner].Name) do
+              CheckName(ARoutine, ClassName, Name, False, Child[Inner], -1);
+      end
+      else if Child.Kind = TSyntaxKind.Block then
+        CheckInline(Child)
+      else if Child.Kind = TSyntaxKind.RoutineDecl then
+        CheckRoutine(Child, ClassName);
+    end;
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.RoutineDecl then
+    begin
+      CheckRoutine(ANode, '');
+      Exit;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+var
+  Cache: IRuleDerivedCache;
+  Defaults: TArray<string>;
+  Name: string;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Defaults := nil;
+  for Name in ShadowDefaultIgnore do
+    Defaults := Defaults + [Name];
+  Ignore := TRuleOptions.Strings(AContext.Options, 'ignore', Defaults);
+  Tokens := AContext.Tree.Tokens;
+  Cache := TRuleDerived.Open(AContext);
+  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
+  try
+    Visit(AContext.Tree.Root);
+  finally
+    Ancestry.Free;
+  end;
+end;
+
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDestroyWithoutOverrideRule.Create);
   ARegistry.Register(TComponentCreateWithoutOverrideRule.Create);
   ARegistry.Register(THidesVirtualRule.Create);
   ARegistry.Register(TVirtualInsteadOfOverrideRule.Create);
+  ARegistry.Register(TShadowedNameRule.Create);
 end;
 
 end.

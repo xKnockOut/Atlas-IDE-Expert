@@ -15,7 +15,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 18 |
+| [Stil und Metriken](#gruppe-style) | 19 |
 | [Packages und Tests](#gruppe-packages) | 1 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -193,6 +193,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`todo-comment`](#todo-comment) | Offener TODO-Kommentar | Code Smell | Hinweis |
 | [`deprecated-symbol`](#deprecated-symbol) | Veraltetes Symbol | Code Smell | Hinweis |
 | [`unneeded-forward-declaration`](#unneeded-forward-declaration) | Überflüssige Forward-Deklaration | Code Smell | Hinweis |
+| [`shadowed-name`](#shadowed-name) | Lokaler Name verdeckt Feld oder Property | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -3093,4 +3094,33 @@ Richtig:
 ```pascal
 if not Preise.TryGetValue(Artikel.Nummer, Preis) then
   Preis := 0;
+```
+
+<a id="shadowed-name"></a>
+### shadowed-name
+
+**Lokaler Name verdeckt Feld oder Property** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Ein Parameter, eine lokale oder Inline-Variable heißt wie ein Feld oder eine Property der Klasse (auch geerbt und dort sichtbar, aufgelöst über die Datei und den Symbolindex) oder wie eine globale Variable der Unit, die vor der Routine deklariert ist. In Formularmethoden besonders tückisch: Caption, Name, Tag, Left. Steht die VCL nicht im Index, kennt die Regel die Mitglieder von TComponent und TControl, wenn die Vorfahrenkette an einer VCL-Grundklasse endet. Parameter von Ereignis-Handlern (mit Sender) bleiben außen vor, weil der Ereignistyp die Signatur vorgibt. Konfidenz hoch. Schnellkorrektur: in der Routine in AName (Parameter, auch in der Deklaration) bzw. LName (lokale Variable) umbenennen. Die Option ignore nennt Namensmuster, die nie gemeldet werden (Vorgabe Sender, Value).
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `ignore` | string-list | `["Sender","Value"]` | Namensmuster (* und ?), die nie gemeldet werden. |
+
+Mit Treffer:
+
+```pascal
+procedure TfrmKunde.Laden(const Caption: string);
+begin
+  Caption := Caption + ' (geladen)';
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TfrmKunde.Laden(const ACaption: string);
+begin
+  Caption := ACaption + ' (geladen)';
+end;
 ```

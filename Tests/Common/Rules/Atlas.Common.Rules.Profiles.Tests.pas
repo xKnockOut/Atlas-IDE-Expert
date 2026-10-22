@@ -187,7 +187,7 @@ const
     'possibly-uninitialized,processmessages-in-loop,raise-in-finally,redundant-assigned-free,' +
     'result-not-set,' +
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
-    'security-tls-verification-disabled,security-weak-crypto,self-assignment,setter-recursion,sizeof-pointer,' +
+    'security-tls-verification-disabled,security-weak-crypto,self-assignment,setter-recursion,shadowed-name,sizeof-pointer,' +
     'slash-command,stringlist-unsorted,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-resume-suspend,' +
     'thread-use-after-free-on-terminate,thread-vcl-access,threadvar-managed,type-used-before-declaration,' +
     'unchecked-conversion,unneeded-forward-declaration,unreachable-code,unresolved-identifier,' +
@@ -228,7 +228,7 @@ begin
     'foreign-form-control-access,format-without-settings,generic-exception-raised,implicit-package-import,' +
     'metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,metric-nesting-depth,' +
     'metric-parameter-count,' +
-    'processmessages-in-loop,redundant-assigned-free,slash-command,thread-resume-suspend,unneeded-forward-declaration,' +
+    'processmessages-in-loop,redundant-assigned-free,shadowed-name,slash-command,thread-resume-suspend,unneeded-forward-declaration,' +
     'unused-assignment,unused-local,' +
     'unused-parameter,with-statement',
     ActiveRules('style'));
