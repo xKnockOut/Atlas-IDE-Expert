@@ -3225,3 +3225,18 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TImport = cla
 | FL6 | `"rules": {"field-not-freed": {"ignoreTypes": ["TStringList"]}}` | Keine Meldung an `FFehler`; auf der Seite „Prüfregeln“ steht die Option unter der Regel (**Abnahme**) |
 | FL7 | Alte Kennung: `"rules": {"owned-field-not-freed": "off"}` bzw. `// lsp-ignore: owned-field-not-freed` an `FFehler` | Keine Meldung |
 | FL8 | `"field-not-freed": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Konstruktor oder Destruktor ohne inherited (#919)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TBasisExport = class public constructor Create; destructor Destroy; override; end;` und `TExport = class(TBasisExport) public destructor Destroy; override; end;`, `TExport.Destroy` mit `FDatei.Free;` ohne `inherited`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MI1 | Unit öffnen | Warnung `missing-inherited` an `Destroy`: „Destroy ruft inherited nicht auf; die Felder von TBasisExport werden nie freigegeben.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| MI2 | Glühbirne, „"inherited;" einfügen“ | `inherited;` nach `FDatei.Free;`; kompiliert; Strg+Z nimmt es in einem Schritt zurück (**Abnahme**) |
+| MI3 | `constructor TExport.Create;` ohne `inherited` | Warnung „Create ruft inherited nicht auf; die Felder von TBasisExport werden nie angelegt.“, Korrektur setzt `inherited;` an den Anfang |
+| MI4 | `constructor Create(AName: string);` ohne override und ohne `inherited` | Korrektur „"inherited Create;" einfügen“ |
+| MI5 | Klasse ohne Vorfahr (`class`) mit Destruktor ohne `inherited` | Keine Meldung |
+| MI6 | Komponente `TFoo = class(TCustomControl)` mit `Destroy` ohne `inherited` | Nur `component-missing-inherited`, keine Doppelmeldung |
+| MI7 | `"rules": {"missing-inherited": {"methods": ["Create"]}}` | Destroy aus MI1 nicht mehr gemeldet; auf der Seite „Prüfregeln“ steht die Option unter der Regel |
+| MI8 | `"missing-inherited": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

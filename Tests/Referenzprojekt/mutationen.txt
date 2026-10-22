@@ -38,3 +38,4 @@ use-after-free | Ref.Formulare.Haupt.pas |     Formular.Free;\n  end; |     Form
 deref-before-nil-check | Ref.Formulare.Haupt.pas | Formular.ShowModal; | Formular.ShowModal;\n    if Assigned(Formular) then\n      Caption := Formular.Caption;
 field-free-without-nil | Ref.Sprache.Merkmale.pas | FElemente.Add(AElement); | FElemente.Free;
 field-not-freed | Ref.Sprache.Merkmale.pas |   FElemente.Free;\n  inherited; |   inherited;
+missing-inherited | Ref.Komponenten.Anzeige.pas |   inherited;\n  FStil := asRahmen; |   FStil := asRahmen;
