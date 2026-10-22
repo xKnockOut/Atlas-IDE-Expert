@@ -632,20 +632,6 @@ begin
   end;
 end;
 
-/// <summary>Was am Fenster der Leiste nicht stimmt, sodass die Maus nicht ankommt; '' = in Ordnung.</summary>
-function WindowProblem(ABar: TAtlasBreadcrumbBar): string;
-begin
-  Result := '';
-  if GetWindowThreadProcessId(ABar.Handle, nil) <> MainThreadID then
-    Result := 'Fenster gehört einem anderen Thread'
-  else if (ABar.Parent = nil) or not ABar.Parent.HandleAllocated or (GetParent(ABar.Handle) <> ABar.Parent.Handle) then
-    Result := 'Fenster hängt an einem anderen Elternfenster'
-  else if not IsWindowEnabled(ABar.Handle) then
-    Result := Format('Fenster ist gesperrt (Enabled %s)', [BoolToStr(ABar.Enabled, True)])
-  else if GetWindowLongPtr(ABar.Handle, GWL_STYLE) and WS_VISIBLE = 0 then
-    Result := 'Fenster ist ausgeblendet';
-end;
-
 /// <summary>Gesperrt wird das Fenster der Leiste nur von außen (IDE oder anderer Experte). Den Aufrufer einmal je
 /// Leiste mit Stack protokollieren, damit die Ursache feststeht.</summary>
 procedure TBreadcrumbsState.Disabled(ABar: TAtlasBreadcrumbBar);
@@ -662,10 +648,15 @@ begin
   end;
 end;
 
-/// <summary>Bekommt die Leiste keine Maus mehr, hat das eine Ursache am Fenster (anderer Thread, falsches Eltern-
-/// fenster, gesperrt, ausgeblendet) oder ein Geschwisterfenster liegt darüber. Jede Ursache einmal mit Einzelheiten
-/// protokollieren und, wo möglich, beheben: Das Fenster wieder freigeben bzw. zeigen, die Leiste neu anlegen
-/// oder nach vorn holen. Läuft bei jedem Takt, nicht erst beim Überfahren.</summary>
+/// <summary>Diagnose, warum die Leiste keine Maus bekommt (Bericht M2). Die Ursache am Fenster der Leiste
+/// (WindowProblem: anderer Thread, falsches Elternfenster, gesperrt, ausgeblendet) prüft jeder Takt, nicht erst
+/// das Überfahren; landet die Maus über der Leiste bei einem anderen Fenster desselben Formulars, nennt HitProblem
+/// die Ursache am Mauspunkt (Region, HTTRANSPARENT, Geschwister darüber). Beides einmal je Wechsel mit Eltern-
+/// kette protokollieren.
+/// Netz, nicht Ursache: Danach wird die Leiste wieder bedienbar gemacht (freigeben, zeigen, neu anlegen, nach vorn
+/// holen), bis das Protokoll den Verursacher nennt und er an der Wurzel behoben ist. Die Einfügereihenfolge ist es
+/// nicht: Im Protokoll vom 21.10. lag die Leiste mit alTop bei 0,0 und kein Geschwister darüber, die Maus landete
+/// beim Elternfenster „EditorPanel“ selbst.</summary>
 procedure TBreadcrumbsState.Probe;
 var
   Bar: TAtlasBreadcrumbBar;
@@ -673,12 +664,13 @@ var
   Window: HWND;
   WindowClass: array[0..255] of Char;
   Control: TWinControl;
-  Problem, Name, Relation: string;
+  Problem, Name, Relation, Cause: string;
+  Ancestor: Boolean;
 begin
   Bar := FActiveBar;
   if (Bar = nil) or not Bar.HandleAllocated or not Bar.Showing then
     Exit;
-  Problem := WindowProblem(Bar);
+  Problem := Bar.WindowProblem;
   if Problem <> FProblem then
   begin
     FProblem := Problem;
@@ -687,8 +679,8 @@ begin
   end;
   if Problem <> '' then
   begin
-    // Ein Fenster eines fremden Threads lässt sich von hier nicht zerstören (DestroyWindow schlägt fehl); nur
-    // protokollieren, damit die Ursache feststeht.
+    // Netz (siehe oben). Ein Fenster eines fremden Threads lässt sich von hier nicht zerstören (DestroyWindow
+    // schlägt fehl); nur protokollieren, damit die Ursache feststeht.
     if GetWindowThreadProcessId(Bar.Handle, nil) <> MainThreadID then
       Exit;
     if (Bar.Parent = nil) or not Bar.Parent.HandleAllocated or (GetParent(Bar.Handle) <> Bar.Parent.Handle) then
@@ -729,15 +721,19 @@ begin
   Name := '';
   if Control <> nil then
     Name := ControlChain(Control);
-  if IsChild(Window, Bar.Handle) then
-    Relation := 'Vorfahr der Leiste'
+  Ancestor := IsChild(Window, Bar.Handle);
+  if Ancestor then
+    Relation := 'Vorfahr der Leiste; lege die Leiste neu an'
   else
-    Relation := 'kein Vorfahr';
-  TAtlasGuard.Log(Format('Brotkrumen: Maus landet bei %s (%s, %s) statt bei der Leiste (in %s); hole die Leiste ' +
-    'nach vorn', [string(WindowClass), Name, Relation, ControlChain(Bar.Parent)]));
-  if IsChild(Window, Bar.Handle) then
+    Relation := 'kein Vorfahr; hole die Leiste nach vorn';
+  Cause := Bar.HitProblem(Cursor);
+  if Cause = '' then
+    Cause := 'am Fenster der Leiste keine erkennbar';
+  TAtlasGuard.Log(Format('Brotkrumen: Maus landet bei %s (%s, %s) statt bei der Leiste (in %s); Ursache: %s',
+    [string(WindowClass), Name, Relation, ControlChain(Bar.Parent), Cause]));
+  // Netz (siehe oben).
+  if Ancestor then
   begin
-    // Das Elternfenster bekommt die Maus, obwohl das Fenster der Leiste in Ordnung ist: neu anlegen.
     Bar.Free;
     Exit;
   end;

@@ -4,7 +4,7 @@
 // Trefferprüfung, Menü nur für Glieder mit Geschwistern, Tastatur (←/→/↓/
 // Esc) und Kürzen von vorn bei schmaler Leiste; „›“ mit Kindermenü,
 // Springen per Strg+Klick und Strg+Enter; Meldung, wenn das Fenster der Leiste
-// von außen gesperrt wird.
+// von außen gesperrt wird; Ursache, wenn die Maus nicht bei der Leiste ankommt.
 
 interface
 
@@ -44,21 +44,38 @@ type
     /// <summary>EnableWindow(False) von außen (wie VCL Enabled := False) meldet OnDisabled; Freigeben nicht.</summary>
     [Test]
     procedure ReportsWhenItsWindowIsDisabled;
+    /// <summary>HitProblem nennt, warum Windows die Maus nicht an die Leiste gibt: ausgeblendet, gesperrt, Punkt
+    /// außerhalb, Fensterregion, Geschwister darüber, HTTRANSPARENT (Bericht M2).</summary>
+    [Test]
+    procedure NamesWhyTheMouseMissesTheBar;
   end;
 
 implementation
 
 uses
   Winapi.Windows,
+  Winapi.Messages,
   System.SysUtils,
   System.Classes,
   System.Types,
   Vcl.Controls,
+  Vcl.ExtCtrls,
   Atlas.Core.Style.Palette,
   Atlas.Core.Outline.Breadcrumbs;
 
 type
   TBarAccess = class(TAtlasBreadcrumbBar);
+
+  /// <summary>Leiste, deren Fensterprozedur die Maus durchreicht, wie eine Unterklasse mit HTTRANSPARENT.</summary>
+  TTransparentBar = class(TAtlasBreadcrumbBar)
+  private
+    procedure WMNCHitTest(var Message: TWMNCHitTest); message WM_NCHITTEST;
+  end;
+
+procedure TTransparentBar.WMNCHitTest(var Message: TWMNCHitTest);
+begin
+  Message.Result := HTTRANSPARENT;
+end;
 
 function Crumb(const AText, ACode: string; ANode: Integer; const ASiblings: TArray<Integer>): TAtlasCrumb;
 begin
@@ -369,6 +386,41 @@ begin
   FBar.Enabled := False;
   Assert.AreEqual(2, Calls, 'über VCL gesperrt');
   FBar.OnDisabled := nil;
+end;
+
+procedure TAtlasBreadcrumbBarTests.NamesWhyTheMouseMissesTheBar;
+var
+  Point: TPoint;
+  Other: TPanel;
+  Transparent: TTransparentBar;
+begin
+  FForm.Show;
+  Point := FBar.ClientToScreen(TPoint.Create(10, 5));
+  Assert.AreEqual('', FBar.HitProblem(Point), 'in Ordnung');
+  Assert.Contains(FBar.HitProblem(FBar.ClientToScreen(TPoint.Create(10, FBar.Height + 40))),
+    'außerhalb des Fensters', 'Punkt unter der Leiste');
+  ShowWindow(FBar.Handle, SW_HIDE);
+  Assert.Contains(FBar.HitProblem(Point), 'ausgeblendet');
+  ShowWindow(FBar.Handle, SW_SHOWNA);
+  EnableWindow(FBar.Handle, False);
+  Assert.Contains(FBar.HitProblem(Point), 'gesperrt');
+  EnableWindow(FBar.Handle, True);
+  // Die Region gehört danach dem Fenster; 0 nimmt sie wieder weg.
+  SetWindowRgn(FBar.Handle, CreateRectRgn(0, 0, 5, 5), False);
+  Assert.Contains(FBar.HitProblem(Point), 'Fensterregion');
+  SetWindowRgn(FBar.Handle, 0, False);
+  Assert.AreEqual('', FBar.HitProblem(Point), 'Region wieder weg');
+  Other := TPanel.Create(FForm);
+  Other.Name := 'Darueber';
+  Other.Parent := FForm;
+  Other.SetBounds(0, 0, 100, 10);
+  Other.BringToFront;
+  Assert.Contains(FBar.HitProblem(Point), 'Geschwisterfenster liegt darüber (TPanel Darueber)');
+  Other.Free;
+  Transparent := TTransparentBar.Create(FForm);
+  Transparent.Parent := FForm;
+  Transparent.Align := alBottom;
+  Assert.Contains(Transparent.HitProblem(Transparent.ClientToScreen(TPoint.Create(10, 5))), 'HTTRANSPARENT');
 end;
 
 end.

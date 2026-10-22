@@ -17,6 +17,14 @@
 //   gibt den Fokus über OnLeave an den Editor zurück.
 // - Farben über SetColors: Gutter ist die Fläche, Text/Muted die Schrift.
 // Ohne Glieder steht EmptyText gedämpft in der Leiste.
+// - WindowProblem und HitProblem nennen, warum Windows die Maus nicht an die
+//   Leiste gibt (Bericht M2): Im atlas.log vom 21./22.10. bekam das Eltern-
+//   fenster „EditorPanel“ die Klicks, obwohl die Leiste oben lag und kein
+//   Geschwister darüber. Die Trefferprüfung von WindowFromPoint übergeht ein
+//   Kindfenster nur, wenn es ausgeblendet oder gesperrt ist, der Punkt außer-
+//   halb seiner Region liegt oder WM_NCHITTEST HTTRANSPARENT liefert; das
+//   prüft HitProblem in dieser Reihenfolge, damit das Protokoll die Ursache
+//   nennt statt einer Vermutung.
 
 interface
 
@@ -107,6 +115,14 @@ type
     procedure Jump(AIndex: Integer; ADeclaration: Boolean);
     /// <summary>Höhe der Leiste bei APPI (eine Zeile).</summary>
     class function BarHeight(APPI: Integer): Integer; static;
+    /// <summary>Was am Fenster der Leiste unabhängig vom Mauspunkt nicht stimmt (kein Fenster, anderer Thread,
+    /// anderes Elternfenster, gesperrt, ausgeblendet); '' = in Ordnung.</summary>
+    function WindowProblem: string;
+    /// <summary>Warum die Trefferprüfung von Windows (WindowFromPoint) am Bildschirmpunkt nicht bei der Leiste
+    /// ankommt, in ihrer Reihenfolge: WindowProblem, Punkt außerhalb des Fensters oder der Client-Fläche des
+    /// Elternfensters, außerhalb der Fensterregion, durchlässiges Fenster, WM_NCHITTEST liefert HTTRANSPARENT,
+    /// ein Geschwisterfenster liegt darüber. '' = Windows gäbe die Maus an die Leiste.</summary>
+    function HitProblem(const AScreenPoint: TPoint): string;
     property Crumbs: TAtlasCrumbs read FCrumbs;
     property Selected: Integer read FSelected;
     /// <summary>Erstes sichtbares Glied (davor „…“).</summary>
@@ -657,6 +673,79 @@ begin
   inherited;
   if not Message.Enabled and Assigned(FOnDisabled) then
     FOnDisabled();
+end;
+
+/// <summary>Klasse und, wenn es ein VCL-Steuerelement ist, dessen Name.</summary>
+function WindowLabel(AWindow: HWND): string;
+var
+  WindowClass: array[0..255] of Char;
+  Control: TWinControl;
+begin
+  WindowClass[0] := #0;
+  GetClassName(AWindow, WindowClass, Length(WindowClass));
+  Result := string(WindowClass);
+  Control := FindControl(AWindow);
+  if Control <> nil then
+    Result := Result + ' ' + Control.Name;
+end;
+
+function TAtlasBreadcrumbBar.WindowProblem: string;
+begin
+  Result := '';
+  if not HandleAllocated then
+    Result := 'Leiste hat kein Fenster'
+  else if GetWindowThreadProcessId(Handle, nil) <> MainThreadID then
+    Result := 'Fenster gehört einem anderen Thread'
+  else if (Parent = nil) or not Parent.HandleAllocated or (GetParent(Handle) <> Parent.Handle) then
+    Result := 'Fenster hängt an einem anderen Elternfenster'
+  else if not IsWindowEnabled(Handle) then
+    Result := Format('Fenster ist gesperrt (Enabled %s)', [BoolToStr(Enabled, True)])
+  else if GetWindowLongPtr(Handle, GWL_STYLE) and WS_VISIBLE = 0 then
+    Result := 'Fenster ist ausgeblendet';
+end;
+
+function TAtlasBreadcrumbBar.HitProblem(const AScreenPoint: TPoint): string;
+var
+  Bounds: TRect;
+  Region: HRGN;
+  ExStyle: NativeInt;
+  HitTest: LRESULT;
+  Topmost: HWND;
+begin
+  Result := WindowProblem;
+  if Result <> '' then
+    Exit;
+  GetWindowRect(Handle, Bounds);
+  if not PtInRect(Bounds, AScreenPoint) then
+  begin
+    Result := Format('Punkt (%d, %d) liegt außerhalb des Fensters (%d, %d, %d, %d)', [AScreenPoint.X,
+      AScreenPoint.Y, Bounds.Left, Bounds.Top, Bounds.Right, Bounds.Bottom]);
+    Exit;
+  end;
+  // Kinder trifft Windows nur in der Client-Fläche des Elternfensters; im Rahmen bekommt es das Elternfenster.
+  if not PtInRect(Parent.ClientRect, Parent.ScreenToClient(AScreenPoint)) then
+    Exit('Punkt liegt im Rahmen des Elternfensters, nicht in seiner Client-Fläche');
+  Region := CreateRectRgn(0, 0, 0, 0);
+  try
+    // Die Region ist relativ zur linken oberen Ecke des Fensters; ERROR = keine Region gesetzt.
+    if (GetWindowRgn(Handle, Region) <> ERROR) and
+      not PtInRegion(Region, AScreenPoint.X - Bounds.Left, AScreenPoint.Y - Bounds.Top) then
+      Exit('Punkt liegt außerhalb der Fensterregion (SetWindowRgn)');
+  finally
+    DeleteObject(Region);
+  end;
+  ExStyle := GetWindowLongPtr(Handle, GWL_EXSTYLE);
+  if ExStyle and WS_EX_TRANSPARENT <> 0 then
+    Exit('Fenster hat WS_EX_TRANSPARENT');
+  if ExStyle and WS_EX_LAYERED <> 0 then
+    Exit('Fenster ist geschichtet (WS_EX_LAYERED)');
+  // Über die ganze Fensterprozedur, also auch über Unterklassen und Stil-Hooks der IDE.
+  HitTest := SendMessage(Handle, WM_NCHITTEST, 0, MakeLParam(Word(AScreenPoint.X), Word(AScreenPoint.Y)));
+  if Integer(HitTest) = HTTRANSPARENT then
+    Exit('WM_NCHITTEST liefert HTTRANSPARENT');
+  Topmost := ChildWindowFromPointEx(Parent.Handle, Parent.ScreenToClient(AScreenPoint), CWP_SKIPINVISIBLE);
+  if (Topmost <> 0) and (Topmost <> Handle) and (Topmost <> Parent.Handle) then
+    Result := Format('Geschwisterfenster liegt darüber (%s)', [WindowLabel(Topmost)]);
 end;
 
 procedure TAtlasBreadcrumbBar.WMGetDlgCode(var Message: TWMGetDlgCode);
