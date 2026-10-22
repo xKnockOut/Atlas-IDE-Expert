@@ -2293,6 +2293,19 @@
         "E2129",
         "E2130"
       ]
+    },
+    {
+      "id": "anonymous-capture-invalid",
+      "name": "Anonymous method captures what it must not capture",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "An anonymous method uses a var, out or untyped parameter, or Result, of a surrounding routine or anonymous function (like E2555). The name is resolved from the inside out (parameters, var/const/type, local routines, inline variables, for var); inside with and asm the rule stays silent, and declarations in conditional branches that exclude the location do not count. Quick fix: copy the value into a local variable before the statement, use only that variable in the anonymous method, and write it back after the statement when the method assigns it.",
+      "bad": "procedure Load(var Count: Integer);\nbegin\n  TTask.Run(procedure begin Inc(Count); end);\nend;",
+      "good": "procedure Load(var Count: Integer);\nvar\n  CountCopy: Integer;\nbegin\n  CountCopy := Count;\n  TTask.Run(procedure begin Inc(CountCopy); end);\n  Count := CountCopy;\nend;",
+      "compilerCodes": [
+        "E2555"
+      ]
     }
   ]
 }

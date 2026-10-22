@@ -2313,6 +2313,19 @@ begin
     '        "E2129",' + #10 +
     '        "E2130"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "anonymous-capture-invalid",' + #10 +
+    '      "name": "Anonymous method captures what it must not capture",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "An anonymous method uses a var, out or untyped parameter, or Result, of a surrounding routine or anonymous function (like E2555). The name is resolved from the inside out (parame' + 'ters, var/const/type, local routines, inline variables, for var); inside with and asm the rule stays silent, and declarations in conditional branches that exclude the location do not count. Quick fix:' + ' copy the value into a local variable before the statement, use only that variable in the anonymous method, and write it back after the statement when the method assigns it.",' + #10 +
+    '      "bad": "procedure Load(var Count: Integer);\nbegin\n  TTask.Run(procedure begin Inc(Count); end);\nend;",' + #10 +
+    '      "good": "procedure Load(var Count: Integer);\nvar\n  CountCopy: Integer;\nbegin\n  CountCopy := Count;\n  TTask.Run(procedure begin Inc(CountCopy); end);\n  Count := CountCopy;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2555"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3483,6 +3496,11 @@ begin
     '      "id": "readonly-property-assigned",' + #10 +
     '      "name": "Zuweisung an eine Property ohne write",' + #10 +
     '      "description": "Zuweisung an eine Property ohne write (wie E2129) bzw. Lesen einer Property ohne read (wie E2130). Die Regel meldet nur, wenn die Namensauflösung die Property sicher findet; Neud' + 'eklarationen ohne read und write (property Caption;) gelten als unbekannt. Korrekturen: Count := 0 wird Clear, wenn der Typ Clear hat; in einer Methode der deklarierenden Klasse das Feld hinter read z' + 'uweisen; für eine Property dieser Datei den Setter anlegen und write ergänzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "anonymous-capture-invalid",' + #10 +
+    '      "name": "Anonyme Methode erfasst, was sie nicht erfassen darf",' + #10 +
+    '      "description": "Eine anonyme Methode greift auf einen var-, out- oder untypisierten Parameter oder auf Result einer umgebenden Routine bzw. anonymen Funktion zu (wie E2555). Der Name wird von in' + 'nen nach außen aufgelöst (Parameter, var/const/type, lokale Routinen, Inline-Variablen, for var); in with und asm bleibt die Regel still, Deklarationen in Zweigen bedingter Übersetzung, die die Stelle' + ' ausschließen, zählen nicht. Korrektur: Wert vor der Anweisung in eine lokale Variable kopieren, in der anonymen Methode nur diese verwenden und nach der Anweisung zurückschreiben, wenn die Methode si' + 'e zuweist."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

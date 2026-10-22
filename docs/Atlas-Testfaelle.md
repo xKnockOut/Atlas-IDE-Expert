@@ -4119,3 +4119,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## Anonyme Methode erfasst, was sie nicht erfassen darf (#1035)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EF1 | Das Beispiel aus #1035: `procedure Laden(var Anzahl: Integer);` mit `TTask.Run(procedure begin Inc(Anzahl); end);` | Fehler `anonymous-capture-invalid` an `Anzahl` in der anonymen Methode: „Der var-Parameter Anzahl kann nicht erfasst werden (wie E2555).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| EF2 | Schnellkorrektur „Wert in die lokale Variable AnzahlKopie kopieren“, danach Strg+Z | `var AnzahlKopie: Integer;`, davor `AnzahlKopie := Anzahl;`, in der anonymen Methode `Inc(AnzahlKopie)`, danach `Anzahl := AnzahlKopie;`; keine Meldung mehr; ein Undo-Schritt |
+| EF3 | `out`-Parameter, untypisierter Parameter (`const Daten`), `function Lesen: string;` mit `TThread.Synchronize(nil, procedure begin Result := Edit1.Text; end);` | Meldungen „Der out-Parameter …“, „Der untypisierte Parameter …“ (ohne Korrektur), „Result der umgebenden Funktion kann nicht erfasst werden (wie E2555).“ mit Korrektur über `Ergebnis` |
+| EF4 | `Result` in einer anonymen Funktion (`function: Integer begin Result := 42; end`), gleichnamiger Parameter oder Inline-Variable der anonymen Methode, `const`-Parameter, lokale Variable, `with Liste do … Anzahl` | Keine Meldung |
+| EF5 | Lokale Prozedur in `Laden`, die eine anonyme Methode mit `Anzahl` startet | Meldung wie EF1; ohne anonyme Methode keine |
+| EF6 | `"anonymous-capture-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| EF7 | Abgleich mit Delphi: EF1 und EF3 übersetzen | dcc meldet E2555 an denselben Stellen, für EF4 nichts |
