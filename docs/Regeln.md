@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 18 |
+| [Compiler vorab](#gruppe-compiler) | 19 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -149,6 +149,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`anonymous-capture-invalid`](#anonymous-capture-invalid) | Anonyme Methode erfasst, was sie nicht erfassen darf | Bug | Fehler |
 | [`operator-declaration-invalid`](#operator-declaration-invalid) | Operator falsch deklariert | Bug | Fehler |
 | [`generic-declaration-invalid`](#generic-declaration-invalid) | Generische Deklaration unzulässig | Bug | Fehler |
+| [`type-restriction-violated`](#type-restriction-violated) | Sprachregel für Records, Inline und Helfer verletzt | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4623,4 +4624,35 @@ type
   TSwap = record
     class procedure Swap<T>(var A, B: T); static;
   end;
+```
+
+<a id="type-restriction-violated"></a>
+### type-restriction-violated
+
+**Sprachregel für Records, Inline und Helfer verletzt** · Bug · Fehler · Gruppe Compiler vorab
+
+Feste Sprachregeln, die erst der Compiler meldet: virtuelle Methoden (wie E2379) oder andere virtuelle Direktiven (override, abstract, reintroduce, message, final; E2463) in Records, parameterlose Konstruktoren (E2394), Konstruktoren, deren Parameter alle Vorgabewerte haben (E2471), und Destruktoren (E2465) in Records, Klassenmethoden in Records ohne static (E2398); in Record-Helfern virtuelle Methoden (E2598) und die übrigen virtuellen Direktiven (E2475); Felder in Helfern (class var ist erlaubt, E2599), Destruktor (E2295) oder Klassenkonstruktor (E2358) in einem Class-Helfer, ein Helfer-Konstruktor, dessen erster Befehl kein Aufruf ohne Argumente ist (E2296), ein Class-Helfer mit Vorfahr-Helfer für einen Typ, der nicht vom Typ des Vorfahren abstammt (E2294, nur bei bekannter Vorfahrenkette), ein Helfer als Typ einer Deklaration (E2527) oder in einem generischen Typ (E2589); mehrere Klassenkonstruktoren (E2359, sich ausschließende bedingte Zweige zählen einmal), Klassenkonstruktoren mit Parametern (E2360) oder virtual, dynamic bzw. message (E2534); Methoden, Properties, Klassenmitglieder, Typen und Konstanten in lokalen oder anonymen Records (E2433 bis E2437); inline an virtuellen oder dynamischen Methoden (E2425), an Konstruktoren und Destruktoren (E2442), mit offenen Array-Parametern (E2439), mit asm-Rumpf (E2426), im interface-Teil deklariert mit Symbolen des implementation-Teils (E2441), als lokale Routine mit Zugriff auf Variablen der umgebenden Routine (E2449) oder mit Aufruf eigener lokaler Routinen (E2501); lokale, absolute oder initialisierte threadvar (E2189, E2190, E2194). Die Prüfungen gelten für alle unterstützten Delphi-Versionen (10 Seattle bis 13). Option disabledChecks nimmt einzelne Codes aus. Korrekturen: Direktive entfernen, static ergänzen.
+
+Entspricht der Compilermeldung `E2189`, `E2190`, `E2194`, `E2294`, `E2295`, `E2296`, `E2358`, `E2359`, `E2360`, `E2379`, `E2394`, `E2398`, `E2425`, `E2426`, `E2433`, `E2434`, `E2435`, `E2436`, `E2437`, `E2439`, `E2441`, `E2442`, `E2449`, `E2463`, `E2465`, `E2471`, `E2475`, `E2501`, `E2527`, `E2534`, `E2589`, `E2598`, `E2599`.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `disabledChecks` | string-list | `[]` | Compilercodes, die die Regel nicht prüft, z. B. ["E2425"]. |
+
+Mit Treffer:
+
+```pascal
+TPoint2 = record
+  X, Y: Integer;
+  function Length: Double; virtual;
+end;
+```
+
+Richtig:
+
+```pascal
+TPoint2 = record
+  X, Y: Integer;
+  function Length: Double;
+end;
 ```

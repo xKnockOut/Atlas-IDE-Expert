@@ -2356,6 +2356,59 @@
         "E2603",
         "H2509"
       ]
+    },
+    {
+      "id": "type-restriction-violated",
+      "name": "Language rule for records, inline and helpers violated",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "Fixed language rules that only the compiler reports: virtual methods (like E2379) or other virtual directives (override, abstract, reintroduce, message, final; E2463) in records, parameterless constructors (E2394), constructors whose parameters all have defaults (E2471) and destructors (E2465) in records, class methods in records without static (E2398); in record helpers virtual methods (E2598) and the other virtual directives (E2475); fields in helpers (class var is allowed, E2599), a destructor (E2295) or class constructor (E2358) in a class helper, a helper constructor whose first statement is not a call without arguments (E2296), a class helper descending from a helper whose type the new target does not descend from (E2294, only with a known ancestor chain), a helper used as type of a declaration (E2527) or declared inside a generic type (E2589); several class constructors (E2359, exclusive conditional branches count once), class constructors with parameters (E2360) or virtual, dynamic or message (E2534); methods, properties, class members, types and constants in local or anonymous records (E2433 to E2437); inline on virtual or dynamic methods (E2425), on constructors and destructors (E2442), with open array parameters (E2439), with an asm body (E2426), declared in the interface section and using a symbol of the implementation section (E2441), as local routine reading variables of the enclosing routine (E2449) or calling its own local routines (E2501); local, absolute or initialized threadvar (E2189, E2190, E2194). The checks apply to all supported Delphi versions (10 Seattle to 13). Option disabledChecks leaves out single codes. Quick fixes: remove the directive, add static.",
+      "bad": "TPoint2 = record\n  X, Y: Integer;\n  function Length: Double; virtual;\nend;",
+      "good": "TPoint2 = record\n  X, Y: Integer;\n  function Length: Double;\nend;",
+      "compilerCodes": [
+        "E2189",
+        "E2190",
+        "E2194",
+        "E2294",
+        "E2295",
+        "E2296",
+        "E2358",
+        "E2359",
+        "E2360",
+        "E2379",
+        "E2394",
+        "E2398",
+        "E2425",
+        "E2426",
+        "E2433",
+        "E2434",
+        "E2435",
+        "E2436",
+        "E2437",
+        "E2439",
+        "E2441",
+        "E2442",
+        "E2449",
+        "E2463",
+        "E2465",
+        "E2471",
+        "E2475",
+        "E2501",
+        "E2527",
+        "E2534",
+        "E2589",
+        "E2598",
+        "E2599"
+      ],
+      "options": [
+        {
+          "name": "disabledChecks",
+          "type": "string-list",
+          "default": [],
+          "description": "Compiler codes the rule does not check, e.g. [\"E2425\"]."
+        }
+      ]
     }
   ]
 }

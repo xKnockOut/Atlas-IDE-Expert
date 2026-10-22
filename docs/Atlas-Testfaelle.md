@@ -4169,3 +4169,23 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | GD10 | Erlaubtes: `T: class, constructor`, `T: TComponent, IFoo, constructor`, `TArr<T> = array of T`, `TP<T> = reference to procedure(A: T)`, generischer Konstruktor, `class function Neu<T>: T; static;` | Keine Meldung |
 | GD11 | `"generic-declaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | GD12 | Abgleich mit Delphi: GD1 und GD3 bis GD9 übersetzen; zusätzlich eine lokale Prozedur in `TListe<T>.Pruefen` | dcc meldet dieselben Codes an denselben Stellen, für GD2 und GD10 nichts; meldet dcc für die lokale Prozedur E2570, ergänzt die Regel diesen Fall |
+
+## Sprachregel für Records, Inline und Helfer verletzt (#994)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TB1 | Das Beispiel aus #994: `TPunkt = record X, Y: Integer; function Laenge: Double; virtual; end;` | Fehler `type-restriction-violated` an `virtual`: „Records erlauben keine virtuellen Methoden (wie E2379).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| TB2 | Schnellkorrektur „virtual entfernen“, danach Strg+Z | `function Laenge: Double;`; keine Meldung mehr; ein Undo-Schritt |
+| TB3 | Im Record `procedure A; override;`, `constructor Create;`, `constructor Neu(X: Integer = 0);`, `destructor Destroy;`, `class procedure C;` | Meldungen wie E2463, E2394, E2471, E2465, E2398; Korrektur „static ergänzen“ ergibt `class procedure C; static;` |
+| TB4 | Lokaler Record in einer Prozedur bzw. `var R: record … end;` mit Methode, Property, `class var`, `type` und `const` | Meldungen wie E2433, E2434, E2435, E2436, E2437; nur Felder: keine Meldung |
+| TB5 | `class helper for TList` mit Feld, `var`-Feld, `destructor Destroy; override;`, `class constructor Init;`, Konstruktor, dessen Rumpf mit einer Zuweisung beginnt; `record helper for Integer` mit `virtual` bzw. `message`; `var Falsch: TListHelfer;` | Meldungen wie E2599 (zweimal), E2295, E2358, E2296, E2598, E2475, E2527; `class var` im Helfer und Konstruktor, der mit `Create;` beginnt: keine Meldung |
+| TB6 | `TBH = class helper for TListe`, `class helper (TBH) for TAnders` (TAnders erbt nicht von TListe); Helfer als verschachtelter Typ in `TG<T> = class` | Meldungen wie E2294 und E2589; `class helper (TBH) for TKind` mit `TKind = class(TListe)` bleibt still |
+| TB7 | `class constructor Init(A: Integer);`, zweiter `class constructor Zwei; virtual;` | Meldungen wie E2360, E2359, E2534; zwei Klassenkonstruktoren in `{$IFDEF}`/`{$ELSE}`: keine Meldung |
+| TB8 | `procedure V; virtual; inline;`, `constructor Create; inline;`, `function Summe(const A: array of Integer): Integer; inline;`, inline-Methode mit asm-Rumpf, inline-Methode aus dem interface-Teil mit einer Konstanten des implementation-Teils | Meldungen wie E2425, E2442, E2439, E2426, E2441; Korrektur „inline entfernen“ |
+| TB9 | `function Aussen: Integer; inline;` mit lokaler Funktion `Hilfe`, die sie aufruft; lokale `function Mitte: Integer; inline;`, die einen Parameter der umgebenden Prozedur liest | Meldungen wie E2501 und E2449; lokale inline-Funktion mit eigenem gleichnamigen Parameter: keine Meldung |
+| TB10 | `threadvar Zaehler: Integer = 3;`, `threadvar Alias: Integer absolute Zaehler;`, `threadvar` in einer Prozedur | Meldungen wie E2194, E2190, E2189 |
+| TB11 | `"type-restriction-violated": {"disabledChecks": ["E2379"]}` beim Beispiel; `"disabledChecks": "E2379"` | Keine Meldung für E2379, andere Codes bleiben; die Zeichenkette statt Liste meldet die Einstellungsprüfung |
+| TB12 | `"type-restriction-violated": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| TB13 | Abgleich mit Delphi 12 und 13: TB1 und TB3 bis TB10 übersetzen | dcc meldet dieselben Codes an denselben Stellen, für die stillen Fälle nichts |
