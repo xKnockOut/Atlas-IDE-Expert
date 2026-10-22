@@ -75,6 +75,10 @@ type
     /// über ResolveTypeFrom hinweg.</summary>
     [Test]
     procedure DeclaredMemberFindsInherited;
+    /// <summary>#1028: Typtext mit Typargumenten wählt den generischen Typ nach der Zahl der Typparameter.
+    /// </summary>
+    [Test]
+    procedure ResolveTypeTextFromPicksArity;
   end;
 
 implementation
@@ -814,6 +818,26 @@ begin
   finally
     Tree.Free;
   end;
+end;
+
+procedure TNameResolverTests.ResolveTypeTextFromPicksArity;
+var
+  Listen: TUnitIndex;
+  Found: TResolvedSymbol;
+begin
+  AddUnit('C:\P\Listen.pas', 'unit Listen;'#10'interface'#10'type'#10'  TListe = class'#10'  end;'#10 +
+    '  TListe<T: class> = class'#10'  end;'#10'implementation'#10'end.');
+  Assert.IsTrue(FIndex.FindUnit('Listen', Listen));
+  Assert.IsTrue(FResolver.ResolveTypeTextFrom(Listen, 'TListe<TObject>', Found));
+  Assert.AreEqual('T', Found.TypeParams);
+  Assert.IsTrue(Pos('T: class', Found.Signature) > 0, Found.Signature);
+  Assert.AreEqual(1, Integer(Length(Found.Bindings)));
+  Assert.IsTrue(FResolver.ResolveTypeTextFrom(Listen, 'TListe', Found));
+  Assert.AreEqual('', Found.TypeParams);
+  // Eingebaute Typen ohne Deklaration.
+  Assert.IsTrue(FResolver.ResolveTypeTextFrom(Listen, 'Integer', Found));
+  Assert.IsTrue(Found.Builtin);
+  Assert.IsFalse(FResolver.ResolveTypeTextFrom(Listen, 'TUnbekannt', Found));
 end;
 
 procedure TNameResolverTests.HelperVisibilityDependsOnSection;

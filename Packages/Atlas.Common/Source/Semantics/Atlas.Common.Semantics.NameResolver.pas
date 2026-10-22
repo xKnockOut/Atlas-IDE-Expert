@@ -341,6 +341,11 @@ type
     function ExtractedUnit(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
     /// <summary>Löst ATypeName so auf, wie er in AFromUnit stünde (z. B. Vorfahren aus dem Index).</summary>
     function ResolveTypeFrom(const AFromUnit: TUnitIndex; const ATypeName: string; out AResult: TResolvedSymbol): Boolean;
+    /// <summary>Wie ResolveTypeFrom, aber für einen Typtext mit Typargumenten (TFabrik&lt;Integer&gt;): wählt den
+    /// generischen Typ mit passender Zahl von Typparametern und bindet die Argumente; eingebaute Typen ohne
+    /// Deklaration liefert es mit Builtin (#1028).</summary>
+    function ResolveTypeTextFrom(const AFromUnit: TUnitIndex; const ATypeText: string;
+      out AResult: TResolvedSymbol): Boolean;
     /// <summary>Überschreibbare Methoden für ATypeName aus AFromUnit (#443): virtual, dynamic, abstract oder
     /// override in einem Vorfahren, im Typ selbst noch nicht deklariert; nächster Vorfahr zuerst (Depth 1).</summary>
     function OverridableMembers(const AFromUnit: TUnitIndex; const ATypeName: string): TArray<TResolvedSymbol>;
@@ -2910,6 +2915,17 @@ begin
   FClassState := 0;
   // Helfer- und Vorfahren-Cache bleiben (Code-Review P-17): Ihre Schlüssel enthalten Unit und Abschnitt.
   Result := ResolveTypeName(ATypeName, AFromUnit, True, AResult);
+end;
+
+function TNameResolver.ResolveTypeTextFrom(const AFromUnit: TUnitIndex; const ATypeText: string;
+  out AResult: TResolvedSymbol): Boolean;
+begin
+  FTree := nil;
+  FOffset := 0;
+  FCurrent := AFromUnit;
+  FInImplementation := True;
+  FClassState := 0;
+  Result := ResolveTypeText(ATypeText, AFromUnit, True, AResult);
 end;
 
 function TNameResolver.ResolveNameFrom(const AFromUnit: TUnitIndex; const AName: string;
