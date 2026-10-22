@@ -2369,6 +2369,24 @@
           "description": "Switches that may stay off up to the end of the unit: warning names for {$WARN} (SYMBOL_PLATFORM), WARNINGS, HINTS, R or RANGECHECKS, Q or OVERFLOWCHECKS; case is ignored."
         }
       ]
+    },
+    {
+      "id": "dll-export-unsafe",
+      "name": "Exported routine not safe across DLL boundaries",
+      "category": "bug",
+      "severity": "warning",
+      "group": "robustness",
+      "description": "A routine of this file listed in exports has no calling convention (stdcall, cdecl, safecall, winapi or pascal; register is the Delphi convention) or takes or returns a string (string, UnicodeString, AnsiString, UTF8String, RawByteString), a dynamic array (TBytes, TArray<T>, …DynArray, array of T declared in the file), an object or an interface without GUID. Callers in other languages or Delphi versions crash; strings and dynamic arrays live in the memory manager of the DLL. WideString, ShortString, PChar, open array parameters and records are fine. Objects are only recognised for certain: classes of the file, of the index and common RTL classes; interfaces only from the file. Routines from other units and overloads that the exports entry does not pin down stay silent. With ShareMem or SimpleShareMem in uses, strings and dynamic arrays are allowed (option allowShareMem). The finding sits on the exports entry; for strings it recommends PChar with buffer and length. High confidence. Quick fix: add stdcall to every header of the routine (only individually, since it changes the interface for existing callers).",
+      "bad": "function KundeName(Id: Integer): string;\n…\nexports\n  KundeName;",
+      "good": "function KundeName(Id: Integer; Puffer: PChar; Laenge: Integer): Integer; stdcall;\n…\nexports\n  KundeName;",
+      "options": [
+        {
+          "name": "allowShareMem",
+          "type": "boolean",
+          "default": true,
+          "description": "With ShareMem or SimpleShareMem in uses, strings and dynamic arrays are allowed in exported routines."
+        }
+      ]
     }
   ]
 }

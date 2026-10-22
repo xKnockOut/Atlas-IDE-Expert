@@ -11,7 +11,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 5 |
 | [Compiler vorab](#gruppe-compiler) | 15 |
-| [Robustheit und Muster](#gruppe-robustness) | 8 |
+| [Robustheit und Muster](#gruppe-robustness) | 9 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
@@ -161,6 +161,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`filename-compare-case`](#filename-compare-case) | Dateinamen mit = verglichen | Bug | Hinweis |
 | [`initialization-not-finalized`](#initialization-not-finalized) | Beim Start erzeugtes Objekt wird nicht freigegeben | Bug | Warnung |
 | [`compiler-warnings-disabled`](#compiler-warnings-disabled) | Compiler-Warnungen oder Prüfungen bis zum Ende der Unit abgeschaltet | Code Smell | Warnung |
+| [`dll-export-unsafe`](#dll-export-unsafe) | Exportierte Routine nicht sicher über DLL-Grenzen aufrufbar | Bug | Warnung |
 
 <a id="gruppe-performance"></a>
 ### Performance
@@ -4686,4 +4687,33 @@ begin
   Result := Wert * 2;
 end;
 {$WARNINGS ON}
+```
+
+<a id="dll-export-unsafe"></a>
+### dll-export-unsafe
+
+**Exportierte Routine nicht sicher über DLL-Grenzen aufrufbar** · Bug · Warnung · Gruppe Robustheit und Muster
+
+Eine in exports aufgeführte Routine dieser Datei hat keine Aufrufkonvention (stdcall, cdecl, safecall, winapi oder pascal; register ist die Delphi-Konvention) oder erwartet bzw. liefert einen String (string, UnicodeString, AnsiString, UTF8String, RawByteString), ein dynamisches Array (TBytes, TArray<T>, …DynArray, array of T aus der Datei), ein Objekt oder ein Interface ohne GUID. Aufrufer aus anderen Sprachen oder Delphi-Versionen stürzen ab; Strings und dynamische Arrays liegen im Speichermanager der DLL. WideString, ShortString, PChar, offene Array-Parameter und Records sind in Ordnung. Objekte erkennt die Regel nur sicher: Klassen der Datei, des Index und häufige RTL-Klassen; Interfaces nur aus der Datei. Routinen aus anderen Units und Überladungen, die der exports-Eintrag nicht festlegt, bleiben still. Mit ShareMem oder SimpleShareMem in der uses-Klausel sind Strings und dynamische Arrays erlaubt (Option allowShareMem). Die Meldung steht am Eintrag in exports; bei Strings empfiehlt sie PChar mit Puffer und Länge. Konfidenz hoch. Korrektur: stdcall in jedem Kopf der Routine ergänzen (nur einzeln, weil das die Schnittstelle für vorhandene Aufrufer ändert).
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowShareMem` | boolean | `true` | Mit ShareMem oder SimpleShareMem in der uses-Klausel sind Strings und dynamische Arrays in exportierten Routinen erlaubt. |
+
+Mit Treffer:
+
+```pascal
+function KundeName(Id: Integer): string;
+…
+exports
+  KundeName;
+```
+
+Richtig:
+
+```pascal
+function KundeName(Id: Integer; Puffer: PChar; Laenge: Integer): Integer; stdcall;
+…
+exports
+  KundeName;
 ```
