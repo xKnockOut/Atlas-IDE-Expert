@@ -10,6 +10,7 @@
 // Arbeitsbereich) oder eine Datei (steht für ihren Arbeitsbereich).
 // Antwort:
 //   {"format": 1, "file": "<voller Pfad>", "previous": "none|valid|invalid",
+//    "setAside": "<voller Pfad>.defekt" (nur nach "invalid"),
 //    "total": 120, "files": 40, "skipped": 0, "added": 3, "removed": 5,
 //    "unchanged": 117, "completed": 0,
 //    "orphaned": {"count": 2, "entries": [{"path": "Alt/U.pas", "count": 2}]}}
@@ -18,6 +19,9 @@
 // "orphaned" sind Einträge, deren Datei nicht geprüft wurde und nicht mehr
 // existiert (umbenannt, verschoben, gelöscht); sie fallen heraus und zählen
 // zu "removed". "skipped" sind Projektdateien, die nicht lesbar waren.
+// War die bisherige Baseline unbrauchbar ("previous": "invalid"), legt der
+// Befehl sie vor dem Schreiben als <Name>.defekt beiseite und nennt den
+// vollen Pfad in "setAside" (Bericht N3); früher ersetzte er sie still.
 //
 // Ohne Projektdateien (Projekt noch nicht geladen) schreibt der Befehl nichts
 // und antwortet mit einem Fehler, damit keine leere Baseline entsteht.
@@ -49,12 +53,19 @@ type
   TLspBaselineExists = reference to function(const AFileName: string): Boolean;
   TLspBaselineRead = reference to function(const AFileName: string; out AText: string): Boolean;
   TLspBaselineWrite = reference to procedure(const AFileName, AText: string);
+  /// <summary>Benennt AFileName in AFileName + '.defekt' um (eine ältere wird ersetzt); ATarget = neuer Name.
+  /// False, wenn es nicht ging.</summary>
+  TLspBaselineSetAside = reference to function(const AFileName: string; out ATarget: string): Boolean;
 
   /// <summary>Dateizugriffe des Befehls; volle Pfade.</summary>
   TLspBaselineFiles = record
     Exists: TLspBaselineExists;
     Read: TLspBaselineRead;
+    /// <summary>Soll atomar ersetzen: Der Arbeitsbereich liest die Datei, sobald sich ihr Zeitstempel ändert.
+    /// </summary>
     Write: TLspBaselineWrite;
+    /// <summary>Unbrauchbare bisherige Baseline beiseitelegen (Bericht N3). nil: Sie wird ersetzt.</summary>
+    SetAside: TLspBaselineSetAside;
   end;
 
   TLspBaseline = class
@@ -104,7 +115,7 @@ end;
 
 function TLspBaseline.Update(const ASource: TLspMetricsSource): string;
 var
-  FileName, Text, Previous: string;
+  FileName, Text, Previous, SetAsideFile: string;
   Old: IRuleBaseline;
   Sources: TArray<TBaselineSource>;
   Source: TBaselineSource;
@@ -123,17 +134,22 @@ begin
     FileName := FileIn(Root, LegacyBaselineFileName);
   Old := nil;
   Previous := 'none';
+  SetAsideFile := '';
   if FFiles.Exists(FileName) and FFiles.Read(FileName, Text) then
     try
       Old := TRuleBaseline.FromJson(Text);
       Previous := 'valid';
     except
-      // Unlesbar: wird ersetzt, die Zähler gelten dann wie ohne Baseline.
+      // Unbrauchbar: Die Zähler gelten wie ohne Baseline; die Datei kommt unten beiseite.
       on ERuleBaseline do
         Previous := 'invalid';
       on EJSONException do
         Previous := 'invalid';
     end;
+  // Nicht still ersetzen (Bericht N3): Die alte Datei bleibt als .defekt zum Nachsehen, die Antwort nennt sie.
+  if (Previous = 'invalid') and Assigned(FFiles.SetAside) then
+    if not FFiles.SetAside(FileName, SetAsideFile) then
+      SetAsideFile := '';
   Sources := nil;
   Skipped := 0;
   for FileName in ASource.Files do
@@ -160,8 +176,10 @@ begin
   // Die Zähler stehen in CountersJson als eigenes Objekt; hier mit Kopf zusammengesetzt.
   Text := Outcome.CountersJson;
   Result := '{"format": ' + IntToStr(Format) + ', "file": ' + TFindingsOutput.JsonString(FileName) +
-    ', "previous": ' + TFindingsOutput.JsonString(Previous) + ', "skipped": ' + IntToStr(Skipped) + ', ' +
-    Copy(Text, 2, MaxInt);
+    ', "previous": ' + TFindingsOutput.JsonString(Previous) + ', ';
+  if SetAsideFile <> '' then
+    Result := Result + '"setAside": ' + TFindingsOutput.JsonString(SetAsideFile) + ', ';
+  Result := Result + '"skipped": ' + IntToStr(Skipped) + ', ' + Copy(Text, 2, MaxInt);
 end;
 
 function TLspBaseline.Execute(const AArguments: TJSONArray): TJSONValue;

@@ -580,16 +580,39 @@ end;
 const
   MarkerPrefix = 'session-';
 
+/// <summary>
+/// Ersetzt AFileName in einem Schritt (Bericht N3): erst vollständig daneben schreiben, dann TFile.Replace
+/// (unter Windows ReplaceFile). Früher erst löschen, dann umbenennen: Ein Absturz dazwischen ließ keine Marke
+/// bzw. keinen Zustand zurück. Ohne TAtlasDataFile, weil das über TAtlasGuard protokolliert und Core.Diagnostics
+/// Core.Files nicht verwenden darf (Feature-Zyklus). EInOutError, wenn die Datei nicht ersetzt wurde; sie bleibt
+/// dann, wie sie war.
+/// </summary>
 procedure WriteFileSafely(const AFileName, AText: string);
 var
-  Temp: string;
+  Temp, Backup: string;
 begin
   ForceDirectories(ExtractFileDir(AFileName));
   Temp := AFileName + '.tmp';
+  // TFile.Replace braucht eine Sicherungsdatei, sobald das Ziel existiert.
+  Backup := AFileName + '.bak';
   TFile.WriteAllText(Temp, AText, TEncoding.UTF8);
-  if TFile.Exists(AFileName) then
-    TFile.Delete(AFileName);
-  TFile.Move(Temp, AFileName);
+  try
+    if TFile.Exists(AFileName) then
+      TFile.Replace(Temp, AFileName, Backup)
+    else
+      TFile.Move(Temp, AFileName);
+    // TFile.Replace meldet ein Scheitern von ReplaceFile nicht. Hat es das Ziel schon zur Sicherung umbenannt,
+    // ohne die neue Datei nachzuschieben, gehört die vollständige neue an seine Stelle.
+    if TFile.Exists(Temp) and not TFile.Exists(AFileName) then
+      TFile.Move(Temp, AFileName);
+    if TFile.Exists(Temp) then
+      raise EInOutError.Create('Datei des abgesicherten Starts nicht ersetzt');
+  finally
+    if TFile.Exists(Temp) then
+      TFile.Delete(Temp);
+    if TFile.Exists(Backup) then
+      TFile.Delete(Backup);
+  end;
 end;
 
 class function TAtlasSessionFiles.MarkerFile(const AFolder: string; AProcessId: Cardinal): string;

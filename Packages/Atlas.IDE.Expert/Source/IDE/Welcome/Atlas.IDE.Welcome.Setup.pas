@@ -43,6 +43,7 @@ uses
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Setup,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Projects.PathCheck,
   Atlas.Core.Generate.FileTemplates,
   Atlas.Core.Welcome.Setup,
@@ -577,8 +578,8 @@ begin
         Exit;
       end;
       try
-        // UTF-8 ohne BOM, wie atlas.json im Repository.
-        TFile.WriteAllBytes(ConfigFile, TEncoding.UTF8.GetBytes(Text));
+        // UTF-8 ohne BOM, wie atlas.json im Repository; atomar (Bericht N3).
+        TAtlasDataFile.Write(ConfigFile, Text);
       except
         on E: Exception do
         begin

@@ -44,7 +44,8 @@ uses
   Winapi.Windows,
   System.IOUtils,
   System.JSON,
-  ToolsAPI;
+  ToolsAPI,
+  Atlas.Core.Files.DataFile;
 
 constructor TAtlasDirtyExport.Create;
 begin
@@ -164,13 +165,13 @@ begin
     end;
     if Text = FLast then
       Exit;
-    ForceDirectories(ExtractFilePath(FFileName));
-    TFile.WriteAllText(FFileName, Text, TEncoding.UTF8);
+    // Atomar (Bericht N3): Der Server liest die Liste jederzeit und sah sonst womöglich eine halbe.
+    TAtlasDataFile.Write(FFileName, Text);
     FLast := Text;
   except
-    // Ohne Liste schützt der Server weiter über den Vergleich mit der Platte.
-    on Exception do
-      ;
+    // Ohne Liste schützt der Server weiter über den Vergleich mit der Platte; der Grund steht einmal im Protokoll.
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten('Liste ungespeicherter Dateien', E);
   end;
 end;
 

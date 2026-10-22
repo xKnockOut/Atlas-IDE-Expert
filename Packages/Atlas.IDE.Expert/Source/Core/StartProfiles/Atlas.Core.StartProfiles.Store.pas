@@ -12,7 +12,11 @@
 //   ersten Profil liegen nur lokal je Projekt:
 //   %LOCALAPPDATA%\Atlas\startprofiles\<schlüssel>.json (Schlüssel wie die
 //   Projekt-Zusammenfassung #592, TAtlasProjectSummaries.KeyOf). Pfade dürfen
-//   absolut sein; relative gelten ab dem Ordner der .dproj.
+//   absolut sein; relative gelten ab dem Ordner der .dproj. Lesen und
+//   Schreiben über TAtlasDataFile (Bericht N3): atomar ersetzt (früher Löschen
+//   und Umbenennen), eine unbrauchbare Datei (etwa nach einem Tippfehler beim
+//   Bearbeiten von Hand) liegt danach als .defekt daneben und steht im
+//   Protokoll, eine beim Lesen gesperrte wird nicht überschrieben.
 // - Format 1 (UTF-8 ohne BOM; Kommentare // und /* */ werden beim Lesen
 //   übergangen, beim Schreiben nicht erhalten):
 //     {"format": 1, "project": "C:\\Projekte\\App.dproj", "active": "Demo",
@@ -89,6 +93,9 @@ type
     HasTemporary: Boolean;
     TemporaryBefore: TAtlasStartOptions;
     TemporaryWritten: string;
+    /// <summary>Vorhandene Datei, die beim Lesen gesperrt war: Save überschreibt sie nicht, sonst gingen ihre
+    /// Profile verloren (Bericht N3). '' sonst.</summary>
+    KeptFile: string;
     /// <summary>Index des persönlichen Profils AName (ohne Groß-/Kleinschreibung); -1 ohne.</summary>
     function IndexOf(const AName: string): Integer;
   end;
@@ -118,10 +125,11 @@ type
     class function FormatOf(const AText: string): Integer; static;
     /// <summary>Text der Datei (eingerückt, CRLF).</summary>
     class function ToJson(const AState: TAtlasStartProfileState): string; static;
-    /// <summary>Datei zu AProject lesen; ohne oder bei unlesbarer Datei leer.</summary>
+    /// <summary>Datei zu AProject über TAtlasDataFile.Load lesen; leer ohne, bei unbrauchbarer (dann als
+    /// .defekt beiseitegelegt) oder gesperrter Datei (dann KeptFile).</summary>
     class function Load(const AFolder, AProject: string): TAtlasStartProfileState; static;
-    /// <summary>Schreiben (über eine temporäre Datei); False bei Fehler oder höherem Format der vorhandenen.
-    /// </summary>
+    /// <summary>Ersetzt die Datei atomar; False bei Fehler (einmal protokolliert), bei höherem Format der
+    /// vorhandenen, wenn sie gerade nicht lesbar ist oder beim Laden gesperrt war (AState.KeptFile).</summary>
     class function Save(const AFolder: string; const AState: TAtlasStartProfileState): Boolean; static;
     /// <summary>Profile zur Auswahl: die gültigen aus ATeam, dann die persönlichen, die dort fehlen.</summary>
     class function Merge(const ATeam: TAtlasTeamSettings;
@@ -178,7 +186,8 @@ uses
   System.JSON,
   Atlas.Text.Jsonc,
   Atlas.Text.Checkin,
-  Atlas.Core.Projects.Summary;
+  Atlas.Core.Projects.Summary,
+  Atlas.Core.Files.DataFile;
 
 function FolderOf(const AFileName: string): string;
 var
@@ -210,41 +219,6 @@ begin
   Value := AObject.GetValue(AName);
   if Value is TJSONString then
     Result := TJSONString(Value).Value;
-end;
-
-function ReadText(const AFileName: string): string;
-var
-  Stream: TFileStream;
-  Bytes: TBytes;
-begin
-  Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
-  try
-    SetLength(Bytes, Stream.Size);
-    if Length(Bytes) > 0 then
-      Stream.ReadBuffer(Bytes[0], Length(Bytes));
-  finally
-    Stream.Free;
-  end;
-  // Mit oder ohne BOM (nach Bearbeiten im Editor der IDE).
-  if (Length(Bytes) >= 3) and (Bytes[0] = $EF) and (Bytes[1] = $BB) and (Bytes[2] = $BF) then
-    Result := TEncoding.UTF8.GetString(Bytes, 3, Length(Bytes) - 3)
-  else
-    Result := TEncoding.UTF8.GetString(Bytes);
-end;
-
-procedure WriteText(const AFileName, AText: string);
-var
-  Stream: TFileStream;
-  Bytes: TBytes;
-begin
-  Bytes := TEncoding.UTF8.GetBytes(AText);
-  Stream := TFileStream.Create(AFileName, fmCreate);
-  try
-    if Length(Bytes) > 0 then
-      Stream.WriteBuffer(Bytes[0], Length(Bytes));
-  finally
-    Stream.Free;
-  end;
 end;
 
 function ReadProfile(AValue: TJSONValue; out AProfile: TAtlasStartProfile): Boolean;
@@ -484,43 +458,49 @@ end;
 class function TAtlasStartProfiles.Load(const AFolder, AProject: string): TAtlasStartProfileState;
 var
   FileName: string;
+  State: TAtlasStartProfileState;
+  Valid: Boolean;
+  Load: TAtlasDataLoad;
 begin
   Result := Empty(AProject);
   if (AFolder = '') or (Trim(AProject) = '') then
     Exit;
   FileName := FileFor(AFolder, AProject);
-  if not FileExists(FileName) then
-    Exit;
-  try
-    Result := Parse(ReadText(FileName), AProject);
-  except
-    // Gesperrt oder unlesbar: wie ohne Datei.
-    on Exception do
-      Result := Empty(AProject);
-  end;
+  Valid := False;
+  Load := TAtlasDataFile.Load(FileName, 'Startprofile',
+    function(const AText: string): Boolean
+    begin
+      State := Parse(AText, AProject, Valid);
+      // Ein höheres Format ist nicht unbrauchbar: nicht beiseitelegen; Save überschreibt es nicht.
+      Result := Valid or (FormatOf(AText) > Format);
+    end);
+  if Valid and (Load = TAtlasDataLoad.Loaded) then
+    Result := State
+  else if not TAtlasDataFile.Writable(Load) then
+    Result.KeptFile := FileName;
 end;
 
 class function TAtlasStartProfiles.Save(const AFolder: string; const AState: TAtlasStartProfileState): Boolean;
 var
-  FileName, Temp: string;
+  FileName, Text: string;
 begin
   Result := False;
   if (AFolder = '') or (Trim(AState.Project) = '') then
     Exit;
   FileName := FileFor(AFolder, AState.Project);
+  // Beim Laden gesperrt: Der Stand kennt den Inhalt der Datei nicht.
+  if SameFileName(FileName, AState.KeptFile) then
+    Exit;
   try
-    // Eine neuere Fassung hat die Datei geschrieben: nicht überschreiben.
-    if FileExists(FileName) and (FormatOf(ReadText(FileName)) > Format) then
+    // Eine neuere Fassung hat die Datei geschrieben oder sie ist gerade nicht lesbar: nicht überschreiben.
+    if FileExists(FileName) and (not TAtlasDataFile.TryRead(FileName, Text) or (FormatOf(Text) > Format)) then
       Exit;
-    ForceDirectories(AFolder);
-    Temp := FileName + '.tmp';
-    WriteText(Temp, ToJson(AState));
-    if FileExists(FileName) then
-      System.SysUtils.DeleteFile(FileName);
-    Result := RenameFile(Temp, FileName);
+    // Atomar ersetzt, UTF-8 ohne BOM.
+    TAtlasDataFile.Write(FileName, ToJson(AState));
+    Result := True;
   except
-    on Exception do
-      Result := False;
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten('Startprofile', E);
   end;
 end;
 

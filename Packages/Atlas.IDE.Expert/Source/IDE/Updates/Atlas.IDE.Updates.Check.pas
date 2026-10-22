@@ -100,6 +100,7 @@ uses
   Atlas.Core.Product.Version,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Core.Files.DataFile,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.Settings;
 
@@ -134,22 +135,30 @@ begin
 end;
 
 procedure TAtlasIdeUpdates.LoadState;
+var
+  Text: string;
 begin
+  // Fehlt, gesperrt oder unbrauchbar: wie beim ersten Start. Kein .defekt (Bericht N3): Die Datei hält nur
+  // Zeitpunkt und Ergebnis der letzten Abfrage und ob schon gefragt wurde.
   FState := Default(TAtlasUpdateState);
-  try
-    if TFile.Exists(FStateFile) then
-      FState := TAtlasUpdateState.FromJson(TFile.ReadAllText(FStateFile, TEncoding.UTF8));
-  except
-    on E: Exception do
-      Log('Update-Zustand nicht gelesen: ' + E.ClassName);
-  end;
+  if TAtlasDataFile.TryRead(FStateFile, Text) then
+    try
+      FState := TAtlasUpdateState.FromJson(Text);
+    except
+      // Unerwarteter Inhalt, den FromJson nicht abfängt: wie beim ersten Start.
+      on E: Exception do
+      begin
+        FState := Default(TAtlasUpdateState);
+        Log('Update-Zustand nicht gelesen: ' + E.ClassName);
+      end;
+    end;
 end;
 
 procedure TAtlasIdeUpdates.SaveState;
 begin
   try
-    ForceDirectories(ExtractFileDir(FStateFile));
-    TFile.WriteAllText(FStateFile, FState.ToJson, TEncoding.UTF8);
+    // Atomar: Ein Abbruch hinterlässt keine halbe Datei (Bericht N3).
+    TAtlasDataFile.Write(FStateFile, FState.ToJson);
   except
     on E: Exception do
       Log('Update-Zustand nicht geschrieben: ' + E.ClassName);

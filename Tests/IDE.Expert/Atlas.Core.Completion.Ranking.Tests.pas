@@ -62,6 +62,10 @@ type
     procedure RecordsBoostAndMarks;
     [Test]
     procedure SavesLoadsAndClears;
+    /// <summary>Unbrauchbare Datei liegt danach als .defekt daneben; eine beim Lesen gesperrte wird nicht
+    /// überschrieben (Bericht N3).</summary>
+    [Test]
+    procedure BrokenFileSetAsideLockedFileKept;
     [Test]
     procedure LearnedEntryRisesInController;
     [Test]
@@ -86,6 +90,7 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Presentation,
   Atlas.Core.Completion.Usage,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Providers.Fixed,
   Atlas.Core.Completion.Providers.Server;
@@ -1041,6 +1046,38 @@ begin
     Assert.IsFalse(Controller.Passive);
   finally
     Controller.Free;
+  end;
+end;
+
+procedure TAtlasUsageTests.BrokenFileSetAsideLockedFileKept;
+var
+  Usage: TAtlasUsage;
+  FileName: string;
+  Lock: TFileStream;
+begin
+  FileName := TPath.Combine(TPath.GetTempPath, 'AtlasUsage' + IntToStr(Random(MaxInt)) + '.json');
+  Usage := TAtlasUsage.Create;
+  try
+    TFile.WriteAllText(FileName, '{"entries": 5}');
+    Assert.IsTrue(Usage.LoadFromFile(FileName) = TAtlasDataLoad.Renewed);
+    Assert.IsTrue(TFile.Exists(FileName + TAtlasDataFile.DefectExtension), 'beiseitegelegt');
+    Usage.Record_(Member('BeginUpdate', 'TStrings', 1, 0));
+    Assert.IsTrue(Usage.SaveToFile(FileName));
+    Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
+    try
+      Assert.IsTrue(Usage.LoadFromFile(FileName) = TAtlasDataLoad.Kept);
+    finally
+      Lock.Free;
+    end;
+    Assert.AreEqual(0, Integer(Usage.Count));
+    Usage.Record_(Member('EndUpdate', 'TStrings', 1, 0));
+    Assert.IsFalse(Usage.SaveToFile(FileName), 'beim Lesen gesperrt: nicht überschreiben');
+    Assert.Contains(TFile.ReadAllText(FileName), 'beginupdate');
+    Assert.DoesNotContain(TFile.ReadAllText(FileName), 'endupdate');
+  finally
+    Usage.Free;
+    System.SysUtils.DeleteFile(FileName);
+    System.SysUtils.DeleteFile(FileName + TAtlasDataFile.DefectExtension);
   end;
 end;
 

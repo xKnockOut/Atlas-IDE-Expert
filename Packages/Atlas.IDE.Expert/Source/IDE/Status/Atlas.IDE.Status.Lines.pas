@@ -443,7 +443,8 @@ begin
   if not TAtlasFileFormats.Satisfies(Bytes, Target) then
   begin
     Stamp := TFile.GetLastWriteTime(AFileName);
-    TFile.WriteAllBytes(AFileName, TAtlasFileFormats.Convert(Bytes, Target));
+    // Atomar (Bericht N3): An Ort und Stelle geschrieben, kostete ein Abbruch die Quelltextdatei.
+    TAtlasTextFile.Replace(AFileName, TAtlasFileFormats.Convert(Bytes, Target));
     // Zeitstempel des Speicherns der IDE behalten: sonst meldet sie die Datei als extern geändert.
     TFile.SetLastWriteTime(AFileName, Stamp);
     FCache.Remove(Key(AFileName));

@@ -2,7 +2,8 @@
 
 // Angeheftete Favoriten (#458) für die IDE: eine Instanz für das ganze Plugin, gelesen aus
 // %APPDATA%\Atlas\favorites.json beim ersten Zugriff (neben usage.json der lernenden Gewichtung, #418) und
-// nach jeder Änderung sofort gespeichert, damit ein Absturz der IDE keinen Favoriten kostet. Die
+// nach jeder Änderung sofort gespeichert, damit ein Absturz der IDE keinen Favoriten kostet. Eine unbrauchbare
+// Datei legt TAtlasDataFile als favorites.json.defekt beiseite, eine gesperrte bleibt unverändert (Bericht N3). Die
 // Einstellungsseite listet und entfernt sie über Items und Remove. Andere Teile des Plugins (etwa der Reiter
 // „Gemerkt“ der Willkommensseite, #755) lesen die Datei über FileName und TAtlasFavorites.LoadFromFile, ohne
 // Server.
@@ -33,7 +34,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.IOUtils;
+  System.IOUtils,
+  Atlas.Core.Files.DataFile;
 
 { TAtlasIdeFavorites }
 
@@ -47,13 +49,9 @@ begin
   if FFavorites = nil then
   begin
     FFavorites := TAtlasFavorites.Create;
-    try
-      FFavorites.LoadFromFile(FileName);
-    except
-      // Unlesbare Datei: leer beginnen.
-      on Exception do
-        FFavorites.Clear;
-    end;
+    // Fehlt, unbrauchbar oder gesperrt: leer beginnen; TAtlasDataFile legt Unbrauchbares beiseite und
+    // protokolliert, eine gesperrte Datei schreibt Save nicht.
+    FFavorites.LoadFromFile(FileName);
   end;
   Result := FFavorites;
 end;
@@ -65,9 +63,9 @@ begin
   try
     FFavorites.SaveToFile(FileName);
   except
-    // Speichern darf die IDE nie stören.
-    on Exception do
-      ;
+    // Speichern darf die IDE nie stören; der Grund steht einmal im Protokoll, Changed bleibt gesetzt.
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten('Favoriten', E);
   end;
 end;
 

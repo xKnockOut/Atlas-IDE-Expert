@@ -359,7 +359,7 @@ type
     TodoFilterDone, TodoFilterHint, TodoFilterOk, TodoFilterCancel, TodoFilterReset, TodoListFilteredTitle,
     TodoListNoMatch,
     SettingsBaselineUpdate, BaselineUpdateCommand, BaselineUpdateNoProject, BaselineUpdateFailed,
-    BaselineUpdateRunning, BaselineUpdateBusy, BaselineUpdateDone, BaselineUpdateCompleted,
+    BaselineUpdateRunning, BaselineUpdateBusy, BaselineUpdateDone, BaselineUpdateCompleted, BaselineUpdateSetAside,
     BaselineUpdateOrphans, BaselineUpdateOrphanLine, BaselineUpdateOrphansMore, BaselineUpdateConfirm,
     WelcomeTrendsTitle, WelcomeTrendsHeading, WelcomeTrendsNoProject, WelcomeTrendsNoPoints,
     WelcomeTrendsNoSeries, WelcomeTrendsWarnings, WelcomeTrendsRuleHits, WelcomeTrendsTodos,
@@ -1369,6 +1369,7 @@ const
      'Baseline aktualisieren: Der Atlas-Server ist gerade beschäftigt; bitte gleich noch einmal versuchen.',
      'Baseline geschrieben: %s (%d Treffer, %d Dateien geprüft; %d neu, %d entfernt, %d unverändert)',
      'Baseline: %d Einträge der älteren Baseline um die Routine ergänzt.',
+     'Baseline: Die bisherige Datei war unbrauchbar und liegt jetzt als %s daneben.',
      'Baseline: %d Einträge ohne Datei entfernt (umbenannt, verschoben oder gelöscht):', '  %s (%d Treffer)',
      '  … und %d weitere',
      'Die Baseline enthält %d Einträge ohne Datei (umbenannt, verschoben oder gelöscht):%sBeim Aktualisieren ' +
@@ -2678,6 +2679,7 @@ const
      'Update baseline: the Atlas server is busy right now; please try again shortly.',
      'Baseline written: %s (%d findings in %d files; %d added, %d removed, %d unchanged)',
      'Baseline: %d entries of the older baseline completed with their routine.',
+     'Baseline: the previous file was unusable and has been set aside as %s.',
      'Baseline: removed %d entries without a file (renamed, moved or deleted):', '  %s (%d findings)',
      '  … and %d more',
      'The baseline contains %d entries without a file (renamed, moved or deleted):%sUpdating removes them; ' +
