@@ -4203,3 +4203,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | WD5 | `"compiler-warnings-disabled": {"allow": ["SYMBOL_PLATFORM", "R"]}` | Keine Meldung für `{$WARN SYMBOL_PLATFORM OFF}` und `{$R-}`, `{$Q-}` bleibt gemeldet; auf der Seite „Prüfregeln“ steht `allow` unter der Regel |
 | WD6 | `"compiler-warnings-disabled": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |
 | WD7 | Atlas.IDE.Expert mit eingeschalteter Überlaufprüfung bauen, Projekt öffnen und schließen | Keine Überlauf-Exception aus `TAtlasProjectSummaries.KeyOf`; der Index-Cache findet seine Ordner wieder (`KeyHash`) |
+
+## Exportierte Routine nicht sicher über DLL-Grenzen aufrufbar (#973)
+
+Voraussetzung: Server läuft in der IDE mit einem DLL-Projekt (`library`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DX1 | Das Beispiel aus #973: `function KundeName(Id: Integer): string;` mit Rumpf, `exports KundeName;`, ohne ShareMem | Warnung `dll-export-unsafe` am Eintrag `KundeName` in exports: „Exportierte Funktion gibt string zurück und hat keine Aufrufkonvention; Aufrufer ohne ShareMem stürzen ab. Besser PChar mit Puffer und Länge übergeben.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| DX2 | Schnellkorrektur „Aufrufkonvention stdcall ergänzen“ auf DX1 | `string; stdcall;` im Kopf; die Meldung nennt nur noch den string, ohne Korrektur; nicht unter „Alle sicheren Korrekturen“ |
+| DX3 | Parameter `TBytes`, `array of Integer` als eigener Typ, `TStringList`, eigene Klasse, Interface ohne GUID | Je Parameter ein Teil der Meldung mit „(dynamisches Array)“, „(Objekt)“ bzw. „(Interface ohne GUID)“ |
+| DX4 | `PChar` mit Länge, `WideString`, `Double`, offener Array-Parameter, Interface mit GUID, `stdcall` bzw. `cdecl` | Keine Meldung |
+| DX5 | `ShareMem` als erste Unit in der uses der DLL, `stdcall` gesetzt; dann `"dll-export-unsafe": {"allowShareMem": false}` | Erst keine Meldung für den string, danach wieder Meldung |
+| DX6 | Überladene Routinen in exports mit Parameterliste und `name`; Unit mit Deklaration im interface und `exports` im implementation-Teil | Keine Syntaxfehler-Meldung zum exports-Abschnitt; die Meldung gilt der gewählten Überladung; in der Unit bekommen beide Köpfe `stdcall` |
+| DX7 | `"dll-export-unsafe": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |

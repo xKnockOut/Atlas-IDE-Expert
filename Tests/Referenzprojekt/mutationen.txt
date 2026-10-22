@@ -108,3 +108,4 @@ hardcoded-path | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nco
 filename-compare-case | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nfunction IstKonfig(const AFileName: string): Boolean;\nbegin\n  Result := ExtractFileName(AFileName) = 'Config.ini';\nend;
 initialization-not-finalized | Ref.Daten.Suche.pas | \nend. | \nvar\n  GTreffer: TStringList;\n\ninitialization\n  GTreffer := TStringList.Create;\nend.
 compiler-warnings-disabled | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\n{$WARNINGS OFF}
+dll-export-unsafe | Ref.Daten.Suche.pas | \nend. | \nfunction SuchText(Id: Integer): string;\nbegin\n  Result := IntToStr(Id);\nend;\n\nexports\n  SuchText;\n\nend.

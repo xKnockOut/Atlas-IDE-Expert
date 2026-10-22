@@ -2389,6 +2389,24 @@ begin
     '          "description": "Switches that may stay off up to the end of the unit: warning names for {$WARN} (SYMBOL_PLATFORM), WARNINGS, HINTS, R or RANGECHECKS, Q or OVERFLOWCHECKS; case is ignored."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dll-export-unsafe",' + #10 +
+    '      "name": "Exported routine not safe across DLL boundaries",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "robustness",' + #10 +
+    '      "description": "A routine of this file listed in exports has no calling convention (stdcall, cdecl, safecall, winapi or pascal; register is the Delphi convention) or takes or returns a string (s' + 'tring, UnicodeString, AnsiString, UTF8String, RawByteString), a dynamic array (TBytes, TArray<T>, …DynArray, array of T declared in the file), an object or an interface without GUID. Callers in other ' + 'languages or Delphi versions crash; strings and dynamic arrays live in the memory manager of the DLL. WideString, ShortString, PChar, open array parameters and records are fine. Objects are only recog' + 'nised for certain: classes of the file, of the index and common RTL classes; interfaces only from the file. Routines from other units and overloads that the exports entry does not pin down stay silent' + '. With ShareMem or SimpleShareMem in uses, strings and dynamic arrays are allowed (option allowShareMem). The finding sits on the exports entry; for strings it recommends PChar with buffer and length.' + ' High confidence. Quick fix: add stdcall to every header of the routine (only individually, since it changes the interface for existing callers).",' + #10 +
+    '      "bad": "function KundeName(Id: Integer): string;\n…\nexports\n  KundeName;",' + #10 +
+    '      "good": "function KundeName(Id: Integer; Puffer: PChar; Laenge: Integer): Integer; stdcall;\n…\nexports\n  KundeName;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowShareMem",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "With ShareMem or SimpleShareMem in uses, strings and dynamic arrays are allowed in exported routines."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3599,6 +3617,17 @@ begin
     '        {' + #10 +
     '          "name": "allow",' + #10 +
     '          "description": "Schalter, die bis zum Ende der Unit aus bleiben dürfen: Warnungsnamen für {$WARN} (SYMBOL_PLATFORM), WARNINGS, HINTS, R bzw. RANGECHECKS, Q bzw. OVERFLOWCHECKS; ohne Groß-/Kl' + 'einschreibung."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dll-export-unsafe",' + #10 +
+    '      "name": "Exportierte Routine nicht sicher über DLL-Grenzen aufrufbar",' + #10 +
+    '      "description": "Eine in exports aufgeführte Routine dieser Datei hat keine Aufrufkonvention (stdcall, cdecl, safecall, winapi oder pascal; register ist die Delphi-Konvention) oder erwartet bzw. ' + 'liefert einen String (string, UnicodeString, AnsiString, UTF8String, RawByteString), ein dynamisches Array (TBytes, TArray<T>, …DynArray, array of T aus der Datei), ein Objekt oder ein Interface ohne ' + 'GUID. Aufrufer aus anderen Sprachen oder Delphi-Versionen stürzen ab; Strings und dynamische Arrays liegen im Speichermanager der DLL. WideString, ShortString, PChar, offene Array-Parameter und Record' + 's sind in Ordnung. Objekte erkennt die Regel nur sicher: Klassen der Datei, des Index und häufige RTL-Klassen; Interfaces nur aus der Datei. Routinen aus anderen Units und Überladungen, die der export' + 's-Eintrag nicht festlegt, bleiben still. Mit ShareMem oder SimpleShareMem in der uses-Klausel sind Strings und dynamische Arrays erlaubt (Option allowShareMem). Die Meldung steht am Eintrag in exports' + '; bei Strings empfiehlt sie PChar mit Puffer und Länge. Konfidenz hoch. Korrektur: stdcall in jedem Kopf der Routine ergänzen (nur einzeln, weil das die Schnittstelle für vorhandene Aufrufer ändert)."' + ',' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowShareMem",' + #10 +
+    '          "description": "Mit ShareMem oder SimpleShareMem in der uses-Klausel sind Strings und dynamische Arrays in exportierten Routinen erlaubt."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    }' + #10 +
