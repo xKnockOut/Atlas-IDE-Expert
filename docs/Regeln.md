@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 1 |
+| [Compiler vorab](#gruppe-compiler) | 2 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -132,6 +132,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | Regel | Name | Kategorie | Schweregrad |
 |---|---|---|---|
 | [`signature-mismatch`](#signature-mismatch) | Implementierung weicht von der Deklaration ab | Bug | Fehler |
+| [`interface-not-implemented`](#interface-not-implemented) | Interface-Methode fehlt in der Klasse | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4153,4 +4154,33 @@ Richtig:
 procedure Buchen(const Betrag: Currency; Datum: TDate);
 …
 procedure TKonto.Buchen(const Betrag: Currency; Datum: TDate);
+```
+
+<a id="interface-not-implemented"></a>
+### interface-not-implemented
+
+**Interface-Methode fehlt in der Klasse** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine Klasse nennt ein Interface, implementiert aber nicht alle seine Methoden, auch die der Vorfahr-Interfaces (wie E2291). Eine gleichnamige Methode der Klasse mit anderer Signatur wird an dieser Methode gemeldet (wie E2211). Geerbte Methoden der Vorfahrklassen, Methodenzuordnungen (procedure IFoo.Bar = Baz) und Properties mit implements zählen; ebenso die öffentlichen Methoden von TObject und die IInterface-Methoden von TInterfacedObject und ähnlichen RTL-Basen. Endet die Kette der Vorfahrklassen bei einer unbekannten Klasse oder ist das Interface unbekannt, bleibt die Regel still. Gemeldet wird auch eine Methodenzuordnung für ein Interface, das die Klasse nicht nennt (wie E2265). Klassen in {$IF}-Blöcken werden übergangen. Korrektur: fehlende Methoden deklarieren und leer implementieren (nicht bei abweichendem Kopf).
+
+Entspricht der Compilermeldung `E2291`, `E2211`, `E2265`.
+
+Mit Treffer:
+
+```pascal
+TDateiLog = class(TInterfacedObject, ILogger)
+public
+  procedure Info(const Text: string);
+end;
+```
+
+Richtig:
+
+```pascal
+TDateiLog = class(TInterfacedObject, ILogger)
+public
+  procedure Info(const Text: string);
+  procedure Warnung(const Text: string);
+  procedure Fehler(const Text: string);
+end;
 ```

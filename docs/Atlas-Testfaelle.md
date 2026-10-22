@@ -3893,3 +3893,19 @@ Voraussetzung: Server läuft; Unit mit Klasse `TKonto`.
 | SM6 | Rumpf ohne Parameterliste, Rumpf ohne `stdcall`, anders gruppierte Parameter (`const A, B` gegen `const A; const B`) | Keine Meldung |
 | SM7 | `"signature-mismatch": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei; `refactoring.syncSignatures` = `false` | Keine Meldung bzw. Meldung ohne Korrekturen |
 | SM8 | Abgleich mit Delphi: SM1, SM4 und SM5 übersetzen | dcc meldet an denselben Stellen E2037 |
+
+## Interface-Methode fehlt in der Klasse (#1000)
+
+Voraussetzung: Server läuft; Unit mit `ILogger = interface` (Methoden `Info`, `Warnung`, `Fehler`, je `const Text: string`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IN1 | `TDateiLog = class(TInterfacedObject, ILogger)` mit nur `procedure Info(const Text: string);` | Fehler `interface-not-implemented` am Klassennamen: „ILogger.Fehler und ILogger.Warnung fehlen in TDateiLog (wie E2291).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| IN2 | Schnellkorrektur „Interface ILogger implementieren“, danach Strg+Z | `Warnung` und `Fehler` deklariert und mit leeren Rümpfen angelegt, Code übersetzt, keine Meldung mehr; ein Undo-Schritt stellt es wieder her (**Abnahme**) |
+| IN3 | `Warnung`/`Fehler` in einer Vorfahrklasse; Zuordnung `procedure ILogger.Fehler = Melde;`; Property mit `implements ILogger` | Keine Meldung |
+| IN4 | Vorfahr aus einer nicht indizierten Unit (`class(TFremdeBasis, ILogger)`) bzw. unbekanntes Interface | Keine Meldung |
+| IN5 | `procedure Info(const Text: Integer);` statt `string` | Fehler an `Info`: „Info weicht von der Deklaration in ILogger ab (wie E2211).“, ohne Korrektur |
+| IN6 | Zuordnung `procedure IAnders.Info = Melde;`, `IAnders` steht nicht in der Klassenliste | Fehler „IAnders steht nicht in der Interface-Liste von TLog (wie E2265).“ |
+| IN7 | Interface aus einer anderen Unit des Projekts (über `uses`) | Fehlende Methoden werden ebenso gemeldet |
+| IN8 | `"interface-not-implemented": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| IN9 | Abgleich mit Delphi: IN1, IN5 und IN6 übersetzen | dcc meldet E2291, E2211 bzw. E2265 an denselben Stellen |

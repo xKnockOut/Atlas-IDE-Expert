@@ -89,3 +89,4 @@ dataset-edit-without-post | Ref.Daten.Suche.pas | \nimplementation | \nimplement
 transaction-without-rollback | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nprocedure Buchen(AVerbindung: TFDConnection);\nbegin\n  AVerbindung.StartTransaction;\n  AVerbindung.ExecSQL(update Konto set Saldo = 0);\n  AVerbindung.Commit;\nend;
 sql-write-without-where | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nprocedure Leeren(AMenge: TFDQuery);\nbegin\n  AMenge.SQL.Text := 'DELETE FROM Warenkorb';\n  AMenge.ExecSQL;\nend;
 signature-mismatch | Ref.Daten.Suche.pas | class function TKundenSuche.Suchen(const AName: string): TArray<string>; | class function TKundenSuche.Suchen(AName: string): TArray<string>;
+interface-not-implemented | Ref.Sprache.Merkmale.pas | ['{6F1C2B9E-4A37-4D2B-9E61-3C5A7B8D9E01}'] | ['{6F1C2B9E-4A37-4D2B-9E61-3C5A7B8D9E01}']\n    function Kurzform(const AWert: Integer): string;
