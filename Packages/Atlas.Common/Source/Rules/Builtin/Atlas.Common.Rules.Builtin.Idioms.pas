@@ -9,6 +9,11 @@
 //                    (GesamtPreis, Nettobetrag, FNetto, Preise; nicht
 //                    NettoGewicht). Sätze, Faktoren, Raten, Quoten und Anteile
 //                    (Steuersatz, PriceFactor) bleiben still, ebenso Prüfsummen.
+//                    Mehrdeutige Wörter (Amount, Summe, Sum, Total: Menge bzw.
+//                    Summe von irgendetwas) zählen nur mit Geldbezug in Typ bzw.
+//                    Routine: ein anderer Geldname, Currency oder Wörter wie Cent,
+//                    Euro, Rabatt, Rechnung, Zahlung, Kosten (Lighten(AColor,
+//                    AAmount: Double) bleibt still).
 //                    Standard aus, niedrige Konfidenz. Korrektur: Typ Currency,
 //                    wenn alle Namen der Deklaration Geldbeträge sind; bei
 //                    Parametern auch im Kopf der Implementierung, bei Feldern
@@ -37,6 +42,8 @@ type
     class function HeadOf(const AName: string): string; static;
     /// <summary>AName bezeichnet nach APatterns einen Geldbetrag (Mehrzahl eingeschlossen, Sätze ausgenommen).</summary>
     class function IsMoneyName(const AName: string; const APatterns: TArray<string>): Boolean; static;
+    /// <summary>AName ist nur über ein mehrdeutiges Muster (Amount, Summe, Sum, Total) ein Geldname.</summary>
+    class function IsAmbiguousName(const AName: string; const APatterns: TArray<string>): Boolean; static;
   end;
 
 /// <summary>Registriert die Regeln für das passendere Sprachmittel.</summary>
@@ -144,6 +151,13 @@ const
   RatioWords: array[0..21] of string = ('Satz', 'Saetze', 'Sätze', 'Faktor', 'Faktoren', 'Rate', 'Raten', 'Rates',
     'Quote', 'Quoten', 'Prozent', 'Anteil', 'Anteile', 'Percent', 'Percentage', 'Ratio', 'Ratios', 'Factor',
     'Factors', 'Pruefsumme', 'Prüfsumme', 'Quersumme');
+  // Muster, die auch Mengen und Summen beliebiger Werte bezeichnen (Farbanteil, Messwerte).
+  AmbiguousWords: array[0..3] of string = ('Amount', 'Summe', 'Sum', 'Total');
+  // Wörter, die einen Geldbezug herstellen.
+  MoneyContextWords: array[0..30] of string = ('Cent', 'Euro', 'EUR', 'USD', 'Dollar', 'Waehrung', 'Währung',
+    'Currency', 'Rabatt', 'Discount', 'Rechnung', 'Invoice', 'Zahlung', 'Payment', 'Kosten', 'Cost', 'Gebuehr',
+    'Gebühr', 'Fee', 'Saldo', 'Balance', 'Lohn', 'Gehalt', 'Salary', 'Kasse', 'MwSt', 'Mehrwertsteuer', 'Tax',
+    'Konto', 'Umsatz', 'Revenue');
 
 function TMoneyAsFloatRule.Descriptor: TRuleDescriptor;
 begin
@@ -188,12 +202,57 @@ begin
   Result := False;
 end;
 
+/// <summary>APatterns ohne die mehrdeutigen Wörter.</summary>
+function UnambiguousPatterns(const APatterns: TArray<string>): TArray<string>;
+var
+  Pattern: string;
+begin
+  Result := nil;
+  for Pattern in APatterns do
+    if not MatchText(Trim(Pattern), AmbiguousWords) then
+      Result := Result + [Pattern];
+end;
+
+class function TMoneyAsFloatRule.IsAmbiguousName(const AName: string; const APatterns: TArray<string>): Boolean;
+begin
+  Result := IsMoneyName(AName, APatterns) and not IsMoneyName(AName, UnambiguousPatterns(APatterns));
+end;
+
 procedure TMoneyAsFloatRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Tokens: TTokens;
   Patterns: TArray<string>;
   Nodes: TArray<TSyntaxNode>;
   Declared: TDictionary<string, Boolean>;
+  ContextPatterns: TArray<string>;
+
+  // Geldbezug im Typ bzw. in der Routine um ANode: ein anderer Geldname, Currency oder ein Geldwort.
+  function HasMoneyContext(ANode: TSyntaxNode; const AName: string): Boolean;
+  var
+    Scope: TSyntaxNode;
+    Index: Integer;
+  begin
+    Scope := AncestorOf(ANode, TSyntaxKind.TypeDecl);
+    if Scope = nil then
+      Scope := AncestorOf(ANode, TSyntaxKind.RoutineDecl);
+    if Scope = nil then
+      Scope := AContext.Tree.Root;
+    Index := TokenAt(Tokens, Scope.StartOffset);
+    while (Index <= High(Tokens)) and (Tokens[Index].Offset < Scope.EndOffset) do
+    begin
+      if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and not SameText(Tokens[Index].Text, AName) and
+        IsMoneyName(Tokens[Index].Text, ContextPatterns) then
+        Exit(True);
+      Inc(Index);
+    end;
+    Result := False;
+  end;
+
+  function IsMoney(ANode: TSyntaxNode; const AName: string): Boolean;
+  begin
+    Result := IsMoneyName(AName, Patterns) and
+      (not IsAmbiguousName(AName, Patterns) or HasMoneyContext(ANode, AName));
+  end;
 
   function IsFloat(ATypeRef: TSyntaxNode): Boolean;
   var
@@ -212,7 +271,7 @@ var
     Name: string;
   begin
     for Name in NamesOf(ANode) do
-      if not IsMoneyName(Name, Patterns) then
+      if not IsMoney(ANode, Name) then
         Exit(False);
     Result := True;
   end;
@@ -459,7 +518,7 @@ var
         Fixes := [TRuleFix.Create('Typ in Currency ändern', Edits)];
     end;
     for Name in NamesOf(ANode) do
-      if IsMoneyName(Name, Patterns) then
+      if IsMoney(ANode, Name) then
         AReport.Add(NameRange(ANode, Name), Format('%s ist %s; Currency rechnet Cent-Beträge exakt.',
           [Name, NodeText(AContext, TypeRef)]), TRuleConfidence.Low, Fixes);
   end;
@@ -480,7 +539,7 @@ var
       for Node in List do
         if (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
           not ((Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.Call) and (Node.Parent[0] = Node)) and
-          IsMoneyName(Node.Name, Patterns) then
+          IsMoney(Node, Node.Name) then
         begin
           AReport.Add(NodeRange(ACall[0]), Format('Round rundet %s auf die nächste gerade Zahl (2,5 wird 2); ' +
             'Geldbeträge kaufmännisch runden, z. B. mit SimpleRoundTo.', [Node.Name]), TRuleConfidence.Low);
@@ -503,6 +562,9 @@ begin
   for Pattern in DefaultPatterns do
     Defaults := Defaults + [Pattern];
   Patterns := TRuleOptions.Strings(AContext.Options, 'namePatterns', Defaults);
+  ContextPatterns := UnambiguousPatterns(Patterns);
+  for Pattern in MoneyContextWords do
+    ContextPatterns := ContextPatterns + [Pattern];
   RoundCheck := TRuleOptions.Bool(AContext.Options, 'checkRound', False);
   Tokens := AContext.Tree.Tokens;
   Nodes := NodesOf(AContext.Tree.Root);

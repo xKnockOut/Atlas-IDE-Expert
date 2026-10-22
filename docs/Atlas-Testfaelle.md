@@ -4187,4 +4187,5 @@ Voraussetzung: Server läuft in der IDE mit Projekt; in `atlas.json` `"minConfid
 | GF6 | `SteuerSatz: Double`, `PreisFaktor: Double`, `NettoGewicht: Double`, `Preis: Currency`, `Betrag: Int64` | Keine Meldung |
 | GF7 | `"namePatterns": ["Kosten"]` | Nur noch `Kosten: Double` wird gemeldet |
 | GF8 | `"checkRound": true` und `Anzahl := Round(Preis * 100);` | Zusätzlich „Round rundet Preis auf die nächste gerade Zahl (2,5 wird 2); …“ |
-| GF9 | Ohne Einstellung bzw. `"money-as-float": "off"`, `exclude` mit dem Pfad der Datei | Keine Meldung |
+| GF9 | `class function Lighten(AColor: TColor; AAmount: Double): TColor;` in einem Farbtyp ohne Geldbezug; dann im selben Typ ein Feld `Rabatt: Integer` | Zuerst keine Meldung (Amount ist mehrdeutig); mit dem Geldbezug eine Meldung an `AAmount` |
+| GF10 | Ohne Einstellung bzw. `"money-as-float": "off"`, `exclude` mit dem Pfad der Datei | Keine Meldung |

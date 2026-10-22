@@ -21,6 +21,8 @@ type
     [Test]
     procedure MoneyFixesAcrossDeclarations;
     [Test]
+    procedure MoneyAmbiguousWords;
+    [Test]
     procedure MoneySilentCases;
     [Test]
     procedure MoneyOptions;
@@ -135,16 +137,16 @@ const
     '    FBrutto: Double;'#10'    procedure SetBrutto(const AValue: Double);'#10'  public'#10 +
     '    procedure Buchen(const ABetrag: Double; AMenge: Integer);'#10 +
     '    property Netto: Double read FNetto write FNetto;'#10'    property Brutto: Double read FBrutto write SetBrutto;'#10 +
-    '  end;'#10'procedure Ausgeben(ASumme: Double);'#10'implementation'#10 +
+    '  end;'#10'procedure Ausgeben(ANetto: Double);'#10'implementation'#10 +
     'procedure TKasse.SetBrutto(const AValue: Double);'#10'begin'#10'end;'#10 +
     'procedure TKasse.Buchen(const ABetrag: Double; AMenge: Integer);'#10'begin'#10'end;'#10 +
-    'procedure Ausgeben(ASumme: Double);'#10'begin'#10'end;'#10'end.';
+    'procedure Ausgeben(ANetto: Double);'#10'begin'#10'end;'#10'end.';
 var
   Findings: TArray<TRuleFinding>;
   Fixed: string;
 begin
   Findings := TRuleAssert.Findings(TMoneyAsFloatRule.Create, Source, MoneyOn);
-  // FNetto, FBrutto, ABetrag, Netto, Brutto, ASumme; die Parameter der Implementierung nicht noch einmal.
+  // FNetto, FBrutto, ABetrag, Netto, Brutto, ANetto; die Parameter der Implementierung nicht noch einmal.
   Assert.AreEqual(6, Integer(Length(Findings)));
   // Feld mit Property, die nur das Feld liest und schreibt: beide ändern.
   Assert.AreEqual('FNetto ist Double; Currency rechnet Cent-Beträge exakt.', Findings[0].Message);
@@ -164,10 +166,40 @@ begin
   Assert.AreEqual(2, Integer(Length(Findings[3].Fixes[0].Edits)));
   Assert.AreEqual(0, Integer(Length(Findings[4].Fixes)));
   // Routine im interface-Teil: beide Köpfe.
-  Assert.AreEqual('ASumme ist Double; Currency rechnet Cent-Beträge exakt.', Findings[5].Message);
+  Assert.AreEqual('ANetto ist Double; Currency rechnet Cent-Beträge exakt.', Findings[5].Message);
   Fixed := TChangeSignature.ApplyEdits(Source, Findings[5].Fixes[0].Edits);
-  Assert.Contains(Fixed, 'procedure Ausgeben(ASumme: Currency);'#10'implementation');
-  Assert.Contains(Fixed, 'procedure Ausgeben(ASumme: Currency);'#10'begin');
+  Assert.Contains(Fixed, 'procedure Ausgeben(ANetto: Currency);'#10'implementation');
+  Assert.Contains(Fixed, 'procedure Ausgeben(ANetto: Currency);'#10'begin');
+end;
+
+procedure TIdiomRulesTests.MoneyAmbiguousWords;
+const
+  ColorUnit = 'unit Farben;'#10'interface'#10'type'#10'  TFarbe = record'#10 +
+    '    class function Aufhellen(AFarbe: Cardinal; AAmount: Double): Cardinal; static;'#10'  end;'#10 +
+    'implementation'#10'class function TFarbe.Aufhellen(AFarbe: Cardinal; AAmount: Double): Cardinal;'#10 +
+    'var'#10'  Summe: Double;'#10'begin'#10'  Summe := AAmount * 255;'#10'  Result := AFarbe + Round(Summe);'#10'end;'#10 +
+    'end.';
+var
+  Findings: TArray<TRuleFinding>;
+  Patterns: TArray<string>;
+begin
+  Patterns := ['Betrag', 'Preis', 'Summe', 'Netto', 'Brutto', 'Steuer', 'Amount', 'Price'];
+  Assert.IsTrue(TMoneyAsFloatRule.IsAmbiguousName('AAmount', Patterns));
+  Assert.IsTrue(TMoneyAsFloatRule.IsAmbiguousName('Gesamtsumme', Patterns));
+  Assert.IsFalse(TMoneyAsFloatRule.IsAmbiguousName('Preis', Patterns));
+  // Farbanteil und Summe von Messwerten: ohne Geldbezug still, auch mit checkRound.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMoneyAsFloatRule.Create, ColorUnit,
+    '{"minConfidence": "low", "rules": {"money-as-float": {"severity": "hint", "checkRound": true}}}'))));
+  // Mit Geldbezug im Typ (Currency, Rabatt) bzw. in der Routine (Euro).
+  Findings := TRuleAssert.Findings(TMoneyAsFloatRule.Create, TypeUnit('  TZahlung = record'#10 +
+    '    Amount: Double;'#10'    Rabatt: Integer;'#10'  end;'#10'  TRechnung = record'#10'    Summe: Double;'#10 +
+    '    Porto: Currency;'#10'  end;'#10), MoneyOn);
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('Amount ist Double; Currency rechnet Cent-Beträge exakt.', Findings[0].Message);
+  Assert.AreEqual('Summe ist Double; Currency rechnet Cent-Beträge exakt.', Findings[1].Message);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMoneyAsFloatRule.Create,
+    RoutineUnit('var'#10'  Summe: Double;'#10, '  Summe := 0;'#10'  Anzeigen(Summe, InEuro);'),
+    MoneyOn))));
 end;
 
 procedure TIdiomRulesTests.MoneySilentCases;
