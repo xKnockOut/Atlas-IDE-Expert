@@ -4,7 +4,7 @@
 
 *Deutsche Fassung: [README_DE.md](README_DE.md). The detailed documentation in `docs/` is in German.*
 
-Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 124 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code.
+Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 127 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code.
 
 Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
@@ -15,7 +15,7 @@ Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/At
 | [Writing](#writing) | Completion with detail panel, parameter hint, code and postfix templates, slash commands (`/uses`, `/extract`, …), generate menu, formatter |
 | [Understanding](#understanding) | Hover with docs, values, inheritance and debugger values, type hints, code metrics, inactive `{$IFDEF}` branches |
 | [Navigating](#navigating) | Breadcrumb bar, outline, peek definition, quick open, unit search, results window, bookmarks and notes |
-| [Code analysis](#code-analysis) | 124 check rules (bugs, code smells, security), profiles, confidence, baseline, compiler check on save, CI linter with SARIF |
+| [Code analysis](#code-analysis) | 127 check rules (bugs, code smells, security), profiles, confidence, baseline, compiler check on save, CI linter with SARIF |
 | [Refactorings and code actions](#refactorings-and-code-actions) | Rename including forms, change signature, extract method, implement interface, generate properties and many quick fixes (Alt+Enter) |
 | [Forms](#forms) | Sync with the designer, form components in completion, checks between form and code |
 | [Build, test, debug](#build-test-debug) | Release build guard, DUnitX tests from the editor, launch profiles, values in the hover while debugging |
@@ -71,7 +71,7 @@ Everything below is implemented in `main`. Features marked *(experimental)* are 
 - **Hover tooltip** in Atlas style instead of Help Insight: declaration, XMLDoc in collapsible sections, clickable types, inheritance chain, values of constants, sets and resource strings, published members of components as a table, symbols in `{$IFDEF}` with their origin, actions (go to, usages, copy declaration, help)
 - **Values while debugging:** when the process is paused, the tooltip shows the value of the expression under the mouse, evaluated by the IDE's debugger without side effects
 - **Type hints** after `var X := …` without a type
-- **Code metrics** as a lens after each method header (length, depth, cyclomatic and cognitive complexity, parameters)
+- **Code metrics** as a lens after each method header (length, depth, cyclomatic and cognitive complexity, parameters), after each class (members), the unit name (lines) and the first `uses` (units)
 - **Recursion marks** in the gutter, **inactive `{$IFDEF}` branches** dimmed with the reason in the tooltip, **unused uses** dimmed
 - **Bracket and block pairs** coloured by depth, with matching block lines
 
@@ -97,13 +97,13 @@ The server checks every unit while you type. Findings appear as squiggles, in th
 - **Finding hover** with severity, rule and action line "Alt+Enter: fix", "Suppress for this line", "Configure rule…"
 - **Page "Prüfregeln"** in the options: per rule group a master switch and a table with severity, exclusions and options of every rule, search and catalog text with examples
 
-- **124 check rules** in four categories: 68 bugs, 46 code smells, 5 vulnerabilities, 5 security hotspots. Among them:
+- **127 check rules** in four categories: 68 bugs, 49 code smells, 5 vulnerabilities, 5 security hotspots. Among them:
   - **Correctness:** `Result` not set, possibly uninitialized variables, unreachable code, unused variables, parameters and assignments, declared but not implemented methods, missing `override`, hidden virtual methods, overflows, float comparison, `raise` in `finally`, overlooked precedence of `not` (`not X in Set`), empty statement after `then`/`do`/`else`, loops one step too far (`0 to List.Count`), lists changed inside their own loop (`Delete` in a forward loop), objects used after `Free` (with a jump to the release), access before the nil check (`X.Name` before `if Assigned(X)`), fields freed outside the destructor without `nil`, fields created in the constructor that the destructor never frees, constructors and destructors without `inherited`, `Destroy` instead of `Free`, `FillChar`/`Move`/`GetMem` on records with strings or interfaces, `PChar` of temporary strings, `out` parameters read before they are set, `Find` on unsorted `TStringList`s, `Writeln` in programs without a console, `raise` in destructors, duplicate conditions and identical branches, `case` over enumerations with missing values, `DisableControls`/`BeginUpdate`/`Screen.Cursor` without `try`/`finally`, `StrToInt` on `Edit.Text` without a check, `Dict[Key]` without `ContainsKey` or `TryGetValue`
   - **Threads:** VCL access from threads, locks without `finally`, `FreeOnTerminate` traps, `Synchronize` in the destructor, `threadvar` with strings, `Application.ProcessMessages` in loops and event handlers
   - **Exceptions:** empty `except` blocks, catch-all without re-raise, exceptions created but not raised
   - **Components and forms:** missing `inherited`, `Notification`, wrong `default` values, fields without a form object and vice versa, data bindings and data sources in DFM files
   - **Security:** SQL and command injection, path traversal, weak cryptography, disabled TLS verification, insecure HTTP and random, Trojan Source (bidi control, invisible and confusable characters)
-  - **Architecture and style:** forbidden uses, role-based import rules, `with`, redundant parentheses and `begin … end`, file header, hard-coded strings, metric limits, local names that shadow a field or property, `if` that only assigns `True` or `False`, `UpperCase(A) = UpperCase(B)` instead of `SameText`, numbers without a name and too long lines (optional; over 1023 characters always an error like F2069)
+  - **Architecture and style:** forbidden uses, role-based import rules, `with`, redundant parentheses and `begin … end`, file header, hard-coded strings, metric limits (also members per class, lines per unit, units in uses), local names that shadow a field or property, `if` that only assigns `True` or `False`, `UpperCase(A) = UpperCase(B)` instead of `SameText`, numbers without a name and too long lines (optional; over 1023 characters always an error like F2069)
 - **Confidence** (high, medium, low) per finding caps the severity; **profiles** `standard`, `fast`, `strict`, `security`, `style` or your own in `atlas.json`
 - **Suppress** with `// lsp-ignore: rule`, with reports of unused or misspelled suppressions
 - **Baseline** for legacy projects: hide known findings, report only new ones

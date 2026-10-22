@@ -1593,6 +1593,60 @@ begin
     '          "description": "Do not report lines that are only too long because of a comment."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-class-size",' + #10 +
+    '      "name": "Class with too many members",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "The class has more members than the limit (default 40): field names, methods, properties with their own type and class var. Properties that only raise visibility (property Align;' + ') and nested types do not count; a nested class is measured on its own. Also shown in the metrics lens above the class. Split the class or move parts into helper classes; Move class to own unit (#103)' + ' helps when the unit is crowded too.",' + #10 +
+    '      "bad": "type\n  TfrmHaupt = class(TForm)\n    { 87 members }\n  end;",' + #10 +
+    '      "good": "type\n  TfrmHaupt = class(TForm)\n    { 25 members; data access in TKundenDaten }\n  end;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 40,' + #10 +
+    '          "description": "Maximum number of members per class."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-unit-length",' + #10 +
+    '      "name": "Unit too long",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "The unit has more lines than the limit (default 2000), counted up to the final end. Only units are measured, not programs or packages. Also shown in the metrics lens above the un' + 'it name. Move classes into their own units with Move class to own unit (#103).",' + #10 +
+    '      "bad": "unit Kasse.Haupt;  { 2140 lines }",' + #10 +
+    '      "good": "unit Kasse.Haupt;  { 900 lines; TBeleg in Kasse.Beleg }",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 2000,' + #10 +
+    '          "description": "Maximum number of lines per unit."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-uses-count",' + #10 +
+    '      "name": "Too many units in uses",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "The unit uses more units than the limit (default 30), interface and implementation together. The finding sits on the first uses. Programs and libraries are not checked, because t' + 'heir uses lists the units of the project. Also shown in the metrics lens above uses. Many dependencies usually mean the unit does too much; Move class to own unit (#103) splits it.",' + #10 +
+    '      "bad": "uses\n  { 34 units in interface and implementation }",' + #10 +
+    '      "good": "uses\n  { 12 units; reports in Kasse.Berichte }",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 30,' + #10 +
+    '          "description": "Maximum number of units in all uses clauses."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2426,6 +2480,39 @@ begin
     '        {' + #10 +
     '          "name": "ignoreComments",' + #10 +
     '          "description": "Zeilen, die nur wegen eines Kommentars zu lang sind, nicht melden."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-class-size",' + #10 +
+    '      "name": "Klasse mit zu vielen Membern",' + #10 +
+    '      "description": "Die Klasse hat mehr Member als der Grenzwert (Vorgabe 40): Feldnamen, Methoden, Properties mit eigenem Typ und class var. Properties, die nur die Sichtbarkeit anheben (property A' + 'lign;), und geschachtelte Typen zählen nicht; eine geschachtelte Klasse wird für sich gemessen. Erscheint auch in der Metrik-Linse über der Klasse. Die Klasse aufteilen oder Teile in Hilfsklassen ausl' + 'agern; „Klasse in eigene Unit verschieben“ (#103) hilft, wenn auch die Unit voll ist.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "description": "Höchstzahl der Member je Klasse."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-unit-length",' + #10 +
+    '      "name": "Unit zu lang",' + #10 +
+    '      "description": "Die Unit hat mehr Zeilen als der Grenzwert (Vorgabe 2000), gezählt bis zum abschließenden end. Gemessen werden nur Units, keine Programme oder Packages. Erscheint auch in der Met' + 'rik-Linse über dem Unit-Namen. Klassen mit „Klasse in eigene Unit verschieben“ (#103) auslagern.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "description": "Höchstzahl der Zeilen je Unit."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-uses-count",' + #10 +
+    '      "name": "Zu viele Units im uses",' + #10 +
+    '      "description": "Die Unit bindet mehr Units ein als der Grenzwert (Vorgabe 30), interface und implementation zusammen. Der Befund steht auf dem ersten uses. Programme und Bibliotheken werden nich' + 't geprüft, weil ihr uses die Units des Projekts aufzählt. Erscheint auch in der Metrik-Linse über uses. Viele Abhängigkeiten heißen meist, dass die Unit zu viel tut; „Klasse in eigene Unit verschieben' + '“ (#103) teilt sie.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "description": "Höchstzahl der Units in allen uses-Klauseln."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    }' + #10 +

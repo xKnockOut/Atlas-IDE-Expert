@@ -16,7 +16,8 @@
 //   - Implementierungen ohne Parameterliste (procedure TFoo.Bar;) nehmen die
 //     Parameter der Deklaration in derselben Datei.
 // Der Baum wird iterativ durchlaufen: Lange Ausdrucksketten ergeben sehr
-// tiefe Bäume.
+// tiefe Bäume. Structure liefert die Kennzahlen des Aufbaus (#939): Member je
+// Klasse, Zeilen der Unit und Units im uses.
 
 interface
 
@@ -42,6 +43,13 @@ type
     class function Cognitive(ATree: TSyntaxTree; ARoutine: TSyntaxNode): Integer; static;
     /// <summary>Parameternamen in der Liste von AHeader (RoutineHeader); 0 ohne Liste.</summary>
     class function ParameterCount(AHeader: TSyntaxNode): Integer; static;
+    /// <summary>Kennzahlen des Aufbaus (#939): je Klasse die Member, dazu Zeilen und uses-Anzahl der Unit;
+    /// nach Position im Quelltext, die Unit zuerst.</summary>
+    class function Structure(ATree: TSyntaxTree): TArray<TStructureMetrics>; static;
+    /// <summary>Parst AText und liefert die Kennzahlen seines Aufbaus.</summary>
+    class function StructureForText(const AText: string): TArray<TStructureMetrics>; static;
+    /// <summary>Member einer Klasse (ClassType, ObjectType), Zählweise siehe Metrics.Contract.</summary>
+    class function MemberCount(AClass: TSyntaxNode): Integer; static;
   end;
 
 implementation
@@ -602,6 +610,155 @@ begin
     Known.Free;
     Stack.Free;
     Found.Free;
+  end;
+end;
+
+function NameCount(const ANames: string): Integer;
+var
+  Position: Integer;
+begin
+  Result := 0;
+  if Trim(ANames) = '' then
+    Exit;
+  Result := 1;
+  for Position := 1 to Length(ANames) do
+    if ANames[Position] = ',' then
+      Inc(Result);
+end;
+
+class function TMetricsCalculator.MemberCount(AClass: TSyntaxNode): Integer;
+var
+  Index, Inner: Integer;
+  Child: TSyntaxNode;
+begin
+  Result := 0;
+  for Index := 0 to AClass.ChildCount - 1 do
+  begin
+    Child := AClass[Index];
+    case Child.Kind of
+      TSyntaxKind.Field:
+        Inc(Result, NameCount(Child.Name));
+      TSyntaxKind.RoutineHeader:
+        Inc(Result);
+      // property Align; hebt nur die Sichtbarkeit an und ist kein neues Member.
+      TSyntaxKind.PropertyDecl:
+        if Child.FindChild(TSyntaxKind.TypeReference) <> nil then
+          Inc(Result);
+      TSyntaxKind.VarSection:
+        for Inner := 0 to Child.ChildCount - 1 do
+          if Child[Inner].Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field] then
+            Inc(Result, NameCount(Child[Inner].Name));
+    end;
+  end;
+end;
+
+class function TMetricsCalculator.Structure(ATree: TSyntaxTree): TArray<TStructureMetrics>;
+var
+  Tokens: TArray<TPascalToken>;
+  Stack: TStack<TSyntaxNode>;
+  Node, Body, UsesNode: TSyntaxNode;
+  Index, UsesTotal, LastLine: Integer;
+  Classes: TArray<TStructureMetrics>;
+  Item: TStructureMetrics;
+
+  // Bezeichner ANode.Name (ohne generische Parameter) ab dem Anfang von ANode.
+  function NameRange(ANode: TSyntaxNode): TTextRange;
+  var
+    Position: Integer;
+    Name: string;
+  begin
+    Result := TTextRange.Create(ANode.StartPos, ANode.StartPos);
+    Name := ANode.Name;
+    if Pos('<', Name) > 0 then
+      Name := Copy(Name, 1, Pos('<', Name) - 1);
+    Position := FirstTokenAt(Tokens, ANode.StartOffset);
+    while (Position < Length(Tokens)) and (Tokens[Position].Offset < ANode.EndOffset) do
+    begin
+      if (Tokens[Position].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Position].Text, Name) then
+        Exit(TTextRange.Create(Tokens[Position].StartPos, Tokens[Position].EndPos));
+      Inc(Position);
+    end;
+  end;
+
+begin
+  Result := nil;
+  if (ATree = nil) or (ATree.Root = nil) then
+    Exit;
+  Tokens := ATree.Tokens;
+  Classes := nil;
+  UsesTotal := 0;
+  UsesNode := nil;
+  Stack := TStack<TSyntaxNode>.Create;
+  try
+    Stack.Push(ATree.Root);
+    while Stack.Count > 0 do
+    begin
+      Node := Stack.Pop;
+      if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] + ExpressionKinds then
+        Continue;
+      if Node.Kind = TSyntaxKind.UsesClause then
+      begin
+        if UsesNode = nil then
+          UsesNode := Node;
+        for Index := 0 to Node.ChildCount - 1 do
+          if Node[Index].Kind = TSyntaxKind.UsedUnit then
+            Inc(UsesTotal);
+        Continue;
+      end;
+      if Node.Kind = TSyntaxKind.TypeDecl then
+      begin
+        Body := Node.FindChild(TSyntaxKind.ClassType);
+        if Body = nil then
+          Body := Node.FindChild(TSyntaxKind.ObjectType);
+        if Body <> nil then
+        begin
+          Item := Default(TStructureMetrics);
+          Item.Kind := TStructureKind.ClassSize;
+          Item.Name := Node.Name;
+          Item.NameRange := NameRange(Node);
+          Item.Value := MemberCount(Body);
+          Classes := Classes + [Item];
+        end;
+      end;
+      for Index := Node.ChildCount - 1 downto 0 do
+        Stack.Push(Node[Index]);
+    end;
+  finally
+    Stack.Free;
+  end;
+  if ATree.Root.Kind = TSyntaxKind.UnitFile then
+  begin
+    LastLine := 0;
+    if Tokens <> nil then
+      LastLine := Tokens[High(Tokens)].EndPos.Line;
+    Item := Default(TStructureMetrics);
+    Item.Kind := TStructureKind.UnitLength;
+    Item.Name := ATree.Root.Name;
+    Item.NameRange := NameRangeOf(Tokens, ATree.Root);
+    Item.Value := LastLine + 1;
+    Result := Result + [Item];
+    if UsesNode <> nil then
+    begin
+      Item.Kind := TStructureKind.UsesCount;
+      Index := FirstTokenAt(Tokens, UsesNode.StartOffset);
+      if Index < Length(Tokens) then
+        Item.NameRange := TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos);
+      Item.Value := UsesTotal;
+      Result := Result + [Item];
+    end;
+  end;
+  Result := Result + Classes;
+end;
+
+class function TMetricsCalculator.StructureForText(const AText: string): TArray<TStructureMetrics>;
+var
+  Tree: TSyntaxTree;
+begin
+  Tree := TSyntaxTreeCache.Parse(AText);
+  try
+    Result := Structure(Tree);
+  finally
+    Tree.Free;
   end;
 end;
 

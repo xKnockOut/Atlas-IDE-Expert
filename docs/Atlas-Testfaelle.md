@@ -3489,3 +3489,17 @@ Voraussetzung: Server läuft; in `atlas.json` `"rules": { "line-length": "hint" 
 | LL6 | Zeile mit Tabs, `"format": { "indentSize": 8 }` | Tabs zählen bis zur nächsten Tabstelle (8er-Schritte) |
 | LL7 | Konstante mit 1400 Zeichen langem String in einer Zeile, `max` 5000 | Fehler (rot): „Zeile mit 1412 Zeichen; der Compiler bricht über 1023 Zeichen ab (wie F2069).“; `/explain line-length` und `docs/Regeln.md` nennen „Entspricht der Compilermeldung F2069.“ (**Abnahme**) |
 | LL8 | `"line-length": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung, auch nicht bei LL7 |
+
+## Klasse, Unit oder uses zu groß (#939)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe (die drei Regeln sind an); Code-Metriken und `codeLens.metrics` an; Formular `TfrmHaupt` mit 87 Komponenten bzw. Feldern.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MS1 | Unit des Formulars öffnen | Hinweis `metric-class-size` am Klassennamen: „TfrmHaupt hat 87 Member (Grenze 40).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| MS2 | Metrik-Linse ansehen | Hinter `TfrmHaupt = class(TForm)` die Marke „87 Member (> 40)“ in Warnfarbe, hinter dem Unit-Namen „N Zeilen“, hinter dem ersten `uses` „N Units im uses“ (**Abnahme**) |
+| MS3 | Klasse mit `property Align;` und geschachteltem Typ | Hochstufungen und geschachtelte Typen zählen nicht; die geschachtelte Klasse hat eine eigene Marke |
+| MS4 | Unit mit mehr als 2000 Zeilen | Hinweis `metric-unit-length` am Unit-Namen „Unit … hat N Zeilen (Grenze 2000); Klassen lassen sich mit „Klasse in eigene Unit verschieben“ auslagern.“ |
+| MS5 | Unit mit 34 Units in interface- und implementation-uses zusammen; zum Vergleich die .dpr | Hinweis `metric-uses-count` am ersten `uses`; in der .dpr keine Meldung |
+| MS6 | Seite „Prüfregeln“, bei `metric-class-size` die Option „max“ auf 90 | Keine Meldung mehr an `TfrmHaupt`; die Linse zeigt „87 Member“ ohne Grenzwert |
+| MS7 | `"metric-class-size": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

@@ -64,6 +64,7 @@ type
     FFetchedFile: string;
     FMetrics: TAtlasFileMetrics;
     FFormats: TAtlasMetricFormats;
+    FStructureFormats: TAtlasStructureFormats;
     FShowing: Boolean;
     procedure Tick(Sender: TObject);
     procedure Fetch;
@@ -72,6 +73,7 @@ type
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     class procedure Invalidate; static;
     class function Formats: TAtlasMetricFormats; static;
+    class function StructureFormats: TAtlasStructureFormats; static;
   public
     constructor Create(const ASession: TAtlasMetricsLensSessionFunc);
     destructor Destroy; override;
@@ -160,6 +162,13 @@ begin
   Result[TAtlasMetric.Cyclomatic] := TAtlasStrings.Text(TAtlasTextId.MetricsLensCyclomatic);
   Result[TAtlasMetric.Cognitive] := TAtlasStrings.Text(TAtlasTextId.MetricsLensCognitive);
   Result[TAtlasMetric.Parameters] := TAtlasStrings.Text(TAtlasTextId.MetricsLensParameters);
+end;
+
+class function TAtlasEditorMetricsLens.StructureFormats: TAtlasStructureFormats;
+begin
+  Result[TAtlasStructureMetric.ClassSize] := TAtlasStrings.Text(TAtlasTextId.MetricsLensMembers);
+  Result[TAtlasStructureMetric.UnitLength] := TAtlasStrings.Text(TAtlasTextId.MetricsLensLines);
+  Result[TAtlasStructureMetric.UsesCount] := TAtlasStrings.Text(TAtlasTextId.MetricsLensUses);
 end;
 
 function Wanted(const ASettings: TAtlasPluginSettings): Boolean;
@@ -274,7 +283,8 @@ begin
   FFetchedAt := GetTickCount;
   FMetrics := Metrics;
   FFormats := Formats;
-  FShowing := Metrics.Enabled and (Length(Metrics.Methods) > 0);
+  FStructureFormats := StructureFormats;
+  FShowing := Metrics.Enabled and ((Length(Metrics.Methods) > 0) or (Length(Metrics.Structures) > 0));
   Invalidate;
 end;
 
@@ -285,6 +295,9 @@ var
   LineState: INTACodeEditorLineState;
   Index, TabWidth, Width, Height, Top, Column: Integer;
   Method: TAtlasMethodMetrics;
+  Structure: TAtlasStructureItem;
+  LensName: string;
+  Over: Boolean;
   Colors: TAtlasColors;
   Canvas: TCanvas;
   Cell, Pill: TRect;
@@ -303,19 +316,38 @@ begin
       Exit;
     if not SameText(Context.FileName, FFetchedFile) then
       Exit;
-    Index := FMetrics.IndexAt(Context.LogicalLineNum - 1);
     LineState := Context.LineState;
-    if (Index < 0) or (LineState = nil) or (Context.EditView = nil) or (Context.EditView.Buffer = nil) then
+    if (LineState = nil) or (Context.EditView = nil) or (Context.EditView.Buffer = nil) then
       Exit;
-    Method := FMetrics.Methods[Index];
+    Index := FMetrics.IndexAt(Context.LogicalLineNum - 1);
+    if Index >= 0 then
+    begin
+      Method := FMetrics.Methods[Index];
+      LensName := Method.Name;
+      Text := TAtlasMetricsLens.Caption(Method, FMetrics.Limits, FFormats,
+        TAtlasStrings.Text(TAtlasTextId.MetricsLensLimit));
+      Over := TAtlasMetricsLens.Exceeds(Method, FMetrics.Limits);
+    end
+    else
+    begin
+      // Aufbau (#939): Member über der Klasse, Zeilen über dem Unit-Namen, Units im uses über uses.
+      Index := FMetrics.StructureAt(Context.LogicalLineNum - 1);
+      if Index < 0 then
+        Exit;
+      Structure := FMetrics.Structures[Index];
+      LensName := Structure.Name;
+      if Structure.Kind = TAtlasStructureMetric.UsesCount then
+        LensName := 'uses';
+      Text := TAtlasMetricsLens.StructureCaption(Structure, FStructureFormats,
+        TAtlasStrings.Text(TAtlasTextId.MetricsLensLimit));
+      Over := Structure.Value > Structure.Limit;
+    end;
     Line := LineState.Text;
-    // Nur, wenn die Zeile noch den Namen der Methode trägt (Text kann seit dem Abruf verschoben sein).
-    if not TAtlasMetricsLens.LineMatches(Line, Method.Name) then
+    // Nur, wenn die Zeile noch den Namen trägt (Text kann seit dem Abruf verschoben sein).
+    if not TAtlasMetricsLens.LineMatches(Line, LensName) then
       Exit;
-    if TAtlasIdeElements.Hidden(TAtlasDrawnElement.CodeLensMetrics, Context.FileName, Method.Name) then
+    if TAtlasIdeElements.Hidden(TAtlasDrawnElement.CodeLensMetrics, Context.FileName, LensName) then
       Exit;
-    Text := TAtlasMetricsLens.Caption(Method, FMetrics.Limits, FFormats,
-      TAtlasStrings.Text(TAtlasTextId.MetricsLensLimit));
     TabWidth := TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer);
     Column := Length(TrimRight(TAtlasPairs.DisplayLine(Line, TabWidth))) + 1;
     Cell := Context.EditorState.GetCharacterPosPx(Column + 3, Context.EditorLineNum);
@@ -329,7 +361,7 @@ begin
       Back := TAtlasColor(Sample);
     Colors := TAtlasColors.ForBackground(Back);
     Tone := Colors.Muted;
-    if TAtlasMetricsLens.Exceeds(Method, FMetrics.Limits) then
+    if Over then
       Tone := Colors.Warn;
     OldFont := TFont.Create;
     OldBrush := TBrush.Create;
@@ -353,7 +385,7 @@ begin
       Canvas.TextOut(Pill.Left + 5, Pill.Top + 1, Text);
       TAtlasLineTail.Finish(Self, TailKey, Pill.Right);
       TAtlasIdeElements.Painted(TAtlasDrawnElement.CodeLensMetrics, Context.FileName, Context.LogicalLineNum - 1,
-        Method.Name, Pill, Context.EditView.TopRow, Rect.Height);
+        LensName, Pill, Context.EditView.TopRow, Rect.Height);
     finally
       Canvas.Font.Assign(OldFont);
       Canvas.Brush.Assign(OldBrush);

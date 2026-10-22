@@ -34,6 +34,8 @@ type
     procedure LimitsDefaultsFromSpecification;
     [Test]
     procedure KindKeysRoundTrip;
+    [Test]
+    procedure StructureJsonAndLensPart;
   end;
 
 implementation
@@ -195,6 +197,30 @@ begin
   Assert.IsTrue(Limits.Exceeds(TMetricKind.Cyclomatic, 16));
   Values := Routine('A', 0, 61, 0, 1, 0, 0).Values;
   Assert.AreEqual(1, Integer(Length(Limits.Exceeded(Values))));
+end;
+
+procedure TMetricsReportTests.StructureJsonAndLensPart;
+var
+  Item: TStructureMetrics;
+  Limits: TMetricLimits;
+begin
+  Limits := TMetricLimits.Default;
+  Assert.AreEqual(40, Limits.Structure[TStructureKind.ClassSize]);
+  Assert.AreEqual(2000, Limits.Structure[TStructureKind.UnitLength]);
+  Assert.AreEqual(30, Limits.Structure[TStructureKind.UsesCount]);
+  Assert.IsFalse(Limits.ExceedsStructure(TStructureKind.ClassSize, 40));
+  Assert.IsTrue(Limits.ExceedsStructure(TStructureKind.ClassSize, 41));
+  Item := Default(TStructureMetrics);
+  Item.Kind := TStructureKind.ClassSize;
+  Item.Name := 'TfrmHaupt';
+  Item.NameRange := TTextRange.Create(4, 2, 4, 11);
+  Item.Value := 87;
+  Assert.AreEqual('[{"kind": "classSize", "name": "TfrmHaupt", "line": 5, "character": 3, "value": 87, ' +
+    '"limit": 40}]', TMetricsReport.StructureJson([Item], Limits));
+  Assert.AreEqual('[]', TMetricsReport.StructureJson(nil, Limits));
+  Assert.AreEqual('87 Member (> 40)', TMetricsReport.StructureLensPart(TStructureKind.ClassSize, 87, Limits));
+  Assert.AreEqual('12 Units im uses', TMetricsReport.StructureLensPart(TStructureKind.UsesCount, 12, Limits));
+  Assert.AreEqual('unitLength', TMetricsReport.StructureKey(TStructureKind.UnitLength));
 end;
 
 procedure TMetricsReportTests.KindKeysRoundTrip;

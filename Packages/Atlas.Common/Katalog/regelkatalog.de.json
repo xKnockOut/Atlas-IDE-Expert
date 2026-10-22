@@ -823,6 +823,39 @@
           "description": "Zeilen, die nur wegen eines Kommentars zu lang sind, nicht melden."
         }
       ]
+    },
+    {
+      "id": "metric-class-size",
+      "name": "Klasse mit zu vielen Membern",
+      "description": "Die Klasse hat mehr Member als der Grenzwert (Vorgabe 40): Feldnamen, Methoden, Properties mit eigenem Typ und class var. Properties, die nur die Sichtbarkeit anheben (property Align;), und geschachtelte Typen zählen nicht; eine geschachtelte Klasse wird für sich gemessen. Erscheint auch in der Metrik-Linse über der Klasse. Die Klasse aufteilen oder Teile in Hilfsklassen auslagern; „Klasse in eigene Unit verschieben“ (#103) hilft, wenn auch die Unit voll ist.",
+      "options": [
+        {
+          "name": "max",
+          "description": "Höchstzahl der Member je Klasse."
+        }
+      ]
+    },
+    {
+      "id": "metric-unit-length",
+      "name": "Unit zu lang",
+      "description": "Die Unit hat mehr Zeilen als der Grenzwert (Vorgabe 2000), gezählt bis zum abschließenden end. Gemessen werden nur Units, keine Programme oder Packages. Erscheint auch in der Metrik-Linse über dem Unit-Namen. Klassen mit „Klasse in eigene Unit verschieben“ (#103) auslagern.",
+      "options": [
+        {
+          "name": "max",
+          "description": "Höchstzahl der Zeilen je Unit."
+        }
+      ]
+    },
+    {
+      "id": "metric-uses-count",
+      "name": "Zu viele Units im uses",
+      "description": "Die Unit bindet mehr Units ein als der Grenzwert (Vorgabe 30), interface und implementation zusammen. Der Befund steht auf dem ersten uses. Programme und Bibliotheken werden nicht geprüft, weil ihr uses die Units des Projekts aufzählt. Erscheint auch in der Metrik-Linse über uses. Viele Abhängigkeiten heißen meist, dass die Unit zu viel tut; „Klasse in eigene Unit verschieben“ (#103) teilt sie.",
+      "options": [
+        {
+          "name": "max",
+          "description": "Höchstzahl der Units in allen uses-Klauseln."
+        }
+      ]
     }
   ]
 }

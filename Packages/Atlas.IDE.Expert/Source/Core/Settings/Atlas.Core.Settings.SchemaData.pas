@@ -138,7 +138,7 @@ const
     '              "max": {',
     '                "type": "integer",',
     '                "minimum": 1,',
-    '                "description": "Nur metric-* (#66): Grenzwert der Kennzahl; darüber meldet die Regel die Methode. Vorgaben: Länge 60, Tiefe 4, zyklomatisch 15, kognitiv 15, Parameter 6. Bei line-lengt' + 'h (#938) die Höchstlänge einer Zeile, Vorgabe 120."',
+    '                "description": "Nur metric-* (#66): Grenzwert der Kennzahl; darüber meldet die Regel die Methode. Vorgaben: Länge 60, Tiefe 4, zyklomatisch 15, kognitiv 15, Parameter 6; metric-class-s' + 'ize 40 Member, metric-unit-length 2000 Zeilen, metric-uses-count 30 Units (#939). Bei line-length (#938) die Höchstlänge einer Zeile, Vorgabe 120."',
     '              },',
     '              "keywords": {',
     '                "type": "array",',
