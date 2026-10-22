@@ -100,3 +100,4 @@ conditional-directive-unbalanced | Ref.Sprache.Merkmale.pas | Result := 'Andere'
 override-target-missing | Ref.Sprache.Merkmale.pas | destructor Destroy; override; | destructor Destroi; override;
 abstract-class-instantiated | Ref.Daten.Kunden.pas | TKundenDaten = class\n | TKundenDaten = class abstract\n
 property-accessor-invalid | Ref.Daten.Kunden.pas | procedure Speichern(AId: Integer; const AName: string);\n  end; | procedure Speichern(AId: Integer; const AName: string);\n    property Verbindung: TFDConnection read FVerbindung write SetVerbindung;\n  end;
+assign-to-property-member | Ref.Komponenten.Anzeige.pas |   Width := StandardBreite; |   StandardBreite := Width;

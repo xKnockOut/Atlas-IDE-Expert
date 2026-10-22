@@ -54,6 +54,17 @@
 //                     Korrektur entfernt den späteren Wert bzw. dessen Zweig.
 //                     Bedingte Zweige über Pascal.ConditionalBranches: gemeldet
 //                     wird nur, wenn die frühere Marke immer mit übersetzt wird.
+//   assign-to-property-member
+//                     Zuweisung an ein Feld eines Records, den eine Property mit
+//                     Getter, eine Default- bzw. Array-Property oder ein
+//                     Funktionsergebnis nur als Kopie liefert (#1005, wie E2064),
+//                     und an eine untypisierte Konstante. Typen kommen aus
+//                     TNameResolver.NodeType; gemeldet wird nur bei sicher
+//                     bekanntem Record-Typ. Liest die Property direkt ein Feld,
+//                     schreibt Delphi in das Feld: still. Korrektur bei Properties
+//                     mit write: über eine lokale Variable zuweisen und
+//                     zurückschreiben (Variable über TRoutineBody.AddVariable, Unit
+//                     des Typs über TUsesClauses.AddUnit).
 // Grundlage ist der Syntaxbaum: if, while, for, for-in und with ohne Rumpf
 // bzw. mit leerem Block; das Schlüsselwort davor sucht die Regel in den Token.
 
@@ -73,6 +84,7 @@ const
   CaseMissingEnumValueRuleId = 'case-missing-enum-value';
   ComparisonAsStatementRuleId = 'comparison-as-statement';
   DuplicateCaseLabelRuleId = 'duplicate-case-label';
+  AssignToPropertyMemberRuleId = 'assign-to-property-member';
 
 type
   TEmptyStatementRule = class(TInterfacedObject, IRule)
@@ -150,6 +162,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TAssignToPropertyMemberRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -169,6 +187,7 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Editing.UsesClause,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Options;
 
@@ -2349,6 +2368,188 @@ begin
   end;
 end;
 
+{ TAssignToPropertyMemberRule }
+
+function TAssignToPropertyMemberRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(AssignToPropertyMemberRuleId, TRuleSeverity.Error,
+    'Zuweisung an ein Feld eines Property-Records');
+end;
+
+procedure TAssignToPropertyMemberRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+const
+  // Anweisungen, die in einer Folge stehen: Dort passen drei Zeilen statt einer.
+  SequenceParents = [TSyntaxKind.Block, TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock,
+    TSyntaxKind.RepeatStatement];
+var
+  Resolver: TNameResolver;
+  FileName: string;
+  Tokens: TTokens;
+  Lines: TArray<string>;
+  LineBreak: string;
+
+  function NodeText(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  function EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;
+  begin
+    Result := ANode.Parent;
+    while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
+      Result := Result.Parent;
+  end;
+
+  /// <summary>Über eine lokale Variable zuweisen und zurückschreiben: R := X.P; R.F := W; X.P := R.</summary>
+  function CopyFix(AStatement, AReceiver: TSyntaxNode; const AType: TResolvedSymbol;
+    out AFix: TRuleFix): Boolean;
+  var
+    Routine: TSyntaxNode;
+    Name, TypeName, Indent, Receiver, NewText: string;
+    UsesEdit: TTextEdit;
+    Edits: TArray<TTextEdit>;
+  begin
+    Result := False;
+    Routine := EnclosingRoutine(AStatement);
+    if (Routine = nil) or (AStatement.Parent = nil) or not (AStatement.Parent.Kind in SequenceParents) or
+      (AStatement.StartPos.Line <> AStatement.EndPos.Line) or (AStatement.StartPos.Line > High(Lines)) then
+      Exit;
+    TypeName := AType.Name;
+    Name := TypeName;
+    if (Length(Name) > 1) and CharInSet(Name[1], ['T', 't']) then
+      Name := Copy(Name, 2, MaxInt);
+    Name := TRoutineBody.UniqueName(Tokens, UpperCase(Copy(Name, 1, 1)));
+    Indent := TTextLines.IndentOf(Lines[AStatement.StartPos.Line]);
+    Receiver := NodeText(AReceiver);
+    NewText := Name + ' := ' + Receiver + ';' + LineBreak + Indent + Name +
+      Copy(AContext.Text, AReceiver.EndOffset + 1, AStatement.EndOffset - AReceiver.EndOffset) + ';' + LineBreak +
+      Indent + Receiver + ' := ' + Name;
+    Edits := [TRoutineBody.AddVariable(AContext.Text, Routine, Name, TypeName, AContext.Formatting),
+      TTextEdit.Create(TTextRange.Create(AStatement.StartPos, AStatement.EndPos), NewText)];
+    // Der Typ stammt oft aus einer Unit, die die Datei nicht einbindet (TRect aus System.Types).
+    if (AType.UnitName <> '') and not SameText(AType.UnitName, 'System') and
+      not SameText(AType.UnitName, AContext.UnitName) and
+      not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(Tokens), AType.UnitName, AContext.Namespaces) then
+    begin
+      if not TUsesClauses.AddUnit(Tokens, AStatement.StartOffset, AType.UnitName, LineBreak, UsesEdit) then
+        Exit;
+      Edits := Edits + [UsesEdit];
+    end;
+    AFix := TRuleFix.Create(Format('Über %s zuweisen und zurückschreiben', [Name]), Edits);
+    Result := True;
+  end;
+
+  /// <summary>Schreibt die Zuweisung an ATarget (ein Feld hinter dem Punkt) in eine Kopie?</summary>
+  procedure CheckMember(AStatement, ATarget: TSyntaxNode);
+  var
+    Receiver: TSyntaxNode;
+    Symbol, TypeInfo: TResolvedSymbol;
+    TypeFound, ReadsField: Boolean;
+    Name: string;
+    Fix: TRuleFix;
+    Fixes: TArray<TRuleFix>;
+  begin
+    if (ATarget.Kind <> TSyntaxKind.MemberAccess) or (ATarget.ChildCount = 0) then
+      Exit;
+    Receiver := ATarget[0];
+    if not (Receiver.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
+      TSyntaxKind.Call]) then
+      Exit;
+    if not Resolver.NodeType(AContext.Tree, FileName, Receiver, Symbol, TypeInfo, TypeFound) or not TypeFound or
+      (TypeInfo.SymbolKind <> TIndexSymbolKind.RecordType) or Symbol.IsType then
+      Exit;
+    Name := Symbol.Name;
+    if Receiver.Kind = TSyntaxKind.IndexAccess then
+      Name := NodeText(Receiver);
+    Fixes := nil;
+    case Symbol.SymbolKind of
+      TIndexSymbolKind.Property_:
+        begin
+          // Liest die Property ein Feld, schreibt Delphi in das Feld; weiter oben kann es wieder eine Kopie geben.
+          if (Symbol.MaxArgs = 0) and (Receiver.Kind <> TSyntaxKind.IndexAccess) then
+          begin
+            if not Resolver.PropertyReadsField(Symbol, ReadsField) then
+              Exit;
+            if ReadsField then
+            begin
+              CheckMember(AStatement, Receiver);
+              Exit;
+            end;
+          end;
+          if ContainsText(' ' + Symbol.Signature.Replace(';', ' ') + ' ', ' write ') and
+            CopyFix(AStatement, Receiver, TypeInfo, Fix) then
+            Fixes := [Fix];
+        end;
+      TIndexSymbolKind.Method, TIndexSymbolKind.Routine:
+        // Ohne Ergebnistyp ist es kein Wert; das meldet der Compiler anders.
+        if Symbol.TypeName = '' then
+          Exit;
+      TIndexSymbolKind.Field, TIndexSymbolKind.Variable:
+        begin
+          // Feld eines Records in einem Feld: weiter zum Empfänger.
+          if Receiver.Kind = TSyntaxKind.MemberAccess then
+            CheckMember(AStatement, Receiver);
+          Exit;
+        end;
+    else
+      Exit;
+    end;
+    AReport.Add(TTextRange.Create(ATarget.StartPos, ATarget.EndPos), Format('%s liefert eine Kopie; die ' +
+      'Zuweisung an %s hat keine Wirkung (wie E2064).', [Name, ATarget.Name]), TRuleConfidence.High, Fixes);
+  end;
+
+  procedure CheckConstant(ATarget: TSyntaxNode);
+  var
+    Symbol, TypeInfo: TResolvedSymbol;
+    TypeFound: Boolean;
+  begin
+    // Typisierte Konstanten sind mit {$J+} beschreibbar; untypisierte nie.
+    if Resolver.NodeType(AContext.Tree, FileName, ATarget, Symbol, TypeInfo, TypeFound) and
+      (Symbol.SymbolKind = TIndexSymbolKind.Constant) and (Symbol.TypeName = '') then
+      AReport.Add(TTextRange.Create(ATarget.StartPos, ATarget.EndPos), Format('%s ist eine Konstante; ihr lässt ' +
+        'sich nichts zuweisen (wie E2064).', [Symbol.Name]), TRuleConfidence.High);
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount > 0) then
+    begin
+      if ANode[0].Kind = TSyntaxKind.Identifier then
+        CheckConstant(ANode[0])
+      else
+        CheckMember(ANode, ANode[0]);
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  FileName := AContext.FileName;
+  if FileName = '' then
+    FileName := AContext.RelativePath;
+  if FileName = '' then
+    FileName := AContext.UnitName + '.pas';
+  Tokens := AContext.Tree.Tokens;
+  Lines := TTextLines.SplitLines(AContext.Text);
+  LineBreak := TTextLines.LineBreakOf(AContext.Text);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  try
+    Resolver.Namespaces := AContext.Namespaces;
+    Resolver.PinTree(AContext.Tree, FileName);
+    try
+      Visit(AContext.Tree.Root);
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TEmptyStatementRule.Create);
@@ -2361,6 +2562,7 @@ begin
   ARegistry.Register(TTransactionWithoutRollbackRule.Create);
   ARegistry.Register(TComparisonAsStatementRule.Create);
   ARegistry.Register(TDuplicateCaseLabelRule.Create);
+  ARegistry.Register(TAssignToPropertyMemberRule.Create);
 end;
 
 end.

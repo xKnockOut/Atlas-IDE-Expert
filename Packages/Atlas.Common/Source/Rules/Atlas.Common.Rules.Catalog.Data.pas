@@ -2285,6 +2285,20 @@ begin
     '        "E2461",' + #10 +
     '        "E2562"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "assign-to-property-member",' + #10 +
+    '      "name": "Assignment to a field of a property record",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Assignment to a field of a record that a property with a getter, a default or array property or a function result only delivers as a copy (like E2064): the assignment has no effe' + 'ct. Assignments to untyped constants are reported as well. Types come from name resolution; the rule only reports when the record type is known for sure. A property that reads a field directly lets De' + 'lphi write into that field and stays silent. Quick fix for a property with write: assign through a local variable and write it back; the variable is declared in the routine and the unit of its type is' + ' added to uses.",' + #10 +
+    '      "bad": "Rahmen.BoundsRect.Left := 0;",' + #10 +
+    '      "good": "R := Rahmen.BoundsRect;\nR.Left := 0;\nRahmen.BoundsRect := R;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2064",' + #10 +
+    '        "E2453"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3445,6 +3459,11 @@ begin
     '      "id": "property-accessor-invalid",' + #10 +
     '      "name": "Getter oder Setter einer Property ungültig",' + #10 +
     '      "description": "Der Name hinter read oder write einer Property passt nicht: Er ist weder in der Klasse noch in ihren Vorfahren deklariert oder ist eine Property (wie E2168); Getter oder Setter h' + 'aben die falsche Art, Parameter oder Typen (wie E2234); der Setter nimmt einen var- oder out-Parameter (wie E2282); die Zugriffsmethode ist überladen (wie E2271); eine Klassen-Property nutzt ein Insta' + 'nzmitglied oder eine Klassenmethode ohne static (wie E2355), eine Instanz-Property ein Klassenmitglied (wie E2356); eine Array-Property oder eine Property mit index nutzt ein Feld (wie E2174); ein Fel' + 'dselektor geht über ein Feld, das kein Record ist (wie E2459), nennt ein Mitglied, das kein Feld ist (wie E2461), oder ein Feld, das dem Record fehlt (wie E2562). Namen sucht die Regel in der Datei un' + 'd für Vorfahren im Symbolindex; sie bleibt still, wenn die Kette der Vorfahren abbricht, der Name nur in einem inaktiven Zweig steht, die Klasse ihn nicht sieht oder Include-Dateien einbindet. Typen v' + 'ergleicht sie nur, wenn beide eingebaut oder als eigener Typ deklariert sind. Korrektur für ein fehlendes F<Name>, Get<Name> oder Set<Name>: anlegen (wie die Vervollständigung hinter read/write, compl' + 'etion.accessorSection)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "assign-to-property-member",' + #10 +
+    '      "name": "Zuweisung an ein Feld eines Property-Records",' + #10 +
+    '      "description": "Zuweisung an ein Feld eines Records, den eine Property mit Getter, eine Default- oder Array-Property oder ein Funktionsergebnis nur als Kopie liefert (wie E2064): Die Zuweisung h' + 'at keine Wirkung. Zuweisungen an untypisierte Konstanten meldet die Regel ebenso. Typen kommen aus der Namensauflösung; gemeldet wird nur bei sicher bekanntem Record-Typ. Liest die Property direkt ein' + ' Feld, schreibt Delphi in dieses Feld, und die Regel bleibt still. Korrektur bei einer Property mit write: über eine lokale Variable zuweisen und zurückschreiben; die Variable wird in der Routine dekl' + 'ariert, die Unit ihres Typs in uses ergänzt."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

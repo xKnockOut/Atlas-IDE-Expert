@@ -2265,6 +2265,20 @@
         "E2461",
         "E2562"
       ]
+    },
+    {
+      "id": "assign-to-property-member",
+      "name": "Assignment to a field of a property record",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "Assignment to a field of a record that a property with a getter, a default or array property or a function result only delivers as a copy (like E2064): the assignment has no effect. Assignments to untyped constants are reported as well. Types come from name resolution; the rule only reports when the record type is known for sure. A property that reads a field directly lets Delphi write into that field and stays silent. Quick fix for a property with write: assign through a local variable and write it back; the variable is declared in the routine and the unit of its type is added to uses.",
+      "bad": "Rahmen.BoundsRect.Left := 0;",
+      "good": "R := Rahmen.BoundsRect;\nR.Left := 0;\nRahmen.BoundsRect := R;",
+      "compilerCodes": [
+        "E2064",
+        "E2453"
+      ]
     }
   ]
 }
