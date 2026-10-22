@@ -23,6 +23,8 @@ type
     [Test]
     procedure ResolvesLocalsParametersAndResult;
     [Test]
+    procedure NodeTypeAndPropertyReadsField;
+    [Test]
     procedure ResolvesInlineVarsOnlyAfterDeclaration;
     [Test]
     procedure ResolvesMembersInMethodsAndSelf;
@@ -79,6 +81,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
@@ -871,6 +874,48 @@ begin
   Assert.AreEqual('TBasis', Ancestor.Name);
   Assert.IsTrue(FResolver.DeclaredMember(Kind, 'Melde', Member));
   Assert.AreEqual('TBasis.Melde', Member.QualifiedName);
+end;
+
+procedure TNameResolverTests.NodeTypeAndPropertyReadsField;
+const
+  Text = 'unit Haupt;'#10'interface'#10'type'#10'  TPunkt = record'#10'    X: Integer;'#10'  end;'#10 +
+    '  TFigur = class'#10'  private'#10'    FPos: TPunkt;'#10'    function GetMitte: TPunkt;'#10'  public'#10 +
+    '    property Pos: TPunkt read FPos;'#10'    property Mitte: TPunkt read GetMitte;'#10'  end;'#10 +
+    'implementation'#10'function TFigur.GetMitte: TPunkt;'#10'begin'#10'end;'#10 +
+    'procedure P(F: TFigur);'#10'begin'#10'  F.Pos.X := 1;'#10'  F.Mitte.X := 2;'#10'end;'#10'end.';
+var
+  Tree: TSyntaxTree;
+  Receivers: TArray<TSyntaxNode>;
+  Symbol, TypeInfo: TResolvedSymbol;
+  TypeFound, ReadsField: Boolean;
+begin
+  Tree := TPascalParser.Parse(Text);
+  try
+    Receivers := nil;
+    Tree.Root.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        if (ANode.Kind = TSyntaxKind.MemberAccess) and MatchText(ANode.Name, ['Pos', 'Mitte']) then
+          Receivers := Receivers + [ANode];
+        Result := True;
+      end);
+    Assert.AreEqual(2, Integer(Length(Receivers)));
+    // #1005: Deklaration und Typ eines Teilausdrucks, und ob die Property ein Feld liest.
+    Assert.IsTrue(FResolver.NodeType(Tree, 'C:\P\Haupt.pas', Receivers[0], Symbol, TypeInfo, TypeFound));
+    Assert.AreEqual('Pos', Symbol.Name);
+    Assert.IsTrue(TypeFound);
+    Assert.AreEqual('TPunkt', TypeInfo.Name);
+    Assert.IsTrue(TypeInfo.SymbolKind = TIndexSymbolKind.RecordType);
+    Assert.IsTrue(FResolver.PropertyReadsField(Symbol, ReadsField));
+    Assert.IsTrue(ReadsField);
+    Assert.IsTrue(FResolver.NodeType(Tree, 'C:\P\Haupt.pas', Receivers[1], Symbol, TypeInfo, TypeFound));
+    Assert.AreEqual('Mitte', Symbol.Name);
+    Assert.IsTrue(FResolver.PropertyReadsField(Symbol, ReadsField));
+    Assert.IsFalse(ReadsField);
+    Assert.IsFalse(FResolver.PropertyReadsField(TypeInfo, ReadsField));
+  finally
+    Tree.Free;
+  end;
 end;
 
 initialization

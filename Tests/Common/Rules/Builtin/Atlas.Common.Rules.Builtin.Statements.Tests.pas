@@ -17,6 +17,9 @@
 // duplicate-case-label (#983): Beispiel mit Korrektur (Zweig bzw. ein Wert),
 // Bereiche, Konstanten, Zeichen, Aufzählungsbereiche, varianter Record, stille
 // Fälle (unbekannte Namen, Aufzählung mit eigenen Werten), Abschalten.
+// assign-to-property-member (#1005): Beispiel mit Korrektur samt uses,
+// Default-Property, Funktionsergebnis, Konstante, stille Fälle (Feld hinter
+// der Property, Record-Variable, Klassen), Abschalten.
 
 interface
 
@@ -127,10 +130,26 @@ type
     procedure DuplicateCaseLabelOffAndExclude;
   end;
 
+  [TestFixture]
+  TAssignToPropertyMemberTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure DefaultPropertyAndFunctionResult;
+    [Test]
+    procedure ConstantIsReported;
+    [Test]
+    procedure WritableTargetsAreSilent;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
 implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Pascal.Contract,
@@ -1082,7 +1101,169 @@ begin
     '{"rules": {"duplicate-case-label": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Vorgaenge.pas'))));
 end;
 
+{ TAssignToPropertyMemberTests }
+
+/// <summary>Index mit TRect, TPoint, TFont und TControl aus eigenen Units wie in der VCL.</summary>
+function ControlIndex: ISymbolIndex;
+begin
+  Result := TSymbolIndex.Create;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit System;'#10'interface'#10'type'#10'  TObject = class'#10 +
+    '  end;'#10'implementation'#10'end.', 'C:\BDS\source\System.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText('unit System.Types;'#10'interface'#10'type'#10 +
+    '  TPoint = record'#10'    X, Y: Integer;'#10'  end;'#10'  TRect = record'#10 +
+    '    Left, Top, Right, Bottom: Integer;'#10'    TopLeft: TPoint;'#10'  end;'#10'implementation'#10'end.',
+    'C:\BDS\source\System.Types.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText('unit Vcl.Controls;'#10'interface'#10'uses'#10'  System.Types;'#10 +
+    'type'#10'  TFont = class'#10'  public'#10'    Size: Integer;'#10'  end;'#10'  TControl = class'#10'  private'#10 +
+    '    FOrigin: TPoint;'#10'    FFont: TFont;'#10'    function GetBoundsRect: TRect;'#10 +
+    '    procedure SetBoundsRect(const Value: TRect);'#10'    function GetClientRect: TRect;'#10'  public'#10 +
+    '    property BoundsRect: TRect read GetBoundsRect write SetBoundsRect;'#10 +
+    '    property ClientRect: TRect read GetClientRect;'#10'    property Origin: TPoint read FOrigin write FOrigin;'#10 +
+    '    property Font: TFont read FFont;'#10'  end;'#10'  TRects = class'#10'  private'#10 +
+    '    function GetItem(Index: Integer): TRect;'#10'    procedure SetItem(Index: Integer; const Value: TRect);'#10 +
+    '  public'#10'    property Items[Index: Integer]: TRect read GetItem write SetItem; default;'#10'  end;'#10 +
+    'function Mitte(const R: TRect): TPoint;'#10'implementation'#10'function Mitte(const R: TRect): TPoint;'#10 +
+    'begin'#10'end;'#10'end.', 'C:\BDS\source\Vcl.Controls.pas', nil));
+end;
+
+function Rahmen(const AStatements: string): string;
+begin
+  Result := 'unit Rahmen;'#10'interface'#10'uses'#10'  Vcl.Controls;'#10'implementation'#10 +
+    'procedure Anordnen(Rahmen: TControl; Liste: TRects);'#10'begin'#10 + AStatements + 'end;'#10'end.';
+end;
+
+function AssignFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TAssignToPropertyMemberRule.Create, ASource, ControlIndex, '', 'Rahmen.pas');
+end;
+
+function AssignFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TAssignToPropertyMemberRule.Create, ASource, ControlIndex, AConfig, APath);
+end;
+
+/// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
+function OffsetIn(const AText: string; const APosition: TTextPosition): Integer;
+var
+  Line, Index: Integer;
+begin
+  Line := 0;
+  Index := 1;
+  while (Line < APosition.Line) and (Index <= Length(AText)) do
+  begin
+    if AText[Index] = #10 then
+      Inc(Line);
+    Inc(Index);
+  end;
+  Result := Index + APosition.Character;
+end;
+
+/// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an (nach Position sortiert).</summary>
+function ApplyAll(const AText: string; const AFix: TRuleFix): string;
+var
+  Edits: TArray<TRuleEdit>;
+  Index, Inner, Start, Stop: Integer;
+  Swap: TRuleEdit;
+begin
+  Edits := Copy(AFix.Edits);
+  for Index := 0 to High(Edits) do
+    for Inner := Index + 1 to High(Edits) do
+      if OffsetIn(AText, Edits[Inner].Range.StartPos) > OffsetIn(AText, Edits[Index].Range.StartPos) then
+      begin
+        Swap := Edits[Index];
+        Edits[Index] := Edits[Inner];
+        Edits[Inner] := Swap;
+      end;
+  Result := AText;
+  for Index := 0 to High(Edits) do
+  begin
+    Start := OffsetIn(Result, Edits[Index].Range.StartPos);
+    Stop := OffsetIn(Result, Edits[Index].Range.EndPos);
+    Result := Copy(Result, 1, Start - 1) + Edits[Index].NewText + Copy(Result, Stop, MaxInt);
+  end;
+end;
+
+procedure TAssignToPropertyMemberTests.IssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Rahmen('  Rahmen.BoundsRect.Left := 0;'#10);
+  Found := AssignFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('BoundsRect liefert eine Kopie; die Zuweisung an Left hat keine Wirkung (wie E2064).',
+    Found[0].Message);
+  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('Über R zuweisen und zurückschreiben', Found[0].Fixes[0].Title);
+  Fixed := ApplyAll(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('  R := Rahmen.BoundsRect;'#10'  R.Left := 0;'#10'  Rahmen.BoundsRect := R;'#10, Fixed) > 0, Fixed);
+  Assert.IsTrue(Pos('R: TRect;', Fixed) > 0, Fixed);
+  Assert.IsTrue(Pos('System.Types', Fixed) > 0, Fixed);
+  Assert.AreEqual(0, Integer(Length(AssignFindings(Fixed))), Fixed);
+  // Ohne write keine Korrektur.
+  Found := AssignFindings(Rahmen('  Rahmen.ClientRect.Top := 0;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  // Feld eines Records im Record: die Kopie liefert weiter BoundsRect.
+  Found := AssignFindings(Rahmen('  Rahmen.BoundsRect.TopLeft.X := 0;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('BoundsRect liefert eine Kopie; die Zuweisung an TopLeft hat keine Wirkung (wie E2064).',
+    Found[0].Message);
+end;
+
+procedure TAssignToPropertyMemberTests.DefaultPropertyAndFunctionResult;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := AssignFindings(Rahmen('  Liste[0].Left := 1;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Liste[0] liefert eine Kopie; die Zuweisung an Left hat keine Wirkung (wie E2064).',
+    Found[0].Message);
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Found := AssignFindings(Rahmen('  Mitte(Rahmen.BoundsRect).X := 1;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Mitte liefert eine Kopie; die Zuweisung an X hat keine Wirkung (wie E2064).', Found[0].Message);
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+end;
+
+procedure TAssignToPropertyMemberTests.ConstantIsReported;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := AssignFindings('unit Rahmen;'#10'interface'#10'implementation'#10'const'#10'  Grenze = 10;'#10 +
+    '  Start: Integer = 1;'#10'procedure P;'#10'begin'#10'  Grenze := 1;'#10'  Start := 2;'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Grenze ist eine Konstante; ihr lässt sich nichts zuweisen (wie E2064).', Found[0].Message);
+end;
+
+procedure TAssignToPropertyMemberTests.WritableTargetsAreSilent;
+var
+  Source: string;
+begin
+  // Property mit Feld, Record-Variable, Klasse hinter der Property, ganze Property, unbekannter Typ.
+  Source := Rahmen('  Rahmen.Origin.X := 1;'#10'  Rahmen.Font.Size := 9;'#10'  Rahmen.BoundsRect := Rahmen.ClientRect;'#10 +
+    '  Liste[0] := Rahmen.ClientRect;'#10'  Unbekannt.Wert.X := 1;'#10).Replace('begin'#10,
+    'var'#10'  R: TRect;'#10'begin'#10'  R.Left := 1;'#10'  R.TopLeft.X := 2;'#10);
+  Assert.AreEqual(0, Integer(Length(AssignFindings(Source))), Source);
+end;
+
+procedure TAssignToPropertyMemberTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Rahmen('  Rahmen.BoundsRect.Left := 0;'#10);
+  Assert.AreEqual(1, Integer(Length(AssignFindings(Source, '', 'Source/Rahmen.pas'))));
+  Assert.AreEqual(0, Integer(Length(AssignFindings(Source, '{"rules": {"assign-to-property-member": "off"}}',
+    'Source/Rahmen.pas'))));
+  Assert.AreEqual(0, Integer(Length(AssignFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/Rahmen.pas'))));
+  Assert.AreEqual(0, Integer(Length(AssignFindings(Source,
+    '{"rules": {"assign-to-property-member": {"exclude": ["Source/*.pas"]}}}', 'Source/Rahmen.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TStatementRulesTests);
+  TDUnitX.RegisterTestFixture(TAssignToPropertyMemberTests);
 
 end.

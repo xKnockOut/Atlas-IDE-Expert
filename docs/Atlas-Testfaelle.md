@@ -4090,3 +4090,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | ZG9 | Geerbte Felder und Methoden aus VCL-Vorfahren (`TCustomControl`), Property ohne Typ (`property Caption;`), Klasse mit `{$I …}`, Accessor nur in `{$IFDEF}` | Keine Meldung |
 | ZG10 | `"property-accessor-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
 | ZG11 | Abgleich mit Delphi: ZG1, ZG3 bis ZG8 übersetzen | dcc meldet an denselben Stellen E2168, E2234, E2282, E2271, E2355, E2356, E2174, E2459, E2461 bzw. E2562; für ZG9 nichts. Abweichende Codes im Issue nachtragen |
+
+## Zuweisung an ein Feld eines Property-Records (#1005)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| XK1 | Das Beispiel aus #1005: `Rahmen.BoundsRect.Left := 0;` in einer Routine mit `Rahmen: TControl` | Fehler `assign-to-property-member` an `Rahmen.BoundsRect.Left`: „BoundsRect liefert eine Kopie; die Zuweisung an Left hat keine Wirkung (wie E2064).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| XK2 | Schnellkorrektur „Über R zuweisen und zurückschreiben“, danach Strg+Z | `var R: TRect;` in der Routine, drei Zeilen `R := Rahmen.BoundsRect; R.Left := 0; Rahmen.BoundsRect := R;`, fehlt `System.Types` in uses, wird es ergänzt; kompiliert; ein Undo-Schritt nimmt alles zurück |
+| XK3 | `Liste[I].Wert := 1;` mit `Liste: TList<TWert>` (Record) | Meldung „Liste[I] liefert eine Kopie …“, Korrektur über eine Variable W |
+| XK4 | `Mitte(R).X := 1;` mit einer Funktion, die einen Record liefert | Meldung „Mitte liefert eine Kopie …“ ohne Korrektur |
+| XK5 | `const Grenze = 10;` und `Grenze := 1;` | „Grenze ist eine Konstante; ihr lässt sich nichts zuweisen (wie E2064).“; typisierte Konstante `Start: Integer = 1` still |
+| XK6 | `Rahmen.Font.Size := 9`, `Rahmen.BoundsRect := R`, Record-Variable `R.Left := 1`, Property mit `read FFeld` | Keine Meldung |
+| XK7 | `"assign-to-property-member": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| XK8 | Abgleich mit Delphi: XK1, XK3 bis XK5 übersetzen | dcc meldet E2064 an denselben Stellen, für XK6 nichts; kommt E2453 vor, den Fall im Issue nachtragen |

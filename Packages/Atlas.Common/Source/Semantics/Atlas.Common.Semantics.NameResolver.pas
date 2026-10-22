@@ -315,6 +315,14 @@ type
     /// <summary>Passt der Zieltyp ATarget eines Helpers (ggf. mit Unit-Präfix) zu AType? string und
     /// UnicodeString gelten als gleich.</summary>
     class function HelperTargets(const ATarget: string; const AType: TResolvedSymbol): Boolean; static;
+    /// <summary>Deklaration und Typ des Ausdrucks ANode aus ATree (#1005): Variable, Feld, Property (bei Liste[i]
+    /// die indizierte bzw. Default-Property), Funktion eines Aufrufs. False, wenn der Ausdruck nicht sicher
+    /// auflösbar ist; ATypeFound sagt, ob der Typ bekannt ist (Aliase verfolgt).</summary>
+    function NodeType(ATree: TSyntaxTree; const AFileName: string; ANode: TSyntaxNode;
+      out ASymbol, AType: TResolvedSymbol; out ATypeFound: Boolean): Boolean;
+    /// <summary>Liest die Property AProperty direkt aus einem Feld (read FFeld, read FFeld.X)? False, wenn das
+    /// nicht sicher feststeht (kein read, Typ oder Mitglied unbekannt); sonst AReadsField (#1005).</summary>
+    function PropertyReadsField(const AProperty: TResolvedSymbol; out AReadsField: Boolean): Boolean;
     /// <summary>Kette A.B als Wert und ihr Typ (Aliase verfolgt), z. B. für Postfix-Vorlagen (#188).
     /// False, wenn die Kette nicht auflösbar ist; ATypeFound sagt, ob der Typ bekannt ist.</summary>
     function ChainType(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
@@ -2772,6 +2780,65 @@ begin
   Result := AOwner.Found;
   if Result and (AOwner.Kind <> TResolvedKind.UnitName) then
     ATypeFound := TypeOf(AOwner, AType);
+end;
+
+function TNameResolver.NodeType(ATree: TSyntaxTree; const AFileName: string; ANode: TSyntaxNode;
+  out ASymbol, AType: TResolvedSymbol; out ATypeFound: Boolean): Boolean;
+begin
+  ASymbol := Default(TResolvedSymbol);
+  AType := Default(TResolvedSymbol);
+  ATypeFound := False;
+  Result := False;
+  if ANode = nil then
+    Exit;
+  Prepare(ATree, AFileName, ANode.StartOffset);
+  Result := ExprSymbol(ANode, ASymbol);
+  if Result and (ASymbol.Kind <> TResolvedKind.UnitName) then
+    ATypeFound := TypeOf(ASymbol, AType);
+end;
+
+function TNameResolver.PropertyReadsField(const AProperty: TResolvedSymbol; out AReadsField: Boolean): Boolean;
+var
+  Words: TArray<string>;
+  Index: Integer;
+  Name: string;
+  FromUnit: TUnitIndex;
+  Owner, Member: TResolvedSymbol;
+  Position: Integer;
+  Symbol: TIndexSymbol;
+begin
+  AReadsField := False;
+  Result := False;
+  if (AProperty.SymbolKind <> TIndexSymbolKind.Property_) or (AProperty.Container = '') then
+    Exit;
+  // "property Rect: TRect read FRect write SetRect": das Wort hinter read, bei read FPunkt.X das Feld FPunkt.
+  Name := '';
+  Words := AProperty.Signature.Replace(';', ' ').Split([' '], TStringSplitOptions.ExcludeEmpty);
+  for Index := 0 to High(Words) - 1 do
+    if SameText(Words[Index], 'read') then
+    begin
+      Name := Words[Index + 1];
+      Break;
+    end;
+  if Pos('.', Name) > 0 then
+    Name := Copy(Name, 1, Pos('.', Name) - 1);
+  if (Name = '') or not UnitOf(AProperty, FromUnit) then
+    Exit;
+  // Zuerst im Typ selbst, auch private: Der Zugriff steht meist privat neben der Property.
+  for Position in FromUnit.SymbolsNamed(Name) do
+  begin
+    Symbol := FromUnit.Symbols[Position];
+    if SameText(Symbol.Container, AProperty.Container) and (Symbol.Kind in [TIndexSymbolKind.Field,
+      TIndexSymbolKind.Method]) then
+    begin
+      AReadsField := Symbol.Kind = TIndexSymbolKind.Field;
+      Exit(True);
+    end;
+  end;
+  if not ResolveTypeName(AProperty.Container, FromUnit, True, Owner) or not FindMember(Owner, Name, Member) then
+    Exit;
+  AReadsField := Member.SymbolKind = TIndexSymbolKind.Field;
+  Result := True;
 end;
 
 procedure TNameResolver.PinTree(ATree: TSyntaxTree; const AFileName: string);

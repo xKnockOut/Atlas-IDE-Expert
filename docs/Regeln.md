@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 13 |
+| [Compiler vorab](#gruppe-compiler) | 14 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -144,6 +144,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`override-target-missing`](#override-target-missing) | override ohne passende virtuelle Methode | Bug | Fehler |
 | [`abstract-class-instantiated`](#abstract-class-instantiated) | Instanz einer Klasse mit abstrakten Methoden | Bug | Warnung |
 | [`property-accessor-invalid`](#property-accessor-invalid) | Getter oder Setter einer Property ungültig | Bug | Fehler |
+| [`assign-to-property-member`](#assign-to-property-member) | Zuweisung an ein Feld eines Property-Records | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4494,4 +4495,27 @@ private
 public
   property Name: string read FName write SetName;
 end;
+```
+
+<a id="assign-to-property-member"></a>
+### assign-to-property-member
+
+**Zuweisung an ein Feld eines Property-Records** · Bug · Fehler · Gruppe Compiler vorab
+
+Zuweisung an ein Feld eines Records, den eine Property mit Getter, eine Default- oder Array-Property oder ein Funktionsergebnis nur als Kopie liefert (wie E2064): Die Zuweisung hat keine Wirkung. Zuweisungen an untypisierte Konstanten meldet die Regel ebenso. Typen kommen aus der Namensauflösung; gemeldet wird nur bei sicher bekanntem Record-Typ. Liest die Property direkt ein Feld, schreibt Delphi in dieses Feld, und die Regel bleibt still. Korrektur bei einer Property mit write: über eine lokale Variable zuweisen und zurückschreiben; die Variable wird in der Routine deklariert, die Unit ihres Typs in uses ergänzt.
+
+Entspricht der Compilermeldung `E2064`, `E2453`.
+
+Mit Treffer:
+
+```pascal
+Rahmen.BoundsRect.Left := 0;
+```
+
+Richtig:
+
+```pascal
+R := Rahmen.BoundsRect;
+R.Left := 0;
+Rahmen.BoundsRect := R;
 ```
