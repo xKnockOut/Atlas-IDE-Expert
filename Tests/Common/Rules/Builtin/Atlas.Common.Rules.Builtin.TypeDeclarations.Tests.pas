@@ -1,0 +1,222 @@
+﻿unit Atlas.Common.Rules.Builtin.TypeDeclarations.Tests;
+
+// Tests der Regeln zur Deklaration von Klassen- und Interface-Mitgliedern:
+// message-method-invalid (#1070): Beispiel aus dem Issue (E2140), gleiche
+// Nummern über Werte und Ausdrücke, sich ausschließende {$IF}-Zweige,
+// Parameterlisten mit Korrektur (E2138), Nummern unter 1 (E2139) und die
+// Einstellungen.
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TMessageMethodInvalidTests = class
+  public
+    [Test]
+    procedure IssueExampleDuplicateNumber;
+    [Test]
+    procedure DuplicatesByValueAndText;
+    [Test]
+    procedure ExclusiveBranchesAreSilent;
+    [Test]
+    procedure ParameterListWithFixes;
+    [Test]
+    procedure NumberBelowOne;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Builtin.TypeDeclarations,
+  Atlas.Tests.RuleAssert;
+
+/// <summary>Unit Messages mit einigen Nachrichtennummern und TMessage.</summary>
+function MessagesIndex: ISymbolIndex;
+begin
+  Result := TSymbolIndex.Create;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit Messages;'#10'interface'#10'const'#10'  WM_NULL = $0000;'#10 +
+    '  WM_MOVE = $0003;'#10'  WM_SIZE = $0005;'#10'  WM_USER = $0400;'#10'type'#10'  TMessage = record'#10 +
+    '    Msg: Cardinal;'#10'  end;'#10'  TWMSize = TMessage;'#10'implementation'#10'end.',
+    'C:\BDS\source\Messages.pas', nil));
+end;
+
+function Findings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TMessageMethodInvalidRule.Create, ASource, MessagesIndex, '', 'Fenster.pas');
+end;
+
+function Findings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TMessageMethodInvalidRule.Create, ASource, MessagesIndex, AConfig, APath);
+end;
+
+/// <summary>Unit Fenster mit TFenster: AMembers im private-Abschnitt, ABodies im implementation-Teil.</summary>
+function Fenster(const AMembers, ABodies: string): string;
+begin
+  Result := 'unit Fenster;'#10'interface'#10'uses'#10'  Messages;'#10'type'#10'  TFenster = class'#10'  private'#10 +
+    AMembers + '  end;'#10'implementation'#10 + ABodies + 'end.';
+end;
+
+function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
+var
+  Line, Index: Integer;
+begin
+  Index := 1;
+  for Line := 1 to APosition.Line do
+  begin
+    while (Index <= Length(AText)) and (AText[Index] <> #10) do
+      Inc(Index);
+    Inc(Index);
+  end;
+  Result := Index + APosition.Character;
+end;
+
+/// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an.</summary>
+function ApplyFix(const AText: string; const AFix: TRuleFix): string;
+var
+  Index, Start, Stop: Integer;
+begin
+  Result := AText;
+  for Index := High(AFix.Edits) downto 0 do
+  begin
+    Start := OffsetOf(Result, AFix.Edits[Index].Range.StartPos);
+    Stop := OffsetOf(Result, AFix.Edits[Index].Range.EndPos);
+    Result := Copy(Result, 1, Start - 1) + AFix.Edits[Index].NewText + Copy(Result, Stop, MaxInt);
+  end;
+end;
+
+{ TMessageMethodInvalidTests }
+
+procedure TMessageMethodInvalidTests.IssueExampleDuplicateNumber;
+var
+  Found: TArray<TRuleFinding>;
+  Line: string;
+begin
+  Line := '    procedure WMGroesse(var Msg: TWMSize); message WM_SIZE;';
+  Found := Findings(Fenster('    procedure WMSize(var Msg: TWMSize); message WM_SIZE;'#10 + Line + #10, ''));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('WM_SIZE wird schon von WMSize behandelt (wie E2140).', Found[0].Message);
+  Assert.AreEqual(Integer(Ord(TRuleSeverity.Error)), Integer(Ord(Found[0].Severity)));
+  Assert.AreEqual(8, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(Pos('WM_SIZE', Line) - 1, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(Pos('WM_SIZE', Line) + 6, Found[0].Range.EndPos.Character);
+  // Korrigierte Form: eigene Nummer.
+  Assert.AreEqual(0, Integer(Length(Findings(Fenster('    procedure WMSize(var Msg: TWMSize); message WM_SIZE;'#10 +
+    '    procedure WMMove(var Msg: TMessage); message WM_MOVE;'#10, '')))));
+end;
+
+procedure TMessageMethodInvalidTests.DuplicatesByValueAndText;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  // Gleicher Wert über eine Zahl, gleicher Ausdruck mit unbekanntem Namen.
+  Found := Findings(Fenster('    procedure A(var M: TMessage); message WM_SIZE;'#10 +
+    '    procedure B(var M: TMessage); message $0005;'#10 +
+    '    procedure C(var M: TMessage); message CM_BASE + 1;'#10 +
+    '    procedure D(var M: TMessage); message CM_BASE+1;'#10 +
+    '    procedure E(var M: TMessage); message WM_USER + 1;'#10 +
+    '    procedure F(var M: TMessage); message CM_BASE + 2;'#10, ''));
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('$0005 wird schon von A behandelt (wie E2140).', Found[0].Message);
+  Assert.AreEqual('CM_BASE+1 wird schon von C behandelt (wie E2140).', Found[1].Message);
+  // Dieselbe Nummer in zwei Klassen ist erlaubt; ebenso wie im Vorfahren (Überschreiben).
+  Assert.AreEqual(0, Integer(Length(Findings(Fenster('    procedure A(var M: TMessage); message WM_SIZE;'#10 +
+    '  end;'#10'  TKind = class(TFenster)'#10'    procedure A(var M: TMessage); message WM_SIZE;'#10, '')))));
+  // Verschachtelte Klasse zählt für sich.
+  Assert.AreEqual(0, Integer(Length(Findings(Fenster('    type'#10'      TInnen = class'#10 +
+    '        procedure A(var M: TMessage); message WM_SIZE;'#10'      end;'#10'    private'#10 +
+    '    procedure A(var M: TMessage); message WM_SIZE;'#10, '')))));
+end;
+
+procedure TMessageMethodInvalidTests.ExclusiveBranchesAreSilent;
+var
+  Members: string;
+begin
+  Members := '  {$IFDEF ALT}'#10'    procedure A(var M: TMessage); message WM_SIZE;'#10'  {$ELSE}'#10 +
+    '    procedure B(var M: TMessage); message WM_SIZE;'#10'  {$ENDIF}'#10;
+  Assert.AreEqual(0, Integer(Length(Findings(Fenster(Members, '')))));
+  // Außerhalb der Bedingung wird die zweite immer mit übersetzt.
+  Assert.AreEqual(1, Integer(Length(Findings(Fenster(Members +
+    '    procedure C(var M: TMessage); message WM_SIZE;'#10, '')))));
+end;
+
+procedure TMessageMethodInvalidTests.ParameterListWithFixes;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Fenster('    procedure WMA(Msg: TMessage); message 10;'#10 +
+    '    procedure WMB(var A, B: Integer); message 11;'#10'    procedure WMC; message 12;'#10 +
+    '    procedure WMD(const Msg: TMessage); message 13;'#10'    procedure WME(var Msg); message 14;'#10 +
+    '    function WMF(var Msg: TMessage): Integer; message 15;'#10'    procedure WMG(var Msg: TMessage); message 16;'#10,
+    'procedure TFenster.WMA(Msg: TMessage);'#10'begin'#10'end;'#10#10 +
+    'procedure TFenster.WMB(var A, B: Integer);'#10'begin'#10'end;'#10#10 +
+    'procedure TFenster.WMC;'#10'begin'#10'end;'#10#10);
+  Found := Findings(Source);
+  Assert.AreEqual(4, Integer(Length(Found)));
+  Assert.AreEqual('Die message-Methode WMA braucht genau einen var-Parameter (wie E2138).', Found[0].Message);
+  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(14, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(17, Found[0].Range.EndPos.Character);
+  Assert.AreEqual('Parameter Msg als var übergeben', Found[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('procedure WMA(var Msg: TMessage); message 10;', Fixed) > 0, Fixed);
+  Assert.IsTrue(Pos('procedure TFenster.WMA(var Msg: TMessage);', Fixed) > 0, Fixed);
+  Assert.AreEqual('Die message-Methode WMB braucht genau einen var-Parameter (wie E2138).', Found[1].Message);
+  Assert.AreEqual('Signatur (var Msg: TMessage) einsetzen', Found[1].Fixes[0].Title);
+  Fixed := ApplyFix(Fixed, Findings(Fixed)[0].Fixes[0]);
+  Assert.IsTrue(Pos('procedure WMB(var Msg: TMessage); message 11;', Fixed) > 0, Fixed);
+  Assert.IsTrue(Pos('procedure TFenster.WMB(var Msg: TMessage);', Fixed) > 0, Fixed);
+  Fixed := ApplyFix(Fixed, Findings(Fixed)[0].Fixes[0]);
+  // Der Rumpf ohne Parameterliste bleibt.
+  Assert.IsTrue(Pos('procedure WMC(var Msg: TMessage); message 12;', Fixed) > 0, Fixed);
+  Assert.IsTrue(Pos('procedure TFenster.WMC;', Fixed) > 0, Fixed);
+  Fixed := ApplyFix(Fixed, Findings(Fixed)[0].Fixes[0]);
+  Assert.IsTrue(Pos('procedure WMD(var Msg: TMessage); message 13;', Fixed) > 0, Fixed);
+  Assert.AreEqual(0, Integer(Length(Findings(Fixed))), Fixed);
+end;
+
+procedure TMessageMethodInvalidTests.NumberBelowOne;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := Findings(Fenster('    procedure A(var M: TMessage); message 0;'#10 +
+    '    procedure B(var M: TMessage); message -151;'#10'    procedure C(var M: TMessage); message WM_NULL;'#10 +
+    '    procedure D(var M: TMessage); message 151;'#10'    procedure E(var M: TMessage); message WM_USER - 1;'#10,
+    ''));
+  Assert.AreEqual(3, Integer(Length(Found)));
+  Assert.AreEqual('Die Nachrichtennummer 0 von A muss mindestens 1 sein (wie E2139).', Found[0].Message);
+  Assert.AreEqual('Die Nachrichtennummer -151 von B muss mindestens 1 sein (wie E2139).', Found[1].Message);
+  Assert.AreEqual('Die Nachrichtennummer WM_NULL von C muss mindestens 1 sein (wie E2139).', Found[2].Message);
+end;
+
+procedure TMessageMethodInvalidTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Fenster('    procedure A(var M: TMessage); message WM_SIZE;'#10 +
+    '    procedure B(var M: TMessage); message WM_SIZE;'#10, '');
+  Assert.AreEqual(1, Integer(Length(Findings(Source, '', 'Source/Fenster.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"message-method-invalid": "off"}}',
+    'Source/Fenster.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"group:compiler": "off"}}', 'Source/Fenster.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(Source,
+    '{"rules": {"message-method-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Fenster.pas'))));
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TMessageMethodInvalidTests);
+
+end.

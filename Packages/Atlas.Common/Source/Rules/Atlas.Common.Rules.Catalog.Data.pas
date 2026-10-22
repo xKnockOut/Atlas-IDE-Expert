@@ -2351,6 +2351,21 @@ begin
     '          "description": "Also report private fields that are never used (the compiler reports only methods)."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "message-method-invalid",' + #10 +
+    '      "name": "Message method declared incorrectly",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A message procedure of a class does not have exactly one var parameter (like E2138; the parameter type is not checked, an untyped var parameter is fine), its message number is le' + 'ss than 1 (like E2139), or an earlier message method of the same class already handles the same number (like E2140, usually after copying). Numbers count as equal when their values are known (numbers,' + ' constants from the index) or when the expressions are the same text. Methods in mutually exclusive {$IF} branches are not duplicates; the same number in a descendant overrides the handler and is fine' + '. Quick fix for E2138: make a single parameter var, otherwise replace the list with (var Msg: TMessage); the method body in the same file is adjusted as well.",' + #10 +
+    '      "bad": "procedure WMSize(var Msg: TWMSize); message WM_SIZE;\nprocedure WMGroesse(var Msg: TWMSize); message WM_SIZE;",' + #10 +
+    '      "good": "procedure WMSize(var Msg: TWMSize); message WM_SIZE;\nprocedure WMMove(var Msg: TWMMove); message WM_MOVE;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2138",' + #10 +
+    '        "E2139",' + #10 +
+    '        "E2140"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3537,6 +3552,11 @@ begin
     '          "description": "Auch nie verwendete private Felder melden (der Compiler meldet nur Methoden)."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "message-method-invalid",' + #10 +
+    '      "name": "message-Methode falsch deklariert",' + #10 +
+    '      "description": "Eine message-Prozedur einer Klasse hat nicht genau einen var-Parameter (wie E2138; der Typ wird nicht geprüft, ein untypisierter var-Parameter ist in Ordnung), ihre Nachrichtennu' + 'mmer ist kleiner als 1 (wie E2139) oder eine frühere message-Methode derselben Klasse behandelt schon dieselbe Nummer (wie E2140, meist nach Kopieren). Nummern gelten als gleich, wenn ihre Werte bekan' + 'nt sind (Zahlen, Konstanten aus dem Index) oder die Ausdrücke gleich lauten. Methoden in sich ausschließenden {$IF}-Zweigen sind nicht doppelt; dieselbe Nummer in einem Nachfahren überschreibt den Han' + 'dler und ist erlaubt. Korrektur für E2138: einen einzelnen Parameter zu var machen, sonst die Liste durch (var Msg: TMessage) ersetzen; der Rumpf in derselben Datei wird mit angepasst."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

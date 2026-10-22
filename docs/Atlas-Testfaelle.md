@@ -4150,3 +4150,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | UV6 | `"unused-private-member": {"includeFields": false}` | Nur noch Methoden, Konstanten und Properties |
 | UV7 | `"unused-private-member": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | UV8 | Abgleich mit Delphi: UV1 übersetzen | dcc meldet H2219 für `KonvertiereAlt` an derselben Stelle (für Felder meldet dcc nichts); für UV4 und UV5 nichts |
+
+## message-Methode falsch deklariert (#1070)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; Unit mit `uses Winapi.Messages`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MW1 | Das Beispiel aus #1070: `procedure WMSize(var Msg: TWMSize); message WM_SIZE;` und darunter `procedure WMGroesse(var Msg: TWMSize); message WM_SIZE;` | Fehler `message-method-invalid` am zweiten `WM_SIZE`: „WM_SIZE wird schon von WMSize behandelt (wie E2140).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| MW2 | Zweite Nummer als `$0005` bzw. `WM_MOVE` schreiben | Bei `$0005` dieselbe Meldung (gleicher Wert), bei `WM_MOVE` keine |
+| MW3 | Beide Methoden in `{$IFDEF X} … {$ELSE} … {$ENDIF}`; dieselbe Nummer in einem Nachfahren | Keine Meldung |
+| MW4 | `procedure WMPaint(Msg: TWMPaint); message WM_PAINT;` mit Rumpf in implementation | Fehler am Namen: „Die message-Methode WMPaint braucht genau einen var-Parameter (wie E2138).“; Korrektur „Parameter Msg als var übergeben“ ändert Deklaration und Rumpf, Strg+Z nimmt beides zurück |
+| MW5 | `procedure WMA(var A, B: Integer); message WM_USER;` bzw. ohne Parameter | Korrektur „Signatur (var Msg: TMessage) einsetzen“; untypisiertes `var Msg` und `function … message` bleiben still |
+| MW6 | `message 0`, `message -151` | „Die Nachrichtennummer 0 von … muss mindestens 1 sein (wie E2139).“ |
+| MW7 | `"message-method-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| MW8 | Abgleich mit Delphi: MW1, MW4, MW6 übersetzen | dcc meldet E2140, E2138, E2139 an denselben Stellen; für MW2 (WM_MOVE), MW3 und MW5 (untypisiert) nichts |
