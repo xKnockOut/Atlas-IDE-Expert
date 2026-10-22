@@ -18,6 +18,15 @@
 //                              und statische Arrays mit Standardwert (E2268),
 //                              Mengen über 4 Byte mit Standardwert (E2146, nur
 //                              "kleine Mengen" sind erlaubt; mittlere Konfidenz).
+//   signed-unsigned-mix        Vorzeichenbehaftet und vorzeichenlos gemischt
+//                              (#1012): Vergleich (W1023) oder Rechnung
+//                              (W1024) eines Operanden bis 32 Bit mit Vorzeichen
+//                              und eines vorzeichenlosen 32-Bit-Operanden, und
+//                              jede Mischung mit UInt64 (Rechnung W1073,
+//                              Vergleich W1023). Typen aus der Namensauflösung,
+//                              nur bei sicher bekanntem Typ beider Operanden;
+//                              Literale zählen nicht. Korrektur: den
+//                              vorzeichenlosen Operanden in Int64 umwandeln.
 //                              Korrekturen: Parameter einzeln deklarieren;
 //                              Parameter mit Standardwert ans Ende verschieben,
 //                              auch im zugehörigen Kopf derselben Datei
@@ -37,6 +46,7 @@ uses
 const
   ConstantExpressionErrorRuleId = 'constant-expression-error';
   DefaultParameterInvalidRuleId = 'default-parameter-invalid';
+  SignedUnsignedMixRuleId = 'signed-unsigned-mix';
 
 type
   TConstantExpressionErrorRule = class(TInterfacedObject, IRule)
@@ -54,12 +64,19 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TSignedUnsignedMixRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterConstantRules(const ARegistry: TRuleRegistry);
 
 implementation
 
 uses
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
@@ -102,6 +119,126 @@ begin
     Exit;
   Result := TOrdinalConstants.Evaluate(Copy(Text, 1, Dots - 1), nil, ALow) and
     TOrdinalConstants.Evaluate(Copy(Text, Dots + 2, MaxInt), nil, AHigh) and (ALow <= AHigh);
+end;
+
+/// <summary>Text hinter "=" einer Typsignatur ("TGroesse = UInt64" → UInt64), ohne Semikolon; '' ohne "=" und
+/// bei gekürzten Signaturen.</summary>
+function TypeBodyOf(const ASignature: string): string;
+var
+  Equals: Integer;
+begin
+  Result := '';
+  Equals := Pos('=', ASignature);
+  if (Equals = 0) or ASignature.EndsWith('…') then
+    Exit;
+  Result := Trim(Copy(ASignature, Equals + 1, MaxInt));
+  if Result.EndsWith(';') then
+    Result := Trim(Copy(Result, 1, Length(Result) - 1));
+end;
+
+type
+  /// <summary>Ganzzahliger Typ fester Größe: Bits und Vorzeichen; Bits = 0 bei anderen Typen.</summary>
+  TIntegerKind = record
+    Bits: Integer;
+    Signed: Boolean;
+  end;
+
+/// <summary>Art des ganzzahligen Typs ATypeName (Integer, Cardinal, DWORD …); NativeInt und NativeUInt hängen
+/// von der Plattform ab und zählen nicht.</summary>
+function IntegerKindOf(const ATypeName: string): TIntegerKind;
+var
+  Name: string;
+begin
+  Result := Default(TIntegerKind);
+  Name := LowerCase(ATypeName);
+  if Name.StartsWith('system.') then
+    Name := Copy(Name, Length('system.') + 1, MaxInt);
+  if (Name = 'shortint') or (Name = 'int8') then
+    Result.Bits := 8
+  else if (Name = 'smallint') or (Name = 'int16') then
+    Result.Bits := 16
+  else if (Name = 'integer') or (Name = 'longint') or (Name = 'int32') then
+    Result.Bits := 32
+  else if Name = 'int64' then
+    Result.Bits := 64;
+  if Result.Bits > 0 then
+  begin
+    Result.Signed := True;
+    Exit;
+  end;
+  if (Name = 'byte') or (Name = 'uint8') then
+    Result.Bits := 8
+  else if (Name = 'word') or (Name = 'uint16') then
+    Result.Bits := 16
+  else if (Name = 'cardinal') or (Name = 'longword') or (Name = 'uint32') or (Name = 'dword') then
+    Result.Bits := 32
+  else if Name = 'uint64' then
+    Result.Bits := 64;
+end;
+
+/// <summary>Ist AWord ein vorzeichenloser Typ mit 32 oder 64 Bit?</summary>
+function IsUnsignedName(const AWord: string): Boolean;
+var
+  Word: string;
+begin
+  Word := LowerCase(AWord);
+  if Word.StartsWith('system.') then
+    Word := Copy(Word, Length('system.') + 1, MaxInt);
+  Result := (Word = 'cardinal') or (Word = 'longword') or (Word = 'uint32') or (Word = 'dword') or
+    (Word = 'uint64');
+end;
+
+/// <summary>Wörter einer Deklaration oder Signatur (Namen, Typen) ohne Satzzeichen.</summary>
+function DeclarationWords(const AText: string): TArray<string>;
+begin
+  Result := AText.Split([' ', ':', ';', '(', ')', '[', ']', ',', '=', '<', '>', #9, #10, #13],
+    TStringSplitOptions.ExcludeEmpty);
+end;
+
+/// <summary>Letzter Name eines Operanden (Liste.Count → Count, F(X) → F, A[I] → A); '' ohne.</summary>
+function OperandName(ANode: TSyntaxNode): string;
+begin
+  Result := '';
+  case ANode.Kind of
+    TSyntaxKind.Identifier, TSyntaxKind.MemberAccess:
+      Result := ANode.Name;
+    TSyntaxKind.Call, TSyntaxKind.IndexAccess:
+      if ANode.ChildCount > 0 then
+        Result := OperandName(ANode[0]);
+    TSyntaxKind.ParenExpr:
+      if ANode.ChildCount = 1 then
+        Result := OperandName(ANode[0]);
+  end;
+end;
+
+/// <summary>Ganzzahliger Typ des Operanden ANode (Variable, Feld, Property, Funktionsergebnis, Element) über die
+/// Namensauflösung; False, wenn er nicht sicher bekannt ist. ATypeName ist der Name wie deklariert.</summary>
+function OperandKind(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string; ANode: TSyntaxNode;
+  out AKind: TIntegerKind; out ATypeName: string): Boolean;
+var
+  Symbol, TypeInfo: TResolvedSymbol;
+  TypeFound: Boolean;
+begin
+  Result := False;
+  AKind := Default(TIntegerKind);
+  ATypeName := '';
+  if (ANode.Kind = TSyntaxKind.ParenExpr) and (ANode.ChildCount = 1) then
+    Exit(OperandKind(AResolver, ATree, AFileName, ANode[0], AKind, ATypeName));
+  if not (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
+    TSyntaxKind.IndexAccess]) or not AResolver.NodeType(ATree, AFileName, ANode, Symbol, TypeInfo, TypeFound) or
+    not (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_,
+    TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) then
+    Exit;
+  ATypeName := Symbol.TypeName;
+  AKind := IntegerKindOf(ATypeName);
+  // Eigene Aliase (type TGroesse = UInt64) über den aufgelösten Typ.
+  if (AKind.Bits = 0) and TypeFound then
+  begin
+    AKind := IntegerKindOf(TypeInfo.Name);
+    if AKind.Bits = 0 then
+      AKind := IntegerKindOf(TypeBodyOf(TypeInfo.Signature));
+  end;
+  Result := AKind.Bits > 0;
 end;
 
 { TConstantExpressionErrorRule }
@@ -562,20 +699,6 @@ var
     end;
   end;
 
-  /// <summary>Text hinter "=" einer Typsignatur, ohne Semikolon; '' bei gekürzten Signaturen.</summary>
-  function TypeBody(const ASignature: string): string;
-  var
-    Equals: Integer;
-  begin
-    Result := '';
-    Equals := Pos('=', ASignature);
-    if (Equals = 0) or ASignature.EndsWith('…') then
-      Exit;
-    Result := Trim(Copy(ASignature, Equals + 1, MaxInt));
-    if Result.EndsWith(';') then
-      Result := Trim(Copy(Result, 1, Length(Result) - 1));
-  end;
-
   /// <summary>Anzahl der Werte einer Aufzählung "(a, b, c)"; 0, wenn es keine ist.</summary>
   function EnumCount(const ABody: string): Integer;
   begin
@@ -607,7 +730,7 @@ var
       Exit;
     end;
     Result := Resolver.ResolveTypeFrom(Resolver.ExtractedUnit(AContext.Tree, FileName), Trim(ABase), Enum) and
-      (Enum.SymbolKind = TIndexSymbolKind.EnumType) and (EnumCount(TypeBody(Enum.Signature)) > 32);
+      (Enum.SymbolKind = TIndexSymbolKind.EnumType) and (EnumCount(TypeBodyOf(Enum.Signature)) > 32);
   end;
 
   /// <summary>Typ eines Parameters mit Standardwert; eingebaute einfache Typen (string, Integer …) brauchen
@@ -642,7 +765,7 @@ var
   var
     Body: string;
   begin
-    Body := TypeBody(AType.Signature);
+    Body := TypeBodyOf(AType.Signature);
     Result := StartsText('set of ', Body) and LargeBase(Copy(Body, Length('set of ') + 1, MaxInt));
   end;
 
@@ -741,10 +864,241 @@ begin
   end;
 end;
 
+{ TSignedUnsignedMixRule }
+
+function TSignedUnsignedMixRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(SignedUnsignedMixRuleId, TRuleSeverity.Warning,
+    'Vorzeichenbehaftet und vorzeichenlos gemischt');
+end;
+
+procedure TSignedUnsignedMixRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+const
+  // Kürzer gehaltene Operanden erscheinen mit Namen in der Meldung.
+  MaxOperandText = 30;
+var
+  FileName: string;
+  Resolver: TNameResolver;
+  // Namen, deren Deklaration einen vorzeichenlosen Typ nennt (Vorfilter vor der Namensauflösung).
+  Suspects: TDictionary<string, Boolean>;
+  LocalNames: TDictionary<string, Boolean>;
+  // Vorzeichenlose Typnamen (eingebaut oder Alias wie TGroesse = UInt64) samt Ergebnis der Prüfung.
+  UnsignedTypes: TDictionary<string, Boolean>;
+
+  function NodeText(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  /// <summary>Ist ATypeName vorzeichenlos: eingebaut, eigener Alias der Datei oder Alias aus dem Index?</summary>
+  function UnsignedType(const ATypeName: string): Boolean;
+  var
+    Key: string;
+    Location: TSymbolLocation;
+  begin
+    if IsUnsignedName(ATypeName) then
+      Exit(True);
+    Key := LowerCase(ATypeName);
+    if UnsignedTypes.TryGetValue(Key, Result) then
+      Exit;
+    // Vorläufig False: schützt vor zyklischen Aliasen.
+    UnsignedTypes.Add(Key, False);
+    Result := False;
+    if (AContext.Index <> nil) and IsValidIdent(ATypeName, True) then
+      for Location in AContext.Index.FindSymbols(ATypeName) do
+        if (Location.Symbol.Kind = TIndexSymbolKind.TypeAlias) and
+          UnsignedType(TypeBodyOf(Location.Symbol.Signature)) then
+        begin
+          Result := True;
+          Break;
+        end;
+    UnsignedTypes[Key] := Result;
+  end;
+
+  function MentionsUnsigned(const AText: string): Boolean;
+  var
+    Word: string;
+  begin
+    for Word in DeclarationWords(AText) do
+      if UnsignedType(Word) then
+        Exit(True);
+    Result := False;
+  end;
+
+  /// <summary>Eigene Aliase der Datei auf vorzeichenlose Typen (type TGroesse = UInt64).</summary>
+  procedure CollectTypes(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    Body: string;
+  begin
+    if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.ChildCount > 0) then
+    begin
+      Body := Trim(NodeText(ANode[0]));
+      if (Pos(' ', Body) = 0) and UnsignedType(Body) then
+        UnsignedTypes.AddOrSetValue(LowerCase(ANode.Name), True);
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      CollectTypes(ANode[Index]);
+  end;
+
+  /// <summary>Deklarationen der Datei mit vorzeichenlosem Typ: Variablen, Felder, Parameter, Konstanten.</summary>
+  procedure CollectLocal(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    Name: string;
+  begin
+    if (ANode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.Parameter, TSyntaxKind.ConstDecl,
+      TSyntaxKind.PropertyDecl, TSyntaxKind.InlineVar]) and (ANode.ChildCount > 0) and
+      MentionsUnsigned(NodeText(ANode[0])) then
+      for Name in ANode.Name.Split([',']) do
+        LocalNames.AddOrSetValue(LowerCase(Trim(Name)), True);
+    // Funktionen mit vorzeichenlosem Ergebnis.
+    if (ANode.Kind = TSyntaxKind.RoutineHeader) and MentionsUnsigned(Copy(NodeText(ANode),
+      LastDelimiter(')', NodeText(ANode)) + 1, MaxInt)) then
+      LocalNames.AddOrSetValue(LowerCase(Copy(ANode.Name, LastDelimiter('.', ANode.Name) + 1, MaxInt)), True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      CollectLocal(ANode[Index]);
+  end;
+
+  function Suspect(const AName: string): Boolean;
+  var
+    Key: string;
+    Location: TSymbolLocation;
+  begin
+    Key := LowerCase(AName);
+    if (Key = '') or LocalNames.ContainsKey(Key) then
+      Exit(Key <> '');
+    if Suspects.TryGetValue(Key, Result) then
+      Exit;
+    Result := False;
+    if AContext.Index <> nil then
+      for Location in AContext.Index.FindSymbols(AName) do
+        if (Location.Symbol.Kind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
+          TIndexSymbolKind.Property_, TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) and
+          (Location.Symbol.TypeName <> '') and UnsignedType(Location.Symbol.TypeName) then
+        begin
+          Result := True;
+          Break;
+        end;
+    Suspects.Add(Key, Result);
+  end;
+
+  procedure CheckMix(ANode: TSyntaxNode);
+  var
+    Comparison: Boolean;
+    LeftKind, RightKind, SignedKind, UnsignedKind: TIntegerKind;
+    LeftType, RightType, SignedType, UnsignedType, SignedText, Message, Subject: string;
+    SignedNode, UnsignedNode: TSyntaxNode;
+  begin
+    Comparison := (ANode.Name = '=') or (ANode.Name = '<>') or (ANode.Name = '<') or (ANode.Name = '>') or
+      (ANode.Name = '<=') or (ANode.Name = '>=');
+    if (ANode.ChildCount <> 2) or not (Comparison or (ANode.Name = '+') or (ANode.Name = '-') or
+      (ANode.Name = '*') or SameText(ANode.Name, 'div') or SameText(ANode.Name, 'mod')) then
+      Exit;
+    if not Suspect(OperandName(ANode[0])) and not Suspect(OperandName(ANode[1])) then
+      Exit;
+    if Resolver = nil then
+    begin
+      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+      Resolver.Namespaces := AContext.Namespaces;
+      Resolver.PinTree(AContext.Tree, FileName);
+    end;
+    if not OperandKind(Resolver, AContext.Tree, FileName, ANode[0], LeftKind, LeftType) or
+      not OperandKind(Resolver, AContext.Tree, FileName, ANode[1], RightKind, RightType) or
+      (LeftKind.Signed = RightKind.Signed) then
+      Exit;
+    if LeftKind.Signed then
+    begin
+      SignedKind := LeftKind;
+      SignedType := LeftType;
+      SignedNode := ANode[0];
+      UnsignedKind := RightKind;
+      UnsignedType := RightType;
+      UnsignedNode := ANode[1];
+    end
+    else
+    begin
+      SignedKind := RightKind;
+      SignedType := RightType;
+      SignedNode := ANode[1];
+      UnsignedKind := LeftKind;
+      UnsignedType := LeftType;
+      UnsignedNode := ANode[0];
+    end;
+    // Byte und Word passen in Integer, Cardinal passt in Int64: dann rechnet Delphi ohne Warnung.
+    if (UnsignedKind.Bits < 32) or ((UnsignedKind.Bits = 32) and (SignedKind.Bits = 64)) then
+      Exit;
+    if Comparison then
+      Subject := 'verglichen'
+    else
+      Subject := 'gemischt';
+    SignedText := NodeText(SignedNode);
+    if (Length(SignedText) > MaxOperandText) or (Pos(#10, SignedText) > 0) then
+      SignedText := 'Wert';
+    if UnsignedKind.Bits = 64 then
+    begin
+      if Comparison then
+        Message := Format('%s und %s verglichen: ein negativer Wert in %s wird vorzeichenlos verglichen (wie W1023).',
+          [SignedType, UnsignedType, SignedText])
+      else
+        Message := Format('%s und %s gemischt: ein negativer Wert in %s wird vorzeichenlos gerechnet (wie W1073).',
+          [SignedType, UnsignedType, SignedText]);
+    end
+    else if Comparison then
+      Message := Format('%s und %s %s: beide Operanden werden auf Int64 erweitert (wie W1023).',
+        [SignedType, UnsignedType, Subject])
+    else
+      Message := Format('%s und %s %s: beide Operanden werden auf Int64 erweitert (wie W1024).',
+        [SignedType, UnsignedType, Subject]);
+    AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Message, TRuleConfidence.Medium,
+      [TRuleFix.Create(Format('%s in Int64 umwandeln', [NodeText(UnsignedNode)]),
+      [TTextEdit.Create(TTextRange.Create(UnsignedNode.StartPos, UnsignedNode.EndPos),
+      'Int64(' + NodeText(UnsignedNode) + ')')])]);
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.BinaryExpr then
+      CheckMix(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  FileName := AContext.FileName;
+  if FileName = '' then
+    FileName := AContext.RelativePath;
+  if FileName = '' then
+    FileName := AContext.UnitName + '.pas';
+  Resolver := nil;
+  Suspects := TDictionary<string, Boolean>.Create;
+  LocalNames := TDictionary<string, Boolean>.Create;
+  UnsignedTypes := TDictionary<string, Boolean>.Create;
+  try
+    CollectTypes(AContext.Tree.Root);
+    CollectLocal(AContext.Tree.Root);
+    Visit(AContext.Tree.Root);
+  finally
+    if Resolver <> nil then
+    begin
+      Resolver.UnpinTree;
+      Resolver.Free;
+    end;
+    UnsignedTypes.Free;
+    LocalNames.Free;
+    Suspects.Free;
+  end;
+end;
+
 procedure RegisterConstantRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TConstantExpressionErrorRule.Create);
   ARegistry.Register(TDefaultParameterInvalidRule.Create);
+  ARegistry.Register(TSignedUnsignedMixRule.Create);
 end;
 
 end.

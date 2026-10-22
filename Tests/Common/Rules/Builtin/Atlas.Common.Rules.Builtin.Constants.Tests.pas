@@ -9,6 +9,10 @@
 // mehrere Namen mit einem Standardwert, var/out, Record, statisches Array und
 // Mengen über 4 Byte,
 // Prozedurtypen, stille Fälle, Abschalten.
+// signed-unsigned-mix (#1012): Beispiel mit UInt64 (W1073), Vergleich und
+// Rechnung mit Cardinal (W1023/W1024), Korrektur, Felder und Funktionen aus dem
+// Index, stille Fälle (Byte/Word, Cardinal mit Int64, Literale, Konstanten),
+// Abschalten.
 
 interface
 
@@ -54,6 +58,23 @@ type
     procedure ValidDefaultsAreSilent;
     [Test]
     procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TSignedUnsignedMixTests = class
+  public
+    [Test]
+    procedure IssueExample;
+    [Test]
+    procedure CardinalWithInteger;
+    [Test]
+    procedure FixWrapsUnsignedOperand;
+    [Test]
+    procedure MembersFromIndex;
+    [Test]
+    procedure SafeCombinationsAreSilent;
+    [Test]
+    procedure OffGroupAndExclude;
   end;
 
 implementation
@@ -239,6 +260,11 @@ begin
     if Rule.Descriptor.Id = DefaultParameterInvalidRuleId then
       Found := True;
   Assert.IsTrue(Found, DefaultParameterInvalidRuleId);
+  Found := False;
+  for Rule in BuiltinRules do
+    if Rule.Descriptor.Id = SignedUnsignedMixRuleId then
+      Found := True;
+  Assert.IsTrue(Found, SignedUnsignedMixRuleId);
 end;
 
 /// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
@@ -402,8 +428,125 @@ begin
     '{"rules": {"default-parameter-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Post.pas'))));
 end;
 
+{ TSignedUnsignedMixTests }
+
+function MixFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TSignedUnsignedMixRule.Create, ASource);
+end;
+
+function MixFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TSignedUnsignedMixRule.Create, ASource, AConfig, APath);
+end;
+
+/// <summary>Unit mit lokalen Variablen AVariables und den Anweisungen AStatements.</summary>
+function Mix(const AVariables, AStatements: string): string;
+begin
+  Result := 'unit Mix;'#10'interface'#10'implementation'#10'procedure Rechnen;'#10'var'#10 + AVariables +
+    'begin'#10 + AStatements + 'end;'#10'end.';
+end;
+
+function OnlyMixMessage(const ASource: string): string;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := MixFindings(ASource);
+  Assert.AreEqual(1, Integer(Length(Found)), ASource);
+  Result := Found[0].Message;
+end;
+
+procedure TSignedUnsignedMixTests.IssueExample;
+begin
+  Assert.AreEqual('Int64 und UInt64 gemischt: ein negativer Wert in Delta wird vorzeichenlos gerechnet ' +
+    '(wie W1073).', OnlyMixMessage(Mix('  Groesse: UInt64;'#10'  Delta: Int64;'#10'  Grenze: UInt64;'#10,
+    '  if Groesse + Delta < Grenze then'#10'    Exit;'#10)));
+  Assert.AreEqual('Int64 und UInt64 verglichen: ein negativer Wert in Delta wird vorzeichenlos verglichen ' +
+    '(wie W1023).', OnlyMixMessage(Mix('  Groesse: UInt64;'#10'  Delta: Int64;'#10,
+    '  if Delta < Groesse then'#10'    Exit;'#10)));
+  // Korrigierte Form: beide Operanden Int64.
+  Assert.AreEqual(0, Integer(Length(MixFindings(Mix('  Groesse: UInt64;'#10'  Delta: Int64;'#10'  Grenze: Int64;'#10,
+    '  if Int64(Groesse) + Delta < Grenze then'#10'    Exit;'#10)))));
+end;
+
+procedure TSignedUnsignedMixTests.CardinalWithInteger;
+begin
+  Assert.AreEqual('Integer und Cardinal verglichen: beide Operanden werden auf Int64 erweitert (wie W1023).',
+    OnlyMixMessage(Mix('  Anzahl: Cardinal;'#10'  Index: Integer;'#10, '  if Index < Anzahl then'#10'    Exit;'#10)));
+  Assert.AreEqual('Integer und DWORD gemischt: beide Operanden werden auf Int64 erweitert (wie W1024).',
+    OnlyMixMessage(Mix('  Anzahl: DWORD;'#10'  Index: Integer;'#10'  Summe: Int64;'#10,
+    '  Summe := Anzahl - Index;'#10)));
+  // Eigener Alias auf einen vorzeichenlosen Typ.
+  Assert.AreEqual(1, Integer(Length(MixFindings('unit Mix;'#10'interface'#10'type'#10'  TZahl = Cardinal;'#10 +
+    'implementation'#10'procedure Rechnen;'#10'var'#10'  Zahl: TZahl;'#10'  Index: Integer;'#10'begin'#10 +
+    '  if Zahl > Index then'#10'    Exit;'#10'end;'#10'end.'))));
+end;
+
+procedure TSignedUnsignedMixTests.FixWrapsUnsignedOperand;
+var
+  Source: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Mix('  Anzahl: Cardinal;'#10'  Index: Integer;'#10, '  if Index < Anzahl then'#10'    Exit;'#10);
+  Found := MixFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('Anzahl in Int64 umwandeln', Found[0].Fixes[0].Title);
+  Assert.IsTrue(Pos('if Index < Int64(Anzahl) then', ApplyAll(Source, Found[0].Fixes[0])) > 0);
+  Assert.AreEqual(0, Integer(Length(MixFindings(ApplyAll(Source, Found[0].Fixes[0])))));
+end;
+
+procedure TSignedUnsignedMixTests.MembersFromIndex;
+var
+  Index: ISymbolIndex;
+  Found: TArray<TRuleFinding>;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText('unit Puffer;'#10'interface'#10'type'#10'  TPuffer = class'#10 +
+    '    Groesse: Cardinal;'#10'    function Frei: UInt64;'#10'  end;'#10'implementation'#10 +
+    'function TPuffer.Frei: UInt64;'#10'begin'#10'  Result := 0;'#10'end;'#10'end.', 'C:\Projekt\Puffer.pas', nil));
+  Found := TRuleAssert.IndexFindings(TSignedUnsignedMixRule.Create, 'unit Mix;'#10'interface'#10'uses'#10 +
+    '  Puffer;'#10'implementation'#10'procedure Rechnen(P: TPuffer; Rest: Integer);'#10'begin'#10 +
+    '  if P.Groesse > Rest then'#10'    Exit;'#10'  if P.Frei >= Rest then'#10'    Exit;'#10'end;'#10'end.',
+    Index, '', 'Mix.pas');
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('Integer und Cardinal verglichen: beide Operanden werden auf Int64 erweitert (wie W1023).',
+    Found[0].Message);
+  Assert.AreEqual('Integer und UInt64 verglichen: ein negativer Wert in Rest wird vorzeichenlos verglichen ' +
+    '(wie W1023).', Found[1].Message);
+end;
+
+procedure TSignedUnsignedMixTests.SafeCombinationsAreSilent;
+begin
+  // Byte und Word passen in Integer, Cardinal passt in Int64.
+  Assert.AreEqual(0, Integer(Length(MixFindings(Mix('  B: Byte;'#10'  W: Word;'#10'  C: Cardinal;'#10 +
+    '  I: Integer;'#10'  L: Int64;'#10, '  if (B < I) or (W > I) or (C < L) then'#10'    I := B + I;'#10)))));
+  // Literale, Konstanten, gleiche Vorzeichen und unbekannte Typen.
+  Assert.AreEqual(0, Integer(Length(MixFindings(Mix('  C: Cardinal;'#10'  D: Cardinal;'#10'  I: Integer;'#10 +
+    '  U: UInt64;'#10'  X: TUnbekannt;'#10, '  if (C > 0) or (U > 10) or (C < D) or (I < 5) or (X < U) then'#10 +
+    '    C := C + 1;'#10)))));
+  // NativeInt und NativeUInt hängen von der Plattform ab.
+  Assert.AreEqual(0, Integer(Length(MixFindings(Mix('  N: NativeUInt;'#10'  I: Integer;'#10,
+    '  if N > I then'#10'    Exit;'#10)))));
+end;
+
+procedure TSignedUnsignedMixTests.OffGroupAndExclude;
+var
+  Source: string;
+begin
+  Source := Mix('  Anzahl: Cardinal;'#10'  Index: Integer;'#10, '  if Index < Anzahl then'#10'    Exit;'#10);
+  Assert.AreEqual(1, Integer(Length(MixFindings(Source, '', 'Source/Mix.pas'))));
+  Assert.AreEqual(0, Integer(Length(MixFindings(Source, '{"rules": {"signed-unsigned-mix": "off"}}',
+    'Source/Mix.pas'))));
+  Assert.AreEqual(0, Integer(Length(MixFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/Mix.pas'))));
+  Assert.AreEqual(0, Integer(Length(MixFindings(Source,
+    '{"rules": {"signed-unsigned-mix": {"exclude": ["Source/*.pas"]}}}', 'Source/Mix.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TConstantExpressionErrorTests);
   TDUnitX.RegisterTestFixture(TDefaultParameterInvalidTests);
+  TDUnitX.RegisterTestFixture(TSignedUnsignedMixTests);
 
 end.

@@ -2327,6 +2327,21 @@
         "E2268",
         "E2146"
       ]
+    },
+    {
+      "id": "signed-unsigned-mix",
+      "name": "Signed and unsigned mixed",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "Comparison or arithmetic (+, -, *, div, mod) with one signed and one unsigned operand whose types are known for certain (variables, fields, properties, function results, own aliases). With UInt64 the whole expression is computed unsigned and a negative value becomes a huge number (like W1073, comparison like W1023); with Cardinal/DWORD and a signed type up to 32 bits both operands are widened to Int64 (like W1023/W1024). Silent for Byte and Word, Cardinal with Int64, literals, constants, NativeInt/NativeUInt and unknown types. Medium confidence. Quick fix: convert the unsigned operand to Int64.",
+      "bad": "if Groesse + Delta < Grenze then  // Groesse: UInt64; Delta: Int64",
+      "good": "if Int64(Groesse) + Delta < Grenze then",
+      "compilerCodes": [
+        "W1023",
+        "W1024",
+        "W1073"
+      ]
     }
   ]
 }

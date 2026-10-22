@@ -2347,6 +2347,21 @@ begin
     '        "E2268",' + #10 +
     '        "E2146"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "signed-unsigned-mix",' + #10 +
+    '      "name": "Signed and unsigned mixed",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Comparison or arithmetic (+, -, *, div, mod) with one signed and one unsigned operand whose types are known for certain (variables, fields, properties, function results, own alia' + 'ses). With UInt64 the whole expression is computed unsigned and a negative value becomes a huge number (like W1073, comparison like W1023); with Cardinal/DWORD and a signed type up to 32 bits both ope' + 'rands are widened to Int64 (like W1023/W1024). Silent for Byte and Word, Cardinal with Int64, literals, constants, NativeInt/NativeUInt and unknown types. Medium confidence. Quick fix: convert the uns' + 'igned operand to Int64.",' + #10 +
+    '      "bad": "if Groesse + Delta < Grenze then  // Groesse: UInt64; Delta: Int64",' + #10 +
+    '      "good": "if Int64(Groesse) + Delta < Grenze then",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1023",' + #10 +
+    '        "W1024",' + #10 +
+    '        "W1073"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3527,6 +3542,11 @@ begin
     '      "id": "default-parameter-invalid",' + #10 +
     '      "name": "Unzulässiger Standardwert eines Parameters",' + #10 +
     '      "description": "Standardwerte, die der Compiler ablehnt: mehrere Namen mit einem gemeinsamen Standardwert (A, B: Integer = 0, wie E2237), ein Parameter ohne Standardwert nach einem mit Standardw' + 'ert (wie E2238), var- und out-Parameter mit Standardwert (wie E2239) Records oder statische Arrays mit Standardwert (wie E2268) sowie Mengen über 4 Byte mit Standardwert (wie E2146, erlaubt sind nur k' + 'leine Mengen; mittlere Konfidenz). Gilt für Routinen, Methoden und Prozedurtypen. Korrekturen: Parameter einzeln deklarieren; Parameter mit Standardwert ans Ende verschieben, auch im zugehörigen Kopf ' + 'der Deklaration bzw. Implementierung derselben Datei (Aufrufe ändert sie nicht)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "signed-unsigned-mix",' + #10 +
+    '      "name": "Vorzeichenbehaftet und vorzeichenlos gemischt",' + #10 +
+    '      "description": "Vergleich oder Rechnung (+, -, *, div, mod) mit einem vorzeichenbehafteten und einem vorzeichenlosen Operanden, deren Typen sicher bekannt sind (Variablen, Felder, Properties, Fu' + 'nktionsergebnisse, eigene Aliase). Mit UInt64 wird der ganze Ausdruck vorzeichenlos gerechnet, ein negativer Wert wird zu einer riesigen Zahl (wie W1073, beim Vergleich wie W1023); mit Cardinal/DWORD ' + 'und einem vorzeichenbehafteten Typ bis 32 Bit werden beide Operanden auf Int64 erweitert (wie W1023/W1024). Still bei Byte und Word, Cardinal mit Int64, Literalen, Konstanten, NativeInt/NativeUInt und' + ' unbekannten Typen. Mittlere Konfidenz. Korrektur: den vorzeichenlosen Operanden in Int64 umwandeln."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

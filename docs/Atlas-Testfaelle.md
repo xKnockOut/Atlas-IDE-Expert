@@ -4154,3 +4154,19 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | QD7 | Standardwerte am Ende, `Double = 0.5`, `TZiel = nil`, Implementierung ohne Standardwerte | Keine Meldung |
 | QD8 | `"default-parameter-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | QD9 | Abgleich mit Delphi: QD1, QD3 bis QD6 und QD10 übersetzen | dcc meldet E2238, E2237, E2239, E2268 bzw. E2146 an denselben Stellen, für QD7 und die kleinen Mengen aus QD10 nichts; meldet dcc bei QD10 nichts, die Mengenprüfung in der Regel entfernen und im Issue vermerken |
+
+## Vorzeichenbehaftet und vorzeichenlos gemischt (#1012)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QV1 | Das Beispiel aus #1012: `var Groesse, Grenze: UInt64; Delta: Int64;` und `if Groesse + Delta < Grenze then` | Warnung `signed-unsigned-mix` an `Groesse + Delta`: „Int64 und UInt64 gemischt: ein negativer Wert in Delta wird vorzeichenlos gerechnet (wie W1073).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| QV2 | `var Anzahl: Cardinal; Index: Integer;` und `if Index < Anzahl then` | „Integer und Cardinal verglichen: beide Operanden werden auf Int64 erweitert (wie W1023).“ |
+| QV3 | Schnellkorrektur „Anzahl in Int64 umwandeln“, danach Strg+Z | `if Index < Int64(Anzahl) then`; keine Meldung mehr; ein Undo-Schritt |
+| QV4 | `Summe := Anzahl - Index;` mit `Anzahl: DWORD` | „Integer und DWORD gemischt: … (wie W1024).“ |
+| QV5 | Feld `Groesse: Cardinal` einer Klasse aus einer anderen Unit, `if P.Groesse > Rest then` mit `Rest: Integer`; ebenso eine Funktion mit Ergebnis `UInt64` | Meldung wie QV2 bzw. QV1 (Typ über den Index) |
+| QV6 | `type TZahl = Cardinal;` und `if Zahl > Index then` | Meldung wie QV2 |
+| QV7 | Byte/Word mit Integer, Cardinal mit Int64, `C > 0`, Konstanten, NativeUInt mit Integer | Keine Meldung |
+| QV8 | `"signed-unsigned-mix": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| QV9 | Abgleich mit Delphi: QV1, QV2, QV4 bis QV6 übersetzen (Win32 und Win64) | dcc meldet W1073, W1023 bzw. W1024 an denselben Stellen, für QV7 nichts |
