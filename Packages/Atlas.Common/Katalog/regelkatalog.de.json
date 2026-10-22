@@ -709,6 +709,11 @@
           "description": "Ersatz für Write und Writeln in der Schnellkorrektur; %s steht für den Text."
         }
       ]
+    },
+    {
+      "id": "exception-in-destructor",
+      "name": "raise im Destruktor",
+      "description": "raise in einem Destruktor (auch class destructor), das kein except im Destruktor abfängt. Die Ausnahme bricht die Freigabe ab: inherited Destroy läuft nicht mehr, das Objekt bleibt halb freigegeben, und in einem finally des Aufrufers überdeckt sie die ursprüngliche Ausnahme. Ein raise im try-Teil eines try..except ist abgefangen; raise im except- oder finally-Teil, auch ein erneutes raise;, wird gemeldet. Eingebettete Routinen und anonyme Methoden sind ausgenommen. Aufrufen, die ihrerseits auslösen, folgt die Regel nicht. Konfidenz hoch. Keine Schnellkorrektur: den Zustand protokollieren oder ohne Ausnahme freigeben."
     }
   ]
 }
