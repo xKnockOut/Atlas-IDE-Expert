@@ -4193,3 +4193,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt; `untyped-pointer-refcount` 
 | ZR5 | `Pointer(FText) := nil` mit `FText: string` | Warnung „Die Zuweisung über Pointer umgeht die Referenzzählung des Strings FText (dcc meldet das nicht).“ ohne Korrektur; der Compiler meldet hier nichts |
 | ZR5a | `Pointer(FObjekt) := nil` (TObject), `Pointer(FWide) := nil` (WideString), `P := Pointer(FBesitzer)`, `if Pointer(FBesitzer) = nil`, Feld mit `[weak]` oder `[unsafe]`, unbekannter Typ | Keine Meldung |
 | ZR6 | `"untyped-pointer-refcount": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+
+## Typ überschreitet eine Größengrenze (#1083)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; `type-too-large` steht auf der Vorgabe (Fehler).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GG1 | Das Beispiel aus #1083 (`type TPuffer = array[0..High(Integer)] of Int64;`) | Fehler an `TPuffer`: „TPuffer ist 16 GB groß; erlaubt sind 2 GB (wie E2100).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover |
+| GG2 | Projekt bauen | Der Compiler meldet E2100 an derselben Stelle; Fenster zeigt Quelle „Atlas + dcc“ |
+| GG3 | `const Anzahl = 1 shl 20;` und `TFlaeche = array[TFarbe, 0..Anzahl - 1, Word] of Byte;` mit `TFarbe = (Rot, Gruen, Blau)`; `var Feld: array[Integer] of Byte;` | „TFlaeche ist 192 GB groß …“ und „Feld ist 4 GB groß …“ |
+| GG4 | Record aus zwei Feldern `array[1..1024] of TBlock` (je 1 GB); Record mit Feld `A, B: array[0..MaxInt] of Int64` | „TPaar ist mindestens 2 GB groß …“; im zweiten Fall nur „A, B ist 16 GB groß …“, der Record nicht zusätzlich |
+| GG5 | `TFeld<T> = array[0..$FFFFFFF] of T;`, dann `TGross = TFeld<Int64>;` und `TKlein = TFeld<Byte>;` | Fehler „TFeld<Int64> ist 2 GB groß …“ (wie E2543), nichts bei `TFeld<Byte>` und am generischen Typ selbst |
+| GG6 | `array[0..MaxInt - 1] of Byte`, `array of Int64`, Grenze aus fremder Unit oder typisierter Konstante, Feld in einer Klasse | Keine Meldung |
+| GG7 | `"type-too-large": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |

@@ -92,6 +92,15 @@ begin
   Assert.AreEqual(Int64(2), ValueOf('Pred(3)'));
   Assert.AreEqual(Int64(200), ValueOf('Byte(200)'));
   Unknown('Length(''abc'')');
+  // Low und High eingebauter Typen, MaxInt (#1083).
+  Assert.AreEqual(Int64(2147483647), ValueOf('High(Integer)'));
+  Assert.AreEqual(Int64(-128), ValueOf('Low(ShortInt)'));
+  Assert.AreEqual(Int64(4294967295), ValueOf('High(Cardinal)'));
+  Assert.AreEqual(Int64(65535), ValueOf('High(Char)'));
+  Assert.AreEqual(Int64(2147483646), ValueOf('MaxInt - 1'));
+  Unknown('High(NativeInt)');
+  Unknown('High(Werte)');
+  Unknown('High(Integer');
 end;
 
 procedure TOrdinalConstantsTests.NamesThroughLookup;

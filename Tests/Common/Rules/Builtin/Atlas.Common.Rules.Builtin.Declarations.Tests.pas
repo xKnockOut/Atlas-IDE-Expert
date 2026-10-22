@@ -116,6 +116,16 @@ type
     procedure VariantManagedSilentCases;
     [Test]
     procedure VariantManagedOffAndExclude;
+    [Test]
+    procedure TypeTooLargeIssueExample;
+    [Test]
+    procedure TypeTooLargeRecordsAndNames;
+    [Test]
+    procedure TypeTooLargeGenericInstance;
+    [Test]
+    procedure TypeTooLargeSilentCases;
+    [Test]
+    procedure TypeTooLargeOffAndExclude;
   end;
 
 implementation
@@ -1013,6 +1023,89 @@ begin
     '{"rules": {"variant-record-managed-field": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Source,
     '{"rules": {"variant-record-managed-field": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
+end;
+
+function Groesse(const ATypes: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10 + ATypes + 'implementation'#10'end.';
+end;
+
+procedure TDeclarationRulesTests.TypeTooLargeIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TTypeTooLargeRule.Create, Groesse('  TPuffer = array[0..High(Integer)] of Int64;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('type-too-large', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('TPuffer ist 16 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[0].Message);
+  Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(9, Findings[0].Range.EndPos.Character);
+  // Korrigierte Form: halber Indexbereich bzw. dynamisches Array.
+  TRuleAssert.Silent(TTypeTooLargeRule.Create, Groesse('  TPuffer = array[0..High(Integer) div 16] of Int64;'#10 +
+    '  TListe = array of Int64;'#10));
+end;
+
+procedure TDeclarationRulesTests.TypeTooLargeRecordsAndNames;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Konstanten, Aufzählung als Index, mehrdimensional, Record aus zwei großen Feldern, Variable, Folgefehler.
+  Findings := TRuleAssert.Findings(TTypeTooLargeRule.Create, 'unit U;'#10'interface'#10'const'#10 +
+    '  Anzahl = 1 shl 20;'#10'type'#10'  TFarbe = (Rot, Gruen, Blau);'#10 +
+    '  TBlock = array[0..Anzahl - 1] of Byte;'#10'  TFlaeche = array[TFarbe, 0..Anzahl - 1, Word] of Byte;'#10 +
+    '  TPaar = record'#10'    A, B: array[1..1024] of TBlock;'#10'  end;'#10'  TGross = record'#10 +
+    '    Paar: TPaar;'#10'  end;'#10'var'#10'  Feld: array[Integer] of Byte;'#10'implementation'#10'end.');
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual('TFlaeche ist 192 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[0].Message);
+  Assert.AreEqual('TPaar ist mindestens 2 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[1].Message);
+  Assert.AreEqual('Feld ist 4 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[2].Message);
+  // Unbekannte Teile zählen 0, Zeiger mindestens 4 Byte.
+  Findings := TRuleAssert.Findings(TTypeTooLargeRule.Create, Groesse('  TListe = array[0..$3FFFFFFF] of record'#10 +
+    '    Text: string;'#10'    Fremd: TUnbekannt;'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TListe ist mindestens 4 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[0].Message);
+  // Inneres Feld über der Grenze: dort gemeldet, der Record nicht noch einmal.
+  Findings := TRuleAssert.Findings(TTypeTooLargeRule.Create, Groesse('  TDaten = record'#10 +
+    '    A, B: array[0..MaxInt] of Int64;'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('A, B ist 16 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[0].Message);
+end;
+
+procedure TDeclarationRulesTests.TypeTooLargeGenericInstance;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TTypeTooLargeRule.Create, Groesse('  TFeld<T> = array[0..$FFFFFFF] of T;'#10 +
+    '  TKlein = TFeld<Byte>;'#10'  TGross = TFeld<Int64>;'#10'  THuelle = record'#10'    Werte: TFeld<Double>;'#10 +
+    '  end;'#10));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('TFeld<Int64> ist 2 GB groß; erlaubt sind 2 GB (wie E2543).', Findings[0].Message);
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual('TFeld<Double> ist 2 GB groß; erlaubt sind 2 GB (wie E2543).', Findings[1].Message);
+end;
+
+procedure TDeclarationRulesTests.TypeTooLargeSilentCases;
+begin
+  // Knapp unter 2 GB, dynamische Arrays, Klassen, unbekannte Grenzen, Index aus fremder Unit, typisierte Konstante.
+  TRuleAssert.Silent(TTypeTooLargeRule.Create, 'unit U;'#10'interface'#10'const'#10'  Grenze: Integer = MaxInt;'#10 +
+    'type'#10'  TFast = array[0..MaxInt - 1] of Byte;'#10'  TDyn = array of array of Int64;'#10 +
+    '  TKlasse = class'#10'    Werte: array[0..1000] of Int64;'#10'  end;'#10 +
+    '  TFremd = array[0..Fremd.Maximum] of Int64;'#10'  TTypisiert = array[0..Grenze] of Int64;'#10 +
+    '  TOffen<T> = array[0..MaxInt] of T;'#10'  TKurz = array[0..$FFFF] of string[200];'#10'implementation'#10'end.');
+end;
+
+procedure TDeclarationRulesTests.TypeTooLargeOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Groesse('  TPuffer = array[0..High(Integer)] of Int64;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTypeTooLargeRule.Create, Source,
+    '{"rules": {"type-too-large": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTypeTooLargeRule.Create, Source,
+    '{"rules": {"type-too-large": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
 end;
 
 initialization

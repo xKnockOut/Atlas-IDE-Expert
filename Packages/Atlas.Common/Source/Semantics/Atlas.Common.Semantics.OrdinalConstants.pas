@@ -3,8 +3,9 @@
 // Werte ordinaler Konstantenausdrücke aus Token (#983): Ganzzahlen (dezimal,
 // $hex, %binär, &oktal), Zeichen ('a', #13, #$0D), True und False, Klammern,
 // die Operatoren + - * div mod and or xor not shl shr sowie Ord, Chr, Succ,
-// Pred und Umwandlungen in ganzzahlige und Zeichentypen. Namen (Konstanten,
-// Aufzählungswerte) löst der Aufrufer über ALookup auf. Alles andere, auch
+// Pred, Umwandlungen in ganzzahlige und Zeichentypen sowie Low und High der
+// eingebauten ordinalen Typen fester Größe und MaxInt/MaxLongint (#1083).
+// Namen (Konstanten, Aufzählungswerte) löst der Aufrufer über ALookup auf. Alles andere, auch
 // Gleitkomma, Strings und Überläufe, gilt als nicht auswertbar.
 
 interface
@@ -44,6 +45,13 @@ uses
 const
   OrdinalCasts: array[0..15] of string = ('Byte', 'Word', 'Integer', 'Cardinal', 'Int64', 'UInt64', 'ShortInt',
     'SmallInt', 'LongInt', 'LongWord', 'NativeInt', 'NativeUInt', 'Char', 'AnsiChar', 'WideChar', 'Ord');
+  // Low und High eingebauter Typen fester Größe (NativeInt hängt von der Plattform ab und fehlt).
+  RangeTypes: array[0..14] of string = ('Byte', 'ShortInt', 'Word', 'SmallInt', 'Integer', 'LongInt', 'FixedInt',
+    'Cardinal', 'LongWord', 'FixedUInt', 'Int64', 'Char', 'WideChar', 'AnsiChar', 'Boolean');
+  RangeLows: array[0..14] of Int64 = (0, -128, 0, -32768, -2147483648, -2147483648, -2147483648, 0, 0, 0,
+    Low(Int64), 0, 0, 0, 0);
+  RangeHighs: array[0..14] of Int64 = (255, 127, 65535, 32767, 2147483647, 2147483647, 2147483647, 4294967295,
+    4294967295, 4294967295, High(Int64), 65535, 65535, 255, 1);
   // Tiefe der Klammern und Aufrufe, damit ein Ausdruck aus fremdem Quelltext den Stapel nicht sprengt.
   MaxDepth = 64;
 
@@ -70,6 +78,7 @@ type
     function CharValue(const AText: string; out AValue: Int64): Boolean;
     function StringValue(const AText: string; out AValue: Int64): Boolean;
     function Arguments: Int64;
+    function Bound(AHigh: Boolean): Int64;
   public
     constructor Create(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer;
       const ALookup: TOrdinalNameLookup);
@@ -264,6 +273,34 @@ begin
   Advance;
 end;
 
+function TEvaluator.Bound(AHigh: Boolean): Int64;
+var
+  Index: Integer;
+begin
+  // Low(Typ) bzw. High(Typ) für eingebaute Typen; alles andere (Variablen, Arrays) ist nicht auswertbar.
+  Result := 0;
+  Advance; // (
+  Index := -1;
+  if not AtEnd and (Current.Kind = TPascalTokenKind.Identifier) then
+    Index := IndexText(Current.Text, RangeTypes);
+  if Index < 0 then
+  begin
+    Fail;
+    Exit;
+  end;
+  Advance;
+  if not IsSym(')') then
+  begin
+    Fail;
+    Exit;
+  end;
+  Advance;
+  if AHigh then
+    Result := RangeHighs[Index]
+  else
+    Result := RangeLows[Index];
+end;
+
 function TEvaluator.CharValue(const AText: string; out AValue: Int64): Boolean;
 var
   Digits: string;
@@ -354,7 +391,9 @@ begin
           if IsSym('(') then
           begin
             // Ord, Chr, Succ, Pred und Typumwandlungen.
-            if SameText(Name, 'Succ') then
+            if SameText(Name, 'High') or SameText(Name, 'Low') then
+              Result := Bound(SameText(Name, 'High'))
+            else if SameText(Name, 'Succ') then
               Result := Arguments + 1
             else if SameText(Name, 'Pred') then
               Result := Arguments - 1
@@ -382,6 +421,8 @@ begin
             Result := 1
           else if (Length(Names) = 1) and SameText(Name, 'False') then
             Result := 0
+          else if (Length(Names) = 1) and (SameText(Name, 'MaxInt') or SameText(Name, 'MaxLongint')) then
+            Result := 2147483647
           else
             Fail;
         end;

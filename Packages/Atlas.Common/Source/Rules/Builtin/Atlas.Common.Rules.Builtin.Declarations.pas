@@ -36,6 +36,15 @@
 //                              Index (Rules.ManagedTypes), unbekannte bleiben
 //                              still. Korrekturen: Feld in den festen Teil vor
 //                              case, ShortString, record-Einschränkung
+//   type-too-large             Statisches Array oder Record ab 2 GB (#1083, wie
+//                              E2100), Instanz eines generischen Typs der Datei
+//                              ab 2 GB (wie E2543). Die Größe ist eine untere
+//                              Grenze aus den Deklarationen (Grenzen über
+//                              Semantics.OrdinalConstants, Konstanten und
+//                              Aufzählungen der Datei, Records aus dem Index);
+//                              Unbekanntes zählt 0. Gemeldet wird nur der
+//                              innerste Typ, der die Grenze überschreitet.
+//                              E2419 (1 MB) gilt nur für Delphi für .NET.
 //
 // Den Abgleich (auch über Überladungen) liefert TClassCompletion.Unmatched aus
 // #42; Paare mit abweichendem Kopf ordnet TClassCompletion.Pairs zu. Sie meldet
@@ -107,6 +116,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TTypeTooLargeRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
   TVariantRecordManagedFieldRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
@@ -135,6 +150,7 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.ManagedTypes,
+  Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Text.Lines;
 
 /// <summary>Zeilen innerhalb von {$IF…}…{$ENDIF}: Element I gilt für Zeile I.</summary>
@@ -1474,6 +1490,604 @@ begin
   Names := nil;
 end;
 
+{ TTypeTooLargeRule }
+
+function TTypeTooLargeRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('type-too-large', TRuleSeverity.Error, 'Typ überschreitet eine Größengrenze');
+end;
+
+const
+  // Ab 2 GB meldet Delphi E2100 bzw. E2543.
+  TypeSizeLimit = Int64(1) shl 31;
+  // Obergrenze der Rechnung, damit Produkte nicht überlaufen.
+  TypeSizeCap = Int64(1) shl 50;
+  TypeKindsForSize = [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.PointerType,
+    TSyntaxKind.RecordType, TSyntaxKind.ObjectType, TSyntaxKind.ClassType, TSyntaxKind.InterfaceType,
+    TSyntaxKind.ClassOfType, TSyntaxKind.SetType, TSyntaxKind.EnumType, TSyntaxKind.ProcedureType,
+    TSyntaxKind.SubrangeType, TSyntaxKind.FileType, TSyntaxKind.HelperType];
+  // Eingebaute Typen: Größe als untere Grenze; Exakt = auf allen Windows-Plattformen gleich.
+  SizeNames: array[0..47] of string = ('Byte', 'ShortInt', 'Boolean', 'ByteBool', 'AnsiChar', 'Int8', 'UInt8',
+    'Word', 'SmallInt', 'Char', 'WideChar', 'WordBool', 'Int16', 'UInt16', 'Integer', 'Cardinal', 'LongInt',
+    'LongWord', 'Single', 'LongBool', 'FixedInt', 'FixedUInt', 'Int32', 'UInt32', 'Int64', 'UInt64', 'Double',
+    'Currency', 'Comp', 'TDateTime', 'TDate', 'TTime', 'Real', 'ShortString', 'TGUID', 'Extended', 'Pointer',
+    'PChar', 'PAnsiChar', 'PWideChar', 'string', 'UnicodeString', 'AnsiString', 'WideString', 'NativeInt',
+    'NativeUInt', 'Variant', 'OleVariant');
+  SizeBytes: array[0..47] of Integer = (1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8,
+    8, 8, 8, 8, 8, 8, 8, 256, 16, 8, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 16, 16);
+  // Ab diesem Eintrag hängt die Größe von der Plattform ab.
+  FirstInexactSize = 35;
+  // Elementzahl eingebauter Indextypen.
+  CountNames: array[0..11] of string = ('Byte', 'AnsiChar', 'ShortInt', 'Boolean', 'Word', 'Char', 'WideChar',
+    'SmallInt', 'Integer', 'Cardinal', 'LongInt', 'LongWord');
+  CountValues: array[0..11] of Int64 = (256, 256, 256, 2, 65536, 65536, 65536, 65536, 4294967296, 4294967296,
+    4294967296, 4294967296);
+
+type
+  /// <summary>Untere Grenze der Größe eines Typs. Exact: genau diese Größe auf allen Windows-Plattformen;
+  /// Nested: ein Bestandteil überschreitet die Grenze schon selbst (dort gemeldet).</summary>
+  TTypeSize = record
+    Bytes: Int64;
+    Exact: Boolean;
+    Nested: Boolean;
+  end;
+
+  /// <summary>Rechnet Typgrößen aus den Deklarationen der Datei und dem Index (#1083).</summary>
+  TTypeSizes = class
+  private
+    FText: string;
+    FTokens: TArray<TPascalToken>;
+    FIndex: ISymbolIndex;
+    FTypes: TDictionary<string, TSyntaxNode>;
+    FConstants: TDictionary<string, TSyntaxNode>;
+    FEnumValues: TDictionary<string, Int64>;
+    FDepth: Integer;
+    procedure Collect(ARoot: TSyntaxNode);
+    function Evaluate(ANode: TSyntaxNode; out AValue: Int64): Boolean;
+    function Count(AIndexType: TSyntaxNode; out AExact: Boolean): Int64;
+    function CountOfName(const AName: string; out AExact: Boolean): Int64;
+    function Multiply(A, B: Int64): Int64;
+    function FieldsOf(ARecord: TSyntaxNode; const AParams, AArgs: TArray<string>; var ASize: TTypeSize): Int64;
+    function IndexSize(const AName: string): TTypeSize;
+  public
+    constructor Create(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex);
+    destructor Destroy; override;
+    /// <summary>Typknoten der Deklaration ANode (TypeDecl, Field, VarDecl); nil ohne.</summary>
+    class function TypeNodeOf(ANode: TSyntaxNode): TSyntaxNode; static;
+    /// <summary>Größe des Typknotens ANode; Typparameter AParams stehen für AArgs.</summary>
+    function OfNode(ANode: TSyntaxNode; const AParams, AArgs: TArray<string>): TTypeSize;
+    /// <summary>Größe des Typs AName.</summary>
+    function OfName(const AName: string; const AParams, AArgs: TArray<string>): TTypeSize;
+    /// <summary>Generische Deklaration der Datei zu AName mit ihren Typparametern; nil ohne.</summary>
+    function GenericDecl(const AName: string; out AParams: TArray<string>): TSyntaxNode;
+  end;
+
+constructor TTypeSizes.Create(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex);
+begin
+  inherited Create;
+  FText := AText;
+  FTokens := ATree.Tokens;
+  FIndex := AIndex;
+  FTypes := TDictionary<string, TSyntaxNode>.Create;
+  FConstants := TDictionary<string, TSyntaxNode>.Create;
+  FEnumValues := TDictionary<string, Int64>.Create;
+  Collect(ATree.Root);
+end;
+
+destructor TTypeSizes.Destroy;
+begin
+  FEnumValues.Free;
+  FConstants.Free;
+  FTypes.Free;
+  inherited;
+end;
+
+procedure TTypeSizes.Collect(ARoot: TSyntaxNode);
+var
+  Stack: TArray<TSyntaxNode>;
+  Count, Index, Value: Integer;
+  Node: TSyntaxNode;
+  Plain: Boolean;
+begin
+  // Ohne Rekursion (#1094); bei gleichen Namen gilt die erste Deklaration.
+  SetLength(Stack, 64);
+  Stack[0] := ARoot;
+  Count := 1;
+  while Count > 0 do
+  begin
+    Dec(Count);
+    Node := Stack[Count];
+    if (Node.Kind = TSyntaxKind.TypeDecl) and not FTypes.ContainsKey(LowerCase(Node.Name)) then
+      FTypes.Add(LowerCase(Node.Name), Node)
+    else if (Node.Kind = TSyntaxKind.ConstDecl) and not FConstants.ContainsKey(LowerCase(Node.Name)) then
+      FConstants.Add(LowerCase(Node.Name), Node)
+    else if Node.Kind = TSyntaxKind.EnumType then
+    begin
+      // Werte nur ohne explizite Zuweisung (a = 5) sicher.
+      Plain := True;
+      for Index := 0 to Node.ChildCount - 1 do
+        if Node[Index].Kind <> TSyntaxKind.Identifier then
+          Plain := False;
+      if Plain then
+        for Value := 0 to Node.ChildCount - 1 do
+          if not FEnumValues.ContainsKey(LowerCase(Node[Value].Name)) then
+            FEnumValues.Add(LowerCase(Node[Value].Name), Value);
+    end;
+    if Count + Node.ChildCount > Length(Stack) then
+      SetLength(Stack, 2 * (Count + Node.ChildCount));
+    for Index := Node.ChildCount - 1 downto 0 do
+    begin
+      Stack[Count] := Node[Index];
+      Inc(Count);
+    end;
+  end;
+end;
+
+class function TTypeSizes.TypeNodeOf(ANode: TSyntaxNode): TSyntaxNode;
+var
+  Index: Integer;
+begin
+  for Index := 0 to ANode.ChildCount - 1 do
+    if ANode[Index].Kind in TypeKindsForSize then
+      Exit(ANode[Index]);
+  Result := nil;
+end;
+
+function TTypeSizes.Multiply(A, B: Int64): Int64;
+begin
+  if (A <= 0) or (B <= 0) then
+    Exit(0);
+  if A > TypeSizeCap div B then
+    Exit(TypeSizeCap);
+  Result := A * B;
+end;
+
+function TTypeSizes.Evaluate(ANode: TSyntaxNode; out AValue: Int64): Boolean;
+var
+  First, Last: Integer;
+  Lookup: TOrdinalNameLookup;
+begin
+  AValue := 0;
+  if FDepth > 32 then
+    Exit(False);
+  First := TokenAtOffset(FTokens, ANode.StartOffset);
+  Last := TokenAtOffset(FTokens, ANode.EndOffset) - 1;
+  if Last < First then
+    Exit(False);
+  Lookup :=
+    function(const ANames: TArray<string>; ATokenIndex: Integer; out AResult: Int64): Boolean
+    var
+      Decl: TSyntaxNode;
+      Key: string;
+    begin
+      Result := False;
+      AResult := 0;
+      if Length(ANames) <> 1 then
+        Exit;
+      Key := LowerCase(ANames[0]);
+      if FEnumValues.TryGetValue(Key, AResult) then
+        Exit(True);
+      // Nur untypisierte Konstanten sind echte Konstanten in Typgrenzen.
+      if not FConstants.TryGetValue(Key, Decl) or (Decl.ChildCount <> 1) or (TypeNodeOf(Decl) <> nil) then
+        Exit;
+      Inc(FDepth);
+      try
+        Result := Evaluate(Decl[0], AResult);
+      finally
+        Dec(FDepth);
+      end;
+    end;
+  Result := TOrdinalConstants.Evaluate(FTokens, First, Last, Lookup, AValue);
+end;
+
+function TTypeSizes.CountOfName(const AName: string; out AExact: Boolean): Int64;
+var
+  Index: Integer;
+  Decl, Body: TSyntaxNode;
+begin
+  AExact := True;
+  Index := IndexText(AName, CountNames);
+  if Index >= 0 then
+    Exit(CountValues[Index]);
+  AExact := False;
+  Result := 0;
+  if (FDepth > 32) or not FTypes.TryGetValue(LowerCase(AName), Decl) then
+    Exit;
+  Body := TypeNodeOf(Decl);
+  if Body = nil then
+    Exit;
+  Inc(FDepth);
+  try
+    Result := Count(Body, AExact);
+  finally
+    Dec(FDepth);
+  end;
+end;
+
+function TTypeSizes.Count(AIndexType: TSyntaxNode; out AExact: Boolean): Int64;
+var
+  Low, High: Int64;
+  Index: Integer;
+begin
+  AExact := False;
+  Result := 0;
+  case AIndexType.Kind of
+    TSyntaxKind.SubrangeType:
+      if (AIndexType.ChildCount = 2) and Evaluate(AIndexType[0], Low) and Evaluate(AIndexType[1], High) then
+      begin
+        AExact := True;
+        if High >= Low then
+          Result := High - Low + 1;
+      end;
+    TSyntaxKind.TypeReference:
+      Result := CountOfName(AIndexType.Name, AExact);
+    TSyntaxKind.EnumType:
+      begin
+        // Mit explizit zugewiesenen Werten (a = 5) mindestens so viele Elemente wie Namen.
+        AExact := True;
+        for Index := 0 to AIndexType.ChildCount - 1 do
+          if AIndexType[Index].Kind = TSyntaxKind.Identifier then
+            Inc(Result)
+          else
+            AExact := False;
+      end;
+  end;
+end;
+
+function TTypeSizes.FieldsOf(ARecord: TSyntaxNode; const AParams, AArgs: TArray<string>;
+  var ASize: TTypeSize): Int64;
+var
+  Index, Inner, Names, Fields: Integer;
+  Child, Item: TSyntaxNode;
+  Part: TTypeSize;
+  Largest, Branch, FieldSize: Int64;
+  Uniform: Boolean;
+begin
+  // Summe der Felder; varianter Teil: Selektor plus größter Zweig.
+  Result := 0;
+  Fields := 0;
+  FieldSize := 0;
+  Uniform := True;
+  for Index := 0 to ARecord.ChildCount - 1 do
+  begin
+    Child := ARecord[Index];
+    case Child.Kind of
+      TSyntaxKind.Field:
+        if TypeNodeOf(Child) <> nil then
+        begin
+          Part := OfNode(TypeNodeOf(Child), AParams, AArgs);
+          Names := Length(Child.Name.Split([',']));
+          Inc(Fields, Names);
+          if (FieldSize <> 0) and (FieldSize <> Part.Bytes) then
+            Uniform := False;
+          FieldSize := Part.Bytes;
+          Result := Result + Multiply(Part.Bytes, Names);
+          ASize.Exact := ASize.Exact and Part.Exact;
+          ASize.Nested := ASize.Nested or Part.Nested or (Part.Bytes >= TypeSizeLimit);
+        end;
+      TSyntaxKind.Visibility:
+        Result := Result + FieldsOf(Child, AParams, AArgs, ASize);
+      TSyntaxKind.VariantPart:
+        begin
+          // Ein Selektorfeld (case Art: TArt of) belegt Platz, ein bloßer Selektortyp nicht.
+          Largest := 0;
+          for Inner := 0 to Child.ChildCount - 1 do
+          begin
+            Item := Child[Inner];
+            if Item.Kind = TSyntaxKind.Field then
+            begin
+              Part := OfNode(TypeNodeOf(Item), AParams, AArgs);
+              Result := Result + Part.Bytes;
+              Inc(Fields);
+            end
+            else if Item.Kind = TSyntaxKind.CaseItem then
+            begin
+              Branch := FieldsOf(Item, AParams, AArgs, ASize);
+              if Branch > Largest then
+                Largest := Branch;
+            end;
+          end;
+          Result := Result + Largest;
+          ASize.Exact := False;
+        end;
+    end;
+    if Result > TypeSizeCap then
+      Result := TypeSizeCap;
+  end;
+  // Mehrere Felder: Ausrichtung kann Lücken einfügen, außer alle sind gleich groß (1, 2, 4 oder 8 Byte).
+  if (Fields > 1) and not (Uniform and ((FieldSize = 1) or (FieldSize = 2) or (FieldSize = 4) or
+    (FieldSize = 8))) then
+    ASize.Exact := False;
+end;
+
+function TTypeSizes.IndexSize(const AName: string): TTypeSize;
+var
+  Location: TSymbolLocation;
+  UnitIndex: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Part: TTypeSize;
+begin
+  Result := Default(TTypeSize);
+  if (FIndex = nil) or (FDepth > 32) then
+    Exit;
+  Inc(FDepth);
+  try
+    for Location in FIndex.FindSymbols(AName) do
+    begin
+      if Location.Symbol.Container <> '' then
+        Continue;
+      case Location.Symbol.Kind of
+        TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType:
+          Result.Bytes := 4;
+        TIndexSymbolKind.EnumType:
+          Result.Bytes := 1;
+        TIndexSymbolKind.TypeAlias:
+          Result := OfName(Location.Symbol.TypeName, nil, nil);
+        TIndexSymbolKind.RecordType:
+          if FIndex.FindFile(Location.FileName, UnitIndex) then
+            for Symbol in UnitIndex.Symbols do
+              if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, AName) then
+              begin
+                Part := OfName(Symbol.TypeName, nil, nil);
+                Result.Bytes := Result.Bytes + Part.Bytes;
+                Result.Nested := Result.Nested or Part.Nested or (Part.Bytes >= TypeSizeLimit);
+              end;
+      end;
+      Result.Exact := False;
+      Exit;
+    end;
+  finally
+    Dec(FDepth);
+  end;
+end;
+
+function TTypeSizes.GenericDecl(const AName: string; out AParams: TArray<string>): TSyntaxNode;
+var
+  Params: TSyntaxNode;
+  Index: Integer;
+begin
+  AParams := nil;
+  if not FTypes.TryGetValue(LowerCase(AName), Result) then
+    Exit(nil);
+  Params := Result.FindChild(TSyntaxKind.GenericParams);
+  if Params = nil then
+    Exit(nil);
+  for Index := 0 to Params.ChildCount - 1 do
+    AParams := AParams + [Params[Index].Name];
+end;
+
+function TTypeSizes.OfName(const AName: string; const AParams, AArgs: TArray<string>): TTypeSize;
+var
+  Index: Integer;
+  Decl: TSyntaxNode;
+begin
+  Result := Default(TTypeSize);
+  Index := IndexText(AName, AParams);
+  if (Index >= 0) and (Index < Length(AArgs)) then
+    Exit(OfName(AArgs[Index], nil, nil));
+  Index := IndexText(AName, SizeNames);
+  if Index >= 0 then
+  begin
+    Result.Bytes := SizeBytes[Index];
+    Result.Exact := Index < FirstInexactSize;
+    Exit;
+  end;
+  if (FDepth > 32) then
+    Exit;
+  if FTypes.TryGetValue(LowerCase(AName), Decl) and (Decl.FindChild(TSyntaxKind.GenericParams) = nil) and
+    (TypeNodeOf(Decl) <> nil) then
+  begin
+    Inc(FDepth);
+    try
+      Result := OfNode(TypeNodeOf(Decl), nil, nil);
+    finally
+      Dec(FDepth);
+    end;
+    // Ein benannter Typ über der Grenze wird an seiner Deklaration gemeldet.
+    if Result.Bytes >= TypeSizeLimit then
+      Result.Nested := True;
+    Exit;
+  end;
+  Result := IndexSize(AName);
+end;
+
+function TTypeSizes.OfNode(ANode: TSyntaxNode; const AParams, AArgs: TArray<string>): TTypeSize;
+var
+  Index, Last: Integer;
+  Element: TTypeSize;
+  Elements: Int64;
+  CountExact: Boolean;
+  Decl, Args, ShortLength: TSyntaxNode;
+  Params, Values: TArray<string>;
+  Value: Int64;
+begin
+  Result := Default(TTypeSize);
+  if (ANode = nil) or (FDepth > 32) then
+    Exit;
+  Inc(FDepth);
+  try
+    case ANode.Kind of
+      TSyntaxKind.TypeReference:
+        begin
+          Args := ANode.FindChild(TSyntaxKind.GenericArgs);
+          ShortLength := nil;
+          for Index := 0 to ANode.ChildCount - 1 do
+            if ANode[Index].Kind <> TSyntaxKind.GenericArgs then
+              ShortLength := ANode[Index];
+          if SameText(ANode.Name, 'string') and (ShortLength <> nil) then
+          begin
+            // string[N]: ShortString mit N Zeichen und Längenbyte.
+            if Evaluate(ShortLength, Value) then
+            begin
+              Result.Bytes := Value + 1;
+              Result.Exact := True;
+            end;
+          end
+          else if Args <> nil then
+          begin
+            Decl := GenericDecl(ANode.Name, Params);
+            if Decl <> nil then
+            begin
+              Values := nil;
+              for Index := 0 to Args.ChildCount - 1 do
+                Values := Values + [Trim(Copy(FText, Args[Index].StartOffset + 1,
+                  Args[Index].EndOffset - Args[Index].StartOffset))];
+              Result := OfNode(TypeNodeOf(Decl), Params, Values);
+            end
+            else
+              // TArray<T>, TList<T> …: Zeiger.
+              Result.Bytes := 4;
+          end
+          else
+            Result := OfName(ANode.Name, AParams, AArgs);
+        end;
+      TSyntaxKind.ArrayType:
+        if ANode.ChildCount < 2 then
+          // Dynamisches Array: ein Zeiger.
+          Result.Bytes := 4
+        else
+        begin
+          Last := ANode.ChildCount - 1;
+          Element := OfNode(ANode[Last], AParams, AArgs);
+          Result.Bytes := Element.Bytes;
+          Result.Exact := Element.Exact;
+          Result.Nested := Element.Nested or (Element.Bytes >= TypeSizeLimit);
+          for Index := 0 to Last - 1 do
+          begin
+            Elements := Count(ANode[Index], CountExact);
+            Result.Bytes := Multiply(Result.Bytes, Elements);
+            Result.Exact := Result.Exact and CountExact;
+          end;
+        end;
+      TSyntaxKind.RecordType, TSyntaxKind.ObjectType:
+        begin
+          Result.Exact := True;
+          Result.Bytes := FieldsOf(ANode, AParams, AArgs, Result);
+          if ANode.Kind = TSyntaxKind.ObjectType then
+            Result.Exact := False;
+        end;
+      TSyntaxKind.ClassType, TSyntaxKind.InterfaceType, TSyntaxKind.ClassOfType, TSyntaxKind.PointerType,
+      TSyntaxKind.ProcedureType:
+        Result.Bytes := 4;
+      TSyntaxKind.EnumType, TSyntaxKind.SetType, TSyntaxKind.SubrangeType:
+        Result.Bytes := 1;
+    end;
+  finally
+    Dec(FDepth);
+  end;
+end;
+
+procedure TTypeTooLargeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Sizes: TTypeSizes;
+  Tokens: TArray<TPascalToken>;
+
+  function SizeText(const ASize: TTypeSize): string;
+  var
+    Gigabytes: Int64;
+    Settings: TFormatSettings;
+  begin
+    Gigabytes := ASize.Bytes shr 30;
+    if ASize.Bytes >= TypeSizeCap then
+      Result := 'über 1 PB'
+    else if ASize.Bytes and ((Int64(1) shl 30) - 1) = 0 then
+      Result := Format('%d GB', [Gigabytes])
+    else
+    begin
+      Settings := TFormatSettings.Invariant;
+      Settings.DecimalSeparator := ',';
+      Result := FormatFloat('0.#', ASize.Bytes / (Int64(1) shl 30), Settings) + ' GB';
+    end;
+    if not ASize.Exact and (ASize.Bytes < TypeSizeCap) then
+      Result := 'mindestens ' + Result;
+  end;
+
+  // Name der Deklaration, zu der der Typknoten gehört; '' bei verschachtelten Typen.
+  function OwnerName(ANode: TSyntaxNode): string;
+  begin
+    Result := '';
+    if (ANode.Parent <> nil) and (ANode.Parent.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.Field,
+      TSyntaxKind.VarDecl]) and (TTypeSizes.TypeNodeOf(ANode.Parent) = ANode) then
+      Result := ANode.Parent.Name.Replace(',', ', ');
+  end;
+
+  function NameRange(ANode: TSyntaxNode): TTextRange;
+  var
+    Index: Integer;
+  begin
+    // Bei Typdeklarationen der Name, sonst der Typ selbst.
+    if ANode.Parent.Kind = TSyntaxKind.TypeDecl then
+      for Index := TokenAtOffset(Tokens, ANode.Parent.StartOffset) to High(Tokens) do
+        if SameText(Tokens[Index].Text, ANode.Parent.Name) then
+          Exit(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos));
+    Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
+  end;
+
+  procedure CheckNode(ANode: TSyntaxNode);
+  var
+    Size: TTypeSize;
+    Name, Code: string;
+    Params: TArray<string>;
+  begin
+    Code := 'E2100';
+    if ANode.Kind = TSyntaxKind.TypeReference then
+    begin
+      // Instanz eines generischen Typs der Datei: TFeld<Int64>.
+      if (ANode.FindChild(TSyntaxKind.GenericArgs) = nil) or (Sizes.GenericDecl(ANode.Name, Params) = nil) then
+        Exit;
+      Code := 'E2543';
+    end;
+    Size := Sizes.OfNode(ANode, nil, nil);
+    if (Size.Bytes < TypeSizeLimit) or Size.Nested then
+      Exit;
+    if Code = 'E2543' then
+      Name := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset))
+    else
+    begin
+      Name := OwnerName(ANode);
+      if Name = '' then
+        Name := 'Der Typ';
+    end;
+    AReport.Add(NameRange(ANode), Format('%s ist %s groß; erlaubt sind 2 GB (wie %s).', [Name, SizeText(Size),
+      Code]), TRuleConfidence.High);
+  end;
+
+var
+  Stack: TArray<TSyntaxNode>;
+  Count, Index: Integer;
+  Node: TSyntaxNode;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Sizes := TTypeSizes.Create(AContext.Tree, AContext.Text, AContext.Index);
+  try
+    // Ohne Rekursion durch den Baum (#1094); Rümpfe generischer Typen erst bei ihrer Instanz.
+    SetLength(Stack, 64);
+    Stack[0] := AContext.Tree.Root;
+    Count := 1;
+    while Count > 0 do
+    begin
+      Dec(Count);
+      Node := Stack[Count];
+      if (Node.Kind = TSyntaxKind.TypeDecl) and (Node.FindChild(TSyntaxKind.GenericParams) <> nil) then
+        Continue;
+      if Node.Kind in [TSyntaxKind.ArrayType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType,
+        TSyntaxKind.TypeReference] then
+        CheckNode(Node);
+      if Count + Node.ChildCount > Length(Stack) then
+        SetLength(Stack, 2 * (Count + Node.ChildCount));
+      for Index := Node.ChildCount - 1 downto 0 do
+      begin
+        Stack[Count] := Node[Index];
+        Inc(Count);
+      end;
+    end;
+  finally
+    Sizes.Free;
+  end;
+end;
+
 { TVariantRecordManagedFieldRule }
 
 function TVariantRecordManagedFieldRule.Descriptor: TRuleDescriptor;
@@ -1739,6 +2353,7 @@ begin
   ARegistry.Register(TOverloadDirectiveMissingRule.Create);
   ARegistry.Register(TDuplicateDeclarationRule.Create);
   ARegistry.Register(TVariantRecordManagedFieldRule.Create);
+  ARegistry.Register(TTypeTooLargeRule.Create);
 end;
 
 end.
