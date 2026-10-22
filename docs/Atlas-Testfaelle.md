@@ -3646,3 +3646,17 @@ Voraussetzung: Server läuft; Formular `TfrmHaupt` mit `procedure WMSize(var Msg
 | MH5 | Handler für `WM_ERASEBKGND` ohne `inherited` | Keine Meldung (Vorgabe von `swallow`) |
 | MH6 | Auf der Seite „Prüfregeln“ `swallow` = `["WM_SIZE"]` | Keine Meldung für `WMSize`; `WM_ERASEBKGND` wird jetzt gemeldet |
 | MH7 | `"message-handler-without-inherited": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## String-Index ab 0 und Pos mit -1 (#951)
+
+Voraussetzung: Server läuft; Routine mit `const Zeile: string` und `if Pos(';', Zeile) > -1 then Felder := Copy(Zeile, 0, Pos(';', Zeile) - 1);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SI1 | Unit öffnen | Zwei Warnungen `string-index-base`: auf `> -1` „Pos liefert 0 bei keinem Treffer; der Vergleich > -1 ist immer wahr.“ und auf `0` in `Copy` „Copy zählt Zeichen ab 1; der Startwert 0 wirkt nur zufällig wie 1.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| SI2 | Alt+Enter auf beiden Meldungen | `> 0` bzw. `Copy(Zeile, 1, …)`; je ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| SI3 | `Delete(Zeile2, 0, 1);` mit `Zeile2: string` | Warnung „Delete zählt Zeichen ab 1; mit dem Startwert 0 löscht es nichts.“ |
+| SI4 | `if Pos('a', Zeile) = -1 then` | Warnung „… ist nie wahr.“, Korrektur auf `= 0` |
+| SI5 | `if Zeile.IndexOf('a') > 0 then` | Warnung mit Sicherheit mittel, Korrektur auf `>= 0`; `Zeile.LastIndexOf('.') > 0` bleibt still |
+| SI6 | `Werte := Copy(Werte, 0, 2);` mit `Werte: TArray<Integer>` | Keine Meldung (Arrays zählen ab 0) |
+| SI7 | `"string-index-base": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

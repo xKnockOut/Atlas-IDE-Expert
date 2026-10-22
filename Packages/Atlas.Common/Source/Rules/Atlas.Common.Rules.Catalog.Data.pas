@@ -1832,6 +1832,16 @@ begin
     '          "description": "Messages that may be handled without inherited; replaces the default."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "string-index-base",' + #10 +
+    '      "name": "String index from 0 or Pos result compared with -1",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "The classic string routines count from 1: Copy(S, 0, N) and Insert(T, S, 0) only work like 1 by chance, Delete(S, 0, N) deletes nothing. The string must be known: declared type i' + 'n the file, literal, or .Text/.Caption; dynamic arrays (0-based) stay silent. Pos, PosEx and AnsiPos return 0 for no match: Pos(...) > -1, >= 0 and <> -1 are always true, = -1 and < 0 never. Conversel' + 'y S.IndexOf(...) > 0 or >= 1 misses a match at the start, < 1 or <= 0 counts it as not found (medium confidence; LastIndexOf stays silent, where > 0 usually means \"not at the start\"). High confidenc' + 'e for Delete and Pos. Quick fix: start value 1 or the corrected comparison (> 0, = 0, >= 0, < 0).",' + #10 +
+    '      "bad": "if Pos('';'', Zeile) > -1 then\n  Felder := Copy(Zeile, 0, Pos('';'', Zeile) - 1);",' + #10 +
+    '      "good": "if Pos('';'', Zeile) > 0 then\n  Felder := Copy(Zeile, 1, Pos('';'', Zeile) - 1);"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2802,6 +2812,11 @@ begin
     '          "description": "Nachrichten, die ohne inherited behandelt werden dürfen; ersetzt die Vorgabe."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "string-index-base",' + #10 +
+    '      "name": "String-Index ab 0 oder Pos-Ergebnis mit -1 verglichen",' + #10 +
+    '      "description": "Die klassischen String-Routinen zählen ab 1: Copy(S, 0, N) und Insert(T, S, 0) wirken nur zufällig wie 1, Delete(S, 0, N) löscht nichts. Der String muss bekannt sein: deklarierte' + 'r Typ in der Datei, Literal oder .Text/.Caption; dynamische Arrays (ab 0) bleiben still. Pos, PosEx und AnsiPos liefern 0 bei keinem Treffer: Pos(…) > -1, >= 0 und <> -1 sind immer wahr, = -1 und < 0 ' + 'nie. Umgekehrt übersieht S.IndexOf(…) > 0 bzw. >= 1 den Treffer am Anfang, < 1 bzw. <= 0 zählt ihn als nicht gefunden (Sicherheit mittel; LastIndexOf bleibt still, dort heißt > 0 meist „nicht am Anfan' + 'g“). Sicherheit hoch für Delete und Pos. Korrektur: Startwert 1 bzw. der richtige Vergleich (> 0, = 0, >= 0, < 0)."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

@@ -10,6 +10,10 @@
 //   duplicate-condition   dieselbe Bedingung zweimal in einer if-else-if-Kette, gleiche then- und
 //                         else-Zweige, A and A bzw. A or A, X = X (#928). Verglichen wird der
 //                         Quelltext ohne Leerraum, Kommentare und Groß-/Kleinschreibung.
+//   string-index-base     Copy(S, 0, N), Delete(S, 0, N), Insert(T, S, 0) auf Strings (deklarierter Typ,
+//                         Literal, .Text/.Caption) und Pos(…) verglichen mit -1 bzw. >= 0 (#951); umgekehrt
+//                         S.IndexOf(…) > 0 bzw. < 1 (nullbasiert, -1 bei keinem Treffer; LastIndexOf nicht,
+//                         dort ist "> 0" meist bewusst).
 
 interface
 
@@ -20,6 +24,7 @@ uses
 const
   OperatorPrecedenceRuleId = 'operator-precedence';
   DuplicateConditionRuleId = 'duplicate-condition';
+  StringIndexBaseRuleId = 'string-index-base';
 
 type
   TOperatorPrecedenceRule = class(TInterfacedObject, IRule)
@@ -32,6 +37,14 @@ type
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TStringIndexBaseRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Ist AType ein String-Typ (string, AnsiString, ShortString, String[n] …)?</summary>
+    class function IsStringType(const AType: string): Boolean; static;
   end;
 
 procedure RegisterExpressionRules(const ARegistry: TRuleRegistry);
@@ -493,10 +506,276 @@ begin
   end;
 end;
 
+{ TStringIndexBaseRule }
+
+function TStringIndexBaseRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(StringIndexBaseRuleId, TRuleSeverity.Warning,
+    'String-Index ab 0 oder Pos-Ergebnis mit -1 verglichen');
+end;
+
+class function TStringIndexBaseRule.IsStringType(const AType: string): Boolean;
+var
+  Name: string;
+begin
+  Name := LowerCase(Trim(AType));
+  if Pos('[', Name) > 0 then
+    Name := Trim(Copy(Name, 1, Pos('[', Name) - 1));
+  Result := MatchText(Name, ['string', 'unicodestring', 'ansistring', 'widestring', 'rawbytestring', 'utf8string',
+    'shortstring', 'tcaption', 'system.string']);
+end;
+
+procedure TStringIndexBaseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Code: TArray<Integer>;
+  Types: TDeclaredTypes;
+
+  function Token(APosition: Integer): TPascalToken;
+  begin
+    Result := Tokens[Code[APosition]];
+  end;
+
+  function IsSym(APosition: Integer; const ASymbol: string): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and Token(APosition).IsSymbol(ASymbol);
+  end;
+
+  function IsName(APosition: Integer; const AName: string): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and
+      (Token(APosition).Kind = TPascalTokenKind.Identifier) and SameText(Token(APosition).Text, AName);
+  end;
+
+  function Closing(AOpen: Integer): Integer;
+  var
+    Depth: Integer;
+  begin
+    Depth := 0;
+    for Result := AOpen to High(Code) do
+      if Token(Result).IsSymbol('(') or Token(Result).IsSymbol('[') then
+        Inc(Depth)
+      else if Token(Result).IsSymbol(')') or Token(Result).IsSymbol(']') then
+      begin
+        Dec(Depth);
+        if Depth = 0 then
+          Exit;
+      end;
+    Result := -1;
+  end;
+
+  // Positionen der Argumente (erstes Token) zwischen AOpen und AClose.
+  function Arguments(AOpen, AClose: Integer): TArray<Integer>;
+  var
+    Position, Depth: Integer;
+  begin
+    Result := [AOpen + 1];
+    Depth := 0;
+    for Position := AOpen + 1 to AClose - 1 do
+      if Token(Position).IsSymbol('(') or Token(Position).IsSymbol('[') then
+        Inc(Depth)
+      else if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
+        Dec(Depth)
+      else if (Depth = 0) and Token(Position).IsSymbol(',') then
+        Result := Result + [Position + 1];
+  end;
+
+  // Ist das Argument ab AFirst bis vor ANext sicher ein String? Deklarierter Typ, Literal oder .Text/.Caption.
+  function IsStringArgument(AFirst, ANext: Integer): Boolean;
+  var
+    Last: Integer;
+  begin
+    Last := ANext - 1;
+    if Last < AFirst then
+      Exit(False);
+    if (AFirst = Last) and (Token(AFirst).Kind = TPascalTokenKind.StringLiteral) then
+      Exit(True);
+    if (Token(Last).Kind = TPascalTokenKind.Identifier) and IsSym(Last - 1, '.') and
+      MatchText(Token(Last).Text, ['Text', 'Caption']) then
+      Exit(True);
+    if IsName(AFirst, 'Self') and IsSym(AFirst + 1, '.') then
+      Inc(AFirst, 2);
+    Result := (AFirst = Last) and (Token(AFirst).Kind = TPascalTokenKind.Identifier) and
+      IsStringType(Types.DeclaredType(Token(AFirst).Text, Token(AFirst).StartPos));
+  end;
+
+  // Ist ARoutine der Aufruf der RTL-Routine (ohne Punkt davor bzw. mit System./StrUtils.)?
+  function IsRtlCall(APosition: Integer): Boolean;
+  begin
+    Result := not IsSym(APosition - 1, '.') or IsName(APosition - 2, 'System') or IsName(APosition - 2, 'StrUtils');
+  end;
+
+  // Copy(S, 0, N), Delete(S, 0, N), Insert(T, S, 0).
+  procedure CheckStartIndex(APosition: Integer);
+  var
+    Close, Index: Integer;
+    Args: TArray<Integer>;
+    Name, Message: string;
+    Confidence: TRuleConfidence;
+    Literal: TPascalToken;
+  begin
+    if not IsSym(APosition + 1, '(') or not IsRtlCall(APosition) then
+      Exit;
+    Close := Closing(APosition + 1);
+    if Close < 0 then
+      Exit;
+    Args := Arguments(APosition + 1, Close);
+    Args := Args + [Close + 1];
+    Name := Token(APosition).Text;
+    if SameText(Name, 'Insert') then
+      Index := 2
+    else
+      Index := 1;
+    if Length(Args) < Index + 2 then
+      Exit;
+    // Das Argument muss genau "0" sein; der String steht bei Insert an zweiter, sonst an erster Stelle.
+    if (Args[Index + 1] - Args[Index] <> 2) or (Token(Args[Index]).Text <> '0') or
+      not IsStringArgument(Args[Index - 1], Args[Index] - 1) then
+      Exit;
+    Literal := Token(Args[Index]);
+    if SameText(Name, 'Delete') then
+    begin
+      Message := 'Delete zählt Zeichen ab 1; mit dem Startwert 0 löscht es nichts.';
+      Confidence := TRuleConfidence.High;
+    end
+    else
+    begin
+      Message := Format('%s zählt Zeichen ab 1; der Startwert 0 wirkt nur zufällig wie 1.', [Name]);
+      Confidence := TRuleConfidence.Medium;
+    end;
+    AReport.Add(TTextRange.Create(Literal.StartPos, Literal.EndPos), Message, Confidence,
+      [TRuleFix.Create('Startwert 1', [TRuleEdit.Create(TTextRange.Create(Literal.StartPos, Literal.EndPos), '1')])]);
+  end;
+
+  // Vergleich hinter AClose: Operator, optional "-", Zahl. Liefert die Positionen und den Text.
+  function Comparison(AAfter: Integer; out AOperator, ALast: Integer; out AText: string): Boolean;
+  begin
+    Result := False;
+    if (AAfter > High(Code)) or not (Token(AAfter).IsSymbol('>') or Token(AAfter).IsSymbol('>=') or
+      Token(AAfter).IsSymbol('<') or Token(AAfter).IsSymbol('<=') or Token(AAfter).IsSymbol('=') or
+      Token(AAfter).IsSymbol('<>')) then
+      Exit;
+    AOperator := AAfter;
+    if IsSym(AAfter + 1, '-') and (AAfter + 2 <= High(Code)) and
+      (Token(AAfter + 2).Kind = TPascalTokenKind.Number) then
+    begin
+      ALast := AAfter + 2;
+      AText := Token(AAfter).Text + '-' + Token(AAfter + 2).Text;
+    end
+    else if (AAfter + 1 <= High(Code)) and (Token(AAfter + 1).Kind = TPascalTokenKind.Number) then
+    begin
+      ALast := AAfter + 1;
+      AText := Token(AAfter).Text + Token(AAfter + 1).Text;
+    end
+    else
+      Exit;
+    // "Pos(…) > 1 + X" vergleicht mit einem anderen Wert.
+    if IsSym(ALast + 1, '+') or IsSym(ALast + 1, '-') or IsSym(ALast + 1, '*') or
+      ((ALast + 1 <= High(Code)) and (Token(ALast + 1).IsKeyword('div') or Token(ALast + 1).IsKeyword('mod'))) then
+      Exit;
+    Result := True;
+  end;
+
+  function TextOf(AFirst, ALast: Integer): string;
+  begin
+    Result := SourceText(AContext.Text, Tokens, Code[AFirst], Code[ALast]);
+  end;
+
+  // Steht vor APosition ein Rechenoperator ("X + Pos(…) > 0")? Dann gilt der Vergleich der Summe.
+  function InArithmetic(APosition: Integer): Boolean;
+  begin
+    if IsSym(APosition - 1, '.') then
+      Dec(APosition, 2);
+    Result := IsSym(APosition - 1, '+') or IsSym(APosition - 1, '-') or IsSym(APosition - 1, '*') or
+      ((APosition > 0) and (Token(APosition - 1).IsKeyword('div') or Token(APosition - 1).IsKeyword('mod')));
+  end;
+
+  procedure ReportComparison(AOperator, ALast: Integer; const AMessage, AReplacement: string;
+    AConfidence: TRuleConfidence);
+  var
+    Range: TTextRange;
+  begin
+    Range := TTextRange.Create(Token(AOperator).StartPos, Token(ALast).EndPos);
+    AReport.Add(Range, AMessage, AConfidence, [TRuleFix.Create(Format('Vergleich auf "%s" korrigieren',
+      [AReplacement]), [TRuleEdit.Create(Range, AReplacement)])]);
+  end;
+
+  // Pos(…) > -1, >= 0, <> -1 (immer wahr), = -1, < 0 (nie wahr).
+  procedure CheckPos(APosition: Integer);
+  var
+    Close, Operator, Last: Integer;
+    Compare, Name: string;
+  begin
+    if not IsSym(APosition + 1, '(') or not IsRtlCall(APosition) or InArithmetic(APosition) then
+      Exit;
+    Close := Closing(APosition + 1);
+    // "Pos(…) > -1", aber nicht "Pos(…) - 1 > 0" oder "X.Pos".
+    if (Close < 0) or not Comparison(Close + 1, Operator, Last, Compare) then
+      Exit;
+    Name := Token(APosition).Text;
+    if (Compare = '>-1') or (Compare = '>=0') or (Compare = '<>-1') then
+      ReportComparison(Operator, Last, Format('%s liefert 0 bei keinem Treffer; der Vergleich %s ist immer wahr.',
+        [Name, TextOf(Operator, Last)]), '> 0', TRuleConfidence.High)
+    else if (Compare = '=-1') or (Compare = '<0') or (Compare = '<=-1') then
+      ReportComparison(Operator, Last, Format('%s liefert 0 bei keinem Treffer; der Vergleich %s ist nie wahr.',
+        [Name, TextOf(Operator, Last)]), '= 0', TRuleConfidence.High);
+  end;
+
+  // S.IndexOf(…) > 0 bzw. >= 1 übersieht den Treffer am Anfang; < 1 bzw. <= 0 zählt ihn als "nicht gefunden".
+  procedure CheckIndexOf(APosition: Integer);
+  var
+    Close, Operator, Last: Integer;
+    Compare, Name: string;
+  begin
+    if not IsSym(APosition - 1, '.') or not IsSym(APosition + 1, '(') then
+      Exit;
+    Close := Closing(APosition + 1);
+    if (Close < 0) or not Comparison(Close + 1, Operator, Last, Compare) then
+      Exit;
+    Name := Token(APosition).Text;
+    if (Compare = '>0') or (Compare = '>=1') then
+      ReportComparison(Operator, Last, Format('%s zählt ab 0 und liefert -1 bei keinem Treffer; der Vergleich %s ' +
+        'übersieht den Treffer am Anfang.', [Name, TextOf(Operator, Last)]), '>= 0', TRuleConfidence.Medium)
+    else if (Compare = '<1') or (Compare = '<=0') then
+      ReportComparison(Operator, Last, Format('%s zählt ab 0 und liefert -1 bei keinem Treffer; der Vergleich %s ' +
+        'zählt den Treffer am Anfang als nicht gefunden.', [Name, TextOf(Operator, Last)]), '< 0',
+        TRuleConfidence.Medium);
+  end;
+
+var
+  Index, Position: Integer;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Code := nil;
+  for Index := 0 to High(Tokens) do
+    if not IsTrivia(Tokens[Index]) then
+      Code := Code + [Index];
+  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  try
+    for Position := 0 to High(Code) do
+    begin
+      if Token(Position).Kind <> TPascalTokenKind.Identifier then
+        Continue;
+      if MatchText(Token(Position).Text, ['Copy', 'Delete', 'Insert']) then
+        CheckStartIndex(Position)
+      else if MatchText(Token(Position).Text, ['Pos', 'PosEx', 'AnsiPos']) then
+        CheckPos(Position)
+      // LastIndexOf(…) > 0 heißt meist bewusst "Trenner nicht am Anfang" (Name.LastIndexOf('.') > 0).
+      else if MatchText(Token(Position).Text, ['IndexOf', 'IndexOfAny']) then
+        CheckIndexOf(Position);
+    end;
+  finally
+    Types.Free;
+  end;
+end;
+
 procedure RegisterExpressionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TOperatorPrecedenceRule.Create);
   ARegistry.Register(TDuplicateConditionRule.Create);
+  ARegistry.Register(TStringIndexBaseRule.Create);
 end;
 
 end.
