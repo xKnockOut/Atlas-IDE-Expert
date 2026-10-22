@@ -257,12 +257,14 @@ begin
     Assert.IsTrue(Item('Regel abschalten').Enabled);
     Assert.IsTrue(Item('Regel erklären').Enabled);
     // Compilermeldung: kein Unterdrücken, Einstellen, Abschalten oder Erklären.
+    // Mehrfachauswahl: ItemIndex fügt nur hinzu, die erste markierte Zeile zählt.
+    Frame.List.ClearSelection;
     Frame.List.ItemIndex := 4;
     Frame.Menu.OnPopup(Frame.Menu);
-    Assert.IsFalse(Item('Schnellkorrektur').Enabled);
-    Assert.IsFalse(Item('Für diese Zeile unterdrücken').Enabled);
-    Assert.IsFalse(Item('Regel abschalten').Enabled);
-    Assert.IsTrue(Item('Gehe zu').Enabled);
+    Assert.IsFalse(Item('Schnellkorrektur').Enabled, 'Schnellkorrektur');
+    Assert.IsFalse(Item('Für diese Zeile unterdrücken').Enabled, 'Unterdrücken');
+    Assert.IsFalse(Item('Regel abschalten').Enabled, 'Abschalten');
+    Assert.IsTrue(Item('Gehe zu').Enabled, 'Gehe zu');
   finally
     Host.Free;
   end;

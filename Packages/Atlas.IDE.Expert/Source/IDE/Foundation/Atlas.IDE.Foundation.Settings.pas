@@ -52,11 +52,13 @@ type
     class procedure Changed; static;
     class function HistoryFile: string; static;
     class procedure SaveHistory; static;
+  public
+    /// <summary>%APPDATA%\Atlas\settings.json.</summary>
     class function GlobalFile: string; static;
-    /// <summary>False, wenn die Datei da, aber nicht lesbar ist; dann wird sie auch nicht geschrieben.</summary>
+    /// <summary>False, wenn die Datei da, aber nicht lesbar ist; dann wird sie auch nicht geschrieben.
+    /// Öffentlich für die gezielten Änderungen der Prüfregeln (#909).</summary>
     class function LoadGlobal(out AContent: TAtlasTextFileContent): Boolean; static;
     class procedure SaveGlobal(const AContent: TAtlasTextFileContent; const AText: string); static;
-  public
     /// <summary>Wirksame Werte: gespeichert, darüber die Sitzungswerte der Schnellschalter (#604).</summary>
     class function Current: TAtlasPluginSettings; static;
     /// <summary>Gespeicherte Werte (Registry) ohne Sitzungswerte; Grundlage für Optionsseite und Update.</summary>

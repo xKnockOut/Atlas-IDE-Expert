@@ -413,7 +413,7 @@ type
     FOnBaselineDelete: TFunc<string>;
     FBaselineInfo: TLabel;
     FRulesProject: TButton;
-    FBaselineUpdate: TButton;
+    FBaselineUpdateButton: TButton;
     FBaselineDelete: TButton;
     FUndoKey: TEdit;
     FRedoKey: TEdit;
@@ -3266,7 +3266,7 @@ begin
   FBaselineInfo.Caption := TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineNone);
   FBaselineInfo.Top := 4000;
   Row := AddRow(5000);
-  FBaselineUpdate := AddButton(Row, TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineUpdate), 0,
+  FBaselineUpdateButton := AddButton(Row, TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineUpdate), 0,
     BaselineUpdateClick);
   FBaselineDelete := AddButton(Row, TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineDelete), 216,
     BaselineDeleteClick);
@@ -3933,7 +3933,9 @@ begin
   else if not FLockedControls.Contains(AControl) then
     FLockedControls.Add(AControl);
   AControl.Enabled := not ALocked and not FOwnOff.Contains(AControl);
-  if (AControl is TWinControl) and not (AControl is TAtlasSettingsGroup) then
+  // Der Regel-Editor (#909) sperrt Tabelle und Felder selbst (Hauptschalter der Gruppe); eine Sperre von
+  // außen wirkt über sein eigenes Enabled.
+  if (AControl is TWinControl) and not (AControl is TAtlasSettingsGroup) and not (AControl is TAtlasRulesEditor) then
     for Index := 0 to TWinControl(AControl).ControlCount - 1 do
       SetLocked(TWinControl(AControl).Controls[Index], ALocked);
 end;
