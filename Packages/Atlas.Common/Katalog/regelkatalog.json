@@ -2293,6 +2293,23 @@
         "E2129",
         "E2130"
       ]
+    },
+    {
+      "id": "dynamic-array-misuse",
+      "name": "New, Dispose or SetLength misused on a dynamic array",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "New (like E2255) or Dispose (like E2256) on a dynamic array, SetLength without a length (like E2246), New with a length on a type that is not a dynamic array (like E2307) and New(TArrayType) without a length (like E2308). Typical for old code that switched from pointers to dynamic arrays. The rule only reports when name resolution knows the variable or type for sure; aliases are followed (TValues = array of Double), TBytes and the other dynamic arrays of the RTL count even without an index; open array parameters and pointers stay silent. Quick fixes: Dispose(A) becomes A := nil, New(A) becomes SetLength(A, 1).",
+      "bad": "Dispose(Werte);",
+      "good": "Werte := nil;",
+      "compilerCodes": [
+        "E2255",
+        "E2256",
+        "E2246",
+        "E2307",
+        "E2308"
+      ]
     }
   ]
 }

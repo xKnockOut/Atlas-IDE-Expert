@@ -4119,3 +4119,19 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## New, Dispose oder SetLength falsch für dynamische Arrays (#1038)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| YD1 | Das Beispiel aus #1038: `var Werte: TArray<Double>;` und `Dispose(Werte);` | Fehler `dynamic-array-misuse` an `Dispose(Werte)`: „Dispose ist für dynamische Arrays nicht erlaubt und nicht nötig (wie E2256).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| YD2 | Schnellkorrektur „Werte := nil“, danach Strg+Z | Zeile wird `Werte := nil;`, keine Meldung mehr; ein Undo-Schritt nimmt es zurück |
+| YD3 | `var Liste: array of Integer;` und `New(Liste);` | „New ist für dynamische Arrays nicht erlaubt; die Länge setzt SetLength (wie E2255).“; Korrektur `SetLength(Liste, 1)` |
+| YD4 | `SetLength(Werte);` | „SetLength braucht für das dynamische Array Werte mindestens eine Länge (wie E2246).“ ohne Korrektur |
+| YD5 | `type TWerte = array of Double;` mit `R := New(TWerte);` bzw. `R := New(TPunkt, 3);` (TPunkt ein Record) | „New für das dynamische Array TWerte braucht mindestens eine Länge (wie E2308).“ bzw. „New mit Länge erwartet den Typ eines dynamischen Arrays; TPunkt ist keiner (wie E2307).“ |
+| YD6 | `Dispose(Daten)` mit `Daten: TBytes`, Alias `TReihe = TWerte` | Je eine Meldung wie YD1 |
+| YD7 | `New(P)`/`Dispose(P)` mit `P: PPunkt`, `R := New(TWerte, 3)`, `SetLength(Werte, 3)`, `Dispose(Offen)` mit offenem Array-Parameter, eigene Prozedur `New` in der Unit | Keine Meldung |
+| YD8 | `"dynamic-array-misuse": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| YD9 | Abgleich mit Delphi: YD1, YD3 bis YD6 übersetzen | dcc meldet E2256, E2255, E2246, E2308 bzw. E2307 an denselben Stellen, für YD7 nichts (offenes Array: eigener Fehler, den die Regel nicht meldet) |
