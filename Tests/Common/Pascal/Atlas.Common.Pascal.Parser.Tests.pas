@@ -22,6 +22,8 @@ type
     [Test]
     procedure ParsesGenericsAndAttributes;
     [Test]
+    procedure ParsesTypeArgsBeforeIdentifier;
+    [Test]
     procedure ParsesRecordWithVariantPart;
     [Test]
     procedure ParsesProcedureTypesWithCallingConvention;
@@ -249,6 +251,32 @@ begin
     Assert.IsTrue(CountKind(Tree.Root, TSyntaxKind.GenericParams) >= 2);
     Assert.IsTrue(CountKind(Tree.Root, TSyntaxKind.GenericArgs) >= 1);
     Assert.AreEqual('<', FindFirst(Tree.Root, TSyntaxKind.BinaryExpr).Name);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TPascalParserTests.ParsesTypeArgsBeforeIdentifier;
+var
+  Tree: TSyntaxTree;
+  Prop, TypeRef: TSyntaxNode;
+begin
+  // Im Typverweis folgt den Typargumenten auch ein Bezeichner (read, write, deprecated) (#1004).
+  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
+    '  TKarte = class',
+    '    property Liste: TList<Integer> read FListe write FListe;',
+    '    property Tabelle: TDictionary<string, TList<Integer>> read FTabelle;',
+    '  end;',
+    'implementation',
+    'end.']));
+  try
+    AssertNoDiagnostics(Tree);
+    Prop := FindFirst(Tree.Root, TSyntaxKind.PropertyDecl);
+    TypeRef := Prop.FindChild(TSyntaxKind.TypeReference);
+    Assert.AreEqual('TList', TypeRef.Name);
+    Assert.IsNotNull(TypeRef.FindChild(TSyntaxKind.GenericArgs));
+    Assert.AreEqual(2, CountKind(Tree.Root, TSyntaxKind.PropertyDecl));
+    Assert.AreEqual(3, CountKind(Tree.Root, TSyntaxKind.GenericArgs));
   finally
     Tree.Free;
   end;

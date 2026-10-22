@@ -63,6 +63,8 @@ uses
   Atlas.Common.Rules.Builtin.Platform,
   Atlas.Common.Rules.Builtin.Idioms,
   Atlas.Common.Rules.Builtin.Inlining,
+  Atlas.Common.Rules.Builtin.MethodDirectives,
+  Atlas.Common.Rules.Builtin.Published,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -121,6 +123,8 @@ begin
     RegisterPlatformRules(Registry);
     RegisterIdiomRules(Registry);
     RegisterInliningRules(Registry);
+    RegisterMethodDirectiveRules(Registry);
+    RegisterPublishedRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

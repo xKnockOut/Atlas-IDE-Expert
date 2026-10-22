@@ -5054,3 +5054,109 @@ Voraussetzung: Server läuft in der IDE; eine Unit mit Klasse ist offen.
 | UD6 | `{$IFDEF FPC} nostackframe; {$ENDIF}` nach einem Prozedurkopf | Keine Meldung |
 | UD7 | `"rules": {"directive-typo": "off"}`, `"group:compiler": "off"` bzw. `"directive-typo": {"exclude": ["Source/*.pas"]}` | Keine Meldung (in den ausgenommenen Dateien) |
 | UD8 | Abgleich mit Delphi: UD1, UD3, UD4 und UD5 übersetzen | dcc meldet E2070 an denselben Stellen; bei UD4 prüfen, ob Delphi E2070 oder einen anderen Code nennt (Abweichung als Kommentar an #1068) |
+
+## abstract, final oder static falsch kombiniert (#998)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JA1 | Das Beispiel aus #998: `function Flaeche: Double; abstract;` in `TForm = class` | Fehler `abstract-declaration-invalid` an `abstract`: „abstract nur zusammen mit virtual oder dynamic (wie E2167).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JA2 | Schnellkorrektur „"virtual;" vor abstract einfügen“, danach Strg+Z | Zeile wird `function Flaeche: Double; virtual; abstract;`, keine Meldung mehr; ein Undo-Schritt |
+| JA3 | `virtual; abstract;` und im implementation-Teil ein Rumpf `function TForm.Flaeche` | „TForm.Flaeche ist abstract und darf keinen Rumpf haben (wie E2136).“; Korrektur „Rumpf entfernen“ löscht den Rumpf samt Leerzeile |
+| JA4 | `procedure Speichern; final;` bzw. `virtual; abstract; final;` | Meldung wie E2351 bzw. E2371 an `final` |
+| JA5 | `TForm = class abstract sealed` | „Eine Klasse ist entweder abstract oder sealed, nicht beides (wie E2383).“ |
+| JA6 | `function Neu: TForm; static;` und `class function Neu: TForm; virtual; static;` | Meldung wie E2376 an `static` |
+| JA7 | `override; abstract;`, `virtual; final;`, `class function … static;` in Klasse und Record, abstrakte Überladung neben einer nicht abstrakten mit Rumpf, abstract nur in einem `{$IFDEF}`-Zweig | Keine Meldung |
+| JA8 | `"abstract-declaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| JA9 | Abgleich mit Delphi: JA1, JA3 bis JA6 übersetzen | dcc meldet E2167, E2136, E2351, E2371, E2383 bzw. E2376 an denselben Stellen, für JA7 nichts; meldet dcc für JA5 E2540 statt E2383, Meldungstext anpassen |
+
+## Vorwärtsdeklaration nie aufgelöst (#1002)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JF1 | Das Beispiel aus #1002: `function Pruefsumme(const Daten: TBytes): Cardinal;` im interface, kein Rumpf | Fehler `unsatisfied-forward` an `Pruefsumme`: „Pruefsumme ist im interface deklariert, aber nicht implementiert (wie E2065).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JF2 | Schnellkorrektur „Leeren Rumpf für Pruefsumme anlegen“, danach Strg+Z | Vor `initialization` bzw. `end.` steht `function Pruefsumme(const Daten: TBytes): Cardinal;` mit `begin`/`end;`, keine Meldung mehr; ein Undo-Schritt; Standardwerte der Parameter fehlen im Rumpf |
+| JF3 | Zwei Überladungen im interface, nur eine implementiert | Meldung an der fehlenden Überladung |
+| JF4 | `procedure Vorne; forward;` im implementation-Teil ohne Rumpf, auch als lokale Routine | „Vorne ist forward deklariert, aber nicht implementiert (wie E2065).“ |
+| JF5 | `TKnoten = class;` bzw. `IBesucher = interface;` ohne vollständige Deklaration im selben type-Abschnitt | Meldung wie E2086 bzw. E2420 |
+| JF6 | Rumpf ohne Parameterliste (`function Kurz;`), `external` im interface oder implementation, Deklaration in `{$IFDEF}`, Unit mit `{$I datei.inc}`, `EFehler = class(Exception);`, Methoden ohne Rumpf (meldet `declared-not-implemented`) | Keine Meldung von `unsatisfied-forward` |
+| JF7 | `"unsatisfied-forward": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| JF8 | Abgleich mit Delphi: JF1, JF3 bis JF5 übersetzen | dcc meldet E2065, E2086 bzw. E2420 an denselben Stellen, für JF6 nichts |
+
+## Member verdeckt einen Member des Vorfahren (#1003)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JV1 | Das Beispiel aus #1003: `TBasis` mit `FName: string;`, `TKunde = class(TBasis)` mit `FName: string;` | Warnung `member-hides-ancestor` an `FName` in `TKunde`: „FName verdeckt TBasis.FName (wie W1009).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JV2 | Schnellkorrektur „In FKundeName umbenennen (in dieser Unit)“, danach Strg+Z | Feld und Zugriffe in den Methoden von `TKunde` (auch `Self.FName`) heißen `FKundeName`; `TBasis(Self).FName` bleibt; ein Undo-Schritt |
+| JV3 | `property Wert: string read FText;` in `TKunde`, `Wert: Integer;` als Feld in `TBasis` | „Wert verdeckt TBasis.Wert (wie W1009).“ |
+| JV4 | Nicht virtuelle Methode `Speichern(const APfad: string)` in beiden Klassen | Meldung mit mittlerer Konfidenz, ohne Korrektur |
+| JV5 | Vorfahr aus einer anderen Unit: `private`-Feld gleichen Namens; `strict private` in derselben Unit | Keine Meldung; mit `"ignoreStrictPrivate": false` Meldung für `strict private` |
+| JV6 | `property Caption;`, Property mit neuem Typ über einer Property, `overload`, `reintroduce`, virtuelle Methoden, Konstruktoren, Klassenmethoden | Keine Meldung von `member-hides-ancestor` |
+| JV7 | `"member-hides-ancestor": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| JV8 | Abgleich mit Delphi: JV1, JV3, JV4 übersetzen | dcc meldet W1009 für JV3; meldet dcc für JV1 oder JV4 nichts, Konfidenz der Fälle senken bzw. im Issue nachtragen |
+
+## Unzulässiges Mitglied im published-Abschnitt (#1004)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JP1 | Das Beispiel aus #1004: `TKarte = class(TCustomControl)` mit `published` und `property Mitte: TPointF read FMitte write SetMitte;`, `System.Types` in uses | Fehler `published-type-invalid` an `TPointF`: „TPointF (Record) kann nicht published sein (wie E2188).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JP2 | Schnellkorrektur „In den public-Abschnitt verschieben“, danach Strg+Z | Die Property steht unter einem neuen `public` direkt vor `published` (bzw. am Ende eines unmittelbar davor stehenden `public`), keine Meldung mehr; ein Undo-Schritt |
+| JP3 | published-Properties vom Typ `TArray<Integer>`, eigenes `array of`, `PChar`, `^Integer`, `procedure(A: Integer)` | Je eine Meldung wie E2188 mit (Array), (Zeiger) bzw. (Prozedurtyp ohne "of object") |
+| JP4 | `property Alt: Real48`, `set of Byte`, Menge über eine Aufzählung mit 33 Werten, `set of 0..32` | Meldungen wie E2186 bzw. E2187; `set of 0..31` und `set of 8..39` ohne Meldung |
+| JP5 | published-Feld `FZahl: Integer;` und `FPunkt: TPoint;` | Meldung wie E2217; Feld vom Typ einer Klasse oder eines Interfaces ohne Meldung |
+| JP6 | Zwei published-Überladungen `procedure Laden; overload;` und `procedure Laden(const APfad: string); overload;` | Meldung wie E2266 an der zweiten; liegt sie in public oder im anderen `{$IFDEF}`-Zweig, keine Meldung |
+| JP7 | `class property Standard: Integer read FStandard;` bzw. `property Größe: Integer read FGroesse;` in published | Meldung wie E2545 bzw. E2452 |
+| JP8 | Dieselben Properties im Abschnitt ohne Angabe einer TPersistent-Klasse, in public, mit Typparameter `T`, mit unbekanntem Typ und mit `published` nur in einem `{$IFDEF}`-Zweig | Keine Meldung |
+| JP9 | `"published-type-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| JP10 | Abgleich mit Delphi: JP1, JP3 bis JP7 übersetzen | dcc meldet dieselben Codes an denselben Stellen, für JP8 nichts; weicht dcc ab (etwa bei Prozedurtypen oder Mengen), Regel anpassen |
+
+## Schreibweise oder Sichtbarkeit weicht vom Vorfahren ab (#1021)
+
+Voraussetzung: Server läuft in der IDE mit Projekt, in `atlas.json` `"rules": {"override-case-mismatch": "hint"}`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JS1 | Das Beispiel aus #1021: `destructor destroy; override;` in einer Klasse | Hinweis `override-case-mismatch` am Namen: „Schreibweise weicht von TObject.Destroy ab (wie H2365).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JS2 | Schnellkorrektur „Schreibweise vom Vorfahr übernehmen“, danach Strg+Z | Deklaration und Rumpfkopf heißen `Destroy`, keine Meldung mehr; ein Undo-Schritt |
+| JS3 | `procedure Paint; override;` einer TGraphicControl-Nachfahrin in `private` (Klasse im interface-Teil) | „… ist private und damit weniger sichtbar als TGraphicControl.Paint (protected) (wie H2269).“; dieselbe Klasse im implementation-Teil ohne Meldung |
+| JS4 | `property Name: string read getName write SETNAME;` mit gleichnamigen Methoden | Zwei Hinweise wie H2367; „In GetName umbenennen“ ändert Deklaration, Property und Rumpfkopf |
+| JS5 | Public `function Anzahl: Integer; inline;`, die `FAnzahl` (private) liest | „Die inline-Methode … greift aber auf FAnzahl (private) zu; … (wie H2440).“ |
+| JS6 | Gleiche Schreibweise, `reintroduce`, unbekannter Vorfahr, protected gegen strict protected, Parameter gleichen Namens im inline-Rumpf, `with` | Keine Meldung |
+| JS7 | Ohne Eintrag in `atlas.json`, mit `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| JS8 | Abgleich mit Delphi: JS1, JS3 bis JS5 übersetzen, einmal normal und einmal mit C++-Ausgabe (`-JPHNE`) | dcc meldet H2365, H2269, H2367 bzw. H2440 an denselben Stellen, für JS6 nichts; dabei notieren, wann dcc H2368 und H2369 meldet, damit sie nachgezogen werden können |
+
+## default-Property falsch deklariert oder fehlt (#1073)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JD1 | Das Beispiel aus #1073: `property Name: string read FName; default;` | Fehler `default-property-invalid` an `default`: „default ist nur an Array-Properties erlaubt (wie E2132).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JD2 | Zwei Properties `Items[I: Integer]` und `Texte[I: Integer]`, beide mit `default;` | „… hat schon die default-Property Items mit denselben Indextypen (wie E2131).“ an der zweiten |
+| JD3 | `Items[I: Integer]` und `Named[const N: string]`, beide `default;` | Keine Meldung (Überladung über den Indextyp) |
+| JD4 | Eigene Klasse ohne default-Property, im Rumpf `L[0] := nil;` | „TListe hat keine default-Property; L[…] braucht eine (wie E2149).“ |
+| JD5 | `TStringList`-Variable `L[0]`, `string`- und Array-Indizes, Array-Property `L.Kinder[0]`, Klasse mit unbekanntem Vorfahren | Keine Meldung |
+| JD6 | `"default-property-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| JD7 | Abgleich mit Delphi: JD1, JD2 und JD4 übersetzen | dcc meldet E2132, E2131 bzw. E2149 an denselben Stellen, für JD3 und JD5 nichts |
+
+## Neu deklarierte Property fehlt im Vorfahren (#1074)
+
+Voraussetzung: Server läuft in der IDE mit Projekt, VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JN1 | Das Beispiel aus #1074: `TMeinPanel = class(TCustomPanel)` mit `published` und `property Captoin;` | Fehler `property-redeclaration-invalid` am Namen: „TCustomPanel hat keine Property Captoin; gemeint ist Caption (wie E2147).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JN2 | Schnellkorrektur „Caption verwenden“, danach Strg+Z | Zeile wird `property Caption;`, keine Meldung mehr; ein Undo-Schritt |
+| JN3 | `property Beschriftung;` ohne ähnlichen Namen; `property Caption;` in einer Klasse ohne Vorfahr | „… hat keine Property … (wie E2147).“ ohne Korrektur; bei der Klasse ohne Vorfahr mit TObject |
+| JN4 | Vorfahr in einer anderen Unit mit Property in `private` bzw. `strict private`, im Nachfahren `property Wert;` | „Die Property Wert von … ist hier nicht erreichbar (wie E2233).“ |
+| JN5 | `property Caption;`, `property Color default clRed;`, Properties mit Typ, unbekannter Vorfahr, gleichnamiges Feld im Vorfahren | Keine Meldung |
+| JN6 | `"property-redeclaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| JN7 | Abgleich mit Delphi: JN1, JN3 und JN4 übersetzen | dcc meldet E2147 bzw. E2233 an denselben Stellen, für JN5 nichts |
