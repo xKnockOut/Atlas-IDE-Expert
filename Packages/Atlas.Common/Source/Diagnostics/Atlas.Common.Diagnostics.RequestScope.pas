@@ -7,6 +7,13 @@
 // Ohne offenen Bereich sind alle Aufrufe wirkungslos und kosten fast nichts.
 //
 // Gemeldet werden nur feste Codes und Zahlen, nie Bezeichner oder Pfade.
+//
+// Gegenstand und Regel (#1094): Wer mehrere Units prüft, nennt vor jeder Unit
+// ihr anonymes Kennzeichen (Subject, z. B. "unit#12"), die Regel-Engine vor
+// jeder Regel deren Kennung (CurrentRule). Endet die Anfrage mit einem Fehler,
+// stehen beide noch im Ergebnis und gehen als unit=/rule= ins Diagnoselog.
+// Scheitert nur eine Regel oder eine Unit und läuft die Anfrage weiter, halten
+// RuleFailed und UnitFailed das als failRule=/failUnit= fest.
 
 interface
 
@@ -20,6 +27,10 @@ type
     Notes: TArray<string>;
     /// <summary>Zahl der Ergebnisse, wenn das Feature sie selbst meldet; -1 = aus der Antwort zählen.</summary>
     Count: Integer;
+    /// <summary>Anonymes Kennzeichen der zuletzt begonnenen Unit, '' = keine offen.</summary>
+    Subject: string;
+    /// <summary>Kennung der zuletzt begonnenen Prüfregel, '' = keine offen.</summary>
+    Rule: string;
   end;
 
   TRequestDiagnostics = record
@@ -46,6 +57,19 @@ type
     /// <summary>Merkt ALabel unter AKey und AMs unter AKey + 'Ms', wenn AMs größer ist als die bisher
     /// gemerkte Dauer, z. B. Slowest('slowRule', 'hides-virtual', 2700) für die langsamste Prüfregel.</summary>
     class procedure Slowest(const AKey, ALabel: string; AMs: Integer); static;
+    /// <summary>Anonymes Kennzeichen der Unit, die jetzt geprüft wird, z. B. "unit#12"; '' beendet sie.</summary>
+    class procedure Subject(const ALabel: string); static;
+    /// <summary>Kennung der Prüfregel, die jetzt läuft; '' beendet sie.</summary>
+    class procedure CurrentRule(const ARuleId: string); static;
+    /// <summary>Eine Regel ist an der aktuellen Unit gescheitert; die übrigen laufen weiter.
+    /// Notiert failedRules, failRule, failRuleUnit und failRuleClass.</summary>
+    class procedure RuleFailed(const ARuleId, AErrorClass: string); static;
+    /// <summary>Die aktuelle Unit wurde nach einem Fehler übersprungen.
+    /// Notiert failedUnits, failUnit und failUnitClass.</summary>
+    class procedure UnitFailed(const AErrorClass: string); static;
+    /// <summary>Die Regeln wurden für die aktuelle Unit übersprungen, weil ihr Baum zu tief ist.
+    /// Notiert deepUnits, deepUnit und deepUnitDepth.</summary>
+    class procedure TreeTooDeep(ADepth: Integer); static;
   end;
 
 implementation
@@ -177,6 +201,55 @@ begin
     Exit;
   Note(AKey, ALabel);
   Note(AKey + 'Ms', AMs);
+end;
+
+class procedure TRequestDiagnostics.Subject(const ALabel: string);
+begin
+  if CurrentScope <> nil then
+    CurrentScope.Notes.Subject := ALabel;
+end;
+
+class procedure TRequestDiagnostics.CurrentRule(const ARuleId: string);
+begin
+  if CurrentScope <> nil then
+    CurrentScope.Notes.Rule := ARuleId;
+end;
+
+function CurrentSubject: string;
+begin
+  Result := CurrentScope.Notes.Subject;
+  if Result = '' then
+    Result := '-';
+end;
+
+class procedure TRequestDiagnostics.RuleFailed(const ARuleId, AErrorClass: string);
+begin
+  if CurrentScope = nil then
+    Exit;
+  Increment('failedRules');
+  Note('failRule', ARuleId);
+  Note('failRuleUnit', CurrentSubject);
+  Note('failRuleClass', AErrorClass);
+end;
+
+class procedure TRequestDiagnostics.UnitFailed(const AErrorClass: string);
+begin
+  if CurrentScope = nil then
+    Exit;
+  Increment('failedUnits');
+  Note('failUnit', CurrentSubject);
+  Note('failUnitClass', AErrorClass);
+  // Die Regel ist mit der Unit erledigt; sonst nennte ein späterer Fehler die falsche.
+  CurrentScope.Notes.Rule := '';
+end;
+
+class procedure TRequestDiagnostics.TreeTooDeep(ADepth: Integer);
+begin
+  if CurrentScope = nil then
+    Exit;
+  Increment('deepUnits');
+  Note('deepUnit', CurrentSubject);
+  Note('deepUnitDepth', ADepth);
 end;
 
 end.

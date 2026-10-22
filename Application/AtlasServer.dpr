@@ -2,6 +2,11 @@
 
 {$APPTYPE CONSOLE}
 
+// 8 MB Stapel je Thread statt 1 MB (#1094): Reserve für rekursive Auswertungen
+// großer Units. Belegt wird nur, was ein Thread wirklich braucht; die Tiefe
+// begrenzen Parser und Regel-Engine selbst.
+{$MAXSTACKSIZE $00800000}
+
 uses
   // Muss als erste Unit stehen: zählt den Speicherrest beim Beenden (#177).
   Atlas.Common.Diagnostics.ShutdownLeaks,
