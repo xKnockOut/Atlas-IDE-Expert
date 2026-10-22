@@ -6,7 +6,8 @@
 // Typs (W1012 als Warnung), zu große Hex-Literale, Konstanten aus anderen
 // Units und aus {$IF}-Zweigen, stille Fälle, Abschalten.
 // default-parameter-invalid (#993): Beispiel mit Korrektur samt Implementierung,
-// mehrere Namen mit einem Standardwert, var/out, Record und statisches Array,
+// mehrere Namen mit einem Standardwert, var/out, Record, statisches Array und
+// Mengen über 4 Byte,
 // Prozedurtypen, stille Fälle, Abschalten.
 
 interface
@@ -364,6 +365,15 @@ begin
     OnlyDefaultMessage(Post('    procedure Zeigen(const Ort: TPunkt = nil);'#10, '')));
   Assert.AreEqual('Parameter vom Typ TPaar können keinen Standardwert haben (wie E2268).',
     OnlyDefaultMessage(Post('    procedure Zeigen(const Werte: TPaar = nil);'#10, '')));
+  // Mengen über 4 Byte (E2146), kleine Mengen gehen.
+  Assert.AreEqual('TZeichen ist eine Menge über 4 Byte; Standardwerte gibt es nur für ordinale, Zeiger- und ' +
+    'kleine Mengentypen (wie E2146).', OnlyDefaultMessage(Post('    procedure Trennen(Zeichen: TZeichen = [''a'']);'#10,
+    '').Replace('  TPost = class'#10, '  TZeichen = set of AnsiChar;'#10'  TPost = class'#10)));
+  Assert.AreEqual(1, Integer(Length(DefaultFindings(Post('    procedure Trennen(Werte: TWerte = []);'#10,
+    '').Replace('  TPost = class'#10, '  TWerte = set of 0..40;'#10'  TPost = class'#10)))));
+  Assert.AreEqual(0, Integer(Length(DefaultFindings(Post('    procedure Malen(Farben: TFarben = [Rot]; ' +
+    'Bits: TBits = [1, 5]);'#10, '').Replace('  TPost = class'#10, '  TFarbe = (Rot, Gruen, Blau);'#10 +
+    '  TFarben = set of TFarbe;'#10'  TBits = set of 0..31;'#10'  TPost = class'#10)))));
   // Prozedurtypen gelten genauso.
   Assert.AreEqual('B braucht einen Standardwert, weil ein vorheriger Parameter einen hat (wie E2238).',
     OnlyDefaultMessage(Post('', '').Replace('  TPost = class'#10,
