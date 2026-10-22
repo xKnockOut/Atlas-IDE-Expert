@@ -450,6 +450,18 @@ begin
       IndexEvent('index cache rejected');
       ReportProcess(TIndexProcessInfo.StateBuilding, WritesCache, Format('Cache verworfen (%s)', [AReason]));
     end;
+  FIndexService.OnCacheNotWritten :=
+    procedure(const AFileName, AReason: string)
+    var
+      Kind: string;
+    begin
+      // Bericht N1: früher still. Der nächste Aufbau liest die fehlenden Units neu; ohne Pfad ins Log.
+      Kind := 'Projekt';
+      if Pos(PathDelim + TIndexCacheDirectory.LibraryFolder + PathDelim, AFileName) > 0 then
+        Kind := 'Bibliothek';
+      FLogger.Warning(Format('Index-Cache (%s) nicht geschrieben: %s', [Kind, AReason]));
+      IndexEvent('index cache not written ' + Kind);
+    end;
   FIndexService.OnError :=
     procedure(const AError: Exception)
     begin
