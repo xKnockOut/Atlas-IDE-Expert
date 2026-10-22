@@ -26,17 +26,13 @@ type
     class function Warnings: TArray<string>; static;
     /// <summary>Ist AName ein Bezeichner für {$WARN …} (ohne Groß-/Kleinschreibung)?</summary>
     class function IsWarning(const AName: string): Boolean; static;
-    /// <summary>Nächstliegender Name aus ACandidates für einen Tippfehler: höchstens zwei Zeichen anders und
-    /// weniger als die Hälfte von AName; '' ohne passenden Namen.</summary>
-    class function Closest(const AName: string; const ACandidates: TArray<string>): string; static;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  System.StrUtils,
-  System.Math;
+  System.StrUtils;
 
 const
   DirectiveNames: array[0..100] of string = (
@@ -126,52 +122,6 @@ end;
 class function TDirectiveNames.IsWarning(const AName: string): Boolean;
 begin
   Result := MatchText(AName, WarningNames);
-end;
-
-/// <summary>Editierabstand nach Levenshtein ohne Groß-/Kleinschreibung.</summary>
-function Distance(const A, B: string): Integer;
-var
-  Previous, Current: TArray<Integer>;
-  I, J, Cost: Integer;
-  UpperA, UpperB: string;
-begin
-  UpperA := UpperCase(A);
-  UpperB := UpperCase(B);
-  SetLength(Previous, Length(UpperB) + 1);
-  SetLength(Current, Length(UpperB) + 1);
-  for J := 0 to Length(UpperB) do
-    Previous[J] := J;
-  for I := 1 to Length(UpperA) do
-  begin
-    Current[0] := I;
-    for J := 1 to Length(UpperB) do
-    begin
-      Cost := 1;
-      if UpperA[I] = UpperB[J] then
-        Cost := 0;
-      Current[J] := Min(Min(Previous[J] + 1, Current[J - 1] + 1), Previous[J - 1] + Cost);
-    end;
-    Previous := Copy(Current);
-  end;
-  Result := Previous[Length(UpperB)];
-end;
-
-class function TDirectiveNames.Closest(const AName: string; const ACandidates: TArray<string>): string;
-var
-  Candidate: string;
-  Best, Value: Integer;
-begin
-  Result := '';
-  Best := Min(3, (Length(AName) + 1) div 2);
-  for Candidate in ACandidates do
-  begin
-    Value := Distance(AName, Candidate);
-    if Value < Best then
-    begin
-      Best := Value;
-      Result := Candidate;
-    end;
-  end;
 end;
 
 end.

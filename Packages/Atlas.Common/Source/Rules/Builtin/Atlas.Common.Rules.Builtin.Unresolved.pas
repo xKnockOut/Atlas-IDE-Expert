@@ -79,10 +79,10 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  System.Math,
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Text.Lines,
+  Atlas.Text.Fuzzy,
   Atlas.Common.Rules.Options,
   Atlas.Common.Projects.DprojEditor,
   Atlas.Common.Editing.UsesClause,
@@ -221,37 +221,6 @@ begin
   end;
 end;
 
-/// <summary>Editierabstand nach Levenshtein ohne Groß-/Kleinschreibung; über ALimit hinaus ALimit + 1.</summary>
-function Distance(const A, B: string; ALimit: Integer): Integer;
-var
-  Left, Right: string;
-  Row, Next: TArray<Integer>;
-  I, J, Best: Integer;
-begin
-  Left := LowerCase(A);
-  Right := LowerCase(B);
-  if Abs(Length(Left) - Length(Right)) > ALimit then
-    Exit(ALimit + 1);
-  SetLength(Row, Length(Right) + 1);
-  SetLength(Next, Length(Right) + 1);
-  for J := 0 to Length(Right) do
-    Row[J] := J;
-  for I := 1 to Length(Left) do
-  begin
-    Next[0] := I;
-    Best := Next[0];
-    for J := 1 to Length(Right) do
-    begin
-      Next[J] := Min(Min(Row[J] + 1, Next[J - 1] + 1), Row[J - 1] + Ord(Left[I] <> Right[J]));
-      Best := Min(Best, Next[J]);
-    end;
-    if Best > ALimit then
-      Exit(ALimit + 1);
-    Row := Copy(Next);
-  end;
-  Result := Row[Length(Right)];
-end;
-
 type
   TScoredName = record
     Score: Integer;
@@ -288,7 +257,7 @@ begin
         Qualified.Add(Known)
       else
       begin
-        Score := Distance(AName, Known, MaxDistance);
+        Score := TTextFuzzy.EditDistance(AName, Known, MaxDistance);
         if Score <= MaxDistance then
           Similar.Add(Scored(Score, Known));
       end;

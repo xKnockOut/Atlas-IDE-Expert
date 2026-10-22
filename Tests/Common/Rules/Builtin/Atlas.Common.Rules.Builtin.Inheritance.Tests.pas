@@ -43,6 +43,18 @@ type
     procedure ShadowedNameSilentCases;
     [Test]
     procedure ShadowedNameOptions;
+    [Test]
+    procedure OverrideTargetIssueExample;
+    [Test]
+    procedure OverrideTargetStaticFinalSealed;
+    [Test]
+    procedure OverrideTargetTypoAndMissing;
+    [Test]
+    procedure OverrideTargetSilentCases;
+    [Test]
+    procedure OverrideTargetFromIndex;
+    [Test]
+    procedure OverrideTargetOptions;
   end;
 
 implementation
@@ -322,6 +334,184 @@ begin
     '{"rules": {"shadowed-name": {"ignore": []}}}', 'U.pas'))));
   TConfigurationParser.Parse('{"rules": {"shadowed-name": {"ignore": "Value"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+function Dienste(const ABase, AMembers, AImplementation: string): string;
+begin
+  Result := 'unit Dienste;'#10'interface'#10'type'#10'  TModus = (mdSchnell, mdGruendlich);'#10 +
+    '  TDienst = class' + ABase + #10'  protected'#10 +
+    '    procedure Ausfuehren(const Modus: TModus); virtual;'#10'  end;'#10 +
+    '  TImportDienst = class(TDienst)'#10'  protected'#10 + AMembers + #10'  end;'#10 +
+    'implementation'#10'procedure TDienst.Ausfuehren(const Modus: TModus);'#10'begin'#10'end;'#10 +
+    AImplementation + 'end.';
+end;
+
+/// <summary>Wendet alle Edits einer Korrektur an (jedes Edit in einer Zeile, von hinten nach vorn).</summary>
+function ApplyEdits(const AText: string; const AFix: TRuleFix): string;
+var
+  Lines: TArray<string>;
+  Edit: TRuleEdit;
+  Line: string;
+  Index: Integer;
+begin
+  Lines := AText.Split([#10]);
+  for Index := High(AFix.Edits) downto 0 do
+  begin
+    Edit := AFix.Edits[Index];
+    Line := Lines[Edit.Range.StartPos.Line];
+    Lines[Edit.Range.StartPos.Line] := Copy(Line, 1, Edit.Range.StartPos.Character) + Edit.NewText +
+      Copy(Line, Edit.Range.EndPos.Character + 1, MaxInt);
+  end;
+  Result := string.Join(#10, Lines);
+end;
+
+procedure TInheritanceRulesTests.OverrideTargetIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Dienste('', '    procedure Ausfuehren(Modus: Integer); override;',
+    'procedure TImportDienst.Ausfuehren(Modus: Integer);'#10'begin'#10'end;'#10);
+  Findings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TDienst hat kein virtuelles Ausfuehren(Integer); dort heißt es Ausfuehren(const Modus: TModus) ' +
+    '(wie E2137).', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Signatur von TDienst.Ausfuehren übernehmen', Findings[0].Fixes[0].Title);
+  Fixed := ApplyEdits(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(Dienste('', '    procedure Ausfuehren(const Modus: TModus); override;',
+    'procedure TImportDienst.Ausfuehren(const Modus: TModus);'#10'begin'#10'end;'#10), Fixed);
+  TRuleAssert.Silent(TOverrideTargetMissingRule.Create, Fixed);
+  // Anderer Aufbau (Zahl der Parameter, Funktion statt Prozedur): ebenfalls E2137.
+  Findings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Dienste('',
+    '    procedure Ausfuehren(const Modus: TModus; Stufe: Integer); override;', ''));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TDienst hat kein virtuelles Ausfuehren(TModus, Integer); dort heißt es ' +
+    'Ausfuehren(const Modus: TModus) (wie E2137).', Findings[0].Message);
+  // Ein unbekannter Typ könnte ein Alias sein: mittlere Konfidenz.
+  Findings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Dienste('',
+    '    procedure Ausfuehren(const Modus: TUnbekannt); override;', ''));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+end;
+
+procedure TInheritanceRulesTests.OverrideTargetStaticFinalSealed;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := 'unit U;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10 +
+    '    procedure Statisch;'#10'    procedure Fest; virtual;'#10'  end;'#10 +
+    '  TMitte = class(TBasis)'#10'  public'#10'    procedure Fest; override; final;'#10'  end;'#10 +
+    '  TEnde = class(TMitte)'#10'  public'#10'    procedure Statisch; override;'#10 +
+    '    procedure Fest; override;'#10'  end;'#10'implementation'#10'end.';
+  Findings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Source);
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('TBasis.Statisch ist nicht virtuell; override braucht virtual oder dynamic im Vorfahren ' +
+    '(wie E2170).', Findings[0].Message);
+  Assert.AreEqual('TMitte.Fest ist final und lässt sich nicht überschreiben (wie E2352).', Findings[1].Message);
+  Source := 'unit U;'#10'interface'#10'type'#10'  TBasis = class sealed'#10'  end;'#10 +
+    '  TAbgeleitet = class(TBasis)'#10'  end;'#10'  TFrei = class abstract'#10'  end;'#10 +
+    '  TAuchFrei = class(TFrei)'#10'  end;'#10'implementation'#10'end.';
+  Findings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TBasis ist sealed; davon lässt sich nicht ableiten (wie E2353).', Findings[0].Message);
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+end;
+
+procedure TInheritanceRulesTests.OverrideTargetTypoAndMissing;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Ohne System im Index: Destroy von TObject als Vorschlag.
+  Source := 'unit U;'#10'interface'#10'type'#10'  TListe = class'#10'  public'#10 +
+    '    destructor Destory; override;'#10'  end;'#10'implementation'#10 +
+    'destructor TListe.Destory;'#10'begin'#10'  inherited;'#10'end;'#10'end.';
+  Findings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Kein Vorfahr von TListe hat ein virtuelles Destory; gemeint ist wohl Destroy (wie E2137).',
+    Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Fixed := ApplyEdits(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(StringReplace(Source, 'Destory', 'Destroy', [rfReplaceAll]), Fixed);
+  TRuleAssert.Silent(TOverrideTargetMissingRule.Create, Fixed);
+  // Tippfehler in einer Methode des Vorfahren der Datei.
+  Findings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Dienste('',
+    '    procedure Ausfueren(const Modus: TModus); override;', ''));
+  Assert.AreEqual('Kein Vorfahr von TImportDienst hat ein virtuelles Ausfueren; gemeint ist wohl Ausfuehren ' +
+    '(wie E2137).', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  // Nichts Ähnliches: ohne Korrektur.
+  Findings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Dienste('',
+    '    procedure Speichern; override;', ''));
+  Assert.AreEqual('Kein Vorfahr von TImportDienst hat ein virtuelles Speichern (wie E2137).', Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TInheritanceRulesTests.OverrideTargetSilentCases;
+begin
+  TRuleAssert.Silent(TOverrideTargetMissingRule.Create, Dienste('',
+    '    procedure Ausfuehren(const Modus: TModus); override;', ''));
+  // TObject ohne Index: dessen virtuelle Methoden gelten als vorhanden.
+  TRuleAssert.Silent(TOverrideTargetMissingRule.Create, 'unit U;'#10'interface'#10'type'#10'  TA = class'#10 +
+    '  public'#10'    destructor Destroy; override;'#10'    procedure AfterConstruction; override;'#10 +
+    '    function ToString: string; override;'#10'  end;'#10'implementation'#10'end.');
+  // Unbekannter Vorfahr: keine Aussage.
+  TRuleAssert.Silent(TOverrideTargetMissingRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TMain = class(TForm)'#10'  protected'#10'    procedure Speichern; override;'#10'  end;'#10 +
+    'implementation'#10'end.');
+  // Alias der Datei und Synonyme wie Longint.
+  TRuleAssert.Silent(TOverrideTargetMissingRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TZahl = Integer;'#10'  TA = class'#10'  public'#10'    procedure Lauf(A: Integer; B: Longint); virtual;'#10 +
+    '  end;'#10'  TB = class(TA)'#10'  public'#10'    procedure Lauf(A: TZahl; B: Integer); override;'#10'  end;'#10 +
+    'implementation'#10'end.');
+  // Generischer Vorfahr: T steht für das Typargument.
+  TRuleAssert.Silent(TOverrideTargetMissingRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TKunde = class'#10'  end;'#10'  TListe<T> = class'#10'  protected'#10 +
+    '    procedure Melden(const Item: T); virtual;'#10'  end;'#10'  TKunden = class(TListe<TKunde>)'#10 +
+    '  protected'#10'    procedure Melden(const Item: TKunde); override;'#10'  end;'#10'implementation'#10'end.');
+  // Überladungen: das passende override zählt; class-Methoden prüft die Regel nicht.
+  TRuleAssert.Silent(TOverrideTargetMissingRule.Create, 'unit U;'#10'interface'#10'type'#10'  TA = class'#10 +
+    '  public'#10'    procedure Lesen(A: Integer); overload; virtual;'#10 +
+    '    procedure Lesen(const S: string); overload; virtual;'#10'  end;'#10'  TB = class(TA)'#10'  public'#10 +
+    '    procedure Lesen(const S: string); overload; override;'#10 +
+    '    class function NewInstance: TObject; override;'#10'  end;'#10'implementation'#10'end.');
+end;
+
+procedure TInheritanceRulesTests.OverrideTargetFromIndex;
+const
+  BasisSource = 'unit Basis;'#10'interface'#10'type'#10'  TBasis = class'#10'  private'#10 +
+    '    procedure Geheim; virtual;'#10'  protected'#10'    procedure Laden(const Datei: string); virtual;'#10 +
+    '  end;'#10'  TFest = class sealed(TBasis)'#10'  end;'#10'implementation'#10'end.';
+var
+  Index: ISymbolIndex;
+  Findings: TArray<TRuleFinding>;
+begin
+  Index := IndexWith([BasisSource]);
+  Findings := Run(TOverrideTargetMissingRule.Create, 'unit U;'#10'interface'#10'uses Basis;'#10'type'#10 +
+    '  TA = class(TBasis)'#10'  protected'#10'    procedure Laden(const Datei: string); override;'#10 +
+    '    procedure Geheim; override;'#10'  end;'#10'  TB = class(TFest)'#10'  end;'#10'implementation'#10'end.',
+    Index);
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  // private aus einer anderen Unit sieht der Nachfahre nicht.
+  Assert.AreEqual('Kein Vorfahr von TA hat ein virtuelles Geheim (wie E2137).', Findings[0].Message);
+  Assert.AreEqual('TFest ist sealed; davon lässt sich nicht ableiten (wie E2353).', Findings[1].Message);
+end;
+
+procedure TInheritanceRulesTests.OverrideTargetOptions;
+var
+  Source: string;
+begin
+  Source := Dienste('', '    procedure Speichern; override;', '');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Source, '', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Source,
+    '{"rules": {"override-target-missing": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Source,
+    '{"rules": {"group:compiler": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Source,
+    '{"rules": {"override-target-missing": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
 initialization

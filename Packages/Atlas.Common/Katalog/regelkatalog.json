@@ -2213,6 +2213,22 @@
         "W1079",
         "E2573"
       ]
+    },
+    {
+      "id": "override-target-missing",
+      "name": "override without a matching virtual method",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A method marked override for which no ancestor has a virtual (or dynamic, abstract) method with the same name and parameters (like E2137): often a typo (Destory) or parameters changed in the ancestor. The message names the closest virtual method of the ancestor (\"there it is Ausfuehren(const Modus: TModus)\") or a similar name. Also: override on a static method (like E2170), on a final one (like E2352), and deriving from a sealed class (like E2353). Ancestors are looked up in the file and in the symbol index; when the chain breaks at an unknown class the rule stays silent. Without System in the index the virtual methods of TObject count as present. Type parameters of generic ancestors, type aliases and synonyms such as Longint match. Quick fix: take over the ancestor's signature in the declaration and the implementation.",
+      "bad": "TDienst = class\nprotected\n  procedure Ausfuehren(const Modus: TModus); virtual;\nend;\nTImportDienst = class(TDienst)\nprotected\n  procedure Ausfuehren(Modus: Integer); override;\nend;",
+      "good": "TImportDienst = class(TDienst)\nprotected\n  procedure Ausfuehren(const Modus: TModus); override;\nend;",
+      "compilerCodes": [
+        "E2137",
+        "E2170",
+        "E2352",
+        "E2353"
+      ]
     }
   ]
 }

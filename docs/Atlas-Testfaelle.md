@@ -4040,3 +4040,20 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | BD10 | `"conditional-directive-unbalanced": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
 | BD11 | Hover über `{$WARN ZERO_NIL_COMPAT OFF}` | Hover nennt die Warnung `ZERO_NIL_COMPAT`; die Vervollständigung nach `{$WARN ` bietet sie an |
 | BD12 | Abgleich mit Delphi: BD1, BD3 bis BD8 übersetzen | dcc meldet an denselben Stellen die Codes aus der Meldung (E2095, E2280, E2279, E2173, W1030, W1078, W1079, E2573); bei abweichendem Code die Meldung in der Regel anpassen; für BD9 nichts |
+
+## override ohne passende virtuelle Methode (#997)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OT1 | Das Beispiel aus #997: `TDienst.Ausfuehren(const Modus: TModus); virtual;`, im Nachfahren `Ausfuehren(Modus: Integer); override;` | Fehler `override-target-missing`: „TDienst hat kein virtuelles Ausfuehren(Integer); dort heißt es Ausfuehren(const Modus: TModus) (wie E2137).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| OT2 | Schnellkorrektur „Signatur von TDienst.Ausfuehren übernehmen“, danach Strg+Z | Deklaration und Rumpf tragen den Kopf des Vorfahren (ohne Standardwerte im Rumpf); ein Undo-Schritt nimmt beides zurück |
+| OT3 | `destructor Destory; override;` in einer Klasse ohne Vorfahr | „Kein Vorfahr von … hat ein virtuelles Destory; gemeint ist wohl Destroy (wie E2137).“ mit Korrektur auf `Destroy` in Deklaration und Rumpf |
+| OT4 | override auf eine statische Methode des Vorfahren; auf eine Methode mit `final` | „… ist nicht virtuell … (wie E2170).“ bzw. „… ist final … (wie E2352).“ |
+| OT5 | `TFest = class sealed`, `TAbgeleitet = class(TFest)`; ebenso mit einer sealed-Klasse aus einer anderen Unit | „TFest ist sealed; davon lässt sich nicht ableiten (wie E2353).“ am Namen von TAbgeleitet |
+| OT6 | Formular `TForm1` mit `procedure Loaded; override;`, `procedure Paint; override;` in einem TCustomControl-Nachfahren, `Notification(…); override;` | Keine Meldung (Vorfahren aus der VCL im Index) |
+| OT7 | Vorfahr aus einer Unit, die nicht im Index steht; generischer Vorfahr `TObjectList<TKunde>` mit `Notify(const Value: TKunde; …); override;`; Parameter vom Aliastyp | Keine Meldung |
+| OT8 | Typ im Nachfahren unbekannt (Unit fehlt in uses) | Meldung nur mit mittlerer Konfidenz (Warnung) |
+| OT9 | `"override-target-missing": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| OT10 | Abgleich mit Delphi: OT1, OT3 bis OT5 übersetzen | dcc meldet E2137, E2170, E2352 bzw. E2353 an denselben Stellen, für OT6 und OT7 nichts |
