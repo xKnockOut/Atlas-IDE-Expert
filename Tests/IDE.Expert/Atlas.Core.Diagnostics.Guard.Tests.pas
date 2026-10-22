@@ -28,6 +28,10 @@ type
     procedure OldFailuresDoNotCount;
     [Test]
     procedure TrippedFeatureIsSkippedOthersRun;
+    /// <summary>Die Brotkrumenleiste hat eine eigene Sicherung: Fehler der übrigen Editorbefehle schalten sie
+    /// nicht ab (sie blieb sonst nach einer Weile stehen).</summary>
+    [Test]
+    procedure BreadcrumbsHaveTheirOwnFuse;
     [Test]
     procedure LogRotatesAtLimit;
     [Test]
@@ -173,6 +177,37 @@ begin
   Assert.AreEqual(1, Calls, 'andere Features laufen weiter');
   TAtlasGuard.Enable(TAtlasFeature.Problems);
   Assert.IsFalse(TAtlasGuard.Disabled(TAtlasFeature.Problems));
+end;
+
+procedure TAtlasGuardTests.BreadcrumbsHaveTheirOwnFuse;
+var
+  Index, Calls: Integer;
+begin
+  Assert.AreEqual('Brotkrumenleiste', TAtlasGuard.FeatureName(TAtlasFeature.Breadcrumbs));
+  for Index := 1 to 3 do
+    TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      procedure
+      begin
+        raise Exception.Create('Fehler');
+      end);
+  Assert.IsTrue(TAtlasGuard.Disabled(TAtlasFeature.EditorCommands));
+  Assert.IsFalse(TAtlasGuard.Disabled(TAtlasFeature.Breadcrumbs), 'Editorbefehle reißen die Leiste nicht mit');
+  Calls := 0;
+  TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
+    procedure
+    begin
+      Inc(Calls);
+    end);
+  Assert.AreEqual(1, Calls);
+  for Index := 1 to 3 do
+    TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
+      procedure
+      begin
+        raise Exception.Create('Fehler');
+      end);
+  Assert.IsTrue(TAtlasGuard.Disabled(TAtlasFeature.Breadcrumbs));
+  TAtlasGuard.EnableAll;
+  Assert.IsFalse(TAtlasGuard.Disabled(TAtlasFeature.Breadcrumbs), 'Abgeschaltete Funktionen einschalten');
 end;
 
 procedure TAtlasGuardTests.LogRotatesAtLimit;

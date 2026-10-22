@@ -2459,6 +2459,8 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | BK21 | Strg+Umschalt+., ←, Strg+↓ bzw. Strg+Enter | Kindermenü des gewählten Glieds bzw. Sprung dorthin |
 | BK22 | `editor.breadcrumbsHideIdeToolbar` an (Vorgabe), mehrere Reiter öffnen und wechseln, zweites Editorfenster | Navigationsleiste der IDE („Typ suchen“/„Methode suchen“) bleibt überall weg, kein Flackern beim Reiterwechsel |
 | BK23 | `editor.breadcrumbsHideIdeToolbar` aus bzw. `editor.breadcrumbs` aus bzw. Atlas entladen | Navigationsleiste der IDE ist wieder an alter Stelle (unter den Reitern, über dem Editor) |
+| BK24 | IDE eine Weile benutzen (Reiter wechseln, Plattform umstellen, tippen), dann auf Glieder und „›“ klicken | Leiste reagiert weiterhin; fällt eine andere Funktion unter „Editorbefehle“ aus, bleibt die Leiste bedienbar |
+| BK25 | Brotkrumenleiste durch Fehler abgeschaltet (atlas.log: „Brotkrumen: durch die Sicherung abgeschaltet“), dann Atlas › Abgeschaltete Funktionen einschalten | Leiste zeigt zuerst den Hinweis „Brotkrumenleiste nach Fehlern abgeschaltet …“, nach dem Einschalten wieder den Pfad am Caret und ist bedienbar |
 
 ## Extrahieren, case und with (#50)
 

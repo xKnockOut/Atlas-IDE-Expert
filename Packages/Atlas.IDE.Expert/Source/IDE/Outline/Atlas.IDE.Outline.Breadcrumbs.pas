@@ -22,6 +22,10 @@
 //   das letzte Glied der aktiven Leiste; Esc gibt ihn an den Editor zurück.
 // - editor.breadcrumbs aus entfernt alle Leisten, editor.breadcrumbsShowUnit
 //   setzt den Unit-Namen als erstes Glied.
+// - Eigene Sicherung TAtlasFeature.Breadcrumbs: Fehler anderer Editorfunktionen
+//   (früher gemeinsam Editorbefehle) schalten die Leiste nicht mehr still ab.
+//   Löst die eigene Sicherung aus, sagt die Leiste das, statt stehen zu
+//   bleiben; nach „Abgeschaltete Funktionen einschalten“ läuft sie weiter.
 // - editor.breadcrumbsIdeColors: Fläche und Schrift wie die Werkzeugleisten
 //   des IDE-Themas (TAtlasIdeStyle.ChromeColors), sonst Atlas-Palette.
 // - editor.breadcrumbsHideIdeToolbar: Die Navigationsleiste der IDE („Typ
@@ -111,8 +115,11 @@ type
     FToolbars: TAtlasNavigationToolbar;
     /// <summary>Fenster, das zuletzt unter der Maus über der Leiste lag (Diagnose).</summary>
     FProbed: HWND;
+    /// <summary>Zeigen die Leisten gerade den Hinweis „abgeschaltet“?</summary>
+    FDisabled: Boolean;
     procedure Tick(Sender: TObject);
     procedure Probe;
+    procedure ShowDisabled;
     function BarOf(AParent: TWinControl): TAtlasBreadcrumbBar;
     function EditorOf(const AWindow: INTAEditWindow): TWinControl;
     procedure EnsureBars;
@@ -139,7 +146,7 @@ type
 
 function Active: Boolean;
 begin
-  Result := TAtlasIdeSettings.Current.Breadcrumbs and not TAtlasGuard.Disabled(TAtlasFeature.EditorCommands);
+  Result := TAtlasIdeSettings.Current.Breadcrumbs and not TAtlasGuard.Disabled(TAtlasFeature.Breadcrumbs);
 end;
 
 { TBarWatcher }
@@ -313,7 +320,7 @@ begin
   Bar.OnJump :=
     procedure(AIndex: Integer; ADeclaration: Boolean)
     begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
         procedure
         begin
           Jump(Bar, AIndex, ADeclaration);
@@ -525,7 +532,7 @@ begin
   State := Self;
   Bar := ABar;
   Action := AAction;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Breadcrumbs,
     procedure
     begin
       if (TAtlasIdeBreadcrumbs.FState <> State) or not State.FBars.Contains(Bar) then
@@ -549,14 +556,51 @@ end;
 
 procedure TBreadcrumbsState.Tick(Sender: TObject);
 begin
-  if not Active then
+  if not TAtlasIdeSettings.Current.Breadcrumbs then
     Exit;
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  if TAtlasGuard.Disabled(TAtlasFeature.Breadcrumbs) then
+  begin
+    ShowDisabled;
+    Exit;
+  end;
+  if FDisabled then
+  begin
+    // Wieder eingeschaltet: alles neu zeichnen.
+    FDisabled := False;
+    FShown := False;
+    FLine := -1;
+    FCharacter := -1;
+    TAtlasGuard.Log('Brotkrumen: wieder eingeschaltet');
+  end;
+  TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
     procedure
     begin
       Update;
       Probe;
     end);
+end;
+
+/// <summary>Nach ausgelöster Sicherung einmal den Hinweis in alle Leisten schreiben; vorher blieb die Leiste mit dem
+/// letzten Pfad stehen und reagierte auf keinen Klick mehr.</summary>
+procedure TBreadcrumbsState.ShowDisabled;
+var
+  Bar: TAtlasBreadcrumbBar;
+begin
+  if FDisabled then
+    Exit;
+  FDisabled := True;
+  TAtlasGuard.Log('Brotkrumen: durch die Sicherung abgeschaltet');
+  try
+    for Bar in FBars do
+    begin
+      Bar.EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsDisabled);
+      Bar.SetCrumbs(nil);
+    end;
+  except
+    // Läuft außerhalb von TAtlasGuard.Run (Feature abgeschaltet); nichts darf in die IDE durchschlagen.
+    on E: Exception do
+      TAtlasGuard.Log('Brotkrumen: Hinweis nicht gesetzt: ' + TAtlasGuard.SafeMessage(E.Message));
+  end;
 end;
 
 /// <summary>Steht die Maus über der Leiste, aber ein anderes Fenster liegt darüber, bekommt die Leiste keine
@@ -574,7 +618,11 @@ begin
   if (Bar = nil) or not Bar.HandleAllocated or not Bar.Showing or not GetCursorPos(Cursor) then
     Exit;
   if not PtInRect(Bar.ClientRect, Bar.ScreenToClient(Cursor)) then
+  begin
+    // Maus weg: Liegt beim nächsten Mal dasselbe Fenster darüber, wird die Leiste wieder nach vorn geholt.
+    FProbed := 0;
     Exit;
+  end;
   Window := WindowFromPoint(Cursor);
   if Window = FProbed then
     Exit;
@@ -605,7 +653,8 @@ end;
 class procedure TAtlasIdeBreadcrumbs.Install;
 begin
   FreeAndNil(FState);
-  if Active then
+  // Auch bei ausgelöster Sicherung: Die Leiste zeigt dann den Hinweis (ShowDisabled).
+  if Enabled then
     FState := TBreadcrumbsState.Create;
 end;
 
@@ -617,7 +666,7 @@ end;
 class procedure TAtlasIdeBreadcrumbs.ApplySettings;
 begin
   // Aus: alle Leisten weg, der Editor bekommt seine Höhe zurück.
-  if not Active then
+  if not Enabled then
   begin
     FreeAndNil(FState);
     Exit;

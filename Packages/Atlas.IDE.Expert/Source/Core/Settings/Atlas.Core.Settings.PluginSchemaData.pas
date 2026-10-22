@@ -2699,7 +2699,7 @@ const
     '      "default": true,',
     '      "x-key": "editor.breadcrumbs",',
     '      "x-area": "editor",',
-    '      "x-feature": "EditorCommands",',
+    '      "x-feature": "Breadcrumbs",',
     '      "x-page": "Editor",',
     '      "x-node": "editor.breadcrumbs",',
     '      "x-quickToggle": true,',
