@@ -119,8 +119,11 @@ var
   Key: string;
 begin
   Result := nil;
+  // Helfer nur mit Vorfahr-Helfer (#848); der Zieltyp ist kein Vorfahr.
+  if (AType.SymbolKind = TIndexSymbolKind.HelperType) and not AResolver.HelperParent(AType, Next) then
+    Exit;
   if not (AType.SymbolKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
-    TIndexSymbolKind.InterfaceType]) then
+    TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType]) then
     Exit;
   Current := AType;
   Seen := nil;
@@ -131,7 +134,12 @@ begin
       Break;
     Seen := Seen + [Key];
     Result := Result + [FromResolved(Current)];
-    if not AResolver.AncestorOf(Current, Next) then
+    if Current.SymbolKind = TIndexSymbolKind.HelperType then
+    begin
+      if not AResolver.HelperParent(Current, Next) then
+        Break;
+    end
+    else if not AResolver.AncestorOf(Current, Next) then
       Break;
     Current := Next;
   end;

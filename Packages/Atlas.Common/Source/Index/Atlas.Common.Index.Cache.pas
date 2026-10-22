@@ -81,7 +81,10 @@ type
     // 22: Typparameter ohne die Typen aus Einschränkungen (<T: class, TBasis>, #1029).
     // 23: Unit-Name zählt nicht mehr als Hinweis im Unit-Kopf (Atlas.Settings.Experimental, #1018);
     // Feld Operator: string ist keine Routine mehr.
-    const FormatVersion = 23;
+    // 24: Helfer mit Vorfahr (class helper (TBase) for T, #848), {$SCOPEDENUMS ON} je Aufzählung und Wert und
+    // Mitglieder aus {$I} im Klassenrumpf (#849), Routinen hinter asm-Blöcken mit @@End (#861), Konstanten
+    // hinter Steuerzeichen wie ^C (#862). Die Kette #847–#862 zählte getrennt 19–22.
+    const FormatVersion = 24;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;
@@ -120,6 +123,7 @@ const
   SymbolDefault = 2;
   SymbolVirtual = 4;
   SymbolUnavailable = 8;
+  SymbolScopedEnum = 16;
 
 type
   ECacheFormat = class(Exception);
@@ -406,6 +410,8 @@ begin
     Flags := Flags or SymbolVirtual;
   if ASymbol.Unavailable then
     Flags := Flags or SymbolUnavailable;
+  if ASymbol.ScopedEnum then
+    Flags := Flags or SymbolScopedEnum;
   AWriter.WriteVar(Flags);
   WriteList(AWriter, ATable, ASymbol.Ancestors);
   AWriter.WriteVar(ATable.IndexOf(ASymbol.TypeName));
@@ -567,6 +573,7 @@ begin
   Result.IsDefault := (Flags and SymbolDefault) <> 0;
   Result.IsVirtual := (Flags and SymbolVirtual) <> 0;
   Result.Unavailable := (Flags and SymbolUnavailable) <> 0;
+  Result.ScopedEnum := (Flags and SymbolScopedEnum) <> 0;
   Result.Ancestors := AReader.ReadList(AStrings);
   Result.TypeName := AReader.ReadString(AStrings);
   Result.TypeArgs := AReader.ReadString(AStrings);

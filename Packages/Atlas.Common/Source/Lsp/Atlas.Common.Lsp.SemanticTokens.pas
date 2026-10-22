@@ -279,7 +279,8 @@ begin
       end;
     for Index := 0 to High(Tokens) do
     begin
-      if Tokens[Index].Kind <> TPascalTokenKind.Identifier then
+      // C in ^C ist ein Steuerzeichen, kein Name (#862).
+      if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or ATree.IsControlCharPart(Index) then
         Continue;
       if AWithRange and not InRange(ARange, Tokens[Index].StartPos) then
         Continue;

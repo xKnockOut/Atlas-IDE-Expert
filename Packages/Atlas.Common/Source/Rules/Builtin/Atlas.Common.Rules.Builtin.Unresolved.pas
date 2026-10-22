@@ -136,7 +136,11 @@ begin
   try
     Resolver.Namespaces := AContext.Namespaces;
     for Name in TUnresolvedNames.Find(Resolver, AContext.Tree, AContext.RelativePath) do
-      AReport.Add(Name.Range, Format('"%s" ist nicht deklariert', [Name.Name]), TRuleConfidence.Medium);
+      if Name.Suggestion <> '' then
+        AReport.Add(Name.Range, Format('"%s" ist nicht deklariert; gemeint ist %s? ({$SCOPEDENUMS ON})',
+          [Name.Name, Name.Suggestion]), TRuleConfidence.Medium)
+      else
+        AReport.Add(Name.Range, Format('"%s" ist nicht deklariert', [Name.Name]), TRuleConfidence.Medium);
   finally
     Resolver.Free;
   end;

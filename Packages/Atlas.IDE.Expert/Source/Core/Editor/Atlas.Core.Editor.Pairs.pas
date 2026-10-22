@@ -11,7 +11,8 @@
 //   (variante Teile) teilt sich das end des records.
 // - Schließen: end (nicht repeat), until (nur repeat); finally/except
 //   bekommen die Tiefe ihres try. "end." ohne Öffner ist das Ende der Unit.
-// - Escapte Bezeichner (&begin) und Mitglieder hinter "." sind keine Schlüsselwörter.
+// - Escapte Bezeichner (&begin), Sprungmarken (@@End, #861) und Mitglieder hinter "."
+//   sind keine Schlüsselwörter; Steuerzeichen wie ^[ sind keine Klammern (#862).
 // Besitzer (#653): Schlüsselwörter der Anweisung, zu der ein Block gehört,
 // bekommen Tiefe und Paarstatus ihres Blocks (Owner = True):
 //   if … then begin          → if, then (davor ein else: auch else)
@@ -158,6 +159,16 @@ begin
           end
           else
             Add(Index, 1, False, False);
+        '^':
+          begin
+            Add(Index, 1, False, False);
+            // ^[ ^] ^( ^) sind Steuerzeichen (#862), keine Klammern; P^[1] und F()^[1] bleiben
+            // Dereferenzierung mit Index.
+            if (Index < Length(AText)) and CharInSet(AText[Index + 1], ['[', ']', '(', ')']) and
+              not ((Index > 1) and
+              CharInSet(AText[Index - 1], ['A'..'Z', 'a'..'z', '0'..'9', '_', ')', ']', '^'])) then
+              Inc(Index);
+          end;
         '''':
           begin
             Inc(Index);
@@ -172,6 +183,8 @@ begin
             Start := Index;
             if Escaped then
               Inc(Index);
+            // @@End im asm-Block ist eine Sprungmarke, kein Blockende (#861).
+            Escaped := Escaped or (Start > 1) and (AText[Start - 1] = '@');
             while (Index <= Length(AText)) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
               Inc(Index);
             Add(Start, Index - Start, True,

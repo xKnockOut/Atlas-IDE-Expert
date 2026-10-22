@@ -31,6 +31,15 @@ type
     procedure DetectsSymbolContexts;
     [Test]
     procedure CandidatesWithOrigin;
+    /// <summary>#847: Hover auf {$IF} nennt Wert und Teilwerte mit Herkunft.</summary>
+    [Test]
+    procedure ConditionHoverExplainsParts;
+    /// <summary>#847: Hover auf {$IFOPT} nennt Schalter aus der .dproj bzw. dem lokalen Schalter davor.</summary>
+    [Test]
+    procedure ConditionHoverNamesSwitchOrigin;
+    /// <summary>#847: {$PUSHOPT} und {$POPOPT} nennen ihr Gegenstück.</summary>
+    [Test]
+    procedure ConditionHoverPairsPushAndPop;
   end;
 
 implementation
@@ -78,10 +87,17 @@ end;
 procedure TConditionalSymbolsTests.HoverNamesIncludeFileAndLine;
 var
   Markdown: string;
+  Target: TConditionalContext;
 begin
   Markdown := HoverAt('unit U;'#10'{$I Defs.inc}'#10'{$IFDEF FOO}'#10'{$ENDIF}', 2, 9, Context);
   Assert.IsTrue(StartsStr('**FOO**: aktiv, definiert mit {$DEFINE FOO} in [Defs.inc](', Markdown), Markdown);
   Assert.IsTrue(EndsStr('), Zeile 2', Markdown), Markdown);
+  // Mit Zielplattform und Konfiguration nennt der Hover den Projektstand (#860).
+  Target := Context;
+  Target.Platform := 'Win64';
+  Target.Config := 'Debug';
+  Markdown := HoverAt('unit U;'#10'{$I Defs.inc}'#10'{$IFDEF FOO}'#10'{$ENDIF}', 2, 9, Target);
+  Assert.IsTrue(EndsStr('), Zeile 2'#10#10'Projekt: Win64 · Debug', Markdown), Markdown);
   // Vor der $I-Direktive gilt FOO noch nicht.
   Assert.IsTrue(StartsStr('**FOO**: nicht definiert',
     HoverAt('unit U;'#10'{$IFDEF FOO}'#10'{$ENDIF}'#10'{$I Defs.inc}', 1, 9, Context)));
@@ -145,6 +161,75 @@ begin
   // Andere Direktiven haben kein Symbol.
   Assert.AreEqual('-', HoverAt('{$R+}', 0, 2, Context));
   Assert.AreEqual('-', HoverAt('unit U;', 0, 2, Context));
+end;
+
+function ConditionAt(const AText: string; ALine, ACharacter: Integer; const AContext: TConditionalContext): string;
+begin
+  if not TConditionalSymbols.ConditionHover(AText, TTextPosition.Create(ALine, ACharacter), AContext, Result) then
+    Result := '-';
+end;
+
+function SwitchContext: TConditionalContext;
+begin
+  Result := Context;
+  Result.Defines := Result.Defines + ['CPU64BITS', '$R+'];
+  Result.Config := 'Debug';
+end;
+
+procedure TConditionalSymbolsTests.ConditionHoverExplainsParts;
+var
+  Markdown: string;
+  Off: TConditionalContext;
+begin
+  Markdown := ConditionAt('{$IF SizeOf(Pointer) = 8}'#10'{$IFEND}', 0, 3, SwitchContext);
+  Assert.IsTrue(StartsStr('**wahr**: `SizeOf(Pointer) = 8`', Markdown), Markdown);
+  Assert.IsTrue(ContainsStr(Markdown, '- `SizeOf(Pointer)` 8 · Zielplattform Win64'), Markdown);
+  Markdown := ConditionAt('{$IF Declared(Unbekannt)}'#10'{$IFEND}', 0, 3, SwitchContext);
+  Assert.IsTrue(StartsStr('**unbekannt = aktiv**', Markdown), Markdown);
+  Assert.IsTrue(ContainsStr(Markdown, '{$ELSE} dazu gelten als aktiv'), Markdown);
+  // Im inaktiven Zweig wird nichts ausgewertet.
+  Markdown := ConditionAt('{$IFDEF LINUX}'#10'{$IF SizeOf(Pointer) = 8}{$IFEND}'#10'{$ENDIF}', 1, 3, SwitchContext);
+  Assert.IsTrue(ContainsStr(Markdown, 'inaktiven Zweig'), Markdown);
+  // Auf anderen Direktiven und abgeschaltet: nichts.
+  Assert.AreEqual('-', ConditionAt('{$IFDEF DEBUG}{$ENDIF}', 0, 3, SwitchContext));
+  Off := SwitchContext;
+  Off.HoverEnabled := False;
+  Assert.AreEqual('-', ConditionAt('{$IF SizeOf(Pointer) = 8}{$IFEND}', 0, 3, Off));
+  // Schaltereinträge sind keine Symbole.
+  Assert.AreEqual<NativeInt>(0, Length(TConditionalSymbols.SourcesOf(['$R+'], nil, nil, '')));
+end;
+
+procedure TConditionalSymbolsTests.ConditionHoverNamesSwitchOrigin;
+const
+  Source =
+    '{$IFOPT R+}'#10 + // 0
+    '{$ENDIF}'#10 +    // 1
+    'x'#10 +           // 2
+    '{$R-}'#10 +       // 3
+    '{$IFOPT R+}'#10 + // 4
+    '{$ENDIF}';
+begin
+  Assert.AreEqual('**aktiv**: R+ aus DCC_RangeChecking (Debug)', ConditionAt(Source, 0, 3, SwitchContext));
+  Assert.AreEqual('**inaktiv**: R- seit {$R-} in Zeile 4', ConditionAt(Source, 4, 3, SwitchContext));
+  Assert.IsTrue(StartsStr('**unbekannt = aktiv**: R+ kein Projekt',
+    ConditionAt(Source, 0, 3, TConditionalContext.Default)));
+end;
+
+procedure TConditionalSymbolsTests.ConditionHoverPairsPushAndPop;
+const
+  Source =
+    '{$PUSHOPT}'#10 + // 0
+    '{$PUSHOPT}'#10 + // 1
+    '{$POPOPT}'#10 +  // 2
+    '{$POPOPT}'#10 +  // 3
+    '{$POPOPT}';      // 4
+begin
+  Assert.AreEqual('**{$PUSHOPT}** sichert den Schalterstand; {$POPOPT} in Zeile 4 stellt ihn wieder her.',
+    ConditionAt(Source, 0, 3, Context));
+  Assert.IsTrue(ContainsStr(ConditionAt(Source, 1, 3, Context), 'Zeile 3'));
+  Assert.AreEqual('**{$POPOPT}** stellt den Schalterstand von {$PUSHOPT} in Zeile 2 wieder her.',
+    ConditionAt(Source, 2, 3, Context));
+  Assert.AreEqual('**{$POPOPT}** ohne passendes {$PUSHOPT} davor.', ConditionAt(Source, 4, 3, Context));
 end;
 
 procedure TConditionalSymbolsTests.HoverIsSwitchable;

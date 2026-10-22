@@ -15,8 +15,11 @@
 // die diese Version noch nicht kennt, als Warnung gemeldet.
 // Meldungen des letzten Compilerlaufs (CompilerMessagesProvider, #40) kommen
 // mit der Quelle "dcc" dazu, auch für Dateien, die nicht geöffnet sind.
-// Include-Dateien (#264) sucht der Präprozessor über IncludePathsProvider;
-// ein Include-Zyklus ist eine Warnung, eine nicht gefundene Datei ein Hinweis.
+// Include-Dateien (#264) sucht der Präprozessor über den Include-Resolver des
+// gemeinsamen Baums (TSyntaxTreeCache.SetIncludeProvider, #860); deren
+// $DEFINE wählen die Zweige. Baum, Syntaxfehler, Abblenden und Include-Befunde
+// kommen aus demselben Präprozessor-Lauf je Dokumentversion.
+// Ein Include-Zyklus ist eine Warnung, eine nicht gefundene Datei ein Hinweis.
 // Mit UsesProvider (#621) kommen ungenutzte uses-Einträge als Hinweise mit
 // dem Tag Unnecessary dazu („Aus Vcl.Grids wird nichts verwendet“), dazu ohne
 // Tag die, die wegen initialization oder "usesKeep" bleiben, und interface-
@@ -45,8 +48,6 @@ type
   /// <summary>Symbole für das Dokument AUri; False, wenn kein Projekt sie festlegt.
   /// Wird im Hintergrund-Thread aufgerufen.</summary>
   TDefinesProvider = reference to function(const AUri: string; out ADefines: TArray<string>): Boolean;
-  /// <summary>Suchpfade für $I-Dateien zum Dokument AUri (#264).</summary>
-  TIncludePathsProvider = reference to function(const AUri: string): TArray<string>;
   /// <summary>Eingestellte Delphi-Version für AUri; '' = unbekannt. Hintergrund-Thread.</summary>
   TDelphiVersionProvider = reference to function(const AUri: string): string;
   /// <summary>Gewählte Zielplattform und Konfiguration für AUri (#615); False = unbekannt. Hintergrund-Thread.</summary>
@@ -123,7 +124,6 @@ type
     FSendLock: TObject;
     FDefinesLock: TObject;
     FDefinesProvider: TDefinesProvider;
-    FIncludePathsProvider: TIncludePathsProvider;
     FVersionProvider: TDelphiVersionProvider;
     FTargetProvider: TBuildTargetProvider;
     FRuleProvider: TRuleContextProvider;
@@ -139,8 +139,6 @@ type
     procedure SetOnError(const AValue: TProc<Exception>);
     function CurrentDefines(const AUri: string; out ADefines: TArray<string>): Boolean;
     procedure SetDefinesProvider(const AValue: TDefinesProvider);
-    function CurrentIncludePaths(const AUri: string): TArray<string>;
-    procedure SetIncludePathsProvider(const AValue: TIncludePathsProvider);
     function CurrentVersion(const AUri: string): string;
     procedure SetVersionProvider(const AValue: TDelphiVersionProvider);
     function CurrentTarget(const AUri: string; out APlatform, AConfig: string): Boolean;
@@ -216,7 +214,6 @@ type
     property OnError: TProc<Exception> read GetOnError write SetOnError;
     /// <summary>Liefert die Symbole für das Abblenden inaktiver Bereiche.</summary>
     property DefinesProvider: TDefinesProvider write SetDefinesProvider;
-    property IncludePathsProvider: TIncludePathsProvider write SetIncludePathsProvider;
     property VersionProvider: TDelphiVersionProvider write SetVersionProvider;
     /// <summary>Zielplattform und Konfiguration für den Hinweis inaktiver Bereiche (#615).</summary>
     property BuildTargetProvider: TBuildTargetProvider write SetTargetProvider;
@@ -244,7 +241,6 @@ uses
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Pascal.IncludeFiles,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Catalog,
@@ -330,32 +326,6 @@ begin
   TMonitor.Enter(FDefinesLock);
   try
     FDefinesProvider := AValue;
-  finally
-    TMonitor.Exit(FDefinesLock);
-  end;
-end;
-
-function TLspSyntaxDiagnostics.CurrentIncludePaths(const AUri: string): TArray<string>;
-var
-  Provider: TIncludePathsProvider;
-begin
-  TMonitor.Enter(FDefinesLock);
-  try
-    Provider := FIncludePathsProvider;
-  finally
-    TMonitor.Exit(FDefinesLock);
-  end;
-  if Assigned(Provider) then
-    Result := Provider(AUri)
-  else
-    Result := nil;
-end;
-
-procedure TLspSyntaxDiagnostics.SetIncludePathsProvider(const AValue: TIncludePathsProvider);
-begin
-  TMonitor.Enter(FDefinesLock);
-  try
-    FIncludePathsProvider := AValue;
   finally
     TMonitor.Exit(FDefinesLock);
   end;
@@ -724,6 +694,7 @@ var
   Item: TJSONObject;
   UsesContext: TUsesContext;
   HasSyntaxErrors: Boolean;
+  Shared: ISharedSyntaxTree;
 begin
   // Formulardateien (#44): nur Lesefehler der DFM, keine Pascal-Prüfungen.
   if TDfmParser.IsFormFile(ADocument.Uri) then
@@ -745,8 +716,11 @@ begin
   Inactive := nil;
   Issues := nil;
   if CurrentDefines(ADocument.Uri, Defines) then
-    Inactive := TLspInactiveRegions.Regions(ADocument.Text, Defines, TDocumentUris.ToPath(ADocument.Uri),
-      TIncludeFiles.Resolver(CurrentIncludePaths(ADocument.Uri)), Issues)
+  begin
+    // Derselbe Lauf wie der Baum in BuildParams (#860): kein zweiter Präprozessor-Lauf.
+    Shared := TSyntaxTreeCache.GetFor(ADocument, Defines);
+    Inactive := TLspInactiveRegions.Regions(Shared.Processed, Shared.IncludesResolved, Issues);
+  end
   else
     Defines := nil;
   if not CurrentRules(ADocument.Uri, Rules) then

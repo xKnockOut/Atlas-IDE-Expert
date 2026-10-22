@@ -34,6 +34,7 @@ uses
   Atlas.Common.Index.Adapters.Processes,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Baseline,
+  Atlas.Common.Rules.Checker,
   Atlas.Common.Lsp.Status,
   Shell.Compiler;
 
@@ -183,6 +184,9 @@ type
     function ApplyText(const AFileName, AText: string): Boolean;
     /// <summary>Symbole des Projekts für das Abblenden; False ohne Projekt. Threadsicher.</summary>
     function Defines(out ADefines: TArray<string>): Boolean;
+    /// <summary>Symbole und Include-Dateien des Projekts für die Regelprüfung von AFileName (#860); ohne
+    /// Projekt die Vordefinitionen, $I dann nur im Ordner der Datei. Threadsicher.</summary>
+    function CheckSource(const AFileName: string): TCheckSource;
     /// <summary>Arbeitsbereich zu einer Datei (S-02): AFound, sonst bei genau einem Arbeitsbereich dieser,
     /// sonst nil. Eine Regel für alle Einstellungs- und Pfadabfragen des Servers.</summary>
     class function Choose(AFound: TShellWorkspace; const AAll: TList<TShellWorkspace>): TShellWorkspace; static;
@@ -288,6 +292,7 @@ uses
   Atlas.Common.Projects.UnitLookup,
   Atlas.Common.Projects.DelphiVersions,
   Atlas.Common.Index.ProjectFiles,
+  Atlas.Common.Pascal.IncludeFiles,
   Atlas.Common.Index.Adapters.DiskFileSystem,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Index.CacheHousekeeping,
@@ -788,6 +793,15 @@ begin
   Result := FIndexService.ApplyChanges(AChanges);
   if Result > 0 then
     Touch;
+end;
+
+function TShellWorkspace.CheckSource(const AFileName: string): TCheckSource;
+var
+  Symbols: TArray<string>;
+begin
+  if not Defines(Symbols) then
+    Symbols := nil;
+  Result := TCheckSource.Create(AFileName, Symbols, TIncludeFiles.Resolver(IncludePaths));
 end;
 
 function TShellWorkspace.Defines(out ADefines: TArray<string>): Boolean;

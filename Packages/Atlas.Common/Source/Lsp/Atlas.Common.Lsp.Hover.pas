@@ -728,7 +728,7 @@ var
   Resolver: TNameResolver;
   Info: THoverInfo;
   Contents, Atlas: TJSONObject;
-  DelphiVersion, Markdown, SymbolMarkdown: string;
+  DelphiVersion, Markdown, SymbolMarkdown, ConditionMarkdown: string;
   Watch: TStopwatch;
   Symbols: TConditionalContext;
   HasSymbol, HasDirective: Boolean;
@@ -777,6 +777,16 @@ begin
     begin
       HasSymbol := TConditionalSymbols.Hover(Text, TLspPositions.ReadPosition(PositionValue), Symbols,
         SymbolMarkdown);
+      // Wert der Bedingung mit Teilwerten (#847).
+      if TConditionalSymbols.ConditionHover(Text, TLspPositions.ReadPosition(PositionValue), Symbols,
+        ConditionMarkdown) then
+      begin
+        if HasSymbol then
+          SymbolMarkdown := ConditionMarkdown + #10#10'---'#10#10 + SymbolMarkdown
+        else
+          SymbolMarkdown := ConditionMarkdown;
+        HasSymbol := True;
+      end;
       HasDirective := TCompilerDirectives.HoverAt(Tree, TLspPositions.ReadPosition(PositionValue), DelphiVersion,
         Markdown);
     end;

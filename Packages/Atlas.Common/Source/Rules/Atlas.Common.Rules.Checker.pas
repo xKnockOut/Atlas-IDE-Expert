@@ -7,11 +7,17 @@
 // aus demselben Syntaxbaum mit, damit nicht zweimal geparst wird.
 // Gehört die Datei zu einem Package (contains einer .dpk), erfahren die Regeln
 // das über TCheckProject (queue-nil-in-package, #943).
+// Syntaxfehler und Regeln sehen nur die aktiven {$IFDEF}-Zweige (#845, #860),
+// wie im Editor: TCheckSource bringt die Symbole des Projekts (Plattform,
+// Konfiguration, .dproj-Defines), den Dateinamen und den Include-Resolver mit,
+// damit $DEFINE aus {$I datei.inc} wirken. Ohne Angabe gelten die
+// Vordefinitionen von Delphi 13 für Win32.
 
 interface
 
 uses
   System.SysUtils,
+  Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Scopes,
@@ -47,6 +53,25 @@ type
     FileName: string;
   end;
 
+  /// <summary>Woher die Symbole einer geprüften Datei kommen (#860).</summary>
+  TCheckSource = record
+    /// <summary>Vollständiger Pfad der Datei; Ausgangspunkt für {$I}.</summary>
+    FileName: string;
+    /// <summary>Symbole des Projekts; leer = Vordefinitionen (Win32, Delphi 13).</summary>
+    Defines: TArray<string>;
+    /// <summary>Sucht {$I}-Dateien; nil = nicht lesen.</summary>
+    ResolveInclude: TIncludeResolver;
+    /// <summary>Ohne Projekt, Datei und Include-Dateien.</summary>
+    class function Default: TCheckSource; static;
+    class function Create(const AFileName: string; const ADefines: TArray<string>;
+      const AResolveInclude: TIncludeResolver): TCheckSource; static;
+    /// <summary>Präprozessor-Optionen wie beim Editor-Baum.</summary>
+    function Options: TPreprocessorOptions;
+  end;
+
+  /// <summary>Quelle der Symbole je Datei, etwa aus dem Projekt des MCP-Servers.</summary>
+  TCheckSourceFunc = reference to function(const AFileName: string): TCheckSource;
+
   TFileChecker = class
   public
     /// <summary>Beschreibung der eingebauten Syntaxprüfung.</summary>
@@ -71,6 +96,19 @@ type
     /// <summary>Das Package aus APackages, dessen contains die Unit AUnitName nennt; sonst Default.</summary>
     class function PackageOf(const APackages: TArray<TPackageSource>; const AUnitName: string): TCheckProject;
       static;
+    /// <summary>Wie oben mit den Symbolen und Include-Dateien aus ASource (#860).</summary>
+    class function CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+      const ARelativePath, AText: string; const ASource: TCheckSource): TArray<TRuleFinding>; overload; static;
+    class function CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+      const ARelativePath, AText: string; const ASource: TCheckSource;
+      out AScopes: TFindingScopes): TArray<TRuleFinding>; overload; static;
+    /// <summary>ASource(AFileName), ohne Quelle TCheckSource.Default.</summary>
+    class function SourceOf(const ASource: TCheckSourceFunc; const AFileName: string): TCheckSource; static;
+    /// <summary>Wie oben mit Projekt (#943) und Symbolen (#860) zugleich; alle anderen Fassungen rufen diese.
+    /// </summary>
+    class function CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+      const ARelativePath, AText: string; const AProject: TCheckProject; const ASource: TCheckSource;
+      out AScopes: TFindingScopes): TArray<TRuleFinding>; overload; static;
   end;
 
 implementation
@@ -80,7 +118,6 @@ uses
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Engine;
 
@@ -123,6 +160,28 @@ begin
     end;
 end;
 
+{ TCheckSource }
+
+class function TCheckSource.Default: TCheckSource;
+begin
+  Result := Create('', nil, nil);
+end;
+
+class function TCheckSource.Create(const AFileName: string; const ADefines: TArray<string>;
+  const AResolveInclude: TIncludeResolver): TCheckSource;
+begin
+  Result.FileName := AFileName;
+  Result.Defines := ADefines;
+  Result.ResolveInclude := AResolveInclude;
+end;
+
+function TCheckSource.Options: TPreprocessorOptions;
+begin
+  Result := TPascalPreprocessor.EditorOptions(Defines, FileName, ResolveInclude);
+end;
+
+{ TFileChecker }
+
 class function TFileChecker.SyntaxDescriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(SyntaxRuleId, TRuleSeverity.Error, 'Syntaxfehler des Parsers');
@@ -159,13 +218,14 @@ class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettin
 var
   Scopes: TFindingScopes;
 begin
-  Result := CheckText(ARules, ASettings, ARelativePath, AText, Scopes);
+  Result := CheckText(ARules, ASettings, ARelativePath, AText, TCheckSource.Default, Scopes);
 end;
 
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const ARelativePath, AText: string; out AScopes: TFindingScopes): TArray<TRuleFinding>;
 begin
-  Result := CheckText(ARules, ASettings, ARelativePath, AText, Default(TCheckProject), AScopes);
+  Result := CheckText(ARules, ASettings, ARelativePath, AText, Default(TCheckProject), TCheckSource.Default,
+    AScopes);
 end;
 
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
@@ -173,7 +233,37 @@ class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettin
 var
   Scopes: TFindingScopes;
 begin
-  Result := CheckText(ARules, ASettings, ARelativePath, AText, AProject, Scopes);
+  Result := CheckText(ARules, ASettings, ARelativePath, AText, AProject, TCheckSource.Default, Scopes);
+end;
+
+class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const ARelativePath, AText: string; const AProject: TCheckProject; out AScopes: TFindingScopes):
+  TArray<TRuleFinding>;
+begin
+  Result := CheckText(ARules, ASettings, ARelativePath, AText, AProject, TCheckSource.Default, AScopes);
+end;
+
+class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const ARelativePath, AText: string; const ASource: TCheckSource): TArray<TRuleFinding>;
+var
+  Scopes: TFindingScopes;
+begin
+  Result := CheckText(ARules, ASettings, ARelativePath, AText, Default(TCheckProject), ASource, Scopes);
+end;
+
+class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const ARelativePath, AText: string; const ASource: TCheckSource;
+  out AScopes: TFindingScopes): TArray<TRuleFinding>;
+begin
+  Result := CheckText(ARules, ASettings, ARelativePath, AText, Default(TCheckProject), ASource, AScopes);
+end;
+
+class function TFileChecker.SourceOf(const ASource: TCheckSourceFunc; const AFileName: string): TCheckSource;
+begin
+  if Assigned(ASource) then
+    Result := ASource(AFileName)
+  else
+    Result := TCheckSource.Default;
 end;
 
 class function TFileChecker.PackageOf(const APackages: TArray<TPackageSource>; const AUnitName: string):
@@ -192,24 +282,25 @@ begin
 end;
 
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-  const ARelativePath, AText: string; const AProject: TCheckProject; out AScopes: TFindingScopes):
-  TArray<TRuleFinding>;
+  const ARelativePath, AText: string; const AProject: TCheckProject; const ASource: TCheckSource;
+  out AScopes: TFindingScopes): TArray<TRuleFinding>;
 var
   Tree: TSyntaxTree;
+  Processed: TPreprocessorResult;
   Context: TRuleContext;
   Syntax: TArray<TRuleFinding>;
-  Active: TArray<TSyntaxDiagnostic>;
+  FileName: string;
 begin
   AScopes := TFindingScopes.FromTree(nil);
   if (ARelativePath <> '') and ASettings.IsExcluded(ARelativePath) then
     Exit(nil);
-  Tree := TSyntaxTreeCache.Parse(AText);
+  // Baum nur aus den aktiven Zweigen wie im Editor: Inaktive Zweige erzeugen keine Syntaxfehler und keine
+  // Regeltreffer.
+  Tree := TPascalParser.ParseActive(AText, ASource.Options, nil, Processed);
   try
     AScopes := TFindingScopes.FromTree(Tree);
-    // Inaktive Zweige der bedingten Kompilierung erzeugen keine Syntaxfehler.
-    if not TPascalParser.ActiveDiagnostics(AText, nil, Active) then
-      Active := Tree.Diagnostics;
-    Syntax := SyntaxFindings(Active, ASettings);
+    // Der Baum enthält nur die aktiven Zweige: Inaktive erzeugen keine Syntaxfehler.
+    Syntax := SyntaxFindings(Tree.Diagnostics, ASettings);
     Context := Default(TRuleContext);
     Context.RelativePath := ARelativePath;
     Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARelativePath, '/', '\', [rfReplaceAll])), '');
@@ -218,8 +309,12 @@ begin
     Context.Application := AProject.Application;
     Context.ProjectName := AProject.Name;
     Context.AutoCreateForms := AProject.AutoCreateForms;
-    if AProject.FileName <> '' then
-      SetFiles(Context, AProject.FileName);
+    // Pfad aus dem Projekt (#1054), sonst aus der Symbolquelle (#860): Formulardatei und Nachbardateien.
+    FileName := AProject.FileName;
+    if FileName = '' then
+      FileName := ASource.FileName;
+    if FileName <> '' then
+      SetFiles(Context, FileName);
     Result := Syntax + TRuleEngine.Run(ARules, ASettings, Context);
   finally
     Tree.Free;

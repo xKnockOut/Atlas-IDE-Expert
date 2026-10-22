@@ -2996,6 +2996,102 @@ Voraussetzung: Einstellungen auf Vorgabe (Blockeinzug 2); Methode mit `if … th
 | NZ11 | Tasten unter Optionen › Befehle › Neue Zeile ober-/unterhalb ändern | Die neuen Tasten wirken, die Tastenübersicht prüft Konflikte |
 | NZ12 | „Neue Zeile ober-/unterhalb“ aus | Umschalt+Enter und Strg+Alt+Enter verhalten sich wie ohne Atlas, die Befehle fehlen in der Palette (**Abnahme**) |
 
+## Steuerzeichen-Literale ^C, ^M (#862)
+
+Voraussetzung: Einstellungen auf Vorgabe; JVCL `JvConsts.pas` oder eine Unit mit `const CtrlC = ^C; CtrlV = ^V; Esc = ^[;` und einer Routine mit `if Key = ^M then`, `if C in [^H, #32..#255] then`, `if C in (. 'a'..'z' .) then`, `case Key of ^C: ; end;` sowie `type P = ^TFoo;` und `X := P^.Feld;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SZ1 | Unit öffnen | Keine Syntaxfehler; CtrlC, CtrlV und Esc stehen in der Gliederung (**Abnahme**) |
+| SZ2 | Strg+Klick auf `CtrlV` aus einer anderen Unit | Sprung zur Konstanten (Index vollständig) |
+| SZ3 | Inlay Hints einschalten | Hinter `^C` steht „#3“, hinter `^V` „#22“, hinter `^[` „#27“; hinter `^M` im if nichts |
+| SZ4 | Optionen › Editor › Inlay-Hints › Steuerzeichen-Codes aus | Die Codes verschwinden, die anderen Inlay Hints bleiben |
+| SZ5 | Hover und Strg+Klick auf das `C` in `^C`, wenn es eine Variable `C` gibt | Kein Hover der Variablen, kein Sprung |
+| SZ6 | Cursor auf `[` in `Esc = ^[;` | Keine unpaarige Klammer markiert |
+| SZ7 | `P = ^TFoo` und `P^.Feld` | Zeigertyp und Dereferenzierung wie bisher: Hover auf TFoo, Vervollständigung nach `P^.` |
+| SZ8 | IDE mit altem Index-Cache starten | Cache wird einmal neu aufgebaut (Formatversion 22) |
+
+## asm-Block mit Sprungmarke @@End (#861)
+
+Voraussetzung: Einstellungen auf Vorgabe; JCL `JclLogic.pas` oder eine Unit mit `function BitsLowest(X: Cardinal): Integer; asm BSF EAX, EAX; JNZ @@End; MOV EAX, -1; @@End: end;` und danach `function BitsHighest(X: Cardinal): Integer;` mit Rumpf.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SM1 | Unit öffnen, Gliederung ansehen | BitsLowest, BitsHighest und alle weiteren Routinen stehen auf Unit-Ebene, kein `initialization`, keine Syntaxfehler (**Abnahme**) |
+| SM2 | Dasselbe mit `@@end` klein geschrieben und `@@Loop:` davor | Wie SM1 (**Abnahme**) |
+| SM3 | Strg+Klick auf einen Aufruf von BitsHighest aus einer anderen Unit | Sprung zur Deklaration |
+| SM4 | Cursor auf `asm` in BitsLowest | Das Blockpaar ist `asm` … `end;`, nicht `@@End` |
+| SM5 | IDE mit altem Index-Cache starten | Cache wird einmal neu aufgebaut (Formatversion 21) |
+
+## Defines aus Include-Dateien (#860)
+
+Voraussetzung: Einstellungen auf Vorgabe; Projekt mit `defs.inc` (`{$DEFINE FOO}{$DEFINE BAR}`) im Ordner der Unit und einer Unit mit `{$I defs.inc}` und danach `{$IFDEF FOO} … {$ENDIF}`, `{$IFNDEF FOO} … {$ENDIF}`, `{$IFDEF BAR} … {$ENDIF}`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ID1 | Unit öffnen | Der FOO-Zweig ist aktiv, der IFNDEF-Zweig abgeblendet mit „Inaktiv: Bedingung not FOO nicht erfüllt“ (**Abnahme**) |
+| ID2 | Im FOO-Zweig eine Methode deklarieren, Gliederung und Strg+Klick | Die Methode steht in der Gliederung, Gehe zu findet sie (**Abnahme**) |
+| ID3 | `{$DEFINE FOO}` in `defs.inc` löschen und speichern | Abblenden und Gliederung drehen sich ohne Neuöffnen der Unit um |
+| ID4 | `{$I fehlt.inc}` einfügen | Hinweis „Include-Datei "fehlt.inc" nicht gefunden“ |
+| ID5 | Inlay Hints einschalten | Hinter `{$I defs.inc}` steht „definiert FOO, BAR“ |
+| ID6 | Optionen › Editor › Inlay-Hints › Include-Symbole aus | Die Marke verschwindet, die anderen Inlay Hints bleiben |
+| ID7 | Hover auf `FOO` in `{$IFDEF FOO}` | Nennt `defs.inc`, Zeile, und am Ende „Projekt: Win64 · Debug“ (bzw. die aktive Plattform und Konfiguration) |
+| ID8 | `check_code` und Linter auf die Unit mit einer Regelverletzung nur im FOO-Zweig | Die Meldung erscheint; im IFNDEF-Zweig nicht (**Abnahme**) |
+
+## Kleinere Sprachlücken (#849)
+
+Voraussetzung: Einstellungen auf Vorgabe; Quellen aus `planung/parser-luecken-faelle/` (Fälle 05, 07, 08, 09 mit `members.inc`, 12) bzw. kleine Units mit den genannten Zeilen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LG1 | Unit mit `{$SCOPEDENUMS ON} TState = (None, Busy, Error);` und `if S = Error then` öffnen | Hover und Strg+Klick auf `Error` finden nichts; die Prüfung meldet „"Error" ist nicht deklariert; gemeint ist TState.Error?“; `TState.Error` wird gefunden (**Abnahme**) |
+| LG2 | Fall 05 öffnen, `var F: TFoo<TObject, TObject>;` ergänzen, Strg+Klick auf `TFoo` | Keine Syntaxfehler; Sprung zu `TFoo<T: IFoo, IBar; V: class, constructor>` (**Abnahme**) |
+| LG3 | Fall 09 mit `members.inc` im Ordner öffnen, `Foo.` an einer Variablen vom Typ TFoo | A, B und After erscheinen als Methoden von TFoo; Strg+Klick auf `A` öffnet `members.inc` |
+| LG4 | `W.Documents.Open(FileName := 'a.docx', ReadOnly := True);` | Kein Syntaxfehler (**Abnahme**) |
+| LG5 | Fall 12 öffnen (`Operator: string;` im Record) | Kein Syntaxfehler; Gliederung zeigt Field, Value, Operator, Negate (**Abnahme**) |
+| LG6 | Fall 08: `const C = 1;` und darunter `[Test] procedure T1;` | Kein Syntaxfehler; das Attribut gehört zu T1 (Gliederung, Hover) |
+| LG7 | `Z := NameOf(T1);` mit `check_code` prüfen | Keine Meldung zu NameOf |
+| LG8 | Fall 08: Gliederung von TFoo und `Foo.` | Nur MyBar, kein „IFoo.Bar“; Strg+Klick auf `MyBar` in `procedure IFoo.Bar = MyBar;` springt zur Methode MyBar (**Abnahme**) |
+| LG9 | `function F(A: Integer): Integer stdcall;`, `TCb = function(A: PAnsiChar): Integer cdecl varargs;`, `procedure X; assembler` + `asm … end;` | Keine Syntaxfehler; der asm-Block bleibt der Rumpf von X (**Abnahme**) |
+| LG10 | `TFColor = record B, G, R: Byte end;` | Kein Syntaxfehler (**Abnahme**) |
+| LG11 | Anonyme Methode mit lokaler `procedure Inner;` und `function Calc: Integer;` vor dem `begin` | Kein Syntaxfehler; die Routine danach steht in der Gliederung (**Abnahme**) |
+| LG12 | Routine ReadFrame mit 312 `else if`, danach Routine WriteFrame | Kein „Zu tief verschachtelt“; WriteFrame in der Gliederung (**Abnahme**) |
+| LG13 | `D2D: array [0..9] of 1..3 = (1, 2, 3, 1, 2, 3, 1, 2, 3, 1);` | Kein Syntaxfehler (**Abnahme**) |
+| LG14 | `SYNOPSE_FRAMEWORK_VERSION = {$I mormot.commit.inc};` mit der .inc im Ordner, Hover auf der Konstanten aus einer anderen Unit | Kein „Ausdruck erwartet“; der Hover zeigt den Inhalt der .inc als Wert (**Abnahme**) |
+| LG15 | IDE mit altem Index-Cache starten | Cache wird einmal neu aufgebaut (Formatversion 20) |
+
+## class helper mit Vorfahr (#848)
+
+Voraussetzung: Einstellungen auf Vorgabe; Unit mit `TFoo = class Name: string; end;`, `TBaseHelper = class helper for TFoo function AsText: string; procedure Reset; end;` und `TFooHelper = class helper (TBaseHelper) for TFoo procedure Reset; end;`, danach `TOther = class procedure B; end;`; zweite Unit mit `uses` darauf und `var Foo: TFoo;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HX1 | Unit öffnen | Keine Syntaxfehler in der Zeile `class helper (TBaseHelper) for TFoo`; die Gliederung zeigt TFooHelper mit Reset und TOther mit B (**Abnahme**) |
+| HX2 | `Foo.` tippen | Reset (aus TFooHelper), AsText (aus TBaseHelper) und Name; Reset nur einmal (**Abnahme**) |
+| HX3 | Strg+Klick auf `AsText` in `Foo.AsText` | Springt zu `TBaseHelper.AsText` |
+| HX4 | Strg+Klick auf `Reset` in `Foo.Reset` | Springt zu `TFooHelper.Reset`, nicht zum Vorfahren |
+| HX5 | Hover auf `TFooHelper` | Deklaration `class helper (TBaseHelper) for TFoo`, Vererbung `TFooHelper › TBaseHelper`; ein Helfer ohne Vorfahr zeigt keine Vererbung |
+| HX6 | IDE mit altem Index-Cache starten | Cache wird einmal neu aufgebaut (Formatversion 19) |
+
+## Bedingungen mit SizeOf, Declared und {$IFOPT} (#847)
+
+Voraussetzung: Einstellungen auf Vorgabe; Projekt mit Win32 und Win64, Konfiguration Debug mit Bereichsprüfung (DCC_RangeChecking an), Release ohne; Unit mit `{$IF SizeOf(Pointer) = 8} type TPtrInt = Int64; {$ELSE} type TPtrInt = Integer; {$IFEND}`, `{$IF RTLVersion111}`, `{$IF Declared(Unbekannt)} a {$ELSE} b {$IFEND}`, `{$IF MeineKonstante > 2}` (Konstante in einer anderen Unit), `{$IFOPT R+} CheckBounds(I); {$ENDIF}`, danach `{$R-}` und dasselbe `{$IFOPT R+}` noch einmal.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BD1 | Plattform Win64, Hover auf `{$IF SizeOf(Pointer) = 8}` | „wahr“, darunter `SizeOf(Pointer)` 8 · Zielplattform Win64; der else-Zweig ist abgeblendet (**Abnahme**) |
+| BD2 | Plattform Win32, BD1 wiederholen | „falsch“, `SizeOf(Pointer)` 4 · Zielplattform Win32; der erste Zweig ist abgeblendet |
+| BD3 | Hover auf `{$IF RTLVersion111}` und auf `{$IF Declared(RTLVersion111)}` | „wahr“ mit `RTLVersion111` wahr · Delphi 13 (bzw. der eigenen Version) |
+| BD4 | Hover auf `{$IF Declared(Unbekannt)}` | „unbekannt = aktiv“ mit dem Hinweis, dass der Zweig und das `{$ELSE}` aktiv sind; keiner der beiden Zweige ist abgeblendet (**Abnahme**) |
+| BD5 | `{$IF MeineKonstante > 2}` ansehen | Zweig nicht abgeblendet, kein Fehler; Hover „unbekannt = aktiv“, `MeineKonstante` unbekannt · Konstante aus dem Code (**Abnahme**) |
+| BD6 | `{$IF Declared(TForm)}` in einer VCL-Unit, Index fertig | „wahr“, `Declared(TForm)` wahr · Index |
+| BD7 | Konfiguration Debug, Hover auf das erste `{$IFOPT R+}` | „aktiv: R+ aus DCC_RangeChecking (Debug)“, `CheckBounds(I)` nicht abgeblendet (**Abnahme**) |
+| BD8 | Hover auf das zweite `{$IFOPT R+}` hinter `{$R-}` | „inaktiv: R- seit {$R-} in Zeile …“, der Zweig ist abgeblendet (**Abnahme**) |
+| BD9 | Konfiguration Release, BD7 wiederholen | „inaktiv“, R- aus DCC_RangeChecking (Release) bzw. Vorgabe des Compilers; Zweig abgeblendet |
+| BD10 | `{$PUSHOPT} {$R-} … {$POPOPT}` um das zweite `{$IFOPT R+}` legen, ein drittes dahinter | Im Block inaktiv, dahinter wieder wie BD7; Hover auf `{$PUSHOPT}` nennt die Zeile des `{$POPOPT}` (**Abnahme**) |
+| BD11 | `{$M+} {$PUSHOPT} {$M-} type TA = class procedure P; end; {$POPOPT} type TB = class procedure Q; end;` in der Gliederung | P ist public, Q published |
+| BD12 | Optionen › Editor › Hover über Direktiven aus | Kein Hover auf den Bedingungen; Abblenden bleibt wie oben |
+
 ## Felder varianter Records (#846)
 
 Voraussetzung: Einstellungen auf Vorgabe; Unit mit `uses System.Types, Winapi.Messages;`, `var R: TRect; M: TMessage;` und einem eigenen Record `TMsg = record case Kind: TKind of mkA, mkB: (Value: Integer); mkC: (Inner: Integer; case Byte of 0: (Lo: Byte); 1: (Hi: Byte)); end;`.

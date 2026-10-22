@@ -66,6 +66,9 @@ type
     /// <summary>Feld im varianten Teil eines Records (#846): Marken seines Zweigs ("0", "mkA, mkB"),
     /// verschachtelt mit " › " verbunden ("1 › 0"); '' = kein varianter Zweig.</summary>
     VariantBranch: string;
+    /// <summary>Aufzählungstyp und seine Werte unter {$SCOPEDENUMS ON} (#849): Werte gelten nur mit
+    /// Typpräfix (TState.Error), nicht unqualifiziert.</summary>
+    ScopedEnum: Boolean;
     /// <summary>Kopf der Deklaration als eine Zeile, z. B. "function Foo(A: Integer): string; overload;"
     /// oder "TFoo = class(TBase)" (#492); höchstens TIndexSymbol.MaxSignature Zeichen.</summary>
     Signature: string;

@@ -183,7 +183,8 @@ type
     function InlayHints(const AFileName: string; AFromLine, AToLine: Integer;
       ATimeoutMs: Cardinal): TArray<TAtlasInlayHint>; overload;
     /// <summary>Wie oben; AEndMarkerMinLines &gt; 0 setzt die Mindestlänge der Endmarken für diese Anfrage
-    /// (#620, editor.blockEndLabels.minLines). Endmarken tragen den Blockanfang aus data.blockStart.</summary>
+    /// (#620, editor.blockEndLabels.minLines). Endmarken tragen den Blockanfang aus data.blockStart;
+    /// Include-Symbole hinter {$I} (#860) kommen als DefineHint mit den Symbolen aus data.includeDefines.</summary>
     function InlayHints(const AFileName: string; AFromLine, AToLine, AEndMarkerMinLines: Integer;
       ATimeoutMs: Cardinal): TArray<TAtlasInlayHint>; overload;
     procedure Initialize;
@@ -1283,7 +1284,7 @@ var
   Params, Range: TJSONObject;
   Response, Item, Part: TJSONValue;
   Entry: TJSONObject;
-  Parts: TJSONArray;
+  Parts, Names: TJSONArray;
   Hint: TAtlasInlayHint;
   Text: string;
   Kind: Integer;
@@ -1309,7 +1310,8 @@ begin
       if not (Item is TJSONObject) then
         Continue;
       Entry := TJSONObject(Item);
-      // Parameternamen (kind 2), Typmarken (kind 1, #453) und Endmarken ohne kind mit "// …" (#620).
+      // Parameternamen (kind 2), Typmarken (kind 1, #453), Endmarken ohne kind mit "// …" (#620) und
+      // Include-Symbole ohne kind mit data.includeDefines (#860) und Steuerzeichen mit data.controlChar (#862).
       Kind := Entry.GetValue<Integer>('kind', 0);
       if (Kind <> 2) and (Kind <> 1) and (Kind <> 0) then
         Continue;
@@ -1325,7 +1327,20 @@ begin
         Text := Entry.GetValue<string>('label', '');
       Text := Trim(Text);
       Hint := Default(TAtlasInlayHint);
-      if Kind = 0 then
+      if (Kind = 0) and Entry.TryGetValue<TJSONArray>('data.includeDefines.names', Names) then
+      begin
+        // Beschriftung baut die Oberfläche in der Sprache der IDE.
+        Hint.DefineHint := True;
+        Text := '';
+        for Part in Names do
+          if Text = '' then
+            Text := Part.Value
+          else
+            Text := Text + ', ' + Part.Value;
+      end
+      else if (Kind = 0) and (Entry.GetValue<Integer>('data.controlChar.code', -1) >= 0) then
+        Hint.CharHint := True
+      else if Kind = 0 then
       begin
         if not Text.StartsWith('//') then
           Continue;

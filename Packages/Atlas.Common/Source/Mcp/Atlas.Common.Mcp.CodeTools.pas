@@ -3,6 +3,8 @@
 // MCP-Werkzeuge, die Quelltext auswerten (#48): Verwendungen, Aufrufhierarchie
 // und Befunde der Prüfregeln. Das Symbol wird per Name über den Index gefunden
 // und dann wie im LSP an seiner Deklaration aufgelöst.
+// Befunde und check_code lesen die Dateien mit den Symbolen des Projekts und
+// dessen Include-Dateien (CheckSource, #860), wie der Editor.
 
 interface
 
@@ -11,6 +13,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Checker,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.References,
   Atlas.Common.Todos.Contract;
@@ -30,6 +33,7 @@ type
     FFiles: TReferenceFilesProvider;
     FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
+    FCheckSource: TCheckSourceFunc;
     function Locate(const AName: string; out ALocation: TSymbolLocation; out AHint: string): Boolean;
     function LineText(const AFileName: string; ALine: Integer): string;
   public
@@ -44,7 +48,12 @@ type
     function QualifiedName(const AFileName: string; ALine, AColumn: Integer; AWithParameters: Boolean): string;
     /// <summary>Befunde der Prüfregeln und Syntaxfehler je Datei; ARoot für relative Pfade.</summary>
     class function Diagnostics(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-      const ARoot: string; const AFiles: TArray<string>; const AReadText: TReferenceReadText): string; static;
+      const ARoot: string; const AFiles: TArray<string>; const AReadText: TReferenceReadText): string; overload;
+      static;
+    /// <summary>Wie oben mit Symbolen und Include-Dateien je Datei aus ASource (#860).</summary>
+    class function Diagnostics(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+      const ARoot: string; const AFiles: TArray<string>; const AReadText: TReferenceReadText;
+      const ASource: TCheckSourceFunc): string; overload; static;
     class function ParseDirection(const AText: string): TMcpCallDirection; static;
     /// <summary>get_metrics (#66): Kennzahlen je Methode mit den Grenzwerten aus ASettings; Markdown-Bericht
     /// oder mit AJson die Metrikdaten. Pfade relativ zu ARoot.</summary>
@@ -67,6 +76,8 @@ type
     /// ungültigem Bereich.</summary>
     class function ReplaceLines(const AOriginal, AText: string; AStartLine, AEndLine: Integer): string; static;
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    /// <summary>Symbole und Include-Dateien für check_code (#860); nil = Vordefinitionen (Win32).</summary>
+    property CheckSource: TCheckSourceFunc read FCheckSource write FCheckSource;
   end;
 
 implementation
@@ -79,7 +90,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Hierarchies,
   Atlas.Common.Lsp.QualifiedNames,
-  Atlas.Common.Rules.Checker,
+  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Rules.Output,
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Mcp.Server,
@@ -338,6 +350,13 @@ end;
 
 class function TMcpCodeTools.Diagnostics(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const ARoot: string; const AFiles: TArray<string>; const AReadText: TReferenceReadText): string;
+begin
+  Result := Diagnostics(ARules, ASettings, ARoot, AFiles, AReadText, nil);
+end;
+
+class function TMcpCodeTools.Diagnostics(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const ARoot: string; const AFiles: TArray<string>; const AReadText: TReferenceReadText;
+  const ASource: TCheckSourceFunc): string;
 var
   Lines: TStringList;
   FileName, RelativePath, Text: string;
@@ -359,7 +378,8 @@ begin
       RelativePath := FileName;
       if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), FileName) then
         RelativePath := Copy(FileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
-      for Finding in TFileChecker.CheckText(ARules, ASettings, RelativePath, Text) do
+      for Finding in TFileChecker.CheckText(ARules, ASettings, RelativePath, Text,
+        TFileChecker.SourceOf(ASource, FileName)) do
       begin
         Inc(Count);
         if Count <= MaxFindings then
@@ -429,6 +449,8 @@ var
   Name: TUnresolvedName;
   Unresolved: TArray<TUnresolvedName>;
   CheckNames: Boolean;
+  Source: TCheckSource;
+  Processed: TPreprocessorResult;
 begin
   if AStartLine > 0 then
   begin
@@ -444,7 +466,8 @@ begin
   Lines := TStringList.Create;
   try
     Count := 0;
-    for Finding in TFileChecker.CheckText(ARules, ASettings, RelativePath, NewText) do
+    Source := TFileChecker.SourceOf(FCheckSource, AFileName);
+    for Finding in TFileChecker.CheckText(ARules, ASettings, RelativePath, NewText, Source) do
     begin
       Inc(Count);
       if Count <= MaxFindings then
@@ -455,7 +478,8 @@ begin
     CheckNames := TUnresolvedNames.Available(FIndex);
     if CheckNames then
     begin
-      Tree := TSyntaxTreeCache.Parse(NewText);
+      // Nur die aktiven Zweige (#860): Namen eines anderen Zielsystems sind dort nicht auflösbar.
+      Tree := TPascalParser.ParseActive(NewText, Source.Options, nil, Processed);
       try
         Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
         try
@@ -470,7 +494,11 @@ begin
       for Name in Unresolved do
       begin
         Inc(Count);
-        if Count <= MaxFindings then
+        if (Count <= MaxFindings) and (Name.Suggestion <> '') then
+          Lines.Add(Format('%d:%d: warning [unresolved-identifier] "%s" ist nicht auflösbar; gemeint ist %s? ' +
+            '({$SCOPEDENUMS ON})', [Name.Range.StartPos.Line + 1, Name.Range.StartPos.Character + 1, Name.Name,
+            Name.Suggestion]))
+        else if Count <= MaxFindings then
           Lines.Add(Format('%d:%d: warning [unresolved-identifier] "%s" ist nicht auflösbar', [Name.Range.StartPos.Line + 1,
             Name.Range.StartPos.Character + 1, Name.Name]));
       end;

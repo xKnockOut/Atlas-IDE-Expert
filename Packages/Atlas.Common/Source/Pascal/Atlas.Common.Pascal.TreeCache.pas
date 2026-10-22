@@ -13,6 +13,10 @@
 //   Symbole gehören zum Schlüssel: Nach einem Wechsel von Plattform oder
 //   Konfiguration parst der nächste Zugriff neu. GetAll liefert den Baum aus
 //   allen Zweigen für Funktionen, die bewusst beide Seiten sehen müssen.
+// - Mit IncludeProvider (#860) liest der Präprozessor {$I datei.inc}: Dort
+//   gesetzte Symbole wählen die Zweige der Datei. Der Lauf steht in Processed,
+//   damit Abblenden, Include-Befunde und Inlay-Hinweise ihn nicht wiederholen.
+//   Ändert sich eine Include-Datei, macht IncludesChanged die Bäume mit $I ungültig.
 // Texte ohne geöffnetes Dokument (Index, andere Dateien, Kommandozeile) parst
 // Parse ohne Cache; dort gilt das Speicherbudget aus #185.
 
@@ -33,10 +37,19 @@ type
     /// <summary>Zweige der bedingten Kompilierung mit Bedingung und ob sie gelten; leer beim Vollbaum
     /// und bei Texten ohne bedingte Direktive.</summary>
     function Conditionals: TArray<TConditionalRange>;
+    /// <summary>Präprozessor-Lauf zum Baum (#860); Files leer, wenn keiner nötig war (Vollbaum, Text ohne
+    /// bedingte Direktive und ohne auflösbares $I).</summary>
+    function Processed: TPreprocessorResult;
+    /// <summary>Lief der Präprozessor mit Include-Resolver? Nur dann sind Include-Befunde echt.</summary>
+    function IncludesResolved: Boolean;
   end;
 
   /// <summary>Symbole des Projekts zu einer Datei; False, wenn keine bekannt sind.</summary>
   TTreeDefinesProvider = reference to function(const AUri: string; out ADefines: TArray<string>): Boolean;
+
+  /// <summary>Include-Resolver zu einer Datei (#860, Server: Suchpfade ihres Projekts); nil = $I nicht lesen.
+  /// </summary>
+  TTreeIncludeProvider = reference to function(const AUri: string): TIncludeResolver;
 
   TSyntaxTreeCache = class
   public
@@ -55,6 +68,13 @@ type
     class function DefinesOf(const AUri: string): TArray<string>; static;
     /// <summary>Quelle der Projektsymbole (Server: aktives Projekt der Datei); nil = Vordefinitionen.</summary>
     class procedure SetDefinesProvider(const AProvider: TTreeDefinesProvider); static;
+    /// <summary>Quelle der Include-Resolver (#860); nil = {$I} wird nicht gelesen.</summary>
+    class procedure SetIncludeProvider(const AProvider: TTreeIncludeProvider); static;
+    /// <summary>Include-Resolver, mit dem Get die Datei liest; nil ohne IncludeProvider.</summary>
+    class function IncludeResolverOf(const AUri: string): TIncludeResolver; static;
+    /// <summary>Eine Include-Datei hat sich geändert: Bäume von Texten mit $I werden beim nächsten Zugriff
+    /// neu geparst.</summary>
+    class procedure IncludesChanged; static;
     /// <summary>Parst ohne Cache; der Aufrufer gibt den Baum frei.</summary>
     class function Parse(const AText: string; const ACancellation: IPascalCancellation = nil): TSyntaxTree; static;
     /// <summary>Anzahl der Parse-Läufe über Get seit Programmstart, für Tests und Status.</summary>
@@ -67,6 +87,7 @@ uses
   System.SyncObjs,
   System.Generics.Collections,
   System.Generics.Defaults,
+  Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.Parser;
 
 const
@@ -79,11 +100,15 @@ type
   private
     FTree: TSyntaxTree;
     FConditionals: TArray<TConditionalRange>;
+    FProcessed: TPreprocessorResult;
+    FIncludesResolved: Boolean;
   public
-    constructor Create(ATree: TSyntaxTree; const AConditionals: TArray<TConditionalRange>);
+    constructor Create(ATree: TSyntaxTree; const AProcessed: TPreprocessorResult; AIncludesResolved: Boolean);
     destructor Destroy; override;
     function Tree: TSyntaxTree;
     function Conditionals: TArray<TConditionalRange>;
+    function Processed: TPreprocessorResult;
+    function IncludesResolved: Boolean;
   end;
 
   /// <summary>Abbruchsignal eines gemeinsamen Parse-Laufs.</summary>
@@ -102,7 +127,10 @@ type
   TTreeMode = record
     All: Boolean;
     Defines: TArray<string>;
+    FileName: string;
+    Resolver: TIncludeResolver;
     function Key(const AText: string): string;
+    function ReadsIncludes(const AText: string): Boolean;
   end;
 
 var
@@ -113,14 +141,20 @@ var
   Running: TDictionary<string, IPascalCancellation>;
   Parses: Integer;
   DefinesProvider: TTreeDefinesProvider;
+  IncludeProvider: TTreeIncludeProvider;
+  // Stand der Include-Dateien; gehört bei Texten mit $I zum Schlüssel.
+  IncludeGeneration: Integer;
 
 { TSharedSyntaxTree }
 
-constructor TSharedSyntaxTree.Create(ATree: TSyntaxTree; const AConditionals: TArray<TConditionalRange>);
+constructor TSharedSyntaxTree.Create(ATree: TSyntaxTree; const AProcessed: TPreprocessorResult;
+  AIncludesResolved: Boolean);
 begin
   inherited Create;
   FTree := ATree;
-  FConditionals := AConditionals;
+  FProcessed := AProcessed;
+  FIncludesResolved := AIncludesResolved;
+  FConditionals := TPascalPreprocessor.MainConditionals(AProcessed);
 end;
 
 destructor TSharedSyntaxTree.Destroy;
@@ -137,6 +171,16 @@ end;
 function TSharedSyntaxTree.Conditionals: TArray<TConditionalRange>;
 begin
   Result := FConditionals;
+end;
+
+function TSharedSyntaxTree.Processed: TPreprocessorResult;
+begin
+  Result := FProcessed;
+end;
+
+function TSharedSyntaxTree.IncludesResolved: Boolean;
+begin
+  Result := FIncludesResolved;
 end;
 
 { TParseRun }
@@ -166,29 +210,37 @@ var
 begin
   if All then
     Exit(AllKey);
-  // Ohne bedingte Direktive ist der Baum für alle Symbole gleich: kein neuer Parse beim Plattformwechsel.
-  if not TPascalPreprocessor.HasConditionals(AText) then
+  // Ohne bedingte Direktive und $I ist der Baum für alle Symbole gleich: kein neuer Parse beim Plattformwechsel.
+  if not TPascalPreprocessor.HasConditionals(AText) and not ReadsIncludes(AText) then
     Exit(TreeKey);
   Sorted := Copy(Defines);
   for Index := 0 to High(Sorted) do
     Sorted[Index] := UpperCase(Trim(Sorted[Index]));
   TArray.Sort<string>(Sorted);
   Result := TreeKey + '|' + string.Join(';', Sorted);
+  if ReadsIncludes(AText) then
+    Result := Result + '|inc' + IntToStr(TInterlocked.CompareExchange(IncludeGeneration, 0, 0));
+end;
+
+function TTreeMode.ReadsIncludes(const AText: string): Boolean;
+begin
+  Result := not All and Assigned(Resolver) and TPascalPreprocessor.HasIncludes(AText);
 end;
 
 /// <summary>Baum nach AMode ohne Cache.</summary>
 function ParseFor(const AText: string; const AMode: TTreeMode;
   const ACancellation: IPascalCancellation): ISharedSyntaxTree;
 var
-  Conditionals: TArray<TConditionalRange>;
+  Processed: TPreprocessorResult;
   Tree: TSyntaxTree;
 begin
-  Conditionals := nil;
+  Processed := Default(TPreprocessorResult);
   if AMode.All then
     Tree := TPascalParser.Parse(AText, ACancellation)
   else
-    Tree := TPascalParser.ParseActive(AText, AMode.Defines, ACancellation, Conditionals);
-  Result := TSharedSyntaxTree.Create(Tree, Conditionals);
+    Tree := TPascalParser.ParseActive(AText, TPascalPreprocessor.EditorOptions(AMode.Defines, AMode.FileName,
+      AMode.Resolver), ACancellation, Processed);
+  Result := TSharedSyntaxTree.Create(Tree, Processed, AMode.ReadsIncludes(AText));
 end;
 
 /// <summary>Parst ADocument als gemeinsamen Lauf; nil, wenn eine neuere Version ihn überholt hat.</summary>
@@ -268,6 +320,8 @@ var
 begin
   Mode.All := False;
   Mode.Defines := ADefines;
+  Mode.FileName := TDocumentUris.ToPath(ADocument.Uri);
+  Mode.Resolver := IncludeResolverOf(ADocument.Uri);
   Result := GetShared(ADocument, Mode, ACancellation);
 end;
 
@@ -278,6 +332,8 @@ var
 begin
   Mode.All := True;
   Mode.Defines := nil;
+  Mode.FileName := '';
+  Mode.Resolver := nil;
   Result := GetShared(ADocument, Mode, ACancellation);
 end;
 
@@ -306,6 +362,36 @@ begin
   end;
 end;
 
+class procedure TSyntaxTreeCache.SetIncludeProvider(const AProvider: TTreeIncludeProvider);
+begin
+  RunLock.Enter;
+  try
+    IncludeProvider := AProvider;
+  finally
+    RunLock.Leave;
+  end;
+end;
+
+class function TSyntaxTreeCache.IncludeResolverOf(const AUri: string): TIncludeResolver;
+var
+  Provider: TTreeIncludeProvider;
+begin
+  RunLock.Enter;
+  try
+    Provider := IncludeProvider;
+  finally
+    RunLock.Leave;
+  end;
+  Result := nil;
+  if Assigned(Provider) then
+    Result := Provider(AUri);
+end;
+
+class procedure TSyntaxTreeCache.IncludesChanged;
+begin
+  TInterlocked.Increment(IncludeGeneration);
+end;
+
 class function TSyntaxTreeCache.Parse(const AText: string; const ACancellation: IPascalCancellation): TSyntaxTree;
 begin
   Result := TPascalParser.Parse(AText, ACancellation);
@@ -324,6 +410,7 @@ initialization
 
 finalization
   DefinesProvider := nil;
+  IncludeProvider := nil;
   FreeAndNil(Running);
   FreeAndNil(RunLock);
 
