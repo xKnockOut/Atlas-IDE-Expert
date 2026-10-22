@@ -57,6 +57,8 @@ type
     procedure KeepsUnknownDirectiveAsDirective;
     [Test]
     procedure KeepsLocalExportsClause;
+    [Test]
+    procedure FieldNamedOperator;
   end;
 
 implementation
@@ -631,6 +633,22 @@ begin
     Clause := FindFirst(Tree.Root, TSyntaxKind.ExportsClause);
     Assert.IsNotNull(Clause);
     Assert.IsTrue(Clause.Parent.Kind = TSyntaxKind.RoutineDecl);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TPascalParserTests.FieldNamedOperator;
+var
+  Tree: TSyntaxTree;
+begin
+  // Operator: string ist ein Feld, kein FPC-Operator; sonst meldete field-after-method (E2169) die Felder danach.
+  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type', '  TRun = record', '    Operator: string;',
+    '    Operator2, Count: Integer;', '    Count2: Integer;', '  end;', 'implementation', 'end.']));
+  try
+    AssertNoDiagnostics(Tree);
+    Assert.AreEqual(0, CountKind(Tree.Root, TSyntaxKind.RoutineDecl));
+    Assert.AreEqual(3, CountKind(Tree.Root, TSyntaxKind.Field));
   finally
     Tree.Free;
   end;
