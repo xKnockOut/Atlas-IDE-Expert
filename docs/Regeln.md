@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 20 |
+| [Compiler vorab](#gruppe-compiler) | 21 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -151,6 +151,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`message-method-invalid`](#message-method-invalid) | message-Methode falsch deklariert | Bug | Fehler |
 | [`interface-declaration-invalid`](#interface-declaration-invalid) | Unzulässige Deklaration in einem Interface | Bug | Fehler |
 | [`implements-clause-invalid`](#implements-clause-invalid) | implements-Klausel unzulässig | Bug | Fehler |
+| [`calling-convention-required`](#calling-convention-required) | Aufrufkonvention passt nicht | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4676,4 +4677,25 @@ Richtig:
 
 ```pascal
 property Logger: ILogger read FLogger write FLogger implements ILogger;
+```
+
+<a id="calling-convention-required"></a>
+### calling-convention-required
+
+**Aufrufkonvention passt nicht** · Bug · Fehler · Gruppe Compiler vorab
+
+Der Compiler schreibt hier die Aufrufkonvention vor: Konstruktoren und Destruktoren einer Klasse nur mit register (wie E2236), Getter und Setter von published-Properties ebenso (wie E2270) und varargs nur mit cdecl (wie E2277 bei external-Routinen, sonst E2591). Ein ausdrückliches register ist in Ordnung; Klassenkonstruktoren, Accessoren außerhalb von published-Abschnitten und geerbte Accessoren bleiben still. Korrektur: die Konvention in der Deklaration und im Rumpf derselben Datei entfernen bzw. bei varargs cdecl setzen.
+
+Entspricht der Compilermeldung `E2236`, `E2270`, `E2277`, `E2591`.
+
+Mit Treffer:
+
+```pascal
+function Formatieren(Muster: PAnsiChar): Integer; stdcall; varargs; external 'msvcrt.dll';
+```
+
+Richtig:
+
+```pascal
+function Formatieren(Muster: PAnsiChar): Integer; cdecl; varargs; external 'msvcrt.dll';
 ```

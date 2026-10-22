@@ -38,6 +38,14 @@
 //                        dynamic oder message (wie E2263), jedes Interface nur
 //                        einmal (wie E2257) und keine Methodenzuordnung für
 //                        ein so umgesetztes Interface (wie E2264).
+//   calling-convention-required
+//                        Aufrufkonventionen, die der Compiler vorschreibt
+//                        (#1078): Konstruktoren und Destruktoren einer Klasse
+//                        nur mit register (wie E2236), Getter und Setter
+//                        von published-Properties ebenso (wie E2270), varargs
+//                        nur mit cdecl (wie E2277 bei external, sonst E2591).
+//                        Korrektur: die Konvention in Deklaration und Rumpf
+//                        der Datei entfernen bzw. cdecl setzen.
 
 interface
 
@@ -49,6 +57,7 @@ const
   MessageMethodInvalidRuleId = 'message-method-invalid';
   InterfaceDeclarationInvalidRuleId = 'interface-declaration-invalid';
   ImplementsClauseInvalidRuleId = 'implements-clause-invalid';
+  CallingConventionRequiredRuleId = 'calling-convention-required';
 
 type
   TMessageMethodInvalidRule = class(TInterfacedObject, IRule)
@@ -64,6 +73,12 @@ type
   end;
 
   TImplementsClauseInvalidRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TCallingConventionRequiredRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -118,6 +133,43 @@ type
 function IsTrivia(const AToken: TPascalToken): Boolean;
 begin
   Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
+end;
+
+/// <summary>Einziger Methodenkopf AName im Typ AType; nil ohne oder bei Überladungen.</summary>
+function UniqueMethodHeader(AType: TSyntaxNode; const AName: string): TSyntaxNode;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  for Index := 0 to AType.ChildCount - 1 do
+    if (AType[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(AType[Index].Name, AName) then
+    begin
+      if Result <> nil then
+        Exit(nil);
+      Result := AType[Index];
+    end;
+end;
+
+/// <summary>Rumpf AClassName.AMethod im implementation-Teil von ATree; nil ohne oder bei mehreren.</summary>
+function MethodBody(ATree: TSyntaxTree; const AClassName, AMethod: string): TSyntaxNode;
+var
+  Section: TSyntaxNode;
+  Index: Integer;
+  Many: Boolean;
+begin
+  Result := nil;
+  Many := False;
+  Section := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
+  if Section = nil then
+    Section := ATree.Root;
+  for Index := 0 to Section.ChildCount - 1 do
+    if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and SameText(Section[Index].Name, AClassName + '.' + AMethod) then
+    begin
+      Many := Result <> nil;
+      Result := Section[Index];
+    end;
+  if Many then
+    Result := nil;
 end;
 
 { TDeclarationScan }
@@ -472,30 +524,6 @@ var
     end;
   end;
 
-  /// <summary>Rumpf ClassName.Methode in der Datei; nil ohne oder bei mehreren.</summary>
-  function Body(const AMethod: TMessageMethod): TSyntaxNode;
-  var
-    Section: TSyntaxNode;
-    Index: Integer;
-    Wanted: string;
-    Many: Boolean;
-  begin
-    Result := nil;
-    Many := False;
-    Wanted := AMethod.ClassName + '.' + MethodName(AMethod.Header);
-    Section := AContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
-    if Section = nil then
-      Section := AContext.Tree.Root;
-    for Index := 0 to Section.ChildCount - 1 do
-      if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and SameText(Section[Index].Name, Wanted) then
-      begin
-        Many := Result <> nil;
-        Result := Section[Index];
-      end;
-    if Many then
-      Result := nil;
-  end;
-
   function SignatureFix(const AMethod: TMessageMethod): TArray<TRuleFix>;
   var
     Edits, BodyEdits: TArray<TTextEdit>;
@@ -505,7 +533,7 @@ var
     Result := nil;
     if not ParameterEdits(AMethod.Header, Edits) then
       Exit;
-    Decl := Body(AMethod);
+    Decl := MethodBody(AContext.Tree, AMethod.ClassName, MethodName(AMethod.Header));
     if Decl <> nil then
     begin
       Header := Decl.FindChild(TSyntaxKind.RoutineHeader);
@@ -868,21 +896,6 @@ var
     Result := LowerCase(Scan.Tokens[AIndex].Text);
   end;
 
-  /// <summary>Methodenkopf AName der Klasse; nil ohne oder bei Überladungen.</summary>
-  function MethodHeader(AType: TSyntaxNode; const AName: string): TSyntaxNode;
-  var
-    Index: Integer;
-  begin
-    Result := nil;
-    for Index := 0 to AType.ChildCount - 1 do
-      if (AType[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(AType[Index].Name, AName) then
-      begin
-        if Result <> nil then
-          Exit(nil);
-        Result := AType[Index];
-      end;
-  end;
-
   procedure CheckType(AProperty: TSyntaxNode);
   var
     Reference: TSyntaxNode;
@@ -910,7 +923,7 @@ var
     Index: Integer;
     Name: string;
   begin
-    Header := MethodHeader(AType, Scan.Tokens[AGetter].Text);
+    Header := UniqueMethodHeader(AType, Scan.Tokens[AGetter].Text);
     if Header = nil then
       Exit;
     for Index := 0 to Header.ChildCount - 1 do
@@ -1053,11 +1066,204 @@ begin
   end;
 end;
 
+{ TCallingConventionRequiredRule }
+
+function TCallingConventionRequiredRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(CallingConventionRequiredRuleId, TRuleSeverity.Error,
+    'Aufrufkonvention passt nicht');
+end;
+
+procedure TCallingConventionRequiredRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Scan: TDeclarationScan;
+
+  function PreviousCode(AIndex: Integer): Integer;
+  begin
+    Result := AIndex - 1;
+    while (Result >= 0) and IsTrivia(Scan.Tokens[Result]) do
+      Dec(Result);
+  end;
+
+  /// <summary>Löscht die Direktive ADirective samt ihrem Semikolon und dem Leerraum davor.</summary>
+  function RemoveDirective(ADirective: TSyntaxNode): TTextEdit;
+  var
+    First, Last, Before: Integer;
+  begin
+    First := Scan.FirstToken(ADirective);
+    Last := Scan.StopToken(ADirective) - 1;
+    if (Scan.NextCode(Last + 1, Length(Scan.Tokens)) < Length(Scan.Tokens)) and
+      Scan.Tokens[Scan.NextCode(Last + 1, Length(Scan.Tokens))].IsSymbol(';') then
+      Last := Scan.NextCode(Last + 1, Length(Scan.Tokens));
+    Before := PreviousCode(First);
+    if Before < 0 then
+      Before := First;
+    Result := TTextEdit.Create(TTextRange.Create(Scan.Tokens[Before].EndPos, Scan.Tokens[Last].EndPos), '');
+  end;
+
+  function Directive(AHeader: TSyntaxNode; const AName: string): TSyntaxNode;
+  var
+    Index: Integer;
+  begin
+    Result := nil;
+    for Index := 0 to AHeader.ChildCount - 1 do
+      if (AHeader[Index].Kind = TSyntaxKind.Directive) and SameText(AHeader[Index].Name, AName) then
+        Exit(AHeader[Index]);
+  end;
+
+  function Convention(AHeader: TSyntaxNode): TSyntaxNode;
+  var
+    Index: Integer;
+  begin
+    Result := nil;
+    for Index := 0 to AHeader.ChildCount - 1 do
+      if (AHeader[Index].Kind = TSyntaxKind.Directive) and MatchText(AHeader[Index].Name, ForeignConventions) then
+        Exit(AHeader[Index]);
+  end;
+
+  function Keyword(AHeader: TSyntaxNode): string;
+  var
+    Index: Integer;
+  begin
+    Index := Scan.NextCode(Scan.FirstToken(AHeader), Length(Scan.Tokens));
+    Result := '';
+    if Index < Length(Scan.Tokens) then
+      Result := LowerCase(Scan.Tokens[Index].Text);
+  end;
+
+  /// <summary>Korrektur: Konvention an AHeader und am Rumpf der Datei entfernen.</summary>
+  function RemoveFix(const AClassName: string; AHeader, AConvention: TSyntaxNode): TArray<TRuleFix>;
+  var
+    Edits: TArray<TTextEdit>;
+    Body, Other: TSyntaxNode;
+  begin
+    Edits := [RemoveDirective(AConvention)];
+    Body := MethodBody(AContext.Tree, AClassName, AHeader.Name);
+    if Body <> nil then
+      Body := Body.FindChild(TSyntaxKind.RoutineHeader);
+    if Body <> nil then
+    begin
+      Other := Directive(Body, AConvention.Name);
+      if Other <> nil then
+        Edits := Edits + [RemoveDirective(Other)];
+    end;
+    Result := [TRuleFix.Create(Format('%s entfernen', [AConvention.Name]), Edits)];
+  end;
+
+  procedure CheckClass(AType: TSyntaxNode; const AClassName: string);
+  var
+    Index, Clause, Argument: Integer;
+    Child, Header, Found: TSyntaxNode;
+    Published: Boolean;
+    Kind: string;
+  begin
+    Published := False;
+    for Index := 0 to AType.ChildCount - 1 do
+    begin
+      Child := AType[Index];
+      if Child.Kind = TSyntaxKind.Visibility then
+        Published := Child.Name = 'published'
+      else if (Child.Kind = TSyntaxKind.RoutineHeader) and Scan.Unconditional(Child) and
+        MatchText(Keyword(Child), ['constructor', 'destructor']) then
+      begin
+        Found := Convention(Child);
+        if Found <> nil then
+          AReport.Add(Scan.FirstRange(Found), Format('Konstruktoren und Destruktoren brauchen register, nicht %s ' +
+            '(wie E2236).', [Found.Name]), TRuleConfidence.High, RemoveFix(AClassName, Child, Found));
+      end
+      else if (Child.Kind = TSyntaxKind.PropertyDecl) and Published and Scan.Unconditional(Child) then
+        for Clause in Scan.ClauseWords(Child) do
+        begin
+          if not MatchText(Scan.Tokens[Clause].Text, ['read', 'write']) then
+            Continue;
+          Argument := Scan.ClauseArgument(Child, Clause);
+          if (Argument >= Scan.ClauseEnd(Child)) or (Scan.Tokens[Argument].Kind <> TPascalTokenKind.Identifier) then
+            Continue;
+          Header := UniqueMethodHeader(AType, Scan.Tokens[Argument].Text);
+          if Header = nil then
+            Continue;
+          Found := Convention(Header);
+          if Found = nil then
+            Continue;
+          if SameText(Scan.Tokens[Clause].Text, 'read') then
+            Kind := 'Getter'
+          else
+            Kind := 'Setter';
+          AReport.Add(Scan.TokenRange(Argument), Format('Der %s %s der published-Property %s braucht register, ' +
+            'nicht %s (wie E2270).', [Kind, Scan.Tokens[Argument].Text, Child.Name, Found.Name]),
+            TRuleConfidence.High, RemoveFix(AClassName, Header, Found));
+        end;
+    end;
+  end;
+
+  procedure CheckVarargs(AHeader: TSyntaxNode);
+  var
+    Varargs, Found: TSyntaxNode;
+    Code: string;
+    Edit: TTextEdit;
+    Position: TTextPosition;
+  begin
+    Varargs := Directive(AHeader, 'varargs');
+    if (Varargs = nil) or (Directive(AHeader, 'cdecl') <> nil) or not Scan.Unconditional(AHeader) then
+      Exit;
+    if Directive(AHeader, 'external') <> nil then
+      Code := 'E2277'
+    else
+      Code := 'E2591';
+    Found := Convention(AHeader);
+    if Found = nil then
+      Found := Directive(AHeader, 'register');
+    if Found <> nil then
+      Edit := TTextEdit.Create(Scan.FirstRange(Found), 'cdecl')
+    else
+    begin
+      Position := Scan.FirstRange(Varargs).StartPos;
+      Edit := TTextEdit.Create(TTextRange.Create(Position, Position), 'cdecl; ');
+    end;
+    AReport.Add(Scan.FirstRange(Varargs), Format('varargs ist nur mit cdecl erlaubt (wie %s).', [Code]),
+      TRuleConfidence.High, [TRuleFix.Create('cdecl setzen', [Edit])]);
+  end;
+
+  procedure Visit(ANode: TSyntaxNode; const AOwner: string);
+  var
+    Index: Integer;
+    Name: string;
+  begin
+    Name := AOwner;
+    if ANode.Kind = TSyntaxKind.TypeDecl then
+    begin
+      if AOwner = '' then
+        Name := ANode.Name
+      else
+        Name := AOwner + '.' + ANode.Name;
+    end;
+    if ANode.Kind = TSyntaxKind.ClassType then
+      CheckClass(ANode, Name);
+    if ANode.Kind = TSyntaxKind.RoutineHeader then
+      CheckVarargs(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if ANode[Index].Kind in DeclarationKinds + [TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader,
+        TSyntaxKind.RecordType, TSyntaxKind.ObjectType, TSyntaxKind.HelperType] then
+        Visit(ANode[Index], Name);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Scan := TDeclarationScan.Create(AContext);
+  try
+    Visit(AContext.Tree.Root, '');
+  finally
+    Scan.Free;
+  end;
+end;
+
 procedure RegisterTypeDeclarationRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TMessageMethodInvalidRule.Create);
   ARegistry.Register(TInterfaceDeclarationInvalidRule.Create);
   ARegistry.Register(TImplementsClauseInvalidRule.Create);
+  ARegistry.Register(TCallingConventionRequiredRule.Create);
 end;
 
 end.
