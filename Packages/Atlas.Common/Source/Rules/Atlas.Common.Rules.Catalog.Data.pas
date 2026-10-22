@@ -2313,6 +2313,21 @@ begin
     '        "E2129",' + #10 +
     '        "E2130"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unit-name-mismatch",' + #10 +
+    '      "name": "Unit name does not match the file name",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The name after unit differs from the file name, usually after renaming the file outside the IDE (like E1038, W1038). Case does not matter, dots in the name do. In a program, libr' + 'ary or package, an entry uses X in ''File.pas'' whose file declares a different unit is reported too (like E2085); the rule reads that file. Programs, libraries and packages themselves are not compared ' + 'with their file name, because the compiler does not either. {$WARN UNIT_NAME_MISMATCH OFF} or {$WARNINGS OFF} before the unit name silences the rule like the compiler. Quick fixes: change the unit nam' + 'e to the file name (renaming the file is up to the IDE), or change the uses entry to the unit the file declares.",' + #10 +
+    '      "bad": "// File: Kunden.Daten.pas\nunit Kunden.Model;\n\ninterface",' + #10 +
+    '      "good": "// File: Kunden.Daten.pas\nunit Kunden.Daten;\n\ninterface",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E1038",' + #10 +
+    '        "W1038",' + #10 +
+    '        "E2085"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3483,6 +3498,11 @@ begin
     '      "id": "readonly-property-assigned",' + #10 +
     '      "name": "Zuweisung an eine Property ohne write",' + #10 +
     '      "description": "Zuweisung an eine Property ohne write (wie E2129) bzw. Lesen einer Property ohne read (wie E2130). Die Regel meldet nur, wenn die Namensauflösung die Property sicher findet; Neud' + 'eklarationen ohne read und write (property Caption;) gelten als unbekannt. Korrekturen: Count := 0 wird Clear, wenn der Typ Clear hat; in einer Methode der deklarierenden Klasse das Feld hinter read z' + 'uweisen; für eine Property dieser Datei den Setter anlegen und write ergänzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unit-name-mismatch",' + #10 +
+    '      "name": "Unit-Name passt nicht zum Dateinamen",' + #10 +
+    '      "description": "Der Name hinter unit weicht vom Dateinamen ab, meist nach dem Umbenennen der Datei außerhalb der IDE (wie E1038, W1038). Groß-/Kleinschreibung zählt nicht, Punkte im Namen schon.' + ' In Programmen, Bibliotheken und Packages wird außerdem ein Eintrag uses X in ''Datei.pas'' gemeldet, dessen Datei eine andere Unit deklariert (wie E2085); die Regel liest dazu die Datei. Programme, Bib' + 'liotheken und Packages selbst vergleicht sie nicht mit dem Dateinamen, weil der Compiler das auch nicht tut. {$WARN UNIT_NAME_MISMATCH OFF} oder {$WARNINGS OFF} vor dem Unit-Namen schaltet die Regel w' + 'ie den Compiler ab. Korrekturen: Unit-Namen an den Dateinamen anpassen (die Datei umbenennen bleibt Sache der IDE) bzw. den uses-Eintrag auf die Unit der Datei ändern."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
