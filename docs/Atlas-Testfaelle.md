@@ -4186,3 +4186,21 @@ Voraussetzung: Server läuft in der IDE mit Projekt, in `atlas.json` `"narrowing
 | QE7 | `Groesse := Strom.Size` mit `Int64`, `Anzahl := 5`, `Anzahl := Integer(Strom.Size) + 1`, unbekannte Typen | Keine Meldung |
 | QE8 | Ohne Eintrag in `atlas.json`, mit `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | QE9 | Abgleich mit Delphi: QE1, QE4 bis QE6 mit `{$WARN IMPLICIT_INTEGER_CAST_LOSS ON}` bzw. `{$WARN IMPLICIT_CONVERSION_LOSS ON}` übersetzen (Win32 und Win64) | dcc meldet W1071, W1072 bzw. W1066 an denselben Stellen, für QE7 nichts; QE5 nur unter Win64 |
+
+## Typisierte Konstante verändert (#1014)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QT1 | Das Beispiel aus #1014: `const Zaehler: Integer = 0;` auf Unit-Ebene und `Inc(Zaehler);` in einer Prozedur | Warnung `typed-constant-modified` an `Zaehler` im Aufruf: „Zaehler ist eine typisierte Konstante und wird verändert (wie W1016).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| QT2 | Schnellkorrektur „In var mit Initialwert umwandeln“, danach Strg+Z | Aus `const` wird `var`, die Deklaration bleibt `Zaehler: Integer = 0;`; keine Meldung mehr; ein Undo-Schritt |
+| QT3 | Wie QT2, aber die Konstante steht zwischen zwei untypisierten Konstanten | Die Korrektur teilt den Abschnitt: `const … var Zaehler … const …`; das Ergebnis übersetzt |
+| QT4 | `Zaehler := 5;`, `Feld[0] := 3;`, `Ursprung.X := 1;` (Record-Konstante), `Delete(Name, 1, 1);` | W1017 für die ersten drei, W1016 für Delete |
+| QT5 | Eigene Prozedur `Tausche(var A, B: Integer)` mit zwei typisierten Konstanten; `Zeige(A: Integer; const B: Integer)` | Zwei Meldungen bei Tausche, keine bei Zeige |
+| QT6 | `{$J-}` vor der Deklaration, dann `Zaehler := 1; Inc(Zaehler);` | Fehler „… kann ohne {$J+} nicht verändert werden (wie E2064).“ bzw. „(wie E2197)“ |
+| QT7 | Lokale typisierte Konstante `const Aufrufe: Integer = 0;` in einer Routine, `Inc(Aufrufe)` | Warnung wie QT1, aber ohne Korrektur |
+| QT8 | `const Leer: Pointer = 0;`, `Text: PChar = 0;`, Schnellkorrektur „nil schreiben“ | „Leer ist ein Zeiger; die 0 wird zu nil umgewandelt (wie W1013).“; danach `= nil` |
+| QT9 | Lesen, `Ziel^ := 1` bei einer Zeigerkonstante, lokale Variable mit demselben Namen | Keine Meldung |
+| QT10 | `"typed-constant-modified": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| QT11 | Abgleich mit Delphi: QT1, QT4 bis QT6, QT8 übersetzen, einmal mit `{$J+}`, einmal ohne | Mit `{$J+}` W1016/W1017 bzw. W1013, mit `{$J-}` E2064/E2197 an denselben Stellen; für QT9 nichts |

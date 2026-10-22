@@ -16,6 +16,10 @@
 // narrowing-assignment (#1013): Beispiel Strom.Size aus dem Index, beide
 // Korrekturen, Inline-Variablen, Rechnungen, Aliase, Option types (Gleitkomma,
 // W1072/W1066), stille Fälle, standardmäßig aus, Abschalten.
+// typed-constant-modified (#1014): Beispiel mit Korrektur, Zuweisung an
+// Konstante, Element und Feld, var-Parameter eigener Routinen, {$J-} und
+// {$J+}, Abschnitte aufteilen, Konstanten aus anderen Units, 0 statt nil,
+// stille Fälle, Abschalten.
 
 interface
 
@@ -95,6 +99,29 @@ type
     procedure SafeAssignmentsAreSilent;
     [Test]
     procedure OffByDefaultGroupAndExclude;
+  end;
+
+  [TestFixture]
+  TTypedConstantModifiedTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure AssignmentsElementsAndFields;
+    [Test]
+    procedure VarParametersOfOwnRoutines;
+    [Test]
+    procedure WriteableConstDirective;
+    [Test]
+    procedure FixSplitsSection;
+    [Test]
+    procedure ConstantFromOtherUnit;
+    [Test]
+    procedure ZeroForPointer;
+    [Test]
+    procedure ReadingAndShadowingAreSilent;
+    [Test]
+    procedure OffGroupAndExclude;
   end;
 
 implementation
@@ -291,6 +318,11 @@ begin
     if Rule.Descriptor.Id = NarrowingAssignmentRuleId then
       Found := True;
   Assert.IsTrue(Found, NarrowingAssignmentRuleId);
+  Found := False;
+  for Rule in BuiltinRules do
+    if Rule.Descriptor.Id = TypedConstantModifiedRuleId then
+      Found := True;
+  Assert.IsTrue(Found, TypedConstantModifiedRuleId);
 end;
 
 /// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
@@ -697,10 +729,181 @@ begin
     '{"rules": {"narrowing-assignment": {"severity": "warning", "exclude": ["Lesen.pas"]}}}'))));
 end;
 
+{ TTypedConstantModifiedTests }
+
+function TypedFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TTypedConstantModifiedRule.Create, ASource);
+end;
+
+function TypedFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TTypedConstantModifiedRule.Create, ASource, AConfig, APath);
+end;
+
+/// <summary>Unit Zaehlen mit ADeclarations auf Unit-Ebene und AStatements in der Prozedur Zaehle.</summary>
+function Zaehlen(const ADeclarations, AStatements: string): string;
+begin
+  Result := 'unit Zaehlen;'#10'interface'#10 + ADeclarations + 'implementation'#10 +
+    'procedure Tausche(var A, B: Integer);'#10'begin'#10'end;'#10 +
+    'procedure Zeige(A: Integer; const B: Integer);'#10'begin'#10'end;'#10 +
+    'procedure Zaehle;'#10'begin'#10 + AStatements + 'end;'#10'end.';
+end;
+
+function Messages(const AFindings: TArray<TRuleFinding>): string;
+var
+  Finding: TRuleFinding;
+begin
+  Result := '';
+  for Finding in AFindings do
+    Result := Result + Finding.Message + #10;
+end;
+
+procedure TTypedConstantModifiedTests.IssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Zaehlen('const'#10'  Zaehler: Integer = 0;'#10, '  Inc(Zaehler);'#10);
+  Found := TypedFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Zaehler ist eine typisierte Konstante und wird verändert (wie W1016).', Found[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[0].Severity));
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('In var mit Initialwert umwandeln', Found[0].Fixes[0].Title);
+  Fixed := ApplyAll(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('interface'#10'var'#10'  Zaehler: Integer = 0;'#10'implementation', Fixed) > 0, Fixed);
+  Assert.AreEqual(0, Integer(Length(TypedFindings(Fixed))));
+end;
+
+procedure TTypedConstantModifiedTests.AssignmentsElementsAndFields;
+begin
+  Assert.AreEqual('Zaehler ist eine typisierte Konstante und wird verändert (wie W1017).'#10 +
+    'Feld ist eine typisierte Konstante und wird verändert (wie W1017).'#10 +
+    'Ursprung ist eine typisierte Konstante und wird verändert (wie W1017).'#10 +
+    'Name ist eine typisierte Konstante und wird verändert (wie W1016).'#10,
+    Messages(TypedFindings(Zaehlen('type'#10'  TPunkt = record'#10'    X, Y: Integer;'#10'  end;'#10'const'#10 +
+    '  Zaehler: Integer = 0;'#10'  Feld: array[0..1] of Integer = (1, 2);'#10 +
+    '  Ursprung: TPunkt = (X: 0; Y: 0);'#10'  Name: string = ''abc'';'#10,
+    '  Zaehler := 5;'#10'  Feld[0] := 3;'#10'  Ursprung.X := 1;'#10'  Delete(Name, 1, 1);'#10))));
+end;
+
+procedure TTypedConstantModifiedTests.VarParametersOfOwnRoutines;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := TypedFindings(Zaehlen('const'#10'  Zaehler: Integer = 0;'#10'  Grenze: Integer = 9;'#10,
+    '  Tausche(Zaehler, Grenze);'#10'  Zeige(Zaehler, Grenze);'#10));
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('Zaehler ist eine typisierte Konstante und wird verändert (wie W1016).', Found[0].Message);
+  Assert.AreEqual('Grenze ist eine typisierte Konstante und wird verändert (wie W1016).', Found[1].Message);
+  Assert.AreEqual(3, Integer(Length(TTypedConstantModifiedRule.VarParameters(
+    'procedure Tausche(var A, B: Integer; C: Integer = 0)'))));
+  Assert.IsTrue(TTypedConstantModifiedRule.VarParameters('procedure Lies(out A: string; var B)')[1]);
+  Assert.IsFalse(TTypedConstantModifiedRule.VarParameters('procedure Tausche(var A, B: Integer; C: Integer)')[2]);
+end;
+
+procedure TTypedConstantModifiedTests.WriteableConstDirective;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := TypedFindings(Zaehlen('{$J-}'#10'const'#10'  Zaehler: Integer = 0;'#10,
+    '  Zaehler := 1;'#10'  Inc(Zaehler);'#10));
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('Zaehler ist eine typisierte Konstante und kann ohne {$J+} nicht verändert werden (wie E2064).',
+    Found[0].Message);
+  Assert.AreEqual('Zaehler ist eine typisierte Konstante und kann ohne {$J+} nicht verändert werden (wie E2197).',
+    Found[1].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
+  Found := TypedFindings(Zaehlen('{$WRITEABLECONST OFF}'#10'{$J+,H+}'#10'const'#10'  Zaehler: Integer = 0;'#10,
+    '  Zaehler := 1;'#10));
+  Assert.AreEqual('Zaehler ist eine typisierte Konstante und wird verändert (wie W1017).'#10, Messages(Found));
+end;
+
+procedure TTypedConstantModifiedTests.FixSplitsSection;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Zaehlen('const'#10'  Erste = 1;'#10'  Zaehler: Integer = 0;'#10'  Letzte = 2;'#10,
+    '  Zaehler := 1;'#10);
+  Found := TypedFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Fixed := ApplyAll(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('const'#10'  Erste = 1;'#10'var'#10'  Zaehler: Integer = 0;'#10'const'#10'  Letzte = 2;'#10,
+    Fixed) > 0, Fixed);
+  Assert.AreEqual(0, Integer(Length(TypedFindings(Fixed))));
+  // Lokale typisierte Konstanten behalten ihren Wert zwischen Aufrufen: keine Korrektur.
+  Found := TypedFindings('unit Zaehlen;'#10'interface'#10'implementation'#10'procedure Zaehle;'#10'const'#10 +
+    '  Aufrufe: Integer = 0;'#10'begin'#10'  Inc(Aufrufe);'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+end;
+
+procedure TTypedConstantModifiedTests.ConstantFromOtherUnit;
+var
+  Index: ISymbolIndex;
+  Found: TArray<TRuleFinding>;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText('unit Vorgaben;'#10'interface'#10'const'#10 +
+    '  Standard: Integer = 4;'#10'  Fest = 5;'#10'implementation'#10'end.', 'C:\Projekt\Vorgaben.pas', nil));
+  Found := TRuleAssert.IndexFindings(TTypedConstantModifiedRule.Create, 'unit Zaehlen;'#10'interface'#10'uses'#10 +
+    '  Vorgaben;'#10'implementation'#10'procedure Zaehle;'#10'var'#10'  X: Integer;'#10'begin'#10 +
+    '  Standard := 8;'#10'  Vorgaben.Standard := 9;'#10'  X := Standard + Fest;'#10'end;'#10'end.',
+    Index, '', 'Zaehlen.pas');
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('Standard ist eine typisierte Konstante und wird verändert (wie W1017).', Found[0].Message);
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+end;
+
+procedure TTypedConstantModifiedTests.ZeroForPointer;
+var
+  Source: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Zaehlen('type'#10'  PKunde = ^Integer;'#10'const'#10'  Leer: Pointer = 0;'#10 +
+    '  Text: PChar = 0;'#10'  Kunde: PKunde = 0;'#10'  Ziel: ^Integer = 0;'#10'  Zahl: Integer = 0;'#10 +
+    '  Gut: Pointer = nil;'#10, '');
+  Found := TypedFindings(Source);
+  Assert.AreEqual('Leer ist ein Zeiger; die 0 wird zu nil umgewandelt (wie W1013).'#10 +
+    'Text ist ein Zeiger; die 0 wird zu nil umgewandelt (wie W1013).'#10 +
+    'Kunde ist ein Zeiger; die 0 wird zu nil umgewandelt (wie W1013).'#10 +
+    'Ziel ist ein Zeiger; die 0 wird zu nil umgewandelt (wie W1013).'#10, Messages(Found));
+  Assert.AreEqual('nil schreiben', Found[0].Fixes[0].Title);
+  Assert.IsTrue(Pos('Leer: Pointer = nil;', ApplyAll(Source, Found[0].Fixes[0])) > 0);
+end;
+
+procedure TTypedConstantModifiedTests.ReadingAndShadowingAreSilent;
+begin
+  Assert.AreEqual(0, Integer(Length(TypedFindings(Zaehlen('const'#10'  Zaehler: Integer = 0;'#10 +
+    '  Fest = 3;'#10'  Ziel: PInteger = nil;'#10'var'#10'  Wert: Integer;'#10,
+    '  Wert := Zaehler + Fest;'#10'  Zeige(Zaehler, Zaehler);'#10'  Ziel^ := 1;'#10'  Inc(Wert, Zaehler);'#10)))));
+  // Eine lokale Variable gleichen Namens verdeckt die Konstante.
+  Assert.AreEqual(0, Integer(Length(TypedFindings('unit Zaehlen;'#10'interface'#10'const'#10 +
+    '  Zaehler: Integer = 0;'#10'implementation'#10'procedure Zaehle;'#10'var'#10'  Zaehler: Integer;'#10 +
+    'begin'#10'  Zaehler := 1;'#10'  Inc(Zaehler);'#10'end;'#10'end.'))));
+end;
+
+procedure TTypedConstantModifiedTests.OffGroupAndExclude;
+var
+  Source: string;
+begin
+  Source := Zaehlen('const'#10'  Zaehler: Integer = 0;'#10, '  Inc(Zaehler);'#10);
+  Assert.AreEqual(1, Integer(Length(TypedFindings(Source, '', 'Source/Zaehlen.pas'))));
+  Assert.AreEqual(0, Integer(Length(TypedFindings(Source, '{"rules": {"typed-constant-modified": "off"}}',
+    'Source/Zaehlen.pas'))));
+  Assert.AreEqual(0, Integer(Length(TypedFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/Zaehlen.pas'))));
+  Assert.AreEqual(0, Integer(Length(TypedFindings(Source,
+    '{"rules": {"typed-constant-modified": {"exclude": ["Source/*.pas"]}}}', 'Source/Zaehlen.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TConstantExpressionErrorTests);
   TDUnitX.RegisterTestFixture(TDefaultParameterInvalidTests);
   TDUnitX.RegisterTestFixture(TSignedUnsignedMixTests);
   TDUnitX.RegisterTestFixture(TNarrowingAssignmentTests);
+  TDUnitX.RegisterTestFixture(TTypedConstantModifiedTests);
 
 end.

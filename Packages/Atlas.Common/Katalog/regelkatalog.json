@@ -2368,6 +2368,23 @@
           "description": "Reported pairs source type>target type, e.g. Double>Single or Extended>Double."
         }
       ]
+    },
+    {
+      "id": "typed-constant-modified",
+      "name": "Typed constant modified",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "A typed constant (const Counter: Integer = 0) is assigned (like W1017, also an element or a record field of it) or passed as a var or out argument, including Inc, Dec, Include, Exclude, Delete, SetLength and the like (like W1016). Usually a variable was meant; this only compiles with {$J+}. When {$J-} or {$WRITEABLECONST OFF} is in effect before the declaration in the same file, it is reported as an error (like E2064 or E2197). Also reports 0 as the value of a pointer constant or an initialised pointer variable (like W1013). Quick fixes: turn a unit-level constant into a variable with an initial value (the const section is split if needed; local typed constants keep their value between calls and get no fix); write nil instead of 0.",
+      "bad": "const\n  Zaehler: Integer = 0;\n…\nInc(Zaehler);",
+      "good": "var\n  Zaehler: Integer = 0;\n…\nInc(Zaehler);",
+      "compilerCodes": [
+        "W1016",
+        "W1017",
+        "W1013",
+        "E2064",
+        "E2197"
+      ]
     }
   ]
 }
