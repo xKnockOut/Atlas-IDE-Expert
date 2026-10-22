@@ -37,6 +37,8 @@
 // Tastenkürzel-Tipps (#600) als Aufruf per Menü (TAtlasIdeShortcutTips.Invoked).
 // „Atlas-Prüfung“ (#909) öffnet das Fenster der Befunde, auch unter Ansicht ›
 // Atlas › Prüfung; sichtbar nur bei problems.window.
+// Unter Navigation die Abschnittssprünge, der Rücksprung und „Methode suchen“
+// der Editorleiste (#1101); sie arbeiten auch ohne die Leiste.
 // Aufbau: häufige Befehle direkt, der Rest in Untermenüs (Navigation, Suchen,
 // Kopieren, Änderungen, Anzeige mit den Schaltern, Index, Hilfe und Diagnose).
 
@@ -97,6 +99,7 @@ type
     procedure RenameClick(Sender: TObject);
     procedure ResultsClick(Sender: TObject);
     procedure EditorClick(Sender: TObject);
+    procedure SectionClick(Sender: TObject);
     procedure UndoClick(Sender: TObject);
     procedure NotesClick(Sender: TObject);
     procedure BookmarksClick(Sender: TObject);
@@ -162,6 +165,7 @@ uses
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Outline.Service,
+  Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.UnitSearch.Commands,
@@ -182,6 +186,9 @@ const
     'Atlas.SwitchTestUnit', 'Atlas.UnitSearch', 'Atlas.UnitSearchIde', 'Atlas.GenerateMenu', 'Atlas.FormatCode');
   ResultsIds: array[0..7] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
     'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow');
+  // Editorleiste (#1101), je Tag von SectionClick.
+  SectionIds: array[0..5] of string = ('Atlas.GotoInterface', 'Atlas.GotoImplementation', 'Atlas.GotoUses',
+    'Atlas.GotoInitialization', 'Atlas.ReturnFromSection', 'Atlas.FindMethod');
   UndoIds: array[0..2] of string = ('Atlas.UndoChange', 'Atlas.RedoChange', 'Atlas.ChangeList');
   NoteIds: array[0..2] of string = ('Atlas.NoteAdd', 'Atlas.NoteDelete', 'Atlas.NoteList');
   BookmarkIds: array[0..2] of string = ('Atlas.BookmarkAdd', 'Atlas.BookmarkGoTo', 'Atlas.BookmarkWindow');
@@ -252,6 +259,12 @@ begin
   AddItem(TAtlasTextId.EditorTypeDefinition, 3, EditorClick);
   AddItem(TAtlasTextId.EditorMethodToggle, 6, EditorClick);
   AddItem(TAtlasTextId.EditorTestUnit, 7, EditorClick);
+  AddItem(TAtlasTextId.GotoInterfaceCommand, 0, SectionClick);
+  AddItem(TAtlasTextId.GotoImplementationCommand, 1, SectionClick);
+  AddItem(TAtlasTextId.GotoUsesCommand, 2, SectionClick);
+  AddItem(TAtlasTextId.GotoInitializationCommand, 3, SectionClick);
+  AddItem(TAtlasTextId.ReturnFromSectionCommand, 4, SectionClick);
+  AddItem(TAtlasTextId.FindMethodCommand, 5, SectionClick);
   AddItem(TAtlasTextId.EditorExpand, 1, EditorClick);
   AddItem(TAtlasTextId.EditorShrink, 2, EditorClick);
   FOutlineItem := AddItem(TAtlasTextId.OutlineCommand, 0, OutlineClick);
@@ -730,6 +743,28 @@ begin
         11: TAtlasIdeEditorCommands.FormatCode;
       else
         TAtlasIdeEditorCommands.CopyQualifiedName(True);
+      end;
+    end);
+end;
+
+procedure TAtlasMainMenu.SectionClick(Sender: TObject);
+var
+  Command: Integer;
+begin
+  Command := TMenuItem(Sender).Tag;
+  if (Command >= Low(SectionIds)) and (Command <= High(SectionIds)) then
+    TAtlasIdeShortcutTips.Invoked(SectionIds[Command]);
+  TAtlasGuard.Run(TAtlasFeature.EditorToolbar,
+    procedure
+    begin
+      case Command of
+        0: TAtlasIdeEditorToolbar.GotoInterface;
+        1: TAtlasIdeEditorToolbar.GotoImplementation;
+        2: TAtlasIdeEditorToolbar.GotoUses;
+        3: TAtlasIdeEditorToolbar.GotoInitialization;
+        4: TAtlasIdeEditorToolbar.ReturnFromSection;
+      else
+        TAtlasIdeEditorToolbar.FindMethod;
       end;
     end);
 end;

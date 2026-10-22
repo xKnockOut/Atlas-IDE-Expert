@@ -62,7 +62,8 @@ uses
   Atlas.UI.Settings.Rules,
   Atlas.UI.Strings,
   Atlas.Core.Style.Symbol,
-  Atlas.UI.Style.Symbol;
+  Atlas.UI.Style.Symbol,
+  Atlas.UI.EditorToolbar.Customize;
 
 type
   /// <summary>Auswahlliste, die Einträge und Auswahl ohne Fensterhandle hält: Die IDE erzeugt und lädt die
@@ -293,6 +294,8 @@ type
     FMethodToggleUpKey: TEdit;
     FMethodToggleDownKey: TEdit;
     FTestUnitKey: TEdit;
+    FGotoInterfaceKey: TEdit;
+    FGotoImplementationKey: TEdit;
     FNavHistory: TCheckBox;
     FNavBackKey: TEdit;
     FNavForwardKey: TEdit;
@@ -325,6 +328,13 @@ type
     FMinimapMarkers: TCheckBox;
     FMinimapClickJumps: TCheckBox;
     FBreadcrumbsKey: TEdit;
+    FEditorToolbar: TCheckBox;
+    FEditorToolbarPosition: TAtlasChoiceBox;
+    FEditorToolbarItems: TEdit;
+    FEditorToolbarReturnButton: TCheckBox;
+    FEditorToolbarLabels: TCheckBox;
+    FEditorToolbarCustomize: TButton;
+    FOnToolbarCommands: TFunc<TArray<TAtlasToolbarCommandInfo>>;
     FGitGutter: TCheckBox;
     FGitBlame: TCheckBox;
     FGutterColumn: TCheckBox;
@@ -678,6 +688,7 @@ type
     procedure FavoritesRemoveAllClick(Sender: TObject);
     procedure SetOnFavorites(const AValue: TFunc<TArray<TAtlasFavorite>>);
     procedure ResetUsageClick(Sender: TObject);
+    procedure EditorToolbarCustomizeClick(Sender: TObject);
     procedure UnblockTipsClick(Sender: TObject);
     procedure AddTeamFileSection;
     procedure TeamFileClick(Sender: TObject);
@@ -998,6 +1009,10 @@ type
     property WelcomeDiscover: TCheckBox read FWelcomeDiscover;
     property TipsUsageTracking: TCheckBox read FTipsUsageTracking;
     property ResetUsageButton: TButton read FResetUsage;
+    /// <summary>Zum Testen: Editorleiste (#1101).</summary>
+    property EditorToolbarItemsEdit: TEdit read FEditorToolbarItems;
+    property EditorToolbarPositionBox: TAtlasChoiceBox read FEditorToolbarPosition;
+    property EditorToolbarCustomizeButton: TButton read FEditorToolbarCustomize;
     property UnblockTipsButton: TButton read FUnblockTips;
     /// <summary>Zum Testen: Bereich „Hilfe und Rückmeldung“ (#766).</summary>
     property WelcomeHelp: TCheckBox read FWelcomeHelp;
@@ -1128,6 +1143,9 @@ type
     property FavoritesRemoveAll: TButton read FFavoritesRemoveAll;
     /// <summary>„Zählung zurücksetzen“ der Nutzung je Befehl (#757).</summary>
     property OnResetUsage: TProc read FOnResetUsage write FOnResetUsage;
+    /// <summary>Befehle für „Leiste anpassen …“ der Editorleiste (#1101): Atlas-Befehle der Palette.</summary>
+    property OnToolbarCommands: TFunc<TArray<TAtlasToolbarCommandInfo>> read FOnToolbarCommands
+      write FOnToolbarCommands;
     /// <summary>„Gesperrte Tipps wieder zeigen“ der Karte „Atlas entdecken“ (#757).</summary>
     property OnUnblockTips: TProc read FOnUnblockTips write FOnUnblockTips;
     /// <summary>Projektdatei .atlas des aktiven Projekts (#486) für die Anzeige „aus .atlas“; nil = keine.</summary>
@@ -1180,6 +1198,7 @@ uses
   Atlas.Core.Settings.Transfer,
   Atlas.Core.Settings.Experimental,
   Atlas.Core.Settings.RuleTable,
+  Atlas.Core.Settings.ToolbarItems,
   Atlas.UI.Notifications.Window;
 
 /// <summary>Bezeichnung einer Reihe des Projektverlaufs (#758) wie auf ihrer Kachel.</summary>
@@ -1546,6 +1565,24 @@ begin
   FBreadcrumbsIdeColors := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsIdeColors));
   FBreadcrumbsHideIdeToolbar := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsHideIdeToolbar));
   FBreadcrumbsKey := AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand));
+  // Atlas-Editorleiste (#1101).
+  FEditorToolbar := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbar));
+  FEditorToolbarPosition := AddChoice(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPosition),
+    [TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionBelow),
+    TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionAbove),
+    TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionInline)]);
+  FEditorToolbarItems := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbarItems));
+  Panel := AddPanel(32);
+  FEditorToolbarCustomize := TButton.Create(Self);
+  FEditorToolbarCustomize.Parent := Panel;
+  FEditorToolbarCustomize.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbarCustomize);
+  FEditorToolbarCustomize.Left := 0;
+  FEditorToolbarCustomize.Top := 3;
+  FEditorToolbarCustomize.Width := 180;
+  FEditorToolbarCustomize.OnClick := EditorToolbarCustomizeClick;
+  Attach(Panel, FEditorToolbarItems);
+  FEditorToolbarReturnButton := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbarReturnButton));
+  FEditorToolbarLabels := AddCheck(TAtlasStrings.Text(TAtlasTextId.EditorToolbarLabels));
   // Mitlaufender Kopf (#506, experimentell).
   FStickyScroll := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScroll));
   FStickyScrollMaxLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollMaxLines));
@@ -1794,6 +1831,9 @@ begin
   FUnwrap := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnwrap));
   FUnwrapKey := AddKey(TAtlasStrings.Text(TAtlasTextId.UnwrapCommand));
   FTestUnitKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTestUnit));
+  // Abschnittssprünge der Editorleiste (#1101), auch ohne die Leiste.
+  FGotoInterfaceKey := AddKey(TAtlasStrings.Text(TAtlasTextId.GotoInterfaceCommand));
+  FGotoImplementationKey := AddKey(TAtlasStrings.Text(TAtlasTextId.GotoImplementationCommand));
   // Navigationsverlauf über Dateien (#504).
   FNavHistory := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNavHistory));
   FNavBackKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NavBackCommand));
@@ -2655,6 +2695,8 @@ begin
   FMarks.Bind(FMethodToggleUpKey, ['MethodToggleUpKey']);
   FMarks.Bind(FMethodToggleDownKey, ['MethodToggleDownKey']);
   FMarks.Bind(FTestUnitKey, ['TestUnitKey']);
+  FMarks.Bind(FGotoInterfaceKey, ['GotoInterfaceKey']);
+  FMarks.Bind(FGotoImplementationKey, ['GotoImplementationKey']);
   FMarks.Bind(FNavHistory, ['NavHistory']);
   FMarks.Bind(FNavBackKey, ['NavBackKey']);
   FMarks.Bind(FNavForwardKey, ['NavForwardKey']);
@@ -2673,6 +2715,11 @@ begin
   FMarks.Bind(FBreadcrumbsIdeColors, ['BreadcrumbsIdeColors']);
   FMarks.Bind(FBreadcrumbsHideIdeToolbar, ['BreadcrumbsHideIdeToolbar']);
   FMarks.Bind(FBreadcrumbsKey, ['BreadcrumbsKey']);
+  FMarks.Bind(FEditorToolbar, ['EditorToolbar']);
+  FMarks.Bind(FEditorToolbarPosition, ['EditorToolbarPosition']);
+  FMarks.Bind(FEditorToolbarItems, ['EditorToolbarItems']);
+  FMarks.Bind(FEditorToolbarReturnButton, ['EditorToolbarReturnButton']);
+  FMarks.Bind(FEditorToolbarLabels, ['EditorToolbarLabels']);
   FMarks.Bind(FStickyScroll, ['StickyScroll']);
   FMarks.Bind(FStickyScrollMaxLines, ['StickyScrollMaxLines']);
   FMarks.Bind(FMinimap, ['Minimap']);
@@ -4843,6 +4890,8 @@ begin
   FMethodToggleUpKey.Text := ShortCutToText(TShortCut(ASettings.MethodToggleUpKey));
   FMethodToggleDownKey.Text := ShortCutToText(TShortCut(ASettings.MethodToggleDownKey));
   FTestUnitKey.Text := ShortCutToText(TShortCut(ASettings.TestUnitKey));
+  FGotoInterfaceKey.Text := ShortCutToText(TShortCut(ASettings.GotoInterfaceKey));
+  FGotoImplementationKey.Text := ShortCutToText(TShortCut(ASettings.GotoImplementationKey));
   FNavHistory.Checked := ASettings.NavHistory;
   FNavBackKey.Text := ShortCutToText(TShortCut(ASettings.NavBackKey));
   FNavForwardKey.Text := ShortCutToText(TShortCut(ASettings.NavForwardKey));
@@ -4861,6 +4910,11 @@ begin
   FBreadcrumbsIdeColors.Checked := ASettings.BreadcrumbsIdeColors;
   FBreadcrumbsHideIdeToolbar.Checked := ASettings.BreadcrumbsHideIdeToolbar;
   FBreadcrumbsKey.Text := ShortCutToText(TShortCut(ASettings.BreadcrumbsKey));
+  FEditorToolbar.Checked := ASettings.EditorToolbar;
+  FEditorToolbarPosition.Choice := Max(0, IndexText(ASettings.EditorToolbarPosition, AtlasToolbarPositions));
+  FEditorToolbarItems.Text := ASettings.EditorToolbarItems;
+  FEditorToolbarReturnButton.Checked := ASettings.EditorToolbarReturnButton;
+  FEditorToolbarLabels.Checked := ASettings.EditorToolbarLabels;
   FStickyScroll.Checked := ASettings.StickyScroll;
   FStickyScrollMaxLines.Text := IntToStr(ASettings.StickyScrollMaxLines);
   FMinimap.Checked := ASettings.Minimap;
@@ -5240,6 +5294,8 @@ begin
   ASettings.MethodToggleUpKey := Integer(TextToShortCut(Trim(FMethodToggleUpKey.Text)));
   ASettings.MethodToggleDownKey := Integer(TextToShortCut(Trim(FMethodToggleDownKey.Text)));
   ASettings.TestUnitKey := Integer(TextToShortCut(Trim(FTestUnitKey.Text)));
+  ASettings.GotoInterfaceKey := Integer(TextToShortCut(Trim(FGotoInterfaceKey.Text)));
+  ASettings.GotoImplementationKey := Integer(TextToShortCut(Trim(FGotoImplementationKey.Text)));
   ASettings.NavHistory := FNavHistory.Checked;
   ASettings.NavBackKey := Integer(TextToShortCut(Trim(FNavBackKey.Text)));
   ASettings.NavForwardKey := Integer(TextToShortCut(Trim(FNavForwardKey.Text)));
@@ -5258,6 +5314,12 @@ begin
   ASettings.BreadcrumbsIdeColors := FBreadcrumbsIdeColors.Checked;
   ASettings.BreadcrumbsHideIdeToolbar := FBreadcrumbsHideIdeToolbar.Checked;
   ASettings.BreadcrumbsKey := Integer(TextToShortCut(Trim(FBreadcrumbsKey.Text)));
+  ASettings.EditorToolbar := FEditorToolbar.Checked;
+  ASettings.EditorToolbarPosition := AtlasToolbarPositions[EnsureRange(FEditorToolbarPosition.Choice, 0,
+    High(AtlasToolbarPositions))];
+  ASettings.EditorToolbarItems := TAtlasToolbarItems.Normalize(FEditorToolbarItems.Text);
+  ASettings.EditorToolbarReturnButton := FEditorToolbarReturnButton.Checked;
+  ASettings.EditorToolbarLabels := FEditorToolbarLabels.Checked;
   ASettings.StickyScroll := FStickyScroll.Checked;
   ASettings.StickyScrollMaxLines := StrToIntDef(FStickyScrollMaxLines.Text, ASettings.StickyScrollMaxLines);
   ASettings.Minimap := FMinimap.Checked;
@@ -5733,6 +5795,27 @@ begin
   if Assigned(FOnResetHistory) then
     FOnResetHistory();
   Allow(FResetHistory, False);
+end;
+
+/// <summary>„Leiste anpassen …“ (#1101): Dialog auf den Werten der Seite; übernommen wird erst mit OK der Optionen.
+/// </summary>
+procedure TAtlasSettingsPage.EditorToolbarCustomizeClick(Sender: TObject);
+var
+  Commands: TArray<TAtlasToolbarCommandInfo>;
+  Config: TAtlasToolbarConfig;
+begin
+  Commands := nil;
+  if Assigned(FOnToolbarCommands) then
+    Commands := FOnToolbarCommands();
+  Config.Items := TAtlasToolbarItems.Parse(FEditorToolbarItems.Text);
+  Config.Labels := FEditorToolbarLabels.Checked;
+  Config.Position := AtlasToolbarPositions[EnsureRange(FEditorToolbarPosition.Choice, 0,
+    High(AtlasToolbarPositions))];
+  if not TAtlasToolbarCustomizeDialog.Execute(Commands, Config) then
+    Exit;
+  FEditorToolbarItems.Text := TAtlasToolbarItems.Format(Config.Items);
+  FEditorToolbarLabels.Checked := Config.Labels;
+  FEditorToolbarPosition.Choice := Max(0, IndexText(Config.Position, AtlasToolbarPositions));
 end;
 
 procedure TAtlasSettingsPage.ResetUsageClick(Sender: TObject);

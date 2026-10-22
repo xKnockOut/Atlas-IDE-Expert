@@ -203,6 +203,7 @@ uses
   Atlas.IDE.Editor.LinkedEditing,
   Atlas.IDE.Editor.SmartPaste,
   Atlas.IDE.Editor.Unwrap,
+  Atlas.IDE.EditorToolbar.Service,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Navigation;
 
@@ -435,6 +436,25 @@ begin
     procedure
     begin
       ToggleMethod;
+    end);
+  // Abschnittssprünge der Editorleiste (#1101), auch ohne die Leiste.
+  FContextMenu.Add('Atlas.GotoInterface', TAtlasStrings.Text(TAtlasTextId.GotoInterfaceCommand),
+    function: Integer
+    begin
+      Result := TAtlasIdeSettings.Current.GotoInterfaceKey;
+    end,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.EditorToolbar, TAtlasIdeEditorToolbar.GotoInterface);
+    end);
+  FContextMenu.Add('Atlas.GotoImplementation', TAtlasStrings.Text(TAtlasTextId.GotoImplementationCommand),
+    function: Integer
+    begin
+      Result := TAtlasIdeSettings.Current.GotoImplementationKey;
+    end,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.EditorToolbar, TAtlasIdeEditorToolbar.GotoImplementation);
     end);
   // Formatieren (#43); aus = ohne Kürzel, der Aufruf meldet, dass es abgeschaltet ist.
   FContextMenu.Add('Atlas.FormatCode', TAtlasStrings.Text(TAtlasTextId.FormatCodeCommand),

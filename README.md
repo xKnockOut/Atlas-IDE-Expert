@@ -14,7 +14,7 @@ Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/At
 |---|---|
 | [Writing](#writing) | Completion with detail panel, parameter hint, code and postfix templates, slash commands (`/uses`, `/extract`, …), generate menu, formatter |
 | [Understanding](#understanding) | Hover with docs, values, inheritance and debugger values, type hints, code metrics, inactive `{$IFDEF}` branches |
-| [Navigating](#navigating) | Breadcrumb bar, outline, peek definition, quick open, unit search, results window, bookmarks and notes |
+| [Navigating](#navigating) | Breadcrumb bar, editor toolbar, outline, peek definition, quick open, unit search, results window, bookmarks and notes |
 | [Code analysis](#code-analysis) | 170 74 73 75 75 76 75 76 75 71 76 75 73 75 75 75 73 4 76 279 check rules (bugs, code smells, security), profiles, confidence, baseline, compiler check on save, CI linter with SARIF |
 | [Refactorings and code actions](#refactorings-and-code-actions) | Rename including forms, change signature, extract method, implement interface, generate properties and many quick fixes (Alt+Enter) |
 | [Forms](#forms) | Sync with the designer, form components in completion, checks between form and code |
@@ -82,6 +82,7 @@ Everything below is implemented in `main`. Features marked *(experimental)* are 
 
 - **Go to** definition (Ctrl+click), implementation and type definition; switch between declaration and implementation (Ctrl+Shift+↑/↓); **jump to the counterpart** (begin ⇄ end, try → finally → end, `{$IFDEF}` → `{$ENDIF}`)
 - **Breadcrumb bar** above the editor with jump menus for unit, class, method and their children
+- **Editor toolbar** with icons: jump to the interface or implementation section (and back with "↩ 214"), find method, navigation history and any palette command; overflow menu, customizable, can also sit inside the breadcrumb row
 - **Outline** as a dockable window with filter
 - **Peek definition** (Alt+F12) below the line without switching files
 - **Quick open** of files and symbols (Ctrl+P) across project, project group and search path; project-wide **symbol search**

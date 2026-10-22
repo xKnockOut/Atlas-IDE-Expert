@@ -17,6 +17,9 @@
 //   gibt den Fokus über OnLeave an den Editor zurück.
 // - Farben über SetColors: Gutter ist die Fläche, Text/Muted die Schrift.
 // Ohne Glieder steht EmptyText gedämpft in der Leiste.
+// - Rechts darf ein Kind-Steuerelement mit alRight stehen (Editorleiste
+//   „in der Brotkrumenzeile“, #1101); die Glieder teilen sich dann nur die
+//   Breite links davon (ContentRight).
 // - WindowProblem und HitProblem nennen, warum Windows die Maus nicht an die
 //   Leiste gibt (Bericht M2): Im atlas.log vom 21./22.10. bekam das Eltern-
 //   fenster „EditorPanel“ die Klicks, obwohl die Leiste oben lag und kein
@@ -92,8 +95,11 @@ type
     procedure DoEnter; override;
     procedure DoExit; override;
     procedure ChangeScale(M, D: Integer; isDpiChange: Boolean); override;
+    procedure AlignControls(AControl: TControl; var Rect: TRect); override;
   public
     constructor Create(AOwner: TComponent); override;
+    /// <summary>Rechter Rand der Glieder: Client-Breite ohne sichtbare Kinder mit alRight.</summary>
+    function ContentRight: Integer;
     /// <summary>Glieder setzen; gleiche Glieder zeichnen nicht neu. Die Auswahl springt aufs letzte Glied.</summary>
     procedure SetCrumbs(const ACrumbs: TAtlasCrumbs);
     procedure SetColors(const AColors: TAtlasColors);
@@ -190,7 +196,8 @@ end;
 constructor TAtlasBreadcrumbBar.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  ControlStyle := ControlStyle + [csOpaque] - [csSetCaption];
+  // csAcceptsControls: Kinder rechts (Editorleiste, #1101), mit WS_CLIPCHILDREN übermalt Paint sie nicht.
+  ControlStyle := ControlStyle + [csOpaque, csAcceptsControls] - [csSetCaption];
   DoubleBuffered := True;
   TabStop := False;
   FColors := TAtlasColors.Light;
@@ -251,6 +258,29 @@ begin
     Invalidate;
 end;
 
+function TAtlasBreadcrumbBar.ContentRight: Integer;
+var
+  Index: Integer;
+  Child: TControl;
+begin
+  Result := ClientWidth;
+  for Index := 0 to ControlCount - 1 do
+  begin
+    Child := Controls[Index];
+    if Child.Visible and (Child.Align = alRight) then
+      Result := Min(Result, Child.Left);
+  end;
+  Result := Max(0, Result);
+end;
+
+procedure TAtlasBreadcrumbBar.AlignControls(AControl: TControl; var Rect: TRect);
+begin
+  inherited AlignControls(AControl, Rect);
+  // Ein Kind rechts kam, ging oder änderte die Breite: Glieder neu verteilen.
+  FLaidOut := False;
+  Invalidate;
+end;
+
 procedure TAtlasBreadcrumbBar.Resize;
 begin
   inherited Resize;
@@ -303,7 +333,7 @@ end;
 procedure TAtlasBreadcrumbBar.Layout;
 var
   Widths: TArray<Integer>;
-  Index, Total, Available, Left_: Integer;
+  Index, Total, Available, Left_, Right_: Integer;
 begin
   if FLaidOut or not HandleAllocated then
     Exit;
@@ -323,7 +353,8 @@ begin
   Inc(Total, High(FCrumbs) * SeparatorWidth);
   if TrailingSeparator then
     Inc(Total, SeparatorWidth);
-  Available := ClientWidth - 2 * Scale(4);
+  Right_ := ContentRight;
+  Available := Right_ - 2 * Scale(4);
   // Vorn Glieder weglassen, bis der Rest samt „…“ passt; das letzte bleibt.
   while (Total > Available) and (FFirstShown < High(FCrumbs)) do
   begin
@@ -342,10 +373,10 @@ begin
       FRects[Index] := TRect.Empty
     else
     begin
-      FRects[Index] := Rect(Left_, 0, Min(Left_ + Widths[Index], ClientWidth), ClientHeight);
+      FRects[Index] := Rect(Left_, 0, Min(Left_ + Widths[Index], Right_), ClientHeight);
       Left_ := Left_ + Widths[Index];
       if (Index < High(FCrumbs)) or TrailingSeparator then
-        FSeparators[Index] := Rect(Left_, 0, Min(Left_ + SeparatorWidth, ClientWidth), ClientHeight);
+        FSeparators[Index] := Rect(Left_, 0, Min(Left_ + SeparatorWidth, Right_), ClientHeight);
       Left_ := Left_ + SeparatorWidth;
     end;
   end;
@@ -498,7 +529,7 @@ begin
     Canvas.Font := Font;
     Canvas.Font.Color := ToColor(FColors.Muted);
     Canvas.Brush.Style := bsClear;
-    Part := Rect(Scale(8), 0, ClientWidth - Scale(4), ClientHeight);
+    Part := Rect(Scale(8), 0, ContentRight - Scale(4), ClientHeight);
     DrawText(Canvas.Handle, PChar(FEmptyText), -1, Part, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
       DT_END_ELLIPSIS);
     Exit;

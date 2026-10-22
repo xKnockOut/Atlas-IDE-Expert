@@ -533,6 +533,16 @@ contains
   Atlas.UI.Notifications.Notice in 'Source\UI\Notifications\Atlas.UI.Notifications.Notice.pas',
   Atlas.UI.Editor.SmartPaste in 'Source\UI\Editor\Atlas.UI.Editor.SmartPaste.pas',
   Atlas.UI.Editor.Unwrap in 'Source\UI\Editor\Atlas.UI.Editor.Unwrap.pas',
-  Atlas.IDE.Notifications.Service in 'Source\IDE\Notifications\Atlas.IDE.Notifications.Service.pas';
+  Atlas.IDE.Notifications.Service in 'Source\IDE\Notifications\Atlas.IDE.Notifications.Service.pas',
+  Atlas.Core.EditorToolbar.Sections in 'Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.Sections.pas',
+  Atlas.Core.Settings.ToolbarItems in 'Source\Core\Settings\Atlas.Core.Settings.ToolbarItems.pas',
+  Atlas.Core.EditorToolbar.Icons in 'Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.Icons.pas',
+  Atlas.Core.EditorToolbar.Layout in 'Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.Layout.pas',
+  Atlas.Core.EditorToolbar.ReturnPoint in 'Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.ReturnPoint.pas',
+  Atlas.Core.EditorToolbar.Glyphs in 'Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.Glyphs.pas',
+  Atlas.UI.EditorToolbar.Glyphs in 'Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Glyphs.pas',
+  Atlas.UI.EditorToolbar.Bar in 'Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Bar.pas',
+  Atlas.UI.EditorToolbar.Customize in 'Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Customize.pas',
+  Atlas.IDE.EditorToolbar.Service in 'Source\IDE\EditorToolbar\Atlas.IDE.EditorToolbar.Service.pas';
 
 end.

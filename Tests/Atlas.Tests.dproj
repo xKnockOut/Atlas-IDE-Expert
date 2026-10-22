@@ -945,6 +945,22 @@
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.SystemIntrinsics.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Dock\Atlas.Core.Dock.Plan.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Dock.Plan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.Sections.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.EditorToolbar.Sections.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.ToolbarItems.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Settings.ToolbarItems.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.Icons.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.EditorToolbar.Icons.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.Layout.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.EditorToolbar.Layout.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.ReturnPoint.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.EditorToolbar.ReturnPoint.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.Glyphs.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Glyphs.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Bar.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.EditorToolbar.Bar.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Customize.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.EditorToolbar.Customize.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

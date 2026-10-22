@@ -33,7 +33,8 @@ interface
 
 uses
   System.SysUtils,
-  System.JSON;
+  System.JSON,
+  Atlas.UI.EditorToolbar.Customize;
 
 type
   /// <summary>Befehl an den Server im Hintergrund (#874); ADone im Hauptthread mit der Antwort, nil ohne Server
@@ -57,6 +58,8 @@ type
     ResetUsage: TProc;
     /// <summary>Gesperrte Tipps wieder zeigen (#757).</summary>
     UnblockTips: TProc;
+    /// <summary>Atlas-Befehle der Palette für „Leiste anpassen …“ der Editorleiste (#1101).</summary>
+    ToolbarCommands: TFunc<TArray<TAtlasToolbarCommandInfo>>;
     /// <summary>Pfad der AtlasServer.exe nach den Einstellungen.</summary>
     ServerPath: TFunc<string>;
     /// <summary>Pfad der mitgelieferten AtlasServer.exe.</summary>
@@ -528,6 +531,13 @@ begin
     function: TArray<TAtlasFavorite>
     begin
       Result := TAtlasIdeFavorites.Items;
+    end;
+  FPage.OnToolbarCommands :=
+    function: TArray<TAtlasToolbarCommandInfo>
+    begin
+      Result := nil;
+      if Assigned(Hooks.ToolbarCommands) then
+        Result := Hooks.ToolbarCommands();
     end;
   // Karte „Atlas entdecken“ (#757): Zählung zurücksetzen, gesperrte Tipps wieder zeigen.
   FPage.OnResetUsage :=

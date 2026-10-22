@@ -119,6 +119,7 @@ uses
   Atlas.IDE.Editor.Hide,
   Atlas.IDE.Notifications.Service,
   Atlas.IDE.Outline.Breadcrumbs,
+  Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Editor.LineChanges,
   Atlas.Core.Editor.LineMove,
   Atlas.IDE.Editor.LineMove,
@@ -411,6 +412,18 @@ begin
     procedure
     begin
       TAtlasIdeEditorCommands.SwitchTestUnit;
+    end);
+  // Abschnittssprünge der Editorleiste (#1101); Vorgabe ohne Taste, auch ohne die Leiste.
+  AddKey(TAtlasFeature.EditorToolbar, Settings.GotoInterfaceKey, TAtlasStrings.Text(TAtlasTextId.GotoInterfaceCommand),
+    procedure
+    begin
+      TAtlasIdeEditorToolbar.GotoInterface;
+    end);
+  AddKey(TAtlasFeature.EditorToolbar, Settings.GotoImplementationKey,
+    TAtlasStrings.Text(TAtlasTextId.GotoImplementationCommand),
+    procedure
+    begin
+      TAtlasIdeEditorToolbar.GotoImplementation;
     end);
   // Formatieren (#43): aus = keine Taste.
   if Settings.FormatCode then

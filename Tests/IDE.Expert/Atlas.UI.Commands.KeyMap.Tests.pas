@@ -305,6 +305,8 @@ begin
   Assert.AreEqual('Neue Zeile darüber', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NewLineAbove));
   Assert.AreEqual('Umschließung entfernen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.Unwrap));
   Assert.AreEqual('Fenster „Atlas-Prüfung“', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.ProblemsWindow));
+  Assert.AreEqual('Zum interface-Teil', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.SectionInterface));
+  Assert.AreEqual('Zum implementation-Teil', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.SectionImplementation));
   Assert.AreEqual('Zeilen darunter duplizieren',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.DuplicateLinesDown));
   // #764: Schnellaktionen der Willkommensseite.
