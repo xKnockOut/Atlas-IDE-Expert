@@ -6,7 +6,17 @@
 //   Richtung IDE; sie werden protokolliert und dem Feature angerechnet.
 // - Sicherung: 3 Fehler eines Features innerhalb von 5 Minuten schalten nur
 //   dieses Feature ab (Run tut dann nichts mehr), mit einer Warnung über
-//   OnWarning. Wieder einschalten über Reset (Menü Atlas).
+//   OnWarning und OnTripped (Eintrag in der Benachrichtigungszentrale).
+//   Wieder einschalten über Reset (Menü Atlas).
+// - Ein Feature je sichtbarer Funktion: Früher teilten sich rund 40 Units die
+//   Sicherung „Editorbefehle“, und ein Zeichenfehler der Minimap schaltete
+//   Gliederung, Brotkrumen, Sticky Scroll und den Rest mit ab. EditorCommands
+//   gilt nur noch für ausdrücklich aufgerufene Editorbefehle.
+// - Derselbe Fehler (Klasse und Stelle) eines Features innerhalb von RepeatMs
+//   nach dem zuletzt gezählten zählt nicht erneut und steht nicht einzeln im
+//   Protokoll: Ein Zeichendurchlauf meldet einen Fehler sonst für jede Zeile
+//   und löste die Sicherung in einer Millisekunde aus. Die nächste gezählte
+//   Zeile nennt, wie oft er seit der letzten Meldung übergangen wurde.
 // - Sicherung je Quelle (Provider): ReportProvider zählt Fehler einer
 //   einzelnen Datenquelle, etwa der Vervollständigung vom Server; nach 3
 //   Fehlern in 5 Minuten fällt nur diese Quelle aus, die übrigen laufen weiter.
@@ -28,7 +38,10 @@ type
 {$SCOPEDENUMS ON}
   TAtlasFeature = (Completion, Signature, Hover, Pairs, Problems, Reloader, Palette, CheckOnSave, Watchdog, Server,
     Settings, Menu, Files, InlayHints, Results, EditorCommands, Forms, Build, Status, WelcomePage, ShortcutTips,
-    Notes, Bookmarks, Notifications, Breadcrumbs);
+    Notes, Bookmarks, Notifications, Breadcrumbs, Outline, StickyScroll, Minimap, LineChanges, GutterColumn,
+    RecursionMarkers, OverviewRuler, SelectionMatches, MultiCursor, LinkedEditing, CodeLens, NavHistory, Peek,
+    SmartPaste, WrapSelection, Unwrap, Hide, Search, UnitSearch, Generate, ContinueLines, SlashCommands,
+    GoToDefinition);
 {$SCOPEDENUMS OFF}
 
   TAtlasFeatures = set of TAtlasFeature;
@@ -57,8 +70,14 @@ type
   public const
     Limit = 3;
     WindowMinutes = 5;
+    /// <summary>Derselbe Fehler eines Features so kurz nach dem zuletzt gezählten zählt nicht erneut.</summary>
+    RepeatMs = 1000;
   private
     FFailures: array[TAtlasFeature] of TArray<TDateTime>;
+    // Zuletzt gezählter Fehler je Feature (Schlüssel, Zeit) und übergangene Wiederholungen seitdem.
+    FLastKey: array[TAtlasFeature] of string;
+    FLastCounted: array[TAtlasFeature] of TDateTime;
+    FRepeats: array[TAtlasFeature] of Integer;
     FTripped: TAtlasFeatures;
     FProviderFailures: TDictionary<string, TArray<TDateTime>>;
     // Kleingeschriebener Name → Name wie gemeldet.
@@ -71,7 +90,12 @@ type
     constructor Create(const AClock: TFunc<TDateTime> = nil);
     destructor Destroy; override;
     /// <summary>Fehler zählen; True, wenn die Sicherung dadurch gerade auslöst.</summary>
-    function Failed(AFeature: TAtlasFeature): Boolean;
+    function Failed(AFeature: TAtlasFeature): Boolean; overload;
+    /// <summary>Wie Failed, mit dem Schlüssel des Fehlers (Klasse und Stelle). Derselbe Schlüssel innerhalb von
+    /// RepeatMs nach dem zuletzt gezählten zählt nicht (ARepeat = True). ASkipped: so viele Wiederholungen des
+    /// zuletzt gezählten Fehlers wurden seitdem übergangen.</summary>
+    function Failed(AFeature: TAtlasFeature; const AKey: string; out ARepeat: Boolean;
+      out ASkipped: Integer): Boolean; overload;
     function Tripped(AFeature: TAtlasFeature): Boolean;
     function TrippedSet: TAtlasFeatures;
     procedure Reset(AFeature: TAtlasFeature);
@@ -87,6 +111,8 @@ type
   TAtlasGuardMessage = reference to procedure(const AText: string);
   /// <summary>Stacktrace zur gerade behandelten Ausnahme; '' ohne.</summary>
   TAtlasGuardStackFunc = reference to function(E: Exception): string;
+  /// <summary>Sicherung eines Features hat ausgelöst; AMessage ist die letzte Fehlermeldung (gekürzt).</summary>
+  TAtlasGuardTripped = reference to procedure(AFeature: TAtlasFeature; const AMessage: string);
 
   TAtlasGuard = class
   private class var
@@ -95,8 +121,12 @@ type
     FOnWarning: TAtlasGuardMessage;
     FOnFailure: TProc<TAtlasFeature>;
     FStackOf: TAtlasGuardStackFunc;
+    FOnTripped: TAtlasGuardTripped;
     class procedure Warn(const AText: string); static;
     class function ErrorLine(const AWhere: string; E: Exception): string; static;
+    /// <summary>Klasse und Stelle (ExceptAddr) des gerade behandelten Fehlers; ohne Stelle Klasse und Meldung.
+    /// </summary>
+    class function FailureKey(E: Exception): string; static;
   public
     /// <summary>Höchstlänge einer Fehlermeldung im Protokoll; mehr könnte Quelltext enthalten.</summary>
     const MaxMessageLength = 300;
@@ -131,6 +161,9 @@ type
     class property OnFailure: TProc<TAtlasFeature> read FOnFailure write FOnFailure;
     /// <summary>Stacktrace für Fehlerzeilen, wenn E.StackTrace leer ist (im except-Block aufgerufen).</summary>
     class property StackOf: TAtlasGuardStackFunc read FStackOf write FStackOf;
+    /// <summary>Nach dem Auslösen der Sicherung eines Features (Benachrichtigungszentrale), im Thread des Fehlers.
+    /// </summary>
+    class property OnTripped: TAtlasGuardTripped read FOnTripped write FOnTripped;
     class property Fuse: TAtlasFuse read FFuse;
     class property RotatingLog: TAtlasRotatingLog read FLog;
   end;
@@ -248,10 +281,37 @@ begin
 end;
 
 function TAtlasFuse.Failed(AFeature: TAtlasFeature): Boolean;
+var
+  Repeated: Boolean;
+  Skipped: Integer;
+begin
+  Result := Failed(AFeature, '', Repeated, Skipped);
+end;
+
+function TAtlasFuse.Failed(AFeature: TAtlasFeature; const AKey: string; out ARepeat: Boolean;
+  out ASkipped: Integer): Boolean;
+var
+  Time: TDateTime;
 begin
   FLock.Enter;
   try
     Result := False;
+    ARepeat := False;
+    ASkipped := 0;
+    Time := FClock;
+    // Fester Abstand ab dem zuletzt gezählten, nicht gleitend: Ein Fehler, der bei jedem Zeichnen kommt, zählt so
+    // einmal je RepeatMs und löst die Sicherung weiterhin aus.
+    if (AKey <> '') and (AKey = FLastKey[AFeature]) and
+      (MilliSecondsBetween(Time, FLastCounted[AFeature]) < RepeatMs) then
+    begin
+      ARepeat := True;
+      Inc(FRepeats[AFeature]);
+      Exit;
+    end;
+    ASkipped := FRepeats[AFeature];
+    FLastKey[AFeature] := AKey;
+    FLastCounted[AFeature] := Time;
+    FRepeats[AFeature] := 0;
     if AFeature in FTripped then
       Exit;
     if Count(FFailures[AFeature]) then
@@ -348,6 +408,8 @@ begin
   try
     Exclude(FTripped, AFeature);
     FFailures[AFeature] := nil;
+    FLastKey[AFeature] := '';
+    FRepeats[AFeature] := 0;
   finally
     FLock.Leave;
   end;
@@ -380,6 +442,7 @@ class destructor TAtlasGuard.Destroy;
 begin
   FOnWarning := nil;
   FStackOf := nil;
+  FOnTripped := nil;
   FreeAndNil(FLog);
   FreeAndNil(FFuse);
 end;
@@ -390,7 +453,11 @@ const
     'Probleme', 'Neuladen', 'Befehlspalette', 'Prüfung beim Speichern', 'Wächter', 'Server', 'Einstellungen', 'Menü',
     'Dateien', 'Inlay-Hints', 'Ergebnisfenster', 'Editorbefehle', 'Formulare', 'Compile-Ereignisse', 'Statusfeld',
     'Willkommensseite', 'Tastenkürzel-Tipps', 'Notizen', 'Lesezeichen',
-    'Benachrichtigungen', 'Brotkrumenleiste');
+    'Benachrichtigungen', 'Brotkrumenleiste', 'Gliederung', 'Mitlaufender Kopf', 'Minimap', 'Änderungsmarken',
+    'Atlas-Spalte', 'Rekursionssymbole', 'Übersichtsleiste', 'Gleichen Text hervorheben', 'Mehrere Einfügemarken',
+    'Bezeichner mitziehen', 'Code Lens', 'Navigationsverlauf', 'Definition einblenden', 'Einfügen mit uses-Ergänzung',
+    'Markierung umschließen', 'Umschließung entfernen', 'Ausblenden am Element', 'Atlas-Suche', 'Units suchen',
+    'Erzeugen-Menü', 'Kommentar und Muster fortsetzen', 'Schnellbefehle', 'Gehe zu Definition');
 begin
   Result := Names[AFeature];
 end;
@@ -460,11 +527,36 @@ begin
     end;
 end;
 
+class function TAtlasGuard.FailureKey(E: Exception): string;
+begin
+  // ExceptAddr gehört zur gerade behandelten Ausnahme; Report läuft in deren except-Block.
+  if ExceptAddr <> nil then
+    Result := Format('%s@%p', [E.ClassName, ExceptAddr])
+  else
+    Result := E.ClassName + ': ' + E.Message;
+end;
+
 class procedure TAtlasGuard.Report(AFeature: TAtlasFeature; E: Exception);
 var
   Failure: TProc<TAtlasFeature>;
+  Tripped: TAtlasGuardTripped;
+  Fired, Repeated: Boolean;
+  Skipped: Integer;
+  Where: string;
 begin
-  Log(ErrorLine(FeatureName(AFeature), E));
+  Fired := False;
+  Repeated := False;
+  Skipped := 0;
+  if FFuse <> nil then
+    Fired := FFuse.Failed(AFeature, FailureKey(E), Repeated, Skipped);
+  // Derselbe Fehler kurz nach dem gezählten (etwa für jede Zeile eines Zeichendurchlaufs): nicht noch einmal
+  // protokollieren und nicht zählen; die nächste gezählte Zeile nennt die Zahl.
+  if Repeated then
+    Exit;
+  Where := FeatureName(AFeature);
+  if Skipped > 0 then
+    Where := Format('%s (seit der letzten Meldung %d Wiederholungen übergangen)', [Where, Skipped]);
+  Log(ErrorLine(Where, E));
   Failure := FOnFailure;
   if Assigned(Failure) then
     try
@@ -472,11 +564,19 @@ begin
     except
       // Die Meldung eines Fehlers darf selbst keinen auslösen.
     end;
-  if (FFuse <> nil) and FFuse.Failed(AFeature) then
-    Warn(Format('Atlas: %s nach %d Fehlern in %d Minuten abgeschaltet (zuletzt: %s). ' +
-      'Wieder einschalten unter Tools > Optionen > Drittanbieter > Atlas oder über Atlas > Abgeschaltete ' +
-      'Funktionen einschalten.', [FeatureName(AFeature), TAtlasFuse.Limit, TAtlasFuse.WindowMinutes,
-      SafeMessage(E.Message)]));
+  if not Fired then
+    Exit;
+  Warn(Format('Atlas: %s nach %d Fehlern in %d Minuten abgeschaltet (zuletzt: %s). ' +
+    'Wieder einschalten unter Tools > Optionen > Drittanbieter > Atlas oder über Atlas > Abgeschaltete ' +
+    'Funktionen einschalten.', [FeatureName(AFeature), TAtlasFuse.Limit, TAtlasFuse.WindowMinutes,
+    SafeMessage(E.Message)]));
+  Tripped := FOnTripped;
+  if Assigned(Tripped) then
+    try
+      Tripped(AFeature, SafeMessage(E.Message));
+    except
+      // Auch der Eintrag in der Zentrale darf nicht in die IDE durchschlagen.
+    end;
 end;
 
 class procedure TAtlasGuard.ReportProvider(const AName: string; E: Exception);

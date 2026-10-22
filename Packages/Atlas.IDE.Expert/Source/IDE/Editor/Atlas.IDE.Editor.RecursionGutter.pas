@@ -13,7 +13,7 @@
 //   Methoden“, darunter die Kette und je Methode ein Link, der zu ihr springt.
 // Abschaltbar über die Einstellung „Rekursionssymbole“ (editor.recursionMarkers,
 // auch als Schnellschalter) und am Element (#628); Sicherung über
-// TAtlasFeature.EditorCommands (#493). Die Property-Falle meldet der Server als
+// TAtlasFeature.RecursionMarkers (#493). Die Property-Falle meldet der Server als
 // Befund der Regel recursive-property-accessor.
 
 interface
@@ -115,7 +115,7 @@ end;
 
 function TAtlasIdeRecursionGutter.Feature: TAtlasFeature;
 begin
-  Result := TAtlasFeature.EditorCommands;
+  Result := TAtlasFeature.RecursionMarkers;
 end;
 
 function TAtlasIdeRecursionGutter.Element: TAtlasDrawnElement;

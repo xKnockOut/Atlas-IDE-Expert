@@ -99,7 +99,7 @@ const
 constructor TAtlasUnwrapWindow.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  GuardFeature := TAtlasFeature.EditorCommands;
+  GuardFeature := TAtlasFeature.Unwrap;
   FRow := -1;
   SetAccessible(UiaListControlType, TAtlasStrings.Text(TAtlasTextId.UnwrapCommand));
 end;

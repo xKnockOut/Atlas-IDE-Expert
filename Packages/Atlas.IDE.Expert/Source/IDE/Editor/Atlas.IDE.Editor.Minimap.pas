@@ -385,7 +385,7 @@ begin
   View.OnScroll :=
     procedure(ATopLine: Integer)
     begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      TAtlasGuard.Run(TAtlasFeature.Minimap,
         procedure
         begin
           Scroll(View, ATopLine);
@@ -394,7 +394,7 @@ begin
   View.OnJump :=
     procedure(ALine: Integer)
     begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      TAtlasGuard.Run(TAtlasFeature.Minimap,
         procedure
         begin
           Jump(View, ALine);
@@ -432,11 +432,11 @@ begin
         Runs := nil;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen (Code-Review A-02).
-      TAtlasMainThread.Queue(TAtlasFeature.EditorCommands,
+      TAtlasMainThread.Queue(TAtlasFeature.Minimap,
         procedure
         begin
           if TAtlasIdeMinimap.FState <> nil then
-            TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+            TAtlasGuard.Run(TAtlasFeature.Minimap,
               procedure
               begin
                 if TAtlasIdeMinimap.FState <> nil then
@@ -651,7 +651,7 @@ begin
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.Minimap, E);
   end;
 end;
 
@@ -783,7 +783,7 @@ begin
   Settings.Minimap := False;
   TAtlasIdeSettings.Update(Settings);
   // Nach dem laufenden Ereignis: der Zustand gibt sich dabei selbst frei.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Minimap,
     procedure
     begin
       TAtlasIdeMinimap.ApplySettings;
@@ -795,7 +795,7 @@ begin
   // Schnellschalter, Hauptschalter und Sicherung wirken ohne eigenes Ereignis.
   if not TAtlasIdeMinimap.Active then
   begin
-    TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Minimap,
       procedure
       begin
         TAtlasIdeMinimap.ApplySettings;
@@ -803,7 +803,7 @@ begin
     FTimer.Enabled := False;
     Exit;
   end;
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  TAtlasGuard.Run(TAtlasFeature.Minimap,
     procedure
     begin
       Update;
@@ -814,7 +814,7 @@ end;
 
 class function TAtlasIdeMinimap.Active: Boolean;
 begin
-  Result := TAtlasIdeSettings.Current.Minimap and not TAtlasGuard.Disabled(TAtlasFeature.EditorCommands);
+  Result := TAtlasIdeSettings.Current.Minimap and not TAtlasGuard.Disabled(TAtlasFeature.Minimap);
 end;
 
 class procedure TAtlasIdeMinimap.Install;

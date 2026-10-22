@@ -263,7 +263,7 @@ var
   Pen, Old: HGDIOBJ;
   Brush: HGDIOBJ;
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) then
+  if TAtlasGuard.Disabled(TAtlasFeature.Search) then
     Exit;
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not TAtlasIdeSearch.FHighlight or
     TAtlasIdeSearch.FLast.IsEmpty then
@@ -307,7 +307,7 @@ begin
     on E: Exception do
     begin
       FHits := nil;
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.Search, E);
     end;
   end;
 end;
@@ -323,7 +323,7 @@ end;
 
 procedure TAtlasIdeSearch.TBarWatcher.Tick(Sender: TObject);
 begin
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands, TAtlasIdeSearch.Probe);
+  TAtlasGuard.Run(TAtlasFeature.Search, TAtlasIdeSearch.Probe);
 end;
 
 { TAtlasIdeSearch }
@@ -548,7 +548,7 @@ begin
     procedure
     begin
       if Bar = FBar then
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        TAtlasGuard.Run(TAtlasFeature.Search,
           procedure
           begin
             Sync(True);
@@ -558,7 +558,7 @@ begin
     procedure(ABackward: Boolean)
     begin
       if Bar = FBar then
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        TAtlasGuard.Run(TAtlasFeature.Search,
           procedure
           begin
             BarStep(ABackward);
@@ -568,13 +568,13 @@ begin
     procedure
     begin
       if Bar = FBar then
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands, BarList);
+        TAtlasGuard.Run(TAtlasFeature.Search, BarList);
     end;
   Bar.OnClose :=
     procedure
     begin
       if Bar = FBar then
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands, CloseBar);
+        TAtlasGuard.Run(TAtlasFeature.Search, CloseBar);
     end;
   Bar.OnControlEnter :=
     procedure(AControl: TWinControl)

@@ -135,7 +135,7 @@ type
 
 function Active: Boolean;
 begin
-  Result := TAtlasIdeSettings.Current.OverviewRuler and not TAtlasGuard.Disabled(TAtlasFeature.EditorCommands);
+  Result := TAtlasIdeSettings.Current.OverviewRuler and not TAtlasGuard.Disabled(TAtlasFeature.OverviewRuler);
 end;
 
 function Debugger: IOTADebuggerServices;
@@ -162,7 +162,7 @@ begin
   FWatcher := TRulerWatcher.Create(nil);
   FWatcher.FState := Self;
   FTip := TAtlasNoteTip.Create(nil);
-  FTip.GuardFeature := TAtlasFeature.EditorCommands;
+  FTip.GuardFeature := TAtlasFeature.OverviewRuler;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := TickMs;
   FTimer.OnTimer := Tick;
@@ -265,7 +265,7 @@ begin
   Ruler.OnJump :=
     procedure(ALine: Integer)
     begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      TAtlasGuard.Run(TAtlasFeature.OverviewRuler,
         procedure
         begin
           Jump(Ruler, ALine);
@@ -522,7 +522,7 @@ procedure TOverviewState.Tick(Sender: TObject);
 begin
   if not Active then
     Exit;
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  TAtlasGuard.Run(TAtlasFeature.OverviewRuler,
     procedure
     begin
       Update;

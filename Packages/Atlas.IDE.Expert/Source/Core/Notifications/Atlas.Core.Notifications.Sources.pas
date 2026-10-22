@@ -42,6 +42,9 @@ type
     UnitRename = 'unitRename';
     /// <summary>Minimap (#873): Hinweis, wenn auch die Minimap der IDE sichtbar ist.</summary>
     Minimap = 'minimap';
+    /// <summary>Absturzsicherung (#493): eine Funktion wurde nach wiederholten Fehlern abgeschaltet. Nicht in Known:
+    /// Dieser Hinweis lässt sich nicht abstellen, sonst fiele eine abgeschaltete Funktion wieder nicht auf.</summary>
+    Fuse = 'fuse';
   public
     /// <summary>Bekannte Quellen in fester Reihenfolge (Optionsseite, Filter).</summary>
     class function Known: TArray<string>; static;

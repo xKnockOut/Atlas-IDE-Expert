@@ -20,7 +20,7 @@
 //   mehreren die Methoden mit Datei und Zeile.
 // Abschaltbar über editor.gutterColumn (auch als Schnellschalter) und je Art
 // über editor.gutterColumn.problems, .codeActions, .overrides; ausblendbar am
-// Element (#628). Sicherung über TAtlasFeature.EditorCommands (#493). Nur im
+// Element (#628). Sicherung über TAtlasFeature.GutterColumn (#493). Nur im
 // Hauptthread.
 
 interface
@@ -223,7 +223,7 @@ begin
   FOptions := TAtlasGutterColumnOptions.All;
   FRows := TDictionary<Integer, TRow>.Create;
   FTip := TAtlasNoteTip.Create(nil);
-  FTip.GuardFeature := TAtlasFeature.EditorCommands;
+  FTip.GuardFeature := TAtlasFeature.GutterColumn;
   FTip.OnLink :=
     procedure(AIndex: Integer)
     var
@@ -279,7 +279,7 @@ end;
 
 function TAtlasIdeGutterColumn.Active: Boolean;
 begin
-  Result := (FIndex >= 0) and not TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) and
+  Result := (FIndex >= 0) and not TAtlasGuard.Disabled(TAtlasFeature.GutterColumn) and
     TAtlasIdeSettings.GutterColumnOn;
 end;
 
@@ -369,7 +369,7 @@ begin
     CheckHover;
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.GutterColumn, E);
   end;
 end;
 
@@ -670,7 +670,7 @@ begin
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.GutterColumn, E);
   end;
 end;
 
@@ -715,7 +715,7 @@ begin
     FHoverScreen := TRect.Create(Editor.ClientToScreen(Row.Rect.TopLeft), Editor.ClientToScreen(Row.Rect.BottomRight));
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.GutterColumn, E);
   end;
 end;
 
@@ -733,7 +733,7 @@ begin
     Click(Row);
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.GutterColumn, E);
   end;
 end;
 

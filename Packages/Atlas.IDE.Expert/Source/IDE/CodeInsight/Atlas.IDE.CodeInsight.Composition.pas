@@ -111,6 +111,7 @@ uses
   Atlas.Core.Status.Contract,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Center,
+  Atlas.Core.Notifications.Sources,
   Atlas.IDE.Notifications.Service,
   Atlas.Core.Diagnostics.SafeMode,
   Atlas.IDE.Diagnostics.SafeMode,
@@ -1206,34 +1207,34 @@ begin
   Add('Atlas.QuickOpen', TAtlasTextId.QuickOpenTitle, Guarded(TAtlasFeature.Palette, TAtlasIdeQuickOpen.Show),
     QuickOpenVisible);
   // Navigationsverlauf über Dateien (#504); nur sichtbar, solange navHistory.enabled an ist.
-  Add('Atlas.NavBack', TAtlasTextId.NavBackCommand, Guarded(TAtlasFeature.EditorCommands, TAtlasIdeNavHistory.GoBack),
+  Add('Atlas.NavBack', TAtlasTextId.NavBackCommand, Guarded(TAtlasFeature.NavHistory, TAtlasIdeNavHistory.GoBack),
     NavHistoryVisible);
   Add('Atlas.NavForward', TAtlasTextId.NavForwardCommand,
-    Guarded(TAtlasFeature.EditorCommands, TAtlasIdeNavHistory.GoForward), NavHistoryVisible);
+    Guarded(TAtlasFeature.NavHistory, TAtlasIdeNavHistory.GoForward), NavHistoryVisible);
   Add('Atlas.LastEdit', TAtlasTextId.NavLastEditCommand,
-    Guarded(TAtlasFeature.EditorCommands, TAtlasIdeNavHistory.GoLastEdit), NavHistoryVisible);
+    Guarded(TAtlasFeature.NavHistory, TAtlasIdeNavHistory.GoLastEdit), NavHistoryVisible);
   Add('Atlas.NavList', TAtlasTextId.NavListCommand,
-    Guarded(TAtlasFeature.EditorCommands, TAtlasIdeNavHistory.ShowList), NavHistoryVisible);
+    Guarded(TAtlasFeature.NavHistory, TAtlasIdeNavHistory.ShowList), NavHistoryVisible);
   Add('Atlas.PeekDefinition', TAtlasTextId.PeekDefinitionCommand,
-    Guarded(TAtlasFeature.EditorCommands, TAtlasIdePeek.PeekDefinition), PeekVisible);
+    Guarded(TAtlasFeature.Peek, TAtlasIdePeek.PeekDefinition), PeekVisible);
   Add('Atlas.PeekReferences', TAtlasTextId.PeekReferencesCommand,
-    Guarded(TAtlasFeature.EditorCommands, TAtlasIdePeek.PeekReferences), PeekVisible);
+    Guarded(TAtlasFeature.Peek, TAtlasIdePeek.PeekReferences), PeekVisible);
   // Gliederungsfenster (#537); nur sichtbar, solange outline.enabled an ist.
   Add('Atlas.Outline', TAtlasTextId.OutlineCommand,
-    Guarded(TAtlasFeature.EditorCommands, TAtlasIdeOutline.ShowWindow), OutlineVisible);
+    Guarded(TAtlasFeature.Outline, TAtlasIdeOutline.ShowWindow), OutlineVisible);
   // Brotkrumenleiste (#590): Fokus auf das letzte Glied; nur sichtbar, solange editor.breadcrumbs an ist.
   Add('Atlas.Breadcrumbs', TAtlasTextId.BreadcrumbsCommand,
-    Guarded(TAtlasFeature.EditorCommands, TAtlasIdeBreadcrumbs.Focus), BreadcrumbsVisible);
+    Guarded(TAtlasFeature.Breadcrumbs, TAtlasIdeBreadcrumbs.Focus), BreadcrumbsVisible);
   // Sprung zum Gegenstück (#635); nur sichtbar, solange keys.jumpToMatch an ist.
   Add('Atlas.JumpToMatch', TAtlasTextId.JumpToMatchCommand, Guarded(TAtlasFeature.EditorCommands, JumpToMatch),
     JumpToMatchVisible);
   Add('Atlas.JumpToMatchSelect', TAtlasTextId.JumpToMatchSelectCommand,
     Guarded(TAtlasFeature.EditorCommands, SelectToMatch), JumpToMatchVisible);
   // Nächste/vorherige Änderung gegenüber dem Repository (#507); nur sichtbar, solange editor.gitGutter an ist.
-  Add('Atlas.NextChange', TAtlasTextId.NextChangeCommand, Guarded(TAtlasFeature.EditorCommands, NextChange),
+  Add('Atlas.NextChange', TAtlasTextId.NextChangeCommand, Guarded(TAtlasFeature.LineChanges, NextChange),
     ChangesVisible);
   Add('Atlas.PreviousChange', TAtlasTextId.PreviousChangeCommand,
-    Guarded(TAtlasFeature.EditorCommands, PreviousChange), ChangesVisible);
+    Guarded(TAtlasFeature.LineChanges, PreviousChange), ChangesVisible);
   // Zeilen verschieben und duplizieren (#634); nur sichtbar, solange keys.moveLines an ist.
   Add('Atlas.MoveLinesUp', TAtlasTextId.MoveLinesUpCommand, Guarded(TAtlasFeature.EditorCommands, MoveLinesUp),
     MoveLinesVisible);
@@ -1258,16 +1259,16 @@ begin
   Add('Atlas.NewLineAbove', TAtlasTextId.NewLineAboveCommand, Guarded(TAtlasFeature.EditorCommands, NewLineAbove),
     NewLineAroundVisible);
   // Umschließung entfernen (#657); nur sichtbar, solange keys.unwrap an ist.
-  Add('Atlas.Unwrap', TAtlasTextId.UnwrapCommand, Guarded(TAtlasFeature.EditorCommands, Unwrap), UnwrapVisible);
+  Add('Atlas.Unwrap', TAtlasTextId.UnwrapCommand, Guarded(TAtlasFeature.Unwrap, Unwrap), UnwrapVisible);
   // Mehrere Einfügemarken (#589).
   Add('Atlas.MultiCursorNext', TAtlasTextId.MultiCursorNextCommand,
-    Guarded(TAtlasFeature.EditorCommands, MultiCursorNext), MultiCursorVisible);
+    Guarded(TAtlasFeature.MultiCursor, MultiCursorNext), MultiCursorVisible);
   Add('Atlas.MultiCursorLineEnds', TAtlasTextId.MultiCursorLineEndsCommand,
-    Guarded(TAtlasFeature.EditorCommands, MultiCursorLineEnds), MultiCursorVisible);
+    Guarded(TAtlasFeature.MultiCursor, MultiCursorLineEnds), MultiCursorVisible);
   Add('Atlas.MultiCursorAbove', TAtlasTextId.MultiCursorAboveCommand,
-    Guarded(TAtlasFeature.EditorCommands, MultiCursorAbove), MultiCursorVisible);
+    Guarded(TAtlasFeature.MultiCursor, MultiCursorAbove), MultiCursorVisible);
   Add('Atlas.MultiCursorBelow', TAtlasTextId.MultiCursorBelowCommand,
-    Guarded(TAtlasFeature.EditorCommands, MultiCursorBelow), MultiCursorVisible);
+    Guarded(TAtlasFeature.MultiCursor, MultiCursorBelow), MultiCursorVisible);
   Add('Atlas.Callers', TAtlasTextId.MenuIncoming, Hierarchy(TAtlasHierarchyDirection.Incoming));
   Add('Atlas.Calls', TAtlasTextId.MenuOutgoing, Hierarchy(TAtlasHierarchyDirection.Outgoing));
   Add('Atlas.Supertypes', TAtlasTextId.MenuSupertypes, Hierarchy(TAtlasHierarchyDirection.Supertypes));
@@ -1295,7 +1296,7 @@ begin
   Add('Atlas.GenerateMenu', TAtlasTextId.GenerateMenuCommand,
     procedure
     begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      TAtlasGuard.Run(TAtlasFeature.Generate,
         procedure
         begin
           TAtlasIdeGenerate.Show;
@@ -1314,7 +1315,7 @@ begin
   Add('Atlas.CodeActions', TAtlasTextId.EditorActions, TAtlasIdeEditorCommands.CodeActions);
   // Ausblenden am Element (#628).
   Add('Atlas.HideElement', TAtlasTextId.HideElementCommand,
-    Guarded(TAtlasFeature.EditorCommands, TAtlasIdeHide.ShowForCommand));
+    Guarded(TAtlasFeature.Hide, TAtlasIdeHide.ShowForCommand));
   // Nächster/vorheriger Befund (#509).
   Add('Atlas.NextProblem', TAtlasTextId.ProblemNextCommand,
     procedure
@@ -1549,6 +1550,36 @@ begin
     FileName := TAtlasGuard.RotatingLog.FileName;
   if FileExists(FileName) and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
     Actions.OpenFile(FileName);
+end;
+
+/// <summary>Ausgelöste Sicherung (#493) als Eintrag in der Benachrichtigungszentrale mit „Wieder einschalten“ und
+/// „Protokoll öffnen“ (atlas.log mit Stacktrace): Der Fehler soll auffallen und behoben werden, statt still eine
+/// Funktion zu kosten. Aus jedem Thread; die Aktionen laufen im Hauptthread.</summary>
+procedure GuardTripped(AFeature: TAtlasFeature; const AMessage: string);
+var
+  Feature: TAtlasFeature;
+  Enable, Log: TAtlasNotificationAction;
+begin
+  Feature := AFeature;
+  Enable.Caption := TAtlasStrings.Text(TAtlasTextId.FuseTrippedEnable);
+  Enable.Run :=
+    procedure
+    begin
+      TAtlasGuard.Enable(Feature);
+      TAtlasGuard.Log(TAtlasGuard.FeatureName(Feature) + ': aus der Benachrichtigung wieder eingeschaltet');
+    end;
+  Log.Caption := TAtlasStrings.Text(TAtlasTextId.FuseTrippedOpenLog);
+  Log.Run :=
+    procedure
+    var
+      Actions: IOTAActionServices;
+    begin
+      if (TAtlasGuard.RotatingLog <> nil) and FileExists(TAtlasGuard.RotatingLog.FileName) and
+        Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+        Actions.OpenFile(TAtlasGuard.RotatingLog.FileName);
+    end;
+  TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Fuse, TAtlasNotificationSeverity.Error,
+    TAtlasStrings.Fmt(TAtlasTextId.FuseTrippedTitle, [TAtlasGuard.FeatureName(Feature)]), AMessage, [Enable, Log]);
 end;
 
 /// <summary>„Einstellungen“ der Zustandskachel (#754): Optionsseite „Atlas“ (#227) wie Menü Atlas › Einstellungen.</summary>
@@ -3745,6 +3776,7 @@ begin
   TAtlasMainThread.Start;
   TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
   TAtlasGuard.OnWarning := GuardWarning;
+  TAtlasGuard.OnTripped := GuardTripped;
   // Stacktraces für jede Fehlerzeile der Sicherung: ohne sie lässt sich kein Fehler bis zur Codezeile verfolgen.
   TAtlasIdeStackCapture.Install;
   TAtlasStrings.Language := IdeLanguage;
@@ -3919,6 +3951,7 @@ begin
         TAtlasIdeExperimental.Stop;
       end);
     TAtlasGuard.OnWarning := nil;
+    TAtlasGuard.OnTripped := nil;
     TAtlasGuard.OnFailure := nil;
     TAtlasIdeSettings.OnChanged := nil;
     // Sauberes Ende: Startmarke löschen, Absturzzähler zurück (#722).

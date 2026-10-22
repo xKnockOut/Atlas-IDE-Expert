@@ -252,7 +252,7 @@ begin
     Choose(TMenuItem(Sender).Tag);
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.Hide, E);
   end;
 end;
 
@@ -267,7 +267,7 @@ end;
 constructor TAtlasHideNoticeWindow.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  GuardFeature := TAtlasFeature.EditorCommands;
+  GuardFeature := TAtlasFeature.Hide;
   SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.HideNotice));
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
@@ -413,7 +413,7 @@ begin
     Dismiss;
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.Hide, E);
   end;
 end;
 

@@ -23,7 +23,9 @@
 // ist) und Umschließung entfernen (#657, Strg+Umschalt+Entf, nur solange
 // keys.unwrap an ist). Jede Taste wird wie
 // die der Befehlspalette vorher auf Konflikte geprüft (#494); ohne Vorrang
-// bleibt eine fremde Belegung aktiv. Nach geänderten Einstellungen meldet
+// bleibt eine fremde Belegung aktiv. Jede Taste läuft unter der Sicherung
+// (#493) ihrer Funktion; Fehler einer Funktion schalten die Tasten der
+// übrigen nicht ab. Nach geänderten Einstellungen meldet
 // Rebind die Bindung neu an. Der Befehl läuft nach der Tastenverarbeitung
 // (ForceQueue), nicht in der Bindung selbst. Ausnahme sind Befehle mit
 // Rückfall (AddAttemptKey): Sie laufen sofort, und ohne Treffer geht die
@@ -46,13 +48,17 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Menus,
-  ToolsAPI;
+  ToolsAPI,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasIdeEditorKeys = class
   private type
     TKey = record
       Key: Word;
+      /// <summary>Sicherung (#493), unter der die Taste läuft: Fehler anderer Funktionen schalten sie nicht ab.
+      /// </summary>
+      Feature: TAtlasFeature;
       Proc: TProc;
       /// <summary>Statt Proc: sofort ausführen; False gibt die Taste an die nächste Bindung weiter.</summary>
       Attempt: TFunc<Boolean>;
@@ -75,13 +81,15 @@ type
     FBindingIndex: Integer;
     FKeys: TArray<TKey>;
     FBound: string;
-    procedure AddKey(AKey: Integer; const AWhat: string; const AProc: TProc);
+    /// <summary>AFeature: Sicherung, unter der die Taste läuft.</summary>
+    procedure AddKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string; const AProc: TProc);
     /// <summary>Wie AddKey mit eigenem Vorrang statt des gemeinsamen (Zurück/Vor, #504). Eigener Name statt
     /// Überladung: anonyme Methoden als Argument vertragen keine Überladungen.</summary>
-    procedure AddPriorityKey(AKey: Integer; const AWhat: string; const AProc: TProc; APriority: Boolean);
+    procedure AddPriorityKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string; const AProc: TProc;
+      APriority: Boolean);
     /// <summary>ACheck False: ohne Konfliktprüfung, weil die Taste ohne Treffer ohnehin an die IDE weitergeht.</summary>
-    procedure AddAttemptKey(AKey: Integer; const AWhat: string; const AAttempt: TFunc<Boolean>;
-      ACheck: Boolean = True);
+    procedure AddAttemptKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string;
+      const AAttempt: TFunc<Boolean>; ACheck: Boolean = True);
   public
     constructor Create;
     destructor Destroy; override;
@@ -94,7 +102,6 @@ implementation
 uses
   Winapi.Windows,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.Settings,
@@ -162,6 +169,7 @@ procedure TAtlasIdeEditorKeys.TBinding.Pressed(const Context: IOTAKeyContext; Ke
   var BindingResult: TKeyBindingResult);
 var
   Key: TKey;
+  Feature: TAtlasFeature;
   Proc: TProc;
   Attempt: TFunc<Boolean>;
   Done: Boolean;
@@ -172,11 +180,12 @@ begin
   for Key in FOwner.FKeys do
     if Key.Key = KeyCode then
     begin
+      Feature := Key.Feature;
       if Assigned(Key.Attempt) then
       begin
         Attempt := Key.Attempt;
         Done := False;
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        TAtlasGuard.Run(Feature,
           procedure
           begin
             Done := Attempt();
@@ -190,10 +199,10 @@ begin
       BindingResult := krHandled;
       Proc := Key.Proc;
       // Keine Exception an die IDE (#493); erst nach der Tastenverarbeitung.
-      TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+      TAtlasMainThread.ForceQueue(Feature,
         procedure
         begin
-          TAtlasGuard.Run(TAtlasFeature.EditorCommands, Proc);
+          TAtlasGuard.Run(Feature, Proc);
         end);
       Exit;
     end;
@@ -225,27 +234,29 @@ begin
   inherited;
 end;
 
-procedure TAtlasIdeEditorKeys.AddKey(AKey: Integer; const AWhat: string; const AProc: TProc);
+procedure TAtlasIdeEditorKeys.AddKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string;
+  const AProc: TProc);
 begin
-  AddPriorityKey(AKey, AWhat, AProc, TAtlasIdeSettings.Current.EditorKeysPriority);
+  AddPriorityKey(AFeature, AKey, AWhat, AProc, TAtlasIdeSettings.Current.EditorKeysPriority);
 end;
 
-procedure TAtlasIdeEditorKeys.AddPriorityKey(AKey: Integer; const AWhat: string; const AProc: TProc;
-  APriority: Boolean);
+procedure TAtlasIdeEditorKeys.AddPriorityKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string;
+  const AProc: TProc; APriority: Boolean);
 var
   Key: TKey;
 begin
   if not TAtlasIdeKeys.Decide(Word(AKey), APriority, AWhat) then
     Exit;
   Key.Key := Word(AKey);
+  Key.Feature := AFeature;
   Key.Proc := AProc;
   Key.Attempt := nil;
   FKeys := FKeys + [Key];
   FBound := FBound + IntToStr(AKey) + ';';
 end;
 
-procedure TAtlasIdeEditorKeys.AddAttemptKey(AKey: Integer; const AWhat: string; const AAttempt: TFunc<Boolean>;
-  ACheck: Boolean);
+procedure TAtlasIdeEditorKeys.AddAttemptKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string;
+  const AAttempt: TFunc<Boolean>; ACheck: Boolean);
 var
   Existing, Key: TKey;
 begin
@@ -259,6 +270,7 @@ begin
   if ACheck and not TAtlasIdeKeys.Decide(Word(AKey), TAtlasIdeSettings.Current.EditorKeysPriority, AWhat) then
     Exit;
   Key.Key := Word(AKey);
+  Key.Feature := AFeature;
   Key.Proc := nil;
   Key.Attempt := AAttempt;
   FKeys := FKeys + [Key];
@@ -276,27 +288,27 @@ begin
   Previous := FBound;
   FKeys := nil;
   FBound := '';
-  AddKey(Settings.ActionsKey, TAtlasStrings.Text(TAtlasTextId.EditorActions),
+  AddKey(TAtlasFeature.EditorCommands, Settings.ActionsKey, TAtlasStrings.Text(TAtlasTextId.EditorActions),
     procedure
     begin
       TAtlasIdeEditorCommands.CodeActions;
     end);
-  AddKey(Settings.ExpandKey, TAtlasStrings.Text(TAtlasTextId.EditorExpand),
+  AddKey(TAtlasFeature.EditorCommands, Settings.ExpandKey, TAtlasStrings.Text(TAtlasTextId.EditorExpand),
     procedure
     begin
       TAtlasIdeEditorCommands.ExpandSelection;
     end);
-  AddKey(Settings.ShrinkKey, TAtlasStrings.Text(TAtlasTextId.EditorShrink),
+  AddKey(TAtlasFeature.EditorCommands, Settings.ShrinkKey, TAtlasStrings.Text(TAtlasTextId.EditorShrink),
     procedure
     begin
       TAtlasIdeEditorCommands.ShrinkSelection;
     end);
-  AddKey(Settings.ImplementationKey, TAtlasStrings.Text(TAtlasTextId.MenuImplementations),
+  AddKey(TAtlasFeature.EditorCommands, Settings.ImplementationKey, TAtlasStrings.Text(TAtlasTextId.MenuImplementations),
     procedure
     begin
       TAtlasIdeResults.FindImplementations;
     end);
-  AddKey(Settings.TypeDefinitionKey, TAtlasStrings.Text(TAtlasTextId.EditorTypeDefinition),
+  AddKey(TAtlasFeature.EditorCommands, Settings.TypeDefinitionKey, TAtlasStrings.Text(TAtlasTextId.EditorTypeDefinition),
     procedure
     begin
       TAtlasIdeEditorCommands.GoToTypeDefinition;
@@ -304,12 +316,12 @@ begin
   // Deklaration ⇄ Implementierung (#775): aus = Taste bleibt bei der Klassennavigation der IDE.
   if Settings.MethodToggle then
   begin
-    AddAttemptKey(Settings.MethodToggleUpKey, TAtlasStrings.Text(TAtlasTextId.EditorMethodToggle),
+    AddAttemptKey(TAtlasFeature.EditorCommands, Settings.MethodToggleUpKey, TAtlasStrings.Text(TAtlasTextId.EditorMethodToggle),
       function: Boolean
       begin
         Result := TAtlasIdeEditorCommands.TryToggleMethod;
       end);
-    AddAttemptKey(Settings.MethodToggleDownKey, TAtlasStrings.Text(TAtlasTextId.EditorMethodToggle),
+    AddAttemptKey(TAtlasFeature.EditorCommands, Settings.MethodToggleDownKey, TAtlasStrings.Text(TAtlasTextId.EditorMethodToggle),
       function: Boolean
       begin
         Result := TAtlasIdeEditorCommands.TryToggleMethod;
@@ -320,49 +332,49 @@ begin
   if Settings.SearchReplaceIde then
   begin
     if Settings.SearchKey <> 0 then
-      AddAttemptKey(Settings.SearchKey, TAtlasStrings.Text(TAtlasTextId.SearchCommand),
+      AddAttemptKey(TAtlasFeature.Search, Settings.SearchKey, TAtlasStrings.Text(TAtlasTextId.SearchCommand),
         function: Boolean
         begin
           // Die Leiste erst nach der Tastenverarbeitung (sie nimmt den Fokus).
           TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
             procedure
             begin
-              TAtlasGuard.Run(TAtlasFeature.EditorCommands, TAtlasIdeSearch.Show);
+              TAtlasGuard.Run(TAtlasFeature.Search, TAtlasIdeSearch.Show);
             end);
           Result := True;
         end, False);
     if Settings.SearchNextKey <> 0 then
-      AddAttemptKey(Settings.SearchNextKey, TAtlasStrings.Text(TAtlasTextId.SearchNextCommand),
+      AddAttemptKey(TAtlasFeature.Search, Settings.SearchNextKey, TAtlasStrings.Text(TAtlasTextId.SearchNextCommand),
         function: Boolean
         begin
           Result := TAtlasIdeSearch.TryNext(False) or TAtlasIdeEditorCommands.TryFindSelection(False);
         end, False);
     if Settings.SearchPreviousKey <> 0 then
-      AddAttemptKey(Settings.SearchPreviousKey, TAtlasStrings.Text(TAtlasTextId.SearchPreviousCommand),
+      AddAttemptKey(TAtlasFeature.Search, Settings.SearchPreviousKey, TAtlasStrings.Text(TAtlasTextId.SearchPreviousCommand),
         function: Boolean
         begin
           Result := TAtlasIdeSearch.TryNext(True) or TAtlasIdeEditorCommands.TryFindSelection(True);
         end, False);
   end;
-  AddKey(Settings.SearchMethodKey, TAtlasStrings.Text(TAtlasTextId.SearchInMethodCommand),
+  AddKey(TAtlasFeature.Search, Settings.SearchMethodKey, TAtlasStrings.Text(TAtlasTextId.SearchInMethodCommand),
     procedure
     begin
       TAtlasIdeSearch.ShowInMethod;
     end);
   // Markierung suchen: F3 bzw. Umschalt+F3 mit einzeiliger Markierung; sonst „Erneut suchen“ der IDE.
-  AddAttemptKey(ShortCut(VK_F3, []), 'F3',
+  AddAttemptKey(TAtlasFeature.EditorCommands, ShortCut(VK_F3, []), 'F3',
     function: Boolean
     begin
       Result := TAtlasIdeEditorCommands.TryFindSelection(False);
     end, False);
-  AddAttemptKey(ShortCut(VK_F3, [ssShift]), 'Umschalt+F3',
+  AddAttemptKey(TAtlasFeature.EditorCommands, ShortCut(VK_F3, [ssShift]), 'Umschalt+F3',
     function: Boolean
     begin
       Result := TAtlasIdeEditorCommands.TryFindSelection(True);
     end, False);
   // Ausblenden am Element (#628): mit Rückfall, ohne Element behält die IDE die Taste (Strg+. = IDE Insight).
   if Settings.HideElementKey <> 0 then
-    AddAttemptKey(Settings.HideElementKey, TAtlasStrings.Text(TAtlasTextId.HideElementCommand),
+    AddAttemptKey(TAtlasFeature.Hide, Settings.HideElementKey, TAtlasStrings.Text(TAtlasTextId.HideElementCommand),
       function: Boolean
       begin
         Result := False;
@@ -370,38 +382,38 @@ begin
           Result := TAtlasIdeHide.ShowForCaret;
         except
           on E: Exception do
-            TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+            TAtlasGuard.Report(TAtlasFeature.Hide, E);
         end;
       end, False);
   // Nächster/vorheriger Befund (#509): nur mit Problemen im Editor.
   if Settings.Problems then
   begin
-    AddKey(Settings.NextProblemKey, TAtlasStrings.Text(TAtlasTextId.ProblemNextCommand),
+    AddKey(TAtlasFeature.EditorCommands, Settings.NextProblemKey, TAtlasStrings.Text(TAtlasTextId.ProblemNextCommand),
       procedure
       begin
         TAtlasIdeEditorCommands.StepProblem(True);
       end);
-    AddKey(Settings.PreviousProblemKey, TAtlasStrings.Text(TAtlasTextId.ProblemPreviousCommand),
+    AddKey(TAtlasFeature.EditorCommands, Settings.PreviousProblemKey, TAtlasStrings.Text(TAtlasTextId.ProblemPreviousCommand),
       procedure
       begin
         TAtlasIdeEditorCommands.StepProblem(False);
       end);
   end;
-  AddKey(Settings.TestUnitKey, TAtlasStrings.Text(TAtlasTextId.EditorTestUnit),
+  AddKey(TAtlasFeature.EditorCommands, Settings.TestUnitKey, TAtlasStrings.Text(TAtlasTextId.EditorTestUnit),
     procedure
     begin
       TAtlasIdeEditorCommands.SwitchTestUnit;
     end);
   // Formatieren (#43): aus = keine Taste.
   if Settings.FormatCode then
-    AddKey(Settings.FormatCodeKey, TAtlasStrings.Text(TAtlasTextId.FormatCodeCommand),
+    AddKey(TAtlasFeature.EditorCommands, Settings.FormatCodeKey, TAtlasStrings.Text(TAtlasTextId.FormatCodeCommand),
       procedure
       begin
         TAtlasIdeEditorCommands.FormatCode;
       end);
   // Blockkommentar umschalten (#703): aus = Kürzel frei.
   if Settings.ToggleBlockComment then
-    AddKey(Settings.ToggleBlockCommentKey, TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentCommand),
+    AddKey(TAtlasFeature.EditorCommands, Settings.ToggleBlockCommentKey, TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentCommand),
       procedure
       begin
         TAtlasGuard.Run(TAtlasFeature.EditorCommands,
@@ -413,7 +425,7 @@ begin
   // Neue Zeile ober- oder unterhalb (#700): aus = die Tasten gehören der IDE.
   if Settings.NewLineAround then
   begin
-    AddKey(Settings.NewLineBelowKey, TAtlasStrings.Text(TAtlasTextId.NewLineBelowCommand),
+    AddKey(TAtlasFeature.EditorCommands, Settings.NewLineBelowKey, TAtlasStrings.Text(TAtlasTextId.NewLineBelowCommand),
       procedure
       begin
         TAtlasGuard.Run(TAtlasFeature.EditorCommands,
@@ -422,7 +434,7 @@ begin
             TAtlasIdeNewLine.Run(TAtlasNewLineDirection.Below);
           end);
       end);
-    AddKey(Settings.NewLineAboveKey, TAtlasStrings.Text(TAtlasTextId.NewLineAboveCommand),
+    AddKey(TAtlasFeature.EditorCommands, Settings.NewLineAboveKey, TAtlasStrings.Text(TAtlasTextId.NewLineAboveCommand),
       procedure
       begin
         TAtlasGuard.Run(TAtlasFeature.EditorCommands,
@@ -434,10 +446,10 @@ begin
   end;
   // Umschließung entfernen (#657): aus = das Kürzel gehört der IDE.
   if Settings.Unwrap then
-    AddKey(Settings.UnwrapKey, TAtlasStrings.Text(TAtlasTextId.UnwrapCommand),
+    AddKey(TAtlasFeature.Unwrap, Settings.UnwrapKey, TAtlasStrings.Text(TAtlasTextId.UnwrapCommand),
       procedure
       begin
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        TAtlasGuard.Run(TAtlasFeature.Unwrap,
           procedure
           begin
             TAtlasIdeUnwrap.Run;
@@ -445,14 +457,14 @@ begin
       end);
   // Units suchen (#777): aus = keine eigene Taste (die IDE behält Strg+F12 für ihren Dialog).
   if Settings.UnitSearchEnabled then
-    AddKey(Settings.UnitSearchKey, TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle),
+    AddKey(TAtlasFeature.UnitSearch, Settings.UnitSearchKey, TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle),
       procedure
       begin
         TAtlasIdeUnitSearch.Show;
       end);
   // Schnell öffnen (#503): aus = Strg+P bleibt der IDE.
   if Settings.QuickOpen then
-    AddKey(Settings.QuickOpenKey, TAtlasStrings.Text(TAtlasTextId.QuickOpenTitle),
+    AddKey(TAtlasFeature.Palette, Settings.QuickOpenKey, TAtlasStrings.Text(TAtlasTextId.QuickOpenTitle),
       procedure
       begin
         TAtlasGuard.Run(TAtlasFeature.Palette,
@@ -464,28 +476,28 @@ begin
   // Navigationsverlauf (#504): aus = Alt+Links/Rechts bleiben Zurück/Vor der IDE.
   if Settings.NavHistory then
   begin
-    AddPriorityKey(Settings.NavBackKey, TAtlasStrings.Text(TAtlasTextId.NavBackCommand),
+    AddPriorityKey(TAtlasFeature.NavHistory, Settings.NavBackKey, TAtlasStrings.Text(TAtlasTextId.NavBackCommand),
       procedure
       begin
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        TAtlasGuard.Run(TAtlasFeature.NavHistory,
           procedure
           begin
             TAtlasIdeNavHistory.GoBack;
           end);
       end, True);
-    AddPriorityKey(Settings.NavForwardKey, TAtlasStrings.Text(TAtlasTextId.NavForwardCommand),
+    AddPriorityKey(TAtlasFeature.NavHistory, Settings.NavForwardKey, TAtlasStrings.Text(TAtlasTextId.NavForwardCommand),
       procedure
       begin
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        TAtlasGuard.Run(TAtlasFeature.NavHistory,
           procedure
           begin
             TAtlasIdeNavHistory.GoForward;
           end);
       end, True);
-    AddKey(Settings.LastEditKey, TAtlasStrings.Text(TAtlasTextId.NavLastEditCommand),
+    AddKey(TAtlasFeature.NavHistory, Settings.LastEditKey, TAtlasStrings.Text(TAtlasTextId.NavLastEditCommand),
       procedure
       begin
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        TAtlasGuard.Run(TAtlasFeature.NavHistory,
           procedure
           begin
             TAtlasIdeNavHistory.GoLastEdit;
@@ -495,19 +507,19 @@ begin
   // Definition und Referenzen einblenden (#505).
   if Settings.Peek then
   begin
-    AddKey(Settings.PeekDefinitionKey, TAtlasStrings.Text(TAtlasTextId.PeekDefinitionCommand),
+    AddKey(TAtlasFeature.Peek, Settings.PeekDefinitionKey, TAtlasStrings.Text(TAtlasTextId.PeekDefinitionCommand),
       procedure
       begin
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        TAtlasGuard.Run(TAtlasFeature.Peek,
           procedure
           begin
             TAtlasIdePeek.PeekDefinition;
           end);
       end);
-    AddKey(Settings.PeekReferencesKey, TAtlasStrings.Text(TAtlasTextId.PeekReferencesCommand),
+    AddKey(TAtlasFeature.Peek, Settings.PeekReferencesKey, TAtlasStrings.Text(TAtlasTextId.PeekReferencesCommand),
       procedure
       begin
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        TAtlasGuard.Run(TAtlasFeature.Peek,
           procedure
           begin
             TAtlasIdePeek.PeekReferences;
@@ -516,7 +528,7 @@ begin
   end;
   // Benannte Lesezeichen (#622): aus = keine Taste, die IDE-Lesezeichen bleiben unberührt.
   if Settings.BookmarksNamed then
-    AddKey(Settings.BookmarkKey, TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd),
+    AddKey(TAtlasFeature.Bookmarks, Settings.BookmarkKey, TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd),
       procedure
       begin
         TAtlasGuard.Run(TAtlasFeature.Bookmarks,
@@ -527,14 +539,14 @@ begin
       end);
   // Erzeugen-Menü (#719): aus = Alt+Einfg bleibt frei.
   if Settings.GenerateMenu then
-    AddKey(Settings.GenerateMenuKey, TAtlasStrings.Text(TAtlasTextId.GenerateMenuCommand),
+    AddKey(TAtlasFeature.Generate, Settings.GenerateMenuKey, TAtlasStrings.Text(TAtlasTextId.GenerateMenuCommand),
       procedure
       begin
         TAtlasIdeGenerate.Show;
       end);
   // Benachrichtigungen (#601): aus = Strg+Umschalt+Alt+N bleibt frei.
   if Settings.Notifications then
-    AddKey(Settings.NotificationsKey, TAtlasStrings.Text(TAtlasTextId.NotificationsCommand),
+    AddKey(TAtlasFeature.Notifications, Settings.NotificationsKey, TAtlasStrings.Text(TAtlasTextId.NotificationsCommand),
       procedure
       begin
         TAtlasGuard.Run(TAtlasFeature.Notifications,
@@ -546,12 +558,12 @@ begin
   // Sprung zum Gegenstück (#635): aus = Strg+Ü und Strg+Umschalt+Ü bleiben frei.
   if Settings.JumpToMatch then
   begin
-    AddKey(Settings.JumpToMatchKey, TAtlasStrings.Text(TAtlasTextId.JumpToMatchCommand),
+    AddKey(TAtlasFeature.EditorCommands, Settings.JumpToMatchKey, TAtlasStrings.Text(TAtlasTextId.JumpToMatchCommand),
       procedure
       begin
         TAtlasIdeEditorCommands.JumpToMatch(False);
       end);
-    AddKey(Settings.JumpToMatchSelectKey, TAtlasStrings.Text(TAtlasTextId.JumpToMatchSelectCommand),
+    AddKey(TAtlasFeature.EditorCommands, Settings.JumpToMatchSelectKey, TAtlasStrings.Text(TAtlasTextId.JumpToMatchSelectCommand),
       procedure
       begin
         TAtlasIdeEditorCommands.JumpToMatch(True);
@@ -559,10 +571,10 @@ begin
   end;
   // Brotkrumenleiste (#590): aus = Strg+Umschalt+. bleibt frei.
   if Settings.Breadcrumbs then
-    AddKey(Settings.BreadcrumbsKey, TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand),
+    AddKey(TAtlasFeature.Breadcrumbs, Settings.BreadcrumbsKey, TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand),
       procedure
       begin
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
           procedure
           begin
             TAtlasIdeBreadcrumbs.Focus;
@@ -571,19 +583,19 @@ begin
   // Nächste/vorherige Änderung (#507): aus = beide Tasten bleiben frei.
   if Settings.GitGutter then
   begin
-    AddKey(Settings.NextChangeKey, TAtlasStrings.Text(TAtlasTextId.NextChangeCommand),
+    AddKey(TAtlasFeature.LineChanges, Settings.NextChangeKey, TAtlasStrings.Text(TAtlasTextId.NextChangeCommand),
       procedure
       begin
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        TAtlasGuard.Run(TAtlasFeature.LineChanges,
           procedure
           begin
             TAtlasIdeLineChanges.GoToChange(True);
           end);
       end);
-    AddKey(Settings.PreviousChangeKey, TAtlasStrings.Text(TAtlasTextId.PreviousChangeCommand),
+    AddKey(TAtlasFeature.LineChanges, Settings.PreviousChangeKey, TAtlasStrings.Text(TAtlasTextId.PreviousChangeCommand),
       procedure
       begin
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        TAtlasGuard.Run(TAtlasFeature.LineChanges,
           procedure
           begin
             TAtlasIdeLineChanges.GoToChange(False);
@@ -594,22 +606,22 @@ begin
   // Spaltenmarkierung; bewusst übernommen, darum mit Vorrang. Aus = die IDE behält sie.
   if Settings.MoveLines then
   begin
-    AddPriorityKey(Settings.MoveLinesUpKey, TAtlasStrings.Text(TAtlasTextId.MoveLinesUpCommand),
+    AddPriorityKey(TAtlasFeature.EditorCommands, Settings.MoveLinesUpKey, TAtlasStrings.Text(TAtlasTextId.MoveLinesUpCommand),
       procedure
       begin
         RunLineMove(TAtlasLineMoveKind.MoveUp);
       end, True);
-    AddPriorityKey(Settings.MoveLinesDownKey, TAtlasStrings.Text(TAtlasTextId.MoveLinesDownCommand),
+    AddPriorityKey(TAtlasFeature.EditorCommands, Settings.MoveLinesDownKey, TAtlasStrings.Text(TAtlasTextId.MoveLinesDownCommand),
       procedure
       begin
         RunLineMove(TAtlasLineMoveKind.MoveDown);
       end, True);
-    AddPriorityKey(Settings.DuplicateLinesUpKey, TAtlasStrings.Text(TAtlasTextId.DuplicateLinesUpCommand),
+    AddPriorityKey(TAtlasFeature.EditorCommands, Settings.DuplicateLinesUpKey, TAtlasStrings.Text(TAtlasTextId.DuplicateLinesUpCommand),
       procedure
       begin
         RunLineMove(TAtlasLineMoveKind.DuplicateUp);
       end, True);
-    AddPriorityKey(Settings.DuplicateLinesDownKey, TAtlasStrings.Text(TAtlasTextId.DuplicateLinesDownCommand),
+    AddPriorityKey(TAtlasFeature.EditorCommands, Settings.DuplicateLinesDownKey, TAtlasStrings.Text(TAtlasTextId.DuplicateLinesDownCommand),
       procedure
       begin
         RunLineMove(TAtlasLineMoveKind.DuplicateDown);
@@ -617,7 +629,7 @@ begin
   end;
   // Anweisung vervollständigen (#697): Strg+Umschalt+Enter sucht in der IDE Referenzen; mit Vorrang übernommen.
   if Settings.CompleteStatement then
-    AddPriorityKey(Settings.CompleteStatementKey, TAtlasStrings.Text(TAtlasTextId.CompleteStatementCommand),
+    AddPriorityKey(TAtlasFeature.EditorCommands, Settings.CompleteStatementKey, TAtlasStrings.Text(TAtlasTextId.CompleteStatementCommand),
       procedure
       begin
         TAtlasGuard.Run(TAtlasFeature.EditorCommands,
@@ -630,33 +642,33 @@ begin
   // Quelltext formatieren). Bewusst eingeschaltet, darum ohne Konfliktprüfung.
   if Settings.MultiCursor then
   begin
-    AddAttemptKey(Settings.MultiCursorNextKey, TAtlasStrings.Text(TAtlasTextId.MultiCursorNextCommand),
+    AddAttemptKey(TAtlasFeature.MultiCursor, Settings.MultiCursorNextKey, TAtlasStrings.Text(TAtlasTextId.MultiCursorNextCommand),
       function: Boolean
       begin
         Result := TAtlasIdeMultiCursor.TryNext;
       end, False);
-    AddAttemptKey(Settings.MultiCursorLineEndsKey, TAtlasStrings.Text(TAtlasTextId.MultiCursorLineEndsCommand),
+    AddAttemptKey(TAtlasFeature.MultiCursor, Settings.MultiCursorLineEndsKey, TAtlasStrings.Text(TAtlasTextId.MultiCursorLineEndsCommand),
       function: Boolean
       begin
         Result := TAtlasIdeMultiCursor.TryLineEnds;
       end, False);
-    AddAttemptKey(Settings.MultiCursorAboveKey, TAtlasStrings.Text(TAtlasTextId.MultiCursorAboveCommand),
+    AddAttemptKey(TAtlasFeature.MultiCursor, Settings.MultiCursorAboveKey, TAtlasStrings.Text(TAtlasTextId.MultiCursorAboveCommand),
       function: Boolean
       begin
         Result := TAtlasIdeMultiCursor.TryVertical(True);
       end, False);
-    AddAttemptKey(Settings.MultiCursorBelowKey, TAtlasStrings.Text(TAtlasTextId.MultiCursorBelowCommand),
+    AddAttemptKey(TAtlasFeature.MultiCursor, Settings.MultiCursorBelowKey, TAtlasStrings.Text(TAtlasTextId.MultiCursorBelowCommand),
       function: Boolean
       begin
         Result := TAtlasIdeMultiCursor.TryVertical(False);
       end, False);
   end;
-  AddKey(Settings.UndoKey, TAtlasStrings.Text(TAtlasTextId.UndoMenu),
+  AddKey(TAtlasFeature.EditorCommands, Settings.UndoKey, TAtlasStrings.Text(TAtlasTextId.UndoMenu),
     procedure
     begin
       TAtlasIdeUndo.UndoLast;
     end);
-  AddKey(Settings.RedoKey, TAtlasStrings.Text(TAtlasTextId.RedoMenu),
+  AddKey(TAtlasFeature.EditorCommands, Settings.RedoKey, TAtlasStrings.Text(TAtlasTextId.RedoMenu),
     procedure
     begin
       TAtlasIdeUndo.RedoLast;

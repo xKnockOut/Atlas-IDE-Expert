@@ -85,7 +85,7 @@ const
 constructor TAtlasSmartPasteWindow.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  GuardFeature := TAtlasFeature.EditorCommands;
+  GuardFeature := TAtlasFeature.SmartPaste;
   SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.SmartPasteName));
 end;
 

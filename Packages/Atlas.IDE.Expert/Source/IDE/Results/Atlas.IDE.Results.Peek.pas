@@ -179,7 +179,7 @@ begin
       FOwner.Window.ViewChanged;
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.Peek, E);
   end;
 end;
 
@@ -189,7 +189,7 @@ constructor TPeekState.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   Window := TAtlasPeekWindow.Create(Self);
-  Window.GuardFeature := TAtlasFeature.EditorCommands;
+  Window.GuardFeature := TAtlasFeature.Peek;
   Window.OnOpen := WindowOpen;
   Keys := TPeekKeys.Create(Self);
   Timer := TTimer.Create(Self);
@@ -229,7 +229,7 @@ end;
 
 procedure TPeekState.WindowOpen(Sender: TObject);
 begin
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  TAtlasGuard.Run(TAtlasFeature.Peek,
     procedure
     begin
       Open;
@@ -255,7 +255,7 @@ begin
     on E: Exception do
     begin
       Hide;
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.Peek, E);
     end;
   end;
 end;

@@ -654,7 +654,7 @@ type
     UnwrapWhile, UnwrapRepeat, UnwrapIfDef, UnwrapRegion, UnwrapKeepFinally, UnwrapDropFinally, UnwrapKeepThen,
     UnwrapKeepElse, UnwrapKeepFirst, UnwrapKeepIfDefElse, UnwrapKeepBranch, UnwrapRaiseNote, UnwrapLoopNote,
     UnwrapWithNote, SettingsOutlineConditions, SettingsCompletionVariantBranch, TagVariantBranch,
-    BreadcrumbsDisabled);
+    BreadcrumbsDisabled, FuseTrippedTitle, FuseTrippedEnable, FuseTrippedOpenLog);
 
   TAtlasStrings = class
   private class var
@@ -2008,7 +2008,10 @@ const
      'Bedingung des aktiven {$IFDEF}-Zweigs hinter dem Eintrag zeigen',
      'Zweig varianter Record-Felder zeigen',
      'Zweig %s',
-     'Brotkrumenleiste nach Fehlern abgeschaltet – wieder einschalten über Atlas › Abgeschaltete Funktionen einschalten'),
+     'Brotkrumenleiste nach Fehlern abgeschaltet – wieder einschalten über Atlas › Abgeschaltete Funktionen einschalten',
+     '%s nach Fehlern abgeschaltet',
+     'Wieder einschalten',
+     'Protokoll öffnen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3270,7 +3273,10 @@ const
      'Show the condition of the active {$IFDEF} branch after the entry',
      'Show the branch of variant record fields',
      'branch %s',
-     'Breadcrumbs switched off after errors – switch on again via Atlas › Re-enable switched-off features'));
+     'Breadcrumbs switched off after errors – switch on again via Atlas › Re-enable switched-off features',
+     '%s switched off after errors',
+     'Switch on again',
+     'Open log'));
 
 { TAtlasStrings }
 
