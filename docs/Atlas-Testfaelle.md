@@ -5595,3 +5595,67 @@ Voraussetzung: Server läuft in der IDE; Regel `file-encoding-unsupported` ist s
 | KO6 | Unit als UTF-32 LE speichern (z. B. mit einem Editor, der UTF-32 kann) und in der IDE öffnen | Eine Meldung in Zeile 1: „Die Datei ist UTF-32 kodiert … (wie F2438)“; keine NUL-Meldungen von `control-char` |
 | KO7 | `"file-encoding-unsupported": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | KO8 | Abgleich mit Delphi: KO1, KO4 und KO6 übersetzen | dcc meldet E2038 („Illegal character in input file“) bzw. F2438 an denselben Stellen, KO5 übersetzt ohne E2038; jedes von Atlas gemeldete Zeichen ist auch für dcc ein Fehler |
+
+## Destruktor greift auf Felder zu, die nil sein können (#1087)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Klasse `TImport` mit `constructor Create(const Datei: string)` (`inherited Create; FStrom := TFileStream.Create(Datei, fmOpenRead); FZeilen := TStringList.Create;`) und `destructor Destroy; override;` (`FZeilen.Clear; FZeilen.Free; FStrom.Free; inherited;`), je Anweisung eine Zeile.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NS1 | Unit öffnen | Warnung `destructor-not-nil-safe` an `FZeilen.Clear`: „Wirft TFileStream.Create, ist FZeilen beim Destruktor noch nil; FZeilen.Clear stürzt ab und verdeckt die eigentliche Exception.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| NS2 | Glühbirne „In if Assigned(FZeilen) then einschließen“, danach Strg+Z | `if Assigned(FZeilen) then` mit eingerücktem `FZeilen.Clear;` darunter, Meldung weg; kompiliert; ein Undo-Schritt stellt alles her (**Abnahme**) |
+| NS3 | Im Konstruktor `FZeilen := TStringList.Create;` vor `FStrom := …` ziehen | Keine Meldung (vor dem Anlegen wirft nur `inherited Create`) |
+| NS4 | Im Konstruktor `if Datei <> '' then FZeilen := TStringList.Create;` | Meldung „FZeilen wird im Konstruktor nur bedingt angelegt und kann beim Destruktor nil sein; FZeilen.Clear stürzt dann ab.“ |
+| NS5 | `FZeilen.Clear` in eine private Methode `Leeren` verschieben, die nur `Destroy` aufruft | Meldung in `Leeren`; ist `Leeren` public oder ruft eine andere Methode sie auf, keine Meldung |
+| NS6 | Fall NS3 mit `"destructor-not-nil-safe": {"onlyAfterRaisingCode": false}` und Zugriff `FZeilen.Clear` | Meldung „Wirft TStringList.Create, ist FZeilen beim Destruktor noch nil; …“; mit `true` keine Meldung |
+| NS7 | `FreeAndNil(FZeilen)`, `if Assigned(FZeilen) then FZeilen.Clear`, Zugriff in `BeforeDestruction` | Keine Meldung |
+| NS8 | `"destructor-not-nil-safe": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| NS9 | Abgleich mit Delphi: Konstruktor mit nicht vorhandener Datei aufrufen (`TImport.Create('fehlt.txt')`) | Ohne Korrektur meldet die IDE eine Zugriffsverletzung statt EFOpenError; mit Korrektur erscheint EFOpenError |
+
+## Windows-Handle wird nicht geschlossen (#1088)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `uses Winapi.Windows;` und einer Prozedur `Starten(const Befehl: string)` mit `var SI: TStartupInfo; PI: TProcessInformation;` und den Zeilen `CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);` und `WaitForSingleObject(PI.hProcess, INFINITE);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HL1 | Unit öffnen | Warnung `handle-leak` an `CreateProcess`: „PI.hProcess und PI.hThread werden nie mit CloseHandle geschlossen (Handle-Leck).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| HL2 | Glühbirne „In try … finally CloseHandle einschließen“, danach Strg+Z | `WaitForSingleObject` steht in `try … finally` mit `CloseHandle(PI.hThread); CloseHandle(PI.hProcess);`, Meldung weg; kompiliert; ein Undo-Schritt stellt alles her (**Abnahme**) |
+| HL3 | Neue Prozedur: `H := CreateFile(…); if H = INVALID_HANDLE_VALUE then RaiseLastOSError; if not ReadFile(H, …) then Exit; CloseHandle(H);` | Meldung „H wird nicht auf jedem Weg mit CloseHandle geschlossen (Handle-Leck).“ (Weg über `Exit`); ohne das `Exit` keine Meldung |
+| HL4 | `if RegOpenKeyEx(HKEY_CURRENT_USER, 'Software\Test', 0, KEY_READ, Schluessel) = ERROR_SUCCESS then` mit `RegQueryValueEx` im Zweig, ohne `RegCloseKey` | Meldung „Schluessel wird nie mit RegCloseKey geschlossen (Handle-Leck).“; mit `RegCloseKey(Schluessel)` im Zweig keine Meldung |
+| HL5 | `Dc := GetDC(0); … ReleaseDC(0, Dc);` sowie `Pinsel := CreateSolidBrush(clRed); FillRect(Canvas.Handle, R, Pinsel);` ohne `DeleteObject` | Für `GetDC` keine Meldung; für `CreateSolidBrush` „Pinsel wird nie mit DeleteObject geschlossen (Handle-Leck).“ |
+| HL6 | Handle zurückgeben (`Result := CreateEvent(…)`), in ein Feld schreiben (`FEreignis := H`), an eine eigene Routine übergeben (`Merken(H)`) oder in einer anonymen Methode benutzen | Keine Meldung |
+| HL7 | `"handle-leak": {"pairs": ["MeinOeffnen>MeinSchliessen"]}` und `H := MeinOeffnen(1); Benutzen;` | Meldung „H wird nie mit MeinSchliessen geschlossen (Handle-Leck).“; ohne die Option keine Meldung; `"pairs": ["kaputt"]` meldet die Einstellungsprüfung |
+| HL8 | `"handle-leak": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| HL9 | Abgleich mit Windows: Fall HL1 1000-mal aufrufen, Taskmanager-Spalte „Handles“ beobachten | Ohne Korrektur steigt die Zahl um etwa 2000; mit Korrektur bleibt sie stabil |
+
+## Globale FormatSettings wird verändert (#1089)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `uses System.SysUtils;` und einer Klasse `TExport` mit den Feldern `FBetrag: Double; FZeile: string;` und der Methode `procedure Schreiben;` mit den Zeilen `FormatSettings.DecimalSeparator := '.';` und `FZeile := FloatToStr(FBetrag);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GF1 | Unit öffnen | Warnung `global-formatsettings-modified` an `FormatSettings.DecimalSeparator := '.'`: „Ändert den Dezimaltrenner für die ganze Anwendung und alle Threads; eine lokale TFormatSettings verwenden.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| GF2 | Glühbirne „Lokale TFormatSettings anlegen und übergeben“, danach Strg+Z | `var FS: TFormatSettings;` vor `begin`, `FS := TFormatSettings.Invariant;` statt der Zuweisung, `FloatToStr(FBetrag, FS)`; Meldung weg; kompiliert; ein Undo-Schritt stellt alles her (**Abnahme**) |
+| GF3 | Zuweisung ändern in `FormatSettings.ShortDateFormat := 'dd.mm.yyyy';` und `FZeile := DateToStr(Date);` | Meldung „Ändert das kurze Datumsformat …“; die Korrektur legt `FS := FormatSettings;` und `FS.ShortDateFormat := 'dd.mm.yyyy';` an und übergibt `FS` an `DateToStr` |
+| GF4 | Alten Wert merken und im `finally` zurücksetzen (`Alt := FormatSettings.DecimalSeparator; … finally FormatSettings.DecimalSeparator := Alt;`) | Zwei Meldungen, keine Glühbirne |
+| GF5 | In `TForm1.FormCreate` eines VCL-Formulars `FormatSettings.DecimalSeparator := '.';` | Meldung (TForm hat kein gleichnamiges Mitglied) |
+| GF6 | Lokale Variable `FormatSettings: TFormatSettings` bzw. Feld `DecimalSeparator` in der eigenen Klasse; Lesen `X := FormatSettings.DecimalSeparator`; Zuweisung in `with … do` | Keine Meldung |
+| GF7 | In der .dpr vor `Application.Initialize` `FormatSettings.DecimalSeparator := '.';`, dann `"global-formatsettings-modified": {"allowInProgram": true}` | Ohne Option Meldung, mit Option keine; in Units bleibt die Meldung |
+| GF8 | `"global-formatsettings-modified": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| GF9 | Abgleich mit Delphi: GF1 übersetzen, im IDE-Plugin ausführen und danach in der IDE eine Zahl im Objektinspektor eingeben | Ohne Korrektur zeigt die IDE danach Punkt statt Komma; mit Korrektur bleibt das Komma |
+
+## Komponente als Interface gespeichert und freigegeben (#1090)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `IBeobachter = interface procedure Melden; end;`, einer Klasse `TBus` mit `Anmelden`/`Abmelden(const ABeobachter: IBeobachter)`, einer globalen Variablen `Bus: TBus`, dem Formular `TfrmKunden = class(TForm, IBeobachter)` und `TfrmHaupt` mit dem Feld `FAnsicht: TfrmKunden`. `AnsichtOeffnen` enthält `FAnsicht := TfrmKunden.Create(Self);` und `Bus.Anmelden(FAnsicht as IBeobachter);`, `AnsichtSchliessen` enthält `FAnsicht.Free;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KD1 | Unit öffnen | Warnung `component-interface-dangling` an `Bus.Anmelden(…)`: „TfrmKunden ist ein TComponent ohne Referenzzählung; nach FAnsicht.Free hält Bus ein ungültiges IBeobachter.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| KD2 | Glühbirne „Abmeldung vor der Freigabe einfügen“, danach Strg+Z | `Bus.Abmelden(FAnsicht as IBeobachter);` steht vor `FAnsicht.Free;`, Meldung weg; kompiliert; ein Undo-Schritt stellt alles her (**Abnahme**) |
+| KD3 | Statt der Anmeldung ein Feld `FBeobachter: IBeobachter` mit `FBeobachter := FAnsicht;` und `FreeAndNil(FAnsicht)` | Meldung „… nach FreeAndNil(FAnsicht) hält FBeobachter …“; die Korrektur fügt `FBeobachter := nil;` davor ein |
+| KD4 | Feld `FListe: TList<IBeobachter>` mit `FListe.Add(FAnsicht);` | Meldung „… hält FListe ein ungültiges IBeobachter.“; ohne Glühbirne, wenn Atlas den Typ von `FListe` nicht kennt; mit `FListe.Remove(FAnsicht)` irgendwo in der Unit keine Meldung |
+| KD5 | `FAnsicht.FreeNotification(Self);` ergänzen bzw. die Freigabe entfernen (der Owner gibt frei) | Keine Meldung |
+| KD6 | `TfrmKunden = class(TInterfacedObject, IBeobachter)` | Meldung „TfrmKunden ist referenzgezählt (TInterfacedObject); FAnsicht.Free gibt es frei, obwohl Bus noch ein IBeobachter darauf hält.“, auch mit `Bus.Abmelden` davor; keine Glühbirne |
+| KD7 | `TfrmKunden` von einer eigenen Basis `TMeineBasis` ableiten, die nicht im Projekt steht; dann `"component-interface-dangling": {"componentClasses": ["TMeineBasis"]}` | Ohne Option keine Meldung, mit Option „TfrmKunden ist ein TMeineBasis ohne Referenzzählung; …“ |
+| KD8 | `"component-interface-dangling": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| KD9 | Abgleich mit Delphi: KD1 übersetzen, `AnsichtOeffnen`, `AnsichtSchliessen`, danach `Bus` ein `Melden` an alle schicken lassen | Ohne Korrektur Zugriffsverletzung beim Aufruf über das gespeicherte Interface; mit Korrektur keine |

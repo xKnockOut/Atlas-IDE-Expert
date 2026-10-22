@@ -10,6 +10,8 @@
 // Weitergabe, stille Fälle, Abschalten.
 // Tests der Regel stringlist-objects-leak (#1048): Beispiel mit Korrektur, lokale Variable, Steuerelemente,
 // besitzende Listen, Freigabe und Weitergabe, Abschalten.
+// Tests der Regel component-interface-dangling (#1090): Komponenten als Interface gespeichert und freigegeben,
+// Formen der Speicherung, Abmeldungen, Korrektur, TInterfacedObject mit Free, Option componentClasses.
 
 interface
 
@@ -58,6 +60,14 @@ type
     procedure SelfAsInterfaceAfterConstruction;
     [Test]
     procedure SelfAsInterfaceOffAndExclude;
+    [Test]
+    procedure DanglingIssueExample;
+    [Test]
+    procedure DanglingVariants;
+    [Test]
+    procedure DanglingSilentCases;
+    [Test]
+    procedure DanglingOptions;
   end;
 
   [TestFixture]
@@ -99,6 +109,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Builtin.Ownership,
+  Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
 function Routine(const ACreate, ABody: string): string;
@@ -926,6 +937,146 @@ begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringListObjectsLeakRule.Create, Source,
     '{"rules": {"stringlist-objects-leak": {"exclude": ["Source/*.pas"]}}}', 'Source/Kundenliste.pas'))));
   Assert.AreEqual('fkunden.items', TStringListObjectsLeakRule.KeyOf('Self.FKunden. Items'));
+end;
+
+/// <summary>Formular, das ein zweites Formular als IBeobachter beim Bus anmeldet; AFelder ergänzt TfrmHaupt,
+/// AOeffnen und ASchliessen stehen in den beiden Methoden, AKunden ist der Vorfahr von TfrmKunden.</summary>
+function Haupt(const AKunden, AFelder, AOeffnen, ASchliessen: string): string;
+begin
+  Result := 'unit Haupt;'#10'interface'#10'uses'#10'  System.Classes, System.Generics.Collections, Vcl.Forms;'#10 +
+    'type'#10'  IBeobachter = interface'#10'    procedure Melden;'#10'  end;'#10'  TBus = class'#10'  public'#10 +
+    '    procedure Anmelden(const ABeobachter: IBeobachter);'#10 +
+    '    procedure Abmelden(const ABeobachter: IBeobachter);'#10'  end;'#10 +
+    '  TfrmKunden = class(' + AKunden + ', IBeobachter)'#10'    procedure Melden;'#10'  end;'#10 +
+    '  TfrmHaupt = class(TForm)'#10'  private'#10'    FAnsicht: TfrmKunden;'#10 + AFelder +
+    '    procedure AnsichtOeffnen;'#10'    procedure AnsichtSchliessen;'#10'  end;'#10'var'#10'  Bus: TBus;'#10 +
+    'implementation'#10'procedure TBus.Anmelden(const ABeobachter: IBeobachter);'#10'begin'#10'end;'#10 +
+    'procedure TBus.Abmelden(const ABeobachter: IBeobachter);'#10'begin'#10'end;'#10 +
+    'procedure TfrmKunden.Melden;'#10'begin'#10'end;'#10'procedure TfrmHaupt.AnsichtOeffnen;'#10'begin'#10 +
+    '  FAnsicht := TfrmKunden.Create(Self);'#10 + AOeffnen + 'end;'#10'procedure TfrmHaupt.AnsichtSchliessen;'#10 +
+    'begin'#10 + ASchliessen + 'end;'#10'end.';
+end;
+
+procedure TOwnershipRulesTests.DanglingIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+  Tree: TSyntaxTree;
+begin
+  Source := Haupt('TForm', '', '  Bus.Anmelden(FAnsicht as IBeobachter);'#10, '  FAnsicht.Free;'#10);
+  Findings := TRuleAssert.Findings(TComponentInterfaceDanglingRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('component-interface-dangling', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('TfrmKunden ist ein TComponent ohne Referenzzählung; nach FAnsicht.Free hält Bus ein ungültiges ' +
+    'IBeobachter.', Findings[0].Message);
+  Assert.AreEqual(37, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Abmeldung vor der Freigabe einfügen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Haupt('TForm', '', '  Bus.Anmelden(FAnsicht as IBeobachter);'#10,
+    '  Bus.Abmelden(FAnsicht as IBeobachter);'#10'  FAnsicht.Free;'#10), Fixed);
+  Tree := TPascalParser.Parse(Fixed);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+  TRuleAssert.Silent(TComponentInterfaceDanglingRule.Create, Fixed);
+end;
+
+procedure TOwnershipRulesTests.DanglingVariants;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Interface-Feld: Korrektur setzt es vor der Freigabe auf nil.
+  Source := Haupt('TForm', '    FBeobachter: IBeobachter;'#10, '  FBeobachter := FAnsicht;'#10,
+    '  FreeAndNil(FAnsicht);'#10);
+  Findings := TRuleAssert.Findings(TComponentInterfaceDanglingRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TfrmKunden ist ein TComponent ohne Referenzzählung; nach FreeAndNil(FAnsicht) hält FBeobachter ' +
+    'ein ungültiges IBeobachter.', Findings[0].Message);
+  Assert.AreEqual(Haupt('TForm', '    FBeobachter: IBeobachter;'#10, '  FBeobachter := FAnsicht;'#10,
+    '  FBeobachter := nil;'#10'  FreeAndNil(FAnsicht);'#10),
+    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+  // Liste von Interfaces ohne "as"; Release; Self.FAnsicht; Gegenstück am unbekannten TList: keine Korrektur.
+  Findings := TRuleAssert.Findings(TComponentInterfaceDanglingRule.Create, Haupt('TForm',
+    '    FListe: TList<IBeobachter>;'#10, '  FListe.Add(Self.FAnsicht);'#10, '  FAnsicht.Release;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TfrmKunden ist ein TComponent ohne Referenzzählung; nach FAnsicht.Release hält FListe ein ' +
+    'ungültiges IBeobachter.', Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Frame und Datenmodul; Anmeldung in Klammern.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TComponentInterfaceDanglingRule.Create, Haupt('TFrame', '',
+    '  Bus.Anmelden((FAnsicht as IBeobachter));'#10, '  FAnsicht.Free;'#10)))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TComponentInterfaceDanglingRule.Create, Haupt('TDataModule',
+    '', '  Bus.Anmelden(FAnsicht as IBeobachter);'#10, '  FAnsicht.Free;'#10)))));
+  // Referenzgezählt und zusätzlich mit Free freigegeben: gemeldet, auch mit Abmeldung, ohne Korrektur.
+  Findings := TRuleAssert.Findings(TComponentInterfaceDanglingRule.Create, Haupt('TInterfacedObject', '',
+    '  Bus.Anmelden(FAnsicht as IBeobachter);'#10, '  Bus.Abmelden(FAnsicht as IBeobachter);'#10 +
+    '  FAnsicht.Free;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TfrmKunden ist referenzgezählt (TInterfacedObject); FAnsicht.Free gibt es frei, obwohl Bus ' +
+    'noch ein IBeobachter darauf hält.', Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Abmelden', TComponentInterfaceDanglingRule.Counterpart('Anmelden'));
+  Assert.AreEqual('Remove', TComponentInterfaceDanglingRule.Counterpart('add'));
+  Assert.AreEqual('', TComponentInterfaceDanglingRule.Counterpart('Push'));
+end;
+
+procedure TOwnershipRulesTests.DanglingSilentCases;
+begin
+  // Abmeldung irgendwo in der Datei: Abmelden, FreeNotification, weitere Zuweisung, Clear.
+  TRuleAssert.Silent(TComponentInterfaceDanglingRule.Create, Haupt('TForm', '',
+    '  Bus.Anmelden(FAnsicht as IBeobachter);'#10'  FAnsicht.FreeNotification(Self);'#10, '  FAnsicht.Free;'#10));
+  TRuleAssert.Silent(TComponentInterfaceDanglingRule.Create, Haupt('TForm', '    FBeobachter: IBeobachter;'#10,
+    '  FBeobachter := FAnsicht as IBeobachter;'#10, '  FBeobachter := nil;'#10'  FAnsicht.Free;'#10));
+  TRuleAssert.Silent(TComponentInterfaceDanglingRule.Create, Haupt('TForm', '    FListe: TList<IBeobachter>;'#10,
+    '  FListe.Add(FAnsicht);'#10, '  FListe.Clear;'#10'  FAnsicht.Free;'#10));
+  // Ohne Freigabe in der Datei (der Owner gibt frei), lokales Ziel, Self, lokale Liste.
+  TRuleAssert.Silent(TComponentInterfaceDanglingRule.Create, Haupt('TForm', '',
+    '  Bus.Anmelden(FAnsicht as IBeobachter);'#10, ''));
+  TRuleAssert.Silent(TComponentInterfaceDanglingRule.Create, StringReplace(Haupt('TForm', '',
+    '  B := FAnsicht as IBeobachter;'#10'  B.Melden;'#10, '  FAnsicht.Free;'#10),
+    'procedure TfrmHaupt.AnsichtOeffnen;'#10, 'procedure TfrmHaupt.AnsichtOeffnen;'#10'var'#10'  B: IBeobachter;'#10,
+    []));
+  TRuleAssert.Silent(TComponentInterfaceDanglingRule.Create, Haupt('TForm', '',
+    '  Bus.Anmelden(Self as IBeobachter);'#10, '  Free;'#10));
+  // Eigenes _Release, unbekannter Vorfahr.
+  TRuleAssert.Silent(TComponentInterfaceDanglingRule.Create, StringReplace(Haupt('TForm', '',
+    '  Bus.Anmelden(FAnsicht as IBeobachter);'#10, '  FAnsicht.Free;'#10), '    procedure Melden;'#10'  end;'#10 +
+    '  TfrmHaupt', '    procedure Melden;'#10'    function _Release: Integer; stdcall;'#10'  end;'#10'  TfrmHaupt', []));
+  TRuleAssert.Silent(TComponentInterfaceDanglingRule.Create, Haupt('TFremdeBasis', '',
+    '  Bus.Anmelden(FAnsicht as IBeobachter);'#10, '  FAnsicht.Free;'#10));
+end;
+
+procedure TOwnershipRulesTests.DanglingOptions;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Haupt('TFremdeBasis', '', '  Bus.Anmelden(FAnsicht as IBeobachter);'#10, '  FAnsicht.Free;'#10);
+  Findings := TRuleAssert.Findings(TComponentInterfaceDanglingRule.Create, Source,
+    '{"rules": {"component-interface-dangling": {"componentClasses": ["TFremdeBasis"]}}}');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TfrmKunden ist ein TFremdeBasis ohne Referenzzählung; nach FAnsicht.Free hält Bus ein ' +
+    'ungültiges IBeobachter.', Findings[0].Message);
+  // Ohne TComponent in der Liste gelten die VCL-Klassen nicht mehr als Basis.
+  Source := Haupt('TForm', '', '  Bus.Anmelden(FAnsicht as IBeobachter);'#10, '  FAnsicht.Free;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TComponentInterfaceDanglingRule.Create, Source,
+    '{"rules": {"component-interface-dangling": {"componentClasses": ["TFremdeBasis"]}}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TComponentInterfaceDanglingRule.Create, Source,
+    '{"rules": {"component-interface-dangling": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TComponentInterfaceDanglingRule.Create, Source,
+    '{"rules": {"component-interface-dangling": {"exclude": ["Source/*.pas"]}}}', 'Source/Haupt.pas'))));
+  TConfigurationParser.Parse('{"rules": {"component-interface-dangling": {"componentClasses": "TComponent"}}}',
+    Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
 initialization
