@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 37 |
+| [Fehler finden](#gruppe-find-bugs) | 38 |
 | [Exceptions](#gruppe-exceptions) | 5 |
 | [Threads](#gruppe-threads) | 7 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -61,6 +61,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`missing-inherited`](#missing-inherited) | Konstruktor oder Destruktor ohne inherited | Bug | Warnung |
 | [`destroy-called-directly`](#destroy-called-directly) | Destroy statt Free aufgerufen | Bug | Warnung |
 | [`managed-type-raw-memory`](#managed-type-raw-memory) | FillChar, Move oder GetMem auf verwaltete Typen | Bug | Fehler |
+| [`pchar-of-temporary`](#pchar-of-temporary) | PChar auf einen temporären String | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -2778,4 +2779,26 @@ Richtig:
 ```pascal
 threadvar
   LetzteMeldung: PChar;
+```
+
+<a id="pchar-of-temporary"></a>
+### pchar-of-temporary
+
+**PChar auf einen temporären String** · Bug · Warnung · Gruppe Fehler finden
+
+PChar (PWideChar, PAnsiChar) eines temporären Strings, etwa einer Verkettung mit einem String (S + '.bak') oder eines Funktionsergebnisses (IntToStr(N)), wird in einer Variablen, einem Feld oder Result gemerkt oder an PostMessage, PostThreadMessage, SendNotifyMessage oder SendMessageCallback übergeben (auch hinter LPARAM(…)). Der temporäre String wird nach der Anweisung freigegeben, der Zeiger zeigt dann ins Leere. Die Übergabe an einen gewöhnlichen Aufruf wie CopyFile ist in Ordnung. Konfidenz hoch. Schnellkorrektur für lokale Variablen: das Zwischenergebnis in eine Inline-String-Variable legen.
+
+Mit Treffer:
+
+```pascal
+Ziel := PChar(Pfad + '.bak');
+CopyFile(PChar(Pfad), Ziel, False);
+```
+
+Richtig:
+
+```pascal
+var ZielText: string := Pfad + '.bak';
+Ziel := PChar(ZielText);
+CopyFile(PChar(Pfad), Ziel, False);
 ```

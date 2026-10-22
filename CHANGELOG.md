@@ -7,6 +7,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Regel `pchar-of-temporary` (#923): `PChar` eines temporären Strings (`Pfad + '.bak'`, `IntToStr(N)`), das in einer Variablen, einem Feld oder `Result` landet oder an `PostMessage` und verwandte asynchrone Aufrufe geht, meldet Atlas („Der Ausdruck Pfad + '.bak' ist temporär; Ziel zeigt nach dieser Zeile auf freigegebenen Speicher.“). Bei lokalen Variablen legt die Korrektur das Zwischenergebnis in eine Inline-Variable.
 - Regel `threadvar-managed` (#922): Eine `threadvar` mit String, Interface, dynamischem Array oder Variant (auch in einem Record) meldet Atlas („threadvar mit string wird beim Thread-Ende nicht finalisiert (Leck je Thread).“), weil Delphi `threadvar` nicht finalisiert.
 - Regel `managed-type-raw-memory` (#921): `FillChar`, `ZeroMemory`, `FillMemory`, `Move`, `CopyMemory`, `GetMem` und `FreeMem` auf Variablen, deren Typ Strings, Interfaces, dynamische Arrays oder Variants enthält, meldet Atlas als Fehler („TAdresse enthält Strings; FillChar überschreibt die Referenzen ohne Freigabe (Leck, ggf. Zugriffsverletzung).“). Records, statische Arrays, Aliasse und Zeigertypen werden in der Datei und im Index aufgelöst. Korrekturen: `X := Default(T)`, `B := A`, `New(P)` und `Dispose(P)`.
 - Regel `destroy-called-directly` (#920): `Obj.Destroy;` als Anweisung meldet Atlas („Destroy direkt aufgerufen; Free prüft vorher auf nil.“) mit der sicheren Korrektur `Obj.Free;`. `inherited Destroy` und Destruktoren mit Argumenten bleiben still.

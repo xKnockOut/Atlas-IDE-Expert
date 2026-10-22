@@ -3,7 +3,7 @@
 // Tests für die typbasierten Regeln zu RTL-Mustern aus #153, Stufe 2, und
 // für die deklarierten Typen, auf denen sie aufbauen; zuletzt
 // managed-type-raw-memory (#921) mit Records, Aliassen, Zeigern, Index und
-// Korrekturen, und threadvar-managed (#922).
+// Korrekturen, threadvar-managed (#922) und pchar-of-temporary (#923).
 
 interface
 
@@ -42,6 +42,12 @@ type
     procedure ManagedRawMemoryOffAndExclude;
     [Test]
     procedure ThreadvarManaged;
+    [Test]
+    procedure PCharOfTemporaryIssueExample;
+    [Test]
+    procedure PCharOfTemporaryVariants;
+    [Test]
+    procedure PCharOfTemporarySilentCases;
   end;
 
 implementation
@@ -324,6 +330,64 @@ begin
     '{"rules": {"threadvar-managed": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
   Assert.AreEqual(3, Integer(Length(TRuleAssert.Findings(TThreadvarManagedRule.Create, Source,
     '{"rules": {"threadvar-managed": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
+end;
+
+function Copier(const ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'implementation'#10'procedure Sichern(const Pfad: string; N: Integer);'#10 +
+    'var'#10'  Ziel: PChar;'#10'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+procedure TRtlTypePatternRulesTests.PCharOfTemporaryIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Copier('  Ziel := PChar(Pfad + ''.bak'');'#10'  CopyFile(PChar(Pfad), Ziel, False);');
+  Findings := TRuleAssert.Findings(TPCharOfTemporaryRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Der Ausdruck Pfad + ''.bak'' ist temporär; Ziel zeigt nach dieser Zeile auf freigegebenen ' +
+    'Speicher.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Zwischenergebnis in ZielText ablegen', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Copier('  var ZielText: string := Pfad + ''.bak'';'#10'  Ziel := PChar(ZielText);'#10 +
+    '  CopyFile(PChar(Pfad), Ziel, False);'), Fixed);
+  TRuleAssert.Silent(TPCharOfTemporaryRule.Create, Fixed);
+end;
+
+procedure TRtlTypePatternRulesTests.PCharOfTemporaryVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Funktionsergebnis, Feld ohne Korrektur, PostMessage hinter LPARAM.
+  Findings := TRuleAssert.Findings(TPCharOfTemporaryRule.Create, Copier('  Ziel := PChar(IntToStr(N));'#10 +
+    '  FName := PChar(Format(''%d'', [N]));'#10'  PostMessage(Handle, WM_USER, 0, LPARAM(PChar(Pfad + ''x'')));'));
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual('Der Ausdruck IntToStr(N) ist temporär; Ziel zeigt nach dieser Zeile auf freigegebenen Speicher.',
+    Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)), 'Feld: keine Korrektur');
+  Assert.AreEqual('Der Ausdruck Pfad + ''x'' ist temporär; PostMessage liest den Zeiger erst später aus ' +
+    'freigegebenem Speicher.', Findings[2].Message);
+  // Name schon vergeben: ZielText2.
+  Findings := TRuleAssert.Findings(TPCharOfTemporaryRule.Create, Copier('  ZielText := 1;'#10 +
+    '  Ziel := PChar(Pfad + ''.bak'');'));
+  Assert.AreEqual('Zwischenergebnis in ZielText2 ablegen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPCharOfTemporaryRule.Create,
+    Copier('  Ziel := PChar(IntToStr(N));'), '{"rules": {"pchar-of-temporary": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPCharOfTemporaryRule.Create,
+    Copier('  Ziel := PChar(IntToStr(N));'), '{"rules": {"pchar-of-temporary": {"exclude": ["Alt/*.pas"]}}}',
+    'Alt/U.pas'))));
+end;
+
+procedure TRtlTypePatternRulesTests.PCharOfTemporarySilentCases;
+begin
+  // Variable, Konstante, Aufruf mit temporärem Argument, SendMessage (synchron), Zeigerarithmetik.
+  TRuleAssert.Silent(TPCharOfTemporaryRule.Create, Copier('  Ziel := PChar(Pfad);'#10 +
+    '  Ziel := PChar(''a'' + ''b'');'#10'  CopyFile(PChar(Pfad + ''.bak''), Ziel, False);'#10 +
+    '  SendMessage(Handle, WM_USER, 0, LPARAM(PChar(Pfad + ''x'')));'#10'  Ziel := PChar(Ziel + 1);'));
 end;
 
 initialization

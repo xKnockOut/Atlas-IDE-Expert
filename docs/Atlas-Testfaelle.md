@@ -3277,3 +3277,16 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `threadvar Let
 | TV2 | `Meldung: TMeldung;` mit `TMeldung = record Text: string; end;` in der threadvar | Meldung „threadvar mit TMeldung (enthält Strings) …“ |
 | TV3 | `LetzteMeldung: PChar;` bzw. dieselbe Variable unter `var` | Keine Meldung |
 | TV4 | `"threadvar-managed": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## PChar auf einen temporären String (#923)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Routine mit `const Pfad: string`, lokaler Variable `Ziel: PChar` und den Zeilen `Ziel := PChar(Pfad + '.bak');` und `CopyFile(PChar(Pfad), Ziel, False);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PT1 | Unit öffnen | Warnung `pchar-of-temporary` an `Pfad + '.bak'`: „Der Ausdruck Pfad + '.bak' ist temporär; Ziel zeigt nach dieser Zeile auf freigegebenen Speicher.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| PT2 | Glühbirne, „Zwischenergebnis in ZielText ablegen“ | Davor `var ZielText: string := Pfad + '.bak';`, dann `Ziel := PChar(ZielText);`; kompiliert; Strg+Z nimmt es in einem Schritt zurück (**Abnahme**) |
+| PT3 | `PostMessage(Handle, WM_USER, 0, LPARAM(PChar(Pfad + 'x')));` | Meldung „… PostMessage liest den Zeiger erst später aus freigegebenem Speicher.“ |
+| PT4 | `FName := PChar(IntToStr(N));` mit Feld `FName` | Meldung ohne Korrektur |
+| PT5 | `CopyFile(PChar(Pfad + '.bak'), …)`, `Ziel := PChar(Pfad);`, `SendMessage(…, LPARAM(PChar(Pfad + 'x')))` | Keine Meldung |
+| PT6 | `"pchar-of-temporary": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
