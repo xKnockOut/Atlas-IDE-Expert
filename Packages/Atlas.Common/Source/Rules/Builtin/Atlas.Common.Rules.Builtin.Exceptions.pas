@@ -7,6 +7,7 @@
 //   exception-freed             Exception-Objekt nach raise bzw. im Handler zusätzlich freigegeben
 //   exception-in-destructor     raise in einem Destruktor, das kein except im Destruktor abfängt (#927)
 //   except-handler-order        on-Handler, der nie erreicht wird, weil ein früherer die Klasse schon fängt (#957)
+//   reraise-exception-object    raise E im Handler statt raise; (#958)
 // Der leere except-Block bleibt bei empty-except (#56).
 
 interface
@@ -46,6 +47,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
     /// <summary>Vorfahr einer bekannten RTL-, VCL- oder FireDAC-Exception; leer, wenn unbekannt.</summary>
     class function KnownParent(const AName: string): string; static;
+  end;
+
+  TReraiseExceptionObjectRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
 /// <summary>Registriert die Exception-Regeln.</summary>
@@ -662,6 +669,90 @@ begin
   end;
 end;
 
+{ TReraiseExceptionObjectRule }
+
+function TReraiseExceptionObjectRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('reraise-exception-object', TRuleSeverity.Warning,
+    'raise E statt raise im Handler');
+end;
+
+procedure TReraiseExceptionObjectRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TTokens;
+  Handler: THandler;
+  Index, Name, Stop: Integer;
+  Done: TArray<Integer>;
+
+  // Übernimmt der Handler das Objekt selbst (AcquireExceptionObject) oder weist er der Variablen neu zu?
+  function OwnsObject(const AHandler: THandler): Boolean;
+  var
+    Position: Integer;
+  begin
+    for Position := AHandler.First to AHandler.Last do
+      if SameText(Tokens[Position].Text, 'AcquireExceptionObject') or
+        (SameText(Tokens[Position].Text, AHandler.Name) and
+        Tokens[NextCode(Tokens, Position + 1)].IsSymbol(':=')) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Liegt das raise in einer anonymen Methode innerhalb des Handlers?
+  function InAnonymousMethod(const AHandler: THandler; ARaise: Integer): Boolean;
+  var
+    Position: Integer;
+  begin
+    for Position := AHandler.First to ARaise do
+      if Tokens[Position].IsKeyword('procedure') or Tokens[Position].IsKeyword('function') then
+        Exit(True);
+    Result := False;
+  end;
+
+  function Reported(AToken: Integer): Boolean;
+  var
+    Item: Integer;
+  begin
+    for Item in Done do
+      if Item = AToken then
+        Exit(True);
+    Result := False;
+  end;
+
+var
+  Fixes: TArray<TRuleFix>;
+begin
+  if (AContext.Tree = nil) or not ContainsText(AContext.Text, 'raise') then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Done := nil;
+  for Handler in Handlers(Tokens) do
+  begin
+    if (Handler.Name = '') or OwnsObject(Handler) then
+      Continue;
+    for Index := Handler.First to Handler.Last do
+    begin
+      if not Tokens[Index].IsKeyword('raise') or Reported(Index) then
+        Continue;
+      Name := NextCode(Tokens, Index + 1);
+      Stop := NextCode(Tokens, Name + 1);
+      if (Stop > High(Tokens)) or not SameText(Tokens[Name].Text, Handler.Name) or
+        InAnonymousMethod(Handler, Index) then
+        Continue;
+      // raise E; raise E end; raise E else; raise E at Adresse (ohne Korrektur).
+      Fixes := nil;
+      if Tokens[Stop].IsSymbol(';') or Tokens[Stop].IsKeyword('end') or Tokens[Stop].IsKeyword('else') then
+        Fixes := [TRuleFix.Create(Format('raise %s; durch raise; ersetzen', [Handler.Name]),
+          [TRuleEdit.Create(RangeOf(Tokens, Index, Name), 'raise')])]
+      else if not SameText(Tokens[Stop].Text, 'at') then
+        Continue;
+      Done := Done + [Index];
+      AReport.Add(RangeOf(Tokens, Index, Name), Format('raise %s löst das Objekt neu aus: Absprungstelle ' +
+        '(ExceptAddr) und Aufrufliste zeigen danach auf diesen Handler statt auf den ursprünglichen Fehler; ' +
+        'raise; wirft die Exception unverändert weiter.', [Handler.Name]), TRuleConfidence.High, Fixes);
+    end;
+  end;
+end;
+
 procedure RegisterExceptionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TGenericExceptionRaisedRule.Create);
@@ -669,6 +760,7 @@ begin
   ARegistry.Register(TExceptionFreedRule.Create);
   ARegistry.Register(TExceptionInDestructorRule.Create);
   ARegistry.Register(TExceptHandlerOrderRule.Create);
+  ARegistry.Register(TReraiseExceptionObjectRule.Create);
 end;
 
 end.
