@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Inheritance.Tests;
 
-// Tests für die Vererbungsregeln (#125) und shadowed-name (#934).
+// Tests für die Vererbungsregeln (#125), shadowed-name (#934) und
+// inherited-abstract-call (#1026).
 
 interface
 
@@ -65,12 +66,21 @@ type
     procedure AbstractInstantiatedSilentCases;
     [Test]
     procedure AbstractInstantiatedOptions;
+    [Test]
+    procedure InheritedAbstractIssueExample;
+    [Test]
+    procedure InheritedAbstractExpressionAndIndex;
+    [Test]
+    procedure InheritedAbstractSilentCases;
+    [Test]
+    procedure InheritedAbstractOptions;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
@@ -627,6 +637,120 @@ begin
     '{"rules": {"group:compiler": "off"}}', 'U.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, Source,
     '{"rules": {"abstract-class-instantiated": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+end;
+
+/// <summary>TForm mit abstraktem Zeichnen, TKreis überschreibt es; ABody ist der Rumpf von TKreis.Zeichnen.
+/// </summary>
+function Kreise(const ABody: string): string;
+begin
+  Result := 'unit Formen;'#10'interface'#10'type'#10'  TForm = class'#10'  public'#10 +
+    '    procedure Zeichnen(C: Integer); virtual; abstract;'#10'    function Flaeche: Double; virtual;'#10 +
+    '  end;'#10'  TKreis = class(TForm)'#10'  public'#10'    procedure Zeichnen(C: Integer); override;'#10 +
+    '    function Flaeche: Double; override;'#10'  end;'#10'implementation'#10 +
+    'function TForm.Flaeche: Double;'#10'begin'#10'  Result := 0;'#10'end;'#10 +
+    'procedure TKreis.Zeichnen(C: Integer);'#10'begin'#10 + ABody + 'end;'#10 +
+    'function TKreis.Flaeche: Double;'#10'begin'#10'  Result := inherited Flaeche;'#10'end;'#10'end.';
+end;
+
+/// <summary>Offset (ab 1) der Position APosition in AText mit #10 als Zeilenende.</summary>
+function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
+var
+  Line: Integer;
+begin
+  Result := 1;
+  for Line := 1 to APosition.Line do
+    Result := Pos(#10, AText, Result) + 1;
+  Inc(Result, APosition.Character);
+end;
+
+procedure TInheritanceRulesTests.InheritedAbstractIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+  Edit: TRuleEdit;
+begin
+  Source := Kreise('  inherited Zeichnen(C);'#10'  Inc(C);'#10);
+  Findings := TRuleAssert.Findings(TInheritedAbstractCallRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TForm.Zeichnen ist abstrakt; der Aufruf über inherited ist nicht erlaubt (wie E2373).',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(20, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Aufruf entfernen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)));
+  Edit := Findings[0].Fixes[0].Edits[0];
+  Fixed := Copy(Source, 1, OffsetOf(Source, Edit.Range.StartPos) - 1) + Edit.NewText +
+    Copy(Source, OffsetOf(Source, Edit.Range.EndPos), MaxInt);
+  Assert.AreEqual(Kreise('  Inc(C);'#10), Fixed);
+  TRuleAssert.Silent(TInheritedAbstractCallRule.Create, Fixed);
+  // Ohne Klammern ebenso.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TInheritedAbstractCallRule.Create,
+    Kreise('  inherited Zeichnen;'#10)))));
+end;
+
+procedure TInheritanceRulesTests.InheritedAbstractExpressionAndIndex;
+const
+  BasisSource = 'unit Basis;'#10'interface'#10'type'#10'  TRechner = class'#10'  protected'#10 +
+    '    function Berechnen(X: Integer): Integer; virtual; abstract;'#10'  end;'#10'implementation'#10'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Als Ausdruck und aus dem Index: gemeldet, aber ohne Korrektur.
+  Findings := TRuleAssert.IndexFindings(TInheritedAbstractCallRule.Create, 'unit U;'#10'interface'#10 +
+    'uses Basis;'#10'type'#10'  TSumme = class(TRechner)'#10'  protected'#10 +
+    '    function Berechnen(X: Integer): Integer; override;'#10'  end;'#10'implementation'#10 +
+    'function TSumme.Berechnen(X: Integer): Integer;'#10'begin'#10'  Result := inherited Berechnen(X) + 1;'#10 +
+    'end;'#10'end.', IndexWith([BasisSource]), '', 'U.pas');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TRechner.Berechnen ist abstrakt; der Aufruf über inherited ist nicht erlaubt (wie E2373).',
+    Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Im Zweig einer if-Anweisung: Entfernen ließe ein leeres then zurück, also keine Korrektur.
+  Findings := TRuleAssert.Findings(TInheritedAbstractCallRule.Create,
+    Kreise('  if C > 0 then'#10'    inherited Zeichnen(C);'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TInheritanceRulesTests.InheritedAbstractSilentCases;
+begin
+  // Bloßes inherited, konkrete Methode des Vorfahren (Flaeche), unbekannter Vorfahr.
+  TRuleAssert.Silent(TInheritedAbstractCallRule.Create, Kreise('  inherited;'#10));
+  TRuleAssert.Silent(TInheritedAbstractCallRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TFoo = class(TUnbekannt)'#10'  public'#10'    procedure Lauf; override;'#10'  end;'#10'implementation'#10 +
+    'procedure TFoo.Lauf;'#10'begin'#10'  inherited Lauf;'#10'end;'#10'end.');
+  // Eine Zwischenklasse überschreibt die abstrakte Methode.
+  TRuleAssert.Silent(TInheritedAbstractCallRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TA = class'#10'  public'#10'    procedure Eins; virtual; abstract;'#10'  end;'#10 +
+    '  TB = class(TA)'#10'  public'#10'    procedure Eins; override;'#10'  end;'#10 +
+    '  TC = class(TB)'#10'  public'#10'    procedure Eins; override;'#10'  end;'#10'implementation'#10 +
+    'procedure TB.Eins;'#10'begin'#10'end;'#10'procedure TC.Eins;'#10'begin'#10'  inherited Eins;'#10'end;'#10 +
+    'end.');
+  // Überladung: die passende ist konkret.
+  TRuleAssert.Silent(TInheritedAbstractCallRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TA = class'#10'  public'#10'    procedure Eins; overload; virtual; abstract;'#10 +
+    '    procedure Eins(X: Integer); overload; virtual;'#10'  end;'#10 +
+    '  TB = class(TA)'#10'  public'#10'    procedure Eins(X: Integer); override;'#10'  end;'#10'implementation'#10 +
+    'procedure TA.Eins(X: Integer);'#10'begin'#10'end;'#10'procedure TB.Eins(X: Integer);'#10'begin'#10 +
+    '  inherited Eins(X);'#10'end;'#10'end.');
+end;
+
+procedure TInheritanceRulesTests.InheritedAbstractOptions;
+var
+  Source: string;
+begin
+  Source := Kreise('  inherited Zeichnen(C);'#10);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TInheritedAbstractCallRule.Create, Source, '',
+    'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedAbstractCallRule.Create, Source,
+    '{"rules": {"inherited-abstract-call": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedAbstractCallRule.Create, Source,
+    '{"rules": {"group:compiler": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedAbstractCallRule.Create, Source,
+    '{"rules": {"inherited-abstract-call": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
 initialization

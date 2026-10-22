@@ -2293,6 +2293,19 @@
         "E2129",
         "E2130"
       ]
+    },
+    {
+      "id": "inherited-abstract-call",
+      "name": "inherited calls an abstract method",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "inherited with an explicit method name, such as inherited Zeichnen(C), although the method is abstract in the ancestor (like E2373). A bare inherited; is skipped silently by the compiler for abstract methods and is not reported. The method is resolved by name resolution including overloads; the rule only reports when every matching overload is abstract. Quick fix: remove the call when it is a statement of its own in a begin…end block.",
+      "bad": "procedure TKreis.Zeichnen(C: TCanvas);\nbegin\n  inherited Zeichnen(C);\n  C.Ellipse(FRahmen);\nend;",
+      "good": "procedure TKreis.Zeichnen(C: TCanvas);\nbegin\n  C.Ellipse(FRahmen);\nend;",
+      "compilerCodes": [
+        "E2373"
+      ]
     }
   ]
 }

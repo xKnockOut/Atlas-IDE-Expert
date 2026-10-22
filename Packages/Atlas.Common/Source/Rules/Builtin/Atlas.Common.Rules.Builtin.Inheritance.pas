@@ -14,6 +14,8 @@
 //                                       einer sealed-Klasse (E2353) (#997)
 //   abstract-class-instantiated         Create auf einer Klasse mit offenen abstrakten Methoden (W1020)
 //                                       oder einer abstract-Klasse (E2402) (#999)
+//   inherited-abstract-call             inherited Name(…) auf eine im Vorfahren abstrakte Methode (E2373,
+//                                       #1026); die Methode löst TNameResolver samt Überladungen auf
 //
 // Vorfahren werden zuerst in der Datei, dann im Symbolindex gesucht (auch RTL
 // und VCL, soweit eingelesen). Ist ein Vorfahr nicht auflösbar oder mehrdeutig,
@@ -137,6 +139,15 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TInheritedAbstractCallRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Trägt der Methodenkopf ASignature die Direktive abstract ("procedure A; virtual; abstract;")?
+    /// </summary>
+    class function IsAbstractSignature(const ASignature: string): Boolean; static;
+  end;
+
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -152,6 +163,7 @@ uses
   Atlas.Common.Rules.Builtin.Unused,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
+  Atlas.Common.Semantics.NameResolver,
   Atlas.Text.Fuzzy;
 
 function TMethodDecl.Has(const ADirective: string): Boolean;
@@ -1795,6 +1807,167 @@ begin
   end;
 end;
 
+{ TInheritedAbstractCallRule }
+
+function TInheritedAbstractCallRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('inherited-abstract-call', TRuleSeverity.Error,
+    'inherited ruft eine abstrakte Methode auf');
+end;
+
+class function TInheritedAbstractCallRule.IsAbstractSignature(const ASignature: string): Boolean;
+var
+  Parts: TArray<string>;
+  Index, Depth, Position: Integer;
+  Text: string;
+begin
+  // Parameterliste ausblenden: ein Parameter "abstract: Boolean" wäre keine Direktive.
+  Text := '';
+  Depth := 0;
+  for Position := 1 to Length(ASignature) do
+    if ASignature[Position] = '(' then
+      Inc(Depth)
+    else if ASignature[Position] = ')' then
+      Dec(Depth)
+    else if Depth = 0 then
+      Text := Text + ASignature[Position];
+  Parts := Text.Split([';']);
+  // Der erste Teil ist der Kopf selbst, die Direktiven folgen hinter Semikolons.
+  for Index := 1 to High(Parts) do
+    if SameText(Trim(Parts[Index]), 'abstract') then
+      Exit(True);
+  Result := False;
+end;
+
+procedure TInheritedAbstractCallRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Cache: IRuleDerivedCache;
+  Tokens: TArray<TPascalToken>;
+  Resolver: TNameResolver;
+  FileName: string;
+  Calls: TDictionary<Integer, TSyntaxNode>;
+
+  /// <summary>Anweisung, die nur aus dem inherited-Aufruf besteht und in einem begin…end steht; sonst nil.
+  /// </summary>
+  function OwnStatement(AExpr: TSyntaxNode): TSyntaxNode;
+  var
+    Node: TSyntaxNode;
+  begin
+    Result := nil;
+    Node := AExpr.Parent;
+    if (Node <> nil) and (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) and (Node[0] = AExpr) then
+      Node := Node.Parent;
+    if (Node <> nil) and (Node.Kind = TSyntaxKind.CallStatement) and (Node.Parent <> nil) and
+      (Node.Parent.Kind = TSyntaxKind.Block) then
+      Result := Node;
+  end;
+
+  /// <summary>Korrektur „Aufruf entfernen“: die Anweisung samt Semikolon, allein auf der Zeile die ganze Zeile.
+  /// </summary>
+  function RemoveFix(AStatement: TSyntaxNode): TRuleFix;
+  var
+    StartOffset, EndOffset, LineStart, LineEnd: Integer;
+    Text: string;
+  begin
+    Text := AContext.Text;
+    StartOffset := AStatement.StartOffset;
+    EndOffset := AStatement.EndOffset;
+    while (EndOffset < Length(Text)) and CharInSet(Text[EndOffset + 1], [' ', #9]) do
+      Inc(EndOffset);
+    if (EndOffset < Length(Text)) and (Text[EndOffset + 1] = ';') then
+      Inc(EndOffset)
+    else
+      EndOffset := AStatement.EndOffset;
+    LineStart := StartOffset;
+    while (LineStart > 0) and CharInSet(Text[LineStart], [' ', #9]) do
+      Dec(LineStart);
+    LineEnd := EndOffset;
+    while (LineEnd < Length(Text)) and CharInSet(Text[LineEnd + 1], [' ', #9]) do
+      Inc(LineEnd);
+    // Allein auf der Zeile: die Zeile samt Zeilenumbruch entfernen.
+    if ((LineStart = 0) or CharInSet(Text[LineStart], [#10, #13])) and
+      ((LineEnd = Length(Text)) or CharInSet(Text[LineEnd + 1], [#10, #13])) then
+    begin
+      StartOffset := LineStart;
+      EndOffset := LineEnd;
+      if (EndOffset < Length(Text)) and (Text[EndOffset + 1] = #13) then
+        Inc(EndOffset);
+      if (EndOffset < Length(Text)) and (Text[EndOffset + 1] = #10) then
+        Inc(EndOffset);
+    end;
+    Result := TRuleFix.Create('Aufruf entfernen', [TRuleEdit.Create(TRuleDerived.OffsetRange(Cache, AContext,
+      StartOffset, EndOffset), '')]);
+  end;
+
+  procedure CheckCall(AExpr: TSyntaxNode; ANameToken: Integer);
+  var
+    Candidates: TArray<TResolvedSymbol>;
+    Candidate: TResolvedSymbol;
+    Statement: TSyntaxNode;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Candidates := Resolver.ResolveAll(AContext.Tree, FileName, Tokens[ANameToken].StartPos);
+    if Candidates = nil then
+      Exit;
+    // Nur wenn jede passende Überladung abstrakt ist; sonst wählt der Compiler womöglich eine andere.
+    for Candidate in Candidates do
+      if not (Candidate.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) or
+        (Candidate.Condition <> '') or not IsAbstractSignature(Candidate.Signature) then
+        Exit;
+    Fixes := nil;
+    Statement := OwnStatement(AExpr);
+    if Statement <> nil then
+      Fixes := [RemoveFix(Statement)];
+    AReport.Add(TTextRange.Create(AExpr.StartPos, AExpr.EndPos), Format('%s.%s ist abstrakt; der Aufruf über ' +
+      'inherited ist nicht erlaubt (wie E2373).', [Candidates[0].Container, Candidates[0].Name]),
+      TRuleConfidence.High, Fixes);
+  end;
+
+var
+  Index: Integer;
+  Node: TSyntaxNode;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Cache := TRuleDerived.Open(AContext);
+  Tokens := TRuleDerived.CodeTokens(Cache, AContext);
+  Calls := TDictionary<Integer, TSyntaxNode>.Create;
+  try
+    // inherited mit Namen; ein bloßes inherited; übergeht der Compiler bei abstrakten Methoden still.
+    AContext.Tree.Root.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        if (ANode.Kind = TSyntaxKind.InheritedExpr) and (ANode.Name <> '') then
+          Calls.AddOrSetValue(ANode.StartOffset, ANode);
+        Result := True;
+      end);
+    if Calls.Count = 0 then
+      Exit;
+    FileName := AContext.FileName;
+    if FileName = '' then
+      FileName := AContext.RelativePath;
+    if FileName = '' then
+      FileName := AContext.UnitName + '.pas';
+    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+    try
+      Resolver.Namespaces := AContext.Namespaces;
+      Resolver.PinTree(AContext.Tree, FileName);
+      try
+        for Index := 0 to High(Tokens) - 1 do
+          if Calls.TryGetValue(Tokens[Index].Offset, Node) and
+            (Tokens[Index + 1].Kind = TPascalTokenKind.Identifier) then
+            CheckCall(Node, Index + 1);
+      finally
+        Resolver.UnpinTree;
+      end;
+    finally
+      Resolver.Free;
+    end;
+  finally
+    Calls.Free;
+  end;
+end;
+
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDestroyWithoutOverrideRule.Create);
@@ -1804,6 +1977,7 @@ begin
   ARegistry.Register(TShadowedNameRule.Create);
   ARegistry.Register(TOverrideTargetMissingRule.Create);
   ARegistry.Register(TAbstractClassInstantiatedRule.Create);
+  ARegistry.Register(TInheritedAbstractCallRule.Create);
 end;
 
 end.

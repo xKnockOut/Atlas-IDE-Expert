@@ -4119,3 +4119,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## inherited ruft eine abstrakte Methode auf (#1026)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IA1 | Das Beispiel aus #1026: `TForm` mit `procedure Zeichnen(C: TCanvas); virtual; abstract;`, in `TKreis.Zeichnen` die Zeile `inherited Zeichnen(C);` | Fehler `inherited-abstract-call` an `inherited Zeichnen`: „TForm.Zeichnen ist abstrakt; der Aufruf über inherited ist nicht erlaubt (wie E2373).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| IA2 | Schnellkorrektur „Aufruf entfernen“, danach Strg+Z | Die Zeile verschwindet, keine Meldung mehr; ein Undo-Schritt |
+| IA3 | `Result := inherited Berechnen(X) + 1;` mit abstraktem `Berechnen` aus einer anderen Unit | Meldung ohne Korrektur |
+| IA4 | Bloßes `inherited;`, Zwischenklasse überschreibt die Methode, passende Überladung ist konkret, Vorfahr unbekannt | Keine Meldung |
+| IA5 | `"inherited-abstract-call": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| IA6 | Abgleich mit Delphi: IA1 und IA3 übersetzen | dcc meldet E2373 an denselben Stellen, für IA4 nichts |
