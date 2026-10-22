@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 38 |
+| [Fehler finden](#gruppe-find-bugs) | 39 |
 | [Exceptions](#gruppe-exceptions) | 5 |
 | [Threads](#gruppe-threads) | 7 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -62,6 +62,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`destroy-called-directly`](#destroy-called-directly) | Destroy statt Free aufgerufen | Bug | Warnung |
 | [`managed-type-raw-memory`](#managed-type-raw-memory) | FillChar, Move oder GetMem auf verwaltete Typen | Bug | Fehler |
 | [`pchar-of-temporary`](#pchar-of-temporary) | PChar auf einen temporären String | Bug | Warnung |
+| [`out-param-read`](#out-param-read) | out-Parameter gelesen, bevor er gesetzt ist | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -2801,4 +2802,29 @@ Richtig:
 var ZielText: string := Pfad + '.bak';
 Ziel := PChar(ZielText);
 CopyFile(PChar(Pfad), Ziel, False);
+```
+
+<a id="out-param-read"></a>
+### out-param-read
+
+**out-Parameter gelesen, bevor er gesetzt ist** · Bug · Warnung · Gruppe Fehler finden
+
+Ein out-Parameter wird auf einem Weg durch den Kontrollfluss gelesen, bevor die Routine ihn setzt. Bei verwalteten Typen (string, Interfaces, dynamische Arrays, Variant) hat der Aufrufer ihn schon geleert, der alte Wert ist weg; bei anderen Typen ist der Wert undefiniert. Gemeint war meist var. Verwendungen, denen der Kontrollflussgraph nicht folgen kann (Übergabe an eine Routine, Setzen eines Felds, @Param), bleiben still. Konfidenz hoch. Schnellkorrektur: aus out wird var in Implementierung und Deklaration.
+
+Mit Treffer:
+
+```pascal
+procedure Anhaengen(out Text: string);
+begin
+  Text := Text + sLineBreak + 'Ende';
+end;
+```
+
+Richtig:
+
+```pascal
+procedure Anhaengen(var Text: string);
+begin
+  Text := Text + sLineBreak + 'Ende';
+end;
 ```

@@ -1337,6 +1337,16 @@ begin
     '      "description": "PChar (PWideChar, PAnsiChar) of a temporary string, such as a concatenation with a string (S + ''.bak'') or a function result (IntToStr(N)), is stored in a variable, a field or Res' + 'ult, or passed to PostMessage, PostThreadMessage, SendNotifyMessage or SendMessageCallback (also behind LPARAM(…)). The temporary string is released after the statement, so the pointer points to freed' + ' memory. Passing it to an ordinary call such as CopyFile is fine. High confidence. Quick fix for local variables: keep the intermediate result in an inline string variable.",' + #10 +
     '      "bad": "Ziel := PChar(Pfad + ''.bak'');\nCopyFile(PChar(Pfad), Ziel, False);",' + #10 +
     '      "good": "var ZielText: string := Pfad + ''.bak'';\nZiel := PChar(ZielText);\nCopyFile(PChar(Pfad), Ziel, False);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "out-param-read",' + #10 +
+    '      "name": "out parameter read before it is set",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "An out parameter is read before the routine sets it on some path through the control flow. For managed types (string, interfaces, dynamic arrays, Variant) the caller has already ' + 'cleared it, so the old value is gone; for other types the value is undefined. Usually var was meant. Uses the control flow graph cannot follow (passing the parameter to a routine, setting a field of i' + 't, @Param) stay silent. High confidence. Quick fix: out becomes var in the implementation and in the declaration.",' + #10 +
+    '      "bad": "procedure Anhaengen(out Text: string);\nbegin\n  Text := Text + sLineBreak + ''Ende'';\nend;",' + #10 +
+    '      "good": "procedure Anhaengen(var Text: string);\nbegin\n  Text := Text + sLineBreak + ''Ende'';\nend;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2037,6 +2047,11 @@ begin
     '      "id": "pchar-of-temporary",' + #10 +
     '      "name": "PChar auf einen temporären String",' + #10 +
     '      "description": "PChar (PWideChar, PAnsiChar) eines temporären Strings, etwa einer Verkettung mit einem String (S + ''.bak'') oder eines Funktionsergebnisses (IntToStr(N)), wird in einer Variablen,' + ' einem Feld oder Result gemerkt oder an PostMessage, PostThreadMessage, SendNotifyMessage oder SendMessageCallback übergeben (auch hinter LPARAM(…)). Der temporäre String wird nach der Anweisung freig' + 'egeben, der Zeiger zeigt dann ins Leere. Die Übergabe an einen gewöhnlichen Aufruf wie CopyFile ist in Ordnung. Konfidenz hoch. Schnellkorrektur für lokale Variablen: das Zwischenergebnis in eine Inli' + 'ne-String-Variable legen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "out-param-read",' + #10 +
+    '      "name": "out-Parameter gelesen, bevor er gesetzt ist",' + #10 +
+    '      "description": "Ein out-Parameter wird auf einem Weg durch den Kontrollfluss gelesen, bevor die Routine ihn setzt. Bei verwalteten Typen (string, Interfaces, dynamische Arrays, Variant) hat der ' + 'Aufrufer ihn schon geleert, der alte Wert ist weg; bei anderen Typen ist der Wert undefiniert. Gemeint war meist var. Verwendungen, denen der Kontrollflussgraph nicht folgen kann (Übergabe an eine Rou' + 'tine, Setzen eines Felds, @Param), bleiben still. Konfidenz hoch. Schnellkorrektur: aus out wird var in Implementierung und Deklaration."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
