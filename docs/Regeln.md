@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 31 |
+| [Stil und Metriken](#gruppe-style) | 32 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -260,6 +260,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`default-parameter`](#default-parameter) | Standardparameter statt Überladung | Code Smell | Warnung |
 | [`empty-routine`](#empty-routine) | Leere Methode | Code Smell | Hinweis |
 | [`write-only-property`](#write-only-property) | Property ohne read | Code Smell | Hinweis |
+| [`xmldoc-mismatch`](#xmldoc-mismatch) | XMLDoc passt nicht zur Signatur | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -3573,6 +3574,37 @@ Richtig:
 
 ```pascal
 property Passwort: string read FPasswort write SetPasswort;
+```
+
+<a id="xmldoc-mismatch"></a>
+### xmldoc-mismatch
+
+**XMLDoc passt nicht zur Signatur** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Ein ///-Kommentar passt nicht zu seiner Deklaration oder ist kein wohlgeformtes XML, wie die Compilerwarnungen W1201 bis W1208 mit eingeschalteter XML-Dokumentation. Gemeldet werden: <param> zu einem Parameter, den es nicht gibt; fehlende <param>, wenn der Block überhaupt Parameter beschreibt (wie W1208, „but other parameters do“); mit checkReturns <returns> an einer Routine ohne Ergebnis und fehlendes <returns> an einer Funktion, deren Block Parameter beschreibt. <inheritdoc/> ergänzt, was fehlt. Außerdem '<' und '&' außerhalb von Tags und Entitäten, unbekannte Entitäten, Attributwerte ohne Anführungszeichen, nicht geschlossene und überzählige Endtags sowie cref-Ziele, die es nicht gibt (W1206, nur mit Index und wenn jede Unit aus uses bekannt ist; generische Ziele, Unit-Namen und Typen mit unbekannten Vorfahren bleiben still). Mit requirePublic zusätzlich public- und published-Methoden und -Properties von Typen im interface ohne ///-Kommentar (nicht override, nicht Properties ohne Typ). Schnellkorrekturen: unbekannte <param> der Reihe nach auf die fehlenden umbenennen, die übrigen als leere Zeilen in Signaturreihenfolge ergänzen, überzählige <param> und <returns> an Prozeduren entfernen; Zeichen maskieren, Anführungszeichen setzen, Endtag ergänzen oder entfernen, ein fremdes leeres Tag wie TList<T> als Text schreiben; cref auf das ähnlichste Symbol setzen; Kommentargerüst erzeugen.
+
+Entspricht der Compilermeldung `W1201`, `W1202`, `W1203`, `W1204`, `W1205`, `W1206`, `W1207`, `W1208`.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `requirePublic` | boolean | `false` | Öffentliche Member ohne XMLDoc melden. |
+| `checkReturns` | boolean | `true` | <returns> prüfen. |
+
+Mit Treffer:
+
+```pascal
+/// <summary>Sucht einen Kunden.</summary>
+/// <param name="Nummer">Kundennummer</param>
+function Suchen(const Id: Integer; Aktive: Boolean): TKunde;
+```
+
+Richtig:
+
+```pascal
+/// <summary>Sucht einen Kunden.</summary>
+/// <param name="Id">Kundennummer</param>
+/// <param name="Aktive"></param>
+function Suchen(const Id: Integer; Aktive: Boolean): TKunde;
 ```
 
 <a id="queue-nil-in-package"></a>

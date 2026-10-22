@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1779] of string = (
+  Lines: array[0..1789] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -448,6 +448,16 @@ const
     '                },',
     '                "default": [],',
     '                "description": "Nur write-only-property: Attribute, die eine Property ohne read erlauben, mit oder ohne Endung Attribute (#978)."',
+    '              },',
+    '              "requirePublic": {',
+    '                "type": "boolean",',
+    '                "default": false,',
+    '                "description": "Nur xmldoc-mismatch: öffentliche Methoden und Properties von Typen im interface ohne XMLDoc melden (#979)."',
+    '              },',
+    '              "checkReturns": {',
+    '                "type": "boolean",',
+    '                "default": true,',
+    '                "description": "Nur xmldoc-mismatch: <returns> an Routinen ohne Ergebnis und fehlendes <returns> prüfen (#979)."',
     '              },',
     '              "allowTables": {',
     '                "type": "array",',

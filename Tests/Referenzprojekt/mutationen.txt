@@ -107,3 +107,4 @@ managed-param-without-const | Ref.Daten.Suche.pas | \nimplementation | \nimpleme
 default-parameter | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nfunction Kopf(const AText: string; ABreite: Integer = 40): string;\nbegin\n  Result := Copy(AText, 1, ABreite);\nend;
 empty-routine | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nprocedure Vorbereiten;\nbegin\nend;
 write-only-property | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\ntype\n  TZugang = class\n  private\n    procedure SetPin(const AWert: string);\n  public\n    property Pin: string write SetPin;\n  end;\n\nprocedure TZugang.SetPin(const AWert: string);\nbegin\n  Writeln(AWert);\nend;
+xmldoc-mismatch | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\n/// <summary>Sucht einen Kunden.</summary>\n/// <param name="Nummer">Kundennummer</param>\nfunction SucheKunde(const Id: Integer): Integer;\nbegin\n  Result := Id;\nend;

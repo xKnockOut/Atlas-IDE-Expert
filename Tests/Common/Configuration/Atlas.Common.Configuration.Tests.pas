@@ -989,6 +989,12 @@ begin
   Parse('{"rules": {"managed-param-without-const": {"ignoreOverrides": "nein"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.Contains(Issues[0].Message, '"ignoreOverrides"');
+  // requirePublic und checkReturns von xmldoc-mismatch (#979).
+  Parse('{"rules": {"xmldoc-mismatch": {"requirePublic": true, "checkReturns": false}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"xmldoc-mismatch": {"checkReturns": "nein"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"checkReturns"');
 end;
 
 procedure TConfigurationParserTests.ChecksTodoKeywordsOption;

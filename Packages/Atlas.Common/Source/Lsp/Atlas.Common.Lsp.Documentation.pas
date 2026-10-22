@@ -66,10 +66,6 @@ type
     /// liest deren Dateien.</summary>
     class function Load(AResolver: TNameResolver; const ASymbol: TResolvedSymbol; const ALines: TArray<string>;
       ALine: Integer; const AReadText: TDocReadText): TXmlDoc; static;
-    /// <summary>Ziel eines cref von AFromUnit aus: Typ, Typ.Mitglied, Mitglied von AContainer oder globaler
-    /// Name. Parameterlisten wie in "M:TFoo.Bar(System.Int32)" zählen nicht.</summary>
-    class function Locate(AResolver: TNameResolver; const AFromUnit: TUnitIndex; const AContainer, ACref: string;
-      out AResult: TResolvedSymbol): Boolean; static;
     /// <summary>Fundorte aller cref in ADoc (Verweise und Exceptions), von AFromUnit bzw. AContainer aus
     /// aufgelöst; nicht auflösbare fehlen.</summary>
     class function Targets(AResolver: TNameResolver; const AFromUnit: TUnitIndex; const AContainer: string;
@@ -186,7 +182,7 @@ begin
     if ADoc.InheritCref <> '' then
     begin
       if FResolver.DeclaringUnit(ASymbol, FromUnit) and
-        TLspDocumentation.Locate(FResolver, FromUnit, ASymbol.Container, ADoc.InheritCref, Target) then
+        FResolver.LocateCref(FromUnit, ASymbol.Container, ADoc.InheritCref, Target) then
         Base := DocOf(Target, ADepth + 1);
     end
     else
@@ -239,43 +235,6 @@ begin
   end;
 end;
 
-class function TLspDocumentation.Locate(AResolver: TNameResolver; const AFromUnit: TUnitIndex;
-  const AContainer, ACref: string; out AResult: TResolvedSymbol): Boolean;
-var
-  Name, TypePart, Member: string;
-  Dot: Integer;
-  Owner: TResolvedSymbol;
-begin
-  Result := False;
-  if AResolver = nil then
-    Exit;
-  Name := Trim(ACref);
-  // Parameterliste weg: "TFoo.Bar(System.Int32)" → "TFoo.Bar".
-  if Pos('(', Name) > 0 then
-    Name := Trim(Copy(Name, 1, Pos('(', Name) - 1));
-  if Name = '' then
-    Exit;
-  // Typ (auch qualifiziert, z. B. System.Classes.TList).
-  if AResolver.ResolveTypeFrom(AFromUnit, Name, AResult) and not AResult.Builtin and AResult.IsType then
-    Exit(True);
-  // Typ.Mitglied
-  Dot := LastDelimiter('.', Name);
-  if Dot > 0 then
-  begin
-    TypePart := Copy(Name, 1, Dot - 1);
-    Member := Copy(Name, Dot + 1, MaxInt);
-    if AResolver.ResolveTypeFrom(AFromUnit, TypePart, Owner) and not Owner.Builtin and
-      AResolver.DeclaredMember(Owner, Member, AResult) then
-      Exit(True);
-  end;
-  // Mitglied der eigenen Klasse.
-  if (AContainer <> '') and (Dot = 0) and AResolver.ResolveTypeFrom(AFromUnit, AContainer, Owner) and
-    AResolver.DeclaredMember(Owner, Name, AResult) then
-    Exit(True);
-  // Globale Routine, Konstante, Variable.
-  Result := AResolver.ResolveNameFrom(AFromUnit, Name, AResult) and (AResult.FileName <> '');
-end;
-
 class function TLspDocumentation.Targets(AResolver: TNameResolver; const AFromUnit: TUnitIndex;
   const AContainer: string; const ADoc: TXmlDoc): TArray<TDocTarget>;
 var
@@ -291,7 +250,7 @@ var
     if (ACref = '') or Seen.ContainsKey(ACref) then
       Exit;
     Seen.Add(ACref, True);
-    if not Locate(AResolver, AFromUnit, AContainer, ACref, Symbol) then
+    if not AResolver.LocateCref(AFromUnit, AContainer, ACref, Symbol) then
       Exit;
     Target.Cref := ACref;
     Target.Name := Symbol.Name;

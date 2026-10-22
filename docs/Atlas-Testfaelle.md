@@ -4187,3 +4187,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | JW4 | `property Caption write SetCaption;` (ohne Typ), Property mit read | Keine Meldung |
 | JW5 | `[Geheim]` vor der Property, `"allowAttributes": ["Geheim"]` bzw. `["GeheimAttribute"]` | Keine Meldung; ohne Option Meldung |
 | JW6 | `"write-only-property": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
+
+## XMLDoc passt nicht zur Signatur (#979)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JX1 | Das Beispiel aus #979: `/// <param name="Nummer">` über `function Suchen(const Id: Integer; Aktive: Boolean): TKunde;` | Hinweis `xmldoc-mismatch` am `<param>`: „<param name="Nummer"> gibt es nicht; Id und Aktive sind nicht beschrieben.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JX2 | Schnellkorrektur „Doku an die Signatur anpassen“, danach Strg+Z | `<param name="Id">Kundennummer</param>` und darunter `<param name="Aktive"></param>`, keine Meldung mehr; ein Undo-Schritt |
+| JX3 | `/// <returns>…</returns>` über einer Prozedur; Korrektur | Meldung „<returns> steht an einer Routine ohne Ergebnis.“; die Korrektur entfernt die Zeile. Mit `"checkReturns": false` keine Meldung |
+| JX4 | `/// <summary>Liefert True, wenn A < B.</summary>`; Korrektur | „Doku-Kommentar ist kein wohlgeformtes XML: '<' muss &lt; heißen (wie W1201).“; danach `A &lt; B`. Ebenso `&` (→ `&amp;`), `TList<T>` (→ als Text), vergessenes `</summary>` (wird ergänzt) |
+| JX5 | `/// <seealso cref="TVergleicher.Vergleich"/>`, im Projekt gibt es `TVergleicher.Vergleiche`; Korrektur | „cref "TVergleicher.Vergleich" zeigt auf kein Symbol (wie W1206). Gemeint ist wohl TVergleicher.Vergleiche.“; Korrektur setzt den Namen. Unit in uses, die nicht im Index steht: keine Meldung |
+| JX6 | Mit Compiler-Option „XML-Dokumentation erzeugen“ im Referenzprojekt übersetzen und mit den Meldungen vergleichen | Jede W1201–W1208 des Compilers hat einen Befund an derselben Stelle; Befunde werden zusammengeführt wie in #1024 |
+| JX7 | `"requirePublic": true`; öffentliche Methode ohne `///`, override-Methode, `property Tag;` | Meldung „Öffentliches Mitglied … hat keinen Doku-Kommentar.“ nur an der ersten; Korrektur erzeugt das Gerüst wie nach `///`. Funktion mit Doku ohne `<returns>` meldet jetzt „<returns> fehlt.“ |
+| JX8 | `"xmldoc-mismatch": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
