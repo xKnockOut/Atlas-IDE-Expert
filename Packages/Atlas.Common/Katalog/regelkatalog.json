@@ -2293,6 +2293,19 @@
         "E2129",
         "E2130"
       ]
+    },
+    {
+      "id": "form-resource-missing",
+      "name": "Form unit without {$R *.dfm}",
+      "category": "bug",
+      "severity": "error",
+      "group": "forms",
+      "description": "A .dfm or .fmx lies next to the unit and the unit declares the class of its root object, but no {$R …} directive includes a form file: creating the form raises EResNotFound. Conversely, a {$R *.dfm} or {$R Name.dfm} whose file does not exist next to the unit is reported (the compiler stops with F1026). A directive in any branch of conditional compilation counts as included. Silent when the form file's class is not declared in the unit and when the rule cannot see files next to the unit. Quick fix: insert {$R *.dfm} (or {$R *.fmx}) after implementation.",
+      "bad": "implementation\n\nprocedure TfrmKunde.FormShow(Sender: TObject);",
+      "good": "implementation\n\n{$R *.dfm}\n\nprocedure TfrmKunde.FormShow(Sender: TObject);",
+      "compilerCodes": [
+        "F1026"
+      ]
     }
   ]
 }

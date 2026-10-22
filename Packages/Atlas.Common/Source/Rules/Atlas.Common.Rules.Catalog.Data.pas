@@ -2313,6 +2313,19 @@ begin
     '        "E2129",' + #10 +
     '        "E2130"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "form-resource-missing",' + #10 +
+    '      "name": "Form unit without {$R *.dfm}",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "forms",' + #10 +
+    '      "description": "A .dfm or .fmx lies next to the unit and the unit declares the class of its root object, but no {$R …} directive includes a form file: creating the form raises EResNotFound. Conv' + 'ersely, a {$R *.dfm} or {$R Name.dfm} whose file does not exist next to the unit is reported (the compiler stops with F1026). A directive in any branch of conditional compilation counts as included. S' + 'ilent when the form file''s class is not declared in the unit and when the rule cannot see files next to the unit. Quick fix: insert {$R *.dfm} (or {$R *.fmx}) after implementation.",' + #10 +
+    '      "bad": "implementation\n\nprocedure TfrmKunde.FormShow(Sender: TObject);",' + #10 +
+    '      "good": "implementation\n\n{$R *.dfm}\n\nprocedure TfrmKunde.FormShow(Sender: TObject);",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "F1026"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3483,6 +3496,11 @@ begin
     '      "id": "readonly-property-assigned",' + #10 +
     '      "name": "Zuweisung an eine Property ohne write",' + #10 +
     '      "description": "Zuweisung an eine Property ohne write (wie E2129) bzw. Lesen einer Property ohne read (wie E2130). Die Regel meldet nur, wenn die Namensauflösung die Property sicher findet; Neud' + 'eklarationen ohne read und write (property Caption;) gelten als unbekannt. Korrekturen: Count := 0 wird Clear, wenn der Typ Clear hat; in einer Methode der deklarierenden Klasse das Feld hinter read z' + 'uweisen; für eine Property dieser Datei den Setter anlegen und write ergänzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "form-resource-missing",' + #10 +
+    '      "name": "Formular-Unit ohne {$R *.dfm}",' + #10 +
+    '      "description": "Neben der Unit liegt eine .dfm bzw. .fmx, die Unit deklariert die Klasse ihres Wurzelobjekts, aber keine {$R …}-Direktive bindet eine Formulardatei ein: Beim Erzeugen des Formula' + 'rs folgt EResNotFound. Umgekehrt meldet die Regel ein {$R *.dfm} bzw. {$R Name.dfm}, dessen Datei neben der Unit fehlt (der Compiler bricht mit F1026 ab). Eine Direktive in einem beliebigen Zweig der ' + 'bedingten Übersetzung zählt als eingebunden. Still bleibt die Regel, wenn die Klasse der Formulardatei nicht in der Unit steht und wenn sie keine Dateien neben der Unit sieht. Korrektur: {$R *.dfm} (b' + 'zw. {$R *.fmx}) nach implementation einfügen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
