@@ -319,6 +319,10 @@ type
     /// auflösbar ist; ATypeFound sagt, ob der Typ bekannt ist (Aliase verfolgt).</summary>
     function NodeType(ATree: TSyntaxTree; const AFileName: string; ANode: TSyntaxNode;
       out ASymbol, AType: TResolvedSymbol; out ATypeFound: Boolean): Boolean;
+    /// <summary>Alle Deklarationen, die der Bezeichner bzw. die Kette ACallee aus ATree vor den Klammern eines
+    /// Aufrufs meinen kann, ohne Auswahl nach den Argumenten (#1007): Überladungen samt geerbter, Deklaration und
+    /// Rumpf mit gleichen Parametern einmal. Leer, wenn ACallee nicht auflösbar ist.</summary>
+    function CallCandidates(ATree: TSyntaxTree; const AFileName: string; ACallee: TSyntaxNode): TArray<TResolvedSymbol>;
     /// <summary>Liest die Property AProperty direkt aus einem Feld (read FFeld, read FFeld.X)? False, wenn das
     /// nicht sicher feststeht (kein read, Typ oder Mitglied unbekannt); sonst AReadsField (#1005).</summary>
     function PropertyReadsField(const AProperty: TResolvedSymbol; out AReadsField: Boolean): Boolean;
@@ -2797,6 +2801,16 @@ begin
   Result := ExprSymbol(ANode, ASymbol);
   if Result and (ASymbol.Kind <> TResolvedKind.UnitName) then
     ATypeFound := TypeOf(ASymbol, AType);
+end;
+
+function TNameResolver.CallCandidates(ATree: TSyntaxTree; const AFileName: string;
+  ACallee: TSyntaxNode): TArray<TResolvedSymbol>;
+begin
+  Result := nil;
+  if ACallee = nil then
+    Exit;
+  Prepare(ATree, AFileName, ACallee.StartOffset);
+  Result := ExprCandidates(ACallee);
 end;
 
 function TNameResolver.PropertyReadsField(const AProperty: TResolvedSymbol; out AReadsField: Boolean): Boolean;

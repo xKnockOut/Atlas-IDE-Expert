@@ -4119,3 +4119,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## Falsche Anzahl Argumente (#1007)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AK1 | Das Beispiel aus #1007: `procedure Versenden(const An, Betreff, Text: string);` und `Versenden(Kunde.Mail, 'Rechnung');` | Fehler `argument-count-mismatch` am Aufruf: „Versenden erwartet 3 Argumente, übergeben sind 2; Text fehlt (wie E2035).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| AK2 | Schnellkorrektur „Signaturhilfe öffnen“ (Glühbirne, Befund-Hover und Fenster „Atlas-Prüfung“) | Schreibmarke steht vor `)`, der Parameter-Hint von Atlas öffnet sich und hebt `Text` hervor |
+| AK3 | `Versenden;` als Anweisung, dann „Signaturhilfe öffnen“ | Meldung „… übergeben ist keins; An, Betreff und Text fehlen (wie E2035).“; die Korrektur setzt `()` und öffnet den Hint zwischen den Klammern; Strg+Z nimmt `()` zurück |
+| AK4 | `Kunde.Senden(1, 2, 3)` bei `procedure Senden(A: Integer; B: Integer = 0);` | „Senden erwartet höchstens 2 Argumente, übergeben sind 3 (wie E2034).“, Wellenlinie unter `3` |
+| AK5 | Überladene Routine (`overload`), `Format('x', [1], 2)`, `Writeln(1, 2, 3)`, `TKunde(X)`, Aufruf einer Variablen vom Typ `TProc`, Deklaration in `{$IFDEF}`/`{$ELSE}` mit verschiedenen Listen | Keine Meldung |
+| AK6 | `"argument-count-mismatch": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| AK7 | Abgleich mit Delphi: AK1, AK3, AK4 übersetzen | dcc meldet E2035 bzw. E2034 an denselben Stellen, für AK5 nichts |

@@ -53,9 +53,14 @@ type
     /// z. B. zur Freigabe bei use-after-free. Edits bleiben leer.</summary>
     HasJump: Boolean;
     JumpTo: TTextPosition;
+    /// <summary>Nach dem Sprung öffnet der Client den Parameter-Hint an JumpTo (#1007).</summary>
+    OpensSignature: Boolean;
     constructor Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean = False);
     /// <summary>Aktion, die nur zu ATarget springt (#915).</summary>
     class function Jump(const ATitle: string; const ATarget: TTextPosition): TRuleFix; static;
+    /// <summary>Aktion, die zu ATarget (in den Klammern eines Aufrufs) springt und dort den Parameter-Hint öffnet
+    /// (#1007).</summary>
+    class function SignatureHelp(const ATitle: string; const ATarget: TTextPosition): TRuleFix; static;
   end;
 
   /// <summary>Ein Treffer einer Regel. Severity setzt die Engine.</summary>
@@ -288,6 +293,12 @@ begin
   Result := TRuleFix.Create(ATitle, nil);
   Result.HasJump := True;
   Result.JumpTo := ATarget;
+end;
+
+class function TRuleFix.SignatureHelp(const ATitle: string; const ATarget: TTextPosition): TRuleFix;
+begin
+  Result := Jump(ATitle, ATarget);
+  Result.OpensSignature := True;
 end;
 
 end.
