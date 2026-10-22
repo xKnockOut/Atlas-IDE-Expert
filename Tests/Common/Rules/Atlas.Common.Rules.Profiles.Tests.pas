@@ -188,7 +188,7 @@ const
     'result-not-set,' +
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
     'security-tls-verification-disabled,security-weak-crypto,self-as-interface-in-constructor,self-assignment,setter-recursion,shadowed-name,sizeof-pointer,' +
-    'slash-command,string-index-base,stringlist-unsorted,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-loop-without-terminated,thread-resume-suspend,' +
+    'slash-command,string-index-base,stringlist-unsorted,synchronize-in-destructor,task-exception-unobserved,thread-free-with-free-on-terminate,thread-loop-without-terminated,thread-resume-suspend,' +
     'thread-use-after-free-on-terminate,thread-vcl-access,threadvar-managed,type-used-before-declaration,' +
     'unchecked-conversion,unchecked-enum-cast,unneeded-forward-declaration,unreachable-code,unresolved-identifier,' +
     'unused-assignment,unused-local,unused-parameter,use-after-free,virtual-instead-of-override,with-statement,' +
@@ -228,7 +228,7 @@ begin
     'foreign-form-control-access,format-without-settings,generic-exception-raised,implicit-package-import,' +
     'metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
     'metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,' +
-    'null-compare,processmessages-in-loop,redundant-assigned-free,reraise-exception-object,shadowed-name,slash-command,thread-resume-suspend,unneeded-forward-declaration,' +
+    'null-compare,processmessages-in-loop,redundant-assigned-free,reraise-exception-object,shadowed-name,slash-command,task-exception-unobserved,thread-resume-suspend,unneeded-forward-declaration,' +
     'unused-assignment,unused-local,' +
     'unused-parameter,with-statement',
     ActiveRules('style'));

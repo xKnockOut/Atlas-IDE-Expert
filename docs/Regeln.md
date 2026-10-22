@@ -8,7 +8,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|
 | [Fehler finden](#gruppe-find-bugs) | 56 |
 | [Exceptions](#gruppe-exceptions) | 8 |
-| [Threads](#gruppe-threads) | 12 |
+| [Threads](#gruppe-threads) | 13 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -112,6 +112,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`blocking-call-in-main-thread`](#blocking-call-in-main-thread) | Blockierender Aufruf im Hauptthread | Code Smell | Warnung |
 | [`thread-loop-without-terminated`](#thread-loop-without-terminated) | Thread-Schleife ohne Terminated | Bug | Warnung |
 | [`anonymous-thread-not-started`](#anonymous-thread-not-started) | Anonymer Thread nie gestartet | Bug | Warnung |
+| [`task-exception-unobserved`](#task-exception-unobserved) | Exception in TTask geht verloren | Code Smell | Hinweis |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -3954,4 +3955,43 @@ TThread.CreateAnonymousThread(
   begin
     Synchronisieren;
   end).Start;
+```
+
+<a id="task-exception-unobserved"></a>
+### task-exception-unobserved
+
+**Exception in TTask geht verloren** · Code Smell · Hinweis · Gruppe Threads
+
+TTask.Run(…) bzw. TTask.Create(…).Start, dessen Ergebnis nicht gespeichert und nie mit Wait, Status o. ä. abgefragt wird und dessen anonyme Methode kein try … except hat. Eine Exception im Task verschwindet still. Auch gemeldet für eine lokale Variable, die nie wieder vorkommt (bei TTask.Create nur in V.Start). Still bei gespeicherten Ergebnissen (Felder, Result, jede andere Verwendung der Variablen) und bei Methodenzeigern, deren Rumpf die Regel nicht sieht. Konfidenz mittel. Korrektur: den Rumpf in try … except einschließen und die Meldung über TThread.Queue mit ShowMessage im Hauptthread zeigen (ergänzt Vcl.Dialogs, in FireMonkey-Units FMX.Dialogs, und System.SysUtils im uses, wenn sie fehlen); nur, wenn begin und end der anonymen Methode auf eigenen Zeilen stehen.
+
+Mit Treffer:
+
+```pascal
+TTask.Run(
+  procedure
+  begin
+    Importieren(Datei);
+  end);
+```
+
+Richtig:
+
+```pascal
+TTask.Run(
+  procedure
+  begin
+    try
+      Importieren(Datei);
+    except
+      on E: Exception do
+      begin
+        var Fehler := E.Message;
+        TThread.Queue(nil,
+          procedure
+          begin
+            ShowMessage(Fehler);
+          end);
+      end;
+    end;
+  end);
 ```

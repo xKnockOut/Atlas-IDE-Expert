@@ -29,6 +29,8 @@
 //                                       die nur von dort kommen (#960); nur Endlos- und Warteschleifen.
 //   anonymous-thread-not-started        TThread.CreateAnonymousThread(…) ohne Start, als Anweisung oder in
 //                                       einer lokalen Variablen, die weder gestartet noch weitergegeben wird (#961).
+//   task-exception-unobserved           TTask.Run(…) bzw. TTask.Create(…).Start, das nie abgefragt wird und
+//                                       dessen anonymer Rumpf kein try … except hat (#962).
 //
 // Ein Thread mit Free ohne Terminate und WaitFor wird nicht gemeldet:
 // TThread.Destroy ruft beides selbst auf.
@@ -136,6 +138,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TTaskExceptionUnobservedRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
   TQueueNilInPackageRule = class(TInterfacedObject, IRule)
   public const
     DefaultWrapper = 'TAtlasMainThread.Queue';
@@ -162,6 +170,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Editing.UsesClause,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Derived,
@@ -1955,6 +1965,24 @@ begin
         Visit(Routine);
 end;
 
+/// <summary>Deklariert die Routine AName als lokale Variable (var-Abschnitt oder Inline-Variable)?</summary>
+function DeclaresLocalVariable(ARoutine: TSyntaxNode; const AName: string): Boolean;
+var
+  Index: Integer;
+  Name: string;
+begin
+  for Index := 0 to ARoutine.ChildCount - 1 do
+  begin
+    if ARoutine[Index].Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar] then
+      for Name in SplitString(ARoutine[Index].Name, ',') do
+        if SameText(Trim(Name), AName) then
+          Exit(True);
+    if (ARoutine[Index].Kind <> TSyntaxKind.RoutineDecl) and DeclaresLocalVariable(ARoutine[Index], AName) then
+      Exit(True);
+  end;
+  Result := False;
+end;
+
 { TAnonymousThreadNotStartedRule }
 
 const
@@ -2028,24 +2056,6 @@ var
       TTextLines.IndentOf(Lines[AAssign.StartPos.Line]) + AName + '.Start;' + LineBreak)])];
   end;
 
-  // Lokale Variable der Routine (var-Abschnitt oder Inline-Variable)?
-  function DeclaresLocal(ANode: TSyntaxNode; const AName: string): Boolean;
-  var
-    Index: Integer;
-    Name: string;
-  begin
-    for Index := 0 to ANode.ChildCount - 1 do
-    begin
-      if ANode[Index].Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar] then
-        for Name in SplitString(ANode[Index].Name, ',') do
-          if SameText(Trim(Name), AName) then
-            Exit(True);
-      if (ANode[Index].Kind <> TSyntaxKind.RoutineDecl) and DeclaresLocal(ANode[Index], AName) then
-        Exit(True);
-    end;
-    Result := False;
-  end;
-
   procedure Visit(ANode, ARoutine: TSyntaxNode);
   var
     Index: Integer;
@@ -2066,7 +2076,7 @@ var
     Target := nil;
     Name := '';
     if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and (ARoutine <> nil) and
-      (ANode[0].Kind = TSyntaxKind.Identifier) and IsCreation(ANode[1]) and DeclaresLocal(ARoutine, ANode[0].Name) then
+      (ANode[0].Kind = TSyntaxKind.Identifier) and IsCreation(ANode[1]) and DeclaresLocalVariable(ARoutine, ANode[0].Name) then
     begin
       Creation := ANode[1];
       Target := ANode[0];
@@ -2098,6 +2108,215 @@ begin
   Visit(AContext.Tree.Root, nil);
 end;
 
+{ TTaskExceptionUnobservedRule }
+
+function TTaskExceptionUnobservedRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('task-exception-unobserved', TRuleSeverity.Hint,
+    'Exception in TTask geht verloren');
+end;
+
+procedure TTaskExceptionUnobservedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Lines: TArray<string>;
+  LineBreak: string;
+
+  function IsTaskCall(ANode: TSyntaxNode; const AMethod: string): Boolean;
+  begin
+    Result := (ANode <> nil) and (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 1) and
+      (ANode[0].Kind = TSyntaxKind.MemberAccess) and SameText(ANode[0].Name, AMethod) and (ANode[0].ChildCount > 0) and
+      SameText(MethodPart(SourceText(AContext.Text, ANode[0][0])), 'TTask');
+  end;
+
+  // TTask.Create(…).Start bzw. .Start(): der Create-Aufruf, sonst nil.
+  function StartedCreate(ANode: TSyntaxNode): TSyntaxNode;
+  begin
+    Result := nil;
+    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 1) then
+      ANode := ANode[0];
+    if (ANode.Kind = TSyntaxKind.MemberAccess) and SameText(ANode.Name, 'Start') and (ANode.ChildCount > 0) and
+      IsTaskCall(ANode[0], 'Create') then
+      Result := ANode[0];
+  end;
+
+  function Catches(ANode: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.TryStatement) and (ANode.FindChild(TSyntaxKind.ExceptBlock) <> nil) then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if Catches(ANode[Index]) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Erster Aufruf im Rumpf für die Meldung.
+  function FirstCall(ANode: TSyntaxNode): string;
+  var
+    Index: Integer;
+    Call: TMethodCall;
+  begin
+    if TryMethodCall(ANode, Call) then
+      Exit(Call.Method);
+    for Index := 0 to ANode.ChildCount - 1 do
+    begin
+      Result := FirstCall(ANode[Index]);
+      if Result <> '' then
+        Exit;
+    end;
+    Result := '';
+  end;
+
+  // Steht das Wort an APosition am Zeilenanfang und folgen höchstens Klammern, Komma und Semikolon?
+  function OnOwnLine(const APosition: TTextPosition; ALength: Integer): Boolean;
+  var
+    Rest: string;
+    Character: Char;
+  begin
+    Result := Trim(Copy(Lines[APosition.Line], 1, APosition.Character)) = '';
+    Rest := Copy(Lines[APosition.Line], APosition.Character + ALength + 1, MaxInt);
+    for Character in Rest do
+      if not CharInSet(Character, [' ', #9, ')', ',', ';']) then
+        Result := False;
+  end;
+
+  // Korrektur: Rumpf in try … except, Meldung über TThread.Queue im Hauptthread.
+  function WrapFix(ABody: TSyntaxNode): TArray<TRuleFix>;
+  var
+    Edits: TArray<TRuleEdit>;
+    Indent, Step, Dialogs, Text: string;
+    Line: Integer;
+    Used: TArray<string>;
+    UsesEdit: TRuleEdit;
+    UsedUnit: string;
+  begin
+    Result := nil;
+    if (ABody.EndPos.Line - ABody.StartPos.Line < 2) or not OnOwnLine(ABody.StartPos, Length('begin')) or
+      not OnOwnLine(TTextPosition.Create(ABody.EndPos.Line, ABody.EndPos.Character - Length('end')),
+      Length('end')) then
+      Exit;
+    Indent := TTextLines.IndentOf(Lines[ABody.StartPos.Line]);
+    Step := TRoutineBody.IndentUnit(AContext.Formatting);
+    // Ein Edit für alle Zeilen zwischen begin und end: try, eingerückter Rumpf, except-Teil.
+    Text := Indent + Step + 'try' + LineBreak;
+    for Line := ABody.StartPos.Line + 1 to ABody.EndPos.Line - 1 do
+      if Trim(Lines[Line]) = '' then
+        Text := Text + Lines[Line] + LineBreak
+      else
+        Text := Text + Step + Lines[Line] + LineBreak;
+    Edits := [TRuleEdit.Create(TTextRange.Create(ABody.StartPos.Line + 1, 0, ABody.EndPos.Line, 0), Text +
+      Indent + Step + 'except' + LineBreak +
+      Indent + Step + Step + 'on E: Exception do' + LineBreak +
+      Indent + Step + Step + 'begin' + LineBreak +
+      Indent + Step + Step + Step + 'var Fehler := E.Message;' + LineBreak +
+      Indent + Step + Step + Step + 'TThread.Queue(nil,' + LineBreak + // mainthread-ok
+      Indent + Step + Step + Step + Step + 'procedure' + LineBreak +
+      Indent + Step + Step + Step + Step + 'begin' + LineBreak +
+      Indent + Step + Step + Step + Step + Step + 'ShowMessage(Fehler);' + LineBreak +
+      Indent + Step + Step + Step + Step + 'end);' + LineBreak +
+      Indent + Step + Step + 'end;' + LineBreak +
+      Indent + Step + 'end;' + LineBreak)];
+    // ShowMessage aus Vcl.Dialogs bzw. FMX.Dialogs, Exception aus System.SysUtils.
+    Used := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
+    Dialogs := 'Vcl.Dialogs';
+    for UsedUnit in Used do
+      if StartsText('FMX.', UsedUnit) then
+        Dialogs := 'FMX.Dialogs';
+    if not TUsesClauses.IsUsed(Used, Dialogs, AContext.Namespaces) and
+      TUsesClauses.AddUnit(AContext.Tree.Tokens, ABody.StartOffset, Dialogs, LineBreak, UsesEdit) then
+      Edits := [UsesEdit] + Edits;
+    if not TUsesClauses.IsUsed(Used, 'System.SysUtils', AContext.Namespaces) and
+      TUsesClauses.AddUnit(AContext.Tree.Tokens, ABody.StartOffset, 'System.SysUtils', LineBreak, UsesEdit) then
+      Edits := [UsesEdit] + Edits;
+    Result := [TRuleFix.Create('Rumpf in try … except mit Meldung über TThread.Queue einschließen', Edits)];
+  end;
+
+  procedure Report(ACall: TSyntaxNode);
+  var
+    Method, Body: TSyntaxNode;
+    Name: string;
+  begin
+    Method := ACall[1];
+    if Method.Kind <> TSyntaxKind.AnonymousMethod then
+      Exit;
+    Body := Method.FindChild(TSyntaxKind.Block);
+    if (Body = nil) or Catches(Body) then
+      Exit;
+    Name := FirstCall(Body);
+    if Name = '' then
+      Name := 'im Task'
+    else
+      Name := 'in ' + Name;
+    AReport.Add(NameRange(ACall[0]), Format('Der Task wird nie abgefragt und fängt keine Exceptions; Fehler %s ' +
+      'gehen verloren.', [Name]), TRuleConfidence.Medium, WrapFix(Body));
+  end;
+
+  // Wie oft erwähnt die Routine die Variable außer an ATarget: als V.Start und sonst?
+  procedure CountUses(ANode, AParent, ATarget: TSyntaxNode; const AName: string; var AStarts, AOthers: Integer);
+  var
+    Index: Integer;
+  begin
+    if (ANode <> ATarget) and (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, AName) then
+    begin
+      if (AParent <> nil) and (AParent.Kind = TSyntaxKind.MemberAccess) and SameText(AParent.Name, 'Start') then
+        Inc(AStarts)
+      else
+        Inc(AOthers);
+      Exit;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      CountUses(ANode[Index], ANode, ATarget, AName, AStarts, AOthers);
+  end;
+
+  // Run ohne jede weitere Erwähnung; Create nur mit V.Start.
+  procedure CheckVariable(ARoutine, ATarget, AValue: TSyntaxNode; const AName: string);
+  var
+    Starts, Others: Integer;
+  begin
+    Starts := 0;
+    Others := 0;
+    CountUses(ARoutine, nil, ATarget, AName, Starts, Others);
+    if Others > 0 then
+      Exit;
+    if (IsTaskCall(AValue, 'Run') and (Starts = 0)) or (IsTaskCall(AValue, 'Create') and (Starts > 0)) then
+      Report(AValue);
+  end;
+
+  procedure Visit(ANode, ARoutine: TSyntaxNode);
+  var
+    Index: Integer;
+    Created: TSyntaxNode;
+  begin
+    if ANode.Kind = TSyntaxKind.RoutineDecl then
+      ARoutine := ANode;
+    if (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount > 0) then
+    begin
+      Created := StartedCreate(ANode[0]);
+      if IsTaskCall(ANode[0], 'Run') then
+        Report(ANode[0])
+      else if Created <> nil then
+        Report(Created);
+    end
+    // Lokale Variable, die nie wieder vorkommt (bei Create nur in V.Start).
+    else if (ARoutine <> nil) and (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
+      (ANode[0].Kind = TSyntaxKind.Identifier) and not SameText(ANode[0].Name, 'Result') and
+      (Pos('.', ANode[0].Name) = 0) and DeclaresLocalVariable(ARoutine, ANode[0].Name) then
+      CheckVariable(ARoutine, ANode[0], ANode[1], ANode[0].Name)
+    else if (ARoutine <> nil) and (ANode.Kind = TSyntaxKind.InlineVar) and (ANode.ChildCount > 0) and
+      (Pos(',', ANode.Name) = 0) then
+      CheckVariable(ARoutine, nil, ANode[ANode.ChildCount - 1], ANode.Name);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index], ARoutine);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'TTask') then
+    Exit;
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  Visit(AContext.Tree.Root, nil);
+end;
+
 procedure RegisterConcurrencyRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TThreadVclAccessRule.Create);
@@ -2112,6 +2331,7 @@ begin
   ARegistry.Register(TBlockingCallInMainThreadRule.Create);
   ARegistry.Register(TThreadLoopWithoutTerminatedRule.Create);
   ARegistry.Register(TAnonymousThreadNotStartedRule.Create);
+  ARegistry.Register(TTaskExceptionUnobservedRule.Create);
 end;
 
 end.

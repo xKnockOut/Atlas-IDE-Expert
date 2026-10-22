@@ -101,6 +101,14 @@ type
     procedure AnonymousThreadSilentCases;
     [Test]
     procedure AnonymousThreadOffAndExclude;
+    [Test]
+    procedure TaskExceptionIssueExample;
+    [Test]
+    procedure TaskExceptionVariants;
+    [Test]
+    procedure TaskExceptionSilentCases;
+    [Test]
+    procedure TaskExceptionOffAndExclude;
   end;
 
 implementation
@@ -883,6 +891,79 @@ begin
     '{"rules": {"anonymous-thread-not-started": "off"}}', 'U.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TAnonymousThreadNotStartedRule.Create, Source,
     '{"rules": {"anonymous-thread-not-started": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+end;
+
+function TaskUnit(const ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils, System.Threading;'#10 +
+    'procedure TA.Run;'#10'var'#10'  A: ITask;'#10'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+procedure TConcurrencyRulesTests.TaskExceptionIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+  Tree: TSyntaxTree;
+begin
+  Source := TaskUnit('  TTask.Run('#10'    procedure'#10'    begin'#10'      Importieren(Datei);'#10'    end);'#10);
+  Findings := TRuleAssert.Findings(TTaskExceptionUnobservedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('task-exception-unobserved', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Der Task wird nie abgefragt und fängt keine Exceptions; Fehler in Importieren gehen verloren.',
+    Findings[0].Message);
+  Assert.AreEqual(9, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(8, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('Rumpf in try … except mit Meldung über TThread.Queue einschließen', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(StringReplace(TaskUnit('  TTask.Run('#10'    procedure'#10'    begin'#10'      try'#10 +
+    '        Importieren(Datei);'#10'      except'#10'        on E: Exception do'#10'        begin'#10 +
+    '          var Fehler := E.Message;'#10'          TThread.Queue(nil,'#10'            procedure'#10 +
+    '            begin'#10'              ShowMessage(Fehler);'#10'            end);'#10'        end;'#10 +
+    '      end;'#10'    end);'#10), 'System.Threading;', 'System.Threading,'#10'  Vcl.Dialogs;', []), Fixed);
+  Tree := TPascalParser.Parse(Fixed);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+  TRuleAssert.Silent(TTaskExceptionUnobservedRule.Create, Fixed);
+end;
+
+procedure TConcurrencyRulesTests.TaskExceptionVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // TTask.Create(…).Start, Variable ohne Abfrage, Create in Variable mit Start, Rumpf in einer Zeile (ohne Korrektur).
+  Findings := TRuleAssert.Findings(TTaskExceptionUnobservedRule.Create, TaskUnit(
+    '  TTask.Create(procedure begin Laden; end).Start;'#10'  A := TTask.Run(procedure begin Laden; end);'#10 +
+    '  var B := TTask.Create(procedure begin end);'#10'  B.Start;'#10) );
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Der Task wird nie abgefragt und fängt keine Exceptions; Fehler im Task gehen verloren.',
+    Findings[2].Message);
+end;
+
+procedure TConcurrencyRulesTests.TaskExceptionSilentCases;
+begin
+  // try … except im Rumpf, abgefragtes Ergebnis, Variable weitergegeben, Methodenzeiger, nie gestartetes Create.
+  TRuleAssert.Silent(TTaskExceptionUnobservedRule.Create, TaskUnit(
+    '  TTask.Run(procedure begin try Laden; except on E: Exception do Melden(E.Message); end; end);'#10 +
+    '  TTask.Run(procedure begin Laden; end).Wait;'#10'  A := TTask.Run(procedure begin Laden; end);'#10 +
+    '  A.Wait;'#10'  FAufgabe := TTask.Run(procedure begin Laden; end);'#10'  TTask.Run(Laden);'#10 +
+    '  var C := TTask.Create(procedure begin Laden; end);'#10'  Result := TTask.Run(procedure begin end);'#10));
+end;
+
+procedure TConcurrencyRulesTests.TaskExceptionOffAndExclude;
+var
+  Source: string;
+begin
+  Source := TaskUnit('  TTask.Run(procedure begin Laden; end);'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTaskExceptionUnobservedRule.Create, Source,
+    '{"rules": {"task-exception-unobserved": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTaskExceptionUnobservedRule.Create, Source,
+    '{"rules": {"task-exception-unobserved": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
 initialization

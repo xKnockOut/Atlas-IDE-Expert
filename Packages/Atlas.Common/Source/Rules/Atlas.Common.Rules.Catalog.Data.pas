@@ -1985,6 +1985,16 @@ begin
     '      "description": "TThread.CreateAnonymousThread(…) creates the thread suspended with FreeOnTerminate set. Without Start the thread never runs, and because it never terminates it is never freed eit' + 'her. Reported for the call as a statement of its own and for a local variable (also an inline variable) that is never started with Start or Resume and not passed on (argument, assignment, Result, fiel' + 'd). Setting properties such as FreeOnTerminate or OnTerminate does not count as passing on. High confidence. Quick fix: append .Start; for a variable, T.Start; after the last statement of the same blo' + 'ck that mentions it.",' + #10 +
     '      "bad": "TThread.CreateAnonymousThread(\n  procedure\n  begin\n    Synchronisieren;\n  end);",' + #10 +
     '      "good": "TThread.CreateAnonymousThread(\n  procedure\n  begin\n    Synchronisieren;\n  end).Start;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "task-exception-unobserved",' + #10 +
+    '      "name": "Exception in TTask gets lost",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "threads",' + #10 +
+    '      "description": "TTask.Run(…) or TTask.Create(…).Start whose result is never kept or queried with Wait, Status or similar, and whose anonymous method has no try … except. An exception in the task' + ' disappears silently. Also reported for a local variable that is never mentioned again (for TTask.Create only in V.Start). Silent for kept results (fields, Result, any other use of the variable) and f' + 'or method references, whose body the rule cannot see. Medium confidence. Quick fix: wrap the body in try … except and report the message on the main thread through TThread.Queue with ShowMessage (adds' + ' Vcl.Dialogs, or FMX.Dialogs in FireMonkey units, and System.SysUtils to the uses clause when missing); only when begin and end of the anonymous method stand on their own lines.",' + #10 +
+    '      "bad": "TTask.Run(\n  procedure\n  begin\n    Importieren(Datei);\n  end);",' + #10 +
+    '      "good": "TTask.Run(\n  procedure\n  begin\n    try\n      Importieren(Datei);\n    except\n      on E: Exception do\n      begin\n        var Fehler := E.Message;\n        TThread.Queue(nil,\n  ' + '        procedure\n          begin\n            ShowMessage(Fehler);\n          end);\n      end;\n    end;\n  end);"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3031,6 +3041,11 @@ begin
     '      "id": "anonymous-thread-not-started",' + #10 +
     '      "name": "Anonymer Thread nie gestartet",' + #10 +
     '      "description": "TThread.CreateAnonymousThread(…) legt den Thread angehalten und mit FreeOnTerminate an. Ohne Start läuft er nie, und weil er nie endet, wird er auch nie freigegeben. Gemeldet für' + ' den Aufruf als eigene Anweisung und für eine lokale Variable (auch Inline-Variable), die weder mit Start oder Resume gestartet noch weitergegeben wird (Argument, Zuweisung, Result, Feld). Eigenschaft' + 'en wie FreeOnTerminate oder OnTerminate zu setzen gilt nicht als Weitergabe. Konfidenz hoch. Korrektur: .Start anhängen; bei einer Variablen T.Start; nach der letzten Anweisung desselben Blocks, die s' + 'ie erwähnt."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "task-exception-unobserved",' + #10 +
+    '      "name": "Exception in TTask geht verloren",' + #10 +
+    '      "description": "TTask.Run(…) bzw. TTask.Create(…).Start, dessen Ergebnis nicht gespeichert und nie mit Wait, Status o. ä. abgefragt wird und dessen anonyme Methode kein try … except hat. Eine Ex' + 'ception im Task verschwindet still. Auch gemeldet für eine lokale Variable, die nie wieder vorkommt (bei TTask.Create nur in V.Start). Still bei gespeicherten Ergebnissen (Felder, Result, jede andere ' + 'Verwendung der Variablen) und bei Methodenzeigern, deren Rumpf die Regel nicht sieht. Konfidenz mittel. Korrektur: den Rumpf in try … except einschließen und die Meldung über TThread.Queue mit ShowMes' + 'sage im Hauptthread zeigen (ergänzt Vcl.Dialogs, in FireMonkey-Units FMX.Dialogs, und System.SysUtils im uses, wenn sie fehlen); nur, wenn begin und end der anonymen Methode auf eigenen Zeilen stehen.' + '"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
