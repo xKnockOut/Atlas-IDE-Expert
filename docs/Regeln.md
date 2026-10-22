@@ -7,6 +7,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`syntax`](#syntax) | Syntaxfehler | Bug | Fehler |
 | [`unused-suppression`](#unused-suppression) | Ungenutzte Unterdrückung | Code Smell | Hinweis |
 | [`unknown-rule-id`](#unknown-rule-id) | Unbekannte Regelkennung | Code Smell | Hinweis |
+| [`unit-too-deep`](#unit-too-deep) | Unit zu tief für die Prüfung | Code Smell | Hinweis |
 | [`bidi-control`](#bidi-control) | Bidirektionales Steuerzeichen | Schwachstelle | Fehler |
 | [`invisible-char`](#invisible-char) | Unsichtbares Zeichen | Sicherheits-Hotspot | Warnung |
 | [`control-char`](#control-char) | Steuerzeichen | Bug | Fehler |
@@ -167,6 +168,26 @@ Richtig:
 ```pascal
 // lsp-ignore: empty-except
 try X; except end;
+```
+
+<a id="unit-too-deep"></a>
+## unit-too-deep
+
+**Unit zu tief für die Prüfung** · Code Smell · Hinweis
+
+Der Syntaxbaum der Unit ist mehr als 100000 Ebenen tief; die Prüfregeln laufen für sie nicht. So tiefe Bäume entstehen nur aus Ketten mit ebenso vielen Gliedern wie X := A - B - C - … Der Hinweis markiert die tiefste Stelle; wer die Kette in Teilausdrücke aufteilt, macht die Unit wieder prüfbar.
+
+Mit Treffer:
+
+```pascal
+X := A - B - C - D - E; // … 100000 terms
+```
+
+Richtig:
+
+```pascal
+Part := A - B - C;
+X := Part - D - E;
 ```
 
 <a id="bidi-control"></a>

@@ -146,40 +146,56 @@ begin
   Result := Trim(AText) = '';
 end;
 
-/// <summary>Verwendungen von Typnamen in ANode: TypeReference ohne Vorfahren, Aliase und Zeiger.</summary>
-procedure CollectRefs(ANode, ADecl: TSyntaxNode; var ARefs: TArray<TSyntaxNode>);
-var
-  Index: Integer;
-  Parent: TSyntaxNode;
-begin
-  if ANode.Kind = TSyntaxKind.TypeReference then
-  begin
-    Parent := ANode.Parent;
-    if (Parent <> ADecl) and (Parent.Kind <> TSyntaxKind.PointerType) and
-      (Parent.Kind <> TSyntaxKind.ClassType) and (Parent.Kind <> TSyntaxKind.InterfaceType) and
-      (Parent.Kind <> TSyntaxKind.ObjectType) and (Parent.Kind <> TSyntaxKind.HelperType) and
-      (Pos('.', ANode.Name) = 0) then
-      ARefs := ARefs + [ANode];
-  end;
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectRefs(ANode[Index], ADecl, ARefs);
-end;
-
+/// <summary>Verwendungen von Typnamen in ADecl: TypeReference ohne Vorfahren, Aliase und Zeiger.</summary>
 function RefsOf(ADecl: TSyntaxNode): TArray<TSyntaxNode>;
+var
+  Refs: TList<TSyntaxNode>;
+  Decl: TSyntaxNode;
 begin
-  Result := nil;
-  CollectRefs(ADecl, ADecl, Result);
+  // Walk statt Rekursion: Konstantenausdrücke im Typ dürfen den Aufrufstapel nicht erschöpfen.
+  Decl := ADecl;
+  Refs := TList<TSyntaxNode>.Create;
+  try
+    ADecl.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      var
+        Parent: TSyntaxNode;
+      begin
+        Result := True;
+        if ANode.Kind <> TSyntaxKind.TypeReference then
+          Exit;
+        Parent := ANode.Parent;
+        if (Parent <> Decl) and (Parent.Kind <> TSyntaxKind.PointerType) and
+          (Parent.Kind <> TSyntaxKind.ClassType) and (Parent.Kind <> TSyntaxKind.InterfaceType) and
+          (Parent.Kind <> TSyntaxKind.ObjectType) and (Parent.Kind <> TSyntaxKind.HelperType) and
+          (Pos('.', ANode.Name) = 0) then
+          Refs.Add(ANode);
+      end);
+    Result := Refs.ToArray;
+  finally
+    Refs.Free;
+  end;
 end;
 
-/// <summary>Namen aus Bezeichnern und Typverweisen in ANode (erster Teil vor dem Punkt).</summary>
-procedure CollectNames(ANode: TSyntaxNode; var ANames: TArray<TSyntaxNode>);
+/// <summary>Bezeichner und Typverweise in ARoot; ihre Namen vergleicht der Aufrufer nach dem ersten Teil
+/// vor dem Punkt.</summary>
+function NamesIn(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
 var
-  Index: Integer;
+  Names: TList<TSyntaxNode>;
 begin
-  if (ANode.Kind = TSyntaxKind.Identifier) or (ANode.Kind = TSyntaxKind.TypeReference) then
-    ANames := ANames + [ANode];
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectNames(ANode[Index], ANames);
+  Names := TList<TSyntaxNode>.Create;
+  try
+    ARoot.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        Result := True;
+        if (ANode.Kind = TSyntaxKind.Identifier) or (ANode.Kind = TSyntaxKind.TypeReference) then
+          Names.Add(ANode);
+      end);
+    Result := Names.ToArray;
+  finally
+    Names.Free;
+  end;
 end;
 
 function FirstPart(const AName: string): string;
@@ -469,8 +485,7 @@ begin
   // erreichbar. Brauchen umgekehrt die Abschnitte dazwischen einen der Typen, geht es nicht.
   for Child in Moved do
   begin
-    Names := nil;
-    CollectNames(Child, Names);
+    Names := NamesIn(Child);
     for Node in Names do
       if MatchText(FirstPart(Node.Name), TypeNames) then
       begin
@@ -530,8 +545,7 @@ begin
       if (Node.StartOffset >= UserStart.StartOffset) and (Node.StartOffset < TargetStart.StartOffset) then
         Between := Between + NamesOf(Node);
   end;
-  Names := nil;
-  CollectNames(ATarget.Node, Names);
+  Names := NamesIn(ATarget.Node);
   for Node in Names do
     if not SameText(Node.Name, ATarget.Node.Name) and not IsGenericParam(ATarget.Node, Node.Name) and
       MatchText(FirstPart(Node.Name), Between) then

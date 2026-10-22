@@ -148,7 +148,7 @@ Alt+Enter opens the code actions; everything is also in the *Atlas* menu and the
 - **Change marks** in the gutter against Git HEAD or SVN BASE
 - **Find selection** with F3 or Shift+F3
 - **Silent reload** of files changed outside the IDE
-- **Robustness:** no error in Atlas reaches the IDE, hang watchdog with log, stack traces with unit and line for every caught error, a feature that keeps failing is switched off on its own (with a notification to switch it back on) while the others keep running, server crashes are logged with their cause (exit code, stderr) and a server that crashes the same way twice is not restarted in a loop, safe start after a crash, bug report to attach, key conflicts with other extensions (GExperts, CnPack, MMX) are detected
+- **Robustness:** no error in Atlas reaches the IDE, hang watchdog with log, stack traces with unit and line for every caught error, check rules handle arbitrarily deeply nested expressions without recursion (a unit beyond the 100000-level net gets the hint `unit-too-deep` instead of silently losing its findings), a feature that keeps failing is switched off on its own (with a notification to switch it back on) while the others keep running, server crashes are logged with their cause (exit code, stderr) and a server that crashes the same way twice is not restarted in a loop, safe start after a crash, bug report to attach, key conflicts with other extensions (GExperts, CnPack, MMX) are detected
 - **Update check** only after consent
 - **Accessibility:** lists and tooltips readable by UI Automation
 

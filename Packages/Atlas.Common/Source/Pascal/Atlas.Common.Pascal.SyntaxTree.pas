@@ -7,7 +7,9 @@
 // Parameter tragen ihren Modifizierer (const, var, out, constref) in
 // Modifier; die Datenflussanalyse braucht ihn für Aufrufe (#143).
 // Depth liefert die größte Tiefe des Baums; rekursive Auswertungen wie die
-// Prüfregeln prüfen damit, ob der Stapel reicht (#1094).
+// Prüfregeln prüfen damit, ob der Stapel reicht (#1094). Walk, Depth und das
+// Freigeben laufen iterativ und brauchen auch bei tiefen Bäumen keinen Stapel
+// (Bericht M1); Läufer sollen Walk nutzen statt eigener Rekursion.
 
 interface
 
@@ -57,6 +59,13 @@ type
   /// <summary>Besuch eines Knotens für TSyntaxNode.Walk; False = Kinder nicht besuchen.</summary>
   TSyntaxNodeVisit = reference to function(ANode: TSyntaxNode): Boolean;
 
+  /// <summary>Antwort eines Besuchs in TSyntaxNode.Search: in die Kinder gehen, sie auslassen oder mit diesem
+  /// Knoten als Treffer aufhören.</summary>
+  TSyntaxSearchStep = (Descend, Skip, Found);
+
+  /// <summary>Besuch eines Knotens für TSyntaxNode.Search.</summary>
+  TSyntaxNodeSearch = reference to function(ANode: TSyntaxNode): TSyntaxSearchStep;
+
   TSyntaxNode = class
   private
     FKind: TSyntaxKind;
@@ -82,9 +91,12 @@ type
     function FindChild(AKind: TSyntaxKind): TSyntaxNode;
     /// <summary>Setzt den Bereich im Quelltext.</summary>
     procedure SetRange(const AStartPos, AEndPos: TTextPosition; AStartOffset, AEndOffset: Integer);
-    /// <summary>Besucht diesen Knoten und, wenn AVisit True liefert, rekursiv alle Kinder in
-    /// Baumreihenfolge (Review P-03).</summary>
+    /// <summary>Besucht diesen Knoten und, wenn AVisit True liefert, alle Kinder in Baumreihenfolge
+    /// (Review P-03). Iterativ: auch für sehr tiefe Bäume ohne Stapelbedarf (Bericht M1).</summary>
     procedure Walk(const AVisit: TSyntaxNodeVisit);
+    /// <summary>Wie Walk, hört aber beim ersten Knoten auf, für den AVisit Found liefert, und gibt ihn zurück;
+    /// nil ohne Treffer. Iterativ wie Walk (Bericht M1).</summary>
+    function Search(const AVisit: TSyntaxNodeSearch): TSyntaxNode;
     property Kind: TSyntaxKind read FKind write FKind;
     /// <summary>Nur bei Parameter: const, var, out oder constref.</summary>
     property Modifier: TParameterModifier read FModifier write FModifier;
@@ -113,6 +125,8 @@ type
     FDiagnostics: TArray<TSyntaxDiagnostic>;
     // 0 = noch nicht bestimmt.
     FDepth: Integer;
+    FDeepest: TSyntaxNode;
+    procedure Measure;
   public
     constructor Create(ARoot: TSyntaxNode; const ATokens: TArray<TPascalToken>;
       const ADiagnostics: TArray<TSyntaxDiagnostic>);
@@ -120,6 +134,9 @@ type
     /// <summary>Größte Zahl von Knoten auf einem Weg von der Wurzel zu einem Blatt (Wurzel allein = 1).
     /// Iterativ bestimmt und gemerkt; auch für sehr tiefe Bäume sicher.</summary>
     function Depth: Integer;
+    /// <summary>Der erste Knoten in Baumreihenfolge, der so tief liegt wie Depth; nil ohne Wurzel. Bei einer
+    /// langen Kette wie 1 - 1 - … - 1 ist das ihr erstes Glied (Bericht M1).</summary>
+    function Deepest: TSyntaxNode;
     property Root: TSyntaxNode read FRoot;
     /// <summary>Alle Token einschließlich Kommentaren und Direktiven.</summary>
     property Tokens: TArray<TPascalToken> read FTokens;
@@ -228,14 +245,67 @@ begin
   FEndOffset := AEndOffset;
 end;
 
-procedure TSyntaxNode.Walk(const AVisit: TSyntaxNodeVisit);
+function TSyntaxNode.Search(const AVisit: TSyntaxNodeSearch): TSyntaxNode;
 var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
   Index: Integer;
 begin
-  if not AVisit(Self) then
+  Result := nil;
+  case AVisit(Self) of
+    TSyntaxSearchStep.Found:
+      Exit(Self);
+    TSyntaxSearchStep.Skip:
+      Exit;
+  end;
+  if ChildCount = 0 then
     Exit;
-  for Index := 0 to ChildCount - 1 do
-    Children[Index].Walk(AVisit);
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    for Index := ChildCount - 1 downto 0 do
+      Pending.Push(Children[Index]);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      case AVisit(Node) of
+        TSyntaxSearchStep.Found:
+          Exit(Node);
+        TSyntaxSearchStep.Descend:
+          for Index := Node.ChildCount - 1 downto 0 do
+            Pending.Push(Node.Children[Index]);
+      end;
+    end;
+  finally
+    Pending.Free;
+  end;
+end;
+
+procedure TSyntaxNode.Walk(const AVisit: TSyntaxNodeVisit);
+var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
+  Index: Integer;
+begin
+  // Iterativ (Bericht M1): Ketten wie 1 - 1 - … - 1 ergeben Bäume, die so tief sind wie die Kette lang; rekursiv
+  // kostete jede Ebene einen Stapelrahmen je Läufer. Die Kinder kommen in umgekehrter Reihenfolge auf den Stapel,
+  // damit die Reihenfolge der Besuche die der Rekursion bleibt.
+  if not AVisit(Self) or (ChildCount = 0) then
+    Exit;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    for Index := ChildCount - 1 downto 0 do
+      Pending.Push(Children[Index]);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if not AVisit(Node) then
+        Continue;
+      for Index := Node.ChildCount - 1 downto 0 do
+        Pending.Push(Node.Children[Index]);
+    end;
+  finally
+    Pending.Free;
+  end;
 end;
 
 { TSyntaxTree }
@@ -267,16 +337,15 @@ begin
   Result.Depth := ADepth;
 end;
 
-function TSyntaxTree.Depth: Integer;
+procedure TSyntaxTree.Measure;
 var
   Pending: TStack<TDepthEntry>;
   Item: TDepthEntry;
   Index, Found: Integer;
+  Bottom: TSyntaxNode;
 begin
-  // Gleichzeitige Aufrufe aus mehreren Threads rechnen denselben Wert; das Merken ist unkritisch.
-  if (FDepth > 0) or (FRoot = nil) then
-    Exit(FDepth);
   Found := 0;
+  Bottom := nil;
   Pending := TStack<TDepthEntry>.Create;
   try
     Pending.Push(DepthEntry(FRoot, 1));
@@ -284,15 +353,35 @@ begin
     begin
       Item := Pending.Pop;
       if Item.Depth > Found then
+      begin
         Found := Item.Depth;
-      for Index := 0 to Item.Node.ChildCount - 1 do
+        Bottom := Item.Node;
+      end;
+      // Rückwärts auf den Stapel: Bei gleicher Tiefe gewinnt der erste Knoten in Baumreihenfolge.
+      for Index := Item.Node.ChildCount - 1 downto 0 do
         Pending.Push(DepthEntry(Item.Node[Index], Item.Depth + 1));
     end;
   finally
     Pending.Free;
   end;
+  // Gleichzeitige Aufrufe aus mehreren Threads rechnen dieselben Werte; das Merken ist unkritisch. FDepth zuletzt,
+  // weil es anzeigt, dass gemessen ist.
+  FDeepest := Bottom;
   FDepth := Found;
-  Result := Found;
+end;
+
+function TSyntaxTree.Depth: Integer;
+begin
+  if (FDepth = 0) and (FRoot <> nil) then
+    Measure;
+  Result := FDepth;
+end;
+
+function TSyntaxTree.Deepest: TSyntaxNode;
+begin
+  if (FDepth = 0) and (FRoot <> nil) then
+    Measure;
+  Result := FDeepest;
 end;
 
 end.

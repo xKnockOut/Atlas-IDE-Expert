@@ -31,10 +31,14 @@
 // abgebrochene oder überholte Prüfung bis zum Ende weiter (bis 240 s). Die
 // langsamste Regel ab SlowRuleMs geht als slowRule/slowRuleMs ins Diagnoselog.
 //
-// Robustheit (#1094): Ist der Syntaxbaum tiefer als MaxTreeDepth, laufen die
-// Regeln für diese Datei nicht; viele Regeln steigen rekursiv ab und würden den
-// Stapel des Threads sprengen. Die Datei steht dann als deepUnit im
-// Diagnoselog. Wirft eine Regel eine Ausnahme, laufen die übrigen weiter; die
+// Robustheit (#1094, Bericht M1): Die Regeln und ihre Dienste gehen iterativ
+// durch den Baum (TSyntaxNode.Walk/Search oder eigener Stapel), auch lange
+// Ketten wie 1 - 1 - … - 1 sprengen den Stapel nicht. MaxTreeDepth bleibt als
+// Netz für unbekannte rekursive Wege: Ist der Baum tiefer, laufen die Regeln
+// für diese Datei nicht; die Datei bekommt den Hinweis unit-too-deep an der
+// tiefsten Stelle und steht als deepUnit im Diagnoselog. Früher lag die Grenze
+// bei 1000 Ebenen, und solche Units verloren still alle Befunde.
+// Wirft eine Regel eine Ausnahme, laufen die übrigen weiter; die
 // Regel steht mit Unit und Ausnahmeklasse als failRule im Diagnoselog. Nur der
 // Abbruch (ERuleCheckCancelled) beendet den Lauf.
 
@@ -49,15 +53,19 @@ uses
 const
   UnusedSuppressionRuleId = 'unused-suppression';
   UnknownRuleIdRuleId = 'unknown-rule-id';
+  /// <summary>Hinweis, dass die Regeln eine Unit wegen MaxTreeDepth übersprungen haben (Bericht M1).</summary>
+  UnitTooDeepRuleId = 'unit-too-deep';
 
 type
   TRuleEngine = class
   public const
     /// <summary>Ab dieser Dauer nennt das Diagnoselog die Regel.</summary>
     SlowRuleMs = 100;
-    /// <summary>Tiefere Syntaxbäume prüfen die Regeln nicht (Stapelschutz, #1094). Ein Baum mit 3000
-    /// Ebenen läuft mit allen Regeln noch in 1 MB Stapel; reale Units bleiben unter 100.</summary>
-    MaxTreeDepth = 1000;
+    /// <summary>Netz (#1094, Bericht M1): Tiefere Syntaxbäume prüfen die Regeln nicht, die Unit bekommt den
+    /// Hinweis unit-too-deep. Alle Regeln laufen iterativ; TBuiltinRulesTests prüft sie mit Ketten von 5000
+    /// Gliedern in 128 KB Stapel. Die Grenze fängt nur unbekannte rekursive Wege ab; so tiefe Bäume entstehen erst aus
+    /// Ketten mit 100000 Gliedern.</summary>
+    MaxTreeDepth = 100000;
   public
     /// <summary>Wirksamer Schweregrad einer Regel; Off = nicht ausführen.</summary>
     class function EffectiveSeverity(const ARule: TRuleDescriptor;
@@ -85,6 +93,7 @@ uses
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Diagnostics.StackGuard,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Profiles,
   Atlas.Common.Rules.Suppressions;
@@ -105,6 +114,28 @@ type
     procedure AddWithSeverity(const ARange: TTextRange; const AMessage: string; ASeverity: TRuleSeverity;
       const AFixes: TArray<TRuleFix>);
   end;
+
+/// <summary>Hinweis unit-too-deep an der tiefsten Stelle einer Unit, deren Baum tiefer als MaxTreeDepth ist
+/// (Bericht M1); leer, wenn der Hinweis abgeschaltet ist.</summary>
+function TooDeepFindings(ATree: TSyntaxTree; const ASettings: TServerSettings): TArray<TRuleFinding>;
+var
+  Finding: TRuleFinding;
+  Node: TSyntaxNode;
+begin
+  Result := nil;
+  if ASettings.RuleSeverity(UnitTooDeepRuleId, TRuleSeverity.Hint) = TRuleSeverity.Off then
+    Exit;
+  Node := ATree.Deepest;
+  Finding := Default(TRuleFinding);
+  Finding.RuleId := UnitTooDeepRuleId;
+  Finding.Range := TTextRange.Create(Node.StartPos, Node.EndPos);
+  Finding.Message := Format('Die Prüfregeln laufen für diese Unit nicht: Der Syntaxbaum ist %d Ebenen tief ' +
+    '(Grenze %d). Die tiefste Stelle liegt hier; eine lange Kette aus - oder * in Teilausdrücke aufteilen',
+    [ATree.Depth, TRuleEngine.MaxTreeDepth]);
+  Finding.Severity := ASettings.RuleSeverity(UnitTooDeepRuleId, TRuleSeverity.Hint);
+  Finding.Confidence := TRuleConfidence.High;
+  Result := [Finding];
+end;
 
 function CompareFindings(const A, B: TRuleFinding): Integer;
 begin
@@ -306,7 +337,8 @@ begin
   if (AContext.Tree <> nil) and (AContext.Tree.Depth > MaxTreeDepth) then
   begin
     TRequestDiagnostics.TreeTooDeep(AContext.Tree.Depth);
-    Exit(nil);
+    Result := TooDeepFindings(AContext.Tree, ASettings);
+    Exit;
   end;
   MinConfidence := TRuleProfiles.MinConfidence(Settings, Settings.Profile);
   // Ein Ableitungscache für alle Regeln des Laufs (Review P-03); ein vom Aufrufer

@@ -267,26 +267,19 @@ function RoutineSpan(ATree: TSyntaxTree; const ATokens: TTokens; AIndex: Integer
   out AFirst, ALast: Integer): Boolean;
 var
   Best: TSyntaxNode;
-
-  procedure Search(ANode: TSyntaxNode);
-  var
-    Child: Integer;
-  begin
-    for Child := 0 to ANode.ChildCount - 1 do
-    begin
-      if (ANode[Child].Kind = TSyntaxKind.RoutineDecl) and (ANode[Child].StartOffset <= ATokens[AIndex].Offset) and
-        (ANode[Child].EndOffset > ATokens[AIndex].Offset) then
-        Best := ANode[Child];
-      Search(ANode[Child]);
-    end;
-  end;
-
-var
-  Index: Integer;
+  Index, Offset: Integer;
 begin
   Best := nil;
+  Offset := ATokens[AIndex].Offset;
+  // Iterativ (Bericht M1); die letzte passende Routine in Baumreihenfolge ist die innerste.
   if ATree.Root <> nil then
-    Search(ATree.Root);
+    ATree.Root.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.StartOffset <= Offset) and (ANode.EndOffset > Offset) then
+          Best := ANode;
+        Result := True;
+      end);
   Result := Best <> nil;
   if not Result then
     Exit;

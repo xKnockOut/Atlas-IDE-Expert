@@ -88,17 +88,22 @@ end;
 
 /// <summary>Text eines Aufrufziels: Bezeichner und Member-Zugriffe, z. B. "TThread.Queue".</summary>
 function CalleeText(ANode: TSyntaxNode): string;
+var
+  Suffix: string;
 begin
+  // Iterativ (Bericht M1): von rechts nach links an der Kette entlang.
+  Suffix := '';
+  while (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount > 0) do
+  begin
+    Suffix := '.' + ANode.Name + Suffix;
+    ANode := ANode[0];
+  end;
   case ANode.Kind of
-    TSyntaxKind.Identifier:
-      Result := ANode.Name;
-    TSyntaxKind.MemberAccess:
-      if ANode.ChildCount > 0 then
-        Result := CalleeText(ANode[0]) + '.' + ANode.Name
-      else
-        Result := ANode.Name;
+    TSyntaxKind.Identifier, TSyntaxKind.MemberAccess:
+      Result := ANode.Name + Suffix;
   else
-    Result := '';
+    // Wie früher: Vor einem anderen Ausdruck (Aufruf, Index …) bleiben nur die Member, z. B. ".Queue".
+    Result := Suffix;
   end;
 end;
 
@@ -142,25 +147,34 @@ end;
 /// <summary>Anonyme Methoden im Rumpf, ohne lokale Routinen.</summary>
 procedure CollectAnonymous(ANode: TSyntaxNode; var AMethods: TArray<TSyntaxNode>);
 var
-  Index: Integer;
+  Methods: TArray<TSyntaxNode>;
 begin
-  if ANode.Kind = TSyntaxKind.RoutineDecl then
-    Exit;
-  if ANode.Kind = TSyntaxKind.AnonymousMethod then
-    AMethods := AMethods + [ANode];
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectAnonymous(ANode[Index], AMethods);
+  // Iterativ (Bericht M1); var-Parameter lassen sich nicht in der anonymen Methode verwenden.
+  Methods := AMethods;
+  ANode.Walk(
+    function(AVisited: TSyntaxNode): Boolean
+    begin
+      Result := AVisited.Kind <> TSyntaxKind.RoutineDecl;
+      if Result and (AVisited.Kind = TSyntaxKind.AnonymousMethod) then
+        Methods := Methods + [AVisited];
+    end);
+  AMethods := Methods;
 end;
 
 /// <summary>Bezeichner im Rumpf der anonymen Methode (ohne verschachtelte anonyme Methoden).</summary>
 procedure CollectIdentifiers(ANode: TSyntaxNode; AList: TList<TSyntaxNode>);
 var
-  Index: Integer;
+  List: TList<TSyntaxNode>;
 begin
-  if ANode.Kind = TSyntaxKind.Identifier then
-    AList.Add(ANode);
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectIdentifiers(ANode[Index], AList);
+  List := AList;
+  // Iterativ (Bericht M1).
+  ANode.Walk(
+    function(AVisited: TSyntaxNode): Boolean
+    begin
+      if AVisited.Kind = TSyntaxKind.Identifier then
+        List.Add(AVisited);
+      Result := True;
+    end);
 end;
 
 function NextToken(const AContext: TRuleContext; AOffset: Integer; out AToken: TPascalToken): Boolean;
@@ -216,25 +230,37 @@ function Locals(ARoutine, ABlock: TSyntaxNode): TArray<TLocal>;
       end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node, TypeNode: TSyntaxNode;
     Index: Integer;
-    TypeNode: TSyntaxNode;
   begin
-    if ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
-      Exit;
-    if ANode.Kind = TSyntaxKind.InlineVar then
-    begin
-      TypeNode := ANode.FindChild(TSyntaxKind.TypeReference);
-      if TypeNode <> nil then
-        AddNames(ANode.Name, TypeNode.Name)
-      else
-        AddNames(ANode.Name, '');
-    end
-    else if ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement] then
-      AddNames(ANode.Name, '');
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
+    // Iterativ mit eigenem Stapel (Bericht M1), Reihenfolge wie die frühere Rekursion.
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+          Continue;
+        if Node.Kind = TSyntaxKind.InlineVar then
+        begin
+          TypeNode := Node.FindChild(TSyntaxKind.TypeReference);
+          if TypeNode <> nil then
+            AddNames(Node.Name, TypeNode.Name)
+          else
+            AddNames(Node.Name, '');
+        end
+        else if Node.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement] then
+          AddNames(Node.Name, '');
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 var

@@ -33,7 +33,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
+  System.StrUtils,
+  System.Generics.Collections;
 
 function Before(const A, B: TTextPosition): Boolean;
 begin
@@ -48,32 +49,43 @@ end;
 /// <summary>Name einer Bezeichner- bzw. Punktkette; '' bei anderen Ausdrücken.</summary>
 function DottedName(ANode: TSyntaxNode): string;
 var
-  Left: string;
+  Suffix: string;
 begin
+  // Iterativ (Bericht M1): von rechts nach links an der Kette entlang.
+  Suffix := '';
+  while (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) do
+  begin
+    Suffix := '.' + ANode.Name + Suffix;
+    ANode := ANode[0];
+  end;
   if ANode.Kind = TSyntaxKind.Identifier then
-    Exit(ANode.Name);
-  if (ANode.Kind <> TSyntaxKind.MemberAccess) or (ANode.ChildCount <> 1) then
-    Exit('');
-  Left := DottedName(ANode[0]);
-  if Left = '' then
-    Result := ''
+    Result := ANode.Name + Suffix
   else
-    Result := Left + '.' + ANode.Name;
+    Result := '';
 end;
 
 function FindAttribute(ANode: TSyntaxNode; const APosition: TTextPosition): TSyntaxNode;
 var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
   Index: Integer;
 begin
-  if ANode.Kind = TSyntaxKind.Attribute then
-    Exit(ANode);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if Contains(ANode[Index], APosition) then
+  // Iterativ mit eigenem Stapel (Bericht M1), Reihenfolge wie die frühere Rekursion.
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
     begin
-      Result := FindAttribute(ANode[Index], APosition);
-      if Result <> nil then
-        Exit;
+      Node := Pending.Pop;
+      if Node.Kind = TSyntaxKind.Attribute then
+        Exit(Node);
+      for Index := Node.ChildCount - 1 downto 0 do
+        if Contains(Node[Index], APosition) then
+          Pending.Push(Node[Index]);
     end;
+  finally
+    Pending.Free;
+  end;
   Result := nil;
 end;
 
