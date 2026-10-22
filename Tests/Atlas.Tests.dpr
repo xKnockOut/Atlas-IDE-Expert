@@ -120,6 +120,7 @@ uses
   Atlas.Common.Rules.Builtin.FreeFields.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.FreeFields.Tests.pas',
   Atlas.Common.Rules.Builtin.Expressions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Expressions.Tests.pas',
   Atlas.Common.Rules.Builtin.Statements.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Statements.Tests.pas',
+  Atlas.Common.Rules.Builtin.TypeChecks.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeChecks.Tests.pas',
   Atlas.Common.Rules.Builtin.Database.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Database.Tests.pas',
   Atlas.Common.Rules.Builtin.Directives.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Directives.Tests.pas',
   Atlas.Common.Rules.Builtin.Properties.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Properties.Tests.pas',

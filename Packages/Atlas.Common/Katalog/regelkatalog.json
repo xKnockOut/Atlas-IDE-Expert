@@ -2325,6 +2325,94 @@
       "level": "T"
     },
     {
+      "id": "dynamic-array-misuse",
+      "name": "New, Dispose or SetLength misused on a dynamic array",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "New (like E2255) or Dispose (like E2256) on a dynamic array, SetLength without a length (like E2246), New with a length on a type that is not a dynamic array (like E2307) and New(TArrayType) without a length (like E2308). Typical for old code that switched from pointers to dynamic arrays. The rule only reports when name resolution knows the variable or type for sure; aliases are followed (TValues = array of Double), TBytes and the other dynamic arrays of the RTL count even without an index; open array parameters and pointers stay silent. Quick fixes: Dispose(A) becomes A := nil, New(A) becomes SetLength(A, 1).",
+      "bad": "Dispose(Werte);",
+      "good": "Werte := nil;",
+      "compilerCodes": [
+        "E2255",
+        "E2256",
+        "E2246",
+        "E2307",
+        "E2308"
+      ]
+    },
+    {
+      "id": "local-routine-as-callback",
+      "name": "Local routine as procedure variable",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A local (nested) routine is assigned to a variable or passed to a parameter of a procedural type without of object (like E2094), or a typed constant of a routine takes the address of a local variable (like E2278). Usually an anonymous method or a routine of the unit was meant. The rule only reports when name resolution knows the target type for sure; method pointers and method references stay silent because the compiler reports them with other codes, and so does @Routine (an untyped pointer). Quick fix: move the routine in front of the enclosing routine as a routine of the unit, if it uses nothing from it (no local names further out, no class members without a prefix).",
+      "bad": "procedure TListe.Sortieren;\n  function Vergleich(A, B: Pointer): Integer;\n  begin\n    Result := 0;\n  end;\nbegin\n  FListe.Sort(Vergleich);\nend;",
+      "good": "function Vergleich(A, B: Pointer): Integer;\nbegin\n  Result := 0;\nend;\n\nprocedure TListe.Sortieren;\nbegin\n  FListe.Sort(Vergleich);\nend;",
+      "compilerCodes": [
+        "E2094",
+        "E2278"
+      ]
+    },
+    {
+      "id": "hresult-integer-mix",
+      "name": "Integer and HRESULT interchanged",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "A class implements an interface method with an HRESULT result through a method with an Integer (or LongInt) result, or the other way round (like X1008). Both are 32 bits wide, so it goes unnoticed, but the meaning of the values (S_FALSE as success) is lost; important for COM and Open Tools API code. Methods are matched by name and parameter types, including resolution clauses such as function IFoo.Bar = Baz; interfaces and their ancestors come from the file or the index. If variants stand in conditional branches, the rule only reports when every variant differs. Quick fix: align the result type in declaration and implementation with the interface.",
+      "bad": "IExport = interface\n  function Schreiben: HRESULT; stdcall;\nend;\n…\n  function Schreiben: Integer; stdcall;",
+      "good": "IExport = interface\n  function Schreiben: HRESULT; stdcall;\nend;\n…\n  function Schreiben: HRESULT; stdcall;",
+      "compilerCodes": [
+        "X1008"
+      ]
+    },
+    {
+      "id": "invalid-var-argument",
+      "name": "Invalid argument for a var or out parameter",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A var or out parameter receives something that is not a variable: a string element for a character parameter (like E2354), a constant, a const parameter, a property or a function result (like E2197), a constant for an open array (like E2192), Slice (like E2454) or an expression (like E2036). Reported only for routines without overloads whose header is known from the file or the index; built-in routines such as Inc or Move and untyped var parameters accept more and stay silent. Typed constants count as constants unless {$J+} is set. Quick fix: pass a local variable of the parameter type, and write it back for string elements and properties with write.",
+      "bad": "procedure Erhoehen(var Zeichen: Char);\n…\nErhoehen(Zeile[1]);",
+      "good": "Zeichen := Zeile[1];\nErhoehen(Zeichen);\nZeile[1] := Zeichen;",
+      "compilerCodes": [
+        "E2354",
+        "E2197",
+        "E2192",
+        "E2454",
+        "E2036"
+      ]
+    },
+    {
+      "id": "condition-not-boolean",
+      "name": "Condition is not Boolean",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "The condition of if, while, until or a conditional expression has a type that is surely not Boolean: a number, a pointer, a class, an interface, a string or a character (like E2012). Unlike C, Delphi needs a Boolean. Reported only when the type is certain; Boolean types such as LongBool, enumerations, aliases and unknown types stay silent. Quick fix: add <> 0 (alternative > 0), <> nil (alternative Assigned), <> '' or <> #0.",
+      "bad": "if Liste.Count then\n  Verarbeiten;",
+      "good": "if Liste.Count > 0 then\n  Verarbeiten;",
+      "compilerCodes": [
+        "E2012"
+      ]
+    },
+    {
+      "id": "for-in-not-enumerable",
+      "name": "for-in over a type without enumerator",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A for-in loop runs over a type that cannot be enumerated: a number, pointer, character or Boolean, or a class, record or interface without a public GetEnumerator, also not inherited or from a helper (like E2430); or the enumerator returned by GetEnumerator lacks a public MoveNext or Current (like E2431). Strings, arrays and sets are fine. Reported only when the type and all its ancestors are known; generic types and unknown types stay silent. No quick fix; if the type has Count, the message suggests an indexed loop.",
+      "bad": "for F in Felder.Dataset do",
+      "good": "for F in Felder do",
+      "compilerCodes": [
+        "E2430",
+        "E2431"
+      ]
+    },
+    {
       "id": "inherited-abstract-call",
       "name": "inherited calls an abstract method",
       "category": "bug",

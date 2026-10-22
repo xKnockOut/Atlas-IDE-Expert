@@ -4445,3 +4445,91 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | KV6 | Variable nur in einem `{$IFDEF}`-Zweig vom Typ der Klassenreferenz | Keine Meldung |
 | KV7 | `"class-reference-nonvirtual-constructor": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | KV8 | Abgleich mit Delphi: KV1, KV3, KV5 übersetzen | dcc meldet hier meist nichts (E2391 nur in Sonderfällen, siehe Issue); Atlas meldet die Stellen trotzdem, weil zur Laufzeit immer der Basiskonstruktor läuft. Weicht etwas ab, im Issue nachtragen |
+
+## New, Dispose oder SetLength falsch für dynamische Arrays (#1038)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| YD1 | Das Beispiel aus #1038: `var Werte: TArray<Double>;` und `Dispose(Werte);` | Fehler `dynamic-array-misuse` an `Dispose(Werte)`: „Dispose ist für dynamische Arrays nicht erlaubt und nicht nötig (wie E2256).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| YD2 | Schnellkorrektur „Werte := nil“, danach Strg+Z | Zeile wird `Werte := nil;`, keine Meldung mehr; ein Undo-Schritt nimmt es zurück |
+| YD3 | `var Liste: array of Integer;` und `New(Liste);` | „New ist für dynamische Arrays nicht erlaubt; die Länge setzt SetLength (wie E2255).“; Korrektur `SetLength(Liste, 1)` |
+| YD4 | `SetLength(Werte);` | „SetLength braucht für das dynamische Array Werte mindestens eine Länge (wie E2246).“ ohne Korrektur |
+| YD5 | `type TWerte = array of Double;` mit `R := New(TWerte);` bzw. `R := New(TPunkt, 3);` (TPunkt ein Record) | „New für das dynamische Array TWerte braucht mindestens eine Länge (wie E2308).“ bzw. „New mit Länge erwartet den Typ eines dynamischen Arrays; TPunkt ist keiner (wie E2307).“ |
+| YD6 | `Dispose(Daten)` mit `Daten: TBytes`, Alias `TReihe = TWerte` | Je eine Meldung wie YD1 |
+| YD7 | `New(P)`/`Dispose(P)` mit `P: PPunkt`, `R := New(TWerte, 3)`, `SetLength(Werte, 3)`, `Dispose(Offen)` mit offenem Array-Parameter, eigene Prozedur `New` in der Unit | Keine Meldung |
+| YD8 | `"dynamic-array-misuse": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| YD9 | Abgleich mit Delphi: YD1, YD3 bis YD6 übersetzen | dcc meldet E2256, E2255, E2246, E2308 bzw. E2307 an denselben Stellen, für YD7 nichts (offenes Array: eigener Fehler, den die Regel nicht meldet) |
+
+## Lokale Routine als Prozedurvariable (#1039)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| YL1 | Das Beispiel aus #1039: in `TListe.Sortieren` eine lokale `function Vergleich(A, B: Pointer): Integer` und `FListe.Sort(Vergleich);` mit `FListe: TList` | Fehler `local-routine-as-callback` an `Vergleich`: „Die lokale Funktion Vergleich kann nicht als Prozedurvariable übergeben werden (wie E2094).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| YL2 | Schnellkorrektur „Vergleich als Routine der Unit auslagern“, danach Strg+Z | Die Funktion steht ohne Einrückung direkt vor `procedure TListe.Sortieren`, keine Meldung mehr, kompiliert; ein Undo-Schritt nimmt es zurück |
+| YL3 | Lokale `procedure Melden;` und `Aktion := Melden;` mit `Aktion: TProcedure` | „Die lokale Prozedur Melden kann keiner Prozedurvariablen zugewiesen werden (wie E2094).“ |
+| YL4 | Wie YL1, aber `Vergleich` liest ein Feld der Klasse ohne `Self.` bzw. eine lokale Variable von `Sortieren` | Meldung wie YL1, aber ohne Korrektur |
+| YL5 | `const Adresse: Pointer = @Wert;` in einer Routine mit lokaler Variable `Wert` | „Die Adresse des lokalen Symbols Wert ist keine Konstante (wie E2278).“ |
+| YL6 | Aufrufe `Vergleich(nil, nil)`, `@Vergleich` an einen `Pointer`, lokale Prozedur an ein Ereignis (`of object`) bzw. an `TProc`, Routine der Unit an `Sort` | Keine Meldung (Ereignis und `TProc` meldet der Compiler mit anderen Codes) |
+| YL7 | `"local-routine-as-callback": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| YL8 | Abgleich mit Delphi: YL1, YL3, YL5 übersetzen | dcc meldet E2094 bzw. E2278 an denselben Stellen, für YL6 nicht E2094 |
+
+## Integer und HRESULT vertauscht (#1040)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| YH1 | Das Beispiel aus #1040: `IExport` mit `function Schreiben: HRESULT; stdcall;`, Klasse `TExport = class(TInterfacedObject, IExport)` mit `function Schreiben: Integer; stdcall;` | Warnung `hresult-integer-mix` an `Schreiben` der Klasse: „IExport.Schreiben liefert HRESULT, die Implementierung Integer (wie X1008).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| YH2 | Schnellkorrektur „Ergebnistyp HRESULT wie im Interface“, danach Strg+Z | Deklaration und Implementierung liefern `HRESULT`, keine Meldung mehr, kompiliert; ein Undo-Schritt nimmt es zurück |
+| YH3 | Umgekehrt: Interface `Integer`, Klasse `HRESULT` bzw. `LongInt` gegen `HRESULT` | Meldung mit vertauschten Typen |
+| YH4 | Zuordnung `function IExport.Lesen = LesenIntern;` mit `LesenIntern: Integer` | Meldung an `LesenIntern` |
+| YH5 | Interface aus einer anderen Unit (Index), auch über einen Interface-Vorfahren | Meldung wie YH1 |
+| YH6 | Passende Typen, gleichnamige Überladungen mit anderen Parametern, Varianten in `{$IFDEF}`-Zweigen, von denen eine passt | Keine Meldung |
+| YH7 | `"hresult-integer-mix": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| YH8 | Abgleich mit Delphi: YH1, YH3, YH4 übersetzen | dcc meldet X1008 (bzw. die Warnung „Integer and HRESULT interchanged“) an denselben Stellen; in der Meldungsliste von Atlas erscheint der Code X1008 als Warnung |
+
+## Ungültiges Argument für var- und out-Parameter (#1037)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| YV1 | `procedure Erhoehen(var Zeichen: Char);` und `Erhoehen(Zeile[1]);` mit `Zeile: string` (das Beispiel `Inc(Zeile[1])` aus #1037 nimmt der Compiler an, weil `Inc` eingebaut ist) | Fehler `invalid-var-argument` an `Zeile[1]`: „Ein String-Element kann nicht an einen var-Parameter übergeben werden (wie E2354).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| YV2 | Schnellkorrektur „Über eine lokale Variable Wert übergeben“, danach Strg+Z | `Wert: Char;` im var-Abschnitt, davor `Wert := Zeile[1];`, danach `Zeile[1] := Wert;`; keine Meldung mehr, kompiliert; ein Undo-Schritt nimmt es zurück |
+| YV3 | An `procedure Zaehlen(var Ziel: Integer)`: eine Konstante, eine typisierte Konstante, einen const-Parameter, eine Property ohne write, `Doppelt(2)` und `5` übergeben | Je eine Meldung „… ist keine Variable und kann nicht an einen var-Parameter übergeben werden (wie E2197).“ |
+| YV4 | An `procedure Fuellen(var Werte: array of Integer)`: eine Konstante, `[1, 2]` und `Slice(Feld, 2)`; an `Zaehlen` den Ausdruck `Zahl + 1` | „… als offenes Array … (wie E2192)“, „Slice ist für einen var-Parameter nicht erlaubt … (wie E2454)“ bzw. „… kein Ausdruck (wie E2036)“ |
+| YV5 | Property mit write an einen var-Parameter, Korrektur anwenden | Die Korrektur schreibt nach dem Aufruf `Zeile.Text := Wert;` zurück; bei einem out-Parameter ohne Zuweisung davor |
+| YV6 | Variablen, Feldelemente, `Inc(Zahl)`, `Move(S[1], …)`, untypisierte var-Parameter, Typumwandlung `Integer(Zahl)`, überladene Routinen aus einer anderen Unit, typisierte Konstante unter `{$J+}` | Keine Meldung |
+| YV7 | `"invalid-var-argument": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| YV8 | Abgleich mit Delphi: YV1, YV3 und YV4 übersetzen | dcc meldet an denselben Stellen Fehler; die Codes in den Meldungen stimmen (E2354, E2197, E2192, E2454, E2036); Abweichungen im Code bitte notieren |
+
+## Bedingung ist kein Boolean (#1069)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| YB1 | Das Beispiel aus #1069: `if Liste.Count then Verarbeiten;` mit `Liste: TList` | Fehler `condition-not-boolean` an `Liste.Count`: „Die Bedingung ist Integer, nicht Boolean (wie E2012).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| YB2 | Schnellkorrektur „Liste.Count > 0“ (Alternative) bzw. „Liste.Count <> 0“, danach Strg+Z | `if Liste.Count > 0 then` bzw. `<> 0`; keine Meldung mehr, kompiliert; ein Undo-Schritt nimmt es zurück |
+| YB3 | `while Rest do` mit `Rest: Int64`, `repeat … until Zeiger;` mit `Zeiger: PInteger`, `if Objekt then`, `if S then` mit `S: string` | Je eine Meldung mit dem Typ (Int64, PInteger, Klasse, string); bei Zeigern und Objekten die Korrekturen „<> nil“ und „Assigned(…)“ |
+| YB4 | Bedingter Ausdruck `X := if Anzahl then 1 else 0;` (Delphi 13) | Meldung wie YB1 |
+| YB5 | `if Flag then` mit `Flag: Boolean`, `LongBool` bzw. `BOOL`, `if not Liste.IsEmpty then`, `if A and B then` mit Booleans, Variant als Bedingung, unbekannter Bezeichner | Keine Meldung |
+| YB6 | `"condition-not-boolean": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| YB7 | Abgleich mit Delphi: YB1, YB3 übersetzen | dcc meldet E2012 an denselben Stellen, für YB5 nicht |
+
+## for-in über einen Typ ohne Enumerator (#1034)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL, VCL und Data.DB im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| YF1 | Das Beispiel aus #1034: `var Felder: TFields; F: TField; … for F in Felder.Dataset do` | Fehler `for-in-not-enumerable` an `Felder.Dataset`: „TDataSet hat keinen Enumerator; for-in ist hier nicht möglich (wie E2430).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| YF2 | `for I in Anzahl do` mit `Anzahl: Integer`, for-in über einen Record ohne GetEnumerator, über eine eigene Klasse mit `Count`, aber ohne GetEnumerator | Meldungen wie YF1; bei der Klasse mit Count der Zusatz „stattdessen über Count mit Index durchlaufen“ |
+| YF3 | Eigene Klasse mit `GetEnumerator`, dessen Enumerator kein `Current` hat | „Der Enumerator … hat kein öffentliches Current; for-in ist hier nicht möglich (wie E2431).“ |
+| YF4 | for-in über `TFields`, `TStringList`, `TList<T>`, `TDictionary<K, V>`, Strings, Arrays, Mengen, eine Klasse mit geerbtem GetEnumerator und einen Typ mit GetEnumerator aus einem Class-Helper | Keine Meldung |
+| YF5 | `"for-in-not-enumerable": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| YF6 | Abgleich mit Delphi: YF1 bis YF3 übersetzen | dcc meldet an denselben Stellen E2430 bzw. E2431; meldet dcc für YF1 E2431 (wie im Issue-Beispiel), bitte notieren |

@@ -743,3 +743,11 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
   - Handtests: ST1–ST6, SJ1–SJ10, SK1–SK11, TV1–TV5, BK22, BK23, BK26, BK28, BK29, SN4, PL1–PL5, ES1–ES6, IC1–IC4, LP1–LP4, DD1–DD7, AS14, AS17–AS20.
   - M2 und M3 hängen am Handtest: Die Zeilen „Brotkrumen: Maus landet bei …; Ursache: …“ und „Navigationsleiste: …“ im atlas.log nennen die tatsächliche Ursache bzw. ob die IDE-Option gefunden wurde.
   - Die neuen Protokollzeilen (Startanteile, Datendateien) stehen nicht in `Packages/Atlas.IDE.Expert/atlas-baseline.json`. Meldet die Selbstprüfung sie als `hardcoded-string`, die Baseline aktualisieren.
+
+## Compilerregeln Typprüfungen (#1038, #1039, #1040, #1037, #1069, #1034; 22.10.2026, ungebaut)
+- Kette ab `feature/1006-readonly-property-assigned`: `feature/1038-dynamic-array-misuse` → `feature/1039-local-routine-as-callback` → `feature/1040-hresult-integer-mix` → `feature/1037-invalid-var-argument` → `feature/1069-condition-not-boolean` → `feature/1034-for-in-not-enumerable`. Kein Merge nach main.
+- Alle sechs Regeln in der neuen Unit `Atlas.Common.Rules.Builtin.TypeChecks` (Tests in `Tests/Common/Rules/Builtin/…TypeChecks.Tests.pas`), Baumläufe über `PreOrder` mit eigenem Stapel (passt zum rekursionsfreien Branch `claude/project-thread-lssjeo`).
+- #1040: Katalog (`IsCompilerCode`), `Update-RuleCatalog.ps1` und `TCompilerOutputParser` akzeptieren jetzt X-Codes (X1008, als Warnung).
+- #1037: `RoutineParams` erkennt Überladungen auch an `overload` im Kopf (die Namensauflösung kennt Überladungen aus anderen Units nicht immer). Das Issue-Beispiel `Inc(Zeile[1])` meldet die Regel nicht, weil `Inc` eingebaut ist; Handtest YV1 nutzt eine eigene var-Prozedur.
+- Fehlercodes ohne Delphi-Abgleich: E2197/E2036 bei Literalen (#1037), E2430 statt E2431 für TDataSet (#1034, Issue nennt E2431); die Handtests YV8 und YF6 gleichen sie mit dcc ab.
+- Unter FPC: 72 Tests (TypeChecks, Katalog, Profile) grün; Prüflauf über 2714 eigene Dateien ohne Fehlalarm; jede Mutation wird gefunden. Handtests YD, YL, YH, YV, YB, YF in `docs/Atlas-Testfaelle.md`.
