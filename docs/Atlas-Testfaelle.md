@@ -4164,3 +4164,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt; `TfrmBasisDialog` mit `btnS
 | IH6 | Vorfahr liegt in einem anderen Ordner (Suchpfad); Vorfahr ohne OnClick; Formular ohne Vererbung | Meldung nur im ersten Fall (Index), sonst keine |
 | IH7 | `"inherited-form-handler-without-inherited": "off"`, `"group:forms": "off"` bzw. `exclude` | Keine Meldung |
 | IH8 | Abgleich: IH1 ausführen und auf Speichern klicken | Die Logik von `TfrmBasisDialog.btnSpeichernClick` läuft nicht; nach IH2 wieder |
+
+## Formular gibt sich im eigenen Ereignis frei (#1057)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; Formular `TfrmMeldung` mit Button `btnOK`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FS1 | Das Beispiel aus #1057: `procedure TfrmMeldung.btnOKClick(Sender: TObject); begin Free; end;` | Fehler `self-free-in-event-handler` an `Free`: „Das Formular gibt sich im eigenen Click-Handler frei; die VCL greift danach noch darauf zu.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| FS2 | Schnellkorrektur „Free durch Release ersetzen“, danach Strg+Z | Zeile wird `Release;`, keine Meldung mehr; ein Undo-Schritt |
+| FS3 | `Self.Free`, `FreeAndNil(Self)`, `frmMeldung.Free`, `Destroy` im Handler; Handler im Code zugewiesen (`btnOK.OnClick := Weiter`) | Je eine Meldung, bei `Weiter` „im eigenen Ereignis-Handler“ |
+| FS4 | In `FormClose(Sender: TObject; var Action: TCloseAction)` `Free;` | Meldung „Close-Handler“, Korrektur „Durch Action := caFree ersetzen“ |
+| FS5 | `Release`, `btnOK.Free`, `Free` in `TThread.ForceQueue(nil, procedure begin Free end)`, `with TStringList.Create do Free`, Methode ohne `Sender`, Rahmen (TFrame) und Datenmodul | Keine Meldung |
+| FS6 | `"self-free-in-event-handler": "off"`, `"group:forms": "off"` bzw. `exclude` | Keine Meldung |
+| FS7 | Abgleich: FS1 ausführen und auf OK klicken | Zugriffsverletzung (bzw. FastMM-Meldung); nach FS2 schließt das Formular sauber |

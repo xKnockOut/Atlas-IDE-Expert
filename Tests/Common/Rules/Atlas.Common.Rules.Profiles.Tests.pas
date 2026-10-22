@@ -187,7 +187,7 @@ const
     'possibly-uninitialized,processmessages-in-loop,property-accessor-invalid,queue-nil-in-package,raise-in-finally,readonly-property-assigned,redundant-assigned-free,reraise-exception-object,' +
     'result-not-set,' +
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
-    'security-tls-verification-disabled,security-weak-crypto,self-as-interface-in-constructor,self-assignment,setter-recursion,shadowed-name,signature-mismatch,sizeof-pointer,' +
+    'security-tls-verification-disabled,security-weak-crypto,self-as-interface-in-constructor,self-assignment,self-free-in-event-handler,setter-recursion,shadowed-name,signature-mismatch,sizeof-pointer,' +
     'slash-command,sql-write-without-where,string-index-base,stringlist-unsorted,synchronize-in-destructor,task-exception-unobserved,thread-free-with-free-on-terminate,thread-loop-without-terminated,thread-resume-suspend,' +
     'thread-use-after-free-on-terminate,thread-vcl-access,threadvar-managed,transaction-without-rollback,type-used-before-declaration,' +
     'unchecked-conversion,unchecked-enum-cast,unneeded-forward-declaration,unreachable-code,unresolved-attribute,unresolved-identifier,' +
@@ -213,7 +213,7 @@ begin
     'ifthen-side-effect,implemented-not-declared,inherited-form-handler-without-inherited,int32-mul-overflow,interface-guid,interface-not-implemented,lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,' +
     'missing-inherited,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,' +
     'possibly-uninitialized,property-accessor-invalid,queue-nil-in-package,raise-in-finally,readonly-property-assigned,result-not-set,security-command-injection,' +
-    'security-sql-injection,security-tls-verification-disabled,self-as-interface-in-constructor,self-assignment,setter-recursion,signature-mismatch,sizeof-pointer,' +
+    'security-sql-injection,security-tls-verification-disabled,self-as-interface-in-constructor,self-assignment,self-free-in-event-handler,setter-recursion,signature-mismatch,sizeof-pointer,' +
     'sql-write-without-where,string-index-base,stringlist-unsorted,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-loop-without-terminated,' +
     'thread-use-after-free-on-terminate,' +
     'thread-vcl-access,threadvar-managed,transaction-without-rollback,type-used-before-declaration,unchecked-conversion,unchecked-enum-cast,unreachable-code,unresolved-attribute,unresolved-identifier,use-after-free,uses-unit-not-found,' +
