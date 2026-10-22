@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 55 |
+| [Fehler finden](#gruppe-find-bugs) | 56 |
 | [Exceptions](#gruppe-exceptions) | 6 |
 | [Threads](#gruppe-threads) | 9 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
@@ -79,6 +79,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`self-as-interface-in-constructor`](#self-as-interface-in-constructor) | Self während der Konstruktion als Interface weitergegeben | Bug | Warnung |
 | [`unchecked-enum-cast`](#unchecked-enum-cast) | Zahl ungeprüft in Aufzählung umgewandelt | Bug | Hinweis |
 | [`createprocess-readonly-commandline`](#createprocess-readonly-commandline) | CreateProcess mit unveränderlicher Befehlszeile | Bug | Fehler |
+| [`form-access-before-create`](#form-access-before-create) | Zugriff auf ein Formular, das noch nicht erzeugt ist | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -3765,4 +3766,30 @@ Richtig:
 Befehl := 'notepad.exe ' + Datei;
 UniqueString(Befehl);
 CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);
+```
+
+<a id="form-access-before-create"></a>
+### form-access-before-create
+
+**Zugriff auf ein Formular, das noch nicht erzeugt ist** · Bug · Warnung · Gruppe Fehler finden
+
+Der Konstruktor, AfterConstruction oder der OnCreate-Handler eines automatisch erzeugten Formulars bzw. Datenmoduls benutzt die globale Variable eines anderen Formulars, das die .dpr erst danach mit Application.CreateForm erzeugt. Die Variable ist dort noch nil. Die Reihenfolge stammt aus der .dpr des Projekts, zu dem die Unit gehört; der OnCreate-Handler aus der Formulardatei (ohne Eintrag FormCreate bzw. DataModuleCreate). Still, wenn die Routine die Variable prüft (Assigned, Vergleich mit nil), selbst zuweist, mit CreateForm erzeugt oder einen gleichnamigen lokalen Namen deklariert, und bei Formularen, die nicht automatisch erzeugt werden. Jede Variable wird je Routine einmal gemeldet. Sicherheit mittel. Keine Korrektur: die Reihenfolge in der .dpr ändern oder den Zugriff nach OnShow verlegen.
+
+Mit Treffer:
+
+```pascal
+procedure TfrmHaupt.FormCreate(Sender: TObject);
+begin
+  lblNutzer.Caption := dmDaten.Benutzer;
+end;
+```
+
+Richtig:
+
+```pascal
+// .dpr: Application.CreateForm(TdmDaten, dmDaten) before TfrmHaupt
+procedure TfrmHaupt.FormCreate(Sender: TObject);
+begin
+  lblNutzer.Caption := dmDaten.Benutzer;
+end;
 ```

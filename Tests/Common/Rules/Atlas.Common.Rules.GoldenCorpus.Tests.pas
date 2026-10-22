@@ -59,6 +59,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Builtin,
+  Atlas.Common.Rules.Builtin.FormFields,
   Atlas.Common.Rules.GoldenCorpus,
   Atlas.Common.Projects.PackageReader,
   System.StrUtils;
@@ -365,6 +366,7 @@ var
   RuleIndex: Integer;
   Packages: TArray<TPackageSource>;
   Project: TCheckProject;
+  Programs: TArray<string>;
 begin
   Folder := ReferenceFolder;
   if Folder = '' then
@@ -374,6 +376,9 @@ begin
   Packages := nil;
   for FileName in TDirectory.GetFiles(Folder, '*.dpk') do
     Packages := Packages + [TPackageReader.Read(ReadSource(FileName))];
+  Programs := nil;
+  for FileName in TDirectory.GetFiles(Folder, '*.dpr') do
+    Programs := Programs + [ReadSource(FileName)];
   Known := nil;
   for Rule in Rules do
     Known := Known + [Rule.Descriptor.Id];
@@ -403,6 +408,10 @@ begin
       begin
         Settings := MutationSettings(Rules[RuleIndex].Descriptor);
         Project := TFileChecker.PackageOf(Packages, ChangeFileExt(Mutation.FileName, ''));
+        // Units eines Programms: CreateForm-Reihenfolge seiner .dpr wie im Linter (#956).
+        if Project.Name = '' then
+          Project.AutoCreateForms := TFormAccessBeforeCreateRule.FormsOfProgram(Programs,
+            ChangeFileExt(Mutation.FileName, ''));
         Detected := TGoldenCorpus.Detected(TFileChecker.CheckText(Rules, Settings, Mutation.FileName, Text, Project),
           TFileChecker.CheckText(Rules, Settings, Mutation.FileName, Mutated, Project), Mutation.RuleId);
         if not Detected then

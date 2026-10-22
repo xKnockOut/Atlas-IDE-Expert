@@ -153,6 +153,9 @@ type
     Application: TRuleApplicationKind;
     /// <summary>Name des Projekts ohne Endung, z. B. Atlas.IDE.Expert (#943); '' ohne Projekt.</summary>
     ProjectName: string;
+    /// <summary>Variablen der automatisch erzeugten Formulare und Datenmodule in der Reihenfolge der
+    /// Application.CreateForm-Aufrufe der .dpr (#956); nil ohne Projekt.</summary>
+    AutoCreateForms: TArray<string>;
     /// <summary>Formatierung aus den Einstellungen (format, #938): Tabbreite und Einrückung für Regeln, die
     /// Spalten zählen oder umbrechen; setzt TRuleEngine.Run. IndentSize 0 = nicht gesetzt.</summary>
     Formatting: TFormatStyle;
