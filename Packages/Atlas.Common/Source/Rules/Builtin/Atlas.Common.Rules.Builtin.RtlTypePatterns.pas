@@ -33,6 +33,12 @@
 //                            Liste.DelimitedText := … nach Liste.Delimiter := … in derselben Routine, ohne dass
 //                            StrictDelimiter gesetzt wird (#952; bei Feldern in der ganzen Unit): DelimitedText
 //                            trennt dann auch an Leerzeichen. Korrektur: StrictDelimiter := True; davor
+//   unchecked-enum-cast      TStatus(Zahl) mit einem Aufzählungstyp aus Datei oder Index, wenn die Zahl aus einer
+//                            Quelle der Option "sources" stammt (FieldByName, ReadInteger, AsInteger, StrToInt):
+//                            direkt im Argument oder über eine Variable, die zwischen Zuweisung und Umwandlung
+//                            nicht gelesen (geprüft) wird (#954). EnsureRange/Min/Max im Argument gelten als
+//                            Prüfung. Korrektur bei direkter Quelle: Hilfsvariable, InRange-Prüfung mit raise
+//                            EConvertError davor, System.Math in uses
 // Bezeichner, deren Typ in der Datei nicht deklariert ist, lösen keinen Treffer aus.
 
 interface
@@ -141,6 +147,14 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TUncheckedEnumCastRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Herkunft für die Meldung: "aus der Datenbank", "aus einem Text" …</summary>
+    class function Origin(const ASource: string): string; static;
+  end;
+
 procedure RegisterRtlTypePatternRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -159,6 +173,7 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Options,
+  Atlas.Common.Rules.Derived,
   Atlas.Text.Lines;
 
 type
@@ -2634,6 +2649,277 @@ begin
       CheckAt(Position);
 end;
 
+{ TUncheckedEnumCastRule }
+
+const
+  DefaultEnumSources: array[0..3] of string = ('FieldByName', 'ReadInteger', 'AsInteger', 'StrToInt');
+  // Aufrufe, die den Wert schon begrenzen: TStatus(EnsureRange(…)).
+  EnumGuards: array[0..2] of string = ('EnsureRange', 'Min', 'Max');
+
+function TUncheckedEnumCastRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('unchecked-enum-cast', TRuleSeverity.Hint,
+    'Zahl ungeprüft in Aufzählung umgewandelt');
+end;
+
+class function TUncheckedEnumCastRule.Origin(const ASource: string): string;
+begin
+  if MatchText(ASource, ['ReadInteger', 'ReadInt64', 'ReadBinaryData']) then
+    Result := 'aus der Registry bzw. INI-Datei'
+  else if MatchText(ASource, ['StrToInt', 'StrToInt64', 'StrToIntDef', 'StrToUInt']) then
+    Result := 'aus einem Text'
+  else if MatchText(ASource, ['FieldByName', 'FindField', 'Fields', 'FieldValues', 'AsInteger', 'AsLargeInt',
+    'AsLongWord', 'AsSmallInt', 'ParamByName']) then
+    Result := 'aus der Datenbank'
+  else
+    Result := 'von außen';
+end;
+
+procedure TUncheckedEnumCastRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TTokens;
+  Code: TArray<Integer>;
+  Sources: TArray<string>;
+  LineBreak: string;
+  Local: TUnitIndex;
+
+  function Token(APosition: Integer): TPascalToken;
+  begin
+    Result := Tokens[Code[APosition]];
+  end;
+
+  function IsSym(APosition: Integer; const ASymbol: string): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and Token(APosition).IsSymbol(ASymbol);
+  end;
+
+  function IsWord(APosition: Integer): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and
+      (Token(APosition).Kind = TPascalTokenKind.Identifier);
+  end;
+
+  function TextOf(AFirst, ALast: Integer): string;
+  begin
+    Result := Copy(AContext.Text, Token(AFirst).Offset + 1,
+      Token(ALast).Offset + Length(Token(ALast).Text) - Token(AFirst).Offset);
+  end;
+
+  function Closing(AOpen: Integer): Integer;
+  var
+    Depth: Integer;
+  begin
+    Depth := 0;
+    for Result := AOpen to High(Code) do
+      if Token(Result).IsSymbol('(') or Token(Result).IsSymbol('[') then
+        Inc(Depth)
+      else if Token(Result).IsSymbol(')') or Token(Result).IsSymbol(']') then
+      begin
+        Dec(Depth);
+        if Depth = 0 then
+          Exit;
+      end;
+    Result := -1;
+  end;
+
+  function CodeAt(AOffset: Integer): Integer;
+  begin
+    for Result := 0 to High(Code) do
+      if Token(Result).Offset >= AOffset then
+        Exit;
+    Result := Length(Code);
+  end;
+
+  // Aufzählungstyp AName in AUnit: Zahl der Werte und ob sie eigene Ordinalwerte tragen.
+  function EnumIn(const AUnit: TUnitIndex; const AName: string; out ACount: Integer;
+    out AExplicit: Boolean): Boolean;
+  var
+    Symbol: TIndexSymbol;
+    Signature: string;
+  begin
+    Result := False;
+    ACount := 0;
+    AExplicit := False;
+    for Symbol in AUnit.Symbols do
+      if (Symbol.Kind = TIndexSymbolKind.EnumType) and (Symbol.Container = '') and SameText(Symbol.Name, AName) then
+      begin
+        Signature := Symbol.Signature;
+        AExplicit := (Pos('(', Signature) > 0) and (Pos('=', Copy(Signature, Pos('(', Signature), MaxInt)) > 0);
+        Result := True;
+      end;
+    if not Result then
+      Exit;
+    for Symbol in AUnit.Symbols do
+      if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, AName) then
+        Inc(ACount);
+  end;
+
+  function EnumInfo(const AName: string; out ACount: Integer; out AExplicit: Boolean): Boolean;
+  var
+    Location: TSymbolLocation;
+    Owner: TUnitIndex;
+  begin
+    if EnumIn(Local, AName, ACount, AExplicit) then
+      Exit(True);
+    Result := False;
+    if AContext.Index = nil then
+      Exit;
+    for Location in AContext.Index.FindSymbols(AName) do
+      if (Location.Symbol.Kind = TIndexSymbolKind.EnumType) and (Location.Symbol.Container = '') and
+        AContext.Index.FindFile(Location.FileName, Owner) and EnumIn(Owner, AName, ACount, AExplicit) then
+        Exit(True);
+  end;
+
+  // Erste Quelle (aus "sources") zwischen AFirst und ALast; '' ohne.
+  function SourceIn(AFirst, ALast: Integer): string;
+  var
+    Position: Integer;
+  begin
+    for Position := AFirst to ALast do
+      if IsWord(Position) and MatchText(Token(Position).Text, Sources) then
+        Exit(Token(Position).Text);
+    Result := '';
+  end;
+
+  // V := Ausdruck mit Quelle vor ACast in der Routine, ohne dass V danach noch gelesen wird (Prüfung).
+  function VariableSource(ARoutine: TSyntaxNode; AVariable, ACast: Integer): string;
+  var
+    Position, Assigned, Ending: Integer;
+  begin
+    Result := '';
+    Assigned := -1;
+    for Position := CodeAt(ARoutine.StartOffset) to ACast - 1 do
+      if IsWord(Position) and SameText(Token(Position).Text, Token(AVariable).Text) and
+        not IsSym(Position - 1, '.') then
+      begin
+        if IsSym(Position + 1, ':=') then
+          Assigned := Position
+        else if Assigned >= 0 then
+          // Gelesen zwischen Zuweisung und Umwandlung: als geprüft ansehen (InRange, Vergleich, case …).
+          Exit('');
+      end;
+    if Assigned < 0 then
+      Exit;
+    Ending := Assigned + 2;
+    while (Ending <= High(Code)) and not Token(Ending).IsSymbol(';') and not Token(Ending).IsKeyword('end') do
+      Inc(Ending);
+    Result := SourceIn(Assigned + 2, Ending - 1);
+    if (Result <> '') and IsWord(Assigned + 2) and MatchText(Token(Assigned + 2).Text, EnumGuards) then
+      Result := '';
+  end;
+
+  // Korrektur bei TStatus(Quelle) in einer eigenen Anweisung: Hilfsvariable, InRange-Prüfung mit raise davor.
+  function Fixes(ARoutine: TSyntaxNode; const ATypeName: string; AFirst, ALast: Integer): TArray<TRuleFix>;
+  var
+    Statement: TSyntaxNode;
+    Name, Indent, Prefix: string;
+    Edits: TArray<TTextEdit>;
+    UsesEdit: TTextEdit;
+    Used: TArray<string>;
+  begin
+    Result := nil;
+    Statement := TRoutineBody.Enclosing(ARoutine, Token(AFirst).Offset, Token(ALast).Offset);
+    while (Statement <> nil) and (Statement <> ARoutine) and not TRoutineBody.IsStatement(Statement) do
+      Statement := Statement.Parent;
+    if (Statement = nil) or (Statement = ARoutine) or not TRoutineBody.InList(Statement) or
+      (Statement.Kind in [TSyntaxKind.Block, TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement,
+      TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement]) then
+      Exit;
+    Name := TRoutineBody.UniqueName(Tokens, 'Wert');
+    Indent := TTextLines.IndentOf(AContext.Text, Statement.StartPos.Line);
+    Edits := [TRoutineBody.AddVariable(AContext.Text, ARoutine, Name, 'Integer', AContext.Formatting),
+      TRoutineBody.InsertBefore(AContext.Text, Statement, Name + ' := ' + TextOf(AFirst, ALast) + ';' +
+      LineBreak + Indent + 'if not InRange(' + Name + ', Ord(Low(' + ATypeName + ')), Ord(High(' + ATypeName +
+      '))) then' + LineBreak + Indent + TRoutineBody.IndentUnit(AContext.Formatting) +
+      'raise EConvertError.CreateFmt(''Ungültiger Wert %d für ' + ATypeName + ''', [' + Name + ']);'),
+      TTextEdit.Create(TTextRange.Create(Token(AFirst).StartPos, Token(ALast).EndPos), Name)];
+    // InRange steht in System.Math.
+    Used := TUsesClauses.UsedUnits(Tokens);
+    if not MatchText('System.Math', Used) and not MatchText('Math', Used) then
+    begin
+      Prefix := 'System.';
+      if (Length(Used) > 0) and not MatchText('System.SysUtils', Used) and MatchText('SysUtils', Used) then
+        Prefix := '';
+      if not TUsesClauses.AddUnit(Tokens, Token(AFirst).Offset, Prefix + 'Math', LineBreak, UsesEdit) then
+        Exit;
+      Edits := [UsesEdit] + Edits;
+    end;
+    Result := [TRuleFix.Create('Prüfung mit InRange davorsetzen', Edits)];
+  end;
+
+  procedure CheckCast(APosition: Integer);
+  var
+    Close, Count: Integer;
+    Explicit: Boolean;
+    TypeName, Source, Range: string;
+    Routine: TSyntaxNode;
+    Direct: Boolean;
+  begin
+    Close := Closing(APosition + 1);
+    if (Close < 0) or (Close = APosition + 2) then
+      Exit;
+    TypeName := Token(APosition).Text;
+    if not EnumInfo(TypeName, Count, Explicit) then
+      Exit;
+    Routine := TRoutineBody.RoutineAt(AContext.Tree, Token(APosition).Offset);
+    if Routine = nil then
+      Exit;
+    // Direkt: TStatus(qry.FieldByName('Status').AsInteger); über eine Variable: TStatus(Wert).
+    Direct := not (IsWord(APosition + 2) and MatchText(Token(APosition + 2).Text, EnumGuards));
+    Source := '';
+    if Direct then
+      Source := SourceIn(APosition + 2, Close - 1);
+    if (Source = '') and (Close = APosition + 3) and IsWord(APosition + 2) then
+    begin
+      Source := VariableSource(Routine, APosition + 2, APosition);
+      Direct := False;
+    end;
+    if Source = '' then
+      Exit;
+    if Explicit or (Count = 0) then
+      Range := Format('Ord(Low(%s))..Ord(High(%s))', [TypeName, TypeName])
+    else
+      Range := Format('0..%d', [Count - 1]);
+    if Direct then
+      AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(Close).EndPos),
+        Format('Wert %s ungeprüft nach %s umgewandelt; Werte außerhalb %s ergeben keinen gültigen %s-Wert.',
+        [Origin(Source), TypeName, Range, TypeName]), TRuleConfidence.Medium,
+        Fixes(Routine, TypeName, APosition + 2, Close - 1))
+    else
+      AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(Close).EndPos),
+        Format('Wert %s ungeprüft nach %s umgewandelt; Werte außerhalb %s ergeben keinen gültigen %s-Wert.',
+        [Origin(Source), TypeName, Range, TypeName]), TRuleConfidence.Medium);
+  end;
+
+var
+  Index, Position: Integer;
+  Defaults: TArray<string>;
+  Name: string;
+  Cache: IRuleDerivedCache;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Defaults := nil;
+  for Name in DefaultEnumSources do
+    Defaults := Defaults + [Name];
+  Sources := TRuleOptions.Strings(AContext.Options, 'sources', Defaults);
+  if Length(Sources) = 0 then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Code := nil;
+  for Index := 0 to High(Tokens) do
+    if not IsTrivia(Tokens[Index]) then
+      Code := Code + [Index];
+  LineBreak := TTextLines.LineBreakOf(AContext.Text);
+  Cache := TRuleDerived.Open(AContext);
+  Local := TRuleDerived.UnitIndex(Cache, AContext);
+  for Position := 0 to High(Code) - 2 do
+    // TName( … ) als Ausdruck: kein Punkt davor (X.TName), kein Typ in einer Deklaration.
+    if IsWord(Position) and (Token(Position).Text[1] = 'T') and IsSym(Position + 1, '(') and
+      not IsSym(Position - 1, '.') then
+      CheckCast(Position);
+end;
+
 procedure RegisterRtlTypePatternRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TInt32MulOverflowRule.Create);
@@ -2650,6 +2936,7 @@ begin
   ARegistry.Register(TWritelnInGuiAppRule.Create);
   ARegistry.Register(TUncheckedConversionRule.Create);
   ARegistry.Register(TDictionaryGetWithoutCheckRule.Create);
+  ARegistry.Register(TUncheckedEnumCastRule.Create);
 end;
 
 end.

@@ -1852,6 +1852,29 @@
       "description": "X = Null or X <> Null compares a variant with Null. The result depends on the global System.Variants.NullEqualityRule: with the default ncrLoose the comparison works as expected, with ncrStrict it is never true and with ncrError it raises an exception. A library, a test framework or another part of the project can change the rule. VarIsNull(X) and Field.IsNull check independently of it. Reported only where the comparison stands on its own (condition, argument, assignment); not X = Null binds as (not X) = Null and gets no quick fix. High confidence. Quick fix: Field.IsNull for X.Value on FieldByName, FindField, Fields[...], ParamByName, Params[...] or a field of type T...Field/T...Param, otherwise VarIsNull(X); with <> preceded by not.",
       "bad": "if qryKunde.FieldByName('Geburtstag').Value = Null then\n  Alter := 0;",
       "good": "if qryKunde.FieldByName('Geburtstag').IsNull then\n  Alter := 0;"
+    },
+    {
+      "id": "unchecked-enum-cast",
+      "name": "Number cast to enumeration without check",
+      "category": "bug",
+      "severity": "hint",
+      "group": "find-bugs",
+      "description": "TStatus(N) with an enumeration type declared in the file or the index, where N comes from a call listed in the option sources (FieldByName, ReadInteger, AsInteger, StrToInt): directly in the argument or via a variable that is not read (checked) between its assignment and the cast. A value outside the range yields an invalid enumeration value that falls through case statements. EnsureRange, Min or Max in the argument count as a check; constants, arithmetic and unknown types stay silent. For enumerations with explicit ordinal values the range is given as Ord(Low(T))..Ord(High(T)). Medium confidence. Quick fix for a direct source in a statement of its own: helper variable, InRange check with raise EConvertError before it, System.Math added to uses.",
+      "bad": "Status := TStatus(qry.FieldByName('Status').AsInteger);",
+      "good": "Wert := qry.FieldByName('Status').AsInteger;\nif not InRange(Wert, Ord(Low(TStatus)), Ord(High(TStatus))) then\n  raise EConvertError.CreateFmt('Ungültiger Wert %d für TStatus', [Wert]);\nStatus := TStatus(Wert);",
+      "options": [
+        {
+          "name": "sources",
+          "type": "string-list",
+          "default": [
+            "FieldByName",
+            "ReadInteger",
+            "AsInteger",
+            "StrToInt"
+          ],
+          "description": "Calls whose result counts as unchecked."
+        }
+      ]
     }
   ]
 }

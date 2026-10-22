@@ -3701,3 +3701,17 @@ Voraussetzung: Server läuft; Unit mit `uses System.Variants, Data.DB;`, Datenme
 | NC5 | `if not Wert = Null then` | Warnung ohne Korrektur (bindet als `(not Wert) = Null`) |
 | NC6 | `Wert := Null;`, `if VarIsNull(Wert) then`, `if (A > 0) and Wert = Null then` | Keine Meldung |
 | NC7 | `"null-compare": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Zahl ungeprüft in Aufzählung umgewandelt (#954)
+
+Voraussetzung: Server läuft; Unit mit `TStatus = (stNeu, stOffen, stFertig, stStorniert);` und einer Datenmenge `qry`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EC1 | `Status := TStatus(qry.FieldByName('Status').AsInteger);` | Hinweis `unchecked-enum-cast` auf der Umwandlung: „Wert aus der Datenbank ungeprüft nach TStatus umgewandelt; Werte außerhalb 0..3 ergeben keinen gültigen TStatus-Wert.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| EC2 | Alt+Enter, „Prüfung mit InRange davorsetzen“ | Variable `Wert: Integer`, Zuweisung, `if not InRange(…) then raise EConvertError.CreateFmt(…)`, `Status := TStatus(Wert);`, `System.Math` in uses; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| EC3 | `N := Ini.ReadInteger(…); Status := TStatus(N);` | Hinweis „aus der Registry bzw. INI-Datei“ ohne Korrektur |
+| EC4 | Wie EC3 mit `if (N < 0) or (N > Ord(High(TStatus))) then Exit;` dazwischen bzw. `TStatus(EnsureRange(…, 0, 3))` | Keine Meldung |
+| EC5 | Aufzählung mit eigenen Werten (`sfEins = 1, sfZwei = 2`) in `case TStufe(StrToInt(Zeile)) of` | Hinweis mit Bereich `Ord(Low(TStufe))..Ord(High(TStufe))`, ohne Korrektur |
+| EC6 | `"sources": ["LeseZahl"]` und `TStatus(LeseZahl)` bzw. `TStatus(qry.FieldByName(…).AsInteger)` | Erstes gemeldet, zweites nicht (**Abnahme** Option) |
+| EC7 | `"unchecked-enum-cast": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
