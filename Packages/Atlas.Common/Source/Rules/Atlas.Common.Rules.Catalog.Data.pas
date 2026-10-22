@@ -2418,6 +2418,20 @@ begin
     '        "E2132",' + #10 +
     '        "E2149"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "property-redeclaration-invalid",' + #10 +
+    '      "name": "Redeclared property missing in the ancestor",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A property redeclaration without type such as property Caption; (to change the visibility or the default value) names a property that no ancestor has (like E2147), or the ancesto' + 'r''s property is not accessible from here: strict private, or private in another unit (like E2233). Only reported when the whole ancestor chain is known; a field or method of the same name and declarat' + 'ions in inactive conditional branches stay silent. Quick fix: use the most similar property name of the ancestors.",' + #10 +
+    '      "bad": "TMeinPanel = class(TCustomPanel)\npublished\n  property Captoin;\nend;",' + #10 +
+    '      "good": "TMeinPanel = class(TCustomPanel)\npublished\n  property Caption;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2147",' + #10 +
+    '        "E2233"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3624,6 +3638,11 @@ begin
     '      "id": "default-property-invalid",' + #10 +
     '      "name": "default-Property falsch deklariert oder fehlt",' + #10 +
     '      "description": "default; hinter einer Property ohne Indexparameter (wie E2132), eine zweite default-Property derselben Klasse mit denselben Indextypen (wie E2131; Überladung über den Indextyp is' + 't erlaubt) oder Obj[I] auf einer Klasse, die in ihrer ganzen Vorfahrenkette keine default-Property hat (wie E2149). Den Typ von Obj ermittelt die Namensauflösung; nicht auflösbare Typen, abgebrochene ' + 'Vorfahrenketten und Klassen mit einem Class-Helper in der Unit bleiben still. Neudeklarationen ohne Typ (property Items; default;) übernehmen den Index des Vorfahren und werden nicht geprüft."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "property-redeclaration-invalid",' + #10 +
+    '      "name": "Neu deklarierte Property fehlt im Vorfahren",' + #10 +
+    '      "description": "Eine Neudeklaration ohne Typ wie property Caption; (um Sichtbarkeit oder Standardwert zu ändern) nennt eine Property, die kein Vorfahr hat (wie E2147), oder die Property des Vorf' + 'ahren ist von hier aus nicht erreichbar: strict private oder private in einer anderen Unit (wie E2233). Gemeldet nur, wenn die ganze Vorfahrenkette bekannt ist; ein gleichnamiges Feld oder eine Method' + 'e und Deklarationen in inaktiven Zweigen bleiben still. Korrektur: den ähnlichsten Property-Namen der Vorfahren verwenden."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

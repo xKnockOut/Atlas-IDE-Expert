@@ -2398,6 +2398,20 @@
         "E2132",
         "E2149"
       ]
+    },
+    {
+      "id": "property-redeclaration-invalid",
+      "name": "Redeclared property missing in the ancestor",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A property redeclaration without type such as property Caption; (to change the visibility or the default value) names a property that no ancestor has (like E2147), or the ancestor's property is not accessible from here: strict private, or private in another unit (like E2233). Only reported when the whole ancestor chain is known; a field or method of the same name and declarations in inactive conditional branches stay silent. Quick fix: use the most similar property name of the ancestors.",
+      "bad": "TMeinPanel = class(TCustomPanel)\npublished\n  property Captoin;\nend;",
+      "good": "TMeinPanel = class(TCustomPanel)\npublished\n  property Caption;\nend;",
+      "compilerCodes": [
+        "E2147",
+        "E2233"
+      ]
     }
   ]
 }

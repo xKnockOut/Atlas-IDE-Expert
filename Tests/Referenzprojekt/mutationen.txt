@@ -108,3 +108,4 @@ member-hides-ancestor | Ref.Sprache.Merkmale.pas |   TDezimalFormatierer = class
 published-type-invalid | Ref.Komponenten.Anzeige.pas |   published\n    property Stil: |   published\n    FZaehler: Integer;\n    property Stil:
 override-case-mismatch | Ref.Daten.Kunden.pas | destructor Destroy; override; | destructor destroy; override;
 default-property-invalid | Ref.Daten.Kunden.pas | procedure Speichern(AId: Integer; const AName: string);\n  end; | procedure Speichern(AId: Integer; const AName: string);\n    property Abfrage: TFDQuery read FAbfrage; default;\n  end;
+property-redeclaration-invalid | Ref.Sprache.Merkmale.pas |   TDezimalFormatierer = class(TInterfacedObject, IFormatierer) |   TAnzeigeBasis = class\n  protected\n    FWert: Integer;\n    property Wert: Integer read FWert;\n  end;\n  TAnzeigeWert = class(TAnzeigeBasis)\n  public\n    property Wret;\n  end;\n  TDezimalFormatierer = class(TInterfacedObject, IFormatierer)

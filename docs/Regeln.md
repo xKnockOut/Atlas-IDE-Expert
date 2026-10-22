@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 21 |
+| [Compiler vorab](#gruppe-compiler) | 22 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -152,6 +152,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`published-type-invalid`](#published-type-invalid) | Unzulässiges Mitglied im published-Abschnitt | Bug | Fehler |
 | [`override-case-mismatch`](#override-case-mismatch) | Schreibweise oder Sichtbarkeit weicht vom Vorfahren ab | Code Smell | Hinweis |
 | [`default-property-invalid`](#default-property-invalid) | default-Property falsch deklariert oder fehlt | Bug | Fehler |
+| [`property-redeclaration-invalid`](#property-redeclaration-invalid) | Neu deklarierte Property fehlt im Vorfahren | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4720,5 +4721,32 @@ Richtig:
 ```pascal
 TListe = class
   property Items[I: Integer]: string read GetItem; default;
+end;
+```
+
+<a id="property-redeclaration-invalid"></a>
+### property-redeclaration-invalid
+
+**Neu deklarierte Property fehlt im Vorfahren** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine Neudeklaration ohne Typ wie property Caption; (um Sichtbarkeit oder Standardwert zu ändern) nennt eine Property, die kein Vorfahr hat (wie E2147), oder die Property des Vorfahren ist von hier aus nicht erreichbar: strict private oder private in einer anderen Unit (wie E2233). Gemeldet nur, wenn die ganze Vorfahrenkette bekannt ist; ein gleichnamiges Feld oder eine Methode und Deklarationen in inaktiven Zweigen bleiben still. Korrektur: den ähnlichsten Property-Namen der Vorfahren verwenden.
+
+Entspricht der Compilermeldung `E2147`, `E2233`.
+
+Mit Treffer:
+
+```pascal
+TMeinPanel = class(TCustomPanel)
+published
+  property Captoin;
+end;
+```
+
+Richtig:
+
+```pascal
+TMeinPanel = class(TCustomPanel)
+published
+  property Caption;
 end;
 ```
