@@ -2293,6 +2293,24 @@
         "E2129",
         "E2130"
       ]
+    },
+    {
+      "id": "destructor-not-nil-safe",
+      "name": "Destructor uses fields that may be nil",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "If a constructor raises, Delphi calls the destructor right away, even though not all fields exist yet. Reported is an access in the destructor (or in a private method that only the destructor calls) to a field such as FLines.Clear, FFile.Position or FLines[0], when a constructor of the class creates the field (TClass.Create) only after a call that can raise or only on some paths. The resulting access violation hides the original exception. Free, FreeAndNil, DisposeOf and accesses after Assigned(FField) or FField <> nil are nil-safe; BeforeDestruction does not run on this path. Constructors of RTL classes that raise at most EOutOfMemory (TStringList.Create, TObjectList<T>.Create(True)), inherited Create and Supports do not count as raising. High confidence. Quick fix: put if Assigned(FField) then in front of the statement. With onlyAfterRaisingCode off, every field created in the constructor counts.",
+      "bad": "constructor TImport.Create(const Datei: string);\nbegin\n  inherited Create;\n  FStrom := TFileStream.Create(Datei, fmOpenRead);\n  FZeilen := TStringList.Create;\nend;\n\ndestructor TImport.Destroy;\nbegin\n  FZeilen.Clear;\n  FZeilen.Free;\n  FStrom.Free;\n  inherited;\nend;",
+      "good": "destructor TImport.Destroy;\nbegin\n  if Assigned(FZeilen) then\n    FZeilen.Clear;\n  FZeilen.Free;\n  FStrom.Free;\n  inherited;\nend;",
+      "options": [
+        {
+          "name": "onlyAfterRaisingCode",
+          "type": "boolean",
+          "default": true,
+          "description": "Only report when the constructor calls something that can raise before it creates the field."
+        }
+      ]
     }
   ]
 }

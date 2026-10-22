@@ -2313,6 +2313,24 @@ begin
     '        "E2129",' + #10 +
     '        "E2130"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "destructor-not-nil-safe",' + #10 +
+    '      "name": "Destructor uses fields that may be nil",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "If a constructor raises, Delphi calls the destructor right away, even though not all fields exist yet. Reported is an access in the destructor (or in a private method that only t' + 'he destructor calls) to a field such as FLines.Clear, FFile.Position or FLines[0], when a constructor of the class creates the field (TClass.Create) only after a call that can raise or only on some pa' + 'ths. The resulting access violation hides the original exception. Free, FreeAndNil, DisposeOf and accesses after Assigned(FField) or FField <> nil are nil-safe; BeforeDestruction does not run on this ' + 'path. Constructors of RTL classes that raise at most EOutOfMemory (TStringList.Create, TObjectList<T>.Create(True)), inherited Create and Supports do not count as raising. High confidence. Quick fix: ' + 'put if Assigned(FField) then in front of the statement. With onlyAfterRaisingCode off, every field created in the constructor counts.",' + #10 +
+    '      "bad": "constructor TImport.Create(const Datei: string);\nbegin\n  inherited Create;\n  FStrom := TFileStream.Create(Datei, fmOpenRead);\n  FZeilen := TStringList.Create;\nend;\n\ndestructor TIm' + 'port.Destroy;\nbegin\n  FZeilen.Clear;\n  FZeilen.Free;\n  FStrom.Free;\n  inherited;\nend;",' + #10 +
+    '      "good": "destructor TImport.Destroy;\nbegin\n  if Assigned(FZeilen) then\n    FZeilen.Clear;\n  FZeilen.Free;\n  FStrom.Free;\n  inherited;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "onlyAfterRaisingCode",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Only report when the constructor calls something that can raise before it creates the field."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3483,6 +3501,17 @@ begin
     '      "id": "readonly-property-assigned",' + #10 +
     '      "name": "Zuweisung an eine Property ohne write",' + #10 +
     '      "description": "Zuweisung an eine Property ohne write (wie E2129) bzw. Lesen einer Property ohne read (wie E2130). Die Regel meldet nur, wenn die Namensauflösung die Property sicher findet; Neud' + 'eklarationen ohne read und write (property Caption;) gelten als unbekannt. Korrekturen: Count := 0 wird Clear, wenn der Typ Clear hat; in einer Methode der deklarierenden Klasse das Feld hinter read z' + 'uweisen; für eine Property dieser Datei den Setter anlegen und write ergänzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "destructor-not-nil-safe",' + #10 +
+    '      "name": "Destruktor benutzt Felder, die nil sein können",' + #10 +
+    '      "description": "Wirft ein Konstruktor, ruft Delphi sofort den Destruktor auf, obwohl noch nicht alle Felder angelegt sind. Gemeldet wird ein Zugriff im Destruktor (oder in einer privaten Methode' + ', die nur der Destruktor aufruft) auf ein Feld wie FZeilen.Clear, FDatei.Position oder FZeilen[0], wenn ein Konstruktor der Klasse das Feld (TKlasse.Create) erst nach einem Aufruf anlegt, der werfen k' + 'ann, oder nur auf manchen Wegen. Die Zugriffsverletzung verdeckt dann die eigentliche Exception. Free, FreeAndNil, DisposeOf und Zugriffe nach Assigned(FFeld) bzw. FFeld <> nil sind nil-sicher; Before' + 'Destruction läuft auf diesem Weg nicht. Konstruktoren von RTL-Klassen, die höchstens EOutOfMemory werfen (TStringList.Create, TObjectList<T>.Create(True)), inherited Create und Supports zählen nicht a' + 'ls werfend. Konfidenz hoch. Schnellkorrektur: if Assigned(FFeld) then vor die Anweisung setzen. Mit onlyAfterRaisingCode aus zählt jedes im Konstruktor angelegte Feld.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "onlyAfterRaisingCode",' + #10 +
+    '          "description": "Nur melden, wenn der Konstruktor vor dem Anlegen des Felds etwas aufruft, das eine Exception werfen kann."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
