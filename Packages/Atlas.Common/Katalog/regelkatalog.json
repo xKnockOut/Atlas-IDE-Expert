@@ -1289,6 +1289,24 @@
       "good": "destructor TExport.Destroy;\nbegin\n  FDatei.Free;\n  inherited;\nend;"
     },
     {
+      "id": "inherited-wrong-method",
+      "name": "inherited calls a different method",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "In the overridden method Speichern there is inherited Laden(…) instead of inherited Speichern(…), usually after copying a method. Only calls count (inherited Name as a statement or with parentheses); inherited Caption without parentheses may be a property. Silent in constructors (inherited Create(nil), CreateNew), in methods without override and when the method also calls itself in the ancestor (inherited; or inherited Speichern), which makes the other call intentional. Pairs from the option allowed stay silent. High confidence. Quick fix: replace the name with the method's own, when the number of arguments matches its parameters.",
+      "bad": "procedure TKundenForm.Speichern;\nbegin\n  inherited Laden;\n  Protokollieren;\nend;",
+      "good": "procedure TKundenForm.Speichern;\nbegin\n  inherited Speichern;\n  Protokollieren;\nend;",
+      "options": [
+        {
+          "name": "allowed",
+          "type": "string-list",
+          "default": [],
+          "description": "Allowed pairs \"Method>inherited method\", patterns with * and ?, e.g. \"Speichern>Pruefen\"."
+        }
+      ]
+    },
+    {
       "id": "destroy-called-directly",
       "name": "Destroy called instead of Free",
       "category": "bug",

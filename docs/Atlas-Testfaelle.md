@@ -4156,3 +4156,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | JO3 | Formular-Konstruktor `constructor TMeinForm.Create(AOwner: TComponent); begin Caption := 'Test'; inherited Create(AOwner); end;` | Meldung „Create greift vor inherited auf Caption aus TControl zu; …“ (Klasse je nach Index); Korrektur verschiebt inherited an den Anfang |
 | JO4 | Thread-Nachfahr mit `inherited;` vor `FListe.Free;` im Destruktor, eigene Felder vor `inherited Create` gesetzt, `inherited` in `finally` | Keine Meldung |
 | JO5 | `"inherited-order": "off"` bzw. `exclude` mit der Datei | Keine Meldung |
+
+## inherited ruft eine andere Methode (#1050)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JW1 | Das Beispiel aus #1050: `procedure TKundenForm.Speichern; begin inherited Laden; Protokollieren; end;` mit `Speichern; override;` | Warnung `inherited-wrong-method` an `inherited Laden`: „Speichern ruft inherited Laden auf; gemeint ist vermutlich inherited Speichern.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JW2 | Schnellkorrektur „inherited Speichern aufrufen“, danach Strg+Z | Zeile wird `inherited Speichern;`, keine Meldung mehr; ein Undo-Schritt |
+| JW3 | `inherited Schreiben('x')` in `Speichern` ohne Parameter | Meldung ohne Korrektur |
+| JW4 | Konstruktor mit `inherited CreateNew(nil)`, Methode ohne override, `inherited; inherited Laden;`, `X := inherited Caption` | Keine Meldung |
+| JW5 | `"inherited-wrong-method": {"allowed": ["Speichern>Laden"]}` | Keine Meldung; `"allowed": [1]` meldet die Einstellungsprüfung „"allowed" muss eine Liste von Texten sein“ |
+| JW6 | `"inherited-wrong-method": "off"` bzw. `exclude` mit der Datei | Keine Meldung |

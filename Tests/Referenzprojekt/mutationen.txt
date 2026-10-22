@@ -105,3 +105,4 @@ readonly-property-assigned | Ref.Formulare.Suchrahmen.pas | read FOnSuchen write
 raw-memory-leak | Ref.Komponenten.Anzeige.pas | Anzeigetext: string;\nbegin\n  Canvas.Brush.Color := Color; | Anzeigetext: string;\n  Puffer: PByte;\nbegin\n  GetMem(Puffer, 16);\n  Canvas.Brush.Color := Color;
 stringlist-objects-leak | Ref.Formulare.Haupt.pas | KundenListe.Items.Add(Kunde); | KundenListe.Items.AddObject(Kunde, TStringList.Create);
 inherited-order | Ref.Sprache.Merkmale.pas | FElemente.Free;\n  inherited; | inherited;\n  FElemente.Free;
+inherited-wrong-method | Ref.Formulare.Detail.pas | procedure TDetailFormular.Initialisieren;\nbegin\n  inherited; | procedure TDetailFormular.Initialisieren;\nbegin\n  inherited Loaded;

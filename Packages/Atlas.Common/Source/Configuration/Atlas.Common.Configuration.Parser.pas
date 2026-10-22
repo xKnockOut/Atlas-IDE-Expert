@@ -287,6 +287,12 @@ begin
             ReportNode(Value[Inner], Format('"%s" muss true oder false sein', [Value.Keys[Inner]]))
           else if (IndexStr(Value.Keys[Inner], StringListRuleOptions) >= 0) and not IsStringList(Value[Inner]) then
             ReportNode(Value[Inner], Format('"%s" muss eine Liste von Texten sein', [Value.Keys[Inner]]))
+          // allowed von inherited-wrong-method (#1050) sind Paare "Methode>geerbte Methode", sonst Zahlen.
+          else if (Value.Keys[Inner] = 'allowed') and (Rule.Id = 'inherited-wrong-method') then
+          begin
+            if not IsStringList(Value[Inner]) then
+              ReportNode(Value[Inner], '"allowed" muss eine Liste von Texten sein');
+          end
           else if (IndexStr(Value.Keys[Inner], NumberListRuleOptions) >= 0) and not IsNumberList(Value[Inner]) then
             ReportNode(Value[Inner], Format('"%s" muss eine Liste von Zahlen sein', [Value.Keys[Inner]]))
           else if (IndexStr(Value.Keys[Inner], StringRuleOptions) >= 0) and (Value[Inner].Kind <> TJsonKind.String_) then

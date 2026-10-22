@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 59 |
+| [Fehler finden](#gruppe-find-bugs) | 60 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
@@ -62,6 +62,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`field-free-without-nil`](#field-free-without-nil) | Feld freigegeben, Verweis bleibt stehen | Bug | Warnung |
 | [`missing-inherited`](#missing-inherited) | Konstruktor oder Destruktor ohne inherited | Bug | Warnung |
 | [`inherited-order`](#inherited-order) | inherited an der falschen Stelle | Bug | Warnung |
+| [`inherited-wrong-method`](#inherited-wrong-method) | inherited ruft eine andere Methode | Bug | Warnung |
 | [`destroy-called-directly`](#destroy-called-directly) | Destroy statt Free aufgerufen | Bug | Warnung |
 | [`managed-type-raw-memory`](#managed-type-raw-memory) | FillChar, Move oder GetMem auf verwaltete Typen | Bug | Fehler |
 | [`pchar-of-temporary`](#pchar-of-temporary) | PChar auf einen temporären String | Bug | Warnung |
@@ -2823,6 +2824,37 @@ destructor TExport.Destroy;
 begin
   FDatei.Free;
   inherited;
+end;
+```
+
+<a id="inherited-wrong-method"></a>
+### inherited-wrong-method
+
+**inherited ruft eine andere Methode** · Bug · Warnung · Gruppe Fehler finden
+
+In der überschriebenen Methode Speichern steht inherited Laden(…) statt inherited Speichern(…), meist nach Kopieren einer Methode. Es zählen nur Aufrufe (inherited Name als Anweisung oder mit Klammern); inherited Caption ohne Klammern kann eine Property sein. Still in Konstruktoren (inherited Create(nil), CreateNew), in Methoden ohne override und wenn die Methode auch sich selbst im Vorfahren aufruft (inherited; bzw. inherited Speichern), denn dann ist der andere Aufruf gewollt. Paare aus der Option allowed bleiben still. Konfidenz hoch. Schnellkorrektur: den Namen durch den eigenen ersetzen, wenn die Zahl der Argumente zu ihren Parametern passt.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowed` | string-list | `[]` | Erlaubte Paare "Methode>geerbte Methode", Muster mit * und ?, z. B. "Speichern>Pruefen". |
+
+Mit Treffer:
+
+```pascal
+procedure TKundenForm.Speichern;
+begin
+  inherited Laden;
+  Protokollieren;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TKundenForm.Speichern;
+begin
+  inherited Speichern;
+  Protokollieren;
 end;
 ```
 

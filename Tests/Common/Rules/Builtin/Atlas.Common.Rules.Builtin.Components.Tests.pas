@@ -3,6 +3,8 @@
 // Tests für die Komponentenregeln (#55, Teil A) und missing-inherited (#919) sowie message-handler-without-inherited (#949).
 // inherited-order (#1049): Destruktor mit Korrektur, Threads, Konstruktor mit geerbter Property, stille Fälle,
 // Abschalten.
+// inherited-wrong-method (#1050): Beispiel mit Korrektur, Argumente, Option allowed samt Parser, stille Fälle,
+// Abschalten.
 
 interface
 
@@ -75,6 +77,21 @@ type
     procedure ConstructorAccessBeforeInherited;
     [Test]
     procedure ConstructorSilentCases;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TInheritedWrongMethodTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure ArgumentsDecideFix;
+    [Test]
+    procedure SilentCases;
+    [Test]
+    procedure AllowedOption;
     [Test]
     procedure OffAndExclude;
   end;
@@ -655,8 +672,109 @@ begin
     '{"rules": {"inherited-order": {"exclude": ["Source/*.pas"]}}}', 'Source/Exporte.pas'))));
 end;
 
+{ TInheritedWrongMethodTests }
+
+/// <summary>TKundenForm überschreibt Speichern und Laden von TBasisForm; ADecl ergänzt die Klasse.</summary>
+function Kundenform(const ABody, ADecl, AMore: string): string;
+begin
+  Result := 'unit Kundenform;'#10'interface'#10'type'#10'  TBasisForm = class'#10'  public'#10 +
+    '    procedure Speichern; virtual;'#10'    procedure Laden; virtual;'#10 +
+    '    procedure Schreiben(const AName: string); virtual;'#10'  end;'#10 +
+    '  TKundenForm = class(TBasisForm)'#10'  public'#10'    procedure Speichern; override;'#10 +
+    '    procedure Laden; override;'#10 + ADecl + '  end;'#10'implementation'#10 +
+    'procedure TKundenForm.Speichern;'#10'begin'#10 + ABody + 'end;'#10 +
+    'procedure TKundenForm.Laden;'#10'begin'#10'  inherited;'#10'end;'#10 + AMore + 'end.';
+end;
+
+procedure TInheritedWrongMethodTests.IssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Kundenform('  inherited Laden;'#10'  Protokollieren;'#10, '', '');
+  Findings := TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('inherited-wrong-method', Findings[0].RuleId);
+  Assert.AreEqual('Speichern ruft inherited Laden auf; gemeint ist vermutlich inherited Speichern.',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(17, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual('inherited Speichern aufrufen', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(Kundenform('  inherited Speichern;'#10'  Protokollieren;'#10, '', ''), Fixed);
+  TRuleAssert.Silent(TInheritedWrongMethodRule.Create, Fixed);
+end;
+
+procedure TInheritedWrongMethodTests.ArgumentsDecideFix;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Andere Zahl an Argumenten als Parameter: Meldung ohne Korrektur.
+  Findings := TRuleAssert.Findings(TInheritedWrongMethodRule.Create,
+    Kundenform('  inherited Schreiben(''x'');'#10, '', ''));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Gleiche Zahl: Korrektur behält die Argumente.
+  Findings := TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Kundenform('  inherited;'#10,
+    '    procedure Schreiben(const AName: string); override;'#10,
+    'procedure TKundenForm.Schreiben(const AName: string);'#10'begin'#10'  inherited Laden;'#10 +
+    '  inherited Speichern();'#10'end;'#10));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
+end;
+
+procedure TInheritedWrongMethodTests.SilentCases;
+begin
+  // Ruft auch sich selbst geerbt auf: der zweite Aufruf ist gewollt.
+  TRuleAssert.Silent(TInheritedWrongMethodRule.Create, Kundenform('  inherited;'#10'  inherited Laden;'#10, '', ''));
+  // Property über inherited ohne Klammern, nicht überschriebene Methode, Konstruktoren.
+  TRuleAssert.Silent(TInheritedWrongMethodRule.Create, Kundenform('  inherited;'#10'  X := inherited Caption;'#10,
+    '', ''));
+  TRuleAssert.Silent(TInheritedWrongMethodRule.Create, Kundenform('  inherited;'#10,
+    '    procedure Neu;'#10'    constructor Create;'#10, 'procedure TKundenForm.Neu;'#10'begin'#10 +
+    '  inherited Laden;'#10'end;'#10'constructor TKundenForm.Create;'#10'begin'#10'  inherited CreateNew(nil);'#10 +
+    'end;'#10));
+end;
+
+procedure TInheritedWrongMethodTests.AllowedOption;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Kundenform('  inherited Laden;'#10, '', '');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Source,
+    '{"rules": {"inherited-wrong-method": {"allowed": ["Speichern>Laden"]}}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Source,
+    '{"rules": {"inherited-wrong-method": {"allowed": ["Speich*>*"]}}}'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Source,
+    '{"rules": {"inherited-wrong-method": {"allowed": ["Laden>Speichern"]}}}'))));
+  Assert.IsTrue(TInheritedWrongMethodRule.Allowed(['Speichern > Laden'], 'Speichern', 'Laden'));
+  Assert.IsFalse(TInheritedWrongMethodRule.Allowed(['Speichern'], 'Speichern', 'Laden'));
+  // Der Parser verlangt hier Texte, bei magic-number weiter Zahlen.
+  TConfigurationParser.Parse('{"rules": {"inherited-wrong-method": {"allowed": [1]}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"allowed" muss eine Liste von Texten sein', Issues[0].Message);
+  TConfigurationParser.Parse('{"rules": {"inherited-wrong-method": {"allowed": ["A>B"]}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"magic-number": {"allowed": ["A>B"]}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+procedure TInheritedWrongMethodTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Kundenform('  inherited Laden;'#10, '', '');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Source,
+    '{"rules": {"inherited-wrong-method": "off"}}', 'Source/Kundenform.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Source,
+    '{"rules": {"inherited-wrong-method": {"exclude": ["Source/*.pas"]}}}', 'Source/Kundenform.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TComponentRulesTests);
   TDUnitX.RegisterTestFixture(TInheritedOrderTests);
+  TDUnitX.RegisterTestFixture(TInheritedWrongMethodTests);
 
 end.
