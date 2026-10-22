@@ -4183,3 +4183,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | JD5 | `Q.Active := False; Q.Active := True;`, `{$IFDEF X} Caption := 'a'; {$ELSE} Caption := 'b'; {$ENDIF}` und `Caption := 'A'; {$IFDEF DEBUG} Caption := 'B'; {$ENDIF}` | Keine Meldung |
 | JD6 | `Panel.Visible := True;` zweimal; dann `"duplicate-assignment": {"allowProperties": ["Cap*"]}` und `Caption` zweimal | Erst keine Meldung (Standard Visible, Enabled); mit der Option Meldung bei Visible, keine bei Caption; `"allowProperties": [1]` meldet „"allowProperties" muss eine Liste von Texten sein“ |
 | JD7 | `"duplicate-assignment": "off"` bzw. `exclude` mit der Datei | Keine Meldung |
+
+## Getter verändert den Zustand (#1052)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JG1 | Das Beispiel aus #1052: `property Wert: Integer read GetWert;` mit `function TZaehler.GetWert: Integer; begin Inc(FAbrufe); Result := FWert; end;` | Warnung `getter-side-effect` an `FAbrufe`: „Der Getter GetWert verändert FAbrufe; schon das Anzeigen im Debugger ändert den Zustand.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JG2 | Im Getter `Self.FWert := 1`, `Dec(FAbrufe)` zweimal, `FListe.Add(TObject.Create)`, ein geerbtes Feld | Je Feld eine Meldung, auch für das geerbte |
+| JG3 | `if FListe = nil then FListe := TList.Create;`, `if Result = nil then begin Result := …; FListe := Result; end;`, `if FAbrufe = 0 then begin FWert := 42; FAbrufe := 1; end;` | Keine Meldung (Lazy-Initialisierung) |
+| JG4 | `"getter-side-effect": {"allowLazyInit": false}` | Die Fälle aus JG3 werden gemeldet; `"allowLazyInit": "ja"` meldet die Einstellungsprüfung „"allowLazyInit" muss true oder false sein“ |
+| JG5 | Lokale Variable mit Feldnamen, Methode ohne Property, Änderung in einer anonymen Methode | Keine Meldung |
+| JG6 | Optionsseite: Auswahlfeld umstellen, Seite wechseln und zurück, speichern | Die Auswahl bleibt erhalten (`TAtlasChoiceBox` sichert sie in `DestroyWnd`) |
+| JG7 | `"getter-side-effect": "off"` bzw. `exclude` mit der Datei | Keine Meldung |

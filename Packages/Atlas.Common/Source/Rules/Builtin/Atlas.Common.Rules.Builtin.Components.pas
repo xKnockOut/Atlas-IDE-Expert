@@ -25,6 +25,11 @@
 //                                        (#1050), meist nach Kopieren; nur Aufrufe (Anweisung oder
 //                                        mit Klammern), nicht in Konstruktoren, nicht wenn die Methode
 //                                        auch sich selbst geerbt aufruft; Ausnahmen über "allowed"
+//   getter-side-effect                   read-Methode einer Property ändert Felder oder Properties des
+//                                        Objekts (#1052): Zuweisung, Inc/Dec/Include/Exclude oder ein neu
+//                                        angelegtes Objekt an eine Methode eines Felds (FListe.Add(T.Create));
+//                                        Lazy-Initialisierung (if prüft, was der Zweig zuweist) ist mit
+//                                        "allowLazyInit" (Standard true) erlaubt; geerbte Felder über TAncestry
 //
 // Die Komponentenregeln prüfen nur Klassen, deren Vorfahrenkette (Datei, Symbolindex) eine
 // bekannte VCL-Basisklasse erreicht. Teil B (nicht registriert, Design-Time-Units
@@ -105,6 +110,12 @@ type
     /// <summary>Erlaubt die Option allowed (Paare "Methode&gt;geerbte Methode", Muster mit * und ?) den Aufruf
     /// inherited AInherited in AMethod?</summary>
     class function Allowed(const APairs: TArray<string>; const AMethod, AInherited: string): Boolean; static;
+  end;
+
+  TGetterSideEffectRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
 procedure RegisterComponentRules(const ARegistry: TRuleRegistry);
@@ -1273,6 +1284,30 @@ begin
       Result := Result + [AClass.Body[Index].Name];
 end;
 
+/// <summary>Parameter und lokale Variablen (var-Abschnitte) einer Methode.</summary>
+function MethodLocalNames(const AMethod: TMethodImpl): TArray<string>;
+var
+  Header, Section: TSyntaxNode;
+  Index, Inner: Integer;
+  Name: string;
+begin
+  Result := nil;
+  Header := AMethod.Decl.FindChild(TSyntaxKind.RoutineHeader);
+  if Header <> nil then
+  begin
+    Section := Header.FindChild(TSyntaxKind.Parameters);
+    if Section <> nil then
+      for Index := 0 to Section.ChildCount - 1 do
+        for Name in Section[Index].Name.Split([',']) do
+          Result := Result + [Trim(Name)];
+  end;
+  for Index := 0 to AMethod.Decl.ChildCount - 1 do
+    if AMethod.Decl[Index].Kind = TSyntaxKind.VarSection then
+      for Inner := 0 to AMethod.Decl[Index].ChildCount - 1 do
+        for Name in AMethod.Decl[Index][Inner].Name.Split([',']) do
+          Result := Result + [Trim(Name)];
+end;
+
 /// <summary>Bezeichner F bzw. Self.F als Ziel einer Freigabe: F.Free, F.DisposeOf, F.Destroy, FreeAndNil(F).</summary>
 function FreedName(ANode: TSyntaxNode): string;
 var
@@ -1418,30 +1453,6 @@ var
     end;
   end;
 
-  // Lokale Variablen und Parameter der Methode.
-  function LocalNames(const AMethod: TMethodImpl): TArray<string>;
-  var
-    Header, Section: TSyntaxNode;
-    Index, Inner: Integer;
-    Name: string;
-  begin
-    Result := nil;
-    Header := AMethod.Decl.FindChild(TSyntaxKind.RoutineHeader);
-    if Header <> nil then
-    begin
-      Section := Header.FindChild(TSyntaxKind.Parameters);
-      if Section <> nil then
-        for Index := 0 to Section.ChildCount - 1 do
-          for Name in Section[Index].Name.Split([',']) do
-            Result := Result + [Trim(Name)];
-    end;
-    for Index := 0 to AMethod.Decl.ChildCount - 1 do
-      if AMethod.Decl[Index].Kind = TSyntaxKind.VarSection then
-        for Inner := 0 to AMethod.Decl[Index].ChildCount - 1 do
-          for Name in AMethod.Decl[Index][Inner].Name.Split([',']) do
-            Result := Result + [Trim(Name)];
-  end;
-
   // Erstes geerbtes Feld bzw. erste geerbte Property in ANode (F, Self.F); nil ohne.
   function FirstInheritedAccess(ANode: TSyntaxNode; const AParent: string; const AExcluded: TArray<string>;
     out AName, AOwner: string): TSyntaxNode;
@@ -1501,7 +1512,7 @@ var
     Parent := DeclaredParent(AInfo);
     if (Parent = '') or SameText(Parent, 'TObject') or Model.HasToken(AMethod.Block, ['with']) then
       Exit;
-    Locals := LocalNames(AMethod);
+    Locals := MethodLocalNames(AMethod);
     Excluded := Locals + OwnMembers(AInfo);
     for Index := 0 to AMethod.Block.ChildCount - 1 do
     begin
@@ -1672,12 +1683,201 @@ begin
   end;
 end;
 
+{ TGetterSideEffectRule }
+
+function TGetterSideEffectRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('getter-side-effect', TRuleSeverity.Warning, 'Getter verändert den Zustand');
+end;
+
+/// <summary>F bzw. Self.F als Ziel; '' sonst.</summary>
+function SelfMemberName(ANode: TSyntaxNode): string;
+begin
+  Result := '';
+  if ANode.Kind = TSyntaxKind.Identifier then
+    Result := ANode.Name
+  else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
+    (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Self') then
+    Result := ANode.Name;
+end;
+
+/// <summary>Namen (F, Self.F, Result, lokale Variablen), denen unter ANode zugewiesen wird.</summary>
+procedure CollectAssignedNames(ANode: TSyntaxNode; var ANames: TArray<string>);
+var
+  Index: Integer;
+  Name: string;
+begin
+  if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount > 0) then
+  begin
+    Name := SelfMemberName(ANode[0]);
+    if Name <> '' then
+      ANames := ANames + [Name];
+  end;
+  for Index := 0 to ANode.ChildCount - 1 do
+    CollectAssignedNames(ANode[Index], ANames);
+end;
+
+/// <summary>Nennt ANode einen der Namen (F oder Self.F)?</summary>
+function MentionsName(ANode: TSyntaxNode; const ANames: TArray<string>): Boolean;
+var
+  Index: Integer;
+  Name: string;
+begin
+  Name := SelfMemberName(ANode);
+  if (Name <> '') and IsIn(Name, ANames) then
+    Exit(True);
+  for Index := 0 to ANode.ChildCount - 1 do
+    if MentionsName(ANode[Index], ANames) then
+      Exit(True);
+  Result := False;
+end;
+
+/// <summary>Enthält ANode einen Konstruktoraufruf (X.Create, X.Create(…))?</summary>
+function ContainsCreate(ANode: TSyntaxNode): Boolean;
+var
+  Index: Integer;
+begin
+  if (ANode.Kind = TSyntaxKind.MemberAccess) and StartsText('Create', ANode.Name) then
+    Exit(True);
+  for Index := 0 to ANode.ChildCount - 1 do
+    if ContainsCreate(ANode[Index]) then
+      Exit(True);
+  Result := False;
+end;
+
+/// <summary>Lazy-Initialisierung: Ein umschließendes if (bis ARoot) prüft in der Bedingung etwas, das im Zweig
+/// mit ANode zugewiesen wird (if FListe = nil then FListe := …, if Result = nil then … FX := Result).</summary>
+function IsLazyInit(ANode, ARoot: TSyntaxNode): Boolean;
+var
+  Branch, Condition: TSyntaxNode;
+  AssignedNames: TArray<string>;
+begin
+  Branch := ANode;
+  while (Branch <> nil) and (Branch <> ARoot) and (Branch.Parent <> nil) do
+  begin
+    Condition := nil;
+    if (Branch.Parent.Kind = TSyntaxKind.IfStatement) and (Branch.Parent.ChildCount > 1) and
+      (Branch.Parent[0] <> Branch) then
+      Condition := Branch.Parent[0];
+    if Condition <> nil then
+    begin
+      AssignedNames := nil;
+      CollectAssignedNames(Branch, AssignedNames);
+      if MentionsName(Condition, AssignedNames) then
+        Exit(True);
+    end;
+    Branch := Branch.Parent;
+  end;
+  Result := False;
+end;
+
+procedure TGetterSideEffectRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Model: TComponentModel;
+  Cache: IRuleDerivedCache;
+  AllowLazyInit: Boolean;
+  Info: TClassInfo;
+  Parent: string;
+  Members, Locals, Reported: TArray<string>;
+
+  // Feld oder Property des Objekts: eigene aus der Klasse, geerbte über TAncestry.
+  function IsState(const AName: string): Boolean;
+  var
+    Member: TIndexSymbol;
+    Unresolved: string;
+  begin
+    if (AName = '') or SameText(AName, 'Result') or SameText(AName, 'Self') or IsIn(AName, Locals) then
+      Exit(False);
+    if IsIn(AName, Members) then
+      Exit(True);
+    Result := (Parent <> '') and Model.FAncestry.FindMember(Parent, AName, Member, Unresolved) and
+      (Member.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]);
+  end;
+
+  // Geändertes Mitglied an ANode: Ziel einer Zuweisung, Inc/Dec/Include/Exclude, Methode eines Felds mit neu
+  // angelegtem Objekt als Argument (FListe.Add(TEintrag.Create)); nil ohne.
+  function ChangedTarget(ANode: TSyntaxNode): TSyntaxNode;
+  var
+    Index: Integer;
+  begin
+    Result := nil;
+    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount > 0) then
+      Result := ANode[0]
+    else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 1) and
+      (ANode[0].Kind = TSyntaxKind.Identifier) and IsIn(ANode[0].Name, ['Inc', 'Dec', 'Include', 'Exclude']) then
+      Result := ANode[1]
+    else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 1) and
+      (ANode[0].Kind = TSyntaxKind.MemberAccess) and (ANode[0].ChildCount = 1) then
+      for Index := 1 to ANode.ChildCount - 1 do
+        if ContainsCreate(ANode[Index]) then
+          Exit(ANode[0][0]);
+  end;
+
+  procedure Visit(ANode, ARoot: TSyntaxNode; const AGetter: string);
+  var
+    Target: TSyntaxNode;
+    Name: string;
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.AnonymousMethod then
+      Exit;
+    Target := ChangedTarget(ANode);
+    if Target <> nil then
+    begin
+      Name := SelfMemberName(Target);
+      if IsState(Name) and not IsIn(Name, Reported) and not (AllowLazyInit and IsLazyInit(ANode, ARoot)) then
+      begin
+        Reported := Reported + [Name];
+        AReport.Add(TTextRange.Create(Target.StartPos, Target.EndPos),
+          Format('Der Getter %s verändert %s; schon das Anzeigen im Debugger ändert den Zustand.', [AGetter, Name]),
+          TRuleConfidence.Medium);
+      end;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index], ARoot, AGetter);
+  end;
+
+var
+  Prop: TPropertyInfo;
+  Method: TMethodImpl;
+  Getters: TArray<string>;
+  Index: Integer;
+begin
+  Cache := TRuleDerived.Open(AContext);
+  if not Prepare(Cache, AContext, Model) then
+    Exit;
+  AllowLazyInit := TRuleOptions.Bool(AContext.Options, 'allowLazyInit', True);
+  for Info in Model.Classes do
+  begin
+    Getters := nil;
+    for Prop in Model.Properties(Info) do
+      if (Prop.ReadName <> '') and not IsIn(Prop.ReadName, Getters) then
+        Getters := Getters + [Prop.ReadName];
+    if Getters = nil then
+      Continue;
+    Parent := DeclaredParent(Info);
+    Members := OwnFields(Info);
+    for Index := 0 to Info.Body.ChildCount - 1 do
+      if Info.Body[Index].Kind = TSyntaxKind.PropertyDecl then
+        Members := Members + [Info.Body[Index].Name];
+    for Method in Model.Methods do
+      if SameText(Method.ClassName, Info.Name) and IsIn(Method.MethodName, Getters) and
+        not Model.HasToken(Method.Block, ['with']) then
+      begin
+        Locals := MethodLocalNames(Method);
+        Reported := nil;
+        Visit(Method.Block, Method.Block, Method.MethodName);
+      end;
+  end;
+end;
+
 procedure RegisterComponentRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TMissingInheritedRule.Create);
   ARegistry.Register(TMessageHandlerWithoutInheritedRule.Create);
   ARegistry.Register(TInheritedOrderRule.Create);
   ARegistry.Register(TInheritedWrongMethodRule.Create);
+  ARegistry.Register(TGetterSideEffectRule.Create);
   ARegistry.Register(TComponentMissingInheritedRule.Create);
   ARegistry.Register(TComponentDefaultMismatchRule.Create);
   ARegistry.Register(TComponentMissingFreeNotificationRule.Create);

@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1768] of string = (
+  Lines: array[0..1773] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -445,6 +445,11 @@ const
     '                },',
     '                "default": ["Visible", "Enabled"],',
     '                "description": "Nur duplicate-assignment: Properties, bei denen doppeltes Setzen gewollt sein kann (Setter mit Nebenwirkung), Muster mit * und ? (#1051)."',
+    '              },',
+    '              "allowLazyInit": {',
+    '                "type": "boolean",',
+    '                "default": true,',
+    '                "description": "Nur getter-side-effect: Lazy-Initialisierung im Getter erlauben (if FListe = nil then FListe := …, #1052)."',
     '              },',
     '              "searchPaths": {',
     '                "type": "string",',

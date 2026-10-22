@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 61 |
+| [Fehler finden](#gruppe-find-bugs) | 62 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
@@ -64,6 +64,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`missing-inherited`](#missing-inherited) | Konstruktor oder Destruktor ohne inherited | Bug | Warnung |
 | [`inherited-order`](#inherited-order) | inherited an der falschen Stelle | Bug | Warnung |
 | [`inherited-wrong-method`](#inherited-wrong-method) | inherited ruft eine andere Methode | Bug | Warnung |
+| [`getter-side-effect`](#getter-side-effect) | Getter verändert den Zustand | Code Smell | Warnung |
 | [`destroy-called-directly`](#destroy-called-directly) | Destroy statt Free aufgerufen | Bug | Warnung |
 | [`managed-type-raw-memory`](#managed-type-raw-memory) | FillChar, Move oder GetMem auf verwaltete Typen | Bug | Fehler |
 | [`pchar-of-temporary`](#pchar-of-temporary) | PChar auf einen temporären String | Bug | Warnung |
@@ -2883,6 +2884,36 @@ procedure TKundenForm.Speichern;
 begin
   inherited Speichern;
   Protokollieren;
+end;
+```
+
+<a id="getter-side-effect"></a>
+### getter-side-effect
+
+**Getter verändert den Zustand** · Code Smell · Warnung · Gruppe Fehler finden
+
+Die read-Methode einer Property weist Feldern oder Properties des eigenen Objekts zu (FAbrufe, Self.FWert, auch geerbte Felder), ruft Inc/Dec/Include/Exclude darauf auf oder übergibt ein neu angelegtes Objekt an eine Methode eines Felds (FListe.Add(TEintrag.Create)). Der Debugger wertet Getter beim Anzeigen aus und ändert so den Zustand. Lazy-Initialisierung ist erlaubt: Ein umschließendes if prüft etwas, das sein Zweig zuweist (if FListe = nil then FListe := …, if Result = nil then … FListe := Result, if not FGeladen then … FGeladen := True). Still bei lokalen Variablen mit dem Namen eines Felds, Result, Methoden ohne Property und anonymen Methoden. Eine Meldung je Getter und Feld. Konfidenz mittel. Keine Schnellkorrektur.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowLazyInit` | boolean | `true` | Lazy-Initialisierung im Getter erlauben (if FListe = nil then FListe := …). |
+
+Mit Treffer:
+
+```pascal
+function TZaehler.GetWert: Integer;
+begin
+  Inc(FAbrufe);
+  Result := FWert;
+end;
+```
+
+Richtig:
+
+```pascal
+function TZaehler.GetWert: Integer;
+begin
+  Result := FWert;
 end;
 ```
 

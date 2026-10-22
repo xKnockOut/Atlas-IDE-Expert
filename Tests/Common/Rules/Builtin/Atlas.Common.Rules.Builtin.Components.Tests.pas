@@ -5,6 +5,8 @@
 // Abschalten.
 // inherited-wrong-method (#1050): Beispiel mit Korrektur, Argumente, Option allowed samt Parser, stille Fälle,
 // Abschalten.
+// getter-side-effect (#1052): Beispiel, Arten der Änderung, geerbte Felder, Lazy-Initialisierung mit Option
+// allowLazyInit samt Parser, stille Fälle, Abschalten.
 
 interface
 
@@ -92,6 +94,23 @@ type
     procedure SilentCases;
     [Test]
     procedure AllowedOption;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TGetterSideEffectTests = class
+  public
+    [Test]
+    procedure IssueExample;
+    [Test]
+    procedure KindsOfChange;
+    [Test]
+    procedure InheritedField;
+    [Test]
+    procedure LazyInitOption;
+    [Test]
+    procedure SilentCases;
     [Test]
     procedure OffAndExclude;
   end;
@@ -772,9 +791,134 @@ begin
     '{"rules": {"inherited-wrong-method": {"exclude": ["Source/*.pas"]}}}', 'Source/Kundenform.pas'))));
 end;
 
+{ TGetterSideEffectTests }
+
+/// <summary>TZaehler mit Getter GetWert (Rumpf ABody, Variablen AVars) und GetListe (Rumpf AListe).</summary>
+function Zaehler(const ABody, AVars, AListe: string): string;
+begin
+  Result := 'unit Zaehler;'#10'interface'#10'type'#10'  TZaehler = class'#10'  private'#10 +
+    '    FWert, FAbrufe: Integer;'#10'    FListe: TList;'#10'    function GetWert: Integer;'#10 +
+    '    function GetListe: TList;'#10'  public'#10'    property Wert: Integer read GetWert;'#10 +
+    '    property Liste: TList read GetListe;'#10'  end;'#10'implementation'#10 +
+    'function TZaehler.GetWert: Integer;'#10 + AVars + 'begin'#10 + ABody + 'end;'#10 +
+    'function TZaehler.GetListe: TList;'#10'begin'#10 + AListe + 'end;'#10'end.';
+end;
+
+function GetterFindings(const ASource: string; const AConfig: string = ''): TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.Findings(TGetterSideEffectRule.Create, ASource, AConfig);
+end;
+
+procedure TGetterSideEffectTests.IssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := GetterFindings(Zaehler('  Inc(FAbrufe);'#10'  Result := FWert;'#10, '', '  Result := FListe;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('getter-side-effect', Findings[0].RuleId);
+  Assert.AreEqual('Der Getter GetWert verändert FAbrufe; schon das Anzeigen im Debugger ändert den Zustand.',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(16, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(6, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Die korrigierte Form ist still.
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, Zaehler('  Result := FWert;'#10, '', '  Result := FListe;'#10));
+end;
+
+procedure TGetterSideEffectTests.KindsOfChange;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Zuweisung (auch über Self.), Dec, neu angelegtes Objekt an eine Methode eines Felds; je Feld eine Meldung.
+  Findings := GetterFindings(Zaehler('  Self.FWert := FWert + 1;'#10'  Dec(FAbrufe);'#10'  Dec(FAbrufe);'#10 +
+    '  Result := FWert;'#10, '', '  FListe.Add(TObject.Create);'#10'  Result := FListe;'#10));
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual('Der Getter GetWert verändert FWert; schon das Anzeigen im Debugger ändert den Zustand.',
+    Findings[0].Message);
+  Assert.AreEqual(16, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual('Der Getter GetWert verändert FAbrufe; schon das Anzeigen im Debugger ändert den Zustand.',
+    Findings[1].Message);
+  Assert.AreEqual('Der Getter GetListe verändert FListe; schon das Anzeigen im Debugger ändert den Zustand.',
+    Findings[2].Message);
+  // Ein if ohne Prüfung des Zugewiesenen ist keine Lazy-Initialisierung.
+  Assert.AreEqual(1, Integer(Length(GetterFindings(Zaehler('  if FWert > 0 then'#10'    Inc(FAbrufe);'#10 +
+    '  Result := FWert;'#10, '', '  Result := FListe;'#10)))));
+end;
+
+procedure TGetterSideEffectTests.InheritedField;
+var
+  Source: string;
+begin
+  Source := StringReplace(Zaehler('  Inc(FZugriffe);'#10'  Result := FWert;'#10, '', '  Result := FListe;'#10),
+    '  TZaehler = class'#10, '  TBasis = class'#10'  protected'#10'    FZugriffe: Integer;'#10'  end;'#10 +
+    '  TZaehler = class(TBasis)'#10, []);
+  Assert.AreEqual('Der Getter GetWert verändert FZugriffe; schon das Anzeigen im Debugger ändert den Zustand.',
+    GetterFindings(Source)[0].Message);
+end;
+
+procedure TGetterSideEffectTests.LazyInitOption;
+var
+  Plain, Assigned_, ViaResult: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Plain := Zaehler('  Result := FWert;'#10, '', '  if FListe = nil then'#10'    FListe := TList.Create;'#10 +
+    '  Result := FListe;'#10);
+  Assigned_ := Zaehler('  Result := FWert;'#10, '', '  if not Assigned(FListe) then'#10'  begin'#10 +
+    '    FListe := TList.Create;'#10'    FListe.Add(TObject.Create);'#10'  end;'#10'  Result := FListe;'#10);
+  ViaResult := Zaehler('  Result := FWert;'#10, '', '  Result := FListe;'#10'  if Result = nil then'#10 +
+    '  begin'#10'    Result := TList.Create;'#10'    FListe := Result;'#10'  end;'#10);
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, Plain);
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, Assigned_);
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, ViaResult);
+  // Zwischenspeicher mit Merker: if FAbrufe = 0 then begin FWert := …; FAbrufe := 1; end.
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, Zaehler('  if FAbrufe = 0 then'#10'  begin'#10 +
+    '    FWert := 42;'#10'    FAbrufe := 1;'#10'  end;'#10'  Result := FWert;'#10, '', '  Result := FListe;'#10));
+  // Mit allowLazyInit = false wird auch sie gemeldet.
+  Assert.AreEqual(1, Integer(Length(GetterFindings(Plain,
+    '{"rules": {"getter-side-effect": {"allowLazyInit": false}}}'))));
+  Assert.AreEqual(1, Integer(Length(GetterFindings(Assigned_,
+    '{"rules": {"getter-side-effect": {"allowLazyInit": false}}}'))));
+  Assert.AreEqual(1, Integer(Length(GetterFindings(ViaResult,
+    '{"rules": {"getter-side-effect": {"allowLazyInit": false}}}'))));
+  TConfigurationParser.Parse('{"rules": {"getter-side-effect": {"allowLazyInit": "ja"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"allowLazyInit" muss true oder false sein', Issues[0].Message);
+  TConfigurationParser.Parse('{"rules": {"getter-side-effect": {"allowLazyInit": false}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+end;
+
+procedure TGetterSideEffectTests.SilentCases;
+begin
+  // Lokale Variable mit Feldnamen, Result, Methoden ohne Property, anonyme Methoden.
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, Zaehler('  FAbrufe := 1;'#10'  Result := FAbrufe;'#10,
+    'var'#10'  FAbrufe: Integer;'#10, '  Result := FListe;'#10));
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, StringReplace(Zaehler('  Result := FWert;'#10, '',
+    '  Result := FListe;'#10), 'end;'#10'end.', 'end;'#10'procedure TZaehler.Zaehlen;'#10'begin'#10 +
+    '  Inc(FAbrufe);'#10'end;'#10'end.', []));
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, Zaehler('  Ausfuehren(procedure begin Inc(FAbrufe); end);'#10 +
+    '  Result := FWert;'#10, '', '  Result := FListe;'#10));
+  // Methode eines Felds mit Argument, das nichts anlegt.
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, Zaehler('  Result := FListe.IndexOf(nil);'#10, '',
+    '  Result := FListe;'#10));
+end;
+
+procedure TGetterSideEffectTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Zaehler('  Inc(FAbrufe);'#10'  Result := FWert;'#10, '', '  Result := FListe;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGetterSideEffectRule.Create, Source,
+    '{"rules": {"getter-side-effect": "off"}}', 'Source/Zaehler.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGetterSideEffectRule.Create, Source,
+    '{"rules": {"getter-side-effect": {"exclude": ["Source/*.pas"]}}}', 'Source/Zaehler.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TComponentRulesTests);
   TDUnitX.RegisterTestFixture(TInheritedOrderTests);
   TDUnitX.RegisterTestFixture(TInheritedWrongMethodTests);
+  TDUnitX.RegisterTestFixture(TGetterSideEffectTests);
 
 end.

@@ -1328,6 +1328,24 @@
       ]
     },
     {
+      "id": "getter-side-effect",
+      "name": "Getter changes the state",
+      "category": "code-smell",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "The read method of a property assigns fields or properties of its own object (FAbrufe, Self.FWert, inherited fields as well), calls Inc/Dec/Include/Exclude on them or passes a newly created object to a method of a field (FListe.Add(TEintrag.Create)). The debugger evaluates getters when displaying them and so changes the state. Lazy initialization is allowed: an enclosing if tests something that its branch assigns (if FListe = nil then FListe := …, if Result = nil then … FListe := Result, if not FGeladen then … FGeladen := True). Local variables with the same name as a field, Result, methods without a property and anonymous methods stay silent. One message per getter and field. Medium confidence. No quick fix.",
+      "bad": "function TZaehler.GetWert: Integer;\nbegin\n  Inc(FAbrufe);\n  Result := FWert;\nend;",
+      "good": "function TZaehler.GetWert: Integer;\nbegin\n  Result := FWert;\nend;",
+      "options": [
+        {
+          "name": "allowLazyInit",
+          "type": "boolean",
+          "default": true,
+          "description": "Allow lazy initialization in the getter (if FListe = nil then FListe := …)."
+        }
+      ]
+    },
+    {
       "id": "destroy-called-directly",
       "name": "Destroy called instead of Free",
       "category": "bug",
