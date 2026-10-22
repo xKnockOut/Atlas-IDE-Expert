@@ -2357,6 +2357,16 @@
           "description": "Types that count as thread-safe; their collection calls stay silent."
         }
       ]
+    },
+    {
+      "id": "thread-unsafe-increment",
+      "name": "Counter in a thread without TInterlocked",
+      "category": "bug",
+      "severity": "warning",
+      "group": "threads",
+      "description": "Inc, Dec, X := X + 1 or X := X - 1 without a lock on a global variable in Execute of a TThread descendant, or on a field or global variable in the body of TTask.Run/Create/Future outside loops and of TThread.CreateAnonymousThread. Inc is not atomic: when several threads count at the same time, increments get lost. Thread classes come from the unit (also through intermediate classes) and from the index. Own fields of the thread in Execute and captured local variables of a single task have only one writer and stay silent, as do bodies with a lock (TMonitor, Enter, Acquire, Lock, LockList, BeginWrite, TInterlocked) and nested anonymous methods (Synchronize, Queue). Tasks inside loops and TParallel.For are reported by parallel-for-shared-write. Medium confidence. Quick fix: TInterlocked.Increment/Decrement/Add for Integer, Int64 and Cardinal (adds System.SyncObjs).",
+      "bad": "procedure TArbeiter.Execute;\nbegin\n  while not Terminated do\n    if Holen then Inc(GVerarbeitet);\nend;",
+      "good": "procedure TArbeiter.Execute;\nbegin\n  while not Terminated do\n    if Holen then TInterlocked.Increment(GVerarbeitet);\nend;"
     }
   ]
 }
