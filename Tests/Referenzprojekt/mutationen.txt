@@ -104,3 +104,4 @@ assign-to-property-member | Ref.Komponenten.Anzeige.pas |   Width := StandardBre
 readonly-property-assigned | Ref.Formulare.Suchrahmen.pas | read FOnSuchen write FOnSuchen;\n  end;\n\nimplementation\n\n{$R *.dfm}\n\nprocedure TSuchrahmen.SuchenButtonClick(Sender: TObject);\nbegin\n  if Assigned(FOnSuchen) then | write FOnSuchen;\n  end;\n\nimplementation\n\n{$R *.dfm}\n\nprocedure TSuchrahmen.SuchenButtonClick(Sender: TObject);\nbegin\n  if Assigned(OnSuchen) then
 form-resource-missing | Ref.Formulare.Detail.pas | {$R *.dfm}\n\nprocedure | procedure
 form-autocreate-and-manual | Ref.Formulare.Haupt.pas | Formular := TDetailFormular.Create(Self); | DetailFormular := TDetailFormular.Create(Self);\n  Formular := DetailFormular;
+inherited-form-handler-without-inherited | Ref.Formulare.Detail.pas | inherited;\n  NameEdit.Clear; | NameEdit.Clear;

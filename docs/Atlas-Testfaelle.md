@@ -4149,3 +4149,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; die `.dpr` enthält `Applic
 | FX5 | Formular nicht in der Liste der automatisch erzeugten (Projektoptionen) | Keine Meldung |
 | FX6 | `"form-autocreate-and-manual": "off"`, `"group:forms": "off"` bzw. `exclude` | Keine Meldung |
 | FX7 | Abgleich mit Delphi: FX1 ausführen, im Debugger `Screen.FormCount` vor und nach dem Klick | Ein Formular mehr als ohne Fehler; nach FX2 nicht mehr |
+
+## Ereignis-Handler im geerbten Formular ohne inherited (#1056)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; `TfrmBasisDialog` mit `btnSpeichern.OnClick = btnSpeichernClick`, davon geerbt `TfrmKundeBearbeiten` (Datei > Neu > Weitere > Vererbbare Elemente).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IH1 | Im geerbten Formular auf `btnSpeichern` doppelklicken, im erzeugten Handler `inherited;` löschen und `FKunde.Speichern;` schreiben | Warnung `inherited-form-handler-without-inherited` am Methodennamen: „TfrmBasisDialog.btnSpeichernClick wird nicht mehr ausgeführt (kein inherited).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| IH2 | Schnellkorrektur „inherited; am Anfang einfügen“, danach Strg+Z | `inherited;` steht als erste Zeile nach `begin`, keine Meldung mehr; Strg+Z nimmt es in einem Schritt zurück |
+| IH3 | `inherited btnSpeichernClick(Sender);` am Ende des Rumpfs | Keine Meldung |
+| IH4 | Im Objektinspektor einen Handler mit anderem Namen zuweisen (`SpeichernNeuClick`) | Keine Meldung (bewusster Ersatz) |
+| IH5 | Drei Stufen: Basis setzt OnClick, Mitte erbt ohne eigenes OnClick, Nachfahr wie IH1 | Meldung nennt `TfrmBasisDialog` |
+| IH6 | Vorfahr liegt in einem anderen Ordner (Suchpfad); Vorfahr ohne OnClick; Formular ohne Vererbung | Meldung nur im ersten Fall (Index), sonst keine |
+| IH7 | `"inherited-form-handler-without-inherited": "off"`, `"group:forms": "off"` bzw. `exclude` | Keine Meldung |
+| IH8 | Abgleich: IH1 ausführen und auf Speichern klicken | Die Logik von `TfrmBasisDialog.btnSpeichernClick` läuft nicht; nach IH2 wieder |

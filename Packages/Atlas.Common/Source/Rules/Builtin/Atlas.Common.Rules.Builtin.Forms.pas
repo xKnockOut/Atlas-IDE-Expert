@@ -14,6 +14,12 @@
 //                           Namen und gleichnamigen Feldern der eigenen Klasse. Kennt die Regel die .dpr
 //                           (ProjectMainSource, ReadFile), muss die Klasse zu CreateForm passen; Korrektur:
 //                           die Zeile mit Application.CreateForm aus der .dpr entfernen.
+//   inherited-form-handler-without-inherited  Geerbtes Formular (inherited in der Formulardatei): Ein Vorfahr
+//                           belegt dasselbe Ereignis derselben Komponente mit einem gleichnamigen Handler, der
+//                           Handler des Nachfahren ruft inherited aber nicht auf (#1056). Die Formulardateien der
+//                           Vorfahren kommen über den Index (Datei der Klasse) bzw. die Units der uses-Liste neben
+//                           der Unit (ReadFile); die Kette folgt inherited-Wurzeln bis zu einer object-Wurzel.
+//                           Andere Handlernamen gelten als bewusster Ersatz. Korrektur: inherited; nach begin.
 
 interface
 
@@ -38,12 +44,20 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TInheritedFormHandlerRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterFormRules(const ARegistry: TRuleRegistry);
 
 implementation
 
 uses
   System.StrUtils,
+  System.RegularExpressions,
+  Atlas.Common.Editing.UsesClause,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
@@ -450,10 +464,256 @@ begin
     CheckRoutine(Routine);
 end;
 
+{ TInheritedFormHandlerRule }
+
+type
+  /// <summary>Ereignis einer Komponente der Formulardatei; Component '' = das Formular selbst.</summary>
+  TFormEvent = record
+    Component: string;
+    Event: string;
+    Handler: string;
+    /// <summary>Klasse, deren Formulardatei den Handler setzt (bei Vorfahren).</summary>
+    Owner: string;
+  end;
+
+procedure CollectEvents(AObject: TDfmObject; AIsRoot: Boolean; const AOwner: string;
+  var AEvents: TArray<TFormEvent>);
+var
+  Prop: TDfmProperty;
+  Child: TDfmObject;
+  Event: TFormEvent;
+begin
+  if AObject.Kind = TDfmObjectKind.Item then
+    Exit;
+  for Prop in AObject.Properties do
+    if Prop.IsEvent then
+    begin
+      Event := Default(TFormEvent);
+      if not AIsRoot then
+        Event.Component := AObject.Name;
+      Event.Event := Prop.Name;
+      Event.Handler := Prop.Value;
+      Event.Owner := AOwner;
+      AEvents := AEvents + [Event];
+    end;
+  for Child in AObject.Children do
+    CollectEvents(Child, False, AOwner, AEvents);
+end;
+
+function TInheritedFormHandlerRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('inherited-form-handler-without-inherited', TRuleSeverity.Warning,
+    'Ereignis-Handler im geerbten Formular ohne inherited');
+end;
+
+procedure TInheritedFormHandlerRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Document: TDfmDocument;
+  Own, Inherited_: TArray<TFormEvent>;
+  UsedUnits: TArray<string>;
+
+  // Formulardatei der Klasse AClassName: über den Index, sonst über die Units AUnits neben der Unit.
+  function AncestorForm(const AClassName: string; const AUnits: TArray<string>; out AText, AFileName: string):
+    Boolean;
+  var
+    Location: TSymbolLocation;
+    Candidates: TArray<string>;
+    Candidate, Extension, Name: string;
+    Data: TBytes;
+    Format_: TFileFormat;
+    Parsed: TDfmDocument;
+  begin
+    Result := False;
+    if not Assigned(AContext.ReadFile) then
+      Exit;
+    Name := Copy(AClassName, LastDelimiter('.', AClassName) + 1, MaxInt);
+    Candidates := nil;
+    if AContext.Index <> nil then
+      for Location in AContext.Index.FindSymbols(Name) do
+        if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') then
+          Candidates := Candidates + [ChangeFileExt(Location.FileName, '')];
+    for Candidate in AUnits do
+      Candidates := Candidates + [Candidate];
+    for Candidate in Candidates do
+      for Extension in TArray<string>.Create('.dfm', '.fmx') do
+        if AContext.ReadFile(Candidate + Extension, Data) then
+        begin
+          AText := TFileEncoding.Decode(Data, Format_);
+          Parsed := TDfmParser.Parse(AText);
+          try
+            if (Parsed.Root <> nil) and SameText(Parsed.Root.TypeName, Name) then
+            begin
+              AFileName := Candidate + Extension;
+              Exit(True);
+            end;
+          finally
+            Parsed.Free;
+          end;
+        end;
+  end;
+
+  // Vorfahr von AClassName aus dem Quelltext der Unit neben AFormFile ('' ohne).
+  function ParentInFile(const AClassName, AFormFile: string; out AUnits: TArray<string>): string;
+  var
+    Data: TBytes;
+    Format_: TFileFormat;
+    Text: string;
+    Match: TMatch;
+  begin
+    Result := '';
+    AUnits := nil;
+    if not AContext.ReadFile(ChangeFileExt(AFormFile, '.pas'), Data) then
+      Exit;
+    Text := TFileEncoding.Decode(Data, Format_);
+    AUnits := TUsesClauses.UsedUnits(TPascalLexer.Tokenize(Text));
+    Match := TRegEx.Match(Text, '\b' + AClassName + '\s*=\s*class\s*\(\s*([\w.]+)', [roIgnoreCase]);
+    if Match.Success then
+      Result := Match.Groups[1].Value;
+  end;
+
+  function FindInherited(const AEvent: TFormEvent; out AFound: TFormEvent): Boolean;
+  var
+    Event: TFormEvent;
+  begin
+    for Event in Inherited_ do
+      if SameText(Event.Component, AEvent.Component) and SameText(Event.Event, AEvent.Event) then
+      begin
+        AFound := Event;
+        Exit(True);
+      end;
+    Result := False;
+  end;
+
+  procedure CollectAncestors(const AClassName: string);
+  var
+    Parent, Text, FileName: string;
+    Units, More: TArray<string>;
+    Level: Integer;
+    Parsed: TDfmDocument;
+    IsInherited: Boolean;
+    Events: TArray<TFormEvent>;
+    Event, Found: TFormEvent;
+  begin
+    Parent := AClassName;
+    Units := UsedUnits;
+    for Level := 1 to 8 do
+    begin
+      if not AncestorForm(Parent, Units, Text, FileName) then
+        Exit;
+      Parsed := TDfmParser.Parse(Text);
+      try
+        Events := nil;
+        CollectEvents(Parsed.Root, True, Parsed.Root.TypeName, Events);
+        IsInherited := Parsed.Root.Kind = TDfmObjectKind.Inherited_;
+      finally
+        Parsed.Free;
+      end;
+      // Der nächste Vorfahr gewinnt.
+      for Event in Events do
+        if not FindInherited(Event, Found) then
+          Inherited_ := Inherited_ + [Event];
+      if not IsInherited then
+        Exit;
+      Parent := ParentInFile(Copy(Parent, LastDelimiter('.', Parent) + 1, MaxInt), FileName, More);
+      if Parent = '' then
+        Exit;
+      Units := Units + More;
+    end;
+  end;
+
+  function FindRoutine(const AName: string): TSyntaxNode;
+  var
+    Routine: TSyntaxNode;
+  begin
+    for Routine in TRuleDerived.Routines(TRuleDerived.Open(AContext), AContext) do
+      if SameText(Routine.Name, AName) then
+        Exit(Routine);
+    Result := nil;
+  end;
+
+var
+  ClassNode, Routine, Body: TSyntaxNode;
+  Parent, ClassName, LineBreak: string;
+  Event, Ancestor: TFormEvent;
+  Token, NameToken, BeginToken: TPascalToken;
+  HasInherited, HasName, HasBegin: Boolean;
+  Fixes: TArray<TRuleFix>;
+begin
+  if (AContext.FormText = '') or (AContext.Tree = nil) or (AContext.Tree.Root = nil) or
+    not ContainsText(AContext.FormText, 'inherited') then
+    Exit;
+  Document := TDfmParser.Parse(AContext.FormText);
+  try
+    if (Document.Root = nil) or (Document.Root.Kind <> TDfmObjectKind.Inherited_) then
+      Exit;
+    ClassName := Document.Root.TypeName;
+    Own := nil;
+    CollectEvents(Document.Root, True, ClassName, Own);
+  finally
+    Document.Free;
+  end;
+  if Length(Own) = 0 then
+    Exit;
+  ClassNode := FindClassDecl(AContext.Tree.Root, ClassName);
+  if (ClassNode = nil) or (ClassNode.ChildCount = 0) or (ClassNode[0].Kind <> TSyntaxKind.TypeReference) then
+    Exit;
+  Parent := ClassNode[0].Name;
+  UsedUnits := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
+  Inherited_ := nil;
+  CollectAncestors(Parent);
+  LineBreak := TTextLines.LineBreakOf(AContext.Text);
+  for Event in Own do
+  begin
+    // Nur gleichnamige Handler: ein anderer Name ersetzt den Handler des Vorfahren bewusst.
+    if not FindInherited(Event, Ancestor) or not SameText(Ancestor.Handler, Event.Handler) then
+      Continue;
+    Routine := FindRoutine(ClassName + '.' + Event.Handler);
+    if Routine = nil then
+      Continue;
+    Body := TRoutineBody.BodyOf(Routine);
+    if Body = nil then
+      Continue;
+    HasInherited := False;
+    HasName := False;
+    HasBegin := False;
+    NameToken := Default(TPascalToken);
+    BeginToken := Default(TPascalToken);
+    for Token in AContext.Tree.Tokens do
+    begin
+      if (Token.Offset < Routine.StartOffset) or (Token.Offset >= Routine.EndOffset) or
+        (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+        Continue;
+      if not HasName and (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, Event.Handler) then
+      begin
+        HasName := True;
+        NameToken := Token;
+      end;
+      if not HasBegin and (Token.Offset >= Body.StartOffset) and Token.IsKeyword('begin') then
+      begin
+        HasBegin := True;
+        BeginToken := Token;
+      end;
+      if (Token.Offset >= Body.StartOffset) and Token.IsKeyword('inherited') then
+        HasInherited := True;
+    end;
+    if HasInherited or not HasName then
+      Continue;
+    Fixes := nil;
+    if HasBegin then
+      Fixes := [TRuleFix.Create('inherited; am Anfang einfügen', [TRuleEdit.Create(TTextRange.Create(
+        BeginToken.EndPos, BeginToken.EndPos), LineBreak + TTextLines.IndentOf(AContext.Text, BeginToken.StartPos.Line) +
+        '  inherited;')], True)];
+    AReport.Add(TTextRange.Create(NameToken.StartPos, NameToken.EndPos),
+      Format('%s.%s wird nicht mehr ausgeführt (kein inherited).', [Ancestor.Owner, Ancestor.Handler]),
+      TRuleConfidence.High, Fixes);
+  end;
+end;
+
 procedure RegisterFormRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TFormResourceMissingRule.Create);
   ARegistry.Register(TFormAutoCreateAndManualRule.Create);
+  ARegistry.Register(TInheritedFormHandlerRule.Create);
 end;
 
 end.

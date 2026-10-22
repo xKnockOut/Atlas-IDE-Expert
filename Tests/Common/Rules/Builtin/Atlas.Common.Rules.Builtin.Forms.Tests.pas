@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Forms.Tests;
 
-// Tests der Formularregeln aus Builtin.Forms: form-resource-missing (#1054), form-autocreate-and-manual (#1055).
+// Tests der Formularregeln aus Builtin.Forms: form-resource-missing (#1054), form-autocreate-and-manual (#1055),
+// inherited-form-handler-without-inherited (#1056).
 
 interface
 
@@ -39,6 +40,18 @@ type
     procedure AutoCreateWithoutProjectFile;
     [Test]
     procedure AutoCreateOffAndExclude;
+    [Test]
+    procedure InheritedHandlerIssueExample;
+    [Test]
+    procedure InheritedHandlerFixInsertsInherited;
+    [Test]
+    procedure InheritedHandlerSilentCases;
+    [Test]
+    procedure InheritedHandlerFollowsChain;
+    [Test]
+    procedure InheritedHandlerAncestorFromIndex;
+    [Test]
+    procedure InheritedHandlerOffAndExclude;
   end;
 
 implementation
@@ -46,6 +59,9 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Builtin.FormFields,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
@@ -157,6 +173,75 @@ begin
       if Result then
         AData := TEncoding.UTF8.GetBytes(AMainSource);
     end;
+end;
+
+const
+  BasisDialogDfm =
+    'object frmBasisDialog: TfrmBasisDialog'#10 +
+    '  Caption = ''Dialog'''#10 +
+    '  OnShow = FormShow'#10 +
+    '  object btnSpeichern: TButton'#10 +
+    '    Caption = ''Speichern'''#10 +
+    '    OnClick = btnSpeichernClick'#10 +
+    '  end'#10 +
+    'end'#10;
+  KundeBearbeitenDfm =
+    'inherited frmKundeBearbeiten: TfrmKundeBearbeiten'#10 +
+    '  Caption = ''Kunde bearbeiten'''#10 +
+    '  inherited btnSpeichern: TButton'#10 +
+    '    OnClick = btnSpeichernClick'#10 +
+    '  end'#10 +
+    'end'#10;
+
+function KundeBearbeiten(const ABody: string): string;
+begin
+  Result :=
+    'unit KundeBearbeiten;'#10 +
+    'interface'#10 +
+    'uses Vcl.Forms, BasisDialog, Kunden;'#10 +
+    'type'#10 +
+    '  TfrmKundeBearbeiten = class(TfrmBasisDialog)'#10 +
+    '    procedure btnSpeichernClick(Sender: TObject);'#10 +
+    '  private'#10 +
+    '    FKunde: TKunde;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    '{$R *.dfm}'#10 +
+    'procedure TfrmKundeBearbeiten.btnSpeichernClick(Sender: TObject);'#10 +
+    'begin'#10 +
+    ABody +
+    'end;'#10 +
+    'end.';
+end;
+
+/// <summary>Kontext mit Formulardatei AFormText und Dateien ANames (Inhalt ATexts) neben der Unit.</summary>
+function FilesContext(const ASource, AFormText: string; const ANames, ATexts: TArray<string>): TRuleContext;
+begin
+  Result := Default(TRuleContext);
+  Result.RelativePath := 'Source/KundeBearbeiten.pas';
+  Result.UnitName := 'KundeBearbeiten';
+  Result.Text := ASource;
+  Result.FormText := AFormText;
+  Result.ReadFile :=
+    function(const AName: string; out AData: TBytes): Boolean
+    var
+      Index: Integer;
+    begin
+      for Index := 0 to High(ANames) do
+        if SameText(ANames[Index], AName) then
+        begin
+          AData := TEncoding.UTF8.GetBytes(ATexts[Index]);
+          Exit(True);
+        end;
+      Result := False;
+    end;
+end;
+
+function InheritedFindings(const ASource, AFormText: string; const ANames, ATexts: TArray<string>):
+  TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.ContextFindings(TInheritedFormHandlerRule.Create, FilesContext(ASource, AFormText, ANames,
+    ATexts), '');
 end;
 
 function ApplyFix(const AText: string; const AFix: TRuleFix): string;
@@ -416,6 +501,119 @@ begin
     '{"rules": {"form-autocreate-and-manual": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TFormAutoCreateAndManualRule.Create, Context,
     '{"rules": {"form-autocreate-and-manual": {"exclude": ["Source/*.pas"]}}}'))));
+end;
+
+procedure TFormRulesTests.InheritedHandlerIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := InheritedFindings(KundeBearbeiten('  FKunde.Speichern;'#10), KundeBearbeitenDfm, ['BasisDialog.dfm'],
+    [BasisDialogDfm]);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('inherited-form-handler-without-inherited', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('TfrmBasisDialog.btnSpeichernClick wird nicht mehr ausgeführt (kein inherited).',
+    Findings[0].Message);
+  Assert.AreEqual(11, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(30, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(47, Findings[0].Range.EndPos.Character);
+end;
+
+procedure TFormRulesTests.InheritedHandlerFixInsertsInherited;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+  Tree: TSyntaxTree;
+begin
+  Source := KundeBearbeiten('  FKunde.Speichern;'#10);
+  Findings := InheritedFindings(Source, KundeBearbeitenDfm, ['BasisDialog.dfm'], [BasisDialogDfm]);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('inherited; am Anfang einfügen', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(KundeBearbeiten('  inherited;'#10'  FKunde.Speichern;'#10), Fixed);
+  Tree := TPascalParser.Parse(Fixed);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+  Assert.AreEqual(0, Integer(Length(InheritedFindings(Fixed, KundeBearbeitenDfm, ['BasisDialog.dfm'],
+    [BasisDialogDfm]))));
+end;
+
+procedure TFormRulesTests.InheritedHandlerSilentCases;
+begin
+  // inherited mit Namen bzw. irgendwo im Rumpf.
+  Assert.AreEqual(0, Integer(Length(InheritedFindings(KundeBearbeiten('  FKunde.Speichern;'#10 +
+    '  inherited btnSpeichernClick(Sender);'#10), KundeBearbeitenDfm, ['BasisDialog.dfm'], [BasisDialogDfm]))));
+  // Anderer Handlername: bewusster Ersatz.
+  Assert.AreEqual(0, Integer(Length(InheritedFindings(StringReplace(KundeBearbeiten('  FKunde.Speichern;'#10),
+    'btnSpeichernClick', 'SpeichernNeuClick', [rfReplaceAll]), StringReplace(KundeBearbeitenDfm,
+    'btnSpeichernClick', 'SpeichernNeuClick', []), ['BasisDialog.dfm'], [BasisDialogDfm]))));
+  // Vorfahr belegt das Ereignis nicht.
+  Assert.AreEqual(0, Integer(Length(InheritedFindings(KundeBearbeiten('  FKunde.Speichern;'#10),
+    KundeBearbeitenDfm, ['BasisDialog.dfm'], [StringReplace(BasisDialogDfm, '    OnClick = btnSpeichernClick'#10,
+    '', [])]))));
+  // Formulardatei des Vorfahren unbekannt.
+  Assert.AreEqual(0, Integer(Length(InheritedFindings(KundeBearbeiten('  FKunde.Speichern;'#10),
+    KundeBearbeitenDfm, [], []))));
+  // Keine Vererbung in der Formulardatei.
+  Assert.AreEqual(0, Integer(Length(InheritedFindings(KundeBearbeiten('  FKunde.Speichern;'#10),
+    StringReplace(KundeBearbeitenDfm, 'inherited frmKundeBearbeiten', 'object frmKundeBearbeiten', []),
+    ['BasisDialog.dfm'], [BasisDialogDfm]))));
+end;
+
+procedure TFormRulesTests.InheritedHandlerFollowsChain;
+const
+  MitteDfm =
+    'inherited frmMitte: TfrmMitte'#10 +
+    '  Caption = ''Mitte'''#10 +
+    'end'#10;
+  MittePas =
+    'unit Mitte;'#10'interface'#10'uses BasisDialog;'#10'type'#10'  TfrmMitte = class(TfrmBasisDialog)'#10 +
+    '  end;'#10'implementation'#10'{$R *.dfm}'#10'end.';
+var
+  Findings: TArray<TRuleFinding>;
+  Source: string;
+begin
+  // TfrmKundeBearbeiten → TfrmMitte (ohne eigenes OnClick) → TfrmBasisDialog (setzt es).
+  Source := StringReplace(StringReplace(KundeBearbeiten('  FKunde.Speichern;'#10), 'class(TfrmBasisDialog)',
+    'class(TfrmMitte)', []), 'BasisDialog, Kunden', 'Mitte, Kunden', []);
+  Findings := InheritedFindings(Source, KundeBearbeitenDfm, ['Mitte.dfm', 'Mitte.pas', 'BasisDialog.dfm'],
+    [MitteDfm, MittePas, BasisDialogDfm]);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TfrmBasisDialog.btnSpeichernClick wird nicht mehr ausgeführt (kein inherited).',
+    Findings[0].Message);
+end;
+
+procedure TFormRulesTests.InheritedHandlerAncestorFromIndex;
+var
+  Index: ISymbolIndex;
+  Context: TRuleContext;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Vorfahr in einem anderen Ordner: Datei kommt aus dem Index.
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText('unit BasisDialog;'#10'interface'#10'uses Vcl.Forms;'#10'type'#10 +
+    '  TfrmBasisDialog = class(TForm)'#10'  end;'#10'implementation'#10'end.', 'C:\Basis\BasisDialog.pas', nil));
+  Context := FilesContext(KundeBearbeiten('  FKunde.Speichern;'#10), KundeBearbeitenDfm,
+    ['C:\Basis\BasisDialog.dfm'], [BasisDialogDfm]);
+  Context.Index := Index;
+  Findings := TRuleAssert.ContextFindings(TInheritedFormHandlerRule.Create, Context, '');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+end;
+
+procedure TFormRulesTests.InheritedHandlerOffAndExclude;
+var
+  Context: TRuleContext;
+begin
+  Context := FilesContext(KundeBearbeiten('  FKunde.Speichern;'#10), KundeBearbeitenDfm, ['BasisDialog.dfm'],
+    [BasisDialogDfm]);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TInheritedFormHandlerRule.Create, Context,
+    '{"rules": {"inherited-form-handler-without-inherited": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TInheritedFormHandlerRule.Create, Context,
+    '{"rules": {"inherited-form-handler-without-inherited": {"exclude": ["Source/*.pas"]}}}'))));
 end;
 
 initialization

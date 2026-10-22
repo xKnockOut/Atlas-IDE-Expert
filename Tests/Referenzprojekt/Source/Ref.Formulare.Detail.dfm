@@ -4,6 +4,9 @@ inherited DetailFormular: TDetailFormular
     inherited TitelLabel: TLabel
       Caption = 'Details'
     end
+    inherited SchliessenButton: TButton
+      OnClick = SchliessenButtonClick
+    end
   end
   object NameEdit: TEdit
     Left = 8
