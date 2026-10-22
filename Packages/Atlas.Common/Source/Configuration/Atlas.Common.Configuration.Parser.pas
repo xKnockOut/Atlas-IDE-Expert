@@ -47,7 +47,7 @@ const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
   BooleanRuleOptions: array[0..0] of string = ('allowCommented');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  StringListRuleOptions: array[0..2] of string = ('countNames', 'mutatingMethods', 'ignoreMethods');
+  StringListRuleOptions: array[0..3] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes');
 
 type
   TValidator = class

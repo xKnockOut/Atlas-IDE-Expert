@@ -36,8 +36,8 @@ type
   /// früheren Kennung wirken weiter auf die Regel unter ihrer neuen.</summary>
   TRuleIdAliases = record
   public const
-    FormerIds: array[0..0] of string = ('recursive-property-accessor');
-    CurrentIds: array[0..0] of string = ('setter-recursion');
+    FormerIds: array[0..1] of string = ('recursive-property-accessor', 'owned-field-not-freed');
+    CurrentIds: array[0..1] of string = ('setter-recursion', 'field-not-freed');
   public
     /// <summary>Heutige Kennung zu AId; AId selbst, wenn sie nicht umbenannt wurde.</summary>
     class function Current(const AId: string): string; static;

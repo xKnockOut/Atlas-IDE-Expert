@@ -1133,14 +1133,22 @@ begin
     '      "good": "type\n  TNode = class\n  end;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
-    '      "id": "owned-field-not-freed",' + #10 +
-    '      "name": "Owned field not freed",' + #10 +
+    '      "id": "field-not-freed",' + #10 +
+    '      "name": "Field created but never freed",' + #10 +
     '      "category": "bug",' + #10 +
     '      "severity": "warning",' + #10 +
     '      "group": "find-bugs",' + #10 +
-    '      "description": "An object field that the constructor (or a private method it calls) creates with TClass.Create is never freed in the class (no Free, FreeAndNil, Destroy or DisposeOf). Components' + ' created with an owner other than nil, interface and record fields are exempt; TObjectList and TObjectDictionary fields are normal fields. Quick fixes: free the field in the destructor, or free all ow' + 'ned objects of the class; a missing destructor is created with override and inherited. The objects are freed before inherited in reverse creation order, as Free or FreeAndNil (refactoring.freeFieldsSt' + 'yle).",' + #10 +
-    '      "bad": "constructor TOrderList.Create;\nbegin\n  inherited Create;\n  FItems := TObjectList<TOrder>.Create(True);\nend;",' + #10 +
-    '      "good": "destructor TOrderList.Destroy;\nbegin\n  FItems.Free;\n  inherited;\nend;"' + #10 +
+    '      "description": "An object field that the constructor (or a private method it calls) creates with TClass.Create is never freed in the class (no Free, FreeAndNil, Destroy or DisposeOf): a memory l' + 'eak. Components created with an owner other than nil, interface and record fields and the classes from the option ignoreTypes are exempt; TObjectList and TObjectDictionary fields are normal fields. Me' + 'dium confidence. Quick fixes: free the field in the destructor, or free all owned objects of the class; a missing destructor is created with override and inherited. The objects are freed before inheri' + 'ted in reverse creation order, as Free or FreeAndNil (refactoring.freeFieldsStyle). Up to #918 the rule was called owned-field-not-freed; settings and suppressions with that id still apply.",' + #10 +
+    '      "bad": "constructor TImport.Create;\nbegin\n  FZeilen := TStringList.Create;\n  FFehler := TStringList.Create;\nend;\n\ndestructor TImport.Destroy;\nbegin\n  FZeilen.Free;\n  inherited;\nend;",' + #10 +
+    '      "good": "destructor TImport.Destroy;\nbegin\n  FFehler.Free;\n  FZeilen.Free;\n  inherited;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "ignoreTypes",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Classes that are freed elsewhere; generic types match without type parameters."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "owned-field-free-unclear",' + #10 +
@@ -1148,7 +1156,7 @@ begin
     '      "category": "bug",' + #10 +
     '      "severity": "hint",' + #10 +
     '      "group": "find-bugs",' + #10 +
-    '      "description": "An object field created in the constructor and not freed is also returned (Result := FField, Exit(FField)), handed to a property of another object, assigned without Create or wri' + 'table through a property (write FField). Whether the class still owns the object is up to the developer, so there is no quick fix.",' + #10 +
+    '      "description": "An object field created in the constructor and not freed is also returned (Result := FField, Exit(FField)), handed to a property of another object or to its Add…, Insert…, Regist' + 'er…, Attach…, Push or Enqueue, assigned without Create or writable through a property (write FField). Whether the class still owns the object is up to the developer, so there is no quick fix.",' + #10 +
     '      "bad": "function TCache.Take: TList;\nbegin\n  Result := FList;  // created in Create, never freed\nend;",' + #10 +
     '      "good": "function TCache.Take: TList;\nbegin\n  Result := FList;\n  FList := nil;  // ownership passes to the caller\nend;"' + #10 +
     '    },' + #10 +
@@ -1862,14 +1870,20 @@ begin
     '      "description": "Eine Forward-Deklaration, deren Typ im selben type-Block vor der vollständigen Deklaration nicht benutzt wird. Schnellkorrektur: entfernen."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
-    '      "id": "owned-field-not-freed",' + #10 +
-    '      "name": "Erzeugtes Feld wird nicht freigegeben",' + #10 +
-    '      "description": "Ein Objektfeld, das der Konstruktor (oder eine von ihm aufgerufene private Methode) mit TKlasse.Create erzeugt, wird in der Klasse nirgends freigegeben (kein Free, FreeAndNil, De' + 'stroy oder DisposeOf). Ausgenommen sind Komponenten mit einem Owner ungleich nil sowie Interface- und Record-Felder; TObjectList- und TObjectDictionary-Felder sind normale Felder. Schnellkorrekturen: ' + 'das Feld im Destruktor freigeben oder alle eigenen Objekte der Klasse freigeben; ein fehlender Destruktor wird mit override und inherited angelegt. Die Freigaben stehen vor inherited in umgekehrter Er' + 'zeugungsreihenfolge, als Free oder FreeAndNil (refactoring.freeFieldsStyle)."' + #10 +
+    '      "id": "field-not-freed",' + #10 +
+    '      "name": "Feld erzeugt, aber nie freigegeben",' + #10 +
+    '      "description": "Ein Objektfeld, das der Konstruktor (oder eine von ihm aufgerufene private Methode) mit TKlasse.Create erzeugt, wird in der Klasse nirgends freigegeben (kein Free, FreeAndNil, De' + 'stroy oder DisposeOf): ein Speicherleck. Ausgenommen sind Komponenten mit einem Owner ungleich nil, Interface- und Record-Felder sowie die Klassen aus der Option ignoreTypes; TObjectList- und TObjectD' + 'ictionary-Felder sind normale Felder. Konfidenz mittel. Schnellkorrekturen: das Feld im Destruktor freigeben oder alle eigenen Objekte der Klasse freigeben; ein fehlender Destruktor wird mit override ' + 'und inherited angelegt. Die Freigaben stehen vor inherited in umgekehrter Erzeugungsreihenfolge, als Free oder FreeAndNil (refactoring.freeFieldsStyle). Bis #918 hieß die Regel owned-field-not-freed; ' + 'Einstellungen und Unterdrückungen mit dieser Kennung wirken weiter.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "ignoreTypes",' + #10 +
+    '          "description": "Klassen, die anderswo freigegeben werden; generische Typen treffen ohne Typparameter."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "owned-field-free-unclear",' + #10 +
     '      "name": "Unklar, ob ein erzeugtes Feld freigegeben werden muss",' + #10 +
-    '      "description": "Ein im Konstruktor erzeugtes, nicht freigegebenes Objektfeld wird auch zurückgegeben (Result := FFeld, Exit(FFeld)), an eine Property eines anderen Objekts übergeben, ohne Create' + ' zugewiesen oder ist über eine Property (write FFeld) schreibbar. Ob die Klasse das Objekt noch besitzt, entscheidet der Entwickler; deshalb gibt es keine Schnellkorrektur."' + #10 +
+    '      "description": "Ein im Konstruktor erzeugtes, nicht freigegebenes Objektfeld wird auch zurückgegeben (Result := FFeld, Exit(FFeld)), an eine Property eines anderen Objekts oder an dessen Add…, I' + 'nsert…, Register…, Attach…, Push oder Enqueue übergeben, ohne Create zugewiesen oder ist über eine Property (write FFeld) schreibbar. Ob die Klasse das Objekt noch besitzt, entscheidet der Entwickler;' + ' deshalb gibt es keine Schnellkorrektur."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "operator-precedence",' + #10 +

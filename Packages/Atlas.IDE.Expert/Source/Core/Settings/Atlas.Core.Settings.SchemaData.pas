@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1576] of string = (
+  Lines: array[0..1584] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -259,6 +259,14 @@ const
     '                },',
     '                "default": ["Destroy", "BeforeDestruction"],',
     '                "description": "Nur field-free-without-nil: Methoden, in denen Free ohne nil erlaubt ist (#917). Destruktoren und Methoden mit [TearDown] gelten immer."',
+    '              },',
+    '              "ignoreTypes": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "default": [],',
+    '                "description": "Nur field-not-freed: Klassen, die anderswo freigegeben werden (#918). Generische Typen treffen ohne Typparameter, z. B. TObjectList."',
     '              }',
     '            }',
     '          }',
@@ -698,7 +706,7 @@ const
     '        "freeFields": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Im Konstruktor (oder einer von ihm aufgerufenen privaten Methode) mit TKlasse.Create erzeugte Objektfelder, die die Klasse nirgends freigibt, melden (owned-field-not-freed) u' + 'nd die Code-Aktionen „Im Destruktor freigeben“ am Feld und „Alle eigenen Objekte freigeben (n)“ an der Klasse anbieten. Fehlt der Destruktor, legt Atlas ihn mit override und inherited an. Ausgenommen ' + 'sind Komponenten mit Owner sowie Interface- und Record-Felder; zurückgegebene oder weitergereichte Felder meldet Atlas als unklar (owned-field-free-unclear).",',
+    '          "description": "Im Konstruktor (oder einer von ihm aufgerufenen privaten Methode) mit TKlasse.Create erzeugte Objektfelder, die die Klasse nirgends freigibt, melden (field-not-freed, bis #91' + '8 owned-field-not-freed) und die Code-Aktionen „Im Destruktor freigeben“ am Feld und „Alle eigenen Objekte freigeben (n)“ an der Klasse anbieten. Fehlt der Destruktor, legt Atlas ihn mit override und ' + 'inherited an. Ausgenommen sind Komponenten mit Owner sowie Interface- und Record-Felder; zurückgegebene oder weitergereichte Felder meldet Atlas als unklar (owned-field-free-unclear).",',
     '          "x-issue": "#666"',
     '        },',
     '        "freeFieldsStyle": {',
