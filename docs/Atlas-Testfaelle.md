@@ -2168,8 +2168,8 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index.
 | HV1 | `const Stile: TFontStyles = [fsBold, fsItalic];`, Maus über `Stile` an einer Verwendung | „Wert: [fsBold, fsItalic] · 2 Elemente“ (**Abnahme**) |
 | HV2 | Maus über `TFontStyles` | „Wert: set of TFontStyle · 4 mögliche Elemente“ |
 | HV3 | `resourcestring SGruss = 'Hallo' + #13#10 + 'Welt';` über zwei Zeilen, Maus über `SGruss` an der Verwendung | „Wert: 'Hallo⏎Welt'“ (**Abnahme**) |
-| HV4 | `procedure Alt; deprecated 'Nutze Neu';` in einer anderen Unit, `Alt;` aufrufen | `Alt` durchgestrichen, Hinweis „"Alt" ist veraltet: Nutze Neu (deprecated-symbol)“; Hover nennt „Veraltet: Nutze Neu“ (**Abnahme**) |
-| HV5 | Konstante mit `platform`, Klasse mit `experimental` verwenden | „ist plattformspezifisch“ bzw. „ist experimentell“, durchgestrichen |
+| HV4 | `procedure Alt; deprecated 'Nutze Neu';` in einer anderen Unit, `Alt;` aufrufen | `Alt` durchgestrichen, Warnung „Alt ist deprecated: Nutze Neu (wie W1000).“ (deprecated-symbol); Hover nennt „Veraltet: Nutze Neu“ (**Abnahme**) |
+| HV5 | Konstante mit `platform`, Klasse mit `experimental` verwenden | Für die Klasse „ist experimental (wie W1003).“, nicht durchgestrichen; die Konstante erst mit `"kinds": ["platform"]` (siehe VS1–VS9) |
 | HV6 | Deklaration von `Alt` und `procedure Alt;` im implementation-Teil | Keine Meldung, nicht durchgestrichen |
 | HV7 | `"rules": {"deprecated-symbol": "off"}` in atlas.json | Keine Meldung und kein Durchstreichen mehr (**Abnahme**) |
 
@@ -4135,3 +4135,19 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | IL7 | Alle Units ergänzt, Routine ohne `inline`, `{$INLINE OFF}` in der Datei | Keine Meldung |
 | IL8 | `"inline-not-expanded": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | IL9 | Abgleich mit Delphi: IL1, IL3, IL4, IL5 übersetzen | dcc meldet H2443, H2444, H2445 bzw. H2456/H2457 an denselben Stellen, für IL7 nichts |
+
+## Veraltete und gebundene Symbole wie W1000–W1007 (#1018)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VS1 | Das Beispiel aus #1018 mit `"rules": {"deprecated-symbol": {"kinds": ["deprecated", "experimental", "platform"]}}`: `Pfad := IncludeTrailingBackslash(Basis) + Name;` | Warnung `deprecated-symbol` an `IncludeTrailingBackslash`: „IncludeTrailingBackslash ist platform; besser IncludeTrailingPathDelimiter (wie W1002).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover, nicht durchgestrichen (**Abnahme**) |
+| VS2 | Schnellkorrektur „Durch IncludeTrailingPathDelimiter ersetzen“, danach Strg+Z | Zeile wird `Pfad := IncludeTrailingPathDelimiter(Basis) + Name;`, keine Meldung mehr; ein Undo-Schritt |
+| VS3 | Ohne Option kinds: VS1 und eine Routine mit `deprecated 'Use Neu'` aufrufen | VS1 still; „Alt ist deprecated: Use Neu (wie W1000).“ durchgestrichen, Korrektur „Durch Neu ersetzen“ |
+| VS4 | Unit `unit Altlast deprecated 'Nutze Neu';` in uses einer anderen Unit | „Unit Altlast ist deprecated: Nutze Neu (wie W1006).“ am Namen im uses; mit `platform` bzw. `library` im Unit-Kopf und passender Option W1005 bzw. W1004, mit `experimental` W1007 |
+| VS5 | `{$WARN SYMBOL_DEPRECATED OFF}` vor dem Aufruf, später `{$WARN SYMBOL_DEPRECATED ON}` | Davor keine Meldung, danach wieder |
+| VS6 | `{$WARN SYMBOL_DEPRECATED ERROR}` | Meldung als Fehler |
+| VS7 | `{$WARNINGS OFF}`; `{$WARN SYMBOL_DEPRECATED OFF}` in `{$IFDEF DEBUG}` und Aufruf danach außerhalb | Keine Meldung |
+| VS8 | `"kinds": ["platfrom"]` in atlas.json | Konfigurationsfehler „"kinds" darf nur "deprecated", "experimental", "platform" und "library" enthalten“ |
+| VS9 | Abgleich mit Delphi: VS1, VS3, VS4 übersetzen (Plattformwarnungen in den Projektoptionen an) | dcc meldet W1002, W1000 bzw. W1006 an denselben Stellen; mit VS5 und VS7 nichts |

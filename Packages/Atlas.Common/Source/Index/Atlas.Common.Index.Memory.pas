@@ -134,7 +134,8 @@ var
   Symbol: TIndexSymbol;
 begin
   Result := SizeOf(TUnitIndex) + StringBytes(AUnit.UnitName) + StringBytes(AUnit.FileName) +
-    StringBytes(AUnit.Hash) + ArrayBytes(AUnit.InterfaceUses) + ArrayBytes(AUnit.ImplementationUses);
+    StringBytes(AUnit.Hash) + ArrayBytes(AUnit.InterfaceUses) + ArrayBytes(AUnit.ImplementationUses) +
+    ArrayBytes(AUnit.Directives) + StringBytes(AUnit.DeprecatedText);
   if Length(AUnit.Symbols) > 0 then
     Inc(Result, 16);
   for Symbol in AUnit.Symbols do

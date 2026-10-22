@@ -48,9 +48,11 @@ const
   BooleanRuleOptions: array[0..6] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
     'includeRecords', 'includeFormVariables', 'checkUses');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  StringListRuleOptions: array[0..13] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+  StringListRuleOptions: array[0..14] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
-    'allowTables');
+    'allowTables', 'kinds');
+  /// <summary>Erlaubte Einträge von kinds bei deprecated-symbol (#1018).</summary>
+  DeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
   NumberListRuleOptions: array[0..0] of string = ('allowed');
   /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
@@ -222,6 +224,18 @@ begin
         Exit(False);
 end;
 
+/// <summary>Liste von Texten, jeder aus AAllowed.</summary>
+function IsStringListOf(ANode: TJsonNode; const AAllowed: array of string): Boolean;
+var
+  Index: Integer;
+begin
+  Result := IsStringList(ANode);
+  if Result then
+    for Index := 0 to ANode.Count - 1 do
+      if IndexStr(ANode[Index].Value, AAllowed) < 0 then
+        Exit(False);
+end;
+
 function TValidator.ParseRules(ANode: TJsonNode; const AName: string; out ARules: TArray<TRuleSetting>): Boolean;
 var
   Index: Integer;
@@ -291,6 +305,10 @@ begin
             ReportNode(Value[Inner], Format('"%s" muss eine Liste von Zahlen sein', [Value.Keys[Inner]]))
           else if (IndexStr(Value.Keys[Inner], StringRuleOptions) >= 0) and (Value[Inner].Kind <> TJsonKind.String_) then
             ReportNode(Value[Inner], Format('"%s" muss ein Text sein', [Value.Keys[Inner]]))
+          // Arten von deprecated-symbol (#1018).
+          else if (Value.Keys[Inner] = 'kinds') and (Rule.Id = 'deprecated-symbol') and
+            not IsStringListOf(Value[Inner], DeprecationKinds) then
+            ReportNode(Value[Inner], '"kinds" darf nur "deprecated", "experimental", "platform" und "library" enthalten')
           // Suchquelle von uses-unit-not-found (#1016).
           else if (Value.Keys[Inner] = 'searchPaths') and
             (IndexStr(Value[Inner].Value, ['project', 'atlas', 'both']) < 0) then

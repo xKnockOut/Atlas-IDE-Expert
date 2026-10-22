@@ -1094,13 +1094,34 @@ begin
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "deprecated-symbol",' + #10 +
-    '      "name": "Deprecated symbol",' + #10 +
+    '      "name": "Deprecated or bound symbol",' + #10 +
     '      "category": "code-smell",' + #10 +
-    '      "severity": "hint",' + #10 +
-    '      "group": "style",' + #10 +
-    '      "description": "A routine, type, constant or member marked deprecated, platform or experimental is used (like compiler warnings W1000, W1002 and W1003). The editor strikes the name through; the ' + 'message carries the reason from deprecated ''reason''. The declaration and the head of its implementation are not reported.",' + #10 +
-    '      "bad": "procedure Old; deprecated ''Use New'';\n...\nOld;",' + #10 +
-    '      "good": "procedure New;\n...\nNew;"' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A routine, type, constant or member marked deprecated, experimental, platform or library is used (like W1000, W1003, W1002, W1001), or a unit whose header carries one of these hi' + 'nts is listed in uses (like W1006, W1007, W1005, W1004). Reported only when the name resolves for sure. The editor strikes deprecated names through; the message carries the reason from deprecated ''rea' + 'son''. The declaration and the head of its implementation are not reported. Which kinds are reported is set by the option kinds (deprecated and experimental by default, as in most projects); the switch' + 'es {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} and so on and {$WARNINGS OFF} apply from their position like in the compiler; a switch in an {$IF} branch that is not surely ' + 'compiled with the position keeps it silent. Quick fix: replace with the name the reason gives (or, for IncludeTrailingBackslash and ExcludeTrailingBackslash, the platform-independent routine) when exa' + 'ctly one name fits, is visible at that position and is of the same kind. Without a project index only the symbols of the file itself are checked.",' + #10 +
+    '      "bad": "Pfad := IncludeTrailingBackslash(Basis) + Name;",' + #10 +
+    '      "good": "Pfad := IncludeTrailingPathDelimiter(Basis) + Name;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1000",' + #10 +
+    '        "W1001",' + #10 +
+    '        "W1002",' + #10 +
+    '        "W1003",' + #10 +
+    '        "W1004",' + #10 +
+    '        "W1005",' + #10 +
+    '        "W1006",' + #10 +
+    '        "W1007"' + #10 +
+    '      ],' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "kinds",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "deprecated",' + #10 +
+    '            "experimental"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Reported kinds: deprecated, experimental, platform, library (platform and library are off by default)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "implicit-package-import",' + #10 +
@@ -2907,8 +2928,14 @@ begin
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "deprecated-symbol",' + #10 +
-    '      "name": "Veraltetes Symbol",' + #10 +
-    '      "description": "Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, platform oder experimental wird verwendet (wie Compilerwarnungen W1000, W1002 und W1003). Der Editor strei' + 'cht den Namen durch; die Meldung nennt den Grund aus deprecated ''Grund''. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet."' + #10 +
+    '      "name": "Veraltetes oder gebundenes Symbol",' + #10 +
+    '      "description": "Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, experimental, platform oder library wird verwendet (wie W1000, W1003, W1002, W1001), oder eine Unit, deren' + ' Kopf einen dieser Hinweise trägt, steht in uses (wie W1006, W1007, W1005, W1004). Gemeldet wird nur, was sicher aufgelöst ist. Der Editor streicht veraltete Namen durch; die Meldung nennt den Grund a' + 'us deprecated ''Grund''. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet. Welche Arten gemeldet werden, legt die Option kinds fest (Standard deprecated und experimental, wie mei' + 'st in Projekten); die Schalter {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} usw. und {$WARNINGS OFF} gelten ab ihrer Stelle wie beim Compiler; ein Schalter in einem {$IF}-Zw' + 'eig, der nicht sicher mit übersetzt wird, hält die Stelle still. Korrektur: durch den Namen aus dem Grund ersetzen (bei IncludeTrailingBackslash und ExcludeTrailingBackslash durch die plattformunabhän' + 'gige Routine), wenn genau ein Name passt, an der Stelle sichtbar ist und dieselbe Art hat. Ohne Projektindex prüft die Regel nur die Symbole der Datei selbst.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "kinds",' + #10 +
+    '          "description": "Gemeldete Arten: deprecated, experimental, platform, library (platform und library sind standardmäßig aus)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "implicit-package-import",' + #10 +

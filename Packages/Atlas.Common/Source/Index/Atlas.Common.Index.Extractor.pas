@@ -82,6 +82,8 @@ type
     /// <summary>Typparameter des Typs AContainer (TList&lt;T&gt; → 'T'), '' ohne.</summary>
     function ContainerParams(const AContainer: string): string;
     procedure SetInlineRefs(APosition: Integer; const ARefs: TArray<string>);
+    /// <summary>Hinweise zwischen unit Name und ";" (#1018).</summary>
+    procedure AddUnitHints(var AUnit: TUnitIndex);
     procedure Walk(ARoot: TSyntaxNode; var AUnit: TUnitIndex);
     class function UsesOf(ASection: TSyntaxNode): TArray<string>; static;
     class function ExtractLevel(const AText, AFileName: string; const ADefines: TArray<string>;
@@ -1275,6 +1277,46 @@ begin
   end;
 end;
 
+procedure TIndexExtractor.AddUnitHints(var AUnit: TUnitIndex);
+var
+  Index, Next: Integer;
+  Started: Boolean;
+  Text: string;
+begin
+  // unit A.B deprecated 'Grund' platform;  Kommentare und Direktiven dazwischen überspringen.
+  Started := False;
+  for Index := 0 to High(FTokens) do
+  begin
+    if FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+      Continue;
+    if not Started then
+    begin
+      if not ((FTokens[Index].Kind = TPascalTokenKind.Keyword) and SameText(FTokens[Index].Text, 'unit')) then
+        Exit;
+      Started := True;
+      Continue;
+    end;
+    if FTokens[Index].IsSymbol(';') then
+      Exit;
+    if not (FTokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) or
+      (IndexText(FTokens[Index].Text, HintDirectives) < 0) then
+      Continue;
+    if IndexText(FTokens[Index].Text, AUnit.Directives) < 0 then
+      AUnit.Directives := AUnit.Directives + [LowerCase(FTokens[Index].Text)];
+    if not SameText(FTokens[Index].Text, 'deprecated') then
+      Continue;
+    Next := Index + 1;
+    while (Next <= High(FTokens)) and (FTokens[Next].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+      Inc(Next);
+    if (Next > High(FTokens)) or (FTokens[Next].Kind <> TPascalTokenKind.StringLiteral) then
+      Continue;
+    Text := FTokens[Next].Text;
+    if (Length(Text) >= 2) and (Text[1] = '''') and (Text[Length(Text)] = '''') then
+      Text := StringReplace(Copy(Text, 2, Length(Text) - 2), '''''', '''', [rfReplaceAll]);
+    AUnit.DeprecatedText := Text;
+  end;
+end;
+
 procedure TIndexExtractor.Walk(ARoot: TSyntaxNode; var AUnit: TUnitIndex);
 var
   Index: Integer;
@@ -1282,10 +1324,13 @@ var
 begin
   AUnit.InterfaceUses := nil;
   AUnit.ImplementationUses := nil;
+  AUnit.Directives := nil;
+  AUnit.DeprecatedText := '';
   AUnit.HasInitialization := (ARoot.FindChild(TSyntaxKind.InitializationSection) <> nil) or
     (ARoot.FindChild(TSyntaxKind.FinalizationSection) <> nil);
   if ARoot.Kind = TSyntaxKind.UnitFile then
   begin
+    AddUnitHints(AUnit);
     AUnit.InterfaceUses := UsesOf(ARoot.FindChild(TSyntaxKind.InterfaceSection));
     AUnit.ImplementationUses := UsesOf(ARoot.FindChild(TSyntaxKind.ImplementationSection));
   end
