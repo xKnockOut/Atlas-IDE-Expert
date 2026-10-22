@@ -11,7 +11,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 5 |
 | [Compiler vorab](#gruppe-compiler) | 15 |
-| [Robustheit und Muster](#gruppe-robustness) | 7 |
+| [Robustheit und Muster](#gruppe-robustness) | 8 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
@@ -160,6 +160,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`hardcoded-path`](#hardcoded-path) | Fester Dateipfad im Code | Code Smell | Hinweis |
 | [`filename-compare-case`](#filename-compare-case) | Dateinamen mit = verglichen | Bug | Hinweis |
 | [`initialization-not-finalized`](#initialization-not-finalized) | Beim Start erzeugtes Objekt wird nicht freigegeben | Bug | Warnung |
+| [`compiler-warnings-disabled`](#compiler-warnings-disabled) | Compiler-Warnungen oder Prüfungen bis zum Ende der Unit abgeschaltet | Code Smell | Warnung |
 
 <a id="gruppe-performance"></a>
 ### Performance
@@ -4653,4 +4654,36 @@ initialization
 finalization
   FreeAndNil(GProtokoll);
 end.
+```
+
+<a id="compiler-warnings-disabled"></a>
+### compiler-warnings-disabled
+
+**Compiler-Warnungen oder Prüfungen bis zum Ende der Unit abgeschaltet** · Code Smell · Warnung · Gruppe Robustheit und Muster
+
+{$WARNINGS OFF}, {$HINTS OFF}, {$WARN X OFF}, {$R-}, {$Q-} (auch zusammen als {$R-,Q-}) oder die langen Formen {$RANGECHECKS OFF} und {$OVERFLOWCHECKS OFF} ohne spätere Wiederherstellung bis zum Ende der Unit. Meldungen und Prüfungen verschwinden weit über die gemeinte Stelle hinaus, die 0/0/0-Regel wird unterlaufen. Jedes spätere ON, +, DEFAULT oder ERROR für denselben Schalter zählt als Wiederherstellung, auch in Mustern mit {$IFOPT}/{$IFDEF}, ebenso ein späteres {$POPOPT}. Ein Schalter, dessen Gegenstück in einem anderen Zweig desselben {$IF} steht ({$IFDEF DEBUG}{$R+}{$ELSE}{$R-}{$ENDIF}), ist eine gewollte Einstellung je Konfiguration und bleibt still, ebenso eine Direktive ohne Code dahinter; {$R *.dfm} ist eine Ressource, keine Bereichsprüfung. Die Option allow nennt Schalter, die aus bleiben dürfen (Warnungsnamen wie SYMBOL_PLATFORM, WARNINGS, HINTS, R bzw. RANGECHECKS, Q bzw. OVERFLOWCHECKS). Konfidenz hoch. Korrektur: die Wiederherstellung ({$WARNINGS ON}, {$WARN X DEFAULT}, {$R+} …) hinter dem nächsten Block einfügen; bei Bereichs- und Überlaufprüfung nur einzeln, weil {$R+} eine Prüfung einschalten kann, die das Projekt aus hat.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allow` | string-list | `[]` | Schalter, die bis zum Ende der Unit aus bleiben dürfen: Warnungsnamen für {$WARN} (SYMBOL_PLATFORM), WARNINGS, HINTS, R bzw. RANGECHECKS, Q bzw. OVERFLOWCHECKS; ohne Groß-/Kleinschreibung. |
+
+Mit Treffer:
+
+```pascal
+{$WARNINGS OFF}
+function AlteBerechnung(const Wert: Integer): Integer;
+begin
+  Result := Wert * 2;
+end;
+```
+
+Richtig:
+
+```pascal
+{$WARNINGS OFF}
+function AlteBerechnung(const Wert: Integer): Integer;
+begin
+  Result := Wert * 2;
+end;
+{$WARNINGS ON}
 ```
