@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 42 |
+| [Fehler finden](#gruppe-find-bugs) | 43 |
 | [Exceptions](#gruppe-exceptions) | 6 |
 | [Threads](#gruppe-threads) | 7 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -66,6 +66,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`stringlist-unsorted`](#stringlist-unsorted) | Find oder Duplicates auf einer unsortierten TStringList | Bug | Warnung |
 | [`writeln-in-gui-app`](#writeln-in-gui-app) | Writeln in einem Programm ohne Konsole | Bug | Warnung |
 | [`duplicate-condition`](#duplicate-condition) | Doppelte Bedingung oder gleiche Zweige | Bug | Warnung |
+| [`case-missing-enum-value`](#case-missing-enum-value) | case über Aufzählung ohne alle Werte | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -2944,4 +2945,35 @@ else if Betrag > 500 then
   Stufe := 2
 else if Betrag > 100 then
   Stufe := 1;
+```
+
+<a id="case-missing-enum-value"></a>
+### case-missing-enum-value
+
+**case über Aufzählung ohne alle Werte** · Bug · Warnung · Gruppe Fehler finden
+
+Ein case über einen Aufzählungstyp ohne else deckt nicht alle Werte ab; ein später ergänzter Wert fällt still durch. Die Meldung nennt die fehlenden Werte. Den Typ des Selektors (Variable, Parameter, Feld oder Kette A.B) liefert die Namensauflösung, die Werte der Index bzw. die Unit selbst; Aliase werden verfolgt. Bereiche (bsNeu..bsBezahlt) und Listen zählen als vorhanden. Selektoren mit Aufrufen, Ganzzahlen und unbekannte Typen bleiben still. Mit der Option requireElse wird auch ein case mit else gemeldet. Konfidenz hoch. Schnellkorrektur „Fehlende Werte ergänzen (n)“ ergänzt leere Zweige in Deklarationsreihenfolge vor else bzw. end, mit Typpräfix, wenn die Marken einen tragen ({$SCOPEDENUMS ON}).
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `requireElse` | boolean | `false` | Auch case-Anweisungen mit else melden, wenn Werte fehlen. |
+
+Mit Treffer:
+
+```pascal
+case Bestellung.Status of
+  bsNeu: Anlegen;
+  bsBezahlt: Versenden;
+end;
+```
+
+Richtig:
+
+```pascal
+case Bestellung.Status of
+  bsNeu: Anlegen;
+  bsBezahlt: Versenden;
+  bsStorniert: ;
+  bsZurueck: ;
+end;
 ```

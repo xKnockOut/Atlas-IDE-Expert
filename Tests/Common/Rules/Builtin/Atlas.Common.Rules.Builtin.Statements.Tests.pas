@@ -8,7 +8,9 @@
 // downto, for … in, Add und Insert, Break/Exit und downto still, Option
 // mutatingMethods, Abschalten und Ausnahmen. Zuletzt destroy-called-directly
 // (#920): Beispiel mit Korrektur, inherited Destroy, Destroy mit Argumenten,
-// Abschalten und Ausnahmen.
+// Abschalten und Ausnahmen. case-missing-enum-value (#929): Beispiel mit
+// Korrektur, Feld über eine Kette, Aufzählung mit Typpräfix, else mit und ohne
+// requireElse, Bereiche und vollständige case-Anweisungen.
 
 interface
 
@@ -65,6 +67,14 @@ type
     procedure DestroyCalledDirectlySilentCases;
     [Test]
     procedure DestroyCalledDirectlyOffAndExclude;
+    [Test]
+    procedure CaseMissingEnumValueIssueExample;
+    [Test]
+    procedure CaseMissingEnumValueVariants;
+    [Test]
+    procedure CaseMissingEnumValueSilentCases;
+    [Test]
+    procedure CaseMissingEnumValueOptions;
   end;
 
 implementation
@@ -505,6 +515,86 @@ begin
     '{"rules": {"destroy-called-directly": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Daten.pas'))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDestroyCalledDirectlyRule.Create, Body(Source),
     '{"rules": {"destroy-called-directly": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Daten.pas'))));
+end;
+
+function Bestellung(const ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10 +
+    '  TBestellStatus = (bsNeu, bsBezahlt, bsStorniert, bsZurueck);'#10 +
+    '  TBestellung = class'#10'    Status: TBestellStatus;'#10'  end;'#10'implementation'#10 +
+    'procedure Bearbeiten(Bestellung: TBestellung; Stand: TBestellStatus);'#10'begin'#10 + ABody + #10 +
+    'end;'#10'end.';
+end;
+
+procedure TStatementRulesTests.CaseMissingEnumValueIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Bestellung('  case Bestellung.Status of'#10'    bsNeu: Anlegen;'#10'    bsBezahlt: Versenden;'#10 +
+    '  end;');
+  Findings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Fehlende Werte von TBestellStatus: bsStorniert, bsZurueck.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Fehlende Werte ergänzen (2)', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Bestellung('  case Bestellung.Status of'#10'    bsNeu: Anlegen;'#10'    bsBezahlt: Versenden;'#10 +
+    '    bsStorniert: ;'#10'    bsZurueck: ;'#10'  end;'), Fixed);
+  TRuleAssert.Silent(TCaseMissingEnumValueRule.Create, Fixed);
+end;
+
+procedure TStatementRulesTests.CaseMissingEnumValueVariants;
+var
+  Findings: TArray<TRuleFinding>;
+  Source: string;
+begin
+  // Parameter, Bereich und Liste zählen als vorhanden.
+  Findings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, Bestellung('  case Stand of'#10 +
+    '    bsNeu..bsBezahlt: Anlegen;'#10'  end;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Fehlende Werte von TBestellStatus: bsStorniert, bsZurueck.', Findings[0].Message);
+  // {$SCOPEDENUMS ON}: neue Zweige mit Typpräfix.
+  Source := 'unit U;'#10'interface'#10'type'#10'  TAmpel = (Rot, Gelb, Gruen);'#10'implementation'#10 +
+    'procedure Schalten(A: TAmpel);'#10'begin'#10'  case A of'#10'    TAmpel.Rot: Halten;'#10'  end;'#10'end;'#10 +
+    'end.';
+  Findings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.IsTrue(Pos('TAmpel.Gelb: ;', TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits)) > 0);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCaseMissingEnumValueRule.Create,
+    Bestellung('  case Stand of'#10'    bsNeu: ;'#10'  end;'), '{"rules": {"case-missing-enum-value": "off"}}',
+    'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCaseMissingEnumValueRule.Create,
+    Bestellung('  case Stand of'#10'    bsNeu: ;'#10'  end;'),
+    '{"rules": {"case-missing-enum-value": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+end;
+
+procedure TStatementRulesTests.CaseMissingEnumValueSilentCases;
+begin
+  // Vollständig, mit else, Ganzzahl, unbekannter Typ, Aufruf als Selektor.
+  TRuleAssert.Silent(TCaseMissingEnumValueRule.Create, Bestellung('  case Stand of'#10 +
+    '    bsNeu, bsBezahlt: Anlegen;'#10'    bsStorniert..bsZurueck: ;'#10'  end;'#10'  case Stand of'#10 +
+    '    bsNeu: Anlegen;'#10'  else'#10'    Protokoll;'#10'  end;'#10'  case Bestellung.Tag of'#10 +
+    '    1: Anlegen;'#10'  end;'#10'  case Fremd of'#10'    fxA: ;'#10'  end;'#10'  case Lesen(Stand) of'#10 +
+    '    bsNeu: ;'#10'  end;'));
+end;
+
+procedure TStatementRulesTests.CaseMissingEnumValueOptions;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Bestellung('  case Stand of'#10'    bsNeu: Anlegen;'#10'  else'#10'    Protokoll;'#10'  end;');
+  Findings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, Source,
+    '{"rules": {"case-missing-enum-value": {"requireElse": true}}}', 'U.pas');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Fehlende Werte von TBestellStatus: bsBezahlt, bsStorniert, bsZurueck.', Findings[0].Message);
+  Assert.IsTrue(Pos('bsZurueck: ;'#10'  else', TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits)) > 0);
+  TConfigurationParser.Parse('{"rules": {"case-missing-enum-value": {"requireElse": "ja"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"requireElse" muss true oder false sein', Issues[0].Message);
 end;
 
 initialization

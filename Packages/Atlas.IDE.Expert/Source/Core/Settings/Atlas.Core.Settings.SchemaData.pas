@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1597] of string = (
+  Lines: array[0..1602] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -275,6 +275,11 @@ const
     '                },',
     '                "default": ["Create", "Destroy", "AfterConstruction", "BeforeDestruction"],',
     '                "description": "Nur missing-inherited: geprüfte Methoden (#919). Create steht für alle Konstruktoren, deren Name mit Create beginnt."',
+    '              },',
+    '              "requireElse": {',
+    '                "type": "boolean",',
+    '                "default": false,',
+    '                "description": "Nur case-missing-enum-value: auch case-Anweisungen mit else melden, wenn Werte fehlen (#929)."',
     '              },',
     '              "replacement": {',
     '                "type": "string",',

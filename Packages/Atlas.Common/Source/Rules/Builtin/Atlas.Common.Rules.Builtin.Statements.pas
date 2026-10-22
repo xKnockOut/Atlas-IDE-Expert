@@ -21,6 +21,12 @@
 //                     Obj.Destroy als Anweisung statt Obj.Free (#920): bei nil
 //                     knallt es. inherited Destroy und Destroy mit Argumenten
 //                     (eigener Destruktor) bleiben still; Korrektur Free.
+//   case-missing-enum-value
+//                     case über einen Aufzählungstyp ohne else, dem Werte fehlen
+//                     (#929); mit Option requireElse auch mit else. Den Typ des
+//                     Selektors löst die Namensauflösung, die Werte kommen aus
+//                     dem Index bzw. der Unit selbst; die Korrektur ergänzt die
+//                     fehlenden Zweige über TCaseCompletion (#449).
 // Grundlage ist der Syntaxbaum: if, while, for, for-in und with ohne Rumpf
 // bzw. mit leerem Block; das Schlüsselwort davor sucht die Regel in den Token.
 
@@ -36,6 +42,7 @@ const
   LoopOffByOneRuleId = 'loop-off-by-one';
   CollectionModifiedInLoopRuleId = 'collection-modified-in-loop';
   DestroyCalledDirectlyRuleId = 'destroy-called-directly';
+  CaseMissingEnumValueRuleId = 'case-missing-enum-value';
 
 type
   TEmptyStatementRule = class(TInterfacedObject, IRule)
@@ -66,6 +73,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TCaseMissingEnumValueRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -77,6 +90,9 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Rules.Options;
 
 type
@@ -915,12 +931,160 @@ begin
   Visit(AContext.Tree.Root);
 end;
 
+{ TCaseMissingEnumValueRule }
+
+function TCaseMissingEnumValueRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(CaseMissingEnumValueRuleId, TRuleSeverity.Warning,
+    'case über Aufzählung ohne alle Werte');
+end;
+
+procedure TCaseMissingEnumValueRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Resolver: TNameResolver;
+  FileName: string;
+  RequireElse: Boolean;
+
+  // Kette A.B.C aus Bezeichnern; False bei Aufrufen, Indizes und Ausdrücken.
+  function Chain(ANode: TSyntaxNode; var ANames: TArray<string>): Boolean;
+  begin
+    case ANode.Kind of
+      TSyntaxKind.Identifier:
+        begin
+          ANames := ANames + [ANode.Name];
+          Result := True;
+        end;
+      TSyntaxKind.MemberAccess:
+        begin
+          Result := (ANode.ChildCount = 1) and Chain(ANode[0], ANames);
+          if Result then
+            ANames := ANames + [ANode.Name];
+        end;
+      TSyntaxKind.ParenExpr:
+        Result := (ANode.ChildCount = 1) and Chain(ANode[0], ANames);
+    else
+      Result := False;
+    end;
+  end;
+
+  function OwnerUnit(const AType: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
+  begin
+    if SameText(AType.FileName, FileName) then
+    begin
+      AUnit := Resolver.ExtractedUnit(AContext.Tree, FileName);
+      Exit(True);
+    end;
+    Result := (AContext.Index <> nil) and AContext.Index.FindFile(AType.FileName, AUnit);
+  end;
+
+  // Werte des Aufzählungstyps in Deklarationsreihenfolge; Aliase werden verfolgt.
+  function EnumValues(AType: TResolvedSymbol; out ATypeName: string): TArray<string>;
+  var
+    Owner: TUnitIndex;
+    Step: Integer;
+    Symbol: TIndexSymbol;
+    Container: string;
+  begin
+    Result := nil;
+    ATypeName := '';
+    for Step := 1 to 4 do
+    begin
+      if not AType.Found or not AType.IsType or not OwnerUnit(AType, Owner) then
+        Exit;
+      if AType.SymbolKind = TIndexSymbolKind.EnumType then
+      begin
+        ATypeName := AType.Name;
+        Container := AType.QualifiedName;
+        for Symbol in Owner.Symbols do
+          if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, Container) then
+            Result := Result + [Symbol.Name];
+        Exit;
+      end;
+      if (AType.SymbolKind <> TIndexSymbolKind.TypeAlias) or (AType.TypeName = '') or
+        not Resolver.ResolveTypeFrom(Owner, AType.TypeName, AType) then
+        Exit;
+    end;
+  end;
+
+  procedure CheckCase(ACase: TSyntaxNode);
+  var
+    Names, Values, Absent: TArray<string>;
+    Owner, TypeSymbol: TResolvedSymbol;
+    TypeFound, HasElse: Boolean;
+    OfPos: TTextPosition;
+    Slot: TCaseBranchSlot;
+    TypeName, Prefix, LabelText: string;
+    Edits: TArray<TTextEdit>;
+    Count: Integer;
+    Fixes: TArray<TRuleFix>;
+  begin
+    if ACase.ChildCount = 0 then
+      Exit;
+    HasElse := ACase.FindChild(TSyntaxKind.CaseElse) <> nil;
+    if HasElse and not RequireElse then
+      Exit;
+    Names := nil;
+    if not Chain(ACase[0], Names) or not TCaseCompletion.OfPosition(AContext.Tree, ACase, OfPos) or
+      not TCaseCompletion.BranchSlot(AContext.Text, AContext.Tree.Tokens, OfPos, Slot) then
+      Exit;
+    if not Resolver.ChainType(AContext.Tree, FileName, Names, ACase[0].EndOffset, Owner, TypeSymbol, TypeFound) or
+      not TypeFound then
+      Exit;
+    Values := EnumValues(TypeSymbol, TypeName);
+    if (Values = nil) or not TCaseCompletion.Missing(Values, Slot.Labels, Absent) or (Absent = nil) then
+      Exit;
+    // {$SCOPEDENUMS ON}: die vorhandenen Marken tragen den Typnamen.
+    Prefix := '';
+    for LabelText in Slot.Labels do
+      if Pos('.', StringReplace(LabelText, '..', '', [rfReplaceAll])) > 0 then
+        Prefix := TypeName + '.';
+    Fixes := nil;
+    if TCaseCompletion.Complete(AContext.Text, AContext.Tree, ACase, Values, Prefix, Edits, Count, HasElse) then
+      Fixes := [TRuleFix.Create(Format('Fehlende Werte ergänzen (%d)', [Count]), Edits)];
+    AReport.Add(TTextRange.Create(ACase[0].StartPos, ACase[0].EndPos), Format('Fehlende Werte von %s: %s.',
+      [TypeName, string.Join(', ', Absent)]), TRuleConfidence.High, Fixes);
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.CaseStatement then
+      CheckCase(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  RequireElse := TRuleOptions.Bool(AContext.Options, 'requireElse', False);
+  FileName := AContext.FileName;
+  if FileName = '' then
+    FileName := AContext.RelativePath;
+  if FileName = '' then
+    FileName := AContext.UnitName + '.pas';
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  try
+    Resolver.Namespaces := AContext.Namespaces;
+    Resolver.PinTree(AContext.Tree, FileName);
+    try
+      Visit(AContext.Tree.Root);
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TEmptyStatementRule.Create);
   ARegistry.Register(TDestroyCalledDirectlyRule.Create);
   ARegistry.Register(TLoopOffByOneRule.Create);
   ARegistry.Register(TCollectionModifiedInLoopRule.Create);
+  ARegistry.Register(TCaseMissingEnumValueRule.Create);
 end;
 
 end.
