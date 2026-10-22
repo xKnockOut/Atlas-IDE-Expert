@@ -5542,6 +5542,8 @@ Der Name hinter unit weicht vom Dateinamen ab, meist nach dem Umbenennen der Dat
 
 Entspricht der Compilermeldung `E1038`, `W1038`, `E2085`.
 
+Stufe A (Parser genügt).
+
 Mit Treffer:
 
 ```pascal
@@ -5568,6 +5570,8 @@ interface
 Nach dem abschließenden end. einer Unit, eines Programms, einer Bibliothek oder eines Packages steht noch Quelltext. Der Compiler ignoriert ihn (wie W1011); meist ist es Code, der beim Einfügen ans Dateiende geraten ist und nie übersetzt wird. Kommentare und Direktiven werden nicht gemeldet (Option allowComments). Die Regel sucht das abschließende end. hinter dem letzten Abschnitt des Syntaxbaums und schweigt, solange der Parser Fehler meldet oder end. in einem {$IF…}-Zweig steht; {$WARNINGS OFF} vor end. schaltet sie ab. Schnellkorrektur: Text nach end. entfernen.
 
 Entspricht der Compilermeldung `W1011`.
+
+Stufe A (Parser genügt).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -5597,6 +5601,8 @@ Eine exports-Klausel in einer Routine (wie E2191), der Export einer threadvar od
 
 Entspricht der Compilermeldung `E2191`, `E2276`, `E2121`, `E2287`.
 
+Stufe A (Parser genügt).
+
 Mit Treffer:
 
 ```pascal
@@ -5623,6 +5629,8 @@ Eine Unit heißt wie eine für den Compiler reservierte Unit, System oder SysIni
 
 Entspricht der Compilermeldung `E2272`, `E2242`.
 
+Stufe B (Namensauflösung über Units).
+
 Mit Treffer:
 
 ```pascal
@@ -5647,6 +5655,8 @@ interface
 Die Unit verwendet Variant oder OleVariant als Typ, ohne System.Variants in uses zu haben. Der Compiler bindet die Unit dann still ein (wie W1040) und ändert damit die Initialisierungsreihenfolge. Die Regel zählt Typangaben im Syntaxbaum (Variablen, Felder, Parameter, Ergebnisse, Typargumente); Variants in uses gilt auch in einem {$IF…}-Zweig und ohne Namespace. Still in System, SysInit und Variants selbst, wenn die Datei einen eigenen Typ Variant deklariert, und nach {$WARN IMPLICIT_VARIANTS OFF}. Standardmäßig aus (Profil strict). Schnellkorrektur: System.Variants in uses aufnehmen (Variants, wenn die Unit SysUtils oder Classes ohne Namespace nennt).
 
 Entspricht der Compilermeldung `W1040`.
+
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -5675,6 +5685,8 @@ Die Datei ist UTF-32 kodiert (wie F2438; erkannt an der BOM, dann keine weiteren
 
 Entspricht der Compilermeldung `F2438`, `E2038`.
 
+Stufe A (Parser genügt).
+
 Mit Treffer:
 
 ```pascal
@@ -5695,6 +5707,8 @@ Titel := 'Bericht';
 Eine anonyme Methode greift auf einen var-, out- oder untypisierten Parameter oder auf Result einer umgebenden Routine bzw. anonymen Funktion zu (wie E2555). Der Name wird von innen nach außen aufgelöst (Parameter, var/const/type, lokale Routinen, Inline-Variablen, for var); in with und asm bleibt die Regel still, Deklarationen in Zweigen bedingter Übersetzung, die die Stelle ausschließen, zählen nicht. Korrektur: Wert vor der Anweisung in eine lokale Variable kopieren, in der anonymen Methode nur diese verwenden und nach der Anweisung zurückschreiben, wenn die Methode sie zuweist.
 
 Entspricht der Compilermeldung `E2555`.
+
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -5727,6 +5741,8 @@ Ein class operator in einem Record oder einer Klasse ist so deklariert, wie Delp
 
 Entspricht der Compilermeldung `E2393`, `E2464`, `E2517`, `E2518`, `E2519`, `E2520`, `E2521`, `E2522`.
 
+Stufe A (Parser genügt).
+
 Mit Treffer:
 
 ```pascal
@@ -5752,6 +5768,8 @@ Eine generische Deklaration, die Delphi ablehnt: Einschränkungen class und reco
 
 Entspricht der Compilermeldung `E2506`, `E2507`, `E2508`, `E2510`, `E2516`, `E2528`, `E2529`, `E2530`, `E2533`, `E2535`, `E2548`, `E2549`, `E2551`, `E2552`, `E2553`, `E2565`, `E2603`, `H2509`.
 
+Stufe A (Parser genügt).
+
 Mit Treffer:
 
 ```pascal
@@ -5775,6 +5793,8 @@ type
 Feste Sprachregeln, die erst der Compiler meldet: virtuelle Methoden (wie E2379) oder andere virtuelle Direktiven (override, abstract, reintroduce, message, final; E2463) in Records, parameterlose Konstruktoren (E2394), Konstruktoren, deren Parameter alle Vorgabewerte haben (E2471), und Destruktoren (E2465) in Records, Klassenmethoden in Records ohne static (E2398); in Record-Helfern virtuelle Methoden (E2598) und die übrigen virtuellen Direktiven (E2475); Felder in Helfern (class var ist erlaubt, E2599), Destruktor (E2295) oder Klassenkonstruktor (E2358) in einem Class-Helfer, ein Helfer-Konstruktor, dessen erster Befehl kein Aufruf ohne Argumente ist (E2296), ein Class-Helfer mit Vorfahr-Helfer für einen Typ, der nicht vom Typ des Vorfahren abstammt (E2294, nur bei bekannter Vorfahrenkette), ein Helfer als Typ einer Deklaration (E2527) oder in einem generischen Typ (E2589); mehrere Klassenkonstruktoren (E2359, sich ausschließende bedingte Zweige zählen einmal), Klassenkonstruktoren mit Parametern (E2360) oder virtual, dynamic bzw. message (E2534); Methoden, Properties, Klassenmitglieder, Typen und Konstanten in lokalen oder anonymen Records (E2433 bis E2437); inline an virtuellen oder dynamischen Methoden (E2425), an Konstruktoren und Destruktoren (E2442), mit offenen Array-Parametern (E2439), mit asm-Rumpf (E2426), im interface-Teil deklariert mit Symbolen des implementation-Teils (E2441), als lokale Routine mit Zugriff auf Variablen der umgebenden Routine (E2449) oder mit Aufruf eigener lokaler Routinen (E2501); lokale, absolute oder initialisierte threadvar (E2189, E2190, E2194). Die Prüfungen gelten für alle unterstützten Delphi-Versionen (10 Seattle bis 13). Option disabledChecks nimmt einzelne Codes aus. Korrekturen: Direktive entfernen, static ergänzen.
 
 Entspricht der Compilermeldung `E2189`, `E2190`, `E2194`, `E2294`, `E2295`, `E2296`, `E2358`, `E2359`, `E2360`, `E2379`, `E2394`, `E2398`, `E2425`, `E2426`, `E2433`, `E2434`, `E2435`, `E2436`, `E2437`, `E2439`, `E2441`, `E2442`, `E2449`, `E2463`, `E2465`, `E2471`, `E2475`, `E2501`, `E2527`, `E2534`, `E2589`, `E2598`, `E2599`.
+
+Stufe A (Parser genügt).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -5807,6 +5827,8 @@ Ein Attribut des Compilers steht dort, wo Delphi es ablehnt: [Weak] an einem Fel
 
 Entspricht der Compilermeldung `E2325`, `E2326`, `E2448`, `E2584`.
 
+Stufe B (Namensauflösung über Units).
+
 Mit Treffer:
 
 ```pascal
@@ -5834,6 +5856,8 @@ end;
 TypeInfo oder Default bekommt eine Variable statt eines Typs (wie E2133, E2537: Parameter, lokale, Inline- und Unit-Variablen, Felder, Properties, Result, for- und Ausnahmevariablen), TypeInfo einen Typ ohne RTTI (Aufzählung mit festen Werten, Dateityp, Text/TextFile; E2134) oder Default einen Dateityp (E2538). Namen werden von innen nach außen aufgelöst; in with, in Helfern, in Methoden von Typen außerhalb der Datei, bei Deklarationen in anderen bedingten Zweigen und wenn Datei oder Index ein eigenes TypeInfo bzw. Default deklarieren, bleibt die Regel still. Korrektur: den deklarierten Typ der Variablen einsetzen.
 
 Entspricht der Compilermeldung `E2133`, `E2134`, `E2537`, `E2538`.
+
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -5891,6 +5915,8 @@ Ein Konstruktor betritt einen try-Block, bevor er den geerbten Konstruktor aufge
 
 Entspricht der Compilermeldung `H2505`.
 
+Stufe A (Parser genügt).
+
 Mit Treffer:
 
 ```pascal
@@ -5919,6 +5945,8 @@ begin
 Im varianten Teil eines Records (case … of) steht ein String, ein dynamisches Array, ein Interface, ein Variant oder ein Record mit solchen Feldern (wie E2154), ein verwalteter Record mit class operator Initialize oder Finalize (wie E2418) oder ein Typparameter ohne record-Einschränkung (wie E2569); ebenso hinter file of (wie E2155, E2417). Typen werden in der Datei und im Index aufgelöst; unbekannte bleiben still. Korrekturen: Feld vor case in den festen Teil verschieben, ShortString verwenden oder den Typparameter mit record einschränken.
 
 Entspricht der Compilermeldung `E2154`, `E2155`, `E2418`, `E2417`, `E2569`.
+
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -5949,6 +5977,8 @@ Die GUID eines Interfaces oder einer typisierten TGUID-Konstante hat nicht die F
 
 Entspricht der Compilermeldung `E2204`.
 
+Stufe A (Parser genügt).
+
 Mit Treffer:
 
 ```pascal
@@ -5971,6 +6001,8 @@ ILogger = interface
 Ein Interface wird über eine Typumwandlung nach Pointer zugewiesen (Pointer(FIntf) := P, wie W1070). Die Referenzzählung läuft dann nicht mit: das Objekt wird zu früh freigegeben oder nie. Die Regel meldet nur, wenn die Namensauflösung den Interface-Typ sicher kennt; Strings (string, AnsiString …) meldet sie ebenfalls, mit dem Zusatz „dcc meldet das nicht“, weil Delphi bei ihnen nur unter NEXTGEN warnt. Felder mit [weak] oder [unsafe] bleiben still. Korrekturen für ein Interface-Feld dieser Datei mit Pointer(Y) oder nil rechts: das Feld mit [weak] bzw. [unsafe] auszeichnen und ohne Pointer zuweisen.
 
 Entspricht der Compilermeldung `W1070`.
+
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
 
 Mit Treffer:
 
@@ -5995,6 +6027,8 @@ Ein statisches Array oder Record ist 2 GB groß oder größer (wie E2100), ebens
 
 Entspricht der Compilermeldung `E2100`, `E2543`.
 
+Stufe B (Namensauflösung über Units).
+
 Mit Treffer:
 
 ```pascal
@@ -6015,6 +6049,8 @@ type TPuffer = array of Int64;
 Vergleich einer Variablen, eines Feldes, einer Property oder eines Funktionsergebnisses vom eingebauten Ganzzahltyp mit einer Konstanten außerhalb bzw. am Rand des Wertebereichs (wie W1021, W1022): Cardinal >= 0 ist immer wahr, Byte > 255 immer falsch. Ebenso case-Marken außerhalb des Bereichs des case-Ausdrucks (wie W1018). Gemeldet wird nur bei sicher bekanntem Typ, dessen Deklaration immer mit dem Vergleich übersetzt wird. NativeInt, LongInt und ihre vorzeichenlosen Gegenstücke gelten mit dem weitesten Bereich aller Plattformen; Teilbereichstypen meldet die Regel nicht. Length(…) < 0 und Length(…) >= 0 meldet sie ebenfalls, obwohl dcc dort nicht warnt; die Meldung sagt das dazu.
 
 Entspricht der Compilermeldung `W1021`, `W1022`, `W1018`.
+
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
 
 Mit Treffer:
 
@@ -6037,6 +6073,8 @@ Eine typisierte Konstante oder initialisierte Variable vom statischen Array-Typ 
 
 Entspricht der Compilermeldung `E2072`, `E2083`.
 
+Stufe B (Namensauflösung über Units).
+
 Mit Treffer:
 
 ```pascal
@@ -6057,6 +6095,8 @@ StatusText: array[TStatus] of string = ('Neu', 'Offen', 'Geschlossen', ''{stArch
 case über einen nicht ordinalen Ausdruck (wie E2001): Strings, Gleitkommazahlen, Klassen und Interfaces; for-Schleife mit nicht ordinaler Zählvariable (wie E2032); case-Marken und Array-Grenzen, die Variablen, Felder, Properties, Parameter oder typisierte Konstanten statt Konstanten sind (wie E2026). Gemeldet wird nur bei sicher bekanntem Typ, dessen Deklaration immer mit der Anweisung übersetzt wird. Korrektur bei Strings mit lauter String-Literalen als Marken: case IndexStr(S, […]) of mit den Positionen als Marken, System.StrUtils kommt in die uses.
 
 Entspricht der Compilermeldung `E2001`, `E2032`, `E2026`.
+
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
 
 Mit Treffer:
 
@@ -6079,6 +6119,8 @@ PChar bzw. PWideChar auf einen AnsiString, RawByteString oder UTF8String und PAn
 
 Entspricht der Compilermeldung `W1044`, `W1048`.
 
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
+
 Mit Treffer:
 
 ```pascal
@@ -6099,6 +6141,8 @@ var Pfad: string; ... DeleteFile(PChar(Pfad));
 Zugriff A.B auf ein Mitglied, das an der Stelle nicht sichtbar ist: private bzw. strict private einer anderen Unit oder Klasse (wie E2361), protected bzw. strict protected außerhalb der deklarierenden Unit und ihrer Nachfahren (wie E2362, E2389). In einer Klassenmethode oder statischen Methode sind Instanzfelder, -methoden und -Properties der Klasse nicht erreichbar (wie E2124). Eine Property, die auf ein private-Mitglied eines Vorfahren derselben Unit verweist, meldet die Regel als Warnung (wie W1045). Gemeldet wird nur, wenn die Namensauflösung den Empfänger und seinen Typ sicher kennt und das Mitglied erst ohne Rücksicht auf die Sichtbarkeit findet; protected-Mitglieder bleiben über eine Klasse der eigenen Unit sichtbar (TZugang(Control).Click). Deklarationen in bedingten Zweigen, Methoden von Helfern und verschachtelten Typen bleiben still.
 
 Entspricht der Compilermeldung `E2361`, `E2362`, `E2389`, `E2124`, `W1045`.
+
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -6128,6 +6172,8 @@ end;
 Ein private- oder strict-private-Feld, eine Methode, Konstante oder Property kommt in der Unit nirgends vor (wie H2219, das der Compiler nur für Methoden meldet; Felder ebenso, außer includeFields ist aus). Jedes Vorkommen des Namens als Bezeichner zählt als Verwendung, auch in inaktiven bedingten Zweigen und hinter read/write; Deklarationen und Methodenköpfe zählen nicht. Ausgenommen: Methoden mit message, virtual, dynamic, override oder abstract, Methoden von Typen, die Interfaces umsetzen, Konstruktoren und Destruktoren, Mitglieder mit Attributen (RTTI), Namen aus der Formulardatei und Units mit Include-Dateien. Korrektur: Deklaration (samt ///-Doku) und den Rumpf einer Methode entfernen; nicht, wenn sich mehrere Mitglieder die Deklaration teilen oder die Methode überladen ist.
 
 Entspricht der Compilermeldung `H2219`.
+
+Stufe A (Parser genügt).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -6198,6 +6244,8 @@ Eine message-Prozedur einer Klasse hat nicht genau einen var-Parameter (wie E213
 
 Entspricht der Compilermeldung `E2138`, `E2139`, `E2140`.
 
+Stufe A (Parser genügt).
+
 Mit Treffer:
 
 ```pascal
@@ -6220,6 +6268,8 @@ procedure WMMove(var Msg: TWMMove); message WM_MOVE;
 Ein Interface deklariert etwas, das Interfaces nicht haben dürfen: Felder (wie E2209), Sichtbarkeitsabschnitte oder Methodendirektiven wie virtual, dynamic, abstract, override, message oder reintroduce (wie E2210), die Property-Klauseln stored, nodefault oder default mit Wert (wie E2207; default; hinter einer Array-Property ist erlaubt), eine Property, die ein Vorfahr-Interface schon deklariert (wie E2206), oder einen Property-Accessor, den nur das Vorfahr-Interface deklariert (wie E2370). Ebenso gemeldet werden eine Klasse, ein Record oder eine Aufzählung als Vorfahr eines Interfaces oder in der Interface-Liste einer Klasse (wie E2205) und dasselbe Interface zweimal in dieser Liste (wie E2208). Typen werden über die uses-Klauseln aufgelöst; Aliase, unbekannte Typen, dispinterface und Deklarationen in bedingten Zweigen bleiben still.
 
 Entspricht der Compilermeldung `E2205`, `E2206`, `E2207`, `E2208`, `E2209`, `E2210`, `E2370`.
+
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -6248,6 +6298,8 @@ Eine Delegation mit implements verletzt eine ihrer festen Regeln: implements nur
 
 Entspricht der Compilermeldung `E2257`, `E2258`, `E2259`, `E2260`, `E2261`, `E2262`, `E2263`, `E2264`.
 
+Stufe B (Namensauflösung über Units).
+
 Mit Treffer:
 
 ```pascal
@@ -6269,6 +6321,8 @@ Der Compiler schreibt hier die Aufrufkonvention vor: Konstruktoren und Destrukto
 
 Entspricht der Compilermeldung `E2236`, `E2270`, `E2277`, `E2591`.
 
+Stufe A (Parser genügt).
+
 Mit Treffer:
 
 ```pascal
@@ -6289,6 +6343,8 @@ function Formatieren(Muster: PAnsiChar): Integer; cdecl; varargs; external 'msvc
 Eine Methodendirektive, die der Compiler ablehnt: abstract ohne virtual, dynamic oder override (wie E2167), ein Rumpf im implementation-Teil zu einer abstrakten Methode (wie E2136), final an einer nicht virtuellen Methode (wie E2351), abstract zusammen mit final (wie E2371), eine Klasse abstract sealed (wie E2383, E2540) oder static an einer Instanzmethode bzw. einer virtuellen Klassenmethode (wie E2376). Ein Rumpf zählt nur dann als Rumpf einer abstrakten Methode, wenn keine gleichnamige nicht abstrakte Methode derselben Klasse mit ihm übersetzt wird (Überladungen, {$IFDEF}-Zweige). Korrekturen: virtual; vor abstract einfügen, Rumpf entfernen.
 
 Entspricht der Compilermeldung `E2167`, `E2136`, `E2351`, `E2371`, `E2383`, `E2540`, `E2376`.
+
+Stufe A (Parser genügt).
 
 Mit Treffer:
 
@@ -6314,6 +6370,8 @@ end;
 Eine Routine aus dem interface-Teil oder mit forward hat keinen Rumpf (wie E2065), oder eine Vorwärtsdeklaration TFoo = class; bzw. IFoo = interface; wird im selben type-Abschnitt nie vollständig deklariert (wie E2086, E2420). Methoden prüft declared-not-implemented. Ein Rumpf passt, wenn er gleich heißt; bei overload muss auch die Zahl der Parameter stimmen. Ein external im implementation-Teil zählt als Rumpf. Deklarationen in einem {$IFDEF}-Zweig bleiben unbeachtet; mit Include-Dateien prüft die Regel keine Routinen. Korrektur: leeren Rumpf vor initialization bzw. dem abschließenden end. anlegen.
 
 Entspricht der Compilermeldung `E2065`, `E2086`, `E2420`.
+
+Stufe A (Parser genügt).
 
 Mit Treffer:
 
@@ -6353,6 +6411,8 @@ Eine Property heißt wie ein Feld eines Vorfahren (wie W1009), ein Feld wie ein 
 
 Entspricht der Compilermeldung `W1009`.
 
+Stufe B (Namensauflösung über Units).
+
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
 | `ignoreStrictPrivate` | boolean | `true` | Verdeckte strict private Member des Vorfahren nicht melden. |
@@ -6388,6 +6448,8 @@ Ein Mitglied hinter einem ausdrücklichen published, das der Compiler ablehnt: e
 
 Entspricht der Compilermeldung `E2188`, `E2217`, `E2186`, `E2187`, `E2266`, `E2545`, `E2452`.
 
+Stufe B (Namensauflösung über Units).
+
 Mit Treffer:
 
 ```pascal
@@ -6415,6 +6477,8 @@ Eine überschreibende Methode schreibt ihren Namen anders als der Vorfahr (destr
 
 Entspricht der Compilermeldung `H2365`, `H2440`, `H2269`, `H2367`.
 
+Stufe B (Namensauflösung über Units).
+
 Mit Treffer:
 
 ```pascal
@@ -6440,6 +6504,8 @@ default; hinter einer Property ohne Indexparameter (wie E2132), eine zweite defa
 
 Entspricht der Compilermeldung `E2131`, `E2132`, `E2149`.
 
+Stufe B (Namensauflösung über Units).
+
 Mit Treffer:
 
 ```pascal
@@ -6464,6 +6530,8 @@ end;
 Eine Neudeklaration ohne Typ wie property Caption; (um Sichtbarkeit oder Standardwert zu ändern) nennt eine Property, die kein Vorfahr hat (wie E2147), oder die Property des Vorfahren ist von hier aus nicht erreichbar: strict private oder private in einer anderen Unit (wie E2233). Gemeldet nur, wenn die ganze Vorfahrenkette bekannt ist; ein gleichnamiges Feld oder eine Methode und Deklarationen in inaktiven Zweigen bleiben still. Korrektur: den ähnlichsten Property-Namen der Vorfahren verwenden.
 
 Entspricht der Compilermeldung `E2147`, `E2233`.
+
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -6492,6 +6560,8 @@ Aufruf einer inline-Routine aus einer anderen Unit, die der Compiler nicht einbe
 
 Entspricht der Compilermeldung `H2443`, `H2444`, `H2445`, `H2456`, `H2457`.
 
+Stufe B (Namensauflösung über Units).
+
 Mit Treffer:
 
 ```pascal
@@ -6518,6 +6588,8 @@ for Wert in Feld as TJSONArray do
 An der Stelle einer Direktive steht ein Wort, das keine ist: nach dem ';' eines Routinen- oder Methodenkopfs (overide;, virutal;, overlaod;, stdcal;, reintroduces;) oder nach einer Property, wo nur default erlaubt ist (defualt;). Der Compiler bricht dort ab (wie E2070). Die Meldung schlägt die ähnlichste Direktive vor, wenn höchstens zwei Zeichen abweichen. Still in {$IF}-Zweigen, die FPC abfragen; FPC kennt weitere Direktiven wie nostackframe. Korrektur: durch die vorgeschlagene Direktive ersetzen.
 
 Entspricht der Compilermeldung `E2070`.
+
+Stufe A (Parser genügt).
 
 Mit Treffer:
 
@@ -7035,6 +7107,8 @@ Ein konstanter Ausdruck teilt durch null (wie E2098), läuft über den Bereich v
 
 Entspricht der Compilermeldung `E2098`, `E2099`, `E2011`, `W1012`, `E2102`.
 
+Stufe B (Namensauflösung über Units).
+
 Mit Treffer:
 
 ```pascal
@@ -7060,6 +7134,8 @@ Standardwerte, die der Compiler ablehnt: mehrere Namen mit einem gemeinsamen Sta
 
 Entspricht der Compilermeldung `E2237`, `E2238`, `E2239`, `E2268`, `E2146`.
 
+Stufe A (Parser genügt).
+
 Mit Treffer:
 
 ```pascal
@@ -7081,6 +7157,8 @@ Vergleich oder Rechnung (+, -, *, div, mod) mit einem vorzeichenbehafteten und e
 
 Entspricht der Compilermeldung `W1023`, `W1024`, `W1073`.
 
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
+
 Mit Treffer:
 
 ```pascal
@@ -7101,6 +7179,8 @@ if Int64(Groesse) + Delta < Grenze then
 Eine Zuweisung oder Inline-Variable mit einem Wert, dessen Typ breiter ist als das Ziel, ohne ausdrückliche Umwandlung: Int64 an Integer, NativeInt an Integer (Win64) und über die Option types z. B. Double an Single oder Extended an Double. Wie W1071 (Ganzzahlen), W1072 (Gleitkomma) und W1066 (Extended an Double); der Compiler zeigt W1071 nur, wenn man es einschaltet. Gemeldet wird nur, wenn beide Typen sicher bekannt sind (Variablen, Felder, Properties, Funktionsergebnisse, eigene Aliase und ganzzahlige Rechnungen daraus); Literale und ausdrückliche Umwandlungen bleiben still. Standardmäßig aus; mittlere Konfidenz. Korrekturen: ausdrücklich umwandeln; den Typ der Deklaration des Ziels vergrößern (einzelne Variable aus derselben Datei).
 
 Entspricht der Compilermeldung `W1071`, `W1072`, `W1066`.
+
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -7126,6 +7206,8 @@ Anzahl := Integer(Strom.Size);
 Einer typisierten Konstante (const Zaehler: Integer = 0) wird etwas zugewiesen (wie W1017, auch einem Element oder Record-Feld davon), oder sie wird als var- oder out-Argument übergeben, auch an Inc, Dec, Include, Exclude, Delete, SetLength und ähnliche (wie W1016). Gemeint war meist eine Variable; übersetzbar ist das nur mit {$J+}. Gilt vor der Deklaration in derselben Datei {$J-} bzw. {$WRITEABLECONST OFF}, meldet Atlas einen Fehler (wie E2064 bzw. E2197). Dazu 0 als Wert einer Zeigerkonstante oder einer initialisierten Zeigervariable (wie W1013). Korrekturen: eine Konstante auf Unit-Ebene in eine Variable mit Initialwert umwandeln (der const-Abschnitt wird bei Bedarf geteilt; lokale typisierte Konstanten behalten ihren Wert zwischen Aufrufen und bekommen keine Korrektur); nil statt 0 schreiben.
 
 Entspricht der Compilermeldung `W1016`, `W1017`, `W1013`, `E2064`, `E2197`.
+
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -7154,6 +7236,8 @@ Ein String-Literal wird an ein Ziel vom Typ string[N] oder ShortString gekürzt:
 
 Entspricht der Compilermeldung `W1014`, `E2056`, `E2381`.
 
+Stufe B (Namensauflösung über Units).
+
 Mit Treffer:
 
 ```pascal
@@ -7179,6 +7263,8 @@ New (wie E2255) oder Dispose (wie E2256) auf einem dynamischen Array, SetLength 
 
 Entspricht der Compilermeldung `E2255`, `E2256`, `E2246`, `E2307`, `E2308`.
 
+Stufe B (Namensauflösung über Units).
+
 Mit Treffer:
 
 ```pascal
@@ -7199,6 +7285,8 @@ Werte := nil;
 Eine lokale (verschachtelte) Routine wird einer Variablen oder einem Parameter eines prozeduralen Typs ohne of object zugewiesen (wie E2094), oder eine typisierte Konstante einer Routine nimmt die Adresse einer lokalen Variablen (wie E2278). Gemeint ist meist eine anonyme Methode oder eine Routine der Unit. Die Regel meldet nur, wenn die Namensauflösung den Zieltyp sicher kennt; Methodenzeiger und Methodenreferenzen bleiben still, weil der Compiler sie mit anderen Codes meldet, ebenso @Routine (ein untypisierter Zeiger). Korrektur: die Routine als Routine der Unit vor die umgebende Routine verschieben, wenn sie nichts aus ihr nutzt (keine lokalen Namen weiter außen, keine Klassenmitglieder ohne Präfix).
 
 Entspricht der Compilermeldung `E2094`, `E2278`.
+
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -7236,6 +7324,8 @@ Eine Klasse implementiert eine Interface-Methode mit HRESULT-Ergebnis über eine
 
 Entspricht der Compilermeldung `X1008`.
 
+Stufe B (Namensauflösung über Units).
+
 Mit Treffer:
 
 ```pascal
@@ -7265,6 +7355,8 @@ Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: ein String-El
 
 Entspricht der Compilermeldung `E2354`, `E2197`, `E2192`, `E2454`, `E2036`.
 
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
+
 Mit Treffer:
 
 ```pascal
@@ -7290,6 +7382,8 @@ Die Bedingung von if, while, until oder eines bedingten Ausdrucks hat sicher ein
 
 Entspricht der Compilermeldung `E2012`.
 
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
+
 Mit Treffer:
 
 ```pascal
@@ -7313,6 +7407,8 @@ Eine for-in-Schleife läuft über einen Typ, der sich nicht aufzählen lässt: Z
 
 Entspricht der Compilermeldung `E2430`, `E2431`.
 
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
+
 Mit Treffer:
 
 ```pascal
@@ -7333,6 +7429,8 @@ for F in Felder do
 inherited mit ausdrücklichem Methodennamen, etwa inherited Zeichnen(C), obwohl die Methode im Vorfahren abstract ist (wie E2373). Ein bloßes inherited; übergeht der Compiler bei abstrakten Methoden still; das meldet die Regel nicht. Die Methode löst die Namensauflösung samt Überladungen auf; gemeldet wird nur, wenn jede passende Überladung abstrakt ist. Korrektur: den Aufruf entfernen, wenn er als eigene Anweisung in einem begin…end steht.
 
 Entspricht der Compilermeldung `E2373`.
+
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -7361,6 +7459,8 @@ end;
 Ein Typargument erfüllt die Einschränkung seines Typparameters nicht: class (wie E2511), record (wie E2512), constructor (wie E2513), ein Interface (wie E2514) oder eine Basisklasse (wie E2515). In Methoden eines generischen Typs dieser Datei meldet die Regel außerdem T.Create ohne constructor-Einschränkung (wie E2568) und Methodenaufrufe auf Werten eines Typparameters ganz ohne Einschränkung (wie E2571). Den generischen Typ löst die Namensauflösung samt Zahl der Typparameter auf, seine Einschränkungen stammen aus seiner Deklaration in der Datei oder im Symbolindex. Argumente, die selbst Typparameter sind, Aliase und Typen mit unvollständiger Vorfahrenkette meldet die Regel nicht. Korrektur für einen Typparameter dieser Datei, der allein in seiner Gruppe steht: die Einschränkung ergänzen (T: class, constructor bzw. T: class).
 
 Entspricht der Compilermeldung `E2511`, `E2512`, `E2513`, `E2514`, `E2515`, `E2568`, `E2571`.
+
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -7391,6 +7491,8 @@ Ein Typname in einer Deklaration (Feld, Parameter, Ergebnis, Vorfahr, Interface-
 
 Entspricht der Compilermeldung `E2564`, `E2563`, `E2005`, `E2003`.
 
+Stufe B (Namensauflösung über Units).
+
 Mit Treffer:
 
 ```pascal
@@ -7417,6 +7519,8 @@ type
 Create über eine Klassenreferenz (class of TBasis), deren Konstruktor nicht virtual ist. Unter Win32 und Win64 übersetzt das ohne Meldung, erzeugt aber immer über den Konstruktor von TBasis: Felder, die Nachfahren in ihren eigenen Konstruktoren setzen, bleiben leer (wie E2391). Der Empfänger kann eine Variable, ein Feld, ein Parameter oder ein Funktionsergebnis vom Typ einer Klassenreferenz sein; den Konstruktor löst die Namensauflösung in der nächsten Klasse auf, die ihn deklariert, Überladungen nach Zahl der Argumente. Still, wenn eine passende Überladung virtual, dynamic, override oder abstract ist, wenn eine Deklaration in einem anderen Zweig der bedingten Übersetzung steht und wenn ein Typ nicht auflösbar ist. Korrektur, wenn der Konstruktor in dieser Datei steht: virtual an ihn und override an die gleichlautenden Konstruktoren der Nachfahren in dieser Datei.
 
 Entspricht der Compilermeldung `E2391`.
+
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -7454,6 +7558,8 @@ Break oder Continue außerhalb einer Schleife (wie E2097) bzw. Break, Continue o
 
 Entspricht der Compilermeldung `E2097`, `E2126`.
 
+Stufe A (Parser genügt).
+
 Mit Treffer:
 
 ```pascal
@@ -7477,6 +7583,8 @@ raise; ohne Exception-Objekt ist nur in einem except-Block erlaubt (wie E2145); 
 
 Entspricht der Compilermeldung `E2145`.
 
+Stufe A (Parser genügt).
+
 Mit Treffer:
 
 ```pascal
@@ -7499,6 +7607,8 @@ raise EImportAbgebrochen.Create('Import abgebrochen');
 Eine Marke ist doppelt gesetzt (wie E2073), deklariert und angesprungen, aber nie gesetzt (E2074), gesetzt oder angesprungen, ohne in der aktuellen Routine deklariert zu sein (E2093), oder goto springt in einen try-Block hinein oder aus ihm heraus, auch zwischen try-Teil und except bzw. finally (E2127). Delphi meldet das erst beim Übersetzen. Marken gehören zu einer Routine bzw. zum Programmblock; eine lokale Prozedur kann keine Marke der umgebenden Routine anspringen. Doppelte Marken in bedingten Zweigen, die sich ausschließen, bleiben still, ebenso Routinen mit asm-Block, weil Marken im asm nicht im Syntaxbaum stehen. Keine Korrektur.
 
 Entspricht der Compilermeldung `E2073`, `E2074`, `E2093`, `E2127`.
+
+Stufe A (Parser genügt).
 
 Mit Treffer:
 
@@ -7535,6 +7645,8 @@ Der Variablen einer for-Schleife wird im Rumpf zugewiesen oder sie wird mit Inc/
 
 Entspricht der Compilermeldung `E2081`, `W1015`, `E1019`.
 
+Stufe A (Parser genügt).
+
 Mit Treffer:
 
 ```pascal
@@ -7565,6 +7677,8 @@ end;
 Nach einer for-Schleife, die normal endet (ohne Break), ist die Schleifenvariable undefiniert. Die Regel meldet das erste Lesen der Variable auf einem Weg vom normalen Schleifenende, bevor ihr erneut zugewiesen wird (wie W1037). Geprüft werden nur einfache lokale Variablen der Routine; for var, Felder, globale Variablen, Lesen nur im Rumpf, Argumente von Routinen, die out-Parameter sein könnten, und Routinen mit unvollständigem Ablaufgraphen bleiben still. Korrektur: auf eine while-Schleife umstellen, deren Zähler danach einen festen Wert hat.
 
 Entspricht der Compilermeldung `W1037`.
+
+Stufe A (Parser genügt).
 
 Mit Treffer:
 

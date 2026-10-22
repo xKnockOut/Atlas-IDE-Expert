@@ -2869,7 +2869,8 @@ begin
     '        "E1038",' + #10 +
     '        "W1038",' + #10 +
     '        "E2085"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "text-after-final-end",' + #10 +
@@ -2890,7 +2891,8 @@ begin
     '      ],' + #10 +
     '      "compilerCodes": [' + #10 +
     '        "W1011"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "exports-invalid",' + #10 +
@@ -2906,7 +2908,8 @@ begin
     '        "E2276",' + #10 +
     '        "E2121",' + #10 +
     '        "E2287"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unit-name-conflict",' + #10 +
@@ -2920,7 +2923,8 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "E2272",' + #10 +
     '        "E2242"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "implicit-variants-unit",' + #10 +
@@ -2933,7 +2937,8 @@ begin
     '      "good": "uses\n  System.SysUtils, System.Variants;\n…\nvar Wert: Variant;",' + #10 +
     '      "compilerCodes": [' + #10 +
     '        "W1040"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "file-encoding-unsupported",' + #10 +
@@ -2947,7 +2952,8 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "F2438",' + #10 +
     '        "E2038"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "anonymous-capture-invalid",' + #10 +
@@ -2960,7 +2966,8 @@ begin
     '      "good": "procedure Load(var Count: Integer);\nvar\n  CountCopy: Integer;\nbegin\n  CountCopy := Count;\n  TTask.Run(procedure begin Inc(CountCopy); end);\n  Count := CountCopy;\nend;",' + #10 +
     '      "compilerCodes": [' + #10 +
     '        "E2555"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "operator-declaration-invalid",' + #10 +
@@ -2980,7 +2987,8 @@ begin
     '        "E2520",' + #10 +
     '        "E2521",' + #10 +
     '        "E2522"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "generic-declaration-invalid",' + #10 +
@@ -3010,7 +3018,8 @@ begin
     '        "E2565",' + #10 +
     '        "E2603",' + #10 +
     '        "H2509"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "type-restriction-violated",' + #10 +
@@ -3063,7 +3072,8 @@ begin
     '          "default": [],' + #10 +
     '          "description": "Compiler codes the rule does not check, e.g. [\"E2425\"]."' + #10 +
     '        }' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "attribute-usage-invalid",' + #10 +
@@ -3079,7 +3089,8 @@ begin
     '        "E2326",' + #10 +
     '        "E2448",' + #10 +
     '        "E2584"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "typeinfo-invalid",' + #10 +
@@ -3095,7 +3106,8 @@ begin
     '        "E2134",' + #10 +
     '        "E2537",' + #10 +
     '        "E2538"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "missing-begin-end",' + #10 +
@@ -3144,7 +3156,8 @@ begin
     '      "good": "constructor TDienst.Create;\nbegin\n  inherited Create;\n  try\n    FListe := TList<TAuftrag>.Create;",' + #10 +
     '      "compilerCodes": [' + #10 +
     '        "H2505"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "variant-record-managed-field",' + #10 +
@@ -3161,7 +3174,8 @@ begin
     '        "E2418",' + #10 +
     '        "E2417",' + #10 +
     '        "E2569"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "guid-syntax-invalid",' + #10 +
@@ -3174,7 +3188,8 @@ begin
     '      "good": "ILogger = interface\n  [''{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C}'']",' + #10 +
     '      "compilerCodes": [' + #10 +
     '        "E2204"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "untyped-pointer-refcount",' + #10 +
@@ -3187,7 +3202,8 @@ begin
     '      "good": "[weak] FBesitzer: IBesitzer;\n…\nFBesitzer := Besitzer;",' + #10 +
     '      "compilerCodes": [' + #10 +
     '        "W1070"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "T"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "type-too-large",' + #10 +
@@ -3201,7 +3217,8 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "E2100",' + #10 +
     '        "E2543"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "comparison-always-constant",' + #10 +
@@ -3216,7 +3233,8 @@ begin
     '        "W1021",' + #10 +
     '        "W1022",' + #10 +
     '        "W1018"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "T"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "constant-initializer-mismatch",' + #10 +
@@ -3230,7 +3248,8 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "E2072",' + #10 +
     '        "E2083"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "case-selector-not-ordinal",' + #10 +
@@ -3245,7 +3264,8 @@ begin
     '        "E2001",' + #10 +
     '        "E2032",' + #10 +
     '        "E2026"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "T"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "suspicious-string-pointer-cast",' + #10 +
@@ -3259,7 +3279,8 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "W1044",' + #10 +
     '        "W1048"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "T"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "inaccessible-member",' + #10 +
@@ -3276,7 +3297,8 @@ begin
     '        "E2389",' + #10 +
     '        "E2124",' + #10 +
     '        "W1045"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unused-private-member",' + #10 +
@@ -3297,7 +3319,8 @@ begin
     '          "default": true,' + #10 +
     '          "description": "Also report private fields that are never used (the compiler reports only methods)."' + #10 +
     '        }' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unused-public-member",' + #10 +
@@ -3387,7 +3410,8 @@ begin
     '        "E2138",' + #10 +
     '        "E2139",' + #10 +
     '        "E2140"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "interface-declaration-invalid",' + #10 +
@@ -3406,7 +3430,8 @@ begin
     '        "E2209",' + #10 +
     '        "E2210",' + #10 +
     '        "E2370"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "implements-clause-invalid",' + #10 +
@@ -3426,7 +3451,8 @@ begin
     '        "E2262",' + #10 +
     '        "E2263",' + #10 +
     '        "E2264"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "calling-convention-required",' + #10 +
@@ -3442,7 +3468,8 @@ begin
     '        "E2270",' + #10 +
     '        "E2277",' + #10 +
     '        "E2591"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "abstract-declaration-invalid",' + #10 +
@@ -3461,7 +3488,8 @@ begin
     '        "E2383",' + #10 +
     '        "E2540",' + #10 +
     '        "E2376"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unsatisfied-forward",' + #10 +
@@ -3476,7 +3504,8 @@ begin
     '        "E2065",' + #10 +
     '        "E2086",' + #10 +
     '        "E2420"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "member-hides-ancestor",' + #10 +
@@ -3497,7 +3526,8 @@ begin
     '          "default": true,' + #10 +
     '          "description": "Do not report hidden strict private members of the ancestor."' + #10 +
     '        }' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "published-type-invalid",' + #10 +
@@ -3516,7 +3546,8 @@ begin
     '        "E2266",' + #10 +
     '        "E2545",' + #10 +
     '        "E2452"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "override-case-mismatch",' + #10 +
@@ -3532,7 +3563,8 @@ begin
     '        "H2440",' + #10 +
     '        "H2269",' + #10 +
     '        "H2367"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "default-property-invalid",' + #10 +
@@ -3547,7 +3579,8 @@ begin
     '        "E2131",' + #10 +
     '        "E2132",' + #10 +
     '        "E2149"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "property-redeclaration-invalid",' + #10 +
@@ -3561,7 +3594,8 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "E2147",' + #10 +
     '        "E2233"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "inline-not-expanded",' + #10 +
@@ -3578,7 +3612,8 @@ begin
     '        "H2445",' + #10 +
     '        "H2456",' + #10 +
     '        "H2457"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "directive-typo",' + #10 +
@@ -3591,7 +3626,8 @@ begin
     '      "good": "procedure Paint; override;",' + #10 +
     '      "compilerCodes": [' + #10 +
     '        "E2070"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "ui-call-in-console-or-service",' + #10 +
@@ -3867,7 +3903,8 @@ begin
     '        "E2011",' + #10 +
     '        "W1012",' + #10 +
     '        "E2102"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "default-parameter-invalid",' + #10 +
@@ -3884,7 +3921,8 @@ begin
     '        "E2239",' + #10 +
     '        "E2268",' + #10 +
     '        "E2146"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "signed-unsigned-mix",' + #10 +
@@ -3899,7 +3937,8 @@ begin
     '        "W1023",' + #10 +
     '        "W1024",' + #10 +
     '        "W1073"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "T"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "narrowing-assignment",' + #10 +
@@ -3925,7 +3964,8 @@ begin
     '          ],' + #10 +
     '          "description": "Reported pairs source type>target type, e.g. Double>Single or Extended>Double."' + #10 +
     '        }' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "T"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "typed-constant-modified",' + #10 +
@@ -3942,7 +3982,8 @@ begin
     '        "W1013",' + #10 +
     '        "E2064",' + #10 +
     '        "E2197"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "string-length-limit",' + #10 +
@@ -3957,7 +3998,8 @@ begin
     '        "W1014",' + #10 +
     '        "E2056",' + #10 +
     '        "E2381"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "dynamic-array-misuse",' + #10 +
@@ -3974,7 +4016,8 @@ begin
     '        "E2246",' + #10 +
     '        "E2307",' + #10 +
     '        "E2308"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "local-routine-as-callback",' + #10 +
@@ -3988,7 +4031,8 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "E2094",' + #10 +
     '        "E2278"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "hresult-integer-mix",' + #10 +
@@ -4001,7 +4045,8 @@ begin
     '      "good": "IExport = interface\n  function Schreiben: HRESULT; stdcall;\nend;\n…\n  function Schreiben: HRESULT; stdcall;",' + #10 +
     '      "compilerCodes": [' + #10 +
     '        "X1008"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "invalid-var-argument",' + #10 +
@@ -4018,7 +4063,8 @@ begin
     '        "E2192",' + #10 +
     '        "E2454",' + #10 +
     '        "E2036"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "T"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "condition-not-boolean",' + #10 +
@@ -4031,7 +4077,8 @@ begin
     '      "good": "if Liste.Count > 0 then\n  Verarbeiten;",' + #10 +
     '      "compilerCodes": [' + #10 +
     '        "E2012"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "T"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "for-in-not-enumerable",' + #10 +
@@ -4045,7 +4092,8 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "E2430",' + #10 +
     '        "E2431"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "T"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "inherited-abstract-call",' + #10 +
@@ -4058,7 +4106,8 @@ begin
     '      "good": "procedure TKreis.Zeichnen(C: TCanvas);\nbegin\n  C.Ellipse(FRahmen);\nend;",' + #10 +
     '      "compilerCodes": [' + #10 +
     '        "E2373"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "generic-constraint-violated",' + #10 +
@@ -4077,7 +4126,8 @@ begin
     '        "E2515",' + #10 +
     '        "E2568",' + #10 +
     '        "E2571"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unresolved-type",' + #10 +
@@ -4093,7 +4143,8 @@ begin
     '        "E2563",' + #10 +
     '        "E2005",' + #10 +
     '        "E2003"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "class-reference-nonvirtual-constructor",' + #10 +
@@ -4106,7 +4157,8 @@ begin
     '      "good": "type\n  TPluginKlasse = class of TPlugin;\n  TPlugin = class\n    constructor Create; virtual;\n  end;\n  TSpezial = class(TPlugin)\n    constructor Create; override;\n  end;\n...\n  P ' + ':= Klasse.Create;",' + #10 +
     '      "compilerCodes": [' + #10 +
     '        "E2391"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "jump-outside-allowed-scope",' + #10 +
@@ -4120,7 +4172,8 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "E2097",' + #10 +
     '        "E2126"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "reraise-outside-handler",' + #10 +
@@ -4133,7 +4186,8 @@ begin
     '      "good": "Protokoll.Fehler(''Import abgebrochen'');\nraise EImportAbgebrochen.Create(''Import abgebrochen'');",' + #10 +
     '      "compilerCodes": [' + #10 +
     '        "E2145"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "label-misuse",' + #10 +
@@ -4149,7 +4203,8 @@ begin
     '        "E2074",' + #10 +
     '        "E2093",' + #10 +
     '        "E2127"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "for-variable-misuse",' + #10 +
@@ -4164,7 +4219,8 @@ begin
     '        "E2081",' + #10 +
     '        "W1015",' + #10 +
     '        "E1019"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "for-variable-after-loop",' + #10 +
@@ -4177,7 +4233,8 @@ begin
     '      "good": "I := 0;\nwhile I <= High(Werte) do\nbegin\n  if Werte[I] = Gesucht then\n    Break;\n  Inc(I);\nend;\nGefunden := I <= High(Werte);",' + #10 +
     '      "compilerCodes": [' + #10 +
     '        "W1037"' + #10 +
-    '      ]' + #10 +
+    '      ],' + #10 +
+    '      "level": "A"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "argument-count-mismatch",' + #10 +
