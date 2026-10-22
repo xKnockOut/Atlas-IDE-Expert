@@ -131,6 +131,11 @@
                 "minimum": 1,
                 "description": "Nur commented-out-code (#942): so viele aufeinanderfolgende Kommentarzeilen mit Code meldet die Regel; Vorgabe 3."
               },
+              "maxLiteralLength": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Nur pos-arguments-swapped (#1045): Höchstlänge des Literals an der Stelle des Textes, bis zu der vertauschte Argumente vermutet werden; Vorgabe 3."
+              },
               "keywords": {
                 "type": "array",
                 "items": {

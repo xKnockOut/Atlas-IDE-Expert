@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1768] of string = (
+  Lines: array[0..1773] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -144,6 +144,11 @@ const
     '                "type": "integer",',
     '                "minimum": 1,',
     '                "description": "Nur commented-out-code (#942): so viele aufeinanderfolgende Kommentarzeilen mit Code meldet die Regel; Vorgabe 3."',
+    '              },',
+    '              "maxLiteralLength": {',
+    '                "type": "integer",',
+    '                "minimum": 1,',
+    '                "description": "Nur pos-arguments-swapped (#1045): Höchstlänge des Literals an der Stelle des Textes, bis zu der vertauschte Argumente vermutet werden; Vorgabe 3."',
     '              },',
     '              "keywords": {',
     '                "type": "array",',

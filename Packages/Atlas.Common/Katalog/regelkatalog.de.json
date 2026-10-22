@@ -1184,6 +1184,17 @@
       "id": "unconditional-recursion",
       "name": "Rekursion ohne Abbruch",
       "description": "Eine Routine ruft sich auf jedem Pfad selbst auf, bevor sie zurückkehren kann: Es gibt keinen Pfad ohne Selbstaufruf und kein Exit oder raise davor. Ergebnis ist ein Stapelüberlauf. Pfade ohne Aufruf sind: if ohne else bzw. case ohne else, der Rumpf von while und for, die rechte Seite von and/or, Zweige von if-Ausdrücken und anonyme Methoden. Getter und Setter der eigenen Property meldet setter-recursion; überladene Routinen bleiben still (der Aufruf kann eine andere Überladung treffen). Das Randsymbol aus #623 zeigt jede Rekursion."
+    },
+    {
+      "id": "pos-arguments-swapped",
+      "name": "Argumente von Pos vertauscht",
+      "description": "Pos(Text, ';'): Pos, PosEx, AnsiPos, StartsText, StartsStr, EndsText und EndsStr (auch mit Ansi-Präfix) erwarten zuerst den gesuchten Teil, dann den Text; ContainsText und ContainsStr erwarten zuerst den Text. Gemeldet, wenn an der Stelle des Textes ein kurzes Literal steht (bis maxLiteralLength Zeichen, Vorgabe 3; '' zählt als ein Zeichen, #9 ebenso) und an der Stelle des Teils sicher ein String: eine Variable oder ein Feld mit in der Datei deklariertem String-Typ, .Text oder .Caption, eine String-Funktion der RTL (Trim, UpperCase, LeftStr, Format …) oder eine Verkettung mit einem String-Teil. Zeichen bleiben still, weil Pos(C, ';,') bewusst prüft, ob C einer der Trenner ist; ebenso unbekannte Typen, zwei Literale und Methoden anderer Objekte (Liste.Pos). Konfidenz mittel. Schnellkorrektur: Argumente in einer Änderung tauschen; Kommentare dazwischen bleiben.",
+      "options": [
+        {
+          "name": "maxLiteralLength",
+          "description": "Längstes Literal an der Stelle des Textes, das noch als vertauscht gilt."
+        }
+      ]
     }
   ]
 }

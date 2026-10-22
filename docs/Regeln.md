@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 60 |
+| [Fehler finden](#gruppe-find-bugs) | 61 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
@@ -86,6 +86,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`infinite-loop`](#infinite-loop) | Schleife ohne Ausgang | Bug | Fehler |
 | [`loop-condition-unchanged`](#loop-condition-unchanged) | Schleifenbedingung ändert sich im Rumpf nie | Bug | Warnung |
 | [`unconditional-recursion`](#unconditional-recursion) | Rekursion ohne Abbruch | Bug | Fehler |
+| [`pos-arguments-swapped`](#pos-arguments-swapped) | Argumente von Pos vertauscht | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -4651,4 +4652,27 @@ begin
     Exit(0);
   Result := 1 + Max(Depth(N.Left), Depth(N.Right));
 end;
+```
+
+<a id="pos-arguments-swapped"></a>
+### pos-arguments-swapped
+
+**Argumente von Pos vertauscht** · Bug · Warnung · Gruppe Fehler finden
+
+Pos(Text, ';'): Pos, PosEx, AnsiPos, StartsText, StartsStr, EndsText und EndsStr (auch mit Ansi-Präfix) erwarten zuerst den gesuchten Teil, dann den Text; ContainsText und ContainsStr erwarten zuerst den Text. Gemeldet, wenn an der Stelle des Textes ein kurzes Literal steht (bis maxLiteralLength Zeichen, Vorgabe 3; '' zählt als ein Zeichen, #9 ebenso) und an der Stelle des Teils sicher ein String: eine Variable oder ein Feld mit in der Datei deklariertem String-Typ, .Text oder .Caption, eine String-Funktion der RTL (Trim, UpperCase, LeftStr, Format …) oder eine Verkettung mit einem String-Teil. Zeichen bleiben still, weil Pos(C, ';,') bewusst prüft, ob C einer der Trenner ist; ebenso unbekannte Typen, zwei Literale und Methoden anderer Objekte (Liste.Pos). Konfidenz mittel. Schnellkorrektur: Argumente in einer Änderung tauschen; Kommentare dazwischen bleiben.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `maxLiteralLength` | integer | `3` | Längstes Literal an der Stelle des Textes, das noch als vertauscht gilt. |
+
+Mit Treffer:
+
+```pascal
+if Pos(Zeile, ';') > 0 then
+```
+
+Richtig:
+
+```pascal
+if Pos(';', Zeile) > 0 then
 ```

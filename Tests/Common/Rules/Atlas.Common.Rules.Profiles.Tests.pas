@@ -183,7 +183,7 @@ const
     'ifthen-side-effect,implemented-not-declared,implicit-package-import,infinite-loop,int32-mul-overflow,interface-guid,interface-not-implemented,' +
     'invisible-char,' +
     'lock-without-finally,loop-condition-unchanged,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,' +
-    'metric-method-length,metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-inherited,null-compare,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,' +
+    'metric-method-length,metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-inherited,null-compare,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,pos-arguments-swapped,' +
     'possibly-uninitialized,processmessages-in-loop,property-accessor-invalid,queue-nil-in-package,raise-in-finally,readonly-property-assigned,redundant-assigned-free,reraise-exception-object,' +
     'result-not-set,' +
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
@@ -211,7 +211,7 @@ begin
     'duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,' +
     'form-access-before-create,form-field-type-mismatch,form-field-without-object,form-object-without-field,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,infinite-loop,int32-mul-overflow,interface-guid,interface-not-implemented,lock-without-finally,loop-condition-unchanged,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,' +
-    'missing-inherited,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,' +
+    'missing-inherited,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,pos-arguments-swapped,' +
     'possibly-uninitialized,property-accessor-invalid,queue-nil-in-package,raise-in-finally,readonly-property-assigned,result-not-set,security-command-injection,' +
     'security-sql-injection,security-tls-verification-disabled,self-as-interface-in-constructor,self-assignment,setter-recursion,signature-mismatch,sizeof-pointer,' +
     'sql-write-without-where,string-index-base,stringlist-unsorted,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-loop-without-terminated,' +

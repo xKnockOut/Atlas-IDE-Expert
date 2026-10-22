@@ -279,6 +279,10 @@ begin
           else if (Value.Keys[Inner] = 'maxSleepMs') and not ((Value[Inner].Kind = TJsonKind.Number) and
             TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 0)) then
             ReportNode(Value[Inner], '"maxSleepMs" muss eine ganze Zahl ab 0 sein')
+          // Höchstlänge des vertauschten Literals von pos-arguments-swapped (#1045).
+          else if (Value.Keys[Inner] = 'maxLiteralLength') and not ((Value[Inner].Kind = TJsonKind.Number) and
+            TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 1)) then
+            ReportNode(Value[Inner], '"maxLiteralLength" muss eine ganze Zahl ab 1 sein')
           // Marken der Regel todo-comment (#68); die Regel und get_todos lesen sie aus den Optionen.
           else if Value.Keys[Inner] = 'keywords' then
             CheckTodoKeywords(Value[Inner])
