@@ -19,13 +19,13 @@ type
     X, Y: Integer;
   end;
 
-function OhneErgebnis(AWert: Integer): Integer;
-procedure MitWith(var APunkt: TPunkt);
-procedure UngenutzteVariable;
-procedure Leck;
-procedure KeinLeck;
-procedure LeererExceptBlock;
-procedure Unerreichbar;
+function OhneErgebnis(AWert: Integer): Integer; // ERWARTET-PROJEKT: unused-public-member
+procedure MitWith(var APunkt: TPunkt); // ERWARTET-PROJEKT: unused-public-member
+procedure UngenutzteVariable; // ERWARTET-PROJEKT: unused-public-member
+procedure Leck; // ERWARTET-PROJEKT: unused-public-member
+procedure KeinLeck; // ERWARTET-PROJEKT: unused-public-member
+procedure LeererExceptBlock; // ERWARTET-PROJEKT: unused-public-member
+procedure Unerreichbar; // ERWARTET-PROJEKT: unused-public-member
 
 implementation
 

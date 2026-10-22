@@ -411,6 +411,75 @@
                 "default": false,
                 "description": "Nur global-variable: auch die Formularvariablen des Designers melden (#941)."
               },
+              "includeFields": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur unused-private-member: auch nie verwendete private Felder melden; der Compiler meldet nur Methoden (#1020)."
+              },
+              "visibilities": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["public", "published", "protected"]
+                },
+                "default": ["public", "published"],
+                "description": "Nur unused-public-member (#1102): geprüfte Sichtbarkeiten."
+              },
+              "memberKinds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["method", "constant", "property", "field", "classVar"]
+                },
+                "default": ["method", "constant", "property"],
+                "description": "Nur unused-public-member (#1102): geprüfte Mitgliedsarten."
+              },
+              "projectKinds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["application", "package", "library"]
+                },
+                "default": ["application"],
+                "description": "Nur unused-public-member (#1102): Projektarten, deren Units geprüft werden. Packages und Bibliotheken haben Nutzer außerhalb der Projektgruppe und sind deshalb standardmäßig aus."
+              },
+              "unitLevel": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur unused-public-member (#1102): auch Routinen und Konstanten aus dem interface-Abschnitt einer Unit prüfen."
+              },
+              "scope": {
+                "type": "string",
+                "enum": ["projectGroup", "project"],
+                "default": "projectGroup",
+                "description": "Nur unused-public-member (#1102): Suchbereich der Verwendungen: alle Projekte der Gruppe oder nur die Projekte der Datei."
+              },
+              "testsCountAsUse": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur unused-public-member (#1102): Verwendungen in Testprojekten zählen; aus = ein Mitglied, das nur Tests verwenden, wird gemeldet."
+              },
+              "stringLiteralsCountAsUse": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur unused-public-member (#1102): der Name als String-Literal ('Name') zählt als Verwendung (RTTI, MethodAddress, Skripte)."
+              },
+              "keepAttributes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur unused-public-member (#1102): Attribute am Mitglied oder seinem Typ, die es als verwendet markieren, z. B. Keep oder Api."
+              },
+              "keepPatterns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur unused-public-member (#1102): Namensmuster (* und ?) für Mitglieder, die immer als verwendet gelten, z. B. TPlugin.* oder *Callback."
+              },
               "checkUses": {
                 "type": "boolean",
                 "default": true,

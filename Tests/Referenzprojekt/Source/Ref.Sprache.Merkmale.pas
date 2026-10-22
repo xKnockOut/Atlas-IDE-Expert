@@ -25,9 +25,9 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Ablegen(const AElement: T);
-    function Entnehmen: T;
-    function Anzahl: Integer;
+    procedure Ablegen(const AElement: T); // ERWARTET-PROJEKT: unused-public-member
+    function Entnehmen: T; // ERWARTET-PROJEKT: unused-public-member
+    function Anzahl: Integer; // ERWARTET-PROJEKT: unused-public-member
   end;
 
   TPaar<TSchluessel, TWert> = record
@@ -42,9 +42,9 @@ type
 
   TZaehlerFunktion = reference to function(const AText: string): Integer;
 
-function Plattform: string;
-function SummeQuadrate(const AWerte: TArray<Integer>): Integer;
-function Zaehler: TZaehlerFunktion;
+function Plattform: string; // ERWARTET-PROJEKT: unused-public-member
+function SummeQuadrate(const AWerte: TArray<Integer>): Integer; // ERWARTET-PROJEKT: unused-public-member
+function Zaehler: TZaehlerFunktion; // ERWARTET-PROJEKT: unused-public-member
 
 implementation
 

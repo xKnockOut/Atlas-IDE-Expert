@@ -82,6 +82,8 @@ type
     ProjectName: string;
     /// <summary>Automatisch erzeugte Formulare in der Reihenfolge der .dpr (#956); nil ohne Projekt.</summary>
     AutoCreateForms: TArray<string>;
+    /// <summary>Projekte der Gruppe für projektweite Regeln (#1102); nil = keine.</summary>
+    ProjectFiles: IRuleProjectFiles;
     /// <summary>Abbruch zwischen den Prüfregeln; nil = nie. Setzt Compute.</summary>
     Cancelled: TRuleCancelled;
   end;
@@ -865,6 +867,9 @@ begin
     if not Fix.Alternative then
       Data.AddPair('fix', Fix.Title);
   end;
+  // Zusatz für den Befund-Hover, z. B. der durchsuchte Bereich projektweiter Regeln (#1102).
+  if AFinding.Details <> '' then
+    Data.AddPair('details', AFinding.Details);
   Result.AddPair('data', Data);
   // Veraltete Symbole durchgestrichen (#38).
   if AFinding.RuleId = DeprecatedSymbolRuleId then
@@ -1014,6 +1019,7 @@ begin
   Context.Application := ARules.Application;
   Context.ProjectName := ARules.ProjectName;
   Context.AutoCreateForms := ARules.AutoCreateForms;
+  Context.ProjectFiles := ARules.ProjectFiles;
   Context.Cancelled := ARules.Cancelled;
   Result := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
 end;
