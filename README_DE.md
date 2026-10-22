@@ -4,7 +4,7 @@
 
 *English version: [README.md](README.md).*
 
-Atlas ist ein Experte für RAD Studio (Delphi/Object Pascal). Er ersetzt die eingebaute Code Insight durch eigene Fenster und ergänzt die IDE um Code-Analyse mit 127 Prüfregeln, Refactorings, Navigation, Formular-Unterstützung, Test- und Debug-Hilfen und eine eigene Willkommensseite. Die Daten liefert der **Atlas-Server**, ein eigener Language Server (LSP), der das Projekt indiziert und auch ohne IDE als Linter oder als MCP-Server für Claude Code läuft.
+Atlas ist ein Experte für RAD Studio (Delphi/Object Pascal). Er ersetzt die eingebaute Code Insight durch eigene Fenster und ergänzt die IDE um Code-Analyse mit 128 Prüfregeln, Refactorings, Navigation, Formular-Unterstützung, Test- und Debug-Hilfen und eine eigene Willkommensseite. Die Daten liefert der **Atlas-Server**, ein eigener Language Server (LSP), der das Projekt indiziert und auch ohne IDE als Linter oder als MCP-Server für Claude Code läuft.
 
 Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
@@ -15,7 +15,7 @@ Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnoc
 | [Schreiben](#schreiben) | Vervollständigung mit Detailpanel, Parameter-Hint, Code- und Postfix-Vorlagen, Schnellbefehle (`/uses`, `/extract`, …), Erzeugen-Menü, Formatierer |
 | [Verstehen](#verstehen) | Hover mit Doku, Werten, Vererbung und Debugger-Werten, Typmarken, Code-Metriken, inaktive `{$IFDEF}`-Zweige |
 | [Navigieren](#navigieren) | Brotkrumenleiste, Gliederung, Definition einblenden, Datei schnell öffnen, Units suchen, Ergebnisfenster, Lesezeichen und Notizen |
-| [Code-Analyse](#code-analyse) | 127 Prüfregeln (Fehler, Code-Smells, Sicherheit), Profile, Konfidenz, Baseline, Compilerprüfung nach dem Speichern, Linter für CI mit SARIF |
+| [Code-Analyse](#code-analyse) | 128 Prüfregeln (Fehler, Code-Smells, Sicherheit), Profile, Konfidenz, Baseline, Compilerprüfung nach dem Speichern, Linter für CI mit SARIF |
 | [Refactorings und Code-Aktionen](#refactorings-und-code-aktionen) | Umbenennen samt Formularen, Signatur ändern, Methode extrahieren, Interface implementieren, Property erzeugen und viele Schnellkorrekturen (Alt+Enter) |
 | [Formulare](#formulare) | Abgleich mit dem Designer, Komponenten in der Vervollständigung, Prüfungen zwischen Formular und Code |
 | [Bauen, Testen, Debuggen](#bauen-testen-debuggen) | Release-Build-Wächter, DUnitX-Tests aus dem Editor, Startprofile, Werte im Hover beim Debuggen |
@@ -97,13 +97,13 @@ Der Server prüft jede Unit beim Tippen. Treffer erscheinen als Wellenlinien, im
 - **Befund-Hover** mit Schweregrad, Regel und Aktionszeile „Alt+Enter: Korrektur“, „Für diese Zeile unterdrücken“, „Regel einstellen…“
 - **Seite „Prüfregeln“** in den Optionen: je Regelgruppe ein Hauptschalter und eine Tabelle mit Schweregrad, Ausnahmen und Optionen jeder Regel, Suche und Katalogtext mit Beispielen
 
-- **127 Prüfregeln** in vier Kategorien: 68 Fehler, 49 Code-Smells, 5 Schwachstellen, 5 Sicherheits-Hotspots. Darunter:
+- **128 Prüfregeln** in vier Kategorien: 68 Fehler, 50 Code-Smells, 5 Schwachstellen, 5 Sicherheits-Hotspots. Darunter:
   - **Korrektheit:** nicht gesetztes `Result`, möglicherweise uneingeleitete Variablen, unerreichbarer Code, ungenutzte Variablen, Parameter und Zuweisungen, deklarierte, aber nicht implementierte Methoden, fehlendes `override`, verdeckte virtuelle Methoden, Überläufe, Gleitkomma-Vergleiche, `raise` in `finally`, übersehener Vorrang von `not` (`not X in Menge`), leere Anweisung nach `then`/`do`/`else`, Schleifen einen Schritt zu weit (`0 to Liste.Count`), Listen in der eigenen Schleife verändert (`Delete` in einer Vorwärtsschleife), Objekte nach `Free` weiter benutzt (mit Sprung zur Freigabe), Zugriff vor der nil-Prüfung (`X.Name` vor `if Assigned(X)`), Felder außerhalb des Destruktors ohne `nil` freigegeben, im Konstruktor erzeugte Felder, die der Destruktor nie freigibt, Konstruktoren und Destruktoren ohne `inherited`, `Destroy` statt `Free`, `FillChar`/`Move`/`GetMem` auf Records mit Strings oder Interfaces, `PChar` auf temporäre Strings, `out`-Parameter, die vor dem Setzen gelesen werden, `Find` auf unsortierten `TStringList`s, `Writeln` in Programmen ohne Konsole, `raise` im Destruktor, doppelte Bedingungen und gleiche Zweige, `case` über Aufzählungen, denen Werte fehlen, `DisableControls`/`BeginUpdate`/`Screen.Cursor` ohne `try`/`finally`, `StrToInt` auf `Edit.Text` ohne Prüfung, `Dict[Key]` ohne `ContainsKey` oder `TryGetValue`
   - **Threads:** VCL-Zugriff aus Threads, Sperren ohne `finally`, `FreeOnTerminate`-Fallen, `Synchronize` im Destruktor, `threadvar` mit Strings, `Application.ProcessMessages` in Schleifen und Ereignis-Handlern
   - **Ausnahmen:** leere `except`-Blöcke, Auffangen ohne erneutes `raise`, erzeugte, aber nicht ausgelöste Ausnahmen
   - **Komponenten und Formulare:** fehlendes `inherited`, `Notification`, falsche `default`-Werte, Felder ohne Objekt im Formular und umgekehrt, Datenbindungen und Datenquellen in DFM-Dateien
   - **Sicherheit:** SQL- und Befehlsinjektion, Pfadmanipulation, schwache Kryptografie, abgeschaltete TLS-Prüfung, unsicheres HTTP und Zufall, Trojan Source (Bidi-Steuerzeichen, unsichtbare und verwechselbare Zeichen)
-  - **Architektur und Stil:** verbotene uses, Importregeln nach Rollen, `with`, überflüssige Klammern und `begin … end`, Dateikopf, hartkodierte Texte, Metrik-Grenzwerte (auch Member je Klasse, Zeilen je Unit, Units im uses), lokale Namen, die ein Feld oder eine Property verdecken, `if`, das nur `True` oder `False` zuweist, `UpperCase(A) = UpperCase(B)` statt `SameText`, Zahlen ohne Namen und zu lange Zeilen (freiwillig; über 1023 Zeichen immer ein Fehler wie F2069)
+  - **Architektur und Stil:** verbotene uses, Importregeln nach Rollen, `with`, überflüssige Klammern und `begin … end`, Dateikopf, hartkodierte Texte, Metrik-Grenzwerte (auch Member je Klasse, Zeilen je Unit, Units im uses), öffentliche Felder (freiwillig, die Korrektur kapselt sie), lokale Namen, die ein Feld oder eine Property verdecken, `if`, das nur `True` oder `False` zuweist, `UpperCase(A) = UpperCase(B)` statt `SameText`, Zahlen ohne Namen und zu lange Zeilen (freiwillig; über 1023 Zeichen immer ein Fehler wie F2069)
 - **Konfidenz** (hoch, mittel, niedrig) je Treffer begrenzt den Schweregrad; **Profile** `standard`, `fast`, `strict`, `security`, `style` oder eigene in `atlas.json`
 - **Unterdrücken** mit `// lsp-ignore: regel`, mit Meldung unbenutzter oder vertippter Unterdrückungen
 - **Baseline** für Altprojekte: bekannte Treffer ausblenden, nur neue melden

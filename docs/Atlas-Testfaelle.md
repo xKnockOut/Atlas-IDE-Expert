@@ -3503,3 +3503,17 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe (die drei Regeln sind an
 | MS5 | Unit mit 34 Units in interface- und implementation-uses zusammen; zum Vergleich die .dpr | Hinweis `metric-uses-count` am ersten `uses`; in der .dpr keine Meldung |
 | MS6 | Seite „Prüfregeln“, bei `metric-class-size` die Option „max“ auf 90 | Keine Meldung mehr an `TfrmHaupt`; die Linse zeigt „87 Member“ ohne Grenzwert |
 | MS7 | `"metric-class-size": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Öffentliches Feld (#940)
+
+Voraussetzung: Server läuft; in `atlas.json` `"rules": { "public-field": "hint" }` (die Regel ist experimentell und steht auf `off`); Klasse `TKunde = class` mit `public` und `Name: string;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PF1 | Unit öffnen | Hinweis `public-field` am Feld: „Öffentliches Feld Name; eine Property hält die Klasse änderbar.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| PF2 | Glühbirne, „Feld kapseln“ | `private` mit `FName: string;`, dann `public` mit `property Name: string read FName write FName;`; der leere public-Abschnitt ist weg; die Unit übersetzt; ein Strg+Z stellt alles wieder her (**Abnahme**) |
+| PF3 | Feld in `published` neben weiteren Mitgliedern | Korrektur legt `private` und `published` mit der Property ans Ende der Klasse, der alte Abschnitt bleibt |
+| PF4 | Formular mit Designerfeldern (`btnOk: TButton;` ohne Sichtbarkeitswort), private/protected-Felder, `class var` | Keine Meldung |
+| PF5 | `X, Y: Integer;` in einer Klasse ohne Vorfahren; `FName` in public | Je eine Meldung für X und Y bzw. FName, aber ohne Korrektur |
+| PF6 | Record `TPunkt = record X: Integer; end;`, dann Option „includeRecords“ an | Erst keine Meldung, danach Meldung mit Korrektur |
+| PF7 | `"public-field": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

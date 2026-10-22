@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1672] of string = (
+  Lines: array[0..1677] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -355,6 +355,11 @@ const
     '                "type": "boolean",',
     '                "default": false,',
     '                "description": "Nur line-length: Zeilen, die nur wegen eines Kommentars zu lang sind, nicht melden (#938)."',
+    '              },',
+    '              "includeRecords": {',
+    '                "type": "boolean",',
+    '                "default": false,',
+    '                "description": "Nur public-field: auch Felder von Records melden (#940)."',
     '              }',
     '            }',
     '          }',

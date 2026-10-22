@@ -341,6 +341,11 @@
                 "type": "boolean",
                 "default": false,
                 "description": "Nur line-length: Zeilen, die nur wegen eines Kommentars zu lang sind, nicht melden (#938)."
+              },
+              "includeRecords": {
+                "type": "boolean",
+                "default": false,
+                "description": "Nur public-field: auch Felder von Records melden (#940)."
               }
             }
           }

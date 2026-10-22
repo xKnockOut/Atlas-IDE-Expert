@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Style.Tests;
 
 // Tests für die Stilregeln (#104): je Regel positiv, negativ und Schnellkorrektur; boolean-assign-if (#935),
-// case-insensitive-compare (#936), magic-number (#937) und line-length (#938).
+// case-insensitive-compare (#936), magic-number (#937), line-length (#938) und public-field (#940).
 
 interface
 
@@ -64,6 +64,12 @@ type
     procedure LineLengthOptions;
     [Test]
     procedure LineLengthCompilerLimit;
+    [Test]
+    procedure PublicFieldIssueExample;
+    [Test]
+    procedure PublicFieldVariantsAndOptions;
+    [Test]
+    procedure PublicFieldSilentCases;
   end;
 
 implementation
@@ -508,6 +514,87 @@ begin
     '{ "rules": { "line-length": { "severity": "hint", "max": 5000 } } }'))), '1024 Zeichen');
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLineLengthRule.Create, Source,
     '{ "rules": { "line-length": "off" } }'))));
+end;
+
+const
+  FieldOn = '{ "rules": { "public-field": "hint" } }';
+
+function TypeUnit(const ADeclaration: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10 + ADeclaration + #10'implementation'#10'end.';
+end;
+
+procedure TStyleRulesTests.PublicFieldIssueExample;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := TypeUnit('  TKunde = class'#10'  public'#10'    Name: string;'#10'  end;');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPublicFieldRule.Create, Source))), 'Standard aus');
+  Findings := TRuleAssert.Findings(TPublicFieldRule.Create, Source, FieldOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Öffentliches Feld Name; eine Property hält die Klasse änderbar.', Findings[0].Message);
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual('Feld kapseln', Findings[0].Fixes[0].Title);
+  Source := Fixed(Source, Findings);
+  Assert.AreEqual(TypeUnit('  TKunde = class'#10'  private'#10'    FName: string;'#10'  public'#10 +
+    '    property Name: string read FName write FName;'#10'  end;'), Source);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPublicFieldRule.Create, Source, FieldOn))));
+end;
+
+procedure TStyleRulesTests.PublicFieldVariantsAndOptions;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // published mit weiteren Mitgliedern: der Abschnitt bleibt, die Property kommt nach published.
+  Source := TypeUnit('  TKunde = class(TPersistent)'#10'  published'#10'    Name: string;'#10 +
+    '    property Ort: string read FOrt;'#10'  private'#10'    FOrt: string;'#10'  end;');
+  Findings := TRuleAssert.Findings(TPublicFieldRule.Create, Source, FieldOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(TypeUnit('  TKunde = class(TPersistent)'#10'  published'#10 +
+    '    property Ort: string read FOrt;'#10'  private'#10'    FOrt: string;'#10'  private'#10 +
+    '    FName: string;'#10'  published'#10'    property Name: string read FName write FName;'#10'  end;'),
+    Fixed(Source, Findings));
+  // Abschnitt ohne Sichtbarkeitswort bei einer Klasse ohne Vorfahren; zwei Namen in einer Zeile ohne Korrektur.
+  Findings := TRuleAssert.Findings(TPublicFieldRule.Create, TypeUnit('  TPunkt = class'#10'    X, Y: Integer;'#10 +
+    '  end;'), FieldOn);
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('Öffentliches Feld Y; eine Property hält die Klasse änderbar.', Findings[1].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Mit F-Präfix keine Korrektur: die Property hieße anders.
+  Findings := TRuleAssert.Findings(TPublicFieldRule.Create, TypeUnit('  TKunde = class'#10'  public'#10 +
+    '    FName: string;'#10'  end;'), FieldOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // includeRecords
+  Source := TypeUnit('  TPunkt = record'#10'    X: Integer;'#10'  end;');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPublicFieldRule.Create, Source, FieldOn))));
+  Findings := TRuleAssert.Findings(TPublicFieldRule.Create, Source,
+    '{ "rules": { "public-field": { "severity": "hint", "includeRecords": true } } }');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(TypeUnit('  TPunkt = record'#10'  private'#10'    FX: Integer;'#10'  public'#10 +
+    '    property X: Integer read FX write FX;'#10'  end;'), Fixed(Source, Findings));
+  // off und exclude
+  Source := TypeUnit('  TKunde = class'#10'  public'#10'    Name: string;'#10'  end;');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPublicFieldRule.Create, Source,
+    '{ "rules": { "public-field": "off" } }'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPublicFieldRule.Create, Source,
+    '{ "rules": { "public-field": { "severity": "hint", "exclude": ["Daten/*.pas"] } } }', 'Daten/U.pas'))));
+end;
+
+procedure TStyleRulesTests.PublicFieldSilentCases;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // Designerfelder im Abschnitt ohne Sichtbarkeitswort, private, protected und class var.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPublicFieldRule.Create, TypeUnit(
+    '  TfrmHaupt = class(TForm)'#10'    btnOk: TButton;'#10'  private'#10'    FA: Integer;'#10'  protected'#10 +
+    '    FB: Integer;'#10'  strict private'#10'    FC: Integer;'#10'  public'#10'    class var Anzahl: Integer;'#10 +
+    '    property A: Integer read FA;'#10'  end;'), FieldOn))));
+  TConfigurationParser.Parse('{"rules": {"public-field": {"includeRecords": "ja"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"includeRecords" muss true oder false sein', Issues[0].Message);
 end;
 
 initialization

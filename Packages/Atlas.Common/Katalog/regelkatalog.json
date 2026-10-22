@@ -1627,6 +1627,24 @@
           "description": "Maximum number of units in all uses clauses."
         }
       ]
+    },
+    {
+      "id": "public-field",
+      "name": "Public field",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "Fields in the public or published section of a class. The section without a visibility keyword only counts for classes without an ancestor or with TObject, because the form designer puts its fields there. Records are excluded unless includeRecords is set; class var is not reported. Off by default. Quick fix: Encapsulate field moves the field as FName into a private section at the end of the class and adds property Name read FName write FName in the old section; accesses from outside stay valid.",
+      "bad": "TKunde = class\npublic\n  Name: string;\nend;",
+      "good": "TKunde = class\nprivate\n  FName: string;\npublic\n  property Name: string read FName write FName;\nend;",
+      "options": [
+        {
+          "name": "includeRecords",
+          "type": "boolean",
+          "default": false,
+          "description": "Also report fields of records."
+        }
+      ]
     }
   ]
 }

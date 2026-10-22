@@ -200,7 +200,7 @@ begin
   // die Architekturregeln des Rollenkonzepts (ohne "prefixes" stumm, Code-Review A-12).
   Assert.AreEqual(Merged(All, ['architecture-contract-content', 'architecture-role-import',
     'catch-all-without-raise', 'file-header', 'hardcoded-string',
-    'line-length', 'loop-invariant-call', 'magic-number', 'missing-begin-update', 'random-without-randomize', 'redundant-begin-end',
+    'line-length', 'loop-invariant-call', 'magic-number', 'missing-begin-update', 'public-field', 'random-without-randomize', 'redundant-begin-end',
     'redundant-parens', 'security-path-traversal', 'string-concat-in-loop', 'todo-comment']), ActiveRules('strict'));
   Assert.AreEqual('assert-side-effect,bidi-control,captured-loop-variable,case-missing-enum-value,char-to-pchar,' +
     'collection-modified-in-loop,' +
