@@ -60,6 +60,7 @@
       "name": "Unit too deep to check",
       "category": "code-smell",
       "severity": "hint",
+      "group": "internal",
       "description": "The syntax tree of the unit is more than 100000 levels deep, so the rules do not run for it. Such trees only come from chains with as many terms, such as X := A - B - C - … The hint marks the deepest point; splitting the chain into partial expressions makes the unit checkable again.",
       "bad": "X := A - B - C - D - E; // … 100000 terms",
       "good": "Part := A - B - C;\nX := Part - D - E;"
