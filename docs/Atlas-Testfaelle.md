@@ -3356,3 +3356,16 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Routine mit `if Betrag 
 | DQ4 | `if A and B and A then` bzw. `if Betrag = Betrag then` | Meldung „A steht zweimal in derselben and-Verknüpfung …“ bzw. „Betrag wird mit sich selbst verglichen; das Ergebnis ist immer True.“ |
 | DQ5 | `if Leser.Next = 'x' then … else if Leser.Next = 'x' then`, `Wert <> Wert` mit `Wert: Double` | Keine Meldung |
 | DQ6 | `"duplicate-condition": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## case über Aufzählung ohne alle Werte (#929)
+
+Voraussetzung: Server läuft, Index aufgebaut; Einstellungen auf Vorgabe; `TBestellStatus = (bsNeu, bsBezahlt, bsStorniert, bsZurueck)` und `case Bestellung.Status of bsNeu: Anlegen; bsBezahlt: Versenden; end;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CE1 | Unit öffnen | Warnung `case-missing-enum-value` am Selektor: „Fehlende Werte von TBestellStatus: bsStorniert, bsZurueck.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| CE2 | Glühbirne, „Fehlende Werte ergänzen (2)“ | Zweige `bsStorniert: ;` und `bsZurueck: ;` vor `end`, gleich eingerückt; Meldung verschwindet (**Abnahme**) |
+| CE3 | Typ in einer anderen Unit (z. B. `case Align of` mit `TAlign` aus Vcl.Controls) | Meldung mit den fehlenden Werten aus dem Index |
+| CE4 | `else` ergänzen | Keine Meldung; mit `"requireElse": true` wieder gemeldet, die Korrektur fügt vor `else` ein |
+| CE5 | `{$SCOPEDENUMS ON}`-Typ mit Marken `TAmpel.Rot:` | Korrektur schreibt `TAmpel.Gelb: ;` |
+| CE6 | `"case-missing-enum-value": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

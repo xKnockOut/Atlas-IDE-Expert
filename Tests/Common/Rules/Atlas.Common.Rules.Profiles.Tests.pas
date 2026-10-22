@@ -169,7 +169,7 @@ end;
 procedure TRuleProfilesTests.BuiltinProfilesActivateExpectedRules;
 const
   Threads = 'thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,thread-vcl-access';
-  All = 'assert-side-effect,bidi-control,bool-compare,captured-loop-variable,char-to-pchar,' +
+  All = 'assert-side-effect,bidi-control,bool-compare,captured-loop-variable,case-missing-enum-value,char-to-pchar,' +
     'collection-modified-in-loop,' +
     'component-create-without-override,component-default-mismatch,component-fixed-pixels,' +
     'component-hardcoded-color,component-missing-free-notification,component-missing-inherited,' +
@@ -202,7 +202,7 @@ begin
     'catch-all-without-raise', 'file-header', 'hardcoded-string',
     'loop-invariant-call', 'missing-begin-update', 'random-without-randomize', 'redundant-begin-end',
     'redundant-parens', 'security-path-traversal', 'string-concat-in-loop', 'todo-comment']), ActiveRules('strict'));
-  Assert.AreEqual('assert-side-effect,bidi-control,captured-loop-variable,char-to-pchar,' +
+  Assert.AreEqual('assert-side-effect,bidi-control,captured-loop-variable,case-missing-enum-value,char-to-pchar,' +
     'collection-modified-in-loop,' +
     'component-create-without-override,component-default-mismatch,component-missing-free-notification,' +
     'component-missing-inherited,constructor-on-instance,control-char,declared-not-implemented,' +

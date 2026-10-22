@@ -7,6 +7,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Regel `case-missing-enum-value` (#929): Ein `case` über einen Aufzählungstyp ohne `else`, dem Werte fehlen, meldet Atlas („Fehlende Werte von TBestellStatus: bsStorniert, bsZurueck.“). Die Korrektur „Fehlende Werte ergänzen (n)“ legt leere Zweige an; mit der neuen Option `rules.case-missing-enum-value.requireElse` auch bei `case` mit `else`.
 - Regel `duplicate-condition` (#928): Dieselbe Bedingung zweimal in einer `if … else if`-Kette, gleiche `then`- und `else`-Zweige, `A and A` und `X = X` meldet Atlas („Gleiche Bedingung wie in Zeile 1; dieser Zweig wird nie erreicht.“). Die Aktion springt zum ersten Vorkommen.
 - Regel `exception-in-destructor` (#927): Ein `raise` im Destruktor, das kein `except` im Destruktor abfängt, meldet Atlas („raise im Destruktor: inherited Destroy läuft nicht mehr, Felder bleiben liegen.“). Auch ein erneutes `raise;` im except-Teil und `class destructor` zählen.
 - Regel `writeln-in-gui-app` (#926): `Write`, `Writeln`, `Read` und `Readln` auf die Standardein- und -ausgabe in einem Programm ohne Konsole meldet Atlas („Das Projekt hat keine Konsole; Writeln löst zur Laufzeit E/A-Fehler 105 aus.“). Die Anwendungsart kommt aus `DCC_ConsoleTarget` der .dproj und `{$APPTYPE CONSOLE}` der .dpr. Die Korrektur ersetzt den Aufruf durch `OutputDebugString(PChar(...))` oder das Ziel aus der neuen Option `rules.writeln-in-gui-app.replacement`.

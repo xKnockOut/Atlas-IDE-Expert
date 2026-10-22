@@ -48,3 +48,4 @@ stringlist-unsorted | Ref.Sprache.Merkmale.pas | { TDezimalFormatierer } | proce
 writeln-in-gui-app | ../RefApp.dpr | Application.Initialize; | Application.Initialize;\n  Writeln('Start');
 exception-in-destructor | Ref.Sprache.Merkmale.pas |   FElemente.Free; |   if FElemente.Count > 0 then\n    raise EInvalidOperation.Create('Stapel nicht leer');\n  FElemente.Free;
 duplicate-condition | Ref.Komponenten.Anzeige.pas | if (Operation = opRemove) and (AComponent = FVerknuepft) then | if (Operation = opRemove) and (Operation = opRemove) then
+case-missing-enum-value | Ref.Komponenten.Anzeige.pas |   if FStil <> asFlach then |   case FStil of\n    asRahmen: Canvas.Rectangle(ClientRect);\n  end;\n  if FStil <> asFlach then
