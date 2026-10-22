@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 17 |
+| [Compiler vorab](#gruppe-compiler) | 18 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -148,6 +148,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
 | [`jump-outside-allowed-scope`](#jump-outside-allowed-scope) | Break, Continue oder Exit an unzulässiger Stelle | Bug | Fehler |
 | [`reraise-outside-handler`](#reraise-outside-handler) | raise ohne Argument außerhalb eines Handlers | Bug | Fehler |
+| [`label-misuse`](#label-misuse) | Sprungmarke falsch verwendet | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4588,4 +4589,39 @@ Richtig:
 ```pascal
 Protokoll.Fehler('Import abgebrochen');
 raise EImportAbgebrochen.Create('Import abgebrochen');
+```
+
+<a id="label-misuse"></a>
+### label-misuse
+
+**Sprungmarke falsch verwendet** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine Marke ist doppelt gesetzt (wie E2073), deklariert und angesprungen, aber nie gesetzt (E2074), gesetzt oder angesprungen, ohne in der aktuellen Routine deklariert zu sein (E2093), oder goto springt in einen try-Block hinein oder aus ihm heraus, auch zwischen try-Teil und except bzw. finally (E2127). Delphi meldet das erst beim Übersetzen. Marken gehören zu einer Routine bzw. zum Programmblock; eine lokale Prozedur kann keine Marke der umgebenden Routine anspringen. Doppelte Marken in bedingten Zweigen, die sich ausschließen, bleiben still, ebenso Routinen mit asm-Block, weil Marken im asm nicht im Syntaxbaum stehen. Keine Korrektur.
+
+Entspricht der Compilermeldung `E2073`, `E2074`, `E2093`, `E2127`.
+
+Mit Treffer:
+
+```pascal
+label Weiter;
+begin
+  try
+    if Fertig then goto Weiter;
+  finally
+    Aufraeumen;
+  end;
+Weiter:
+end;
+```
+
+Richtig:
+
+```pascal
+begin
+  try
+    if Fertig then Exit;
+  finally
+    Aufraeumen;
+  end;
+end;
 ```

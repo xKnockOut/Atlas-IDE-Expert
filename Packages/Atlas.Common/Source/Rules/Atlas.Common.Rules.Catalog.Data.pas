@@ -2340,6 +2340,22 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "E2145"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "label-misuse",' + #10 +
+    '      "name": "Label used incorrectly",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A label is set twice (like E2073), declared and jumped to but never set (E2074), set or jumped to without being declared in the current routine (E2093), or goto jumps into or out' + ' of a try block, also between the try part and its except or finally part (E2127). Delphi only reports these when compiling. Labels belong to one routine or the program block; a local procedure cannot' + ' jump to a label of the routine around it. Duplicate labels in conditional branches that exclude each other stay silent, as do routines with an asm block, because labels inside asm are not in the synt' + 'ax tree. No quick fix.",' + #10 +
+    '      "bad": "label Weiter;\nbegin\n  try\n    if Fertig then goto Weiter;\n  finally\n    Aufraeumen;\n  end;\nWeiter:\nend;",' + #10 +
+    '      "good": "begin\n  try\n    if Fertig then Exit;\n  finally\n    Aufraeumen;\n  end;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2073",' + #10 +
+    '        "E2074",' + #10 +
+    '        "E2093",' + #10 +
+    '        "E2127"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3520,6 +3536,11 @@ begin
     '      "id": "reraise-outside-handler",' + #10 +
     '      "name": "raise ohne Argument außerhalb eines Handlers",' + #10 +
     '      "description": "raise; ohne Exception-Objekt ist nur in einem except-Block erlaubt (wie E2145); Delphi meldet es erst beim Übersetzen. Es passiert in einer lokalen Prozedur, die aus dem Handler ' + 'gerufen wird, in einem finally-Block oder nach dem Verschieben von Code. Routinen und anonyme Methoden beginnen neu. Still bleibt die Regel in anonymen Methoden innerhalb eines except-Blocks und in Ro' + 'utinen, in denen der Parser einen Fehler meldet. Keine Korrektur: eine neue Exception auslösen (raise EImport.Create(…)) oder den Code in den Handler verschieben. raise E; im Handler meldet reraise-ex' + 'ception-object."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "label-misuse",' + #10 +
+    '      "name": "Sprungmarke falsch verwendet",' + #10 +
+    '      "description": "Eine Marke ist doppelt gesetzt (wie E2073), deklariert und angesprungen, aber nie gesetzt (E2074), gesetzt oder angesprungen, ohne in der aktuellen Routine deklariert zu sein (E2' + '093), oder goto springt in einen try-Block hinein oder aus ihm heraus, auch zwischen try-Teil und except bzw. finally (E2127). Delphi meldet das erst beim Übersetzen. Marken gehören zu einer Routine b' + 'zw. zum Programmblock; eine lokale Prozedur kann keine Marke der umgebenden Routine anspringen. Doppelte Marken in bedingten Zweigen, die sich ausschließen, bleiben still, ebenso Routinen mit asm-Bloc' + 'k, weil Marken im asm nicht im Syntaxbaum stehen. Keine Korrektur."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

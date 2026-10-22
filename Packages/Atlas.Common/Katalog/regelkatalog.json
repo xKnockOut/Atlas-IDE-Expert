@@ -2320,6 +2320,22 @@
       "compilerCodes": [
         "E2145"
       ]
+    },
+    {
+      "id": "label-misuse",
+      "name": "Label used incorrectly",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A label is set twice (like E2073), declared and jumped to but never set (E2074), set or jumped to without being declared in the current routine (E2093), or goto jumps into or out of a try block, also between the try part and its except or finally part (E2127). Delphi only reports these when compiling. Labels belong to one routine or the program block; a local procedure cannot jump to a label of the routine around it. Duplicate labels in conditional branches that exclude each other stay silent, as do routines with an asm block, because labels inside asm are not in the syntax tree. No quick fix.",
+      "bad": "label Weiter;\nbegin\n  try\n    if Fertig then goto Weiter;\n  finally\n    Aufraeumen;\n  end;\nWeiter:\nend;",
+      "good": "begin\n  try\n    if Fertig then Exit;\n  finally\n    Aufraeumen;\n  end;\nend;",
+      "compilerCodes": [
+        "E2073",
+        "E2074",
+        "E2093",
+        "E2127"
+      ]
     }
   ]
 }
