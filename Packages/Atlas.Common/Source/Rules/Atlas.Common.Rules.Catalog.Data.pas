@@ -2402,7 +2402,7 @@ begin
     '      "category": "bug",' + #10 +
     '      "severity": "warning",' + #10 +
     '      "group": "compiler",' + #10 +
-    '      "description": "An interface is assigned through a typecast to Pointer (Pointer(FIntf) := P, like W1070). Reference counting does not take part: the object is freed too early or never. The rule ' + 'reports only when name resolution knows the interface type for sure; strings are not reported, as Delphi warns about them only under NEXTGEN. Fields that already carry [weak] or [unsafe] stay silent. ' + 'Quick fixes for a field of this file with Pointer(Y) or nil on the right: mark the field [weak] or [unsafe] and assign without Pointer.",' + #10 +
+    '      "description": "An interface is assigned through a typecast to Pointer (Pointer(FIntf) := P, like W1070). Reference counting does not take part: the object is freed too early or never. The rule ' + 'reports only when name resolution knows the interface type for sure; strings (string, AnsiString …) are reported as well, with the note \"dcc does not report this\", since Delphi warns about them only' + ' under NEXTGEN. Fields that already carry [weak] or [unsafe] stay silent. Quick fixes for an interface field of this file with Pointer(Y) or nil on the right: mark the field [weak] or [unsafe] and ass' + 'ign without Pointer.",' + #10 +
     '      "bad": "Pointer(FBesitzer) := Pointer(Besitzer);",' + #10 +
     '      "good": "[weak] FBesitzer: IBesitzer;\n…\nFBesitzer := Besitzer;",' + #10 +
     '      "compilerCodes": [' + #10 +
@@ -3616,7 +3616,7 @@ begin
     '    {' + #10 +
     '      "id": "untyped-pointer-refcount",' + #10 +
     '      "name": "Untypisierter Zeiger umgeht die Referenzzählung",' + #10 +
-    '      "description": "Ein Interface wird über eine Typumwandlung nach Pointer zugewiesen (Pointer(FIntf) := P, wie W1070). Die Referenzzählung läuft dann nicht mit: das Objekt wird zu früh freigegeben' + ' oder nie. Die Regel meldet nur, wenn die Namensauflösung den Interface-Typ sicher kennt; Strings meldet sie nicht, weil Delphi bei ihnen nur unter NEXTGEN warnt. Felder mit [weak] oder [unsafe] bleib' + 'en still. Korrekturen für ein Feld dieser Datei mit Pointer(Y) oder nil rechts: das Feld mit [weak] bzw. [unsafe] auszeichnen und ohne Pointer zuweisen."' + #10 +
+    '      "description": "Ein Interface wird über eine Typumwandlung nach Pointer zugewiesen (Pointer(FIntf) := P, wie W1070). Die Referenzzählung läuft dann nicht mit: das Objekt wird zu früh freigegeben' + ' oder nie. Die Regel meldet nur, wenn die Namensauflösung den Interface-Typ sicher kennt; Strings (string, AnsiString …) meldet sie ebenfalls, mit dem Zusatz „dcc meldet das nicht“, weil Delphi bei ih' + 'nen nur unter NEXTGEN warnt. Felder mit [weak] oder [unsafe] bleiben still. Korrekturen für ein Interface-Feld dieser Datei mit Pointer(Y) oder nil rechts: das Feld mit [weak] bzw. [unsafe] auszeichne' + 'n und ohne Pointer zuweisen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
