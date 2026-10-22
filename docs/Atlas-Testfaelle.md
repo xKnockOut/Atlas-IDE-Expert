@@ -5160,3 +5160,94 @@ Voraussetzung: Server läuft in der IDE mit Projekt, VCL im Index.
 | JN5 | `property Caption;`, `property Color default clRed;`, Properties mit Typ, unbekannter Vorfahr, gleichnamiges Feld im Vorfahren | Keine Meldung |
 | JN6 | `"property-redeclaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | JN7 | Abgleich mit Delphi: JN1, JN3 und JN4 übersetzen | dcc meldet E2147 bzw. E2233 an denselben Stellen, für JN5 nichts |
+
+## Zugriff auf ein nicht sichtbares Mitglied (#1008)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NS1 | Das Beispiel aus #1008: in `class function TKonfig.Standard` die Zeile `Result.Pfad := FBasisPfad;` | Fehler `inaccessible-member` an `FBasisPfad`: „FBasisPfad ist ein Instanzfeld und in der Klassenmethode Standard nicht erreichbar (wie E2124).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| NS2 | In einer Klassenmethode bzw. `class function …; static;` eine Instanzmethode (`Free`) und eine Instanz-Property aufrufen | Je eine Meldung „… ist eine Instanzmethode …“ bzw. „… eine Instanz-Property …“ (wie E2124) |
+| NS3 | `Result.FBasisPfad`, `class var` lesen, `Create` aufrufen, `with Result do Pfad := …` in der Klassenmethode | Keine Meldung |
+| NS4 | In einer Unit ohne Bezug zu `TControl`: `Control.Click` (protected in Vcl.Controls) | „TControl.Click ist protected und hier nicht sichtbar (wie E2362).“ |
+| NS5 | Dieselbe Zeile in einer Methode eines Nachfahren von `TControl` bzw. als `TZugang(Control).Click` mit `TZugang = class(TControl)` in der eigenen Unit | Keine Meldung |
+| NS6 | Zwei Klassen in einer Unit, die zweite greift auf ein `strict private`-Feld der ersten zu; danach dasselbe mit `private` | Erst „… ist strict private und hier nicht sichtbar (wie E2361).“, mit `private` keine Meldung |
+| NS7 | `TKind = class(TBasis)` in derselben Unit mit `property Wert: Integer read FWert;`, `FWert` private in `TBasis` | Warnung an `Wert`: „Die Property Wert verweist auf TBasis.FWert, das im Vorfahren private ist (wie W1045).“ |
+| NS8 | `"inaccessible-member": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| NS9 | Abgleich mit Delphi: NS1, NS2, NS4, NS6, NS7 übersetzen | dcc meldet E2124, E2362, E2361 bzw. W1045 an denselben Stellen, für NS3 und NS5 nichts |
+
+## Privates Mitglied nie verwendet (#1020)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UV1 | Das Beispiel aus #1020: `TImport` mit `private FAltFormat: Boolean; procedure KonvertiereAlt;`, beide nirgends verwendet | Hinweise `unused-private-member` an beiden Namen: „Privates Feld FAltFormat wird nie verwendet (wie H2219).“ und „Private Methode KonvertiereAlt wird nie verwendet (wie H2219).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| UV2 | Schnellkorrektur „KonvertiereAlt entfernen“, danach Strg+Z | Deklaration samt ///-Doku und Rumpf in implementation sind weg; ein Undo-Schritt stellt beides wieder her |
+| UV3 | Private Konstante und Property ohne Verwendung; `FA, FB: Integer` mit nur `FB` verwendet | Meldungen für Konstante, Property und `FA` (bei `FA` ohne Korrektur) |
+| UV4 | Mitglied nur in einem `{$IFDEF}`-Zweig, hinter `read` einer Property oder über `Self.` verwendet | Keine Meldung |
+| UV5 | `message`-Methode, `override`-Methode, Feld mit `[Weak]`, Methode einer Klasse mit Interface, Komponente aus der .dfm, Unit mit `{$I …}` | Keine Meldung |
+| UV6 | `"unused-private-member": {"includeFields": false}` | Nur noch Methoden, Konstanten und Properties |
+| UV7 | `"unused-private-member": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| UV8 | Abgleich mit Delphi: UV1 übersetzen | dcc meldet H2219 für `KonvertiereAlt` an derselben Stelle (für Felder meldet dcc nichts); für UV4 und UV5 nichts |
+
+## message-Methode falsch deklariert (#1070)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; Unit mit `uses Winapi.Messages`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MW1 | Das Beispiel aus #1070: `procedure WMSize(var Msg: TWMSize); message WM_SIZE;` und darunter `procedure WMGroesse(var Msg: TWMSize); message WM_SIZE;` | Fehler `message-method-invalid` am zweiten `WM_SIZE`: „WM_SIZE wird schon von WMSize behandelt (wie E2140).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| MW2 | Zweite Nummer als `$0005` bzw. `WM_MOVE` schreiben | Bei `$0005` dieselbe Meldung (gleicher Wert), bei `WM_MOVE` keine |
+| MW3 | Beide Methoden in `{$IFDEF X} … {$ELSE} … {$ENDIF}`; dieselbe Nummer in einem Nachfahren | Keine Meldung |
+| MW4 | `procedure WMPaint(Msg: TWMPaint); message WM_PAINT;` mit Rumpf in implementation | Fehler am Namen: „Die message-Methode WMPaint braucht genau einen var-Parameter (wie E2138).“; Korrektur „Parameter Msg als var übergeben“ ändert Deklaration und Rumpf, Strg+Z nimmt beides zurück |
+| MW5 | `procedure WMA(var A, B: Integer); message WM_USER;` bzw. ohne Parameter | Korrektur „Signatur (var Msg: TMessage) einsetzen“; untypisiertes `var Msg` und `function … message` bleiben still |
+| MW6 | `message 0`, `message -151` | „Die Nachrichtennummer 0 von … muss mindestens 1 sein (wie E2139).“ |
+| MW7 | `"message-method-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| MW8 | Abgleich mit Delphi: MW1, MW4, MW6 übersetzen | dcc meldet E2140, E2138, E2139 an denselben Stellen; für MW2 (WM_MOVE), MW3 und MW5 (untypisiert) nichts |
+
+## Unzulässige Deklaration in einem Interface (#1075)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IZ1 | Das Beispiel aus #1075: `IKunde = interface` mit `FName: string;` und `function GetName: string;` | Fehler `interface-declaration-invalid` an `FName`: „Interfaces dürfen keine Felder haben (wie E2209).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| IZ2 | `private` im Interface, `procedure A; virtual;` | „Die Direktive private …“ bzw. „Die Direktive virtual ist in Interfaces nicht erlaubt (wie E2210).“; `stdcall`, `safecall` und `overload` bleiben still |
+| IZ3 | `property X: Integer read GetX stored False;`, `… default 0;`, `… nodefault;` | „Die Klausel stored ist in Interfaces nicht erlaubt (wie E2207).“ usw.; `property Items[…] … ; default;` bleibt still |
+| IZ4 | `IKunde = interface(IBasis)` mit `property Name: string read GetName;`, wobei Name und GetName nur in IBasis stehen | E2206 am Namen („… ist schon in IBasis deklariert …“) und E2370 an `GetName` („GetName stammt aus IBasis …“) |
+| IZ5 | `IFalsch = interface(TKlasse)`; `TDienst = class(TInterfacedObject, TPunkt, IBasis, IBasis)` | E2205 an `TKlasse` und `TPunkt`, E2208 am zweiten `IBasis` |
+| IZ6 | Feld in `{$IFDEF}`, Alias als Vorfahr, unbekannter Typ, `dispinterface` mit `readonly dispid 1` | Keine Meldung |
+| IZ7 | `"interface-declaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| IZ8 | Abgleich mit Delphi: IZ1 bis IZ5 übersetzen | dcc meldet E2209, E2210, E2207, E2206, E2370, E2205 und E2208 an denselben Stellen; für IZ6 nichts |
+
+## implements-Klausel unzulässig (#1076)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IK1 | Das Beispiel aus #1076: `property Logger: ILogger write FLogger implements ILogger;` in einer Klasse | Fehler `implements-clause-invalid` an `implements`: „implements braucht eine lesbare Property (wie E2261).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| IK2 | `property Zahl: Integer read FZahl implements IA;`, `property C: IC index 1 read GetC implements IC;` | E2259 am Typ `Integer`, E2260 an `index` |
+| IK3 | Getter `function GetB: IB; cdecl;` bzw. `dynamic;` hinter `read` einer implements-Property | E2262 bzw. E2263 am Getter; mit `register` keine Meldung |
+| IK4 | Zwei Properties mit `implements IA`; `procedure IB.Machen = Tun;` in einer Klasse mit `implements IB` | E2257 am zweiten `IA`, E2264 an der Methodenzuordnung |
+| IK5 | `implements` an einer Property eines Records bzw. Interfaces | E2258 an `implements` |
+| IK6 | Unbekannter Typ, Alias, Klassentyp, generisches Interface, Property in `{$IFDEF}` | Keine Meldung |
+| IK7 | `"implements-clause-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| IK8 | Abgleich mit Delphi: IK1 bis IK5 übersetzen | dcc meldet E2261, E2259, E2260, E2262, E2263, E2257, E2264 und E2258 an denselben Stellen; für IK6 nichts |
+
+## Aufrufkonvention passt nicht (#1078)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AK1 | Das Beispiel aus #1078: `function Formatieren(Muster: PAnsiChar): Integer; stdcall; varargs; external 'msvcrt.dll';` | Fehler `calling-convention-required` an `varargs`: „varargs ist nur mit cdecl erlaubt (wie E2277).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| AK2 | Schnellkorrektur „cdecl setzen“, danach Strg+Z | `stdcall` wird zu `cdecl`; ohne Konvention wird `cdecl; ` vor `varargs` eingefügt; ein Undo-Schritt |
+| AK3 | `procedure Vier(Muster: PAnsiChar); stdcall; varargs;` ohne external | „… (wie E2591).“ |
+| AK4 | `constructor Create; pascal;` mit Rumpf `constructor TBasis.Create; pascal;` | „Konstruktoren und Destruktoren brauchen register, nicht pascal (wie E2236).“; Korrektur „pascal entfernen“ ändert Deklaration und Rumpf |
+| AK5 | `published property Wert: Integer read GetWert write SetWert;` mit `function GetWert: Integer; cdecl;` | „Der Getter GetWert der published-Property Wert braucht register, nicht cdecl (wie E2270).“; in `public` keine Meldung |
+| AK6 | `register` ausdrücklich, `class constructor`, `cdecl; varargs` | Keine Meldung |
+| AK7 | `"calling-convention-required": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| AK8 | Abgleich mit Delphi: AK1, AK3, AK4, AK5 übersetzen | dcc meldet E2277, E2591, E2236 und E2270 an denselben Stellen; für AK6 nichts |

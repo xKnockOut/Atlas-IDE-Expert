@@ -99,6 +99,8 @@ type
     /// <summary>Kopf der Deklaration wie im Index (#492), bei Properties samt read/write (#491); '' ohne Index.
     /// </summary>
     Signature: string;
+    /// <summary>Direktiven wie im Index (#492), z. B. class, static, virtual (#1008); nil bei lokalen Namen.</summary>
+    Directives: TArray<string>;
     /// <summary>Gebundene Typparameter als Name=Typ (bei Mitgliedern die des umgebenden Typs).</summary>
     Bindings: TArray<string>;
     /// <summary>Eingebauter Typ ohne Deklaration im Index (string, Integer ...).</summary>
@@ -209,7 +211,11 @@ type
     function FindMembers(const AType: TResolvedSymbol; const AName: string): TArray<TResolvedSymbol>;
     function UnitRoutines(const ASymbol: TResolvedSymbol): TArray<TResolvedSymbol>;
     function HelperFor(const AType: TResolvedSymbol; out AHelper: TResolvedSymbol): Boolean;
-    function IsVisible(const ASymbol: TIndexSymbol; const AOwnerUnit: TUnitIndex; const AOwner: TResolvedSymbol): Boolean;
+    /// <summary>Ist ASymbol (Mitglied von AOwner aus AOwnerUnit) an der vorbereiteten Stelle sichtbar? ALocalChain:
+    /// Ein Typ zwischen dem Empfänger und AOwner ist in der aktuellen Unit deklariert; dann sind protected-Mitglieder
+    /// sichtbar wie in der Unit von AOwner (TKlasse(Control).Click, #1008).</summary>
+    function IsVisible(const ASymbol: TIndexSymbol; const AOwnerUnit: TUnitIndex; const AOwner: TResolvedSymbol;
+      ALocalChain: Boolean): Boolean;
     function CurrentClass(out AType: TResolvedSymbol): Boolean;
     function DescendsFrom(const AType, AAncestor: TResolvedSymbol): Boolean;
     function DefaultProperty(const AType: TResolvedSymbol; out AResult: TResolvedSymbol): Boolean;
@@ -982,6 +988,7 @@ begin
   Result.ParamTypes := ASymbol.ParamTypes;
   Result.IsDefault := ASymbol.IsDefault;
   Result.Signature := ASymbol.Signature;
+  Result.Directives := ASymbol.Directives;
   Result.InInterface := ASymbol.InInterface;
   Result.IsVirtual := ASymbol.IsVirtual;
   Result.Condition := ASymbol.Condition;
@@ -1320,7 +1327,7 @@ begin
 end;
 
 function TNameResolver.IsVisible(const ASymbol: TIndexSymbol; const AOwnerUnit: TUnitIndex;
-  const AOwner: TResolvedSymbol): Boolean;
+  const AOwner: TResolvedSymbol; ALocalChain: Boolean): Boolean;
 var
   SameUnit: Boolean;
   Own: TResolvedSymbol;
@@ -1335,7 +1342,7 @@ begin
     TIndexVisibility.StrictPrivate:
       Result := SameUnit and CurrentClass(Own) and SameText(Own.QualifiedName, AOwner.QualifiedName);
     TIndexVisibility.Protected:
-      Result := SameUnit or (CurrentClass(Own) and DescendsFrom(Own, AOwner));
+      Result := SameUnit or ALocalChain or (CurrentClass(Own) and DescendsFrom(Own, AOwner));
     TIndexVisibility.StrictProtected:
       Result := CurrentClass(Own) and DescendsFrom(Own, AOwner);
   else
@@ -1408,10 +1415,11 @@ var
   Symbol: TIndexSymbol;
   Depth, Position: Integer;
   TypeName: string;
-  Hidden: Boolean;
+  Hidden, LocalChain: Boolean;
 begin
   Result := nil;
   Current := AType;
+  LocalChain := False;
   for Depth := 0 to MaxDepth do
   begin
     // Helfer zuerst: ihre Mitglieder verdecken gleichnamige des Typs.
@@ -1420,7 +1428,7 @@ begin
       for Position in HelperUnit.SymbolsNamed(AName) do
       begin
         Symbol := HelperUnit.Symbols[Position];
-        if SameText(Symbol.Container, Helper.QualifiedName) and IsVisible(Symbol, HelperUnit, Helper) then
+        if SameText(Symbol.Container, Helper.QualifiedName) and IsVisible(Symbol, HelperUnit, Helper, False) then
         begin
           Found := FromSymbol(HelperUnit, Symbol);
           Found.Bindings := Current.Bindings;
@@ -1432,6 +1440,7 @@ begin
     end;
     if Current.Builtin or not UnitOf(Current, OwnerUnit) then
       Exit;
+    LocalChain := LocalChain or SameText(OwnerUnit.FileName, FCurrent.FileName);
     TypeName := Current.QualifiedName;
     Hidden := False;
     // Erste Fundstelle: die Deklaration im Typ steht vor dem Rumpf in implementation.
@@ -1441,7 +1450,7 @@ begin
       if SameText(Symbol.Container, TypeName) then
       begin
         // Ist die Deklaration unsichtbar, gilt das auch für ihren Rumpf.
-        if Hidden or not IsVisible(Symbol, OwnerUnit, Current) then
+        if Hidden or not IsVisible(Symbol, OwnerUnit, Current, LocalChain) then
         begin
           Hidden := True;
           Continue;
@@ -1506,7 +1515,7 @@ begin
       Exit(False);
     for Symbol in OwnerUnit.Symbols do
       if Symbol.IsDefault and (Symbol.Kind = TIndexSymbolKind.Property_) and
-        SameText(Symbol.Container, Current.QualifiedName) and IsVisible(Symbol, OwnerUnit, Current) then
+        SameText(Symbol.Container, Current.QualifiedName) and IsVisible(Symbol, OwnerUnit, Current, False) then
       begin
         AResult := FromSymbol(OwnerUnit, Symbol);
         AResult.Bindings := Current.Bindings;
@@ -2477,8 +2486,10 @@ var
   OwnerUnit, HelperUnit: TUnitIndex;
   Position, Depth: Integer;
   TypeName: string;
+  LocalChain: Boolean;
 begin
   Current := AType;
+  LocalChain := False;
   for Depth := 0 to MaxDepth do
   begin
     // Mitglieder des Helfers zuerst (#263), auch für eingebaute Typen. Über den Index statt for-in:
@@ -2486,14 +2497,15 @@ begin
     if HelperFor(Current, Helper) and UnitOf(Helper, HelperUnit) then
       for Position := 0 to High(HelperUnit.Symbols) do
         if SameText(HelperUnit.Symbols[Position].Container, Helper.QualifiedName) and
-          IsVisible(HelperUnit.Symbols[Position], HelperUnit, Helper) and NameWanted(HelperUnit.Symbols[Position].Name) then
+          IsVisible(HelperUnit.Symbols[Position], HelperUnit, Helper, False) and NameWanted(HelperUnit.Symbols[Position].Name) then
           AddCandidate(AList, ASeen, MemberOf(FromSymbol(HelperUnit, HelperUnit.Symbols[Position]), Depth, True));
     if Current.Builtin or not UnitOf(Current, OwnerUnit) then
       Exit;
+    LocalChain := LocalChain or SameText(OwnerUnit.FileName, FCurrent.FileName);
     TypeName := Current.QualifiedName;
     for Position := 0 to High(OwnerUnit.Symbols) do
       if SameText(OwnerUnit.Symbols[Position].Container, TypeName) then
-        if IsVisible(OwnerUnit.Symbols[Position], OwnerUnit, Current) then
+        if IsVisible(OwnerUnit.Symbols[Position], OwnerUnit, Current, LocalChain) then
         begin
           if NameWanted(OwnerUnit.Symbols[Position].Name) then
           begin

@@ -2,7 +2,8 @@
 
 // Tests von TConstantValues (#983, #992): Konstanten und Aufzählungswerte der
 // eigenen Unit und aus dem Index, Check mit Grund, Konstanten aus {$IF}-Zweigen
-// und der Tokenbereich eines Knotens.
+// und der Tokenbereich eines Knotens; Werte eines Knotens, einer Aufzählung in
+// Reihenfolge und Wertebereiche der eingebauten Ganzzahltypen (#1011).
 
 interface
 
@@ -21,6 +22,12 @@ type
     procedure CheckGivesReason;
     [Test]
     procedure ConditionalConstantsNeedSameBranch;
+    [Test]
+    procedure ConstantsAndEnumValues;
+    [Test]
+    procedure EnumMembersInOrder;
+    [Test]
+    procedure IntegerRanges;
   end;
 
 implementation
@@ -95,6 +102,35 @@ begin
   Result := 'unit Werte;'#10'interface'#10 + ADeclarations + 'implementation'#10'end.';
 end;
 
+function FarbenIndex: ISymbolIndex;
+begin
+  Result := TSymbolIndex.Create;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit Farben;'#10'interface'#10'const'#10'  Basis = 10;'#10 +
+    '  Grenze = Basis * 2 + 1;'#10'type'#10'  TFarbe = (fRot, fGruen, fBlau);'#10 +
+    '  TCode = (cA = 1, cB = 5);'#10'implementation'#10'end.', 'C:\Projekt\Farben.pas', nil));
+end;
+
+/// <summary>Wert der ersten Konstanten AName unter ARoot; nil ohne.</summary>
+function FindDecl(ARoot: TSyntaxNode; const AName: string): TSyntaxNode;
+var
+  Found: TSyntaxNode;
+begin
+  Found := nil;
+  ARoot.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if (Found = nil) and (ANode.Kind = TSyntaxKind.ConstDecl) and SameText(ANode.Name, AName) then
+        Found := ANode[ANode.ChildCount - 1];
+      Result := Found = nil;
+    end);
+  Result := Found;
+end;
+
+const
+  Source = 'unit Probe;'#10'interface'#10'uses'#10'  Farben;'#10'implementation'#10'const'#10 +
+    '  Eigen = 3;'#10'  A = Grenze - Eigen;'#10'  B = Ord(fBlau) + 1;'#10'  C = Ord(cB);'#10'  D = Unbekannt + 1;'#10 +
+    'end.';
+
 { TConstantValuesTests }
 
 procedure TConstantValuesTests.ConstantsAndEnumsOfOwnUnit;
@@ -166,6 +202,92 @@ begin
   finally
     Fixture.Free;
   end;
+end;
+
+procedure TConstantValuesTests.ConstantsAndEnumValues;
+var
+  Tree: TSyntaxTree;
+  Resolver: TNameResolver;
+  Values: TConstantValues;
+  Value: Int64;
+begin
+  Tree := TPascalParser.Parse(Source);
+  Resolver := TNameResolver.Create(FarbenIndex);
+  try
+    Resolver.PinTree(Tree, 'Probe.pas');
+    Values := TConstantValues.Create(Tree, 'Probe.pas', FarbenIndex, Resolver);
+    try
+      Assert.IsTrue(Values.EvaluateNode(FindDecl(Tree.Root, 'A'), Value));
+      Assert.AreEqual(Int64(18), Value);
+      Assert.IsTrue(Values.EvaluateNode(FindDecl(Tree.Root, 'B'), Value));
+      Assert.AreEqual(Int64(3), Value);
+      // Eigene Werte (cB = 5): Position nicht sicher.
+      Assert.IsFalse(Values.EvaluateNode(FindDecl(Tree.Root, 'C'), Value));
+      Assert.IsFalse(Values.EvaluateNode(FindDecl(Tree.Root, 'D'), Value));
+      Assert.IsFalse(Values.EvaluateNode(nil, Value));
+    finally
+      Values.Free;
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+    Tree.Free;
+  end;
+end;
+
+procedure TConstantValuesTests.EnumMembersInOrder;
+var
+  Tree: TSyntaxTree;
+  Resolver: TNameResolver;
+  Values: TConstantValues;
+  Index: ISymbolIndex;
+  Farbe, Code: TResolvedSymbol;
+  Names: TArray<string>;
+  Units: TUnitIndex;
+begin
+  Index := FarbenIndex;
+  Tree := TPascalParser.Parse(Source);
+  Resolver := TNameResolver.Create(Index);
+  try
+    Resolver.PinTree(Tree, 'Probe.pas');
+    Values := TConstantValues.Create(Tree, 'Probe.pas', Index, Resolver);
+    try
+      Assert.IsTrue(Index.FindUnit('Farben', Units));
+      Assert.IsTrue(Resolver.ResolveTypeFrom(Units, 'TFarbe', Farbe));
+      Assert.IsTrue(Values.EnumMembers(Farbe, Names));
+      Assert.AreEqual('fRot,fGruen,fBlau', string.Join(',', Names));
+      Assert.IsTrue(Resolver.ResolveTypeFrom(Units, 'TCode', Code));
+      Assert.IsFalse(Values.EnumMembers(Code, Names));
+    finally
+      Values.Free;
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+    Tree.Free;
+  end;
+end;
+
+procedure TConstantValuesTests.IntegerRanges;
+var
+  LowValue, HighValue: Int64;
+begin
+  Assert.IsTrue(TConstantValues.IntegerRange('Byte', LowValue, HighValue));
+  Assert.AreEqual(Int64(0), LowValue);
+  Assert.AreEqual(Int64(255), HighValue);
+  Assert.IsTrue(TConstantValues.IntegerRange('smallint', LowValue, HighValue));
+  Assert.AreEqual(Int64(-32768), LowValue);
+  Assert.IsTrue(TConstantValues.IntegerRange('Cardinal', LowValue, HighValue));
+  Assert.AreEqual(Int64(4294967295), HighValue);
+  Assert.IsTrue(TConstantValues.IntegerRange('Integer', LowValue, HighValue));
+  Assert.AreEqual(Int64(-2147483648), LowValue);
+  // Plattformabhängig: weitester Bereich.
+  Assert.IsTrue(TConstantValues.IntegerRange('LongInt', LowValue, HighValue));
+  Assert.AreEqual(Int64(High(Int64)), HighValue);
+  Assert.IsTrue(TConstantValues.IntegerRange('NativeUInt', LowValue, HighValue));
+  Assert.AreEqual(Int64(0), LowValue);
+  Assert.IsFalse(TConstantValues.IntegerRange('Double', LowValue, HighValue));
+  Assert.IsFalse(TConstantValues.IntegerRange('Char', LowValue, HighValue));
 end;
 
 initialization

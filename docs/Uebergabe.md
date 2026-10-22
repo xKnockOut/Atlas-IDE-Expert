@@ -791,3 +791,12 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - #1068 `directive-typo` (Builtin.Directives): der Parser legt für `overide;` einen Directive-Knoten an; Routinendirektiven in `Pascal.DirectiveNames`. Handtest UD1–UD8.
 - Beim Zusammenführen: Tests anderer Ketten, die alte Parsermeldungen (`";" fehlt`, `Unerwartetes "x"`) erwarten, auf die neuen Texte umstellen; Cache-Format fortlaufend vergeben.
 - Mit Delphi prüfen: `Exit` in anonymen Methoden des Walk (Builtin.Directives), Hinweise zu nicht benutzten Variablen in `Lsp.SyntaxDiagnostics.Compute`.
+
+## Compiler-Regeln Kette H: #1008, #1020, #1070, #1075, #1076, #1078 (22.10.2026, ungebaut)
+- Kette ab `feature/1006-readonly-property-assigned`: `feature/1008-inaccessible-member` → `feature/1020-unused-private-member` → `feature/1070-message-method-invalid` → `feature/1075-interface-declaration-invalid` → `feature/1076-implements-clause-invalid` → `feature/1078-calling-convention-required`. Nichts nach main.
+- Neue Units: `Rules.Builtin.Visibility` (inaccessible-member, unused-private-member) und `Rules.Builtin.TypeDeclarations` (message-method-invalid, interface-declaration-invalid, implements-clause-invalid, calling-convention-required; gemeinsame Hilfe `TDeclarationScan`).
+- Ursache behoben (#1008): `TNameResolver` kennt jetzt protected-Zugriffe über eine Klasse der eigenen Unit (`TZugang(Control).Click`). Dabei aufgefallen und behoben: `GlobalFile`, `LoadGlobal`, `SaveGlobal` in `Atlas.IDE.Foundation.Settings` standen privat, wurden aber von außen gerufen (echter E2361 aus dem #909-Stand).
+- `Semantics.ConstantValues` ist unverändert aus der Kette #1011/#1015 übernommen; im Sammelbranch dieselbe Datei wie dort, nur die Fassung aus #992 muss vereinigt werden.
+- Neue Option `includeFields` für unused-private-member (Schema, Parser, Doku erzeugt).
+- Unter FPC getestet (Regeltests, Golden-Korpus, Profile); Scan über alle Repo-Quellen und das Referenzprojekt ohne Fehlalarme. Handtests NS1–NS9, UV1–UV8, MW1–MW8, IZ1–IZ8, IK1–IK8, AK1–AK8 in `docs/Atlas-Testfaelle.md`; die Issues bleiben bis dahin offen.
+- Beim ersten Delphi-Build prüfen: Konstanten-Arrays mit `MatchText` (`InterfaceForbiddenDirectives`, `ForeignConventions`, `PropertySpecifiers`), `case` über `TIndexSymbolKind` mit `else`.
