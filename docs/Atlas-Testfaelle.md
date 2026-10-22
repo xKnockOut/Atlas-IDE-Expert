@@ -4304,3 +4304,87 @@ Voraussetzung: experimentelles `editor.stickyScroll` an (wie bei Marco), Brotkru
 | GS2 | Während der Server noch startet, Plattform Win32 ↔ Win64 wechseln | Kein Fehler; Gliederung, Brotkrumen und Sticky Scroll zeigen danach den Stand der neuen Plattform |
 | GS3 | Konfiguration Debug ↔ Release wechseln, Unit mit `{$IFDEF DEBUG}` offen | Gliederung baut sich neu auf, kein Fehler im Log |
 | GS4 | IDE beenden | Im Log „Atlas entladen …; Fehler beim Abbau: keine“ |
+
+## Break, Continue oder Exit an unzulässiger Stelle (#984)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JS1 | Das Beispiel aus #984: Methode mit `if Eintrag.Treffer then Break;` ohne Schleife | Fehler `jump-outside-allowed-scope` an `Break`: „Break außerhalb einer Schleife (wie E2097).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JS2 | Schnellkorrektur „Break durch Exit ersetzen“, danach Strg+Z | Zeile wird `Exit;`, keine Meldung mehr; ein Undo-Schritt |
+| JS3 | `Continue;` ohne Schleife | „Continue außerhalb einer Schleife (wie E2097).“, keine Korrektur |
+| JS4 | In einer Schleife `try … finally if Fertig then Break; end;`, ebenso `Continue` und `Exit` im finally | „Break darf einen finally-Block nicht verlassen (wie E2126).“ bzw. für Continue und Exit; keine Korrektur |
+| JS5 | Schleife ganz im finally mit `Break`, `Exit` im try-Teil, `Break` in `case` und `with` einer Schleife, `TMonitor.Exit(FLock)`, `Exit` in einer anonymen Methode im finally | Keine Meldung |
+| JS6 | `Break` in einer anonymen Methode, die in einer Schleife steht | „Break außerhalb einer Schleife (wie E2097).“ |
+| JS7 | `"jump-outside-allowed-scope": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| JS8 | Abgleich mit Delphi: JS1, JS3, JS4, JS6 übersetzen | dcc meldet E2097 bzw. E2126 an denselben Stellen, für JS5 nichts |
+
+## raise ohne Argument außerhalb eines Handlers (#985)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RQ1 | Das Beispiel aus #985: `procedure TImport.Abbrechen;` mit `Protokoll.Fehler(…); raise;` | Fehler `reraise-outside-handler` an `raise`: „raise ohne Argument ist nur in einem except-Block erlaubt (wie E2145).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| RQ2 | Lokale Prozedur `Weiterwerfen` mit `raise;`, aufgerufen aus einem except; ebenso `raise;` im finally und in einer anonymen Methode außerhalb eines except | Je eine Meldung wie RQ1 |
+| RQ3 | `raise;` in `on E: … do`, im else-Teil, im except ohne Handler und in einem try … finally innerhalb des except; `raise EImport.Create(…)` außerhalb | Keine Meldung |
+| RQ4 | `raise;` in einer anonymen Methode innerhalb eines except | Keine Meldung (Lage unklar) |
+| RQ5 | `"reraise-outside-handler": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| RQ6 | Abgleich mit Delphi: RQ1, RQ2 und RQ4 übersetzen | dcc meldet E2145 an den Stellen aus RQ1 und RQ2, für RQ3 nichts; das Ergebnis für RQ4 in der Regel nachtragen |
+
+## Sprungmarke falsch verwendet (#995)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LJ1 | Das Beispiel aus #995: `label Weiter;`, im try-Teil `if Fertig then goto Weiter;`, `Weiter:` nach dem `end` des try | Fehler `label-misuse` an `goto Weiter`: „goto Weiter verlässt einen try-Block (wie E2127).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| LJ2 | `goto Innen` vor dem try, `Innen:` im try-Teil; `goto Handler` aus dem try-Teil zu `Handler:` im except | „goto Innen springt in einen try-Block (wie E2127).“ und „goto Handler springt in einen except-Block (wie E2127).“ |
+| LJ3 | `label Doppelt;` mit zweimal `Doppelt:` | „Marke Doppelt ist bereits gesetzt (wie E2073).“ an der zweiten Marke |
+| LJ4 | `label Fehlt;` und `goto Fehlt;` ohne `Fehlt:` | „Marke Fehlt wird angesprungen, aber nie gesetzt (wie E2074).“ an der Deklaration |
+| LJ5 | `goto Anders;` ohne Deklaration; lokale Prozedur mit `goto Ende` auf eine Marke der äußeren Routine | „Marke Anders ist in dieser Routine nicht deklariert (wie E2093).“ bzw. für Ende |
+| LJ6 | Richtige Marken, `goto 007` auf `7:`, dieselbe Marke in `{$IFDEF}`/`{$ELSE}`, Marke im asm-Block, goto innerhalb eines except | Keine Meldung |
+| LJ7 | `"label-misuse": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| LJ8 | Abgleich mit Delphi: LJ1 bis LJ5 übersetzen | dcc meldet E2127, E2073, E2074 bzw. E2093 an denselben Stellen, für LJ6 nichts |
+
+## Schleifenvariable verändert oder nicht lokal (#1009)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SV1 | Das Beispiel aus #1009: `for I := 0 to Zeilen.Count - 1 do` mit `Inc(I);` im Rumpf | Fehler `for-variable-misuse` an `I` in `Inc(I)`: „Schleifenvariable I darf im Rumpf nicht verändert werden (wie E2081).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| SV2 | Schnellkorrektur „Auf while-Schleife umstellen“, danach Strg+Z | `I := 0; while I <= Zeilen.Count - 1 do begin … Inc(I); end;`, keine Meldung mehr; ein Undo-Schritt |
+| SV3 | `I := 5;` im Rumpf; `downto` mit `Dec(I)`; Rumpf mit `Continue` | Meldung „… darf im Rumpf nicht zugewiesen werden (wie E2081).“; Korrektur mit `>=` und `Dec`; mit Continue keine Korrektur |
+| SV4 | Eigene `procedure Weiter(var N: Integer)` und `Weiter(I)` im Rumpf | „Schleifenvariable I wird als var-Parameter an Weiter übergeben (wie W1015).“ |
+| SV5 | `for FIndex := …` mit einem Feld, `for GZaehler := …` mit einer globalen Variablen, lokale Prozedur mit der Variablen der äußeren Routine | „Schleifenvariable FIndex ist ein Feld, keine einfache lokale Variable (wie E1019).“ usw.; Korrektur „for var FIndex verwenden“ nur, wenn die Routine den Namen sonst nicht benutzt |
+| SV6 | Lesen der Variablen, `Zeilen[I] := …`, `Zeilen.Delete(I)`, anonyme Methode im Rumpf, Schleife in `with`, Parameter als Schleifenvariable | Keine Meldung |
+| SV7 | `"for-variable-misuse": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| SV8 | Abgleich mit Delphi: SV1, SV3, SV4, SV5 übersetzen | dcc meldet E2081, W1015 bzw. E1019 an denselben Stellen, für SV6 nichts; abweichende Codes in der Regel nachtragen |
+
+## Schleifenvariable nach der Schleife gelesen (#1010)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NS1 | Das Beispiel aus #1010: `for I := 0 to High(Werte) do if Werte[I] = Gesucht then Break;` und danach `Gefunden := I <= High(Werte);` | Warnung `for-variable-after-loop` an `I` nach der Schleife: „I ist nach der Schleife undefiniert, wenn kein Break erreicht wurde (wie W1037).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| NS2 | Schnellkorrektur „Auf while-Schleife umstellen“, danach Strg+Z | `I := 0; while I <= High(Werte) do begin … Inc(I); end;`, keine Meldung mehr; ein Undo-Schritt |
+| NS3 | Erst eine andere Anweisung, dann `if I > J then`; `downto` mit `J := Length(Zeilen[I]);` danach | Meldung je am ersten Lesen nach der Schleife |
+| NS4 | `I := 0;` vor dem Lesen, zweite Schleife mit derselben Variable, `for var K`, Feld oder globale Variable als Schleifenvariable, Lesen nur im Rumpf vor `Exit`, `Ausgeben(I)` mit unbekannter Routine | Keine Meldung |
+| NS5 | `"for-variable-after-loop": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| NS6 | Abgleich mit Delphi: NS1 und NS3 übersetzen | dcc meldet W1037 an denselben Stellen, für NS4 nichts; Abweichungen in der Regel nachtragen |
+
+## Schleife läuft nie: konstante Grenzen (#1023)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HL1 | Das Beispiel aus #1023: `for I := 10 to 1 do Countdown(I);` | Warnung `for-high-to-low` an der Schleife: „Die Schleife läuft nie (10 to 1); gemeint war downto (wie H2135).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| HL2 | Schnellkorrektur „to durch downto ersetzen“, danach Strg+Z | `for I := 10 downto 1 do`, keine Meldung mehr; ein Undo-Schritt |
+| HL3 | `-1 to -5`, `$10 to 3`, `'z' to 'a'`, `#13 to #10`, `for var K := 3 to 2`, `for var K: Integer := 3 to 2`, `for var K := High(A) to Low(A)` | Je eine Meldung |
+| HL4 | `10 downto 1`, `1 to 10`, `5 to 5`, `10 - 9 to 1`, `Max to 1`, `{$IFDEF X}10{$ELSE}0{$ENDIF} to 1` | Keine Meldung |
+| HL5 | `"for-high-to-low": "off"` bzw. `"group:compiler": "off"` | Keine Meldung |
+| HL6 | Abgleich mit Delphi: HL1 und HL3 übersetzen | dcc meldet H2135 an denselben Stellen, für HL4 nichts; Abweichungen in der Regel nachtragen |
