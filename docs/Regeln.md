@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 19 |
+| [Compiler vorab](#gruppe-compiler) | 20 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -150,6 +150,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`default-parameter-invalid`](#default-parameter-invalid) | Unzulässiger Standardwert eines Parameters | Bug | Fehler |
 | [`signed-unsigned-mix`](#signed-unsigned-mix) | Vorzeichenbehaftet und vorzeichenlos gemischt | Bug | Warnung |
 | [`narrowing-assignment`](#narrowing-assignment) | Zuweisung mit möglichem Datenverlust | Bug | Warnung |
+| [`typed-constant-modified`](#typed-constant-modified) | Typisierte Konstante verändert | Bug | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4636,4 +4637,31 @@ Richtig:
 
 ```pascal
 Anzahl := Integer(Strom.Size);
+```
+
+<a id="typed-constant-modified"></a>
+### typed-constant-modified
+
+**Typisierte Konstante verändert** · Bug · Warnung · Gruppe Compiler vorab
+
+Einer typisierten Konstante (const Zaehler: Integer = 0) wird etwas zugewiesen (wie W1017, auch einem Element oder Record-Feld davon), oder sie wird als var- oder out-Argument übergeben, auch an Inc, Dec, Include, Exclude, Delete, SetLength und ähnliche (wie W1016). Gemeint war meist eine Variable; übersetzbar ist das nur mit {$J+}. Gilt vor der Deklaration in derselben Datei {$J-} bzw. {$WRITEABLECONST OFF}, meldet Atlas einen Fehler (wie E2064 bzw. E2197). Dazu 0 als Wert einer Zeigerkonstante oder einer initialisierten Zeigervariable (wie W1013). Korrekturen: eine Konstante auf Unit-Ebene in eine Variable mit Initialwert umwandeln (der const-Abschnitt wird bei Bedarf geteilt; lokale typisierte Konstanten behalten ihren Wert zwischen Aufrufen und bekommen keine Korrektur); nil statt 0 schreiben.
+
+Entspricht der Compilermeldung `W1016`, `W1017`, `W1013`, `E2064`, `E2197`.
+
+Mit Treffer:
+
+```pascal
+const
+  Zaehler: Integer = 0;
+…
+Inc(Zaehler);
+```
+
+Richtig:
+
+```pascal
+var
+  Zaehler: Integer = 0;
+…
+Inc(Zaehler);
 ```

@@ -2388,6 +2388,23 @@ begin
     '          "description": "Reported pairs source type>target type, e.g. Double>Single or Extended>Double."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "typed-constant-modified",' + #10 +
+    '      "name": "Typed constant modified",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A typed constant (const Counter: Integer = 0) is assigned (like W1017, also an element or a record field of it) or passed as a var or out argument, including Inc, Dec, Include, E' + 'xclude, Delete, SetLength and the like (like W1016). Usually a variable was meant; this only compiles with {$J+}. When {$J-} or {$WRITEABLECONST OFF} is in effect before the declaration in the same fi' + 'le, it is reported as an error (like E2064 or E2197). Also reports 0 as the value of a pointer constant or an initialised pointer variable (like W1013). Quick fixes: turn a unit-level constant into a ' + 'variable with an initial value (the const section is split if needed; local typed constants keep their value between calls and get no fix); write nil instead of 0.",' + #10 +
+    '      "bad": "const\n  Zaehler: Integer = 0;\n…\nInc(Zaehler);",' + #10 +
+    '      "good": "var\n  Zaehler: Integer = 0;\n…\nInc(Zaehler);",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1016",' + #10 +
+    '        "W1017",' + #10 +
+    '        "W1013",' + #10 +
+    '        "E2064",' + #10 +
+    '        "E2197"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3584,6 +3601,11 @@ begin
     '          "description": "Gemeldete Paare Quelltyp>Zieltyp, z. B. Double>Single oder Extended>Double."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "typed-constant-modified",' + #10 +
+    '      "name": "Typisierte Konstante verändert",' + #10 +
+    '      "description": "Einer typisierten Konstante (const Zaehler: Integer = 0) wird etwas zugewiesen (wie W1017, auch einem Element oder Record-Feld davon), oder sie wird als var- oder out-Argument üb' + 'ergeben, auch an Inc, Dec, Include, Exclude, Delete, SetLength und ähnliche (wie W1016). Gemeint war meist eine Variable; übersetzbar ist das nur mit {$J+}. Gilt vor der Deklaration in derselben Datei' + ' {$J-} bzw. {$WRITEABLECONST OFF}, meldet Atlas einen Fehler (wie E2064 bzw. E2197). Dazu 0 als Wert einer Zeigerkonstante oder einer initialisierten Zeigervariable (wie W1013). Korrekturen: eine Kons' + 'tante auf Unit-Ebene in eine Variable mit Initialwert umwandeln (der const-Abschnitt wird bei Bedarf geteilt; lokale typisierte Konstanten behalten ihren Wert zwischen Aufrufen und bekommen keine Korr' + 'ektur); nil statt 0 schreiben."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
