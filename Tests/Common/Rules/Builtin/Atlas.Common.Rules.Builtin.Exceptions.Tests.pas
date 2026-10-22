@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Rules.Builtin.Exceptions.Tests;
 
 // Tests für die Exception-Regeln (#277): je Regel ein positiver und ein negativer Fall;
-// exception-in-destructor (#927).
+// exception-in-destructor (#927). reraise-outside-handler (#985): Beispiel aus dem Issue,
+// lokale Prozedur, anonyme Methode, finally, stille Fälle, Abschalten, Gruppe und Ausnahmen.
 
 interface
 
@@ -48,6 +49,19 @@ type
     procedure ReraiseSilentCases;
     [Test]
     procedure ReraiseOffAndExclude;
+  end;
+
+  [TestFixture]
+  TReraiseOutsideHandlerTests = class
+  public
+    [Test]
+    procedure IssueExample;
+    [Test]
+    procedure LocalRoutineAndAnonymousMethod;
+    [Test]
+    procedure HandlersAreSilent;
+    [Test]
+    procedure OffAndExclude;
   end;
 
 implementation
@@ -365,7 +379,77 @@ begin
     '{"rules": {"reraise-exception-object": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
 end;
 
+{ TReraiseOutsideHandlerTests }
+
+function Import(const AStatements: string): string;
+begin
+  Result := 'unit Importe;'#10'interface'#10'implementation'#10'procedure TImport.Abbrechen;'#10'begin'#10 +
+    AStatements + 'end;'#10'end.';
+end;
+
+procedure TReraiseOutsideHandlerTests.IssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TReraiseOutsideHandlerRule.Create,
+    Import('  Protokoll.Fehler(''Import abgebrochen'');'#10'  raise;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('reraise-outside-handler', Findings[0].RuleId);
+  Assert.AreEqual('raise ohne Argument ist nur in einem except-Block erlaubt (wie E2145).', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(7, Findings[0].Range.EndPos.Character);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TReraiseOutsideHandlerTests.LocalRoutineAndAnonymousMethod;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Lokale Prozedur, die aus dem Handler gerufen wird, raise im finally und in einer anonymen Methode.
+  Findings := TRuleAssert.Findings(TReraiseOutsideHandlerRule.Create,
+    'unit Importe;'#10'interface'#10'implementation'#10'procedure TImport.Laden;'#10 +
+    '  procedure Weiterwerfen;'#10'  begin'#10'    raise;'#10'  end;'#10'begin'#10'  try'#10'    Lesen;'#10 +
+    '  except'#10'    Weiterwerfen;'#10'  end;'#10'  try'#10'    Lesen;'#10'  finally'#10'    raise;'#10'  end;'#10 +
+    '  Ausfuehren(procedure begin raise; end);'#10'end;'#10'end.');
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(17, Findings[1].Range.StartPos.Line);
+  Assert.AreEqual(19, Findings[2].Range.StartPos.Line);
+end;
+
+procedure TReraiseOutsideHandlerTests.HandlersAreSilent;
+begin
+  // raise; in on-Handlern, im else-Teil, im except ohne Handler, verschachtelt in try und if, raise mit Objekt;
+  // anonyme Methode im except (unklar) und Parserfehler.
+  TRuleAssert.Silent(TReraiseOutsideHandlerRule.Create,
+    Import('  try'#10'    Lesen;'#10'  except'#10'    on E: EDatenbank do'#10'      raise;'#10 +
+    '    on E: EConvertError do'#10'    begin'#10'      Protokoll(E.Message);'#10'      raise;'#10'    end;'#10 +
+    '  else'#10'    raise;'#10'  end;'#10'  try'#10'    Lesen;'#10'  except'#10'    try'#10'      Aufraeumen;'#10 +
+    '    finally'#10'      if Fertig then'#10'        raise;'#10'    end;'#10'  end;'#10 +
+    '  raise EImport.Create(''Abbruch'');'#10 +
+    '  try'#10'    Lesen;'#10'  except'#10'    TThread.Synchronize(nil, procedure begin raise; end);'#10'  end;'#10));
+  TRuleAssert.Silent(TReraiseOutsideHandlerRule.Create, Import('  if then'#10'  raise;'#10));
+end;
+
+procedure TReraiseOutsideHandlerTests.OffAndExclude;
+const
+  Statements = '  raise;'#10;
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TReraiseOutsideHandlerRule.Create, Import(Statements),
+    '{"rules": {"reraise-outside-handler": "off"}}', 'Importe.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TReraiseOutsideHandlerRule.Create, Import(Statements),
+    '{"rules": {"group:compiler": "off"}}', 'Importe.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TReraiseOutsideHandlerRule.Create, Import(Statements),
+    '{"rules": {"reraise-outside-handler": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Importe.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TReraiseOutsideHandlerRule.Create, Import(Statements),
+    '{"rules": {"reraise-outside-handler": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Importe.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TExceptionRulesTests);
+  TDUnitX.RegisterTestFixture(TReraiseOutsideHandlerTests);
 
 end.

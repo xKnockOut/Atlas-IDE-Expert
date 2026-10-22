@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Rules.Builtin.RtlPatterns.Tests;
 
 // Tests für die Regeln zu RTL-Mustern aus #153, Stufe 1: je Regel ein
-// positiver und ein negativer Fall, dazu die Fälle aus der Abnahme.
+// positiver und ein negativer Fall, dazu die Fälle aus der Abnahme; konstante
+// Grenzen, die nie laufen, bei for-high-to-low (#1023, wie H2135).
 
 interface
 
@@ -22,6 +23,10 @@ type
     procedure ForHighToLowReportedWithFix;
     [Test]
     procedure ForLowToHighSilent;
+    [Test]
+    procedure ForConstantBoundsNeverRun;
+    [Test]
+    procedure ForConstantBoundsSilentAndOff;
     [Test]
     procedure ExceptionNotRaisedReportedWithFix;
     [Test]
@@ -48,6 +53,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.RtlPatterns,
   Atlas.Common.Rules.Engine,
+  Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Pascal.SyntaxTree,
@@ -156,6 +162,52 @@ begin
   TRuleAssert.Silent(TForHighToLowRule.Create, InRoutine('  for I := Low(A) to High(A) do Save(A[I]);'#10 +
     '  for I := High(A) downto Low(A) do Save(A[I]);'#10'  for I := 0 to Liste.Count - 1 do;'#10 +
     '  for I := High(A) - 1 to Low(A) + 5 do;'));
+end;
+
+procedure TRtlPatternRulesTests.ForConstantBoundsNeverRun;
+const
+  Body = '  for I := 10 to 1 do'#10'    Countdown(I);';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Beispiel aus #1023 mit Korrektur.
+  Findings := TRuleAssert.Findings(TForHighToLowRule.Create, InRoutine(Body));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('for-high-to-low', Findings[0].RuleId);
+  Assert.AreEqual('Die Schleife läuft nie (10 to 1); gemeint war downto (wie H2135).', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('to durch downto ersetzen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(InRoutine('  for I := 10 downto 1 do'#10'    Countdown(I);'),
+    TChangeSignature.ApplyEdits(InRoutine(Body), Findings[0].Fixes[0].Edits));
+  // Vorzeichen, Hex, Zeichen, Inline-Variable mit und ohne Typ (auch für High … to Low).
+  Findings := TRuleAssert.Findings(TForHighToLowRule.Create, InRoutine('  for I := -1 to -5 do;'#10 +
+    '  for I := $10 to 3 do;'#10'  for C := ''z'' to ''a'' do;'#10'  for C := #13 to #10 do;'#10 +
+    '  for var K := 3 to 2 do;'#10'  for var K: Integer := 3 to 2 do;'#10'  for var K := High(A) to Low(A) do;'));
+  Assert.AreEqual(7, Integer(Length(Findings)));
+  Assert.AreEqual('Die Schleife läuft nie (3 to 2); gemeint war downto (wie H2135).', Findings[5].Message);
+  Assert.AreEqual('Die Schleife läuft nie (-1 to -5); gemeint war downto (wie H2135).', Findings[0].Message);
+  Assert.AreEqual('Die Schleife läuft nie ($10 to 3); gemeint war downto (wie H2135).', Findings[1].Message);
+  Assert.AreEqual('Die Schleife läuft nie (''z'' to ''a''); gemeint war downto (wie H2135).', Findings[2].Message);
+  Assert.AreEqual('Die Schleife läuft nie (#13 to #10); gemeint war downto (wie H2135).', Findings[3].Message);
+end;
+
+procedure TRtlPatternRulesTests.ForConstantBoundsSilentAndOff;
+const
+  Body = '  for I := 10 to 1 do;';
+begin
+  // Korrigierte Form, aufsteigend, gleiche Grenzen (läuft einmal), Ausdrücke und Namen, bedingte Übersetzung.
+  TRuleAssert.Silent(TForHighToLowRule.Create, InRoutine('  for I := 10 downto 1 do;'#10 +
+    '  for I := 1 to 10 do;'#10'  for I := 5 to 5 do;'#10'  for I := 10 - 9 to 1 do;'#10 +
+    '  for I := Max to 1 do;'#10'  for I := 10 to N do;'#10'  for I := -5 to -1 do;'#10 +
+    '  for I := {$IFDEF X}10{$ELSE}0{$ENDIF} to 1 do;'#10'  for C := ''a'' to ''z'' do;'));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TForHighToLowRule.Create, InRoutine(Body),
+    '{"rules": {"for-high-to-low": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TForHighToLowRule.Create, InRoutine(Body),
+    '{"rules": {"group:compiler": "off"}}', 'U.pas'))));
 end;
 
 procedure TRtlPatternRulesTests.ExceptionNotRaisedReportedWithFix;
