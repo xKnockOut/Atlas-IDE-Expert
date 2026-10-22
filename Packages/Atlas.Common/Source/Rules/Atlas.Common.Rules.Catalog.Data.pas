@@ -2362,6 +2362,32 @@ begin
     '        "W1024",' + #10 +
     '        "W1073"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "narrowing-assignment",' + #10 +
+    '      "name": "Assignment with possible data loss",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "An assignment or an inline variable with a value whose type is wider than the target, without an explicit conversion: Int64 to Integer, NativeInt to Integer (Win64) and, via the ' + 'option types, e.g. Double to Single or Extended to Double. Like W1071 (integers), W1072 (floating point) and W1066 (Extended to Double); the compiler shows W1071 only when switched on. Only reported w' + 'hen both types are known for certain (variables, fields, properties, function results, own aliases and integer arithmetic built from them); literals and explicit conversions stay silent. Off by defaul' + 't; medium confidence. Quick fixes: convert explicitly; widen the type of the target''s declaration (single variable declared in the same file).",' + #10 +
+    '      "bad": "Anzahl := Strom.Size;  // Anzahl: Integer",' + #10 +
+    '      "good": "Anzahl := Integer(Strom.Size);",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1071",' + #10 +
+    '        "W1072",' + #10 +
+    '        "W1066"' + #10 +
+    '      ],' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "types",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "Int64>Integer",' + #10 +
+    '            "NativeInt>Integer"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Reported pairs source type>target type, e.g. Double>Single or Extended>Double."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3547,6 +3573,17 @@ begin
     '      "id": "signed-unsigned-mix",' + #10 +
     '      "name": "Vorzeichenbehaftet und vorzeichenlos gemischt",' + #10 +
     '      "description": "Vergleich oder Rechnung (+, -, *, div, mod) mit einem vorzeichenbehafteten und einem vorzeichenlosen Operanden, deren Typen sicher bekannt sind (Variablen, Felder, Properties, Fu' + 'nktionsergebnisse, eigene Aliase). Mit UInt64 wird der ganze Ausdruck vorzeichenlos gerechnet, ein negativer Wert wird zu einer riesigen Zahl (wie W1073, beim Vergleich wie W1023); mit Cardinal/DWORD ' + 'und einem vorzeichenbehafteten Typ bis 32 Bit werden beide Operanden auf Int64 erweitert (wie W1023/W1024). Still bei Byte und Word, Cardinal mit Int64, Literalen, Konstanten, NativeInt/NativeUInt und' + ' unbekannten Typen. Mittlere Konfidenz. Korrektur: den vorzeichenlosen Operanden in Int64 umwandeln."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "narrowing-assignment",' + #10 +
+    '      "name": "Zuweisung mit möglichem Datenverlust",' + #10 +
+    '      "description": "Eine Zuweisung oder Inline-Variable mit einem Wert, dessen Typ breiter ist als das Ziel, ohne ausdrückliche Umwandlung: Int64 an Integer, NativeInt an Integer (Win64) und über di' + 'e Option types z. B. Double an Single oder Extended an Double. Wie W1071 (Ganzzahlen), W1072 (Gleitkomma) und W1066 (Extended an Double); der Compiler zeigt W1071 nur, wenn man es einschaltet. Gemelde' + 't wird nur, wenn beide Typen sicher bekannt sind (Variablen, Felder, Properties, Funktionsergebnisse, eigene Aliase und ganzzahlige Rechnungen daraus); Literale und ausdrückliche Umwandlungen bleiben ' + 'still. Standardmäßig aus; mittlere Konfidenz. Korrekturen: ausdrücklich umwandeln; den Typ der Deklaration des Ziels vergrößern (einzelne Variable aus derselben Datei).",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "types",' + #10 +
+    '          "description": "Gemeldete Paare Quelltyp>Zieltyp, z. B. Double>Single oder Extended>Double."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

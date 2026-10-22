@@ -4170,3 +4170,19 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | QV7 | Byte/Word mit Integer, Cardinal mit Int64, `C > 0`, Konstanten, NativeUInt mit Integer | Keine Meldung |
 | QV8 | `"signed-unsigned-mix": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | QV9 | Abgleich mit Delphi: QV1, QV2, QV4 bis QV6 übersetzen (Win32 und Win64) | dcc meldet W1073, W1023 bzw. W1024 an denselben Stellen, für QV7 nichts |
+
+## Zuweisung mit möglichem Datenverlust (#1013)
+
+Voraussetzung: Server läuft in der IDE mit Projekt, in `atlas.json` `"narrowing-assignment": "warning"`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QE1 | Das Beispiel aus #1013: `var Anzahl: Integer;` und `Anzahl := Strom.Size;` mit einem `TStream` | Warnung `narrowing-assignment` an `Strom.Size`: „Strom.Size ist Int64; die Zuweisung an Integer kann Daten verlieren (wie W1071).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| QE2 | Schnellkorrektur „Ausdrücklich in Integer umwandeln“, danach Strg+Z | `Anzahl := Integer(Strom.Size);`; keine Meldung mehr; ein Undo-Schritt |
+| QE3 | Schnellkorrektur „Zieltyp auf Int64 vergrößern“ | Die Deklaration wird `Anzahl: Int64;`; keine Meldung mehr. Bei `Anzahl, Rest: Integer` und bei Feldern einer anderen Unit gibt es nur die Umwandlung |
+| QE4 | `var Anzahl: Integer := Strom.Size;` und `Anzahl := Strom.Size - Rest;` | Meldung wie QE1, beim zweiten mit „Strom.Size - Rest ist Int64“ |
+| QE5 | `Anzahl := Zeiger;` mit `Zeiger: NativeInt` | Meldung „Zeiger ist NativeInt; … (wie W1071).“ |
+| QE6 | Option `"types": ["Double>Single", "Extended>Double"]`, dann `Wert := Teil;` (Single ← Double) und `Mittel := Genau;` (Double ← Extended) | „… (wie W1072).“ bzw. „… (wie W1066).“; `Anzahl := Strom.Size` meldet jetzt nichts mehr |
+| QE7 | `Groesse := Strom.Size` mit `Int64`, `Anzahl := 5`, `Anzahl := Integer(Strom.Size) + 1`, unbekannte Typen | Keine Meldung |
+| QE8 | Ohne Eintrag in `atlas.json`, mit `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| QE9 | Abgleich mit Delphi: QE1, QE4 bis QE6 mit `{$WARN IMPLICIT_INTEGER_CAST_LOSS ON}` bzw. `{$WARN IMPLICIT_CONVERSION_LOSS ON}` übersetzen (Win32 und Win64) | dcc meldet W1071, W1072 bzw. W1066 an denselben Stellen, für QE7 nichts; QE5 nur unter Win64 |

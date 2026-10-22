@@ -105,3 +105,4 @@ readonly-property-assigned | Ref.Formulare.Suchrahmen.pas | read FOnSuchen write
 constant-expression-error | Ref.Komponenten.Anzeige.pas | TextAbstand = 4; | TextAbstand = 4 div (StandardHoehe - 32);
 default-parameter-invalid | Ref.Daten.Kunden.pas | procedure Speichern(AId: Integer; const AName: string); | procedure Speichern(AId: Integer = 0; const AName: string);
 signed-unsigned-mix | Ref.Pruefung.Verstoesse.pas |   I: Integer;\nbegin\n  Result := 0; |   I: Integer;\n  Grenze: Cardinal;\nbegin\n  Result := 0;\n  Grenze := 10;\n  if Length(AWerte) > 0 then\n    I := 0;\n  if I > Grenze then\n    Exit;
+narrowing-assignment | Ref.Pruefung.Verstoesse.pas |   Benutzt: Integer; // KEIN-TREFFER: unused-local\nbegin\n  Benutzt := 1; |   Benutzt: Integer; // KEIN-TREFFER: unused-local\n  Gross: Int64;\nbegin\n  Gross := 1;\n  Benutzt := Gross;

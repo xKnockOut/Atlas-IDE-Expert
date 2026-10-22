@@ -2342,6 +2342,32 @@
         "W1024",
         "W1073"
       ]
+    },
+    {
+      "id": "narrowing-assignment",
+      "name": "Assignment with possible data loss",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "An assignment or an inline variable with a value whose type is wider than the target, without an explicit conversion: Int64 to Integer, NativeInt to Integer (Win64) and, via the option types, e.g. Double to Single or Extended to Double. Like W1071 (integers), W1072 (floating point) and W1066 (Extended to Double); the compiler shows W1071 only when switched on. Only reported when both types are known for certain (variables, fields, properties, function results, own aliases and integer arithmetic built from them); literals and explicit conversions stay silent. Off by default; medium confidence. Quick fixes: convert explicitly; widen the type of the target's declaration (single variable declared in the same file).",
+      "bad": "Anzahl := Strom.Size;  // Anzahl: Integer",
+      "good": "Anzahl := Integer(Strom.Size);",
+      "compilerCodes": [
+        "W1071",
+        "W1072",
+        "W1066"
+      ],
+      "options": [
+        {
+          "name": "types",
+          "type": "string-list",
+          "default": [
+            "Int64>Integer",
+            "NativeInt>Integer"
+          ],
+          "description": "Reported pairs source type>target type, e.g. Double>Single or Extended>Double."
+        }
+      ]
     }
   ]
 }

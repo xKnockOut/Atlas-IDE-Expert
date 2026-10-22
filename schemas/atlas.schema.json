@@ -227,6 +227,15 @@
                 "default": true,
                 "description": "Nur empty-statement: leere Blöcke begin … end mit Kommentar darin nicht melden (#912)."
               },
+              "types": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_.]*>[A-Za-z_][A-Za-z0-9_.]*$"
+                },
+                "default": ["Int64>Integer", "NativeInt>Integer"],
+                "description": "Nur narrowing-assignment: gemeldete Paare Quelltyp>Zieltyp, z. B. \"Double>Single\" oder \"Extended>Double\" (#1013)."
+              },
               "countNames": {
                 "type": "array",
                 "items": {

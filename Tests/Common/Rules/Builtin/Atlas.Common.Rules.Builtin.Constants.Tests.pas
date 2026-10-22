@@ -13,6 +13,9 @@
 // Rechnung mit Cardinal (W1023/W1024), Korrektur, Felder und Funktionen aus dem
 // Index, stille Fälle (Byte/Word, Cardinal mit Int64, Literale, Konstanten),
 // Abschalten.
+// narrowing-assignment (#1013): Beispiel Strom.Size aus dem Index, beide
+// Korrekturen, Inline-Variablen, Rechnungen, Aliase, Option types (Gleitkomma,
+// W1072/W1066), stille Fälle, standardmäßig aus, Abschalten.
 
 interface
 
@@ -77,6 +80,23 @@ type
     procedure OffGroupAndExclude;
   end;
 
+  [TestFixture]
+  TNarrowingAssignmentTests = class
+  public
+    [Test]
+    procedure IssueExample;
+    [Test]
+    procedure BothFixes;
+    [Test]
+    procedure InlineVariablesAndArithmetic;
+    [Test]
+    procedure TypesOption;
+    [Test]
+    procedure SafeAssignmentsAreSilent;
+    [Test]
+    procedure OffByDefaultGroupAndExclude;
+  end;
+
 implementation
 
 uses
@@ -86,6 +106,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Constants,
@@ -265,6 +286,11 @@ begin
     if Rule.Descriptor.Id = SignedUnsignedMixRuleId then
       Found := True;
   Assert.IsTrue(Found, SignedUnsignedMixRuleId);
+  Found := False;
+  for Rule in BuiltinRules do
+    if Rule.Descriptor.Id = NarrowingAssignmentRuleId then
+      Found := True;
+  Assert.IsTrue(Found, NarrowingAssignmentRuleId);
 end;
 
 /// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
@@ -544,9 +570,137 @@ begin
     '{"rules": {"signed-unsigned-mix": {"exclude": ["Source/*.pas"]}}}', 'Source/Mix.pas'))));
 end;
 
+{ TNarrowingAssignmentTests }
+
+const
+  NarrowingOn = '{"rules": {"narrowing-assignment": "warning"}}';
+
+/// <summary>Index mit der Unit Stroeme: TStrom.Size ist Int64, TStrom.Teil ein Double.</summary>
+function StreamIndex: ISymbolIndex;
+begin
+  Result := TSymbolIndex.Create;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit Stroeme;'#10'interface'#10'type'#10'  TStrom = class'#10 +
+    '  private'#10'    function GetSize: Int64;'#10'  public'#10'    Teil: Double;'#10 +
+    '    Genau: Extended;'#10'    property Size: Int64 read GetSize;'#10'  end;'#10'implementation'#10 +
+    'function TStrom.GetSize: Int64;'#10'begin'#10'  Result := 0;'#10'end;'#10'end.', 'C:\Projekt\Stroeme.pas',
+    nil));
+end;
+
+/// <summary>Unit, die Stroeme benutzt, mit den Variablen AVariables und den Anweisungen AStatements.</summary>
+function Lesen(const AVariables, AStatements: string): string;
+begin
+  Result := 'unit Lesen;'#10'interface'#10'uses'#10'  Stroeme;'#10'implementation'#10 +
+    'procedure Laden(Strom: TStrom);'#10'var'#10 + AVariables + 'begin'#10 + AStatements + 'end;'#10'end.';
+end;
+
+function NarrowingFindings(const ASource, AConfig: string): TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.IndexFindings(TNarrowingAssignmentRule.Create, ASource, StreamIndex, AConfig, 'Lesen.pas');
+end;
+
+function OnlyNarrowingMessage(const ASource: string): string;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := NarrowingFindings(ASource, NarrowingOn);
+  Assert.AreEqual(1, Integer(Length(Found)), ASource);
+  Result := Found[0].Message;
+end;
+
+procedure TNarrowingAssignmentTests.IssueExample;
+begin
+  Assert.AreEqual('Strom.Size ist Int64; die Zuweisung an Integer kann Daten verlieren (wie W1071).',
+    OnlyNarrowingMessage(Lesen('  Anzahl: Integer;'#10, '  Anzahl := Strom.Size;'#10)));
+  // Korrigierte Formen: ausdrücklich umgewandelt oder passender Zieltyp.
+  Assert.AreEqual(0, Integer(Length(NarrowingFindings(Lesen('  Anzahl: Integer;'#10'  Groesse: Int64;'#10,
+    '  Anzahl := Integer(Strom.Size);'#10'  Groesse := Strom.Size;'#10), NarrowingOn))));
+end;
+
+procedure TNarrowingAssignmentTests.BothFixes;
+var
+  Source: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Lesen('  Anzahl: Integer;'#10, '  Anzahl := Strom.Size;'#10);
+  Found := NarrowingFindings(Source, NarrowingOn);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(2, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('Ausdrücklich in Integer umwandeln', Found[0].Fixes[0].Title);
+  Assert.IsTrue(Pos('Anzahl := Integer(Strom.Size);', ApplyAll(Source, Found[0].Fixes[0])) > 0);
+  Assert.AreEqual('Zieltyp auf Int64 vergrößern', Found[0].Fixes[1].Title);
+  Assert.IsTrue(Pos('  Anzahl: Int64;', ApplyAll(Source, Found[0].Fixes[1])) > 0);
+  Assert.AreEqual(0, Integer(Length(NarrowingFindings(ApplyAll(Source, Found[0].Fixes[1]), NarrowingOn))));
+  // Mehrere Namen in einer Deklaration und Felder: nur die Umwandlung.
+  Found := NarrowingFindings(Lesen('  Anzahl, Rest: Integer;'#10, '  Anzahl := Strom.Size;'#10), NarrowingOn);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+end;
+
+procedure TNarrowingAssignmentTests.InlineVariablesAndArithmetic;
+begin
+  Assert.AreEqual('Strom.Size ist Int64; die Zuweisung an Integer kann Daten verlieren (wie W1071).',
+    OnlyNarrowingMessage(Lesen('', '  var Anzahl: Integer := Strom.Size;'#10)));
+  Assert.AreEqual('Strom.Size - Rest ist Int64; die Zuweisung an Integer kann Daten verlieren (wie W1071).',
+    OnlyNarrowingMessage(Lesen('  Anzahl, Rest: Integer;'#10, '  Anzahl := Strom.Size - Rest;'#10)));
+  Assert.AreEqual('(Strom.Size + 1) div 2 ist Int64; die Zuweisung an LongInt kann Daten verlieren (wie W1071).',
+    OnlyNarrowingMessage(Lesen('  Anzahl: LongInt;'#10, '  Anzahl := (Strom.Size + 1) div 2;'#10)));
+  // Eigener Alias auf Int64 als Quelle und auf Integer als Ziel.
+  Assert.AreEqual(1, Integer(Length(NarrowingFindings('unit Lesen;'#10'interface'#10'type'#10 +
+    '  TGroesse = Int64;'#10'  TZahl = Integer;'#10'implementation'#10'procedure Laden;'#10'var'#10 +
+    '  Groesse: TGroesse;'#10'  Zahl: TZahl;'#10'begin'#10'  Zahl := Groesse;'#10'end;'#10'end.', NarrowingOn))));
+end;
+
+procedure TNarrowingAssignmentTests.TypesOption;
+var
+  Source, Config: string;
+  Found: TArray<TRuleFinding>;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Lesen('  Anzahl: Integer;'#10'  Wert: Single;'#10'  Mittel: Double;'#10,
+    '  Anzahl := Strom.Size;'#10'  Wert := Strom.Teil;'#10'  Mittel := Strom.Genau;'#10);
+  Assert.AreEqual(1, Integer(Length(NarrowingFindings(Source, NarrowingOn))));
+  Config := '{"rules": {"narrowing-assignment": {"severity": "warning", "types": ["Double>Single", ' +
+    '"Extended>Double"]}}}';
+  Found := NarrowingFindings(Source, Config);
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('Strom.Teil ist Double; die Zuweisung an Single kann Daten verlieren (wie W1072).',
+    Found[0].Message);
+  Assert.AreEqual('Strom.Genau ist Extended; die Zuweisung an Double kann Daten verlieren (wie W1066).',
+    Found[1].Message);
+  // NativeInt>Integer gehört zur Vorgabe.
+  Assert.AreEqual(1, Integer(Length(NarrowingFindings(Lesen('  Zeiger: NativeInt;'#10'  Anzahl: Integer;'#10,
+    '  Anzahl := Zeiger;'#10), NarrowingOn))));
+  TConfigurationParser.Parse('{"rules": {"narrowing-assignment": {"types": "Int64>Integer"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"types" muss eine Liste von Texten sein', Issues[0].Message);
+end;
+
+procedure TNarrowingAssignmentTests.SafeAssignmentsAreSilent;
+begin
+  // Breiterer Zieltyp, Literale, Integer an Int64, Umwandlungen und unbekannte Typen.
+  Assert.AreEqual(0, Integer(Length(NarrowingFindings(Lesen('  Anzahl: Integer;'#10'  Groesse: Int64;'#10 +
+    '  Wert: Double;'#10'  Fremd: TUnbekannt;'#10, '  Groesse := Strom.Size;'#10'  Groesse := Anzahl;'#10 +
+    '  Anzahl := 5;'#10'  Wert := Strom.Size;'#10'  Anzahl := Integer(Strom.Size) + 1;'#10 +
+    '  Anzahl := Fremd;'#10'  Anzahl := Strom.Size div Fremd;'#10'  Wert := Strom.Teil;'#10), NarrowingOn))));
+end;
+
+procedure TNarrowingAssignmentTests.OffByDefaultGroupAndExclude;
+var
+  Source: string;
+begin
+  Source := Lesen('  Anzahl: Integer;'#10, '  Anzahl := Strom.Size;'#10);
+  Assert.AreEqual(0, Integer(Length(NarrowingFindings(Source, ''))));
+  Assert.AreEqual(1, Integer(Length(NarrowingFindings(Source, NarrowingOn))));
+  Assert.AreEqual(0, Integer(Length(NarrowingFindings(Source,
+    '{"rules": {"narrowing-assignment": "warning", "group:compiler": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(NarrowingFindings(Source,
+    '{"rules": {"narrowing-assignment": {"severity": "warning", "exclude": ["Lesen.pas"]}}}'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TConstantExpressionErrorTests);
   TDUnitX.RegisterTestFixture(TDefaultParameterInvalidTests);
   TDUnitX.RegisterTestFixture(TSignedUnsignedMixTests);
+  TDUnitX.RegisterTestFixture(TNarrowingAssignmentTests);
 
 end.
