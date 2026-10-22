@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 18 |
+| [Compiler vorab](#gruppe-compiler) | 19 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -149,6 +149,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`unit-name-mismatch`](#unit-name-mismatch) | Unit-Name passt nicht zum Dateinamen | Bug | Fehler |
 | [`text-after-final-end`](#text-after-final-end) | Text nach dem abschließenden end. | Code Smell | Warnung |
 | [`exports-invalid`](#exports-invalid) | exports-Klausel unzulässig | Bug | Fehler |
+| [`unit-name-conflict`](#unit-name-conflict) | Unit-Name kollidiert | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4624,4 +4625,29 @@ Richtig:
 exports
   Initialisieren,
   Berechnen;
+```
+
+<a id="unit-name-conflict"></a>
+### unit-name-conflict
+
+**Unit-Name kollidiert** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine Unit heißt wie eine für den Compiler reservierte Unit, System oder SysInit (wie E2272), oder {$NOINCLUDE X} nennt eine Unit, die der Compiler nicht kennt (wie E2242); dafür braucht die Regel die Unit-Suche des Projekts und schweigt ohne sichere Antwort. Die Quellen der RTL (source/rtl) prüft sie nicht. Nicht gemeldet: E2447, W1051 und X2421 gehören zu den Namensräumen der .NET-Metadaten, die dcc32/dcc64 nicht erzeugt; für E2399 nennt die Dokumentation keine Bedingung, und eine Unit Kunden neben Kunden.Daten übersetzt Delphi ohne Fehler (Spring.pas neben Spring.Collections.pas). Schnellkorrektur für {$NOINCLUDE}: eine ähnlich geschriebene bekannte Unit einsetzen.
+
+Entspricht der Compilermeldung `E2272`, `E2242`.
+
+Mit Treffer:
+
+```pascal
+unit System;
+
+interface
+```
+
+Richtig:
+
+```pascal
+unit Kunden.Systemdienste;
+
+interface
 ```

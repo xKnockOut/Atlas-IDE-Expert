@@ -12,6 +12,9 @@
 //                       E2276), einer Variablen, Konstanten oder eines Typs
 //                       (wie E2121) und derselbe Eintrag bzw. Exportname
 //                       zweimal (wie E2287).
+//   unit-name-conflict  Eine Unit heißt System oder SysInit (#1079, wie
+//                       E2272), oder {$NOINCLUDE X} nennt eine Unit, die die
+//                       Unit-Suche sicher nicht findet (wie E2242).
 //
 // Die Regeln lesen nur den Text der Datei und, für "in '…'", die genannte
 // Datei über TRuleContext.ReadFile. Ohne Dateinamen, ohne lesbare Datei und
@@ -20,7 +23,13 @@
 // schweigt, wenn der Parser Fehler meldet oder end. in einem {$IF…}-Zweig
 // steht. exports-invalid löst Namen nur gegen globale Deklarationen der
 // Datei auf; Namen aus anderen Units und Namen mit Punkt bleiben still,
-// ebenso zwei Einträge in sich ausschließenden {$IF…}-Zweigen. {$WARN UNIT_NAME_MISMATCH
+// ebenso zwei Einträge in sich ausschließenden {$IF…}-Zweigen.
+// unit-name-conflict schweigt in den Quellen der RTL (source/rtl), wo System
+// und SysInit zu Hause sind. Die Codes E2399, E2447, W1051 und X2421 aus #1079
+// meldet sie nicht: E2447, W1051 und X2421 gehören zu den Namensräumen der
+// .NET-Metadaten, die dcc32/dcc64 nicht erzeugt; für E2399 nennt die
+// docwiki keine Bedingung, und eine Unit Kunden neben Kunden.Daten übersetzt
+// Delphi ohne Fehler (Spring.pas neben Spring.Collections.pas, Atlas selbst). {$WARN UNIT_NAME_MISMATCH
 // OFF} und {$WARNINGS OFF} vor dem Unit-Namen schalten W1038 wie beim
 // Compiler ab.
 
@@ -36,6 +45,7 @@ const
   UnitNameMismatchRuleId = 'unit-name-mismatch';
   TextAfterFinalEndRuleId = 'text-after-final-end';
   ExportsInvalidRuleId = 'exports-invalid';
+  UnitNameConflictRuleId = 'unit-name-conflict';
 
 type
 {$SCOPEDENUMS ON}
@@ -96,6 +106,12 @@ type
     /// <summary>Einträge der Klausel zwischen den Token-Indizes AFirst (exports) und ALast (Semikolon).</summary>
     class function Entries(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): TArray<TExportEntry>;
       static;
+  end;
+
+  TUnitNameConflictRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
 /// <summary>Ist die Warnung AName ({$WARN AName …}) an AOffset eingeschaltet? Wertet {$WARN AName ON|OFF|ERROR|
@@ -699,11 +715,63 @@ begin
     end;
 end;
 
+{ TUnitNameConflictRule }
+
+function TUnitNameConflictRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(UnitNameConflictRuleId, TRuleSeverity.Error,
+    'Unit-Name kollidiert (wie E2272, E2242)');
+end;
+
+procedure TUnitNameConflictRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Header: TModuleHeader;
+  Path, Body, Name, Suggestion: string;
+  Token: TPascalToken;
+  At: Integer;
+  Range: TTextRange;
+  Fixes: TArray<TRuleFix>;
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Header := TModuleHeader.Read(Tokens);
+  Path := StringReplace(AContext.FileName + '|' + AContext.RelativePath, '\', '/', [rfReplaceAll]);
+  if (Header.Kind = TModuleKind.UnitModule) and MatchText(Header.Name, ['System', 'SysInit']) and
+    not ContainsText(Path, 'source/rtl/') then
+    AReport.Add(RangeOf(Tokens, Header.First, Header.Last), Format('Der Unit-Name %s ist für den Compiler ' +
+      'reserviert (wie E2272).', [Header.Name]), TRuleConfidence.High);
+  // {$NOINCLUDE X} braucht eine Unit, die der Compiler kennt.
+  if AContext.Units = nil then
+    Exit;
+  for Token in Tokens do
+  begin
+    if (Token.Kind <> TPascalTokenKind.Directive) or (TPascalLexer.DirectiveName(Token.Text) <> 'NOINCLUDE') then
+      Continue;
+    Body := TDirectiveNames.Body(Token.Text);
+    Name := Trim(Copy(Body, Length(TDirectiveNames.LeadingName(Body)) + 1, MaxInt));
+    if not IsQualifiedName(Name) or (Token.StartPos.Line <> Token.EndPos.Line) then
+      Continue;
+    if AContext.Units.Find(Name, '', AContext.FileName, [TRuleUnitSource.Project]) <> TRuleUnitAnswer.Missing then
+      Continue;
+    At := Pos(Name, Token.Text);
+    Range := TTextRange.Create(Token.StartPos.Line, Token.StartPos.Character + At - 1, Token.StartPos.Line,
+      Token.StartPos.Character + At - 1 + Length(Name));
+    Fixes := nil;
+    for Suggestion in TUsesUnitNotFoundRule.Suggestions(Name, AContext.Units.KnownUnits([TRuleUnitSource.Project])) do
+      Fixes := Fixes + [TRuleFix.Create(Format('%s verwenden', [Suggestion]), [TRuleEdit.Create(Range, Suggestion)])];
+    AReport.Add(Range, Format('{$NOINCLUDE %s}: %s ist keine bekannte Unit (wie E2242).', [Name, Name]),
+      TRuleConfidence.High, Fixes);
+  end;
+end;
+
 procedure RegisterUnitRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TUnitNameMismatchRule.Create);
   ARegistry.Register(TTextAfterFinalEndRule.Create);
   ARegistry.Register(TExportsInvalidRule.Create);
+  ARegistry.Register(TUnitNameConflictRule.Create);
 end;
 
 end.

@@ -4164,3 +4164,17 @@ Voraussetzung: Server läuft in der IDE; eine Bibliothek (`library`) mit zwei ex
 | XP7 | Überladene Routinen mit Parameterliste und eigenem `name`, Einträge in `{$IFDEF}`/`{$ELSE}` | Keine Meldung |
 | XP8 | `"exports-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | XP9 | Abgleich mit Delphi: XP1, XP3–XP6 übersetzen | dcc meldet E2287, E2276, E2121 bzw. E2191 an denselben Stellen, für XP7 nichts (E2287 ist laut docwiki „nicht verwendet“; bitte prüfen, was dcc bei XP1 tatsächlich meldet) |
+
+## Unit-Name kollidiert (#1079)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; Unit-Suche kennt die Bibliothekspfade.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NK1 | Neue Unit `System.pas` mit `unit System;` | Fehler `unit-name-conflict` am Unit-Namen: „Der Unit-Name System ist für den Compiler reserviert (wie E2272).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| NK2 | Wie NK1 mit `unit SysInit;` | Dieselbe Meldung für SysInit |
+| NK3 | `System.pas` der RTL öffnen (`source\rtl\sys`) | Keine Meldung |
+| NK4 | `{$NOINCLUDE Kunden.Datn}` in einer Unit, im Projekt gibt es `Kunden.Daten` | „{$NOINCLUDE Kunden.Datn}: Kunden.Datn ist keine bekannte Unit (wie E2242).“; Korrektur „Kunden.Daten verwenden“, ein Undo-Schritt |
+| NK5 | Das Beispiel aus #1079: `unit Kunden;` neben `Kunden.Daten.pas` und `Kunden.Ansicht.pas` | Keine Meldung; Delphi übersetzt das ohne E2399 (bitte gegenprüfen) |
+| NK6 | `"unit-name-conflict": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| NK7 | Abgleich mit Delphi: NK1, NK4 und NK5 übersetzen | dcc meldet E2272 bzw. E2242 an denselben Stellen, für NK5 nichts |

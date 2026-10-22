@@ -2345,6 +2345,20 @@
         "E2121",
         "E2287"
       ]
+    },
+    {
+      "id": "unit-name-conflict",
+      "name": "Unit name conflicts",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A unit is named like a unit reserved for the compiler, System or SysInit (like E2272), or {$NOINCLUDE X} names a unit the compiler does not know (like E2242); the latter needs the project's unit search and stays silent when it gives no sure answer. The RTL sources (source/rtl) are not checked. Not reported: E2447, W1051 and X2421 belong to the namespaces of .NET metadata, which dcc32/dcc64 do not create; for E2399 the documentation gives no condition, and a unit Kunden next to Kunden.Daten compiles without error in Delphi (Spring.pas next to Spring.Collections.pas). Quick fix for {$NOINCLUDE}: use a similarly spelled known unit.",
+      "bad": "unit System;\n\ninterface",
+      "good": "unit Kunden.Systemdienste;\n\ninterface",
+      "compilerCodes": [
+        "E2272",
+        "E2242"
+      ]
     }
   ]
 }
