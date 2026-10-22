@@ -2332,6 +2332,19 @@
           "description": "Allow a single statement on the same line as the condition or loop header."
         }
       ]
+    },
+    {
+      "id": "inherited-constructor-after-try",
+      "name": "Inherited constructor only inside try",
+      "category": "bug",
+      "severity": "hint",
+      "group": "compiler",
+      "description": "A constructor enters a try block before it has called the inherited constructor (like H2505). Self is not initialised there yet; an exception in the block can hit half-created fields. Calls count as the inherited constructor when they are inherited without a name, with the constructor's own name or with a name starting with Create. Branches of {$IFDEF} are checked separately. Quick fix when the call is the first statement of the try block: move it before try.",
+      "bad": "constructor TDienst.Create;\nbegin\n  try\n    inherited Create;\n    FListe := TList<TAuftrag>.Create;",
+      "good": "constructor TDienst.Create;\nbegin\n  inherited Create;\n  try\n    FListe := TList<TAuftrag>.Create;",
+      "compilerCodes": [
+        "H2505"
+      ]
     }
   ]
 }

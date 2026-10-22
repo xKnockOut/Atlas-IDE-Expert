@@ -1177,6 +1177,11 @@
           "description": "Eine einzelne Anweisung in derselben Zeile wie Bedingung bzw. Schleifenkopf erlauben."
         }
       ]
+    },
+    {
+      "id": "inherited-constructor-after-try",
+      "name": "Geerbter Konstruktor erst im try-Block",
+      "description": "Ein Konstruktor betritt einen try-Block, bevor er den geerbten Konstruktor aufgerufen hat (wie H2505). Self ist dort noch nicht initialisiert; eine Exception im Block kann auf halb erzeugte Felder treffen. Als geerbter Konstruktor gilt inherited ohne Namen, mit dem Namen des Konstruktors oder mit einem Namen, der mit Create beginnt. Zweige von {$IFDEF} werden getrennt geprüft. Korrektur, wenn der Aufruf die erste Anweisung im try-Block ist: vor try ziehen."
     }
   ]
 }

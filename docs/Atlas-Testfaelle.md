@@ -4134,3 +4134,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; `missing-begin-end` steht a
 | BB6 | In `atlas.json` `"missing-begin-end": {"statements": ["case"]}`, dann `{"allowSingleLineExit": true}` und `{"allowSameLine": true}` | Nur case-Zweige ohne Block („case-Zweig ohne begin … end“); dann kein Befund mehr für `if A then Exit;` in einer Zeile; dann keiner für eine Anweisung in derselben Zeile |
 | BB7 | `"redundant-begin-end": "hint"` setzen, `if A then begin Save; end;` | Keine Meldung von `redundant-begin-end`, solange `missing-begin-end` an ist; Seite Prüfregeln zeigt bei `redundant-begin-end` „Wird durch missing-begin-end übersteuert …“. Mit `"missing-begin-end": "off"` meldet `redundant-begin-end` wieder |
 | BB8 | `"missing-begin-end": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
+
+## Geerbter Konstruktor erst im try-Block (#1027)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; `inherited-constructor-after-try` steht auf der Vorgabe (Hinweis).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IK1 | Das Beispiel aus #1027 (`constructor TDienst.Create; begin try inherited Create; FListe := TList<TAuftrag>.Create; …`) | Hinweis `inherited-constructor-after-try` an `try`: „try vor dem Aufruf des geerbten Konstruktors; Self ist noch nicht initialisiert (wie H2505).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover mit „wie H2505“ |
+| IK2 | Projekt bauen | Der Compiler meldet H2505 an derselben Stelle; Fenster zeigt Quelle „Atlas + dcc“ |
+| IK3 | Alt+Enter: „inherited Create vor try ziehen“, danach Strg+Z | Code wie im Issue nach der Korrektur, `inherited Create;` in eigener Zeile vor `try`; übersetzt ohne H2505; ein Undo-Schritt |
+| IK4 | `try inherited; …` in einer Zeile, dann `try FListe := nil; inherited Create; …` | Erster Fall mit Korrektur (`inherited;` vor `try`); zweiter Fall gemeldet, aber ohne Korrektur |
+| IK5 | Verschachtelte `try`-Blöcke mit `inherited Create` im inneren | Nur das äußere `try` gemeldet |
+| IK6 | `{$IFDEF ALT} try inherited Create; finally end; {$ELSE} inherited Create; try finally end; {$ENDIF}` | Eine Meldung im ALT-Zweig, keine im anderen |
+| IK7 | `inherited Create;` vor `try`; `try … inherited Laden; …`; `try` in eingebetteter Prozedur oder anonymer Methode; `class constructor`; Methode statt Konstruktor | Keine Meldung |
+| IK8 | `"inherited-constructor-after-try": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |

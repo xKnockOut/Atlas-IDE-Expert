@@ -48,6 +48,14 @@ type
     procedure ReraiseSilentCases;
     [Test]
     procedure ReraiseOffAndExclude;
+    [Test]
+    procedure InheritedConstructorIssueExample;
+    [Test]
+    procedure InheritedConstructorVariants;
+    [Test]
+    procedure InheritedConstructorSilentCases;
+    [Test]
+    procedure InheritedConstructorOffAndExclude;
   end;
 
 implementation
@@ -363,6 +371,104 @@ begin
     '{"rules": {"reraise-exception-object": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, Source,
     '{"rules": {"reraise-exception-object": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
+end;
+
+function Dienst(const ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  TDienst = class(TBasis)'#10'  private'#10 +
+    '    FListe: TObject;'#10'  public'#10'    constructor Create;'#10'  end;'#10'implementation'#10 +
+    'constructor TDienst.Create;'#10'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+procedure TExceptionRulesTests.InheritedConstructorIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Dienst('  try'#10'    inherited Create;'#10'    FListe := TObject.Create;'#10'  except'#10 +
+    '    FListe.Free;'#10'    raise;'#10'  end;'#10);
+  Findings := TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('inherited-constructor-after-try', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('try vor dem Aufruf des geerbten Konstruktors; Self ist noch nicht initialisiert (wie H2505).',
+    Findings[0].Message);
+  Assert.AreEqual(12, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(5, Findings[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('inherited Create vor try ziehen', Findings[0].Fixes[0].Title);
+  Assert.IsTrue(Findings[0].Fixes[0].Safe);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Dienst('  inherited Create;'#10'  try'#10'    FListe := TObject.Create;'#10'  except'#10 +
+    '    FListe.Free;'#10'    raise;'#10'  end;'#10), Fixed);
+  TRuleAssert.Silent(TInheritedConstructorAfterTryRule.Create, Fixed);
+end;
+
+procedure TExceptionRulesTests.InheritedConstructorVariants;
+var
+  Findings: TArray<TRuleFinding>;
+  Fixed: string;
+begin
+  // inherited ohne Namen, auf derselben Zeile wie try.
+  Findings := TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create,
+    Dienst('  try inherited;'#10'    FListe := TObject.Create;'#10'  finally'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('inherited vor try ziehen', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Dienst('  try inherited;'#10'    FListe := TObject.Create;'#10 +
+    '  finally'#10'  end;'#10), Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Dienst('  inherited;'#10'  try'#10'    FListe := TObject.Create;'#10'  finally'#10'  end;'#10),
+    Fixed);
+  // Nicht die erste Anweisung: Meldung ohne Korrektur.
+  Findings := TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create,
+    Dienst('  try'#10'    FListe := nil;'#10'    inherited Create;'#10'  finally'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Mit Argumenten, CreateNeu; verschachtelt nur das äußere try.
+  Findings := TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create,
+    Dienst('  try'#10'    try'#10'      inherited CreateNeu(nil);'#10'    finally'#10'    end;'#10 +
+    '  except'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(12, Findings[0].Range.StartPos.Line);
+  // {$IFDEF}: Nur der Zweig, in dem inherited im try steht.
+  Findings := TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create,
+    Dienst('{$IFDEF ALT}'#10'  try'#10'    inherited Create;'#10'  finally'#10'  end;'#10'{$ELSE}'#10 +
+    '  inherited Create;'#10'  try'#10'  finally'#10'  end;'#10'{$ENDIF}'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(13, Findings[0].Range.StartPos.Line);
+end;
+
+procedure TExceptionRulesTests.InheritedConstructorSilentCases;
+begin
+  // Korrekte Form, kein inherited, anderer geerbter Aufruf, inherited vor try im anderen Zweig.
+  TRuleAssert.Silent(TInheritedConstructorAfterTryRule.Create, Dienst('  inherited Create;'#10'  try'#10 +
+    '    FListe := TObject.Create;'#10'  except'#10'    raise;'#10'  end;'#10));
+  TRuleAssert.Silent(TInheritedConstructorAfterTryRule.Create, Dienst('  try'#10 +
+    '    FListe := TObject.Create;'#10'  finally'#10'  end;'#10));
+  TRuleAssert.Silent(TInheritedConstructorAfterTryRule.Create, Dienst('  inherited Create;'#10'  try'#10 +
+    '    inherited Laden;'#10'  finally'#10'  end;'#10));
+  TRuleAssert.Silent(TInheritedConstructorAfterTryRule.Create, Dienst('{$IFDEF ALT}'#10 +
+    '  inherited Create;'#10'{$ELSE}'#10'  inherited Create(nil);'#10'{$ENDIF}'#10'  try'#10 +
+    '    inherited Laden;'#10'  finally'#10'  end;'#10));
+  // try in eingebetteter Routine und anonymer Methode, Methode statt Konstruktor, class constructor.
+  TRuleAssert.Silent(TInheritedConstructorAfterTryRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'constructor TDienst.Create;'#10'  procedure Pruefen;'#10'  begin'#10'    try'#10'    finally'#10'    end;'#10 +
+    '  end;'#10'begin'#10'  FAufgabe := procedure'#10'    begin'#10'      try'#10'      finally'#10'      end;'#10 +
+    '    end;'#10'  inherited Create;'#10'end;'#10'procedure TDienst.Neu;'#10'begin'#10'  try'#10 +
+    '    inherited Create;'#10'  finally'#10'  end;'#10'end;'#10'class constructor TDienst.Create;'#10'begin'#10 +
+    '  try'#10'    inherited;'#10'  finally'#10'  end;'#10'end;'#10'end.');
+end;
+
+procedure TExceptionRulesTests.InheritedConstructorOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Dienst('  try'#10'    inherited Create;'#10'  finally'#10'  end;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create, Source,
+    '{"rules": {"inherited-constructor-after-try": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create, Source,
+    '{"rules": {"inherited-constructor-after-try": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
 end;
 
 initialization
