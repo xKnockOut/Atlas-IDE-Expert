@@ -2352,6 +2352,19 @@ begin
     '          "description": "Allow a single statement on the same line as the condition or loop header."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inherited-constructor-after-try",' + #10 +
+    '      "name": "Inherited constructor only inside try",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A constructor enters a try block before it has called the inherited constructor (like H2505). Self is not initialised there yet; an exception in the block can hit half-created fi' + 'elds. Calls count as the inherited constructor when they are inherited without a name, with the constructor''s own name or with a name starting with Create. Branches of {$IFDEF} are checked separately.' + ' Quick fix when the call is the first statement of the try block: move it before try.",' + #10 +
+    '      "bad": "constructor TDienst.Create;\nbegin\n  try\n    inherited Create;\n    FListe := TList<TAuftrag>.Create;",' + #10 +
+    '      "good": "constructor TDienst.Create;\nbegin\n  inherited Create;\n  try\n    FListe := TList<TAuftrag>.Create;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "H2505"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3541,6 +3554,11 @@ begin
     '          "description": "Eine einzelne Anweisung in derselben Zeile wie Bedingung bzw. Schleifenkopf erlauben."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inherited-constructor-after-try",' + #10 +
+    '      "name": "Geerbter Konstruktor erst im try-Block",' + #10 +
+    '      "description": "Ein Konstruktor betritt einen try-Block, bevor er den geerbten Konstruktor aufgerufen hat (wie H2505). Self ist dort noch nicht initialisiert; eine Exception im Block kann auf ha' + 'lb erzeugte Felder treffen. Als geerbter Konstruktor gilt inherited ohne Namen, mit dem Namen des Konstruktors oder mit einem Namen, der mit Create beginnt. Zweige von {$IFDEF} werden getrennt geprüft' + '. Korrektur, wenn der Aufruf die erste Anweisung im try-Block ist: vor try ziehen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

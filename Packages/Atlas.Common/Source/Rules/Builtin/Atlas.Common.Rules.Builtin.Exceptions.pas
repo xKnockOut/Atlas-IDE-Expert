@@ -8,6 +8,9 @@
 //   exception-in-destructor     raise in einem Destruktor, das kein except im Destruktor abfängt (#927)
 //   except-handler-order        on-Handler, der nie erreicht wird, weil ein früherer die Klasse schon fängt (#957)
 //   reraise-exception-object    raise E im Handler statt raise; (#958)
+//   inherited-constructor-after-try  try im Konstruktor vor dem geerbten Konstruktor, Self noch nicht
+//                               initialisiert (wie H2505, #1027); ergänzt missing-inherited. Zweige von
+//                               {$IFDEF}, die sich ausschließen, zählen nicht gegeneinander
 // Der leere except-Block bleibt bei empty-except (#56).
 
 interface
@@ -55,6 +58,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TInheritedConstructorAfterTryRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 /// <summary>Registriert die Exception-Regeln.</summary>
 procedure RegisterExceptionRules(const ARegistry: TRuleRegistry);
 
@@ -68,6 +77,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance;
 
@@ -753,6 +763,195 @@ begin
   end;
 end;
 
+{ TInheritedConstructorAfterTryRule }
+
+function TInheritedConstructorAfterTryRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('inherited-constructor-after-try', TRuleSeverity.Hint,
+    'Geerbter Konstruktor erst nach try');
+end;
+
+/// <summary>Erstes Token ab AOffset (die Tokens sind nach Offset sortiert).</summary>
+function TokenAtOffset(const ATokens: TTokens; AOffset: Integer): Integer;
+var
+  Upper, Middle: Integer;
+begin
+  Result := 0;
+  Upper := Length(ATokens);
+  while Result < Upper do
+  begin
+    Middle := (Result + Upper) div 2;
+    if ATokens[Middle].Offset < AOffset then
+      Result := Middle + 1
+    else
+      Upper := Middle;
+  end;
+end;
+
+/// <summary>Knoten unter ARoot in Quelltextreihenfolge, ohne Rekursion (#1094). Mit ASkipRoutines ohne
+/// eingebettete Routinen und anonyme Methoden.</summary>
+function NodesBelow(ARoot: TSyntaxNode; ASkipRoutines: Boolean): TArray<TSyntaxNode>;
+var
+  Stack: TArray<TSyntaxNode>;
+  Count, Index, Found: Integer;
+  Node: TSyntaxNode;
+begin
+  SetLength(Result, 64);
+  Found := 0;
+  SetLength(Stack, 64);
+  Stack[0] := ARoot;
+  Count := 1;
+  while Count > 0 do
+  begin
+    Dec(Count);
+    Node := Stack[Count];
+    if Found = Length(Result) then
+      SetLength(Result, 2 * Found);
+    Result[Found] := Node;
+    Inc(Found);
+    if Count + Node.ChildCount > Length(Stack) then
+      SetLength(Stack, 2 * (Count + Node.ChildCount));
+    for Index := Node.ChildCount - 1 downto 0 do
+      if not ASkipRoutines or not (Node[Index].Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
+      begin
+        Stack[Count] := Node[Index];
+        Inc(Count);
+      end;
+  end;
+  SetLength(Result, Found);
+end;
+
+procedure TInheritedConstructorAfterTryRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+const
+  Message = 'try vor dem Aufruf des geerbten Konstruktors; Self ist noch nicht initialisiert (wie H2505).';
+var
+  Tokens: TTokens;
+  Paths, Lines: TArray<string>;
+  LineBreak: string;
+
+  function PathOf(ANode: TSyntaxNode): string;
+  begin
+    Result := TConditionalBranches.PathAt(Paths, TokenAtOffset(Tokens, ANode.StartOffset));
+  end;
+
+  function IsConstructor(ARoutine: TSyntaxNode): Boolean;
+  var
+    Head: string;
+  begin
+    // class constructor ruft kein inherited auf; dort gibt es kein Self.
+    Head := TrimLeft(Copy(AContext.Text, ARoutine.StartOffset + 1, Length('constructor') + 1));
+    Result := StartsText('constructor', Head) and (Length(Head) > Length('constructor')) and
+      CharInSet(Head[Length('constructor') + 1], [' ', #9, #10, #13]);
+  end;
+
+  // inherited ohne Namen, mit dem eigenen Namen oder Create…: der geerbte Konstruktor.
+  function IsConstructorCall(ANode: TSyntaxNode; const AOwn: string): Boolean;
+  begin
+    Result := (ANode.Kind = TSyntaxKind.InheritedExpr) and ((ANode.Name = '') or SameText(ANode.Name, AOwn) or
+      StartsText('Create', ANode.Name));
+  end;
+
+  // Korrektur, wenn der Aufruf die erste Anweisung des try-Teils ist: vor try ziehen.
+  function MoveBeforeTry(ATry, ACall: TSyntaxNode): TArray<TRuleFix>;
+  var
+    Statement: TSyntaxNode;
+    TryToken, Last, Semicolon: Integer;
+    Text, Before: string;
+    Removal: TTextRange;
+  begin
+    Result := nil;
+    Statement := ACall;
+    while (Statement <> nil) and (Statement.Parent <> ATry) do
+      Statement := Statement.Parent;
+    if (Statement = nil) or (ATry.ChildCount = 0) or (ATry[0] <> Statement) or
+      (Statement.Kind <> TSyntaxKind.CallStatement) then
+      Exit;
+    TryToken := TokenAtOffset(Tokens, ATry.StartOffset);
+    // Kommentare zwischen try und Aufruf gingen mit dem Verschieben verloren.
+    if (TryToken + 1 > High(Tokens)) or (Tokens[TryToken + 1].Offset <> Statement.StartOffset) then
+      Exit;
+    Last := PreviousCode(Tokens, TokenAtOffset(Tokens, Statement.EndOffset));
+    Semicolon := NextCode(Tokens, Last + 1);
+    Removal := TTextRange.Create(Tokens[TryToken].EndPos, Tokens[Last].EndPos);
+    if (Semicolon <= High(Tokens)) and Tokens[Semicolon].IsSymbol(';') then
+      Removal.EndPos := Tokens[Semicolon].EndPos;
+    Text := Copy(AContext.Text, Statement.StartOffset + 1, Statement.EndOffset - Statement.StartOffset);
+    Before := Trim(Copy(Lines[Tokens[TryToken].StartPos.Line], 1, Tokens[TryToken].StartPos.Character));
+    if Before = '' then
+      Text := Text + ';' + LineBreak + TTextLines.IndentOf(Lines[Tokens[TryToken].StartPos.Line])
+    else
+      Text := Text + '; ';
+    Result := [TRuleFix.Create(Format('%s vor try ziehen', [Trim(Copy(AContext.Text, ACall.StartOffset + 1,
+      ACall.EndOffset - ACall.StartOffset))]), [TRuleEdit.Create(TTextRange.Create(Tokens[TryToken].StartPos,
+      Tokens[TryToken].StartPos), Text), TRuleEdit.Create(Removal, '')], True)];
+  end;
+
+  procedure CheckConstructor(ARoutine: TSyntaxNode);
+  var
+    Body, Node, Call, After: TSyntaxNode;
+    Own, TryPath: string;
+    Calls, Trys, Reported: TArray<TSyntaxNode>;
+    Earlier, Shadowed: Boolean;
+  begin
+    Body := ARoutine.FindChild(TSyntaxKind.Block);
+    if Body = nil then
+      Exit;
+    Own := ARoutine.Name;
+    if LastDelimiter('.', Own) > 0 then
+      Own := Copy(Own, LastDelimiter('.', Own) + 1, MaxInt);
+    Calls := nil;
+    Trys := nil;
+    for Node in NodesBelow(Body, True) do
+      if IsConstructorCall(Node, Own) then
+        Calls := Calls + [Node]
+      else if Node.Kind = TSyntaxKind.TryStatement then
+        Trys := Trys + [Node];
+    if (Calls = nil) or (Trys = nil) then
+      Exit;
+    Reported := nil;
+    for Node in Trys do
+    begin
+      // Zweige von {$IFDEF}, die sich ausschließen, zählen nicht gegeneinander.
+      TryPath := PathOf(Node);
+      Earlier := False;
+      After := nil;
+      for Call in Calls do
+      begin
+        if TConditionalBranches.Exclusive(TryPath, PathOf(Call)) then
+          Continue;
+        if Call.StartOffset < Node.StartOffset then
+          Earlier := True
+        else if After = nil then
+          After := Call;
+      end;
+      if Earlier or (After = nil) then
+        Continue;
+      // Gemeldet wird das erste try; ein späteres nur in einem anderen Zweig.
+      Shadowed := False;
+      for Call in Reported do
+        if not TConditionalBranches.Exclusive(TryPath, PathOf(Call)) then
+          Shadowed := True;
+      if Shadowed then
+        Continue;
+      Reported := Reported + [Node];
+      AReport.Add(TTextRange.Create(Node.StartPos, TTextPosition.Create(Node.StartPos.Line,
+        Node.StartPos.Character + Length('try'))), Message, TRuleConfidence.High, MoveBeforeTry(Node, After));
+    end;
+  end;
+
+var
+  Node: TSyntaxNode;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Paths := TConditionalBranches.Paths(Tokens);
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  for Node in NodesBelow(AContext.Tree.Root, False) do
+    if (Node.Kind = TSyntaxKind.RoutineDecl) and IsConstructor(Node) then
+      CheckConstructor(Node);
+end;
+
 procedure RegisterExceptionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TGenericExceptionRaisedRule.Create);
@@ -761,6 +960,7 @@ begin
   ARegistry.Register(TExceptionInDestructorRule.Create);
   ARegistry.Register(TExceptHandlerOrderRule.Create);
   ARegistry.Register(TReraiseExceptionObjectRule.Create);
+  ARegistry.Register(TInheritedConstructorAfterTryRule.Create);
 end;
 
 end.

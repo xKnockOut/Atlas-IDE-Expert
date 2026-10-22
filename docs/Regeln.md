@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 15 |
+| [Compiler vorab](#gruppe-compiler) | 16 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -146,6 +146,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`property-accessor-invalid`](#property-accessor-invalid) | Getter oder Setter einer Property ungültig | Bug | Fehler |
 | [`assign-to-property-member`](#assign-to-property-member) | Zuweisung an ein Feld eines Property-Records | Bug | Fehler |
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
+| [`inherited-constructor-after-try`](#inherited-constructor-after-try) | Geerbter Konstruktor erst im try-Block | Bug | Hinweis |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4578,4 +4579,33 @@ else
 begin
   Speichern(Kunde);
 end;
+```
+
+<a id="inherited-constructor-after-try"></a>
+### inherited-constructor-after-try
+
+**Geerbter Konstruktor erst im try-Block** · Bug · Hinweis · Gruppe Compiler vorab
+
+Ein Konstruktor betritt einen try-Block, bevor er den geerbten Konstruktor aufgerufen hat (wie H2505). Self ist dort noch nicht initialisiert; eine Exception im Block kann auf halb erzeugte Felder treffen. Als geerbter Konstruktor gilt inherited ohne Namen, mit dem Namen des Konstruktors oder mit einem Namen, der mit Create beginnt. Zweige von {$IFDEF} werden getrennt geprüft. Korrektur, wenn der Aufruf die erste Anweisung im try-Block ist: vor try ziehen.
+
+Entspricht der Compilermeldung `H2505`.
+
+Mit Treffer:
+
+```pascal
+constructor TDienst.Create;
+begin
+  try
+    inherited Create;
+    FListe := TList<TAuftrag>.Create;
+```
+
+Richtig:
+
+```pascal
+constructor TDienst.Create;
+begin
+  inherited Create;
+  try
+    FListe := TList<TAuftrag>.Create;
 ```
