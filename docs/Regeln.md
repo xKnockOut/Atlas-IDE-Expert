@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 36 |
+| [Fehler finden](#gruppe-find-bugs) | 37 |
 | [Exceptions](#gruppe-exceptions) | 5 |
 | [Threads](#gruppe-threads) | 6 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -60,6 +60,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`field-free-without-nil`](#field-free-without-nil) | Feld freigegeben, Verweis bleibt stehen | Bug | Warnung |
 | [`missing-inherited`](#missing-inherited) | Konstruktor oder Destruktor ohne inherited | Bug | Warnung |
 | [`destroy-called-directly`](#destroy-called-directly) | Destroy statt Free aufgerufen | Bug | Warnung |
+| [`managed-type-raw-memory`](#managed-type-raw-memory) | FillChar, Move oder GetMem auf verwaltete Typen | Bug | Fehler |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -2736,4 +2737,23 @@ Richtig:
 
 ```pascal
 Verbindung.Free;
+```
+
+<a id="managed-type-raw-memory"></a>
+### managed-type-raw-memory
+
+**FillChar, Move oder GetMem auf verwaltete Typen** · Bug · Fehler · Gruppe Fehler finden
+
+FillChar, ZeroMemory, FillMemory, Move, CopyMemory, GetMem oder FreeMem auf eine Variable, deren Typ Strings, Interfaces, dynamische Arrays oder Variants enthält (Records, statische Arrays und Aliasse werden in der Datei und im Index aufgelöst). Referenzzähler werden überschrieben oder übergangen: Lecks, doppelte Freigabe, Zugriffsverletzungen. Geprüft werden nur einfache Variablen (X, @X, P^); Array-Elemente wie S[1] und Typen, die sich nicht auflösen lassen, bleiben still. Konfidenz hoch. Schnellkorrekturen: aus FillChar(X, SizeOf(X), 0) wird X := Default(T), aus Move(A, B, SizeOf(T)) wird B := A, aus GetMem(P, SizeOf(T)) wird New(P) und aus FreeMem(P) wird Dispose(P); sonst helfen Initialize und Finalize.
+
+Mit Treffer:
+
+```pascal
+FillChar(Adresse, SizeOf(Adresse), 0);
+```
+
+Richtig:
+
+```pascal
+Adresse := Default(TAdresse);
 ```

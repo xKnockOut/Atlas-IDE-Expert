@@ -1,7 +1,9 @@
 ﻿unit Atlas.Common.Rules.Builtin.RtlTypePatterns.Tests;
 
 // Tests für die typbasierten Regeln zu RTL-Mustern aus #153, Stufe 2, und
-// für die deklarierten Typen, auf denen sie aufbauen.
+// für die deklarierten Typen, auf denen sie aufbauen; zuletzt
+// managed-type-raw-memory (#921) mit Records, Aliassen, Zeigern, Index und
+// Korrekturen.
 
 interface
 
@@ -28,6 +30,16 @@ type
     procedure FormatWithoutSettings;
     [Test]
     procedure LocaleSpecifiers;
+    [Test]
+    procedure ManagedRawMemoryIssueExample;
+    [Test]
+    procedure ManagedRawMemoryKinds;
+    [Test]
+    procedure ManagedRawMemoryMoveAndPointers;
+    [Test]
+    procedure ManagedRawMemorySilentCases;
+    [Test]
+    procedure ManagedRawMemoryOffAndExclude;
   end;
 
 implementation
@@ -41,6 +53,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
+  Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
 function InRoutine(const AVars, ABody: string): string;
@@ -163,6 +176,120 @@ begin
   Assert.IsTrue(TFormatWithoutSettingsRule.HasLocaleSpecifier('%m'));
   Assert.IsFalse(TFormatWithoutSettingsRule.HasLocaleSpecifier('%d %s %x'));
   Assert.IsFalse(TFormatWithoutSettingsRule.HasLocaleSpecifier('100%% fertig'));
+end;
+
+function WithTypes(const ATypes, AVars, ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10 + ATypes + #10'implementation'#10'procedure P;'#10'var'#10 +
+    AVars + #10'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+const
+  Adresse = '  TAdresse = record'#10'    Strasse: string;'#10'    Ort: string;'#10'  end;'#10 +
+    '  PAdresse = ^TAdresse;'#10'  TPunkt = record'#10'    X, Y: Integer;'#10'  end;';
+
+procedure TRtlTypePatternRulesTests.ManagedRawMemoryIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := WithTypes(Adresse, '  Adresse: TAdresse;', '  FillChar(Adresse, SizeOf(Adresse), 0);');
+  Findings := TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TAdresse enthält Strings; FillChar überschreibt die Referenzen ohne Freigabe (Leck, ' +
+    'ggf. Zugriffsverletzung).', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Adresse := Default(TAdresse)', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(WithTypes(Adresse, '  Adresse: TAdresse;', '  Adresse := Default(TAdresse);'), Fixed);
+  TRuleAssert.Silent(TManagedTypeRawMemoryRule.Create, Fixed);
+  // Record ohne verwaltete Felder: FillChar ist in Ordnung.
+  TRuleAssert.Silent(TManagedTypeRawMemoryRule.Create, WithTypes(Adresse, '  Punkt: TPunkt;',
+    '  FillChar(Punkt, SizeOf(Punkt), 0);'));
+end;
+
+procedure TRtlTypePatternRulesTests.ManagedRawMemoryKinds;
+const
+  Types = '  IKunde = interface'#10'  end;'#10'  TMitInterface = record'#10'    Kunde: IKunde;'#10'  end;'#10 +
+    '  TMitArray = record'#10'    Werte: array of Integer;'#10'  end;'#10'  TMitVariant = record'#10 +
+    '    Wert: Variant;'#10'  end;'#10'  TInnen = record'#10'    Name: string;'#10'  end;'#10 +
+    '  TAussen = record'#10'    Innen: array[0..1] of TInnen;'#10'  end;'#10'  TAlias = TAussen;';
+
+  function Message(const AVar, AType: string): string;
+  var
+    Findings: TArray<TRuleFinding>;
+  begin
+    Findings := TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, WithTypes(Types, '  ' + AVar + ': ' + AType +
+      ';', '  ZeroMemory(@' + AVar + ', SizeOf(' + AVar + '));'));
+    Result := '';
+    if Length(Findings) = 1 then
+      Result := Findings[0].Message;
+  end;
+
+begin
+  Assert.StartsWith('TMitInterface enthält Interfaces; ZeroMemory', Message('A', 'TMitInterface'));
+  Assert.StartsWith('TMitArray enthält dynamische Arrays;', Message('B', 'TMitArray'));
+  Assert.StartsWith('TMitVariant enthält Variants;', Message('C', 'TMitVariant'));
+  Assert.StartsWith('TAussen enthält Strings;', Message('D', 'TAussen'), 'statisches Array verschachtelter Records');
+  Assert.StartsWith('TAlias enthält Strings;', Message('E', 'TAlias'), 'Alias');
+  Assert.StartsWith('string ist ein verwalteter Typ;', Message('F', 'string'));
+  Assert.StartsWith('TFormatSettings enthält Strings;', Message('G', 'TFormatSettings'), 'bekannter RTL-Record');
+  Assert.AreEqual('', Message('H', 'Integer'));
+  Assert.AreEqual('', Message('I', 'TUnbekannt'), 'unbekannter Typ: keine Aussage');
+end;
+
+procedure TRtlTypePatternRulesTests.ManagedRawMemoryMoveAndPointers;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := WithTypes(Adresse, '  A, B: TAdresse;', '  Move(A, B, SizeOf(TAdresse));');
+  Findings := TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TAdresse enthält Strings; Move kopiert die Referenzen ohne Referenzzählung (doppelte Freigabe, ' +
+    'ggf. Zugriffsverletzung).', Findings[0].Message);
+  Assert.AreEqual(WithTypes(Adresse, '  A, B: TAdresse;', '  B := A;'),
+    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+  // GetMem und FreeMem über einen Zeiger auf den Record.
+  Source := WithTypes(Adresse, '  P: PAdresse;', '  GetMem(P, SizeOf(TAdresse));'#10'  FreeMem(P);');
+  Findings := TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, Source);
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('TAdresse enthält Strings; GetMem lässt die Referenzen uninitialisiert (Zugriffsverletzung beim ' +
+    'ersten Zuweisen); New oder Initialize verwenden.', Findings[0].Message);
+  Assert.AreEqual('TAdresse enthält Strings; FreeMem gibt die Referenzen nicht frei (Leck); Dispose oder Finalize ' +
+    'verwenden.', Findings[1].Message);
+  Assert.AreEqual(WithTypes(Adresse, '  P: PAdresse;', '  New(P);'#10'  FreeMem(P);'),
+    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+  Assert.AreEqual(WithTypes(Adresse, '  P: PAdresse;', '  GetMem(P, SizeOf(TAdresse));'#10'  Dispose(P);'),
+    TChangeSignature.ApplyEdits(Source, Findings[1].Fixes[0].Edits));
+  // Dereferenzierter Zeiger: FillChar(P^, …) ohne Korrektur.
+  Findings := TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, WithTypes(Adresse, '  P: ^TAdresse;',
+    '  FillChar(P^, SizeOf(TAdresse), 0);'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TRtlTypePatternRulesTests.ManagedRawMemorySilentCases;
+begin
+  // Element eines Arrays, Puffer aus Bytes, Methode eines Objekts.
+  TRuleAssert.Silent(TManagedTypeRawMemoryRule.Create, WithTypes(Adresse,
+    '  S: string;'#10'  Puffer: array[0..15] of Byte;'#10'  Liste: TListe;',
+    '  FillChar(S[1], Length(S) * SizeOf(Char), '' '');'#10'  FillChar(Puffer, SizeOf(Puffer), 0);'#10 +
+    '  Liste.Move(0, 1);'));
+end;
+
+procedure TRtlTypePatternRulesTests.ManagedRawMemoryOffAndExclude;
+var
+  Source: string;
+begin
+  Source := WithTypes(Adresse, '  Adresse: TAdresse;', '  FillChar(Adresse, SizeOf(Adresse), 0);');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, Source,
+    '{"rules": {"managed-type-raw-memory": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, Source,
+    '{"rules": {"managed-type-raw-memory": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, Source,
+    '{"rules": {"managed-type-raw-memory": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
 end;
 
 initialization

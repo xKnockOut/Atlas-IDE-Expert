@@ -1287,6 +1287,16 @@
       "description": "Obj.Destroy is called directly as a statement. If Obj is nil, the call crashes; Free checks for nil first and is the usual way to release an object. inherited Destroy and calls of a destructor with arguments are exempt. High confidence. Quick fix: Destroy becomes Free.",
       "bad": "Verbindung.Destroy;",
       "good": "Verbindung.Free;"
+    },
+    {
+      "id": "managed-type-raw-memory",
+      "name": "FillChar, Move or GetMem on managed types",
+      "category": "bug",
+      "severity": "error",
+      "group": "find-bugs",
+      "description": "FillChar, ZeroMemory, FillMemory, Move, CopyMemory, GetMem or FreeMem on a variable whose type contains strings, interfaces, dynamic arrays or variants (records, static arrays and aliases are resolved in the file and in the index). Reference counts are overwritten or skipped: leaks, double frees, access violations. Only plain variables (X, @X, P^) are checked; array elements such as S[1] and types that cannot be resolved stay silent. High confidence. Quick fixes: FillChar(X, SizeOf(X), 0) becomes X := Default(T), Move(A, B, SizeOf(T)) becomes B := A, GetMem(P, SizeOf(T)) becomes New(P) and FreeMem(P) becomes Dispose(P); otherwise Initialize and Finalize help.",
+      "bad": "FillChar(Adresse, SizeOf(Adresse), 0);",
+      "good": "Adresse := Default(TAdresse);"
     }
   ]
 }

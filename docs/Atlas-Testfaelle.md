@@ -3252,3 +3252,17 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Routine mit `Verbindung
 | DC3 | `inherited Destroy;` im Destruktor | Keine Meldung |
 | DC4 | `Knoten.Destroy(True);` (eigener Destruktor mit Argument) | Keine Meldung |
 | DC5 | `"destroy-called-directly": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## FillChar, Move oder GetMem auf verwaltete Typen (#921)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TAdresse = record Strasse, Ort: string; end;`, `PAdresse = ^TAdresse;` und in einer Routine `Adresse: TAdresse;` und `FillChar(Adresse, SizeOf(Adresse), 0);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MR1 | Unit öffnen | Fehler `managed-type-raw-memory`: „TAdresse enthält Strings; FillChar überschreibt die Referenzen ohne Freigabe (Leck, ggf. Zugriffsverletzung).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| MR2 | Glühbirne, „Adresse := Default(TAdresse)“ | `Adresse := Default(TAdresse);`; kompiliert; Strg+Z nimmt es in einem Schritt zurück (**Abnahme**) |
+| MR3 | `Move(A, B, SizeOf(TAdresse));` mit `A, B: TAdresse` | Meldung „… Move kopiert die Referenzen ohne Referenzzählung …“, Korrektur `B := A;` |
+| MR4 | `GetMem(P, SizeOf(TAdresse));` und `FreeMem(P);` mit `P: PAdresse` | Zwei Meldungen; Korrekturen `New(P);` und `Dispose(P);` |
+| MR5 | Record aus einer anderen Unit des Projekts (im Index) mit einem Interface-Feld | Meldung „… enthält Interfaces …“ |
+| MR6 | `FillChar(Punkt, SizeOf(Punkt), 0);` mit `TPunkt = record X, Y: Integer; end;` und `FillChar(S[1], …)` | Keine Meldung |
+| MR7 | `"managed-type-raw-memory": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

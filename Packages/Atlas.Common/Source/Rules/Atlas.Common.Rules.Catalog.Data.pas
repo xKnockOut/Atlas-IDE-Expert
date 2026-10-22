@@ -1307,6 +1307,16 @@ begin
     '      "description": "Obj.Destroy is called directly as a statement. If Obj is nil, the call crashes; Free checks for nil first and is the usual way to release an object. inherited Destroy and calls o' + 'f a destructor with arguments are exempt. High confidence. Quick fix: Destroy becomes Free.",' + #10 +
     '      "bad": "Verbindung.Destroy;",' + #10 +
     '      "good": "Verbindung.Free;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "managed-type-raw-memory",' + #10 +
+    '      "name": "FillChar, Move or GetMem on managed types",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "FillChar, ZeroMemory, FillMemory, Move, CopyMemory, GetMem or FreeMem on a variable whose type contains strings, interfaces, dynamic arrays or variants (records, static arrays an' + 'd aliases are resolved in the file and in the index). Reference counts are overwritten or skipped: leaks, double frees, access violations. Only plain variables (X, @X, P^) are checked; array elements ' + 'such as S[1] and types that cannot be resolved stay silent. High confidence. Quick fixes: FillChar(X, SizeOf(X), 0) becomes X := Default(T), Move(A, B, SizeOf(T)) becomes B := A, GetMem(P, SizeOf(T)) ' + 'becomes New(P) and FreeMem(P) becomes Dispose(P); otherwise Initialize and Finalize help.",' + #10 +
+    '      "bad": "FillChar(Adresse, SizeOf(Adresse), 0);",' + #10 +
+    '      "good": "Adresse := Default(TAdresse);"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -1992,6 +2002,11 @@ begin
     '      "id": "destroy-called-directly",' + #10 +
     '      "name": "Destroy statt Free aufgerufen",' + #10 +
     '      "description": "Obj.Destroy wird direkt als Anweisung aufgerufen. Ist Obj nil, knallt der Aufruf; Free prüft vorher auf nil und ist der übliche Weg, ein Objekt freizugeben. inherited Destroy und' + ' Aufrufe eines Destruktors mit Argumenten sind ausgenommen. Konfidenz hoch. Schnellkorrektur: aus Destroy wird Free."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "managed-type-raw-memory",' + #10 +
+    '      "name": "FillChar, Move oder GetMem auf verwaltete Typen",' + #10 +
+    '      "description": "FillChar, ZeroMemory, FillMemory, Move, CopyMemory, GetMem oder FreeMem auf eine Variable, deren Typ Strings, Interfaces, dynamische Arrays oder Variants enthält (Records, statis' + 'che Arrays und Aliasse werden in der Datei und im Index aufgelöst). Referenzzähler werden überschrieben oder übergangen: Lecks, doppelte Freigabe, Zugriffsverletzungen. Geprüft werden nur einfache Var' + 'iablen (X, @X, P^); Array-Elemente wie S[1] und Typen, die sich nicht auflösen lassen, bleiben still. Konfidenz hoch. Schnellkorrekturen: aus FillChar(X, SizeOf(X), 0) wird X := Default(T), aus Move(A' + ', B, SizeOf(T)) wird B := A, aus GetMem(P, SizeOf(T)) wird New(P) und aus FreeMem(P) wird Dispose(P); sonst helfen Initialize und Finalize."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
