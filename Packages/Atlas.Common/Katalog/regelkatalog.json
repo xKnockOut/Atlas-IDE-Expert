@@ -2293,6 +2293,24 @@
         "E2129",
         "E2130"
       ]
+    },
+    {
+      "id": "constant-condition",
+      "name": "Condition is always the same",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "The condition of if, while or until is fixed: True, False, comparisons of numbers and untyped constants of the file, also through and, or, xor and not (X or True is always true, X and False always false). The branch is dead code or always runs. while True do and repeat … until False count as deliberate endless loops (infinite-loop checks their exit). Constants listed in switchConstants, constants inside a {$IF…} branch and constants from other units count as unknown. Quick fix for if: remove the dead branch or the condition.",
+      "bad": "if (Count > 0) or True then\n  Process;",
+      "good": "if Count > 0 then\n  Process;",
+      "options": [
+        {
+          "name": "switchConstants",
+          "type": "string-list",
+          "default": [],
+          "description": "Constants that deliberately serve as switches; conditions on them are not reported."
+        }
+      ]
     }
   ]
 }
