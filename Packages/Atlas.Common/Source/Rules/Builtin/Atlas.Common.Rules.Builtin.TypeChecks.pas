@@ -34,6 +34,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
@@ -85,26 +86,55 @@ begin
   end;
 end;
 
-/// <summary>Innerste Deklaration (Variable, Parameter, Feld, Typ, Konstante) um APosition; nil ohne.</summary>
-function DeclarationAt(ANode: TSyntaxNode; const APosition: TTextPosition): TSyntaxNode;
+/// <summary>Alle Knoten unter ARoot (samt ARoot) in der Reihenfolge eines rekursiven Laufs, aber über einen
+/// eigenen Stapel: Ausdrucksketten können sehr tief sein (Bericht M1).</summary>
+function PreOrder(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
 var
+  Pending: TStack<TSyntaxNode>;
+  Nodes: TList<TSyntaxNode>;
+  Node: TSyntaxNode;
   Index: Integer;
-  Inner: TSyntaxNode;
 begin
   Result := nil;
-  if (ANode.StartPos.Line > APosition.Line) or (ANode.EndPos.Line < APosition.Line) then
+  if ARoot = nil then
     Exit;
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    Inner := DeclarationAt(ANode[Index], APosition);
-    if Inner <> nil then
-      Exit(Inner);
+  Pending := TStack<TSyntaxNode>.Create;
+  Nodes := TList<TSyntaxNode>.Create;
+  try
+    Pending.Push(ARoot);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      Nodes.Add(Node);
+      for Index := Node.ChildCount - 1 downto 0 do
+        Pending.Push(Node[Index]);
+    end;
+    Result := Nodes.ToArray;
+  finally
+    Nodes.Free;
+    Pending.Free;
   end;
-  if (ANode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.Field, TSyntaxKind.TypeDecl,
-    TSyntaxKind.ConstDecl, TSyntaxKind.InlineVar]) and
-    ((ANode.StartPos.Line < APosition.Line) or (ANode.StartPos.Character <= APosition.Character)) and
-    ((ANode.EndPos.Line > APosition.Line) or (ANode.EndPos.Character >= APosition.Character)) then
-    Result := ANode;
+end;
+
+/// <summary>Liegt APosition im Bereich von ANode?</summary>
+function Covers(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
+begin
+  Result := ((ANode.StartPos.Line < APosition.Line) or ((ANode.StartPos.Line = APosition.Line) and
+    (ANode.StartPos.Character <= APosition.Character))) and ((ANode.EndPos.Line > APosition.Line) or
+    ((ANode.EndPos.Line = APosition.Line) and (ANode.EndPos.Character >= APosition.Character)));
+end;
+
+/// <summary>Innerste Deklaration (Variable, Parameter, Feld, Typ, Konstante) um APosition; nil ohne.</summary>
+function DeclarationAt(ARoot: TSyntaxNode; const APosition: TTextPosition): TSyntaxNode;
+var
+  Node: TSyntaxNode;
+begin
+  Result := nil;
+  // Vorwärts in Pre-Order: Der letzte Treffer ist der innerste.
+  for Node in PreOrder(ARoot) do
+    if (Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.Field, TSyntaxKind.TypeDecl,
+      TSyntaxKind.ConstDecl, TSyntaxKind.InlineVar]) and Covers(Node, APosition) then
+      Result := Node;
 end;
 
 /// <summary>Deklarierter Typ von ASymbol als Quelltext ("TArray<Double>", "array of Integer"); bei Aliasen
@@ -236,6 +266,7 @@ var
   Resolver: TNameResolver;
   FileName: string;
   Local: TUnitIndex;
+  Node: TSyntaxNode;
 
   /// <summary>Variable, Feld oder Parameter mit dynamischem Array als Typ? Offene Array-Parameter (array of
   /// T als Parametertyp) sind keine dynamischen Arrays.</summary>
@@ -350,17 +381,6 @@ var
     end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
-  var
-    Index: Integer;
-  begin
-    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) and
-      MatchText(ANode[0].Name, ['New', 'Dispose', 'SetLength']) then
-      CheckCall(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
-  end;
-
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
     Exit;
@@ -375,7 +395,10 @@ begin
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
-      Visit(AContext.Tree.Root);
+      for Node in PreOrder(AContext.Tree.Root) do
+        if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) and
+          MatchText(Node[0].Name, ['New', 'Dispose', 'SetLength']) then
+          CheckCall(Node);
     finally
       Resolver.UnpinTree;
     end;
