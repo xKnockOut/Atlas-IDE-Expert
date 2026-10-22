@@ -10,11 +10,15 @@
 //     FreeAndNil(FFeld) in irgendeiner Methode der Klasse.
 //   - Ausgenommen: Felder vom Interface-, Record- oder anderem Nicht-Klassentyp,
 //     Records mit Create (TStopwatch.Create), Komponenten mit einem Owner
-//     ungleich nil (TComponent-Nachfahren laut Datei und Index; unbekannte
-//     Typen mit Self, AOwner, Owner oder Application als erstem Argument).
-//     TObjectList und TObjectDictionary sind normale Felder.
+//     ungleich nil (TComponent-Nachfahren laut Datei, Index und einer Liste
+//     häufiger VCL-Komponenten; Typen mit unbekannten Vorfahren mit Self,
+//     AOwner, Owner, Application oder einem Komponentenfeld der Klasse als
+//     erstem Argument) und Objekte, die die Klasse einem
+//     Interface-Feld zuweist (FLog := FLogImpl): die Referenzzählung gibt sie
+//     frei (#918). TObjectList und TObjectDictionary sind normale Felder.
 //   - Unklar (Meldung ohne Aktion): Das Feld wird zurückgegeben (Result :=
-//     FFeld, Exit(FFeld)), an eine Property eines anderen Objekts übergeben,
+//     FFeld, Exit(FFeld)), an eine Property eines anderen Objekts oder an
+//     dessen Add…, Insert…, Register…, Attach…, Push oder Enqueue übergeben,
 //     auch ohne Create zugewiesen oder über "write FFeld" von außen gesetzt.
 //   - Freigabe: vor dem ersten inherited im Destruktor, sonst vor dessen
 //     "end", in umgekehrter Erzeugungsreihenfolge, als FFeld.Free oder
@@ -97,8 +101,18 @@ const
   FreeMethods: array[0..2] of string = ('Free', 'Destroy', 'DisposeOf');
   OwnerNames: array[0..3] of string = ('Self', 'AOwner', 'Owner', 'Application');
   // Records der RTL mit Create; ohne Index sähen sie wie Klassen aus.
-  KnownRecords: array[0..11] of string = ('TStopwatch', 'TTimeSpan', 'TRect', 'TRectF', 'TPoint', 'TPointF',
-    'TSize', 'TSizeF', 'TGUID', 'TFormatSettings', 'TValue', 'TEncodingHelper');
+  KnownRecords: array[0..14] of string = ('TStopwatch', 'TTimeSpan', 'TRect', 'TRectF', 'TPoint', 'TPointF',
+    'TSize', 'TSizeF', 'TGUID', 'TFormatSettings', 'TValue', 'TEncodingHelper', 'TRegEx', 'TMatch', 'TRttiContext');
+  /// <summary>Häufige VCL-Komponenten ohne einen der ComponentRoots im Namen (#918).</summary>
+  KnownComponents: array[0..21] of string = ('TMenuItem', 'TMenu', 'TPopupMenu', 'TMainMenu', 'TTimer',
+    'TActionList', 'TAction', 'TBasicAction', 'TImageList', 'TCustomImageList', 'TCommonDialog', 'TOpenDialog',
+    'TSaveDialog', 'TApplicationEvents', 'TComboBox', 'TEdit', 'TButton', 'TLabel', 'TListBox', 'TMemo',
+    'TCheckBox', 'TScrollBox');
+  /// <summary>Häufige Klassen, die sicher keine Komponenten sind.</summary>
+  KnownNonComponents: array[0..9] of string = ('TObject', 'TInterfacedObject', 'TPersistent', 'TThread',
+    'TStream', 'TStrings', 'TStringList', 'TList', 'TObjectList', 'TDictionary');
+  /// <summary>Grund für Felder, die ein Interface-Feld übernimmt; sie werden nie gemeldet.</summary>
+  InterfaceReason = 'interface';
 
 type
   TTypeGuess = (tgUnknown, tgClass, tgRecord, tgInterface, tgOther);
@@ -128,6 +142,14 @@ begin
     end;
 end;
 
+/// <summary>Methoden, die ein übergebenes Objekt übernehmen können: Add, Insert, Push, Enqueue, Register,
+/// Attach und ihre Varianten (AddObject, RegisterListener).</summary>
+function HandsOver(const AMethod: string): Boolean;
+begin
+  Result := StartsText('Add', AMethod) or StartsText('Insert', AMethod) or SameText(AMethod, 'Push') or
+    SameText(AMethod, 'Enqueue') or StartsText('Register', AMethod) or StartsText('Attach', AMethod);
+end;
+
 /// <summary>Name ohne generische Argumente: TObjectList&lt;TOrder&gt; → TObjectList.</summary>
 function BaseName(const ATypeName: string): string;
 var
@@ -151,6 +173,7 @@ type
     FClassNode: TSyntaxNode;
     FClassName: string;
     FFields: TArray<TOwnedField>;
+    FInterfaceFields: TArray<string>;
     FPrivate: TArray<string>;
     FMethods: TArray<TSyntaxNode>;
     FVisited: TArray<string>;
@@ -158,9 +181,15 @@ type
     FCurrent: string;
     function FieldIndex(const AName: string): Integer;
     function FieldRef(ANode: TSyntaxNode): Integer;
+    /// <summary>ANode ist FFeld oder Self.FFeld mit einem Interface-Typ.</summary>
+    function IsInterfaceField(ANode: TSyntaxNode): Boolean;
     function MethodBody(const AName: string): TSyntaxNode;
     function TypeGuess(const ATypeName: string): TTypeGuess;
+    function ComponentChain(const ATypeName: string; out AEndsKnown: Boolean): TArray<string>;
     function IsComponent(const ATypeName: string): Boolean;
+    /// <summary>True, wenn die Vorfahrenkette von ATypeName sicher endet: bei einer Komponente, bei
+    /// einer Klasse ohne Vorfahren oder bei einer bekannten Nicht-Komponente (#918).</summary>
+    function ComponentKnown(const ATypeName: string): Boolean;
     function Creation(AValue: TSyntaxNode; out ATypeName: string; out AOwned: Boolean): Boolean;
     function IsCreation(AValue: TSyntaxNode): Boolean;
     function CalledPrivate(AStatement: TSyntaxNode): string;
@@ -266,6 +295,18 @@ begin
     Result := FieldIndex(ANode.Name);
 end;
 
+function TClassAnalyzer.IsInterfaceField(ANode: TSyntaxNode): Boolean;
+begin
+  Result := False;
+  if ANode = nil then
+    Exit;
+  if ANode.Kind = TSyntaxKind.Identifier then
+    Result := MatchText(ANode.Name, FInterfaceFields)
+  else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
+    (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Self') then
+    Result := MatchText(ANode.Name, FInterfaceFields);
+end;
+
 function TClassAnalyzer.MethodBody(const AName: string): TSyntaxNode;
 var
   Decl: TSyntaxNode;
@@ -365,45 +406,70 @@ begin
     Result := tgInterface;
 end;
 
-function TClassAnalyzer.IsComponent(const ATypeName: string): Boolean;
+function TClassAnalyzer.ComponentChain(const ATypeName: string; out AEndsKnown: Boolean): TArray<string>;
 var
   Name, Next: string;
   Location: TSymbolLocation;
   Depth: Integer;
-  Chain: TArray<string>;
+  Declared: Boolean;
 begin
   Name := BaseName(ATypeName);
-  Chain := [Name];
+  Result := [Name];
+  AEndsKnown := False;
   for Depth := 1 to 32 do
   begin
     Next := '';
+    Declared := False;
     FTree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       var
         Kind: TSyntaxNode;
       begin
-        Result := Next = '';
+        Result := not Declared;
         if Result and (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, Name) then
         begin
           Kind := ANode.FindChild(TSyntaxKind.ClassType);
-          if (Kind <> nil) and (Kind.ChildCount > 0) and (Kind[0].Kind = TSyntaxKind.TypeReference) then
+          if Kind = nil then
+            Exit;
+          Declared := True;
+          if (Kind.ChildCount > 0) and (Kind[0].Kind = TSyntaxKind.TypeReference) then
             Next := Kind[0].Name;
         end;
       end);
-    if (Next = '') and (FIndex <> nil) then
+    if not Declared and (FIndex <> nil) then
       for Location in FIndex.FindSymbols(Name) do
         if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') then
         begin
+          Declared := True;
           if Length(Location.Symbol.Ancestors) > 0 then
             Next := BaseName(Location.Symbol.Ancestors[0]);
           Break;
         end;
-    if (Next = '') or (IndexText(Next, Chain) >= 0) then
+    // Klasse ohne Vorfahren stammt von TObject ab: das Ende ist bekannt.
+    if Declared and (Next = '') then
+      AEndsKnown := True;
+    if (Next = '') or (IndexText(Next, Result) >= 0) then
       Break;
-    Chain := Chain + [Next];
+    Result := Result + [Next];
     Name := Next;
   end;
-  Result := DescendsFrom(Chain, ComponentRoots);
+  if DescendsFrom(Result, ComponentRoots) or DescendsFrom(Result, KnownComponents) or
+    DescendsFrom(Result, KnownNonComponents) then
+    AEndsKnown := True;
+end;
+
+function TClassAnalyzer.IsComponent(const ATypeName: string): Boolean;
+var
+  Chain: TArray<string>;
+  EndsKnown: Boolean;
+begin
+  Chain := ComponentChain(ATypeName, EndsKnown);
+  Result := DescendsFrom(Chain, ComponentRoots) or DescendsFrom(Chain, KnownComponents);
+end;
+
+function TClassAnalyzer.ComponentKnown(const ATypeName: string): Boolean;
+begin
+  ComponentChain(ATypeName, Result);
 end;
 
 function TClassAnalyzer.Creation(AValue: TSyntaxNode; out ATypeName: string; out AOwned: Boolean): Boolean;
@@ -450,13 +516,17 @@ begin
     Exit;
   if IsComponent(ATypeName) then
     AOwned := True
-  else if TypeGuess(ATypeName) = tgUnknown then
+  else if not ComponentKnown(ATypeName) then
   begin
+    // Unbekannte Vorfahren (z. B. VCL-Klassen ohne Index): Owner am Argument erkennen.
     Name := '';
     if Argument.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess] then
       Name := Argument.Name;
     AOwned := MatchText(Name, OwnerNames);
   end;
+  // Owner ist ein Komponentenfeld der Klasse (Host := TForm.Create…; Box := TFoo.Create(Host)).
+  if not AOwned and (FieldRef(Argument) >= 0) and IsComponent(FFields[FieldRef(Argument)].TypeName) then
+    AOwned := True;
 end;
 
 function TClassAnalyzer.IsCreation(AValue: TSyntaxNode): Boolean;
@@ -528,7 +598,10 @@ end;
 
 procedure TClassAnalyzer.SetUnclear(AField: Integer; const AReason: string);
 begin
-  if (AField >= 0) and (FFields[AField].State <> TOwnedFieldState.Unclear) then
+  // Komponenten mit Owner und vom Interface übernommene Objekte gibt ein anderer frei,
+  // gleich wohin sie die Klasse weiterreicht.
+  if (AField >= 0) and (FFields[AField].State <> TOwnedFieldState.Unclear) and
+    (FFields[AField].Reason <> InterfaceReason) and (FFields[AField].Reason <> 'owned') then
   begin
     FFields[AField].State := TOwnedFieldState.Unclear;
     FFields[AField].Reason := AReason;
@@ -556,13 +629,30 @@ begin
           AFreed[Field] := True
         else if SameText(ANode[0].Name, 'Exit') then
           SetUnclear(Field, Format('wird von %s zurückgegeben', [AMethod]));
-      end;
+      end
+      else if (ANode.ChildCount >= 2) and (ANode[0].Kind = TSyntaxKind.MemberAccess) and
+        (ANode[0].ChildCount = 1) and not ((ANode[0][0].Kind = TSyntaxKind.Identifier) and
+        SameText(ANode[0][0].Name, 'Self')) and HandsOver(ANode[0].Name) then
+        // Liste.Add(FFeld), Dienst.Register(FFeld): das andere Objekt kann es übernehmen (#918).
+        for Index := 1 to ANode.ChildCount - 1 do
+          SetUnclear(FieldRef(ANode[Index]), Format('wird in %s an %s übergeben',
+            [AMethod, Collapse(NodeText(FText, ANode[0]))]));
     TSyntaxKind.AssignStatement:
       if ANode.ChildCount >= 2 then
       begin
         Target := ANode[0];
         Field := FieldRef(ANode[1]);
-        if Field >= 0 then
+        // Typumwandlung TKlasse(FFeld) zählt wie FFeld.
+        if (Field < 0) and (ANode[1].Kind = TSyntaxKind.Call) and (ANode[1].ChildCount = 2) and
+          (ANode[1][0].Kind = TSyntaxKind.Identifier) and IsInterfaceField(Target) then
+          Field := FieldRef(ANode[1][1]);
+        if (Field >= 0) and IsInterfaceField(Target) then
+        begin
+          // Das Interface-Feld übernimmt das Objekt; Free wäre eine doppelte Freigabe.
+          FFields[Field].State := TOwnedFieldState.NotFreed;
+          FFields[Field].Reason := InterfaceReason;
+        end
+        else if Field >= 0 then
         begin
           if (Target.Kind = TSyntaxKind.Identifier) and SameText(Target.Name, 'Result') then
             SetUnclear(Field, Format('wird von %s zurückgegeben', [AMethod]))
@@ -604,6 +694,9 @@ begin
           if TypeRef = nil then
             Continue;
           TypeName := Collapse(NodeText(FText, TypeRef));
+          if TypeGuess(TypeName) = tgInterface then
+            for Name in Child.Name.Split([',']) do
+              FInterfaceFields := FInterfaceFields + [Trim(Name)];
           if TypeGuess(TypeName) in [tgRecord, tgInterface, tgOther] then
             Continue;
           for Name in Child.Name.Split([',']) do
@@ -667,7 +760,7 @@ begin
         [Child.Name]));
   end;
   for Index in FCreated do
-    if not Freed[Index] and (FFields[Index].Reason <> 'owned') then
+    if not Freed[Index] and (FFields[Index].Reason <> 'owned') and (FFields[Index].Reason <> InterfaceReason) then
       Result := Result + [FFields[Index]];
 end;
 

@@ -2850,14 +2850,14 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TOrderList = 
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| FF1 | Unit öffnen | Warnung `owned-field-not-freed` an `FItems` und an `FIndex` |
+| FF1 | Unit öffnen | Warnung `field-not-freed` (bis #918 `owned-field-not-freed`) an `FItems` und an `FIndex` |
 | FF2 | Glühbirne auf der Zeile von `FItems` | „Im Destruktor freigeben“ und „Alle eigenen Objekte freigeben (2)“ |
 | FF3 | „Alle eigenen Objekte freigeben (2)“ | `destructor Destroy; override;` hinter `constructor Create;`; hinter dem Konstruktor `destructor TOrderList.Destroy;` mit `FIndex.Free;`, `FItems.Free;`, `inherited;`; kompiliert, keine Warnung mehr; Strg+Z nimmt alles in einem Schritt zurück (**Abnahme**) |
 | FF4 | Wie FF3 mit vorhandenem Destruktor `begin FItems.Free; inherited; end;` | Nur `FIndex` gemeldet; `FIndex.Free;` vor `inherited;` |
 | FF5 | Glühbirne auf der Kopfzeile `TOrderList = class` | „Alle eigenen Objekte freigeben (2)“ |
 | FF6 | Feld `FTimer: TTimer`, im Konstruktor `FTimer := TTimer.Create(Self);` | Keine Meldung (Owner gibt frei) (**Abnahme**) |
 | FF7 | Feld `FLog: ILog`, im Konstruktor `FLog := TFileLog.Create;` | Keine Meldung (Interface) (**Abnahme**) |
-| FF8 | Erzeugung in einer privaten Methode `Init`, die der Konstruktor aufruft | Gemeldet wie FF1, die Meldung nennt `TOrderList.Init` (**Abnahme**) |
+| FF8 | Erzeugung in einer privaten Methode `Init`, die der Konstruktor aufruft | Gemeldet wie FF1 (**Abnahme**) |
 | FF9 | `function Take: TList; begin Result := FList; end;` für ein erzeugtes Feld | Hinweis `owned-field-free-unclear` „… wird von TOrderList.Take zurückgegeben“, keine Aktion |
 | FF10 | Drei Felder in der Reihenfolge FA, FB, FC erzeugt, „Alle eigenen Objekte freigeben (3)“ | Freigaben FC, FB, FA (**Abnahme**) |
 | FF11 | `"refactoring": {"freeFieldsStyle": "freeAndNil"}` | `FreeAndNil(FIndex);` statt `FIndex.Free;` |
@@ -3210,3 +3210,18 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Klasse `TImport` mit Fe
 | FN6 | `"field-free-without-nil": {"ignoreMethods": ["Zuruecksetzen"]}` | FN1 ohne Meldung; `BeforeDestruction` wird jetzt gemeldet |
 | FN7 | Befund-Hover und Fenster „Atlas-Prüfung“ | Gruppe „Fehler finden“, Konfidenz mittel, Aktionszeile mit der Korrektur aus FN2 |
 | FN8 | `"field-free-without-nil": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Feld erzeugt, aber nie freigegeben (#918)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TImport = class private FZeilen, FFehler: TStringList; public constructor Create; destructor Destroy; override; end;`, im Konstruktor `FZeilen := TStringList.Create;` und `FFehler := TStringList.Create;`, im Destruktor nur `FZeilen.Free; inherited;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FL1 | Unit öffnen | Warnung `field-not-freed` an `FFehler`: „FFehler wird im Konstruktor erzeugt, aber im Destruktor nicht freigegeben (Speicherleck).“, Konfidenz mittel; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| FL2 | Glühbirne auf `FFehler`, „Im Destruktor freigeben“ | `FFehler.Free;` vor `inherited;`; Meldung weg |
+| FL3 | Feld `FKnopf: TButton`, im Konstruktor `FKnopf := TButton.Create(Self);` | Keine Meldung (Owner gibt frei) |
+| FL4 | Feld `FLog: ILog` und `FLogImpl: TFileLog`, im Konstruktor `FLogImpl := TFileLog.Create; FLog := FLogImpl;` | Keine Meldung (die Referenzzählung gibt frei) |
+| FL5 | Feld `FPruefung: TRegEx`, im Konstruktor `FPruefung := TRegEx.Create('x');` | Keine Meldung (Record) |
+| FL6 | `"rules": {"field-not-freed": {"ignoreTypes": ["TStringList"]}}` | Keine Meldung an `FFehler`; auf der Seite „Prüfregeln“ steht die Option unter der Regel (**Abnahme**) |
+| FL7 | Alte Kennung: `"rules": {"owned-field-not-freed": "off"}` bzw. `// lsp-ignore: owned-field-not-freed` an `FFehler` | Keine Meldung |
+| FL8 | `"field-not-freed": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

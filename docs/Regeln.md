@@ -49,7 +49,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`constructor-on-instance`](#constructor-on-instance) | Konstruktor auf einer Instanz aufgerufen | Bug | Warnung |
 | [`unresolved-identifier`](#unresolved-identifier) | Nicht deklarierter Bezeichner | Bug | Warnung |
 | [`type-used-before-declaration`](#type-used-before-declaration) | Typ vor seiner Deklaration benutzt | Bug | Fehler |
-| [`owned-field-not-freed`](#owned-field-not-freed) | Erzeugtes Feld wird nicht freigegeben | Bug | Warnung |
+| [`field-not-freed`](#field-not-freed) | Feld erzeugt, aber nie freigegeben | Bug | Warnung |
 | [`owned-field-free-unclear`](#owned-field-free-unclear) | Unklar, ob ein erzeugtes Feld freigegeben werden muss | Bug | Hinweis |
 | [`operator-precedence`](#operator-precedence) | Vorrang von not übersehen | Bug | Warnung |
 | [`empty-statement`](#empty-statement) | Leere Anweisung nach then, do oder else | Bug | Warnung |
@@ -2450,29 +2450,40 @@ type
   end;
 ```
 
-<a id="owned-field-not-freed"></a>
-### owned-field-not-freed
+<a id="field-not-freed"></a>
+### field-not-freed
 
-**Erzeugtes Feld wird nicht freigegeben** · Bug · Warnung · Gruppe Fehler finden
+**Feld erzeugt, aber nie freigegeben** · Bug · Warnung · Gruppe Fehler finden
 
-Ein Objektfeld, das der Konstruktor (oder eine von ihm aufgerufene private Methode) mit TKlasse.Create erzeugt, wird in der Klasse nirgends freigegeben (kein Free, FreeAndNil, Destroy oder DisposeOf). Ausgenommen sind Komponenten mit einem Owner ungleich nil sowie Interface- und Record-Felder; TObjectList- und TObjectDictionary-Felder sind normale Felder. Schnellkorrekturen: das Feld im Destruktor freigeben oder alle eigenen Objekte der Klasse freigeben; ein fehlender Destruktor wird mit override und inherited angelegt. Die Freigaben stehen vor inherited in umgekehrter Erzeugungsreihenfolge, als Free oder FreeAndNil (refactoring.freeFieldsStyle).
+Ein Objektfeld, das der Konstruktor (oder eine von ihm aufgerufene private Methode) mit TKlasse.Create erzeugt, wird in der Klasse nirgends freigegeben (kein Free, FreeAndNil, Destroy oder DisposeOf): ein Speicherleck. Ausgenommen sind Komponenten mit einem Owner ungleich nil, Interface- und Record-Felder sowie die Klassen aus der Option ignoreTypes; TObjectList- und TObjectDictionary-Felder sind normale Felder. Konfidenz mittel. Schnellkorrekturen: das Feld im Destruktor freigeben oder alle eigenen Objekte der Klasse freigeben; ein fehlender Destruktor wird mit override und inherited angelegt. Die Freigaben stehen vor inherited in umgekehrter Erzeugungsreihenfolge, als Free oder FreeAndNil (refactoring.freeFieldsStyle). Bis #918 hieß die Regel owned-field-not-freed; Einstellungen und Unterdrückungen mit dieser Kennung wirken weiter.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `ignoreTypes` | string-list | `[]` | Klassen, die anderswo freigegeben werden; generische Typen treffen ohne Typparameter. |
 
 Mit Treffer:
 
 ```pascal
-constructor TOrderList.Create;
+constructor TImport.Create;
 begin
-  inherited Create;
-  FItems := TObjectList<TOrder>.Create(True);
+  FZeilen := TStringList.Create;
+  FFehler := TStringList.Create;
+end;
+
+destructor TImport.Destroy;
+begin
+  FZeilen.Free;
+  inherited;
 end;
 ```
 
 Richtig:
 
 ```pascal
-destructor TOrderList.Destroy;
+destructor TImport.Destroy;
 begin
-  FItems.Free;
+  FFehler.Free;
+  FZeilen.Free;
   inherited;
 end;
 ```
@@ -2482,7 +2493,7 @@ end;
 
 **Unklar, ob ein erzeugtes Feld freigegeben werden muss** · Bug · Hinweis · Gruppe Fehler finden
 
-Ein im Konstruktor erzeugtes, nicht freigegebenes Objektfeld wird auch zurückgegeben (Result := FFeld, Exit(FFeld)), an eine Property eines anderen Objekts übergeben, ohne Create zugewiesen oder ist über eine Property (write FFeld) schreibbar. Ob die Klasse das Objekt noch besitzt, entscheidet der Entwickler; deshalb gibt es keine Schnellkorrektur.
+Ein im Konstruktor erzeugtes, nicht freigegebenes Objektfeld wird auch zurückgegeben (Result := FFeld, Exit(FFeld)), an eine Property eines anderen Objekts oder an dessen Add…, Insert…, Register…, Attach…, Push oder Enqueue übergeben, ohne Create zugewiesen oder ist über eine Property (write FFeld) schreibbar. Ob die Klasse das Objekt noch besitzt, entscheidet der Entwickler; deshalb gibt es keine Schnellkorrektur.
 
 Mit Treffer:
 
