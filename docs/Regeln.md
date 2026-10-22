@@ -16,7 +16,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
 | [Stil und Metriken](#gruppe-style) | 28 |
-| [Packages und Tests](#gruppe-packages) | 2 |
+| [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
 <a id="gruppe-find-bugs"></a>
@@ -213,6 +213,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|---|---|
 | [`implicit-package-import`](#implicit-package-import) | Implizit eingebundene Unit | Code Smell | Warnung |
 | [`ota-notifier-not-removed`](#ota-notifier-not-removed) | IDE-Notifier ohne RemoveNotifier | Bug | Warnung |
+| [`dunitx-test-without-assert`](#dunitx-test-without-assert) | DUnitX-Test ohne Assert | Code Smell | Hinweis |
 
 <a id="gruppe-internal"></a>
 ### Atlas intern
@@ -3465,4 +3466,36 @@ initialization
 finalization
   if NotifierIndex >= 0 then
     (BorlandIDEServices as IOTAServices).RemoveNotifier(NotifierIndex);
+```
+
+<a id="dunitx-test-without-assert"></a>
+### dunitx-test-without-assert
+
+**DUnitX-Test ohne Assert** · Code Smell · Hinweis · Gruppe Packages und Tests
+
+Eine [Test]- oder [TestCase]-Methode, die keine Prüfung aufruft, weder selbst noch über Methoden derselben Klasse oder Routinen der Unit: Sie ist immer grün. Als Prüfung zählen Aufrufe nach assertPatterns (Vorgabe Assert.*, WillRaise*, Check*), System.Assert und Aufrufe an Klassen mit Assert im Namen (TRuleAssert.Reports). Tests mit [WillRaise] oder [Ignore] bleiben still. Sicherheit hoch. Korrekturen: Assert.Pass als Platzhalter einfügen oder zur Methode springen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `assertPatterns` | string-list | `["Assert.*","WillRaise*","Check*"]` | Aufrufe, die als Prüfung zählen, als Muster mit * und ?; ersetzt die Vorgabe. |
+
+Mit Treffer:
+
+```pascal
+[Test]
+procedure TImportTests.LeereDateiWirdGelesen;
+begin
+  FImport.Laden('leer.csv');
+end;
+```
+
+Richtig:
+
+```pascal
+[Test]
+procedure TImportTests.LeereDateiWirdGelesen;
+begin
+  FImport.Laden('leer.csv');
+  Assert.AreEqual(0, FImport.Anzahl);
+end;
 ```

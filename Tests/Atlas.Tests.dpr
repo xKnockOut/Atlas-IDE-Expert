@@ -116,6 +116,7 @@ uses
   Atlas.Common.Rules.Builtin.Statements.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Statements.Tests.pas',
   Atlas.Common.Rules.Builtin.Packages.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas',
   Atlas.Common.Rules.Builtin.OpenTools.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.Tests.pas',
+  Atlas.Common.Rules.Builtin.Testing.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Tests.pas',
   Atlas.Common.Lsp.Baseline.Tests in 'Common\Lsp\Atlas.Common.Lsp.Baseline.Tests.pas',
   Atlas.Common.Lsp.SemanticTokens.Tests in 'Common\Lsp\Atlas.Common.Lsp.SemanticTokens.Tests.pas',
   Atlas.Common.Lsp.Status.Tests in 'Common\Lsp\Atlas.Common.Lsp.Status.Tests.pas',

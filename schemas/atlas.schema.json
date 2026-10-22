@@ -251,6 +251,14 @@
                 "default": ["Destroy", "BeforeDestruction"],
                 "description": "Nur field-free-without-nil: Methoden, in denen Free ohne nil erlaubt ist (#917). Destruktoren und Methoden mit [TearDown] gelten immer."
               },
+              "assertPatterns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["Assert.*", "WillRaise*", "Check*"],
+                "description": "Nur dunitx-test-without-assert (#945): Aufrufe, die als Prüfung zählen, als Muster mit * und ?; ersetzt die Vorgabe. System.Assert und Klassen mit Assert im Namen zählen immer."
+              },
               "ignoreTypes": {
                 "type": "array",
                 "items": {

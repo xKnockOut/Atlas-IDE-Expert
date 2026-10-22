@@ -1732,6 +1732,28 @@
           "description": "Pairs of the Open Tools API as [{\"open\": \"AddNotifier\", \"close\": \"RemoveNotifier\"}]; replaces the default."
         }
       ]
+    },
+    {
+      "id": "dunitx-test-without-assert",
+      "name": "DUnitX test without assert",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "packages",
+      "description": "A [Test] or [TestCase] method that calls no check, neither itself nor through methods of the same class or routines of the unit: it is always green. Calls matching assertPatterns (default Assert.*, WillRaise*, Check*), System.Assert and calls on classes with Assert in their name (TRuleAssert.Reports) count as checks. Tests with [WillRaise] or [Ignore] stay silent. High confidence. Quick fixes: insert Assert.Pass as a placeholder, or jump to the method.",
+      "bad": "[Test]\nprocedure TImportTests.LeereDateiWirdGelesen;\nbegin\n  FImport.Laden('leer.csv');\nend;",
+      "good": "[Test]\nprocedure TImportTests.LeereDateiWirdGelesen;\nbegin\n  FImport.Laden('leer.csv');\n  Assert.AreEqual(0, FImport.Anzahl);\nend;",
+      "options": [
+        {
+          "name": "assertPatterns",
+          "type": "string-list",
+          "default": [
+            "Assert.*",
+            "WillRaise*",
+            "Check*"
+          ],
+          "description": "Calls that count as a check, as patterns with * and ?; replaces the default."
+        }
+      ]
     }
   ]
 }
