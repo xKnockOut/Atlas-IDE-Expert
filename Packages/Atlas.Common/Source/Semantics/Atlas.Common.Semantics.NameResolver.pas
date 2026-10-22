@@ -231,6 +231,8 @@ type
     function ResolveAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition): TArray<TResolvedSymbol>;
     function TypeOf(const AResolved: TResolvedSymbol; out AType: TResolvedSymbol): Boolean;
     function FindMember(const AType: TResolvedSymbol; const AName: string; out AResult: TResolvedSymbol): Boolean;
+    /// <summary>Im Typ AOuter selbst deklarierter Typ AName, ohne Sichtbarkeitsprüfung (Pfad im Methodenkopf).</summary>
+    function NestedType(const AOuter: TResolvedSymbol; const AName: string; out AResult: TResolvedSymbol): Boolean;
     function IsAttributeClass(const AType: TResolvedSymbol): Boolean;
     function EnclosingRoutines: TArray<TSyntaxNode>;
     function LookupLocal(const AName: string; out AResult: TResolvedSymbol): Boolean;
@@ -1216,13 +1218,30 @@ end;
 
 function TNameResolver.CurrentClass(out AType: TResolvedSymbol): Boolean;
 begin
-  // Einmal je Prepare: Klasse der umgebenden Methode.
+  // Einmal je Prepare: Klasse der umgebenden Methode. 0 = noch nicht ermittelt, 1 = keine, 2 = FClass,
+  // 3 = wird gerade ermittelt.
+  if FClassState = 3 then
+  begin
+    // Sicherheitsnetz (Code-Review F-02), zusätzlich zur Ursachenbehebung in MethodClasses: Führt das Ermitteln
+    // der Klasse wieder hierher, gilt „keine Klasse“ statt einer Rekursion bis zum Stapelüberlauf. Im
+    // Diagnoselog als „resolve classRecursion“ sichtbar, damit ein neuer Weg dorthin auffällt.
+    TRequestDiagnostics.ResolveFailed('classRecursion');
+    AType := NoResult;
+    Exit(False);
+  end;
   if FClassState = 0 then
   begin
-    if (FTree <> nil) and MethodClass(FClass) then
-      FClassState := 2
-    else
-      FClassState := 1;
+    FClassState := 3;
+    try
+      if (FTree <> nil) and MethodClass(FClass) then
+        FClassState := 2
+      else
+        FClassState := 1;
+    except
+      // Abbruch der Anfrage: beim nächsten Aufruf neu ermitteln, nicht als Rekursion werten.
+      FClassState := 0;
+      raise;
+    end;
   end;
   AType := FClass;
   Result := FClassState = 2;
@@ -1394,6 +1413,28 @@ begin
   Result := Length(Members) > 0;
   if Result then
     AResult := Members[0];
+end;
+
+function TNameResolver.NestedType(const AOuter: TResolvedSymbol; const AName: string;
+  out AResult: TResolvedSymbol): Boolean;
+var
+  OwnerUnit: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Position: Integer;
+begin
+  Result := False;
+  if AOuter.Builtin or not UnitOf(AOuter, OwnerUnit) then
+    Exit;
+  for Position in OwnerUnit.SymbolsNamed(AName) do
+  begin
+    Symbol := OwnerUnit.Symbols[Position];
+    if (Symbol.Kind in TypeKinds) and SameText(Symbol.Container, AOuter.QualifiedName) then
+    begin
+      AResult := FromSymbol(OwnerUnit, Symbol);
+      AResult.Bindings := AOuter.Bindings;
+      Exit(True);
+    end;
+  end;
 end;
 
 function TNameResolver.DefaultProperty(const AType: TResolvedSymbol; out AResult: TResolvedSymbol): Boolean;
@@ -1704,7 +1745,10 @@ begin
     Result := [Current];
     for Index := 1 to High(Parts) do
     begin
-      if not FindMember(Current, Parts[Index], Inner) then
+      // Der Pfad im Kopf benennt den deklarierenden Typ, unabhängig von seiner Sichtbarkeit (strict private
+      // verschachtelte Typen werden genauso implementiert). FindMember prüfte die Sichtbarkeit über
+      // CurrentClass, das hierher zurückführte (Code-Review F-02).
+      if not NestedType(Current, Parts[Index], Inner) then
       begin
         Result := nil;
         Break;
