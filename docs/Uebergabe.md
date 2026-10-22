@@ -690,3 +690,10 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Unter FPC getestet: RuleTable, Hover.Layout, Findings. VCL-Tests (`Atlas.UI.Settings.Rules.Tests`, Page.Tests) nur mit Delphi.
 - Risiken beim ersten Delphi-Build: `TListView.OnItemChecked`, AutoSize des Editors, `HandleNeeded` der Editoren auf verborgenen Seiten.
 - Handtest AP1–AP26 in `docs/Atlas-Testfaelle.md`. Danach folgen die Unter-Issues (#910 ff.) als Kette auf diesem Branch.
+
+## Prüfregeln Formulare und Threads (#1054–#1059, 22.10.2026, Kette ab `feature/1006-readonly-property-assigned`, ungebaut)
+- Branches je Issue aufeinander: `feature/1054-form-resource-missing` → `feature/1055-form-autocreate-and-manual` → `feature/1056-inherited-form-handler-without-inherited` → `feature/1057-self-free-in-event-handler` → `feature/1058-parallel-for-shared-write` → `feature/1059-thread-unsafe-increment`. Nicht nach main gemergt; Issues bleiben bis zum Handtest offen.
+- Neue Units `Builtin.Forms` (#1054–#1057) und `Builtin.SharedState` (#1058, #1059) samt Tests; neue Option `threadSafeTypes` (Schema, Parser, Katalog).
+- Ursachen behoben: Der Linter sieht Formulardateien jetzt wie der Server (`TCheckProject.FileName`); `TRuleContext.ProjectMainSource` reicht die `.dpr` an die Regeln (Server, Code-Aktionen, Linter).
+- Unter FPC getestet, 0 Fehlalarme in 1382 Dateien (Atlas-Quellen und Referenzprojekt), alle sechs Mutationen werden erkannt. Neu im Referenzprojekt: geerbter Handler `TDetailFormular.SchliessenButtonClick` mit `inherited`.
+- Handtests FR, FX, IH, FS, PW, IZ in `docs/Atlas-Testfaelle.md`. Vor dem Merge mit Delphi bauen; Risiko: generische Aufrufe (`TTask.Future<T>`) und `Symbol.Ancestors` nur unter FPC übersetzt.
