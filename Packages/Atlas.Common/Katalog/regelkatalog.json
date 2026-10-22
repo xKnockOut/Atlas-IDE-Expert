@@ -2312,6 +2312,21 @@
         "E2540",
         "E2376"
       ]
+    },
+    {
+      "id": "unsatisfied-forward",
+      "name": "Forward declaration never satisfied",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A routine declared in the interface section or with forward has no body (like E2065), or a forward declaration TFoo = class; or IFoo = interface; is never completed in the same type section (like E2086, E2420). Methods are checked by declared-not-implemented. A body fits when it has the same name; with overload the number of parameters must match too. An external declaration in the implementation section counts as a body. Declarations inside a {$IFDEF} branch are skipped; with include files the rule does not check routines. Quick fix: create an empty body before initialization or the final end.",
+      "bad": "interface\n\nfunction Pruefsumme(const Daten: TBytes): Cardinal;\n\nimplementation\n\nend.",
+      "good": "interface\n\nfunction Pruefsumme(const Daten: TBytes): Cardinal;\n\nimplementation\n\nfunction Pruefsumme(const Daten: TBytes): Cardinal;\nbegin\n  Result := 0;\nend;\n\nend.",
+      "compilerCodes": [
+        "E2065",
+        "E2086",
+        "E2420"
+      ]
     }
   ]
 }

@@ -2332,6 +2332,21 @@ begin
     '        "E2540",' + #10 +
     '        "E2376"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unsatisfied-forward",' + #10 +
+    '      "name": "Forward declaration never satisfied",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A routine declared in the interface section or with forward has no body (like E2065), or a forward declaration TFoo = class; or IFoo = interface; is never completed in the same t' + 'ype section (like E2086, E2420). Methods are checked by declared-not-implemented. A body fits when it has the same name; with overload the number of parameters must match too. An external declaration ' + 'in the implementation section counts as a body. Declarations inside a {$IFDEF} branch are skipped; with include files the rule does not check routines. Quick fix: create an empty body before initializ' + 'ation or the final end.",' + #10 +
+    '      "bad": "interface\n\nfunction Pruefsumme(const Daten: TBytes): Cardinal;\n\nimplementation\n\nend.",' + #10 +
+    '      "good": "interface\n\nfunction Pruefsumme(const Daten: TBytes): Cardinal;\n\nimplementation\n\nfunction Pruefsumme(const Daten: TBytes): Cardinal;\nbegin\n  Result := 0;\nend;\n\nend.",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2065",' + #10 +
+    '        "E2086",' + #10 +
+    '        "E2420"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3507,6 +3522,11 @@ begin
     '      "id": "abstract-declaration-invalid",' + #10 +
     '      "name": "abstract, final oder static falsch kombiniert",' + #10 +
     '      "description": "Eine Methodendirektive, die der Compiler ablehnt: abstract ohne virtual, dynamic oder override (wie E2167), ein Rumpf im implementation-Teil zu einer abstrakten Methode (wie E213' + '6), final an einer nicht virtuellen Methode (wie E2351), abstract zusammen mit final (wie E2371), eine Klasse abstract sealed (wie E2383, E2540) oder static an einer Instanzmethode bzw. einer virtuell' + 'en Klassenmethode (wie E2376). Ein Rumpf zählt nur dann als Rumpf einer abstrakten Methode, wenn keine gleichnamige nicht abstrakte Methode derselben Klasse mit ihm übersetzt wird (Überladungen, {$IFD' + 'EF}-Zweige). Korrekturen: virtual; vor abstract einfügen, Rumpf entfernen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unsatisfied-forward",' + #10 +
+    '      "name": "Vorwärtsdeklaration nie aufgelöst",' + #10 +
+    '      "description": "Eine Routine aus dem interface-Teil oder mit forward hat keinen Rumpf (wie E2065), oder eine Vorwärtsdeklaration TFoo = class; bzw. IFoo = interface; wird im selben type-Abschnit' + 't nie vollständig deklariert (wie E2086, E2420). Methoden prüft declared-not-implemented. Ein Rumpf passt, wenn er gleich heißt; bei overload muss auch die Zahl der Parameter stimmen. Ein external im ' + 'implementation-Teil zählt als Rumpf. Deklarationen in einem {$IFDEF}-Zweig bleiben unbeachtet; mit Include-Dateien prüft die Regel keine Routinen. Korrektur: leeren Rumpf vor initialization bzw. dem a' + 'bschließenden end. anlegen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

@@ -4135,3 +4135,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | JA7 | `override; abstract;`, `virtual; final;`, `class function … static;` in Klasse und Record, abstrakte Überladung neben einer nicht abstrakten mit Rumpf, abstract nur in einem `{$IFDEF}`-Zweig | Keine Meldung |
 | JA8 | `"abstract-declaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | JA9 | Abgleich mit Delphi: JA1, JA3 bis JA6 übersetzen | dcc meldet E2167, E2136, E2351, E2371, E2383 bzw. E2376 an denselben Stellen, für JA7 nichts; meldet dcc für JA5 E2540 statt E2383, Meldungstext anpassen |
+
+## Vorwärtsdeklaration nie aufgelöst (#1002)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JF1 | Das Beispiel aus #1002: `function Pruefsumme(const Daten: TBytes): Cardinal;` im interface, kein Rumpf | Fehler `unsatisfied-forward` an `Pruefsumme`: „Pruefsumme ist im interface deklariert, aber nicht implementiert (wie E2065).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JF2 | Schnellkorrektur „Leeren Rumpf für Pruefsumme anlegen“, danach Strg+Z | Vor `initialization` bzw. `end.` steht `function Pruefsumme(const Daten: TBytes): Cardinal;` mit `begin`/`end;`, keine Meldung mehr; ein Undo-Schritt; Standardwerte der Parameter fehlen im Rumpf |
+| JF3 | Zwei Überladungen im interface, nur eine implementiert | Meldung an der fehlenden Überladung |
+| JF4 | `procedure Vorne; forward;` im implementation-Teil ohne Rumpf, auch als lokale Routine | „Vorne ist forward deklariert, aber nicht implementiert (wie E2065).“ |
+| JF5 | `TKnoten = class;` bzw. `IBesucher = interface;` ohne vollständige Deklaration im selben type-Abschnitt | Meldung wie E2086 bzw. E2420 |
+| JF6 | Rumpf ohne Parameterliste (`function Kurz;`), `external` im interface oder implementation, Deklaration in `{$IFDEF}`, Unit mit `{$I datei.inc}`, `EFehler = class(Exception);`, Methoden ohne Rumpf (meldet `declared-not-implemented`) | Keine Meldung von `unsatisfied-forward` |
+| JF7 | `"unsatisfied-forward": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| JF8 | Abgleich mit Delphi: JF1, JF3 bis JF5 übersetzen | dcc meldet E2065, E2086 bzw. E2420 an denselben Stellen, für JF6 nichts |
