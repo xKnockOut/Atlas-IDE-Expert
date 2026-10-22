@@ -75,6 +75,7 @@ type
     procedure SetChoice(AValue: Integer);
   protected
     procedure CreateWnd; override;
+    procedure DestroyWnd; override;
   public
     constructor Create(AOwner: TComponent); override;
     procedure SetChoices(const AItems: array of string);
@@ -1236,11 +1237,20 @@ begin
   ItemIndex := FChoice;
 end;
 
+procedure TAtlasChoiceBox.DestroyWnd;
+begin
+  // Auswahl sichern, bevor das Fenster wegfällt (RecreateWnd); CreateWnd setzt sie wieder. So ändert der
+  // Getter nichts (getter-side-effect, #1052).
+  FChoice := ItemIndex;
+  inherited DestroyWnd;
+end;
+
 function TAtlasChoiceBox.GetChoice: Integer;
 begin
   if HandleAllocated then
-    FChoice := ItemIndex;
-  Result := FChoice;
+    Result := ItemIndex
+  else
+    Result := FChoice;
 end;
 
 procedure TAtlasChoiceBox.SetChoice(AValue: Integer);

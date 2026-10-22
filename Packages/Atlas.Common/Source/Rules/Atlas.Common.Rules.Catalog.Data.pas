@@ -1348,6 +1348,24 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "getter-side-effect",' + #10 +
+    '      "name": "Getter changes the state",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "The read method of a property assigns fields or properties of its own object (FAbrufe, Self.FWert, inherited fields as well), calls Inc/Dec/Include/Exclude on them or passes a ne' + 'wly created object to a method of a field (FListe.Add(TEintrag.Create)). The debugger evaluates getters when displaying them and so changes the state. Lazy initialization is allowed: an enclosing if t' + 'ests something that its branch assigns (if FListe = nil then FListe := …, if Result = nil then … FListe := Result, if not FGeladen then … FGeladen := True). Local variables with the same name as a fie' + 'ld, Result, methods without a property and anonymous methods stay silent. One message per getter and field. Medium confidence. No quick fix.",' + #10 +
+    '      "bad": "function TZaehler.GetWert: Integer;\nbegin\n  Inc(FAbrufe);\n  Result := FWert;\nend;",' + #10 +
+    '      "good": "function TZaehler.GetWert: Integer;\nbegin\n  Result := FWert;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowLazyInit",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Allow lazy initialization in the getter (if FListe = nil then FListe := …)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "destroy-called-directly",' + #10 +
     '      "name": "Destroy called instead of Free",' + #10 +
     '      "category": "bug",' + #10 +
@@ -3087,6 +3105,17 @@ begin
     '        {' + #10 +
     '          "name": "allowed",' + #10 +
     '          "description": "Erlaubte Paare \"Methode>geerbte Methode\", Muster mit * und ?, z. B. \"Speichern>Pruefen\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "getter-side-effect",' + #10 +
+    '      "name": "Getter verändert den Zustand",' + #10 +
+    '      "description": "Die read-Methode einer Property weist Feldern oder Properties des eigenen Objekts zu (FAbrufe, Self.FWert, auch geerbte Felder), ruft Inc/Dec/Include/Exclude darauf auf oder über' + 'gibt ein neu angelegtes Objekt an eine Methode eines Felds (FListe.Add(TEintrag.Create)). Der Debugger wertet Getter beim Anzeigen aus und ändert so den Zustand. Lazy-Initialisierung ist erlaubt: Ein ' + 'umschließendes if prüft etwas, das sein Zweig zuweist (if FListe = nil then FListe := …, if Result = nil then … FListe := Result, if not FGeladen then … FGeladen := True). Still bei lokalen Variablen ' + 'mit dem Namen eines Felds, Result, Methoden ohne Property und anonymen Methoden. Eine Meldung je Getter und Feld. Konfidenz mittel. Keine Schnellkorrektur.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowLazyInit",' + #10 +
+    '          "description": "Lazy-Initialisierung im Getter erlauben (if FListe = nil then FListe := …)."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +

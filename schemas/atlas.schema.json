@@ -432,6 +432,11 @@
                 "default": ["Visible", "Enabled"],
                 "description": "Nur duplicate-assignment: Properties, bei denen doppeltes Setzen gewollt sein kann (Setter mit Nebenwirkung), Muster mit * und ? (#1051)."
               },
+              "allowLazyInit": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur getter-side-effect: Lazy-Initialisierung im Getter erlauben (if FListe = nil then FListe := …, #1052)."
+              },
               "searchPaths": {
                 "type": "string",
                 "enum": ["project", "atlas", "both"],
