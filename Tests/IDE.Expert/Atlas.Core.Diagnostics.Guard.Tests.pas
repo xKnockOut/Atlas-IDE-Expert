@@ -34,6 +34,17 @@ type
     procedure BreadcrumbsHaveTheirOwnFuse;
     [Test]
     procedure LogRotatesAtLimit;
+    /// <summary>Scheitert das Rotieren, wird trotzdem angehängt und der Grund einmal vermerkt (Bericht M4); früher
+    /// ging dabei jede Zeile verloren.</summary>
+    [Test]
+    procedure LogKeepsWritingWhenRotationFails;
+    /// <summary>Scheitert das Anhängen, zählt das Protokoll die Zeilen, meldet den ersten Fehler über OnError und
+    /// vermerkt die Lücke beim nächsten Gelingen (Bericht M4).</summary>
+    [Test]
+    procedure LogCountsLostLinesAndReportsTheGap;
+    /// <summary>Ein Mutex je Ordner, gleich für alle Schreibweisen des Ordners.</summary>
+    [Test]
+    procedure LogMutexNameDependsOnlyOnTheFolder;
     [Test]
     procedure ProviderFuseTripsOnlyThatProvider;
     [Test]
@@ -259,6 +270,96 @@ begin
   finally
     Log.Free;
   end;
+end;
+
+/// <summary>Wie oft ASub in AText vorkommt.</summary>
+function Occurrences(const AText, ASub: string): Integer;
+var
+  Offset: Integer;
+begin
+  Result := 0;
+  Offset := Pos(ASub, AText);
+  while Offset > 0 do
+  begin
+    Inc(Result);
+    Offset := Pos(ASub, AText, Offset + Length(ASub));
+  end;
+end;
+
+procedure TAtlasGuardTests.LogKeepsWritingWhenRotationFails;
+var
+  Log: TAtlasRotatingLog;
+  Index: Integer;
+  Text: string;
+begin
+  Log := TAtlasRotatingLog.Create(FFolder, 100, 3);
+  try
+    ForceDirectories(FFolder);
+    // atlas.1.log lässt sich nicht nach atlas.2.log verschieben, dort liegt ein Ordner.
+    TFile.WriteAllText(TPath.Combine(FFolder, 'atlas.1.log'), 'alt');
+    TDirectory.CreateDirectory(TPath.Combine(FFolder, 'atlas.2.log'));
+    for Index := 1 to 10 do
+      Log.Add('Zeile ' + IntToStr(Index));
+    Text := TFile.ReadAllText(Log.FileName);
+    Assert.Contains(Text, 'Zeile 10', 'trotz gescheitertem Rotieren angehängt');
+    Assert.AreEqual(1, Occurrences(Text, 'Protokoll: Rotieren gescheitert'), 'Grund nur einmal');
+    Assert.DoesNotContain(Text, FFolder, 'ohne Ordner (Benutzername)');
+    Assert.AreEqual(0, Log.Lost, 'keine Zeile verloren');
+  finally
+    Log.Free;
+  end;
+end;
+
+procedure TAtlasGuardTests.LogCountsLostLinesAndReportsTheGap;
+var
+  Log: TAtlasRotatingLog;
+  Reports: TArray<string>;
+  Blocker, Text: string;
+begin
+  Reports := nil;
+  Log := TAtlasRotatingLog.Create(FFolder);
+  try
+    Log.OnError :=
+      procedure(const AMessage: string)
+      begin
+        Reports := Reports + [AMessage];
+      end;
+    // Ein Ordner namens atlas.log: Anhängen scheitert.
+    Blocker := TPath.Combine(FFolder, 'atlas.log');
+    TDirectory.CreateDirectory(Blocker);
+    Log.Add('eins');
+    Log.Add('zwei');
+    Log.Add('drei');
+    Assert.AreEqual(3, Log.Lost);
+    Assert.AreEqual(1, Integer(Length(Reports)), 'nur der erste Fehler wird gemeldet');
+    Assert.IsTrue(Reports[0] <> '', 'mit Grund');
+    Assert.AreEqual(Reports[0], Log.LastError);
+    TDirectory.Delete(Blocker);
+    Log.Add('vier');
+    Assert.AreEqual(2, Integer(Length(Reports)));
+    Assert.AreEqual('', Reports[1], 'wieder in Ordnung');
+    Assert.AreEqual('', Log.LastError);
+    Assert.AreEqual(3, Log.Lost, 'die Summe bleibt');
+    Text := TFile.ReadAllText(Log.FileName);
+    Assert.Contains(Text, 'Protokoll: 3 Zeilen nicht geschrieben');
+    Assert.Contains(Text, 'vier');
+    Assert.DoesNotContain(Text, 'eins');
+    Assert.DoesNotContain(Text, FFolder, 'ohne Ordner (Benutzername)');
+  finally
+    Log.Free;
+  end;
+end;
+
+procedure TAtlasGuardTests.LogMutexNameDependsOnlyOnTheFolder;
+var
+  Name: string;
+begin
+  Name := TAtlasRotatingLog.MutexName('C:\Users\Anna\AppData\Local\Atlas\Logs');
+  Assert.AreEqual(Name, TAtlasRotatingLog.MutexName(
+    IncludeTrailingPathDelimiter('c:\users\anna\appdata\local\atlas\logs')), 'Schreibweise und Schlussstrich egal');
+  Assert.AreNotEqual(Name, TAtlasRotatingLog.MutexName('C:\Users\Anna\AppData\Local\Temp\AtlasTests\Logs'));
+  Assert.IsTrue(Name.StartsWith('Local\Atlas.Log.'), Name);
+  Assert.AreEqual(0, Pos('\', Copy(Name, 7, MaxInt)), 'kein Backslash nach dem Namensraum');
 end;
 
 procedure TAtlasGuardTests.ProviderFuseTripsOnlyThatProvider;

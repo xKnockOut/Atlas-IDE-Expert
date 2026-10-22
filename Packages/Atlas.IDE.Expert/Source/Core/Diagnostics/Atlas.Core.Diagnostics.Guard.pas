@@ -30,6 +30,16 @@
 //   nie Quelltext aus dem Editor. Den Stack-Trace liefert Exception.StackTrace
 //   (falls ein Anbieter installiert ist), sonst der Haken StackOf
 //   (Atlas.IDE.Diagnostics.StackCapture: Mitschnitt beim Auslösen).
+// - Schreibfehler des Protokolls (Bericht M4): Früher verschluckte Add jeden
+//   Fehler, und ein Fehler beim Rotieren verhinderte auch das Anhängen; ab
+//   dem 21.10. 21:29 kam so nichts mehr an, ohne Spur. Jetzt sperrt ein
+//   benannter Mutex je Ordner Rotieren und Schreiben über alle IDE-Prozesse
+//   (Marcos IDE und die von Claude-Compile gestarteten teilen den Ordner;
+//   ohne Sperre öffneten zwei Schreiber dieselbe Datei exklusiv). Scheitert
+//   das Rotieren, wird trotzdem angehängt und der Grund einmal vermerkt.
+//   Scheitert das Anhängen, zählt Add die verlorenen Zeilen, meldet den
+//   ersten Fehler (und jeden neuen Grund) über OnError und schreibt beim
+//   nächsten Gelingen eine Zeile über die Lücke.
 
 interface
 
@@ -50,22 +60,52 @@ type
 
   TAtlasFeatures = set of TAtlasFeature;
 
+  /// <summary>Protokoll gestört: Grund des Schreibfehlers; '' = schreibt wieder.</summary>
+  TAtlasLogError = reference to procedure(const AMessage: string);
+
   TAtlasRotatingLog = class
   private
     FFolder: string;
     FMaxBytes: Int64;
     FMaxFiles: Integer;
     FLock: TCriticalSection;
+    /// <summary>Prozessübergreifende Sperre für FMutexFolder.</summary>
+    FMutex: TMutex;
+    FMutexFolder: string;
+    /// <summary>Seit dem letzten gelungenen Schreiben verlorene Zeilen.</summary>
+    FFailed: Integer;
+    /// <summary>Verlorene Zeilen seit dem Start.</summary>
+    FLost: Integer;
+    FLastError: string;
+    FRotateError: string;
+    FOnError: TAtlasLogError;
     procedure Rotate;
+    function Mutex: TMutex;
+    function AppendLine(const ALine: string): string;
+    function Clean(const AText: string): string;
   public
+    /// <summary>So lange wartet Add auf einen anderen Prozess, der gerade schreibt; danach schreibt es trotzdem.
+    /// </summary>
+    const LockTimeoutMs = 2000;
     constructor Create(const AFolder: string; AMaxBytes: Int64 = 1024 * 1024; AMaxFiles: Integer = 5);
     destructor Destroy; override;
-    /// <summary>Zeile mit Zeitstempel anhängen; Fehler beim Schreiben werden verschluckt.</summary>
+    /// <summary>Zeile mit Zeitstempel anhängen. Wirft nie; ein Schreibfehler zählt die Zeile als verloren und meldet
+    /// sich über OnError.</summary>
     procedure Add(const AText: string);
+    /// <summary>Name des benannten Mutex für AFolder (Groß-/Kleinschreibung und Schlussstrich egal).</summary>
+    class function MutexName(const AFolder: string): string; static;
     /// <summary>Aktuelle Datei (atlas.log); ältere heißen atlas.1.log … atlas.4.log.</summary>
     function FileName: string;
     /// <summary>Ordner der Protokolldateien (Tests stellen ihn um).</summary>
     property Folder: string read FFolder write FFolder;
+    /// <summary>Seit dem Start verlorene Zeilen.</summary>
+    property Lost: Integer read FLost;
+    /// <summary>Grund des letzten Schreibfehlers; '' = das letzte Schreiben gelang.</summary>
+    property LastError: string read FLastError;
+    /// <summary>Erster Schreibfehler nach einem gelungenen Schreiben und jeder neue Grund; '' sobald wieder
+    /// geschrieben wird. Läuft außerhalb der Sperren im Thread des Schreibers und darf selbst protokollieren.
+    /// </summary>
+    property OnError: TAtlasLogError read FOnError write FOnError;
     /// <summary>%LOCALAPPDATA%\Atlas\Logs.</summary>
     class function DefaultFolder: string; static;
   end;
@@ -204,8 +244,34 @@ end;
 
 destructor TAtlasRotatingLog.Destroy;
 begin
+  FMutex.Free;
   FLock.Free;
   inherited;
+end;
+
+class function TAtlasRotatingLog.MutexName(const AFolder: string): string;
+var
+  Key: string;
+  Hash: Cardinal;
+  Index: Integer;
+begin
+  // FNV-1a über den Ordner; ein Mutexname darf außer nach „Local\“ keinen Backslash enthalten.
+  Key := UpperCase(ExcludeTrailingPathDelimiter(AFolder));
+  Hash := 2166136261;
+  for Index := 1 to Length(Key) do
+    Hash := Cardinal((UInt64(Hash xor Ord(Key[Index])) * 16777619) and $FFFFFFFF);
+  Result := 'Local\Atlas.Log.' + IntToHex(Hash, 8);
+end;
+
+function TAtlasRotatingLog.Mutex: TMutex;
+begin
+  if (FMutex = nil) or not SameText(FMutexFolder, FFolder) then
+  begin
+    FreeAndNil(FMutex);
+    FMutex := TMutex.Create(nil, False, MutexName(FFolder));
+    FMutexFolder := FFolder;
+  end;
+  Result := FMutex;
 end;
 
 class function TAtlasRotatingLog.DefaultFolder: string;
@@ -238,22 +304,87 @@ begin
   end;
 end;
 
+/// <summary>Fehlermeldung fürs Protokoll: ohne den Ordner (enthält den Benutzernamen), einzeilig und gekürzt.</summary>
+function TAtlasRotatingLog.Clean(const AText: string): string;
+begin
+  Result := TAtlasGuard.SafeMessage(StringReplace(AText, ExcludeTrailingPathDelimiter(FFolder), 'Logs',
+    [rfReplaceAll, rfIgnoreCase]));
+end;
+
+/// <summary>Rotieren und Anhängen unter der prozessübergreifenden Sperre; '' = geschrieben, sonst der Grund. Nur
+/// unter FLock.</summary>
+function TAtlasRotatingLog.AppendLine(const ALine: string): string;
+var
+  Lock: TMutex;
+  Owned: Boolean;
+  Stamp, Lines: string;
+begin
+  Result := '';
+  try
+    ForceDirectories(FFolder);
+    Lock := Mutex;
+    // Abgebrochen heißt: Ein anderer Prozess endete beim Schreiben; die Sperre gehört dann uns.
+    Owned := Lock.WaitFor(LockTimeoutMs) in [wrSignaled, wrAbandoned];
+    try
+      Stamp := FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', Now) + ' ';
+      Lines := '';
+      if TFile.Exists(FileName) and (TFile.GetSize(FileName) >= FMaxBytes) then
+        try
+          Rotate;
+          FRotateError := '';
+        except
+          // Rotieren gescheitert (z. B. eine ältere Datei ist woanders gesperrt): trotzdem anhängen, die Datei wird
+          // dann größer. Früher ging dabei auch die Zeile verloren, bei jedem Versuch wieder.
+          on E: Exception do
+            if E.Message <> FRotateError then
+            begin
+              FRotateError := E.Message;
+              Lines := Stamp + 'Protokoll: Rotieren gescheitert (' + E.ClassName + ': ' + Clean(E.Message) +
+                '); schreibe weiter in atlas.log' + sLineBreak;
+            end;
+        end;
+      if FFailed > 0 then
+        Lines := Lines + Stamp + Format('Protokoll: %d Zeilen nicht geschrieben (zuletzt: %s)',
+          [FFailed, Clean(FLastError)]) + sLineBreak;
+      TFile.AppendAllText(FileName, Lines + ALine, TEncoding.UTF8);
+    finally
+      if Owned then
+        Lock.Release;
+    end;
+  except
+    on E: Exception do
+      Result := E.ClassName + ': ' + E.Message;
+  end;
+end;
+
 procedure TAtlasRotatingLog.Add(const AText: string);
+var
+  Failure, Error: string;
+  Notify: Boolean;
 begin
   FLock.Enter;
   try
-    try
-      ForceDirectories(FFolder);
-      if TFile.Exists(FileName) and (TFile.GetSize(FileName) >= FMaxBytes) then
-        Rotate;
-      TFile.AppendAllText(FileName, FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', Now) + ' ' + AText + sLineBreak,
-        TEncoding.UTF8);
-    except
-      // Das Protokoll darf die IDE nie stören.
+    Failure := AppendLine(FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', Now) + ' ' + AText + sLineBreak);
+    if Failure = '' then
+    begin
+      Notify := FFailed > 0;
+      FFailed := 0;
+      FLastError := '';
+    end
+    else
+    begin
+      Inc(FFailed);
+      Inc(FLost);
+      Notify := Failure <> FLastError;
+      FLastError := Failure;
     end;
+    Error := FLastError;
   finally
     FLock.Leave;
   end;
+  // Außerhalb der Sperren: Der Empfänger darf selbst protokollieren.
+  if Notify and Assigned(FOnError) then
+    FOnError(Error);
 end;
 
 { TAtlasFuse }

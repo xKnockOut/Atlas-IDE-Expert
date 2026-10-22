@@ -1582,6 +1582,32 @@ begin
     TAtlasStrings.Fmt(TAtlasTextId.FuseTrippedTitle, [TAtlasGuard.FeatureName(Feature)]), AMessage, [Enable, Log]);
 end;
 
+/// <summary>Atlas-Protokoll gestört (Bericht M4), aus dem Thread des Schreibers: über OutputDebugString (DebugView
+/// zeigt es, auch wenn atlas.log nichts mehr annimmt) und als Benachrichtigung; '' = schreibt wieder.</summary>
+procedure LogError(const AMessage: string);
+var
+  Reason, Text, Detail: string;
+begin
+  if AMessage = '' then
+  begin
+    OutputDebugString(PChar('Atlas: Protokoll schreibt wieder'));
+    Exit;
+  end;
+  Reason := TAtlasGuard.SafeMessage(AMessage);
+  OutputDebugString(PChar('Atlas: Protokoll gestört: ' + Reason));
+  Text := TAtlasStrings.Text(TAtlasTextId.LogBrokenTitle);
+  Detail := TAtlasStrings.Fmt(TAtlasTextId.LogBrokenText, [TAtlasGuard.RotatingLog.FileName, Reason]);
+  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Fuse, TAtlasNotificationSeverity.Warning,
+    Text, Detail) <> TAtlasNotificationMode.Show then
+    Exit;
+  Text := Text + ': ' + Detail;
+  TAtlasMainThread.Queue(TAtlasFeature.Status,
+    procedure
+    begin
+      MessageLine(Text);
+    end);
+end;
+
 /// <summary>„Einstellungen“ der Zustandskachel (#754): Optionsseite „Atlas“ (#227) wie Menü Atlas › Einstellungen.</summary>
 procedure OpenAtlasOptions;
 var
@@ -3783,6 +3809,7 @@ begin
   TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
   TAtlasGuard.OnWarning := GuardWarning;
   TAtlasGuard.OnTripped := GuardTripped;
+  TAtlasGuard.RotatingLog.OnError := LogError;
   // Stacktraces für jede Fehlerzeile der Sicherung: ohne sie lässt sich kein Fehler bis zur Codezeile verfolgen.
   TAtlasIdeStackCapture.Install;
   TAtlasStrings.Language := IdeLanguage;
@@ -3959,6 +3986,7 @@ begin
     TAtlasGuard.OnWarning := nil;
     TAtlasGuard.OnTripped := nil;
     TAtlasGuard.OnFailure := nil;
+    TAtlasGuard.RotatingLog.OnError := nil;
     TAtlasIdeSettings.OnChanged := nil;
     // Sauberes Ende: Startmarke löschen, Absturzzähler zurück (#722).
     Teardown.Step('SafeMode',

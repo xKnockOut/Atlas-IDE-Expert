@@ -3144,6 +3144,18 @@ Voraussetzung: Einstellungen auf Vorgabe, Diagnoselog an, ein Testprojekt offen.
 | TV4 | `AtlasServer.exe --check` über das Projekt aus TV1 | Läuft ohne Absturz durch; `Tief.pas` mit `with-statement`, `Tief2.pas` mit `unit-too-deep` |
 | TV5 | Testlauf `Atlas.Tests.exe` | Grün, darunter `AllRulesHandleDeepTrees` und `EngineChecksDeepUnit` (TBuiltinRulesTests), `TooDeepTreeSkipsRules` und `TooDeepHintCanBeSwitchedOff` (TRuleEngineTests), `WalkAndSearchOfDeepTreeNeedLittleStack` und `DeepestIsFirstNodeAtGreatestDepth` (TSyntaxTreeTests), `WalkersHandleDeepTrees` (TLspDeepTreeTests) |
 
+## Atlas-Protokoll bei Schreibfehlern (Bericht M4)
+
+Voraussetzung: Atlas geladen, DebugView (Sysinternals) mit „Capture Win32“ an, Ordner `%LOCALAPPDATA%\Atlas\Logs` im Explorer offen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PL1 | Zweite IDE starten (z. B. über Claude-Compile), in beiden arbeiten, danach `atlas.log` ansehen | Zeilen beider IDEs stehen vollständig und nicht ineinander; kein „Protokoll gestört“ |
+| PL2 | `atlas.2.log` in einem Programm öffnen, das die Datei sperrt (z. B. Excel), dann so lange arbeiten, bis `atlas.log` 1 MB erreicht (oder `atlas.log` vorher mit 1 MB Text füllen) | Atlas schreibt weiter in `atlas.log`; dort steht einmal „Protokoll: Rotieren gescheitert (…); schreibe weiter in atlas.log“, ohne Benutzernamen. Nach dem Schließen rotiert es wieder |
+| PL3 | `atlas.log` umbenennen und einen Ordner `atlas.log` anlegen, eine Atlas-Funktion benutzen | DebugView zeigt „Atlas: Protokoll gestört: …“; Benachrichtigung „Atlas-Protokoll gestört“ (bzw. Zeile in der Meldungsansicht) nur einmal |
+| PL4 | Ordner `atlas.log` wieder löschen, weiterarbeiten | DebugView „Atlas: Protokoll schreibt wieder“; in `atlas.log` steht „Protokoll: N Zeilen nicht geschrieben (zuletzt: …)“ vor der nächsten Zeile |
+| PL5 | Testlauf `Atlas.Tests.exe` | Grün, darunter `LogKeepsWritingWhenRotationFails`, `LogCountsLostLinesAndReportsTheGap` und `LogMutexNameDependsOnlyOnTheFolder` (TAtlasGuardTests) |
+
 ## Gliederung beim Start und Kontextwechsel ohne Zugriffsverletzung
 
 Voraussetzung: experimentelles `editor.stickyScroll` an (wie bei Marco), Brotkrumen an; IDE frisch gestartet, eine Gruppe mit mehreren Plattformen.

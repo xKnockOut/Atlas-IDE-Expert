@@ -655,7 +655,7 @@ type
     UnwrapKeepElse, UnwrapKeepFirst, UnwrapKeepIfDefElse, UnwrapKeepBranch, UnwrapRaiseNote, UnwrapLoopNote,
     UnwrapWithNote, SettingsOutlineConditions, SettingsCompletionVariantBranch, TagVariantBranch,
     BreadcrumbsDisabled, FuseTrippedTitle, FuseTrippedEnable, FuseTrippedOpenLog, ServerCrashedCause, ServerHeldTitle,
-    ServerHeldText, ServerHeldPhase);
+    ServerHeldText, ServerHeldPhase, LogBrokenTitle, LogBrokenText);
 
   TAtlasStrings = class
   private class var
@@ -2018,7 +2018,10 @@ const
      'Der Server endete zweimal mit %s innerhalb von %d Minuten. Atlas startet ihn nicht mehr von selbst neu, ' +
      'damit der Fehler nicht in einer Schleife wiederkehrt. Der Fehlerbericht enthält das Protokoll und die ' +
      'Ausgabe des Servers auf stderr.',
-     '%s; zweimal, kein automatischer Neustart'),
+     '%s; zweimal, kein automatischer Neustart',
+     'Atlas-Protokoll gestört',
+     'Atlas kann nicht in %s schreiben: %s. Atlas versucht es bei jeder Zeile weiter und vermerkt die Lücke im ' +
+     'Protokoll, sobald es wieder geht.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3288,7 +3291,10 @@ const
      'Server crashed repeatedly',
      'The server ended twice with %s within %d minutes. Atlas no longer restarts it on its own, so the error ' +
      'does not recur in a loop. The bug report contains the log and the server''s output on stderr.',
-     '%s; twice, no automatic restart'));
+     '%s; twice, no automatic restart',
+     'Atlas log disrupted',
+     'Atlas cannot write to %s: %s. Atlas keeps trying with every line and notes the gap in the log once writing ' +
+     'works again.'));
 
 { TAtlasStrings }
 
