@@ -128,19 +128,23 @@ const
 type
   ECacheFormat = class(Exception);
 
-  /// <summary>Wachsender Bytepuffer.</summary>
+  /// <summary>Wachsender Bytepuffer. Ein zählender Puffer (Counter) legt nichts ab, sondern zählt nur die
+  /// Bytes; Serialize misst damit vorab die genaue Größe.</summary>
   TCacheWriter = class
   private
     FData: TBytes;
     FLength: Integer;
+    FCounting: Boolean;
     procedure Grow(ACount: Integer);
   public
     constructor Create(ACapacity: Integer);
+    class function Counter: TCacheWriter; static;
     procedure WriteByte(AValue: Byte);
     procedure WriteBytes(const AValue: TBytes; AIndex, ACount: Integer);
     procedure WriteVar(AValue: UInt64);
     procedure WriteInt(AValue: Int64);
-    function ToBytes: TBytes;
+    /// <summary>Übergibt den Puffer ohne Kopie, wenn er genau gefüllt ist; danach ist der Schreiber leer.</summary>
+    function TakeBytes: TBytes;
     property Length_: Integer read FLength;
   end;
 
@@ -195,6 +199,12 @@ begin
   SetLength(FData, ACapacity);
 end;
 
+class function TCacheWriter.Counter: TCacheWriter;
+begin
+  Result := TCacheWriter.Create(0);
+  Result.FCounting := True;
+end;
+
 procedure TCacheWriter.Grow(ACount: Integer);
 var
   Needed, Capacity: Integer;
@@ -212,6 +222,11 @@ end;
 
 procedure TCacheWriter.WriteByte(AValue: Byte);
 begin
+  if FCounting then
+  begin
+    Inc(FLength);
+    Exit;
+  end;
   Grow(1);
   FData[FLength] := AValue;
   Inc(FLength);
@@ -221,6 +236,11 @@ procedure TCacheWriter.WriteBytes(const AValue: TBytes; AIndex, ACount: Integer)
 begin
   if ACount <= 0 then
     Exit;
+  if FCounting then
+  begin
+    Inc(FLength, ACount);
+    Exit;
+  end;
   Grow(ACount);
   Move(AValue[AIndex], FData[FLength], ACount);
   Inc(FLength, ACount);
@@ -248,9 +268,13 @@ begin
   WriteVar(Encoded);
 end;
 
-function TCacheWriter.ToBytes: TBytes;
+function TCacheWriter.TakeBytes: TBytes;
 begin
-  Result := Copy(FData, 0, FLength);
+  Result := FData;
+  FData := nil;
+  if Length(Result) <> FLength then
+    SetLength(Result, FLength);
+  FLength := 0;
 end;
 
 { TCacheReader }
@@ -449,26 +473,35 @@ begin
   end;
 end;
 
-class function TIndexCache.Serialize(const AUnits: TArray<TUnitIndex>): TBytes;
+/// <summary>Bytes, die WriteVar für AValue schreibt.</summary>
+function VarSize(AValue: UInt64): Integer;
+begin
+  Result := 1;
+  while AValue >= $80 do
+  begin
+    Inc(Result);
+    AValue := AValue shr 7;
+  end;
+end;
+
+/// <summary>Alle Units hinter der String-Tabelle. ATable vergibt die Nummern; ein zweiter Lauf über dieselben
+/// Units findet alle Texte schon vor und schreibt dieselben Nummern.</summary>
+procedure WriteUnits(AWriter: TCacheWriter; ATable: TStringTable; const AUnits: TArray<TUnitIndex>);
 var
-  Table: TStringTable;
-  Body, Block, Output: TCacheWriter;
+  Block: TCacheWriter;
   UnitIndex: TUnitIndex;
   Symbol: TIndexSymbol;
   Usage: TIndexUsage;
-  Flags, MagicIndex, ChecksumAt: Integer;
+  Flags: Integer;
   Kind: TNamingKind;
   Stamp: Int64;
-  Value: string;
-  Bytes: TBytes;
-  Checksum: Cardinal;
 begin
-  Table := TStringTable.Create;
-  Body := TCacheWriter.Create(1024 * 1024);
-  Block := TCacheWriter.Create(64 * 1024);
-  Output := nil;
+  if AWriter.FCounting then
+    Block := TCacheWriter.Counter
+  else
+    Block := TCacheWriter.Create(64 * 1024);
   try
-    Body.WriteVar(Length(AUnits));
+    AWriter.WriteVar(Length(AUnits));
     for UnitIndex in AUnits do
     begin
       Flags := 0;
@@ -480,42 +513,77 @@ begin
         Flags := Flags or FlagInitialization;
       if UnitIndex.UsagesIndexed then
         Flags := Flags or FlagUsages;
-      Body.WriteVar(Table.IndexOf(UnitIndex.UnitName));
-      Body.WriteVar(Table.IndexOf(UnitIndex.FileName));
-      Body.WriteInt(UnitIndex.Stamp);
-      Body.WriteVar(Table.IndexOf(UnitIndex.Hash));
-      Body.WriteVar(Flags);
-      WriteList(Body, Table, UnitIndex.InterfaceUses);
-      WriteList(Body, Table, UnitIndex.ImplementationUses);
-      WriteList(Body, Table, UnitIndex.Includes);
-      Body.WriteVar(Length(UnitIndex.IncludeStamps));
+      AWriter.WriteVar(ATable.IndexOf(UnitIndex.UnitName));
+      AWriter.WriteVar(ATable.IndexOf(UnitIndex.FileName));
+      AWriter.WriteInt(UnitIndex.Stamp);
+      AWriter.WriteVar(ATable.IndexOf(UnitIndex.Hash));
+      AWriter.WriteVar(Flags);
+      WriteList(AWriter, ATable, UnitIndex.InterfaceUses);
+      WriteList(AWriter, ATable, UnitIndex.ImplementationUses);
+      WriteList(AWriter, ATable, UnitIndex.Includes);
+      AWriter.WriteVar(Length(UnitIndex.IncludeStamps));
       for Stamp in UnitIndex.IncludeStamps do
-        Body.WriteInt(Stamp);
+        AWriter.WriteInt(Stamp);
       for Kind := Low(TNamingKind) to High(TNamingKind) do
       begin
-        Body.WriteVar(UnitIndex.Naming[Kind].Total);
-        Body.WriteVar(UnitIndex.Naming[Kind].Prefixed);
+        AWriter.WriteVar(UnitIndex.Naming[Kind].Total);
+        AWriter.WriteVar(UnitIndex.Naming[Kind].Prefixed);
       end;
-      WriteList(Body, Table, UnitIndex.Directives);
-      Body.WriteVar(Table.IndexOf(UnitIndex.DeprecatedText));
-      Body.WriteVar(Length(UnitIndex.Symbols));
-      Body.WriteVar(Length(UnitIndex.Unavailable));
+      WriteList(AWriter, ATable, UnitIndex.Directives);
+      AWriter.WriteVar(ATable.IndexOf(UnitIndex.DeprecatedText));
+      AWriter.WriteVar(Length(UnitIndex.Symbols));
+      AWriter.WriteVar(Length(UnitIndex.Unavailable));
       // Block erst sammeln, damit seine Länge davor stehen kann.
       Block.FLength := 0;
       for Symbol in UnitIndex.Symbols do
-        WriteSymbol(Block, Table, Symbol);
+        WriteSymbol(Block, ATable, Symbol);
       for Symbol in UnitIndex.Unavailable do
-        WriteSymbol(Block, Table, Symbol);
-      Body.WriteVar(Block.Length_);
-      Body.WriteBytes(Block.FData, 0, Block.Length_);
+        WriteSymbol(Block, ATable, Symbol);
+      AWriter.WriteVar(Block.Length_);
+      AWriter.WriteBytes(Block.FData, 0, Block.Length_);
       Block.FLength := 0;
       for Usage in UnitIndex.Usages do
-        WriteUsage(Block, Table, Usage);
-      Body.WriteVar(Length(UnitIndex.Usages));
-      Body.WriteVar(Block.Length_);
-      Body.WriteBytes(Block.FData, 0, Block.Length_);
+        WriteUsage(Block, ATable, Usage);
+      AWriter.WriteVar(Length(UnitIndex.Usages));
+      AWriter.WriteVar(Block.Length_);
+      AWriter.WriteBytes(Block.FData, 0, Block.Length_);
     end;
-    Output := TCacheWriter.Create(Body.Length_ + 64 * 1024);
+  finally
+    Block.Free;
+  end;
+end;
+
+class function TIndexCache.Serialize(const AUnits: TArray<TUnitIndex>): TBytes;
+var
+  Table: TStringTable;
+  Counter, Output: TCacheWriter;
+  MagicIndex, ChecksumAt, TextCount, Size: Integer;
+  Capacity: Int64;
+  Value: string;
+  Bytes: TBytes;
+  Checksum: Cardinal;
+begin
+  // Speicher (Rückmeldung 22.10.2026, 3 GB bei acht Projekten): Früher wuchs der Rumpf in einem eigenen
+  // Puffer bis auf das Doppelte, wurde hinter die Tabelle kopiert und am Ende noch einmal kopiert; das
+  // kostete kurzzeitig das Vier- bis Fünffache der Datei. Jetzt zählt ein erster Lauf nur die Bytes und
+  // füllt die Tabelle, der zweite schreibt in einen Puffer genau passender Größe, der ohne Kopie das
+  // Ergebnis wird.
+  Table := TStringTable.Create;
+  Counter := TCacheWriter.Counter;
+  Output := nil;
+  try
+    WriteUnits(Counter, Table, AUnits);
+    TextCount := Table.Items.Count;
+    Capacity := Int64(Length(Magic)) + VarSize(FormatVersion) + ChecksumSize + VarSize(TextCount) +
+      Counter.Length_;
+    for Value in Table.Items do
+    begin
+      Size := TEncoding.UTF8.GetByteCount(Value);
+      Inc(Capacity, VarSize(Size) + Size);
+    end;
+    if Capacity > MaxInt then
+      raise ECacheFormat.Create('Index-Cache zu groß');
+    Output := TCacheWriter.Create(Integer(Capacity));
     for MagicIndex := Low(Magic) to High(Magic) do
       Output.WriteByte(Magic[MagicIndex]);
     Output.WriteVar(FormatVersion);
@@ -523,22 +591,24 @@ begin
     ChecksumAt := Output.Length_;
     for MagicIndex := 1 to ChecksumSize do
       Output.WriteByte(0);
-    Output.WriteVar(Table.Items.Count);
+    Output.WriteVar(TextCount);
     for Value in Table.Items do
     begin
       Bytes := TEncoding.UTF8.GetBytes(Value);
       Output.WriteVar(Length(Bytes));
       Output.WriteBytes(Bytes, 0, Length(Bytes));
     end;
-    Output.WriteBytes(Body.FData, 0, Body.Length_);
-    Result := Output.ToBytes;
+    WriteUnits(Output, Table, AUnits);
+    // Beide Läufe müssen dieselben Texte in derselben Reihenfolge sehen.
+    if (Table.Items.Count <> TextCount) or (Output.Length_ <> Capacity) then
+      raise EInvalidOpException.Create('Index-Cache: Größe weicht von der Vorabzählung ab');
+    Result := Output.TakeBytes;
     Checksum := ChecksumOf(Result, ChecksumAt + ChecksumSize, Length(Result));
     for MagicIndex := 0 to ChecksumSize - 1 do
       Result[ChecksumAt + MagicIndex] := Byte(Checksum shr (8 * MagicIndex));
   finally
     Output.Free;
-    Block.Free;
-    Body.Free;
+    Counter.Free;
     Table.Free;
   end;
 end;

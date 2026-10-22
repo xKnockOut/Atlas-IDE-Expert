@@ -21,6 +21,7 @@ type
     FRefuseWrites: Boolean;
     FLocked: TDictionary<string, Boolean>;
     FAfterRead: TProc<string>;
+    FBeforeWrite: TProc;
   public
     constructor Create;
     destructor Destroy; override;
@@ -44,6 +45,8 @@ type
     property RefuseWrites: Boolean read FRefuseWrites write FRefuseWrites;
     /// <summary>Nach jedem ReadBytes mit dem Dateinamen, außerhalb der Sperre (ein anderer Schreiber).</summary>
     property AfterRead: TProc<string> read FAfterRead write FAfterRead;
+    /// <summary>Läuft vor jedem WriteBytes außerhalb der Sperre, z. B. um ein Schreiben aufzuhalten.</summary>
+    property BeforeWrite: TProc read FBeforeWrite write FBeforeWrite;
   end;
 
   [TestFixture]
@@ -184,6 +187,14 @@ type
     /// <summary>Ein nicht geschriebener Cache wird gemeldet statt verschluckt (Bericht N1).</summary>
     [Test]
     procedure ServiceReportsUnwrittenCache;
+    /// <summary>Rückmeldung 22.10.2026 (3 GB bei acht Projekten): Projekte, die zusammen aufbauen, schreiben
+    /// den gemeinsamen Bibliotheks-Cache nur einmal, statt jedes für sich gegen seinen Startstand.</summary>
+    [Test]
+    [IgnoreMemoryLeaks]
+    procedure ConcurrentServicesWriteLibraryCacheOnce;
+    /// <summary>Diagnoselog nennt, warum Units nicht aus dem Cache kamen (Rückmeldung 22.10.2026).</summary>
+    [Test]
+    procedure CountsWhyUnitsWereParsed;
     [Test]
     procedure ReadOnlyServiceStopsWaitingAfterLimit;
     [Test]
@@ -239,6 +250,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Memory,
   Atlas.Common.Index.Cache,
   Atlas.Common.Index.Builder,
   Atlas.Common.Index.Service,
@@ -407,8 +419,12 @@ end;
 
 function TMemoryIndexFileSystem.WriteBytes(const AFileName: string; const ABytes: TBytes;
   out AError: string): Boolean;
+var
+  Stamp: Int64;
 begin
   AError := '';
+  if Assigned(FBeforeWrite) then
+    FBeforeWrite();
   if FFailWrites then
     raise EInOutError.Create('simuliert');
   if FRefuseWrites then
@@ -419,7 +435,11 @@ begin
   TMonitor.Enter(Self);
   try
     FBytes.AddOrSetValue(UpperCase(AFileName), ABytes);
-    FStamps.AddOrSetValue(UpperCase(AFileName), 1);
+    // Jedes Schreiben ändert den Zeitstempel wie auf der Platte; TSharedCacheWrites erkennt daran fremde
+    // Schreiber.
+    if not FStamps.TryGetValue(UpperCase(AFileName), Stamp) then
+      Stamp := 0;
+    FStamps.AddOrSetValue(UpperCase(AFileName), Stamp + 1);
     Result := True;
   finally
     TMonitor.Exit(Self);
@@ -2215,6 +2235,107 @@ begin
   finally
     Reported.Free;
   end;
+end;
+
+procedure TIndexBuilderTests.ConcurrentServicesWriteLibraryCacheOnce;
+const
+  LibraryCache = 'C:\Cache\bibliothek.json';
+var
+  First, Second: TIndexService;
+  Request: TIndexRequest;
+  Gate: TEvent;
+  Waiting, LibraryWrites: Integer;
+  Counted: TIndexCacheWrittenEvent;
+  Watch: TStopwatch;
+begin
+  // Beide nutzen nur F: Nach dem ersten Schreiben gibt es nichts Neues mehr.
+  FFiles.Put('C:\P\R.dpr', 'program R;'#10'uses F;'#10'begin end.', 1);
+  FFiles.Put('C:\Q\Q.dpr', 'program Q;'#10'uses F;'#10'begin end.', 1);
+  Waiting := 0;
+  LibraryWrites := 0;
+  Gate := TEvent.Create(nil, True, False, '');
+  try
+    // Das erste Schreiben wird aufgehalten, bis beide Aufbauten ihren Startstand gelesen haben.
+    FFiles.BeforeWrite :=
+      procedure
+      begin
+        TInterlocked.Increment(Waiting);
+        Gate.WaitFor(10000);
+      end;
+    Counted :=
+      procedure(ALibrary: Boolean; AUnits: Integer; ABytes, AElapsedMs: Int64)
+      begin
+        if ALibrary then
+          TInterlocked.Increment(LibraryWrites);
+      end;
+    First := TIndexService.Create(FIndex, FFileSystem);
+    Second := TIndexService.Create(FIndex, FFileSystem);
+    try
+      First.OnCacheWritten := Counted;
+      Second.OnCacheWritten := Counted;
+      Request := Default(TIndexRequest);
+      Request.ResolveUnit := Resolve;
+      Request.LibraryCacheFile := LibraryCache;
+      Request.Files := ['C:\P\R.dpr'];
+      Request.CacheFile := 'C:\Cache\r.json';
+      First.Start(Request);
+      Request.Files := ['C:\Q\Q.dpr'];
+      Request.CacheFile := 'C:\Cache\q.json';
+      Request.Priority := 1;
+      Second.Start(Request);
+      Watch := TStopwatch.StartNew;
+      while (TInterlocked.CompareExchange(Waiting, 0, 0) = 0) and (Watch.ElapsedMilliseconds < 5000) do
+        TThread.Sleep(10);
+      // Der zweite Aufbau hat dann längst gelesen und wartet auf das Schreiben.
+      TThread.Sleep(300);
+      Gate.SetEvent;
+      First.WaitFor;
+      Second.WaitFor;
+    finally
+      Second.Free;
+      First.Free;
+    end;
+  finally
+    FFiles.BeforeWrite := nil;
+    Gate.Free;
+  end;
+  Assert.AreEqual(1, LibraryWrites, 'Bibliotheks-Cache nur einmal geschrieben');
+end;
+
+procedure TIndexBuilderTests.CountsWhyUnitsWereParsed;
+var
+  Builder: TIndexBuilder;
+  Cache: TArray<TUnitIndex>;
+  BuildResult: TIndexBuildResult;
+  Position: Integer;
+begin
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  try
+    BuildResult := Builder.Build(['C:\P\P.dpr', 'C:\P\A.pas', 'C:\Lib\F.pas'], nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual(3, BuildResult.Misses[TIndexCacheMiss.NoEntry]);
+  Cache := Copy(FIndex.Units);
+  // Kompakte Projekt-Unit taugt nicht; geänderte Datei wird neu gelesen; F kommt aus dem Cache.
+  for Position := 0 to High(Cache) do
+    if SameText(Cache[Position].UnitName, 'P') then
+      Cache[Position] := TIndexMemory.Compacted(Cache[Position]);
+  FFiles.Put('C:\P\A.pas', UnitA + ' ', 2);
+  FIndex := TSymbolIndex.Create;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  try
+    Builder.UseCache(Cache);
+    BuildResult := Builder.Build(['C:\P\P.dpr', 'C:\P\A.pas', 'C:\Lib\F.pas'], nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual(2, BuildResult.Parsed);
+  Assert.AreEqual(1, BuildResult.FromCache);
+  Assert.AreEqual(1, BuildResult.Misses[TIndexCacheMiss.Compact]);
+  Assert.AreEqual(1, BuildResult.Misses[TIndexCacheMiss.Changed]);
+  Assert.AreEqual(0, BuildResult.Misses[TIndexCacheMiss.NoEntry]);
+  Cache := nil;
 end;
 
 procedure TIndexBuilderTests.ReadOnlyServiceWaitsForOtherWriter;
