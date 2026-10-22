@@ -4,10 +4,16 @@
 //   unit-name-mismatch  Der Name hinter unit weicht vom Dateinamen ab (#990,
 //                       wie E1038, W1038), oder die Datei aus "uses X in
 //                       '…'" deklariert eine andere Unit als X (wie E2085).
+//   text-after-final-end  Code nach dem abschließenden end. (#991, wie W1011);
+//                       Kommentare und Direktiven nur mit allowComments =
+//                       false.
 //
 // Die Regeln lesen nur den Text der Datei und, für "in '…'", die genannte
 // Datei über TRuleContext.ReadFile. Ohne Dateinamen, ohne lesbare Datei und
-// für Einträge in {$IF…}-Zweigen schweigen sie. {$WARN UNIT_NAME_MISMATCH
+// für Einträge in {$IF…}-Zweigen schweigen sie. text-after-final-end sucht
+// das abschließende end. hinter dem letzten Abschnitt des Syntaxbaums und
+// schweigt, wenn der Parser Fehler meldet oder end. in einem {$IF…}-Zweig
+// steht. {$WARN UNIT_NAME_MISMATCH
 // OFF} und {$WARNINGS OFF} vor dem Unit-Namen schalten W1038 wie beim
 // Compiler ab.
 
@@ -21,6 +27,7 @@ uses
 
 const
   UnitNameMismatchRuleId = 'unit-name-mismatch';
+  TextAfterFinalEndRuleId = 'text-after-final-end';
 
 type
 {$SCOPEDENUMS ON}
@@ -49,6 +56,15 @@ type
     class function ExpectedName(const APath: string): string; static;
   end;
 
+  TTextAfterFinalEndRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Token-Index des Punkts im abschließenden end. bzw. im end. des Programms; -1, wenn der Baum ihn
+    /// nicht sicher bestimmt.</summary>
+    class function FinalDot(const AContext: TRuleContext): Integer; static;
+  end;
+
 /// <summary>Ist die Warnung AName ({$WARN AName …}) an AOffset eingeschaltet? Wertet {$WARN AName ON|OFF|ERROR|
 /// DEFAULT} und {$WARNINGS ON|OFF} davor aus, wie der Compiler in Textreihenfolge.</summary>
 function WarningEnabled(const ATokens: TArray<TPascalToken>; const AName: string; AOffset: Integer): Boolean;
@@ -67,6 +83,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Rules.Options,
   Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Rules.Builtin.Unresolved;
 
@@ -263,9 +281,82 @@ begin
   end;
 end;
 
+{ TTextAfterFinalEndRule }
+
+function TTextAfterFinalEndRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(TextAfterFinalEndRuleId, TRuleSeverity.Warning,
+    'Text nach dem abschließenden end. (wie W1011)');
+end;
+
+class function TTextAfterFinalEndRule.FinalDot(const AContext: TRuleContext): Integer;
+var
+  Tokens: TArray<TPascalToken>;
+  Root: TSyntaxNode;
+  From, Index: Integer;
+begin
+  Result := -1;
+  if (AContext.Tree = nil) or (AContext.Tree.Diagnostics <> nil) or (AContext.Tree.Root = nil) or
+    (AContext.Tree.Root.ChildCount = 0) then
+    Exit;
+  Root := AContext.Tree.Root;
+  Tokens := AContext.Tree.Tokens;
+  // Hinter dem letzten Abschnitt folgen end und der Punkt; beim Programm gehört end zum Block.
+  From := Root.Children[Root.ChildCount - 1].EndOffset;
+  Index := 0;
+  while (Index <= High(Tokens)) and (Tokens[Index].Offset < From) do
+    Inc(Index);
+  while (Index <= High(Tokens)) and not IsCode(Tokens[Index]) do
+    Inc(Index);
+  if (Index <= High(Tokens)) and Tokens[Index].IsKeyword('end') then
+  begin
+    Inc(Index);
+    while (Index <= High(Tokens)) and not IsCode(Tokens[Index]) do
+      Inc(Index);
+  end;
+  if (Index <= High(Tokens)) and Tokens[Index].IsSymbol('.') then
+    Result := Index;
+end;
+
+procedure TTextAfterFinalEndRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Dot, First, Index: Integer;
+  AllowComments: Boolean;
+  Message: string;
+begin
+  Dot := FinalDot(AContext);
+  if Dot < 0 then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  if TConditionalBranches.PathAt(TConditionalBranches.Paths(Tokens), Dot) <> '' then
+    Exit;
+  if not WarningEnabled(Tokens, '', Tokens[Dot].Offset) then
+    Exit;
+  AllowComments := TRuleOptions.Bool(AContext.Options, 'allowComments', True);
+  First := -1;
+  for Index := Dot + 1 to High(Tokens) do
+    if IsCode(Tokens[Index]) or not AllowComments then
+    begin
+      First := Index;
+      Break;
+    end;
+  if First < 0 then
+    Exit;
+  Message := 'Kommentar nach end. wird nicht übersetzt (wie W1011).';
+  for Index := First to High(Tokens) do
+    if IsCode(Tokens[Index]) then
+      Message := 'Code nach end. wird nicht übersetzt (wie W1011).';
+  // Entfernt wird ab dem Ende des Tokens davor, damit keine Leerzeilen stehen bleiben.
+  AReport.Add(RangeOf(Tokens, First, High(Tokens)), Message, TRuleConfidence.High,
+    [TRuleFix.Create('Text nach end. entfernen',
+    [TRuleEdit.Create(TTextRange.Create(Tokens[First - 1].EndPos, Tokens[High(Tokens)].EndPos), '')])]);
+end;
+
 procedure RegisterUnitRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TUnitNameMismatchRule.Create);
+  ARegistry.Register(TTextAfterFinalEndRule.Create);
 end;
 
 end.

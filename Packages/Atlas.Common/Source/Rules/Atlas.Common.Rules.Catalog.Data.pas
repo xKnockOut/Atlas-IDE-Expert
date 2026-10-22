@@ -2328,6 +2328,27 @@ begin
     '        "W1038",' + #10 +
     '        "E2085"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "text-after-final-end",' + #10 +
+    '      "name": "Text after the final end.",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Source code after the final end. of a unit, program, library or package. The compiler ignores it (like W1011); usually it is code that ended up at the end of the file while pasti' + 'ng and is never compiled. Comments and directives are not reported (option allowComments). The rule finds the final end. behind the last section of the syntax tree and stays silent while the parser re' + 'ports errors or when end. is inside an {$IF…} branch; {$WARNINGS OFF} before end. silences it. Quick fix: remove the text after end.",' + #10 +
+    '      "bad": "end.\n\nprocedure TKunde.Speichern;\nbegin",' + #10 +
+    '      "good": "end.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowComments",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Allow comments and directives after end."' + #10 +
+    '        }' + #10 +
+    '      ],' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1011"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3503,6 +3524,17 @@ begin
     '      "id": "unit-name-mismatch",' + #10 +
     '      "name": "Unit-Name passt nicht zum Dateinamen",' + #10 +
     '      "description": "Der Name hinter unit weicht vom Dateinamen ab, meist nach dem Umbenennen der Datei außerhalb der IDE (wie E1038, W1038). Groß-/Kleinschreibung zählt nicht, Punkte im Namen schon.' + ' In Programmen, Bibliotheken und Packages wird außerdem ein Eintrag uses X in ''Datei.pas'' gemeldet, dessen Datei eine andere Unit deklariert (wie E2085); die Regel liest dazu die Datei. Programme, Bib' + 'liotheken und Packages selbst vergleicht sie nicht mit dem Dateinamen, weil der Compiler das auch nicht tut. {$WARN UNIT_NAME_MISMATCH OFF} oder {$WARNINGS OFF} vor dem Unit-Namen schaltet die Regel w' + 'ie den Compiler ab. Korrekturen: Unit-Namen an den Dateinamen anpassen (die Datei umbenennen bleibt Sache der IDE) bzw. den uses-Eintrag auf die Unit der Datei ändern."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "text-after-final-end",' + #10 +
+    '      "name": "Text nach dem abschließenden end.",' + #10 +
+    '      "description": "Nach dem abschließenden end. einer Unit, eines Programms, einer Bibliothek oder eines Packages steht noch Quelltext. Der Compiler ignoriert ihn (wie W1011); meist ist es Code, de' + 'r beim Einfügen ans Dateiende geraten ist und nie übersetzt wird. Kommentare und Direktiven werden nicht gemeldet (Option allowComments). Die Regel sucht das abschließende end. hinter dem letzten Absc' + 'hnitt des Syntaxbaums und schweigt, solange der Parser Fehler meldet oder end. in einem {$IF…}-Zweig steht; {$WARNINGS OFF} vor end. schaltet sie ab. Schnellkorrektur: Text nach end. entfernen.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowComments",' + #10 +
+    '          "description": "Kommentare und Direktiven nach end. erlauben."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

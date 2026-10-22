@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Units.Tests;
 
 // Tests der Regeln für Unit-Kopf, uses und Dateiende: unit-name-mismatch
-// (#990).
+// (#990), text-after-final-end (#991).
 
 interface
 
@@ -24,6 +24,14 @@ type
     procedure MismatchOptions;
     [Test]
     procedure ModuleHeaderRead;
+    [Test]
+    procedure TextAfterIssueExample;
+    [Test]
+    procedure TextAfterSilentCases;
+    [Test]
+    procedure TextAfterAllowComments;
+    [Test]
+    procedure TextAfterOptions;
   end;
 
 implementation
@@ -86,6 +94,38 @@ end;
 function Run(const ARule: IRule; const ASource, APath: string): TArray<TRuleFinding>; overload;
 begin
   Result := Run(ARule, ASource, APath, nil, '');
+end;
+
+/// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
+function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
+var
+  Line, Index: Integer;
+begin
+  Line := 0;
+  Index := 1;
+  while (Line < APosition.Line) and (Index <= Length(AText)) do
+  begin
+    if AText[Index] = #10 then
+      Inc(Line);
+    Inc(Index);
+  end;
+  Result := Index + APosition.Character;
+end;
+
+/// <summary>Wendet ein Edit an, auch über Zeilen.</summary>
+function ApplyAny(const AText: string; const AEdit: TTextEdit): string;
+var
+  Start, Stop: Integer;
+begin
+  Start := OffsetOf(AText, AEdit.Range.StartPos);
+  Stop := OffsetOf(AText, AEdit.Range.EndPos);
+  Result := Copy(AText, 1, Start - 1) + AEdit.NewText + Copy(AText, Stop, MaxInt);
+end;
+
+function Kunde(const ATail: string): string;
+begin
+  Result := 'unit Kunde;'#10'interface'#10'implementation'#10'procedure TKunde.Laden;'#10'begin'#10'end;'#10 +
+    'end.' + ATail;
 end;
 
 /// <summary>Wendet ein Edit innerhalb einer Zeile an (Zeilen aus #10).</summary>
@@ -228,6 +268,92 @@ begin
   Assert.AreEqual('Neu', TUnitNameMismatchRule.ExpectedName('C:\Projekt\Quellen\Neu.pas'));
   Assert.AreEqual('Kunden.Daten', TUnitNameMismatchRule.ExpectedName('Quellen/Kunden.Daten.PAS'));
   Assert.AreEqual('', TUnitNameMismatchRule.ExpectedName('Projekt.dpr'));
+end;
+
+procedure TUnitRulesTests.TextAfterIssueExample;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Kunde(#10#10'procedure TKunde.Speichern;'#10'begin'#10);
+  Found := TRuleAssert.Findings(TTextAfterFinalEndRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Code nach end. wird nicht übersetzt (wie W1011).', Found[0].Message);
+  Assert.AreEqual(8, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(0, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(9, Found[0].Range.EndPos.Line);
+  Assert.AreEqual('Text nach end. entfernen', Found[0].Fixes[0].Title);
+  Fixed := ApplyAny(Source, Found[0].Fixes[0].Edits[0]);
+  Assert.AreEqual(Kunde(#10), Fixed);
+  TRuleAssert.Silent(TTextAfterFinalEndRule.Create, Fixed);
+  // Programm: end gehört zum Block.
+  Found := TRuleAssert.Findings(TTextAfterFinalEndRule.Create, 'program P;'#10'begin'#10'end.'#10'Rest;');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  // Unit mit initialization und Package.
+  TRuleAssert.Reports(TTextAfterFinalEndRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'initialization'#10'  X := 1;'#10'end.'#10'Y := 2;');
+  TRuleAssert.Reports(TTextAfterFinalEndRule.Create, 'package P;'#10'requires'#10'  rtl;'#10'end.'#10'contains X;');
+end;
+
+procedure TUnitRulesTests.TextAfterSilentCases;
+begin
+  // Nichts dahinter, nur Leerraum, Kommentare und Direktiven.
+  TRuleAssert.Silent(TTextAfterFinalEndRule.Create, Kunde(''));
+  TRuleAssert.Silent(TTextAfterFinalEndRule.Create, Kunde(#10#10#10));
+  TRuleAssert.Silent(TTextAfterFinalEndRule.Create, Kunde(#10'// Ende'#10'{ Notiz }'#10'(* alt *)'#10'{$ENDIF}'));
+  // Halb getippter Code: Der Parser meldet Fehler, die Lage von end. ist unsicher.
+  TRuleAssert.Silent(TTextAfterFinalEndRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'procedure A;'#10'begin'#10'  if X then'#10'end.'#10'procedure B;');
+  // end. in einem {$IF…}-Zweig.
+  TRuleAssert.Silent(TTextAfterFinalEndRule.Create, 'program P;'#10'begin'#10'{$IFDEF A}'#10'end.'#10'{$ELSE}'#10 +
+    '  X;'#10'end.'#10'{$ENDIF}');
+  // {$WARNINGS OFF} davor.
+  TRuleAssert.Silent(TTextAfterFinalEndRule.Create, '{$WARNINGS OFF}'#10 + Kunde(#10'Rest;'));
+end;
+
+procedure TUnitRulesTests.TextAfterAllowComments;
+var
+  Source: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Kunde(#10'// Ende'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTextAfterFinalEndRule.Create, Source, '', 'Kunde.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTextAfterFinalEndRule.Create, Source,
+    '{"rules": {"text-after-final-end": {"allowComments": true}}}', 'Kunde.pas'))));
+  Found := TRuleAssert.Findings(TTextAfterFinalEndRule.Create, Source,
+    '{"rules": {"text-after-final-end": {"allowComments": false}}}', 'Kunde.pas');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Kommentar nach end. wird nicht übersetzt (wie W1011).', Found[0].Message);
+  Assert.AreEqual(Kunde(#10), ApplyAny(Source, Found[0].Fixes[0].Edits[0]));
+  // Mit Kommentar vor dem Code beginnt die Meldung beim Code bzw. mit allowComments = false beim Kommentar.
+  Source := Kunde(#10'// Rest'#10'X;'#10);
+  Found := TRuleAssert.Findings(TTextAfterFinalEndRule.Create, Source, '', 'Kunde.pas');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(8, Found[0].Range.StartPos.Line);
+  Found := TRuleAssert.Findings(TTextAfterFinalEndRule.Create, Source,
+    '{"rules": {"text-after-final-end": {"allowComments": false}}}', 'Kunde.pas');
+  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
+  Assert.AreEqual('Code nach end. wird nicht übersetzt (wie W1011).', Found[0].Message);
+end;
+
+procedure TUnitRulesTests.TextAfterOptions;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // Der Parser prüft den Typ von allowComments.
+  TConfigurationParser.Parse('{"rules": {"text-after-final-end": {"allowComments": "ja"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"allowComments" muss true oder false sein', Issues[0].Message);
+  Source := Kunde(#10'Rest;');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TTextAfterFinalEndRule.Create, Source, '',
+    'Source/Kunde.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTextAfterFinalEndRule.Create, Source,
+    '{"rules": {"text-after-final-end": "off"}}', 'Source/Kunde.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTextAfterFinalEndRule.Create, Source,
+    '{"rules": {"group:compiler": "off"}}', 'Source/Kunde.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTextAfterFinalEndRule.Create, Source,
+    '{"rules": {"text-after-final-end": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunde.pas'))));
 end;
 
 initialization

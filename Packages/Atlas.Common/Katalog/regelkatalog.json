@@ -2308,6 +2308,27 @@
         "W1038",
         "E2085"
       ]
+    },
+    {
+      "id": "text-after-final-end",
+      "name": "Text after the final end.",
+      "category": "code-smell",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "Source code after the final end. of a unit, program, library or package. The compiler ignores it (like W1011); usually it is code that ended up at the end of the file while pasting and is never compiled. Comments and directives are not reported (option allowComments). The rule finds the final end. behind the last section of the syntax tree and stays silent while the parser reports errors or when end. is inside an {$IF…} branch; {$WARNINGS OFF} before end. silences it. Quick fix: remove the text after end.",
+      "bad": "end.\n\nprocedure TKunde.Speichern;\nbegin",
+      "good": "end.",
+      "options": [
+        {
+          "name": "allowComments",
+          "type": "boolean",
+          "default": true,
+          "description": "Allow comments and directives after end."
+        }
+      ],
+      "compilerCodes": [
+        "W1011"
+      ]
     }
   ]
 }

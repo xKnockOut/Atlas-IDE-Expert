@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 16 |
+| [Compiler vorab](#gruppe-compiler) | 17 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -147,6 +147,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`assign-to-property-member`](#assign-to-property-member) | Zuweisung an ein Feld eines Property-Records | Bug | Fehler |
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
 | [`unit-name-mismatch`](#unit-name-mismatch) | Unit-Name passt nicht zum Dateinamen | Bug | Fehler |
+| [`text-after-final-end`](#text-after-final-end) | Text nach dem abschließenden end. | Code Smell | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4568,4 +4569,32 @@ Richtig:
 unit Kunden.Daten;
 
 interface
+```
+
+<a id="text-after-final-end"></a>
+### text-after-final-end
+
+**Text nach dem abschließenden end.** · Code Smell · Warnung · Gruppe Compiler vorab
+
+Nach dem abschließenden end. einer Unit, eines Programms, einer Bibliothek oder eines Packages steht noch Quelltext. Der Compiler ignoriert ihn (wie W1011); meist ist es Code, der beim Einfügen ans Dateiende geraten ist und nie übersetzt wird. Kommentare und Direktiven werden nicht gemeldet (Option allowComments). Die Regel sucht das abschließende end. hinter dem letzten Abschnitt des Syntaxbaums und schweigt, solange der Parser Fehler meldet oder end. in einem {$IF…}-Zweig steht; {$WARNINGS OFF} vor end. schaltet sie ab. Schnellkorrektur: Text nach end. entfernen.
+
+Entspricht der Compilermeldung `W1011`.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowComments` | boolean | `true` | Kommentare und Direktiven nach end. erlauben. |
+
+Mit Treffer:
+
+```pascal
+end.
+
+procedure TKunde.Speichern;
+begin
+```
+
+Richtig:
+
+```pascal
+end.
 ```
