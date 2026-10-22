@@ -4134,6 +4134,25 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index; in `atlas.jso
 | JT6 | Korrigierte Form `TList<TPosition>` mit `Pos := FPositionen[I]`, `TList` ohne Cast (`Count`, `Add`), `Pointer(L[I])`, `TStringList.Objects[I]` mit Cast | Keine Meldung |
 | JT7 | Ohne Eintrag in `atlas.json`, mit `"legacy-tlist": "off"` bzw. `exclude` mit dem Pfad der Unit | Keine Meldung |
 | JT8 | Abgleich mit Delphi: JT1 bis JT3 übersetzen | dcc meldet nichts (die Regel ist reine Stilprüfung); nach Umstellen auf `TList<TPosition>` ohne Cast übersetzt es mit 0 Fehlern, 0 Warnungen, 0 Hinweisen |
+
+## Schnellkorrektur legacy-tlist (#1105)
+
+Voraussetzung: wie JT; Projektgruppe geladen und Index fertig aufgebaut.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LT1 | Das Beispiel aus #1105: privates Feld `FPositionen: TList;`, im Konstruktor `FPositionen := TList.Create;`, in einer Methode `Pos := TPosition(FPositionen[I]);`, `Pos := FPositionen.First as TPosition;`; Hover auf die Meldung | Aktionszeile des Befund-Hovers und Fenster „Atlas-Prüfung“ bieten „In TList<TPosition> umwandeln“ |
+| LT2 | LT1 ausführen | `FPositionen: TList<TPosition>;`, `TList<TPosition>.Create`, `Pos := FPositionen[I];`, `Pos := FPositionen.First;`, `System.Generics.Collections` im uses des interface; die Meldung verschwindet |
+| LT3 | Nach LT2 einmal Strg+Z | Alle Änderungen aus LT2 sind in einem Schritt zurückgenommen |
+| LT4 | `FObjekte: TObjectList;` aus `System.Contnrs` mit `FObjekte := TObjectList.Create(False);` und `TKunde(FObjekte[0])`; Contnrs sonst ungenutzt | `TObjectList<TKunde>.Create(False)`; `Contnrs` bzw. `System.Contnrs` ist aus dem uses entfernt. Mit zusätzlichem `TObjectStack` in der Unit bleibt es stehen |
+| LT5 | Liste mit `FPositionen.Sort(Vergleichen)`; dann mit `TPosition(L[0])` und `TObject(L[1])`; dann mit `L.Add(Pointer(5))`; dann `Verarbeiten(FPositionen)` mit Parameter `TList` | Meldung bleibt, keine Korrektur; der Befund-Hover zeigt „Keine Schnellkorrektur: …“ mit dem Grund (TListSortCompare, verschiedene Casts, Pointer-Werte, Weitergabe) |
+| LT6 | Öffentliches Feld `Regale: TList` in Unit `Lager`, Cast `TRegal(L.Regale[0])` nur in Unit `Auftraege`; Korrektur in `Auftraege` ausführen | Beide Units ändern sich: in `Lager` Deklaration, Create und uses, in `Auftraege` der Cast; „Alle korrigieren“ (source.fixAll) wendet diese Korrektur nicht an |
+| LT7 | Wie LT6, aber `Auftraege` ruft zusätzlich `L.Regale.Sort(Vergleichen)` auf; ebenso direkt nach dem IDE-Start, solange der Index aufgebaut wird | Keine Korrektur; der Hover nennt TListSortCompare bzw. den laufenden Index |
+| LT8 | `property Regale: TList read FRegale;` mit privatem Feld, Cast nur in einer anderen Unit | Korrektur ändert Feld, Property und Create in `Lager` und den Cast in der anderen Unit |
+| LT9 | „Alle korrigieren“ bei LT1 (nur eine Unit, alle Typen bekannt) | Die Liste wird mit umgewandelt |
+| LT10 | `"legacy-tlist": "off"` | Keine Meldung und keine Korrektur |
+| LT11 | Abgleich mit Delphi: LT2, LT4, LT6, LT8 übersetzen | 0 Fehler, 0 Warnungen, 0 Hinweise |
+
 ## Zugriff auf ein nicht sichtbares Mitglied (#1008)
 
 Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.

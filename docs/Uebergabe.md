@@ -690,3 +690,10 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Unter FPC getestet: RuleTable, Hover.Layout, Findings. VCL-Tests (`Atlas.UI.Settings.Rules.Tests`, Page.Tests) nur mit Delphi.
 - Risiken beim ersten Delphi-Build: `TListView.OnItemChecked`, AutoSize des Editors, `HandleNeeded` der Editoren auf verborgenen Seiten.
 - Handtest AP1–AP26 in `docs/Atlas-Testfaelle.md`. Danach folgen die Unter-Issues (#910 ff.) als Kette auf diesem Branch.
+
+## Schnellkorrektur legacy-tlist (#1105, 22.10.2026, Branch `feature/1105-generische-liste` auf `feature/981-legacy-tlist`, ungebaut)
+- Enthält PR #1103 (`claude/project-thread-u51p2x`, unused-public-member) als Merge: gebraucht werden `IRuleProjectFiles` für Verwendungen in anderen Units und `TRuleFinding.Details` für den Grund im Befund-Hover. Beim Zusammenführen #1103 also vor oder mit diesem Branch.
+- `Atlas.Common.Editing.GenericLists`: gemeinsame Umwandlung für #1105 und #1106 (TList, TObjectList, TStack, TQueue, TObjectStack, TObjectQueue), `TGenericListConversion` mit `DeclarationAt`, `Start`, `ExternalNames`, `AddFile`, `Finish`.
+- `Builtin.Collections`: gemeinsame Regelbasis `TLegacyCollectionRule` (Check, Korrektur, Grund im Hover); #1106 erbt davon. `TLegacyCollections.ConversionFix` liest andere Units über `TRuleContext.ProjectFiles`.
+- `TRuleFix.OtherFiles` (Rules.Contract): Korrekturen über mehrere Dateien; `TRuleCodeActions` legt sie als `FileEdits` an, `FixAll` überspringt sie. Das Plugin wendet `FileEdits` schon über `TAtlasIdeWorkspaceEdit` an.
+- Unter FPC grün: GenericLists (39), Rules.CodeActions (7), Builtin.Collections (13). Handtest LT1–LT11.

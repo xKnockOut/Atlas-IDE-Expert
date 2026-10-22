@@ -313,6 +313,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.KeywordReference.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AssignmentSwap.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ChangeSignature.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.GenericLists.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.StringLiterals.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PostfixTemplates.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CaseCompletion.pas"/>

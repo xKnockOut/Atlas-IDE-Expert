@@ -138,6 +138,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.KeywordReference.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.AssignmentSwap.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ChangeSignature.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.GenericLists.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.StringLiterals.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.References.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Rename.Tests.pas"/>

@@ -148,6 +148,7 @@ uses
   Atlas.Common.Lsp.KeywordReference.Tests in 'Common\Lsp\Atlas.Common.Lsp.KeywordReference.Tests.pas',
   Atlas.Common.Editing.AssignmentSwap.Tests in 'Common\Editing\Atlas.Common.Editing.AssignmentSwap.Tests.pas',
   Atlas.Common.Editing.ChangeSignature.Tests in 'Common\Editing\Atlas.Common.Editing.ChangeSignature.Tests.pas',
+  Atlas.Common.Editing.GenericLists.Tests in 'Common\Editing\Atlas.Common.Editing.GenericLists.Tests.pas',
   Atlas.Common.Editing.StringLiterals.Tests in 'Common\Editing\Atlas.Common.Editing.StringLiterals.Tests.pas',
   Atlas.Common.Lsp.DocWiki.Tests in 'Common\Lsp\Atlas.Common.Lsp.DocWiki.Tests.pas',
   Atlas.Common.Lsp.CompilerDirectives.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompilerDirectives.Tests.pas',
