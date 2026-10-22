@@ -4149,3 +4149,19 @@ Voraussetzung: Server läuft in der IDE mit Projekt; `inherited-constructor-afte
 | IK6 | `{$IFDEF ALT} try inherited Create; finally end; {$ELSE} inherited Create; try finally end; {$ENDIF}` | Eine Meldung im ALT-Zweig, keine im anderen |
 | IK7 | `inherited Create;` vor `try`; `try … inherited Laden; …`; `try` in eingebetteter Prozedur oder anonymer Methode; `class constructor`; Methode statt Konstruktor | Keine Meldung |
 | IK8 | `"inherited-constructor-after-try": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+
+## Verwalteter Typ im varianten Teil eines Records (#1071)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; `variant-record-managed-field` steht auf der Vorgabe (Fehler).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VT1 | Das Beispiel aus #1071 (`TWert = record case Art: TArt of waZahl: (Zahl: Double); waText: (Text: string); end;`) | Fehler an `string`: „string braucht Finalisierung und ist im varianten Teil nicht erlaubt (wie E2154).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover |
+| VT2 | Projekt bauen | Der Compiler meldet E2154 an derselben Stelle; Fenster zeigt Quelle „Atlas + dcc“ |
+| VT3 | Alt+Enter: „Text in den festen Teil verschieben“, danach Strg+Z; dann „ShortString verwenden“ | `Text: string;` steht vor `case`, der Zweig wird `waText: ();`; übersetzt; ein Undo-Schritt. Bzw. `(Text: ShortString)` |
+| VT4 | Im varianten Teil `array of Integer`, `TBytes`, `IInterface`, `Variant`, ein Record mit String-Feld, `array[0..1] of WideString` | Je ein Fehler „… braucht Finalisierung …“ (wie E2154); Records aus anderen Units (über den Index) ebenso |
+| VT5 | Record mit `class operator Initialize` im varianten Teil; `TDatei = file of TZaehler` | „TZaehler braucht Initialisierung …“ (wie E2418 bzw. E2417) |
+| VT6 | `TBox<T> = record case Integer of 0: (Wert: T); end;`, Alt+Enter „T: record einschränken“ | Fehler wie E2569; nach der Korrektur `TBox<T: record>` und keine Meldung |
+| VT7 | `TDatei = file of string;`, Alt+Enter „ShortString verwenden“ | Fehler wie E2155; danach `file of ShortString` ohne Meldung |
+| VT8 | `ShortString`, `string[20]`, `Integer`, `TObject`, `PChar`, unbekannter Typ, String im festen Teil, `TBox<T: class>`, `file of Integer`, `file` | Keine Meldung |
+| VT9 | `"variant-record-managed-field": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |

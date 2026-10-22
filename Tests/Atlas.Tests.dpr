@@ -200,6 +200,7 @@ uses
   Atlas.Tests.SlashHost in 'Support\Atlas.Tests.SlashHost.pas',
   Atlas.Common.Rules.Engine.Tests in 'Common\Rules\Atlas.Common.Rules.Engine.Tests.pas',
   Atlas.Common.Rules.Derived.Tests in 'Common\Rules\Atlas.Common.Rules.Derived.Tests.pas',
+  Atlas.Common.Rules.ManagedTypes.Tests in 'Common\Rules\Atlas.Common.Rules.ManagedTypes.Tests.pas',
   Atlas.Common.Rules.GoldenCorpus.Tests in 'Common\Rules\Atlas.Common.Rules.GoldenCorpus.Tests.pas',
   Atlas.Common.Rules.Profiles.Tests in 'Common\Rules\Atlas.Common.Rules.Profiles.Tests.pas',
   Atlas.Common.Rules.CodeActions.Tests in 'Common\Rules\Atlas.Common.Rules.CodeActions.Tests.pas',

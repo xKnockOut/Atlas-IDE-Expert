@@ -2365,6 +2365,23 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "H2505"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "variant-record-managed-field",' + #10 +
+    '      "name": "Managed type in the variant part of a record",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The variant part of a record (case … of) holds a string, dynamic array, interface, Variant or a record with such fields (like E2154), a custom managed record with class operator ' + 'Initialize or Finalize (like E2418), or a type parameter without record constraint (like E2569); likewise after file of (like E2155, E2417). Types are resolved in the file and the index; unknown types' + ' stay silent. Quick fixes: move the field before case into the fixed part, use ShortString, or constrain the type parameter with record.",' + #10 +
+    '      "bad": "TWert = record\n  case Art: TArt of\n    waZahl: (Zahl: Double);\n    waText: (Text: string);\nend;",' + #10 +
+    '      "good": "TWert = record\n  Text: string;\n  case Art: TArt of\n    waZahl: (Zahl: Double);\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2154",' + #10 +
+    '        "E2155",' + #10 +
+    '        "E2418",' + #10 +
+    '        "E2417",' + #10 +
+    '        "E2569"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3559,6 +3576,11 @@ begin
     '      "id": "inherited-constructor-after-try",' + #10 +
     '      "name": "Geerbter Konstruktor erst im try-Block",' + #10 +
     '      "description": "Ein Konstruktor betritt einen try-Block, bevor er den geerbten Konstruktor aufgerufen hat (wie H2505). Self ist dort noch nicht initialisiert; eine Exception im Block kann auf ha' + 'lb erzeugte Felder treffen. Als geerbter Konstruktor gilt inherited ohne Namen, mit dem Namen des Konstruktors oder mit einem Namen, der mit Create beginnt. Zweige von {$IFDEF} werden getrennt geprüft' + '. Korrektur, wenn der Aufruf die erste Anweisung im try-Block ist: vor try ziehen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "variant-record-managed-field",' + #10 +
+    '      "name": "Verwalteter Typ im varianten Teil eines Records",' + #10 +
+    '      "description": "Im varianten Teil eines Records (case … of) steht ein String, ein dynamisches Array, ein Interface, ein Variant oder ein Record mit solchen Feldern (wie E2154), ein verwalteter R' + 'ecord mit class operator Initialize oder Finalize (wie E2418) oder ein Typparameter ohne record-Einschränkung (wie E2569); ebenso hinter file of (wie E2155, E2417). Typen werden in der Datei und im In' + 'dex aufgelöst; unbekannte bleiben still. Korrekturen: Feld vor case in den festen Teil verschieben, ShortString verwenden oder den Typparameter mit record einschränken."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
