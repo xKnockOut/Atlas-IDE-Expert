@@ -74,6 +74,12 @@ type
     Directives: TArray<string>;
     /// <summary>Grund hinter deprecated 'Grund' (#38); '' ohne Grund oder ohne deprecated.</summary>
     DeprecatedText: string;
+    /// <summary>Nur bei inline-Routinen (#1017): was der Rumpf aus anderen Units braucht, aufgelöst im Bereich
+    /// der deklarierenden Unit. "Name" = Bezeichner, der nicht in dieser Unit deklariert ist; ":Typ" = Typ eines
+    /// Felds oder einer Variablen, dessen Mitglieder der Rumpf benutzt (FListe.Count), bzw. ein Typverweis;
+    /// "!Name" = Zugriff auf ein strict private-Mitglied der eigenen Klasse. nil = keine inline-Routine, nicht
+    /// einbettbar (asm, with, verschachtelte Routinen) oder ohne solche Verweise.</summary>
+    InlineRefs: TArray<string>;
     /// <summary>XMLDoc-Kurztext: Klartext von &lt;summary&gt; aus den ///-Zeilen darüber, eine Zeile,
     /// höchstens TIndexSymbol.MaxSummary Zeichen; '' ohne Doku (#492).</summary>
     Summary: string;
