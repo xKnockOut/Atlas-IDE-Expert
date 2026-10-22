@@ -4,6 +4,10 @@
 // Korrektur, Konstante der Datei mit Entfernen der Anweisung, else-Zweig,
 // gewollte Endlosschleifen, stille Fälle (Variablen, typisierte Konstanten,
 // {$IFDEF}, verdeckte Namen), Option switchConstants samt Typprüfung in atlas.json, Abschalten und Ausnahmen.
+// infinite-loop (#1042): Beispiel aus dem Issue, repeat mit Sprung zum Kopf,
+// Ausgänge (Break, Exit, raise, Halt, Routine der Datei mit raise, Terminated),
+// try-Teil eines try … except, Break nur in innerer Schleife bzw. Exit nur in
+// anonymer Methode, Abschalten.
 
 interface
 
@@ -26,6 +30,21 @@ type
     procedure SilentCases;
     [Test]
     procedure SwitchConstantsOption;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TInfiniteLoopTests = class
+  public
+    [Test]
+    procedure IssueExample;
+    [Test]
+    procedure RepeatJumpsToHead;
+    [Test]
+    procedure ExitsAreSilent;
+    [Test]
+    procedure InnerBreakDoesNotCount;
     [Test]
     procedure OffAndExclude;
   end;
@@ -173,7 +192,99 @@ begin
     '{"rules": {"constant-condition": {"exclude": ["Source/*.pas"]}}}', 'Source/Daten.pas'))));
 end;
 
+{ TInfiniteLoopTests }
+
+function LoopFindings(const ASource: string; const AConfig: string = ''; const APath: string = ''):
+  TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.Findings(TInfiniteLoopRule.Create, ASource, AConfig, APath);
+end;
+
+function Lesen(const AStatements: string): string;
+begin
+  Result := 'unit Daten;'#10'interface'#10'implementation'#10'procedure Pruefen(const S: string);'#10'begin'#10 +
+    '  if S = '''' then'#10'    raise EArgumentException.Create(''leer'');'#10'end;'#10 +
+    'procedure Lesen(Leser: TStreamReader);'#10'var'#10'  Zeile: string;'#10'begin'#10 + AStatements + 'end;'#10'end.';
+end;
+
+procedure TInfiniteLoopTests.IssueExample;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := LoopFindings(Lesen('  while True do'#10'  begin'#10'    Zeile := Leser.ReadLine;'#10 +
+    '    Verarbeiten(Zeile);'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(InfiniteLoopRuleId, Found[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
+  Assert.AreEqual('Die Schleife hat keinen Ausgang (kein Break, Exit oder raise).', Found[0].Message);
+  Assert.AreEqual(12, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(12, Found[0].Range.EndPos.Line);
+  Assert.AreEqual(12, Found[0].Range.EndPos.Character);
+end;
+
+procedure TInfiniteLoopTests.RepeatJumpsToHead;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := LoopFindings(Lesen('  repeat'#10'    Zeile := Leser.ReadLine;'#10'  until False;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(14, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.IsTrue(Found[0].Fixes[0].HasJump);
+  Assert.AreEqual(12, Found[0].Fixes[0].JumpTo.Line);
+  Assert.AreEqual(2, Found[0].Fixes[0].JumpTo.Character);
+end;
+
+procedure TInfiniteLoopTests.ExitsAreSilent;
+const
+  Exits: array[0..7] of string = ('if Zeile = '''' then Break;', 'if Zeile = '''' then Exit;',
+    'if Zeile = '''' then raise EAbort.Create(''Ende'');', 'if Zeile = '''' then Halt(1);', 'Pruefen(Zeile);',
+    'if Zeile = '''' then Abort;', 'if TThread.CurrentThread.CheckTerminated then Exit;',
+    'if Zeile = '''' then goto Ende;');
+var
+  Statement: string;
+begin
+  for Statement in Exits do
+    Assert.AreEqual(0, Integer(Length(LoopFindings(Lesen('  while True do'#10'  begin'#10 +
+      '    Zeile := Leser.ReadLine;'#10'    ' + Statement + #10'  end;'#10)))), Statement);
+  // Normale Schleifen und Terminated im Thread.
+  Assert.AreEqual(0, Integer(Length(LoopFindings(Lesen('  while not Leser.EndOfStream do'#10 +
+    '    Zeile := Leser.ReadLine;'#10'  while True do'#10'    if Terminated then'#10'      Zeile := '''';'#10)))));
+  // Lesen bis zur Ausnahme im try-Teil eines try … except; im except-Teil zählt das nicht.
+  Assert.AreEqual(0, Integer(Length(LoopFindings(Lesen('  try'#10'    while True do'#10 +
+    '      Verarbeiten(Leser.ReadLine);'#10'  except'#10'    on EEndOfStream do'#10'      ;'#10'  end;'#10)))));
+  Assert.AreEqual(1, Integer(Length(LoopFindings(Lesen('  try'#10'    Zeile := '''';'#10'  except'#10 +
+    '    while True do'#10'      Verarbeiten(Leser.ReadLine);'#10'  end;'#10)))));
+end;
+
+procedure TInfiniteLoopTests.InnerBreakDoesNotCount;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := LoopFindings(Lesen('  while True do'#10'  begin'#10'    for Zeile in Leser.Zeilen do'#10 +
+    '      if Zeile = '''' then'#10'        Break;'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)), 'Break der inneren Schleife');
+  Found := LoopFindings(Lesen('  while True do'#10'  begin'#10'    TThread.Queue(nil,'#10 +
+    '      procedure'#10'      begin'#10'        Exit;'#10'      end);'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)), 'Exit der anonymen Methode');
+end;
+
+procedure TInfiniteLoopTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Lesen('  while True do'#10'    Zeile := Leser.ReadLine;'#10);
+  Assert.AreEqual(1, Integer(Length(LoopFindings(Source, '', 'Source/Daten.pas'))));
+  Assert.AreEqual(0, Integer(Length(LoopFindings(Source, '{"rules": {"infinite-loop": "off"}}', 'Source/Daten.pas'))));
+  Assert.AreEqual(0, Integer(Length(LoopFindings(Source, '{"rules": {"group:find-bugs": "off"}}',
+    'Source/Daten.pas'))));
+  Assert.AreEqual(0, Integer(Length(LoopFindings(Source, '{"rules": {"infinite-loop": {"exclude": ["Source/*.pas"]}}}',
+    'Source/Daten.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TConstantConditionTests);
+  TDUnitX.RegisterTestFixture(TInfiniteLoopTests);
 
 end.

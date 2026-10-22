@@ -2311,6 +2311,16 @@
           "description": "Constants that deliberately serve as switches; conditions on them are not reported."
         }
       ]
+    },
+    {
+      "id": "infinite-loop",
+      "name": "Loop without exit",
+      "category": "bug",
+      "severity": "error",
+      "group": "find-bugs",
+      "description": "while True do, repeat … until False or another loop whose condition never ends it, without an exit in the body: no Break (a Break in a nested loop only leaves that loop), Exit, raise, goto, Halt, Abort or RunError, no call of a routine of the file that raises an exception or ends the program, and no check of Terminated (thread loops are covered by thread-loop-without-terminated). Anonymous methods in the body do not count. The action jumps to the loop head.",
+      "bad": "while True do\nbegin\n  Line := Reader.ReadLine;\n  Process(Line);\nend;",
+      "good": "while not Reader.EndOfStream do\nbegin\n  Line := Reader.ReadLine;\n  Process(Line);\nend;"
     }
   ]
 }
