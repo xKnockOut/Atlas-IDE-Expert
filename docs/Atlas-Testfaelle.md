@@ -4133,3 +4133,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | JL5 | Array vor der Schleife befüllt, Feld statt lokaler Variable, `Result` einer Funktion, `Break` im Rumpf | Meldung ohne Korrektur |
 | JL6 | `S: string` mit `SetLength(S, Length(S) + 1)` in einer Schleife, `SetLength(A, 10)` in einer Schleife, SetLength außerhalb einer Schleife | Keine Meldung |
 | JL7 | `"setlength-in-loop": "off"`, `"group:performance": "off"` bzw. `exclude` | Keine Meldung |
+
+## Parameter ohne const, der nicht verändert wird (#975)
+
+Voraussetzung: Server läuft in der IDE mit Projekt, `"managed-param-without-const": "hint"` (Standard aus).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JK1 | Das Beispiel aus #975: `TKundenDaten = record Name: string; Nummer: Int64; end;`, `function Formatieren(Text: string; Kunde: TKundenDaten): string;` im interface und im Rumpf `Result := Text + Kunde.Name;` | Hinweis `managed-param-without-const` an der Parameterliste: „Text und Kunde werden nicht verändert; mit const entfallen Referenzzählung und Kopie.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JK2 | Schnellkorrektur „const ergänzen“, danach Strg+Z | Beide Köpfe (interface und implementation) lauten `function Formatieren(const Text: string; const Kunde: TKundenDaten): string;`; keine Meldung mehr; übersetzt; ein Undo-Schritt stellt beide Köpfe wieder her |
+| JK3 | `procedure P(A, B: string)` mit `B := A;` im Rumpf, Korrektur anwenden | Meldung nur für A; Kopf danach `procedure P(const A: string; B: string)` |
+| JK4 | Rumpf ändert den Parameter: `Text := Trim(Text)`, `Text[1] := 'x'`, `Delete(Text, 1, 1)`, `Kunde.Name := ''`, Übergabe an `var`, `@Kunde`, `with Kunde do`, Einfangen in einer anonymen Methode, `Kunde.Leeren` (Record-Methode) | Für diesen Parameter keine Meldung |
+| JK5 | `Liste.Add(Text)` an einem Objekt: einmal mit fertigem Index, einmal direkt nach dem Öffnen ohne Index | Mit Index Meldung (Add nimmt const), ohne Index keine (Signatur unbekannt) |
+| JK6 | Methode `virtual`, `override`, `published`, Ereignis-Handler aus der .dfm, `OnText := M` im Code, Klasse mit Interface, `stdcall`/`external`/`exports` | Keine Meldung; mit `"ignoreOverrides": false` meldet die Regel das Override ohne Korrektur |
+| JK7 | Record mit `X, Y: Integer` (8 Byte), `Integer`- und `TObject`-Parameter; danach `"minRecordSize": 8` | Erst keine Meldung; mit 8 wird der Record gemeldet |
+| JK8 | `"managed-param-without-const": "off"`, `"group:performance": "off"` bzw. `exclude` | Keine Meldung |

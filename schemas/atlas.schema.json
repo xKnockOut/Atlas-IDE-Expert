@@ -416,6 +416,17 @@
                 "default": true,
                 "description": "Nur duplicate-declaration: doppelte Einträge in uses-Klauseln melden (#988)."
               },
+              "minRecordSize": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 16,
+                "description": "Nur managed-param-without-const: Record-Parameter ab dieser Größe in Byte melden (#975)."
+              },
+              "ignoreOverrides": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur managed-param-without-const: Overrides nicht melden, ihre Signatur gibt der Vorfahr vor (#975)."
+              },
               "allowTables": {
                 "type": "array",
                 "items": {

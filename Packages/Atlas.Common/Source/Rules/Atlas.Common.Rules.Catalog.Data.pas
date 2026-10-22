@@ -912,6 +912,30 @@ begin
     '      "good": "SetLength(Namen, Liste.Count);\nfor I := 0 to Liste.Count - 1 do\n  Namen[I] := Liste[I].Name;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "managed-param-without-const",' + #10 +
+    '      "name": "Managed parameter without const",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "performance",' + #10 +
+    '      "description": "A value parameter of type string, interface, dynamic or open array, or a record of the file with at least minRecordSize bytes, that the routine never changes. Every call pays ref' + 'erence counting or a copy; const avoids both. Changed means: assigned, a part assigned (characters, fields, elements), passed to var or out, @Param, a method call on a record, a for loop variable. The' + ' rule only reports when this is certain: calls with unknown signature (methods without the symbol index, overloads), with blocks, captures in anonymous methods, bare inherited and asm make it stay sil' + 'ent. Virtual, dynamic, abstract and message methods, calling conventions, external and exported routines, methods of classes implementing interfaces, published methods and methods used as values (even' + 't handlers, @Routine, form file) are skipped because their signature is given from outside; overrides only with ignoreOverrides = false and then without fix. The fix adds const in the implementation a' + 'nd the declaration and splits parameter groups when needed. References as method pointers in other units are not visible to the rule; the compiler reports them after the fix.",' + #10 +
+    '      "bad": "function Formatieren(Text: string; Kunde: TKundenDaten): string;\nbegin\n  Result := Text + Kunde.Name;\nend;",' + #10 +
+    '      "good": "function Formatieren(const Text: string; const Kunde: TKundenDaten): string;\nbegin\n  Result := Text + Kunde.Name;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "minRecordSize",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 16,' + #10 +
+    '          "description": "Report record parameters from this size in bytes on."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "ignoreOverrides",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Do not report overrides; their signature is given by the ancestor."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "bool-compare",' + #10 +
     '      "name": "Comparison with True or False",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -2796,6 +2820,21 @@ begin
     '      "id": "setlength-in-loop",' + #10 +
     '      "name": "Array wächst in der Schleife um je ein Element",' + #10 +
     '      "description": "SetLength(A, Length(A) + 1) in einer Schleife kopiert das dynamische Array bei jedem Durchlauf. Die Regel meldet nur, wenn A sicher ein dynamisches Array ist (array of, TArray<T>' + ', ein Array-Typ der Datei oder ein bekannter RTL-Typ wie TBytes), nie bei Strings. In einer for-Schleife ist die Anzahl bekannt: Die Meldung nennt sie, und ist A eine lokale Variable, die vor der Schl' + 'eife nicht benutzt und darin nur als A[High(A)] bzw. A[Length(A) - 1] beschrieben wird, setzt die Schnellkorrektur die Länge einmal vor der Schleife und indiziert mit der Schleifenvariable. Sonst die ' + 'Werte in einer TList<T> sammeln."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "managed-param-without-const",' + #10 +
+    '      "name": "Verwalteter Parameter ohne const",' + #10 +
+    '      "description": "Ein Wertparameter vom Typ String, Interface, dynamisches oder offenes Array oder ein Record der Datei ab minRecordSize Byte, den die Routine nie verändert. Jeder Aufruf zahlt Ref' + 'erenzzählung bzw. Kopie; const spart beides. Verändert heißt: zugewiesen, ein Teil zugewiesen (Zeichen, Felder, Elemente), an var oder out übergeben, @Parameter, Methodenaufruf an einem Record, Laufva' + 'riable einer for-Schleife. Die Regel meldet nur, wenn das sicher ist: Aufrufe mit unbekannter Signatur (Methoden ohne Symbolindex, Überladungen), with-Blöcke, Einfangen in anonymen Methoden, inherited' + ' ohne Namen und asm lassen sie schweigen. Virtuelle, dynamische, abstrakte und message-Methoden, Aufrufkonventionen, external- und exportierte Routinen, Methoden von Klassen mit Interfaces, published-' + 'Methoden und als Wert benutzte Methoden (Ereignisse, @Routine, Formulardatei) bleiben außen vor, weil ihre Signatur von außen vorgegeben ist; Overrides nur mit ignoreOverrides = false und dann ohne Ko' + 'rrektur. Die Korrektur ergänzt const in Rumpf und Deklaration und teilt Parametergruppen bei Bedarf. Verweise als Methodenzeiger in anderen Units sieht die Regel nicht; die meldet nach der Korrektur d' + 'er Compiler.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "minRecordSize",' + #10 +
+    '          "description": "Record-Parameter ab dieser Größe in Byte melden."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "ignoreOverrides",' + #10 +
+    '          "description": "Overrides nicht melden; ihre Signatur gibt der Vorfahr vor."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "bool-compare",' + #10 +

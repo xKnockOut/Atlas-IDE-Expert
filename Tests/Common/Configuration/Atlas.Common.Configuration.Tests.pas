@@ -980,6 +980,15 @@ begin
   Parse('{"rules": {"commented-out-code": {"minLines": 0}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.Contains(Issues[0].Message, '"minLines"');
+  // minRecordSize und ignoreOverrides von managed-param-without-const (#975).
+  Parse('{"rules": {"managed-param-without-const": {"minRecordSize": 32, "ignoreOverrides": false}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"managed-param-without-const": {"minRecordSize": 0}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"minRecordSize"');
+  Parse('{"rules": {"managed-param-without-const": {"ignoreOverrides": "nein"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"ignoreOverrides"');
 end;
 
 procedure TConfigurationParserTests.ChecksTodoKeywordsOption;

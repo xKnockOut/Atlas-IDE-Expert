@@ -892,6 +892,30 @@
       "good": "SetLength(Namen, Liste.Count);\nfor I := 0 to Liste.Count - 1 do\n  Namen[I] := Liste[I].Name;"
     },
     {
+      "id": "managed-param-without-const",
+      "name": "Managed parameter without const",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "performance",
+      "description": "A value parameter of type string, interface, dynamic or open array, or a record of the file with at least minRecordSize bytes, that the routine never changes. Every call pays reference counting or a copy; const avoids both. Changed means: assigned, a part assigned (characters, fields, elements), passed to var or out, @Param, a method call on a record, a for loop variable. The rule only reports when this is certain: calls with unknown signature (methods without the symbol index, overloads), with blocks, captures in anonymous methods, bare inherited and asm make it stay silent. Virtual, dynamic, abstract and message methods, calling conventions, external and exported routines, methods of classes implementing interfaces, published methods and methods used as values (event handlers, @Routine, form file) are skipped because their signature is given from outside; overrides only with ignoreOverrides = false and then without fix. The fix adds const in the implementation and the declaration and splits parameter groups when needed. References as method pointers in other units are not visible to the rule; the compiler reports them after the fix.",
+      "bad": "function Formatieren(Text: string; Kunde: TKundenDaten): string;\nbegin\n  Result := Text + Kunde.Name;\nend;",
+      "good": "function Formatieren(const Text: string; const Kunde: TKundenDaten): string;\nbegin\n  Result := Text + Kunde.Name;\nend;",
+      "options": [
+        {
+          "name": "minRecordSize",
+          "type": "integer",
+          "default": 16,
+          "description": "Report record parameters from this size in bytes on."
+        },
+        {
+          "name": "ignoreOverrides",
+          "type": "boolean",
+          "default": true,
+          "description": "Do not report overrides; their signature is given by the ancestor."
+        }
+      ]
+    },
+    {
       "id": "bool-compare",
       "name": "Comparison with True or False",
       "category": "code-smell",
