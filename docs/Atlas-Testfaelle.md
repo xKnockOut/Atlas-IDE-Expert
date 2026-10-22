@@ -2202,8 +2202,8 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index.
 | HV1 | `const Stile: TFontStyles = [fsBold, fsItalic];`, Maus über `Stile` an einer Verwendung | „Wert: [fsBold, fsItalic] · 2 Elemente“ (**Abnahme**) |
 | HV2 | Maus über `TFontStyles` | „Wert: set of TFontStyle · 4 mögliche Elemente“ |
 | HV3 | `resourcestring SGruss = 'Hallo' + #13#10 + 'Welt';` über zwei Zeilen, Maus über `SGruss` an der Verwendung | „Wert: 'Hallo⏎Welt'“ (**Abnahme**) |
-| HV4 | `procedure Alt; deprecated 'Nutze Neu';` in einer anderen Unit, `Alt;` aufrufen | `Alt` durchgestrichen, Hinweis „"Alt" ist veraltet: Nutze Neu (deprecated-symbol)“; Hover nennt „Veraltet: Nutze Neu“ (**Abnahme**) |
-| HV5 | Konstante mit `platform`, Klasse mit `experimental` verwenden | „ist plattformspezifisch“ bzw. „ist experimentell“, durchgestrichen |
+| HV4 | `procedure Alt; deprecated 'Nutze Neu';` in einer anderen Unit, `Alt;` aufrufen | `Alt` durchgestrichen, Warnung „Alt ist deprecated: Nutze Neu (wie W1000).“ (deprecated-symbol); Hover nennt „Veraltet: Nutze Neu“ (**Abnahme**) |
+| HV5 | Konstante mit `platform`, Klasse mit `experimental` verwenden | Für die Klasse „ist experimental (wie W1003).“, nicht durchgestrichen; die Konstante erst mit `"kinds": ["platform"]` (siehe VS1–VS9) |
 | HV6 | Deklaration von `Alt` und `procedure Alt;` im implementation-Teil | Keine Meldung, nicht durchgestrichen |
 | HV7 | `"rules": {"deprecated-symbol": "off"}` in atlas.json | Keine Meldung und kein Durchstreichen mehr (**Abnahme**) |
 
@@ -4990,3 +4990,67 @@ Voraussetzung: Server läuft in der IDE mit Projekt; in `atlas.json` `"string-if
 | SK6 | Drei Vergleiche, verschiedene Variablen, `and` in einer Bedingung, `Lesen() = 'a'`, Zahlenvergleiche, ein Zweig nur unter `{$IFDEF DEBUG}` (dann nur drei) | Keine Meldung |
 | SK7 | `"string-if-chain": {"min": 3}` bzw. `{"min": 5}`; `{"min": 1}` | Drei Vergleiche werden gemeldet bzw. das Beispiel nicht mehr; `min` 1 meldet die Konfiguration als Fehler |
 | SK8 | Ohne Einstellung, `"string-if-chain": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Inline-Funktion wird nicht eingebettet (#1017)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IL1 | Das Beispiel aus #1017: Unit mit `uses System.JSON;`, `if Obj.Count > 0 then` mit `Obj: TJSONObject` | Hinweis `inline-not-expanded` an `Count`: „Inline-Funktion TJSONObject.GetCount wird nicht eingebettet: System.Generics.Collections fehlt in uses (wie H2443).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| IL2 | Schnellkorrektur „uses System.Generics.Collections ergänzen“, danach Strg+Z | Unit steht im uses, keine Meldung mehr; ein Undo-Schritt |
+| IL3 | Klasse mit `strict private FStand` und `function Stand: Integer; inline;` (Rumpf `Result := FStand`), Aufruf `Z.Stand` in einer Routine außerhalb der Klasse, auch in derselben Unit | „Inline-Funktion TZaehler.Stand wird nicht eingebettet: Zugriff auf TZaehler.FStand (strict private) ist hier nicht möglich (wie H2444).“; in einer Methode von TZaehler keine Meldung |
+| IL4 | Eigene inline-Routine, die eine Unit aus dem implementation-uses aufruft, deren inline-Routine sie nutzt | Meldung mit „steht nur im uses des implementation-Teils … (wie H2445)“ |
+| IL5 | Zwei Units, die sich gegenseitig im implementation-uses nennen; Aufruf einer inline-Routine der anderen Unit | Meldung „… verwendet die übersetzte Unit … (wie H2456)“, über eine dritte Unit „… indirekt über … (wie H2457)“ |
+| IL6 | `for Paar in Obj do` mit `Obj: TJSONObject` ohne System.Generics.Collections | Meldung am Ausdruck nach `in` für den inline-Enumerator |
+| IL7 | Alle Units ergänzt, Routine ohne `inline`, `{$INLINE OFF}` in der Datei | Keine Meldung |
+| IL8 | `"inline-not-expanded": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| IL9 | Abgleich mit Delphi: IL1, IL3, IL4, IL5 übersetzen | dcc meldet H2443, H2444, H2445 bzw. H2456/H2457 an denselben Stellen, für IL7 nichts |
+
+## Veraltete und gebundene Symbole wie W1000–W1007 (#1018)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VS1 | Das Beispiel aus #1018 mit `"rules": {"deprecated-symbol": {"kinds": ["deprecated", "experimental", "platform"]}}`: `Pfad := IncludeTrailingBackslash(Basis) + Name;` | Warnung `deprecated-symbol` an `IncludeTrailingBackslash`: „IncludeTrailingBackslash ist platform; besser IncludeTrailingPathDelimiter (wie W1002).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover, nicht durchgestrichen (**Abnahme**) |
+| VS2 | Schnellkorrektur „Durch IncludeTrailingPathDelimiter ersetzen“, danach Strg+Z | Zeile wird `Pfad := IncludeTrailingPathDelimiter(Basis) + Name;`, keine Meldung mehr; ein Undo-Schritt |
+| VS3 | Ohne Option kinds: VS1 und eine Routine mit `deprecated 'Use Neu'` aufrufen | VS1 still; „Alt ist deprecated: Use Neu (wie W1000).“ durchgestrichen, Korrektur „Durch Neu ersetzen“ |
+| VS4 | Unit `unit Altlast deprecated 'Nutze Neu';` in uses einer anderen Unit | „Unit Altlast ist deprecated: Nutze Neu (wie W1006).“ am Namen im uses; mit `platform` bzw. `library` im Unit-Kopf und passender Option W1005 bzw. W1004, mit `experimental` W1007 |
+| VS5 | `{$WARN SYMBOL_DEPRECATED OFF}` vor dem Aufruf, später `{$WARN SYMBOL_DEPRECATED ON}` | Davor keine Meldung, danach wieder |
+| VS6 | `{$WARN SYMBOL_DEPRECATED ERROR}` | Meldung als Fehler |
+| VS7 | `{$WARNINGS OFF}`; `{$WARN SYMBOL_DEPRECATED OFF}` in `{$IFDEF DEBUG}` und Aufruf danach außerhalb | Keine Meldung |
+| VS8 | `"kinds": ["platfrom"]` in atlas.json | Konfigurationsfehler „"kinds" darf nur "deprecated", "experimental", "platform" und "library" enthalten“ |
+| VS9 | Abgleich mit Delphi: VS1, VS3, VS4 übersetzen (Plattformwarnungen in den Projektoptionen an) | dcc meldet W1002, W1000 bzw. W1006 an denselben Stellen; mit VS5 und VS7 nichts |
+
+## Syntaxfehler mit Compilercode (#1022)
+
+Voraussetzung: Server läuft in der IDE; eine Unit des Projekts ist offen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SC1 | Das Beispiel aus #1022: `if Gueltig then`, `Speichern;`, `else`, `Verwerfen;` | Fehler `syntax` am `;`: „';' vor 'else' ist nicht erlaubt (wie E2153).“ als Wellenlinie, im Befund-Hover („Atlas · syntax“, ohne „Unterdrücken“) und im Fenster „Atlas-Prüfung“ (**Abnahme**) |
+| SC2 | Schnellkorrektur „';' entfernen“ (Alt+Enter im Hover), danach Strg+Z | Code wie im Issue nach der Korrektur, keine Meldung mehr; ein Undo-Schritt. Mit „Beim Speichern korrigieren“ (source.fixAll) entfernt Speichern das `;` |
+| SC3 | `case X of 1: if A then B;`, `else C;`, `end;` und `on E: Exception do if A then B;`, `else C;` | Keine Meldung: das else gehört zu case bzw. except |
+| SC4 | `B := 1` ohne `;` vor einer weiteren Zeile; dann `B := 1 2;` | „';' fehlt (wie E2066).“ am Zeilenende mit Korrektur „';' ergänzen“; bzw. „Operator oder ';' fehlt (wie E2066).“ |
+| SC5 | `S := 'abc;` in einer Zeile; `{ offen` vor dem Rest der Unit | Nur „Unvollständiger String (wie E2052).“ bzw. nur „Unerwartetes Dateiende im Kommentar ab Zeile N (wie E2057).“, keine Folgefehler; Korrekturen schließen String bzw. Kommentar |
+| SC6 | Im interface: `procedure P: Integer;`, `function F;`, `procedure Q(A);`, `label L;`, `begin` vor implementation; `var A, B: Integer = 0;` | E2025, E2023, E2067, E2049, E2050 und E2196 mit Text wie in docs/Regeln.md; die Kurzform `function F;` in der Implementierung zu einer Deklaration mit Ergebnistyp bleibt still |
+| SC7 | In einer Routine: `var I: Integer = 0;`, `type TLokal = class end;`, `goto Ende;` ohne label | E2195, E2061 und E2031; `type TPunkt = record … end;` und `TKlasse = class of TObject;` lokal still |
+| SC8 | `uses System.;`, `strict public`, `class FWert: Integer;`, `try … end;` ohne except, `for := 1 to 3 do` | E2372, E2375, E2357, E2125 und E2088 |
+| SC9 | `"rules": {"syntax": "off"}` bzw. `"group:compiler": "off"` in atlas.json, SC1 wiederholen | Keine Meldung; die uses-Hinweise (#621) bleiben trotzdem aus, solange der Code nicht parst |
+| SC10 | Abgleich mit Delphi: SC1, SC4–SC8 je einzeln übersetzen | dcc meldet an denselben Stellen dieselben Codes; besonders prüfen: E2058–E2061 (Typ im var-Abschnitt bzw. lokal), E2088, E2357, E2372 und E2375, deren genaue Fälle die Doku nicht beschreibt. Abweichungen als Kommentar an #1022 |
+
+## Unbekannte Direktive wie E2070 (#1068)
+
+Voraussetzung: Server läuft in der IDE; eine Unit mit Klasse ist offen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UD1 | Das Beispiel aus #1068: `procedure Paint; overide;` in einer Klasse | Fehler `directive-typo` an `overide`: „Unbekannte Direktive overide; gemeint ist override (wie E2070).“ als Wellenlinie, im Befund-Hover und im Fenster „Atlas-Prüfung“; kein Syntaxfehler daneben (**Abnahme**) |
+| UD2 | Schnellkorrektur „Durch override ersetzen“, danach Strg+Z | Zeile wird `procedure Paint; override;`, keine Meldung mehr; ein Undo-Schritt |
+| UD3 | `virutal;`, `overlaod;`, `stdcal;` an einer freien Prozedur, `REINTRODUCES;` | Je eine Meldung mit virtual, overload, stdcall bzw. REINTRODUCE |
+| UD4 | `property Items[I: Integer]: string read Get; defualt;` | „Unbekannte Direktive defualt; gemeint ist default (wie E2070).“ |
+| UD5 | `procedure Paint; Zeichnen;` | „Unbekannte Direktive Zeichnen (wie E2070).“ ohne Korrektur |
+| UD6 | `{$IFDEF FPC} nostackframe; {$ENDIF}` nach einem Prozedurkopf | Keine Meldung |
+| UD7 | `"rules": {"directive-typo": "off"}`, `"group:compiler": "off"` bzw. `"directive-typo": {"exclude": ["Source/*.pas"]}` | Keine Meldung (in den ausgenommenen Dateien) |
+| UD8 | Abgleich mit Delphi: UD1, UD3, UD4 und UD5 übersetzen | dcc meldet E2070 an denselben Stellen; bei UD4 prüfen, ob Delphi E2070 oder einen anderen Code nennt (Abweichung als Kommentar an #1068) |

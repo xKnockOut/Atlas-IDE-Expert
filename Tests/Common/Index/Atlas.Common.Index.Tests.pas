@@ -1100,6 +1100,8 @@ begin
   Original.Naming[TNamingKind.Field].Total := 7;
   Original.Naming[TNamingKind.Field].Prefixed := 5;
   Original.Naming[TNamingKind.Local].Total := 300;
+  Original.Directives := ['deprecated', 'platform'];
+  Original.DeprecatedText := 'Nutze Neu';
   Symbol := Default(TIndexSymbol);
   Symbol.Name := 'TListe';
   Symbol.TypeName := 'TDictionary<string,Integer>';
@@ -1122,6 +1124,8 @@ begin
   Assert.AreEqual(5, U.Naming[TNamingKind.Field].Prefixed);
   Assert.AreEqual(300, U.Naming[TNamingKind.Local].Total);
   Assert.AreEqual(0, U.Naming[TNamingKind.Parameter].Total);
+  Assert.AreEqual('deprecated,platform', String.Join(',', U.Directives));
+  Assert.AreEqual('Nutze Neu', U.DeprecatedText);
   Assert.AreEqual<NativeInt>(1, Length(U.Symbols));
   Assert.AreEqual('TDictionary<string,Integer>', U.Symbols[0].TypeName);
   Assert.AreEqual(Symbol.Condition, U.Symbols[0].Condition);

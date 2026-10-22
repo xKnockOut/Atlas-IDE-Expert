@@ -15,6 +15,8 @@ type
     procedure ProblemFromJsonViaLspContract;
     [Test]
     procedure AliasesAreTheSameTypes;
+    [Test]
+    procedure SyntaxErrorsCannotBeSuppressed;
   end;
 
 implementation
@@ -65,6 +67,19 @@ begin
   Symbol.Kind := 12;
   Assert.AreEqual(12, Symbol.Kind);
   Assert.IsTrue(TAtlasResults.IsCallHierarchy(Atlas.Core.Results.Model.TAtlasHierarchyDirection.Incoming));
+end;
+
+procedure TLspContractTests.SyntaxErrorsCannotBeSuppressed;
+var
+  Problem: Atlas.Core.Lsp.Contract.TAtlasProblem;
+begin
+  Problem := Default(Atlas.Core.Lsp.Contract.TAtlasProblem);
+  Problem.Code := 'empty-except';
+  Assert.IsTrue(Problem.CanSuppress);
+  Problem.Code := 'syntax';
+  Assert.IsFalse(Problem.CanSuppress);
+  Problem.Code := '';
+  Assert.IsFalse(Problem.CanSuppress);
 end;
 
 initialization

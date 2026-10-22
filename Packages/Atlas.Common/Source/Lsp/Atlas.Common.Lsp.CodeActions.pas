@@ -116,6 +116,7 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
+  Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Prompt,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
@@ -327,6 +328,12 @@ begin
     Context.ProjectMainSource := Rules.ProjectMainSource;
     Findings := TRuleEngine.Run(Rules.Rules, Rules.Settings, Context);
   end;
+  // Syntaxfehler mit der Korrektur des Parsers (#1022), auch ohne Prüfregeln; Schweregrad und Abschalten wie
+  // in den Diagnosen.
+  if HasRules then
+    Findings := TFileChecker.SyntaxFindings(Tree.Diagnostics, Rules.Settings) + Findings
+  else
+    Findings := TFileChecker.SyntaxFindings(Tree.Diagnostics, Default(TServerSettings));
   HasCompletion := WantsEditing and TClassCompletion.MissingBodies(Tree, Document.Text, Range.StartPos, Completion);
   UsesActions := nil;
   if (WantsEditing or WantsRemoveUnused) and Assigned(FUsesContextFor) and FUsesContextFor(Uri, UsesContext) then

@@ -782,3 +782,12 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Neue Units: `Rules.Builtin.Platform` (#1060–#1063) und `Rules.Builtin.Idioms` (#1064, #1066). `TRuleApplicationKind` kennt jetzt `Service` (SvcMgr ohne Forms) und `Library_` (DLL ohne Formulare); `writeln-in-gui-app` meldet damit auch in Diensten.
 - Neue Optionen: `defaultEncoding` (load-without-encoding), `namePatterns` und `checkRound` (money-as-float), `min` (string-if-chain, Parser prüft ab 2).
 - Offen: load-without-encoding findet in Atlas 13 echte `TFile.ReadAllText` ohne Kodierung (Files.Reloader, Welcome.*, Shell.Composition u. a.); bewusst nicht pauschal umgestellt, weil die IDE BOM-lose Dateien als ANSI liest. money-as-float zählt mehrdeutige Wörter (Amount, Summe, Sum, Total) nur mit Geldbezug in Typ oder Routine; damit keine Fehlalarme in Atlas. string-if-chain (standardmäßig aus) findet in Atlas 89 Ketten, alle echte Treffer.
+
+## Compilerregeln #1017, #1018, #1022, #1068 (22.10.2026, Kette ab `feature/1006-readonly-property-assigned`, ungebaut)
+- Kette: `feature/1017-inline-not-expanded` → `feature/1018-deprecated-symbol` → `feature/1022-syntax-compilercodes` → `feature/1068-directive-typo`; kein Merge nach main, Issues bleiben für den Handtest offen.
+- #1017 `inline-not-expanded` (Builtin.Inlining, `TIndexSymbol.InlineRefs`, Cache-Format 20, `TNameResolver.ResolveTypeTextFrom`); Handtest IL1–IL9.
+- #1018 `deprecated-symbol` in Gruppe compiler (W1000–W1007, `TUnitIndex.Directives`/`DeprecatedText`, Cache-Format 21, Option `kinds`, `{$WARN}` je Stelle); Handtest VS1–VS9.
+- #1022 `syntax` mit Compilercodes: Parsermeldungen wie dcc mit Code und Korrektur (`TSyntaxDiagnostic.Code`, `FixTitle`, `FixEdits`, `FixSafe`), Baumprüfungen in `Pascal.SyntaxChecks`, `TFileChecker.SyntaxFindings` für Linter, Diagnosen und Code-Aktionen; Plugin: `TAtlasProblem.CanSuppress`. Handtest SC1–SC10.
+- #1068 `directive-typo` (Builtin.Directives): der Parser legt für `overide;` einen Directive-Knoten an; Routinendirektiven in `Pascal.DirectiveNames`. Handtest UD1–UD8.
+- Beim Zusammenführen: Tests anderer Ketten, die alte Parsermeldungen (`";" fehlt`, `Unerwartetes "x"`) erwarten, auf die neuen Texte umstellen; Cache-Format fortlaufend vergeben.
+- Mit Delphi prüfen: `Exit` in anonymen Methoden des Walk (Builtin.Directives), Hinweise zu nicht benutzten Variablen in `Lsp.SyntaxDiagnostics.Compute`.

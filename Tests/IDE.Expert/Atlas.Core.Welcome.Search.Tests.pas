@@ -152,6 +152,9 @@ begin
       PutVar(Body, 3); // -2 als ZigZag
       for Index := 1 to 6 do
         PutVar(Body, Index); // Präfix-Zählung (#452)
+      PutVar(Body, 1); // Hinweise im Unit-Kopf (#1018)
+      PutVar(Body, IndexOf('deprecated'));
+      PutVar(Body, IndexOf('Nutze Neu')); // Grund
       PutVar(Body, 2); // Symbolzahl
       PutVar(Body, 1); // nicht verfügbar
       PutVar(Body, 200); // Blocklänge über ein Byte hinaus

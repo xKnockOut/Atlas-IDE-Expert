@@ -75,7 +75,10 @@ type
     // 16: Zählung der Präfixe je Unit (#452).
     // 17: Grund hinter deprecated je Symbol (#38).
     // 18: Zweig varianter Record-Felder je Symbol (#846).
-    const FormatVersion = 19;
+    // 19: Direktive class an Klassenmitgliedern (#1001).
+    // 20: Verweise der Rümpfe von inline-Routinen (#1017).
+    // 21: Hinweise im Unit-Kopf samt Grund hinter deprecated (#1018).
+    const FormatVersion = 21;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;
@@ -417,6 +420,7 @@ begin
   AWriter.WriteVar(ATable.IndexOf(ASymbol.Summary));
   AWriter.WriteVar(ATable.IndexOf(ASymbol.DeprecatedText));
   AWriter.WriteVar(ATable.IndexOf(ASymbol.VariantBranch));
+  WriteList(AWriter, ATable, ASymbol.InlineRefs);
 end;
 
 procedure WriteUsage(AWriter: TCacheWriter; ATable: TStringTable; const AUsage: TIndexUsage);
@@ -483,6 +487,8 @@ begin
         Body.WriteVar(UnitIndex.Naming[Kind].Total);
         Body.WriteVar(UnitIndex.Naming[Kind].Prefixed);
       end;
+      WriteList(Body, Table, UnitIndex.Directives);
+      Body.WriteVar(Table.IndexOf(UnitIndex.DeprecatedText));
       Body.WriteVar(Length(UnitIndex.Symbols));
       Body.WriteVar(Length(UnitIndex.Unavailable));
       // Block erst sammeln, damit seine Länge davor stehen kann.
@@ -577,6 +583,7 @@ begin
   Result.Summary := AReader.ReadString(AStrings);
   Result.DeprecatedText := AReader.ReadString(AStrings);
   Result.VariantBranch := AReader.ReadString(AStrings);
+  Result.InlineRefs := AReader.ReadList(AStrings);
 end;
 
 function ReadUsage(var AReader: TCacheReader; const AStrings: TArray<string>): TIndexUsage;
@@ -678,6 +685,8 @@ begin
         Entry.Header.Naming[Kind].Total := Reader.ReadNumber;
         Entry.Header.Naming[Kind].Prefixed := Reader.ReadNumber;
       end;
+      Entry.Header.Directives := Reader.ReadList(Strings);
+      Entry.Header.DeprecatedText := Reader.ReadString(Strings);
       Entry.SymbolCount := Reader.ReadCount;
       Entry.UnavailableCount := Reader.ReadCount;
       Size := Reader.ReadCount;

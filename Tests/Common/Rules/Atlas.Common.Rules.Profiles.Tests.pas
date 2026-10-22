@@ -176,11 +176,11 @@ const
     'component-palette-icon,component-setter-without-invalidate,condition-not-boolean,conditional-directive-unbalanced,confusable-identifier,constant-condition,constant-expression-error,' +
     'constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,default-parameter-invalid,delimited-text-without-strict,deprecated-symbol,deref-before-nil-check,destroy-called-directly,destroy-without-override,' +
     'dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,' +
-    'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,dictionary-get-without-check,dunitx-test-without-assert,duplicate-assignment,duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,dynamic-array-misuse,' +
+    'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,dictionary-get-without-check,directive-typo,dunitx-test-without-assert,duplicate-assignment,duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,dynamic-array-misuse,' +
     'empty-except,empty-finally,empty-statement,equals-without-gethashcode,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,for-in-not-enumerable,for-variable-after-loop,for-variable-misuse,forbidden-uses,' +
     'foreign-form-control-access,form-access-before-create,form-autocreate-and-manual,form-field-type-mismatch,form-field-without-object,' +
     'form-object-without-field,form-resource-missing,format-without-settings,generic-constraint-violated,generic-exception-raised,getter-side-effect,hides-virtual,' +
-    'hresult-integer-mix,ifthen-side-effect,implemented-not-declared,implicit-package-import,infinite-loop,inherited-abstract-call,inherited-form-handler-without-inherited,inherited-order,inherited-wrong-method,int32-mul-overflow,integer-division-to-float,interface-guid,interface-not-implemented,' +
+    'hresult-integer-mix,ifthen-side-effect,implemented-not-declared,implicit-package-import,infinite-loop,inherited-abstract-call,inherited-form-handler-without-inherited,inherited-order,inherited-wrong-method,inline-not-expanded,int32-mul-overflow,integer-division-to-float,interface-guid,interface-not-implemented,' +
     'invalid-var-argument,invisible-char,jump-outside-allowed-scope,label-misuse,' +
     'load-without-encoding,local-routine-as-callback,lock-without-finally,loop-condition-unchanged,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,' +
     'metric-method-length,metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-inherited,now-for-elapsed-time,null-compare,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,parallel-for-shared-write,pchar-of-temporary,pos-arguments-swapped,' +
@@ -207,7 +207,7 @@ begin
     'component-create-without-override,component-default-mismatch,component-missing-free-notification,' +
     'component-missing-inherited,condition-not-boolean,conditional-directive-unbalanced,constant-condition,constant-expression-error,constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,default-parameter-invalid,delimited-text-without-strict,' +
     'deref-before-nil-check,destroy-called-directly,destroy-without-override,dfm-circular-datasource,dfm-control-field-type-mismatch,' +
-    'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,dictionary-get-without-check,' +
+    'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,dictionary-get-without-check,directive-typo,' +
     'duplicate-assignment,duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,dynamic-array-misuse,empty-statement,equals-without-gethashcode,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,for-in-not-enumerable,for-variable-after-loop,for-variable-misuse,' +
     'form-access-before-create,form-autocreate-and-manual,form-field-type-mismatch,form-field-without-object,form-object-without-field,form-resource-missing,generic-constraint-violated,hides-virtual,' +
     'hresult-integer-mix,ifthen-side-effect,implemented-not-declared,infinite-loop,inherited-abstract-call,inherited-form-handler-without-inherited,inherited-order,inherited-wrong-method,int32-mul-overflow,integer-division-to-float,interface-guid,interface-not-implemented,invalid-var-argument,jump-outside-allowed-scope,label-misuse,load-without-encoding,local-routine-as-callback,lock-without-finally,loop-condition-unchanged,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,' +
@@ -225,7 +225,7 @@ begin
     ActiveRules('security'));
   Assert.AreEqual('blocking-call-in-main-thread,bool-compare,boolean-assign-if,case-insensitive-compare,commented-out-code,component-fixed-pixels,component-hardcoded-color,component-palette-icon,' +
     'component-setter-without-invalidate,deprecated-symbol,dfm-property,dunitx-test-without-assert,empty-except,empty-finally,forbidden-uses,' +
-    'foreign-form-control-access,format-without-settings,generic-exception-raised,getter-side-effect,implicit-package-import,' +
+    'foreign-form-control-access,format-without-settings,generic-exception-raised,getter-side-effect,implicit-package-import,inline-not-expanded,' +
     'metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
     'metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,' +
     'now-for-elapsed-time,null-compare,processmessages-in-loop,redundant-assigned-free,reraise-exception-object,shadowed-name,slash-command,task-exception-unobserved,thread-resume-suspend,unneeded-forward-declaration,' +
