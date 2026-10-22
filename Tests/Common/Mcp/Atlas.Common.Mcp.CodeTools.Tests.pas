@@ -31,6 +31,10 @@ type
     procedure ReplacesLineRange;
     [Test]
     procedure CheckCodeReportsWithoutWriting;
+    /// <summary>check_code und get_diagnostics prüfen mit den Symbolen des Projekts (#860): Für Win64 ist der
+    /// {$ELSE}-Zweig für Win32 inaktiv und meldet nichts.</summary>
+    [Test]
+    procedure CheckCodeUsesProjectDefines;
   end;
 
 implementation
@@ -43,6 +47,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
+  Atlas.Common.Rules.Checker,
+  Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Lsp.References,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.CodeTools,
@@ -288,6 +294,44 @@ begin
   finally
     Tools.Free;
   end;
+end;
+
+procedure TMcpCodeToolsTests.CheckCodeUsesProjectDefines;
+const
+  Win64Unit =
+    'unit Ziel;'#10'interface'#10'implementation'#10'procedure X;'#10'begin'#10 +
+    '{$IFDEF WIN64}'#10'  X;'#10'{$ELSE}'#10'  if then'#10'{$ENDIF}'#10'end;'#10'end.';
+var
+  Tools: TMcpCodeTools;
+  Win64: TCheckSourceFunc;
+  ReadWin64: TReferenceReadText;
+begin
+  Win64 :=
+    function(const AFileName: string): TCheckSource
+    begin
+      Result := TCheckSource.Create(AFileName, TPascalPreprocessor.PredefinedSymbols('Win64', 37), nil);
+    end;
+  ReadWin64 :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      AText := Win64Unit;
+      Result := True;
+    end;
+  Tools := NewTools;
+  try
+    // Ohne Projekt gelten Win32 und Delphi 13: Der {$ELSE}-Zweig ist aktiv und kaputt.
+    Assert.Contains(Tools.CheckCode(BuiltinRules, TServerSettings.Default, 'C:\P', MainFile, Win64Unit, 0, 0),
+      '[syntax]');
+    Tools.CheckSource := Win64;
+    Assert.Contains(Tools.CheckCode(BuiltinRules, TServerSettings.Default, 'C:\P', MainFile, Win64Unit, 0, 0),
+      'Keine Befunde');
+  finally
+    Tools.Free;
+  end;
+  Assert.Contains(TMcpCodeTools.Diagnostics(BuiltinRules, TServerSettings.Default, 'C:\P', ['C:\P\Ziel.pas'],
+    ReadWin64), '[syntax]');
+  Assert.Contains(TMcpCodeTools.Diagnostics(BuiltinRules, TServerSettings.Default, 'C:\P', ['C:\P\Ziel.pas'],
+    ReadWin64, Win64), '0 Befunde');
 end;
 
 procedure TMcpCodeToolsTests.ParsesDirection;

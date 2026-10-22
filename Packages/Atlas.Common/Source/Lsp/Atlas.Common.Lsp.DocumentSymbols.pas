@@ -608,6 +608,8 @@ begin
         ATarget.AddElement(Symbol);
       end;
     TSyntaxKind.RoutineHeader:
+      // Methodenzuordnung procedure IFoo.Bar = MyBar erscheint nicht in der Gliederung (#849).
+      if not ANode.IsMethodResolution then
       begin
         Symbol := NewSymbol(ANode, ANode.Name, RoutineKind(ANode, AInType));
         if AInType then

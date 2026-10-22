@@ -62,6 +62,10 @@ type
     procedure InactiveRegionsNameTheirCondition;
     [Test]
     procedure InactiveHintNamesConditionAndTarget;
+    /// <summary>#860: Symbole aus {$I} wählen die Zweige; Abblenden und Include-Befunde kommen aus dem Lauf des
+    /// gemeinsamen Baums.</summary>
+    [Test]
+    procedure ComputeReadsIncludeDefines;
     [Test]
     procedure AddsRuleFindingsWithCode;
     [Test]
@@ -91,6 +95,8 @@ uses
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Lsp.InactiveRegions,
+  Atlas.Common.Pascal.Preprocessor,
+  Atlas.Common.Pascal.TreeCache,
   System.Classes,
   System.Diagnostics,
   Atlas.Common.Documents.Providers.DocumentStore,
@@ -658,6 +664,54 @@ begin
     end;
   finally
     Diagnostics.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.ComputeReadsIncludeDefines;
+const
+  Code = 'unit U;'#10'interface'#10'{$I defs.inc}'#10'{$IFDEF FOO} uses A; {$ENDIF}'#10 +
+    '{$IFNDEF FOO} uses B; uses C; {$ENDIF}'#10'{$I fehlt.inc}'#10'implementation'#10'end.';
+var
+  Diagnostics: TLspSyntaxDiagnostics;
+  Document: ITextDocument;
+  Params: TJSONObject;
+  Item: TJSONValue;
+  Messages: string;
+begin
+  TSyntaxTreeCache.SetIncludeProvider(
+    function(const AUri: string): TIncludeResolver
+    begin
+      Result :=
+        function(const AName, AFromFile: string; out AFileName, AText: string): Boolean
+        begin
+          Result := SameText(AName, 'defs.inc');
+          AFileName := 'C:\Projekt\defs.inc';
+          AText := '{$DEFINE FOO}';
+        end;
+    end);
+  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, 0);
+  try
+    Diagnostics.DefinesProvider :=
+      function(const AUri: string; out ADefines: TArray<string>): Boolean
+      begin
+        ADefines := ['WIN32'];
+        Result := True;
+      end;
+    Document := FStore.Open(Uri, 'objectpascal', 1, Code);
+    Params := Diagnostics.Compute(Document);
+    try
+      Messages := '';
+      for Item in Params.GetValue<TJSONArray>('diagnostics') do
+        Messages := Messages + Item.GetValue<string>('message') + '|';
+      // Kein Syntaxfehler: Der {$IFNDEF FOO}-Zweig ist abgeblendet, fehlt.inc ein Hinweis.
+      Assert.AreEqual('Inaktiv: Bedingung not FOO nicht erfüllt|Include-Datei "fehlt.inc" nicht gefunden|',
+        Messages);
+    finally
+      Params.Free;
+    end;
+  finally
+    Diagnostics.Free;
+    TSyntaxTreeCache.SetIncludeProvider(nil);
   end;
 end;
 

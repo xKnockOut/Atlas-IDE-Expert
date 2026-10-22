@@ -333,7 +333,10 @@ begin
   else if IsIdentifierStart(C) then
   begin
     ScanIdentifier;
-    if TPascalLexer.IsReservedWord(Copy(FText, Start + 1, FPos - Start)) then
+    // Direkt hinter @ ist ein reserviertes Wort ein Bezeichner: Sprungmarken
+    // wie @@End im asm-Block beenden den Block nicht (#861).
+    if ((Start = 0) or (FText[Start] <> '@')) and
+      TPascalLexer.IsReservedWord(Copy(FText, Start + 1, FPos - Start)) then
       Kind := TPascalTokenKind.Keyword
     else
       Kind := TPascalTokenKind.Identifier;

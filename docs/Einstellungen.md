@@ -35,7 +35,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Robustheit | `requestTimeoutMs` | `10000` | settings.json (Tools › Optionen › Atlas) | nein | Zahlenfeld (ms) | #283 |
 | Robustheit | `diagnostics`: `log`, `logDays`, `logMapFile` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Zahlenfeld (Tage) | #647 |
 | Editor | `highlight`: `blockPairs`, `directives`, `exitPoints`, `exitKeywords` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Liste | #307 |
-| Editor | `inlayHints`: `parameterNames`, `inferredTypes`, `endMarkers`, `endMarkerMinLines` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Zahlenfeld | #35, #453 |
+| Editor | `inlayHints`: `parameterNames`, `inferredTypes`, `endMarkers`, `endMarkerMinLines`, `includeDefines`, `controlChars` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Zahlenfeld | #35, #453, #860, #862 |
 | Editor | `codeLens`: `metrics` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen | #66 |
 | Hints | `hints`: `xmlDocExpand`, `xmlDocFull`, `xmlDocMaxLines`, `publishedMembers` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Zahlenfeld | #654 |
 | Editor | `directives`: `completion`, `hover` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen | #102 |
@@ -212,6 +212,8 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
     - `editor.recursionMarkers.depth`
   - `inlayHints.parameterNames`
   - `inlayHints.inferredTypes`
+  - `inlayHints.includeDefines`
+  - `inlayHints.controlChars`
   - `editor.blockEndLabels`
     - `editor.blockEndLabels.minLines`
   - `editor.inlineDiagnostics`

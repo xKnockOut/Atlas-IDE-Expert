@@ -78,6 +78,10 @@ type
     EndMarkers: Boolean;
     /// <summary>Mindestlänge eines Blocks in Zeilen für eine Endmarkierung.</summary>
     EndMarkerMinLines: Integer;
+    /// <summary>Hinter {$I datei.inc} die dort gesetzten Symbole, die die Unit prüft (#860).</summary>
+    IncludeDefines: Boolean;
+    /// <summary>Hinter Steuerzeichen wie ^C in Konstanten der Code (#3, #862).</summary>
+    ControlChars: Boolean;
     class function Default: TInlayHintSettings; static;
   end;
 
@@ -711,6 +715,8 @@ begin
   Result.InferredTypes := True;
   Result.EndMarkers := True;
   Result.EndMarkerMinLines := 20;
+  Result.IncludeDefines := True;
+  Result.ControlChars := True;
 end;
 
 { TCodeLensSettings }

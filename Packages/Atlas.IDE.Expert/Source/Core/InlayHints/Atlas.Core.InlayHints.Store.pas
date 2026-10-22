@@ -17,6 +17,11 @@
 // wenn hinter dem end schon ein Kommentar steht; lange Texte enden mit „…“.
 // Typmarken (#453): der abgeleitete Typ von var X := …, const X = … und for var X in … (kind 1) liegt
 // ebenfalls getrennt, mit eigener Einstellung (InlayTypeHints), und erscheint als „: TStringList“.
+// Include-Symbole (#860): hinter {$I datei.inc} die dort gesetzten Symbole, die die Unit prüft
+// (data.includeDefines), mit eigener Einstellung (InlayDefineHints); die Beschriftung baut die
+// Oberfläche in der Sprache der IDE („definiert COMPLIB_VCL“).
+// Steuerzeichen (#862): hinter ^C im Wert einer Konstanten der Code „#3“ (data.controlChar), mit eigener
+// Einstellung (InlayCharHints).
 
 interface
 
@@ -36,6 +41,10 @@ type
     EndLabel: Boolean;
     /// <summary>Typmarke (#453): Name ist der abgeleitete Typ ohne ":".</summary>
     TypeHint: Boolean;
+    /// <summary>Include-Symbole (#860): Name sind die Symbole durch ", " getrennt.</summary>
+    DefineHint: Boolean;
+    /// <summary>Steuerzeichen (#862): Name ist der Code wie „#3“.</summary>
+    CharHint: Boolean;
     /// <summary>Endmarke: Anfang des Blocks (0-basiert), zu dem ein Klick springt; nur mit HasBlock.</summary>
     BlockLine: Integer;
     BlockCharacter: Integer;
@@ -60,6 +69,8 @@ type
       Hints: TArray<TAtlasInlayHint>;
       Ends: TArray<TAtlasInlayHint>;
       Types: TArray<TAtlasInlayHint>;
+      Defines: TArray<TAtlasInlayHint>;
+      Chars: TArray<TAtlasInlayHint>;
     end;
   private
     FEntries: TObjectDictionary<string, TEntry>;
@@ -96,6 +107,11 @@ type
     function OnLine(const AFileName: string; ALine: Integer): TArray<string>;
     /// <summary>Typmarken („: TStringList“, #453) der Zeile in Reihenfolge.</summary>
     function TypesOnLine(const AFileName: string; ALine: Integer): TArray<string>;
+    /// <summary>Include-Symbole hinter {$I} in der Zeile (#860), je Direktive die Symbole durch ", " getrennt.
+    /// </summary>
+    function DefinesOnLine(const AFileName: string; ALine: Integer): TArray<string>;
+    /// <summary>Codes der Steuerzeichen in der Zeile („#3“, #862) in Reihenfolge.</summary>
+    function CharsOnLine(const AFileName: string; ALine: Integer): TArray<string>;
     /// <summary>„: Typ“, lange Typen gekürzt.</summary>
     class function TypeLabelOf(const ATypeName: string): string; static;
     /// <summary>Blockende-Beschriftung der Zeile: AText ist der Text der Marke ohne "//" (Anker), ALabel die
@@ -199,6 +215,8 @@ begin
   Entry.Hints := nil;
   Entry.Ends := nil;
   Entry.Types := nil;
+  Entry.Defines := nil;
+  Entry.Chars := nil;
 end;
 
 function TAtlasInlayHintStore.Missing(const AFileName: string; AFirst, ALast: Integer; out AFrom, ATo: Integer): Boolean;
@@ -225,6 +243,17 @@ begin
       ATo := Line;
     end;
   Result := AFrom >= 0;
+end;
+
+/// <summary>Fügt AHint an, wenn an seiner Stelle noch keiner steht (überlappende Abrufe).</summary>
+procedure AddOnce(var AList: TArray<TAtlasInlayHint>; const AHint: TAtlasInlayHint);
+var
+  Known: TAtlasInlayHint;
+begin
+  for Known in AList do
+    if (Known.Line = AHint.Line) and (Known.Character = AHint.Character) then
+      Exit;
+  AList := AList + [AHint];
 end;
 
 procedure TAtlasInlayHintStore.Put(const AFileName, AText: string; AFrom, ATo: Integer;
@@ -257,16 +286,17 @@ begin
         Entry.Ends := Entry.Ends + [Hint];
       Continue;
     end;
-    // Typmarke (#453): jede Stelle einmal.
-    if Hint.TypeHint then
+    // Typmarke (#453), Include-Symbole (#860) und Steuerzeichen (#862): jede Stelle einmal.
+    if Hint.TypeHint or Hint.DefineHint or Hint.CharHint then
     begin
       if (Hint.Line < AFrom) or (Hint.Line > ATo) or (Hint.Line > High(Entry.Lines)) or (Hint.Name = '') then
         Continue;
-      Duplicate := False;
-      for Known in Entry.Types do
-        Duplicate := Duplicate or ((Known.Line = Hint.Line) and (Known.Character = Hint.Character));
-      if not Duplicate then
-        Entry.Types := Entry.Types + [Hint];
+      if Hint.TypeHint then
+        AddOnce(Entry.Types, Hint)
+      else if Hint.DefineHint then
+        AddOnce(Entry.Defines, Hint)
+      else
+        AddOnce(Entry.Chars, Hint);
       Continue;
     end;
     if (Hint.Line < AFrom) or (Hint.Line > ATo) or (Hint.Line > High(Entry.Lines)) or (Hint.Name = '') or
@@ -292,6 +322,39 @@ begin
     end);
   TArray.Sort<TAtlasInlayHint>(Entry.Hints, Order);
   TArray.Sort<TAtlasInlayHint>(Entry.Types, Order);
+  TArray.Sort<TAtlasInlayHint>(Entry.Defines, Order);
+  TArray.Sort<TAtlasInlayHint>(Entry.Chars, Order);
+end;
+
+/// <summary>Namen der Hinweise aus AHints in ALine, in Reihenfolge.</summary>
+function NamesOn(const AHints: TArray<TAtlasInlayHint>; ALine: Integer): TArray<string>;
+var
+  Hint: TAtlasInlayHint;
+begin
+  Result := nil;
+  for Hint in AHints do
+    if Hint.Line = ALine then
+      Result := Result + [Hint.Name];
+end;
+
+function TAtlasInlayHintStore.DefinesOnLine(const AFileName: string; ALine: Integer): TArray<string>;
+var
+  Entry: TEntry;
+begin
+  Result := nil;
+  Entry := Find(AFileName);
+  if Entry <> nil then
+    Result := NamesOn(Entry.Defines, ALine);
+end;
+
+function TAtlasInlayHintStore.CharsOnLine(const AFileName: string; ALine: Integer): TArray<string>;
+var
+  Entry: TEntry;
+begin
+  Result := nil;
+  Entry := Find(AFileName);
+  if Entry <> nil then
+    Result := NamesOn(Entry.Chars, ALine);
 end;
 
 function TAtlasInlayHintStore.OnLine(const AFileName: string; ALine: Integer): TArray<string>;

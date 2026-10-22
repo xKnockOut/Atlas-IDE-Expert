@@ -48,6 +48,7 @@ uses
   Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.Refactorings,
   Atlas.Common.Pascal.LanguageFeatures,
+  Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Lsp.Hierarchies,
   Atlas.Common.Lsp.Implementations,
@@ -362,6 +363,8 @@ type
     /// <summary>Wirksame Konfiguration je Arbeitsbereich als formatiertes JSON.</summary>
     function ConfigurationReport: string;
     function DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
+    /// <summary>Include-Resolver mit den Suchpfaden des Projekts von AUri (#860).</summary>
+    function IncludeResolverFor(const AUri: string): TIncludeResolver;
     function DelphiVersionFor(const AUri: string): string;
     /// <summary>Schnellbefehle (#293): False = aus; ADisabled samt "uses" bei usesCommand = false.</summary>
     function SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
@@ -481,7 +484,6 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.IncludeFiles,
-  Atlas.Common.Pascal.Preprocessor,
   Shell.SlashHost,
   Shell.VcsChanges,
   Shell.Bootstrap,
@@ -958,28 +960,29 @@ begin
         AConfig := Project.Config;
       end;
     end;
-  FSyntaxDiagnostics.IncludePathsProvider :=
-    function(const AUri: string): TArray<string>
-    var
-      Workspace: TShellWorkspace;
-    begin
-      Result := nil;
-      TMonitor.Enter(FWorkspacesLock);
-      try
-        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
-        if Workspace <> nil then
-          Result := Workspace.IncludePaths;
-      finally
-        TMonitor.Exit(FWorkspacesLock);
-      end;
-    end;
+  // $I-Dateien im Editor-Baum, in Syntaxprüfung und Abblenden (#264, #860): Suchpfade des Projekts.
+  TSyntaxTreeCache.SetIncludeProvider(IncludeResolverFor);
   FSyntaxDiagnostics.VersionProvider := DelphiVersionFor;
   FSyntaxDiagnostics.RuleProvider := RuleContextFor;
 end;
 
 procedure TServerComposition.WireIndex;
+var
+  Index: ISymbolIndex;
 begin
   FIndex := TSymbolIndex.Create;
+  // Declared(X) in {$IF} fragt den Index (#847). Die Referenz hält den Index, bis Destroy den Anbieter abmeldet.
+  Index := FIndex;
+  TPascalPreprocessor.SetDeclaredProvider(
+    function(const AName: string): Boolean
+    var
+      Location: TSymbolLocation;
+    begin
+      for Location in Index.FindSymbols(AName) do
+        if Location.Symbol.Container = '' then
+          Exit(True);
+      Result := False;
+    end);
   FFormatting.Index := FIndex;
   // Standardsichtbarkeit published über die Vorfahren (#537).
   FDocumentSymbols.Index := FIndex;
@@ -1937,6 +1940,7 @@ destructor TServerComposition.Destroy;
 var
   Unfinished: Boolean;
 begin
+  TPascalPreprocessor.SetDeclaredProvider(nil);
   // Zuerst: Eine laufende Übernahme greift auf die Ordner zu.
   FreeAndNil(FIndexRefresh);
   // Vor der Verbindung: Beide Wächter rufen FConnection.
@@ -1955,6 +1959,7 @@ begin
   StopIndexThreads;
   // Der Baum-Cache ist global; ohne Projekte gelten wieder die Vordefinitionen (#845).
   TSyntaxTreeCache.SetDefinesProvider(nil);
+  TSyntaxTreeCache.SetIncludeProvider(nil);
   // Erst jetzt meldet sich niemand mehr beim Diagnoselog.
   if FDispatcher <> nil then
     FDispatcher.Observer := nil;
@@ -2674,6 +2679,24 @@ begin
     TMonitor.Exit(FWorkspacesLock);
   end;
   Result := True;
+end;
+
+function TServerComposition.IncludeResolverFor(const AUri: string): TIncludeResolver;
+var
+  Workspace: TShellWorkspace;
+  IncludePaths: TArray<string>;
+begin
+  IncludePaths := nil;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
+    if Workspace <> nil then
+      IncludePaths := Workspace.IncludePaths;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  // Ohne Projekt sucht der Resolver im Ordner der Datei.
+  Result := TIncludeFiles.Resolver(IncludePaths);
 end;
 
 function TServerComposition.DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
@@ -3968,9 +3991,11 @@ begin
     Project := Default(TProjectInfo);
   Predefined := TPascalPreprocessor.PredefinedSymbols(Project.Platform,
     TPascalPreprocessor.CompilerVersionFromDefines(Defines));
+  Result.Config := Project.Config;
+  Result.Platform := Project.Platform;
   Own := nil;
   for Define in Defines do
-    if IndexText(Define, Predefined) < 0 then
+    if (IndexText(Define, Predefined) < 0) and not TPascalPreprocessor.IsSwitchEntry(Define) then
       Own := Own + [Define];
   Result.Sources := TConditionalSymbols.SourcesOf(Own, Project.DefineOrigins, Predefined, Project.Platform);
 end;
@@ -4655,7 +4680,15 @@ begin
       end
       // .inc (#264): der Index liest die einbindenden Units neu ein.
       else if MatchText(ExtractFileExt(Change.FileName), ['.pas', '.dpr', '.inc']) then
+      begin
         Sources := Sources + [Change];
+        // Editor-Bäume mit $I neu lesen (#860): Die Symbole der .inc wählen ihre Zweige.
+        if SameText(ExtractFileExt(Change.FileName), '.inc') then
+        begin
+          TSyntaxTreeCache.IncludesChanged;
+          FSyntaxDiagnostics.RefreshLater;
+        end;
+      end;
     // Neu aufbauen: Suchpfade, Defines oder Units können sich geändert haben.
     for Workspace in Reload do
     begin

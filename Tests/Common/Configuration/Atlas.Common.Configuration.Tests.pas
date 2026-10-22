@@ -896,6 +896,13 @@ begin
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.InlayHints.ParameterNames);
   Assert.AreEqual(20, Settings.InlayHints.EndMarkerMinLines);
+  Assert.IsTrue(Settings.InlayHints.IncludeDefines);
+  Settings := Parse('{"inlayHints": {"includeDefines": false}}', Issues);
+  Assert.IsFalse(Settings.InlayHints.IncludeDefines, '#860');
+  Assert.IsTrue(Settings.InlayHints.ControlChars, '#862 Vorgabe');
+  Settings := Parse('{"inlayHints": {"controlChars": false}}', Issues);
+  Assert.IsFalse(Settings.InlayHints.ControlChars, '#862');
+  Assert.AreEqual(0, Integer(Length(Issues)));
   Settings := Parse('{"inlayHints": {"parameterNames": false, "endMarkerMinLines": 8, "inferredTypes": 1, "x": true}}',
     Issues);
   Assert.IsFalse(Settings.InlayHints.ParameterNames);

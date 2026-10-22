@@ -436,6 +436,32 @@
       "x-captionEn": "Type marks",
       "x-issue": "#453"
     },
+    "InlayDefineHints": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "inlayHints.includeDefines",
+      "x-area": "editor",
+      "x-feature": "InlayHints",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Include-Symbole",
+      "x-captionEn": "Include symbols",
+      "x-issue": "#860"
+    },
+    "InlayCharHints": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "inlayHints.controlChars",
+      "x-area": "editor",
+      "x-feature": "InlayHints",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Steuerzeichen-Codes",
+      "x-captionEn": "Control character codes",
+      "x-issue": "#862"
+    },
     "BlockEndLabels": {
       "type": "boolean",
       "default": true,

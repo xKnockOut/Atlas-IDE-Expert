@@ -14,6 +14,12 @@
 // Defined( bietet die Symbole mit Herkunft an: Projekt und Compiler, dann
 // $DEFINE der Datei und ihrer Includes, dann in der Datei benutzte Namen und
 // Compiler-Symbole anderer Plattformen.
+// Hover über {$IF}, {$ELSEIF} und {$IFOPT} nennt den Wert der Bedingung und
+// ihre Teilwerte mit Herkunft (SizeOf nach Zielplattform, RTLVersion111 nach
+// Delphi-Version, Declared aus dem Index, Schalter aus der .dproj oder einem
+// lokalen {$R-} davor); {$PUSHOPT}/{$POPOPT} nennen ihr Gegenstück (#847).
+// Stammt das Symbol aus einer Include-Datei (#860), nennt der Hover dazu
+// Zielplattform und Konfiguration des Projekts: „Projekt: Win64 · Debug“.
 
 interface
 
@@ -44,6 +50,11 @@ type
     Sources: TArray<TSymbolSource>;
     FileName: string;
     ResolveInclude: TIncludeResolver;
+    /// <summary>Aktive Konfiguration (Debug, Release) für die Herkunft von Schaltern (#847); '' ohne Projekt.
+    /// </summary>
+    Config: string;
+    /// <summary>Zielplattform des Projekts (Win32, Win64 …, #860); '' ohne Projekt.</summary>
+    Platform: string;
     /// <summary>Beides eingeschaltet, ohne Projekt.</summary>
     class function Default: TConditionalContext; static;
   end;
@@ -73,6 +84,10 @@ type
     /// <summary>Markdown für den Hover über dem Symbol einer Direktive an APosition; False ohne Symbol.</summary>
     class function Hover(const AText: string; const APosition: TTextPosition; const AContext: TConditionalContext;
       out AMarkdown: string): Boolean; static;
+    /// <summary>Markdown für den Hover über {$IF}, {$ELSEIF}, {$IFOPT}, {$PUSHOPT} oder {$POPOPT} an APosition:
+    /// Wert der Bedingung mit Teilwerten und Herkunft (#847); False bei anderen Stellen.</summary>
+    class function ConditionHover(const AText: string; const APosition: TTextPosition;
+      const AContext: TConditionalContext; out AMarkdown: string): Boolean; static;
     /// <summary>Steht vor dem Cursor die Stelle eines Symbols: {$IFDEF , {$IFNDEF , {$DEFINE , {$UNDEF oder
     /// Defined( in {$IF bzw. {$ELSEIF? APrefix: schon getippter Teil des Namens.</summary>
     class function IsSymbolContext(const ALineBefore: string; out APrefix: string): Boolean; static;
@@ -127,6 +142,9 @@ begin
   Result := nil;
   for Name in AProjectDefines do
   begin
+    // Schalterstände für $IFOPT ("$R+", #847) sind keine Symbole.
+    if TPascalPreprocessor.IsSwitchEntry(Name) then
+      Continue;
     Source.Name := UpperCase(Name);
     Source.Origin := 'Projektoptionen der IDE';
     for Origin in AOrigins do
@@ -290,6 +308,16 @@ begin
     ASite.Range.StartPos.Line + 1]);
 end;
 
+/// <summary>"Win64 · Debug"; ohne Plattform oder Konfiguration nur der bekannte Teil, '' ohne beides.</summary>
+function TargetText(const AContext: TConditionalContext): string;
+begin
+  Result := AContext.Platform;
+  if (Result <> '') and (AContext.Config <> '') then
+    Result := Result + ' · ' + AContext.Config
+  else if AContext.Config <> '' then
+    Result := AContext.Config;
+end;
+
 function InInactiveRange(const AProcessed: TPreprocessorResult; const APosition: TTextPosition): Boolean;
 var
   Inactive: TInactiveRange;
@@ -362,6 +390,173 @@ begin
     AMarkdown := AMarkdown + #10#10 + Format('Diese Direktive hebt **%s** ab hier auf.', [Name]);
   if InInactiveRange(Processed, Start) then
     AMarkdown := AMarkdown + #10#10 + 'Die Direktive liegt in einem inaktiven Zweig und wirkt nicht.';
+  // Aus einer Include-Datei (#860): unter welchem Projektstand die Datei gelesen wurde.
+  if HasSite and (Last.FileIndex <> 0) and AContext.HasDefines and (TargetText(AContext) <> '') then
+    AMarkdown := AMarkdown + #10#10 + 'Projekt: ' + TargetText(AContext);
+  Result := True;
+end;
+
+function DirectiveName(const AToken: string): string;
+var
+  Body: string;
+  Offset, Index: Integer;
+begin
+  Body := DirectiveBody(AToken, Offset);
+  Index := 1;
+  while (Index <= Length(Body)) and IsNameChar(Body[Index]) do
+    Inc(Index);
+  Result := UpperCase(Copy(Body, 1, Index - 1));
+end;
+
+function ValueText(AValue: TConditionValue): string;
+begin
+  case AValue of
+    TConditionValue.Yes:
+      Result := 'wahr';
+    TConditionValue.No:
+      Result := 'falsch';
+  else
+    Result := 'unbekannt = aktiv';
+  end;
+end;
+
+/// <summary>"aus DCC_RangeChecking (Debug)" bzw. "seit {$R-} in Zeile 4".</summary>
+function SwitchOrigin(const AOrigin: string; const AContext: TConditionalContext): string;
+begin
+  if AOrigin = '' then
+  begin
+    if AContext.HasDefines then
+      Exit('weder in der .dproj noch mit einem Schalter davor gesetzt');
+    Exit('kein Projekt geladen, nur die Datei ausgewertet');
+  end;
+  if StartsStr('{$', AOrigin) then
+    Exit('seit ' + AOrigin);
+  Result := 'aus ' + AOrigin;
+  if (AContext.Config <> '') and not ContainsStr(AOrigin, '(') then
+    Result := Result + ' (' + AContext.Config + ')';
+end;
+
+/// <summary>Zeile (0-basiert) des Gegenstücks zu {$PUSHOPT} bzw. {$POPOPT} an AToken; -1 ohne.</summary>
+function PartnerLine(const AText: string; const AToken: TPascalToken; APush: Boolean): Integer;
+var
+  Token: TPascalToken;
+  Stack: TStack<Integer>;
+  Name: string;
+  Pending: Integer;
+begin
+  Result := -1;
+  Pending := -1;
+  Stack := TStack<Integer>.Create;
+  try
+    for Token in TPascalLexer.Tokenize(AText) do
+    begin
+      if Token.Kind <> TPascalTokenKind.Directive then
+        Continue;
+      Name := DirectiveName(Token.Text);
+      if Name = 'PUSHOPT' then
+      begin
+        if Token.Offset = AToken.Offset then
+          Pending := Stack.Count;
+        Stack.Push(Token.StartPos.Line);
+      end
+      else if (Name = 'POPOPT') and (Stack.Count > 0) then
+      begin
+        if not APush and (Token.Offset = AToken.Offset) then
+          Exit(Stack.Peek);
+        if APush and (Pending = Stack.Count - 1) then
+          Exit(Token.StartPos.Line);
+        Stack.Pop;
+      end;
+    end;
+  finally
+    Stack.Free;
+  end;
+end;
+
+class function TConditionalSymbols.ConditionHover(const AText: string; const APosition: TTextPosition;
+  const AContext: TConditionalContext; out AMarkdown: string): Boolean;
+var
+  Token: TPascalToken;
+  Name: string;
+  Processed: TPreprocessorResult;
+  Check, Item: TConditionCheck;
+  Part: TConditionPart;
+  Found: Boolean;
+  Line: Integer;
+begin
+  AMarkdown := '';
+  if not AContext.HoverEnabled or not DirectiveAt(AText, APosition, Token) then
+    Exit(False);
+  Name := DirectiveName(Token.Text);
+  if Name = 'PUSHOPT' then
+  begin
+    AMarkdown := '**{$PUSHOPT}** sichert den Schalterstand';
+    Line := PartnerLine(AText, Token, True);
+    if Line >= 0 then
+      AMarkdown := AMarkdown + Format('; {$POPOPT} in Zeile %d stellt ihn wieder her.', [Line + 1])
+    else
+      AMarkdown := AMarkdown + '; ohne passendes {$POPOPT} gilt der geänderte Stand bis zum Dateiende.';
+    Exit(True);
+  end;
+  if Name = 'POPOPT' then
+  begin
+    Line := PartnerLine(AText, Token, False);
+    if Line >= 0 then
+      AMarkdown := Format('**{$POPOPT}** stellt den Schalterstand von {$PUSHOPT} in Zeile %d wieder her.',
+        [Line + 1])
+    else
+      AMarkdown := '**{$POPOPT}** ohne passendes {$PUSHOPT} davor.';
+    Exit(True);
+  end;
+  if not MatchStr(Name, ['IF', 'ELSEIF', 'IFOPT']) then
+    Exit(False);
+  Processed := TPascalPreprocessor.Process(AText, OptionsFor(AContext));
+  Found := False;
+  for Item in Processed.Checks do
+    if (Item.FileIndex = 0) and (Item.Range.StartPos.Line = Token.StartPos.Line) and
+      (Item.Range.StartPos.Character = Token.StartPos.Character) then
+    begin
+      Check := Item;
+      Found := True;
+      Break;
+    end;
+  if not Found then
+  begin
+    if InInactiveRange(Processed, Token.StartPos) then
+      AMarkdown := 'Die Bedingung liegt in einem inaktiven Zweig und wird nicht ausgewertet.'
+    else
+      AMarkdown := 'Die Bedingung lässt sich nicht auswerten.';
+    Exit(True);
+  end;
+  if Name = 'IFOPT' then
+  begin
+    Part := Default(TConditionPart);
+    if Check.Parts <> nil then
+      Part := Check.Parts[0];
+    case Check.Value of
+      TConditionValue.Yes:
+        AMarkdown := Format('**aktiv**: %s %s', [Part.Value, SwitchOrigin(Part.Origin, AContext)]);
+      TConditionValue.No:
+        AMarkdown := Format('**inaktiv**: %s %s', [Part.Value, SwitchOrigin(Part.Origin, AContext)]);
+    else
+      AMarkdown := Format('**unbekannt = aktiv**: %s %s', [Part.Text, SwitchOrigin(Part.Origin, AContext)]);
+    end;
+    Exit(True);
+  end;
+  AMarkdown := Format('**%s**: `%s`', [ValueText(Check.Value), Check.Expression]);
+  if Check.Parts <> nil then
+  begin
+    AMarkdown := AMarkdown + #10;
+    for Part in Check.Parts do
+    begin
+      AMarkdown := AMarkdown + #10 + Format('- `%s` %s', [Part.Text, Part.Value]);
+      if Part.Origin <> '' then
+        AMarkdown := AMarkdown + ' · ' + Part.Origin;
+    end;
+  end;
+  if Check.Value = TConditionValue.Unknown then
+    AMarkdown := AMarkdown + #10#10 +
+      'Ein Wert ist hier nicht bekannt; der Zweig und ein {$ELSE} dazu gelten als aktiv.';
   Result := True;
 end;
 

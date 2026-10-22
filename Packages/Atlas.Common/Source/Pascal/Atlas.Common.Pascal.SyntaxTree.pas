@@ -97,6 +97,12 @@ type
     procedure Extract(ANode: TSyntaxNode);
     /// <summary>Erstes Kind der Art, sonst nil.</summary>
     function FindChild(AKind: TSyntaxKind): TSyntaxNode;
+    /// <summary>Routinenkopf einer Methodenzuordnung "procedure IFoo.Bar = MyBar;" (#849): kein eigenes
+    /// Mitglied; das Ziel steht als Identifier unter der Direktive "resolution".</summary>
+    function IsMethodResolution: Boolean;
+    /// <summary>Qualifizierter Name der Typdeklarationen über diesem Knoten (TAussen.TInnen), Self
+    /// eingeschlossen; '' außerhalb eines Typs.</summary>
+    function EnclosingTypeName: string;
     /// <summary>Setzt den Bereich im Quelltext.</summary>
     procedure SetRange(const AStartPos, AEndPos: TTextPosition; AStartOffset, AEndOffset: Integer);
     /// <summary>Besucht diesen Knoten und, wenn AVisit True liefert, alle Kinder in Baumreihenfolge
@@ -156,6 +162,9 @@ type
     /// <summary>Der erste Knoten in Baumreihenfolge, der so tief liegt wie Depth; nil ohne Wurzel. Bei einer
     /// langen Kette wie 1 - 1 - … - 1 ist das ihr erstes Glied (Bericht M1).</summary>
     function Deepest: TSyntaxNode;
+    /// <summary>Steht das Token ATokenIndex in einem Steuerzeichen wie ^C (#862)? Dann ist der Bezeichner C
+    /// kein Name, sondern Teil eines Literals.</summary>
+    function IsControlCharPart(ATokenIndex: Integer): Boolean;
     property Root: TSyntaxNode read FRoot;
     /// <summary>Alle Token einschließlich Kommentaren und Direktiven.</summary>
     property Tokens: TArray<TPascalToken> read FTokens;
@@ -251,6 +260,33 @@ begin
   Result := nil;
 end;
 
+function TSyntaxNode.IsMethodResolution: Boolean;
+var
+  Index: Integer;
+begin
+  for Index := 0 to ChildCount - 1 do
+    if (Children[Index].Kind = TSyntaxKind.Directive) and (Children[Index].Name = 'resolution') then
+      Exit(True);
+  Result := False;
+end;
+
+function TSyntaxNode.EnclosingTypeName: string;
+var
+  Node: TSyntaxNode;
+begin
+  Result := '';
+  Node := Self;
+  while Node <> nil do
+  begin
+    if Node.Kind = TSyntaxKind.TypeDecl then
+      if Result = '' then
+        Result := Node.Name
+      else
+        Result := Node.Name + '.' + Result;
+    Node := Node.Parent;
+  end;
+end;
+
 function TSyntaxNode.GetChild(AIndex: Integer): TSyntaxNode;
 begin
   Result := FChildren[AIndex];
@@ -336,6 +372,33 @@ begin
 end;
 
 { TSyntaxTree }
+
+function TSyntaxTree.IsControlCharPart(ATokenIndex: Integer): Boolean;
+var
+  Node: TSyntaxNode;
+  Offset, Index: Integer;
+  Found: Boolean;
+begin
+  Result := False;
+  if (ATokenIndex < 1) or (ATokenIndex > High(FTokens)) or not FTokens[ATokenIndex - 1].IsSymbol('^') or
+    (FTokens[ATokenIndex].Offset <> FTokens[ATokenIndex - 1].Offset + 1) then
+    Exit;
+  // Innerster Knoten über dem Token: ein Literal nur bei ^C, ein Zeigertyp ^T bleibt TypeReference.
+  Offset := FTokens[ATokenIndex].Offset;
+  Node := FRoot;
+  repeat
+    if Node.Kind = TSyntaxKind.Literal then
+      Exit(True);
+    Found := False;
+    for Index := 0 to Node.ChildCount - 1 do
+      if (Node[Index].StartOffset <= Offset) and (Offset < Node[Index].EndOffset) then
+      begin
+        Node := Node[Index];
+        Found := True;
+        Break;
+      end;
+  until not Found;
+end;
 
 constructor TSyntaxTree.Create(ARoot: TSyntaxNode; const ATokens: TArray<TPascalToken>;
   const ADiagnostics: TArray<TSyntaxDiagnostic>);

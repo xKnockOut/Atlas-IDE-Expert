@@ -195,6 +195,8 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `inlayHints.inferredTypes` | global (settings.json) | boolean | `true` |  | Abgeleiteter Typ hinter var X := …, const X = … und for var X in … (im Plugin als Typmarke am Zeilenende). |
 | `inlayHints.endMarkers` | global (settings.json) | boolean | `true` |  | Hinter dem end langer Blöcke anzeigen, was dort endet. |
 | `inlayHints.endMarkerMinLines` | global (settings.json) | integer | `20` | 1… | Mindestlänge eines Blocks in Zeilen für eine Endmarkierung. |
+| `inlayHints.includeDefines` | global (settings.json) | boolean | `true` |  | Hinter {$I datei.inc} die Symbole, die die Include-Datei setzt und die eine Bedingung der Unit prüft ("definiert COMPLIB_VCL"). |
+| `inlayHints.controlChars` | global (settings.json) | boolean | `true` |  | Hinter Steuerzeichen wie ^C oder ^[ im Wert einer Konstanten ihr Code (#3, #27). |
 
 ## codeLens
 
@@ -216,7 +218,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
 | `directives.completion` | global (settings.json) | boolean | `true` |  | In {$ die Direktivennamen, nach {$WARN die Warnungsbezeichner und nach {$IFDEF, {$IFNDEF, {$DEFINE, {$UNDEF und in Defined( die bedingten Symbole vorschlagen, jeweils mit Herkunft (Konfiguration, Plattform, Compiler-Vorgabe, {$DEFINE} mit Zeile). |
-| `directives.hover` | global (settings.json) | boolean | `true` |  | Hover über Schaltern wie {$R+} erklärt die Direktive mit DocWiki-Link; über {$IFDEF X} und Co. nennt er, ob X an dieser Stelle aktiv ist und wo es definiert wird (Projekt, Konfiguration und Plattform aus der .dproj, Compiler-Vorgabe, {$DEFINE} mit Datei und Zeile, auch aus Include-Dateien). |
+| `directives.hover` | global (settings.json) | boolean | `true` |  | Hover über Schaltern wie {$R+} erklärt die Direktive mit DocWiki-Link; über {$IFDEF X} und Co. nennt er, ob X an dieser Stelle aktiv ist und wo es definiert wird (Projekt, Konfiguration und Plattform aus der .dproj, Compiler-Vorgabe, {$DEFINE} mit Datei und Zeile, auch aus Include-Dateien). Über {$IF}, {$ELSEIF} und {$IFOPT} nennt er den Wert der Bedingung mit Teilwerten und Herkunft (SizeOf nach Zielplattform, RTLVersion111 nach Delphi-Version, Declared aus dem Index, Schalter aus der .dproj oder einem {$R-} davor), über {$PUSHOPT}/{$POPOPT} das Gegenstück (#847). |
 
 ## stringLiteral
 

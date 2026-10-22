@@ -751,6 +751,10 @@ begin
       ExpectBoolean(Value, Key, FSettings.InlayHints.InferredTypes)
     else if Key = 'endMarkers' then
       ExpectBoolean(Value, Key, FSettings.InlayHints.EndMarkers)
+    else if Key = 'includeDefines' then
+      ExpectBoolean(Value, Key, FSettings.InlayHints.IncludeDefines)
+    else if Key = 'controlChars' then
+      ExpectBoolean(Value, Key, FSettings.InlayHints.ControlChars)
     else if Key = 'endMarkerMinLines' then
     begin
       if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Lines) and (Lines >= 1) then

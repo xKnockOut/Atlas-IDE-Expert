@@ -69,7 +69,11 @@ type
     /// <summary>Symbol der Atlas-Spalte in der Zeilenleiste (#768).</summary>
     GutterColumn,
     /// <summary>Hervorhebung gleichen Texts wie die Markierung samt Anzahl (#709).</summary>
-    SelectionMatches);
+    SelectionMatches,
+    /// <summary>Symbole aus Include-Dateien hinter {$I} (#860).</summary>
+    InlayDefineHints,
+    /// <summary>Codes von Steuerzeichen wie ^C (#862).</summary>
+    InlayCharHints);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -192,6 +196,10 @@ begin
     // Nur solange die Markierung steht; Ausblenden je Datei oder überall.
     TAtlasDrawnElement.SelectionMatches:
       Result := Make(AElement, 'SelectionMatches', FileScopes, True, False);
+    TAtlasDrawnElement.InlayDefineHints:
+      Result := Make(AElement, 'InlayDefineHints', AllScopes, True, False);
+    TAtlasDrawnElement.InlayCharHints:
+      Result := Make(AElement, 'InlayCharHints', AllScopes, True, False);
   else
     Result := Make(AElement, '', [], False, False);
   end;

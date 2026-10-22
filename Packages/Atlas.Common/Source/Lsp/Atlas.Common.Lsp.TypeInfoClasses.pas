@@ -9,6 +9,7 @@
 //   {$M+}, {$M-}, {$TYPEINFO ON|OFF}, auch in Listen wie {$R-,M+} und in
 //   (*$ … *); {$M 16384,1048576} (Stapelgröße) zählt nicht. Inaktive Zweige
 //   von $IFDEF/$IF bleiben außen vor (Vordefinitionen von Delphi).
+//   {$PUSHOPT} sichert den Stand, {$POPOPT} stellt ihn wieder her (#847).
 // - HasTypeInfo folgt der Vorfahrenkette über den Symbolindex und liest dazu
 //   die Deklaration der Vorfahren aus ihrer Datei. Fehlt ein Vorfahr im Index
 //   (RTL und VCL nicht indiziert), entscheiden die bekannten Klassen der RTL,
@@ -150,14 +151,31 @@ class function TTypeInfoClasses.SwitchAt(const ATokens: TArray<TPascalToken>; co
 var
   Token: TPascalToken;
   Value: Boolean;
+  Saved: TArray<Boolean>;
+  Name: string;
 begin
   Result := False;
+  Saved := nil;
   for Token in ATokens do
   begin
     if not Before(Token.StartPos, APosition) then
       Break;
-    if (Token.Kind = TPascalTokenKind.Directive) and ReadSwitch(Token.Text, Value) then
+    if Token.Kind <> TPascalTokenKind.Directive then
+      Continue;
+    if ReadSwitch(Token.Text, Value) then
+    begin
       Result := Value;
+      Continue;
+    end;
+    // {$PUSHOPT}/{$POPOPT} (#847).
+    Name := UpperCase(StringReplace(Token.Text, ' ', '', [rfReplaceAll]));
+    if (Name = '{$PUSHOPT}') or (Name = '(*$PUSHOPT*)') then
+      Saved := Saved + [Result]
+    else if ((Name = '{$POPOPT}') or (Name = '(*$POPOPT*)')) and (Saved <> nil) then
+    begin
+      Result := Saved[High(Saved)];
+      SetLength(Saved, Length(Saved) - 1);
+    end;
   end;
 end;
 

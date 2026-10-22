@@ -6,7 +6,10 @@
 //   - abgeleiteter Typ hinter var X := …, const X = … und for var X in … (Literale, Konstruktoren, Funktionen,
 //     Variablen, Elemente von Arrays und Enumeratoren; #453), dazu die Aktion „Typ ausschreiben“
 //     (ExplicitTypeAction) mit uses-Eintrag für die Unit des Typs,
-//   - Endmarkierungen hinter dem end langer Blöcke: Routine, Typ, if/while/for/with/case/try.
+//   - Endmarkierungen hinter dem end langer Blöcke: Routine, Typ, if/while/for/with/case/try,
+//   - hinter {$I datei.inc} die Symbole, die die Datei dort setzt und die eine Bedingung dieser Unit
+//     prüft: „definiert COMPLIB_VCL“ (#860), aus dem Präprozessor-Lauf des gemeinsamen Baums,
+//   - hinter Steuerzeichen wie ^C im Wert einer Konstanten ihr Code „#3“ (#862).
 // Was erscheint, steuert "inlayHints" in atlas.json.
 
 interface
@@ -19,6 +22,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.CodeActions,
@@ -35,6 +39,12 @@ type
     /// <summary>Endmarke (#620): Anfang des Blocks, zu dem ein Klick springt; nur mit HasBlockStart.</summary>
     BlockStart: TTextPosition;
     HasBlockStart: Boolean;
+    /// <summary>Hinweis hinter {$I} (#860): gesetzte Symbole und Name der Include-Datei; leer sonst.</summary>
+    Defines: TArray<string>;
+    IncludeFile: string;
+    /// <summary>Code eines Steuerzeichens wie ^C (#862); nur mit ControlChar.</summary>
+    CharCode: Integer;
+    ControlChar: Boolean;
   end;
 
   /// <summary>Abgeleiteter Typ einer Inline-Variablen ohne Typangabe (#453).</summary>
@@ -65,6 +75,8 @@ type
     /// <summary>Mindestlänge des Blocks aus der Anfrage (#620, editor.blockEndLabels.minLines im Plugin); geht
     /// inlayHints.endMarkerMinLines vor.</summary>
     MinLinesParam = 'atlas.endMarkerMinLines';
+    /// <summary>Anfang der Beschriftung hinter {$I} (#860).</summary>
+    DefinesPrefix = 'definiert ';
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -95,10 +107,22 @@ type
     class function ExplicitTypeAction(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
       const APosition: TTextPosition; const ALineBreak: string; out AAction: TCodeAction): Boolean; static;
     class function EndMarkers(ATree: TSyntaxTree; const ARange: TTextRange; AMinLines: Integer): TArray<TInlayHint>; static;
+    /// <summary>Hinter jedem {$I datei} in ARange die Symbole, die die Include-Datei setzt und die eine
+    /// $IFDEF/$IF-Bedingung von ATree prüft (#860); AProcessed ist der Präprozessor-Lauf zum Baum.</summary>
+    class function IncludeDefines(ATree: TSyntaxTree; const AProcessed: TPreprocessorResult;
+      const ARange: TTextRange): TArray<TInlayHint>; static;
+    /// <summary>Hinter jedem Steuerzeichen wie ^C im Wert einer Konstanten in ARange sein Code „#3“ (#862);
+    /// ATreeText ist der Text, aus dem ATree gelesen wurde.</summary>
+    class function ControlChars(ATree: TSyntaxTree; const ATreeText: string;
+      const ARange: TTextRange): TArray<TInlayHint>; static;
     /// <summary>Alle eingeschalteten Hinweise in ARange, nach Position sortiert.</summary>
     class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const ATreeText, AFileName: string; const ARange: TTextRange; const ASettings: TInlayHintSettings;
-      const AReadText: THoverReadText): TArray<TInlayHint>; static;
+      const AReadText: THoverReadText): TArray<TInlayHint>; overload; static;
+    /// <summary>Wie oben, dazu die Symbole hinter {$I} aus dem Präprozessor-Lauf AProcessed (#860).</summary>
+    class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const ATreeText, AFileName: string; const ARange: TTextRange; const ASettings: TInlayHintSettings;
+      const AReadText: THoverReadText; const AProcessed: TPreprocessorResult): TArray<TInlayHint>; overload; static;
     /// <summary>InlayHint[] des LSP. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AHints: TArray<TInlayHint>): TJSONArray; static;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
@@ -119,7 +143,8 @@ uses
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Editing.PostfixTemplates,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Lsp.Internals.Cancellation;
+  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Text.Chars;
 
 type
   TSyntaxKinds = set of TSyntaxKind;
@@ -813,6 +838,141 @@ begin
   end;
 end;
 
+/// <summary>Bezeichner in den Bedingungen ($IFDEF, $IFNDEF, $IF, $ELSEIF) der Datei, groß geschrieben.</summary>
+function ConditionWords(ATree: TSyntaxTree): TDictionary<string, Boolean>;
+var
+  Token: TPascalToken;
+  Text, Head: string;
+  Index, Start: Integer;
+begin
+  Result := TDictionary<string, Boolean>.Create;
+  for Token in ATree.Tokens do
+  begin
+    if Token.Kind <> TPascalTokenKind.Directive then
+      Continue;
+    Text := UpperCase(Token.Text);
+    if Text.StartsWith('{$') then
+      Text := Copy(Text, 3, MaxInt)
+    else if Text.StartsWith('(*$') then
+      Text := Copy(Text, 4, MaxInt)
+    else
+      Continue;
+    Index := 1;
+    while (Index <= Length(Text)) and TTextChars.IsIdentChar(Text[Index]) do
+      Inc(Index);
+    Head := Copy(Text, 1, Index - 1);
+    if (Head <> 'IFDEF') and (Head <> 'IFNDEF') and (Head <> 'IF') and (Head <> 'ELSEIF') then
+      Continue;
+    while Index <= Length(Text) do
+      if TTextChars.IsIdentStart(Text[Index]) then
+      begin
+        Start := Index;
+        while (Index <= Length(Text)) and TTextChars.IsIdentChar(Text[Index]) do
+          Inc(Index);
+        Result.AddOrSetValue(Copy(Text, Start, Index - Start), True);
+      end
+      else
+        Inc(Index);
+  end;
+end;
+
+class function TLspInlayHints.IncludeDefines(ATree: TSyntaxTree; const AProcessed: TPreprocessorResult;
+  const ARange: TTextRange): TArray<TInlayHint>;
+var
+  Used: TDictionary<string, Boolean>;
+  Site: TDefineSite;
+  Token: TPascalToken;
+  Hint: TInlayHint;
+  Names: TArray<string>;
+  Name, IncludeName: string;
+  Index: Integer;
+begin
+  Result := nil;
+  if Length(AProcessed.DefineSites) = 0 then
+    Exit;
+  Used := ConditionWords(ATree);
+  try
+    for Token in ATree.Tokens do
+    begin
+      if (Token.Kind <> TPascalTokenKind.Directive) or not InRange(ARange, Token.StartPos) or
+        not TPascalPreprocessor.IncludeFileOf(Token.Text, IncludeName) then
+        Continue;
+      // Stand nach der Include-Datei: ein späteres $UNDEF dort nimmt das Symbol wieder heraus.
+      Names := nil;
+      for Site in AProcessed.DefineSites do
+      begin
+        if (Site.FileIndex = 0) or (Site.RootPos <> Token.StartPos) or not Used.ContainsKey(UpperCase(Site.Name)) then
+          Continue;
+        Index := IndexText(Site.Name, Names);
+        if Site.Undefine and (Index >= 0) then
+          Delete(Names, Index, 1)
+        else if not Site.Undefine and (Index < 0) then
+          Names := Names + [Site.Name];
+      end;
+      if Length(Names) = 0 then
+        Continue;
+      Hint := Default(TInlayHint);
+      Hint.Position := Token.EndPos;
+      Hint.Text := DefinesPrefix;
+      for Name in Names do
+        if Hint.Text = DefinesPrefix then
+          Hint.Text := Hint.Text + Name
+        else
+          Hint.Text := Hint.Text + ', ' + Name;
+      if Length(Hint.Text) > MaxLabelLength then
+        Hint.Text := Copy(Hint.Text, 1, MaxLabelLength - 1) + '…';
+      Hint.PaddingLeft := True;
+      Hint.Defines := Names;
+      Hint.IncludeFile := ExtractFileName(StringReplace(Trim(IncludeName), '''', '', [rfReplaceAll]));
+      Result := Result + [Hint];
+    end;
+  finally
+    Used.Free;
+  end;
+end;
+
+/// <summary>Liegt ANode im Wert einer Konstanten (const-Abschnitt oder Inline-Konstante)?</summary>
+function InConstant(ANode: TSyntaxNode): Boolean;
+var
+  Node: TSyntaxNode;
+begin
+  Node := ANode.Parent;
+  while (Node <> nil) and not (Node.Kind in [TSyntaxKind.ConstDecl, TSyntaxKind.InlineConst]) do
+    Node := Node.Parent;
+  Result := Node <> nil;
+end;
+
+class function TLspInlayHints.ControlChars(ATree: TSyntaxTree; const ATreeText: string;
+  const ARange: TTextRange): TArray<TInlayHint>;
+var
+  Literals: TList<TSyntaxNode>;
+  Node: TSyntaxNode;
+  Hint: TInlayHint;
+begin
+  Result := nil;
+  Literals := TList<TSyntaxNode>.Create;
+  try
+    CollectNodes(ATree.Root, [TSyntaxKind.Literal], Literals);
+    for Node in Literals do
+    begin
+      // Ein Literal aus genau einem ^X: der Parser schreibt es als #Code (#862).
+      if (Node.EndOffset - Node.StartOffset <> 2) or (Node.StartOffset >= Length(ATreeText)) or
+        (ATreeText[Node.StartOffset + 1] <> '^') or not Node.Name.StartsWith('#') or
+        not InRange(ARange, Node.StartPos) or not InConstant(Node) then
+        Continue;
+      Hint := Default(TInlayHint);
+      Hint.Position := Node.EndPos;
+      Hint.Text := Node.Name;
+      Hint.PaddingLeft := True;
+      Hint.ControlChar := True;
+      Hint.CharCode := StrToIntDef(Copy(Node.Name, 2, MaxInt), 0);
+      Result := Result + [Hint];
+    end;
+  finally
+    Literals.Free;
+  end;
+end;
+
 function CompareHints(const A, B: TInlayHint): Integer;
 begin
   Result := ComparePositions(A.Position, B.Position);
@@ -821,6 +981,14 @@ end;
 class function TLspInlayHints.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const ATreeText, AFileName: string; const ARange: TTextRange; const ASettings: TInlayHintSettings;
   const AReadText: THoverReadText): TArray<TInlayHint>;
+begin
+  Result := Collect(AResolver, AIndex, ATree, ATreeText, AFileName, ARange, ASettings, AReadText,
+    Default(TPreprocessorResult));
+end;
+
+class function TLspInlayHints.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const ATreeText, AFileName: string; const ARange: TTextRange; const ASettings: TInlayHintSettings;
+  const AReadText: THoverReadText; const AProcessed: TPreprocessorResult): TArray<TInlayHint>;
 var
   List: TList<TInlayHint>;
 begin
@@ -832,6 +1000,10 @@ begin
       List.AddRange(InferredTypes(AResolver, ATree, AFileName, ARange));
     if ASettings.EndMarkers then
       List.AddRange(EndMarkers(ATree, ARange, ASettings.EndMarkerMinLines));
+    if ASettings.IncludeDefines then
+      List.AddRange(IncludeDefines(ATree, AProcessed, ARange));
+    if ASettings.ControlChars then
+      List.AddRange(ControlChars(ATree, ATreeText, ARange));
     List.Sort;
     Result := List.ToArray;
   finally
@@ -843,6 +1015,8 @@ class function TLspInlayHints.ToJson(const AHints: TArray<TInlayHint>): TJSONArr
 var
   Hint: TInlayHint;
   Entry: TJSONObject;
+  Defines: TJSONArray;
+  Name: string;
 begin
   Result := TJSONArray.Create;
   for Hint in AHints do
@@ -861,6 +1035,19 @@ begin
     if Hint.HasBlockStart then
       Entry.AddPair('data', TJSONObject.Create(TJSONPair.Create('blockStart',
         TLspPositions.PositionToJson(Hint.BlockStart))));
+    // Symbole hinter {$I} (#860), für das Plugin getrennt von Endmarken.
+    if Length(Hint.Defines) > 0 then
+    begin
+      Defines := TJSONArray.Create;
+      for Name in Hint.Defines do
+        Defines.Add(Name);
+      Entry.AddPair('data', TJSONObject.Create(TJSONPair.Create('includeDefines',
+        TJSONObject.Create.AddPair('file', Hint.IncludeFile).AddPair('names', Defines))));
+    end;
+    // Code eines Steuerzeichens (#862), für das Plugin getrennt von Endmarken.
+    if Hint.ControlChar then
+      Entry.AddPair('data', TJSONObject.Create(TJSONPair.Create('controlChar',
+        TJSONObject.Create(TJSONPair.Create('code', TJSONNumber.Create(Hint.CharCode))))));
   end;
 end;
 
@@ -896,7 +1083,7 @@ begin
   try
     Resolver.Namespaces := Namespaces;
     Result := ToJson(Collect(Resolver, FIndex, Tree, Document.Text, TDocumentUris.ToPath(Uri),
-      TLspPositions.ReadRange(RangeValue), Settings, FReadText));
+      TLspPositions.ReadRange(RangeValue), Settings, FReadText, Shared.Processed));
   finally
     Resolver.Free;
   end;

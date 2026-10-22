@@ -27,7 +27,9 @@
 //   ist TKunde, class(TObjectList<TKunde>), Foo<Integer>(...)).
 // - Class/Record Helper: Mitglieder des zuletzt sichtbaren Helpers für
 //   einen Typ gelten für den Typ und verdecken dessen gleichnamige; auch
-//   für eingebaute Typen (string, Integer).
+//   für eingebaute Typen (string, Integer). Ein Helfer mit Vorfahr
+//   (class helper (TBaseHelper) for T, #848) erbt dessen Mitglieder;
+//   Ancestors des Helfers: Vorfahr-Helfer, zuletzt der Zieltyp.
 // - with: Bezeichner werden zuerst in den with-Ausdrücken gesucht (innen
 //   nach außen); ist ein Typ dort unbekannt, gibt es kein Ergebnis.
 // - Inline-Variablen ohne Typ (var X := ..., for var I := ...) erhalten
@@ -268,6 +270,8 @@ type
     destructor Destroy; override;
     /// <summary>Direkter Vorfahr eines Typs (ohne Angabe TObject bzw. IInterface); False ohne oder bei Helfern.</summary>
     function AncestorOf(const AType: TResolvedSymbol; out AAncestor: TResolvedSymbol): Boolean;
+    /// <summary>Vorfahr-Helfer eines Helfers (class helper (TBaseHelper) for T, #848); False ohne.</summary>
+    function HelperParent(const AHelper: TResolvedSymbol; out AParent: TResolvedSymbol): Boolean;
     /// <summary>Deklaration der Property AName mit Typ in AType oder seinen Vorfahren (#491): "property Caption;"
     /// hebt nur die Sichtbarkeit an, Typ und Zugriff stehen weiter oben. ADepth wie bei MemberCandidates.
     /// </summary>
@@ -282,6 +286,10 @@ type
     /// der Typ eines Elements unbekannt ist und der Name dazugehören könnte.</summary>
     function WithMember(ATree: TSyntaxTree; const AFileName, AName: string; AOffset: Integer; out AWith: TSyntaxNode;
       out AElement: Integer; out AUnknown: Boolean): Boolean;
+    /// <summary>Wert einer Aufzählung unter {$SCOPEDENUMS ON} namens AName, sichtbar an AOffset (#849): AQualified
+    /// erhält ihn mit Typpräfix (TState.Error). Für den Hinweis bei unqualifizierter Verwendung.</summary>
+    function ScopedEnumValue(ATree: TSyntaxTree; const AFileName, AName: string; AOffset: Integer;
+      out AQualified: string): Boolean;
     /// <summary>Löst die Kette ANames (A.B.C) so auf, wie sie an AOffset stünde.</summary>
     function ResolveChain(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
       AOffset: Integer; AInherited: Boolean = False): TResolvedSymbol;
@@ -1064,8 +1072,8 @@ begin
         Continue;
       if AOnlyTypes and not (Symbol.Kind in TypeKinds) then
         Continue;
-      // Unit-Ebene; Enum-Werte sind ohne SCOPEDENUMS auch dort sichtbar.
-      if (Symbol.Container <> '') and (Symbol.Kind <> TIndexSymbolKind.EnumMember) then
+      // Unit-Ebene; Enum-Werte sind ohne SCOPEDENUMS auch dort sichtbar (#849).
+      if (Symbol.Container <> '') and ((Symbol.Kind <> TIndexSymbolKind.EnumMember) or Symbol.ScopedEnum) then
         Continue;
       if AOnlyTypes and (AArity > 0) and (Length(SplitArgs(Symbol.TypeParams)) <> AArity) then
         Continue;
@@ -1419,12 +1427,27 @@ begin
   Result := AHelper.Found;
 end;
 
+function TNameResolver.HelperParent(const AHelper: TResolvedSymbol; out AParent: TResolvedSymbol): Boolean;
+var
+  FromUnit: TUnitIndex;
+begin
+  AParent := NoResult;
+  if (AHelper.SymbolKind <> TIndexSymbolKind.HelperType) or (Length(AHelper.Ancestors) < 2) or
+    not UnitOf(AHelper, FromUnit) then
+    Exit(False);
+  Result := ResolveTypeText(AHelper.Ancestors[0], FromUnit, SameText(FromUnit.FileName, FCurrent.FileName),
+    AParent) and (AParent.SymbolKind = TIndexSymbolKind.HelperType) and
+    not SameText(AParent.QualifiedName, AHelper.QualifiedName);
+  if not Result then
+    AParent := NoResult;
+end;
+
 function TNameResolver.FindMembers(const AType: TResolvedSymbol; const AName: string): TArray<TResolvedSymbol>;
 var
-  Current, Ancestor, Helper, Found: TResolvedSymbol;
+  Current, Ancestor, Helper, Parent, Found: TResolvedSymbol;
   OwnerUnit, HelperUnit: TUnitIndex;
   Symbol: TIndexSymbol;
-  Depth, Position: Integer;
+  Depth, Position, HelperDepth: Integer;
   TypeName: string;
   Hidden, LocalChain: Boolean;
 begin
@@ -1433,22 +1456,27 @@ begin
   LocalChain := False;
   for Depth := 0 to MaxDepth do
   begin
-    // Helfer zuerst: ihre Mitglieder verdecken gleichnamige des Typs.
-    if HelperFor(Current, Helper) and UnitOf(Helper, HelperUnit) then
-    begin
-      for Position in HelperUnit.SymbolsNamed(AName) do
+    // Helfer zuerst: ihre Mitglieder verdecken gleichnamige des Typs; danach die Vorfahr-Helfer (#848).
+    if HelperFor(Current, Helper) then
+      for HelperDepth := 0 to MaxDepth do
       begin
-        Symbol := HelperUnit.Symbols[Position];
-        if SameText(Symbol.Container, Helper.QualifiedName) and IsVisible(Symbol, HelperUnit, Helper, False) then
-        begin
-          Found := FromSymbol(HelperUnit, Symbol);
-          Found.Bindings := Current.Bindings;
-          AddDistinct(Result, Found);
-        end;
+        if UnitOf(Helper, HelperUnit) then
+          for Position in HelperUnit.SymbolsNamed(AName) do
+          begin
+            Symbol := HelperUnit.Symbols[Position];
+            if SameText(Symbol.Container, Helper.QualifiedName) and IsVisible(Symbol, HelperUnit, Helper, False) then
+            begin
+              Found := FromSymbol(HelperUnit, Symbol);
+              Found.Bindings := Current.Bindings;
+              AddDistinct(Result, Found);
+            end;
+          end;
+        if Result <> nil then
+          Exit;
+        if not HelperParent(Helper, Parent) then
+          Break;
+        Helper := Parent;
       end;
-      if Result <> nil then
-        Exit;
-    end;
     if Current.Builtin or not UnitOf(Current, OwnerUnit) then
       Exit;
     LocalChain := LocalChain or SameText(OwnerUnit.FileName, FCurrent.FileName);
@@ -2362,6 +2390,37 @@ begin
     Result := NoResult;
 end;
 
+function TNameResolver.ScopedEnumValue(ATree: TSyntaxTree; const AFileName, AName: string; AOffset: Integer;
+  out AQualified: string): Boolean;
+
+  function Find(const AUnit: TUnitIndex; AOnlyInterface: Boolean): Boolean;
+  var
+    Position: Integer;
+  begin
+    for Position in AUnit.SymbolsNamed(AName) do
+      if (AUnit.Symbols[Position].Kind = TIndexSymbolKind.EnumMember) and AUnit.Symbols[Position].ScopedEnum and
+        (not AOnlyInterface or AUnit.Symbols[Position].InInterface) then
+      begin
+        AQualified := AUnit.Symbols[Position].Container + '.' + AUnit.Symbols[Position].Name;
+        Exit(True);
+      end;
+    Result := False;
+  end;
+
+var
+  UnitName: string;
+  Used: TUnitIndex;
+begin
+  AQualified := '';
+  Prepare(ATree, AFileName, AOffset);
+  if Find(FCurrent, False) then
+    Exit(True);
+  for UnitName in ScopeUnits(FCurrent, FInImplementation) do
+    if FindUnit(UnitName, Used) and Find(Used, True) then
+      Exit(True);
+  Result := False;
+end;
+
 procedure TNameResolver.Prepare(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer);
 var
   Section: TSyntaxNode;
@@ -2493,9 +2552,9 @@ end;
 procedure TNameResolver.CollectMembers(const AType: TResolvedSymbol; AList: TList<TResolvedSymbol>;
   ASeen: TDictionary<string, Boolean>);
 var
-  Current, Ancestor, Helper, Member: TResolvedSymbol;
+  Current, Ancestor, Helper, Parent, Member: TResolvedSymbol;
   OwnerUnit, HelperUnit: TUnitIndex;
-  Position, Depth: Integer;
+  Position, Depth, HelperDepth: Integer;
   TypeName: string;
   LocalChain: Boolean;
 begin
@@ -2505,11 +2564,20 @@ begin
   begin
     // Mitglieder des Helfers zuerst (#263), auch für eingebaute Typen. Über den Index statt for-in:
     // keine Kopie des Symbol-Records je geprüftem Symbol (Code-Review P-05).
-    if HelperFor(Current, Helper) and UnitOf(Helper, HelperUnit) then
-      for Position := 0 to High(HelperUnit.Symbols) do
-        if SameText(HelperUnit.Symbols[Position].Container, Helper.QualifiedName) and
-          IsVisible(HelperUnit.Symbols[Position], HelperUnit, Helper, False) and NameWanted(HelperUnit.Symbols[Position].Name) then
-          AddCandidate(AList, ASeen, MemberOf(FromSymbol(HelperUnit, HelperUnit.Symbols[Position]), Depth, True));
+    // Vorfahr-Helfer danach (#848); gleichnamige verdeckt der abgeleitete.
+    if HelperFor(Current, Helper) then
+      for HelperDepth := 0 to MaxDepth do
+      begin
+        if UnitOf(Helper, HelperUnit) then
+          for Position := 0 to High(HelperUnit.Symbols) do
+            if SameText(HelperUnit.Symbols[Position].Container, Helper.QualifiedName) and
+              IsVisible(HelperUnit.Symbols[Position], HelperUnit, Helper, False) and
+              NameWanted(HelperUnit.Symbols[Position].Name) then
+              AddCandidate(AList, ASeen, MemberOf(FromSymbol(HelperUnit, HelperUnit.Symbols[Position]), Depth, True));
+        if not HelperParent(Helper, Parent) then
+          Break;
+        Helper := Parent;
+      end;
     if Current.Builtin or not UnitOf(Current, OwnerUnit) then
       Exit;
     LocalChain := LocalChain or SameText(OwnerUnit.FileName, FCurrent.FileName);
@@ -2545,7 +2613,8 @@ begin
   begin
     if AOnlyInterface and not AUnit.Symbols[Position].InInterface then
       Continue;
-    if (AUnit.Symbols[Position].Container <> '') and (AUnit.Symbols[Position].Kind <> TIndexSymbolKind.EnumMember) then
+    if (AUnit.Symbols[Position].Container <> '') and ((AUnit.Symbols[Position].Kind <> TIndexSymbolKind.EnumMember) or
+      AUnit.Symbols[Position].ScopedEnum) then
       Continue;
     if not NameWanted(AUnit.Symbols[Position].Name) then
       Continue;
@@ -3543,11 +3612,32 @@ begin
     Token := FTree.Tokens[Index];
     if ComparePositions(Token.StartPos, APosition) > 0 then
       Break;
-    // Cursor auf oder direkt hinter dem Bezeichner.
+    // Cursor auf oder direkt hinter dem Bezeichner; C in ^C ist ein Zeichen (#862).
     if (Token.Kind = TPascalTokenKind.Identifier) and (ComparePositions(APosition, Token.EndPos) <= 0) then
+    begin
+      if FTree.IsControlCharPart(Index) then
+        Exit(-1);
       Exit(Index);
+    end;
   end;
   Result := -1;
+end;
+
+/// <summary>Typ, dessen Methodenzuordnung (procedure IFoo.Bar = MyBar) an AOffset ihr Ziel nennt (#849);
+/// '' an anderen Stellen.</summary>
+function ResolutionOwner(ANode: TSyntaxNode; AOffset: Integer): string;
+var
+  Index: Integer;
+begin
+  Result := '';
+  for Index := 0 to ANode.ChildCount - 1 do
+    if (ANode[Index].StartOffset <= AOffset) and (AOffset < ANode[Index].EndOffset) then
+    begin
+      if (ANode[Index].Kind = TSyntaxKind.Identifier) and (ANode.Kind = TSyntaxKind.Directive) and
+        (ANode.Name = 'resolution') then
+        Exit(ANode.EnclosingTypeName);
+      Exit(ResolutionOwner(ANode[Index], AOffset));
+    end;
 end;
 
 function TNameResolver.ResolveAt(ATree: TSyntaxTree; const AFileName: string;
@@ -3564,6 +3654,7 @@ var
   Before: TPascalToken;
   Use: TAttributeUse;
   AttributeNames: TArray<string>;
+  Owner: string;
 
   function Clean(const AText: string): string;
   begin
@@ -3636,6 +3727,17 @@ begin
     if (Index < High(Tokens)) and Tokens[Index + 1].IsSymbol('(') then
       Call := FindCall(Tokens[Index].Offset + Length(Tokens[Index].Text));
     IsInherited := (Receiver = nil) and (First >= 1) and Tokens[First - 1].IsKeyword('inherited');
+    // Ziel einer Methodenzuordnung procedure IFoo.Bar = MyBar (#849): Methode des umgebenden Typs.
+    if (Receiver = nil) and (First >= 1) and Tokens[First - 1].IsSymbol('=') then
+    begin
+      Owner := ResolutionOwner(ATree.Root, Tokens[Index].Offset);
+      if Owner <> '' then
+      begin
+        Result := ResolveNames(ATree, AFileName, Owner.Split(['.']) + Names.ToArray, Tokens[Index].Offset, False,
+          nil, nil);
+        Exit;
+      end;
+    end;
     // Attribut (#119): [Foo] meint zuerst die Klasse FooAttribute, dann Foo; Argumente gehen an den Konstruktor.
     if (Receiver = nil) and (First >= 1) and (Tokens[First - 1].IsSymbol('[') or Tokens[First - 1].IsSymbol(',')) and
       not ((Index < High(Tokens)) and Tokens[Index + 1].IsSymbol('.')) and TAttributes.At(ATree, APosition, Use) then
