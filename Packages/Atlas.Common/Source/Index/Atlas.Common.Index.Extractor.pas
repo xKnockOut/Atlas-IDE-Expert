@@ -74,6 +74,16 @@ type
     procedure AddRoutine(ANode: TSyntaxNode);
     /// <summary>Vorwärtsdeklarationen entfernen, deren Typ in der Unit vollständig deklariert ist.</summary>
     procedure DropForwards;
+    /// <summary>Verweise des Rumpfs ANode einer inline-Routine (#1017), siehe TIndexSymbol.InlineRefs; nil, wenn
+    /// die Routine nicht einbettbar ist. AContainer: Klasse der Methode, '' bei freien Routinen.</summary>
+    function InlineRefsOf(ANode: TSyntaxNode; const AContainer, AContainerParams: string): TArray<string>;
+    /// <summary>Trägt InlineRefs an Deklaration und Implementierung der inline-Routinen aus ASection ein.</summary>
+    procedure AddInlineRefs(ASection: TSyntaxNode);
+    /// <summary>Typparameter des Typs AContainer (TList&lt;T&gt; → 'T'), '' ohne.</summary>
+    function ContainerParams(const AContainer: string): string;
+    procedure SetInlineRefs(APosition: Integer; const ARefs: TArray<string>);
+    /// <summary>Hinweise zwischen unit Name und ";" (#1018).</summary>
+    procedure AddUnitHints(var AUnit: TUnitIndex);
     procedure Walk(ARoot: TSyntaxNode; var AUnit: TUnitIndex);
     class function UsesOf(ASection: TSyntaxNode): TArray<string>; static;
     class function ExtractLevel(const AText, AFileName: string; const ADefines: TArray<string>;
@@ -973,6 +983,351 @@ begin
   FForwards.Clear;
 end;
 
+/// <summary>Namen einer Liste "A, B" bzw. "A,B" in ANames eintragen (klein).</summary>
+procedure AddNameList(ANames: TDictionary<string, Boolean>; const AList: string);
+var
+  Name: string;
+begin
+  for Name in AList.Split([',']) do
+    if Name.Trim <> '' then
+      ANames.AddOrSetValue(LowerCase(Name.Trim.Replace('&', '')), True);
+end;
+
+/// <summary>Liegt ANode in AOuter (oder ist es selbst)?</summary>
+function IsInside(ANode, AOuter: TSyntaxNode): Boolean;
+begin
+  Result := False;
+  if AOuter = nil then
+    Exit;
+  while ANode <> nil do
+  begin
+    if ANode = AOuter then
+      Exit(True);
+    ANode := ANode.Parent;
+  end;
+end;
+
+function TIndexExtractor.InlineRefsOf(ANode: TSyntaxNode; const AContainer, AContainerParams: string): TArray<string>;
+var
+  Locals: TDictionary<string, Boolean>;
+  Refs: TList<string>;
+  Seen: TDictionary<string, Boolean>;
+  Own: TDictionary<string, TIndexSymbol>;
+  Members: TDictionary<string, TIndexSymbol>;
+  Header: TSyntaxNode;
+  Symbol: TIndexSymbol;
+  Blocked: Boolean;
+  Nodes: TList<TSyntaxNode>;
+  Stack: TStack<TSyntaxNode>;
+  Child: TSyntaxNode;
+  Index: Integer;
+
+  procedure AddRef(const ARef: string);
+  begin
+    if (ARef = '') or Seen.ContainsKey(LowerCase(ARef)) then
+      Exit;
+    Seen.Add(LowerCase(ARef), True);
+    Refs.Add(ARef);
+  end;
+
+  function TypeRefOf(const ASymbol: TIndexSymbol): string;
+  begin
+    Result := ':' + ASymbol.TypeName;
+    if ASymbol.TypeArgs <> '' then
+      Result := Result + '<' + ASymbol.TypeArgs + '>';
+  end;
+
+  // Wird ANode als Wert weiter benutzt (A.B, A[i])? Dann braucht der Rumpf die Unit seines Typs.
+  function IsDereferenced(AIdent: TSyntaxNode): Boolean;
+  var
+    Parent: TSyntaxNode;
+  begin
+    Parent := AIdent.Parent;
+    Result := (Parent <> nil) and (Parent.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess]) and
+      (Parent.ChildCount > 0) and (Parent[0] = AIdent) and (Parent.FindChild(TSyntaxKind.GenericArgs) = nil);
+  end;
+
+  procedure Identifier(AIdent: TSyntaxNode);
+  var
+    Name, Key: string;
+    Member: TIndexSymbol;
+  begin
+    Name := AIdent.Name.Replace('&', '');
+    Key := LowerCase(Name);
+    if (Name = '') or Locals.ContainsKey(Key) then
+      Exit;
+    if (AContainer <> '') and Members.TryGetValue(Key, Member) then
+    begin
+      if Member.Visibility = TIndexVisibility.StrictPrivate then
+        AddRef('!' + Member.Name);
+      if IsDereferenced(AIdent) and (Member.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
+        (Member.TypeName <> '') then
+        AddRef(TypeRefOf(Member));
+      Exit;
+    end;
+    if Own.TryGetValue(Key, Member) then
+    begin
+      if IsDereferenced(AIdent) and (Member.Kind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Constant]) and
+        (Member.TypeName <> '') then
+        AddRef(TypeRefOf(Member));
+      Exit;
+    end;
+    AddRef(Name);
+  end;
+
+  procedure TypeReference(AType: TSyntaxNode);
+  var
+    Name: string;
+  begin
+    Name := AType.Name.Replace('&', '');
+    if (Name = '') or SameText(Name, 'string') or SameText(Name, 'const') or SameText(Name, 'file') or
+      Locals.ContainsKey(LowerCase(Name)) or Own.ContainsKey(LowerCase(Name)) or
+      ((AContainer <> '') and Members.ContainsKey(LowerCase(Name))) then
+      Exit;
+    AddRef(':' + Name);
+  end;
+
+begin
+  Result := nil;
+  Locals := TDictionary<string, Boolean>.Create;
+  Refs := TList<string>.Create;
+  Seen := TDictionary<string, Boolean>.Create;
+  Own := TDictionary<string, TIndexSymbol>.Create;
+  Members := TDictionary<string, TIndexSymbol>.Create;
+  try
+    for Symbol in FSymbols do
+      if Symbol.Container = '' then
+        Own.AddOrSetValue(LowerCase(Symbol.Name), Symbol)
+      else if (AContainer <> '') and SameText(Symbol.Container, AContainer) and
+        not Members.ContainsKey(LowerCase(Symbol.Name)) then
+        Members.Add(LowerCase(Symbol.Name), Symbol);
+    Locals.Add('result', True);
+    Locals.Add('self', True);
+    AddNameList(Locals, AContainerParams);
+    Header := ANode.FindChild(TSyntaxKind.RoutineHeader);
+    if Header <> nil then
+      AddNameList(Locals, TypeParamsOf(Header));
+    Blocked := False;
+    Nodes := TList<TSyntaxNode>.Create;
+    try
+      // Lokale Namen zuerst, damit die Reihenfolge im Rumpf keine Rolle spielt. Ohne anonyme Methode, weil
+      // die lokalen Prozeduren dieselben Variablen benutzen.
+      Stack := TStack<TSyntaxNode>.Create;
+      try
+        Stack.Push(ANode);
+        while Stack.Count > 0 do
+        begin
+          Child := Stack.Pop;
+          case Child.Kind of
+            TSyntaxKind.Parameter, TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl, TSyntaxKind.InlineVar,
+            TSyntaxKind.InlineConst, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.TypeDecl:
+              AddNameList(Locals, Child.Name);
+            TSyntaxKind.AsmBlock, TSyntaxKind.WithStatement:
+              Blocked := True;
+            TSyntaxKind.RoutineDecl:
+              if Child <> ANode then
+                Blocked := True;
+            TSyntaxKind.ArrayType:
+              // Offene Array-Parameter verhindern das Einbetten.
+              if (Child.Parent <> nil) and (Child.Parent.Kind = TSyntaxKind.Parameter) then
+                Blocked := True;
+          end;
+          // Den Kopf (Parameter- und Ergebnistypen) kennt der Aufrufer ohnehin.
+          if (Child.Kind in [TSyntaxKind.Identifier, TSyntaxKind.TypeReference]) and not IsInside(Child, Header) then
+            Nodes.Add(Child);
+          for Index := Child.ChildCount - 1 downto 0 do
+            Stack.Push(Child[Index]);
+        end;
+      finally
+        Stack.Free;
+      end;
+      if Blocked then
+        Exit;
+      for Child in Nodes do
+        if Child.Kind = TSyntaxKind.Identifier then
+          Identifier(Child)
+        else
+          TypeReference(Child);
+    finally
+      Nodes.Free;
+    end;
+    Result := Refs.ToArray;
+    // Nur gesetzt, wenn es etwas zu prüfen gibt; nil hält den Index klein.
+    if Length(Result) = 0 then
+      Result := nil;
+  finally
+    Members.Free;
+    Own.Free;
+    Seen.Free;
+    Refs.Free;
+    Locals.Free;
+  end;
+end;
+
+/// <summary>Direktiven eines Routinenkopfs in Kleinschreibung.</summary>
+function DirectivesOfHeader(AHeader: TSyntaxNode): TArray<string>;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  for Index := 0 to AHeader.ChildCount - 1 do
+    if AHeader[Index].Kind = TSyntaxKind.Directive then
+      Result := Result + [LowerCase(AHeader[Index].Name)];
+end;
+
+function SameParamTypes(const A, B: TArray<string>): Boolean;
+var
+  Index: Integer;
+begin
+  Result := Length(A) = Length(B);
+  if Result then
+    for Index := 0 to High(A) do
+      if not SameText(A[Index], B[Index]) then
+        Exit(False);
+end;
+
+function TIndexExtractor.ContainerParams(const AContainer: string): string;
+var
+  Symbol: TIndexSymbol;
+begin
+  Result := '';
+  if AContainer = '' then
+    Exit;
+  for Symbol in FSymbols do
+    if (Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+      TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType]) and SameText(Symbol.QualifiedName, AContainer) then
+      Exit(Symbol.TypeParams);
+end;
+
+procedure TIndexExtractor.SetInlineRefs(APosition: Integer; const ARefs: TArray<string>);
+var
+  Symbol: TIndexSymbol;
+begin
+  Symbol := FSymbols[APosition];
+  Symbol.InlineRefs := ARefs;
+  FSymbols[APosition] := Symbol;
+end;
+
+procedure TIndexExtractor.AddInlineRefs(ASection: TSyntaxNode);
+const
+  NotInlined: array[0..5] of string = ('virtual', 'dynamic', 'override', 'abstract', 'message', 'external');
+var
+  Index, Position, Found: Integer;
+  Node, Header: TSyntaxNode;
+  Name, Container: string;
+  Dot, Min, Max: Integer;
+  Types: TArray<string>;
+  Inline_, Skip: Boolean;
+  Symbol: TIndexSymbol;
+  Refs: TArray<string>;
+  Directive: string;
+begin
+  if ASection = nil then
+    Exit;
+  for Index := 0 to ASection.ChildCount - 1 do
+  begin
+    Node := ASection[Index];
+    if Node.Kind <> TSyntaxKind.RoutineDecl then
+      Continue;
+    Header := Node.FindChild(TSyntaxKind.RoutineHeader);
+    if (Header = nil) or (Node.FindChild(TSyntaxKind.Block) = nil) or IsConstructor(Node) then
+      Continue;
+    Name := Node.Name;
+    Container := '';
+    Dot := Name.LastIndexOf('.');
+    if Dot >= 0 then
+    begin
+      Container := Name.Substring(0, Dot);
+      Name := Name.Substring(Dot + 1);
+    end;
+    ParamInfo(Header, Min, Max, Types);
+    // Deklaration suchen: gleicher Name und Typ, bei Überladungen dieselben Parametertypen.
+    Found := -1;
+    Inline_ := False;
+    Skip := False;
+    for Directive in DirectivesOfHeader(Header) do
+    begin
+      Inline_ := Inline_ or SameText(Directive, 'inline');
+      Skip := Skip or (IndexText(Directive, NotInlined) >= 0);
+    end;
+    for Position := 0 to FSymbols.Count - 1 do
+    begin
+      Symbol := FSymbols[Position];
+      if not (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) or
+        not SameText(Symbol.Name, Name) or not SameText(Symbol.Container, Container) or
+        (Symbol.Range.StartPos = Node.StartPos) then
+        Continue;
+      if (Length(Types) > 0) and not SameParamTypes(Symbol.ParamTypes, Types) then
+        Continue;
+      if Found >= 0 then
+      begin
+        // Mehrdeutig (Überladungen ohne Parameterliste in der Implementierung).
+        Found := -2;
+        Break;
+      end;
+      Found := Position;
+    end;
+    if Found = -2 then
+      Continue;
+    if Found >= 0 then
+      for Directive in FSymbols[Found].Directives do
+      begin
+        Inline_ := Inline_ or SameText(Directive, 'inline');
+        Skip := Skip or (IndexText(Directive, NotInlined) >= 0);
+      end;
+    if not Inline_ or Skip then
+      Continue;
+    Refs := InlineRefsOf(Node, Container, ContainerParams(Container));
+    if Refs = nil then
+      Continue;
+    if Found >= 0 then
+      SetInlineRefs(Found, Refs);
+    for Position := 0 to FSymbols.Count - 1 do
+      if (FSymbols[Position].Range.StartPos = Node.StartPos) and SameText(FSymbols[Position].Name, Name) then
+        SetInlineRefs(Position, Refs);
+  end;
+end;
+
+procedure TIndexExtractor.AddUnitHints(var AUnit: TUnitIndex);
+var
+  Index, Next: Integer;
+  Started: Boolean;
+  Text: string;
+begin
+  // unit A.B deprecated 'Grund' platform;  Kommentare und Direktiven dazwischen überspringen.
+  Started := False;
+  for Index := 0 to High(FTokens) do
+  begin
+    if FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+      Continue;
+    if not Started then
+    begin
+      if not ((FTokens[Index].Kind = TPascalTokenKind.Keyword) and SameText(FTokens[Index].Text, 'unit')) then
+        Exit;
+      Started := True;
+      Continue;
+    end;
+    if FTokens[Index].IsSymbol(';') then
+      Exit;
+    if not (FTokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) or
+      (IndexText(FTokens[Index].Text, HintDirectives) < 0) then
+      Continue;
+    if IndexText(FTokens[Index].Text, AUnit.Directives) < 0 then
+      AUnit.Directives := AUnit.Directives + [LowerCase(FTokens[Index].Text)];
+    if not SameText(FTokens[Index].Text, 'deprecated') then
+      Continue;
+    Next := Index + 1;
+    while (Next <= High(FTokens)) and (FTokens[Next].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+      Inc(Next);
+    if (Next > High(FTokens)) or (FTokens[Next].Kind <> TPascalTokenKind.StringLiteral) then
+      Continue;
+    Text := FTokens[Next].Text;
+    if (Length(Text) >= 2) and (Text[1] = '''') and (Text[Length(Text)] = '''') then
+      Text := StringReplace(Copy(Text, 2, Length(Text) - 2), '''''', '''', [rfReplaceAll]);
+    AUnit.DeprecatedText := Text;
+  end;
+end;
+
 procedure TIndexExtractor.Walk(ARoot: TSyntaxNode; var AUnit: TUnitIndex);
 var
   Index: Integer;
@@ -980,10 +1335,13 @@ var
 begin
   AUnit.InterfaceUses := nil;
   AUnit.ImplementationUses := nil;
+  AUnit.Directives := nil;
+  AUnit.DeprecatedText := '';
   AUnit.HasInitialization := (ARoot.FindChild(TSyntaxKind.InitializationSection) <> nil) or
     (ARoot.FindChild(TSyntaxKind.FinalizationSection) <> nil);
   if ARoot.Kind = TSyntaxKind.UnitFile then
   begin
+    AddUnitHints(AUnit);
     AUnit.InterfaceUses := UsesOf(ARoot.FindChild(TSyntaxKind.InterfaceSection));
     AUnit.ImplementationUses := UsesOf(ARoot.FindChild(TSyntaxKind.ImplementationSection));
   end
@@ -1010,6 +1368,8 @@ begin
     AddDeclarations(ARoot);
   end;
   DropForwards;
+  if ARoot.Kind = TSyntaxKind.UnitFile then
+    AddInlineRefs(ARoot.FindChild(TSyntaxKind.ImplementationSection));
   AUnit.Symbols := FSymbols.ToArray;
   AUnit.Naming := NamingOf(ARoot);
 end;

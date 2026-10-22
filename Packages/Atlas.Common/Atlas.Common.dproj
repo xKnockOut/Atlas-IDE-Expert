@@ -400,6 +400,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Conditions.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Platform.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Idioms.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Inlining.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.pas"/>
@@ -439,6 +440,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Contract.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Lexer.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.SyntaxTree.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.SyntaxChecks.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Parser.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TreeCache.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.IncludeFiles.pas"/>

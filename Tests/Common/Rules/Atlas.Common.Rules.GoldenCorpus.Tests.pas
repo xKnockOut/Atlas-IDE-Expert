@@ -357,6 +357,8 @@ var
   Rules: TArray<IRule>;
   Rule: IRule;
   Known, Errors: TArray<string>;
+  Descriptors: TArray<TRuleDescriptor>;
+  Descriptor: TRuleDescriptor;
   Mutations: TArray<TRuleMutation>;
   Mutation: TRuleMutation;
   Found: TArray<Boolean>;
@@ -379,9 +381,14 @@ begin
   Programs := nil;
   for FileName in TDirectory.GetFiles(Folder, '*.dpr') do
     Programs := Programs + [ReadSource(FileName)];
-  Known := nil;
+  // Syntaxfehler (#1022) sind keine IRule, prüft aber TFileChecker.CheckText mit.
+  Descriptors := nil;
   for Rule in Rules do
-    Known := Known + [Rule.Descriptor.Id];
+    Descriptors := Descriptors + [Rule.Descriptor];
+  Descriptors := Descriptors + [TFileChecker.SyntaxDescriptor];
+  Known := nil;
+  for Descriptor in Descriptors do
+    Known := Known + [Descriptor.Id];
   Mutations := TGoldenCorpus.Mutations(ReadSource(TPath.Combine(Folder, 'mutationen.txt')),
     Errors);
   Problems := '';
@@ -406,7 +413,7 @@ begin
           [Mutation.Line, Mutation.FileName])
       else
       begin
-        Settings := MutationSettings(Rules[RuleIndex].Descriptor);
+        Settings := MutationSettings(Descriptors[RuleIndex]);
         Project := TFileChecker.PackageOf(Packages, ChangeFileExt(Mutation.FileName, ''));
         // Units eines Programms: CreateForm-Reihenfolge seiner .dpr wie im Linter (#956).
         if Project.Name = '' then

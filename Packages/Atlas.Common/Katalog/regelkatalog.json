@@ -5,11 +5,35 @@
       "name": "Syntax error",
       "category": "bug",
       "severity": "error",
-      "group": "find-bugs",
-      "description": "The parser could not read the source code.",
-      "bad": "procedure Foo;\nbegin\n  if X then\nend;",
-      "good": "procedure Foo;\nbegin\n  if X then\n    Bar;\nend;",
-      "level": "A"
+      "group": "compiler",
+      "description": "The source code does not parse. The message says, like the compiler, what was expected and what was found (\"';' expected but 'end' found (like E2029).\") and carries the compiler code: missing ';' (E2066 between statements, E2029 in declarations), ';' before else (E2153), unterminated string (E2052) or comment with its start line (E2057), statements in the interface part (E2050), identifier after a trailing dot (E2372), strict without private or protected (E2375), class before something other than a routine (E2357), try without except or finally (E2125), for without a variable (E2088). Checks on the finished tree: procedure with a result type (E2025), function declaration without one (E2023; the short form of an implementation is fine), value parameter without a type (E2067), initialised local variable (E2195) or several variables with one initial value (E2196), class, interface or object type in a var section (E2060, E2058) or local to a routine (E2061, E2059), label in the interface part (E2049) and goto to an undeclared label (E2031). After an unterminated string or comment the follow-up errors are dropped, as the compiler stops there. Inactive {$IFDEF} branches are not reported. Quick fixes: remove ';' before else (safe, also on save), add ';', close the string, close the comment at the end of its first line.",
+      "bad": "if Gueltig then\n  Speichern;\nelse\n  Verwerfen;",
+      "good": "if Gueltig then\n  Speichern\nelse\n  Verwerfen;",
+      "level": "A",
+      "compilerCodes": [
+        "E2023",
+        "E2025",
+        "E2029",
+        "E2031",
+        "E2049",
+        "E2050",
+        "E2052",
+        "E2057",
+        "E2058",
+        "E2059",
+        "E2060",
+        "E2061",
+        "E2066",
+        "E2067",
+        "E2088",
+        "E2125",
+        "E2153",
+        "E2195",
+        "E2196",
+        "E2357",
+        "E2372",
+        "E2375"
+      ]
     },
     {
       "id": "unused-suppression",
@@ -1109,14 +1133,35 @@
     },
     {
       "id": "deprecated-symbol",
-      "name": "Deprecated symbol",
+      "name": "Deprecated or bound symbol",
       "category": "code-smell",
-      "severity": "hint",
-      "group": "style",
-      "description": "A routine, type, constant or member marked deprecated, platform or experimental is used (like compiler warnings W1000, W1002 and W1003). The editor strikes the name through; the message carries the reason from deprecated 'reason'. The declaration and the head of its implementation are not reported.",
-      "bad": "procedure Old; deprecated 'Use New';\n...\nOld;",
-      "good": "procedure New;\n...\nNew;",
-      "level": "B"
+      "severity": "warning",
+      "group": "compiler",
+      "description": "A routine, type, constant or member marked deprecated, experimental, platform or library is used (like W1000, W1003, W1002, W1001), or a unit whose header carries one of these hints is listed in uses (like W1006, W1007, W1005, W1004). Reported only when the name resolves for sure. The editor strikes deprecated names through; the message carries the reason from deprecated 'reason'. The declaration and the head of its implementation are not reported. Which kinds are reported is set by the option kinds (deprecated and experimental by default, as in most projects); the switches {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} and so on and {$WARNINGS OFF} apply from their position like in the compiler; a switch in an {$IF} branch that is not surely compiled with the position keeps it silent. Quick fix: replace with the name the reason gives (or, for IncludeTrailingBackslash and ExcludeTrailingBackslash, the platform-independent routine) when exactly one name fits, is visible at that position and is of the same kind. Without a project index only the symbols of the file itself are checked.",
+      "bad": "Pfad := IncludeTrailingBackslash(Basis) + Name;",
+      "good": "Pfad := IncludeTrailingPathDelimiter(Basis) + Name;",
+      "level": "B",
+      "compilerCodes": [
+        "W1000",
+        "W1001",
+        "W1002",
+        "W1003",
+        "W1004",
+        "W1005",
+        "W1006",
+        "W1007"
+      ],
+      "options": [
+        {
+          "name": "kinds",
+          "type": "string-list",
+          "default": [
+            "deprecated",
+            "experimental"
+          ],
+          "description": "Reported kinds: deprecated, experimental, platform, library (platform and library are off by default)."
+        }
+      ]
     },
     {
       "id": "implicit-package-import",
@@ -2420,6 +2465,36 @@
         "E2130"
       ],
       "level": "T"
+    },
+    {
+      "id": "inline-not-expanded",
+      "name": "Inline function is not expanded",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "compiler",
+      "description": "A call of an inline routine from another unit that the compiler does not expand: its body needs a unit that is missing from uses here (like H2443, typically System.Generics.Collections for TJSONObject.Count), it accesses a strict private member and the call is not inside a method of that class (like H2444), the calling routine is inline itself and the unit of the callee is only in the implementation uses (like H2445), or the unit of the callee uses this unit directly (like H2456) or through other units (like H2457). Calls, properties with an inline getter or setter and for-in loops (GetEnumerator, MoveNext, Current) are checked. The index records what each inline body refers to; the rule only reports what it resolves for sure (unknown references and members inherited from other units stay silent). Silent with {$INLINE OFF} in the file. Quick fix: add the missing units to the uses clause of the section.",
+      "bad": "uses\n  System.JSON;\n...\nfor Wert in Feld as TJSONArray do",
+      "good": "uses\n  System.JSON, System.Generics.Collections;\n...\nfor Wert in Feld as TJSONArray do",
+      "compilerCodes": [
+        "H2443",
+        "H2444",
+        "H2445",
+        "H2456",
+        "H2457"
+      ]
+    },
+    {
+      "id": "directive-typo",
+      "name": "Unknown directive (typo)",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A word that is not a directive stands where a directive belongs: after the ';' of a routine or method header (overide;, virutal;, overlaod;, stdcal;, reintroduces;) or after a property, where only default is allowed (defualt;). The compiler stops there (like E2070). The message suggests the closest directive when at most two characters differ. Silent in {$IF} branches that test FPC, which knows further directives such as nostackframe. Quick fix: replace with the suggested directive.",
+      "bad": "procedure Paint; overide;",
+      "good": "procedure Paint; override;",
+      "compilerCodes": [
+        "E2070"
+      ]
     },
     {
       "id": "ui-call-in-console-or-service",

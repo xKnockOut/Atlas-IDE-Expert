@@ -8,7 +8,10 @@
 // halb getippten Code einen Baum und lässt sich gezielt erweitern.
 //
 // Fehlerbehandlung: Fehlt ein erwartetes Token, wird eine Diagnose erzeugt und
-// so weitergemacht, als wäre es da. Unpassende Token werden in Error-Knoten
+// so weitergemacht, als wäre es da. Meldungen und Codes folgen dem Compiler
+// (#1022: „';' erwartet, aber 'end' gefunden (wie E2029).“), einige mit
+// Korrektur; Prüfungen, die den fertigen Baum brauchen, macht danach
+// Pascal.SyntaxChecks. Unpassende Token werden in Error-Knoten
 // übersprungen, bis ein Token kommt, an dem der Parser wieder aufsetzen kann.
 // Jede Schleife verbraucht pro Durchlauf mindestens ein Token oder endet; der
 // Parser terminiert also immer.
@@ -73,9 +76,13 @@ implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
+  System.Generics.Defaults,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.Lexer;
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.DirectiveNames,
+  Atlas.Common.Pascal.SyntaxChecks;
 
 type
   /// <summary>Wo der Parser nach einem Fehler wieder aufsetzt.</summary>
@@ -111,6 +118,11 @@ type
     FInImplementation: Boolean;
     /// <summary>Endwörter der innersten Anweisungsliste, für die Fehlerbehandlung.</summary>
     FTerminators: TArray<string>;
+    /// <summary>Übersprungene Bereiche (inaktive Zweige); ihre Token erzeugen keine Diagnosen.</summary>
+    FSkip: TArray<TTextRange>;
+    /// <summary>Die Anweisung gehört direkt zu einem case-Zweig bzw. einem on-Handler: Dort beginnt
+    /// "; else" den else-Teil von case bzw. except, kein Fehler wie E2153.</summary>
+    FInCaseItem: Boolean;
 
     // Token
     function AtEnd: Boolean; inline;
@@ -132,9 +144,20 @@ type
 
     // Knoten und Diagnosen
     procedure Diagnose(const AMessage: string);
-    procedure DiagnoseMissingSemicolon;
+    /// <summary>Fehlendes ';' in Deklarationen (wie E2029).</summary>
+    procedure DiagnoseMissingSemicolon; overload;
+    /// <summary>Wie oben; AStatement: zwischen Anweisungen, dort meldet der Compiler E2066.</summary>
+    procedure DiagnoseMissingSemicolon(AStatement: Boolean); overload;
     procedure DiagnoseAt(const AMessage: string; const AStartPos, AEndPos: TTextPosition);
-    procedure DiagnoseUnexpected(const AExpected: string);
+    /// <summary>Meldung mit Compilercode: AMessage bekommt „(wie ACode).“ angehängt.</summary>
+    procedure DiagnoseCode(const ACode, AMessage: string; const AStartPos, AEndPos: TTextPosition); overload;
+    procedure DiagnoseCode(const ACode, AMessage: string; const AStartPos, AEndPos: TTextPosition;
+      const AFixTitle: string; const AEdits: TArray<TTextEdit>; ASafe: Boolean); overload;
+    procedure AddDiagnostic(const ADiagnostic: TSyntaxDiagnostic);
+    procedure DiagnoseUnexpected(const AExpected: string); overload;
+    procedure DiagnoseUnexpected(const ACode, AExpected: string); overload;
+    /// <summary>Nicht geschlossene Strings und Kommentare (E2052, E2057) und die Prüfungen am Baum.</summary>
+    procedure CheckTokensAndTree(ARoot: TSyntaxNode);
     function StartNode(AKind: TSyntaxKind): TSyntaxNode;
     procedure FinishNode(ANode: TSyntaxNode; AStartIndex: Integer);
     function NodeStart: Integer; inline;
@@ -245,13 +268,6 @@ const
   RelationalOperators: array[0..5] of string = ('=', '<>', '<', '>', '<=', '>=');
   AdditiveSymbols: array[0..1] of string = ('+', '-');
   MultiplicativeSymbols: array[0..1] of string = ('*', '/');
-  // Direktiven nach Routinenköpfen, ohne Groß-/Kleinschreibung.
-  RoutineDirectives: array[0..31] of string = (
-    'abstract', 'assembler', 'cdecl', 'deprecated', 'dispid', 'dynamic', 'experimental',
-    'export', 'external', 'far', 'final', 'forward', 'inline', 'library', 'local',
-    'message', 'near', 'noreturn', 'overload', 'override', 'pascal', 'platform',
-    'register', 'reintroduce', 'safecall', 'static', 'stdcall', 'unsafe', 'varargs',
-    'virtual', 'winapi', 'delayed');
   /// <summary>Höchste Verschachtelungstiefe; schützt vor Stapelüberlauf bei kaputtem Code.</summary>
   MaxNesting = 256;
   /// <summary>Assoziative Operatoren, deren lange Folgen ausgeglichen gebaut werden.</summary>
@@ -303,6 +319,7 @@ var
 begin
   inherited Create;
   FCancellation := ACancellation;
+  FSkip := ASkip;
   FDiagnostics := TList<TSyntaxDiagnostic>.Create;
   FAllTokens := TPascalLexer.Tokenize(AText);
   Significant := TList<TPascalToken>.Create;
@@ -333,6 +350,7 @@ var
   Root: TSyntaxNode;
 begin
   Root := ParseFile;
+  CheckTokensAndTree(Root);
   Result := TSyntaxTree.Create(Root, FAllTokens, FDiagnostics.ToArray);
 end;
 
@@ -429,6 +447,77 @@ begin
     DiagnoseUnexpected('"' + AWord + '"');
 end;
 
+function DiagnosticBefore(const A, B: TSyntaxDiagnostic): Integer;
+begin
+  Result := A.StartPos.Line - B.StartPos.Line;
+  if Result = 0 then
+    Result := A.StartPos.Character - B.StartPos.Character;
+end;
+
+procedure TParser.CheckTokensAndTree(ARoot: TSyntaxNode);
+var
+  Token: TPascalToken;
+  Diagnostic: TSyntaxDiagnostic;
+  Index: Integer;
+  Closer: string;
+  LineEnd: TTextPosition;
+  First: TTextPosition;
+  Found: Boolean;
+begin
+  // Der erste offene String bzw. Kommentar ist die Ursache; was danach in derselben Zeile bzw. im Rest der
+  // Datei gemeldet wurde, folgt daraus und fällt weg (der Compiler bricht dort ab).
+  Found := False;
+  for Token in FAllTokens do
+  begin
+    if Token.Terminated or ((FSkip <> nil) and InRanges(Token.StartPos, FSkip)) then
+      Continue;
+    if Token.Kind = TPascalTokenKind.StringLiteral then
+    begin
+      for Index := FDiagnostics.Count - 1 downto 0 do
+        if (FDiagnostics[Index].StartPos.Line = Token.StartPos.Line) and
+          not Before(FDiagnostics[Index].StartPos, Token.StartPos) then
+          FDiagnostics.Delete(Index);
+      if Token.StartPos.Line = Token.EndPos.Line then
+        DiagnoseCode('E2052', 'Unvollständiger String', Token.StartPos, Token.EndPos, 'String schließen',
+          [TTextEdit.Create(TTextRange.Create(Token.EndPos, Token.EndPos), '''')], False)
+      else
+        DiagnoseCode('E2052', 'Unvollständiger String', Token.StartPos, Token.StartPos);
+    end
+    else if Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
+      First := Token.StartPos;
+      for Index := FDiagnostics.Count - 1 downto 0 do
+        if not Before(FDiagnostics[Index].StartPos, First) then
+          FDiagnostics.Delete(Index);
+      if StartsStr('(*', Token.Text) then
+        Closer := '*)'
+      else
+        Closer := '}';
+      // Geschlossen wird am Ende der ersten Zeile: Meist fehlt dort die Klammer.
+      LineEnd := First;
+      Index := Pos(#10, Token.Text);
+      if Index > 0 then
+      begin
+        if (Index > 1) and (Token.Text[Index - 1] = #13) then
+          Dec(Index);
+        LineEnd.Character := First.Character + Index - 1;
+      end
+      else
+        LineEnd := Token.EndPos;
+      DiagnoseCode('E2057', Format('Unerwartetes Dateiende im Kommentar ab Zeile %d', [First.Line + 1]), First,
+        TTextPosition.Create(First.Line, First.Character + Length(Closer)),
+        Format('Kommentar in Zeile %d schließen', [First.Line + 1]),
+        [TTextEdit.Create(TTextRange.Create(LineEnd, LineEnd), Closer)], False);
+      Found := True;
+    end;
+    if Found then
+      Break;
+  end;
+  for Diagnostic in TSyntaxChecks.Check(ARoot, FAllTokens) do
+    AddDiagnostic(Diagnostic);
+  FDiagnostics.Sort(TComparer<TSyntaxDiagnostic>.Construct(DiagnosticBefore));
+end;
+
 procedure TParser.ExpectSym(const ASymbol: string);
 begin
   if AcceptSym(ASymbol) then
@@ -440,16 +529,29 @@ begin
 end;
 
 procedure TParser.DiagnoseMissingSemicolon;
+begin
+  DiagnoseMissingSemicolon(False);
+end;
+
+procedure TParser.DiagnoseMissingSemicolon(AStatement: Boolean);
 var
   Previous: TPascalToken;
+  Code: string;
 begin
   // Folgefehler: An dieser Stelle wurde schon etwas gemeldet.
   if (FDiagnostics.Count > 0) and (FDiagnostics.Last.StartPos = Current.StartPos) then
     Exit;
   Previous := PeekToken(-1);
   // Am Zeilenende dort melden, wo es fehlt, nicht erst in der nächsten Zeile.
+  Code := 'E2029';
+  if AStatement then
+    Code := 'E2066';
   if (FIndex > 0) and (AtEnd or (Current.StartPos.Line > Previous.EndPos.Line)) then
-    DiagnoseAt('";" fehlt', Previous.EndPos, Previous.EndPos)
+    DiagnoseCode(Code, ''';'' fehlt', Previous.EndPos, Previous.EndPos, ''';'' ergänzen',
+      [TTextEdit.Create(TTextRange.Create(Previous.EndPos, Previous.EndPos), ';')], False)
+  else if AStatement then
+    // B := 1 2; – es fehlt ein Operator oder das Semikolon.
+    DiagnoseCode(Code, 'Operator oder '';'' fehlt', Current.StartPos, Current.EndPos)
   else
     DiagnoseUnexpected('";"');
 end;
@@ -479,21 +581,58 @@ procedure TParser.DiagnoseAt(const AMessage: string; const AStartPos, AEndPos: T
 var
   Diagnostic: TSyntaxDiagnostic;
 begin
+  Diagnostic := Default(TSyntaxDiagnostic);
   Diagnostic.Message := AMessage;
   Diagnostic.StartPos := AStartPos;
   Diagnostic.EndPos := AEndPos;
+  AddDiagnostic(Diagnostic);
+end;
+
+procedure TParser.AddDiagnostic(const ADiagnostic: TSyntaxDiagnostic);
+begin
   // Mehrere Folgefehler an derselben Stelle melden wir nur einmal.
-  if (FDiagnostics.Count > 0) and (FDiagnostics.Last.StartPos = Diagnostic.StartPos) then
+  if (FDiagnostics.Count > 0) and (FDiagnostics.Last.StartPos = ADiagnostic.StartPos) then
     Exit;
-  FDiagnostics.Add(Diagnostic);
+  FDiagnostics.Add(ADiagnostic);
+end;
+
+procedure TParser.DiagnoseCode(const ACode, AMessage: string; const AStartPos, AEndPos: TTextPosition);
+begin
+  DiagnoseCode(ACode, AMessage, AStartPos, AEndPos, '', nil, False);
+end;
+
+procedure TParser.DiagnoseCode(const ACode, AMessage: string; const AStartPos, AEndPos: TTextPosition;
+  const AFixTitle: string; const AEdits: TArray<TTextEdit>; ASafe: Boolean);
+var
+  Diagnostic: TSyntaxDiagnostic;
+begin
+  Diagnostic := Default(TSyntaxDiagnostic);
+  Diagnostic.Message := AMessage + Format(' (wie %s).', [ACode]);
+  Diagnostic.StartPos := AStartPos;
+  Diagnostic.EndPos := AEndPos;
+  Diagnostic.Code := ACode;
+  Diagnostic.FixTitle := AFixTitle;
+  Diagnostic.FixEdits := AEdits;
+  Diagnostic.FixSafe := ASafe;
+  AddDiagnostic(Diagnostic);
 end;
 
 procedure TParser.DiagnoseUnexpected(const AExpected: string);
 begin
+  DiagnoseUnexpected('E2029', AExpected);
+end;
+
+procedure TParser.DiagnoseUnexpected(const ACode, AExpected: string);
+var
+  Expected: string;
+begin
+  // Wie der Compiler: '%s' erwartet, aber '%s' gefunden.
+  Expected := StringReplace(AExpected, '"', '''', [rfReplaceAll]);
   if AtEnd then
-    Diagnose(AExpected + ' erwartet, Dateiende gefunden')
+    DiagnoseCode(ACode, Expected + ' erwartet, aber Dateiende gefunden', Current.StartPos, Current.EndPos)
   else
-    Diagnose(AExpected + ' erwartet, "' + Current.Text + '" gefunden');
+    DiagnoseCode(ACode, Format('%s erwartet, aber ''%s'' gefunden', [Expected, Current.Text]), Current.StartPos,
+      Current.EndPos);
 end;
 
 function TParser.NodeStart: Integer;
@@ -559,7 +698,14 @@ begin
     Exit;
   Start := NodeStart;
   Node := StartNode(TSyntaxKind.Error);
-  Diagnose('Unerwartetes "' + Current.Text + '"');
+  case ARecovery of
+    TRecovery.Declarations:
+      DiagnoseUnexpected('Deklaration');
+    TRecovery.Members:
+      DiagnoseUnexpected('"end"');
+  else
+    DiagnoseUnexpected('Anweisung');
+  end;
   repeat
     Advance;
   until AtEnd or IsRecoveryPoint(ARecovery);
@@ -603,6 +749,12 @@ begin
     Result := Result + '.' + Current.Text;
     Advance;
   end;
+  // uses System.; – hinter dem Punkt fehlt der Name.
+  if IsSym('.') then
+  begin
+    Advance;
+    DiagnoseCode('E2372', 'Bezeichner erwartet', Current.StartPos, Current.EndPos);
+  end;
 end;
 
 procedure TParser.ParseUnit(ANode: TSyntaxNode);
@@ -613,6 +765,13 @@ begin
   ExpectSym(';');
 
   ParseInterfaceSection(ANode);
+  if IsKw('begin') then
+  begin
+    // Anweisungen bis zum implementation-Teil überspringen.
+    DiagnoseCode('E2050', 'Anweisungen sind im interface-Teil nicht erlaubt', Current.StartPos, Current.EndPos);
+    while not AtEnd and not IsKw('implementation') do
+      Advance;
+  end;
   ParseImplementationSection(ANode);
 
   if IsKw('initialization') then
@@ -1122,7 +1281,10 @@ var
   Word: string;
 begin
   // overload; virtual; abstract; external 'dll' name 'x'; message WM_X; ...
-  while IsIdent and InWords(Current.Text, RoutineDirectives) or IsKw(['inline', 'library']) do
+  // Ein anderes Wort mit ';' dahinter kann an dieser Stelle nur eine Direktive sein, meist ein Tippfehler
+  // (overide;): Es wird ein Directive-Knoten mit dem Wort, die Regel directive-typo meldet es (#1068).
+  while (IsIdent and (TDirectiveNames.IsRoutineDirective(Current.Text) or PeekIsSym(1, ';'))) or
+    IsKw(['inline', 'library']) do
   begin
     Start := NodeStart;
     Word := LowerCase(Current.Text);
@@ -1534,11 +1696,13 @@ begin
       Node := StartNode(TSyntaxKind.Visibility);
       Node.Name := LowerCase(Current.Text);
       Advance;
-      if (Node.Name = 'strict') and IsIdent then
+      if (Node.Name = 'strict') and (IsIdentText('private') or IsIdentText('protected')) then
       begin
         Node.Name := 'strict ' + LowerCase(Current.Text);
         Advance;
-      end;
+      end
+      else if Node.Name = 'strict' then
+        DiagnoseUnexpected('E2375', '"private" oder "protected"');
       FinishNode(Node, Start);
       AParent.Add(Node);
     end
@@ -1568,6 +1732,12 @@ begin
       ParseVariantPart(AParent)
     else if IsIdent then
       ParseFieldDecl(AParent)
+    else if IsKw('class') then
+    begin
+      // class vor etwas anderem als Routine, var, property.
+      Advance;
+      DiagnoseUnexpected('E2357', '"procedure", "function" oder "constructor"');
+    end
     else if IsKw(['begin', 'implementation', 'initialization', 'finalization']) or
       (IsKw(['type', 'var', 'const']) and FInImplementation) then
     begin
@@ -1611,8 +1781,8 @@ end;
 
 procedure TParser.ParseProperty(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  Start, DirectiveStart: Integer;
+  Node, Directive: TSyntaxNode;
 begin
   // property Name[Index: Integer]: Typ read GetX write SetX default 0; default;
   Start := NodeStart;
@@ -1631,6 +1801,18 @@ begin
   if IsIdentText('default') and PeekIsSym(1, ';') then
   begin
     Advance;
+    Advance;
+  end
+  else if IsIdent and PeekIsSym(1, ';') then
+  begin
+    // property … ; defualt; – an dieser Stelle steht nur default, ein anderes Wort ist ein Tippfehler
+    // (#1068, Regel directive-typo).
+    DirectiveStart := NodeStart;
+    Directive := StartNode(TSyntaxKind.Directive);
+    Directive.Name := LowerCase(Current.Text);
+    Node.Add(Directive);
+    Advance;
+    FinishNode(Directive, DirectiveStart);
     Advance;
   end;
   FinishNode(Node, Start);
@@ -1775,8 +1957,11 @@ procedure TParser.ParseStatementList(AParent: TSyntaxNode; const ATerminators: a
 var
   Saved: TArray<string>;
   Index: Integer;
+  SavedInCase: Boolean;
 begin
   Saved := FTerminators;
+  SavedInCase := FInCaseItem;
+  FInCaseItem := False;
   SetLength(FTerminators, Length(ATerminators));
   for Index := 0 to High(ATerminators) do
     FTerminators[Index] := ATerminators[Index];
@@ -1784,6 +1969,7 @@ begin
     ParseStatementsUntil(AParent);
   finally
     FTerminators := Saved;
+    FInCaseItem := SavedInCase;
   end;
 end;
 
@@ -1806,7 +1992,7 @@ begin
       // Fehlendes end: Der Rest gehört nicht mehr zu diesem Block.
       Break
     else
-      DiagnoseMissingSemicolon;
+      DiagnoseMissingSemicolon(True);
   end;
 end;
 
@@ -1913,6 +2099,13 @@ begin
   ParseExpression(Node);
   ExpectKw('then');
   ParseStatement(Node);
+  // if A then B; else C – außer in case- und on-Zweigen, wo "; else" deren else-Teil beginnt.
+  if IsSym(';') and PeekIsKw(1, 'else') and not FInCaseItem then
+  begin
+    DiagnoseCode('E2153', ''';'' vor ''else'' ist nicht erlaubt', Current.StartPos, Current.EndPos,
+      ''';'' entfernen', [TTextEdit.Create(TTextRange.Create(Current.StartPos, Current.EndPos), '')], True);
+    Advance;
+  end;
   if AcceptKw('else') then
     ParseStatement(Node);
   FinishNode(Node, Start);
@@ -1925,6 +2118,7 @@ var
   ItemStart, LabelStart: Integer;
   Item, Element: TSyntaxNode;
   Before: Integer;
+  SavedInCase: Boolean;
 begin
   Start := NodeStart;
   Node := StartNode(TSyntaxKind.CaseStatement);
@@ -1951,11 +2145,14 @@ begin
       end;
     until not AcceptSym(',');
     ExpectSym(':');
+    SavedInCase := FInCaseItem;
+    FInCaseItem := True;
     ParseStatement(Item);
+    FInCaseItem := SavedInCase;
     FinishNode(Item, ItemStart);
     if not AcceptSym(';') and not IsKw(['end', 'else']) then
     begin
-      DiagnoseMissingSemicolon;
+      DiagnoseMissingSemicolon(True);
       if FIndex = Before then
         Advance;
       if IsKw(['implementation', 'initialization', 'finalization']) or IsRoutineStart then
@@ -1986,7 +2183,10 @@ begin
   AParent.Add(Node);
   Advance; // for
   AcceptKw('var');
-  Node.Name := ExpectIdent;
+  if IsIdent then
+    Node.Name := ExpectIdent
+  else
+    DiagnoseUnexpected('E2088', 'Variablenname');
   if AcceptSym(':') then
     ParseTypeReference(Node);
   if AcceptKw('in') then
@@ -2062,6 +2262,7 @@ var
   Part: TSyntaxNode;
   HandlerStart: Integer;
   Handler: TSyntaxNode;
+  SavedInCase: Boolean;
 begin
   Start := NodeStart;
   Node := StartNode(TSyntaxKind.TryStatement);
@@ -2097,7 +2298,10 @@ begin
         end;
         ParseTypeReference(Handler);
         ExpectKw('do');
+        SavedInCase := FInCaseItem;
+        FInCaseItem := True;
         ParseStatement(Handler);
+        FInCaseItem := SavedInCase;
         FinishNode(Handler, HandlerStart);
         AcceptSym(';');
       end;
@@ -2109,7 +2313,7 @@ begin
     FinishNode(Part, PartStart);
   end
   else
-    DiagnoseUnexpected('"except" oder "finally"');
+    DiagnoseUnexpected('E2125', '"except" oder "finally"');
   ExpectKw('end');
   FinishNode(Node, Start);
 end;

@@ -22,6 +22,8 @@ type
     procedure ClosestFindsTypos;
     [Test]
     procedure ListsHaveNoDuplicates;
+    [Test]
+    procedure KnowsRoutineDirectives;
   end;
 
 implementation
@@ -87,6 +89,19 @@ procedure TDirectiveNamesTests.ListsHaveNoDuplicates;
 begin
   CheckList(TDirectiveNames.Directives);
   CheckList(TDirectiveNames.Warnings);
+end;
+
+procedure TDirectiveNamesTests.KnowsRoutineDirectives;
+begin
+  // Grundlage für Parser und directive-typo (#1068).
+  Assert.IsTrue(TDirectiveNames.IsRoutineDirective('override'));
+  Assert.IsTrue(TDirectiveNames.IsRoutineDirective('StdCall'));
+  Assert.IsTrue(TDirectiveNames.IsRoutineDirective('inline'));
+  Assert.IsFalse(TDirectiveNames.IsRoutineDirective('overide'));
+  Assert.IsFalse(TDirectiveNames.IsRoutineDirective('default'));
+  Assert.AreEqual('override', TTextFuzzy.Closest('overide', TDirectiveNames.RoutineDirectives));
+  Assert.AreEqual('overload', TTextFuzzy.Closest('overlaod', TDirectiveNames.RoutineDirectives));
+  Assert.AreEqual(32, Integer(Length(TDirectiveNames.RoutineDirectives)));
 end;
 
 initialization

@@ -150,3 +150,7 @@ registry-hklm-write | Ref.Sprache.Merkmale.pas | Result := 'Andere'; | Reg.RootK
 now-for-elapsed-time | Ref.Sprache.Merkmale.pas | Result := IntToStr(AWert); | Beginn := Now;\n  Result := FloatToStr(Now - Beginn);
 money-as-float | Ref.Daten.Verwendung.pas | function NeuerAuftrag(ANummer: Integer): TAuftrag;\nbegin | function NeuerAuftrag(ANummer: Integer): TAuftrag;\nvar\n  Brutto: Double;\nbegin
 string-if-chain | Ref.Sprache.Merkmale.pas | Result := Self = ''; | if Self = 'a' then Result := True\n  else if Self = 'b' then Result := True\n  else if Self = 'c' then Result := True\n  else if Self = 'd' then Result := True\n  else Result := Self = '';
+inline-not-expanded | Ref.Sprache.Merkmale.pas | function Zaehler: TZaehlerFunktion;\n\nimplementation\n | function Zaehler: TZaehlerFunktion;\n\ntype\n  TMerker = class\n  strict private\n    FWert: Integer;\n  public\n    function Wert: Integer; inline;\n  end;\n\nimplementation\n\nfunction TMerker.Wert: Integer;\nbegin\n  Result := FWert;\nend;\n\nfunction Gemerkt(AMerker: TMerker): Integer;\nbegin\n  Result := AMerker.Wert;\nend;\n
+deprecated-symbol | Ref.Komponenten.Anzeige.pas | StandardBreite = 120; | StandardBreite = 120 deprecated 'Nutze Width';
+syntax | Ref.Daten.Suche.pas |     Result := FAnbieter(AName)\n  else |     Result := FAnbieter(AName);\n  else
+directive-typo | Ref.Komponenten.Anzeige.pas | procedure Paint; override; | procedure Paint; overide;

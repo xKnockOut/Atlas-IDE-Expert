@@ -191,6 +191,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Conditions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Platform.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Idioms.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Inlining.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.UnitLookup.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas"/>
@@ -212,6 +213,7 @@
         <DCCReference Include="Windows\Process\Atlas.Windows.Process.Instances.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Lexer.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Parser.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.SyntaxChecks.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TreeCache.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ActiveBranches.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.VariantRecords.Tests.pas"/>

@@ -225,7 +225,7 @@ begin
       Assert.AreEqual(8, Item.GetValue<Integer>('range.end.character'));
       Assert.AreEqual(1, Item.GetValue<Integer>('severity'));
       Assert.AreEqual('Atlas', Item.GetValue<string>('source'));
-      Assert.AreEqual('";" fehlt', Item.GetValue<string>('message'));
+      Assert.AreEqual(''';'' fehlt (wie E2066).', Item.GetValue<string>('message'));
     finally
       Message.Free;
     end;

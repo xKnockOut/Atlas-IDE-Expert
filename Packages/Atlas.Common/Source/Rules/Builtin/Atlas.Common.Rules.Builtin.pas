@@ -62,6 +62,7 @@ uses
   Atlas.Common.Rules.Builtin.Conditions,
   Atlas.Common.Rules.Builtin.Platform,
   Atlas.Common.Rules.Builtin.Idioms,
+  Atlas.Common.Rules.Builtin.Inlining,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -119,6 +120,7 @@ begin
     RegisterConditionRules(Registry);
     RegisterPlatformRules(Registry);
     RegisterIdiomRules(Registry);
+    RegisterInliningRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

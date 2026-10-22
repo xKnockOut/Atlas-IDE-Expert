@@ -244,6 +244,7 @@ uses
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.IncludeFiles,
   Atlas.Common.Rules.Engine,
+  Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Builtin.Deprecated,
   Atlas.Common.Dfm.Contract,
@@ -720,7 +721,6 @@ var
   Issue: TPreprocessorIssue;
   Item: TJSONObject;
   UsesContext: TUsesContext;
-  Value: TJSONValue;
   HasSyntaxErrors: Boolean;
 begin
   // Formulardateien (#44): nur Lesefehler der DFM, keine Pascal-Prüfungen.
@@ -765,14 +765,11 @@ begin
     Item.AddPair('message', Issue.Message);
     Items.AddElement(Item);
   end;
-  // Ungenutzte uses (#621): nicht bei Syntaxfehlern (Fehler von Atlas ohne Regelkennung), dann fehlen Bezeichner.
+  // Ungenutzte uses (#621): nicht bei Syntaxfehlern, dann fehlen Bezeichner. Entscheidend ist der Baum, nicht
+  // die Meldungen: Auch mit abgeschalteter Regel "syntax" (#1022) wäre die Auswertung unsicher.
   if CurrentUses(ADocument.Uri, UsesContext) then
   begin
-    HasSyntaxErrors := False;
-    for Value in Items do
-      if (Value is TJSONObject) and (TJSONObject(Value).GetValue<Integer>('severity', 0) =
-        TLspDiagnosticSeverity.Error) and (TJSONObject(Value).GetValue('code') = nil) then
-        HasSyntaxErrors := True;
+    HasSyntaxErrors := Length(TSyntaxTreeCache.GetFor(ADocument, Defines).Tree.Diagnostics) > 0;
     if not HasSyntaxErrors then
       AddUsesDiagnostics(Items, ADocument.Text, TLspInactiveRegions.RangesOf(Inactive), UsesContext);
   end;
@@ -878,8 +875,8 @@ begin
       Data.AddPair('fix', Fix.Title);
   end;
   Result.AddPair('data', Data);
-  // Veraltete Symbole durchgestrichen (#38).
-  if AFinding.RuleId = DeprecatedSymbolRuleId then
+  // Veraltete Symbole durchgestrichen (#38), aber nicht platform, library oder experimental (#1018).
+  if (AFinding.RuleId = DeprecatedSymbolRuleId) and TDeprecatedSymbolRule.IsDeprecation(AFinding.Message) then
   begin
     Tags := TJSONArray.Create;
     // DiagnosticTag.Deprecated
@@ -923,7 +920,6 @@ class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
   const AInactive: TArray<TLspInactiveRegion>; const ADelphiVersion: string; const ARules: TRuleCheckContext;
   const APlatform, AConfig: string; const ADefines: TArray<string>): TJSONObject;
 var
-  Syntax: TArray<TSyntaxDiagnostic>;
   RuleFinding: TRuleFinding;
   Findings: TArray<TRuleFinding>;
 var
@@ -933,7 +929,6 @@ var
   Tags: TJSONArray;
   Tree: TSyntaxTree;
   Shared: ISharedSyntaxTree;
-  Diagnostic: TSyntaxDiagnostic;
   Items: TJSONArray;
   Item: TJSONObject;
 begin
@@ -942,16 +937,10 @@ begin
   // sehen den Code, den der Compiler übersetzt. Mit den Symbolen des Projekts ist es der Baum aus Get.
   Shared := TSyntaxTreeCache.GetFor(ADocument, ADefines);
   Tree := Shared.Tree;
-  Syntax := Tree.Diagnostics;
-  for Diagnostic in Syntax do
-  begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(Diagnostic.StartPos, Diagnostic.EndPos)));
-    Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Error));
-    Item.AddPair('source', Source);
-    Item.AddPair('message', Diagnostic.Message);
-    Items.AddElement(Item);
-  end;
+  // Syntaxfehler als Treffer der Regel "syntax" (#1022): Schweregrad und Gruppe aus der Konfiguration,
+  // Code und Korrektur wie bei den übrigen Regeln. Ohne Konfiguration gilt Default = Fehler.
+  for RuleFinding in TFileChecker.SyntaxFindings(Tree.Diagnostics, ARules.Settings) do
+    Items.AddElement(FindingToJson(RuleFinding));
   // Merkmale in inaktiven Zweigen ({$IF CompilerVersion >= …}) sind gewollt (#109).
   for Finding in TLanguageFeatures.Check(Tree, ADelphiVersion, TLspInactiveRegions.RangesOf(AInactive)) do
   begin

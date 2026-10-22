@@ -1122,7 +1122,8 @@ begin
   else
     FFixItem.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuFixNone);
   FFixItem.Enabled := Has and (Finding.Problem.FixTitle <> '');
-  FSuppressItem.Enabled := Rule;
+  // Syntaxfehler (#1022) lassen sich nicht per Kommentar unterdrücken.
+  FSuppressItem.Enabled := Rule and Finding.Problem.CanSuppress;
   FConfigureItem.Enabled := Rule;
   FDisableItem.Enabled := Rule;
   FExplainItem.Enabled := Rule;

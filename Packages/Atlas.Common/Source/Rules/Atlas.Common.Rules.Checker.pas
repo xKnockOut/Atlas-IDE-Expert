@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Checker;
 
 // Prüft einen Dateitext ohne Editor: Syntaxfehler des Parsers (Regel
-// "syntax", immer Fehler mit hoher Konfidenz) und alle Prüfregeln über die
+// "syntax", Fehler mit hoher Konfidenz, Meldungen mit Compilercode, #1022) und alle Prüfregeln über die
 // Engine. Grundlage für den Kommandozeilen-Linter (#95).
 // Für die Baseline (#97) liefert CheckText auf Wunsch die Routinen der Datei
 // aus demselben Syntaxbaum mit, damit nicht zweimal geparst wird.
@@ -16,6 +16,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Rules.Baseline,
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Projects.PackageReader;
 
 const
@@ -50,6 +51,11 @@ type
   public
     /// <summary>Beschreibung der eingebauten Syntaxprüfung.</summary>
     class function SyntaxDescriptor: TRuleDescriptor; static;
+    /// <summary>Syntaxfehler als Treffer der Regel "syntax" mit Schweregrad aus ASettings und den
+    /// Korrekturen des Parsers (#1022); leer, wenn die Regel oder ihre Gruppe abgeschaltet ist.
+    /// Gemeinsam für Linter, Diagnosen und Schnellkorrekturen im Editor.</summary>
+    class function SyntaxFindings(const ADiagnostics: TArray<TSyntaxDiagnostic>;
+      const ASettings: TServerSettings): TArray<TRuleFinding>; static;
     /// <summary>Treffer für AText; leer, wenn ARelativePath global ausgeschlossen ist.</summary>
     class function CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
       const ARelativePath, AText: string): TArray<TRuleFinding>; overload; static;
@@ -73,7 +79,6 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Documents.Contract,
@@ -123,6 +128,32 @@ begin
   Result := TRuleDescriptor.Create(SyntaxRuleId, TRuleSeverity.Error, 'Syntaxfehler des Parsers');
 end;
 
+class function TFileChecker.SyntaxFindings(const ADiagnostics: TArray<TSyntaxDiagnostic>;
+  const ASettings: TServerSettings): TArray<TRuleFinding>;
+var
+  Diagnostic: TSyntaxDiagnostic;
+  Finding: TRuleFinding;
+  Severity: TRuleSeverity;
+begin
+  Result := nil;
+  Severity := ASettings.RuleSeverity(SyntaxRuleId, TRuleSeverity.Error);
+  // Auch Syntaxfehler gehören zu einer Gruppe (#909, seit #1022 „Compiler vorab“).
+  if (Severity = TRuleSeverity.Off) or TRuleEngine.GroupOff(SyntaxRuleId, ASettings) then
+    Exit;
+  for Diagnostic in ADiagnostics do
+  begin
+    Finding := Default(TRuleFinding);
+    Finding.RuleId := SyntaxRuleId;
+    Finding.Range := TTextRange.Create(Diagnostic.StartPos, Diagnostic.EndPos);
+    Finding.Message := Diagnostic.Message;
+    Finding.Severity := Severity;
+    Finding.Confidence := TRuleConfidence.High;
+    if Diagnostic.FixTitle <> '' then
+      Finding.Fixes := [TRuleFix.Create(Diagnostic.FixTitle, Diagnostic.FixEdits, Diagnostic.FixSafe)];
+    Result := Result + [Finding];
+  end;
+end;
+
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const ARelativePath, AText: string): TArray<TRuleFinding>;
 var
@@ -166,8 +197,6 @@ class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettin
 var
   Tree: TSyntaxTree;
   Context: TRuleContext;
-  Diagnostic: TSyntaxDiagnostic;
-  Finding: TRuleFinding;
   Syntax: TArray<TRuleFinding>;
   Active: TArray<TSyntaxDiagnostic>;
 begin
@@ -177,23 +206,10 @@ begin
   Tree := TSyntaxTreeCache.Parse(AText);
   try
     AScopes := TFindingScopes.FromTree(Tree);
-    Syntax := nil;
     // Inaktive Zweige der bedingten Kompilierung erzeugen keine Syntaxfehler.
     if not TPascalParser.ActiveDiagnostics(AText, nil, Active) then
       Active := Tree.Diagnostics;
-    // Auch Syntaxfehler gehören zu einer Gruppe („Fehler finden“, #909).
-    if (ASettings.RuleSeverity(SyntaxRuleId, TRuleSeverity.Error) <> TRuleSeverity.Off) and
-      not TRuleEngine.GroupOff(SyntaxRuleId, ASettings) then
-      for Diagnostic in Active do
-      begin
-        Finding := Default(TRuleFinding);
-        Finding.RuleId := SyntaxRuleId;
-        Finding.Range := TTextRange.Create(Diagnostic.StartPos, Diagnostic.EndPos);
-        Finding.Message := Diagnostic.Message;
-        Finding.Severity := ASettings.RuleSeverity(SyntaxRuleId, TRuleSeverity.Error);
-        Finding.Confidence := TRuleConfidence.High;
-        Syntax := Syntax + [Finding];
-      end;
+    Syntax := SyntaxFindings(Active, ASettings);
     Context := Default(TRuleContext);
     Context.RelativePath := ARelativePath;
     Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARelativePath, '/', '\', [rfReplaceAll])), '');

@@ -119,10 +119,18 @@ type
     property EndOffset: Integer read FEndOffset;
   end;
 
+  /// <summary>Syntaxfehler. Message endet mit „(wie Code).“, wenn der Compiler denselben Fehler meldet (#1022).</summary>
   TSyntaxDiagnostic = record
     Message: string;
     StartPos: TTextPosition;
     EndPos: TTextPosition;
+    /// <summary>Code der Compilermeldung (E2029 …); '' ohne.</summary>
+    Code: string;
+    /// <summary>Titel der Korrektur; '' = keine.</summary>
+    FixTitle: string;
+    FixEdits: TArray<TTextEdit>;
+    /// <summary>Korrektur ohne Rückfrage anwendbar (source.fixAll).</summary>
+    FixSafe: Boolean;
   end;
 
   /// <summary>Ergebnis des Parsers. Besitzt alle Knoten.</summary>

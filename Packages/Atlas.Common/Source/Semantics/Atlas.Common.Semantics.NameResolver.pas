@@ -349,7 +349,8 @@ type
     function ResolveTypeFrom(const AFromUnit: TUnitIndex; const ATypeName: string; out AResult: TResolvedSymbol): Boolean;
     /// <summary>Wie ResolveTypeFrom, aber für einen Typtext mit Typargumenten (TFabrik&lt;Integer&gt;): wählt den
     /// generischen Typ mit passender Zahl von Typparametern und bindet die Argumente; eingebaute Typen ohne
-    /// Deklaration liefert es mit Builtin (#1028).</summary>
+    /// Deklaration liefert es mit Builtin (#1028).
+    /// TList&lt;TKunde&gt; findet so die generische TList, nicht Classes.TList (#1017).</summary>
     function ResolveTypeTextFrom(const AFromUnit: TUnitIndex; const ATypeText: string;
       out AResult: TResolvedSymbol): Boolean;
     /// <summary>Überschreibbare Methoden für ATypeName aus AFromUnit (#443): virtual, dynamic, abstract oder
