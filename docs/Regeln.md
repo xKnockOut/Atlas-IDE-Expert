@@ -6,11 +6,11 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 56 |
+| [Fehler finden](#gruppe-find-bugs) | 55 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 20 |
+| [Compiler vorab](#gruppe-compiler) | 21 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -40,7 +40,6 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`interface-guid`](#interface-guid) | Interface ohne GUID | Bug | Warnung |
 | [`duplicate-interface-guid`](#duplicate-interface-guid) | Zwei Interfaces mit derselben GUID | Bug | Fehler |
 | [`self-assignment`](#self-assignment) | Zuweisung an sich selbst | Bug | Warnung |
-| [`for-high-to-low`](#for-high-to-low) | for-Schleife zählt mit to abwärts | Bug | Warnung |
 | [`exception-not-raised`](#exception-not-raised) | Exception erzeugt, aber nicht ausgelöst | Bug | Warnung |
 | [`assert-side-effect`](#assert-side-effect) | Assert mit Seiteneffekt | Bug | Warnung |
 | [`ifthen-side-effect`](#ifthen-side-effect) | IfThen wertet beide Zweige aus | Bug | Warnung |
@@ -131,6 +130,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Regel | Name | Kategorie | Schweregrad |
 |---|---|---|---|
+| [`for-high-to-low`](#for-high-to-low) | for-Schleife zählt mit to abwärts | Bug | Warnung |
 | [`signature-mismatch`](#signature-mismatch) | Implementierung weicht von der Deklaration ab | Bug | Fehler |
 | [`interface-not-implemented`](#interface-not-implemented) | Interface-Methode fehlt in der Klasse | Bug | Fehler |
 | [`uses-unit-not-found`](#uses-unit-not-found) | Unit in uses nicht gefunden | Bug | Fehler |
@@ -1718,22 +1718,24 @@ FName := AName;
 <a id="for-high-to-low"></a>
 ### for-high-to-low
 
-**for-Schleife zählt mit to abwärts** · Bug · Warnung · Gruppe Fehler finden
+**for-Schleife zählt mit to abwärts** · Bug · Warnung · Gruppe Compiler vorab
 
-Die Schleife beginnt beim oberen Wert (High, Count - 1) und endet beim unteren, verwendet aber to. Sie läuft nie; gemeint war downto.
+Die Schleife beginnt beim oberen Wert (High, Count - 1) und endet beim unteren, verwendet aber to. Sie läuft nie; gemeint war downto. Ebenso Schleifen mit konstanten Grenzen, die nie laufen, etwa for I := 10 to 1, auch mit Vorzeichen, Hex- oder Zeichenliteralen (wie H2135). Gleiche Grenzen, Ausdrücke, benannte Konstanten und aufsteigende Grenzen bleiben still. Korrektur: to durch downto ersetzen.
+
+Entspricht der Compilermeldung `H2135`.
 
 Mit Treffer:
 
 ```pascal
-for I := High(A) to Low(A) do
-  Save(A[I]);
+for I := 10 to 1 do
+  Countdown(I);
 ```
 
 Richtig:
 
 ```pascal
-for I := High(A) downto Low(A) do
-  Save(A[I]);
+for I := 10 downto 1 do
+  Countdown(I);
 ```
 
 <a id="exception-not-raised"></a>

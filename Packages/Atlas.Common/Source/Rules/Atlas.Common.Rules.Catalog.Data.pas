@@ -721,10 +721,13 @@ begin
     '      "name": "for loop counts down with to",' + #10 +
     '      "category": "bug",' + #10 +
     '      "severity": "warning",' + #10 +
-    '      "group": "find-bugs",' + #10 +
-    '      "description": "The loop starts at the upper bound (High, Count - 1) and ends at the lower one, but uses to. It never runs; downto was meant.",' + #10 +
-    '      "bad": "for I := High(A) to Low(A) do\n  Save(A[I]);",' + #10 +
-    '      "good": "for I := High(A) downto Low(A) do\n  Save(A[I]);"' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The loop starts at the upper bound (High, Count - 1) and ends at the lower one, but uses to. It never runs; downto was meant. Also reports loops with constant bounds that never r' + 'un, such as for I := 10 to 1, with signed, hexadecimal or character literals (like H2135). Equal bounds, expressions, named constants and ascending bounds stay silent. Quick fix: replace to with downt' + 'o.",' + #10 +
+    '      "bad": "for I := 10 to 1 do\n  Countdown(I);",' + #10 +
+    '      "good": "for I := 10 downto 1 do\n  Countdown(I);",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "H2135"' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "exception-not-raised",' + #10 +
@@ -2765,7 +2768,7 @@ begin
     '    {' + #10 +
     '      "id": "for-high-to-low",' + #10 +
     '      "name": "for-Schleife zählt mit to abwärts",' + #10 +
-    '      "description": "Die Schleife beginnt beim oberen Wert (High, Count - 1) und endet beim unteren, verwendet aber to. Sie läuft nie; gemeint war downto."' + #10 +
+    '      "description": "Die Schleife beginnt beim oberen Wert (High, Count - 1) und endet beim unteren, verwendet aber to. Sie läuft nie; gemeint war downto. Ebenso Schleifen mit konstanten Grenzen, die' + ' nie laufen, etwa for I := 10 to 1, auch mit Vorzeichen, Hex- oder Zeichenliteralen (wie H2135). Gleiche Grenzen, Ausdrücke, benannte Konstanten und aufsteigende Grenzen bleiben still. Korrektur: to d' + 'urch downto ersetzen."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "exception-not-raised",' + #10 +

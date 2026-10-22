@@ -701,10 +701,13 @@
       "name": "for loop counts down with to",
       "category": "bug",
       "severity": "warning",
-      "group": "find-bugs",
-      "description": "The loop starts at the upper bound (High, Count - 1) and ends at the lower one, but uses to. It never runs; downto was meant.",
-      "bad": "for I := High(A) to Low(A) do\n  Save(A[I]);",
-      "good": "for I := High(A) downto Low(A) do\n  Save(A[I]);"
+      "group": "compiler",
+      "description": "The loop starts at the upper bound (High, Count - 1) and ends at the lower one, but uses to. It never runs; downto was meant. Also reports loops with constant bounds that never run, such as for I := 10 to 1, with signed, hexadecimal or character literals (like H2135). Equal bounds, expressions, named constants and ascending bounds stay silent. Quick fix: replace to with downto.",
+      "bad": "for I := 10 to 1 do\n  Countdown(I);",
+      "good": "for I := 10 downto 1 do\n  Countdown(I);",
+      "compilerCodes": [
+        "H2135"
+      ]
     },
     {
       "id": "exception-not-raised",

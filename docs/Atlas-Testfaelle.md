@@ -4190,3 +4190,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | NS4 | `I := 0;` vor dem Lesen, zweite Schleife mit derselben Variable, `for var K`, Feld oder globale Variable als Schleifenvariable, Lesen nur im Rumpf vor `Exit`, `Ausgeben(I)` mit unbekannter Routine | Keine Meldung |
 | NS5 | `"for-variable-after-loop": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | NS6 | Abgleich mit Delphi: NS1 und NS3 übersetzen | dcc meldet W1037 an denselben Stellen, für NS4 nichts; Abweichungen in der Regel nachtragen |
+
+## Schleife läuft nie: konstante Grenzen (#1023)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HL1 | Das Beispiel aus #1023: `for I := 10 to 1 do Countdown(I);` | Warnung `for-high-to-low` an der Schleife: „Die Schleife läuft nie (10 to 1); gemeint war downto (wie H2135).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| HL2 | Schnellkorrektur „to durch downto ersetzen“, danach Strg+Z | `for I := 10 downto 1 do`, keine Meldung mehr; ein Undo-Schritt |
+| HL3 | `-1 to -5`, `$10 to 3`, `'z' to 'a'`, `#13 to #10`, `for var K := 3 to 2`, `for var K: Integer := 3 to 2`, `for var K := High(A) to Low(A)` | Je eine Meldung |
+| HL4 | `10 downto 1`, `1 to 10`, `5 to 5`, `10 - 9 to 1`, `Max to 1`, `{$IFDEF X}10{$ELSE}0{$ENDIF} to 1` | Keine Meldung |
+| HL5 | `"for-high-to-low": "off"` bzw. `"group:compiler": "off"` | Keine Meldung |
+| HL6 | Abgleich mit Delphi: HL1 und HL3 übersetzen | dcc meldet H2135 an denselben Stellen, für HL4 nichts; Abweichungen in der Regel nachtragen |

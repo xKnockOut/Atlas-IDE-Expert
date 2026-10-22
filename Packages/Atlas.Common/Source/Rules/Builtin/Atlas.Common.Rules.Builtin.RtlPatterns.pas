@@ -2,7 +2,8 @@
 
 // Regeln für fehleranfällige RTL-Muster, Stufe 1 aus #153 (syntaktisch, ohne Typen):
 //   self-assignment           X := X
-//   for-high-to-low           for I := High(A) to Low(A) bzw. Count - 1 to 0 ohne downto
+//   for-high-to-low           for I := High(A) to Low(A) bzw. Count - 1 to 0 ohne downto; konstante
+//                             Grenzen, die nie laufen (10 to 1, wie H2135, #1023)
 //   exception-not-raised      Exception erzeugt, aber nicht ausgelöst
 //   assert-side-effect        Assert mit Seiteneffekt im Argument; fällt mit {$C-} weg
 //   ifthen-side-effect        IfThen wertet beide Zweige aus: Nil-Zugriff oder Funktionsaufruf darin
@@ -314,11 +315,60 @@ begin
   Result := NextCode(ATokens, Closing(ATokens, Open) + 1) = AStop;
 end;
 
+/// <summary>Ist der Ausdruck von AFirst bis vor AStop ein ganzzahliges Literal (mit Vorzeichen) bzw. ein
+/// einzelnes Zeichen? AIsChar unterscheidet beides; andere Ausdrücke liefern False.</summary>
+function LiteralBound(const ATokens: TTokens; AFirst, AStop: Integer; out AValue: Int64;
+  out AIsChar: Boolean): Boolean;
+var
+  Sign: Int64;
+  Text: string;
+begin
+  Result := False;
+  AValue := 0;
+  AIsChar := False;
+  Sign := 1;
+  if (AFirst <= High(ATokens)) and (ATokens[AFirst].IsSymbol('-') or ATokens[AFirst].IsSymbol('+')) then
+  begin
+    if ATokens[AFirst].IsSymbol('-') then
+      Sign := -1;
+    AFirst := NextCode(ATokens, AFirst + 1);
+  end;
+  if (AFirst > High(ATokens)) or (NextCode(ATokens, AFirst + 1) <> AStop) then
+    Exit;
+  Text := ATokens[AFirst].Text;
+  case ATokens[AFirst].Kind of
+    TPascalTokenKind.Number:
+      begin
+        // $-Hex versteht TryStrToInt64; %-Binär und Gleitkommazahlen bleiben still.
+        if not TryStrToInt64(Text, AValue) then
+          Exit;
+        AValue := Sign * AValue;
+        Result := True;
+      end;
+    TPascalTokenKind.CharLiteral:
+      if (Sign = 1) and (Length(Text) > 1) and TryStrToInt64(Copy(Text, 2, MaxInt), AValue) then
+      begin
+        AIsChar := True;
+        Result := True;
+      end;
+    TPascalTokenKind.StringLiteral:
+      if (Sign = 1) and (Length(Text) = 3) and (Text[1] = '''') and (Text[3] = '''') and (Text[2] <> '''') then
+      begin
+        AValue := Ord(Text[2]);
+        AIsChar := True;
+        Result := True;
+      end;
+  end;
+end;
+
 procedure TForHighToLowRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Tokens: TTokens;
   Index, Assign, StartExpr, ToToken, EndExpr, DoToken, Last: Integer;
   Suspicious: Boolean;
+  StartValue, EndValue: Int64;
+  StartIsChar, EndIsChar: Boolean;
+  Fix: TRuleFix;
 begin
   if AContext.Tree = nil then
     Exit;
@@ -327,7 +377,15 @@ begin
   begin
     if not Tokens[Index].IsKeyword('for') then
       Continue;
-    Assign := NextCode(Tokens, NextCode(Tokens, Index + 1) + 1);
+    // for I := …, for var I := … und for var I: Integer := ….
+    Assign := NextCode(Tokens, Index + 1);
+    if (Assign <= High(Tokens)) and Tokens[Assign].IsKeyword('var') then
+      Assign := NextCode(Tokens, Assign + 1);
+    Assign := NextCode(Tokens, Assign + 1);
+    if (Assign <= High(Tokens)) and Tokens[Assign].IsSymbol(':') then
+      while (Assign <= High(Tokens)) and not Tokens[Assign].IsSymbol(':=') and
+        not Tokens[Assign].IsKeyword('do') do
+        Assign := NextCode(Tokens, Assign + 1);
     if (Assign > High(Tokens)) or not Tokens[Assign].IsSymbol(':=') then
       Continue;
     StartExpr := NextCode(Tokens, Assign + 1);
@@ -353,11 +411,19 @@ begin
         SameText(Tokens[PreviousCode(Tokens, PreviousCode(Tokens, Last))].Text, 'Count') and
         (Tokens[EndExpr].Text = '0') and (NextCode(Tokens, EndExpr + 1) = DoToken);
     end;
+    Fix := TRuleFix.Create('to durch downto ersetzen', [TRuleEdit.Create(RangeOf(Tokens, ToToken, ToToken),
+      'downto')], True);
     if Suspicious then
       AReport.Add(RangeOf(Tokens, Index, DoToken), 'Die Schleife läuft vom oberen zum unteren Wert mit to und ' +
-        'wird daher nie ausgeführt; downto verwenden', TRuleConfidence.High,
-        [TRuleFix.Create('to durch downto ersetzen', [TRuleEdit.Create(RangeOf(Tokens, ToToken, ToToken),
-        'downto')], True)]);
+        'wird daher nie ausgeführt; downto verwenden', TRuleConfidence.High, [Fix])
+    // Konstante Grenzen: 10 to 1, -1 to -5, 'z' to 'a', #13 to #10 (#1023, wie H2135).
+    else if LiteralBound(Tokens, StartExpr, ToToken, StartValue, StartIsChar) and
+      LiteralBound(Tokens, EndExpr, DoToken, EndValue, EndIsChar) and (StartIsChar = EndIsChar) and
+      (StartValue > EndValue) then
+      AReport.Add(RangeOf(Tokens, Index, DoToken), Format('Die Schleife läuft nie (%s to %s); gemeint war downto ' +
+        '(wie H2135).', [Trim(Copy(AContext.Text, Tokens[StartExpr].Offset + 1,
+        Tokens[ToToken].Offset - Tokens[StartExpr].Offset)), Trim(Copy(AContext.Text, Tokens[EndExpr].Offset + 1,
+        Tokens[DoToken].Offset - Tokens[EndExpr].Offset))]), TRuleConfidence.High, [Fix]);
   end;
 end;
 
