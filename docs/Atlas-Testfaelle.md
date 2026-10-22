@@ -4133,3 +4133,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | KD5 | DLL-Projekt (`library`) ohne Formular mit `ShowMessage` | Meldung „… in einer DLL ohne Formulare blockiert, wenn der Host keine Oberfläche hat …“ mit mittlerer Konfidenz |
 | KD6 | GUI-Programm, DLL mit Formular, Formular-Unit im Konsolenprogramm, `if not IsConsole then ShowMessage(…)`, eigene Routine `ShowMessage` in der Unit, `Log.ShowMessage(…)` | Keine Meldung |
 | KD7 | `"ui-call-in-console-or-service": "off"`, `"group:robustness": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Text laden oder speichern ohne Kodierung (#1061)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LK1 | Das Beispiel aus #1061: `Zeilen: TStringList` und `Zeilen.LoadFromFile(Pfad);` | Warnung `load-without-encoding` an `Zeilen.LoadFromFile`: „LoadFromFile ohne Kodierung liest Dateien ohne BOM mit der ANSI-Codepage.“; im Fenster „Atlas-Prüfung“ (Gruppe Robustheit und Muster) und im Befund-Hover (**Abnahme**) |
+| LK2 | Schnellkorrektur „TEncoding.UTF8 ergänzen“, danach Strg+Z | Zeile wird `Zeilen.LoadFromFile(Pfad, TEncoding.UTF8);`, fehlt `System.SysUtils`, wird es ergänzt; danach keine Meldung; ein Undo-Schritt nimmt es zurück |
+| LK3 | `Memo1.Lines.SaveToFile(Pfad)`, `Abfrage.SQL.LoadFromStream(Strom)`, `TFile.ReadAllText(Pfad)` | Je eine Meldung; bei `SaveToFile` „… schreibt mit der ANSI-Codepage; Umlaute gehen auf anderen Rechnern verloren.“ |
+| LK4 | `"load-without-encoding": {"defaultEncoding": "Unicode"}` in `atlas.json`, Korrektur an LK1 | `TEncoding.Unicode` wird eingesetzt; `"defaultEncoding": "Latin1"` meldet die Konfiguration als Fehler |
+| LK5 | `Bild.LoadFromFile` (TBitmap), `Puffer.SaveToFile` (TMemoryStream), `TFile.WriteAllText`, `TStreamReader.Create(Pfad)`, `Zeilen.DefaultEncoding := TEncoding.UTF8` vor dem Laden, `SaveToFile` nach `LoadFromFile(Pfad, TEncoding.UTF8)` | Keine Meldung |
+| LK6 | `"load-without-encoding": "off"`, `"group:robustness": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

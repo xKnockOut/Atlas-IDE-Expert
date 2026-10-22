@@ -54,7 +54,8 @@ const
   /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
   NumberListRuleOptions: array[0..0] of string = ('allowed');
   /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
-  StringRuleOptions: array[0..4] of string = ('template', 'replacement', 'wrapper', 'okMarker', 'searchPaths');
+  StringRuleOptions: array[0..5] of string = ('template', 'replacement', 'wrapper', 'okMarker', 'searchPaths',
+    'defaultEncoding');
 
 type
   TValidator = class
@@ -295,6 +296,12 @@ begin
           else if (Value.Keys[Inner] = 'searchPaths') and
             (IndexStr(Value[Inner].Value, ['project', 'atlas', 'both']) < 0) then
             ReportNode(Value[Inner], '"searchPaths" muss "project", "atlas" oder "both" sein')
+          // Kodierung der Korrektur von load-without-encoding (#1061).
+          else if (Value.Keys[Inner] = 'defaultEncoding') and
+            (IndexText(Value[Inner].Value, ['UTF8', 'Unicode', 'BigEndianUnicode', 'ANSI', 'ASCII', 'UTF7',
+            'Default']) < 0) then
+            ReportNode(Value[Inner],
+              '"defaultEncoding" muss UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 oder Default sein')
           // Transaktionspaare von transaction-without-rollback (#965).
           else if (Value.Keys[Inner] = 'pairs') and (Rule.Id = 'transaction-without-rollback') then
           begin

@@ -103,3 +103,4 @@ property-accessor-invalid | Ref.Daten.Kunden.pas | procedure Speichern(AId: Inte
 assign-to-property-member | Ref.Komponenten.Anzeige.pas |   Width := StandardBreite; |   StandardBreite := Width;
 readonly-property-assigned | Ref.Formulare.Suchrahmen.pas | read FOnSuchen write FOnSuchen;\n  end;\n\nimplementation\n\n{$R *.dfm}\n\nprocedure TSuchrahmen.SuchenButtonClick(Sender: TObject);\nbegin\n  if Assigned(FOnSuchen) then | write FOnSuchen;\n  end;\n\nimplementation\n\n{$R *.dfm}\n\nprocedure TSuchrahmen.SuchenButtonClick(Sender: TObject);\nbegin\n  if Assigned(OnSuchen) then
 ui-call-in-console-or-service | ../RefApp.dpr | Application.Initialize; | {$APPTYPE CONSOLE}\n  ShowMessage('Start');\n  Application.Initialize;
+load-without-encoding | Ref.Daten.Kunden.pas | FAbfrage.SQL.Text := 'SELECT Id, Name FROM Kunden WHERE Name LIKE :Name'; | FAbfrage.SQL.LoadFromFile('kunden.sql');
