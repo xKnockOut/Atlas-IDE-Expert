@@ -1256,7 +1256,8 @@ begin
       Result.Name := 'class';
       Advance;
     end
-    else if PeekIsKw(2, 'for') and SameWord(PeekToken(1).Text, 'helper') then
+    // class helper [(TBaseHelper)] for T (#848)
+    else if SameWord(PeekToken(1).Text, 'helper') and (PeekIsKw(2, 'for') or PeekIsSym(2, '(')) then
     begin
       Result := StartNode(TSyntaxKind.HelperType);
       Result.Name := 'class';
@@ -1289,7 +1290,7 @@ begin
   end
   else if IsKw('record') then
   begin
-    if SameWord(PeekToken(1).Text, 'helper') and PeekIsKw(2, 'for') then
+    if SameWord(PeekToken(1).Text, 'helper') and (PeekIsKw(2, 'for') or PeekIsSym(2, '(')) then
     begin
       Result := StartNode(TSyntaxKind.HelperType);
       Result.Name := 'record';

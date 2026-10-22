@@ -22,6 +22,8 @@ type
     [Test]
     procedure ParsesGenericsAndAttributes;
     [Test]
+    procedure ParsesHelperWithAncestor;
+    [Test]
     procedure ParsesRecordWithVariantPart;
     [Test]
     procedure ParsesProcedureTypesWithCallingConvention;
@@ -258,6 +260,32 @@ begin
     Assert.AreEqual(2, Params.ChildCount);
     Assert.AreEqual('K', Params[0].Name);
     Assert.AreEqual('V', Params[1].Name);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TPascalParserTests.ParsesHelperWithAncestor;
+var
+  Tree: TSyntaxTree;
+  Helper: TSyntaxNode;
+begin
+  // class helper (TBasis) for T und record helper (…) for T sind Helfer, keine Klassen (#848, #994).
+  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
+    '  TListeHelfer = class helper (TBasisHelfer) for TListe',
+    '    procedure Leeren;',
+    '  end;',
+    '  TZahlHelfer = record helper (TBasisZahl) for Integer',
+    '  end;',
+    'implementation', 'end.']));
+  try
+    AssertNoDiagnostics(Tree);
+    Assert.AreEqual(2, CountKind(Tree.Root, TSyntaxKind.HelperType));
+    Assert.AreEqual(0, CountKind(Tree.Root, TSyntaxKind.ClassType));
+    Helper := FindFirst(Tree.Root, TSyntaxKind.HelperType);
+    Assert.AreEqual('TBasisHelfer', Helper[0].Name);
+    Assert.AreEqual('TListe', Helper[1].Name);
+    Assert.AreEqual('Leeren', Helper[2].Name);
   finally
     Tree.Free;
   end;

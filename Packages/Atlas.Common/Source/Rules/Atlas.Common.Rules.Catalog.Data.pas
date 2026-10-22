@@ -2376,6 +2376,59 @@ begin
     '        "E2603",' + #10 +
     '        "H2509"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "type-restriction-violated",' + #10 +
+    '      "name": "Language rule for records, inline and helpers violated",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Fixed language rules that only the compiler reports: virtual methods (like E2379) or other virtual directives (override, abstract, reintroduce, message, final; E2463) in records,' + ' parameterless constructors (E2394), constructors whose parameters all have defaults (E2471) and destructors (E2465) in records, class methods in records without static (E2398); in record helpers virt' + 'ual methods (E2598) and the other virtual directives (E2475); fields in helpers (class var is allowed, E2599), a destructor (E2295) or class constructor (E2358) in a class helper, a helper constructor' + ' whose first statement is not a call without arguments (E2296), a class helper descending from a helper whose type the new target does not descend from (E2294, only with a known ancestor chain), a hel' + 'per used as type of a declaration (E2527) or declared inside a generic type (E2589); several class constructors (E2359, exclusive conditional branches count once), class constructors with parameters (' + 'E2360) or virtual, dynamic or message (E2534); methods, properties, class members, types and constants in local or anonymous records (E2433 to E2437); inline on virtual or dynamic methods (E2425), on ' + 'constructors and destructors (E2442), with open array parameters (E2439), with an asm body (E2426), declared in the interface section and using a symbol of the implementation section (E2441), as local' + ' routine reading variables of the enclosing routine (E2449) or calling its own local routines (E2501); local, absolute or initialized threadvar (E2189, E2190, E2194). The checks apply to all supported' + ' Delphi versions (10 Seattle to 13). Option disabledChecks leaves out single codes. Quick fixes: remove the directive, add static.",' + #10 +
+    '      "bad": "TPoint2 = record\n  X, Y: Integer;\n  function Length: Double; virtual;\nend;",' + #10 +
+    '      "good": "TPoint2 = record\n  X, Y: Integer;\n  function Length: Double;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2189",' + #10 +
+    '        "E2190",' + #10 +
+    '        "E2194",' + #10 +
+    '        "E2294",' + #10 +
+    '        "E2295",' + #10 +
+    '        "E2296",' + #10 +
+    '        "E2358",' + #10 +
+    '        "E2359",' + #10 +
+    '        "E2360",' + #10 +
+    '        "E2379",' + #10 +
+    '        "E2394",' + #10 +
+    '        "E2398",' + #10 +
+    '        "E2425",' + #10 +
+    '        "E2426",' + #10 +
+    '        "E2433",' + #10 +
+    '        "E2434",' + #10 +
+    '        "E2435",' + #10 +
+    '        "E2436",' + #10 +
+    '        "E2437",' + #10 +
+    '        "E2439",' + #10 +
+    '        "E2441",' + #10 +
+    '        "E2442",' + #10 +
+    '        "E2449",' + #10 +
+    '        "E2463",' + #10 +
+    '        "E2465",' + #10 +
+    '        "E2471",' + #10 +
+    '        "E2475",' + #10 +
+    '        "E2501",' + #10 +
+    '        "E2527",' + #10 +
+    '        "E2534",' + #10 +
+    '        "E2589",' + #10 +
+    '        "E2598",' + #10 +
+    '        "E2599"' + #10 +
+    '      ],' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "disabledChecks",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Compiler codes the rule does not check, e.g. [\"E2425\"]."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3561,6 +3614,17 @@ begin
     '      "id": "generic-declaration-invalid",' + #10 +
     '      "name": "Generische Deklaration unzulässig",' + #10 +
     '      "description": "Eine generische Deklaration, die Delphi ablehnt: Einschränkungen class und record zugleich (wie E2507), eine Einschränkung doppelt (E2603), record zusammen mit constructor (E2516' + '), eine Klasse neben class bzw. record (E2552), zwei Klassen (E2553), ein Einschränkungstyp, der weder Klasse noch Interface ist (E2510); Typparameter an Aufzählung, Menge, Teilbereich, Zeiger, Klasse' + 'nreferenz, Alias oder Helfer (E2508), an Destruktor oder Klassenkonstruktor (E2528), Operator (E2529), globaler Routine (E2530), virtueller, dynamischer, message- oder override-Methode (E2533) oder In' + 'terface-Methode (E2535); class of eines parametrisierten Typs (E2548), generische Klasse, die von TCustomAttribute erbt (E2549), parametrisierter Typ als Attribut (E2565); ein Typparameter, der einen ' + 'des umgebenden Typs verdeckt (H2509); ein Aufruf mit einer Zahl Typargumente, die keine Überladung hat (E2551, Klassen und Records der Datei mit Vorfahren aus der Datei); eine Methode eines generische' + 'n Typs oder eine generische Methode aus dem interface-Teil, die ein Symbol des implementation-Teils verwendet (E2506; still in with und wenn die Vorfahrenkette nicht bekannt ist). Typen zählen nur, we' + 'nn sie eingebaut oder in der Datei deklariert sind; unbekannte Typen halten die Regel still. Lokale Prozeduren in generischen Methoden (E2570) meldet die Regel erst, wenn der Abgleich mit Delphi 12/13' + ' bestätigt, dass sie noch abgelehnt werden."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "type-restriction-violated",' + #10 +
+    '      "name": "Sprachregel für Records, Inline und Helfer verletzt",' + #10 +
+    '      "description": "Feste Sprachregeln, die erst der Compiler meldet: virtuelle Methoden (wie E2379) oder andere virtuelle Direktiven (override, abstract, reintroduce, message, final; E2463) in Reco' + 'rds, parameterlose Konstruktoren (E2394), Konstruktoren, deren Parameter alle Vorgabewerte haben (E2471), und Destruktoren (E2465) in Records, Klassenmethoden in Records ohne static (E2398); in Record' + '-Helfern virtuelle Methoden (E2598) und die übrigen virtuellen Direktiven (E2475); Felder in Helfern (class var ist erlaubt, E2599), Destruktor (E2295) oder Klassenkonstruktor (E2358) in einem Class-H' + 'elfer, ein Helfer-Konstruktor, dessen erster Befehl kein Aufruf ohne Argumente ist (E2296), ein Class-Helfer mit Vorfahr-Helfer für einen Typ, der nicht vom Typ des Vorfahren abstammt (E2294, nur bei ' + 'bekannter Vorfahrenkette), ein Helfer als Typ einer Deklaration (E2527) oder in einem generischen Typ (E2589); mehrere Klassenkonstruktoren (E2359, sich ausschließende bedingte Zweige zählen einmal), ' + 'Klassenkonstruktoren mit Parametern (E2360) oder virtual, dynamic bzw. message (E2534); Methoden, Properties, Klassenmitglieder, Typen und Konstanten in lokalen oder anonymen Records (E2433 bis E2437)' + '; inline an virtuellen oder dynamischen Methoden (E2425), an Konstruktoren und Destruktoren (E2442), mit offenen Array-Parametern (E2439), mit asm-Rumpf (E2426), im interface-Teil deklariert mit Symbo' + 'len des implementation-Teils (E2441), als lokale Routine mit Zugriff auf Variablen der umgebenden Routine (E2449) oder mit Aufruf eigener lokaler Routinen (E2501); lokale, absolute oder initialisierte' + ' threadvar (E2189, E2190, E2194). Die Prüfungen gelten für alle unterstützten Delphi-Versionen (10 Seattle bis 13). Option disabledChecks nimmt einzelne Codes aus. Korrekturen: Direktive entfernen, st' + 'atic ergänzen.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "disabledChecks",' + #10 +
+    '          "description": "Compilercodes, die die Regel nicht prüft, z. B. [\"E2425\"]."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

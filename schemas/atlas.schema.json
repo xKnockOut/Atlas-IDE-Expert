@@ -424,6 +424,15 @@
                 "default": [],
                 "description": "Nur sql-write-without-where: Tabellen, die absichtlich ganz geleert bzw. geändert werden, mit oder ohne Schema (#966)."
               },
+              "disabledChecks": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[EeHhWw][0-9]{4}$"
+                },
+                "default": [],
+                "description": "Nur type-restriction-violated: Compilercodes, die die Regel nicht prüft, z. B. [\"E2425\"] (#994)."
+              },
               "searchPaths": {
                 "type": "string",
                 "enum": ["project", "atlas", "both"],

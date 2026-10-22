@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1760] of string = (
+  Lines: array[0..1769] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -437,6 +437,15 @@ const
     '                },',
     '                "default": [],',
     '                "description": "Nur sql-write-without-where: Tabellen, die absichtlich ganz geleert bzw. geändert werden, mit oder ohne Schema (#966)."',
+    '              },',
+    '              "disabledChecks": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string",',
+    '                  "pattern": "^[EeHhWw][0-9]{4}$"',
+    '                },',
+    '                "default": [],',
+    '                "description": "Nur type-restriction-violated: Compilercodes, die die Regel nicht prüft, z. B. [\"E2425\"] (#994)."',
     '              },',
     '              "searchPaths": {',
     '                "type": "string",',

@@ -5,7 +5,9 @@
 // Codes (E2393, E2517, E2518, E2519, E2520, E2521, E2522, E2464), stillen
 // Fällen (richtige Operatoren, Aliase, unbekannte Typen) und Abschalten;
 // generic-declaration-invalid (#1029) mit dem Beispiel und je Gruppe von
-// Codes ein gemeldeter und ein stiller Fall.
+// Codes ein gemeldeter und ein stiller Fall; type-restriction-violated (#994)
+// mit dem Beispiel samt Korrektur, Records, lokalen Records, Helfern,
+// Klassenkonstruktoren, inline, threadvar und der Option disabledChecks.
 
 interface
 
@@ -57,10 +59,33 @@ type
     procedure OffAndExclude;
   end;
 
+  [TestFixture]
+  TTypeRestrictionViolatedTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure RecordMembers;
+    [Test]
+    procedure LocalAndAnonymousRecords;
+    [Test]
+    procedure Helpers;
+    [Test]
+    procedure ClassConstructors;
+    [Test]
+    procedure InlineRoutines;
+    [Test]
+    procedure ThreadVars;
+    [Test]
+    procedure DisabledChecksOffAndExclude;
+  end;
+
 implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.TypeRestrictions,
   Atlas.Common.Editing.ChangeSignature,
@@ -454,8 +479,212 @@ begin
     '{"rules": {"generic-declaration-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/G.pas'))));
 end;
 
+function RestrictionFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TTypeRestrictionViolatedRule.Create, ASource);
+end;
+
+function RestrictionFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TTypeRestrictionViolatedRule.Create, ASource, AConfig, APath);
+end;
+
+procedure TTypeRestrictionViolatedTests.IssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := GenericUnit('  TPunkt = record'#10'    X, Y: Integer;'#10'    function Laenge: Double; virtual;'#10 +
+    '  end;'#10, '');
+  Found := RestrictionFindings(Source);
+  Assert.AreEqual('6: Records erlauben keine virtuellen Methoden (wie E2379).', Messages(Found));
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('virtual entfernen', Found[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
+  Assert.AreEqual(GenericUnit('  TPunkt = record'#10'    X, Y: Integer;'#10'    function Laenge: Double;'#10 +
+    '  end;'#10, ''), Fixed);
+  Assert.AreEqual('', Messages(RestrictionFindings(Fixed)));
+end;
+
+procedure TTypeRestrictionViolatedTests.RecordMembers;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := GenericUnit('  TR = record'#10 +
+    '    procedure A; override;'#10 +
+    '    function B: Integer; virtual; abstract;'#10 +
+    '    constructor Create;'#10 +
+    '    constructor Neu(X: Integer = 0; Y: Integer = 1);'#10 +
+    '    destructor Destroy;'#10 +
+    '    class procedure C;'#10 +
+    '  end;'#10, '');
+  Found := RestrictionFindings(Source);
+  Assert.AreEqual('5: Die Direktive override ist in Records nicht erlaubt (wie E2463).|' +
+    '6: Records erlauben keine virtuellen Methoden (wie E2379).|' +
+    '7: Records erlauben keine parameterlosen Konstruktoren (wie E2394).|' +
+    '8: Records erlauben keine Konstruktoren, die ohne Argumente aufrufbar sind; alle Parameter haben ' +
+    'Vorgabewerte (wie E2471).|' +
+    '9: Records dürfen keinen Destruktor einführen (wie E2465).|' +
+    '10: Klassenmethoden in Records müssen static sein (wie E2398).', Messages(Found));
+  // virtual und abstract gehen zusammen weg.
+  Fixed := TChangeSignature.ApplyEdits(Source, Found[1].Fixes[0].Edits);
+  Assert.IsTrue(Pos('    function B: Integer;'#10, Fixed) > 0, Fixed);
+  Assert.AreEqual('static ergänzen', Found[5].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Found[5].Fixes[0].Edits);
+  Assert.IsTrue(Pos('    class procedure C; static;'#10, Fixed) > 0, Fixed);
+  // Erlaubtes.
+  Assert.AreEqual('', Messages(RestrictionFindings(GenericUnit('  TR = record'#10 +
+    '    constructor Create(X: Integer; Y: Integer = 1);'#10'    class function Neu: TR; static;'#10 +
+    '    class constructor Init;'#10'    class destructor Fertig;'#10 +
+    '    class operator Add(const A, B: TR): TR;'#10'    procedure M; inline;'#10'  end;'#10 +
+    '  TO = object'#10'    procedure V; virtual;'#10'  end;'#10, ''))));
+end;
+
+procedure TTypeRestrictionViolatedTests.LocalAndAnonymousRecords;
+begin
+  Assert.AreEqual('7: Lokale und anonyme Records dürfen keine Methoden deklarieren (wie E2433).|' +
+    '8: Lokale und anonyme Records dürfen keine Properties deklarieren (wie E2434).|' +
+    '9: Lokale und anonyme Records dürfen keine Klassenmitglieder deklarieren (wie E2435).|' +
+    '10: Lokale und anonyme Records dürfen keine Typen deklarieren (wie E2436).|' +
+    '12: Lokale und anonyme Records dürfen keine Konstanten deklarieren (wie E2437).|' +
+    '17: Lokale und anonyme Records dürfen keine Methoden deklarieren (wie E2433).',
+    Messages(RestrictionFindings('unit G;'#10'interface'#10'implementation'#10'procedure Lokal;'#10 +
+    'type'#10'  TL = record'#10'    procedure M;'#10'    property P: Integer read A;'#10 +
+    '    class var Z: Integer;'#10'    type'#10'      TI = Integer;'#10'    const'#10'      K = 1;'#10 +
+    '  end;'#10'var'#10'  A: Integer;'#10'  R: record X: Integer; procedure N; end;'#10'begin'#10'end;'#10 +
+    'end.')));
+  Assert.AreEqual('', Messages(RestrictionFindings('unit G;'#10'interface'#10'implementation'#10 +
+    'procedure Lokal;'#10'type'#10'  TL = record'#10'    A, B: Integer;'#10'  end;'#10'var'#10 +
+    '  R: record X: Integer; end;'#10'begin'#10'end;'#10'end.')));
+end;
+
+procedure TTypeRestrictionViolatedTests.Helpers;
+begin
+  Assert.AreEqual('5: Helfer dürfen keine Felder deklarieren (wie E2599).|' +
+    '7: Helfer dürfen keine Felder deklarieren (wie E2599).|' +
+    '9: Class-Helfer dürfen keinen Destruktor einführen (wie E2295).|' +
+    '10: Class-Helfer erlauben keine Klassenkonstruktoren (wie E2358).|' +
+    '15: Record-Helfer erlauben keine virtuellen Methoden (wie E2598).|' +
+    '16: Die Direktive message ist in Record-Helfern nicht erlaubt (wie E2475).|' +
+    '21: Der Helfer TLH kann nicht als Typ in Deklarationen stehen (wie E2527).|' +
+    '27: Ein Konstruktor im Class-Helfer muss als ersten Befehl den parameterlosen Konstruktor von TList aufrufen ' +
+    '(wie E2296).',
+    Messages(RestrictionFindings(GenericUnit(
+    '  TLH = class helper for TList'#10 +
+    '    FAnzahl: Integer;'#10 +
+    '    class var FZaehler: Integer;'#10 +
+    '    var FMehr: Integer;'#10 +
+    '  public'#10 +
+    '    destructor Destroy; override;'#10 +
+    '    class constructor Init;'#10 +
+    '    constructor Neu(A: Integer);'#10 +
+    '    constructor Leer;'#10 +
+    '  end;'#10 +
+    '  TIH = record helper for Integer'#10 +
+    '    function F: Integer; virtual;'#10 +
+    '    procedure G(var M); message 1;'#10 +
+    '    function H: Integer; inline;'#10 +
+    '  end;'#10 +
+    'var'#10 +
+    '  Helfer: TObject;'#10 +
+    '  Falsch: TLH;'#10,
+    'constructor TLH.Neu(A: Integer);'#10'begin'#10'  Create;'#10'end;'#10 +
+    'constructor TLH.Leer;'#10'begin'#10'  FZaehler := 1;'#10'end;'#10))));
+  // Vorfahr-Helfer und generischer Kontext.
+  Assert.AreEqual('14: Ein Class-Helfer, der von TBH abstammt, kann nur Nachfahren von TListe helfen (wie E2294).|' +
+    '16: Ein Class-Helfer, der von TBH abstammt, kann nur Nachfahren von TListe helfen (wie E2294).|' +
+    '19: Helfer dürfen nicht im Kontext eines parametrisierten Typs deklariert werden (wie E2589).',
+    Messages(RestrictionFindings(GenericUnit(
+    '  TAnders = class'#10'  end;'#10'  TListe = class'#10'  end;'#10'  TKind = class(TListe)'#10'  end;'#10 +
+    '  TBH = class helper for TListe'#10'  end;'#10'  TGut = class helper (TBH) for TKind'#10'  end;'#10 +
+    '  TFalsch = class helper (TBH) for TAnders'#10'  end;'#10'  TWurzel = class helper (TBH) for TObject end;'#10'  TG<T> = class'#10'  type'#10'    TInnen = class helper for TObject'#10'    end;'#10'  end;'#10,
+    ''))));
+end;
+
+procedure TTypeRestrictionViolatedTests.ClassConstructors;
+begin
+  Assert.AreEqual('6: Klassenkonstruktoren dürfen keine Parameter haben (wie E2360).|' +
+    '7: Mehrere Klassenkonstruktoren in TA: Init und Zwei (wie E2359).|' +
+    '7: Klassenkonstruktoren dürfen nicht virtual, dynamic oder message sein (wie E2534).',
+    Messages(RestrictionFindings(GenericUnit('  TA = class'#10'  public'#10 +
+    '    class constructor Init(A: Integer);'#10'    class constructor Zwei; virtual;'#10'  end;'#10, ''))));
+  Assert.AreEqual('', Messages(RestrictionFindings(GenericUnit('  TA = class'#10'  public'#10'  {$IFDEF X}'#10 +
+    '    class constructor Init;'#10'  {$ELSE}'#10'    class constructor Init2;'#10'  {$ENDIF}'#10 +
+    '    class destructor Fertig;'#10'  end;'#10, ''))));
+end;
+
+procedure TTypeRestrictionViolatedTests.InlineRoutines;
+begin
+  Assert.AreEqual('6: Inline-Methoden dürfen nicht virtual oder dynamic sein (wie E2425).|' +
+    '7: inline ist an Konstruktoren und Destruktoren nicht erlaubt (wie E2442).|' +
+    '8: Inline-Routinen dürfen keine offenen Array-Parameter haben (wie E2439).|' +
+    '9: Inline-Routinen dürfen keinen asm-Block haben (wie E2426).|' +
+    '21: Die Inline-Routine TA.Rechnen aus dem interface-Teil darf Grenze aus dem implementation-Teil nicht ' +
+    'verwenden (wie E2441).',
+    Messages(RestrictionFindings(GenericUnit('  TA = class'#10'  public'#10 +
+    '    procedure V; virtual; inline;'#10'    constructor Create; inline;'#10 +
+    '    function Summe(const A: array of Integer): Integer; inline;'#10'    function Roh: Integer; inline;'#10 +
+    '    function Rechnen: Integer; inline;'#10'  end;'#10,
+    'const'#10'  Grenze = 3;'#10'function TA.Roh: Integer;'#10'asm'#10'  mov eax, 1'#10'end;'#10 +
+    'function TA.Rechnen: Integer;'#10'begin'#10'  Result := Grenze;'#10'end;'#10))));
+  Assert.AreEqual('7: Die Inline-Routine Aussen darf die lokale Routine Hilfe nicht aufrufen (wie E2501).|' +
+    '14: Die eingebettete lokale Routine Mitte darf nicht auf Wert der umgebenden Routine zugreifen (wie E2449).',
+    Messages(RestrictionFindings('unit G;'#10'interface'#10'implementation'#10 +
+    'function Aussen: Integer; inline;'#10'  function Hilfe: Integer; begin Result := 1; end;'#10'begin'#10 +
+    '  Result := Hilfe;'#10'end;'#10 +
+    'procedure Rahmen(Wert: Integer);'#10'var'#10'  Lokal: Integer;'#10 +
+    '  function Mitte: Integer; inline;'#10'  begin'#10'    Result := Wert;'#10'  end;'#10 +
+    '  function Eigen(Wert: Integer): Integer; inline;'#10'  begin'#10'    Result := Wert;'#10'  end;'#10 +
+    'begin'#10'  Lokal := Mitte + Eigen(1);'#10'end;'#10'end.')));
+  // Erlaubtes: inline ohne Hürde, Symbole des implementation-Teils in Routinen ohne inline oder nur im
+  // implementation-Teil.
+  Assert.AreEqual('', Messages(RestrictionFindings(GenericUnit('  TA = class'#10'  public'#10 +
+    '    function Doppelt(A: Integer): Integer; inline;'#10'    function Weit: Integer;'#10 +
+    '    function Lang(const A: TArray<Integer>): Integer; inline;'#10'  end;'#10,
+    'const'#10'  Grenze = 3;'#10'function Intern: Integer; inline;'#10'begin'#10'  Result := Grenze;'#10 +
+    'end;'#10'function TA.Doppelt(A: Integer): Integer;'#10'begin'#10'  Result := A * 2;'#10'end;'#10 +
+    'function TA.Weit: Integer;'#10'begin'#10'  Result := Grenze;'#10'end;'#10))));
+end;
+
+procedure TTypeRestrictionViolatedTests.ThreadVars;
+begin
+  Assert.AreEqual('4: threadvar-Variablen lassen sich nicht initialisieren (wie E2194).|' +
+    '5: threadvar-Variablen dürfen nicht absolute sein (wie E2190).|' +
+    '9: threadvar ist nur auf Unit-Ebene erlaubt, nicht lokal in einer Routine (wie E2189).',
+    Messages(RestrictionFindings('unit G;'#10'interface'#10'threadvar'#10'  Zaehler: Integer = 3;'#10 +
+    '  Alias: Integer absolute Zaehler;'#10'  Gut: Integer;'#10'implementation'#10'procedure Lokal;'#10 +
+    'threadvar'#10'  T: Integer;'#10'begin'#10'end;'#10'end.')));
+  Assert.AreEqual('', Messages(RestrictionFindings('unit G;'#10'interface'#10'threadvar'#10'  T: Integer;'#10 +
+    'var'#10'  V: Integer = 3;'#10'implementation'#10'end.')));
+end;
+
+procedure TTypeRestrictionViolatedTests.DisabledChecksOffAndExclude;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := GenericUnit('  TPunkt = record'#10'    function Laenge: Double; virtual;'#10'    class procedure C;'#10 +
+    '  end;'#10, '');
+  Assert.AreEqual(2, Integer(Length(RestrictionFindings(Source, '', 'Source/G.pas'))));
+  Assert.AreEqual('6: Klassenmethoden in Records müssen static sein (wie E2398).', Messages(RestrictionFindings(Source,
+    '{"rules": {"type-restriction-violated": {"disabledChecks": ["E2379"]}}}', 'Source/G.pas')));
+  Assert.AreEqual(0, Integer(Length(RestrictionFindings(Source, '{"rules": {"type-restriction-violated": "off"}}',
+    'Source/G.pas'))));
+  Assert.AreEqual(0, Integer(Length(RestrictionFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/G.pas'))));
+  Assert.AreEqual(0, Integer(Length(RestrictionFindings(Source,
+    '{"rules": {"type-restriction-violated": {"exclude": ["Source/*.pas"]}}}', 'Source/G.pas'))));
+  // Parser: disabledChecks muss eine Liste von Texten sein.
+  TConfigurationParser.Parse('{"rules": {"type-restriction-violated": {"disabledChecks": "E2379"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"type-restriction-violated": {"disabledChecks": ["E2379"]}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TOperatorDeclarationInvalidTests);
   TDUnitX.RegisterTestFixture(TGenericDeclarationInvalidTests);
+  TDUnitX.RegisterTestFixture(TTypeRestrictionViolatedTests);
 
 end.
