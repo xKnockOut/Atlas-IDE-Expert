@@ -4,7 +4,7 @@
 
 *Deutsche Fassung: [README_DE.md](README_DE.md). The detailed documentation in `docs/` is in German.*
 
-Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 102 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code.
+Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 103 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code.
 
 Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
@@ -15,7 +15,7 @@ Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/At
 | [Writing](#writing) | Completion with detail panel, parameter hint, code and postfix templates, slash commands (`/uses`, `/extract`, …), generate menu, formatter |
 | [Understanding](#understanding) | Hover with docs, values, inheritance and debugger values, type hints, code metrics, inactive `{$IFDEF}` branches |
 | [Navigating](#navigating) | Breadcrumb bar, outline, peek definition, quick open, unit search, results window, bookmarks and notes |
-| [Code analysis](#code-analysis) | 102 check rules (bugs, code smells, security), profiles, confidence, baseline, compiler check on save, CI linter with SARIF |
+| [Code analysis](#code-analysis) | 103 check rules (bugs, code smells, security), profiles, confidence, baseline, compiler check on save, CI linter with SARIF |
 | [Refactorings and code actions](#refactorings-and-code-actions) | Rename including forms, change signature, extract method, implement interface, generate properties and many quick fixes (Alt+Enter) |
 | [Forms](#forms) | Sync with the designer, form components in completion, checks between form and code |
 | [Build, test, debug](#build-test-debug) | Release build guard, DUnitX tests from the editor, launch profiles, values in the hover while debugging |
@@ -97,8 +97,8 @@ The server checks every unit while you type. Findings appear as squiggles, in th
 - **Finding hover** with severity, rule and action line "Alt+Enter: fix", "Suppress for this line", "Configure rule…"
 - **Page "Prüfregeln"** in the options: per rule group a master switch and a table with severity, exclusions and options of every rule, search and catalog text with examples
 
-- **102 check rules** in four categories: 52 bugs, 40 code smells, 5 vulnerabilities, 5 security hotspots. Among them:
-  - **Correctness:** `Result` not set, possibly uninitialized variables, unreachable code, unused variables, parameters and assignments, declared but not implemented methods, missing `override`, hidden virtual methods, overflows, float comparison, `raise` in `finally`, overlooked precedence of `not` (`not X in Set`), empty statement after `then`/`do`/`else`, loops one step too far (`0 to List.Count`), lists changed inside their own loop (`Delete` in a forward loop), objects used after `Free` (with a jump to the release)
+- **103 check rules** in four categories: 53 bugs, 40 code smells, 5 vulnerabilities, 5 security hotspots. Among them:
+  - **Correctness:** `Result` not set, possibly uninitialized variables, unreachable code, unused variables, parameters and assignments, declared but not implemented methods, missing `override`, hidden virtual methods, overflows, float comparison, `raise` in `finally`, overlooked precedence of `not` (`not X in Set`), empty statement after `then`/`do`/`else`, loops one step too far (`0 to List.Count`), lists changed inside their own loop (`Delete` in a forward loop), objects used after `Free` (with a jump to the release), access before the nil check (`X.Name` before `if Assigned(X)`)
   - **Threads:** VCL access from threads, locks without `finally`, `FreeOnTerminate` traps, `Synchronize` in the destructor
   - **Exceptions:** empty `except` blocks, catch-all without re-raise, exceptions created but not raised
   - **Components and forms:** missing `inherited`, `Notification`, wrong `default` values, fields without a form object and vice versa, data bindings and data sources in DFM files

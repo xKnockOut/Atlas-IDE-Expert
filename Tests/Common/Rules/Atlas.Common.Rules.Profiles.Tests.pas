@@ -174,7 +174,7 @@ const
     'component-create-without-override,component-default-mismatch,component-fixed-pixels,' +
     'component-hardcoded-color,component-missing-free-notification,component-missing-inherited,' +
     'component-palette-icon,component-setter-without-invalidate,confusable-identifier,' +
-    'constructor-on-instance,control-char,declared-not-implemented,deprecated-symbol,destroy-without-override,' +
+    'constructor-on-instance,control-char,declared-not-implemented,deprecated-symbol,deref-before-nil-check,destroy-without-override,' +
     'dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,' +
     'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,duplicate-interface-guid,' +
     'empty-except,empty-statement,exception-freed,exception-not-raised,float-equality,for-high-to-low,forbidden-uses,' +
@@ -205,7 +205,7 @@ begin
     'collection-modified-in-loop,' +
     'component-create-without-override,component-default-mismatch,component-missing-free-notification,' +
     'component-missing-inherited,constructor-on-instance,control-char,declared-not-implemented,' +
-    'destroy-without-override,dfm-circular-datasource,dfm-control-field-type-mismatch,' +
+    'deref-before-nil-check,destroy-without-override,dfm-circular-datasource,dfm-control-field-type-mismatch,' +
     'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,' +
     'duplicate-interface-guid,empty-statement,exception-freed,exception-not-raised,float-equality,for-high-to-low,' +
     'form-field-type-mismatch,form-field-without-object,form-object-without-field,hides-virtual,' +

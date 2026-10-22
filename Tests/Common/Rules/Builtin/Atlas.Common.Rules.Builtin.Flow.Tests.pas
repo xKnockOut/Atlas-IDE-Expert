@@ -4,7 +4,10 @@
 // unreachable-code (#94) und use-after-free (#915): Beispiel mit Sprung zur
 // Freigabe, FreeAndNil, Konfidenz nach Block, doppelte Freigabe, Dispose,
 // stille Muster (neue Zuweisung, Abfrage auf nil, Übergabe, try/finally,
-// Schleife), Abschalten und Ausnahmen.
+// Schleife), Abschalten und Ausnahmen; deref-before-nil-check (#916):
+// Beispiel mit Korrektur, Feld mit und ohne Aufruf dazwischen, stille Muster
+// (Prüfung davor, neue Zuweisung, X := X.Next, Prüfung im selben Ausdruck,
+// Schleife), Rumpf mit begin … end, else ohne Korrektur, Abschalten.
 
 interface
 
@@ -57,6 +60,14 @@ type
     procedure SafeUsesAfterFreeAreSilent;
     [Test]
     procedure UseAfterFreeOffAndExclude;
+    [Test]
+    procedure DerefBeforeNilCheckReportsWithFix;
+    [Test]
+    procedure DerefBeforeNilCheckBlockAndElse;
+    [Test]
+    procedure DerefBeforeNilCheckSilentCases;
+    [Test]
+    procedure DerefBeforeNilCheckFieldsAndOff;
   end;
 
 implementation
@@ -74,6 +85,7 @@ uses
   Atlas.Common.Rules.CodeActions,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
 function Routine(const ABody: string; const AHeader: string = 'function F: Integer;';
@@ -358,6 +370,122 @@ begin
     '{"rules": {"use-after-free": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUseAfterFreeRule.Create, Source,
     '{"rules": {"use-after-free": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
+end;
+
+const
+  CheckHeader = 'procedure P(Kunde, Knoten: TKunde);';
+  CheckVars = 'var'#10'  Titel: string;'#10;
+
+procedure TFlowRulesTests.DerefBeforeNilCheckReportsWithFix;
+const
+  Body = '  Titel := Kunde.Name;'#10'  if Assigned(Kunde) then'#10'    Anzeigen(Kunde);';
+  Fixed = '  if Assigned(Kunde) then'#10'  begin'#10'    Titel := Kunde.Name;'#10'    Anzeigen(Kunde);'#10'  end;';
+var
+  Findings: TArray<TRuleFinding>;
+  Text: string;
+  Tree: TSyntaxTree;
+  Rule: IRule;
+  Found: Boolean;
+begin
+  Findings := TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine(Body, CheckHeader, CheckVars));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(DerefBeforeNilCheckRuleId, Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Kunde wird hier benutzt, aber erst in Zeile 9 auf nil geprüft.', Findings[0].Message);
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(11, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Prüfung vor den Zugriff ziehen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  Text := TChangeSignature.ApplyEdits(Routine(Body, CheckHeader, CheckVars), Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Routine(Fixed, CheckHeader, CheckVars), Text);
+  Tree := TPascalParser.Parse(Text);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Ergebnis parst fehlerfrei');
+  finally
+    Tree.Free;
+  end;
+  TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Text);
+  Found := False;
+  for Rule in BuiltinRules do
+    if Rule.Descriptor.Id = DerefBeforeNilCheckRuleId then
+      Found := True;
+  Assert.IsTrue(Found, DerefBeforeNilCheckRuleId);
+end;
+
+procedure TFlowRulesTests.DerefBeforeNilCheckBlockAndElse;
+const
+  Body = '  Kunde.Laden;'#10'  if Kunde <> nil then'#10'  begin'#10'    Anzeigen(Kunde);'#10'    Titel := '''';'#10 +
+    '  end;';
+  Fixed = '  if Kunde <> nil then'#10'  begin'#10'    Kunde.Laden;'#10'    Anzeigen(Kunde);'#10'    Titel := '''';'#10 +
+    '  end;';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine(Body, CheckHeader, CheckVars));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(Routine(Fixed, CheckHeader, CheckVars),
+    TChangeSignature.ApplyEdits(Routine(Body, CheckHeader, CheckVars), Findings[0].Fixes[0].Edits));
+  // Mit else oder nicht direkt danach: Meldung ohne Korrektur.
+  Findings := TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine('  Titel := Kunde.Name;'#10 +
+    '  if Kunde = nil then'#10'    Titel := '''''#10'  else'#10'    Anzeigen(Kunde);', CheckHeader, CheckVars));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Findings := TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine('  Titel := Kunde.Name;'#10 +
+    '  Anzeigen(Titel);'#10'  if Assigned(Kunde) then'#10'    Anzeigen(Kunde);', CheckHeader, CheckVars));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Kunde wird hier benutzt, aber erst in Zeile 10 auf nil geprüft.', Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TFlowRulesTests.DerefBeforeNilCheckSilentCases;
+begin
+  TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
+    // Schon vorher geprüft.
+    '  if Kunde = nil then'#10'    Exit;'#10'  Titel := Kunde.Name;'#10'  if Assigned(Kunde) then'#10 +
+    '    Anzeigen(Kunde);', CheckHeader, CheckVars));
+  TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
+    // Dazwischen neu gesetzt bzw. X := X.Next.
+    '  Titel := Kunde.Name;'#10'  Kunde := Suchen(Titel);'#10'  if Assigned(Kunde) then'#10'    Anzeigen(Kunde);'#10 +
+    '  Knoten := Knoten.Weiter;'#10'  if Knoten <> nil then'#10'    Anzeigen(Knoten);', CheckHeader, CheckVars));
+  TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
+    // Prüfung im selben Ausdruck vor dem Zugriff, Schleife über eine Kette.
+    '  if Assigned(Kunde) and Kunde.Aktiv then'#10'    Anzeigen(Kunde);'#10 +
+    '  while Knoten <> nil do'#10'  begin'#10'    Knoten.Pruefen;'#10'    Knoten := Knoten.Weiter;'#10'  end;',
+    CheckHeader, CheckVars));
+  TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
+    // Übergabe dazwischen: die Routine kann den Wert ändern.
+    '  Titel := Kunde.Name;'#10'  Ersetzen(Kunde);'#10'  if Assigned(Kunde) then'#10'    Anzeigen(Kunde);',
+    CheckHeader, CheckVars));
+  TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
+    // Supports setzt Kunde im selben Ausdruck; Zugriff nur in einem Zweig, die Prüfung gilt dem anderen.
+    '  if Supports(Quelle, IKunde, Kunde) and Kunde.Aktiv then'#10'    Titel := '''';'#10 +
+    '  if A then'#10'  begin'#10'    Kunde := TKunde.Create;'#10'    Kunde.Laden;'#10'  end;'#10 +
+    '  if Kunde <> nil then'#10'    Anzeigen(Kunde);', 'procedure P(A: Boolean; Kunde: TKunde);', CheckVars));
+  TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
+    // while als Prüfung späterer Durchläufe.
+    '  Titel := Knoten.Name;'#10'  while Knoten <> nil do'#10'    Knoten := Knoten.Parent;', CheckHeader, CheckVars));
+end;
+
+procedure TFlowRulesTests.DerefBeforeNilCheckFieldsAndOff;
+var
+  Source: string;
+begin
+  // Feld ohne Aufruf dazwischen: gemeldet; mit Aufruf (kann das Feld ändern): still.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine(
+    '  Titel := FKunde.Name;'#10'  if Assigned(FKunde) then'#10'    Titel := '''';', CheckHeader, CheckVars)))));
+  TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
+    '  Titel := FKunde.Name;'#10'  Laden;'#10'  if Assigned(FKunde) then'#10'    Titel := '''';', CheckHeader,
+    CheckVars));
+  Source := Routine('  Titel := Kunde.Name;'#10'  if Assigned(Kunde) then'#10'    Anzeigen(Kunde);', CheckHeader,
+    CheckVars);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Source,
+    '{"rules": {"deref-before-nil-check": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Source,
+    '{"rules": {"deref-before-nil-check": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Source,
+    '{"rules": {"deref-before-nil-check": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
 end;
 
 initialization

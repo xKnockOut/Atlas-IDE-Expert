@@ -18,6 +18,15 @@
 //                             hoch, wenn Freigabe und Zugriff im selben Block
 //                             nacheinander stehen, sonst mittel. Die Aktion
 //                             springt zur Freigabe.
+//   deref-before-nil-check    X wird benutzt (X.Feld, X.Methode, X[…], X^) und
+//                             erst danach mit Assigned(X), X <> nil oder X = nil
+//                             geprüft (#916). Still, wenn vor dem Zugriff schon
+//                             geprüft wurde, wenn X dazwischen neu gesetzt oder
+//                             übergeben wird und bei Feldern und globalen
+//                             Variablen nach jedem Aufruf dazwischen (er kann
+//                             sie ändern). Steht die Prüfung als if ohne else
+//                             direkt nach dem Zugriff im selben Block, zieht die
+//                             Korrektur sie vor den Zugriff.
 //
 // Was der Graph nicht sieht, macht die Variable "unbekannt" und erzeugt keinen
 // Treffer: Übergabe als Argument (var/out-Parameter, SetLength, FillChar,
@@ -64,8 +73,15 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TDerefBeforeNilCheckRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 const
   UseAfterFreeRuleId = 'use-after-free';
+  DerefBeforeNilCheckRuleId = 'deref-before-nil-check';
 
 /// <summary>Wird AName in ABlock so benutzt, dass der Kontrollfluss die Zuweisung nicht sieht?</summary>
 function HasOpaqueUse(ABlock: TSyntaxNode; const AName: string): Boolean;
@@ -440,6 +456,15 @@ begin
   end;
 end;
 
+const
+  /// <summary>Anweisungen und ihre Teile; ein Knoten des Graphen wertet sie nicht selbst aus.</summary>
+  FlowStatementKinds = [TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.AssignStatement,
+    TSyntaxKind.CallStatement, TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement, TSyntaxKind.CaseItem,
+    TSyntaxKind.CaseElse, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+    TSyntaxKind.RepeatStatement, TSyntaxKind.WithStatement, TSyntaxKind.TryStatement, TSyntaxKind.ExceptBlock,
+    TSyntaxKind.ExceptionHandler, TSyntaxKind.FinallyBlock, TSyntaxKind.RaiseStatement, TSyntaxKind.GotoStatement,
+    TSyntaxKind.LabeledStatement, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.EmptyStatement];
+
 { TUseAfterFreeRule }
 
 function TUseAfterFreeRule.Descriptor: TRuleDescriptor;
@@ -490,13 +515,6 @@ begin
 end;
 
 procedure TUseAfterFreeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-const
-  StatementKinds = [TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.AssignStatement,
-    TSyntaxKind.CallStatement, TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement, TSyntaxKind.CaseItem,
-    TSyntaxKind.CaseElse, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
-    TSyntaxKind.RepeatStatement, TSyntaxKind.WithStatement, TSyntaxKind.TryStatement, TSyntaxKind.ExceptBlock,
-    TSyntaxKind.ExceptionHandler, TSyntaxKind.FinallyBlock, TSyntaxKind.RaiseStatement, TSyntaxKind.GotoStatement,
-    TSyntaxKind.LabeledStatement, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.EmptyStatement];
 var
   Cache: IRuleDerivedCache;
   Routine: TSyntaxNode;
@@ -584,7 +602,7 @@ var
     for Index := 0 to ASyntax.ChildCount - 1 do
     begin
       Child := ASyntax[Index];
-      if not AllChildren and (Child.Kind in StatementKinds) then
+      if not AllChildren and (Child.Kind in FlowStatementKinds) then
         Continue;
       if (Index = 0) and (ASyntax.Kind = TSyntaxKind.AssignStatement) and SameText(FreedPath(Child), APath) then
       begin
@@ -680,12 +698,428 @@ begin
   end;
 end;
 
+{ TDerefBeforeNilCheckRule }
+
+function TDerefBeforeNilCheckRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(DerefBeforeNilCheckRuleId, TRuleSeverity.Warning,
+    'Erst benutzt, dann auf nil geprüft');
+end;
+
+/// <summary>Ausdrücke, die ein Knoten des Graphen selbst auswertet: bei einfachen Anweisungen alle Kinder,
+/// bei if, while, for, case und with nur die Bedingung bzw. den Kopf.</summary>
+function OwnParts(ASyntax: TSyntaxNode): TArray<TSyntaxNode>;
+var
+  Index: Integer;
+  AllChildren: Boolean;
+begin
+  Result := nil;
+  if ASyntax = nil then
+    Exit;
+  AllChildren := ASyntax.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement,
+    TSyntaxKind.RaiseStatement, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst];
+  for Index := 0 to ASyntax.ChildCount - 1 do
+    if AllChildren or not (ASyntax[Index].Kind in FlowStatementKinds) then
+      Result := Result + [ASyntax[Index]];
+end;
+
+/// <summary>Enthält E Assigned(APath), APath = nil oder APath <> nil?</summary>
+function ContainsNilCheck(E: TSyntaxNode; const APath: string): Boolean;
+var
+  Index: Integer;
+begin
+  Result := False;
+  if E.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+    Exit;
+  if (E.Kind = TSyntaxKind.Call) and (E.ChildCount = 2) and IsName(E[0], 'Assigned') and
+    SameText(FreedPath(E[1]), APath) then
+    Exit(True);
+  if (E.Kind = TSyntaxKind.BinaryExpr) and MatchText(E.Name, ['=', '<>']) and (E.ChildCount = 2) and
+    ((SameText(FreedPath(E[0]), APath) and (E[1].Kind = TSyntaxKind.Literal) and SameText(E[1].Name, 'nil')) or
+    (SameText(FreedPath(E[1]), APath) and (E[0].Kind = TSyntaxKind.Literal) and SameText(E[0].Name, 'nil'))) then
+    Exit(True);
+  for Index := 0 to E.ChildCount - 1 do
+    if ContainsNilCheck(E[Index], APath) then
+      Exit(True);
+end;
+
+/// <summary>Wurzeln der Zugriffe X.… und X^ in E, in Textreihenfolge. X[…] zählt nicht: bei dynamischen
+/// Arrays ist X <> nil die übliche Abfrage auf leer.</summary>
+procedure CollectDerefs(E: TSyntaxNode; var AList: TArray<TSyntaxNode>);
+var
+  Index: Integer;
+begin
+  if E.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+    Exit;
+  if (E.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Dereference]) and (E.ChildCount > 0) and
+    (FreedPath(E[0]) <> '') then
+    AList := AList + [E[0]];
+  for Index := 0 to E.ChildCount - 1 do
+    CollectDerefs(E[Index], AList);
+end;
+
+/// <summary>Weist der Knoten APath sicher einen Wert zu (Zuweisung, Schleifenvariable)?</summary>
+function AssignsPath(ANode: TFlowNode; const APath: string): Boolean;
+var
+  S: TSyntaxNode;
+begin
+  S := ANode.Syntax;
+  Result := SameText(ANode.Defines, APath);
+  if Result or (S = nil) then
+    Exit;
+  if (ANode.Kind = TFlowNodeKind.Condition) and (S.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and
+    SameText(S.Name, APath) then
+    Exit(True);
+  Result := (S.Kind = TSyntaxKind.AssignStatement) and (S.ChildCount > 0) and SameText(FreedPath(S[0]), APath);
+end;
+
+/// <summary>Kann der Knoten APath ändern? Zuweisung, Schleifenvariable, Übergabe als Argument, @X; bei
+/// Feldern und globalen Variablen (ALocal = False) jeder Aufruf.</summary>
+function ChangesPath(ANode: TFlowNode; const APath: string; ALocal: Boolean): Boolean;
+
+  function Visit(E: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    Result := False;
+    if E.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+      Exit;
+    if (E.Kind = TSyntaxKind.Call) and (E.ChildCount > 0) and not IsName(E[0], 'Assigned') then
+    begin
+      if not ALocal then
+        Exit(True);
+      for Index := 1 to E.ChildCount - 1 do
+        if SameText(FreedPath(E[Index]), APath) then
+          Exit(True);
+    end;
+    if (E.Kind = TSyntaxKind.AddressOf) and (E.ChildCount > 0) and SameText(FreedPath(E[0]), APath) then
+      Exit(True);
+    for Index := 0 to E.ChildCount - 1 do
+      if Visit(E[Index]) then
+        Exit(True);
+  end;
+
+var
+  S, Part: TSyntaxNode;
+begin
+  S := ANode.Syntax;
+  Result := AssignsPath(ANode, APath);
+  if Result or (S = nil) then
+    Exit;
+  // X.Methode ohne Klammern ist ein Aufruf.
+  if not ALocal and (S.Kind = TSyntaxKind.CallStatement) then
+    Exit(True);
+  for Part in OwnParts(S) do
+    if Visit(Part) then
+      Exit(True);
+end;
+
+function NodeHasNilCheck(ANode: TFlowNode; const APath: string): Boolean;
+var
+  Part: TSyntaxNode;
+begin
+  Result := False;
+  for Part in OwnParts(ANode.Syntax) do
+    if ContainsNilCheck(Part, APath) then
+      Exit(True);
+end;
+
+/// <summary>Weist eine Anweisung unter ANode APath zu?</summary>
+function SubtreeAssigns(ANode: TSyntaxNode; const APath: string): Boolean;
+var
+  Index: Integer;
+begin
+  if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount > 0) and SameText(FreedPath(ANode[0]), APath) then
+    Exit(True);
+  for Index := 0 to ANode.ChildCount - 1 do
+    if SubtreeAssigns(ANode[Index], APath) then
+      Exit(True);
+  Result := False;
+end;
+
+/// <summary>Parameter, lokale Variablen und Inline-Variablen der Routine (ohne lokale Routinen).</summary>
+function LocalNames(ARoutine: TSyntaxNode): TArray<string>;
+
+  procedure Visit(E: TSyntaxNode; ATop: Boolean);
+  var
+    Index: Integer;
+    Name: string;
+  begin
+    if not ATop and (E.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
+      Exit;
+    if E.Kind in [TSyntaxKind.Parameter, TSyntaxKind.VarDecl, TSyntaxKind.InlineVar] then
+      for Name in E.Name.Split([',']) do
+        Result := Result + [Trim(Name)];
+    for Index := 0 to E.ChildCount - 1 do
+      Visit(E[Index], False);
+  end;
+
+begin
+  Result := nil;
+  Visit(ARoutine, True);
+end;
+
+procedure TDerefBeforeNilCheckRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Cache: IRuleDerivedCache;
+  Routine: TSyntaxNode;
+  Graph: TControlFlowGraph;
+  Node, CheckNode: TFlowNode;
+  Locals, Checked, Done: TArray<string>;
+  Derefs: TArray<TSyntaxNode>;
+  Deref, Part: TSyntaxNode;
+  Path, Key: string;
+  LineBreak: string;
+
+  function Contains(const AList: TArray<string>; const AName: string): Boolean;
+  var
+    Item: string;
+  begin
+    for Item in AList do
+      if SameText(Item, AName) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Pfade, die die Routine irgendwo auf nil prüft; nur diese lohnen die Suche.
+  procedure CollectChecked(E: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if (E.Kind = TSyntaxKind.Call) and (E.ChildCount = 2) and IsName(E[0], 'Assigned') and (FreedPath(E[1]) <> '') and
+      not Contains(Checked, FreedPath(E[1])) then
+      Checked := Checked + [FreedPath(E[1])];
+    if (E.Kind = TSyntaxKind.BinaryExpr) and (E.ChildCount = 2) then
+      for Index := 0 to 1 do
+        if (FreedPath(E[Index]) <> '') and (E[1 - Index].Kind = TSyntaxKind.Literal) and
+          SameText(E[1 - Index].Name, 'nil') and not Contains(Checked, FreedPath(E[Index])) then
+          Checked := Checked + [FreedPath(E[Index])];
+    for Index := 0 to E.ChildCount - 1 do
+      CollectChecked(E[Index]);
+  end;
+
+  // Wird APath auf einem Weg zu ANode schon geprüft (ohne Zuweisung dazwischen)? Rückwärts beenden nur sichere
+  // Zuweisungen den Weg: lieber eine Prüfung zu viel finden.
+  function CheckedBefore(ANode: TFlowNode; const APath: string): Boolean;
+  var
+    Visited: TArray<Boolean>;
+    Queue: TArray<TFlowNode>;
+    Head: Integer;
+    Current, Prev: TFlowNode;
+  begin
+    Result := False;
+    SetLength(Visited, Graph.Nodes.Count);
+    Queue := ANode.Predecessors.ToArray;
+    Head := 0;
+    while Head < Length(Queue) do
+    begin
+      Current := Queue[Head];
+      Inc(Head);
+      if Visited[Current.Index] then
+        Continue;
+      Visited[Current.Index] := True;
+      if (Current.Syntax <> nil) and NodeHasNilCheck(Current, APath) then
+        Exit(True);
+      if AssignsPath(Current, APath) then
+        Continue;
+      for Prev in Current.Predecessors do
+        if not Visited[Prev.Index] then
+          Queue := Queue + [Prev];
+    end;
+  end;
+
+  // Erste Prüfung von APath nach ANode ohne Änderung dazwischen; nil ohne.
+  function CheckAfter(ANode: TFlowNode; const APath: string; ALocal: Boolean): TFlowNode;
+  var
+    Visited: TArray<Boolean>;
+    Queue: TArray<TFlowNode>;
+    Head: Integer;
+    Current, Next: TFlowNode;
+  begin
+    Result := nil;
+    SetLength(Visited, Graph.Nodes.Count);
+    Queue := nil;
+    for Next in ANode.Successors do
+      if not ANode.IsImplicitRaiseEdge(Next) then
+        Queue := Queue + [Next];
+    Head := 0;
+    while Head < Length(Queue) do
+    begin
+      Current := Queue[Head];
+      Inc(Head);
+      if Visited[Current.Index] or (Current = ANode) then
+        Continue;
+      Visited[Current.Index] := True;
+      if (Current.Syntax <> nil) and NodeHasNilCheck(Current, APath) then
+        Exit(Current);
+      if ChangesPath(Current, APath, ALocal) then
+        Continue;
+      for Next in Current.Successors do
+        if not Visited[Next.Index] and not Current.IsImplicitRaiseEdge(Next) then
+          Queue := Queue + [Next];
+    end;
+  end;
+
+  function Source(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  // Einrückung vor ANode; False, wenn davor in der Zeile noch Code steht.
+  function Indent(ANode: TSyntaxNode; out AIndent: string): Boolean;
+  var
+    Start: Integer;
+  begin
+    Start := ANode.StartOffset;
+    while (Start > 0) and CharInSet(AContext.Text[Start], [' ', #9]) do
+      Dec(Start);
+    AIndent := Copy(AContext.Text, Start + 1, ANode.StartOffset - Start);
+    Result := (Start = 0) or CharInSet(AContext.Text[Start], [#10, #13]);
+  end;
+
+  // Zeilen von AText mit AIndent davor; führende und folgende Leerzeilen fallen weg.
+  function Reindented(const AText, AIndent: string): string;
+  var
+    Line: string;
+    Lines: TArray<string>;
+    Index: Integer;
+  begin
+    Result := '';
+    Lines := AText.Replace(#13#10, #10).Replace(#13, #10).Split([#10]);
+    for Index := 0 to High(Lines) do
+    begin
+      Line := Lines[Index];
+      if Trim(Line) = '' then
+        Continue;
+      Result := Result + AIndent + Line + LineBreak;
+    end;
+  end;
+
+  // Prüfung als if ohne else direkt nach dem Zugriff im selben Block: if … then begin Zugriff; Rumpf end.
+  function MoveCheckFix(AAccess: TFlowNode; ACheck: TFlowNode; out AFix: TRuleFix): Boolean;
+  var
+    Access, IfNode, Parent, Body, Condition: TSyntaxNode;
+    Position, Index: Integer;
+    Outer, Inner, Text, BodyText: string;
+  begin
+    Result := False;
+    Access := AAccess.Syntax;
+    IfNode := ACheck.Syntax;
+    if (AAccess.Kind <> TFlowNodeKind.Statement) or (ACheck.Kind <> TFlowNodeKind.Condition) or
+      (IfNode.Kind <> TSyntaxKind.IfStatement) or (Access.Parent = nil) or (Access.Parent <> IfNode.Parent) then
+      Exit;
+    Parent := Access.Parent;
+    Position := -1;
+    for Index := 0 to Parent.ChildCount - 1 do
+      if Parent[Index] = Access then
+        Position := Index;
+    if (Position < 0) or (Position + 1 >= Parent.ChildCount) or (Parent[Position + 1] <> IfNode) then
+      Exit;
+    // if Bedingung then Rumpf, ohne else.
+    Condition := nil;
+    Body := nil;
+    for Index := 0 to IfNode.ChildCount - 1 do
+      if IfNode[Index].Kind in FlowStatementKinds then
+      begin
+        if Body <> nil then
+          Exit;
+        Body := IfNode[Index];
+      end
+      else if Condition = nil then
+        Condition := IfNode[Index];
+    if (Condition = nil) or (Body = nil) then
+      Exit;
+    if not Indent(Access, Outer) then
+      Exit;
+    Inner := Outer + '  ';
+    if Body.Kind = TSyntaxKind.Block then
+    begin
+      BodyText := Source(Body);
+      // begin … end abschneiden; die Zeilen behalten ihre Einrückung.
+      BodyText := Copy(BodyText, 6, Length(BodyText) - 8);
+      BodyText := Reindented(BodyText, '');
+    end
+    else
+      BodyText := Inner + Trim(Source(Body)) + ';' + LineBreak;
+    Text := 'if ' + Trim(Source(Condition)) + ' then' + LineBreak + Outer + 'begin' + LineBreak +
+      Inner + Trim(Source(Access)) + ';' + LineBreak + BodyText + Outer + 'end';
+    AFix := TRuleFix.Create('Prüfung vor den Zugriff ziehen',
+      [TRuleEdit.Create(TTextRange.Create(Access.StartPos, IfNode.EndPos), Text)]);
+    Result := True;
+  end;
+
+var
+  Fix: TRuleFix;
+  Fixes: TArray<TRuleFix>;
+  IsLocal: Boolean;
+begin
+  if AContext.Tree = nil then
+    Exit;
+  LineBreak := #10;
+  if Pos(#13#10, AContext.Text) > 0 then
+    LineBreak := #13#10;
+  Cache := TRuleDerived.Open(AContext);
+  for Routine in TRuleDerived.Routines(Cache, AContext) do
+  begin
+    Checked := nil;
+    CollectChecked(Routine);
+    if Checked = nil then
+      Continue;
+    Graph := TRuleDerived.Graph(Cache, AContext, Routine);
+    if not Graph.Complete then
+      Continue;
+    Locals := LocalNames(Routine);
+    Done := nil;
+    for Node in Graph.Nodes do
+    begin
+      if (Node.Syntax = nil) or not (Node.Kind in [TFlowNodeKind.Statement, TFlowNodeKind.Condition]) then
+        Continue;
+      Derefs := nil;
+      for Part in OwnParts(Node.Syntax) do
+        CollectDerefs(Part, Derefs);
+      for Deref in Derefs do
+      begin
+        Path := FreedPath(Deref);
+        if not Contains(Checked, Path) or NodeHasNilCheck(Node, Path) then
+          Continue;
+        IsLocal := Contains(Locals, Path);
+        // X := X.Next: die spätere Prüfung gilt dem neuen Wert. Ebenso Supports(Y, IX, X) and X.Foo: die
+        // Übergabe im selben Ausdruck setzt X erst.
+        if ChangesPath(Node, Path, True) then
+          Continue;
+        CheckNode := CheckAfter(Node, Path, IsLocal);
+        // Eine Prüfung weiter oben, die erst der nächste Schleifendurchlauf erreicht, schützt den Zugriff.
+        if (CheckNode = nil) or (CheckNode.Syntax.StartOffset < Node.Syntax.StartOffset) then
+          Continue;
+        // Nur wenn jeder Weg zur Prüfung durch den Zugriff führt; sonst gilt sie den anderen Wegen
+        // (X := TX.Create; X.Init; … if X <> nil nach einem Zweig ohne Create).
+        if Graph.Dominates(Node, CheckNode) <> TFlowAnswer.Yes then
+          Continue;
+        // while X <> nil do … X := X.Parent: die Bedingung gilt den späteren Durchläufen.
+        if (CheckNode.Syntax.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement]) and
+          SubtreeAssigns(CheckNode.Syntax, Path) then
+          Continue;
+        Key := LowerCase(Path) + '@' + IntToStr(CheckNode.Index);
+        if Contains(Done, Key) or CheckedBefore(Node, Path) then
+          Continue;
+        Done := Done + [Key];
+        Fixes := nil;
+        if MoveCheckFix(Node, CheckNode, Fix) then
+          Fixes := [Fix];
+        AReport.Add(NodeRange(Deref), Format('%s wird hier benutzt, aber erst in Zeile %d auf nil geprüft.',
+          [Path, CheckNode.Syntax.StartPos.Line + 1]), TRuleConfidence.Medium, Fixes);
+      end;
+    end;
+  end;
+end;
+
 procedure RegisterFlowRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TResultNotSetRule.Create);
   ARegistry.Register(TPossiblyUninitializedRule.Create);
   ARegistry.Register(TUnreachableCodeRule.Create);
   ARegistry.Register(TUseAfterFreeRule.Create);
+  ARegistry.Register(TDerefBeforeNilCheckRule.Create);
 end;
 
 end.

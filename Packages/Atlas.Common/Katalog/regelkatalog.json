@@ -1215,6 +1215,16 @@
       "description": "After X.Free, X.Destroy, X.DisposeOf, FreeAndNil(X) or Dispose(X), X is used again without a new assignment: a method, field, index or X^, with X, and after Free also Assigned(X) (always True) or a second Free. The rule follows the data flow of the routine; an assignment to X, passing X to a routine, @X and after FreeAndNil a check for nil end the path, ways only through a possible exception are left out. Confidence high when release and access stand one after the other in the same block, otherwise medium. No automatic fix; the action jumps to the release.",
       "bad": "Bericht.Free;\nProtokoll.Add('Seiten: ' + IntToStr(Bericht.Seiten));",
       "good": "Protokoll.Add('Seiten: ' + IntToStr(Bericht.Seiten));\nBericht.Free;"
+    },
+    {
+      "id": "deref-before-nil-check",
+      "name": "Used first, checked for nil later",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "X is dereferenced (X.Field, X.Method, X^) and only afterwards checked with Assigned(X), X <> nil or X = nil. Either the check is superfluous or the access before it can crash. Reported only when every path to the check passes the access and X was not checked before; a new assignment, passing X to a routine and, for fields and global variables, any call in between end the path. Medium confidence. When the check is an if without else directly after the access in the same block, the quick fix moves the access into it.",
+      "bad": "Titel := Kunde.Name;\nif Assigned(Kunde) then\n  Anzeigen(Kunde);",
+      "good": "if Assigned(Kunde) then\nbegin\n  Titel := Kunde.Name;\n  Anzeigen(Kunde);\nend;"
     }
   ]
 }

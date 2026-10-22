@@ -1235,6 +1235,16 @@ begin
     '      "description": "After X.Free, X.Destroy, X.DisposeOf, FreeAndNil(X) or Dispose(X), X is used again without a new assignment: a method, field, index or X^, with X, and after Free also Assigned(X)' + ' (always True) or a second Free. The rule follows the data flow of the routine; an assignment to X, passing X to a routine, @X and after FreeAndNil a check for nil end the path, ways only through a po' + 'ssible exception are left out. Confidence high when release and access stand one after the other in the same block, otherwise medium. No automatic fix; the action jumps to the release.",' + #10 +
     '      "bad": "Bericht.Free;\nProtokoll.Add(''Seiten: '' + IntToStr(Bericht.Seiten));",' + #10 +
     '      "good": "Protokoll.Add(''Seiten: '' + IntToStr(Bericht.Seiten));\nBericht.Free;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "deref-before-nil-check",' + #10 +
+    '      "name": "Used first, checked for nil later",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "X is dereferenced (X.Field, X.Method, X^) and only afterwards checked with Assigned(X), X <> nil or X = nil. Either the check is superfluous or the access before it can crash. Re' + 'ported only when every path to the check passes the access and X was not checked before; a new assignment, passing X to a routine and, for fields and global variables, any call in between end the path' + '. Medium confidence. When the check is an if without else directly after the access in the same block, the quick fix moves the access into it.",' + #10 +
+    '      "bad": "Titel := Kunde.Name;\nif Assigned(Kunde) then\n  Anzeigen(Kunde);",' + #10 +
+    '      "good": "if Assigned(Kunde) then\nbegin\n  Titel := Kunde.Name;\n  Anzeigen(Kunde);\nend;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -1882,6 +1892,11 @@ begin
     '      "id": "use-after-free",' + #10 +
     '      "name": "Objekt nach Free weiter benutzt",' + #10 +
     '      "description": "Nach X.Free, X.Destroy, X.DisposeOf, FreeAndNil(X) oder Dispose(X) wird X ohne neue Zuweisung wieder benutzt: Methode, Feld, Index oder X^, with X, nach Free auch Assigned(X) (im' + 'mer True) oder ein zweites Free. Die Regel folgt dem Datenfluss der Routine; eine Zuweisung an X, die Übergabe von X an eine Routine, @X und nach FreeAndNil eine Abfrage auf nil beenden den Weg, Wege ' + 'nur über eine mögliche Ausnahme bleiben aus. Konfidenz hoch, wenn Freigabe und Zugriff im selben Block nacheinander stehen, sonst mittel. Keine automatische Korrektur; die Aktion springt zur Freigabe.' + '"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "deref-before-nil-check",' + #10 +
+    '      "name": "Erst benutzt, dann auf nil geprüft",' + #10 +
+    '      "description": "X wird dereferenziert (X.Feld, X.Methode, X^) und erst danach mit Assigned(X), X <> nil oder X = nil geprüft. Entweder ist die Prüfung überflüssig oder der Zugriff davor kann kna' + 'llen. Gemeldet wird nur, wenn jeder Weg zur Prüfung durch den Zugriff führt und X vorher nicht geprüft wurde; eine neue Zuweisung, die Übergabe von X an eine Routine und bei Feldern und globalen Varia' + 'blen jeder Aufruf dazwischen beenden den Weg. Konfidenz mittel. Ist die Prüfung ein if ohne else direkt nach dem Zugriff im selben Block, zieht die Schnellkorrektur den Zugriff hinein."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 32 |
+| [Fehler finden](#gruppe-find-bugs) | 33 |
 | [Exceptions](#gruppe-exceptions) | 5 |
 | [Threads](#gruppe-threads) | 6 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -56,6 +56,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`loop-off-by-one`](#loop-off-by-one) | Schleife läuft einen Schritt zu weit | Bug | Warnung |
 | [`collection-modified-in-loop`](#collection-modified-in-loop) | Liste in der eigenen Schleife verändert | Bug | Warnung |
 | [`use-after-free`](#use-after-free) | Objekt nach Free weiter benutzt | Bug | Fehler |
+| [`deref-before-nil-check`](#deref-before-nil-check) | Erst benutzt, dann auf nil geprüft | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -2618,4 +2619,29 @@ Richtig:
 ```pascal
 Protokoll.Add('Seiten: ' + IntToStr(Bericht.Seiten));
 Bericht.Free;
+```
+
+<a id="deref-before-nil-check"></a>
+### deref-before-nil-check
+
+**Erst benutzt, dann auf nil geprüft** · Bug · Warnung · Gruppe Fehler finden
+
+X wird dereferenziert (X.Feld, X.Methode, X^) und erst danach mit Assigned(X), X <> nil oder X = nil geprüft. Entweder ist die Prüfung überflüssig oder der Zugriff davor kann knallen. Gemeldet wird nur, wenn jeder Weg zur Prüfung durch den Zugriff führt und X vorher nicht geprüft wurde; eine neue Zuweisung, die Übergabe von X an eine Routine und bei Feldern und globalen Variablen jeder Aufruf dazwischen beenden den Weg. Konfidenz mittel. Ist die Prüfung ein if ohne else direkt nach dem Zugriff im selben Block, zieht die Schnellkorrektur den Zugriff hinein.
+
+Mit Treffer:
+
+```pascal
+Titel := Kunde.Name;
+if Assigned(Kunde) then
+  Anzeigen(Kunde);
+```
+
+Richtig:
+
+```pascal
+if Assigned(Kunde) then
+begin
+  Titel := Kunde.Name;
+  Anzeigen(Kunde);
+end;
 ```
