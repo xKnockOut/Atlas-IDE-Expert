@@ -2516,8 +2516,16 @@ begin
     Assert.IsFalse(Page.HoverProblemActionsCheck.Checked);
     Page.ProblemsWindowScopeChoice.Choice := 0;
     Page.ProblemsWindowCompilerCheck.Checked := True;
+    // Gruppe „Compiler vorab“ (#1024): im Knoten der Gruppe unter dem Regel-Editor.
+    Assert.AreEqual(0, Page.ProblemsCompilerMergeChoice.Choice);
+    Assert.IsTrue(Page.ProblemsShowCompilerCodeCheck.Checked);
+    Assert.IsTrue(SheetOf(Page.ProblemsShowCompilerCodeCheck) = Page.NodeSheet('rules.group.compiler'));
+    Page.ProblemsCompilerMergeChoice.Choice := 1;
+    Page.ProblemsShowCompilerCodeCheck.Checked := False;
     Settings := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Settings);
+    Assert.AreEqual('both', Settings.ProblemsCompilerMerge);
+    Assert.IsFalse(Settings.ProblemsShowCompilerCode);
     Assert.AreEqual('file', Settings.ProblemsWindowScope);
     Assert.AreEqual('rule', Settings.ProblemsWindowGroupBy);
     Assert.IsTrue(Settings.ProblemsWindowCompiler);

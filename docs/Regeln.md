@@ -284,6 +284,8 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 Der Parser konnte den Quelltext nicht lesen.
 
+Stufe A (Parser genügt).
+
 Mit Treffer:
 
 ```pascal
@@ -1718,6 +1720,8 @@ FName := AName;
 
 Die Schleife beginnt beim oberen Wert (High, Count - 1) und endet beim unteren, verwendet aber to. Sie läuft nie; gemeint war downto.
 
+Stufe A (Parser genügt).
+
 Mit Treffer:
 
 ```pascal
@@ -2431,6 +2435,8 @@ end;
 **Veraltetes Symbol** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, platform oder experimental wird verwendet (wie Compilerwarnungen W1000, W1002 und W1003). Der Editor streicht den Namen durch; die Meldung nennt den Grund aus deprecated 'Grund'. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet.
+
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -4154,6 +4160,8 @@ Der Kopf im implementation-Teil hat andere Parameter (Anzahl, Name, Typ, const/v
 
 Entspricht der Compilermeldung `E2037`, `E2211`, `E2065`.
 
+Stufe B (Namensauflösung über Units).
+
 Mit Treffer:
 
 ```pascal
@@ -4178,6 +4186,8 @@ procedure TKonto.Buchen(const Betrag: Currency; Datum: TDate);
 Eine Klasse nennt ein Interface, implementiert aber nicht alle seine Methoden, auch die der Vorfahr-Interfaces (wie E2291). Eine gleichnamige Methode der Klasse mit anderer Signatur wird an dieser Methode gemeldet (wie E2211). Geerbte Methoden der Vorfahrklassen, Methodenzuordnungen (procedure IFoo.Bar = Baz) und Properties mit implements zählen; ebenso die öffentlichen Methoden von TObject und die IInterface-Methoden von TInterfacedObject und ähnlichen RTL-Basen. Endet die Kette der Vorfahrklassen bei einer unbekannten Klasse oder ist das Interface unbekannt, bleibt die Regel still. Gemeldet wird auch eine Methodenzuordnung für ein Interface, das die Klasse nicht nennt (wie E2265). Klassen in {$IF}-Blöcken werden übergangen. Korrektur: fehlende Methoden deklarieren und leer implementieren (nicht bei abweichendem Kopf).
 
 Entspricht der Compilermeldung `E2291`, `E2211`, `E2265`.
+
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -4208,6 +4218,8 @@ Eine Unit aus uses oder contains liegt weder im Projekt noch in den Ordnern, die
 
 Entspricht der Compilermeldung `F2613`, `F1027`, `F1026`, `E2202`, `F2092`.
 
+Stufe B (Namensauflösung über Units).
+
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
 | `searchPaths` | string | `"project"` | Wo Units gesucht werden: project (wie der Compiler: Projekt, Suchpfade der .dproj, Bibliothekspfade, .pas und .dcu), atlas (was Atlas kennt: Index und Quellpfade der Installation) oder both. |
@@ -4234,6 +4246,8 @@ uses
 Ein Attribut [Name] lässt sich weder einer Klasse NameAttribute noch Name zuordnen, meist weil eine Unit in uses fehlt. Delphi warnt nur (W1074) und übergeht das Attribut: DUnitX-Tests laufen dann nicht, JSON- oder ORM-Zuordnungen fehlen. Die Meldung nennt die Unit, die das Attribut im Index deklariert; eine Fassaden-Unit, die den Typ aus einer anderen Kandidatin weiterreicht (DUnitX.TestFramework statt DUnitX.Attributes), geht vor, und die DUnitX-Attribute sind auch ohne DUnitX im Index bekannt. Attribute des Compilers wie Weak, Unsafe, Ref und Volatile zählen immer. Still ohne die Unit System im Index, wenn eine Unit aus uses nicht im Index steht (sie könnte das Attribut deklarieren), in {$IF}-Blöcken und bei unbekanntem Vorfahren der umgebenden Klasse; mit Include-Dateien ist die Konfidenz mittel. Korrektur: Unit in uses aufnehmen.
 
 Entspricht der Compilermeldung `W1074`, `E2289`.
+
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -4264,6 +4278,8 @@ Ein Vergleich wie Result = 0; oder FAktiv = True; steht als eigene Anweisung; ge
 
 Entspricht der Compilermeldung `E2014`.
 
+Stufe A (Parser genügt).
+
 Mit Treffer:
 
 ```pascal
@@ -4284,6 +4300,8 @@ Result := 0;
 Zwei Marken einer case-Anweisung decken denselben Wert ab (wie E2030), auch über Bereiche (1..5 und 3), Konstanten mit gleichem Wert, Zeichen ('a' und #97) und Bereiche von Aufzählungswerten. Gleiches gilt für die Marken eines varianten Record-Teils (wie E2027). Die Werte ergeben sich aus Zahlen, Zeichen, Konstanten und Aufzählungswerten über die Namensauflösung; Marken mit unbekanntem Wert vergleicht die Regel nur über den Text. Gemeldet wird eine Marke nur, wenn die frühere immer mit übersetzt wird: verschiedene Zweige desselben {$IF} stoßen nie zusammen. Korrektur: den doppelten Wert aus dem späteren Zweig entfernen bzw. den ganzen Zweig, wenn es seine einzige Marke war; eine teilweise Überschneidung von Bereichen meldet die Regel ohne Korrektur.
 
 Entspricht der Compilermeldung `E2030`, `E2027`.
+
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -4312,6 +4330,8 @@ end;
 In einem Sichtbarkeitsabschnitt einer Klasse, eines Objekts oder Records folgt eine Felddeklaration auf eine Methode oder Property. Delphi verlangt Felder zuerst oder einen neuen Abschnitt bzw. var (E2169); FPC übersetzt das. Korrekturen: das Feld samt Attributen und Kommentaren an den Anfang des Abschnitts verschieben oder var davor setzen. In Records steht var vorn, weil das Verschieben das Speicherlayout ändert. Gemeldet wird ein Feld nur, wenn eine Methode davor immer mit übersetzt wird, wenn das Feld übersetzt wird; mit bedingten Zweigen dazwischen gibt es nur var.
 
 Entspricht der Compilermeldung `E2169`.
+
+Stufe A (Parser genügt).
 
 Mit Treffer:
 
@@ -4342,6 +4362,8 @@ Zwei Routinen oder Methoden gleichen Namens im selben Gültigkeitsbereich (ein T
 
 Entspricht der Compilermeldung `E2254`, `E2267`, `E2252`, `E2301`.
 
+Stufe A (Parser genügt).
+
 Mit Treffer:
 
 ```pascal
@@ -4364,6 +4386,8 @@ procedure Laden(Strom: TStream); overload;
 Ein Bezeichner ist im selben Gültigkeitsbereich zweimal deklariert (wie E2004): lokale Variable, Konstante, Typ oder Label und ein Parameter der Routine, zwei Felder, ein Feld und eine Methode oder Property eines Typs, zwei Typen, Konstante und Variable der Unit über interface und implementation hinweg. Ebenso eine Unit doppelt in uses oder in den uses-Klauseln von interface und implementation zugleich (Option checkUses). Überladungen und Rümpfe von Routinen, eine Vorwärtsdeklaration und ihr Typ, TList neben TList<T> und Deklarationen in verschiedenen Zweigen desselben {$IF} zählen nicht. Korrektur: zweite Deklaration entfernen (den ganzen var-, const-, type- oder label-Abschnitt, wenn sie seine einzige war; bei uses den doppelten Eintrag); keine bei Parametern, Methoden und Properties.
 
 Entspricht der Compilermeldung `E2004`.
+
+Stufe A (Parser genügt).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -4394,6 +4418,8 @@ Ein {$IFDEF}, {$IFNDEF}, {$IFOPT} oder {$IF}, das nie geschlossen wird, sodass d
 
 Entspricht der Compilermeldung `E2095`, `E2280`, `E2279`, `E2173`, `W1030`, `W1078`, `W1079`, `E2573`.
 
+Stufe A (Parser genügt).
+
 Mit Treffer:
 
 ```pascal
@@ -4421,6 +4447,8 @@ procedure TDienst.Starten;
 Eine Methode mit override, zu der kein Vorfahr eine virtuelle (oder dynamic, abstract) Methode mit gleichem Namen und gleichen Parametern hat (wie E2137): oft ein Tippfehler (Destory) oder im Vorfahren geänderte Parameter. Die Meldung nennt die nächstliegende virtuelle Methode des Vorfahren („dort heißt es Ausfuehren(const Modus: TModus)“) bzw. einen ähnlichen Namen. Außerdem: override auf eine statische Methode (wie E2170), auf eine finale (wie E2352) und Ableiten von einer sealed-Klasse (wie E2353). Vorfahren sucht die Regel in der Datei und im Symbolindex; bricht die Kette an einer unbekannten Klasse ab, bleibt sie still. Ohne System im Index gelten die virtuellen Methoden von TObject als vorhanden. Typparameter generischer Vorfahren, Typaliase und Synonyme wie Longint passen. Korrektur: Signatur des Vorfahren in Deklaration und Implementierung übernehmen.
 
 Entspricht der Compilermeldung `E2137`, `E2170`, `E2352`, `E2353`.
+
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -4453,6 +4481,8 @@ Create auf einer Klasse, die abstrakte Methoden deklariert oder erbt, ohne sie z
 
 Entspricht der Compilermeldung `W1020`, `E2402`.
 
+Stufe B (Namensauflösung über Units).
+
 Mit Treffer:
 
 ```pascal
@@ -4475,6 +4505,8 @@ Gesamt := Gesamt + Form.Flaeche;
 Der Name hinter read oder write einer Property passt nicht: Er ist weder in der Klasse noch in ihren Vorfahren deklariert oder ist eine Property (wie E2168); Getter oder Setter haben die falsche Art, Parameter oder Typen (wie E2234); der Setter nimmt einen var- oder out-Parameter (wie E2282); die Zugriffsmethode ist überladen (wie E2271); eine Klassen-Property nutzt ein Instanzmitglied oder eine Klassenmethode ohne static (wie E2355), eine Instanz-Property ein Klassenmitglied (wie E2356); eine Array-Property oder eine Property mit index nutzt ein Feld (wie E2174); ein Feldselektor geht über ein Feld, das kein Record ist (wie E2459), nennt ein Mitglied, das kein Feld ist (wie E2461), oder ein Feld, das dem Record fehlt (wie E2562). Namen sucht die Regel in der Datei und für Vorfahren im Symbolindex; sie bleibt still, wenn die Kette der Vorfahren abbricht, der Name nur in einem inaktiven Zweig steht, die Klasse ihn nicht sieht oder Include-Dateien einbindet. Typen vergleicht sie nur, wenn beide eingebaut oder als eigener Typ deklariert sind. Korrektur für ein fehlendes F<Name>, Get<Name> oder Set<Name>: anlegen (wie die Vervollständigung hinter read/write, completion.accessorSection).
 
 Entspricht der Compilermeldung `E2168`, `E2234`, `E2282`, `E2271`, `E2355`, `E2356`, `E2174`, `E2459`, `E2461`, `E2562`.
+
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -4508,6 +4540,8 @@ Zuweisung an ein Feld eines Records, den eine Property mit Getter, eine Default-
 
 Entspricht der Compilermeldung `E2064`, `E2453`.
 
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
+
 Mit Treffer:
 
 ```pascal
@@ -4531,6 +4565,8 @@ Zuweisung an eine Property ohne write (wie E2129) bzw. Lesen einer Property ohne
 
 Entspricht der Compilermeldung `E2129`, `E2130`.
 
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
+
 Mit Treffer:
 
 ```pascal
@@ -4551,6 +4587,8 @@ Liste.Clear;
 Ein Aufruf übergibt mehr Argumente, als die Routine Parameter hat (wie E2034), oder weniger als Parameter ohne Standardwert (wie E2035), auch als Anweisung ohne Klammern. Geprüft wird nur, wenn der Name sicher genau eine Routine meint: Überladungen, varargs, Typumwandlungen, Variablen prozeduralen Typs, Bezeichner von System ohne Quelltext und Deklarationen in bedingten Zweigen bleiben beim Compiler (E2250). Eine Funktion mit zu vielen Argumenten meldet die Regel nur bei bekanntem, nicht prozeduralem Ergebnistyp. Korrektur: Signaturhilfe öffnen setzt die Schreibmarke in die Klammern und öffnet den Parameter-Hint (ergänzt () bei Bedarf).
 
 Entspricht der Compilermeldung `E2034`, `E2035`.
+
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
 
 Mit Treffer:
 

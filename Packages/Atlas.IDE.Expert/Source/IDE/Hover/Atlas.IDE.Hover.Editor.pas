@@ -390,6 +390,7 @@ end;
 procedure TAtlasEditorHover.Refresh;
 begin
   FTip.ProblemActions := TAtlasIdeSettings.Current.HoverProblemActions;
+  FTip.HideCompilerCode := not TAtlasIdeSettings.Current.ProblemsShowCompilerCode;
   FTip.UpdateContent(CurrentView);
 end;
 
@@ -654,6 +655,7 @@ begin
   FUsagesCount := -1;
   TAtlasIdeStyle.Apply(FTip, FWordRect);
   FTip.ProblemActions := TAtlasIdeSettings.Current.HoverProblemActions;
+  FTip.HideCompilerCode := not TAtlasIdeSettings.Current.ProblemsShowCompilerCode;
   FTip.ShowContent(CurrentView, FWordRect);
   TAtlasKeyHook.Add(FKeys);
   FShownKey := FKey;

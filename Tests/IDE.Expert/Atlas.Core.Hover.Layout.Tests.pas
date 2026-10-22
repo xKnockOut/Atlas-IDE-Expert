@@ -61,6 +61,10 @@ type
     /// <summary>#909: Fehler zuerst, Pille mit der Art, Herkunft mit Regel-ID bzw. Meldungsnummer.</summary>
     [Test]
     procedure FindingsShowPillAndRuleErrorsFirst;
+    /// <summary>#1024: vom Build bestätigter Befund mit „Atlas + dcc“ und Code; ohne Code ohne „(wie …)“.
+    /// </summary>
+    [Test]
+    procedure ConfirmedFindingShowsBothSources;
     /// <summary>#909: Aktionszeile nur an Regelbefunden und nur mit hover.problemActions.</summary>
     [Test]
     procedure RuleFindingsOfferActions;
@@ -656,6 +660,33 @@ begin
   // Ohne Aktionszeile keine Klickflächen.
   Assert.AreEqual('', ActionCodes(Layout));
   Assert.AreEqual(-1, Layout.FixProblem);
+end;
+
+procedure THoverLayoutTests.ConfirmedFindingShowsBothSources;
+var
+  HoverView: TAtlasHoverView;
+  HoverInput: TAtlasHoverInput;
+  Layout: TAtlasHoverLayout;
+  Problem: TAtlasProblem;
+begin
+  Problem := Finding(TAtlasProblemSeverity.Error, 'Atlas', 'argument-count-mismatch',
+    'Suchen erwartet 1 Argumente (wie E2035).', '');
+  Problem.Confirmed := True;
+  Problem.ConfirmedCode := 'E2035';
+  HoverView := View('');
+  HoverView.Problems := [Problem];
+  HoverInput := Input(HoverView, 460);
+  HoverInput.Texts.Confirmed := 'vom Compiler bestätigt';
+  HoverInput.Texts.ConfirmedCode := 'vom Compiler bestätigt (%s)';
+  Layout := Build(HoverInput);
+  Assert.AreEqual('Suchen erwartet 1 Argumente (wie E2035).|', TextsOf(Layout, TAtlasHoverItemKind.Block));
+  Assert.AreEqual('Atlas + dcc · argument-count-mismatch · vom Compiler bestätigt (E2035)|',
+    TextsOf(Layout, TAtlasHoverItemKind.Text));
+  HoverInput.HideCompilerCode := True;
+  Layout := Build(HoverInput);
+  Assert.AreEqual('Suchen erwartet 1 Argumente.|', TextsOf(Layout, TAtlasHoverItemKind.Block));
+  Assert.AreEqual('Atlas + dcc · argument-count-mismatch · vom Compiler bestätigt|',
+    TextsOf(Layout, TAtlasHoverItemKind.Text));
 end;
 
 procedure THoverLayoutTests.RuleFindingsOfferActions;

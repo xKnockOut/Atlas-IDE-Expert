@@ -484,6 +484,18 @@ begin
     Assert.AreEqual('exceptions', Item.GetValue<string>('data.group'));
     Assert.AreEqual('code-smell', Item.GetValue<string>('data.category'));
     Assert.AreEqual('Ausnahme protokollieren', Item.GetValue<string>('data.fix'));
+    // Ohne Compilercodes kein Feld.
+    Assert.IsNull((Item.GetValue('data') as TJSONObject).FindValue('compilerCodes'));
+  finally
+    Item.Free;
+  end;
+  // Gruppe „Compiler vorab“ (#1024): Codes für den Abgleich mit dcc im Plugin.
+  Finding.RuleId := 'argument-count-mismatch';
+  Finding.Fixes := nil;
+  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  try
+    Assert.AreEqual('compiler', Item.GetValue<string>('data.group'));
+    Assert.AreEqual('["E2034","E2035"]', (Item.GetValue('data') as TJSONObject).GetValue('compilerCodes').ToJSON);
   finally
     Item.Free;
   end;

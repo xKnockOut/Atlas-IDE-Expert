@@ -4133,3 +4133,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | AK5 | Überladene Routine (`overload`), `Format('x', [1], 2)`, `Writeln(1, 2, 3)`, `TKunde(X)`, Aufruf einer Variablen vom Typ `TProc`, Deklaration in `{$IFDEF}`/`{$ELSE}` mit verschiedenen Listen | Keine Meldung |
 | AK6 | `"argument-count-mismatch": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | AK7 | Abgleich mit Delphi: AK1, AK3, AK4 übersetzen | dcc meldet E2035 bzw. E2034 an denselben Stellen, für AK5 nichts |
+
+## Gruppe „Compiler vorab“: Stufen und Zusammenführen mit dcc (#1024)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; eine Unit mit `Versenden(Kunde.Mail, 'Rechnung');` wie in AK1.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CV1 | Tools › Optionen › Atlas › Prüfregeln › Compiler vorab öffnen | Hauptschalter „Regeln der Gruppe „Compiler vorab“ prüfen“, darunter „Regeln der Stufe T prüfen …“, die Regeltabelle, „Bestätigte Compilermeldungen“ und „Compilercode (E2035 …) zu Befunden zeigen“ |
+| CV2 | Projekt bauen (Strg+F9) mit dem Fehler aus AK1 | Ein Eintrag an der Zeile: Atlas-Befund mit Herkunft „Atlas + dcc · argument-count-mismatch · vom Compiler bestätigt (E2035)“ im Hover; im Fenster „Atlas-Prüfung“ mit „Compilermeldungen im Fenster zeigen“ Spalte „Compiler“ = „E2035 · Atlas + dcc“, keine zweite Zeile von dcc (**Abnahme**) |
+| CV3 | „Bestätigte Compilermeldungen“ = „beide zeigen“, OK | Atlas-Befund und dcc-Meldung stehen beide da; der Atlas-Befund bleibt „vom Compiler bestätigt“ |
+| CV4 | Fehler beheben, erneut bauen | Weder Atlas-Befund noch dcc-Meldung; ein anderer dcc-Fehler an einer anderen Zeile bleibt als eigene Zeile |
+| CV5 | „Compilercode … zeigen“ aus | Meldungen ohne „(wie E2035)“, Spalte „Compiler“ verschwindet (Spaltenlayout bleibt gemerkt), Hover nur „vom Compiler bestätigt“ |
+| CV6 | „Regeln der Stufe T prüfen“ aus | In atlas.json steht `"group:compiler": {"typeLevel": "off"}`; `argument-count-mismatch` und die übrigen Regeln der Stufe T (Regeln.md) melden nichts, `duplicate-case-label` (Stufe B) meldet weiter |
+| CV7 | Hauptschalter der Gruppe aus | `"group:compiler": {"typeLevel": "off", "severity": "off"}` bzw. `"off"`; Tabelle, Stufe T und die beiden Plugin-Einstellungen gesperrt, Knoten grau; keine Regel der Gruppe meldet |
+| CV8 | `"group:compiler": {"typeLevel": "maybe"}` in atlas.json | Hinweis „"typeLevel" muss "certain" oder "off" sein“ beim Laden der Konfiguration |

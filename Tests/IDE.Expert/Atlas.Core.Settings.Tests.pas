@@ -1953,6 +1953,15 @@ begin
   Assert.IsTrue(Settings.ProblemsLive);
   Assert.IsTrue(Settings.HoverProblemActions);
   Assert.IsFalse(Settings.ProblemsList, 'Meldungsfenster-Gruppe seit dem Prüffenster aus');
+  // Gruppe „Compiler vorab“ (#1024).
+  Assert.AreEqual('merge', Settings.ProblemsCompilerMerge);
+  Assert.IsTrue(Settings.ProblemsShowCompilerCode);
+  Settings.ProblemsCompilerMerge := 'BOTH';
+  Settings.Normalize;
+  Assert.AreEqual('both', Settings.ProblemsCompilerMerge);
+  Settings.ProblemsCompilerMerge := 'beides';
+  Settings.Normalize;
+  Assert.AreEqual('merge', Settings.ProblemsCompilerMerge, 'Unbekanntes = Vorgabe');
   Settings.ProblemsWindowScope := 'PROJECT';
   Settings.ProblemsWindowGroupBy := 'unsinn';
   Settings.ProblemsWindowKey := -1;
@@ -1970,6 +1979,8 @@ begin
   Settings.ProblemsLive := False;
   Settings.HoverProblemActions := False;
   Settings.ProblemsList := True;
+  Settings.ProblemsCompilerMerge := 'both';
+  Settings.ProblemsShowCompilerCode := False;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
@@ -1983,6 +1994,8 @@ begin
   Assert.AreEqual($C051, Loaded.ProblemsWindowKey);
   Assert.IsFalse(Loaded.ProblemsLive);
   Assert.IsFalse(Loaded.HoverProblemActions);
+  Assert.AreEqual('both', Loaded.ProblemsCompilerMerge);
+  Assert.IsFalse(Loaded.ProblemsShowCompilerCode);
   Assert.IsTrue(Loaded.ProblemsList);
 end;
 

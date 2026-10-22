@@ -24,7 +24,10 @@
 //
 // Hauptschalter je Gruppe (#909): "rules": { "group:threads": "off" } schaltet
 // alle Regeln der Gruppe ab, auch einzeln eingestellte; die Gruppe steht im
-// Regelkatalog.
+// Regelkatalog. Für die Gruppe „Compiler vorab“ (#1024) auch als Objekt:
+// "group:compiler": {"severity": "off", "typeLevel": "off"}; typeLevel "off"
+// schaltet die Regeln der Stufe T (Katalogfeld "level") ab, "certain" (Vorgabe)
+// lässt sie laufen, sie melden dann nur bei sicher bekanntem Typ.
 //
 // Regelprofile, Pfadregeln und das Ausnehmen von Test-Units (#146) wertet
 // TRuleProfiles aus; maßgeblich ist das Profil in ASettings.Profile, für
@@ -60,6 +63,8 @@ type
       const ARelativePath: string; out AEnabled: Boolean): TRuleSeverity; overload; static;
     /// <summary>Ist die Gruppe der Regel über "group:&lt;gruppe&gt;": "off" abgeschaltet (#909)?</summary>
     class function GroupOff(const ARuleId: string; const ASettings: TServerSettings): Boolean; static;
+    /// <summary>Regel der Stufe T der Gruppe „Compiler vorab“ bei "typeLevel": "off" (#1024)?</summary>
+    class function TypeLevelOff(const ARuleId: string; const ASettings: TServerSettings): Boolean; static;
     /// <summary>Optionen der Regel als JSON-Text, sonst ''.</summary>
     class function RuleOptions(const ARuleId: string; const ASettings: TServerSettings): string; static;
     /// <summary>ASeverity begrenzt nach Konfidenz.</summary>
@@ -182,7 +187,7 @@ end;
 class function TRuleEngine.EffectiveSeverity(const ARule: TRuleDescriptor; const ASettings: TServerSettings;
   const ARelativePath: string; out AEnabled: Boolean): TRuleSeverity;
 begin
-  if GroupOff(ARule.Id, ASettings) then
+  if GroupOff(ARule.Id, ASettings) or TypeLevelOff(ARule.Id, ASettings) then
   begin
     AEnabled := False;
     Exit(TRuleSeverity.Off);
@@ -206,6 +211,31 @@ var
 begin
   Result := (Length(ASettings.Rules) > 0) and TRuleCatalog.Shared.TryFind(ARuleId, Entry) and
     (ASettings.RuleSeverity(TRuleCatalog.GroupKey(Entry.Group), TRuleSeverity.Default) = TRuleSeverity.Off);
+end;
+
+class function TRuleEngine.TypeLevelOff(const ARuleId: string; const ASettings: TServerSettings): Boolean;
+var
+  Entry: TRuleCatalogEntry;
+  Options: string;
+  Value, Level: TJSONValue;
+begin
+  Result := False;
+  if (Length(ASettings.Rules) = 0) or not TRuleCatalog.Shared.TryFind(ARuleId, Entry) or
+    (Entry.Group <> TRuleGroup.Compiler) or (Entry.Level <> 'T') then
+    Exit;
+  Options := RuleOptions(TRuleCatalog.GroupKey(Entry.Group), ASettings);
+  if Options = '' then
+    Exit;
+  Value := TJSONObject.ParseJSONValue(Options);
+  try
+    if Value is TJSONObject then
+    begin
+      Level := TJSONObject(Value).GetValue('typeLevel');
+      Result := (Level is TJSONString) and SameText(TJSONString(Level).Value, 'off');
+    end;
+  finally
+    Value.Free;
+  end;
 end;
 
 class function TRuleEngine.CapSeverity(ASeverity: TRuleSeverity; AConfidence: TRuleConfidence): TRuleSeverity;

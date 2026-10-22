@@ -72,6 +72,8 @@ type
     GroupIds: array[0..13] of string = ('find-bugs', 'exceptions', 'threads', 'database', 'compiler',
       'robustness', 'performance', 'security', 'components', 'forms', 'architecture', 'style', 'packages',
       'internal');
+    /// <summary>Gruppe „Compiler vorab“ (#1024) mit der Option "typeLevel".</summary>
+    CompilerGroup = 'compiler';
   public
     /// <summary>ACatalog: Antwort von atlas.server.settingsCatalog (darf nil sein). ARulesJson: Wert von
     /// "rules" ('' ohne).</summary>
@@ -93,11 +95,20 @@ type
     class function WithOption(const ARulesJson, AId, AOption, AValueJson: string): string; static;
     /// <summary>Neuer Wert von "rules" mit den Mustern AExclude in "exclude" von AId; leer entfernt sie.</summary>
     class function WithExclude(const ARulesJson, AId: string; const AExclude: TArray<string>): string; static;
-    /// <summary>Gruppe AGroup ist in "rules" abgeschaltet ("group:<gruppe>": "off").</summary>
+    /// <summary>Gruppe AGroup ist in "rules" abgeschaltet ("group:<gruppe>": "off" oder als Objekt
+    /// {"severity": "off", …}, #1024).</summary>
     class function GroupOff(const ARulesJson, AGroup: string): Boolean; static;
-    /// <summary>Neuer Wert von "rules" mit Hauptschalter der Gruppe: AOn entfernt den Schlüssel, sonst
-    /// "group:<gruppe>": "off".</summary>
+    /// <summary>Neuer Wert von "rules" mit Hauptschalter der Gruppe: AOn entfernt den Schlüssel bzw. im
+    /// Objekt "severity", sonst "group:<gruppe>": "off" bzw. "severity": "off". Optionen der Gruppe
+    /// (z. B. "typeLevel") bleiben stehen.</summary>
     class function WithGroup(const ARulesJson, AGroup: string; AOn: Boolean): string; static;
+    /// <summary>Option AOption der Gruppe als Text ('' = nicht gesetzt), z. B. "typeLevel" der Gruppe
+    /// „Compiler vorab“ (#1024).</summary>
+    class function GroupOption(const ARulesJson, AGroup, AOption: string): string; static;
+    /// <summary>Neuer Wert von "rules" mit Option AOption = AValue (Text) der Gruppe; '' entfernt sie. Der
+    /// Schlüssel wird dazu zum Objekt; bleibt nur "severity", wird er wieder Text, ein leeres Objekt
+    /// entfällt.</summary>
+    class function WithGroupOption(const ARulesJson, AGroup, AOption, AValue: string): string; static;
     /// <summary>Schlüssel des Hauptschalters, z. B. "group:style".</summary>
     class function GroupKey(const AGroup: string): string; static;
     /// <summary>Gruppen der Zeilen in Reihenfolge des ersten Vorkommens, ohne ''.</summary>
@@ -508,6 +519,8 @@ begin
   Rules := ParseRules(ARulesJson);
   try
     Value := Rules.GetValue(GroupKey(AGroup));
+    if Value is TJSONObject then
+      Value := TJSONObject(Value).GetValue('severity');
     Result := (Value is TJSONString) and not (Value is TJSONNumber) and SameText(TJSONString(Value).Value, 'off');
   finally
     Rules.Free;
@@ -516,15 +529,75 @@ end;
 
 class function TAtlasRuleTable.WithGroup(const ARulesJson, AGroup: string; AOn: Boolean): string;
 var
+  Value: string;
+begin
+  Value := '';
+  if not AOn then
+    Value := 'off';
+  Result := WithGroupOption(ARulesJson, AGroup, 'severity', Value);
+end;
+
+class function TAtlasRuleTable.GroupOption(const ARulesJson, AGroup, AOption: string): string;
+var
   Rules: TJSONObject;
+  Value: TJSONValue;
+begin
+  Result := '';
+  Rules := ParseRules(ARulesJson);
+  try
+    Value := Rules.GetValue(GroupKey(AGroup));
+    if Value is TJSONObject then
+      Value := TJSONObject(Value).GetValue(AOption)
+    else if not SameText(AOption, 'severity') then
+      Value := nil;
+    if (Value is TJSONString) and not (Value is TJSONNumber) then
+      Result := TJSONString(Value).Value;
+  finally
+    Rules.Free;
+  end;
+end;
+
+class function TAtlasRuleTable.WithGroupOption(const ARulesJson, AGroup, AOption, AValue: string): string;
+var
+  Rules, Group: TJSONObject;
+  Value: TJSONValue;
   Pair: TJSONPair;
+  Severity: string;
 begin
   Rules := ParseRules(ARulesJson);
   try
+    // Text ("off") und Objekt einheitlich als Objekt bearbeiten, danach so knapp wie möglich zurückschreiben.
     Pair := Rules.RemovePair(GroupKey(AGroup));
+    try
+      Group := TJSONObject.Create;
+      if Pair <> nil then
+      begin
+        Value := Pair.JsonValue;
+        if Value is TJSONObject then
+        begin
+          Group.Free;
+          Group := TJSONObject(TJSONObject(Value).Clone);
+        end
+        else if (Value is TJSONString) and not (Value is TJSONNumber) then
+          Group.AddPair('severity', TJSONString(Value).Value);
+      end;
+    finally
+      Pair.Free;
+    end;
+    Pair := Group.RemovePair(AOption);
     Pair.Free;
-    if not AOn then
-      Rules.AddPair(GroupKey(AGroup), 'off');
+    if AValue <> '' then
+      Group.AddPair(AOption, AValue);
+    if Group.Count = 0 then
+      Group.Free
+    else if (Group.Count = 1) and (Group.GetValue('severity') is TJSONString) then
+    begin
+      Severity := TJSONString(Group.GetValue('severity')).Value;
+      Group.Free;
+      Rules.AddPair(GroupKey(AGroup), Severity);
+    end
+    else
+      Rules.AddPair(GroupKey(AGroup), Group);
     Result := RulesText(Rules);
   finally
     Rules.Free;

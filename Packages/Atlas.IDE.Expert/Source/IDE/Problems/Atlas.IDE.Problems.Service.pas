@@ -429,6 +429,7 @@ var
   Settings: TAtlasPluginSettings;
 begin
   Settings := TAtlasIdeSettings.Current;
+  AFrame.ShowCompilerCode := Settings.ProblemsShowCompilerCode;
   AFrame.ApplySettings(ScopeOf(Settings.ProblemsWindowScope), GroupingOf(Settings.ProblemsWindowGroupBy),
     Settings.ProblemsWindowColumns, Settings.ProblemsWindowCompiler);
   AFrame.OnOpen :=
@@ -579,6 +580,7 @@ begin
   Frame := TAtlasIdeProblemsWindow.ExistingFrame;
   if Frame <> nil then
   begin
+    Frame.ShowCompilerCode := Settings.ProblemsShowCompilerCode;
     Frame.ApplySettings(ScopeOf(Settings.ProblemsWindowScope), GroupingOf(Settings.ProblemsWindowGroupBy),
       Settings.ProblemsWindowColumns, Settings.ProblemsWindowCompiler);
     Refresh(True);

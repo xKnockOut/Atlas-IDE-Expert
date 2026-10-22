@@ -31,6 +31,12 @@ type
     procedure ProblemsMoveWithInsertedLinesAndTurnStaleWhereEdited;
     [Test]
     procedure CompilerMessagesStayShiftedUntilReplaced;
+    /// <summary>#1024: Bestätigt der Build einen Atlas-Befund (gleiche Zeile, Code aus data.compilerCodes),
+    /// bleibt mit Zusammenführen nur der Atlas-Befund; mit both beide.</summary>
+    [Test]
+    procedure ConfirmedCompilerMessagesMerge;
+    [Test]
+    procedure ReadsCompilerCodesAndStripsThem;
     [Test]
     procedure ForFileHidesInactiveRangesAndDuplicatesAndSorts;
     [Test]
@@ -227,6 +233,74 @@ begin
   finally
     Store.Free;
   end;
+end;
+
+procedure TAtlasProblemsTests.ConfirmedCompilerMessagesMerge;
+var
+  Store: TAtlasProblemStore;
+  Problems: TArray<TAtlasProblem>;
+  Rule, Same, Other, Elsewhere: TAtlasProblem;
+begin
+  Rule := Problem(1, 2, 'Suchen erwartet 1 Argumente, übergeben sind 0; AName fehlt (wie E2035).');
+  Rule.Code := 'argument-count-mismatch';
+  Rule.CompilerCodes := ['E2034', 'E2035'];
+  Same := Problem(1, 8, 'Nicht genügend wirkliche Parameter', 'dcc');
+  Same.Code := 'E2035';
+  Other := Problem(1, 8, 'Inkompatible Typen', 'dcc');
+  Other.Code := 'E2010';
+  Elsewhere := Problem(2, 0, 'Nicht genügend wirkliche Parameter', 'dcc');
+  Elsewhere.Code := 'E2035';
+  Store := TAtlasProblemStore.Create;
+  try
+    Assert.IsTrue(Store.CompilerMerge, 'Vorgabe merge');
+    Store.Update('C:\P\A.pas', 'a'#10'b'#10'c', True, [Rule, Same, Other, Elsewhere], '1', True);
+    Problems := Store.ForFile('C:\P\A.pas');
+    // Gleiche Zeile und Code: eine Meldung; anderer Code bzw. andere Zeile bleiben.
+    Assert.AreEqual(3, Integer(Length(Problems)));
+    Assert.AreEqual('argument-count-mismatch', Problems[0].Code);
+    Assert.IsTrue(Problems[0].Confirmed);
+    Assert.AreEqual('E2035', Problems[0].ConfirmedCode);
+    Assert.AreEqual('E2035', Problems[0].CompilerCodeText);
+    Assert.AreEqual('E2010', Problems[1].Code);
+    Assert.AreEqual(2, Problems[2].StartLine);
+    // both: beide Meldungen, der Atlas-Befund bleibt bestätigt.
+    Store.CompilerMerge := False;
+    Problems := Store.ForFile('C:\P\A.pas');
+    Assert.AreEqual(4, Integer(Length(Problems)));
+    Assert.IsTrue(Problems[0].Confirmed or Problems[1].Confirmed);
+    // Nach dem nächsten Build ohne die Meldung: nur der Atlas-Befund, nicht mehr bestätigt.
+    Store.CompilerMerge := True;
+    Store.Update('C:\P\A.pas', 'a'#10'b'#10'c', True, [Rule], '2', True);
+    Problems := Store.ForFile('C:\P\A.pas');
+    Assert.AreEqual(1, Integer(Length(Problems)));
+    Assert.IsFalse(Problems[0].Confirmed);
+    Assert.AreEqual('E2034, E2035', Problems[0].CompilerCodeText);
+  finally
+    Store.Free;
+  end;
+end;
+
+procedure TAtlasProblemsTests.ReadsCompilerCodesAndStripsThem;
+var
+  Item: TJSONValue;
+  Problem: TAtlasProblem;
+begin
+  Item := TJSONObject.ParseJSONValue('{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":4}},' +
+    '"severity":1,"code":"argument-count-mismatch","source":"Atlas","message":"X erwartet 1 Argumente (wie E2035).",' +
+    '"data":{"compilerCodes":["E2034","E2035"]}}');
+  try
+    Problem := TAtlasProblem.FromJson(Item as TJSONObject);
+    Assert.AreEqual(2, Integer(Length(Problem.CompilerCodes)));
+    Assert.AreEqual('E2034, E2035', Problem.CompilerCodeText);
+  finally
+    Item.Free;
+  end;
+  Assert.AreEqual('X erwartet 1 Argumente.', TAtlasProblem.WithoutCompilerCode('X erwartet 1 Argumente (wie E2035).'));
+  Assert.AreEqual('A und B.', TAtlasProblem.WithoutCompilerCode('A (wie E2034, E2035) und B (wie W1000' + #$2013 +
+    'W1007).'));
+  // Anderer Text in Klammern bleibt.
+  Assert.AreEqual('Wert (wie oben) fehlt.', TAtlasProblem.WithoutCompilerCode('Wert (wie oben) fehlt.'));
+  Assert.AreEqual('Ohne Code', TAtlasProblem.WithoutCompilerCode('Ohne Code'));
 end;
 
 procedure TAtlasProblemsTests.LinesBetweenDirectivesAreInactive;

@@ -295,6 +295,11 @@ type
     ProblemsWindowCompiler: Boolean;
     /// <summary>Eintrag zur Cursorzeile im Fenster markieren.</summary>
     ProblemsWindowFollowCursor: Boolean;
+    /// <summary>Bestätigt der Build einen Atlas-Befund (gleiche Zeile, gleicher Code, #1024): 'merge' (Vorgabe)
+    /// zeigt nur den Atlas-Befund mit Marke „Atlas + dcc“, 'both' beide Meldungen.</summary>
+    ProblemsCompilerMerge: string;
+    /// <summary>Compilercode (E2035 …) in Meldung, Spalte „Compiler“ und Hover zeigen (#1024).</summary>
+    ProblemsShowCompilerCode: Boolean;
     /// <summary>Fenster öffnen (TShortCut, 0 = keins; Vorgabe Strg+Alt+P).</summary>
     ProblemsWindowKey: Integer;
     /// <summary>Laufende Prüfung beim Tippen (#909); aus = Prüfung der offenen Datei nur beim Speichern.</summary>
@@ -1234,6 +1239,8 @@ begin
   Result.ProblemsWindowColumns := '';
   Result.ProblemsWindowCompiler := False;
   Result.ProblemsWindowFollowCursor := True;
+  Result.ProblemsCompilerMerge := 'merge';
+  Result.ProblemsShowCompilerCode := True;
   Result.ProblemsWindowKey := $C050; // Strg+Alt+P
   Result.ProblemsLive := True;
   Result.HoverProblemActions := True;
@@ -1675,6 +1682,7 @@ begin
   InlineDiagnostics := Choice(InlineDiagnostics, ['errors', 'off', 'errorsAndWarnings', 'all']);
   ProblemsWindowScope := Choice(ProblemsWindowScope, ['group', 'file', 'project']);
   ProblemsWindowGroupBy := Choice(ProblemsWindowGroupBy, ['file', 'none', 'rule', 'category']);
+  ProblemsCompilerMerge := Choice(ProblemsCompilerMerge, ['merge', 'both']);
   ProblemsWindowKey := EnsureRange(ProblemsWindowKey, 0, $FFFF);
   NextProblemKey := EnsureRange(NextProblemKey, 0, $FFFF);
   PreviousProblemKey := EnsureRange(PreviousProblemKey, 0, $FFFF);
@@ -1792,6 +1800,9 @@ begin
   ProblemsWindowCompiler := AStore.ReadInteger('ProblemsWindowCompiler', BoolValue(Default.ProblemsWindowCompiler)) <> 0;
   ProblemsWindowFollowCursor := AStore.ReadInteger('ProblemsWindowFollowCursor',
     BoolValue(Default.ProblemsWindowFollowCursor)) <> 0;
+  ProblemsCompilerMerge := AStore.ReadString('ProblemsCompilerMerge', Default.ProblemsCompilerMerge);
+  ProblemsShowCompilerCode := AStore.ReadInteger('ProblemsShowCompilerCode',
+    BoolValue(Default.ProblemsShowCompilerCode)) <> 0;
   ProblemsWindowKey := AStore.ReadInteger('ProblemsWindowKey', Default.ProblemsWindowKey);
   ProblemsLive := AStore.ReadInteger('ProblemsLive', BoolValue(Default.ProblemsLive)) <> 0;
   HoverProblemActions := AStore.ReadInteger('HoverProblemActions', BoolValue(Default.HoverProblemActions)) <> 0;
@@ -2199,6 +2210,8 @@ begin
   AStore.WriteString('ProblemsWindowColumns', ProblemsWindowColumns);
   AStore.WriteInteger('ProblemsWindowCompiler', BoolValue(ProblemsWindowCompiler));
   AStore.WriteInteger('ProblemsWindowFollowCursor', BoolValue(ProblemsWindowFollowCursor));
+  AStore.WriteString('ProblemsCompilerMerge', ProblemsCompilerMerge);
+  AStore.WriteInteger('ProblemsShowCompilerCode', BoolValue(ProblemsShowCompilerCode));
   AStore.WriteInteger('ProblemsWindowKey', ProblemsWindowKey);
   AStore.WriteInteger('ProblemsLive', BoolValue(ProblemsLive));
   AStore.WriteInteger('HoverProblemActions', BoolValue(HoverProblemActions));

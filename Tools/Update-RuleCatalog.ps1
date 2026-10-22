@@ -59,6 +59,11 @@ $GroupNames = [ordered]@{
     'architecture' = 'Architektur'; 'style' = 'Stil und Metriken'; 'packages' = 'Packages und Tests'
     'internal' = 'Atlas intern'
 }
+$LevelNames = @{
+    'A' = 'A (Parser genügt)'
+    'B' = 'B (Namensauflösung über Units)'
+    'T' = 'T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar)'
+}
 $OptionKinds = @('integer', 'boolean', 'string', 'string-list', 'number-list', 'json')
 
 # Vollständigkeit der Einträge
@@ -90,6 +95,10 @@ foreach ($Rule in $Base.rules) {
                 $Problems.Add("Regel '$($Rule.id)': ungültiger Compilercode '$Code'")
             }
         }
+    }
+    # Stufe der Compilerregeln (#1024): A Parser, B Namensauflösung, T Ausdruckstypen.
+    if (($Rule.PSObject.Properties.Name -contains 'level') -and (@('A', 'B', 'T') -cnotcontains [string]$Rule.level)) {
+        $Problems.Add("Regel '$($Rule.id)': ungültige Stufe '$($Rule.level)' (erlaubt A, B, T)")
     }
 }
 
@@ -197,6 +206,9 @@ foreach ($Row in $Rows) {
     [void]$Doc.Append("$($Row.Description)`r`n`r`n")
     if ($Row.Rule.PSObject.Properties.Name -contains 'compilerCodes') {
         [void]$Doc.Append("Entspricht der Compilermeldung $((@($Row.Rule.compilerCodes) | ForEach-Object { '`' + $_ + '`' }) -join ', ').`r`n`r`n")
+    }
+    if ($Row.Rule.PSObject.Properties.Name -contains 'level') {
+        [void]$Doc.Append("Stufe $($LevelNames[[string]$Row.Rule.level]).`r`n`r`n")
     }
     if ($Row.Options.Count -gt 0) {
         [void]$Doc.Append("| Option | Typ | Vorgabe | Bedeutung |`r`n|---|---|---|---|`r`n")

@@ -253,6 +253,10 @@
     "rules.window": {
       "caption": "Prüffenster",
       "captionEn": "Findings window"
+    },
+    "rules.group.compiler": {
+      "caption": "Compiler vorab",
+      "captionEn": "Compiler ahead"
     }
   },
   "type": "object",
@@ -1379,6 +1383,32 @@
       "x-area": "rules",
       "x-page": "Prüfregeln",
       "x-issue": "#909"
+    },
+    "ProblemsCompilerMerge": {
+      "type": "string",
+      "enum": [
+        "merge",
+        "both"
+      ],
+      "default": "merge",
+      "description": "Meldet der Build an der Zeile eines Atlas-Befunds denselben Code (Gruppe „Compiler vorab“): merge zeigt nur den Atlas-Befund mit Marke „Atlas + dcc“, both beide Meldungen.",
+      "x-key": "problems.compilerMerge",
+      "x-node": "rules.group.compiler",
+      "x-area": "rules",
+      "x-page": "Prüfregeln",
+      "x-control": "Auswahl „Bestätigte Compilermeldungen“",
+      "x-issue": "#1024"
+    },
+    "ProblemsShowCompilerCode": {
+      "type": "boolean",
+      "default": true,
+      "description": "Compilercode (E2035 …) in der Meldung, in der Spalte „Compiler“ des Fensters und im Hover zeigen.",
+      "x-key": "problems.showCompilerCode",
+      "x-node": "rules.group.compiler",
+      "x-area": "rules",
+      "x-page": "Prüfregeln",
+      "x-control": "Schalter „Compilercode zeigen“",
+      "x-issue": "#1024"
     },
     "ProblemsWindowKey": {
       "type": "integer",

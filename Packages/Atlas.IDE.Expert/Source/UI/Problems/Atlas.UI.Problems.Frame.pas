@@ -6,9 +6,12 @@
 // Anzeige „Live“ bzw. „Angehalten“. Darunter die Liste (virtuell, ohne
 // Flackern) mit den Spalten aus TAtlasFindingColumn: Icon (rotes Kreuz,
 // gelb-oranges Dreieck, blauer Kreis), Art, Kategorie, Meldung, Zeile (gekürzt,
-// Tooltip mit ganzer Zeile), Stelle und Regel. Reihenfolge (Spaltenkopf
-// ziehen), Breite und Sichtbarkeit (Kontextmenü „Spalten“, nur Meldung und
-// Regel) liefert ColumnsText für problems.window.columns. Klick auf den
+// Tooltip mit ganzer Zeile), Stelle, Regel und Compiler (#1024: Code, bei
+// bestätigten Befunden „Atlas + dcc“). Reihenfolge (Spaltenkopf ziehen),
+// Breite und Sichtbarkeit (Kontextmenü „Spalten“, nur Meldung, Regel und
+// Compiler) liefert ColumnsText für problems.window.columns. Mit
+// ShowCompilerCode aus (problems.showCompilerCode) fehlt die Spalte Compiler,
+// und die Meldungen stehen ohne „(wie E2035)“. Klick auf den
 // Spaltenkopf sortiert, ein zweiter kehrt um. Gruppenzeilen (▾/▸ Name, Anzahl)
 // klappen per Klick, Leertaste oder ←/→. Unten die Statuszeile.
 // Bedienung: Doppelklick oder Enter springt (OnOpen), Alt+Enter wendet die
@@ -81,6 +84,7 @@ type
     /// <summary>Fenster der Liste, für das die Reihenfolge gesetzt ist; Andocken legt es neu an.</summary>
     FOrderHandle: HWND;
     FUpdating: Boolean;
+    FShowCompilerCode: Boolean;
     FOnOpen: TAtlasFindingEvent;
     FOnFix: TAtlasFindingEvent;
     FOnSuppress: TAtlasFindingEvent;
@@ -94,6 +98,7 @@ type
     procedure FillCombo(ACombo: TComboBox; const ATexts: TArray<string>; AIndex: Integer);
     procedure BuildImages;
     procedure BuildColumns;
+    procedure SetShowCompilerCode(AValue: Boolean);
     /// <summary>Anzeigereihenfolge und Breiten der Liste nach FColumns übernehmen.</summary>
     procedure ReadColumns;
     procedure ApplyOrder;
@@ -164,6 +169,8 @@ type
     class function KindText(AKind: TAtlasFindingKind): string; static;
     class function CategoryText(ACategory: TAtlasFindingCategory): string; static;
     property View: TAtlasFindingsView read FView;
+    /// <summary>Compilercodes zeigen (problems.showCompilerCode, #1024; Vorgabe an).</summary>
+    property ShowCompilerCode: Boolean read FShowCompilerCode write SetShowCompilerCode;
     property List: TListView read FList;
     property ScopeBox: TComboBox read FScope;
     property CategoryBox: TComboBox read FCategory;
@@ -197,7 +204,7 @@ uses
 
 const
   /// <summary>Vorgabebreiten bei 96 dpi.</summary>
-  DefaultWidths: array[TAtlasFindingColumn] of Integer = (24, 70, 110, 320, 260, 130, 150);
+  DefaultWidths: array[TAtlasFindingColumn] of Integer = (24, 70, 110, 320, 260, 130, 150, 130);
   /// <summary>Hervorhebung neuer Einträge.</summary>
   NewMs = 1500;
   IconSize = 16;
@@ -346,6 +353,7 @@ begin
   FNewTimer.OnTimer := NewTimerTick;
 
   FColumns := TAtlasFindings.ParseColumns('');
+  FShowCompilerCode := True;
   BuildColumns;
   UpdateKindCaptions;
 end;
@@ -489,6 +497,8 @@ begin
       Result := TAtlasStrings.Text(TAtlasTextId.ProblemsColumnLocation);
     TAtlasFindingColumn.Rule:
       Result := TAtlasStrings.Text(TAtlasTextId.ProblemsColumnRule);
+    TAtlasFindingColumn.Compiler:
+      Result := TAtlasStrings.Text(TAtlasTextId.ProblemsColumnCompiler);
   else
     Result := '';
   end;
@@ -535,7 +545,8 @@ begin
   // Spaltenreihenfolge des Kopfs.
   FShown := [TAtlasFindingColumn.Icon];
   for State in FColumns do
-    if State.Visible and (State.Column <> TAtlasFindingColumn.Icon) then
+    if State.Visible and (State.Column <> TAtlasFindingColumn.Icon) and
+      (FShowCompilerCode or (State.Column <> TAtlasFindingColumn.Compiler)) then
       FShown := FShown + [State.Column];
   FList.Columns.BeginUpdate;
   try
@@ -558,7 +569,8 @@ begin
   // Menü „Spalten“: nur die abwählbaren.
   FColumnsItem.Clear;
   for Position := 0 to High(FColumns) do
-    if not TAtlasFindings.IsMandatory(FColumns[Position].Column) then
+    if not TAtlasFindings.IsMandatory(FColumns[Position].Column) and
+      (FShowCompilerCode or (FColumns[Position].Column <> TAtlasFindingColumn.Compiler)) then
     begin
       Item := AddMenuItem(FColumnsItem, ColumnCaption(FColumns[Position].Column), ColumnToggleClick);
       Item.Checked := FColumns[Position].Visible;
@@ -623,6 +635,16 @@ function TAtlasProblemsFrame.ColumnsText: string;
 begin
   ReadColumns;
   Result := TAtlasFindings.FormatColumns(FColumns);
+end;
+
+procedure TAtlasProblemsFrame.SetShowCompilerCode(AValue: Boolean);
+begin
+  if FShowCompilerCode = AValue then
+    Exit;
+  ReadColumns;
+  FShowCompilerCode := AValue;
+  BuildColumns;
+  Refill;
 end;
 
 procedure TAtlasProblemsFrame.ApplySettings(AScope: TAtlasFindingScope; AGrouping: TAtlasFindingGrouping;
@@ -821,13 +843,15 @@ begin
     TAtlasFindingColumn.Category:
       Result := CategoryText(Finding.Category);
     TAtlasFindingColumn.Message:
-      Result := Finding.Problem.Message;
+      Result := Finding.MessageText(FShowCompilerCode);
     TAtlasFindingColumn.Line:
       Result := Finding.ShortLine(TAtlasFindings.LineMax);
     TAtlasFindingColumn.Location:
       Result := Finding.Location;
     TAtlasFindingColumn.Rule:
       Result := Finding.Rule;
+    TAtlasFindingColumn.Compiler:
+      Result := Finding.CompilerText;
   end;
 end;
 
@@ -957,7 +981,9 @@ begin
     Exit;
   // Ganze Zeile und ganze Meldung.
   Finding := FView.Finding(Row.Finding);
-  InfoTip := Finding.Problem.Message;
+  InfoTip := Finding.MessageText(FShowCompilerCode);
+  if Finding.Problem.Confirmed then
+    InfoTip := InfoTip + sLineBreak + TAtlasStrings.CompilerConfirmed(Finding.Problem.ConfirmedCode, FShowCompilerCode);
   if Finding.LineText <> '' then
     InfoTip := InfoTip + sLineBreak + Finding.LineText;
 end;

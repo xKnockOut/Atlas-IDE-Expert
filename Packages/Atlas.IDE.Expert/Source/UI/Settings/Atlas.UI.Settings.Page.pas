@@ -395,6 +395,8 @@ type
     FProblemsWindowCompiler: TCheckBox;
     FProblemsWindowFollowCursor: TCheckBox;
     FProblemsLive: TCheckBox;
+    FProblemsCompilerMerge: TAtlasChoiceBox;
+    FProblemsShowCompilerCode: TCheckBox;
     FHoverProblemActions: TCheckBox;
     /// <summary>Bereich Prüfregeln (#909): Index in FSheets, Regel-Editoren (Hauptknoten zuerst), Katalog
     /// (Kopie), "rules" beim Laden und jetzt, gewünschte Regel bis zum Laden.</summary>
@@ -1079,6 +1081,8 @@ type
     property ProblemsWindowCompilerCheck: TCheckBox read FProblemsWindowCompiler;
     property ProblemsWindowFollowCursorCheck: TCheckBox read FProblemsWindowFollowCursor;
     property ProblemsLiveCheck: TCheckBox read FProblemsLive;
+    property ProblemsCompilerMergeChoice: TAtlasChoiceBox read FProblemsCompilerMerge;
+    property ProblemsShowCompilerCodeCheck: TCheckBox read FProblemsShowCompilerCode;
     property HoverProblemActionsCheck: TCheckBox read FHoverProblemActions;
     /// <summary>Regel-Editor der Gruppe AGroup ('' = Hauptknoten mit allen Regeln); nil ohne.</summary>
     function RulesEditor(const AGroup: string): TAtlasRulesEditor;
@@ -1267,6 +1271,8 @@ const
   /// </summary>
   ScopeValues: array[0..2] of string = ('file', 'project', 'group');
   GroupByValues: array[0..3] of string = ('none', 'file', 'rule', 'category');
+  /// <summary>Werte von problems.compilerMerge in der Reihenfolge der Auswahl (#1024).</summary>
+  CompilerMergeValues: array[0..1] of string = ('merge', 'both');
 
 const
   // Reihenfolge der Auswahllisten von „Units suchen“ (#777) wie die Werte der Einstellungen.
@@ -1691,6 +1697,11 @@ begin
   FProblemsWindowCompiler := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowCompiler));
   FProblemsWindowFollowCursor := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowFollowCursor));
   FProblemsLive := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsLive));
+  // Gruppe „Compiler vorab“ (#1024): stehen über x-node im Knoten der Gruppe unter dem Regel-Editor.
+  FProblemsCompilerMerge := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsCompilerMerge),
+    [TAtlasStrings.Text(TAtlasTextId.ProblemsCompilerMergeMerge),
+    TAtlasStrings.Text(TAtlasTextId.ProblemsCompilerMergeBoth)]);
+  FProblemsShowCompilerCode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsShowCompilerCode));
 
   // Release-Build-Wächter (#533).
   AddSheet(TAtlasTextId.SettingsTabRelease);
@@ -2778,6 +2789,8 @@ begin
   FMarks.Bind(FProblemsWindowCompiler, ['ProblemsWindowCompiler']);
   FMarks.Bind(FProblemsWindowFollowCursor, ['ProblemsWindowFollowCursor']);
   FMarks.Bind(FProblemsLive, ['ProblemsLive']);
+  FMarks.Bind(FProblemsCompilerMerge, ['ProblemsCompilerMerge']);
+  FMarks.Bind(FProblemsShowCompilerCode, ['ProblemsShowCompilerCode']);
   FMarks.Bind(FHoverProblemActions, ['HoverProblemActions']);
   FMarks.Bind(FProblemsStatusCounter, ['ProblemsStatusCounter']);
   FMarks.Bind(FStatusField, ['StatusField']);
@@ -3275,7 +3288,8 @@ begin
   begin
     Group := TAtlasRuleTable.GroupIds[Index];
     Page := AddNodePageCaption(FRulesArea, 'rules.group.' + Group, AtlasRuleGroupCaption(Group));
-    AddRulesEditor(FNodePages[Page].Box, Group).Top := 1000;
+    // Über den Einstellungen, die BuildArea per x-node schon in den Knoten gelegt hat (ab Top 1000, #1024).
+    AddRulesEditor(FNodePages[Page].Box, Group).Top := 500;
   end;
 end;
 
@@ -4043,6 +4057,7 @@ procedure TAtlasSettingsPage.UpdateLocks;
 var
   Index: Integer;
   Outside: TArray<string>;
+  Editor: TAtlasRulesEditor;
 begin
   if FGroups = nil then
     Exit;
@@ -4052,6 +4067,13 @@ begin
     ApplyLocks(FNodePages[Index].Box, False, Outside);
     FNodePages[Index].Banner.Caption := string.Join(sLineBreak, Outside);
     FNodePages[Index].Banner.Visible := Length(Outside) > 0;
+  end;
+  // Hauptschalter der Gruppe „Compiler vorab“ steht in "rules": sperrt auch die Plugin-Einstellungen (#1024).
+  Editor := RulesEditor(TAtlasRuleTable.CompilerGroup);
+  if Editor <> nil then
+  begin
+    SetLocked(FProblemsCompilerMerge, Editor.GroupOff);
+    SetLocked(FProblemsShowCompilerCode, Editor.GroupOff);
   end;
   // Spiegel in der Übersicht folgen ihrem Hauptschalter.
   FSyncing := True;
@@ -4963,6 +4985,8 @@ begin
   FProblemsWindowGroupBy.Choice := Max(0, IndexText(ASettings.ProblemsWindowGroupBy, GroupByValues));
   FProblemsWindowCompiler.Checked := ASettings.ProblemsWindowCompiler;
   FProblemsWindowFollowCursor.Checked := ASettings.ProblemsWindowFollowCursor;
+  FProblemsCompilerMerge.Choice := Max(0, IndexText(ASettings.ProblemsCompilerMerge, CompilerMergeValues));
+  FProblemsShowCompilerCode.Checked := ASettings.ProblemsShowCompilerCode;
   FProblemsLive.Checked := ASettings.ProblemsLive;
   FProblemsStatusCounter.Checked := ASettings.ProblemsStatusCounter;
   FStatusField.Checked := ASettings.StatusField;
@@ -5385,6 +5409,9 @@ begin
     ASettings.ProblemsWindowGroupBy := GroupByValues[FProblemsWindowGroupBy.Choice];
   ASettings.ProblemsWindowCompiler := FProblemsWindowCompiler.Checked;
   ASettings.ProblemsWindowFollowCursor := FProblemsWindowFollowCursor.Checked;
+  if (FProblemsCompilerMerge.Choice >= 0) and (FProblemsCompilerMerge.Choice <= High(CompilerMergeValues)) then
+    ASettings.ProblemsCompilerMerge := CompilerMergeValues[FProblemsCompilerMerge.Choice];
+  ASettings.ProblemsShowCompilerCode := FProblemsShowCompilerCode.Checked;
   ASettings.ProblemsLive := FProblemsLive.Checked;
   ASettings.ProblemsStatusCounter := FProblemsStatusCounter.Checked;
   ASettings.StatusField := FStatusField.Checked;

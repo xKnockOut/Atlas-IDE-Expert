@@ -79,6 +79,7 @@ type
     FOnUrl: TAtlasHoverUrlEvent;
     FOnProblemAction: TAtlasHoverProblemActionEvent;
     FProblemActions: Boolean;
+    FHideCompilerCode: Boolean;
     FDoc: TAtlasDocView;
     /// <summary>Linke obere Ecke der Doku beim letzten Zeichnen bzw. Messen.</summary>
     FDocLeft: Integer;
@@ -100,6 +101,7 @@ type
     /// <summary>Höhe neu nach dem Inhalt, Breite bleibt; wächst nach unten, über dem Wort nach oben.</summary>
     procedure Refit;
     procedure SetProblemActions(AValue: Boolean);
+    procedure SetHideCompilerCode(AValue: Boolean);
     /// <summary>Löst die Aktion der Klickfläche AHit (Index in FLayout.Hits) aus, wenn sie zu einem Problem gehört.
     /// </summary>
     function FireProblemAction(AHit: Integer): Boolean;
@@ -154,6 +156,8 @@ type
     property OnProblemAction: TAtlasHoverProblemActionEvent read FOnProblemAction write FOnProblemAction;
     /// <summary>Aktionszeile unter Regelbefunden (hover.problemActions, #909).</summary>
     property ProblemActions: Boolean read FProblemActions write SetProblemActions;
+    /// <summary>problems.showCompilerCode aus (#1024).</summary>
+    property HideCompilerCode: Boolean read FHideCompilerCode write SetHideCompilerCode;
   end;
 
 implementation
@@ -410,6 +414,8 @@ begin
   Result.KeyUsages := TAtlasStrings.Text(TAtlasTextId.HoverKeyUsages);
   Result.KeyCopy := TAtlasStrings.Text(TAtlasTextId.HoverKeyCopy);
   Result.SourceAtlas := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceAtlas);
+  Result.Confirmed := TAtlasStrings.Text(TAtlasTextId.ProblemsCompilerConfirmed);
+  Result.ConfirmedCode := TAtlasStrings.Text(TAtlasTextId.ProblemsCompilerConfirmedCode);
   Result.SourceCompiler := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceCompiler);
   Result.SourceInactive := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceInactive);
   Result.SourceUses := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceUses);
@@ -451,8 +457,8 @@ end;
 
 function TAtlasHoverTip.LayoutKey(AWidth: Integer): string;
 begin
-  Result := Format('%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d', [AWidth, FDoc.Height, Ord(FDoc.IsEmpty), Ord(FDoc.HasSelection),
-    Ord(FProblemActions), PPI, Font.Height, UIFont.Height, Integer(Colors.Surface), Integer(Colors.Text), Integer(Colors.Accent)]);
+  Result := Format('%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d', [AWidth, FDoc.Height, Ord(FDoc.IsEmpty),
+    Ord(FDoc.HasSelection), Ord(FProblemActions), Ord(FHideCompilerCode), PPI, Font.Height, UIFont.Height, Integer(Colors.Surface), Integer(Colors.Text), Integer(Colors.Accent)]);
 end;
 
 procedure TAtlasHoverTip.BuildLayout(AWidth: Integer);
@@ -470,6 +476,7 @@ begin
   Input.DocHeight := FDoc.Height;
   Input.HasSelection := FDoc.HasSelection;
   Input.ProblemActions := FProblemActions;
+  Input.HideCompilerCode := FHideCompilerCode;
   FLayout := TAtlasHoverLayout.Build(Input, TTipMeasure.Create(Self));
   FLayoutKey := LayoutKey(AWidth);
   FDocLeft := FLayout.DocLeft;
@@ -762,6 +769,15 @@ begin
     Exit;
   FProblemActions := AValue;
   FHot := -1;
+  FLayoutKey := '';
+  Invalidate;
+end;
+
+procedure TAtlasHoverTip.SetHideCompilerCode(AValue: Boolean);
+begin
+  if FHideCompilerCode = AValue then
+    Exit;
+  FHideCompilerCode := AValue;
   FLayoutKey := '';
   Invalidate;
 end;
