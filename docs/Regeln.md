@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 53 |
+| [Fehler finden](#gruppe-find-bugs) | 54 |
 | [Exceptions](#gruppe-exceptions) | 6 |
 | [Threads](#gruppe-threads) | 9 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
@@ -77,6 +77,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`string-index-base`](#string-index-base) | String-Index ab 0 oder Pos-Ergebnis mit -1 verglichen | Bug | Warnung |
 | [`delimited-text-without-strict`](#delimited-text-without-strict) | DelimitedText ohne StrictDelimiter | Bug | Warnung |
 | [`self-as-interface-in-constructor`](#self-as-interface-in-constructor) | Self während der Konstruktion als Interface weitergegeben | Bug | Warnung |
+| [`unchecked-enum-cast`](#unchecked-enum-cast) | Zahl ungeprüft in Aufzählung umgewandelt | Bug | Hinweis |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -3716,4 +3717,30 @@ Richtig:
 ```pascal
 if qryKunde.FieldByName('Geburtstag').IsNull then
   Alter := 0;
+```
+
+<a id="unchecked-enum-cast"></a>
+### unchecked-enum-cast
+
+**Zahl ungeprüft in Aufzählung umgewandelt** · Bug · Hinweis · Gruppe Fehler finden
+
+TStatus(N) mit einem Aufzählungstyp aus der Datei oder dem Index, wenn N aus einem Aufruf der Option sources stammt (FieldByName, ReadInteger, AsInteger, StrToInt): direkt im Argument oder über eine Variable, die zwischen Zuweisung und Umwandlung nicht gelesen (geprüft) wird. Ein Wert außerhalb des Bereichs ergibt einen ungültigen Aufzählungswert, der in case durchfällt. EnsureRange, Min oder Max im Argument gelten als Prüfung; Konstanten, Rechnungen und unbekannte Typen bleiben still. Bei Aufzählungen mit eigenen Ordinalwerten nennt die Meldung den Bereich als Ord(Low(T))..Ord(High(T)). Sicherheit mittel. Korrektur bei direkter Quelle in einer eigenen Anweisung: Hilfsvariable, InRange-Prüfung mit raise EConvertError davor, System.Math in uses.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `sources` | string-list | `["FieldByName","ReadInteger","AsInteger","StrToInt"]` | Aufrufe, deren Ergebnis als ungeprüft gilt. |
+
+Mit Treffer:
+
+```pascal
+Status := TStatus(qry.FieldByName('Status').AsInteger);
+```
+
+Richtig:
+
+```pascal
+Wert := qry.FieldByName('Status').AsInteger;
+if not InRange(Wert, Ord(Low(TStatus)), Ord(High(TStatus))) then
+  raise EConvertError.CreateFmt('Ungültiger Wert %d für TStatus', [Wert]);
+Status := TStatus(Wert);
 ```

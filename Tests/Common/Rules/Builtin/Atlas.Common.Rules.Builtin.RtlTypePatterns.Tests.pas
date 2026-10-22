@@ -5,7 +5,7 @@
 // managed-type-raw-memory (#921) mit Records, Aliassen, Zeigern, Index und
 // Korrekturen, threadvar-managed (#922), pchar-of-temporary (#923) und
 // stringlist-unsorted (#925), writeln-in-gui-app (#926), unchecked-conversion (#932) und
-// dictionary-get-without-check (#933), delimited-text-without-strict (#952).
+// dictionary-get-without-check (#933), delimited-text-without-strict (#952), unchecked-enum-cast (#954).
 
 interface
 
@@ -88,6 +88,14 @@ type
     procedure DelimitedTextSilentCases;
     [Test]
     procedure DelimitedTextOffAndExclude;
+    [Test]
+    procedure UncheckedEnumCastIssueExample;
+    [Test]
+    procedure UncheckedEnumCastVariants;
+    [Test]
+    procedure UncheckedEnumCastSilentCases;
+    [Test]
+    procedure UncheckedEnumCastOffAndExclude;
   end;
 
 implementation
@@ -895,6 +903,102 @@ begin
     '{"rules": {"delimited-text-without-strict": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create, Source,
     '{"rules": {"delimited-text-without-strict": {"exclude": ["Source/*.pas"]}}}', 'Source/Import.pas'))));
+end;
+
+function Auftrag(const AUses, AVars, ABody: string): string;
+begin
+  Result := 'unit Auftrag;'#10'interface'#10'type'#10'  TStatus = (stNeu, stOffen, stFertig, stStorniert);'#10 +
+    '  TStufe = (sfEins = 1, sfZwei = 2);'#10'implementation'#10 + AUses +
+    'procedure Laden(qry: TDataSet; Ini: TIniFile; var Status: TStatus; var Stufe: TStufe);'#10 + AVars +
+    'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+procedure TRtlTypePatternRulesTests.UncheckedEnumCastIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+  Tree: TSyntaxTree;
+begin
+  Source := Auftrag('uses System.SysUtils, Data.DB;'#10, '',
+    '  Status := TStatus(qry.FieldByName(''Status'').AsInteger);'#10);
+  Findings := TRuleAssert.Findings(TUncheckedEnumCastRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('unchecked-enum-cast', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Wert aus der Datenbank ungeprüft nach TStatus umgewandelt; Werte außerhalb 0..3 ergeben keinen ' +
+    'gültigen TStatus-Wert.', Findings[0].Message);
+  Assert.AreEqual(9, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(12, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('Prüfung mit InRange davorsetzen', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Auftrag('uses System.SysUtils, Data.DB, System.Math;'#10, 'var'#10'  Wert: Integer;'#10,
+    '  Wert := qry.FieldByName(''Status'').AsInteger;'#10 +
+    '  if not InRange(Wert, Ord(Low(TStatus)), Ord(High(TStatus))) then'#10 +
+    '    raise EConvertError.CreateFmt(''Ungültiger Wert %d für TStatus'', [Wert]);'#10 +
+    '  Status := TStatus(Wert);'#10), Fixed);
+  Tree := TPascalParser.Parse(Fixed);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+  TRuleAssert.Silent(TUncheckedEnumCastRule.Create, Fixed);
+end;
+
+procedure TRtlTypePatternRulesTests.UncheckedEnumCastVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Über eine Variable: Meldung ohne Korrektur.
+  Findings := TRuleAssert.Findings(TUncheckedEnumCastRule.Create, Auftrag('', 'var'#10'  N: Integer;'#10,
+    '  N := Ini.ReadInteger(''Auftrag'', ''Status'', 0);'#10'  Status := TStatus(N);'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Wert aus der Registry bzw. INI-Datei ungeprüft nach TStatus umgewandelt; Werte außerhalb 0..3 ' +
+    'ergeben keinen gültigen TStatus-Wert.', Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Eigene Ordinalwerte: Bereich über Low/High; in case ohne Korrektur.
+  Findings := TRuleAssert.Findings(TUncheckedEnumCastRule.Create, Auftrag('', '',
+    '  case TStufe(StrToInt(Zeile)) of'#10'    sfEins: Exit;'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Wert aus einem Text ungeprüft nach TStufe umgewandelt; Werte außerhalb Ord(Low(TStufe))..' +
+    'Ord(High(TStufe)) ergeben keinen gültigen TStufe-Wert.', Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Option sources: eigene Quellen.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUncheckedEnumCastRule.Create,
+    Auftrag('', '', '  Status := TStatus(qry.FieldByName(''Status'').AsInteger);'#10),
+    '{"rules": {"unchecked-enum-cast": {"sources": ["LeseZahl"]}}}'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUncheckedEnumCastRule.Create,
+    Auftrag('', '', '  Status := TStatus(LeseZahl);'#10),
+    '{"rules": {"unchecked-enum-cast": {"sources": ["LeseZahl"]}}}'))));
+end;
+
+procedure TRtlTypePatternRulesTests.UncheckedEnumCastSilentCases;
+begin
+  // Geprüfte Variable, EnsureRange, Konstanten, unbekannte Typen und Klassen-Casts.
+  TRuleAssert.Silent(TUncheckedEnumCastRule.Create, Auftrag('', 'var'#10'  N: Integer;'#10,
+    '  N := qry.FieldByName(''Status'').AsInteger;'#10 +
+    '  if (N < 0) or (N > Ord(High(TStatus))) then Exit;'#10'  Status := TStatus(N);'#10 +
+    '  Status := TStatus(EnsureRange(qry.FieldByName(''Status'').AsInteger, 0, 3));'#10 +
+    '  Status := TStatus(2);'#10'  Status := TStatus(N + 1);'#10 +
+    '  TUnbekannt(qry.FieldByName(''X'').AsInteger).Free;'#10 +
+    '  TDataSet(qry.FieldByName(''X'').AsInteger).Close;'#10));
+  Assert.AreEqual('aus der Datenbank', TUncheckedEnumCastRule.Origin('AsInteger'));
+  Assert.AreEqual('von außen', TUncheckedEnumCastRule.Origin('LeseZahl'));
+end;
+
+procedure TRtlTypePatternRulesTests.UncheckedEnumCastOffAndExclude;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Auftrag('', '', '  Status := TStatus(qry.FieldByName(''Status'').AsInteger);'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUncheckedEnumCastRule.Create, Source,
+    '{"rules": {"unchecked-enum-cast": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUncheckedEnumCastRule.Create, Source,
+    '{"rules": {"unchecked-enum-cast": {"exclude": ["Source/*.pas"]}}}', 'Source/Auftrag.pas'))));
+  TConfigurationParser.Parse('{"rules": {"unchecked-enum-cast": {"sources": "LeseZahl"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
 initialization

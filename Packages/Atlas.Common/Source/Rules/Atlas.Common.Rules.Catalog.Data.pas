@@ -1872,6 +1872,29 @@ begin
     '      "description": "X = Null or X <> Null compares a variant with Null. The result depends on the global System.Variants.NullEqualityRule: with the default ncrLoose the comparison works as expected,' + ' with ncrStrict it is never true and with ncrError it raises an exception. A library, a test framework or another part of the project can change the rule. VarIsNull(X) and Field.IsNull check independe' + 'ntly of it. Reported only where the comparison stands on its own (condition, argument, assignment); not X = Null binds as (not X) = Null and gets no quick fix. High confidence. Quick fix: Field.IsNull' + ' for X.Value on FieldByName, FindField, Fields[...], ParamByName, Params[...] or a field of type T...Field/T...Param, otherwise VarIsNull(X); with <> preceded by not.",' + #10 +
     '      "bad": "if qryKunde.FieldByName(''Geburtstag'').Value = Null then\n  Alter := 0;",' + #10 +
     '      "good": "if qryKunde.FieldByName(''Geburtstag'').IsNull then\n  Alter := 0;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unchecked-enum-cast",' + #10 +
+    '      "name": "Number cast to enumeration without check",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "TStatus(N) with an enumeration type declared in the file or the index, where N comes from a call listed in the option sources (FieldByName, ReadInteger, AsInteger, StrToInt): dir' + 'ectly in the argument or via a variable that is not read (checked) between its assignment and the cast. A value outside the range yields an invalid enumeration value that falls through case statements' + '. EnsureRange, Min or Max in the argument count as a check; constants, arithmetic and unknown types stay silent. For enumerations with explicit ordinal values the range is given as Ord(Low(T))..Ord(Hi' + 'gh(T)). Medium confidence. Quick fix for a direct source in a statement of its own: helper variable, InRange check with raise EConvertError before it, System.Math added to uses.",' + #10 +
+    '      "bad": "Status := TStatus(qry.FieldByName(''Status'').AsInteger);",' + #10 +
+    '      "good": "Wert := qry.FieldByName(''Status'').AsInteger;\nif not InRange(Wert, Ord(Low(TStatus)), Ord(High(TStatus))) then\n  raise EConvertError.CreateFmt(''Ungültiger Wert %d für TStatus'', [Wert])' + ';\nStatus := TStatus(Wert);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "sources",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "FieldByName",' + #10 +
+    '            "ReadInteger",' + #10 +
+    '            "AsInteger",' + #10 +
+    '            "StrToInt"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Calls whose result counts as unchecked."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2862,6 +2885,17 @@ begin
     '      "id": "null-compare",' + #10 +
     '      "name": "Vergleich mit Null statt VarIsNull oder IsNull",' + #10 +
     '      "description": "X = Null bzw. X <> Null vergleicht einen Variant mit Null. Das Ergebnis hängt von der globalen Einstellung System.Variants.NullEqualityRule ab: Mit der Vorgabe ncrLoose vergleich' + 't er wie erwartet, mit ncrStrict ist er nie wahr, mit ncrError löst er eine Exception aus. Eine Bibliothek, ein Testrahmen oder ein anderer Teil des Projekts kann die Einstellung ändern. VarIsNull(X) ' + 'und Feld.IsNull prüfen unabhängig davon. Gemeldet wird nur, wo der Vergleich für sich steht (Bedingung, Argument, Zuweisung); not X = Null bindet als (not X) = Null und bekommt keine Korrektur. Sicher' + 'heit hoch. Korrektur: Feld.IsNull bei X.Value auf FieldByName, FindField, Fields[…], ParamByName, Params[…] oder einem Feld vom Typ T…Field/T…Param, sonst VarIsNull(X); bei <> mit not davor."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unchecked-enum-cast",' + #10 +
+    '      "name": "Zahl ungeprüft in Aufzählung umgewandelt",' + #10 +
+    '      "description": "TStatus(N) mit einem Aufzählungstyp aus der Datei oder dem Index, wenn N aus einem Aufruf der Option sources stammt (FieldByName, ReadInteger, AsInteger, StrToInt): direkt im Arg' + 'ument oder über eine Variable, die zwischen Zuweisung und Umwandlung nicht gelesen (geprüft) wird. Ein Wert außerhalb des Bereichs ergibt einen ungültigen Aufzählungswert, der in case durchfällt. Ensu' + 'reRange, Min oder Max im Argument gelten als Prüfung; Konstanten, Rechnungen und unbekannte Typen bleiben still. Bei Aufzählungen mit eigenen Ordinalwerten nennt die Meldung den Bereich als Ord(Low(T)' + ')..Ord(High(T)). Sicherheit mittel. Korrektur bei direkter Quelle in einer eigenen Anweisung: Hilfsvariable, InRange-Prüfung mit raise EConvertError davor, System.Math in uses.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "sources",' + #10 +
+    '          "description": "Aufrufe, deren Ergebnis als ungeprüft gilt."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
