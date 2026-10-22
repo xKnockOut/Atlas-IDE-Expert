@@ -690,3 +690,12 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Unter FPC getestet: RuleTable, Hover.Layout, Findings. VCL-Tests (`Atlas.UI.Settings.Rules.Tests`, Page.Tests) nur mit Delphi.
 - Risiken beim ersten Delphi-Build: `TListView.OnItemChecked`, AutoSize des Editors, `HandleNeeded` der Editoren auf verborgenen Seiten.
 - Handtest AP1–AP26 in `docs/Atlas-Testfaelle.md`. Danach folgen die Unter-Issues (#910 ff.) als Kette auf diesem Branch.
+
+## Compiler-Regeln Kette H: #1008, #1020, #1070, #1075, #1076, #1078 (22.10.2026, ungebaut)
+- Kette ab `feature/1006-readonly-property-assigned`: `feature/1008-inaccessible-member` → `feature/1020-unused-private-member` → `feature/1070-message-method-invalid` → `feature/1075-interface-declaration-invalid` → `feature/1076-implements-clause-invalid` → `feature/1078-calling-convention-required`. Nichts nach main.
+- Neue Units: `Rules.Builtin.Visibility` (inaccessible-member, unused-private-member) und `Rules.Builtin.TypeDeclarations` (message-method-invalid, interface-declaration-invalid, implements-clause-invalid, calling-convention-required; gemeinsame Hilfe `TDeclarationScan`).
+- Ursache behoben (#1008): `TNameResolver` kennt jetzt protected-Zugriffe über eine Klasse der eigenen Unit (`TZugang(Control).Click`). Dabei aufgefallen und behoben: `GlobalFile`, `LoadGlobal`, `SaveGlobal` in `Atlas.IDE.Foundation.Settings` standen privat, wurden aber von außen gerufen (echter E2361 aus dem #909-Stand).
+- `Semantics.ConstantValues` ist unverändert aus der Kette #1011/#1015 übernommen; im Sammelbranch dieselbe Datei wie dort, nur die Fassung aus #992 muss vereinigt werden.
+- Neue Option `includeFields` für unused-private-member (Schema, Parser, Doku erzeugt).
+- Unter FPC getestet (Regeltests, Golden-Korpus, Profile); Scan über alle Repo-Quellen und das Referenzprojekt ohne Fehlalarme. Handtests NS1–NS9, UV1–UV8, MW1–MW8, IZ1–IZ8, IK1–IK8, AK1–AK8 in `docs/Atlas-Testfaelle.md`; die Issues bleiben bis dahin offen.
+- Beim ersten Delphi-Build prüfen: Konstanten-Arrays mit `MatchText` (`InterfaceForbiddenDirectives`, `ForeignConventions`, `PropertySpecifiers`), `case` über `TIndexSymbolKind` mit `else`.
