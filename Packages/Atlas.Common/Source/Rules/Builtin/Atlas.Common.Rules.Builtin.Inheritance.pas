@@ -18,6 +18,11 @@
 //                                       Feld oder eine Property, nicht virtuelle Methode wie eine gleich
 //                                       aufgebaute nicht virtuelle des Vorfahren (#1003); strict private
 //                                       des Vorfahren nur mit ignoreStrictPrivate = false
+//   override-case-mismatch              Schreibweise oder Sichtbarkeit weicht ab (#1021, aus): override
+//                                       anders geschrieben als der Vorfahr (H2365) oder weniger sichtbar
+//                                       (H2269, nur Klassen im interface-Teil), Getter/Setter Get<Name>
+//                                       bzw. Set<Name> anders geschrieben (H2367), inline-Methode greift
+//                                       auf ein weniger sichtbares Mitglied zu (H2440)
 //
 // Vorfahren werden zuerst in der Datei, dann im Symbolindex gesucht (auch RTL
 // und VCL, soweit eingelesen). Ist ein Vorfahr nicht auflösbar oder mehrdeutig,
@@ -147,8 +152,15 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TOverrideCaseMismatchRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 const
   MemberHidesAncestorRuleId = 'member-hides-ancestor';
+  OverrideCaseMismatchRuleId = 'override-case-mismatch';
 
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 
@@ -2009,6 +2021,382 @@ begin
   end;
 end;
 
+{ TOverrideCaseMismatchRule }
+
+function TOverrideCaseMismatchRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(OverrideCaseMismatchRuleId, TRuleSeverity.Hint,
+    'Schreibweise oder Sichtbarkeit weicht vom Vorfahren ab', True);
+end;
+
+/// <summary>Stufe einer Sichtbarkeit: 0 privat, 1 geschützt, 2 öffentlich (public und published). Nur Stufen
+/// werden verglichen; private gegen strict protected bleibt offen.</summary>
+function VisibilityTier(AVisibility: TIndexVisibility): Integer;
+begin
+  case AVisibility of
+    TIndexVisibility.StrictPrivate, TIndexVisibility.Private:
+      Result := 0;
+    TIndexVisibility.StrictProtected, TIndexVisibility.Protected:
+      Result := 1;
+  else
+    Result := 2;
+  end;
+end;
+
+function VisibilityName(AVisibility: TIndexVisibility): string;
+begin
+  case AVisibility of
+    TIndexVisibility.Published:
+      Result := 'published';
+    TIndexVisibility.Protected:
+      Result := 'protected';
+    TIndexVisibility.StrictProtected:
+      Result := 'strict protected';
+    TIndexVisibility.Private:
+      Result := 'private';
+    TIndexVisibility.StrictPrivate:
+      Result := 'strict private';
+  else
+    Result := 'public';
+  end;
+end;
+
+procedure TOverrideCaseMismatchRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Cache: IRuleDerivedCache;
+  Ancestry: TAncestry;
+  Tokens: TArray<TPascalToken>;
+
+  function TokenRange(AIndex: Integer): TTextRange;
+  begin
+    Result := TTextRange.Create(Tokens[AIndex].StartPos, Tokens[AIndex].EndPos);
+  end;
+
+  /// <summary>Erstes Token ab AOffset; Length(Tokens) ohne.</summary>
+  function TokenFrom(AOffset: Integer): Integer;
+  var
+    Low, High, Middle: Integer;
+  begin
+    Low := 0;
+    High := Length(Tokens);
+    while Low < High do
+    begin
+      Middle := (Low + High) div 2;
+      if Tokens[Middle].Offset < AOffset then
+        Low := Middle + 1
+      else
+        High := Middle;
+    end;
+    Result := Low;
+  end;
+
+  /// <summary>Edits, die den Namen AOld in den Rumpfköpfen "procedure AClassName.AOld" durch ANew ersetzen.</summary>
+  function BodyHeadEdits(const AClassName, AOld, ANew: string): TArray<TRuleEdit>;
+  var
+    Index: Integer;
+  begin
+    Result := nil;
+    for Index := 1 to High(Tokens) - 2 do
+      if (Tokens[Index - 1].Kind = TPascalTokenKind.Keyword) and MatchText(Tokens[Index - 1].Text, ['procedure',
+        'function', 'constructor', 'destructor']) and SameText(Tokens[Index].Text, AClassName) and
+        Tokens[Index + 1].IsSymbol('.') and (Tokens[Index + 2].Kind = TPascalTokenKind.Identifier) and
+        SameText(Tokens[Index + 2].Text, AOld) and (Tokens[Index + 2].Text <> ANew) then
+        Result := Result + [TRuleEdit.Create(TokenRange(Index + 2), ANew)];
+  end;
+
+  /// <summary>Token der Property AProperty: vom Namen bis vor das abschließende ";".</summary>
+  procedure PropertyTokens(const AProperty: TIndexSymbol; out AFirst, ALast: Integer);
+  begin
+    AFirst := 0;
+    while (AFirst <= High(Tokens)) and ((Tokens[AFirst].StartPos.Line < AProperty.Range.StartPos.Line) or
+      ((Tokens[AFirst].StartPos.Line = AProperty.Range.StartPos.Line) and
+      (Tokens[AFirst].StartPos.Character < AProperty.Range.StartPos.Character))) do
+      Inc(AFirst);
+    ALast := AFirst;
+    while (ALast < High(Tokens)) and not Tokens[ALast].IsSymbol(';') do
+      Inc(ALast);
+  end;
+
+  /// <summary>Edits, die hinter read/write der Property AProperty den Namen AOld durch ANew ersetzen.</summary>
+  function AccessorEdits(const AProperty: TIndexSymbol; const AOld, ANew: string): TArray<TRuleEdit>;
+  var
+    Index, First, Last: Integer;
+  begin
+    Result := nil;
+    PropertyTokens(AProperty, First, Last);
+    for Index := First + 1 to Last - 1 do
+      if SameText(Tokens[Index].Text, AOld) and (SameText(Tokens[Index - 1].Text, 'read') or
+        SameText(Tokens[Index - 1].Text, 'write')) then
+        Result := Result + [TRuleEdit.Create(TokenRange(Index), ANew)];
+  end;
+
+  /// <summary>Mitglied AName der eigenen Members oder der nächsten Stufe der Kette, die es dort sichtbar gibt.
+  /// False, wenn keine Aussage möglich ist (nur in inaktivem Zweig).</summary>
+  function FindVisibleMember(const AName: string; const AOwnMembers: TArray<TIndexSymbol>;
+    const AChain: TArray<TSymbolLocation>; out AHit: TIndexSymbol; out AFound: Boolean): Boolean;
+  var
+    Symbol: TIndexSymbol;
+    Location: TSymbolLocation;
+  begin
+    AHit := Default(TIndexSymbol);
+    AFound := False;
+    for Symbol in AOwnMembers do
+      if SameText(Symbol.Name, AName) then
+      begin
+        if Symbol.Unavailable then
+          Exit(False);
+        AHit := Symbol;
+        AFound := True;
+        Exit(True);
+      end;
+    for Location in AChain do
+      for Symbol in Ancestry.Members(Location) do
+        if SameText(Symbol.Name, AName) then
+        begin
+          if Symbol.Unavailable then
+            Exit(False);
+          if (Symbol.Visibility = TIndexVisibility.StrictPrivate) or ((Location.FileName <> '') and
+            (Symbol.Visibility = TIndexVisibility.Private)) then
+            Continue;
+          AHit := Symbol;
+          AFound := True;
+          Exit(True);
+        end;
+    Result := True;
+  end;
+
+  /// <summary>Die überschriebene Methode: nächste Stufe mit gleichnamiger, sichtbarer, virtueller Methode gleicher
+  /// Parameterzahl; TObject über die Tabelle, wenn System nicht im Index steht. False ohne sichere Aussage.</summary>
+  function Overridden(const AOwn: TIndexSymbol; const AChain: TArray<TSymbolLocation>; AObjectMissing: Boolean;
+    out AOwner: string; out ATarget: TIndexSymbol): Boolean;
+  var
+    Location: TSymbolLocation;
+    Symbol: TIndexSymbol;
+    Any: Boolean;
+    Name: string;
+  begin
+    Result := False;
+    ATarget := Default(TIndexSymbol);
+    for Location in AChain do
+    begin
+      Any := False;
+      for Symbol in Ancestry.Methods(Location) do
+      begin
+        if not SameText(Symbol.Name, AOwn.Name) then
+          Continue;
+        if Symbol.Unavailable then
+          Exit;
+        if (Symbol.Visibility = TIndexVisibility.StrictPrivate) or ((Location.FileName <> '') and
+          (Symbol.Visibility = TIndexVisibility.Private)) then
+          Continue;
+        Any := True;
+        if Symbol.IsVirtual and (Symbol.MaxArgs = AOwn.MaxArgs) and
+          (StartsText('class ', Symbol.Signature) = StartsText('class ', AOwn.Signature)) then
+        begin
+          AOwner := Location.Symbol.Name;
+          ATarget := Symbol;
+          Exit(True);
+        end;
+      end;
+      if Any then
+        Exit;
+    end;
+    if AObjectMissing and (AOwn.MaxArgs = 0) then
+      for Name in ObjectVirtualNames do
+        if SameText(Name, AOwn.Name) then
+        begin
+          AOwner := 'TObject';
+          ATarget.Name := Name;
+          ATarget.Visibility := TIndexVisibility.Public;
+          Exit(True);
+        end;
+  end;
+
+  procedure CheckOverride(const AClass, AOwn: TIndexSymbol; const AChain: TArray<TSymbolLocation>;
+    AObjectMissing: Boolean);
+  var
+    Owner: string;
+    Target: TIndexSymbol;
+  begin
+    if not Overridden(AOwn, AChain, AObjectMissing, Owner, Target) then
+      Exit;
+    if Target.Name <> AOwn.Name then
+      AReport.Add(AOwn.SelectionRange, Format('Schreibweise weicht von %s.%s ab (wie H2365).', [Owner, Target.Name]),
+        TRuleConfidence.High, [TRuleFix.Create('Schreibweise vom Vorfahr übernehmen',
+        [TRuleEdit.Create(AOwn.SelectionRange, Target.Name)] + BodyHeadEdits(AClass.Name, AOwn.Name, Target.Name))]);
+    // Nur für Klassen im interface-Teil (die Sichtbarkeit sieht man nur dort von außen).
+    if AClass.InInterface and (VisibilityTier(AOwn.Visibility) < VisibilityTier(Target.Visibility)) then
+      AReport.Add(AOwn.SelectionRange, Format('%s.%s ist %s und damit weniger sichtbar als %s.%s (%s) (wie H2269).',
+        [AClass.Name, AOwn.Name, VisibilityName(AOwn.Visibility), Owner, Target.Name,
+        VisibilityName(Target.Visibility)]), TRuleConfidence.High);
+  end;
+
+  /// <summary>H2367: Getter oder Setter heißt Get&lt;Property&gt; bzw. Set&lt;Property&gt;, nur anders geschrieben.
+  /// </summary>
+  procedure CheckAccessors(const AClass, AProperty: TIndexSymbol; const AOwnMembers: TArray<TIndexSymbol>);
+  var
+    Index, Last: Integer;
+    Expected, Name: string;
+    Member, Method: TIndexSymbol;
+    Found: Boolean;
+    Edits: TArray<TRuleEdit>;
+  begin
+    PropertyTokens(AProperty, Index, Last);
+    while Index < Last do
+    begin
+      if (Index + 2 <= High(Tokens)) and (Tokens[Index].Kind in [TPascalTokenKind.Identifier,
+        TPascalTokenKind.Keyword]) and (SameText(Tokens[Index].Text, 'read') or SameText(Tokens[Index].Text, 'write')) and
+        (Tokens[Index + 1].Kind = TPascalTokenKind.Identifier) and not Tokens[Index + 2].IsSymbol('.') then
+      begin
+        Name := Tokens[Index + 1].Text;
+        if SameText(Tokens[Index].Text, 'read') then
+          Expected := 'Get' + AProperty.Name
+        else
+          Expected := 'Set' + AProperty.Name;
+        Found := False;
+        Method := Default(TIndexSymbol);
+        for Member in AOwnMembers do
+          if SameText(Member.Name, Name) then
+          begin
+            Found := Member.Kind = TIndexSymbolKind.Method;
+            Method := Member;
+            if not Found then
+              Break;
+          end;
+        if Found and SameText(Name, Expected) and (Name <> Expected) then
+        begin
+          // Umbenennen in der Klasse (Deklaration, Properties) und in den Rumpfköpfen.
+          Edits := nil;
+          for Member in AOwnMembers do
+            if (Member.Kind = TIndexSymbolKind.Method) and SameText(Member.Name, Name) then
+              Edits := Edits + [TRuleEdit.Create(Member.SelectionRange, Expected)];
+          for Member in AOwnMembers do
+            if Member.Kind = TIndexSymbolKind.Property_ then
+              Edits := Edits + AccessorEdits(Member, Name, Expected);
+          Edits := Edits + BodyHeadEdits(AClass.Name, Name, Expected);
+          AReport.Add(TokenRange(Index + 1), Format('Die Zugriffsmethode %s.%s sollte %s.%s geschrieben werden ' +
+            '(wie H2367).', [AClass.Name, Method.Name, AClass.Name, Expected]), TRuleConfidence.High,
+            [TRuleFix.Create(Format('In %s umbenennen', [Expected]), Edits)]);
+        end;
+      end;
+      Inc(Index);
+    end;
+  end;
+
+  /// <summary>H2440: Die inline-Methode AMethod greift im Rumpf auf ein weniger sichtbares Mitglied zu.</summary>
+  procedure CheckInline(const AType, AMethod: TIndexSymbol; const AOwnMembers: TArray<TIndexSymbol>;
+    const AChain: TArray<TSymbolLocation>);
+  var
+    Section, Routine, Body, Node: TSyntaxNode;
+    Stack: TArray<TSyntaxNode>;
+    Index, Level, Child: Integer;
+    Locals, Reported: TArray<string>;
+    HasWith: Boolean;
+    Hit, Same: TIndexSymbol;
+    Found: Boolean;
+  begin
+    // Alle gleichnamigen Deklarationen inline und auf derselben Stufe, sonst ist der Rumpf nicht zuzuordnen.
+    for Same in AOwnMembers do
+      if SameText(Same.Name, AMethod.Name) and ((Same.Kind <> TIndexSymbolKind.Method) or
+        not Same.HasDirective('inline') or (VisibilityTier(Same.Visibility) <> VisibilityTier(AMethod.Visibility)) or
+        Same.Unavailable) then
+        Exit;
+    Section := AContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
+    if Section = nil then
+      Exit;
+    Reported := nil;
+    for Index := 0 to Section.ChildCount - 1 do
+    begin
+      Routine := Section[Index];
+      if (Routine.Kind <> TSyntaxKind.RoutineDecl) or not SameText(Routine.Name, AType.Name + '.' + AMethod.Name) then
+        Continue;
+      Body := Routine.FindChild(TSyntaxKind.Block);
+      if Body = nil then
+        Continue;
+      Locals := nil;
+      HasWith := False;
+      // Lokale Namen (Parameter, Variablen, Konstanten, Typen, verschachtelte Routinen) verdecken Mitglieder.
+      Stack := [Routine];
+      while Stack <> nil do
+      begin
+        Node := Stack[High(Stack)];
+        SetLength(Stack, Length(Stack) - 1);
+        if (Node <> Routine) and (Node.Kind in [TSyntaxKind.Parameter, TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl,
+          TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl]) then
+          Locals := Locals + Node.Name.Split([',']);
+        if Node.Kind = TSyntaxKind.WithStatement then
+          HasWith := True;
+        for Child := 0 to Node.ChildCount - 1 do
+          Stack := Stack + [Node[Child]];
+      end;
+      if HasWith then
+        Continue;
+      for Level := TokenFrom(Body.StartOffset) to High(Tokens) do
+      begin
+        if Tokens[Level].Offset >= Body.EndOffset then
+          Break;
+        if (Tokens[Level].Kind <> TPascalTokenKind.Identifier) or MatchText(Tokens[Level].Text, Locals) or
+          MatchText(Tokens[Level].Text, Reported) then
+          Continue;
+        // Obj.FWert gehört einem anderen Ausdruck; nur Self.FWert zählt.
+        if (Level > 0) and Tokens[Level - 1].IsSymbol('.') and ((Level < 2) or
+          not SameText(Tokens[Level - 2].Text, 'Self')) then
+          Continue;
+        if not FindVisibleMember(Tokens[Level].Text, AOwnMembers, AChain, Hit, Found) or not Found then
+          Continue;
+        if VisibilityTier(Hit.Visibility) >= VisibilityTier(AMethod.Visibility) then
+          Continue;
+        Reported := Reported + [Tokens[Level].Text];
+        AReport.Add(TokenRange(Level), Format('Die inline-Methode %s.%s ist %s, greift aber auf %s (%s) zu; ' +
+          'außerhalb der Klasse setzt der Compiler sie nicht ein (wie H2440).', [AType.Name, AMethod.Name,
+          VisibilityName(AMethod.Visibility), Hit.Name, VisibilityName(Hit.Visibility)]), TRuleConfidence.High);
+      end;
+    end;
+  end;
+
+var
+  Symbol, Member: TIndexSymbol;
+  Location: TSymbolLocation;
+  Chain: TArray<TSymbolLocation>;
+  Members: TArray<TIndexSymbol>;
+  Complete, ObjectMissing: Boolean;
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Cache := TRuleDerived.Open(AContext);
+  Tokens := TRuleDerived.CodeTokens(Cache, AContext);
+  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
+  try
+    for Symbol in Ancestry.Local.Symbols do
+    begin
+      if not (Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.RecordType]) or (Symbol.Container <> '') or
+        Symbol.Unavailable then
+        Continue;
+      Location := Default(TSymbolLocation);
+      Location.Symbol := Symbol;
+      Members := Ancestry.Members(Location);
+      Chain := nil;
+      ObjectMissing := False;
+      if Symbol.Kind = TIndexSymbolKind.ClassType then
+        Chain := Ancestry.Ancestors(Symbol.Name, Complete, ObjectMissing);
+      for Member in Members do
+      begin
+        if Member.Unavailable then
+          Continue;
+        if (Member.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and
+          Member.HasDirective('override') and (Symbol.Kind = TIndexSymbolKind.ClassType) then
+          CheckOverride(Symbol, Member, Chain, ObjectMissing);
+        if Member.Kind = TIndexSymbolKind.Property_ then
+          CheckAccessors(Symbol, Member, Members);
+        if (Member.Kind = TIndexSymbolKind.Method) and Member.HasDirective('inline') then
+          CheckInline(Symbol, Member, Members, Chain);
+      end;
+    end;
+  finally
+    Ancestry.Free;
+  end;
+end;
+
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDestroyWithoutOverrideRule.Create);
@@ -2019,6 +2407,7 @@ begin
   ARegistry.Register(TOverrideTargetMissingRule.Create);
   ARegistry.Register(TAbstractClassInstantiatedRule.Create);
   ARegistry.Register(TMemberHidesAncestorRule.Create);
+  ARegistry.Register(TOverrideCaseMismatchRule.Create);
 end;
 
 end.

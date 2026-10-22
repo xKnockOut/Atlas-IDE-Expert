@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 19 |
+| [Compiler vorab](#gruppe-compiler) | 20 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -150,6 +150,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`unsatisfied-forward`](#unsatisfied-forward) | Vorwärtsdeklaration nie aufgelöst | Bug | Fehler |
 | [`member-hides-ancestor`](#member-hides-ancestor) | Member verdeckt einen Member des Vorfahren | Bug | Warnung |
 | [`published-type-invalid`](#published-type-invalid) | Unzulässiges Mitglied im published-Abschnitt | Bug | Fehler |
+| [`override-case-mismatch`](#override-case-mismatch) | Schreibweise oder Sichtbarkeit weicht vom Vorfahren ab | Code Smell | Hinweis |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4668,5 +4669,30 @@ Richtig:
 TKarte = class(TCustomControl)
 public
   property Mitte: TPointF read FMitte write SetMitte;
+end;
+```
+
+<a id="override-case-mismatch"></a>
+### override-case-mismatch
+
+**Schreibweise oder Sichtbarkeit weicht vom Vorfahren ab** · Code Smell · Hinweis · Gruppe Compiler vorab
+
+Eine überschreibende Methode schreibt ihren Namen anders als der Vorfahr (destructor destroy, wie H2365) oder ist weniger sichtbar als die überschriebene Methode (wie H2269, nur für Klassen im interface-Teil; verglichen werden die Stufen privat, geschützt, öffentlich), ein Getter oder Setter heißt Get<Property> bzw. Set<Property>, ist aber anders geschrieben (wie H2367), oder eine inline-Methode greift auf ein Mitglied zu, das weniger sichtbar ist als sie selbst, sodass der Compiler sie außerhalb der Klasse nicht einsetzen kann (wie H2440). Wichtig für C++Builder-Nutzer der Units und für einheitlichen Code. Die Docwiki führt H2269 und H2367 als X2269 und X2367, weil sich ihre Stufe umstellen lässt; dcc meldet sie standardmäßig als Hinweis. H2368 und H2369 deckt die Regel nicht ab, weil nicht dokumentiert ist, wann dcc sie meldet. Standardmäßig aus; in atlas.json einschalten. Korrekturen: Schreibweise vom Vorfahr übernehmen, Zugriffsmethode umbenennen.
+
+Entspricht der Compilermeldung `H2365`, `H2440`, `H2269`, `H2367`.
+
+Mit Treffer:
+
+```pascal
+TKunde = class
+  destructor destroy; override;
+end;
+```
+
+Richtig:
+
+```pascal
+TKunde = class
+  destructor Destroy; override;
 end;
 ```

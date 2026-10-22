@@ -4182,3 +4182,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | JP8 | Dieselben Properties im Abschnitt ohne Angabe einer TPersistent-Klasse, in public, mit Typparameter `T`, mit unbekanntem Typ und mit `published` nur in einem `{$IFDEF}`-Zweig | Keine Meldung |
 | JP9 | `"published-type-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | JP10 | Abgleich mit Delphi: JP1, JP3 bis JP7 übersetzen | dcc meldet dieselben Codes an denselben Stellen, für JP8 nichts; weicht dcc ab (etwa bei Prozedurtypen oder Mengen), Regel anpassen |
+
+## Schreibweise oder Sichtbarkeit weicht vom Vorfahren ab (#1021)
+
+Voraussetzung: Server läuft in der IDE mit Projekt, in `atlas.json` `"rules": {"override-case-mismatch": "hint"}`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JS1 | Das Beispiel aus #1021: `destructor destroy; override;` in einer Klasse | Hinweis `override-case-mismatch` am Namen: „Schreibweise weicht von TObject.Destroy ab (wie H2365).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JS2 | Schnellkorrektur „Schreibweise vom Vorfahr übernehmen“, danach Strg+Z | Deklaration und Rumpfkopf heißen `Destroy`, keine Meldung mehr; ein Undo-Schritt |
+| JS3 | `procedure Paint; override;` einer TGraphicControl-Nachfahrin in `private` (Klasse im interface-Teil) | „… ist private und damit weniger sichtbar als TGraphicControl.Paint (protected) (wie H2269).“; dieselbe Klasse im implementation-Teil ohne Meldung |
+| JS4 | `property Name: string read getName write SETNAME;` mit gleichnamigen Methoden | Zwei Hinweise wie H2367; „In GetName umbenennen“ ändert Deklaration, Property und Rumpfkopf |
+| JS5 | Public `function Anzahl: Integer; inline;`, die `FAnzahl` (private) liest | „Die inline-Methode … greift aber auf FAnzahl (private) zu; … (wie H2440).“ |
+| JS6 | Gleiche Schreibweise, `reintroduce`, unbekannter Vorfahr, protected gegen strict protected, Parameter gleichen Namens im inline-Rumpf, `with` | Keine Meldung |
+| JS7 | Ohne Eintrag in `atlas.json`, mit `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| JS8 | Abgleich mit Delphi: JS1, JS3 bis JS5 übersetzen, einmal normal und einmal mit C++-Ausgabe (`-JPHNE`) | dcc meldet H2365, H2269, H2367 bzw. H2440 an denselben Stellen, für JS6 nichts; dabei notieren, wann dcc H2368 und H2369 meldet, damit sie nachgezogen werden können |

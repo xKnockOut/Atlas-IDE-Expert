@@ -2367,6 +2367,22 @@
         "E2545",
         "E2452"
       ]
+    },
+    {
+      "id": "override-case-mismatch",
+      "name": "Spelling or visibility differs from the ancestor",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "compiler",
+      "description": "An overriding method spells its name differently from the ancestor (destructor destroy, like H2365) or has a lower visibility than the overridden method (like H2269, only for classes in the interface section; visibilities are compared in tiers private, protected, public), a getter or setter is named Get<Property> or Set<Property> but spelled differently (like H2367), or an inline method accesses a member that is less visible than the method itself, so the compiler cannot expand it outside the class (like H2440). Matters for C++Builder users of the units and for consistent code. The docwiki lists H2269 and H2367 as X2269 and X2367 because their level can be changed; dcc reports them as hints by default. H2368 and H2369 are not covered, since it is not documented when dcc reports them. Off by default; switch it on in atlas.json. Quick fixes: adopt the ancestor's spelling, rename the accessor.",
+      "bad": "TKunde = class\n  destructor destroy; override;\nend;",
+      "good": "TKunde = class\n  destructor Destroy; override;\nend;",
+      "compilerCodes": [
+        "H2365",
+        "H2440",
+        "H2269",
+        "H2367"
+      ]
     }
   ]
 }

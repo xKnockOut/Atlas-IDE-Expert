@@ -2387,6 +2387,22 @@ begin
     '        "E2545",' + #10 +
     '        "E2452"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "override-case-mismatch",' + #10 +
+    '      "name": "Spelling or visibility differs from the ancestor",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "An overriding method spells its name differently from the ancestor (destructor destroy, like H2365) or has a lower visibility than the overridden method (like H2269, only for cla' + 'sses in the interface section; visibilities are compared in tiers private, protected, public), a getter or setter is named Get<Property> or Set<Property> but spelled differently (like H2367), or an in' + 'line method accesses a member that is less visible than the method itself, so the compiler cannot expand it outside the class (like H2440). Matters for C++Builder users of the units and for consistent' + ' code. The docwiki lists H2269 and H2367 as X2269 and X2367 because their level can be changed; dcc reports them as hints by default. H2368 and H2369 are not covered, since it is not documented when d' + 'cc reports them. Off by default; switch it on in atlas.json. Quick fixes: adopt the ancestor''s spelling, rename the accessor.",' + #10 +
+    '      "bad": "TKunde = class\n  destructor destroy; override;\nend;",' + #10 +
+    '      "good": "TKunde = class\n  destructor Destroy; override;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "H2365",' + #10 +
+    '        "H2440",' + #10 +
+    '        "H2269",' + #10 +
+    '        "H2367"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3583,6 +3599,11 @@ begin
     '      "id": "published-type-invalid",' + #10 +
     '      "name": "Unzulässiges Mitglied im published-Abschnitt",' + #10 +
     '      "description": "Ein Mitglied hinter einem ausdrücklichen published, das der Compiler ablehnt: eine Property vom Typ Record, Array, Zeiger oder Prozedurtyp ohne of object (wie E2188), vom Typ Rea' + 'l48 (wie E2186) oder eine Menge über 4 Byte (wie E2187), ein Feld, das weder Klasse noch Interface ist (wie E2217), mehr als eine published-Überladung (wie E2266), eine Klassen-Property (wie E2545) od' + 'er ein Name mit Zeichen außerhalb von ASCII (wie E2452). Typen löst die Regel über die Datei und den Index auf und verfolgt Aliase; Typparameter, unbekannte Typen und Abschnitte, deren published in ei' + 'nem anderen Zweig der bedingten Übersetzung steht als das Mitglied, bleiben still. Den Abschnitt ohne Sichtbarkeitsangabe prüft sie nicht, weil der Compiler solche Mitglieder dort still zu public hera' + 'bstuft. Korrektur: das Mitglied in den public-Abschnitt verschieben."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "override-case-mismatch",' + #10 +
+    '      "name": "Schreibweise oder Sichtbarkeit weicht vom Vorfahren ab",' + #10 +
+    '      "description": "Eine überschreibende Methode schreibt ihren Namen anders als der Vorfahr (destructor destroy, wie H2365) oder ist weniger sichtbar als die überschriebene Methode (wie H2269, nur ' + 'für Klassen im interface-Teil; verglichen werden die Stufen privat, geschützt, öffentlich), ein Getter oder Setter heißt Get<Property> bzw. Set<Property>, ist aber anders geschrieben (wie H2367), oder' + ' eine inline-Methode greift auf ein Mitglied zu, das weniger sichtbar ist als sie selbst, sodass der Compiler sie außerhalb der Klasse nicht einsetzen kann (wie H2440). Wichtig für C++Builder-Nutzer d' + 'er Units und für einheitlichen Code. Die Docwiki führt H2269 und H2367 als X2269 und X2367, weil sich ihre Stufe umstellen lässt; dcc meldet sie standardmäßig als Hinweis. H2368 und H2369 deckt die Re' + 'gel nicht ab, weil nicht dokumentiert ist, wann dcc sie meldet. Standardmäßig aus; in atlas.json einschalten. Korrekturen: Schreibweise vom Vorfahr übernehmen, Zugriffsmethode umbenennen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
