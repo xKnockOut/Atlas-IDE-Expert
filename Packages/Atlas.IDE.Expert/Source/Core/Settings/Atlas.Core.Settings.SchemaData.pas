@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1760] of string = (
+  Lines: array[0..1765] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -443,6 +443,11 @@ const
     '                "enum": ["project", "atlas", "both"],',
     '                "default": "project",',
     '                "description": "Nur uses-unit-not-found: wo nach Units gesucht wird (#1016). project: wie der Compiler (Projekt, Suchpfade der .dproj, Bibliothekspfade der Installation, .pas und .dcu)' + '; atlas: was Atlas kennt (Index, Quellpfade der Installation); both: beides."',
+    '              },',
+    '              "ignoreStrictPrivate": {',
+    '                "type": "boolean",',
+    '                "default": true,',
+    '                "description": "Nur member-hides-ancestor: verdeckte strict private Member des Vorfahren nicht melden (#1003)."',
     '              }',
     '            }',
     '          }',

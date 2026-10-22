@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 17 |
+| [Compiler vorab](#gruppe-compiler) | 18 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -148,6 +148,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
 | [`abstract-declaration-invalid`](#abstract-declaration-invalid) | abstract, final oder static falsch kombiniert | Bug | Fehler |
 | [`unsatisfied-forward`](#unsatisfied-forward) | Vorwärtsdeklaration nie aufgelöst | Bug | Fehler |
+| [`member-hides-ancestor`](#member-hides-ancestor) | Member verdeckt einen Member des Vorfahren | Bug | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4605,4 +4606,39 @@ begin
 end;
 
 end.
+```
+
+<a id="member-hides-ancestor"></a>
+### member-hides-ancestor
+
+**Member verdeckt einen Member des Vorfahren** · Bug · Warnung · Gruppe Compiler vorab
+
+Eine Property heißt wie ein Feld eines Vorfahren (wie W1009), ein Feld wie ein Feld oder eine Property eines Vorfahren oder eine nicht virtuelle Methode hat Namen und Parameter einer nicht virtuellen Methode eines Vorfahren. Code, der über den Vorfahrtyp zugreift, sieht weiter den alten Member. Virtuelle Methoden meldet hides-virtual, lokale Namen shadowed-name. Neu veröffentlichte Properties (property Caption;), Properties mit neuem Typ über einer Property des Vorfahren, overload, reintroduce, Konstruktoren und Klassenmethoden bleiben unbeanstandet. Member, die der Nachfahre nicht sieht (private einer anderen Unit, strict private mit ignoreStrictPrivate), zählen nicht; Vorfahren kommen aus der Datei und dem Symbolindex. Korrektur für Felder und Properties: den Member in der Klassendeklaration und in den Rümpfen ihrer Methoden in dieser Unit umbenennen (aus FName wird FKundeName).
+
+Entspricht der Compilermeldung `W1009`.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `ignoreStrictPrivate` | boolean | `true` | Verdeckte strict private Member des Vorfahren nicht melden. |
+
+Mit Treffer:
+
+```pascal
+TBasis = class
+  FName: string;
+end;
+TKunde = class(TBasis)
+  FName: string;
+end;
+```
+
+Richtig:
+
+```pascal
+TBasis = class
+  FName: string;
+end;
+TKunde = class(TBasis)
+  FKundeName: string;
+end;
 ```
