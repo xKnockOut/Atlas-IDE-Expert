@@ -11,6 +11,9 @@ type
   [TestFixture]
   TAtlasCommandPaletteTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure FuzzyFindsBuildProject;
     [Test]
@@ -102,6 +105,11 @@ begin
     begin
       Result := True;
     end);
+end;
+
+procedure TAtlasCommandPaletteTests.WarmUpFirstUse;
+begin
+  BrokenFileSetAsideLockedFileKept;
 end;
 
 procedure TAtlasCommandPaletteTests.FuzzyFindsBuildProject;
@@ -226,6 +234,8 @@ begin
     System.SysUtils.DeleteFile(FileName);
     System.SysUtils.DeleteFile(FileName + TAtlasDataFile.DefectExtension);
   end;
+  // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
+  TAtlasDataFile.ForgetReports;
 end;
 
 initialization

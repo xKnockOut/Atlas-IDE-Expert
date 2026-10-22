@@ -117,12 +117,12 @@ begin
   Handle := OpenFor(_DELETE or SYNCHRONIZE);
   try
     Assert.AreEqual(2, Integer(Length(TWindowsSharedRead.ReadAllBytes(FFile))));
-    // Gegenprobe: So las der Server bisher.
-    Assert.WillRaise(
+    // Gegenprobe: So las der Server bisher. Delphi meldet EInOutError, FPC EFOpenError.
+    Assert.WillRaiseAny(
       procedure
       begin
         TFile.ReadAllBytes(FFile);
-      end, EFOpenError);
+      end);
   finally
     CloseHandle(Handle);
   end;

@@ -208,7 +208,7 @@ begin
       end);
     Assert.IsTrue(Found = Expected, 'erste Zuweisung in Baumreihenfolge');
     // Bis zum Treffer jeder Knoten genau einmal, danach keiner mehr.
-    Assert.AreEqual(All.IndexOf(Expected) + 1, Visits);
+    Assert.AreEqual(Integer(All.IndexOf(Expected)) + 1, Visits);
     Assert.IsTrue(Tree.Root.Search(
       function(ANode: TSyntaxNode): TSyntaxSearchStep
       begin

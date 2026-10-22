@@ -2156,24 +2156,32 @@ procedure TIndexBuilderTests.ServiceWaitsForLibraryWriteLock;
 const
   LibraryCache = 'C:\Cache\bibliothek.json';
 var
-  Held: IInterface;
+  Locked: TEvent;
   Releaser: TThread;
   Service: TIndexService;
   Request: TIndexRequest;
   Data: TBytes;
   NotWritten: string;
+  Files: IIndexFileSystem;
 begin
-  // Ein anderer schreibt gerade und gibt die Sperre nach kurzer Zeit frei.
-  Held := FFileSystem.TryLockWrite(LibraryCache);
-  Assert.IsTrue(Held <> nil);
-  Assert.IsTrue(FFileSystem.TryLockWrite(LibraryCache) = nil, 'nur ein Schreiber');
+  // Ein anderer schreibt gerade und gibt die Sperre nach kurzer Zeit frei. Die Sperre gehört allein dem Thread:
+  // Delphi hält das Interface-Ergebnis von TryLockWrite sonst in einem Zwischenwert bis zum Ende der Methode.
+  Files := FFileSystem;
+  Locked := TEvent.Create;
   Releaser := TThread.CreateAnonymousThread(
     procedure
+    var
+      Held: IInterface;
     begin
+      Held := Files.TryLockWrite(LibraryCache);
+      Locked.SetEvent;
       TThread.Sleep(300);
       Held := nil;
     end);
   Releaser.FreeOnTerminate := False;
+  Releaser.Start;
+  Assert.IsTrue(Locked.WaitFor(5000) = wrSignaled, 'Sperre genommen');
+  Assert.IsTrue(FFileSystem.TryLockWrite(LibraryCache) = nil, 'nur ein Schreiber');
   NotWritten := '';
   Service := TIndexService.Create(FIndex, FFileSystem);
   try
@@ -2187,13 +2195,13 @@ begin
     Request.ResolveUnit := Resolve;
     Request.CacheFile := 'C:\Cache\projekt.json';
     Request.LibraryCacheFile := LibraryCache;
-    Releaser.Start;
     Service.Start(Request);
     Service.WaitFor;
   finally
     Service.Free;
     Releaser.WaitFor;
     Releaser.Free;
+    Locked.Free;
   end;
   Assert.AreEqual('', NotWritten);
   Assert.IsTrue(FFileSystem.ReadBytes(LibraryCache, Data));

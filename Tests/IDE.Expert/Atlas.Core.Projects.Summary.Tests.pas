@@ -127,6 +127,13 @@ begin
   finally
     TearDown;
   end;
+  // Gesperrte Datei: Erstgebrauch der Melde- und Fehlerpfade.
+  Setup;
+  try
+    BrokenFileSetAsideLockedFileKept;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TAtlasProjectSummaryTests.Setup;
@@ -863,6 +870,8 @@ begin
   end;
   Assert.IsTrue(TAtlasProjectSummaries.Load(FFolder, Project, Summary));
   Assert.IsTrue(Summary.Hidden);
+  // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
+  TAtlasDataFile.ForgetReports;
 end;
 
 initialization
