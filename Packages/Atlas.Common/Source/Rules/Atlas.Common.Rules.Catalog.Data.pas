@@ -1737,6 +1737,16 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "default-parameter",' + #10 +
+    '      "name": "Default parameter instead of overload",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A parameter with a default value (Count: Integer = 10). For teams that prefer overloads: default values end up compiled into the caller, do not change with the library and do not' + ' mix well with overloads. Reported once per declaration (class member, interface section, forward or a routine only in the implementation part); the body of a declaration is not reported again. The qu' + 'ick fix inserts one overload per omitted trailing default parameter before the declaration, each forwarding with the default value, removes the default values (also repeated ones in the body) and adds' + ' overload. No fix when the signature is given from outside (virtual, dynamic, abstract, override, message, external, interface types), when the name is used as a value (@Routine, method pointer), when' + ' an overload of the same name exists, inside conditional compilation, or when the body cannot be found unambiguously.",' + #10 +
+    '      "bad": "procedure Exportieren(const Datei: string; MitKopf: Boolean = True);",' + #10 +
+    '      "good": "procedure Exportieren(const Datei: string); overload;\nprocedure Exportieren(const Datei: string; MitKopf: Boolean); overload;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "queue-nil-in-package",' + #10 +
     '      "name": "TThread.Queue(nil, …) in a package",' + #10 +
     '      "category": "bug",' + #10 +
@@ -3268,6 +3278,11 @@ begin
     '          "description": "Mindestzahl aufeinanderfolgender auskommentierter Codezeilen."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "default-parameter",' + #10 +
+    '      "name": "Standardparameter statt Überladung",' + #10 +
+    '      "description": "Ein Parameter mit Vorgabewert (Anzahl: Integer = 10). Für Teams, die Überladungen bevorzugen: Vorgabewerte landen beim Aufrufer im Code, ändern sich nicht mit der Bibliothek und ' + 'vertragen sich schlecht mit Überladungen. Gemeldet wird einmal je Deklaration (Klassenmitglied, interface-Teil, forward oder eine Routine nur im implementation-Teil); der Rumpf zu einer Deklaration ni' + 'cht noch einmal. Die Schnellkorrektur fügt vor der Deklaration je weggelassenem Standardparameter am Ende eine Überladung ein, die mit dem Vorgabewert weiterreicht, entfernt die Vorgabewerte (auch im ' + 'Rumpf wiederholte) und ergänzt overload. Keine Korrektur, wenn die Signatur von außen vorgegeben ist (virtual, dynamic, abstract, override, message, external, Interface-Typen), der Name als Wert benut' + 'zt wird (@Routine, Methodenzeiger), es schon eine gleichnamige Überladung gibt, in bedingter Übersetzung oder wenn der Rumpf nicht eindeutig zu finden ist."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "queue-nil-in-package",' + #10 +
