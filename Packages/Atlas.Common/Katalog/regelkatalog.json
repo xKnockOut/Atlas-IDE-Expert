@@ -2383,6 +2383,21 @@
         "H2269",
         "H2367"
       ]
+    },
+    {
+      "id": "default-property-invalid",
+      "name": "default property declared wrongly or missing",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "default; behind a property without index parameters (like E2132), a second default property of the same class with the same index types (like E2131; overloading by index type is allowed), or Obj[I] on a class that has no default property in its whole ancestor chain (like E2149). The type of Obj is resolved by name resolution; unresolvable types, broken ancestor chains and classes with a class helper in the unit stay silent. Property redeclarations without a type (property Items; default;) take the index from the ancestor and are not checked.",
+      "bad": "TListe = class\n  property Name: string read FName; default;\nend;",
+      "good": "TListe = class\n  property Items[I: Integer]: string read GetItem; default;\nend;",
+      "compilerCodes": [
+        "E2131",
+        "E2132",
+        "E2149"
+      ]
     }
   ]
 }

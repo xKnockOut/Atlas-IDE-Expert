@@ -107,3 +107,4 @@ unsatisfied-forward | Ref.Sprache.Merkmale.pas | function Zaehler: TZaehlerFunkt
 member-hides-ancestor | Ref.Sprache.Merkmale.pas |   TDezimalFormatierer = class(TInterfacedObject, IFormatierer) |   THuelleBasis = class\n    FWert: Integer;\n  end;\n  THuelle = class(THuelleBasis)\n    FWert: Integer;\n  end;\n  TDezimalFormatierer = class(TInterfacedObject, IFormatierer)
 published-type-invalid | Ref.Komponenten.Anzeige.pas |   published\n    property Stil: |   published\n    FZaehler: Integer;\n    property Stil:
 override-case-mismatch | Ref.Daten.Kunden.pas | destructor Destroy; override; | destructor destroy; override;
+default-property-invalid | Ref.Daten.Kunden.pas | procedure Speichern(AId: Integer; const AName: string);\n  end; | procedure Speichern(AId: Integer; const AName: string);\n    property Abfrage: TFDQuery read FAbfrage; default;\n  end;

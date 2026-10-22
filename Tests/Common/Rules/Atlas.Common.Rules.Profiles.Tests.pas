@@ -174,7 +174,7 @@ const
     'component-create-without-override,component-default-mismatch,component-fixed-pixels,' +
     'component-hardcoded-color,component-missing-free-notification,component-missing-inherited,' +
     'component-palette-icon,component-setter-without-invalidate,conditional-directive-unbalanced,confusable-identifier,' +
-    'constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,delimited-text-without-strict,deprecated-symbol,deref-before-nil-check,destroy-called-directly,destroy-without-override,' +
+    'constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,default-property-invalid,delimited-text-without-strict,deprecated-symbol,deref-before-nil-check,destroy-called-directly,destroy-without-override,' +
     'dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,' +
     'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,dictionary-get-without-check,dunitx-test-without-assert,duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,' +
     'empty-except,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,forbidden-uses,' +
@@ -205,7 +205,7 @@ begin
   Assert.AreEqual('abstract-class-instantiated,abstract-declaration-invalid,anonymous-thread-not-started,assert-side-effect,assign-to-property-member,bidi-control,captured-loop-variable,case-missing-enum-value,char-to-pchar,' +
     'collection-modified-in-loop,comparison-as-statement,' +
     'component-create-without-override,component-default-mismatch,component-missing-free-notification,' +
-    'component-missing-inherited,conditional-directive-unbalanced,constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,delimited-text-without-strict,' +
+    'component-missing-inherited,conditional-directive-unbalanced,constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,default-property-invalid,delimited-text-without-strict,' +
     'deref-before-nil-check,destroy-called-directly,destroy-without-override,dfm-circular-datasource,dfm-control-field-type-mismatch,' +
     'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,dictionary-get-without-check,' +
     'duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,' +
