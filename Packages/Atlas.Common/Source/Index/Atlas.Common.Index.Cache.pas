@@ -79,7 +79,8 @@ type
     // 20: Verweise der Rümpfe von inline-Routinen (#1017).
     // 21: Hinweise im Unit-Kopf samt Grund hinter deprecated (#1018).
     // 22: Typparameter ohne die Typen aus Einschränkungen (<T: class, TBasis>, #1029).
-    const FormatVersion = 22;
+    // 23: Unit-Name zählt nicht mehr als Hinweis im Unit-Kopf (Atlas.Settings.Experimental, #1018).
+    const FormatVersion = 23;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;
