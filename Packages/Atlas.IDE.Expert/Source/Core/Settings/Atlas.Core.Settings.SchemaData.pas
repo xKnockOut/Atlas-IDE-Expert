@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1687] of string = (
+  Lines: array[0..1697] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -313,6 +313,16 @@ const
     '                "type": "boolean",',
     '                "default": false,',
     '                "description": "Nur case-missing-enum-value: auch case-Anweisungen mit else melden, wenn Werte fehlen (#929)."',
+    '              },',
+    '              "wrapper": {',
+    '                "type": "string",',
+    '                "default": "TAtlasMainThread.Queue",',
+    '                "description": "Nur queue-nil-in-package (#943): Ersatz für TThread.Queue(nil, …) in der Schnellkorrektur; bei ForceQueue wird aus …Queue …ForceQueue. Mit Klammer steht der Text so vor' + ' den übrigen Argumenten, z. B. \"TAtlasMainThread.Queue(TAtlasFeature.Hover, \"."',
+    '              },',
+    '              "okMarker": {',
+    '                "type": "string",',
+    '                "default": "mainthread-ok",',
+    '                "description": "Nur queue-nil-in-package (#943): Kommentar, der eine Zeile ausnimmt, z. B. // mainthread-ok."',
     '              },',
     '              "replacement": {',
     '                "type": "string",',

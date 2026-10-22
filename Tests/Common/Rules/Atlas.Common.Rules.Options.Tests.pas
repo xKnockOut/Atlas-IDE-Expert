@@ -20,6 +20,8 @@ type
     procedure StringsReadsListOrDefault;
     [Test]
     procedure NumbersReadsListOrDefault;
+    [Test]
+    procedure TextReadsValueOrDefault;
   end;
 
 implementation
@@ -76,6 +78,14 @@ begin
   Items := TRuleOptions.Numbers('{"allowed": "1"}', 'allowed', [7]);
   Assert.AreEqual(1, Integer(Length(Items)), 'falscher Typ');
   Assert.AreEqual(Double(7), Items[0]);
+end;
+
+procedure TRuleOptionsTests.TextReadsValueOrDefault;
+begin
+  Assert.AreEqual('Log.Queue', TRuleOptions.Text('{"wrapper": " Log.Queue "}', 'wrapper', 'X'));
+  Assert.AreEqual('X', TRuleOptions.Text('{"wrapper": ""}', 'wrapper', 'X'), 'leer');
+  Assert.AreEqual('X', TRuleOptions.Text('{"wrapper": 1}', 'wrapper', 'X'), 'falscher Typ');
+  Assert.AreEqual('X', TRuleOptions.Text('', 'wrapper', 'X'));
 end;
 
 initialization

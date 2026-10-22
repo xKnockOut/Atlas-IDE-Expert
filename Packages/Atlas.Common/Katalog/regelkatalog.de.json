@@ -889,6 +889,21 @@
           "description": "Mindestzahl aufeinanderfolgender auskommentierter Codezeilen."
         }
       ]
+    },
+    {
+      "id": "queue-nil-in-package",
+      "name": "TThread.Queue(nil, …) in einem Package",
+      "description": "TThread.Queue(nil, …) oder TThread.ForceQueue(nil, …) in einer Unit eines Design-Time- oder Laufzeit-Packages: Der Eintrag gehört keinem Thread, beim Entladen des Packages räumt ihn niemand weg, und CheckSynchronize ruft ihn womöglich danach in fremdem Speicher auf. Package-Units erkennt die Regel über die .dpk bzw. .dproj des geladenen Projekts (eine .dpk ohne Projekt für sich). Eine Zeile mit dem Kommentar aus okMarker (Vorgabe mainthread-ok) ist ausgenommen. Sicherheit hoch. Korrektur: auf den Wrapper aus der Option wrapper umschreiben (Vorgabe TAtlasMainThread.Queue, bei ForceQueue ForceQueue); mit Klammer steht der Text so vor den übrigen Argumenten. ForceQueue mit Verzögerung bekommt keine Korrektur. Der Kommandozeilen-Linter liest die .dpk-Dateien unter dem geprüften Ordner. Leistet für jedes Plugin-Projekt dasselbe wie Tools/Check-MainThreadQueue.ps1; das Skript bleibt für Prüfungen ohne Atlas-Server.",
+      "options": [
+        {
+          "name": "wrapper",
+          "description": "Ersatz für TThread.Queue(nil, in der Schnellkorrektur."
+        },
+        {
+          "name": "okMarker",
+          "description": "Kommentar, der eine Zeile ausnimmt."
+        }
+      ]
     }
   ]
 }

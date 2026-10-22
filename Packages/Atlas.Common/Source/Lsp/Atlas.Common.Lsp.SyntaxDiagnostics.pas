@@ -76,6 +76,8 @@ type
     PackageProvides: TRulePackageProvides;
     /// <summary>Anwendungsart des Projekts der Datei (#926); Unknown ohne Projekt.</summary>
     Application: TRuleApplicationKind;
+    /// <summary>Name des Projekts ohne Endung (#943); '' ohne Projekt.</summary>
+    ProjectName: string;
     /// <summary>Abbruch zwischen den Prüfregeln; nil = nie. Setzt Compute.</summary>
     Cancelled: TRuleCancelled;
   end;
@@ -1005,6 +1007,7 @@ begin
   Context.FileName := ARules.FileName;
   Context.PackageProvides := ARules.PackageProvides;
   Context.Application := ARules.Application;
+  Context.ProjectName := ARules.ProjectName;
   Context.Cancelled := ARules.Cancelled;
   Result := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
 end;

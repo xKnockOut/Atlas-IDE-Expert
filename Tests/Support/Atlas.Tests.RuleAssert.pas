@@ -23,6 +23,10 @@ type
     /// <summary>Treffer von ARule auf ASource in einem Projekt der Anwendungsart AApplication (#926).</summary>
     class function ApplicationFindings(ARule: IRule; const ASource: string;
       AApplication: TRuleApplicationKind): TArray<TRuleFinding>; static;
+    /// <summary>Treffer von ARule auf ASource als Unit des Packages AProjectName (#943) mit Einstellungen aus
+    /// AConfigJson ('' = Vorgaben) unter ARelativePath.</summary>
+    class function PackageFindings(ARule: IRule; const ASource, AProjectName, AConfigJson,
+      ARelativePath: string): TArray<TRuleFinding>; static;
     /// <summary>Treffer von ARule auf ASource mit der Formulardatei AFormText daneben (#123).</summary>
     class function FormFindings(const ARule: IRule; const ASource, AFormText: string): TArray<TRuleFinding>; static;
     /// <summary>Positiver Testfall: genau ACount Treffer.</summary>
@@ -103,6 +107,32 @@ begin
     Context.Tree := Tree;
     Context.Application := AApplication;
     Result := TRuleEngine.Run([ARule], TServerSettings.Default, Context);
+  finally
+    Tree.Free;
+  end;
+end;
+
+class function TRuleAssert.PackageFindings(ARule: IRule; const ASource, AProjectName, AConfigJson,
+  ARelativePath: string): TArray<TRuleFinding>;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+begin
+  if AConfigJson = '' then
+    Settings := TServerSettings.Default
+  else
+    Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  Tree := TPascalParser.Parse(ASource);
+  try
+    Context := Default(TRuleContext);
+    Context.RelativePath := ARelativePath;
+    Context.Text := ASource;
+    Context.Tree := Tree;
+    Context.Application := TRuleApplicationKind.Package;
+    Context.ProjectName := AProjectName;
+    Result := TRuleEngine.Run([ARule], Settings, Context);
   finally
     Tree.Free;
   end;

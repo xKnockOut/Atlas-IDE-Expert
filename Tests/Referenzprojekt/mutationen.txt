@@ -64,3 +64,4 @@ metric-unit-length | Ref.Komponenten.Anzeige.pas | TextAbstand = 4; | TextAbstan
 public-field | Ref.Komponenten.Anzeige.pas |   public\n    constructor Create | public\n    Notiz: string;\n    constructor Create
 global-variable | Ref.Daten.Suche.pas | \nimplementation | \nvar\n  LetzteSuche: string;\n\nimplementation
 commented-out-code | Ref.Daten.Suche.pas | FAnbieter := AAnbieter; | FAnbieter := AAnbieter;\n  // if Assigned(AAnbieter) then\n  //   FAnbieter := AAnbieter\n  // else\n  //   FAnbieter := nil;
+queue-nil-in-package | Ref.Komponenten.Anzeige.pas | FWert := AValue;\n    Invalidate; | FWert := AValue;\n    TThread.Queue(nil, Invalidate);

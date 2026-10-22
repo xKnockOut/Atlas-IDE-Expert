@@ -3544,3 +3544,18 @@ Voraussetzung: Server läuft; Unit mit drei auskommentierten Codezeilen im Rumpf
 | CC5 | Code als mehrzeiliger `{ … }`-Kommentar | Eine Meldung; die Korrektur entfernt den ganzen Kommentar |
 | CC6 | Option „minLines“ auf 4 bzw. 2 | Bei 4 keine Meldung, bei 2 werden auch zwei Zeilen gemeldet |
 | CC7 | `"commented-out-code": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## TThread.Queue(nil, …) in einem Package (#943)
+
+Voraussetzung: Server läuft; ein Package-Projekt (`.dproj` mit `.dpk`) ist geladen, eine seiner Units enthält `TThread.Queue(nil, procedure begin FPanel.Aktualisieren; end);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QN1 | Unit öffnen | Warnung `queue-nil-in-package` auf `TThread.Queue(nil`: „Queue(nil, …) in <Package>.bpl: der Eintrag kann nach dem Entladen des Packages laufen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| QN2 | Alt+Enter, „Durch TAtlasMainThread.Queue(…) ersetzen“ | `TAtlasMainThread.Queue(procedure … end);`, ein Undo-Schritt nimmt es zurück (**Abnahme**) |
+| QN3 | Dieselbe Zeile in einer Unit eines Programms (`.dpr`) | Keine Meldung |
+| QN4 | `// mainthread-ok` hinter die Zeile schreiben | Keine Meldung |
+| QN5 | `TThread.ForceQueue(nil, Proc);` bzw. `TThread.ForceQueue(nil, Proc, 100);` | Meldung; Korrektur auf `TAtlasMainThread.ForceQueue(Proc)` bzw. ohne Korrektur |
+| QN6 | Auf der Seite „Prüfregeln“ `wrapper` = `Haupt.Einreihen` und `okMarker` = `ui-ok` | Korrektur schreibt `Haupt.Einreihen(…)`; `// ui-ok` nimmt die Zeile aus |
+| QN7 | `atlas --check` auf den Ordner des Packages | Meldung in der Package-Unit, wie im Editor |
+| QN8 | `"queue-nil-in-package": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

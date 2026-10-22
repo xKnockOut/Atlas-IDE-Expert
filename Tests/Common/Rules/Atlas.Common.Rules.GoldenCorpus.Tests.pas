@@ -60,6 +60,7 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.GoldenCorpus,
+  Atlas.Common.Projects.PackageReader,
   System.StrUtils;
 
 function Finding(const ARuleId: string; ALine: Integer): TRuleFinding;
@@ -362,11 +363,17 @@ var
   Detected: Boolean;
   Settings: TServerSettings;
   RuleIndex: Integer;
+  Packages: TArray<TPackageSource>;
+  Project: TCheckProject;
 begin
   Folder := ReferenceFolder;
   if Folder = '' then
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
   Rules := BuiltinRules;
+  // Units der Packages RefRuntime und RefDesign prüfen wie der Linter als Package-Units (#943).
+  Packages := nil;
+  for FileName in TDirectory.GetFiles(Folder, '*.dpk') do
+    Packages := Packages + [TPackageReader.Read(ReadSource(FileName))];
   Known := nil;
   for Rule in Rules do
     Known := Known + [Rule.Descriptor.Id];
@@ -395,8 +402,9 @@ begin
       else
       begin
         Settings := MutationSettings(Rules[RuleIndex].Descriptor);
-        Detected := TGoldenCorpus.Detected(TFileChecker.CheckText(Rules, Settings, Mutation.FileName, Text),
-          TFileChecker.CheckText(Rules, Settings, Mutation.FileName, Mutated), Mutation.RuleId);
+        Project := TFileChecker.PackageOf(Packages, ChangeFileExt(Mutation.FileName, ''));
+        Detected := TGoldenCorpus.Detected(TFileChecker.CheckText(Rules, Settings, Mutation.FileName, Text, Project),
+          TFileChecker.CheckText(Rules, Settings, Mutation.FileName, Mutated, Project), Mutation.RuleId);
         if not Detected then
           Problems := Problems + sLineBreak + Format('Zeile %d: %s findet die Mutation in %s nicht',
             [Mutation.Line, Mutation.RuleId, Mutation.FileName]);

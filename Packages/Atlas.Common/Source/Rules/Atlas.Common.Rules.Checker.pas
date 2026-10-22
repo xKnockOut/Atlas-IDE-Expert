@@ -5,6 +5,8 @@
 // Engine. Grundlage für den Kommandozeilen-Linter (#95).
 // Für die Baseline (#97) liefert CheckText auf Wunsch die Routinen der Datei
 // aus demselben Syntaxbaum mit, damit nicht zweimal geparst wird.
+// Gehört die Datei zu einem Package (contains einer .dpk), erfahren die Regeln
+// das über TCheckProject (queue-nil-in-package, #943).
 
 interface
 
@@ -13,7 +15,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Scopes,
-  Atlas.Common.Rules.Baseline;
+  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Projects.PackageReader;
 
 const
   SyntaxRuleId = 'syntax';
@@ -31,6 +34,13 @@ type
     Marks: TArray<TBaselineMark>;
   end;
 
+  /// <summary>Projekt einer geprüften Datei (#943); Default = unbekannt.</summary>
+  TCheckProject = record
+    Application: TRuleApplicationKind;
+    /// <summary>Name ohne Endung, z. B. Atlas.IDE.Expert.</summary>
+    Name: string;
+  end;
+
   TFileChecker = class
   public
     /// <summary>Beschreibung der eingebauten Syntaxprüfung.</summary>
@@ -41,6 +51,15 @@ type
     /// <summary>Wie oben, dazu die Routinen und Abschnitte der Datei (Baseline, #97).</summary>
     class function CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
       const ARelativePath, AText: string; out AScopes: TFindingScopes): TArray<TRuleFinding>; overload; static;
+    /// <summary>Wie oben für eine Datei des Projekts AProject (#943).</summary>
+    class function CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+      const ARelativePath, AText: string; const AProject: TCheckProject): TArray<TRuleFinding>; overload; static;
+    class function CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+      const ARelativePath, AText: string; const AProject: TCheckProject; out AScopes: TFindingScopes):
+      TArray<TRuleFinding>; overload; static;
+    /// <summary>Das Package aus APackages, dessen contains die Unit AUnitName nennt; sonst Default.</summary>
+    class function PackageOf(const APackages: TArray<TPackageSource>; const AUnitName: string): TCheckProject;
+      static;
   end;
 
 implementation
@@ -67,6 +86,36 @@ end;
 
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const ARelativePath, AText: string; out AScopes: TFindingScopes): TArray<TRuleFinding>;
+begin
+  Result := CheckText(ARules, ASettings, ARelativePath, AText, Default(TCheckProject), AScopes);
+end;
+
+class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const ARelativePath, AText: string; const AProject: TCheckProject): TArray<TRuleFinding>;
+var
+  Scopes: TFindingScopes;
+begin
+  Result := CheckText(ARules, ASettings, ARelativePath, AText, AProject, Scopes);
+end;
+
+class function TFileChecker.PackageOf(const APackages: TArray<TPackageSource>; const AUnitName: string):
+  TCheckProject;
+var
+  Source: TPackageSource;
+begin
+  Result := Default(TCheckProject);
+  for Source in APackages do
+    if Source.IsPackage and (Source.ContainsIndex(AUnitName) >= 0) then
+    begin
+      Result.Application := TRuleApplicationKind.Package;
+      Result.Name := Source.Name;
+      Exit;
+    end;
+end;
+
+class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const ARelativePath, AText: string; const AProject: TCheckProject; out AScopes: TFindingScopes):
+  TArray<TRuleFinding>;
 var
   Tree: TSyntaxTree;
   Context: TRuleContext;
@@ -103,6 +152,8 @@ begin
     Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARelativePath, '/', '\', [rfReplaceAll])), '');
     Context.Text := AText;
     Context.Tree := Tree;
+    Context.Application := AProject.Application;
+    Context.ProjectName := AProject.Name;
     Result := Syntax + TRuleEngine.Run(ARules, ASettings, Context);
   finally
     Tree.Free;

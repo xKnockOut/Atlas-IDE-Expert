@@ -570,6 +570,9 @@ begin
   Assert.AreEqual(Ord(TRuleApplicationKind.Unknown), Ord(TWritelnInGuiAppRule.ApplicationKind('',
     'library L;'#10'begin'#10'end.')));
   Assert.AreEqual(Ord(TRuleApplicationKind.Unknown), Ord(TWritelnInGuiAppRule.ApplicationKind('', '')));
+  // Packages (#943).
+  Assert.AreEqual(Ord(TRuleApplicationKind.Package), Ord(TWritelnInGuiAppRule.ApplicationKind('',
+    '// Kopf'#10'package Atlas.IDE.Expert;'#10'requires rtl;'#10'end.')));
 end;
 
 procedure TRtlTypePatternRulesTests.WritelnInGuiAppVariants;
