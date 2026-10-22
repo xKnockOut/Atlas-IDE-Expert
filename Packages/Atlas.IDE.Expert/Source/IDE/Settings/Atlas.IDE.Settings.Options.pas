@@ -116,7 +116,6 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Settings.JsonText,
-  Atlas.Core.Files.TextFile,
   Atlas.IDE.Foundation.TeamFile;
 
 type
@@ -350,14 +349,15 @@ end;
 /// </summary>
 function GlobalRules: string;
 var
-  Content: TAtlasTextFileContent;
+  Text: string;
   Root: TJSONObject;
   Rules: TJSONValue;
 begin
   Result := '';
-  if not TAtlasIdeSettings.LoadGlobal(Content) then
+  Text := TAtlasIdeSettings.GlobalText;
+  if Text = '' then
     Exit;
-  Root := TAtlasJsonText.Parse(Content.Text);
+  Root := TAtlasJsonText.Parse(Text);
   try
     if Root = nil then
       Exit;
@@ -623,7 +623,6 @@ procedure TAtlasAddInOptions.DialogClosed(Accepted: Boolean);
 var
   Settings: TAtlasPluginSettings;
   Changes: TArray<TPair<string, string>>;
-  Content: TAtlasTextFileContent;
 begin
   PendingReveal := '';
   try
@@ -634,8 +633,9 @@ begin
       TAtlasIdeSettings.Update(Settings);
       // Prüfregeln (#909): nur die geänderten Regeln in die globale settings.json.
       Changes := FPage.RulesChanges;
-      if (Length(Changes) > 0) and TAtlasIdeSettings.LoadGlobal(Content) then
-        TAtlasIdeSettings.SaveGlobal(Content, TAtlasJsonText.ApplyChanges(Content.Text, Changes));
+      // SaveGlobalText schreibt nicht, wenn die Datei da, aber nicht lesbar ist.
+      if Length(Changes) > 0 then
+        TAtlasIdeSettings.SaveGlobalText(TAtlasJsonText.ApplyChanges(TAtlasIdeSettings.GlobalText, Changes));
     end;
     // Strukturhervorhebung und Help Insight der IDE erst nach dem Dialog abgleichen: Mit OK
     // schreibt die IDE danach ihre Editoroptionen aus dem Speicher zurück, auch die Schalter,

@@ -29,9 +29,16 @@ uses
   Vcl.Graphics,
   Vcl.StdCtrls,
   Vcl.ComCtrls,
+  Vcl.ExtCtrls,
   Atlas.Core.Settings.RuleTable;
 
 type
+  /// <summary>Behälter ohne Rahmen und Beschriftung (Zeilen und Bereiche des Editors).</summary>
+  TAtlasRulesBox = class(TCustomPanel)
+  public
+    constructor Create(AOwner: TComponent); override;
+  end;
+
   TAtlasRulesEditor = class(TCustomPanel)
   private
     FCatalog: TJSONValue;
@@ -164,6 +171,15 @@ const
     TAtlasTextId.RulesGroupComponents, TAtlasTextId.RulesGroupForms, TAtlasTextId.RulesGroupArchitecture,
     TAtlasTextId.RulesGroupStyle, TAtlasTextId.RulesGroupPackages, TAtlasTextId.RulesGroupInternal);
 
+{ TAtlasRulesBox }
+
+constructor TAtlasRulesBox.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  BevelOuter := bvNone;
+  ShowCaption := False;
+end;
+
 function AtlasRuleGroupCaption(const AGroup: string): string;
 var
   Index: Integer;
@@ -293,8 +309,8 @@ begin
   FGoodLabel := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.ProblemsExplainGood));
   FGoodLabel.Font.Color := $0050A030;
   FGood := AddMemo(FDetails);
+  // Auswahl und Memos brauchen ein Fenster: CreateWnd füllt über Refill auch die Details.
   FDirty := True;
-  ShowDetails;
 end;
 
 function TAtlasRulesEditor.AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
