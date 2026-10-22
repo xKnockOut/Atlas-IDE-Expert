@@ -10,8 +10,9 @@
 // Der Wächter arbeitet im Hauptthread nur die Antwort auf die Messnachricht.
 // Gemessen wird erst, wenn die Nachrichtenschleife nach dem Laden frei ist;
 // das Laden der übrigen Packages beim Start ist kein Hänger (die Startzeit
-// meldet OnStartup). Ebenso das Beenden: ohne sichtbares Hauptfenster oder
-// nach Application.Terminate wird nichts gemeldet.
+// samt Anteilen von Atlas meldet die Composition, Bericht N4). Ebenso das
+// Beenden: ohne sichtbares Hauptfenster oder nach Application.Terminate wird
+// nichts gemeldet.
 
 interface
 
@@ -25,7 +26,6 @@ uses
 
 type
   TAtlasHangProc = reference to procedure(const AHang: TAtlasHang);
-  TAtlasStartupProc = reference to procedure(AMilliseconds: Int64);
 
   TAtlasWatchdog = class
   private const
@@ -50,9 +50,7 @@ type
     FPong: Integer;
     FStarted: Integer;
     FThresholdMs: Integer;
-    FLoadedAt: Int64;
     FOnHang: TAtlasHangProc;
-    FOnStartup: TAtlasStartupProc;
     FThresholdFunc: TFunc<Integer>;
     // Kopie beim Hänger; nur im Wächter-Thread beschrieben, vor dem Anhalten angelegt.
     FStack: array[0..StackWords - 1] of NativeUInt;
@@ -66,15 +64,13 @@ type
     class function NowMs: Int64; static;
     class function ForegroundWindowText: string; static;
   public
-    /// <summary>ALoadedAt: NowMs beim Laden des Packages; AThreshold liefert die Schwelle (im Hauptthread gelesen).</summary>
-    constructor Create(ALoadedAt: Int64; const AThreshold: TFunc<Integer>);
+    /// <summary>AThreshold liefert die Schwelle (im Hauptthread gelesen).</summary>
+    constructor Create(const AThreshold: TFunc<Integer>);
     destructor Destroy; override;
     /// <summary>Zeitpunkt in ms (monoton) für ALoadedAt.</summary>
     class function Timestamp: Int64; static;
     /// <summary>Im Hauptthread nach dem Ende eines Hängers über der Schwelle.</summary>
     property OnHang: TAtlasHangProc read FOnHang write FOnHang;
-    /// <summary>Im Hauptthread, sobald die Nachrichtenschleife nach dem Laden frei ist.</summary>
-    property OnStartup: TAtlasStartupProc read FOnStartup write FOnStartup;
   end;
 
 implementation
@@ -172,10 +168,9 @@ end;
 
 { TAtlasWatchdog }
 
-constructor TAtlasWatchdog.Create(ALoadedAt: Int64; const AThreshold: TFunc<Integer>);
+constructor TAtlasWatchdog.Create(const AThreshold: TFunc<Integer>);
 begin
   inherited Create;
-  FLoadedAt := ALoadedAt;
   FThresholdFunc := AThreshold;
   FThresholdMs := 500;
   if Assigned(FThresholdFunc) then
@@ -234,11 +229,7 @@ begin
             TInterlocked.Exchange(FThresholdMs, FThresholdFunc());
         end;
       WM_ATLAS_STARTUP:
-        begin
-          TInterlocked.Exchange(FStarted, 1);
-          if Assigned(FOnStartup) then
-            FOnStartup(NowMs - FLoadedAt);
-        end;
+        TInterlocked.Exchange(FStarted, 1);
     else
       AMessage.Result := DefWindowProc(FWindow, AMessage.Msg, AMessage.WParam, AMessage.LParam);
     end;

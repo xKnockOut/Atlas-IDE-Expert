@@ -502,6 +502,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Keys.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Events.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.Events.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.StartTimes.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.StartTimes.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Hangs.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.Hangs.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.StackRing.pas"/>

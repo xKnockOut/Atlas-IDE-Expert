@@ -6,6 +6,8 @@
 //   - StartWanted startet in Reihenfolge jedes gewünschte, nicht laufende
 //     Teil; mehrfach aufrufbar (Schnellschalter, „Normal weiterarbeiten“)
 //   - StopAll stoppt rückwärts jedes laufende Teil
+//   - Times: Beim Start misst StartWanted jedes Teil für die Startanteile
+//     (Bericht N4); danach nil
 // Ein Fehler in Start geht an den Aufrufer (wie zuvor in RegisterFeatures).
 // Ein Fehler in Stop hält den Abbau nicht an (#886): Die übrigen Teile werden
 // trotzdem gestoppt, StopAll liefert die fehlgeschlagenen mit Ausnahmeklasse.
@@ -16,6 +18,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Core.Diagnostics.SafeMode,
+  Atlas.Core.Diagnostics.StartTimes,
   Atlas.Core.Diagnostics.Teardown;
 
 type
@@ -33,6 +36,7 @@ type
     end;
   private
     FSlots: TList<TSlot>;
+    FTimes: TAtlasStartTimes;
   public
     constructor Create;
     destructor Destroy; override;
@@ -50,6 +54,9 @@ type
     function StopAll: TArray<string>;
     /// <summary>Namen in Startreihenfolge.</summary>
     function Names: TArray<string>;
+    /// <summary>Gesetzt: StartWanted addiert die Dauer jedes Starts unter dem Namen des Teils (Startanteile,
+    /// Bericht N4). Gehört dem Aufrufer; vor dessen Freigabe auf nil setzen.</summary>
+    property Times: TAtlasStartTimes read FTimes write FTimes;
   end;
 
 implementation
@@ -102,7 +109,12 @@ begin
   begin
     Slot := FSlots[Index];
     if not Slot.IsActive() and Slot.Wanted(ALevel) then
-      Slot.Start();
+    begin
+      if FTimes <> nil then
+        FTimes.Measure(Slot.Name, Slot.Start)
+      else
+        Slot.Start();
+    end;
   end;
 end;
 

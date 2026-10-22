@@ -548,9 +548,13 @@ Ablage je Projekt neben der .dproj (Projekte im selben Ordner teilen sich die Da
 | AS11 | Umschalt beim Start der IDE gedrückt halten, bis die Packages geladen sind | Fenster „Atlas wurde abgesichert gestartet (Taste beim Laden)…“; nur Optionsseite und Atlas-Feld, kein Menü Atlas, keine Palette, keine Vervollständigung von Atlas |
 | AS12 | `bds.exe -AtlasSafeMode` bzw. `set ATLAS_SAFE_MODE=1` und IDE starten | Wie AS11 mit „Kommandozeile bzw. ATLAS_SAFE_MODE“ |
 | AS13 | Optionen › Abgesicherter Start: Taste „Strg“; Umschalt bzw. Strg beim Start | Umschalt tut nichts, Strg wirkt wie AS11 |
-| AS14 | Optionen: Längste Ladezeit 1000, IDE mit großem Projekt neu starten (Laden dauert länger), dann noch einmal neu starten | Beim zweiten Start Rückfrage mit „Der letzte Start von Atlas dauerte länger als 1000 ms.“ |
+| AS14 | Optionen: Langsamer Start ab 1000, IDE mit großem Projekt neu starten (Laden dauert länger), dann noch einmal neu starten | Nach dem ersten Start im Meldungsfenster (Gruppe Atlas) „Atlas: Der Start der IDE dauerte … ms (Zeitlimit 1000 ms); Atlas selbst brauchte davon … ms: …“ mit den längsten Teilen; beim zweiten Start keine Rückfrage, Atlas startet normal (Bericht N4: ein langsamer Start ist kein Absturz) |
 | AS15 | Optionen: beide Kästchen aus, Taste „keine“; AS3, AS9, AS11 wiederholen | Nie eine Rückfrage, Atlas startet immer normal |
 | AS16 | Zwei IDEs gleichzeitig starten, eine normal beenden, die andere offen lassen; dritte IDE starten | Keine Rückfrage: die laufende IDE gilt nicht als Absturz |
+| AS17 | IDE normal starten, danach `%LOCALAPPDATA%\Atlas\Logs\atlas.log` öffnen | Eine Zeile „Start: … ms bis zur freien Nachrichtenschleife, davon Atlas … ms: …“ mit Teilnamen und Millisekunden, ohne Pfade; kein Eintrag im Meldungsfenster, solange das Zeitlimit nicht überschritten ist |
+| AS18 | `build.onOpen` an, großes Projekt als zuletzt geöffnetes, Langsamer Start ab 1000, IDE neu starten | Meldung aus AS14 nennt „Aktion Bauen beim Öffnen … ms“ unter den längsten Teilen |
+| AS19 | Wie AS14, aber Optionen › Robustheit „Hinweis im Meldungsfenster nach langen Hängern (ab 2 s)“ aus | Kein Eintrag im Meldungsfenster; die Zeile aus AS17 steht trotzdem im Protokoll |
+| AS20 | `safemode.json` einer älteren Fassung mit `"slowStart": true` unter `%LOCALAPPDATA%\Atlas\Session` ablegen, IDE starten | Keine Rückfrage, Atlas startet normal; danach steht `slowStart` nicht mehr in der Datei |
 
 ## Atlas-Änderungen zurücknehmen (#721)
 

@@ -410,6 +410,8 @@ uses
   Atlas.UI.Settings.Keys.Tests in 'IDE.Expert\Atlas.UI.Settings.Keys.Tests.pas',
   Atlas.Core.Build.Events in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Events.pas',
   Atlas.Core.Build.Events.Tests in 'IDE.Expert\Atlas.Core.Build.Events.Tests.pas',
+  Atlas.Core.Diagnostics.StartTimes in '..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.StartTimes.pas',
+  Atlas.Core.Diagnostics.StartTimes.Tests in 'IDE.Expert\Atlas.Core.Diagnostics.StartTimes.Tests.pas',
   Atlas.Core.Diagnostics.Hangs in '..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Hangs.pas',
   Atlas.Core.Diagnostics.Hangs.Tests in 'IDE.Expert\Atlas.Core.Diagnostics.Hangs.Tests.pas',
   Atlas.Core.Diagnostics.StackRing in '..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.StackRing.pas',
