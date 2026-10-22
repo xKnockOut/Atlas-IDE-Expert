@@ -4533,3 +4533,104 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL, VCL und Data.DB im Ind
 | YF4 | for-in über `TFields`, `TStringList`, `TList<T>`, `TDictionary<K, V>`, Strings, Arrays, Mengen, eine Klasse mit geerbtem GetEnumerator und einen Typ mit GetEnumerator aus einem Class-Helper | Keine Meldung |
 | YF5 | `"for-in-not-enumerable": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | YF6 | Abgleich mit Delphi: YF1 bis YF3 übersetzen | dcc meldet an denselben Stellen E2430 bzw. E2431; meldet dcc für YF1 E2431 (wie im Issue-Beispiel), bitte notieren |
+
+## Fehler in einem konstanten Ausdruck (#992)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QK1 | Das Beispiel aus #992: `const MaxEintraege = 100; Seiten = 0; ProSeite = MaxEintraege div Seiten;` | Fehler `constant-expression-error` an `MaxEintraege div Seiten`: „Division durch null in einem konstanten Ausdruck (Seiten = 0, wie E2098).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| QK2 | `Seiten = 5` | Keine Meldung |
+| QK3 | `const Riesig = 1000000 * 1000000 * 1000000 * 1000;` | „Überlauf in einem konstanten Ausdruck: Das Ergebnis passt in keinen Ganzzahltyp (wie E2099).“ |
+| QK4 | `type TFeld = array[5..1] of Integer;` | „Die Untergrenze 5 liegt über der Obergrenze 1 (wie E2011).“ |
+| QK5 | `const Grenze: Byte = 300;`, in einer Routine `B := 300` mit `B: Byte`, `type TProzent = 0..100;` und `Anteil := 150` | Warnung „300 liegt außerhalb des Bereichs von Byte (0..255, wie W1012).“ bzw. „… von TProzent (0..100, …)“ |
+| QK6 | `const Maske = $1FFFFFFFFFFFFFFFF;` | „Ganzzahlkonstante zu groß: … passt nicht in 64 Bit (wie E2102).“ |
+| QK7 | Konstante `Keine = 0` in einer anderen Unit des Projekts, hier `A = 100 div Keine` | Meldung wie QK1 mit „Keine = 0“ |
+| QK8 | `{$IFDEF KLEIN} Seiten = 0; {$ELSE} Seiten = 5; {$ENDIF}` und danach `ProSeite = 100 div Seiten` | Keine Meldung (Wert hängt von der Konfiguration ab) |
+| QK9 | `High(Int64) + 1`, `I div C` mit Variablen, `1 / 2` | Keine Meldung |
+| QK10 | `"constant-expression-error": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| QK11 | Abgleich mit Delphi: QK1, QK3 bis QK6 übersetzen | dcc meldet E2098, E2099, E2011, W1012 (bei der typisierten Konstante ggf. als Fehler) bzw. E2102 an denselben Stellen, für QK2, QK8 und QK9 nichts |
+
+## Unzulässiger Standardwert eines Parameters (#993)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QD1 | Das Beispiel aus #993 als Methode einer Klasse: `procedure Senden(const Text: string = ''; Ziel: TZiel);` samt Implementierung ohne Standardwert | Fehler `default-parameter-invalid` an `Ziel: TZiel`: „Ziel braucht einen Standardwert, weil ein vorheriger Parameter einen hat (wie E2238).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| QD2 | Schnellkorrektur „Parameter mit Standardwert ans Ende verschieben“, danach Strg+Z | Deklaration wird `Senden(Ziel: TZiel; const Text: string = '')`, die Implementierung `Senden(Ziel: TZiel; const Text: string)`; keine Meldung mehr; ein Undo-Schritt |
+| QD3 | `procedure Rand(const Links, Rechts: Integer = 4);` und Schnellkorrektur | „Links, Rechts: Standardwerte gibt es nur für einzeln deklarierte Parameter (wie E2237).“; danach `const Links: Integer = 4; const Rechts: Integer = 4` |
+| QD4 | `procedure Zaehlen(var Anzahl: Integer = 0);`, `out Fehler: string = ''` | „Anzahl ist ein var-Parameter und kann keinen Standardwert haben (wie E2239).“ bzw. out |
+| QD5 | `procedure Zeigen(const Ort: TPoint = …);` mit einem Record | „Parameter vom Typ TPoint können keinen Standardwert haben (wie E2268).“ |
+| QD10 | `type TZeichen = set of AnsiChar;` und `procedure Trennen(Zeichen: TZeichen = ['a']);`, ebenso `set of 0..40` | Fehler „TZeichen ist eine Menge über 4 Byte; Standardwerte gibt es nur für ordinale, Zeiger- und kleine Mengentypen (wie E2146).“ (mittlere Konfidenz); `set of TFarbe` mit drei Werten und `set of 0..31` still |
+| QD6 | `type TRechnen = procedure(A: Integer = 1; B: Integer);` | Meldung wie QD1 an `B` |
+| QD7 | Standardwerte am Ende, `Double = 0.5`, `TZiel = nil`, Implementierung ohne Standardwerte | Keine Meldung |
+| QD8 | `"default-parameter-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| QD9 | Abgleich mit Delphi: QD1, QD3 bis QD6 und QD10 übersetzen | dcc meldet E2238, E2237, E2239, E2268 bzw. E2146 an denselben Stellen, für QD7 und die kleinen Mengen aus QD10 nichts; meldet dcc bei QD10 nichts, die Mengenprüfung in der Regel entfernen und im Issue vermerken |
+
+## Vorzeichenbehaftet und vorzeichenlos gemischt (#1012)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QV1 | Das Beispiel aus #1012: `var Groesse, Grenze: UInt64; Delta: Int64;` und `if Groesse + Delta < Grenze then` | Warnung `signed-unsigned-mix` an `Groesse + Delta`: „Int64 und UInt64 gemischt: ein negativer Wert in Delta wird vorzeichenlos gerechnet (wie W1073).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| QV2 | `var Anzahl: Cardinal; Index: Integer;` und `if Index < Anzahl then` | „Integer und Cardinal verglichen: beide Operanden werden auf Int64 erweitert (wie W1023).“ |
+| QV3 | Schnellkorrektur „Anzahl in Int64 umwandeln“, danach Strg+Z | `if Index < Int64(Anzahl) then`; keine Meldung mehr; ein Undo-Schritt |
+| QV4 | `Summe := Anzahl - Index;` mit `Anzahl: DWORD` | „Integer und DWORD gemischt: … (wie W1024).“ |
+| QV5 | Feld `Groesse: Cardinal` einer Klasse aus einer anderen Unit, `if P.Groesse > Rest then` mit `Rest: Integer`; ebenso eine Funktion mit Ergebnis `UInt64` | Meldung wie QV2 bzw. QV1 (Typ über den Index) |
+| QV6 | `type TZahl = Cardinal;` und `if Zahl > Index then` | Meldung wie QV2 |
+| QV7 | Byte/Word mit Integer, Cardinal mit Int64, `C > 0`, Konstanten, NativeUInt mit Integer | Keine Meldung |
+| QV8 | `"signed-unsigned-mix": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| QV9 | Abgleich mit Delphi: QV1, QV2, QV4 bis QV6 übersetzen (Win32 und Win64) | dcc meldet W1073, W1023 bzw. W1024 an denselben Stellen, für QV7 nichts |
+
+## Zuweisung mit möglichem Datenverlust (#1013)
+
+Voraussetzung: Server läuft in der IDE mit Projekt, in `atlas.json` `"narrowing-assignment": "warning"`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QE1 | Das Beispiel aus #1013: `var Anzahl: Integer;` und `Anzahl := Strom.Size;` mit einem `TStream` | Warnung `narrowing-assignment` an `Strom.Size`: „Strom.Size ist Int64; die Zuweisung an Integer kann Daten verlieren (wie W1071).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| QE2 | Schnellkorrektur „Ausdrücklich in Integer umwandeln“, danach Strg+Z | `Anzahl := Integer(Strom.Size);`; keine Meldung mehr; ein Undo-Schritt |
+| QE3 | Schnellkorrektur „Zieltyp auf Int64 vergrößern“ | Die Deklaration wird `Anzahl: Int64;`; keine Meldung mehr. Bei `Anzahl, Rest: Integer` und bei Feldern einer anderen Unit gibt es nur die Umwandlung |
+| QE4 | `var Anzahl: Integer := Strom.Size;` und `Anzahl := Strom.Size - Rest;` | Meldung wie QE1, beim zweiten mit „Strom.Size - Rest ist Int64“ |
+| QE5 | `Anzahl := Zeiger;` mit `Zeiger: NativeInt` | Meldung „Zeiger ist NativeInt; … (wie W1071).“ |
+| QE6 | Option `"types": ["Double>Single", "Extended>Double"]`, dann `Wert := Teil;` (Single ← Double) und `Mittel := Genau;` (Double ← Extended) | „… (wie W1072).“ bzw. „… (wie W1066).“; `Anzahl := Strom.Size` meldet jetzt nichts mehr |
+| QE7 | `Groesse := Strom.Size` mit `Int64`, `Anzahl := 5`, `Anzahl := Integer(Strom.Size) + 1`, unbekannte Typen | Keine Meldung |
+| QE8 | Ohne Eintrag in `atlas.json`, mit `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| QE9 | Abgleich mit Delphi: QE1, QE4 bis QE6 mit `{$WARN IMPLICIT_INTEGER_CAST_LOSS ON}` bzw. `{$WARN IMPLICIT_CONVERSION_LOSS ON}` übersetzen (Win32 und Win64) | dcc meldet W1071, W1072 bzw. W1066 an denselben Stellen, für QE7 nichts; QE5 nur unter Win64 |
+
+## Typisierte Konstante verändert (#1014)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QT1 | Das Beispiel aus #1014: `const Zaehler: Integer = 0;` auf Unit-Ebene und `Inc(Zaehler);` in einer Prozedur | Warnung `typed-constant-modified` an `Zaehler` im Aufruf: „Zaehler ist eine typisierte Konstante und wird verändert (wie W1016).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| QT2 | Schnellkorrektur „In var mit Initialwert umwandeln“, danach Strg+Z | Aus `const` wird `var`, die Deklaration bleibt `Zaehler: Integer = 0;`; keine Meldung mehr; ein Undo-Schritt |
+| QT3 | Wie QT2, aber die Konstante steht zwischen zwei untypisierten Konstanten | Die Korrektur teilt den Abschnitt: `const … var Zaehler … const …`; das Ergebnis übersetzt |
+| QT4 | `Zaehler := 5;`, `Feld[0] := 3;`, `Ursprung.X := 1;` (Record-Konstante), `Delete(Name, 1, 1);` | W1017 für die ersten drei, W1016 für Delete |
+| QT5 | Eigene Prozedur `Tausche(var A, B: Integer)` mit zwei typisierten Konstanten; `Zeige(A: Integer; const B: Integer)` | Zwei Meldungen bei Tausche, keine bei Zeige |
+| QT6 | `{$J-}` vor der Deklaration, dann `Zaehler := 1; Inc(Zaehler);` | Fehler „… kann ohne {$J+} nicht verändert werden (wie E2064).“ bzw. „(wie E2197)“ |
+| QT7 | Lokale typisierte Konstante `const Aufrufe: Integer = 0;` in einer Routine, `Inc(Aufrufe)` | Warnung wie QT1, aber ohne Korrektur |
+| QT8 | `const Leer: Pointer = 0;`, `Text: PChar = 0;`, Schnellkorrektur „nil schreiben“ | „Leer ist ein Zeiger; die 0 wird zu nil umgewandelt (wie W1013).“; danach `= nil` |
+| QT9 | Lesen, `Ziel^ := 1` bei einer Zeigerkonstante, lokale Variable mit demselben Namen | Keine Meldung |
+| QT10 | `"typed-constant-modified": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| QT11 | Abgleich mit Delphi: QT1, QT4 bis QT6, QT8 übersetzen, einmal mit `{$J+}`, einmal ohne | Mit `{$J+}` W1016/W1017 bzw. W1013, mit `{$J-}` E2064/E2197 an denselben Stellen; für QT9 nichts |
+
+## String-Grenze überschritten (#1036)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QL1 | Das Beispiel aus #1036: `var Kennung: string[8];` und `Kennung := 'KUNDE-2026-0001';` | Warnung `string-length-limit` am Literal: „Das Literal hat 15 Zeichen und wird auf 8 gekürzt (wie W1014).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| QL2 | Schnellkorrektur „Als string deklarieren“, danach Strg+Z | Die Deklaration wird `Kennung: string;`; keine Meldung mehr; ein Undo-Schritt |
+| QL3 | `const Kopf: string[4] = 'Kopfzeile';`, `type TKurz = string[5];` mit `Kurz := 'abcdefg';`, `Code: string[Laenge]` mit `const Laenge = 3` und `Code := 'abc' + 'de''f';` | Meldungen mit 9/4, 7/5 und 7/3 Zeichen |
+| QL4 | Record `TSatz` mit `Kennung: string[8]` in einer anderen Unit, `S.Kennung := 'KUNDE-2026-0001';` | Meldung wie QL1, aber ohne Korrektur (Record-Felder behalten ihre Größe) |
+| QL5 | `"delphiVersion": "22.0"` in `atlas.json`, Konstante mit einem Literal aus 300 Zeichen; Schnellkorrektur „Literal teilen“ | Fehler „Das Literal hat 300 Zeichen in Anführungszeichen; vor Delphi 12 sind höchstens 255 erlaubt (wie E2056).“; danach `'…255…' + '…45…'`, keine Meldung. Mit Delphi 12 oder 13 keine Meldung |
+| QL6 | `resourcestring` aus mit + verbundenen Literalen, zusammen über 4096 Zeichen | Fehler „Der resourcestring … hat … Zeichen; Windows erlaubt höchstens 4096 (wie E2381).“ |
+| QL7 | Passende Literale, `string`, `AnsiString`, Zuweisung einer Variablen an `string[8]` | Keine Meldung |
+| QL8 | `"string-length-limit": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| QL9 | Abgleich mit Delphi: QL1, QL3, QL4, QL6 übersetzen (QL5 mit Delphi 11 oder älter) | dcc meldet W1014, E2381 bzw. E2056 an denselben Stellen, für QL7 nichts |

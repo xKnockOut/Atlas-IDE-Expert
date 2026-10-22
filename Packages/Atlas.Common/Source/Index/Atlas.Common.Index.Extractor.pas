@@ -386,8 +386,9 @@ end;
 function TIndexExtractor.SignatureOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind;
   const AName, ATypeText: string): string;
 var
-  Node: TSyntaxNode;
+  Node, TypeRef: TSyntaxNode;
   First, Last: Integer;
+  Suffix: string;
 begin
   Node := ANode;
   if (Node.Kind = TSyntaxKind.RoutineDecl) and (Node.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
@@ -398,7 +399,17 @@ begin
     TIndexSymbolKind.Field, TIndexSymbolKind.Variable:
       // A, B: Integer: je Name eine eigene Signatur.
       if ATypeText <> '' then
-        Exit(AName + ': ' + ATypeText);
+      begin
+        // string[8]: Die Länge gehört zur Signatur (Anzeige, string-length-limit #1036); der Typname bleibt
+        // string, damit die Namensauflösung ihn findet.
+        Suffix := '';
+        TypeRef := DeclaredTypeNode(ANode);
+        if (TypeRef <> nil) and SameText(TypeRef.Name, 'string') and (TypeRef.ChildCount = 1) and
+          (TypeRef[0].Kind <> TSyntaxKind.GenericArgs) then
+          Suffix := '[' + TokenText(TokenIndexAt(TypeRef[0].StartOffset), TokenIndexAt(TypeRef[0].EndOffset) - 1,
+            False) + ']';
+        Exit(AName + ': ' + ATypeText + Suffix);
+      end;
   end;
   First := TokenIndexAt(Node.StartOffset);
   Last := TokenIndexAt(Node.EndOffset) - 1;
