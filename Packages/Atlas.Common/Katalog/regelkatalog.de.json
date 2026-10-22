@@ -1184,6 +1184,11 @@
       "id": "published-type-invalid",
       "name": "Unzulässiges Mitglied im published-Abschnitt",
       "description": "Ein Mitglied hinter einem ausdrücklichen published, das der Compiler ablehnt: eine Property vom Typ Record, Array, Zeiger oder Prozedurtyp ohne of object (wie E2188), vom Typ Real48 (wie E2186) oder eine Menge über 4 Byte (wie E2187), ein Feld, das weder Klasse noch Interface ist (wie E2217), mehr als eine published-Überladung (wie E2266), eine Klassen-Property (wie E2545) oder ein Name mit Zeichen außerhalb von ASCII (wie E2452). Typen löst die Regel über die Datei und den Index auf und verfolgt Aliase; Typparameter, unbekannte Typen und Abschnitte, deren published in einem anderen Zweig der bedingten Übersetzung steht als das Mitglied, bleiben still. Den Abschnitt ohne Sichtbarkeitsangabe prüft sie nicht, weil der Compiler solche Mitglieder dort still zu public herabstuft. Korrektur: das Mitglied in den public-Abschnitt verschieben."
+    },
+    {
+      "id": "override-case-mismatch",
+      "name": "Schreibweise oder Sichtbarkeit weicht vom Vorfahren ab",
+      "description": "Eine überschreibende Methode schreibt ihren Namen anders als der Vorfahr (destructor destroy, wie H2365) oder ist weniger sichtbar als die überschriebene Methode (wie H2269, nur für Klassen im interface-Teil; verglichen werden die Stufen privat, geschützt, öffentlich), ein Getter oder Setter heißt Get<Property> bzw. Set<Property>, ist aber anders geschrieben (wie H2367), oder eine inline-Methode greift auf ein Mitglied zu, das weniger sichtbar ist als sie selbst, sodass der Compiler sie außerhalb der Klasse nicht einsetzen kann (wie H2440). Wichtig für C++Builder-Nutzer der Units und für einheitlichen Code. Die Docwiki führt H2269 und H2367 als X2269 und X2367, weil sich ihre Stufe umstellen lässt; dcc meldet sie standardmäßig als Hinweis. H2368 und H2369 deckt die Regel nicht ab, weil nicht dokumentiert ist, wann dcc sie meldet. Standardmäßig aus; in atlas.json einschalten. Korrekturen: Schreibweise vom Vorfahr übernehmen, Zugriffsmethode umbenennen."
     }
   ]
 }
