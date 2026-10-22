@@ -10,14 +10,14 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 16 |
+| [Compiler vorab](#gruppe-compiler) | 17 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 28 |
+| [Stil und Metriken](#gruppe-style) | 27 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -131,6 +131,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Regel | Name | Kategorie | Schweregrad |
 |---|---|---|---|
+| [`deprecated-symbol`](#deprecated-symbol) | Veraltetes oder gebundenes Symbol | Code Smell | Warnung |
 | [`signature-mismatch`](#signature-mismatch) | Implementierung weicht von der Deklaration ab | Bug | Fehler |
 | [`interface-not-implemented`](#interface-not-implemented) | Interface-Methode fehlt in der Klasse | Bug | Fehler |
 | [`uses-unit-not-found`](#uses-unit-not-found) | Unit in uses nicht gefunden | Bug | Fehler |
@@ -244,7 +245,6 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`metric-cognitive-complexity`](#metric-cognitive-complexity) | Kognitive Komplexität zu hoch | Code Smell | Hinweis |
 | [`metric-parameter-count`](#metric-parameter-count) | Zu viele Parameter | Code Smell | Hinweis |
 | [`todo-comment`](#todo-comment) | Offener TODO-Kommentar | Code Smell | Hinweis |
-| [`deprecated-symbol`](#deprecated-symbol) | Veraltetes Symbol | Code Smell | Hinweis |
 | [`unneeded-forward-declaration`](#unneeded-forward-declaration) | Überflüssige Forward-Deklaration | Code Smell | Hinweis |
 | [`shadowed-name`](#shadowed-name) | Lokaler Name verdeckt Feld oder Property | Code Smell | Hinweis |
 | [`boolean-assign-if`](#boolean-assign-if) | if, das nur True oder False zuweist | Code Smell | Hinweis |
@@ -2428,24 +2428,26 @@ end;
 <a id="deprecated-symbol"></a>
 ### deprecated-symbol
 
-**Veraltetes Symbol** · Code Smell · Hinweis · Gruppe Stil und Metriken
+**Veraltetes oder gebundenes Symbol** · Code Smell · Warnung · Gruppe Compiler vorab
 
-Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, platform oder experimental wird verwendet (wie Compilerwarnungen W1000, W1002 und W1003). Der Editor streicht den Namen durch; die Meldung nennt den Grund aus deprecated 'Grund'. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet.
+Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, experimental, platform oder library wird verwendet (wie W1000, W1003, W1002, W1001), oder eine Unit, deren Kopf einen dieser Hinweise trägt, steht in uses (wie W1006, W1007, W1005, W1004). Gemeldet wird nur, was sicher aufgelöst ist. Der Editor streicht veraltete Namen durch; die Meldung nennt den Grund aus deprecated 'Grund'. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet. Welche Arten gemeldet werden, legt die Option kinds fest (Standard deprecated und experimental, wie meist in Projekten); die Schalter {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} usw. und {$WARNINGS OFF} gelten ab ihrer Stelle wie beim Compiler; ein Schalter in einem {$IF}-Zweig, der nicht sicher mit übersetzt wird, hält die Stelle still. Korrektur: durch den Namen aus dem Grund ersetzen (bei IncludeTrailingBackslash und ExcludeTrailingBackslash durch die plattformunabhängige Routine), wenn genau ein Name passt, an der Stelle sichtbar ist und dieselbe Art hat. Ohne Projektindex prüft die Regel nur die Symbole der Datei selbst.
+
+Entspricht der Compilermeldung `W1000`, `W1001`, `W1002`, `W1003`, `W1004`, `W1005`, `W1006`, `W1007`.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `kinds` | string-list | `["deprecated","experimental"]` | Gemeldete Arten: deprecated, experimental, platform, library (platform und library sind standardmäßig aus). |
 
 Mit Treffer:
 
 ```pascal
-procedure Old; deprecated 'Use New';
-...
-Old;
+Pfad := IncludeTrailingBackslash(Basis) + Name;
 ```
 
 Richtig:
 
 ```pascal
-procedure New;
-...
-New;
+Pfad := IncludeTrailingPathDelimiter(Basis) + Name;
 ```
 
 <a id="implicit-package-import"></a>

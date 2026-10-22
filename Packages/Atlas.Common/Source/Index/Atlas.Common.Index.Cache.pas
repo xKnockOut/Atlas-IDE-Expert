@@ -77,7 +77,8 @@ type
     // 18: Zweig varianter Record-Felder je Symbol (#846).
     // 19: Direktive class an Klassenmitgliedern (#1001).
     // 20: Verweise der Rümpfe von inline-Routinen (#1017).
-    const FormatVersion = 20;
+    // 21: Hinweise im Unit-Kopf samt Grund hinter deprecated (#1018).
+    const FormatVersion = 21;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;
@@ -486,6 +487,8 @@ begin
         Body.WriteVar(UnitIndex.Naming[Kind].Total);
         Body.WriteVar(UnitIndex.Naming[Kind].Prefixed);
       end;
+      WriteList(Body, Table, UnitIndex.Directives);
+      Body.WriteVar(Table.IndexOf(UnitIndex.DeprecatedText));
       Body.WriteVar(Length(UnitIndex.Symbols));
       Body.WriteVar(Length(UnitIndex.Unavailable));
       // Block erst sammeln, damit seine Länge davor stehen kann.
@@ -682,6 +685,8 @@ begin
         Entry.Header.Naming[Kind].Total := Reader.ReadNumber;
         Entry.Header.Naming[Kind].Prefixed := Reader.ReadNumber;
       end;
+      Entry.Header.Directives := Reader.ReadList(Strings);
+      Entry.Header.DeprecatedText := Reader.ReadString(Strings);
       Entry.SymbolCount := Reader.ReadCount;
       Entry.UnavailableCount := Reader.ReadCount;
       Size := Reader.ReadCount;

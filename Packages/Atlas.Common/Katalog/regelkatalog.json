@@ -1074,13 +1074,34 @@
     },
     {
       "id": "deprecated-symbol",
-      "name": "Deprecated symbol",
+      "name": "Deprecated or bound symbol",
       "category": "code-smell",
-      "severity": "hint",
-      "group": "style",
-      "description": "A routine, type, constant or member marked deprecated, platform or experimental is used (like compiler warnings W1000, W1002 and W1003). The editor strikes the name through; the message carries the reason from deprecated 'reason'. The declaration and the head of its implementation are not reported.",
-      "bad": "procedure Old; deprecated 'Use New';\n...\nOld;",
-      "good": "procedure New;\n...\nNew;"
+      "severity": "warning",
+      "group": "compiler",
+      "description": "A routine, type, constant or member marked deprecated, experimental, platform or library is used (like W1000, W1003, W1002, W1001), or a unit whose header carries one of these hints is listed in uses (like W1006, W1007, W1005, W1004). Reported only when the name resolves for sure. The editor strikes deprecated names through; the message carries the reason from deprecated 'reason'. The declaration and the head of its implementation are not reported. Which kinds are reported is set by the option kinds (deprecated and experimental by default, as in most projects); the switches {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} and so on and {$WARNINGS OFF} apply from their position like in the compiler; a switch in an {$IF} branch that is not surely compiled with the position keeps it silent. Quick fix: replace with the name the reason gives (or, for IncludeTrailingBackslash and ExcludeTrailingBackslash, the platform-independent routine) when exactly one name fits, is visible at that position and is of the same kind. Without a project index only the symbols of the file itself are checked.",
+      "bad": "Pfad := IncludeTrailingBackslash(Basis) + Name;",
+      "good": "Pfad := IncludeTrailingPathDelimiter(Basis) + Name;",
+      "compilerCodes": [
+        "W1000",
+        "W1001",
+        "W1002",
+        "W1003",
+        "W1004",
+        "W1005",
+        "W1006",
+        "W1007"
+      ],
+      "options": [
+        {
+          "name": "kinds",
+          "type": "string-list",
+          "default": [
+            "deprecated",
+            "experimental"
+          ],
+          "description": "Reported kinds: deprecated, experimental, platform, library (platform and library are off by default)."
+        }
+      ]
     },
     {
       "id": "implicit-package-import",

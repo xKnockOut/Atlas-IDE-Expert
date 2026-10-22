@@ -866,8 +866,8 @@ begin
       Data.AddPair('fix', Fix.Title);
   end;
   Result.AddPair('data', Data);
-  // Veraltete Symbole durchgestrichen (#38).
-  if AFinding.RuleId = DeprecatedSymbolRuleId then
+  // Veraltete Symbole durchgestrichen (#38), aber nicht platform, library oder experimental (#1018).
+  if (AFinding.RuleId = DeprecatedSymbolRuleId) and TDeprecatedSymbolRule.IsDeprecation(AFinding.Message) then
   begin
     Tags := TJSONArray.Create;
     // DiagnosticTag.Deprecated

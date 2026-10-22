@@ -45,7 +45,7 @@ type
     // Immer wie TIndexCache.FormatVersion, weil Plugin und Server dasselbe Cache-Format lesen (K-05);
     // 20: Verweise der inline-Rümpfe (#1017). 19 (#1001) fehlte hier, die Willkommensseite fand
     // deshalb keinen Cache.
-    FormatVersion = 20;
+    FormatVersion = 21;
     CacheFileName = 'index.atlasidx';
     IndexFolder = 'Index';
     LibraryFolder = 'Bibliothek';
@@ -278,6 +278,8 @@ begin
         Reader.SkipList; // Include-Zeitstempel
         for Part := 1 to 6 do
           Reader.ReadVar; // Präfix-Zählung (#452): je Art Anzahl und mit Präfix
+        Reader.SkipList; // Hinweise im Unit-Kopf (#1018)
+        Reader.ReadVar; // Grund hinter deprecated
         Reader.ReadVar; // Symbolzahl
         Reader.ReadVar; // nicht verfügbar
         Reader.Skip(Reader.ReadCount); // Symbolblock

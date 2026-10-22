@@ -137,6 +137,11 @@ type
     Hash: string;
     InterfaceUses: TArray<string>;
     ImplementationUses: TArray<string>;
+    /// <summary>Hinweise im Unit-Kopf (unit X deprecated 'Grund' platform;) in Kleinschreibung: deprecated,
+    /// experimental, platform, library (#1018).</summary>
+    Directives: TArray<string>;
+    /// <summary>Grund hinter deprecated im Unit-Kopf; '' ohne.</summary>
+    DeprecatedText: string;
     Symbols: TArray<TIndexSymbol>;
     /// <summary>Über eine uses-Liste nachgeladen (RTL, VCL, Bibliotheken), nicht aus dem Projekt.</summary>
     Library_: Boolean;
