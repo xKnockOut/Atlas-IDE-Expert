@@ -82,6 +82,8 @@ type
     ProjectName: string;
     /// <summary>Automatisch erzeugte Formulare in der Reihenfolge der .dpr (#956); nil ohne Projekt.</summary>
     AutoCreateForms: TArray<string>;
+    /// <summary>Projekte der Gruppe für projektweite Regeln (#1102); nil = keine.</summary>
+    ProjectFiles: IRuleProjectFiles;
     /// <summary>Abbruch zwischen den Prüfregeln; nil = nie. Setzt Compute.</summary>
     Cancelled: TRuleCancelled;
   end;
@@ -1014,6 +1016,7 @@ begin
   Context.Application := ARules.Application;
   Context.ProjectName := ARules.ProjectName;
   Context.AutoCreateForms := ARules.AutoCreateForms;
+  Context.ProjectFiles := ARules.ProjectFiles;
   Context.Cancelled := ARules.Cancelled;
   Result := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
 end;

@@ -127,6 +127,47 @@ type
   TRuleApplicationKind = (Unknown, Console, Gui, Package);
 {$SCOPEDENUMS OFF}
 
+  /// <summary>Art eines Projekts für projektweite Regeln (#1102): Anwendung (program), Package (.dpk) oder DLL
+  /// (library).</summary>
+{$SCOPEDENUMS ON}
+  TRuleProjectKind = (Unknown, Application, Package, Library_);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Ein Projekt der Projektgruppe mit seinen Quelltexten und Formularen (#1102).</summary>
+  TRuleProject = record
+    /// <summary>Projektdatei (.dproj, .dpr oder .dpk).</summary>
+    FileName: string;
+    Kind: TRuleProjectKind;
+    /// <summary>DUnitX- oder DUnit-Testprojekt.</summary>
+    IsTest: Boolean;
+    /// <summary>Absolute Pfade der Units samt Hauptquelltext (.dpr/.dpk).</summary>
+    Sources: TArray<string>;
+    /// <summary>Absolute Pfade der Formulardateien (.dfm/.fmx) neben den Units.</summary>
+    Forms: TArray<string>;
+  end;
+
+  /// <summary>Antwort auf "kommt der Name in der Datei vor?" (#1102).</summary>
+{$SCOPEDENUMS ON}
+  TRuleNameAnswer = (Absent, Present, Unknown);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Die Projekte der Gruppe für projektweite Regeln wie unused-public-member (#1102); nil = unbekannt
+  /// (Linter, Datei ohne Projekt), die Regeln schweigen.</summary>
+  IRuleProjectFiles = interface
+    ['{3F0B6C1D-9A47-4E2B-8D15-6C7A2E94B0F3}']
+    /// <summary>Sind alle Projekte geladen und indiziert? Sonst nennt AReason den Grund ("Index läuft (180 von
+    /// 214 Units)"), und projektweite Regeln schweigen.</summary>
+    function Complete(out AReason: string): Boolean;
+    /// <summary>Projekte, zu denen AFileName gehört, zuerst; mit AWholeGroup danach alle übrigen der Gruppe.
+    /// </summary>
+    function ProjectsOf(const AFileName: string; AWholeGroup: Boolean): TArray<TRuleProject>;
+    /// <summary>Kommt AName als Bezeichner in AFileName vor (ohne Groß-/Kleinschreibung)? Unknown, wenn die
+    /// Datei nicht gelesen werden kann.</summary>
+    function NameIn(const AFileName, AName: string): TRuleNameAnswer;
+    /// <summary>Text der Datei, geöffnete Dokumente zuerst; False, wenn sie nicht lesbar ist.</summary>
+    function ReadText(const AFileName: string; out AText: string): Boolean;
+  end;
+
   /// <summary>Alles, was eine Regel über die geprüfte Datei wissen darf.</summary>
   TRuleContext = record
     /// <summary>Pfad relativ zum Ordner der Konfiguration, '' wenn unbekannt.</summary>
@@ -192,6 +233,9 @@ type
     /// <summary>Formatierung aus den Einstellungen (format, #938): Tabbreite und Einrückung für Regeln, die
     /// Spalten zählen oder umbrechen; setzt TRuleEngine.Run. IndentSize 0 = nicht gesetzt.</summary>
     Formatting: TFormatStyle;
+    /// <summary>Projekte der Gruppe für projektweite Regeln (#1102); nil = unbekannt, diese Regeln schweigen.
+    /// </summary>
+    ProjectFiles: IRuleProjectFiles;
   end;
 
   /// <summary>Sammelt die Treffer einer Regel. Ohne Angabe gilt Konfidenz High.</summary>
