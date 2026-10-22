@@ -59,6 +59,7 @@ uses
   Atlas.Common.Rules.Builtin.Constants,
   Atlas.Common.Rules.Builtin.Forms,
   Atlas.Common.Rules.Builtin.SharedState,
+  Atlas.Common.Rules.Builtin.Conditions,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -113,6 +114,7 @@ begin
     RegisterConstantRules(Registry);
     RegisterFormRules(Registry);
     RegisterSharedStateRules(Registry);
+    RegisterConditionRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

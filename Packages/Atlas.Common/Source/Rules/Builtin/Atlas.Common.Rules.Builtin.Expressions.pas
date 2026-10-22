@@ -18,6 +18,17 @@
 //                         ncrLoose vergleicht wie erwartet, ncrStrict liefert nie wahr, ncrError eine Exception).
 //                         Korrektur: Feld.IsNull bei X.Value auf FieldByName/FindField/Fields[…]/Params bzw.
 //                         einem Feld vom Typ T…Field/T…Param, sonst VarIsNull(X); bei <> mit not.
+//   pos-arguments-swapped Pos(Text, ';') statt Pos(';', Text), ebenso PosEx, StartsText, EndsText (…Str, Ansi…) und
+//                         umgekehrt ContainsText(';', Text) (#1045): an der Stelle des Textes ein kurzes Literal
+//                         (bis maxLiteralLength Zeichen, Vorgabe 3), an der Stelle des Teils sicher ein String
+//                         (deklarierter Typ, .Text/.Caption, String-Funktion, Verkettung). Zeichen bleiben stumm:
+//                         Pos(C, ';,') prüft bewusst, ob C einer der Trenner ist.
+//   integer-division-to-float
+//                         Schnitt := Summe div Anzahl mit Schnitt: Double (#1046): div schneidet ab, bevor zugewiesen
+//                         wird; auch Teil div Gesamt * 100, Result und var X: Double := …. Gesucht wird durch Klammern
+//                         und + - * / hindurch, nicht in Aufrufen (Round(A div B)). Ziel mit in der Datei deklariertem
+//                         Gleitkommatyp; TDateTime bleibt stumm (ganze Tage sind dort meist gewollt), ebenso with
+//                         und Trunc(A) div Trunc(B) (ausdrücklich gewandelt, also gewollt ganzzahlig).
 
 interface
 
@@ -30,6 +41,8 @@ const
   DuplicateConditionRuleId = 'duplicate-condition';
   StringIndexBaseRuleId = 'string-index-base';
   NullCompareRuleId = 'null-compare';
+  PosArgumentsSwappedRuleId = 'pos-arguments-swapped';
+  IntegerDivisionToFloatRuleId = 'integer-division-to-float';
 
 type
   TOperatorPrecedenceRule = class(TInterfacedObject, IRule)
@@ -60,6 +73,23 @@ type
     class function IsDataType(const AType: string): Boolean; static;
   end;
 
+  TPosArgumentsSwappedRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Zeichenzahl eines Literals aus '…'- und #n-Teilen ('''' zählt als ein Zeichen); -1, wenn
+    /// ALiteral kein solches Literal ist.</summary>
+    class function LiteralLength(const ALiteral: string): Integer; static;
+  end;
+
+  TIntegerDivisionToFloatRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Gleitkommatyp mit Nachkommastellen (Double, Single, Extended, Real, Currency …), ohne TDateTime.</summary>
+    class function IsFractional(const AType: string): Boolean; static;
+  end;
+
 procedure RegisterExpressionRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -71,7 +101,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.DeclaredTypes;
+  Atlas.Common.Pascal.DeclaredTypes,
+  Atlas.Common.Rules.Options;
 
 type
   TTokens = TArray<TPascalToken>;
@@ -1005,12 +1036,428 @@ begin
   end;
 end;
 
+{ TPosArgumentsSwappedRule }
+
+function TPosArgumentsSwappedRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(PosArgumentsSwappedRuleId, TRuleSeverity.Warning,
+    'Argumente von Pos, StartsText oder ContainsText vertauscht');
+end;
+
+class function TPosArgumentsSwappedRule.LiteralLength(const ALiteral: string): Integer;
+var
+  Index, Value: Integer;
+  Digits: string;
+begin
+  Result := 0;
+  Index := 1;
+  while Index <= Length(ALiteral) do
+    if ALiteral[Index] = '''' then
+    begin
+      Inc(Index);
+      while Index <= Length(ALiteral) do
+      begin
+        if ALiteral[Index] = '''' then
+        begin
+          // '' im Literal ist ein Apostroph, sonst endet der Abschnitt.
+          if (Index < Length(ALiteral)) and (ALiteral[Index + 1] = '''') then
+            Inc(Index)
+          else
+            Break;
+        end;
+        Inc(Result);
+        Inc(Index);
+      end;
+      Inc(Index);
+    end
+    else if ALiteral[Index] = '#' then
+    begin
+      Inc(Index);
+      Digits := '';
+      while (Index <= Length(ALiteral)) and CharInSet(ALiteral[Index], ['$', '0'..'9', 'A'..'F', 'a'..'f', '_']) do
+      begin
+        if ALiteral[Index] <> '_' then
+          Digits := Digits + ALiteral[Index];
+        Inc(Index);
+      end;
+      if not TryStrToInt(Digits, Value) then
+        Exit(-1);
+      Inc(Result);
+    end
+    else
+      Exit(-1);
+end;
+
+procedure TPosArgumentsSwappedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Code: TArray<Integer>;
+  Types: TDeclaredTypes;
+  MaxLength: Integer;
+
+  function Token(APosition: Integer): TPascalToken;
+  begin
+    Result := Tokens[Code[APosition]];
+  end;
+
+  function IsSym(APosition: Integer; const ASymbol: string): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and Token(APosition).IsSymbol(ASymbol);
+  end;
+
+  function IsName(APosition: Integer; const AName: string): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and
+      (Token(APosition).Kind = TPascalTokenKind.Identifier) and SameText(Token(APosition).Text, AName);
+  end;
+
+  function Closing(AOpen: Integer): Integer;
+  var
+    Depth: Integer;
+  begin
+    Depth := 0;
+    for Result := AOpen to High(Code) do
+      if Token(Result).IsSymbol('(') or Token(Result).IsSymbol('[') then
+        Inc(Depth)
+      else if Token(Result).IsSymbol(')') or Token(Result).IsSymbol(']') then
+      begin
+        Dec(Depth);
+        if Depth = 0 then
+          Exit;
+      end;
+    Result := -1;
+  end;
+
+  // Erstes Token jedes Arguments zwischen AOpen und AClose, dazu AClose + 1 als Ende des letzten.
+  function Arguments(AOpen, AClose: Integer): TArray<Integer>;
+  var
+    Position, Depth: Integer;
+  begin
+    Result := [AOpen + 1];
+    Depth := 0;
+    for Position := AOpen + 1 to AClose - 1 do
+      if Token(Position).IsSymbol('(') or Token(Position).IsSymbol('[') then
+        Inc(Depth)
+      else if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
+        Dec(Depth)
+      else if (Depth = 0) and Token(Position).IsSymbol(',') then
+        Result := Result + [Position + 1];
+    Result := Result + [AClose + 1];
+  end;
+
+  function TextOf(AFirst, ALast: Integer): string;
+  begin
+    Result := SourceText(AContext.Text, Tokens, Code[AFirst], Code[ALast]);
+  end;
+
+  // Zeichenzahl des Literals AFirst..ALast (nur String- und Zeichenliterale, keine mehrzeiligen); -1 sonst.
+  function Literal(AFirst, ALast: Integer): Integer;
+  var
+    Position: Integer;
+    Text: string;
+  begin
+    if ALast < AFirst then
+      Exit(-1);
+    Text := '';
+    for Position := AFirst to ALast do
+    begin
+      if not (Token(Position).Kind in [TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral]) or
+        (Pos(#10, Token(Position).Text) > 0) then
+        Exit(-1);
+      Text := Text + Token(Position).Text;
+    end;
+    Result := LiteralLength(Text);
+  end;
+
+  // Ist das Argument AFirst..ALast sicher ein String und kein Zeichen? Deklarierter String-Typ, .Text/.Caption,
+  // Aufruf einer String-Funktion der RTL oder Verkettung mit einem String-Teil.
+  function IsStringArgument(AFirst, ALast: Integer): Boolean;
+  var
+    Position, Depth: Integer;
+  begin
+    if ALast < AFirst then
+      Exit(False);
+    Depth := 0;
+    for Position := AFirst to ALast do
+      if Token(Position).IsSymbol('(') or Token(Position).IsSymbol('[') then
+        Inc(Depth)
+      else if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
+        Dec(Depth)
+      else if (Depth = 0) and Token(Position).IsSymbol('+') then
+        // Zeichen + Zeichen ist schon ein String, Zahl + Zahl nicht: ein Teil muss sicher String sein.
+        Exit(IsStringArgument(AFirst, Position - 1) or IsStringArgument(Position + 1, ALast) or
+          (Literal(AFirst, Position - 1) >= 2) or (Literal(Position + 1, ALast) >= 2));
+    if (Token(ALast).Kind = TPascalTokenKind.Identifier) and IsSym(ALast - 1, '.') and
+      MatchText(Token(ALast).Text, ['Text', 'Caption']) then
+      Exit(True);
+    if (Token(AFirst).Kind = TPascalTokenKind.Identifier) and IsSym(AFirst + 1, '(') and
+      not IsSym(AFirst - 1, '.') and MatchText(Token(AFirst).Text, ['Trim', 'TrimLeft', 'TrimRight', 'UpperCase',
+      'LowerCase', 'AnsiUpperCase', 'AnsiLowerCase', 'IntToStr', 'Format', 'QuotedStr', 'StringReplace',
+      'ExtractFileName', 'ExtractFilePath', 'ExtractFileExt', 'ChangeFileExt', 'IncludeTrailingPathDelimiter',
+      'ExcludeTrailingPathDelimiter', 'LeftStr', 'RightStr', 'MidStr', 'ReverseString', 'DupeString']) then
+      Exit(Closing(AFirst + 1) = ALast);
+    if IsName(AFirst, 'Self') and IsSym(AFirst + 1, '.') then
+      Inc(AFirst, 2);
+    Result := (AFirst = ALast) and (Token(AFirst).Kind = TPascalTokenKind.Identifier) and
+      TStringIndexBaseRule.IsStringType(Types.DeclaredType(Token(AFirst).Text, Token(AFirst).StartPos));
+  end;
+
+  // ATextFirst: ContainsText(Text, Teil), sonst Pos(Teil, Text). Vertauscht steht an der Stelle des Textes ein
+  // kurzes Literal und an der Stelle des Teils ein String.
+  procedure CheckCall(APosition: Integer; ATextFirst: Boolean);
+  var
+    Close, TextArg, PartArg, Size: Integer;
+    Args: TArray<Integer>;
+    Name, Message, Between: string;
+    Range: TTextRange;
+  begin
+    if not IsSym(APosition + 1, '(') then
+      Exit;
+    // Nur die RTL-Routine: ohne Punkt davor oder mit System. bzw. StrUtils. (auch System.StrUtils.).
+    if IsSym(APosition - 1, '.') and not IsName(APosition - 2, 'System') and
+      not IsName(APosition - 2, 'StrUtils') then
+      Exit;
+    Close := Closing(APosition + 1);
+    if Close < 0 then
+      Exit;
+    Args := Arguments(APosition + 1, Close);
+    if Length(Args) < 3 then
+      Exit;
+    if ATextFirst then
+    begin
+      TextArg := 0;
+      PartArg := 1;
+    end
+    else
+    begin
+      TextArg := 1;
+      PartArg := 0;
+    end;
+    Size := Literal(Args[TextArg], Args[TextArg + 1] - 2);
+    if (Size < 1) or (Size > MaxLength) or (Literal(Args[PartArg], Args[PartArg + 1] - 2) >= 0) or
+      not IsStringArgument(Args[PartArg], Args[PartArg + 1] - 2) then
+      Exit;
+    Name := Token(APosition).Text;
+    if ATextFirst then
+      Message := '%s(Text, Teil): vermutlich vertauscht, gesucht wird %s in %s.'
+    else
+      Message := '%s(Teil, Text): vermutlich vertauscht, gesucht wird %s in %s.';
+    Message := Format(Message, [Name, TextOf(Args[TextArg], Args[TextArg + 1] - 2),
+      TextOf(Args[PartArg], Args[PartArg + 1] - 2)]);
+    // Eine Änderung über beide Argumente (ein Undo-Schritt); Komma, Leerraum und Kommentare dazwischen bleiben.
+    Between := Copy(AContext.Text, Tokens[Code[Args[1] - 2]].Offset + Length(Tokens[Code[Args[1] - 2]].Text) + 1,
+      Tokens[Code[Args[1]]].Offset - Tokens[Code[Args[1] - 2]].Offset - Length(Tokens[Code[Args[1] - 2]].Text));
+    Range := TTextRange.Create(Token(Args[0]).StartPos, Token(Args[2] - 2).EndPos);
+    AReport.Add(Range, Message, TRuleConfidence.Medium, [TRuleFix.Create('Argumente tauschen',
+      [TRuleEdit.Create(Range, TextOf(Args[1], Args[2] - 2) + Between + TextOf(Args[0], Args[1] - 2))])]);
+  end;
+
+var
+  Index, Position: Integer;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  MaxLength := TRuleOptions.Int(AContext.Options, 'maxLiteralLength', 3);
+  Tokens := AContext.Tree.Tokens;
+  Code := nil;
+  for Index := 0 to High(Tokens) do
+    if not IsTrivia(Tokens[Index]) then
+      Code := Code + [Index];
+  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  try
+    for Position := 0 to High(Code) do
+    begin
+      if Token(Position).Kind <> TPascalTokenKind.Identifier then
+        Continue;
+      if MatchText(Token(Position).Text, ['Pos', 'PosEx', 'AnsiPos', 'StartsText', 'StartsStr', 'EndsText',
+        'EndsStr', 'AnsiStartsText', 'AnsiStartsStr', 'AnsiEndsText', 'AnsiEndsStr']) then
+        CheckCall(Position, False)
+      else if MatchText(Token(Position).Text, ['ContainsText', 'ContainsStr', 'AnsiContainsText',
+        'AnsiContainsStr']) then
+        CheckCall(Position, True);
+    end;
+  finally
+    Types.Free;
+  end;
+end;
+
+{ TIntegerDivisionToFloatRule }
+
+function TIntegerDivisionToFloatRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(IntegerDivisionToFloatRuleId, TRuleSeverity.Warning,
+    'Ganzzahldivision an Gleitkommazahl');
+end;
+
+class function TIntegerDivisionToFloatRule.IsFractional(const AType: string): Boolean;
+begin
+  // TDateTime, TDate und TTime nicht: A div B als ganze Tage ist dort meist gewollt; Comp ist ganzzahlig.
+  Result := MatchText(Trim(AType), ['Single', 'Double', 'Extended', 'Real', 'Real48', 'Float32', 'Float64',
+    'Currency', 'System.Single', 'System.Double', 'System.Extended', 'System.Currency']);
+end;
+
+procedure TIntegerDivisionToFloatRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Types: TDeclaredTypes;
+
+  // Typ des Funktionsergebnisses der Routine um ANode; '' ohne Funktion.
+  function ResultType(ANode: TSyntaxNode): string;
+  var
+    Header, Reference: TSyntaxNode;
+  begin
+    Result := '';
+    while (ANode <> nil) and not (ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) do
+      ANode := ANode.Parent;
+    if (ANode = nil) or (ANode.Kind <> TSyntaxKind.RoutineDecl) then
+      Exit;
+    Header := ANode.FindChild(TSyntaxKind.RoutineHeader);
+    if Header = nil then
+      Exit;
+    Reference := Header.FindChild(TSyntaxKind.TypeReference);
+    if Reference <> nil then
+      Result := Trim(Copy(AContext.Text, Reference.StartOffset + 1, Reference.EndOffset - Reference.StartOffset));
+  end;
+
+  // Steht ANode in einem with-Block? Dann kann der Name ein Feld des with-Objekts sein.
+  function InWith(ANode: TSyntaxNode): Boolean;
+  begin
+    while ANode <> nil do
+    begin
+      if ANode.Kind = TSyntaxKind.WithStatement then
+        Exit(True);
+      ANode := ANode.Parent;
+    end;
+    Result := False;
+  end;
+
+  // Das Schlüsselwort div zwischen den Operanden von ADivision.
+  function DivToken(ADivision: TSyntaxNode; out AToken: TPascalToken): Boolean;
+  var
+    Index: Integer;
+  begin
+    for Index := 0 to High(Tokens) do
+      if (Tokens[Index].Offset >= ADivision[0].EndOffset) and (Tokens[Index].Offset < ADivision[1].StartOffset) and
+        Tokens[Index].IsKeyword('div') then
+      begin
+        AToken := Tokens[Index];
+        Exit(True);
+      end;
+    Result := False;
+  end;
+
+  // Trunc(X), Round(X), Floor(X), Ceil(X): Wer Gleitkommazahlen ausdrücklich in Ganzzahlen wandelt und dann
+  // mit div teilt, will die ganzzahlige Division (Trunc(A) div Trunc(B) im Präprozessor).
+  function IsExplicitInteger(AOperand: TSyntaxNode): Boolean;
+  begin
+    while (AOperand.Kind = TSyntaxKind.ParenExpr) and (AOperand.ChildCount = 1) do
+      AOperand := AOperand[0];
+    Result := (AOperand.Kind = TSyntaxKind.Call) and (AOperand.ChildCount > 0) and
+      (AOperand[0].Kind = TSyntaxKind.Identifier) and MatchText(AOperand[0].Name, ['Trunc', 'Round', 'Floor', 'Ceil']);
+  end;
+
+  // div in AExpression, deren Ergebnis ungekürzt in die Gleitkommazahl fließt: durch Klammern, Vorzeichen und
+  // + - * / hindurch, nicht in Aufrufe, Indizes, mod oder Vergleiche.
+  procedure Search(AExpression: TSyntaxNode; const ATarget, AType: string);
+  var
+    Token: TPascalToken;
+    Index: Integer;
+  begin
+    case AExpression.Kind of
+      TSyntaxKind.ParenExpr, TSyntaxKind.UnaryExpr:
+        if (AExpression.Kind = TSyntaxKind.ParenExpr) or (AExpression.Name = '-') or (AExpression.Name = '+') then
+          for Index := 0 to AExpression.ChildCount - 1 do
+            Search(AExpression[Index], ATarget, AType);
+      TSyntaxKind.BinaryExpr:
+        if SameText(AExpression.Name, 'div') and (AExpression.ChildCount = 2) then
+        begin
+          if not IsExplicitInteger(AExpression[0]) and not IsExplicitInteger(AExpression[1]) and
+            DivToken(AExpression, Token) then
+            AReport.Add(TTextRange.Create(AExpression.StartPos, AExpression.EndPos),
+              Format('div rechnet ganzzahlig; %s ist %s und verliert die Nachkommastellen.', [ATarget, AType]),
+              TRuleConfidence.High, [TRuleFix.Create('div durch / ersetzen',
+              [TRuleEdit.Create(TTextRange.Create(Token.StartPos, Token.EndPos), '/')])]);
+        end
+        else if MatchStr(AExpression.Name, ['+', '-', '*', '/']) then
+          for Index := 0 to AExpression.ChildCount - 1 do
+            Search(AExpression[Index], ATarget, AType);
+    end;
+  end;
+
+  procedure CheckAssignment(ANode: TSyntaxNode);
+  var
+    Target: TSyntaxNode;
+    Name, TypeName: string;
+  begin
+    if (ANode.ChildCount <> 2) or InWith(ANode) then
+      Exit;
+    Target := ANode[0];
+    // Self.X wie X.
+    if (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount = 1) and
+      (Target[0].Kind = TSyntaxKind.Identifier) and SameText(Target[0].Name, 'Self') then
+      Name := Target.Name
+    else if Target.Kind = TSyntaxKind.Identifier then
+      Name := Target.Name
+    else
+      Exit;
+    if SameText(Name, 'Result') then
+    begin
+      TypeName := Types.DeclaredType(Name, Target.StartPos);
+      if TypeName = '' then
+        TypeName := ResultType(ANode);
+    end
+    else
+      TypeName := Types.DeclaredType(Name, Target.StartPos);
+    if IsFractional(TypeName) then
+      Search(ANode[1], Name, TypeName);
+  end;
+
+  // var Schnitt: Double := Summe div Anzahl;
+  procedure CheckInlineVar(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    TypeName: string;
+  begin
+    if (ANode.ChildCount <> 2) or (Pos(',', ANode.Name) > 0) or (ANode[0].Kind <> TSyntaxKind.TypeReference) then
+      Exit;
+    TypeName := Trim(Copy(AContext.Text, ANode[0].StartOffset + 1, ANode[0].EndOffset - ANode[0].StartOffset));
+    if IsFractional(TypeName) then
+      for Index := 1 to ANode.ChildCount - 1 do
+        Search(ANode[Index], Trim(ANode.Name), TypeName);
+  end;
+
+  procedure Walk(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.AssignStatement then
+      CheckAssignment(ANode)
+    else if ANode.Kind = TSyntaxKind.InlineVar then
+      CheckInlineVar(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Walk(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  try
+    Walk(AContext.Tree.Root);
+  finally
+    Types.Free;
+  end;
+end;
+
 procedure RegisterExpressionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TOperatorPrecedenceRule.Create);
   ARegistry.Register(TDuplicateConditionRule.Create);
   ARegistry.Register(TStringIndexBaseRule.Create);
   ARegistry.Register(TNullCompareRule.Create);
+  ARegistry.Register(TPosArgumentsSwappedRule.Create);
+  ARegistry.Register(TIntegerDivisionToFloatRule.Create);
 end;
 
 end.

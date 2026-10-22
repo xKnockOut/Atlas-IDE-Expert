@@ -137,3 +137,10 @@ inherited-form-handler-without-inherited | Ref.Formulare.Detail.pas | inherited;
 self-free-in-event-handler | Ref.Formulare.Basis.pas |   Close; |   Free;
 parallel-for-shared-write | Ref.Daten.Suche.pas | \nimplementation\n | \nimplementation\n\nfunction Gesamt(const AWerte: TArray<Integer>): Integer;\nvar\n  Summe: Integer;\nbegin\n  Summe := 0;\n  TParallel.For(0, High(AWerte), procedure(I: Integer)\n    begin\n      Summe := Summe + AWerte[I];\n    end);\n  Result := Summe;\nend;\n
 thread-unsafe-increment | Ref.Daten.Suche.pas | \nimplementation\n | \nimplementation\n\nvar\n  GGefunden: Integer;\n\ntype\n  TZaehler = class(TThread)\n  protected\n    procedure Execute; override;\n  end;\n\nprocedure TZaehler.Execute;\nbegin\n  while not Terminated do\n    Inc(GGefunden);\nend;\n
+constant-condition | Ref.Daten.Suche.pas | if Assigned(FAnbieter) then | if Assigned(FAnbieter) or True then
+infinite-loop | Ref.Daten.Kunden.pas | while not Daten.Eof do | while True do
+loop-condition-unchanged | Ref.Pruefung.Verstoesse.pas |   if Benutzt > 0 then\n    Exit; |   while Benutzt > 0 do\n    Beep;
+unconditional-recursion | Ref.Sprache.Merkmale.pas | Result := 0;\n  for var Wert in AWerte do | Result := SummeQuadrate(AWerte);\n  for var Wert in AWerte do
+pos-arguments-swapped | Ref.Daten.Suche.pas | if Assigned(FAnbieter) then | if Assigned(FAnbieter) and (Pos(AName, '*') = 0) then
+integer-division-to-float | Ref.Komponenten.Anzeige.pas |   Canvas.TextOut(TextAbstand, (Height - Canvas.TextHeight(Anzeigetext)) div 2, Anzeigetext); |   var Mitte: Double := (Height - Canvas.TextHeight(Anzeigetext)) div 2;\n  Canvas.TextOut(TextAbstand, Round(Mitte), Anzeigetext);
+empty-finally | Ref.Formulare.Haupt.pas |   finally\n    Formular.Free;\n  end; |   finally\n  end;

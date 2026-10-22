@@ -4814,3 +4814,94 @@ Voraussetzung: Server läuft in der IDE mit Projekt; eine Unit mit einer Klasse 
 | IZ5 | `Inc(FEigene)` (Feld des Threads) in Execute, eingefangene lokale Variable eines einzelnen Tasks, Rumpf mit `TMonitor` oder `TInterlocked`, `Inc` in `Synchronize`, `Execute` einer Klasse ohne TThread, `X := X + 2` | Keine Meldung |
 | IZ6 | Task in einer `for`-Schleife mit `Inc(FAnzahl)` | Nur `parallel-for-shared-write`, nicht diese Regel |
 | IZ7 | `"thread-unsafe-increment": "off"`, `"group:threads": "off"` bzw. `exclude` | Keine Meldung |
+
+## Bedingung ist immer gleich (#1041)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KB1 | Das Beispiel aus #1041: `if (Anzahl > 0) or True then Verarbeiten;` | Warnung `constant-condition` an der Bedingung: „Die Bedingung ist immer wahr (… or True).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| KB2 | Schnellkorrektur „Bedingung entfernen“, danach Strg+Z | Nur `Verarbeiten;` bleibt; ein Undo-Schritt |
+| KB3 | `const DEBUG_MODUS = False;` und `if DEBUG_MODUS then Protokoll('x');` allein auf zwei Zeilen; Korrektur „Toten Zweig entfernen“ | „Die Bedingung ist immer falsch (DEBUG_MODUS = False).“; die Anweisung samt Zeilen verschwindet |
+| KB4 | `if False then A else begin … end;` mit Korrektur | Nur der else-Zweig bleibt, um die Einrückung des if ausgerückt |
+| KB5 | `while True do … Break`, `repeat … until False`, `if Anzahl > 0`, typisierte Konstante `const X: Boolean = False`, Konstante in `{$IFDEF DEBUG} … {$ELSE} … {$ENDIF}`, Konstante aus einer anderen Unit | Keine Meldung |
+| KB6 | `"constant-condition": {"switchConstants": ["DEBUG_MODUS"]}` | KB3 still, `if False then` weiter gemeldet; `"switchConstants": "DEBUG_MODUS"` meldet in atlas.json „"switchConstants" muss eine Liste von Texten sein“ |
+| KB7 | Seite *Prüfregeln › Fehler finden*, Regel `constant-condition` | Option `switchConstants` als Liste |
+| KB8 | `"constant-condition": "off"`, `"group:find-bugs": "off"` bzw. `exclude` | Keine Meldung |
+
+## Schleife ohne Ausgang (#1042)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EL1 | Das Beispiel aus #1042: `while True do begin Zeile := Leser.ReadLine; Verarbeiten(Zeile); end;` | Fehler `infinite-loop` an `while True`: „Die Schleife hat keinen Ausgang (kein Break, Exit oder raise).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| EL2 | `repeat Zeile := Leser.ReadLine; until False;`, Aktion „Zum Schleifenkopf springen“ | Meldung an `False`; der Cursor springt zu `repeat` |
+| EL3 | Im Rumpf jeweils `if … then Break`, `Exit`, `raise …`, `Halt`, `Abort`, `goto`, Aufruf einer Prozedur der Unit, die `raise` enthält, `if Terminated then …` | Keine Meldung |
+| EL4 | `Break` nur in einer inneren `for`-Schleife bzw. `Exit` nur in einer anonymen Methode im Rumpf | Meldung wie EL1 |
+| EL5 | `try while True do Verarbeiten(Leser.ReadLine); except on EEndOfStream do ; end;` | Keine Meldung |
+| EL6 | `"infinite-loop": "off"`, `"group:find-bugs": "off"` bzw. `exclude` | Keine Meldung |
+
+## Schleifenbedingung ändert sich nie (#1043)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SV1 | Das Beispiel aus #1043: `I := 0; while I < Liste.Count do begin Pruefen(Liste[I]); end;` | Warnung `loop-condition-unchanged` an der Bedingung: „I und Liste werden im Rumpf nie verändert; die Schleife endet nicht.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| SV2 | `repeat Pruefen(Liste[0]); until I > 10;` | „I wird im Rumpf nie verändert; die Schleife endet nicht.“ |
+| SV3 | Im Rumpf von SV1 jeweils `Inc(I)`, `I := I + 1`, `Lesen(I)`, `Liste.Delete(0)`, `for I := …` | Keine Meldung |
+| SV4 | Bedingung mit Funktionsaufruf, Feld (`while not FFertig`), var-Parameter, `Terminated`, nur `Liste.Count > 0`; Rumpf mit `Break`, `Sleep`, `with`, Aufruf einer lokalen Prozedur oder einer anonymen Methode, die `I` erfasst | Keine Meldung |
+| SV5 | `"loop-condition-unchanged": "off"`, `"group:find-bugs": "off"` bzw. `exclude` | Keine Meldung |
+
+## Rekursion ohne Abbruch (#1044)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RA1 | Das Beispiel aus #1044: `function TBaum.Tiefe(K: TKnoten): Integer; begin Result := 1 + Max(Tiefe(K.Links), Tiefe(K.Rechts)); end;` | Fehler `unconditional-recursion` am Namen `Tiefe` im Kopf: „Tiefe ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch (z. B. K = nil).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| RA2 | `function Fakultaet(N: Integer): Int64; begin Result := N * Fakultaet(N - 1); end;` | Hinweis „(z. B. N <= 0)“ |
+| RA3 | Aufruf in beiden Zweigen von if … else, in repeat, im try-Teil | Meldung wie RA1 |
+| RA4 | RA1 mit `if K = nil then Exit(0);` davor, Aufruf nur im then-Zweig, rechts von `and`, im Rumpf von while/for, in case ohne Aufruf im else, in einer anonymen Methode | Keine Meldung |
+| RA5 | `procedure Log(I: Integer); overload;` ruft `Log(IntToStr(I))`; Getter, der die eigene Property liest | Keine Meldung von `unconditional-recursion` (Getter: `setter-recursion`) |
+| RA6 | `"unconditional-recursion": "off"`, `"group:find-bugs": "off"` bzw. `exclude` | Keine Meldung |
+
+## Vertauschte Argumente von Pos (#1045)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PO1 | Das Beispiel aus #1045: `Zeile: string`, `if Pos(Zeile, ';') > 0 then` | Warnung `pos-arguments-swapped` über `Zeile, ';'`: „Pos(Teil, Text): vermutlich vertauscht, gesucht wird ';' in Zeile.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| PO2 | Schnellkorrektur „Argumente tauschen“, danach Strg+Z | `Pos(';', Zeile)`, Meldung weg; ein Strg+Z stellt das Original her |
+| PO3 | `ContainsText(', ', Zeile)`, `PosEx(Zeile, #9, 3)`, `StartsText(Edit1.Text, '//')` | Je eine Meldung; bei ContainsText „ContainsText(Text, Teil): …“ |
+| PO4 | `Pos(';', Zeile)`, `Pos(C, ';,')` mit `C: Char`, `Pos(Zeile, 'Ende')`, `Liste.Pos(Zeile, ';')` | Keine Meldung |
+| PO5 | `"pos-arguments-swapped": {"maxLiteralLength": 4}` und `Pos(Zeile, 'END;')` | Meldung; ohne Option keine |
+| PO6 | `"pos-arguments-swapped": "off"`, `"group:find-bugs": "off"` bzw. `exclude` | Keine Meldung |
+
+## Ganzzahldivision an Gleitkommazahl (#1046)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GD1 | Das Beispiel aus #1046: `var Schnitt: Double; … Schnitt := Summe div Anzahl;` | Warnung `integer-division-to-float` über `Summe div Anzahl`: „div rechnet ganzzahlig; Schnitt ist Double und verliert die Nachkommastellen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| GD2 | Schnellkorrektur „div durch / ersetzen“, danach Strg+Z | `Schnitt := Summe / Anzahl;`, Meldung weg; ein Strg+Z stellt das Original her |
+| GD3 | `Prozent := Teil div Gesamt * 100` mit `Prozent: Single`; `Result := A div B` in einer Funktion `: Double`; `var M: Extended := Summe div 2;` | Je eine Meldung |
+| GD4 | `Ganz := Summe div Anzahl` (Integer), `Schnitt := Round(Summe div Anzahl)`, `Schnitt := Trunc(X) div Trunc(Y)`, `Datum := Sekunden div 86400` (TDateTime), Zuweisung in `with` | Keine Meldung |
+| GD5 | `"integer-division-to-float": "off"`, `"group:find-bugs": "off"` bzw. `exclude` | Keine Meldung |
+
+## Leerer finally-Block (#1065)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EF1 | Das Beispiel aus #1065: `Liste := TStringList.Create; try Liste.LoadFromFile(Pfad); finally end;` (je Zeile) | Hinweis `empty-finally` an `finally`: „Leerer finally-Block; fehlt hier Liste.Free?“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| EF2 | Schnellkorrektur „try … finally end entfernen (Rumpf bleibt)“, danach Strg+Z | try, finally und end weg, Rumpf um eine Stufe ausgerückt; ein Strg+Z stellt das Original her |
+| EF3 | `if Bereit then` mit try, zwei Anweisungen, leerem finally | Schnellkorrektur „try … finally end durch begin … end ersetzen“ ergibt `begin … end;` |
+| EF4 | Ohne Create davor; `try Lesen; finally end;` in einer Zeile | Meldung „… die Freigabe fehlt oder try … finally ist überflüssig.“; in einer Zeile ohne Schnellkorrektur |
+| EF5 | finally mit `// Freigabe übernimmt der Besitzer`, mit `{$IFDEF DEBUG}…{$ENDIF}`, mit `Liste.Free;`; leeres except | Keine Meldung von `empty-finally` |
+| EF6 | `"empty-finally": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |

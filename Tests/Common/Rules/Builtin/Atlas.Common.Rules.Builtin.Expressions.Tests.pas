@@ -3,7 +3,8 @@
 // Tests der Regel operator-precedence (#911): not vor in und Vergleichen bei
 // Aufzählungen und Ganzzahlen, Klammern als Korrektur, keine Meldung bei
 // Boolean, unbekanntem Typ und geklammerter Form, Abschalten und Ausnahmen;
-// duplicate-condition (#928); string-index-base (#951); null-compare (#953).
+// duplicate-condition (#928); string-index-base (#951); null-compare (#953);
+// pos-arguments-swapped (#1045); integer-division-to-float (#1046).
 
 interface
 
@@ -52,6 +53,22 @@ type
     procedure NullCompareSilentCases;
     [Test]
     procedure NullCompareOffAndExclude;
+    [Test]
+    procedure PosArgumentsSwappedIssueExample;
+    [Test]
+    procedure PosArgumentsSwappedVariants;
+    [Test]
+    procedure PosArgumentsSwappedSilentCases;
+    [Test]
+    procedure PosArgumentsSwappedOptions;
+    [Test]
+    procedure IntegerDivisionIssueExample;
+    [Test]
+    procedure IntegerDivisionVariants;
+    [Test]
+    procedure IntegerDivisionSilentCases;
+    [Test]
+    procedure IntegerDivisionOffAndExclude;
   end;
 
 implementation
@@ -59,6 +76,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
@@ -425,6 +443,180 @@ begin
     '{"rules": {"null-compare": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TNullCompareRule.Create, Source,
     '{"rules": {"null-compare": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
+end;
+
+function Suche(const AStatements: string): string;
+begin
+  Result := 'unit Suche;'#10'interface'#10'uses System.StrUtils;'#10'implementation'#10 +
+    'procedure Finden(const Zeile: string; Zeichen: Char; Feld: TEdit);'#10'var'#10'  Treffer: Integer;'#10 +
+    '  Gefunden: Boolean;'#10'begin'#10 + AStatements + 'end;'#10'end.';
+end;
+
+procedure TExpressionRulesTests.PosArgumentsSwappedIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Suche('  if Pos(Zeile, '';'') > 0 then'#10'    Treffer := 1;'#10);
+  Findings := TRuleAssert.Findings(TPosArgumentsSwappedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('pos-arguments-swapped', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Pos(Teil, Text): vermutlich vertauscht, gesucht wird '';'' in Zeile.', Findings[0].Message);
+  Assert.AreEqual(9, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(9, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('Argumente tauschen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  Fixed := ApplyFixes(Source, Findings);
+  Assert.AreEqual(Suche('  if Pos('';'', Zeile) > 0 then'#10'    Treffer := 1;'#10), Fixed);
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Fixed);
+end;
+
+procedure TExpressionRulesTests.PosArgumentsSwappedVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // ContainsText erwartet den Text zuerst.
+  Findings := TRuleAssert.Findings(TPosArgumentsSwappedRule.Create,
+    Suche('  Gefunden := ContainsText('', '', Zeile);'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('ContainsText(Text, Teil): vermutlich vertauscht, gesucht wird '', '' in Zeile.',
+    Findings[0].Message);
+  Assert.AreEqual('Zeile, '', ''', Findings[0].Fixes[0].Edits[0].NewText);
+  // PosEx mit drittem Argument, StartsText, Kommentar zwischen den Argumenten bleibt erhalten.
+  Findings := TRuleAssert.Findings(TPosArgumentsSwappedRule.Create,
+    Suche('  Treffer := PosEx(Zeile, #9, 3);'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('#9, Zeile', Findings[0].Fixes[0].Edits[0].NewText);
+  Findings := TRuleAssert.Findings(TPosArgumentsSwappedRule.Create,
+    Suche('  Gefunden := System.StrUtils.StartsText(Trim(Zeile), {Kopf} ''//'');'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('''//'', {Kopf} Trim(Zeile)', Findings[0].Fixes[0].Edits[0].NewText);
+  // .Text, Verkettung und '''' als ein Zeichen.
+  TRuleAssert.Reports(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Pos(Feld.Text, ''.'');'#10));
+  TRuleAssert.Reports(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Pos(Zeile + ''x'', '''''''');'#10));
+  TRuleAssert.Reports(TPosArgumentsSwappedRule.Create, Suche('  Gefunden := EndsStr(Zeile, ''\'');'#10));
+end;
+
+procedure TExpressionRulesTests.PosArgumentsSwappedSilentCases;
+begin
+  // Richtige Reihenfolge, Zeichen in einer Trennerliste, unbekannter Typ, langes Literal, zwei Literale.
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Pos('';'', Zeile);'#10 +
+    '  Gefunden := ContainsText(Zeile, '';'');'#10'  Gefunden := StartsText(''//'', Zeile);'#10));
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Pos(Zeichen, '';,'');'#10));
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Pos(Unbekannt, '';'');'#10));
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Pos(Zeile, ''Ende'');'#10));
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Pos(''ab'', '';'');'#10));
+  // Eigene Methode eines Objekts und Zeichen + Zeichen.
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Liste.Pos(Zeile, '';'');'#10));
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Pos(Zeichen + Zeichen, '';'');'#10));
+  Assert.AreEqual(1, TPosArgumentsSwappedRule.LiteralLength(''''''''''));
+  Assert.AreEqual(3, TPosArgumentsSwappedRule.LiteralLength('''a''#13#$0A'));
+  Assert.AreEqual(-1, TPosArgumentsSwappedRule.LiteralLength('X'));
+end;
+
+procedure TExpressionRulesTests.PosArgumentsSwappedOptions;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Suche('  Treffer := Pos(Zeile, ''END;'');'#10);
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TPosArgumentsSwappedRule.Create, Source,
+    '{"rules": {"pos-arguments-swapped": {"maxLiteralLength": 4}}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPosArgumentsSwappedRule.Create,
+    Suche('  Treffer := Pos(Zeile, ''//'');'#10), '{"rules": {"pos-arguments-swapped": {"maxLiteralLength": 1}}}'))));
+  Source := Suche('  Treffer := Pos(Zeile, '';'');'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPosArgumentsSwappedRule.Create, Source,
+    '{"rules": {"pos-arguments-swapped": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPosArgumentsSwappedRule.Create, Source,
+    '{"rules": {"pos-arguments-swapped": {"exclude": ["Source/*.pas"]}}}', 'Source/Suche.pas'))));
+  TConfigurationParser.Parse('{"rules": {"pos-arguments-swapped": {"maxLiteralLength": 0}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"maxLiteralLength" muss eine ganze Zahl ab 1 sein', Issues[0].Message);
+end;
+
+function Statistik(const AStatements: string): string;
+begin
+  Result := 'unit Statistik;'#10'interface'#10'implementation'#10 +
+    'procedure Rechnen(Summe, Anzahl: Integer; Teil, Gesamt: Int64);'#10'var'#10'  Schnitt: Double;'#10 +
+    '  Prozent: Single;'#10'  Ganz: Integer;'#10'  Datum: TDateTime;'#10'begin'#10 + AStatements + 'end;'#10'end.';
+end;
+
+procedure TExpressionRulesTests.IntegerDivisionIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Statistik('  Schnitt := Summe div Anzahl;'#10);
+  Findings := TRuleAssert.Findings(TIntegerDivisionToFloatRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('integer-division-to-float', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('div rechnet ganzzahlig; Schnitt ist Double und verliert die Nachkommastellen.',
+    Findings[0].Message);
+  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(13, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('div durch / ersetzen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  Fixed := ApplyFixes(Source, Findings);
+  Assert.AreEqual(Statistik('  Schnitt := Summe / Anzahl;'#10), Fixed);
+  TRuleAssert.Silent(TIntegerDivisionToFloatRule.Create, Fixed);
+end;
+
+procedure TExpressionRulesTests.IntegerDivisionVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TIntegerDivisionToFloatRule.Create,
+    Statistik('  Prozent := Teil div Gesamt * 100;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('div rechnet ganzzahlig; Prozent ist Single und verliert die Nachkommastellen.',
+    Findings[0].Message);
+  Assert.AreEqual(Statistik('  Prozent := Teil / Gesamt * 100;'#10),
+    ApplyFixes(Statistik('  Prozent := Teil div Gesamt * 100;'#10), Findings));
+  // Klammern, Vorzeichen, Summe, Inline-Variable und Result einer Funktion.
+  TRuleAssert.Reports(TIntegerDivisionToFloatRule.Create, Statistik('  Schnitt := -(Summe div Anzahl) + 0.5;'#10));
+  TRuleAssert.Reports(TIntegerDivisionToFloatRule.Create, Statistik('  var Mittel: Extended := Summe div 2;'#10));
+  TRuleAssert.Reports(TIntegerDivisionToFloatRule.Create, 'unit F;'#10'interface'#10'implementation'#10 +
+    'function Mittel(A, B: Integer): Double;'#10'begin'#10'  Result := A div B;'#10'end;'#10'end.');
+  TRuleAssert.Reports(TIntegerDivisionToFloatRule.Create, 'unit F;'#10'interface'#10'type'#10 +
+    '  TWert = class'#10'    FAnteil: Currency;'#10'    procedure Setzen(A, B: Integer);'#10'  end;'#10 +
+    'implementation'#10'procedure TWert.Setzen(A, B: Integer);'#10'begin'#10'  Self.FAnteil := A div B;'#10 +
+    'end;'#10'end.');
+end;
+
+procedure TExpressionRulesTests.IntegerDivisionSilentCases;
+begin
+  // Richtige Division, Ganzzahlziel, Aufruf, mod, TDateTime, unbekanntes Ziel.
+  TRuleAssert.Silent(TIntegerDivisionToFloatRule.Create, Statistik('  Schnitt := Summe / Anzahl;'#10 +
+    '  Ganz := Summe div Anzahl;'#10'  Schnitt := Round(Summe div Anzahl);'#10 +
+    '  Schnitt := (Summe div Anzahl) mod 2;'#10'  Datum := Summe div 86400;'#10'  Fremd := Summe div Anzahl;'#10));
+  // Funktion mit Ganzzahlergebnis und with-Block.
+  TRuleAssert.Silent(TIntegerDivisionToFloatRule.Create, 'unit F;'#10'interface'#10'implementation'#10 +
+    'function Mittel(A, B: Integer): Integer;'#10'begin'#10'  Result := A div B;'#10'end;'#10'end.');
+  TRuleAssert.Silent(TIntegerDivisionToFloatRule.Create, Statistik('  with Liste do'#10 +
+    '    Schnitt := Summe div Anzahl;'#10));
+  // Ausdrücklich gewandelte Operanden: ganzzahlige Division ist gewollt.
+  TRuleAssert.Silent(TIntegerDivisionToFloatRule.Create, Statistik('  Schnitt := Trunc(Schnitt) div Trunc(Prozent);'#10 +
+    '  Schnitt := Summe div (Round(Prozent));'#10));
+  Assert.IsTrue(TIntegerDivisionToFloatRule.IsFractional('Currency'));
+  Assert.IsFalse(TIntegerDivisionToFloatRule.IsFractional('TDateTime'));
+end;
+
+procedure TExpressionRulesTests.IntegerDivisionOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Statistik('  Schnitt := Summe div Anzahl;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TIntegerDivisionToFloatRule.Create, Source,
+    '{"rules": {"integer-division-to-float": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TIntegerDivisionToFloatRule.Create, Source,
+    '{"rules": {"group:find-bugs": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TIntegerDivisionToFloatRule.Create, Source,
+    '{"rules": {"integer-division-to-float": {"exclude": ["Source/*.pas"]}}}', 'Source/Statistik.pas'))));
 end;
 
 initialization

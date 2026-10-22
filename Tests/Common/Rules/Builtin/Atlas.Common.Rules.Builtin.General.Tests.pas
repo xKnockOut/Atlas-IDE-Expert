@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Rules.Builtin.General.Tests;
 
 // Tests für die allgemeinen Regeln aus #56, Stufe 1: empty-except,
-// interface-guid, duplicate-interface-guid, file-header und hardcoded-string.
+// interface-guid, duplicate-interface-guid, file-header und hardcoded-string;
+// empty-finally (#1065).
 
 interface
 
@@ -16,6 +17,14 @@ type
     procedure EmptyExceptReportedWithRaiseFix;
     [Test]
     procedure EmptyExceptWithCommentOrStatementSilent;
+    [Test]
+    procedure EmptyFinallyIssueExample;
+    [Test]
+    procedure EmptyFinallyFixVariants;
+    [Test]
+    procedure EmptyFinallySilentCases;
+    [Test]
+    procedure EmptyFinallyOffAndExclude;
     [Test]
     procedure InterfaceWithoutGuidReported;
     [Test]
@@ -41,6 +50,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.General,
   Atlas.Tests.RuleAssert;
@@ -194,6 +204,84 @@ begin
   Assert.AreEqual(42, Integer(Length(Line)));
   Assert.IsTrue(Line.StartsWith('[''{') and Line.EndsWith('}'']'), Line);
   Assert.AreNotEqual(Line, GuidLine);
+end;
+
+procedure TGeneralRulesTests.EmptyFinallyIssueExample;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := InRoutine('  Liste := TStringList.Create;'#10'  try'#10'    Liste.LoadFromFile(Pfad);'#10'  finally'#10 +
+    '  end;'#10'  Weiter;');
+  Findings := TRuleAssert.Findings(TEmptyFinallyRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('empty-finally', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Leerer finally-Block; fehlt hier Liste.Free?', Findings[0].Message);
+  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('try … finally end entfernen (Rumpf bleibt)', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  Assert.AreEqual(InRoutine('  Liste := TStringList.Create;'#10'  Liste.LoadFromFile(Pfad);'#10'  Weiter;'),
+    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+end;
+
+procedure TGeneralRulesTests.EmptyFinallyFixVariants;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Ohne Create davor allgemeine Meldung; fehlendes Semikolon wandert an den Rumpf.
+  Source := InRoutine('  try'#10'    Lesen;'#10#10'    Schreiben'#10'  finally'#10'  end;'#10'  Weiter;');
+  Findings := TRuleAssert.Findings(TEmptyFinallyRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Leerer finally-Block; die Freigabe fehlt oder try … finally ist überflüssig.', Findings[0].Message);
+  Assert.AreEqual(InRoutine('  Lesen;'#10#10'  Schreiben;'#10'  Weiter;'),
+    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+  // Einzige Anweisung eines if mit zwei Anweisungen im Rumpf: begin … end.
+  Source := InRoutine('  if Bereit then'#10'    try'#10'      Lesen;'#10'      Schreiben;'#10'    finally'#10 +
+    '    end;');
+  Findings := TRuleAssert.Findings(TEmptyFinallyRule.Create, Source);
+  Assert.AreEqual('try … finally end durch begin … end ersetzen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(InRoutine('  if Bereit then'#10'    begin'#10'      Lesen;'#10'      Schreiben;'#10'    end;'),
+    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+  // Mit einer Anweisung reicht das Ausrücken.
+  Source := InRoutine('  if Bereit then'#10'    try'#10'      Lesen;'#10'    finally'#10'    end;');
+  Findings := TRuleAssert.Findings(TEmptyFinallyRule.Create, Source);
+  Assert.AreEqual(InRoutine('  if Bereit then'#10'    Lesen;'), TChangeSignature.ApplyEdits(Source,
+    Findings[0].Fixes[0].Edits));
+  // Alles in einer Zeile: Meldung ohne Korrektur.
+  Findings := TRuleAssert.Findings(TEmptyFinallyRule.Create, InRoutine('  try Lesen; finally end;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TGeneralRulesTests.EmptyFinallySilentCases;
+begin
+  TRuleAssert.Silent(TEmptyFinallyRule.Create, InRoutine('  try'#10'    Lesen;'#10'  finally'#10'    Liste.Free;'#10 +
+    '  end;'));
+  TRuleAssert.Silent(TEmptyFinallyRule.Create, InRoutine('  try'#10'    Lesen;'#10'  finally'#10 +
+    '    // Freigabe übernimmt der Besitzer'#10'  end;'));
+  TRuleAssert.Silent(TEmptyFinallyRule.Create, InRoutine('  try'#10'    Lesen;'#10'  finally'#10 +
+    '    {$IFDEF DEBUG}Protokoll;{$ENDIF}'#10'  end;'));
+  TRuleAssert.Silent(TEmptyFinallyRule.Create, InRoutine('  try'#10'    Lesen;'#10'  except'#10'  end;'));
+  // Ein inneres leeres finally wird gemeldet, das äußere volle nicht.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TEmptyFinallyRule.Create, InRoutine('  try'#10 +
+    '    try'#10'      Lesen;'#10'    finally'#10'    end;'#10'  finally'#10'    Liste.Free;'#10'  end;')))));
+end;
+
+procedure TGeneralRulesTests.EmptyFinallyOffAndExclude;
+var
+  Source: string;
+begin
+  Source := InRoutine('  try'#10'    Lesen;'#10'  finally'#10'  end;');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyFinallyRule.Create, Source,
+    '{"rules": {"empty-finally": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyFinallyRule.Create, Source,
+    '{"rules": {"group:style": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyFinallyRule.Create, Source,
+    '{"rules": {"empty-finally": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
 initialization

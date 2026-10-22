@@ -2422,6 +2422,92 @@
       "level": "T"
     },
     {
+      "id": "constant-condition",
+      "name": "Condition is always the same",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "The condition of if, while or until is fixed: True, False, comparisons of numbers and untyped constants of the file, also through and, or, xor and not (X or True is always true, X and False always false). The branch is dead code or always runs. while True do and repeat … until False count as deliberate endless loops (infinite-loop checks their exit). Constants listed in switchConstants, constants inside a {$IF…} branch and constants from other units count as unknown. Quick fix for if: remove the dead branch or the condition.",
+      "bad": "if (Count > 0) or True then\n  Process;",
+      "good": "if Count > 0 then\n  Process;",
+      "options": [
+        {
+          "name": "switchConstants",
+          "type": "string-list",
+          "default": [],
+          "description": "Constants that deliberately serve as switches; conditions on them are not reported."
+        }
+      ]
+    },
+    {
+      "id": "infinite-loop",
+      "name": "Loop without exit",
+      "category": "bug",
+      "severity": "error",
+      "group": "find-bugs",
+      "description": "while True do, repeat … until False or another loop whose condition never ends it, without an exit in the body: no Break (a Break in a nested loop only leaves that loop), Exit, raise, goto, Halt, Abort or RunError, no call of a routine of the file that raises an exception or ends the program, and no check of Terminated (thread loops are covered by thread-loop-without-terminated). Anonymous methods in the body do not count. The action jumps to the loop head.",
+      "bad": "while True do\nbegin\n  Line := Reader.ReadLine;\n  Process(Line);\nend;",
+      "good": "while not Reader.EndOfStream do\nbegin\n  Line := Reader.ReadLine;\n  Process(Line);\nend;"
+    },
+    {
+      "id": "loop-condition-unchanged",
+      "name": "Loop condition never changes in the body",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "No variable of the while or until condition changes in the body: no assignment, no Inc/Dec, no argument (possibly var), no method or member access on the object of the condition, no for loop over it. Typically a forgotten Inc(I) or Next. The rule only reports when every variable of the condition is a local variable or value parameter of the routine and at least one appears directly (not only as X.Property). Conditions with function calls, fields, global variables, var and out parameters and Terminated are not reported, nor loops with an exit (Break, Exit, raise …), waiting loops (Sleep, ProcessMessages …), with, calls of local routines or variables captured by an anonymous method. Changes through X[…] count only when the condition reads X[…].",
+      "bad": "I := 0;\nwhile I < List.Count do\nbegin\n  Check(List[I]);\nend;",
+      "good": "I := 0;\nwhile I < List.Count do\nbegin\n  Check(List[I]);\n  Inc(I);\nend;"
+    },
+    {
+      "id": "unconditional-recursion",
+      "name": "Recursion without a stop",
+      "category": "bug",
+      "severity": "error",
+      "group": "find-bugs",
+      "description": "A routine calls itself on every path before it can return: there is no path without a self-call and no Exit or raise before it. The result is a stack overflow. Paths without a call are: an if without else or a case without else, the body of while and for, the right side of and/or, branches of if expressions and anonymous methods. Getters and setters of their own property are reported by setter-recursion; overloaded routines stay silent (the call may go to another overload). The margin marker from #623 shows every recursion.",
+      "bad": "function TTree.Depth(N: TNode): Integer;\nbegin\n  Result := 1 + Max(Depth(N.Left), Depth(N.Right));\nend;",
+      "good": "function TTree.Depth(N: TNode): Integer;\nbegin\n  if N = nil then\n    Exit(0);\n  Result := 1 + Max(Depth(N.Left), Depth(N.Right));\nend;"
+    },
+    {
+      "id": "pos-arguments-swapped",
+      "name": "Arguments of Pos swapped",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "Pos(Text, ';'): Pos, PosEx, AnsiPos, StartsText, StartsStr, EndsText and EndsStr (also with Ansi prefix) expect the searched part first and the text second; ContainsText and ContainsStr expect the text first. Reported when a short literal (up to maxLiteralLength characters, default 3; '' counts as one character, #9 as well) stands where the text belongs and a certain string stands where the part belongs: a variable or field of a string type declared in the file, .Text or .Caption, a string function of the RTL (Trim, UpperCase, Copy-like LeftStr, Format …) or a concatenation with a string part. Characters stay silent, because Pos(C, ';,') deliberately checks whether C is one of the separators; so do unknown types, two literals and methods of other objects (Liste.Pos). Medium confidence. Quick fix: swap the arguments in one edit; comments between them stay.",
+      "bad": "if Pos(Zeile, ';') > 0 then",
+      "good": "if Pos(';', Zeile) > 0 then",
+      "options": [
+        {
+          "name": "maxLiteralLength",
+          "type": "integer",
+          "default": 3,
+          "description": "Longest literal in the place of the text that is still taken as swapped."
+        }
+      ]
+    },
+    {
+      "id": "integer-division-to-float",
+      "name": "Integer division assigned to a floating-point number",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "Average := Sum div Count with Average: Double: div cuts off the fraction before the value is assigned. Also Percent := Part div Total * 100, Result of a function with a floating-point result and var X: Double := A div B. The div is searched through parentheses, signs and + - * /, not inside calls (Round(A div B)), indexes, mod or comparisons. The target must be a variable, field (also Self.X) or Result whose type Single, Double, Extended, Real, Currency … is declared in the file. TDateTime, TDate and TTime stay silent (whole days are usually intended there), as do assignments inside with and Trunc(A) div Trunc(B) (also Round, Floor, Ceil: explicitly converted, so integer division is intended). High confidence. Quick fix: replace div with / (same precedence).",
+      "bad": "var Average: Double;\n…\nAverage := Sum div Count;",
+      "good": "var Average: Double;\n…\nAverage := Sum / Count;"
+    },
+    {
+      "id": "empty-finally",
+      "name": "Empty finally block",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "A finally block without statements: usually the release got lost during a rework. If the statement right before try is X := T….Create, the message names X.Free. A block with an explaining comment counts as deliberate and is not reported (as with empty-except); a block with a compiler directive is skipped as well, because another branch may contain code. High confidence. Quick fix: remove try, finally and end and outdent the body (when try, finally and end each stand on their own line); as the only statement of an if, while, for, with or case branch with several statements in the body, try becomes begin.",
+      "bad": "Liste := TStringList.Create;\ntry\n  Liste.LoadFromFile(Pfad);\nfinally\nend;",
+      "good": "Liste := TStringList.Create;\ntry\n  Liste.LoadFromFile(Pfad);\nfinally\n  Liste.Free;\nend;"
+    },
+    {
       "id": "form-resource-missing",
       "name": "Form unit without {$R *.dfm}",
       "category": "bug",
