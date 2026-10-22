@@ -65,6 +65,15 @@
 //                     mit write: über eine lokale Variable zuweisen und
 //                     zurückschreiben (Variable über TRoutineBody.AddVariable, Unit
 //                     des Typs über TUsesClauses.AddUnit).
+//   untyped-pointer-refcount
+//                     Pointer(X) := … mit einem Interface X (#1081, wie W1070):
+//                     die Zuweisung umgeht die Referenzzählung. Typ über
+//                     TNameResolver.NodeType, gemeldet wird nur bei sicher
+//                     bekanntem Interface-Typ; Strings meldet Delphi außerhalb
+//                     von NEXTGEN nicht, Atlas daher auch nicht. Felder mit
+//                     [weak] oder [unsafe] bleiben still. Korrekturen für Felder
+//                     dieser Datei mit Pointer(Y) oder nil rechts: [weak] bzw.
+//                     [unsafe] ans Feld, Zuweisung ohne Pointer.
 //   readonly-property-assigned
 //                     Zuweisung an eine Property ohne write (#1006, wie E2129) und
 //                     Lesen einer Property ohne read (wie E2130), nur bei sicher
@@ -172,6 +181,12 @@ type
   end;
 
   TAssignToPropertyMemberRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TUntypedPointerRefcountRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -2571,6 +2586,171 @@ begin
   end;
 end;
 
+{ TUntypedPointerRefcountRule }
+
+function TUntypedPointerRefcountRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('untyped-pointer-refcount', TRuleSeverity.Warning,
+    'Untypisierter Zeiger umgeht die Referenzzählung');
+end;
+
+procedure TUntypedPointerRefcountRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Resolver: TNameResolver;
+  FileName: string;
+  Tokens: TTokens;
+
+  function NodeText(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  // Pointer(X) mit genau einem Argument: X; sonst nil.
+  function PointerArgument(ANode: TSyntaxNode): TSyntaxNode;
+  begin
+    Result := nil;
+    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 2) and
+      (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Pointer') then
+      Result := ANode[1];
+  end;
+
+  // Namenstoken des Felds ASymbol in dieser Datei, wenn es allein deklariert ist (A: IFoo, nicht A, B: IFoo); -1 sonst.
+  // AMarked: das Feld trägt schon [weak] oder [unsafe].
+  function FieldToken(const ASymbol: TResolvedSymbol; out AMarked: Boolean): Integer;
+  var
+    Index, Before, After, Open: Integer;
+  begin
+    Result := -1;
+    AMarked := False;
+    if (ASymbol.SymbolKind <> TIndexSymbolKind.Field) or not SameText(ASymbol.FileName, FileName) then
+      Exit;
+    for Index := 0 to High(Tokens) do
+      if (Tokens[Index].StartPos.Line = ASymbol.SelectionRange.StartPos.Line) and
+        (Tokens[Index].StartPos.Character = ASymbol.SelectionRange.StartPos.Character) then
+      begin
+        Before := PreviousCode(Tokens, Index);
+        After := NextCode(Tokens, Index + 1);
+        // Attribute davor: [weak], [unsafe], auch mehrere.
+        while (Before >= 0) and Tokens[Before].IsSymbol(']') do
+        begin
+          Open := Before;
+          while (Open >= 0) and not Tokens[Open].IsSymbol('[') do
+          begin
+            if MatchText(Tokens[Open].Text, ['weak', 'unsafe', 'WeakAttribute', 'UnsafeAttribute']) then
+              AMarked := True;
+            Dec(Open);
+          end;
+          Before := PreviousCode(Tokens, Open);
+        end;
+        if ((Before >= 0) and Tokens[Before].IsSymbol(',')) or (After > High(Tokens)) or
+          not Tokens[After].IsSymbol(':') then
+          Exit;
+        Exit(Index);
+      end;
+  end;
+
+  procedure CheckAssignment(AStatement: TSyntaxNode);
+  var
+    Target, Value, Source: TSyntaxNode;
+    Symbol, TypeInfo: TResolvedSymbol;
+    TypeFound, Marked: Boolean;
+    Name, NewValue: string;
+    Field: Integer;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Target := PointerArgument(AStatement[0]);
+    if (Target = nil) or not (Target.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+      Exit;
+    if not Resolver.NodeType(AContext.Tree, FileName, Target, Symbol, TypeInfo, TypeFound) or Symbol.IsType or
+      not ((TypeFound and (TypeInfo.SymbolKind = TIndexSymbolKind.InterfaceType)) or
+      MatchText(Symbol.TypeName, ['IInterface', 'IUnknown', 'IDispatch'])) then
+      Exit;
+    Field := FieldToken(Symbol, Marked);
+    if Marked then
+      Exit;
+    Name := NodeText(Target);
+    Fixes := nil;
+    Value := nil;
+    if AStatement.ChildCount > 1 then
+      Value := AStatement[1];
+    NewValue := '';
+    if Value <> nil then
+    begin
+      Source := PointerArgument(Value);
+      if Source <> nil then
+        NewValue := NodeText(Source)
+      else if SameText(Trim(NodeText(Value)), 'nil') then
+        NewValue := 'nil';
+    end;
+    if (Field >= 0) and (NewValue <> '') then
+      Fixes := [TRuleFix.Create(Format('[weak] %s verwenden', [Symbol.Name]),
+        [TRuleEdit.Create(TTextRange.Create(Tokens[Field].StartPos, Tokens[Field].StartPos), '[weak] '),
+        TRuleEdit.Create(TTextRange.Create(AStatement[0].StartPos, AStatement[0].EndPos), Name),
+        TRuleEdit.Create(TTextRange.Create(Value.StartPos, Value.EndPos), NewValue)]),
+        TRuleFix.Create(Format('[unsafe] %s verwenden', [Symbol.Name]),
+        [TRuleEdit.Create(TTextRange.Create(Tokens[Field].StartPos, Tokens[Field].StartPos), '[unsafe] '),
+        TRuleEdit.Create(TTextRange.Create(AStatement[0].StartPos, AStatement[0].EndPos), Name),
+        TRuleEdit.Create(TTextRange.Create(Value.StartPos, Value.EndPos), NewValue)])];
+    AReport.Add(TTextRange.Create(AStatement[0].StartPos, AStatement[0].EndPos), Format('Die Zuweisung über ' +
+      'Pointer umgeht die Referenzzählung (wie W1070); besser [weak] %s.', [Name]), TRuleConfidence.Medium, Fixes);
+  end;
+
+var
+  Stack: TArray<TSyntaxNode>;
+  Count, Index: Integer;
+  Node: TSyntaxNode;
+  Found: Boolean;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  // Vorfilter: ohne Pointer( keine Namensauflösung.
+  Found := False;
+  for Index := 0 to High(Tokens) - 1 do
+    if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, 'Pointer') and
+      Tokens[Index + 1].IsSymbol('(') then
+    begin
+      Found := True;
+      Break;
+    end;
+  if not Found then
+    Exit;
+  FileName := AContext.FileName;
+  if FileName = '' then
+    FileName := AContext.RelativePath;
+  if FileName = '' then
+    FileName := AContext.UnitName + '.pas';
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  try
+    Resolver.Namespaces := AContext.Namespaces;
+    Resolver.PinTree(AContext.Tree, FileName);
+    try
+      // Ohne Rekursion durch den Baum (#1094).
+      SetLength(Stack, 64);
+      Stack[0] := AContext.Tree.Root;
+      Count := 1;
+      while Count > 0 do
+      begin
+        Dec(Count);
+        Node := Stack[Count];
+        if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount > 0) then
+          CheckAssignment(Node);
+        if Count + Node.ChildCount > Length(Stack) then
+          SetLength(Stack, 2 * (Count + Node.ChildCount));
+        for Index := Node.ChildCount - 1 downto 0 do
+        begin
+          Stack[Count] := Node[Index];
+          Inc(Count);
+        end;
+      end;
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
 { TReadonlyPropertyAssignedRule }
 
 function TReadonlyPropertyAssignedRule.Descriptor: TRuleDescriptor;
@@ -2841,6 +3021,7 @@ begin
   ARegistry.Register(TComparisonAsStatementRule.Create);
   ARegistry.Register(TDuplicateCaseLabelRule.Create);
   ARegistry.Register(TAssignToPropertyMemberRule.Create);
+  ARegistry.Register(TUntypedPointerRefcountRule.Create);
   ARegistry.Register(TReadonlyPropertyAssignedRule.Create);
 end;
 

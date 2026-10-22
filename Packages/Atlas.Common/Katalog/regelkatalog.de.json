@@ -1192,6 +1192,11 @@
       "id": "guid-syntax-invalid",
       "name": "GUID mit falscher Schreibweise",
       "description": "Die GUID eines Interfaces oder einer typisierten TGUID-Konstante hat nicht die Form '{8-4-4-4-12}' (wie E2204): fehlende Klammern, falsche Zahl oder Länge der Blöcke, Zeichen, die keine Hexadezimalziffern sind, oft nach Hand-Bearbeitung. Geprüft werden nur einzelne Literale; Verkettungen und Konstanten bleiben still. Korrekturen: neue GUID erzeugen; fehlen nur die Klammern, sie ergänzen. Ergänzt interface-guid und duplicate-interface-guid."
+    },
+    {
+      "id": "untyped-pointer-refcount",
+      "name": "Untypisierter Zeiger umgeht die Referenzzählung",
+      "description": "Ein Interface wird über eine Typumwandlung nach Pointer zugewiesen (Pointer(FIntf) := P, wie W1070). Die Referenzzählung läuft dann nicht mit: das Objekt wird zu früh freigegeben oder nie. Die Regel meldet nur, wenn die Namensauflösung den Interface-Typ sicher kennt; Strings meldet sie nicht, weil Delphi bei ihnen nur unter NEXTGEN warnt. Felder mit [weak] oder [unsafe] bleiben still. Korrekturen für ein Feld dieser Datei mit Pointer(Y) oder nil rechts: das Feld mit [weak] bzw. [unsafe] auszeichnen und ohne Pointer zuweisen."
     }
   ]
 }
