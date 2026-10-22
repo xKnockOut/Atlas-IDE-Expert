@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 58 |
+| [Fehler finden](#gruppe-find-bugs) | 59 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
@@ -84,6 +84,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`form-access-before-create`](#form-access-before-create) | Zugriff auf ein Formular, das noch nicht erzeugt ist | Bug | Warnung |
 | [`constant-condition`](#constant-condition) | Bedingung ist immer gleich | Bug | Warnung |
 | [`infinite-loop`](#infinite-loop) | Schleife ohne Ausgang | Bug | Fehler |
+| [`loop-condition-unchanged`](#loop-condition-unchanged) | Schleifenbedingung ändert sich im Rumpf nie | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -4593,5 +4594,33 @@ while not Reader.EndOfStream do
 begin
   Line := Reader.ReadLine;
   Process(Line);
+end;
+```
+
+<a id="loop-condition-unchanged"></a>
+### loop-condition-unchanged
+
+**Schleifenbedingung ändert sich im Rumpf nie** · Bug · Warnung · Gruppe Fehler finden
+
+Keine Variable der while- bzw. until-Bedingung ändert sich im Rumpf: keine Zuweisung, kein Inc/Dec, kein Argument (möglicherweise var), kein Methoden- oder Mitgliedszugriff auf das Objekt der Bedingung, keine for-Schleife darüber. Typisch ist das vergessene Inc(I) oder Next. Gemeldet wird nur, wenn jede Variable der Bedingung eine lokale Variable oder ein Wertparameter der Routine ist und mindestens eine direkt (nicht nur als X.Eigenschaft) vorkommt. Still bleiben Bedingungen mit Funktionsaufrufen, Feldern, globalen Variablen, var- und out-Parametern und Terminated, außerdem Schleifen mit Ausgang (Break, Exit, raise …), Warteschleifen (Sleep, ProcessMessages …), with, Aufrufen lokaler Routinen und Variablen, die eine anonyme Methode erfasst. Änderungen über X[…] zählen nur, wenn die Bedingung X[…] liest.
+
+Mit Treffer:
+
+```pascal
+I := 0;
+while I < List.Count do
+begin
+  Check(List[I]);
+end;
+```
+
+Richtig:
+
+```pascal
+I := 0;
+while I < List.Count do
+begin
+  Check(List[I]);
+  Inc(I);
 end;
 ```

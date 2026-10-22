@@ -4147,3 +4147,15 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | EL4 | `Break` nur in einer inneren `for`-Schleife bzw. `Exit` nur in einer anonymen Methode im Rumpf | Meldung wie EL1 |
 | EL5 | `try while True do Verarbeiten(Leser.ReadLine); except on EEndOfStream do ; end;` | Keine Meldung |
 | EL6 | `"infinite-loop": "off"`, `"group:find-bugs": "off"` bzw. `exclude` | Keine Meldung |
+
+## Schleifenbedingung ändert sich nie (#1043)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SV1 | Das Beispiel aus #1043: `I := 0; while I < Liste.Count do begin Pruefen(Liste[I]); end;` | Warnung `loop-condition-unchanged` an der Bedingung: „I und Liste werden im Rumpf nie verändert; die Schleife endet nicht.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| SV2 | `repeat Pruefen(Liste[0]); until I > 10;` | „I wird im Rumpf nie verändert; die Schleife endet nicht.“ |
+| SV3 | Im Rumpf von SV1 jeweils `Inc(I)`, `I := I + 1`, `Lesen(I)`, `Liste.Delete(0)`, `for I := …` | Keine Meldung |
+| SV4 | Bedingung mit Funktionsaufruf, Feld (`while not FFertig`), var-Parameter, `Terminated`, nur `Liste.Count > 0`; Rumpf mit `Break`, `Sleep`, `with`, Aufruf einer lokalen Prozedur oder einer anonymen Methode, die `I` erfasst | Keine Meldung |
+| SV5 | `"loop-condition-unchanged": "off"`, `"group:find-bugs": "off"` bzw. `exclude` | Keine Meldung |
