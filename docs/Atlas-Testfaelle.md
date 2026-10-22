@@ -4119,3 +4119,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## Ungenerische Liste mit Cast (#981)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index; in `atlas.json` `"legacy-tlist": "info"` (Standard aus).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JT1 | Das Beispiel aus #981: Feld `FPositionen: TList;`, in einer Methode `Pos := TPosition(FPositionen[I]);` | Information `legacy-tlist` an `FPositionen` in der Deklaration: „Ungenerische TList mit Cast beim Lesen; TList<TPosition> prüft den Typ beim Übersetzen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JT2 | Wie JT1, aber `uses System.Classes, System.Generics.Collections` und zusätzlich `FPositionen.Items[I]`, `FPositionen.First`, `FPositionen.Last`, `FPositionen[I] as TPosition` | Weiterhin genau ein Treffer an der Deklaration; Hover auf `TList` zeigt `System.Classes.TList` |
+| JT3 | `FObjekte: TObjectList;` aus `System.Contnrs` mit `TKunde(FObjekte[0])` | „Ungenerische TObjectList mit Cast beim Lesen; TObjectList<TKunde> prüft den Typ beim Übersetzen.“ |
+| JT4 | Dieselbe Liste mit `TPosition(L[0])` und `TObject(L[1])` | „Ungenerische TList mit Casts auf TPosition, TObject beim Lesen; eine generische Liste prüft den Typ beim Übersetzen.“ |
+| JT5 | Öffentliches Feld `Regale: TList` in Unit A, Cast `TRegal(Lager.Regale[0])` nur in Unit B | Treffer in B am Cast `TRegal(Lager.Regale[0])` |
+| JT6 | Korrigierte Form `TList<TPosition>` mit `Pos := FPositionen[I]`, `TList` ohne Cast (`Count`, `Add`), `Pointer(L[I])`, `TStringList.Objects[I]` mit Cast | Keine Meldung |
+| JT7 | Ohne Eintrag in `atlas.json`, mit `"legacy-tlist": "off"` bzw. `exclude` mit dem Pfad der Unit | Keine Meldung |
+| JT8 | Abgleich mit Delphi: JT1 bis JT3 übersetzen | dcc meldet nichts (die Regel ist reine Stilprüfung); nach Umstellen auf `TList<TPosition>` ohne Cast übersetzt es mit 0 Fehlern, 0 Warnungen, 0 Hinweisen |

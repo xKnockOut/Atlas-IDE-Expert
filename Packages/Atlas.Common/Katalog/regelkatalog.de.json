@@ -869,6 +869,11 @@
       ]
     },
     {
+      "id": "legacy-tlist",
+      "name": "Ungenerische Liste mit Cast",
+      "description": "Eine ungenerische TList (System.Classes) oder TObjectList (System.Contnrs), deren Elemente mit Cast gelesen werden: T(Liste[I]), T(Liste.Items[I]), T(Liste.First), Liste[I] as T usw. TList<T> und TObjectList<T> aus System.Generics.Collections prüfen den Typ beim Übersetzen und brauchen keinen Cast. Die Regel meldet je Liste einmal, an ihrer Deklaration, wenn sie in der Datei steht, sonst am ersten Cast; bei mehreren Zieltypen nennt sie alle. Nur wenn die Namensauflösung Listentyp und Zieltyp sicher findet; Casts auf Pointer zählen nicht. Standard aus; für Code, der noch mit alten Delphi-Versionen übersetzen muss, über exclude abschaltbar. Stapel und Warteschlangen folgen in #1106, die Schnellkorrektur in #1105."
+    },
+    {
       "id": "global-variable",
       "name": "Globale Variable im interface",
       "description": "var oder threadvar im interface-Teil einer Unit: Jede Unit, die sie einbindet, kann den Wert lesen und ändern. Die Formularvariable des Designers (frmHaupt: TfrmHaupt, bei Nachfahren von TForm, TFrame, TDataModule oder jeder Klasse einer Unit mit Formulardatei) ist ausgenommen, außer mit includeFormVariables. Standard aus. Die Variable in den implementation-Teil verschieben und eine Funktion oder Property anbieten.",

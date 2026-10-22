@@ -425,6 +425,8 @@ const
     TSyntaxKind.ParenExpr, TSyntaxKind.Dereference];
   MaxDepth = 32;
   MaxInferDepth = 8;
+  // AArity für LookupInUnit/LookupGlobal: nur Typen ohne Typparameter (-1 = beliebig, 0 = ohne Typargumente).
+  NonGenericArity = -2;
   // Eingebaute Typen, die nicht als Symbol im Index stehen.
   BuiltinTypes: array[0..27] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'ShortString',
     'Char', 'WideChar', 'AnsiChar', 'Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt',
@@ -1015,7 +1017,7 @@ begin
         Continue;
       if AOnlyTypes and (AArity > 0) and (Length(SplitArgs(Symbol.TypeParams)) <> AArity) then
         Continue;
-      if AOnlyTypes and (AArity = 0) and (Pass = 0) and (Symbol.TypeParams <> '') then
+      if AOnlyTypes and ((AArity = 0) and (Pass = 0) or (AArity = NonGenericArity)) and (Symbol.TypeParams <> '') then
         Continue;
       AResult := FromSymbol(AUnit, Symbol);
       Exit(True);
@@ -1032,6 +1034,10 @@ var
   UnitName: string;
   Used: TUnitIndex;
 begin
+  // Ohne Typargumente gewinnt ein nicht generischer Typ jeder Unit vor einem generischen gleichen Namens, wie im
+  // Compiler: TList ist mit System.Classes und System.Generics.Collections in uses immer System.Classes.TList (#981).
+  if AOnlyTypes and (AArity = 0) and LookupGlobal(AUnit, AName, AWithImplementation, True, AResult, NonGenericArity) then
+    Exit(True);
   if LookupInUnit(AUnit, AName, not AWithImplementation, AOnlyTypes, AResult, AArity) then
     Exit(True);
   for UnitName in ScopeUnits(AUnit, AWithImplementation) do

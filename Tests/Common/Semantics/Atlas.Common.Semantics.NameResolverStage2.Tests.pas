@@ -34,6 +34,8 @@ type
     [Test]
     procedure FollowsGenericAncestors;
     [Test]
+    procedure NonGenericTypeBeatsGenericOfSameName;
+    [Test]
     procedure BindsGenericMethodArguments;
     [Test]
     procedure UsesHelpersForBuiltinAndClassTypes;
@@ -281,6 +283,30 @@ begin
   Assert.AreEqual('TKunde', ResolveAt(Source, 'Name;', 2).Container);
   Assert.AreEqual('TKunde', ResolveAt(Source, 'Name;', 3).Container);
   Assert.IsFalse(ResolveAt(Source, 'Unbekannt').Found);
+end;
+
+procedure TNameResolverStage2Tests.NonGenericTypeBeatsGenericOfSameName;
+const
+  UnitClasses = 'unit System.Classes;'#10'interface'#10'type'#10'  TList = class'#10'  public'#10 +
+    '    function Extract(Item: Pointer): Pointer;'#10'  end;'#10'implementation'#10'end.';
+  Body = 'type'#10'  TBestand = class'#10'    Alt: TList;'#10'    Neu: TList<TKunde>;'#10'  end;'#10 +
+    'implementation'#10'procedure P(B: TBestand);'#10'begin'#10'  B.Alt.Extract(nil);'#10'  B.Neu.First;'#10 +
+    'end;'#10'end.';
+var
+  UsesOrder: string;
+  R: TResolvedSymbol;
+begin
+  // Wie im Compiler (#981): TList ohne Typargumente ist System.Classes.TList, auch wenn
+  // System.Generics.Collections mit TList<T> weiter hinten in uses steht; TList<…> bleibt generisch.
+  AddUnit('C:\Lib\System.Classes.pas', UnitClasses);
+  for UsesOrder in ['System.Classes, System.Generics.Collections', 'System.Generics.Collections, System.Classes'] do
+  begin
+    R := ResolveAt('unit Haupt;'#10'interface'#10'uses ' + UsesOrder + ', Kunden;'#10 + Body, 'Extract');
+    Assert.IsTrue(R.Found, UsesOrder);
+    Assert.AreEqual('System.Classes', R.UnitName, UsesOrder);
+    R := ResolveAt('unit Haupt;'#10'interface'#10'uses ' + UsesOrder + ', Kunden;'#10 + Body, 'First');
+    Assert.AreEqual('System.Generics.Collections', R.UnitName, UsesOrder);
+  end;
 end;
 
 procedure TNameResolverStage2Tests.FollowsGenericAncestors;
