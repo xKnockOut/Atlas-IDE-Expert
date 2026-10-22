@@ -1,7 +1,8 @@
 ﻿unit Atlas.Core.Files.TextFile.Tests;
 
 // Tests für das Ändern von Quelltexten auf der Platte in ihrer Kodierung (#397),
-// Vorgabe-Codepage und binäre Formulare (#121).
+// Vorgabe-Codepage und binäre Formulare (#121), atomares Ersetzen und Lesen
+// ohne Sperre (Bericht M5).
 
 interface
 
@@ -22,6 +23,13 @@ type
     procedure SavesBesideAndReplaces;
     [Test]
     procedure ReplacesFileHeldOpenByOthers;
+    /// <summary>Hält ein fremdes Programm die Datei ohne FILE_SHARE_DELETE offen, scheitert Save nach dem Netz
+    /// und lässt die Datei, wie sie war (früher: an Ort und Stelle überschrieben).</summary>
+    [Test]
+    procedure KeepsFileLockedByOthers;
+    /// <summary>ReadAllBytes teilt Löschen: Es liest, während ein anderer die Datei zum Ersetzen offen hat.</summary>
+    [Test]
+    procedure ReadAllBytesDoesNotBlockReplace;
     [Test]
     procedure AnsiDefaultCodePage;
     [Test]
@@ -37,6 +45,7 @@ implementation
 uses
   Winapi.Windows,
   System.SysUtils,
+  System.Classes,
   System.IOUtils,
   Atlas.Core.Files.TextFile;
 
@@ -120,9 +129,11 @@ var
   Folder, FileName: string;
   Content: TAtlasTextFileContent;
   Handle: THandle;
+  Old: array[0..1] of Byte;
+  Count: DWORD;
 begin
-  // Wie der Server, der settings.json beobachtet: Datei offen mit FILE_SHARE_DELETE. Löschen und Verschieben
-  // getrennt meldete „Datei bereits vorhanden“.
+  // Wie ein Leser, der Löschen teilt (der Server mit TWindowsSharedRead, ReadAllBytes): Löschen und
+  // Verschieben getrennt meldete „Datei bereits vorhanden“, klassisches MoveFileEx scheitert ebenso.
   Folder := TPath.Combine(TPath.GetTempPath, 'Atlas-TextFile-' + IntToStr(Random(MaxInt)));
   TDirectory.CreateDirectory(Folder);
   try
@@ -135,11 +146,83 @@ begin
       Content := TAtlasTextFile.Load(FileName);
       Content.Text := '{"metrics": false}';
       TAtlasTextFile.Save(FileName, Content);
+      // Atomar ersetzt, nicht überschrieben: Der Leser sieht weiter den alten Stand.
+      Assert.IsTrue(ReadFile(Handle, Old, SizeOf(Old), Count, nil));
+      Assert.AreEqual(2, Integer(Count));
+      Assert.AreEqual(Integer(Ord('{')), Integer(Old[0]));
+      Assert.AreEqual(Integer(Ord('}')), Integer(Old[1]));
     finally
       CloseHandle(Handle);
     end;
     Assert.AreEqual('{"metrics": false}', TAtlasTextFile.Load(FileName).Text);
     Assert.IsFalse(TFile.Exists(FileName + '.atlas-tmp'), 'keine Nachbardatei übrig');
+  finally
+    TDirectory.Delete(Folder, True);
+  end;
+end;
+
+procedure TAtlasTextFileTests.KeepsFileLockedByOthers;
+var
+  Folder, FileName: string;
+  Content: TAtlasTextFileContent;
+  Handle: THandle;
+begin
+  Folder := TPath.Combine(TPath.GetTempPath, 'Atlas-TextFile-' + IntToStr(Random(MaxInt)));
+  TDirectory.CreateDirectory(Folder);
+  try
+    FileName := TPath.Combine(Folder, 'settings.json');
+    TFile.WriteAllText(FileName, '{}');
+    // So las TFile.ReadAllBytes: Lesen geteilt, Löschen nicht.
+    Handle := CreateFile(PChar(FileName), GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING,
+      FILE_ATTRIBUTE_NORMAL, 0);
+    Assert.IsTrue(Handle <> INVALID_HANDLE_VALUE);
+    try
+      Content := TAtlasTextFile.Load(FileName);
+      Content.Text := '{"metrics": false}';
+      Assert.WillRaise(
+        procedure
+        begin
+          TAtlasTextFile.Save(FileName, Content);
+        end, EAtlasTextFileError);
+    finally
+      CloseHandle(Handle);
+    end;
+    Assert.AreEqual('{}', TAtlasTextFile.Load(FileName).Text);
+    Assert.IsFalse(TFile.Exists(FileName + '.atlas-tmp'), 'keine Nachbardatei übrig');
+  finally
+    TDirectory.Delete(Folder, True);
+  end;
+end;
+
+procedure TAtlasTextFileTests.ReadAllBytesDoesNotBlockReplace;
+var
+  Folder, FileName: string;
+  Content: TAtlasTextFileContent;
+  Handle: THandle;
+begin
+  Folder := TPath.Combine(TPath.GetTempPath, 'Atlas-TextFile-' + IntToStr(Random(MaxInt)));
+  TDirectory.CreateDirectory(Folder);
+  try
+    FileName := TPath.Combine(Folder, 'atlas.json');
+    TFile.WriteAllText(FileName, '{}');
+    // Wie Save beim Ersetzen: offen zum Löschen. TFile.ReadAllBytes scheitert daran, ReadAllBytes nicht.
+    Handle := CreateFile(PChar(FileName), _DELETE or SYNCHRONIZE,
+      FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    Assert.IsTrue(Handle <> INVALID_HANDLE_VALUE);
+    try
+      Assert.AreEqual(2, Integer(Length(TAtlasTextFile.ReadAllBytes(FileName))));
+    finally
+      CloseHandle(Handle);
+    end;
+    Assert.WillRaise(
+      procedure
+      begin
+        TAtlasTextFile.ReadAllBytes(TPath.Combine(Folder, 'fehlt.json'));
+      end, EFOpenError);
+    Content := TAtlasTextFile.Load(FileName);
+    Content.Text := '{"a": 1}';
+    TAtlasTextFile.Save(FileName, Content);
+    Assert.AreEqual('{"a": 1}', TAtlasTextFile.Load(FileName).Text);
   finally
     TDirectory.Delete(Folder, True);
   end;

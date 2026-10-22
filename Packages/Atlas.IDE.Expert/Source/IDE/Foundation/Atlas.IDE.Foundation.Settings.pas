@@ -135,6 +135,7 @@ uses
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Scopes,
   Atlas.Core.Settings.Experimental,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings;
 
 type
@@ -262,9 +263,12 @@ begin
     ForceDirectories(ExtractFileDir(GlobalFile));
     TAtlasTextFile.Save(GlobalFile, Content);
   except
-    // Ohne Schreibrecht bleiben die Werte für diese Sitzung bestehen.
-    on Exception do
-      ;
+    // Ohne Schreibrecht oder bei fremder Sperre (Bericht M5) bleiben die Werte für diese Sitzung bestehen. Ins
+    // Protokoll ohne Pfad: Die Meldung von EAtlasTextFileError nennt keinen, andere nur mit Klasse.
+    on E: EAtlasTextFileError do
+      TAtlasGuard.Log('Einstellungen nicht gespeichert: ' + TAtlasGuard.SafeMessage(E.Message));
+    on E: Exception do
+      TAtlasGuard.Log('Einstellungen nicht gespeichert: ' + E.ClassName);
   end;
 end;
 

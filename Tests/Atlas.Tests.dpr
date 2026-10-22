@@ -150,6 +150,7 @@ uses
   Atlas.Common.Lsp.WorkspaceFolders.Tests in 'Common\Lsp\Atlas.Common.Lsp.WorkspaceFolders.Tests.pas',
   Atlas.Windows.Documents.PathCanonicalizer.Tests in 'Windows\Documents\Atlas.Windows.Documents.PathCanonicalizer.Tests.pas',
   Atlas.Windows.Documents.FileWatcher.Tests in 'Windows\Documents\Atlas.Windows.Documents.FileWatcher.Tests.pas',
+  Atlas.Windows.Documents.SharedRead.Tests in 'Windows\Documents\Atlas.Windows.Documents.SharedRead.Tests.pas',
   Atlas.Windows.Process.Instances.Tests in 'Windows\Process\Atlas.Windows.Process.Instances.Tests.pas',
   Atlas.Common.Pascal.Lexer.Tests in 'Common\Pascal\Atlas.Common.Pascal.Lexer.Tests.pas',
   Atlas.Common.Lsp.Internals.Debouncer.Tests in 'Common\Lsp\Atlas.Common.Lsp.Internals.Debouncer.Tests.pas',

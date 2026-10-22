@@ -515,6 +515,7 @@ uses
   Atlas.Common.Compiler.Edition,
   Atlas.Windows.Console.StdStreams,
   Atlas.Windows.Documents.PathCanonicalizer,
+  Atlas.Windows.Documents.SharedRead,
   Atlas.Windows.Diagnostics.Adapters.DebugOutputSink,
   Atlas.Windows.Diagnostics.StackTrace,
   Atlas.Windows.Diagnostics.StackGuard,
@@ -4530,6 +4531,9 @@ begin
   // Nach einem abgefangenen Stapelüberlauf die Schutzseite neu setzen (#1094); sonst beendet der
   // nächste Überlauf den Prozess.
   TWindowsStackGuard.Install;
+  // Lesen mit FILE_SHARE_DELETE (Bericht M5): Das Plugin ersetzt settings.json, atlas.json und Units atomar,
+  // auch während der Server sie liest.
+  TWindowsSharedRead.Install;
   LoggerImpl := TLogger.Create;
   Logger := LoggerImpl;
   LoggerImpl.AddSink(TDebugOutputLogSink.Create, TLogLevel.Debug);

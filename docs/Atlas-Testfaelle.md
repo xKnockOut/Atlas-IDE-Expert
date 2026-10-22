@@ -3156,6 +3156,19 @@ Voraussetzung: Atlas geladen, DebugView (Sysinternals) mit „Capture Win32“ a
 | PL4 | Ordner `atlas.log` wieder löschen, weiterarbeiten | DebugView „Atlas: Protokoll schreibt wieder“; in `atlas.log` steht „Protokoll: N Zeilen nicht geschrieben (zuletzt: …)“ vor der nächsten Zeile |
 | PL5 | Testlauf `Atlas.Tests.exe` | Grün, darunter `LogKeepsWritingWhenRotationFails`, `LogCountsLostLinesAndReportsTheGap` und `LogMutexNameDependsOnlyOnTheFolder` (TAtlasGuardTests) |
 
+## Einstellungen und Units atomar speichern (Bericht M5)
+
+Voraussetzung: Atlas geladen, Server läuft, ein Projekt mit einigen Units offen. Process Monitor (Sysinternals) mit Filter „Path ends with settings.json“ hilft bei ES2.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ES1 | In den Atlas-Optionen mehrmals schnell hintereinander eine Einstellung umschalten und mit OK speichern | Jedes Speichern gelingt sofort, ohne spürbare Pause; `settings.json` ist danach gültiges JSON; keine `settings.json.atlas-tmp` im Ordner |
+| ES2 | ES1 mit Process Monitor | Beim Speichern ein `SetRenameInformationFile` auf `settings.json` mit Ergebnis SUCCESS, kein `WriteFile` auf `settings.json` selbst; die Leser (`AtlasServer.exe`, `bds.exe`) öffnen mit „Share Mode: Read, Write, Delete“ |
+| ES3 | Eine Unit mit vielen Verwendungen über Atlas umbenennen (Umbenennen über Dateien, die nicht im Editor offen sind), währenddessen indiziert der Server | Alle Dateien geändert, keine Fehlermeldung „von einem anderen Programm gesperrt“, keine `.atlas-tmp` übrig |
+| ES4 | `settings.json` sperren, ohne Löschen zu teilen: in PowerShell `$f = [IO.File]::Open("$env:APPDATA\Atlas\settings.json", 'Open', 'Read', 'Read')`, dann in den Atlas-Optionen speichern; danach `$f.Close()` und erneut speichern | Nach etwa einer halben Sekunde steht in `atlas.log` „Einstellungen nicht gespeichert: Datei ist von einem anderen Programm gesperrt und bleibt unverändert (…)“ ohne Pfad; die Werte gelten bis zum Ende der Sitzung; `settings.json` unverändert und vollständig, keine `.atlas-tmp`; nach `$f.Close()` gelingt das Speichern |
+| ES5 | Unit im Editor ändern und speichern (Strg+S), während der Server sie gerade liest (z. B. kurz nach dem Öffnen eines großen Projekts) | Die IDE speichert ohne Meldung „Datei kann nicht erstellt werden“ |
+| ES6 | Testlauf `Atlas.Tests.exe` | Grün, darunter `ReplacesFileHeldOpenByOthers`, `KeepsFileLockedByOthers`, `ReadAllBytesDoesNotBlockReplace` (TAtlasTextFileTests), `TWindowsSharedReadTests` und `LoadsThroughPlatformReader`, `ReadsWhileSomeoneWrites` (TFileEncodingDefaultTests) |
+
 ## Gliederung beim Start und Kontextwechsel ohne Zugriffsverletzung
 
 Voraussetzung: experimentelles `editor.stickyScroll` an (wie bei Marco), Brotkrumen an; IDE frisch gestartet, eine Gruppe mit mehreren Plattformen.

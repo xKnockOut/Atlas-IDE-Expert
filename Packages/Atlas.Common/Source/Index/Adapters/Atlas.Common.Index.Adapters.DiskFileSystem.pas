@@ -68,7 +68,9 @@ begin
     Exit(False);
   end;
   try
-    ABytes := TFile.ReadAllBytes(AFileName);
+    // Über TFileEncoding: teilt Löschen, damit ein zweiter Server den Cache währenddessen ersetzen kann
+    // (Bericht M5).
+    ABytes := TFileEncoding.ReadAllBytes(AFileName);
     Result := True;
   except
     on EInOutError do

@@ -48,6 +48,7 @@ contains
   Atlas.Windows.Compiler.Adapters.ProcessRunner in 'Source\Compiler\Atlas.Windows.Compiler.Adapters.ProcessRunner.pas',
   Atlas.Windows.Documents.PathCanonicalizer in 'Source\Documents\Atlas.Windows.Documents.PathCanonicalizer.pas',
   Atlas.Windows.Documents.FileWatcher in 'Source\Documents\Atlas.Windows.Documents.FileWatcher.pas',
+  Atlas.Windows.Documents.SharedRead in 'Source\Documents\Atlas.Windows.Documents.SharedRead.pas',
   Atlas.Windows.Console.StdStreams in 'Source\Console\Atlas.Windows.Console.StdStreams.pas',
   Atlas.Windows.Editing.SystemColors in 'Source\Editing\Atlas.Windows.Editing.SystemColors.pas';
 

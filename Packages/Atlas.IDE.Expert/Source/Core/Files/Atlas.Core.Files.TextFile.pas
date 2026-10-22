@@ -7,6 +7,13 @@
 // Zeilenenden bleiben, wie sie sind. Geschrieben wird erst in eine
 // Nachbardatei, die dann die alte ersetzt.
 //
+// Atomar ersetzen (Bericht M5): Die Nachbardatei tritt mit POSIX-Semantik an
+// die Stelle der alten. Das gelingt auch, solange andere die alte Datei offen
+// haben, wenn sie Löschen teilen; Atlas liest darum selbst mit ReadAllBytes
+// (Plugin) bzw. TWindowsSharedRead (Server). Ein halber Stand ist nie
+// lesbar: Wer die alte Datei offen hat, liest sie zu Ende, wer danach öffnet,
+// bekommt die neue.
+//
 // Vorgabe-Kodierung (#121): Dieselbe Einstellung "encoding" aus atlas.json wie
 // beim Server (TAtlasEncodingDefault liest sie). Eine ANSI-Codepage als Vorgabe
 // gilt für ungültiges UTF-8 und für reines ASCII; ohne Vorgabe oder mit
@@ -50,11 +57,19 @@ type
     /// <summary>"utf-8", "utf8", "65001", "1250", "windows-1250", "cp1250" wie beim Server;
     /// False für unbekannte Werte und Mehrbyte-Codepages.</summary>
     class function ParseCodePage(const AText: string; out ACodePage: Integer): Boolean; static;
+    /// <summary>
+    /// Liest die ganze Datei und teilt Lesen, Schreiben und Löschen, anders als TFile.ReadAllBytes (nur Lesen):
+    /// Wer die Datei währenddessen speichert oder atomar ersetzt (Save, der Server, eine zweite IDE), scheitert
+    /// nicht an diesem Leser (Bericht M5). Dieselbe Lesart hat der Server in TWindowsSharedRead. EFOpenError,
+    /// wenn die Datei fehlt oder gesperrt ist; EReadError bei einem Lesefehler.
+    /// </summary>
+    class function ReadAllBytes(const AFileName: string): TBytes; static;
     /// <summary>Löst EAtlasTextFileError für ein binäres Formular aus.</summary>
     class function Load(const AFileName: string; ADefaultCodePage: Integer): TAtlasTextFileContent; overload;
       static;
     class function Load(const AFileName: string): TAtlasTextFileContent; overload; static;
-    /// <summary>Überschreibt nie ein binäres Formular (EAtlasTextFileError).</summary>
+    /// <summary>Überschreibt nie ein binäres Formular (EAtlasTextFileError). Ersetzt die Datei atomar;
+    /// EAtlasTextFileError, wenn ein anderes Programm sie ohne FILE_SHARE_DELETE offen hält.</summary>
     class procedure Save(const AFileName: string; const AContent: TAtlasTextFileContent); static;
   end;
 
@@ -64,39 +79,151 @@ uses
   Winapi.Windows,
   System.Classes,
   System.IOUtils,
+  System.RTLConsts,
   Atlas.Text.Encoding;
 
 const
-  /// <summary>Versuche, wenn ein anderer Prozess die Zieldatei gerade offen hält (Server, Virenscanner).</summary>
+  /// <summary>
+  /// Netz, nicht die Behebung: Versuche, solange ein fremdes Programm die Zieldatei ohne FILE_SHARE_DELETE
+  /// offen hält (Virenscanner, Sicherung, Synchronisation). Atlas selbst blockiert das Ersetzen nicht mehr
+  /// (Bericht M5). Danach scheitert Save, statt die Datei an Ort und Stelle zu überschreiben: Das hinterließ
+  /// bei einem Abbruch eine halbe Datei und konnte Lesern einen halben Stand zeigen.
+  /// </summary>
   ReplaceAttempts = 10;
   ReplaceWaitMs = 50;
+  // Aus winbase.h (Windows 10 1607 und neuer); Delphis Winapi.Windows kennt sie nicht.
+  FileRenameInfoEx = 22;
+  FILE_RENAME_FLAG_REPLACE_IF_EXISTS = $00000001;
+  FILE_RENAME_FLAG_POSIX_SEMANTICS = $00000002;
 
-/// <summary>Ersetzt ATarget in einem Schritt durch ASource. Löschen und Verschieben getrennt scheitert, wenn
-/// ein anderer Prozess das Ziel offen hält: Das Löschen ist dann nur vorgemerkt und die Datei noch da
-/// („Datei bereits vorhanden“). Bleibt das Ziel gesperrt, wird ASource an Ort und Stelle hineingeschrieben
-/// (geht, solange der andere Prozess Schreiben teilt, etwa der Server, der settings.json beobachtet).</summary>
-procedure ReplaceWith(const ASource, ATarget: string; const ABytes: TBytes);
+type
+  /// <summary>FILE_RENAME_INFO mit Flags statt ReplaceIfExists, für FileRenameInfoEx.</summary>
+  TFileRenameInfoEx = record
+    Flags: DWORD;
+    RootDirectory: THandle;
+    FileNameLength: DWORD;
+    FileName: array[0..0] of WideChar;
+  end;
+  PFileRenameInfoEx = ^TFileRenameInfoEx;
+
+// Mit DWORD statt der Aufzählung aus Winapi.Windows, die FileRenameInfoEx nicht enthält.
+function SetFileInformation(AFile: THandle; AInformationClass: DWORD; AInformation: Pointer;
+  ASize: DWORD): BOOL; stdcall; external kernel32 name 'SetFileInformationByHandle';
+
+/// <summary>
+/// Benennt ASource in ATarget um und ersetzt es mit POSIX-Semantik: Wer ATarget offen hat (und Löschen teilt),
+/// liest weiter den alten Stand; wer danach öffnet, bekommt den neuen. ASource muss im selben Ordner liegen.
+/// Schreibt ASource vorher auf die Platte, wie MOVEFILE_WRITE_THROUGH beim klassischen Ersetzen; scheitert
+/// das, ersetzt es trotzdem (wie früher, als nie geleert wurde). False mit AError, wenn es nicht ging.
+/// </summary>
+function PosixReplace(const ASource, ATarget: string; out AError: DWORD): Boolean;
+var
+  Handle: THandle;
+  Name: string;
+  Size: Integer;
+  Info: PFileRenameInfoEx;
+begin
+  Result := False;
+  Handle := CreateFile(PChar(ASource), GENERIC_WRITE or _DELETE or SYNCHRONIZE,
+    FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+  if Handle = INVALID_HANDLE_VALUE then
+  begin
+    AError := GetLastError;
+    Exit;
+  end;
+  try
+    // Nur der Name: Umbenennen im selben Ordner, ohne Pfad in NT-Schreibweise.
+    Name := ExtractFileName(ATarget);
+    Size := SizeOf(TFileRenameInfoEx) + Length(Name) * SizeOf(WideChar);
+    GetMem(Info, Size);
+    try
+      FillChar(Info^, Size, 0);
+      Info^.Flags := FILE_RENAME_FLAG_REPLACE_IF_EXISTS or FILE_RENAME_FLAG_POSIX_SEMANTICS;
+      Info^.RootDirectory := 0;
+      Info^.FileNameLength := Length(Name) * SizeOf(WideChar);
+      Move(PChar(Name)^, Info^.FileName, Length(Name) * SizeOf(WideChar));
+      FlushFileBuffers(Handle);
+      Result := SetFileInformation(Handle, FileRenameInfoEx, Info, Size);
+      if not Result then
+        AError := GetLastError;
+    finally
+      FreeMem(Info);
+    end;
+  finally
+    CloseHandle(Handle);
+  end;
+end;
+
+/// <summary>Windows oder das Dateisystem kennen das POSIX-Ersetzen nicht (vor Windows 10 1607, FAT, manche
+/// Netzlaufwerke).</summary>
+function PosixUnsupported(AError: DWORD): Boolean;
+begin
+  Result := (AError = ERROR_INVALID_PARAMETER) or (AError = ERROR_NOT_SUPPORTED) or
+    (AError = ERROR_INVALID_FUNCTION);
+end;
+
+/// <summary>Ein Versuch: POSIX-Ersetzen, wo Windows und das Dateisystem es können, sonst klassisch.</summary>
+function TryReplace(const ASource, ATarget: string; out AError: DWORD): Boolean;
+begin
+  Result := PosixReplace(ASource, ATarget, AError);
+  if Result or not PosixUnsupported(AError) then
+    Exit;
+  // Klassisch ersetzen: gelingt nur, solange niemand die Zieldatei offen hat.
+  Result := MoveFileEx(PChar(ASource), PChar(ATarget), MOVEFILE_REPLACE_EXISTING or MOVEFILE_WRITE_THROUGH);
+  if not Result then
+    AError := GetLastError;
+end;
+
+/// <summary>Ersetzt ATarget in einem Schritt durch ASource; EAtlasTextFileError, wenn ein fremdes Programm
+/// die Zieldatei auch nach den Versuchen des Netzes noch sperrt.</summary>
+procedure ReplaceWith(const ASource, ATarget: string);
 var
   Attempt: Integer;
-  Stream: TFileStream;
+  Error: DWORD;
 begin
-  for Attempt := 1 to ReplaceAttempts do
+  Attempt := 1;
+  while not TryReplace(ASource, ATarget, Error) do
   begin
-    if MoveFileEx(PChar(ASource), PChar(ATarget), MOVEFILE_REPLACE_EXISTING or MOVEFILE_WRITE_THROUGH) then
-      Exit;
-    if Attempt < ReplaceAttempts then
-      Sleep(ReplaceWaitMs);
+    if Attempt >= ReplaceAttempts then
+      // Ohne Dateinamen: Die Meldung kann im Protokoll landen.
+      raise EAtlasTextFileError.CreateFmt('Datei ist von einem anderen Programm gesperrt und bleibt unverändert (%s)',
+        [SysErrorMessage(Error)]);
+    // Netz (siehe ReplaceAttempts).
+    Inc(Attempt);
+    Sleep(ReplaceWaitMs);
   end;
-  // Ohne Ausschluss öffnen: Der andere Prozess liest weiter.
-  Stream := TFileStream.Create(ATarget, fmOpenWrite or fmShareDenyNone);
+end;
+
+class function TAtlasTextFile.ReadAllBytes(const AFileName: string): TBytes;
+var
+  Handle: THandle;
+  Size: Int64;
+  Total, Count: Integer;
+begin
+  Handle := CreateFile(PChar(AFileName), GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE,
+    nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL or FILE_FLAG_SEQUENTIAL_SCAN, 0);
+  if Handle = INVALID_HANDLE_VALUE then
+    raise EFOpenError.CreateResFmt(@SFOpenErrorEx, [ExpandFileName(AFileName), SysErrorMessage(GetLastError)]);
   try
-    Stream.Size := 0;
-    if Length(ABytes) > 0 then
-      Stream.WriteBuffer(ABytes[0], Length(ABytes));
+    Size := FileSeek(Handle, Int64(0), 2);
+    if (Size < 0) or (Size > MaxInt) or (FileSeek(Handle, Int64(0), 0) <> 0) then
+      raise EReadError.CreateRes(@SReadError);
+    SetLength(Result, Integer(Size));
+    Total := 0;
+    while Total < Length(Result) do
+    begin
+      Count := FileRead(Handle, Result[Total], Length(Result) - Total);
+      if Count < 0 then
+        raise EReadError.CreateRes(@SReadError);
+      // Kürzer geworden (jemand schreibt an Ort und Stelle): lesen, was da ist.
+      if Count = 0 then
+        Break;
+      Inc(Total, Count);
+    end;
+    SetLength(Result, Total);
   finally
-    Stream.Free;
+    CloseHandle(Handle);
   end;
-  TFile.Delete(ASource);
 end;
 
 class function TAtlasTextFile.IsUtf8(const ABytes: TBytes; AStart: Integer): Boolean;
@@ -221,7 +348,7 @@ class function TAtlasTextFile.Load(const AFileName: string; ADefaultCodePage: In
 var
   Bytes: TBytes;
 begin
-  Bytes := TFile.ReadAllBytes(AFileName);
+  Bytes := ReadAllBytes(AFileName);
   if IsBinaryForm(Bytes) then
     raise EAtlasTextFileError.Create('binär gespeichertes Formular; bitte in der IDE als Text speichern');
   Result := Decode(Bytes, ADefaultCodePage);
@@ -237,14 +364,14 @@ var
   Temporary: string;
   Bytes: TBytes;
 begin
-  if TFile.Exists(AFileName) and IsBinaryForm(TFile.ReadAllBytes(AFileName)) then
+  if TFile.Exists(AFileName) and IsBinaryForm(ReadAllBytes(AFileName)) then
     raise EAtlasTextFileError.Create('binär gespeichertes Formular wird nicht überschrieben');
   // Erst vollständig daneben schreiben: Ein Abbruch hinterlässt nie eine halbe Datei.
   Temporary := AFileName + '.atlas-tmp';
   Bytes := Encode(AContent);
   TFile.WriteAllBytes(Temporary, Bytes);
   try
-    ReplaceWith(Temporary, AFileName, Bytes);
+    ReplaceWith(Temporary, AFileName);
   except
     if TFile.Exists(Temporary) then
       TFile.Delete(Temporary);
