@@ -5,6 +5,10 @@
 // und Continue ohne Korrektur, var-Parameter einer Routine der Datei (W1015),
 // Feld, globale Variable und Variable der umgebenden Routine (E1019) mit
 // Korrektur "for var", stille Fälle, Abschalten, Gruppe und Ausnahmen.
+// Tests der Regel for-variable-after-loop (#1010): Beispiel aus dem Issue mit
+// Korrektur nach while, Lesen erst nach weiteren Anweisungen und in einer
+// Bedingung, stille Fälle (Zuweisung vorher, for var, Feld, nur im Rumpf,
+// neue Schleife, Argument einer unbekannten Routine), Abschalten, Gruppe und Ausnahmen.
 
 interface
 
@@ -25,6 +29,21 @@ type
     procedure VarParameterOfOwnRoutine;
     [Test]
     procedure NonLocalLoopVariables;
+    [Test]
+    procedure SilentCases;
+    [Test]
+    procedure OffAndExclude;
+    [Test]
+    procedure RuleIsRegistered;
+  end;
+
+  [TestFixture]
+  TForVariableAfterLoopTests = class
+  public
+    [Test]
+    procedure IssueExampleWithWhileFix;
+    [Test]
+    procedure LaterReadAndCondition;
     [Test]
     procedure SilentCases;
     [Test]
@@ -199,7 +218,94 @@ begin
   Assert.IsTrue(Found);
 end;
 
+{ TForVariableAfterLoopTests }
+
+procedure TForVariableAfterLoopTests.IssueExampleWithWhileFix;
+const
+  Statements = '  for I := 0 to Zeilen.Count - 1 do'#10'    if Zeilen[I] = '''' then'#10'      Break;'#10 +
+    '  J := I;'#10;
+  Fixed = '  I := 0;'#10'  while I <= Zeilen.Count - 1 do'#10'  begin'#10'    if Zeilen[I] = '''' then'#10 +
+    '      Break;'#10'    Inc(I);'#10'  end;'#10'  J := I;'#10;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TForVariableAfterLoopRule.Create, Zeilen(Statements));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(ForVariableAfterLoopRuleId, Findings[0].RuleId);
+  Assert.AreEqual('I ist nach der Schleife undefiniert, wenn kein Break erreicht wurde (wie W1037).',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(21, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(8, Findings[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Auf while-Schleife umstellen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(Zeilen(Fixed), TChangeSignature.ApplyEdits(Zeilen(Statements), Findings[0].Fixes[0].Edits));
+end;
+
+procedure TForVariableAfterLoopTests.LaterReadAndCondition;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Gelesen erst nach anderen Anweisungen, in einer Bedingung; je Lesestelle nur die erste.
+  Findings := TRuleAssert.Findings(TForVariableAfterLoopRule.Create,
+    Zeilen('  for I := 0 to 9 do'#10'    Ausgeben(I);'#10'  J := 3;'#10'  if I > J then'#10'    Ausgeben(I);'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(21, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Character);
+  // downto, Lesen in einem Index.
+  Findings := TRuleAssert.Findings(TForVariableAfterLoopRule.Create,
+    Zeilen('  for I := 9 downto 0 do'#10'    if Zeilen[I] = '''' then'#10'      Break;'#10'  J := Length(Zeilen[I]);'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(21, Findings[0].Range.StartPos.Line);
+end;
+
+procedure TForVariableAfterLoopTests.SilentCases;
+begin
+  // Zuweisung vor dem Lesen, neue Schleife mit derselben Variable, for var, Feld, Lesen nur im Rumpf,
+  // Verlassen der Routine aus dem Rumpf, globale Variable.
+  TRuleAssert.Silent(TForVariableAfterLoopRule.Create,
+    Zeilen('  for I := 0 to 9 do'#10'    Ausgeben(I);'#10'  I := 0;'#10'  J := I;'#10 +
+    '  for I := 0 to 3 do'#10'    Ausgeben(I);'#10'  for I := 0 to 5 do'#10'    Ausgeben(I);'#10 +
+    '  for var K := 0 to 3 do'#10'    Ausgeben(K);'#10'  for FIndex := 0 to 3 do'#10'    Ausgeben(FIndex);'#10 +
+    '  J := FIndex;'#10'  for GZaehler := 0 to 3 do'#10'    Ausgeben(GZaehler);'#10'  J := GZaehler;'#10));
+  TRuleAssert.Silent(TForVariableAfterLoopRule.Create,
+    Zeilen('  for I := 0 to Zeilen.Count - 1 do'#10'    if Zeilen[I] = '''' then'#10'    begin'#10 +
+    '      Ausgeben(I);'#10'      Exit;'#10'    end;'#10'  Ausgeben(0);'#10));
+  // Als Argument einer unbekannten Routine (könnte ein out-Parameter sein) und ohne Schleife.
+  TRuleAssert.Silent(TForVariableAfterLoopRule.Create,
+    Zeilen('  for I := 0 to 9 do'#10'    Ausgeben(I);'#10'  Ausgeben(I);'#10));
+  TRuleAssert.Silent(TForVariableAfterLoopRule.Create, Zeilen('  J := I;'#10));
+end;
+
+procedure TForVariableAfterLoopTests.OffAndExclude;
+const
+  Statements = '  for I := 0 to 9 do'#10'    Ausgeben(I);'#10'  J := I;'#10;
+begin
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TForVariableAfterLoopRule.Create, Zeilen(Statements)))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TForVariableAfterLoopRule.Create, Zeilen(Statements),
+    '{"rules": {"for-variable-after-loop": "off"}}', 'Zeilen.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TForVariableAfterLoopRule.Create, Zeilen(Statements),
+    '{"rules": {"group:compiler": "off"}}', 'Zeilen.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TForVariableAfterLoopRule.Create, Zeilen(Statements),
+    '{"rules": {"for-variable-after-loop": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Zeilen.pas'))));
+end;
+
+procedure TForVariableAfterLoopTests.RuleIsRegistered;
+var
+  Rule: IRule;
+  Found: Boolean;
+begin
+  Found := False;
+  for Rule in BuiltinRules do
+    if Rule.Descriptor.Id = ForVariableAfterLoopRuleId then
+      Found := True;
+  Assert.IsTrue(Found);
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TForVariableMisuseTests);
+  TDUnitX.RegisterTestFixture(TForVariableAfterLoopTests);
 
 end.

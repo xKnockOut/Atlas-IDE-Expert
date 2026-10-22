@@ -4177,3 +4177,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | SV6 | Lesen der Variablen, `Zeilen[I] := …`, `Zeilen.Delete(I)`, anonyme Methode im Rumpf, Schleife in `with`, Parameter als Schleifenvariable | Keine Meldung |
 | SV7 | `"for-variable-misuse": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | SV8 | Abgleich mit Delphi: SV1, SV3, SV4, SV5 übersetzen | dcc meldet E2081, W1015 bzw. E1019 an denselben Stellen, für SV6 nichts; abweichende Codes in der Regel nachtragen |
+
+## Schleifenvariable nach der Schleife gelesen (#1010)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NS1 | Das Beispiel aus #1010: `for I := 0 to High(Werte) do if Werte[I] = Gesucht then Break;` und danach `Gefunden := I <= High(Werte);` | Warnung `for-variable-after-loop` an `I` nach der Schleife: „I ist nach der Schleife undefiniert, wenn kein Break erreicht wurde (wie W1037).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| NS2 | Schnellkorrektur „Auf while-Schleife umstellen“, danach Strg+Z | `I := 0; while I <= High(Werte) do begin … Inc(I); end;`, keine Meldung mehr; ein Undo-Schritt |
+| NS3 | Erst eine andere Anweisung, dann `if I > J then`; `downto` mit `J := Length(Zeilen[I]);` danach | Meldung je am ersten Lesen nach der Schleife |
+| NS4 | `I := 0;` vor dem Lesen, zweite Schleife mit derselben Variable, `for var K`, Feld oder globale Variable als Schleifenvariable, Lesen nur im Rumpf vor `Exit`, `Ausgeben(I)` mit unbekannter Routine | Keine Meldung |
+| NS5 | `"for-variable-after-loop": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| NS6 | Abgleich mit Delphi: NS1 und NS3 übersetzen | dcc meldet W1037 an denselben Stellen, für NS4 nichts; Abweichungen in der Regel nachtragen |

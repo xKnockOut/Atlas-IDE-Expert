@@ -2371,6 +2371,19 @@ begin
     '        "W1015",' + #10 +
     '        "E1019"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "for-variable-after-loop",' + #10 +
+    '      "name": "Loop variable read after the loop",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "After a for loop that ends normally (without Break), the loop variable is undefined. The rule reports the first read of the variable on a path from the normal loop exit, before i' + 't is assigned again (like W1037). Only simple local variables of the routine are checked; for var loops, fields, globals, reads only inside the body, arguments of routines that might be out parameters' + ', and routines whose control flow is incomplete stay silent. Quick fix: convert to a while loop, where the counter has a defined value afterwards.",' + #10 +
+    '      "bad": "for I := 0 to High(Werte) do\n  if Werte[I] = Gesucht then\n    Break;\nGefunden := I <= High(Werte);",' + #10 +
+    '      "good": "I := 0;\nwhile I <= High(Werte) do\nbegin\n  if Werte[I] = Gesucht then\n    Break;\n  Inc(I);\nend;\nGefunden := I <= High(Werte);",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1037"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3561,6 +3574,11 @@ begin
     '      "id": "for-variable-misuse",' + #10 +
     '      "name": "Schleifenvariable verändert oder nicht lokal",' + #10 +
     '      "description": "Der Variablen einer for-Schleife wird im Rumpf zugewiesen oder sie wird mit Inc/Dec verändert (wie E2081), sie wird als var- bzw. out-Parameter an eine Routine dieser Datei überg' + 'eben (wie W1015) oder sie ist keine einfache lokale Variable: Feld der eigenen Klasse, globale Variable der Unit oder lokale Variable der umgebenden Routine (wie E1019). Delphi meldet das erst beim Üb' + 'ersetzen. Parameter, unbekannte Namen und Schleifen in with-Anweisungen bleiben still, ebenso anonyme Methoden im Rumpf und Routinen mit Parserfehlern. Korrekturen: auf eine while-Schleife umstellen (' + 'nicht bei Continue im Rumpf) bzw. for var verwenden, wenn die Routine den Namen sonst nicht benutzt."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "for-variable-after-loop",' + #10 +
+    '      "name": "Schleifenvariable nach der Schleife gelesen",' + #10 +
+    '      "description": "Nach einer for-Schleife, die normal endet (ohne Break), ist die Schleifenvariable undefiniert. Die Regel meldet das erste Lesen der Variable auf einem Weg vom normalen Schleifene' + 'nde, bevor ihr erneut zugewiesen wird (wie W1037). Geprüft werden nur einfache lokale Variablen der Routine; for var, Felder, globale Variablen, Lesen nur im Rumpf, Argumente von Routinen, die out-Par' + 'ameter sein könnten, und Routinen mit unvollständigem Ablaufgraphen bleiben still. Korrektur: auf eine while-Schleife umstellen, deren Zähler danach einen festen Wert hat."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

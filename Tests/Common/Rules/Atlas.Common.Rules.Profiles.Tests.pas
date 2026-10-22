@@ -177,7 +177,7 @@ const
     'constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,delimited-text-without-strict,deprecated-symbol,deref-before-nil-check,destroy-called-directly,destroy-without-override,' +
     'dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,' +
     'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,dictionary-get-without-check,dunitx-test-without-assert,duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,' +
-    'empty-except,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,for-variable-misuse,forbidden-uses,' +
+    'empty-except,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,for-variable-after-loop,for-variable-misuse,forbidden-uses,' +
     'foreign-form-control-access,form-access-before-create,form-field-type-mismatch,form-field-without-object,' +
     'form-object-without-field,format-without-settings,generic-exception-raised,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,implicit-package-import,int32-mul-overflow,interface-guid,interface-not-implemented,' +
@@ -208,7 +208,7 @@ begin
     'component-missing-inherited,conditional-directive-unbalanced,constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,delimited-text-without-strict,' +
     'deref-before-nil-check,destroy-called-directly,destroy-without-override,dfm-circular-datasource,dfm-control-field-type-mismatch,' +
     'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,dictionary-get-without-check,' +
-    'duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,for-variable-misuse,' +
+    'duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,for-variable-after-loop,for-variable-misuse,' +
     'form-access-before-create,form-field-type-mismatch,form-field-without-object,form-object-without-field,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,interface-not-implemented,jump-outside-allowed-scope,label-misuse,lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,' +
     'missing-inherited,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,' +
