@@ -19,5 +19,6 @@ begin
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
   Application.CreateForm(THauptFormular, HauptFormular);
+  Application.CreateForm(TDetailFormular, DetailFormular);
   Application.Run;
 end.

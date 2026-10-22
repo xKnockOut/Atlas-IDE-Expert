@@ -39,6 +39,8 @@ type
     Application: TRuleApplicationKind;
     /// <summary>Name ohne Endung, z. B. Atlas.IDE.Expert.</summary>
     Name: string;
+    /// <summary>Automatisch erzeugte Formulare in der Reihenfolge der .dpr (#956).</summary>
+    AutoCreateForms: TArray<string>;
   end;
 
   TFileChecker = class
@@ -154,6 +156,7 @@ begin
     Context.Tree := Tree;
     Context.Application := AProject.Application;
     Context.ProjectName := AProject.Name;
+    Context.AutoCreateForms := AProject.AutoCreateForms;
     Result := Syntax + TRuleEngine.Run(ARules, ASettings, Context);
   finally
     Tree.Free;

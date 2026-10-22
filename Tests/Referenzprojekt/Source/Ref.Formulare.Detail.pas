@@ -22,6 +22,10 @@ type
     procedure Initialisieren; override;
   end;
 
+var
+  // Automatisch erzeugt nach HauptFormular (RefApp.dpr); Ziel der Mutation für form-access-before-create.
+  DetailFormular: TDetailFormular;
+
 implementation
 
 {$R *.dfm}

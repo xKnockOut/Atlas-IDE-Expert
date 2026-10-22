@@ -3729,3 +3729,16 @@ Voraussetzung: Server läuft; Routine mit `SI: TStartupInfo; PI: TProcessInforma
 | CP5 | `CreateProcessAsUser(0, nil, PChar(Datei), …)` | Fehler mit mittlerer Konfidenz (Parameter kann ein Literal sein) |
 | CP6 | `UniqueString(Befehl)` vor dem Aufruf, `PChar(Format(…))`, `PChar('"' + Datei + '"')`, `CreateProcessA`, `PChar(Editor)` als lpApplicationName | Keine Meldung |
 | CP7 | `"createprocess-readonly-commandline": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Zugriff auf ein Formular, das noch nicht erzeugt ist (#956)
+
+Voraussetzung: Server läuft; Projekt mit `Application.CreateForm(TfrmHaupt, frmHaupt);` vor `Application.CreateForm(TdmDaten, dmDaten);` in der .dpr; `TfrmHaupt.FormCreate` als `OnCreate` in der .dfm.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FA1 | In `FormCreate`: `lblNutzer.Caption := dmDaten.Benutzer;` | Warnung `form-access-before-create` auf `dmDaten`: „dmDaten wird in der .dpr erst nach frmHaupt erzeugt und ist hier noch nil.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover, keine Korrektur (**Abnahme**) |
+| FA2 | In der .dpr die beiden CreateForm-Zeilen tauschen, speichern, Unit neu prüfen | Keine Meldung mehr (**Abnahme**) |
+| FA3 | `OnCreate = Anlegen` in der .dfm, Zugriff in `Anlegen` bzw. im Konstruktor `Create(AOwner)` | Warnung; mehrere Zugriffe auf dieselbe Variable in einer Routine nur einmal |
+| FA4 | `if Assigned(dmDaten) then …`, `if frmLog <> nil then …`, `Application.CreateForm(TfrmOpt, frmOpt)` vor dem Zugriff, lokale Variable `dmDaten` | Keine Meldung |
+| FA5 | Zugriff in `FormShow` bzw. Formular, das nicht in der .dpr erzeugt wird | Keine Meldung |
+| FA6 | `"form-access-before-create": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
