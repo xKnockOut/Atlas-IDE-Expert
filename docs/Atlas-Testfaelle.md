@@ -4195,3 +4195,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | IK6 | Unbekannter Typ, Alias, Klassentyp, generisches Interface, Property in `{$IFDEF}` | Keine Meldung |
 | IK7 | `"implements-clause-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | IK8 | Abgleich mit Delphi: IK1 bis IK5 übersetzen | dcc meldet E2261, E2259, E2260, E2262, E2263, E2257, E2264 und E2258 an denselben Stellen; für IK6 nichts |
+
+## Aufrufkonvention passt nicht (#1078)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AK1 | Das Beispiel aus #1078: `function Formatieren(Muster: PAnsiChar): Integer; stdcall; varargs; external 'msvcrt.dll';` | Fehler `calling-convention-required` an `varargs`: „varargs ist nur mit cdecl erlaubt (wie E2277).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| AK2 | Schnellkorrektur „cdecl setzen“, danach Strg+Z | `stdcall` wird zu `cdecl`; ohne Konvention wird `cdecl; ` vor `varargs` eingefügt; ein Undo-Schritt |
+| AK3 | `procedure Vier(Muster: PAnsiChar); stdcall; varargs;` ohne external | „… (wie E2591).“ |
+| AK4 | `constructor Create; pascal;` mit Rumpf `constructor TBasis.Create; pascal;` | „Konstruktoren und Destruktoren brauchen register, nicht pascal (wie E2236).“; Korrektur „pascal entfernen“ ändert Deklaration und Rumpf |
+| AK5 | `published property Wert: Integer read GetWert write SetWert;` mit `function GetWert: Integer; cdecl;` | „Der Getter GetWert der published-Property Wert braucht register, nicht cdecl (wie E2270).“; in `public` keine Meldung |
+| AK6 | `register` ausdrücklich, `class constructor`, `cdecl; varargs` | Keine Meldung |
+| AK7 | `"calling-convention-required": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| AK8 | Abgleich mit Delphi: AK1, AK3, AK4, AK5 übersetzen | dcc meldet E2277, E2591, E2236 und E2270 an denselben Stellen; für AK6 nichts |

@@ -2385,6 +2385,22 @@
         "E2263",
         "E2264"
       ]
+    },
+    {
+      "id": "calling-convention-required",
+      "name": "Calling convention does not fit",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "The compiler prescribes the calling convention here: constructors and destructors of a class only with register (like E2236), getters and setters of published properties as well (like E2270), and varargs only with cdecl (like E2277 for external routines, otherwise E2591). Explicit register is fine; class constructors, accessors outside published sections and inherited accessors stay silent. Quick fix: remove the convention in the declaration and in the method body of the same file, or set cdecl for varargs.",
+      "bad": "function Formatieren(Muster: PAnsiChar): Integer; stdcall; varargs; external 'msvcrt.dll';",
+      "good": "function Formatieren(Muster: PAnsiChar): Integer; cdecl; varargs; external 'msvcrt.dll';",
+      "compilerCodes": [
+        "E2236",
+        "E2270",
+        "E2277",
+        "E2591"
+      ]
     }
   ]
 }

@@ -2405,6 +2405,22 @@ begin
     '        "E2263",' + #10 +
     '        "E2264"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "calling-convention-required",' + #10 +
+    '      "name": "Calling convention does not fit",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The compiler prescribes the calling convention here: constructors and destructors of a class only with register (like E2236), getters and setters of published properties as well ' + '(like E2270), and varargs only with cdecl (like E2277 for external routines, otherwise E2591). Explicit register is fine; class constructors, accessors outside published sections and inherited accesso' + 'rs stay silent. Quick fix: remove the convention in the declaration and in the method body of the same file, or set cdecl for varargs.",' + #10 +
+    '      "bad": "function Formatieren(Muster: PAnsiChar): Integer; stdcall; varargs; external ''msvcrt.dll'';",' + #10 +
+    '      "good": "function Formatieren(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2236",' + #10 +
+    '        "E2270",' + #10 +
+    '        "E2277",' + #10 +
+    '        "E2591"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3606,6 +3622,11 @@ begin
     '      "id": "implements-clause-invalid",' + #10 +
     '      "name": "implements-Klausel unzulässig",' + #10 +
     '      "description": "Eine Delegation mit implements verletzt eine ihrer festen Regeln: implements nur in Klassen (wie E2258), nur an Properties mit Klassen- oder Interface-Typ (wie E2259; gemeldet fü' + 'r eingebaute Typen, Records und Aufzählungen), nicht zusammen mit index (wie E2260), nur an lesbaren Properties (wie E2261), der Getter ohne andere Aufrufkonvention als register (wie E2262) und nicht ' + 'dynamic oder message (wie E2263), jedes Interface nur über eine Property (wie E2257) und keine Methodenzuordnung für ein so umgesetztes Interface (wie E2264). Typen werden über die uses-Klauseln aufge' + 'löst; unbekannte Typen, Aliase und Properties in bedingten Zweigen bleiben still."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "calling-convention-required",' + #10 +
+    '      "name": "Aufrufkonvention passt nicht",' + #10 +
+    '      "description": "Der Compiler schreibt hier die Aufrufkonvention vor: Konstruktoren und Destruktoren einer Klasse nur mit register (wie E2236), Getter und Setter von published-Properties ebenso (' + 'wie E2270) und varargs nur mit cdecl (wie E2277 bei external-Routinen, sonst E2591). Ein ausdrückliches register ist in Ordnung; Klassenkonstruktoren, Accessoren außerhalb von published-Abschnitten un' + 'd geerbte Accessoren bleiben still. Korrektur: die Konvention in der Deklaration und im Rumpf derselben Datei entfernen bzw. bei varargs cdecl setzen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

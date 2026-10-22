@@ -14,6 +14,10 @@
 // index und Getter (E2259, E2260, E2262, E2263), doppelte Interfaces und
 // Methodenzuordnungen (E2257, E2264), implements außerhalb von Klassen
 // (E2258), stille Fälle und die Einstellungen.
+// calling-convention-required (#1078): Beispiel aus dem Issue mit Korrektur
+// (E2277), varargs ohne external (E2591), Konstruktoren und Destruktoren
+// (E2236) und Accessoren von published-Properties (E2270) mit Korrektur in
+// Deklaration und Rumpf, stille Fälle und die Einstellungen.
 
 interface
 
@@ -70,6 +74,19 @@ type
     procedure OutsideOfClasses;
     [Test]
     procedure SilentCases;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TCallingConventionRequiredTests = class
+  public
+    [Test]
+    procedure IssueExampleVarargsWithFix;
+    [Test]
+    procedure ConstructorsAndDestructors;
+    [Test]
+    procedure PublishedAccessors;
     [Test]
     procedure OffAndExclude;
   end;
@@ -550,9 +567,119 @@ begin
     '{"rules": {"implements-clause-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
 end;
 
+{ TCallingConventionRequiredTests }
+
+function ConventionFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TCallingConventionRequiredRule.Create, ASource);
+end;
+
+function ConventionFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TCallingConventionRequiredRule.Create, ASource, AConfig, APath);
+end;
+
+/// <summary>Unit Druck mit AInterface im interface- und AImplementation im implementation-Teil.</summary>
+function Druck(const AInterface, AImplementation: string): string;
+begin
+  Result := 'unit Druck;'#10'interface'#10 + AInterface + 'implementation'#10 + AImplementation + 'end.';
+end;
+
+procedure TCallingConventionRequiredTests.IssueExampleVarargsWithFix;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Druck('function Formatieren(Muster: PAnsiChar): Integer; stdcall; varargs; external ''msvcrt.dll'';'#10 +
+    'function Zwei(Muster: PAnsiChar): Integer; varargs; external ''msvcrt.dll'';'#10 +
+    'function Drei(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';'#10 +
+    'procedure Vier(Muster: PAnsiChar); stdcall; varargs;'#10, 'procedure Vier(Muster: PAnsiChar);'#10'begin'#10 +
+    'end;'#10);
+  Found := ConventionFindings(Source);
+  Assert.AreEqual(3, Integer(Length(Found)), Messages(Found));
+  Assert.AreEqual('varargs ist nur mit cdecl erlaubt (wie E2277).', Found[0].Message);
+  Assert.AreEqual(2, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(59, Found[0].Range.StartPos.Character);
+  Assert.AreEqual('cdecl setzen', Found[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('function Formatieren(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';',
+    Fixed) > 0, Fixed);
+  Fixed := ApplyFix(Fixed, Found[1].Fixes[0]);
+  Assert.IsTrue(Pos('function Zwei(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';', Fixed) > 0,
+    Fixed);
+  Assert.AreEqual('varargs ist nur mit cdecl erlaubt (wie E2591).', Found[2].Message);
+  Assert.AreEqual(5, Found[2].Range.StartPos.Line);
+  Fixed := ApplyFix(Fixed, Found[2].Fixes[0]);
+  Assert.AreEqual(0, Integer(Length(ConventionFindings(Fixed))), Fixed);
+end;
+
+procedure TCallingConventionRequiredTests.ConstructorsAndDestructors;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Druck('type'#10'  TBasis = class'#10'    constructor Create; pascal;'#10 +
+    '    destructor Destroy; override; stdcall;'#10'    constructor Neu; register;'#10 +
+    '    class constructor Init;'#10'    procedure Machen; stdcall;'#10'  end;'#10,
+    'constructor TBasis.Create; pascal;'#10'begin'#10'end;'#10#10'destructor TBasis.Destroy;'#10'begin'#10'end;'#10);
+  Found := ConventionFindings(Source);
+  Assert.AreEqual(2, Integer(Length(Found)), Messages(Found));
+  Assert.AreEqual('Konstruktoren und Destruktoren brauchen register, nicht pascal (wie E2236).', Found[0].Message);
+  Assert.AreEqual(4, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(24, Found[0].Range.StartPos.Character);
+  Assert.AreEqual('pascal entfernen', Found[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('    constructor Create;'#10, Fixed) > 0, Fixed);
+  Assert.IsTrue(Pos('constructor TBasis.Create;'#10, Fixed) > 0, Fixed);
+  Assert.AreEqual('Konstruktoren und Destruktoren brauchen register, nicht stdcall (wie E2236).', Found[1].Message);
+  Fixed := ApplyFix(Fixed, ConventionFindings(Fixed)[0].Fixes[0]);
+  Assert.IsTrue(Pos('    destructor Destroy; override;'#10, Fixed) > 0, Fixed);
+  Assert.AreEqual(0, Integer(Length(ConventionFindings(Fixed))), Fixed);
+end;
+
+procedure TCallingConventionRequiredTests.PublishedAccessors;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Druck('type'#10'  TBasis = class'#10'  private'#10'    function GetWert: Integer; cdecl;'#10 +
+    '    procedure SetWert(V: Integer); stdcall;'#10'    function GetAnders: Integer; cdecl;'#10'  public'#10 +
+    '    property Anders: Integer read GetAnders;'#10'  published'#10 +
+    '    property Wert: Integer read GetWert write SetWert;'#10'    property Feld: Integer read FFeld;'#10'  end;'#10,
+    'function TBasis.GetWert: Integer; cdecl;'#10'begin'#10'  Result := 0;'#10'end;'#10);
+  Found := ConventionFindings(Source);
+  Assert.AreEqual(2, Integer(Length(Found)), Messages(Found));
+  Assert.AreEqual('Der Getter GetWert der published-Property Wert braucht register, nicht cdecl (wie E2270).',
+    Found[0].Message);
+  Assert.AreEqual(11, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(32, Found[0].Range.StartPos.Character);
+  Assert.AreEqual('Der Setter SetWert der published-Property Wert braucht register, nicht stdcall (wie E2270).',
+    Found[1].Message);
+  Fixed := ApplyFix(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('    function GetWert: Integer;'#10, Fixed) > 0, Fixed);
+  Assert.IsTrue(Pos('function TBasis.GetWert: Integer;'#10, Fixed) > 0, Fixed);
+  Assert.AreEqual(1, Integer(Length(ConventionFindings(Fixed))), Fixed);
+end;
+
+procedure TCallingConventionRequiredTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Druck('function Formatieren(Muster: PAnsiChar): Integer; stdcall; varargs; external ''msvcrt.dll'';'#10,
+    '');
+  Assert.AreEqual(1, Integer(Length(ConventionFindings(Source, '', 'Source/Druck.pas'))));
+  Assert.AreEqual(0, Integer(Length(ConventionFindings(Source, '{"rules": {"calling-convention-required": "off"}}',
+    'Source/Druck.pas'))));
+  Assert.AreEqual(0, Integer(Length(ConventionFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/Druck.pas'))));
+  Assert.AreEqual(0, Integer(Length(ConventionFindings(Source,
+    '{"rules": {"calling-convention-required": {"exclude": ["Source/*.pas"]}}}', 'Source/Druck.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TMessageMethodInvalidTests);
   TDUnitX.RegisterTestFixture(TInterfaceDeclarationInvalidTests);
   TDUnitX.RegisterTestFixture(TImplementsClauseInvalidTests);
+  TDUnitX.RegisterTestFixture(TCallingConventionRequiredTests);
 
 end.
