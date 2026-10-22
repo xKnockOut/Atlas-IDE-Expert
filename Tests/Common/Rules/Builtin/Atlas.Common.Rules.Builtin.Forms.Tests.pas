@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Forms.Tests;
 
-// Tests der Formularregeln aus Builtin.Forms: form-resource-missing (#1054).
+// Tests der Formularregeln aus Builtin.Forms: form-resource-missing (#1054), form-autocreate-and-manual (#1055).
 
 interface
 
@@ -27,6 +27,18 @@ type
     procedure ResourceOffAndExclude;
     [Test]
     procedure FormResourceParsesDirectives;
+    [Test]
+    procedure AutoCreateIssueExample;
+    [Test]
+    procedure AutoCreateFixRemovesCreateForm;
+    [Test]
+    procedure AutoCreateGuardsAreSilent;
+    [Test]
+    procedure AutoCreateOtherNamesAreSilent;
+    [Test]
+    procedure AutoCreateWithoutProjectFile;
+    [Test]
+    procedure AutoCreateOffAndExclude;
   end;
 
 implementation
@@ -34,6 +46,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Rules.Builtin.FormFields,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
@@ -87,6 +100,62 @@ begin
         if SameText(Name, AName) then
           Exit(True);
       Result := False;
+    end;
+end;
+
+const
+  ProjektDpr =
+    'program Projekt;'#10 +
+    'uses'#10 +
+    '  Vcl.Forms,'#10 +
+    '  Haupt in ''Haupt.pas'' {frmHaupt},'#10 +
+    '  Bericht in ''Bericht.pas'' {frmBericht};'#10 +
+    'begin'#10 +
+    '  Application.Initialize;'#10 +
+    '  Application.CreateForm(TfrmHaupt, frmHaupt);'#10 +
+    '  Application.CreateForm(TfrmBericht, frmBericht);'#10 +
+    '  Application.Run;'#10 +
+    'end.';
+
+function HauptUnit(const AVar, ABody: string): string;
+begin
+  Result :=
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'uses Vcl.Forms, Bericht;'#10 +
+    'type'#10 +
+    '  TfrmHaupt = class(TForm)'#10 +
+    '    procedure BerichtClick(Sender: TObject);'#10 +
+    '  end;'#10 +
+    'var'#10 +
+    '  frmHaupt: TfrmHaupt;'#10 +
+    'implementation'#10 +
+    'procedure TfrmHaupt.BerichtClick(Sender: TObject);'#10 +
+    AVar +
+    'begin'#10 +
+    ABody +
+    'end;'#10 +
+    'end.';
+end;
+
+/// <summary>Kontext einer Unit des Projekts Projekt.dpr (CreateForm-Reihenfolge, .dpr über ReadFile).</summary>
+function ProjectContext(const ASource, AMainSource: string): TRuleContext;
+begin
+  Result := Default(TRuleContext);
+  Result.RelativePath := 'Source/Haupt.pas';
+  Result.UnitName := 'Haupt';
+  Result.Text := ASource;
+  Result.ProjectName := 'Projekt';
+  Result.AutoCreateForms := TFormAccessBeforeCreateRule.AutoCreatedForms(ProjektDpr);
+  if AMainSource = '' then
+    Exit;
+  Result.ProjectMainSource := 'C:\P\Projekt.dpr';
+  Result.ReadFile :=
+    function(const AName: string; out AData: TBytes): Boolean
+    begin
+      Result := SameText(AName, 'C:\P\Projekt.dpr');
+      if Result then
+        AData := TEncoding.UTF8.GetBytes(AMainSource);
     end;
 end;
 
@@ -244,6 +313,109 @@ begin
   Assert.IsFalse(TFormResourceMissingRule.FormResource('{$R *.res}', 'Kunde', FileName));
   Assert.IsFalse(TFormResourceMissingRule.FormResource('{$R+}', 'Kunde', FileName));
   Assert.IsFalse(TFormResourceMissingRule.FormResource('{$R *.dfm}', '', FileName));
+end;
+
+procedure TFormRulesTests.AutoCreateIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.ContextFindings(TFormAutoCreateAndManualRule.Create, ProjectContext(HauptUnit('',
+    '  frmBericht := TfrmBericht.Create(Application);'#10'  frmBericht.ShowModal;'#10), ProjektDpr), '');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('form-autocreate-and-manual', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('frmBericht wird schon in Projekt.dpr erzeugt; hier entsteht eine zweite Instanz.',
+    Findings[0].Message);
+  Assert.AreEqual(12, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(34, Findings[0].Range.EndPos.Character);
+end;
+
+procedure TFormRulesTests.AutoCreateFixRemovesCreateForm;
+var
+  Findings: TArray<TRuleFinding>;
+  Fixed: string;
+  Tree: TSyntaxTree;
+begin
+  Findings := TRuleAssert.ContextFindings(TFormAutoCreateAndManualRule.Create, ProjectContext(HauptUnit('',
+    '  frmBericht := TfrmBericht.Create(Application);'#10'  frmBericht.ShowModal;'#10), ProjektDpr), '');
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Application.CreateForm(TfrmBericht, frmBericht) aus Projekt.dpr entfernen',
+    Findings[0].Fixes[0].Title);
+  Assert.AreEqual('C:\P\Projekt.dpr', Findings[0].Fixes[0].FileName);
+  Assert.IsFalse(Findings[0].Fixes[0].Safe);
+  Fixed := ApplyFix(ProjektDpr, Findings[0].Fixes[0]);
+  Assert.AreEqual(StringReplace(ProjektDpr, '  Application.CreateForm(TfrmBericht, frmBericht);'#10, '', []), Fixed);
+  Tree := TPascalParser.Parse(Fixed);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+  // Danach erzeugt nur noch der Code das Formular.
+  Assert.AreEqual('frmHaupt', string.Join(',', TFormAccessBeforeCreateRule.AutoCreatedForms(Fixed)));
+end;
+
+procedure TFormRulesTests.AutoCreateGuardsAreSilent;
+
+  procedure Silent(const AVar, ABody: string);
+  begin
+    Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TFormAutoCreateAndManualRule.Create,
+      ProjectContext(HauptUnit(AVar, ABody), ProjektDpr), ''))), ABody);
+  end;
+
+begin
+  Silent('', '  if not Assigned(frmBericht) then'#10'    frmBericht := TfrmBericht.Create(Application);'#10);
+  Silent('', '  if frmBericht = nil then'#10'    frmBericht := TfrmBericht.Create(Application);'#10);
+  Silent('', '  frmBericht.Free;'#10'  frmBericht := TfrmBericht.Create(Application);'#10);
+  Silent('', '  FreeAndNil(frmBericht);'#10'  frmBericht := TfrmBericht.Create(Application);'#10);
+  Silent('', '  frmBericht.Release;'#10'  frmBericht := TfrmBericht.Create(Application);'#10);
+  // Lokale Variable gleichen Namens.
+  Silent('var'#10'  frmBericht: TfrmBericht;'#10, '  frmBericht := TfrmBericht.Create(nil);'#10);
+end;
+
+procedure TFormRulesTests.AutoCreateOtherNamesAreSilent;
+var
+  Source: string;
+begin
+  // Nicht automatisch erzeugt, nicht der globalen Variablen zugewiesen, andere Klasse als in CreateForm.
+  Source := HauptUnit('var'#10'  Dialog: TfrmBericht;'#10, '  Dialog := TfrmBericht.Create(nil);'#10 +
+    '  with TfrmBericht.Create(nil) do'#10'    ShowModal;'#10 + '  frmBericht := TfrmBerichtNeu.Create(nil);'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TFormAutoCreateAndManualRule.Create,
+    ProjectContext(Source, ProjektDpr), ''))));
+  // Feld gleichen Namens in der eigenen Klasse.
+  Source := StringReplace(HauptUnit('', '  frmBericht := TfrmBericht.Create(Self);'#10),
+    '    procedure BerichtClick', '    frmBericht: TfrmBericht;'#10'    procedure BerichtClick', []);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TFormAutoCreateAndManualRule.Create,
+    ProjectContext(Source, ProjektDpr), ''))));
+  // Unit außerhalb eines Projekts.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFormAutoCreateAndManualRule.Create,
+    HauptUnit('', '  frmBericht := TfrmBericht.Create(Application);'#10)))));
+end;
+
+procedure TFormRulesTests.AutoCreateWithoutProjectFile;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Nur die Reihenfolge bekannt (Linter, Golden-Korpus): Meldung ohne Korrektur.
+  Findings := TRuleAssert.ContextFindings(TFormAutoCreateAndManualRule.Create, ProjectContext(HauptUnit('',
+    '  frmBericht := TfrmBericht.Create(Application);'#10), ''), '');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('frmBericht wird schon in Projekt.dpr erzeugt; hier entsteht eine zweite Instanz.',
+    Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TFormRulesTests.AutoCreateOffAndExclude;
+var
+  Context: TRuleContext;
+begin
+  Context := ProjectContext(HauptUnit('', '  frmBericht := TfrmBericht.Create(Application);'#10), ProjektDpr);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TFormAutoCreateAndManualRule.Create, Context,
+    '{"rules": {"form-autocreate-and-manual": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TFormAutoCreateAndManualRule.Create, Context,
+    '{"rules": {"form-autocreate-and-manual": {"exclude": ["Source/*.pas"]}}}'))));
 end;
 
 initialization
