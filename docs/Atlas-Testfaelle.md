@@ -3810,3 +3810,16 @@ Voraussetzung: Server läuft; Unit mit `uses System.Classes`.
 | AT4 | `var Aufgabe := TThread.CreateAnonymousThread(Arbeit);` ohne Start | Warnung mit Korrektur `Aufgabe.Start;` |
 | AT5 | `.Start` angehängt, `T.Start` bzw. `T.Resume` später, `FListe.Add(T)`, `Result := …`, Feld `FThread := …`, `Fabrik.CreateAnonymousThread(…)` | Keine Meldung |
 | AT6 | `"anonymous-thread-not-started": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Exception in TTask geht verloren (#962)
+
+Voraussetzung: Server läuft; VCL-Unit mit `uses System.Threading`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TE1 | `TTask.Run(procedure begin Importieren(Datei); end);` mit `begin`/`end` auf eigenen Zeilen | Hinweis `task-exception-unobserved` auf `Run`: „Der Task wird nie abgefragt und fängt keine Exceptions; Fehler in Importieren gehen verloren.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| TE2 | Schnellkorrektur „Rumpf in try … except mit Meldung über TThread.Queue einschließen“, danach Strg+Z | Rumpf eingerückt in `try … except on E: Exception do … TThread.Queue(nil, … ShowMessage(Fehler) …)`, `Vcl.Dialogs` im uses ergänzt, Code übersetzt; ein Undo-Schritt stellt alles wieder her (**Abnahme**) |
+| TE3 | Dasselbe in einer FireMonkey-Unit | Korrektur ergänzt `FMX.Dialogs` |
+| TE4 | `TTask.Create(…).Start;`, `A := TTask.Run(…)` ohne weitere Verwendung, `var B := TTask.Create(…); B.Start;` | Je ein Hinweis; einzeiliger Rumpf ohne Korrektur |
+| TE5 | `try … except` im Rumpf, `.Wait`, `A.Wait`, Feld, `Result`, `TTask.Run(Laden)` | Keine Meldung |
+| TE6 | `"task-exception-unobserved": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
