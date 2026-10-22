@@ -690,3 +690,12 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Unter FPC getestet: RuleTable, Hover.Layout, Findings. VCL-Tests (`Atlas.UI.Settings.Rules.Tests`, Page.Tests) nur mit Delphi.
 - Risiken beim ersten Delphi-Build: `TListView.OnItemChecked`, AutoSize des Editors, `HandleNeeded` der Editoren auf verborgenen Seiten.
 - Handtest AP1–AP26 in `docs/Atlas-Testfaelle.md`. Danach folgen die Unter-Issues (#910 ff.) als Kette auf diesem Branch.
+
+## Compilerregeln #1017, #1018, #1022, #1068 (22.10.2026, Kette ab `feature/1006-readonly-property-assigned`, ungebaut)
+- Kette: `feature/1017-inline-not-expanded` → `feature/1018-deprecated-symbol` → `feature/1022-syntax-compilercodes` → `feature/1068-directive-typo`; kein Merge nach main, Issues bleiben für den Handtest offen.
+- #1017 `inline-not-expanded` (Builtin.Inlining, `TIndexSymbol.InlineRefs`, Cache-Format 20, `TNameResolver.ResolveTypeTextFrom`); Handtest IL1–IL9.
+- #1018 `deprecated-symbol` in Gruppe compiler (W1000–W1007, `TUnitIndex.Directives`/`DeprecatedText`, Cache-Format 21, Option `kinds`, `{$WARN}` je Stelle); Handtest VS1–VS9.
+- #1022 `syntax` mit Compilercodes: Parsermeldungen wie dcc mit Code und Korrektur (`TSyntaxDiagnostic.Code`, `FixTitle`, `FixEdits`, `FixSafe`), Baumprüfungen in `Pascal.SyntaxChecks`, `TFileChecker.SyntaxFindings` für Linter, Diagnosen und Code-Aktionen; Plugin: `TAtlasProblem.CanSuppress`. Handtest SC1–SC10.
+- #1068 `directive-typo` (Builtin.Directives): der Parser legt für `overide;` einen Directive-Knoten an; Routinendirektiven in `Pascal.DirectiveNames`. Handtest UD1–UD8.
+- Beim Zusammenführen: Tests anderer Ketten, die alte Parsermeldungen (`";" fehlt`, `Unerwartetes "x"`) erwarten, auf die neuen Texte umstellen; Cache-Format fortlaufend vergeben.
+- Mit Delphi prüfen: `Exit` in anonymen Methoden des Walk (Builtin.Directives), Hinweise zu nicht benutzten Variablen in `Lsp.SyntaxDiagnostics.Compute`.
