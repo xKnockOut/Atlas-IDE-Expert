@@ -8,6 +8,10 @@
 // hardcoded-path (#969): Beispiel aus dem Issue, Laufwerk, UNC, Schrägstrich,
 // Fälle ohne Meldung (Wurzel, \\?\, relative Pfade, Meldungstexte),
 // Test-Units, allowUnits, Abschalten und falscher Optionstyp.
+// filename-compare-case (#970): Beispiel aus dem Issue mit Korrektur, <>,
+// TPath, FileName-Eigenschaften, ExeName, uses-Ergänzung, Fälle ohne Meldung
+// (Leertext, Literal ohne Buchstaben, SameFileName, ExtractFileDir(X) = X),
+// Abschalten.
 
 interface
 
@@ -34,6 +38,12 @@ type
     procedure HardcodedPathKinds;
     [Test]
     procedure HardcodedPathAllowedUnitsAndTests;
+    [Test]
+    procedure FilenameCompareIssueExample;
+    [Test]
+    procedure FilenameCompareVariants;
+    [Test]
+    procedure FilenameCompareSilentCases;
     [Test]
     procedure RulesAreRegistered;
   end;
@@ -257,6 +267,78 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
+function CompareUnit(const ACondition: string): string;
+begin
+  Result := 'unit Dateien;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils;'#10 +
+    'procedure Laden(const Datei: string);'#10'begin'#10'  if ' + ACondition + ' then'#10'    Exit;'#10'end;'#10'end.';
+end;
+
+function CompareFindings(const ASource: string): TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.Findings(TFilenameCompareCaseRule.Create, ASource);
+end;
+
+function CompareCount(const ACondition: string): Integer;
+begin
+  Result := Length(CompareFindings(CompareUnit(ACondition)));
+end;
+
+procedure TFileRulesTests.FilenameCompareIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := CompareFindings(CompareUnit('ExtractFileName(Datei) = ''Config.ini'''));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(FilenameCompareCaseRuleId, Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Dateinamen unterscheiden unter Windows nicht nach Groß-/Kleinschreibung; SameFileName ' +
+    'vergleicht richtig.', Findings[0].Message);
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('SameFileName verwenden', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)));
+  Assert.AreEqual('SameFileName(ExtractFileName(Datei), ''Config.ini'')', Findings[0].Fixes[0].Edits[0].NewText);
+  // Korrigierte Form und naheliegender Negativfall
+  Assert.AreEqual(0, CompareCount('SameFileName(ExtractFileName(Datei), ''Config.ini'')'));
+  Assert.AreEqual(0, CompareCount('ExtractFileName(Datei) = '''''));
+end;
+
+procedure TFileRulesTests.FilenameCompareVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := CompareFindings(CompareUnit('ExtractFileExt(Datei) <> ''.pas'''));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('not SameFileName(ExtractFileExt(Datei), ''.pas'')', Findings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(1, CompareCount('TPath.GetFileName(Datei) = Name'));
+  Assert.AreEqual(1, CompareCount('OpenDialog.FileName = SaveDialog.FileName'));
+  Assert.AreEqual(1, CompareCount('Application.ExeName = Datei'));
+  Assert.AreEqual(1, CompareCount('AFileName = FLetzteDatei'));
+  Assert.AreEqual(1, CompareCount('(ExpandFileName(Datei)) = ExpandFileName(Alt)'));
+  // Ohne System.SysUtils trägt die Korrektur die Unit ein.
+  Findings := CompareFindings('unit Dateien;'#10'interface'#10'implementation'#10'uses'#10'  System.Classes;'#10 +
+    'function Gleich(Liste: TStrings): Boolean;'#10'begin'#10'  Result := Liste.FileName = ''a.txt'';'#10'end;'#10 +
+    'end.');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes[0].Edits)));
+end;
+
+procedure TFileRulesTests.FilenameCompareSilentCases;
+begin
+  Assert.AreEqual(0, CompareCount('ExtractFileExt(Datei) = '''''));
+  Assert.AreEqual(0, CompareCount('OpenDialog.FileName <> '''''));
+  Assert.AreEqual(0, CompareCount('ExtractFilePath(Datei) = ''\'''));
+  Assert.AreEqual(0, CompareCount('ExtractFileDir(Datei) = Datei'));
+  Assert.AreEqual(0, CompareCount('Datei = ExtractFileDir(Datei)'));
+  Assert.AreEqual(0, CompareCount('SameText(ExtractFileExt(Datei), ''.pas'')'));
+  Assert.AreEqual(0, CompareCount('Name = ''Config.ini'''));
+  Assert.AreEqual(0, CompareCount('Length(ExtractFileName(Datei)) = 3'));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFilenameCompareCaseRule.Create,
+    CompareUnit('ExtractFileName(Datei) = ''Config.ini'''), '{"rules": {"filename-compare-case": "off"}}'))));
+end;
+
 procedure TFileRulesTests.RulesAreRegistered;
 var
   Rule: IRule;
@@ -267,6 +349,7 @@ begin
     Ids := Ids + ' ' + Rule.Descriptor.Id;
   Assert.IsTrue(Pos(' ' + PathConcatWithoutDelimiterRuleId, Ids) > 0);
   Assert.IsTrue(Pos(' ' + HardcodedPathRuleId, Ids) > 0);
+  Assert.IsTrue(Pos(' ' + FilenameCompareCaseRuleId, Ids) > 0);
 end;
 
 initialization

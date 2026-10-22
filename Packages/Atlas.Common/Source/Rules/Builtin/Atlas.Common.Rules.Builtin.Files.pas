@@ -17,6 +17,12 @@
 //                                  (#969). Laufwerkswurzeln wie 'C:\' und
 //                                  Präfixe wie '\\?\' bleiben still, ebenso
 //                                  Test-Units und Units aus allowUnits.
+//   filename-compare-case          Dateinamen mit = bzw. <> verglichen (#970):
+//                                  eine Seite aus ExtractFileName & Co., TPath,
+//                                  Application.ExeName oder einem Namen auf
+//                                  FileName, die andere kein Leertext und kein
+//                                  Literal ohne Buchstaben. Korrektur:
+//                                  SameFileName.
 
 interface
 
@@ -28,6 +34,7 @@ uses
 const
   PathConcatWithoutDelimiterRuleId = 'path-concat-without-delimiter';
   HardcodedPathRuleId = 'hardcoded-path';
+  FilenameCompareCaseRuleId = 'filename-compare-case';
 
 type
   TPathConcatWithoutDelimiterRule = class(TInterfacedObject, IRule)
@@ -53,6 +60,15 @@ type
     /// <summary>Passt AUnitName auf einen Eintrag aus allowUnits (Groß-/Kleinschreibung egal, * am Ende als
     /// Präfix)?</summary>
     class function UnitAllowed(const AUnitName: string; const AAllowed: TArray<string>): Boolean; static;
+  end;
+
+  TFilenameCompareCaseRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Liefert ANode einen Datei- oder Pfadnamen (ExtractFileName, TPath.GetFileName,
+    /// Application.ExeName, X.FileName …)?</summary>
+    class function IsFileNameExpression(ANode: TSyntaxNode): Boolean; static;
   end;
 
 /// <summary>Name und Qualifizierer eines Aufrufs oder Bezeichners: TPath.GetDocumentsPath ergibt
@@ -487,10 +503,130 @@ begin
   end;
 end;
 
+{ TFilenameCompareCaseRule }
+
+const
+  // System.SysUtils: liefern Datei- oder Pfadnamen.
+  SysUtilsFileNames: array[0..10] of string = ('ExtractFileName', 'ExtractFilePath', 'ExtractFileDir',
+    'ExtractFileExt', 'ExpandFileName', 'ExpandUNCFileName', 'ChangeFileExt', 'ExtractRelativePath',
+    'ExcludeTrailingPathDelimiter', 'IncludeTrailingPathDelimiter', 'GetCurrentDir');
+  // System.IOUtils.TPath
+  PathFileNames: array[0..7] of string = ('GetFileName', 'GetFileNameWithoutExtension', 'GetExtension',
+    'GetDirectoryName', 'GetFullPath', 'Combine', 'ChangeExtension', 'GetTempFileName');
+
+function TFilenameCompareCaseRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(FilenameCompareCaseRuleId, TRuleSeverity.Hint, 'Dateinamen mit = verglichen');
+end;
+
+class function TFilenameCompareCaseRule.IsFileNameExpression(ANode: TSyntaxNode): Boolean;
+var
+  Name, Qualifier: string;
+  Node: TSyntaxNode;
+begin
+  Node := Unwrapped(ANode);
+  Result := False;
+  if not CalleeName(Node, Name, Qualifier) then
+    Exit;
+  if ((Qualifier = '') or QualifierIs(Qualifier, 'SysUtils')) and MatchText(Name, SysUtilsFileNames) then
+    Exit(True);
+  if QualifierIs(Qualifier, 'TPath') and MatchText(Name, PathFileNames) then
+    Exit(True);
+  // Eigenschaften und Variablen: X.FileName, AFileName, Application.ExeName (kein Aufruf mit Argumenten)
+  if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 1) then
+    Exit;
+  Result := EndsText('FileName', Name) or SameText(Name, 'ExeName');
+end;
+
+/// <summary>Kann ANode als Vergleichspartner eines Dateinamens Groß-/Kleinschreibung haben? Leertext,
+/// nil, Zahlen und Literale ohne Buchstaben nicht.</summary>
+function HasCase(ANode: TSyntaxNode): Boolean;
+var
+  Node: TSyntaxNode;
+  Plain: string;
+  C: Char;
+begin
+  Node := Unwrapped(ANode);
+  if Node.Kind = TSyntaxKind.Literal then
+  begin
+    if not StartsStr('''', Node.Name) or not TStringLiterals.PlainText(Node.Name, Plain) then
+      Exit(False);
+    for C in Plain do
+      if UpperCase(C) <> LowerCase(C) then
+        Exit(True);
+    Exit(False);
+  end;
+  Result := not ((Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, 'nil'));
+end;
+
+/// <summary>Ist eine Seite aus der anderen abgeleitet (ExtractFileDir(X) = X, die Wurzel ist erreicht)? Dann
+/// stammen beide aus demselben Text, die Schreibweise ist gleich.</summary>
+function DerivedFromOther(const AText: string; ALeft, ARight: TSyntaxNode): Boolean;
+
+  function Derives(ACall, AOther: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+    Other: string;
+  begin
+    Result := False;
+    if ACall.Kind <> TSyntaxKind.Call then
+      Exit;
+    Other := SourceText(AText, AOther);
+    for Index := 1 to ACall.ChildCount - 1 do
+      if SameText(SourceText(AText, Unwrapped(ACall[Index])), Other) then
+        Exit(True);
+  end;
+
+begin
+  Result := Derives(Unwrapped(ALeft), Unwrapped(ARight)) or Derives(Unwrapped(ARight), Unwrapped(ALeft));
+end;
+
+procedure TFilenameCompareCaseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Compares: TArray<TSyntaxNode>;
+  Compare: TSyntaxNode;
+  Used: TArray<string>;
+  Edits: TArray<TRuleEdit>;
+  UsesEdit: TRuleEdit;
+  NewText: string;
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Compares := nil;
+  AContext.Tree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if (ANode.Kind = TSyntaxKind.BinaryExpr) and ((ANode.Name = '=') or (ANode.Name = '<>')) and
+        (ANode.ChildCount = 2) and (IsFileNameExpression(ANode[0]) or IsFileNameExpression(ANode[1])) and
+        HasCase(ANode[0]) and HasCase(ANode[1]) and not DerivedFromOther(AContext.Text, ANode[0], ANode[1]) then
+        Compares := Compares + [ANode];
+      Result := True;
+    end);
+  if Compares = nil then
+    Exit;
+  Used := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
+  for Compare in Compares do
+  begin
+    NewText := Format('SameFileName(%s, %s)', [SourceText(AContext.Text, Compare[0]),
+      SourceText(AContext.Text, Compare[1])]);
+    if Compare.Name = '<>' then
+      NewText := 'not ' + NewText;
+    Edits := [TRuleEdit.Create(TTextRange.Create(Compare.StartPos, Compare.EndPos), NewText)];
+    if not TUsesClauses.IsUsed(Used, 'System.SysUtils', AContext.Namespaces) and
+      TUsesClauses.AddUnit(AContext.Tree.Tokens, Compare.StartOffset, 'System.SysUtils',
+      TTextLines.LineBreakOf(AContext.Text), UsesEdit) then
+      Edits := Edits + [UsesEdit];
+    AReport.Add(TTextRange.Create(Compare.StartPos, Compare.EndPos),
+      'Dateinamen unterscheiden unter Windows nicht nach Groß-/Kleinschreibung; SameFileName vergleicht richtig.',
+      TRuleConfidence.Medium, [TRuleFix.Create('SameFileName verwenden', Edits)]);
+  end;
+end;
+
 procedure RegisterFileRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TPathConcatWithoutDelimiterRule.Create);
   ARegistry.Register(THardcodedPathRule.Create);
+  ARegistry.Register(TFilenameCompareCaseRule.Create);
 end;
 
 end.

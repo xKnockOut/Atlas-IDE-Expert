@@ -11,7 +11,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 5 |
 | [Compiler vorab](#gruppe-compiler) | 15 |
-| [Robustheit und Muster](#gruppe-robustness) | 5 |
+| [Robustheit und Muster](#gruppe-robustness) | 6 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
@@ -158,6 +158,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`null-compare`](#null-compare) | Vergleich mit Null statt VarIsNull oder IsNull | Code Smell | Warnung |
 | [`path-concat-without-delimiter`](#path-concat-without-delimiter) | Pfad ohne Trennzeichen zusammengesetzt | Bug | Warnung |
 | [`hardcoded-path`](#hardcoded-path) | Fester Dateipfad im Code | Code Smell | Hinweis |
+| [`filename-compare-case`](#filename-compare-case) | Dateinamen mit = verglichen | Bug | Hinweis |
 
 <a id="gruppe-performance"></a>
 ### Performance
@@ -4606,4 +4607,23 @@ Richtig:
 
 ```pascal
 Protokoll.SaveToFile(TPath.Combine(TPath.GetDocumentsPath, 'log.txt'));
+```
+
+<a id="filename-compare-case"></a>
+### filename-compare-case
+
+**Dateinamen mit = verglichen** · Bug · Hinweis · Gruppe Robustheit und Muster
+
+Ein Vergleich mit = oder <>, bei dem eine Seite ein Datei- oder Pfadname ist: das Ergebnis von ExtractFileName, ExtractFilePath, ExtractFileDir, ExtractFileExt, ExpandFileName, ChangeFileExt und verwandten Funktionen aus System.SysUtils, von TPath.GetFileName, GetExtension, GetDirectoryName, GetFullPath, Combine und verwandten Methoden oder eine Variable bzw. Eigenschaft, deren Name auf FileName endet, oder Application.ExeName. Unter Windows sind Kunde.pas und kunde.PAS dieselbe Datei. Vergleiche mit Leertext, nil oder einem Literal ohne Buchstaben bleiben still, ebenso ExtractFileDir(X) = X (beide Seiten stammen aus demselben Text). Konfidenz mittel. Korrektur: SameFileName(A, B), bei <> not SameFileName(A, B); ergänzt System.SysUtils in der uses-Klausel, falls nötig.
+
+Mit Treffer:
+
+```pascal
+if ExtractFileName(Datei) = 'Config.ini' then
+```
+
+Richtig:
+
+```pascal
+if SameFileName(ExtractFileName(Datei), 'Config.ini') then
 ```
