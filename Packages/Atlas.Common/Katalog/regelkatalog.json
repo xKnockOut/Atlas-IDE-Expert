@@ -1985,6 +1985,16 @@
       "description": "while not Q.Eof do without Q.Next in the body, or with Next only on some of the paths that continue the loop (an if without else, Continue before Next). The loop spins forever on the same record. Delete, MoveBy, Last, Close, FindNext and Free also count as moving on; Break, Exit, Abort and raise end the loop. Nested while and for loops are not trusted to run. When Q is passed on in the body (argument, assignment, with), the called code may move the record pointer and the rule stays silent. High confidence when Next is missing entirely, medium when only some paths miss it. Quick fix: insert Q.Next; at the end of the begin … end body (only when Next is missing entirely).",
       "bad": "qryPositionen.First;\nwhile not qryPositionen.Eof do\nbegin\n  Summe := Summe + qryPositionen.FieldByName('Betrag').AsCurrency;\nend;",
       "good": "qryPositionen.First;\nwhile not qryPositionen.Eof do\nbegin\n  Summe := Summe + qryPositionen.FieldByName('Betrag').AsCurrency;\n  qryPositionen.Next;\nend;"
+    },
+    {
+      "id": "dataset-edit-without-post",
+      "name": "Edit or Append without Post",
+      "category": "bug",
+      "severity": "warning",
+      "group": "database",
+      "description": "After Edit, Append or Insert (without arguments) on a dataset, the same routine calls neither Post nor Cancel (nor CheckBrowseMode). The change stays open and is silently lost on scrolling or saved unexpectedly later; on an exception in between, nothing cancels it. Silent when another routine of the unit posts or cancels the same dataset (an Edit button with a separate Save button) and when the dataset is passed on after Edit (argument, assignment, with). Medium confidence. Quick fix: wrap the following statements that use the dataset in try … except, with Post at the end of the try part and Cancel; raise; in the except part.",
+      "bad": "tblKunde.Edit;\ntblKunde.FieldByName('Status').AsInteger := Ord(ksAktiv);\nProtokollieren;",
+      "good": "tblKunde.Edit;\ntry\n  tblKunde.FieldByName('Status').AsInteger := Ord(ksAktiv);\n  tblKunde.Post;\nexcept\n  tblKunde.Cancel;\n  raise;\nend;\nProtokollieren;"
     }
   ]
 }

@@ -83,6 +83,14 @@ type
     procedure DatasetLoopSilentCases;
     [Test]
     procedure DatasetLoopOffAndExclude;
+    [Test]
+    procedure DatasetEditIssueExample;
+    [Test]
+    procedure DatasetEditVariants;
+    [Test]
+    procedure DatasetEditSilentCases;
+    [Test]
+    procedure DatasetEditOffAndExclude;
   end;
 
 implementation
@@ -670,6 +678,71 @@ begin
     '{"rules": {"dataset-loop-without-next": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDatasetLoopWithoutNextRule.Create, Source,
     '{"rules": {"dataset-loop-without-next": {"exclude": ["Source/*.pas"]}}}', 'Source/Daten.pas'))));
+end;
+
+procedure TStatementRulesTests.DatasetEditIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+  Tree: TSyntaxTree;
+begin
+  Source := Body('  tblKunde.Edit;'#10'  tblKunde.FieldByName(''Status'').AsInteger := Ord(ksAktiv);'#10 +
+    '  Protokollieren;'#10);
+  Findings := TRuleAssert.Findings(TDatasetEditWithoutPostRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('dataset-edit-without-post', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Nach Edit fehlt Post oder Cancel; die Änderung bleibt offen.', Findings[0].Message);
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(11, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(15, Findings[0].Range.EndPos.Character);
+  Assert.AreEqual('tblKunde.Post mit try … except Cancel ergänzen', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Body('  tblKunde.Edit;'#10'  try'#10'    tblKunde.FieldByName(''Status'').AsInteger := Ord(ksAktiv);'#10 +
+    '    tblKunde.Post;'#10'  except'#10'    tblKunde.Cancel;'#10'    raise;'#10'  end;'#10'  Protokollieren;'#10), Fixed);
+  Tree := TPascalParser.Parse(Fixed);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+  TRuleAssert.Silent(TDatasetEditWithoutPostRule.Create, Fixed);
+end;
+
+procedure TStatementRulesTests.DatasetEditVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Append und Insert(); ohne folgende Zuweisung keine Korrektur; Post vor dem Edit zählt nicht.
+  Findings := TRuleAssert.Findings(TDatasetEditWithoutPostRule.Create, Body('  Q.Post;'#10'  Q.Append;'#10 +
+    '  Q[''Name''] := Name;'#10'  Q.FieldValues[''Ort''] := Ort;'#10'  R.Insert();'#10'  Weiter;'#10));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('Nach Append fehlt Post oder Cancel; die Änderung bleibt offen.', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
+end;
+
+procedure TStatementRulesTests.DatasetEditSilentCases;
+begin
+  // Post, Cancel, CheckBrowseMode, Post in anderer Routine, weitergegeben, Insert mit Argumenten, Edit ohne Empfänger.
+  TRuleAssert.Silent(TDatasetEditWithoutPostRule.Create, Body('  A.Edit;'#10'  A[''X''] := 1;'#10'  A.Post;'#10 +
+    '  B.Append;'#10'  if Fehler then B.Cancel;'#10'  C.Insert;'#10'  C.CheckBrowseMode;'#10'  D.Edit;'#10 +
+    '  Speichern(D);'#10'  Liste.Insert(0, ''x'');'#10'  Edit;'#10));
+  TRuleAssert.Silent(TDatasetEditWithoutPostRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'procedure TForm1.BearbeitenClick(Sender: TObject);'#10'begin'#10'  tblKunde.Edit;'#10'end;'#10 +
+    'procedure TForm1.SpeichernClick(Sender: TObject);'#10'begin'#10'  tblKunde.Post;'#10'end;'#10'end.');
+end;
+
+procedure TStatementRulesTests.DatasetEditOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Body('  Q.Edit;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDatasetEditWithoutPostRule.Create, Source,
+    '{"rules": {"dataset-edit-without-post": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDatasetEditWithoutPostRule.Create, Source,
+    '{"rules": {"dataset-edit-without-post": {"exclude": ["Source/*.pas"]}}}', 'Source/Daten.pas'))));
 end;
 
 initialization

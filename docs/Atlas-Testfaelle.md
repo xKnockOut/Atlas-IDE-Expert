@@ -3836,3 +3836,16 @@ Voraussetzung: Server läuft; Unit mit einer Abfrage `qryPositionen: TFDQuery`.
 | DL4 | `if … then Q.Delete else Q.Next;`, `Break` vor `Q.Next`, `Q.Next` im `finally`, `Verarbeiten(Q)`, `with Q do Next` | Keine Meldung |
 | DL5 | Einstellungsseite, Bereich Prüfregeln | Regel unter der Gruppe „Datenbank“ |
 | DL6 | `"dataset-loop-without-next": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Edit oder Append ohne Post (#964)
+
+Voraussetzung: Server läuft; Unit mit einer Tabelle `tblKunde`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DE1 | `tblKunde.Edit; tblKunde.FieldByName('Status').AsInteger := Ord(ksAktiv); Protokollieren;` ohne Post | Warnung `dataset-edit-without-post` auf `Edit`: „Nach Edit fehlt Post oder Cancel; die Änderung bleibt offen.“; im Fenster „Atlas-Prüfung“ (Gruppe Datenbank) und im Befund-Hover (**Abnahme**) |
+| DE2 | Schnellkorrektur „tblKunde.Post mit try … except Cancel ergänzen“, danach Strg+Z | Zuweisung in `try … tblKunde.Post; except tblKunde.Cancel; raise; end;`, `Protokollieren` bleibt dahinter, Code übersetzt; ein Undo-Schritt stellt es wieder her (**Abnahme**) |
+| DE3 | `Q.Append; Q['Name'] := Name;` bzw. `R.Insert();` ohne Zuweisung | Warnung mit Korrektur bzw. ohne Korrektur |
+| DE4 | `Post`, `Cancel` im if, `CheckBrowseMode`, `Speichern(D)` nach `D.Edit`, `Liste.Insert(0, 'x')` | Keine Meldung |
+| DE5 | `tblKunde.Edit` in `BearbeitenClick`, `tblKunde.Post` in `SpeichernClick` | Keine Meldung |
+| DE6 | `"dataset-edit-without-post": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
