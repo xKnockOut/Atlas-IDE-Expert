@@ -5740,3 +5740,101 @@ Voraussetzung: Server läuft in der IDE mit einer Projektgruppe aus Anwendung un
 | OM9 | Schnellkorrektur „Als bewusst öffentlich markieren (lsp-ignore)“ | Über der Deklaration steht `// lsp-ignore: unused-public-member`; die Meldung ist weg |
 | OM10 | `"unused-public-member": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
 | OM11 | Großes Projekt (mehrere hundert Units): Service-Unit bearbeiten | Keine spürbare Verzögerung der Diagnosen; im Diagnoselog keine Zeitüberschreitung der Regel |
+
+## SELECT * im Code (#967)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; Regel `sql-select-star` in den Einstellungen auf „Hinweis“ (Standard aus).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SQ1 | Das Beispiel aus #967: `qry.SQL.Text := 'SELECT * FROM Kunden WHERE Ort = :Ort';` | Hinweis `sql-select-star` am Literal: „SELECT * holt alle Spalten; neue Spalten ändern still die Datenmenge.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| SQ2 | Datenmodul mit `qryKunden` und persistenten Feldern `Id`, `Name` und einem berechneten Feld in der .dfm; im Code `qryKunden.SQL.Text := 'SELECT * FROM Kunden';`, Alt+Enter „* durch die persistenten Felder ersetzen“, danach Strg+Z | Literal wird `'SELECT Id, Name FROM Kunden'` (ohne das berechnete Feld), keine Meldung mehr; ein Undo-Schritt |
+| SQ3 | `SELECT k.Id, a.* FROM Kunden k JOIN Auftrag a …` | „SELECT a.* holt alle Spalten von a; …“ |
+| SQ4 | `SQL.Strings` mit `SELECT *` nur in der .dfm | Hinweis an der Felddeklaration der Query: „… (qryLesen.SQL in der Formulardatei) …“ |
+| SQ5 | `SELECT COUNT(*) FROM Kunden`, `… WHERE EXISTS (SELECT * FROM Sperre …)`, `ShowMessage('Select * dauert')`, Spaltenliste aus einer Variablen | Keine Meldung |
+| SQ6 | Regel auf Standard, `"sql-select-star": "off"`, `"group:database": "off"` bzw. `exclude` | Keine Meldung |
+| SQ7 | Profil `strict` | Meldung wie SQ1 ohne eigene Einstellung |
+
+## Pfad ohne Trennzeichen zusammengesetzt (#968)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PC1 | Das Beispiel aus #968: `Ordner := TPath.GetDocumentsPath;` und `Datei := Ordner + 'export.csv';` | Warnung `path-concat-without-delimiter` an `Ordner + 'export.csv'`: „Ordner kommt aus GetDocumentsPath und hat keinen abschließenden Backslash; das Ergebnis ist …\Documentsexport.csv.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| PC2 | Alt+Enter „TPath.Combine verwenden“ in einer Unit ohne `System.IOUtils`, danach Strg+Z | Ausdruck wird `TPath.Combine(Ordner, 'export.csv')`, `System.IOUtils` steht in den uses, keine Meldung mehr; ein Undo-Schritt |
+| PC3 | `ExtractFileDir(Datei) + Name` | Meldung mit mittlerer Konfidenz: „… Name wird ohne Trennzeichen angehängt.“ |
+| PC4 | `ExtractFilePath(Datei) + 'x.txt'`, `TPath.GetTempPath + 'x.txt'`, `ExtractFileDir(Datei) + PathDelim + Name`, `ExtractFileDir(Datei) + '.bak'`, `ExtractFileDir(Datei) + ' fehlt'` | Keine Meldung |
+| PC5 | `Ordner := TPath.GetDocumentsPath; if … then Ordner := IncludeTrailingPathDelimiter(Ordner); Datei := Ordner + 'x';` | Keine Meldung |
+| PC6 | `"path-concat-without-delimiter": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |
+| PC7 | Echtlauf: im Beispiel aus PC1 die Datei schreiben | Datei landet ohne Korrektur als `Documentsexport.csv` im Benutzerordner, mit Korrektur in `Documents` |
+
+## Fester Dateipfad im Code (#969)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HP1 | Das Beispiel aus #969: `Protokoll.SaveToFile('C:\Users\marco\Desktop\log.txt');` in einer Unit ohne Test-Framework | Hinweis `hardcoded-path` am Literal: „Fester Benutzerpfad; auf anderen Rechnern gibt es ihn nicht.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| HP2 | `'D:\Daten\Kunden.db'`, `'c:/Programme/Tool.exe'` | „Fester Dateipfad; auf anderen Rechnern fehlt er womöglich.“ |
+| HP3 | `'\\nas\Logs\log.txt'` | „Fester Netzwerkpfad; auf anderen Rechnern und ohne Netzwerk fehlt er womöglich.“ |
+| HP4 | `'C:\'`, `'\\?\' + Pfad`, `'\\.\COM3'`, `'Logs\log.txt'`, Pfad nur im Kommentar | Keine Meldung |
+| HP5 | Dasselbe Literal in einer DUnitX-Test-Unit | Keine Meldung |
+| HP6 | Konstante `'C:\ProgramData\Atlas'` in `App.Pfade`, dann `"hardcoded-path": {"allowUnits": ["App.*"]}` | Erst Meldung, danach keine; auf der Seite „Prüfregeln“ steht `allowUnits` unter der Regel |
+| HP7 | `"hardcoded-path": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |
+
+## Dateinamen mit = verglichen (#970)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FC1 | Das Beispiel aus #970: `if ExtractFileName(Datei) = 'Config.ini' then` | Hinweis `filename-compare-case` am Vergleich: „Dateinamen unterscheiden unter Windows nicht nach Groß-/Kleinschreibung; SameFileName vergleicht richtig.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| FC2 | Schnellkorrektur „SameFileName verwenden“ auf FC1 | `if SameFileName(ExtractFileName(Datei), 'Config.ini') then`; ein Undo-Schritt macht alles rückgängig (**Abnahme**) |
+| FC3 | `if Dialog.FileName <> FLetzteDatei then`, Korrektur anwenden | Meldung; Korrektur ergibt `not SameFileName(Dialog.FileName, FLetzteDatei)` |
+| FC4 | `TPath.GetExtension(Datei) = '.pas'`, `Application.ExeName = Pfad` | Je eine Meldung |
+| FC5 | `ExtractFileName(Datei) = ''`, `ExtractFileExt(Datei) = '.1'`, `ExtractFileDir(Dir) = Dir`, `SameFileName(A, B)` | Keine Meldung |
+| FC6 | FC1 in einer Unit ohne `System.SysUtils` in der uses-Klausel (Datei-Funktion über eigene Unit), Korrektur anwenden | `System.SysUtils` wird ergänzt, das Ergebnis übersetzt |
+| FC7 | `"filename-compare-case": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |
+
+## Beim Start erzeugtes Objekt wird nicht freigegeben (#971)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IF1 | Das Beispiel aus #971: `var GProtokoll: TProtokoll;` im implementation-Abschnitt, `initialization GProtokoll := TProtokoll.Create; end.` | Warnung `initialization-not-finalized` an `GProtokoll`: „GProtokoll wird in initialization erzeugt, aber in finalization nicht freigegeben.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| IF2 | Schnellkorrektur „In finalization freigeben“ auf IF1 | Leerzeile, `finalization`, `FreeAndNil(GProtokoll);` vor `end.`; fehlt `System.SysUtils`, steht es danach in der uses-Klausel; ein Undo-Schritt macht alles rückgängig; die Unit übersetzt (**Abnahme**) |
+| IF3 | Zwei Objekte in initialization, eines in vorhandener finalization freigegeben, „Alle sicheren Korrekturen“ | Das fehlende `FreeAndNil` landet am Ende der vorhandenen finalization |
+| IF4 | `class var FInstanz: TDienst;` und `class constructor Create;` mit `FInstanz := TDienst.Create;`, ohne class destructor, Korrektur anwenden | Meldung „… im class constructor erzeugt, aber im class destructor nicht freigegeben.“; Korrektur deklariert `class destructor Destroy;` und legt den Rumpf mit `FreeAndNil(FInstanz);` an |
+| IF5 | Freigabe in einer Prozedur der Unit, `G.Free` in finalization hinter `if Assigned(G)`, Interface-Variable, `TStopwatch.Create`, `TDatenmodul.Create(Application)`, `Liste.Add(G)`, `with G do`, `G.FreeOnTerminate := True` | Keine Meldung |
+| IF6 | Variable im interface-Abschnitt, eine andere Unit des Projekts verwendet sie | Keine Meldung; ohne die andere Unit Meldung |
+| IF7 | `"initialization-not-finalized": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |
+
+## Compiler-Warnungen bis zum Ende der Unit abgeschaltet (#972)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WD1 | Das Beispiel aus #972: `{$WARNINGS OFF}` vor `function AlteBerechnung(…)`, danach weitere Routinen, kein `{$WARNINGS ON}` | Warnung `compiler-warnings-disabled` an der Direktive: „WARNINGS bleibt bis zum Ende der Unit aus; alle späteren Warnungen fehlen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| WD2 | Schnellkorrektur „Nach dem nächsten Block wiederherstellen“ auf WD1 | `{$WARNINGS ON}` in der Zeile hinter dem `end;` von `AlteBerechnung`; Meldung verschwindet; ein Undo-Schritt |
+| WD3 | `{$HINTS OFF}`, `{$WARN SYMBOL_PLATFORM OFF}`, `{$R-,Q-}`, `{$OVERFLOWCHECKS OFF}` ohne Gegenstück | Je Schalter eine Meldung, bei `{$R-,Q-}` zwei; die Korrektur schreibt `{$HINTS ON}`, `{$WARN SYMBOL_PLATFORM DEFAULT}`, `{$R+}`, `{$Q+}` bzw. `{$OVERFLOWCHECKS ON}`; bei R und Q nicht unter „Alle sicheren Korrekturen“ |
+| WD4 | Wiederhergestellt: `{$WARNINGS ON}` weiter unten, `{$IFOPT R+}{$DEFINE X}{$R-}{$ENDIF}` … `{$IFDEF X}{$R+}{$ENDIF}`, `{$PUSHOPT}{$Q-}` … `{$POPOPT}`, `{$IFDEF DEBUG}{$R+}{$ELSE}{$R-}{$ENDIF}`, `{$R *.dfm}`, Schalter in einer `.dpk` | Keine Meldung |
+| WD5 | `"compiler-warnings-disabled": {"allow": ["SYMBOL_PLATFORM", "R"]}` | Keine Meldung für `{$WARN SYMBOL_PLATFORM OFF}` und `{$R-}`, `{$Q-}` bleibt gemeldet; auf der Seite „Prüfregeln“ steht `allow` unter der Regel |
+| WD6 | `"compiler-warnings-disabled": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |
+| WD7 | Atlas.IDE.Expert mit eingeschalteter Überlaufprüfung bauen, Projekt öffnen und schließen | Keine Überlauf-Exception aus `TAtlasProjectSummaries.KeyOf`; der Index-Cache findet seine Ordner wieder (`KeyHash`) |
+
+## Exportierte Routine nicht sicher über DLL-Grenzen aufrufbar (#973)
+
+Voraussetzung: Server läuft in der IDE mit einem DLL-Projekt (`library`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DX1 | Das Beispiel aus #973: `function KundeName(Id: Integer): string;` mit Rumpf, `exports KundeName;`, ohne ShareMem | Warnung `dll-export-unsafe` am Eintrag `KundeName` in exports: „Exportierte Funktion gibt string zurück und hat keine Aufrufkonvention; Aufrufer ohne ShareMem stürzen ab. Besser PChar mit Puffer und Länge übergeben.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| DX2 | Schnellkorrektur „Aufrufkonvention stdcall ergänzen“ auf DX1 | `string; stdcall;` im Kopf; die Meldung nennt nur noch den string, ohne Korrektur; nicht unter „Alle sicheren Korrekturen“ |
+| DX3 | Parameter `TBytes`, `array of Integer` als eigener Typ, `TStringList`, eigene Klasse, Interface ohne GUID | Je Parameter ein Teil der Meldung mit „(dynamisches Array)“, „(Objekt)“ bzw. „(Interface ohne GUID)“ |
+| DX4 | `PChar` mit Länge, `WideString`, `Double`, offener Array-Parameter, Interface mit GUID, `stdcall` bzw. `cdecl` | Keine Meldung |
+| DX5 | `ShareMem` als erste Unit in der uses der DLL, `stdcall` gesetzt; dann `"dll-export-unsafe": {"allowShareMem": false}` | Erst keine Meldung für den string, danach wieder Meldung |
+| DX6 | Überladene Routinen in exports mit Parameterliste und `name`; Unit mit Deklaration im interface und `exports` im implementation-Teil | Keine Syntaxfehler-Meldung zum exports-Abschnitt; die Meldung gilt der gewählten Überladung; in der Unit bekommen beide Köpfe `stdcall` |
+| DX7 | `"dll-export-unsafe": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |

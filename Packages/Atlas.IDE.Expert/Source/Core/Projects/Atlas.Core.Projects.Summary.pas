@@ -536,9 +536,6 @@ uses
   System.JSON,
   Atlas.Core.Files.DataFile;
 
-{$OVERFLOWCHECKS OFF}
-{$RANGECHECKS OFF}
-
 const
   // Bekannte Felder; alles andere übernimmt ToJson unverändert aus Raw.
   TopKeys: array[0..16] of string = ('format', 'project', 'lastOpened', 'lastClosed', 'hidden', 'vcs', 'build',
@@ -1600,6 +1597,8 @@ begin
       Result[Index] := Chr(Ord(Result[Index]) - 32);
 end;
 
+// FNV-1a rechnet modulo 2^64: die Überlaufprüfung ist nur hier aus, danach wie vorher (#972).
+{$IFOPT Q+}{$DEFINE ATLAS_HASH_UEBERLAUF}{$Q-}{$ENDIF}
 class function TAtlasProjectSummaries.KeyOf(const AProject: string): string;
 const
   Offset: UInt64 = $CBF29CE484222325;
@@ -1627,6 +1626,7 @@ begin
     Dec(Shift, 4);
   end;
 end;
+{$IFDEF ATLAS_HASH_UEBERLAUF}{$Q+}{$UNDEF ATLAS_HASH_UEBERLAUF}{$ENDIF}
 
 class function TAtlasProjectSummaries.FileFor(const AFolder, AProject: string): string;
 begin

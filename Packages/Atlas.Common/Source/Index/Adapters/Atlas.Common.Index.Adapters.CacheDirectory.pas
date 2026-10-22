@@ -101,9 +101,6 @@ type
 
 implementation
 
-// Hashes rechnen modulo 2^64.
-{$Q-}
-
 uses
   System.IOUtils,
   System.StrUtils,
@@ -118,6 +115,8 @@ begin
   Result := TPath.Combine(TPath.GetCachePath, 'Atlas');
 end;
 
+// FNV-1a rechnet modulo 2^64: die Überlaufprüfung ist nur hier aus, danach wie vorher (#972).
+{$IFOPT Q+}{$DEFINE ATLAS_HASH_UEBERLAUF}{$Q-}{$ENDIF}
 class function TIndexCacheDirectory.KeyHash(const AKey: string): string;
 var
   Key: string;
@@ -135,6 +134,7 @@ begin
   end;
   Result := IntToHex(Int64(Hash), 16);
 end;
+{$IFDEF ATLAS_HASH_UEBERLAUF}{$Q+}{$UNDEF ATLAS_HASH_UEBERLAUF}{$ENDIF}
 
 function SafeFolderName(const AValue: string): string;
 var

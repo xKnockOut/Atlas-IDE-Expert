@@ -29,7 +29,11 @@ type
     class function PackageFindings(ARule: IRule; const ASource, AProjectName, AConfigJson,
       ARelativePath: string): TArray<TRuleFinding>; static;
     /// <summary>Treffer von ARule auf ASource mit der Formulardatei AFormText daneben (#123).</summary>
-    class function FormFindings(const ARule: IRule; const ASource, AFormText: string): TArray<TRuleFinding>; static;
+    class function FormFindings(const ARule: IRule; const ASource, AFormText: string): TArray<TRuleFinding>;
+      overload; static;
+    /// <summary>Wie FormFindings, mit Einstellungen aus AConfigJson (z. B. für Regeln, die aus sind).</summary>
+    class function FormFindings(const ARule: IRule; const ASource, AFormText, AConfigJson: string):
+      TArray<TRuleFinding>; overload; static;
     /// <summary>Treffer von ARule auf ASource als Unit eines Projekts, dessen .dpr die Formulare AForms in dieser
     /// Reihenfolge erzeugt (#956), mit Formulardatei AFormText und Einstellungen aus AConfigJson unter
     /// ARelativePath.</summary>
@@ -157,17 +161,29 @@ begin
 end;
 
 class function TRuleAssert.FormFindings(const ARule: IRule; const ASource, AFormText: string): TArray<TRuleFinding>;
+begin
+  Result := FormFindings(ARule, ASource, AFormText, '');
+end;
+
+class function TRuleAssert.FormFindings(const ARule: IRule; const ASource, AFormText, AConfigJson: string):
+  TArray<TRuleFinding>;
 var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
   Context: TRuleContext;
   Tree: TSyntaxTree;
 begin
+  if AConfigJson = '' then
+    Settings := TServerSettings.Default
+  else
+    Settings := TConfigurationParser.Parse(AConfigJson, Issues);
   Tree := TPascalParser.Parse(ASource);
   try
     Context := Default(TRuleContext);
     Context.Text := ASource;
     Context.Tree := Tree;
     Context.FormText := AFormText;
-    Result := TRuleEngine.Run([ARule], TServerSettings.Default, Context);
+    Result := TRuleEngine.Run([ARule], Settings, Context);
   finally
     Tree.Free;
   end;
