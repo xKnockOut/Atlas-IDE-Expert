@@ -67,6 +67,19 @@
 //                                 E2194). Option disabledChecks nimmt Codes
 //                                 aus. Korrekturen: Direktive entfernen bzw.
 //                                 static ergänzen.
+//   attribute-usage-invalid       Attribute des Compilers am falschen Ziel
+//                                 (#1033): [Weak] an Feldern und Variablen,
+//                                 deren Typ sicher weder Klasse noch
+//                                 Interface ist (E2584), [Volatile] an Typ,
+//                                 Routine oder Property (E2325), Weak,
+//                                 Unsafe, Volatile oder Ref doppelt am
+//                                 selben Ziel (E2326, nicht in sich
+//                                 ausschließenden Zweigen); Argument eines
+//                                 Attributs, das sicher eine Variable oder
+//                                 Routine der Datei ist (E2448). Eigene
+//                                 Attribute dürfen mehrfach stehen; ein Typ
+//                                 Weak bzw. WeakAttribute in der Datei macht
+//                                 die Regel für diesen Namen still.
 //
 // Typen gelten als gleich, wenn ihr Name ohne Unit-Präfix und Typargumente
 // übereinstimmt. Steht in der Datei ein Alias auf den eigenen Typ, bleibt die
@@ -129,10 +142,17 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TAttributeUsageInvalidRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 const
   OperatorDeclarationInvalidRuleId = 'operator-declaration-invalid';
   TypeRestrictionViolatedRuleId = 'type-restriction-violated';
   GenericDeclarationInvalidRuleId = 'generic-declaration-invalid';
+  AttributeUsageInvalidRuleId = 'attribute-usage-invalid';
 
 /// <summary>Name ohne Unit-Präfix und ohne Typargumente: "System.TList&lt;T&gt;" ergibt "TList".</summary>
 function BareTypeName(const AName: string): string;
@@ -407,8 +427,8 @@ begin
   Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
 end;
 
-/// <summary>Text eines Knotens ohne Zeilenumbrüche und doppelte Leerzeichen, für Vergleiche.</summary>
-function Squeezed(const AText: string; ANode: TSyntaxNode): string;
+/// <summary>Text eines Knotens in einer Zeile, ohne doppelte Leerzeichen, für Meldungen.</summary>
+function OneLine(const AText: string; ANode: TSyntaxNode): string;
 var
   Text: string;
 begin
@@ -418,7 +438,13 @@ begin
   Text := StringReplace(StringReplace(Text, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
   while Pos('  ', Text) > 0 do
     Text := StringReplace(Text, '  ', ' ', [rfReplaceAll]);
-  Result := LowerCase(Trim(Text));
+  Result := Trim(Text);
+end;
+
+/// <summary>Text eines Knotens ohne Zeilenumbrüche und doppelte Leerzeichen, für Vergleiche.</summary>
+function Squeezed(const AText: string; ANode: TSyntaxNode): string;
+begin
+  Result := LowerCase(OneLine(AText, ANode));
 end;
 
 /// <summary>Rümpfe AQualified (TFoo.Bar, auch TAussen.TFoo.Bar) mit gleicher Parameterliste und gleichem
@@ -1822,7 +1848,7 @@ end;
 function TTypeRestrictionViolatedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(TypeRestrictionViolatedRuleId, TRuleSeverity.Error,
-    'Sprachregel für Records, InlineHead und Helfer verletzt');
+    'Sprachregel für Records, inline und Helfer verletzt');
 end;
 
 procedure TTypeRestrictionViolatedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -2430,11 +2456,505 @@ begin
   end;
 end;
 
+{ TAttributeUsageInvalidRule }
+
+const
+  // Attribute des Compilers, die er selbst prüft (System.WeakAttribute …).
+  CompilerCheckedAttributes: array[0..3] of string = ('Weak', 'Unsafe', 'Volatile', 'Ref');
+  // Typarten, die sicher weder Klasse noch Interface sind (E2584). ProcedureType fehlt: reference to ist ein
+  // Interface.
+  NonReferenceTypeKinds = [TSyntaxKind.RecordType, TSyntaxKind.EnumType, TSyntaxKind.SetType, TSyntaxKind.ArrayType,
+    TSyntaxKind.PointerType, TSyntaxKind.FileType, TSyntaxKind.SubrangeType];
+  // Ziele, an denen Volatile nicht stehen darf (Compiler Attributes: keine Typen, Routinen, Methoden).
+  VolatileForbiddenTargets = [TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader,
+    TSyntaxKind.PropertyDecl];
+
+/// <summary>Knoten des Namens eines Eintrags im Attribut-Knoten ([Name] bzw. [Name(…)]).</summary>
+function AttributeNameNode(AItem: TSyntaxNode): TSyntaxNode;
+begin
+  Result := AItem;
+  if (AItem.Kind = TSyntaxKind.Call) and (AItem.ChildCount > 0) then
+    Result := AItem[0];
+end;
+
+/// <summary>Punktkette eines Bezeichners bzw. MemberAccess; '' bei anderen Ausdrücken.</summary>
+function DottedNameOf(ANode: TSyntaxNode): string;
+var
+  Left: string;
+begin
+  Result := '';
+  if ANode.Kind = TSyntaxKind.Identifier then
+    Exit(ANode.Name);
+  if (ANode.Kind <> TSyntaxKind.MemberAccess) or (ANode.ChildCount <> 1) then
+    Exit;
+  Left := DottedNameOf(ANode[0]);
+  if Left <> '' then
+    Result := Left + '.' + ANode.Name;
+end;
+
+/// <summary>Name des Compiler-Attributs (Weak, Unsafe, Volatile, Ref) für den Eintrag AItem, '' bei anderen.
+/// [WeakAttribute] und [System.Weak] zählen mit; deklariert die Datei einen Typ gleichen Namens, nicht.</summary>
+function CompilerAttribute(const ATypes: TFileTypes; AItem: TSyntaxNode): string;
+var
+  Name, Bare: string;
+  Dot: Integer;
+begin
+  Result := '';
+  Name := DottedNameOf(AttributeNameNode(AItem));
+  Dot := LastDelimiter('.', Name);
+  if (Dot > 0) and not SameText(Copy(Name, 1, Dot - 1), 'System') then
+    Exit;
+  Bare := Copy(Name, Dot + 1, MaxInt);
+  if EndsText('Attribute', Bare) and (Length(Bare) > Length('Attribute')) then
+    Bare := Copy(Bare, 1, Length(Bare) - Length('Attribute'));
+  if not MatchText(Bare, CompilerCheckedAttributes) then
+    Exit;
+  if (ATypes.IndexOf(Bare) >= 0) or (ATypes.IndexOf(Bare + 'Attribute') >= 0) then
+    Exit;
+  Result := CompilerCheckedAttributes[IndexText(Bare, CompilerCheckedAttributes)];
+end;
+
+/// <summary>Deklaration, zu der der Attribut-Knoten AAttribute gehört: der nächste Geschwisterknoten, der kein
+/// Attribut ist, bzw. der Parameter; nil ohne.</summary>
+function AttributeTarget(AAttribute: TSyntaxNode): TSyntaxNode;
+var
+  Parent: TSyntaxNode;
+  Index: Integer;
+  Found: Boolean;
+begin
+  Result := nil;
+  Parent := AAttribute.Parent;
+  if Parent = nil then
+    Exit;
+  if Parent.Kind = TSyntaxKind.Parameter then
+    Exit(Parent);
+  Found := False;
+  for Index := 0 to Parent.ChildCount - 1 do
+    if Parent[Index] = AAttribute then
+      Found := True
+    else if Found and (Parent[Index].Kind <> TSyntaxKind.Attribute) then
+      Exit(Parent[Index]);
+end;
+
+/// <summary>Ist der Typ des Felds bzw. der Variablen (Kind von AType) sicher weder Klasse noch Interface? Eingebaute
+/// Werttypen und Records, Aufzählungen, Mengen, Arrays, Zeiger der Datei; Aliase werden verfolgt.</summary>
+function CertainlyNoReference(const ATypes: TFileTypes; AType: TSyntaxNode): Boolean;
+var
+  Name: string;
+  Index, Depth: Integer;
+begin
+  if AType.Kind in NonReferenceTypeKinds then
+    Exit(True);
+  if (AType.Kind <> TSyntaxKind.TypeReference) or (AType.FindChild(TSyntaxKind.GenericArgs) <> nil) then
+    Exit(False);
+  Name := AType.Name;
+  for Depth := 1 to 16 do
+  begin
+    if (Name = '') or (Pos('.', Name) > 0) or (Pos('<', Name) > 0) then
+      Exit(False);
+    if ATypes.DeclaredKind(Name) in NonReferenceTypeKinds then
+      Exit(True);
+    Index := ATypes.IndexOf(Name);
+    if Index < 0 then
+      // Pointer bleibt außen vor: die Hilfe nennt nur Klassen und Interfaces, der Fall ist nicht abgeglichen.
+      Exit(not SameText(Name, 'Pointer') and (MatchText(Name, BuiltinTypeNames) or
+        MatchText(Name, BooleanTypeNames)));
+    if ATypes.AliasOf[Index] <> '' then
+      Name := ATypes.AliasOf[Index]
+    else if ATypes.Types[Index].Kind = TSyntaxKind.TypeReference then
+      Name := ATypes.Types[Index].Name
+    else
+      Exit(False);
+  end;
+  Result := False;
+end;
+
+type
+  /// <summary>Deklarationen der Datei je Name (klein geschrieben): Variablen und Routinen, die in einem
+  /// Attributargument nie konstant sind, und alle übrigen Arten (Konstanten, Typen, Werte …).</summary>
+  TAttributeArgumentNames = class
+  private
+    FVariables: TObjectDictionary<string, TList<TSyntaxNode>>;
+    FOthers: TDictionary<string, Boolean>;
+    procedure AddVariable(const AName: string; ANode: TSyntaxNode);
+    procedure AddOther(const AName: string);
+    procedure AddNames(const ANames: string; ANode: TSyntaxNode; AVariable: Boolean);
+  public
+    constructor Create(ARoot: TSyntaxNode);
+    destructor Destroy; override;
+    /// <summary>Variablen- bzw. Routinen-Deklarationen zu AName, die nur so in der Datei stehen; nil sonst.</summary>
+    function OnlyVariables(const AName: string): TList<TSyntaxNode>;
+  end;
+
+constructor TAttributeArgumentNames.Create(ARoot: TSyntaxNode);
+var
+  Nodes: TList<TSyntaxNode>;
+  Node: TSyntaxNode;
+  Name: string;
+  Index: Integer;
+begin
+  inherited Create;
+  FVariables := TObjectDictionary<string, TList<TSyntaxNode>>.Create([doOwnsValues]);
+  FOthers := TDictionary<string, Boolean>.Create;
+  Nodes := TList<TSyntaxNode>.Create;
+  try
+    ARoot.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        Result := True;
+        Nodes.Add(ANode);
+      end);
+    for Node in Nodes do
+      case Node.Kind of
+        TSyntaxKind.VarDecl, TSyntaxKind.Field:
+          AddNames(Node.Name, Node, True);
+        TSyntaxKind.RoutineHeader:
+          begin
+            Name := Node.Name;
+            if LastDelimiter('.', Name) > 0 then
+              Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+            // Nur Routinen der Unit selbst gelten als sicher; Methoden und lokale Routinen zählen als andere Art.
+            AddNames(Name, Node, (Pos('.', Node.Name) = 0) and (Node.Parent <> nil) and
+              (Node.Parent.Kind = TSyntaxKind.RoutineDecl) and (Node.Parent.Parent <> nil) and
+              (Node.Parent.Parent.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection]));
+          end;
+        TSyntaxKind.ConstDecl, TSyntaxKind.TypeDecl, TSyntaxKind.Parameter, TSyntaxKind.PropertyDecl,
+        TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.UsedUnit, TSyntaxKind.ForStatement,
+        TSyntaxKind.ForInStatement:
+          AddNames(Node.Name, Node, False);
+        TSyntaxKind.EnumType:
+          for Index := 0 to Node.ChildCount - 1 do
+            AddOther(Node[Index].Name);
+        TSyntaxKind.GenericParams:
+          for Index := 0 to Node.ChildCount - 1 do
+            AddOther(Node[Index].Name);
+      end;
+  finally
+    Nodes.Free;
+  end;
+end;
+
+destructor TAttributeArgumentNames.Destroy;
+begin
+  FVariables.Free;
+  FOthers.Free;
+  inherited;
+end;
+
+procedure TAttributeArgumentNames.AddVariable(const AName: string; ANode: TSyntaxNode);
+var
+  List: TList<TSyntaxNode>;
+begin
+  if not FVariables.TryGetValue(LowerCase(AName), List) then
+  begin
+    List := TList<TSyntaxNode>.Create;
+    FVariables.Add(LowerCase(AName), List);
+  end;
+  List.Add(ANode);
+end;
+
+procedure TAttributeArgumentNames.AddOther(const AName: string);
+begin
+  if Trim(AName) <> '' then
+    FOthers.AddOrSetValue(LowerCase(Trim(AName)), True);
+end;
+
+procedure TAttributeArgumentNames.AddNames(const ANames: string; ANode: TSyntaxNode; AVariable: Boolean);
+var
+  Name: string;
+begin
+  for Name in SplitString(ANames, ',') do
+    if Trim(Name) = '' then
+      Continue
+    else if AVariable then
+      AddVariable(Trim(Name), ANode)
+    else
+      AddOther(Name);
+end;
+
+function TAttributeArgumentNames.OnlyVariables(const AName: string): TList<TSyntaxNode>;
+begin
+  Result := nil;
+  if FOthers.ContainsKey(LowerCase(AName)) then
+    Exit;
+  FVariables.TryGetValue(LowerCase(AName), Result);
+end;
+
+function TAttributeUsageInvalidRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(AttributeUsageInvalidRuleId, TRuleSeverity.Error, 'Attribut falsch verwendet');
+end;
+
+procedure TAttributeUsageInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Types: TFileTypes;
+  Paths: TArray<string>;
+  Attributes: TList<TSyntaxNode>;
+  Names: TAttributeArgumentNames;
+  Node: TSyntaxNode;
+
+  function PathOf(ANode: TSyntaxNode): string;
+  begin
+    Result := TConditionalBranches.PathAt(Paths, TRoutineBody.TokenAt(Tokens, ANode.StartOffset));
+  end;
+
+  /// <summary>Liegt ANode in ARoot (ARoot selbst eingeschlossen)?</summary>
+  function Inside(ANode, ARoot: TSyntaxNode): Boolean;
+  begin
+    while ANode <> nil do
+    begin
+      if ANode = ARoot then
+        Exit(True);
+      ANode := ANode.Parent;
+    end;
+    Result := False;
+  end;
+
+  /// <summary>Ist die Deklaration ADecl (VarDecl, Field oder RoutineHeader) am Attribut AAttribute sichtbar und
+  /// wird mit ihm übersetzt? Unit-Ebene oder umgebende Routine, vor dem Attribut; Felder nicht.</summary>
+  function VisibleAt(ADecl, AAttribute: TSyntaxNode): Boolean;
+  var
+    Holder: TSyntaxNode;
+  begin
+    Result := False;
+    if (ADecl.StartOffset >= AAttribute.StartOffset) or (ADecl.Kind = TSyntaxKind.Field) then
+      Exit;
+    Holder := ADecl.Parent;
+    if ADecl.Kind = TSyntaxKind.VarDecl then
+    begin
+      if (Holder = nil) or (Holder.Kind <> TSyntaxKind.VarSection) then
+        Exit;
+      Holder := Holder.Parent;
+      if Holder = nil then
+        Exit;
+      if Holder.Kind = TSyntaxKind.RoutineDecl then
+      begin
+        if not Inside(AAttribute, Holder) then
+          Exit;
+      end
+      else if not (Holder.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection]) then
+        Exit;
+    end;
+    Result := TConditionalBranches.Implies(PathOf(AAttribute), PathOf(ADecl));
+  end;
+
+  /// <summary>Steht AName am Attribut sicher für eine Variable bzw. Routine der Datei?</summary>
+  function CertainVariable(const AName: string; AAttribute: TSyntaxNode): Boolean;
+  var
+    Decls: TList<TSyntaxNode>;
+    Decl: TSyntaxNode;
+  begin
+    Result := False;
+    Decls := Names.OnlyVariables(AName);
+    if Decls = nil then
+      Exit;
+    for Decl in Decls do
+      if VisibleAt(Decl, AAttribute) then
+        Exit(True);
+  end;
+
+  procedure CheckArgument(AArgument, AAttribute: TSyntaxNode; const AAttributeName: string; var AReported: Boolean);
+  var
+    Index: Integer;
+    Callee: TSyntaxNode;
+  begin
+    if AReported then
+      Exit;
+    case AArgument.Kind of
+      TSyntaxKind.Identifier:
+        if CertainVariable(AArgument.Name, AAttribute) then
+        begin
+          AReport.Add(NodeRange(AArgument), Format('Das Argument %s von [%s] ist kein konstanter Ausdruck; ' +
+            'Attributargumente müssen Konstanten, TypeInfo-Ausdrücke oder Array-Konstruktoren sein (wie E2448).',
+            [AArgument.Name, AAttributeName]), TRuleConfidence.High, nil);
+          AReported := True;
+        end;
+      TSyntaxKind.Call:
+        begin
+          // Nur Aufrufe eigener Routinen; SizeOf, High, TypeInfo usw. sind konstant, Typumwandlungen auch.
+          if AArgument.ChildCount = 0 then
+            Exit;
+          Callee := AArgument[0];
+          if (Callee.Kind = TSyntaxKind.Identifier) and CertainVariable(Callee.Name, AAttribute) then
+          begin
+            AReport.Add(NodeRange(AArgument), Format('Der Aufruf %s in [%s] ist kein konstanter Ausdruck; ' +
+              'Attributargumente müssen Konstanten, TypeInfo-Ausdrücke oder Array-Konstruktoren sein (wie E2448).',
+              [Callee.Name, AAttributeName]), TRuleConfidence.High, nil);
+            AReported := True;
+          end;
+        end;
+      TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr, TSyntaxKind.SetConstructor,
+      TSyntaxKind.IndexAccess, TSyntaxKind.RangeExpr:
+        for Index := 0 to AArgument.ChildCount - 1 do
+          CheckArgument(AArgument[Index], AAttribute, AAttributeName, AReported);
+    end;
+  end;
+
+  procedure CheckArguments(AAttribute: TSyntaxNode);
+  var
+    Index, Argument: Integer;
+    Item: TSyntaxNode;
+    Reported: Boolean;
+  begin
+    for Index := 0 to AAttribute.ChildCount - 1 do
+    begin
+      Item := AAttribute[Index];
+      if Item.Kind <> TSyntaxKind.Call then
+        Continue;
+      Reported := False;
+      for Argument := 1 to Item.ChildCount - 1 do
+        CheckArgument(Item[Argument], AAttribute, DottedNameOf(Item[0]), Reported);
+    end;
+  end;
+
+  /// <summary>Alle Attribut-Knoten vor dem Ziel, zu dem AAttribute gehört (ohne Parameter: nur AAttribute).</summary>
+  function AttributeGroup(AAttribute: TSyntaxNode): TArray<TSyntaxNode>;
+  var
+    Parent: TSyntaxNode;
+    Index: Integer;
+  begin
+    Result := [AAttribute];
+    Parent := AAttribute.Parent;
+    if (Parent = nil) or (Parent.Kind = TSyntaxKind.Parameter) then
+    begin
+      Result := nil;
+      if Parent <> nil then
+        for Index := 0 to Parent.ChildCount - 1 do
+          if Parent[Index].Kind = TSyntaxKind.Attribute then
+            Result := Result + [Parent[Index]];
+      Exit;
+    end;
+    Index := 0;
+    while (Index < Parent.ChildCount) and (Parent[Index] <> AAttribute) do
+      Inc(Index);
+    while (Index + 1 < Parent.ChildCount) and (Parent[Index + 1].Kind = TSyntaxKind.Attribute) do
+    begin
+      Inc(Index);
+      Result := Result + [Parent[Index]];
+    end;
+  end;
+
+  /// <summary>Ist AAttribute das erste Attribut vor seinem Ziel?</summary>
+  function FirstOfGroup(AAttribute: TSyntaxNode): Boolean;
+  var
+    Parent: TSyntaxNode;
+    Index: Integer;
+  begin
+    Parent := AAttribute.Parent;
+    if Parent = nil then
+      Exit(False);
+    for Index := 0 to Parent.ChildCount - 1 do
+      if Parent[Index] = AAttribute then
+        Exit((Index = 0) or (Parent[Index - 1].Kind <> TSyntaxKind.Attribute));
+    Result := False;
+  end;
+
+  procedure CheckWeakTarget(AItem, ATarget: TSyntaxNode);
+  var
+    Child: Integer;
+    TypeNode: TSyntaxNode;
+  begin
+    if not (ATarget.Kind in [TSyntaxKind.Field, TSyntaxKind.VarDecl]) then
+      Exit;
+    TypeNode := nil;
+    for Child := 0 to ATarget.ChildCount - 1 do
+      if ATarget[Child].Kind <> TSyntaxKind.Attribute then
+      begin
+        TypeNode := ATarget[Child];
+        Break;
+      end;
+    if (TypeNode = nil) or not CertainlyNoReference(Types, TypeNode) then
+      Exit;
+    AReport.Add(NodeRange(AItem), Format('[Weak] ist nur an Klassen- und Interface-Referenzen erlaubt; %s hat ' +
+      'den Typ %s (wie E2584).', [Trim(ATarget.Name), OneLine(AContext.Text, TypeNode)]), TRuleConfidence.High,
+      nil);
+  end;
+
+  procedure CheckTarget(AFirst: TSyntaxNode);
+  var
+    Group: TArray<TSyntaxNode>;
+    Items: TArray<TSyntaxNode>;
+    ItemNames: TArray<string>;
+    Attribute, Target, Item: TSyntaxNode;
+    Index, Other: Integer;
+    Name: string;
+    Duplicate: Boolean;
+  begin
+    Target := AttributeTarget(AFirst);
+    if Target = nil then
+      Exit;
+    Group := AttributeGroup(AFirst);
+    Items := nil;
+    ItemNames := nil;
+    for Attribute in Group do
+      for Index := 0 to Attribute.ChildCount - 1 do
+      begin
+        Items := Items + [Attribute[Index]];
+        ItemNames := ItemNames + [CompilerAttribute(Types, Attribute[Index])];
+      end;
+    for Index := 0 to High(Items) do
+    begin
+      Name := ItemNames[Index];
+      if Name = '' then
+        Continue;
+      Item := Items[Index];
+      Duplicate := False;
+      for Other := 0 to Index - 1 do
+        if SameText(ItemNames[Other], Name) and
+          not TConditionalBranches.Exclusive(PathOf(Items[Other]), PathOf(Item)) then
+          Duplicate := True;
+      if Duplicate then
+      begin
+        AReport.Add(NodeRange(Item), Format('[%s] steht mehrfach an derselben Deklaration; ein Attribut des ' +
+          'Compilers darf je Ziel nur einmal stehen (wie E2326).', [Name]), TRuleConfidence.High, nil);
+        Continue;
+      end;
+      if SameText(Name, 'Volatile') and (Target.Kind in VolatileForbiddenTargets) then
+        AReport.Add(NodeRange(Item), '[Volatile] gilt nur für Variablen, Parameter und Felder, nicht für Typen, ' +
+          'Routinen, Methoden oder Properties (wie E2325).', TRuleConfidence.High, nil)
+      else if SameText(Name, 'Weak') then
+        CheckWeakTarget(Item, Target);
+    end;
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or (Pos('[', AContext.Text) = 0) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Types := TFileTypes.Collect(AContext.Tree.Root);
+  Paths := TConditionalBranches.Paths(Tokens);
+  Names := nil;
+  Attributes := TList<TSyntaxNode>.Create;
+  try
+    AContext.Tree.Root.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        Result := True;
+        if ANode.Kind = TSyntaxKind.Attribute then
+          Attributes.Add(ANode);
+      end);
+    if Attributes.Count = 0 then
+      Exit;
+    Names := TAttributeArgumentNames.Create(AContext.Tree.Root);
+    for Node in Attributes do
+    begin
+      CheckArguments(Node);
+      if FirstOfGroup(Node) then
+        CheckTarget(Node);
+    end;
+  finally
+    Names.Free;
+    Attributes.Free;
+  end;
+end;
+
 procedure RegisterTypeRestrictionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TOperatorDeclarationInvalidRule.Create);
   ARegistry.Register(TGenericDeclarationInvalidRule.Create);
   ARegistry.Register(TTypeRestrictionViolatedRule.Create);
+  ARegistry.Register(TAttributeUsageInvalidRule.Create);
 end;
 
 end.

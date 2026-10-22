@@ -2429,6 +2429,22 @@ begin
     '          "description": "Compiler codes the rule does not check, e.g. [\"E2425\"]."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "attribute-usage-invalid",' + #10 +
+    '      "name": "Attribute used incorrectly",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A compiler attribute is used where Delphi rejects it: [Weak] on a field or variable whose type is certainly neither a class nor an interface (built-in value types, records, enume' + 'rations, sets, arrays, pointer types of the file, aliases followed; like E2584), [Volatile] on a type, routine, method or property (E2325), Weak, Unsafe, Volatile or Ref twice on the same declaration ' + '(E2326; branches that exclude each other do not count), or an attribute argument that is certainly a variable or a routine of the file (E2448; visible before the attribute, not shadowed by a constant,' + ' type or other declaration of the same name). Custom attributes may be repeated; a type Weak or WeakAttribute declared in the file keeps the rule silent for that name. No quick fix.",' + #10 +
+    '      "bad": "TCounter = class\nprivate\n  [Weak] FCount: Integer;\nend;",' + #10 +
+    '      "good": "TCounter = class\nprivate\n  [Weak] FOwner: IInterface;\n  FCount: Integer;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2325",' + #10 +
+    '        "E2326",' + #10 +
+    '        "E2448",' + #10 +
+    '        "E2584"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3625,6 +3641,11 @@ begin
     '          "description": "Compilercodes, die die Regel nicht prüft, z. B. [\"E2425\"]."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "attribute-usage-invalid",' + #10 +
+    '      "name": "Attribut falsch verwendet",' + #10 +
+    '      "description": "Ein Attribut des Compilers steht dort, wo Delphi es ablehnt: [Weak] an einem Feld oder einer Variablen, deren Typ sicher weder Klasse noch Interface ist (eingebaute Werttypen, Re' + 'cords, Aufzählungen, Mengen, Arrays, Zeigertypen der Datei, Aliase verfolgt; wie E2584), [Volatile] an Typ, Routine, Methode oder Property (E2325), Weak, Unsafe, Volatile oder Ref doppelt an derselben' + ' Deklaration (E2326; sich ausschließende Zweige zählen nicht) oder ein Attributargument, das sicher eine Variable oder Routine der Datei ist (E2448; vor dem Attribut sichtbar, nicht durch eine gleichn' + 'amige Konstante, einen Typ oder eine andere Deklaration verdeckt). Eigene Attribute dürfen mehrfach stehen; ein Typ Weak bzw. WeakAttribute in der Datei macht die Regel für diesen Namen still. Keine S' + 'chnellkorrektur."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

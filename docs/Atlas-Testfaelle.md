@@ -4189,3 +4189,21 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | TB11 | `"type-restriction-violated": {"disabledChecks": ["E2379"]}` beim Beispiel; `"disabledChecks": "E2379"` | Keine Meldung für E2379, andere Codes bleiben; die Zeichenkette statt Liste meldet die Einstellungsprüfung |
 | TB12 | `"type-restriction-violated": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | TB13 | Abgleich mit Delphi 12 und 13: TB1 und TB3 bis TB10 übersetzen | dcc meldet dieselben Codes an denselben Stellen, für die stillen Fälle nichts |
+
+## Attribut falsch verwendet (#1033)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AW1 | Das Beispiel aus #1033: in einer Klasse `[Weak] FZaehler: Integer;` | Fehler `attribute-usage-invalid` an `Weak`: „[Weak] ist nur an Klassen- und Interface-Referenzen erlaubt; FZaehler hat den Typ Integer (wie E2584).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| AW2 | `[Weak]` an Feldern vom Typ eines Records, einer Aufzählung, `array of TObject`, `string`, eines Alias `TZahl = Integer` und an einer lokalen Variablen | Je eine Meldung wie E2584 |
+| AW3 | `[Weak]` an `TObject`, `IInterface`, einem Typ aus einer anderen Unit, `TList<Integer>`, `Pointer`, `TNotifyEvent`, einem `reference to`-Typ und an einem `var`-Parameter; `[Unsafe] FWert: Integer;` | Keine Meldung |
+| AW4 | `[Weak, Weak] FA: TObject;`, `[Unsafe] [Unsafe] FB: IInterface;`, `[Volatile, Volatile] Zaehler: Integer;` | Je eine Meldung wie E2326 am zweiten Attribut |
+| AW5 | Zweimal `[TestCase(…)]` an einer Testmethode; `{$IFDEF X}[Weak]{$ELSE}[Weak]{$ENDIF} FA: TObject;` | Keine Meldung |
+| AW6 | `[Volatile]` an einem Typ, einer Methode und einer Property; `[Volatile]` an Feld, globaler Variable und Parameter | Meldungen wie E2325 für Typ, Methode und Property; sonst keine |
+| AW7 | `var Grenze: Integer;` und `function Standard: string;` vor der Klasse, darin `[Bereich(1, Grenze + 1)]`, `[Bereich(Standard(), 2)]`, `[Name(Standard)]` | Je eine Meldung wie E2448 |
+| AW8 | `[Bereich(Oben, SizeOf(Grenze))]` mit Konstante `Oben`, `[Typ(TypeInfo(TKonfig))]`; Klassenkonstante gleichen Namens wie die Variable; Variable erst nach der Klasse bzw. nur in `{$IFDEF X}`; Feld als Argument | Keine Meldung |
+| AW9 | Eigener Typ `WeakAttribute = class(TCustomAttribute)` in der Unit, dann `[Weak] FZahl: Integer;` | Keine Meldung |
+| AW10 | `"attribute-usage-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| AW11 | Abgleich mit Delphi 12 und 13: AW1, AW2, AW4, AW6, AW7 übersetzen; dazu `[Ref]` an einem Feld und `[Weak]` an einem Typ bzw. einer Methode | dcc meldet dieselben Codes an denselben Stellen, für die stillen Fälle nichts. Meldet dcc für `[Ref]` am Feld oder `[Weak]` an Typ bzw. Methode E2325, die Regel um diese Ziele erweitern (bisher still, weil nicht abgeglichen) |

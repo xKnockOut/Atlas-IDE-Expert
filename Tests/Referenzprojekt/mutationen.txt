@@ -106,3 +106,4 @@ anonymous-capture-invalid | Ref.Sprache.Merkmale.pas | Result := Length(AText); 
 operator-declaration-invalid | Ref.Sprache.Merkmale.pas | constructor Create(const ASchluessel: TSchluessel; const AWert: TWert); | constructor Create(const ASchluessel: TSchluessel; const AWert: TWert);\n    class operator Equal(const A, B: TPaar<TSchluessel, TWert>): Integer;
 generic-declaration-invalid | Ref.Sprache.Merkmale.pas | TStapel<T> = class | TStapel<T: class, record> = class
 type-restriction-violated | Ref.Sprache.Merkmale.pas | function IstLeer: Boolean; | function IstLeer: Boolean; virtual;
+attribute-usage-invalid | Ref.Sprache.Merkmale.pas | FElemente: TList<T>; | FElemente: TList<T>;\n    [Weak] FAnzahl: Integer;
