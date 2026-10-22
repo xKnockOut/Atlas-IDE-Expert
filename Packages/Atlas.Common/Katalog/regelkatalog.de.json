@@ -167,12 +167,12 @@
     {
       "id": "declared-not-implemented",
       "name": "Deklariert, aber nicht implementiert",
-      "description": "Eine Methode ist in einer Klasse, einem Record oder Objekt deklariert, hat aber keinen Rumpf im implementation-Abschnitt. Der Compiler meldet das erst beim Kompilieren (E2065)."
+      "description": "Eine Methode ist in einer Klasse, einem Record oder Objekt deklariert, hat aber keinen Rumpf im implementation-Abschnitt. Der Compiler meldet das erst beim Kompilieren (E2065). Einen Rumpf gleichen Namens mit anderem Kopf meldet stattdessen signature-mismatch."
     },
     {
       "id": "implemented-not-declared",
       "name": "Implementiert, aber nicht deklariert",
-      "description": "Ein Methodenrumpf TFoo.Bar hat keine passende Deklaration im Typ."
+      "description": "Ein Methodenrumpf TFoo.Bar hat keine Deklaration dieses Namens im Typ. Eine gleichnamige Deklaration mit anderem Kopf meldet stattdessen signature-mismatch."
     },
     {
       "id": "destroy-without-override",
@@ -1071,6 +1071,11 @@
           "description": "Tabellen, die absichtlich ganz geleert bzw. geändert werden, mit oder ohne Schema."
         }
       ]
+    },
+    {
+      "id": "signature-mismatch",
+      "name": "Implementierung weicht von der Deklaration ab",
+      "description": "Der Kopf im implementation-Teil hat andere Parameter (Anzahl, Name, Typ, const/var/out), einen anderen Ergebnistyp, procedure statt function oder eine andere Aufrufkonvention als die Deklaration im Typ (wie E2037). Bei Überladungen wird die nächstliegende Deklaration verglichen (Parameteranzahl, dann Typen, Namen und Modifizierer); ist sie nicht eindeutig, melden declared-not-implemented und implemented-not-declared beide Seiten. Ein Rumpf darf Parameterliste, Ergebnistyp und Aufrufkonvention weglassen. Methoden in {$IF}-Blöcken werden übergangen; mit Include-Dateien ist die Konfidenz mittel. Korrektur: Kopf der Implementierung an die Deklaration angleichen oder als zweite Aktion die Deklaration an die Implementierung (Standardwerte bleiben in der Deklaration). refactoring.syncSignatures = false entfernt nur die Korrekturen."
     }
   ]
 }

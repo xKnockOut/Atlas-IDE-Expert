@@ -3,25 +3,30 @@
 // Deklaration und Rumpf passen nicht zusammen (#124):
 //   declared-not-implemented   Methode im Typ ohne Rumpf (sonst erst E2065)
 //   implemented-not-declared   Rumpf TFoo.Bar ohne Deklaration im Typ
+//   signature-mismatch         Rumpf und Deklaration gleichen Namens mit
+//                              abweichendem Kopf (#996, wie E2037): Parameter
+//                              (Anzahl, Name, Typ, const/var/out), Ergebnistyp,
+//                              procedure/function, Aufrufkonvention
 //
 // Den Abgleich (auch über Überladungen) liefert TClassCompletion.Unmatched aus
-// #42. Abstrakte, externe und forward-Methoden, Interfaces und generische
+// #42; Paare mit abweichendem Kopf ordnet TClassCompletion.Pairs zu. Sie meldet
+// nur signature-mismatch, die beiden anderen Regeln finden fehlende Namen. Abstrakte, externe und forward-Methoden, Interfaces und generische
 // Typen erzeugen keinen Treffer. Methoden innerhalb von {$IF…}-Blöcken werden
 // übergangen, weil der Syntaxbaum auch inaktive Zweige enthält. Bindet die
 // Datei Include-Dateien ein, können dort Rümpfe stehen: dann nur mittlere
 // Konfidenz (höchstens Warnung).
 //
 // Korrekturen: "Rumpf erzeugen" (#42) bzw. "Deklaration ergänzen" im
-// private-Abschnitt. Gibt es auf der anderen Seite genau eine gleichnamige
-// Methode mit gleich vielen Parametern, weichen nur die Signaturen ab: Dann
-// kommen zuerst die Aktionen, die eine Seite an die andere angleichen (#100).
+// private-Abschnitt; bei signature-mismatch "Implementierung an die
+// Deklaration angleichen" und als zweite Aktion umgekehrt (#100).
 
 interface
 
 uses
   System.SysUtils,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Registry;
+  Atlas.Common.Rules.Registry,
+  Atlas.Common.Editing.ClassCompletion;
 
 type
   TDeclaredNotImplementedRule = class(TInterfacedObject, IRule)
@@ -36,6 +41,15 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TSignatureMismatchRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Abweichungen des Rumpfs ABody von der Deklaration ADeclaration, z. B. "Betrag ohne const",
+    /// "Datum TDateTime statt TDate"; leer, wenn die Köpfe gleich sind.</summary>
+    class function Differences(const ADeclaration, ABody: TSignatureShape): TArray<string>; static;
+  end;
+
 procedure RegisterDeclarationRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -45,8 +59,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.ClassCompletion;
+  Atlas.Common.Editing.CodeActions;
 
 /// <summary>Zeilen innerhalb von {$IF…}…{$ENDIF}: Element I gilt für Zeile I.</summary>
 function ConditionalLines(const AContext: TRuleContext): TArray<Boolean>;
@@ -119,20 +132,16 @@ begin
   Result.Alternative := AIsAlternative;
 end;
 
-/// <summary>TClassCompletion.SignatureFixes als alternative Korrekturen der Regel.</summary>
-function SignatureFixesOf(const AContext: TRuleContext; const AMethod: TUnmatchedMethod;
-  out AFixes: TArray<TRuleFix>): Boolean;
+/// <summary>Gehört AMethod zu einem Paar mit abweichendem Kopf? Das meldet signature-mismatch.</summary>
+function InPair(const APairs: TArray<TSignaturePair>; const AMethod: TUnmatchedMethod): Boolean;
 var
-  Actions: TArray<TCodeAction>;
-  Action: TCodeAction;
+  Pair: TSignaturePair;
 begin
-  AFixes := nil;
-  Result := TClassCompletion.SignatureFixes(AContext.Tree, AContext.Text, AMethod, Actions);
-  // refactoring.syncSignatures aus: die Meldung bleibt, die Angleich-Aktionen entfallen.
-  if AContext.NoSignatureSync then
-    Exit;
-  for Action in Actions do
-    AFixes := AFixes + [Alternative(TRuleFix.Create(Action.Title, Action.Edits), True)];
+  for Pair in APairs do
+    if (Pair.Declaration.Symbol.SelectionRange.StartPos = AMethod.Symbol.SelectionRange.StartPos) or
+      (Pair.Body.Symbol.SelectionRange.StartPos = AMethod.Symbol.SelectionRange.StartPos) then
+      Exit(True);
+  Result := False;
 end;
 
 function Confidence(const AContext: TRuleContext): TRuleConfidence;
@@ -154,28 +163,26 @@ end;
 procedure TDeclaredNotImplementedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Lines: TArray<Boolean>;
+  Pairs: TArray<TSignaturePair>;
   Method: TUnmatchedMethod;
   Action: TCodeAction;
   Fixes: TArray<TRuleFix>;
-  Message: string;
   Level: TRuleConfidence;
 begin
   if AContext.Tree = nil then
     Exit;
   Lines := ConditionalLines(AContext);
   Level := Confidence(AContext);
+  Pairs := TClassCompletion.Pairs(AContext.Tree, AContext.Text);
   for Method in TClassCompletion.Unmatched(AContext.Tree, AContext.Text) do
   begin
-    if not Method.Declared or IsConditional(Lines, Method) then
+    if not Method.Declared or IsConditional(Lines, Method) or InPair(Pairs, Method) then
       Continue;
-    if SignatureFixesOf(AContext, Method, Fixes) then
-      Message := Format('Die Implementierung von "%s.%s" hat eine andere Signatur als die Deklaration',
-        [Method.TypeName, Method.Symbol.Name])
-    else
-      Message := Format('"%s.%s" ist deklariert, aber nicht implementiert', [Method.TypeName, Method.Symbol.Name]);
+    Fixes := nil;
     if TClassCompletion.MissingBodies(AContext.Tree, AContext.Text, Method.Symbol.SelectionRange.StartPos, Action) then
-      Fixes := Fixes + [Alternative(TRuleFix.Create(Action.Title, Action.Edits), Length(Fixes) > 0)];
-    AReport.Add(Method.Symbol.SelectionRange, Message, Level, Fixes);
+      Fixes := [TRuleFix.Create(Action.Title, Action.Edits)];
+    AReport.Add(Method.Symbol.SelectionRange, Format('"%s.%s" ist deklariert, aber nicht implementiert',
+      [Method.TypeName, Method.Symbol.Name]), Level, Fixes);
   end;
 end;
 
@@ -190,30 +197,122 @@ end;
 procedure TImplementedNotDeclaredRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Lines: TArray<Boolean>;
+  Pairs: TArray<TSignaturePair>;
   Method: TUnmatchedMethod;
   Edit: TRuleEdit;
   Fixes: TArray<TRuleFix>;
-  Message: string;
   Level: TRuleConfidence;
 begin
   if AContext.Tree = nil then
     Exit;
   Lines := ConditionalLines(AContext);
   Level := Confidence(AContext);
+  Pairs := TClassCompletion.Pairs(AContext.Tree, AContext.Text);
   for Method in TClassCompletion.Unmatched(AContext.Tree, AContext.Text) do
   begin
-    if Method.Declared or IsConditional(Lines, Method) then
+    if Method.Declared or IsConditional(Lines, Method) or InPair(Pairs, Method) then
       Continue;
-    if SignatureFixesOf(AContext, Method, Fixes) then
-      Message := Format('"%s.%s" hat eine andere Signatur als die Deklaration in %s',
-        [Method.TypeName, Method.Symbol.Name, Method.TypeName])
-    else
-      Message := Format('"%s.%s" hat keine passende Deklaration in %s',
-        [Method.TypeName, Method.Symbol.Name, Method.TypeName]);
+    Fixes := nil;
     if TClassCompletion.AddDeclaration(AContext.Tree, AContext.Text, Method, Edit) then
-      Fixes := Fixes + [Alternative(TRuleFix.Create(Format('Deklaration von %s in %s ergänzen',
-        [Method.Symbol.Name, Method.TypeName]), [Edit]), Length(Fixes) > 0)];
-    AReport.Add(Method.Symbol.SelectionRange, Message, Level, Fixes);
+      Fixes := [TRuleFix.Create(Format('Deklaration von %s in %s ergänzen', [Method.Symbol.Name,
+        Method.TypeName]), [Edit])];
+    AReport.Add(Method.Symbol.SelectionRange, Format('"%s.%s" hat keine passende Deklaration in %s',
+      [Method.TypeName, Method.Symbol.Name, Method.TypeName]), Level, Fixes);
+  end;
+end;
+
+{ TSignatureMismatchRule }
+
+function TSignatureMismatchRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('signature-mismatch', TRuleSeverity.Error,
+    'Implementierung weicht von der Deklaration ab (wie E2037)');
+end;
+
+class function TSignatureMismatchRule.Differences(const ADeclaration, ABody: TSignatureShape): TArray<string>;
+
+  function Normalized(const AText: string): string;
+  begin
+    Result := LowerCase(StringReplace(AText, ' ', '', [rfReplaceAll]));
+  end;
+
+  function ConventionOf(const AShape: TSignatureShape): string;
+  begin
+    Result := AShape.Convention;
+    if Result = '' then
+      Result := 'register';
+  end;
+
+var
+  Index: Integer;
+  Decl, Body: TSignatureParameter;
+begin
+  Result := nil;
+  if (ADeclaration.Kind <> '') and (ABody.Kind <> '') and (ADeclaration.Kind <> ABody.Kind) then
+    Result := Result + [Format('%s statt %s', [ABody.Kind, ADeclaration.Kind])];
+  if Length(ADeclaration.Parameters) <> Length(ABody.Parameters) then
+    Result := Result + [Format('%d statt %d Parameter', [Length(ABody.Parameters), Length(ADeclaration.Parameters)])]
+  else
+    for Index := 0 to High(ABody.Parameters) do
+    begin
+      Decl := ADeclaration.Parameters[Index];
+      Body := ABody.Parameters[Index];
+      if not SameText(Decl.Name, Body.Name) then
+        Result := Result + [Format('%s statt %s', [Body.Name, Decl.Name])];
+      if Decl.Modifier <> Body.Modifier then
+      begin
+        if Body.Modifier = '' then
+          Result := Result + [Format('%s ohne %s', [Body.Name, Decl.Modifier])]
+        else if Decl.Modifier = '' then
+          Result := Result + [Format('%s mit %s', [Body.Name, Body.Modifier])]
+        else
+          Result := Result + [Format('%s %s statt %s', [Body.Name, Body.Modifier, Decl.Modifier])];
+      end;
+      if Normalized(Decl.TypeName) <> Normalized(Body.TypeName) then
+      begin
+        if Body.TypeName = '' then
+          Result := Result + [Format('%s ohne Typ statt %s', [Body.Name, Decl.TypeName])]
+        else if Decl.TypeName = '' then
+          Result := Result + [Format('%s %s statt ohne Typ', [Body.Name, Body.TypeName])]
+        else
+          Result := Result + [Format('%s %s statt %s', [Body.Name, Body.TypeName, Decl.TypeName])];
+      end;
+    end;
+  if (ADeclaration.Kind = ABody.Kind) and (Normalized(ADeclaration.ResultType) <> Normalized(ABody.ResultType)) then
+    Result := Result + [Format('Ergebnis %s statt %s', [ABody.ResultType, ADeclaration.ResultType])];
+  // Der Rumpf darf die Konvention weglassen; nur eine abweichende Angabe ist ein Fehler.
+  if (ABody.Convention <> '') and (ConventionOf(ABody) <> ConventionOf(ADeclaration)) then
+    Result := Result + [Format('%s statt %s', [ABody.Convention, ConventionOf(ADeclaration)])];
+end;
+
+procedure TSignatureMismatchRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Lines: TArray<Boolean>;
+  Pair: TSignaturePair;
+  Changes: TArray<string>;
+  Actions: TArray<TCodeAction>;
+  Fixes: TArray<TRuleFix>;
+  Index: Integer;
+  Level: TRuleConfidence;
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Lines := ConditionalLines(AContext);
+  Level := Confidence(AContext);
+  for Pair in TClassCompletion.Pairs(AContext.Tree, AContext.Text) do
+  begin
+    if IsConditional(Lines, Pair.Declaration) or IsConditional(Lines, Pair.Body) then
+      Continue;
+    Changes := Differences(Pair.DeclarationShape, Pair.BodyShape);
+    if Changes = nil then
+      Continue;
+    Fixes := nil;
+    // refactoring.syncSignatures aus (#100): die Meldung bleibt, die Angleich-Aktionen entfallen.
+    if not AContext.NoSignatureSync and TClassCompletion.PairFixes(AContext.Tree, AContext.Text, Pair, Actions) then
+      for Index := 0 to High(Actions) do
+        Fixes := Fixes + [Alternative(TRuleFix.Create(Actions[Index].Title, Actions[Index].Edits), Index > 0)];
+    AReport.Add(Pair.Body.Symbol.SelectionRange, Format('%s weicht von der Deklaration ab: %s (wie E2037).',
+      [Pair.Body.Symbol.Name, string.Join(', ', Changes)]), Level, Fixes);
   end;
 end;
 
@@ -221,6 +320,7 @@ procedure RegisterDeclarationRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDeclaredNotImplementedRule.Create);
   ARegistry.Register(TImplementedNotDeclaredRule.Create);
+  ARegistry.Register(TSignatureMismatchRule.Create);
 end;
 
 end.
