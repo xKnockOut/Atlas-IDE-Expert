@@ -28,6 +28,16 @@
 //                     Stehen Varianten in bedingten Zweigen, meldet die Regel nur,
 //                     wenn jede Variante abweicht. Korrektur: den Ergebnistyp in
 //                     Deklaration und Rumpf an das Interface angleichen.
+//   invalid-var-argument
+//                     An einen var- oder out-Parameter geht ein String-Element an
+//                     einen Zeichen-Parameter (wie E2354), eine Konstante, ein
+//                     const-Parameter, eine Property oder ein Funktionsergebnis
+//                     (wie E2197), eine Konstante an ein offenes Array (wie
+//                     E2192), Slice (wie E2454) oder ein Ausdruck (wie E2036)
+//                     (#1037). Nur bei eindeutiger Routine ohne Überladungen und
+//                     ohne eingebaute Routinen (Inc, Move ... nehmen mehr an).
+//                     Korrektur: über eine lokale Variable übergeben, bei
+//                     String-Elementen und Properties mit write mit Rückschreiben.
 
 interface
 
@@ -40,6 +50,7 @@ const
   DynamicArrayMisuseRuleId = 'dynamic-array-misuse';
   LocalRoutineAsCallbackRuleId = 'local-routine-as-callback';
   HresultIntegerMixRuleId = 'hresult-integer-mix';
+  InvalidVarArgumentRuleId = 'invalid-var-argument';
 
 type
   TDynamicArrayMisuseRule = class(TInterfacedObject, IRule)
@@ -62,6 +73,12 @@ type
     class function Interchanged(const AExpected, AActual: string): Boolean; static;
   end;
 
+  TInvalidVarArgumentRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterTypeCheckRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -77,6 +94,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.SystemIntrinsics,
   Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Editing.RoutineBody,
   Atlas.Text.Lines;
 
 const
@@ -88,6 +106,10 @@ const
   // Prozedurale Typen der RTL ohne of object, auch wenn ihre Unit nicht im Index steht.
   RtlPlainProcedureTypes: array[0..3] of string = ('TListSortCompare', 'TStringListSortCompare',
     'TThreadFunc', 'TFarProc');
+
+type
+  /// <summary>Art eines unzulässigen Arguments für einen var- bzw. out-Parameter (invalid-var-argument).</summary>
+  TVarArgumentKind = (None, StringElement, ConstantObject, OpenArrayConstant, SliceCall, Expression);
 
 /// <summary>Dateiname für die Namensauflösung wie in den übrigen Regeln.</summary>
 function ResolverFileName(const AContext: TRuleContext): string;
@@ -297,7 +319,8 @@ begin
 end;
 
 /// <summary>Parameter der Routine ASymbol in Reihenfolge, je Name ein Eintrag: aus dem Kopf im Index bzw. für
-/// lokale Routinen aus dem Baum. False bei Überladungen oder unbekanntem Kopf.</summary>
+/// lokale Routinen aus dem Baum. False bei Überladungen (auch mit overload im Kopf) oder unbekanntem Kopf.
+/// </summary>
 function RoutineParams(const AContext: TRuleContext; const ASymbol: TResolvedSymbol;
   out AParams: TArray<TSignatureParameter>): Boolean;
 var
@@ -331,7 +354,9 @@ begin
             Break;
           end;
         end;
-      if Close = 0 then
+      // Überladungen aus anderen Units kennt die Namensauflösung nicht immer (Overloads leer); die Direktive
+      // im Kopf zeigt sie sicher an.
+      if (Close = 0) or MatchText('overload', SplitString(LowerCase(Copy(Signature, Close + 1, MaxInt)), ' ;')) then
         Exit;
       AParams := TChangeSignature.ParseParameters(Copy(Signature, Open + 1, Close - Open - 1));
     end;
@@ -1034,11 +1059,291 @@ begin
   end;
 end;
 
+{ TInvalidVarArgumentRule }
+
+function TInvalidVarArgumentRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(InvalidVarArgumentRuleId, TRuleSeverity.Error,
+    'Ungültiges Argument für einen var- oder out-Parameter');
+end;
+
+procedure TInvalidVarArgumentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Resolver: TNameResolver;
+  FileName, LineBreak: string;
+  Local: TUnitIndex;
+  Lines: TArray<string>;
+  Node: TSyntaxNode;
+  WriteableConsts: Boolean;
+
+  function ModifierWord(const AModifier: string): string;
+  var
+    Words: TArray<string>;
+  begin
+    Words := Trim(AModifier).Split([' ']);
+    Result := '';
+    if Length(Words) > 0 then
+      Result := LowerCase(Words[High(Words)]);
+  end;
+
+  function IsStringText(const AType: string): Boolean;
+  begin
+    Result := MatchText(AType, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString',
+      'UTF8String', 'System.string', 'System.UnicodeString', 'System.AnsiString', 'System.WideString']);
+  end;
+
+  /// <summary>Typisierte Konstante? Aus dem Kopf im Index ("C: Integer = 2") bzw. dem Baum.</summary>
+  function IsTypedConstant(const ASymbol: TResolvedSymbol): Boolean;
+  var
+    Decl: TSyntaxNode;
+    Colon, Equal: Integer;
+  begin
+    if (ASymbol.Kind <> TResolvedKind.Local) and (ASymbol.TypeName <> '') then
+      Exit(True);
+    if ASymbol.Signature <> '' then
+    begin
+      Colon := Pos(':', ASymbol.Signature);
+      Equal := Pos('=', ASymbol.Signature);
+      Exit((Colon > 0) and ((Equal = 0) or (Colon < Equal)));
+    end;
+    Result := False;
+    if (ASymbol.Kind = TResolvedKind.Local) and (AContext.Tree <> nil) then
+    begin
+      Decl := DeclarationAt(AContext.Tree.Root, ASymbol.SelectionRange.StartPos);
+      Result := (Decl <> nil) and (Decl.Kind = TSyntaxKind.ConstDecl) and (NodeTypeText(AContext.Text, Decl) <> '');
+    end;
+  end;
+
+  /// <summary>Lokaler const- bzw. constref-Parameter?</summary>
+  function IsConstParameter(const ASymbol: TResolvedSymbol): Boolean;
+  var
+    Decl: TSyntaxNode;
+  begin
+    Result := False;
+    if (ASymbol.Kind <> TResolvedKind.Local) or not ASymbol.IsParameter then
+      Exit;
+    Decl := DeclarationAt(AContext.Tree.Root, ASymbol.SelectionRange.StartPos);
+    Result := (Decl <> nil) and (Decl.Kind = TSyntaxKind.Parameter) and
+      (Decl.Modifier in [TParameterModifier.ConstParam, TParameterModifier.ConstRefParam]);
+  end;
+
+  /// <summary>Was ist AArgument für einen var- bzw. out-Parameter vom Typ AParamType? ADescription nennt es in
+  /// der Meldung, AWriteBack: Die Korrektur schreibt den Wert zurück.</summary>
+  function Classify(AArgument: TSyntaxNode; const AParamType: string; out ADescription: string;
+    out AWriteBack: Boolean): TVarArgumentKind;
+  var
+    Symbol, TypeInfo: TResolvedSymbol;
+    TypeFound, OpenArray: Boolean;
+  begin
+    Result := TVarArgumentKind.None;
+    ADescription := NodeText(AContext, AArgument);
+    AWriteBack := False;
+    OpenArray := StartsText('array of ', AParamType) and not SameText(NormalizedType(AParamType), 'array of const');
+    case AArgument.Kind of
+      TSyntaxKind.Literal:
+        if OpenArray then
+          Result := TVarArgumentKind.OpenArrayConstant
+        else
+        begin
+          ADescription := Format('Der Wert %s', [ADescription]);
+          Result := TVarArgumentKind.ConstantObject;
+        end;
+      TSyntaxKind.SetConstructor:
+        if OpenArray then
+          Result := TVarArgumentKind.OpenArrayConstant
+        else
+          Result := TVarArgumentKind.Expression;
+      TSyntaxKind.UnaryExpr, TSyntaxKind.AddressOf:
+        Result := TVarArgumentKind.Expression;
+      TSyntaxKind.BinaryExpr:
+        // "X as TFoo" ist ein Typumwandlung; der Compiler meldet sie anders.
+        if not SameText(AArgument.Name, 'as') then
+          Result := TVarArgumentKind.Expression;
+      TSyntaxKind.IndexAccess:
+        // S[I] mit S vom Typ string an einen Zeichen-Parameter (wie E2354).
+        if (AArgument.ChildCount = 2) and MatchText(AParamType, ['Char', 'WideChar', 'AnsiChar']) and
+          (AArgument[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+          Resolver.NodeType(AContext.Tree, FileName, AArgument[0], Symbol, TypeInfo, TypeFound) and
+          (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) and
+          IsStringText(DeclaredTypeText(AContext, Symbol)) then
+        begin
+          AWriteBack := True;
+          Result := TVarArgumentKind.StringElement;
+        end;
+      TSyntaxKind.Call:
+        if (AArgument.ChildCount > 0) and (AArgument[0].Kind = TSyntaxKind.Identifier) and
+          SameText(AArgument[0].Name, 'Slice') and OpenArray and
+          IsIntrinsicCall(Resolver, AContext, FileName, AArgument[0], 'Slice') then
+          Result := TVarArgumentKind.SliceCall
+        else if (AArgument.ChildCount > 0) and
+          Resolver.NodeType(AContext.Tree, FileName, AArgument[0], Symbol, TypeInfo, TypeFound) and
+          not Symbol.IsType and (Symbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) and
+          (Symbol.TypeName <> '') then
+        begin
+          // Aufruf einer Funktion (keine Typumwandlung): ihr Ergebnis ist keine Variable.
+          ADescription := Format('Das Ergebnis von %s', [NodeText(AContext, AArgument[0])]);
+          Result := TVarArgumentKind.ConstantObject;
+        end;
+      TSyntaxKind.Identifier, TSyntaxKind.MemberAccess:
+        if Resolver.NodeType(AContext.Tree, FileName, AArgument, Symbol, TypeInfo, TypeFound) then
+          case Symbol.SymbolKind of
+            TIndexSymbolKind.Constant, TIndexSymbolKind.EnumMember:
+              if not IsTypedConstant(Symbol) then
+              begin
+                if OpenArray then
+                  Exit(TVarArgumentKind.OpenArrayConstant);
+                ADescription := Format('Die Konstante %s', [ADescription]);
+                Result := TVarArgumentKind.ConstantObject;
+              end
+              else if not WriteableConsts and (Symbol.SymbolKind = TIndexSymbolKind.Constant) then
+              begin
+                ADescription := Format('Die typisierte Konstante %s', [ADescription]);
+                Result := TVarArgumentKind.ConstantObject;
+              end;
+            TIndexSymbolKind.Property_:
+              begin
+                ADescription := Format('Die Eigenschaft %s', [ADescription]);
+                AWriteBack := ContainsText(' ' + Symbol.Signature.Replace(';', ' ') + ' ', ' write ');
+                Result := TVarArgumentKind.ConstantObject;
+              end;
+            TIndexSymbolKind.Variable:
+              if IsConstParameter(Symbol) then
+              begin
+                ADescription := Format('Der const-Parameter %s', [ADescription]);
+                Result := TVarArgumentKind.ConstantObject;
+              end;
+          end;
+    end;
+  end;
+
+  /// <summary>Korrektur: das Argument über eine lokale Variable vom Typ des Parameters übergeben, bei
+  /// String-Elementen und beschreibbaren Eigenschaften mit Rückschreiben.</summary>
+  function LocalVariableFix(ACall, AArgument: TSyntaxNode; const AParamType: string; AOut, AWriteBack: Boolean;
+    out AFix: TRuleFix): Boolean;
+  var
+    Host, Routine: TSyntaxNode;
+    TypeSymbol: TResolvedSymbol;
+    Name, Argument, Indent, Rest: string;
+    Edits: TArray<TTextEdit>;
+  begin
+    Result := False;
+    Host := ACall.Parent;
+    if (Host = nil) or not ((Host.Kind = TSyntaxKind.CallStatement) or
+      ((Host.Kind = TSyntaxKind.AssignStatement) and (Host.ChildCount = 2) and (Host[1] = ACall))) or
+      not TRoutineBody.InList(Host) or (Host.StartPos.Line <> Host.EndPos.Line) or (Host.EndPos.Line > High(Lines)) then
+      Exit;
+    Routine := TRoutineBody.RoutineAt(AContext.Tree, Host.StartOffset);
+    if (Routine = nil) or (AParamType = '') or StartsText('array of', AParamType) or
+      not (TNameResolver.IsBuiltinTypeName(AParamType) or Resolver.ResolveTypeFrom(Local, AParamType, TypeSymbol)) then
+      Exit;
+    Rest := Trim(Copy(Lines[Host.EndPos.Line], Host.EndPos.Character + 1, MaxInt));
+    if (Rest <> '') and (Rest <> ';') then
+      Exit;
+    Name := TRoutineBody.UniqueName(AContext.Tree.Tokens, 'Wert');
+    Argument := NodeText(AContext, AArgument);
+    Indent := TTextLines.IndentOf(Lines[Host.StartPos.Line]);
+    Edits := [TRoutineBody.AddVariable(AContext.Text, Routine, Name, AParamType, AContext.Formatting)];
+    if not AOut then
+      Edits := Edits + [TRoutineBody.InsertBefore(AContext.Text, Host, Name + ' := ' + Argument + ';')];
+    Edits := Edits + [TTextEdit.Create(TTextRange.Create(AArgument.StartPos, AArgument.EndPos), Name)];
+    if AWriteBack then
+      Edits := Edits + [TTextEdit.Create(TTextRange.Create(Host.EndPos.Line, Length(Lines[Host.EndPos.Line]),
+        Host.EndPos.Line, Length(Lines[Host.EndPos.Line])), LineBreak + Indent + Argument + ' := ' + Name + ';')];
+    AFix := TRuleFix.Create(Format('Über eine lokale Variable %s übergeben', [Name]), Edits);
+    Result := True;
+  end;
+
+  procedure CheckCall(ACall: TSyntaxNode);
+  var
+    Symbol, TypeInfo: TResolvedSymbol;
+    TypeFound, WriteBack: Boolean;
+    Params: TArray<TSignatureParameter>;
+    Index: Integer;
+    Modifier, Description, Message: string;
+    Argument: TSyntaxNode;
+    Kind: TVarArgumentKind;
+    Fix: TRuleFix;
+    Fixes: TArray<TRuleFix>;
+  begin
+    if (ACall.ChildCount < 2) or (ACall[0].Kind = TSyntaxKind.InheritedExpr) or
+      not Resolver.NodeType(AContext.Tree, FileName, ACall, Symbol, TypeInfo, TypeFound) or Symbol.IsType or
+      not (Symbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_]) or
+      not RoutineParams(AContext, Symbol, Params) then
+      Exit;
+    // Passt die Zahl der Argumente nicht zum Kopf, ist es eine andere Routine (bzw. ein anderer Fehler).
+    if (Symbol.Signature <> '') and ((ACall.ChildCount - 1 < Symbol.MinArgs) or
+      (ACall.ChildCount - 1 > Symbol.MaxArgs)) then
+      Exit;
+    for Index := 1 to ACall.ChildCount - 1 do
+    begin
+      if Index > Length(Params) then
+        Break;
+      Modifier := ModifierWord(Params[Index - 1].Modifier);
+      if (Modifier <> 'var') and (Modifier <> 'out') then
+        Continue;
+      Argument := ACall[Index];
+      Kind := Classify(Argument, NormalizedType(Params[Index - 1].TypeName), Description, WriteBack);
+      case Kind of
+        TVarArgumentKind.StringElement:
+          Message := Format('Ein String-Element kann nicht an einen %s-Parameter übergeben werden (wie E2354).',
+            [Modifier]);
+        TVarArgumentKind.ConstantObject:
+          Message := Format('%s ist keine Variable und kann nicht an einen %s-Parameter übergeben werden (wie E2197).',
+            [Description, Modifier]);
+        TVarArgumentKind.OpenArrayConstant:
+          Message := Format('Eine Konstante kann nicht als offenes Array an einen %s-Parameter übergeben werden ' +
+            '(wie E2192).', [Modifier]);
+        TVarArgumentKind.SliceCall:
+          Message := Format('Slice ist für einen %s-Parameter nicht erlaubt; Änderungen kämen nicht im Array an ' +
+            '(wie E2454).', [Modifier]);
+        TVarArgumentKind.Expression:
+          Message := Format('An einen %s-Parameter muss eine Variable übergeben werden, kein Ausdruck (wie E2036).',
+            [Modifier]);
+      else
+        Continue;
+      end;
+      Fixes := nil;
+      if (Kind in [TVarArgumentKind.StringElement, TVarArgumentKind.ConstantObject, TVarArgumentKind.Expression]) and
+        LocalVariableFix(ACall, Argument, NormalizedType(Params[Index - 1].TypeName), Modifier = 'out', WriteBack, Fix)
+      then
+        Fixes := [Fix];
+      AReport.Add(TTextRange.Create(Argument.StartPos, Argument.EndPos), Message, TRuleConfidence.High, Fixes);
+    end;
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  // Typisierte Konstanten sind mit {$J+} beschreibbar.
+  WriteableConsts := ContainsText(AContext.Text, '{$J+') or ContainsText(AContext.Text, '{$WRITEABLECONST ON') or
+    ContainsText(AContext.Text, ',J+');
+  FileName := ResolverFileName(AContext);
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  if LineBreak = '' then
+    LineBreak := sLineBreak;
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  try
+    Resolver.Namespaces := AContext.Namespaces;
+    Resolver.PinTree(AContext.Tree, FileName);
+    try
+      Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
+      for Node in PreOrder(AContext.Tree.Root) do
+        if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 1) then
+          CheckCall(Node);
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
 procedure RegisterTypeCheckRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDynamicArrayMisuseRule.Create);
   ARegistry.Register(TLocalRoutineAsCallbackRule.Create);
   ARegistry.Register(THresultIntegerMixRule.Create);
+  ARegistry.Register(TInvalidVarArgumentRule.Create);
 end;
 
 end.

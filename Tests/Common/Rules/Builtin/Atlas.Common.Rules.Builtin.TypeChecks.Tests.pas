@@ -54,6 +54,25 @@ type
   end;
 
   [TestFixture]
+  TInvalidVarArgumentTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure ConstantsPropertiesAndResults;
+    [Test]
+    procedure OpenArraysSliceAndExpressions;
+    [Test]
+    procedure PropertyFixWritesBack;
+    [Test]
+    procedure VariablesAndUntypedParametersAreSilent;
+    [Test]
+    procedure RoutinesFromIndex;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
   TLocalRoutineAsCallbackTests = class
   public
     [Test]
@@ -233,6 +252,11 @@ begin
   Found := False;
   for Rule in BuiltinRules do
     if Rule.Descriptor.Id = HresultIntegerMixRuleId then
+      Found := True;
+  Assert.IsTrue(Found);
+  Found := False;
+  for Rule in BuiltinRules do
+    if Rule.Descriptor.Id = InvalidVarArgumentRuleId then
       Found := True;
   Assert.IsTrue(Found);
 end;
@@ -465,9 +489,163 @@ begin
     '{"rules": {"local-routine-as-callback": {"exclude": ["Source/*.pas"]}}}', 'Source/Listen.pas'))));
 end;
 
+{ TInvalidVarArgumentTests }
+
+function VarFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TInvalidVarArgumentRule.Create, ASource, SystemIndex, '', 'Zeilen.pas');
+end;
+
+function VarFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TInvalidVarArgumentRule.Create, ASource, SystemIndex, AConfig, APath);
+end;
+
+/// <summary>Routinen mit var-, out- und untypisierten Parametern; AStatements stehen in Bearbeiten.</summary>
+function Zeilen(const AStatements: string): string;
+begin
+  Result := 'unit Zeilen;'#10'interface'#10'type'#10'  TZeile = class'#10'  private'#10'    FText: string;'#10 +
+    '    FAnzahl: Integer;'#10'  public'#10'    property Text: string read FText write FText;'#10 +
+    '    property Anzahl: Integer read FAnzahl;'#10'  end;'#10'const'#10'  Grenze = 10;'#10 +
+    '  Start: Integer = 1;'#10'implementation'#10'procedure Erhoehen(var Zeichen: Char);'#10'begin'#10'end;'#10 +
+    'procedure Zaehlen(var Ziel: Integer);'#10'begin'#10'end;'#10'procedure Lesen(out Ziel: Integer);'#10 +
+    'begin'#10'end;'#10'procedure Fuellen(var Werte: array of Integer);'#10'begin'#10'end;'#10 +
+    'procedure Puffer(var Daten);'#10'begin'#10'end;'#10'procedure Anhaengen(var Text: string);'#10'begin'#10 +
+    'end;'#10'function Doppelt(Zahl: Integer): Integer;'#10'begin'#10'  Result := Zahl * 2;'#10'end;'#10 +
+    'procedure Bearbeiten(const Fest: Integer; Zeile: TZeile);'#10'var'#10'  S: string;'#10'  Zahl: Integer;'#10 +
+    '  Feld: array[0..3] of Integer;'#10'begin'#10 + AStatements + 'end;'#10'end.';
+end;
+
+procedure TInvalidVarArgumentTests.IssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Zeilen('  Erhoehen(S[1]);'#10);
+  Found := VarFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(InvalidVarArgumentRuleId, Found[0].RuleId);
+  Assert.AreEqual('Ein String-Element kann nicht an einen var-Parameter übergeben werden (wie E2354).',
+    Found[0].Message);
+  Assert.AreEqual(43, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(11, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('Über eine lokale Variable Wert übergeben', Found[0].Fixes[0].Title);
+  Fixed := Apply(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('  Feld: array[0..3] of Integer;'#10'  Wert: Char;'#10'begin'#10'  Wert := S[1];'#10 +
+    '  Erhoehen(Wert);'#10'  S[1] := Wert;'#10'end;', Fixed) > 0, Fixed);
+  Assert.AreEqual(0, Integer(Length(VarFindings(Fixed))), Fixed);
+end;
+
+procedure TInvalidVarArgumentTests.ConstantsPropertiesAndResults;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := VarFindings(Zeilen('  Zaehlen(Grenze);'#10'  Zaehlen(Start);'#10'  Zaehlen(Fest);'#10 +
+    '  Zaehlen(Zeile.Anzahl);'#10'  Zaehlen(Doppelt(2));'#10'  Zaehlen(5);'#10));
+  Assert.AreEqual(6, Integer(Length(Found)));
+  Assert.AreEqual('Die Konstante Grenze ist keine Variable und kann nicht an einen var-Parameter übergeben ' +
+    'werden (wie E2197).', Found[0].Message);
+  Assert.AreEqual('Die typisierte Konstante Start ist keine Variable und kann nicht an einen var-Parameter ' +
+    'übergeben werden (wie E2197).', Found[1].Message);
+  Assert.AreEqual('Der const-Parameter Fest ist keine Variable und kann nicht an einen var-Parameter übergeben ' +
+    'werden (wie E2197).', Found[2].Message);
+  Assert.AreEqual('Die Eigenschaft Zeile.Anzahl ist keine Variable und kann nicht an einen var-Parameter ' +
+    'übergeben werden (wie E2197).', Found[3].Message);
+  Assert.AreEqual('Das Ergebnis von Doppelt ist keine Variable und kann nicht an einen var-Parameter übergeben ' +
+    'werden (wie E2197).', Found[4].Message);
+  Assert.AreEqual('Der Wert 5 ist keine Variable und kann nicht an einen var-Parameter übergeben werden ' +
+    '(wie E2197).', Found[5].Message);
+  // Ohne Rückschreiben: Die Korrektur übergibt eine Kopie.
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  // Mit {$J+} sind typisierte Konstanten beschreibbar.
+  Assert.AreEqual(0, Integer(Length(VarFindings('{$J+}'#10 + Zeilen('  Zaehlen(Start);'#10)))));
+end;
+
+procedure TInvalidVarArgumentTests.OpenArraysSliceAndExpressions;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := VarFindings(Zeilen('  Fuellen(Grenze);'#10'  Fuellen([1, 2]);'#10'  Fuellen(Slice(Feld, 2));'#10 +
+    '  Zaehlen(Zahl + 1);'#10'  Lesen(-Zahl);'#10));
+  Assert.AreEqual(5, Integer(Length(Found)));
+  Assert.AreEqual('Eine Konstante kann nicht als offenes Array an einen var-Parameter übergeben werden (wie E2192).',
+    Found[0].Message);
+  Assert.AreEqual(Found[0].Message, Found[1].Message);
+  Assert.AreEqual('Slice ist für einen var-Parameter nicht erlaubt; Änderungen kämen nicht im Array an (wie E2454).',
+    Found[2].Message);
+  Assert.AreEqual('An einen var-Parameter muss eine Variable übergeben werden, kein Ausdruck (wie E2036).',
+    Found[3].Message);
+  Assert.AreEqual('An einen out-Parameter muss eine Variable übergeben werden, kein Ausdruck (wie E2036).',
+    Found[4].Message);
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(Found[2].Fixes)));
+  Assert.AreEqual(1, Integer(Length(Found[3].Fixes)));
+end;
+
+procedure TInvalidVarArgumentTests.PropertyFixWritesBack;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Zeilen('  Anhaengen(Zeile.Text);'#10);
+  Found := VarFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Fixed := Apply(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('  Wert: string;'#10'begin'#10'  Wert := Zeile.Text;'#10'  Anhaengen(Wert);'#10 +
+    '  Zeile.Text := Wert;'#10, Fixed) > 0, Fixed);
+  // out: ohne Zuweisung vorab; Anzahl hat kein write, also kein Rückschreiben.
+  Source := Zeilen('  Lesen(Zeile.Anzahl);'#10);
+  Found := VarFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Fixed := Apply(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('  Wert: Integer;'#10'begin'#10'  Lesen(Wert);'#10'end;', Fixed) > 0, Fixed);
+end;
+
+procedure TInvalidVarArgumentTests.VariablesAndUntypedParametersAreSilent;
+begin
+  Assert.AreEqual(0, Integer(Length(VarFindings(Zeilen('  Zaehlen(Zahl);'#10'  Lesen(Feld[0]);'#10 +
+    '  Puffer(S[1]);'#10'  Inc(Zahl);'#10'  Zaehlen(Integer(Zahl));'#10'  Fuellen(Feld);'#10 +
+    '  Zahl := Doppelt(Grenze);'#10'  Zaehlen(Zeile.FAnzahl);'#10'  Anhaengen(S);'#10)))));
+end;
+
+procedure TInvalidVarArgumentTests.RoutinesFromIndex;
+var
+  Index: ISymbolIndex;
+  Found: TArray<TRuleFinding>;
+begin
+  Index := SystemIndex;
+  Index.AddUnit(TIndexExtractor.ExtractText('unit Fremd;'#10'interface'#10'type'#10'  TLeser = class'#10 +
+    '    class procedure Holen(out A: Integer); overload;'#10 +
+    '    class procedure Holen(A: Integer; out B: Integer); overload;'#10'  end;'#10 +
+    'procedure Setzen(var A: Integer; B: Integer = 0);'#10'implementation'#10'end.', 'C:\Projekt\Fremd.pas', nil));
+  // Überladungen aus einer anderen Unit: Die Auswahl kennt Atlas nicht sicher, also still.
+  Found := TRuleAssert.IndexFindings(TInvalidVarArgumentRule.Create, 'unit Nutzer;'#10'interface'#10 +
+    'implementation'#10'uses'#10'  Fremd;'#10'procedure Tun;'#10'var'#10'  Zahl: Integer;'#10'begin'#10 +
+    '  TLeser.Holen(5, Zahl);'#10'  Setzen(Zahl, 2);'#10'  Setzen(3);'#10'end;'#10'end.', Index, '', 'Nutzer.pas');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(11, Found[0].Range.StartPos.Line);
+end;
+
+procedure TInvalidVarArgumentTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Zeilen('  Erhoehen(S[1]);'#10);
+  Assert.AreEqual(1, Integer(Length(VarFindings(Source, '', 'Source/Zeilen.pas'))));
+  Assert.AreEqual(0, Integer(Length(VarFindings(Source, '{"rules": {"invalid-var-argument": "off"}}',
+    'Source/Zeilen.pas'))));
+  Assert.AreEqual(0, Integer(Length(VarFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/Zeilen.pas'))));
+  Assert.AreEqual(0, Integer(Length(VarFindings(Source,
+    '{"rules": {"invalid-var-argument": {"exclude": ["Source/*.pas"]}}}', 'Source/Zeilen.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TDynamicArrayMisuseTests);
   TDUnitX.RegisterTestFixture(TLocalRoutineAsCallbackTests);
   TDUnitX.RegisterTestFixture(THresultIntegerMixTests);
+  TDUnitX.RegisterTestFixture(TInvalidVarArgumentTests);
 
 end.

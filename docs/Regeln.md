@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 18 |
+| [Compiler vorab](#gruppe-compiler) | 19 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -149,6 +149,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`dynamic-array-misuse`](#dynamic-array-misuse) | New, Dispose oder SetLength falsch für dynamische Arrays | Bug | Fehler |
 | [`local-routine-as-callback`](#local-routine-as-callback) | Lokale Routine als Prozedurvariable | Bug | Fehler |
 | [`hresult-integer-mix`](#hresult-integer-mix) | Integer und HRESULT vertauscht | Bug | Warnung |
+| [`invalid-var-argument`](#invalid-var-argument) | Ungültiges Argument für einen var- oder out-Parameter | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4629,4 +4630,29 @@ IExport = interface
 end;
 …
   function Schreiben: HRESULT; stdcall;
+```
+
+<a id="invalid-var-argument"></a>
+### invalid-var-argument
+
+**Ungültiges Argument für einen var- oder out-Parameter** · Bug · Fehler · Gruppe Compiler vorab
+
+Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: ein String-Element für einen Zeichen-Parameter (wie E2354), eine Konstante, einen const-Parameter, eine Property oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192), Slice (wie E2454) oder einen Ausdruck (wie E2036). Gemeldet nur für Routinen ohne Überladungen, deren Kopf aus der Datei oder dem Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {$J+}. Korrektur: eine lokale Variable vom Typ des Parameters übergeben, bei String-Elementen und Properties mit write mit Rückschreiben.
+
+Entspricht der Compilermeldung `E2354`, `E2197`, `E2192`, `E2454`, `E2036`.
+
+Mit Treffer:
+
+```pascal
+procedure Erhoehen(var Zeichen: Char);
+…
+Erhoehen(Zeile[1]);
+```
+
+Richtig:
+
+```pascal
+Zeichen := Zeile[1];
+Erhoehen(Zeichen);
+Zeile[1] := Zeichen;
 ```

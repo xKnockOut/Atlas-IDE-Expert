@@ -2357,6 +2357,23 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "X1008"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "invalid-var-argument",' + #10 +
+    '      "name": "Invalid argument for a var or out parameter",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A var or out parameter receives something that is not a variable: a string element for a character parameter (like E2354), a constant, a const parameter, a property or a function' + ' result (like E2197), a constant for an open array (like E2192), Slice (like E2454) or an expression (like E2036). Reported only for routines without overloads whose header is known from the file or t' + 'he index; built-in routines such as Inc or Move and untyped var parameters accept more and stay silent. Typed constants count as constants unless {$J+} is set. Quick fix: pass a local variable of the ' + 'parameter type, and write it back for string elements and properties with write.",' + #10 +
+    '      "bad": "procedure Erhoehen(var Zeichen: Char);\n…\nErhoehen(Zeile[1]);",' + #10 +
+    '      "good": "Zeichen := Zeile[1];\nErhoehen(Zeichen);\nZeile[1] := Zeichen;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2354",' + #10 +
+    '        "E2197",' + #10 +
+    '        "E2192",' + #10 +
+    '        "E2454",' + #10 +
+    '        "E2036"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3542,6 +3559,11 @@ begin
     '      "id": "hresult-integer-mix",' + #10 +
     '      "name": "Integer und HRESULT vertauscht",' + #10 +
     '      "description": "Eine Klasse implementiert eine Interface-Methode mit HRESULT-Ergebnis über eine Methode mit Integer- (bzw. LongInt-) Ergebnis oder umgekehrt (wie X1008). Beide sind 32 Bit groß, ' + 'deshalb fällt es nicht auf; die Bedeutung der Werte (S_FALSE als Erfolg) geht aber verloren; wichtig für COM- und OTA-Code. Zugeordnet wird über Name und Parametertypen samt Zuordnungen wie function I' + 'Foo.Bar = Baz; Interfaces samt ihren Vorfahren kommen aus der Datei bzw. dem Index. Stehen Varianten in bedingten Zweigen, meldet die Regel nur, wenn jede Variante abweicht. Korrektur: den Ergebnistyp' + ' in Deklaration und Implementierung an das Interface angleichen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "invalid-var-argument",' + #10 +
+    '      "name": "Ungültiges Argument für einen var- oder out-Parameter",' + #10 +
+    '      "description": "Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: ein String-Element für einen Zeichen-Parameter (wie E2354), eine Konstante, einen const-Parameter, eine Propert' + 'y oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192), Slice (wie E2454) oder einen Ausdruck (wie E2036). Gemeldet nur für Routinen ohne Überladungen, deren Kopf a' + 'us der Datei oder dem Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {' + '$J+}. Korrektur: eine lokale Variable vom Typ des Parameters übergeben, bei String-Elementen und Properties mit write mit Rückschreiben."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
