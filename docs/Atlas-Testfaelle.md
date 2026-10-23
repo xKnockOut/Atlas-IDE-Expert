@@ -2701,6 +2701,31 @@ Vorbereitung: Testprogramm aus `docs/Studie-Exception-Dialog.md`, Projekt in `C:
 | EC10 | Win64 (LLDB), EC1 und EC3 | Wie Win32 |
 | EC11 | Diagnoseprotokoll nach dem Start | Keine Zeile „Aktion „Einzelne Anweisung“ nicht gefunden“ (sonst Aktionsname für die Studie notieren) |
 
+## Exception-Leiste beim Debuggen (#783)
+
+Vorbereitung: Testprogramm aus `docs/Studie-Exception-Dialog.md`, Projekt in `C:\Projekte\Demo`; *Tools › Optionen › Atlas › Debuggen* „Exception-Verlauf beim Debuggen“, „Nur eigener Code beim Debuggen“ und „Exception-Leiste statt Dialog“ an. Delphi 12 bzw. 13.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EB1 | F9, Knopf 1 (`StrToFloat('x')` statt `StrToInt`) | Kein Dialog bleibt stehen (höchstens kurzes Aufblitzen); oben im Editor die Leiste: `EConvertError`, Meldung, „Thread: Hauptthread …“, „n Ebenen ausgeblendet“, `Unit1.TForm1.Button1Click (Unit1.pas:<Zeile>)`; die Zeile ist markiert (**Abnahme**) |
+| EB2 | Wie EB1, dann F9 (Fokus im Editor) | Programm läuft weiter, Leiste weg (**Abnahme**) |
+| EB3 | Wie EB1, dann F8 bzw. Esc | Leiste weg, Prozess bleibt angehalten; danach wirkt F8 wieder als „Gesamte Routine“ (**Abnahme**) |
+| EB4 | Wie EB1, Knopf „Fortsetzen“ bzw. „Anhalten“ in der Leiste | Wie EB2 bzw. EB3 |
+| EB5 | Knopf 1 dreimal in einer Sitzung | Ab dem zweiten Mal rechts „2× an dieser Stelle“, dann „3×“ |
+| EB6 | „Nur an dieser Stelle ignorieren“, Programm neu starten, Knopf 1 | Kein Halt; im Fenster „Atlas: Exceptions“ ein grauer Eintrag, der zählt; Meldung „… wird in diesem Projekt künftig still fortgesetzt“ (**Abnahme**) |
+| EB7 | Nach EB6: eine zweite Zeile mit `StrToFloat('y')` in einer anderen Methode | Der Debugger hält dort mit Leiste (**Abnahme**) |
+| EB8 | „Klasse ignorieren“ | Prozess läuft weiter; Knopf 1 und EB7 halten nicht mehr; im Verlauf grau; Rechtsklick › „Wieder anhalten“ hebt es auf |
+| EB9 | „Meldung kopieren“, in einen Editor einfügen | Klasse, Meldung, Routine, Datei(Zeile), Thread und der Aufrufstapel |
+| EB10 | Klick auf die Ortszeile der Leiste | Springt zur Zeile und markiert sie |
+| EB11 | *Debuggen* „Nur an dieser Stelle ignorieren“ aus, Knopf 1 | Der Knopf fehlt; Orte aus EB6 wirken nicht mehr (Halt mit Leiste) |
+| EB12 | „Exception-Leiste statt Dialog“ aus (bzw. Schnellschalter), Knopf 1 | Der IDE-Dialog erscheint wie ohne Atlas, keine Leiste (**Abnahme**) |
+| EB13 | Befehlspalette „Atlas: Exception-Dialog der IDE in dieser Debug-Sitzung zeigen“, Knopf 1 | Dialog der IDE bleibt; nach „Anhalten“ im Dialog kommt die Leiste; nach Programmende und neuem Start ersetzt die Leiste den Dialog wieder |
+| EB14 | Knopf 1, im Dialog (EB13) „Fortsetzen“ | Keine Leiste |
+| EB15 | Win64 (Delphi 13: LLDB), EB1 bis EB7 | Wie Win32 (**Abnahme**) |
+| EB16 | Helles und dunkles Thema, Leiste offen | Fläche, Akzentrahmen, Knöpfe und Texte folgen dem Thema, alles lesbar |
+| EB17 | Brotkrumen und Editorleiste an, EB1 | Die Leiste steht ganz oben, darunter Brotkrumen und Editorleiste unverändert |
+| EB18 | Studie S12–S17 (`docs/Studie-Exception-Dialog.md`) | Ergebnisse eintragen und in #783 kommentieren (**Abnahme**) |
+
 ## Werte im Hover beim Debuggen (#891)
 
 Vorbereitung: Ein kleines VCL-Projekt mit `FList: TStringList` (drei Einträge), einem Record-Array `Kunden` und einer lokalen Variablen `I`, Haltepunkt in einer Methode, die alle drei verwendet. Atlas-Tooltip an (`editor.hoverTooltip`), `debug.hoverValues` an.

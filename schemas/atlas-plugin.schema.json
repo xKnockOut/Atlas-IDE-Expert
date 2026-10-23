@@ -915,6 +915,31 @@
       "x-captionEn": "Just my code while debugging",
       "x-issue": "#578"
     },
+    "DebugExceptionBanner": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.exceptionBanner",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-parent": "debug.exceptionHistory",
+      "x-quickToggle": true,
+      "x-caption": "Exception-Leiste statt Dialog",
+      "x-captionEn": "Exception bar instead of dialog",
+      "x-issue": "#783"
+    },
+    "DebugExceptionBannerIgnoreAtLocation": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.exceptionBanner.ignoreAtLocation",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-parent": "debug.exceptionBanner",
+      "x-caption": "Nur an dieser Stelle ignorieren",
+      "x-captionEn": "Ignore only here",
+      "x-issue": "#783"
+    },
     "DebugOwnCodeFolders": {
       "type": "string",
       "default": "",

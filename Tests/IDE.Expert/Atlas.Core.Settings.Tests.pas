@@ -249,6 +249,8 @@ begin
   Assert.IsTrue(Settings.DebugHoverValues, 'debug.hoverValues standardmäßig an (#891)');
   Assert.IsTrue(Settings.DebugExceptionHistory, 'debug.exceptionHistory (#517)');
   Assert.IsTrue(Settings.DebugJustMyCode, 'debug.justMyCode (#578)');
+  Assert.IsFalse(Settings.DebugExceptionBanner, 'debug.exceptionBanner (#783)');
+  Assert.IsTrue(Settings.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
   Assert.AreEqual('', Settings.DebugOwnCodeFolders, 'debug.ownCodeFolders leer (#578)');
   Assert.IsTrue(Settings.TodoList, 'Befehl standardmäßig da (#68)');
   Assert.IsTrue(Settings.MetricsReport, 'Befehl standardmäßig da (#66)');
@@ -350,6 +352,8 @@ begin
   Settings.DebugHoverValues := False;
   Settings.DebugExceptionHistory := False;
   Settings.DebugJustMyCode := False;
+  Settings.DebugExceptionBanner := True;
+  Settings.DebugExceptionBannerIgnoreAtLocation := False;
   Settings.DebugOwnCodeFolders := '  C:\Komponenten;D:\Lib ';
   Settings.TodoList := False;
   Settings.MetricsReport := False;
@@ -436,6 +440,8 @@ begin
   Assert.IsFalse(Loaded.DebugHoverValues, 'debug.hoverValues (#891)');
   Assert.IsFalse(Loaded.DebugExceptionHistory, 'debug.exceptionHistory (#517)');
   Assert.IsFalse(Loaded.DebugJustMyCode, 'debug.justMyCode (#578)');
+  Assert.IsTrue(Loaded.DebugExceptionBanner, 'debug.exceptionBanner (#783)');
+  Assert.IsFalse(Loaded.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
   Assert.AreEqual('C:\Komponenten;D:\Lib', Loaded.DebugOwnCodeFolders, 'debug.ownCodeFolders ohne Leerraum (#578)');
   Assert.IsFalse(Loaded.TodoList);
   Assert.IsFalse(Loaded.MetricsReport);

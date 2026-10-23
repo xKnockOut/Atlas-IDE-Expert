@@ -289,6 +289,8 @@ type
     FDebugHoverValues: TCheckBox;
     FDebugExceptionHistory: TCheckBox;
     FDebugJustMyCode: TCheckBox;
+    FDebugExceptionBanner: TCheckBox;
+    FDebugExceptionBannerIgnoreAtLocation: TCheckBox;
     FDebugOwnCodeFolders: TEdit;
     FActionsKey: TEdit;
     FExpandKey: TEdit;
@@ -1068,6 +1070,8 @@ type
     property DebugHoverValuesCheck: TCheckBox read FDebugHoverValues;
     property DebugExceptionHistoryCheck: TCheckBox read FDebugExceptionHistory;
     property DebugJustMyCodeCheck: TCheckBox read FDebugJustMyCode;
+    property DebugExceptionBannerCheck: TCheckBox read FDebugExceptionBanner;
+    property DebugExceptionBannerIgnoreAtLocationCheck: TCheckBox read FDebugExceptionBannerIgnoreAtLocation;
     property DebugOwnCodeFoldersEdit: TEdit read FDebugOwnCodeFolders;
     /// <summary>Zum Testen: benannte Lesezeichen (#622).</summary>
     property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
@@ -1808,6 +1812,10 @@ begin
   // Nur eigener Code beim Debuggen (#578).
   FDebugJustMyCode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugJustMyCode));
   FDebugOwnCodeFolders := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsDebugOwnCodeFolders));
+  // Exception-Leiste beim Debuggen (#783).
+  FDebugExceptionBanner := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExceptionBanner));
+  FDebugExceptionBannerIgnoreAtLocation :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExceptionBannerIgnoreAtLocation));
 
   // Editorbefehle (#399): ein Vorrang für alle.
   AddSheet(TAtlasTextId.SettingsTabCommands);
@@ -2936,6 +2944,8 @@ begin
   FMarks.Bind(FDebugHoverValues, ['DebugHoverValues']);
   FMarks.Bind(FDebugExceptionHistory, ['DebugExceptionHistory']);
   FMarks.Bind(FDebugJustMyCode, ['DebugJustMyCode']);
+  FMarks.Bind(FDebugExceptionBanner, ['DebugExceptionBanner']);
+  FMarks.Bind(FDebugExceptionBannerIgnoreAtLocation, ['DebugExceptionBannerIgnoreAtLocation']);
   FMarks.Bind(FDebugOwnCodeFolders, ['DebugOwnCodeFolders']);
   FMarks.Bind(FSafeAsk, ['SafeAskAfterCrash']);
   FMarks.Bind(FSafeAuto, ['SafeAutoAfterRepeatedCrash']);
@@ -5077,6 +5087,8 @@ begin
   FDebugHoverValues.Checked := ASettings.DebugHoverValues;
   FDebugExceptionHistory.Checked := ASettings.DebugExceptionHistory;
   FDebugJustMyCode.Checked := ASettings.DebugJustMyCode;
+  FDebugExceptionBanner.Checked := ASettings.DebugExceptionBanner;
+  FDebugExceptionBannerIgnoreAtLocation.Checked := ASettings.DebugExceptionBannerIgnoreAtLocation;
   FDebugOwnCodeFolders.Text := ASettings.DebugOwnCodeFolders;
   FSafeAsk.Checked := ASettings.SafeAskAfterCrash;
   FSafeAuto.Checked := ASettings.SafeAutoAfterRepeatedCrash;
@@ -5530,6 +5542,8 @@ begin
   ASettings.DebugHoverValues := FDebugHoverValues.Checked;
   ASettings.DebugExceptionHistory := FDebugExceptionHistory.Checked;
   ASettings.DebugJustMyCode := FDebugJustMyCode.Checked;
+  ASettings.DebugExceptionBanner := FDebugExceptionBanner.Checked;
+  ASettings.DebugExceptionBannerIgnoreAtLocation := FDebugExceptionBannerIgnoreAtLocation.Checked;
   ASettings.DebugOwnCodeFolders := TAtlasDebugOwnCode.FoldersText(TAtlasDebugOwnCode.ParseFolders(
     FDebugOwnCodeFolders.Text));
   ASettings.SafeAskAfterCrash := FSafeAsk.Checked;

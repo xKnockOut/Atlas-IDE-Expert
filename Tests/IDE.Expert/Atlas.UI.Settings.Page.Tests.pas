@@ -1038,11 +1038,16 @@ begin
     Assert.IsTrue(Page.DebugHoverValuesCheck.Checked, 'Werte im Hover standardmäßig an (#891)');
     Assert.IsTrue(Page.DebugExceptionHistoryCheck.Checked, 'debug.exceptionHistory (#517)');
     Assert.IsTrue(Page.DebugJustMyCodeCheck.Checked, 'debug.justMyCode (#578)');
+    Assert.IsFalse(Page.DebugExceptionBannerCheck.Checked, 'debug.exceptionBanner (#783)');
+    Assert.IsTrue(Page.DebugExceptionBannerIgnoreAtLocationCheck.Checked,
+      'debug.exceptionBanner.ignoreAtLocation (#783)');
     Page.TestDebugCheck.Checked := False;
     Page.TestBreakAtStartCheck.Checked := False;
     Page.DebugHoverValuesCheck.Checked := False;
     Page.DebugExceptionHistoryCheck.Checked := False;
     Page.DebugJustMyCodeCheck.Checked := False;
+    Page.DebugExceptionBannerCheck.Checked := True;
+    Page.DebugExceptionBannerIgnoreAtLocationCheck.Checked := False;
     Page.DebugOwnCodeFoldersEdit.Text := 'C:\Komponenten\; ;c:\komponenten';
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
@@ -1051,17 +1056,23 @@ begin
     Assert.IsFalse(Saved.DebugHoverValues);
     Assert.IsFalse(Saved.DebugExceptionHistory);
     Assert.IsFalse(Saved.DebugJustMyCode);
+    Assert.IsTrue(Saved.DebugExceptionBanner);
+    Assert.IsFalse(Saved.DebugExceptionBannerIgnoreAtLocation);
     Assert.AreEqual('C:\Komponenten', Saved.DebugOwnCodeFolders, 'bereinigt (#578)');
     Saved.TestBreakAtStart := True;
     Saved.DebugHoverValues := True;
     Saved.DebugExceptionHistory := True;
     Saved.DebugJustMyCode := True;
+    Saved.DebugExceptionBanner := False;
+    Saved.DebugExceptionBannerIgnoreAtLocation := True;
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.TestDebugCheck.Checked);
     Assert.IsTrue(Page.TestBreakAtStartCheck.Checked);
     Assert.IsTrue(Page.DebugHoverValuesCheck.Checked);
     Assert.IsTrue(Page.DebugExceptionHistoryCheck.Checked);
     Assert.IsTrue(Page.DebugJustMyCodeCheck.Checked);
+    Assert.IsFalse(Page.DebugExceptionBannerCheck.Checked);
+    Assert.IsTrue(Page.DebugExceptionBannerIgnoreAtLocationCheck.Checked);
   finally
     Page.Free;
   end;
