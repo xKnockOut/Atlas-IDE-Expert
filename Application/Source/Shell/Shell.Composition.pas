@@ -31,6 +31,7 @@ uses
   Atlas.Common.Lsp.LinkedEditing,
   Atlas.Common.Lsp.InlineValues,
   Atlas.Common.Lsp.CompilerSwitches,
+  Atlas.Common.Lsp.DebugUnavailable,
   Atlas.Common.Lsp.Formatting,
   Atlas.Common.Lsp.SelectionRanges,
   Atlas.Common.Lsp.Definition,
@@ -123,6 +124,7 @@ type
     FLinkedEditing: TLspLinkedEditing;
     FInlineValues: TLspInlineValues;
     FCompilerSwitches: TLspCompilerSwitches;
+    FDebugUnavailable: TLspDebugUnavailable;
     FFormatting: TLspFormatting;
     FSlashMenu: TLspSlashMenu;
     FSelectionRanges: TLspSelectionRanges;
@@ -1055,6 +1057,8 @@ begin
   FInlineValues.Attach(FDispatcher);
   FCompilerSwitches := TLspCompilerSwitches.Create(FDocuments, CompilerSwitchContextFor);
   FCompilerSwitches.Attach(FDispatcher);
+  FDebugUnavailable := TLspDebugUnavailable.Create(FDocuments, FIndex, EnsureUnit, CompilerSwitchContextFor);
+  FDebugUnavailable.Attach(FDispatcher);
   FReferences := TLspReferences.Create(FDocuments, FIndex,
     ReadSourceText,
     ProjectSourceFiles,
@@ -2047,6 +2051,7 @@ begin
   FLinkedEditing.Free;
   FInlineValues.Free;
   FCompilerSwitches.Free;
+  FDebugUnavailable.Free;
   FFormatting.Free;
   FSlashMenu.Free;
   FSelectionRanges.Free;

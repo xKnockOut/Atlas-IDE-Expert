@@ -988,6 +988,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompilerSwitches.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.CompilerSwitches.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Build.SwitchesFrame.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DebugUnavailable.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
