@@ -118,7 +118,7 @@ Der Server prüft jede Unit beim Tippen. Treffer erscheinen als Wellenlinien, im
 - **Unterdrücken** mit `// lsp-ignore: regel`, mit Meldung unbenutzter oder vertippter Unterdrückungen
 - **Baseline** für Altprojekte: bekannte Treffer ausblenden, nur neue melden
 - **Compilerprüfung nach dem Speichern** und Übernahme der Meldungen aus dem Reiter „Build“
-- **Suchpfade und Defines prüfen** für das aktive Projekt (Karte auf der Willkommensseite)
+- **Suchpfade und Defines prüfen** für das aktive Projekt (Karte auf der Atlas-Willkommensseite)
 - **Linter ohne IDE:** `AtlasServer.exe --check` für Pre-Commit-Hooks und CI, als Text, JSON oder SARIF für GitHub Code Scanning, auf Wunsch nur geänderte Dateien oder Zeilen (siehe [Linter-Modus](#linter-modus))
 
 Jede Regel mit Beschreibung und Vorher-Nachher-Beispiel: [docs/Regeln.md](docs/Regeln.md).
@@ -155,7 +155,7 @@ Code-Aktionen öffnet Alt+Enter; alles steht auch im Menü *Atlas* und im Kontex
 
 ### IDE-Komfort
 
-- **Willkommensseite** mit Bereichen: Weiterarbeiten, Projekte mit Schnellaktionen, Projektverlauf, Nicht gesichert, Projekt einrichten, Testergebnisse, Meine Issues, Neu in Atlas, Atlas entdecken, Hilfe und Rückmeldung; Suchfeld und freies Layout
+- **Atlas-Willkommensseite** im andockbaren Fenster *Atlas-Start* (*Ansicht › Atlas-Start*, Befehlspalette; öffnet sich, sobald das letzte Projekt geschlossen ist, mit `welcomePage.openOnStart` auch beim Start der IDE; die Willkommensseite der IDE bleibt unberührt) mit Bereichen: Weiterarbeiten, Projekte mit Schnellaktionen, Projektverlauf, Nicht gesichert, Projekt einrichten, Testergebnisse, Meine Issues, Neu in Atlas, Atlas entdecken, Hilfe und Rückmeldung; Suchfeld und freies Layout
 - **Befehlspalette** (Strg+Umschalt+P) für alle Atlas-Befehle
 - **Atlas-Statusfeld** mit Indexfortschritt und Schnellschaltern (Strg+Umschalt+Alt+A)
 - **Benachrichtigungszentrale** (Strg+Umschalt+Alt+N) sammelt Hinweise von Builds, Prüfungen und Server

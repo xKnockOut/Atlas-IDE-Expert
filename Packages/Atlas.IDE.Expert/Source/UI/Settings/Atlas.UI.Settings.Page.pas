@@ -489,8 +489,8 @@ type
     FSearchReplace: TCheckBox;
     FSearchMessages: TCheckBox;
     FWelcomeEnabled: TCheckBox;
-    FWelcomeHost: TAtlasChoiceBox;
-    FWelcomeLayout: TCheckBox;
+    FWelcomeOpenOnStart: TCheckBox;
+    FWelcomeOpenWhenNoProject: TCheckBox;
     // Freies Layout (#767): Schalter, Spalten, aktives Layout und dessen Verwaltung. FPageLayouts ist das
     // Modell der Seite; erst OK schreibt es in die Einstellungen.
     FWelcomeCustomLayout: TCheckBox;
@@ -937,8 +937,8 @@ type
     property BugReportAnonymize: TCheckBox read FBugReportAnonymize;
     /// <summary>Zum Testen: Willkommensseite (#753).</summary>
     property WelcomeEnabled: TCheckBox read FWelcomeEnabled;
-    property WelcomeHost: TAtlasChoiceBox read FWelcomeHost;
-    property WelcomeLayout: TCheckBox read FWelcomeLayout;
+    property WelcomeOpenOnStart: TCheckBox read FWelcomeOpenOnStart;
+    property WelcomeOpenWhenNoProject: TCheckBox read FWelcomeOpenWhenNoProject;
     /// <summary>Zum Testen: freies Layout (#767).</summary>
     property WelcomeCustomLayout: TCheckBox read FWelcomeCustomLayout;
     property WelcomeColumns: TEdit read FWelcomeColumns;
@@ -2128,13 +2128,10 @@ var
   Action: TAtlasQuickAction;
   Panel: TWinControl;
 begin
-  // Atlas-Bereiche auf der Willkommensseite (#753).
+  // Atlas-Willkommensseite im Fenster „Atlas-Start“ (#753, #1114).
   FWelcomeEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeEnabled));
-  // Reihenfolge wie welcomePage.host: welcomePage, dockWindow.
-  FWelcomeHost := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHost),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHostPage),
-    TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHostWindow)]);
-  FWelcomeLayout := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeLayout));
+  FWelcomeOpenOnStart := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeOpenOnStart));
+  FWelcomeOpenWhenNoProject := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeOpenWhenNoProject));
   // Freies Layout (#767): Bearbeitungsmodus „Seite anpassen“, Spalten, benannte Layouts.
   FWelcomeCustomLayout := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeCustomLayout));
   FWelcomeColumns := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeColumns));
@@ -2955,8 +2952,8 @@ begin
   FMarks.Bind(FSearchReplace, ['SearchReplaceIde']);
   FMarks.Bind(FSearchMessages, ['SearchResultsInMessages']);
   FMarks.Bind(FWelcomeEnabled, ['WelcomePage']);
-  FMarks.Bind(FWelcomeHost, ['WelcomePageHost']);
-  FMarks.Bind(FWelcomeLayout, ['WelcomePageLayout']);
+  FMarks.Bind(FWelcomeOpenOnStart, ['WelcomePageOpenOnStart']);
+  FMarks.Bind(FWelcomeOpenWhenNoProject, ['WelcomePageOpenWhenNoProject']);
   FMarks.Bind(FWelcomeCustomLayout, ['WelcomePageCustomLayout']);
   FMarks.Bind(FWelcomeColumns, ['WelcomePageColumns']);
   FMarks.Bind(FWelcomeActiveLayout, ['WelcomePageActiveLayout', 'WelcomePageLayouts']);
@@ -5104,10 +5101,8 @@ begin
   FSearchReplace.Checked := ASettings.SearchReplaceIde;
   FSearchMessages.Checked := ASettings.SearchResultsInMessages;
   FWelcomeEnabled.Checked := ASettings.WelcomePage;
-  FWelcomeHost.Choice := 0;
-  if ASettings.WelcomePageHost = 'dockWindow' then
-    FWelcomeHost.Choice := 1;
-  FWelcomeLayout.Checked := ASettings.WelcomePageLayout = 'atlas';
+  FWelcomeOpenOnStart.Checked := ASettings.WelcomePageOpenOnStart;
+  FWelcomeOpenWhenNoProject.Checked := ASettings.WelcomePageOpenWhenNoProject;
   FWelcomeHeader.Checked := ASettings.WelcomePageHeader;
   FWelcomeGreeting.Checked := ASettings.WelcomePageGreeting;
   FWelcomeSearch.Checked := ASettings.WelcomePageSearch;
@@ -5551,12 +5546,8 @@ begin
   ASettings.SearchReplaceIde := FSearchReplace.Checked;
   ASettings.SearchResultsInMessages := FSearchMessages.Checked;
   ASettings.WelcomePage := FWelcomeEnabled.Checked;
-  ASettings.WelcomePageHost := 'welcomePage';
-  if FWelcomeHost.Choice = 1 then
-    ASettings.WelcomePageHost := 'dockWindow';
-  ASettings.WelcomePageLayout := 'off';
-  if FWelcomeLayout.Checked then
-    ASettings.WelcomePageLayout := 'atlas';
+  ASettings.WelcomePageOpenOnStart := FWelcomeOpenOnStart.Checked;
+  ASettings.WelcomePageOpenWhenNoProject := FWelcomeOpenWhenNoProject.Checked;
   ASettings.WelcomePageHeader := FWelcomeHeader.Checked;
   ASettings.WelcomePageGreeting := FWelcomeGreeting.Checked;
   ASettings.WelcomePageSearch := FWelcomeSearch.Checked;

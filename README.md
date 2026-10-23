@@ -118,7 +118,7 @@ The server checks every unit while you type. Findings appear as squiggles, in th
 - **Suppress** with `// lsp-ignore: rule`, with reports of unused or misspelled suppressions
 - **Baseline** for legacy projects: hide known findings, report only new ones
 - **Compiler check after saving** and the messages of the "Build" tab
-- **Check search paths and defines** of the active project (card on the welcome page)
+- **Check search paths and defines** of the active project (card on the Atlas welcome page)
 - **Linter without the IDE:** `AtlasServer.exe --check` for pre-commit hooks and CI, as text, JSON or SARIF for GitHub code scanning, optionally only changed files or lines (see [Linter mode](#linter-mode))
 
 Every rule with description and before/after example: [docs/Regeln.md](docs/Regeln.md).
@@ -155,7 +155,7 @@ Alt+Enter opens the code actions; everything is also in the *Atlas* menu and the
 
 ### IDE comfort
 
-- **Welcome page** with sections: continue working, projects with quick actions, project history, unsaved, project setup, test results, my issues, new in Atlas, discover Atlas, help and feedback; search box and free layout
+- **Atlas welcome page** in the dockable window *Atlas Start* (*View › Atlas Start*, command palette; opens when the last project is closed and, with `welcomePage.openOnStart`, on IDE start; the IDE's own welcome page stays untouched) with sections: continue working, projects with quick actions, project history, unsaved, project setup, test results, my issues, new in Atlas, discover Atlas, help and feedback; search box and free layout
 - **Command palette** (Ctrl+Shift+P) for all Atlas commands
 - **Atlas status field** with index progress and quick toggles (Ctrl+Shift+Alt+A)
 - **Notification centre** (Ctrl+Shift+Alt+N) collects messages from builds, checks and the server

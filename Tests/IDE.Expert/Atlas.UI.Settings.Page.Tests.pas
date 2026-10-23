@@ -1549,8 +1549,8 @@ begin
   try
     Page.LoadFrom(Settings);
     Assert.IsTrue(Page.WelcomeEnabled.Checked);
-    Assert.AreEqual(0, Page.WelcomeHost.Choice);
-    Assert.IsFalse(Page.WelcomeLayout.Checked);
+    Assert.IsFalse(Page.WelcomeOpenOnStart.Checked, 'Atlas-Start nur auf Wunsch (#1114)');
+    Assert.IsTrue(Page.WelcomeOpenWhenNoProject.Checked, 'Atlas-Start ohne Projekt (#1114)');
     Assert.IsTrue(Page.WelcomeHeader.Checked);
     Assert.IsTrue(Page.WelcomeGreeting.Checked);
     Assert.IsTrue(Page.WelcomeSearch.Checked);
@@ -1609,8 +1609,8 @@ begin
     Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Page.WelcomeHelpReportUrl.Text);
     Assert.AreEqual('', Page.WelcomeHelpReportFolder.Text);
     Page.WelcomeEnabled.Checked := False;
-    Page.WelcomeHost.Choice := 1;
-    Page.WelcomeLayout.Checked := True;
+    Page.WelcomeOpenOnStart.Checked := True;
+    Page.WelcomeOpenWhenNoProject.Checked := False;
     Page.WelcomeHeader.Checked := False;
     Page.WelcomeGreeting.Checked := False;
     Page.WelcomeSearch.Checked := False;
@@ -1673,8 +1673,8 @@ begin
     Assert.IsFalse(Saved.WelcomePageProjectSetup);
     Assert.IsFalse(Saved.WelcomePageNewFromTemplate);
     Assert.IsFalse(Saved.WelcomePage);
-    Assert.AreEqual('dockWindow', Saved.WelcomePageHost);
-    Assert.AreEqual('atlas', Saved.WelcomePageLayout);
+    Assert.IsTrue(Saved.WelcomePageOpenOnStart);
+    Assert.IsFalse(Saved.WelcomePageOpenWhenNoProject);
     Assert.IsFalse(Saved.WelcomePageHeader);
     Assert.IsFalse(Saved.WelcomePageGreeting);
     Assert.IsFalse(Saved.WelcomePageSearch);
@@ -1748,8 +1748,7 @@ begin
     Assert.AreEqual('D:\Diagnose', Page.WelcomeHelpReportFolder.Text);
     Assert.IsFalse(Page.WelcomeDiscover.Checked);
     Assert.IsFalse(Page.TipsUsageTracking.Checked);
-    Assert.AreEqual(1, Page.WelcomeHost.Choice);
-    Assert.IsTrue(Page.WelcomeLayout.Checked);
+    Assert.IsTrue(Page.WelcomeOpenOnStart.Checked);
     Assert.AreEqual(2, Page.WelcomeWhatsNew.Choice);
     Page.WelcomeWhatsNew.Choice := 0;
     // Keine Webadresse als Ziel: die Vorgabe.

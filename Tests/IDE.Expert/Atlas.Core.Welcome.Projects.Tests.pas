@@ -6,7 +6,8 @@
 // Versionsverwaltung kein Branch und kein Fehler), Übernahme eines Compiles
 // in die Zusammenfassung, Abfrage der Versionsverwaltung mit Ersatz-Umsetzung
 // (geänderte Dateien nur im Projektordner, Ende einer hängenden Abfrage),
-// Regeltreffer aus den Problemen des Servers und gekürzte Pfade.
+// Regeltreffer aus den Problemen des Servers, gekürzte Pfade und wann sich
+// „Atlas-Start“ ohne Projekt öffnet (#1114).
 
 interface
 
@@ -61,6 +62,16 @@ type
     procedure ShortensLongPaths;
     [Test]
     procedure SettingsDefaultsAndLimits;
+    [Test]
+    procedure OpensWhenLastProjectClosed;
+    [Test]
+    procedure StaysClosedWhileProjectsRemain;
+    [Test]
+    procedure StaysClosedWhenSwitchedOff;
+    [Test]
+    procedure StaysClosedWhenIdeEnds;
+    [Test]
+    procedure OpenWhenNoProjectDefaultsOn;
   end;
 
 implementation
@@ -68,6 +79,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.History,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Build.Messages,
   Atlas.Core.Vcs.Contract,
@@ -630,6 +642,49 @@ begin
   Settings.WelcomePageMaxProjects := 500;
   Settings.Normalize;
   Assert.AreEqual(TAtlasWelcomeProjects.MaxMax, Settings.WelcomePageMaxProjects);
+end;
+
+procedure TAtlasWelcomeProjectsTests.OpensWhenLastProjectClosed;
+begin
+  Assert.IsTrue(TAtlasWelcomeAutoOpen.AfterProjectClosed(True, True, 0, True, False));
+end;
+
+procedure TAtlasWelcomeProjectsTests.StaysClosedWhileProjectsRemain;
+begin
+  // Noch ein Projekt der Gruppe offen, oder die Zahl ist unbekannt.
+  Assert.IsFalse(TAtlasWelcomeAutoOpen.AfterProjectClosed(True, True, 1, True, False));
+  Assert.IsFalse(TAtlasWelcomeAutoOpen.AfterProjectClosed(True, True, -1, True, False));
+  // Schon sichtbar: nicht noch einmal nach vorn holen.
+  Assert.IsFalse(TAtlasWelcomeAutoOpen.AfterProjectClosed(True, True, 0, True, True));
+end;
+
+procedure TAtlasWelcomeProjectsTests.StaysClosedWhenSwitchedOff;
+begin
+  Assert.IsFalse(TAtlasWelcomeAutoOpen.AfterProjectClosed(False, True, 0, True, False), 'welcomePage.enabled aus');
+  Assert.IsFalse(TAtlasWelcomeAutoOpen.AfterProjectClosed(True, False, 0, True, False),
+    'welcomePage.openWhenNoProject aus');
+end;
+
+procedure TAtlasWelcomeProjectsTests.StaysClosedWhenIdeEnds;
+begin
+  // Beim Beenden schließt die IDE alle Projekte; dann kein Fenster mehr öffnen.
+  Assert.IsFalse(TAtlasWelcomeAutoOpen.AfterProjectClosed(True, True, 0, False, False));
+end;
+
+procedure TAtlasWelcomeProjectsTests.OpenWhenNoProjectDefaultsOn;
+var
+  Store: IAtlasSettingsStore;
+  Settings: TAtlasPluginSettings;
+begin
+  Assert.IsTrue(TAtlasPluginSettings.Defaults.WelcomePageOpenWhenNoProject);
+  Store := TAtlasMemorySettingsStore.Create;
+  Settings := TAtlasPluginSettings.Defaults;
+  Settings.WelcomePageOpenWhenNoProject := False;
+  Settings.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('WelcomePageOpenWhenNoProject', 1), 'Registry-Name');
+  Settings := TAtlasPluginSettings.Defaults;
+  Settings.Load(Store);
+  Assert.IsFalse(Settings.WelcomePageOpenWhenNoProject);
 end;
 
 initialization
