@@ -138,6 +138,7 @@
         <DCCReference Include="Source\Index\Atlas.Common.Index.Service.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Derived.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.TypedScope.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ManagedTypes.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Registry.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Suppressions.pas"/>
@@ -392,6 +393,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ConsideredUsed.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ProjectFiles.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Casts.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.pas"/>

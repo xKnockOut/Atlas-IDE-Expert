@@ -213,6 +213,7 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.ConsideredUsed.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.ProjectFiles.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Casts.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.UnitLookup.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas"/>
@@ -276,6 +277,7 @@
         <DCCReference Include="Support\Atlas.Tests.SlashHost.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Engine.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Derived.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.TypedScope.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.ManagedTypes.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.GoldenCorpus.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Profiles.Tests.pas"/>

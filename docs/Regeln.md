@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 70 |
+| [Fehler finden](#gruppe-find-bugs) | 71 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
@@ -46,6 +46,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`int32-mul-overflow`](#int32-mul-overflow) | Int32-Multiplikation an Int64 zugewiesen | Bug | Warnung |
 | [`sizeof-pointer`](#sizeof-pointer) | SizeOf eines Zeigers in Move oder FillChar | Bug | Fehler |
 | [`char-to-pchar`](#char-to-pchar) | Char nach PChar umgewandelt | Bug | Fehler |
+| [`unrelated-class-cast`](#unrelated-class-cast) | Harte Umwandlung zwischen nicht verwandten Klassen | Bug | Warnung |
 | [`float-equality`](#float-equality) | Gleitkommavergleich mit = oder <> | Bug | Hinweis |
 | [`constructor-on-instance`](#constructor-on-instance) | Konstruktor auf einer Instanz aufgerufen | Bug | Warnung |
 | [`unresolved-identifier`](#unresolved-identifier) | Nicht deklarierter Bezeichner | Bug | Warnung |
@@ -2035,6 +2036,41 @@ Richtig:
 
 ```pascal
 ShowMessage(PChar(string(C)));
+```
+
+<a id="unrelated-class-cast"></a>
+### unrelated-class-cast
+
+**Harte Umwandlung zwischen nicht verwandten Klassen** · Bug · Warnung · Gruppe Fehler finden
+
+TButton(Obj) prüft nichts. Ist der statische Typ von Obj weder Vorfahr noch Nachfahr von TButton (z. B. TEdit oder TForm), liest der Zugriff Speicher eines Objekts mit anderem Aufbau. Gemeldet wird nur, wenn beide Typen sicher bekannt sind, beide Vererbungsketten bis TObject bekannt sind und beide Deklarationen immer mit der Umwandlung übersetzt werden. Interfaces, Zeiger, Zahlen, TObject als Quelle und Umwandlungen in oder aus Klassenreferenzen (class of) bleiben still, ebenso der Zugriffsklassen-Trick: Das Ziel und seine Vorfahren bis zu einem gemeinsamen Vorfahren deklarieren weder Felder noch neue virtuelle Methoden (THackControl = class(TControl)), der Aufbau ist also derselbe. Sicherheit hoch. Korrektur: (Obj as TButton) prüft den Typ zur Laufzeit.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowTypes` | string-list | `[]` | Typen, die absichtlich hart umgewandelt werden: ein Typname (als Quelle oder Ziel) oder ein Paar "Quelle=Ziel". |
+
+Mit Treffer:
+
+```pascal
+procedure TForm1.EditExit(Sender: TObject);
+var
+  mEdit: TEdit;
+begin
+  mEdit := Sender as TEdit;
+  TButton(mEdit).Caption := 'OK';
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TForm1.EditExit(Sender: TObject);
+var
+  mEdit: TEdit;
+begin
+  mEdit := Sender as TEdit;
+  (mEdit as TButton).Caption := 'OK';
+end;
 ```
 
 <a id="float-equality"></a>

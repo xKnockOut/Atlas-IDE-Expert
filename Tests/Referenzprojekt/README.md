@@ -72,6 +72,7 @@ müssen gemeldet werden, jede weitere Meldung ist ein Fehlalarm.
 | `unreachable-code` | Regel im Katalog (#94) |
 | `possible-leak` | geplant, `geplante-regeln.txt`, Issue #56 |
 | `legacy-stack-queue` | Regel im Katalog (#1106), `ERWARTET-INDEX`, in `Ref.Pruefung.Verstoesse` |
+| `unrelated-class-cast` | Regel im Katalog (#1129), in `Ref.Pruefung.Verstoesse` |
 
 Jede ID steht im Regelkatalog oder in `geplante-regeln.txt` mit dem
 offenen Issue, das sie in den Katalog übernimmt. Eine ID ohne Issue lässt
