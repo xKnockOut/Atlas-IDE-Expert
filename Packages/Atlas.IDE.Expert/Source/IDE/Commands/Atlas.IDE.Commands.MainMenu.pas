@@ -39,6 +39,8 @@
 // Tastenkürzel-Tipps (#600) als Aufruf per Menü (TAtlasIdeShortcutTips.Invoked).
 // „Atlas-Prüfung“ (#909) öffnet das Fenster der Befunde, auch unter Ansicht ›
 // Atlas › Prüfung; sichtbar nur bei problems.window.
+// „Architekturübersicht“ (#1118) öffnet das Fenster „Atlas-Architektur“, auch
+// unter Ansicht › Atlas › Architektur; sichtbar nur bei architecture.enabled.
 // Unter Navigation die Abschnittssprünge, der Rücksprung und „Methode suchen“
 // der Editorleiste (#1101); sie arbeiten auch ohne die Leiste.
 // Aufbau: häufige Befehle direkt, der Rest in Untermenüs (Navigation, Suchen,
@@ -98,6 +100,10 @@ type
     /// <summary>„Atlas-Prüfung“ (#909) im Atlas-Menü und unter Ansicht › Atlas.</summary>
     FProblemsItem: TMenuItem;
     FViewAtlas: TMenuItem;
+    FViewProblems: TMenuItem;
+    /// <summary>„Architekturübersicht“ (#1118) im Atlas-Menü und unter Ansicht › Atlas.</summary>
+    FArchitectureItem: TMenuItem;
+    FViewArchitecture: TMenuItem;
     procedure WelcomeClick(Sender: TObject);
     procedure RenameClick(Sender: TObject);
     procedure ResultsClick(Sender: TObject);
@@ -108,6 +114,7 @@ type
     procedure BookmarksClick(Sender: TObject);
     procedure OutlineClick(Sender: TObject);
     procedure ProblemsClick(Sender: TObject);
+    procedure ArchitectureClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     function AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     /// <summary>Untermenü im Atlas-Menü; folgende AddItem landen darin.</summary>
@@ -168,6 +175,7 @@ uses
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Outline.Service,
+  Atlas.IDE.Architecture.Service,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Commands.Editor,
@@ -258,6 +266,7 @@ begin
   AddItem(TAtlasTextId.UnitSearchMenu, 8, EditorClick);
   AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
   FProblemsItem := AddItem(TAtlasTextId.ProblemsWindowCaption, 0, ProblemsClick);
+  FArchitectureItem := AddItem(TAtlasTextId.ArchitectureCommand, 0, ArchitectureClick);
   FRoot.Add(NewLine);
   AddGroup(TAtlasTextId.MenuGroupNavigation);
   AddItem(TAtlasTextId.EditorTypeDefinition, 3, EditorClick);
@@ -357,13 +366,17 @@ begin
       FViewStart.Tag := Ord(TAtlasWelcomeCommand.Start);
       FViewStart.OnClick := WelcomeClick;
       Services.MainMenu.Items[Index].Add(FViewStart);
-      // Ansicht › Atlas › Prüfung (#909).
+      // Ansicht › Atlas › Prüfung (#909) und Architektur (#1118).
       FViewAtlas := TMenuItem.Create(FRoot);
       FViewAtlas.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsViewMenuAtlas);
-      Item := TMenuItem.Create(FViewAtlas);
-      Item.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsViewMenuWindow);
-      Item.OnClick := ProblemsClick;
-      FViewAtlas.Add(Item);
+      FViewProblems := TMenuItem.Create(FViewAtlas);
+      FViewProblems.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsViewMenuWindow);
+      FViewProblems.OnClick := ProblemsClick;
+      FViewAtlas.Add(FViewProblems);
+      FViewArchitecture := TMenuItem.Create(FViewAtlas);
+      FViewArchitecture.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureViewMenu);
+      FViewArchitecture.OnClick := ArchitectureClick;
+      FViewAtlas.Add(FViewArchitecture);
       Services.MainMenu.Items[Index].Add(FViewAtlas);
       Break;
     end;
@@ -658,8 +671,15 @@ begin
   // Atlas-Prüfung (#909) nach problems.window.
   if FProblemsItem <> nil then
     FProblemsItem.Visible := TAtlasIdeProblems.Enabled;
+  if FViewProblems <> nil then
+    FViewProblems.Visible := TAtlasIdeProblems.Enabled;
+  // Architekturübersicht (#1118) nach architecture.enabled.
+  if FArchitectureItem <> nil then
+    FArchitectureItem.Visible := TAtlasIdeArchitecture.Enabled;
+  if FViewArchitecture <> nil then
+    FViewArchitecture.Visible := TAtlasIdeArchitecture.Enabled;
   if FViewAtlas <> nil then
-    FViewAtlas.Visible := TAtlasIdeProblems.Enabled;
+    FViewAtlas.Visible := TAtlasIdeProblems.Enabled or TAtlasIdeArchitecture.Enabled;
   // Benannte Lesezeichen (#622) nach bookmarks.named, schnelle (#1104) nach bookmarks.quick; das Fenster zeigt
   // beide.
   Marks := TAtlasIdeSettings.Current.BookmarksNamed or TAtlasIdeSettings.Current.QuickBookmarks;
@@ -854,6 +874,16 @@ begin
     procedure
     begin
       TAtlasIdeProblems.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.ArchitectureClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.Architecture');
+  TAtlasGuard.Run(TAtlasFeature.Architecture,
+    procedure
+    begin
+      TAtlasIdeArchitecture.ShowWindow;
     end);
 end;
 

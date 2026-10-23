@@ -10,10 +10,13 @@
 //           "markdown", "html" oder "text", "section": overview, central,
 //           subsystems, cycles, crossLinks (nur "text"), "unit": Name
 //           (nur "text": Steckbrief)}
-//   Antwort {"enabled": true, "format": "json", "data": {…}} mit den Daten
-//   aus TArchitectureReport.Json (samt Lage der Karte), sonst
-//   {"enabled": true, "format": …, "text": "…"};
-//   {"enabled": false} bei architecture.enabled = false.
+//   Antwort {"enabled": true, "root": Projektordner, "format": "json",
+//   "data": {…}} mit den Daten aus TArchitectureReport.Json (samt Lage der
+//   Karte; Pfade relativ zu "root"), sonst {"enabled": true, "root": …,
+//   "format": …, "text": "…"}; {"enabled": false} bei
+//   architecture.enabled = false.
+// Befehl atlas.architecture (für das IDE-Fenster): Argumente [uri, Optionen]
+//   mit denselben Optionen wie params der Anfrage, Antwort wie oben.
 // Befehl atlas.architecture.saveReport: Argumente [uri, Datei, Optionen]
 //   schreibt den Bericht nach der Endung (.md Markdown, .html/.htm HTML) und
 //   liefert {"file": …, "units": n}; Optionen wie bei der Anfrage (scope,
@@ -40,17 +43,21 @@ type
   TLspArchitecture = class
   public const
     Method = 'atlas/architecture';
+    Command = 'atlas.architecture';
     SaveCommand = 'atlas.architecture.saveReport';
   private
     FService: TArchitectureService;
     FSourceFor: TLspArchitectureSourceFunc;
-    function OverviewFor(const AParams: TJSONObject; out AEnabled: Boolean): TArchitectureOverview;
+    function OverviewFor(const AParams: TJSONObject; out AEnabled: Boolean; out ARoot: string): TArchitectureOverview;
   public
     /// <summary>AService gehört dem Aufrufer.</summary>
     constructor Create(AService: TArchitectureService; const ASourceFor: TLspArchitectureSourceFunc);
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>Antwort auf atlas/architecture; der Aufrufer übernimmt das Ergebnis.</summary>
     function Request(const AParams: TJSONValue): TJSONValue;
+    /// <summary>Befehl atlas.architecture: [uri, Optionen] wie die Anfrage; der Aufrufer übernimmt das Ergebnis.
+    /// </summary>
+    function Execute(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Befehl atlas.architecture.saveReport; der Aufrufer übernimmt das Ergebnis.</summary>
     function SaveReport(const AArguments: TJSONArray): TJSONValue;
     class function TryParseFormat(const AText: string; out AFormat: TLspArchitectureFormat): Boolean; static;
@@ -137,13 +144,16 @@ begin
   end;
 end;
 
-function TLspArchitecture.OverviewFor(const AParams: TJSONObject; out AEnabled: Boolean): TArchitectureOverview;
+function TLspArchitecture.OverviewFor(const AParams: TJSONObject; out AEnabled: Boolean;
+  out ARoot: string): TArchitectureOverview;
 var
   FileName, Scope: string;
   Request: TArchitectureRequest;
   Settings: TServerSettings;
 begin
   Result := Default(TArchitectureOverview);
+  ARoot := '';
+  AEnabled := False;
   FileName := StringOf(AParams, 'uri');
   FileName := PathOf(FileName);
   Scope := StringOf(AParams, 'scope');
@@ -154,6 +164,7 @@ begin
   AEnabled := Settings.ArchitectureEnabled;
   if not AEnabled then
     Exit;
+  ARoot := Request.Root;
   Request.IncludeLibrary := FlagOf(AParams, 'includeLibraryUnits', Request.IncludeLibrary);
   Result := FService.Overview(Request);
 end;
@@ -165,7 +176,7 @@ var
   Section: TArchitectureSection;
   Overview: TArchitectureOverview;
   Enabled: Boolean;
-  UnitName, Data: string;
+  UnitName, Data, Root: string;
   Value: TJSONValue;
 begin
   if AParams is TJSONObject then
@@ -177,10 +188,13 @@ begin
   if not TArchitectureReport.ParseSection(StringOf(Params, 'section'), Section) then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       '"section" ist overview, central, subsystems, cycles oder crossLinks');
-  Overview := OverviewFor(Params, Enabled);
+  Overview := OverviewFor(Params, Enabled, Root);
   Answer := TJSONObject.Create;
   try
     Answer.AddPair('enabled', TJSONBool.Create(Enabled));
+    // Nur in der Antwort, nicht in den Berichtsdaten: Ein weitergegebener Bericht nennt keine lokalen Pfade.
+    if Enabled then
+      Answer.AddPair('root', Root);
     if Enabled then
       case Format of
         TLspArchitectureFormat.Json:
@@ -219,10 +233,33 @@ begin
   end;
 end;
 
+function TLspArchitecture.Execute(const AArguments: TJSONArray): TJSONValue;
+var
+  Params: TJSONObject;
+  Options: TJSONObject;
+  Pair: TJSONPair;
+begin
+  Params := TJSONObject.Create;
+  try
+    if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+      Params.AddPair('uri', AArguments.Items[0].Value);
+    if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONObject) then
+    begin
+      Options := TJSONObject(AArguments.Items[1]);
+      for Pair in Options do
+        if Pair.JsonString.Value <> 'uri' then
+          Params.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
+    end;
+    Result := Request(Params);
+  finally
+    Params.Free;
+  end;
+end;
+
 function TLspArchitecture.SaveReport(const AArguments: TJSONArray): TJSONValue;
 var
   Params: TJSONObject;
-  FileName, Target: string;
+  FileName, Target, Root: string;
   Overview: TArchitectureOverview;
   Enabled: Boolean;
   Answer: TJSONObject;
@@ -245,7 +282,7 @@ begin
         Params.AddPair('includeLibraryUnits', TJSONBool.Create(FlagOf(TJSONObject(AArguments.Items[2]),
           'includeLibraryUnits', False)));
     end;
-    Overview := OverviewFor(Params, Enabled);
+    Overview := OverviewFor(Params, Enabled, Root);
   finally
     Params.Free;
   end;

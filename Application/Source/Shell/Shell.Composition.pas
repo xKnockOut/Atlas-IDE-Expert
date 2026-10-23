@@ -1504,6 +1504,11 @@ begin
     begin
       Result := FTodos.Execute(AArguments);
     end);
+  FCommands.Register(TLspArchitecture.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FArchitecture.Execute(AArguments);
+    end);
   FCommands.Register(TLspArchitecture.SaveCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin

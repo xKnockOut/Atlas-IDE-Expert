@@ -517,6 +517,19 @@ type
     /// <summary>Menüeintrag „Prozesse am Projekt…“ (#62, diagnostics.processes): Index-Cache, Sperre und
     /// angemeldete LSP- und MCP-Prozesse; Vorgabe an.</summary>
     DiagnosticsProcesses: Boolean;
+    /// <summary>Architekturübersicht (#1118, architecture.enabled in settings.json): Fenster „Atlas-Architektur“,
+    /// Bericht und get_architecture; Vorgabe an.</summary>
+    ArchitectureEnabled: Boolean;
+    /// <summary>Umfang der Übersicht (architecture.scope): 'project' oder 'projectGroup' (Vorgabe).</summary>
+    ArchitectureScope: string;
+    /// <summary>Bibliotheks-Units (RTL, VCL, Fremdbibliotheken) mitzählen (architecture.includeLibraryUnits).
+    /// </summary>
+    ArchitectureIncludeLibraryUnits: Boolean;
+    /// <summary>So viele zentrale Units (architecture.centralUnits, 5–100, Vorgabe 15).</summary>
+    ArchitectureCentralUnits: Integer;
+    /// <summary>Zustand: Das Fenster „Atlas-Architektur“ wurde einmal rechts neben die Projektverwaltung
+    /// gelegt (ui.architectureWindowPlaced); danach gilt die Lage aus dem Desktop der IDE.</summary>
+    ArchitectureWindowPlaced: Boolean;
     /// <summary>Hauptschalter der experimentellen Funktionen (#834, experimental.enabled, liegt in settings.json):
     /// aus = keine Einstellung mit x-experimental wirkt, auch wenn sie an ist; Vorgabe aus.</summary>
     ExperimentalEnabled: Boolean;
@@ -1398,6 +1411,12 @@ begin
   Result.DiagnosticModeKey := $E044; // Strg+Umschalt+Alt+D
   Result.DiagnosticModeKeyPriority := False;
   Result.DiagnosticsProcesses := True;
+  // Wie die Vorgaben im Schema (atlas.schema.json, architecture).
+  Result.ArchitectureEnabled := True;
+  Result.ArchitectureScope := 'projectGroup';
+  Result.ArchitectureIncludeLibraryUnits := False;
+  Result.ArchitectureCentralUnits := 15;
+  Result.ArchitectureWindowPlaced := False;
   Result.ExperimentalEnabled := False;
   Result.SetupChecklist := True;
   Result.SetupChecklistSeen := False;
@@ -1649,6 +1668,8 @@ begin
   ContinuePatternMinLines := EnsureRange(ContinuePatternMinLines, MinPatternLines, MaxPatternLines);
   OpenDelayMs := EnsureRange(OpenDelayMs, 0, MaxOpenDelay);
   MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb);
+  ArchitectureScope := Choice(ArchitectureScope, ['projectGroup', 'project']);
+  ArchitectureCentralUnits := EnsureRange(ArchitectureCentralUnits, 5, 100);
   // TShortCut ist ein Word.
   PaletteKey := EnsureRange(PaletteKey, 0, $FFFF);
   WelcomePageSearchKey := EnsureRange(WelcomePageSearchKey, 0, $FFFF);
@@ -2015,6 +2036,13 @@ begin
     AStore.ReadInteger('DiagnosticModeKeyPriority', BoolValue(Default.DiagnosticModeKeyPriority)) <> 0;
   DiagnosticsProcesses :=
     AStore.ReadInteger('DiagnosticsProcesses', BoolValue(Default.DiagnosticsProcesses)) <> 0;
+  ArchitectureEnabled := AStore.ReadInteger('ArchitectureEnabled', BoolValue(Default.ArchitectureEnabled)) <> 0;
+  ArchitectureScope := AStore.ReadString('ArchitectureScope', Default.ArchitectureScope);
+  ArchitectureIncludeLibraryUnits := AStore.ReadInteger('ArchitectureIncludeLibraryUnits',
+    BoolValue(Default.ArchitectureIncludeLibraryUnits)) <> 0;
+  ArchitectureCentralUnits := AStore.ReadInteger('ArchitectureCentralUnits', Default.ArchitectureCentralUnits);
+  ArchitectureWindowPlaced := AStore.ReadInteger('ArchitectureWindowPlaced',
+    BoolValue(Default.ArchitectureWindowPlaced)) <> 0;
   ExperimentalEnabled := AStore.ReadInteger('ExperimentalEnabled', BoolValue(Default.ExperimentalEnabled)) <> 0;
   SetupChecklist := AStore.ReadInteger('SetupChecklist', BoolValue(Default.SetupChecklist)) <> 0;
   SetupChecklistSeen := AStore.ReadInteger('SetupChecklistSeen', BoolValue(Default.SetupChecklistSeen)) <> 0;
@@ -2442,6 +2470,11 @@ begin
   AStore.WriteInteger('DiagnosticModeKey', DiagnosticModeKey);
   AStore.WriteInteger('DiagnosticModeKeyPriority', BoolValue(DiagnosticModeKeyPriority));
   AStore.WriteInteger('DiagnosticsProcesses', BoolValue(DiagnosticsProcesses));
+  AStore.WriteInteger('ArchitectureEnabled', BoolValue(ArchitectureEnabled));
+  AStore.WriteString('ArchitectureScope', ArchitectureScope);
+  AStore.WriteInteger('ArchitectureIncludeLibraryUnits', BoolValue(ArchitectureIncludeLibraryUnits));
+  AStore.WriteInteger('ArchitectureCentralUnits', ArchitectureCentralUnits);
+  AStore.WriteInteger('ArchitectureWindowPlaced', BoolValue(ArchitectureWindowPlaced));
   AStore.WriteInteger('ExperimentalEnabled', BoolValue(ExperimentalEnabled));
   AStore.WriteInteger('SetupChecklist', BoolValue(SetupChecklist));
   AStore.WriteInteger('SetupChecklistSeen', BoolValue(SetupChecklistSeen));

@@ -570,6 +570,15 @@
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.Peek.pas"/>
         <DCCReference Include="Source\IDE\Results\Atlas.IDE.Results.Peek.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.Model.pas"/>
+        <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.Model.pas"/>
+        <DCCReference Include="Source\UI\Architecture\Atlas.UI.Architecture.Map.pas"/>
+        <DCCReference Include="Source\UI\Architecture\Atlas.UI.Architecture.Frame.pas">
+            <Form>AtlasArchitectureFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\IDE\Architecture\Atlas.IDE.Architecture.Window.pas"/>
+        <DCCReference Include="Source\IDE\Architecture\Atlas.IDE.Architecture.Service.pas"/>
         <DCCReference Include="Source\UI\Outline\Atlas.UI.Outline.Frame.pas">
             <Form>AtlasOutlineFrame</Form>
             <FormType>dfm</FormType>

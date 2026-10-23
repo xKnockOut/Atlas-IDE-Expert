@@ -112,7 +112,12 @@ begin
     Setting('CodeLensMetrics', 'codeLens.metrics', True),
     Setting('Metrics', 'metrics', True),
     Setting('ExperimentalEnabled', 'experimental.enabled', True),
-    Setting('CompileOnSave', 'compiler.onSave', True)];
+    Setting('CompileOnSave', 'compiler.onSave', True),
+    // Architekturübersicht (#1118): Server (Fenster, Bericht, get_architecture) und Plugin lesen denselben Wert.
+    Setting('ArchitectureEnabled', 'architecture.enabled', True),
+    TextSetting('ArchitectureScope', 'architecture.scope'),
+    Setting('ArchitectureIncludeLibraryUnits', 'architecture.includeLibraryUnits', True),
+    Setting('ArchitectureCentralUnits', 'architecture.centralUnits', False)];
 end;
 
 class function TAtlasSettingsScopes.TryRouted(const AName: string; out ASetting: TAtlasRoutedSetting): Boolean;
