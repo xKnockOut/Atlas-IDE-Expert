@@ -917,6 +917,16 @@
       ]
     },
     {
+      "id": "first-char-address",
+      "name": "Address of the first character via S[1]",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "@S[1] and PChar(@S[1]) raise a range check error for an empty string with {$R+}; without range checking they yield nil or garbage. The index access also forces a unique copy (UniqueString). PChar(S) and Pointer(S) are safe for empty strings too. Applies to string, UnicodeString, WideString, AnsiString, RawByteString and UTF8String, also S[Low(S)]; ShortString, arrays and other indexes stay silent. Reported only when the type of S is known for sure. High confidence. Quick fix for const parameters: replace with PChar(S) (PAnsiChar for AnsiString types), a surrounding PChar(…), PAnsiChar(…), PWideChar(…), PByte(…) or Pointer(…) is replaced as a whole. For other strings the pointer may be used for writing, where the unique copy is intended, so there is no quick fix and the message names UniqueString(S).",
+      "bad": "procedure Send(const AText: string);\nbegin\n  WriteBuffer(@AText[1], Length(AText) * SizeOf(Char));\nend;",
+      "good": "procedure Send(const AText: string);\nbegin\n  WriteBuffer(PChar(AText), Length(AText) * SizeOf(Char));\nend;"
+    },
+    {
       "id": "float-equality",
       "name": "Floating-point comparison with = or <>",
       "category": "bug",

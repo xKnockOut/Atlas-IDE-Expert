@@ -451,6 +451,11 @@
       ]
     },
     {
+      "id": "first-char-address",
+      "name": "Adresse des ersten Zeichens über S[1]",
+      "description": "@S[1] und PChar(@S[1]) lösen bei leerem String mit {$R+} einen Bereichsfehler aus, ohne Bereichsprüfung ergibt sich nil oder Müll. Außerdem erzwingt der Indexzugriff eine eindeutige Kopie (UniqueString). PChar(S) und Pointer(S) sind auch für leere Strings sicher. Gilt für string, UnicodeString, WideString, AnsiString, RawByteString und UTF8String, auch S[Low(S)]; ShortString, Arrays und andere Indizes bleiben still. Gemeldet wird nur, wenn der Typ von S sicher bekannt ist. Sicherheit hoch. Korrektur bei const-Parametern: durch PChar(S) ersetzen (PAnsiChar bei AnsiString-Typen), ein umgebendes PChar(…), PAnsiChar(…), PWideChar(…), PByte(…) oder Pointer(…) wird als Ganzes ersetzt. Bei anderen Strings kann der Zeiger zum Schreiben dienen, dann ist die eigene Kopie gewollt; dort gibt es keine Korrektur, die Meldung nennt UniqueString(S)."
+    },
+    {
       "id": "float-equality",
       "name": "Gleitkommavergleich mit = oder <>",
       "description": "Gleitkommawerte sind nach Berechnungen selten exakt gleich. Mit SameValue aus System.Math und einer Toleranz vergleichen. Vergleiche mit 0 werden nicht gemeldet."

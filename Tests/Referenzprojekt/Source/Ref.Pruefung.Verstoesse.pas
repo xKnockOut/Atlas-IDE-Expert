@@ -180,4 +180,10 @@ begin
   TObject(ABlatt).Free; // ERWARTET: redundant-cast
 end;
 
+procedure Senden(const AText: string; AStrom: TStream);
+begin
+  AStrom.WriteBuffer(PChar(@AText[1])^, Length(AText) * SizeOf(Char)); // ERWARTET: first-char-address
+  AStrom.WriteBuffer(PChar(AText)^, Length(AText) * SizeOf(Char)); // KEIN-TREFFER: first-char-address
+end;
+
 end.

@@ -90,6 +90,7 @@ Fehlalarm.
 | `legacy-stack-queue` | Regel im Katalog (#1106), `ERWARTET-INDEX`, in `Ref.Pruefung.Verstoesse` |
 | `unrelated-class-cast` | Regel im Katalog (#1129), in `Ref.Pruefung.Verstoesse` |
 | `redundant-cast` | Regel im Katalog (#1139), in `Ref.Pruefung.Verstoesse` |
+| `first-char-address` | Regel im Katalog (#1130), in `Ref.Pruefung.Verstoesse` |
 | `forbidden-symbol` | Regel im Katalog (#1133), `ERWARTET-OPTION`, in `Ref.Pruefung.Verstoesse` |
 
 Jede ID steht im Regelkatalog oder in `geplante-regeln.txt` mit dem

@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 71 |
+| [Fehler finden](#gruppe-find-bugs) | 72 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
@@ -47,6 +47,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`sizeof-pointer`](#sizeof-pointer) | SizeOf eines Zeigers in Move oder FillChar | Bug | Fehler |
 | [`char-to-pchar`](#char-to-pchar) | Char nach PChar umgewandelt | Bug | Fehler |
 | [`unrelated-class-cast`](#unrelated-class-cast) | Harte Umwandlung zwischen nicht verwandten Klassen | Bug | Warnung |
+| [`first-char-address`](#first-char-address) | Adresse des ersten Zeichens über S[1] | Bug | Warnung |
 | [`float-equality`](#float-equality) | Gleitkommavergleich mit = oder <> | Bug | Hinweis |
 | [`constructor-on-instance`](#constructor-on-instance) | Konstruktor auf einer Instanz aufgerufen | Bug | Warnung |
 | [`unresolved-identifier`](#unresolved-identifier) | Nicht deklarierter Bezeichner | Bug | Warnung |
@@ -2102,6 +2103,31 @@ var
 begin
   mEdit := Sender as TEdit;
   (mEdit as TButton).Caption := 'OK';
+end;
+```
+
+<a id="first-char-address"></a>
+### first-char-address
+
+**Adresse des ersten Zeichens über S[1]** · Bug · Warnung · Gruppe Fehler finden
+
+@S[1] und PChar(@S[1]) lösen bei leerem String mit {$R+} einen Bereichsfehler aus, ohne Bereichsprüfung ergibt sich nil oder Müll. Außerdem erzwingt der Indexzugriff eine eindeutige Kopie (UniqueString). PChar(S) und Pointer(S) sind auch für leere Strings sicher. Gilt für string, UnicodeString, WideString, AnsiString, RawByteString und UTF8String, auch S[Low(S)]; ShortString, Arrays und andere Indizes bleiben still. Gemeldet wird nur, wenn der Typ von S sicher bekannt ist. Sicherheit hoch. Korrektur bei const-Parametern: durch PChar(S) ersetzen (PAnsiChar bei AnsiString-Typen), ein umgebendes PChar(…), PAnsiChar(…), PWideChar(…), PByte(…) oder Pointer(…) wird als Ganzes ersetzt. Bei anderen Strings kann der Zeiger zum Schreiben dienen, dann ist die eigene Kopie gewollt; dort gibt es keine Korrektur, die Meldung nennt UniqueString(S).
+
+Mit Treffer:
+
+```pascal
+procedure Send(const AText: string);
+begin
+  WriteBuffer(@AText[1], Length(AText) * SizeOf(Char));
+end;
+```
+
+Richtig:
+
+```pascal
+procedure Send(const AText: string);
+begin
+  WriteBuffer(PChar(AText), Length(AText) * SizeOf(Char));
 end;
 ```
 
