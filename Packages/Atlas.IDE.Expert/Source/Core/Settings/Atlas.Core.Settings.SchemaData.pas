@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2025] of string = (
+  Lines: array[0..2031] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1245,6 +1245,15 @@ const
       ' auf einer privaten, nicht virtuellen Methode bzw. einer freien Routine der Implementierung mit genau einem Aufruf, wahlweise ohne durchgereichte Parameter. Jede Aktion zeigt vorher die neue Signatur ' +
       'und die Zahl der geänderten Aufrufe. Liegt die lokale Routine in einer anderen, gibt es statt der Aktion einen Hinweis.",',
     '          "x-issue": "#663"',
+    '        },',
+    '        "promoteVariable": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen zwischen lokaler Variable und Feld: „In Feld umwandeln“ auf einer lokalen Variablen oder Inline-Variablen einer Methode (Vorschlag F + Name ohne L-Präfix, änder' +
+      'bar; das Feld steht hinter dem letzten Feld des private-Abschnitts, eine Initialisierung bleibt als Zuweisung, der Typ einer Inline-Variablen ohne Angabe wird abgeleitet; Warnung, wenn das Objekt in d' +
+      'er Methode erzeugt und freigegeben wird) und „In lokale Variable umwandeln“ auf einem privaten Feld, das nur eine Methode benutzt und dort auf jedem Weg zuerst schreibt (nicht bei Property, published,' +
+      ' Formularfeld). Vorher eine Vorschau, ein Rückgängig-Schritt.",',
+    '          "x-issue": "#668"',
     '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',

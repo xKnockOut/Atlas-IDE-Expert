@@ -2631,6 +2631,18 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | LRM8 | Freie Routine `Zeige(const Name: string; Anzahl: Integer)` der Implementierung, einziger Aufruf `Zeige(Name, Zahl)` mit Parameter `Name` und Variable `Zahl: Integer` des Aufrufers, „In lokale Routine umwandeln (durchgereichte Parameter entfernen)“ | Lokale Routine ohne Parameter, der Rumpf nutzt `Name` und `Zahl`; ein geschriebener Wertparameter bleibt; steht die Routine im interface, keine Aktion |
 | LRM9 | `refactoring.nestedRoutine` aus | Keine der vier Aktionen |
 
+## Lokale Variable und Feld (#668)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LVF1 | In `procedure TForm1.Rechne;` mit `var LZeile: Integer;` Cursor auf `LZeile`, Alt+Enter, „In Feld umwandeln (LZeile → FZeile)“ | Namensabfrage mit `FZeile`; nach Bestätigung Vorschau, dann `FZeile: Integer;` hinter dem letzten Feld im private-Abschnitt, alle Verwendungen umbenannt, der var-Eintrag weg (bei einzigem Eintrag auch `var`); ein Rückgängig-Schritt |
+| LVF2 | Dasselbe für `var LSumme: Integer := 0;` und `var LNeu := TStringList.Create;` (mit `LNeu.Free` am Ende) | `FSumme := 0;` bleibt als Zuweisung; `FNeu: TStringList;` mit abgeleitetem Typ, die Vorschau warnt zur Lebensdauer |
+| LVF3 | Namen in der Abfrage auf ein vorhandenes Feld, ein geerbtes Mitglied (`Caption`), `begin` oder einen Namen ändern, den eine andere Methode der Klasse anders meint | Meldung „Umwandeln fehlgeschlagen: …“ mit dem Grund, nichts geändert |
+| LVF4 | Klasse ohne private-Abschnitt; Record mit Methode | Neuer `private`-Abschnitt vor `end` bzw. Feld im Record |
+| LVF5 | Privates `FTemp: Integer;`, das nur `TForm1.Rechne` benutzt und dort zuerst schreibt (auch als `Self.FTemp`), Cursor auf das Feld oder eine Verwendung, „In lokale Variable umwandeln (FTemp → LTemp)“ | `LTemp: Integer;` im var-Abschnitt von `Rechne`, Verwendungen ohne `Self.`, das Feld weg (ein leerer private-Abschnitt auch) |
+| LVF6 | Feld in zwei Methoden, zuerst gelesen (`Inc(FTemp)`), nur in einem Zweig geschrieben, hinter einer Property, published, als Komponente in der .dfm, in einer lokalen Routine oder in einer rekursiven Methode | Keine Aktion |
+| LVF7 | `refactoring.promoteVariable` aus | Keine der beiden Aktionen; „Boolean umkehren“ fragt weiter den Namen und zeigt die Vorschau wie vorher |
+
 ## Methode aus Aufruf anlegen (#472)
 
 | Nr. | Schritte | Erwartet |

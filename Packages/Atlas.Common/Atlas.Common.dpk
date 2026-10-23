@@ -183,6 +183,8 @@ contains
   Atlas.Common.Editing.Conditions in 'Source\Editing\Atlas.Common.Editing.Conditions.pas',
   Atlas.Common.Editing.ConditionalExpression in 'Source\Editing\Atlas.Common.Editing.ConditionalExpression.pas',
   Atlas.Common.Editing.NestedRoutines in 'Source\Editing\Atlas.Common.Editing.NestedRoutines.pas',
+  Atlas.Common.Editing.PromoteVariable in 'Source\Editing\Atlas.Common.Editing.PromoteVariable.pas',
+  Atlas.Common.Lsp.PromoteVariable in 'Source\Lsp\Atlas.Common.Lsp.PromoteVariable.pas',
   Atlas.Common.Editing.RoutineLocals in 'Source\Editing\Atlas.Common.Editing.RoutineLocals.pas',
   Atlas.Common.Editing.MoveClass in 'Source\Editing\Atlas.Common.Editing.MoveClass.pas',
   Atlas.Common.Editing.UnitRename in 'Source\Editing\Atlas.Common.Editing.UnitRename.pas',

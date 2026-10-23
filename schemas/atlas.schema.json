@@ -1163,6 +1163,12 @@
           "description": "Code-Aktionen zwischen lokaler Routine und Methode: „In private Methode umwandeln“ bzw. „Aus Routine herauslösen“ auf dem Kopf einer lokalen Routine (genutzte Variablen und Parameter der äußeren Routine werden Parameter, var beim Schreiben, const bei Strings, Records und Interfaces; Konstanten wandern mit), „Als lokale Routine einbetten“ bzw. „In lokale Routine umwandeln“ auf einer privaten, nicht virtuellen Methode bzw. einer freien Routine der Implementierung mit genau einem Aufruf, wahlweise ohne durchgereichte Parameter. Jede Aktion zeigt vorher die neue Signatur und die Zahl der geänderten Aufrufe. Liegt die lokale Routine in einer anderen, gibt es statt der Aktion einen Hinweis.",
           "x-issue": "#663"
         },
+        "promoteVariable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Code-Aktionen zwischen lokaler Variable und Feld: „In Feld umwandeln“ auf einer lokalen Variablen oder Inline-Variablen einer Methode (Vorschlag F + Name ohne L-Präfix, änderbar; das Feld steht hinter dem letzten Feld des private-Abschnitts, eine Initialisierung bleibt als Zuweisung, der Typ einer Inline-Variablen ohne Angabe wird abgeleitet; Warnung, wenn das Objekt in der Methode erzeugt und freigegeben wird) und „In lokale Variable umwandeln“ auf einem privaten Feld, das nur eine Methode benutzt und dort auf jedem Weg zuerst schreibt (nicht bei Property, published, Formularfeld). Vorher eine Vorschau, ein Rückgängig-Schritt.",
+          "x-issue": "#668"
+        },
         "tryFinally": {
           "type": "boolean",
           "default": true,

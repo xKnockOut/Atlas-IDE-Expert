@@ -183,22 +183,6 @@ begin
   Result := (Header <> nil) and (Header.FindChild(TSyntaxKind.TypeReference) <> nil);
 end;
 
-/// <summary>Name ohne Klasse: Rechne aus TKunde.Rechne.</summary>
-function ShortName(const AName: string): string;
-begin
-  Result := AName;
-  if Result.LastIndexOf('.') >= 0 then
-    Result := Result.Substring(Result.LastIndexOf('.') + 1);
-end;
-
-/// <summary>Klasse vor dem Namen: TKunde aus TKunde.Rechne; '' ohne.</summary>
-function Qualifier(const AName: string): string;
-begin
-  Result := '';
-  if AName.LastIndexOf('.') > 0 then
-    Result := AName.Substring(0, AName.LastIndexOf('.'));
-end;
-
 function Encloses(ANode: TSyntaxNode; AOffset: Integer): Boolean;
 begin
   Result := (ANode <> nil) and (ANode.StartOffset <= AOffset) and (AOffset <= ANode.EndOffset);
@@ -397,19 +381,6 @@ begin
         Result := Result + [Trim(Name)];
 end;
 
-/// <summary>Namen der Mitglieder der Typdeklaration ABody.</summary>
-function MemberNames(ABody: TSyntaxNode): TArray<string>;
-var
-  Index: Integer;
-  Name: string;
-begin
-  Result := nil;
-  for Index := 0 to ABody.ChildCount - 1 do
-    if ABody[Index].Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.Field, TSyntaxKind.PropertyDecl] then
-      for Name in ABody[Index].Name.Split([',']) do
-        Result := Result + [Trim(Name)];
-end;
-
 /// <summary>Namen auf Unit-Ebene: Routinen, Typen, Variablen und Konstanten beider Teile.</summary>
 function UnitNames(ARoot: TSyntaxNode): TArray<string>;
 var
@@ -428,7 +399,7 @@ begin
       Child := Section[Inner];
       case Child.Kind of
         TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader:
-          if Qualifier(Child.Name) = '' then
+          if TRoutineBody.QualifierOf(Child.Name) = '' then
             Result := Result + [Child.Name];
         TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.TypeSection:
           for Name in ChildNames(Child) do
@@ -682,7 +653,7 @@ begin
   if (Inner = nil) or (Inner.Parent = nil) or (Inner.Parent.Kind <> TSyntaxKind.RoutineDecl) then
     Exit(Fail('keine lokale Routine', AReason));
   Outer := Inner.Parent;
-  ClassName := Qualifier(Outer.Name);
+  ClassName := TRoutineBody.QualifierOf(Outer.Name);
   IsMethod := ClassName <> '';
   if IsMethod then
     AAction.Title := TNestedRoutines.ToMethodTitle
@@ -708,7 +679,7 @@ begin
   TypeBody := nil;
   if IsMethod then
   begin
-    TypeBody := TRoutineBody.TypeBody(ATree.Root, ShortName(ClassName));
+    TypeBody := TRoutineBody.TypeBody(ATree.Root, TRoutineBody.ShortNameOf(ClassName));
     if TypeBody = nil then
       Exit(Fail('Klasse ' + ClassName + ' nicht in der Datei', AReason));
   end;
@@ -811,7 +782,7 @@ begin
     end;
     // Freier Name.
     if IsMethod then
-      Taken := MemberNames(TypeBody)
+      Taken := TRoutineBody.MemberNames(TypeBody)
     else
       Taken := UnitNames(ATree.Root);
     NewName := FreeName(Inner.Name, Taken);
@@ -867,7 +838,7 @@ begin
     if IsClass then
       for Index := 0 to TypeBody.ChildCount - 1 do
         if (TypeBody[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(TypeBody[Index].Name,
-          ShortName(Outer.Name)) and HasWord(Tokens, TypeBody[Index], ['static']) then
+          TRoutineBody.ShortNameOf(Outer.Name)) and HasWord(Tokens, TypeBody[Index], ['static']) then
         begin
           Declaration := Declaration + ' static;';
           Break;
@@ -954,21 +925,6 @@ begin
       Exit(Implementation_[Index]);
 end;
 
-/// <summary>Sichtbarkeit des Mitglieds AMember in ABody ('' ohne Abschnitt).</summary>
-function VisibilityOf(ABody, AMember: TSyntaxNode): string;
-var
-  Index: Integer;
-begin
-  Result := '';
-  for Index := 0 to ABody.ChildCount - 1 do
-  begin
-    if ABody[Index] = AMember then
-      Exit;
-    if ABody[Index].Kind = TSyntaxKind.Visibility then
-      Result := LowerCase(ABody[Index].Name);
-  end;
-end;
-
 function EmbedCore(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
   const ALookup: TNestedRoutineLookup; const AStyle: TFormatStyle; ARemovePassThrough: Boolean;
   out AAction: TCodeAction; out AReason: string): Boolean;
@@ -1004,8 +960,8 @@ begin
   Header := HeaderOf(Routine);
   if (Header = nil) or (TRoutineBody.BodyOf(Routine) = nil) then
     Exit(Fail('Routine ohne Rumpf', AReason));
-  Short := ShortName(Routine.Name);
-  ClassName := Qualifier(Routine.Name);
+  Short := TRoutineBody.ShortNameOf(Routine.Name);
+  ClassName := TRoutineBody.QualifierOf(Routine.Name);
   IsMethod := ClassName <> '';
   IsClass := IsClassHeader(Tokens, Header);
   if HasWord(Tokens, Header, ['overload', 'forward', 'external', 'export', 'assembler']) or (Pos('<', ClassName) > 0) or
@@ -1027,7 +983,7 @@ begin
       end;
     if Declaration = nil then
       Exit(Fail('Deklaration fehlt', AReason));
-    if not MatchText(VisibilityOf(TypeBody, Declaration), ['private', 'strict private']) then
+    if not MatchText(TRoutineBody.VisibilityOf(TypeBody, Declaration), ['private', 'strict private']) then
       Exit(Fail('nicht privat', AReason));
     if HasWord(Tokens, Declaration, ['virtual', 'dynamic', 'override', 'abstract', 'message', 'overload',
       'reintroduce', 'final', 'static']) then
@@ -1083,7 +1039,7 @@ begin
     if (Caller = nil) or (Caller = Routine) or (Caller.Parent <> Routine.Parent) or
       not TRoutineBody.Within(Reference, TRoutineBody.BodyOf(Caller)) then
       Exit(Fail('Aufrufer ist keine Routine der Implementierung', AReason));
-    if IsMethod and (not SameText(Qualifier(Caller.Name), ClassName) or
+    if IsMethod and (not SameText(TRoutineBody.QualifierOf(Caller.Name), ClassName) or
       (IsClassHeader(Tokens, HeaderOf(Caller)) <> IsClass)) then
       Exit(Fail('Aufrufer ist keine Methode derselben Art', AReason));
     // Nur Aufrufe, kein Methodenzeiger oder Ereignis.
@@ -1146,9 +1102,9 @@ begin
     if Cache.Declares(Caller, Short, CallerBody.StartOffset - 1) then
       Exit(Fail(Caller.Name + ' kennt schon ' + Short, AReason));
     Members := nil;
-    if not IsMethod and (Qualifier(Caller.Name) <> '') and (TRoutineBody.TypeBody(ATree.Root,
-      Qualifier(Caller.Name)) <> nil) then
-      Members := MemberNames(TRoutineBody.TypeBody(ATree.Root, Qualifier(Caller.Name)));
+    if not IsMethod and (TRoutineBody.QualifierOf(Caller.Name) <> '') and (TRoutineBody.TypeBody(ATree.Root,
+      TRoutineBody.QualifierOf(Caller.Name)) <> nil) then
+      Members := TRoutineBody.MemberNames(TRoutineBody.TypeBody(ATree.Root, TRoutineBody.QualifierOf(Caller.Name)));
     for Node in Identifiers do
     begin
       if Shadowed(Cache, Node, Routine, Node.Name, True) then
