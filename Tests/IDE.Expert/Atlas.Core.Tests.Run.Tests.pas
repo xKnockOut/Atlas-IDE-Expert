@@ -38,6 +38,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Build.Messages,
+  Atlas.Core.Build.Verdict,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tests.Run,
@@ -135,37 +136,47 @@ var
   Value: TAtlasPluginSettings;
 begin
   Value := Settings;
-  Assert.IsTrue(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, '', 3, True));
-  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, False, False, '', 0, True), 'Build fehlgeschlagen');
-  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, True, '', 0, True), 'Hintergrundprüfung');
-  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, TAtlasTestRun.RequestedBy, 0, True),
+  Assert.IsTrue(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, '', True));
+  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, False, False, '', True), 'Build fehlgeschlagen');
+  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, True, '', True), 'Hintergrundprüfung');
+  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, TAtlasTestRun.RequestedBy, True),
     'Build vor den Tests');
-  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, 'mcp', 0, True), 'Build für Claude Code');
-  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, '', 0, False), 'kein Testprogramm');
+  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, 'mcp', True), 'Build für Claude Code');
+  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, '', False), 'kein Testprogramm');
   Value.TestsAfterBuild := False;
-  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, '', 0, True), 'Vorgabe aus');
+  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, '', True), 'Vorgabe aus');
   Value := Settings;
   Value.TestRun := False;
-  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, '', 0, True), 'Tests ausführen aus');
+  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, '', True), 'Tests ausführen aus');
   Value := Settings;
   Value.Enabled := False;
-  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, '', 0, True), 'Atlas aus');
+  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, '', True), 'Atlas aus');
 end;
 
 procedure TAtlasTestRunTests.ZeroHintsNeedsCleanBuild;
 var
   Value: TAtlasPluginSettings;
   Messages: TArray<TAtlasCompilerMessage>;
+  Verdict: TAtlasBuildVerdict;
 begin
-  SetLength(Messages, 3);
-  Messages[0].Severity := TAtlasCompilerSeverity.Hint;
-  Messages[1].Severity := TAtlasCompilerSeverity.Warning;
-  Messages[2].Severity := TAtlasCompilerSeverity.Info;
-  Assert.AreEqual(2, TAtlasTestRun.WarningsAndHints(Messages));
+  // Abnahme #530: Mit zeroHints gilt ein Build mit Hinweis als gescheitert, Tests nach dem Build starten nicht.
+  SetLength(Messages, 2);
+  Messages[0] := TAtlasCompilerMessages.FromIde('Hint', 'H2164 Variable X wurde deklariert, aber nicht verwendet',
+    'C:\P\U.pas', 5, 3);
+  Messages[1] := TAtlasCompilerMessages.FromIde('Info', 'Erfolg', '', 0, 0);
   Value := Settings;
   Value.BuildZeroHints := True;
-  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, '', 2, True), 'mit Hinweisen nicht');
-  Assert.IsTrue(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, '', 0, True), 'ohne Hinweise');
+  Verdict := TAtlasBuildVerdicts.Evaluate(Messages, nil, True, TAtlasBuildVerdictSettings.Create(
+    Value.BuildZeroHints, Value.BuildWarningsAsErrors));
+  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, Verdict.Effective, False, '', True), 'mit Hinweisen nicht');
+  // Derselbe Hinweis in der Basislinie zählt nicht.
+  Verdict := TAtlasBuildVerdicts.Evaluate(Messages, TArray<Boolean>.Create(True, False), True,
+    TAtlasBuildVerdictSettings.Create(Value.BuildZeroHints, Value.BuildWarningsAsErrors));
+  Assert.IsTrue(TAtlasTestRun.ShouldRunAfterBuild(Value, Verdict.Effective, False, '', True), 'in der Basislinie');
+  Value.BuildZeroHints := False;
+  Verdict := TAtlasBuildVerdicts.Evaluate(Messages, nil, True, TAtlasBuildVerdictSettings.Create(
+    Value.BuildZeroHints, Value.BuildWarningsAsErrors));
+  Assert.IsTrue(TAtlasTestRun.ShouldRunAfterBuild(Value, Verdict.Effective, False, '', True), 'ohne zeroHints');
 end;
 
 procedure TAtlasTestRunTests.FailureSitsOnTestMethod;
