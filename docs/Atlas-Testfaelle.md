@@ -3059,6 +3059,29 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit Unit `Kunde
 | TZ11 | `"refactoring": {"inlineAccessorDiagnostic": true}` | Hinweis an `GetName`, `SetName`, `GetAlter`, `SetAlter` (Regel `trivial-accessor`), nicht an `SetFarbe`; Glühbirne an der Meldung bietet das Ersetzen; mit zusätzlich `"inlineAccessorEqualityCheck": false` kein Hinweis und keine Aktion an `SetName` |
 | TZ12 | `"refactoring": {"inlineAccessor": false}` bzw. `{"inlineAccessorBulk": false}` | Keine Aktion mehr bzw. nur noch die einzelne Aktion ohne Sammelaktionen (**Abnahme**) |
 
+## Sicher löschen (#716)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit `Formen.pas`: `TForm = class private FCache: Integer; FSize: Integer; public procedure Draw; virtual; procedure Ungenutzt; procedure Genutzt; procedure Auffrischen; function GetSize: Integer; property Size: Integer read GetSize; end;` (`Auffrischen` benutzt `FCache` und als einzige Routine `Hilfen.Doppelt`), `Kreis.pas` mit `TKreis = class(TForm) procedure Draw; override; end;`, `Nutzer.pas` ruft `Genutzt` und `Doppelt` auf, `Hilfen.pas` mit `function Doppelt(A: Integer): Integer;`, `Haupt.pas`/`Haupt.dfm` mit `Button1: TButton` und `Button1Click` als OnClick.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SL1 | Cursor auf `procedure Ungenutzt;`, Alt+Entf | Ohne Rückfrage gelöscht: Deklaration und Rumpf weg, eine Zeile in der Meldungsansicht; Strg+Z nimmt es zurück |
+| SL2 | Strg+. auf `procedure Genutzt;` | Aktion „Methode „Genutzt“ sicher löschen …“ |
+| SL3 | Aktion aus SL2 wählen | Dialog „„Genutzt“ wird noch verwendet (1 Stellen)“ mit `Nutzer.pas:…`; Knöpfe Anzeigen, Trotzdem löschen, Abbrechen |
+| SL4 | In SL3 „Anzeigen“ | Ergebnisfenster „Verwendungen von „Genutzt““ mit der Stelle; nichts gelöscht |
+| SL5 | In SL3 „Trotzdem löschen“ | Vorschau mit Hinweis „Trotz 1 Verwendungen gelöscht.“; Löschen übernimmt |
+| SL6 | Alt+Entf auf `procedure Draw; virtual;` | Rückfrage „„Draw“ wird in 1 Nachfahren überschrieben … Überschreibungen mitlöschen?“; Ja: `TKreis.Draw` verschwindet mit (zwei Dateien) |
+| SL7 | Wie SL6, Nein | Die Überschreibung zählt als Verwendung: Dialog wie SL3 |
+| SL8 | Alt+Entf auf `procedure Auffrischen;` | Rückfrage „Danach unbenutzt: FCache, uses Hilfen … Mitlöschen?“; Ja: Feld und uses-Eintrag fallen mit, `FSize` bleibt |
+| SL9 | Alt+Entf auf `property Size` | Folgeschritt nennt `GetSize`; Ja löscht Property und Getter samt Rumpf, dann auch `FSize` |
+| SL10 | Alt+Entf auf `Button1Click` in `Haupt.pas` | Verwendung `Haupt.dfm` (Ereignis); auf `Button1` die Komponente |
+| SL11 | Alt+Entf auf `FA` in `FA, FB: Integer;` | Nur `FA` verschwindet, `FB: Integer;` bleibt |
+| SL12 | Alt+Entf auf einer Konstante mit `///`-Kommentar, die als letzte im `const`-Abschnitt steht | Doku-Kommentar und Abschnitt fallen mit |
+| SL13 | Alt+Entf auf der Zeile `unit Hilfen;` | Verwendungen `Formen.pas` und `Nutzer.pas` (benutzen Symbole); Trotzdem löschen zeigt die Vorschau mit der gelöschten Datei, eine Unit, die `Hilfen` nur einbindet, verliert den uses-Eintrag; die Datei landet im Papierkorb und fehlt im Projekt |
+| SL14 | Alt+Entf auf einer published-Methode ohne Verwendungen | Gelöscht, Hinweis „… ist published: Formulare und RTTI können es ansprechen.“ |
+| SL15 | `"refactoring": {"safeDeletePreviewWhenUnused": true, "safeDeleteCascade": "never", "safeDeleteIncludeOverrides": "always"}` | SL1 zeigt die Vorschau; SL8 fragt nicht und lässt `FCache` stehen; SL6 löscht die Überschreibung ohne Frage |
+| SL16 | `"refactoring": {"safeDelete": false}` bzw. Einstellungen › Befehle „Sicher löschen“ aus | Keine Code-Aktion bzw. Alt+Entf gehört wieder der IDE, kein Menüeintrag (**Abnahme**) |
+
 ## Atlas-Spalte in der Zeilenleiste (#768)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TBasis = class procedure Zeichne; virtual; end;`, `TKnopf = class(TBasis) procedure Zeichne; override; end;` und einer zweiten Nachfahrklasse, die `Zeichne` ebenfalls überschreibt; ein Compilerfehler in einer Zeile.

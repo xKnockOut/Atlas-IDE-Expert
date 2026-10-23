@@ -325,6 +325,8 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MoveMember.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.InlineAccessor.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlineAccessor.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.SafeDelete.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SafeDelete.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.InvertBoolean.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InvertBoolean.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Unwrap.pas"/>

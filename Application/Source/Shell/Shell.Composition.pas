@@ -344,6 +344,10 @@ type
     function InlineAccessorActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>Befehl atlas.server.inlineAccessor: [uri, position, here|unit|project] (#717).</summary>
     function InlineAccessor(const AArguments: TJSONArray): TJSONValue;
+    function SafeDeleteActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Befehle atlas.server.safeDelete.prepare: [uri, position] und atlas.server.safeDelete: [uri,
+    /// position, {overrides, cascade, force}] (#716).</summary>
+    function SafeDelete(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
     /// <summary>Projekt der Datei AFileName für Umbauten mit neuen Units; False ohne Projekt.</summary>
     function RefactoringProject(const AFileName: string; out AProject: TProjectInfo): Boolean;
     /// <summary>Gibt es die Datei auf der Platte oder als offenes Dokument?</summary>
@@ -524,6 +528,7 @@ uses
   Atlas.Common.Lsp.PropertyFromAccessors,
   Atlas.Common.Editing.InlineAccessor,
   Atlas.Common.Lsp.InlineAccessor,
+  Atlas.Common.Lsp.SafeDelete,
   Atlas.Common.Lsp.InvertBoolean,
   Atlas.Common.Lsp.Unwrap,
   Atlas.Common.Lsp.UnitRename,
@@ -1400,6 +1405,7 @@ begin
       Result := Result + MoveClassActions(AUri, ARange.StartPos);
       Result := Result + PropertyFromAccessorsActions(AUri, ARange.StartPos);
       Result := Result + InlineAccessorActions(AUri, ARange.StartPos);
+      Result := Result + SafeDeleteActions(AUri, ARange.StartPos);
       Result := Result + ExtractInterfaceActions(AUri, ARange.StartPos);
       Result := Result + ExtractSuperclassActions(AUri, ARange.StartPos);
       Result := Result + MoveMemberActions(AUri, ARange.StartPos);
@@ -1512,6 +1518,16 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := InlineAccessor(AArguments);
+    end);
+  FCommands.Register(TLspSafeDelete.PrepareCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := SafeDelete(AArguments, True);
+    end);
+  FCommands.Register(TLspSafeDelete.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := SafeDelete(AArguments, False);
     end);
   FCommands.Register(TLspInvertBoolean.ApplyCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -3308,6 +3324,87 @@ begin
   // Nur Zahlen ins Log, keine Namen und Pfade (#647).
   FLogger.Info(Format('Zugriffsmethode durch Feld ersetzen: %d Methoden, %d Dateien',
     [(Answer.GetValue('accessors') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt]));
+  Result := Answer;
+end;
+
+function TServerComposition.SafeDeleteActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).SafeDelete or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspSafeDelete.Actions(True, Shared.Tree, Document.Text, AUri, APosition);
+end;
+
+function TServerComposition.SafeDelete(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Settings: TRefactoringSettings;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+  Choices: TSafeDeleteChoices;
+  Context: TSafeDeleteContext;
+  Provider: TUsesContextProvider;
+begin
+  // Argumente: URI, Position, beim Löschen die Antworten auf die Rückfragen.
+  if (AArguments = nil) or (AArguments.Count < 2) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "position" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  Choices := Default(TSafeDeleteChoices);
+  if AArguments.Count > 2 then
+    Choices := TSafeDeleteChoices.FromJson(AArguments.Items[2]);
+  Settings := RefactoringSettingsFor(Uri);
+  if not Settings.SafeDelete then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, '"Sicher löschen" ist abgeschaltet (refactoring.safeDelete).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context := Default(TSafeDeleteContext);
+  Context.Index := FIndex;
+  Context.Files := ProjectSourceFiles;
+  Context.ReadText := ReadSourceText;
+  Provider := FCodeActions.UsesContextFor;
+  if Assigned(Provider) then
+    Context.UsesFor :=
+      function(const AFileName: string): TUsesContext
+      begin
+        if not Provider(TDocumentUris.FromPath(AFileName), Result) then
+          Result := Default(TUsesContext);
+      end;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    if APrepare then
+    begin
+      Answer := TLspSafeDelete.Prepare(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text, Position,
+        Context);
+      // Die Einstellungen entscheiden im Plugin über Rückfragen und Vorschau.
+      Answer.AddPair('previewWhenUnused', TJSONBool.Create(Settings.SafeDeletePreviewWhenUnused));
+      Answer.AddPair('cascadeMode', Settings.SafeDeleteCascade);
+      Answer.AddPair('overridesMode', Settings.SafeDeleteIncludeOverrides);
+    end
+    else
+      Answer := TLspSafeDelete.Execute(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text, Position,
+        Choices, Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  if APrepare then
+    FLogger.Info(Format('Sicher löschen geprüft: %d Verwendungen, %d Überschreibungen',
+      [(Answer.GetValue('usages') as TJSONArray).Count, (Answer.GetValue('overrides') as TJSONArray).Count]))
+  else
+    FLogger.Info(Format('Sicher löschen: %d Symbole, %d Dateien',
+      [(Answer.GetValue('deleted') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt]));
   Result := Answer;
 end;
 

@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2073] of string = (
+  Lines: array[0..2101] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1294,6 +1294,38 @@ const
     '          "default": false,',
     '          "description": "Hinweis-Diagnose trivial-accessor an trivialen Zugriffsmethoden (Schweregrad über die Regel einstellbar); die Glühbirne an der Meldung ersetzt sie.",',
     '          "x-issue": "#717"',
+    '        },',
+    '        "safeDelete": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "„Sicher löschen“ (Alt+Entf im Editor, Code-Aktion „Methode „Run“ sicher löschen …“) für Methoden (Überladungen einzeln), Felder, Properties, Typen, Konstanten, globale Variab' +
+      'len, Routinen, lokale Routinen und auf der Zeile „unit X;“ für die ganze Unit. Atlas sucht vorher Verwendungen im Projekt, in Formularen (Ereignisse, Komponenten), in uses-Listen, Überschreibungen und' +
+      ' Interface-Implementierungen. Ohne Verwendungen wird sofort gelöscht, sonst zeigt eine Liste die Stellen (Abbrechen, Anzeigen, Trotzdem löschen). Doku-Kommentar und Attribute gehen mit, leere Abschnit' +
+      'te fallen weg.",',
+    '          "x-issue": "#716"',
+    '        },',
+    '        "safeDeletePreviewWhenUnused": {',
+    '          "type": "boolean",',
+    '          "default": false,',
+    '          "description": "Auch ohne Verwendungen erst die Vorschau zeigen, statt sofort zu löschen.",',
+    '          "x-issue": "#716"',
+    '        },',
+    '        "safeDeleteCascade": {',
+    '          "type": "string",',
+    '          "enum": ["ask", "always", "never"],',
+    '          "default": "ask",',
+    '          "description": "Was durch das Löschen unbenutzt wird (private Felder und Methoden, Getter und Setter einer Property, uses-Einträge): ask (nachfragen), always (mitlöschen) oder never (stehen ' +
+      'lassen).",',
+    '          "x-control": "Auswahl",',
+    '          "x-issue": "#716"',
+    '        },',
+    '        "safeDeleteIncludeOverrides": {',
+    '          "type": "string",',
+    '          "enum": ["ask", "always", "never"],',
+    '          "default": "ask",',
+    '          "description": "Überschreibungen einer virtuellen Methode in Nachfahren: ask (nachfragen), always (mitlöschen) oder never (zählen als Verwendung).",',
+    '          "x-control": "Auswahl",',
+    '          "x-issue": "#716"',
     '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',

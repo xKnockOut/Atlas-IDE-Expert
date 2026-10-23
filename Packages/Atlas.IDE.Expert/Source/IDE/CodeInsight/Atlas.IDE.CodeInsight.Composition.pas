@@ -1075,6 +1075,19 @@ begin
   TAtlasIdeUnwrap.Run;
 end;
 
+function SafeDeleteVisible: Boolean;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  Settings := TAtlasIdeSettings.Current;
+  Result := Settings.Enabled and Settings.SafeDelete;
+end;
+
+procedure SafeDelete;
+begin
+  TAtlasIdeEditorCommands.SafeDelete;
+end;
+
 procedure CompleteStatement;
 begin
   TAtlasIdeStatementCompletion.Run;
@@ -1304,6 +1317,9 @@ begin
     NewLineAroundVisible);
   // Umschließung entfernen (#657); nur sichtbar, solange keys.unwrap an ist.
   Add('Atlas.Unwrap', TAtlasTextId.UnwrapCommand, Guarded(TAtlasFeature.Unwrap, Unwrap), UnwrapVisible);
+  // Sicher löschen (#716); nur sichtbar, solange keys.safeDelete an ist.
+  Add('Atlas.SafeDelete', TAtlasTextId.SafeDeleteCommand, Guarded(TAtlasFeature.EditorCommands, SafeDelete),
+    SafeDeleteVisible);
   // Mehrere Einfügemarken (#589).
   Add('Atlas.MultiCursorNext', TAtlasTextId.MultiCursorNextCommand,
     Guarded(TAtlasFeature.MultiCursor, MultiCursorNext), MultiCursorVisible);

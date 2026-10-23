@@ -35,12 +35,15 @@ type
   private
     FFiles: TArray<TWorkspaceFileEdits>;
     FCreated: TArray<TWorkspaceNewFile>;
+    FDeleted: TArray<string>;
     FWarnings: TArray<string>;
   public
     /// <summary>Änderungen an AFileName; ohne Änderungen nichts.</summary>
     procedure Add(const AFileName: string; const AEdits: TArray<TTextEdit>);
     /// <summary>Neue Datei mit AText.</summary>
     procedure CreateFile(const AFileName, AText: string);
+    /// <summary>AFileName löschen (#716); fehlt sie, bleibt es ohne Fehler (ignoreIfNotExists).</summary>
+    procedure DeleteFile(const AFileName: string);
     procedure Warn(const AWarning: string);
     /// <summary>Die neue Unit ANewFile (Name AUnitName) ins Projekt eintragen; ohne Projekt nur ein Hinweis.
     /// </summary>
@@ -48,7 +51,7 @@ type
       const ANewFile, AUnitName: string);
     /// <summary>Änderungen an AFileName bisher.</summary>
     function EditsOf(const AFileName: string): TArray<TTextEdit>;
-    /// <summary>Anzahl der Änderungen und der Dateien (neue eingeschlossen).</summary>
+    /// <summary>Anzahl der Änderungen und der Dateien (neue und gelöschte eingeschlossen).</summary>
     function EditCount: Integer;
     function FileCount: Integer;
     /// <summary>WorkspaceEdit; mit AAnnotationId tragen alle Änderungen diese Anmerkung (needsConfirmation) mit
@@ -59,6 +62,7 @@ type
     function WarningsJson: TJSONArray;
     property Files: TArray<TWorkspaceFileEdits> read FFiles;
     property Created: TArray<TWorkspaceNewFile> read FCreated;
+    property Deleted: TArray<string> read FDeleted;
     property Warnings: TArray<string> read FWarnings;
   end;
 
@@ -100,6 +104,11 @@ begin
   FCreated := FCreated + [Item];
 end;
 
+procedure TWorkspaceChanges.DeleteFile(const AFileName: string);
+begin
+  FDeleted := FDeleted + [AFileName];
+end;
+
 procedure TWorkspaceChanges.Warn(const AWarning: string);
 begin
   FWarnings := FWarnings + [AWarning];
@@ -119,14 +128,14 @@ function TWorkspaceChanges.EditCount: Integer;
 var
   Item: TWorkspaceFileEdits;
 begin
-  Result := Length(FCreated);
+  Result := Length(FCreated) + Length(FDeleted);
   for Item in FFiles do
     Inc(Result, Length(Item.Edits));
 end;
 
 function TWorkspaceChanges.FileCount: Integer;
 begin
-  Result := Length(FFiles) + Length(FCreated);
+  Result := Length(FFiles) + Length(FCreated) + Length(FDeleted);
 end;
 
 procedure TWorkspaceChanges.RegisterUnit(AHasProject: Boolean; const AProject: TProjectInfo;
@@ -188,7 +197,7 @@ var
   Creation, Options, Annotation, Annotations: TJSONObject;
   NewFile: TWorkspaceNewFile;
   FileEdits: TWorkspaceFileEdits;
-  Uri: string;
+  Uri, Deleted: string;
 begin
   Changes := TJSONArray.Create;
   for NewFile in FCreated do
@@ -208,6 +217,19 @@ begin
   end;
   for FileEdits in FFiles do
     Changes.AddElement(DocumentEdit(TDocumentUris.FromPath(FileEdits.FileName), FileEdits.Edits, AAnnotationId));
+  // Gelöschte Dateien zuletzt: Änderungen an anderen Dateien (uses) stehen davor.
+  for Deleted in FDeleted do
+  begin
+    Creation := TJSONObject.Create;
+    Creation.AddPair('kind', 'delete');
+    Creation.AddPair('uri', TDocumentUris.FromPath(Deleted));
+    Options := TJSONObject.Create;
+    Options.AddPair('ignoreIfNotExists', TJSONBool.Create(True));
+    Creation.AddPair('options', Options);
+    if AAnnotationId <> '' then
+      Creation.AddPair('annotationId', AAnnotationId);
+    Changes.AddElement(Creation);
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('documentChanges', Changes);
   if AAnnotationId <> '' then

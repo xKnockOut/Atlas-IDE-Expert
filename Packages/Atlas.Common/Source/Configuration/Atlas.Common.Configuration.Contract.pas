@@ -412,6 +412,14 @@ type
     InlineAccessorBulk: Boolean;
     /// <summary>Hinweis-Diagnose trivial-accessor an trivialen Zugriffsmethoden (#717).</summary>
     InlineAccessorDiagnostic: Boolean;
+    /// <summary>„Sicher löschen“ (#716).</summary>
+    SafeDelete: Boolean;
+    /// <summary>Auch ohne Verwendungen erst die Vorschau zeigen (#716).</summary>
+    SafeDeletePreviewWhenUnused: Boolean;
+    /// <summary>Freigewordenes mitlöschen: ask, always oder never (#716).</summary>
+    SafeDeleteCascade: string;
+    /// <summary>Überschreibungen einer virtuellen Methode mitlöschen: ask, always oder never (#716).</summary>
+    SafeDeleteIncludeOverrides: string;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -879,6 +887,10 @@ begin
   Result.InlineAccessorEqualityCheck := True;
   Result.InlineAccessorBulk := True;
   Result.InlineAccessorDiagnostic := False;
+  Result.SafeDelete := True;
+  Result.SafeDeletePreviewWhenUnused := False;
+  Result.SafeDeleteCascade := 'ask';
+  Result.SafeDeleteIncludeOverrides := 'ask';
 end;
 
 { TCompletionSettings }
