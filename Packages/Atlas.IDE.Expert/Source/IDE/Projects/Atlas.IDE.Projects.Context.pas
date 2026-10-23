@@ -52,6 +52,10 @@ type
     class function Configurations(const AProject: IOTAProject): TArray<string>; static;
     /// <summary>Hat das Projekt die Konfiguration AName (Groß-/Kleinschreibung egal)?</summary>
     class function HasConfiguration(const AProject: IOTAProject; const AName: string): Boolean; static;
+    /// <summary>Build-Konfiguration AName ('' = aktive) ohne Plattform, etwa zum Setzen einer Option (#840); nil
+    /// ohne.</summary>
+    class function BuildConfiguration(const AProject: IOTAProject; const AName: string): IOTABuildConfiguration;
+      static;
   end;
 
 implementation
@@ -294,6 +298,14 @@ begin
   if (AProject.ProjectOptions <> nil) and
     ((AConfiguration = '') or SameText(AConfiguration, AProject.CurrentConfiguration)) then
     Result := OptionValue(AProject, AName);
+end;
+
+class function TAtlasIdeProjectContext.BuildConfiguration(const AProject: IOTAProject;
+  const AName: string): IOTABuildConfiguration;
+begin
+  Result := nil;
+  if AProject <> nil then
+    Result := NamedConfiguration(AProject, AName, '');
 end;
 
 class function TAtlasIdeProjectContext.Configurations(const AProject: IOTAProject): TArray<string>;

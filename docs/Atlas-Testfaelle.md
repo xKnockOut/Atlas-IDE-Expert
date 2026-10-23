@@ -6198,6 +6198,30 @@ Vorbereitung: Atlas-Server läuft, Projekt geöffnet. Unit mit `{$R-}` in Zeile 
 | CS15 | Dunkles Thema | Liste, Köpfe und hervorgehobene Werte gut lesbar |
 | CS16 | `build.compilerSwitches` aus (Schnellschalter) | Fenster schließt, Befehl und Menüeintrag fehlen, kein Statusfeld, keine Anfrage an den Server (Diagnoseprotokoll) (**Abnahme**) |
 
+## „kein Zugriff auf Wert“ erklärt (#840)
+
+Vorbereitung: Atlas-Server läuft, Projekt mit den Konfigurationen Debug (Vorgabe: `O−`, Debug-Informationen an) und Release (`O+`, ohne Debug-Informationen). Routine `Summe` mit lokalen Variablen `I`, `Wert` (erst ab Zeile 12 gebraucht) und `Ergebnis` (nach Zeile 15 nicht mehr), Haltepunkt in Zeile 14. Hover über Variablen beim Halt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KZ1 | Deutsche IDE, Release starten, Hover über `I` | Fehlertext der IDE wird erkannt: Hover zeigt `‹kein Zugriff›` und „Das Programm läuft in der Konfiguration „Release“ ohne Debug-Informationen.“, Verweis „Mit Debug neu starten“ (**Abnahme**); den genauen Fehlertext der IDE im Issue notieren |
+| KZ2 | Englische IDE oder Win64 (LLDB), wie KZ1 | Ebenso erkannt; Text im Issue notieren (fehlt er, in `KnownTexts` nachtragen) |
+| KZ3 | KZ1, Klick „Mit Debug neu starten“ | Vorschau nennt „Debug“ und die bisherige Konfiguration; OK setzt das Programm zurück, wählt Debug und startet neu; Abbrechen ändert nichts (**Abnahme**) |
+| KZ4 | Debug-Start, `{$O+}` in Zeile 3 der Unit, Hover über `Ergebnis` in Zeile 17 (nach dem Halt dort) | Ursache „Die Optimierung ist an ($O+) …“ mit Zusatz „Nach Zeile 16 wird sie nicht mehr gebraucht.“, Herkunft „{$O+} in Unit.pas, Zeile 3“, Verweise „Optimierung für die Routine aus“, „{$O-} am Unit-Anfang“, „Zur Direktive“ (**Abnahme**) |
+| KZ5 | KZ4, Klick „Optimierung für die Routine aus“ | Vorschau mit `{$OPTIMIZATION OFF}` vor und `{$OPTIMIZATION ON}` nach der Routine (Zeilennummern); OK fügt beides ein, ein Strg+Z nimmt es zurück (**Abnahme**) |
+| KZ6 | KZ4, Klick „{$O-} am Unit-Anfang“ | `{$O-}` direkt unter `unit …;`; Strg+Z bzw. „Letzte Atlas-Änderung zurücknehmen“ nimmt es zurück |
+| KZ7 | KZ4, Klick „Zur Direktive“ | Editor springt in Zeile 3 |
+| KZ8 | Debug-Start, aktive Konfiguration danach auf Release umschalten, Hover wie KZ4 ohne `{$O+}` | Keine Optimierungs-Ursache: Es gilt die Konfiguration des Starts (O−) |
+| KZ9 | `{$D-}` bzw. `{$L-}` am Unit-Anfang, Debug-Start | Ursache „… ohne Debug-Informationen übersetzt ($D-)“ bzw. „… ohne lokale Symbole ($L-) …“ mit Herkunft und „Zur Direktive“ |
+| KZ10 | Haltepunkt in einer `inline`-Routine, die eingebettet aufgerufen wird; Hover über eine lokale Variable | Ursache „Die Routine … ist inline …“ (sofern die IDE „kein Zugriff“ meldet) |
+| KZ11 | Debug ohne Debug-DCUs, F7 in `SysUtils` (nur mit Quelltext), Hover über eine lokale Variable | Ursache „Der Halt liegt in Bibliothekscode …“, Verweis „Debug-DCUs verwenden“; Vorschau nennt Konfiguration, Projekt und alten Wert; OK setzt `DCC_DebugDCUs`, Meldungsansicht nennt den Weg zurück |
+| KZ12 | Fall ohne bekannte Ursache (etwa Debug, `O−`, Variable gültig, aber Fehlertext erscheint) | „Ursache unbekannt.“ und „Geprüft, ohne Treffer:“ mit sechs Punkten in der Reihenfolge der Prüfung |
+| KZ13 | Werte im Editor an (`debug.inlineValues`), Halt wie KZ4 | Am Zeilenende `Ergebnis = ‹kein Zugriff›` statt nichts; andere Fehler weiterhin ausgeblendet |
+| KZ14 | Server beendet, Hover wie KZ1 | Erklärung ohne Server: Release-Ursache bzw. Bibliothek, sonst „Ursache unbekannt“; kein Hänger |
+| KZ15 | `%LOCALAPPDATA%\Atlas\debug-unavailable.txt` mit einer Zeile, die einen sonst unbekannten Fehlertext trifft; Einstellungen speichern | Dieser Text gilt jetzt als „kein Zugriff“ |
+| KZ16 | `debug.explainUnavailable` aus (Schnellschalter) | Fehler wie vorher ausgeblendet, kein `‹kein Zugriff›` im Editor, keine Anfrage `atlas/debugUnavailable` (Diagnoseprotokoll) (**Abnahme**) |
+| KZ17 | Dunkles Thema | Kennzeichen in der Warnfarbe, Ursache, Herkunft und Verweise gut lesbar |
+
 ## Werte im Editor beim Debuggen (#508)
 
 Vorbereitung: Atlas-Server läuft (Projekt geöffnet, Indexierung fertig). Testunit mit einer Methode wie im Test `Atlas.Common.Lsp.InlineValues.Tests` (Felder `FCount`, `FName`, Parameter `Anzahl`, lokale `Summe`, `for var I`, `with Andere do`, Aufruf `GetSize`, Eigenschaft `Size`, eine `TDateTime`-Variable). *Tools › Optionen › Atlas › Debuggen* „Werte im Editor beim Debuggen“ an. Win32 und Win64.

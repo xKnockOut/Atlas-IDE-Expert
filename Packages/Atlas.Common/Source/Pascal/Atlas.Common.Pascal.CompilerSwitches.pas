@@ -78,7 +78,7 @@ type
   end;
 
   TCompilerSwitchState = record
-    /// <summary>R, Q, O, C, I, A in dieser Reihenfolge.</summary>
+    /// <summary>R, Q, O, C, I, A, D, L in dieser Reihenfolge (D und L für #840).</summary>
     Switches: TSwitchEntries;
     Hints: TSwitchEntry;
     Warnings: TSwitchEntry;
@@ -93,7 +93,7 @@ type
   TCompilerSwitches = record
   public const
     /// <summary>Gezeigte Schalter in Reihenfolge.</summary>
-    Letters = 'RQOCIA';
+    Letters = 'RQOCIADL';
     AlignProperty = 'DCC_Alignment';
     HintsProperty = 'DCC_Hints';
     WarningsProperty = 'DCC_Warnings';
@@ -205,6 +205,8 @@ begin
     'C': Result := 'ASSERTIONS';
     'I': Result := 'IOCHECKS';
     'A': Result := 'ALIGN';
+    'D': Result := 'DEBUGINFO';
+    'L': Result := 'LOCALSYMBOLS';
   else
     Result := '';
   end;

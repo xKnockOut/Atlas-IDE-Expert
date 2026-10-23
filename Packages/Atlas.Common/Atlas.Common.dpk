@@ -407,6 +407,7 @@ contains
   Atlas.Common.Pascal.Preprocessor in 'Source\Pascal\Atlas.Common.Pascal.Preprocessor.pas',
   Atlas.Common.Pascal.XmlDoc in 'Source\Pascal\Atlas.Common.Pascal.XmlDoc.pas',
   Atlas.Common.Pascal.CompilerSwitches in 'Source\Pascal\Atlas.Common.Pascal.CompilerSwitches.pas',
-  Atlas.Common.Lsp.CompilerSwitches in 'Source\Lsp\Atlas.Common.Lsp.CompilerSwitches.pas';
+  Atlas.Common.Lsp.CompilerSwitches in 'Source\Lsp\Atlas.Common.Lsp.CompilerSwitches.pas',
+  Atlas.Common.Lsp.DebugUnavailable in 'Source\Lsp\Atlas.Common.Lsp.DebugUnavailable.pas';
 
 end.
