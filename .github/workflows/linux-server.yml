@@ -1,0 +1,77 @@
+name: AtlasServer für Linux
+
+# Baut AtlasServer mit Free Pascal trunk für Linux (ADR 0013) und stellt ihn für Claude-Code-Sitzungen in der
+# Cloud bereit. Dort startet Claude Code den MCP-Server des Atlas-Plugins beim Start der Sitzung; ein Bau in
+# der Sitzung (FPC etwa 10 Minuten, Server etwa 2 Minuten) kommt dafür zu spät.
+#
+# Bei jedem Push auf main ersetzt der Job die Dateien des Vorab-Releases "cloud-linux":
+#   - AtlasServer-x86_64-linux.tar.xz: Programm und Fingerabdruck des Quelltexts (AtlasServer.stamp)
+#   - fpc-<FPC_COMMIT>-x86_64-linux.tar.xz: der gebaute FPC trunk, damit Sitzungen mit geändertem Server
+#     nur noch etwa 2 Minuten bauen
+# Tools/Linux/Build-AtlasServer.sh lädt beides und nimmt das Programm nur, wenn der Fingerabdruck passt.
+# Auf Branches und in Pull Requests baut der Job nur (Prüfung, dass der Linux-Bau nicht bricht).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Application/**'
+      - 'Packages/**'
+      - 'Tools/Linux/**'
+      - '.github/workflows/linux-server.yml'
+  pull_request:
+    paths:
+      - 'Application/**'
+      - 'Packages/**'
+      - 'Tools/Linux/**'
+      - '.github/workflows/linux-server.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: linux-server-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bauen:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stand von FPC trunk
+        id: fpc
+        run: echo "commit=$(sed -nE 's/^FPC_COMMIT=([0-9a-f]+)$/\1/p' Tools/Linux/Build-AtlasServer.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: FPC trunk aus dem Zwischenspeicher
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/atlas-fpc/${{ steps.fpc.outputs.commit }}
+          key: atlas-fpc-${{ steps.fpc.outputs.commit }}
+
+      - name: Startcompiler FPC 3.2.2
+        run: sudo apt-get update && sudo apt-get install -y fp-compiler fp-units-rtl
+
+      - name: AtlasServer bauen
+        run: Tools/Linux/Build-AtlasServer.sh --no-download --package "$RUNNER_TEMP/cloud-linux"
+
+      - name: Startprobe (MCP initialize und tools/list)
+        run: |
+          printf '%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}' \
+            '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' |
+            timeout 60 Output/Linux64/Bin/AtlasServer --mcp > "$RUNNER_TEMP/mcp.out" || true
+          grep -q '"get_diagnostics"' "$RUNNER_TEMP/mcp.out" || { cat "$RUNNER_TEMP/mcp.out"; exit 1; }
+
+      - name: Release cloud-linux aktualisieren
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view cloud-linux >/dev/null 2>&1; then
+            gh release create cloud-linux --prerelease --title "AtlasServer für Claude-Code-Cloud (Linux)" \
+              --notes "Wird bei jedem Push auf main ersetzt (linux-server.yml). Kein ausgeliefertes Produkt; nur für Tools/Linux/Build-AtlasServer.sh in Cloud-Sitzungen (ADR 0013)."
+          fi
+          gh release upload cloud-linux "$RUNNER_TEMP"/cloud-linux/* --clobber
