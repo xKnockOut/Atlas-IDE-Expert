@@ -208,6 +208,8 @@ contains
   Atlas.Common.Lsp.MoveMember in 'Source\Lsp\Atlas.Common.Lsp.MoveMember.pas',
   Atlas.Common.Editing.InlineAccessor in 'Source\Editing\Atlas.Common.Editing.InlineAccessor.pas',
   Atlas.Common.Lsp.InlineAccessor in 'Source\Lsp\Atlas.Common.Lsp.InlineAccessor.pas',
+  Atlas.Common.Editing.SafeDelete in 'Source\Editing\Atlas.Common.Editing.SafeDelete.pas',
+  Atlas.Common.Lsp.SafeDelete in 'Source\Lsp\Atlas.Common.Lsp.SafeDelete.pas',
   Atlas.Common.Editing.InvertBoolean in 'Source\Editing\Atlas.Common.Editing.InvertBoolean.pas',
   Atlas.Common.Lsp.InvertBoolean in 'Source\Lsp\Atlas.Common.Lsp.InvertBoolean.pas',
   Atlas.Common.Editing.Unwrap in 'Source\Editing\Atlas.Common.Editing.Unwrap.pas',

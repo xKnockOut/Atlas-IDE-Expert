@@ -1421,6 +1421,26 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InlineAccessorBulk)
     else if Key = 'inlineAccessorDiagnostic' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InlineAccessorDiagnostic)
+    else if Key = 'safeDelete' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.SafeDelete)
+    else if Key = 'safeDeletePreviewWhenUnused' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.SafeDeletePreviewWhenUnused)
+    else if Key = 'safeDeleteCascade' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if MatchText(Value, ['ask', 'always', 'never']) then
+          FSettings.Refactoring.SafeDeleteCascade := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.safeDeleteCascade" muss "ask", "always" oder "never" sein');
+    end
+    else if Key = 'safeDeleteIncludeOverrides' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if MatchText(Value, ['ask', 'always', 'never']) then
+          FSettings.Refactoring.SafeDeleteIncludeOverrides := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.safeDeleteIncludeOverrides" muss "ask", "always" oder "never" sein');
+    end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);

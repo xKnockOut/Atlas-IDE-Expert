@@ -129,6 +129,7 @@ Code-Aktionen öffnet Alt+Enter; alles steht auch im Menü *Atlas* und im Kontex
 
 - **Umbenennen** projektweit mit Vorschau, samt `.dfm`/`.fmx` und automatisch benannter Ereignis-Handler
 - **Signatur ändern** im Dialog: Parameter hinzufügen, entfernen, verschieben, umbenennen, mit Vorschau
+- **Sicher löschen** (Alt+Entf): Methode, Feld, Property, Typ, Konstante, Variable, Routine oder ganze Unit erst nach der Suche nach Verwendungen im Projekt, in Formularen und uses-Listen löschen; Überschreibungen und Freigewordenes auf Wunsch mit
 - **Methode extrahieren**, **Variable einführen**, **Bedingung in Funktion auslagern**, **with auflösen**, **case ergänzen**
 - **Variable und Methode einbetten** *(experimentell)*, **Klasse in eigene Unit verschieben** *(experimentell)*, **uses nachziehen nach dem Umbenennen einer Unit** *(experimentell)*
 - **Klassen-Aktionen:** Interface implementieren, Methoden überschreiben, Getter, Setter und Feld erzeugen, Property aus vorhandenen Zugriffsmethoden, Interface aus einer Klasse herauslösen, Basisklasse herauslösen, Mitglied in Vorfahr oder Nachfahren verschieben, triviale Zugriffsmethode durch Feld ersetzen (einzeln oder für Unit und Projekt), Methode aus einem Aufruf anlegen, Forward-Deklaration ergänzen

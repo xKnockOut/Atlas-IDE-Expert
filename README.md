@@ -129,6 +129,7 @@ Alt+Enter opens the code actions; everything is also in the *Atlas* menu and the
 
 - **Rename** project-wide with preview, including `.dfm`/`.fmx` and automatically named event handlers
 - **Change signature** in a dialog: add, remove, move and rename parameters, with preview
+- **Safe delete** (Alt+Del): delete a method, field, property, type, constant, variable, routine or a whole unit only after searching for usages in the project, in forms and in uses clauses; overrides and members that become unused can go too
 - **Extract method**, **introduce variable**, **extract condition to function**, **resolve `with`**, **complete `case`**
 - **Inline variable and method** *(experimental)*, **move class to its own unit** *(experimental)*, **update uses after renaming a unit** *(experimental)*
 - **Class actions:** implement interface, override methods, generate getter, setter and field, property from existing accessors, extract interface from a class, extract superclass, pull members up or push them down, replace trivial accessors with their field (one at a time or for a unit or project), create method from a call, add forward declaration
