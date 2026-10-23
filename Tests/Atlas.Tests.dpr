@@ -951,7 +951,10 @@ uses
   Atlas.Core.Build.CompilerSwitches.Tests in 'IDE.Expert\Atlas.Core.Build.CompilerSwitches.Tests.pas',
   Atlas.UI.Build.SwitchesFrame.Tests in 'IDE.Expert\Atlas.UI.Build.SwitchesFrame.Tests.pas',
   Atlas.Common.Lsp.DebugUnavailable.Tests in 'Common\Lsp\Atlas.Common.Lsp.DebugUnavailable.Tests.pas',
-  Atlas.Core.Debug.Unavailable.Tests in 'IDE.Expert\Atlas.Core.Debug.Unavailable.Tests.pas';
+  Atlas.Core.Debug.Unavailable.Tests in 'IDE.Expert\Atlas.Core.Debug.Unavailable.Tests.pas',
+  Atlas.Common.Lsp.ExpressionCompletion.Tests in 'Common\Lsp\Atlas.Common.Lsp.ExpressionCompletion.Tests.pas',
+  Atlas.Core.Debug.DialogCompletion.Tests in 'IDE.Expert\Atlas.Core.Debug.DialogCompletion.Tests.pas',
+  Atlas.Core.Completion.Providers.Expression.Tests in 'IDE.Expert\Atlas.Core.Completion.Providers.Expression.Tests.pas';
 
 // Atlas-Symbol (#751) für die UI-Tests.
 {$R '..\Packages\Atlas.IDE.Expert\Resources\Symbol\Atlas.Symbol.res'}
