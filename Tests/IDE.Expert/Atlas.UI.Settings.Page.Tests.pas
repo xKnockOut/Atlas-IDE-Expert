@@ -2385,8 +2385,11 @@ begin
     Dialog := TAtlasProjectSettingsDialog.CreateDialog(nil, Model, 'C:\Ptlas.json');
     try
       Dialog.Catalog := Catalog;
+      // Mit Fenster: Erst dann hat der Behälter seine Breite; ohne war die Prüfung der Breite wertlos.
+      Dialog.HandleNeeded;
       Assert.IsTrue(Dialog.SelectPage(Model.Fields[Model.IndexOf('rules')].Page));
       Assert.AreEqual(2, Integer(Dialog.RuleList.Items.Count));
+      Assert.IsTrue(Dialog.RuleEditor.Parent.ClientWidth > 400, 'Behälter breit');
       // AutoSize ohne Align ließ den Editor auf die Breite eines leeren Panels schrumpfen.
       Assert.IsTrue(Dialog.RuleEditor.Left + Dialog.RuleEditor.Width >= Dialog.RuleEditor.Parent.ClientWidth - 50,
         'Regel-Editor in voller Breite');
@@ -2423,9 +2426,12 @@ begin
       Assert.IsNotNull(Dialog.GroupNode('style'));
       Assert.AreEqual(Model.Fields[Model.IndexOf('rules')].Page, Dialog.GroupNode('threads').Parent.Text);
       // Knoten der Gruppe: nur ihre Regeln; der Hauptschalter schreibt "group:threads".
+      Dialog.HandleNeeded;
       Dialog.PageTree.Selected := Dialog.GroupNode('threads');
       Assert.AreEqual('threads', Dialog.RuleEditor.FixedGroup);
       Assert.AreEqual(1, Dialog.RuleList.Items.Count);
+      Assert.IsTrue(Dialog.RuleEditor.Left + Dialog.RuleEditor.Width >= Dialog.RuleEditor.Parent.ClientWidth - 50,
+        'Regel-Editor der Gruppe in voller Breite');
       Dialog.RuleEditor.Master.Checked := False;
       Assert.Contains(Model.ResultText, '"group:threads"');
       // „Regel einstellen…“: Knoten der Gruppe der Regel, die Regel markiert.

@@ -111,7 +111,8 @@ type
     procedure CreateWnd; override;
     /// <summary>AutoSize regelt nur die Höhe; die Breite gibt der Behälter vor (Align oder SetBounds mit
     /// Anker). Sonst schrumpft der Editor ohne Align auf die Breite eines leeren Panels, weil alle Kinder alTop
-    /// sind (Projektdialog).</summary>
+    /// sind (Projektdialog). Die angefragte Breite bleibt: CheckNewSize fragt mit der neuen Breite, die alte
+    /// (Width) hielt jedes SetBounds auf den 185 Pixeln eines frischen Panels.</summary>
     function CanAutoSize(var NewWidth, NewHeight: Integer): Boolean; override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -347,9 +348,12 @@ begin
 end;
 
 function TAtlasRulesEditor.CanAutoSize(var NewWidth, NewHeight: Integer): Boolean;
+var
+  Requested: Integer;
 begin
+  Requested := NewWidth;
   Result := inherited CanAutoSize(NewWidth, NewHeight);
-  NewWidth := Width;
+  NewWidth := Requested;
 end;
 
 procedure TAtlasRulesEditor.CreateWnd;
