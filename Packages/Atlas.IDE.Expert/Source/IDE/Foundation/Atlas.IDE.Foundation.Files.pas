@@ -24,6 +24,8 @@ type
     class function BufferOf(const AFileName: string): IOTAEditBuffer; static;
     /// <summary>Projektdatei des Projekts der Projektgruppe, das AFileName enthält; '' wenn keins.</summary>
     class function ProjectOfFile(const AFileName: string): string; static;
+    /// <summary>Projekt der Projektgruppe mit der Projektdatei AProjectFile (.dproj); nil, wenn keins.</summary>
+    class function GroupProject(const AProjectFile: string): IOTAProject; static;
     /// <summary>Aktives Projekt für eine neue Unit (.pas unter dessen Ordner); sonst ''.</summary>
     class function ProjectForNewFile(const AFileName: string): string; static;
     /// <summary>.dproj oder .groupproj?</summary>
@@ -118,6 +120,23 @@ begin
   for Index := 0 to Group.ProjectCount - 1 do
     if Group.Projects[Index].FindModuleInfo(AFileName) <> nil then
       Exit(Group.Projects[Index].FileName);
+end;
+
+class function TAtlasIdeFiles.GroupProject(const AProjectFile: string): IOTAProject;
+var
+  Services: IOTAModuleServices;
+  Group: IOTAProjectGroup;
+  Index: Integer;
+begin
+  Result := nil;
+  if (AProjectFile = '') or not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+    Exit;
+  Group := Services.MainProjectGroup;
+  if Group = nil then
+    Exit;
+  for Index := 0 to Group.ProjectCount - 1 do
+    if SameFileName(Group.Projects[Index].FileName, AProjectFile) then
+      Exit(Group.Projects[Index]);
 end;
 
 class function TAtlasIdeFiles.ProjectForNewFile(const AFileName: string): string;
