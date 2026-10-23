@@ -364,6 +364,8 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`money-as-float`](#money-as-float) | Geldbetrag als Gleitkommazahl | Bug | Hinweis |
 | [`string-if-chain`](#string-if-chain) | Lange if-Kette über denselben String | Code Smell | Hinweis |
 | [`empty-finally`](#empty-finally) | Leerer finally-Block | Code Smell | Hinweis |
+| [`override-only-inherited`](#override-only-inherited) | override ruft nur inherited auf | Code Smell | Hinweis |
+| [`inherited-without-ancestor`](#inherited-without-ancestor) | inherited ohne Methode im Vorfahr | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -7448,6 +7450,62 @@ Richtig:
 procedure TKreis.Zeichnen(C: TCanvas);
 begin
   C.Ellipse(FRahmen);
+end;
+```
+
+<a id="override-only-inherited"></a>
+### override-only-inherited
+
+**override ruft nur inherited auf** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine überschreibende Methode, deren Rumpf nur die geerbte Methode aufruft: ein bloßes inherited;, inherited Name oder inherited Name(A, B) mit den eigenen Parametern in unveränderter Reihenfolge, in Funktionen nur Result := inherited Name(…). Sie tut nichts Eigenes und täuscht ein geändertes Verhalten vor. Still, wenn die Methode die Sichtbarkeit der geerbten ändert (protected zu public), ein Attribut, Standardwerte oder die Direktiven final, deprecated, experimental, platform, library oder reintroduce trägt, lokale Deklarationen, mehr als eine Anweisung, Kommentare oder bedingte Direktiven im Rumpf hat oder die überschriebene Methode unbekannt ist (Vorfahr nicht im Index; virtuelle Methoden von TObject gelten als public). Sicherheit hoch. Korrektur: Deklaration und Rumpf entfernen, samt XMLDoc-Kommentaren und der Leerzeile hinter dem Rumpf.
+
+Mit Treffer:
+
+```pascal
+type
+  TKundenForm = class(TForm)
+  protected
+    procedure Loaded; override;
+  end;
+
+procedure TKundenForm.Loaded;
+begin
+  inherited Loaded;
+end;
+```
+
+Richtig:
+
+```pascal
+type
+  TKundenForm = class(TForm)
+  end;
+```
+
+<a id="inherited-without-ancestor"></a>
+### inherited-without-ancestor
+
+**inherited ohne Methode im Vorfahr** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Ein bloßes inherited; in einer Methode, die kein Vorfahr deklariert (neue Methode, kein override), tut nichts. Das deutet auf ein vergessenes override oder einen Tippfehler im Namen. Nicht gemeldet: Message-Handler (inherited ruft dort DefaultHandler), Klassen- und statische Methoden, Konstruktoren und Destruktoren, override und reintroduce, inherited in anonymen Methoden, Vorfahren mit einem gleichnamigen Mitglied (auch nicht virtuell) und unbekannte Vorfahren. Vorfahren aus anderen Units liefert der Symbolindex; Methoden von TObject gelten als bekannt, wenn System nicht im Index steht. Sicherheit hoch. Korrektur: inherited entfernen, wenn es als eigene Anweisung in einem begin…end steht.
+
+Mit Treffer:
+
+```pascal
+procedure TImport.Vorbereiten;
+begin
+  inherited;
+  FZeilen.Clear;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TImport.Vorbereiten;
+begin
+  FZeilen.Clear;
 end;
 ```
 

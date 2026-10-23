@@ -6147,3 +6147,28 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index. Proben aus `werkz
 | PX5 | Proben `p01_resolution_function.pas` und `p09_generic_resolution.pas` öffnen; dann in einer Klasse `function GetX;` ohne Typ | In den Proben kein Syntaxfehler (**Abnahme**: DUnitX `DUnitX.Generics.pas`, `DUnitX.Test.pas`, `DUnitX.TestFixture.pas` ohne Syntaxfehler); `function GetX;` meldet „braucht einen Ergebnistyp (wie E2023)“ |
 | PX6 | Proben `p03_class_threadvar.pas`, `p04_class_operator_in.pas` und `p06_codepage_string.pas` öffnen | Kein Syntaxfehler (**Abnahme**: Spring4D `Spring.HazardEra.pas`, `Spring.Patterns.Specification.pas`, mORMot2 `mormot.core.base.pas`); Gliederung zeigt `FCurrent`, den Operator `In` und die Typen `WinAnsiString`, `RawUnicode`; Strg+Klick auf `FCurrent` im Rumpf springt zum Feld |
 | PX7 | Proben `p07_record_align.pas`, `p08_variant_attribute.pas`, `p10_generic_default_param.pas` und `p11_binary_separator.pas` öffnen; die Probe p10 außerdem mit Delphi übersetzen | Kein Syntaxfehler, `TMyRecord`, `ValueWithAttribute`, `TFoo.Bar` und die Konstanten stehen in der Gliederung. Übersetzt Delphi p10 nicht, ist Atlas hier zu großzügig: bitte melden (das Issue verlangt die Gegenprüfung mit Delphi) |
+
+## override ruft nur inherited auf (#1143)
+
+Voraussetzung: Server läuft in der IDE mit Projekt, VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OE1 | Das Beispiel aus #1143: Formular `TKundenForm` mit `procedure Loaded; override;` und Rumpf `inherited Loaded;` | Hinweis `override-only-inherited` am Namen `Loaded` im Rumpf: „TKundenForm.Loaded ruft nur inherited auf und kann entfallen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| OE2 | Alt+Enter, „Methode entfernen“ | Deklaration und Rumpf verschwinden samt `///`-Kommentaren und der Leerzeile dahinter; ein Undo-Schritt; das Projekt übersetzt (**Abnahme**) |
+| OE3 | `procedure Lauf(A, B: Integer); override;` mit `inherited;`, `inherited Lauf(A, B);` bzw. `function Wert(X: Integer): Integer; override;` mit `Result := inherited Wert(X);` | Je eine Meldung |
+| OE4 | `inherited Lauf(B, A)`, eine zweite Anweisung, eine lokale Variable, ein Kommentar oder `{$IFDEF}` im Rumpf, Methode im Abschnitt `public` statt `protected` wie im Vorfahr, `[Weak]` davor, `final` oder `deprecated` dahinter, Vorfahr aus einer nicht indizierten Unit | Keine Meldung (**Abnahme**) |
+| OE5 | `"override-only-inherited": "off"` bzw. `exclude`; Seite Prüfregeln › Stil | Keine Meldung; die Regel steht mit Schalter und Schweregrad in der Gruppe |
+
+## inherited ohne Methode im Vorfahr (#1144)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IO1 | Das Beispiel aus #1144: `TImport = class(TBasis)` mit neuer Methode `Vorbereiten`, Rumpf `inherited; FZeilen.Clear;`; TBasis hat kein Vorbereiten | Hinweis `inherited-without-ancestor` an `inherited`: „Kein Vorfahr von TImport hat Vorbereiten: inherited tut nichts. Fehlt override?“ (**Abnahme**) |
+| IO2 | Alt+Enter, „inherited entfernen“ | Die Zeile `inherited;` verschwindet, `FZeilen.Clear;` bleibt; ein Undo-Schritt (**Abnahme**) |
+| IO3 | `inherited;` in einem if-Zweig | Meldung ohne Schnellkorrektur |
+| IO4 | Message-Handler (`message WM_PAINT`), Konstruktor, Destruktor, `class procedure`, Methode mit `override`, TBasis mit gleichnamiger (auch statischer) Methode, Vorfahr aus einer nicht indizierten Unit, `inherited;` in einer anonymen Methode | Keine Meldung (**Abnahme**) |
+| IO5 | TBasis in einer anderen Unit des Projekts, einmal mit, einmal ohne `Vorbereiten` | Mit: keine Meldung; ohne: Meldung wie IO1 |
+| IO6 | `"inherited-without-ancestor": "off"` bzw. `exclude`; Seite Prüfregeln › Stil | Keine Meldung; die Regel steht in der Gruppe |

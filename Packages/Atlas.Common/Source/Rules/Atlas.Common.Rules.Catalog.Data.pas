@@ -4728,6 +4728,33 @@ begin
     '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "override-only-inherited",' + #10 +
+    '      "name": "Override only calls inherited",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "An overriding method whose body only calls the inherited method: a bare inherited;, inherited Name or inherited Name(A, B) with its own parameters in unchanged order, in function' +
+    's only Result := inherited Name(…). It does nothing of its own and pretends a changed behaviour. Silent when the method changes the visibility of the ancestor''s method (protected to public), carries a' +
+    'n attribute, default values or the directives final, deprecated, experimental, platform, library or reintroduce, has local declarations, more than one statement, comments or conditional directives in ' +
+    'the body, or when the overridden method is unknown (ancestor not indexed; virtual methods of TObject count as public). High confidence. Quick fix: remove declaration and body, including XMLDoc comment' +
+    's and the blank line after the body.",' + #10 +
+    '      "bad": "type\n  TKundenForm = class(TForm)\n  protected\n    procedure Loaded; override;\n  end;\n\nprocedure TKundenForm.Loaded;\nbegin\n  inherited Loaded;\nend;",' + #10 +
+    '      "good": "type\n  TKundenForm = class(TForm)\n  end;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inherited-without-ancestor",' + #10 +
+    '      "name": "inherited without a method in the ancestor",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A bare inherited; in a method that no ancestor declares (a new method, no override) does nothing. This points to a forgotten override or a misspelled name. Not reported: message ' +
+    'handlers (inherited calls DefaultHandler there), class and static methods, constructors and destructors, override and reintroduce, inherited inside anonymous methods, ancestors with a member of that n' +
+    'ame (also non-virtual) and unknown ancestors. Ancestors from other units come from the symbol index; methods of TObject count as known when System is not indexed. High confidence. Quick fix: remove in' +
+    'herited when it is a statement of its own in a begin…end block.",' + #10 +
+    '      "bad": "procedure TImport.Vorbereiten;\nbegin\n  inherited;\n  FZeilen.Clear;\nend;",' + #10 +
+    '      "good": "procedure TImport.Vorbereiten;\nbegin\n  FZeilen.Clear;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "generic-constraint-violated",' + #10 +
     '      "name": "Type argument violates a constraint",' + #10 +
     '      "category": "bug",' + #10 +
@@ -7473,6 +7500,23 @@ begin
     '      "description": "inherited mit ausdrücklichem Methodennamen, etwa inherited Zeichnen(C), obwohl die Methode im Vorfahren abstract ist (wie E2373). Ein bloßes inherited; übergeht der Compiler bei ' +
     'abstrakten Methoden still; das meldet die Regel nicht. Die Methode löst die Namensauflösung samt Überladungen auf; gemeldet wird nur, wenn jede passende Überladung abstrakt ist. Korrektur: den Aufruf ' +
     'entfernen, wenn er als eigene Anweisung in einem begin…end steht."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "override-only-inherited",' + #10 +
+    '      "name": "override ruft nur inherited auf",' + #10 +
+    '      "description": "Eine überschreibende Methode, deren Rumpf nur die geerbte Methode aufruft: ein bloßes inherited;, inherited Name oder inherited Name(A, B) mit den eigenen Parametern in unverände' +
+    'rter Reihenfolge, in Funktionen nur Result := inherited Name(…). Sie tut nichts Eigenes und täuscht ein geändertes Verhalten vor. Still, wenn die Methode die Sichtbarkeit der geerbten ändert (protecte' +
+    'd zu public), ein Attribut, Standardwerte oder die Direktiven final, deprecated, experimental, platform, library oder reintroduce trägt, lokale Deklarationen, mehr als eine Anweisung, Kommentare oder ' +
+    'bedingte Direktiven im Rumpf hat oder die überschriebene Methode unbekannt ist (Vorfahr nicht im Index; virtuelle Methoden von TObject gelten als public). Sicherheit hoch. Korrektur: Deklaration und R' +
+    'umpf entfernen, samt XMLDoc-Kommentaren und der Leerzeile hinter dem Rumpf."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inherited-without-ancestor",' + #10 +
+    '      "name": "inherited ohne Methode im Vorfahr",' + #10 +
+    '      "description": "Ein bloßes inherited; in einer Methode, die kein Vorfahr deklariert (neue Methode, kein override), tut nichts. Das deutet auf ein vergessenes override oder einen Tippfehler im Na' +
+    'men. Nicht gemeldet: Message-Handler (inherited ruft dort DefaultHandler), Klassen- und statische Methoden, Konstruktoren und Destruktoren, override und reintroduce, inherited in anonymen Methoden, Vo' +
+    'rfahren mit einem gleichnamigen Mitglied (auch nicht virtuell) und unbekannte Vorfahren. Vorfahren aus anderen Units liefert der Symbolindex; Methoden von TObject gelten als bekannt, wenn System nicht' +
+    ' im Index steht. Sicherheit hoch. Korrektur: inherited entfernen, wenn es als eigene Anweisung in einem begin…end steht."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "generic-constraint-violated",' + #10 +
