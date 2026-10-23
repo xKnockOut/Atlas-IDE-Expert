@@ -181,6 +181,10 @@ type
     procedure ForgetClosedFiles;
     procedure Later(const AAction: TProc);
     procedure BarDisabled(Sender: TObject);
+    /// <summary>Gibt gesperrte Leisten frei, sobald wieder ein Editor aktiv ist. Beim Schließen aller Editoren
+    /// (Projektwechsel) sperrt die IDE jedes Steuerelement im Editor-Panel (Aufrufer laut Protokoll coreide370) und
+    /// gibt danach nur ihre eigenen wieder frei; ohne Abgleich blieben die Leisten bis zum Neustart taub.</summary>
+    procedure EnableBars;
   public
     constructor Create;
     destructor Destroy; override;
@@ -561,6 +565,18 @@ begin
     TAtlasIdeStackCapture.CurrentStack(1));
 end;
 
+procedure TToolbarState.EnableBars;
+var
+  Bar: TAtlasEditorToolbar;
+begin
+  for Bar in FBars do
+    if not Bar.Enabled then
+    begin
+      Bar.Enabled := True;
+      TAtlasGuard.Log('Editorleiste: wieder freigegeben, ein Editor ist aktiv');
+    end;
+end;
+
 procedure TToolbarState.ShowBars(AShown: Boolean);
 var
   Bar: TAtlasEditorToolbar;
@@ -786,6 +802,7 @@ begin
       View := TAtlasEditorBuffer.ActiveView;
       if (View = nil) or not CaretOf(View, Line, Character) then
         Exit;
+      EnableBars;
       FileName := View.Buffer.FileName;
       Track(View, FileName, Line);
       if not On_ or not Supports(BorlandIDEServices, INTAEditorServices, Services) then
