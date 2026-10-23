@@ -63,6 +63,8 @@ type
     procedure DebugDisplayRulesRoundTrip;
     [Test]
     procedure DebugStepIntoTargetRoundTrip;
+    [Test]
+    procedure DebugBreakOnNextEventRoundTrip;
     /// <summary>Benannte Lesezeichen (#622): zwei Schalter auf dem Reiter Editor, Taste bei den Befehlen.</summary>
     [Test]
     procedure BookmarksRoundTrip;
@@ -1101,6 +1103,28 @@ begin
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.DebugStepIntoTarget);
     Assert.AreEqual($6076, Saved.DebugStepIntoTargetKey);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.DebugBreakOnNextEventRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  // #856: Schalter und ausgenommene Ereignisse auf dem Reiter Debuggen; die Liste wird beim Speichern bereinigt.
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.DebugBreakOnNextEventCheck.Checked);
+    Assert.AreEqual('OnPaint, OnMouseMove, OnUpdate', Page.DebugBreakOnNextEventExcludedEdit.Text);
+    Page.DebugBreakOnNextEventCheck.Checked := False;
+    Page.DebugBreakOnNextEventExcludedEdit.Text := 'OnPaint;OnResize';
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.DebugBreakOnNextEvent);
+    Assert.AreEqual('OnPaint, OnResize', Saved.DebugBreakOnNextEventExcluded);
   finally
     Page.Free;
   end;

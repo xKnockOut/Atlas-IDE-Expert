@@ -970,3 +970,11 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Einstellungen:** `debug.stepIntoTarget` (Vorgabe an), `debug.stepIntoTarget.key` (Strg+Alt+F7).
 - **Offen:** Haltepunkte ohne eigene Gruppe (die Gruppen-API der ToolsAPI ist unsicher); Bibliothekscode nur nach `$(BDS)\source` erkannt; Verhalten bei Win64 (LLDB) ungetestet.
 
+## Beim nächsten Ereignis anhalten (#856, 23.10.2026, Entwurf, ungebaut)
+
+- **Branch:** `after-release/856-naechstes-ereignis` auf `after-release/836-gezielt-hineinspringen`. Server- und Kernteil mit FPC geprüft (neue Tests grün); IDE- und UI-Teil ungebaut, Handtests EB1–EB22.
+- **Server:** `Atlas.Common.Dfm.EventHandlers` (rein) sammelt je Unit die Handler aus den Formularen (`TFormModel.Events`, mit Komponentenklasse und Timer-Intervall) und aus Zuweisungen im Code (`X.OnY := M`, `OnY := Self.M`; `nil`, anonyme Methoden und fremde Objekte nicht), dazu `begin`-Zeile und erste Anweisung (`bodyLine`, dort ist `Sender` schon auswertbar). `Atlas.Common.Lsp.EventHandlers` geht über das Projekt, sucht fehlende Rümpfe in den Vorfahren über den Index und antwortet auf `atlas.server.eventHandlers` (Format 1).
+- **Plugin:** `Atlas.Core.Debug.EventBreak` (Antwort, Ereignisarten, häufige Ereignisse, Auswahl, Stellen, Beschriftung, `Sender`-Zuordnung), `Atlas.UI.Debug.EventBreak` (Dialog und Leiste), `Atlas.IDE.Debug.EventBreak` (Menü Start, Befehlspalette `Atlas.BreakOnNextEvent`, Haltepunkte in der Gruppe `Atlas.Ereignis`, Pause und `Screen.Forms` für sichtbare Formulare, Takt bis zum Halt). `Atlas.IDE.Debug.Breakpoints` ist neu und wird auch von #836 genutzt (dort nur umgestellt).
+- **Einstellungen:** `debug.breakOnNextEvent` (Vorgabe an), `debug.breakOnNextEvent.excluded` (Vorgabe `OnPaint, OnMouseMove, OnUpdate`). `AtlasSetup` bekommt `Atlas.Core.Debug.EventBreak` (Normalisieren der Liste).
+- **Nebenbei:** `TDfmProperty.IsEvent` erkennt auch `Before…`/`After…` (Datenmengen).
+- **Offen:** `IOTAProcess.Pause` und `IOTABreakpoint.GroupName` gegen `ToolsAPI.pas` (Delphi 12/13) gegenlesen; Win64 (LLDB) ungetestet; Zuweisungen über Variablen oder Methodenzeiger (`B.OnClick := FHandler`) werden nicht verfolgt.

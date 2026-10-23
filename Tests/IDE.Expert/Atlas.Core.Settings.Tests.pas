@@ -104,6 +104,8 @@ type
     procedure DebugDisplayRuleOptions;
     [Test]
     procedure DebugStepIntoTargetOptions;
+    [Test]
+    procedure DebugBreakOnNextEventOptions;
     /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure GenerateMenuOptions;
@@ -1858,6 +1860,29 @@ begin
   Loaded.DebugStepIntoTargetKey := -5;
   Loaded.Normalize;
   Assert.AreEqual(0, Loaded.DebugStepIntoTargetKey);
+end;
+
+procedure TAtlasPluginSettingsTests.DebugBreakOnNextEventOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // #856: an, ausgenommen OnPaint, OnMouseMove und OnUpdate; die Liste wird beim Normalisieren bereinigt.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugBreakOnNextEvent);
+  Assert.AreEqual('OnPaint, OnMouseMove, OnUpdate', Settings.DebugBreakOnNextEventExcluded);
+  Settings.DebugBreakOnNextEvent := False;
+  Settings.DebugBreakOnNextEventExcluded := 'OnPaint, OnResize';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Loaded.Normalize;
+  Assert.IsFalse(Loaded.DebugBreakOnNextEvent);
+  Assert.AreEqual('OnPaint, OnResize', Loaded.DebugBreakOnNextEventExcluded);
+  Loaded.DebugBreakOnNextEventExcluded := ' OnPaint ;; OnResize,';
+  Loaded.Normalize;
+  Assert.AreEqual('OnPaint, OnResize', Loaded.DebugBreakOnNextEventExcluded);
 end;
 
 procedure TAtlasPluginSettingsTests.DebugVisualizerOptions;

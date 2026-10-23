@@ -32,6 +32,7 @@ uses
   Atlas.Core.Settings.ProfileData in '..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.ProfileData.pas',
   Atlas.Core.Settings.OverviewKinds in '..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.OverviewKinds.pas',
   Atlas.Core.Debug.Visualizers in '..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.Visualizers.pas',
+  Atlas.Core.Debug.EventBreak in '..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.EventBreak.pas',
   Atlas.Core.Settings.Plugin in '..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.Plugin.pas',
   Atlas.Core.Settings.Scopes in '..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.Scopes.pas',
   Atlas.Core.Settings.History in '..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.History.pas',

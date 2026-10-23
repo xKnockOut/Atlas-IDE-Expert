@@ -188,6 +188,7 @@ uses
   Atlas.IDE.Debug.Visualizers,
   Atlas.IDE.Debug.DisplayRules,
   Atlas.IDE.Debug.StepInto,
+  Atlas.IDE.Debug.EventBreak,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Editor.TestUnitLens,
   Atlas.IDE.Hover.Editor,
@@ -1088,6 +1089,16 @@ begin
   TAtlasIdeStepInto.Run;
 end;
 
+function BreakOnNextEventVisible: Boolean;
+begin
+  Result := TAtlasIdeEventBreak.Enabled;
+end;
+
+procedure BreakOnNextEvent;
+begin
+  TAtlasIdeEventBreak.Run;
+end;
+
 procedure CompleteStatement;
 begin
   TAtlasIdeStatementCompletion.Run;
@@ -1320,6 +1331,9 @@ begin
   // Gezielt hineinspringen (#836); nur sichtbar, solange debug.stepIntoTarget an ist.
   Add('Atlas.StepIntoTarget', TAtlasTextId.StepIntoTargetCommand,
     Guarded(TAtlasFeature.Debugger, StepIntoTarget), StepIntoTargetVisible);
+  // Beim nächsten Ereignis anhalten (#856); nur sichtbar, solange debug.breakOnNextEvent an ist.
+  Add('Atlas.BreakOnNextEvent', TAtlasTextId.EventBreakCommand,
+    Guarded(TAtlasFeature.Debugger, BreakOnNextEvent), BreakOnNextEventVisible);
   // Mehrere Einfügemarken (#589).
   Add('Atlas.MultiCursorNext', TAtlasTextId.MultiCursorNextCommand,
     Guarded(TAtlasFeature.MultiCursor, MultiCursorNext), MultiCursorVisible);
@@ -2559,6 +2573,18 @@ begin
     begin
       MessageLine(AText);
     end);
+  // Beim nächsten Ereignis anhalten (#856): Eintrag im Menü Start; Meldungen in der Meldungsansicht.
+  TAtlasIdeEventBreak.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
   // Übersichtsleiste an der Scrollleiste (#519).
   // Mit schnellen Lesezeichen (#1104) zeigt die Art „bookmarks“ die Lesezeichen von Atlas.
   TAtlasIdeOverviewRuler.Bookmarks :=
@@ -2618,6 +2644,7 @@ begin
   TAtlasIdeBlockComment.Uninstall;
   TAtlasIdeUnwrap.Uninstall;
   TAtlasIdeStepInto.Uninstall;
+  TAtlasIdeEventBreak.Uninstall;
   TAtlasIdeSmartPaste.Uninstall;
   TAtlasIdeWrapSelection.Uninstall;
   TAtlasIdeLinkedEditing.Uninstall;
@@ -4238,6 +4265,8 @@ begin
       TAtlasIdeBreadcrumbs.ApplySettings;
       // editor.toolbar* (#1101).
       TAtlasIdeEditorToolbar.ApplySettings;
+      // debug.breakOnNextEvent (#856).
+      TAtlasIdeEventBreak.ApplySettings;
       // search.resultsInMessages (#878).
       TAtlasIdeSearch.ApplySettings;
       // editor.stickyScroll* (#506).

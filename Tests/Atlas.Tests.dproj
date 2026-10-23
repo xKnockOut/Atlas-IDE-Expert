@@ -181,6 +181,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DebugDisplay.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Todos.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DebugDisplay.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.EventHandlers.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Deprecated.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.ForwardDeclarations.Tests.pas"/>
@@ -392,6 +393,7 @@
         <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.ComponentRename.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.FormModel.Tests.pas"/>
+        <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.EventHandlers.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.FormInfo.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.BinaryForm.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.FormFiles.Tests.pas"/>
@@ -443,7 +445,9 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.DisplayRules.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.DisplayRules.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.StepInto.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.EventBreak.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.StepInto.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EventBreak.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas"/>
@@ -753,7 +757,9 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Editor\Atlas.UI.Editor.Unwrap.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Editor.Unwrap.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Debug\Atlas.UI.Debug.StepInto.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Debug\Atlas.UI.Debug.EventBreak.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.StepInto.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.EventBreak.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.QuickToggles.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.QuickToggles.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.Transfer.Tests.pas"/>,

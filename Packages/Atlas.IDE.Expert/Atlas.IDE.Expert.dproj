@@ -130,6 +130,7 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Visualizers.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.DisplayRules.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.StepInto.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.EventBreak.pas"/>
         <DCCReference Include="Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas"/>
         <DCCReference Include="Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas"/>
         <DCCReference Include="Source\Core\Signature\Atlas.Core.Signature.CallScanner.pas"/>
@@ -287,6 +288,8 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Visualizers.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.DisplayRules.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StepInto.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Breakpoints.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.EventBreak.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.Viewer.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Preview.pas"/>
         <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.Preview.pas"/>
@@ -626,6 +629,7 @@
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.SmartPaste.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.Unwrap.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.StepInto.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.EventBreak.pas"/>
         <DCCReference Include="Source\IDE\Notifications\Atlas.IDE.Notifications.Service.pas"/>
         <DCCReference Include="Source\Core\Dock\Atlas.Core.Dock.Plan.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DockWindow.pas"/>
