@@ -17,8 +17,10 @@
 // Bedeutung der Namen über TNameResolver.ResolveChain, der Rumpf der Methode
 // über die Deklaration (auch aus einer anderen Unit des Projekts, nicht aus
 // Bibliotheken).
-// Was refactoring.extract, .completeCase, .resolveWith, .createMethod und
-// .inline abschalten, kommt nicht.
+// Dazu „In case umwandeln“ und „In if-Kette umwandeln“ (#646): Typ des
+// verglichenen Ausdrucks und Konstanten über TIfCaseLookup.FromResolver.
+// Was refactoring.extract, .completeCase, .resolveWith, .createMethod,
+// .inline und .ifCase abschalten, kommt nicht.
 
 interface
 
@@ -87,7 +89,10 @@ type
     /// <summary>„Variable einbetten“ und „Methode einbetten“ (#103) für APosition.</summary>
     class function InlineActions(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
       const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>; static;
-    /// <summary>Alle eingeschalteten Aktionen aus #50, #103 und #472 für ARange.</summary>
+    /// <summary>„In case umwandeln“ bzw. „In if-Kette umwandeln“ (#646) für den Kopf an APosition.</summary>
+    class function IfCaseActions(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
+      const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>; static;
+    /// <summary>Alle eingeschalteten Aktionen aus #50, #103, #472 und #646 für ARange.</summary>
     class function Actions(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
       const AContext: TRefactoringContext): TArray<TCodeAction>; static;
   end;
@@ -104,6 +109,8 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.CreateMethod,
   Atlas.Common.Editing.CaseCompletion,
+  Atlas.Common.Editing.StatementText,
+  Atlas.Common.Editing.IfCase,
   Atlas.Common.Lsp.InlayHints,
   Atlas.Common.Lsp.Completion;
 
@@ -566,6 +573,34 @@ begin
   end;
 end;
 
+class function TLspRefactorings.IfCaseActions(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
+  const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>;
+var
+  Lookup: TIfCaseLookup;
+  Layout: TStatementLayout;
+  Conversion: TIfCaseConversion;
+
+  procedure Add;
+  var
+    Action: TCodeAction;
+  begin
+    Action := Default(TCodeAction);
+    Action.Title := Conversion.Title;
+    Action.Kind := RewriteKind;
+    Action.Edits := [Conversion.Edit];
+    Result := Result + [Action];
+  end;
+
+begin
+  Result := nil;
+  Lookup := TIfCaseLookup.FromResolver(AResolver, ATree, AContext.FileName);
+  Layout := TStatementLayout.Create('', TRoutineBody.IndentUnit(AContext.Style), TTextLines.LineBreakOf(AText));
+  if TIfCase.ToCase(AText, ATree, APosition, Lookup, Layout, Conversion) then
+    Add;
+  if TIfCase.ToIf(AText, ATree, APosition, Lookup, Layout, Conversion) then
+    Add;
+end;
+
 class function TLspRefactorings.Actions(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
   const AContext: TRefactoringContext): TArray<TCodeAction>;
 var
@@ -579,7 +614,7 @@ begin
   if AContext.Settings.Extract then
     Result := Result + TExtractRefactoring.Actions(AText, ATree, ARange, OptionsOf(AContext));
   if not (AContext.Settings.CompleteCase or AContext.Settings.ResolveWith or AContext.Settings.CreateMethod or
-    AContext.Settings.InlineCode) then
+    AContext.Settings.InlineCode or AContext.Settings.IfCase) then
     Exit;
   Resolver := NewResolver(AContext);
   try
@@ -601,6 +636,8 @@ begin
       end;
       if AContext.Settings.InlineCode then
         Result := Result + InlineActions(Resolver, ATree, AText, ARange.StartPos, AContext);
+      if AContext.Settings.IfCase then
+        Result := Result + IfCaseActions(Resolver, ATree, AText, ARange.StartPos, AContext);
     finally
       Resolver.UnpinTree;
     end;

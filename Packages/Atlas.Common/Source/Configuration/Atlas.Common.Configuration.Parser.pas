@@ -325,7 +325,7 @@ begin
           else if (Value.Keys[Inner] = 'minLines') and not ((Value[Inner].Kind = TJsonKind.Number) and
             TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 1)) then
             ReportNode(Value[Inner], '"minLines" muss eine ganze Zahl ab 1 sein')
-          // Mindestzahl der Vergleiche von string-if-chain (#1066).
+          // Mindestzahl der Vergleiche von string-if-chain (#1066) bzw. der Zweige von prefer-case (#646).
           else if (Value.Keys[Inner] = 'min') and not ((Value[Inner].Kind = TJsonKind.Number) and
             TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 2)) then
             ReportNode(Value[Inner], '"min" muss eine ganze Zahl ab 2 sein')
@@ -1370,6 +1370,8 @@ begin
     end
     else if Key = 'invertBooleanIncludeDfm' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InvertBooleanIncludeDfm)
+    else if Key = 'ifCase' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.IfCase)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);
