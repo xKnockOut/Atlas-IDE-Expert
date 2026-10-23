@@ -943,3 +943,12 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Regel-Editor schmal (nach dem Push bemerkt):** `TAtlasRulesEditor.CanAutoSize` setzte `NewWidth := Width`; `CheckNewSize` fragt aber mit der neuen Breite, so blieb jedes `SetBounds` bei den 185 Pixeln eines frischen Panels. Jetzt bleibt die angefragte Breite. Der Test prüfte ohne Fenster, da war auch der Behälter schmal; `KeepsRequestedWidth` und die Dialogtests messen jetzt mit Fenster.
 - **Protokoll lesen:** Das Bash-Werkzeug sieht `%LOCALAPPDATA%` virtualisiert (Kopie unter `AppData\Local\Packages\Claude_…\LocalCache`, Stand 22.10.). Das echte `atlas.log` nur mit PowerShell lesen. Das Plugin-Protokoll läuft normal, eine Lücke gibt es nicht.
 - **Nebenbefund Server-Diagnose:** `workspace/diagnostic` brauchte 17 s mit `slowRule=inline-not-expanded` (16,4 s) in einer Unit mit fehlenden Units; nicht untersucht.
+
+## Nach v1.1.0: #268, #1118, #1119 (23.10.2026, ungebaut)
+
+- **Auswahl:** Liste der nächsten Issues in `/mnt/project-files/planung/naechste-issues-nach-v1.1.0.md`; Marco: „Mach den Teil den du für sinnvoll hältst“. Branches heißen `after-release/NN-name`, je ein Entwurfs-PR gegen `main`.
+- **#268 Uses-Graph:** Branch `after-release/268-uses-graph`, PR #1146.
+- **#1118 Architekturübersicht:** Branch `after-release/1118-architekturuebersicht`, PR #1149.
+- **#1119 Treffersicherheit:** Branch `after-release/1119-treffersicherheit`, PR #1153. Server: `Atlas.Common.Lsp.ReferenceConfidence` (`TReferenceClassifier`), `atlasConfidence` je Treffer, `atlasUnchanged` beim Umbenennen, MCP trennt sicher/erschlossen, Einstellungen `references.inferred`/`references.textMatches`. Plugin: Ergebnisfenster mit Abschnitten und Filter „Nur sichere“, Umbenennen-Vorschau „Nicht geändert, bitte prüfen“. Umbenennen ändert dieselbe Menge wie vorher. Handtests TS1–TS10. Die Pfadsuche aus #1117 ist nicht enthalten.
+- **Erkenntnis:** Auch der Syntaxbaum des Editors (nur aktive Zweige) enthält alle Token (`TParser.FAllTokens`); inaktive Treffer erkennt man deshalb über die Position, nicht über fehlende Token.
+- **Offen:** Delphi-Build und Tests aller drei Branches; Anhebung von #268 auf high wartet auf Marco.
