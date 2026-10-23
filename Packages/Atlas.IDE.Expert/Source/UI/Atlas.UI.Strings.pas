@@ -710,7 +710,11 @@ type
     DebugExceptionsColumnLocation, DebugExceptionsColumnThread, DebugExceptionsEmpty, DebugExceptionsIgnored,
     DebugExceptionsThread, DebugExceptionsAllClasses, DebugExceptionsSummary, DebugExceptionsFault,
     DebugExceptionsUnknownClass, DebugExceptionsIgnoredClassSaid, DebugExceptionsStopAgainSaid,
-    DebugExceptionsNoSource);
+    DebugExceptionsNoSource,
+    // Nur eigener Code beim Debuggen (#578).
+    SettingsDebugJustMyCode, SettingsDebugOwnCodeFolders, DebugJustMyCodeCommand, DebugJustMyCodeOn,
+    DebugJustMyCodeOff, DebugJustMyCodeJumped, DebugExceptionsStackCaption, DebugExceptionsStackLibrary,
+    DebugExceptionsStackEmpty);
 
   TAtlasStrings = class
   private class var
@@ -2306,7 +2310,13 @@ const
      'Thread', 'Noch keine Exception in dieser Debug-Sitzung.', 'ignoriert', 'Hauptthread', 'Alle Klassen',
      '%d Einträge, %d Exceptions in dieser Sitzung', 'Fehler des Betriebssystems', 'Exception',
      'Atlas: %s wird künftig ignoriert; Atlas setzt bei dieser Klasse still fort.',
-     'Atlas: Bei %s hält der Debugger wieder an.', 'Atlas: Quelltext %s nicht gefunden.'),
+     'Atlas: Bei %s hält der Debugger wieder an.', 'Atlas: Quelltext %s nicht gefunden.',
+     'Nur eigener Code beim Debuggen (Sprung in eigenen Code, F7 überspringt Code ohne Quelltext)',
+     'Weitere Ordner mit eigenem Code (durch ; getrennt):', 'Atlas: Nur eigener Code beim Debuggen umschalten',
+     'Atlas: Nur eigener Code beim Debuggen ist an.',
+     'Atlas: Nur eigener Code beim Debuggen ist aus; die IDE verhält sich wie ohne Atlas.',
+     'Atlas: Exception in Bibliothekscode; eigener Code: %s:%d (%d Ebenen darüber, Ursprung im Aufrufstapel).',
+     'Aufrufstapel', '… %d Bibliotheksrahmen', 'Kein Aufrufstapel bekannt.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3806,7 +3816,13 @@ const
      'No exception in this debug session yet.', 'ignored', 'Main thread', 'All classes',
      '%d entries, %d exceptions in this session', 'Operating system fault', 'Exception',
      'Atlas: %s is ignored from now on; Atlas continues silently on this class.',
-     'Atlas: The debugger stops on %s again.', 'Atlas: Source %s not found.'));
+     'Atlas: The debugger stops on %s again.', 'Atlas: Source %s not found.',
+     'Just my code while debugging (jump to own code, F7 skips code without source)',
+     'More folders with own code (separated by ;):', 'Atlas: Toggle just my code while debugging',
+     'Atlas: Just my code while debugging is on.',
+     'Atlas: Just my code while debugging is off; the IDE behaves as without Atlas.',
+     'Atlas: Exception in library code; own code: %s:%d (%d levels up, origin in the call stack).', 'Call stack',
+     '… %d library frames', 'No call stack known.'));
 
 { TAtlasStrings }
 

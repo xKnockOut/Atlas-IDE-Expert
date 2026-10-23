@@ -181,6 +181,7 @@ uses
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Bookmarks.Gutter,
   Atlas.IDE.Debug.Exceptions,
+  Atlas.IDE.Debug.OwnCode,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Foundation.Elements,
@@ -1352,6 +1353,9 @@ begin
   // Exception-Verlauf beim Debuggen (#517); nur sichtbar, solange debug.exceptionHistory an ist.
   Add('Atlas.DebugExceptions', TAtlasTextId.DebugExceptionsCommand,
     Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugExceptions.ShowWindow), DebugExceptionsVisible);
+  // Nur eigener Code beim Debuggen (#578): schaltet debug.justMyCode um, deshalb immer sichtbar.
+  Add('Atlas.DebugJustMyCode', TAtlasTextId.DebugJustMyCodeCommand,
+    Guarded(TAtlasFeature.Debugger, ToggleDebugJustMyCode));
   // Fenster „Atlas-Prüfung“ (#909); nur sichtbar, solange problems.window an ist.
   Add('Atlas.ProblemsWindow', TAtlasTextId.ProblemsWindowCommand,
     Guarded(TAtlasFeature.Problems, TAtlasIdeProblems.ShowWindow), ProblemsWindowVisible);
@@ -2881,6 +2885,24 @@ begin
     end);
 end;
 
+procedure StartDebugOwnCode;
+begin
+  TAtlasIdeDebugOwnCode.Start(
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+end;
+
+procedure ToggleDebugJustMyCode;
+begin
+  TAtlasIdeDebugOwnCode.ToggleSetting(
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+end;
+
 /// <summary>Fenster „Atlas-Prüfung“ (#909): Code-Aktionen, Optionsseite, Serverbefehle und Meldungen über
 /// Haken; F8/Umschalt+F8 gehen bei sichtbarem Fenster durch dessen Liste.</summary>
 procedure StartProblemsWindow;
@@ -3889,6 +3911,17 @@ begin
       Result := TAtlasIdeDebugExceptions.Started;
     end,
     StartDebugExceptions, TAtlasIdeDebugExceptions.Release);
+  // Nur eigener Code beim Debuggen (#578): Zuhörer der Debug-Sitzung und Haken an „Einzelne Anweisung“ (F7).
+  Features.AddWanted('DebugOwnCode',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugJustMyCode;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugOwnCode.Started;
+    end,
+    StartDebugOwnCode, TAtlasIdeDebugOwnCode.Release);
   // Gleichen Text wie die Markierung hervorheben (#709): nur im normalen Start oder mit Einstellung.
   Features.AddWanted('SelectionMatches',
     function(ALevel: TAtlasSafeLevel): Boolean
