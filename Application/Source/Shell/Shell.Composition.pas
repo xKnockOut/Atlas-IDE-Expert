@@ -348,6 +348,10 @@ type
     function PromoteVariableActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>Lokale Variable und Feld umwandeln (#668): das WorkspaceEdit mit dem gewählten Namen.</summary>
     function PromoteVariable(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>„In Methode umwandeln“ und „Als anonyme Methode einbetten“ an APosition (#680).</summary>
+    function AnonymousMethodActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Anonyme Methode in Methode umwandeln (#680): das WorkspaceEdit mit dem gewählten Namen.</summary>
+    function AnonymousMethod(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Umschließung entfernen“ (#657): Konstrukte am Cursor mit Varianten und Vorschau.</summary>
     function Unwrap(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable an APosition.</summary>
@@ -505,6 +509,7 @@ uses
   Atlas.Common.Lsp.PropertyFromAccessors,
   Atlas.Common.Lsp.InvertBoolean,
   Atlas.Common.Lsp.PromoteVariable,
+  Atlas.Common.Lsp.AnonymousMethods,
   Atlas.Common.Lsp.Unwrap,
   Atlas.Common.Lsp.UnitRename,
   Atlas.Common.Lsp.SmartPaste,
@@ -1382,6 +1387,7 @@ begin
       Result := Result + PropertyFromAccessorsActions(AUri, ARange.StartPos);
       Result := Result + InvertBooleanActions(AUri, ARange.StartPos);
       Result := Result + PromoteVariableActions(AUri, ARange.StartPos);
+      Result := Result + AnonymousMethodActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
       Result := Result + RefactoringActions(AUri, ARange);
     end;
@@ -1465,6 +1471,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := PromoteVariable(AArguments);
+    end);
+  FCommands.Register(TLspAnonymousMethods.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := AnonymousMethod(AArguments);
     end);
   FCommands.Register(TLspUnwrap.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -3331,6 +3342,79 @@ begin
   end;
   // Nur Zahlen ins Log, keine Namen und Pfade (#647).
   FLogger.Info(Format('Variable/Feld umwandeln: %d Stellen, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.AnonymousMethodActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Settings: TRefactoringSettings;
+begin
+  Result := nil;
+  Settings := RefactoringSettingsFor(AUri);
+  if not Settings.AnonymousMethod or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(AUri));
+    try
+      Result := TLspAnonymousMethods.Actions(Shared.Tree, Document.Text, AUri, APosition,
+        TLspAnonymousMethods.Lookup(Resolver, Shared.Tree, TDocumentUris.ToPath(AUri), ReadSourceText),
+        TLspAnonymousMethods.CaptureOf(Settings.AnonymousMethodDeferredCapture), ResolvedFormatStyleFor(AUri));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.AnonymousMethod(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+  Settings: TRefactoringSettings;
+begin
+  // Argumente: URI, Position, Name.
+  if (AArguments = nil) or (AArguments.Count < 3) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri", "position" und "name" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  Settings := RefactoringSettingsFor(Uri);
+  if not Settings.AnonymousMethod then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Anonyme Methode und Methode umwandeln" ist abgeschaltet (refactoring.anonymousMethod).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(Uri));
+    try
+      Answer := TLspAnonymousMethods.Execute(Shared.Tree, Document.Text, Uri, Position,
+        Trim(AArguments.Items[2].Value), TLspAnonymousMethods.Lookup(Resolver, Shared.Tree,
+        TDocumentUris.ToPath(Uri), ReadSourceText), TLspAnonymousMethods.CaptureOf(
+        Settings.AnonymousMethodDeferredCapture), ResolvedFormatStyleFor(Uri));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Anonyme Methode umwandeln: %d Änderungen, %d Warnungen',
     [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('warnings') as TJSONArray).Count]));
   Result := Answer;
 end;

@@ -2643,6 +2643,21 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | LVF6 | Feld in zwei Methoden, zuerst gelesen (`Inc(FTemp)`), nur in einem Zweig geschrieben, hinter einer Property, published, als Komponente in der .dfm, in einer lokalen Routine oder in einer rekursiven Methode | Keine Aktion |
 | LVF7 | `refactoring.promoteVariable` aus | Keine der beiden Aktionen; „Boolean umkehren“ fragt weiter den Namen und zeigt die Vorschau wie vorher |
 
+## Anonyme Methode und Methode (#680)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AMU1 | In `procedure TForm1.FormCreate(Sender: TObject);` steht `Button1.OnClick := procedure(Sender: TObject) begin Caption := 'x'; end;` (in einem Projekt, das das übersetzt); Cursor auf `procedure`, Alt+Enter, „In Methode umwandeln (HandleClick)“ | Namensabfrage mit `HandleClick`; Vorschau „Erfasst keine Variablen …“; danach `Button1.OnClick := HandleClick;`, `procedure HandleClick(Sender: TObject);` im private-Abschnitt, Rumpf hinter `FormCreate`; ein Rückgängig-Schritt |
+| AMU2 | `LSum` und `LFactor` lokal, `FList.ForEach(procedure(const AItem: Integer) begin LSum := LSum + AItem * LFactor; end);` umwandeln, übersetzen und ausführen | Vorschlag `ProcessItem`, Methode `ProcessItem(const AItem: Integer; var LSum: Integer; LFactor: Integer)`, an der Stelle eine kurze anonyme Methode `ProcessItem(AItem, LSum, LFactor)`; die Summe ist dieselbe wie vorher |
+| AMU3 | `TThread.Queue(nil, procedure begin Memo1.Lines.Add(LText); end);` mit lokaler `LText` umwandeln, `refactoring.anonymousMethodDeferredCapture` = `forward` | Vorschau erklärt die Weiterleitung; an der Stelle bleibt `procedure begin UpdateInMainThread(LText); end`, die Ausgabe ist dieselbe |
+| AMU4 | Wie AMU3 mit `fields` | `FText := LText;` vor der Anweisung, `TThread.Queue(nil, UpdateInMainThread);`, Feld `FText: string;`, die Vorschau warnt; schreibt die anonyme Methode eine Variable, bleibt es bei der Weiterleitung mit Begründung |
+| AMU5 | `FList.Sort(TComparer<TKunde>.Construct(function(const A, B: TKunde): Integer begin Result := CompareText(A.Name, B.Name); end));` | Vorschlag `CompareByName`, an der Stelle `TComparer<TKunde>.Construct(CompareByName)`, Sortierung unverändert |
+| AMU6 | Anonyme Methode in einer freien Routine (`TParallel.For` mit Zähler) | „In Routine umwandeln (ProcessIndex)“: Routine der Unit vor der äußeren Routine, Zähler als `var`-Parameter, Ergebnis wie vorher |
+| AMU7 | Anonyme Methode, die `Result` der äußeren Funktion setzt, eine lokale Routine der äußeren aufruft oder in einer lokalen Routine steht; Namen in der Abfrage auf ein vorhandenes Mitglied oder `begin` ändern | Keine Aktion bzw. „Umwandeln fehlgeschlagen: …“ mit Grund |
+| AMU8 | Private Methode `ProcessItem`, genau einmal als `FList.ForEach(ProcessItem)` übergeben (Parameter vom Typ `TProc<Integer>` oder eigenes `reference to`), Cursor auf ihren Kopf, „Als anonyme Methode einbetten“ | Vorschau, dann steht der Rumpf als `procedure(const AItem: Integer) … end` an der Stelle, Methode und Deklaration sind weg |
+| AMU9 | Dasselbe für eine Methode an `Timer1.OnTimer` (TNotifyEvent), eine Methode, die in der .dfm steht, die zweimal übergeben oder direkt aufgerufen wird | Keine Einbetten-Aktion |
+| AMU10 | `refactoring.anonymousMethod` aus | Keine der beiden Aktionen; „Lokale Variable und Feld umwandeln“ fragt weiter den Namen und zeigt die Vorschau wie vorher |
+
 ## Methode aus Aufruf anlegen (#472)
 
 | Nr. | Schritte | Erwartet |
