@@ -2987,7 +2987,7 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit Unit `Kunde
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| EI1 | Strg+. auf `TKunde = class` | „Interface aus TKunde herauslösen …“; auf `Speichern` ebenso |
+| EI1 | Strg+. auf `TKunde = class` | „Interface aus TKunde herauslösen …“; auf `Speichern` nicht |
 | EI2 | Aktion wählen | Dialog mit Name `IKunde`, Ziel-Unit „Kunden (diese Unit)“; `Speichern`, `Laden` und `Name` angehakt; `Create` und `Neu` grau mit Grund; „Keine“ sperrt „Vorschau …“ mit Hinweis, „Alle“ hakt nur die wählbaren an |
 | EI3 | „Vorschau …“, dann „Herauslösen“ | Vor `TKunde` steht `IKunde = interface` mit `['{GUID}']`, `procedure Speichern(const APfad: string = '');`, `function Laden(AStream: TStream): Boolean; overload;`, `function GetName: string;`, `procedure SetName(const Value: string);` und `property Name: string read GetName write SetName;`; `TKunde = class(TInterfacedObject, IKunde)`, private `GetName`/`SetName` mit Rumpf, Property liest über sie; kompiliert; Strg+Z nimmt es in einem Schritt zurück (**Abnahme**) |
 | EI4 | Wie EI3, Ziel-Unit `Kunden.Schnittstellen` eintippen | Neue Unit mit dem Interface und `uses System.Classes;` (für `TStream`), eingetragen in `.dpr` und `.dproj`; `Kunden.pas` bindet sie im interface ein; die neue Unit öffnet sich; Projekt kompiliert (**Abnahme**) |
