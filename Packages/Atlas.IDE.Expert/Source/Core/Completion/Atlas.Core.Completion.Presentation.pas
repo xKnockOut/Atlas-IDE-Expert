@@ -43,6 +43,8 @@ type
     Id: TAtlasTagId;
     /// <summary>Einzusetzender Wert übersetzbarer Marken, bei VariantBranch die Zweigmarken ("0").</summary>
     Arg: string;
+    /// <summary>Mit Fläche in der weichen Farbe der Art (Warnfläche bei „verdeckt …“, #481).</summary>
+    Filled: Boolean;
   end;
 
   TAtlasTags = TArray<TAtlasTag>;
@@ -369,6 +371,17 @@ begin
         // Methoden von Self: die Klasse, die sie deklariert.
         Result := Result + [MakeTag(AItem.DeclaringClass, TAtlasTagKind.Neutral)];
     4: Result := Result + [MakeTag('Unit', TAtlasTagKind.Neutral)];
+    6:
+      if AItem.WithOrigin <> '' then
+      begin
+        // with-Objekt (#481): Herkunft und, was das Mitglied verdeckt, als Warnung mit Fläche.
+        Result := Result + [MakeTag('aus ' + AItem.WithOrigin, TAtlasTagKind.Accent)];
+        for Directive in AItem.WithShadows do
+        begin
+          Result := Result + [MakeTag('verdeckt ' + Directive, TAtlasTagKind.Warn)];
+          Result[High(Result)].Filled := True;
+        end;
+      end;
     5:
       if AItem.DeclaringUnit <> '' then
         Result := Result + [MakeTag(AItem.DeclaringUnit, TAtlasTagKind.Neutral)];

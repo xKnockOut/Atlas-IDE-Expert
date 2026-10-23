@@ -588,7 +588,14 @@ begin
   Result := 0;
   if (FContext.Kind <> TCompletionContextKind.Scope) or (AMember.Name = '') then
     Exit;
-  if AMember.Kind = TResolvedKind.Local then
+  if AMember.WithOrigin <> '' then
+  begin
+    // Mitglied eines with-Objekts (#481), auch wenn es zur eigenen Klasse gehört (with Self do); abgeschaltet
+    // ohne Angabe statt einer falschen.
+    if FRequest.Settings.WithOrigin then
+      Result := 6;
+  end
+  else if AMember.Kind = TResolvedKind.Local then
   begin
     if AMember.IsParameter then
       Result := 2
@@ -652,6 +659,11 @@ begin
   Scored.Item.Scope := ScopeOf(ASymbol, UnitName);
   Scored.Item.UnitName := UnitName;
   Scored.Item.Hides := ASymbol.Hides;
+  if Scored.Item.Scope = 6 then
+  begin
+    Scored.Item.WithOrigin := ASymbol.WithOrigin;
+    Scored.Item.WithShadows := ASymbol.WithShadows;
+  end;
   for Params in ASymbol.VariantParams do
     if Params <> '' then
       Scored.Item.HasParameters := True;
@@ -1233,7 +1245,7 @@ begin
   Names := TDictionary<string, Integer>.Create;
   try
     for Index := 0 to FList.Count - 1 do
-      if (FList[Index].Item.Scope >= 1) and (FList[Index].Item.Scope <= 4) then
+      if ((FList[Index].Item.Scope >= 1) and (FList[Index].Item.Scope <= 4)) or (FList[Index].Item.Scope = 6) then
         Names.AddOrSetValue(UpperCase(FList[Index].Item.Name), Index);
     if Names.Count = 0 then
       Exit;

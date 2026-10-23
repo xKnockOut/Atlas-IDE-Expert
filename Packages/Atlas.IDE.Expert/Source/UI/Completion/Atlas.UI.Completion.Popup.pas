@@ -1185,6 +1185,9 @@ begin
   Box := Rect(ALeft, ARow.Top + (ARow.Height - Height) div 2, ALeft + TagWidth(ATag), 0);
   Box.Bottom := Box.Top + Height;
   Canvas.Font := UIFont;
+  // Warnfläche (#481): „verdeckt …“ fällt auch ohne Farbsehen auf.
+  if ATag.Filled and (ATag.Kind = TAtlasTagKind.Warn) then
+    FillRounded(Box, Colors.WarnSoft, TAtlasDraw.ChipRadius);
   FrameRounded(Box, Line, TAtlasDraw.ChipRadius);
   Canvas.Font.Color := ToColor(TextColor);
   Canvas.Brush.Style := bsClear;

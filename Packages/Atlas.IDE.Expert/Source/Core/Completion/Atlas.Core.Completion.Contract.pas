@@ -119,11 +119,15 @@ type
     /// <summary>Unter der aktiven Konfiguration nicht deklariert: abgeschwächt und am Ende (#476).</summary>
     Unavailable: Boolean;
     /// <summary>Gültigkeitsbereich (#488): 1 lokal, 2 Parameter, 3 Mitglied von Self, 4 eigene Unit,
-    /// 5 andere Unit; 0 ohne Angabe.</summary>
+    /// 5 andere Unit, 6 Mitglied eines with-Objekts (#481); 0 ohne Angabe.</summary>
     Scope: Integer;
     /// <summary>Verdeckte gleichnamige Deklarationen weiter außen (#488), z. B. "Feld TKunde.Total";
     /// das Detailpanel nennt sie.</summary>
     Hides: TArray<string>;
+    /// <summary>Bei Scope 6 (#481): Ausdruck des with-Objekts ("qryOrders") und verdeckte lokale Namen bzw.
+    /// Mitglieder von Self ("Self.Name"), als Marken „aus …“ und „verdeckt …“.</summary>
+    WithOrigin: string;
+    WithShadows: TArray<string>;
     /// <summary>ResolveData der weiteren Überladungen (#425); die erste ist ResolveData.</summary>
     OverloadData: TArray<string>;
     /// <summary>Routine mit Parametern (#430): beim Übernehmen Klammern ergänzen.</summary>
@@ -272,6 +276,8 @@ type
     Display: TAtlasDocDisplay;
     /// <summary>Vom gewählten Eintrag verdeckte Deklarationen (#488).</summary>
     Hides: TArray<string>;
+    /// <summary>with-Objekt, dem der gewählte Eintrag gehört (#481); '' sonst.</summary>
+    WithOrigin: string;
     /// <summary>Warum der Eintrag im aktiven Ziel fehlt (#476); '' = verfügbar.</summary>
     Availability: string;
     /// <summary>Gleitkomma für eine Ganzzahl (#490): Typ des Werts und erwarteter Typ; '' sonst.</summary>

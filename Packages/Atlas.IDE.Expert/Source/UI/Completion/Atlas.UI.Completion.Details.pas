@@ -403,6 +403,9 @@ begin
       Block(TAtlasStrings.Text(TAtlasTextId.SameNameNotActive) + ' · ' +
         TAtlasStrings.Fmt(TAtlasTextId.SameNameInsertAdd, [FDetails.SameNameThis]), AColors.Warn, []);
   end;
+  // with-Objekt (#481): Zusammen mit „Verdeckt: …“ nennt das Panel beide Bedeutungen.
+  if FDetails.WithOrigin <> '' then
+    Block(TAtlasStrings.Fmt(TAtlasTextId.WithMemberOrigin, [FDetails.WithOrigin]), AColors.Accent, []);
   // Verdeckte Deklarationen weiter außen (#488).
   for Text in FDetails.Hides do
     Block(TAtlasStrings.Fmt(TAtlasTextId.HidesDeclaration, [Text]), AColors.Muted, [fsItalic]);

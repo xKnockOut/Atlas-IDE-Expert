@@ -322,6 +322,9 @@ type
     /// <summary>Erwartet ein Argument oder eine Zuweisung einen Methodenreferenztyp, oben ein Gerüst
     /// "procedure(…) begin end" bzw. "function(…): T" mit passender Signatur (#468). Aus: kein Gerüst.</summary>
     AnonymousMethods: Boolean;
+    /// <summary>In with-Blöcken Mitglieder des with-Objekts mit „aus Ausdruck“ und der Warnung „verdeckt Self.Name“
+    /// bzw. „verdeckt lokale Variable Name“ (#481). Aus: ohne Herkunft.</summary>
+    WithOrigin: Boolean;
     /// <summary>Gleichnamige Bezeichner aus verschiedenen Units als Varianten mit ihrer Unit; die vom Compiler
     /// gewählte zuerst mit „aktiv“ (#475). Aus: nur die aktive.</summary>
     SameNameVariants: Boolean;
@@ -877,6 +880,7 @@ begin
   Result.InheritedCall := True;
   Result.Attributes := True;
   Result.AnonymousMethods := True;
+  Result.WithOrigin := True;
   Result.SameNameVariants := True;
   Result.SameNameInsert := TCompletionSameNameInsert.Prefix;
   Result.ShowFmxUnits := False;

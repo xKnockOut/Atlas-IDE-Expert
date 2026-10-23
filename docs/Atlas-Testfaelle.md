@@ -2449,6 +2449,23 @@ Voraussetzung: Server läuft in der IDE, DUnitX im Bibliothekspfad indiziert, `c
 | AT9 | Eigenes `MarkeAttribute = class(TCustomAttribute)` und `TNurKlasse = class` in der Unit; `[` | `Marke` angeboten, `TNurKlasse` nicht |
 | AT10 | `"completion": {"attributes": false}` in atlas.json; AT1 | Gewöhnliche Liste mit `TestAttribute` usw. samt Endung |
 
+## with-Blöcke (#481)
+
+Voraussetzung: Server läuft in der IDE, `completion.withOrigin` an (Vorgabe). Formular `TForm1` mit Feld bzw. Eigenschaft `Name`, Methode mit `qryOrders: TFDQuery`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WB1 | `with qryOrders do` und darin `Na` tippen | Eintrag `Name` mit Marke „aus qryOrders“ und Warnmarke „verdeckt Self.Name“ (Warnfläche); `Name` nur einmal |
+| WB2 | WB1, Detailpanel | „Mitglied von qryOrders (with)“ und „Verdeckt: Eigenschaft TComponent.Name“ (bzw. Feld) |
+| WB3 | Lokale Variable `Active` und `with qryOrders do Act` | „aus qryOrders“, „verdeckt lokale Variable Active“ |
+| WB4 | `with qryOrders do` und `Op` | `Open` mit „aus qryOrders“, ohne Warnung |
+| WB5 | `with qryOrders do with qryOther do Na` sowie `with qryOrders, qryOther do Na` | „aus qryOther“ |
+| WB6 | `with Self.FQuery do` | Marke „aus Self.FQuery“ |
+| WB7 | Hinter dem with-Block `Na` | `Name` mit Herkunft des Formulars, ohne „aus …“ |
+| WB8 | Strg+Leer auf `with` | „with auflösen“ oben; danach übersetzt der Code und verhält sich gleich; ein Rückgängig-Schritt |
+| WB9 | Helles und dunkles Thema | Warnfläche lesbar |
+| WB10 | `"completion": {"withOrigin": false}` in atlas.json; WB1 | `Name` ohne Marken; das Mitglied von qryOrders gilt weiter |
+
 ## Anonyme Methoden (#468)
 
 Voraussetzung: Server läuft in der IDE, `completion.anonymousMethods` an (Vorgabe), Code-Vorlagen an.

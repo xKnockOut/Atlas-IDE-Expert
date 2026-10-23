@@ -116,6 +116,8 @@ type
     [Test]
     procedure MethodRefTag;
     [Test]
+    procedure WithOriginAndShadowTags;
+    [Test]
     procedure MissingUnitBecomesTag;
     [Test]
     procedure UnitDetailIsFileName;
@@ -591,6 +593,28 @@ begin
   Assert.AreEqual('sn', TAtlasItemPresentation.Badge(Entry).Code);
   Assert.AreEqual('TPredicate<TCustomer>', TAtlasItemPresentation.TagText(Entry));
   Assert.AreEqual('', TAtlasItemPresentation.TagText(Item('procedure', TAtlasItemKind.Snippet)));
+end;
+
+procedure TAtlasPresentationTests.WithOriginAndShadowTags;
+var
+  Entry: TAtlasCompletionItem;
+  Tags: TAtlasTags;
+begin
+  // with-Objekt (#481): „aus …“, dann je verdecktem Namen eine Warnmarke mit Fläche.
+  Entry := Item('Name', TAtlasItemKind.Field);
+  Entry.Scope := 6;
+  Entry.WithOrigin := 'qryOrders';
+  Entry.WithShadows := ['Self.Name', 'lokale Variable Name'];
+  Tags := TAtlasItemPresentation.Tags(Entry);
+  Assert.AreEqual('aus qryOrders, verdeckt Self.Name, verdeckt lokale Variable Name',
+    TAtlasItemPresentation.TagText(Entry));
+  Assert.AreEqual(Ord(TAtlasTagKind.Accent), Ord(Tags[0].Kind));
+  Assert.IsFalse(Tags[0].Filled);
+  Assert.AreEqual(Ord(TAtlasTagKind.Warn), Ord(Tags[1].Kind));
+  Assert.IsTrue(Tags[1].Filled);
+  // Ohne Verdeckung nur die Herkunft.
+  Entry.WithShadows := nil;
+  Assert.AreEqual('aus qryOrders', TAtlasItemPresentation.TagText(Entry));
 end;
 
 procedure TAtlasPresentationTests.MissingUnitBecomesTag;
