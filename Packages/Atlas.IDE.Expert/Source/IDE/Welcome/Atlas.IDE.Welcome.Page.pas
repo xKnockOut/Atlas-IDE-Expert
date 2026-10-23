@@ -55,7 +55,8 @@ uses
   Vcl.Graphics,
   ToolsAPI,
   ToolsAPI.WelcomePage,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.IDE.Foundation.DockWindow;
 
 type
   TPlugin = class;
@@ -102,12 +103,8 @@ var
   ServiceGone: Boolean;
 
 procedure Theme(AFrame: TFrame);
-var
-  Theming: IOTAIDEThemingServices;
 begin
-  if (AFrame <> nil) and Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) and
-    Theming.IDEThemingEnabled then
-    Theming.ApplyTheme(AFrame);
+  TAtlasIdeDockWindow.ApplyIdeTheme(AFrame);
 end;
 
 { TViewWatch }

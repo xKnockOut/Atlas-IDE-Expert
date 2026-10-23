@@ -44,7 +44,8 @@ uses
   ToolsAPI,
   Atlas.UI.Strings,
   Atlas.UI.Style.Symbol,
-  Atlas.IDE.Foundation.Symbol;
+  Atlas.IDE.Foundation.Symbol,
+  Atlas.IDE.Foundation.DockWindow;
 
 type
   TOutlineDock = class(TInterfacedObject, INTACustomDockableForm)
@@ -77,12 +78,8 @@ var
   Watch: TWatch;
 
 procedure Theme(AFrame: TCustomFrame);
-var
-  Theming: IOTAIDEThemingServices;
 begin
-  if (AFrame <> nil) and Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) and
-    Theming.IDEThemingEnabled then
-    Theming.ApplyTheme(AFrame);
+  TAtlasIdeDockWindow.ApplyIdeTheme(AFrame);
 end;
 
 { TOutlineDock }

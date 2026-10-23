@@ -112,7 +112,6 @@ end;
 procedure TResultsDock.FrameCreated(AFrame: TCustomFrame);
 var
   ResultsFrame: TAtlasResultsFrame;
-  Theming: IOTAIDEThemingServices;
 begin
   if not (AFrame is TAtlasResultsFrame) then
     Exit;
@@ -163,8 +162,7 @@ begin
       if Assigned(TAtlasIdeResultsWindow.OnExpand) then
         Result := TAtlasIdeResultsWindow.OnExpand(ADirection, AItem);
     end;
-  if Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) and Theming.IDEThemingEnabled then
-    Theming.ApplyTheme(AFrame);
+  TAtlasIdeDockWindow.ApplyIdeTheme(AFrame);
 end;
 
 function TResultsDock.GetMenuActionList: TCustomActionList;

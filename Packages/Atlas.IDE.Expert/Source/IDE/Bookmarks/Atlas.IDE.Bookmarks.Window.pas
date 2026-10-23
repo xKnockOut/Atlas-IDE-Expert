@@ -73,12 +73,8 @@ var
   Host: TAtlasIdeDockWindow;
 
 procedure Theme(AFrame: TCustomFrame);
-var
-  Theming: IOTAIDEThemingServices;
 begin
-  if (AFrame <> nil) and Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) and
-    Theming.IDEThemingEnabled then
-    Theming.ApplyTheme(AFrame);
+  TAtlasIdeDockWindow.ApplyIdeTheme(AFrame);
 end;
 
 { TBookmarksDock }
