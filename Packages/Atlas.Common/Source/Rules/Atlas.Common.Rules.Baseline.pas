@@ -854,6 +854,8 @@ begin
               if Mark.Match = TBaselineMatch.Legacy then
                 Inc(Result.Completed);
             end;
+          TBaselineState.None: ;
+          TBaselineState.Absent: ;
         end;
     end;
     if AOld = nil then

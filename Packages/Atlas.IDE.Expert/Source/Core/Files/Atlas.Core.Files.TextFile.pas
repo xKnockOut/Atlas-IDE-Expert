@@ -68,6 +68,12 @@ type
     class function Load(const AFileName: string; ADefaultCodePage: Integer): TAtlasTextFileContent; overload;
       static;
     class function Load(const AFileName: string): TAtlasTextFileContent; overload; static;
+    /// <summary>Nur der Text von Load: für Dateien, die das Plugin bloß liest (Projekt, Gruppe, .map), statt
+    /// TFile.ReadAllText, das ohne BOM immer ANSI annimmt (#1109).</summary>
+    class function LoadText(const AFileName: string): string; static;
+    /// <summary>LoadText in Zeilen; ein Umbruch am Ende ergibt wie bei TFile.ReadAllLines keine leere letzte
+    /// Zeile.</summary>
+    class function LoadLines(const AFileName: string): TArray<string>; static;
     /// <summary>Überschreibt nie ein binäres Formular (EAtlasTextFileError). Ersetzt die Datei atomar;
     /// EAtlasTextFileError, wenn ein anderes Programm sie ohne FILE_SHARE_DELETE offen hält.</summary>
     class procedure Save(const AFileName: string; const AContent: TAtlasTextFileContent); static;
@@ -83,7 +89,8 @@ uses
   System.Classes,
   System.IOUtils,
   System.RTLConsts,
-  Atlas.Text.Encoding;
+  Atlas.Text.Encoding,
+  Atlas.Text.Lines;
 
 const
   /// <summary>
@@ -361,6 +368,18 @@ end;
 class function TAtlasTextFile.Load(const AFileName: string): TAtlasTextFileContent;
 begin
   Result := Load(AFileName, 0);
+end;
+
+class function TAtlasTextFile.LoadText(const AFileName: string): string;
+begin
+  Result := Load(AFileName).Text;
+end;
+
+class function TAtlasTextFile.LoadLines(const AFileName: string): TArray<string>;
+begin
+  Result := TTextLines.SplitLines(LoadText(AFileName));
+  if (Length(Result) > 0) and (Result[High(Result)] = '') then
+    SetLength(Result, Length(Result) - 1);
 end;
 
 class procedure TAtlasTextFile.Save(const AFileName: string; const AContent: TAtlasTextFileContent);

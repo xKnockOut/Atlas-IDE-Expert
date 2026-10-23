@@ -332,10 +332,10 @@ type
     procedure CollectLocals(ANode: TSyntaxNode);
     procedure CollectIdentifiers(ANode: TSyntaxNode; const AName, ANewName: string);
     procedure Visit(ANode: TSyntaxNode; AInBody: Boolean);
-    procedure VisitExpression(ANode: TSyntaxNode; AInBody: Boolean);
-    procedure VisitAssign(ANode: TSyntaxNode; AInBody: Boolean);
+    procedure VisitExpression(ANode: TSyntaxNode);
+    procedure VisitAssign(ANode: TSyntaxNode);
     procedure VisitCall(ANode: TSyntaxNode; AInBody: Boolean);
-    procedure VisitDeclaration(ANode: TSyntaxNode; AInBody: Boolean);
+    procedure VisitDeclaration(ANode: TSyntaxNode);
   public
     Warnings: TArray<TInvertWarning>;
     constructor Create(ATree: TSyntaxTree; const AText: string; const ATargets: TInvertTargets);
@@ -951,7 +951,7 @@ begin
   end;
 end;
 
-procedure TRewriter.VisitExpression(ANode: TSyntaxNode; AInBody: Boolean);
+procedure TRewriter.VisitExpression(ANode: TSyntaxNode);
 var
   Pending: TStack<TSyntaxNode>;
   Node: TSyntaxNode;
@@ -978,7 +978,7 @@ begin
   end;
 end;
 
-procedure TRewriter.VisitAssign(ANode: TSyntaxNode; AInBody: Boolean);
+procedure TRewriter.VisitAssign(ANode: TSyntaxNode);
 var
   Target, Value: TSyntaxNode;
 begin
@@ -990,8 +990,8 @@ begin
     Emit(Value, Print(Value, True, True));
     Exit;
   end;
-  VisitExpression(Target, AInBody);
-  VisitExpression(Value, AInBody);
+  VisitExpression(Target);
+  VisitExpression(Value);
 end;
 
 procedure TRewriter.VisitCall(ANode: TSyntaxNode; AInBody: Boolean);
@@ -1009,10 +1009,10 @@ begin
   if ContainsDirect(Call) then
     Emit(Call, Rebuild(Call))
   else
-    VisitExpression(Call, AInBody);
+    VisitExpression(Call);
 end;
 
-procedure TRewriter.VisitDeclaration(ANode: TSyntaxNode; AInBody: Boolean);
+procedure TRewriter.VisitDeclaration(ANode: TSyntaxNode);
 var
   Index, Token: Integer;
   Value: TSyntaxNode;
@@ -1033,7 +1033,7 @@ begin
     InvertedName(FTokens[Token].Offset, Name) and Name.Invert then
     Emit(Value, Print(Value, True, True))
   else
-    VisitExpression(Value, AInBody);
+    VisitExpression(Value);
 end;
 
 procedure TRewriter.Visit(ANode: TSyntaxNode; AInBody: Boolean);
@@ -1049,7 +1049,7 @@ begin
     TSyntaxKind.AssignStatement:
       if ANode.ChildCount >= 2 then
       begin
-        VisitAssign(ANode, AInBody);
+        VisitAssign(ANode);
         Exit;
       end;
     TSyntaxKind.CallStatement:
@@ -1060,7 +1060,7 @@ begin
       end;
     TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst:
       begin
-        VisitDeclaration(ANode, AInBody);
+        VisitDeclaration(ANode);
         Exit;
       end;
   end;
@@ -1068,7 +1068,7 @@ begin
   begin
     Child := ANode[Index];
     if Child.Kind in ExpressionKinds then
-      VisitExpression(Child, AInBody)
+      VisitExpression(Child)
     else
       Visit(Child, AInBody);
   end;

@@ -33,7 +33,7 @@ uses
   Atlas.Core.Build.Inbox;
 
 type
-  /// <summary>Ende eines Auftrags; AError <> '' = nicht gebaut (Grund), sonst Ergebnis in AReport.</summary>
+  /// <summary>Ende eines Auftrags; AError &lt;&gt; '' = nicht gebaut (Grund), sonst Ergebnis in AReport.</summary>
   TAtlasBuildDoneProc = reference to procedure(const AReport: TAtlasBuildReport; const AError: string);
 
   TAtlasIdeBuildRunner = class
@@ -80,8 +80,7 @@ type
     function Start(const ARequest: TAtlasBuildRequest; const ARequestedBy: string; const AOnDone: TAtlasBuildDoneProc;
       out AReason: string): Boolean;
     /// <summary>Meldungen des Lesers (#528); gehören sie zum eigenen Build, gehen sie ins Ergebnis.</summary>
-    procedure MessagesRead(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
-      ASucceeded, AReadable: Boolean);
+    procedure MessagesRead(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject);
     property Busy: Boolean read FBusy;
   end;
 
@@ -295,7 +294,7 @@ begin
 end;
 
 procedure TAtlasIdeBuildRunner.MessagesRead(const AMessages: TArray<TAtlasCompilerMessage>;
-  const AProject: TAtlasCompileProject; ASucceeded, AReadable: Boolean);
+  const AProject: TAtlasCompileProject);
 begin
   if not FBusy or FMessagesSeen or not SameText(AProject.FileName, FRequest.Project) then
     Exit;

@@ -102,9 +102,9 @@ var
   Time: string;
 begin
   if SameDate(ASet.Time, ANow) then
-    Time := FormatDateTime('hh:nn', ASet.Time)
+    Time := FormatDateTime('hh":"nn', ASet.Time)
   else
-    Time := FormatDateTime('dd.mm. hh:nn', ASet.Time);
+    Time := FormatDateTime('dd.mm. hh":"nn', ASet.Time);
   Result := TAtlasStrings.Fmt(TAtlasTextId.UndoSetCaption, [ASet.Action, Length(ASet.Files), Time,
     StateText(ASet.State)]);
 end;

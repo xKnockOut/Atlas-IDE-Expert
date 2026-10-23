@@ -245,8 +245,11 @@ destructor TAtlasIdeOpenBuild.Destroy;
 var
   Services: IOTAServices;
 begin
-  FTimer.Enabled := False;
-  FTimer.Free;
+  if FTimer <> nil then
+  begin
+    FTimer.Enabled := False;
+    FTimer.Free;
+  end;
   // Erst abmelden, dann freigeben (#493).
   if FNotifier <> nil then
     FNotifier.FOwner := nil;

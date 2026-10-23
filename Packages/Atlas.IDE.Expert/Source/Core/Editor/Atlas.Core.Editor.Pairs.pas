@@ -81,7 +81,7 @@ type
     Line: Integer;
     Character: Integer;
     IsWord: Boolean;
-    /// <summary>Bezeichner mit & oder hinter einem Punkt: kein Schlüsselwort.</summary>
+    /// <summary>Bezeichner mit &amp; oder hinter einem Punkt: kein Schlüsselwort.</summary>
     Plain: Boolean;
   end;
 

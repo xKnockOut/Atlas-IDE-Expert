@@ -244,6 +244,55 @@ procedure TGenericExceptionRaisedRule.Check(const AContext: TRuleContext; const 
 var
   Tokens: TTokens;
   Index, Name, Dot, Ctor: Integer;
+  Caught: TArray<THandler>;
+
+  // raise direkt im try-Teil, dessen except alles fängt: Die Exception verlässt die Routine nie; oft nur, um einen
+  // Stack für das Protokoll zu bekommen (#1109).
+  function CaughtRightThere(AOffset: Integer): Boolean;
+  var
+    Raise_, Try_, Handlers_: TSyntaxNode;
+    Handler: THandler;
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
+    Child: Integer;
+    AnyOn: Boolean;
+  begin
+    Result := False;
+    Raise_ := nil;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(AContext.Tree.Root);
+      while (Pending.Count > 0) and (Raise_ = nil) do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.RaiseStatement) and (Node.StartOffset = AOffset) then
+          Raise_ := Node
+        else if (Node.StartOffset <= AOffset) and (Node.EndOffset >= AOffset) then
+          for Child := Node.ChildCount - 1 downto 0 do
+            Pending.Push(Node[Child]);
+      end;
+    finally
+      Pending.Free;
+    end;
+    if (Raise_ = nil) or (Raise_.Parent = nil) or (Raise_.Parent.Kind <> TSyntaxKind.TryStatement) then
+      Exit;
+    Try_ := Raise_.Parent;
+    Handlers_ := Try_.FindChild(TSyntaxKind.ExceptBlock);
+    if Handlers_ = nil then
+      Exit;
+    AnyOn := False;
+    for Handler in Caught do
+      if (Tokens[Handler.OnToken].Offset >= Handlers_.StartOffset) and
+        (Tokens[Handler.OnToken].Offset < Handlers_.EndOffset) then
+      begin
+        AnyOn := True;
+        if MatchText(Handler.TypeName, ['Exception', 'TObject']) then
+          Exit(True);
+      end;
+    // except ohne on fängt alles.
+    Result := not AnyOn;
+  end;
+
 begin
   if AContext.Tree = nil then
     Exit;
@@ -261,6 +310,10 @@ begin
     Ctor := NextCode(Tokens, Dot + 1);
     if (Ctor > High(Tokens)) or not SameText(Tokens[Name].Text, 'Exception') or not Tokens[Dot].IsSymbol('.') or
       not StartsText('Create', Tokens[Ctor].Text) then
+      Continue;
+    if Caught = nil then
+      Caught := Handlers(Tokens);
+    if CaughtRightThere(Tokens[Index].Offset) then
       Continue;
     AReport.Add(RangeOf(Tokens, Index, Ctor), 'raise Exception lässt sich nicht gezielt abfangen; eine eigene ' +
       'Klasse (z. B. EKundeNichtGefunden = class(Exception)) oder eine passende der RTL verwenden',

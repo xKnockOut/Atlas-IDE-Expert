@@ -132,7 +132,7 @@ var
   Age: TDateTime;
 begin
   if FileAge(AFileName, Age) then
-    Result := FloatToStr(Age)
+    Result := FloatToStr(Age, TFormatSettings.Invariant)
   else
     Result := '-';
 end;

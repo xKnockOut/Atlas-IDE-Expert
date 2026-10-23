@@ -316,6 +316,9 @@ begin
         AState.Available := '';
         AState.ChangesUrl := '';
       end;
+    TAtlasUpdateOutcome.Disabled: ;
+    TAtlasUpdateOutcome.NotDue: ;
+    TAtlasUpdateOutcome.Failed: ;
   end;
 end;
 

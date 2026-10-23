@@ -22,6 +22,8 @@ type
     [Test]
     procedure BreakLeavesLoop;
     [Test]
+    procedure EndlessLoopEndsOnlyThroughExit;
+    [Test]
     procedure ContinueSkipsRestOfBody;
     [Test]
     procedure FinallyRunsOnExit;
@@ -41,6 +43,8 @@ type
     procedure ExceptionPathThroughFinallyDoesNotEndNormally;
     [Test]
     procedure ReachingDefinitionsWithoutEntryPath;
+    [Test]
+    procedure ReachingDefinitionsSkipFailedAssignment;
     [Test]
     procedure MayReadBeforeWriteFindsEarlyRead;
     [Test]
@@ -217,6 +221,32 @@ begin
   end;
 end;
 
+procedure TControlFlowTests.EndlessLoopEndsOnlyThroughExit;
+var
+  F: TFlowFixture;
+  Body: string;
+begin
+  // while True und repeat … until False laufen nur über Exit, Break oder raise hinaus (#1109).
+  for Body in TArray<string>.Create('  while True do'#13#10'    if X > 0 then Exit(1);',
+    '  repeat'#13#10'    if X > 0 then Exit(1);'#13#10'  until False;',
+    '  while (True) do'#13#10'    if X > 0 then Exit(1);') do
+  begin
+    F := Flow(Body);
+    try
+      Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.No, Body);
+    finally
+      F.Free;
+    end;
+  end;
+  // Break verlässt die Schleife ohne Result.
+  F := Flow('  while True do'#13#10'    if X > 0 then Break else Exit(1);');
+  try
+    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Yes);
+  finally
+    F.Free;
+  end;
+end;
+
 procedure TControlFlowTests.BreakLeavesLoop;
 var
   F: TFlowFixture;
@@ -353,6 +383,24 @@ begin
   try
     Assert.AreEqual(1, Integer(Length(F.Graph.UnreachableStatements)));
     Assert.IsTrue(F.Graph.UnreachableStatements[0] = NodeNamed(F, 'Dead'));
+  finally
+    F.Free;
+  end;
+end;
+
+// Wirft Load, wird Y nie gesetzt: Im except und dahinter gilt noch Y := nil (#1109).
+procedure TControlFlowTests.ReachingDefinitionsSkipFailedAssignment;
+var
+  F: TFlowFixture;
+  Defs: TReachingDefinitions;
+begin
+  F := Flow('  Y := nil;'#13#10'  try'#13#10'    Y := Load;'#13#10'  except'#13#10'    Report;'#13#10'  end;'#13#10'  Use;');
+  try
+    Defs := F.Graph.ReachingDefinitions(NodeNamed(F, 'Use'), 'Y');
+    Assert.AreEqual(2, Integer(Length(Defs.Definitions)));
+    Defs := F.Graph.ReachingDefinitions(NodeNamed(F, 'Report'), 'Y');
+    Assert.AreEqual(1, Integer(Length(Defs.Definitions)));
+    Assert.IsTrue(Defs.Definitions[0] = NodeNamed(F, 'Y'), 'im except gilt nur Y := nil');
   finally
     F.Free;
   end;

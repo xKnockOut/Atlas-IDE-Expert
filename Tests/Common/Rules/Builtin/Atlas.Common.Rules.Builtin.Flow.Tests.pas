@@ -42,6 +42,8 @@ type
     [Test]
     procedure UninitializedReadReports;
     [Test]
+    procedure UninitializedFlagsNestedAndRecords;
+    [Test]
     procedure AssignedBeforeReadIsSilent;
     [Test]
     procedure OutArgumentIsSilent;
@@ -95,6 +97,8 @@ type
     procedure DestructorNotNilSafeVariants;
     [Test]
     procedure DestructorNotNilSafeSilentCases;
+    [Test]
+    procedure DestructorNotNilSafeGuardsAndQuietClasses;
     [Test]
     procedure HandleLeakIssueExample;
     [Test]
@@ -198,6 +202,50 @@ procedure TFlowRulesTests.OutArgumentIsSilent;
 begin
   TRuleAssert.Silent(TPossiblyUninitializedRule.Create,
     Routine('  Lese(I);'#10'  J := I;', 'procedure P;', 'var'#10'  I, J: Integer;'#10));
+end;
+
+procedure TFlowRulesTests.UninitializedFlagsNestedAndRecords;
+const
+  Vars = 'var'#10'  I, J: Integer;'#10'  Gefunden: Boolean;'#10;
+begin
+  // Merker (#1109): I bekommt seinen Wert zusammen mit Gefunden := True.
+  TRuleAssert.Silent(TPossiblyUninitializedRule.Create, Routine('  Gefunden := False;'#10'  for K in L do'#10 +
+    '    if K > 0 then'#10'    begin'#10'      I := K;'#10'      Gefunden := True;'#10'    end;'#10 +
+    '  if not Gefunden then'#10'    Exit;'#10'  J := I;', 'procedure P;', Vars));
+  TRuleAssert.Silent(TPossiblyUninitializedRule.Create, Routine('  Gefunden := False;'#10'  if A then'#10 +
+    '  begin'#10'    I := 1;'#10'    Gefunden := True;'#10'  end;'#10'  if Gefunden and B then'#10'    J := I;',
+    'procedure P;', Vars));
+  // Prüfung des Merkers in try … finally.
+  TRuleAssert.Silent(TPossiblyUninitializedRule.Create, Routine('  try'#10'    Gefunden := False;'#10 +
+    '    for K in L do'#10'      if K > 0 then'#10'      begin'#10'        I := K;'#10'        Gefunden := True;'#10 +
+    '      end;'#10'    if not Gefunden then'#10'      Exit;'#10'    J := I;'#10'  finally'#10'    Aufraeumen;'#10 +
+    '  end;', 'procedure P;', Vars));
+  // Merker aus einem Ausdruck, direkt danach "if Gefunden then begin I := …; Break; end".
+  TRuleAssert.Silent(TPossiblyUninitializedRule.Create, Routine('  Gefunden := False;'#10'  for K in L do'#10 +
+    '  begin'#10'    Gefunden := K > 0;'#10'    if Gefunden then'#10'    begin'#10'      I := K;'#10'      Break;'#10 +
+    '    end;'#10'  end;'#10'  if Gefunden then'#10'    J := I;', 'procedure P;', Vars));
+  TRuleAssert.Reports(TPossiblyUninitializedRule.Create, Routine('  Gefunden := False;'#10'  for K in L do'#10 +
+    '  begin'#10'    Gefunden := K > 0;'#10'    if Gefunden and (K > 5) then'#10'    begin'#10'      I := K;'#10 +
+    '      Break;'#10'    end;'#10'  end;'#10 +
+    '  if Gefunden then'#10'    J := I;', 'procedure P;', Vars));
+  // Gefunden wird auch ohne I gesetzt: kein Merker.
+  TRuleAssert.Reports(TPossiblyUninitializedRule.Create, Routine('  Gefunden := C;'#10'  if A then'#10 +
+    '  begin'#10'    I := 1;'#10'    Gefunden := True;'#10'  end;'#10'  if Gefunden then'#10'    J := I;',
+    'procedure P;', Vars));
+  // Ohne Prüfung des Merkers bleibt der Befund.
+  TRuleAssert.Reports(TPossiblyUninitializedRule.Create, Routine('  Gefunden := False;'#10'  if A then'#10 +
+    '  begin'#10'    I := 1;'#10'    Gefunden := True;'#10'  end;'#10'  J := I;', 'procedure P;', Vars));
+  // Eine lokale Routine setzt I.
+  TRuleAssert.Silent(TPossiblyUninitializedRule.Create, Routine('  Setzen;'#10'  J := I;', 'procedure P;',
+    Vars + '  procedure Setzen;'#10'  begin'#10'    I := 1;'#10'  end;'#10));
+  // Methode eines Records der Unit legt ihn an (Scanner.Init).
+  TRuleAssert.Silent(TPossiblyUninitializedRule.Create, 'unit U;'#10'interface'#10'implementation'#10'type'#10 +
+    '  TLeser = record'#10'    Pos: Integer;'#10'    procedure Init;'#10'  end;'#10'procedure TLeser.Init;'#10 +
+    'begin'#10'  Pos := 0;'#10'end;'#10'procedure P;'#10'var'#10'  L: TLeser;'#10'  J: Integer;'#10'begin'#10 +
+    '  L.Init;'#10'  J := L.Pos;'#10'end;'#10'end.');
+  TRuleAssert.Reports(TPossiblyUninitializedRule.Create, 'unit U;'#10'interface'#10'implementation'#10'type'#10 +
+    '  TLeser = record'#10'    Pos: Integer;'#10'  end;'#10'procedure P;'#10'var'#10'  L: TLeser;'#10 +
+    '  J: Integer;'#10'begin'#10'  J := L.Pos;'#10'end;'#10'end.');
 end;
 
 procedure TFlowRulesTests.ManagedTypeIsSilent;
@@ -502,6 +550,10 @@ begin
   TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
     // while als Prüfung späterer Durchläufe.
     '  Titel := Knoten.Name;'#10'  while Knoten <> nil do'#10'    Knoten := Knoten.Parent;', CheckHeader, CheckVars));
+  TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
+    // Ein Zweig setzt Knoten neu (FindChild kann nil liefern); die Prüfung gilt diesem Wert (#1109).
+    '  if Knoten.Kind = 1 then'#10'    Knoten := Knoten.FindChild(2);'#10'  if Knoten = nil then'#10'    Exit;',
+    CheckHeader, CheckVars));
 end;
 
 procedure TFlowRulesTests.DerefBeforeNilCheckFieldsAndOff;
@@ -862,6 +914,56 @@ begin
     '  end;'#10'implementation'#10'constructor TA.Create;'#10'begin'#10'  FL := TList.Create;'#10 +
     '  FUhr := TStopwatch.StartNew;'#10'  FUhr := TStopwatch.Create;'#10'end;'#10'destructor TA.Destroy;'#10 +
     'begin'#10'  FUhr.Stop;'#10'  FL.Free;'#10'end;'#10'end.');
+end;
+
+function GuardUnit(const AFirst, ASecond, ADestructor: string): string;
+begin
+  Result := ImportUnit('  inherited Create;'#10'  Pruefen;'#10 + AFirst + #10 + ASecond, ADestructor);
+end;
+
+function LocalClassUnit(const AHelper, AConstructor: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10 + AHelper + '  TA = class'#10'    FH: THelfer;'#10 +
+    '    FL: TObject;'#10'    constructor Create;'#10'    destructor Destroy; override;'#10'  end;'#10 +
+    'implementation'#10 + AConstructor + 'constructor TA.Create;'#10'begin'#10'  FH := THelfer.Create;'#10 +
+    '  FL := TFoo.Create;'#10'end;'#10'destructor TA.Destroy;'#10'begin'#10'  FL.Clear;'#10'end;'#10'end.';
+end;
+
+procedure TFlowRulesTests.DestructorNotNilSafeGuardsAndQuietClasses;
+begin
+  // Wächterfeld (#1109): FStrom wird erst nach FZeilen gesetzt; ist FStrom nicht nil, ist FZeilen es auch.
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, GuardUnit('  FZeilen := TStringList.Create;',
+    '  FStrom := TFileStream.Create(Datei, fmOpenRead);', '  if FStrom <> nil then'#10'    FZeilen.Clear;'#10 +
+    '  inherited;'));
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, GuardUnit('  FZeilen := TStringList.Create;',
+    '  FStrom := TFileStream.Create(Datei, fmOpenRead);', '  if Assigned(FStrom) then'#10'  begin'#10 +
+    '    FZeilen.Clear;'#10'    FZeilen.Sorted := False;'#10'  end;'#10'  inherited;'));
+  // Umgekehrte Reihenfolge: FStrom sagt nichts über FZeilen.
+  TRuleAssert.Reports(TDestructorNotNilSafeRule.Create, GuardUnit('  FStrom := TFileStream.Create(Datei, fmOpenRead);',
+    '  FZeilen := TStringList.Create;', '  if FStrom <> nil then'#10'    FZeilen.Clear;'#10'  inherited;'));
+  // Nur bedingt vor dem Wächter angelegt: kein Schluss.
+  TRuleAssert.Reports(TDestructorNotNilSafeRule.Create, GuardUnit('  if Datei <> '''' then'#10 +
+    '    FZeilen := TStringList.Create;', '  FStrom := TFileStream.Create(Datei, fmOpenRead);',
+    '  if FStrom <> nil then'#10'    FZeilen.Clear;'#10'  inherited;'));
+  // Klasse der Unit ohne werfenden Konstruktor wirft höchstens EOutOfMemory, wie TStringList.
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, LocalClassUnit('  THelfer = class'#10'  end;'#10, ''));
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, LocalClassUnit('  THelfer = class(TStringList)'#10 +
+    '    constructor Create;'#10'  end;'#10, 'constructor THelfer.Create;'#10'begin'#10'  inherited Create;'#10 +
+    '  Sorted := True;'#10'end;'#10));
+  // Werfender Konstruktor oder unbekannter Vorfahr: zählt als werfend.
+  TRuleAssert.Reports(TDestructorNotNilSafeRule.Create, LocalClassUnit('  THelfer = class'#10 +
+    '    constructor Create;'#10'  end;'#10, 'constructor THelfer.Create;'#10'begin'#10 +
+    '  LoadFromFile(''x'');'#10'end;'#10));
+  TRuleAssert.Reports(TDestructorNotNilSafeRule.Create, LocalClassUnit('  THelfer = class(TFremd)'#10'  end;'#10,
+    ''));
+  // Kurzschluss: "(FZeilen <> nil) and FZeilen.Sorted" schützt den rechten Teil.
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, GuardUnit('  FStrom := TFileStream.Create(Datei, fmOpenRead);',
+    '  FZeilen := TStringList.Create;', '  FOk := (FZeilen <> nil) and FZeilen.Sorted;'#10'  inherited;'));
+  TRuleAssert.Reports(TDestructorNotNilSafeRule.Create, GuardUnit('  FStrom := TFileStream.Create(Datei, fmOpenRead);',
+    '  FZeilen := TStringList.Create;', '  FOk := (FZeilen = nil) and FZeilen.Sorted;'#10'  inherited;'));
+  // Grafikobjekte der VCL legen ihr Handle erst bei Bedarf an.
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit('  inherited Create;'#10 +
+    '  FStrom := TFont.Create;'#10'  FZeilen := TStringList.Create;', '  FZeilen.Clear;'#10'  inherited;'));
 end;
 
 function Prozess(const ABody: string): string;

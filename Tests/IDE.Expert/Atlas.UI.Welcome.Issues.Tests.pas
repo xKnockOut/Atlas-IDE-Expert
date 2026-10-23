@@ -206,7 +206,7 @@ begin
     TAtlasStrings.Language := TAtlasLanguage.German;
     View := SampleView;
     // Frischer Stand: keine Zeile über der Liste; Fußzeile wie im Mockup.
-    Assert.AreEqual('', TAtlasWelcomeIssuesFrame.StatusText(View, NowUtc0));
+    Assert.AreEqual('', TAtlasWelcomeIssuesFrame.StatusText(View));
     Assert.AreEqual('„Beginnen“ legt den Branch an und öffnet das Projekt.',
       TAtlasWelcomeIssuesFrame.FooterText(View));
     // Nach dem Klick: der Hinweis der Quelle.
@@ -217,25 +217,25 @@ begin
     View.Status := TAtlasIssuesStatus.Stale;
     View.Error := TAtlasCiFetchError.Network;
     View.At := NowUtc0;
-    Assert.StartsWith('GitHub · nicht erreichbar · Stand vom ', TAtlasWelcomeIssuesFrame.StatusText(View, NowUtc0));
+    Assert.StartsWith('GitHub · nicht erreichbar · Stand vom ', TAtlasWelcomeIssuesFrame.StatusText(View));
     View.Status := TAtlasIssuesStatus.Failed;
     View.Error := TAtlasCiFetchError.Unauthorized;
     Assert.AreEqual('GitHub · Anmeldung abgelehnt oder kein Token (Zugang zum Issue-Tracker hinterlegen)',
-      TAtlasWelcomeIssuesFrame.StatusText(View, NowUtc0));
+      TAtlasWelcomeIssuesFrame.StatusText(View));
     View.Status := TAtlasIssuesStatus.Waiting;
     View.Querying := True;
-    Assert.AreEqual('Issues werden abgefragt …', TAtlasWelcomeIssuesFrame.StatusText(View, NowUtc0));
+    Assert.AreEqual('Issues werden abgefragt …', TAtlasWelcomeIssuesFrame.StatusText(View));
     View.Status := TAtlasIssuesStatus.Ready;
     View.Querying := False;
     View.Items := nil;
-    Assert.AreEqual('Keine offenen Issues für diese Abfrage.', TAtlasWelcomeIssuesFrame.StatusText(View, NowUtc0));
+    Assert.AreEqual('Keine offenen Issues für diese Abfrage.', TAtlasWelcomeIssuesFrame.StatusText(View));
     // Aktuelles Issue, das die Liste nicht (mehr) zeigt.
     View.Active.Key := 'ATL-123';
     View.Active.Title := 'Tracker';
     Assert.AreEqual('Aktuelles Issue: ATL-123 Tracker', TAtlasWelcomeIssuesFrame.FooterText(View));
     // Ohne Tracker in .atlas bzw. ohne Projekt.
     View.Status := TAtlasIssuesStatus.NotConfigured;
-    Assert.AreEqual('', TAtlasWelcomeIssuesFrame.StatusText(View, NowUtc0));
+    Assert.AreEqual('', TAtlasWelcomeIssuesFrame.StatusText(View));
     Assert.Contains(TAtlasWelcomeIssuesFrame.FooterText(View), 'tracker');
     View.Project := '';
     Assert.Contains(TAtlasWelcomeIssuesFrame.FooterText(View), 'Noch kein Projekt');

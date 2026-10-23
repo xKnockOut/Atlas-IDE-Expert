@@ -227,9 +227,9 @@ end;
 class function TAtlasNotificationsWindow.TimeText(ATime, ANow: TDateTime): string;
 begin
   if IsSameDay(ATime, ANow) then
-    Result := FormatDateTime('hh:nn', ATime)
+    Result := FormatDateTime('hh":"nn', ATime)
   else
-    Result := FormatDateTime('dd.mm. hh:nn', ATime);
+    Result := FormatDateTime('dd.mm. hh":"nn', ATime);
 end;
 
 function TAtlasNotificationsWindow.LineHeight: Integer;

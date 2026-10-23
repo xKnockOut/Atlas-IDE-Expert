@@ -64,6 +64,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Core.Vcs.Internals.Text;
 
 const
@@ -484,72 +485,81 @@ class function TAtlasGitParser.ParseBlame(const AText: string): TArray<TAtlasVcs
 var
   Lines: TArray<string>;
   Commits: TArray<TCommitInfo>;
-  Index, CommitIndex, Final, Search: Integer;
+  CommitIndexOf: TDictionary<string, Integer>;
+  Index, CommitIndex, CommitCount, Count, Final: Integer;
   Line, Hash, Key, Value: string;
   Seconds: Int64;
   Item: TAtlasVcsBlameLine;
 begin
-  Result := nil;
-  Commits := nil;
   Lines := AText.Split([#10]);
-  Index := 0;
-  while Index <= High(Lines) do
-  begin
-    Line := Lines[Index].TrimRight([#13]);
-    Inc(Index);
-    if Line = '' then
-      Continue;
-    // Kopfzeile: <hash> <ursprüngliche Zeile> <Zeile> [<Anzahl>]
-    Hash := Field(Line, 0, False);
-    if (Length(Hash) < 40) or not TryStrToInt(Field(Line, 2, False), Final) then
-      raise EAtlasVcsParse.Create('git blame: Kopfzeile erwartet');
-    CommitIndex := -1;
-    for Search := 0 to High(Commits) do
-      if Commits[Search].Hash = Hash then
-        CommitIndex := Search;
-    if CommitIndex < 0 then
-    begin
-      SetLength(Commits, Length(Commits) + 1);
-      CommitIndex := High(Commits);
-      Commits[CommitIndex].Hash := Hash;
-      Commits[CommitIndex].Author := '';
-      Commits[CommitIndex].Date := 0;
-      Commits[CommitIndex].Summary := '';
-    end;
-    // Angaben zum Commit bis zur Inhaltszeile (beginnt mit Tab).
+  // Höchstens eine Zeile und ein Commit je Kopfzeile: einmal anlegen statt je Zeile zu kopieren, Commits über ihren
+  // Hash finden statt die Liste zu durchsuchen (#1109).
+  SetLength(Result, Length(Lines));
+  SetLength(Commits, Length(Lines));
+  Count := 0;
+  CommitCount := 0;
+  CommitIndexOf := TDictionary<string, Integer>.Create;
+  try
+    Index := 0;
     while Index <= High(Lines) do
     begin
       Line := Lines[Index].TrimRight([#13]);
       Inc(Index);
-      if (Line <> '') and (Line[1] = #9) then
-        Break;
-      Key := Field(Line, 0, False);
-      Value := Field(Line, 1, True);
-      if Key = 'author' then
-        Commits[CommitIndex].Author := Value
-      else if (Key = 'author-time') and TryStrToInt64(Value, Seconds) then
-        Commits[CommitIndex].Date := VcsUnixToDate(Seconds)
-      else if Key = 'summary' then
-        Commits[CommitIndex].Summary := Value;
+      if Line = '' then
+        Continue;
+      // Kopfzeile: <hash> <ursprüngliche Zeile> <Zeile> [<Anzahl>]
+      Hash := Field(Line, 0, False);
+      if (Length(Hash) < 40) or not TryStrToInt(Field(Line, 2, False), Final) then
+        raise EAtlasVcsParse.Create('git blame: Kopfzeile erwartet');
+      if not CommitIndexOf.TryGetValue(Hash, CommitIndex) then
+      begin
+        CommitIndex := CommitCount;
+        Inc(CommitCount);
+        CommitIndexOf.Add(Hash, CommitIndex);
+        Commits[CommitIndex].Hash := Hash;
+        Commits[CommitIndex].Author := '';
+        Commits[CommitIndex].Date := 0;
+        Commits[CommitIndex].Summary := '';
+      end;
+      // Angaben zum Commit bis zur Inhaltszeile (beginnt mit Tab).
+      while Index <= High(Lines) do
+      begin
+        Line := Lines[Index].TrimRight([#13]);
+        Inc(Index);
+        if (Line <> '') and (Line[1] = #9) then
+          Break;
+        Key := Field(Line, 0, False);
+        Value := Field(Line, 1, True);
+        if Key = 'author' then
+          Commits[CommitIndex].Author := Value
+        else if (Key = 'author-time') and TryStrToInt64(Value, Seconds) then
+          Commits[CommitIndex].Date := VcsUnixToDate(Seconds)
+        else if Key = 'summary' then
+          Commits[CommitIndex].Summary := Value;
+      end;
+      Item.Line := Final;
+      if Hash = NullCommit then
+      begin
+        // Noch nicht übernommen: git nennt "Not Committed Yet" und die Uhrzeit von jetzt.
+        Item.Revision := '';
+        Item.Author := '';
+        Item.Date := 0;
+        Item.Summary := '';
+      end
+      else
+      begin
+        Item.Revision := Hash;
+        Item.Author := Commits[CommitIndex].Author;
+        Item.Date := Commits[CommitIndex].Date;
+        Item.Summary := Commits[CommitIndex].Summary;
+      end;
+      Result[Count] := Item;
+      Inc(Count);
     end;
-    Item.Line := Final;
-    if Hash = NullCommit then
-    begin
-      // Noch nicht übernommen: git nennt "Not Committed Yet" und die Uhrzeit von jetzt.
-      Item.Revision := '';
-      Item.Author := '';
-      Item.Date := 0;
-      Item.Summary := '';
-    end
-    else
-    begin
-      Item.Revision := Hash;
-      Item.Author := Commits[CommitIndex].Author;
-      Item.Date := Commits[CommitIndex].Date;
-      Item.Summary := Commits[CommitIndex].Summary;
-    end;
-    Result := Result + [Item];
+  finally
+    CommitIndexOf.Free;
   end;
+  SetLength(Result, Count);
 end;
 
 end.

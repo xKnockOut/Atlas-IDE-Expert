@@ -301,6 +301,8 @@ begin
       end;
     TAtlasServerPhase.Failed:
       Result := AInfo.Error;
+    TAtlasServerPhase.NotStarted: ;
+    TAtlasServerPhase.Starting: ;
   end;
 end;
 

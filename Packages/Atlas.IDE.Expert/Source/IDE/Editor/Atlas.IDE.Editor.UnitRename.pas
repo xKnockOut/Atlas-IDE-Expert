@@ -285,8 +285,11 @@ var
 begin
   if FInstance = Self then
     FInstance := nil;
-  FTimer.Enabled := False;
-  FTimer.Free;
+  if FTimer <> nil then
+  begin
+    FTimer.Enabled := False;
+    FTimer.Free;
+  end;
   FNotice.Free;
   // Erst abmelden, dann freigeben (#493).
   if FNotifier <> nil then

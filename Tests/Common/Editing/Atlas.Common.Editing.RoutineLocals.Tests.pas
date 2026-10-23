@@ -143,17 +143,17 @@ begin
     Locals := TRoutineLocals.Collect(Source, Tree, TRoutineBody.RoutineAt(Tree, Pos('X := A', Source)));
     // Ein Name aus einer Gruppe.
     Edits := nil;
-    TRoutineLocals.RemoveVariables(Source, Tree, Locals[4].Decl, ['X'], Edits);
+    TRoutineLocals.RemoveVariables(Tree, Locals[4].Decl, ['X'], Edits);
     Assert.AreEqual(StringReplace(Source, '  X, Y: Integer;', '  Y: Integer;', []),
       TChangeSignature.ApplyEdits(Source, Edits));
     // Die ganze Zeile.
     Edits := nil;
-    TRoutineLocals.RemoveVariables(Source, Tree, Locals[6].Decl, ['Z'], Edits);
+    TRoutineLocals.RemoveVariables(Tree, Locals[6].Decl, ['Z'], Edits);
     Assert.AreEqual(StringReplace(Source, '  Z: Integer;'#10, '', []), TChangeSignature.ApplyEdits(Source, Edits));
     // Alle Einträge: auch "var".
     Edits := nil;
-    TRoutineLocals.RemoveVariables(Source, Tree, Locals[4].Decl, ['X', 'Y', 'Z'], Edits);
-    TRoutineLocals.RemoveVariables(Source, Tree, Locals[6].Decl, ['X', 'Y', 'Z'], Edits);
+    TRoutineLocals.RemoveVariables(Tree, Locals[4].Decl, ['X', 'Y', 'Z'], Edits);
+    TRoutineLocals.RemoveVariables(Tree, Locals[6].Decl, ['X', 'Y', 'Z'], Edits);
     Assert.AreEqual(StringReplace(Source, 'var'#10'  X, Y: Integer;'#10'  Z: Integer;'#10, '', []),
       TChangeSignature.ApplyEdits(Source, Edits));
   finally

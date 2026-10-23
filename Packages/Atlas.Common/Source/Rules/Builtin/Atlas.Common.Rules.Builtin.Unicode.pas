@@ -306,6 +306,7 @@ begin
     TCharRule.Invisible:
       if APlace <> TCharPlace.Code then
         Result := TRuleConfidence.Medium;
+    TCharRule.Control: ;
   end;
 end;
 

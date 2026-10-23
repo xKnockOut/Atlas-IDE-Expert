@@ -113,7 +113,7 @@ begin
   Result := TFileEncoding.LoadFromFile(AFileName, FileFormat);
 end;
 
-/// <summary>Im Editor der IDE ungespeichert geänderte Dateien: editor-dirty-<pid>.json je laufender IDE.</summary>
+/// <summary>Im Editor der IDE ungespeichert geänderte Dateien: editor-dirty-&lt;pid&gt;.json je laufender IDE.</summary>
 function EditorDirtyFiles: TArray<string>;
 var
   FileName, Text: string;
@@ -147,7 +147,7 @@ begin
   end;
 end;
 
-/// <summary>Prozess der IDE, in der AFileName offen ist ("open" in editor-dirty-<pid>.json, #397); 0 ohne.</summary>
+/// <summary>Prozess der IDE, in der AFileName offen ist ("open" in editor-dirty-&lt;pid&gt;.json, #397); 0 ohne.</summary>
 function IdeWithOpenFile(const AFileName: string): Cardinal;
 var
   FileName, Text: string;
@@ -230,7 +230,7 @@ begin
       TMcpIdeEditOutcome.Applied:
         Exit;
       TMcpIdeEditOutcome.Failed:
-        raise Exception.CreateFmt('IDE: %s', [Reason]);
+        raise EMcpToolError.CreateFmt('IDE: %s', [Reason]);
     end;
   TFileEncoding.SaveToFile(AFileName, AText, FileFormat);
 end;

@@ -343,7 +343,7 @@ begin
   Check := TAtlasProblemsController.LastCheck;
   if Check.FileName <> '' then
   begin
-    Last := FormatDateTime('hh:nn:ss', Check.At);
+    Last := FormatDateTime('hh":"nn":"ss', Check.At);
     Status := Status + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusLast, [Last,
       ExtractFileName(Check.FileName), Integer(Check.DurationMs)]);
   end;

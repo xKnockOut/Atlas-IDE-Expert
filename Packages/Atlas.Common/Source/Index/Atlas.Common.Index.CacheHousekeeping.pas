@@ -49,7 +49,7 @@ type
     class function SelectOrphans(const AFiles: TArray<TCacheFileInfo>; const AKeep: TArray<string>;
       const AExists: TFunc<string, Boolean>): TArray<string>; static;
     /// <summary>Caches, die vor mehr als AMaxAgeDays Tagen (gezählt ab ANow) zuletzt benutzt wurden;
-    /// AMaxAgeDays <= 0 = keine. AKeep und gesperrte Caches werden nie gewählt.</summary>
+    /// AMaxAgeDays &lt;= 0 = keine. AKeep und gesperrte Caches werden nie gewählt.</summary>
     class function SelectUnused(const AFiles: TArray<TCacheFileInfo>; const AKeep: TArray<string>;
       ANow: TDateTime; AMaxAgeDays: Integer): TArray<string>; static;
     /// <summary>Höchstgröße aus der Einstellung index.cacheMaxMb; 0 = ohne Grenze.</summary>

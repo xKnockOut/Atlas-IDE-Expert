@@ -36,7 +36,7 @@ begin
   Lines := TStringList.Create;
   try
     try
-      Lines.LoadFromFile('/proc/self/status');
+      Lines.LoadFromFile('/proc/self/status', TEncoding.UTF8);
     except
       on EStreamError do
         Exit;

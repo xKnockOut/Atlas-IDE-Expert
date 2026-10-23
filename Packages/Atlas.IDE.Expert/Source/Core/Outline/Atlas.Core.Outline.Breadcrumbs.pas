@@ -360,6 +360,9 @@ begin
       Name := 'initialization';
     TAtlasCodeSection.Finalization_:
       Name := 'finalization';
+    TAtlasCodeSection.None: ;
+    TAtlasCodeSection.InterfacePart: ;
+    TAtlasCodeSection.ImplementationPart: ;
   end;
   if Name <> '' then
   begin

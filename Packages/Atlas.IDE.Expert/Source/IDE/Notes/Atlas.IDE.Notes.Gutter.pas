@@ -140,7 +140,7 @@ begin
     Stamp := ANotes[0].Changed;
     if Stamp = 0 then
       Stamp := ANotes[0].Created;
-    ATitle := TAtlasStrings.Fmt(TAtlasTextId.NotesTipTitle, [DateToStr(TTimeZone.Local.ToLocalTime(Stamp))]);
+    ATitle := TAtlasStrings.Fmt(TAtlasTextId.NotesTipTitle, [DateToStr(TTimeZone.Local.ToLocalTime(Stamp), FormatSettings)]);
     AText := ANotes[0].Text;
     Exit;
   end;

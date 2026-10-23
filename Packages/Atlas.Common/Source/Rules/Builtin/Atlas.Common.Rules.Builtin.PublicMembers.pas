@@ -319,7 +319,7 @@ var
     // Bei eindeutig aufgelösten Überladungen zählt nur die passende.
     if Result and not AAmbiguous and (ASymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) and
       ASymbol.HasDirective('overload') and (AResolved.ParamTypes <> nil) then
-      Result := string.Join(',', AResolved.ParamTypes).ToLower = string.Join(',', ASymbol.ParamTypes).ToLower;
+      Result := AnsiSameText(string.Join(',', AResolved.ParamTypes), string.Join(',', ASymbol.ParamTypes));
   end;
 
   /// <summary>Deklarationen mit dem Namen in AFile: dort ist der Name keine Verwendung.</summary>

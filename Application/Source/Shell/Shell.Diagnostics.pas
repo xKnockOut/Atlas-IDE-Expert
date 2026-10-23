@@ -129,7 +129,8 @@ end;
 
 destructor TShellDiagnostics.Destroy;
 begin
-  FLogImpl.Flush;
+  if FLogImpl <> nil then
+    FLogImpl.Flush;
   FLog := nil;
   FWriter := nil;
   FIds.Free;

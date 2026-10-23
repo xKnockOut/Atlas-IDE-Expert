@@ -100,6 +100,14 @@ begin
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
   TRuleAssert.Reports(TGenericExceptionRaisedRule.Create,
     InRoutine('  raise System.SysUtils.Exception.CreateFmt(''%d'', [N]);'));
+  // Gleich wieder gefangen, nur für den Stack im Protokoll (#1109).
+  TRuleAssert.Silent(TGenericExceptionRaisedRule.Create, InRoutine('  try'#10 +
+    '    raise Exception.Create(''Stack'');'#10'  except'#10'    on E: Exception do'#10'      Log(E.StackTrace);'#10 +
+    '  end;'));
+  // Ein except, der nur andere Klassen fängt, lässt sie durch.
+  TRuleAssert.Reports(TGenericExceptionRaisedRule.Create, InRoutine('  try'#10 +
+    '    raise Exception.Create(''x'');'#10'  except'#10'    on E: EConvertError do'#10'      Log(E.Message);'#10 +
+    '  end;'));
 end;
 
 procedure TExceptionRulesTests.OwnExceptionClassSilent;

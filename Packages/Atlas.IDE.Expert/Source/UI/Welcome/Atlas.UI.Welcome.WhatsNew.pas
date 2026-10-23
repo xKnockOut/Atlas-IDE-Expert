@@ -205,7 +205,8 @@ end;
 destructor TAtlasWelcomeWhatsNewFrame.Destroy;
 begin
   Live.Remove(Self);
-  FMenu.Source := nil;
+  if FMenu <> nil then
+    FMenu.Source := nil;
   FreeAndNil(FControls);
   FreeAndNil(FExpanded);
   inherited;

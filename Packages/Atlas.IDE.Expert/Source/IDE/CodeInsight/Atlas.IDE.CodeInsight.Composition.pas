@@ -1929,7 +1929,7 @@ begin
         TAtlasGuard.Run(TAtlasFeature.Build,
           procedure
           begin
-            BuildRunner.MessagesRead(Messages, Project, Succeeded, Readable);
+            BuildRunner.MessagesRead(Messages, Project);
           end);
       // Eintrag „Build fertig“ bzw. Hintergrundprüfung in der Benachrichtigungszentrale (#601).
       if Notifications <> nil then
@@ -3163,7 +3163,7 @@ begin
 end;
 
 /// <summary>Token für den Issue-Tracker ATarget abfragen und im Anmeldespeicher von Windows ablegen (#765); leer
-/// entfernt es. Ziel "Atlas:tracker:<Server>", Benutzer = Anbieter. True, wenn sich etwas geändert hat.</summary>
+/// entfernt es. Ziel "Atlas:tracker:&lt;Server&gt;", Benutzer = Anbieter. True, wenn sich etwas geändert hat.</summary>
 function EnterTrackerCredentials(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean;
 var
   Token: string;

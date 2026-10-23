@@ -297,7 +297,7 @@ begin
   until False;
 end;
 
-/// <summary>Beginnt ALine (ohne Leerraum) mit "ATypeName =" bzw. "ATypeName<…> ="?</summary>
+/// <summary>Beginnt ALine (ohne Leerraum) mit "ATypeName =" bzw. "ATypeName&lt;…&gt; ="?</summary>
 function IsTypeHead(const ALine, ATypeName: string): Boolean;
 var
   Text: string;

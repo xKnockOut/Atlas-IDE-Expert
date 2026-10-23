@@ -22,7 +22,7 @@ type
     /// </summary>
     class function IsCredentialName(const AName: string): Boolean; static;
     /// <summary>Adresse mit Zugangsdaten: Benutzer oder Passwort vor „@“ (https://user:pw@host/…) oder ein
-    /// Abfrageparameter wie ?token=… bzw. &api_key=… (Namen wie bei IsCredentialKey).</summary>
+    /// Abfrageparameter wie ?token=… bzw. &amp;api_key=… (Namen wie bei IsCredentialKey).</summary>
     class function HasUrlCredentials(const AValue: string): Boolean; static;
     /// <summary>Laufwerk („C:\“, „C:/“, „C:“) oder UNC-Pfad („\\server“, „//server“): ein Ort auf genau einem
     /// Rechner. Glob-Muster wie "/Generated/**" zählen nicht.</summary>

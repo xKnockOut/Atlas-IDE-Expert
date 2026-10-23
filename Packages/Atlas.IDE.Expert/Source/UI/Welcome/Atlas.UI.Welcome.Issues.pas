@@ -135,7 +135,7 @@ type
     /// <summary>„Beginnen“ nutzbar: Quelle da, keine laufende Aktion.</summary>
     function CanStart: Boolean;
     /// <summary>Zeile über der Liste: Stand, Fehler, „Stand vom …“; '' bei frischem Stand.</summary>
-    class function StatusText(const AView: TAtlasIssuesView; ANowUtc: TDateTime): string; static;
+    class function StatusText(const AView: TAtlasIssuesView): string; static;
     /// <summary>Fußzeile: Hinweis, sonst aktuelles Issue außerhalb der Liste, sonst was „Beginnen“ tut.</summary>
     class function FooterText(const AView: TAtlasIssuesView): string; static;
     class function ErrorText(AError: TAtlasCiFetchError): string; static;
@@ -312,7 +312,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeIssuesFrame.StatusText(const AView: TAtlasIssuesView; ANowUtc: TDateTime): string;
+class function TAtlasWelcomeIssuesFrame.StatusText(const AView: TAtlasIssuesView): string;
 var
   Parts: TArray<string>;
 begin
@@ -439,7 +439,7 @@ end;
 function TAtlasWelcomeIssuesFrame.ListTop: Integer;
 begin
   Result := ScaleValue(Indent) div 2;
-  if StatusText(FView, NowUtc) <> '' then
+  if StatusText(FView) <> '' then
     Inc(Result, ScaleValue(StatusHeight));
 end;
 
@@ -601,7 +601,7 @@ begin
   Canvas := FBox.Canvas;
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Assign(Font);
-  Text := StatusText(FView, NowUtc);
+  Text := StatusText(FView);
   if Text <> '' then
   begin
     Canvas.Font.Size := Font.Size - 1;
@@ -671,6 +671,8 @@ begin
   Source := FSource;
   Item := FView.Items[AHit.Index];
   case AHit.Kind of
+    // Leerraum und Zeilentext lösen nichts aus; sie zeigen nur den Hinweis (BoxMouseMove).
+    TAtlasIssuesHitKind.None, TAtlasIssuesHitKind.Row: ;
     TAtlasIssuesHitKind.Key:
       Post(
         procedure

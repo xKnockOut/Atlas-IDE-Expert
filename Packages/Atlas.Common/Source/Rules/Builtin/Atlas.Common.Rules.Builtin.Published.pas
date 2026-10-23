@@ -513,6 +513,9 @@ var
               TPublishKind.LargeSet:
                 AReport.Add(NodeRange(TypeNode), Format('Die Menge %s ist größer als 4 Byte und kann nicht ' +
                   'published sein (wie E2187).', [TypeText]), TRuleConfidence.High, Fixes);
+              TPublishKind.Unknown: ;
+              TPublishKind.ClassOrInterface: ;
+              TPublishKind.Simple: ;
             end;
           end;
         TSyntaxKind.Field:

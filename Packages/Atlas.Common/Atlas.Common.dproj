@@ -329,6 +329,7 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ConstantValues.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ConditionalBranches.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.DirectiveNames.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.PureRoutines.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Attributes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Definition.pas"/>

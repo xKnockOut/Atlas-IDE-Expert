@@ -371,6 +371,10 @@ begin
   TRuleAssert.Reports(TComponentHardcodedColorRule.Create, PaintUnit('  Canvas.Brush.Color := $00FF8000;'));
   TRuleAssert.Reports(TComponentHardcodedColorRule.Create, PaintUnit('  Canvas.Pen.Color := RGB(255, 128, 0);'));
   TRuleAssert.Silent(TComponentHardcodedColorRule.Create, PaintUnit('  Canvas.Brush.Color := clBtnFace;'));
+  TRuleAssert.Reports(TComponentHardcodedColorRule.Create, PaintUnit('  Canvas.Pen.Color := TColor($00FF8000);'));
+  // Farben des Themas, nur in TColor umgewandelt bzw. gemischt (#1109).
+  TRuleAssert.Silent(TComponentHardcodedColorRule.Create, PaintUnit('  Canvas.Brush.Color := TColor(FColors.Surface);'#10 +
+    '  Canvas.Pen.Color := RGB(R, G, B);'));
 end;
 
 procedure TComponentRulesTests.AllComponentRulesShareModelInOneRun;
@@ -470,6 +474,11 @@ begin
   TRuleAssert.Silent(TMissingInheritedRule.Create, StringReplace(ExportUnit,
     '  TExport = class(TBasisExport)'#10'  public'#10'    destructor Destroy; override;',
     '  TExport = class(TBasisExport)'#10'  public'#10'    destructor Destroy;', []));
+  // Formular ohne DFM: CreateNew ruft selbst inherited Create (#1109).
+  TRuleAssert.Silent(TMissingInheritedRule.Create, 'unit U;'#10'interface'#10'uses Vcl.Forms;'#10'type'#10 +
+    '  TMaske = class(TForm)'#10'  public'#10'    constructor CreateMaske(AOwner: TComponent);'#10'  end;'#10 +
+    'implementation'#10'constructor TMaske.CreateMaske(AOwner: TComponent);'#10'begin'#10'  CreateNew(AOwner);'#10 +
+    '  Caption := ''x'';'#10'end;'#10'end.');
 end;
 
 procedure TComponentRulesTests.MissingInheritedComponentsNoDoubleReport;

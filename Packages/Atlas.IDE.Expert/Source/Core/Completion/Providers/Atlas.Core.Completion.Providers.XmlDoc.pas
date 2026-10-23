@@ -15,7 +15,7 @@ uses
 type
   TAtlasXmlDoc = class
   public
-    /// <summary>Steht der Cursor nach "/// <" (ggf. mit angefangenem Tag)? ALineBefore: Zeile bis zum Cursor.</summary>
+    /// <summary>Steht der Cursor nach "/// &lt;" (ggf. mit angefangenem Tag)? ALineBefore: Zeile bis zum Cursor.</summary>
     class function IsTagContext(const ALineBefore: string): Boolean; static;
     /// <summary>Deklaration nach der Zeile ALine (0-basiert): die nächsten Zeilen ohne ///, bis ";"
     /// außerhalb von Klammern; '' ohne.</summary>

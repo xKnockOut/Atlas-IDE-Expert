@@ -86,7 +86,7 @@ type
     class function Rows(ACatalog: TJSONValue; const ARulesJson, AGlobalRulesJson: string): TArray<TAtlasRuleRow>;
       overload; static;
     /// <summary>Pfad und JSON-Text für TAtlasJsonText, um ASeverity für AId zu setzen ('' = entfernen):
-    /// "rules.<id>" oder bei einer Regel mit Optionen "rules.<id>.severity". So ändert sich in der Datei nur
+    /// "rules.&lt;id&gt;" oder bei einer Regel mit Optionen "rules.&lt;id&gt;.severity". So ändert sich in der Datei nur
     /// dieser Wert.</summary>
     class procedure SeverityChange(const ARulesJson, AId, ASeverity: string; out APath, AJson: string); static;
     /// <summary>Neuer Wert von "rules" mit ASeverity für AId; '' entfernt die Regel (bei Optionen nur
@@ -98,11 +98,11 @@ type
     class function WithOption(const ARulesJson, AId, AOption, AValueJson: string): string; static;
     /// <summary>Neuer Wert von "rules" mit den Mustern AExclude in "exclude" von AId; leer entfernt sie.</summary>
     class function WithExclude(const ARulesJson, AId: string; const AExclude: TArray<string>): string; static;
-    /// <summary>Gruppe AGroup ist in "rules" abgeschaltet ("group:<gruppe>": "off" oder als Objekt
+    /// <summary>Gruppe AGroup ist in "rules" abgeschaltet ("group:&lt;gruppe&gt;": "off" oder als Objekt
     /// {"severity": "off", …}, #1024).</summary>
     class function GroupOff(const ARulesJson, AGroup: string): Boolean; static;
     /// <summary>Neuer Wert von "rules" mit Hauptschalter der Gruppe: AOn entfernt den Schlüssel bzw. im
-    /// Objekt "severity", sonst "group:<gruppe>": "off" bzw. "severity": "off". Optionen der Gruppe
+    /// Objekt "severity", sonst "group:&lt;gruppe&gt;": "off" bzw. "severity": "off". Optionen der Gruppe
     /// (z. B. "typeLevel") bleiben stehen.</summary>
     class function WithGroup(const ARulesJson, AGroup: string; AOn: Boolean): string; static;
     /// <summary>Option AOption der Gruppe als Text ('' = nicht gesetzt), z. B. "typeLevel" der Gruppe

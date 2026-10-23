@@ -37,7 +37,7 @@ begin
   Lines := TStringList.Create;
   try
     try
-      Lines.LoadFromFile(AProcDir + '/comm');
+      Lines.LoadFromFile(AProcDir + '/comm', TEncoding.UTF8);
     except
       on EStreamError do
         Exit('');

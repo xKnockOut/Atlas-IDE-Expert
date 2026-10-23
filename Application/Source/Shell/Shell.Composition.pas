@@ -696,7 +696,7 @@ begin
       Result := nil;
       try
         if TFile.Exists(AFileName) then
-          Result := TFile.ReadAllLines(AFileName);
+          Result := TFileEncoding.LoadLines(AFileName);
       except
         on E: Exception do
           FLogger.Warning('Build-Log der IDE nicht lesbar: ' + E.ClassName);
@@ -770,7 +770,7 @@ begin
     begin
       Result := FileExists(AFileName);
       if Result then
-        AText := TFile.ReadAllText(AFileName);
+        AText := TFileEncoding.LoadText(AFileName);
     end);
   FFormatting.SlashCommandsFor := SlashCommandsFor;
   FFormatting.DelphiVersionFor := DelphiVersionFor;
@@ -1530,7 +1530,7 @@ begin
   FCommands.Register(TUnitSearch.UnitsCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
-      Result := FUnitSearch.ExecuteUnits(AArguments);
+      Result := FUnitSearch.ExecuteUnits;
     end);
   FCommands.Register(TUnitSearch.PreviewCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -4015,7 +4015,7 @@ begin
     begin
       Result := FileExists(AFileName);
       if Result then
-        AText := TFile.ReadAllText(AFileName);
+        AText := TFileEncoding.LoadText(AFileName);
     end);
 end;
 

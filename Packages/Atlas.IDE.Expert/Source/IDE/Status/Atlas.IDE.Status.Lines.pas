@@ -172,9 +172,12 @@ end;
 destructor TAtlasIdeStatusLines.Destroy;
 begin
   FreeAndNil(FPoll);
-  FServer.Detach;
-  FIndex.Detach;
-  FFile.Detach;
+  if FServer <> nil then
+    FServer.Detach;
+  if FIndex <> nil then
+    FIndex.Detach;
+  if FFile <> nil then
+    FFile.Detach;
   FRegistry.Remove(TAtlasStatusLines.ServerId);
   FRegistry.Remove(TAtlasStatusLines.IndexId);
   FRegistry.Remove(TAtlasStatusLines.FileId);

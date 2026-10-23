@@ -310,9 +310,11 @@ begin
   if Length(Actions) = 0 then
     raise EMcpToolError.CreateFmt('Keine Korrektur in Zeile %d.', [ALine]);
   Chosen := -1;
+  // Über die Regelkennung nur echte Korrekturen: Unterdrücken behebt nichts und braucht seinen Titel (#1109).
   if ATitle <> '' then
     for Index := 0 to High(Actions) do
-      if SameText(Actions[Index].Title, ATitle) or SameText(Actions[Index].RuleId, ATitle) then
+      if SameText(Actions[Index].Title, ATitle) or (SameText(Actions[Index].RuleId, ATitle) and
+        not MatchStr(Actions[Index].Tag, [RuleSuppressLineTag, RuleSuppressFileTag])) then
       begin
         Chosen := Index;
         Break;

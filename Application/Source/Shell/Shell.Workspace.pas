@@ -1419,7 +1419,7 @@ begin
   HasContext := (FIdeProjects <> nil) and FIdeProjects.Find(ProjectFile, Context);
   // Konfiguration vor ProjectVersion der .dproj vor neuester Installation (#47).
   try
-    ProjectVersion := TDelphiVersions.ProjectVersionOf(TFile.ReadAllText(ProjectFile));
+    ProjectVersion := TDelphiVersions.ProjectVersionOf(TFileEncoding.LoadText(ProjectFile));
   except
     on Exception do
       ProjectVersion := '';

@@ -900,6 +900,10 @@ begin
           else
             ADoc.Exceptions := ADoc.Exceptions + [Entry];
         end;
+      TXmlDocSectionKind.TypeParam: ;
+      TXmlDocSectionKind.Value: ;
+      TXmlDocSectionKind.Example: ;
+      TXmlDocSectionKind.SeeAlso: ;
     end;
 end;
 

@@ -215,6 +215,11 @@ begin
   // Zeitstempel werden absichtlich exakt verglichen (#647).
   TRuleAssert.Silent(TFloatEqualityRule.Create, InRoutine('  T, U: TDateTime;',
     '  if T <> U then Save;'));
+  // Größter Wert aus Max: genau einer der Operanden (#1109).
+  TRuleAssert.Silent(TFloatEqualityRule.Create, InRoutine('  R, G, B, M: Double;',
+    '  M := Max(R, Max(G, B));'#10'  if M = R then Save'#10'  else if G = M then Save;'));
+  TRuleAssert.Reports(TFloatEqualityRule.Create, InRoutine('  R, G, B, M: Double;',
+    '  M := Max(G, B);'#10'  if M = R then Save;'));
 end;
 
 procedure TRtlTypePatternRulesTests.ConstructorOnInstance;
@@ -241,6 +246,12 @@ begin
   TRuleAssert.Silent(TFormatWithoutSettingsRule.Create, InRoutine('  N: Integer;',
     '  S := Format(''%d'', [N]);'#10'  S := Format(''%.2f'', [X], FS);'#10'  S := FloatToStr(X, FS);'#10 +
     '  S := Writer.Format(''%f'', [X]);'));
+  // Festes Bild ohne Trennzeichen bzw. ausdrücklich im Format des Gebietsschemas (#1109).
+  TRuleAssert.Silent(TFormatWithoutSettingsRule.Create, InRoutine('  X: Double;',
+    '  S := FormatDateTime(''yyyy"-"mm"-"dd'', Now);'#10'  S := FormatDateTime(''ddddd t'', Now);'#10 +
+    '  S := FormatFloat(''000'', X);'));
+  Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TFormatWithoutSettingsRule.Create, InRoutine('  X: Double;',
+    '  S := FormatDateTime(''hh:nn'', Now);'#10'  S := FormatFloat(''0.0'', X);')))));
 end;
 
 procedure TRtlTypePatternRulesTests.LocaleSpecifiers;
@@ -250,6 +261,15 @@ begin
   Assert.IsTrue(TFormatWithoutSettingsRule.HasLocaleSpecifier('%m'));
   Assert.IsFalse(TFormatWithoutSettingsRule.HasLocaleSpecifier('%d %s %x'));
   Assert.IsFalse(TFormatWithoutSettingsRule.HasLocaleSpecifier('100%% fertig'));
+  // Bilder von FormatDateTime und FormatFloat: nur Trennzeichen außerhalb von Anführungszeichen (#1109).
+  Assert.IsTrue(TFormatWithoutSettingsRule.PictureDependsOnLocale('FormatDateTime', 'hh:nn:ss'));
+  Assert.IsTrue(TFormatWithoutSettingsRule.PictureDependsOnLocale('FormatDateTime', 'dd/mm/yyyy'));
+  Assert.IsFalse(TFormatWithoutSettingsRule.PictureDependsOnLocale('FormatDateTime', 'yyyy"-"mm"-"dd hh":"nn'));
+  Assert.IsFalse(TFormatWithoutSettingsRule.PictureDependsOnLocale('FormatDateTime', 'yyyymmdd'));
+  Assert.IsFalse(TFormatWithoutSettingsRule.PictureDependsOnLocale('FormatDateTime', 'ddddd t'));
+  Assert.IsFalse(TFormatWithoutSettingsRule.PictureDependsOnLocale('FormatDateTime', 'hh''.''nn'));
+  Assert.IsTrue(TFormatWithoutSettingsRule.PictureDependsOnLocale('FormatFloat', '0.00'));
+  Assert.IsFalse(TFormatWithoutSettingsRule.PictureDependsOnLocale('FormatFloat', '000'));
 end;
 
 function WithTypes(const ATypes, AVars, ABody: string): string;
@@ -819,6 +839,20 @@ begin
     '  Erster: string;'#10, '  Liste := Preise.Keys.ToArray;'#10'  for var I := 0 to High(Liste) do'#10 +
     '    Anzeigen(Preise[Liste[I]]);'#10'  for var Paar in Preise do'#10'    Erster := Paar.Key;'#10 +
     '  Preis := Preise[Erster];'#10'  FPreise.AddOrSetValue(''A'', 1);'#10'  Preis := FPreise[''B''];'));
+  // An eine Routine übergeben, die es füllen kann; Merktabelle in Nachordnung, gefüllt im selben Durchlauf (#1109).
+  TRuleAssert.Silent(TDictionaryGetWithoutCheckRule.Create, Preisliste('',
+    '  Einlesen(Datei, Preise);'#10'  Preis := Preise[''A''];'));
+  TRuleAssert.Silent(TDictionaryGetWithoutCheckRule.Create, Preisliste('',
+    '  while Offen do'#10'  begin'#10'    if Fertig then'#10'      Preis := Preise[Artikel.Nummer];'#10 +
+    '    Preise.AddOrSetValue(Artikel.Nummer, Preis);'#10'  end;'));
+  // Gefüllt im äußeren Durchlauf, gelesen in einer inneren for-Schleife (#1109).
+  TRuleAssert.Silent(TDictionaryGetWithoutCheckRule.Create, Preisliste('  I: Integer;'#10,
+    '  while Offen do'#10'  begin'#10'    for I := 0 to 2 do'#10'      Anzeigen(Preise[Teile[I]]);'#10 +
+    '    Preise.AddOrSetValue(Artikel.Nummer, Preis);'#10'  end;'));
+  // Feld, das eine andere Methode der Unit füllt: Die Klasse sichert ihre Schlüssel selbst (#1109).
+  TRuleAssert.Silent(TDictionaryGetWithoutCheckRule.Create, StringReplace(Preisliste('',
+    '  Preis := FPreise[Artikel.Nummer];'), 'implementation'#10, 'implementation'#10 +
+    'procedure TKasse.Merken(Artikel: TArtikel);'#10'begin'#10'  FPreise.Add(Artikel.Nummer, 1);'#10'end;'#10, []));
 end;
 
 function Teilen(const ABody: string): string;

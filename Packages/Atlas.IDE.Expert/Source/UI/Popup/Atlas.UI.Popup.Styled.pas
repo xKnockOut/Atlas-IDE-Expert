@@ -31,7 +31,7 @@ type
     end;
   private
     function Pieces(AFrom, ATill: Integer): TArray<TPiece>;
-    procedure ApplyFont(ACanvas: TCanvas; const APiece: TPiece; ADimmed: Boolean);
+    procedure ApplyFont(ACanvas: TCanvas; const APiece: TPiece);
   public
     Text: string;
     Tokens: TAtlasTokens;
@@ -148,7 +148,7 @@ begin
   SetLength(Result, Count);
 end;
 
-procedure TAtlasStyledText.ApplyFont(ACanvas: TCanvas; const APiece: TPiece; ADimmed: Boolean);
+procedure TAtlasStyledText.ApplyFont(ACanvas: TCanvas; const APiece: TPiece);
 begin
   // Breite und Zeichnung gleich: Schlüsselwörter auch gedämpft halbfett.
   if APiece.Active or (not APiece.Muted and (APiece.Kind = TAtlasTokenKind.Keyword)) then
@@ -164,7 +164,7 @@ begin
   Result := 0;
   for Piece in Pieces(AFrom, ATill) do
   begin
-    ApplyFont(ACanvas, Piece, False);
+    ApplyFont(ACanvas, Piece);
     Inc(Result, ACanvas.TextWidth(Copy(Text, Piece.Start + 1, Piece.Stop - Piece.Start)));
   end;
   ACanvas.Font.Style := [];
@@ -187,7 +187,7 @@ begin
   SetLength(Widths, Length(AllPieces));
   for Index := 0 to High(AllPieces) do
   begin
-    ApplyFont(ACanvas, AllPieces[Index], ADimmed);
+    ApplyFont(ACanvas, AllPieces[Index]);
     Widths[Index] := ACanvas.TextWidth(Copy(Text, AllPieces[Index].Start + 1,
       AllPieces[Index].Stop - AllPieces[Index].Start));
   end;
@@ -233,7 +233,7 @@ begin
       else
         Color := AColors.Text;
       end;
-    ApplyFont(ACanvas, Piece, ADimmed);
+    ApplyFont(ACanvas, Piece);
     ACanvas.Font.Color := TColor(Color);
     PieceText := Copy(Text, Piece.Start + 1, Piece.Stop - Piece.Start);
     Part := Rect(AX, ARow.Top, ARow.Right, ARow.Bottom);
@@ -262,7 +262,7 @@ begin
     for Index := Done + 1 to Piece.Start do
       Result[Index] := Result[Done];
     Done := Piece.Stop;
-    ApplyFont(ACanvas, Piece, False);
+    ApplyFont(ACanvas, Piece);
     PieceText := Copy(Text, Piece.Start + 1, Piece.Stop - Piece.Start);
     // TextWidth wählt die Schrift mit dem Stil des Stücks in den DC; dann Teilbreiten je Zeichen.
     Base := Result[Piece.Start];

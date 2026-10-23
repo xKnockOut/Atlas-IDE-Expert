@@ -58,7 +58,7 @@ type
     /// <summary>Stelle hinter dem "of" der case-Anweisung ACase; False ohne.</summary>
     class function OfPosition(ATree: TSyntaxTree; ACase: TSyntaxNode; out APosition: TTextPosition): Boolean;
       static;
-    /// <summary>Zweige "<Wert>: ;" für die Werte aus AValues ohne Marke, in Deklarationsreihenfolge vor dem else
+    /// <summary>Zweige "&lt;Wert&gt;: ;" für die Werte aus AValues ohne Marke, in Deklarationsreihenfolge vor dem else
     /// (AHasElse) bzw. vor dem end. False, wenn nichts fehlt, eine Marke kein Wert ist oder end fehlt.</summary>
     class function Complete(const AText: string; ATree: TSyntaxTree; ACase: TSyntaxNode;
       const AValues: TArray<string>; const APrefix: string; out AEdits: TArray<TTextEdit>; out ACount: Integer;
@@ -262,8 +262,12 @@ begin
         ASlot.HasEnd := Width(TTextLines.IndentOf(AText, ATokens[Index].StartPos.Line)) >= Width(ASlot.CaseIndent);
         Break;
       end;
-      if IsKeywordIn(ATokens[Index], ['until', 'except', 'finally', 'procedure', 'function', 'constructor',
-        'destructor', 'implementation', 'initialization', 'finalization', 'var', 'const', 'type']) then
+      // Anonyme Methoden (Post(procedure begin … end), X := function …) beenden den case nicht (#1109): In
+      // Klammern oder nach := steht keine Deklaration.
+      if (Parens = 0) and IsKeywordIn(ATokens[Index], ['until', 'except', 'finally', 'procedure', 'function',
+        'constructor', 'destructor', 'implementation', 'initialization', 'finalization', 'var', 'const', 'type']) and
+        not (IsKeywordIn(ATokens[Index], ['procedure', 'function']) and (Prev(ATokens, Index) >= 0) and
+        ATokens[Prev(ATokens, Index)].IsSymbol(':=')) then
         Break;
       if ATokens[Index].IsKeyword('else') and (Prev(ATokens, Index) >= 0) and
         (ATokens[Prev(ATokens, Index)].IsSymbol(';') or (Prev(ATokens, Index) = OfIndex)) then

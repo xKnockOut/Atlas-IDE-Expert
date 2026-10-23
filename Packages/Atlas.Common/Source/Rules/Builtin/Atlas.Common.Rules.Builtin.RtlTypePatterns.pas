@@ -8,6 +8,8 @@
 //   float-equality           Gleitkommavergleich mit = oder <> (nicht mit 0)
 //   constructor-on-instance  Konstruktor auf einer Variablen statt auf der Klasse
 //   format-without-settings  Format mit %f/%n/%m/%g/%e, FloatToStr, StrToDate … ohne TFormatSettings
+//                            (FormatDateTime/FormatFloat mit festem Bild nur, wenn es Trennzeichen
+//                            wie : / . , enthält)
 //   managed-type-raw-memory  FillChar, ZeroMemory, Move, CopyMemory, GetMem oder FreeMem auf Variablen,
 //                            deren Typ Strings, Interfaces, dynamische Arrays oder Variants enthält
 //                            (#921). Records und Aliasse werden in der Datei und im Index aufgelöst.
@@ -28,7 +30,8 @@
 //                            denselben Schlüssel vorher in der Routine geprüft hat (#933). Still bleibt die
 //                            Regel, wenn die Routine das Dictionary vorher selbst füllt (Add, AddOrSetValue,
 //                            Dict[K] := …) oder der Schlüssel aus Keys stammt (for K in Dict.Keys,
-//                            Namen := Dict.Keys.ToArray). Korrektur: TryGetValue mit Vorgabewert
+//                            Namen := Dict.Keys.ToArray). Felder, die die Unit an anderer Stelle füllt, sichert
+//                            die Klasse selbst (#1109). Korrektur: TryGetValue mit Vorgabewert
 //   delimited-text-without-strict
 //                            Liste.DelimitedText := … nach Liste.Delimiter := … in derselben Routine, ohne dass
 //                            StrictDelimiter gesetzt wird (#952; bei Feldern in der ganzen Unit): DelimitedText
@@ -102,6 +105,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
     /// <summary>Enthält AFormat einen vom Gebietsschema abhängigen Platzhalter (%f, %n, %m, %g, %e)?</summary>
     class function HasLocaleSpecifier(const AFormat: string): Boolean; static;
+    /// <summary>Hängt das Bild APicture von FormatDateTime bzw. FormatFloat/FormatCurr (AFunction) vom
+    /// Gebietsschema ab? Nur die Trennzeichen außerhalb von Anführungszeichen tun es: ":" und "/" werden zu
+    /// TimeSeparator und DateSeparator, "." und "," zu DecimalSeparator und ThousandSeparator. Ziffernfelder
+    /// ('yyyy"-"mm"-"dd') sind fest; Namen und Gesamtformate ('ddddd t', 'mmmm') verlangen das Gebietsschema
+    /// ausdrücklich (#1109).</summary>
+    class function PictureDependsOnLocale(const AFunction, APicture: string): Boolean; static;
   end;
 
   TManagedTypeRawMemoryRule = class(TInterfacedObject, IRule)
@@ -482,6 +491,42 @@ begin
   Result := TDeclaredTypes.IsFloat(AType) and not MatchText(AType, ['TDateTime', 'TDate', 'TTime']);
 end;
 
+/// <summary>
+/// Steht vor ATokens[AIndex] in derselben Routine "AName := Max(…)" bzw. Min(…) mit AOther unter den Argumenten?
+/// Dann ist AName genau einer der Werte, und = AOther ist ein exakter Vergleich (MaxValue = R, #1109).
+/// </summary>
+function SelectedFrom(const ATokens: TTokens; AIndex: Integer; const AName, AOther: string): Boolean;
+var
+  Index, Call, Close, Inner: Integer;
+begin
+  Result := False;
+  Index := AIndex - 1;
+  while (Index >= 0) and not (ATokens[Index].IsKeyword('procedure') or ATokens[Index].IsKeyword('function') or
+    ATokens[Index].IsKeyword('constructor') or ATokens[Index].IsKeyword('destructor')) do
+  begin
+    if (ATokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[Index].Text, AName) then
+    begin
+      Call := NextCode(ATokens, NextCode(ATokens, Index + 1) + 1);
+      if (Call <= High(ATokens)) and ATokens[NextCode(ATokens, Index + 1)].IsSymbol(':=') and
+        MatchText(ATokens[Call].Text, ['Max', 'Min']) then
+      begin
+        Close := NextCode(ATokens, Call + 1);
+        if (Close <= High(ATokens)) and ATokens[Close].IsSymbol('(') then
+          for Inner := Close + 1 to High(ATokens) do
+          begin
+            if ATokens[Inner].IsSymbol(';') then
+              Break;
+            if (ATokens[Inner].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[Inner].Text, AOther) then
+              Exit(True);
+          end;
+        // Die letzte Zuweisung zählt.
+        Exit;
+      end;
+    end;
+    Dec(Index);
+  end;
+end;
+
 procedure TFloatEqualityRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Tokens: TTokens;
@@ -517,7 +562,8 @@ begin
         IsInexact(Types.DeclaredType(Tokens[Left].Text, Tokens[Left].StartPos))) or
         ((Tokens[Right].Kind = TPascalTokenKind.Identifier) and
         IsInexact(Types.DeclaredType(Tokens[Right].Text, Tokens[Right].StartPos)));
-      if not IsFloat then
+      if not IsFloat or SelectedFrom(Tokens, Index, Tokens[Left].Text, Tokens[Right].Text) or
+        SelectedFrom(Tokens, Index, Tokens[Right].Text, Tokens[Left].Text) then
         Continue;
       Call := 'SameValue(' + Tokens[Left].Text + ', ' + Tokens[Right].Text + ')';
       if Tokens[Index].IsSymbol('<>') then
@@ -612,6 +658,30 @@ begin
   Result := False;
 end;
 
+class function TFormatWithoutSettingsRule.PictureDependsOnLocale(const AFunction, APicture: string): Boolean;
+var
+  Index: Integer;
+  Quote: Char;
+  Separators: TSysCharSet;
+begin
+  if SameText(AFunction, 'FormatDateTime') then
+    Separators := [':', '/']
+  else
+    Separators := ['.', ','];
+  Quote := #0;
+  for Index := 1 to Length(APicture) do
+    if Quote <> #0 then
+    begin
+      if APicture[Index] = Quote then
+        Quote := #0;
+    end
+    else if CharInSet(APicture[Index], ['"', '''']) then
+      Quote := APicture[Index]
+    else if CharInSet(APicture[Index], Separators) then
+      Exit(True);
+  Result := False;
+end;
+
 /// <summary>Zahl der Argumente ohne TFormatSettings; 0, wenn AName keine solche Funktion ist.</summary>
 function PlainArgumentCount(const AName: string): Integer;
 const
@@ -658,8 +728,17 @@ begin
       TFormatWithoutSettingsRule.HasLocaleSpecifier(ATokens[First].Text);
   end
   else
+  begin
     Result := (PlainArgumentCount(ATokens[AIndex].Text) > 0) and
       (ArgumentCount(ATokens, Open, AClose) = PlainArgumentCount(ATokens[AIndex].Text));
+    // Festes Bild als einzelnes Literal: nur seine Trennzeichen hängen vom Gebietsschema ab.
+    First := NextCode(ATokens, Open + 1);
+    if Result and MatchText(ATokens[AIndex].Text, ['FormatDateTime', 'FormatFloat', 'FormatCurr']) and
+      (ATokens[First].Kind = TPascalTokenKind.StringLiteral) and ATokens[NextCode(ATokens, First + 1)].IsSymbol(',')
+      then
+      Result := TFormatWithoutSettingsRule.PictureDependsOnLocale(ATokens[AIndex].Text,
+        StringReplace(Copy(ATokens[First].Text, 2, Length(ATokens[First].Text) - 2), '''''', '''', [rfReplaceAll]));
+  end;
 end;
 
 procedure TFormatWithoutSettingsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -2324,6 +2403,40 @@ const
   // Aufrufe, mit denen die Routine das Dictionary selbst füllt.
   DictionaryFills: array[0..2] of string = ('Add', 'AddOrSetValue', 'TryAdd');
 
+/// <summary>Deklariert die Routine ARoutine AName lokal (Variable, Parameter)? Sonst ist es ein Feld der Klasse
+/// oder global.</summary>
+function DeclaredLocally(ARoutine: TSyntaxNode; const AName: string): Boolean;
+var
+  Pending: TStack<TSyntaxNode>;
+  Node, Child: TSyntaxNode;
+  Index: Integer;
+  Name: string;
+begin
+  // Iterativ (Bericht M1); Pending hält die Knoten, deren Kinder noch zu prüfen sind.
+  Result := False;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ARoutine);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      for Index := Node.ChildCount - 1 downto 0 do
+      begin
+        Child := Node[Index];
+        if Child.Kind = TSyntaxKind.RoutineDecl then
+          Continue;
+        if Child.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter] then
+          for Name in SplitString(Child.Name, ',') do
+            if SameText(Trim(Name), AName) then
+              Exit(True);
+        Pending.Push(Child);
+      end;
+    end;
+  finally
+    Pending.Free;
+  end;
+end;
+
 function TDictionaryGetWithoutCheckRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('dictionary-get-without-check', TRuleSeverity.Hint,
@@ -2550,6 +2663,90 @@ var
     Result := Names;
   end;
 
+  // Füllt ANode das Dictionary ADict (Add, AddOrSetValue, Dict[K] := …) oder übergibt es einer Routine, die es
+  // füllen kann (ReadProperties(…, Infos), #1109)?
+  function Fills(ANode, AAccess: TSyntaxNode; const ADict: string): Boolean;
+  var
+    Index: Integer;
+  begin
+    Result := False;
+    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount >= 2) and (ANode[0].Kind = TSyntaxKind.MemberAccess) and
+      (ANode[0].ChildCount = 1) and (Key(ANode[0][0]) = ADict) and MatchText(ANode.Name, DictionaryFills) then
+      Exit(True);
+    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and (ANode[0] <> AAccess) and
+      (ANode[0].Kind = TSyntaxKind.IndexAccess) and (ANode[0].ChildCount = 2) and (Key(ANode[0][0]) = ADict) then
+      Exit(True);
+    if ANode.Kind = TSyntaxKind.Call then
+      for Index := 1 to ANode.ChildCount - 1 do
+        if Key(ANode[Index]) = ADict then
+          Exit(True);
+  end;
+
+  // Füllt eine Schleife um AAccess ADict, auch hinter dem Zugriff? Dann füllt ein früherer Durchlauf
+  // (Nachordnung mit Merktabelle: die Kinder vor dem Knoten, auch über eine innere for-Schleife, #1109).
+  function FilledInLoop(AScope, AAccess: TSyntaxNode; const ADict: string): Boolean;
+  var
+    Loop, Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
+    Index: Integer;
+  begin
+    Result := False;
+    Loop := AAccess.Parent;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      while (Loop <> nil) and (Loop <> AScope) do
+      begin
+        if Loop.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement,
+          TSyntaxKind.ForInStatement] then
+        begin
+          Pending.Clear;
+          Pending.Push(Loop);
+          while Pending.Count > 0 do
+          begin
+            Node := Pending.Pop;
+            if (Node.StartOffset > AAccess.EndOffset) and Fills(Node, AAccess, ADict) then
+              Exit(True);
+            for Index := Node.ChildCount - 1 downto 0 do
+              Pending.Push(Node[Index]);
+          end;
+        end;
+        Loop := Loop.Parent;
+      end;
+    finally
+      Pending.Free;
+    end;
+  end;
+
+  // Ein Feld (oder eine globale Variable), das die Unit an anderer Stelle füllt: Welche Schlüssel drin sind,
+  // sichert die Klasse über ihre Methoden hinweg (FOrder und FPending im Gleichschritt, Tabelle je Control beim
+  // Aufbau); das sieht die Prüfung einer einzelnen Routine nicht (#1109).
+  function FieldFilledInUnit(AScope, AAccess, ADictNode: TSyntaxNode; const ADict: string): Boolean;
+  var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
+    Index: Integer;
+  begin
+    Result := False;
+    if (ADictNode.Kind = TSyntaxKind.Identifier) and DeclaredLocally(AScope, ADictNode.Name) then
+      Exit;
+    if not (ADictNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+      Exit;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(AContext.Tree.Root);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Fills(Node, AAccess, ADict) then
+          Exit(True);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
+  end;
+
   // ContainsKey/TryGetValue mit demselben Schlüssel oder Add, AddOrSetValue, Dict[K] := … vor AAccess.
   function Checked(AScope, AAccess: TSyntaxNode; const ADict, AKey: string): Boolean;
   var
@@ -2557,6 +2754,8 @@ var
     Index: Integer;
     Node, Callee: TSyntaxNode;
   begin
+    if FilledInLoop(AScope, AAccess, ADict) then
+      Exit(True);
     // Iterativ (Bericht M1); Kinder ab dem Ende des Zugriffs bleiben wie zuvor aus.
     Result := False;
     Pending := TStack<TSyntaxNode>.Create;
@@ -2571,12 +2770,10 @@ var
             (Node[0].Kind = TSyntaxKind.MemberAccess) and (Node[0].ChildCount = 1) then
           begin
             Callee := Node[0];
-            if (Key(Callee[0]) = ADict) and (MatchText(Node.Name, DictionaryFills) or
-              (MatchText(Node.Name, DictionaryKeyChecks) and (Key(Node[1]) = AKey))) then
+            if (Key(Callee[0]) = ADict) and MatchText(Node.Name, DictionaryKeyChecks) and (Key(Node[1]) = AKey) then
               Exit(True);
           end;
-          if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and (Node[0] <> AAccess) and
-            (Node[0].Kind = TSyntaxKind.IndexAccess) and (Node[0].ChildCount = 2) and (Key(Node[0][0]) = ADict) then
+          if Fills(Node, AAccess, ADict) then
             Exit(True);
         end;
         for Index := Node.ChildCount - 1 downto 0 do
@@ -2643,7 +2840,8 @@ var
     if Value = '' then
       Exit;
     Scope := Routine(AAccess);
-    if Checked(Scope, AAccess, Key(DictNode), Key(AAccess[1])) or MentionsAny(AAccess[1], KeyNames(Scope)) then
+    if Checked(Scope, AAccess, Key(DictNode), Key(AAccess[1])) or MentionsAny(AAccess[1], KeyNames(Scope)) or
+      FieldFilledInUnit(Scope, AAccess, DictNode, Key(DictNode)) then
       Exit;
     AReport.Add(TTextRange.Create(AAccess.StartPos, AAccess.EndPos), 'Schlüssel wird nicht geprüft; fehlt er, löst ' +
       'der Zugriff EListError aus.', TRuleConfidence.Medium, Fixes(AAccess, DictNode, Value));
@@ -2741,39 +2939,6 @@ var
     Result := False;
   end;
 
-  // Deklariert die Routine AName lokal (Variable, Parameter)? Sonst ist es ein Feld der Klasse.
-  function IsLocal(ARoutine: TSyntaxNode; const AName: string): Boolean;
-  var
-    Pending: TStack<TSyntaxNode>;
-    Node, Child: TSyntaxNode;
-    Index: Integer;
-    Name: string;
-  begin
-    // Iterativ (Bericht M1); Pending hält die Knoten, deren Kinder noch zu prüfen sind.
-    Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
-    try
-      Pending.Push(ARoutine);
-      while Pending.Count > 0 do
-      begin
-        Node := Pending.Pop;
-        for Index := Node.ChildCount - 1 downto 0 do
-        begin
-          Child := Node[Index];
-          if Child.Kind = TSyntaxKind.RoutineDecl then
-            Continue;
-          if Child.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter] then
-            for Name in SplitString(Child.Name, ',') do
-              if SameText(Trim(Name), AName) then
-                Exit(True);
-          Pending.Push(Child);
-        end;
-      end;
-    finally
-      Pending.Free;
-    end;
-  end;
-
   // Erstes Kind von ANode, das AOffset enthält; nil ohne.
   function ChildAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
   var
@@ -2830,7 +2995,7 @@ var
     // Lokal: die Routine; Feld: die ganze Unit (StrictDelimiter oft im Konstruktor).
     From := Routine.StartOffset;
     Till := Routine.EndOffset;
-    if not IsLocal(Routine, List) then
+    if not DeclaredLocally(Routine, List) then
     begin
       From := 0;
       Till := MaxInt;

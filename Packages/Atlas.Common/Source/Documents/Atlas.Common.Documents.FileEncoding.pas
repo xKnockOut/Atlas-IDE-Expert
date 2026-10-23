@@ -155,6 +155,12 @@ type
     class function LoadFromFile(const AFileName: string; out AFormat: TFileFormat): string; overload; static;
     class function LoadFromFile(const AFileName: string; out AFormat: TFileFormat;
       ADefault: TFileEncodingKind): string; overload; static;
+    /// <summary>Wie LoadFromFile, wenn nur gelesen wird (Projekt, Gruppe, Quelltext, Protokoll): erkennt BOM,
+    /// UTF-8 und ANSI statt wie TFile.ReadAllText ohne BOM immer ANSI anzunehmen (#1109).</summary>
+    class function LoadText(const AFileName: string): string; static;
+    /// <summary>LoadText in Zeilen; ein Umbruch am Ende ergibt wie bei TFile.ReadAllLines keine leere letzte
+    /// Zeile.</summary>
+    class function LoadLines(const AFileName: string): TArray<string>; static;
     /// <summary>Schreibt AText; ein vorhandenes binäres Formular wird nie überschrieben (EFileEncodingError).</summary>
     class procedure SaveToFile(const AFileName, AText: string; const AFormat: TFileFormat); static;
   end;
@@ -730,6 +736,20 @@ class function TFileEncoding.LoadFromFile(const AFileName: string; out AFormat: 
   ADefault: TFileEncodingKind): string;
 begin
   Result := Decode(ReadAllBytes(AFileName), AFormat, ADefault);
+end;
+
+class function TFileEncoding.LoadText(const AFileName: string): string;
+var
+  Format: TFileFormat;
+begin
+  Result := LoadFromFile(AFileName, Format);
+end;
+
+class function TFileEncoding.LoadLines(const AFileName: string): TArray<string>;
+begin
+  Result := TTextLines.SplitLines(LoadText(AFileName));
+  if (Length(Result) > 0) and (Result[High(Result)] = '') then
+    SetLength(Result, Length(Result) - 1);
 end;
 
 class function TFileEncoding.IsBinaryFormFile(const AFileName: string): Boolean;

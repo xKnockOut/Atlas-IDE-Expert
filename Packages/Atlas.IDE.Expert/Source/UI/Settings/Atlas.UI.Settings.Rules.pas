@@ -124,7 +124,7 @@ type
     procedure SetSeverity(const ASeverity: string);
     /// <summary>Schweregrad der Regel AId setzen ('' = Vorgabe), ohne sie zu markieren; False ohne sie.</summary>
     function SetRuleSeverity(const AId, ASeverity: string): Boolean;
-    /// <summary>Gruppe abgeschaltet ("group:<gruppe>": "off")?</summary>
+    /// <summary>Gruppe abgeschaltet ("group:&lt;gruppe&gt;": "off")?</summary>
     function GroupOff: Boolean;
     function HasRule(const AId: string): Boolean;
     /// <summary>Feste Gruppe (Knoten der Optionsseite); '' = alle Regeln mit Suche und Gruppenauswahl.

@@ -100,7 +100,7 @@ type
     /// <summary>Fenster schließen (Ansicht gewechselt).</summary>
     class procedure Dismiss; static;
     /// <summary>Aus EditorViewModified: Fenster schließen und nach einem Einfügen sehen.</summary>
-    class procedure EditorModified(const AView: IOTAEditView); static;
+    class procedure EditorModified; static;
   end;
 
 implementation
@@ -247,7 +247,7 @@ begin
     FInstance.FWindow.Dismiss;
 end;
 
-class procedure TAtlasIdeSmartPaste.EditorModified(const AView: IOTAEditView);
+class procedure TAtlasIdeSmartPaste.EditorModified;
 begin
   if (FInstance = nil) or FInstance.FWriting then
     Exit;

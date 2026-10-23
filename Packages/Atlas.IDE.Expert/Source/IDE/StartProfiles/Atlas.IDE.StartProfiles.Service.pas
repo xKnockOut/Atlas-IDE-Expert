@@ -760,9 +760,9 @@ begin
     Personal := TAtlasStartProfiles.FileFor(Folder, FileName);
     Stamp := FileName + '|' + Project.CurrentConfiguration + '|' + Project.CurrentPlatform + '|' + TeamSettings.FileName;
     if (TeamSettings.FileName <> '') and FileAge(TeamSettings.FileName, Age) then
-      Stamp := Stamp + '|' + FloatToStr(Age);
+      Stamp := Stamp + '|' + FloatToStr(Age, TFormatSettings.Invariant);
     if FileAge(Personal, Age) then
-      Stamp := Stamp + '|' + FloatToStr(Age);
+      Stamp := Stamp + '|' + FloatToStr(Age, TFormatSettings.Invariant);
   end;
   if not AForce and (Stamp = FStamp) then
     Exit;

@@ -572,6 +572,11 @@ begin
   end;
 end;
 
+function ShortName(const AName: string): string;
+begin
+  Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
+end;
+
 /// <summary>Schlüssel einer Sperre: Empfänger; bei TMonitor.Enter(X) und EnterCriticalSection(X) auch das Argument.</summary>
 function LockKey(const AText: string; const ACall: TMethodCall): string;
 begin
@@ -579,15 +584,36 @@ begin
     Result := NodeText(AText, ACall.Receiver)
   else
     Result := '';
-  if (ACall.Call <> nil) and (ACall.Call.ChildCount > 1) then
+  // Nur bei TMonitor.Enter(X) und EnterCriticalSection(X) gehört das Argument zur Sperre; sonst ist es ein
+  // Parameter der Freigabe (Guard.Leave(Clear, Keys), #1109).
+  if (ACall.Call <> nil) and (ACall.Call.ChildCount > 1) and
+    ((ACall.Receiver = nil) or SameText(ShortName(Result), 'TMonitor')) then
     Result := Result + '(' + NodeText(AText, ACall.Call[1]) + ')';
+end;
+
+/// <summary>Wie TryMethodCall für einen Aufruf in einem Ausdruck: if Guard.Leave(…) then (#1109).</summary>
+function TryExpressionCall(ANode: TSyntaxNode; out ACall: TMethodCall): Boolean;
+begin
+  Result := False;
+  ACall := Default(TMethodCall);
+  if (ANode.Kind <> TSyntaxKind.Call) or (ANode.ChildCount = 0) or (ANode.Parent = nil) or
+    (ANode.Parent.Kind = TSyntaxKind.CallStatement) then
+    Exit;
+  ACall.Call := ANode;
+  ACall.Member := ANode[0];
+  if (ACall.Member.Kind = TSyntaxKind.MemberAccess) and (ACall.Member.ChildCount > 0) then
+    ACall.Receiver := ACall.Member[0]
+  else if ACall.Member.Kind <> TSyntaxKind.Identifier then
+    Exit;
+  ACall.Method := ACall.Member.Name;
+  Result := True;
 end;
 
 function IsRelease(const AText: string; ANode: TSyntaxNode; const ARelease, AKey: string): Boolean;
 var
   Call: TMethodCall;
 begin
-  Result := TryMethodCall(ANode, Call) and SameText(Call.Method, ARelease) and (LockKey(AText, Call) = AKey);
+  Result := (TryMethodCall(ANode, Call) or TryExpressionCall(ANode, Call)) and SameText(Call.Method, ARelease) and (LockKey(AText, Call) = AKey);
 end;
 
 /// <summary>True, wenn ein Finally-Block von ATry die Freigabe mit demselben Schlüssel enthält.</summary>
@@ -636,6 +662,37 @@ var
       TTextRange.Create(First.StartPos, Release.EndPos), NewText)])];
   end;
 
+  // Namen der Routinen dieser Unit (Methoden, lokale Routinen) ohne Klassenpräfix.
+  function UnitRoutines: TArray<string>;
+  var
+    Names: TArray<string>;
+  begin
+    Names := nil;
+    AContext.Tree.Root.Search(
+      function(ANode: TSyntaxNode): TSyntaxSearchStep
+      begin
+        if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.Name <> '') then
+          Names := Names + [ShortName(ANode.Name)];
+        Result := TSyntaxSearchStep.Descend;
+      end);
+    Result := Names;
+  end;
+
+  // Name der Routine, in der ANode steht; '' außerhalb (initialization).
+  function EnclosingRoutine(ANode: TSyntaxNode): string;
+  begin
+    Result := '';
+    while ANode <> nil do
+    begin
+      if ANode.Kind = TSyntaxKind.RoutineDecl then
+        Exit(ShortName(ANode.Name));
+      ANode := ANode.Parent;
+    end;
+  end;
+
+var
+  Routines: TArray<string>;
+
   procedure CheckList(AList: TSyntaxNode);
   var
     Index, Later, ReleaseIndex: Integer;
@@ -647,6 +704,12 @@ var
     for Index := 0 to AList.ChildCount - 1 do
     begin
       if not TryMethodCall(AList[Index], Call) then
+        Continue;
+      // Enter(…) ohne Empfänger ruft eine Routine dieser Unit (lokale Routine, eigene Methode), keine Sperre;
+      // eine gleichnamige Hülle (procedure TX.Enter; begin TMonitor.Enter(FLock); end) gibt die Sperre an den
+      // Aufrufer weiter, der dort geprüft wird (#1109).
+      if ((Call.Receiver = nil) and MatchText(Call.Method, Routines)) or
+        SameText(EnclosingRoutine(AList), Call.Method) then
         Continue;
       Key := LockKey(AContext.Text, Call);
       Released := False;
@@ -660,7 +723,9 @@ var
           // Direkt folgendes try … finally Freigabe, oder Sperre als Anweisung im try selbst.
           if ((Index < AList.ChildCount - 1) and (AList[Index + 1].Kind = TSyntaxKind.TryStatement) and
             ReleasesIn(AContext.Text, AList[Index + 1], Pair.Release, Key)) or
-            ((AList.Kind = TSyntaxKind.TryStatement) and ReleasesIn(AContext.Text, AList, Pair.Release, Key)) then
+            ((AList.Kind = TSyntaxKind.TryStatement) and ReleasesIn(AContext.Text, AList, Pair.Release, Key)) or
+            // Freigabe direkt danach: dazwischen kann nichts werfen (Monitor vorab anlegen).
+            ((Index < AList.ChildCount - 1) and IsRelease(AContext.Text, AList[Index + 1], Pair.Release, Key)) then
             Released := True;
           for Later := Index + 1 to AList.ChildCount - 1 do
             if (ReleaseIndex < 0) and IsRelease(AContext.Text, AList[Later], Pair.Release, Key) then
@@ -683,6 +748,7 @@ begin
   if AContext.Tree = nil then
     Exit;
   Pairs := LockPairs(AContext.Options);
+  Routines := UnitRoutines;
   for List in StatementLists(AContext.Tree.Root) do
     CheckList(List);
 end;

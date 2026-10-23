@@ -74,7 +74,7 @@ type
     /// <summary>Vorschlag verwerfen.</summary>
     class procedure Dismiss; static;
     /// <summary>Aus EditorViewModified: jede Änderung verwirft einen sichtbaren Vorschlag.</summary>
-    class procedure EditorModified(const AView: IOTAEditView); static;
+    class procedure EditorModified; static;
   end;
 
 implementation
@@ -190,7 +190,7 @@ begin
     FPreview.Clear;
 end;
 
-class procedure TAtlasIdePatternContinuation.EditorModified(const AView: IOTAEditView);
+class procedure TAtlasIdePatternContinuation.EditorModified;
 begin
   Dismiss;
 end;

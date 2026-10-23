@@ -297,6 +297,8 @@ begin
       Result := Result + ' (Objekt)';
     TExportTypeKind.InterfaceWithoutGuid:
       Result := Result + ' (Interface ohne GUID)';
+    TExportTypeKind.Safe: ;
+    TExportTypeKind.ManagedString: ;
   end;
 end;
 

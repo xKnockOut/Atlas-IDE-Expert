@@ -940,7 +940,7 @@ end;
 
 **Zugewiesener Wert ungenutzt** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077.
+Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077. Variablen mit Interface-Typ sind ausgenommen: Die Zuweisung hält oder gibt eine Referenz frei (Bereichswächter, Writer := nil).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -2080,7 +2080,7 @@ List := TStringList.Create;
 
 **Formatierung abhängig vom Gebietsschema** · Code Smell · Hinweis · Gruppe Robustheit und Muster
 
-Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenner, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format('%d', …) wird nicht gemeldet.
+Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenner, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format('%d', …) wird nicht gemeldet, ebenso wenig FormatDateTime und FormatFloat mit festem Bild ohne Trennzeichen (: / . ,) wie 'yyyy"-"mm"-"dd' oder 'ddddd t'.
 
 Mit Treffer:
 

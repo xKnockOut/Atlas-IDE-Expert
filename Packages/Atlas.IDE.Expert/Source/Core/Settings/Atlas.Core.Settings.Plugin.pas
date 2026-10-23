@@ -814,7 +814,7 @@ type
     ContinueCommentsBlockPrefix: string;
     /// <summary>Markierung beim Tippen eines öffnenden Zeichens umschließen (#672, editor.wrapSelection).</summary>
     WrapSelection: Boolean;
-    /// <summary>Zeichen, die umschließen, aus ([{'< (#672, editor.wrapSelection.chars).</summary>
+    /// <summary>Zeichen, die umschließen, aus ([{'&lt; (#672, editor.wrapSelection.chars).</summary>
     WrapSelectionChars: string;
     /// <summary>Anweisung vervollständigen (#697, editor.completeStatement).</summary>
     CompleteStatement: Boolean;

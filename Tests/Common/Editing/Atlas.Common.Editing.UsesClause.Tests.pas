@@ -117,6 +117,13 @@ begin
   Assert.AreEqual(3, Integer(Length(References)));
   Name := References[2].Name;
   Assert.AreEqual('Y', Name);
+  // Art der Liste (#1109).
+  Assert.AreEqual(Ord(TUsesListKind.RequiresList), Ord(References[0].List));
+  Assert.AreEqual(Ord(TUsesListKind.ContainsList), Ord(References[1].List));
+  Assert.AreEqual(Ord(TUsesListKind.ContainsList), Ord(References[2].List));
+  References := TUsesClauses.References(TPascalLexer.Tokenize(
+    'unit U;'#10'interface'#10'uses A, B.C in ''b.pas'';'#10'implementation'#10'end.'));
+  Assert.AreEqual(Ord(TUsesListKind.UsesList), Ord(References[0].List));
 end;
 
 procedure TUsesClauseTests.ReadsOwnName;

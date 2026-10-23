@@ -55,11 +55,11 @@ type
     /// <summary>Deklaration von ARange; über mehr als MaxLines Zeilen (Klassen, Records) nur die erste.</summary>
     class function DeclarationOf(const ALines: TArray<string>; const ARange: TTextRange): string; static;
     /// <summary>Vorfahrenliste der Klasse ab Zeile AStartLine wie im Quelltext, samt Typargumenten
-    /// ("TInterfacedObject", "IComparer<TKunde>"); nil, wenn kein "class(" folgt (#466).</summary>
+    /// ("TInterfacedObject", "IComparer&lt;TKunde&gt;"); nil, wenn kein "class(" folgt (#466).</summary>
     class function HeaderAncestors(const ALines: TArray<string>; AStartLine: Integer): TArray<string>; static;
     /// <summary>Setzt Bindungen "T=TKunde" wortweise in AText ein (#466).</summary>
     class function SubstituteWords(const AText: string; const ABindings: TArray<string>): string; static;
-    /// <summary>"IComparer<TKunde>" aus Container und Bindungen; ohne Bindungen der Container.</summary>
+    /// <summary>"IComparer&lt;TKunde&gt;" aus Container und Bindungen; ohne Bindungen der Container.</summary>
     class function GenericName(const AContainer: string; const ABindings: TArray<string>): string; static;
   end;
 

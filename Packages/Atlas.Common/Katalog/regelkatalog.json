@@ -323,7 +323,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077.",
+      "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077. Variables of an interface type are exempt: assigning them holds or releases a reference (scope guards, Writer := nil).",
       "bad": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := 0;\n  I := Calc;\n  Bar(I);\nend;",
       "good": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := Calc;\n  Bar(I);\nend;",
       "options": [
@@ -877,7 +877,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "robustness",
-      "description": "Format with %f, %n, %m, %g or %e and functions like FloatToStr, StrToFloat or DateToStr without a TFormatSettings parameter use the user's locale (decimal separator, date format). For files, protocols and logs pass fixed TFormatSettings. Format('%d', …) is not reported.",
+      "description": "Format with %f, %n, %m, %g or %e and functions like FloatToStr, StrToFloat or DateToStr without a TFormatSettings parameter use the user's locale (decimal separator, date format). For files, protocols and logs pass fixed TFormatSettings. Format('%d', …) is not reported, nor are FormatDateTime and FormatFloat with a fixed picture without separators (: / . ,), such as 'yyyy\"-\"mm\"-\"dd' or 'ddddd t'.",
       "bad": "Line := Format('%.2f', [Amount]);",
       "good": "Line := Format('%.2f', [Amount], TFormatSettings.Invariant);"
     },

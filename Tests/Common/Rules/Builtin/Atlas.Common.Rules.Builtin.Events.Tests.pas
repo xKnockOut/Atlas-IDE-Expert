@@ -199,6 +199,17 @@ begin
     Zaehler('    function KannMelden: Boolean;'#10, '  if not KannMelden then'#10'    Exit;'#10'  FOnChange(Self);'#10),
     'implementation'#10, 'implementation'#10'function TZaehler.KannMelden: Boolean;'#10'begin'#10 +
     '  Result := FWert > 0;'#10'end;'#10, []));
+  // Merker, der nur ohne Handler gesetzt wird: leerer Grund heißt zugewiesen (#1109).
+  TRuleAssert.Silent(TEventCallWithoutAssignedRule.Create,
+    Zaehler('    FGrund: string;'#10, '  if (FWert > 0) and not Assigned(FOnChange) then'#10'    FGrund := ''aus'';'#10 +
+    '  if FGrund = '''' then'#10'    FOnChange(Self);'#10));
+  TRuleAssert.Silent(TEventCallWithoutAssignedRule.Create,
+    Zaehler('    FAus: Boolean;'#10, '  if not Assigned(FOnChange) then'#10'    FAus := True;'#10 +
+    '  if not FAus and (FWert > 0) then'#10'    FOnChange(Self);'#10));
+  // Ein Merker, der auch ohne Handler leer bleibt, schützt nicht.
+  TRuleAssert.Reports(TEventCallWithoutAssignedRule.Create,
+    Zaehler('    FGrund: string;'#10, '  if not Assigned(FOnChange) then'#10'    FGrund := '''';'#10 +
+    '  if FGrund = '''' then'#10'    FOnChange(Self);'#10));
   // Die Prüfung nach dem Aufruf schützt nicht.
   TRuleAssert.Reports(TEventCallWithoutAssignedRule.Create,
     Body('  FOnChange(Self);'#10'  if not Assigned(FOnChange) then'#10'    Exit;'#10));

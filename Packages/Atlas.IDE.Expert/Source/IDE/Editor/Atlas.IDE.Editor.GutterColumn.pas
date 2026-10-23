@@ -260,9 +260,12 @@ begin
   DropColumn;
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Editors) then
     Editors.RemoveEditorEventsNotifier(FIndex);
-  FEvents.OnEditorPaintGutter := nil;
-  FEvents.OnEditorMouseMove := nil;
-  FEvents.OnEditorMouseDown := nil;
+  if FEvents <> nil then
+  begin
+    FEvents.OnEditorPaintGutter := nil;
+    FEvents.OnEditorMouseMove := nil;
+    FEvents.OnEditorMouseDown := nil;
+  end;
   FEventsRef := nil;
   FTip.OnLink := nil;
   FTip.Free;

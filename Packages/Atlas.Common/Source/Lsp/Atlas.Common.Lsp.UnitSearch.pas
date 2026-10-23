@@ -114,7 +114,7 @@ type
     /// sonst ins implementation-uses; vorhandene Units entfallen.</summary>
     class function AddUsesJson(const AUri, AText: string; const AUnits: TArray<string>;
       const AUses: TUsesContext): TJSONObject; static;
-    function ExecuteUnits(const AArguments: TJSONArray): TJSONValue;
+    function ExecuteUnits: TJSONValue;
     function ExecutePreview(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Argumente: [uri der Zieldatei, [Unit-Namen]].</summary>
     function ExecuteAddUses(const AArguments: TJSONArray): TJSONValue;
@@ -763,7 +763,7 @@ begin
   end;
 end;
 
-function TUnitSearch.ExecuteUnits(const AArguments: TJSONArray): TJSONValue;
+function TUnitSearch.ExecuteUnits: TJSONValue;
 var
   Context: TUnitSearchContext;
 begin

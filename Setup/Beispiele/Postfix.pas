@@ -20,7 +20,7 @@ implementation
 
 procedure Tue(Liste: TStrings);
 begin
-  
+  // Hier eine der Vorlagen von oben ausprobieren, z. B. Liste.for
 end;
 
 end.

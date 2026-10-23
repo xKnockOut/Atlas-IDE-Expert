@@ -349,6 +349,332 @@ var
     end;
   end;
 
+  function IsFalseValue(ANode: TSyntaxNode): Boolean;
+  begin
+    Result := (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.Literal]) and
+      MatchText(ANode.Name, ['False', 'nil', '''''']);
+  end;
+
+  // Merker ANode: F, Assigned(F), F <> nil, F <> ''; liefert F.
+  function PositiveFlag(ANode: TSyntaxNode; out AFlag: string): Boolean;
+  var
+    Index: Integer;
+  begin
+    Result := False;
+    case ANode.Kind of
+      TSyntaxKind.Identifier:
+        if not MatchText(ANode.Name, ['True', 'False', 'nil']) then
+        begin
+          AFlag := ANode.Name;
+          Result := True;
+        end;
+      TSyntaxKind.ParenExpr:
+        Result := (ANode.ChildCount = 1) and PositiveFlag(ANode[0], AFlag);
+      TSyntaxKind.Call:
+        if (ANode.ChildCount = 2) and IsName(ANode[0], 'Assigned') and (ANode[1].Kind = TSyntaxKind.Identifier) then
+        begin
+          AFlag := ANode[1].Name;
+          Result := True;
+        end;
+      TSyntaxKind.BinaryExpr:
+        if ANode.ChildCount = 2 then
+        begin
+          if SameText(ANode.Name, 'and') then
+            Result := PositiveFlag(ANode[0], AFlag) or PositiveFlag(ANode[1], AFlag)
+          else if ANode.Name = '<>' then
+            for Index := 0 to 1 do
+              if not Result and IsFalseValue(ANode[1 - Index]) and (ANode[Index].Kind = TSyntaxKind.Identifier) then
+              begin
+                AFlag := ANode[Index].Name;
+                Result := True;
+              end;
+        end;
+    end;
+  end;
+
+  // Gegenteil eines Merkers: not F, F = nil, F = '', … or …; liefert F.
+  function NegativeFlag(ANode: TSyntaxNode; out AFlag: string): Boolean;
+  var
+    Index: Integer;
+  begin
+    Result := False;
+    case ANode.Kind of
+      TSyntaxKind.ParenExpr:
+        Result := (ANode.ChildCount = 1) and NegativeFlag(ANode[0], AFlag);
+      TSyntaxKind.UnaryExpr:
+        Result := SameText(ANode.Name, 'not') and (ANode.ChildCount = 1) and PositiveFlag(ANode[0], AFlag);
+      TSyntaxKind.BinaryExpr:
+        if ANode.ChildCount = 2 then
+        begin
+          if SameText(ANode.Name, 'or') then
+            Result := NegativeFlag(ANode[0], AFlag) or NegativeFlag(ANode[1], AFlag)
+          else if ANode.Name = '=' then
+            for Index := 0 to 1 do
+              if not Result and IsFalseValue(ANode[1 - Index]) and (ANode[Index].Kind = TSyntaxKind.Identifier) then
+              begin
+                AFlag := ANode[Index].Name;
+                Result := True;
+              end;
+        end;
+    end;
+  end;
+
+  // Verlässt AStatement die Anweisungsliste immer (Exit, raise, Break, Continue, Abort)?
+  function Leaves(AStatement: TSyntaxNode): Boolean;
+  var
+    Callee: TSyntaxNode;
+  begin
+    Result := False;
+    case AStatement.Kind of
+      TSyntaxKind.RaiseStatement:
+        Result := True;
+      TSyntaxKind.CallStatement:
+        if AStatement.ChildCount > 0 then
+        begin
+          Callee := AStatement[0];
+          if (Callee.Kind = TSyntaxKind.Call) and (Callee.ChildCount > 0) then
+            Callee := Callee[0];
+          Result := (Callee.Kind = TSyntaxKind.Identifier) and MatchText(Callee.Name,
+            ['Exit', 'Break', 'Continue', 'Abort', 'Halt']);
+        end;
+      TSyntaxKind.Block:
+        Result := (AStatement.ChildCount > 0) and Leaves(AStatement[AStatement.ChildCount - 1]);
+    end;
+  end;
+
+  // Stehen in ANode Anweisungen nebeneinander (begin … end, try, repeat, case-Zweig)?
+  function IsStatementList(ANode: TSyntaxNode): Boolean;
+  begin
+    Result := ANode.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement, TSyntaxKind.RepeatStatement,
+      TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.CaseItem, TSyntaxKind.CaseElse];
+  end;
+
+  // Weist AStatement (allein oder als begin … end) Name zu und verlässt die Liste danach?
+  function AssignsAndLeaves(AStatement: TSyntaxNode): Boolean;
+  var
+    Child: Integer;
+  begin
+    Result := False;
+    if (AStatement.Kind <> TSyntaxKind.Block) or not Leaves(AStatement) then
+      Exit;
+    for Child := 0 to AStatement.ChildCount - 1 do
+      if (AStatement[Child].Kind = TSyntaxKind.AssignStatement) and (AStatement[Child].ChildCount = 2) and
+        IsName(AStatement[Child][0], Name) then
+        Exit(True);
+  end;
+
+  // Folgt der Zuweisung ANode an AFlag in einer umgebenden Liste "if AFlag then begin Name := …; Break; end"
+  // (genau AFlag als Bedingung, nicht AFlag and …)?
+  // Dann bleibt AFlag nur gesetzt, wenn Name einen Wert hat (Found := …; if Found then begin Hidden := S; Break;
+  // end; #1109).
+  function CommittedAfter(ABlock, ANode: TSyntaxNode; const AFlag: string): Boolean;
+  var
+    Child, Parent: TSyntaxNode;
+    Index: Integer;
+    Seen: Boolean;
+  begin
+    Result := False;
+    Child := ANode;
+    Parent := ANode.Parent;
+    while (Parent <> nil) and (Child <> ABlock) do
+    begin
+      if IsStatementList(Parent) then
+      begin
+        Seen := False;
+        for Index := 0 to Parent.ChildCount - 1 do
+          if Parent[Index] = Child then
+            Seen := True
+          else if Seen and (Parent[Index].Kind = TSyntaxKind.IfStatement) and (Parent[Index].ChildCount = 2) and
+            IsName(Parent[Index][0], AFlag) and AssignsAndLeaves(Parent[Index][1]) then
+            Exit(True);
+      end;
+      Child := Parent;
+      Parent := Parent.Parent;
+    end;
+  end;
+
+  // Ist AFlag ein Merker für Name: Jede Zuweisung an AFlag setzt den Startwert (False, nil, '') oder steht in
+  // derselben Anweisungsliste wie eine Zuweisung an Name (Feld := Symbol; Gefunden := True)? Dann heißt ein
+  // gesetzter Merker, dass Name einen Wert hat (#1109).
+  function IsFlagFor(ABlock: TSyntaxNode; const AFlag: string): Boolean;
+  var
+    Pending: TStack<TSyntaxNode>;
+    Node, Sibling: TSyntaxNode;
+    Child: Integer;
+    Paired, Any: Boolean;
+  begin
+    Result := False;
+    if SameText(AFlag, Name) or HasOpaqueUse(ABlock, AFlag) then
+      Exit;
+    Any := False;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ABlock);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+          Continue;
+        if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and IsName(Node[0], AFlag) and
+          not IsFalseValue(Node[1]) then
+        begin
+          Paired := False;
+          if (Node.Parent <> nil) and IsStatementList(Node.Parent) then
+            for Child := 0 to Node.Parent.ChildCount - 1 do
+            begin
+              Sibling := Node.Parent[Child];
+              if (Sibling <> Node) and (Sibling.Kind = TSyntaxKind.AssignStatement) and (Sibling.ChildCount = 2) and
+                IsName(Sibling[0], Name) then
+                Paired := True;
+            end;
+          if not Paired and not CommittedAfter(ABlock, Node, AFlag) then
+            Exit;
+          Any := True;
+        end;
+        for Child := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Child]);
+      end;
+    finally
+      Pending.Free;
+    end;
+    Result := Any;
+  end;
+
+  // Liest ANode Name nur, wenn ein Merker gesetzt ist: im then-Zweig von if F, rechts von F and … bzw. not F or …,
+  // oder nach if not F then Exit in einer umgebenden Anweisungsliste?
+  function GuardedByFlag(ABlock, ANode: TSyntaxNode): Boolean;
+  var
+    Child, Parent: TSyntaxNode;
+    Index: Integer;
+    Flag: string;
+  begin
+    Result := False;
+    Child := ANode;
+    Parent := ANode.Parent;
+    while (Parent <> nil) and (Child <> ABlock) do
+    begin
+      if (Parent.Kind = TSyntaxKind.IfStatement) and (Parent.ChildCount >= 2) and (Parent[1] = Child) and
+        PositiveFlag(Parent[0], Flag) and IsFlagFor(ABlock, Flag) then
+        Exit(True);
+      if (Parent.Kind = TSyntaxKind.BinaryExpr) and (Parent.ChildCount = 2) and (Parent[1] = Child) and
+        ((SameText(Parent.Name, 'and') and PositiveFlag(Parent[0], Flag)) or
+        (SameText(Parent.Name, 'or') and NegativeFlag(Parent[0], Flag))) and IsFlagFor(ABlock, Flag) then
+        Exit(True);
+      if IsStatementList(Parent) then
+        for Index := 0 to Parent.ChildCount - 1 do
+        begin
+          if Parent[Index] = Child then
+            Break;
+          if (Parent[Index].Kind = TSyntaxKind.IfStatement) and (Parent[Index].ChildCount = 2) and
+            NegativeFlag(Parent[Index][0], Flag) and Leaves(Parent[Index][1]) and IsFlagFor(ABlock, Flag) then
+            Exit(True);
+        end;
+      Child := Parent;
+      Parent := Parent.Parent;
+    end;
+  end;
+
+  // Lokale Routinen und anonyme Methoden der Routine, die Name nennen: Sie können ihn setzen, wann immer sie
+  // laufen (Finish; setzt AfterName); der Fluss der Routine sieht das nicht (#1109).
+  function UsedInNested(ARoutine: TSyntaxNode): Boolean;
+  var
+    Pending, Inner: TStack<TSyntaxNode>;
+    Node, Item: TSyntaxNode;
+    Child: Integer;
+  begin
+    Result := False;
+    Pending := TStack<TSyntaxNode>.Create;
+    Inner := TStack<TSyntaxNode>.Create;
+    try
+      for Child := ARoutine.ChildCount - 1 downto 0 do
+        Pending.Push(ARoutine[Child]);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+        begin
+          Inner.Clear;
+          Inner.Push(Node);
+          while Inner.Count > 0 do
+          begin
+            Item := Inner.Pop;
+            if IsName(Item, Name) then
+              Exit(True);
+            for Child := Item.ChildCount - 1 downto 0 do
+              Inner.Push(Item[Child]);
+          end;
+          Continue;
+        end;
+        for Child := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Child]);
+      end;
+    finally
+      Inner.Free;
+      Pending.Free;
+    end;
+  end;
+
+  // Methoden eines Record-Typs ATypeName aus dieser Unit; nil für andere Typen.
+  function RecordMethods(const ATypeName: string): TArray<string>;
+  var
+    Pending: TStack<TSyntaxNode>;
+    Node, Body: TSyntaxNode;
+    Child: Integer;
+  begin
+    Result := nil;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(AContext.Tree.Root);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.RoutineDecl then
+          Continue;
+        if (Node.Kind = TSyntaxKind.TypeDecl) and SameText(Node.Name, ATypeName) then
+        begin
+          Body := Node.FindChild(TSyntaxKind.RecordType);
+          if Body <> nil then
+            for Child := 0 to Body.ChildCount - 1 do
+              if (Body[Child].Kind = TSyntaxKind.RoutineHeader) and (Body[Child].Name <> '') then
+                Result := Result + [Body[Child].Name];
+          Exit;
+        end;
+        for Child := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Child]);
+      end;
+    finally
+      Pending.Free;
+    end;
+  end;
+
+  // Ruft der Rumpf eine Methode des Records auf der Variablen auf (Scanner.Init(…))? Die Methode bekommt den
+  // Record als var-Self und legt ihn an.
+  function CallsRecordMethod(ABlock: TSyntaxNode; const AMethods: TArray<string>): Boolean;
+  var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
+    Child: Integer;
+  begin
+    Result := False;
+    if AMethods = nil then
+      Exit;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ABlock);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.MemberAccess) and (Node.ChildCount = 1) and IsName(Node[0], Name) and
+          MatchText(Node.Name, AMethods) then
+          Exit(True);
+        for Child := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Child]);
+      end;
+    finally
+      Pending.Free;
+    end;
+  end;
+
   // Erster Lesezugriff auf Name, der ohne vorherige Zuweisung erreichbar ist.
   procedure Visit(ARoot: TSyntaxNode);
   var
@@ -371,7 +697,7 @@ var
         begin
           Flow := FlowNodeOf(Node);
           if (Flow <> nil) and (Graph.IsReachable(Flow) = TFlowAnswer.Yes) and
-            Graph.ReachingDefinitions(Flow, Name).FromEntry then
+            Graph.ReachingDefinitions(Flow, Name).FromEntry and not GuardedByFlag(ARoot, Node) then
           begin
             AReport.Add(NodeRange(Node),
               Format('"%s" wird hier möglicherweise gelesen, bevor ein Wert zugewiesen wurde', [Name]), Confidence);
@@ -419,7 +745,8 @@ begin
           Continue;
         for Name in Decl.Name.Split([',']) do
         begin
-          if HasOpaqueUse(Block, Name.Trim) then
+          if HasOpaqueUse(Block, Name.Trim) or UsedInNested(Routine) or
+            CallsRecordMethod(Block, RecordMethods(TypeName)) then
             Continue;
           if Graph = nil then
             Graph := TRuleDerived.Graph(Cache, AContext, Routine);
@@ -830,7 +1157,7 @@ begin
       Result := Result + [ASyntax[Index]];
 end;
 
-/// <summary>Enthält E Assigned(APath), APath = nil oder APath <> nil?</summary>
+/// <summary>Enthält E Assigned(APath), APath = nil oder APath &lt;&gt; nil?</summary>
 function ContainsNilCheck(ARoot: TSyntaxNode; const APath: string): Boolean;
 var
   Index: Integer;
@@ -863,7 +1190,7 @@ begin
 end;
 
 /// <summary>Wurzeln der Zugriffe X.… und X^ in E, in Textreihenfolge. X[…] zählt nicht: bei dynamischen
-/// Arrays ist X <> nil die übliche Abfrage auf leer.</summary>
+/// Arrays ist X &lt;&gt; nil die übliche Abfrage auf leer.</summary>
 procedure CollectDerefs(ARoot: TSyntaxNode; var AList: TArray<TSyntaxNode>);
 var
   Index: Integer;
@@ -1137,6 +1464,34 @@ var
     end;
   end;
 
+  // Weist ein Weg von AFrom nach ATo APath neu zu? Dann gilt die Prüfung in ATo auch dem neuen Wert
+  // (X := List[I]; if X.Kind = … then X := X.FindChild(…); if X = nil then; #1109).
+  function AssignedOnWay(AFrom, ATo: TFlowNode; const APath: string): Boolean;
+  var
+    Visited: TArray<Boolean>;
+    Queue: TArray<TFlowNode>;
+    Head: Integer;
+    Current, Prev: TFlowNode;
+  begin
+    Result := False;
+    SetLength(Visited, Graph.Nodes.Count);
+    Queue := ATo.Predecessors.ToArray;
+    Head := 0;
+    while Head < Length(Queue) do
+    begin
+      Current := Queue[Head];
+      Inc(Head);
+      if Visited[Current.Index] or (Current = AFrom) then
+        Continue;
+      Visited[Current.Index] := True;
+      if AssignsPath(Current, APath) then
+        Exit(True);
+      for Prev in Current.Predecessors do
+        if not Visited[Prev.Index] then
+          Queue := Queue + [Prev];
+    end;
+  end;
+
   function Source(ANode: TSyntaxNode): string;
   begin
     Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
@@ -1270,7 +1625,7 @@ begin
           Continue;
         // Nur wenn jeder Weg zur Prüfung durch den Zugriff führt; sonst gilt sie den anderen Wegen
         // (X := TX.Create; X.Init; … if X <> nil nach einem Zweig ohne Create).
-        if Graph.Dominates(Node, CheckNode) <> TFlowAnswer.Yes then
+        if (Graph.Dominates(Node, CheckNode) <> TFlowAnswer.Yes) or AssignedOnWay(Node, CheckNode, Path) then
           Continue;
         // while X <> nil do … X := X.Parent: die Bedingung gilt den späteren Durchläufen.
         if (CheckNode.Syntax.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement]) and
@@ -1634,11 +1989,13 @@ end;
 
 const
   /// <summary>Klassen der RTL, deren Konstruktor ohne Argumente höchstens EOutOfMemory wirft; danach gilt
-  /// ohnehin nichts mehr.</summary>
-  QuietConstructions: array[0..21] of string = ('TObject', 'TInterfacedObject', 'TPersistent', 'TList',
+  /// ohnehin nichts mehr.
+  /// Dazu Grafik- und Menüobjekte der VCL, die ihr Handle erst bei Bedarf anlegen.</summary>
+  QuietConstructions: array[0..30] of string = ('TObject', 'TInterfacedObject', 'TPersistent', 'TList',
     'TObjectList', 'TDictionary', 'TObjectDictionary', 'TStringList', 'TQueue', 'TObjectQueue', 'TStack',
     'TObjectStack', 'THashSet', 'TMemoryStream', 'TStringBuilder', 'TCriticalSection', 'TMultiReadExclusiveWriteSynchronizer',
-    'TBits', 'TThreadList', 'TInterfaceList', 'TStringStream', 'TBytesStream');
+    'TBits', 'TThreadList', 'TInterfaceList', 'TStringStream', 'TBytesStream', 'TFont', 'TBrush', 'TPen', 'TBitmap',
+    'TIcon', 'TPicture', 'TPopupMenu', 'TMenuItem', 'TApplicationEvents');
   /// <summary>Standardroutinen, die nicht werfen.</summary>
   QuietRoutines: array[0..22] of string = ('Assigned', 'Length', 'High', 'Low', 'SizeOf', 'Ord', 'Chr', 'Inc',
     'Dec', 'Include', 'Exclude', 'Default', 'Supports', 'Max', 'Min', 'TypeInfo', 'Trim', 'SameText', 'LowerCase',
@@ -1654,11 +2011,20 @@ type
     Conditional: Boolean;
   end;
 
+  /// <summary>Feld Guard, das jeder Konstruktor erst nach den Feldern Implied setzt: Ist Guard nicht nil, sind
+  /// es Implied auch (if FThread &lt;&gt; nil then FStop.SetEvent).</summary>
+  TGuardImplication = record
+    Guard: string;
+    Implied: TArray<string>;
+  end;
+
 procedure TDestructorNotNilSafeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Routines: TArray<TSyntaxNode>;
   Fields: TArray<string>;
   Risky: TArray<TNilAtDestroy>;
+  Implications: TArray<TGuardImplication>;
+  QuietLocals: TArray<string>;
   PrivateMethods: TArray<string>;
   OnlyAfterRaising: Boolean;
   QualifiedClass, LineBreak: string;
@@ -1757,7 +2123,9 @@ var
     Name := Trim(Text(Callee[0]));
     if Pos('<', Name) > 0 then
       Name := Copy(Name, 1, Pos('<', Name) - 1);
-    Result := MatchText(Name, QuietConstructions);
+    // Verschachtelte Klasse (TOwner.TEvents): der letzte Namensteil.
+    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+    Result := MatchText(Name, QuietConstructions) or Contains(QuietLocals, Name);
   end;
 
   // Weist AStatement einem Feld mit TKlasse.Create zu? Liefert Feld und Aufruf.
@@ -1821,6 +2189,71 @@ var
     finally
       Pending.Free;
     end;
+  end;
+
+  // Klassen dieser Unit, deren Konstruktor höchstens EOutOfMemory wirft: Vorfahr ruhig (TObject, QuietConstructions
+  // oder selbst eine solche Klasse) und kein Konstruktor Create mit werfendem Aufruf. Bis nichts mehr dazukommt,
+  // weil eine Klasse auf einer anderen aus der Unit aufbauen kann.
+  procedure CollectQuietLocals;
+  var
+    Names, Ancestors: TArray<string>;
+    Pending: TStack<TSyntaxNode>;
+    Node, Body, Ancestor: TSyntaxNode;
+    Index: Integer;
+    Changed, Quiet: Boolean;
+    Routine: TSyntaxNode;
+  begin
+    QuietLocals := nil;
+    Names := nil;
+    Ancestors := nil;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(AContext.Tree.Root);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.RoutineDecl then
+          Continue;
+        if Node.Kind = TSyntaxKind.TypeDecl then
+        begin
+          Body := Node.FindChild(TSyntaxKind.ClassType);
+          if Body <> nil then
+          begin
+            Ancestor := Body.FindChild(TSyntaxKind.TypeReference);
+            Names := Names + [Node.Name];
+            if Ancestor = nil then
+              Ancestors := Ancestors + ['TObject']
+            else
+              Ancestors := Ancestors + [Copy(Ancestor.Name, LastDelimiter('.', Ancestor.Name) + 1, MaxInt)];
+          end;
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
+    repeat
+      Changed := False;
+      for Index := 0 to High(Names) do
+      begin
+        if Contains(QuietLocals, Names[Index]) or
+          not (MatchText(Ancestors[Index], QuietConstructions) or Contains(QuietLocals, Ancestors[Index])) then
+          Continue;
+        Quiet := True;
+        for Routine in Routines do
+          if SameText(MethodOf(Routine), 'Create') and StartsWithWord(Routine, 'constructor') and
+            SameText(Copy(ClassOf(Routine), LastDelimiter('.', ClassOf(Routine)) + 1, MaxInt), Names[Index]) and
+            ((Routine.FindChild(TSyntaxKind.Block) = nil) or
+            (RaisingCall(Routine.FindChild(TSyntaxKind.Block)) <> '')) then
+            Quiet := False;
+        if Quiet then
+        begin
+          QuietLocals := QuietLocals + [Names[Index]];
+          Changed := True;
+        end;
+      end;
+    until not Changed;
   end;
 
   // Weist eine Anweisung unter ANode dem Feld AField zu?
@@ -1949,22 +2382,71 @@ var
     Risky := Risky + [Item];
   end;
 
+  // AGuard wird erst nach AAlways gesetzt; mit einem anderen Konstruktor gilt nur, was beide vorher setzen.
+  procedure AddImplication(const AGuard: string; const AAlways: TArray<string>);
+  var
+    Index: Integer;
+    Kept: TArray<string>;
+    Name: string;
+    Item: TGuardImplication;
+  begin
+    for Index := 0 to High(Implications) do
+      if SameText(Implications[Index].Guard, AGuard) then
+      begin
+        Kept := nil;
+        for Name in Implications[Index].Implied do
+          if Contains(AAlways, Name) then
+            Kept := Kept + [Name];
+        Implications[Index].Implied := Kept;
+        Exit;
+      end;
+    Item.Guard := AGuard;
+    Item.Implied := AAlways;
+    Implications := Implications + [Item];
+  end;
+
   // Felder, die nach einer Exception in AConstructor beim Destruktor noch nil sein können.
   procedure ScanConstructor(AConstructor: TSyntaxNode);
   var
     Body, Statement: TSyntaxNode;
     Index: Integer;
     Raiser, Field, Callee, Created: string;
-    Done: TArray<string>;
+    Done, Always, Seen, Added: TArray<string>;
   begin
     Body := AConstructor.FindChild(TSyntaxKind.Block);
     if Body = nil then
       Exit;
     Raiser := '';
     Done := nil;
+    Always := nil;
+    Seen := nil;
     for Index := 0 to Body.ChildCount - 1 do
     begin
       Statement := Body[Index];
+      // Reihenfolge der Zuweisungen: Wer ein Feld zuweist, hat die Felder davor auf jedem Weg schon gesetzt.
+      Added := nil;
+      if (Statement.Kind = TSyntaxKind.AssignStatement) and (Statement.ChildCount = 2) then
+      begin
+        Field := FreedPath(Statement[0]);
+        if Contains(Fields, Field) then
+        begin
+          if not Contains(Seen, Field) then
+            AddImplication(Field, Always);
+          Seen := Seen + [Field];
+          Added := Added + [Field];
+        end;
+      end
+      else if Statement.Kind in FlowStatementKinds then
+        for Created in Fields do
+          if AssignsField(Statement, Created) then
+          begin
+            if not Contains(Seen, Created) then
+              AddImplication(Created, Always);
+            Seen := Seen + [Created];
+            if AssignsAlways(Statement, Created) then
+              Added := Added + [Created];
+          end;
+      Always := Always + Added;
       if CreatesField(Statement, Field, Callee) then
       begin
         if not Contains(Done, Field) then
@@ -2093,6 +2575,17 @@ var
   var
     Checked, Reported: TArray<string>;
 
+    // X gilt als geprüft, dazu jedes Feld, das jeder Konstruktor vor X setzt.
+    procedure AddChecked(const AName: string);
+    var
+      Item: TGuardImplication;
+    begin
+      Checked := Checked + [AName];
+      for Item in Implications do
+        if SameText(Item.Guard, AName) then
+          Checked := Checked + Item.Implied;
+    end;
+
     // Assigned(X), X <> nil, X = nil in E sammeln: danach gilt X als geprüft.
     procedure CollectChecks(ARoot: TSyntaxNode);
     var
@@ -2109,17 +2602,46 @@ var
           E := Pending.Pop;
           if (E.Kind = TSyntaxKind.Call) and (E.ChildCount = 2) and IsName(E[0], 'Assigned') and
             (FreedPath(E[1]) <> '') then
-            Checked := Checked + [FreedPath(E[1])];
+            AddChecked(FreedPath(E[1]));
           if (E.Kind = TSyntaxKind.BinaryExpr) and (E.ChildCount = 2) then
             for Index := 0 to 1 do
               if (FreedPath(E[Index]) <> '') and (E[1 - Index].Kind = TSyntaxKind.Literal) and
                 SameText(E[1 - Index].Name, 'nil') then
-                Checked := Checked + [FreedPath(E[Index])];
+                AddChecked(FreedPath(E[Index]));
           for Index := E.ChildCount - 1 downto 0 do
             Pending.Push(E[Index]);
         end;
       finally
         Pending.Free;
+      end;
+    end;
+
+    // Linker Teil von "… and …": Assigned(X) und X <> nil schützen den rechten Teil (Kurzschluss, #1109).
+    procedure CollectShortCircuit(ANode: TSyntaxNode);
+    var
+      Index: Integer;
+    begin
+      case ANode.Kind of
+        TSyntaxKind.ParenExpr:
+          if ANode.ChildCount = 1 then
+            CollectShortCircuit(ANode[0]);
+        TSyntaxKind.Call:
+          if (ANode.ChildCount = 2) and IsName(ANode[0], 'Assigned') and (FreedPath(ANode[1]) <> '') then
+            AddChecked(FreedPath(ANode[1]));
+        TSyntaxKind.BinaryExpr:
+          if ANode.ChildCount = 2 then
+          begin
+            if SameText(ANode.Name, 'and') then
+            begin
+              CollectShortCircuit(ANode[0]);
+              CollectShortCircuit(ANode[1]);
+            end
+            else if ANode.Name = '<>' then
+              for Index := 0 to 1 do
+                if (FreedPath(ANode[Index]) <> '') and (ANode[1 - Index].Kind = TSyntaxKind.Literal) and
+                  SameText(ANode[1 - Index].Name, 'nil') then
+                  AddChecked(FreedPath(ANode[Index]));
+          end;
       end;
     end;
 
@@ -2153,6 +2675,8 @@ var
             for Index := 0 to E.ChildCount - 1 do
               if not (E[Index].Kind in FlowStatementKinds) then
                 CollectChecks(E[Index]);
+          if (E.Kind = TSyntaxKind.BinaryExpr) and SameText(E.Name, 'and') and (E.ChildCount = 2) then
+            CollectShortCircuit(E[0]);
           // Neu zugewiesen im Destruktor: der Wert stammt nicht mehr aus dem Konstruktor.
           if (E.Kind = TSyntaxKind.AssignStatement) and (E.ChildCount = 2) and (FreedPath(E[0]) <> '') then
             Checked := Checked + [FreedPath(E[0])];
@@ -2211,6 +2735,7 @@ begin
   if Pos(#13#10, AContext.Text) > 0 then
     LineBreak := #13#10;
   Routines := TRuleDerived.Routines(TRuleDerived.Open(AContext), AContext);
+  CollectQuietLocals;
   Classes := nil;
   for Routine in Routines do
   begin
@@ -2226,6 +2751,7 @@ begin
       Continue;
     PrivateMethods := PrivateOf(FindClassType(AContext.Tree.Root, ClassName));
     Risky := nil;
+    Implications := nil;
     for Other in Routines do
       if SameText(ClassOf(Other), QualifiedClass) and StartsWithWord(Other, 'constructor') then
         ScanConstructor(Other);

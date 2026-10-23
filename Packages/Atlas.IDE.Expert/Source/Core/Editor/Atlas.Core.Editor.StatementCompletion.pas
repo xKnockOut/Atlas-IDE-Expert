@@ -589,6 +589,12 @@ begin
     TStatementKind.CaseHeader:
       if not HasWord(Scan, 'of') then
         Code := Code + ' of';
+    TStatementKind.Plain: ;
+    TStatementKind.ElseHeader: ;
+    TStatementKind.TryLine: ;
+    TStatementKind.RepeatLine: ;
+    TStatementKind.BeginLine: ;
+    TStatementKind.Routine: ;
   end;
   Rest := '';
   Plain := StatementKind = TStatementKind.Plain;
@@ -771,6 +777,8 @@ begin
             InsertLine(ALine + 1, Indent + 'until ;');
             CursorLineAfter(ALine, Indent + Step);
           end;
+        TStatementKind.Plain: ;
+        TStatementKind.Routine: ;
       end;
     if HeaderCursor then
       CursorAt(ALine, Length(Indent) + Cursor);

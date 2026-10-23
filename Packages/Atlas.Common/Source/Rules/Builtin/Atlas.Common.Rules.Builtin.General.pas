@@ -134,7 +134,7 @@ var
   Guid: TGUID;
 begin
   if CreateGUID(Guid) <> 0 then
-    raise Exception.Create('GUID konnte nicht erzeugt werden');
+    raise EOSError.Create('GUID konnte nicht erzeugt werden');
   Result := '[''' + GUIDToString(Guid) + ''']';
 end;
 

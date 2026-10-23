@@ -32,6 +32,8 @@ type
     [Test]
     procedure OwnLockPairFromOptions;
     [Test]
+    procedure LockLookalikesAndWrappersAreSilent;
+    [Test]
     procedure UseAfterFreeOnTerminateReports;
     [Test]
     procedure UseWithoutFreeOnTerminateIsSilent;
@@ -246,6 +248,30 @@ begin
   TRuleAssert.Silent(TLockWithoutFinallyRule.Create,
     Routine('  EnterCriticalSection(FCS);'#10'  try'#10'    DoWork;'#10'  finally'#10'    LeaveCriticalSection(FCS);'#10 +
     '  end;'));
+  TRuleAssert.Reports(TLockWithoutFinallyRule.Create, Routine('  EnterCriticalSection(FCS);'#10'  DoWork;'));
+end;
+
+procedure TConcurrencyRulesTests.LockLookalikesAndWrappersAreSilent;
+begin
+  // Lokale Routine Enter ist keine Sperre (Rahmenstapel wie in DeclaredTypes).
+  TRuleAssert.Silent(TLockWithoutFinallyRule.Create, Routine(
+    '  Enter(ARoot);'#10'  DoWork;',
+    'procedure TA.Run;'#10'  procedure Enter(ANode: TObject);'#10'  begin'#10'  end;'));
+  // Eigene Methode Acquire(Id) ohne Empfänger.
+  TRuleAssert.Silent(TLockWithoutFinallyRule.Create,
+    'unit U;'#10'interface'#10'implementation'#10'procedure TA.Acquire(AId: Integer);'#10'begin'#10'end;'#10 +
+    'procedure TA.Run;'#10'begin'#10'  Acquire(Id);'#10'  DoWork;'#10'end;'#10'end.');
+  // Hülle, die nur sperrt: der Aufrufer wird geprüft.
+  TRuleAssert.Silent(TLockWithoutFinallyRule.Create, Routine('  TMonitor.Enter(FLock);',
+    'class procedure TSharedWrites.Enter;'));
+  TRuleAssert.Reports(TLockWithoutFinallyRule.Create, Routine('  TSharedWrites.Enter;'#10'  DoWork;'));
+  // Monitor vorab anlegen: Freigabe direkt danach.
+  TRuleAssert.Silent(TLockWithoutFinallyRule.Create, Routine('  TMonitor.Enter(FLock);'#10'  TMonitor.Exit(FLock);'));
+  // Freigabe mit eigenen Parametern in einem Ausdruck im finally.
+  TRuleAssert.Silent(TLockWithoutFinallyRule.Create, Routine(
+    '  Guard.Enter;'#10'  try'#10'    DoWork;'#10'  finally'#10'    if Guard.Leave(Clear, Keys) then'#10'      Reset;'#10 +
+    '  end;'));
+  // Ein fremdes Programm-Enter ohne Empfänger bleibt eine Sperre.
   TRuleAssert.Reports(TLockWithoutFinallyRule.Create, Routine('  EnterCriticalSection(FCS);'#10'  DoWork;'));
 end;
 

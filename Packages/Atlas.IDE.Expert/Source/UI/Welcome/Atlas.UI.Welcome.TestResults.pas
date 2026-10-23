@@ -342,7 +342,7 @@ var
   Seconds: Int64;
 begin
   if AMs < 60000 then
-    Result := FormatFloat('0.0', AMs / 1000) + ' s'
+    Result := FormatFloat('0.0', AMs / 1000, FormatSettings) + ' s'
   else
   begin
     Seconds := AMs div 1000;
@@ -942,6 +942,8 @@ begin
     Exit;
   Source := FSource;
   case AHit.Kind of
+    // Leerraum und die Zeile „… weitere“ sind keine Schaltflächen.
+    TAtlasTestResultsHitKind.None, TAtlasTestResultsHitKind.More: ;
     TAtlasTestResultsHitKind.Row:
       begin
         if (AHit.Index < 0) or (AHit.Index > High(FView.Rows)) or (AHit.Index = FView.Selected) then

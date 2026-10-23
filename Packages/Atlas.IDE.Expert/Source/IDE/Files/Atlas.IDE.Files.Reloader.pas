@@ -101,8 +101,11 @@ end;
 
 destructor TAtlasFileReloader.Destroy;
 begin
-  FTimer.Enabled := False;
-  FTimer.Free;
+  if FTimer <> nil then
+  begin
+    FTimer.Enabled := False;
+    FTimer.Free;
+  end;
   FChanges.Free;
   inherited;
 end;

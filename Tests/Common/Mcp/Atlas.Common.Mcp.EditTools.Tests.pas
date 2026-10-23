@@ -65,6 +65,13 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  /// <summary>Meldet jeden Bezeichner "Alt" ohne Korrektur; nur Unterdrücken wird angeboten.</summary>
+  TNoFixRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
   /// <summary>Dateien im Speicher; FailOn lässt das Schreiben dieser Datei scheitern.</summary>
   TMemoryFiles = class
   public
@@ -93,6 +100,20 @@ begin
       Range := TTextRange.Create(Token.StartPos, Token.EndPos);
       AReport.Add(Range, 'Alt gefunden', [TRuleFix.Create('Alt durch Neu ersetzen', [TRuleEdit.Create(Range, 'Neu')])]);
     end;
+end;
+
+function TNoFixRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('test-ohne', TRuleSeverity.Warning, 'Alt ohne Korrektur');
+end;
+
+procedure TNoFixRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Token: TPascalToken;
+begin
+  for Token in AContext.Tree.Tokens do
+    if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, 'Alt') then
+      AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), 'Alt gefunden');
 end;
 
 constructor TMemoryFiles.Create;
@@ -434,6 +455,17 @@ begin
     Assert.AreEqual(0, Files.Writes, 'ohne title nur auflisten');
     Edit.ApplyCodeAction([TRenameRule.Create], Default(TServerSettings), '', 'U.pas', 4, 'test-alt', False);
     Assert.Contains(Files.Files['U.pas'], '  Neu: Integer;');
+    // Die Regelkennung wählt nie das Unterdrücken (#1109); das geht nur über seinen Titel.
+    Files.Files['U.pas'] := 'unit U;'#10'interface'#10'var'#10'  Alt: Integer;'#10'implementation'#10'end.';
+    Assert.WillRaise(
+      procedure
+      begin
+        Edit.ApplyCodeAction([TNoFixRule.Create], Default(TServerSettings), '', 'U.pas', 4, 'test-ohne', False);
+      end, EMcpToolError);
+    Assert.IsFalse(Pos('lsp-ignore', Files.Files['U.pas']) > 0, 'nichts unterdrückt');
+    Edit.ApplyCodeAction([TNoFixRule.Create], Default(TServerSettings), '', 'U.pas', 4,
+      '"test-ohne" für diese Zeile unterdrücken', False);
+    Assert.IsTrue(Pos('lsp-ignore: test-ohne', Files.Files['U.pas']) > 0, 'mit Titel unterdrückt');
   finally
     Edit.Free;
     Files.Free;

@@ -141,16 +141,13 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals;
+  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.PureRoutines;
 
 const
   LoopKinds = [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
     TSyntaxKind.RepeatStatement];
   CompoundKinds = [TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.IfExpr, TSyntaxKind.RangeExpr];
-  /// <summary>Standardroutinen ohne Seiteneffekte.</summary>
-  PureRoutines: array[0..27] of string = ('Abs', 'Assigned', 'Chr', 'Copy', 'Frac', 'High', 'Int', 'IntToStr',
-    'Length', 'Low', 'LowerCase', 'Max', 'Min', 'Odd', 'Ord', 'Pos', 'Pred', 'Round', 'SameText', 'SizeOf', 'Sqr',
-    'Sqrt', 'Succ', 'Trim', 'Trunc', 'UpperCase', 'Format', 'FloatToStr');
   /// <summary>Bezeichner, die wie Literale nie ihren Wert ändern.</summary>
   ConstantNames: array[0..2] of string = ('True', 'False', 'MaxInt');
 
@@ -359,7 +356,7 @@ var
   Found: TInlineMeaning;
 begin
   Callee := ACall[0];
-  if (Callee.Kind = TSyntaxKind.Identifier) and MatchText(Callee.Name, PureRoutines) then
+  if (Callee.Kind = TSyntaxKind.Identifier) and TPureRoutines.IsPure(Callee.Name) then
     Exit(True);
   Result := False;
   if Assigned(ALookup) and IsSimpleChain(Callee) then
@@ -534,7 +531,7 @@ begin
           end;
         TSyntaxKind.Call:
           begin
-            if (Node[0].Kind <> TSyntaxKind.Identifier) or not MatchText(Node[0].Name, PureRoutines) then
+            if (Node[0].Kind <> TSyntaxKind.Identifier) or not TPureRoutines.IsPure(Node[0].Name) then
               Exit(False);
             First := 1;
           end;
@@ -846,7 +843,7 @@ begin
       Parenthesized(ExprText, Expression, Read))];
   Edits := Edits + [RemoveStatement(ASource.Text, Tree, Definition)];
   if Local.Kind = TLocalKind.Variable then
-    TRoutineLocals.RemoveVariables(ASource.Text, Tree, Local.Decl, [Name], Edits)
+    TRoutineLocals.RemoveVariables(Tree, Local.Decl, [Name], Edits)
   else if Definition <> Local.Decl then
     Edits := Edits + [RemoveStatement(ASource.Text, Tree, Local.Decl)];
   AAction.Title := Format('Variable %s einbetten', [Name]);

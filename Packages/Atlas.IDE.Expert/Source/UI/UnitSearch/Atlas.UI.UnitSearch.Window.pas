@@ -1361,7 +1361,7 @@ begin
   Facts := [TAtlasStrings.Fmt(TAtlasTextId.UnitSearchPreviewLines, [FPreview.Lines])];
   if FPreview.Modified > 0 then
     Facts := Facts + [TAtlasStrings.Fmt(TAtlasTextId.UnitSearchPreviewModified,
-      [FormatDateTime('dd.mm.yyyy hh:nn', FPreview.Modified)])];
+      [FormatDateTime('dd.mm.yyyy hh":"nn', FPreview.Modified)])];
   if FPreview.Git = 'clean' then
     Facts := Facts + [TAtlasStrings.Text(TAtlasTextId.UnitSearchGitClean)]
   else if FPreview.Git = 'modified' then

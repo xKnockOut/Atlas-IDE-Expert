@@ -598,6 +598,7 @@ begin
           else if InFailure and (Trim(Cursor.Value) <> '') and (Current.Message = '') then
             Current.Message := Cursor.Value;
         end;
+      TXmlNodeKind.Done: ;
     end;
   end;
   if Result.Format = '' then

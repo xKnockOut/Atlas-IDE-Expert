@@ -312,7 +312,7 @@ begin
   TAtlasGuard.Run(TAtlasFeature.ContinueLines,
     procedure
     begin
-      TAtlasIdePatternContinuation.EditorModified(View);
+      TAtlasIdePatternContinuation.EditorModified;
       TAtlasEnterWatch.EditorModified(View);
     end);
   // Mehrfachmarken (#589): fremde Änderungen an allen Marken nachziehen.
@@ -331,13 +331,13 @@ begin
   TAtlasGuard.Run(TAtlasFeature.SmartPaste,
     procedure
     begin
-      TAtlasIdeSmartPaste.EditorModified(View);
+      TAtlasIdeSmartPaste.EditorModified;
     end);
   // Umschließung entfernen (#657): Jede Änderung schließt die Liste ohne Änderung.
   TAtlasGuard.Run(TAtlasFeature.Unwrap,
     procedure
     begin
-      TAtlasIdeUnwrap.EditorModified(View);
+      TAtlasIdeUnwrap.EditorModified;
     end);
 end;
 

@@ -224,7 +224,7 @@ begin
     FileName := TAtlasTeamFile.Locate(ExtractFileDir(Project), PathExists);
   Stamp := Project + '|' + FileName;
   if (FileName <> '') and FileAge(FileName, Age) then
-    Stamp := Stamp + '|' + FloatToStr(Age);
+    Stamp := Stamp + '|' + FloatToStr(Age, TFormatSettings.Invariant);
   if Stamp = FStamp then
     Exit;
   Team := TAtlasTeamFile.Empty;

@@ -170,7 +170,7 @@ type
     procedure RemoveBars;
     procedure ShowBars(AShown: Boolean);
     procedure Track(const AView: IOTAEditView; const AFileName: string; ALine: Integer);
-    procedure UpdateBar(ABar: TAtlasEditorToolbar; const AView: IOTAEditView; const AFileName: string;
+    procedure UpdateBar(ABar: TAtlasEditorToolbar; const AFileName: string;
       ALine, ACharacter: Integer);
     function ButtonsFor(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasToolbarButton>;
     function CommandOf(const AId: string; out ACommand: TAtlasCommand): Boolean;
@@ -634,7 +634,7 @@ begin
   end;
 end;
 
-procedure TToolbarState.UpdateBar(ABar: TAtlasEditorToolbar; const AView: IOTAEditView; const AFileName: string;
+procedure TToolbarState.UpdateBar(ABar: TAtlasEditorToolbar; const AFileName: string;
   ALine, ACharacter: Integer);
 var
   Point: TAtlasReturnPoint;
@@ -767,7 +767,7 @@ begin
       SectionsOf(View, FileName);
       if FileName = '' then
         FileName := View.Buffer.FileName;
-      UpdateBar(Bar, View, FileName, Line, Character);
+      UpdateBar(Bar, FileName, Line, Character);
     end);
 end;
 

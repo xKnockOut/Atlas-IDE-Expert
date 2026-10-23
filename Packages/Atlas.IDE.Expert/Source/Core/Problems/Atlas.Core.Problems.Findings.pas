@@ -1104,6 +1104,7 @@ begin
             Row.Caption := First.Problem.Code;
           TAtlasFindingGrouping.ByCategory:
             Row.Caption := CategoryNames[First.Category];
+          TAtlasFindingGrouping.None: ;
         end;
         if not FCollapsed.TryGetValue(Key, Collapsed) then
           Collapsed := False;

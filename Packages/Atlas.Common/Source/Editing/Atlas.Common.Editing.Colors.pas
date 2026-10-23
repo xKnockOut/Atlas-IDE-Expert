@@ -330,6 +330,8 @@ begin
     TColorFormat.Named:
       if Name <> '' then
         Add(Name, TColorFormat.Named);
+    TColorFormat.Hex: ;
+    TColorFormat.SystemColor: ;
   end;
   Add(Hex, TColorFormat.Hex);
   if (AFormat <> TColorFormat.Rgb) then

@@ -802,7 +802,7 @@ begin
       begin
         Statement := Routine[Index];
         for LocalIndex := 0 to Statement.ChildCount - 1 do
-          TRoutineLocals.RemoveVariables(AText, ATree, Statement[LocalIndex], Removed, Edits);
+          TRoutineLocals.RemoveVariables(ATree, Statement[LocalIndex], Removed, Edits);
       end;
   Edits := Edits + [TTextEdit.Create(TTextRange.Create(Statements[0].StartPos, Statements[High(Statements)].EndPos),
     ShortName + Args)];

@@ -167,7 +167,7 @@ begin
   Zoom := TAtlasScaling.ZoomFromCaret(ACaret.Height, TextHeight);
   AWindow.SetScaling(MonitorPPI, Zoom, FontName, FontSize);
   Result := Format('Darstellung: %s %d pt, Monitor %d dpi, Caret %d px, Text %d px, Zoom %.2f',
-    [FontName, FontSize, MonitorPPI, ACaret.Height, TextHeight, Zoom]);
+    [FontName, FontSize, MonitorPPI, ACaret.Height, TextHeight, Zoom], TFormatSettings.Invariant);
 end;
 
 end.

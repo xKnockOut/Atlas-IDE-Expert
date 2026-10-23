@@ -314,6 +314,7 @@ var
           end
           else
             Exit;
+        TFormatAlignment.Comments: ;
       end;
     end;
   end;

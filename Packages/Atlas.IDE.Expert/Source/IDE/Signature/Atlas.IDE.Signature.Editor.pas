@@ -73,7 +73,7 @@ type
     procedure ApplyStyle(const ACaret: TRect);
     procedure ActiveChanged;
     function WantsKey(AKey: Word; AShift: TShiftState): Boolean;
-    procedure HandleKey(AKey: Word; AShift: TShiftState);
+    procedure HandleKey(AKey: Word);
   private class var
     FPreferredName: string;
     FPreferredIndex: Integer;
@@ -178,7 +178,7 @@ end;
 procedure TSignatureKeys.HandleKey(AKey: Word; AShift: TShiftState);
 begin
   try
-    FOwner.HandleKey(AKey, AShift);
+    FOwner.HandleKey(AKey);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Signature, E);
@@ -563,7 +563,7 @@ begin
      (((AKey = VK_UP) or (AKey = VK_DOWN)) and (AShift = [ssAlt]) and (Length(FController.Help.Signatures) > 1)));
 end;
 
-procedure TAtlasEditorSignature.HandleKey(AKey: Word; AShift: TShiftState);
+procedure TAtlasEditorSignature.HandleKey(AKey: Word);
 begin
   case AKey of
     VK_ESCAPE:

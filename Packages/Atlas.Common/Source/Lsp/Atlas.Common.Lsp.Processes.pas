@@ -104,7 +104,7 @@ begin
   else if Seconds < 86400 then
     Result := Format('vor %d h', [Seconds div 3600])
   else
-    Result := 'am ' + FormatDateTime('dd.mm.yyyy hh:nn', ASaved);
+    Result := 'am ' + FormatDateTime('dd.mm.yyyy hh":"nn', ASaved);
 end;
 
 class function TLspProcesses.ProcessText(const AProcess: TIndexProcessInfo): string;
@@ -152,7 +152,7 @@ begin
         Builder.Append(Format('- Index nur einmal aufgebaut, %d Prozesse', [Length(Workspace.Processes)]))
           .Append(#10);
       for Event in TIndexProcessLog.Events(Workspace.Processes) do
-        Builder.Append('  - ').Append(FormatDateTime('hh:nn:ss', Event.Time)).Append(' ').Append(Event.Text)
+        Builder.Append('  - ').Append(FormatDateTime('hh":"nn":"ss', Event.Time)).Append(' ').Append(Event.Text)
           .Append(#10);
     end;
     Builder.Append(#10).Append('Ungespeicherte Stände bleiben je Prozess getrennt: Andere Prozesse sehen den ' +
@@ -209,7 +209,7 @@ begin
     begin
       Entry := TJSONObject.Create;
       Events.AddElement(Entry);
-      Entry.AddPair('time', FormatDateTime('hh:nn:ss', Event.Time));
+      Entry.AddPair('time', FormatDateTime('hh":"nn":"ss', Event.Time));
       Entry.AddPair('text', Event.Text);
     end;
   end;

@@ -83,6 +83,14 @@ begin
   TRuleAssert.Silent(TSecurityCommandInjectionRule.Create,
     Body('  ShellExecute(0, ''open'', ''notepad.exe'', nil, nil, SW_SHOW);'#10 +
     '  ShellExecute(0, ''open'', PChar(''cmd /c '' + ''dir''), nil, nil, SW_SHOW);'));
+  // Festes Programm ohne Shell, eingesetzter Pfad in Anführungszeichen (#1109).
+  TRuleAssert.Silent(TSecurityCommandInjectionRule.Create,
+    Body('  ShellExecute(0, ''open'', ''explorer.exe'', PChar(''/select,"'' + Pfad + ''"''), nil, SW_SHOW);'));
+  // Ohne Anführungszeichen oder mit einer Shell als Programm bleibt es gemeldet.
+  TRuleAssert.Reports(TSecurityCommandInjectionRule.Create,
+    Body('  ShellExecute(0, ''open'', ''explorer.exe'', PChar(''/select,'' + Pfad), nil, SW_SHOW);'));
+  TRuleAssert.Reports(TSecurityCommandInjectionRule.Create,
+    Body('  ShellExecute(0, ''open'', ''cmd.exe'', PChar(''/c "'' + Pfad + ''"''), nil, SW_SHOW);'));
 end;
 
 procedure TSecurityRulesTests.FileFromInputReports;
@@ -174,6 +182,14 @@ begin
     '  Client.Get(''http://localhost:8080'');'#10 +
     '  // siehe http://example.com'#10 +
     '  Client.Get(''https://api.example.com'');'));
+  // Bloßes Schema ohne Rechner, JSON-Schema-Kennung (#1109).
+  TRuleAssert.Silent(TSecurityInsecureHttpRule.Create,
+    Body('  if StartsText(''http://'', Url) then'#10'    Exit;'#10 +
+    '  Hinweis := ''Ziel (http:// oder https://):'';'#10 +
+    '  Kopf := ''"$schema": "http://json-schema.org/draft-07/schema#"'';'));
+  // Hinter einem bloßen Schema zählt die nächste echte URL.
+  TRuleAssert.Reports(TSecurityInsecureHttpRule.Create,
+    Body('  Hinweis := ''http:// zum Beispiel http://server/pfad'';'));
 end;
 
 procedure TSecurityRulesTests.RandomTokenReports;
@@ -224,6 +240,10 @@ begin
     '  Q.Open;'#10 +
     '  Q.ExecSQL(''update K set A = :A'', [Edit1.Text]);'#10 +
     'end;'#10'end.');
+  // Execute und Open eines Dialogs bzw. einer Datei sind kein SQL (#1109).
+  TRuleAssert.Silent(TSecuritySqlInjectionRule.Create,
+    Body('  if Dialog.Execute(Format(''%s, Zeile %d'', [Datei, Zeile + 1]), Name) then'#10'    Exit;'#10 +
+    '  Archiv.Open(Ordner + Datei);'));
 end;
 
 procedure TSecurityRulesTests.SecurityRulesFindSameWithSharedTokens;

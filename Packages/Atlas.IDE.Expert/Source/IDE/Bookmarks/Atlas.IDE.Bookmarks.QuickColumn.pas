@@ -212,14 +212,20 @@ var
   Editors: INTACodeEditorServices;
 begin
   FTimer.Free;
-  FAppEvents.OnMessage := nil;
-  FAppEvents.Free;
+  if FAppEvents <> nil then
+  begin
+    FAppEvents.OnMessage := nil;
+    FAppEvents.Free;
+  end;
   // Erst Spalte und Notifier abmelden, dann freigeben (#493).
   DropColumn;
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Editors) then
     Editors.RemoveEditorEventsNotifier(FIndex);
-  FEvents.OnEditorPaintGutter := nil;
-  FEvents.OnEditorMouseMove := nil;
+  if FEvents <> nil then
+  begin
+    FEvents.OnEditorPaintGutter := nil;
+    FEvents.OnEditorMouseMove := nil;
+  end;
   FEventsRef := nil;
   FMenu.Free;
   FTip.Free;
