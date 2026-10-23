@@ -257,7 +257,8 @@ begin
     Add('E2025', 'Eine Prozedur kann keinen Ergebnistyp haben', ResultType.StartPos, ResultType.EndPos);
     Exit;
   end;
-  if (Word <> 'function') or (ResultType <> nil) then
+  // Eine Methodenzuordnung (function IFoo.GetX = MyGetX) hat nie einen Ergebnistyp (#1134).
+  if (Word <> 'function') or (ResultType <> nil) or AHeader.IsMethodResolution then
     Exit;
   // Deklaration: in einem Typ, im interface-Teil, forward/external oder eine freie Routine ohne
   // Deklaration mit Ergebnistyp in der Datei.
