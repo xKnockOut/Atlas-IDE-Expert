@@ -705,7 +705,12 @@ type
     // Treffersicherheit der Verwendungen (#1119).
     ResultsSureGroup, ResultsInferredGroup, ResultsOnlySure, RenameChangedGroup, RenameUnchangedGroup,
     ReferenceReasonInterface, ReferenceReasonVirtual, ReferenceReasonAmbiguous, ReferenceReasonUnresolved, ReferenceReasonInactiveBranch, ReferenceReasonText,
-    SettingsReferencesInferred, SettingsReferencesTextMatches);
+    SettingsReferencesInferred, SettingsReferencesTextMatches,
+    // Auswirkungsanalyse (#1120).
+    ImpactCommand, ImpactTitle, ImpactDirect, ImpactIndirect, ImpactTests, ImpactNoTests, ImpactRunTests, ImpactDepth,
+    ImpactEdgeReference, ImpactEdgeOverride, ImpactEdgeBase, ImpactEdgeInterface, ImpactEdgeImplementation,
+    ImpactForm, ImpactUnitLevel, ImpactLimitDepth, ImpactLimitCount, ImpactLimitTime, ImpactOff, ImpactNothing,
+    ImpactRunning, SettingsImpact, SettingsImpactDepth);
 
   TAtlasStrings = class
   private class var
@@ -2306,7 +2311,30 @@ const
      'inaktiver Zweig',
      'im Text',
      'Erschlossene Verwendungen zeigen (Interface, überschriebene Methode, unklare Überladung, inaktiver Zweig)',
-     'Auch Namen in Strings als Verwendung melden (RTTI, MethodAddress)'),
+     'Auch Namen in Strings als Verwendung melden (RTTI, MethodAddress)',
+     'Auswirkungen anzeigen',
+     'Auswirkungen von %s · Tiefe %d · %d Stellen',
+     'Direkt (%d)',
+     'Indirekt (%d)',
+     'Betroffene Tests (%d)',
+     'Keine betroffenen Tests',
+     'Betroffene Tests ausführen',
+     'Tiefe:',
+     'Verweis',
+     'Override',
+     'überschriebene Basismethode',
+     'Interface-Methode',
+     'Umsetzung',
+     'Formular: %s  (%s:%d)',
+     'Unit-Ebene',
+     'Tiefe %d erreicht: %d Stellen nicht weiter verfolgt',
+     'Höchstzahl von %d Stellen erreicht, Ergebnis unvollständig',
+     'Zeitlimit von %d ms erreicht, Ergebnis unvollständig',
+     'Auswirkungen anzeigen ist ausgeschaltet (navigation.impact).',
+     'Keine Auswirkungen gefunden: Am Cursor steht kein Symbol, oder nichts verwendet es.',
+     'Ermittle Auswirkungen von %s (Tiefe %d) …',
+     'Befehl „Auswirkungen anzeigen“ (Aufrufer, Verweise, Overrides, betroffene Tests)',
+     'Vorgabe der Tiefe (1 bis 5):'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3811,7 +3839,30 @@ const
      'inactive branch',
      'in a string',
      'Show inferred usages (interface, overridden method, ambiguous overload, inactive branch)',
-     'Also report names in strings as usages (RTTI, MethodAddress)'));
+     'Also report names in strings as usages (RTTI, MethodAddress)',
+     'Show impact',
+     'Impact of %s · depth %d · %d places',
+     'Direct (%d)',
+     'Indirect (%d)',
+     'Affected tests (%d)',
+     'No affected tests',
+     'Run affected tests',
+     'Depth:',
+     'reference',
+     'override',
+     'overridden base method',
+     'interface method',
+     'implementation',
+     'Form: %s  (%s:%d)',
+     'unit level',
+     'Depth %d reached: %d places not followed further',
+     'Limit of %d places reached, result incomplete',
+     'Time limit of %d ms reached, result incomplete',
+     'Show impact is switched off (navigation.impact).',
+     'No impact found: there is no symbol at the cursor, or nothing uses it.',
+     'Determining impact of %s (depth %d) …',
+     'Command “Show impact” (callers, references, overrides, affected tests)',
+     'Default depth (1 to 5):'));
 
 { TAtlasStrings }
 

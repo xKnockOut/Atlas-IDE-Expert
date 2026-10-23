@@ -124,6 +124,7 @@
         <DCCReference Include="Source\Diagnostics\Providers\Atlas.Common.Diagnostics.Providers.Log.pas"/>
         <DCCReference Include="Source\Diagnostics\Adapters\Atlas.Common.Diagnostics.Adapters.LogFolder.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Contract.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Usages.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Files.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.SymbolIndex.pas"/>
@@ -251,6 +252,7 @@
         <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.CompletionSource.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SignatureHelp.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hierarchies.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Impact.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Implementations.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlayHints.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MessageHandlers.pas"/>

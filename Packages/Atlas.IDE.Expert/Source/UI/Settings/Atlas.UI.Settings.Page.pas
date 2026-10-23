@@ -309,6 +309,8 @@ type
     FPeekReferencesKey: TEdit;
     FReferencesInferred: TCheckBox;
     FReferencesTextMatches: TCheckBox;
+    FImpact: TCheckBox;
+    FImpactDepth: TEdit;
     FOutline: TCheckBox;
     FOutlineAlphabetical: TCheckBox;
     FOutlineFollowCursor: TCheckBox;
@@ -1859,6 +1861,9 @@ begin
   // Treffersicherheit der Verwendungen (#1119).
   FReferencesInferred := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReferencesInferred));
   FReferencesTextMatches := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReferencesTextMatches));
+  // Auswirkungsanalyse (#1120).
+  FImpact := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsImpact));
+  FImpactDepth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsImpactDepth));
   FOutline := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutline));
   FOutlineAlphabetical := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineAlphabetical));
   FOutlineFollowCursor := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineFollowCursor));
@@ -2709,6 +2714,8 @@ begin
   FMarks.Bind(FPeekReferencesKey, ['PeekReferencesKey']);
   FMarks.Bind(FReferencesInferred, ['ReferencesInferred']);
   FMarks.Bind(FReferencesTextMatches, ['ReferencesTextMatches']);
+  FMarks.Bind(FImpact, ['Impact']);
+  FMarks.Bind(FImpactDepth, ['ImpactDepth']);
   FMarks.Bind(FOutline, ['Outline']);
   FMarks.Bind(FOutlineAlphabetical, ['OutlineAlphabetical']);
   FMarks.Bind(FOutlineFollowCursor, ['OutlineFollowCursor']);
@@ -4815,6 +4822,8 @@ begin
   FPeekReferencesKey.Text := ShortCutToText(TShortCut(ASettings.PeekReferencesKey));
   FReferencesInferred.Checked := ASettings.ReferencesInferred;
   FReferencesTextMatches.Checked := ASettings.ReferencesTextMatches;
+  FImpact.Checked := ASettings.Impact;
+  FImpactDepth.Text := IntToStr(ASettings.ImpactDepth);
   FOutline.Checked := ASettings.Outline;
   FOutlineAlphabetical.Checked := ASettings.OutlineAlphabetical;
   FOutlineFollowCursor.Checked := ASettings.OutlineFollowCursor;
@@ -5231,6 +5240,8 @@ begin
   ASettings.PeekReferencesKey := Integer(TextToShortCut(Trim(FPeekReferencesKey.Text)));
   ASettings.ReferencesInferred := FReferencesInferred.Checked;
   ASettings.ReferencesTextMatches := FReferencesTextMatches.Checked;
+  ASettings.Impact := FImpact.Checked;
+  ASettings.ImpactDepth := StrToIntDef(FImpactDepth.Text, ASettings.ImpactDepth);
   ASettings.Outline := FOutline.Checked;
   ASettings.OutlineAlphabetical := FOutlineAlphabetical.Checked;
   ASettings.OutlineFollowCursor := FOutlineFollowCursor.Checked;

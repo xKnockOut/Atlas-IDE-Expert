@@ -2,7 +2,7 @@
 
 // Werttypen, die der LSP-Client (TLspSession) liefert und die Features darüber verwenden (A-09): Probleme
 // (Diagnosen, #398), Symbole der projektweiten Suche und Einträge der Typ- und Aufrufhierarchie (#400),
-// Treffersicherheit einer Fundstelle (#1119).
+// Treffersicherheit einer Fundstelle (#1119), Ergebnis der Auswirkungsanalyse (#1120).
 // Sie liegen im Lsp-Feature, weil die Protokollschicht unten liegt; Atlas.Core.Problems.Contract und
 // Atlas.Core.Results.Model führen sie als Alias weiter. Positionen sind 0-basiert in UTF-16-Einheiten.
 
@@ -144,6 +144,73 @@ type
     Confidence: TAtlasConfidence;
   end;
 
+  /// <summary>Formularbindung einer betroffenen Stelle (#1120): Ereignis-Handler oder Komponentenname.</summary>
+  TAtlasImpactForm = record
+    FileName: string;
+    Line: Integer;
+    Character: Integer;
+    /// <summary>Zeile der Formulardatei, z. B. "OnClick = Button1Click".</summary>
+    Text: string;
+  end;
+
+  /// <summary>Betroffene Stelle der Auswirkungsanalyse (#1120).</summary>
+  TAtlasImpactPlace = record
+    /// <summary>Die Stelle als Routine, Deklaration oder Unit; Confidence aus atlasConfidence.</summary>
+    Item: TAtlasHierarchyItem;
+    /// <summary>1 = direkt, ab 2 indirekt.</summary>
+    Level: Integer;
+    /// <summary>"call", "reference", "override", "baseMethod", "interfaceMethod", "implementation".</summary>
+    Edge: string;
+    /// <summary>Index der verursachenden Stelle in TAtlasImpact.Places; -1 = das Symbol.</summary>
+    Cause: Integer;
+    /// <summary>Erste Verwendung der Ursache in der Stelle (Ziel des Doppelklicks); ohne: die Stelle selbst.</summary>
+    UseLine: Integer;
+    UseCharacter: Integer;
+    /// <summary>Zahl der Verwendungen der Ursache in der Stelle.</summary>
+    UseCount: Integer;
+    Forms: TArray<TAtlasImpactForm>;
+    /// <summary>Unit-Ebene (initialization): nicht weiter verfolgt.</summary>
+    Terminal: Boolean;
+    /// <summary>Name des Tests (Unit.Fixture.Methode), wenn die Stelle einer ist; sonst ''.</summary>
+    Test: string;
+  end;
+
+  TAtlasImpactTest = record
+    /// <summary>Unit.Fixture.Methode.</summary>
+    Name: string;
+    /// <summary>Namen für den Testlauf (--run), bei [TestCase] je Fall.</summary>
+    RunNames: TArray<string>;
+    FileName: string;
+    Line: Integer;
+    Level: Integer;
+  end;
+
+  /// <summary>Antwort von atlas/impact (#1120).</summary>
+  TAtlasImpact = record
+    Symbol: TAtlasHierarchyItem;
+    SymbolForms: TArray<TAtlasImpactForm>;
+    Depth: Integer;
+    Places: TArray<TAtlasImpactPlace>;
+    Tests: TArray<TAtlasImpactTest>;
+    /// <summary>Erreichte Grenzen: Tiefe, Anzahl, Zeit.</summary>
+    DepthReached: Boolean;
+    CountReached: Boolean;
+    TimeReached: Boolean;
+    /// <summary>Stellen der letzten Ebene, die nicht weiter verfolgt wurden.</summary>
+    Unexpanded: Integer;
+    MaxPlaces: Integer;
+    TimeoutMs: Integer;
+    /// <summary>Indizes der Stellen, deren Ursache ACause ist, in Reihenfolge.</summary>
+    function Children(ACause: Integer): TArray<Integer>;
+    /// <summary>Zahl der Stellen auf Ebene ALevel bzw. ab Ebene ALevel.</summary>
+    function LevelCount(ALevel: Integer): Integer;
+    function CountFrom(ALevel: Integer): Integer;
+    /// <summary>Alle Namen für den Testlauf ohne Doppelte.</summary>
+    function RunNames: TArray<string>;
+    /// <summary>Gibt es ein Ergebnis (Symbol gefunden)?</summary>
+    function Found: Boolean;
+  end;
+
 implementation
 
 { TAtlasConfidence }
@@ -164,6 +231,59 @@ begin
     Result.Reason := TJSONObject(Value).GetValue<string>('reason', '');
     Result.Explanation := TJSONObject(Value).GetValue<string>('detail', '');
   end;
+end;
+
+{ TAtlasImpact }
+
+function TAtlasImpact.Children(ACause: Integer): TArray<Integer>;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  for Index := 0 to High(Places) do
+    if Places[Index].Cause = ACause then
+      Result := Result + [Index];
+end;
+
+function TAtlasImpact.LevelCount(ALevel: Integer): Integer;
+var
+  Place: TAtlasImpactPlace;
+begin
+  Result := 0;
+  for Place in Places do
+    if Place.Level = ALevel then
+      Inc(Result);
+end;
+
+function TAtlasImpact.CountFrom(ALevel: Integer): Integer;
+var
+  Place: TAtlasImpactPlace;
+begin
+  Result := 0;
+  for Place in Places do
+    if Place.Level >= ALevel then
+      Inc(Result);
+end;
+
+function TAtlasImpact.RunNames: TArray<string>;
+var
+  Test: TAtlasImpactTest;
+  Name, Seen: string;
+begin
+  Result := nil;
+  Seen := '|';
+  for Test in Tests do
+    for Name in Test.RunNames do
+      if Pos('|' + UpperCase(Name) + '|', Seen) = 0 then
+      begin
+        Seen := Seen + UpperCase(Name) + '|';
+        Result := Result + [Name];
+      end;
+end;
+
+function TAtlasImpact.Found: Boolean;
+begin
+  Result := Symbol.Name <> '';
 end;
 
 { TAtlasProblem }

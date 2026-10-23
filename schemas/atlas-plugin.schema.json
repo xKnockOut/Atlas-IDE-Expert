@@ -194,6 +194,10 @@
       "caption": "Verwendungen",
       "captionEn": "Usages"
     },
+    "commands.impact": {
+      "caption": "Auswirkungen",
+      "captionEn": "Impact"
+    },
     "commands.outline": {
       "caption": "Gliederung",
       "captionEn": "Outline"
@@ -3027,6 +3031,33 @@
       "x-parent": "references.inferred",
       "x-node": "commands.references",
       "x-issue": "#1119"
+    },
+    "Impact": {
+      "description": "Befehl „Auswirkungen anzeigen“ im Kontextmenü des Editors, im Menü Atlas und in der Befehlspalette: Was ist betroffen, wenn sich das Symbol am Cursor ändert? Aufrufer und Verweise nach Ebenen, Overrides, Interface-Umsetzungen, Formularbindungen und die betroffenen Tests. Aus = Befehl und Menüeinträge fehlen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "navigation.impact",
+      "x-area": "editor",
+      "x-page": "Befehle",
+      "x-parent": "",
+      "x-node": "commands.impact",
+      "x-quickToggle": true,
+      "x-caption": "Auswirkungen anzeigen",
+      "x-captionEn": "Show impact",
+      "x-issue": "#1120"
+    },
+    "ImpactDepth": {
+      "description": "Vorgabe der Tiefe der Auswirkungsanalyse (1 bis 5) im Ergebnisfenster und für das MCP-Werkzeug get_impact; im Fenster lässt sie sich je Analyse umschalten.",
+      "type": "integer",
+      "default": 2,
+      "minimum": 1,
+      "maximum": 5,
+      "x-key": "navigation.impactDepth",
+      "x-area": "editor",
+      "x-page": "Befehle",
+      "x-parent": "navigation.impact",
+      "x-node": "commands.impact",
+      "x-issue": "#1120"
     },
     "PeekHeightLines": {
       "description": "Höhe des Fensters von „Definition einblenden“ in Editorzeilen (5 bis 60).",
