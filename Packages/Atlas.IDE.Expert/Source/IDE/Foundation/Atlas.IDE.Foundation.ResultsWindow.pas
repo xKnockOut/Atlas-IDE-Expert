@@ -5,7 +5,7 @@
 // enthält. Es entsteht beim ersten Gebrauch, folgt dem IDE-Thema und lässt
 // sich wie die Fenster der IDE andocken. Beim Entladen des Packages gibt
 // Release es frei. Das Fenster trägt das Atlas-Symbol (#751) zum IDE-Thema;
-// UpdateIcon schaltet nach einem Themenwechsel um.
+// ApplyTheme färbt nach einem Themenwechsel um, samt Symbol.
 
 interface
 
@@ -47,6 +47,8 @@ type
     class function ExistingFrame: TAtlasResultsFrame; static;
     /// <summary>Fenstersymbol (#751) zum aktiven IDE-Thema.</summary>
     class procedure UpdateIcon; static;
+    /// <summary>Nach einem Themenwechsel: Inhalt im Thema der IDE, Symbol dazu.</summary>
+    class procedure ApplyTheme; static;
     /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt (#879).</summary>
     class procedure Prepare; static;
     /// <summary>Beim Entladen: Fenster schließen und freigeben.</summary>
@@ -289,6 +291,16 @@ begin
   finally
     Icon.Free;
   end;
+end;
+
+class procedure TAtlasIdeResultsWindow.ApplyTheme;
+var
+  Frame: TAtlasResultsFrame;
+begin
+  Frame := ExistingFrame;
+  if Frame <> nil then
+    TAtlasIdeDockWindow.ApplyIdeTheme(Frame);
+  UpdateIcon;
 end;
 
 class procedure TAtlasIdeResultsWindow.Prepare;
