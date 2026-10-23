@@ -701,7 +701,9 @@ type
     // Element „Schnelle Lesezeichen“ im Menü „Ausblenden“ (#1104).
     ElementQuickBookmarks, ElementQuickBookmarksPlural,
     // Seite Prüfregeln: Weg zum Dialog der globalen Einstellungen (#909).
-    RulesGlobalButton);
+    RulesGlobalButton,
+    // Prüfung vor dem Kompilieren (#529).
+    SettingsBuildGateTimeout, GateFindings, GateBlocked, GateOverridden, GateTimedOut, GateBlockReason);
 
   TAtlasStrings = class
   private class var
@@ -1574,7 +1576,8 @@ const
      'Höchstens Einträge in der Liste:', 'Verhalten je Quelle:',
      'Release-Build',
      'Release-Build-Wächter: vor make und build in einer Release-Konfiguration die Projektoptionen prüfen (build.releaseGuard)',
-     'Bei Befunden (build.gate)', 'nur melden (off)', 'warnen (warn)', 'Build abbrechen (block)',
+     'Prüfung vor dem Compile und Release-Wächter (build.gate)',
+     'keine Prüfung vor dem Compile, Release-Wächter meldet nur (off)', 'melden (warn)', 'Build abbrechen (block)',
      'Release-Konfigurationen, durch Komma getrennt; „Release“ gilt immer (build.releaseConfigs)',
      'Prüfungen (build.releaseChecks)', 'Symbol DEBUG definiert', 'Debug-Informationen', 'Stack-Frames',
      'Assertions', 'Bereichsprüfung', 'Überlaufprüfung',
@@ -2289,7 +2292,13 @@ const
      'Schnelle Lesezeichen sind ausgeschaltet (bookmarks.quick).',
      'Nr.',
      'nur diese Datei', 'Marker eines schnellen Lesezeichens', 'Marker der schnellen Lesezeichen',
-     'Globale Prüfregeln bearbeiten …'),
+     'Globale Prüfregeln bearbeiten …',
+     'Zeitlimit der Prüfung vor dem Compile in ms (build.gateTimeoutMs)',
+     'Prüfung vor dem Compile: %d Fehler in %s (%d geänderte Unit(s) geprüft):',
+     'Prüfung vor dem Compile: Compile abgebrochen (build.gate = block). Ein zweiter Compile ohne Änderung binnen 10 s läuft trotzdem.',
+     'Prüfung vor dem Compile: bewusst übergangen, der Compile läuft trotz der Fehler.',
+     'Prüfung vor dem Compile: Zeitlimit von %d ms (build.gateTimeoutMs) überschritten, der Compile läuft ungeprüft. Dieser Hinweis erscheint einmal je Sitzung.',
+     '%d Fehler der Prüfung vor dem Compile'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3094,7 +3103,8 @@ const
      'Maximum entries in the list:', 'Behaviour per source:',
      'Release build',
      'Release build guard: check the project options before make and build in a release configuration (build.releaseGuard)',
-     'On findings (build.gate)', 'report only (off)', 'warn (warn)', 'cancel the build (block)',
+     'Check before compiling and release guard (build.gate)',
+     'no check before compiling, release guard only reports (off)', 'report (warn)', 'cancel the build (block)',
      'Release configurations, separated by commas; “Release” always counts (build.releaseConfigs)',
      'Checks (build.releaseChecks)', 'Symbol DEBUG defined', 'Debug information', 'Stack frames', 'Assertions',
      'Range checking', 'Overflow checking', 'ReportMemoryLeaksOnShutdown := True without {$IFDEF DEBUG}',
@@ -3781,7 +3791,13 @@ const
      'Quick bookmarks are switched off (bookmarks.quick).',
      'No.',
      'this file only', 'quick bookmark marker', 'quick bookmark markers',
-     'Edit global rules …'));
+     'Edit global rules …',
+     'Time limit of the check before compiling in ms (build.gateTimeoutMs)',
+     'Check before compiling: %d error(s) in %s (%d changed unit(s) checked):',
+     'Check before compiling: compile cancelled (build.gate = block). A second compile without changes within 10 s runs anyway.',
+     'Check before compiling: deliberately overridden, the compile runs despite the errors.',
+     'Check before compiling: time limit of %d ms (build.gateTimeoutMs) exceeded, the compile runs unchecked. This notice appears once per session.',
+     '%d error(s) of the check before compiling'));
 
 { TAtlasStrings }
 

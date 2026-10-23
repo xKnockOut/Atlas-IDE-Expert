@@ -147,6 +147,7 @@ Alt+Enter opens the code actions; everything is also in the *Atlas* menu and the
 
 ### Build, test, debug
 
+- **Check before compiling:** the units changed since the last successful compile are checked for syntax errors and rule errors before each build; report or cancel the build (`build.gate`)
 - **Release build guard:** checks the project options before a release build (DEBUG symbol, debug information, …)
 - **DUnitX tests** run from the editor, and a single test starts in the debugger (code lens on `[Test]` and `[TestFixture]`)
 - **Launch profiles** for parameters, working folder, environment and host application

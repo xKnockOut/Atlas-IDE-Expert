@@ -61,6 +61,7 @@ uses
   Atlas.IDE.Build.Runner,
   Atlas.IDE.Build.Inbox,
   Atlas.IDE.Build.ReleaseGuard,
+  Atlas.IDE.Build.Gate,
   Atlas.IDE.Build.OpenBuild,
   Atlas.IDE.Editor.UnitRename,
   Atlas.IDE.Settings.Project,
@@ -212,6 +213,7 @@ uses
   Atlas.Core.Diagnostics.Teardown,
   Atlas.Core.Build.Inbox,
   Atlas.Core.Build.ReleaseGuard,
+  Atlas.Core.Build.Gate,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.InlineHints,
   Atlas.Core.Projects.Summary,
@@ -1161,6 +1163,15 @@ begin
     Settings.ReleaseChecks);
 end;
 
+/// <summary>Einstellungen der Prüfung vor dem Kompilieren (#529) aus den aktuellen Plugin-Einstellungen.</summary>
+function GateSettings: TAtlasGateSettings;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  Settings := TAtlasIdeSettings.Current;
+  Result := TAtlasGateSettings.Create(Settings.BuildGate, Settings.BuildGateTimeoutMs);
+end;
+
 function ReleaseGuardVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.ReleaseGuard;
@@ -1893,6 +1904,18 @@ begin
     function: TAtlasReleaseSettings
     begin
       Result := ReleaseSettings();
+    end));
+  // Prüfung vor dem Kompilieren (#529): geänderte Units über den laufenden Server, nur Builds des Benutzers.
+  Events.Add(TAtlasIdeBuildGate.CreateParticipant(
+    function: TAtlasGateSettings
+    begin
+      Result := GateSettings();
+    end,
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
     end));
   // Compilermeldungen aus dem Reiter „Build“ an den Server (#528).
   Events.Add(TAtlasMessageViewReader.Create(

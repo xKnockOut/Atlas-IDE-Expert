@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4138] of string = (
+  Lines: array[0..4148] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -2458,8 +2458,18 @@ const
     '      "default": "off",',
     '      "x-key": "build.gate",',
     '      "x-area": "build",',
-    '      "x-page": "Release-Build",',
-    '      "x-parent": "build.releaseGuard"',
+    '      "x-page": "Compiler",',
+    '      "x-issue": "#529, #533"',
+    '    },',
+    '    "BuildGateTimeoutMs": {',
+    '      "type": "integer",',
+    '      "default": 300,',
+    '      "minimum": 50,',
+    '      "maximum": 10000,',
+    '      "x-key": "build.gateTimeoutMs",',
+    '      "x-area": "build",',
+    '      "x-page": "Compiler",',
+    '      "x-issue": "#529"',
     '    },',
     '    "ReleaseConfigs": {',
     '      "type": "string",',

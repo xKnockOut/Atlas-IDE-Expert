@@ -393,6 +393,8 @@ contains
   Atlas.IDE.Build.Inbox in 'Source\IDE\Build\Atlas.IDE.Build.Inbox.pas',
   Atlas.Core.Build.ReleaseGuard in 'Source\Core\Build\Atlas.Core.Build.ReleaseGuard.pas',
   Atlas.IDE.Build.ReleaseGuard in 'Source\IDE\Build\Atlas.IDE.Build.ReleaseGuard.pas',
+  Atlas.Core.Build.Gate in 'Source\Core\Build\Atlas.Core.Build.Gate.pas',
+  Atlas.IDE.Build.Gate in 'Source\IDE\Build\Atlas.IDE.Build.Gate.pas',
   Atlas.Core.Build.OpenBuild in 'Source\Core\Build\Atlas.Core.Build.OpenBuild.pas',
   Atlas.IDE.Build.OpenBuild in 'Source\IDE\Build\Atlas.IDE.Build.OpenBuild.pas',
   Atlas.Core.Build.IdleGate in 'Source\Core\Build\Atlas.Core.Build.IdleGate.pas',
