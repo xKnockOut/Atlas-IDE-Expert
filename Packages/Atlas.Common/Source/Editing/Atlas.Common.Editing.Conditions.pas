@@ -281,13 +281,6 @@ begin
   Result := True;
 end;
 
-function Encloses(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
-begin
-  Result := ((ANode.StartPos.Line < APosition.Line) or ((ANode.StartPos.Line = APosition.Line) and
-    (ANode.StartPos.Character <= APosition.Character))) and ((APosition.Line < ANode.EndPos.Line) or
-    ((APosition.Line = ANode.EndPos.Line) and (APosition.Character <= ANode.EndPos.Character)));
-end;
-
 /// <summary>not, dessen Operand sich ohne not schreiben lässt: not X, ein Vergleich oder True/False.</summary>
 function IsDoubleNegation(ANode: TSyntaxNode): Boolean;
 var
@@ -322,7 +315,7 @@ begin
   Found := ATree.Root.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
-      if not Encloses(ANode, Position) then
+      if not TStatementText.Encloses(ANode, Position) then
         Exit(TSyntaxSearchStep.Skip);
       Result := TSyntaxSearchStep.Descend;
       if IsDoubleNegation(ANode) then

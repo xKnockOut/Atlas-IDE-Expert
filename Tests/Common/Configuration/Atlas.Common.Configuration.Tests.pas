@@ -641,6 +641,9 @@ begin
   // #656: Bedingungen umformen.
   Assert.IsTrue(Parse('{}', Issues).Refactoring.Conditions);
   Assert.IsFalse(Parse('{"refactoring": {"conditions": false}}', Issues).Refactoring.Conditions);
+  // #684: if-Anweisung und Bedingungsausdruck.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.ConditionalExpression);
+  Assert.IsFalse(Parse('{"refactoring": {"conditionalExpression": false}}', Issues).Refactoring.ConditionalExpression);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"refactoring": {"propertyFromAccessorsPrefixes": "Get", "propertyFromAccessorsReplaceCalls": "ja", ' +
     '"propertyFromAccessorsSection": "private", "propertyFromAccessorsHideAccessors": "public"}}', Issues);

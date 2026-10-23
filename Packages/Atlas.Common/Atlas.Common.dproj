@@ -298,6 +298,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.StatementText.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.IfCase.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Conditions.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ConditionalExpression.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RoutineLocals.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MoveClass.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UnitRename.pas"/>

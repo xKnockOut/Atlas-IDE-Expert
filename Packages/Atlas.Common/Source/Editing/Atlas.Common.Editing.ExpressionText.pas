@@ -76,7 +76,8 @@ type
     class function IsBooleanLiteral(ANode: TSyntaxNode): Boolean; static;
     /// <summary>Mindestvorrang, den ein Ersatz für ANode an seiner Stelle braucht, damit er ohne Klammern
     /// dasselbe bedeutet (siehe TExpressionPart.AtLeast): Operand eines Operators, Empfänger eines Aufrufs,
-    /// Indexzugriffs oder Mitglieds; sonst (Bedingung, Argument, Klammer) PrecedenceIfExpr.</summary>
+    /// Indexzugriffs oder Mitglieds, Bedingung oder Wert vor else eines Bedingungsausdrucks; sonst (Bedingung einer
+    /// Anweisung, Argument, Klammer, Wert nach else) PrecedenceIfExpr.</summary>
     class function ContextPrecedence(ANode: TSyntaxNode): Integer; static;
   end;
 
@@ -232,6 +233,11 @@ begin
     TSyntaxKind.AddressOf, TSyntaxKind.Call, TSyntaxKind.IndexAccess, TSyntaxKind.MemberAccess:
       if Parent[0] = ANode then
         Result := PrecedenceOperand;
+    // Bedingung und Wert vor else eines Bedingungsausdrucks: ein innerer Bedingungsausdruck in Klammern
+    // (sonst gehörte das else zum inneren).
+    TSyntaxKind.IfExpr:
+      if (Parent.ChildCount = 3) and (Parent[2] <> ANode) then
+        Result := PrecedenceIfExpr + 1;
   end;
 end;
 

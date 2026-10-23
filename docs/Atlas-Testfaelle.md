@@ -2604,6 +2604,19 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | BU7 | `if A or B then if C then X;`, auf dem äußeren oder inneren `if`, „Verschachtelte if zusammenfassen“ | `if (A or B) and C then X;`; mit else am inneren if oder einer zweiten Anweisung fehlt die Aktion |
 | BU8 | Cursor auf `not` in `if not not Ready then`, `X and not (A <> B)`, `not True`; dann `refactoring.conditions` aus | „Doppelte Verneinung entfernen“ ergibt `Ready`, `X and (A = B)`, `False`; ausgeschaltet fehlen alle vier Aktionen |
 
+## if-Anweisung und Bedingungsausdruck (#684)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BA1 | Projekt für Delphi 13: `if Fertig then Caption := 'Bereit' else Caption := 'Läuft';`, Cursor auf `if`, Alt+Enter, „In bedingten Ausdruck umwandeln“ | `Caption := if Fertig then 'Bereit' else 'Läuft';`, ein Rückgängig-Schritt |
+| BA2 | Dasselbe mit `Exit(1)`/`Exit(2)`, mit `Log(I, 'a')`/`Log(I, 'b')` und mit `if A then X := 1 else if B then X := 2 else X := 3;` | `Exit(if … then 1 else 2);`, `Log(I, if … then 'a' else 'b');`, `X := if A then 1 else if B then 2 else 3;`; ab drei Bedingungen fehlt die Aktion |
+| BA3 | Zweige mit `'a'` und `1`, mit zwei verschiedenen Klassen, mit `Log(F(1))`/`Log(G(2))`, ohne else, mit Kommentar im Zweig | Keine Aktion |
+| BA4 | Cursor in `X := (if A then I + 1 else 2) * 3;`, „In if-Anweisung umwandeln“ | `if A then X := (I + 1) * 3 else X := 2 * 3;`, mehrzeilig eingerückt wie die Umgebung |
+| BA5 | Dasselbe für `X := if A then (if B then 1 else 2) else 3;` und `var Y: Integer := if A then 1 else 2;` | Inneres if in begin … end vor dem else; `var Y: Integer;` und danach die if-Anweisung; ohne Typ (`var Y := …`) keine Aktion |
+| BA6 | `X := IfThen(A, 1, 2) + 1;` mit `System.Math` in uses, Cursor auf `IfThen`, „IfThen durch bedingten Ausdruck ersetzen“ | `X := (if A then 1 else 2) + 1;`; ein eigenes `IfThen` der Unit bekommt keine Aktion |
+| BA7 | Projekt für Delphi 12 (`delphiVersion` 23.0) mit zwei Bedingungsausdrücken | Je ein Fehler `conditional-expression-version` (wie E2029), Korrektur „In if-Anweisung umwandeln“, „Alle korrigieren“ wandelt beide um; „In bedingten Ausdruck umwandeln“ und IfThen-Ersetzung fehlen, keine zweite Warnung zum Sprachmerkmal |
+| BA8 | Bedingungsausdruck in `{$IF CompilerVersion >= 37} … {$ENDIF}`, dann `refactoring.conditionalExpression` aus | Kein Fehler im versionsabhängigen Zweig; ausgeschaltet fehlen alle drei Aktionen |
+
 ## Methode aus Aufruf anlegen (#472)
 
 | Nr. | Schritte | Erwartet |

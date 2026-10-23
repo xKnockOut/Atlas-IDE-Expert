@@ -148,6 +148,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.StatementText.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.IfCase.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Conditions.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.ConditionalExpression.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.References.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Rename.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Tests.pas"/>
