@@ -1,9 +1,10 @@
 ﻿unit Atlas.IDE.Welcome.Window;
 
-// Andockbares Fenster „Atlas-Start“ (#753, Menü Ansicht › Atlas-Start): zeigt
-// dieselben Atlas-Bereiche wie die Willkommensseite untereinander, wenn die
-// IDE keine Schnittstelle für die Willkommensseite anbietet oder
-// welcomePage.host = dockWindow ist. Aufbau wie das Ergebnisfenster (#400):
+// Andockbares Fenster „Atlas-Start“ (#753, Menü Ansicht › Atlas-Start): die
+// Atlas-Willkommensseite mit allen Atlas-Bereichen. Seit #1114 der einzige
+// Ort dafür; auf der Willkommensseite der IDE meldet Atlas nichts mehr an.
+// Es öffnet auf Wunsch (Menü, Palette, Desktop der IDE) bzw. mit
+// welcomePage.openOnStart beim Start. Aufbau wie das Ergebnisfenster (#400):
 // INTAServices.CreateDockableForm mit TAtlasWelcomeBoardFrame, IDE-Thema,
 // Atlas-Symbol (#751) im Fenstertitel. OnFrame meldet einen neuen Frame,
 // damit die Steuerung ihn füllt.

@@ -1,11 +1,12 @@
 ﻿unit Atlas.Core.Welcome.Backup;
 
 // Sicherung des Willkommensseiten-Layouts der IDE (#753), ohne Windows:
-// Vor „Atlas-Layout anwenden“ wird der Registry-Schlüssel der IDE
-// (HKCU\Software\Embarcadero\BDS\<Version>\WelcomePage) samt Unterschlüsseln
-// und allen Werten mit Typ als JSON gesichert; „Atlas-Layout zurücksetzen“
-// schreibt ihn exakt so zurück (auch: Schlüssel fehlte vorher → wieder
-// löschen). Den Zugriff auf die Registry liefert die IDE-Schicht über
+// Der Registry-Schlüssel der IDE (HKCU\Software\Embarcadero\BDS\<Version>\
+// WelcomePage) samt Unterschlüsseln und allen Werten mit Typ als JSON. Frühere
+// Fassungen sicherten ihn vor „Atlas-Layout anwenden“; seit #1114 schreibt
+// TAtlasWelcomeRetire eine solche Sicherung beim Start exakt zurück (auch:
+// Schlüssel fehlte vorher → wieder löschen), und die Marke für den
+// gewünschten Stand nutzt dasselbe Format. Den Zugriff auf die Registry liefert die IDE-Schicht über
 // IAtlasRegistryAccess; TAtlasMemoryRegistry dient Tests und Vergleichen.
 
 interface

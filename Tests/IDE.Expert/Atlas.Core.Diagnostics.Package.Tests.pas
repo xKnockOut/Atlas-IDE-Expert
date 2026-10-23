@@ -128,7 +128,7 @@ begin
     '  "ServerPath": "C:\\Users\\' + User + '\\Atlas\\AtlasServer.exe",' + sLineBreak +
     '  "WelcomePageHelpReportFolder": "' + 'C:\\Projekte\\Kunde\\Ablage' + '",' + sLineBreak +
     '  "WelcomePageHelpReportUrl": "https://example.org/' + User + '/issues/new",' + sLineBreak +
-    '  "WelcomePageHost": "dockWindow",' + sLineBreak +
+    '  "WelcomePageWhatsNew": "afterUpdate",' + sLineBreak +
     '  "VisibleRows": 10' + sLineBreak + '}';
   Result.LastDataFile := TPath.Combine(AFolder, 'atlas-diagnosemodus.txt');
   Result.Roots := [Root];
@@ -246,7 +246,7 @@ begin
   Text := TAtlasDiagnosticPackage.SettingsWithoutPaths(PackageInput(FFolder).SettingsJson);
   Assert.Contains(Text, '"ServerPath": "<pfad>"');
   Assert.Contains(Text, '"WelcomePageHelpReportFolder": "<pfad>"');
-  Assert.Contains(Text, '"WelcomePageHost": "dockWindow"', 'kein Pfad');
+  Assert.Contains(Text, '"WelcomePageWhatsNew": "afterUpdate"', 'kein Pfad');
   Assert.Contains(Text, '"VisibleRows": 10', 'Zahlen bleiben');
   Assert.Contains(Text, '"WelcomePageHelpReportUrl": "https://example.org/', 'Webadresse ist kein Pfad');
   Assert.IsFalse(Text.Contains('Users'), 'Benutzerordner');

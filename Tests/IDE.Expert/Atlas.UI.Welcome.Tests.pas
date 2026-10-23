@@ -1383,8 +1383,8 @@ begin
       Hits := [TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Files, 'Atlas.IDE.Expert.WelcomePage.pas', 'Atlas',
         'C:\P\Atlas.IDE.Expert.WelcomePage.pas'),
         TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Files, 'Welcome.pas', 'Atlas', 'C:\P\Welcome.pas'),
-        TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Commands, 'Atlas-Layout anwenden', '', 'Atlas.WelcomeApply')];
-      Hits[2].Alias := 'WelcomeApply';
+        TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Commands, 'Atlas-Start', '', 'Atlas.WelcomeStart')];
+      Hits[2].Alias := 'WelcomeStart';
       Result := TAtlasWelcomeSearch.Search(APattern, Hits, 'Hinweis');
     end;
 end;
@@ -1475,7 +1475,7 @@ begin
     Assert.AreEqual('', Box.Edit.Text);
     Assert.AreEqual(0, Integer(Length(Box.Hits)));
     CheckSynchronize;
-    Assert.AreEqual('Atlas.WelcomeApply', Opened);
+    Assert.AreEqual('Atlas.WelcomeStart', Opened);
     // Esc bzw. Clear ohne Treffer öffnet nichts.
     Opened := '';
     Box.OpenSelected;
