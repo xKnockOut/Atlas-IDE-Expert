@@ -3840,6 +3840,24 @@
       "good": "I := 0;\nwhile I < List.Count do\nbegin\n  Check(List[I]);\n  Inc(I);\nend;"
     },
     {
+      "id": "loop-runs-at-most-once",
+      "name": "Loop runs at most once",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "Every path through the body of a for, for-in, while or repeat loop ends with Exit, Break, raise, Halt, Abort, RunError, ExitProcess or a call of a routine of the file that raises, so the loop runs at most once. Usually an if is missing before the jump, or Continue was meant. A path counts as a jump for if with else and both branches, case with else and all branches, try … finally with the try or the finally part and try … except with the try part and every handler. Silent with Continue of this loop, goto or labels and conditional directives in the body; Break of inner loops does not count. Complements infinite-loop and loop-condition-unchanged. No quick fix, the intent is unclear; if the jump directly follows an if without else, the message asks whether it belongs into the if branch. High confidence.",
+      "bad": "for mCustomer in FCustomers do\nbegin\n  if mCustomer.Id = AId then\n    Result := mCustomer;\n  Exit;\nend;",
+      "good": "for mCustomer in FCustomers do\n  if mCustomer.Id = AId then\n    Exit(mCustomer);",
+      "options": [
+        {
+          "name": "allowFirstElement",
+          "type": "boolean",
+          "default": false,
+          "description": "Do not report a for-in loop of simple statements that ends with Exit or Break (fetching the first element)."
+        }
+      ]
+    },
+    {
       "id": "unconditional-recursion",
       "name": "Recursion without a stop",
       "category": "bug",

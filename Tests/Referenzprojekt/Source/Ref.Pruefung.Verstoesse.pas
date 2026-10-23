@@ -186,4 +186,23 @@ begin
   AStrom.WriteBuffer(PChar(AText)^, Length(AText) * SizeOf(Char)); // KEIN-TREFFER: first-char-address
 end;
 
+procedure Suchen(const AWerte: TArray<Integer>; AWert: Integer; out AGefunden: Boolean);
+var
+  mWert: Integer;
+begin
+  AGefunden := False;
+  for mWert in AWerte do // ERWARTET: loop-runs-at-most-once
+  begin
+    if mWert = AWert then
+      AGefunden := True;
+    Exit;
+  end;
+  for mWert in AWerte do // KEIN-TREFFER: loop-runs-at-most-once
+    if mWert = AWert then
+    begin
+      AGefunden := True;
+      Exit;
+    end;
+end;
+
 end.

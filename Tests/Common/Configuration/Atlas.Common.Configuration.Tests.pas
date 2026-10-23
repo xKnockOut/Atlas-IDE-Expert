@@ -1016,6 +1016,12 @@ begin
   Parse('{"rules": {"redundant-cast": {"checkFree": "nein"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.Contains(Issues[0].Message, '"checkFree"');
+  // allowFirstElement von loop-runs-at-most-once (#1131).
+  Parse('{"rules": {"loop-runs-at-most-once": {"allowFirstElement": true}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"loop-runs-at-most-once": {"allowFirstElement": "ja"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"allowFirstElement"');
 end;
 
 procedure TConfigurationParserTests.ChecksForbiddenSymbolsOption;

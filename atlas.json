@@ -13,6 +13,9 @@
     "metric-unit-length": "off",
     "metric-uses-count": "off",
     "metric-inheritance-depth": "off",
+    "loop-runs-at-most-once": {
+      "allowFirstElement": true
+    },
     "architecture-role-import": {
       "severity": "warning",
       "prefixes": ["Atlas.Text", "Atlas.Common", "Atlas.Windows", "Atlas.Core", "Atlas.UI", "Atlas.IDE"],
