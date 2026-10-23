@@ -69,6 +69,7 @@ uses
   Atlas.Text.DUnitX,
   Atlas.Text.TestResults,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Prompt,
@@ -635,6 +636,29 @@ begin
         raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
       Result := TMcpCodeTools.Diagnostics(BuiltinRules, AWorkspace.Configuration.Settings, ARoot, Files,
         ReadSourceText, CheckSource);
+    end);
+  AServer.AddTool('hook_check',
+    'Für Hooks von Claude Code (PostToolUse nach Edit/Write, siehe Plugin atlas): Befunde ab severity ' +
+    '(Vorgabe warning) der gerade bearbeiteten Datei als Hook-Ausgabe mit additionalContext. Leer bei Dateien, ' +
+    'die kein Pascal-Quelltext sind, außerhalb des Arbeitsbereichs liegen oder keine Befunde haben. Abschalten ' +
+    'über mcp.disabledTools.',
+    TMcpServer.StringSchema(['file', 'severity'],
+      ['Pfad der bearbeiteten Datei (tool_input.file_path)', 'error, warning (Vorgabe), information oder hint'], 1),
+    function(const AArguments: TJSONObject): string
+    var
+      FileName: string;
+      Severity: TRuleSeverity;
+    begin
+      Severity := TMcpCodeTools.ParseHookSeverity(TMcpServer.OptionalString(AArguments, 'severity'));
+      try
+        FileName := AGuard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+      except
+        // Dateien außerhalb des Projekts gehen Atlas nichts an; eine Fehlermeldung je Bearbeitung wäre Rauschen.
+        on EMcpToolError do
+          Exit('');
+      end;
+      Result := TMcpCodeTools.HookDiagnostics(BuiltinRules, AWorkspace.Configuration.Settings, ARoot, FileName,
+        ReadSourceText, CheckSource, Severity);
     end);
   AServer.AddTool('get_metrics',
     'Code-Metriken (#66) je Methode: Länge in Codezeilen, Verschachtelungstiefe, zyklomatische und kognitive ' +
