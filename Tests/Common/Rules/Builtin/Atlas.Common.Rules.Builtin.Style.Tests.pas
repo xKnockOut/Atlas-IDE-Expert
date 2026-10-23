@@ -79,6 +79,9 @@ type
     procedure MissingBeginEndIssueExample;
     [Test]
     procedure MissingBeginEndFixesIssueExample;
+    /// <summary>format.elsePlacement sameLine: Die Korrektur setzt else hinter das end.</summary>
+    [Test]
+    procedure MissingBeginEndFixFollowsElsePlacement;
     [Test]
     procedure MissingBeginEndSameLineAndNestedFixes;
     [Test]
@@ -773,6 +776,35 @@ begin
   Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  if A then'#10 +
     '  begin'#10'    B;'#10'  end;'#10'  while C do'#10'  begin'#10'    D;'#10'  end;'#10'end;'#10'procedure Q;'#10 +
     'begin'#10'  with E do'#10'  begin'#10'    F;'#10'  end;'#10'end;'#10'end.', Expected);
+  AssertParses(Expected);
+end;
+
+procedure TStyleRulesTests.MissingBeginEndFixFollowsElsePlacement;
+const
+  SameLine = '{ "format": { "elsePlacement": "sameLine" } }';
+var
+  Source, Expected: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := InRoutine('', '  if Kunde.Gesperrt then'#10'    Protokoll.Warnung(''Gesperrt'')'#10'  else'#10 +
+    '    Speichern(Kunde);');
+  Expected := InRoutine('', '  if Kunde.Gesperrt then'#10'  begin'#10'    Protokoll.Warnung(''Gesperrt'');'#10 +
+    '  end else'#10'  begin'#10'    Speichern(Kunde);'#10'  end;');
+  Findings := TRuleAssert.Findings(TMissingBeginEndRule.Create, Source, SameLine);
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(Expected, Applied(Source, FixTitled(Findings[0], 'ganzen Methode')));
+  AssertParses(Expected);
+  // Alles in einer Zeile: else bleibt hinter dem end.
+  Source := InRoutine('', '  if A then B else C;');
+  Findings := TRuleAssert.Findings(TMissingBeginEndRule.Create, Source, SameLine);
+  Expected := Applied(Source, FixTitled(Findings[0], 'ganzen Methode'));
+  Assert.Contains(Expected, '  end else'#10);
+  AssertParses(Expected);
+  // Ein Kommentar zwischen Rumpf und else bleibt stehen, else dann in eigener Zeile.
+  Source := InRoutine('', '  if A then'#10'    B // Grund'#10'  else'#10'    C;');
+  Findings := TRuleAssert.Findings(TMissingBeginEndRule.Create, Source, SameLine);
+  Expected := Applied(Source, FixTitled(Findings[0], 'ganzen Methode'));
+  Assert.Contains(Expected, '// Grund');
   AssertParses(Expected);
 end;
 

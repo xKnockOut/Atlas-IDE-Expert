@@ -3559,7 +3559,8 @@ begin
     '      "description": "The body of if … then, else, for, while or with is a single statement without begin … end. With the rule, conditions and loops always have a block, so a second statement added la' +
     'ter does not end up outside by accident. else if stays allowed (the inner if needs no block of its own); repeat … until, case … end, try … end and asm … end are blocks already. An empty statement (if ' +
     'X then ;) is reported by empty-statement. Bodies with {$IFDEF} are not reported. While the rule is on, redundant-begin-end reports nothing. Quick fixes: put begin … end around the statement, for the w' +
-    'hole method or for the whole file, indented by the format settings; a ; before else moves into the block (no E2153).",' + #10 +
+    'hole method or for the whole file, indented by the format settings; a ; before else moves into the block (no E2153); with format.elsePlacement \"sameLine\", else follows the new end on the same line (' +
+    'end else).",' + #10 +
     '      "bad": "if Kunde.Gesperrt then\n  Protokoll.Warnung(''Gesperrt'')\nelse\n  Speichern(Kunde);",' + #10 +
     '      "good": "if Kunde.Gesperrt then\nbegin\n  Protokoll.Warnung(''Gesperrt'');\nend\nelse\nbegin\n  Speichern(Kunde);\nend;",' + #10 +
     '      "options": [' + #10 +
@@ -6890,7 +6891,8 @@ begin
     '      "description": "Der Rumpf von if … then, else, for, while oder with ist eine einzelne Anweisung ohne begin … end. Mit der Regel haben Bedingungen und Schleifen immer einen Block; eine später erg' +
     'änzte zweite Anweisung landet so nicht versehentlich außerhalb. else if bleibt erlaubt (das innere if braucht keinen eigenen Block); repeat … until, case … end, try … end und asm … end sind schon Blöc' +
     'ke. Eine leere Anweisung (if X then ;) meldet empty-statement. Rümpfe mit {$IFDEF} meldet die Regel nicht. Solange die Regel an ist, meldet redundant-begin-end nichts. Schnellkorrekturen: begin … end ' +
-    'um die Anweisung setzen, für die ganze Methode oder für die ganze Datei, eingerückt nach den Formatierungseinstellungen; ein ; vor else wandert in den Block (kein E2153).",' + #10 +
+    'um die Anweisung setzen, für die ganze Methode oder für die ganze Datei, eingerückt nach den Formatierungseinstellungen; ein ; vor else wandert in den Block (kein E2153); mit format.elsePlacement \"sa' +
+    'meLine\" steht else hinter dem neuen end (end else).",' + #10 +
     '      "options": [' + #10 +
     '        {' + #10 +
     '          "name": "statements",' + #10 +

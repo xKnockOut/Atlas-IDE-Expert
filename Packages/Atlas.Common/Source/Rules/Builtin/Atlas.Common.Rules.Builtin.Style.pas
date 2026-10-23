@@ -1682,6 +1682,8 @@ type
     FLines: TArray<string>;
     FLineBreak: string;
     FIndentUnit: string;
+    /// <summary>format.elsePlacement: SameLine setzt else hinter das neue end.</summary>
+    FElsePlacement: TBlockPlacement;
     FPaths: TArray<string>;
     FStatements: TArray<string>;
     FAllowSingleLineExit: Boolean;
@@ -1717,6 +1719,7 @@ begin
   if Style.IndentSize <= 0 then
     Style.IndentSize := 2;
   FIndentUnit := TFormatLayout.IndentUnit(Style);
+  FElsePlacement := Style.ElsePlacement;
   if Style.EndOfLine <> '' then
     FLineBreak := Style.EndOfLine;
   FPaths := TConditionalBranches.Paths(FTokens);
@@ -1974,11 +1977,21 @@ begin
     end;
     Range := TTextRange.Create(FTokens[FSites[Site].Last].EndPos, FTokens[FSites[Site].Last].EndPos);
     Next := NextCode(FTokens, FSites[Site].Last + 1);
-    if (Next <= High(FTokens)) and FTokens[Next].IsKeyword('else') and
-      (FTokens[Next].StartPos.Line = FTokens[FSites[Site].Last].EndPos.Line) then
+    if (Next <= High(FTokens)) and FTokens[Next].IsKeyword('else') then
     begin
-      Text := Text + FLineBreak + Indent(Outer, Chosen);
-      Range.EndPos := FTokens[Next].StartPos;
+      LeadEnd := FTokens[FSites[Site].Last].Offset + Length(FTokens[FSites[Site].Last].Text);
+      Gap := Copy(FText, LeadEnd + 1, FTokens[Next].Offset - LeadEnd);
+      // format.elsePlacement sameLine: end else. Nur ohne Kommentar dazwischen, der ginge sonst verloren.
+      if (FElsePlacement = TBlockPlacement.SameLine) and (Trim(Gap) = '') then
+      begin
+        Text := Text + ' ';
+        Range.EndPos := FTokens[Next].StartPos;
+      end
+      else if FTokens[Next].StartPos.Line = FTokens[FSites[Site].Last].EndPos.Line then
+      begin
+        Text := Text + FLineBreak + Indent(Outer, Chosen);
+        Range.EndPos := FTokens[Next].StartPos;
+      end;
     end;
     Result[Count] := TRuleEdit.Create(Range, Text);
     Inc(Count);
