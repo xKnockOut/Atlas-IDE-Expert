@@ -49,7 +49,8 @@ type
     class function IsInlineFor(const ATokens: TArray<TPascalToken>; AFor: TSyntaxNode): Boolean; static;
     /// <summary>Typ als Text, wenn das erste Kind ein Typ ist; sonst ''.</summary>
     class function TypeChildText(const AText: string; ANode: TSyntaxNode): string; static;
-    /// <summary>Lokale Namen der Routine: Parameter, var- und const-Abschnitt, Inline-Variablen, for var.</summary>
+    /// <summary>Lokale Namen der Routine (auch einer anonymen Methode): Parameter, var- und const-Abschnitt,
+    /// Inline-Variablen, for var; leer ohne Rumpf.</summary>
     class function Collect(const AText: string; ATree: TSyntaxTree; ARoutine: TSyntaxNode): TArray<TRoutineLocal>;
       static;
     /// <summary>Lokaler Name AName, der an AOffset gilt (innerster zuerst); -1 ohne.</summary>
@@ -126,14 +127,20 @@ var
   Name: string;
   List: TList<TRoutineLocal>;
 begin
+  Result := nil;
   Body := TRoutineBody.BodyOf(ARoutine);
+  if Body = nil then
+    Exit;
   List := TList<TRoutineLocal>.Create;
   Nodes := TList<TSyntaxNode>.Create;
   try
     Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
     Parameters := nil;
     if Header <> nil then
-      Parameters := Header.FindChild(TSyntaxKind.Parameters);
+      Parameters := Header.FindChild(TSyntaxKind.Parameters)
+    else if ARoutine.Kind = TSyntaxKind.AnonymousMethod then
+      // procedure(A: Integer) begin … end: Die Parameter hängen direkt an der anonymen Methode (#712).
+      Parameters := ARoutine.FindChild(TSyntaxKind.Parameters);
     if Parameters <> nil then
       for Index := 0 to Parameters.ChildCount - 1 do
         // "A, B: Integer" ist ein Knoten mit beiden Namen.

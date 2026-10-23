@@ -3282,6 +3282,63 @@ end;
 | AX16 | Server beenden, Cursor auf `Exit` | Keine Hervorhebung, kein Hängen des Editors; nach dem Neustart des Servers wieder da |
 | AX17 | Thema hell/dunkel wechseln | Farben und Marke in beiden Themen gut lesbar |
 
+## Neu zugewiesene Variablen unterstreichen (#712)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; Einstellungen auf Vorgabe (`highlight.reassigned` an, Arten „Lokale Variablen“ und „Wertparameter“, gepunktet, Themenfarbe); Unit `Zuweisung.pas` mit
+
+```pascal
+type
+  TZaehler = class
+    FStand: Integer;
+    procedure Rechne(A: Integer; var B: Integer; const C: Integer);
+  end;
+
+procedure Erhoehe(var X: Integer);
+begin
+  Inc(X);
+end;
+
+procedure TZaehler.Rechne(A: Integer; var B: Integer; const C: Integer);
+var
+  Summe, Fest, Zaehler, I: Integer;
+begin
+  Fest := 10;
+  Summe := 0;
+  for I := 1 to 3 do
+    Summe := Summe + I;
+  A := A + Fest;
+  B := A;
+  Erhoehe(Zaehler);
+  FStand := 1;
+  FStand := 2;
+  var Wert := C * 2;
+  B := B + Wert + Summe;
+end;
+```
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| UZ1 | Unit öffnen, 1 s warten | `Summe` und `A` sind an jeder Stelle gepunktet unterstrichen (Deklaration, Zuweisungen, Lesestellen); `Fest`, `Wert`, `C`, `I` und `B` nicht (**Abnahme**) |
+| UZ2 | Maus auf `Summe` | Hover zeigt unter der Linie „Neu zugewiesen: 2 Zuweisungen (Zeilen …)“ mit den Zeilen von `Summe := 0;` und `Summe := Summe + I;` (**Abnahme**) |
+| UZ3 | Maus auf `Fest` | Keine Zeile „Neu zugewiesen“ |
+| UZ4 | Maus auf `A` | „Einmal neu zugewiesen (Zeile …)“ mit der Zeile von `A := A + Fest;` |
+| UZ5 | `Zaehler`, dann eine zweite Zeile `Erhoehe(Zaehler);` | Zuerst nicht unterstrichen (eine Zuweisung über den var-Parameter); mit der zweiten Zeile unterstrichen, Hover „2 Zuweisungen“ |
+| UZ6 | Seite Atlas › Einstellungen › Hervorhebung › Neu zugewiesene Variablen: „Schleifenzähler“ an, OK | `I` ist jetzt unterstrichen, Hover „Einmal neu zugewiesen“ mit der Zeile der for-Schleife |
+| UZ7 | „Var-Parameter“ an | `B` unterstrichen (Zuweisungen `B := A;` und `B := B + …`) |
+| UZ8 | „Felder“ an | `FStand` unterstrichen, auch in der Klassendeklaration, nicht nur in `Rechne` |
+| UZ9 | „Wertparameter“ aus | `A` nicht mehr unterstrichen, Hover auf `A` ohne „Neu zugewiesen“ (**Abnahme**) |
+| UZ10 | Linienart „Durchgezogen“, dann „Welle“ | Linie sofort durchgezogen bzw. flache Welle; sie sitzt über der Wellenlinie eines Problems in derselben Zeile, beide lesbar |
+| UZ11 | Farbe `#FF00FF` | Linie magenta; `theme` wieder Akzentfarbe des Themas; unlesbarer Wert (`rot`) wird beim Speichern zu `theme` |
+| UZ12 | In `Summe := 0;` tippen (Zeile ändert sich) | Linie in dieser Zeile verschwindet sofort, nach der Tipp-Pause (0,7 s) erscheint der neue Stand; andere Zeilen bleiben ruhig (**Abnahme**) |
+| UZ13 | Neue Zeile `Fest := 11;` einfügen | Nach der Tipp-Pause ist `Fest` überall unterstrichen |
+| UZ14 | Rechtsklick bzw. Strg+. auf eine Linie › Element ausblenden „In dieser Datei“ | Keine Linien in dieser Datei, in anderen weiter |
+| UZ15 | Schnellschalter „Neu zugewiesene Variablen“ aus | Keine Linien, kein Hover-Zusatz; wieder an: Linien nach spätestens 1 s |
+| UZ16 | Server beenden | Keine Fehlermeldung, Linien bleiben bis zur nächsten Änderung; nach Neustart des Servers erscheinen sie wieder (nach höchstens 5 s) |
+| UZ17 | atlas.json `"refactoring": {"suggestConst": true}`, Cursor auf `Fest`, Strg+. | (UZ13 vorher rückgängig) „Als Konstante deklarieren (const Fest)“; Anwenden: `Fest` verschwindet aus dem var-Abschnitt, `Fest := 10;` wird `const Fest: Integer = 10;` |
+| UZ18 | Wie UZ17 auf `var Wert := C * 2;` | Wird `const Wert = C * 2;`; mit `minDelphiVersion` unter 10.3 kein Angebot |
+| UZ19 | Thema hell/dunkel wechseln | Linie in beiden Themen sichtbar, aber zurückhaltend |
+| UZ20 | Großer Unit (5000 Zeilen) öffnen und tippen | Editor bleibt flüssig; die Anfrage läuft im Hintergrund |
+
 ## Forward-Deklaration ergänzen (#685)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; neue Unit `Tree.pas`.

@@ -167,6 +167,7 @@
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.GutterColumn.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.SelectionMatches.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ExitPoints.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Reassigned.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.BlockComment.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.NewLine.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.WrapSelection.pas"/>
@@ -336,6 +337,8 @@
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.GutterColumn.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.SelectionMatches.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.ExitPoints.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Reassigned.pas"/>
+        <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Reassigned.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.BlockComment.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.NewLine.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.WrapSelection.pas"/>
