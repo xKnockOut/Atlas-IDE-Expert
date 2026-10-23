@@ -560,6 +560,14 @@
                 "default": true,
                 "description": "Nur xmldoc-mismatch: <returns> an Routinen ohne Ergebnis und fehlendes <returns> prüfen (#979)."
               },
+              "allowTypes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur unrelated-class-cast: Typen, die absichtlich hart umgewandelt werden, als Typname (Quelle oder Ziel) oder Paar \"Quelle=Ziel\", z. B. [\"TEdit=TButton\"] (#1129)."
+              },
               "allowTables": {
                 "type": "array",
                 "items": {

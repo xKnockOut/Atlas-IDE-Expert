@@ -852,6 +852,24 @@
       "good": "ShowMessage(PChar(string(C)));"
     },
     {
+      "id": "unrelated-class-cast",
+      "name": "Hard cast between unrelated classes",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "TButton(Obj) checks nothing. If the static type of Obj is neither an ancestor nor a descendant of TButton (e.g. TEdit or TForm), the access reads memory of an object with a different layout. Reported only when both types are known for sure, both inheritance chains are known up to TObject and both declarations are always compiled together with the cast. Interfaces, pointers, numbers, TObject as source and casts to or from class references (class of) stay silent, as does the accessor class trick: the target and its ancestors up to a common ancestor declare neither fields nor new virtual methods (THackControl = class(TControl)), so the layout is the same. High confidence. Quick fix: (Obj as TButton) checks the type at run time.",
+      "bad": "procedure TForm1.EditExit(Sender: TObject);\nvar\n  mEdit: TEdit;\nbegin\n  mEdit := Sender as TEdit;\n  TButton(mEdit).Caption := 'OK';\nend;",
+      "good": "procedure TForm1.EditExit(Sender: TObject);\nvar\n  mEdit: TEdit;\nbegin\n  mEdit := Sender as TEdit;\n  (mEdit as TButton).Caption := 'OK';\nend;",
+      "options": [
+        {
+          "name": "allowTypes",
+          "type": "string-list",
+          "default": [],
+          "description": "Types that may be hard cast on purpose: a type name (as source or target) or a pair \"Source=Target\"."
+        }
+      ]
+    },
+    {
       "id": "float-equality",
       "name": "Floating-point comparison with = or <>",
       "category": "bug",

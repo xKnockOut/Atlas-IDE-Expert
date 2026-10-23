@@ -6108,3 +6108,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index; Metrik-Linse (`co
 | JM6 | Vorfahr aus einer Unit, die nicht im Index steht | Linse „Vererbungstiefe mindestens n“; Meldung nur, wenn schon die bekannten Vorfahren über der Grenze liegen |
 | JM7 | Metrik-Linse über einer Methode | „… · 2 Parameter · Operanden 6 (> 5) · 3 lokale · 1 Ausstiege“; Werte über der Grenze farbig. Auf Englisch: „operands 6 (> 5) · 3 locals · 1 exits“ |
 | JM8 | `"metric-boolean-operands": {"max": 6}`, `"metric-local-count": "off"`, `"metric-exit-points": {"exclude": ["Alt/*.pas"]}`, `"group:style": "off"` | Beispiel aus JM1 meldet nichts mehr; keine lokale-Variablen-Meldung; keine Ausstiege-Meldung in `Alt/`; mit der Gruppe aus keine der vier Regeln |
+
+## Harte Umwandlung zwischen nicht verwandten Klassen (#1129)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index (VCL-Quellen indiziert).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HU1 | Das Beispiel aus #1129: `mEdit := Sender as TEdit; TButton(mEdit).Caption := 'OK';` | Warnung `unrelated-class-cast` an `TButton(mEdit)`: „TEdit und TButton sind nicht verwandt: Die Umwandlung zeigt auf ein Objekt mit anderem Aufbau.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| HU2 | Schnellkorrektur „In (mEdit as TButton) umwandeln“, danach Strg+Z | `(mEdit as TButton).Caption := 'OK';`, keine Meldung mehr; ein Undo-Schritt. `mButton := TButton(mEdit);` wird zu `mButton := mEdit as TButton;` (ohne Klammern) |
+| HU3 | `TButton(Sender)`, `TButton(mControl)` mit `mControl: TControl`, `TControl(mButton)` | Keine Meldung (TObject als Quelle, verwandte Klassen) |
+| HU4 | `TButton(mPointer)`, `TButton(mIntf)` mit einem Interface, `TControlClass(mEditClass)` | Keine Meldung |
+| HU5 | Zugriffsklasse `THackControl = class(TControl) end;` und `THackControl(mButton).Click`; danach ein Feld in `THackControl` ergänzen | Ohne Feld keine Meldung (gleicher Aufbau); mit Feld Meldung „TButton und THackControl sind nicht verwandt …“ |
+| HU6 | `"unrelated-class-cast": {"allowTypes": ["TEdit=TButton"]}` in atlas.json | Beispiel aus HU1 meldet nichts mehr; `TEdit(mButton)` weiterhin |
+| HU7 | Klasse mit Vorfahr aus einer Unit, die nicht im Index steht | Keine Meldung (Kette unbekannt) |
+| HU8 | `"unrelated-class-cast": "off"`, `"group:find-bugs": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden | Keine Meldung; die Regel steht mit Schalter, Schweregrad und der Option `allowTypes` in der Gruppe |
