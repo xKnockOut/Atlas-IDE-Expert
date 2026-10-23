@@ -62,6 +62,7 @@ uses
   Atlas.Common.Lsp.ExpressionType,
   Atlas.Common.Lsp.MethodOrder,
   Atlas.Common.Editing.SuggestConst,
+  Atlas.Common.Editing.VarBlock,
   Atlas.Common.Semantics.ResolvedSignatures,
   Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.SlashMenu,
@@ -356,6 +357,8 @@ type
     function ExplicitTypeActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Als Konstante deklarieren“ (#712, refactoring.suggestConst).</summary>
     function SuggestConstActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>var-Block pflegen (#644, refactoring.varBlock): umwandeln in beide Richtungen, aufräumen.</summary>
+    function VarBlockActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>Extrahieren, „case vervollständigen“ und „with auflösen“ (#50).</summary>
     function RefactoringActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
     /// <summary>Index, Einstellungen, Sprachversion und Formatstil für die Aktionen aus #50.</summary>
@@ -1386,6 +1389,7 @@ begin
       Result := Result + InvertBooleanActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
       Result := Result + SuggestConstActions(AUri, ARange.StartPos);
+      Result := Result + VarBlockActions(AUri, ARange.StartPos);
       Result := Result + RefactoringActions(AUri, ARange);
     end;
   FCodeActions.Attach(FDispatcher);
@@ -3505,6 +3509,77 @@ begin
       if TSuggestConst.Action(Document.Text, Shared.Tree, APosition,
         TResolvedSignatures.Lookup(Resolver, Shared.Tree, FileName), Action) then
         Result := [TLspCodeActions.ActionToJson(AUri, Action)];
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
+/// <summary>Typ einer Inline-Variablen ohne Typangabe für „In var-Block verschieben“ (#644): dieselbe Ermittlung
+/// wie „Typ ausschreiben“ (#453), samt der uses, die ihn sichtbar machen.</summary>
+function VarBlockTypes(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
+  ALineBreak: string): TVarBlockTypeLookup;
+begin
+  Result :=
+    function(ADecl: TSyntaxNode; out AType: string; out AEdits: TArray<TTextEdit>): Boolean
+    var
+      Found: TInferredType;
+      Action: TCodeAction;
+    begin
+      AType := '';
+      AEdits := nil;
+      Result := False;
+      for Found in TLspInlayHints.Inferred(AResolver, ATree, AFileName, TTextRange.Create(ADecl.StartPos,
+        ADecl.EndPos)) do
+        if not Found.ForIn and TLspInlayHints.ExplicitTypeAction(AResolver, ATree, AFileName, Found.NameStart,
+          ALineBreak, Action) and (Action.Edits <> nil) then
+        begin
+          // Erstes Edit ": Typ", die übrigen ergänzen uses.
+          AType := Copy(Action.Edits[0].NewText, 3, MaxInt);
+          AEdits := Copy(Action.Edits, 1, MaxInt);
+          Exit(True);
+        end;
+    end;
+end;
+
+function TServerComposition.VarBlockActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Settings: TRefactoringSettings;
+  Options: TVarBlockOptions;
+  Action: TCodeAction;
+  FileName, LineBreak: string;
+begin
+  Result := nil;
+  Settings := RefactoringSettingsFor(AUri);
+  if not Settings.VarBlock or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  FileName := TDocumentUris.ToPath(AUri);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, FileName);
+    try
+      Options := TVarBlockOptions.Default;
+      Options.InlineVariables := TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable,
+        DelphiVersionFor(AUri));
+      Options.Merge := Settings.VarBlockMerge;
+      Options.Sort := TVarBlock.SortOf(Settings.VarBlockSort);
+      Options.Style := ResolvedFormatStyleFor(AUri);
+      Options.Lookup := TResolvedSignatures.Lookup(Resolver, Shared.Tree, FileName);
+      LineBreak := #10;
+      if Pos(#13#10, Document.Text) > 0 then
+        LineBreak := #13#10;
+      Options.Types := VarBlockTypes(Resolver, Shared.Tree, FileName, LineBreak);
+      for Action in TVarBlock.Actions(Document.Text, Shared.Tree, APosition, Options) do
+        Result := Result + [TLspCodeActions.ActionToJson(AUri, Action)];
     finally
       Resolver.UnpinTree;
     end;

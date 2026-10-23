@@ -301,6 +301,7 @@ contains
   Atlas.Common.Semantics.ExpressionTypes in 'Source\Semantics\Atlas.Common.Semantics.ExpressionTypes.pas',
   Atlas.Common.Semantics.ResolvedSignatures in 'Source\Semantics\Atlas.Common.Semantics.ResolvedSignatures.pas',
   Atlas.Common.Editing.SuggestConst in 'Source\Editing\Atlas.Common.Editing.SuggestConst.pas',
+  Atlas.Common.Editing.VarBlock in 'Source\Editing\Atlas.Common.Editing.VarBlock.pas',
   Atlas.Common.Semantics.OrdinalConstants in 'Source\Semantics\Atlas.Common.Semantics.OrdinalConstants.pas',
   Atlas.Common.Semantics.ConstantValues in 'Source\Semantics\Atlas.Common.Semantics.ConstantValues.pas',
   Atlas.Common.Pascal.ConditionalBranches in 'Source\Pascal\Atlas.Common.Pascal.ConditionalBranches.pas',

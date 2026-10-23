@@ -626,6 +626,15 @@ begin
   // #712: Als Konstante deklarieren.
   Assert.IsFalse(Parse('{}', Issues).Refactoring.SuggestConst);
   Assert.IsTrue(Parse('{"refactoring": {"suggestConst": true}}', Issues).Refactoring.SuggestConst);
+  // #644: var-Block pflegen.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.VarBlock);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.VarBlockMerge);
+  Assert.AreEqual('usage', Parse('{}', Issues).Refactoring.VarBlockSort);
+  Assert.IsFalse(Parse('{"refactoring": {"varBlock": false}}', Issues).Refactoring.VarBlock);
+  Assert.IsFalse(Parse('{"refactoring": {"varBlockMerge": false}}', Issues).Refactoring.VarBlockMerge);
+  Assert.AreEqual('alpha', Parse('{"refactoring": {"varBlockSort": "Alpha"}}', Issues).Refactoring.VarBlockSort);
+  Assert.AreEqual('usage', Parse('{"refactoring": {"varBlockSort": "quer"}}', Issues).Refactoring.VarBlockSort);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // #715: Boolean umkehren.
   Assert.IsTrue(Parse('{}', Issues).Refactoring.InvertBoolean);
   Assert.IsTrue(Parse('{}', Issues).Refactoring.InvertBooleanIncludeDfm);

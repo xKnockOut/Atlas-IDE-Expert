@@ -117,6 +117,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MethodOrder.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.MethodOrder.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SuggestConst.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.VarBlock.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.OrdinalConstants.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ConstantValues.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ConditionalBranches.Tests.pas"/>

@@ -393,6 +393,13 @@ type
     InvertBooleanFallbackPrefix: string;
     /// <summary>Published Properties auch in den Formularen umkehren (#715).</summary>
     InvertBooleanIncludeDfm: Boolean;
+    /// <summary>Code-Aktionen „In Inline-Variable umwandeln“, „In var-Block verschieben“ und „var-Block
+    /// aufräumen“ (#644).</summary>
+    VarBlock: Boolean;
+    /// <summary>Beim Aufräumen gleiche Typen zusammenfassen; False trennt sie (#644).</summary>
+    VarBlockMerge: Boolean;
+    /// <summary>Reihenfolge beim Aufräumen: usage, alpha oder none (#644).</summary>
+    VarBlockSort: string;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -850,6 +857,9 @@ begin
   Result.InvertBooleanAntonyms := nil;
   Result.InvertBooleanFallbackPrefix := 'Not';
   Result.InvertBooleanIncludeDfm := True;
+  Result.VarBlock := True;
+  Result.VarBlockMerge := True;
+  Result.VarBlockSort := 'usage';
 end;
 
 { TCompletionSettings }

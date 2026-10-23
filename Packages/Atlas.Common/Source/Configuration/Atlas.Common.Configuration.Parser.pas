@@ -1344,6 +1344,18 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.SuggestConst)
     else if Key = 'invertBoolean' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InvertBoolean)
+    else if Key = 'varBlock' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.VarBlock)
+    else if Key = 'varBlockMerge' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.VarBlockMerge)
+    else if Key = 'varBlockSort' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if MatchText(Value, ['usage', 'alpha', 'none']) then
+          FSettings.Refactoring.VarBlockSort := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.varBlockSort" muss "usage", "alpha" oder "none" sein');
+    end
     else if Key = 'invertBooleanAntonyms' then
     begin
       // {"Hidden": "Visible"}: Name → Gegenteil, beide Richtungen.
