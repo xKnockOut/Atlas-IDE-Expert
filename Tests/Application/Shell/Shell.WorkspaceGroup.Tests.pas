@@ -14,6 +14,10 @@ type
     FFolder: string;
     function Path(const AName: string): string;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen: Der erste Symbolindex im Prozess legt bleibende
+    /// Strukturen an, die je nach Reihenfolge der Tests als Leck zählen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -68,6 +72,16 @@ begin
 end;
 
 { TShellWorkspaceGroupTests }
+
+procedure TShellWorkspaceGroupTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    LoadIndexesProjectAndGivesRuleProject;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TShellWorkspaceGroupTests.Setup;
 begin

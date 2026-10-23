@@ -969,3 +969,18 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Anwendungsart über mehrere Projekte:** Eine Unit im Testprogramm (Konsole) und im Plugin-Package hat keine eindeutige Art; `MergeRuleProjects` setzt dann Unknown (Fehlalarm ui-call-in-console-or-service in den Welcome-Frames), in Server und Gruppe gleich.
 - **Funde mit Index über Atlas:** shadowed-name 137 (Locals wie Width, Left, Text in Frames verdeckten Properties, per MCP `rename_symbol` auf `m`-Präfix), case-missing-enum-value 160 (nach Marcos Wahl explizites leeres `else` mit Kommentar), unused-public-member 2 (`TShellWorkspace.UsagesOf`, `TServerComposition.Logger` entfernt).
 - **Beim Delphi-Build prüfen:** umbenannte Locals im Plugin (nur unter FPC nicht übersetzbar, Umbenennung über den Index), neue Overloads `TShellWorkspace.RuleProjectOf`, `Shell.WorkspaceGroup` und `Shell.WorkspaceGroup.Tests` in `.dpr`/`.dproj`.
+
+## Branches #1101, #1114, #1111/#1112 in main (23.10.2026 vormittags, lokal)
+
+- **Gemergt** (Branch `merge/branches-1023b`, Fast-Forward von main): `feature/1101-editorleiste-klick`, `claude/project-thread-xmq6ib` (#1114 Willkommensseite nur im Fenster „Atlas-Start“), `feature/1112-index-pruefung` (enthält `feature/1111-naming-prefix`).
+- **Konflikte:**
+  - `Atlas.IDE.Welcome.Page.pas` hat #1114 gelöscht, die Löschung gilt (in main stand dort nur der Themenaufruf).
+  - ADR-Nummer doppelt: Willkommensseite jetzt ADR 0014, Linux-Bau bleibt 0013.
+  - `Shell.Mcp`: `CheckSource` und `CheckProject` entstehen in eigenen Routinen (`CheckSourceOf`, `CheckProjectOf`), sonst hält sich der Rahmen selbst (Leck). `CheckSourceOf` liest `AGroup.Main` erst beim Aufruf; mein erster Stand las es beim Registrieren, Tests ohne Gruppe liefen in eine Zugriffsverletzung.
+  - `Settings.Page`: Aufbau aus main (Prüfregeln in den Dialogen), Benennung aus #1111 (`mText`).
+- **Delphi-Funde:**
+  - H2077 in `naming-prefix`.
+  - Korpustest mit Index: `legacy-stack-queue` ist experimentell und lief mit den Standardeinstellungen nie; der Test schaltet die nur mit Index erwarteten Regeln jetzt ausdrücklich ein.
+  - Profiltest: `strict` schaltet auch `naming-prefix` ein.
+  - Erstbenutzungslecks: Aufwärmen in `[SetupFixture]` für „Leiste anpassen“, Linter mit Index und Workspace-Gruppe.
+- **Ablauf ab jetzt (Marcos Wunsch):** Erst bauen und installieren, dann die Tests laufen lassen, während Marco schon prüft.
