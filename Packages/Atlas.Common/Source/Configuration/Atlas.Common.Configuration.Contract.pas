@@ -392,6 +392,16 @@ type
     InvertBooleanIncludeDfm: Boolean;
     /// <summary>Code-Aktion „Interface aus Klasse herauslösen“ (#664).</summary>
     ExtractInterface: Boolean;
+    /// <summary>Code-Aktion „Basisklasse herauslösen“ (#713).</summary>
+    ExtractSuperclass: Boolean;
+    /// <summary>Vorgabe für das Ziel: sameUnit oder newUnit (#713).</summary>
+    ExtractSuperclassTarget: string;
+    /// <summary>Endung des vorgeschlagenen Namens; Custom als Präfix TCustom… (#713).</summary>
+    ExtractSuperclassNameSuffix: string;
+    /// <summary>Vorgabe je Methode: move oder abstract (#713).</summary>
+    ExtractSuperclassMethodMode: string;
+    /// <summary>Sichtbarkeit gehobener private-Mitglieder: protected oder strictProtected (#713).</summary>
+    ExtractSuperclassRaiseVisibility: string;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -849,6 +859,11 @@ begin
   Result.InvertBooleanFallbackPrefix := 'Not';
   Result.InvertBooleanIncludeDfm := True;
   Result.ExtractInterface := True;
+  Result.ExtractSuperclass := True;
+  Result.ExtractSuperclassTarget := 'sameUnit';
+  Result.ExtractSuperclassNameSuffix := 'Base';
+  Result.ExtractSuperclassMethodMode := 'move';
+  Result.ExtractSuperclassRaiseVisibility := 'protected';
 end;
 
 { TCompletionSettings }

@@ -349,6 +349,10 @@ type
     function ExtractInterfaceActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Interface herauslösen“ (#664): APrepare = Kandidaten, sonst das WorkspaceEdit.</summary>
     function ExtractInterface(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
+    /// <summary>Code-Aktion „Basisklasse aus … herauslösen …“ an APosition (#713).</summary>
+    function ExtractSuperclassActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>„Basisklasse herauslösen“ (#713): APrepare = Kandidaten, sonst das WorkspaceEdit.</summary>
+    function ExtractSuperclass(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
     /// <summary>„Bedeutung umkehren“ an APosition (#715).</summary>
     function InvertBooleanActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Boolean umkehren“ (#715): das WorkspaceEdit für alle Stellen.</summary>
@@ -507,6 +511,7 @@ uses
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Lsp.MoveClass,
   Atlas.Common.Lsp.ExtractInterface,
+  Atlas.Common.Lsp.ExtractSuperclass,
   Atlas.Common.Editing.PropertyFromAccessors,
   Atlas.Common.Lsp.PropertyFromAccessors,
   Atlas.Common.Lsp.InvertBoolean,
@@ -1385,6 +1390,7 @@ begin
       Result := Result + MoveClassActions(AUri, ARange.StartPos);
       Result := Result + PropertyFromAccessorsActions(AUri, ARange.StartPos);
       Result := Result + ExtractInterfaceActions(AUri, ARange.StartPos);
+      Result := Result + ExtractSuperclassActions(AUri, ARange.StartPos);
       Result := Result + InvertBooleanActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
       Result := Result + RefactoringActions(AUri, ARange);
@@ -1464,6 +1470,16 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := ExtractInterface(AArguments, False);
+    end);
+  FCommands.Register(TLspExtractSuperclass.PrepareCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := ExtractSuperclass(AArguments, True);
+    end);
+  FCommands.Register(TLspExtractSuperclass.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := ExtractSuperclass(AArguments, False);
     end);
   FCommands.Register(TLspPropertyFromAccessors.ApplyCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -3442,6 +3458,70 @@ begin
   end;
   // Nur Zahlen ins Log, keine Namen und Pfade (#647).
   FLogger.Info(Format('Interface herauslösen: %d Methoden', [(Answer.GetValue('methods') as TJSONNumber).AsInt]));
+  Result := Answer;
+end;
+
+function TServerComposition.ExtractSuperclassActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).ExtractSuperclass or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspExtractSuperclass.Actions(True, Shared.Tree, Document.Text, AUri, APosition);
+end;
+
+function TServerComposition.ExtractSuperclass(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
+var
+  Uri, FileName: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Settings: TRefactoringSettings;
+  Context: TExtractSuperclassContext;
+  Answer: TJSONObject;
+begin
+  // Argumente: URI, Position, beim Ausführen {name, unit, members, abstract}.
+  if (AArguments = nil) or (AArguments.Count < 2) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "position" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  Settings := RefactoringSettingsFor(Uri);
+  if not Settings.ExtractSuperclass then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Basisklasse herauslösen" ist abgeschaltet (refactoring.extractSuperclass).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  FileName := TDocumentUris.ToPath(Uri);
+  Context := Default(TExtractSuperclassContext);
+  Context.Index := FIndex;
+  Context.ReadText := ReadSourceText;
+  Context.Exists := SourceExists;
+  Context.HasProject := RefactoringProject(FileName, Context.Project);
+  Context.Target := Settings.ExtractSuperclassTarget;
+  Context.NameSuffix := Settings.ExtractSuperclassNameSuffix;
+  Context.MethodMode := Settings.ExtractSuperclassMethodMode;
+  Context.RaiseVisibility := Settings.ExtractSuperclassRaiseVisibility;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  if APrepare then
+    Exit(TLspExtractSuperclass.Prepare(Shared.Tree, Document.Text, Position, Context));
+  if AArguments.Count < 3 then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argument mit Name, Ziel und Mitgliedern fehlt');
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspExtractSuperclass.Execute(Resolver, Shared.Tree, FileName, Document.Text, Position,
+      AArguments.Items[2], Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Basisklasse herauslösen: %d Mitglieder', [(Answer.GetValue('moved') as TJSONNumber).AsInt]));
   Result := Answer;
 end;
 

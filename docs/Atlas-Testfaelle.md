@@ -2999,6 +2999,26 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit Unit `Kunde
 | EI10 | Name `TKunde` oder `begin` im Dialog | Fehlerzeile, „Vorschau …“ gesperrt; Name eines vorhandenen Typs: Meldung vom Server |
 | EI11 | `"refactoring": {"extractInterface": false}` in atlas.json | Keine Aktion mehr (**Abnahme**) |
 
+## Basisklasse herauslösen (#713)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit Unit `Export.pas`: `TPdfExport = class(TComponent, IExport) private FItems: TStrings; FTitle: string; procedure WritePage(const AText: string); public constructor Create(AOwner: TComponent); override; destructor Destroy; override; procedure Run; property Title: string read FTitle write FTitle; end;`. Im Konstruktor `inherited Create(AOwner); FItems := TStringList.Create;`, im Destruktor `FItems.Free; inherited;`, `Run` ruft `WritePage` mit `FItems`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ES1 | Strg+. auf `TPdfExport = class` | „Basisklasse aus TPdfExport herauslösen …“; auf `Run` nicht |
+| ES2 | Aktion wählen | Dialog mit Name `TExportBase`, Ziel-Unit „Export (diese Unit)“; Felder, Methoden und Property mit Art und Sichtbarkeit, nichts angehakt; Konstruktor und Destruktor fehlen, Hinweis zu Konstruktoren unten; Knöpfe „Abhängigkeiten“ und „Nur abstrakt“ sichtbar |
+| ES3 | Nur `Run` anhaken | Fehlerzeile „„Run“ benutzt „FItems“ (bzw. „WritePage“): bitte mitnehmen oder abstrakt deklarieren.“, „Vorschau …“ gesperrt; „Abhängigkeiten“ hakt `WritePage` und `FItems` an, Fehler weg |
+| ES4 | ES3, „Vorschau …“, dann „Herauslösen“ | Über `TPdfExport` steht `TExportBase = class(TComponent)` mit `FItems`, `WritePage`, `Run` und eigenem Konstruktor (`inherited Create(AOwner); FItems := TStringList.Create;`) und Destruktor; `TPdfExport = class(TExportBase, IExport)`; die Rümpfe heißen `TExportBase.…`; kompiliert; Strg+Z nimmt es in einem Schritt zurück (**Abnahme**) |
+| ES5 | Nur `Run` anhaken, „Nur abstrakt“ | Oben `procedure Run; virtual; abstract;`, unten `procedure Run; override;` mit dem alten Rumpf; `WritePage` muss nicht mit |
+| ES6 | `FTitle` und `Title` anhaken, `WritePage` bleibt | `FTitle` oben private, `Title` public; kein Hinweis |
+| ES7 | `WritePage` (private) anhaken, `Run` bleibt unten | `WritePage` oben `protected`, Hinweis „WritePage wird protected, weil TPdfExport es weiter benutzt.“ in der Vorschau |
+| ES8 | Wie ES7 mit `"refactoring": {"extractSuperclassRaiseVisibility": "strictProtected"}` | `strict protected` statt `protected` |
+| ES9 | Ziel-Unit `ExportBase` eintippen | Neue Unit `ExportBase.pas` mit der Basisklasse und den nötigen uses (`System.Classes`), eingetragen in `.dpr` und `.dproj`; `Export.pas` bindet sie ein; Atlas springt dorthin; kompiliert (**Abnahme**) |
+| ES10 | `"refactoring": {"extractSuperclassTarget": "newUnit", "extractSuperclassMethodMode": "abstract", "extractSuperclassNameSuffix": "Core"}` | Dialog schlägt `TExportCore` und Unit `ExportCore` vor, Methoden stehen auf „Methode (abstrakt)“ |
+| ES11 | Generische Klasse `TBox<T: class> = class` mit Feld und Methode | `TBoxBase<T: class> = class`, `TBox<T: class> = class(TBoxBase<T>)`, Rumpf `TBoxBase<T>.…`; kompiliert |
+| ES12 | Name `TPdfExport`, `begin` oder ein vorhandener Typ | Fehlerzeile bzw. Meldung vom Server, nichts geändert |
+| ES13 | `"refactoring": {"extractSuperclass": false}` in atlas.json | Keine Aktion mehr (**Abnahme**) |
+
 ## Atlas-Spalte in der Zeilenleiste (#768)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TBasis = class procedure Zeichne; virtual; end;`, `TKnopf = class(TBasis) procedure Zeichne; override; end;` und einer zweiten Nachfahrklasse, die `Zeichne` ebenfalls überschreibt; ein Compilerfehler in einer Zeile.

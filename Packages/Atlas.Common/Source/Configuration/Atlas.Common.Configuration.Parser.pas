@@ -1372,6 +1372,45 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InvertBooleanIncludeDfm)
     else if Key = 'extractInterface' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ExtractInterface)
+    else if Key = 'extractSuperclass' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ExtractSuperclass)
+    else if Key = 'extractSuperclassTarget' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if SameText(Value, 'sameUnit') then
+          FSettings.Refactoring.ExtractSuperclassTarget := 'sameUnit'
+        else if SameText(Value, 'newUnit') then
+          FSettings.Refactoring.ExtractSuperclassTarget := 'newUnit'
+        else
+          ReportNode(ANode[Index], '"refactoring.extractSuperclassTarget" muss "sameUnit" oder "newUnit" sein');
+    end
+    else if Key = 'extractSuperclassNameSuffix' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if IsValidIdent(Trim(Value)) then
+          FSettings.Refactoring.ExtractSuperclassNameSuffix := Trim(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.extractSuperclassNameSuffix" muss ein Bezeichner wie "Base" sein');
+    end
+    else if Key = 'extractSuperclassMethodMode' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if MatchText(Value, ['move', 'abstract']) then
+          FSettings.Refactoring.ExtractSuperclassMethodMode := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.extractSuperclassMethodMode" muss "move" oder "abstract" sein');
+    end
+    else if Key = 'extractSuperclassRaiseVisibility' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if SameText(Value, 'protected') then
+          FSettings.Refactoring.ExtractSuperclassRaiseVisibility := 'protected'
+        else if SameText(Value, 'strictProtected') then
+          FSettings.Refactoring.ExtractSuperclassRaiseVisibility := 'strictProtected'
+        else
+          ReportNode(ANode[Index], '"refactoring.extractSuperclassRaiseVisibility" muss "protected" oder ' +
+            '"strictProtected" sein');
+    end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);

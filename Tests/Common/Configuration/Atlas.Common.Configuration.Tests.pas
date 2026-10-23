@@ -649,6 +649,25 @@ begin
   Assert.IsFalse(Parse('{"refactoring": {"extractInterface": false}}', Issues).Refactoring.ExtractInterface);
   Parse('{"refactoring": {"extractInterface": "ja"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // #713: Basisklasse herauslösen.
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Refactoring.ExtractSuperclass);
+  Assert.AreEqual('sameUnit', Settings.Refactoring.ExtractSuperclassTarget);
+  Assert.AreEqual('Base', Settings.Refactoring.ExtractSuperclassNameSuffix);
+  Assert.AreEqual('move', Settings.Refactoring.ExtractSuperclassMethodMode);
+  Assert.AreEqual('protected', Settings.Refactoring.ExtractSuperclassRaiseVisibility);
+  Settings := Parse('{"refactoring": {"extractSuperclass": false, "extractSuperclassTarget": "newunit", ' +
+    '"extractSuperclassNameSuffix": "Custom", "extractSuperclassMethodMode": "Abstract", ' +
+    '"extractSuperclassRaiseVisibility": "strictprotected"}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Refactoring.ExtractSuperclass);
+  Assert.AreEqual('newUnit', Settings.Refactoring.ExtractSuperclassTarget);
+  Assert.AreEqual('Custom', Settings.Refactoring.ExtractSuperclassNameSuffix);
+  Assert.AreEqual('abstract', Settings.Refactoring.ExtractSuperclassMethodMode);
+  Assert.AreEqual('strictProtected', Settings.Refactoring.ExtractSuperclassRaiseVisibility);
+  Parse('{"refactoring": {"extractSuperclassTarget": "otherUnit", "extractSuperclassNameSuffix": "1x", ' +
+    '"extractSuperclassMethodMode": "copy", "extractSuperclassRaiseVisibility": "public"}}', Issues);
+  Assert.AreEqual(4, Integer(Length(Issues)));
   // Speicherbudget (#185)
   Assert.AreEqual(768, Parse('{}', Issues).MemoryBudgetMb, 'Vorgabe 768 MB (Rückmeldung 15.10.2026)');
   Assert.AreEqual(0, Parse('{"memoryBudgetMb": 0}', Issues).MemoryBudgetMb, '0 = unbegrenzt');
