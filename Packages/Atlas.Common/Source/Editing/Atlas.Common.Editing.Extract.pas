@@ -44,6 +44,7 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.CodeActions;
 
@@ -79,6 +80,9 @@ type
     Style: TFormatStyle;
     /// <summary>Namensauflösung für Typen; nil ohne.</summary>
     Probe: TTypeProbe;
+    /// <summary>Präfixe neuer Namen nach der Namensregel (#1111): Konstante einführen → cNewConstant; ohne leer.
+    /// </summary>
+    Names: TPascalNamePrefixes;
     class function Default: TExtractOptions; static;
   end;
 
@@ -124,7 +128,6 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Text.Lines,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Semantics.ControlFlow,
@@ -160,6 +163,7 @@ begin
   Result.InlineVar := True;
   Result.Style := TFormatStyle.Default;
   Result.Probe := nil;
+  Result.Names := TPascalNamePrefixes.None;
 end;
 
 function Fail(const AReason: string; out AOut: string): Boolean;
@@ -944,7 +948,7 @@ begin
       Exit;
     Host := TRoutineBody.HostStatement(Targets[0], Body);
   end;
-  Name := TRoutineBody.UniqueName(ATree.Tokens, NameFor(Expression));
+  Name := TRoutineBody.UniqueName(ATree.Tokens, AOptions.Names.Local(NameFor(Expression)));
   Expr := TRoutineBody.TextOf(AText, Expression);
   Edits := nil;
   if AOptions.InlineVar then
@@ -1014,7 +1018,7 @@ begin
       Exit;
     Node := Node.Parent;
   end;
-  Name := TRoutineBody.UniqueName(ATree.Tokens, ConstantName);
+  Name := TRoutineBody.UniqueName(ATree.Tokens, AOptions.Names.Constant(ConstantName));
   Value := TRoutineBody.TextOf(AText, Literal);
   LineBreak := TTextLines.LineBreakOf(AText);
   if AUnit then

@@ -1910,7 +1910,9 @@ begin
     'a module (components), parameters of methods with override or message, of published methods, of event handlers (a parameter named Sender) and of methods implementing an interface method (in the file o' +
     'r the symbol index; unknown interface: silent). Parameters are reported at the declaration only. Quick fix: rename to the expected name in the routine or the block after an inline declaration, for par' +
     'ameters also in declaration and implementation, for private fields and class constants in the class and its methods (also Self.Name and TType.Name), for implementation constants in the whole unit. No ' +
-    'fix when the new name already occurs in the file, the scope contains with, a nested routine redeclares the name, or the name is visible outside the file.",' + #10 +
+    'fix when the new name already occurs in the file, the scope contains with, a nested routine redeclares the name, or the name is visible outside the file. While the rule runs, other quick fixes and ref' +
+    'actorings build new names with these prefixes (introduce constant → cNewConstant, introduce variable and resolve with → mValue, parameters of “create method” → APreis), so the rule does not report the' +
+    'm right away.",' + #10 +
     '      "bad": "procedure TKunde.Laden(const Datei: string);\nvar\n  Zeilen: TStringList;\nbegin\nend;",' + #10 +
     '      "good": "procedure TKunde.Laden(const ADatei: string);\nvar\n  mZeilen: TStringList;\nbegin\nend;",' + #10 +
     '      "options": [' + #10 +
@@ -6034,7 +6036,8 @@ begin
     'Parameter heißt Sender) und von Methoden, die eine Interface-Methode erfüllen (in der Datei oder im Symbolindex; unbekanntes Interface: still). Parameter werden nur an der Deklaration gemeldet. Schnel' +
     'lkorrektur: in den erwarteten Namen umbenennen, in der Routine bzw. im Block ab einer Inline-Deklaration, bei Parametern auch in Deklaration und Implementierung, bei privaten Feldern und Klassenkonsta' +
     'nten in der Klasse und ihren Methoden (auch Self.Name und TTyp.Name), bei Konstanten der implementation in der ganzen Unit. Keine Korrektur, wenn der neue Name in der Datei schon vorkommt, der Bereich' +
-    ' with enthält, eine verschachtelte Routine den Namen neu deklariert oder der Name außerhalb der Datei sichtbar ist.",' + #10 +
+    ' with enthält, eine verschachtelte Routine den Namen neu deklariert oder der Name außerhalb der Datei sichtbar ist. Läuft die Regel, bilden andere Korrekturen und Refactorings neue Namen mit diesen Pr' +
+    'äfixen (Konstante einführen → cNewConstant, Variable einführen und with auflösen → mValue, Parameter von „Methode anlegen“ → APreis), damit die Regel sie nicht gleich wieder meldet.",' + #10 +
     '      "options": [' + #10 +
     '        {' + #10 +
     '          "name": "local",' + #10 +

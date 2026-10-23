@@ -883,7 +883,7 @@ var
     Name: string;
     Edit: TTextEdit;
   begin
-    Name := TRoutineBody.UniqueName(Tokens, VariableName(ATypeText));
+    Name := TRoutineBody.UniqueName(Tokens, AContext.NewNames.Local(VariableName(ATypeText)));
     Result := WrapFollowingInTryFinally(Lines, LineBreak, AStatement, Name + ' := ', Name + '.Free;',
       AContext.Formatting, Edit);
     if Result then

@@ -41,6 +41,7 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry;
 
@@ -62,19 +63,21 @@ type
     class function Expected(const AName, APrefix: string): string; static;
   end;
 
-  TNamingPrefixRule = class(TInterfacedObject, IRule)
+  TNamingPrefixRule = class(TInterfacedObject, IRule, IRuleNewNames)
   public const
     RuleId = NamingPrefixRuleId;
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Korrekturen und Refactorings bilden neue Namen mit den Präfixen dieser Regel.</summary>
+    function NewNames(const AContext: TRuleContext): TPascalNamePrefixes;
   end;
 
 const
   DefaultNamingPrefixes: array[TRuleNamingKind] of string = ('m', 'F', 'A', 'c');
 
-/// <summary>Präfix für Umbenennungen anderer Regeln (shadowed-name): Vorgabe der Projektdatei, wenn sie eines
-/// setzt, sonst ADefault.</summary>
+/// <summary>Präfix für Umbenennungen anderer Regeln (shadowed-name): das der Namensregel, wenn sie für die Datei
+/// läuft (AContext.NewNames), sonst die Vorgabe der Projektdatei, wenn sie eines setzt, sonst ADefault.</summary>
 function NamingPrefixFor(const AContext: TRuleContext; AKind: TRuleNamingKind; const ADefault: string): string;
 
 procedure RegisterNamingRules(const ARegistry: TRuleRegistry);
@@ -87,7 +90,6 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Derived,
@@ -104,6 +106,18 @@ const
 
 function NamingPrefixFor(const AContext: TRuleContext; AKind: TRuleNamingKind; const ADefault: string): string;
 begin
+  case AKind of
+    TRuleNamingKind.Local:
+      Result := AContext.NewNames.LocalPrefix;
+    TRuleNamingKind.Field:
+      Result := AContext.NewNames.FieldPrefix;
+    TRuleNamingKind.Parameter:
+      Result := AContext.NewNames.ParameterPrefix;
+  else
+    Result := AContext.NewNames.ConstantPrefix;
+  end;
+  if Result <> '' then
+    Exit;
   Result := ADefault;
   if AContext.Naming.Known[AKind] and (AContext.Naming.Prefixes[AKind] <> '') then
     Result := AContext.Naming.Prefixes[AKind];
@@ -153,22 +167,27 @@ end;
 
 class function TNamingConvention.Follows(const AName, APrefix: string): Boolean;
 begin
-  if APrefix = '' then
-    Exit(True);
-  if (Length(AName) <= Length(APrefix)) or not StartsStr(APrefix, AName) then
-    Exit(False);
-  Result := not IsLetter(APrefix[Length(APrefix)]) or IsUpperOrDigit(AName[Length(APrefix) + 1]);
+  // Eine Umsetzung für Regel und Korrekturen (TPascalNamePrefixes, Editing darf Rules nicht verwenden).
+  Result := TPascalNamePrefixes.Follows(AName, APrefix);
 end;
 
 class function TNamingConvention.Expected(const AName, APrefix: string): string;
 begin
-  if (APrefix <> '') and IsLetter(APrefix[Length(APrefix)]) and (AName <> '') then
-    Result := APrefix + AnsiUpperCase(AName[1]) + Copy(AName, 2, MaxInt)
-  else
-    Result := APrefix + AName;
+  Result := TPascalNamePrefixes.Expected(AName, APrefix);
 end;
 
 { TNamingPrefixRule }
+
+function TNamingPrefixRule.NewNames(const AContext: TRuleContext): TPascalNamePrefixes;
+var
+  Convention: TNamingConvention;
+begin
+  Convention := TNamingConvention.Resolve(AContext);
+  Result.LocalPrefix := Convention.Prefixes[TRuleNamingKind.Local];
+  Result.FieldPrefix := Convention.Prefixes[TRuleNamingKind.Field];
+  Result.ParameterPrefix := Convention.Prefixes[TRuleNamingKind.Parameter];
+  Result.ConstantPrefix := Convention.Prefixes[TRuleNamingKind.Constant];
+end;
 
 function TNamingPrefixRule.Descriptor: TRuleDescriptor;
 begin

@@ -15,6 +15,8 @@ type
     FIndex: ISymbolIndex;
     FResolver: TNameResolver;
     function TargetsAt(const AMarker: string; AOccurrence: Integer; ADeclaration: Boolean): TArray<TDefinitionTarget>;
+    function TargetsIn(const AText, AMarker: string; AOccurrence: Integer;
+      ADeclaration: Boolean): TArray<TDefinitionTarget>;
   public
     [Setup]
     procedure Setup;
@@ -36,6 +38,10 @@ type
     procedure TypeDefinitionFollowsDeclaredTypes;
     [Test]
     procedure WritesLocations;
+    /// <summary>Überladungen: Deklaration und Implementierung derselben Variante (gleiche Parametertypen); vorher
+    /// galt immer die erste Überladung (Hover auf der zweiten zeigte die erste).</summary>
+    [Test]
+    procedure OverloadsPairByParameters;
   end;
 
 implementation
@@ -84,6 +90,25 @@ const
     '  Unbekannt;'#10 +
     'end;'#10 +
     'procedure TFoo.Baz;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'end.';
+
+  KonsoleFile = 'C:\P\Konsole.pas';
+
+  UnitKonsole =
+    'unit Konsole;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TKonsole = class'#10 +
+    '    procedure Progress(const S: string); overload;'#10 +
+    '    procedure Progress(const S: string; Force: Boolean); overload;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TKonsole.Progress(const S: string);'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'procedure TKonsole.Progress(const S: string; Force: Boolean);'#10 +
     'begin'#10 +
     'end;'#10 +
     'end.';
@@ -138,6 +163,44 @@ begin
   finally
     Tree.Free;
   end;
+end;
+
+function TLspDefinitionTests.TargetsIn(const AText, AMarker: string; AOccurrence: Integer;
+  ADeclaration: Boolean): TArray<TDefinitionTarget>;
+var
+  Tree: TSyntaxTree;
+begin
+  Tree := TPascalParser.Parse(AText);
+  try
+    Result := TLspDefinition.Targets(FResolver, FIndex, Tree, KonsoleFile, PositionOf(AText, AMarker, AOccurrence),
+      ADeclaration);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TLspDefinitionTests.OverloadsPairByParameters;
+const
+  Zweite = 'Progress(const S: string; Force';
+  Erste = 'Progress(const S: string)';
+var
+  Targets: TArray<TDefinitionTarget>;
+begin
+  // Hover und Strg+Umschalt+↑ auf der zweiten Überladung: ihre eigene Deklaration.
+  Targets := TargetsIn(UnitKonsole, Zweite, 1, True);
+  Assert.AreEqual(1, Integer(Length(Targets)));
+  Assert.AreEqual(5, Targets[0].SelectionRange.StartPos.Line, 'Deklaration der zweiten');
+  Assert.AreEqual(5, Targets[0].Range.StartPos.Line, 'Bereich der zweiten');
+  // F12 auf der Deklaration der zweiten: ihre Implementierung, und zurück.
+  Targets := TargetsIn(UnitKonsole, Zweite, 1, False);
+  Assert.AreEqual(11, Targets[0].SelectionRange.StartPos.Line, 'Implementierung der zweiten');
+  Targets := TargetsIn(UnitKonsole, Zweite, 2, False);
+  Assert.AreEqual(5, Targets[0].SelectionRange.StartPos.Line, 'zurück zur zweiten');
+  // Die erste bleibt bei sich.
+  Targets := TargetsIn(UnitKonsole, Erste, 1, False);
+  Assert.AreEqual(8, Targets[0].SelectionRange.StartPos.Line, 'Implementierung der ersten');
+  Targets := TargetsIn(UnitKonsole, Erste, 2, False);
+  Assert.AreEqual(4, Targets[0].SelectionRange.StartPos.Line, 'zurück zur ersten');
 end;
 
 procedure TLspDefinitionTests.DefinitionOfMethodCallIsImplementation;

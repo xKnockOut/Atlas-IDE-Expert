@@ -8,6 +8,10 @@
 //   - definition springt zur Implementierung; steht der Cursor bereits auf
 //     dem Namen der Implementierung, zurück zur Deklaration. So wechselt
 //     dieselbe Taste zwischen beiden.
+// Bei Überladungen gehören nur Deklaration und Implementierung derselben
+// Variante (gleiche Parametertypen) zusammen; steht der Cursor auf einer
+// Routine der Datei, gilt deren Variante. Vorher galt immer die erste
+// Überladung (Hover auf der zweiten zeigte die erste).
 // Unit-Namen (z. B. in uses) führen an den Anfang der Unit-Datei.
 // textDocument/typeDefinition springt von Variablen, Feldern, Parametern,
 // Properties und Funktionen zur Deklaration ihres Typs.
@@ -99,6 +103,19 @@ begin
      ((APosition.Line = ARange.EndPos.Line) and (APosition.Character <= ARange.EndPos.Character)));
 end;
 
+/// <summary>Gleiche Parametertypen (Groß-/Kleinschreibung egal): dieselbe Variante einer Überladung.</summary>
+function SameParams(const A, B: TArray<string>): Boolean;
+var
+  Index: Integer;
+begin
+  Result := Length(A) = Length(B);
+  if not Result then
+    Exit;
+  for Index := 0 to High(A) do
+    if not SameText(A[Index], B[Index]) then
+      Exit(False);
+end;
+
 function Target(const AFileName: string; const ARange, ASelectionRange: TTextRange): TDefinitionTarget;
 begin
   Result.FileName := AFileName;
@@ -138,34 +155,37 @@ class function TLspDefinition.Targets(AResolver: TNameResolver; const AIndex: IS
   const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean): TArray<TDefinitionTarget>;
 var
   Resolved: TResolvedSymbol;
-  OwnerUnit: TUnitIndex;
+  OwnerUnit, Here: TUnitIndex;
   Symbol, First, Last: TIndexSymbol;
-  Count: Integer;
+  Same, Variant: TArray<TIndexSymbol>;
+  Params: TArray<string>;
   Empty: TTextRange;
 begin
   Result := nil;
-  Resolved := AResolver.Resolve(ATree, AFileName, APosition);
   // Namen in Deklarationen (z. B. Methoden in der Klasse) sind keine Verwendungen:
-  // dann gilt die Deklaration unter dem Cursor selbst.
+  // dann gilt die Deklaration unter dem Cursor selbst. Zuerst prüfen: Die
+  // Namensauflösung liest einen solchen Namen sonst wie eine Verwendung und nimmt
+  // bei Überladungen die erste (Hover auf der zweiten zeigte die erste).
   // Das Extrakt erst in einer Variablen halten und unten Result zuweisen statt
   // Exit([...]): In der früheren Form brach dcc64 (Delphi 13) ohne Meldung ab.
+  Resolved := Default(TResolvedSymbol);
+  // Über den Resolver: bei gepinntem Baum ohne neue Auswertung (Code-Review P-01).
+  OwnerUnit := AResolver.ExtractedUnit(ATree, AFileName);
+  for Symbol in OwnerUnit.Symbols do
+    if SameText(OwnerUnit.SymbolFile(Symbol), AFileName) and Within(APosition, Symbol.SelectionRange) then
+    begin
+      Resolved.Kind := TResolvedKind.Symbol;
+      Resolved.Name := Symbol.Name;
+      Resolved.Container := Symbol.Container;
+      Resolved.SymbolKind := Symbol.Kind;
+      Resolved.FileName := AFileName;
+      Resolved.Range := Symbol.Range;
+      Resolved.SelectionRange := Symbol.SelectionRange;
+      Resolved.ParamTypes := Symbol.ParamTypes;
+      Break;
+    end;
   if Resolved.Kind = TResolvedKind.None then
-  begin
-    // Über den Resolver: bei gepinntem Baum ohne neue Auswertung (Code-Review P-01).
-    OwnerUnit := AResolver.ExtractedUnit(ATree, AFileName);
-    for Symbol in OwnerUnit.Symbols do
-      if Within(APosition, Symbol.SelectionRange) then
-      begin
-        Resolved.Kind := TResolvedKind.Symbol;
-        Resolved.Name := Symbol.Name;
-        Resolved.Container := Symbol.Container;
-        Resolved.SymbolKind := Symbol.Kind;
-        Resolved.FileName := AFileName;
-        Resolved.Range := Symbol.Range;
-        Resolved.SelectionRange := Symbol.SelectionRange;
-        Break;
-      end;
-  end;
+    Resolved := AResolver.Resolve(ATree, AFileName, APosition);
   case Resolved.Kind of
     TResolvedKind.None:
       Exit;
@@ -187,23 +207,41 @@ begin
   Result := [Target(Resolved.FileName, Resolved.Range, Resolved.SelectionRange)];
   if not (Resolved.SymbolKind in RoutineKinds) then
     Exit;
-  // Deklaration und Implementierung derselben Routine: erste und letzte Fundstelle.
+  // Deklaration und Implementierung derselben Routine: erste und letzte Fundstelle derselben Variante. Steht der
+  // Cursor auf einer Routine dieser Datei (Deklaration oder Implementierung), gilt deren Variante.
+  Params := Resolved.ParamTypes;
+  Here := AResolver.ExtractedUnit(ATree, AFileName);
+  for Symbol in Here.Symbols do
+    if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Name, Resolved.Name) and
+      Within(APosition, Symbol.SelectionRange) then
+    begin
+      Params := Symbol.ParamTypes;
+      Break;
+    end;
   if SameText(Resolved.FileName, AFileName) then
-    OwnerUnit := AResolver.ExtractedUnit(ATree, AFileName)
+    OwnerUnit := Here
   else if not TIndexFiles.UnitOf(AIndex, Resolved.FileName, OwnerUnit) then
     Exit;
-  Count := 0;
+  Same := nil;
+  Variant := nil;
   for Symbol in OwnerUnit.Symbols do
     if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, Resolved.Container) and
       SameText(Symbol.Name, Resolved.Name) then
     begin
-      if Count = 0 then
-        First := Symbol;
-      Last := Symbol;
-      Inc(Count);
+      Same := Same + [Symbol];
+      if SameParams(Symbol.ParamTypes, Params) then
+        Variant := Variant + [Symbol];
     end;
-  if Count < 2 then
-    Exit;
+  // Ohne zweite Fundstelle dieser Variante: Die Implementierung darf ihre Parameter weglassen, aber nur ohne
+  // Überladungen; dann wie bisher das einzige Paar.
+  if Length(Variant) < 2 then
+  begin
+    if Length(Same) <> 2 then
+      Exit;
+    Variant := Same;
+  end;
+  First := Variant[0];
+  Last := Variant[High(Variant)];
   // Mit Include-Dateien (#500) kann jede Fundstelle in einer anderen Datei stehen.
   if ADeclaration or (SameText(OwnerUnit.SymbolFile(Last), AFileName) and Within(APosition, Last.SelectionRange)) then
     Result := [Target(OwnerUnit.SymbolFile(First), First.Range, First.SelectionRange)]

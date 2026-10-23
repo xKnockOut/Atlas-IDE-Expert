@@ -286,7 +286,7 @@ begin
         Exit(Fail('Typ von ' + TRoutineBody.TextOf(AText, Items[Index]) + ' ist kein Klassentyp', AReason));
       if not InList then
         Exit(Fail('with steht nicht in einer Anweisungsliste', AReason));
-      Name := TRoutineBody.UniqueName(Tokens, VariableFor(Probed.Name));
+      Name := TRoutineBody.UniqueName(Tokens, AOptions.Names.Local(VariableFor(Probed.Name)));
       while IndexText(Name, Taken) >= 0 do
         Name := Name + '_';
       Taken := Taken + [Name];

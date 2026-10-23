@@ -864,9 +864,9 @@ var
         Writes := Writes or (Access <> TLocalAccess.Read);
       end;
       if ADecl.Kind = TCaptureDeclKind.FunctionResult then
-        Copy_ := TRoutineBody.UniqueName(Tokens, 'Ergebnis')
+        Copy_ := TRoutineBody.UniqueName(Tokens, AContext.NewNames.Local('Ergebnis'))
       else
-        Copy_ := TRoutineBody.UniqueName(Tokens, ADecl.Name + 'Kopie');
+        Copy_ := TRoutineBody.UniqueName(Tokens, AContext.NewNames.Local(ADecl.Name + 'Kopie'));
       RoutineIndent := Indent(Routine.StartPos.Line);
       StatementIndent := Indent(Statement.StartPos.Line);
       Section := nil;
