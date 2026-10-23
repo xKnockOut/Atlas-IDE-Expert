@@ -65,6 +65,7 @@ ergibt einen Werkzeugfehler mit Begründung. Geschrieben wird nur im Arbeitsordn
 | `get_call_hierarchy` | `name`, `direction` | Aufrufer (`incoming`) und Aufgerufene (`outgoing`), Standard beides |
 | `qualified_name` | `file`, `line`, `column`, `withParameters` (optional) | Voll qualifizierter Name des Symbols an der Stelle, z. B. `Vcl.Controls.TControl.Paint`; mit `withParameters` bei Routinen samt Parametertypen |
 | `get_diagnostics` | `file` (optional) | Syntaxfehler und Regelbefunde einer Datei oder aller Projektdateien |
+| `hook_check` | `file`, `severity` (`error`, `warning`, `information`, `hint`; Vorgabe `warning`) | Für Hooks von Claude Code: Befunde ab `severity` einer gerade bearbeiteten Datei als Ausgabe eines PostToolUse-Hooks (`{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"…"}}`), damit Claude sie gleich nach Edit/Write sieht. Leer (kein Hinweis) bei Dateien ohne Endung `.pas`, `.dpr`, `.dpk`, `.inc`, außerhalb des Arbeitsbereichs oder ohne Befunde. Das Plugin `atlas` ruft es über `hooks/hooks.json` auf; abschalten mit `"mcp": {"disabledTools": ["hook_check"]}` |
 | `get_metrics` | `file` (optional), `format` (`markdown` oder `json`) | Code-Metriken je Methode (#66): Länge in Codezeilen, Verschachtelungstiefe, zyklomatische und kognitive Komplexität, Parameteranzahl; Bericht mit den Methoden über einem Grenzwert aus `atlas.json` (Regeln `metric-*`, Option `max`) oder die Metrikdaten als JSON |
 | `get_todos` | `file`, `unit`, `category`, `owner`, `keyword`, `includeDone` (alle optional), `format` (`markdown` oder `json`) | TODO-Übersicht (#68) aller Dateien, die das Projektmodell dem Projekt zuordnet: `// TODO`, `// FIXME` und das Format der IDE-To-Do-Liste `{ TODO 1 -oPerson -cKategorie : Text }` mit Priorität, Person und Kategorie, gefiltert nach Unit, Kategorie, Person oder Marke; erledigte Einträge (`{ DONE … }`) nur mit `includeDone`. Weitere Marken über die Option `keywords` der Regel `todo-comment`. Markdown mit Zählung nach Kategorie und Person und je Unit einer Tabelle, oder JSON (`format` 1, Zeilen ab 1) |
 | `check_code` | `file`, `text`, `startLine`/`endLine` (optional) | Prüft geplanten Code ohne zu schreiben: Syntaxfehler, Regelbefunde, nicht auflösbare Bezeichner. Ohne Bereich ist `text` die ganze Unit, sonst der Ersatz für die Zeilen `startLine`..`endLine` |
@@ -75,3 +76,31 @@ ergibt einen Werkzeugfehler mit Begründung. Geschrieben wird nur im Arbeitsordn
 | `explain_finding` | `file`, `line`, `rule` (optional) | Befunde einer Zeile als Markdown (#158): Regel mit Beschreibung, Codeausschnitt mit markierter Zeile, Vorher/Nachher-Beispiel aus dem Regelkatalog. |
 | `rename_symbol` | `file`, `line`, `column`, `newName`, `dryRun` (Vorgabe `true`) | Schreibend (#61): benennt das Symbol an der Stelle projektweit um, samt `.dfm`/`.fmx` und automatisch benannter Ereignis-Handler; liefert den Diff aller Dateien |
 | `apply_code_action` | `file`, `line`, `title` (optional), `dryRun` (Vorgabe `true`) | Schreibend (#61): ohne `title` die Korrekturen der Zeile auflisten, mit `title` (Titel oder Regelkennung) die Korrektur anwenden; liefert den Diff |
+
+## Werkzeuge entwickeln und prüfen
+
+Neue oder geänderte Werkzeuge erst mit dem [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) prüfen, bevor Claude sie benutzt. Er zeigt Werkzeuge, Ressourcen und Eingabeschemas so, wie ein Client sie sieht, ruft Werkzeuge mit eigenen Argumenten auf und zeigt die rohen JSON-RPC-Nachrichten. Das trennt Fehler im Server von Fehlern in Beschreibung oder Schema, die nur dazu führen, dass Claude ein Werkzeug falsch aufruft.
+
+```powershell
+# Oberfläche im Browser (Server: Output\Win64\Debug\Bin\AtlasServer.exe, sonst -Server angeben)
+pwsh Tools/Start-McpInspector.ps1
+
+# Kommandozeile, Ergebnis als JSON
+pwsh Tools/Start-McpInspector.ps1 -Method tools/list
+pwsh Tools/Start-McpInspector.ps1 -Method tools/call -Tool get_diagnostics -Arguments @{ file = 'Application/AtlasServer.dpr' }
+```
+
+Ohne PowerShell, z. B. in einer Cloud-Sitzung mit dem Linux-Server:
+
+```bash
+npx -y @modelcontextprotocol/inspector@2.12.0 --cli AtlasServer --mcp --root . --method tools/call \
+  --tool-name hook_check --tool-arg file=Application/Source/Shell/Shell.Mcp.pas
+```
+
+Worauf achten:
+
+- Beschreibung und Parameterbeschreibungen sagen, wann das Werkzeug hilft und was es liefert; Claude wählt nur danach aus.
+- Pflichtparameter stehen in `required`; ein fehlender Pflichtparameter liefert eine verständliche Fehlermeldung (`EMcpToolError`), keine Ausnahme mit Stapel.
+- Große Ergebnisse sind begrenzt (z. B. `MaxFindings`) und sagen, wie viel weggelassen wurde.
+- Neue Werkzeuge stehen in der Tabelle oben; `TMcpShellTests.ToolsListMatchesDocumentation` prüft das.
+
