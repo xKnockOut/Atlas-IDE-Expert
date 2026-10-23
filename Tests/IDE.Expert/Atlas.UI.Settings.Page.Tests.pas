@@ -1159,6 +1159,10 @@ begin
     Assert.IsTrue(Page.DimUnusedUsesCheck.Checked, 'uses abblenden standardmäßig an (#621)');
     Assert.IsTrue(Page.RecursionMarkersCheck.Checked, 'Rekursionssymbole standardmäßig an (#623)');
     Assert.AreEqual('4', Page.RecursionMarkersDepthEdit.Text);
+    Assert.IsTrue(Page.ExitPointsCheck.Checked, 'Austrittspunkte standardmaessig an (#698)');
+    Assert.IsTrue(Page.ExitPointsExceptionsCheck.Checked);
+    Assert.IsTrue(Page.ExitPointsLoopsCheck.Checked);
+    Assert.IsTrue(Page.ExitPointsBadgeCheck.Checked);
     // Atlas-Spalte in der Zeilenleiste (#768).
     Assert.IsTrue(Page.GutterColumnCheck.Checked, 'Atlas-Spalte standardmäßig an (#768)');
     Assert.IsTrue(Page.GutterColumnProblemsCheck.Checked);
@@ -1210,6 +1214,8 @@ begin
     Page.DimUnusedUsesCheck.Checked := False;
     Page.RecursionMarkersCheck.Checked := False;
     Page.RecursionMarkersDepthEdit.Text := '2';
+    Page.ExitPointsCheck.Checked := False;
+    Page.ExitPointsBadgeCheck.Checked := False;
     Page.InlineDiagnostics.Choice := 2;
     Page.ProblemsStatusCounterCheck.Checked := False;
     Page.PreviousProblemKey.Text := '';
@@ -1222,6 +1228,10 @@ begin
     Assert.IsFalse(Saved.DimUnusedUses);
     Assert.IsFalse(Saved.RecursionMarkers);
     Assert.AreEqual(2, Saved.RecursionMarkersDepth);
+    Assert.IsFalse(Saved.ExitPoints);
+    Assert.IsTrue(Saved.ExitPointsExceptions);
+    Assert.IsTrue(Saved.ExitPointsLoops);
+    Assert.IsFalse(Saved.ExitPointsBadge);
     Assert.IsTrue(Saved.GutterColumn);
     Assert.IsTrue(Saved.GutterColumnProblems);
     Assert.IsFalse(Saved.GutterColumnCodeActions);
@@ -1255,6 +1265,8 @@ begin
     Assert.IsFalse(Page.BlockEndLabelsCheck.Checked);
     Assert.IsFalse(Page.DimUnusedUsesCheck.Checked);
     Assert.IsFalse(Page.RecursionMarkersCheck.Checked);
+    Assert.IsFalse(Page.ExitPointsCheck.Checked);
+    Assert.IsFalse(Page.ExitPointsBadgeCheck.Checked);
     Assert.IsFalse(Page.GutterColumnOverridesCheck.Checked);
     Assert.IsTrue(Page.SelectionMatchesWholeWordCheck.Checked);
     Assert.AreEqual(1, Page.ToggleBlockCommentScope.Choice);

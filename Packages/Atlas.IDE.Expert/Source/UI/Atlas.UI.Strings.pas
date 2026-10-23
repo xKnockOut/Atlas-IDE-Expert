@@ -701,7 +701,10 @@ type
     // Element „Schnelle Lesezeichen“ im Menü „Ausblenden“ (#1104).
     ElementQuickBookmarks, ElementQuickBookmarksPlural,
     // Seite Prüfregeln: Weg zum Dialog der globalen Einstellungen (#909).
-    RulesGlobalButton);
+    RulesGlobalButton,
+    // Austrittspunkte hervorheben (#698): Optionsseite, Marke, Element.
+    SettingsExitPoints, SettingsExitPointsExceptions, SettingsExitPointsLoops, SettingsExitPointsBadge,
+    ExitPointsOne, ExitPointsCount, ExitPointsResultMissing, ElementExitPoints, ElementExitPointsPlural);
 
   TAtlasStrings = class
   private class var
@@ -2289,7 +2292,11 @@ const
      'Schnelle Lesezeichen sind ausgeschaltet (bookmarks.quick).',
      'Nr.',
      'nur diese Datei', 'Marker eines schnellen Lesezeichens', 'Marker der schnellen Lesezeichen',
-     'Globale Prüfregeln bearbeiten …'),
+     'Globale Prüfregeln bearbeiten …',
+     'Austrittspunkte hervorheben', 'Auf except/on die auslösenden Aufrufe zeigen',
+     'Auf Break/Continue die Schleife zeigen', 'Marke mit der Anzahl am Routinenkopf',
+     '1 Austritt', '%d Austritte', 'Result fehlt auf einem Weg',
+     'Hervorhebung der Austrittspunkte', 'Hervorhebungen der Austrittspunkte'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3781,7 +3788,11 @@ const
      'Quick bookmarks are switched off (bookmarks.quick).',
      'No.',
      'this file only', 'quick bookmark marker', 'quick bookmark markers',
-     'Edit global rules …'));
+     'Edit global rules …',
+     'Highlight exit points', 'On except/on, show the calls that raise',
+     'On Break/Continue, show the loop', 'Badge with the count at the routine header',
+     '1 exit', '%d exits', 'Result missing on a path',
+     'exit point highlight', 'exit point highlights'));
 
 { TAtlasStrings }
 

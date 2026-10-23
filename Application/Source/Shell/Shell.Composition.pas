@@ -57,6 +57,7 @@ uses
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Todos,
   Atlas.Common.Lsp.Recursion,
+  Atlas.Common.Lsp.ExitPoints,
   Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.SlashMenu,
   Atlas.Common.Editing.SlashCommands,
@@ -1484,6 +1485,13 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FRecursion.Execute(AArguments);
+    end);
+  // Austrittspunkte am Cursor für die Hervorhebung im Plugin (#698).
+  FCommands.Register(TLspExitPoints.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TLspExitPoints.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, ReadSourceTextRef,
+        FDocumentHighlights.SettingsFor, AArguments);
     end);
   // Überschreibungen für die Atlas-Spalte der Zeilenleiste (#768).
   FCommands.Register(TLspOverrideMarks.Command,
