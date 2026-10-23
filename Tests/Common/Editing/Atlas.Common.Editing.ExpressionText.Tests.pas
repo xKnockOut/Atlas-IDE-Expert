@@ -25,6 +25,8 @@ type
     procedure SameIgnoresLayoutAndCase;
     [Test]
     procedure SideEffects;
+    [Test]
+    procedure ContextPrecedenceFollowsParent;
   end;
 
 implementation
@@ -161,6 +163,30 @@ begin
   Assert.IsTrue(Pure('Length(S) > Ord(C)'));
   Assert.IsFalse(Pure('Next() = 1'));
   Assert.IsFalse(Pure('List.Count(X) = 1'));
+end;
+
+procedure TExpressionTextTests.ContextPrecedenceFollowsParent;
+var
+  Text: string;
+  Tree: TSyntaxTree;
+  Condition: TSyntaxNode;
+begin
+  Text := Program_('(A = B) and not C or F(X)');
+  Tree := TPascalParser.Parse(Text);
+  try
+    // ((A = B) and not C) or F(X)
+    Condition := ConditionOf(Tree);
+    Assert.AreEqual(PrecedenceIfExpr, TExpressionText.ContextPrecedence(Condition));
+    Assert.AreEqual(PrecedenceAdditive, TExpressionText.ContextPrecedence(Condition[0]));
+    Assert.AreEqual(PrecedenceMultiplicative, TExpressionText.ContextPrecedence(Condition[0][0]));
+    Assert.AreEqual(PrecedenceMultiplicative + 1, TExpressionText.ContextPrecedence(Condition[0][1]));
+    Assert.AreEqual(PrecedenceUnary, TExpressionText.ContextPrecedence(Condition[0][1][0]));
+    // Empfänger eines Aufrufs braucht einen Operanden, ein Argument nichts.
+    Assert.AreEqual(PrecedenceOperand, TExpressionText.ContextPrecedence(Condition[1][0]));
+    Assert.AreEqual(PrecedenceIfExpr, TExpressionText.ContextPrecedence(Condition[1][1]));
+  finally
+    Tree.Free;
+  end;
 end;
 
 initialization

@@ -2591,6 +2591,19 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | IFC8 | `refactoring.ifCase` aus | Beide Aktionen fehlen |
 | IFC9 | Regel `prefer-case` in atlas.json einschalten (`"prefer-case": {"severity": "hint"}`), Kette mit 4 Zweigen und mit 3 Zweigen; dann `"min": 3` | Hinweis „4 Zweige vergleichen denselben Ausdruck …“ nur bei der langen Kette, mit `min` 3 auch bei der kürzeren; Schnellkorrektur wie IFC1 |
 
+## Bedingungen umformen (#656)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BU1 | `if (I = 1) or Ready then A else begin B; C; end;`, Cursor auf `if`, Alt+Enter, „Bedingung umkehren“ | `if (I <> 1) and not Ready then begin B; C; end else A;`, eingerückt wie die Umgebung, ein Rückgängig-Schritt |
+| BU2 | Dasselbe mit `Assigned(P) and (P.Count > 0)`, mit `I in [1, 2]` und mit `not Ready` | `not Assigned(P) or (P.Count <= 0)` (Reihenfolge bleibt), `not (I in [1, 2])`, `Ready`; nie `not A = B` |
+| BU3 | `if A then X else if B then Y else Z;`, auf dem ersten `if` | Das innere if steht in begin … end vor dem neuen else; auf dem zweiten `if` wird nur dieses Glied umgekehrt |
+| BU4 | Letzte Anweisung einer Methode `if Assigned(P) then begin … end;`, „Frühen Ausstieg einführen (Exit)“ | `if not Assigned(P) then Exit;`, der Rumpf rückt eine Ebene aus, begin … end entfällt, Kommentare bleiben bei ihrer Anweisung |
+| BU5 | Dasselbe als letzte Anweisung in while/for/repeat, auch `for … do if A then begin … end;` | `if … then Continue;`; bei for ohne begin … end bekommt der Rumpf einen |
+| BU6 | if mit nachfolgender Anweisung, mit else, mit `var X := …` im Zweig oder im Hauptprogramm | „Frühen Ausstieg einführen“ fehlt; mit else gibt es nur „Bedingung umkehren“ |
+| BU7 | `if A or B then if C then X;`, auf dem äußeren oder inneren `if`, „Verschachtelte if zusammenfassen“ | `if (A or B) and C then X;`; mit else am inneren if oder einer zweiten Anweisung fehlt die Aktion |
+| BU8 | Cursor auf `not` in `if not not Ready then`, `X and not (A <> B)`, `not True`; dann `refactoring.conditions` aus | „Doppelte Verneinung entfernen“ ergibt `Ready`, `X and (A = B)`, `False`; ausgeschaltet fehlen alle vier Aktionen |
+
 ## Methode aus Aufruf anlegen (#472)
 
 | Nr. | Schritte | Erwartet |

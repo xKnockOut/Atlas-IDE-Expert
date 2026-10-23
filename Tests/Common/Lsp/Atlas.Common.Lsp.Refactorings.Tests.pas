@@ -41,6 +41,9 @@ type
     /// </summary>
     [Test]
     procedure ConvertsCaseAndIfChain;
+    /// <summary>Bedingungen umformen (#656): angeboten auf dem if, abschaltbar.</summary>
+    [Test]
+    procedure RewritesConditions;
     /// <summary>Strg+Leertaste auf dem Wort with bietet „with auflösen“ an.</summary>
     [Test]
     procedure CompletionOffersWithItem;
@@ -364,6 +367,22 @@ begin
     '  case A of'#10'    alNone: Exit;'#10'    alTop, alBottom: Exit;'#10, []), Applied(Chain, 'In case umwandeln', 17,
     4));
   Assert.AreEqual('-', Applied(Chain, 'In if-Kette umwandeln', 17, 4));
+end;
+
+procedure TLspRefactoringsTests.RewritesConditions;
+var
+  Chain: string;
+  Off: TRefactoringContext;
+begin
+  Chain := StringReplace(UnitHaupt, '  case A of'#10'    alNone: ;'#10'    alTop: ;'#10'    alBottom: ;'#10'  end;'#10,
+    '  if A = alNone then'#10'    Exit'#10'  else if A in [alTop, alBottom] then'#10'    Exit;'#10, []);
+  Assert.AreEqual(StringReplace(Chain, '  if A = alNone then'#10'    Exit'#10'  else if A in [alTop, alBottom] then'#10 +
+    '    Exit;'#10, '  if A <> alNone then'#10'  begin'#10'    if A in [alTop, alBottom] then'#10'      Exit;'#10 +
+    '  end'#10'  else'#10'    Exit;'#10, []), Applied(Chain, 'Bedingung umkehren', 17, 4));
+  Assert.IsTrue(Pos('Bedingung umkehren|', Titles(Chain, 17, 4, Context)) > 0);
+  Off := Context;
+  Off.Settings.Conditions := False;
+  Assert.AreEqual(0, Pos('Bedingung umkehren', Titles(Chain, 17, 4, Off)));
 end;
 
 procedure TLspRefactoringsTests.CompletionOffersWithItem;

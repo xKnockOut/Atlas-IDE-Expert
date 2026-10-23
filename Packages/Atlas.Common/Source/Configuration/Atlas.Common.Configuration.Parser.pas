@@ -1372,6 +1372,8 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InvertBooleanIncludeDfm)
     else if Key = 'ifCase' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.IfCase)
+    else if Key = 'conditions' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.Conditions)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);
