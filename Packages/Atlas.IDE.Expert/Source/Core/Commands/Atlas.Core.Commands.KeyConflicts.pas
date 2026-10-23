@@ -57,7 +57,7 @@ type
     MultiCursorAbove, MultiCursorBelow, Search, SearchNext, SearchPrevious,
     SearchMethod, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove, Unwrap, ProblemsWindow,
     SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
-    PreviousBookmark);
+    PreviousBookmark, SearchReplace);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -251,6 +251,9 @@ begin
     Create(TAtlasKeyFunction.SearchNext, Word(ASettings.SearchNextKey), True, ASettings.SearchReplaceIde),
     Create(TAtlasKeyFunction.SearchPrevious, Word(ASettings.SearchPreviousKey), True, ASettings.SearchReplaceIde),
     Create(TAtlasKeyFunction.SearchMethod, Word(ASettings.SearchMethodKey), Shared),
+    // Suchen und ersetzen (#893): Strg+H wie Strg+F bewusst übernommen; mit search.replace aus gehört sie der IDE.
+    Create(TAtlasKeyFunction.SearchReplace, Word(ASettings.SearchReplaceKey), True,
+      ASettings.SearchReplaceIde and ASettings.SearchReplace),
     // Formatieren (#43): aus = keine Taste.
     Create(TAtlasKeyFunction.FormatCode, Word(ASettings.FormatCodeKey), Shared, ASettings.FormatCode),
     // Blockkommentar umschalten (#703): aus = Kürzel frei.
@@ -403,6 +406,8 @@ begin
         ASettings.SearchPreviousKey := Entry.Key;
       TAtlasKeyFunction.SearchMethod:
         ASettings.SearchMethodKey := Entry.Key;
+      TAtlasKeyFunction.SearchReplace:
+        ASettings.SearchReplaceKey := Entry.Key;
       TAtlasKeyFunction.FormatCode:
         ASettings.FormatCodeKey := Entry.Key;
       TAtlasKeyFunction.ToggleBlockComment:

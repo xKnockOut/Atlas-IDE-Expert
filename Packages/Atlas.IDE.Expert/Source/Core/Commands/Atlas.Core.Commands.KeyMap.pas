@@ -350,6 +350,8 @@ begin
       Result := 'Atlas.SearchPrevious';
     TAtlasKeyFunction.SearchMethod:
       Result := 'Atlas.SearchInMethod';
+    TAtlasKeyFunction.SearchReplace:
+      Result := 'Atlas.SearchReplace';
     TAtlasKeyFunction.FormatCode:
       Result := 'Atlas.FormatCode';
     TAtlasKeyFunction.ToggleBlockComment:

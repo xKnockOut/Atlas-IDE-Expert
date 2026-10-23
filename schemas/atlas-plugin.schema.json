@@ -1424,6 +1424,57 @@
       "description": "Treffer der Atlas-Suche im Reiter „Atlas-Suche“ des Fensters Meldungen auflisten (Enter bzw. „In Meldungen“ in der Suchleiste; Doppelklick springt zum Treffer); aus = nur Markierungen und Zähler in der Leiste",
       "x-issue": "#878"
     },
+    "SearchReplace": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "search.replace",
+      "x-area": "editor",
+      "x-page": "Units suchen",
+      "x-control": "Kontrollkästchen",
+      "description": "Ersetzen-Zeile in der Atlas-Suchleiste („Ersetzen“, „Alle ersetzen“) und Strg+H öffnet die Leiste mit Ersetzen-Zeile; aus = keine Ersetzen-Zeile, Strg+H gehört der IDE",
+      "x-issue": "#893"
+    },
+    "SearchRegex": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "search.regex",
+      "x-area": "editor",
+      "x-page": "Units suchen",
+      "x-control": "Kontrollkästchen",
+      "description": "Option „.*“ (regulärer Ausdruck, PCRE) in der Atlas-Suchleiste mit $1…$9, ${name} und $0 im Ersetzen-Feld und Vorschau „vorher → nachher“; aus = nur Textsuche",
+      "x-issue": "#893"
+    },
+    "SearchHistory": {
+      "type": "integer",
+      "default": 20,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "search.history",
+      "x-area": "editor",
+      "x-page": "Units suchen",
+      "x-control": "Zahl",
+      "description": "Länge des Such- und Ersetzen-Verlaufs der Atlas-Suchleiste (Pfeil hoch/runter, Alt+↓), gespeichert über IDE-Neustarts; 0 = kein Verlauf",
+      "x-issue": "#893"
+    },
+    "SearchMultiFile": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "search.multiFile",
+      "x-area": "editor",
+      "x-page": "Units suchen",
+      "x-control": "Kontrollkästchen",
+      "description": "Bereiche „Offene Dateien“, „Projekt“ und „Projektgruppe“ in der Atlas-Suchleiste (Suche im Hintergrund, Liste im Reiter „Atlas-Suche“, Ersetzen über Dateien mit Auswahl); aus = nur Methode, Unit, Auswahl",
+      "x-issue": "#893"
+    },
+    "SearchReplaceKey": {
+      "type": "integer",
+      "default": 16456,
+      "x-key": "keys.searchReplace",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#893"
+    },
     "SearchKey": {
       "type": "integer",
       "default": 16454,
