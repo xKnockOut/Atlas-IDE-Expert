@@ -111,6 +111,7 @@
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ConstantValues.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ConditionalBranches.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.FormatStrings.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.FormatRoutines.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.DirectiveNames.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.PureRoutines.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.Tests.pas"/>
@@ -160,6 +161,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionCollector.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.CompletionSource.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SignatureHelp.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SignatureFormat.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Hierarchies.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Implementations.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InlayHints.Tests.pas"/>
@@ -442,8 +444,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Documentation.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Signature\Atlas.Core.Signature.CallScanner.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Signature\Atlas.Core.Signature.Controller.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Signature\Atlas.Core.Signature.Format.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Signature\Atlas.Core.Signature.Providers.Server.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Signature.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Signature.Format.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Color.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Palette.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Syntax.pas"/>

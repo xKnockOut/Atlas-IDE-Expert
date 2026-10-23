@@ -19,6 +19,10 @@
 //   - Alle Überladungen stehen untereinander; Klick wählt eine. Tasten über den
 //     gemeinsamen Hook: Esc schließt, Alt+↑/↓ wechselt die gewählte Überladung;
 //     nach der Vervollständigung, die Esc zuerst bekommt.
+//   - Platzhalter (#451): Bei Format und anderen Formatroutinen zeigt der Hint, welchen Platzhalter der Eintrag
+//     am Cursor füllt, und TAtlasIdeFormatMarks färbt Platzhalter und Argumente im Editor. Ändern sich Text oder
+//     Cursor, fragt der Zeitgeber nach kurzer Ruhe neu; UpdateFormat übernimmt nur die neue Zuordnung.
+//     Abschaltbar mit completion.formatPlaceholders.
 
 interface
 
@@ -33,7 +37,8 @@ uses
   Atlas.Core.Signature.Controller,
   Atlas.UI.Signature.Hint,
   Atlas.Core.Editor.CloseRules,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.IDE.Foundation.KeyHook,
+  Atlas.IDE.Signature.FormatMarks;
 
 type
   TAtlasLogFunc = reference to procedure(const AMessage: string);
@@ -41,6 +46,9 @@ type
   TAtlasBoolFunc = reference to function: Boolean;
 
   TAtlasEditorSignature = class
+  private const
+    /// <summary>Takte ohne Änderung, bis die Platzhalter neu angefragt werden (#451).</summary>
+    FormatQuietTicks = 3;
   private
     FProvider: IAtlasSignatureSource;
     FHint: TAtlasSignatureHint;
@@ -66,6 +74,13 @@ type
     // Mit Esc geschlossener Aufruf.
     FDismissedFile: string;
     FDismissedParen: Integer;
+    // Platzhalter (#451): Färbung, Stand (Text und Cursor) der letzten Anfrage, Takte bis zur nächsten.
+    FMarks: TAtlasIdeFormatMarks;
+    FFormatText: string;
+    FFormatCaret: Integer;
+    FFormatDue: Integer;
+    procedure ShowFormat(const AFormat: TAtlasSignatureFormat; const AText: string);
+    procedure CheckFormat(const AText: string; ALine, ACharacter, ACaret: Integer);
     procedure Reopen(const AView: IOTAEditView);
     procedure Log(const AMessage: string);
     procedure TimerTick(Sender: TObject);
@@ -102,6 +117,7 @@ uses
   Vcl.Forms,
   DockForm,
   Atlas.Core.Signature.CallScanner,
+  Atlas.Core.Signature.Format,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
@@ -257,7 +273,9 @@ begin
   FOpenParen := -1;
   FLastLine := -1;
   FDismissedParen := -1;
+  FFormatCaret := -1;
   FProvider := ASource;
+  FMarks := TAtlasIdeFormatMarks.Create;
   FHint := TAtlasSignatureHint.Create(nil);
   FController := TAtlasSignatureController.Create(FHint);
   FHint.OnSelect :=
@@ -289,6 +307,7 @@ begin
   Shutdown;
   FController.Free;
   FHint.Free;
+  FMarks.Free;
   FProvider := nil;
   FKeys.Free;
   inherited;
@@ -359,8 +378,12 @@ begin
     Anchor.Left := Anchor.Left - FHint.Canvas.TextWidth(Copy(Text, Site.OpenParen + 1, Caret - Site.OpenParen));
   FHint.Anchor := Anchor;
   FHint.Above := Assigned(FCompletionOpen) and FCompletionOpen();
+  FHint.FormatPlaceholders := TAtlasIdeSettings.Current.FormatPlaceholders;
   FController.Close;
   FDismissedParen := -1;
+  FFormatText := Text;
+  FFormatCaret := Caret;
+  FFormatDue := 0;
   FView := AView;
   FEditorWindow := Info.hwndCaret;
   FOpenParen := Site.OpenParen;
@@ -392,6 +415,7 @@ begin
         (FPreferredIndex < Length(AHelp.Signatures)) then
         FController.SelectOverload(FPreferredIndex);
       FPreferredName := '';
+      ShowFormat(AHelp.Format, Text);
       Log(Format('Parameter-Hint: %d Signaturen, Parameter %d', [Length(AHelp.Signatures), Current.ActiveParameter]));
       ActiveChanged;
     end);
@@ -410,7 +434,51 @@ begin
   FPending := False;
   FProvider.Cancel;
   FController.Close;
+  FMarks.Clear;
+  FFormatText := '';
+  FFormatCaret := -1;
+  FFormatDue := 0;
   ActiveChanged;
+end;
+
+procedure TAtlasEditorSignature.ShowFormat(const AFormat: TAtlasSignatureFormat; const AText: string);
+begin
+  if FHint.FormatPlaceholders and AFormat.Found and (FView <> nil) and (FView.Buffer <> nil) then
+    FMarks.Show(FView.Buffer.FileName, AText, TAtlasEditorBuffer.TabWidth(FView.Buffer),
+      TAtlasSignatureFormats.Marks(AFormat))
+  else
+    FMarks.Clear;
+end;
+
+procedure TAtlasEditorSignature.CheckFormat(const AText: string; ALine, ACharacter, ACaret: Integer);
+var
+  Text: string;
+begin
+  if FPending or not FHint.FormatPlaceholders or not FController.Help.Format.Found or (FView = nil) then
+    Exit;
+  // Erst nach kurzer Ruhe: Jede Anfrage gleicht den Puffer mit dem Server ab.
+  if (ACaret <> FFormatCaret) or (AText <> FFormatText) then
+  begin
+    FFormatText := AText;
+    FFormatCaret := ACaret;
+    FFormatDue := FormatQuietTicks;
+    Exit;
+  end;
+  if FFormatDue <= 0 then
+    Exit;
+  Dec(FFormatDue);
+  if FFormatDue > 0 then
+    Exit;
+  Text := AText;
+  FProvider.Query(FView.Buffer.FileName, Text, ALine, ACharacter,
+    procedure(const AHelp: TAtlasSignatureHelp)
+    begin
+      // Inzwischen geschlossen oder weitergetippt: Der nächste Takt fragt neu.
+      if (FView = nil) or not FController.Active or (Text <> FFormatText) then
+        Exit;
+      FController.UpdateFormat(AHelp.Format);
+      ShowFormat(AHelp.Format, Text);
+    end);
 end;
 
 procedure TAtlasEditorSignature.ActiveChanged;
@@ -553,6 +621,8 @@ begin
   begin
     FHint.Above := Assigned(FCompletionOpen) and FCompletionOpen();
     FController.UpdateParameter(Site.ActiveParameter);
+    CheckFormat(Text, Cursor.Line - 1, Character,
+      TAtlasEditorBuffer.CharOffset(Text, Cursor.Line - 1, Character));
   end;
 end;
 

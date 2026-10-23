@@ -22,7 +22,8 @@
 // zuletzt die Umgebung des Prozesses.
 //
 // Präfixe (#452): Read übernimmt die Vorgaben unter "naming" aus der
-// Projektdatei .atlas (#486, nur wenn sie eingeschaltet und gültig ist).
+// Projektdatei .atlas (#486, nur wenn sie eingeschaltet und gültig ist),
+// ebenso die eigenen Formatroutinen unter "formatFunctions" (#451).
 
 interface
 
@@ -187,6 +188,8 @@ procedure ReadNaming(var AContext: TAtlasProjectContext);
 var
   Team: TAtlasTeamSettings;
   Kind: TAtlasNamingKind;
+  Item: TAtlasFormatFunction;
+  Entry: TAtlasProjectFormatFunction;
 begin
   Team := TAtlasIdeTeamFile.ForProject(AContext.Project);
   if not Team.Valid then
@@ -197,6 +200,13 @@ begin
       AContext.HasNaming[TAtlasProjectNamingKind(Ord(Kind))] := True;
       AContext.Naming[TAtlasProjectNamingKind(Ord(Kind))] := Team.Naming[Kind];
     end;
+  // Eigene Formatroutinen für die Platzhalter im Parameter-Hint (#451).
+  for Item in Team.FormatFunctions do
+  begin
+    Entry.Name := Item.Name;
+    Entry.FormatIndex := Item.FormatIndex;
+    AContext.FormatFunctions := AContext.FormatFunctions + [Entry];
+  end;
 end;
 
 class function TAtlasIdeProjectContext.Read(const AProject: IOTAProject): TAtlasProjectContext;

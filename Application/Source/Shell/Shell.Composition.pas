@@ -50,6 +50,7 @@ uses
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Lsp.SignatureHelp,
+  Atlas.Common.Pascal.FormatRoutines,
   Atlas.Common.Lsp.Hierarchies,
   Atlas.Common.Lsp.Implementations,
   Atlas.Common.Lsp.InlayHints,
@@ -387,6 +388,9 @@ type
     function ConditionalContextFor(const AUri: string): TConditionalContext;
     function RefactoringSettingsFor(const AUri: string): TRefactoringSettings;
     function CompletionSettingsFor(const AUri: string): TCompletionSettings;
+    /// <summary>Formatroutinen für den Parameter-Hint (#451): eingebaute, formatMethods der Regel format-args
+    /// (atlas.json) und formatFunctions der Projektdatei .atlas (Projektkontext der IDE).</summary>
+    function FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
     /// <summary>"stringLiteral" für AUri; AMultiline nach Stil und Delphi-Version (#312).</summary>
     function StringLiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
     function FormatStyleFor(const AUri: string): TFormatStyle;
@@ -487,6 +491,8 @@ uses
   Shell.Commands.Build,
   Shell.Commands.Index,
   Atlas.Common.Rules.Engine,
+  Atlas.Common.Rules.Options,
+  Atlas.Common.Rules.Builtin.FormatArgs,
   Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
@@ -1167,6 +1173,8 @@ begin
   FSignatureHelp := TLspSignatureHelp.Create(FDocuments, FIndex,
     ReadSourceText,
     EnsureUnit);
+  // Platzhalter von Format und eigenen Formatroutinen (#451).
+  FSignatureHelp.FormatRoutinesFor := FormatRoutinesFor;
   FSignatureHelp.Attach(FDispatcher);
   FHierarchies := TLspHierarchies.Create(FDocuments, FIndex,
     ReadSourceText,
@@ -3889,6 +3897,23 @@ end;
 function TServerComposition.CompletionSettingsFor(const AUri: string): TCompletionSettings;
 begin
   Result := SettingsFor(AUri).Completion;
+end;
+
+function TServerComposition.FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
+var
+  Workspace: TShellWorkspace;
+  Project: TProjectInfo;
+  Context: TIdeProjectContext;
+  Name: string;
+begin
+  Result := TFormatRoutines.Defaults;
+  for Name in TRuleOptions.Strings(TRuleEngine.RuleOptions(FormatArgsRuleId, SettingsFor(AUri)), 'formatMethods',
+    nil) do
+    if Trim(Name) <> '' then
+      Result := Result + [TFormatRoutines.Custom(Name, -1)];
+  Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+  if (Workspace <> nil) and Workspace.Project(Project) and FIdeProject.Find(Project.FileName, Context) then
+    Result := Result + Context.FormatFunctions;
 end;
 
 function TServerComposition.RefactoringSettingsFor(const AUri: string): TRefactoringSettings;

@@ -10,6 +10,8 @@
 // Parametertyp verglichen (TNameResolver.ArgumentFits). Unbekannte Typen gelten als verträglich. Jede Signatur
 // trägt das Ergebnis in data.fits und data.mismatch (erstes unverträgliches Argument, -1); vorgewählt wird die
 // erste verträgliche mit genug Parametern.
+// Formatroutinen (#451): Ist die Routine Format oder eine andere Formatroutine (Pascal.FormatRoutines, dazu eigene
+// aus FormatRoutinesFor), steht unter "format" die Zuordnung Platzhalter → Argument (Lsp.SignatureFormat).
 
 interface
 
@@ -24,6 +26,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Pascal.FormatRoutines,
+  Atlas.Common.Lsp.SignatureFormat,
   Atlas.Common.Lsp.Hover;
 
 type
@@ -66,8 +70,13 @@ type
     ActiveParameter: Integer;
     /// <summary>Signaturen aus der eingebauten Liste von System (#880), ohne Quelltext.</summary>
     Intrinsic: Boolean;
+    /// <summary>Platzhalter einer Formatroutine (#451); Found = False sonst.</summary>
+    Format: TSignatureFormat;
     function Found: Boolean;
   end;
+
+  /// <summary>Formatroutinen für das Dokument AUri: eingebaute und eigene (#451).</summary>
+  TFormatRoutinesFunc = reference to function(const AUri: string): TArray<TFormatRoutine>;
 
   TLspSignatureHelp = class
   public const
@@ -78,6 +87,7 @@ type
     FEnsureUnit: TEnsureUnitFunc;
     FReadText: THoverReadText;
     FNamespaces: TArray<string>;
+    FFormatRoutinesFor: TFormatRoutinesFunc;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
     /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
@@ -102,10 +112,16 @@ type
     class function ParseSignature(const ALines: TArray<string>; ALine, AColumn: Integer): TSignature; static;
     class function HelpAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const ATreeText, AFileName: string; const APosition: TTextPosition;
-      const AReadText: THoverReadText): TSignatureHelp; static;
+      const AReadText: THoverReadText): TSignatureHelp; overload; static;
+    /// <summary>Wie oben mit den Formatroutinen ARoutines (#451).</summary>
+    class function HelpAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const ATreeText, AFileName: string; const APosition: TTextPosition; const AReadText: THoverReadText;
+      const ARoutines: TArray<TFormatRoutine>): TSignatureHelp; overload; static;
     /// <summary>SignatureHelp des LSP; JSON-null ohne Signaturen. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AHelp: TSignatureHelp): TJSONValue; static;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
+    /// <summary>Formatroutinen je Dokument (#451); ohne gelten die eingebauten.</summary>
+    property FormatRoutinesFor: TFormatRoutinesFunc read FFormatRoutinesFor write FFormatRoutinesFor;
   end;
 
 implementation
@@ -615,6 +631,13 @@ end;
 class function TLspSignatureHelp.HelpAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const ATreeText, AFileName: string; const APosition: TTextPosition;
   const AReadText: THoverReadText): TSignatureHelp;
+begin
+  Result := HelpAt(AResolver, AIndex, ATree, ATreeText, AFileName, APosition, AReadText, TFormatRoutines.Defaults);
+end;
+
+class function TLspSignatureHelp.HelpAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const ATreeText, AFileName: string; const APosition: TTextPosition; const AReadText: THoverReadText;
+  const ARoutines: TArray<TFormatRoutine>): TSignatureHelp;
 var
   Site: TCallSite;
   Resolved: TResolvedSymbol;
@@ -638,6 +661,7 @@ var
   Binding: string;
   Nested: TResolvedSymbol;
   IntrinsicName: string;
+  Routine: TFormatRoutine;
 begin
   Result := Default(TSignatureHelp);
   Site := CallSiteAt(ATree, APosition);
@@ -761,12 +785,17 @@ begin
       end;
   if Result.ActiveSignature < 0 then
     Result.ActiveSignature := 0;
+  // Platzhalter einer Formatroutine (#451), nach dem voll qualifizierten Namen.
+  if (Length(Result.Signatures) > 0) and TFormatRoutines.FindQualified(ARoutines,
+    Resolved.UnitName + '.' + Resolved.QualifiedName, Routine) then
+    Result.Format := TSignatureFormats.Analyze(AResolver, ATree, AFileName, Site.ArgumentFirst, Site.ArgumentLast,
+      Site.ActiveParameter, Routine);
 end;
 
 class function TLspSignatureHelp.ToJson(const AHelp: TSignatureHelp): TJSONValue;
 var
   Signatures, Parameters, LabelRange: TJSONArray;
-  Signature, Parameter, Documentation, Data: TJSONObject;
+  Signature, Parameter, Documentation, Data, FormatJson: TJSONObject;
   Item: TSignature;
   Index: Integer;
 begin
@@ -808,6 +837,10 @@ begin
   TJSONObject(Result).AddPair('signatures', Signatures);
   TJSONObject(Result).AddPair('activeSignature', TJSONNumber.Create(AHelp.ActiveSignature));
   TJSONObject(Result).AddPair('activeParameter', TJSONNumber.Create(AHelp.ActiveParameter));
+  // Platzhalter (#451), Erweiterung von Atlas.
+  FormatJson := TSignatureFormats.ToJson(AHelp.Format);
+  if FormatJson <> nil then
+    TJSONObject(Result).AddPair('format', FormatJson);
 end;
 
 function TLspSignatureHelp.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -820,6 +853,7 @@ var
   Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Help: TSignatureHelp;
+  Routines: TArray<TFormatRoutine>;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
@@ -831,11 +865,15 @@ begin
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
   Tree := Shared.Tree;
   ACancellation.ThrowIfCancellationRequested;
+  if Assigned(FFormatRoutinesFor) then
+    Routines := FFormatRoutinesFor(Uri)
+  else
+    Routines := TFormatRoutines.Defaults;
   Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
     Resolver.Namespaces := Namespaces;
     Help := HelpAt(Resolver, FIndex, Tree, Document.Text, TDocumentUris.ToPath(Uri),
-      TLspPositions.ReadPosition(PositionValue), FReadText);
+      TLspPositions.ReadPosition(PositionValue), FReadText, Routines);
   finally
     Resolver.Free;
   end;

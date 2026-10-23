@@ -149,6 +149,8 @@ type
     FCommitChars: TCheckBox;
     FAutoUses: TCheckBox;
     FParameterHints: TCheckBox;
+    // Platzhalter von Format im Parameter-Hint (#451).
+    FFormatPlaceholders: TCheckBox;
     FOpenDelay: TEdit;
     FAutoWidth: TCheckBox;
     FFilterChips: TCheckBox;
@@ -1167,6 +1169,7 @@ type
     property CommitChars: TCheckBox read FCommitChars;
     property AutoUses: TCheckBox read FAutoUses;
     property ParameterHints: TCheckBox read FParameterHints;
+    property FormatPlaceholders: TCheckBox read FFormatPlaceholders;
     property OpenDelay: TEdit read FOpenDelay;
     property AutoWidth: TCheckBox read FAutoWidth;
     property Symbol: TAtlasSymbolImage read FSymbol;
@@ -1524,6 +1527,7 @@ begin
   FCommitChars := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCommitChars));
   FAutoUses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsAutoUses));
   FParameterHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsParameterHints));
+  FFormatPlaceholders := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFormatPlaceholders));
   // Code-Vorlagen (#51).
   FSnippets := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSnippets));
   FImportIdeTemplates := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsImportIdeTemplates));
@@ -2818,6 +2822,7 @@ begin
   FMarks.Bind(FCommitChars, ['CommitCharacters']);
   FMarks.Bind(FAutoUses, ['AutoUses']);
   FMarks.Bind(FParameterHints, ['ParameterHints']);
+  FMarks.Bind(FFormatPlaceholders, ['FormatPlaceholders']);
   FMarks.Bind(FOpenDelay, ['OpenDelayMs']);
   FMarks.Bind(FFilterChips, ['FilterChips']);
   FMarks.Bind(FLearning, ['Learning']);
@@ -4933,6 +4938,7 @@ begin
   FCommitChars.Checked := ASettings.CommitCharacters;
   FAutoUses.Checked := ASettings.AutoUses;
   FParameterHints.Checked := ASettings.ParameterHints;
+  FFormatPlaceholders.Checked := ASettings.FormatPlaceholders;
   FOpenDelay.Text := IntToStr(ASettings.OpenDelayMs);
   FAutoWidth.OnClick := nil;
   FAutoWidth.Checked := ASettings.ListWidth = 0;
@@ -5379,6 +5385,7 @@ begin
   ASettings.CommitCharacters := FCommitChars.Checked;
   ASettings.AutoUses := FAutoUses.Checked;
   ASettings.ParameterHints := FParameterHints.Checked;
+  ASettings.FormatPlaceholders := FFormatPlaceholders.Checked;
   ASettings.OpenDelayMs := StrToIntDef(FOpenDelay.Text, ASettings.OpenDelayMs);
   ASettings.FilterChips := FFilterChips.Checked;
   ASettings.Learning := FLearning.Checked;

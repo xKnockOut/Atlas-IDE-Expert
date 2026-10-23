@@ -17,6 +17,9 @@
 // meldet das Plugin die Vorgaben der Projektdatei .atlas (#486). Sie ändern nur
 // die Namensvorschläge der Vervollständigung, nie den Index; eine Änderung
 // allein löst deshalb kein OnChanged aus.
+// Formatroutinen (#451): Unter "formatFunctions" ([{"name": "Log", "formatIndex": 0}])
+// meldet das Plugin die eigenen Formatroutinen der Projektdatei .atlas; sie gelten
+// für die Platzhalter im Parameter-Hint und lösen ebenfalls kein OnChanged aus.
 // Aktives Projekt (#46): "active": true markiert das aktive Projekt der Gruppe. Gehört
 // eine Datei zu mehreren Projekten, gilt es vor der Reihenfolge der Gruppe; ein
 // Wechsel lädt nichts neu und löst kein OnChanged aus.
@@ -29,6 +32,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.FormatRoutines,
   Atlas.Common.Projects.Contract;
 
 type
@@ -49,6 +53,8 @@ type
     /// <summary>Präfix-Vorgaben der Projektdatei (#452); nur mit HasNaming, '' = ohne Präfix.</summary>
     Naming: array[TNamingKind] of string;
     HasNaming: array[TNamingKind] of Boolean;
+    /// <summary>Eigene Formatroutinen der Projektdatei (#451); ohne Name entfällt ein Eintrag.</summary>
+    FormatFunctions: TArray<TFormatRoutine>;
     /// <summary>Aktives Projekt der Gruppe (#46); nur mit HasActive gemeldet.</summary>
     Active: Boolean;
     HasActive: Boolean;
@@ -56,7 +62,7 @@ type
     class function FromJson(const AValue: TJSONValue): TIdeProjectContext; static;
     /// <summary>Vergleichsschlüssel: gleich, wenn sich für Index und Projekt nichts ändert (ohne Naming).</summary>
     function Key: string;
-    /// <summary>Vergleichsschlüssel der Präfix-Vorgaben.</summary>
+    /// <summary>Vergleichsschlüssel der Präfix-Vorgaben und Formatroutinen.</summary>
     function NamingKey: string;
     /// <summary>Übernimmt Symbole, Suchpfade und Namespaces in AProject ($(Name) mit AVariables,
     /// Pfade ab dem Projektordner, ohne Doppelte).</summary>
@@ -159,7 +165,9 @@ var
   Item, Prefixes: TJSONObject;
   HasDefines, HasPaths, HasNamespaces, Ignored: Boolean;
   Kind: TNamingKind;
-  Prefix: TJSONValue;
+  Prefix, Entry: TJSONValue;
+  Functions: TJSONArray;
+  Name: string;
 begin
   Result := Default(TIdeProjectContext);
   if not (AValue is TJSONObject) then
@@ -188,16 +196,28 @@ begin
         Result.Naming[Kind] := Trim(Prefix.Value);
       end;
     end;
+  if Item.TryGetValue<TJSONArray>('formatFunctions', Functions) then
+    for Entry in Functions do
+      if Entry is TJSONObject then
+      begin
+        Name := Trim(TJSONObject(Entry).GetValue<string>('name', ''));
+        if Name <> '' then
+          Result.FormatFunctions := Result.FormatFunctions + [TFormatRoutines.Custom(Name,
+            TJSONObject(Entry).GetValue<Integer>('formatIndex', -1))];
+      end;
 end;
 
 function TIdeProjectContext.NamingKey: string;
 var
   Kind: TNamingKind;
+  Routine: TFormatRoutine;
 begin
   Result := '';
   for Kind := Low(TNamingKind) to High(TNamingKind) do
     if HasNaming[Kind] then
       Result := Result + NamingKeys[Kind] + '=' + Naming[Kind] + '|';
+  for Routine in FormatFunctions do
+    Result := Result + 'format=' + Routine.Name + ':' + IntToStr(Routine.FormatIndex) + '|';
 end;
 
 function TIdeProjectContext.Key: string;

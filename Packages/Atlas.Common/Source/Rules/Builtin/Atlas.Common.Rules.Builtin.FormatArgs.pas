@@ -1,8 +1,10 @@
 ﻿unit Atlas.Common.Rules.Builtin.FormatArgs;
 
 // Formatstrings gegen ihre Argumente (#56, Gruppe „Fehler finden“):
-//   format-args       Format, FmtStr, WideFormat, WideFmtStr, Exception.CreateFmt
-//                     bzw. CreateFmtHelp, TStringBuilder.AppendFormat und die
+//   format-args       Format, FmtStr, FormatBuf, StrFmt, StrLFmt, WideFormat,
+//                     WideFmtStr, Exception.CreateFmt bzw. CreateFmtHelp,
+//                     TStringBuilder.AppendFormat (Liste in Pascal.FormatRoutines,
+//                     gemeinsam mit dem Parameter-Hint, #451) und die
 //                     Methoden der Option formatMethods (der Formatstring steht
 //                     vor der Argumentliste [...]). Geprüft wird nur ein
 //                     bekannter Formatstring: Literal, Verkettung von
@@ -35,9 +37,6 @@ type
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
-    /// <summary>Passt AName ("Unit.Typ.Methode", "Methode") zum Eintrag AEntry? Der kürzere Name muss das Ende
-    /// des längeren ab einer Punktgrenze sein, ohne Groß-/Kleinschreibung.</summary>
-    class function SameTail(const AEntry, AName: string): Boolean; static;
   end;
 
 procedure RegisterFormatArgsRules(const ARegistry: TRuleRegistry);
@@ -52,23 +51,11 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.FormatStrings,
+  Atlas.Common.Pascal.FormatRoutines,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.TypedScope;
-
-type
-  /// <summary>Art eines Arguments im Sinn von TVarRec.</summary>
-  TArgumentClass = (Unknown, Integer_, Float, Text, Character, Bool, Variant_, Enum, Object_, Pointer_);
-
-  /// <summary>Formatroutine: voll qualifizierter Name, Position des Formatstrings, wenn die Argumentliste
-  /// keine [...] ist (-1: unbekannt), und ob sie eine Methode ist (ohne Namensauflösung genügt dann der
-  /// Methodenname hinter einem beliebigen Qualifizierer: EImport.CreateFmt, mBuilder.AppendFormat).</summary>
-  TFormatRoutine = record
-    Name: string;
-    FormatIndex: Integer;
-    IsMethod: Boolean;
-  end;
 
 const
   // Höchste Tiefe beim Auflösen von Konstanten aus Konstanten.
@@ -83,33 +70,12 @@ const
   cCharTypes: array[0..2] of string = ('Char', 'AnsiChar', 'WideChar');
   cBoolTypes: array[0..3] of string = ('Boolean', 'ByteBool', 'WordBool', 'LongBool');
 
-function Routine(const AName: string; AFormatIndex: Integer; AIsMethod: Boolean): TFormatRoutine;
-begin
-  Result.Name := AName;
-  Result.FormatIndex := AFormatIndex;
-  Result.IsMethod := AIsMethod;
-end;
-
-function DefaultRoutines: TArray<TFormatRoutine>;
-begin
-  Result := TArray<TFormatRoutine>.Create(Routine('System.SysUtils.Format', 0, False),
-    Routine('System.SysUtils.FmtStr', 1, False), Routine('System.SysUtils.WideFormat', 0, False),
-    Routine('System.SysUtils.WideFmtStr', 1, False), Routine('System.SysUtils.Exception.CreateFmt', 0, True),
-    Routine('System.SysUtils.Exception.CreateFmtHelp', 0, True),
-    Routine('System.SysUtils.TStringBuilder.AppendFormat', 0, True));
-end;
-
 { TFormatArgsRule }
 
 function TFormatArgsRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(FormatArgsRuleId, TRuleSeverity.Error,
     'Formatstring passt nicht zu den Argumenten');
-end;
-
-class function TFormatArgsRule.SameTail(const AEntry, AName: string): Boolean;
-begin
-  Result := SameText(AEntry, AName) or EndsText('.' + AName, AEntry) or EndsText('.' + AEntry, AName);
 end;
 
 procedure TFormatArgsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -121,45 +87,6 @@ var
   function Raw(ANode: TSyntaxNode): string;
   begin
     Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
-  end;
-
-  /// <summary>Wert eines Ausdrucks aus Literalen, die mit + verbunden sind (Text einer Signatur).</summary>
-  function ExpressionValue(const AText: string; out AValue: string): Boolean;
-  var
-    mPos, mStart: Integer;
-    mQuoted: Boolean;
-    mPart: string;
-  begin
-    AValue := '';
-    mQuoted := False;
-    mStart := 1;
-    for mPos := 1 to Length(AText) + 1 do
-    begin
-      if (mPos <= Length(AText)) and (AText[mPos] = '''') then
-        mQuoted := not mQuoted;
-      if (mPos > Length(AText)) or not mQuoted and (AText[mPos] = '+') then
-      begin
-        if not TFormatString.LiteralValue(Trim(Copy(AText, mStart, mPos - mStart)), mPart) then
-          Exit(False);
-        AValue := AValue + mPart;
-        mStart := mPos + 1;
-      end;
-    end;
-    Result := True;
-  end;
-
-  /// <summary>Wert einer Konstanten aus ihrer Signatur ("cFormat = 'Text'", "cFormat: string = 'Text'").</summary>
-  function SignatureValue(const ASignature: string; out AValue: string): Boolean;
-  var
-    mEqual, mQuote: Integer;
-  begin
-    AValue := '';
-    mEqual := Pos('=', ASignature);
-    mQuote := Pos('''', ASignature);
-    // Gekürzte Signatur bzw. "=" erst im Literal.
-    if (mEqual = 0) or EndsStr('…', ASignature) or ((mQuote > 0) and (mQuote < mEqual)) then
-      Exit(False);
-    Result := ExpressionValue(Trim(Copy(ASignature, mEqual + 1, MaxInt)), AValue);
   end;
 
   /// <summary>Deklaration der Konstanten ASymbol in dieser Datei; nil, wenn sie anderswo steht.</summary>
@@ -222,68 +149,50 @@ var
           if mDecl <> nil then
             Result := FormatValue(mDecl[mDecl.ChildCount - 1], ADepth + 1, AValue)
           else
-            Result := SignatureValue(mSymbol.Signature, AValue);
+            Result := TFormatString.ConstantValue(mSymbol.Signature, AValue);
         end;
     end;
   end;
 
   /// <summary>Art des Typs ASymbol/AType nach dem Namen.</summary>
-  function TypeClass(const AType: TResolvedSymbol): TArgumentClass;
+  function TypeClass(const AType: TResolvedSymbol): TFormatArgumentClass;
   begin
-    Result := TArgumentClass.Unknown;
+    Result := TFormatArgumentClass.Unknown;
     if MatchText(AType.Name, ['Variant', 'OleVariant']) then
-      Result := TArgumentClass.Variant_
+      Result := TFormatArgumentClass.Variant_
     else if MatchText(AType.Name, cBoolTypes) then
-      Result := TArgumentClass.Bool
+      Result := TFormatArgumentClass.Bool
     else if MatchText(AType.Name, cIntegerTypes) then
-      Result := TArgumentClass.Integer_
+      Result := TFormatArgumentClass.Integer_
     else if MatchText(AType.Name, cFloatTypes) then
-      Result := TArgumentClass.Float
+      Result := TFormatArgumentClass.Float
     else if MatchText(AType.Name, cTextTypes) then
-      Result := TArgumentClass.Text
+      Result := TFormatArgumentClass.Text
     else if MatchText(AType.Name, cCharTypes) then
-      Result := TArgumentClass.Character
+      Result := TFormatArgumentClass.Character
     else if SameText(AType.Name, 'Pointer') then
-      Result := TArgumentClass.Pointer_
+      Result := TFormatArgumentClass.Pointer_
     else if not AType.Builtin and (AType.SymbolKind = TIndexSymbolKind.EnumType) then
-      Result := TArgumentClass.Enum
+      Result := TFormatArgumentClass.Enum
     else if not AType.Builtin and (AType.SymbolKind = TIndexSymbolKind.ClassType) and (AType.TypeParams = '') and
       not ContainsText(AType.Signature, 'class of') then
-      Result := TArgumentClass.Object_;
+      Result := TFormatArgumentClass.Object_;
   end;
 
   /// <summary>Art des Arguments ANode und sein Typname für die Meldung.</summary>
-  function ArgumentClass(ANode: TSyntaxNode; out ATypeName: string): TArgumentClass;
+  function ArgumentClass(ANode: TSyntaxNode; out ATypeName: string): TFormatArgumentClass;
   var
     mSymbol, mType: TResolvedSymbol;
-    mText, mValue: string;
     mFoundAny: Boolean;
   begin
     ATypeName := '';
-    Result := TArgumentClass.Unknown;
+    Result := TFormatArgumentClass.Unknown;
     ANode := Unwrapped(ANode);
     if (ANode.Kind = TSyntaxKind.UnaryExpr) and (ANode.Name = '-') and (ANode.ChildCount = 1) and
       (Unwrapped(ANode[0]).Kind = TSyntaxKind.Literal) then
       ANode := Unwrapped(ANode[0]);
     if ANode.Kind = TSyntaxKind.Literal then
-    begin
-      mText := Raw(ANode);
-      if TFormatString.LiteralValue(mText, mValue) then
-      begin
-        ATypeName := 'ein String';
-        if Length(mValue) = 1 then
-          Exit(TArgumentClass.Character);
-        Exit(TArgumentClass.Text);
-      end;
-      if (mText <> '') and CharInSet(mText[1], ['0'..'9', '$']) then
-      begin
-        ATypeName := 'eine Zahl';
-        if (mText[1] <> '$') and (ContainsText(mText, '.') or ContainsText(mText, 'e')) then
-          Exit(TArgumentClass.Float);
-        Exit(TArgumentClass.Integer_);
-      end;
-      Exit;
-    end;
+      Exit(TFormatString.LiteralClass(Raw(ANode), ATypeName));
     if ANode.Kind <> TSyntaxKind.Identifier then
     begin
       if mScope.SureType(ANode, mSymbol, mType) and not mSymbol.IsType then
@@ -299,7 +208,7 @@ var
         Exit;
       ATypeName := mType.Name;
       if mSymbol.SymbolKind = TIndexSymbolKind.EnumMember then
-        Exit(TArgumentClass.Enum);
+        Exit(TFormatArgumentClass.Enum);
       Exit(TypeClass(mType));
     end;
     if mScope.Resolver.NodeType(AContext.Tree, mScope.FileName, ANode, mSymbol, mType, mFoundAny) then
@@ -312,7 +221,7 @@ var
           ATypeName := mSymbol.Container;
         if ATypeName = '' then
           ATypeName := 'Aufzählungswert';
-        Result := TArgumentClass.Enum;
+        Result := TFormatArgumentClass.Enum;
       end;
       Exit;
     end;
@@ -320,31 +229,12 @@ var
     if MatchText(ANode.Name, ['True', 'False']) then
     begin
       ATypeName := 'Boolean';
-      Result := TArgumentClass.Bool;
+      Result := TFormatArgumentClass.Bool;
     end
     else if SameText(ANode.Name, 'nil') then
     begin
       ATypeName := 'nil';
-      Result := TArgumentClass.Pointer_;
-    end;
-  end;
-
-  /// <summary>Passt die Art AClass zum Typbuchstaben AType ('*' für Breite bzw. Genauigkeit)?</summary>
-  function Fits(AType: Char; AClass: TArgumentClass): Boolean;
-  begin
-    if AClass in [TArgumentClass.Unknown, TArgumentClass.Variant_] then
-      Exit(True);
-    case AType of
-      'd', 'u', 'x', '*':
-        Result := AClass = TArgumentClass.Integer_;
-      'e', 'f', 'g', 'n', 'm':
-        Result := AClass = TArgumentClass.Float;
-      's':
-        Result := AClass in [TArgumentClass.Text, TArgumentClass.Character];
-      'p':
-        Result := AClass in [TArgumentClass.Pointer_, TArgumentClass.Object_];
-    else
-      Result := True;
+      Result := TFormatArgumentClass.Pointer_;
     end;
   end;
 
@@ -365,12 +255,12 @@ var
   end;
 
   /// <summary>Vorschlag zur Meldung bei falschem Typ.</summary>
-  function Advice(AClass: TArgumentClass; const AArgument: string): string;
+  function Advice(AClass: TFormatArgumentClass; const AArgument: string): string;
   begin
     case AClass of
-      TArgumentClass.Enum:
+      TFormatArgumentClass.Enum:
         Result := Format(' Ord(%s) übergeben.', [AArgument]);
-      TArgumentClass.Bool:
+      TFormatArgumentClass.Bool:
         Result := Format(' BoolToStr(%s, True) übergeben.', [AArgument]);
     else
       Result := '';
@@ -379,11 +269,11 @@ var
 
   procedure CheckArgument(const ASpec: TFormatSpec; AType: Char; AArgument: TSyntaxNode);
   var
-    mClass: TArgumentClass;
+    mClass: TFormatArgumentClass;
     mTypeName, mShown: string;
   begin
     mClass := ArgumentClass(AArgument, mTypeName);
-    if Fits(AType, mClass) then
+    if TFormatString.Fits(AType, mClass) then
       Exit;
     mShown := mScope.Text(Unwrapped(AArgument));
     if not StartsText('ein', mTypeName) and (mTypeName <> 'nil') then
@@ -434,7 +324,7 @@ var
       begin
         mQualified := mCandidate.UnitName + '.' + mCandidate.QualifiedName;
         for mRoutine in mRoutines do
-          if TFormatArgsRule.SameTail(mRoutine.Name, mQualified) then
+          if TFormatRoutines.SameTail(mRoutine.Name, mQualified) then
           begin
             AFormatIndex := mRoutine.FormatIndex;
             Exit(True);
@@ -466,15 +356,18 @@ var
       Exit;
     mList := nil;
     mFormatNode := nil;
+    // Bekannte Stelle des Formatstrings zuerst (FormatBuf: Puffer und Längen davor, die Länge direkt vor der
+    // Liste), sonst das Argument vor der Liste.
+    if (mFormatIndex >= 0) and (mFormatIndex + 1 < ANode.ChildCount) then
+      mFormatNode := ANode[mFormatIndex + 1];
     for mIndex := 2 to ANode.ChildCount - 1 do
       if Unwrapped(ANode[mIndex]).Kind = TSyntaxKind.SetConstructor then
       begin
         mList := Unwrapped(ANode[mIndex]);
-        mFormatNode := ANode[mIndex - 1];
+        if mFormatNode = nil then
+          mFormatNode := ANode[mIndex - 1];
         Break;
       end;
-    if (mFormatNode = nil) and (mFormatIndex >= 0) and (mFormatIndex + 1 < ANode.ChildCount) then
-      mFormatNode := ANode[mFormatIndex + 1];
     if (mFormatNode = nil) or not FormatValue(mFormatNode, 0, mValue) then
       Exit;
     mFormat := TFormatString.Parse(mValue);
@@ -541,10 +434,10 @@ var
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
     Exit;
-  mRoutines := DefaultRoutines;
+  mRoutines := TFormatRoutines.Defaults;
   for mName in TRuleOptions.Strings(AContext.Options, 'formatMethods', nil) do
     if Trim(mName) <> '' then
-      mRoutines := mRoutines + [Routine(Trim(mName), -1, Pos('.', mName) > 0)];
+      mRoutines := mRoutines + [TFormatRoutines.Custom(mName, -1)];
   mScope := TTypedScope.Create(AContext);
   try
     Visit(AContext.Tree.Root);

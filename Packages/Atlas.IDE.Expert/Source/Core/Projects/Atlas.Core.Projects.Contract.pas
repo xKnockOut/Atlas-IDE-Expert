@@ -12,6 +12,9 @@
 // Präfixe (#452): Gibt die Projektdatei .atlas (#486) unter "naming" Präfixe für
 // Felder, Parameter oder lokale Variablen vor, gehen sie unter "naming" mit; sie
 // gelten für die Namensvorschläge vor der Zählung im Projekt.
+// Formatroutinen (#451): Die eigenen Formatroutinen der Projektdatei gehen unter
+// "formatFunctions" mit ([{"name": "Log", "formatIndex": 0}]); der Server zeigt
+// für sie die Platzhalter im Parameter-Hint.
 // Aktives Projekt (#46): "active" markiert das aktive Projekt der Gruppe; der
 // Server wählt es für Dateien, die zu mehreren Projekten gehören.
 
@@ -26,6 +29,12 @@ type
   /// <summary>Art einer Präfix-Vorgabe; Reihenfolge wie TAtlasNamingKind der Projektdatei.</summary>
   TAtlasProjectNamingKind = (Field, Parameter, Local);
   {$SCOPEDENUMS OFF}
+
+  /// <summary>Eigene Formatroutine der Projektdatei (#451): Name und Stelle des Formatstrings (ab 0).</summary>
+  TAtlasProjectFormatFunction = record
+    Name: string;
+    FormatIndex: Integer;
+  end;
 
   TAtlasProjectContext = record
   public const
@@ -49,6 +58,8 @@ type
     /// <summary>Präfix-Vorgaben der Projektdatei (#452); nur mit HasNaming gesetzt, '' = ohne Präfix.</summary>
     Naming: array[TAtlasProjectNamingKind] of string;
     HasNaming: array[TAtlasProjectNamingKind] of Boolean;
+    /// <summary>Eigene Formatroutinen der Projektdatei (#451).</summary>
+    FormatFunctions: TArray<TAtlasProjectFormatFunction>;
     /// <summary>Aktives Projekt der Projektgruppe (#46).</summary>
     Active: Boolean;
     /// <summary>Woher Defines, Suchpfade und Namespaces kommen (nur fürs Protokoll, nicht für den
@@ -139,6 +150,7 @@ end;
 function TAtlasProjectContext.Key: string;
 var
   Kind: TAtlasProjectNamingKind;
+  Item: TAtlasProjectFormatFunction;
 begin
   Result := AnsiUpperCase(Project) + '|' + Configuration + '|' + Platform + '|' + BdsVersion + '|' +
     string.Join(';', Defines) + '|' + string.Join(';', SearchPaths) + '|' + string.Join(';', Namespaces) + '|' +
@@ -146,12 +158,16 @@ begin
   for Kind := Low(TAtlasProjectNamingKind) to High(TAtlasProjectNamingKind) do
     if HasNaming[Kind] then
       Result := Result + '|' + NamingKeys[Kind] + '=' + Naming[Kind];
+  for Item in FormatFunctions do
+    Result := Result + '|format=' + Item.Name + ':' + IntToStr(Item.FormatIndex);
 end;
 
 function TAtlasProjectContext.ToJson: TJSONObject;
 var
   Kind: TAtlasProjectNamingKind;
-  Prefixes: TJSONObject;
+  Prefixes, Entry: TJSONObject;
+  Functions: TJSONArray;
+  Item: TAtlasProjectFormatFunction;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('project', Project);
@@ -176,6 +192,18 @@ begin
       end;
       Prefixes.AddPair(NamingKeys[Kind], Naming[Kind]);
     end;
+  if Length(FormatFunctions) > 0 then
+  begin
+    Functions := TJSONArray.Create;
+    Result.AddPair('formatFunctions', Functions);
+    for Item in FormatFunctions do
+    begin
+      Entry := TJSONObject.Create;
+      Functions.AddElement(Entry);
+      Entry.AddPair('name', Item.Name);
+      Entry.AddPair('formatIndex', TJSONNumber.Create(Item.FormatIndex));
+    end;
+  end;
 end;
 
 end.

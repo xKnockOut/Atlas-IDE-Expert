@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4138] of string = (
+  Lines: array[0..4148] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -1105,6 +1105,18 @@ const
     '      "x-key": "completion.parameterHints",',
     '      "x-area": "completion",',
     '      "x-page": "Einfügen"',
+    '    },',
+    '    "FormatPlaceholders": {',
+    '      "description": "Im Parameter-Hint von Format und anderen Formatroutinen nennt eine Zeile den Platzhalter zum Argument am Cursor (\"Platzhalter 2 von 2 erwartet ganzzahlig\") und warnt in Fehlerf' +
+      'arbe bei überzähligen Argumenten, ungültigen Platzhaltern und Typkonflikten mit Literalen; Platzhalter und Argument bekommen im Editor dieselbe Hintergrundfarbe (sechs Farben, danach wiederholt). Eige' +
+      'ne Formatroutinen: formatFunctions in der Projektdatei .atlas bzw. formatMethods der Regel format-args in atlas.json.",',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "completion.formatPlaceholders",',
+    '      "x-area": "completion",',
+    '      "x-page": "Einfügen",',
+    '      "x-parent": "completion.parameterHints",',
+    '      "x-issue": "#451"',
     '    },',
     '    "OpenDelayMs": {',
     '      "type": "integer",',
