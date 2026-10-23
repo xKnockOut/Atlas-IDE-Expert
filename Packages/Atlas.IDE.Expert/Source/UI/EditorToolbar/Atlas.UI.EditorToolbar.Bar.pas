@@ -17,11 +17,12 @@
 //   zwischen Drücken und Loslassen bricht nicht ab: In der IDE kommt es bei
 //   jedem Klick (Mausfang, die IDE holt den Fokus in den Editor), früher lief
 //   dadurch jeder Klick ins Leere.
-// - Die Leiste lässt sich von außen nicht sperren (SetEnabled): Die IDE setzt
-//   Enabled bei Steuerelementen im Editor-Panel auf False (Protokoll der
-//   Brotkrumen: „Fenster ist gesperrt“), danach kam kein Klick mehr an. Die
-//   Knöpfe sperrt die Leiste selbst; ein Klick auf einen gesperrten Knopf
-//   steht samt Grund im Protokoll.
+// - Gesperrt wird die Leiste nur von außen: Etwas setzt Enabled bei
+//   Steuerelementen im Editor-Panel auf False (Protokoll der Brotkrumen:
+//   „Fenster ist gesperrt“), danach kommt kein Klick mehr an. OnDisabled
+//   meldet das im Moment des Sperrens, die IDE-Schicht protokolliert den
+//   Aufrufer. Die Knöpfe sperrt die Leiste selbst; ein Klick auf einen
+//   gesperrten Knopf steht samt Grund im Protokoll.
 // - Tooltip je Knopf: Name und Taste.
 // - PreferredWidth: Breite ohne Überlauf (Inline: so breit, wie nötig).
 
@@ -98,6 +99,7 @@ type
     FOnCommand: TAtlasToolbarCommandEvent;
     FOnReturn: TProc;
     FOnCustomize: TProc;
+    FOnDisabled: TProc<TObject>;
     function Scale(AValue: Integer): Integer;
     function IconSize: Integer;
     function ButtonWidth(const AButton: TAtlasToolbarButton): Integer;
@@ -163,6 +165,8 @@ type
     property OnCommand: TAtlasToolbarCommandEvent read FOnCommand write FOnCommand;
     property OnReturn: TProc read FOnReturn write FOnReturn;
     property OnCustomize: TProc read FOnCustomize write FOnCustomize;
+    /// <summary>Jemand sperrt die Leiste (Enabled := False); gerufen, bevor sie gesperrt ist.</summary>
+    property OnDisabled: TProc<TObject> read FOnDisabled write FOnDisabled;
   end;
 
 implementation
@@ -716,8 +720,10 @@ end;
 
 procedure TAtlasEditorToolbar.SetEnabled(Value: Boolean);
 begin
-  // Immer bedienbar (siehe oben); gesperrt werden nur einzelne Knöpfe.
-  inherited SetEnabled(True);
+  // Vor dem Sperren melden: Der Aufrufer steht dann noch auf dem Stapel (siehe oben).
+  if not Value and Enabled and Assigned(FOnDisabled) then
+    FOnDisabled(Self);
+  inherited SetEnabled(Value);
 end;
 
 procedure TAtlasEditorToolbar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
