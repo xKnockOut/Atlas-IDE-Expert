@@ -9,7 +9,7 @@ interface
 
 const
   /// <summary>Schlüssel für alle Projekte (settings.json).</summary>
-  GlobalSettingPaths: array[0..42] of string = (
+  GlobalSettingPaths: array[0..46] of string = (
     'delphiVersion',
     'language',
     'rules',
@@ -42,6 +42,10 @@ const
     'index.removeOrphans',
     'index.cacheMaxAgeDays',
     'index.cacheMaxMb',
+    'architecture.enabled',
+    'architecture.scope',
+    'architecture.includeLibraryUnits',
+    'architecture.centralUnits',
     'requestTimeoutMs',
     'diagnostics',
     'highlight',
@@ -54,7 +58,7 @@ const
     'logFile',
     'traceFile');
   /// <summary>Schlüssel des Projekts (atlas.json).</summary>
-  ProjectSettingPaths: array[0..27] of string = (
+  ProjectSettingPaths: array[0..28] of string = (
     'encoding',
     'project',
     'config',
@@ -76,6 +80,7 @@ const
     'usesKeep',
     'dfmPropertyRules',
     'index.exclude',
+    'architecture.exclude',
     'stringLiteral',
     'memberOrder',
     'testUnits',

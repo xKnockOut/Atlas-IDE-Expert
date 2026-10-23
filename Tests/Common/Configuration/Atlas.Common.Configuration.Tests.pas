@@ -12,6 +12,8 @@ type
     [Test]
     procedure MergesLayersPerKey;
     [Test]
+    procedure ReadsArchitectureSettings;
+    [Test]
     procedure ReadsAllSettings;
     [Test]
     procedure EmptyObjectGivesDefaults;
@@ -157,6 +159,41 @@ begin
   Assert.AreEqual(1252, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{"encoding": "cp1252"}',
     Issues).DefaultEncoding);
   Assert.AreEqual(1250, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{}', Issues).DefaultEncoding);
+end;
+
+procedure TConfigurationParserTests.ReadsArchitectureSettings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // Architekturübersicht (#1118)
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.ArchitectureEnabled);
+  Assert.AreEqual('projectGroup', Settings.ArchitectureScope);
+  Assert.IsFalse(Settings.ArchitectureIncludeLibraryUnits);
+  Assert.AreEqual(15, Settings.ArchitectureCentralUnits);
+  Assert.AreEqual(0, Integer(Length(Settings.ArchitectureExclude)));
+  Settings := Parse('{"architecture": {"enabled": false, "scope": "project", "includeLibraryUnits": true, ' +
+    '"centralUnits": 40, "exclude": ["Tests/**", "*.Tests"]}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.ArchitectureEnabled);
+  Assert.AreEqual('project', Settings.ArchitectureScope);
+  Assert.IsTrue(Settings.ArchitectureIncludeLibraryUnits);
+  Assert.AreEqual(40, Settings.ArchitectureCentralUnits);
+  Assert.AreEqual('Tests/**|*.Tests', string.Join('|', Settings.ArchitectureExclude));
+  Settings := Parse('{"architecture": {"enabled": 1, "scope": "alles", "centralUnits": 4, "exclude": "Tests", ' +
+    '"x": true}}', Issues);
+  Assert.AreEqual(5, Integer(Length(Issues)));
+  Assert.IsTrue(Settings.ArchitectureEnabled);
+  Assert.AreEqual('projectGroup', Settings.ArchitectureScope);
+  Assert.AreEqual(15, Settings.ArchitectureCentralUnits);
+  Settings := Parse('{"architecture": {"centralUnits": 101}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Parse('{"architecture": []}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"architecture": {"centralUnits": 30}}',
+    '{"architecture": {"exclude": ["Demo/**"]}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Settings.ArchitectureExclude)));
 end;
 
 procedure TConfigurationParserTests.MergesLayersPerKey;
