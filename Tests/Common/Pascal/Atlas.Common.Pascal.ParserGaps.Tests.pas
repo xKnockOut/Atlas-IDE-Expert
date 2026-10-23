@@ -42,6 +42,15 @@ type
     /// <summary>#1134 Gegentest: function GetX; in einer Klasse meldet E2023 weiterhin.</summary>
     [Test]
     procedure FunctionWithoutResultStillReported;
+    /// <summary>#1140 (Probe p03): private class threadvar ohne Diagnose, Feld und Methode im Index.</summary>
+    [Test]
+    procedure ClassThreadVar;
+    /// <summary>#1140 (Probe p04): class operator In und weitere reservierte Operatornamen.</summary>
+    [Test]
+    procedure ClassOperatorKeywordNames;
+    /// <summary>#1140 (Probe p06): type AnsiString(Codepage).</summary>
+    [Test]
+    procedure CodepageString;
   end;
 
 implementation
@@ -83,6 +92,21 @@ const
     '  TGenerator<T> = class(TInterfacedObject, TFunc<T>)'#10'  private'#10 +
     '    function TFunc<T>.Invoke = Bind;'#10'  public'#10'    function Bind: T;'#10'  end;'#10 +
     'implementation'#10'function TGenerator<T>.Bind: T;'#10'begin'#10'  Result := Default(T);'#10'end;'#10'end.';
+  ClassThreadVarSource =
+    'unit p03_class_threadvar;'#10'interface'#10'type'#10'  TFoo = class'#10'  private class threadvar'#10 +
+    '    FCurrent: Integer;'#10'  public'#10'    class function Current: Integer; static;'#10'  end;'#10 +
+    'implementation'#10'class function TFoo.Current: Integer;'#10'begin'#10'  Result := FCurrent;'#10'end;'#10'end.';
+  OperatorIn =
+    'unit p04_class_operator_in;'#10'interface'#10'type'#10'  TSet = record'#10 +
+    '    class operator In(const A: Integer; const B: TSet): Boolean;'#10 +
+    '    class operator And(const A, B: TSet): TSet;'#10'    class operator Not(const A: TSet): TSet;'#10 +
+    '    class operator Shl(const A: TSet; B: Integer): TSet;'#10'    procedure Danach;'#10'  end;'#10 +
+    'implementation'#10'class operator TSet.In(const A: Integer; const B: TSet): Boolean;'#10'begin'#10 +
+    '  Result := A > 0;'#10'end;'#10'procedure TSet.Danach;'#10'begin'#10'end;'#10'end.';
+  CodepageSource =
+    'unit p06_codepage_string;'#10'interface'#10'const'#10'  CP_WINANSI = 1252;'#10'type'#10 +
+    '  WinAnsiString = type AnsiString(CP_WINANSI);'#10'  RawUnicode = type AnsiString(1200);'#10'var'#10 +
+    '  W: WinAnsiString;'#10'implementation'#10'end.';
   EscapedMember =
     'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'    procedure &Type;'#10'  end;'#10'implementation'#10 +
     'procedure TFoo.&Type;'#10'begin'#10'end;'#10'procedure P(F: TFoo);'#10'begin'#10'  F.&Type;'#10'end;'#10'end.';
@@ -324,6 +348,61 @@ procedure TParserGapsTests.FunctionWithoutResultStillReported;
 begin
   Assert.Contains(Diagnostics('unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'    function GetX;'#10 +
     '  end;'#10'implementation'#10'end.'), 'E2023');
+end;
+
+procedure TParserGapsTests.ClassThreadVar;
+var
+  U: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Directive: string;
+  ClassField: Boolean;
+begin
+  Assert.AreEqual('', Diagnostics(ClassThreadVarSource));
+  U := TIndexExtractor.ExtractText(ClassThreadVarSource, MainFile, nil);
+  Assert.IsTrue(HasSymbol(U, 'TFoo', 'Current'));
+  // Das Feld ist ein Klassenfeld wie bei class var.
+  ClassField := False;
+  for Symbol in U.Symbols do
+    if SameText(Symbol.Container, 'TFoo') and SameText(Symbol.Name, 'FCurrent') then
+      for Directive in Symbol.Directives do
+        ClassField := ClassField or SameText(Directive, 'class');
+  Assert.IsTrue(ClassField);
+end;
+
+procedure TParserGapsTests.ClassOperatorKeywordNames;
+var
+  Tree: TSyntaxTree;
+  TypeNode: TSyntaxNode;
+begin
+  Assert.AreEqual('', Diagnostics(OperatorIn));
+  Tree := TPascalParser.Parse(OperatorIn);
+  try
+    TypeNode := Find(Tree.Root, TSyntaxKind.TypeDecl, 'TSet');
+    Assert.IsNotNull(Find(TypeNode, TSyntaxKind.RoutineHeader, 'In'), 'In');
+    Assert.IsNotNull(Find(TypeNode, TSyntaxKind.RoutineHeader, 'And'), 'And');
+    Assert.IsNotNull(Find(TypeNode, TSyntaxKind.RoutineHeader, 'Not'), 'Not');
+    Assert.IsNotNull(Find(TypeNode, TSyntaxKind.RoutineHeader, 'Shl'), 'Shl');
+    Assert.IsNotNull(Find(TypeNode, TSyntaxKind.RoutineHeader, 'Danach'), 'Danach');
+    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.RoutineDecl, 'TSet.In'), 'Rumpf');
+  finally
+    Tree.Free;
+  end;
+  Assert.IsTrue(HasSymbol(TIndexExtractor.ExtractText(OperatorIn, MainFile, nil), 'TSet', 'In'));
+end;
+
+procedure TParserGapsTests.CodepageString;
+var
+  Tree: TSyntaxTree;
+begin
+  Assert.AreEqual('', Diagnostics(CodepageSource));
+  Tree := TPascalParser.Parse(CodepageSource);
+  try
+    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.TypeDecl, 'WinAnsiString'));
+    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.TypeDecl, 'RawUnicode'));
+    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.VarDecl, 'W'));
+  finally
+    Tree.Free;
+  end;
 end;
 
 initialization
