@@ -6108,3 +6108,25 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index; Metrik-Linse (`co
 | JM6 | Vorfahr aus einer Unit, die nicht im Index steht | Linse „Vererbungstiefe mindestens n“; Meldung nur, wenn schon die bekannten Vorfahren über der Grenze liegen |
 | JM7 | Metrik-Linse über einer Methode | „… · 2 Parameter · Operanden 6 (> 5) · 3 lokale · 1 Ausstiege“; Werte über der Grenze farbig. Auf Englisch: „operands 6 (> 5) · 3 locals · 1 exits“ |
 | JM8 | `"metric-boolean-operands": {"max": 6}`, `"metric-local-count": "off"`, `"metric-exit-points": {"exclude": ["Alt/*.pas"]}`, `"group:style": "off"` | Beispiel aus JM1 meldet nichts mehr; keine lokale-Variablen-Meldung; keine Ausstiege-Meldung in `Alt/`; mit der Gruppe aus keine der vier Regeln |
+
+## Architekturübersicht (#1118)
+
+Voraussetzung: Server läuft in der IDE, Projektgruppe aus dem Referenzprojekt (#94) mit drei Namensräumen (etwa `App.Data.*`, `App.Ui.*`, `App.Net.*`), einer absichtlich falsch einsortierten Unit (`App.Ui.DbHelfer` mit uses nur auf `App.Data.*`), einem Zyklus über implementation und einem reinen interface-Zyklus in einer Kopie; Index fertig aufgebaut.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ARC1 | Zum ersten Mal *Ansicht › Atlas › Architektur* | Fenster *Atlas-Architektur* öffnet sich als Reiter neben der Projektverwaltung (rechts); Statuszeile erst „Berechne die Architekturübersicht …“, dann „n Units · 3 Teilsysteme · … · Index-Stand … · … ms“ |
+| ARC2 | Fenster an eine andere Stelle ziehen, IDE neu starten, Fenster wieder öffnen; *Atlas › Architekturübersicht* und Befehlspalette „Architekturübersicht“ | Es bleibt an der neuen Stelle (kein erneutes Andocken rechts); Menü und Palette öffnen dasselbe Fenster |
+| ARC3 | Reiter *Teilsysteme* | Drei Teilsysteme „Data“, „Ui“, „Net“ mit Zusammenhalt; `App.Ui.DbHelfer` als Ausreißer „mehr Kanten nach Data“ (**Abnahme**) |
+| ARC4 | Reiter *Zentrale Units*, Spaltenköpfe anklicken | Direkt/gesamt abhängig und verwendet wie in `get_architecture`; zweiter Klick sortiert umgekehrt; „gesamt abhängig“ stimmt mit „Units neu übersetzen“ (#554) überein |
+| ARC5 | Reiter *Zyklen*, uses-Eintrag doppelklicken | Zyklus über implementation mit vollständigem Rundweg; der Doppelklick springt an Zeile und Spalte des uses-Eintrags; der interface-Zyklus steht als „Zyklus nur über interface (F2047)“ |
+| ARC6 | Reiter *Querverbindungen* | Die einzelne Kante zwischen zwei sonst getrennten Teilsystemen mit Grund „selten“ und Fundstelle; Doppelklick springt hin |
+| ARC7 | *Übersicht*: Mausrad, Ziehen, Klick, Doppelklick, +, −, 0, „Einpassen“, „Namen“ | Zoom um den Mauszeiger, Verschieben, Steckbrief der gewählten Unit unter der Karte, Doppelklick öffnet die Unit; Namen nur zentraler Units, solange weit herausgezoomt |
+| ARC8 | Unit wählen, Umschalt+Klick auf eine andere; dann gegen die Richtung; Esc | Kürzester Weg hervorgehoben, Rest blass, Zeile „Kürzester Weg (n Schritte …): A → … → B“ wie die HTML-Karte bzw. `find_path` mit `via: ["uses"]`; gegen die Richtung „Kein Weg: …“; Esc hebt auf |
+| ARC9 | „Zyklen markieren“, „implementation-uses“ aus, „Teilsysteme ▾“ ein Teilsystem abwählen, „Alle einblenden“ | Zyklen in Fehlerfarbe; ohne implementation-uses verschwinden gepunktete Kanten und der Weg wird neu gesucht; ein abgewähltes Teilsystem samt Units und Kanten verschwindet |
+| ARC10 | Filter „cache“; Umfang „Projekt“; „Bibliotheks-Units“ | Karte, Tabelle und Bäume grenzen sich ein; Umfang und Bibliothek rechnen neu und stehen danach auch unter Tools › Optionen › Atlas › Allgemein › Architektur |
+| ARC11 | „Bericht speichern …“ als `.html` und `.md`; dasselbe mit `AtlasServer --check <Gruppe> --architecture bericht.html` | Gleiche Zahlen in Fenster, Markdown und HTML; die HTML-Seite öffnet ohne Netz, „Weg zeigen“ und „Zyklen markieren“ funktionieren |
+| ARC12 | `"architecture": {"exclude": ["Tests/**"]}` in atlas.json (Projekt-Einstellungen) | Testunits fehlen; die Statuszeile nennt „ausgeschlossen: Tests/**“ |
+| ARC13 | IDE in hellem und dunklem Thema | Karte, Listen und Statuszeile lesbar, Teilsystemfarben passend zum Thema |
+| ARC14 | Projektgruppe mit etwa 2000 Units, „Neu berechnen“ | Rechnung im Hintergrund unter 2 s, IDE bleibt bedienbar, kein Eintrag des Einfrier-Wächters (#501) |
+| ARC15 | `architecture.enabled` aus (Schnellschalter) | Kein Menüeintrag, kein Palettenbefehl, ein offenes Fenster schließt sich, `get_architecture` fehlt in `tools/list`, `--architecture` endet mit Exit-Code 3 |

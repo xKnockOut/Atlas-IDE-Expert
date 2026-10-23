@@ -21,7 +21,7 @@ Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnoc
 | [Bauen, Testen, Debuggen](#bauen-testen-debuggen) | Release-Build-Wächter, DUnitX-Tests aus dem Editor, Startprofile, Werte im Hover beim Debuggen |
 | [IDE-Komfort](#ide-komfort) | Willkommensseite, Befehlspalette, Benachrichtigungen, Änderungsmarken aus Git/SVN, abgesicherter Start |
 | [Einstellungen](#einstellungen) | Jede Funktion einzeln abschaltbar, Optionsseite als Baum, teamweite Projektdatei `.atlas` |
-| [Claude Code](#claude-code-und-mcp) | 19 MCP-Werkzeuge zum Lesen, Prüfen, Bauen, Testen und Umbenennen |
+| [Claude Code](#claude-code-und-mcp) | 20 MCP-Werkzeuge zum Lesen, Prüfen, Bauen, Testen und Umbenennen |
 
 ## Schnellstart
 
@@ -77,6 +77,7 @@ Alles Folgende ist in `main` umgesetzt. Funktionen mit *(experimentell)* sind ab
 - **Code-Metriken** als Marke hinter jedem Methodenkopf (Länge, Tiefe, zyklomatische und kognitive Komplexität, Parameter, Operanden der größten Bedingung, lokale Variablen, Ausstiege), hinter jeder Klasse (Member, Vererbungstiefe ohne RTL und VCL), dem Unit-Namen (Zeilen) und dem ersten `uses` (Units)
 - **Rekursion im Rand**, **inaktive `{$IFDEF}`-Zweige** abgeschwächt mit Grund im Tooltip, **ungenutzte uses** abgeblendet
 - **Klammer- und Blockpaare** farbig nach Tiefe, mit eigenen Blocklinien
+- **Architekturübersicht** (Fenster *Atlas-Architektur*, *Ansicht › Atlas › Architektur*): Teilsysteme als Gruppen eng verbundener Units auf einer Karte zum Zoomen und Verschieben, zentrale Units mit direkt und gesamt abhängigen Units und Rolle (Fundament, Drehscheibe), Zyklen mit Rundweg und den uses-Einträgen, die ihn schließen, Querverbindungen zwischen Teilsystemen (selten oder gegen die Hauptrichtung) und Ausreißer; Doppelklick öffnet Unit oder uses-Eintrag. Als HTML- oder Markdown-Bericht speicherbar, auch mit `AtlasServer --architecture` und im MCP-Werkzeug `get_architecture`
 
 ### Navigieren
 
@@ -177,7 +178,7 @@ Alle Schlüssel: [docs/Einstellungen.md](docs/Einstellungen.md) und [docs/Konfig
 
 ### Claude Code und MCP
 
-Der Server bietet Claude Code 19 MCP-Werkzeuge: Symbole suchen, Deklarationen und Typ- und Aufrufhierarchien lesen, Komponenten- und Formularinfos, Diagnosen, Metriken und TODOs abfragen, geplanten Code mit `check_code` vor dem Schreiben prüfen, Treffer erklären, über die IDE bauen (`build_project`, `get_last_build`), DUnitX-Tests ausführen und schreibend umbenennen oder Code-Aktionen anwenden (mit Vorschau). Dazu die Ressource `delphi://conventions` mit den Konventionen des Projekts. Einrichtung: [Editors/ClaudeCode](Editors/ClaudeCode/README.md), Werkzeuge: [docs/MCP.md](docs/MCP.md).
+Der Server bietet Claude Code 20 MCP-Werkzeuge: Symbole suchen, die Architektur des Projekts überblicken (`get_architecture`), Deklarationen und Typ- und Aufrufhierarchien lesen, Komponenten- und Formularinfos, Diagnosen, Metriken und TODOs abfragen, geplanten Code mit `check_code` vor dem Schreiben prüfen, Treffer erklären, über die IDE bauen (`build_project`, `get_last_build`), DUnitX-Tests ausführen und schreibend umbenennen oder Code-Aktionen anwenden (mit Vorschau). Dazu die Ressource `delphi://conventions` mit den Konventionen des Projekts. Einrichtung: [Editors/ClaudeCode](Editors/ClaudeCode/README.md), Werkzeuge: [docs/MCP.md](docs/MCP.md).
 
 ### Geplant
 
@@ -331,6 +332,7 @@ Der Linter hat keinen Symbolindex: Typen aus anderen Units bleiben unbekannt, Re
 | `--suppression-stats` | statt der Treffer: wie oft jede Regel per `lsp-ignore` unterdrückt wird (häufigste zuerst, mit ungenutzten), als Text oder JSON; Exit-Code 0 |
 | `--metrics` | statt der Treffer: Code-Metriken je Methode (Länge, Verschachtelungstiefe, zyklomatische und kognitive Komplexität, Parameter, Operanden, lokale Variablen, Ausstiege; #66, #980) mit den Grenzwerten aus `atlas.json` (`"max"` der Regeln `metric-*`); `--format text` schreibt einen Markdown-Bericht, `json` die Metrikdaten; Exit-Code 0 |
 | `--todos` | statt der Treffer: offene TODO-Einträge (#68) aus `// TODO`, `// FIXME` und dem Format der IDE-To-Do-Liste `{ TODO 1 -oPerson -cKategorie : Text }` mit Priorität, Person und Kategorie; weitere Marken über die Option `"keywords"` der Regel `todo-comment`; `--format text` schreibt eine Markdown-Übersicht, `json` die Daten; Exit-Code 0 |
+| `--architecture <Datei>` | statt der Treffer: Architekturübersicht (#1118) des Ziels aus `--check` (ohne `--check` des aktuellen Ordners) als `.html` (eigenständige Karte zum Zoomen mit Tabellen) oder `.md`: Teilsysteme, zentrale Units, Zyklen mit Fundstellen, Querverbindungen und Ausreißer; Umfang, Bibliotheks-Units und Ausschlüsse aus `architecture.*` in `atlas.json` bzw. `settings.json`; Exit-Code 0, 3 bei ausgeschalteter Übersicht |
 
 Exit-Code: 1, wenn ein Treffer `--fail-on` erreicht (Standard: mindestens ein Fehler), sonst 0; 3 bei Aufruf- oder Lesefehlern. Treffer aus der Baseline zählen nie.
 

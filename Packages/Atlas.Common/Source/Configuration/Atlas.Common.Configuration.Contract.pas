@@ -516,6 +516,15 @@ type
     IndexRemoveOrphans: Boolean;
     IndexCacheMaxAgeDays: Integer;
     IndexCacheMaxMb: Integer;
+    /// <summary>Architekturübersicht (#1118): Hauptschalter (aus = kein Fenster, kein Bericht, kein
+    /// get_architecture), Umfang ("project" oder "projectGroup"), Bibliotheks-Units mitzählen, Länge der Liste
+    /// zentraler Units (5..100) und Glob-Muster für Units, die nicht eingehen (Unit-Name oder Pfad relativ zum
+    /// Projekt).</summary>
+    ArchitectureEnabled: Boolean;
+    ArchitectureScope: string;
+    ArchitectureIncludeLibraryUnits: Boolean;
+    ArchitectureCentralUnits: Integer;
+    ArchitectureExclude: TArray<string>;
     /// <summary>Protokoll (#265): Stufe (debug/info/warning/error), Logdatei und Mitschnitt.
     /// Der Server übernimmt sie nicht zur Laufzeit; der Client übergibt sie beim Start als
     /// --log-level, --log und --trace.</summary>
@@ -941,6 +950,11 @@ begin
   Result.IndexRemoveOrphans := True;
   Result.IndexCacheMaxAgeDays := 14;
   Result.IndexCacheMaxMb := 256;
+  Result.ArchitectureEnabled := True;
+  Result.ArchitectureScope := 'projectGroup';
+  Result.ArchitectureIncludeLibraryUnits := False;
+  Result.ArchitectureCentralUnits := 15;
+  Result.ArchitectureExclude := nil;
   Result.LogLevel := 'info';
   Result.LogFile := '';
   Result.TraceFile := '';

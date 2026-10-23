@@ -266,9 +266,16 @@
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.UsesGraph.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.UsesLocator.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.UsesService.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Louvain.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Overview.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Layout.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.MapTemplate.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Report.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Service.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Todos.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Architecture.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Recursion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.OverrideMarks.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Baseline.pas"/>

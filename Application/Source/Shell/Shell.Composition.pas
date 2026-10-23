@@ -56,6 +56,8 @@ uses
   Atlas.Common.Lsp.CodeLens,
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Todos,
+  Atlas.Common.Lsp.Architecture,
+  Atlas.Common.Architecture.Service,
   Atlas.Common.Lsp.Recursion,
   Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.SlashMenu,
@@ -153,6 +155,10 @@ type
     FMetrics: TLspMetrics;
     /// <summary>TODO-Übersicht (#68): Befehl atlas.server.todos.</summary>
     FTodos: TLspTodos;
+    /// <summary>Architekturübersicht (#1118): Dienst mit Zwischenspeicher je Index-Generation, Anfrage
+    /// atlas/architecture und Befehl atlas.architecture.saveReport.</summary>
+    FArchitectureService: TArchitectureService;
+    FArchitecture: TLspArchitecture;
     FRecursion: TLspRecursion;
     /// <summary>Baseline für Altprojekte (#97): Befehl atlas.updateBaseline.</summary>
     FBaseline: TLspBaseline;
@@ -381,6 +387,11 @@ type
     /// <summary>Einstellungen, Wurzel und Dateien für die Code-Metriken (#66): Datei, Projekt (.dproj/.dpr/.dpk),
     /// Ordner oder '' (einziger Arbeitsbereich).</summary>
     function MetricsSourceFor(const AFileName: string; AProject: Boolean; out ASource: TLspMetricsSource): Boolean;
+    /// <summary>Anfrage der Architekturübersicht (#1118) zum Arbeitsbereich von AFileName: Einstellungen, Wurzel,
+    /// Titel, Namensräume und Dateien des Projekts (AScope "project") bzw. aller Projekte (sonst; leer =
+    /// architecture.scope).</summary>
+    function ArchitectureSourceFor(const AFileName, AScope: string; out ARequest: TArchitectureRequest;
+      out ASettings: TServerSettings): Boolean;
     function HintSettingsFor(const AUri: string): THintSettings;
     /// <summary>Bedingte Symbole für Hover und Vervollständigung in Direktiven (#102): Symbole des Projekts mit
     /// Herkunft aus der .dproj, Compiler-Vorgaben, Include-Pfade und der Schalter "directives".</summary>
@@ -1203,6 +1214,19 @@ begin
   // Gleiche Quelle wie die Metriken: Einstellungen, Wurzel und Dateien des Projektmodells (#14).
   FTodos := TLspTodos.Create(MetricsSourceFor,
     ReadSourceText);
+  // Architekturübersicht (#1118): Fundstellen der uses-Einträge mit den Defines des Projekts der Datei.
+  FArchitectureService := TArchitectureService.Create(FIndex,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    function(const AFileName: string): TArray<string>
+    begin
+      if not DefinesFor(TDocumentUris.FromPath(AFileName), Result) then
+        Result := nil;
+    end);
+  FArchitecture := TLspArchitecture.Create(FArchitectureService, ArchitectureSourceFor);
+  FArchitecture.Attach(FDispatcher);
   // Rekursionssymbole im Editorrand (#623).
   FRecursion := TLspRecursion.Create(ReadSourceText);
   // Baseline (#97): dieselben Dateien wie die Metriken, Prüfung wie im Editor (Regeln, Index, Formulardatei).
@@ -1479,6 +1503,16 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FTodos.Execute(AArguments);
+    end);
+  FCommands.Register(TLspArchitecture.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FArchitecture.Execute(AArguments);
+    end);
+  FCommands.Register(TLspArchitecture.SaveCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FArchitecture.SaveReport(AArguments);
     end);
   FCommands.Register(TLspRecursion.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2046,6 +2080,8 @@ begin
   FCodeLens.Free;
   FMetrics.Free;
   FTodos.Free;
+  FArchitecture.Free;
+  FArchitectureService.Free;
   FRecursion.Free;
   FBaseline.Free;
   FInlayHints.Free;
@@ -3939,6 +3975,55 @@ begin
     if AProject then
       ASource.Files := Workspace.ProjectFiles;
     Result := True;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+function TServerComposition.ArchitectureSourceFor(const AFileName, AScope: string;
+  out ARequest: TArchitectureRequest; out ASettings: TServerSettings): Boolean;
+var
+  Source: TLspMetricsSource;
+  Workspace: TShellWorkspace;
+  Scope: string;
+  Files: TArray<string>;
+begin
+  ARequest := Default(TArchitectureRequest);
+  ASettings := TServerSettings.Default;
+  Result := MetricsSourceFor(AFileName, True, Source);
+  if not Result then
+    Exit;
+  ASettings := Source.Settings;
+  ARequest := TArchitectureRequest.FromSettings(ASettings);
+  Scope := AScope;
+  if Scope = '' then
+    Scope := ASettings.ArchitectureScope;
+  ARequest.Scope := Scope;
+  ARequest.Root := Source.Root;
+  ARequest.Title := Source.Title;
+  if Scope = 'project' then
+    ARequest.Files := Source.Files
+  else
+  begin
+    // Projektgruppe (#648): die Dateien aller geladenen Projekte.
+    Files := nil;
+    TMonitor.Enter(FWorkspacesLock);
+    try
+      for Workspace in FWorkspaces do
+        Files := Files + Workspace.ProjectFiles;
+    finally
+      TMonitor.Exit(FWorkspacesLock);
+    end;
+    ARequest.Files := Files;
+  end;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := nil;
+    if AFileName <> '' then
+      Workspace := WorkspaceOf(AFileName);
+    Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
+    if Workspace <> nil then
+      ARequest.Namespaces := Workspace.Namespaces;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;

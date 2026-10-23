@@ -38,6 +38,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `dfmPropertyRules` | Projekt (atlas.json) | array<object> | `` |  | Eigenschaftsregeln für Formulardateien: Vorgaben für Komponenten-Properties, gemeldet als dfm-property am Feld der Komponente in der Unit. Nicht gespeicherte Properties gelten mit ihrem default-Wert. |
 | `memoryBudgetMb` | global (settings.json) | integer | `768` | 0… | Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst die Verwendungen ausgelagert (sie bleiben im Cache auf der Platte), dann Bibliotheks-Units (RTL, VCL) und zuletzt Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. |
 | `index` | gemischt, siehe unten | object | – |  | Umfang des Symbolindex. Standard: alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und alle Units der Bibliotheks- und Suchpfade der Delphi-Installation, auch wenn keine Unit sie einbindet. Reihenfolge: aktives Projekt, übrige Projekte, Suchpfade, Bibliothek; alles im Hintergrund, die Bibliothek aus dem gemeinsamen Cache. |
+| `architecture` | gemischt, siehe unten | object | – |  | Architekturübersicht aus dem Index: zentrale Units, Teilsysteme, Zyklen und Querverbindungen im Fenster „Atlas-Architektur“, als Bericht (Markdown oder HTML, auch AtlasServer --architecture) und im MCP-Werkzeug get_architecture. |
 | `requestTimeoutMs` | global (settings.json) | integer | `10000` | 1000… | Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. |
 | `diagnostics` | global (settings.json) | object | – |  | Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichnernamen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben. |
 | `highlight` | global (settings.json) | object | – |  | Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. |
@@ -169,6 +170,16 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `index.cacheMaxAgeDays` | global (settings.json) | integer | `14` | 0…3650 | Index-Caches löschen, die so viele Tage nicht benutzt wurden (Laden des Projekts zählt als Benutzung); 0 = aus. Das betrifft auch die Bibliotheks-Caches deinstallierter Delphi-Versionen. |
 | `index.cacheMaxMb` | global (settings.json) | integer | `256` | 0…1048576 | Höchstgröße des Cache-Ordners in MB; darüber gehen die am längsten nicht benutzten Caches zuerst. 0 = ohne Grenze. |
 | `index.exclude` | Projekt (atlas.json) | array<string> | `` | z. B. `["**/Demos/**","**/Samples/**"]` | Ordner oder Dateien, die nicht indiziert werden (Glob-Muster gegen den vollen Pfad: *, **, ?). |
+
+## architecture
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `architecture.enabled` | global (settings.json) | boolean | `true` |  | Hauptschalter: false = kein Fenster, kein Menüeintrag, kein Bericht, kein get_architecture. |
+| `architecture.scope` | global (settings.json) | string | `"projectGroup"` | `"project"`, `"projectGroup"` | Umfang der Auswertung: nur das aktive Projekt oder die ganze Projektgruppe. |
+| `architecture.includeLibraryUnits` | global (settings.json) | boolean | `false` |  | Units aus RTL, VCL und den Bibliothekspfaden mitzählen; aus = nur Units der Projekte und ihrer Suchpfade. |
+| `architecture.centralUnits` | global (settings.json) | integer | `15` | 5…100 | Wie viele zentrale Units Fenster, Bericht und get_architecture zeigen. |
+| `architecture.exclude` | Projekt (atlas.json) | array<string> | `` | z. B. `["Tests/**","*.Tests"]` | Units, die nicht in die Auswertung eingehen: Glob-Muster auf den Unit-Namen oder den Pfad relativ zum Projekt (*, **, ?). |
 
 ## diagnostics
 
