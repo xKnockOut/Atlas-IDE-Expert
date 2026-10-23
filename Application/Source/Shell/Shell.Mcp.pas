@@ -63,6 +63,10 @@ uses
   Atlas.Common.Mcp.IdeEdits,
   Atlas.Common.Mcp.IdeBuilds,
   Atlas.Common.Mcp.TestTools,
+  Atlas.Common.Mcp.DeadCodeTools,
+  Atlas.Common.Architecture.UsesGraph,
+  Atlas.Common.Architecture.UsesService,
+  Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Projects.DprojReader,
   Atlas.Common.Compiler.Contract,
   Atlas.Text.Lines,
@@ -830,6 +834,147 @@ begin
     end, TMcpToolKind.Write);
 end;
 
+/// <summary>Arbeitsbereich und übrige Projekte der Gruppe als Liste; AOthers darf nil sein.</summary>
+function WorkspacesOf(AWorkspace: TShellWorkspace; AOthers: TObjectList<TShellWorkspace>): TArray<TShellWorkspace>;
+var
+  Item: TShellWorkspace;
+begin
+  Result := [AWorkspace];
+  if AOthers <> nil then
+    for Item in AOthers do
+      Result := Result + [Item];
+end;
+
+/// <summary>Projekte der Gruppe für die Regeln (#64) wie im Editor: still, solange ein Projekt lädt oder der
+/// Index läuft. In eigener Routine, damit die anonymen Methoden keinen Rahmen mit anderen teilen.</summary>
+function RuleProjectFilesOf(const AWorkspaces: TArray<TShellWorkspace>; const AIndex: ISymbolIndex;
+  AGraph: TUsesGraphService): IRuleProjectFiles;
+var
+  Workspaces: TArray<TShellWorkspace>;
+  Workspace: TShellWorkspace;
+  Info: TProjectInfo;
+  Projects: TArray<TRuleProject>;
+  Reader: TRuleProjectReadText;
+begin
+  Workspaces := AWorkspaces;
+  Reader :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end;
+  Projects := nil;
+  for Workspace in Workspaces do
+    if Workspace.Project(Info) then
+      Projects := Projects + [TRuleProjectFiles.ProjectOf(Workspace.ProjectFileName, Info.MainSource,
+        Workspace.ProjectFiles, Reader)];
+  Result := TRuleProjectFiles.Create(Projects, AIndex, Reader,
+    function(out AReason: string): Boolean
+    var
+      Item: TShellWorkspace;
+      Loaded: TProjectInfo;
+    begin
+      AReason := '';
+      for Item in Workspaces do
+      begin
+        if Item.ProjectPending or not Item.Project(Loaded) then
+        begin
+          AReason := 'Projekte werden geladen';
+          Exit(False);
+        end;
+        if Item.IndexLoading >= 0 then
+        begin
+          AReason := 'Index wird aufgebaut';
+          Exit(False);
+        end;
+      end;
+      Result := True;
+    end,
+    AGraph);
+end;
+
+/// <summary>Namensräume des Projekts für den Uses-Graphen; neu aufgebaut wird er nur bei einer Änderung.</summary>
+procedure SyncGraphNamespaces(AGraph: TUsesGraphService; const ANamespaces: TArray<string>);
+var
+  Options: TUsesGraphOptions;
+begin
+  Options := AGraph.Options;
+  if string.Join(';', Options.Namespaces) <> string.Join(';', ANamespaces) then
+  begin
+    Options.Namespaces := ANamespaces;
+    AGraph.SetOptions(Options);
+  end;
+end;
+
+/// <summary>Werkzeuge für toten Code und Unit-Abhängigkeiten (#64).</summary>
+procedure RegisterDeadCodeTools(AServer: TMcpServer; AWorkspace: TShellWorkspace;
+  AOthers: TObjectList<TShellWorkspace>; const AIndex: ISymbolIndex; AGraph: TUsesGraphService; const ARoot: string;
+  AGuard: TMcpPathGuard);
+begin
+  AServer.AddTool('find_unused_code',
+    'Ungenutzter Code (#64): private und öffentliche Member, Deklarationen nur im implementation-Teil und Units, ' +
+    'die nur das Programm nennt, mit dem Index aller Projekte der Gruppe wie im Editor. Schweregrad, Optionen und ' +
+    'deadCode.keepAttributes/keepPatterns aus atlas.json gelten. Als Markdown-Bericht oder als JSON-Daten.',
+    '{"type":"object","properties":{' +
+      '"file":{"type":"string","description":"Pfad einer .pas-Datei; leer = alle Projektdateien"},' +
+      '"format":{"type":"string","enum":["markdown","json"],"description":"markdown (Vorgabe) oder json"}}}',
+    function(const AArguments: TJSONObject): string
+    var
+      FileName, Format: string;
+      Files: TArray<string>;
+    begin
+      FileName := TMcpServer.OptionalString(AArguments, 'file');
+      Format := TMcpServer.OptionalString(AArguments, 'format');
+      if (Format <> '') and not SameText(Format, 'markdown') and not SameText(Format, 'json') then
+        raise EMcpToolError.Create('"format" ist markdown oder json');
+      if FileName <> '' then
+        Files := [AGuard.Resolve(FileName)]
+      else
+        Files := AWorkspace.ProjectFiles;
+      if Length(Files) = 0 then
+        raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
+      SyncGraphNamespaces(AGraph, AWorkspace.Namespaces);
+      Result := TMcpDeadCodeTools.FindUnused(BuiltinRules, AWorkspace.Configuration.Settings, ARoot, Files, AIndex,
+        RuleProjectFilesOf(WorkspacesOf(AWorkspace, AOthers), AIndex, AGraph), AWorkspace.Namespaces,
+        SameText(Format, 'json'));
+    end);
+  AServer.AddTool('get_unit_dependencies',
+    'Abhängigkeiten einer Unit (#64): direkte uses und die Units, die sie verwenden, je mit Abschnitt ' +
+    '(interface/implementation), auf Wunsch die transitiven Hüllen, dazu die Zyklen durch die Unit mit ' +
+    'vollständigem Pfad. Nur Units der Projekte, ohne RTL/VCL. Als Markdown oder als JSON-Daten.',
+    '{"type":"object","properties":{' +
+      '"unit":{"type":"string","description":"Unit-Name (Ref.Daten) oder Pfad der .pas-Datei"},' +
+      '"direction":{"type":"string","enum":["uses","usedBy","both"],"description":"Richtung; Vorgabe both"},' +
+      '"transitive":{"type":"boolean","description":"Auch die transitiven Hüllen; Vorgabe false"},' +
+      '"format":{"type":"string","enum":["markdown","json"],"description":"markdown (Vorgabe) oder json"}},' +
+      '"required":["unit"]}',
+    function(const AArguments: TJSONObject): string
+    var
+      UnitName, Format, Text: string;
+      Direction: TMcpUsesDirection;
+      Transitive: Boolean;
+    begin
+      UnitName := TMcpServer.RequiredString(AArguments, 'unit');
+      if (Pos('\', UnitName) > 0) or (Pos('/', UnitName) > 0) or SameText(ExtractFileExt(UnitName), '.pas') then
+        UnitName := AGuard.Resolve(UnitName);
+      if not TMcpDeadCodeTools.ParseDirection(TMcpServer.OptionalString(AArguments, 'direction'), Direction) then
+        raise EMcpToolError.Create('"direction" ist uses, usedBy oder both');
+      if not AArguments.TryGetValue<Boolean>('transitive', Transitive) then
+        Transitive := False;
+      Format := TMcpServer.OptionalString(AArguments, 'format');
+      if (Format <> '') and not SameText(Format, 'markdown') and not SameText(Format, 'json') then
+        raise EMcpToolError.Create('"format" ist markdown oder json');
+      SyncGraphNamespaces(AGraph, AWorkspace.Namespaces);
+      Text := '';
+      AGraph.Read(
+        procedure(const AUses: TUsesGraph)
+        begin
+          Text := TMcpDeadCodeTools.UnitDependencies(AUses, UnitName, ARoot, Direction, Transitive,
+            SameText(Format, 'json'));
+        end);
+      Result := Text;
+    end);
+end;
+
 class function TMcpShell.ToolNames: TArray<string>;
 var
   Server: TMcpServer;
@@ -841,6 +986,7 @@ begin
   Server := TMcpServer.Create('Atlas', '0');
   try
     RegisterTools(Server, nil, nil, nil, '', nil, nil);
+    RegisterDeadCodeTools(Server, nil, nil, nil, nil, '', nil);
     Listed := Server.ListTools;
     try
       for Tool in Listed.GetValue<TJSONArray>('tools') do
@@ -869,6 +1015,8 @@ var
   Identity: TIndexProcessInfo;
   Guard: TMcpPathGuard;
   Edit: TMcpEditTools;
+  // Uses-Graph für find_unused_code und get_unit_dependencies (#64).
+  Graph: TUsesGraphService;
   Root, Warning: string;
   Anonymizer: ILogAnonymizer;
   // Weitere Projekte der Gruppe, gleicher Index wie Workspace (Plugin-Units hinter dem Testprojekt).
@@ -937,6 +1085,7 @@ begin
         if not Result then
           Result := Item.EnsureUnit(AUnitName);
     end;
+  Graph := TUsesGraphService.Create(Index, TUsesGraphOptions.Default);
   Tools := TMcpIndexTools.Create(Index, ReadSourceText);
   // Package einer Unit: .dpk unter dem Projektordner, deren contains sie führt.
   Tools.PackageOf :=
@@ -993,6 +1142,7 @@ begin
     Server.Instructions := 'Delphi-Projekt in ' + Root + '. Für Fragen zu Typen, Units und Formularen ' +
       'zuerst diese Werkzeuge nutzen statt Quelldateien vollständig zu lesen.';
     RegisterTools(Server, Tools, Code, Workspace, Root, Guard, Edit);
+    RegisterDeadCodeTools(Server, Workspace, Others, Index, Graph, Root, Guard);
     // Sicherheit (#99).
     Server.Restricted := AOptions.Restricted;
     Server.OnDisabledTools :=
@@ -1075,6 +1225,7 @@ begin
     Code.Free;
     Tools.Free;
     Workspace.Free;
+    Graph.Free;
   end;
 end;
 

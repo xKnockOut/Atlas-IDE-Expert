@@ -11,13 +11,20 @@
 // - Units mit Include-Dateien: Was im Text der Unit nicht steht, kann in einer
 //   Include-Datei stehen; ist eine davon nicht lesbar, ist die Antwort Unknown.
 // - Kind und IsTest leitet KindOfSource bzw. IsTestSource aus dem Hauptquelltext
-//   ab, damit die Komposition und der Linter dieselbe Regel anwenden.
+//   ab, damit die Komposition und der Linter dieselbe Regel anwenden; ProjectOf
+//   setzt daraus und aus den Formulardateien neben den Units ein Projekt
+//   zusammen (Komposition und MCP-Werkzeug find_unused_code, #64).
+// - UsesPath und UsedBy fragen den gemeinsamen Uses-Graph-Dienst (#268, für
+//   uses-cycle und unused-unit, #64). Die Komposition reicht ihren
+//   langlebigen Dienst herein; ohne ihn baut die Instanz bei Bedarf einen
+//   eigenen über den Index (Tests, einmalige Läufe).
 
 interface
 
 uses
   System.SysUtils,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Architecture.UsesService,
   Atlas.Common.Rules.Contract;
 
 type
@@ -32,16 +39,31 @@ type
     FIndex: ISymbolIndex;
     FReadText: TRuleProjectReadText;
     FComplete: TRuleProjectComplete;
+    FUsesGraph: TUsesGraphService;
+    FOwnsUsesGraph: Boolean;
+    /// <summary>Der Uses-Graph-Dienst; ohne hereingereichten einer über FIndex. nil ohne Index.</summary>
+    function UsesGraph: TUsesGraphService;
     function TextHasName(const AText, AName: string): Boolean;
     function UsagesHaveName(const AUsages: TArray<TIndexUsage>; const AName: string): Boolean;
   public
     /// <summary>AIndex darf nil sein (dann sucht NameIn im Text); AComplete nil = vollständig.</summary>
     constructor Create(const AProjects: TArray<TRuleProject>; const AIndex: ISymbolIndex;
-      const AReadText: TRuleProjectReadText; const AComplete: TRuleProjectComplete);
+      const AReadText: TRuleProjectReadText; const AComplete: TRuleProjectComplete); overload;
+    /// <summary>Wie oben mit dem Uses-Graph-Dienst der Komposition (#64); er gehört dem Aufrufer.</summary>
+    constructor Create(const AProjects: TArray<TRuleProject>; const AIndex: ISymbolIndex;
+      const AReadText: TRuleProjectReadText; const AComplete: TRuleProjectComplete;
+      AUsesGraph: TUsesGraphService); overload;
+    destructor Destroy; override;
     function Complete(out AReason: string): Boolean;
     function ProjectsOf(const AFileName: string; AWholeGroup: Boolean): TArray<TRuleProject>;
     function NameIn(const AFileName, AName: string): TRuleNameAnswer;
     function ReadText(const AFileName: string; out AText: string): Boolean;
+    function UsesPath(const AFromUnit, AToFile: string; AInterfaceOnly: Boolean): TArray<TRuleUsesStep>;
+    function UsedBy(const AFileName: string; out AUsers: TArray<TRuleUsesStep>): Boolean;
+    /// <summary>Projekt aus Projektdatei, Hauptquelltext und Units: Art und Testprojekt aus dem Hauptquelltext
+    /// (über AReadText), Formulardateien (.dfm, sonst .fmx) neben den Units, sofern sie existieren.</summary>
+    class function ProjectOf(const AProjectFile, AMainSource: string; const ASources: TArray<string>;
+      const AReadText: TRuleProjectReadText): TRuleProject; static;
     /// <summary>Art des Projekts aus seinem Hauptquelltext: program, library oder package; .dpk ist immer
     /// ein Package.</summary>
     class function KindOfSource(const AFileName, AText: string): TRuleProjectKind; static;
@@ -53,6 +75,7 @@ implementation
 
 uses
   System.StrUtils,
+  Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
@@ -78,6 +101,130 @@ begin
   FIndex := AIndex;
   FReadText := AReadText;
   FComplete := AComplete;
+end;
+
+constructor TRuleProjectFiles.Create(const AProjects: TArray<TRuleProject>; const AIndex: ISymbolIndex;
+  const AReadText: TRuleProjectReadText; const AComplete: TRuleProjectComplete; AUsesGraph: TUsesGraphService);
+begin
+  Create(AProjects, AIndex, AReadText, AComplete);
+  FUsesGraph := AUsesGraph;
+end;
+
+destructor TRuleProjectFiles.Destroy;
+begin
+  if FOwnsUsesGraph then
+    FUsesGraph.Free;
+  inherited;
+end;
+
+function TRuleProjectFiles.UsesGraph: TUsesGraphService;
+begin
+  if (FUsesGraph = nil) and (FIndex <> nil) then
+  begin
+    FUsesGraph := TUsesGraphService.Create(FIndex, TUsesGraphOptions.Default);
+    FOwnsUsesGraph := True;
+  end;
+  Result := FUsesGraph;
+end;
+
+function TRuleProjectFiles.UsesPath(const AFromUnit, AToFile: string; AInterfaceOnly: Boolean): TArray<TRuleUsesStep>;
+var
+  Steps: TArray<TRuleUsesStep>;
+  FromUnit, ToFile: string;
+  InterfaceOnly: Boolean;
+begin
+  Result := nil;
+  if UsesGraph = nil then
+    Exit;
+  Steps := nil;
+  FromUnit := AFromUnit;
+  ToFile := AToFile;
+  InterfaceOnly := AInterfaceOnly;
+  UsesGraph.Read(
+    procedure(const AGraph: TUsesGraph)
+    var
+      Sections: TUsesSections;
+      Edge: TUsesEdge;
+      Step: TRuleUsesStep;
+    begin
+      if InterfaceOnly then
+        Sections := InterfaceUsesOnly
+      else
+        Sections := AllUsesSections;
+      for Edge in AGraph.Path(AGraph.IndexOf(FromUnit), AGraph.IndexOfFile(ToFile), Sections) do
+      begin
+        Step.UnitName := AGraph.Node(Edge.Target).UnitName;
+        Step.FileName := AGraph.Node(Edge.Target).FileName;
+        Step.InInterface := Edge.Section = TUsesSection.Interface_;
+        Steps := Steps + [Step];
+      end;
+    end);
+  Result := Steps;
+end;
+
+function TRuleProjectFiles.UsedBy(const AFileName: string; out AUsers: TArray<TRuleUsesStep>): Boolean;
+var
+  Users: TArray<TRuleUsesStep>;
+  Known: Boolean;
+  FileName: string;
+begin
+  AUsers := nil;
+  Result := False;
+  if UsesGraph = nil then
+    Exit;
+  Users := nil;
+  Known := False;
+  FileName := AFileName;
+  UsesGraph.Read(
+    procedure(const AGraph: TUsesGraph)
+    var
+      Node: Integer;
+      Ref: TUsesEdgeRef;
+      Source: TUsesNode;
+      Step: TRuleUsesStep;
+    begin
+      Node := AGraph.IndexOfFile(FileName);
+      if Node < 0 then
+        Exit;
+      Known := True;
+      for Ref in AGraph.Node(Node).Incoming do
+      begin
+        Source := AGraph.Node(Ref.Source);
+        if not Source.Active then
+          Continue;
+        Step.UnitName := Source.UnitName;
+        Step.FileName := Source.FileName;
+        Step.InInterface := Source.Outgoing[Ref.Item].Section = TUsesSection.Interface_;
+        Users := Users + [Step];
+      end;
+    end);
+  AUsers := Users;
+  Result := Known;
+end;
+
+class function TRuleProjectFiles.ProjectOf(const AProjectFile, AMainSource: string; const ASources: TArray<string>;
+  const AReadText: TRuleProjectReadText): TRuleProject;
+var
+  Text, Source: string;
+begin
+  Result := Default(TRuleProject);
+  Result.FileName := AProjectFile;
+  Result.Sources := ASources;
+  if Assigned(AReadText) and AReadText(AMainSource, Text) then
+  begin
+    Result.Kind := KindOfSource(AMainSource, Text);
+    Result.IsTest := IsTestSource(Text);
+  end
+  else if SameText(ExtractFileExt(AMainSource), '.dpk') then
+    Result.Kind := TRuleProjectKind.Package;
+  for Source in ASources do
+    if SameText(ExtractFileExt(Source), '.pas') then
+    begin
+      if FileExists(ChangeFileExt(Source, '.dfm')) then
+        Result.Forms := Result.Forms + [ChangeFileExt(Source, '.dfm')]
+      else if FileExists(ChangeFileExt(Source, '.fmx')) then
+        Result.Forms := Result.Forms + [ChangeFileExt(Source, '.fmx')];
+    end;
 end;
 
 function TRuleProjectFiles.Complete(out AReason: string): Boolean;

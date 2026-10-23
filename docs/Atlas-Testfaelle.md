@@ -5913,6 +5913,24 @@ Voraussetzung: Server läuft in der IDE mit einer Projektgruppe aus Anwendung un
 | OM10 | `"unused-public-member": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
 | OM11 | Großes Projekt (mehrere hundert Units): Service-Unit bearbeiten | Keine spürbare Verzögerung der Diagnosen; im Diagnoselog keine Zeitüberschreitung der Regel |
 
+## Toter Code und Unit-Abhängigkeiten (#64)
+
+Voraussetzung: Server läuft in der IDE mit einer Projektgruppe aus Anwendung und Testprojekt; Index fertig aufgebaut. Claude Code mit dem Atlas-MCP-Server am selben Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UZ1 | Unit A nennt B im interface-uses, B nennt A im implementation-uses | Warnung `uses-cycle` am uses-Eintrag in beiden Units: „Zirkuläre Unit-Referenz: A → B → A (über implementation-uses)“, im Hover die Kanten mit Abschnitt (**Abnahme**) |
+| UZ2 | Beide Einträge aus UZ1 ins interface-uses; dann mit Delphi übersetzen | Fehler „Zirkuläre Unit-Referenz über interface-uses (wie F2047): A → B → A“; dcc meldet F2047 an derselben Stelle |
+| UZ3 | Zyklus über drei Units (A → B → C → A); `"uses-cycle": {"implementation": false}` | Erst Meldung mit dem ganzen Rundweg; mit der Option nur noch reine interface-Zyklen |
+| UZ4 | Private Routine, Konstante, Variable und Typ nur im implementation-Teil, nirgends verwendet; eine davon nur in einer anderen ungenutzten Routine benutzt | Hinweise `unused-declaration` „Routine X wird nirgends verwendet.“ usw.; die nur intern benutzte bleibt still, solange ihr Nutzer existiert. Korrektur „Als bewusst vorhanden markieren (lsp-ignore)“ (**Abnahme**) |
+| UZ5 | Handler aus der .dfm, Routine per Name als String, Unit mit `{$I …}`, Deklaration auch im interface | Keine Meldung `unused-declaration` |
+| UZ6 | Unit, die nur die .dpr im uses nennt und keine andere Unit verwendet | Hinweis `unused-unit` „Unit X wird von keiner anderen Unit verwendet; nur App.dpr nennt sie im uses.“; mit `initialization`-Abschnitt oder Verwendung eines Symbols in der .dpr keine Meldung |
+| UZ7 | Öffentlicher Typ und globale Variable im interface, nirgends verwendet; `"unused-public-member": {"unitKinds": ["routine"]}` | Erst „Öffentlicher Typ …“ bzw. „Globale Variable …“ von `unused-public-member`; mit der Option nur noch Routinen |
+| UZ8 | Optionen › Atlas › Prüfregeln: `deadCode.keepAttributes` = `Schnittstelle`, `deadCode.keepPatterns` = `Test*`; Klasse mit `[Schnittstelle]`, Routine `TestHilfe` | Keine Meldung für beide, weder von `unused-public-member` noch von `unused-declaration` oder `unused-private-member` |
+| UZ9 | Claude Code: `find_unused_code` ohne Argumente, mit `file`, mit `format: "json"`; während der Index lädt | Markdown je Datei mit Zeile, Regel und Konfidenz; nur die Datei; JSON mit `findings`/`total`; beim Laden der Hinweis, dass projektweite Regeln schweigen |
+| UZ10 | Claude Code: `get_unit_dependencies` mit `unit: "A"` aus UZ1, mit `direction: "usedBy"`, `transitive: true`, mit Pfad statt Name, mit RTL-Unit | uses und Nutzer mit Abschnitt, der Zyklus A → B → A; nur Nutzer; die transitiven Hüllen; gleiches Ergebnis über den Pfad; RTL-Unit: Hinweis, dass sie nicht im Uses-Graphen steht |
+| UZ11 | `"uses-cycle": "off"`, `"unused-declaration": "off"`, `"unused-unit": "off"`, `"group:architecture": "off"` bzw. `mcp.disabledTools` mit beiden Werkzeugen | Keine Meldungen der Regeln; die Werkzeuge fehlen in tools/list |
+
 ## SELECT * im Code (#967)
 
 Voraussetzung: Server läuft in der IDE mit Projekt; Regel `sql-select-star` in den Einstellungen auf „Hinweis“ (Standard aus).

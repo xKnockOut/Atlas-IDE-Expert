@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2001] of string = (
+  Lines: array[0..2028] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1480,6 +1480,34 @@ const
     '      "x-page": "Eingabehilfen",',
     '      "x-control": "Liste",',
     '      "x-issue": "#284"',
+    '    },',
+    '    "deadCode": {',
+    '      "type": "object",',
+    '      "description": "Toter Code: Elemente, die als verwendet gelten, obwohl ihr Name im Code nicht vorkommt (RTTI, Serialisierung, Plugins). Gilt für unused-private-member, unused-public-member und u' +
+      'nused-declaration, zusätzlich zu den Optionen keepAttributes und keepPatterns der Regeln.",',
+    '      "additionalProperties": false,',
+    '      "properties": {',
+    '        "keepAttributes": {',
+    '          "type": "array",',
+    '          "items": {',
+    '            "type": "string"',
+    '          },',
+    '          "default": [],',
+    '          "description": "Attributnamen ohne \"Attribute\", z. B. \"JsonName\": Alle Mitglieder eines Typs mit diesem Attribut gelten als verwendet."',
+    '        },',
+    '        "keepPatterns": {',
+    '          "type": "array",',
+    '          "items": {',
+    '            "type": "string"',
+    '          },',
+    '          "default": [],',
+    '          "description": "Namensmuster mit * und ?, auch als Typ.Name, z. B. \"*Handler\" oder \"TPlugin.*\": Passende Elemente gelten als verwendet."',
+    '        }',
+    '      },',
+    '      "x-scope": "project",',
+    '      "x-page": "Prüfregeln",',
+    '      "x-control": "Liste mit Hinzufügen/Entfernen",',
+    '      "x-issue": "#64"',
     '    },',
     '    "dfmPropertyRules": {',
     '      "type": "array",',
