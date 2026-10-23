@@ -74,6 +74,7 @@ müssen gemeldet werden, jede weitere Meldung ist ein Fehlalarm.
 | `legacy-stack-queue` | Regel im Katalog (#1106), `ERWARTET-INDEX`, in `Ref.Pruefung.Verstoesse` |
 | `override-only-inherited` | Regel im Katalog (#1143), in `Ref.Pruefung.Verstoesse` |
 | `inherited-without-ancestor` | Regel im Katalog (#1144), in `Ref.Pruefung.Verstoesse` |
+| `redundant-jump` | Regel im Katalog (#1141), in `Ref.Pruefung.Verstoesse` |
 
 Jede ID steht im Regelkatalog oder in `geplante-regeln.txt` mit dem
 offenen Issue, das sie in den Katalog übernimmt. Eine ID ohne Issue lässt

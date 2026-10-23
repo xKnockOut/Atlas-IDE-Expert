@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 14 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 45 |
+| [Stil und Metriken](#gruppe-style) | 46 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
@@ -366,6 +366,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`empty-finally`](#empty-finally) | Leerer finally-Block | Code Smell | Hinweis |
 | [`override-only-inherited`](#override-only-inherited) | override ruft nur inherited auf | Code Smell | Hinweis |
 | [`inherited-without-ancestor`](#inherited-without-ancestor) | inherited ohne Methode im Vorfahr | Code Smell | Hinweis |
+| [`redundant-jump`](#redundant-jump) | Überflüssiges Exit oder Continue | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -7506,6 +7507,32 @@ Richtig:
 procedure TImport.Vorbereiten;
 begin
   FZeilen.Clear;
+end;
+```
+
+<a id="redundant-jump"></a>
+### redundant-jump
+
+**Überflüssiges Exit oder Continue** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Ein bloßes Exit; als letzte Anweisung einer Routine oder anonymen Methode, oder ein bloßes Continue; als letzte Anweisung eines Schleifenrumpfs (for, for-in, while, repeat), auch im letzten Zweig eines if am Ende (der then-Zweig nur ohne else; then Continue else … bewacht eine else-if-Kette). Der Sprung ändert nichts. Nicht gemeldet: Exit mit Wert, Sprünge in try…finally oder try…except (der Sprung löst den finally-Teil bewusst aus), in case, qualifizierte Namen wie System.Continue, Anweisungen mit goto-Marke und Rümpfe mit bedingten Direktiven. Sicherheit hoch. Korrektur: die Anweisung entfernen, wenn sie in einem begin…end oder direkt in repeat steht.
+
+Mit Treffer:
+
+```pascal
+procedure TPuffer.Leeren;
+begin
+  FLaenge := 0;
+  Exit;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TPuffer.Leeren;
+begin
+  FLaenge := 0;
 end;
 ```
 

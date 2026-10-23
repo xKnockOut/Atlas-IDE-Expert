@@ -36,6 +36,16 @@
 //                       Argument eines Aufrufs (var möglich), X.Methode bzw. jeder
 //                       Zugriff X.Name im Rumpf, @X und for X; über X[…] nur, wenn
 //                       die Bedingung X[…] liest.
+//   redundant-jump      Exit als letzte Anweisung einer Routine bzw. anonymen
+//                       Methode und Continue als letzte Anweisung eines
+//                       Schleifenrumpfs (#1141, Stil): Sie ändern den Ablauf nicht.
+//                       Continue zählt auch im letzten Zweig eines if am Ende des
+//                       Rumpfs (then nur ohne else; then Continue else … ist ein
+//                       Wächter der Kette) und in begin … end. Still: Exit(Wert), Exit in
+//                       inneren Blöcken (if, try, case), Sprünge in try … finally
+//                       bzw. try … except, Anweisungen mit Marke und Rümpfe mit
+//                       bedingten Direktiven. Korrektur „Anweisung entfernen“,
+//                       wenn die Anweisung in einem begin … end steht.
 
 interface
 
@@ -47,6 +57,7 @@ const
   ConstantConditionRuleId = 'constant-condition';
   InfiniteLoopRuleId = 'infinite-loop';
   LoopConditionUnchangedRuleId = 'loop-condition-unchanged';
+  RedundantJumpRuleId = 'redundant-jump';
 
 type
   TConstantConditionRule = class(TInterfacedObject, IRule)
@@ -62,6 +73,12 @@ type
   end;
 
   TLoopConditionUnchangedRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TRedundantJumpRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1406,11 +1423,131 @@ begin
   end;
 end;
 
+{ TRedundantJumpRule }
+
+function TRedundantJumpRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(RedundantJumpRuleId, TRuleSeverity.Hint, 'Überflüssiges Exit oder Continue');
+end;
+
+/// <summary>Ist AStatement ein bloßes AName; (ohne Argumente, ohne Qualifizierer)?</summary>
+function IsBareJump(AStatement: TSyntaxNode; const AName: string): Boolean;
+begin
+  Result := (AStatement <> nil) and (AStatement.Kind = TSyntaxKind.CallStatement) and (AStatement.ChildCount = 1) and
+    (AStatement[0].Kind = TSyntaxKind.Identifier) and SameText(AStatement[0].Name, AName);
+end;
+
+/// <summary>Steht zwischen AStart und AEnd eine bedingte Direktive oder eine andere Direktive?</summary>
+function HasDirectiveBetween(const ATokens: TTokens; AStart, AEnd: Integer): Boolean;
+var
+  mToken: TPascalToken;
+begin
+  for mToken in ATokens do
+  begin
+    if mToken.Offset < AStart then
+      Continue;
+    if mToken.Offset >= AEnd then
+      Break;
+    if mToken.Kind = TPascalTokenKind.Directive then
+      Exit(True);
+  end;
+  Result := False;
+end;
+
+/// <summary>Letzte Anweisung, mit der AStatement endet: in begin … end die letzte, bei if die des letzten Zweigs
+/// (else, ohne else then). Ein then-Zweig mit folgendem else ist ein Wächter der else-if-Kette und zählt nicht.
+/// Andere Anweisungen (try, case, with, Schleifen) enden mit sich selbst.</summary>
+function LastStatement(AStatement: TSyntaxNode): TSyntaxNode;
+begin
+  Result := AStatement;
+  // Schleife statt Rekursion (Bericht M1): lange else-if-Ketten wären sonst tiefe Rekursion.
+  while (Result <> nil) and (Result.Kind in [TSyntaxKind.Block, TSyntaxKind.IfStatement]) do
+    if (Result.Kind = TSyntaxKind.IfStatement) and (Result.ChildCount < 2) then
+      Exit(nil)
+    else if Result.ChildCount = 0 then
+      Exit(nil)
+    else
+      Result := Result[Result.ChildCount - 1];
+end;
+
+/// <summary>Letzte Anweisung des Rumpfs einer Schleife in ALast; bei repeat die vor der Bedingung.</summary>
+function LoopBody(ALoop: TSyntaxNode; out ALast: TSyntaxNode): Boolean;
+begin
+  ALast := nil;
+  case ALoop.Kind of
+    TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement:
+      if ALoop.ChildCount > 0 then
+        ALast := ALoop[ALoop.ChildCount - 1];
+    TSyntaxKind.RepeatStatement:
+      // Kinder: Anweisungen, dann die Bedingung hinter until.
+      if ALoop.ChildCount > 1 then
+        ALast := ALoop[ALoop.ChildCount - 2];
+  end;
+  Result := ALast <> nil;
+end;
+
+procedure TRedundantJumpRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+const
+  cExitMessage = 'Exit am Ende der Routine ist überflüssig.';
+  cContinueMessage = 'Continue am Ende des Schleifenrumpfs ist überflüssig.';
+var
+  mTokens: TTokens;
+  mPending: TStack<TSyntaxNode>;
+  mNode, mBlock, mLast, mStatement: TSyntaxNode;
+  mIndex: Integer;
+
+  procedure ReportJump(AStatement: TSyntaxNode; const AMessage: string);
+  var
+    mFixes: TArray<TRuleFix>;
+  begin
+    mFixes := nil;
+    // In einer Anweisungsfolge (begin … end, repeat … until); als Zweig eines if bliebe ein leeres then.
+    if (AStatement.Parent <> nil) and (AStatement.Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.RepeatStatement]) then
+      mFixes := [TRuleFix.Create('Anweisung entfernen', [TRuleEdit.Create(StatementRemoval(AContext.Text, AStatement),
+        '')])];
+    AReport.Add(TTextRange.Create(AStatement.StartPos, AStatement.EndPos), AMessage, TRuleConfidence.High, mFixes);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or
+    not (ContainsText(AContext.Text, 'Exit') or ContainsText(AContext.Text, 'Continue')) then
+    Exit;
+  mTokens := AContext.Tree.Tokens;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(AContext.Tree.Root);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+        mPending.Push(mNode[mIndex]);
+      if mNode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+      begin
+        // Nur die letzte Anweisung des Rumpfs selbst; Exit in inneren Blöcken kann gewollt früh verlassen.
+        mBlock := mNode.FindChild(TSyntaxKind.Block);
+        if (mBlock <> nil) and (mBlock.ChildCount > 0) and
+          IsBareJump(mBlock[mBlock.ChildCount - 1], 'Exit') and
+          not HasDirectiveBetween(mTokens, mBlock.StartOffset, mBlock.EndOffset) then
+          ReportJump(mBlock[mBlock.ChildCount - 1], cExitMessage);
+      end
+      else if LoopBody(mNode, mLast) and not HasDirectiveBetween(mTokens, mNode.StartOffset, mNode.EndOffset) then
+      begin
+        mStatement := LastStatement(mLast);
+        if (mStatement <> nil) and IsBareJump(mStatement, 'Continue') then
+          ReportJump(mStatement, cContinueMessage);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
 procedure RegisterConditionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TConstantConditionRule.Create);
   ARegistry.Register(TInfiniteLoopRule.Create);
   ARegistry.Register(TLoopConditionUnchangedRule.Create);
+  ARegistry.Register(TRedundantJumpRule.Create);
 end;
 
 end.

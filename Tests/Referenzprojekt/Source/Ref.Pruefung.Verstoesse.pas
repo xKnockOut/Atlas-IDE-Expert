@@ -108,6 +108,18 @@ begin
   AName := AName; // ERWARTET: self-assignment
 end;
 
+procedure Abzaehlen(var AZaehler: Integer);
+var
+  I: Integer;
+begin
+  for I := 1 to 3 do
+  begin
+    Inc(AZaehler, I);
+    Continue; // ERWARTET: redundant-jump
+  end;
+  Exit; // ERWARTET: redundant-jump
+end;
+
 procedure StapelLesen;
 var
   Offen: TObjectStack; // ERWARTET-INDEX: legacy-stack-queue

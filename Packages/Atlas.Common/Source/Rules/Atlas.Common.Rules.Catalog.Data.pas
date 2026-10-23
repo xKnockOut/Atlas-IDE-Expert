@@ -4755,6 +4755,19 @@ begin
     '      "good": "procedure TImport.Vorbereiten;\nbegin\n  FZeilen.Clear;\nend;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "redundant-jump",' + #10 +
+    '      "name": "Redundant Exit or Continue",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A bare Exit; as the last statement of a routine or anonymous method, or a bare Continue; as the last statement of a loop body (for, for-in, while, repeat), also in the last branc' +
+    'h of an if at the end (the then branch only without else; then Continue else … guards an else-if chain). The jump changes nothing. Not reported: Exit with a value, jumps inside try…finally or try…exce' +
+    'pt (the jump deliberately triggers the finally part), inside case, qualified names such as System.Continue, statements with a goto label and bodies with conditional directives. High confidence. Quick ' +
+    'fix: remove the statement when it stands in a begin…end block or directly in repeat.",' + #10 +
+    '      "bad": "procedure TPuffer.Leeren;\nbegin\n  FLaenge := 0;\n  Exit;\nend;",' + #10 +
+    '      "good": "procedure TPuffer.Leeren;\nbegin\n  FLaenge := 0;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "generic-constraint-violated",' + #10 +
     '      "name": "Type argument violates a constraint",' + #10 +
     '      "category": "bug",' + #10 +
@@ -7517,6 +7530,14 @@ begin
     'men. Nicht gemeldet: Message-Handler (inherited ruft dort DefaultHandler), Klassen- und statische Methoden, Konstruktoren und Destruktoren, override und reintroduce, inherited in anonymen Methoden, Vo' +
     'rfahren mit einem gleichnamigen Mitglied (auch nicht virtuell) und unbekannte Vorfahren. Vorfahren aus anderen Units liefert der Symbolindex; Methoden von TObject gelten als bekannt, wenn System nicht' +
     ' im Index steht. Sicherheit hoch. Korrektur: inherited entfernen, wenn es als eigene Anweisung in einem begin…end steht."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "redundant-jump",' + #10 +
+    '      "name": "Überflüssiges Exit oder Continue",' + #10 +
+    '      "description": "Ein bloßes Exit; als letzte Anweisung einer Routine oder anonymen Methode, oder ein bloßes Continue; als letzte Anweisung eines Schleifenrumpfs (for, for-in, while, repeat), auch' +
+    ' im letzten Zweig eines if am Ende (der then-Zweig nur ohne else; then Continue else … bewacht eine else-if-Kette). Der Sprung ändert nichts. Nicht gemeldet: Exit mit Wert, Sprünge in try…finally oder' +
+    ' try…except (der Sprung löst den finally-Teil bewusst aus), in case, qualifizierte Namen wie System.Continue, Anweisungen mit goto-Marke und Rümpfe mit bedingten Direktiven. Sicherheit hoch. Korrektur' +
+    ': die Anweisung entfernen, wenn sie in einem begin…end oder direkt in repeat steht."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "generic-constraint-violated",' + #10 +

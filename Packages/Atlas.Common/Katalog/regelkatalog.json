@@ -4110,6 +4110,16 @@
       "good": "procedure TImport.Vorbereiten;\nbegin\n  FZeilen.Clear;\nend;"
     },
     {
+      "id": "redundant-jump",
+      "name": "Redundant Exit or Continue",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "A bare Exit; as the last statement of a routine or anonymous method, or a bare Continue; as the last statement of a loop body (for, for-in, while, repeat), also in the last branch of an if at the end (the then branch only without else; then Continue else … guards an else-if chain). The jump changes nothing. Not reported: Exit with a value, jumps inside try…finally or try…except (the jump deliberately triggers the finally part), inside case, qualified names such as System.Continue, statements with a goto label and bodies with conditional directives. High confidence. Quick fix: remove the statement when it stands in a begin…end block or directly in repeat.",
+      "bad": "procedure TPuffer.Leeren;\nbegin\n  FLaenge := 0;\n  Exit;\nend;",
+      "good": "procedure TPuffer.Leeren;\nbegin\n  FLaenge := 0;\nend;"
+    },
+    {
       "id": "generic-constraint-violated",
       "name": "Type argument violates a constraint",
       "category": "bug",
