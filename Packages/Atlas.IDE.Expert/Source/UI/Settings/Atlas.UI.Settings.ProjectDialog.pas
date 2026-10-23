@@ -101,6 +101,10 @@ type
     procedure SetBuildHint(const AValue: string);
     procedure SetProjectHint(const AValue: string);
     procedure SetServerChecks(AValue: Boolean);
+  protected
+    /// <summary>Höhe des Hinweises zur neuen Breite: Ein umbrechendes Label rechnet sie nur beim Setzen des
+    /// Textes, vor dem Anzeigen war es noch schmal und hinterließ einen hohen leeren Streifen.</summary>
+    procedure Resize; override;
   public
     /// <summary>AModel bleibt beim Aufrufer. AFileName: bearbeitete Datei für die Anzeige.</summary>
     constructor CreateDialog(AOwner: TComponent; AModel: TAtlasSettingsModel; const AFileName: string);
@@ -313,6 +317,16 @@ begin
     Lines := Lines + [TAtlasStrings.Text(TAtlasTextId.ProjectSettingsSyntaxOnly)];
   FHint.Caption := string.Join(sLineBreak, Lines);
   FHint.Visible := Length(Lines) > 0;
+end;
+
+procedure TAtlasProjectSettingsDialog.Resize;
+begin
+  inherited Resize;
+  if (FHint <> nil) and FHint.Visible then
+  begin
+    FHint.AutoSize := False;
+    FHint.AutoSize := True;
+  end;
 end;
 
 procedure TAtlasProjectSettingsDialog.SetBuildHint(const AValue: string);

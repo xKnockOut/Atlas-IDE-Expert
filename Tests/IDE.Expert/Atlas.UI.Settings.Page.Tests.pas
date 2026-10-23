@@ -2383,6 +2383,9 @@ begin
       Dialog.Catalog := Catalog;
       Assert.IsTrue(Dialog.SelectPage(Model.Fields[Model.IndexOf('rules')].Page));
       Assert.AreEqual(2, Integer(Dialog.RuleList.Items.Count));
+      // AutoSize ohne Align ließ den Editor auf die Breite eines leeren Panels schrumpfen.
+      Assert.IsTrue(Dialog.RuleEditor.Left + Dialog.RuleEditor.Width >= Dialog.RuleEditor.Parent.ClientWidth - 50,
+        'Regel-Editor in voller Breite');
       Assert.IsTrue(Dialog.SetRuleSeverity('no-with', 'off'));
       Assert.AreEqual(StringReplace(Text, '"error"', '"off"', []), Model.ResultText);
       Assert.IsFalse(Dialog.SetRuleSeverity('unbekannt', 'off'));
@@ -2421,6 +2424,10 @@ begin
       Assert.AreEqual(1, Checked);
       Dialog.ServerChecks := False;
       Assert.IsTrue(Dialog.HintLabel.Visible, 'Hinweis: nur Syntax');
+      // Eine Zeile Hinweis: Nach dem Anpassen an die Breite bleibt kein hoher leerer Streifen.
+      Dialog.HandleNeeded;
+      Dialog.Width := Dialog.Width + 10;
+      Assert.IsTrue(Dialog.HintLabel.Height < 60, 'Hinweis ohne leeren Streifen');
     finally
       Dialog.Free;
     end;

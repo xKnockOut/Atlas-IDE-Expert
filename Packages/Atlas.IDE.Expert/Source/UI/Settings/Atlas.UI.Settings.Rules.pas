@@ -109,6 +109,10 @@ type
     procedure OptionChange(Sender: TObject);
   protected
     procedure CreateWnd; override;
+    /// <summary>AutoSize regelt nur die Höhe; die Breite gibt der Behälter vor (Align oder SetBounds mit
+    /// Anker). Sonst schrumpft der Editor ohne Align auf die Breite eines leeren Panels, weil alle Kinder alTop
+    /// sind (Projektdialog).</summary>
+    function CanAutoSize(var NewWidth, NewHeight: Integer): Boolean; override;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Katalog (atlas.server.settingsCatalog, bleibt beim Aufrufer und muss leben, solange der Editor
@@ -340,6 +344,12 @@ begin
   AControl.Align := alTop;
   AControl.AlignWithMargins := True;
   AControl.Top := FNextTop;
+end;
+
+function TAtlasRulesEditor.CanAutoSize(var NewWidth, NewHeight: Integer): Boolean;
+begin
+  Result := inherited CanAutoSize(NewWidth, NewHeight);
+  NewWidth := Width;
 end;
 
 procedure TAtlasRulesEditor.CreateWnd;
