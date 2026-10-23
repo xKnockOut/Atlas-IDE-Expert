@@ -1043,6 +1043,10 @@ begin
   Assert.IsTrue(TAtlasColorMath.DeltaE2000(PinnedBackColor(Backs[0]), TAtlasColorMath.FromHex('#EEF4FB')) < 3,
     TAtlasColorMath.ToHex(PinnedBackColor(Backs[0])));
   Assert.IsTrue(TAtlasColorMath.IsDark(PinnedBackColor(Backs[1])));
+  // Neu dazugekommen: hell bleibt hell, dunkel bleibt dunkel (lesbar mit der Schrift des Themas).
+  Assert.IsFalse(TAtlasColorMath.IsDark(NewBackColor(Backs[0])));
+  Assert.IsTrue(TAtlasColorMath.IsDark(NewBackColor(Backs[1])));
+  Assert.AreNotEqual(TAtlasColorMath.ToHex(Backs[1]), TAtlasColorMath.ToHex(NewBackColor(Backs[1])));
 end;
 
 initialization
