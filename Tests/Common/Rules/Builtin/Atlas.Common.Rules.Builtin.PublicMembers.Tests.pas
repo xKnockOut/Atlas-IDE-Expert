@@ -37,6 +37,8 @@ type
     [Test]
     procedure VisibilitiesAndMemberKinds;
     [Test]
+    procedure ProtectedBodyIsNoCandidate;
+    [Test]
     procedure ScopeProjectOrGroup;
     [Test]
     procedure TestsCountAsUseOption;
@@ -427,6 +429,18 @@ begin
   Data.Config := '{"rules": {"unused-public-member": {"memberKinds": ["field"]}}}';
   Assert.AreEqual('Öffentliches Feld TKundenService.Notiz wird im Projekt nirgends verwendet.'#10,
     Messages(Run(Data, ServiceFile)));
+end;
+
+procedure TUnusedPublicMemberTests.ProtectedBodyIsNoCandidate;
+var
+  Data: TScenario;
+begin
+  // Die protected-Deklaration entscheidet; der Rumpf steht im Index als public und wurde früher gemeldet.
+  Data := Scenario('');
+  Data.Put(MainFile, 'unit Kunden.Main;'#10'interface'#10'procedure Start;'#10'implementation'#10'type'#10 +
+    '  TGeraet = class'#10'  protected'#10'    procedure Stoppen; virtual;'#10'  end;'#10 +
+    'procedure TGeraet.Stoppen;'#10'begin'#10'end;'#10'procedure Start;'#10'begin'#10'end;'#10'end.');
+  Assert.AreEqual('', Messages(Run(Data, MainFile)));
 end;
 
 procedure TUnusedPublicMemberTests.ScopeProjectOrGroup;
