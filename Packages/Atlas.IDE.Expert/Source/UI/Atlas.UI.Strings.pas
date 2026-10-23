@@ -707,7 +707,8 @@ type
     SettingsDebugVisualizerNameFields, SettingsDebugVisualizerMaxLength, SettingsDebugVisualizerTimeout, SettingsDebugVisualizerMaxImagePixels, SettingsDebugVisualizerEvaluation, DebugVisualizerEvaluationFields, DebugVisualizerEvaluationProperties, DebugVisualizerEvaluationCalls, DebugVisualizerName, DebugVisualizerDescription, DebugViewerMenu,
     DebugViewerTitle, DebugViewerColumnIndex, DebugViewerColumnValue, DebugViewerColumnKey, DebugViewerColumnField, DebugViewerColumnFieldType, DebugViewerColumnOldValue, DebugViewerRunning, DebugViewerOutOfScope, DebugViewerNeedsMore, DebugViewerEmpty, DebugViewerCopy, DebugViewerColor,
     // Eigene Wertdarstellung beim Debuggen (#854).
-    SettingsDebugDisplayRules, SettingsDebugDisplayRulesAllowCalls, DebugDisplayName, DebugDisplayDescription, DebugViewerAllFields);
+    SettingsDebugDisplayRules, SettingsDebugDisplayRulesAllowCalls, DebugDisplayName, DebugDisplayDescription, DebugViewerAllFields,
+    SettingsDebugStepIntoTarget, StepIntoTargetCommand, StepIntoTargetFooter, StepIntoTargetGetter, StepIntoTargetSetter, StepIntoTargetConstructor, StepIntoTargetInherited, StepIntoTargetNoSource, StepIntoTargetLibrary, StepIntoTargetCandidate, StepIntoTargetNotStopped, StepIntoTargetNoSourceAt, StepIntoTargetFailed, StepIntoTargetNotCalled, StepIntoTargetOff, StepIntoTargetElsewhere, StepIntoTargetNothing);
 
   TAtlasStrings = class
   private class var
@@ -2334,7 +2335,24 @@ const
      'Getter und Funktionsaufrufe in Vorlagen erlauben',
      'Atlas: eigene Wertdarstellung',
      'Zeigt Typen mit Regel (// atlas-debug:, [AtlasDebugDisplay], .atlas) nach ihrer Vorlage (#854).',
-     'Alle Felder'),
+     'Alle Felder',
+     'Gezielt hineinspringen (Strg+Alt+F7: einen Aufruf der Anweisung wählen)',
+     'Gezielt hineinspringen',
+     '↑/↓ und Enter oder 1–9 wählen  ·  Esc schließt',
+     'Getter',
+     'Setter',
+     'Konstruktor',
+     'inherited',
+     'ohne Quelltext',
+     'ohne Debug-DCUs',
+     'Überschreibung',
+     'Gezielt hineinspringen geht nur, solange das Programm angehalten ist.',
+     'Gezielt hineinspringen: Am Ausführungspunkt steht kein Quelltext.',
+     'Gezielt hineinspringen: %s',
+     'Gezielt hineinspringen: %s wurde nicht aufgerufen; angehalten bei der Folgeanweisung (Zeile %d).',
+     'Gezielt hineinspringen ist ausgeschaltet (Tools › Optionen › Atlas › Debuggen).',
+     'Gezielt hineinspringen: Das Programm hielt vorher an einer anderen Stelle (%s:%d); die vorübergehenden Haltepunkte sind entfernt.',
+     'Gezielt hineinspringen: Kein wählbarer Aufruf in dieser Anweisung; Schritt wie F7.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3865,7 +3883,24 @@ const
      'Allow getters and function calls in templates',
      'Atlas: custom value display',
      'Shows types with a rule (// atlas-debug:, [AtlasDebugDisplay], .atlas) by their template (#854).',
-     'All fields'));
+     'All fields',
+     'Step into specific call (Ctrl+Alt+F7: choose a call of the statement)',
+     'Step into specific call',
+     '↑/↓ and Enter or 1–9 to choose  ·  Esc closes',
+     'getter',
+     'setter',
+     'constructor',
+     'inherited',
+     'no source',
+     'no debug DCUs',
+     'override',
+     'Step into specific call works only while the program is paused.',
+     'Step into specific call: there is no source at the execution point.',
+     'Step into specific call: %s',
+     'Step into specific call: %s was not called; stopped at the next statement (line %d).',
+     'Step into specific call is turned off (Tools › Options › Atlas › Debugging).',
+     'Step into specific call: the program stopped elsewhere first (%s:%d); the temporary breakpoints are removed.',
+     'Step into specific call: no call to choose in this statement; stepping like F7.'));
 
 { TAtlasStrings }
 

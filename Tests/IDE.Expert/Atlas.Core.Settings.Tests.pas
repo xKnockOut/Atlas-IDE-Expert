@@ -102,6 +102,8 @@ type
     procedure DebugVisualizerOptions;
     [Test]
     procedure DebugDisplayRuleOptions;
+    [Test]
+    procedure DebugStepIntoTargetOptions;
     /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure GenerateMenuOptions;
@@ -1833,6 +1835,29 @@ begin
   Loaded.Normalize;
   Assert.IsFalse(Loaded.DebugDisplayRules);
   Assert.IsTrue(Loaded.DebugDisplayRulesAllowCalls);
+end;
+
+procedure TAtlasPluginSettingsTests.DebugStepIntoTargetOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // #836: an mit Strg+Alt+F7; Schalter und Taste überleben Speichern und Laden, 0 = keine Taste.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugStepIntoTarget);
+  Assert.AreEqual($C076, Settings.DebugStepIntoTargetKey);
+  Settings.DebugStepIntoTarget := False;
+  Settings.DebugStepIntoTargetKey := 0;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Loaded.Normalize;
+  Assert.IsFalse(Loaded.DebugStepIntoTarget);
+  Assert.AreEqual(0, Loaded.DebugStepIntoTargetKey);
+  Loaded.DebugStepIntoTargetKey := -5;
+  Loaded.Normalize;
+  Assert.AreEqual(0, Loaded.DebugStepIntoTargetKey);
 end;
 
 procedure TAtlasPluginSettingsTests.DebugVisualizerOptions;
