@@ -205,6 +205,11 @@ type
     function ParseGenericParams(AParent: TSyntaxNode): Boolean;
     procedure ParseConstSection(AParent: TSyntaxNode);
     procedure ParseConstDecl(AParent: TSyntaxNode);
+    /// <summary>Teilt das aktuelle Token ">=" in ">" und "=" (IBaz&lt;string&gt;=nil, #1142).</summary>
+    procedure SplitGreaterEqual;
+    /// <summary>Wert einer typisierten Konstante oder initialisierten Variable; () ist die leere Record- bzw.
+    /// Array-Initialisierung, alle Felder null (#1138).</summary>
+    procedure ParseInitializer(AParent: TSyntaxNode);
     function IsDeclStart: Boolean;
     /// <summary>Steht auf "["; folgt den Attributen ein Deklarationsname (#849)? Sonst gehören sie zur
     /// nächsten Methode oder Property und beenden den Abschnitt.</summary>
@@ -310,6 +315,8 @@ const
   CallingConventions: array[0..6] of string = ('stdcall', 'cdecl', 'pascal', 'register', 'safecall', 'winapi',
     'varargs');
   VisibilityWords: array[0..5] of string = ('private', 'protected', 'public', 'published', 'automated', 'strict');
+  // Reservierte Wörter, die als Name hinter operator stehen dürfen (class operator In, #1140).
+  OperatorKeywords: array[0..8] of string = ('in', 'and', 'or', 'xor', 'not', 'div', 'mod', 'shl', 'shr');
   HintWords: array[0..3] of string = ('deprecated', 'platform', 'library', 'experimental');
 
 function SameWord(const A, B: string): Boolean; inline;
@@ -1147,12 +1154,37 @@ begin
   AParent.Add(Node);
   Node.Name := ExpectIdent;
   if AcceptSym(':') then
+  begin
     ParseType(Node);
-  ExpectSym('=');
-  ParseExpression(Node);
+    ExpectSym('=');
+    ParseInitializer(Node);
+  end
+  else
+  begin
+    ExpectSym('=');
+    ParseExpression(Node);
+  end;
   ParseHints;
   ExpectSym(';');
   FinishNode(Node, Start);
+end;
+
+procedure TParser.ParseInitializer(AParent: TSyntaxNode);
+var
+  Start: Integer;
+  Node: TSyntaxNode;
+begin
+  if IsSym('(') and PeekToken(1).IsSymbol(')') then
+  begin
+    Start := NodeStart;
+    Node := StartNode(TSyntaxKind.ParenExpr);
+    AParent.Add(Node);
+    Advance;
+    Advance;
+    FinishNode(Node, Start);
+  end
+  else
+    ParseExpression(AParent);
 end;
 
 procedure TParser.ParseVarSection(AParent: TSyntaxNode);
@@ -1195,7 +1227,7 @@ begin
     ParseExpression(Node);
   end
   else if AcceptSym('=') then
-    ParseExpression(Node);
+    ParseInitializer(Node);
   ParseHints;
   ExpectSym(';');
   FinishNode(Node, Start);
@@ -1255,14 +1287,23 @@ var
   Start, ClauseStart: Integer;
   Name: string;
   Clause: TSyntaxNode;
+  IsOperator: Boolean;
 begin
   // [class] procedure|function|constructor|destructor|operator Name[<T>][.Name[<T>]] [(Params)] [: Typ];
   Start := NodeStart;
   Result := StartNode(AKind);
   AParent.Add(Result);
   AcceptKw('class');
+  IsOperator := SameWord(Current.Text, 'operator');
   Advance; // procedure, function, constructor, destructor, operator
-  Name := ExpectIdent;
+  // Operatornamen dürfen reservierte Wörter sein: class operator In, And, Or, Xor, Not, Div, Mod, Shl, Shr (#1140).
+  if IsOperator and (Current.Kind = TPascalTokenKind.Keyword) and InWords(Current.Text, OperatorKeywords) then
+  begin
+    Name := Current.Text;
+    Advance;
+  end
+  else
+    Name := ExpectIdent;
   repeat
     if IsSym('<') then
       ParseGenericParams(Result);
@@ -1518,6 +1559,13 @@ begin
     Advance;
     ParseExpression(Result);
     ExpectSym(']');
+  end
+  else if SameWord(Name, 'AnsiString') and IsSym('(') then
+  begin
+    // Codepage: type AnsiString(CP_WINANSI) bzw. AnsiString(1200) (#1140).
+    Advance;
+    ParseExpression(Result);
+    ExpectSym(')');
   end;
   Result.Name := Name;
   FinishNode(Result, Start);
@@ -1602,6 +1650,12 @@ begin
       Advance;
       ParseMembers(Result);
       ExpectKw('end');
+      // Ausrichtung: end align 16 (#1142).
+      if IsIdentText('align') and (PeekToken(1).Kind = TPascalTokenKind.Number) then
+      begin
+        Advance;
+        Advance;
+      end;
     end;
   end
   else if IsKw(['interface', 'dispinterface']) then
@@ -1688,7 +1742,9 @@ begin
     ParseTypeReference(Result);
   end
   else if IsKw(['string', 'file', 'const']) or
-    (IsIdent and not PeekIsSym(1, '..') and not PeekIsSym(1, '(')) then
+    (IsIdent and not PeekIsSym(1, '..') and not PeekIsSym(1, '(')) or
+    // AnsiString(Codepage) ist ein Typ, kein Teilbereich wie Low(X)..High(X) (#1140).
+    (IsIdentText('AnsiString') and PeekIsSym(1, '(')) then
   begin
     // Benannter Typ, ggf. doch ein Teilbereich wie Low(X)..High(X) oder A.B..C.
     Result := ParseTypeReference(AParent);
@@ -1811,8 +1867,9 @@ begin
     end
     else if IsSym('[') then
       ParseAttributes(AParent)
-    else if IsKw('class') and PeekIsKw(1, 'var') then
+    else if IsKw('class') and (PeekIsKw(1, 'var') or PeekIsKw(1, 'threadvar')) then
     begin
+      // class var und class threadvar (#1140).
       Advance;
       ParseVarSection(AParent);
     end
@@ -2010,6 +2067,9 @@ begin
     Before := FIndex;
     if IsKw('case') then
       ParseVariantPart(AParent)
+    else if IsSym('[') then
+      // Attribut an einem Feld im varianten Zweig (#1142).
+      ParseAttributes(AParent)
     else if IsIdent then
       ParseFieldDecl(AParent, True)
     else
@@ -2774,6 +2834,9 @@ begin
       Inc(Depth)
     else if Token.IsSymbol('>') then
       Dec(Depth)
+    else if AInType and (Depth = 1) and Token.IsSymbol('>=') then
+      // Baz: IBaz<string>=nil: das = gehört zum Vorgabewert (#1142).
+      Exit(True)
     else if not ((Token.Kind = TPascalTokenKind.Identifier) or Token.IsSymbol('.') or Token.IsSymbol(',') or
       Token.IsKeyword('string')) then
       Exit(False);
@@ -2785,6 +2848,21 @@ begin
   Result := AInType and (Token.Kind = TPascalTokenKind.Identifier);
   Result := Result or not (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number,
     TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral]);
+end;
+
+procedure TParser.SplitGreaterEqual;
+var
+  Equal: TPascalToken;
+begin
+  // Der Lexer liest in IBaz<string>=nil ">=" als ein Token; hinter generischen Argumenten sind es ">" und "="
+  // (#1142).
+  Equal := FTokens[FIndex];
+  FTokens[FIndex].Text := '>';
+  FTokens[FIndex].EndPos := TTextPosition.Create(Equal.StartPos.Line, Equal.StartPos.Character + 1);
+  Equal.Text := '=';
+  Inc(Equal.Offset);
+  Equal.StartPos := FTokens[FIndex].EndPos;
+  Insert(Equal, FTokens, FIndex + 1);
 end;
 
 procedure TParser.ParseGenericArgs(AParent: TSyntaxNode);
@@ -2802,6 +2880,8 @@ begin
     if not AcceptSym(',') then
       Break;
   end;
+  if IsSym('>=') then
+    SplitGreaterEqual;
   ExpectSym('>');
   FinishNode(Node, Start);
 end;

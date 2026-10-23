@@ -23,6 +23,13 @@ type
     class function ReservedWordList: TArray<string>; static;
     /// <summary>Name einer Direktive in Großbuchstaben, z. B. IFDEF für {$ifdef X}; '' ohne Direktive.</summary>
     class function DirectiveName(const AText: string): string; static;
+    /// <summary>Name ohne das Escape-Zeichen, je Teil eines qualifizierten Namens: &amp;begin → begin,
+    /// &amp;&amp;op_Equality → &amp;op_Equality, TFoo.&amp;Type → TFoo.Type (#1137).</summary>
+    class function PlainName(const AName: string): string; static;
+    /// <summary>Gegenstück zu PlainName: der Name, wie er im Quelltext stehen muss. Reservierte Wörter und
+    /// Namen, die mit &amp; beginnen, bekommen ein &amp; davor (begin → &amp;begin, &amp;op_Equality →
+    /// &amp;&amp;op_Equality).</summary>
+    class function SourceName(const AName: string): string; static;
   end;
 
 implementation
@@ -305,7 +312,7 @@ begin
     Inc(FPos);
     ScanDigits(['0'..'9', 'A'..'F', 'a'..'f', '_']);
   end
-  else if (C = '%') and CharInSet(Peek(1), ['0', '1']) then
+  else if (C = '%') and CharInSet(Peek(1), ['0', '1', '_']) then
   begin
     Kind := TPascalTokenKind.Number;
     Inc(FPos);
@@ -321,6 +328,14 @@ begin
     // &begin: reserviertes Wort als Bezeichner.
     Kind := TPascalTokenKind.Identifier;
     Inc(FPos);
+    ScanIdentifier;
+  end
+  else if (C = '&') and (Peek(1) = '&') and IsIdentifierStart(Peek(2)) then
+  begin
+    // &&op_Equality: Bezeichner &op_Equality, so schreibt Spring4D die
+    // Operator-Methoden nach dem .NET-Namensschema (#1137).
+    Kind := TPascalTokenKind.Identifier;
+    Inc(FPos, 2);
     ScanIdentifier;
   end
   else if (C = '&') and CharInSet(Peek(1), ['0'..'7']) then
@@ -421,6 +436,34 @@ begin
   while (Stop <= Length(AText)) and CharInSet(AText[Stop], ['A'..'Z', 'a'..'z']) do
     Inc(Stop);
   Result := UpperCase(Copy(AText, Start, Stop - Start));
+end;
+
+class function TPascalLexer.PlainName(const AName: string): string;
+var
+  Index: Integer;
+  AtStart: Boolean;
+begin
+  Result := '';
+  AtStart := True;
+  for Index := 1 to Length(AName) do
+  begin
+    // Nur das erste & eines Teils ist Escape; ein zweites gehört zum Namen.
+    if AtStart and (AName[Index] = '&') then
+    begin
+      AtStart := False;
+      Continue;
+    end;
+    AtStart := AName[Index] = '.';
+    Result := Result + AName[Index];
+  end;
+end;
+
+class function TPascalLexer.SourceName(const AName: string): string;
+begin
+  if (AName <> '') and ((AName[1] = '&') or IsReservedWord(AName)) then
+    Result := '&' + AName
+  else
+    Result := AName;
 end;
 
 class function TPascalLexer.ReservedWordList: TArray<string>;

@@ -960,3 +960,13 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **IDE:** `Atlas.IDE.StatusBar.Service` (eine Leiste je Editorfenster, alBottom im Eltern-Steuerelement des Editors und immer ganz unten, Takt 250 ms, Aktionen über `TAtlasMainThread.ForceQueue` mit Sicherung `TAtlasFeature.StatusBar`). `TAtlasStatusField.Relocated` macht das Feld der Statuszeile 0 breit, `OnRelocatedAnchor` setzt Statusfenster und Schnellschalter an die Leiste. Die Metrik-Lens holt Metriken auch für die Leiste (`Want`, `Latest`), kein zweiter Abruf. `TAtlasProblemsController.Checking`, `TAtlasIdeProblems.ShowCurrentFile` neu.
 - **Einstellungen:** `editor.statusBar`, `editor.statusBar.items` (Plugin-Schema, Parser, Optionsseite „Editor“, Schnellschalter).
 - **Offen:** Delphi-Build 0/0/0, Tests (auch `Atlas.UI.StatusBar.Bar.Tests`, `EditorStatusBarRoundTrip`), Handtests ASL1–ASL18.
+
+## Parser-Lücken für v1.1.0: #1137, #1138, #1134, #1140, #1142 (23.10.2026, ungebaut)
+
+- **Auftrag:** Marco wollte die Parser-Lücken aus der Gegenprüfung mit DelphiAST noch in v1.1.0. Die Kette ist gestapelt (`feature/NN-name`), die Entwurfs-PRs sind #1157 (Basis main) → #1158 → #1159 → #1160 → #1161.
+- **#1137:** `&&op_Equality` ist ein Bezeichner. Mitbehoben ist die Ursache, dass `&`-Namen nie aufgelöst wurden: Der Index führte `&Type`, die Suche suchte `Type`. `TPascalLexer.PlainName` nimmt genau ein Escape-`&` je Namensteil weg, `SourceName` setzt es für die Vervollständigung wieder. Das Indexformat ist jetzt Version 26. Bewusste Abweichung vom Issue: Der Name ist `&op_Equality`, nicht `op_Equality`, weil das der Delphi-Bezeichner ist.
+- **#1138:** `()` gilt nur als Initialisierung (`ParseInitializer`).
+- **#1134:** Die E2023-Prüfung fragt `IsMethodResolution` ab.
+- **#1140:** `class threadvar`, Operatornamen aus reservierten Wörtern (`OperatorKeywords`) und `AnsiString(CP)`.
+- **#1142:** `end align N`, Attribute im varianten Zweig, `>=` hinter generischen Argumenten in Typen (`SplitGreaterEqual`) und `%_0101`. Die Probe p10 muss noch mit Delphi gegengeprüft werden (Handtest PX7).
+- **Tests:** Alle Tests stehen in `Tests/Common/Pascal/Atlas.Common.Pascal.ParserGaps.Tests.pas`, Handtests PX1–PX7. Die Spring4D-Abnahme war in der Cloud nicht möglich, weil Bitbucket gesperrt ist und der GitHub-Spiegel leer.
