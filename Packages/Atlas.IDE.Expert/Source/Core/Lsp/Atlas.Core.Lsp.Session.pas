@@ -195,6 +195,10 @@ type
     /// <summary>Bezeichner aus der Antwort auf textDocument/inlineValue; nur InlineValueVariableLookup mit
     /// variableName.</summary>
     class function InlineValueRefsOf(const AResponse: TJSONValue): TAtlasInlineValueRefs; static;
+    /// <summary>Wirksame Compiler-Schalter an ALine/ACharacter (0-basiert, #558, atlas/compilerSwitches); ohne
+    /// Abgleich: Sync vorher im Hauptthread. Threadsicher wie Completion. Gehört dem Aufrufer; nil ohne Antwort.
+    /// </summary>
+    function CompilerSwitches(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
     procedure Initialize;
     /// <summary>Parameter von initialize (#396, #397, #408, #648, #652). AApplyEdit: workspace.applyEdit
     /// ankündigen. Gehört dem Aufrufer.</summary>
@@ -1307,6 +1311,18 @@ begin
   finally
     Response.Free;
   end;
+end;
+
+function TLspSession.CompilerSwitches(const AFileName: string; ALine, ACharacter: Integer;
+  ATimeoutMs: Cardinal): TJSONValue;
+var
+  Params: TJSONObject;
+begin
+  Params := TJSONObject.Create;
+  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  Params.AddPair('position', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ALine))
+    .AddPair('character', TJSONNumber.Create(ACharacter)));
+  Result := FClient.Request('atlas/compilerSwitches', Params, ATimeoutMs);
 end;
 
 class function TLspSession.InlineValueRefsOf(const AResponse: TJSONValue): TAtlasInlineValueRefs;

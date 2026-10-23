@@ -30,6 +30,7 @@ uses
   Atlas.Common.Lsp.FoldingRanges,
   Atlas.Common.Lsp.LinkedEditing,
   Atlas.Common.Lsp.InlineValues,
+  Atlas.Common.Lsp.CompilerSwitches,
   Atlas.Common.Lsp.Formatting,
   Atlas.Common.Lsp.SelectionRanges,
   Atlas.Common.Lsp.Definition,
@@ -50,6 +51,7 @@ uses
   Atlas.Common.Lsp.Refactorings,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Pascal.Preprocessor,
+  Atlas.Common.Pascal.CompilerSwitches,
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Lsp.Hierarchies,
   Atlas.Common.Lsp.Implementations,
@@ -120,6 +122,7 @@ type
     FFoldingRanges: TLspFoldingRanges;
     FLinkedEditing: TLspLinkedEditing;
     FInlineValues: TLspInlineValues;
+    FCompilerSwitches: TLspCompilerSwitches;
     FFormatting: TLspFormatting;
     FSlashMenu: TLspSlashMenu;
     FSelectionRanges: TLspSelectionRanges;
@@ -387,6 +390,8 @@ type
     /// <summary>Bedingte Symbole für Hover und Vervollständigung in Direktiven (#102): Symbole des Projekts mit
     /// Herkunft aus der .dproj, Compiler-Vorgaben, Include-Pfade und der Schalter "directives".</summary>
     function ConditionalContextFor(const AUri: string): TConditionalContext;
+    /// <summary>Projektstand für atlas/compilerSwitches (#558), unabhängig von directives.*.</summary>
+    function CompilerSwitchContextFor(const AUri: string): TCompilerSwitchContext;
     function RefactoringSettingsFor(const AUri: string): TRefactoringSettings;
     function CompletionSettingsFor(const AUri: string): TCompletionSettings;
     /// <summary>"stringLiteral" für AUri; AMultiline nach Stil und Delphi-Version (#312).</summary>
@@ -1048,6 +1053,8 @@ begin
   // Werte beim Debuggen am Zeilenende (#508).
   FInlineValues := TLspInlineValues.Create(FDocuments, FIndex, EnsureUnit);
   FInlineValues.Attach(FDispatcher);
+  FCompilerSwitches := TLspCompilerSwitches.Create(FDocuments, CompilerSwitchContextFor);
+  FCompilerSwitches.Attach(FDispatcher);
   FReferences := TLspReferences.Create(FDocuments, FIndex,
     ReadSourceText,
     ProjectSourceFiles,
@@ -2039,6 +2046,7 @@ begin
   FFoldingRanges.Free;
   FLinkedEditing.Free;
   FInlineValues.Free;
+  FCompilerSwitches.Free;
   FFormatting.Free;
   FSlashMenu.Free;
   FSelectionRanges.Free;
@@ -4007,6 +4015,56 @@ begin
     if (IndexText(Define, Predefined) < 0) and not TPascalPreprocessor.IsSwitchEntry(Define) then
       Own := Own + [Define];
   Result.Sources := TConditionalSymbols.SourcesOf(Own, Project.DefineOrigins, Predefined, Project.Platform);
+end;
+
+function TServerComposition.CompilerSwitchContextFor(const AUri: string): TCompilerSwitchContext;
+var
+  Workspace: TShellWorkspace;
+  Project: TProjectInfo;
+  Defines, Predefined, Own: TArray<string>;
+  IncludePaths: TArray<string>;
+  Define: string;
+  Source: TSymbolSource;
+  Kind: TSwitchOriginKind;
+begin
+  Result := Default(TCompilerSwitchContext);
+  Result.FileName := TDocumentUris.ToPath(AUri);
+  IncludePaths := nil;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := PickWorkspace(Result.FileName);
+    if Workspace <> nil then
+    begin
+      IncludePaths := Workspace.IncludePaths;
+      Result.HasProject := Workspace.Project(Project);
+    end;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  Result.ResolveInclude := TIncludeFiles.Resolver(IncludePaths);
+  if not Result.HasProject then
+    Project := Default(TProjectInfo);
+  Result.Configuration := Project.Config;
+  Result.Platform := Project.Platform;
+  Result.Input.Properties := Project.Properties;
+  // Dieselben Symbole und Schalterstände wie beim Abblenden inaktiver Zweige.
+  if not DefinesFor(AUri, Defines) then
+    Exit;
+  Result.Input.Defines := Defines;
+  Predefined := TPascalPreprocessor.PredefinedSymbols(Project.Platform,
+    TPascalPreprocessor.CompilerVersionFromDefines(Defines));
+  Own := nil;
+  for Define in Defines do
+    if (IndexText(Define, Predefined) < 0) and not TPascalPreprocessor.IsSwitchEntry(Define) then
+      Own := Own + [Define];
+  for Source in TConditionalSymbols.SourcesOf(Own, Project.DefineOrigins, Predefined, Project.Platform) do
+  begin
+    Kind := TSwitchOriginKind.Project;
+    if IndexText(Source.Name, Predefined) >= 0 then
+      Kind := TSwitchOriginKind.Default;
+    Result.Input.DefineOrigins := Result.Input.DefineOrigins +
+      [TSwitchDefineOrigin.Create(Source.Name, TSwitchOrigin.Make(Kind, Source.Origin))];
+  end;
 end;
 
 function TServerComposition.FormatStyleFor(const AUri: string): TFormatStyle;

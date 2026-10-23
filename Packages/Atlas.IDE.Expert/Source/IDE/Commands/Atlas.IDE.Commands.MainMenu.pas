@@ -99,6 +99,8 @@ type
     FProblemsItem: TMenuItem;
     /// <summary>„Atlas: Exception-Verlauf“ (#517), sichtbar nach debug.exceptionHistory.</summary>
     FDebugExceptionsItem: TMenuItem;
+    /// <summary>„Atlas: Compiler-Schalter“ (#558), sichtbar nach build.compilerSwitches.</summary>
+    FCompilerSwitchesItem: TMenuItem;
     FViewAtlas: TMenuItem;
     procedure WelcomeClick(Sender: TObject);
     procedure RenameClick(Sender: TObject);
@@ -111,6 +113,7 @@ type
     procedure OutlineClick(Sender: TObject);
     procedure ProblemsClick(Sender: TObject);
     procedure DebugExceptionsClick(Sender: TObject);
+    procedure CompilerSwitchesClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     function AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     /// <summary>Untermenü im Atlas-Menü; folgende AddItem landen darin.</summary>
@@ -174,6 +177,7 @@ uses
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Debug.Exceptions,
+  Atlas.IDE.Build.CompilerSwitches,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
@@ -264,6 +268,8 @@ begin
   FProblemsItem := AddItem(TAtlasTextId.ProblemsWindowCaption, 0, ProblemsClick);
   // Exception-Verlauf beim Debuggen (#517).
   FDebugExceptionsItem := AddItem(TAtlasTextId.DebugExceptionsCommand, 0, DebugExceptionsClick);
+  // Wirksame Compiler-Schalter an der Cursorposition (#558).
+  FCompilerSwitchesItem := AddItem(TAtlasTextId.CompilerSwitchesCommand, 0, CompilerSwitchesClick);
   FRoot.Add(NewLine);
   AddGroup(TAtlasTextId.MenuGroupNavigation);
   AddItem(TAtlasTextId.EditorTypeDefinition, 3, EditorClick);
@@ -669,6 +675,9 @@ begin
   // Exception-Verlauf (#517) nach debug.exceptionHistory.
   if FDebugExceptionsItem <> nil then
     FDebugExceptionsItem.Visible := TAtlasIdeSettings.Current.DebugExceptionHistory;
+  // Compiler-Schalter (#558) nach build.compilerSwitches.
+  if FCompilerSwitchesItem <> nil then
+    FCompilerSwitchesItem.Visible := TAtlasIdeSettings.Current.BuildCompilerSwitches;
   // Benannte Lesezeichen (#622) nach bookmarks.named, schnelle (#1104) nach bookmarks.quick; das Fenster zeigt
   // beide.
   Marks := TAtlasIdeSettings.Current.BookmarksNamed or TAtlasIdeSettings.Current.QuickBookmarks;
@@ -873,6 +882,16 @@ begin
     procedure
     begin
       TAtlasIdeDebugExceptions.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.CompilerSwitchesClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.CompilerSwitches');
+  TAtlasGuard.Run(TAtlasFeature.Build,
+    procedure
+    begin
+      TAtlasIdeCompilerSwitches.ShowWindow;
     end);
 end;
 
