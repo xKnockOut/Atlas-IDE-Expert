@@ -80,6 +80,8 @@ uses
   Atlas.Common.Semantics.ResolvedSignatures.Tests in 'Common\Semantics\Atlas.Common.Semantics.ResolvedSignatures.Tests.pas',
   Atlas.Common.Lsp.Reassigned.Tests in 'Common\Lsp\Atlas.Common.Lsp.Reassigned.Tests.pas',
   Atlas.Common.Lsp.ExpressionType.Tests in 'Common\Lsp\Atlas.Common.Lsp.ExpressionType.Tests.pas',
+  Atlas.Common.Editing.MethodOrder.Tests in 'Common\Editing\Atlas.Common.Editing.MethodOrder.Tests.pas',
+  Atlas.Common.Lsp.MethodOrder.Tests in 'Common\Lsp\Atlas.Common.Lsp.MethodOrder.Tests.pas',
   Atlas.Common.Editing.SuggestConst.Tests in 'Common\Editing\Atlas.Common.Editing.SuggestConst.Tests.pas',
   Atlas.Common.Semantics.OrdinalConstants.Tests in 'Common\Semantics\Atlas.Common.Semantics.OrdinalConstants.Tests.pas',
   Atlas.Common.Semantics.ConstantValues.Tests in 'Common\Semantics\Atlas.Common.Semantics.ConstantValues.Tests.pas',
