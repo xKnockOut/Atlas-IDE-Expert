@@ -221,6 +221,10 @@ function CollapseSpace(const AText: string): string;
 /// <summary>Bezeichner nach Delphi-Regeln (Buchstabe oder _, danach auch Ziffern, optional &amp; davor).
 /// </summary>
 function IsIdentifier(const AName: string): Boolean;
+/// <summary>Kommentar oder Compiler-Direktive.</summary>
+function IsTrivia(const AToken: TPascalToken): Boolean;
+/// <summary>Index des ersten Tokens ab AOffset; Length(ATokens) dahinter.</summary>
+function TokenIndexAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 
 implementation
 
@@ -281,7 +285,6 @@ begin
   Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
 end;
 
-/// <summary>Index des ersten Tokens ab AOffset; Length(ATokens) dahinter.</summary>
 function TokenIndexAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 var
   Low_, High_, Middle: Integer;

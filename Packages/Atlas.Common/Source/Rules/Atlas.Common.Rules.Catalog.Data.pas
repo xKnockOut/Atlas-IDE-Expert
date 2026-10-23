@@ -2181,6 +2181,20 @@ begin
     '      "good": "procedure TImport.Pruefen;\nbegin\n  // Absichtlich leer.\nend;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "trivial-accessor",' + #10 +
+    '      "name": "Accessor method only reads or writes a field",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A getter whose body is only Result := FName; (also Exit(FName), Self.FName) or a setter whose body is only FName := Value; (with refactoring.inlineAccessorEqualityCheck also if F' +
+    'Name <> Value then FName := Value;). The property can point to the field directly. Only methods that are not virtual, dynamic, override or abstract, not class methods, not overloaded or generic, imple' +
+    'ment no interface method (also via a method resolution clause), have no index specifier and are not used by other members of the class; the field belongs to the class and has the type of the property.' +
+    ' Silent unless refactoring.inlineAccessorDiagnostic is on (default off) and refactoring.inlineAccessor is on. Medium confidence: calls in other units are not visible to the rule. No quick fix in the r' +
+    'ule; the code action \"Replace accessor GetName with field FName\" at the same place checks calls with the reference search and replaces it.",' + #10 +
+    '      "bad": "property Name: string read GetName write FName;\n...\nfunction TCustomer.GetName: string;\nbegin\n  Result := FName;\nend;",' + #10 +
+    '      "good": "property Name: string read FName write FName;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "write-only-property",' + #10 +
     '      "name": "Property without read",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -6152,6 +6166,15 @@ begin
     'gnis-Handler, die in der Formulardatei stehen (die IDE entfernt leere beim Speichern), und Rümpfe mit Kommentar, etwa Überschreibungen, die bewusst nichts tun. Schnellkorrekturen: Kommentar zwischen b' +
     'egin und end einfügen; Methode entfernen (Deklaration samt XML-Doku und Rumpf) nur bei privaten Methoden und Routinen ohne Deklaration im interface-Teil, die sonst nirgends in der Datei vorkommen und ' +
     'keine Signatur von außen erfüllen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "trivial-accessor",' + #10 +
+    '      "name": "Zugriffsmethode liest bzw. setzt nur ein Feld",' + #10 +
+    '      "description": "Ein Getter, dessen Rumpf nur Result := FName; enthält (auch Exit(FName), Self.FName), oder ein Setter, dessen Rumpf nur FName := Value; enthält (mit refactoring.inlineAccessorEqu' +
+    'alityCheck auch if FName <> Value then FName := Value;). Die Property kann direkt auf das Feld zeigen. Nur Methoden, die nicht virtual, dynamic, override oder abstract, keine class-Methoden, nicht übe' +
+    'rladen oder generisch sind, keine Interface-Methode implementieren (auch nicht über eine Methodenzuordnung), keinen index haben und von keinem anderen Mitglied der Klasse benutzt werden; das Feld gehö' +
+    'rt zur Klasse und hat den Typ der Property. Stumm, solange refactoring.inlineAccessorDiagnostic aus ist (Vorgabe) oder refactoring.inlineAccessor aus ist. Sicherheit mittel: Aufrufe in anderen Units s' +
+    'ieht die Regel nicht. Keine Korrektur in der Regel; die Code-Aktion „Zugriffsmethode GetName durch Feld FName ersetzen“ an derselben Stelle prüft die Aufrufe mit der Referenzsuche und ersetzt."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "write-only-property",' + #10 +

@@ -714,7 +714,10 @@ type
     // „Mitglied in Vorfahr/Nachfahren verschieben“ (#675) im selben Dialog.
     ExtractMembersTarget, ExtractMembersTargets, ExtractMembersTargetItem, ExtractMembersNoTarget,
     ExtractMembersOverrideSiblings, ExtractMembersKeepAbstract, MoveUpTitle, MoveDownTitle, MoveMemberFailed,
-    MoveMemberNothing, MoveMemberPreviewHint, MoveMemberApply, MoveMemberDone);
+    MoveMemberNothing, MoveMemberPreviewHint, MoveMemberApply, MoveMemberDone,
+    // „Zugriffsmethode durch Feld ersetzen“ (#717).
+    InlineAccessorTitle, InlineAccessorFailed, InlineAccessorNothing, InlineAccessorPreviewHint, InlineAccessorApply,
+    InlineAccessorDone, InlineAccessorWarning);
 
   TAtlasStrings = class
   private class var
@@ -2349,7 +2352,14 @@ const
      'Mitglied verschieben: nichts zu ändern.',
      '%d Mitglieder: %d Änderungen in %d Dateien',
      'Verschieben',
-     '%d Mitglieder verschoben: %d Änderungen in %d Dateien übernommen.'),
+     '%d Mitglieder verschoben: %d Änderungen in %d Dateien übernommen.',
+     'Zugriffsmethode durch Feld ersetzen',
+     'Zugriffsmethode durch Feld ersetzen fehlgeschlagen: %s',
+     'Zugriffsmethode durch Feld ersetzen: nichts zu ändern.',
+     '%d Zugriffsmethoden: %d Änderungen in %d Dateien',
+     'Ersetzen',
+     '%d Zugriffsmethoden durch Felder ersetzt: %d Änderungen in %d Dateien übernommen.',
+     'Hinweis: %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3888,7 +3898,14 @@ const
      'Move member: nothing to change.',
      '%d members: %d changes in %d files',
      'Move',
-     '%d members moved: %d changes applied in %d files.'));
+     '%d members moved: %d changes applied in %d files.',
+     'Replace accessor with field',
+     'Replace accessor with field failed: %s',
+     'Replace accessor with field: nothing to change.',
+     '%d accessors: %d changes in %d files',
+     'Replace',
+     '%d accessors replaced with fields: %d changes applied in %d files.',
+     'Note: %s'));
 
 { TAtlasStrings }
 

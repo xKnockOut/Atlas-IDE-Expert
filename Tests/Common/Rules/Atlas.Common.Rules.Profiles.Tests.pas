@@ -189,7 +189,7 @@ const
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
     'security-tls-verification-disabled,security-weak-crypto,self-as-interface-in-constructor,self-assignment,self-free-in-event-handler,setlength-in-loop,setter-recursion,shadowed-name,signature-mismatch,signed-unsigned-mix,sizeof-pointer,' +
     'slash-command,sql-write-without-where,string-index-base,string-length-limit,stringlist-objects-leak,stringlist-unsorted,suspicious-string-pointer-cast,synchronize-in-destructor,task-exception-unobserved,text-after-final-end,thread-free-with-free-on-terminate,thread-loop-without-terminated,thread-resume-suspend,' +
-    'thread-unsafe-increment,thread-use-after-free-on-terminate,thread-vcl-access,threadvar-managed,transaction-without-rollback,type-restriction-violated,type-too-large,type-used-before-declaration,typed-constant-modified,typeinfo-invalid,' +
+    'thread-unsafe-increment,thread-use-after-free-on-terminate,thread-vcl-access,threadvar-managed,transaction-without-rollback,trivial-accessor,type-restriction-violated,type-too-large,type-used-before-declaration,typed-constant-modified,typeinfo-invalid,' +
     'ui-call-in-console-or-service,unchecked-conversion,unchecked-enum-cast,unconditional-recursion,unit-name-conflict,unit-name-mismatch,unneeded-forward-declaration,unreachable-code,unresolved-attribute,unresolved-identifier,unresolved-type,unsatisfied-forward,' +
     'untyped-pointer-refcount,unused-assignment,unused-local,unused-parameter,unused-private-member,unused-public-member,use-after-free,uses-unit-not-found,variant-record-managed-field,virtual-instead-of-override,with-statement,' +
     'write-only-property,writeln-in-gui-app,xmldoc-mismatch';
@@ -231,7 +231,7 @@ begin
     'forbidden-uses,foreign-form-control-access,format-without-settings,generic-exception-raised,getter-side-effect,hardcoded-path,implicit-package-import,inline-not-expanded,' +
     'metric-boolean-operands,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-exit-points,metric-inheritance-depth,metric-local-count,metric-method-length,' +
     'metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-begin-end,now-for-elapsed-time,null-compare,processmessages-in-loop,redundant-assigned-free,' +
-    'reraise-exception-object,setlength-in-loop,shadowed-name,slash-command,task-exception-unobserved,text-after-final-end,thread-resume-suspend,unneeded-forward-declaration,' +
+    'reraise-exception-object,setlength-in-loop,shadowed-name,slash-command,task-exception-unobserved,text-after-final-end,thread-resume-suspend,trivial-accessor,unneeded-forward-declaration,' +
     'unused-assignment,unused-local,' +
     'unused-parameter,unused-private-member,unused-public-member,with-statement,write-only-property,xmldoc-mismatch',
     ActiveRules('style'));

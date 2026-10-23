@@ -673,6 +673,20 @@ begin
   Assert.IsFalse(Parse('{"refactoring": {"moveMember": false}}', Issues).Refactoring.MoveMember);
   Parse('{"refactoring": {"moveMember": 1}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // #717: Zugriffsmethode durch Feld ersetzen.
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Refactoring.InlineAccessor);
+  Assert.IsTrue(Settings.Refactoring.InlineAccessorEqualityCheck);
+  Assert.IsTrue(Settings.Refactoring.InlineAccessorBulk);
+  Assert.IsFalse(Settings.Refactoring.InlineAccessorDiagnostic);
+  Settings := Parse('{"refactoring": {"inlineAccessor": false, "inlineAccessorEqualityCheck": false, ' +
+    '"inlineAccessorBulk": false, "inlineAccessorDiagnostic": true}}', Issues);
+  Assert.IsFalse(Settings.Refactoring.InlineAccessor);
+  Assert.IsFalse(Settings.Refactoring.InlineAccessorEqualityCheck);
+  Assert.IsFalse(Settings.Refactoring.InlineAccessorBulk);
+  Assert.IsTrue(Settings.Refactoring.InlineAccessorDiagnostic);
+  Parse('{"refactoring": {"inlineAccessorBulk": "ja"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Speicherbudget (#185)
   Assert.AreEqual(768, Parse('{}', Issues).MemoryBudgetMb, 'Vorgabe 768 MB (Rückmeldung 15.10.2026)');
   Assert.AreEqual(0, Parse('{"memoryBudgetMb": 0}', Issues).MemoryBudgetMb, '0 = unbegrenzt');
