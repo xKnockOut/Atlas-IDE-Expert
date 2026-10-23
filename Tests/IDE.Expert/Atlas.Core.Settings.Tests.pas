@@ -21,6 +21,10 @@ type
     /// <summary>#1101: Atlas-Editorleiste, Lage, Belegung, Rücksprung, Text, Tasten der Abschnittssprünge.</summary>
     [Test]
     procedure EditorToolbarOptions;
+    /// <summary>#1155: Atlas-Statusleiste an, alle Elemente in Vorgabe-Reihenfolge; Bereinigen, Speichern, Laden.
+    /// </summary>
+    [Test]
+    procedure EditorStatusBarOptions;
     /// <summary>Schnelle Lesezeichen (#1104): Vorgaben laut Issue, Grenzen, Speichern und Laden.</summary>
     [Test]
     procedure QuickBookmarkOptions;
@@ -157,7 +161,8 @@ uses
   Atlas.Core.Settings.Schema,
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.Scopes,
-  Atlas.Core.Settings.ToolbarItems;
+  Atlas.Core.Settings.ToolbarItems,
+  Atlas.Core.Settings.StatusBarItems;
 
 type
   TMemoryStore = class(TInterfacedObject, IAtlasSettingsStore)
@@ -2079,6 +2084,28 @@ begin
   Assert.IsTrue(Loaded.EditorToolbarLabels);
   Assert.AreEqual($6049, Loaded.GotoInterfaceKey);
   Assert.AreEqual($604D, Loaded.GotoImplementationKey);
+end;
+
+procedure TAtlasPluginSettingsTests.EditorStatusBarOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.EditorStatusBar);
+  Assert.AreEqual('status,findings,liveCheck,method', Settings.EditorStatusBarItems);
+  Assert.AreEqual(TAtlasStatusBarItems.DefaultText, Settings.EditorStatusBarItems);
+  Settings.EditorStatusBarItems := ' METHOD, zahnrad ,status,method';
+  Settings.Normalize;
+  Assert.AreEqual('method,status', Settings.EditorStatusBarItems, 'nur bekannte, jedes einmal');
+  Settings.EditorStatusBar := False;
+  Settings.EditorStatusBarItems := '';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.EditorStatusBar);
+  Assert.AreEqual('', Loaded.EditorStatusBarItems, 'alle Elemente aus bleibt leer');
 end;
 
 procedure TAtlasPluginSettingsTests.QuickBookmarkOptions;

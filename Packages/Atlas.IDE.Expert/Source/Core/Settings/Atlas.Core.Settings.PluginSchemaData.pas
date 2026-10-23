@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4138] of string = (
+  Lines: array[0..4167] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -103,6 +103,10 @@ const
     '    "editor.toolbar": {',
     '      "caption": "Editorleiste",',
     '      "captionEn": "Editor toolbar"',
+    '    },',
+    '    "editor.statusBar": {',
+    '      "caption": "Atlas-Statusleiste",',
+    '      "captionEn": "Atlas status bar"',
     '    },',
     '    "editor.stickyScroll": {',
     '      "caption": "Mitlaufender Kopf",',
@@ -3243,6 +3247,33 @@ const
     '      "x-page": "Editor",',
     '      "x-parent": "editor.toolbar",',
     '      "x-issue": "#1101"',
+    '    },',
+    '    "EditorStatusBar": {',
+    '      "description": "Atlas-Statusleiste unten am Editor, über der Statuszeile der IDE: Server-Status, Meldungen dieser Unit, Live-Prüfung und aktuelle Methode mit Zeilen und CC. Mit dem Element „Stat' +
+      'us“ zieht das Atlas-Feld aus der Statuszeile der IDE in die Leiste; aus = keine Leiste, das Atlas-Feld bleibt in der Statuszeile.",',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "editor.statusBar",',
+    '      "x-area": "editor",',
+    '      "x-feature": "StatusBar",',
+    '      "x-page": "Editor",',
+    '      "x-node": "editor.statusBar",',
+    '      "x-quickToggle": true,',
+    '      "x-caption": "Atlas-Statusleiste",',
+    '      "x-captionEn": "Atlas status bar",',
+    '      "x-issue": "#1155"',
+    '    },',
+    '    "EditorStatusBarItems": {',
+    '      "type": "string",',
+    '      "default": "status,findings,liveCheck,method",',
+    '      "description": "Sichtbare Elemente der Atlas-Statusleiste in Reihenfolge, durch Komma getrennt: status (Server-Status), findings (Meldungen dieser Unit), liveCheck (Live-Prüfung), method (aktuel' +
+      'le Methode); leer = keine. Ein- und ausblenden auch über „Leiste anpassen …“ (Zahnrad, Rechtsklick).",',
+    '      "x-key": "editor.statusBar.items",',
+    '      "x-area": "editor",',
+    '      "x-page": "Editor",',
+    '      "x-parent": "editor.statusBar",',
+    '      "x-control": "Textfeld und Menü „Leiste anpassen …“",',
+    '      "x-issue": "#1155"',
     '    },',
     '    "StickyScroll": {',
     '      "description": "Mitlaufender Kopf: Die Kopfzeilen der umgebenden Klasse bzw. des Records und der Routinen bleiben oben im Editor stehen, bis der Block endet. Verschachtelte Routinen stapeln sich' +

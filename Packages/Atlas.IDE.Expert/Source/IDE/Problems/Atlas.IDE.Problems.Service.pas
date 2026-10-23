@@ -70,6 +70,9 @@ type
     class procedure ThemeChanged; static;
     /// <summary>„Atlas-Prüfung“ zeigen (Menü, Palette, Taste).</summary>
     class procedure ShowWindow; static;
+    /// <summary>„Atlas-Prüfung“ mit Bereich „aktuelle Datei“ zeigen (Doppelklick auf die Zähler der
+    /// Atlas-Statusleiste, #1155); der Bereich bleibt wie nach einer Wahl im Fenster gespeichert.</summary>
+    class procedure ShowCurrentFile; static;
     /// <summary>F8/Umschalt+F8 (#637): bei sichtbarem Fenster nächster bzw. vorheriger Befund der gefilterten
     /// Liste, auch in anderen Dateien. False, wenn das Fenster nicht sichtbar ist (dann gilt die Datei).</summary>
     class function StepWindow(AForward: Boolean): Boolean; static;
@@ -670,6 +673,24 @@ begin
     Exit;
   if TAtlasIdeProblemsWindow.Show <> nil then
     Refresh(True);
+end;
+
+class procedure TAtlasIdeProblems.ShowCurrentFile;
+var
+  Frame: TAtlasProblemsFrame;
+begin
+  if not Enabled then
+    Exit;
+  Frame := TAtlasIdeProblemsWindow.Show;
+  if Frame = nil then
+    Exit;
+  if Frame.Scope <> TAtlasFindingScope.CurrentFile then
+  begin
+    Frame.ApplySettings(TAtlasFindingScope.CurrentFile, Frame.Grouping, Frame.ColumnsText,
+      Settings.ProblemsWindowCompiler);
+    SaveLayout(Frame);
+  end;
+  Refresh(True);
 end;
 
 class function TAtlasIdeProblems.StepWindow(AForward: Boolean): Boolean;

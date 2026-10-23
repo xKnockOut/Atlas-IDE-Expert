@@ -14,7 +14,7 @@ Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnoc
 |---|---|
 | [Schreiben](#schreiben) | Vervollständigung mit Detailpanel, Parameter-Hint, Code- und Postfix-Vorlagen, Schnellbefehle (`/uses`, `/extract`, …), Erzeugen-Menü, Formatierer |
 | [Verstehen](#verstehen) | Hover mit Doku, Werten, Vererbung und Debugger-Werten, Typmarken, Code-Metriken, inaktive `{$IFDEF}`-Zweige |
-| [Navigieren](#navigieren) | Brotkrumenleiste, Editorleiste, Gliederung, Definition einblenden, Datei schnell öffnen, Units suchen, Ergebnisfenster, Lesezeichen und Notizen |
+| [Navigieren](#navigieren) | Brotkrumenleiste, Editorleiste, Statusleiste, Gliederung, Definition einblenden, Datei schnell öffnen, Units suchen, Ergebnisfenster, Lesezeichen und Notizen |
 | [Code-Analyse](#code-analyse) | 170 74 73 75 75 76 75 76 75 71 76 75 73 75 75 75 73 4 76 279 Prüfregeln (Fehler, Code-Smells, Sicherheit), Profile, Konfidenz, Baseline, Compilerprüfung nach dem Speichern, Linter für CI mit SARIF |
 | [Refactorings und Code-Aktionen](#refactorings-und-code-aktionen) | Umbenennen samt Formularen, Signatur ändern, Methode extrahieren, Interface implementieren, Property erzeugen und viele Schnellkorrekturen (Alt+Enter) |
 | [Formulare](#formulare) | Abgleich mit dem Designer, Komponenten in der Vervollständigung, Prüfungen zwischen Formular und Code |
@@ -83,6 +83,7 @@ Alles Folgende ist in `main` umgesetzt. Funktionen mit *(experimentell)* sind ab
 - **Gehe zu** Definition (Strg+Klick), Implementierung und Typdefinition; Wechsel zwischen Deklaration und Implementierung (Strg+Umschalt+↑/↓); **Sprung zum Gegenstück** (begin ⇄ end, try → finally → end, `{$IFDEF}` → `{$ENDIF}`)
 - **Brotkrumenleiste** über dem Editor mit Sprungmenüs zu Unit, Klasse, Methode und deren Kindern
 - **Editorleiste** mit Symbolen: Sprung zum interface- bzw. implementation-Teil (und zurück mit „↩ 214“), Methode suchen, Navigationsverlauf und beliebige Palettenbefehle; Überlaufmenü, frei belegbar, auch rechts in der Brotkrumenzeile
+- **Atlas-Statusleiste** unten in jedem Editorfenster: Server-Status, Meldungen dieser Unit je Art (Klick springt zum nächsten Befund, Doppelklick öffnet „Atlas-Prüfung“ für die Unit), Live-Prüfung („live · geprüft vor 2 s“) und die Methode am Cursor mit Zeilen und CC (über der Grenze der Metrikregeln in Warnfarbe); jedes Element abschaltbar, das Atlas-Feld verlässt die Statuszeile der IDE, solange die Leiste den Status zeigt
 - **Gliederung** als andockbares Fenster mit Filter
 - **Definition einblenden** (Alt+F12) unter der Zeile, ohne die Datei zu wechseln
 - **Datei und Symbol schnell öffnen** (Strg+P) über Projekt, Projektgruppe und Suchpfad; projektweite **Symbolsuche**
