@@ -18,7 +18,7 @@ Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnoc
 | [Code-Analyse](#code-analyse) | 170 74 73 75 75 76 75 76 75 71 76 75 73 75 75 75 73 4 76 279 Prüfregeln (Fehler, Code-Smells, Sicherheit), Profile, Konfidenz, Baseline, Compilerprüfung nach dem Speichern, Linter für CI mit SARIF |
 | [Refactorings und Code-Aktionen](#refactorings-und-code-aktionen) | Umbenennen samt Formularen, Signatur ändern, Methode extrahieren, Interface implementieren, Property erzeugen und viele Schnellkorrekturen (Alt+Enter) |
 | [Formulare](#formulare) | Abgleich mit dem Designer, Komponenten in der Vervollständigung, Prüfungen zwischen Formular und Code |
-| [Bauen, Testen, Debuggen](#bauen-testen-debuggen) | Release-Build-Wächter, DUnitX-Tests aus dem Editor, Startprofile, Werte im Hover beim Debuggen |
+| [Bauen, Testen, Debuggen](#bauen-testen-debuggen) | Release-Build-Wächter, DUnitX-Tests aus dem Editor, Startprofile, Werte im Hover beim Debuggen, Exception-Verlauf |
 | [IDE-Komfort](#ide-komfort) | Willkommensseite, Befehlspalette, Benachrichtigungen, Änderungsmarken aus Git/SVN, abgesicherter Start |
 | [Einstellungen](#einstellungen) | Jede Funktion einzeln abschaltbar, Optionsseite als Baum, teamweite Projektdatei `.atlas` |
 | [Claude Code](#claude-code-und-mcp) | 19 MCP-Werkzeuge zum Lesen, Prüfen, Bauen, Testen und Umbenennen |
@@ -151,6 +151,7 @@ Code-Aktionen öffnet Alt+Enter; alles steht auch im Menü *Atlas* und im Kontex
 - **DUnitX-Tests** aus dem Editor ausführen und einen einzelnen Test im Debugger starten (Code Lens an `[Test]` und `[TestFixture]`)
 - **Startprofile** für Parameter, Arbeitsordner, Umgebung und Host-Anwendung
 - **Werte im Hover beim Debuggen** (siehe [Verstehen](#verstehen))
+- **Exception-Verlauf:** andockbares Fenster „Atlas: Exceptions“ mit jeder Exception der Debug-Sitzung (Uhrzeit, Klasse, Meldung aus dem Dialog der IDE, Anzahl gleicher Exceptions am gleichen Ort, Ort, Thread), Filter nach Klasse und Text, Enter springt zur Zeile, Strg+C kopiert Klasse, Meldung und Aufrufstapel; „Klasse künftig ignorieren“ setzt bei dieser Klasse still fort (`debug.exceptionHistory`)
 - **Bauen-Werkzeug für Claude Code:** `build_project` baut offene Projekte über den Compiler der IDE, auch in der Starter-Edition
 
 ### IDE-Komfort

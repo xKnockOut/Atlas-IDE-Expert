@@ -943,3 +943,12 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Regel-Editor schmal (nach dem Push bemerkt):** `TAtlasRulesEditor.CanAutoSize` setzte `NewWidth := Width`; `CheckNewSize` fragt aber mit der neuen Breite, so blieb jedes `SetBounds` bei den 185 Pixeln eines frischen Panels. Jetzt bleibt die angefragte Breite. Der Test prüfte ohne Fenster, da war auch der Behälter schmal; `KeepsRequestedWidth` und die Dialogtests messen jetzt mit Fenster.
 - **Protokoll lesen:** Das Bash-Werkzeug sieht `%LOCALAPPDATA%` virtualisiert (Kopie unter `AppData\Local\Packages\Claude_…\LocalCache`, Stand 22.10.). Das echte `atlas.log` nur mit PowerShell lesen. Das Plugin-Protokoll läuft normal, eine Lücke gibt es nicht.
 - **Nebenbefund Server-Diagnose:** `workspace/diagnostic` brauchte 17 s mit `slowRule=inline-not-expanded` (16,4 s) in einer Unit mit fehlenden Units; nicht untersucht.
+
+## Debugger-Ketten G und H nach v1.1.0 (23.10.2026, gestapelte Branches `after-release/NN-…`)
+
+- **Reihenfolge:** #517 → #578 → #783 (Studie zuerst), #508 + #558 → #840, #538 → #784, #690 → #865, zuletzt #850 auf dem Branch von #836 (Kette E). Je Branch ein Draft-PR, nichts gemergt, alles nur unter FPC geprüft (Kern-Tests), VCL- und IDE-Teile ungebaut.
+- **#517 Exception-Verlauf** (`after-release/517-exception-verlauf`): neue Units `Atlas.Core.Debug.*`, `Atlas.UI.Debug.ExceptionsFrame`, `Atlas.IDE.Debug.*`; Sicherung `TAtlasFeature.Debugger` („Debuggen“); Einstellung `debug.exceptionHistory` (an, Schnellschalter); Befehl `Atlas.DebugExceptions` und Eintrag im Atlas-Menü.
+  - `TAtlasIdeDebugSession` ist der gemeinsame Debugger-Notifier für alle folgenden Debug-Issues (Zuhörer `IAtlasIdeDebugListener`; der letzte Zuhörer meldet ab).
+  - Klasse und Meldung kommen aus dem Exception-Dialog der IDE (Fenster durchsuchen, 3 s), ersatzweise aus `GetStatusString`; die OTA hat sie nicht. Ob das je IDE-Version trägt, klärt `docs/Studie-Exception-Dialog.md` (Marco, Delphi 12 und 13); Ergebnis gehört in #783.
+  - Eigene Ignorier-Liste `%LOCALAPPDATA%\Atlas\debug-ignore.json` (Klassen; Orte je Projekt für #783). Die Liste der IDE selbst (Registry) ist unbekannt und wird nicht angefasst.
+  - **Beim Delphi-Build prüfen:** `TAtlasIdeDebugSession.TNotifier` (IOTADebuggerNotifier90-Signaturen gegen `$(BDS)\source\ToolsAPI` lesen), `TAtlasIdeExceptionDialog.Collect` (TControlAccess), Frame-Tests mit `HandleNeeded`, `Atlas.Core.Debug.IgnoreList.Tests` (unter FPC nicht lauffähig, `System.JSON`).

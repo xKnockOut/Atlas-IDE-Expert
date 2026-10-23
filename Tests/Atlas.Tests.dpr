@@ -927,7 +927,17 @@ uses
   Atlas.Common.Lsp.Unwrap.Tests in 'Common\Lsp\Atlas.Common.Lsp.Unwrap.Tests.pas',
   Atlas.Common.Editing.InterfaceStubs.Tests in 'Common\Editing\Atlas.Common.Editing.InterfaceStubs.Tests.pas',
   Atlas.Common.Lsp.Completion.Postfix.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Postfix.Tests.pas',
-  Atlas.Common.Editing.ContextSnippets.Tests in 'Common\Editing\Atlas.Common.Editing.ContextSnippets.Tests.pas';
+  Atlas.Common.Editing.ContextSnippets.Tests in 'Common\Editing\Atlas.Common.Editing.ContextSnippets.Tests.pas',
+  Atlas.Core.Debug.Exceptions in '..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.Exceptions.pas',
+  Atlas.Core.Debug.CallStack in '..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.CallStack.pas',
+  Atlas.Core.Debug.IgnoreList in '..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.IgnoreList.pas',
+  Atlas.Core.Debug.ExceptionDialog in '..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.ExceptionDialog.pas',
+  Atlas.UI.Debug.ExceptionsFrame in '..\Packages\Atlas.IDE.Expert\Source\UI\Debug\Atlas.UI.Debug.ExceptionsFrame.pas',
+  Atlas.Core.Debug.Exceptions.Tests in 'IDE.Expert\Atlas.Core.Debug.Exceptions.Tests.pas',
+  Atlas.Core.Debug.CallStack.Tests in 'IDE.Expert\Atlas.Core.Debug.CallStack.Tests.pas',
+  Atlas.Core.Debug.IgnoreList.Tests in 'IDE.Expert\Atlas.Core.Debug.IgnoreList.Tests.pas',
+  Atlas.Core.Debug.ExceptionDialog.Tests in 'IDE.Expert\Atlas.Core.Debug.ExceptionDialog.Tests.pas',
+  Atlas.UI.Debug.ExceptionsFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.ExceptionsFrame.Tests.pas';
 
 // Atlas-Symbol (#751) für die UI-Tests.
 {$R '..\Packages\Atlas.IDE.Expert\Resources\Symbol\Atlas.Symbol.res'}

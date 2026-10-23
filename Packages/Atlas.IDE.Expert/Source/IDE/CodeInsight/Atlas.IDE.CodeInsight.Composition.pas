@@ -180,6 +180,7 @@ uses
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Bookmarks.Gutter,
+  Atlas.IDE.Debug.Exceptions,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Foundation.Elements,
@@ -945,6 +946,11 @@ begin
   Result := TAtlasIdeSettings.Current.BookmarksNamed or TAtlasIdeSettings.Current.QuickBookmarks;
 end;
 
+function DebugExceptionsVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugExceptionHistory;
+end;
+
 function ProblemsWindowVisible: Boolean;
 begin
   Result := TAtlasIdeProblems.Enabled;
@@ -1343,6 +1349,9 @@ begin
     Guarded(TAtlasFeature.QuickBookmarks, TAtlasIdeBookmarks.NextBookmark), QuickBookmarksVisible);
   Add('Atlas.PreviousBookmark', TAtlasTextId.PreviousBookmarkCommand,
     Guarded(TAtlasFeature.QuickBookmarks, TAtlasIdeBookmarks.PreviousBookmark), QuickBookmarksVisible);
+  // Exception-Verlauf beim Debuggen (#517); nur sichtbar, solange debug.exceptionHistory an ist.
+  Add('Atlas.DebugExceptions', TAtlasTextId.DebugExceptionsCommand,
+    Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugExceptions.ShowWindow), DebugExceptionsVisible);
   // Fenster „Atlas-Prüfung“ (#909); nur sichtbar, solange problems.window an ist.
   Add('Atlas.ProblemsWindow', TAtlasTextId.ProblemsWindowCommand,
     Guarded(TAtlasFeature.Problems, TAtlasIdeProblems.ShowWindow), ProblemsWindowVisible);
@@ -2863,6 +2872,15 @@ begin
   BookmarksStarted := False;
 end;
 
+procedure StartDebugExceptions;
+begin
+  TAtlasIdeDebugExceptions.Start(
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+end;
+
 /// <summary>Fenster „Atlas-Prüfung“ (#909): Code-Aktionen, Optionsseite, Serverbefehle und Meldungen über
 /// Haken; F8/Umschalt+F8 gehen bei sichtbarem Fenster durch dessen Liste.</summary>
 procedure StartProblemsWindow;
@@ -3860,6 +3878,17 @@ begin
       Result := QuickColumn <> nil;
     end,
     StartQuickColumn, StopQuickColumn);
+  // Exception-Verlauf beim Debuggen (#517): Zuhörer der Debug-Sitzung; aus = kein Notifier beim Debugger.
+  Features.AddWanted('DebugExceptions',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugExceptionHistory;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugExceptions.Started;
+    end,
+    StartDebugExceptions, TAtlasIdeDebugExceptions.Release);
   // Gleichen Text wie die Markierung hervorheben (#709): nur im normalen Start oder mit Einstellung.
   Features.AddWanted('SelectionMatches',
     function(ALevel: TAtlasSafeLevel): Boolean
@@ -4117,6 +4146,7 @@ begin
       TAtlasIdeLineChanges.ThemeChanged;
       TAtlasIdeOverviewRuler.ThemeChanged;
       TAtlasIdeMinimap.ThemeChanged;
+      TAtlasIdeDebugExceptions.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -4168,6 +4198,8 @@ begin
       TAtlasIdeSearch.ApplySettings;
       // editor.stickyScroll* (#506).
       TAtlasIdeStickyScroll.ApplySettings;
+      // debug.exceptionHistory (#517).
+      TAtlasIdeDebugExceptions.ApplySettings;
       // editor.gitGutter, editor.gitBlame (#507).
       TAtlasIdeLineChanges.ApplySettings;
       // editor.overviewRuler, editor.overviewRulerKinds (#519).
