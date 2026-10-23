@@ -213,7 +213,7 @@ var
   Message: TJSONObject;
   Item: TJSONValue;
 begin
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, 0);
+  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders), 0);
   try
     Diagnostics.Attach;
     FStore.Open(Uri, 'objectpascal', 3, BrokenCode);
@@ -245,7 +245,7 @@ var
   Diagnostics: TLspSyntaxDiagnostics;
   Message: TJSONObject;
 begin
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, 0);
+  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders), 0);
   try
     Diagnostics.Attach;
     FStore.Open(Uri, 'objectpascal', 1, ValidCode);
@@ -265,7 +265,7 @@ var
   Diagnostics: TLspSyntaxDiagnostics;
   Message: TJSONObject;
 begin
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, 0);
+  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders), 0);
   try
     Diagnostics.Attach;
     FStore.Open(Uri, 'objectpascal', 1, BrokenCode);
@@ -288,7 +288,7 @@ var
   Diagnostics: TLspSyntaxDiagnostics;
   Message: TJSONObject;
 begin
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, 0);
+  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders), 0);
   try
     Diagnostics.Attach;
     FStore.Open(Uri, 'objectpascal', 1, BrokenCode);
@@ -315,7 +315,7 @@ var
 begin
   // Jedes Projekt einer Gruppe meldet seine Indexstufen; neu geprüft wird einmal (#647).
   Calls := 0;
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport);
+  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders));
   try
     Diagnostics.PullMode := True;
     Diagnostics.OnPullChanged :=
@@ -340,7 +340,7 @@ var
   Version: Integer;
   Message: TJSONObject;
 begin
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport);
+  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders));
   try
     Diagnostics.Attach;
     FStore.Open(Uri, 'objectpascal', 1, ValidCode);
@@ -625,6 +625,7 @@ const
   Code = 'unit U;'#10'interface'#10'{$IFDEF WIN64}'#10'const A = 1;'#10'{$ENDIF}'#10'implementation'#10'end.';
 var
   Diagnostics: TLspSyntaxDiagnostics;
+  Providers: TSyntaxDiagnosticsProviders;
   Document: ITextDocument;
   Params: TJSONObject;
   Item: TJSONValue;
@@ -633,21 +634,22 @@ begin
   Assert.AreEqual('Inaktiv: Bedingung DEBUG nicht erfüllt', TLspSyntaxDiagnostics.InactiveMessageOf('DEBUG', '', ''));
   Assert.AreEqual('Inaktiv: Bedingung DEBUG nicht erfüllt (Zielplattform Win64 · ?)',
     TLspSyntaxDiagnostics.InactiveMessageOf('DEBUG', 'Win64', ''));
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, 0);
+  Providers := Default(TSyntaxDiagnosticsProviders);
+  Providers.Defines :=
+    function(const AUri: string; out ADefines: TArray<string>): Boolean
+    begin
+      ADefines := ['WIN32'];
+      Result := True;
+    end;
+  Providers.BuildTarget :=
+    function(const AUri: string; out APlatform, AConfig: string): Boolean
+    begin
+      APlatform := 'Win32';
+      AConfig := 'Debug';
+      Result := True;
+    end;
+  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Providers, 0);
   try
-    Diagnostics.DefinesProvider :=
-      function(const AUri: string; out ADefines: TArray<string>): Boolean
-      begin
-        ADefines := ['WIN32'];
-        Result := True;
-      end;
-    Diagnostics.BuildTargetProvider :=
-      function(const AUri: string; out APlatform, AConfig: string): Boolean
-      begin
-        APlatform := 'Win32';
-        AConfig := 'Debug';
-        Result := True;
-      end;
     Document := FStore.Open(Uri, 'objectpascal', 1, Code);
     Params := Diagnostics.Compute(Document);
     try
@@ -673,6 +675,7 @@ const
     '{$IFNDEF FOO} uses B; uses C; {$ENDIF}'#10'{$I fehlt.inc}'#10'implementation'#10'end.';
 var
   Diagnostics: TLspSyntaxDiagnostics;
+  Providers: TSyntaxDiagnosticsProviders;
   Document: ITextDocument;
   Params: TJSONObject;
   Item: TJSONValue;
@@ -689,14 +692,15 @@ begin
           AText := '{$DEFINE FOO}';
         end;
     end);
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, 0);
+  Providers := Default(TSyntaxDiagnosticsProviders);
+  Providers.Defines :=
+    function(const AUri: string; out ADefines: TArray<string>): Boolean
+    begin
+      ADefines := ['WIN32'];
+      Result := True;
+    end;
+  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Providers, 0);
   try
-    Diagnostics.DefinesProvider :=
-      function(const AUri: string; out ADefines: TArray<string>): Boolean
-      begin
-        ADefines := ['WIN32'];
-        Result := True;
-      end;
     Document := FStore.Open(Uri, 'objectpascal', 1, Code);
     Params := Diagnostics.Compute(Document);
     try
@@ -718,16 +722,18 @@ end;
 procedure TLspSyntaxDiagnosticsTests.AddsCompilerMessagesToOpenDocuments;
 var
   Diagnostics: TLspSyntaxDiagnostics;
+  Providers: TSyntaxDiagnosticsProviders;
   Message: TJSONObject;
   Items: TJSONArray;
 begin
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, 0);
+  Providers := Default(TSyntaxDiagnosticsProviders);
+  Providers.CompilerMessages :=
+    function(const AFileName: string): TArray<TCompilerMessage>
+    begin
+      Result := [CompilerMessage(2, 2, TCompilerSeverity.Error), CompilerMessage(1, -1, TCompilerSeverity.Hint)];
+    end;
+  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Providers, 0);
   try
-    Diagnostics.CompilerMessagesProvider :=
-      function(const AFileName: string): TArray<TCompilerMessage>
-      begin
-        Result := [CompilerMessage(2, 2, TCompilerSeverity.Error), CompilerMessage(1, -1, TCompilerSeverity.Hint)];
-      end;
     Diagnostics.Attach;
     FStore.Open(Uri, 'objectpascal', 1, ValidCode);
     Message := FCapture.MessageAt(0);
@@ -756,16 +762,18 @@ end;
 procedure TLspSyntaxDiagnosticsTests.PublishesCompilerMessagesForClosedFiles;
 var
   Diagnostics: TLspSyntaxDiagnostics;
+  Providers: TSyntaxDiagnosticsProviders;
   Message: TJSONObject;
   Items: TJSONArray;
 begin
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, 0);
+  Providers := Default(TSyntaxDiagnosticsProviders);
+  Providers.CompilerMessages :=
+    function(const AFileName: string): TArray<TCompilerMessage>
+    begin
+      Result := [CompilerMessage(4, -1, TCompilerSeverity.Warning)];
+    end;
+  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Providers, 0);
   try
-    Diagnostics.CompilerMessagesProvider :=
-      function(const AFileName: string): TArray<TCompilerMessage>
-      begin
-        Result := [CompilerMessage(4, -1, TCompilerSeverity.Warning)];
-      end;
     Diagnostics.Attach;
     Diagnostics.RefreshFiles(['C:\Projekt\B.pas']);
     Assert.AreEqual(1, Integer(FCapture.Count));
@@ -791,26 +799,28 @@ const
   Code = 'unit U;'#10'interface'#10'uses'#10'  Vcl.Grids, Units.Reg;'#10'implementation'#10'end.';
 var
   Diagnostics: TLspSyntaxDiagnostics;
+  Providers: TSyntaxDiagnosticsProviders;
   Document: ITextDocument;
   Params: TJSONObject;
   Items: TJSONArray;
 begin
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, 0);
+  Providers := Default(TSyntaxDiagnosticsProviders);
+  Providers.UsesContext :=
+    function(const AUri: string; out AContext: TUsesContext): Boolean
+    begin
+      AContext := Default(TUsesContext);
+      AContext.Info :=
+        function(const AUnitName: string): TUsesUnitInfo
+        begin
+          Result := Default(TUsesUnitInfo);
+          Result.Known := True;
+          Result.Names := ['TStringGrid'];
+          Result.HasInitialization := SameText(AUnitName, 'Units.Reg');
+        end;
+      Result := True;
+    end;
+  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Providers, 0);
   try
-    Diagnostics.UsesProvider :=
-      function(const AUri: string; out AContext: TUsesContext): Boolean
-      begin
-        AContext := Default(TUsesContext);
-        AContext.Info :=
-          function(const AUnitName: string): TUsesUnitInfo
-          begin
-            Result := Default(TUsesUnitInfo);
-            Result.Known := True;
-            Result.Names := ['TStringGrid'];
-            Result.HasInitialization := SameText(AUnitName, 'Units.Reg');
-          end;
-        Result := True;
-      end;
     Document := FStore.Open(Uri, 'objectpascal', 1, Code);
     Params := Diagnostics.Compute(Document);
     try

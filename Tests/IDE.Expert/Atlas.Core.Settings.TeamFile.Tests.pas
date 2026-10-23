@@ -133,7 +133,7 @@ begin
     '{'#13#10 +
     '  // Kommentar'#13#10 +
     '  "version": 1,'#13#10 +
-    '  "naming": {"field": "F", "parameter": "A", "local": ""},'#13#10 +
+    '  "naming": {"field": "F", "parameter": "A", "local": "", "constant": "c"},'#13#10 +
     '  "snippets": "Vorlagen\\Snippets",'#13#10 +
     '  "formatFunctions": [{"name": "Log", "formatIndex": 0}, {"name": "Trace", "formatIndex": 1}],'#13#10 +
     '  "sqlTargets": ["TMyQuery.SQL", "TMyQuery.SQL"],'#13#10 +
@@ -151,6 +151,8 @@ begin
   Assert.AreEqual('F', Team.Naming[TAtlasNamingKind.Field]);
   Assert.AreEqual('A', Team.Naming[TAtlasNamingKind.Parameter]);
   Assert.IsTrue(Team.HasNaming[TAtlasNamingKind.Local], 'leeres Präfix ist ein Wert');
+  // Konstanten für die Prüfregel naming-prefix (#1111).
+  Assert.AreEqual('c', Team.Naming[TAtlasNamingKind.Constant]);
   Assert.AreEqual('Vorlagen\Snippets', Team.Snippets);
   Assert.AreEqual(2, Integer(Length(Team.FormatFunctions)));
   Assert.AreEqual('Trace', Team.FormatFunctions[1].Name);

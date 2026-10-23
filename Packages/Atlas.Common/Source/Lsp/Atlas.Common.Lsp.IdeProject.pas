@@ -13,10 +13,11 @@
 // $(Name) löst der Server mit den Variablen der Installation auf, relative
 // Pfade gelten ab dem Projektordner. Ohne Plugin (CLI, MCP) bleibt es beim
 // Lesen der .dproj (#14).
-// Präfixe (#452): Unter "naming" ({"field": "F", "parameter": "A", "local": "L"})
-// meldet das Plugin die Vorgaben der Projektdatei .atlas (#486). Sie ändern nur
-// die Namensvorschläge der Vervollständigung, nie den Index; eine Änderung
-// allein löst deshalb kein OnChanged aus.
+// Präfixe (#452): Unter "naming" ({"field": "F", "parameter": "A", "local": "L",
+// "constant": "c"}) meldet das Plugin die Vorgaben der Projektdatei .atlas
+// (#486). Sie ändern die Namensvorschläge der Vervollständigung und die
+// Prüfregeln naming-prefix und shadowed-name (#1111), nie den Index; eine
+// Änderung allein löst deshalb statt OnChanged nur OnNamingChanged aus.
 // Aktives Projekt (#46): "active": true markiert das aktive Projekt der Gruppe. Gehört
 // eine Datei zu mehreren Projekten, gilt es vor der Reihenfolge der Gruppe; ein
 // Wechsel lädt nichts neu und löst kein OnChanged aus.
@@ -29,7 +30,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Projects.Contract;
+  Atlas.Common.Projects.Contract,
+  Atlas.Common.Rules.Contract;
 
 type
   TIdeProjectContext = record
@@ -49,6 +51,10 @@ type
     /// <summary>Präfix-Vorgaben der Projektdatei (#452); nur mit HasNaming, '' = ohne Präfix.</summary>
     Naming: array[TNamingKind] of string;
     HasNaming: array[TNamingKind] of Boolean;
+    /// <summary>Präfix für Konstanten (naming.constant, #1111); nur mit HasConstantPrefix, '' = ohne Präfix.
+    /// Die Namensvorschläge kennen keine Konstanten, deshalb steht es nicht in Naming.</summary>
+    ConstantPrefix: string;
+    HasConstantPrefix: Boolean;
     /// <summary>Aktives Projekt der Gruppe (#46); nur mit HasActive gemeldet.</summary>
     Active: Boolean;
     HasActive: Boolean;
@@ -58,6 +64,9 @@ type
     function Key: string;
     /// <summary>Vergleichsschlüssel der Präfix-Vorgaben.</summary>
     function NamingKey: string;
+    /// <summary>Präfix-Vorgaben für die Prüfregeln (#1111): Felder, Parameter, lokale Variablen und Konstanten.
+    /// </summary>
+    function RuleNaming: TRuleNaming;
     /// <summary>Übernimmt Symbole, Suchpfade und Namespaces in AProject ($(Name) mit AVariables,
     /// Pfade ab dem Projektordner, ohne Doppelte).</summary>
     procedure ApplyTo(var AProject: TProjectInfo; const AVariables: TArray<TPair<string, string>>);
@@ -75,6 +84,7 @@ type
     FLock: TObject;
     FContexts: TDictionary<string, TIdeProjectContext>;
     FOnChanged: TIdeProjectChangedEvent;
+    FOnNamingChanged: TIdeProjectChangedEvent;
     FActive: string;
     procedure HandleNotification(const AParams: TJSONValue);
   public
@@ -85,13 +95,19 @@ type
     procedure LoadInitialize(const AParams: TJSONValue);
     /// <summary>Merkt sich AContext; True, wenn er neu ist oder sich Key geändert hat (eine neue Präfix-Vorgabe
     /// allein wird gemerkt, ergibt aber False). Threadsicher.</summary>
-    function Update(const AContext: TIdeProjectContext): Boolean;
+    function Update(const AContext: TIdeProjectContext): Boolean; overload;
+    /// <summary>Wie oben; ANamingChanged: die Präfix-Vorgaben eines bekannten Projekts haben sich geändert.
+    /// </summary>
+    function Update(const AContext: TIdeProjectContext; out ANamingChanged: Boolean): Boolean; overload;
     /// <summary>Gemeldeter Kontext des Projekts AProjectFile; False ohne. Threadsicher.</summary>
     function Find(const AProjectFile: string; out AContext: TIdeProjectContext): Boolean;
     /// <summary>.dproj des aktiven Projekts der IDE (#46); '' ohne Meldung. Threadsicher.</summary>
     function ActiveProject: string;
     /// <summary>Nach atlas/projectContext mit geändertem Kontext (Thread des Dispatchers).</summary>
     property OnChanged: TIdeProjectChangedEvent read FOnChanged write FOnChanged;
+    /// <summary>Nach atlas/projectContext, wenn sich nur die Präfix-Vorgaben geändert haben (#1111): Prüfregeln
+    /// wie naming-prefix neu prüfen, das Projekt bleibt geladen. Thread des Dispatchers.</summary>
+    property OnNamingChanged: TIdeProjectChangedEvent read FOnNamingChanged write FOnNamingChanged;
   end;
 
 implementation
@@ -178,6 +194,7 @@ begin
   if Result.HasActive then
     Result.Active := TJSONBool(Item.GetValue('active')).AsBoolean;
   if Item.TryGetValue<TJSONObject>('naming', Prefixes) then
+  begin
     for Kind := Low(TNamingKind) to High(TNamingKind) do
     begin
       Prefix := Prefixes.GetValue(NamingKeys[Kind]);
@@ -188,6 +205,13 @@ begin
         Result.Naming[Kind] := Trim(Prefix.Value);
       end;
     end;
+    Prefix := Prefixes.GetValue('constant');
+    if (Prefix is TJSONString) and not (Prefix is TJSONNumber) then
+    begin
+      Result.HasConstantPrefix := True;
+      Result.ConstantPrefix := Trim(Prefix.Value);
+    end;
+  end;
 end;
 
 function TIdeProjectContext.NamingKey: string;
@@ -198,6 +222,29 @@ begin
   for Kind := Low(TNamingKind) to High(TNamingKind) do
     if HasNaming[Kind] then
       Result := Result + NamingKeys[Kind] + '=' + Naming[Kind] + '|';
+  if HasConstantPrefix then
+    Result := Result + 'constant=' + ConstantPrefix + '|';
+end;
+
+function TIdeProjectContext.RuleNaming: TRuleNaming;
+const
+  Kinds: array[TNamingKind] of TRuleNamingKind = (TRuleNamingKind.Field, TRuleNamingKind.Parameter,
+    TRuleNamingKind.Local);
+var
+  Kind: TNamingKind;
+begin
+  Result := Default(TRuleNaming);
+  for Kind := Low(TNamingKind) to High(TNamingKind) do
+    if HasNaming[Kind] then
+    begin
+      Result.Known[Kinds[Kind]] := True;
+      Result.Prefixes[Kinds[Kind]] := Naming[Kind];
+    end;
+  if HasConstantPrefix then
+  begin
+    Result.Known[TRuleNamingKind.Constant] := True;
+    Result.Prefixes[TRuleNamingKind.Constant] := ConstantPrefix;
+  end;
 end;
 
 function TIdeProjectContext.Key: string;
@@ -280,14 +327,24 @@ end;
 
 function TLspIdeProject.Update(const AContext: TIdeProjectContext): Boolean;
 var
+  NamingChanged: Boolean;
+begin
+  Result := Update(AContext, NamingChanged);
+end;
+
+function TLspIdeProject.Update(const AContext: TIdeProjectContext; out ANamingChanged: Boolean): Boolean;
+var
   Known: TIdeProjectContext;
   Key: string;
+  Found: Boolean;
 begin
   Key := AnsiUpperCase(AContext.Project);
   TMonitor.Enter(FLock);
   try
-    Result := not FContexts.TryGetValue(Key, Known) or (Known.Key <> AContext.Key);
-    if Result or (Known.NamingKey <> AContext.NamingKey) or (Known.Active <> AContext.Active) then
+    Found := FContexts.TryGetValue(Key, Known);
+    Result := not Found or (Known.Key <> AContext.Key);
+    ANamingChanged := Found and not Result and (Known.NamingKey <> AContext.NamingKey);
+    if Result or ANamingChanged or (Known.Active <> AContext.Active) then
       FContexts.AddOrSetValue(Key, AContext);
     if AContext.HasActive and AContext.Active then
       FActive := AContext.Project
@@ -321,12 +378,18 @@ end;
 procedure TLspIdeProject.HandleNotification(const AParams: TJSONValue);
 var
   Context: TIdeProjectContext;
+  NamingChanged: Boolean;
 begin
   Context := TIdeProjectContext.FromJson(AParams);
-  if (Context.Project = '') or not Update(Context) then
+  if Context.Project = '' then
     Exit;
-  if Assigned(FOnChanged) then
-    FOnChanged(Context);
+  if Update(Context, NamingChanged) then
+  begin
+    if Assigned(FOnChanged) then
+      FOnChanged(Context);
+  end
+  else if NamingChanged and Assigned(FOnNamingChanged) then
+    FOnNamingChanged(Context);
 end;
 
 end.
