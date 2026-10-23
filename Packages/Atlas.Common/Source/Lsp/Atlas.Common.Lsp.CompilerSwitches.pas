@@ -53,6 +53,8 @@ type
     /// <summary>Antwort wie im Kopf beschrieben; gehört dem Aufrufer.</summary>
     class function ToJson(const AState: TCompilerSwitchState; const AContext: TCompilerSwitchContext): TJSONObject;
       static;
+    /// <summary>Ein Schalter wie in switches (für #840); gehört dem Aufrufer.</summary>
+    class function EntryToJson(const AEntry: TSwitchEntry): TJSONObject; static;
   end;
 
 implementation
@@ -138,6 +140,11 @@ begin
   Result.AddPair('warnings', EntryJson(AState.Warnings, True));
   Result.AddPair('warns', EntriesJson(AState.Warns, True));
   Result.AddPair('defines', EntriesJson(AState.Defines, False));
+end;
+
+class function TLspCompilerSwitches.EntryToJson(const AEntry: TSwitchEntry): TJSONObject;
+begin
+  Result := EntryJson(AEntry, True);
 end;
 
 function TLspCompilerSwitches.Handle(const AParams: TJSONValue;

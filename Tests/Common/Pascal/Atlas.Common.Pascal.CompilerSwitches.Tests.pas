@@ -40,6 +40,8 @@ type
     procedure DefinesWithOrigin;
     [Test]
     procedure SummaryNamesOnlyDeviations;
+    [Test]
+    procedure DebugInfoAndLocalSymbols;
   end;
 
 implementation
@@ -279,6 +281,24 @@ begin
   Assert.AreEqual('A4 WARN 2×', State.Summary);
   State := StateAt(Lines(['{$WARN SYMBOL_DEPRECATED OFF}', 'x']), 1, Defines, NoProperties);
   Assert.AreEqual('WARN SYMBOL_DEPRECATED OFF', State.Summary);
+end;
+
+procedure TCompilerSwitchesTests.DebugInfoAndLocalSymbols;
+var
+  State: TCompilerSwitchState;
+begin
+  // D und L für die Erklärung „kein Zugriff“ (#840): Projekt "$D+", "$L+", Direktiven in der Unit.
+  State := StateAt(Lines(['unit Main;', '{$D-}', '{$LOCALSYMBOLS OFF}', 'implementation', 'end.']), 3,
+    TArray<string>.Create('$D+', '$L+'), NoProperties);
+  Assert.AreEqual('-', Find(State, 'D').Value);
+  Assert.AreEqual('+', Find(State, 'D').ProjectValue);
+  Assert.AreEqual('DEBUGINFO', Find(State, 'D').LongName);
+  Assert.AreEqual(1, Find(State, 'D').Origin.Line);
+  Assert.AreEqual('-', Find(State, 'L').Value);
+  Assert.AreEqual(2, Find(State, 'L').Origin.Line);
+  State := StateAt(Lines(['unit Main;', 'implementation', 'end.']), 1, TArray<string>.Create('$D-'), NoProperties);
+  Assert.AreEqual('-', Find(State, 'D').Value, 'aus dem Projekt');
+  Assert.IsTrue(Find(State, 'D').Origin.Kind = TSwitchOriginKind.Project);
 end;
 
 end.

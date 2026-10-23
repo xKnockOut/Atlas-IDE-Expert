@@ -3,7 +3,7 @@
 // Fenster „Compiler-Schalter“ (#558), Kern ohne VCL und Open Tools API:
 //   - TAtlasCompilerSwitchView liest die Antwort von atlas/compilerSwitches
 //     (Atlas.Common.Lsp.CompilerSwitches) in Zeilen je Abschnitt: Schalter
-//     (R, Q, O, C, I, A), Hinweise und Warnungen (HINTS, WARNINGS, einzelne
+//     (R, Q, O, C, I, A, D, L), Hinweise und Warnungen (HINTS, WARNINGS, einzelne
 //     Warnungen), bedingte Symbole und Ziel (Plattform, Konfiguration).
 //   - Je Zeile Wert, Stand der .dproj, Abweichung und Herkunft; mit Datei und
 //     Zeile springt ein Doppelklick zur Direktive, mit Projektoption öffnet er
