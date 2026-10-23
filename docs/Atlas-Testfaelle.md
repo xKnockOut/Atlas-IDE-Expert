@@ -6148,3 +6148,20 @@ Voraussetzung wie oben (#1118); Projekt unter Versionsverwaltung.
 | ARV9 | Konsole: `AtlasServer --check . --architecture neu.json --compare architektur.json` mit neuem Zyklus; dann mit `--fail-on centralGrowth`; ohne Abweichung | Text mit den Abschnitten und „Ergebnis: …“, Exit-Code 1; mit `centralGrowth` (ohne Wachstum) 0; ohne Abweichung 0; unlesbarer Stand oder `--fail-on falsch` Exit-Code 3 |
 | ARV10 | Claude Code: `get_architecture` mit `compareWith: "architektur.json"` | Die Abschnitte des Vergleichs; Pfad außerhalb des Projekts wird abgelehnt |
 | ARV11 | Hell und dunkel | Grün und Rot auf der Karte und im Reiter gut lesbar |
+
+## Treffersicherheit der Verwendungen (#1119)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index. Beispiel: `IKunde` mit `Speichern`, `TKunde = class(TBasis, IKunde)` überschreibt `TBasis.Speichern` (virtual); Aufrufe über `S: IKunde`, `B: TBasis`, `K: TKunde`, einer in `{$IFDEF DEBUG}` bei Release-Konfiguration, und `MethodAddress('Speichern')`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TS1 | Cursor auf `TKunde.Speichern`, *Referenzen* | Ergebnisfenster mit „Sicher (n)“ (Aufrufe über `K`, Deklaration, Rumpf) und „Erschlossen (n) · vor dem Umbenennen prüfen“; beide aufgeklappt (**Abnahme**) |
+| TS2 | Maus über die erschlossenen Zeilen | Zeilen beginnen mit „≈“ und enden mit „[über Interface]“, „[überschrieben]“ bzw. „[inaktiver Zweig]“; Tooltip etwa „Aufruf über IKunde.Speichern; TKunde ist die einzige Umsetzung“ bzw. „In einem inaktiven Zweig: Bedingung DEBUG nicht erfüllt“ |
+| TS3 | „Nur sichere“ rechts im Kopf an- und abhaken | Nur die sicheren Zeilen ohne Abschnittsköpfe, danach wieder beide Abschnitte. Bei *Implementierungen* oder einem Symbol ohne erschlossene Treffer ist der Filter ausgeblendet |
+| TS4 | *Symbol umbenennen…* auf `TKunde.Speichern` | Vorschau „Wird geändert (n)“ (sichere und der inaktive Zweig) und „Nicht geändert, bitte prüfen (n)“ (Interface, überschrieben); nach dem Übernehmen sind nur die Stellen aus „Wird geändert“ geändert, ein Rückgängig-Schritt (Strg+Alt+Z) |
+| TS5 | *Aufrufer* von `TKunde.Speichern` | Aufrufer über `K` oben, über `S` und `B` darunter mit „≈“ und Grund; Aufklappen lädt weiter |
+| TS6 | *Definition einblenden* der Verwendungen (Peek) | Erschlossene Ausschnitte mit „≈“ vor der Zeile |
+| TS7 | Optionen › Atlas › Befehle › Verwendungen: „Erschlossene Verwendungen zeigen“ aus, TS1 wiederholen | Nur sichere Treffer wie vor #1119, kein Filter, keine Abschnitte; auch als Schnellschalter |
+| TS8 | „Auch Namen in Strings als Verwendung melden“ an, TS1 wiederholen | Zusätzlich `MethodAddress('Speichern')` unter „Erschlossen“ mit „[im Text]“, markiert ist nur der Name ohne Anführungszeichen; das Kontrollkästchen ist nur bedienbar, solange „Erschlossene Verwendungen zeigen“ an ist |
+| TS9 | In Claude Code `find_references` und `rename_symbol` (dryRun) für `TKunde.Speichern` | „n Verwendungen …, a sicher, b erschlossen:“, sichere zuerst, dann „Erschlossen, vor dem Umbenennen prüfen:“ mit „– erschlossen (interface): …“; rename_symbol endet mit „Nicht geändert, bitte prüfen (b erschlossene Stellen):“ |
+| TS10 | Englische IDE-Sprache | „Sure (n)“, „Inferred (n) · check before renaming“, „Sure only“, Gründe auf Englisch |

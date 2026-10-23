@@ -88,7 +88,7 @@ Alles Folgende ist in `main` umgesetzt. Funktionen mit *(experimentell)* sind ab
 - **Definition einblenden** (Alt+F12) unter der Zeile, ohne die Datei zu wechseln
 - **Datei und Symbol schnell öffnen** (Strg+P) über Projekt, Projektgruppe und Suchpfad; projektweite **Symbolsuche**
 - **Units suchen** (Strg+F12) im eigenen Fenster mit Vorschau, Gruppen, Filtern und „In uses aufnehmen“
-- **Ergebnisfenster** „Atlas-Ergebnisse“ für Referenzen (auch in Formularen), Implementierungen, Aufrufer, Aufrufe und Vererbung
+- **Ergebnisfenster** „Atlas-Ergebnisse“ für Referenzen (auch in Formularen), Implementierungen, Aufrufer, Aufrufe und Vererbung; Verwendungen getrennt in „Sicher“ und „Erschlossen · vor dem Umbenennen prüfen“ mit Grund (Interface, überschrieben, Überladung unklar, inaktiver Zweig) und Filter „Nur sichere“
 - **Navigationsverlauf** über Dateien hinweg
 - **Benannte Lesezeichen** (Strg+Alt+K) und persönliche **Notizen** an Codezeilen, die nicht im Quelltext landen
 - **Schnelle Lesezeichen** in einer Spalte links der Zeilennummern: Klick setzt und entfernt, Strg+Umschalt+1…9 nummeriert, Strg+1…9 springt projektweit, Strg+Umschalt+K unnummeriert (die Faltungsakkorde der IDE bleiben), wandern mit dem Code mit und übernehmen die IDE-Lesezeichen

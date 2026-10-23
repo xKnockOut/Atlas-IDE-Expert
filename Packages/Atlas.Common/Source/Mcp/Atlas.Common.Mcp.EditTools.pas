@@ -11,6 +11,8 @@
 // Änderung ab; scheitert das Schreiben einer Datei, werden die schon
 // geschriebenen zurückgesetzt. Geänderte Dateien gehen ins Protokoll (Audit).
 // apply_code_action prüft mit den Symbolen des Projekts (CheckSource, #860).
+// rename_symbol ändert nur sichere Stellen (#1119); erschlossene nennt der
+// Bericht unter „Nicht geändert, bitte prüfen“.
 
 interface
 
@@ -50,6 +52,7 @@ type
     FAudit: TMcpAudit;
     FNamespaces: TArray<string>;
     FCheckSource: TCheckSourceFunc;
+    FSettingsFor: TReferenceSettingsProvider;
   public
     constructor Create(const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
       const AWriteText: TMcpWriteText; const AProjectFiles: TFunc<TArray<string>>;
@@ -70,6 +73,8 @@ type
     property Audit: TMcpAudit read FAudit write FAudit;
     /// <summary>Symbole und Include-Dateien für die Regelprüfung (#860); nil = Vordefinitionen (Win32).</summary>
     property CheckSource: TCheckSourceFunc read FCheckSource write FCheckSource;
+    /// <summary>Einstellungen references.* (#1119); nicht gesetzt: Vorgaben.</summary>
+    property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
   end;
 
 implementation
@@ -82,6 +87,8 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Lsp.ReferenceConfidence,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Rules.CodeActions,
   Atlas.Common.Lsp.Rename,
@@ -255,9 +262,17 @@ var
   Renames: TArray<TRenameEdit>;
   Rename: TRenameEdit;
   Edits: TArray<TMcpFileEdit>;
+  Settings: TReferenceSettings;
+  Unchanged: TArray<TReferenceLocation>;
+  Location: TReferenceLocation;
+  Lines: TStringList;
 begin
   if not FReadText(AFileName, Text) then
     raise EMcpToolError.CreateFmt('%s ist nicht lesbar', [AFileName]);
+  if Assigned(FSettingsFor) then
+    Settings := FSettingsFor(TDocumentUris.FromPath(AFileName))
+  else
+    Settings := TReferenceSettings.Default;
   Tree := TSyntaxTreeCache.Parse(Text);
   try
     Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
@@ -265,7 +280,7 @@ begin
       Resolver.Namespaces := FNamespaces;
       try
         Renames := TLspRename.Edits(Resolver, FIndex, Tree, AFileName, TTextPosition.Create(ALine - 1, AColumn - 1),
-          ANewName, FProjectFiles(), FReadText);
+          ANewName, FProjectFiles(), FReadText, nil, True, Settings, Unchanged);
       except
         on E: EJsonRpcError do
           raise EMcpToolError.Create(E.Message);
@@ -282,6 +297,19 @@ begin
   if Length(Edits) = 0 then
     raise EMcpToolError.Create('An dieser Stelle steht kein umbenennbares Symbol.');
   Result := Apply('rename_symbol', Edits, ADryRun);
+  if Length(Unchanged) = 0 then
+    Exit;
+  Lines := TStringList.Create;
+  try
+    Lines.Add('');
+    Lines.Add(Format('Nicht geändert, bitte prüfen (%d erschlossene Stellen):', [Length(Unchanged)]));
+    for Location in Unchanged do
+      Lines.Add(Format('%s:%d:%d – %s: %s', [Location.FileName, Location.Range.StartPos.Line + 1,
+        Location.Range.StartPos.Character + 1, Location.Confidence.ReasonName, Location.Confidence.Detail]));
+    Result := Result + sLineBreak + TrimRight(Lines.Text);
+  finally
+    Lines.Free;
+  end;
 end;
 
 function TMcpEditTools.ApplyCodeAction(const ARules: TArray<IRule>; const ASettings: TServerSettings;

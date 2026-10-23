@@ -722,7 +722,11 @@ type
     ArchitectureStatusComparison, ArchitectureChangeNewCycles, ArchitectureChangeRemovedCycles,
     ArchitectureChangeNewCrossLinks, ArchitectureChangeRemovedCrossLinks, ArchitectureChangeNewEdges,
     ArchitectureChangeRemovedEdges, ArchitectureChangeMoves, ArchitectureChangeGrowth, ArchitectureChangeNewUnits,
-    ArchitectureChangeRemovedUnits, ArchitectureNoChanges, ArchitectureGrowthLine);
+    ArchitectureChangeRemovedUnits, ArchitectureNoChanges, ArchitectureGrowthLine,
+    // Treffersicherheit der Verwendungen (#1119).
+    ResultsSureGroup, ResultsInferredGroup, ResultsOnlySure, RenameChangedGroup, RenameUnchangedGroup,
+    ReferenceReasonInterface, ReferenceReasonVirtual, ReferenceReasonAmbiguous, ReferenceReasonUnresolved, ReferenceReasonInactiveBranch, ReferenceReasonText,
+    SettingsReferencesInferred, SettingsReferencesTextMatches);
 
   TAtlasStrings = class
   private class var
@@ -2391,7 +2395,20 @@ const
      'Neue Units (%d)',
      'Entfernte Units (%d)',
      'Keine Änderungen gegenüber dem Stand.',
-     '%s: gesamt abhängig %s → %s'),
+     '%s: gesamt abhängig %s → %s',
+     'Sicher (%d)',
+     'Erschlossen (%d) · vor dem Umbenennen prüfen',
+     'Nur sichere',
+     'Wird geändert (%d)',
+     'Nicht geändert, bitte prüfen (%d)',
+     'über Interface',
+     'überschrieben',
+     'Überladung unklar',
+     'Typ unbekannt',
+     'inaktiver Zweig',
+     'im Text',
+     'Erschlossene Verwendungen zeigen (Interface, überschriebene Methode, unklare Überladung, inaktiver Zweig)',
+     'Auch Namen in Strings als Verwendung melden (RTTI, MethodAddress)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3964,7 +3981,20 @@ const
      'New units (%d)',
      'Removed units (%d)',
      'No changes since the state.',
-     '%s: total dependents %s → %s'));
+     '%s: total dependents %s → %s',
+     'Sure (%d)',
+     'Inferred (%d) · check before renaming',
+     'Sure only',
+     'Will change (%d)',
+     'Not changed, please check (%d)',
+     'via interface',
+     'overridden',
+     'ambiguous overload',
+     'unknown type',
+     'inactive branch',
+     'in a string',
+     'Show inferred usages (interface, overridden method, ambiguous overload, inactive branch)',
+     'Also report names in strings as usages (RTTI, MethodAddress)'));
 
 { TAtlasStrings }
 

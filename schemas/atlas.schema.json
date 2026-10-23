@@ -1706,6 +1706,28 @@
       "x-control": "Kontrollkästchen",
       "x-issue": "#66"
     },
+    "references": {
+      "type": "object",
+      "description": "Treffersicherheit von Verwendungen, Aufrufhierarchie und Umbenennen: Neben den sicheren (eindeutig aufgelösten) Stellen erscheinen erschlossene mit Grund, etwa Aufrufe über ein Interface oder in einem inaktiven {$IFDEF}-Zweig. Umbenennen ändert nur sichere Stellen und listet die erschlossenen.",
+      "additionalProperties": false,
+      "properties": {
+        "inferred": {
+          "type": "boolean",
+          "default": true,
+          "description": "Erschlossene Treffer zeigen: über ein Interface, das die Klasse umsetzt, über die überschriebene Methode eines Vorfahren, nicht eindeutige Überladungen, gleicher Name mit unbekanntem Typ (with, unbekannter Ausdruck) und Stellen in inaktiven Zweigen; aus = nur sichere Treffer wie bisher."
+        },
+        "textMatches": {
+          "type": "boolean",
+          "default": false,
+          "description": "Auch den Namen in String-Literalen als erschlossen melden, etwa für RTTI oder MethodAddress('Speichern')."
+        }
+      },
+      "x-scope": "global",
+      "x-area": "editor",
+      "x-page": "Befehle",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#1119"
+    },
     "hints": {
       "type": "object",
       "description": "Anzeige von XMLDoc-Kommentaren (///) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku immer vollständig auf; die Werte steuern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas.",

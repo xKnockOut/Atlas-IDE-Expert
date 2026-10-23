@@ -64,6 +64,11 @@ type
     /// <summary>Sprungziele für den Bezeichner an APosition; leer, wenn er nicht auflösbar ist.</summary>
     class function Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean): TArray<TDefinitionTarget>; static;
+    /// <summary>Wie Targets, für ein schon aufgelöstes Symbol (etwa einen Kandidaten aus ResolveAll, #1119).
+    /// </summary>
+    class function TargetsOf(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName: string; const APosition: TTextPosition; const AResolved: TResolvedSymbol;
+      ADeclaration: Boolean): TArray<TDefinitionTarget>; static;
     /// <summary>Deklaration des Typs des Bezeichners an APosition; leer, wenn er keinen bekannten Typ hat.</summary>
     class function TypeTargets(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
       const APosition: TTextPosition): TArray<TDefinitionTarget>; static;
@@ -136,6 +141,14 @@ end;
 
 class function TLspDefinition.Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean): TArray<TDefinitionTarget>;
+begin
+  Result := TargetsOf(AResolver, AIndex, ATree, AFileName, APosition, AResolver.Resolve(ATree, AFileName, APosition),
+    ADeclaration);
+end;
+
+class function TLspDefinition.TargetsOf(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string; const APosition: TTextPosition; const AResolved: TResolvedSymbol;
+  ADeclaration: Boolean): TArray<TDefinitionTarget>;
 var
   Resolved: TResolvedSymbol;
   OwnerUnit: TUnitIndex;
@@ -144,7 +157,7 @@ var
   Empty: TTextRange;
 begin
   Result := nil;
-  Resolved := AResolver.Resolve(ATree, AFileName, APosition);
+  Resolved := AResolved;
   // Namen in Deklarationen (z. B. Methoden in der Klasse) sind keine Verwendungen:
   // dann gilt die Deklaration unter dem Cursor selbst.
   // Das Extrakt erst in einer Variablen halten und unten Result zuweisen statt
