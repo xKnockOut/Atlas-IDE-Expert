@@ -263,6 +263,9 @@
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Contract.pas"/>
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Scanner.pas"/>
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Report.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.UsesGraph.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.UsesLocator.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.UsesService.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Todos.pas"/>
