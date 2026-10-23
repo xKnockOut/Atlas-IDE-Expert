@@ -172,6 +172,9 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Metrics.Tests.pas"/>
         <DCCReference Include="Common\Todos\Atlas.Common.Todos.Scanner.Tests.pas"/>
         <DCCReference Include="Common\Todos\Atlas.Common.Todos.Report.Tests.pas"/>
+        <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.UsesGraph.Tests.pas"/>
+        <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.UsesLocator.Tests.pas"/>
+        <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.UsesService.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Todos.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.Tests.pas"/>
