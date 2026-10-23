@@ -205,6 +205,8 @@ type
     function ParseGenericParams(AParent: TSyntaxNode): Boolean;
     procedure ParseConstSection(AParent: TSyntaxNode);
     procedure ParseConstDecl(AParent: TSyntaxNode);
+    /// <summary>Teilt das aktuelle Token ">=" in ">" und "=" (IBaz&lt;string&gt;=nil, #1142).</summary>
+    procedure SplitGreaterEqual;
     /// <summary>Wert einer typisierten Konstante oder initialisierten Variable; () ist die leere Record- bzw.
     /// Array-Initialisierung, alle Felder null (#1138).</summary>
     procedure ParseInitializer(AParent: TSyntaxNode);
@@ -1648,6 +1650,12 @@ begin
       Advance;
       ParseMembers(Result);
       ExpectKw('end');
+      // Ausrichtung: end align 16 (#1142).
+      if IsIdentText('align') and (PeekToken(1).Kind = TPascalTokenKind.Number) then
+      begin
+        Advance;
+        Advance;
+      end;
     end;
   end
   else if IsKw(['interface', 'dispinterface']) then
@@ -2059,6 +2067,9 @@ begin
     Before := FIndex;
     if IsKw('case') then
       ParseVariantPart(AParent)
+    else if IsSym('[') then
+      // Attribut an einem Feld im varianten Zweig (#1142).
+      ParseAttributes(AParent)
     else if IsIdent then
       ParseFieldDecl(AParent, True)
     else
@@ -2823,6 +2834,9 @@ begin
       Inc(Depth)
     else if Token.IsSymbol('>') then
       Dec(Depth)
+    else if AInType and (Depth = 1) and Token.IsSymbol('>=') then
+      // Baz: IBaz<string>=nil: das = gehört zum Vorgabewert (#1142).
+      Exit(True)
     else if not ((Token.Kind = TPascalTokenKind.Identifier) or Token.IsSymbol('.') or Token.IsSymbol(',') or
       Token.IsKeyword('string')) then
       Exit(False);
@@ -2834,6 +2848,21 @@ begin
   Result := AInType and (Token.Kind = TPascalTokenKind.Identifier);
   Result := Result or not (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number,
     TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral]);
+end;
+
+procedure TParser.SplitGreaterEqual;
+var
+  Equal: TPascalToken;
+begin
+  // Der Lexer liest in IBaz<string>=nil ">=" als ein Token; hinter generischen Argumenten sind es ">" und "="
+  // (#1142).
+  Equal := FTokens[FIndex];
+  FTokens[FIndex].Text := '>';
+  FTokens[FIndex].EndPos := TTextPosition.Create(Equal.StartPos.Line, Equal.StartPos.Character + 1);
+  Equal.Text := '=';
+  Inc(Equal.Offset);
+  Equal.StartPos := FTokens[FIndex].EndPos;
+  Insert(Equal, FTokens, FIndex + 1);
 end;
 
 procedure TParser.ParseGenericArgs(AParent: TSyntaxNode);
@@ -2851,6 +2880,8 @@ begin
     if not AcceptSym(',') then
       Break;
   end;
+  if IsSym('>=') then
+    SplitGreaterEqual;
   ExpectSym('>');
   FinishNode(Node, Start);
 end;
