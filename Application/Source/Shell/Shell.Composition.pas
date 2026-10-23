@@ -15,6 +15,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Logging.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
@@ -352,6 +353,9 @@ type
     function RefactoringActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
     /// <summary>Index, Einstellungen, Sprachversion und Formatstil für die Aktionen aus #50.</summary>
     function RefactoringContextFor(const AUri: string): TRefactoringContext;
+    /// <summary>Präfixe neuer Namen für Refactorings in AUri: die der Namensregel, wenn sie für die Datei läuft
+    /// (dieselbe Entscheidung wie in der Prüfung, TRuleEngine.NewNames).</summary>
+    function NewNamesFor(const AUri: string): TPascalNamePrefixes;
     /// <summary>Inhalt des Status-Befehls (#28).</summary>
     function CollectBookmarks: TArray<TBookmarkHit>;
     function CollectStatus: TServerStatus;
@@ -3389,6 +3393,34 @@ begin
   Result.InlineVar := Result.Settings.InlineVar and
     TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, DelphiVersionFor(AUri));
   Result.Style := ResolvedFormatStyleFor(AUri);
+  Result.NewNames := NewNamesFor(AUri);
+end;
+
+function TServerComposition.NewNamesFor(const AUri: string): TPascalNamePrefixes;
+var
+  FileName: string;
+  Workspace: TShellWorkspace;
+  Settings: TServerSettings;
+  Context: TRuleContext;
+begin
+  FileName := TDocumentUris.ToPath(AUri);
+  Context := Default(TRuleContext);
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := PickWorkspace(FileName);
+    if Workspace = nil then
+      Settings := FLooseSettings
+    else
+    begin
+      Settings := Workspace.Configuration.Settings;
+      Context.RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(Workspace.Root), FileName);
+      Context.Naming := Workspace.RuleServices.Naming;
+    end;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  Context.UnitName := ChangeFileExt(ExtractFileName(FileName), '');
+  Result := TRuleEngine.NewNames(BuiltinRules, Settings, Context);
 end;
 
 function TServerComposition.RefactoringActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;

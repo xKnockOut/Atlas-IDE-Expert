@@ -38,6 +38,14 @@ type
     procedure ConfigurationAndProjectFile;
     [Test]
     procedure ShadowedNameUsesProjectPrefixes;
+    /// <summary>Präfixe neuer Namen: die der Namensregel, wenn sie für die Datei läuft (auch aus ihren Optionen),
+    /// sonst keine.</summary>
+    [Test]
+    procedure NewNamesFollowActiveRule;
+    /// <summary>„Konstante einführen“ (magic-number) bildet cNewConstant, wenn naming-prefix läuft; sonst meldete
+    /// die Namensregel die Korrektur gleich wieder.</summary>
+    [Test]
+    procedure FixesFollowNamingRule;
   end;
 
 implementation
@@ -47,9 +55,12 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin.Naming,
   Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Rules.Builtin.Style,
   Atlas.Tests.RuleAssert;
 
 const
@@ -368,6 +379,64 @@ begin
   Found := TRuleAssert.ContextFindings(TShadowedNameRule.Create, Context, '');
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual('In mState umbenennen', Found[0].Fixes[0].Title);
+end;
+
+
+procedure TNamingRulesTests.NewNamesFollowActiveRule;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+  Context: TRuleContext;
+  Names: TPascalNamePrefixes;
+begin
+  Context := Default(TRuleContext);
+  // Experimentell und aus: keine Präfixe.
+  Names := TRuleEngine.NewNames([TNamingPrefixRule.Create as IRule], TServerSettings.Default, Context);
+  Assert.AreEqual('', Names.ConstantPrefix + Names.LocalPrefix + Names.FieldPrefix + Names.ParameterPrefix);
+  Assert.AreEqual('NewConstant', Names.Constant('NewConstant'));
+  Settings := TConfigurationParser.Parse(Enabled, Issues);
+  Names := TRuleEngine.NewNames([TNamingPrefixRule.Create as IRule], Settings, Context);
+  Assert.AreEqual('mValue', Names.Local('Value'));
+  Assert.AreEqual('FCount', Names.Field('Count'));
+  Assert.AreEqual('APreis', Names.Parameter('Preis'));
+  Assert.AreEqual('cNewConstant', Names.Constant('NewConstant'));
+  Assert.AreEqual('mValue', Names.Local('mValue'), 'trägt das Präfix schon');
+  // Optionen der Regel gelten auch für neue Namen.
+  Settings := TConfigurationParser.Parse('{"rules": {"naming-prefix": {"severity": "hint", "constant": "k"}}}',
+    Issues);
+  Names := TRuleEngine.NewNames([TNamingPrefixRule.Create as IRule], Settings, Context);
+  Assert.AreEqual('kNewConstant', Names.Constant('NewConstant'));
+  Context := Default(TRuleContext);
+end;
+
+procedure TNamingRulesTests.FixesFollowNamingRule;
+const
+  Source = 'unit U;'#10'interface'#10'implementation'#10'function Rabatt(APreis: Double): Double;'#10'begin'#10 +
+    '  Result := APreis * 0.93;'#10'end;'#10'end.';
+
+  function FixText(const AConfig: string): string;
+  var
+    Found: TArray<TRuleFinding>;
+    Finding: TRuleFinding;
+  begin
+    Result := '';
+    Found := TRuleAssert.FindingsOfAll([TMagicNumberRule.Create as IRule, TNamingPrefixRule.Create as IRule],
+      Source, AConfig);
+    for Finding in Found do
+      if (Finding.RuleId = 'magic-number') and (Length(Finding.Fixes) > 0) then
+        Result := ApplyFix(Source, Finding.Fixes[0]);
+  end;
+
+var
+  Fixed: string;
+begin
+  // magic-number meldet mit niedriger Konfidenz.
+  Fixed := FixText('{"minConfidence": "low", "rules": {"magic-number": "hint"}}');
+  Assert.IsTrue(Pos('NewConstant = 0.93', Fixed) > 0, Fixed);
+  Assert.IsFalse(Pos('cNewConstant', Fixed) > 0, 'ohne Namensregel unverändert');
+  Fixed := FixText('{"minConfidence": "low", "rules": {"magic-number": "hint", "naming-prefix": "hint"}}');
+  Assert.IsTrue(Pos('cNewConstant = 0.93', Fixed) > 0, Fixed);
+  Assert.IsTrue(Pos('APreis * cNewConstant', Fixed) > 0, Fixed);
 end;
 
 initialization

@@ -27,6 +27,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.CodeActions,
@@ -46,6 +47,8 @@ type
     /// <summary>Inline-Variablen erlaubt (Einstellung und Sprachversion).</summary>
     InlineVar: Boolean;
     Style: TFormatStyle;
+    /// <summary>Präfixe neuer Namen nach der Namensregel (#1111, TRuleEngine.NewNames); ohne leer.</summary>
+    NewNames: TPascalNamePrefixes;
   end;
 
   /// <summary>Ergebnis von „Methode aus Aufruf anlegen“ (#472).</summary>
@@ -97,7 +100,6 @@ implementation
 uses
   System.StrUtils,
   Atlas.Text.Lines,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.RoutineBody,
@@ -113,6 +115,7 @@ begin
   Result.InlineVar := AContext.InlineVar;
   Result.Style := AContext.Style;
   Result.Probe := TLspRefactorings.Probe(AContext);
+  Result.Names := AContext.NewNames;
 end;
 
 function NewResolver(const AContext: TRefactoringContext): TNameResolver;
@@ -343,6 +346,8 @@ begin
     Parameter.Name := TCreateMethod.ArgumentName(Tokens, Site.Arguments[Index]);
     if Parameter.Name = '' then
       Parameter.Name := TCreateMethod.NameFromType(Parameter.TypeName);
+    // Präfix der Namensregel (APreis statt Preis), sonst meldet naming-prefix die neue Methode gleich.
+    Parameter.Name := AContext.NewNames.Parameter(Parameter.Name);
     Names := Names + [Parameter.Name];
     Plan.Parameters := Plan.Parameters + [Parameter];
   end;

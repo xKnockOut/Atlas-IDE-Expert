@@ -3219,7 +3219,7 @@ var
       (Statement.Kind in [TSyntaxKind.Block, TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement,
       TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement]) then
       Exit;
-    Name := TRoutineBody.UniqueName(Tokens, 'Wert');
+    Name := TRoutineBody.UniqueName(Tokens, AContext.NewNames.Local('Wert'));
     Indent := TTextLines.IndentOf(AContext.Text, Statement.StartPos.Line);
     Edits := [TRoutineBody.AddVariable(AContext.Text, ARoutine, Name, 'Integer', AContext.Formatting),
       TRoutineBody.InsertBefore(AContext.Text, Statement, Name + ' := ' + TextOf(AFirst, ALast) + ';' +
@@ -3533,7 +3533,7 @@ var
         [TRoutineBody.InsertBefore(AContext.Text, Statement, 'UniqueString(' + AValue.Name + ');')])];
       Exit;
     end;
-    Name := TRoutineBody.UniqueName(AContext.Tree.Tokens, 'Befehl');
+    Name := TRoutineBody.UniqueName(AContext.Tree.Tokens, AContext.NewNames.Local('Befehl'));
     Indent := TTextLines.IndentOf(AContext.Text, Statement.StartPos.Line);
     Result := [TRuleFix.Create('Befehlszeile in eine lokale Variable kopieren und UniqueString aufrufen',
       [TRoutineBody.AddVariable(AContext.Text, ARoutine, Name, 'string', AContext.Formatting),
@@ -3848,7 +3848,7 @@ var
       (AItem.Statement.StartPos.Line <> AItem.Statement.EndPos.Line) or
       (AItem.Statement.StartPos.Line > High(Lines)) then
       Exit;
-    Name := TRoutineBody.UniqueName(Tokens, 'FS');
+    Name := TRoutineBody.UniqueName(Tokens, AContext.NewNames.Local('FS'));
     Edits := nil;
     Position := TRoutineBody.TokenAt(Tokens, AItem.Statement.EndOffset);
     while (Position <= High(Tokens)) and (Tokens[Position].Offset < Body.EndOffset) do

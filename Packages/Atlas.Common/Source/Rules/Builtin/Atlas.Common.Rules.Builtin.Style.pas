@@ -1067,6 +1067,7 @@ var
     Value: Double;
     Action: TCodeAction;
     Fixes: TArray<TRuleFix>;
+    Options: TExtractOptions;
   begin
     if not NumberValue(Text(ALiteral), Value) then
       Exit;
@@ -1081,8 +1082,11 @@ var
     if IsAllowed(Value) then
       Exit;
     Fixes := nil;
+    Options := TExtractOptions.Default;
+    // Name nach der Namensregel (cNewConstant), sonst meldet naming-prefix die Korrektur gleich wieder.
+    Options.Names := AContext.NewNames;
     if TExtractRefactoring.ExtractConstant(AContext.Text, AContext.Tree, TTextRange.Create(Node.StartPos, Node.EndPos),
-      TExtractOptions.Default, False, Action) then
+      Options, False, Action) then
       Fixes := [TRuleFix.Create('Konstante einführen', Action.Edits)];
     AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), Format('Zahl %s ohne Namen; als Konstante wird klar, ' +
       'was sie bedeutet.', [Text(Node)]), TRuleConfidence.Low, Fixes);

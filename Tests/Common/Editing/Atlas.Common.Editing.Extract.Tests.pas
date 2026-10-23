@@ -41,6 +41,9 @@ type
     procedure ExtractConstantInRoutineAndUnit;
     [Test]
     procedure ExtractConstantRejectsNonLiterals;
+    /// <summary>Neue Namen mit den Präfixen der Namensregel (#1111): cNewConstant, mValue.</summary>
+    [Test]
+    procedure NewNamesWithPrefixes;
     [Test]
     procedure ExtractConditionAsMethod;
     [Test]
@@ -54,6 +57,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.CodeActions,
@@ -847,6 +851,40 @@ begin
     'begin',
     'end.']), Reason));
   Assert.AreEqual('Result in der Bedingung', Reason);
+end;
+
+
+procedure TExtractTests.NewNamesWithPrefixes;
+var
+  Title, Changed: string;
+  Names: TPascalNamePrefixes;
+begin
+  Names := TPascalNamePrefixes.None;
+  Names.ConstantPrefix := 'c';
+  Names.LocalPrefix := 'm';
+  Changed := Apply(Join(['unit U;', 'interface', 'implementation', 'procedure Run;', 'begin', '  Sleep(«250»);',
+    'end;', 'end.']),
+    function(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange; out AAction: TCodeAction): Boolean
+    var
+      Extract: TExtractOptions;
+    begin
+      Extract := Options(True);
+      Extract.Names := Names;
+      Result := TExtractRefactoring.ExtractConstant(AText, ATree, ARange, Extract, False, AAction);
+    end, Title);
+  Assert.IsTrue(Pos('  cNewConstant = 250;', Changed) > 0, Changed);
+  Assert.IsTrue(Pos('Sleep(cNewConstant)', Changed) > 0, Changed);
+  Changed := Apply(Join(['unit U;', 'interface', 'implementation', 'procedure Run(X: Integer);', 'begin',
+    '  Sleep(«X + 1»);', 'end;', 'end.']),
+    function(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange; out AAction: TCodeAction): Boolean
+    var
+      Extract: TExtractOptions;
+    begin
+      Extract := Options(True);
+      Extract.Names := Names;
+      Result := TExtractRefactoring.IntroduceVariable(AText, ATree, ARange, Extract, False, AAction);
+    end, Title);
+  Assert.IsTrue(Pos('mValue', Changed) > 0, Changed);
 end;
 
 initialization

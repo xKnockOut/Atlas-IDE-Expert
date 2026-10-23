@@ -14,7 +14,8 @@ uses
   Atlas.Common.Index.Contract,
   // Genehmigte Ausnahme der Rollenmatrix (Architektur.md, "Genehmigte Ausnahmen"): der Syntaxbaum ist
   // Datengrundlage jeder Regel und hängt selbst nur an Contracts.
-  Atlas.Common.Pascal.SyntaxTree;
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Contract;
 
 type
   /// <summary>Feste Angaben einer Regel.</summary>
@@ -271,6 +272,9 @@ type
     /// <summary>Präfixe der Projektdatei .atlas aus dem Projektkontext der IDE (#1111); ohne IDE (Linter) leer.
     /// </summary>
     Naming: TRuleNaming;
+    /// <summary>Präfixe für Namen, die Korrekturen neu bilden (Konstante einführen, Hilfsvariable …): die der
+    /// Namensregel, wenn sie für die Datei läuft, sonst keine (TRuleEngine.NewNames).</summary>
+    NewNames: TPascalNamePrefixes;
   end;
 
   /// <summary>Dienste des Projekts für die Regeln (#1112): Symbolindex, Nachladen von Units, Unit-Suche,
@@ -317,6 +321,14 @@ type
     ['{2C4A1F3E-8D5B-4E7A-A1C2-7F9E0B3D4C55}']
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  /// <summary>Regel, die vorgibt, wie neue Namen heißen (naming-prefix): Korrekturen und Refactorings übernehmen
+  /// ihre Präfixe, damit sie keine Namen erzeugen, die die Regel gleich wieder meldet.</summary>
+  IRuleNewNames = interface
+    ['{3F9C2B71-5D84-4A6E-B1C7-8E2D40A95F13}']
+    /// <summary>Präfixe neuer Namen; AContext trägt die Optionen dieser Regel.</summary>
+    function NewNames(const AContext: TRuleContext): TPascalNamePrefixes;
   end;
 
   /// <summary>Regel, die nach allen anderen die rohen Treffer sieht (vor Unterdrückung und Konfidenzfilter),

@@ -60,6 +60,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Contract;
 
 const
@@ -90,6 +91,11 @@ type
     class function TypeLevelOff(const ARuleId: string; const ASettings: TServerSettings): Boolean; static;
     /// <summary>Optionen der Regel als JSON-Text, sonst ''.</summary>
     class function RuleOptions(const ARuleId: string; const ASettings: TServerSettings): string; static;
+    /// <summary>Präfixe für Namen, die Korrekturen und Refactorings neu bilden: die der ersten Regel mit
+    /// IRuleNewNames (naming-prefix), die für die Datei läuft; sonst keine. AContext liefert Pfad, Unit und die
+    /// Vorgaben der Projektdatei.</summary>
+    class function NewNames(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+      const AContext: TRuleContext): TPascalNamePrefixes; static;
     /// <summary>ASeverity begrenzt nach Konfidenz.</summary>
     class function CapSeverity(ASeverity: TRuleSeverity; AConfidence: TRuleConfidence): TRuleSeverity; static;
     /// <summary>True, wenn "exclude" in AOptions den Pfad oder die Unit trifft.</summary>
@@ -428,6 +434,33 @@ begin
   end;
 end;
 
+class function TRuleEngine.NewNames(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const AContext: TRuleContext): TPascalNamePrefixes;
+var
+  Rule: IRule;
+  Source: IRuleNewNames;
+  Descriptor: TRuleDescriptor;
+  Enabled: Boolean;
+  Context: TRuleContext;
+begin
+  Result := TPascalNamePrefixes.None;
+  for Rule in ARules do
+  begin
+    if not Supports(Rule, IRuleNewNames, Source) then
+      Continue;
+    Descriptor := Rule.Descriptor;
+    // Dieselben Bedingungen wie für den Lauf der Regel: Schweregrad, experimentell, Ausnahmen der Optionen.
+    if (EffectiveSeverity(Descriptor, ASettings, AContext.RelativePath, Enabled) = TRuleSeverity.Off) or
+      (Descriptor.Experimental and not Enabled) then
+      Continue;
+    Context := AContext;
+    Context.Options := RuleOptions(Descriptor.Id, ASettings);
+    if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
+      Continue;
+    Exit(Source.NewNames(Context));
+  end;
+end;
+
 class function TRuleEngine.Run(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const AContext: TRuleContext): TArray<TRuleFinding>;
 var
@@ -483,6 +516,8 @@ begin
   // Ein Ableitungscache für alle Regeln des Laufs (Review P-03); ein vom Aufrufer
   // gesetzter Cache gehört dem Aufrufer und bleibt gefüllt.
   Shared := AContext;
+  // Neue Namen der Korrekturen nach der Namensregel (#1111), einmal für alle Regeln.
+  Shared.NewNames := NewNames(ARules, Settings, Shared);
   OwnCache := nil;
   if Shared.Derived = nil then
   begin
