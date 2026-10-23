@@ -186,6 +186,7 @@ uses
   Atlas.Common.Editing.IfCase.Tests in 'Common\Editing\Atlas.Common.Editing.IfCase.Tests.pas',
   Atlas.Common.Editing.Conditions.Tests in 'Common\Editing\Atlas.Common.Editing.Conditions.Tests.pas',
   Atlas.Common.Editing.ConditionalExpression.Tests in 'Common\Editing\Atlas.Common.Editing.ConditionalExpression.Tests.pas',
+  Atlas.Common.Editing.NestedRoutines.Tests in 'Common\Editing\Atlas.Common.Editing.NestedRoutines.Tests.pas',
   Atlas.Common.Lsp.DocWiki.Tests in 'Common\Lsp\Atlas.Common.Lsp.DocWiki.Tests.pas',
   Atlas.Common.Lsp.CompilerDirectives.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompilerDirectives.Tests.pas',
   Atlas.Common.Lsp.ConditionalSymbols.Tests in 'Common\Lsp\Atlas.Common.Lsp.ConditionalSymbols.Tests.pas',

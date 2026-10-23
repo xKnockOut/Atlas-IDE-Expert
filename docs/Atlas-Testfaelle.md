@@ -2617,6 +2617,20 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | BA7 | Projekt für Delphi 12 (`delphiVersion` 23.0) mit zwei Bedingungsausdrücken | Je ein Fehler `conditional-expression-version` (wie E2029), Korrektur „In if-Anweisung umwandeln“, „Alle korrigieren“ wandelt beide um; „In bedingten Ausdruck umwandeln“ und IfThen-Ersetzung fehlen, keine zweite Warnung zum Sprachmerkmal |
 | BA8 | Bedingungsausdruck in `{$IF CompilerVersion >= 37} … {$ENDIF}`, dann `refactoring.conditionalExpression` aus | Kein Fehler im versionsabhängigen Zweig; ausgeschaltet fehlen alle drei Aktionen |
 
+## Lokale Routine und Methode (#663)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LRM1 | In `procedure TForm1.Rechne;` eine lokale `procedure Addiere(N: Integer);`, die `Summe := Summe + N + FZaehler;` und `Text := Name;` schreibt (Summe, Text lokal, Name Parameter `const`); Cursor auf den Kopf von `Addiere`, Alt+Enter, „In private Methode umwandeln“ | Vorschau mit „Neue Signatur: procedure TForm1.Addiere(N: Integer; var Summe: Integer; var Text: string; const Name: string);“ und der Zahl der Aufrufe; nach „Übernehmen“ steht die Methode hinter `TForm1.Rechne`, die Deklaration im private-Abschnitt, die Aufrufe bekommen die Argumente, `FZaehler` wird kein Parameter; ein Rückgängig-Schritt |
+| LRM2 | Dasselbe in einer freien Routine mit lokaler Konstante `Grenze = 10;`, die die lokale Routine nutzt, „Aus Routine herauslösen“ | Routine steht vor der äußeren, mit eigenem `const Grenze = 10;`; Record-Variable (`TPoint`) als `const`-Parameter |
+| LRM3 | Lokale Routine ruft sich selbst auf; der Name ist in der Klasse schon vergeben | Rekursiver Aufruf bekommt die Argumente; neuer Name mit Nummer (`Zeige2`) |
+| LRM4 | Lokale Routine in einer lokalen Routine, Cursor auf den inneren Kopf, Alt+Enter | Am Ende der Liste ein Hinweis „Aus Routine herauslösen“; Wählen meldet „geht hier nicht: … erst diese umwandeln“ |
+| LRM5 | Lokale Routine, die `Result` der äußeren Funktion setzt, eine andere lokale Routine aufruft, einen lokalen Typ nutzt, `with` enthält oder als `@Routine` benutzt wird | Keine Aktion |
+| LRM6 | Private Methode `Hilfe(Wert: Integer)` mit genau einem Aufruf `Self.Hilfe(I)` in `TForm1.Rechne`, Cursor auf ihren Kopf (Klasse oder Implementierung), „Als lokale Routine einbetten“ | Vorschau „Neue lokale Routine in TForm1.Rechne: …“; danach lokale Routine vor dem `begin` von `Rechne`, Deklaration aus der Klasse entfernt, Aufruf `Hilfe(I)` |
+| LRM7 | Dieselbe Methode `virtual`, `override`, öffentlich, mit zwei Aufrufern, ohne Aufruf, als `Button1.OnClick := Hilfe` oder über ein anderes Objekt benutzt; Aufrufer hat eine Variable mit einem Namen, den der Rumpf meint | Keine Aktion |
+| LRM8 | Freie Routine `Zeige(const Name: string; Anzahl: Integer)` der Implementierung, einziger Aufruf `Zeige(Name, Zahl)` mit Parameter `Name` und Variable `Zahl: Integer` des Aufrufers, „In lokale Routine umwandeln (durchgereichte Parameter entfernen)“ | Lokale Routine ohne Parameter, der Rumpf nutzt `Name` und `Zahl`; ein geschriebener Wertparameter bleibt; steht die Routine im interface, keine Aktion |
+| LRM9 | `refactoring.nestedRoutine` aus | Keine der vier Aktionen |
+
 ## Methode aus Aufruf anlegen (#472)
 
 | Nr. | Schritte | Erwartet |
