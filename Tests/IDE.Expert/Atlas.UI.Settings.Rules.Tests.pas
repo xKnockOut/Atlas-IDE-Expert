@@ -39,6 +39,10 @@ type
     procedure CheckboxTurnsRuleOffAndOn;
     [Test]
     procedure ShowsGlobalValueAndCatalogText;
+    /// <summary>AutoSize regelt nur die Höhe: Die Breite aus SetBounds bleibt, mit und ohne Fenster, und folgt dem
+    /// Anker (früher blieb der Editor bei den 185 Pixeln eines frischen Panels).</summary>
+    [Test]
+    procedure KeepsRequestedWidth;
   end;
 
 implementation
@@ -47,6 +51,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.JSON,
+  Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ComCtrls,
@@ -125,6 +130,33 @@ begin
     Editor.Master.Checked := True;
     Assert.AreEqual('', Editor.RulesJson);
     Assert.IsTrue(Editor.List.Enabled);
+  finally
+    Host.Free;
+    Catalog.Free;
+  end;
+end;
+
+procedure TAtlasRulesEditorTests.KeepsRequestedWidth;
+var
+  Host: TForm;
+  Catalog: TJSONValue;
+  Editor: TAtlasRulesEditor;
+begin
+  Catalog := TJSONObject.ParseJSONValue(CatalogText);
+  Host := TForm.CreateNew(nil);
+  try
+    Host.ClientWidth := 900;
+    Editor := TAtlasRulesEditor.Create(Host);
+    Editor.Parent := Host;
+    Editor.SetBounds(10, 10, 700, 400);
+    Assert.AreEqual(700, Editor.Width, 'ohne Fenster');
+    Editor.Anchors := [akLeft, akTop, akRight];
+    Editor.SetRules(Catalog, '', '');
+    Editor.HandleNeeded;
+    Assert.AreEqual(700, Editor.Width, 'mit Fenster');
+    Assert.IsTrue(Editor.Height > 100, 'Höhe aus dem Inhalt');
+    Host.ClientWidth := 1000;
+    Assert.AreEqual(800, Editor.Width, 'folgt dem Anker');
   finally
     Host.Free;
     Catalog.Free;
