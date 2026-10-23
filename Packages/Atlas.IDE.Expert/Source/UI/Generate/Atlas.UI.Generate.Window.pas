@@ -308,10 +308,10 @@ end;
 
 procedure TAtlasGenerateWindow.UpdateHeight;
 var
-  Visible: Integer;
+  mVisible: Integer;
 begin
-  Visible := EnsureRange(RowCount, 1, VisibleRows);
-  ClientHeight := TitleHeight + Visible * RowHeight + FooterHeight + ScaleValue(4);
+  mVisible := EnsureRange(RowCount, 1, VisibleRows);
+  ClientHeight := TitleHeight + mVisible * RowHeight + FooterHeight + ScaleValue(4);
 end;
 
 procedure TAtlasGenerateWindow.Rebuild;

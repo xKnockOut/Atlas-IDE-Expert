@@ -689,6 +689,8 @@ begin
           Take(TCaptureDeclKind.Other, Section, '');
           Exit(True);
         end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
   VisitInline(AScope);

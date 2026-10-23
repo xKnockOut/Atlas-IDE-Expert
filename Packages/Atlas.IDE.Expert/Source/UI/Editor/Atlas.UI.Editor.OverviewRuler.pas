@@ -214,7 +214,7 @@ end;
 procedure TAtlasOverviewRuler.Paint;
 var
   Bar: TAtlasOverviewBar;
-  Inner, Lane, Left, Right, Top, Bottom: Integer;
+  Inner, Lane, mLeft, Right, mTop, Bottom: Integer;
   Area: TRect;
 begin
   Layout;
@@ -226,10 +226,10 @@ begin
   // Sichtbarer Bereich.
   if FLastVisible >= FFirstVisible then
   begin
-    Top := TAtlasOverview.PixelOf(FFirstVisible, FLineCount, ClientHeight);
-    Bottom := Max(Top + Scale(4), TAtlasOverview.PixelOf(FLastVisible + 1, FLineCount, ClientHeight));
+    mTop := TAtlasOverview.PixelOf(FFirstVisible, FLineCount, ClientHeight);
+    Bottom := Max(mTop + Scale(4), TAtlasOverview.PixelOf(FLastVisible + 1, FLineCount, ClientHeight));
     Canvas.Brush.Color := TColor(TAtlasColorMath.Mix(FColors.Text, FColors.Surface, 0.1));
-    Canvas.FillRect(TRect.Create(0, Top, ClientWidth, Min(Bottom, ClientHeight)));
+    Canvas.FillRect(TRect.Create(0, mTop, ClientWidth, Min(Bottom, ClientHeight)));
   end;
   Inner := Max(Scale(3), (ClientWidth - Scale(2)) div 3);
   for Bar in FBars do
@@ -238,26 +238,26 @@ begin
     case Bar.Lane of
       TAtlasOverviewLane.Left:
         begin
-          Left := Lane;
-          Right := Left + Inner;
+          mLeft := Lane;
+          Right := mLeft + Inner;
         end;
       TAtlasOverviewLane.Middle:
         begin
-          Left := Lane + Inner;
-          Right := Left + Inner;
+          mLeft := Lane + Inner;
+          Right := mLeft + Inner;
         end;
       TAtlasOverviewLane.Right:
         begin
-          Left := Lane + 2 * Inner;
+          mLeft := Lane + 2 * Inner;
           Right := ClientWidth - Lane;
         end;
     else
       begin
-        Left := 0;
+        mLeft := 0;
         Right := ClientWidth;
       end;
     end;
-    Area := TRect.Create(Left, Bar.Top, Right, Bar.Bottom);
+    Area := TRect.Create(mLeft, Bar.Top, Right, Bar.Bottom);
     // Der Cursor ist eine dünne Linie über die ganze Breite.
     if Bar.Kind = TAtlasOverviewMarkKind.Cursor then
       Area.Bottom := Min(Area.Bottom, Area.Top + Scale(2));

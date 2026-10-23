@@ -66,7 +66,7 @@ constructor TAtlasSnippetsPage.Create(AOwner: TComponent);
 var
   Buttons, Editor: TPanel;
   Column: TListColumn;
-  Caption: TLabel;
+  mCaption: TLabel;
 begin
   inherited Create(AOwner);
   Name := 'AtlasSnippetsPage';
@@ -119,10 +119,10 @@ begin
   FPrefix := AddField(Editor, TAtlasStrings.Text(TAtlasTextId.SnippetsPrefix), 4);
   FName := AddField(Editor, TAtlasStrings.Text(TAtlasTextId.SnippetsName), 32);
   FDescription := AddField(Editor, TAtlasStrings.Text(TAtlasTextId.SnippetsDescription), 60);
-  Caption := TLabel.Create(Self);
-  Caption.Parent := Editor;
-  Caption.SetBounds(4, 92, 300, 15);
-  Caption.Caption := TAtlasStrings.Text(TAtlasTextId.SnippetsBody);
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := Editor;
+  mCaption.SetBounds(4, 92, 300, 15);
+  mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.SnippetsBody);
   FBody := TMemo.Create(Self);
   FBody.Parent := Editor;
   FBody.SetBounds(4, 110, Editor.Width - 8, 200);
@@ -150,12 +150,12 @@ end;
 
 function TAtlasSnippetsPage.AddField(AParent: TWinControl; const ACaption: string; ATop: Integer): TEdit;
 var
-  Caption: TLabel;
+  mCaption: TLabel;
 begin
-  Caption := TLabel.Create(Self);
-  Caption.Parent := AParent;
-  Caption.SetBounds(4, ATop + 4, 90, 15);
-  Caption.Caption := ACaption;
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := AParent;
+  mCaption.SetBounds(4, ATop + 4, 90, 15);
+  mCaption.Caption := ACaption;
   Result := TEdit.Create(Self);
   Result.Parent := AParent;
   Result.SetBounds(100, ATop, AParent.Width - 104, 23);

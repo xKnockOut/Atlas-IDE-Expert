@@ -200,7 +200,7 @@ end;
 constructor TAtlasRulesEditor.Create(AOwner: TComponent);
 var
   Column: TListColumn;
-  Caption: TLabel;
+  mCaption: TLabel;
 begin
   inherited Create(AOwner);
   AutoSize := True;
@@ -282,13 +282,13 @@ begin
   FSeverityRow := TAtlasRulesBox.Create(Self);
   FSeverityRow.Height := 24;
   Stack(FDetails, FSeverityRow);
-  Caption := TLabel.Create(Self);
-  Caption.Parent := FSeverityRow;
-  Caption.Align := alLeft;
-  Caption.Layout := tlCenter;
-  Caption.Width := 160;
-  Caption.AutoSize := False;
-  Caption.Caption := TAtlasStrings.Text(TAtlasTextId.RulesSeverity);
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := FSeverityRow;
+  mCaption.Align := alLeft;
+  mCaption.Layout := tlCenter;
+  mCaption.Width := 160;
+  mCaption.AutoSize := False;
+  mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.RulesSeverity);
   FSeverity := TComboBox.Create(Self);
   FSeverity.Parent := FSeverityRow;
   FSeverity.Align := alLeft;
@@ -676,7 +676,7 @@ var
   Index: Integer;
   Option: TAtlasRuleOption;
   Line: TAtlasRulesBox;
-  Caption: TLabel;
+  mCaption: TLabel;
   Check: TCheckBox;
   Edit: TEdit;
   Control: TControl;
@@ -708,16 +708,16 @@ begin
     end
     else
     begin
-      Caption := TLabel.Create(Self);
-      Caption.Parent := Line;
-      Caption.Align := alLeft;
-      Caption.AutoSize := False;
-      Caption.Width := 160;
-      Caption.Layout := tlCenter;
-      Caption.ShowAccelChar := False;
-      Caption.Caption := Option.Name + ':';
-      Caption.Hint := Option.Description;
-      Caption.ShowHint := Option.Description <> '';
+      mCaption := TLabel.Create(Self);
+      mCaption.Parent := Line;
+      mCaption.Align := alLeft;
+      mCaption.AutoSize := False;
+      mCaption.Width := 160;
+      mCaption.Layout := tlCenter;
+      mCaption.ShowAccelChar := False;
+      mCaption.Caption := Option.Name + ':';
+      mCaption.Hint := Option.Description;
+      mCaption.ShowHint := Option.Description <> '';
       Edit := TEdit.Create(Self);
       Edit.Parent := Line;
       Edit.Align := alClient;
@@ -735,18 +735,18 @@ end;
 
 procedure TAtlasRulesEditor.Apply(const ARulesJson: string);
 var
-  Index, Visible: Integer;
+  Index, mVisible: Integer;
 begin
   // Zeilen aus dem neuen Wert; die Tabelle wird nur nachgeführt, damit Fokus und Eingabe bleiben.
   FRulesJson := ARulesJson;
   FRows := TAtlasRuleTable.Rows(FCatalog, FRulesJson, FOtherRulesJson);
   FFilling := True;
   try
-    for Visible := 0 to High(FVisible) do
+    for mVisible := 0 to High(FVisible) do
     begin
-      Index := FVisible[Visible];
-      if (Index <= High(FRows)) and (Visible < FList.Items.Count) then
-        FillItem(FList.Items[Visible], FRows[Index]);
+      Index := FVisible[mVisible];
+      if (Index <= High(FRows)) and (mVisible < FList.Items.Count) then
+        FillItem(FList.Items[mVisible], FRows[Index]);
     end;
   finally
     FFilling := False;
@@ -900,7 +900,7 @@ procedure TAtlasRulesEditor.OptionChange(Sender: TObject);
 var
   Row, Index: Integer;
   Option: TAtlasRuleOption;
-  Text, Json: string;
+  mText, Json: string;
 begin
   Row := SelectedRow;
   if FFilling or (Row < 0) or not (Sender is TControl) then
@@ -911,14 +911,14 @@ begin
   Option := FRows[Row].Options[Index];
   if Sender is TCheckBox then
   begin
-    Text := 'false';
+    mText := 'false';
     if TCheckBox(Sender).Checked then
-      Text := 'true';
+      mText := 'true';
   end
   else
-    Text := TEdit(Sender).Text;
+    mText := TEdit(Sender).Text;
   // Ungültige Eingabe bleibt im Feld stehen, wird aber nicht übernommen.
-  if not TAtlasRuleTable.OptionJson(Option.Kind, Text, Json) then
+  if not TAtlasRuleTable.OptionJson(Option.Kind, mText, Json) then
   begin
     FInvalid.Caption := TAtlasStrings.Fmt(TAtlasTextId.RulesOptionInvalid, [Option.Name]);
     FInvalid.Visible := True;

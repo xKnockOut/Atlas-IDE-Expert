@@ -517,15 +517,15 @@ end;
 procedure TAtlasHoverTip.PaintItem(const AItem: TAtlasHoverItem);
 var
   Hot: Boolean;
-  Color: TAtlasColor;
+  mColor: TAtlasColor;
   Face: TAtlasHoverFace;
   Area: TRect;
   X: Integer;
 begin
   Hot := (AItem.HotIndex >= 0) and FLayout.IsHot(FHot, AItem.HotKind, AItem.HotIndex);
-  Color := AItem.Color;
+  mColor := AItem.Color;
   if Hot then
-    Color := AItem.HotColor;
+    mColor := AItem.HotColor;
   Face := AItem.Face;
   if Hot and AItem.HotUnderline then
     Face.Underline := True;
@@ -533,12 +533,12 @@ begin
     TAtlasHoverItemKind.Fill:
       begin
         Canvas.Brush.Style := bsSolid;
-        Canvas.Brush.Color := ToColor(Color);
+        Canvas.Brush.Color := ToColor(mColor);
         Canvas.FillRect(AItem.Rect);
       end;
     TAtlasHoverItemKind.Line:
       begin
-        Canvas.Pen.Color := ToColor(Color);
+        Canvas.Pen.Color := ToColor(mColor);
         if Hot then
           Canvas.Pen.Width := AItem.HotPenWidth
         else
@@ -550,27 +550,27 @@ begin
     TAtlasHoverItemKind.Text:
       begin
         ApplyFace(Face, 0);
-        Canvas.Font.Color := ToColor(Color);
+        Canvas.Font.Color := ToColor(mColor);
         Canvas.Brush.Style := bsClear;
         Canvas.TextOut(AItem.Rect.Left, AItem.Rect.Top, AItem.Text);
       end;
     TAtlasHoverItemKind.CenterText:
       begin
         ApplyFace(Face, AItem.Rect.Height);
-        Canvas.Font.Color := ToColor(Color);
+        Canvas.Font.Color := ToColor(mColor);
         Canvas.Brush.Style := bsClear;
         Area := AItem.Rect;
         DrawText(Canvas.Handle, PChar(AItem.Text), -1, Area, DT_CENTER or DT_VCENTER or DT_SINGLELINE or
           DT_NOPREFIX);
       end;
     TAtlasHoverItemKind.Frame:
-      FrameRounded(AItem.Rect, Color, AItem.Radius, ToColor(AItem.Back));
+      FrameRounded(AItem.Rect, mColor, AItem.Radius, ToColor(AItem.Back));
     TAtlasHoverItemKind.RoundFill:
-      FillRounded(AItem.Rect, Color, AItem.Radius);
+      FillRounded(AItem.Rect, mColor, AItem.Radius);
     TAtlasHoverItemKind.Block:
       begin
         Canvas.Font := UIFont;
-        Canvas.Font.Color := ToColor(Color);
+        Canvas.Font.Color := ToColor(mColor);
         Canvas.Brush.Style := bsClear;
         Area := AItem.Rect;
         DrawText(Canvas.Handle, PChar(AItem.Text), -1, Area, DT_WORDBREAK or DT_NOPREFIX or DT_END_ELLIPSIS);
@@ -612,24 +612,24 @@ end;
 
 procedure TAtlasHoverTip.ShowContent(const AView: TAtlasHoverView; const AWord: TRect);
 var
-  Width, Height: Integer;
+  mWidth, mHeight: Integer;
   Spoken: string;
   Area, Bounds: TRect;
 begin
   FView := AView;
   FDeclaration := TAtlasStyledText.Create(AView.Data.Declaration);
   FHot := -1;
-  Width := PreferredWidth;
-  PrepareDoc(Width);
+  mWidth := PreferredWidth;
+  PrepareDoc(mWidth);
   Area := WorkAreaAt(AWord.TopLeft);
   // Höchstens so hoch wie der größere Platz unter bzw. über dem Wort; darüber scrollt die Doku.
-  Height := FitHeight(Width, Max(Area.Bottom - AWord.Bottom, AWord.Top - Area.Top) - Scale(12));
-  Bounds := TRect.Create(Point(AWord.Left, AWord.Bottom + Scale(4)), Width, Height);
+  mHeight := FitHeight(mWidth, Max(Area.Bottom - AWord.Bottom, AWord.Top - Area.Top) - Scale(12));
+  Bounds := TRect.Create(Point(AWord.Left, AWord.Bottom + Scale(4)), mWidth, mHeight);
   FAbove := Bounds.Bottom > Area.Bottom;
   if FAbove then
-    Bounds.SetLocation(Bounds.Left, AWord.Top - Height - Scale(4));
+    Bounds.SetLocation(Bounds.Left, AWord.Top - mHeight - Scale(4));
   if Bounds.Right > Area.Right then
-    Bounds.SetLocation(Max(Area.Left, Area.Right - Width), Bounds.Top);
+    Bounds.SetLocation(Max(Area.Left, Area.Right - mWidth), Bounds.Top);
   ShowAt(Bounds);
   // Sprachausgabe (#447): Deklaration und Anfang der Doku.
   SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessHover));
@@ -642,7 +642,7 @@ end;
 
 procedure TAtlasHoverTip.UpdateContent(const AView: TAtlasHoverView);
 var
-  Width, Height: Integer;
+  mWidth, mHeight: Integer;
   Bounds, Area: TRect;
 begin
   if not IsShown then
@@ -650,12 +650,12 @@ begin
   FView := AView;
   FDeclaration := TAtlasStyledText.Create(AView.Data.Declaration);
   FHot := -1;
-  Width := Max(BoundsRect.Width, PreferredWidth);
-  PrepareDoc(Width);
+  mWidth := Max(BoundsRect.Width, PreferredWidth);
+  PrepareDoc(mWidth);
   Area := WorkAreaAt(BoundsRect.TopLeft);
-  Height := Max(BoundsRect.Height, FitHeight(Width, Area.Bottom - BoundsRect.Top - Scale(4)));
-  Height := Min(Height, Max(Area.Bottom - BoundsRect.Top, Scale(80)));
-  Bounds := TRect.Create(BoundsRect.TopLeft, Width, Height);
+  mHeight := Max(BoundsRect.Height, FitHeight(mWidth, Area.Bottom - BoundsRect.Top - Scale(4)));
+  mHeight := Min(mHeight, Max(Area.Bottom - BoundsRect.Top, Scale(80)));
+  Bounds := TRect.Create(BoundsRect.TopLeft, mWidth, mHeight);
   ShowAt(Bounds);
   Invalidate;
 end;

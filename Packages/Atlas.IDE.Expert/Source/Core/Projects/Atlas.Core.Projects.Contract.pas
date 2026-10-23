@@ -24,7 +24,7 @@ uses
 type
   {$SCOPEDENUMS ON}
   /// <summary>Art einer Präfix-Vorgabe; Reihenfolge wie TAtlasNamingKind der Projektdatei.</summary>
-  TAtlasProjectNamingKind = (Field, Parameter, Local);
+  TAtlasProjectNamingKind = (Field, Parameter, Local, Constant);
   {$SCOPEDENUMS OFF}
 
   TAtlasProjectContext = record
@@ -76,7 +76,7 @@ type
 implementation
 
 const
-  NamingKeys: array[TAtlasProjectNamingKind] of string = ('field', 'parameter', 'local');
+  NamingKeys: array[TAtlasProjectNamingKind] of string = ('field', 'parameter', 'local', 'constant');
 
 function JsonList(const AItems: TArray<string>): TJSONArray;
 var

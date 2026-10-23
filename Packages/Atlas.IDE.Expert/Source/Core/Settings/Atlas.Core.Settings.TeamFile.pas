@@ -9,7 +9,8 @@
 //   Repositorys). Relative Pfade gelten ab dem Ordner der Datei.
 // - Format: JSON mit Kommentaren (// und /* */) und Schema-Version:
 //     {"version": 1,
-//      "naming": {"field": "F", "parameter": "A", "local": "L"},        #452
+//      "naming": {"field": "F", "parameter": "A", "local": "L",         #452
+//                 "constant": "c"},                                   #1111
 //      "snippets": "Vorlagen\\Snippets",                               #51
 //      "formatFunctions": [{"name": "Log", "formatIndex": 0}],         #451
 //      "sqlTargets": ["TMyQuery.SQL"],                                  #462
@@ -44,8 +45,8 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  /// <summary>Präfix-Arten der Benennung (#452).</summary>
-  TAtlasNamingKind = (Field, Parameter, Local);
+  /// <summary>Präfix-Arten der Benennung (#452); Constant nur für die Prüfregel naming-prefix (#1111).</summary>
+  TAtlasNamingKind = (Field, Parameter, Local, Constant);
 
   /// <summary>Art einer Meldung zur Projektdatei.</summary>
   TAtlasTeamIssueKind = (
@@ -188,7 +189,7 @@ type
       APersonal: TArray<TAtlasStartProfile>): TArray<TAtlasStartProfile>; static;
     /// <summary>Gesetzte Werte zur Anzeige „aus .atlas“, in der Reihenfolge des Formats.</summary>
     class function Values(const ATeam: TAtlasTeamSettings): TArray<TAtlasTeamValue>; static;
-    /// <summary>Schlüssel einer Präfix-Art: "field", "parameter", "local".</summary>
+    /// <summary>Schlüssel einer Präfix-Art: "field", "parameter", "local", "constant".</summary>
     class function NamingKey(AKind: TAtlasNamingKind): string; static;
     /// <summary>ARelative an AFolder gehängt, „.“ und „..“ aufgelöst, Trenner „\“.</summary>
     class function Combine(const AFolder, ARelative: string): string; static;
@@ -203,7 +204,7 @@ uses
   Atlas.Text.Checkin;
 
 const
-  NamingKeys: array[TAtlasNamingKind] of string = ('field', 'parameter', 'local');
+  NamingKeys: array[TAtlasNamingKind] of string = ('field', 'parameter', 'local', 'constant');
 
 function IsSeparator(ACh: Char): Boolean;
 begin
@@ -982,7 +983,7 @@ const
     '  // ignoriert solche Einträge. Pfade relativ zu dieser Datei.',
     '  "version": 1,',
     '  "naming": {',
-    '    // "field": "F", "parameter": "A", "local": "L"',
+    '    // "field": "F", "parameter": "A", "local": "L", "constant": "c"',
     '  },',
     '  // Ordner mit Code-Vorlagen des Projekts (*.atlas-snippet wie unter %APPDATA%\Atlas\Snippets):',
     '  // "snippets": "Vorlagen\\Snippets",',

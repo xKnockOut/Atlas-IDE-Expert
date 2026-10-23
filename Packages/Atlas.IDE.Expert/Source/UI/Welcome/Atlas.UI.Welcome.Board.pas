@@ -609,7 +609,7 @@ end;
 
 procedure TAtlasWelcomeBoardFrame.UpdateInsertLine;
 var
-  Column, Left, Top, Width: Integer;
+  Column, mLeft, mTop, mWidth: Integer;
   Before: string;
 begin
   if not FEditing then
@@ -618,9 +618,9 @@ begin
     Exit;
   end;
   Target(Column, Before);
-  TAtlasWelcomeFlow.InsertLine(FCells, FPlaced, FScroll.ClientWidth, Gap, MinColumnWidth, Column, Before, Left,
-    Top, Width);
-  FInsertLine.SetBounds(Left, Top - 1 - FScroll.VertScrollBar.Position, Width, 3);
+  TAtlasWelcomeFlow.InsertLine(FCells, FPlaced, FScroll.ClientWidth, Gap, MinColumnWidth, Column, Before, mLeft,
+    mTop, mWidth);
+  FInsertLine.SetBounds(mLeft, mTop - 1 - FScroll.VertScrollBar.Position, mWidth, 3);
   FInsertLine.Color := StyleServices(Self).GetSystemColor(clHighlight);
   FInsertLine.Visible := True;
   FInsertLine.BringToFront;
@@ -713,6 +713,8 @@ begin
             ASource.HideSection(Id);
           end);
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 
@@ -820,23 +822,25 @@ begin
         Where := FBar.ClientToScreen(Point(APart.Rect.Left, APart.Rect.Bottom));
         FBarMenu.Popup(Where.X, Where.Y);
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 
 procedure TAtlasWelcomeBoardFrame.BuildLayoutMenu;
 var
   Item: TMenuItem;
-  Name: string;
+  mName: string;
   Index: Integer;
 begin
   FBarMenu.Items.Clear;
   for Index := 0 to High(FLayoutNames) do
   begin
-    Name := FLayoutNames[Index];
+    mName := FLayoutNames[Index];
     Item := TMenuItem.Create(FBarMenu);
-    Item.Caption := Name;
+    Item.Caption := mName;
     Item.RadioItem := True;
-    Item.Checked := SameText(Name, FActiveLayout);
+    Item.Checked := SameText(mName, FActiveLayout);
     Item.Tag := Index;
     Item.OnClick := LayoutMenuSwitch;
     FBarMenu.Items.Add(Item);
@@ -899,66 +903,66 @@ end;
 procedure TAtlasWelcomeBoardFrame.LayoutMenuSwitch(Sender: TObject);
 var
   Index: Integer;
-  Name: string;
+  mName: string;
 begin
   Index := (Sender as TMenuItem).Tag;
   if (Index < 0) or (Index > High(FLayoutNames)) or SameText(FLayoutNames[Index], FActiveLayout) then
     Exit;
-  Name := FLayoutNames[Index];
+  mName := FLayoutNames[Index];
   Later(
     procedure(ASource: IAtlasWelcomeArrangeSource)
     begin
-      ASource.SwitchLayout(Name);
+      ASource.SwitchLayout(mName);
     end);
 end;
 
 function TAtlasWelcomeBoardFrame.NameTaken(const AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
   Result := False;
-  for Name in FLayoutNames do
-    Result := Result or SameText(Name, Trim(AName));
+  for mName in FLayoutNames do
+    Result := Result or SameText(mName, Trim(AName));
 end;
 
 procedure TAtlasWelcomeBoardFrame.LayoutMenuNew(Sender: TObject);
 var
-  Name: string;
+  mName: string;
 begin
-  Name := '';
-  if not AskName(TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeLayoutName), Name) or (Trim(Name) = '') then
+  mName := '';
+  if not AskName(TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeLayoutName), mName) or (Trim(mName) = '') then
     Exit;
-  if NameTaken(Name) then
+  if NameTaken(mName) then
   begin
-    Confirm(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeLayoutTaken, [Trim(Name)]), False);
+    Confirm(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeLayoutTaken, [Trim(mName)]), False);
     Exit;
   end;
-  Name := Trim(Name);
+  mName := Trim(mName);
   Later(
     procedure(ASource: IAtlasWelcomeArrangeSource)
     begin
-      ASource.AddLayout(Name);
+      ASource.AddLayout(mName);
     end);
 end;
 
 procedure TAtlasWelcomeBoardFrame.LayoutMenuRename(Sender: TObject);
 var
-  Name: string;
+  mName: string;
 begin
-  Name := FActiveLayout;
-  if not AskName(TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeLayoutName), Name) or (Trim(Name) = '') or
-    SameText(Trim(Name), FActiveLayout) then
+  mName := FActiveLayout;
+  if not AskName(TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeLayoutName), mName) or (Trim(mName) = '') or
+    SameText(Trim(mName), FActiveLayout) then
     Exit;
-  if NameTaken(Name) then
+  if NameTaken(mName) then
   begin
-    Confirm(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeLayoutTaken, [Trim(Name)]), False);
+    Confirm(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeLayoutTaken, [Trim(mName)]), False);
     Exit;
   end;
-  Name := Trim(Name);
+  mName := Trim(mName);
   Later(
     procedure(ASource: IAtlasWelcomeArrangeSource)
     begin
-      ASource.RenameLayout(Name);
+      ASource.RenameLayout(mName);
     end);
 end;
 

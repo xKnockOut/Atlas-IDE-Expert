@@ -61,8 +61,8 @@ const
   /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
   NumberListRuleOptions: array[0..0] of string = ('allowed');
   /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
-  StringRuleOptions: array[0..6] of string = ('template', 'replacement', 'wrapper', 'okMarker', 'searchPaths',
-    'defaultEncoding', 'scope');
+  StringRuleOptions: array[0..10] of string = ('template', 'replacement', 'wrapper', 'okMarker', 'searchPaths',
+    'defaultEncoding', 'scope', 'local', 'field', 'parameter', 'constant');
 
 type
   TValidator = class
@@ -1658,12 +1658,12 @@ var
   Index, Size: Integer;
   Key: string;
   Value: TJsonNode;
-  Settings: TFormatStyle;
+  mSettings: TFormatStyle;
 
   procedure ReadBoolean(var ATarget: Boolean; AKey: TFormatKey);
   begin
     if ExpectBoolean(Value, Key, ATarget) then
-      Include(Settings.Given, AKey);
+      Include(mSettings.Given, AKey);
   end;
 
   procedure ReadPlacement(var ATarget: TBlockPlacement);
@@ -1679,7 +1679,7 @@ var
   end;
 
 begin
-  Settings := TFormatStyle.Default;
+  mSettings := TFormatStyle.Default;
   for Index := 0 to ANode.Count - 1 do
   begin
     Key := ANode.Keys[Index];
@@ -1688,77 +1688,77 @@ begin
     begin
       if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Size) and (Size >= 1) and (Size <= 16) then
       begin
-        Settings.IndentSize := Size;
-        Include(Settings.Given, TFormatKey.IndentSize);
+        mSettings.IndentSize := Size;
+        Include(mSettings.Given, TFormatKey.IndentSize);
       end
       else
         ReportNode(Value, '"indentSize" muss eine ganze Zahl von 1 bis 16 sein');
     end
     else if Key = 'useTabs' then
-      ReadBoolean(Settings.UseTabs, TFormatKey.UseTabs)
+      ReadBoolean(mSettings.UseTabs, TFormatKey.UseTabs)
     else if Key = 'trimTrailingWhitespace' then
-      ReadBoolean(Settings.TrimTrailingWhitespace, TFormatKey.TrimTrailingWhitespace)
+      ReadBoolean(mSettings.TrimTrailingWhitespace, TFormatKey.TrimTrailingWhitespace)
     else if Key = 'insertFinalNewline' then
-      ReadBoolean(Settings.InsertFinalNewline, TFormatKey.InsertFinalNewline)
+      ReadBoolean(mSettings.InsertFinalNewline, TFormatKey.InsertFinalNewline)
     else if Key = 'spaceAroundAssignment' then
-      ReadBoolean(Settings.SpaceAroundAssignment, TFormatKey.SpaceAroundAssignment)
+      ReadBoolean(mSettings.SpaceAroundAssignment, TFormatKey.SpaceAroundAssignment)
     else if Key = 'spaceAfterComma' then
-      ReadBoolean(Settings.SpaceAfterComma, TFormatKey.SpaceAfterComma)
+      ReadBoolean(mSettings.SpaceAfterComma, TFormatKey.SpaceAfterComma)
     else if Key = 'keywordCase' then
     begin
       if (Value.Kind = TJsonKind.String_) and (Value.Value = 'preserve') then
-        Settings.KeywordCase := TKeywordCase.Preserve
+        mSettings.KeywordCase := TKeywordCase.Preserve
       else if (Value.Kind = TJsonKind.String_) and (Value.Value = 'lower') then
-        Settings.KeywordCase := TKeywordCase.Lower
+        mSettings.KeywordCase := TKeywordCase.Lower
       else if (Value.Kind = TJsonKind.String_) and (Value.Value = 'upper') then
-        Settings.KeywordCase := TKeywordCase.Upper
+        mSettings.KeywordCase := TKeywordCase.Upper
       else
       begin
         ReportNode(Value, 'Erlaubt sind "preserve", "lower" und "upper"');
         Continue;
       end;
-      Include(Settings.Given, TFormatKey.KeywordCase);
+      Include(mSettings.Given, TFormatKey.KeywordCase);
     end
     else if Key = 'endOfLine' then
     begin
       if (Value.Kind = TJsonKind.String_) and (Value.Value = 'lf') then
-        Settings.EndOfLine := #10
+        mSettings.EndOfLine := #10
       else if (Value.Kind = TJsonKind.String_) and (Value.Value = 'crlf') then
-        Settings.EndOfLine := #13#10
+        mSettings.EndOfLine := #13#10
       else
       begin
         ReportNode(Value, 'Erlaubt sind "lf" und "crlf"');
         Continue;
       end;
-      Include(Settings.Given, TFormatKey.EndOfLine);
+      Include(mSettings.Given, TFormatKey.EndOfLine);
     end
     else if Key = 'reindent' then
-      ExpectBoolean(Value, Key, Settings.Reindent)
+      ExpectBoolean(Value, Key, mSettings.Reindent)
     else if Key = 'beginPlacement' then
-      ReadPlacement(Settings.BeginPlacement)
+      ReadPlacement(mSettings.BeginPlacement)
     else if Key = 'elsePlacement' then
-      ReadPlacement(Settings.ElsePlacement)
+      ReadPlacement(mSettings.ElsePlacement)
     else if Key = 'maxLineLength' then
     begin
       if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Size) and (Size >= 0) and (Size <= 1000) then
       begin
-        Settings.MaxLineLength := Size;
-        Include(Settings.Given, TFormatKey.MaxLineLength);
+        mSettings.MaxLineLength := Size;
+        Include(mSettings.Given, TFormatKey.MaxLineLength);
       end
       else
         ReportNode(Value, '"maxLineLength" muss eine ganze Zahl von 0 bis 1000 sein');
     end
     else if Key = 'alignAssignments' then
-      ExpectBoolean(Value, Key, Settings.AlignAssignments)
+      ExpectBoolean(Value, Key, mSettings.AlignAssignments)
     else if Key = 'alignDeclarations' then
-      ExpectBoolean(Value, Key, Settings.AlignDeclarations)
+      ExpectBoolean(Value, Key, mSettings.AlignDeclarations)
     else if Key = 'alignComments' then
-      ExpectBoolean(Value, Key, Settings.AlignComments)
+      ExpectBoolean(Value, Key, mSettings.AlignComments)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "format.%s"', [Key]), False);
   end;
-  FSettings.Formatting := Settings;
+  FSettings.Formatting := mSettings;
 end;
 
 function TValidator.ParseRoot: TJsonNode;

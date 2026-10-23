@@ -35,6 +35,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Rules.Checker,
+  Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Lsp.Status,
   Shell.Compiler;
 
@@ -84,6 +85,9 @@ type
     FOwnFiles: TDictionary<string, Boolean>;
     /// <summary>Fest vorgegebene Projektdatei (Projektgruppe, #648); '' = im Ordner suchen.</summary>
     FFixedProject: string;
+    /// <summary>Ordner der Index-Caches (#1112, --index-cache); Vorgabe TIndexCacheDirectory.DefaultRoot.
+    /// </summary>
+    FCacheRoot: string;
     FPriority: Integer;
     FScheduler: TIndexScheduler;
     /// <summary>Aus der Projektgruppe: Mit index.projectGroup = false erst indizieren, wenn eine Datei des
@@ -177,8 +181,6 @@ type
     /// <summary>Hält den Aufbau an und gibt die Sperre des eigenen Caches frei, damit „Index löschen“ (#492)
     /// ihn entfernen kann; Rebuild sperrt ihn wieder.</summary>
     procedure ReleaseCache;
-    /// <summary>Verwendungen der Bezeichner einer Unit (#492), auch ausgelagerte.</summary>
-    function UsagesOf(const AFileName: string; out AUsages: TArray<TIndexUsage>): Boolean;
     function EnsureUnit(const AUnitName: string): Boolean;
     function ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
     function ApplyText(const AFileName, AText: string): Boolean;
@@ -247,6 +249,9 @@ type
     /// <summary>Vor Load setzen (#648): feste Projektdatei, Reihenfolge, gemeinsamer Scheduler und ob das
     /// Projekt nur aus der Gruppe stammt.</summary>
     property ProjectFile: string read FFixedProject write FFixedProject;
+    /// <summary>Vor Load setzen (#1112): Ordner der Index-Caches; Vorgabe TIndexCacheDirectory.DefaultRoot.
+    /// </summary>
+    property CacheRoot: string read FCacheRoot write FCacheRoot;
     property Priority: Integer read FPriority write FPriority;
     property Scheduler: TIndexScheduler read FScheduler write FScheduler;
     property Deferred: Boolean read FDeferred write FDeferred;
@@ -265,6 +270,35 @@ type
     property PackageLocator: TPackageLocator read GetPackageLocator;
     /// <summary>Unit-Suche des zuletzt geladenen Projekts (#1016); nil vor dem ersten Laden. Threadsicher.</summary>
     function UnitLookup: IRuleUnitLookup;
+    /// <summary>Dienste des Projekts für die Prüfregeln (#1112): Symbolindex, Nachladen von Units dieses
+    /// Arbeitsbereichs, Namespaces, Unit-Suche, Packages und die Namenskonvention aus dem Projektkontext der IDE.
+    /// Ein Weg für LSP-Server, MCP und Linter; projektweite Dienste (ProjectFiles, Nachladen über alle
+    /// Arbeitsbereiche) ergänzt, wer mehrere Arbeitsbereiche hält. Threadsicher.</summary>
+    function RuleServices: TRuleServices;
+    /// <summary>Anwendungsart, Projektname und automatisch erzeugte Formulare für AFileName aus AProject
+    /// (#926, #943, #956, #1055); sonst nur der Dateiname. Liest die .dpr über AReadText.</summary>
+    class function RuleProjectOf(const AProject: TProjectInfo; const AFileName: string;
+      const AReadText: TRuleProjectReadText): TCheckProject; overload; static;
+    /// <summary>RuleProjectOf über alle Projekte, die AFileName enthalten (#1112), das bevorzugte zuerst;
+    /// zusammengeführt mit MergeRuleProjects.</summary>
+    class function RuleProjectOf(const AProjects: TArray<TProjectInfo>; const AFileName: string;
+      const AReadText: TRuleProjectReadText): TCheckProject; overload; static;
+    /// <summary>Projektkontext einer Datei aus mehreren Projekten (#1112): Das erste Projekt, das die Datei
+    /// enthält, liefert Name, Formulare und .dpr. Widersprechen sich die Anwendungsarten (eine Unit im
+    /// Konsolen-Testprogramm und im IDE-Package), bleibt die Art Unknown: Art-abhängige Regeln dürfen nicht
+    /// für ein Projekt melden, was im anderen richtig ist.</summary>
+    class function MergeRuleProjects(const AProjects: TArray<TCheckProject>;
+      const AFileName: string): TCheckProject; static;
+    /// <summary>Projekt dieses Arbeitsbereichs für projektweite Regeln (#1102) mit Datei und Quelltexten, dazu
+    /// der Hauptquelltext; False ohne geladenes Projekt. Threadsicher, liest keine Dateien.</summary>
+    function RuleProject(out AProject: TRuleProject; out AMainSource: string): Boolean;
+    /// <summary>Art, Test-Projekt und Formulardateien von AProject aus dem Hauptquelltext AMainSource; liest
+    /// Dateien, deshalb außerhalb von Sperren aufrufen.</summary>
+    class procedure CompleteRuleProject(var AProject: TRuleProject; const AMainSource: string;
+      const AReadText: TRuleProjectReadText); static;
+    /// <summary>Projekt geladen und Index fertig (#1102, #1112)? Sonst der Grund in AReason. Ein Arbeitsbereich
+    /// ohne geladenes Projekt kann Verwendungen enthalten, die keiner kennt. Threadsicher.</summary>
+    function RuleReady(out AReason: string): Boolean;
     /// <summary>Vor Load setzen (#46): selectBuild merkt die Wahl dort, der erste Indexaufbau übernimmt sie.</summary>
     property Selection: TProjectSelection read FSelection write FSelection;
     /// <summary>Feste Projektdatei oder die des geladenen Projekts; '' ohne Projekt. Threadsicher.</summary>
@@ -296,6 +330,8 @@ uses
   Atlas.Common.Index.Adapters.DiskFileSystem,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Index.CacheHousekeeping,
+  Atlas.Common.Rules.Builtin.RtlTypePatterns,
+  Atlas.Common.Rules.Builtin.FormFields,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Shell.Platform,
   Shell.Bootstrap;
@@ -513,6 +549,7 @@ begin
   FRetiredResolvers := TObjectList<TUnitResolver>.Create(True);
   FRetiredLocators := TObjectList<TPackageLocator>.Create(True);
   FLastIndexMs := -1;
+  FCacheRoot := TIndexCacheDirectory.DefaultRoot;
   FConfiguration := TLspConfiguration.Create(AStore, ATransport,
     function(const AFileName: string; out AText: string): Boolean
     begin
@@ -768,11 +805,6 @@ begin
   end;
 end;
 
-function TShellWorkspace.UsagesOf(const AFileName: string; out AUsages: TArray<TIndexUsage>): Boolean;
-begin
-  Result := FIndexService.UsagesOf(AFileName, AUsages);
-end;
-
 procedure TShellWorkspace.Activate;
 begin
   if not FDeferred or FActivated then
@@ -866,16 +898,16 @@ begin
     // Im Log nur Anzahlen, keine Pfade (anonymes Server-Log).
     if ASettings.IndexRemoveOrphans then
     begin
-      Removed := TIndexCacheDirectory.RemoveOrphans(TIndexCacheDirectory.DefaultRoot, Keep);
+      Removed := TIndexCacheDirectory.RemoveOrphans(FCacheRoot, Keep);
       if Removed > 0 then
         FLogger.Info(Format('%d verwaiste Index-Caches gelöscht (Projekt nicht mehr vorhanden)', [Removed]));
     end;
-    Removed := TIndexCacheDirectory.RemoveUnused(TIndexCacheDirectory.DefaultRoot, ASettings.IndexCacheMaxAgeDays,
+    Removed := TIndexCacheDirectory.RemoveUnused(FCacheRoot, ASettings.IndexCacheMaxAgeDays,
       Keep);
     if Removed > 0 then
       FLogger.Info(Format('%d Index-Caches gelöscht (länger als %d Tage nicht benutzt)',
         [Removed, ASettings.IndexCacheMaxAgeDays]));
-    Removed := TIndexCacheDirectory.Cleanup(TIndexCacheDirectory.DefaultRoot,
+    Removed := TIndexCacheDirectory.Cleanup(FCacheRoot,
       TIndexCacheHousekeeping.MaxBytesOf(ASettings.IndexCacheMaxMb), Keep);
     if Removed > 0 then
       FLogger.Info(Format('%d alte Index-Caches gelöscht (Höchstgröße %d MB)', [Removed, ASettings.IndexCacheMaxMb]));
@@ -1202,6 +1234,165 @@ begin
   end;
 end;
 
+function TShellWorkspace.RuleServices: TRuleServices;
+var
+  Locator: TPackageLocator;
+  Context: TIdeProjectContext;
+begin
+  Result := Default(TRuleServices);
+  Result.Index := FIndex;
+  Result.EnsureUnit :=
+    function(const AUnitName: string): Boolean
+    begin
+      Result := EnsureUnit(AUnitName);
+    end;
+  Result.Namespaces := Namespaces;
+  // Unit-Suche wie beim Compiler für uses-unit-not-found (#1016).
+  Result.Units := UnitLookup;
+  // requires-Packages für implicit-package-import (#46); der Locator lebt so lange wie der Arbeitsbereich.
+  // Nicht gefundene Packages sind unbekannt, damit die Regel still bleibt statt falsch zu melden.
+  Locator := PackageLocator;
+  if Locator <> nil then
+    Result.PackageProvides :=
+      function(const APackage, AUnitName: string): TRulePackageAnswer
+      var
+        Contains: Boolean;
+      begin
+        if not Locator.Provides(APackage, AUnitName, Contains) then
+          Result := TRulePackageAnswer.Unknown
+        else if Contains then
+          Result := TRulePackageAnswer.Yes
+        else
+          Result := TRulePackageAnswer.No;
+      end;
+  // Präfixe der Projektdatei .atlas für naming-prefix und die Korrektur von shadowed-name (#1111).
+  if (FIdeProjects <> nil) and (ProjectFileName <> '') and FIdeProjects.Find(ProjectFileName, Context) then
+    Result.Naming := Context.RuleNaming;
+end;
+
+class function TShellWorkspace.RuleProjectOf(const AProject: TProjectInfo; const AFileName: string;
+  const AReadText: TRuleProjectReadText): TCheckProject;
+var
+  Member: Boolean;
+  ProjectUnit: TProjectUnit;
+  Pair: TPair<string, string>;
+  ConsoleTarget, MainText: string;
+begin
+  Result := Default(TCheckProject);
+  Result.FileName := AFileName;
+  // Anwendungsart für writeln-in-gui-app (#926) und queue-nil-in-package (#943), nur für Dateien des Projekts.
+  if AProject.MainSource = '' then
+    Exit;
+  Member := SameText(AProject.MainSource, AFileName);
+  for ProjectUnit in AProject.Units do
+    if SameText(ProjectUnit.FileName, AFileName) then
+      Member := True;
+  ConsoleTarget := '';
+  for Pair in AProject.Properties do
+    if SameText(Pair.Key, 'DCC_ConsoleTarget') then
+      ConsoleTarget := Pair.Value;
+  if Member and AReadText(AProject.MainSource, MainText) then
+  begin
+    Result.Application := TWritelnInGuiAppRule.ApplicationKind(ConsoleTarget, MainText);
+    Result.Name := ChangeFileExt(ExtractFileName(AProject.MainSource), '');
+    // Reihenfolge von Application.CreateForm für form-access-before-create (#956).
+    Result.AutoCreateForms := TFormAccessBeforeCreateRule.AutoCreatedForms(MainText);
+    // .dpr für die Korrektur von form-autocreate-and-manual (#1055).
+    Result.ProjectMainSource := AProject.MainSource;
+  end;
+end;
+
+class function TShellWorkspace.RuleProjectOf(const AProjects: TArray<TProjectInfo>; const AFileName: string;
+  const AReadText: TRuleProjectReadText): TCheckProject;
+var
+  Projects: TArray<TCheckProject>;
+  Project: TProjectInfo;
+begin
+  Projects := nil;
+  for Project in AProjects do
+    Projects := Projects + [RuleProjectOf(Project, AFileName, AReadText)];
+  Result := MergeRuleProjects(Projects, AFileName);
+end;
+
+class function TShellWorkspace.MergeRuleProjects(const AProjects: TArray<TCheckProject>;
+  const AFileName: string): TCheckProject;
+var
+  Project: TCheckProject;
+  Found: Boolean;
+begin
+  Result := Default(TCheckProject);
+  Result.FileName := AFileName;
+  Found := False;
+  for Project in AProjects do
+  begin
+    // Ohne .dpr gehört die Datei nicht zu diesem Projekt (RuleProjectOf).
+    if Project.ProjectMainSource = '' then
+      Continue;
+    if not Found then
+    begin
+      Result := Project;
+      Result.FileName := AFileName;
+      Found := True;
+    end
+    else if Project.Application <> Result.Application then
+      Result.Application := TRuleApplicationKind.Unknown;
+  end;
+end;
+
+function TShellWorkspace.RuleProject(out AProject: TRuleProject; out AMainSource: string): Boolean;
+var
+  Info: TProjectInfo;
+begin
+  AProject := Default(TRuleProject);
+  AMainSource := '';
+  Result := Project(Info);
+  if not Result then
+    Exit;
+  AProject.FileName := ProjectFileName;
+  AProject.Sources := ProjectFiles;
+  AMainSource := Info.MainSource;
+end;
+
+class procedure TShellWorkspace.CompleteRuleProject(var AProject: TRuleProject; const AMainSource: string;
+  const AReadText: TRuleProjectReadText);
+var
+  Source, Text: string;
+begin
+  if AReadText(AMainSource, Text) then
+  begin
+    AProject.Kind := TRuleProjectFiles.KindOfSource(AMainSource, Text);
+    AProject.IsTest := TRuleProjectFiles.IsTestSource(Text);
+  end
+  else if SameText(ExtractFileExt(AMainSource), '.dpk') then
+    AProject.Kind := TRuleProjectKind.Package;
+  for Source in AProject.Sources do
+    if SameText(ExtractFileExt(Source), '.pas') then
+    begin
+      if TFile.Exists(ChangeFileExt(Source, '.dfm')) then
+        AProject.Forms := AProject.Forms + [ChangeFileExt(Source, '.dfm')]
+      else if TFile.Exists(ChangeFileExt(Source, '.fmx')) then
+        AProject.Forms := AProject.Forms + [ChangeFileExt(Source, '.fmx')];
+    end;
+end;
+
+function TShellWorkspace.RuleReady(out AReason: string): Boolean;
+var
+  Info: TProjectInfo;
+begin
+  AReason := '';
+  if ProjectPending or not Project(Info) then
+  begin
+    AReason := 'Projekte werden geladen';
+    Exit(False);
+  end;
+  if IndexLoading >= 0 then
+  begin
+    AReason := 'Index wird aufgebaut';
+    Exit(False);
+  end;
+  Result := True;
+end;
+
 function TShellWorkspace.GetPackageLocator: TPackageLocator;
 begin
   TMonitor.Enter(FLock);
@@ -1381,7 +1572,7 @@ end;
 
 procedure TShellWorkspace.StartIndex(const ASettings: TServerSettings);
 var
-  ProjectFile, Signature, State, CacheFile, CacheOrigin: string;
+  mProjectFile, Signature, State, CacheFile, CacheOrigin: string;
   Installation: ILibraryPathProvider;
   Options: TDprojOptions;
   Project: TProjectInfo;
@@ -1411,15 +1602,15 @@ begin
       [FName]));
     Exit;
   end;
-  ProjectFile := FindProjectFile(ASettings);
-  if ProjectFile = '' then
+  mProjectFile := FindProjectFile(ASettings);
+  if mProjectFile = '' then
     Exit;
   // In der IDE bestimmt die IDE Konfiguration, Plattform, Optionen und Delphi-Version (#396).
   Context := Default(TIdeProjectContext);
-  HasContext := (FIdeProjects <> nil) and FIdeProjects.Find(ProjectFile, Context);
+  HasContext := (FIdeProjects <> nil) and FIdeProjects.Find(mProjectFile, Context);
   // Konfiguration vor ProjectVersion der .dproj vor neuester Installation (#47).
   try
-    ProjectVersion := TDelphiVersions.ProjectVersionOf(TFileEncoding.LoadText(ProjectFile));
+    ProjectVersion := TDelphiVersions.ProjectVersionOf(TFileEncoding.LoadText(mProjectFile));
   except
     on Exception do
       ProjectVersion := '';
@@ -1457,7 +1648,7 @@ begin
     begin
       Result := FileExists(AFileName);
     end;
-  RestoreBuild(ProjectFile);
+  RestoreBuild(mProjectFile);
   Options := Default(TDprojOptions);
   Options.Config := ASettings.Config;
   Options.Platform := ASettings.Platform;
@@ -1478,7 +1669,7 @@ begin
   if Installation <> nil then
     Options.Variables := Installation.Variables;
   try
-    Project := TDprojReader.Load(ProjectFile, Options);
+    Project := TDprojReader.Load(mProjectFile, Options);
     // Gemerkte Wahl (#46), die es im Projekt nicht mehr gibt: mit den Vorgaben weiter.
     if DropUnknownBuild(Project) then
     begin
@@ -1488,12 +1679,12 @@ begin
         Options.Config := Context.Configuration;
       if HasContext and (Context.Platform <> '') then
         Options.Platform := Context.Platform;
-      Project := TDprojReader.Load(ProjectFile, Options);
+      Project := TDprojReader.Load(mProjectFile, Options);
     end;
   except
     on E: EProjectError do
     begin
-      FLogger.Error(Format('Projekt %s nicht lesbar: %s', [ProjectFile, E.Message]));
+      FLogger.Error(Format('Projekt %s nicht lesbar: %s', [mProjectFile, E.Message]));
       Exit;
     end;
   end;
@@ -1594,7 +1785,7 @@ begin
   PackageFolders := nil;
   if Assigned(FOnPackageFolders) then
     PackageFolders := FOnPackageFolders();
-  Locator := TPackageLocator.Create(PackageFolders + [ExtractFileDir(ProjectFile)] + Project.SearchPaths +
+  Locator := TPackageLocator.Create(PackageFolders + [ExtractFileDir(mProjectFile)] + Project.SearchPaths +
     CompilerLibraryPaths);
   TMonitor.Enter(FLock);
   try
@@ -1651,10 +1842,10 @@ begin
       Result := Resolver.Resolve(AUnitName);
     end;
   // Ablage je IDE-Version und Projekt (#492): %LOCALAPPDATA%\Atlas\Index\<Version>\<Projekt-Hash>.
-  CacheFile := TIndexCacheDirectory.FileFor(TIndexCacheDirectory.DefaultRoot, Version, Signature);
+  CacheFile := TIndexCacheDirectory.FileFor(FCacheRoot, Version, Signature);
   Request.CacheFile := CacheFile;
   // RTL/VCL/FMX einmal je Compilerversion und Plattform, geteilt mit allen Projekten (#492, #647).
-  Request.LibraryCacheFile := TIndexCacheDirectory.LibraryFileFor(TIndexCacheDirectory.DefaultRoot, Version,
+  Request.LibraryCacheFile := TIndexCacheDirectory.LibraryFileFor(FCacheRoot, Version,
     TIndexProjectFiles.LibrarySignature(Project, Version));
   Request.Usages := ASettings.IndexUsages;
   // Herkunft für das Aufräumen (#905): die Projektdatei, ohne sie der Arbeitsordner.
@@ -1698,7 +1889,7 @@ begin
     TMonitor.Exit(FLock);
   end;
   FLogger.Info(Format('Symbolindex für %s (%s, %s): %d Projektdateien, %d Units der Suchpfade, %d der Bibliothek, Cache %s',
-    [ProjectFile, Project.Config, Project.Platform, Length(Request.Files), Length(Request.SearchFiles),
+    [mProjectFile, Project.Config, Project.Platform, Length(Request.Files), Length(Request.SearchFiles),
      Length(Request.LibraryFiles), CacheFile]));
   IndexEvent(Format('index project#%d start files %d search %d library %d cache %s',
     [FPriority, Length(Request.Files), Length(Request.SearchFiles), Length(Request.LibraryFiles),

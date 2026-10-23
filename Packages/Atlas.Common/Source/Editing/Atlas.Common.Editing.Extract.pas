@@ -843,6 +843,8 @@ begin
       Result := ANode.Name;
     TSyntaxKind.Call:
       Result := ANode.Name;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   if StartsText('Get', Result) and (Length(Result) > 3) then
     Result := Copy(Result, 4, MaxInt);
@@ -1054,6 +1056,8 @@ begin
       Result := Parent[0] = ANode;
     TSyntaxKind.RepeatStatement:
       Result := Parent[Parent.ChildCount - 1] = ANode;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

@@ -17,7 +17,6 @@ Hier stehen Architekturentscheidungen mit Kontext, Entscheidung und Folgen. Eine
 | [0011](0011-willkommensseite.md) | Atlas-Bereiche als Plugins der IDE-Willkommensseite, Layout über die Registry | Teilweise abgelöst durch 0014 |
 | [0012](0012-gemeinsamer-text-code.md) | Plugin ohne Atlas.Common; gemeinsamer Code in Atlas.Text | Angenommen |
 | [0013](0013-linux-bau.md) | AtlasServer unter Linux mit Free Pascal für Cloud-Sitzungen | Angenommen |
-
 | [0014](0014-willkommensseite-nur-fenster.md) | Atlas-Willkommensseite nur im Fenster „Atlas-Start“ | Angenommen |
 
 ## Vorlage

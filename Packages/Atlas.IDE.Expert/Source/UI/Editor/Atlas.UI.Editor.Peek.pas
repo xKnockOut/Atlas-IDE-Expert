@@ -256,31 +256,31 @@ end;
 
 procedure TAtlasPeekWindow.PaintList;
 var
-  Width, Height, Index, Top, Half: Integer;
+  mWidth, mHeight, Index, mTop, Half: Integer;
   Area, Line: TRect;
   Entry: TAtlasPeekEntry;
   Place: string;
 begin
-  Width := ListWidth;
-  if Width = 0 then
+  mWidth := ListWidth;
+  if mWidth = 0 then
     Exit;
-  Height := EntryHeight;
-  Area := Rect(0, HeaderHeight + 1, Width, ClientHeight);
+  mHeight := EntryHeight;
+  Area := Rect(0, HeaderHeight + 1, mWidth, ClientHeight);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Gutter);
   Canvas.FillRect(Area);
   Canvas.Pen.Color := ToColor(Colors.Line);
-  Canvas.MoveTo(Width, Area.Top);
-  Canvas.LineTo(Width, ClientHeight);
+  Canvas.MoveTo(mWidth, Area.Top);
+  Canvas.LineTo(mWidth, ClientHeight);
   Canvas.Font.Assign(UIFont);
   Half := Canvas.TextHeight('Wg');
   // Die gewählte Zeile bleibt sichtbar: bei langen Listen weiterschieben.
-  Top := 0;
-  if (FView.Selected + 1) * Height > Area.Height then
-    Top := FView.Selected - Area.Height div Height + 1;
-  for Index := Top to FView.Count - 1 do
+  mTop := 0;
+  if (FView.Selected + 1) * mHeight > Area.Height then
+    mTop := FView.Selected - Area.Height div mHeight + 1;
+  for Index := mTop to FView.Count - 1 do
   begin
-    Line := Rect(0, Area.Top + (Index - Top) * Height, Width, Area.Top + (Index - Top + 1) * Height);
+    Line := Rect(0, Area.Top + (Index - mTop) * mHeight, mWidth, Area.Top + (Index - mTop + 1) * mHeight);
     if Line.Top >= ClientHeight then
       Break;
     Entry := FView.Entry(Index);
@@ -311,7 +311,7 @@ procedure TAtlasPeekWindow.PaintCode;
 var
   Area, Row, Number: TRect;
   Rows: TArray<TAtlasPeekRow>;
-  Height, Index, Gutter, X, Thumb, ThumbTop: Integer;
+  mHeight, Index, Gutter, X, Thumb, ThumbTop: Integer;
   Styled: TAtlasStyledText;
   Value: string;
 begin
@@ -323,13 +323,13 @@ begin
     Exit;
   PrepareTokens;
   Rows := FView.Current.Rows;
-  Height := RowHeight;
+  mHeight := RowHeight;
   Canvas.Font.Assign(Font);
   Gutter := Canvas.TextWidth('99999') + Scale(Pad);
   for Index := FView.Top to Min(High(Rows), FView.Top + FView.PageRows - 1) do
   begin
-    Row := Rect(Area.Left, Area.Top + (Index - FView.Top) * Height, Area.Right, Area.Top + (Index - FView.Top + 1) *
-      Height);
+    Row := Rect(Area.Left, Area.Top + (Index - FView.Top) * mHeight, Area.Right, Area.Top + (Index - FView.Top + 1) *
+      mHeight);
     if Rows[Index].Target then
     begin
       Canvas.Brush.Style := bsSolid;

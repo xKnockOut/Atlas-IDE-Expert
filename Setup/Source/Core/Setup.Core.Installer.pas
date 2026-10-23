@@ -248,22 +248,22 @@ end;
 function TSetupInstaller.FindIdes(const AVersions: TArray<string>;
   const ARootOf: TFunc<string, string>): TArray<TSetupIde>;
 var
-  Version, Root: string;
+  mVersion, Root: string;
 begin
   Result := nil;
-  for Version in AVersions do
+  for mVersion in AVersions do
   begin
-    if not TSetupIdes.IsVersionKey(Version) then
+    if not TSetupIdes.IsVersionKey(mVersion) then
       Continue;
-    Root := ARootOf(Version);
+    Root := ARootOf(mVersion);
     if Root <> '' then
-      AddIde(Result, Version, Root);
+      AddIde(Result, mVersion, Root);
   end;
 end;
 
 function TSetupInstaller.Detect: TArray<TSetupIde>;
 var
-  MachineKey, Version, Root: string;
+  MachineKey, mVersion, Root: string;
   Ide: TSetupIde;
   Found: TArray<TSetupIde>;
 begin
@@ -274,15 +274,15 @@ begin
       Result := FSystem.ReadString(TSetupIdes.BdsKey + '\' + AVersion, 'RootDir');
     end);
   for MachineKey in TSetupIdes.MachineBdsKeys do
-    for Version in FSystem.MachineSubKeys(MachineKey) do
+    for mVersion in FSystem.MachineSubKeys(MachineKey) do
     begin
-      if not TSetupIdes.IsVersionKey(Version) or IsKnown(Result, Version) then
+      if not TSetupIdes.IsVersionKey(mVersion) or IsKnown(Result, mVersion) then
         Continue;
-      Root := FSystem.MachineReadString(MachineKey + '\' + Version, 'RootDir');
+      Root := FSystem.MachineReadString(MachineKey + '\' + mVersion, 'RootDir');
       if Root = '' then
         Continue;
       Found := nil;
-      AddIde(Found, Version, Root);
+      AddIde(Found, mVersion, Root);
       for Ide in Found do
         Result := Result + [Ide];
     end;
@@ -444,15 +444,15 @@ end;
 
 procedure TSetupInstaller.RemoveRegistrations;
 var
-  Version, Key, Suffix: string;
+  mVersion, Key, Suffix: string;
   Removed: Boolean;
 begin
   // Alle Versionen, auch nicht unterstützte: dort könnte eine Hand-Installation stehen.
-  for Version in FSystem.SubKeys(TSetupIdes.BdsKey) do
+  for mVersion in FSystem.SubKeys(TSetupIdes.BdsKey) do
   begin
-    if not TSetupIdes.IsVersionKey(Version) then
+    if not TSetupIdes.IsVersionKey(mVersion) then
       Continue;
-    Key := TSetupIdes.BdsKey + '\' + Version;
+    Key := TSetupIdes.BdsKey + '\' + mVersion;
     Removed := False;
     for Suffix in PackageListSuffixes do
     begin
@@ -462,7 +462,7 @@ begin
         Removed := True;
     end;
     if Removed then
-      Report(TSetupStepKind.RegistrationRemoved, TSetupIdes.Lookup(Version).ProductName);
+      Report(TSetupStepKind.RegistrationRemoved, TSetupIdes.Lookup(mVersion).ProductName);
   end;
 end;
 

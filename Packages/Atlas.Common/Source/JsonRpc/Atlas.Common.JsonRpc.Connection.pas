@@ -480,12 +480,12 @@ end;
 function TJsonRpcConnection.CreateResponder: TJsonRpcResponder;
 var
   Transport: IJsonRpcTransport;
-  OnError: TJsonRpcErrorEvent;
+  mOnError: TJsonRpcErrorEvent;
 begin
   // Ohne Self: ein Worker kann die Verbindung überleben, wenn er beim Beenden
   // nicht rechtzeitig fertig wird.
   Transport := FTransport;
-  OnError := FOnError;
+  mOnError := FOnError;
   Result :=
     procedure(const AResponse: TJSONObject)
     begin
@@ -497,9 +497,9 @@ begin
         end;
       except
         on E: Exception do
-          if Assigned(OnError) then
+          if Assigned(mOnError) then
             try
-              OnError(E);
+              mOnError(E);
             except
               // Ein Fehler beim Melden darf den Worker nicht beenden.
             end;

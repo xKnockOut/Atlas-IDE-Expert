@@ -325,7 +325,7 @@ var
   Index: Integer;
   Row, Part: TRect;
   Item: IAtlasStatusItem;
-  Text: string;
+  mText: string;
 begin
   Canvas.Font := Font;
   Canvas.Brush.Color := ToColor(FColors.Surface);
@@ -337,8 +337,8 @@ begin
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(FColors.Text);
   Part.Left := Part.Left + ScaleValue(16);
-  Text := TAtlasStatusSummary.FieldCaption;
-  DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+  mText := TAtlasStatusSummary.FieldCaption;
+  DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
   Canvas.Font.Style := [];
   Canvas.Pen.Color := ToColor(FColors.Line);
   Canvas.MoveTo(0, HeaderHeight - ScaleValue(3));
@@ -360,8 +360,8 @@ begin
       Canvas.Font.Color := ToColor(FColors.Accent)
     else
       Canvas.Font.Color := ToColor(FColors.Text);
-    Text := Item.Text;
-    DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+    mText := Item.Text;
+    DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
   end;
   Canvas.Pen.Color := ToColor(FColors.Line);
   Canvas.MoveTo(0, ClientHeight - ButtonsHeight);

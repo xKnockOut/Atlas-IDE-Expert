@@ -10,6 +10,9 @@
 // Sicherheit (#99): mcp.disabledTools aus atlas.json, --restricted schaltet
 // schreibende Werkzeuge ab, schreibende Aufrufe stehen im Log. Ungespeicherte
 // Dateien der IDE meldet das Plugin in %LOCALAPPDATA%\Atlas\editor-dirty-<pid>.json.
+// Prüfregeln (get_diagnostics, check_code, explain_finding, apply_code_action)
+// bekommen den Symbolindex und die Projektdienste über TShellWorkspaceGroup wie
+// im Server (#1112); solange der Index lädt, sagt get_diagnostics das dazu.
 
 interface
 
@@ -71,6 +74,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Checker,
+  Atlas.Common.Rules.Scopes,
   Atlas.Common.Rules.Prompt,
   Atlas.Common.Rules.Conventions,
   Atlas.Common.Index.Adapters.DiskFileSystem,
@@ -79,30 +83,12 @@ uses
   Atlas.Common.Index.Processes,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Projects.Contract,
-  System.Generics.Collections,
   Shell.Platform,
   Atlas.Common.Diagnostics.Anonymizer,
   Shell.Workspace,
+  Shell.WorkspaceGroup,
   Shell.Bootstrap,
   Shell.Diagnostics;
-
-type
-  /// <summary>Nimmt die LSP-Benachrichtigungen des Arbeitsbereichs (Fortschritt,
-  /// logMessage) auf und verwirft sie; im MCP-Modus gibt es keinen LSP-Client.</summary>
-  TSilentTransport = class(TInterfacedObject, IJsonRpcTransport)
-  public
-    function ReadMessage: TJSONObject;
-    procedure WriteMessage(const AMessage: TJSONObject);
-  end;
-
-function TSilentTransport.ReadMessage: TJSONObject;
-begin
-  raise EJsonRpcTransportClosed.Create('Kein LSP-Client im MCP-Modus');
-end;
-
-procedure TSilentTransport.WriteMessage(const AMessage: TJSONObject);
-begin
-end;
 
 /// <summary>Datei des Plugins (editor-dirty-&lt;pid&gt;.json), UTF-8 mit oder ohne BOM. Über TFileEncoding: teilt
 /// Löschen, damit das Plugin sie währenddessen atomar ersetzen kann (Bericht M5, N3).</summary>
@@ -417,12 +403,26 @@ begin
     end;
 end;
 
+/// <summary>AGroup.RuleProject als Methodenreferenz (#1112), aus denselben Gründen wie CheckSourceOf in eigener
+/// Routine.</summary>
+function CheckProjectOf(AGroup: TShellWorkspaceGroup): TCheckProjectFunc;
+begin
+  Result :=
+    function(const AFileName: string): TCheckProject
+    begin
+      Result := AGroup.RuleProject(AFileName);
+    end;
+end;
+
 procedure RegisterTools(AServer: TMcpServer; ATools: TMcpIndexTools; ACode: TMcpCodeTools;
-  AWorkspace: TShellWorkspace; const ARoot: string; AGuard: TMcpPathGuard; AEdit: TMcpEditTools);
+  AGroup: TShellWorkspaceGroup; const ARoot: string; AGuard: TMcpPathGuard; AEdit: TMcpEditTools);
 var
   CheckSource: TCheckSourceFunc;
+  CheckProject: TCheckProjectFunc;
 begin
-  CheckSource := CheckSourceOf(AWorkspace);
+  CheckSource := CheckSourceOf(AGroup.Main);
+  // Symbolindex und Projektdienste für die Prüfregeln wie im Server (#1112).
+  CheckProject := CheckProjectOf(AGroup);
   AServer.AddTool('find_symbol',
     'Sucht Delphi-Symbole (Typen, Methoden, Felder, Konstanten …) im Projekt und in RTL/VCL. ' +
     'Liefert Art, Typ, Unit und Datei:Zeile. Name einfach ("Execute") oder qualifiziert ("TMyForm.Execute"); ' +
@@ -466,7 +466,7 @@ begin
     TMcpServer.StringSchema(['name'], ['Symbolname, am besten qualifiziert (TFoo.Bar)']),
     function(const AArguments: TJSONObject): string
     begin
-      ACode.Namespaces := AWorkspace.Namespaces;
+      ACode.Namespaces := AGroup.Main.Namespaces;
       Result := ACode.References(TMcpServer.RequiredString(AArguments, 'name'));
     end);
   AServer.AddTool('get_call_hierarchy',
@@ -475,7 +475,7 @@ begin
       ['Methode oder Routine, z. B. TFoo.Bar', 'incoming, outgoing oder both (Standard)'], 1),
     function(const AArguments: TJSONObject): string
     begin
-      ACode.Namespaces := AWorkspace.Namespaces;
+      ACode.Namespaces := AGroup.Main.Namespaces;
       Result := ACode.CallHierarchy(TMcpServer.RequiredString(AArguments, 'name'),
         TMcpCodeTools.ParseDirection(TMcpServer.OptionalString(AArguments, 'direction')));
     end);
@@ -615,7 +615,7 @@ begin
         raise EMcpToolError.Create('Argumente "line" und "column" fehlen');
       if not AArguments.TryGetValue<Boolean>('withParameters', WithParameters) then
         WithParameters := False;
-      ACode.Namespaces := AWorkspace.Namespaces;
+      ACode.Namespaces := AGroup.Main.Namespaces;
       Result := ACode.QualifiedName(FileName, Line, Column, WithParameters);
     end);
   AServer.AddTool('get_diagnostics',
@@ -623,18 +623,22 @@ begin
     TMcpServer.StringSchema(['file'], ['Pfad einer .pas-Datei; leer = alle Projektdateien'], 0),
     function(const AArguments: TJSONObject): string
     var
-      FileName: string;
+      FileName, Reason: string;
       Files: TArray<string>;
     begin
       FileName := TMcpServer.OptionalString(AArguments, 'file');
       if FileName <> '' then
         Files := [AGuard.Resolve(FileName)]
       else
-        Files := AWorkspace.ProjectFiles;
+        Files := AGroup.Main.ProjectFiles;
       if Length(Files) = 0 then
         raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
-      Result := TMcpCodeTools.Diagnostics(BuiltinRules, AWorkspace.Configuration.Settings, ARoot, Files,
-        ReadSourceText, CheckSource);
+      Result := TMcpCodeTools.Diagnostics(BuiltinRules, AGroup.Main.Configuration.Settings, ARoot, Files,
+        ReadSourceText, CheckSource, CheckProject);
+      // Solange der Index lädt, sehen Regeln, die Typen anderer Units brauchen, noch nicht alles (#1112).
+      if not AGroup.Ready(Reason) then
+        Result := Format('Hinweis: %s; Befunde, die den Symbolindex brauchen, können noch fehlen.',
+          [Reason]) + sLineBreak + Result;
     end);
   AServer.AddTool('get_metrics',
     'Code-Metriken (#66) je Methode: Länge in Codezeilen, Verschachtelungstiefe, zyklomatische und kognitive ' +
@@ -655,10 +659,10 @@ begin
       if FileName <> '' then
         Files := [AGuard.Resolve(FileName)]
       else
-        Files := AWorkspace.ProjectFiles;
+        Files := AGroup.Main.ProjectFiles;
       if Length(Files) = 0 then
         raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
-      Result := TMcpCodeTools.Metrics(AWorkspace.Configuration.Settings, ARoot, Files, ReadSourceText,
+      Result := TMcpCodeTools.Metrics(AGroup.Main.Configuration.Settings, ARoot, Files, ReadSourceText,
         SameText(Format, 'json'));
     end);
   AServer.AddTool('get_todos',
@@ -696,10 +700,10 @@ begin
       if FileName <> '' then
         Files := [AGuard.Resolve(FileName)]
       else
-        Files := AWorkspace.ProjectFiles;
+        Files := AGroup.Main.ProjectFiles;
       if Length(Files) = 0 then
         raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
-      Result := TMcpCodeTools.Todos(AWorkspace.Configuration.Settings, ARoot, Files, ReadSourceText, Filter,
+      Result := TMcpCodeTools.Todos(AGroup.Main.Configuration.Settings, ARoot, Files, ReadSourceText, Filter,
         SameText(Format, 'json'));
     end);
   AServer.AddTool('check_code',
@@ -723,7 +727,7 @@ begin
         StartLine := 0;
       if not AArguments.TryGetValue<Integer>('endLine', EndLine) then
         EndLine := StartLine;
-      Result := ACode.CheckCode(BuiltinRules, AWorkspace.Configuration.Settings, ARoot, FileName, Text,
+      Result := ACode.CheckCode(BuiltinRules, AGroup.Main.Configuration.Settings, ARoot, FileName, Text,
         StartLine, EndLine);
     end);
   AServer.AddTool('get_dfm_info',
@@ -759,6 +763,7 @@ begin
       Line: Integer;
       Finding: TRuleFinding;
       Catalog: TRuleCatalog;
+      Scopes: TFindingScopes;
     begin
       FileName := AGuard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
       if not AArguments.TryGetValue<Integer>('line', Line) then
@@ -772,8 +777,8 @@ begin
       Result := '';
       Catalog := TFindingPrompt.GermanCatalog;
       try
-        for Finding in TFileChecker.CheckText(BuiltinRules, AWorkspace.Configuration.Settings, RelativePath, Text,
-          AWorkspace.CheckSource(FileName)) do
+        for Finding in TFileChecker.CheckText(BuiltinRules, AGroup.Main.Configuration.Settings, RelativePath, Text,
+          CheckProject(FileName), AGroup.Main.CheckSource(FileName), Scopes) do
           if (Finding.Range.StartPos.Line = Line - 1) and ((RuleId = '') or SameText(RuleId, Finding.RuleId)) then
           begin
             if Result <> '' then
@@ -804,7 +809,7 @@ begin
       FileName := AGuard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
       if not AArguments.TryGetValue<Integer>('line', Line) or not AArguments.TryGetValue<Integer>('column', Column) then
         raise EMcpToolError.Create('Argumente "line" und "column" fehlen');
-      AEdit.Namespaces := AWorkspace.Namespaces;
+      AEdit.Namespaces := AGroup.Main.Namespaces;
       Result := AEdit.RenameSymbol(FileName, Line, Column, TMcpServer.RequiredString(AArguments, 'newName'),
         DryRunOf(AArguments));
     end, TMcpToolKind.Write);
@@ -825,7 +830,7 @@ begin
       FileName := AGuard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
       if not AArguments.TryGetValue<Integer>('line', Line) then
         raise EMcpToolError.Create('Argument "line" fehlt');
-      Result := AEdit.ApplyCodeAction(BuiltinRules, AWorkspace.Configuration.Settings, ARoot, FileName, Line,
+      Result := AEdit.ApplyCodeAction(BuiltinRules, AGroup.Main.Configuration.Settings, ARoot, FileName, Line,
         TMcpServer.OptionalString(AArguments, 'title'), DryRunOf(AArguments));
     end, TMcpToolKind.Write);
 end;
@@ -857,7 +862,7 @@ class function TMcpShell.Run(const AOptions: TCommandLineOptions): Integer;
 var
   LoggerImpl: TLogger;
   Logger: ILogger;
-  Transport, Silent: IJsonRpcTransport;
+  Transport: IJsonRpcTransport;
   Dispatcher: TJsonRpcDispatcher;
   Connection: TJsonRpcConnection;
   Server: TMcpServer;
@@ -866,21 +871,17 @@ var
   Index: ISymbolIndex;
   Store: IDocumentStore;
   Workspace: TShellWorkspace;
+  // Hauptprojekt und übrige Projekte der Gruppe in einem Index (Plugin-Units hinter dem Testprojekt).
+  Group: TShellWorkspaceGroup;
   Identity: TIndexProcessInfo;
   Guard: TMcpPathGuard;
   Edit: TMcpEditTools;
   Root, Warning: string;
   Anonymizer: ILogAnonymizer;
-  // Weitere Projekte der Gruppe, gleicher Index wie Workspace (Plugin-Units hinter dem Testprojekt).
-  Others: TObjectList<TShellWorkspace>;
-  Other: TShellWorkspace;
-  Main: TProjectInfo;
-  ProjectFile: string;
   AllFiles: TFunc<TArray<string>>;
   EnsureAny: TFunc<string, Boolean>;
   GlobalSettings: string;
 begin
-  Others := TObjectList<TShellWorkspace>.Create(True);
   LoggerImpl := TLogger.Create;
   Logger := LoggerImpl;
   LoggerImpl.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Warning);
@@ -902,15 +903,14 @@ begin
     begin
       Result := TShellPlatform.CanonicalizePath(APath);
     end);
-  Silent := TSilentTransport.Create;
-  Workspace := TShellWorkspace.Create(Root, ExtractFileName(Root), Store, Silent, Logger, Index,
-    'atlas-mcp-index');
+  Group := TShellWorkspaceGroup.Create(Root, Store, Logger, Index, 'atlas-mcp-index', ReadSourceText);
+  Workspace := Group.Main;
   // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62); der MCP-Modus läuft für Claude Code.
   Identity := Default(TIndexProcessInfo);
   Identity.Pid := TShellPlatform.CurrentProcessId;
   Identity.Kind := TIndexProcessInfo.KindMcp;
   Identity.Client := 'Claude Code';
-  Workspace.ProcessIdentity := Identity;
+  Group.ProcessIdentity := Identity;
   // Globale Einstellungen wie im LSP-Server und im Linter (D-08), abschaltbar mit mcp.globalSettings in
   // atlas.json. Load übernimmt sie, damit der Index nur einmal mit den wirksamen Einstellungen startet.
   GlobalSettings := '';
@@ -920,22 +920,13 @@ begin
     Logger.Info('Globale Einstellungen ausgeschaltet (mcp.globalSettings)');
   AllFiles :=
     function: TArray<string>
-    var
-      Item: TShellWorkspace;
     begin
-      Result := Workspace.ProjectFiles;
-      for Item in Others do
-        Result := Result + Item.ProjectFiles;
+      Result := Group.AllFiles;
     end;
   EnsureAny :=
     function(AUnitName: string): Boolean
-    var
-      Item: TShellWorkspace;
     begin
-      Result := Workspace.EnsureUnit(AUnitName);
-      for Item in Others do
-        if not Result then
-          Result := Item.EnsureUnit(AUnitName);
+      Result := Group.EnsureUnit(AUnitName);
     end;
   Tools := TMcpIndexTools.Create(Index, ReadSourceText);
   // Package einer Unit: .dpk unter dem Projektordner, deren contains sie führt.
@@ -981,6 +972,9 @@ begin
   // Regelprüfung mit den Symbolen und Include-Dateien des Projekts (#860).
   Edit.CheckSource := CheckSourceOf(Workspace);
   Code.CheckSource := Edit.CheckSource;
+  // Prüfregeln mit Symbolindex und Projektdiensten wie im Server (#1112).
+  Edit.CheckProject := CheckProjectOf(Group);
+  Code.CheckProject := Edit.CheckProject;
   Edit.Audit :=
     procedure(const AText: string)
     begin
@@ -992,7 +986,7 @@ begin
   try
     Server.Instructions := 'Delphi-Projekt in ' + Root + '. Für Fragen zu Typen, Units und Formularen ' +
       'zuerst diese Werkzeuge nutzen statt Quelldateien vollständig zu lesen.';
-    RegisterTools(Server, Tools, Code, Workspace, Root, Guard, Edit);
+    RegisterTools(Server, Tools, Code, Group, Root, Guard, Edit);
     // Sicherheit (#99).
     Server.Restricted := AOptions.Restricted;
     Server.OnDisabledTools :=
@@ -1027,8 +1021,11 @@ begin
       begin
         Changes := TMcpFreshness.Changes(Index, TDiskIndexFileSystem.Create, AllFiles());
         if Length(Changes) > 0 then
+        begin
           Logger.Info(Format('%d geänderte Dateien nachgeladen, %d Units aktualisiert',
             [Length(Changes), Workspace.ApplyChanges(Changes)]));
+          Group.Invalidate;
+        end;
       end;
     Server.Attach(Dispatcher);
     Connection.OnError :=
@@ -1037,21 +1034,8 @@ begin
         Logger.Error(Format('MCP: %s: %s', [AError.ClassName, AError.Message]));
       end;
     Logger.Info(Format('%s %s im MCP-Modus für %s', [TProductVersion.Name, TProductVersion.Version, Root]));
-    Workspace.Load(GlobalSettings);
-    // Übrige Projekte der Gruppe (index.projectGroup, Standard an): Sonst fehlen z. B. Units, die nur
-    // ein Package enthält, wenn atlas.json auf ein anderes Projekt zeigt.
-    if Workspace.Configuration.Settings.IndexProjectGroup then
-      for ProjectFile in TShellBootstrap.GroupProjects(Root, Logger) do
-      begin
-        if Workspace.Project(Main) and SameText(Main.FileName, ProjectFile) then
-          Continue;
-        Other := TShellWorkspace.Create(ExtractFileDir(ProjectFile), ChangeFileExt(ExtractFileName(ProjectFile), ''),
-          Store, Silent, Logger, Index, Format('atlas-mcp-index-%d', [Others.Count + 1]));
-        Other.ProjectFile := ProjectFile;
-        Other.ProcessIdentity := Identity;
-        Others.Add(Other);
-        Other.Load(GlobalSettings);
-      end;
+    // Mit index.projectGroup auch die übrigen Projekte der Gruppe.
+    Group.Load(GlobalSettings);
     try
       Connection.Run;
       Result := 0;
@@ -1062,11 +1046,8 @@ begin
         Result := 1;
       end;
     end;
-    for Other in Others do
-      Other.Stop;
-    Workspace.Stop;
+    Group.Stop;
   finally
-    Others.Free;
     Connection.Free;
     Dispatcher.Free;
     Server.Free;
@@ -1074,7 +1055,7 @@ begin
     Edit.Free;
     Code.Free;
     Tools.Free;
-    Workspace.Free;
+    Group.Free;
   end;
 end;
 

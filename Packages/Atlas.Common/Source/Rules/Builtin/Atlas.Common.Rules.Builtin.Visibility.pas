@@ -291,6 +291,8 @@ var
           TSyntaxKind.Identifier:
             if (ClassMethod <> nil) and (Node.Name <> '') then
               CheckInstanceMember(Node, ClassMethod);
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         for Index := Node.ChildCount - 1 downto 0 do
           // Kopf der Klassenmethode (Parameter, Ergebnistyp) ist kein Zugriff.

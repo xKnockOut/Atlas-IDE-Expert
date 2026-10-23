@@ -602,6 +602,8 @@ begin
           ACanvas.LineTo(Center, Top + Size - 1 - Head);
         end;
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

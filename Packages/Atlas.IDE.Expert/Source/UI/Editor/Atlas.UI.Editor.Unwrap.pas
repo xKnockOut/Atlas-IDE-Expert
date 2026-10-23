@@ -173,10 +173,10 @@ end;
 
 function TAtlasUnwrapWindow.Layout(ADraw: Boolean): TSize;
 var
-  X, Y, TextHeight, Width, Index: Integer;
-  Text, Line, Note, Accept, Cancel: string;
+  X, Y, TextHeight, mWidth, Index: Integer;
+  mText, Line, Note, Accept, Cancel: string;
   Entry: TAtlasUnwrapEntry;
-  Top: Integer;
+  mTop: Integer;
 begin
   Canvas.Font := UIFont;
   TextHeight := Canvas.TextHeight('Wg');
@@ -184,14 +184,14 @@ begin
     Canvas.Brush.Style := bsClear;
   X := Scale(Pad);
   Y := Scale(Pad);
-  Text := Title;
+  mText := Title;
   Canvas.Font.Style := [fsBold];
   if ADraw then
   begin
     Canvas.Font.Color := ToColor(Colors.Text);
-    Canvas.TextOut(X, Y, Text);
+    Canvas.TextOut(X, Y, mText);
   end;
-  Width := X + Canvas.TextWidth(Text);
+  mWidth := X + Canvas.TextWidth(mText);
   Canvas.Font.Style := [];
   SetLength(FRowRects, Length(FEntries));
   for Index := 0 to High(FEntries) do
@@ -202,11 +202,11 @@ begin
     if not FCompact then
     begin
       Y := Y + TextHeight + Scale(RowGap);
-      Top := Y;
+      mTop := Y;
       X := Scale(Pad);
-      Text := EntryCaption(Entry);
+      mText := EntryCaption(Entry);
       if Index = FRow then
-        Text := Marker + Text
+        mText := Marker + mText
       else
         X := X + Canvas.TextWidth(Marker);
       if ADraw then
@@ -217,9 +217,9 @@ begin
           Canvas.Font.Color := ToColor(Colors.Text)
         else
           Canvas.Font.Color := ToColor(Colors.Muted);
-        Canvas.TextOut(X, Y, Text);
+        Canvas.TextOut(X, Y, mText);
       end;
-      Inc(X, Canvas.TextWidth(Text));
+      Inc(X, Canvas.TextWidth(mText));
       Line := Separator + TAtlasStrings.Fmt(TAtlasTextId.UnwrapLine, [Entry.Line + 1]);
       if ADraw then
       begin
@@ -227,8 +227,8 @@ begin
         Canvas.TextOut(X, Y, Line);
       end;
       Inc(X, Canvas.TextWidth(Line));
-      Width := Max(Width, X);
-      FRowRects[Index] := Rect(Scale(Pad), Top, X, Y + TextHeight);
+      mWidth := Max(mWidth, X);
+      FRowRects[Index] := Rect(Scale(Pad), mTop, X, Y + TextHeight);
     end;
     if Note <> '' then
     begin
@@ -239,7 +239,7 @@ begin
         Canvas.Font.Color := ToColor(Colors.Warn);
         Canvas.TextOut(X, Y, Note);
       end;
-      Width := Max(Width, X + Canvas.TextWidth(Note));
+      mWidth := Max(mWidth, X + Canvas.TextWidth(Note));
       if not FCompact then
         FRowRects[Index].Bottom := Y + TextHeight;
     end;
@@ -267,10 +267,10 @@ begin
     Canvas.Font.Color := ToColor(Colors.Accent);
     Canvas.TextOut(X, Y, Cancel);
   end;
-  Width := Max(Width, FCancelRect.Right);
+  mWidth := Max(mWidth, FCancelRect.Right);
   if ADraw then
     Canvas.Brush.Style := bsSolid;
-  Result.cx := Width + Scale(Pad);
+  Result.cx := mWidth + Scale(Pad);
   Result.cy := Y + TextHeight + Scale(Pad);
 end;
 
@@ -278,7 +278,7 @@ procedure TAtlasUnwrapWindow.ShowFor(const AEntries: TArray<TAtlasUnwrapEntry>; 
 var
   Size: TSize;
   Area: TRect;
-  Left, Top: Integer;
+  mLeft, mTop: Integer;
 begin
   FEntries := AEntries;
   FCompact := TAtlasUnwrap.SingleEntry(FEntries);
@@ -286,12 +286,12 @@ begin
   HandleNeeded;
   Size := Layout(False);
   Area := WorkAreaAt(APoint);
-  Left := Min(APoint.X, Area.Right - Size.cx);
-  Top := APoint.Y + Scale(Gap);
-  if Top + Size.cy > Area.Bottom then
-    Top := APoint.Y - Scale(Gap) - Size.cy;
-  ShowAt(Rect(Max(Left, Area.Left), Max(Top, Area.Top), Max(Left, Area.Left) + Size.cx,
-    Max(Top, Area.Top) + Size.cy));
+  mLeft := Min(APoint.X, Area.Right - Size.cx);
+  mTop := APoint.Y + Scale(Gap);
+  if mTop + Size.cy > Area.Bottom then
+    mTop := APoint.Y - Scale(Gap) - Size.cy;
+  ShowAt(Rect(Max(mLeft, Area.Left), Max(mTop, Area.Top), Max(mLeft, Area.Left) + Size.cx,
+    Max(mTop, Area.Top) + Size.cy));
   Announce(Title);
   if FRow >= 0 then
   begin

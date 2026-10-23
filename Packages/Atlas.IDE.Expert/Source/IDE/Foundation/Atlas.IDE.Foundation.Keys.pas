@@ -168,14 +168,14 @@ end;
 
 procedure TAtlasIdeKeyBinding.Rebind(AKey: Word; APriority: Boolean; const AWhat: string);
 var
-  Key: Word;
+  mKey: Word;
 begin
-  Key := AKey;
-  if not TAtlasIdeKeys.Decide(Key, APriority, AWhat) then
-    Key := 0;
-  if (Key = FKey) and ((FIndex >= 0) = (Key <> 0)) then
+  mKey := AKey;
+  if not TAtlasIdeKeys.Decide(mKey, APriority, AWhat) then
+    mKey := 0;
+  if (mKey = FKey) and ((FIndex >= 0) = (mKey <> 0)) then
     Exit;
-  FKey := Key;
+  FKey := mKey;
   if FKey = 0 then
     TAtlasIdeKeys.Unbind(FIndex)
   else

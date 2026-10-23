@@ -34,6 +34,12 @@ type
     procedure TimeRulesCoversEveryRule;
     [Test]
     procedure ReferenceProjectMatchesMarkers;
+    /// <summary>Wie oben mit Symbolindex über alle Units und RTL-Stubs (#1112): ERWARTET-INDEX zählt mit.
+    /// </summary>
+    [Test]
+    procedure ReferenceProjectWithIndexMatchesMarkers;
+    [Test]
+    procedure IndexMarkersOnlyWithIndex;
     [Test]
     procedure MutationsParseAndReportBadLines;
     [Test]
@@ -63,6 +69,11 @@ uses
   Atlas.Common.Rules.GoldenCorpus,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Projects.PackageReader,
+  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
+  Atlas.Tests.RtlStubs,
   System.StrUtils;
 
 function Finding(const ARuleId: string; ALine: Integer): TRuleFinding;
@@ -274,6 +285,73 @@ begin
   for Timing in TGoldenCorpus.TimeRules(Rules, TServerSettings.Default, Texts) do
     System.Writeln(Format('  %s: %.1f ms', [Timing.RuleId, Timing.Milliseconds]));
   Assert.AreEqual('', Problems, 'Golden-Korpus weicht ab:' + Problems);
+end;
+
+procedure TGoldenCorpusTests.IndexMarkersOnlyWithIndex;
+const
+  Text = 'a; // ERWARTET-INDEX: regel-a'#13#10'b; // ERWARTET: regel-b';
+var
+  Markers: TArray<TGoldenMarker>;
+begin
+  Markers := TGoldenCorpus.Markers(Text);
+  Assert.AreEqual(1, Integer(Length(Markers)));
+  Assert.AreEqual('regel-b', Markers[0].RuleId);
+  Markers := TGoldenCorpus.Markers(Text, True);
+  Assert.AreEqual(2, Integer(Length(Markers)));
+  Assert.AreEqual(0, Markers[0].Line);
+  Assert.AreEqual('regel-a', Markers[0].RuleId);
+  Assert.IsTrue(Markers[0].Expected);
+  Assert.AreEqual('regel-b', Markers[1].RuleId);
+  Markers := nil;
+end;
+
+procedure TGoldenCorpusTests.ReferenceProjectWithIndexMatchesMarkers;
+var
+  Folder, FileName, Problems, Line: string;
+  Rules: TArray<IRule>;
+  Rule: IRule;
+  Known, Planned, Files, Texts: TArray<string>;
+  Index: ISymbolIndex;
+  Project: TCheckProject;
+  Scopes: TFindingScopes;
+  Outcome: TGoldenResult;
+  FileIndex: Integer;
+begin
+  // Wie TShellWorkspaceGroup.RuleProject: Die Regeln bekommen den Index über TCheckProject.Services. Ohne
+  // Dateinamen wie der Lauf ohne Index, damit nur der Index den Unterschied macht.
+  Folder := ReferenceFolder;
+  if Folder = '' then
+    Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
+  Rules := BuiltinRules;
+  Known := [SyntaxRuleId];
+  for Rule in Rules do
+    Known := Known + [Rule.Descriptor.Id];
+  Planned := TGoldenCorpus.PlannedIds(ReadSource(TPath.Combine(Folder, 'geplante-regeln.txt')));
+  Index := TSymbolIndex.Create;
+  TRtlStubs.AddTo(Index);
+  Files := nil;
+  Texts := nil;
+  for FileName in TDirectory.GetFiles(TPath.Combine(Folder, 'Source'), '*.pas') do
+  begin
+    Files := Files + [FileName];
+    Texts := Texts + [ReadSource(FileName)];
+    Index.AddUnit(TIndexExtractor.ExtractText(Texts[High(Texts)], FileName, nil));
+  end;
+  Project := Default(TCheckProject);
+  Project.Services.Index := Index;
+  Problems := '';
+  for FileIndex := 0 to High(Files) do
+  begin
+    Outcome := TGoldenCorpus.Compare(ExtractFileName(Files[FileIndex]),
+      TGoldenCorpus.Markers(Texts[FileIndex], True), TFileChecker.CheckText(Rules, TServerSettings.Default,
+      ExtractFileName(Files[FileIndex]), Texts[FileIndex], Project, TCheckSource.Default, Scopes), Known, Planned);
+    for Line in Outcome.Missing + Outcome.FalseAlarms + Outcome.Unknown do
+      Problems := Problems + sLineBreak + Line;
+  end;
+  Files := nil;
+  Texts := nil;
+  Project := Default(TCheckProject);
+  Assert.AreEqual('', Problems, 'Golden-Korpus mit Index weicht ab:' + Problems);
 end;
 
 procedure TGoldenCorpusTests.MutationsParseAndReportBadLines;

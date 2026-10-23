@@ -473,6 +473,8 @@ begin
         end;
       TSyntaxKind.EnumType:
         Kind := TLspSymbolKind.Enum;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   Result := NewSymbol(ADecl, ADecl.Name, Kind, Detail);
   if Body = nil then
@@ -636,6 +638,8 @@ begin
           FVisibility := Outer;
         end;
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

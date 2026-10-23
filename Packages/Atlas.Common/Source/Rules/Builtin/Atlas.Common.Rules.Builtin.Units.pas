@@ -578,6 +578,8 @@ var
           for Inner := 0 to Child.ChildCount - 1 do
             if (Child.Children[Inner].Kind = TSyntaxKind.TypeDecl) and SameText(Child.Children[Inner].Name, AName) then
               Include(Found, TGlobalKind.TypeName);
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
     end;
   end;

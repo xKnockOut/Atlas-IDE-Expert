@@ -469,6 +469,8 @@ begin
             False) + ']';
         Exit(AName + ': ' + ATypeText + Suffix);
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   First := TokenIndexAt(Node.StartOffset);
   Last := TokenIndexAt(Node.EndOffset) - 1;
@@ -684,6 +686,8 @@ begin
     TSyntaxKind.ArrayType:
       if ANode.FindChild(TSyntaxKind.TypeReference) <> nil then
         Result := 'array of ' + TypeText(ANode[ANode.ChildCount - 1]);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 
@@ -849,6 +853,8 @@ begin
             Kind := TIndexSymbolKind.Method;
           Add(Child, Child.Name, AContainer, Kind);
         end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 end;
@@ -889,6 +895,8 @@ begin
           Kind := TIndexSymbolKind.InterfaceType;
         TSyntaxKind.EnumType:
           Kind := TIndexSymbolKind.EnumType;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
       // Vorfahren: direkte Typverweise des Rumpfs (class(TBase, IFoo), helper for T).
       if Body.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.InterfaceType,
@@ -1007,6 +1015,8 @@ begin
         AddNames(Child, '', TIndexSymbolKind.Variable);
       TSyntaxKind.RoutineHeader, TSyntaxKind.RoutineDecl:
         AddRoutine(Child);
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 end;
@@ -1207,6 +1217,8 @@ begin
               // Offene Array-Parameter verhindern das Einbetten.
               if (Child.Parent <> nil) and (Child.Parent.Kind = TSyntaxKind.Parameter) then
                 Blocked := True;
+          else
+            // Übrige Werte bewusst ohne Wirkung.
           end;
           // Den Kopf (Parameter- und Ergebnistypen) kennt der Aufrufer ohnehin.
           if (Child.Kind in [TSyntaxKind.Identifier, TSyntaxKind.TypeReference]) and not IsInside(Child, Header) then
