@@ -95,6 +95,35 @@ begin
   Result.Filled := AFilled;
 end;
 
+/// <summary>Umriss eines Zahnrads um CX/CY mit ATeeth Zähnen: Kopf auf AOuter, Fuß auf AInner, Zahn und Lücke etwa
+/// gleich breit. Je Zahn vier Punkte (Fuß, Flanke hinauf, Kopf, Flanke hinab).</summary>
+function GearOutline(CX, CY, AOuter, AInner: Single; ATeeth: Integer): TAtlasGlyphShape;
+var
+  Points: TArray<TAtlasGlyphPoint>;
+  Tooth: Integer;
+  Step, Start: Single;
+
+  procedure Add(AAngle, ARadius: Single);
+  begin
+    Points := Points + [P(CX + ARadius * Cos(AAngle), CY + ARadius * Sin(AAngle))];
+  end;
+
+begin
+  Points := nil;
+  Step := 2 * Pi / ATeeth;
+  for Tooth := 0 to ATeeth - 1 do
+  begin
+    Start := Tooth * Step - Step / 4;
+    Add(Start, AInner);
+    Add(Start + Step * 0.12, AOuter);
+    Add(Start + Step * 0.38, AOuter);
+    Add(Start + Step * 0.5, AInner);
+  end;
+  Result.Points := Points;
+  Result.Closed := True;
+  Result.Filled := False;
+end;
+
 function Join(const A: array of TAtlasGlyphPoint; const B: TArray<TAtlasGlyphPoint>;
   const C: array of TAtlasGlyphPoint): TArray<TAtlasGlyphPoint>;
 var
@@ -180,10 +209,8 @@ begin
     TAtlasToolbarIcon.More:
       Result := [Stroke([P(4, 4.5), P(7.5, 8), P(4, 11.5)]), Stroke([P(8.5, 4.5), P(12, 8), P(8.5, 11.5)])];
     TAtlasToolbarIcon.Gear:
-      Result := [Circle(8, 8, 2.2, False), Stroke([P(8, 1.5), P(8, 3.5)]), Stroke([P(8, 12.5), P(8, 14.5)]),
-        Stroke([P(1.5, 8), P(3.5, 8)]), Stroke([P(12.5, 8), P(14.5, 8)]), Stroke([P(3.4, 3.4), P(4.8, 4.8)]),
-        Stroke([P(11.2, 11.2), P(12.6, 12.6)]), Stroke([P(3.4, 12.6), P(4.8, 11.2)]),
-        Stroke([P(11.2, 4.8), P(12.6, 3.4)])];
+      // Zahnkranz mit Loch; früher Kreis mit acht Strahlen, das sah aus wie eine Sonne.
+      Result := [GearOutline(8, 8, 6.8, 5, 8), Circle(8, 8, 2.2, False)];
   else
     Result := nil;
   end;

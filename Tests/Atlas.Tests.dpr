@@ -532,6 +532,8 @@ uses
   Atlas.Core.Results.Model in '..\Packages\Atlas.IDE.Expert\Source\Core\Results\Atlas.Core.Results.Model.pas',
   Atlas.Core.Results.Model.Tests in 'IDE.Expert\Atlas.Core.Results.Model.Tests.pas',
   Atlas.Core.Editor.Selection in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Selection.pas',
+  Atlas.Core.Editor.Conditionals in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Conditionals.pas',
+  Atlas.Core.Editor.Conditionals.Tests in 'IDE.Expert\Atlas.Core.Editor.Conditionals.Tests.pas',
   Atlas.Core.Editor.MethodToggle in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.MethodToggle.pas',
   Atlas.Core.Editor.SlashTrigger in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.SlashTrigger.pas',
   Atlas.Core.Editor.Commands.Tests in 'IDE.Expert\Atlas.Core.Editor.Commands.Tests.pas',

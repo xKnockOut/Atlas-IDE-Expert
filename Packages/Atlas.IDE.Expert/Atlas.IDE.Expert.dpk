@@ -365,6 +365,7 @@ contains
   Atlas.IDE.Foundation.ResultsWindow in 'Source\IDE\Foundation\Atlas.IDE.Foundation.ResultsWindow.pas',
   Atlas.IDE.Results.Commands in 'Source\IDE\Results\Atlas.IDE.Results.Commands.pas',
   Atlas.Core.Editor.Selection in 'Source\Core\Editor\Atlas.Core.Editor.Selection.pas',
+  Atlas.Core.Editor.Conditionals in 'Source\Core\Editor\Atlas.Core.Editor.Conditionals.pas',
   Atlas.Core.Editor.MethodToggle in 'Source\Core\Editor\Atlas.Core.Editor.MethodToggle.pas',
   Atlas.Core.Editor.SlashTrigger in 'Source\Core\Editor\Atlas.Core.Editor.SlashTrigger.pas',
   Atlas.IDE.Commands.ContextMenu in 'Source\IDE\Commands\Atlas.IDE.Commands.ContextMenu.pas',

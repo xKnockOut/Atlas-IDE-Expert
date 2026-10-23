@@ -834,7 +834,10 @@ begin
     Exit;
   if AProblem.Stale then
     Color := TAtlasColorMath.Mix(Color, FColors.Surface, AtlasMixFaded);
-  PillFace := Face(TAtlasHoverFont.Badge, True);
+  // Kleine UI-Schrift statt Badge: Die Badge-Schrift richtet sich beim Zeichnen nach der Höhe des Kästchens, das
+  // Kästchen hier nach der gemessenen Schrift; gemessen wurde sie ohne Kästchen (Windows-Standardschrift), das
+  // Kästchen geriet zu groß und der Text darin kleiner.
+  PillFace := Face(TAtlasHoverFont.SmallUi, True);
   Box := Rect(FLeft, FY + Scale(1), FLeft + Width(PillFace, Caption) + Scale(12), FY + Scale(1) +
     Max(Height(PillFace) + Scale(2), Scale(15)));
   Item := NewItem(TAtlasHoverItemKind.RoundFill, Box, TAtlasColorMath.Mix(Color, FColors.Surface, 0.16));

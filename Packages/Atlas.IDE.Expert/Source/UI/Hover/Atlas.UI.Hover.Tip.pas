@@ -501,6 +501,7 @@ begin
       end;
     TAtlasHoverFont.Badge:
       begin
+        // Größe aus der Höhe des Kästchens: nur für Kästchen fester Größe (Kopfzeile), nicht zum Messen.
         Canvas.Font := Font;
         Canvas.Font.Height := -Round(ABadgeHeight * 0.62);
       end;

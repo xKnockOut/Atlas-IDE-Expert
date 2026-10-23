@@ -11,6 +11,10 @@ type
   [TestFixture]
   TAtlasMethodToggleTests = class
   public
+    /// <summary>Alternative Rümpfe in $IFDEF-Zweigen ({$IFDEF MSWINDOWS} begin … end; {$ELSE} …): nur der aktive
+    /// Zweig zählt; vorher fand sich ab dort keine Routine mehr.</summary>
+    [Test]
+    procedure IfdefAlternativeBodies;
     [Test]
     procedure DeclarationJumpsToImplementationAndBack;
     [Test]
@@ -552,6 +556,63 @@ begin
   Assert.AreEqual('4:13', Jump(Text, 13));
   Assert.AreEqual('5:13', Jump(Text, 16, 2));
 end;
+
+
+procedure TAtlasMethodToggleTests.IfdefAlternativeBodies;
+var
+  Text: string;
+
+  function ClockEnd(const APlaces: TArray<TAtlasMethodPlace>): Integer;
+  var
+    Place: TAtlasMethodPlace;
+  begin
+    Result := -1;
+    for Place in APlaces do
+      if Place.IsBody and (Place.Name = 'Clock') then
+        Result := Place.LastLine;
+  end;
+
+begin
+  Text := Source([
+    'unit Demo;',                       // 0
+    'interface',                        // 1
+    'type',                             // 2
+    '  TFoo = class',                   // 3
+    '    procedure Run;',               // 4
+    '  end;',                           // 5
+    'function Clock: Double;',          // 6
+    'implementation',                   // 7
+    'function Clock: Double;',          // 8
+    '{$IFDEF MSWINDOWS}',               // 9
+    'begin',                            // 10
+    '  Result := 1;',                   // 11
+    'end;',                             // 12
+    '{$ELSE}',                          // 13
+    '{$IFDEF FPC}',                     // 14
+    'var',                              // 15
+    '  T: Integer;',                    // 16
+    'begin',                            // 17
+    '  Result := T;',                   // 18
+    'end;',                             // 19
+    '{$ELSE}',                          // 20
+    'begin',                            // 21
+    '  Result := 3;',                   // 22
+    'end;',                             // 23
+    '{$ENDIF}',                         // 24
+    '{$ENDIF}',                         // 25
+    'procedure TFoo.Run;',              // 26
+    'begin',                            // 27
+    'end;',                             // 28
+    'end.']);
+  // Ohne Symbole wie Delphi für Win32: der MSWINDOWS-Zweig.
+  Assert.AreEqual('26:15', Jump(Text, 4, 15), 'Run nach den Zweigen');
+  Assert.AreEqual('4:14', Jump(Text, 27));
+  Assert.AreEqual('8:9', Jump(Text, 6, 10));
+  // Rumpf von Clock: ohne Symbole der erste Zweig, mit FPC (Free Pascal unter Linux) der mittlere.
+  Assert.AreEqual(12, ClockEnd(TAtlasMethodToggle.Places(Text)));
+  Assert.AreEqual(19, ClockEnd(TAtlasMethodToggle.Places(Text, ['FPC', 'UNIX'])));
+end;
+
 
 initialization
   TDUnitX.RegisterTestFixture(TAtlasMethodToggleTests);

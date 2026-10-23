@@ -178,6 +178,9 @@ uses
   Atlas.Core.Editor.Selection,
   Atlas.Core.Editor.MethodToggle,
   Atlas.Core.Editor.Match,
+  Atlas.Core.Build.Target,
+  Atlas.Text.Defines,
+  Atlas.IDE.Build.Target,
   Atlas.Core.Editor.SelectionMatches,
   Atlas.Core.Editor.TestUnit,
   Atlas.UI.Strings,
@@ -814,6 +817,17 @@ begin
   TAtlasIdeNavigation.GoToLocation(Found[0].FileName, Found[0].Line, Found[0].Character);
 end;
 
+/// <summary>Symbole der bedingten Übersetzung des aktiven Projekts (Plattform und DCC_Define), damit der
+/// Methodenwechsel dieselben $IFDEF-Zweige sieht wie der Compiler; nil ohne Projekt (dann Delphi für Win32).</summary>
+function ProjectDefines: TArray<string>;
+var
+  Target: TAtlasBuildTarget;
+begin
+  Result := nil;
+  if TAtlasIdeBuildTarget.Read(Target) then
+    Result := TTextDefines.Predefined(Target.Platform, CompilerVersion) + Target.Defines;
+end;
+
 class function TAtlasIdeEditorCommands.TryToggleMethod: Boolean;
 var
   Editors: IOTAEditorServices;
@@ -839,7 +853,7 @@ begin
   if (Row >= 0) and (Row < Length(Lines)) then
     LineText := Lines[Row];
   if not TAtlasMethodToggle.Counterpart(Text, Row, TLspSession.ColumnToIndex(LineText, Cursor.Col, TabWidth),
-    Target) then
+    Target, ProjectDefines) then
     Exit;
   View.CursorPos := EditPos(Lines, TLspTextPosition.Create(Target.Line, Target.Character), TabWidth);
   View.MoveViewToCursor;
