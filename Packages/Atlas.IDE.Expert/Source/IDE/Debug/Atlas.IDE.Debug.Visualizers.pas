@@ -14,6 +14,10 @@
 //   Text der IDE.
 // - ApplySettings meldet neu an, wenn sich Schalter, Arten oder Grenzen
 //   ändern; Stop meldet alles ab und schließt offene Ansichtsfenster.
+// - Das Ansichtsfenster (TAtlasIdeViewerUpdater) holt seinen Inhalt über eine
+//   Quelle (TAtlasViewSource); die eigenen Wertdarstellungen (#854) nutzen es
+//   mit ihrer Tabelle. Jedes Fenster gehört einer Gruppe, damit Stop nur die
+//   eigenen schließt.
 // - Visualisierer der Open Tools API laufen laut Embarcadero nur mit dem
 //   32-Bit-Debugger ohne LLDB. Für Win64 und Hover bereitet HoverText den Wert
 //   im Atlas-Tooltip auf (Art aus Typ und Vorfahren laut Server).
@@ -30,6 +34,14 @@ uses
   Atlas.UI.Debug.Viewer;
 
 type
+  /// <summary>Inhalt des Ansichtsfensters für einen Wert.</summary>
+  TAtlasViewSource = reference to function(const AExpression, ATypeName, AEvalResult: string): TAtlasVisualizerView;
+
+  {$SCOPEDENUMS ON}
+  /// <summary>Wem ein Ansichtsfenster gehört (Stop schließt nur die eigenen).</summary>
+  TAtlasViewerGroup = (Visualizers, DisplayRules);
+  {$SCOPEDENUMS OFF}
+
   TAtlasIdeVisualizer = class(TInterfacedObject, IOTADebuggerVisualizer, IOTADebuggerVisualizer250,
     IOTADebuggerVisualizerValueReplacer)
   private
@@ -63,13 +75,14 @@ type
   /// <summary>Verbindung zwischen dem Debugger und einem offenen Ansichtsfenster.</summary>
   TAtlasIdeViewerUpdater = class(TInterfacedObject, IOTADebuggerVisualizerExternalViewerUpdater)
   private
-    FKind: TAtlasVisualizerKind;
+    FGroup: TAtlasViewerGroup;
+    FSource: TAtlasViewSource;
     FForm: TAtlasDebugViewer;
     FClosed: TOTAVisualizerClosedProcedure;
     procedure FormClosed(Sender: TObject);
   public
-    constructor Create(AKind: TAtlasVisualizerKind; const AExpression, ATypeName, AEvalResult: string;
-      ALeft, ATop: Integer);
+    constructor Create(AGroup: TAtlasViewerGroup; const ASource: TAtlasViewSource; const AExpression, ATypeName,
+      AEvalResult: string; ALeft, ATop: Integer);
     destructor Destroy; override;
     { IOTADebuggerVisualizerExternalViewerUpdater }
     procedure CloseVisualizer;
@@ -79,6 +92,7 @@ type
     /// <summary>Fenster sofort freigeben (Entladen: keine eingereihte Freigabe) und den Debugger benachrichtigen.
     /// </summary>
     procedure Shutdown;
+    property Group: TAtlasViewerGroup read FGroup;
   end;
 
   TAtlasIdeVisualizers = class
@@ -108,6 +122,10 @@ type
     /// <summary>Ansicht für den Wert; Budget wie das Ansichtsfenster.</summary>
     class function ViewOf(AKind: TAtlasVisualizerKind; const AExpression, ATypeName,
       AEvalResult: string): TAtlasVisualizerView; static;
+    /// <summary>Quelle für das Ansichtsfenster einer Art.</summary>
+    class function KindSource(AKind: TAtlasVisualizerKind): TAtlasViewSource; static;
+    /// <summary>Offene Ansichtsfenster der Gruppe sofort freigeben (Entladen, Abschalten).</summary>
+    class procedure CloseViewers(AGroup: TAtlasViewerGroup); static;
     class procedure ViewerOpened(AViewer: TAtlasIdeViewerUpdater); static;
     class procedure ViewerClosed(AViewer: TAtlasIdeViewerUpdater); static;
   end;
@@ -221,7 +239,8 @@ function TAtlasIdeViewerVisualizer.Show(const Expression, TypeName, EvalResult: 
 begin
   Result := nil;
   try
-    Result := TAtlasIdeViewerUpdater.Create(Kind, Expression, TypeName, EvalResult, SuggestedLeft, SuggestedTop);
+    Result := TAtlasIdeViewerUpdater.Create(TAtlasViewerGroup.Visualizers, TAtlasIdeVisualizers.KindSource(Kind),
+      Expression, TypeName, EvalResult, SuggestedLeft, SuggestedTop);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Debugger, E);
@@ -230,11 +249,12 @@ end;
 
 { TAtlasIdeViewerUpdater }
 
-constructor TAtlasIdeViewerUpdater.Create(AKind: TAtlasVisualizerKind; const AExpression, ATypeName,
-  AEvalResult: string; ALeft, ATop: Integer);
+constructor TAtlasIdeViewerUpdater.Create(AGroup: TAtlasViewerGroup; const ASource: TAtlasViewSource;
+  const AExpression, ATypeName, AEvalResult: string; ALeft, ATop: Integer);
 begin
   inherited Create;
-  FKind := AKind;
+  FGroup := AGroup;
+  FSource := ASource;
   FForm := TAtlasDebugViewer.CreateViewer(Application);
   FForm.OnClosed := FormClosed;
   FForm.Left := ALeft;
@@ -292,7 +312,7 @@ begin
   if FForm = nil then
     Exit;
   try
-    FForm.ShowView(Expression, TAtlasIdeVisualizers.ViewOf(FKind, Expression, TypeName, EvalResult));
+    FForm.ShowView(Expression, FSource(Expression, TypeName, EvalResult));
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Debugger, E);
@@ -398,20 +418,35 @@ begin
   FreeAndNil(FRegistered);
 end;
 
-class procedure TAtlasIdeVisualizers.Stop;
+class procedure TAtlasIdeVisualizers.CloseViewers(AGroup: TAtlasViewerGroup);
 var
   Viewers: TArray<TAtlasIdeViewerUpdater>;
   Viewer: TAtlasIdeViewerUpdater;
 begin
-  // Offene Fenster zuerst und sofort: Ihr Code liegt im Package, das gleich entladen werden kann; Close gäbe
-  // sie erst über eine eingereihte Nachricht frei.
-  if FViewers <> nil then
-  begin
-    Viewers := FViewers.ToArray;
-    for Viewer in Viewers do
+  // Sofort freigeben: Ihr Code liegt im Package, das gleich entladen werden kann; Close gäbe sie erst über eine
+  // eingereihte Nachricht frei.
+  if FViewers = nil then
+    Exit;
+  Viewers := FViewers.ToArray;
+  for Viewer in Viewers do
+    if Viewer.Group = AGroup then
       Viewer.Shutdown;
+  if FViewers.Count = 0 then
     FreeAndNil(FViewers);
-  end;
+end;
+
+class function TAtlasIdeVisualizers.KindSource(AKind: TAtlasVisualizerKind): TAtlasViewSource;
+begin
+  Result :=
+    function(const AExpression, ATypeName, AEvalResult: string): TAtlasVisualizerView
+    begin
+      Result := ViewOf(AKind, AExpression, ATypeName, AEvalResult);
+    end;
+end;
+
+class procedure TAtlasIdeVisualizers.Stop;
+begin
+  CloseViewers(TAtlasViewerGroup.Visualizers);
   Unregister;
   FSignature := '';
 end;

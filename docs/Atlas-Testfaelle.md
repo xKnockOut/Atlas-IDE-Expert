@@ -2706,6 +2706,31 @@ Vorbereitung: VCL-Projekt (Win32) mit `Kunden: TObjectList<TKunde>` (drei Kunden
 | VI18 | Hauptschalter (Schnellschalter) aus | Überwachte Ausdrücke und Tooltip zeigen die Texte der IDE; Optionen › Debugger › Visualisierer listet keine Atlas-Einträge mehr |
 | VI19 | Package bei offenem Ansichtsfenster deinstallieren | Fenster schließt, kein Fehler |
 | VI20 | Optionen › Debugger › Visualisierer der IDE | Je eingeschalteter Art ein Eintrag „Atlas: …“ mit Beschreibung |
+
+## Eigene Wertdarstellung beim Debuggen (#854)
+
+Vorbereitung: VCL-Projekt (Win32) mit `TKunde = class` (Felder `FName`, `FOrt`, `FNr: Integer`, Eigenschaften `Name` und `Ort` direkt auf die Felder, `Saldo: Currency` mit Getter `GetSaldo`), darüber `// atlas-debug: '{Name}, {Ort} (Nr {FNr})'` und `// atlas-debug-children: Name, Ort`. `TAuftrag = record` mit `[AtlasDebugDisplay('Auftrag {Nr}: {Betrag:0.00} €')]` (Unit `Atlas.Debug.Attributes` aus `Setup/Vorlagen` im Projekt). Haltepunkt nach dem Anlegen von `Kunde` und `Auftrag`. Optionen › Debuggen: „Eigene Wertdarstellungen“ an, „Getter und Funktionsaufrufe in Vorlagen erlauben“ aus.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WD1 | F9 bis zum Haltepunkt, `Kunde` in Überwachte Ausdrücke | Wert `Meier, Berlin (Nr 7)` (**Abnahme**) |
+| WD2 | `Auftrag` überwachen | `Auftrag 12: 99,50 €` (Format nach Gebietsschema) |
+| WD3 | Maus im Editor auf `Kunde` (Atlas-Tooltip), auch im Win64-Debugger | Tooltip zeigt `Meier, Berlin (Nr 7)` (**Abnahme**) |
+| WD4 | Vorlage auf `'{Name}: {Saldo}'` ändern, speichern, neu debuggen | `Meier: {?Saldo}` (Getter ohne Erlaubnis nicht aufgerufen) |
+| WD5 | „Getter und Funktionsaufrufe in Vorlagen erlauben“ an, Wert neu auswerten | `Meier: 1234,5` |
+| WD6 | Lupe an `Kunde` → „Mit Atlas anzeigen …“ | Tabelle Feld/Wert nur mit `Name` und `Ort`; „Alle Felder“ an: alle Felder (`FName`, `FOrt`, `FNr` …) |
+| WD7 | `.atlas` im Projekt: `"debugDisplayRules": {"TPoint": "({X}|{Y})"}`, debuggen, `P: TPoint` überwachen | `(10|20)`; eine Regel im Quelltext gewinnt gegen die Projektdatei |
+| WD8 | In `.atlas` `"debugDisplayRules": {"TKunde": 3}` | Projektdatei meldet falschen Typ, Debuggen läuft ohne diese Regel |
+| WD9 | Abgeleitete Klasse `TStammkunde = class(TKunde)` ohne eigene Regel überwachen | Darstellung von `TKunde` |
+| WD10 | Im Kommentar `// atlas-debug: '{Na` tippen | Vervollständigung bietet `Name`, `FName` … des Typs an; ebenso nach `atlas-debug-children:` (**Abnahme**) |
+| WD11 | Vorlage `'{Nmae}'` speichern | Warnung `debug-display-placeholder` unter `Nmae`: „TKunde hat kein Mitglied „Nmae“ …“ |
+| WD12 | Vorlage `'{Name'` speichern | Warnung „Ungültige Wertdarstellung: …“ an der offenen Klammer |
+| WD13 | `// atlas-debug-children: Name, Telefon` | Warnung unter `Telefon` |
+| WD14 | Klasse von einem Vorfahren aus einer nicht indizierten Unit ableiten, unbekanntes Mitglied nennen | Keine Warnung (Regel schweigt bei unbekanntem Vorfahren) |
+| WD15 | Server neu starten, während das Programm angehalten ist | Regeln aus `.atlas` gelten weiter; Regeln aus dem Quelltext spätestens 15 s nach dem Neustart wieder |
+| WD16 | Schnellschalter „Eigene Wertdarstellungen“ aus | Überwachte Ausdrücke und Tooltip zeigen die Texte der IDE; „Atlas: eigene Wertdarstellung“ fehlt in Optionen › Debugger › Visualisierer |
+| WD17 | Package bei offenem Ansichtsfenster deinstallieren | Fenster schließt, kein Fehler |
+
 ## Kein Hängen, während der Server indexiert (#874)
 
 Vorher: Eine große Projektgruppe öffnen (Index läuft, Fortschritt im Statusfeld), „Diagnosemodus“ an.

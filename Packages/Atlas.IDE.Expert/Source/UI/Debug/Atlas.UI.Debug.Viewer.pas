@@ -13,6 +13,9 @@
 // - Läuft das Programm weiter oder ist der Ausdruck nicht mehr gültig, bleibt
 //   der letzte Inhalt sichtbar, ausgegraut, mit dem Grund darüber
 //   (MarkUnavailable); ShowView nach dem nächsten Halt füllt neu.
+// - Eigene Wertdarstellung (#854): Zeigt die Tabelle nur die Unterelemente aus
+//   atlas-debug-children (AllRows gesetzt), schaltet „Alle Felder“ auf die
+//   ganze Feldliste um; die Wahl bleibt beim nächsten Halt erhalten.
 // - Schließen gibt das Fenster frei und meldet OnClosed.
 
 interface
@@ -34,6 +37,7 @@ type
   private
     FHeader: TLabel;
     FNote: TLabel;
+    FAllFields: TCheckBox;
     FList: TListView;
     FTree: TTreeView;
     FImageBox: TScrollBox;
@@ -46,6 +50,9 @@ type
     FOnClosed: TNotifyEvent;
     procedure ListData(Sender: TObject; AItem: TListItem);
     procedure ImagePaint(Sender: TObject);
+    procedure AllFieldsClick(Sender: TObject);
+    /// <summary>Angezeigte Tabellenzeilen: AllRows mit „Alle Felder“, sonst Rows.</summary>
+    function CurrentRows: TArray<TArray<string>>;
     procedure ContentKeyDown(Sender: TObject; var AKey: Word; AShift: TShiftState);
     procedure CopyClick(Sender: TObject);
     procedure ViewerClose(Sender: TObject; var AAction: TCloseAction);
@@ -71,6 +78,7 @@ type
     property HeaderLabel: TLabel read FHeader;
     property NoteLabel: TLabel read FNote;
     property List: TListView read FList;
+    property AllFieldsCheck: TCheckBox read FAllFields;
     property Tree: TTreeView read FTree;
     property OnClosed: TNotifyEvent read FOnClosed write FOnClosed;
   end;
@@ -131,6 +139,16 @@ begin
   FNote.ShowAccelChar := False;
   FNote.Visible := False;
   FNote.Top := FHeader.Top + FHeader.Height + 1;
+
+  FAllFields := TCheckBox.Create(Self);
+  FAllFields.Parent := Self;
+  FAllFields.Align := alTop;
+  FAllFields.AlignWithMargins := True;
+  FAllFields.Margins.SetBounds(ScaleValue(Gap), ScaleValue(Gap div 2), ScaleValue(Gap), 0);
+  FAllFields.Caption := TAtlasStrings.Text(TAtlasTextId.DebugViewerAllFields);
+  FAllFields.Visible := False;
+  FAllFields.Top := FNote.Top + FNote.Height + 1;
+  FAllFields.OnClick := AllFieldsClick;
 
   FList := TListView.Create(Self);
   FList.Parent := Self;
@@ -236,6 +254,8 @@ begin
   FHeader.Enabled := True;
   FNote.Visible := AView.NeedsMore;
   FNote.Caption := TAtlasStrings.Text(TAtlasTextId.DebugViewerNeedsMore);
+  FAllFields.Visible := (AView.Mode = TAtlasVisualizerViewMode.Table) and (AView.AllRows <> nil);
+  FAllFields.Enabled := True;
   HideContent;
   FList.Enabled := True;
   FTree.Enabled := True;
@@ -267,6 +287,7 @@ begin
   FNote.Caption := AReason;
   FNote.Visible := True;
   FHeader.Enabled := False;
+  FAllFields.Enabled := False;
   FList.Enabled := False;
   FTree.Enabled := False;
   FImageBox.Enabled := False;
@@ -298,7 +319,7 @@ begin
     if FList.Columns.Count > 0 then
       FList.Columns[FList.Columns.Count - 1].AutoSize := True;
     FList.ShowColumnHeaders := True;
-    FList.Items.Count := Length(FView.Rows);
+    FList.Items.Count := Length(CurrentRows);
   finally
     FList.Items.EndUpdate;
   end;
@@ -416,14 +437,29 @@ function TAtlasDebugViewer.RowText(AIndex: Integer): string;
 begin
   if FView.Mode = TAtlasVisualizerViewMode.Hex then
     Result := TAtlasVisualizerFormat.HexLine(FView.Bytes, AIndex * 16)
-  else if (AIndex >= 0) and (AIndex < Length(FView.Rows)) then
-    Result := string.Join(#9, FView.Rows[AIndex])
+  else if (AIndex >= 0) and (AIndex < Length(CurrentRows)) then
+    Result := string.Join(#9, CurrentRows[AIndex])
   else
     Result := '';
 end;
 
+function TAtlasDebugViewer.CurrentRows: TArray<TArray<string>>;
+begin
+  if FAllFields.Visible and FAllFields.Checked then
+    Result := FView.AllRows
+  else
+    Result := FView.Rows;
+end;
+
+procedure TAtlasDebugViewer.AllFieldsClick(Sender: TObject);
+begin
+  if FView.Mode = TAtlasVisualizerViewMode.Table then
+    ShowTable;
+end;
+
 procedure TAtlasDebugViewer.ListData(Sender: TObject; AItem: TListItem);
 var
+  Rows: TArray<TArray<string>>;
   Cells: TArray<string>;
   Index: Integer;
 begin
@@ -432,9 +468,10 @@ begin
     AItem.Caption := TAtlasVisualizerFormat.HexLine(FView.Bytes, AItem.Index * 16);
     Exit;
   end;
-  if (AItem.Index < 0) or (AItem.Index >= Length(FView.Rows)) then
+  Rows := CurrentRows;
+  if (AItem.Index < 0) or (AItem.Index >= Length(Rows)) then
     Exit;
-  Cells := FView.Rows[AItem.Index];
+  Cells := Rows[AItem.Index];
   if Length(Cells) = 0 then
     Exit;
   AItem.Caption := Cells[0];

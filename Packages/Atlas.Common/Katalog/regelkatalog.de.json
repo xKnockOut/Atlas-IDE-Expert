@@ -623,6 +623,11 @@
       ]
     },
     {
+      "id": "debug-display-placeholder",
+      "name": "Wertdarstellung nennt unbekanntes Mitglied",
+      "description": "Eine Regel für die Wertdarstellung beim Debuggen über einem Typ (// atlas-debug: '{Name}, {Ort}', [AtlasDebugDisplay('…')], // atlas-debug-children: Name, Ort oder [AtlasDebugChildren('…')]) nennt einen Platzhalter oder ein Unterelement, das weder Feld noch Eigenschaft noch Methode des Typs oder eines Vorfahren ist, oder die Vorlage ist ungültig (offene oder leere Klammer). Im Debugger bliebe ein solcher Platzhalter leer ({?Name}). Vorfahren kommen aus der Unit und dem Index; ist ein Vorfahr unbekannt, schweigt die Regel für den Typ. Mitglieder von TObject (ClassName, ToString, …) gelten immer als bekannt."
+    },
+    {
       "id": "component-palette-icon",
       "name": "Registrierte Komponente ohne Palettensymbol",
       "description": "Jede an RegisterComponents übergebene Klasse braucht in einer per {$R} eingebundenen .dcr oder .res eine Bitmap mit dem Klassennamen in Großbuchstaben. Ab Delphi 11 werden zusätzlich die Größen 16, 24 und 32 px (NAME16, NAME24, NAME32) erwartet. Ohne lesbare eingebundene Ressourcendatei schweigt die Regel."

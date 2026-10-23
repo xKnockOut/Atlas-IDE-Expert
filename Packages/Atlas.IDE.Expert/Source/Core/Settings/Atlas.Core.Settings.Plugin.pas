@@ -445,6 +445,13 @@ type
     DebugVisualizerMaxImagePixels: Integer;
     /// <summary>fields, properties oder calls (debug.visualizers.evaluation).</summary>
     DebugVisualizerEvaluation: string;
+    /// <summary>Eigene Wertdarstellungen (#854, debug.displayRules): Regeln aus // atlas-debug:,
+    /// [AtlasDebugDisplay] und der Projektdatei .atlas im Hover, in Überwachten Ausdrücken und Lokalen Variablen;
+    /// aus = die IDE zeigt ihre eigenen Werte.</summary>
+    DebugDisplayRules: Boolean;
+    /// <summary>Getter und Funktionsaufrufe in Vorlagen auswerten (debug.displayRules.allowCalls); aus = nur Felder
+    /// und Eigenschaften mit direktem Feldzugriff.</summary>
+    DebugDisplayRulesAllowCalls: Boolean;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -1387,6 +1394,8 @@ begin
   Result.DebugVisualizerTimeoutMs := TAtlasVisualizerOptions.DefaultTimeoutMs;
   Result.DebugVisualizerMaxImagePixels := TAtlasVisualizerOptions.DefaultMaxImagePixels;
   Result.DebugVisualizerEvaluation := TAtlasVisualizers.EvaluationNames[TAtlasVisualizerEvaluation.Properties];
+  Result.DebugDisplayRules := True;
+  Result.DebugDisplayRulesAllowCalls := False;
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
   Result.TodoList := True;
@@ -2006,6 +2015,9 @@ begin
   DebugVisualizerMaxImagePixels := AStore.ReadInteger('DebugVisualizerMaxImagePixels',
     Default.DebugVisualizerMaxImagePixels);
   DebugVisualizerEvaluation := AStore.ReadString('DebugVisualizerEvaluation', Default.DebugVisualizerEvaluation);
+  DebugDisplayRules := AStore.ReadInteger('DebugDisplayRules', BoolValue(Default.DebugDisplayRules)) <> 0;
+  DebugDisplayRulesAllowCalls := AStore.ReadInteger('DebugDisplayRulesAllowCalls',
+    BoolValue(Default.DebugDisplayRulesAllowCalls)) <> 0;
   StartProfiles := AStore.ReadInteger('StartProfiles', BoolValue(Default.StartProfiles)) <> 0;
   StartProfilesStatusField := AStore.ReadInteger('StartProfilesStatusField',
     BoolValue(Default.StartProfilesStatusField)) <> 0;
@@ -2456,6 +2468,8 @@ begin
   AStore.WriteInteger('DebugVisualizerTimeoutMs', DebugVisualizerTimeoutMs);
   AStore.WriteInteger('DebugVisualizerMaxImagePixels', DebugVisualizerMaxImagePixels);
   AStore.WriteString('DebugVisualizerEvaluation', DebugVisualizerEvaluation);
+  AStore.WriteInteger('DebugDisplayRules', BoolValue(DebugDisplayRules));
+  AStore.WriteInteger('DebugDisplayRulesAllowCalls', BoolValue(DebugDisplayRulesAllowCalls));
   AStore.WriteInteger('StartProfiles', BoolValue(StartProfiles));
   AStore.WriteInteger('StartProfilesStatusField', BoolValue(StartProfilesStatusField));
   AStore.WriteInteger('TodoList', BoolValue(TodoList));

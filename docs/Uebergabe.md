@@ -951,3 +951,14 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Hover:** `TAtlasEditorHover.VisualizedDebugValue` bereitet den Debug-Wert auf, sobald der Server den Typ geliefert hat (Typ aus der Deklaration, dann `Ancestors`); einmal je Wert und Typ. Damit gilt das auch unter Win64, wo IDE-Visualisierer nicht laufen.
 - **Abweichung vom Issue:** neue Einstellung `debug.visualizers.evaluation` (`fields`/`properties`/`calls`, Vorgabe `properties`). „Nur ohne Nebenwirkungen“ hätte `Count`, `RecNo` und `Fields[i]` ausgeschlossen; JSON-Text und `ToString` brauchen Aufrufe. Marco entscheidet, ob die Vorgabe `fields` sein soll. `timeoutMs` gilt für alle Auswertungen eines Werts zusammen, das Ansichtsfenster bekommt das 25-Fache.
 - **Offen:** Ob die IDE einen Visualisierer mit Replacer und External-Viewer in einem Objekt annimmt (VI8, VI20); Namen der Felder in RTL-Versionen (Probe-Listen in `Atlas.Core.Debug.Visualizers`).
+
+## Eigene Wertdarstellung beim Debuggen (#854, 23.10.2026, Entwurf, ungebaut)
+
+- **Branch:** `after-release/854-wertdarstellung` auf `after-release/835-visualisierer`. Nur mit FPC geprüft (85 neue Tests grün); IDE- und UI-Teil ungebaut, Handtests WD1–WD17.
+- **Regeln:** `// atlas-debug: '…'` und `// atlas-debug-children: …` über der Typdeklaration, Attribute `[AtlasDebugDisplay('…')]`/`[AtlasDebugChildren('…')]` (Unit `Setup/Vorlagen/Atlas.Debug.Attributes.pas`, nur `System`), `debugDisplayRules` in `.atlas`. Quelltext gewinnt gegen Projektdatei. Vorlagen-Parser in `Atlas.Text.DebugDisplay` (Server und Plugin).
+- **Server:** Befehl `atlas.server.debugDisplayRules` liefert die Regeln aller Projekt-Units mit Herkunft; Prüfregel `debug-display-placeholder` (unbekannte Mitglieder, ungültige Vorlage; schweigt bei unbekanntem Vorfahren, `Atlas.Common.Index.TypeMembers`); Vervollständigung in Vorlage und children (`Atlas.Common.Lsp.CompletionDebugDisplay`), im Plugin über die Ausnahme für Kommentare in `InDebugDisplayLine`.
+- **Plugin:** `Atlas.Core.Debug.DisplayRules` (Regeln, Vererbungskette, Rendern, Ansicht mit „Alle Felder“), `Atlas.IDE.Debug.DisplayRules` (ein Visualisierer mit `AllDescendants`, holt die Regeln beim Debuggen je Projekt und Stand der Projektdatei; Server-Fehler: erneut nach 15 s). Hover zuerst über die Regeln, dann die Visualisierer von #835.
+- **Einstellungen:** `debug.displayRules` (Vorgabe an, Schnellschalter), `debug.displayRules.allowCalls` (Vorgabe aus: ohne Erlaubnis nur Felder und Eigenschaften mit Feld-Leser, sonst `{?X}`).
+- **Nebenbei behoben:** `.atlas` las Zahlen als Text (`TJSONNumber` erbt von `TJSONString`); `AtlasSetup` fehlte `Atlas.Core.Debug.Visualizers` (seit #835); README-Regelzahl.
+- **Grenze:** children gelten nur im Atlas-Ansichtsfenster; die IDE-Fenster klappen weiter alle Felder auf (ToolsAPI bietet keine Einschränkung). Unter Win64 (LLDB) laufen keine IDE-Visualisierer, dort wirkt nur der Hover.
+
