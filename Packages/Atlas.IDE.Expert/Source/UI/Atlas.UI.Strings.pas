@@ -701,7 +701,11 @@ type
     // Element „Schnelle Lesezeichen“ im Menü „Ausblenden“ (#1104).
     ElementQuickBookmarks, ElementQuickBookmarksPlural,
     // Seite Prüfregeln: Weg zum Dialog der globalen Einstellungen (#909).
-    RulesGlobalButton);
+    RulesGlobalButton,
+    // Treffersicherheit der Verwendungen (#1119).
+    ResultsSureGroup, ResultsInferredGroup, ResultsOnlySure, RenameChangedGroup, RenameUnchangedGroup,
+    ReferenceReasonInterface, ReferenceReasonVirtual, ReferenceReasonAmbiguous, ReferenceReasonUnresolved, ReferenceReasonInactiveBranch, ReferenceReasonText,
+    SettingsReferencesInferred, SettingsReferencesTextMatches);
 
   TAtlasStrings = class
   private class var
@@ -2289,7 +2293,20 @@ const
      'Schnelle Lesezeichen sind ausgeschaltet (bookmarks.quick).',
      'Nr.',
      'nur diese Datei', 'Marker eines schnellen Lesezeichens', 'Marker der schnellen Lesezeichen',
-     'Globale Prüfregeln bearbeiten …'),
+     'Globale Prüfregeln bearbeiten …',
+     'Sicher (%d)',
+     'Erschlossen (%d) · vor dem Umbenennen prüfen',
+     'Nur sichere',
+     'Wird geändert (%d)',
+     'Nicht geändert, bitte prüfen (%d)',
+     'über Interface',
+     'überschrieben',
+     'Überladung unklar',
+     'Typ unbekannt',
+     'inaktiver Zweig',
+     'im Text',
+     'Erschlossene Verwendungen zeigen (Interface, überschriebene Methode, unklare Überladung, inaktiver Zweig)',
+     'Auch Namen in Strings als Verwendung melden (RTTI, MethodAddress)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3781,7 +3798,20 @@ const
      'Quick bookmarks are switched off (bookmarks.quick).',
      'No.',
      'this file only', 'quick bookmark marker', 'quick bookmark markers',
-     'Edit global rules …'));
+     'Edit global rules …',
+     'Sure (%d)',
+     'Inferred (%d) · check before renaming',
+     'Sure only',
+     'Will change (%d)',
+     'Not changed, please check (%d)',
+     'via interface',
+     'overridden',
+     'ambiguous overload',
+     'unknown type',
+     'inactive branch',
+     'in a string',
+     'Show inferred usages (interface, overridden method, ambiguous overload, inactive branch)',
+     'Also report names in strings as usages (RTTI, MethodAddress)'));
 
 { TAtlasStrings }
 

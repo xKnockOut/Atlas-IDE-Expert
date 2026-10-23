@@ -14,6 +14,11 @@
 // Die Liste der persönlichen Notizen (#545) zeigt je Datei „Zeile: Titel“ und
 // verwaiste Notizen in einer Gruppe am Ende; Doppelklick oder Enter springt,
 // das Kontextmenü bearbeitet oder löscht die Notiz (Entf löscht ebenfalls).
+// Verwendungen mit erschlossenen Treffern (#1119) stehen in zwei Abschnitten,
+// „Sicher (n)“ und „Erschlossen (n) · vor dem Umbenennen prüfen“, darin nach
+// Unit gruppiert; erschlossene Zeilen tragen ≈ und ihren Grund, der Hinweis
+// unter der Maus erklärt ihn. „Nur sichere“ in der Titelzeile blendet die
+// erschlossenen aus. Erschlossene Aufrufer der Hierarchie sind ebenso markiert.
 
 interface
 
@@ -62,6 +67,8 @@ type
       State: TAtlasChangeSetState;
       /// <summary>Kennung der Notiz (#545).</summary>
       NoteId: string;
+      /// <summary>Hinweis unter der Maus: Erklärung eines erschlossenen Treffers (#1119).</summary>
+      Hint: string;
     end;
   private
     FTitle: TLabel;
@@ -84,9 +91,19 @@ type
     FShowsNotes: Boolean;
     FOnNoteEdit: TAtlasNoteAction;
     FOnNoteDelete: TAtlasNoteAction;
+    FOnlySure: TCheckBox;
+    FRatedTitle: string;
+    FRatedEntries: TArray<TAtlasResultEntry>;
+    FSureCaption: string;
+    FInferredCaption: string;
+    FHintNode: TTreeNode;
     function AddNode(AParent: TTreeNode; const AText: string; const AData: TNodeData): TTreeNode;
     function DataOf(ANode: TTreeNode): TNodeData;
     procedure AddHierarchy(AParent: TTreeNode; const AItems: TArray<TAtlasHierarchyItem>);
+    procedure AddGroups(AParent: TTreeNode; const AGroups: TArray<TAtlasResultGroup>);
+    procedure RenderRated;
+    procedure OnlySureClick(Sender: TObject);
+    procedure TreeMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure Clear(const ATitle: string);
     procedure OpenSelected;
     procedure TreeDblClick(Sender: TObject);
@@ -104,6 +121,10 @@ type
     destructor Destroy; override;
     /// <summary>Fundstellen nach Unit gruppiert; alle Gruppen aufgeklappt.</summary>
     procedure ShowEntries(const ATitle: string; const AGroups: TArray<TAtlasResultGroup>);
+    /// <summary>Fundstellen nach Treffersicherheit (#1119): ohne erschlossene wie ShowEntries; sonst zwei Abschnitte
+    /// mit ASureCaption bzw. AInferredCaption (Format mit der Anzahl), darin nach Unit gruppiert.</summary>
+    procedure ShowRated(const ATitle: string; const AEntries: TArray<TAtlasResultEntry>;
+      const ASureCaption, AInferredCaption: string);
     /// <summary>Wurzeln einer Hierarchie; die erste Ebene wird gleich geladen.</summary>
     procedure ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
       const ARoots: TArray<TAtlasHierarchyItem>);
@@ -129,8 +150,11 @@ type
     class function NoteGroupText(const AGroup: TAtlasNoteGroup): string; static;
     /// <summary>Eintrag: "42: Titel" bzw. verwaist "Kunde.pas, Zeile 42: Titel".</summary>
     class function NoteText(const ANote: TAtlasNote; AOrphaned: Boolean): string; static;
-    /// <summary>Text einer Fundstelle: "12: Kunde.Laden;" bzw. mit Vorschau "alt  →  neu".</summary>
+    /// <summary>Text einer Fundstelle: "12: Kunde.Laden;" bzw. mit Vorschau "alt  →  neu"; erschlossen
+    /// "≈ 12: S.Speichern;  [über Interface]" (#1119).</summary>
     class function EntryText(const AEntry: TAtlasResultEntry): string; static;
+    /// <summary>Kurzer Grund eines erschlossenen Treffers, etwa "über Interface"; '' bei sicheren.</summary>
+    class function ReasonText(const AConfidence: TAtlasConfidence): string; static;
     /// <summary>Text eines Hierarchie-Eintrags: "Laden · TKunde  (Kunden.pas:12)".</summary>
     class function HierarchyText(const AItem: TAtlasHierarchyItem): string; static;
     property Tree: TTreeView read FTree;
@@ -147,6 +171,8 @@ type
     property ShowsNotes: Boolean read FShowsNotes;
     property OnNoteEdit: TAtlasNoteAction read FOnNoteEdit write FOnNoteEdit;
     property OnNoteDelete: TAtlasNoteAction read FOnNoteDelete write FOnNoteDelete;
+    /// <summary>„Nur sichere“ (#1119); sichtbar, solange erschlossene Treffer da sind.</summary>
+    property OnlySure: TCheckBox read FOnlySure;
   end;
 
 implementation
@@ -178,6 +204,15 @@ begin
   FSymbol.LogicalSize := TAtlasSymbol.MenuSize;
   FSymbol.Align := alLeft;
   FSymbol.AlignWithMargins := True;
+  // Filter „Nur sichere“ (#1119), rechts in der Titelzeile.
+  FOnlySure := TCheckBox.Create(Self);
+  FOnlySure.Parent := Header;
+  FOnlySure.Align := alRight;
+  FOnlySure.AlignWithMargins := True;
+  FOnlySure.Caption := TAtlasStrings.Text(TAtlasTextId.ResultsOnlySure);
+  FOnlySure.Width := 110;
+  FOnlySure.Visible := False;
+  FOnlySure.OnClick := OnlySureClick;
   FTitle := TLabel.Create(Self);
   FTitle.Parent := Header;
   FTitle.Align := alClient;
@@ -196,6 +231,8 @@ begin
   FTree.OnDblClick := TreeDblClick;
   FTree.OnKeyDown := TreeKeyDown;
   FTree.OnExpanding := TreeExpanding;
+  FTree.OnMouseMove := TreeMouseMove;
+  FTree.ShowHint := True;
   // Kontextmenü der Liste „Atlas-Änderungen“ (#721); in anderen Listen ohne Einträge.
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
@@ -229,11 +266,35 @@ begin
   inherited;
 end;
 
+class function TAtlasResultsFrame.ReasonText(const AConfidence: TAtlasConfidence): string;
+begin
+  Result := '';
+  if not AConfidence.Inferred then
+    Exit;
+  if AConfidence.Reason = 'interface' then
+    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonInterface)
+  else if AConfidence.Reason = 'virtual' then
+    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonVirtual)
+  else if AConfidence.Reason = 'ambiguous' then
+    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonAmbiguous)
+  else if AConfidence.Reason = 'unresolved' then
+    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonUnresolved)
+  else if AConfidence.Reason = 'inactiveBranch' then
+    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonInactiveBranch)
+  else if AConfidence.Reason = 'text' then
+    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonText)
+  else
+    // Gründe neuerer Server: wie geliefert.
+    Result := AConfidence.Reason;
+end;
+
 class function TAtlasResultsFrame.EntryText(const AEntry: TAtlasResultEntry): string;
 begin
   Result := Format('%d: %s', [AEntry.Line + 1, AEntry.Text]);
   if AEntry.Detail <> '' then
     Result := Result + '  →  ' + AEntry.Detail;
+  if AEntry.Confidence.Inferred then
+    Result := '≈ ' + Result + '  [' + ReasonText(AEntry.Confidence) + ']';
 end;
 
 class function TAtlasResultsFrame.HierarchyText(const AItem: TAtlasHierarchyItem): string;
@@ -243,6 +304,8 @@ begin
     Result := Result + ' · ' + AItem.Detail;
   if AItem.FileName <> '' then
     Result := Result + Format('  (%s:%d)', [ExtractFileName(AItem.FileName), AItem.Line + 1]);
+  if AItem.Confidence.Inferred then
+    Result := '≈ ' + Result + '  [' + ReasonText(AItem.Confidence) + ']';
 end;
 
 function TAtlasResultsFrame.AddNode(AParent: TTreeNode; const AText: string; const AData: TNodeData): TTreeNode;
@@ -269,6 +332,9 @@ procedure TAtlasResultsFrame.Clear(const ATitle: string);
 begin
   FShowsChanges := False;
   FShowsNotes := False;
+  FOnlySure.Visible := False;
+  FHintNode := nil;
+  FTree.Hint := '';
   FTitle.Caption := ATitle;
   FTree.Items.BeginUpdate;
   try
@@ -279,38 +345,114 @@ begin
   FData.Clear;
 end;
 
-procedure TAtlasResultsFrame.ShowEntries(const ATitle: string; const AGroups: TArray<TAtlasResultGroup>);
+procedure TAtlasResultsFrame.AddGroups(AParent: TTreeNode; const AGroups: TArray<TAtlasResultGroup>);
 var
   Group: TAtlasResultGroup;
   Entry: TAtlasResultEntry;
   Data: TNodeData;
   GroupNode: TTreeNode;
 begin
+  for Group in AGroups do
+  begin
+    Data := Default(TNodeData);
+    Data.Kind := TNodeKind.Group;
+    Data.FileName := Group.FileName;
+    GroupNode := AddNode(AParent, Group.Caption, Data);
+    for Entry in Group.Entries do
+    begin
+      Data := Default(TNodeData);
+      Data.Kind := TNodeKind.Entry;
+      Data.FileName := Entry.FileName;
+      Data.Line := Entry.Line;
+      Data.Character := Entry.Character;
+      Data.Hint := Entry.Confidence.Explanation;
+      AddNode(GroupNode, EntryText(Entry), Data);
+    end;
+    GroupNode.Expand(False);
+  end;
+end;
+
+procedure TAtlasResultsFrame.ShowEntries(const ATitle: string; const AGroups: TArray<TAtlasResultGroup>);
+begin
   Clear(ATitle);
   FTree.Items.BeginUpdate;
   try
-    for Group in AGroups do
+    AddGroups(nil, AGroups);
+  finally
+    FTree.Items.EndUpdate;
+  end;
+  if FTree.Items.Count > 0 then
+    FTree.Selected := FTree.Items[0];
+end;
+
+procedure TAtlasResultsFrame.ShowRated(const ATitle: string; const AEntries: TArray<TAtlasResultEntry>;
+  const ASureCaption, AInferredCaption: string);
+begin
+  FRatedTitle := ATitle;
+  FRatedEntries := AEntries;
+  FSureCaption := ASureCaption;
+  FInferredCaption := AInferredCaption;
+  RenderRated;
+end;
+
+procedure TAtlasResultsFrame.RenderRated;
+var
+  Sure, Inferred: TArray<TAtlasResultEntry>;
+  Entry: TAtlasResultEntry;
+  Data: TNodeData;
+  Section: TTreeNode;
+begin
+  Sure := TAtlasResults.SureOnly(FRatedEntries);
+  Inferred := nil;
+  for Entry in FRatedEntries do
+    if Entry.Confidence.Inferred then
+      Inferred := Inferred + [Entry];
+  if Length(Inferred) = 0 then
+  begin
+    ShowEntries(FRatedTitle, TAtlasResults.Group(FRatedEntries));
+    Exit;
+  end;
+  Clear(FRatedTitle);
+  FOnlySure.Visible := True;
+  FTree.Items.BeginUpdate;
+  try
+    if FOnlySure.Checked then
+      AddGroups(nil, TAtlasResults.Group(Sure))
+    else
     begin
       Data := Default(TNodeData);
-      Data.Kind := TNodeKind.Group;
-      Data.FileName := Group.FileName;
-      GroupNode := AddNode(nil, Group.Caption, Data);
-      for Entry in Group.Entries do
-      begin
-        Data := Default(TNodeData);
-        Data.Kind := TNodeKind.Entry;
-        Data.FileName := Entry.FileName;
-        Data.Line := Entry.Line;
-        Data.Character := Entry.Character;
-        AddNode(GroupNode, EntryText(Entry), Data);
-      end;
-      GroupNode.Expand(False);
+      Data.Kind := TNodeKind.Placeholder;
+      Section := AddNode(nil, Format(FSureCaption, [Length(Sure)]), Data);
+      AddGroups(Section, TAtlasResults.Group(Sure));
+      Section.Expand(False);
+      Section := AddNode(nil, Format(FInferredCaption, [Length(Inferred)]), Data);
+      AddGroups(Section, TAtlasResults.Group(Inferred));
+      Section.Expand(False);
     end;
   finally
     FTree.Items.EndUpdate;
   end;
   if FTree.Items.Count > 0 then
     FTree.Selected := FTree.Items[0];
+end;
+
+procedure TAtlasResultsFrame.OnlySureClick(Sender: TObject);
+begin
+  // Clear blendet den Filter aus und RenderRated wieder ein; Checked bleibt.
+  if Length(FRatedEntries) > 0 then
+    RenderRated;
+end;
+
+procedure TAtlasResultsFrame.TreeMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+var
+  Node: TTreeNode;
+begin
+  Node := FTree.GetNodeAt(X, Y);
+  if Node = FHintNode then
+    Exit;
+  FHintNode := Node;
+  FTree.Hint := DataOf(Node).Hint;
+  Application.CancelHint;
 end;
 
 procedure TAtlasResultsFrame.AddHierarchy(AParent: TTreeNode; const AItems: TArray<TAtlasHierarchyItem>);
@@ -327,6 +469,7 @@ begin
     Data.Line := Item.Line;
     Data.Character := Item.Character;
     Data.Item := Item;
+    Data.Hint := Item.Confidence.Explanation;
     Node := AddNode(AParent, HierarchyText(Item), Data);
     // Platzhalter, damit sich der Knoten aufklappen lässt; geladen wird erst dann.
     Data := Default(TNodeData);

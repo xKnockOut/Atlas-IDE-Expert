@@ -21,6 +21,9 @@ type
     procedure PreviewsFileOperationsFirst;
     [Test]
     procedure MapsSymbolKindsToBadges;
+    /// <summary>Treffersicherheit (#1119): Filter, Zähler und nicht geänderte Stellen in der Vorschau.</summary>
+    [Test]
+    procedure RatesEntriesAndPreviewsUnchanged;
   end;
 
 implementation
@@ -101,6 +104,42 @@ begin
   Assert.AreEqual(2, Entries[1].Line);
   Assert.AreEqual(2, Entries[1].Character);
   Assert.AreEqual('Kunde := Kunde.Next;', Entries[1].Detail);
+end;
+
+procedure TAtlasResultsTests.RatesEntriesAndPreviewsUnchanged;
+var
+  Edit: TLspWorkspaceEdit;
+  Entries: TArray<TAtlasResultEntry>;
+begin
+  Entries := TArray<TAtlasResultEntry>.Create(TAtlasResultEntry.Create('A.pas', 1, 0),
+    TAtlasResultEntry.Create('A.pas', 2, 0));
+  Entries[1].Confidence.Inferred := True;
+  Assert.AreEqual(1, TAtlasResults.InferredCount(Entries));
+  Assert.AreEqual(1, Integer(Length(TAtlasResults.SureOnly(Entries))));
+  Assert.AreEqual(1, TAtlasResults.SureOnly(Entries)[0].Line);
+  Edit := Default(TLspWorkspaceEdit);
+  Edit.Files := [Default(TLspFileEdits)];
+  Edit.Files[0].FileName := 'A.pas';
+  Edit.Files[0].Edits := [TextEdit(1, 4, 9, 'Kunde')];
+  Edit.Unchanged := [Default(TLspUnchangedPlace)];
+  Edit.Unchanged[0].FileName := 'A.pas';
+  Edit.Unchanged[0].Line := 2;
+  Edit.Unchanged[0].Character := 2;
+  Edit.Unchanged[0].Confidence.Inferred := True;
+  Edit.Unchanged[0].Confidence.Reason := 'interface';
+  Entries := TAtlasResults.RenamePreview(Edit,
+    function(const AFileName: string): string
+    begin
+      Result := 'var'#13#10'    Leser: TLeser;'#13#10'  I.Leser;';
+    end);
+  Assert.AreEqual(2, Integer(Length(Entries)));
+  Assert.IsFalse(Entries[0].Confidence.Inferred);
+  Assert.AreEqual('Kunde: TLeser;', Entries[0].Detail);
+  // Nicht geändert: ohne Vorschau, mit Zeilentext und Grund.
+  Assert.IsTrue(Entries[1].Confidence.Inferred);
+  Assert.AreEqual('interface', Entries[1].Confidence.Reason);
+  Assert.AreEqual('I.Leser;', Entries[1].Text);
+  Assert.AreEqual('', Entries[1].Detail);
 end;
 
 procedure TAtlasResultsTests.PreviewsFileOperationsFirst;

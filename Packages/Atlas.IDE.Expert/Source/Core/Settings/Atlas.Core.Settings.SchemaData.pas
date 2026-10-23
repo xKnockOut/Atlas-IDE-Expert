@@ -1744,7 +1744,7 @@ const
     '      },',
     '      "x-scope": "global",',
     '      "x-area": "editor",',
-    '      "x-page": "Editor",',
+    '      "x-page": "Befehle",',
     '      "x-control": "Kontrollkästchen",',
     '      "x-issue": "#1119"',
     '    },',
