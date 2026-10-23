@@ -1488,8 +1488,12 @@ begin
       Symbol := OwnerUnit.Symbols[Position];
       if SameText(Symbol.Container, TypeName) then
       begin
-        // Ist die Deklaration unsichtbar, gilt das auch für ihren Rumpf.
-        if Hidden or not IsVisible(Symbol, OwnerUnit, Current, LocalChain) then
+        // Ist die Deklaration unsichtbar, gilt das auch für ihren Rumpf (implementation, dort public). Weitere
+        // Deklarationen im interface prüft IsVisible einzeln: Überladungen dürfen anders sichtbar sein
+        // (System.TMonitor.Enter: strict private als Instanzmethode, public als Klassenmethode).
+        if Hidden and not Symbol.InInterface then
+          Continue;
+        if not IsVisible(Symbol, OwnerUnit, Current, LocalChain) then
         begin
           Hidden := True;
           Continue;
