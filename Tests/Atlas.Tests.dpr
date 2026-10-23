@@ -120,6 +120,8 @@ uses
   Atlas.Common.Architecture.UsesService.Tests in 'Common\Architecture\Atlas.Common.Architecture.UsesService.Tests.pas',
   Atlas.Common.Architecture.Louvain.Tests in 'Common\Architecture\Atlas.Common.Architecture.Louvain.Tests.pas',
   Atlas.Common.Architecture.Overview.Tests in 'Common\Architecture\Atlas.Common.Architecture.Overview.Tests.pas',
+  Atlas.Common.Architecture.Layout.Tests in 'Common\Architecture\Atlas.Common.Architecture.Layout.Tests.pas',
+  Atlas.Common.Architecture.Report.Tests in 'Common\Architecture\Atlas.Common.Architecture.Report.Tests.pas',
   Atlas.Common.Rules.Builtin.Todos.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.Tests.pas',
   Atlas.Common.Lsp.Todos.Tests in 'Common\Lsp\Atlas.Common.Lsp.Todos.Tests.pas',
   Atlas.Common.Rules.Builtin.Recursion.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.Tests.pas',

@@ -70,6 +70,8 @@ type
     OuterEdges: Integer;
     /// <summary>Anteil der Kanten der Units, die im Teilsystem bleiben (0..1).</summary>
     Cohesion: Double;
+    /// <summary>Sammelgruppe der Units ohne uses-Beziehung im Umfang (Name TArchitectureAnalyzer.IsolatedName).</summary>
+    Isolated: Boolean;
   end;
 
   TOverviewOutlierReason = (Namespace, Edges);
@@ -149,6 +151,7 @@ type
     ImplementationWeight = 1;
     /// <summary>Höchstens so viele Kanten zwischen zwei Teilsystemen gelten als selten.</summary>
     RareLimit = 2;
+    IsolatedName = 'Ohne uses-Beziehung';
   public
     /// <summary>Übersicht über alle aktiven Units von AGraph. ALocator darf nil sein (dann ohne Fundstellen).
     /// ACentralCount: Länge der Liste zentraler Units (5..100).</summary>
@@ -263,6 +266,28 @@ begin
   Result := Copy(Parts, 0, Length(Parts) - 1);
 end;
 
+/// <summary>Gruppennummern fortlaufend ab 0 in der Reihenfolge des ersten Auftretens.</summary>
+procedure Renumber(var AValues: TArray<Integer>);
+var
+  Map: TDictionary<Integer, Integer>;
+  Index, Number: Integer;
+begin
+  Map := TDictionary<Integer, Integer>.Create;
+  try
+    for Index := 0 to High(AValues) do
+    begin
+      if not Map.TryGetValue(AValues[Index], Number) then
+      begin
+        Number := Map.Count;
+        Map.Add(AValues[Index], Number);
+      end;
+      AValues[Index] := Number;
+    end;
+  finally
+    Map.Free;
+  end;
+end;
+
 type
   TAnalysis = class
   private
@@ -273,6 +298,8 @@ type
     FUnitOf: TArray<Integer>;
     /// <summary>Je Teilsystem: Name stammt aus einem Namensraum-Abschnitt (nicht aus der zentralen Unit).</summary>
     FNamedByPart: TArray<Boolean>;
+    /// <summary>Je Teilsystem der Namensraum-Abschnitt seines Namens (klein, ohne Zähler " 2"); '' ohne.</summary>
+    FPartKey: TArray<string>;
     procedure CollectUnits;
     procedure CollectEdges;
     procedure Measure;
@@ -407,7 +434,8 @@ var
   Edge: TOverviewEdge;
   Item: TLouvainEdge;
   Communities: TArray<Integer>;
-  Index, Count, Member: Integer;
+  Index, Count, Member, Isolated: Integer;
+  Degree: TArray<Integer>;
   Subsystem: TOverviewSubsystem;
 begin
   SetLength(Edges, Length(FResult.Edges));
@@ -421,6 +449,29 @@ begin
     Inc(Count);
   end;
   Communities := TLouvain.Communities(Length(FResult.Units), Edges);
+  // Units ohne Kante bilden bei Louvain je eine eigene Gruppe; sie kommen in eine Sammelgruppe.
+  SetLength(Degree, Length(FResult.Units));
+  for Edge in FResult.Edges do
+  begin
+    Inc(Degree[Edge.Source]);
+    Inc(Degree[Edge.Target]);
+  end;
+  Isolated := -1;
+  for Index := 0 to High(Communities) do
+    if Degree[Index] = 0 then
+    begin
+      if Isolated < 0 then
+        Isolated := Communities[Index];
+      Communities[Index] := Isolated;
+    end;
+  Renumber(Communities);
+  if Isolated >= 0 then
+    for Index := 0 to High(Communities) do
+      if Degree[Index] = 0 then
+      begin
+        Isolated := Communities[Index];
+        Break;
+      end;
   Count := 0;
   for Member in Communities do
     Count := Max(Count, Member + 1);
@@ -447,6 +498,7 @@ begin
   for Index := 0 to High(FResult.Subsystems) do
   begin
     Subsystem := FResult.Subsystems[Index];
+    Subsystem.Isolated := Index = Isolated;
     if Subsystem.InnerEdges + Subsystem.OuterEdges > 0 then
       Subsystem.Cohesion := Subsystem.InnerEdges / (Subsystem.InnerEdges + Subsystem.OuterEdges)
     else
@@ -540,6 +592,7 @@ var
   Taken: Boolean;
 begin
   SetLength(FNamedByPart, Length(FResult.Subsystems));
+  SetLength(FPartKey, Length(FResult.Subsystems));
   SetLength(Parts, Length(FResult.Units));
   Global_ := TDictionary<string, Integer>.Create;
   try
@@ -560,9 +613,15 @@ begin
     end;
     for Index := 0 to High(FResult.Subsystems) do
     begin
-      Key := BestPart(Parts, FResult.Subsystems[Index].Units, Global_, Length(FResult.Units), Score);
+      if FResult.Subsystems[Index].Isolated then
+        Key := ''
+      else
+        Key := BestPart(Parts, FResult.Subsystems[Index].Units, Global_, Length(FResult.Units), Score);
       FNamedByPart[Index] := Key <> '';
-      if Key <> '' then
+      FPartKey[Index] := Key;
+      if FResult.Subsystems[Index].Isolated then
+        Name := TArchitectureAnalyzer.IsolatedName
+      else if Key <> '' then
         Name := PartCaption(Parts, FResult.Subsystems[Index].Units, Key)
       else if FResult.Subsystems[Index].Central >= 0 then
         Name := FResult.Units[FResult.Subsystems[Index].Central].Name
@@ -635,7 +694,7 @@ begin
       Parts := TArchitectureAnalyzer.NamespaceParts(FResult.Units[Index].Name);
       NameOwn := False;
       for Part in Parts do
-        if SameText(Part, FResult.Subsystems[Own].Name) then
+        if SameText(Part, FPartKey[Own]) then
           NameOwn := True;
       if not NameOwn and FNamedByPart[Own] then
         for Subsystem := 0 to High(FResult.Subsystems) do
@@ -643,7 +702,7 @@ begin
           if (Subsystem = Own) or not FNamedByPart[Subsystem] or (Length(FResult.Subsystems[Subsystem].Units) < 2) then
             Continue;
           for Part in Parts do
-            if SameText(Part, FResult.Subsystems[Subsystem].Name) and (Outlier.Suggested < 0) then
+            if SameText(Part, FPartKey[Subsystem]) and (Outlier.Suggested < 0) then
             begin
               Outlier.Suggested := Subsystem;
               Outlier.Reason := TOverviewOutlierReason.Namespace;
@@ -753,14 +812,17 @@ var
   Sorted: TArray<TOverviewSubsystem>;
   Index: Integer;
 begin
-  // Größte zuerst, bei Gleichstand nach dem Namen der zentralen Unit (Namen entstehen erst danach).
+  // Größte zuerst, bei Gleichstand nach dem Namen der zentralen Unit (Namen entstehen erst danach); die
+  // Sammelgruppe ohne uses-Beziehung zuletzt.
   SetLength(Order, Length(FResult.Subsystems));
   for Index := 0 to High(Order) do
     Order[Index] := Index;
   TArray.Sort<Integer>(Order, TComparer<Integer>.Construct(
     function(const ALeft, ARight: Integer): Integer
     begin
-      Result := Length(FResult.Subsystems[ARight].Units) - Length(FResult.Subsystems[ALeft].Units);
+      Result := Ord(FResult.Subsystems[ALeft].Isolated) - Ord(FResult.Subsystems[ARight].Isolated);
+      if Result = 0 then
+        Result := Length(FResult.Subsystems[ARight].Units) - Length(FResult.Subsystems[ALeft].Units);
       if Result = 0 then
         Result := CompareText(FResult.Units[FResult.Subsystems[ALeft].Central].Name,
           FResult.Units[FResult.Subsystems[ARight].Central].Name);
