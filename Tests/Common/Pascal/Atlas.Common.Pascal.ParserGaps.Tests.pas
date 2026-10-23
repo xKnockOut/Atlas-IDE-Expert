@@ -63,6 +63,15 @@ type
     /// <summary>#1142 (Probe p11): %_0101 wie $_FF.</summary>
     [Test]
     procedure BinaryWithLeadingSeparator;
+    /// <summary>#1167 (Probe p13): reserviertes Wort als Name eines benannten Arguments.</summary>
+    [Test]
+    procedure NamedArgumentWithKeyword;
+    /// <summary>#1167 (Probe p14): Aufrufkonvention an einer anonymen Methode, die Routine dahinter bleibt.</summary>
+    [Test]
+    procedure AnonymousMethodWithCallingConvention;
+    /// <summary>#1167 (Probe p15): Attribut an einer Inline-Variablen; Typ und Wert bleiben die Kinder.</summary>
+    [Test]
+    procedure InlineVariableWithAttribute;
   end;
 
 implementation
@@ -134,6 +143,18 @@ const
   BinarySeparator =
     'unit p11_binary_separator;'#10'interface'#10'const'#10'  A = %_0101;'#10'  B = $_FF;'#10'  C = 1_000;'#10 +
     'implementation'#10'end.';
+  NamedKeyword =
+    'unit p13_named_arg_keyword;'#10'interface'#10'implementation'#10'procedure Test(Word: OleVariant);'#10 +
+    'begin'#10'  Word.Documents.Open(FileName := ''a.docx'', ReadOnly := True);'#10'  Word.Foo(Type := 1);'#10 +
+    'end;'#10'end.';
+  AnonymousConvention =
+    'unit p14_anon_callconv;'#10'interface'#10'implementation'#10'type'#10 +
+    '  TPred = reference to function(const S: string): Boolean;'#10'procedure Use(P: TPred);'#10'begin'#10 +
+    'end;'#10'procedure Test;'#10'begin'#10'  Use(function(const S: string): Boolean register'#10'    begin'#10 +
+    '      Result := S = '''';'#10'    end);'#10'end;'#10'procedure Danach;'#10'begin'#10'end;'#10'end.';
+  InlineAttribute =
+    'unit p15_inline_var_attribute;'#10'interface'#10'implementation'#10'procedure Test;'#10'begin'#10 +
+    '  var [Weak] Obj: IInterface := nil;'#10'  var [Unsafe, Weak] A, B: TObject;'#10'end;'#10'end.';
   EscapedMember =
     'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'    procedure &Type;'#10'  end;'#10'implementation'#10 +
     'procedure TFoo.&Type;'#10'begin'#10'end;'#10'procedure P(F: TFoo);'#10'begin'#10'  F.&Type;'#10'end;'#10'end.';
@@ -478,6 +499,43 @@ end;
 procedure TParserGapsTests.BinaryWithLeadingSeparator;
 begin
   Assert.AreEqual('', Diagnostics(BinarySeparator));
+end;
+
+procedure TParserGapsTests.NamedArgumentWithKeyword;
+begin
+  Assert.AreEqual('', Diagnostics(NamedKeyword));
+end;
+
+procedure TParserGapsTests.AnonymousMethodWithCallingConvention;
+var
+  mTree: TSyntaxTree;
+begin
+  Assert.AreEqual('', Diagnostics(AnonymousConvention));
+  mTree := TPascalParser.Parse(AnonymousConvention);
+  try
+    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.AnonymousMethod, 'function'));
+    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.RoutineDecl, 'Danach'), 'Routine dahinter');
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TParserGapsTests.InlineVariableWithAttribute;
+var
+  mTree: TSyntaxTree;
+  mVariable: TSyntaxNode;
+begin
+  Assert.AreEqual('', Diagnostics(InlineAttribute));
+  mTree := TPascalParser.Parse(InlineAttribute);
+  try
+    mVariable := Find(mTree.Root, TSyntaxKind.InlineVar, 'Obj');
+    Assert.IsNotNull(mVariable);
+    Assert.AreEqual(2, mVariable.ChildCount);
+    Assert.AreEqual(Ord(TSyntaxKind.TypeReference), Ord(mVariable[0].Kind));
+    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.InlineVar, 'A,B'));
+  finally
+    mTree.Free;
+  end;
 end;
 
 initialization

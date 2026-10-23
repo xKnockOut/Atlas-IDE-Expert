@@ -6134,7 +6134,7 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index; Metrik-Linse (`co
 | JM7 | Metrik-Linse über einer Methode | „… · 2 Parameter · Operanden 6 (> 5) · 3 lokale · 1 Ausstiege“; Werte über der Grenze farbig. Auf Englisch: „operands 6 (> 5) · 3 locals · 1 exits“ |
 | JM8 | `"metric-boolean-operands": {"max": 6}`, `"metric-local-count": "off"`, `"metric-exit-points": {"exclude": ["Alt/*.pas"]}`, `"group:style": "off"` | Beispiel aus JM1 meldet nichts mehr; keine lokale-Variablen-Meldung; keine Ausstiege-Meldung in `Alt/`; mit der Gruppe aus keine der vier Regeln |
 
-## Parser-Lücken aus der Gegenprüfung mit DelphiAST (#1137, #1138, #1134, #1140, #1142)
+## Parser-Lücken aus der Gegenprüfung mit DelphiAST (#1137, #1138, #1134, #1140, #1142, #1167)
 
 Voraussetzung: Server läuft in der IDE mit Projekt und Index. Proben aus `werkzeuge/delphiast/gegenpruefung/proben` (Projektdateien).
 
@@ -6147,6 +6147,7 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index. Proben aus `werkz
 | PX5 | Proben `p01_resolution_function.pas` und `p09_generic_resolution.pas` öffnen; dann in einer Klasse `function GetX;` ohne Typ | In den Proben kein Syntaxfehler (**Abnahme**: DUnitX `DUnitX.Generics.pas`, `DUnitX.Test.pas`, `DUnitX.TestFixture.pas` ohne Syntaxfehler); `function GetX;` meldet „braucht einen Ergebnistyp (wie E2023)“ |
 | PX6 | Proben `p03_class_threadvar.pas`, `p04_class_operator_in.pas` und `p06_codepage_string.pas` öffnen | Kein Syntaxfehler (**Abnahme**: Spring4D `Spring.HazardEra.pas`, `Spring.Patterns.Specification.pas`, mORMot2 `mormot.core.base.pas`); Gliederung zeigt `FCurrent`, den Operator `In` und die Typen `WinAnsiString`, `RawUnicode`; Strg+Klick auf `FCurrent` im Rumpf springt zum Feld |
 | PX7 | Proben `p07_record_align.pas`, `p08_variant_attribute.pas`, `p10_generic_default_param.pas` und `p11_binary_separator.pas` öffnen; die Probe p10 außerdem mit Delphi übersetzen | Kein Syntaxfehler, `TMyRecord`, `ValueWithAttribute`, `TFoo.Bar` und die Konstanten stehen in der Gliederung. Übersetzt Delphi p10 nicht, ist Atlas hier zu großzügig: bitte melden (das Issue verlangt die Gegenprüfung mit Delphi) |
+| PX8 | Proben `p13_named_arg_keyword.pas`, `p14_anon_callconv.pas` und `p15_inline_var_attribute.pas` öffnen (#1167); alle drei außerdem mit Delphi 13 übersetzen und das Ergebnis in #1167 vermerken | Kein Syntaxfehler; in p14 zeigt die Gliederung die Routinen nach der anonymen Methode. Lehnt Delphi eine Form ab, bitte melden: Atlas bleibt dort bewusst nachsichtig |
 
 ## override ruft nur inherited auf (#1143)
 
