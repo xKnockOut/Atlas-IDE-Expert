@@ -179,12 +179,15 @@ begin
   Assert.AreEqual(4, Integer(Length(Order.Moves)));
   Assert.AreEqual('Speichern', Order.Moves[0].Name);
   Assert.AreEqual(-4, Order.Moves[0].Delta);
+  Assert.AreEqual('procedure TKunde.Speichern(A: Integer);', Done.Split([#10])[Order.Moves[0].NewLine]);
+  Assert.AreEqual(3, Order.Moves[0].Size);
   Assert.AreEqual('TAussen', Order.Moves[1].TypeName);
   Assert.AreEqual(3, Order.Moves[1].Delta);
   Assert.AreEqual('TAussen.TInnen', Order.Moves[2].TypeName);
   Assert.AreEqual(1, Order.Moves[2].Delta);
   Assert.AreEqual('Laden', Order.Moves[3].Name);
   Assert.IsTrue(Order.Moves[3].Fixed, 'in der Region: bleibt');
+  Assert.AreEqual(-1, Order.Moves[3].NewLine);
   Assert.AreEqual('region', TMethodOrder.ReasonName(Order.Moves[3].Reason));
 end;
 
@@ -255,6 +258,8 @@ begin
   Assert.AreEqual(1, Integer(Length(Order.Moves)));
   Assert.AreEqual('B', Order.Moves[0].Name);
   Assert.AreEqual(-1, Order.Moves[0].Delta);
+  Assert.AreEqual(17, Order.Moves[0].NewLine);
+  Assert.AreEqual(21, Order.Moves[0].Line);
 end;
 
 procedure TMethodOrderTests.PlacesNewFirstMethod;

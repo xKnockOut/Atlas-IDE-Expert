@@ -11,9 +11,12 @@
 // Antwort (Zeilen und Zeichen ab 0 wie im Protokoll):
 //   {"edits": [{"range": …, "newText": "…"}],
 //    "moves": [{"type": "TKunde", "name": "Speichern", "line": 40,
-//               "delta": -3, "fixed": false, "reason": ""}, …]}
-// "delta" zählt Rümpfe (negativ = nach oben); "fixed" mit "reason" region,
-// ifdef oder line markiert Rümpfe, die stehen bleiben.
+//               "newLine": 22, "size": 4, "delta": -3, "fixed": false,
+//               "reason": ""}, …]}
+// "line"/"newLine" ist die Kopfzeile vorher/nachher (-1 bei stehen
+// bleibenden), "size" die Zahl der Zeilen bis zum end; "delta" zählt Rümpfe
+// (negativ = nach oben); "fixed" mit "reason" region, ifdef oder line
+// markiert Rümpfe, die stehen bleiben.
 
 interface
 
@@ -68,6 +71,8 @@ begin
     Item.AddPair('type', Move.TypeName);
     Item.AddPair('name', Move.Name);
     Item.AddPair('line', TJSONNumber.Create(Move.Line));
+    Item.AddPair('newLine', TJSONNumber.Create(Move.NewLine));
+    Item.AddPair('size', TJSONNumber.Create(Move.Size));
     Item.AddPair('delta', TJSONNumber.Create(Move.Delta));
     Item.AddPair('fixed', TJSONBool.Create(Move.Fixed));
     Item.AddPair('reason', TMethodOrder.ReasonName(Move.Reason));
