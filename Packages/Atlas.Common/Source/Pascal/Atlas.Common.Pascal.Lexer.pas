@@ -312,7 +312,7 @@ begin
     Inc(FPos);
     ScanDigits(['0'..'9', 'A'..'F', 'a'..'f', '_']);
   end
-  else if (C = '%') and CharInSet(Peek(1), ['0', '1']) then
+  else if (C = '%') and CharInSet(Peek(1), ['0', '1', '_']) then
   begin
     Kind := TPascalTokenKind.Number;
     Inc(FPos);
