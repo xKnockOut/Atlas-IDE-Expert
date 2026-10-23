@@ -193,6 +193,10 @@ type
     function FormSnapshot(const ASourceFile, ASourceText: string; out ASnapshot: TFormSnapshot): Boolean;
     function ReadCached(const AFileName: string; out AText: string): Boolean;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+    /// <summary>Antwort für ADocument an APosition; AParams (darf nil sein) liefert Auslöser und
+    /// partialResultToken.</summary>
+    function CompleteDocument(const ADocument: ITextDocument; const AUri: string; const APosition: TTextPosition;
+      const AParams: TJSONObject; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleResolve(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
     /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
@@ -204,6 +208,10 @@ type
       const AEnsureUnit: TEnsureUnitFunc = nil);
     destructor Destroy; override;
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
+    /// <summary>CompletionList für eine Momentaufnahme außerhalb des Dokumentspeichers, etwa mit eingefügtem
+    /// Ausdruck (#538); ohne Auslöser und ohne Staffelung.</summary>
+    function Complete(const ADocument: ITextDocument; const AUri: string; const APosition: TTextPosition;
+      const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     /// <summary>completionProvider mit Punkt als Auslöser.</summary>
     class function Capability: TJSONObject; static;
     /// <summary>Was an APosition vervollständigt wird.</summary>
@@ -2391,9 +2399,35 @@ end;
 
 function TLspCompletion.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
+  Uri: string;
+  PositionValue: TJSONValue;
+  Document: ITextDocument;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      'Felder "textDocument.uri" und "position" fehlen');
+  if not FStore.TryGet(Uri, Document) then
+  begin
+    TRequestDiagnostics.Reason('documentNotOpen');
+    Exit(TJSONNull.Create);
+  end;
+  Result := CompleteDocument(Document, Uri, TLspPositions.ReadPosition(PositionValue), TJSONObject(AParams),
+    ACancellation);
+end;
+
+function TLspCompletion.Complete(const ADocument: ITextDocument; const AUri: string; const APosition: TTextPosition;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+begin
+  Result := CompleteDocument(ADocument, AUri, APosition, nil, ACancellation);
+end;
+
+function TLspCompletion.CompleteDocument(const ADocument: ITextDocument; const AUri: string;
+  const APosition: TTextPosition; const AParams: TJSONObject; const ACancellation: IJsonRpcCancellationToken):
+  TJSONValue;
+var
   Cancellation: IPascalCancellation;
   Uri, Trigger: string;
-  PositionValue: TJSONValue;
   Document: ITextDocument;
   Request: TCompletionRequest;
   Answer: TCompletionAnswer;
@@ -2404,25 +2438,19 @@ var
   ParseMs: Int64;
 begin
   Watch := TStopwatch.StartNew;
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri" und "position" fehlen');
-  if not FStore.TryGet(Uri, Document) then
-  begin
-    TRequestDiagnostics.Reason('documentNotOpen');
-    Exit(TJSONNull.Create);
-  end;
+  Uri := AUri;
+  Document := ADocument;
   Cancellation := TRequestCancellation.Create(ACancellation);
   // Eine Anfrage für alle Fälle (Code-Review S-01): Text, Datei, Position und was je Dokument gilt.
-  Request := TCompletionRequest.Create(Document, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue));
+  Request := TCompletionRequest.Create(Document, TDocumentUris.ToPath(Uri), APosition);
   Answer := TCompletionAnswer.Create;
   try
     Request.Uri := Uri;
     Request.Index := FIndex;
     Request.ReadText := FReadText;
     Trigger := '';
-    TJSONObject(AParams).TryGetValue<string>('context.triggerCharacter', Trigger);
+    if AParams <> nil then
+      AParams.TryGetValue<string>('context.triggerCharacter', Trigger);
     Request.Trigger := Trigger;
     Answer.Cancellation := ACancellation;
     // Formulare über den Zwischenspeicher der Instanz (Code-Review P-06).
@@ -2431,8 +2459,8 @@ begin
       begin
         Result := FormSnapshot(ASourceFile, ASourceText, ASnapshot);
       end;
-    if Assigned(FNotify) and (TJSONObject(AParams).GetValue('partialResultToken') is TJSONString) then
-      Answer.Token := TJSONString(TJSONObject(AParams).GetValue('partialResultToken')).Value;
+    if Assigned(FNotify) and (AParams <> nil) and (AParams.GetValue('partialResultToken') is TJSONString) then
+      Answer.Token := TJSONString(AParams.GetValue('partialResultToken')).Value;
     if RunCases(FTextCases, Request, Answer) then
       Exit(ToJson(Answer.Exclusive));
     Shared := TSyntaxTreeCache.Get(Document, Cancellation);

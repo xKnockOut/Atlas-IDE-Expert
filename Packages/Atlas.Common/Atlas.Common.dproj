@@ -443,6 +443,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.CompilerSwitches.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerSwitches.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DebugUnavailable.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ExpressionCompletion.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

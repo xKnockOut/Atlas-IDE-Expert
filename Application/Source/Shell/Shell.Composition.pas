@@ -32,6 +32,7 @@ uses
   Atlas.Common.Lsp.InlineValues,
   Atlas.Common.Lsp.CompilerSwitches,
   Atlas.Common.Lsp.DebugUnavailable,
+  Atlas.Common.Lsp.ExpressionCompletion,
   Atlas.Common.Lsp.Formatting,
   Atlas.Common.Lsp.SelectionRanges,
   Atlas.Common.Lsp.Definition,
@@ -151,6 +152,7 @@ type
     /// <summary>Zuletzt gesetztes Zeitlimit für Anfragen, für die Einordnung als timeout.</summary>
     FRequestTimeout: Cardinal;
     FCompletion: TLspCompletion;
+    FExpressionCompletion: TLspExpressionCompletion;
     FSignatureHelp: TLspSignatureHelp;
     FHierarchies: TLspHierarchies;
     FImplementations: TLspImplementations;
@@ -1174,6 +1176,9 @@ begin
       FLogger.Debug(AText);
     end;
   FCompletion.Attach(FDispatcher);
+  // Ausdrücke in den Debug-Dialogen (#538) mit denselben Einträgen wie im Editor.
+  FExpressionCompletion := TLspExpressionCompletion.Create(FDocuments, FCompletion);
+  FExpressionCompletion.Attach(FDispatcher);
   // „Interface implementieren“ im Erzeugen-Menü (#719, #466) wie in der Vervollständigung.
   FSlashMenu.Completion := FCompletion;
 end;
@@ -2071,6 +2076,7 @@ begin
   FImplementations.Free;
   FHierarchies.Free;
   FSignatureHelp.Free;
+  FExpressionCompletion.Free;
   FCompletion.Free;
   FRename.Free;
   FCodeActions.Free;
