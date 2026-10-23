@@ -422,7 +422,7 @@ begin
   begin
     // $/cancelRequest ist Teil des Protokolls und gilt in jedem Zustand. Über
     // die Verbindung erledigt das schon der Lese-Thread (IJsonRpcPendingRequests.Observe).
-    if MethodValue.Value = JsonRpcCancelRequestMethod then
+    if (MethodValue.Value = JsonRpcCancelRequestMethod) or (MethodValue.Value = McpCancelledMethod) then
     begin
       FPending.Observe(AMessage);
       Exit(nil);

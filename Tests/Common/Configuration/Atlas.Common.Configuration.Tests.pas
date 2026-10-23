@@ -14,6 +14,8 @@ type
     [Test]
     procedure ReadsArchitectureSettings;
     [Test]
+    procedure ReadsNavigation;
+    [Test]
     procedure ReadsAllSettings;
     [Test]
     procedure EmptyObjectGivesDefaults;
@@ -159,6 +161,29 @@ begin
   Assert.AreEqual(1252, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{"encoding": "cp1252"}',
     Issues).DefaultEncoding);
   Assert.AreEqual(1250, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{}', Issues).DefaultEncoding);
+end;
+
+procedure TConfigurationParserTests.ReadsNavigation;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Navigation.SymbolPath);
+  Settings := Parse('{"navigation": {"symbolPath": false}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Navigation.SymbolPath);
+  // Unbekannte Schlüssel sind Warnungen, falscher Typ ein Fehler.
+  Settings := Parse('{"navigation": {"symbolPath": 1, "x": 1}}', Issues);
+  Assert.IsTrue(Settings.Navigation.SymbolPath);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Assert.IsTrue(Issues[0].IsError);
+  Assert.IsFalse(Issues[1].IsError);
+  Parse('{"navigation": true}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Steht navigation in der Datei, gilt ihr Objekt ganz, auch mit den Vorgaben.
+  Settings := TConfigurationParser.ParseLayered('{"navigation": {"symbolPath": false}}', '{"navigation": {}}', Issues);
+  Assert.IsTrue(Settings.Navigation.SymbolPath);
 end;
 
 procedure TConfigurationParserTests.ReadsArchitectureSettings;
