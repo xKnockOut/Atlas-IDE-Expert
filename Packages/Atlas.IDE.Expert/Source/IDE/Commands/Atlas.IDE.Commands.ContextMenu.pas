@@ -15,6 +15,9 @@
 // einem Neustart.
 // Einträge mit einer Kennung der Befehlspalette melden sich bei den
 // Tastenkürzel-Tipps (#600) als Aufruf per Kontextmenü.
+// Einträge, die eine Einstellung abschaltet (AddWhen, #1120), blendet
+// UpdateVisibility aus bzw. ein; aufgerufen beim Registrieren und nach jeder
+// Einstellungsänderung, nie aus OnUpdate (siehe oben).
 
 interface
 
@@ -36,6 +39,8 @@ type
       Proc: TProc;
       /// <summary>Sicherung (#493), unter der der Eintrag läuft.</summary>
       Feature: TAtlasFeature;
+      /// <summary>Sichtbar nach Einstellung (#1120); nil = immer.</summary>
+      Visible: TFunc<Boolean>;
     end;
   private const
     Category = 'Atlas';
@@ -63,6 +68,11 @@ type
     /// </summary>
     procedure AddGuarded(AFeature: TAtlasFeature; const AId, ACaption: string; const AKey: TFunc<Integer>;
       const AProc: TProc);
+    /// <summary>Wie AddGuarded, nur sichtbar, solange AVisible True liefert (Einstellung, #1120).</summary>
+    procedure AddWhen(AFeature: TAtlasFeature; const AId, ACaption: string; const AKey: TFunc<Integer>;
+      const AProc: TProc; const AVisible: TFunc<Boolean>);
+    /// <summary>Einträge mit Sichtbarkeit nach Einstellung ein- bzw. ausblenden.</summary>
+    procedure UpdateVisibility;
     /// <summary>Registriert das Untermenü bei der IDE, einmal nach allen Add.</summary>
     procedure EnsureAll;
   end;
@@ -113,7 +123,24 @@ begin
   Entry.Key := AKey;
   Entry.Proc := AProc;
   Entry.Feature := AFeature;
+  Entry.Visible := nil;
   FEntries := FEntries + [Entry];
+end;
+
+procedure TAtlasIdeContextMenu.AddWhen(AFeature: TAtlasFeature; const AId, ACaption: string;
+  const AKey: TFunc<Integer>; const AProc: TProc; const AVisible: TFunc<Boolean>);
+begin
+  AddGuarded(AFeature, AId, ACaption, AKey, AProc);
+  FEntries[High(FEntries)].Visible := AVisible;
+end;
+
+procedure TAtlasIdeContextMenu.UpdateVisibility;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(FItems) do
+    if (Index <= High(FEntries)) and Assigned(FEntries[Index].Visible) and (FItems[Index] is TAction) then
+      TAction(FItems[Index]).Visible := FEntries[Index].Visible();
 end;
 
 function TAtlasIdeContextMenu.CaptionOf(AIndex: Integer): string;
@@ -155,6 +182,7 @@ begin
       Item.OnExecute := ItemExecute;
     end;
   end;
+  UpdateVisibility;
   Services.GetEditorLocalMenu.RegisterActionList(FActions, Category, cEdMenuCatLast);
   FRegistered := True;
 end;

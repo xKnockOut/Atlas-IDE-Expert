@@ -94,6 +94,7 @@ type
     procedure ReadInlayHints(ANode: TJsonNode);
     procedure ReadCodeLens(ANode: TJsonNode);
     procedure ReadReferences(ANode: TJsonNode);
+    procedure ReadNavigation(ANode: TJsonNode);
     procedure CheckTodoKeywords(ANode: TJsonNode);
     procedure ReadHints(ANode: TJsonNode);
     procedure ReadDirectives(ANode: TJsonNode);
@@ -835,6 +836,36 @@ begin
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "references.%s"', [Key]), False);
+  end;
+end;
+
+procedure TValidator.ReadNavigation(ANode: TJsonNode);
+var
+  Index, Depth: Integer;
+  Key: string;
+  Value: TJsonNode;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"navigation" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    Value := ANode[Index];
+    if Key = 'impact' then
+      ExpectBoolean(Value, Key, FSettings.Navigation.Impact)
+    else if Key = 'impactDepth' then
+    begin
+      if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Depth) and (Depth >= 1) and (Depth <= 5) then
+        FSettings.Navigation.ImpactDepth := Depth
+      else
+        ReportNode(Value, '"impactDepth" muss eine ganze Zahl von 1 bis 5 sein');
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "navigation.%s"', [Key]), False);
   end;
 end;
 
@@ -1908,6 +1939,8 @@ begin
         ReadCodeLens(Value)
       else if Key = 'references' then
         ReadReferences(Value)
+      else if Key = 'navigation' then
+        ReadNavigation(Value)
       else if Key = 'hints' then
         ReadHints(Value)
       else if Key = 'directives' then
@@ -2258,6 +2291,8 @@ begin
       Result.CodeLens := FileSettings.CodeLens
     else if Key = 'references' then
       Result.References := FileSettings.References
+    else if Key = 'navigation' then
+      Result.Navigation := FileSettings.Navigation
     else if Key = 'hints' then
       Result.Hints := FileSettings.Hints
     else if Key = 'directives' then

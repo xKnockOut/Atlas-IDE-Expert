@@ -7,6 +7,8 @@
 // dessen Include-Dateien (CheckSource, #860), wie der Editor.
 // Verwendungen und Aufrufer sind nach Treffersicherheit getrennt (#1119):
 // erst die sicheren, dann die erschlossenen mit Grund.
+// get_impact (#1120): Auswirkungen einer Änderung nach Ebenen samt betroffenen
+// Tests, als Text oder als JSON wie atlas/impact.
 
 interface
 
@@ -18,6 +20,7 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.References,
+  Atlas.Common.Lsp.Impact,
   Atlas.Common.Todos.Contract;
 
 {$SCOPEDENUMS ON}
@@ -37,6 +40,7 @@ type
     FNamespaces: TArray<string>;
     FCheckSource: TCheckSourceFunc;
     FSettingsFor: TReferenceSettingsProvider;
+    FImpactOptionsFor: TImpactOptionsProvider;
     function Locate(const AName: string; out ALocation: TSymbolLocation; out AHint: string): Boolean;
     function LineText(const AFileName: string; ALine: Integer): string;
     function SettingsOf(const AFileName: string): TReferenceSettings;
@@ -47,6 +51,12 @@ type
     function References(const AName: string): string;
     /// <summary>Aufrufer und/oder aufgerufene Routinen einer Methode oder Routine.</summary>
     function CallHierarchy(const AName: string; ADirection: TMcpCallDirection): string;
+    /// <summary>get_impact (#1120) mit der Tiefe aus navigation.impactDepth.</summary>
+    function Impact(const AName: string; AJson: Boolean): string; overload;
+    /// <summary>Wie oben mit der Tiefe ADepth (1–5, außerhalb begrenzt).</summary>
+    function Impact(const AName: string; ADepth: Integer; AJson: Boolean): string; overload;
+    /// <summary>Text von get_impact: Symbol, direkte und indirekte Stellen als Baum, Tests, Grenzen.</summary>
+    class function ImpactReport(const AResult: TImpactResult; const AHint: string): string; static;
     /// <summary>qualified_name (#128): voll qualifizierter Name des Symbols an ALine/AColumn (ab 1);
     /// EMcpToolError, wenn dort keins steht.</summary>
     function QualifiedName(const AFileName: string; ALine, AColumn: Integer; AWithParameters: Boolean): string;
@@ -84,6 +94,8 @@ type
     property CheckSource: TCheckSourceFunc read FCheckSource write FCheckSource;
     /// <summary>Einstellungen references.* (#1119); nicht gesetzt: Vorgaben.</summary>
     property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
+    /// <summary>Optionen der Auswirkungsanalyse (#1120); nicht gesetzt: Vorgaben mit SettingsFor.</summary>
+    property ImpactOptionsFor: TImpactOptionsProvider read FImpactOptionsFor write FImpactOptionsFor;
   end;
 
 implementation
@@ -91,6 +103,7 @@ implementation
 uses
   System.Classes,
   System.StrUtils,
+  System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.SyntaxTree,
@@ -350,6 +363,151 @@ begin
     end;
     if Hint <> '' then
       Lines.Add(Hint);
+    Result := TrimRight(Lines.Text);
+  finally
+    Lines.Free;
+  end;
+end;
+
+function ImpactOptionsOf(const ATools: TMcpCodeTools; const AProvider: TImpactOptionsProvider;
+  const AFileName: string): TImpactOptions;
+begin
+  if Assigned(AProvider) then
+    Result := AProvider(TDocumentUris.FromPath(AFileName))
+  else
+  begin
+    Result := TImpactOptions.Default;
+    Result.References := ATools.SettingsOf(AFileName);
+  end;
+end;
+
+function TMcpCodeTools.Impact(const AName: string; AJson: Boolean): string;
+var
+  Location: TSymbolLocation;
+  Hint: string;
+begin
+  if not Locate(AName, Location, Hint) then
+    Exit(Format('Kein Symbol "%s" im Index.', [AName]));
+  Result := Impact(AName, ImpactOptionsOf(Self, FImpactOptionsFor, Location.FileName).Depth, AJson);
+end;
+
+function TMcpCodeTools.Impact(const AName: string; ADepth: Integer; AJson: Boolean): string;
+var
+  Location: TSymbolLocation;
+  Hint, Text: string;
+  Tree: TSyntaxTree;
+  Resolver: TNameResolver;
+  Start: THierarchyItem;
+  Options: TImpactOptions;
+  Found: TImpactResult;
+  Json: TJSONObject;
+begin
+  if not Locate(AName, Location, Hint) then
+    Exit(Format('Kein Symbol "%s" im Index.', [AName]));
+  if not FReadText(Location.FileName, Text) then
+    Exit(Format('Datei %s nicht lesbar.', [Location.FileName]));
+  Options := ImpactOptionsOf(Self, FImpactOptionsFor, Location.FileName);
+  Options.Depth := TImpactAnalysis.ClampDepth(ADepth);
+  Tree := TSyntaxTreeCache.Parse(Text);
+  try
+    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+    try
+      Resolver.Namespaces := FNamespaces;
+      if not TLspHierarchies.SymbolItemAt(Resolver, Tree, Location.FileName,
+        Location.Symbol.SelectionRange.StartPos, Start) then
+        Exit(Format('Zu %s gibt es keine Deklaration.', [Location.Symbol.QualifiedName]));
+      if Assigned(FFiles) then
+        Found := TImpactAnalysis.Analyze(Resolver, FIndex, Start, FFiles(), FReadText, Options, nil)
+      else
+        Found := TImpactAnalysis.Analyze(Resolver, FIndex, Start, nil, FReadText, Options, nil);
+    finally
+      Resolver.Free;
+    end;
+  finally
+    Tree.Free;
+  end;
+  if not AJson then
+    Exit(ImpactReport(Found, Hint));
+  Json := TImpactAnalysis.ToJson(Found);
+  try
+    Result := Json.ToJSON;
+  finally
+    Json.Free;
+  end;
+end;
+
+function ImpactEdgeText(AEdge: TImpactEdge): string;
+const
+  Texts: array[TImpactEdge] of string = ('Aufruf', 'Verweis', 'Override', 'überschriebene Basismethode',
+    'Interface-Methode', 'Umsetzung');
+begin
+  Result := Texts[AEdge];
+end;
+
+procedure AddImpactPlace(ALines: TStrings; const AResult: TImpactResult; AIndex: Integer; const AIndent: string);
+var
+  Place: TImpactPlace;
+  Binding: TImpactFormBinding;
+  Child: Integer;
+  Extra: string;
+begin
+  Place := AResult.Places[AIndex];
+  Extra := ImpactEdgeText(Place.Edge);
+  if Length(Place.Ranges) > 0 then
+    Extra := Format('%s, %d×', [Extra, Length(Place.Ranges)]);
+  if Place.Terminal then
+    Extra := Extra + ', Unit-Ebene';
+  if Place.Test >= 0 then
+    Extra := Extra + ', Test';
+  ALines.Add(Format('%s← %s (%s)%s', [AIndent, DescribeItem(Place.Item), Extra, ConfidenceSuffix(Place.Confidence)]));
+  for Binding in Place.Forms do
+    ALines.Add(Format('%s    Formular: %s (%s:%d)', [AIndent, Binding.Text, Binding.FileName,
+      Binding.Range.StartPos.Line + 1]));
+  // Jede Stelle hat genau eine Ursache: Der Baum endet.
+  for Child := AIndex + 1 to High(AResult.Places) do
+    if AResult.Places[Child].Cause = AIndex then
+      AddImpactPlace(ALines, AResult, Child, AIndent + '  ');
+end;
+
+class function TMcpCodeTools.ImpactReport(const AResult: TImpactResult; const AHint: string): string;
+var
+  Lines: TStringList;
+  Binding: TImpactFormBinding;
+  Test: TImpactTest;
+  Index: Integer;
+  Names: TArray<string>;
+begin
+  Lines := TStringList.Create;
+  try
+    Lines.Add(Format('Auswirkungen von %s, Tiefe %d: %d Stellen, %d direkt, %d indirekt, %d Tests.',
+      [DescribeItem(AResult.Symbol), AResult.Depth, Length(AResult.Places), AResult.LevelCount(1),
+      Length(AResult.Places) - AResult.LevelCount(1), Length(AResult.Tests)]));
+    for Binding in AResult.SymbolForms do
+      Lines.Add(Format('  Formular: %s (%s:%d)', [Binding.Text, Binding.FileName, Binding.Range.StartPos.Line + 1]));
+    if Length(AResult.Places) = 0 then
+      Lines.Add('Nichts verwendet das Symbol.');
+    for Index := 0 to High(AResult.Places) do
+      if AResult.Places[Index].Cause < 0 then
+        AddImpactPlace(Lines, AResult, Index, '  ');
+    if Length(AResult.Tests) > 0 then
+    begin
+      Lines.Add('Betroffene Tests:');
+      for Test in AResult.Tests do
+        Lines.Add(Format('  %s (%s:%d, Ebene %d)', [Test.Name, Test.FileName, Test.Line + 1, Test.Level]));
+      Names := AResult.RunNames;
+      Lines.Add('run_tests tests: ' + string.Join(', ', Names));
+    end
+    else
+      Lines.Add('Keine betroffenen Tests.');
+    if TImpactLimit.Depth in AResult.Limits then
+      Lines.Add(Format('Tiefe %d erreicht: %d Stellen nicht weiter verfolgt (größere "depth" geht weiter).',
+        [AResult.Depth, AResult.Unexpanded]));
+    if TImpactLimit.Count in AResult.Limits then
+      Lines.Add(Format('Höchstzahl von %d Stellen erreicht, Ergebnis unvollständig.', [AResult.MaxPlaces]));
+    if TImpactLimit.Time in AResult.Limits then
+      Lines.Add(Format('Zeitlimit von %d ms erreicht, Ergebnis unvollständig.', [AResult.TimeoutMs]));
+    if AHint <> '' then
+      Lines.Add(AHint);
     Result := TrimRight(Lines.Text);
   finally
     Lines.Free;

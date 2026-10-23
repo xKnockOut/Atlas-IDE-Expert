@@ -19,6 +19,11 @@
 // Unit gruppiert; erschlossene Zeilen tragen ≈ und ihren Grund, der Hinweis
 // unter der Maus erklärt ihn. „Nur sichere“ in der Titelzeile blendet die
 // erschlossenen aus. Erschlossene Aufrufer der Hierarchie sind ebenso markiert.
+// Die Auswirkungsanalyse (#1120) steht in drei Abschnitten: „Direkt“ (Ebene 1),
+// „Indirekt“ als Baum über die verursachende Stelle und „Betroffene Tests“;
+// Formularbindungen hängen unter ihrer Stelle, erreichte Grenzen stehen am
+// Ende. In der Titelzeile wählt „Tiefe“ 1–5 (OnImpactDepth rechnet neu), und
+// „Betroffene Tests ausführen“ gibt die Tests an OnImpactRunTests.
 
 interface
 
@@ -34,6 +39,7 @@ uses
   Vcl.Menus,
   Vcl.ExtCtrls,
   Atlas.Core.Results.Model,
+  Atlas.Core.Lsp.Contract,
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
   Atlas.Core.Undo.Contract,
@@ -49,6 +55,10 @@ type
   TAtlasChangeDiff = reference to procedure(ASetId: Integer; const AFileName: string);
   /// <summary>Notiz (#545) bearbeiten bzw. löschen.</summary>
   TAtlasNoteAction = reference to procedure(const ANoteId: string);
+  /// <summary>Auswirkungsanalyse (#1120) mit anderer Tiefe neu rechnen.</summary>
+  TAtlasImpactDepthChange = reference to procedure(ADepth: Integer);
+  /// <summary>Betroffene Tests der gezeigten Analyse ausführen.</summary>
+  TAtlasImpactRunTests = reference to procedure(const AImpact: TAtlasImpact);
 
   TAtlasResultsFrame = class(TFrame)
   private type
@@ -97,6 +107,18 @@ type
     FSureCaption: string;
     FInferredCaption: string;
     FHintNode: TTreeNode;
+    FDepthLabel: TLabel;
+    FDepth: TComboBox;
+    FRunTests: TButton;
+    FImpact: TAtlasImpact;
+    FShowsImpact: Boolean;
+    FOnImpactDepth: TAtlasImpactDepthChange;
+    FOnImpactRunTests: TAtlasImpactRunTests;
+    function AddImpactPlace(AParent: TTreeNode; APlace: Integer): TTreeNode;
+    procedure AddImpactBranch(AParent: TTreeNode; ACause: Integer);
+    procedure AddImpactForms(AParent: TTreeNode; const AForms: TArray<TAtlasImpactForm>);
+    procedure DepthChange(Sender: TObject);
+    procedure RunTestsClick(Sender: TObject);
     function AddNode(AParent: TTreeNode; const AText: string; const AData: TNodeData): TTreeNode;
     function DataOf(ANode: TTreeNode): TNodeData;
     procedure AddHierarchy(AParent: TTreeNode; const AItems: TArray<TAtlasHierarchyItem>);
@@ -157,6 +179,24 @@ type
     class function ReasonText(const AConfidence: TAtlasConfidence): string; static;
     /// <summary>Text eines Hierarchie-Eintrags: "Laden · TKunde  (Kunden.pas:12)".</summary>
     class function HierarchyText(const AItem: TAtlasHierarchyItem): string; static;
+    /// <summary>Auswirkungsanalyse (#1120): Abschnitte „Direkt“, „Indirekt“ (Baum über die Ursache),
+    /// „Betroffene Tests“, darunter erreichte Grenzen; Tiefe und „Betroffene Tests ausführen“ in der Titelzeile.
+    /// </summary>
+    procedure ShowImpact(const ATitle: string; const AImpact: TAtlasImpact);
+    /// <summary>Text einer betroffenen Stelle: wie HierarchyText, mit Art (Override, Umsetzung …), Zahl der
+    /// Verwendungen und Test-Kennzeichen.</summary>
+    class function ImpactPlaceText(const APlace: TAtlasImpactPlace): string; static;
+    /// <summary>"Formular: OnClick = Button1Click  (Main.dfm:12)".</summary>
+    class function ImpactFormText(const AForm: TAtlasImpactForm): string; static;
+    /// <summary>Je erreichte Grenze eine Zeile; leer ohne.</summary>
+    class function ImpactLimitTexts(const AImpact: TAtlasImpact): TArray<string>; static;
+    /// <summary>Zeigt gerade eine Auswirkungsanalyse (#1120).</summary>
+    property ShowsImpact: Boolean read FShowsImpact;
+    property Impact: TAtlasImpact read FImpact;
+    property DepthBox: TComboBox read FDepth;
+    property RunTestsButton: TButton read FRunTests;
+    property OnImpactDepth: TAtlasImpactDepthChange read FOnImpactDepth write FOnImpactDepth;
+    property OnImpactRunTests: TAtlasImpactRunTests read FOnImpactRunTests write FOnImpactRunTests;
     property Tree: TTreeView read FTree;
     property OnOpen: TAtlasResultsOpen read FOnOpen write FOnOpen;
     property OnExpand: TAtlasHierarchyExpand read FOnExpand write FOnExpand;
@@ -213,6 +253,31 @@ begin
   FOnlySure.Width := 110;
   FOnlySure.Visible := False;
   FOnlySure.OnClick := OnlySureClick;
+  // Auswirkungsanalyse (#1120): Tiefe und Testlauf, rechts in der Titelzeile. Die Liste der Tiefen füllt
+  // ShowImpact: Ein Kombinationsfeld braucht dafür ein Fenster.
+  FRunTests := TButton.Create(Self);
+  FRunTests.Parent := Header;
+  FRunTests.Align := alRight;
+  FRunTests.AlignWithMargins := True;
+  FRunTests.Caption := TAtlasStrings.Text(TAtlasTextId.ImpactRunTests);
+  FRunTests.Width := 170;
+  FRunTests.Visible := False;
+  FRunTests.OnClick := RunTestsClick;
+  FDepth := TComboBox.Create(Self);
+  FDepth.Parent := Header;
+  FDepth.Align := alRight;
+  FDepth.AlignWithMargins := True;
+  FDepth.Style := csDropDownList;
+  FDepth.Width := 44;
+  FDepth.Visible := False;
+  FDepth.OnChange := DepthChange;
+  FDepthLabel := TLabel.Create(Self);
+  FDepthLabel.Parent := Header;
+  FDepthLabel.Align := alRight;
+  FDepthLabel.AlignWithMargins := True;
+  FDepthLabel.Layout := tlCenter;
+  FDepthLabel.Caption := TAtlasStrings.Text(TAtlasTextId.ImpactDepth);
+  FDepthLabel.Visible := False;
   FTitle := TLabel.Create(Self);
   FTitle.Parent := Header;
   FTitle.Align := alClient;
@@ -308,6 +373,175 @@ begin
     Result := '≈ ' + Result + '  [' + ReasonText(AItem.Confidence) + ']';
 end;
 
+class function TAtlasResultsFrame.ImpactPlaceText(const APlace: TAtlasImpactPlace): string;
+var
+  Edge: string;
+begin
+  if APlace.Terminal then
+    Result := APlace.Item.Name + ' · ' + TAtlasStrings.Text(TAtlasTextId.ImpactUnitLevel) +
+      Format('  (%s:%d)', [ExtractFileName(APlace.Item.FileName), APlace.UseLine + 1])
+  else
+    Result := HierarchyText(APlace.Item);
+  Edge := '';
+  if APlace.Edge = 'reference' then
+    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeReference)
+  else if APlace.Edge = 'override' then
+    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeOverride)
+  else if APlace.Edge = 'baseMethod' then
+    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeBase)
+  else if APlace.Edge = 'interfaceMethod' then
+    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeInterface)
+  else if APlace.Edge = 'implementation' then
+    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeImplementation);
+  if Edge <> '' then
+    Result := Result + '  · ' + Edge;
+  if APlace.UseCount > 1 then
+    Result := Result + Format('  ×%d', [APlace.UseCount]);
+  if APlace.Test <> '' then
+    Result := Result + '  · Test';
+end;
+
+class function TAtlasResultsFrame.ImpactFormText(const AForm: TAtlasImpactForm): string;
+begin
+  Result := Format(TAtlasStrings.Text(TAtlasTextId.ImpactForm), [AForm.Text, ExtractFileName(AForm.FileName),
+    AForm.Line + 1]);
+end;
+
+class function TAtlasResultsFrame.ImpactLimitTexts(const AImpact: TAtlasImpact): TArray<string>;
+begin
+  Result := nil;
+  if AImpact.DepthReached then
+    Result := Result + [Format(TAtlasStrings.Text(TAtlasTextId.ImpactLimitDepth), [AImpact.Depth,
+      AImpact.Unexpanded])];
+  if AImpact.CountReached then
+    Result := Result + [Format(TAtlasStrings.Text(TAtlasTextId.ImpactLimitCount), [AImpact.MaxPlaces])];
+  if AImpact.TimeReached then
+    Result := Result + [Format(TAtlasStrings.Text(TAtlasTextId.ImpactLimitTime), [AImpact.TimeoutMs])];
+end;
+
+procedure TAtlasResultsFrame.AddImpactForms(AParent: TTreeNode; const AForms: TArray<TAtlasImpactForm>);
+var
+  Form: TAtlasImpactForm;
+  Data: TNodeData;
+begin
+  for Form in AForms do
+  begin
+    Data := Default(TNodeData);
+    Data.Kind := TNodeKind.Entry;
+    Data.FileName := Form.FileName;
+    Data.Line := Form.Line;
+    Data.Character := Form.Character;
+    AddNode(AParent, ImpactFormText(Form), Data);
+  end;
+end;
+
+function TAtlasResultsFrame.AddImpactPlace(AParent: TTreeNode; APlace: Integer): TTreeNode;
+var
+  Place: TAtlasImpactPlace;
+  Data: TNodeData;
+begin
+  Place := FImpact.Places[APlace];
+  Data := Default(TNodeData);
+  Data.Kind := TNodeKind.Entry;
+  // Doppelklick springt zur Verwendung der Ursache in der Stelle.
+  Data.FileName := Place.Item.FileName;
+  Data.Line := Place.UseLine;
+  Data.Character := Place.UseCharacter;
+  Data.Hint := Place.Item.Confidence.Explanation;
+  Result := AddNode(AParent, ImpactPlaceText(Place), Data);
+  AddImpactForms(Result, Place.Forms);
+end;
+
+procedure TAtlasResultsFrame.AddImpactBranch(AParent: TTreeNode; ACause: Integer);
+var
+  Child: Integer;
+begin
+  // Jede Stelle hat genau eine Ursache: Der Baum endet, Zyklen gibt es nicht.
+  for Child in FImpact.Children(ACause) do
+    AddImpactBranch(AddImpactPlace(AParent, Child), Child);
+end;
+
+procedure TAtlasResultsFrame.ShowImpact(const ATitle: string; const AImpact: TAtlasImpact);
+var
+  Data: TNodeData;
+  Section, Node: TTreeNode;
+  Index, Depth: Integer;
+  Test: TAtlasImpactTest;
+  Limit: string;
+begin
+  Clear(ATitle);
+  FImpact := AImpact;
+  FShowsImpact := True;
+  FDepthLabel.Visible := True;
+  FDepth.Visible := True;
+  FRunTests.Visible := True;
+  FRunTests.Enabled := Length(AImpact.Tests) > 0;
+  if FDepth.Items.Count = 0 then
+    for Depth := 1 to 5 do
+      FDepth.Items.Add(IntToStr(Depth));
+  FDepth.OnChange := nil;
+  try
+    FDepth.ItemIndex := AImpact.Depth - 1;
+  finally
+    FDepth.OnChange := DepthChange;
+  end;
+  Data := Default(TNodeData);
+  Data.Kind := TNodeKind.Placeholder;
+  FTree.Items.BeginUpdate;
+  try
+    Section := AddNode(nil, Format(TAtlasStrings.Text(TAtlasTextId.ImpactDirect), [AImpact.LevelCount(1)]), Data);
+    AddImpactForms(Section, AImpact.SymbolForms);
+    for Index := 0 to High(AImpact.Places) do
+      if AImpact.Places[Index].Level = 1 then
+        AddImpactPlace(Section, Index);
+    Section.Expand(False);
+    Section := AddNode(nil, Format(TAtlasStrings.Text(TAtlasTextId.ImpactIndirect), [AImpact.CountFrom(2)]), Data);
+    for Index in AImpact.Children(-1) do
+      if Length(AImpact.Children(Index)) > 0 then
+      begin
+        Node := AddImpactPlace(Section, Index);
+        AddImpactBranch(Node, Index);
+      end;
+    Section.Expand(AImpact.CountFrom(2) <= 200);
+    if Length(AImpact.Tests) = 0 then
+      AddNode(nil, TAtlasStrings.Text(TAtlasTextId.ImpactNoTests), Data)
+    else
+    begin
+      Section := AddNode(nil, Format(TAtlasStrings.Text(TAtlasTextId.ImpactTests), [Length(AImpact.Tests)]), Data);
+      for Test in AImpact.Tests do
+      begin
+        Data.Kind := TNodeKind.Entry;
+        Data.FileName := Test.FileName;
+        Data.Line := Test.Line;
+        Data.Character := 0;
+        AddNode(Section, Test.Name + Format('  (%s:%d)', [ExtractFileName(Test.FileName), Test.Line + 1]),
+          Data);
+      end;
+      Data := Default(TNodeData);
+      Data.Kind := TNodeKind.Placeholder;
+      Section.Expand(False);
+    end;
+    for Limit in ImpactLimitTexts(AImpact) do
+      AddNode(nil, '⚠ ' + Limit, Data);
+  finally
+    FTree.Items.EndUpdate;
+  end;
+  if FTree.Items.Count > 0 then
+    FTree.Selected := FTree.Items[0];
+end;
+
+procedure TAtlasResultsFrame.DepthChange(Sender: TObject);
+begin
+  if FShowsImpact and (FDepth.ItemIndex >= 0) and Assigned(FOnImpactDepth) then
+    FOnImpactDepth(FDepth.ItemIndex + 1);
+end;
+
+procedure TAtlasResultsFrame.RunTestsClick(Sender: TObject);
+begin
+  if FShowsImpact and (Length(FImpact.Tests) > 0) and Assigned(FOnImpactRunTests) then
+    FOnImpactRunTests(FImpact);
+end;
+
 function TAtlasResultsFrame.AddNode(AParent: TTreeNode; const AText: string; const AData: TNodeData): TTreeNode;
 begin
   Result := FTree.Items.AddChild(AParent, AText);
@@ -333,6 +567,10 @@ begin
   FShowsChanges := False;
   FShowsNotes := False;
   FOnlySure.Visible := False;
+  FShowsImpact := False;
+  FDepthLabel.Visible := False;
+  FDepth.Visible := False;
+  FRunTests.Visible := False;
   FHintNode := nil;
   FTree.Hint := '';
   FTitle.Caption := ATitle;

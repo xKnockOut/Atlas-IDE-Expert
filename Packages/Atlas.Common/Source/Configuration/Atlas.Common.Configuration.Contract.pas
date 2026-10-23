@@ -105,6 +105,15 @@ type
     class function SureOnly: TReferenceSettings; static;
   end;
 
+  /// <summary>Navigation über den Code ("navigation", #1120).</summary>
+  TNavigationSettings = record
+    /// <summary>Befehl „Auswirkungen anzeigen“ im Plugin mit seinen Menüeinträgen.</summary>
+    Impact: Boolean;
+    /// <summary>Vorgabe der Tiefe der Auswirkungsanalyse in IDE und MCP (1–5).</summary>
+    ImpactDepth: Integer;
+    class function Default: TNavigationSettings; static;
+  end;
+
   /// <summary>Anzeige von XMLDoc in Hover und Detailpanel des Plugins (#654, #770). Der Server bereitet die Doku
   /// immer vollständig auf und gibt die Werte nur weiter.</summary>
   THintSettings = record
@@ -451,6 +460,7 @@ type
     InlayHints: TInlayHintSettings;
     CodeLens: TCodeLensSettings;
     References: TReferenceSettings;
+    Navigation: TNavigationSettings;
     Hints: THintSettings;
     Directives: TDirectiveSettings;
     Highlight: THighlightSettings;
@@ -746,6 +756,14 @@ begin
   Result.TextMatches := False;
 end;
 
+{ TNavigationSettings }
+
+class function TNavigationSettings.Default: TNavigationSettings;
+begin
+  Result.Impact := True;
+  Result.ImpactDepth := 2;
+end;
+
 { TCodeLensSettings }
 
 class function TCodeLensSettings.Default: TCodeLensSettings;
@@ -926,6 +944,7 @@ begin
   Result.InlayHints := TInlayHintSettings.Default;
   Result.CodeLens := TCodeLensSettings.Default;
   Result.References := TReferenceSettings.Default;
+  Result.Navigation := TNavigationSettings.Default;
   Result.Hints := THintSettings.Default;
   Result.Directives := TDirectiveSettings.Default;
   Result.Highlight := THighlightSettings.Default;

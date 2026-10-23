@@ -16,6 +16,7 @@ uses
   Atlas.Core.Results.Model,
   Atlas.Core.Undo.Contract,
   Atlas.Core.Notes.Store,
+  Atlas.Core.Lsp.Contract,
   Atlas.UI.Results.Frame;
 
 type
@@ -32,6 +33,9 @@ type
     /// <summary>Liste der Notizen (#545): bearbeiten, löschen.</summary>
     OnNoteEdit: TAtlasNoteAction;
     OnNoteDelete: TAtlasNoteAction;
+    /// <summary>Auswirkungsanalyse (#1120): andere Tiefe, betroffene Tests ausführen.</summary>
+    OnImpactDepth: TAtlasImpactDepthChange;
+    OnImpactRunTests: TAtlasImpactRunTests;
   public
     /// <summary>Fenster zeigen (bei Bedarf anlegen); nil, wenn die IDE keine andockbaren Fenster anbietet.</summary>
     class function Frame: TAtlasResultsFrame; static;
@@ -45,6 +49,8 @@ type
     /// <summary>Notizen des Projekts (#545); ASelectId: diese Notiz wählen.</summary>
     class procedure ShowNotes(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>;
       const ASelectId: string); static;
+    /// <summary>Auswirkungen einer Änderung am Symbol (#1120): direkt, indirekt, Tests.</summary>
+    class procedure ShowImpact(const ATitle: string; const AImpact: TAtlasImpact); static;
     /// <summary>Frame, falls das Fenster schon existiert; legt nichts an und holt nichts nach vorn.</summary>
     class function ExistingFrame: TAtlasResultsFrame; static;
     /// <summary>Fenstersymbol (#751) zum aktiven IDE-Thema.</summary>
@@ -158,6 +164,18 @@ begin
     begin
       if Assigned(TAtlasIdeResultsWindow.OnNoteDelete) then
         TAtlasIdeResultsWindow.OnNoteDelete(ANoteId);
+    end;
+  ResultsFrame.OnImpactDepth :=
+    procedure(ADepth: Integer)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnImpactDepth) then
+        TAtlasIdeResultsWindow.OnImpactDepth(ADepth);
+    end;
+  ResultsFrame.OnImpactRunTests :=
+    procedure(const AImpact: TAtlasImpact)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnImpactRunTests) then
+        TAtlasIdeResultsWindow.OnImpactRunTests(AImpact);
     end;
   ResultsFrame.OnExpand :=
     function(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>
@@ -284,6 +302,15 @@ begin
     Target.ShowNotes(ATitle, AGroups, ASelectId);
 end;
 
+class procedure TAtlasIdeResultsWindow.ShowImpact(const ATitle: string; const AImpact: TAtlasImpact);
+var
+  Target: TAtlasResultsFrame;
+begin
+  Target := Frame;
+  if Target <> nil then
+    Target.ShowImpact(ATitle, AImpact);
+end;
+
 class function TAtlasIdeResultsWindow.ExistingFrame: TAtlasResultsFrame;
 begin
   Result := nil;
@@ -330,6 +357,8 @@ begin
   OnChangeDiff := nil;
   OnNoteEdit := nil;
   OnNoteDelete := nil;
+  OnImpactDepth := nil;
+  OnImpactRunTests := nil;
   // Meldet ab und gibt die Form nur frei, wenn die IDE sie nicht schon zerstört hat.
   FreeAndNil(Host);
 end;

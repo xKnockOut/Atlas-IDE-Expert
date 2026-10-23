@@ -5,7 +5,7 @@
 // atlas.json (x-scope im Schema).
 // Ein Teil der globalen Server-Einstellungen steht auf den Reitern der
 // Optionsseite: Index, Speicher, XMLDoc, Inlay-Hints, Code-Metriken, Schnellbefehle,
-// Kompilieren nach dem Speichern und die Treffersicherheit der Verwendungen. Sie gehören zu TAtlasPluginSettings, liegen
+// Kompilieren nach dem Speichern, die Treffersicherheit der Verwendungen und die Auswirkungsanalyse. Sie gehören zu TAtlasPluginSettings, liegen
 // aber in settings.json statt in der Registry; TAtlasRoutedSettingsStore leitet
 // sie dorthin um. So lesen Plugin und Server denselben Wert, und der Dialog
 // „Weitere globale Einstellungen“ blendet sie aus (IdeManagedPaths).
@@ -115,7 +115,10 @@ begin
     Setting('CompileOnSave', 'compiler.onSave', True),
     // Treffersicherheit der Verwendungen (#1119).
     Setting('ReferencesInferred', 'references.inferred', True),
-    Setting('ReferencesTextMatches', 'references.textMatches', True)];
+    Setting('ReferencesTextMatches', 'references.textMatches', True),
+    // Auswirkungsanalyse (#1120).
+    Setting('Impact', 'navigation.impact', True),
+    Setting('ImpactDepth', 'navigation.impactDepth', False)];
 end;
 
 class function TAtlasSettingsScopes.TryRouted(const AName: string; out ASetting: TAtlasRoutedSetting): Boolean;

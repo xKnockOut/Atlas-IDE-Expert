@@ -21,7 +21,7 @@ Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnoc
 | [Bauen, Testen, Debuggen](#bauen-testen-debuggen) | Release-Build-Wächter, DUnitX-Tests aus dem Editor, Startprofile, Werte im Hover beim Debuggen |
 | [IDE-Komfort](#ide-komfort) | Willkommensseite, Befehlspalette, Benachrichtigungen, Änderungsmarken aus Git/SVN, abgesicherter Start |
 | [Einstellungen](#einstellungen) | Jede Funktion einzeln abschaltbar, Optionsseite als Baum, teamweite Projektdatei `.atlas` |
-| [Claude Code](#claude-code-und-mcp) | 19 MCP-Werkzeuge zum Lesen, Prüfen, Bauen, Testen und Umbenennen |
+| [Claude Code](#claude-code-und-mcp) | 20 MCP-Werkzeuge zum Lesen, Prüfen, Bauen, Testen und Umbenennen |
 
 ## Schnellstart
 
@@ -88,6 +88,7 @@ Alles Folgende ist in `main` umgesetzt. Funktionen mit *(experimentell)* sind ab
 - **Datei und Symbol schnell öffnen** (Strg+P) über Projekt, Projektgruppe und Suchpfad; projektweite **Symbolsuche**
 - **Units suchen** (Strg+F12) im eigenen Fenster mit Vorschau, Gruppen, Filtern und „In uses aufnehmen“
 - **Ergebnisfenster** „Atlas-Ergebnisse“ für Referenzen (auch in Formularen), Implementierungen, Aufrufer, Aufrufe und Vererbung; Verwendungen getrennt in „Sicher“ und „Erschlossen · vor dem Umbenennen prüfen“ mit Grund (Interface, überschrieben, Überladung unklar, inaktiver Zweig) und Filter „Nur sichere“
+- **Auswirkungen anzeigen** (Kontextmenü des Editors, *Atlas › Suchen*, Befehlspalette): Was ist betroffen, wenn sich das Symbol am Cursor ändert? Direkte und indirekte Aufrufer und Verweise, Overrides, die überschriebene Basismethode, Interface-Methode und Umsetzungen, Ereignis-Handler und Komponenten in Formularen, als Baum nach Ursache mit Tiefe 1 bis 5, dazu die betroffenen DUnitX-Tests und „Betroffene Tests ausführen“. Läuft im Hintergrund und meldet erreichte Grenzen (Tiefe, Anzahl, Zeit); `navigation.impact`, `navigation.impactDepth`
 - **Navigationsverlauf** über Dateien hinweg
 - **Benannte Lesezeichen** (Strg+Alt+K) und persönliche **Notizen** an Codezeilen, die nicht im Quelltext landen
 - **Schnelle Lesezeichen** in einer Spalte links der Zeilennummern: Klick setzt und entfernt, Strg+Umschalt+1…9 nummeriert, Strg+1…9 springt projektweit, Strg+Umschalt+K unnummeriert (die Faltungsakkorde der IDE bleiben), wandern mit dem Code mit und übernehmen die IDE-Lesezeichen
@@ -177,7 +178,7 @@ Alle Schlüssel: [docs/Einstellungen.md](docs/Einstellungen.md) und [docs/Konfig
 
 ### Claude Code und MCP
 
-Der Server bietet Claude Code 19 MCP-Werkzeuge: Symbole suchen, Deklarationen und Typ- und Aufrufhierarchien lesen, Komponenten- und Formularinfos, Diagnosen, Metriken und TODOs abfragen, geplanten Code mit `check_code` vor dem Schreiben prüfen, Treffer erklären, über die IDE bauen (`build_project`, `get_last_build`), DUnitX-Tests ausführen und schreibend umbenennen oder Code-Aktionen anwenden (mit Vorschau). Dazu die Ressource `delphi://conventions` mit den Konventionen des Projekts. Einrichtung: [Editors/ClaudeCode](Editors/ClaudeCode/README.md), Werkzeuge: [docs/MCP.md](docs/MCP.md).
+Der Server bietet Claude Code 20 MCP-Werkzeuge: Symbole suchen, Deklarationen und Typ- und Aufrufhierarchien lesen, die Auswirkungen einer Änderung ermitteln (`get_impact`), Komponenten- und Formularinfos, Diagnosen, Metriken und TODOs abfragen, geplanten Code mit `check_code` vor dem Schreiben prüfen, Treffer erklären, über die IDE bauen (`build_project`, `get_last_build`), DUnitX-Tests ausführen und schreibend umbenennen oder Code-Aktionen anwenden (mit Vorschau). Dazu die Ressource `delphi://conventions` mit den Konventionen des Projekts. Einrichtung: [Editors/ClaudeCode](Editors/ClaudeCode/README.md), Werkzeuge: [docs/MCP.md](docs/MCP.md).
 
 ### Geplant
 

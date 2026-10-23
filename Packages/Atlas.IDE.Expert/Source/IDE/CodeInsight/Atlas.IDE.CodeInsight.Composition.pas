@@ -69,6 +69,7 @@ uses
   Atlas.IDE.Editor.DfmPropertyRules,
   Atlas.Core.Results.Model,
   Atlas.IDE.Results.Commands,
+  Atlas.IDE.Results.Impact,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Commands.QuickOpen,
   Atlas.IDE.Editor.NavHistory,
@@ -960,6 +961,11 @@ begin
   Result := TAtlasIdeSettings.Current.NavHistory;
 end;
 
+function ImpactVisible: Boolean;
+begin
+  Result := TAtlasIdeImpact.Enabled;
+end;
+
 function PeekVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.Peek;
@@ -1232,6 +1238,9 @@ begin
   Add('Atlas.References', TAtlasTextId.MenuReferences, TAtlasIdeResults.FindReferences);
   Add('Atlas.Implementations', TAtlasTextId.MenuImplementations, TAtlasIdeResults.FindImplementations);
   Add('Atlas.SymbolSearch', TAtlasTextId.MenuSymbolSearch, TAtlasIdeResults.SearchSymbol);
+  // Auswirkungsanalyse (#1120); nur sichtbar, solange navigation.impact an ist.
+  Add('Atlas.Impact', TAtlasTextId.ImpactCommand, Guarded(TAtlasFeature.Results, TAtlasIdeImpact.ShowAtCursor),
+    ImpactVisible);
   // Schnell öffnen (#503); nur sichtbar, solange quickOpen.enabled an ist.
   Add('Atlas.QuickOpen', TAtlasTextId.QuickOpenTitle, Guarded(TAtlasFeature.Palette, TAtlasIdeQuickOpen.Show),
     QuickOpenVisible);
@@ -2330,6 +2339,15 @@ begin
     begin
       GuardWarning(AText);
     end);
+  // Auswirkungsanalyse (#1120): „Betroffene Tests ausführen“ über den Testläufer (#69).
+  TAtlasIdeImpact.Install(
+    procedure(const AFileName: string; const ATests: TArray<string>)
+    begin
+      if Tests <> nil then
+        Tests.RunTests(AFileName, ATests)
+      else
+        GuardWarning(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
+    end);
   // Klick auf die Testunit-Lens (#189); die Lens kennt die Editorbefehle nicht (A-09).
   TAtlasEditorTestUnitLens.OnSwitchTestUnit :=
     procedure
@@ -2605,6 +2623,7 @@ begin
   TAtlasEditorTestUnitLens.OnSwitchTestUnit := nil;
   TAtlasEditorHover.OnProblemAction := nil;
   TAtlasIdeEditorCommands.Uninstall;
+  TAtlasIdeImpact.Uninstall;
   TAtlasIdeResults.Uninstall;
   CommandsInstalled := False;
 end;
@@ -3984,6 +4003,8 @@ begin
     MainMenu.UpdateWelcome;
     MainMenu.UpdateKeyMap;
   end;
+  // Abschaltbare Einträge im Kontextmenü des Editors (#1120).
+  TAtlasIdeEditorCommands.UpdateContextMenus;
   // Phase und Fortschritt des Servers melden sich aus jedem Thread; gezeichnet wird gesammelt.
   if (Manager <> nil) and (StatusField <> nil) then
     Manager.OnServerChanged :=

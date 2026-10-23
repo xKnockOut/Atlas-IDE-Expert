@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2023] of string = (
+  Lines: array[0..2047] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1747,6 +1747,32 @@ const
     '      "x-page": "Befehle",',
     '      "x-control": "Kontrollkästchen",',
     '      "x-issue": "#1119"',
+    '    },',
+    '    "navigation": {',
+    '      "type": "object",',
+    '      "description": "Auswirkungsanalyse: Was ist betroffen, wenn ich ein Symbol ändere? Aufrufer, Verweise, Overrides, Interface-Umsetzungen und Formularbindungen nach Ebenen, dazu die betroffenen Te' +
+      'sts (Plugin-Befehl „Auswirkungen anzeigen“, MCP-Werkzeug get_impact).",',
+    '      "additionalProperties": false,',
+    '      "properties": {',
+    '        "impact": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Befehl „Auswirkungen anzeigen“ im Plugin mit Einträgen im Kontextmenü, im Menü Atlas und in der Befehlspalette; aus = Befehl und Menüeinträge fehlen. Das MCP-Werkzeug schalte' +
+      't mcp.disabledTools (get_impact) ab."',
+    '        },',
+    '        "impactDepth": {',
+    '          "type": "integer",',
+    '          "default": 2,',
+    '          "minimum": 1,',
+    '          "maximum": 5,',
+    '          "description": "Vorgabe der Tiefe der Auswirkungsanalyse in IDE und MCP: 1 = nur direkte Aufrufer und Verweise, jede weitere Ebene geht einen Schritt weiter zurück."',
+    '        }',
+    '      },',
+    '      "x-scope": "global",',
+    '      "x-area": "editor",',
+    '      "x-page": "Befehle",',
+    '      "x-control": "Kontrollkästchen, Zahlenfeld",',
+    '      "x-issue": "#1120"',
     '    },',
     '    "hints": {',
     '      "type": "object",',

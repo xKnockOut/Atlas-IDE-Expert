@@ -21,7 +21,7 @@ Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/At
 | [Build, test, debug](#build-test-debug) | Release build guard, DUnitX tests from the editor, launch profiles, values in the hover while debugging |
 | [IDE comfort](#ide-comfort) | Welcome page, command palette, notifications, Git/SVN change marks, safe start |
 | [Settings](#settings) | Every feature can be switched off, options page as a tree, team-wide project file `.atlas` |
-| [Claude Code](#claude-code-and-mcp) | 19 MCP tools to read, check, build, test and rename |
+| [Claude Code](#claude-code-and-mcp) | 20 MCP tools to read, check, build, test and rename |
 
 ## Quick start
 
@@ -88,6 +88,7 @@ Everything below is implemented in `main`. Features marked *(experimental)* are 
 - **Quick open** of files and symbols (Ctrl+P) across project, project group and search path; project-wide **symbol search**
 - **Unit search** (Ctrl+F12) in its own window with preview, groups, filters and "add to uses"
 - **Results window** "Atlas Results" for references (including forms), implementations, callers, calls and inheritance; usages split into "Sure" and "Inferred · check before renaming" with a reason (interface, override, ambiguous overload, inactive branch) and a "Sure only" filter
+- **Show impact** (editor context menu, *Atlas › Search*, command palette): what is affected if the symbol at the cursor changes? Direct and indirect callers and references, overrides, the overridden base method, interface method and implementations, event handlers and components in forms, as a tree by cause with a depth of 1 to 5, plus the affected DUnitX tests and "Run affected tests". Runs in the background, reports reached limits (depth, count, time); `navigation.impact`, `navigation.impactDepth`
 - **Navigation history** across files
 - **Named bookmarks** (Ctrl+Alt+K) and personal **notes** on code lines that never go into the source
 - **Quick bookmarks** in a column left of the line numbers: click to set and remove, Ctrl+Shift+1…9 numbers them, Ctrl+1…9 jumps project-wide, Ctrl+Shift+K unnumbered (the IDE's folding chords keep working); they follow code changes and take over the IDE bookmarks
@@ -177,7 +178,7 @@ All keys (German): [docs/Einstellungen.md](docs/Einstellungen.md) and [docs/Konf
 
 ### Claude Code and MCP
 
-The server offers Claude Code 19 MCP tools: find symbols, read declarations and type and call hierarchies, component and form info, query diagnostics, metrics and TODOs, check planned code with `check_code` before writing it, explain findings, build through the IDE (`build_project`, `get_last_build`), run DUnitX tests, and rename or apply code actions (with preview). Plus the resource `delphi://conventions` with the project's conventions. Setup: [Editors/ClaudeCode](Editors/ClaudeCode/README.md), tools: [docs/MCP.md](docs/MCP.md).
+The server offers Claude Code 20 MCP tools: find symbols, read declarations and type and call hierarchies, the impact of a change (`get_impact`), component and form info, query diagnostics, metrics and TODOs, check planned code with `check_code` before writing it, explain findings, build through the IDE (`build_project`, `get_last_build`), run DUnitX tests, and rename or apply code actions (with preview). Plus the resource `delphi://conventions` with the project's conventions. Setup: [Editors/ClaudeCode](Editors/ClaudeCode/README.md), tools: [docs/MCP.md](docs/MCP.md).
 
 ### Planned
 

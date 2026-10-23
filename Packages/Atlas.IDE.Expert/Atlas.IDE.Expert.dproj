@@ -569,6 +569,7 @@
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Peek.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.Peek.pas"/>
         <DCCReference Include="Source\IDE\Results\Atlas.IDE.Results.Peek.pas"/>
+        <DCCReference Include="Source\IDE\Results\Atlas.IDE.Results.Impact.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.Model.pas"/>
         <DCCReference Include="Source\UI\Outline\Atlas.UI.Outline.Frame.pas">
             <Form>AtlasOutlineFrame</Form>
