@@ -943,3 +943,13 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Regel-Editor schmal (nach dem Push bemerkt):** `TAtlasRulesEditor.CanAutoSize` setzte `NewWidth := Width`; `CheckNewSize` fragt aber mit der neuen Breite, so blieb jedes `SetBounds` bei den 185 Pixeln eines frischen Panels. Jetzt bleibt die angefragte Breite. Der Test prüfte ohne Fenster, da war auch der Behälter schmal; `KeepsRequestedWidth` und die Dialogtests messen jetzt mit Fenster.
 - **Protokoll lesen:** Das Bash-Werkzeug sieht `%LOCALAPPDATA%` virtualisiert (Kopie unter `AppData\Local\Packages\Claude_…\LocalCache`, Stand 22.10.). Das echte `atlas.log` nur mit PowerShell lesen. Das Plugin-Protokoll läuft normal, eine Lücke gibt es nicht.
 - **Nebenbefund Server-Diagnose:** `workspace/diagnostic` brauchte 17 s mit `slowRule=inline-not-expanded` (16,4 s) in einer Unit mit fehlenden Units; nicht untersucht.
+
+## Parser-Lücken für v1.1.0: #1137, #1138, #1134, #1140, #1142 (23.10.2026, ungebaut)
+
+- **Auftrag:** Marco wollte die Parser-Lücken aus der Gegenprüfung mit DelphiAST noch in v1.1.0. Die Kette ist gestapelt (`feature/NN-name`), die Entwurfs-PRs sind #1157 (Basis main) → #1158 → #1159 → #1160 → #1161.
+- **#1137:** `&&op_Equality` ist ein Bezeichner. Mitbehoben ist die Ursache, dass `&`-Namen nie aufgelöst wurden: Der Index führte `&Type`, die Suche suchte `Type`. `TPascalLexer.PlainName` nimmt genau ein Escape-`&` je Namensteil weg, `SourceName` setzt es für die Vervollständigung wieder. Das Indexformat ist jetzt Version 26. Bewusste Abweichung vom Issue: Der Name ist `&op_Equality`, nicht `op_Equality`, weil das der Delphi-Bezeichner ist.
+- **#1138:** `()` gilt nur als Initialisierung (`ParseInitializer`).
+- **#1134:** Die E2023-Prüfung fragt `IsMethodResolution` ab.
+- **#1140:** `class threadvar`, Operatornamen aus reservierten Wörtern (`OperatorKeywords`) und `AnsiString(CP)`.
+- **#1142:** `end align N`, Attribute im varianten Zweig, `>=` hinter generischen Argumenten in Typen (`SplitGreaterEqual`) und `%_0101`. Die Probe p10 muss noch mit Delphi gegengeprüft werden (Handtest PX7).
+- **Tests:** Alle Tests stehen in `Tests/Common/Pascal/Atlas.Common.Pascal.ParserGaps.Tests.pas`, Handtests PX1–PX7. Die Spring4D-Abnahme war in der Cloud nicht möglich, weil Bitbucket gesperrt ist und der GitHub-Spiegel leer.
