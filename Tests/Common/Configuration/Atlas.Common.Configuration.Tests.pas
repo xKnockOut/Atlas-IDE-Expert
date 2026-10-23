@@ -687,6 +687,22 @@ begin
   Assert.IsTrue(Settings.Refactoring.InlineAccessorDiagnostic);
   Parse('{"refactoring": {"inlineAccessorBulk": "ja"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // #716: Sicher löschen.
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Refactoring.SafeDelete);
+  Assert.IsFalse(Settings.Refactoring.SafeDeletePreviewWhenUnused);
+  Assert.AreEqual('ask', Settings.Refactoring.SafeDeleteCascade);
+  Assert.AreEqual('ask', Settings.Refactoring.SafeDeleteIncludeOverrides);
+  Settings := Parse('{"refactoring": {"safeDelete": false, "safeDeletePreviewWhenUnused": true, ' +
+    '"safeDeleteCascade": "Always", "safeDeleteIncludeOverrides": "never"}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Refactoring.SafeDelete);
+  Assert.IsTrue(Settings.Refactoring.SafeDeletePreviewWhenUnused);
+  Assert.AreEqual('always', Settings.Refactoring.SafeDeleteCascade);
+  Assert.AreEqual('never', Settings.Refactoring.SafeDeleteIncludeOverrides);
+  Settings := Parse('{"refactoring": {"safeDeleteCascade": "manchmal"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('ask', Settings.Refactoring.SafeDeleteCascade);
   // Speicherbudget (#185)
   Assert.AreEqual(768, Parse('{}', Issues).MemoryBudgetMb, 'Vorgabe 768 MB (Rückmeldung 15.10.2026)');
   Assert.AreEqual(0, Parse('{"memoryBudgetMb": 0}', Issues).MemoryBudgetMb, '0 = unbegrenzt');

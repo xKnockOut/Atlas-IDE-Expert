@@ -86,6 +86,8 @@ type
       static;
     /// <summary>Auskunft über Interfaces aus dem Symbolindex samt ihren Vorfahren; nil ohne Index.</summary>
     class function IndexInterfaces(const AIndex: ISymbolIndex): TInterfaceDeclares; static;
+    /// <summary>Ist AMethod im Rumpf der Klasse einer Interface-Methode zugeordnet (IFoo.Bar = AMethod)?</summary>
+    class function IsResolution(ALayout: TClassLayout; const AMethod: string): Boolean; static;
     /// <summary>Titel der Code-Aktionen.</summary>
     class function Title(const AAccessors: TArray<TTrivialAccessor>): string; static;
   end;
@@ -577,6 +579,11 @@ begin
     Result := Format('Zugriffsmethode %s durch Feld %s ersetzen', [AAccessors[0].Name, AAccessors[0].Field])
   else
     Result := Format('Zugriffsmethoden %s und %s durch Feld ersetzen', [AAccessors[0].Name, AAccessors[1].Name]);
+end;
+
+class function TInlineAccessor.IsResolution(ALayout: TClassLayout; const AMethod: string): Boolean;
+begin
+  Result := HasResolution(ALayout, AMethod);
 end;
 
 end.

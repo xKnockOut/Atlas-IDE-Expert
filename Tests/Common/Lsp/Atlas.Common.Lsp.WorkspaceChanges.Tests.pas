@@ -3,7 +3,7 @@
 // Gemeinsamer Baustein der Umbauten mit mehreren Dateien (#103, #664):
 // Zusammenfassen je Datei, neue Dateien, Eintrag ins Projekt (.dpr und
 // .dproj, ohne Projekt nur ein Hinweis) und das WorkspaceEdit samt
-// Änderungsanmerkung.
+// Änderungsanmerkung, gelöschte Dateien (#716).
 
 interface
 
@@ -33,6 +33,8 @@ type
     procedure JsonCreatesFilesFirstWithAnnotation;
     [Test]
     procedure JsonWithoutAnnotation;
+    [Test]
+    procedure JsonDeletesFilesLast;
   end;
 
 implementation
@@ -210,6 +212,34 @@ begin
     Assert.AreEqual(1, Integer(Warnings.Count));
   finally
     Warnings.Free;
+    Json.Free;
+    Changes.Free;
+  end;
+end;
+
+procedure TWorkspaceChangesTests.JsonDeletesFilesLast;
+var
+  Changes: TWorkspaceChanges;
+  Json, Item: TJSONObject;
+  Items: TJSONArray;
+begin
+  Changes := TWorkspaceChanges.Create;
+  Json := nil;
+  try
+    Changes.DeleteFile('C:\P\Alt.pas');
+    Changes.Add('C:\P\A.pas', [Edit(1, 'x')]);
+    Assert.AreEqual(2, Changes.FileCount);
+    Assert.AreEqual(2, Changes.EditCount);
+    Assert.AreEqual(1, Integer(Length(Changes.Deleted)));
+    Json := Changes.ToJson('safeDelete', 'Sicher loeschen', '1 Datei');
+    Items := Json.GetValue('documentChanges') as TJSONArray;
+    Assert.AreEqual(2, Integer(Items.Count));
+    Item := Items.Items[1] as TJSONObject;
+    Assert.AreEqual('delete', Item.GetValue('kind').Value);
+    Assert.IsTrue(Item.GetValue('uri').Value.EndsWith('Alt.pas'));
+    Assert.AreEqual('safeDelete', Item.GetValue('annotationId').Value);
+    Assert.IsTrue(((Item.GetValue('options') as TJSONObject).GetValue('ignoreIfNotExists') as TJSONBool).AsBoolean);
+  finally
     Json.Free;
     Changes.Free;
   end;

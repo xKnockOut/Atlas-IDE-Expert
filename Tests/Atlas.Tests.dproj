@@ -382,6 +382,8 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.MoveMember.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.InlineAccessor.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InlineAccessor.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.SafeDelete.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SafeDelete.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WorkspaceChanges.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.InvertBoolean.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InvertBoolean.Tests.pas"/>
@@ -881,6 +883,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.WrapSelection.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Unwrap.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Unwrap.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.SafeDelete.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.SafeDelete.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Pairs.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Match.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Match.Tests.pas"/>

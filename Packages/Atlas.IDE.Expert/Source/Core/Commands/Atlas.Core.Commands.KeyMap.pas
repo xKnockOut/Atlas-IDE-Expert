@@ -372,6 +372,8 @@ begin
       Result := 'Atlas.NextBookmark';
     TAtlasKeyFunction.PreviousBookmark:
       Result := 'Atlas.PreviousBookmark';
+    TAtlasKeyFunction.SafeDelete:
+      Result := 'Atlas.SafeDelete';
   else
     Result := '';
   end;

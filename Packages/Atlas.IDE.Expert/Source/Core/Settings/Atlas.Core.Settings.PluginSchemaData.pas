@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4138] of string = (
+  Lines: array[0..4166] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -199,6 +199,10 @@ const
     '    "commands.unwrap": {',
     '      "caption": "Umschließung entfernen",',
     '      "captionEn": "Remove surrounding construct"',
+    '    },',
+    '    "commands.safeDelete": {',
+    '      "caption": "Sicher löschen",',
+    '      "captionEn": "Safe delete"',
     '    },',
     '    "commands.moveLines": {',
     '      "caption": "Zeilen verschieben",',
@@ -2125,6 +2129,32 @@ const
     '      "x-format": "shortcut",',
     '      "x-page": "Befehle",',
     '      "x-issue": "#657"',
+    '    },',
+    '    "SafeDelete": {',
+    '      "description": "Sicher löschen: Alt+Entf auf einem Symbol (Methode, Feld, Property, Typ, Konstante, Variable, Routine, lokale Routine, auf der Zeile „unit X;“ die ganze Unit) prüft Verwendungen ' +
+      'im Projekt, in Formularen und uses-Listen, fragt nach Überschreibungen und Folgeschritten und löscht ohne Verwendungen sofort, sonst nach der Wahl Abbrechen, Anzeigen oder Trotzdem löschen. Aus = Kürz' +
+      'el frei, kein Menüeintrag; die Code-Aktion schaltet refactoring.safeDelete in atlas.json.",',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "keys.safeDelete",',
+    '      "x-area": "keys",',
+    '      "x-feature": "EditorCommands",',
+    '      "x-page": "Befehle",',
+    '      "x-node": "commands.safeDelete",',
+    '      "x-caption": "Sicher löschen",',
+    '      "x-captionEn": "Safe delete",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "x-issue": "#716"',
+    '    },',
+    '    "SafeDeleteKey": {',
+    '      "description": "Tastenkürzel „Sicher löschen“ (0 = keins).",',
+    '      "type": "integer",',
+    '      "default": 32814,',
+    '      "x-key": "keys.safeDelete.key",',
+    '      "x-area": "keys",',
+    '      "x-format": "shortcut",',
+    '      "x-page": "Befehle",',
+    '      "x-issue": "#716"',
     '    },',
     '    "ContinueComments": {',
     '      "description": "Kommentar beim Enter fortsetzen: Nach einer //- oder ///-Zeile bekommt die neue Zeile Einrückung und Präfix, in einem offenen { … }- bzw. (* … *)-Block den Einzug. Enter auf eine' +

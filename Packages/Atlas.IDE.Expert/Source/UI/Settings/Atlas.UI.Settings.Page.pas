@@ -373,6 +373,8 @@ type
     FNewLineAroundStatementAware: TCheckBox;
     FUnwrap: TCheckBox;
     FUnwrapKey: TEdit;
+    FSafeDelete: TCheckBox;
+    FSafeDeleteKey: TEdit;
     FContinueComments: TCheckBox;
     FContinueCommentsLineComments: TCheckBox;
     FContinueCommentsLists: TCheckBox;
@@ -901,6 +903,9 @@ type
     /// <summary>Zum Testen: Umschließung entfernen (#657).</summary>
     property Unwrap: TCheckBox read FUnwrap;
     property UnwrapKey: TEdit read FUnwrapKey;
+    /// <summary>Zum Testen: Sicher löschen (#716).</summary>
+    property SafeDelete: TCheckBox read FSafeDelete;
+    property SafeDeleteKey: TEdit read FSafeDeleteKey;
     /// <summary>Zum Testen: Kommentar beim Enter fortsetzen (#696).</summary>
     property ContinueComments: TCheckBox read FContinueComments;
     property ContinueCommentsLists: TCheckBox read FContinueCommentsLists;
@@ -1839,6 +1844,9 @@ begin
   // Umschließung entfernen (#657).
   FUnwrap := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnwrap));
   FUnwrapKey := AddKey(TAtlasStrings.Text(TAtlasTextId.UnwrapCommand));
+  // Sicher löschen (#716).
+  FSafeDelete := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSafeDelete));
+  FSafeDeleteKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand));
   FTestUnitKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTestUnit));
   // Abschnittssprünge der Editorleiste (#1101), auch ohne die Leiste.
   FGotoInterfaceKey := AddKey(TAtlasStrings.Text(TAtlasTextId.GotoInterfaceCommand));
@@ -2766,6 +2774,8 @@ begin
   FMarks.Bind(FNewLineAroundStatementAware, ['NewLineAroundStatementAware']);
   FMarks.Bind(FUnwrap, ['Unwrap']);
   FMarks.Bind(FUnwrapKey, ['UnwrapKey']);
+  FMarks.Bind(FSafeDelete, ['SafeDelete']);
+  FMarks.Bind(FSafeDeleteKey, ['SafeDeleteKey']);
   FMarks.Bind(FContinueComments, ['ContinueComments']);
   FMarks.Bind(FContinueCommentsLineComments, ['ContinueCommentsLineComments']);
   FMarks.Bind(FContinueCommentsLists, ['ContinueCommentsLists']);
@@ -4873,6 +4883,8 @@ begin
   FNewLineAroundStatementAware.Checked := ASettings.NewLineAroundStatementAware;
   FUnwrap.Checked := ASettings.Unwrap;
   FUnwrapKey.Text := ShortCutToText(TShortCut(ASettings.UnwrapKey));
+  FSafeDelete.Checked := ASettings.SafeDelete;
+  FSafeDeleteKey.Text := ShortCutToText(TShortCut(ASettings.SafeDeleteKey));
   FContinueComments.Checked := ASettings.ContinueComments;
   FContinueCommentsLineComments.Checked := ASettings.ContinueCommentsLineComments;
   FContinueCommentsLists.Checked := ASettings.ContinueCommentsLists;
@@ -5302,6 +5314,8 @@ begin
   ASettings.NewLineAroundStatementAware := FNewLineAroundStatementAware.Checked;
   ASettings.Unwrap := FUnwrap.Checked;
   ASettings.UnwrapKey := Integer(TextToShortCut(Trim(FUnwrapKey.Text)));
+  ASettings.SafeDelete := FSafeDelete.Checked;
+  ASettings.SafeDeleteKey := Integer(TextToShortCut(Trim(FSafeDeleteKey.Text)));
   ASettings.ContinueComments := FContinueComments.Checked;
   ASettings.ContinueCommentsLineComments := FContinueCommentsLineComments.Checked;
   ASettings.ContinueCommentsLists := FContinueCommentsLists.Checked;

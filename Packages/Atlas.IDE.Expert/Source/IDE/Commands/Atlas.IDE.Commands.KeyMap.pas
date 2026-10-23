@@ -142,7 +142,9 @@ const
     // Abschnittsknöpfe der Editorleiste (#1101): Editorbefehle.
     3, 3,
     // Schnelle Lesezeichen (#1104): Editorbefehle.
-    3, 3, 3, 3, 3);
+    3, 3, 3, 3, 3,
+    // Sicher löschen (#716): Editorbefehl.
+    3);
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>

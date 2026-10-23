@@ -717,7 +717,11 @@ type
     MoveMemberNothing, MoveMemberPreviewHint, MoveMemberApply, MoveMemberDone,
     // „Zugriffsmethode durch Feld ersetzen“ (#717).
     InlineAccessorTitle, InlineAccessorFailed, InlineAccessorNothing, InlineAccessorPreviewHint, InlineAccessorApply,
-    InlineAccessorDone, InlineAccessorWarning);
+    InlineAccessorDone, InlineAccessorWarning,
+    // „Sicher löschen“ (#716).
+    SafeDeleteCommand, SettingsSafeDelete, SafeDeleteFailed, SafeDeleteUsages, SafeDeleteShow, SafeDeleteForce,
+    SafeDeleteCancel, SafeDeleteAskOverrides, SafeDeleteAskCascade, SafeDeletePreviewHint, SafeDeleteApply,
+    SafeDeleteDone, SafeDeleteWarning, SafeDeleteUsagesTitle, SafeDeleteMore);
 
   TAtlasStrings = class
   private class var
@@ -2359,7 +2363,22 @@ const
      '%d Zugriffsmethoden: %d Änderungen in %d Dateien',
      'Ersetzen',
      '%d Zugriffsmethoden durch Felder ersetzt: %d Änderungen in %d Dateien übernommen.',
-     'Hinweis: %s'),
+     'Hinweis: %s',
+     'Sicher löschen',
+     'Sicher löschen (Alt+Entf): Verwendungen prüfen, dann löschen',
+     'Sicher löschen fehlgeschlagen: %s',
+     '„%s“ wird noch verwendet (%d Stellen):',
+     'Anzeigen',
+     'Trotzdem löschen',
+     'Abbrechen',
+     '„%s“ wird in %d Nachfahren überschrieben:%s%s%sÜberschreibungen mitlöschen?',
+     'Danach unbenutzt:%s%s%sMitlöschen?',
+     '%d Symbole: %d Änderungen in %d Dateien',
+     'Löschen',
+     '%d Symbole sicher gelöscht: %d Änderungen in %d Dateien übernommen.',
+     'Hinweis: %s',
+     'Verwendungen von „%s“',
+     '… %d weitere'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3905,7 +3924,22 @@ const
      '%d accessors: %d changes in %d files',
      'Replace',
      '%d accessors replaced with fields: %d changes applied in %d files.',
-     'Note: %s'));
+     'Note: %s',
+     'Safe delete',
+     'Safe delete (Alt+Del): check usages, then delete',
+     'Safe delete failed: %s',
+     '“%s” is still used (%d places):',
+     'Show',
+     'Delete anyway',
+     'Cancel',
+     '“%s” is overridden in %d descendants:%s%s%sDelete the overrides too?',
+     'Unused afterwards:%s%s%sDelete these too?',
+     '%d symbols: %d changes in %d files',
+     'Delete',
+     '%d symbols safely deleted: %d changes applied in %d files.',
+     'Note: %s',
+     'Usages of “%s”',
+     '… %d more'));
 
 { TAtlasStrings }
 

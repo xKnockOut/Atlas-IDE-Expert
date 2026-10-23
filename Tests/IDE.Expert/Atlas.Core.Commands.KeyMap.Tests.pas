@@ -408,6 +408,9 @@ begin
   // Umschließung entfernen (#657): Strg+Umschalt+Entf.
   Assert.AreEqual($602E, Integer(EntryOf(Entries, TAtlasKeyFunction.Unwrap).Key));
   Assert.AreEqual('Atlas.Unwrap', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.Unwrap));
+  // Sicher löschen (#716): Alt+Entf.
+  Assert.AreEqual($802E, Integer(EntryOf(Entries, TAtlasKeyFunction.SafeDelete).Key));
+  Assert.AreEqual('Atlas.SafeDelete', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SafeDelete));
   // Fenster „Atlas-Prüfung“ (#909): Strg+Alt+P.
   Assert.AreEqual($C050, Integer(EntryOf(Entries, TAtlasKeyFunction.ProblemsWindow).Key));
   Assert.AreEqual('Atlas.ProblemsWindow', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.ProblemsWindow));
@@ -503,6 +506,7 @@ begin
   Settings.ToggleBlockComment := False;
   Settings.NewLineAround := False;
   Settings.Unwrap := False;
+  Settings.SafeDelete := False;
   Settings.ProblemsWindow := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
@@ -519,7 +523,7 @@ begin
       TAtlasKeyFunction.MultiCursorSkip, TAtlasKeyFunction.MultiCursorLineEnds, TAtlasKeyFunction.MultiCursorAbove,
       TAtlasKeyFunction.MultiCursorBelow, TAtlasKeyFunction.FormatCode, TAtlasKeyFunction.ToggleBlockComment,
       TAtlasKeyFunction.NewLineBelow, TAtlasKeyFunction.NewLineAbove, TAtlasKeyFunction.Unwrap,
-      TAtlasKeyFunction.ProblemsWindow] then
+      TAtlasKeyFunction.ProblemsWindow, TAtlasKeyFunction.SafeDelete] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),

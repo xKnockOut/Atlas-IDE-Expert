@@ -118,6 +118,8 @@ type
     class procedure ExpandSelection; static;
     class procedure ShrinkSelection; static;
     class procedure GoToTypeDefinition; static;
+    /// <summary>„Sicher löschen“ für das Symbol am Cursor (#716, Alt+Entf).</summary>
+    class procedure SafeDelete; static;
     /// <summary>Cursor zum Gegenstück der Methode am Cursor (Deklaration ⇄ Implementierung, #775); False ohne
     /// Gegenstück, dann ohne Meldung (die Taste geht an die IDE weiter).</summary>
     class function TryToggleMethod: Boolean; static;
@@ -201,6 +203,8 @@ uses
   Atlas.IDE.Editor.MoveMember,
   Atlas.IDE.Editor.PropertyFromAccessors,
   Atlas.IDE.Editor.InlineAccessor,
+  Atlas.IDE.Editor.SafeDelete,
+  Atlas.Core.Editor.SafeDelete,
   Atlas.IDE.Editor.InvertBoolean,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.IDE.Editor.PatternContinuation,
@@ -819,6 +823,24 @@ begin
   TAtlasIdeNavigation.GoToLocation(Found[0].FileName, Found[0].Line, Found[0].Character);
 end;
 
+class procedure TAtlasIdeEditorCommands.SafeDelete;
+var
+  View: IOTAEditView;
+  FileName: string;
+  Lines: TArray<string>;
+  Selection: TLspRange;
+begin
+  if not Current(View, FileName, Lines, Selection) then
+    Exit;
+  TAtlasIdeSafeDelete.Execute(Session, TAtlasSafeDelete.Arguments(TLspSession.PathToUri(FileName),
+    Selection.StartPos.Line, Selection.StartPos.Character),
+    TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+    procedure(AText: string)
+    begin
+      Say(AText);
+    end);
+end;
+
 class function TAtlasIdeEditorCommands.TryToggleMethod: Boolean;
 var
   Editors: IOTAEditorServices;
@@ -1393,6 +1415,17 @@ begin
   begin
     // Client-Befehl: Vorschau „Zugriffsmethode durch Feld ersetzen“ (#717); er fragt den Server selbst.
     TAtlasIdeInlineAccessor.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeSafeDelete.ClientCommand then
+  begin
+    // Client-Befehl: „Sicher löschen“ (#716) prüfen, nachfragen, löschen; er fragt den Server selbst.
+    TAtlasIdeSafeDelete.Execute(Session, AArgumentsJson,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
       procedure(AText: string)
       begin

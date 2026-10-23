@@ -354,6 +354,8 @@ begin
       Id := TAtlasTextId.NextBookmarkCommand;
     TAtlasKeyFunction.PreviousBookmark:
       Id := TAtlasTextId.PreviousBookmarkCommand;
+    TAtlasKeyFunction.SafeDelete:
+      Id := TAtlasTextId.SafeDeleteCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

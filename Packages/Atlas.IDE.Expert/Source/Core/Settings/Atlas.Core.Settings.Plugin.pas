@@ -777,6 +777,11 @@ type
     Unwrap: Boolean;
     /// <summary>Kürzel „Umschließung entfernen“ (#657); Vorgabe Strg+Umschalt+Entf.</summary>
     UnwrapKey: Integer;
+    /// <summary>Sicher löschen (#716, keys.safeDelete): Kürzel im Editor; aus = Kürzel frei, kein Menüeintrag
+    /// (die Code-Aktion schaltet refactoring.safeDelete).</summary>
+    SafeDelete: Boolean;
+    /// <summary>Kürzel „Sicher löschen“ (#716); Vorgabe Alt+Entf.</summary>
+    SafeDeleteKey: Integer;
     /// <summary>Kürzel „Nächste Änderung“ (#507, keys.nextChange); Vorgabe Strg+Alt+Bild↓.</summary>
     NextChangeKey: Integer;
     /// <summary>Kürzel „Vorherige Änderung“ (#507, keys.previousChange); Vorgabe Strg+Alt+Bild↑.</summary>
@@ -1516,6 +1521,8 @@ begin
   Result.NewLineAroundStatementAware := True;
   Result.Unwrap := True;
   Result.UnwrapKey := $602E; // Strg+Umschalt+Entf
+  Result.SafeDelete := True;
+  Result.SafeDeleteKey := $802E; // Alt+Entf
   // Strg+Alt+↑/↓ springt in RAD Studio schon zwischen Methoden.
   Result.NextChangeKey := $C022; // Strg+Alt+Bild↓
   Result.PreviousChangeKey := $C021; // Strg+Alt+Bild↑
@@ -1746,6 +1753,7 @@ begin
   NewLineBelowKey := EnsureRange(NewLineBelowKey, 0, $FFFF);
   NewLineAboveKey := EnsureRange(NewLineAboveKey, 0, $FFFF);
   UnwrapKey := EnsureRange(UnwrapKey, 0, $FFFF);
+  SafeDeleteKey := EnsureRange(SafeDeleteKey, 0, $FFFF);
   MinimapRender := Choice(MinimapRender, ['blocks', 'characters']);
   MinimapWidth := EnsureRange(MinimapWidth, MinMinimapWidth, MaxMinimapWidth);
   MinimapScale := EnsureRange(MinimapScale, MinMinimapScale, MaxMinimapScale);
@@ -2151,6 +2159,8 @@ begin
     BoolValue(Default.NewLineAroundStatementAware)) <> 0;
   Unwrap := AStore.ReadInteger('Unwrap', BoolValue(Default.Unwrap)) <> 0;
   UnwrapKey := AStore.ReadInteger('UnwrapKey', Default.UnwrapKey);
+  SafeDelete := AStore.ReadInteger('SafeDelete', BoolValue(Default.SafeDelete)) <> 0;
+  SafeDeleteKey := AStore.ReadInteger('SafeDeleteKey', Default.SafeDeleteKey);
   NextChangeKey := AStore.ReadInteger('NextChangeKey', Default.NextChangeKey);
   PreviousChangeKey := AStore.ReadInteger('PreviousChangeKey', Default.PreviousChangeKey);
   OverviewRuler := AStore.ReadInteger('OverviewRuler', BoolValue(Default.OverviewRuler)) <> 0;
@@ -2559,6 +2569,8 @@ begin
   AStore.WriteInteger('NewLineAroundStatementAware', BoolValue(NewLineAroundStatementAware));
   AStore.WriteInteger('Unwrap', BoolValue(Unwrap));
   AStore.WriteInteger('UnwrapKey', UnwrapKey);
+  AStore.WriteInteger('SafeDelete', BoolValue(SafeDelete));
+  AStore.WriteInteger('SafeDeleteKey', SafeDeleteKey);
   AStore.WriteInteger('NextChangeKey', NextChangeKey);
   AStore.WriteInteger('PreviousChangeKey', PreviousChangeKey);
   AStore.WriteInteger('OverviewRuler', BoolValue(OverviewRuler));
