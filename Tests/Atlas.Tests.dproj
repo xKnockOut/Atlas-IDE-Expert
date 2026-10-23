@@ -900,6 +900,15 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Search\Atlas.Core.Search.Results.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Search\Atlas.UI.Search.Bar.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Search.Bar.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Search\Atlas.Core.Search.Replace.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Search\Atlas.Core.Search.History.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Search\Atlas.Core.Search.Files.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Search\Atlas.Core.Search.ReplaceList.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Search.Replace.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Search.History.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Search.Files.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Search\Atlas.UI.Search.ReplaceFrame.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Search.ReplaceFrame.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.SnapshotPolicy.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.CloseRules.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Messages.pas"/>

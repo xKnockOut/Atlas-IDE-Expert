@@ -89,6 +89,9 @@ type
     MaxUndoDepth = 200;
     MinUndoMaxSizeMb = 1;
     MaxUndoMaxSizeMb = 1024;
+    /// <summary>search.history (#893): Vorgabe und Höchstwert.</summary>
+    DefaultSearchHistory = 20;
+    MaxSearchHistory = 100;
     /// <summary>Grenzen für welcomePage.maxProjects (#592); wie TAtlasWelcomeProjects.MinMax/MaxMax.</summary>
     MinWelcomeProjects = 1;
     MaxWelcomeProjects = 30;
@@ -265,6 +268,21 @@ type
     /// <summary>Treffer der Atlas-Suche im Reiter „Atlas-Suche“ des Fensters Meldungen auflisten (#878,
     /// search.resultsInMessages; Enter bzw. „In Meldungen“ in der Suchleiste). Vorgabe an.</summary>
     SearchResultsInMessages: Boolean;
+    /// <summary>Ersetzen-Zeile der Suchleiste und Strg+H (#893, search.replace); aus = keine Ersetzen-Zeile, Strg+H
+    /// gehört der IDE. Vorgabe an.</summary>
+    SearchReplace: Boolean;
+    /// <summary>Option „.*“ (regulärer Ausdruck) und Vorschau in der Suchleiste (#893, search.regex). Vorgabe an.
+    /// </summary>
+    SearchRegex: Boolean;
+    /// <summary>Länge des Such- und Ersetzen-Verlaufs (#893, search.history; 0 = kein Verlauf, Vorgabe 20).
+    /// </summary>
+    SearchHistory: Integer;
+    /// <summary>Bereiche „Offene Dateien“, „Projekt“, „Projektgruppe“ in der Suchleiste (#893, search.multiFile).
+    /// Vorgabe an.</summary>
+    SearchMultiFile: Boolean;
+    /// <summary>Suchleiste mit Ersetzen-Zeile (#893, TShortCut, 0 = keine; Vorgabe Strg+H); nur mit
+    /// search.replaceIdeSearch und search.replace.</summary>
+    SearchReplaceKey: Integer;
     /// <summary>Taste für die Atlas-Suchleiste (#878, TShortCut, 0 = keine; Vorgabe Strg+F).</summary>
     SearchKey: Integer;
     /// <summary>Nächster Treffer der letzten Atlas-Suche (#878; Vorgabe F3).</summary>
@@ -1294,6 +1312,11 @@ begin
   Result.HideElementKey := $40BE; // Strg+.
   Result.SearchReplaceIde := True;
   Result.SearchResultsInMessages := True;
+  Result.SearchReplace := True;
+  Result.SearchRegex := True;
+  Result.SearchHistory := DefaultSearchHistory;
+  Result.SearchMultiFile := True;
+  Result.SearchReplaceKey := $4048; // Strg+H
   Result.SearchKey := $4046; // Strg+F
   Result.SearchNextKey := $72; // F3
   Result.SearchPreviousKey := $2072; // Umschalt+F3
@@ -1798,6 +1821,8 @@ begin
   NextProblemKey := EnsureRange(NextProblemKey, 0, $FFFF);
   PreviousProblemKey := EnsureRange(PreviousProblemKey, 0, $FFFF);
   SearchKey := EnsureRange(SearchKey, 0, $FFFF);
+  SearchReplaceKey := EnsureRange(SearchReplaceKey, 0, $FFFF);
+  SearchHistory := EnsureRange(SearchHistory, 0, MaxSearchHistory);
   SearchNextKey := EnsureRange(SearchNextKey, 0, $FFFF);
   SearchPreviousKey := EnsureRange(SearchPreviousKey, 0, $FFFF);
   SearchMethodKey := EnsureRange(SearchMethodKey, 0, $FFFF);
@@ -1893,6 +1918,11 @@ begin
   SearchReplaceIde := AStore.ReadInteger('SearchReplaceIde', BoolValue(Default.SearchReplaceIde)) <> 0;
   SearchResultsInMessages := AStore.ReadInteger('SearchResultsInMessages',
     BoolValue(Default.SearchResultsInMessages)) <> 0;
+  SearchReplace := AStore.ReadInteger('SearchReplace', BoolValue(Default.SearchReplace)) <> 0;
+  SearchRegex := AStore.ReadInteger('SearchRegex', BoolValue(Default.SearchRegex)) <> 0;
+  SearchHistory := AStore.ReadInteger('SearchHistory', Default.SearchHistory);
+  SearchMultiFile := AStore.ReadInteger('SearchMultiFile', BoolValue(Default.SearchMultiFile)) <> 0;
+  SearchReplaceKey := AStore.ReadInteger('SearchReplaceKey', Default.SearchReplaceKey);
   SearchKey := AStore.ReadInteger('SearchKey', Default.SearchKey);
   SearchNextKey := AStore.ReadInteger('SearchNextKey', Default.SearchNextKey);
   SearchPreviousKey := AStore.ReadInteger('SearchPreviousKey', Default.SearchPreviousKey);
@@ -2340,6 +2370,11 @@ begin
   AStore.WriteInteger('HideElementKey', HideElementKey);
   AStore.WriteInteger('SearchReplaceIde', BoolValue(SearchReplaceIde));
   AStore.WriteInteger('SearchResultsInMessages', BoolValue(SearchResultsInMessages));
+  AStore.WriteInteger('SearchReplace', BoolValue(SearchReplace));
+  AStore.WriteInteger('SearchRegex', BoolValue(SearchRegex));
+  AStore.WriteInteger('SearchHistory', SearchHistory);
+  AStore.WriteInteger('SearchMultiFile', BoolValue(SearchMultiFile));
+  AStore.WriteInteger('SearchReplaceKey', SearchReplaceKey);
   AStore.WriteInteger('SearchKey', SearchKey);
   AStore.WriteInteger('SearchNextKey', SearchNextKey);
   AStore.WriteInteger('SearchPreviousKey', SearchPreviousKey);

@@ -2660,6 +2660,31 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | SU18 | Leiste öffnen, ins Fenster Meldungen oder Struktur klicken, dann nacheinander ins Suchfeld, auf ein Kästchen, in die Bereichsliste und auf ↓ klicken | Jeder Klick wirkt beim ersten Mal (Fokus bleibt in der Leiste, Kästchen schaltet um); holt die IDE den Fokus zurück, steht „Suchleiste: Fokus nach dem Klick …“ mit Fensterklasse im Diagnoseprotokoll |
 | SU19 | In einer Methode Strg+F, Bereich auf „Methode“ stellen, Esc; dann erneut Strg+F (auch in einer anderen Methode) | Bereich steht wieder auf „Unit“ (erster Eintrag der Liste); „Methode“ nur nach gezielter Wahl in der Liste oder mit Strg+Umschalt+Alt+F |
 
+## Suchleiste: Ersetzen, Regex, Verlauf, Bereiche über Dateien (#893)
+
+Vorbereitung: Projektgruppe mit zwei Projekten; in Projekt A die Units `Kunden.pas` (offen, mit ungespeicherter Änderung `IntToStr(Kunde.Nr)`) und `Rechnung.pas` (nicht offen, enthält `IntToStr(Rechnung.Nr)` zweimal), `Alt.pas` schreibgeschützt mit einem Treffer. Einstellungen `search.replace`, `search.regex`, `search.multiFile` an, `search.history` = 20.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ER1 | Strg+H im Editor | Leiste mit Zeile „Ersetzen durch“, Knopf ▾ links; Strg+F öffnet sie ohne die Zeile (▸) |
+| ER2 | Suchen `Nr`, Ersetzen `Nummer`, „Alle ersetzen“ in einer Unit | Alle Treffer der Unit ersetzt, „n Ersetzungen in 1 Datei“ in der Leiste; ein Strg+Z nimmt alles zurück |
+| ER3 | „Ersetzen“ mehrmals | Erster Klick springt zum Treffer (markiert), jeder weitere ersetzt den markierten und springt zum nächsten; Enter im Ersetzen-Feld wirkt wie „Ersetzen“, Strg+Enter wie „Alle ersetzen“ |
+| ER4 | `.*` an, Suchen `IntToStr\((\w+)\.Nr\)`, Ersetzen `$1.Nr.ToString` | Vorschau-Zeile „Vorschau: ~~IntToStr(Kunde.Nr)~~ → **Kunde.Nr.ToString**“; „Ersetzen“ ergibt `Kunde.Nr.ToString` |
+| ER5 | `.*` an, Suchen `(abc` | Suchfeld rot umrandet, Zeile „Ungültiger Ausdruck: …“ mit dem Text der Regex-Engine; keine Rahmen im Editor, Zähler leer, „Ersetzen“/„Alle ersetzen“ ändern nichts |
+| ER6 | `.*` und „Bezeichner“ an, Suchen `Nr` in einer Unit mit `// Nr` und `'Nr'` | Treffer nur im Code, nicht in Kommentar und String |
+| ER7 | Bereich „Projekt“, Suchen `IntToStr` | Zähler „Suche … n Treffer in m Dateien“, danach „n Treffer in m Dateien“; Treffer auch in `Rechnung.pas` (nicht offen) und in der ungespeicherten Änderung von `Kunden.pas`; die IDE bleibt währenddessen bedienbar (kein Eintrag des Einfrier-Wächters) |
+| ER8 | Wie ER7, dann Enter | Reiter „Atlas-Suche“ mit Kopfzeile „Suche nach „IntToStr“ in Projekt“, Treffer je Datei, Abschluss „n Treffer in m von k Dateien“; Doppelklick springt |
+| ER9 | Bereich „Projektgruppe“ mit großem Projekt, sofort „Abbrechen“ | Suche endet, Zähler „Abgebrochen nach n Dateien.“ |
+| ER10 | Wie ER7, F3 mehrmals | Springt über alle Treffer, nach dem letzten der aktiven Datei in die nächste Datei (wird geöffnet), am Ende Umlauf mit Meldung |
+| ER11 | Wie ER7 mit `.*`, „Auswählen …“ | Fenster „Atlas-Suche: Ersetzen“: je Datei Kopfzeile mit ☑, darunter Treffer mit Zeile, Text und „vorher → nachher“; Klick aufs Häkchen bzw. Leertaste schaltet, Datei-Häkchen schaltet alle ihre Treffer; Doppelklick springt |
+| ER12 | Wie ER11, zwei Treffer abhaken, „Ausgewählte ersetzen“ | Nur die angehakten ersetzt; `Alt.pas` als schreibgeschützt gemeldet und übersprungen; „n Ersetzungen in m Dateien · 1 übersprungen …“; „Letzte Atlas-Änderung zurücknehmen“ nimmt alles in allen Dateien zurück; Kodierung (ANSI/UTF-8) und Zeilenenden von `Rechnung.pas` unverändert |
+| ER13 | Wie ER11, vor „Ausgewählte ersetzen“ eine Trefferzeile von Hand ändern | Die Datei wird als „seit der Suche geändert“ gemeldet und nicht ersetzt |
+| ER14 | Zwei Suchen nacheinander, Leiste schließen, IDE neu starten, Strg+F, Pfeil hoch | Die vorige Suche steht im Feld (auch wenn die letzte noch drin stand); Pfeil runter zurück; Alt+↓ öffnet die Liste; im Ersetzen-Feld eigener Verlauf |
+| ER15 | `search.replace` aus | Keine Ersetzen-Zeile, kein Knopf ▸; Strg+H öffnet den IDE-Dialog „Ersetzen“; Befehl fehlt in der Palette |
+| ER16 | `search.regex` aus | Keine Option `.*`, keine Vorschau |
+| ER17 | `search.history` = 0 | Pfeil hoch ändert nichts, keine Verlaufsliste |
+| ER18 | `search.multiFile` aus | Bereiche nur Methode, Unit, Auswahl; offenes Fenster „Atlas-Suche: Ersetzen“ verschwindet |
+
 ## Werte im Hover beim Debuggen (#891)
 
 Vorbereitung: Ein kleines VCL-Projekt mit `FList: TStringList` (drei Einträge), einem Record-Array `Kunden` und einer lokalen Variablen `I`, Haltepunkt in einer Methode, die alle drei verwendet. Atlas-Tooltip an (`editor.hoverTooltip`), `debug.hoverValues` an.
