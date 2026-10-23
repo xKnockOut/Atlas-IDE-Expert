@@ -480,12 +480,12 @@ end;
 
 procedure TAtlasWelcomeDiscoverFrame.ClickButton(AButton: TAtlasDiscoverButton);
 var
-  Source: IAtlasDiscoverSource;
+  mSource: IAtlasDiscoverSource;
   Id: string;
 begin
   if (FSource = nil) or not FHasCard or not FButtons[AButton].Enabled then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Id := FCard.Id;
   // Die Quelle baut die Karte neu: nicht im Klick des Knopfs.
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
@@ -493,11 +493,11 @@ begin
     begin
       case AButton of
         TAtlasDiscoverButton.TryIt:
-          Source.TryTip(Id);
+          mSource.TryTip(Id);
         TAtlasDiscoverButton.Next:
-          Source.NextTip(Id);
+          mSource.NextTip(Id);
       else
-        Source.BlockTip(Id);
+        mSource.BlockTip(Id);
       end;
     end);
 end;

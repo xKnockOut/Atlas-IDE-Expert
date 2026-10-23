@@ -171,7 +171,7 @@ procedure TAtlasWelcomeSearchList.DrawRow(ARow: Integer; const ARect: TRect);
 var
   Row: TAtlasWelcomeSearchRow;
   Hit: TAtlasWelcomeHit;
-  Text: string;
+  mText: string;
   Part, Cell: TRect;
   Width_: Integer;
 begin
@@ -184,8 +184,8 @@ begin
       begin
         Canvas.Font.Style := [fsBold];
         Canvas.Font.Color := ToColor(FBox.FColors.Muted);
-        Text := TAtlasWelcomeSearchBox.GroupCaption(Row.Group);
-        DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+        mText := TAtlasWelcomeSearchBox.GroupCaption(Row.Group);
+        DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
         Canvas.Font.Style := [];
       end;
     TAtlasWelcomeRowKind.Hint, TAtlasWelcomeRowKind.More:
@@ -193,11 +193,11 @@ begin
         Canvas.Font.Style := [fsItalic];
         Canvas.Font.Color := ToColor(FBox.FColors.Muted);
         if Row.Kind = TAtlasWelcomeRowKind.Hint then
-          Text := Row.Text
+          mText := Row.Text
         else
-          Text := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSearchMore, [Row.Index]);
+          mText := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSearchMore, [Row.Index]);
         Inc(Part.Left, MulDiv(12, Screen.PixelsPerInch, 96));
-        DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+        DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
         Canvas.Font.Style := [];
       end;
   else

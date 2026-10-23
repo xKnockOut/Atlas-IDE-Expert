@@ -493,7 +493,7 @@ procedure TAtlasToolbarCustomizeDialog.CurrentDrawItem(Control: TWinControl; Ind
 var
   List: TListBox;
   Id: string;
-  Icon, Text: TRect;
+  Icon, mText: TRect;
   Caption_: string;
   Size, Middle: Integer;
 begin
@@ -516,9 +516,9 @@ begin
   else
     TAtlasGlyphPainter.Draw(List.Canvas, TAtlasToolbarIcons.IconOf(Id), Icon, List.Canvas.Font.Color,
       List.Canvas.Brush.Color, Caption_);
-  Text := System.Types.Rect(Icon.Right + ScaleValue(6), Rect.Top, Rect.Right - ScaleValue(2), Rect.Bottom);
+  mText := System.Types.Rect(Icon.Right + ScaleValue(6), Rect.Top, Rect.Right - ScaleValue(2), Rect.Bottom);
   List.Canvas.Brush.Style := bsClear;
-  DrawText(List.Canvas.Handle, PChar(Caption_), -1, Text, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
+  DrawText(List.Canvas.Handle, PChar(Caption_), -1, mText, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
     DT_END_ELLIPSIS);
   List.Canvas.Brush.Style := bsSolid;
 end;

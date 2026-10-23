@@ -54,7 +54,7 @@ end;
 
 procedure TAtlasTextTip.Paint;
 var
-  Text: TRect;
+  mText: TRect;
 begin
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Surface);
@@ -62,8 +62,8 @@ begin
   Canvas.Font := Font;
   Canvas.Font.Color := ToColor(Colors.Text);
   Canvas.Brush.Style := bsClear;
-  Text := Rect(Scale(9), 0, ClientWidth - Scale(9), ClientHeight);
-  DrawText(Canvas.Handle, PChar(FText), -1, Text, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
+  mText := Rect(Scale(9), 0, ClientWidth - Scale(9), ClientHeight);
+  DrawText(Canvas.Handle, PChar(FText), -1, mText, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
     DT_END_ELLIPSIS);
   Canvas.Brush.Style := bsSolid;
   PaintBorder;

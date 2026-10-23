@@ -483,23 +483,23 @@ end;
 
 procedure TAtlasWelcomeGrip.Paint;
 var
-  Row, Column, Size, Left, Top: Integer;
+  Row, Column, Size, mLeft, mTop: Integer;
 begin
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := TAtlasWelcomeCanvas.BackgroundOf(Self);
   Canvas.FillRect(ClientRect);
   // Sechs Punkte wie ein Griff (⠿).
   Size := ScaleValue(2);
-  Left := (ClientWidth - 3 * Size) div 2;
-  Top := (ClientHeight - 5 * Size) div 2;
+  mLeft := (ClientWidth - 3 * Size) div 2;
+  mTop := (ClientHeight - 5 * Size) div 2;
   if Focused then
     Canvas.Brush.Color := StyleColor(Self, clHighlight)
   else
     Canvas.Brush.Color := StyleColor(Self, clGrayText);
   for Row := 0 to 2 do
     for Column := 0 to 1 do
-      Canvas.FillRect(TRect.Create(Left + Column * 2 * Size, Top + Row * 2 * Size,
-        Left + Column * 2 * Size + Size, Top + Row * 2 * Size + Size));
+      Canvas.FillRect(TRect.Create(mLeft + Column * 2 * Size, mTop + Row * 2 * Size,
+        mLeft + Column * 2 * Size + Size, mTop + Row * 2 * Size + Size));
   if Focused then
     Canvas.DrawFocusRect(ClientRect);
 end;
@@ -637,7 +637,7 @@ end;
 
 procedure TAtlasWelcomeSectionTools.Paint;
 var
-  Half, Size, Mid, Left, Top: Integer;
+  Half, Size, Mid, mLeft, mTop: Integer;
   Area: TRect;
   Color_: TColor;
 begin
@@ -653,9 +653,9 @@ begin
     Color_ := StyleColor(Self, clWindowText);
   Canvas.Pen.Color := Color_;
   Canvas.Brush.Color := Color_;
-  Left := (Half - Size) div 2;
-  Top := (ClientHeight - Size div 2) div 2;
-  Area := TRect.Create(Left, Top, Left + Size div 2 - ScaleValue(1), Top + Size div 2);
+  mLeft := (Half - Size) div 2;
+  mTop := (ClientHeight - Size div 2) div 2;
+  Area := TRect.Create(mLeft, mTop, mLeft + Size div 2 - ScaleValue(1), mTop + Size div 2);
   Canvas.FillRect(Area);
   Area.Offset(Size div 2 + ScaleValue(1), 0);
   if FWide then
@@ -673,11 +673,11 @@ begin
   Canvas.Pen.Color := Color_;
   Canvas.Brush.Style := bsClear;
   Mid := Half + Half div 2;
-  Top := ClientHeight div 2;
-  Canvas.Ellipse(Mid - Size div 2, Top - Size div 3, Mid + Size div 2, Top + Size div 3);
+  mTop := ClientHeight div 2;
+  Canvas.Ellipse(Mid - Size div 2, mTop - Size div 3, Mid + Size div 2, mTop + Size div 3);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := Color_;
-  Canvas.Ellipse(Mid - ScaleValue(2), Top - ScaleValue(2), Mid + ScaleValue(2), Top + ScaleValue(2));
+  Canvas.Ellipse(Mid - ScaleValue(2), mTop - ScaleValue(2), Mid + ScaleValue(2), mTop + ScaleValue(2));
 end;
 
 procedure TAtlasWelcomeSectionTools.MouseMove(Shift: TShiftState; X, Y: Integer);

@@ -81,7 +81,7 @@ constructor TAtlasChangeSignatureDialog.CreateDialog(AOwner: TComponent; AModel:
 var
   Bottom, Right, Fields, Options: TPanel;
   Column: TListColumn;
-  Top: Integer;
+  mTop: Integer;
   Notes: string;
   Warning: string;
 begin
@@ -183,11 +183,11 @@ begin
   FType := TEdit.Create(Self);
   FModifier := TComboBox.Create(Self);
   FValue := TEdit.Create(Self);
-  Top := ScaleValue(4);
-  Top := AddLabeled(Fields, TAtlasStrings.Text(TAtlasTextId.SigFieldName), Top, FName);
-  Top := AddLabeled(Fields, TAtlasStrings.Text(TAtlasTextId.SigFieldType), Top, FType);
-  Top := AddLabeled(Fields, TAtlasStrings.Text(TAtlasTextId.SigFieldModifier), Top, FModifier);
-  AddLabeled(Fields, TAtlasStrings.Text(TAtlasTextId.SigFieldValue), Top, FValue);
+  mTop := ScaleValue(4);
+  mTop := AddLabeled(Fields, TAtlasStrings.Text(TAtlasTextId.SigFieldName), mTop, FName);
+  mTop := AddLabeled(Fields, TAtlasStrings.Text(TAtlasTextId.SigFieldType), mTop, FType);
+  mTop := AddLabeled(Fields, TAtlasStrings.Text(TAtlasTextId.SigFieldModifier), mTop, FModifier);
+  AddLabeled(Fields, TAtlasStrings.Text(TAtlasTextId.SigFieldValue), mTop, FValue);
   FModifier.Style := csDropDownList;
   FName.OnChange := FieldChange;
   FType.OnChange := FieldChange;
@@ -208,11 +208,11 @@ begin
   FRemove.Top := FAdd.Top + FAdd.Height + ScaleValue(4);
   FUp.Top := FRemove.Top + FRemove.Height + ScaleValue(Gap * 2);
   FDown.Top := FUp.Top + FUp.Height + ScaleValue(4);
-  for Top := 0 to Right.ControlCount - 1 do
+  for mTop := 0 to Right.ControlCount - 1 do
   begin
-    Right.Controls[Top].Left := ScaleValue(Gap);
-    Right.Controls[Top].Width := Right.Width - ScaleValue(2 * Gap);
-    Right.Controls[Top].Anchors := [akLeft, akTop];
+    Right.Controls[mTop].Left := ScaleValue(Gap);
+    Right.Controls[mTop].Width := Right.Width - ScaleValue(2 * Gap);
+    Right.Controls[mTop].Anchors := [akLeft, akTop];
   end;
 
   FList := TListView.Create(Self);
@@ -256,13 +256,13 @@ end;
 function TAtlasChangeSignatureDialog.AddLabeled(AParent: TWinControl; const ACaption: string; ATop: Integer;
   AControl: TWinControl): Integer;
 var
-  Caption: TLabel;
+  mCaption: TLabel;
 begin
-  Caption := TLabel.Create(Self);
-  Caption.Parent := AParent;
-  Caption.Caption := ACaption;
-  Caption.SetBounds(ScaleValue(Gap), ATop + ScaleValue(3), ScaleValue(190), ScaleValue(20));
-  Caption.FocusControl := AControl;
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := AParent;
+  mCaption.Caption := ACaption;
+  mCaption.SetBounds(ScaleValue(Gap), ATop + ScaleValue(3), ScaleValue(190), ScaleValue(20));
+  mCaption.FocusControl := AControl;
   AControl.Parent := AParent;
   AControl.SetBounds(ScaleValue(200), ATop, ScaleValue(DialogWidth - 200 - Gap), ScaleValue(23));
   AControl.Anchors := [akLeft, akTop, akRight];

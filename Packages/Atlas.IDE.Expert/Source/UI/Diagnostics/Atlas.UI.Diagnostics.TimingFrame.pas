@@ -210,7 +210,7 @@ const
 var
   Canvas: TCanvas;
   Bounds, Cell: TRect;
-  ValueWidth, Top, Index, Column: Integer;
+  ValueWidth, mTop, Index, Column: Integer;
   Row: TAtlasTimingRow;
   Texts: array[0..4] of string;
   Warns: array[0..4] of Boolean;
@@ -261,20 +261,20 @@ begin
   Texts[2] := TAtlasStrings.Fmt(TAtlasTextId.DiagnosticColumnMean, [Length(FQueries)]);
   Texts[3] := TAtlasStrings.Text(TAtlasTextId.DiagnosticColumnMax);
   Texts[4] := TAtlasStrings.Text(TAtlasTextId.DiagnosticColumnBudget);
-  Top := Bounds.Top;
+  mTop := Bounds.Top;
   for Column := 0 to 4 do
   begin
     if Column = 0 then
-      Cell := Rect(Bounds.Left, Top, Bounds.Right - 4 * ValueWidth, Top + RowHeight)
+      Cell := Rect(Bounds.Left, mTop, Bounds.Right - 4 * ValueWidth, mTop + RowHeight)
     else
-      Cell := Rect(Bounds.Right - (5 - Column) * ValueWidth, Top, Bounds.Right - (4 - Column) * ValueWidth,
-        Top + RowHeight);
+      Cell := Rect(Bounds.Right - (5 - Column) * ValueWidth, mTop, Bounds.Right - (4 - Column) * ValueWidth,
+        mTop + RowHeight);
     DrawCell(Cell, Texts[Column], False, Column > 0, True);
   end;
-  Inc(Top, RowHeight);
+  Inc(mTop, RowHeight);
   Canvas.Pen.Color := ToColor(FColors.Line);
-  Canvas.MoveTo(Bounds.Left, Top - 1);
-  Canvas.LineTo(Bounds.Right, Top - 1);
+  Canvas.MoveTo(Bounds.Left, mTop - 1);
+  Canvas.LineTo(Bounds.Right, mTop - 1);
   for Index := 0 to High(FRows) do
   begin
     Row := FRows[Index];
@@ -301,16 +301,16 @@ begin
     for Column := 0 to 4 do
     begin
       if Column = 0 then
-        Cell := Rect(Bounds.Left, Top, Bounds.Right - 4 * ValueWidth, Top + RowHeight)
+        Cell := Rect(Bounds.Left, mTop, Bounds.Right - 4 * ValueWidth, mTop + RowHeight)
       else
-        Cell := Rect(Bounds.Right - (5 - Column) * ValueWidth, Top, Bounds.Right - (4 - Column) * ValueWidth,
-          Top + RowHeight);
+        Cell := Rect(Bounds.Right - (5 - Column) * ValueWidth, mTop, Bounds.Right - (4 - Column) * ValueWidth,
+          mTop + RowHeight);
       // Quellen eingerückt unter dem Kontext.
       if (Column = 0) and (Row.Kind = TAtlasTimingRowKind.Provider) then
         Inc(Cell.Left, Scale(12));
       DrawCell(Cell, Texts[Column], Warns[Column], Column > 0, Column = 4);
     end;
-    Inc(Top, RowHeight);
+    Inc(mTop, RowHeight);
   end;
 end;
 

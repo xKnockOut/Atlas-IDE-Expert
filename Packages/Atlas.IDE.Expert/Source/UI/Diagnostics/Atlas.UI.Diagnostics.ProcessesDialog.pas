@@ -277,11 +277,11 @@ end;
 
 function TAtlasProcessesDialog.AddRow(AParent: TWinControl; ACaption: TAtlasTextId; ATop: Integer): TLabel;
 var
-  Name: TLabel;
+  mName: TLabel;
 begin
-  Name := AddLabel(AParent, TAtlasStrings.Text(ACaption));
-  Name.SetBounds(Gap, ATop + 2, LabelWidth, 18);
-  Name.Font.Color := clGrayText;
+  mName := AddLabel(AParent, TAtlasStrings.Text(ACaption));
+  mName.SetBounds(Gap, ATop + 2, LabelWidth, 18);
+  mName.Font.Color := clGrayText;
   Result := AddLabel(AParent, '');
   Result.Left := Gap + LabelWidth + Gap;
   Result.Top := ATop + 2;
@@ -409,7 +409,7 @@ end;
 procedure TAtlasProcessesDialog.ShowDirty;
 var
   Names: TArray<string>;
-  Name, Mcp: string;
+  mName, Mcp: string;
   Item: TListItem;
   HasMcp: Boolean;
   Workspace: TAtlasProcessWorkspace;
@@ -427,10 +427,10 @@ begin
   FDirty.Items.BeginUpdate;
   try
     FDirty.Items.Clear;
-    for Name in Names do
+    for mName in Names do
     begin
       Item := FDirty.Items.Add;
-      Item.Caption := Name;
+      Item.Caption := mName;
       Item.SubItems.Add(TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyIdeText));
       Item.SubItems.Add(Mcp);
     end;

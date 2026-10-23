@@ -169,16 +169,16 @@ end;
 procedure TAtlasWhatsNewMenu.ItemClick(Sender: TObject);
 var
   View: TAtlasWhatsNewView;
-  Source: IAtlasWhatsNewSource;
+  mSource: IAtlasWhatsNewSource;
 begin
   View := TAtlasWhatsNewView(TMenuItem(Sender).Tag);
-  Source := FSource;
+  mSource := FSource;
   // Die Quelle baut Karte und Bereiche neu; das Menü darf nicht in seinem eigenen Klick verschwinden.
-  if Source <> nil then
+  if mSource <> nil then
     TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
       procedure
       begin
-        Source.Show(View);
+        mSource.Show(View);
       end);
 end;
 
@@ -530,49 +530,49 @@ end;
 
 procedure TAtlasWelcomeWhatsNewFrame.SwitchClick(Sender: TObject);
 var
-  Source: IAtlasWhatsNewSource;
+  mSource: IAtlasWhatsNewSource;
   Setting: string;
   Value: Boolean;
 begin
   if FUpdating or (FSource = nil) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Setting := FRows[TCheckBox(Sender).Tag].Item.Setting;
   Value := TCheckBox(Sender).Checked;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.SetSwitch(Setting, Value);
+      mSource.SetSwitch(Setting, Value);
     end);
 end;
 
 procedure TAtlasWelcomeWhatsNewFrame.TryClick(Sender: TObject);
 var
-  Source: IAtlasWhatsNewSource;
+  mSource: IAtlasWhatsNewSource;
   Item: TAtlasWhatsNewItem;
 begin
   if FSource = nil then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Item := FRows[TButton(Sender).Tag].Item;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.TryItem(Item);
+      mSource.TryItem(Item);
     end);
 end;
 
 procedure TAtlasWelcomeWhatsNewFrame.DismissClick(Sender: TObject);
 var
-  Source: IAtlasWhatsNewSource;
+  mSource: IAtlasWhatsNewSource;
 begin
   if FSource = nil then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.Dismiss;
+      mSource.Dismiss;
     end);
 end;
 

@@ -254,16 +254,16 @@ function TAtlasExportDialog.Options: TAtlasExportOptions;
 var
   Index: Integer;
   Areas: TArray<string>;
-  Secrets: TAtlasSecretMode;
+  mSecrets: TAtlasSecretMode;
 begin
   Areas := nil;
   for Index := 0 to High(FAreas) do
     if FAreas[Index].Checked then
       Areas := Areas + [FAreaIds[Index]];
-  Secrets := smOmit;
+  mSecrets := smOmit;
   if FSecrets.ItemIndex = 1 then
-    Secrets := smPlaceholder;
-  Result := TAtlasExportOptions.Create(Areas, Secrets);
+    mSecrets := smPlaceholder;
+  Result := TAtlasExportOptions.Create(Areas, mSecrets);
 end;
 
 class function TAtlasExportDialog.Execute(ACatalog: TAtlasSettingsCatalog; var AOptions: TAtlasExportOptions;
@@ -522,7 +522,7 @@ procedure TAtlasImportDialog.Recalculate(Sender: TObject);
 var
   Areas: TArray<string>;
   Index: Integer;
-  Mode: TAtlasImportMode;
+  mMode: TAtlasImportMode;
 begin
   if not Assigned(FOnPreview) then
     Exit;
@@ -530,18 +530,18 @@ begin
   for Index := 0 to High(FAreaBoxes) do
     if FAreaBoxes[Index].Checked then
       Areas := Areas + [FAreaIds[Index]];
-  Mode := imMerge;
+  mMode := imMerge;
   if FMode.ItemIndex = 1 then
-    Mode := imReplace;
+    mMode := imReplace;
   // Keine Bereiche gewählt: leere Vorschau statt „alle“.
   if Length(Areas) = 0 then
   begin
     FPreview.Items := nil;
     FPreview.Areas := nil;
-    FPreview.Mode := Mode;
+    FPreview.Mode := mMode;
   end
   else
-    FPreview := FOnPreview(Mode, Areas);
+    FPreview := FOnPreview(mMode, Areas);
   if HandleAllocated then
     Fill;
 end;
@@ -615,13 +615,13 @@ end;
 
 procedure TAtlasProfileDialog.DoShow;
 var
-  Name: string;
+  mName: string;
 begin
   inherited;
   if FList.Items.Count = 0 then
   begin
-    for Name in FNames do
-      FList.Items.Add(Name);
+    for mName in FNames do
+      FList.Items.Add(mName);
     if FList.Items.Count > 0 then
       FList.ItemIndex := 0;
     ListClick(nil);
