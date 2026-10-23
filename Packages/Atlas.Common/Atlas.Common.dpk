@@ -133,6 +133,7 @@ contains
   Atlas.Common.Lsp.CompletionAttributes in 'Source\Lsp\Atlas.Common.Lsp.CompletionAttributes.pas',
   Atlas.Common.Lsp.CompletionAnonymous in 'Source\Lsp\Atlas.Common.Lsp.CompletionAnonymous.pas',
   Atlas.Common.Lsp.CompletionExceptions in 'Source\Lsp\Atlas.Common.Lsp.CompletionExceptions.pas',
+  Atlas.Common.Lsp.CompletionSyntax in 'Source\Lsp\Atlas.Common.Lsp.CompletionSyntax.pas',
   Atlas.Common.Lsp.CompletionUses in 'Source\Lsp\Atlas.Common.Lsp.CompletionUses.pas',
   Atlas.Common.Lsp.CompletionInherited in 'Source\Lsp\Atlas.Common.Lsp.CompletionInherited.pas',
   Atlas.Common.Lsp.CompletionSameNames in 'Source\Lsp\Atlas.Common.Lsp.CompletionSameNames.pas',

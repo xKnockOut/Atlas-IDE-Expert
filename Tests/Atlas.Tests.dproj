@@ -158,6 +158,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionAnonymous.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionWith.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionExceptions.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionSyntax.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionUses.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionInherited.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionSameNames.Tests.pas"/>

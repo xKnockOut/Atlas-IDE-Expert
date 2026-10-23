@@ -22,6 +22,8 @@ type
     [Test]
     procedure KeepsRaiseItemsWithoutSnippets;
     [Test]
+    procedure ReadsSyntaxNotice;
+    [Test]
     procedure ReadsItemArrayAndNull;
     [Test]
     procedure PartialItemsContinueRank;
@@ -139,6 +141,7 @@ type
     destructor Destroy; override;
     procedure AddItems(const AItems: TAtlasCompletionItems);
     procedure MarkIncomplete;
+    procedure MarkSyntax(const ANotice: TAtlasSyntaxNotice);
     procedure Complete;
     function WaitDone(ATimeoutMs: Cardinal): Boolean;
     function Names: string;
@@ -175,6 +178,10 @@ begin
 end;
 
 procedure TCollectingSink.MarkIncomplete;
+begin
+end;
+
+procedure TCollectingSink.MarkSyntax(const ANotice: TAtlasSyntaxNotice);
 begin
 end;
 
@@ -278,6 +285,33 @@ begin
   Assert.AreEqual(1, Integer(Length(Items)));
   Assert.AreEqual('', Items[0].Snippet);
   Assert.AreEqual('procedure'#10'  begin'#10'    '#10'  end', Items[0].TextEdit.NewText);
+end;
+
+procedure TAtlasCompletionProviderTests.ReadsSyntaxNotice;
+var
+  Response: TJSONValue;
+  Notice: TAtlasSyntaxNotice;
+begin
+  // #457: syntaxNotice der CompletionList; ohne Angabe sicher.
+  Response := TJSONObject.ParseJSONValue('{"isIncomplete":false,"items":[],"syntaxNotice":' +
+    '{"trust":"unknown","line":13,"character":12,"message":"Ausdruck erwartet"}}');
+  try
+    Notice := TAtlasServerCompletionProvider.SyntaxNoticeOf(Response);
+  finally
+    Response.Free;
+  end;
+  Assert.AreEqual(Ord(TAtlasSyntaxTrust.Unknown), Ord(Notice.Trust));
+  Assert.AreEqual(13, Notice.Line);
+  Assert.AreEqual(12, Notice.Character);
+  Assert.AreEqual('Ausdruck erwartet', Notice.Message);
+  Response := TJSONObject.ParseJSONValue('{"isIncomplete":false,"items":[]}');
+  try
+    Notice := TAtlasServerCompletionProvider.SyntaxNoticeOf(Response);
+  finally
+    Response.Free;
+  end;
+  Assert.AreEqual(Ord(TAtlasSyntaxTrust.Sure), Ord(Notice.Trust));
+  Assert.AreEqual(-1, Notice.Line);
 end;
 
 procedure TAtlasCompletionProviderTests.KeepsRaiseItemsWithoutSnippets;

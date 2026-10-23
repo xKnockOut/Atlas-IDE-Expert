@@ -35,6 +35,26 @@ type
   /// <summary>Lernende Gewichtung (#418): zuletzt bzw. häufig gewählt.</summary>
   TAtlasUsageMark = (None, Recent, Frequent);
 
+  /// <summary>Wie sicher die Quelle den Kontext bestimmen konnte (#457): sicher, eingeschränkt (Syntaxfehler vor dem
+  /// Cursor in der aktuellen Routine), unbekannt (dazu keine Einträge).</summary>
+  TAtlasSyntaxTrust = (Sure, Limited, Unknown);
+
+  /// <summary>Hinweis bei unvollständigem Code (#457): Status und erster Fehler, Zeile und Spalte 0-basiert.
+  /// </summary>
+  TAtlasSyntaxNotice = record
+    Trust: TAtlasSyntaxTrust;
+    Line: Integer;
+    Character: Integer;
+    Message: string;
+  end;
+
+  /// <summary>Zustand einer abgerufenen Liste: gekürzt (LSP isIncomplete, #431) und Hinweis bei unvollständigem
+  /// Code (#457).</summary>
+  TAtlasFetchState = record
+    Incomplete: Boolean;
+    Syntax: TAtlasSyntaxNotice;
+  end;
+
   /// <summary>Textänderung, 0-basiert in UTF-16-Einheiten wie im LSP.</summary>
   TAtlasTextEdit = record
     StartLine: Integer;
@@ -322,6 +342,8 @@ type
     /// <summary>Die Liste ist gekürzt (LSP isIncomplete): Beim Weitertippen neu fragen (#431).
     /// Vor Complete aufzurufen.</summary>
     procedure MarkIncomplete;
+    /// <summary>Hinweis bei unvollständigem Code (#457), nur wenn nicht sicher; vor Complete aufzurufen.</summary>
+    procedure MarkSyntax(const ANotice: TAtlasSyntaxNotice);
     /// <summary>Die Quelle ist fertig; genau einmal je Query.</summary>
     procedure Complete;
   end;

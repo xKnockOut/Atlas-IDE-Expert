@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2107] of string = (
+  Lines: array[0..2113] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1156,6 +1156,14 @@ const
       'en der RTL wie StrToInt → EConvertError), darunter „Allgemein“; im selben except schon behandelte Klassen fehlen, Klassen, die ein früherer Zweig schon fängt, tragen die Warnung „nie erreicht“. Aus: d' +
       'ie gewöhnliche Liste.",',
     '          "x-issue": "#483"',
+    '        },',
+    '        "syntaxNotice": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Hinweis bei unvollständigem Code: Steht vor dem Cursor in der aktuellen Routine bzw. Klassendeklaration ein Syntaxfehler, zeigt die Liste oben die Warnleiste „Ergebnisse mögl' +
+      'icherweise unvollständig · Syntaxfehler in Zeile n“; Klick auf die Zeilenangabe springt dorthin. Ohne Vorschläge zeigt der leere Zustand den Fehler. Fehler in anderen Routinen und die Stelle, an der g' +
+      'erade getippt wird, zählen nicht. Aus: kein Hinweis.",',
+    '          "x-issue": "#457"',
     '        },',
     '        "sameNameVariants": {',
     '          "type": "boolean",',

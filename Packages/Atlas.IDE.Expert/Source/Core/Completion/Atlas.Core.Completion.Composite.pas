@@ -43,6 +43,7 @@ type
       destructor Destroy; override;
       procedure Add(const AItems: TAtlasCompletionItems);
       procedure Incomplete;
+      procedure Syntax(const ANotice: TAtlasSyntaxNotice);
       procedure PartDone;
       procedure Cancel;
     end;
@@ -62,6 +63,7 @@ type
       constructor Create(AState: TQueryState; const AName: string; ATimingId: Integer);
       procedure AddItems(const AItems: TAtlasCompletionItems);
       procedure MarkIncomplete;
+      procedure MarkSyntax(const ANotice: TAtlasSyntaxNotice);
       procedure Complete;
     end;
     /// <summary>Läuft der vorige Aufruf einer Quelle noch (nach dem Zeitlimit aufgegeben)? Lebt, solange ein
@@ -152,6 +154,18 @@ begin
   end;
 end;
 
+procedure TAtlasCompletionProviders.TQueryState.Syntax(const ANotice: TAtlasSyntaxNotice);
+begin
+  // Hinweis bei unvollständigem Code (#457): Ihn meldet nur der Server; weiterreichen wie gekürzt.
+  FLock.Enter;
+  try
+    if FSink <> nil then
+      FSink.MarkSyntax(ANotice);
+  finally
+    FLock.Leave;
+  end;
+end;
+
 procedure TAtlasCompletionProviders.TQueryState.PartDone;
 begin
   FLock.Enter;
@@ -205,6 +219,12 @@ procedure TAtlasCompletionProviders.TPartSink.MarkIncomplete;
 begin
   if TInterlocked.CompareExchange(FDone, 0, 0) = 0 then
     FState.Incomplete;
+end;
+
+procedure TAtlasCompletionProviders.TPartSink.MarkSyntax(const ANotice: TAtlasSyntaxNotice);
+begin
+  if TInterlocked.CompareExchange(FDone, 0, 0) = 0 then
+    FState.Syntax(ANotice);
 end;
 
 procedure TAtlasCompletionProviders.TPartSink.Complete;
