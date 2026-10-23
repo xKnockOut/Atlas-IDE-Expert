@@ -111,6 +111,7 @@
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ConstantValues.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ConditionalBranches.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.DirectiveNames.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.WarningCodes.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.PureRoutines.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Attributes.Tests.pas"/>
@@ -222,6 +223,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Baseline.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompilerBaseline.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DisableWarning.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SemanticTokens.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WorkspaceSymbols.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DocumentHighlights.Tests.pas"/>
@@ -373,6 +375,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.PropertyFromAccessors.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.InvertBoolean.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.DisableWarning.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InvertBoolean.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Unwrap.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Unwrap.Tests.pas"/>
@@ -630,6 +633,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.WorkspacePlan.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.TestUnit.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.WorkspacePlan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.DisableWarning.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.DisableWarning.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.ChangeSignature.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.ChangeSignature.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.TestUnit.Tests.pas"/>

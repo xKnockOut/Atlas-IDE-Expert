@@ -270,6 +270,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.OverrideMarks.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Baseline.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerBaseline.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DisableWarning.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SemanticTokens.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Commands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ApplyEdit.pas"/>
@@ -315,6 +316,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PropertyFromAccessors.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.InvertBoolean.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.DisableWarning.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InvertBoolean.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Unwrap.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Unwrap.pas"/>
@@ -330,6 +332,7 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ConstantValues.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ConditionalBranches.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.DirectiveNames.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.WarningCodes.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.PureRoutines.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Attributes.pas"/>

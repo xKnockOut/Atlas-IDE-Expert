@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2001] of string = (
+  Lines: array[0..2013] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1232,6 +1232,21 @@ const
     '          "description": "Code-Aktion „Typ ausschreiben“ auf dem Namen von var X := …, const X = … und for var X in … ohne Typangabe: fügt den abgeleiteten Typ ein (var Count: Integer := Lines.Count) ' +
       'und trägt seine Unit bei Bedarf ins uses ein.",',
     '          "x-issue": "#453"',
+    '        },',
+    '        "disableWarning": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen auf einer Warnung oder einem Hinweis des letzten Compilerlaufs: „W1000 hier abschalten“ setzt {$WARN SYMBOL_DEPRECATED OFF} vor und {$WARN SYMBOL_DEPRECATED ON}' +
+      ' hinter die Zeile, dazu Varianten um die Routine, für die ganze Unit und (nach Rückfrage) für das ganze Projekt in den Projektoptionen. Hinweise bekommen {$HINTS OFF}/{$HINTS ON}, Warnungen ohne eigen' +
+      'en Bezeichner {$WARNINGS OFF}/{$WARNINGS ON} (betrifft alle Warnungen). Ablaufmeldungen wie H2164 oder W1035 gibt es nur um die ganze Routine. Ein Rückgängig-Schritt.",',
+    '          "x-issue": "#531"',
+    '        },',
+    '        "disableWarningReason": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Beim Abschalten einer Warnung nach einer Begründung fragen; sie kommt als Kommentar hinter den Schalter ({$WARN SYMBOL_DEPRECATED OFF} // Altlast bis zur Umstellung). Leer er' +
+      'laubt. Aus: ohne Rückfrage, ohne Kommentar.",',
+    '          "x-issue": "#531"',
     '        },',
     '        "extract": {',
     '          "type": "boolean",',
