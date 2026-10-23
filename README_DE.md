@@ -25,7 +25,7 @@ Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnoc
 
 ## Schnellstart
 
-Voraussetzung ist RAD Studio bzw. Delphi ab Version 12. Fertige Pakete stehen unter [Releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases); Release 1.0.0 enthält das Plugin nur für Delphi 13.
+Voraussetzung ist RAD Studio bzw. Delphi ab Version 12. Fertige Pakete stehen unter [Releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases); Die Releases 1.0.0 und 1.1.0 enthalten das Plugin nur für Delphi 13. Was mit 1.1.0 neu ist, steht im [Changelog](CHANGELOG.md).
 
 **Weg A – mit Installer:**
 
@@ -183,8 +183,8 @@ Der Server bietet Claude Code 19 MCP-Werkzeuge: Symbole suchen, Deklarationen un
 
 Noch nicht in `main`, als Issues angelegt:
 
-- Über 100 weitere Prüfregeln (Unter-Issues von #909, #1086)
-- Compilermeldungen als eigene Atlas-Regeln, schon beim Tippen statt erst beim Übersetzen (#1024)
+- Weitere Prüfregeln (Unter-Issues von #1086)
+- Debuggen (#614) und Designer-Funktionen für spätere Versionen
 
 ## Installation
 
