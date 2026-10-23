@@ -273,6 +273,9 @@ begin
     Result.Attribute := Data.GetValue('attribute') is TJSONTrue;
     // Anonyme Methoden (#468).
     Result.MethodRef := Data.GetValue<string>('methodRef', '');
+    // Exception-Klassen (#483).
+    Result.ExceptionGroup := Data.GetValue<string>('exceptionGroup', '');
+    Result.Unreachable := Data.GetValue<string>('unreachable', '');
     // uses-Abschnitt (#469): gefiltert wird nach dem Namensteil ab dem Getippten ("Classes" für System.Classes).
     Result.UsesGroup := Data.GetValue<string>('usesGroup', '');
     if Data.GetValue<string>('usesFilter', '') <> '' then
@@ -390,12 +393,13 @@ var
 begin
   Result := nil;
   // Postfix-Vorlagen (#188) haben ihren eigenen Schalter completion.postfixTemplates. Einträge, die Code erzeugen
-  // (resourcestring auslagern, #473), und Gerüste anonymer Methoden (#468, eigener Schalter
-  // completion.anonymousMethods) bleiben ohne Platzhalter.
+  // (resourcestring auslagern, #473), Gerüste anonymer Methoden (#468, eigener Schalter
+  // completion.anonymousMethods) und "EFoo.Create('')" nach raise (#483, completion.exceptionClasses) bleiben ohne
+  // Platzhalter.
   for Item in AItems do
     if (Item.Snippet = '') or Item.Postfix then
       Result := Result + [Item]
-    else if Item.IsAction or (Item.MethodRef <> '') then
+    else if Item.IsAction or (Item.MethodRef <> '') or (Item.ExceptionGroup <> '') then
       Result := Result + [Plain(Item)];
 end;
 

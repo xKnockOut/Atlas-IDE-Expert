@@ -506,6 +506,7 @@ uses
   Atlas.Common.Lsp.CompletionEnums,
   Atlas.Common.Lsp.CompletionGenerics,
   Atlas.Common.Lsp.CompletionAttributes,
+  Atlas.Common.Lsp.CompletionExceptions,
   Atlas.Common.Editing.DataFieldNames,
   Atlas.Common.Editing.GuardFree,
   Atlas.Common.Editing.ContextSnippets,
@@ -996,6 +997,7 @@ var
   Token: TPascalToken;
   Names: TList<string>;
   Site: TGenericArgSite;
+  ExceptionSite: TExceptionSite;
   Before: Integer;
 begin
   Result := Default(TCompletionContext);
@@ -1119,6 +1121,15 @@ begin
   if (Result.Filter = TCompletionFilter.Any) and TCompletionAttributes.SiteAt(Tokens, Last) then
   begin
     Result.Attribute := True;
+    Result.Filter := TCompletionFilter.Types;
+    Exit;
+  end;
+  // Exception-Klassen nach "raise " und "on E: " (#483); ob es gilt, entscheidet Collect nach der Einstellung.
+  if (Result.Filter <> TCompletionFilter.InheritedCall) and TCompletionExceptions.SiteAt(Tokens, Last,
+    ExceptionSite) then
+  begin
+    Result.Exceptions := True;
+    Result.ExceptionToken := Last;
     Result.Filter := TCompletionFilter.Types;
     Exit;
   end;
@@ -1713,6 +1724,23 @@ begin
   end;
 end;
 
+/// <summary>Exception-Klassen, die schon ohne Eingabe aus nicht eingebundenen Units kommen (#483): die gängigen
+/// und, nach "on E: ", die aus dem try-Block.</summary>
+function ExceptionImportNames(ARequest: TCompletionRequest; const AContext: TCompletionContext): TArray<string>;
+var
+  Site: TExceptionSite;
+  Name: string;
+  Units: TArray<string>;
+begin
+  Result := nil;
+  for Name in TCompletionExceptions.CommonNames do
+    Result := Result + [Name];
+  if TCompletionExceptions.SiteAt(ARequest.Tree.Tokens, AContext.ExceptionToken, Site) then
+    for Name in TCompletionExceptions.TryClasses(ARequest, Site, Units) do
+      if IndexText(Name, Result) < 0 then
+        Result := Result + [Name];
+end;
+
 class function TLspCompletion.Collect(ARequest: TCompletionRequest; const APostfix: TPostfixOptions;
   const AOnPartial: TCompletionPartialProc): TCompletionItems;
 var
@@ -1756,6 +1784,14 @@ begin
   end;
   if Context.Attribute then
     OnPartial := nil;
+  // Exception-Klassen (#483): ebenso erst die ganze Liste; aus: die gewöhnliche Liste.
+  if Context.Exceptions and not ARequest.Settings.ExceptionClasses then
+  begin
+    Context.Exceptions := False;
+    Context.Filter := TCompletionFilter.Any;
+  end;
+  if Context.Exceptions then
+    OnPartial := nil;
   // Diagnoselog (#647): nur Art und Längen, nie die Namen selbst.
   TRequestDiagnostics.Note('ctx', ContextCodes[Context.Kind]);
   TRequestDiagnostics.Note('prefixLen', Length(Context.Prefix));
@@ -1774,6 +1810,8 @@ begin
   try
     if Context.Attribute then
       Collector.SetAdmit(TCompletionAttributes.Admit(ARequest.Resolver));
+    if Context.Exceptions then
+      Collector.SetAdmit(TCompletionExceptions.Admit(ARequest.Resolver));
     case Context.Kind of
       TCompletionContextKind.UsesClause:
         // Gruppen, Hinweise und Zirkelbezüge (#469); aus: alle Units als schlichte Liste.
@@ -1849,7 +1887,10 @@ begin
               Collector.AddFromOtherUnits
             else if Context.Attribute then
               // Bekannte Attribute (DUnitX, JSON) schon nach "[" mit uses-Eintrag (#465).
-              Collector.AddFromOtherUnits(TCompletionAttributes.KnownClassNames);
+              Collector.AddFromOtherUnits(TCompletionAttributes.KnownClassNames)
+            else if Context.Exceptions then
+              // Gängige Exception-Klassen schon nach "raise " bzw. "on E: " mit uses-Eintrag (#483).
+              Collector.AddFromOtherUnits(ExceptionImportNames(ARequest, Context));
             Collector.AddUnavailable;
             Collector.AddKeywords(KeywordsAt(Context));
           end;
@@ -1863,6 +1904,9 @@ begin
       Result.Items := TCompletionGenerics.Apply(ARequest, Context, GenericOwner, Result.Items);
     if Context.Attribute then
       Result.Items := TCompletionAttributes.Apply(ARequest, Context, Result.Items);
+    if Context.Exceptions then
+      // Platzhalter wie bei den Postfix-Vorlagen nach snippetSupport des Clients.
+      Result.Items := TCompletionExceptions.Apply(ARequest, Context, APostfix.Snippet, Result.Items);
     Result.Items := Result.Items + Postfix;
   finally
     Collector.Free;

@@ -443,6 +443,16 @@ type
     /// Vorfahren ab, zählt sie nur, wenn dessen Name auf Attribute endet. TCustomAttribute selbst zählt nicht.
     /// </summary>
     function AttributeClassOf(const ASymbol: TResolvedSymbol; out AClass: TResolvedSymbol): Boolean;
+    /// <summary>Exception-Klasse hinter ASymbol (#483): ein Alias wird verfolgt, die Klasse ist Exception oder
+    /// stammt davon ab. Bricht die Kette an einem unbekannten Vorfahren ab, zählt sie nur, wenn dessen Name wie
+    /// eine Exception aussieht (Exception, EFoo).</summary>
+    function ExceptionClassOf(const ASymbol: TResolvedSymbol; out AClass: TResolvedSymbol): Boolean;
+    /// <summary>Namen ohne Unit von AClass und seinen Vorfahren, AClass zuerst (#483); bricht die Kette ab,
+    /// zuletzt der Name des unbekannten Vorfahren.</summary>
+    function AncestorNames(const AClass: TResolvedSymbol): TArray<string>;
+    /// <summary>Sieht AName (auch mit Unit) wie eine Exception-Klasse aus: Exception oder E mit Großbuchstaben?
+    /// </summary>
+    class function LooksLikeException(const AName: string): Boolean; static;
     /// <summary>Unit-Namespaces des Projekts (DCC_Namespace) für uses ohne Präfix.</summary>
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
     /// <summary>Ist AName der Anfang eines Unit-Namens im Bereich (Atlas in Atlas.Core.Foo.Bar, Winapi in
@@ -1339,6 +1349,62 @@ begin
       Exit;
     if not AncestorOf(Current, Next) then
       Exit(EndsText('Attribute', Current.Ancestors[0]));
+    Current := Next;
+  end;
+end;
+
+class function TNameResolver.LooksLikeException(const AName: string): Boolean;
+var
+  Plain: string;
+begin
+  Plain := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
+  Result := SameText(Plain, 'Exception') or ((Length(Plain) > 1) and (Plain[1] = 'E') and
+    CharInSet(Plain[2], ['A'..'Z']));
+end;
+
+function TNameResolver.ExceptionClassOf(const ASymbol: TResolvedSymbol; out AClass: TResolvedSymbol): Boolean;
+var
+  Current, Next: TResolvedSymbol;
+  Depth: Integer;
+begin
+  Result := False;
+  AClass := NoResult;
+  if not ASymbol.Found or not ASymbol.IsType or not TypeOf(ASymbol, Current) or
+    (Current.SymbolKind <> TIndexSymbolKind.ClassType) then
+    Exit;
+  AClass := Current;
+  for Depth := 0 to MaxDepth do
+  begin
+    if SameText(Current.Name, 'Exception') then
+      Exit(True);
+    if (Length(Current.Ancestors) = 0) or SameText(Current.Ancestors[0], 'TObject') or
+      SameText(Current.Ancestors[0], 'System.TObject') then
+      Exit;
+    if not AncestorOf(Current, Next) then
+      Exit(LooksLikeException(Current.Ancestors[0]));
+    Current := Next;
+  end;
+end;
+
+function TNameResolver.AncestorNames(const AClass: TResolvedSymbol): TArray<string>;
+var
+  Current, Next: TResolvedSymbol;
+  Depth: Integer;
+begin
+  Result := nil;
+  if not AClass.Found then
+    Exit;
+  Current := AClass;
+  for Depth := 0 to MaxDepth do
+  begin
+    Result := Result + [Current.Name];
+    if Length(Current.Ancestors) = 0 then
+      Exit;
+    if not AncestorOf(Current, Next) then
+    begin
+      Result := Result + [Copy(Current.Ancestors[0], LastDelimiter('.', Current.Ancestors[0]) + 1, MaxInt)];
+      Exit;
+    end;
     Current := Next;
   end;
 end;
