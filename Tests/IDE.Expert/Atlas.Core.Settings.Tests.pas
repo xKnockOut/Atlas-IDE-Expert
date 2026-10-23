@@ -805,6 +805,10 @@ begin
   Settings.DimUnusedUses := False;
   Settings.RecursionMarkers := False;
   Settings.RecursionMarkersDepth := 7;
+  Settings.ExitPoints := False;
+  Settings.ExitPointsExceptions := False;
+  Settings.ExitPointsLoops := False;
+  Settings.ExitPointsBadge := False;
   Settings.InlineDiagnostics := 'off';
   Settings.ProblemsStatusCounter := False;
   Settings.NextProblemKey := 0;
@@ -819,6 +823,10 @@ begin
   Assert.IsFalse(Loaded.DimUnusedUses, 'uses-Abblenden abschaltbar');
   Assert.IsFalse(Loaded.RecursionMarkers, 'Rekursionssymbole abschaltbar (#623)');
   Assert.AreEqual(7, Loaded.RecursionMarkersDepth);
+  Assert.IsFalse(Loaded.ExitPoints, 'Austrittspunkte abschaltbar (#698)');
+  Assert.IsFalse(Loaded.ExitPointsExceptions);
+  Assert.IsFalse(Loaded.ExitPointsLoops);
+  Assert.IsFalse(Loaded.ExitPointsBadge);
   Assert.AreEqual('off', Loaded.InlineDiagnostics, 'Fehlertext abschaltbar');
   Assert.IsFalse(Loaded.ProblemsStatusCounter, 'Zähler abschaltbar');
   Assert.AreEqual(0, Loaded.NextProblemKey);

@@ -752,6 +752,14 @@ type
     SelectionMatchesNavigateF3: Boolean;
     /// <summary>Höchstzahl der Treffer (#709).</summary>
     SelectionMatchesMaxMatches: Integer;
+    /// <summary>Austrittspunkte hervorheben (#698, editor.exitPoints).</summary>
+    ExitPoints: Boolean;
+    /// <summary>Auf except bzw. on die auslösenden Aufrufe zeigen (#698).</summary>
+    ExitPointsExceptions: Boolean;
+    /// <summary>Auf Break bzw. Continue die Schleife zeigen (#698).</summary>
+    ExitPointsLoops: Boolean;
+    /// <summary>Marke mit der Anzahl am Routinenkopf (#698).</summary>
+    ExitPointsBadge: Boolean;
     /// <summary>Blockkommentar umschalten (#703, keys.toggleBlockComment); aus = Kürzel frei.</summary>
     ToggleBlockComment: Boolean;
     /// <summary>Kürzel „Blockkommentar umschalten“ (#703); Vorgabe Umschalt+Alt+A.</summary>
@@ -1504,6 +1512,10 @@ begin
   Result.SelectionMatchesWholeWord := False;
   Result.SelectionMatchesNavigateF3 := True;
   Result.SelectionMatchesMaxMatches := 1000;
+  Result.ExitPoints := True;
+  Result.ExitPointsExceptions := True;
+  Result.ExitPointsLoops := True;
+  Result.ExitPointsBadge := True;
   Result.ToggleBlockComment := True;
   Result.ToggleBlockCommentKey := $A041; // Umschalt+Alt+A
   Result.ToggleBlockCommentStyle := 'braces';
@@ -2136,6 +2148,10 @@ begin
   SelectionMatchesNavigateF3 := AStore.ReadInteger('SelectionMatchesNavigateF3',
     BoolValue(Default.SelectionMatchesNavigateF3)) <> 0;
   SelectionMatchesMaxMatches := AStore.ReadInteger('SelectionMatchesMaxMatches', Default.SelectionMatchesMaxMatches);
+  ExitPoints := AStore.ReadInteger('ExitPoints', BoolValue(Default.ExitPoints)) <> 0;
+  ExitPointsExceptions := AStore.ReadInteger('ExitPointsExceptions', BoolValue(Default.ExitPointsExceptions)) <> 0;
+  ExitPointsLoops := AStore.ReadInteger('ExitPointsLoops', BoolValue(Default.ExitPointsLoops)) <> 0;
+  ExitPointsBadge := AStore.ReadInteger('ExitPointsBadge', BoolValue(Default.ExitPointsBadge)) <> 0;
   ToggleBlockComment := AStore.ReadInteger('ToggleBlockComment', BoolValue(Default.ToggleBlockComment)) <> 0;
   ToggleBlockCommentKey := AStore.ReadInteger('ToggleBlockCommentKey', Default.ToggleBlockCommentKey);
   ToggleBlockCommentStyle := AStore.ReadString('ToggleBlockCommentStyle', Default.ToggleBlockCommentStyle);
@@ -2547,6 +2563,10 @@ begin
   AStore.WriteInteger('SelectionMatchesWholeWord', BoolValue(SelectionMatchesWholeWord));
   AStore.WriteInteger('SelectionMatchesNavigateF3', BoolValue(SelectionMatchesNavigateF3));
   AStore.WriteInteger('SelectionMatchesMaxMatches', SelectionMatchesMaxMatches);
+  AStore.WriteInteger('ExitPoints', BoolValue(ExitPoints));
+  AStore.WriteInteger('ExitPointsExceptions', BoolValue(ExitPointsExceptions));
+  AStore.WriteInteger('ExitPointsLoops', BoolValue(ExitPointsLoops));
+  AStore.WriteInteger('ExitPointsBadge', BoolValue(ExitPointsBadge));
   AStore.WriteInteger('ToggleBlockComment', BoolValue(ToggleBlockComment));
   AStore.WriteInteger('ToggleBlockCommentKey', ToggleBlockCommentKey);
   AStore.WriteString('ToggleBlockCommentStyle', ToggleBlockCommentStyle);

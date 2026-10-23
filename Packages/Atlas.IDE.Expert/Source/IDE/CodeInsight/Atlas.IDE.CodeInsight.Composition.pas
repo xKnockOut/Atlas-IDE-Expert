@@ -177,6 +177,7 @@ uses
   Atlas.Core.Editor.Overview,
   Atlas.IDE.Bookmarks.QuickChord,
   Atlas.IDE.Editor.SelectionMatches,
+  Atlas.IDE.Editor.ExitPoints,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Bookmarks.Gutter,
@@ -2997,6 +2998,23 @@ begin
   SelectionMatches := TAtlasIdeSelectionMatches.Create;
 end;
 
+procedure StartExitPoints;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  TAtlasIdeExitPoints.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end);
+end;
+
+procedure StopExitPoints;
+begin
+  TAtlasIdeExitPoints.Uninstall;
+end;
+
 procedure StartCompletionKey;
 begin
   CompletionKey := TAtlasIdeKeyBinding.Create('Atlas.Completion', 'Atlas-Vervollständigung',
@@ -3876,6 +3894,18 @@ begin
     begin
       FreeAndNil(SelectionMatches);
     end);
+  // Austrittspunkte hervorheben (#698): nur im normalen Start oder mit Einstellung.
+  Features.AddWanted('ExitPoints',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
+        TAtlasIdeSettings.Current.ExitPoints);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeExitPoints.Installed;
+    end,
+    StartExitPoints, StopExitPoints);
   Features.AddWanted('CompletionKey',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
