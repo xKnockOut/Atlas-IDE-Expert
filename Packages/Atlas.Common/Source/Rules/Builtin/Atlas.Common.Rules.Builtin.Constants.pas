@@ -714,6 +714,8 @@ var
             CheckInitializer(Node);
           TSyntaxKind.AssignStatement:
             CheckAssignment(Node);
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         for Index := Node.ChildCount - 1 downto 0 do
           Pending.Push(Node[Index]);
@@ -1474,6 +1476,8 @@ var
                 Known := (IntegerWidth(NodeCanonical) > 0) or IsFloatName(NodeCanonical);
               end;
             end;
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         if Known then
         begin
@@ -2235,6 +2239,8 @@ var
             CheckCall(Node);
           TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl:
             CheckZeroPointer(Node);
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         for Index := Node.ChildCount - 1 downto 0 do
           Pending.Push(Node[Index]);
@@ -2864,6 +2870,8 @@ var
           TSyntaxKind.ConstSection:
             if SameText(Node.Name, 'resourcestring') then
               CheckResourceStrings(Node);
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         for Index := Node.ChildCount - 1 downto 0 do
           Pending.Push(Node[Index]);

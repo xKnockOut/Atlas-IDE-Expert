@@ -545,6 +545,8 @@ begin
             Memo.OnChange := MemoChange;
             Control := Memo;
           end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
     if Control <> nil then
     begin

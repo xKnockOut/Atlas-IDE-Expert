@@ -251,6 +251,8 @@ var
         Result := TArgumentKind.ValueArg;
       TIndexSymbolKind.InterfaceType:
         Result := TArgumentKind.InterfaceArg;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 

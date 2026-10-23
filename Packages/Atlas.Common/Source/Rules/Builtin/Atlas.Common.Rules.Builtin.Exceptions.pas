@@ -949,6 +949,8 @@ procedure TReraiseOutsideHandlerRule.Check(const AContext: TRuleContext; const A
               AReport.Add(TTextRange.Create(Node.StartPos, TTextPosition.Create(Node.StartPos.Line,
                 Node.StartPos.Character + Length('raise'))),
                 'raise ohne Argument ist nur in einem except-Block erlaubt (wie E2145).', TRuleConfidence.High);
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         Flags := 0;
         if InExcept then

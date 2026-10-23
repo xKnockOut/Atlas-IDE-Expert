@@ -249,6 +249,8 @@ var
           ACollection := AValue[0][0];
           Exit(True);
         end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 

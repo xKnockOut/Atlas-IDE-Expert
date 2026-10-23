@@ -621,6 +621,8 @@ begin
         TSyntaxKind.Call:
           if RoundCheck and (Node.ChildCount > 1) then
             CheckRound(Node);
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
   finally
     Declared.Free;

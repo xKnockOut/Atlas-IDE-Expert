@@ -187,6 +187,8 @@ begin
               Pending.Push(Node[0]);
             Continue;
           end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
       for Index := Node.ChildCount - 1 downto 0 do
         Pending.Push(Node[Index]);
@@ -227,6 +229,8 @@ begin
             if MatchText(Name, LeavingCalls) or (Loop and MatchText(Name, ['Break', 'Continue'])) then
               Exit(True);
           end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
       ChildLoop := Loop and not (Node.Kind in LoopKinds);
       for Index := Node.ChildCount - 1 downto 0 do
@@ -333,6 +337,8 @@ begin
           Result := AlwaysList(Node, 0, Index - 1, ALoop) or ((Index < Node.ChildCount) and
             (Node[Index].Kind = TSyntaxKind.FinallyBlock) and Always(Node[Index], ALoop));
         end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
     Node := Next;
   end;

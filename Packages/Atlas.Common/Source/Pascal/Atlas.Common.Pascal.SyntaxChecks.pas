@@ -447,6 +447,8 @@ begin
             Add('E2049', 'Label-Deklarationen sind im interface-Teil nicht erlaubt', ANode.StartPos, ANode.EndPos);
         TSyntaxKind.GotoStatement:
           CheckGoto(ANode);
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
     end);
   Result := FResult.ToArray;

@@ -1463,6 +1463,8 @@ var
             else if MatchStr(Node.Name, ['+', '-', '*', '/']) then
               for Index := Node.ChildCount - 1 downto 0 do
                 Pending.Push(Node[Index]);
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
       end;
     finally

@@ -2593,6 +2593,8 @@ var
                 SameText(Expression.Name, 'Clear') then
                 Clears := Clears + [Expression];
             end;
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         for Child := Node.ChildCount - 1 downto 0 do
           Pending.Push(Node[Child]);

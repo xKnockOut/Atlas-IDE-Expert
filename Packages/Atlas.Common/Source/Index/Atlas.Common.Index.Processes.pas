@@ -26,9 +26,11 @@ type
     StateReady = 'bereit';
     KindLsp = 'LSP';
     KindMcp = 'MCP';
+    /// <summary>Kommandozeilen-Linter --check mit Symbolindex (#1112).</summary>
+    KindCheck = 'Check';
   public
     Pid: Cardinal;
-    /// <summary>KindLsp oder KindMcp.</summary>
+    /// <summary>KindLsp, KindMcp oder KindCheck.</summary>
     Kind: string;
     /// <summary>Name des Clients aus initialize (z. B. "Atlas IDE Expert"); '' = unbekannt.</summary>
     Client: string;

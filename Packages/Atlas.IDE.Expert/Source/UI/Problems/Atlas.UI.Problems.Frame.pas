@@ -985,6 +985,8 @@ begin
       Result := Finding.Rule;
     TAtlasFindingColumn.Compiler:
       Result := Finding.CompilerText;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

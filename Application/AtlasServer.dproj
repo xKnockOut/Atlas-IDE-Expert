@@ -56,6 +56,7 @@
         <DCCReference Include="Source\Shell\Shell.Composition.pas"/>
         <DCCReference Include="Source\Shell\Shell.CommandLine.pas"/>
         <DCCReference Include="Source\Shell\Shell.Workspace.pas"/>
+        <DCCReference Include="Source\Shell\Shell.WorkspaceGroup.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.pas"/>
         <DCCReference Include="Source\Shell\Shell.SlashHost.pas"/>
         <DCCReference Include="Source\Shell\Shell.VcsChanges.pas"/>

@@ -864,6 +864,8 @@ begin
         Exit(IsIn(Parent.Name, NonPixelTargets));
       TSyntaxKind.Block, TSyntaxKind.RoutineDecl:
         Exit(False);
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
     Child := Parent;
     Parent := Parent.Parent;

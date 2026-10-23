@@ -220,6 +220,8 @@ begin
         Frame.SetMessage(TAtlasStrings.Text(TAtlasTextId.OutlineNoServer));
       TAtlasOutlineStatus.Ready:
         Frame.SetNodes(Snapshot.Nodes);
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
   if Snapshot.Status = TAtlasOutlineStatus.Ready then

@@ -346,6 +346,8 @@ begin
   case AItem.Kind of
     TAtlasItemKind.Constructor_: Result := Result + [MakeTag('constructor', TAtlasTagKind.Neutral)];
     TAtlasItemKind.Destructor_: Result := Result + [MakeTag('destructor', TAtlasTagKind.Neutral)];
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   for Directive in AItem.Directives do
     if SameText(Directive, 'deprecated') then
@@ -408,6 +410,8 @@ begin
         Result := Result + [MakeTag('häufig', TAtlasTagKind.Neutral)];
         Result[High(Result)].Id := TAtlasTagId.Frequent;
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

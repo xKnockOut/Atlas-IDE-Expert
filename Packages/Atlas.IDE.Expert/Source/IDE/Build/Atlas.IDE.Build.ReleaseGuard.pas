@@ -342,6 +342,8 @@ begin
       Messages.AddTitleMessage(TAtlasStrings.Text(TAtlasTextId.ReleaseBlocked), Group);
     TAtlasReleaseOutcome.Overridden:
       Messages.AddTitleMessage(TAtlasStrings.Text(TAtlasTextId.ReleaseOverridden), Group);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   Messages.ShowMessageView(Group);
 end;

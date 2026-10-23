@@ -252,6 +252,8 @@ begin
           // Alias: TNamen = string
           if (ADepth < 8) and not SameText(Child.Name, Name) then
             Exit(KindOf(AContext, NodeText(AContext.Text, Child), ADepth + 1));
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
     end;
     Exit;
