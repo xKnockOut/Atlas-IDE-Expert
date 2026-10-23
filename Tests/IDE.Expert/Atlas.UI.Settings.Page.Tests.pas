@@ -1546,6 +1546,7 @@ begin
     Page.LoadFrom(Settings);
     Assert.IsTrue(Page.WelcomeEnabled.Checked);
     Assert.IsFalse(Page.WelcomeOpenOnStart.Checked, 'Atlas-Start nur auf Wunsch (#1114)');
+    Assert.IsTrue(Page.WelcomeOpenWhenNoProject.Checked, 'Atlas-Start ohne Projekt (#1114)');
     Assert.IsTrue(Page.WelcomeHeader.Checked);
     Assert.IsTrue(Page.WelcomeGreeting.Checked);
     Assert.IsTrue(Page.WelcomeSearch.Checked);
@@ -1605,6 +1606,7 @@ begin
     Assert.AreEqual('', Page.WelcomeHelpReportFolder.Text);
     Page.WelcomeEnabled.Checked := False;
     Page.WelcomeOpenOnStart.Checked := True;
+    Page.WelcomeOpenWhenNoProject.Checked := False;
     Page.WelcomeHeader.Checked := False;
     Page.WelcomeGreeting.Checked := False;
     Page.WelcomeSearch.Checked := False;
@@ -1668,6 +1670,7 @@ begin
     Assert.IsFalse(Saved.WelcomePageNewFromTemplate);
     Assert.IsFalse(Saved.WelcomePage);
     Assert.IsTrue(Saved.WelcomePageOpenOnStart);
+    Assert.IsFalse(Saved.WelcomePageOpenWhenNoProject);
     Assert.IsFalse(Saved.WelcomePageHeader);
     Assert.IsFalse(Saved.WelcomePageGreeting);
     Assert.IsFalse(Saved.WelcomePageSearch);

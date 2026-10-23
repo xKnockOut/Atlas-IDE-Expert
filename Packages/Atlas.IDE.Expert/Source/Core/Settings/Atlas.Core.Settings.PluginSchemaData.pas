@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4125] of string = (
+  Lines: array[0..4134] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -3643,6 +3643,15 @@ const
     '      "type": "boolean",',
     '      "default": false,',
     '      "x-key": "welcomePage.openOnStart",',
+    '      "x-area": "welcome",',
+    '      "x-page": "Willkommensseite",',
+    '      "x-issue": "#1114"',
+    '    },',
+    '    "WelcomePageOpenWhenNoProject": {',
+    '      "description": "Fenster „Atlas-Start“ öffnen, sobald das letzte Projekt bzw. die Projektgruppe geschlossen ist (nicht beim Beenden der IDE).",',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "welcomePage.openWhenNoProject",',
     '      "x-area": "welcome",',
     '      "x-page": "Willkommensseite",',
     '      "x-issue": "#1114"',

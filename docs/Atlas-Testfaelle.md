@@ -813,6 +813,9 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 | WP12 | Schnellschalter bzw. Optionen: „Atlas-Willkommensseite“ aus | „Atlas-Start“ schließt sich, Menüeintrag ausgeblendet, Befehl fehlt in der Befehlspalette; wieder an: Eintrag zurück, das Fenster öffnet sich erst auf Wunsch |
 | WP13 | IDE-Stil hell/dunkel wechseln | „Atlas-Start“ folgt dem Thema, Symbol in passender Variante |
 | WP14 | Befehlspalette: „Atlas-Layout anwenden“, „Atlas-Layout zurücksetzen“ suchen | Keine Treffer; im Atlas-Menü fehlen beide Einträge |
+| WP15 | „Atlas-Start“ geschlossen; Projekt öffnen, dann *Datei › Alle schließen* (ebenso eine Projektgruppe schließen) | „Atlas-Start“ öffnet sich, sobald kein Projekt mehr geladen ist; beim Schließen eines von zwei Projekten der Gruppe nicht (**Abnahme**) |
+| WP16 | Mit offenem Projekt ein anderes Projekt öffnen; danach IDE mit offenem Projekt beenden | Kein Aufblitzen von „Atlas-Start“ beim Wechsel; beim Beenden öffnet es sich nicht und es gibt keinen Fehler beim Abbau |
+| WP17 | Optionen: „Öffnen, wenn kein Projekt mehr geladen ist“ aus, dann Projekt schließen | „Atlas-Start“ bleibt zu |
 
 ### Suchfeld (#760)
 

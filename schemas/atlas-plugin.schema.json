@@ -3581,6 +3581,15 @@
       "x-page": "Willkommensseite",
       "x-issue": "#1114"
     },
+    "WelcomePageOpenWhenNoProject": {
+      "description": "Fenster „Atlas-Start“ öffnen, sobald das letzte Projekt bzw. die Projektgruppe geschlossen ist (nicht beim Beenden der IDE).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.openWhenNoProject",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#1114"
+    },
     "WelcomePageHeader": {
       "type": "boolean",
       "default": true,

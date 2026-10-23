@@ -155,7 +155,7 @@ Alt+Enter opens the code actions; everything is also in the *Atlas* menu and the
 
 ### IDE comfort
 
-- **Atlas welcome page** in the dockable window *Atlas Start* (*View › Atlas Start*, command palette; opens on IDE start with `welcomePage.openOnStart`; the IDE's own welcome page stays untouched) with sections: continue working, projects with quick actions, project history, unsaved, project setup, test results, my issues, new in Atlas, discover Atlas, help and feedback; search box and free layout
+- **Atlas welcome page** in the dockable window *Atlas Start* (*View › Atlas Start*, command palette; opens when the last project is closed and, with `welcomePage.openOnStart`, on IDE start; the IDE's own welcome page stays untouched) with sections: continue working, projects with quick actions, project history, unsaved, project setup, test results, my issues, new in Atlas, discover Atlas, help and feedback; search box and free layout
 - **Command palette** (Ctrl+Shift+P) for all Atlas commands
 - **Atlas status field** with index progress and quick toggles (Ctrl+Shift+Alt+A)
 - **Notification centre** (Ctrl+Shift+Alt+N) collects messages from builds, checks and the server
