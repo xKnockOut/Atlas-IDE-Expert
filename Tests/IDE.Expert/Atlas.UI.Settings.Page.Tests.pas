@@ -1036,20 +1036,25 @@ begin
     Assert.IsTrue(Page.TestDebugCheck.Checked, 'Test debuggen standardmäßig an');
     Assert.IsTrue(Page.TestBreakAtStartCheck.Checked, 'Haltepunkt am Anfang standardmäßig an');
     Assert.IsTrue(Page.DebugHoverValuesCheck.Checked, 'Werte im Hover standardmäßig an (#891)');
+    Assert.IsTrue(Page.DebugExceptionHistoryCheck.Checked, 'debug.exceptionHistory (#517)');
     Page.TestDebugCheck.Checked := False;
     Page.TestBreakAtStartCheck.Checked := False;
     Page.DebugHoverValuesCheck.Checked := False;
+    Page.DebugExceptionHistoryCheck.Checked := False;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.TestDebug);
     Assert.IsFalse(Saved.TestBreakAtStart);
     Assert.IsFalse(Saved.DebugHoverValues);
+    Assert.IsFalse(Saved.DebugExceptionHistory);
     Saved.TestBreakAtStart := True;
     Saved.DebugHoverValues := True;
+    Saved.DebugExceptionHistory := True;
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.TestDebugCheck.Checked);
     Assert.IsTrue(Page.TestBreakAtStartCheck.Checked);
     Assert.IsTrue(Page.DebugHoverValuesCheck.Checked);
+    Assert.IsTrue(Page.DebugExceptionHistoryCheck.Checked);
   finally
     Page.Free;
   end;

@@ -428,6 +428,11 @@ type
     /// Atlas den Ausdruck unter der Maus über den Debugger der IDE aus und zeigt den Wert oben im Tooltip (bzw.
     /// im Tooltip der IDE, wenn der eigene aus ist); aus = kein Wert.</summary>
     DebugHoverValues: Boolean;
+    /// <summary>Exception-Verlauf beim Debuggen (#517, debug.exceptionHistory): Jeder Halt wegen einer Exception
+    /// landet mit Klasse, Meldung, Ort, Thread und Anzahl im Fenster „Atlas: Exceptions“ (Befehl
+    /// Atlas.DebugExceptions); Klassen lassen sich dort ignorieren, Atlas setzt dann still fort. Aus = kein Verlauf,
+    /// kein Beobachter.</summary>
+    DebugExceptionHistory: Boolean;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -1362,6 +1367,7 @@ begin
   Result.TestDebug := True;
   Result.TestBreakAtStart := True;
   Result.DebugHoverValues := True;
+  Result.DebugExceptionHistory := True;
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
   Result.TodoList := True;
@@ -1964,6 +1970,7 @@ begin
   TestDebug := AStore.ReadInteger('TestDebug', BoolValue(Default.TestDebug)) <> 0;
   TestBreakAtStart := AStore.ReadInteger('TestBreakAtStart', BoolValue(Default.TestBreakAtStart)) <> 0;
   DebugHoverValues := AStore.ReadInteger('DebugHoverValues', BoolValue(Default.DebugHoverValues)) <> 0;
+  DebugExceptionHistory := AStore.ReadInteger('DebugExceptionHistory', BoolValue(Default.DebugExceptionHistory)) <> 0;
   StartProfiles := AStore.ReadInteger('StartProfiles', BoolValue(Default.StartProfiles)) <> 0;
   StartProfilesStatusField := AStore.ReadInteger('StartProfilesStatusField',
     BoolValue(Default.StartProfilesStatusField)) <> 0;
@@ -2407,6 +2414,7 @@ begin
   AStore.WriteInteger('TestDebug', BoolValue(TestDebug));
   AStore.WriteInteger('TestBreakAtStart', BoolValue(TestBreakAtStart));
   AStore.WriteInteger('DebugHoverValues', BoolValue(DebugHoverValues));
+  AStore.WriteInteger('DebugExceptionHistory', BoolValue(DebugExceptionHistory));
   AStore.WriteInteger('StartProfiles', BoolValue(StartProfiles));
   AStore.WriteInteger('StartProfilesStatusField', BoolValue(StartProfilesStatusField));
   AStore.WriteInteger('TodoList', BoolValue(TodoList));

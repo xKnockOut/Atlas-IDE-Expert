@@ -2660,6 +2660,29 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | SU18 | Leiste öffnen, ins Fenster Meldungen oder Struktur klicken, dann nacheinander ins Suchfeld, auf ein Kästchen, in die Bereichsliste und auf ↓ klicken | Jeder Klick wirkt beim ersten Mal (Fokus bleibt in der Leiste, Kästchen schaltet um); holt die IDE den Fokus zurück, steht „Suchleiste: Fokus nach dem Klick …“ mit Fensterklasse im Diagnoseprotokoll |
 | SU19 | In einer Methode Strg+F, Bereich auf „Methode“ stellen, Esc; dann erneut Strg+F (auch in einer anderen Methode) | Bereich steht wieder auf „Unit“ (erster Eintrag der Liste); „Methode“ nur nach gezielter Wahl in der Liste oder mit Strg+Umschalt+Alt+F |
 
+## Exception-Verlauf beim Debuggen (#517)
+
+Vorbereitung: Testprogramm aus `docs/Studie-Exception-Dialog.md` (vier Knöpfe), `debug.exceptionHistory` an, *Tools › Optionen › Debugger › Sprach-Exceptions* „Bei Sprach-Exceptions benachrichtigen“ an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EV1 | Atlas › „Atlas: Exception-Verlauf“ bzw. Befehlspalette `Atlas.DebugExceptions` | Andockbares Fenster „Atlas: Exceptions“ mit dem Hinweis „Noch keine Exception in dieser Debug-Sitzung.“ |
+| EV2 | F9, Knopf 1, zehnmal im Dialog „Fortsetzen“ | Ein Eintrag `EConvertError` mit Meldung `'x' is not a valid integer value` (bzw. deutsch), Anzahl 10, Ort `Unit1.pas:<Zeile von StrToInt>` (**Abnahme**) |
+| EV3 | Doppelklick bzw. Enter auf den Eintrag | Unit1.pas öffnet an der auslösenden Zeile (**Abnahme**) |
+| EV4 | Knopf 2, „Fortsetzen“ | Neuer Eintrag `EInvalidOp` mit Meldung `Nicht erlaubt: 'Wert'` (Hochkommas in der Meldung) |
+| EV5 | Knopf 3 | Eintrag `EAccessViolation` mit Ort `Unit1.pas:<Zeile>` |
+| EV6 | Knopf 4 | Eintrag `EAbort`, Spalte Thread „Lader (<Kennung>)“; die übrigen „Hauptthread <Kennung>“ |
+| EV7 | Klassenauswahl „EConvertError“, dann Filter „valid“ | Nur passende Einträge; „Alle Klassen“ zeigt wieder alle; ↓ im Filter führt in die Liste |
+| EV8 | Rechtsklick auf `EConvertError` › „EConvertError künftig ignorieren“; Programm neu starten (Strg+F2, F9), Knopf 1 | Meldungsansicht „Atlas: EConvertError wird künftig ignoriert …“; im neuen Lauf schließt Atlas jeden Dialog selbst, der Eintrag steht grau mit „10 · ignoriert“ (**Abnahme**) |
+| EV9 | Rechtsklick › „Bei EConvertError wieder anhalten“, Knopf 1 | Der Dialog bleibt wieder stehen |
+| EV10 | Strg+C auf einem Eintrag, in einen Editor einfügen | Klasse und Meldung, Routine, Datei(Zeile), Thread, Anzahl |
+| EV11 | Programm beenden, Fenster ansehen; erneut F9 | Verlauf bleibt nach dem Ende stehen; der neue Lauf beginnt leer |
+| EV12 | Kontextmenü › „Verlauf leeren“ | Liste leer, Hinweis wieder da |
+| EV13 | Win64 (Delphi 13: LLDB), EV2 bis EV5 | Wie Win32; liefert der Debugger den Stapel verzögert, steht der Ort trotzdem (bis 1 s später) |
+| EV14 | Schnellschalter bzw. *Tools › Optionen › Atlas › Debuggen* „Exception-Verlauf beim Debuggen“ aus, Knopf 2 | Fenster schließt, Befehl und Menüpunkt fehlen; der Dialog der IDE verhält sich wie ohne Atlas, auch für zuvor ignorierte Klassen |
+| EV15 | Helles und dunkles Thema wechseln, Fenster offen | Liste, Filter und Auswahl folgen dem Thema; ignorierte Zeilen grau und lesbar |
+| EV16 | Studie `docs/Studie-Exception-Dialog.md` S1–S8 in Delphi 12 und 13 | Ergebnisse in die Tabelle eintragen und in #783 kommentieren |
+
 ## Werte im Hover beim Debuggen (#891)
 
 Vorbereitung: Ein kleines VCL-Projekt mit `FList: TStringList` (drei Einträge), einem Record-Array `Kunden` und einer lokalen Variablen `I`, Haltepunkt in einer Methode, die alle drei verwendet. Atlas-Tooltip an (`editor.hoverTooltip`), `debug.hoverValues` an.

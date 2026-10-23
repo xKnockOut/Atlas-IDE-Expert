@@ -629,6 +629,19 @@
         <DCCReference Include="Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Bar.pas"/>
         <DCCReference Include="Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Customize.pas"/>
         <DCCReference Include="Source\IDE\EditorToolbar\Atlas.IDE.EditorToolbar.Service.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Exceptions.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.CallStack.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.IgnoreList.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ExceptionDialog.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.ExceptionsFrame.pas">
+            <Form>AtlasDebugExceptionsFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Session.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ExceptionDialog.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ExceptionsWindow.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Exceptions.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -97,6 +97,8 @@ type
     FNotesGroup: TMenuItem;
     /// <summary>„Atlas-Prüfung“ (#909) im Atlas-Menü und unter Ansicht › Atlas.</summary>
     FProblemsItem: TMenuItem;
+    /// <summary>„Atlas: Exception-Verlauf“ (#517), sichtbar nach debug.exceptionHistory.</summary>
+    FDebugExceptionsItem: TMenuItem;
     FViewAtlas: TMenuItem;
     procedure WelcomeClick(Sender: TObject);
     procedure RenameClick(Sender: TObject);
@@ -108,6 +110,7 @@ type
     procedure BookmarksClick(Sender: TObject);
     procedure OutlineClick(Sender: TObject);
     procedure ProblemsClick(Sender: TObject);
+    procedure DebugExceptionsClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     function AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     /// <summary>Untermenü im Atlas-Menü; folgende AddItem landen darin.</summary>
@@ -170,6 +173,7 @@ uses
   Atlas.IDE.Outline.Service,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Problems.Service,
+  Atlas.IDE.Debug.Exceptions,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
@@ -258,6 +262,8 @@ begin
   AddItem(TAtlasTextId.UnitSearchMenu, 8, EditorClick);
   AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
   FProblemsItem := AddItem(TAtlasTextId.ProblemsWindowCaption, 0, ProblemsClick);
+  // Exception-Verlauf beim Debuggen (#517).
+  FDebugExceptionsItem := AddItem(TAtlasTextId.DebugExceptionsCommand, 0, DebugExceptionsClick);
   FRoot.Add(NewLine);
   AddGroup(TAtlasTextId.MenuGroupNavigation);
   AddItem(TAtlasTextId.EditorTypeDefinition, 3, EditorClick);
@@ -660,6 +666,9 @@ begin
     FProblemsItem.Visible := TAtlasIdeProblems.Enabled;
   if FViewAtlas <> nil then
     FViewAtlas.Visible := TAtlasIdeProblems.Enabled;
+  // Exception-Verlauf (#517) nach debug.exceptionHistory.
+  if FDebugExceptionsItem <> nil then
+    FDebugExceptionsItem.Visible := TAtlasIdeSettings.Current.DebugExceptionHistory;
   // Benannte Lesezeichen (#622) nach bookmarks.named, schnelle (#1104) nach bookmarks.quick; das Fenster zeigt
   // beide.
   Marks := TAtlasIdeSettings.Current.BookmarksNamed or TAtlasIdeSettings.Current.QuickBookmarks;
@@ -854,6 +863,16 @@ begin
     procedure
     begin
       TAtlasIdeProblems.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.DebugExceptionsClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.DebugExceptions');
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      TAtlasIdeDebugExceptions.ShowWindow;
     end);
 end;
 

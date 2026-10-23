@@ -287,6 +287,7 @@ type
     FTestDebug: TCheckBox;
     FTestBreakAtStart: TCheckBox;
     FDebugHoverValues: TCheckBox;
+    FDebugExceptionHistory: TCheckBox;
     FActionsKey: TEdit;
     FExpandKey: TEdit;
     FShrinkKey: TEdit;
@@ -1063,6 +1064,7 @@ type
     property TestDebugCheck: TCheckBox read FTestDebug;
     property TestBreakAtStartCheck: TCheckBox read FTestBreakAtStart;
     property DebugHoverValuesCheck: TCheckBox read FDebugHoverValues;
+    property DebugExceptionHistoryCheck: TCheckBox read FDebugExceptionHistory;
     /// <summary>Zum Testen: benannte Lesezeichen (#622).</summary>
     property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
     property BookmarksSharedCheck: TCheckBox read FBookmarksShared;
@@ -1796,6 +1798,8 @@ begin
   FTestBreakAtStart := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestBreakAtStart));
   // Variablenwerte im Hover beim Debuggen (#891).
   FDebugHoverValues := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugHoverValues));
+  // Exception-Verlauf beim Debuggen (#517).
+  FDebugExceptionHistory := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExceptionHistory));
 
   // Editorbefehle (#399): ein Vorrang für alle.
   AddSheet(TAtlasTextId.SettingsTabCommands);
@@ -2922,6 +2926,7 @@ begin
   FMarks.Bind(FTestDebug, ['TestDebug']);
   FMarks.Bind(FTestBreakAtStart, ['TestBreakAtStart']);
   FMarks.Bind(FDebugHoverValues, ['DebugHoverValues']);
+  FMarks.Bind(FDebugExceptionHistory, ['DebugExceptionHistory']);
   FMarks.Bind(FSafeAsk, ['SafeAskAfterCrash']);
   FMarks.Bind(FSafeAuto, ['SafeAutoAfterRepeatedCrash']);
   FMarks.Bind(FSafeKey, ['SafeStartupKey']);
@@ -5060,6 +5065,7 @@ begin
   FTestDebug.Checked := ASettings.TestDebug;
   FTestBreakAtStart.Checked := ASettings.TestBreakAtStart;
   FDebugHoverValues.Checked := ASettings.DebugHoverValues;
+  FDebugExceptionHistory.Checked := ASettings.DebugExceptionHistory;
   FSafeAsk.Checked := ASettings.SafeAskAfterCrash;
   FSafeAuto.Checked := ASettings.SafeAutoAfterRepeatedCrash;
   case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
@@ -5510,6 +5516,7 @@ begin
   ASettings.TestDebug := FTestDebug.Checked;
   ASettings.TestBreakAtStart := FTestBreakAtStart.Checked;
   ASettings.DebugHoverValues := FDebugHoverValues.Checked;
+  ASettings.DebugExceptionHistory := FDebugExceptionHistory.Checked;
   ASettings.SafeAskAfterCrash := FSafeAsk.Checked;
   ASettings.SafeAutoAfterRepeatedCrash := FSafeAuto.Checked;
   case FSafeKey.Choice of

@@ -966,6 +966,16 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.EditorToolbar.Bar.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Customize.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.EditorToolbar.Customize.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.Exceptions.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.CallStack.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.IgnoreList.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.ExceptionDialog.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Debug\Atlas.UI.Debug.ExceptionsFrame.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Exceptions.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.CallStack.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.IgnoreList.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.ExceptionDialog.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.ExceptionsFrame.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
