@@ -925,6 +925,24 @@
       "x-captionEn": "Build succeeds only without warnings and hints",
       "x-issue": "#530"
     },
+    "BuildSummary": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "build.summary",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-caption": "Zusammenfassung nach jedem Build",
+      "x-captionEn": "Summary after every build",
+      "x-issue": "#530"
+    },
+    "BuildWarningsAsErrors": {
+      "type": "string",
+      "default": "",
+      "x-key": "build.warningsAsErrors",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-issue": "#530"
+    },
     "WelcomePage": {
       "type": "boolean",
       "default": true,

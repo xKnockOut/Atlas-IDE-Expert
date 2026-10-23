@@ -401,9 +401,15 @@ type
     TestsAfterBuild: Boolean;
     /// <summary>Vor „Tests ausführen“ das Testprojekt bauen (make); aus = die vorhandene Test-EXE läuft.</summary>
     TestsBuildFirst: Boolean;
-    /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530). Wirkt
-    /// bisher auf „Tests nach dem Build“ (#69).</summary>
+    /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530); Meldungen
+    /// in der Basislinie zählen nicht. Bewertung in Atlas.Core.Build.Verdict.</summary>
     BuildZeroHints: Boolean;
+    /// <summary>Zusammenfassung nach jedem Build in der Atlas-Gruppe des Meldungsfensters (build.summary, #530).
+    /// Ein Build, den zeroHints oder warningsAsErrors scheitern lassen, wird auch ohne sie gemeldet.</summary>
+    BuildSummary: Boolean;
+    /// <summary>Codes von Warnungen und Hinweisen, die als Fehler zählen (build.warningsAsErrors, #530), z. B.
+    /// "W1035, H2164"; gespeichert in der Form von TAtlasBuildVerdicts.NormalizeCodes.</summary>
+    BuildWarningsAsErrors: string;
     /// <summary>Release-Build-Wächter (#533, build.releaseGuard): vor make und build in einer Release-Konfiguration
     /// die Projektoptionen prüfen, dazu der Befehl „Release-Build prüfen“ (Atlas.CheckRelease) mit Tipp. Aus = keine
     /// Prüfung, Befehl und Tipp verschwinden.</summary>
@@ -1059,6 +1065,7 @@ uses
   Atlas.Core.Build.Events,
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Build.Gate,
+  Atlas.Core.Build.Verdict,
   Atlas.Core.Build.OpenBuild,
   Atlas.Core.Settings.OverviewKinds,
   Atlas.Core.Notifications.Sources,
@@ -1360,6 +1367,8 @@ begin
   Result.TestsAfterBuild := False;
   Result.TestsBuildFirst := True;
   Result.BuildZeroHints := False;
+  Result.BuildSummary := True;
+  Result.BuildWarningsAsErrors := '';
   Result.ReleaseGuard := True;
   Result.BuildGate := 'off';
   Result.BuildGateTimeoutMs := TAtlasBuildGateCheck.DefaultTimeoutMs;
@@ -1691,6 +1700,7 @@ begin
   BuildGateTimeoutMs := EnsureRange(BuildGateTimeoutMs, TAtlasBuildGateCheck.MinTimeoutMs,
     TAtlasBuildGateCheck.MaxTimeoutMs);
   ReleaseConfigs := TAtlasReleaseGuard.NormalizedConfigurations(ReleaseConfigs);
+  BuildWarningsAsErrors := TAtlasBuildVerdicts.NormalizeCodes(BuildWarningsAsErrors);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
   CheckKey := EnsureRange(CheckKey, 0, $FFFF);
   CompletionKey := EnsureRange(CompletionKey, 0, $FFFF);
@@ -1965,6 +1975,8 @@ begin
   TestsAfterBuild := AStore.ReadInteger('TestsAfterBuild', BoolValue(Default.TestsAfterBuild)) <> 0;
   TestsBuildFirst := AStore.ReadInteger('TestsBuildFirst', BoolValue(Default.TestsBuildFirst)) <> 0;
   BuildZeroHints := AStore.ReadInteger('BuildZeroHints', BoolValue(Default.BuildZeroHints)) <> 0;
+  BuildSummary := AStore.ReadInteger('BuildSummary', BoolValue(Default.BuildSummary)) <> 0;
+  BuildWarningsAsErrors := AStore.ReadString('BuildWarningsAsErrors', Default.BuildWarningsAsErrors);
   ReleaseGuard := AStore.ReadInteger('ReleaseGuard', BoolValue(Default.ReleaseGuard)) <> 0;
   BuildGate := AStore.ReadString('BuildGate', Default.BuildGate);
   BuildGateTimeoutMs := AStore.ReadInteger('BuildGateTimeoutMs', Default.BuildGateTimeoutMs);
@@ -2409,6 +2421,8 @@ begin
   AStore.WriteInteger('TestsAfterBuild', BoolValue(TestsAfterBuild));
   AStore.WriteInteger('TestsBuildFirst', BoolValue(TestsBuildFirst));
   AStore.WriteInteger('BuildZeroHints', BoolValue(BuildZeroHints));
+  AStore.WriteInteger('BuildSummary', BoolValue(BuildSummary));
+  AStore.WriteString('BuildWarningsAsErrors', BuildWarningsAsErrors);
   AStore.WriteInteger('ReleaseGuard', BoolValue(ReleaseGuard));
   AStore.WriteString('BuildGate', BuildGate);
   AStore.WriteInteger('BuildGateTimeoutMs', BuildGateTimeoutMs);

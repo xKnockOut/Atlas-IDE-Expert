@@ -703,7 +703,14 @@ type
     // Seite Prüfregeln: Weg zum Dialog der globalen Einstellungen (#909).
     RulesGlobalButton,
     // Prüfung vor dem Kompilieren (#529).
-    SettingsBuildGateTimeout, GateFindings, GateBlocked, GateOverridden, GateTimedOut, GateBlockReason);
+    SettingsBuildGateTimeout, GateFindings, GateBlocked, GateOverridden, GateTimedOut, GateBlockReason,
+    // Schranke für Hinweise und Warnungen (#530).
+    SettingsBuildSummary, SettingsBuildWarningsAsErrors, BuildSummaryClean, BuildSummaryCounts,
+    BuildSummaryRejected, BuildSummaryRejectedCodes, BuildSummaryFailed, BuildSummaryBaselined,
+    BuildCountWarning, BuildCountWarnings, BuildCountHint, BuildCountHints, BuildCountJoin,
+    NotificationsBuildRejected, NotificationsBuildRejectedCodes, NotificationsGoToMessage,
+    NotificationsBuildBaselined, CompilerBaselineCommand, CompilerBaselineNone, CompilerBaselineDone,
+    CompilerBaselineSkipped, CompilerBaselineFailed, CompilerBaselineNoProject);
 
   TAtlasStrings = class
   private class var
@@ -725,6 +732,8 @@ type
     /// <summary>Zirkelbezug (#469) zur Kette "uA → uB → Haupt": „uA bindet diese Unit über uB im interface-Teil
     /// ein“; '' ohne.</summary>
     class function UsesCycle(const AChain: string): string; static;
+    /// <summary>Zählung eines Builds (#530): „2 Warnungen, 1 Hinweis“, Einzahl bei 1; '' ohne beides.</summary>
+    class function BuildCounts(AWarnings, AHints: Integer): string; static;
     /// <summary>Fußzeile nach "inherited " (#482) zu den ausgelassenen abstrakten Vorfahrmethoden
     /// ("TBasis.Zeichnen"): eine mit Namen, mehrere aufgezählt (höchstens drei, dann „…“); '' ohne.</summary>
     class function InheritedAbstract(const AMethods: TArray<string>): string; static;
@@ -2298,7 +2307,30 @@ const
      'Prüfung vor dem Compile: Compile abgebrochen (build.gate = block). Ein zweiter Compile ohne Änderung binnen 10 s läuft trotzdem.',
      'Prüfung vor dem Compile: bewusst übergangen, der Compile läuft trotz der Fehler.',
      'Prüfung vor dem Compile: Zeitlimit von %d ms (build.gateTimeoutMs) überschritten, der Compile läuft ungeprüft. Dieser Hinweis erscheint einmal je Sitzung.',
-     '%d Fehler der Prüfung vor dem Compile'),
+     '%d Fehler der Prüfung vor dem Compile',
+     'Zusammenfassung nach jedem Build (build.summary)',
+     'Codes, die als Fehler zählen (build.warningsAsErrors, z. B. W1035, H2164)',
+     'Build %s erfolgreich: 0 Fehler, 0 Warnungen, 0 Hinweise',
+     'Build %s erfolgreich, aber %s',
+     'Build %s gilt als gescheitert: %s (build.zeroHints)',
+     'Build %s gilt als gescheitert: %s; %s zählt als Fehler (build.warningsAsErrors)',
+     'Build %s fehlgeschlagen: %d Fehler',
+     ' (%d weitere in der Basislinie)',
+     '1 Warnung',
+     '%d Warnungen',
+     '1 Hinweis',
+     '%d Hinweise',
+     '%s, %s',
+     'Build gilt als gescheitert (build.zeroHints)',
+     'Build gilt als gescheitert: %s zählt als Fehler',
+     'Zur Meldung',
+     '(%d in der Basislinie)',
+     'Aktuelle Compilermeldungen in die Basislinie',
+     'Keine Warnungen oder Hinweise aus dem letzten Build von %s für die Basislinie.',
+     'Compilermeldungen in die Basislinie übernommen: %s (%d Compilermeldungen; %d neu, %d entfernt, %d unverändert)',
+     '%d Meldungen nicht übernommen: Datei nicht lesbar oder außerhalb des Projektordners.',
+     'Compilermeldungen nicht in die Basislinie übernommen (Server nicht erreichbar oder Basislinie nicht lesbar).',
+     'Kein aktives Projekt für die Basislinie.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3797,7 +3829,30 @@ const
      'Check before compiling: compile cancelled (build.gate = block). A second compile without changes within 10 s runs anyway.',
      'Check before compiling: deliberately overridden, the compile runs despite the errors.',
      'Check before compiling: time limit of %d ms (build.gateTimeoutMs) exceeded, the compile runs unchecked. This notice appears once per session.',
-     '%d error(s) of the check before compiling'));
+     '%d error(s) of the check before compiling',
+     'Summary after every build (build.summary)',
+     'Codes that count as errors (build.warningsAsErrors, e.g. W1035, H2164)',
+     'Build %s succeeded: 0 errors, 0 warnings, 0 hints',
+     'Build %s succeeded, but %s',
+     'Build %s counts as failed: %s (build.zeroHints)',
+     'Build %s counts as failed: %s; %s counts as an error (build.warningsAsErrors)',
+     'Build %s failed: %d error(s)',
+     ' (%d more in the baseline)',
+     '1 warning',
+     '%d warnings',
+     '1 hint',
+     '%d hints',
+     '%s, %s',
+     'Build counts as failed (build.zeroHints)',
+     'Build counts as failed: %s counts as an error',
+     'Go to message',
+     '(%d in the baseline)',
+     'Add current compiler messages to the baseline',
+     'No warnings or hints from the last build of %s for the baseline.',
+     'Compiler messages added to the baseline: %s (%d compiler messages; %d new, %d removed, %d unchanged)',
+     '%d messages not added: file not readable or outside the project folder.',
+     'Compiler messages not added to the baseline (server not reachable or baseline not readable).',
+     'No active project for the baseline.'));
 
 { TAtlasStrings }
 
@@ -3920,6 +3975,26 @@ begin
   if Length(Parts) = 2 then
     Exit(Fmt(TAtlasTextId.UsesCycleDirect, [Parts[0]]));
   Result := Fmt(TAtlasTextId.UsesCycleChain, [Parts[0], string.Join(', ', Copy(Parts, 1, Length(Parts) - 2))]);
+end;
+
+class function TAtlasStrings.BuildCounts(AWarnings, AHints: Integer): string;
+var
+  Warnings, Hints: string;
+begin
+  Warnings := '';
+  Hints := '';
+  if AWarnings = 1 then
+    Warnings := Text(TAtlasTextId.BuildCountWarning)
+  else if AWarnings > 1 then
+    Warnings := Fmt(TAtlasTextId.BuildCountWarnings, [AWarnings]);
+  if AHints = 1 then
+    Hints := Text(TAtlasTextId.BuildCountHint)
+  else if AHints > 1 then
+    Hints := Fmt(TAtlasTextId.BuildCountHints, [AHints]);
+  if (Warnings <> '') and (Hints <> '') then
+    Result := Fmt(TAtlasTextId.BuildCountJoin, [Warnings, Hints])
+  else
+    Result := Warnings + Hints;
 end;
 
 class function TAtlasStrings.Confidence(const AName: string): string;

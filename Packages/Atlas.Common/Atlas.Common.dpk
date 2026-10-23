@@ -157,6 +157,7 @@ contains
   Atlas.Common.Lsp.Recursion in 'Source\Lsp\Atlas.Common.Lsp.Recursion.pas',
   Atlas.Common.Lsp.OverrideMarks in 'Source\Lsp\Atlas.Common.Lsp.OverrideMarks.pas',
   Atlas.Common.Lsp.Baseline in 'Source\Lsp\Atlas.Common.Lsp.Baseline.pas',
+  Atlas.Common.Lsp.CompilerBaseline in 'Source\Lsp\Atlas.Common.Lsp.CompilerBaseline.pas',
   Atlas.Common.Lsp.SemanticTokens in 'Source\Lsp\Atlas.Common.Lsp.SemanticTokens.pas',
   Atlas.Common.Lsp.Commands in 'Source\Lsp\Atlas.Common.Lsp.Commands.pas',
   Atlas.Common.Lsp.ApplyEdit in 'Source\Lsp\Atlas.Common.Lsp.ApplyEdit.pas',

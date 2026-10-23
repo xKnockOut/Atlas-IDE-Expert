@@ -61,6 +61,7 @@ uses
   Atlas.Common.Lsp.SlashMenu,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Lsp.Baseline,
+  Atlas.Common.Lsp.CompilerBaseline,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Projects.Selection,
@@ -156,6 +157,8 @@ type
     FRecursion: TLspRecursion;
     /// <summary>Baseline für Altprojekte (#97): Befehl atlas.updateBaseline.</summary>
     FBaseline: TLspBaseline;
+    /// <summary>Compilermeldungen in der Baseline (#530).</summary>
+    FCompilerBaseline: TLspCompilerBaseline;
     FSemanticTokens: TLspSemanticTokens;
     FCodeActions: TLspCodeActions;
     /// <summary>Testunit anlegen und wechseln (#274, #189).</summary>
@@ -1235,6 +1238,18 @@ begin
       // Der Arbeitsbereich liest die Datei beim nächsten Prüfen neu; offene Dokumente gleich neu prüfen.
       FSyntaxDiagnostics.RefreshLater;
     end;
+  // Compilermeldungen in derselben Baseline (#530): Text wie im Editor, offene Dokumente vor der Platte.
+  FCompilerBaseline := TLspCompilerBaseline.Create(MetricsSourceFor,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    BaselineFiles);
+  FCompilerBaseline.OnWritten :=
+    procedure(AFileName: string)
+    begin
+      FSyntaxDiagnostics.RefreshLater;
+    end;
   FSemanticTokens := TLspSemanticTokens.Create(FDocuments, FIndex,
     EnsureUnit);
   FSemanticTokens.Attach(FDispatcher);
@@ -1505,6 +1520,20 @@ begin
           TJSONObject(Result).GetValue<Integer>('files', -1), TJSONObject(Result).GetValue<Integer>('added', -1),
           TJSONObject(Result).GetValue<Integer>('removed', -1),
           TJSONObject(Result).GetValue<Integer>('orphaned.count', -1), Watch.ElapsedMilliseconds]));
+    end);
+  FCommands.Register(TLspCompilerBaseline.AddCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FCompilerBaseline.ExecuteAdd(AArguments);
+      if Result is TJSONObject then
+        FLogger.Info(Format('Compilermeldungen in die Baseline: %d Einträge (%d neu, %d entfernt)',
+          [TJSONObject(Result).GetValue<Integer>('total', -1), TJSONObject(Result).GetValue<Integer>('added', -1),
+          TJSONObject(Result).GetValue<Integer>('removed', -1)]));
+    end);
+  FCommands.Register(TLspCompilerBaseline.ClassifyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FCompilerBaseline.ExecuteClassify(AArguments);
     end);
   FCommands.Register(TLspSlashMenu.MenuCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2047,6 +2076,7 @@ begin
   FMetrics.Free;
   FTodos.Free;
   FRecursion.Free;
+  FCompilerBaseline.Free;
   FBaseline.Free;
   FInlayHints.Free;
   FImplementations.Free;

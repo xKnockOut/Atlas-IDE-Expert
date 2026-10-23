@@ -23,6 +23,9 @@ type
     procedure TypeArgHeadingAndFooter;
     [Test]
     procedure UsesFooterAndCycle;
+    /// <summary>Abnahme #530: ein Hinweis H2164 zeigt „1 Hinweis“ in der Zusammenfassung.</summary>
+    [Test]
+    procedure BuildCountsSingularAndPlural;
   end;
 
 implementation
@@ -77,6 +80,24 @@ begin
     Assert.AreEqual('', TAtlasStrings.Confidence(''), 'Syntax- und Compilermeldungen ohne Konfidenz');
     TAtlasStrings.Language := TAtlasLanguage.English;
     Assert.AreEqual('Confidence: low', TAtlasStrings.Confidence('low'));
+  finally
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
+procedure TAtlasStringsTests.BuildCountsSingularAndPlural;
+var
+  Saved: TAtlasLanguage;
+begin
+  Saved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Assert.AreEqual('1 Hinweis', TAtlasStrings.BuildCounts(0, 1));
+    Assert.AreEqual('2 Warnungen, 1 Hinweis', TAtlasStrings.BuildCounts(2, 1));
+    Assert.AreEqual('1 Warnung, 3 Hinweise', TAtlasStrings.BuildCounts(1, 3));
+    Assert.AreEqual('', TAtlasStrings.BuildCounts(0, 0));
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    Assert.AreEqual('2 warnings, 1 hint', TAtlasStrings.BuildCounts(2, 1));
   finally
     TAtlasStrings.Language := Saved;
   end;

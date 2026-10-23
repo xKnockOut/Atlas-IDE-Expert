@@ -25,6 +25,8 @@ uses
   Atlas.Core.Build.ReleaseGuard in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.ReleaseGuard.pas',
   Atlas.Core.Lsp.Contract in '..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Contract.pas',
   Atlas.Core.Build.Gate in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Gate.pas',
+  Atlas.Core.Build.Messages in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Messages.pas',
+  Atlas.Core.Build.Verdict in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Verdict.pas',
   Atlas.Core.Notifications.Contract in '..\Packages\Atlas.IDE.Expert\Source\Core\Notifications\Atlas.Core.Notifications.Contract.pas',
   Atlas.Core.Notifications.Sources in '..\Packages\Atlas.IDE.Expert\Source\Core\Notifications\Atlas.Core.Notifications.Sources.pas',
   Atlas.Core.Settings.JsonText in '..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.JsonText.pas',

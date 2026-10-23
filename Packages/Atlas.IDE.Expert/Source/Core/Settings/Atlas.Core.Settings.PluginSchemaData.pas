@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4148] of string = (
+  Lines: array[0..4166] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -945,6 +945,24 @@ const
     '      "x-page": "Compiler",',
     '      "x-caption": "Build nur ohne Warnungen und Hinweise erfolgreich",',
     '      "x-captionEn": "Build succeeds only without warnings and hints",',
+    '      "x-issue": "#530"',
+    '    },',
+    '    "BuildSummary": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "build.summary",',
+    '      "x-area": "build",',
+    '      "x-page": "Compiler",',
+    '      "x-caption": "Zusammenfassung nach jedem Build",',
+    '      "x-captionEn": "Summary after every build",',
+    '      "x-issue": "#530"',
+    '    },',
+    '    "BuildWarningsAsErrors": {',
+    '      "type": "string",',
+    '      "default": "",',
+    '      "x-key": "build.warningsAsErrors",',
+    '      "x-area": "build",',
+    '      "x-page": "Compiler",',
     '      "x-issue": "#530"',
     '    },',
     '    "WelcomePage": {',

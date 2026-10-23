@@ -273,6 +273,10 @@ type
     FTestsBuildFirst: TCheckBox;
     FTestsAfterBuild: TCheckBox;
     FBuildZeroHints: TCheckBox;
+    /// <summary>Schranke für Hinweise und Warnungen (#530): Zusammenfassung und Codes, die als Fehler zählen.
+    /// </summary>
+    FBuildSummary: TCheckBox;
+    FBuildWarningsAsErrors: TEdit;
     /// <summary>Prüfung vor dem Compile (#529): build.gate (gilt auch für den Release-Wächter) und ihr Zeitlimit.
     /// </summary>
     FBuildGate: TAtlasChoiceBox;
@@ -1051,6 +1055,9 @@ type
     property TestsBuildFirstCheck: TCheckBox read FTestsBuildFirst;
     property TestsAfterBuildCheck: TCheckBox read FTestsAfterBuild;
     property BuildZeroHintsCheck: TCheckBox read FBuildZeroHints;
+    /// <summary>Zum Testen: Schranke für Hinweise und Warnungen (#530).</summary>
+    property BuildSummaryCheck: TCheckBox read FBuildSummary;
+    property BuildWarningsAsErrorsEdit: TEdit read FBuildWarningsAsErrors;
     /// <summary>Zum Testen: Prüfung vor dem Compile (#529).</summary>
     property BuildGateChoice: TAtlasChoiceBox read FBuildGate;
     property BuildGateTimeoutEdit: TEdit read FBuildGateTimeout;
@@ -1186,6 +1193,7 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.Core.Build.Gate,
+  Atlas.Core.Build.Verdict,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Problems.InlineHints,
   Atlas.Core.Product.Version,
@@ -1757,6 +1765,9 @@ begin
   FTestsBuildFirst := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsBuildFirst));
   FTestsAfterBuild := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAfterBuild));
   FBuildZeroHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildZeroHints));
+  // Schranke für Hinweise und Warnungen (#530).
+  FBuildSummary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildSummary));
+  FBuildWarningsAsErrors := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsBuildWarningsAsErrors));
   // Prüfung vor dem Compile (#529); Reihenfolge wie TAtlasBuildGate: off, warn, block.
   FBuildGate := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsBuildGate),
     [TAtlasStrings.Text(TAtlasTextId.SettingsBuildGateOff), TAtlasStrings.Text(TAtlasTextId.SettingsBuildGateWarn),
@@ -2922,6 +2933,8 @@ begin
   FMarks.Bind(FTestsBuildFirst, ['TestsBuildFirst']);
   FMarks.Bind(FTestsAfterBuild, ['TestsAfterBuild']);
   FMarks.Bind(FBuildZeroHints, ['BuildZeroHints']);
+  FMarks.Bind(FBuildSummary, ['BuildSummary']);
+  FMarks.Bind(FBuildWarningsAsErrors, ['BuildWarningsAsErrors']);
   FMarks.Bind(FBuildGateTimeout, ['BuildGateTimeoutMs']);
   FMarks.Bind(FStartProfiles, ['StartProfiles']);
   FMarks.Bind(FStartProfilesStatusField, ['StartProfilesStatusField']);
@@ -5060,6 +5073,8 @@ begin
   FTestsBuildFirst.Checked := ASettings.TestsBuildFirst;
   FTestsAfterBuild.Checked := ASettings.TestsAfterBuild;
   FBuildZeroHints.Checked := ASettings.BuildZeroHints;
+  FBuildSummary.Checked := ASettings.BuildSummary;
+  FBuildWarningsAsErrors.Text := TAtlasBuildVerdicts.NormalizeCodes(ASettings.BuildWarningsAsErrors);
   FBuildGate.Choice := Ord(TAtlasReleaseGuard.GateOf(ASettings.BuildGate));
   FBuildGateTimeout.Text := IntToStr(ASettings.BuildGateTimeoutMs);
   LoadRelease(ASettings);
@@ -5512,6 +5527,9 @@ begin
   ASettings.TestsBuildFirst := FTestsBuildFirst.Checked;
   ASettings.TestsAfterBuild := FTestsAfterBuild.Checked;
   ASettings.BuildZeroHints := FBuildZeroHints.Checked;
+  ASettings.BuildSummary := FBuildSummary.Checked;
+  // Ungültige Einträge fallen weg; gespeichert wird die einheitliche Form „W1035, H2164“.
+  ASettings.BuildWarningsAsErrors := TAtlasBuildVerdicts.NormalizeCodes(FBuildWarningsAsErrors.Text);
   if (FBuildGate.Choice >= Ord(Low(TAtlasBuildGate))) and (FBuildGate.Choice <= Ord(High(TAtlasBuildGate))) then
     ASettings.BuildGate := TAtlasReleaseGuard.GateNames[TAtlasBuildGate(FBuildGate.Choice)];
   ASettings.BuildGateTimeoutMs := EnsureRange(StrToIntDef(FBuildGateTimeout.Text, ASettings.BuildGateTimeoutMs),
