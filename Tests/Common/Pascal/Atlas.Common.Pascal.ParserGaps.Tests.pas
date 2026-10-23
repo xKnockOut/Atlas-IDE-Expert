@@ -51,6 +51,18 @@ type
     /// <summary>#1140 (Probe p06): type AnsiString(Codepage).</summary>
     [Test]
     procedure CodepageString;
+    /// <summary>#1142 (Probe p07): end align 16 am Record.</summary>
+    [Test]
+    procedure RecordAlign;
+    /// <summary>#1142 (Probe p08): Attribut an einem Feld im varianten Zweig.</summary>
+    [Test]
+    procedure AttributeInVariantPart;
+    /// <summary>#1142 (Probe p10): Vorgabewert direkt hinter generischem Typ (IBaz&lt;string&gt;=nil).</summary>
+    [Test]
+    procedure GenericDefaultParameter;
+    /// <summary>#1142 (Probe p11): %_0101 wie $_FF.</summary>
+    [Test]
+    procedure BinaryWithLeadingSeparator;
   end;
 
 implementation
@@ -107,6 +119,21 @@ const
     'unit p06_codepage_string;'#10'interface'#10'const'#10'  CP_WINANSI = 1252;'#10'type'#10 +
     '  WinAnsiString = type AnsiString(CP_WINANSI);'#10'  RawUnicode = type AnsiString(1200);'#10'var'#10 +
     '  W: WinAnsiString;'#10'implementation'#10'end.';
+  RecordAlignSource =
+    'unit p07_record_align;'#10'interface'#10'type'#10'  TMyRecord = record'#10'    Value: Integer;'#10 +
+    '  end align 16;'#10'  TDanach = Integer;'#10'implementation'#10'end.';
+  VariantAttribute =
+    'unit p08_variant_attribute;'#10'interface'#10'type'#10'  TVariantRecord = record'#10'    case Byte of'#10 +
+    '      1: ('#10'        Value: Double;'#10'        [Example]'#10'        ValueWithAttribute: Integer;'#10 +
+    '        );'#10'  end;'#10'implementation'#10'end.';
+  GenericDefault =
+    'unit p10_generic_default_param;'#10'interface'#10'type'#10'  IBaz<T> = interface'#10'  end;'#10 +
+    '  TFoo = class(TObject)'#10'    procedure Bar(Baz: IBaz<string>=nil);'#10'    procedure Danach;'#10'  end;'#10 +
+    'implementation'#10'procedure TFoo.Bar(Baz: IBaz<string>=nil);'#10'begin'#10 +
+    '  if A < B >= C then'#10'    Exit;'#10'end;'#10'procedure TFoo.Danach;'#10'begin'#10'end;'#10'end.';
+  BinarySeparator =
+    'unit p11_binary_separator;'#10'interface'#10'const'#10'  A = %_0101;'#10'  B = $_FF;'#10'  C = 1_000;'#10 +
+    'implementation'#10'end.';
   EscapedMember =
     'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'    procedure &Type;'#10'  end;'#10'implementation'#10 +
     'procedure TFoo.&Type;'#10'begin'#10'end;'#10'procedure P(F: TFoo);'#10'begin'#10'  F.&Type;'#10'end;'#10'end.';
@@ -403,6 +430,54 @@ begin
   finally
     Tree.Free;
   end;
+end;
+
+procedure TParserGapsTests.RecordAlign;
+var
+  Tree: TSyntaxTree;
+begin
+  Assert.AreEqual('', Diagnostics(RecordAlignSource));
+  Tree := TPascalParser.Parse(RecordAlignSource);
+  try
+    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.RecordType, ''));
+    Assert.IsNull(Find(Tree.Root, TSyntaxKind.TypeReference, 'align'), 'align ist kein Typ');
+    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.TypeDecl, 'TDanach'));
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TParserGapsTests.AttributeInVariantPart;
+var
+  U: TUnitIndex;
+begin
+  Assert.AreEqual('', Diagnostics(VariantAttribute));
+  U := TIndexExtractor.ExtractText(VariantAttribute, MainFile, nil);
+  Assert.IsTrue(HasSymbol(U, 'TVariantRecord', 'Value'));
+  Assert.IsTrue(HasSymbol(U, 'TVariantRecord', 'ValueWithAttribute'));
+end;
+
+procedure TParserGapsTests.GenericDefaultParameter;
+var
+  Tree: TSyntaxTree;
+  Parameter: TSyntaxNode;
+begin
+  // Der Ausdruck A < B >= C im Rumpf bleibt ein Vergleich, nur die Typen der Parameter teilen >=.
+  Assert.AreEqual('', Diagnostics(GenericDefault));
+  Tree := TPascalParser.Parse(GenericDefault);
+  try
+    Parameter := Find(Find(Tree.Root, TSyntaxKind.TypeDecl, 'TFoo'), TSyntaxKind.Parameter, 'Baz');
+    Assert.IsNotNull(Parameter);
+    Assert.IsNotNull(Find(Parameter, TSyntaxKind.GenericArgs, ''), 'IBaz<string>');
+    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.RoutineDecl, 'TFoo.Danach'), 'Routine dahinter');
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TParserGapsTests.BinaryWithLeadingSeparator;
+begin
+  Assert.AreEqual('', Diagnostics(BinarySeparator));
 end;
 
 initialization
