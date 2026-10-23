@@ -525,6 +525,11 @@ type
     ArchitectureIncludeLibraryUnits: Boolean;
     ArchitectureCentralUnits: Integer;
     ArchitectureExclude: TArray<string>;
+    /// <summary>Architekturvergleich (#1121): gespeicherter Stand (Pfad relativ zum Projekt, '' = keiner), mit dem
+    /// Fenster und Bericht automatisch vergleichen, und die Abweichungen, die --compare als Fehler meldet
+    /// (newCycle, newCrossLink, subsystemChange, centralGrowth; Vorgabe newCycle).</summary>
+    ArchitectureBaseline: string;
+    ArchitectureFailOn: TArray<string>;
     /// <summary>Protokoll (#265): Stufe (debug/info/warning/error), Logdatei und Mitschnitt.
     /// Der Server übernimmt sie nicht zur Laufzeit; der Client übergibt sie beim Start als
     /// --log-level, --log und --trace.</summary>
@@ -955,6 +960,8 @@ begin
   Result.ArchitectureIncludeLibraryUnits := False;
   Result.ArchitectureCentralUnits := 15;
   Result.ArchitectureExclude := nil;
+  Result.ArchitectureBaseline := '';
+  Result.ArchitectureFailOn := ['newCycle'];
   Result.LogLevel := 'info';
   Result.LogFile := '';
   Result.TraceFile := '';

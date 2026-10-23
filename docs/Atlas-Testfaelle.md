@@ -6130,3 +6130,21 @@ Voraussetzung: Server läuft in der IDE, Projektgruppe aus dem Referenzprojekt (
 | ARC13 | IDE in hellem und dunklem Thema | Karte, Listen und Statuszeile lesbar, Teilsystemfarben passend zum Thema |
 | ARC14 | Projektgruppe mit etwa 2000 Units, „Neu berechnen“ | Rechnung im Hintergrund unter 2 s, IDE bleibt bedienbar, kein Eintrag des Einfrier-Wächters (#501) |
 | ARC15 | `architecture.enabled` aus (Schnellschalter) | Kein Menüeintrag, kein Palettenbefehl, ein offenes Fenster schließt sich, `get_architecture` fehlt in `tools/list`, `--architecture` endet mit Exit-Code 3 |
+
+## Architekturvergleich (#1121)
+
+Voraussetzung wie oben (#1118); Projekt unter Versionsverwaltung.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ARV1 | Im Fenster „Stand speichern …“, Datei `architektur.json` im Projektordner; ohne Änderung erneut speichern | Datei entsteht (Statuszeile „… gespeichert“); zweites Speichern ergibt keine Änderung im Diff der Versionsverwaltung |
+| ARV2 | In einer Unit von `App.Data.*` ein uses auf eine Unit von `App.Ui.*` ergänzen, die ihrerseits `App.Data.*` braucht, speichern, Index fertig; „Vergleichen mit …“ und `architektur.json` wählen | Reiter *Vergleich*: „Verglichen mit architektur.json (…): n Änderungen · verletzt: newCycle“, Abschnitt „Neue Zyklen (1)“ mit dem Rundweg, neue Querverbindung bzw. uses-Kante zwischen Teilsystemen; Statuszeile „· Vergleich: n Änderungen“ |
+| ARV3 | Reiter *Übersicht* nach ARV2 | Die neue Kante grün; „Änderungen zum Stand“ aus: wieder in normaler Farbe; mit „Zyklen markieren“ ist die Zykluskante rot |
+| ARV4 | Ein uses zwischen zwei Teilsystemen entfernen, „Neu berechnen“ | Die entfernte Kante erscheint rot gestrichelt; Abschnitt „Entfernte uses-Kanten zwischen Teilsystemen“ |
+| ARV5 | Doppelklick auf einen Eintrag im Reiter *Vergleich*; Filter „data“ | Die Unit öffnet sich; nur Einträge mit `data` im Namen bleiben |
+| ARV6 | In `atlas.json` `"architecture": {"baseline": "architektur.json"}`, Fenster schließen, IDE neu starten, Fenster öffnen | Vergleich ohne Wahl; „Vergleich aufheben“ zeigt den Hinweis „Kein Vergleich …“, Karte ohne Farben |
+| ARV7 | `architektur.json` durch Text „kaputt“ ersetzen, „Neu berechnen“ | Übersicht erscheint, Reiter *Vergleich* und Statuszeile „Vergleich nicht möglich: Architekturstand ist beschädigt …“ |
+| ARV8 | „Bericht speichern …“ als HTML und Markdown mit aktivem Vergleich | Beide enthalten den Abschnitt „Vergleich“; in der HTML-Karte „Änderungen zum Stand“ mit grünen und rot gestrichelten Kanten |
+| ARV9 | Konsole: `AtlasServer --check . --architecture neu.json --compare architektur.json` mit neuem Zyklus; dann mit `--fail-on centralGrowth`; ohne Abweichung | Text mit den Abschnitten und „Ergebnis: …“, Exit-Code 1; mit `centralGrowth` (ohne Wachstum) 0; ohne Abweichung 0; unlesbarer Stand oder `--fail-on falsch` Exit-Code 3 |
+| ARV10 | Claude Code: `get_architecture` mit `compareWith: "architektur.json"` | Die Abschnitte des Vergleichs; Pfad außerhalb des Projekts wird abgelehnt |
+| ARV11 | Hell und dunkel | Grün und Rot auf der Karte und im Reiter gut lesbar |
