@@ -1090,6 +1090,12 @@
           "description": "Nach „raise “ und „on E: “ nur Exception-Klassen anbieten. Nach raise Projektklassen vor denen der Bibliotheken, Übernahme als EFoo.Create('') mit dem Cursor zwischen den Anführungszeichen, dazu je Klasse ein Eintrag EFoo.CreateFmt. Nach „on E: “ zuerst die Gruppe „Aus dem try-Block“ mit den Klassen aus <exception cref> der dort aufgerufenen Routinen (und bekannten Fällen der RTL wie StrToInt → EConvertError), darunter „Allgemein“; im selben except schon behandelte Klassen fehlen, Klassen, die ein früherer Zweig schon fängt, tragen die Warnung „nie erreicht“. Aus: die gewöhnliche Liste.",
           "x-issue": "#483"
         },
+        "syntaxNotice": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hinweis bei unvollständigem Code: Steht vor dem Cursor in der aktuellen Routine bzw. Klassendeklaration ein Syntaxfehler, zeigt die Liste oben die Warnleiste „Ergebnisse möglicherweise unvollständig · Syntaxfehler in Zeile n“; Klick auf die Zeilenangabe springt dorthin. Ohne Vorschläge zeigt der leere Zustand den Fehler. Fehler in anderen Routinen und die Stelle, an der gerade getippt wird, zählen nicht. Aus: kein Hinweis.",
+          "x-issue": "#457"
+        },
         "sameNameVariants": {
           "type": "boolean",
           "default": true,

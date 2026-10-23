@@ -39,6 +39,9 @@
 // Barrierefreiheit (#447): Die Einträge sind für UI Automation Listeneinträge (IAtlasAccessibleItems) mit
 // Zustand aus den Tags; die gewählte Zeile trägt mit SelectionMarker zusätzlich Rahmen und Marke ▸, damit sie
 // nicht nur an der Farbe erkennbar ist.
+// Unvollständiger Code (#457, IAtlasCompletionSyntaxView): Unter den Chips steht eine Leiste in Warnfarbe
+// „Ergebnisse möglicherweise unvollständig · Syntaxfehler in Zeile n“ (unbekannt: „Kontext unklar · …“), auch im
+// leeren Zustand, der dann den Fehlertext nennt. Klick auf die unterstrichene Zeilenangabe meldet OnSyntaxLine.
 
 interface
 
@@ -70,6 +73,8 @@ type
   /// <summary>Gezogene Breiten in logischen Pixeln; AListWidth 0 = automatisch.</summary>
   TAtlasWidthsEvent = reference to procedure(AListWidth, APanelWidth: Integer);
   TAtlasPanelEvent = reference to procedure(ACollapsed: Boolean);
+  /// <summary>Klick auf die Zeilenangabe der Warnleiste (#457); 0-basiert.</summary>
+  TAtlasSyntaxLineEvent = reference to procedure(ALine, ACharacter: Integer);
 
 {$SCOPEDENUMS ON}
   TAtlasChipEvent = reference to procedure(AChip: TAtlasChip);
@@ -80,7 +85,8 @@ type
   TAtlasHitArea = (None, Splitter, Edge, Grip, PanelBar);
 {$SCOPEDENUMS OFF}
 
-  TAtlasCompletionPopup = class(TAtlasPopupWindow, IAtlasCompletionView, IAtlasAccessibleItems)
+  TAtlasCompletionPopup = class(TAtlasPopupWindow, IAtlasCompletionView, IAtlasCompletionSyntaxView,
+    IAtlasAccessibleItems)
   public const
     DefaultVisibleRows = 9;
     MinWidth = TAtlasPopupWidth.MinListWidth;
@@ -154,13 +160,23 @@ type
     FMetricsValid: Boolean;
     // Rahmen und Marke an der gewählten Zeile (#447).
     FSelectionMarker: Boolean;
+    // Unvollständiger Code (#457): Hinweis, Fläche der Zeilenangabe, Klick darauf.
+    FSyntax: TAtlasSyntaxNotice;
+    FSyntaxLink: TRect;
+    FOnSyntaxLine: TAtlasSyntaxLineEvent;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
     procedure InvalidateMetrics;
     procedure EnsureMetrics;
     function Dim(AColor: TAtlasColor): TAtlasColor;
     function ChipsHeight: Integer;
+    /// <summary>Höhe der Warnleiste (#457); 0 ohne Hinweis.</summary>
+    function SyntaxHeight: Integer;
+    /// <summary>Text der Warnleiste vor der Zeilenangabe bzw. die Zeilenangabe selbst.</summary>
+    function SyntaxLead: string;
+    function SyntaxLineText: string;
     function ListTop: Integer;
     procedure DrawChips;
+    procedure DrawSyntax;
     /// <summary>Text der Überschrift an APosition (geerbt von, Weitere Einträge, …).</summary>
     function HeaderText(APosition: Integer): string;
     procedure DrawHeader(ARow, APosition: Integer);
@@ -261,6 +277,8 @@ type
     procedure ShowEmpty(const APrefix: string; ATotal: Integer);
     function PageSize: Integer;
     procedure ShowChips(const ACounts: TAtlasChipCounts; AActive: TAtlasChip; AVisible: Boolean);
+    { IAtlasCompletionSyntaxView }
+    procedure ShowSyntax(const ANotice: TAtlasSyntaxNotice);
     /// <summary>Caret-Rechteck in Bildschirmkoordinaten; vor dem ersten ShowList setzen.</summary>
     property Anchor: TRect read FAnchor write FAnchor;
     property VisibleRows: Integer read FVisibleRows write FVisibleRows;
@@ -295,6 +313,10 @@ type
     property Notice: string read FNotice;
     /// <summary>Gewählte Zeile mit Rahmen und Marke ▸ statt nur farbig (#447, completion.selectionMarker).</summary>
     property SelectionMarker: Boolean read FSelectionMarker write FSelectionMarker;
+    /// <summary>Gezeigter Hinweis bei unvollständigem Code (#457).</summary>
+    property Syntax: TAtlasSyntaxNotice read FSyntax;
+    /// <summary>Klick auf die Zeilenangabe der Warnleiste (#457).</summary>
+    property OnSyntaxLine: TAtlasSyntaxLineEvent read FOnSyntaxLine write FOnSyntaxLine;
   end;
 
 implementation
@@ -408,9 +430,9 @@ end;
 function TAtlasCompletionPopup.ListHeight: Integer;
 begin
   if FShowingEmpty then
-    Result := 2 * Pad + ChipsHeight + 2 * RowHeight + FooterHeight
+    Result := 2 * Pad + ChipsHeight + SyntaxHeight + 2 * RowHeight + FooterHeight
   else
-    Result := 2 * Pad + ChipsHeight + RowCount * RowHeight + FooterHeight;
+    Result := 2 * Pad + ChipsHeight + SyntaxHeight + RowCount * RowHeight + FooterHeight;
 end;
 
 function TAtlasCompletionPopup.PanelHeight: Integer;
@@ -514,9 +536,79 @@ begin
   Result := FChipsHeight;
 end;
 
+function TAtlasCompletionPopup.SyntaxHeight: Integer;
+begin
+  if FSyntax.Trust = TAtlasSyntaxTrust.Sure then
+    Exit(0);
+  EnsureMetrics;
+  Result := FChipsHeight;
+end;
+
+function TAtlasCompletionPopup.SyntaxLead: string;
+begin
+  if FSyntax.Trust = TAtlasSyntaxTrust.Unknown then
+    Result := TAtlasStrings.Text(TAtlasTextId.SyntaxUnknown)
+  else
+    Result := TAtlasStrings.Text(TAtlasTextId.SyntaxLimited);
+end;
+
+function TAtlasCompletionPopup.SyntaxLineText: string;
+begin
+  Result := TAtlasStrings.Fmt(TAtlasTextId.SyntaxLine, [FSyntax.Line + 1]);
+end;
+
 function TAtlasCompletionPopup.ListTop: Integer;
 begin
-  Result := Pad + ChipsHeight;
+  Result := Pad + ChipsHeight + SyntaxHeight;
+end;
+
+procedure TAtlasCompletionPopup.ShowSyntax(const ANotice: TAtlasSyntaxNotice);
+begin
+  FSyntax := ANotice;
+  FSyntaxLink := Rect(0, 0, 0, 0);
+  if FSyntax.Trust <> TAtlasSyntaxTrust.Sure then
+  begin
+    // Die Leiste soll ganz lesbar sein: Breite wächst wie beim leeren Zustand.
+    Canvas.Font := UIFont;
+    FSessionWidth := Max(FSessionWidth, Canvas.TextWidth(SyntaxLead + SyntaxLineText) + Scale(40));
+    Canvas.Font := Font;
+  end;
+  if IsShown then
+    Relayout;
+  Invalidate;
+end;
+
+procedure TAtlasCompletionPopup.DrawSyntax;
+var
+  Bar, Text: TRect;
+  Lead, LineText: string;
+  Left: Integer;
+begin
+  FSyntaxLink := Rect(0, 0, 0, 0);
+  if SyntaxHeight = 0 then
+    Exit;
+  Bar := Rect(ListLeft + Pad + Scale(4), Pad + ChipsHeight + Scale(2), ListRight - Pad - Scale(4),
+    Pad + ChipsHeight + SyntaxHeight - Scale(2));
+  FillRounded(Bar, Colors.WarnSoft, TAtlasDraw.ChipRadius);
+  Lead := SyntaxLead;
+  LineText := SyntaxLineText;
+  Canvas.Font := UIFont;
+  Canvas.Font.Color := ToColor(Colors.Warn);
+  Canvas.Brush.Style := bsClear;
+  Text := Rect(Bar.Left + Scale(8), Bar.Top, Bar.Right - Scale(8), Bar.Bottom);
+  DrawText(Canvas.Handle, PChar(Lead), -1, Text, TextFlags or DT_END_ELLIPSIS);
+  // Zeilenangabe unterstrichen dahinter; nur sie ist anklickbar.
+  Left := Text.Left + Canvas.TextWidth(Lead);
+  if Left + Canvas.TextWidth(LineText) <= Text.Right then
+  begin
+    Canvas.Font.Style := [fsUnderline];
+    Text.Left := Left;
+    DrawText(Canvas.Handle, PChar(LineText), -1, Text, TextFlags);
+    FSyntaxLink := Rect(Left, Bar.Top, Left + Canvas.TextWidth(LineText), Bar.Bottom);
+    Canvas.Font.Style := [];
+  end;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Font := Font;
 end;
 
 procedure TAtlasCompletionPopup.ShowChips(const ACounts: TAtlasChipCounts; AActive: TAtlasChip; AVisible: Boolean);
@@ -1026,6 +1118,8 @@ begin
   FDetailView.Details := Default(TAtlasItemDetails);
   FDetailView.OverloadIndex := 0;
   FDetailView.OverloadCount := 0;
+  FSyntax := Default(TAtlasSyntaxNotice);
+  FSyntaxLink := Rect(0, 0, 0, 0);
 end;
 
 procedure TAtlasCompletionPopup.ShowEmpty(const APrefix: string; ATotal: Integer);
@@ -1085,13 +1179,16 @@ var
   end;
 
 begin
+  DrawSyntax;
   if FEmptyPrefix <> '' then
-  begin
-    DrawLine(0, TAtlasStrings.Fmt(TAtlasTextId.NoMatchesFor, [FEmptyPrefix]), Colors.Text);
-    DrawLine(1, TAtlasStrings.Text(TAtlasTextId.BackspaceWidens), Colors.Muted);
-  end
+    DrawLine(0, TAtlasStrings.Fmt(TAtlasTextId.NoMatchesFor, [FEmptyPrefix]), Colors.Text)
   else
     DrawLine(0, TAtlasStrings.Text(TAtlasTextId.NoSuggestions), Colors.Text);
+  // Unvollständiger Code (#457): statt des Tipps zur Rücktaste der Fehler.
+  if (FSyntax.Trust <> TAtlasSyntaxTrust.Sure) and (FSyntax.Message <> '') then
+    DrawLine(1, FSyntax.Message, Colors.Muted)
+  else if FEmptyPrefix <> '' then
+    DrawLine(1, TAtlasStrings.Text(TAtlasTextId.BackspaceWidens), Colors.Muted);
   Canvas.Brush.Style := bsSolid;
   DrawFooter(TAtlasStrings.Text(TAtlasTextId.EscCloses), TAtlasStrings.Fmt(TAtlasTextId.CountOf, [0, FEmptyTotal]));
 end;
@@ -1522,6 +1619,7 @@ begin
   else
   begin
     DrawChips;
+    DrawSyntax;
     for Row := 0 to RowCount - 1 do
       if FTop + Row < Length(FOrder) then
         if TAtlasRanking.IsHeader(FOrder[FTop + Row]) then
@@ -1604,6 +1702,12 @@ begin
   inherited;
   if Button <> mbLeft then
     Exit;
+  // Zeilenangabe der Warnleiste (#457).
+  if PtInRect(FSyntaxLink, Point(X, Y)) and Assigned(FOnSyntaxLine) then
+  begin
+    FOnSyntaxLine(FSyntax.Line, FSyntax.Character);
+    Exit;
+  end;
   case HitArea(X, Y) of
     TAtlasHitArea.PanelBar:
       begin
@@ -1763,7 +1867,8 @@ begin
     TAtlasHitArea.Edge, TAtlasHitArea.Grip: Cursor := crSizeWE;
     TAtlasHitArea.PanelBar: Cursor := crHandPoint;
   else
-    if (DocActive and (FDetailView.DocLinkAt(X, Y) >= 0)) or (StarAt(X, Y) >= 0) then
+    if (DocActive and (FDetailView.DocLinkAt(X, Y) >= 0)) or (StarAt(X, Y) >= 0) or
+      PtInRect(FSyntaxLink, Point(X, Y)) then
       Cursor := crHandPoint
     else if DocActive and FDetailView.InDoc(X, Y) then
       Cursor := crIBeam

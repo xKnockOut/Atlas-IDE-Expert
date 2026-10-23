@@ -329,6 +329,10 @@ type
     /// zuerst die aus dem try-Block (XMLDoc), ohne schon behandelte, mit Warnung bei unerreichbaren Zweigen (#483).
     /// Aus: die gewöhnliche Liste.</summary>
     ExceptionClasses: Boolean;
+    /// <summary>Hinweis bei unvollständigem Code (#457): Steht vor dem Cursor in der aktuellen Routine bzw.
+    /// Klassendeklaration ein Syntaxfehler, meldet die Antwort „eingeschränkt“ samt Fehlerzeile (ohne Einträge
+    /// „unbekannt“). Aus: kein Hinweis.</summary>
+    SyntaxNotice: Boolean;
     /// <summary>Gleichnamige Bezeichner aus verschiedenen Units als Varianten mit ihrer Unit; die vom Compiler
     /// gewählte zuerst mit „aktiv“ (#475). Aus: nur die aktive.</summary>
     SameNameVariants: Boolean;
@@ -886,6 +890,7 @@ begin
   Result.AnonymousMethods := True;
   Result.WithOrigin := True;
   Result.ExceptionClasses := True;
+  Result.SyntaxNotice := True;
   Result.SameNameVariants := True;
   Result.SameNameInsert := TCompletionSameNameInsert.Prefix;
   Result.ShowFmxUnits := False;
