@@ -6198,3 +6198,28 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index (RTL-Quellen indiz
 | VB8 | Tools › Optionen › Atlas › Prüfregeln › Architektur › „Verbotenes Symbol verwendet“: Schalter an, Schweregrad Warnung, in der Tabelle „symbols“ eine Zeile `System.Writeln` / `routine` / `Nur über ILogger` eintragen, unten erscheint eine leere Zeile; danach eine Zeile leeren | atlas.json enthält `"symbols": [{"name": "System.Writeln", "kind": "routine", "message": "Nur über ILogger"}]`; die Spalten `units`, `firstArgument` und `allowFirstArgument` nehmen Listen mit „;“; die geleerte Zeile fällt weg, ohne Zeilen entfällt `symbols` (**Abnahme**) |
 | VB9 | Ohne `symbols` bzw. mit `[]`; `"forbidden-symbol": "off"`; Profil strict | Ohne Liste keine Meldung; aus keine Meldung; im Profil strict ist die Regel an |
 | VB10 | Atlas-Repo selbst öffnen (seine atlas.json verbietet Write/Writeln, GetStdHandle(STD_OUTPUT_HANDLE) und TThread.Queue/ForceQueue(nil, …) im Plugin) | Keine Meldung in den Quellen; eine eingefügte Zeile `TThread.Queue(nil, nil);` in einer Unit unter `Packages/Atlas.IDE.Expert/Source` wird als Fehler gemeldet, ebenso von `pwsh Tools/Check-MainThreadQueue.ps1` |
+
+## override ruft nur inherited auf (#1143)
+
+Voraussetzung: Server läuft in der IDE mit Projekt, VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OE1 | Das Beispiel aus #1143: Formular `TKundenForm` mit `procedure Loaded; override;` und Rumpf `inherited Loaded;` | Hinweis `override-only-inherited` am Namen `Loaded` im Rumpf: „TKundenForm.Loaded ruft nur inherited auf und kann entfallen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| OE2 | Alt+Enter, „Methode entfernen“ | Deklaration und Rumpf verschwinden samt `///`-Kommentaren und der Leerzeile dahinter; ein Undo-Schritt; das Projekt übersetzt (**Abnahme**) |
+| OE3 | `procedure Lauf(A, B: Integer); override;` mit `inherited;`, `inherited Lauf(A, B);` bzw. `function Wert(X: Integer): Integer; override;` mit `Result := inherited Wert(X);` | Je eine Meldung |
+| OE4 | `inherited Lauf(B, A)`, eine zweite Anweisung, eine lokale Variable, ein Kommentar oder `{$IFDEF}` im Rumpf, Methode im Abschnitt `public` statt `protected` wie im Vorfahr, `[Weak]` davor, `final` oder `deprecated` dahinter, Vorfahr aus einer nicht indizierten Unit | Keine Meldung (**Abnahme**) |
+| OE5 | `"override-only-inherited": "off"` bzw. `exclude`; Seite Prüfregeln › Stil | Keine Meldung; die Regel steht mit Schalter und Schweregrad in der Gruppe |
+
+## inherited ohne Methode im Vorfahr (#1144)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IO1 | Das Beispiel aus #1144: `TImport = class(TBasis)` mit neuer Methode `Vorbereiten`, Rumpf `inherited; FZeilen.Clear;`; TBasis hat kein Vorbereiten | Hinweis `inherited-without-ancestor` an `inherited`: „Kein Vorfahr von TImport hat Vorbereiten: inherited tut nichts. Fehlt override?“ (**Abnahme**) |
+| IO2 | Alt+Enter, „inherited entfernen“ | Die Zeile `inherited;` verschwindet, `FZeilen.Clear;` bleibt; ein Undo-Schritt (**Abnahme**) |
+| IO3 | `inherited;` in einem if-Zweig | Meldung ohne Schnellkorrektur |
+| IO4 | Message-Handler (`message WM_PAINT`), Konstruktor, Destruktor, `class procedure`, Methode mit `override`, TBasis mit gleichnamiger (auch statischer) Methode, Vorfahr aus einer nicht indizierten Unit, `inherited;` in einer anonymen Methode | Keine Meldung (**Abnahme**) |
+| IO5 | TBasis in einer anderen Unit des Projekts, einmal mit, einmal ohne `Vorbereiten` | Mit: keine Meldung; ohne: Meldung wie IO1 |
+| IO6 | `"inherited-without-ancestor": "off"` bzw. `exclude`; Seite Prüfregeln › Stil | Keine Meldung; die Regel steht in der Gruppe |
