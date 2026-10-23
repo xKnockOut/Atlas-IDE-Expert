@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2019] of string = (
+  Lines: array[0..2025] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1236,6 +1236,15 @@ const
       'eg und „IfThen durch bedingten Ausdruck ersetzen“ (IfThen wertet beide Zweige aus). Muss das Projekt mit Delphi 12 oder älter übersetzen, gibt es nur den Rückweg; vorhandene Bedingungsausdrücke meldet' +
       ' dann die Regel conditional-expression-version.",',
     '          "x-issue": "#684"',
+    '        },',
+    '        "nestedRoutine": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen zwischen lokaler Routine und Methode: „In private Methode umwandeln“ bzw. „Aus Routine herauslösen“ auf dem Kopf einer lokalen Routine (genutzte Variablen und P' +
+      'arameter der äußeren Routine werden Parameter, var beim Schreiben, const bei Strings, Records und Interfaces; Konstanten wandern mit), „Als lokale Routine einbetten“ bzw. „In lokale Routine umwandeln“' +
+      ' auf einer privaten, nicht virtuellen Methode bzw. einer freien Routine der Implementierung mit genau einem Aufruf, wahlweise ohne durchgereichte Parameter. Jede Aktion zeigt vorher die neue Signatur ' +
+      'und die Zahl der geänderten Aufrufe. Liegt die lokale Routine in einer anderen, gibt es statt der Aktion einen Hinweis.",',
+    '          "x-issue": "#663"',
     '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',

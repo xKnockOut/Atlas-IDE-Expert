@@ -178,7 +178,7 @@ end;
 class function TLspCodeActions.ActionToJson(const AUri: string; const AAction: TCodeAction): TJSONObject;
 var
   FileEdits: TFileTextEdits;
-  Changes, WorkspaceEdit, Diagnostic, Command: TJSONObject;
+  Changes, WorkspaceEdit, Diagnostic, Command, Data: TJSONObject;
   Diagnostics, Arguments: TJSONArray;
   Argument: string;
 begin
@@ -206,9 +206,19 @@ begin
   end;
   if AAction.IsPreferred then
     Result.AddPair('isPreferred', TJSONBool.Create(True));
-  // Kennung für Clients, die eine bestimmte Aktion suchen (#621).
-  if AAction.Tag <> '' then
-    Result.AddPair('data', TJSONObject.Create(TJSONPair.Create('tag', AAction.Tag)));
+  // Kennung für Clients, die eine bestimmte Aktion suchen (#621), Vorschau vor dem Übernehmen (#663).
+  if (AAction.Tag <> '') or (AAction.Preview <> '') then
+  begin
+    Data := TJSONObject.Create;
+    if AAction.Tag <> '' then
+      Data.AddPair('tag', AAction.Tag);
+    if AAction.Preview <> '' then
+      Data.AddPair('preview', AAction.Preview);
+    Result.AddPair('data', Data);
+  end;
+  // Hinweis statt Aktion (LSP 3.16 disabled).
+  if AAction.Disabled <> '' then
+    Result.AddPair('disabled', TJSONObject.Create(TJSONPair.Create('reason', AAction.Disabled)));
   if AAction.RuleId <> '' then
   begin
     Diagnostic := TJSONObject.Create;

@@ -1157,6 +1157,12 @@
           "description": "Code-Aktionen zwischen if-Anweisung und Bedingungsausdruck (Delphi 13: X := if C then A else B): „In bedingten Ausdruck umwandeln“ auf einem if mit else, dessen Zweige an dasselbe Ziel zuweisen, Exit aufrufen oder denselben Aufruf mit genau einem anderen Argument ohne Seiteneffekte machen (bis zu zwei Bedingungen, verträgliche Typen), „In if-Anweisung umwandeln“ als Rückweg und „IfThen durch bedingten Ausdruck ersetzen“ (IfThen wertet beide Zweige aus). Muss das Projekt mit Delphi 12 oder älter übersetzen, gibt es nur den Rückweg; vorhandene Bedingungsausdrücke meldet dann die Regel conditional-expression-version.",
           "x-issue": "#684"
         },
+        "nestedRoutine": {
+          "type": "boolean",
+          "default": true,
+          "description": "Code-Aktionen zwischen lokaler Routine und Methode: „In private Methode umwandeln“ bzw. „Aus Routine herauslösen“ auf dem Kopf einer lokalen Routine (genutzte Variablen und Parameter der äußeren Routine werden Parameter, var beim Schreiben, const bei Strings, Records und Interfaces; Konstanten wandern mit), „Als lokale Routine einbetten“ bzw. „In lokale Routine umwandeln“ auf einer privaten, nicht virtuellen Methode bzw. einer freien Routine der Implementierung mit genau einem Aufruf, wahlweise ohne durchgereichte Parameter. Jede Aktion zeigt vorher die neue Signatur und die Zahl der geänderten Aufrufe. Liegt die lokale Routine in einer anderen, gibt es statt der Aktion einen Hinweis.",
+          "x-issue": "#663"
+        },
         "tryFinally": {
           "type": "boolean",
           "default": true,

@@ -644,6 +644,8 @@ begin
   // #684: if-Anweisung und Bedingungsausdruck.
   Assert.IsTrue(Parse('{}', Issues).Refactoring.ConditionalExpression);
   Assert.IsFalse(Parse('{"refactoring": {"conditionalExpression": false}}', Issues).Refactoring.ConditionalExpression);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.NestedRoutine);
+  Assert.IsFalse(Parse('{"refactoring": {"nestedRoutine": false}}', Issues).Refactoring.NestedRoutine);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"refactoring": {"propertyFromAccessorsPrefixes": "Get", "propertyFromAccessorsReplaceCalls": "ja", ' +
     '"propertyFromAccessorsSection": "private", "propertyFromAccessorsHideAccessors": "public"}}', Issues);

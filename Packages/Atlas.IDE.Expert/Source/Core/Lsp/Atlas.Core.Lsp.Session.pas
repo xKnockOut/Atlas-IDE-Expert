@@ -72,6 +72,8 @@ type
     ArgumentsJson: string;
     /// <summary>Kennung aus data.tag, z. B. "uses.remove" (#621); '' ohne.</summary>
     Tag: string;
+    /// <summary>Vorschau aus data.preview (#663): vor dem Übernehmen zeigen; '' ohne.</summary>
+    Preview: string;
     /// <summary>Regel des behobenen Treffers aus diagnostics[0].code (#909); '' ohne.</summary>
     Rule: string;
     /// <summary>Aus einem Eintrag der Antwort: CodeAction oder Command; False bei anderem.</summary>
@@ -904,6 +906,7 @@ begin
   AAction.Disabled := Item.GetValue<string>('disabled.reason', '');
   AAction.Edit := TLspWorkspaceEdit.FromJson(Item.GetValue('edit'));
   AAction.Tag := Item.GetValue<string>('data.tag', '');
+  AAction.Preview := Item.GetValue<string>('data.preview', '');
   if Item.TryGetValue<TJSONArray>('diagnostics', Arguments) and (Arguments.Count > 0) and
     (Arguments.Items[0] is TJSONObject) then
     AAction.Rule := TJSONObject(Arguments.Items[0]).GetValue<string>('code', '');
