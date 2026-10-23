@@ -180,6 +180,8 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `architecture.includeLibraryUnits` | global (settings.json) | boolean | `false` |  | Units aus RTL, VCL und den Bibliothekspfaden mitzählen; aus = nur Units der Projekte und ihrer Suchpfade. |
 | `architecture.centralUnits` | global (settings.json) | integer | `15` | 5…100 | Wie viele zentrale Units Fenster, Bericht und get_architecture zeigen. |
 | `architecture.exclude` | Projekt (atlas.json) | array<string> | `` | z. B. `["Tests/**","*.Tests"]` | Units, die nicht in die Auswertung eingehen: Glob-Muster auf den Unit-Namen oder den Pfad relativ zum Projekt (*, **, ?). |
+| `architecture.baseline` | Projekt (atlas.json) | string | `""` | z. B. `"architektur-main.json"` | Gespeicherter Architekturstand (JSON aus AtlasServer --architecture <Datei.json> oder „Stand speichern …“), Pfad relativ zum Projekt: Fenster, Bericht und get_architecture vergleichen automatisch damit. Leer = kein Vergleich. |
+| `architecture.failOn` | Projekt (atlas.json) | array<string> | `"newCycle"` |  | Welche Abweichungen AtlasServer --compare als Fehler meldet (Exitcode 1), wenn --fail-on fehlt: neue Zyklen, neue Querverbindungen, Units mit Teilsystemwechsel, zentrale Units mit stark gewachsener Abhängigkeit. |
 
 ## diagnostics
 

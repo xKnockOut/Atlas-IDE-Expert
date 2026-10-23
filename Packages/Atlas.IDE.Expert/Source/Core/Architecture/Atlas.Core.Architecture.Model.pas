@@ -11,8 +11,15 @@
 //   über uses wie die HTML-Karte.
 // - TAtlasArchitecturePalette: Farben der Teilsysteme wie in der HTML-Karte,
 //   je für helle und dunkle Themen.
+// - Comparison: Vergleich mit einem gespeicherten Stand (#1121) aus
+//   "comparison" (Daten aus TArchitectureComparer.Json), "baseline" und
+//   "comparisonError" der Antwort: Abschnitte mit Einträgen (Namen statt
+//   Nummern, je mit der Unit des aktuellen Stands zum Springen), dazu die
+//   geänderten Kanten für die Karte (neue als Nummern in Edges, entfernte
+//   zwischen Units, die es noch gibt).
 // - TAtlasArchitectureCommands baut die Argumente der Befehle
-//   atlas.architecture und atlas.architecture.saveReport.
+//   atlas.architecture (mit "compareWith" bzw. "compare": false) und
+//   atlas.architecture.saveReport (.json: Stand speichern).
 // - TAtlasArchitectureView rechnet die Karte zwischen Lage (Koordinaten des
 //   Servers) und Bildpunkten um: Einpassen, Zoomen um einen Punkt,
 //   Verschieben, Treffer einer Unit.
@@ -102,7 +109,56 @@ type
 
 {$SCOPEDENUMS ON}
   TAtlasArchColumn = (Name, Subsystem, Direct, Total, Uses_, Role);
+  /// <summary>Abschnitte des Vergleichs (#1121) in der Reihenfolge der Anzeige.</summary>
+  TAtlasArchChangeKind = (NewCycles, RemovedCycles, NewCrossLinks, RemovedCrossLinks, NewEdges, RemovedEdges, Moves,
+    Growth, NewUnits, RemovedUnits);
 {$SCOPEDENUMS OFF}
+
+  /// <summary>Eintrag eines Abschnitts im Vergleich (#1121).</summary>
+  TAtlasArchChange = record
+    /// <summary>Unit, „A → B“ (Kanten) oder der Weg eines Zyklus.</summary>
+    Text: string;
+    /// <summary>Kanten und Wechsel: Teilsystem vorher bzw. nachher; Wachstum: „gesamt abhängig“ vorher und
+    /// nachher; sonst ''.</summary>
+    From: string;
+    To_: string;
+    /// <summary>Kanten: "interface" oder "implementation"; Zyklen: "interface" bei Zyklen nur über interface.
+    /// </summary>
+    Section: string;
+    /// <summary>Querverbindungen: "rare" oder "againstDirection".</summary>
+    Reason: string;
+    /// <summary>Unit des aktuellen Stands zum Springen (Quelle bzw. erste Unit), -1 ohne (entfernte Unit).
+    /// </summary>
+    Unit_: Integer;
+  end;
+
+  TAtlasArchChangeSection = record
+    Kind: TAtlasArchChangeKind;
+    Items: TArray<TAtlasArchChange>;
+  end;
+
+  TAtlasArchComparison = record
+    /// <summary>Pfad des gespeicherten Stands; '' ohne Vergleich.</summary>
+    Baseline: string;
+    /// <summary>Meldung, wenn der Stand nicht lesbar war (dann ohne Abschnitte).</summary>
+    Error: string;
+    BaselineTitle: string;
+    BaselineUnits: Integer;
+    BaselineEdges: Integer;
+    /// <summary>Arten aus architecture.failOn, die vorkommen ("newCycle", "newCrossLink", …).</summary>
+    Failed: TArray<string>;
+    /// <summary>Alle Abschnitte in der Reihenfolge von TAtlasArchChangeKind, auch leere.</summary>
+    Sections: TArray<TAtlasArchChangeSection>;
+    /// <summary>Neue uses-Kanten (Nummern in Edges).</summary>
+    AddedEdges: TArray<Integer>;
+    /// <summary>Entfernte uses-Kanten zwischen Units, die es noch gibt.</summary>
+    DroppedEdges: TArray<TAtlasArchEdge>;
+    /// <summary>Ein Stand wurde gelesen und verglichen.</summary>
+    function Present: Boolean;
+    /// <summary>Einträge aller Abschnitte.</summary>
+    function Count: Integer;
+    function Section(AKind: TAtlasArchChangeKind): TArray<TAtlasArchChange>;
+  end;
 
   TAtlasArchitectureModel = record
   public const
@@ -128,6 +184,8 @@ type
     Outliers: TArray<TAtlasArchOutlier>;
     Cycles: TArray<TAtlasArchCycle>;
     CrossLinks: TArray<TAtlasArchLink>;
+    /// <summary>Vergleich mit einem gespeicherten Stand (#1121), leer ohne.</summary>
+    Comparison: TAtlasArchComparison;
     /// <summary>Antwort von atlas.architecture lesen. AEnabled: false bei architecture.enabled = false (dann
     /// True ohne Daten). False bei unlesbarer Antwort oder fremdem Format.</summary>
     class function Parse(const AAnswer: string; out AModel: TAtlasArchitectureModel;
@@ -166,10 +224,18 @@ type
     SaveCommand = 'atlas.architecture.saveReport';
   public
     /// <summary>[uri, {"scope", "includeLibraryUnits", "format": "json"}] für atlas.architecture.</summary>
-    class function Arguments(const AProjectUri, AScope: string; AIncludeLibrary: Boolean): string; static;
-    /// <summary>[uri, Datei, {"scope", "includeLibraryUnits"}] für atlas.architecture.saveReport.</summary>
+    class function Arguments(const AProjectUri, AScope: string; AIncludeLibrary: Boolean): string; overload; static;
+    /// <summary>Wie oben mit Vergleich (#1121): ACompareWith (Pfad eines gespeicherten Stands) als "compareWith";
+    /// leer und ohne ACompare "compare": false (auch nicht mit architecture.baseline vergleichen).</summary>
+    class function Arguments(const AProjectUri, AScope: string; AIncludeLibrary: Boolean; const ACompareWith: string;
+      ACompare: Boolean): string; overload; static;
+    /// <summary>[uri, Datei, {"scope", "includeLibraryUnits"}] für atlas.architecture.saveReport; Datei .json
+    /// speichert den Stand für den Vergleich.</summary>
     class function SaveArguments(const AProjectUri, AFileName, AScope: string;
-      AIncludeLibrary: Boolean): string; static;
+      AIncludeLibrary: Boolean): string; overload; static;
+    /// <summary>Wie oben mit Vergleich wie Arguments (Berichte bekommen den Abschnitt „Vergleich“).</summary>
+    class function SaveArguments(const AProjectUri, AFileName, AScope: string; AIncludeLibrary: Boolean;
+      const ACompareWith: string; ACompare: Boolean): string; overload; static;
     /// <summary>Gespeicherte Datei aus der Antwort von saveReport ({"file", "units"}); '' bei Fehler.</summary>
     class function SavedFile(const AAnswer: string): string; static;
   end;
@@ -378,6 +444,179 @@ begin
   Result := True;
 end;
 
+function NamesOf(const AItems: TJSONArray): TArray<string>;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  if AItems = nil then
+    Exit;
+  for Index := 0 to AItems.Count - 1 do
+    if AItems.Items[Index] is TJSONString then
+      Result := Result + [AItems.Items[Index].Value];
+end;
+
+function ChangeOf(const AModel: TAtlasArchitectureModel; const AText, AUnit: string): TAtlasArchChange;
+begin
+  Result := Default(TAtlasArchChange);
+  Result.Text := AText;
+  Result.Unit_ := AModel.IndexOf(AUnit);
+end;
+
+/// <summary>Einträge eines Abschnitts aus "comparison"; fremde Einträge fallen weg.</summary>
+function ChangesOf(const AModel: TAtlasArchitectureModel; const AData: TJSONObject;
+  AKind: TAtlasArchChangeKind): TArray<TAtlasArchChange>;
+const
+  Names: array[TAtlasArchChangeKind] of string = ('newCycles', 'removedCycles', 'newCrossLinks', 'removedCrossLinks',
+    'newEdges', 'removedEdges', 'moves', 'growth', 'newUnits', 'removedUnits');
+var
+  Items: TJSONArray;
+  Index: Integer;
+  Item: TJSONObject;
+  Change: TAtlasArchChange;
+  Members: TArray<string>;
+  Name: string;
+begin
+  Result := nil;
+  Items := ArrayOf(AData, Names[AKind]);
+  if Items = nil then
+    Exit;
+  if AKind in [TAtlasArchChangeKind.NewUnits, TAtlasArchChangeKind.RemovedUnits] then
+  begin
+    for Name in NamesOf(Items) do
+      Result := Result + [ChangeOf(AModel, Name, Name)];
+    Exit;
+  end;
+  for Index := 0 to Items.Count - 1 do
+  begin
+    if not (Items.Items[Index] is TJSONObject) then
+      Continue;
+    Item := TJSONObject(Items.Items[Index]);
+    case AKind of
+      TAtlasArchChangeKind.NewCycles, TAtlasArchChangeKind.RemovedCycles:
+        begin
+          Members := NamesOf(ArrayOf(Item, 'units'));
+          if Length(Members) = 0 then
+            Continue;
+          Change := ChangeOf(AModel, string.Join(' → ', Members) + ' → ' + Members[0], Members[0]);
+          if FlagOf(Item, 'interfaceOnly') then
+            Change.Section := 'interface';
+        end;
+      TAtlasArchChangeKind.Moves:
+        begin
+          Change := ChangeOf(AModel, TextOf(Item, 'unit'), TextOf(Item, 'unit'));
+          Change.From := TextOf(Item, 'from');
+          Change.To_ := TextOf(Item, 'to');
+        end;
+      TAtlasArchChangeKind.Growth:
+        begin
+          Change := ChangeOf(AModel, TextOf(Item, 'unit'), TextOf(Item, 'unit'));
+          Change.From := IntToStr(IntOf(Item, 'before', 0));
+          Change.To_ := IntToStr(IntOf(Item, 'after', 0));
+        end;
+    else
+      Change := ChangeOf(AModel, TextOf(Item, 'source') + ' → ' + TextOf(Item, 'target'), TextOf(Item, 'source'));
+      Change.From := TextOf(Item, 'from');
+      Change.To_ := TextOf(Item, 'to');
+      Change.Section := TextOf(Item, 'section');
+      Change.Reason := TextOf(Item, 'reason');
+    end;
+    Result := Result + [Change];
+  end;
+end;
+
+/// <summary>Kanten ([Quelle, Ziel, "i"/"m"]) unter AName, deren Units es im aktuellen Stand gibt.</summary>
+function MapEdgesOf(const AModel: TAtlasArchitectureModel; const AData: TJSONObject;
+  const AName: string): TArray<TAtlasArchEdge>;
+var
+  Items, Pair: TJSONArray;
+  Index: Integer;
+  Edge: TAtlasArchEdge;
+begin
+  Result := nil;
+  Items := ArrayOf(AData, AName);
+  if Items = nil then
+    Exit;
+  for Index := 0 to Items.Count - 1 do
+  begin
+    if not (Items.Items[Index] is TJSONArray) then
+      Continue;
+    Pair := TJSONArray(Items.Items[Index]);
+    if Pair.Count < 3 then
+      Continue;
+    Edge.Source := AModel.IndexOf(Pair.Items[0].Value);
+    Edge.Target := AModel.IndexOf(Pair.Items[1].Value);
+    Edge.Interface_ := Pair.Items[2].Value = 'i';
+    if (Edge.Source >= 0) and (Edge.Target >= 0) then
+      Result := Result + [Edge];
+  end;
+end;
+
+function ComparisonOf(const AModel: TAtlasArchitectureModel; const AAnswer: TJSONObject): TAtlasArchComparison;
+var
+  Data, Baseline: TJSONObject;
+  Kind: TAtlasArchChangeKind;
+  Section: TAtlasArchChangeSection;
+  Edge: TAtlasArchEdge;
+  Index: Integer;
+begin
+  Result := Default(TAtlasArchComparison);
+  Result.Error := TextOf(AAnswer, 'comparisonError');
+  if not (AAnswer.GetValue('comparison') is TJSONObject) then
+    Exit;
+  Result.Baseline := TextOf(AAnswer, 'baseline');
+  Data := TJSONObject(AAnswer.GetValue('comparison'));
+  if Data.GetValue('baseline') is TJSONObject then
+  begin
+    Baseline := TJSONObject(Data.GetValue('baseline'));
+    Result.BaselineTitle := TextOf(Baseline, 'title');
+    Result.BaselineUnits := IntOf(Baseline, 'units', 0);
+    Result.BaselineEdges := IntOf(Baseline, 'edges', 0);
+  end;
+  Result.Failed := NamesOf(ArrayOf(Data, 'failed'));
+  for Kind := Low(TAtlasArchChangeKind) to High(TAtlasArchChangeKind) do
+  begin
+    Section.Kind := Kind;
+    Section.Items := ChangesOf(AModel, Data, Kind);
+    Result.Sections := Result.Sections + [Section];
+  end;
+  // Neue Kanten stehen im aktuellen Stand: als Nummern in Edges, damit die Karte sie wie die übrigen zeichnet.
+  for Edge in MapEdgesOf(AModel, Data, 'addedEdges') do
+    for Index := 0 to High(AModel.Edges) do
+      if (AModel.Edges[Index].Source = Edge.Source) and (AModel.Edges[Index].Target = Edge.Target) then
+      begin
+        Result.AddedEdges := Result.AddedEdges + [Index];
+        Break;
+      end;
+  Result.DroppedEdges := MapEdgesOf(AModel, Data, 'droppedEdges');
+end;
+
+{ TAtlasArchComparison }
+
+function TAtlasArchComparison.Present: Boolean;
+begin
+  Result := (Baseline <> '') and (Error = '') and (Length(Sections) > 0);
+end;
+
+function TAtlasArchComparison.Count: Integer;
+var
+  Item: TAtlasArchChangeSection;
+begin
+  Result := 0;
+  for Item in Sections do
+    Inc(Result, Length(Item.Items));
+end;
+
+function TAtlasArchComparison.Section(AKind: TAtlasArchChangeKind): TArray<TAtlasArchChange>;
+var
+  Item: TAtlasArchChangeSection;
+begin
+  Result := nil;
+  for Item in Sections do
+    if Item.Kind = AKind then
+      Exit(Item.Items);
+end;
+
 { TAtlasArchitectureModel }
 
 class function TAtlasArchitectureModel.Parse(const AAnswer: string; out AModel: TAtlasArchitectureModel;
@@ -539,6 +778,7 @@ begin
     for Index := 0 to High(AModel.Cycles) do
       for Inner in AModel.Cycles[Index].Units do
         AModel.Units[Inner].OnCycle := True;
+    AModel.Comparison := ComparisonOf(AModel, Answer);
     Result := True;
   finally
     Root.Free;
@@ -744,8 +984,22 @@ begin
   Result.AddPair('includeLibraryUnits', TJSONBool.Create(AIncludeLibrary));
 end;
 
+procedure AddComparison(AOptions: TJSONObject; const ACompareWith: string; ACompare: Boolean);
+begin
+  if ACompareWith <> '' then
+    AOptions.AddPair('compareWith', ACompareWith)
+  else if not ACompare then
+    AOptions.AddPair('compare', TJSONBool.Create(False));
+end;
+
 class function TAtlasArchitectureCommands.Arguments(const AProjectUri, AScope: string;
   AIncludeLibrary: Boolean): string;
+begin
+  Result := Arguments(AProjectUri, AScope, AIncludeLibrary, '', True);
+end;
+
+class function TAtlasArchitectureCommands.Arguments(const AProjectUri, AScope: string; AIncludeLibrary: Boolean;
+  const ACompareWith: string; ACompare: Boolean): string;
 var
   Items: TJSONArray;
   Option: TJSONObject;
@@ -755,6 +1009,7 @@ begin
     Items.Add(AProjectUri);
     Option := Options(AScope, AIncludeLibrary);
     Option.AddPair('format', 'json');
+    AddComparison(Option, ACompareWith, ACompare);
     Items.AddElement(Option);
     Result := Items.ToJSON;
   finally
@@ -764,14 +1019,23 @@ end;
 
 class function TAtlasArchitectureCommands.SaveArguments(const AProjectUri, AFileName, AScope: string;
   AIncludeLibrary: Boolean): string;
+begin
+  Result := SaveArguments(AProjectUri, AFileName, AScope, AIncludeLibrary, '', True);
+end;
+
+class function TAtlasArchitectureCommands.SaveArguments(const AProjectUri, AFileName, AScope: string;
+  AIncludeLibrary: Boolean; const ACompareWith: string; ACompare: Boolean): string;
 var
   Items: TJSONArray;
+  Option: TJSONObject;
 begin
   Items := TJSONArray.Create;
   try
     Items.Add(AProjectUri);
     Items.Add(AFileName);
-    Items.AddElement(Options(AScope, AIncludeLibrary));
+    Option := Options(AScope, AIncludeLibrary);
+    AddComparison(Option, ACompareWith, ACompare);
+    Items.AddElement(Option);
     Result := Items.ToJSON;
   finally
     Items.Free;

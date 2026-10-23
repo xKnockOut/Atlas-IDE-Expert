@@ -14,6 +14,8 @@ type
     [Test]
     procedure ReadsArchitectureSettings;
     [Test]
+    procedure ReadsArchitectureComparisonSettings;
+    [Test]
     procedure ReadsAllSettings;
     [Test]
     procedure EmptyObjectGivesDefaults;
@@ -159,6 +161,34 @@ begin
   Assert.AreEqual(1252, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{"encoding": "cp1252"}',
     Issues).DefaultEncoding);
   Assert.AreEqual(1250, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{}', Issues).DefaultEncoding);
+end;
+
+procedure TConfigurationParserTests.ReadsArchitectureComparisonSettings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // Architekturvergleich (#1121)
+  Settings := Parse('{}', Issues);
+  Assert.AreEqual('', Settings.ArchitectureBaseline);
+  Assert.AreEqual('newCycle', string.Join(',', Settings.ArchitectureFailOn));
+  Settings := Parse('{"architecture": {"baseline": " Stand/main.json ", "failOn": ["newCycle", "centralGrowth"]}}',
+    Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('Stand/main.json', Settings.ArchitectureBaseline);
+  Assert.AreEqual('newCycle,centralGrowth', string.Join(',', Settings.ArchitectureFailOn));
+  Settings := Parse('{"architecture": {"failOn": []}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual(0, Integer(Length(Settings.ArchitectureFailOn)));
+  Settings := Parse('{"architecture": {"baseline": 3, "failOn": ["newCycle", "error"]}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Assert.AreEqual('newCycle', string.Join(',', Settings.ArchitectureFailOn));
+  Parse('{"architecture": {"failOn": "newCycle"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{}', '{"architecture": {"baseline": "a.json", ' +
+    '"failOn": ["subsystemChange"]}}', Issues);
+  Assert.AreEqual('a.json', Settings.ArchitectureBaseline);
+  Assert.AreEqual('subsystemChange', string.Join(',', Settings.ArchitectureFailOn));
 end;
 
 procedure TConfigurationParserTests.ReadsArchitectureSettings;

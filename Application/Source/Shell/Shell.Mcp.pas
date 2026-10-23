@@ -82,6 +82,7 @@ uses
   Atlas.Common.Architecture.Overview,
   Atlas.Common.Architecture.Service,
   Atlas.Common.Architecture.Report,
+  Atlas.Common.Architecture.Comparison,
   Atlas.Common.Projects.Contract,
   System.Generics.Collections,
   Shell.Platform,
@@ -422,8 +423,10 @@ begin
 end;
 
 type
-  /// <summary>Text der Architekturübersicht (#1118) zu Abschnitt bzw. Unit ('' = Abschnitt).</summary>
-  TMcpArchitectureFunc = reference to function(ASection: TArchitectureSection; const AUnit: string): string;
+  /// <summary>Text der Architekturübersicht (#1118) zu Abschnitt bzw. Unit ('' = Abschnitt); mit ACompareWith
+  /// (absoluter Pfad eines gespeicherten Stands, #1121) der Text des Vergleichs.</summary>
+  TMcpArchitectureFunc = reference to function(ASection: TArchitectureSection;
+    const AUnit, ACompareWith: string): string;
 
 procedure RegisterTools(AServer: TMcpServer; ATools: TMcpIndexTools; ACode: TMcpCodeTools;
   AWorkspace: TShellWorkspace; const ARoot: string; AGuard: TMcpPathGuard; AEdit: TMcpEditTools;
@@ -673,19 +676,27 @@ begin
   AServer.AddTool('get_architecture',
     'Architekturübersicht (#1118) aus dem uses-Graphen: Teilsysteme (Gruppen eng verbundener Units), zentrale ' +
     'Units, Zyklen und Querverbindungen zwischen Teilsystemen, je mit Datei:Zeile der uses-Einträge. Mit "unit" ' +
-    'der Steckbrief einer Unit (Teilsystem, Abhängigkeiten, Zyklen, Ausreißer). Umfang und Bibliotheks-Units ' +
-    'aus architecture.* in atlas.json.',
+    'der Steckbrief einer Unit (Teilsystem, Abhängigkeiten, Zyklen, Ausreißer). Mit "compareWith" der Vergleich ' +
+    'mit einem gespeicherten Stand (#1121): neue und entfernte Zyklen, Querverbindungen und uses-Kanten zwischen ' +
+    'Teilsystemen, Teilsystemwechsel, gewachsene zentrale Units, neue und entfernte Units. Umfang und ' +
+    'Bibliotheks-Units aus architecture.* in atlas.json.',
     '{"type":"object","properties":{' +
       '"section":{"type":"string","enum":["overview","central","subsystems","cycles","crossLinks"],' +
         '"description":"Abschnitt; Vorgabe overview"},' +
-      '"unit":{"type":"string","description":"Steckbrief dieser Unit statt eines Abschnitts"}}}',
+      '"unit":{"type":"string","description":"Steckbrief dieser Unit statt eines Abschnitts"},' +
+      '"compareWith":{"type":"string","description":"Gespeicherter Stand (JSON aus AtlasServer --architecture ' +
+        '<Datei.json>), Pfad relativ zum Projekt: liefert die Abschnitte des Vergleichs"}}}',
     function(const AArguments: TJSONObject): string
     var
       Section: TArchitectureSection;
+      CompareWith: string;
     begin
       if not TArchitectureReport.ParseSection(TMcpServer.OptionalString(AArguments, 'section'), Section) then
         raise EMcpToolError.Create('"section" ist overview, central, subsystems, cycles oder crossLinks');
-      Result := AArchitecture(Section, TMcpServer.OptionalString(AArguments, 'unit'));
+      CompareWith := TMcpServer.OptionalString(AArguments, 'compareWith');
+      if CompareWith <> '' then
+        CompareWith := AGuard.Resolve(CompareWith);
+      Result := AArchitecture(Section, TMcpServer.OptionalString(AArguments, 'unit'), CompareWith);
     end);
   AServer.AddTool('get_todos',
     'TODO-Übersicht (#68): Kommentare // TODO, // FIXME und das Format der IDE-To-Do-Liste ' +
@@ -1031,11 +1042,14 @@ begin
     Server.Instructions := 'Delphi-Projekt in ' + Root + '. Für Fragen zu Typen, Units und Formularen ' +
       'zuerst diese Werkzeuge nutzen statt Quelldateien vollständig zu lesen.';
     RegisterTools(Server, Tools, Code, Workspace, Root, Guard, Edit,
-      function(ASection: TArchitectureSection; const AUnit: string): string
+      function(ASection: TArchitectureSection; const AUnit, ACompareWith: string): string
       var
         Settings: TServerSettings;
         Request: TArchitectureRequest;
         Overview: TArchitectureOverview;
+        Comparison: TArchitectureComparison;
+        FailOn: TArchitectureFailKinds;
+        Error: string;
       begin
         Settings := Workspace.Configuration.Settings;
         if not Settings.ArchitectureEnabled then
@@ -1052,7 +1066,15 @@ begin
         if Length(Request.Files) = 0 then
           raise EMcpToolError.Create('Kein Projekt geladen');
         Overview := Architecture.Overview(Request);
-        if AUnit <> '' then
+        if ACompareWith <> '' then
+        begin
+          if not TArchitectureComparer.CompareWithFile(ACompareWith, Overview, Comparison, Error) then
+            raise EMcpToolError.Create(Error);
+          if not TArchitectureComparer.ParseKinds(Settings.ArchitectureFailOn, FailOn, Error) then
+            FailOn := TArchitectureComparer.DefaultFailOn;
+          Result := TArchitectureComparer.Text(Comparison, FailOn, TArchitectureReport.TextLimit);
+        end
+        else if AUnit <> '' then
           Result := TArchitectureReport.UnitText(Overview, AUnit)
         else
           Result := TArchitectureReport.Text(Overview, ASection, TArchitectureReport.TextLimit);

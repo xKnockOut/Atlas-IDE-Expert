@@ -28,6 +28,8 @@ type
     procedure SameOverviewSameReports;
     [Test]
     procedure TemplateHasPlaceholdersOnce;
+    [Test]
+    procedure ReportsCarryComparison;
   end;
 
 implementation
@@ -43,6 +45,8 @@ uses
   Atlas.Common.Architecture.Layout,
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.MapTemplate,
+  Atlas.Common.Architecture.Snapshot,
+  Atlas.Common.Architecture.Comparison,
   Atlas.Common.Architecture.UsesGraph.Tests;
 
 /// <summary>Drei Namensräume wie in den Übersichtstests, dazu ein Zyklus über implementation in Data und eine
@@ -165,6 +169,42 @@ begin
   Assert.Contains(Html, '"name":"App.Core.Base"');
   Assert.Contains(Html, 'Weg zeigen');
   Assert.Contains(Html, 'Zyklen markieren');
+end;
+
+procedure TArchitectureReportTests.ReportsCarryComparison;
+var
+  Data, Older: TArchitectureOverview;
+  Comparison: TArchitectureComparison;
+  Text: string;
+  Root: TJSONValue;
+begin
+  // Vergleich (#1121): Der alte Stand hatte den Zyklus in Data noch nicht.
+  Data := Sample;
+  Older := Data;
+  Older.Cycles := nil;
+  Comparison := TArchitectureComparer.Compare(TArchitectureSnapshots.FromOverview(Older),
+    TArchitectureSnapshots.FromOverview(Data));
+  Assert.AreEqual(1, Integer(Length(Comparison.NewCycles)));
+  Text := TArchitectureReport.Markdown(Data, Comparison);
+  Assert.Contains(Text, '- [Vergleich](#vergleich)');
+  Assert.Contains(Text, '## Vergleich');
+  Assert.Contains(Text, '### Neue Zyklen (1)');
+  Assert.DoesNotContain(TArchitectureReport.Markdown(Data), '## Vergleich');
+  Text := TArchitectureReport.Json(Data, TArchitectureLayouter.Compute(Data), Comparison,
+    TArchitectureComparer.DefaultFailOn);
+  Root := TJSONObject.ParseJSONValue(Text);
+  try
+    Assert.IsTrue(Root is TJSONObject);
+    Assert.AreEqual(1, ((Root as TJSONObject).GetValue('comparison') as TJSONObject).GetValue<TJSONArray>(
+      'newCycles').Count);
+  finally
+    Root.Free;
+  end;
+  Text := TArchitectureReport.Html(Data, Comparison, TArchitectureComparer.DefaultFailOn);
+  Assert.Contains(Text, '"comparison":{"baseline":');
+  Assert.Contains(Text, 'id="vergleich"');
+  Assert.Contains(TArchitectureReport.ForFile(Data, 'bericht.htm', Comparison, []), '"comparison":');
+  Assert.Contains(TArchitectureReport.ForFile(Data, 'bericht.md', Comparison, []), '## Vergleich');
 end;
 
 procedure TArchitectureReportTests.TextSectionsAndLimit;

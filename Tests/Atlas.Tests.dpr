@@ -121,6 +121,8 @@ uses
   Atlas.Common.Architecture.Louvain.Tests in 'Common\Architecture\Atlas.Common.Architecture.Louvain.Tests.pas',
   Atlas.Common.Architecture.Overview.Tests in 'Common\Architecture\Atlas.Common.Architecture.Overview.Tests.pas',
   Atlas.Common.Architecture.Layout.Tests in 'Common\Architecture\Atlas.Common.Architecture.Layout.Tests.pas',
+  Atlas.Common.Architecture.Snapshot.Tests in 'Common\Architecture\Atlas.Common.Architecture.Snapshot.Tests.pas',
+  Atlas.Common.Architecture.Comparison.Tests in 'Common\Architecture\Atlas.Common.Architecture.Comparison.Tests.pas',
   Atlas.Common.Architecture.Report.Tests in 'Common\Architecture\Atlas.Common.Architecture.Report.Tests.pas',
   Atlas.Common.Architecture.Service.Tests in 'Common\Architecture\Atlas.Common.Architecture.Service.Tests.pas',
   Atlas.Common.Rules.Builtin.Todos.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.Tests.pas',

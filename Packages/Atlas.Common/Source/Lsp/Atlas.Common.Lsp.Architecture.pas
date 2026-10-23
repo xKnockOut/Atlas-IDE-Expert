@@ -9,18 +9,28 @@
 //           (Vorgabe aus den Einstellungen), "format": "json" (Vorgabe),
 //           "markdown", "html" oder "text", "section": overview, central,
 //           subsystems, cycles, crossLinks (nur "text"), "unit": Name
-//           (nur "text": Steckbrief)}
+//           (nur "text": Steckbrief), "compareWith": gespeicherter Stand
+//           (#1121, Pfad oder file-URI, relativ zum Projekt), "compare":
+//           false schaltet den Vergleich mit architecture.baseline ab}
 //   Antwort {"enabled": true, "root": Projektordner, "format": "json",
 //   "data": {…}} mit den Daten aus TArchitectureReport.Json (samt Lage der
 //   Karte; Pfade relativ zu "root"), sonst {"enabled": true, "root": …,
 //   "format": …, "text": "…"}; {"enabled": false} bei
 //   architecture.enabled = false.
+//   Vergleich (#1121) mit "compareWith", sonst mit architecture.baseline
+//   (außer "compare": false): "json" bekommt "comparison" (Daten aus
+//   TArchitectureComparer.Json) und "baseline" (Pfad des Stands),
+//   "markdown"/"html" den Abschnitt „Vergleich“, "text" den Text des
+//   Vergleichs statt eines Abschnitts. Fehlt der Stand oder ist er nicht
+//   lesbar, steht die Meldung in "comparisonError" (die Übersicht kommt
+//   trotzdem).
 // Befehl atlas.architecture (für das IDE-Fenster): Argumente [uri, Optionen]
 //   mit denselben Optionen wie params der Anfrage, Antwort wie oben.
 // Befehl atlas.architecture.saveReport: Argumente [uri, Datei, Optionen]
-//   schreibt den Bericht nach der Endung (.md Markdown, .html/.htm HTML) und
-//   liefert {"file": …, "units": n}; Optionen wie bei der Anfrage (scope,
-//   includeLibraryUnits).
+//   schreibt den Bericht nach der Endung (.md Markdown, .html/.htm HTML,
+//   .json den Stand für den Vergleich, #1121) und liefert {"file": …,
+//   "units": n}; Optionen wie bei der Anfrage (scope, includeLibraryUnits,
+//   compareWith, compare). Berichte vergleichen wie atlas.architecture.
 
 interface
 
@@ -30,7 +40,8 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Architecture.Overview,
-  Atlas.Common.Architecture.Service;
+  Atlas.Common.Architecture.Service,
+  Atlas.Common.Architecture.Comparison;
 
 type
   /// <summary>Anfrage und Einstellungen zum Arbeitsbereich von AFileName ('' = der einzige oder erste).
@@ -48,7 +59,8 @@ type
   private
     FService: TArchitectureService;
     FSourceFor: TLspArchitectureSourceFunc;
-    function OverviewFor(const AParams: TJSONObject; out AEnabled: Boolean; out ARoot: string): TArchitectureOverview;
+    function OverviewFor(const AParams: TJSONObject; out AEnabled: Boolean; out ARoot: string;
+      out ASettings: TServerSettings): TArchitectureOverview;
   public
     /// <summary>AService gehört dem Aufrufer.</summary>
     constructor Create(AService: TArchitectureService; const ASourceFor: TLspArchitectureSourceFunc);
@@ -71,7 +83,8 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Architecture.Layout,
-  Atlas.Common.Architecture.Report;
+  Atlas.Common.Architecture.Report,
+  Atlas.Common.Architecture.Snapshot;
 
 function StringOf(const AObject: TJSONObject; const AName: string): string;
 var
@@ -144,12 +157,11 @@ begin
   end;
 end;
 
-function TLspArchitecture.OverviewFor(const AParams: TJSONObject; out AEnabled: Boolean;
-  out ARoot: string): TArchitectureOverview;
+function TLspArchitecture.OverviewFor(const AParams: TJSONObject; out AEnabled: Boolean; out ARoot: string;
+  out ASettings: TServerSettings): TArchitectureOverview;
 var
   FileName, Scope: string;
   Request: TArchitectureRequest;
-  Settings: TServerSettings;
 begin
   Result := Default(TArchitectureOverview);
   ARoot := '';
@@ -159,14 +171,33 @@ begin
   Scope := StringOf(AParams, 'scope');
   if (Scope <> '') and (Scope <> 'project') and (Scope <> 'projectGroup') then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"scope" ist project oder projectGroup');
-  if not (Assigned(FSourceFor) and FSourceFor(FileName, Scope, Request, Settings)) then
+  if not (Assigned(FSourceFor) and FSourceFor(FileName, Scope, Request, ASettings)) then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Kein Projekt geladen');
-  AEnabled := Settings.ArchitectureEnabled;
+  AEnabled := ASettings.ArchitectureEnabled;
   if not AEnabled then
     Exit;
   ARoot := Request.Root;
   Request.IncludeLibrary := FlagOf(AParams, 'includeLibraryUnits', Request.IncludeLibrary);
   Result := FService.Overview(Request);
+end;
+
+/// <summary>Stand für den Vergleich (#1121): "compareWith", sonst architecture.baseline (außer "compare": false);
+/// '' ohne Vergleich. Relativ zum Projekt.</summary>
+function BaselineFile(const AParams: TJSONObject; const ARoot: string; const ASettings: TServerSettings): string;
+begin
+  Result := PathOf(StringOf(AParams, 'compareWith'));
+  if (Result = '') and FlagOf(AParams, 'compare', True) then
+    Result := ASettings.ArchitectureBaseline;
+  Result := TArchitectureComparer.ResolvePath(ARoot, Result);
+end;
+
+/// <summary>Abweichungen aus architecture.failOn; unbekannte Namen hat der Parser schon gemeldet.</summary>
+function FailOnOf(const ASettings: TServerSettings): TArchitectureFailKinds;
+var
+  Error: string;
+begin
+  if not TArchitectureComparer.ParseKinds(ASettings.ArchitectureFailOn, Result, Error) then
+    Result := TArchitectureComparer.DefaultFailOn;
 end;
 
 function TLspArchitecture.Request(const AParams: TJSONValue): TJSONValue;
@@ -175,8 +206,12 @@ var
   Format: TLspArchitectureFormat;
   Section: TArchitectureSection;
   Overview: TArchitectureOverview;
+  Settings: TServerSettings;
+  Comparison: TArchitectureComparison;
+  Compared: Boolean;
+  FailOn: TArchitectureFailKinds;
   Enabled: Boolean;
-  UnitName, Data, Root: string;
+  UnitName, Data, Root, Baseline, Error: string;
   Value: TJSONValue;
 begin
   if AParams is TJSONObject then
@@ -188,13 +223,28 @@ begin
   if not TArchitectureReport.ParseSection(StringOf(Params, 'section'), Section) then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       '"section" ist overview, central, subsystems, cycles oder crossLinks');
-  Overview := OverviewFor(Params, Enabled, Root);
+  Overview := OverviewFor(Params, Enabled, Root, Settings);
+  Compared := False;
+  Baseline := '';
+  Error := '';
+  FailOn := [];
+  if Enabled then
+  begin
+    Baseline := BaselineFile(Params, Root, Settings);
+    FailOn := FailOnOf(Settings);
+    if Baseline <> '' then
+      Compared := TArchitectureComparer.CompareWithFile(Baseline, Overview, Comparison, Error);
+  end;
   Answer := TJSONObject.Create;
   try
     Answer.AddPair('enabled', TJSONBool.Create(Enabled));
     // Nur in der Antwort, nicht in den Berichtsdaten: Ein weitergegebener Bericht nennt keine lokalen Pfade.
     if Enabled then
       Answer.AddPair('root', Root);
+    if Compared then
+      Answer.AddPair('baseline', Baseline)
+    else if Error <> '' then
+      Answer.AddPair('comparisonError', Error);
     if Enabled then
       case Format of
         TLspArchitectureFormat.Json:
@@ -205,16 +255,29 @@ begin
               raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'Architekturdaten sind kein gültiges JSON');
             Answer.AddPair('format', 'json');
             Answer.AddPair('data', Value);
+            if Compared then
+            begin
+              Value := TJSONObject.ParseJSONValue(TArchitectureComparer.Json(Comparison, FailOn));
+              if Value = nil then
+                raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'Vergleichsdaten sind kein gültiges JSON');
+              Answer.AddPair('comparison', Value);
+            end;
           end;
         TLspArchitectureFormat.Markdown:
           begin
             Answer.AddPair('format', 'markdown');
-            Answer.AddPair('text', TArchitectureReport.Markdown(Overview));
+            if Compared then
+              Answer.AddPair('text', TArchitectureReport.Markdown(Overview, Comparison))
+            else
+              Answer.AddPair('text', TArchitectureReport.Markdown(Overview));
           end;
         TLspArchitectureFormat.Html:
           begin
             Answer.AddPair('format', 'html');
-            Answer.AddPair('text', TArchitectureReport.Html(Overview));
+            if Compared then
+              Answer.AddPair('text', TArchitectureReport.Html(Overview, Comparison, FailOn))
+            else
+              Answer.AddPair('text', TArchitectureReport.Html(Overview));
           end;
         TLspArchitectureFormat.Text:
           begin
@@ -222,6 +285,8 @@ begin
             UnitName := StringOf(Params, 'unit');
             if UnitName <> '' then
               Answer.AddPair('text', TArchitectureReport.UnitText(Overview, UnitName))
+            else if Compared then
+              Answer.AddPair('text', TArchitectureComparer.Text(Comparison, FailOn, TArchitectureReport.TextLimit))
             else
               Answer.AddPair('text', TArchitectureReport.Text(Overview, Section, TArchitectureReport.TextLimit));
           end;
@@ -258,11 +323,14 @@ end;
 
 function TLspArchitecture.SaveReport(const AArguments: TJSONArray): TJSONValue;
 var
-  Params: TJSONObject;
-  FileName, Target, Root: string;
+  Params, Options: TJSONObject;
+  Target, Root, Baseline, Error, Extension: string;
   Overview: TArchitectureOverview;
-  Enabled: Boolean;
+  Settings: TServerSettings;
+  Comparison: TArchitectureComparison;
+  Enabled, Compared: Boolean;
   Answer: TJSONObject;
+  Name: string;
 begin
   Params := TJSONObject.Create;
   try
@@ -272,30 +340,53 @@ begin
     if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) then
       Target := PathOf(AArguments.Items[1].Value);
     if Target = '' then
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Zieldatei fehlt (.md oder .html)');
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Zieldatei fehlt (.md, .html oder .json)');
     if (AArguments <> nil) and (AArguments.Count > 2) and (AArguments.Items[2] is TJSONObject) then
     begin
-      FileName := StringOf(TJSONObject(AArguments.Items[2]), 'scope');
-      if FileName <> '' then
-        Params.AddPair('scope', FileName);
-      if TJSONObject(AArguments.Items[2]).GetValue('includeLibraryUnits') is TJSONBool then
-        Params.AddPair('includeLibraryUnits', TJSONBool.Create(FlagOf(TJSONObject(AArguments.Items[2]),
-          'includeLibraryUnits', False)));
+      Options := TJSONObject(AArguments.Items[2]);
+      for Name in TArray<string>.Create('scope', 'compareWith') do
+        if StringOf(Options, Name) <> '' then
+          Params.AddPair(Name, StringOf(Options, Name));
+      for Name in TArray<string>.Create('includeLibraryUnits', 'compare') do
+        if Options.GetValue(Name) is TJSONBool then
+          Params.AddPair(Name, TJSONBool.Create(FlagOf(Options, Name, False)));
     end;
-    Overview := OverviewFor(Params, Enabled, Root);
+    Overview := OverviewFor(Params, Enabled, Root, Settings);
+    Baseline := '';
+    if Enabled then
+      Baseline := BaselineFile(Params, Root, Settings);
   finally
     Params.Free;
   end;
   if not Enabled then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, 'Architekturübersicht ist ausgeschaltet ' +
       '(architecture.enabled)');
-  ForceDirectories(ExtractFileDir(Target));
-  // UTF-8 ohne BOM wie --architecture; Browser und Markdown-Leser brauchen keins.
-  TFile.WriteAllBytes(Target, TEncoding.UTF8.GetBytes(TArchitectureReport.ForFile(Overview, Target)));
+  Extension := LowerCase(ExtractFileExt(Target));
   Answer := TJSONObject.Create;
-  Answer.AddPair('file', Target);
-  Answer.AddPair('units', TJSONNumber.Create(Length(Overview.Units)));
-  Result := Answer;
+  try
+    if Extension = '.json' then
+      // Stand für den Vergleich (#1121): stabil sortiert, bei gleichem Stand byteweise gleich.
+      TArchitectureSnapshots.Save(Target, TArchitectureSnapshots.FromOverview(Overview))
+    else
+    begin
+      Compared := (Baseline <> '') and TArchitectureComparer.CompareWithFile(Baseline, Overview, Comparison, Error);
+      if (Baseline <> '') and not Compared then
+        Answer.AddPair('comparisonError', Error);
+      ForceDirectories(ExtractFileDir(Target));
+      // UTF-8 ohne BOM wie --architecture; Browser und Markdown-Leser brauchen keins.
+      if Compared then
+        TFile.WriteAllBytes(Target, TEncoding.UTF8.GetBytes(TArchitectureReport.ForFile(Overview, Target, Comparison,
+          FailOnOf(Settings))))
+      else
+        TFile.WriteAllBytes(Target, TEncoding.UTF8.GetBytes(TArchitectureReport.ForFile(Overview, Target)));
+    end;
+    Answer.AddPair('file', Target);
+    Answer.AddPair('units', TJSONNumber.Create(Length(Overview.Units)));
+    Result := Answer;
+    Answer := nil;
+  finally
+    Answer.Free;
+  end;
 end;
 
 end.

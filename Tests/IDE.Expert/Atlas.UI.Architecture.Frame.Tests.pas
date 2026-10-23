@@ -3,7 +3,7 @@
 // Fenster „Atlas-Architektur“ (#1118), Fensterinhalt: Tabellen und Bäume aus
 // den Daten des Servers, Sortieren per Spaltenklick, Filter, Öffnen von Unit
 // und uses-Eintrag, Hinweise, Umfang und Bibliotheks-Units, Treffer der
-// Karte.
+// Karte; Reiter „Vergleich“ und Änderungen auf der Karte (#1121).
 
 interface
 
@@ -39,6 +39,10 @@ type
     procedure MapSelectsUnitUnderMouse;
     [Test]
     procedure PathCyclesAndSubsystems;
+    [Test]
+    procedure ComparisonTabAndMapChanges;
+    [Test]
+    procedure WithoutComparisonShowsHint;
   end;
 
 implementation
@@ -254,6 +258,81 @@ begin
   Assert.IsTrue(FFrame.Map.SubsystemVisible[FFrame.Model.Units[Cache].Subsystem]);
   Assert.IsTrue(FFrame.Map.PathFound, 'nach dem Einblenden wird der Weg neu gesucht');
   FFrame.Map.ClearPath;
+end;
+
+procedure TAtlasArchitectureFrameTests.ComparisonTabAndMapChanges;
+var
+  Model: TAtlasArchitectureModel;
+  Enabled, Cleared: Boolean;
+  Text: string;
+  Index: Integer;
+begin
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleComparisonAnswer, Model, Enabled));
+  FFrame.SetModel(Model);
+  Text := Joined(FFrame.ComparisonText);
+  Assert.IsTrue(Pos(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureChangeNewCycles, [1]), Text) > 0, Text);
+  Assert.IsTrue(Pos(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureChangeRemovedUnits, [1]), Text) > 0, Text);
+  Assert.IsTrue(Pos('App.Old', Text) > 0);
+  // Leere Abschnitte stehen nicht da.
+  Assert.AreEqual(0, Pos(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureChangeRemovedCycles, [0]), Text));
+  Assert.IsTrue(Pos('stand.json', FFrame.ComparisonInfo.Caption) > 0, FFrame.ComparisonInfo.Caption);
+  Assert.IsTrue(Pos('newCycle', FFrame.ComparisonInfo.Caption) > 0, 'verletzte Art aus failOn');
+  Assert.IsTrue(Pos(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusComparison, [Model.Comparison.Count]),
+    FFrame.StatusLabel.Caption) > 0);
+  Assert.IsTrue(FFrame.ChangesCheck.Enabled);
+  Assert.IsTrue(FFrame.Map.ShowChanges);
+  Assert.IsTrue(FFrame.ClearCompareButton.Enabled);
+  // Doppelklick auf einen Eintrag öffnet die Unit.
+  for Index := 0 to FFrame.ComparisonTree.Items.Count - 1 do
+    if FFrame.ComparisonTree.Items[Index].Data <> nil then
+    begin
+      FFrame.ComparisonTree.Selected := FFrame.ComparisonTree.Items[Index];
+      Break;
+    end;
+  FFrame.ComparisonTree.OnDblClick(FFrame.ComparisonTree);
+  Assert.IsTrue(EndsStr('.pas', FOpened), FOpened);
+  // Karte ohne Änderungen.
+  FFrame.ChangesCheck.Checked := False;
+  Assert.IsFalse(FFrame.Map.ShowChanges);
+  FFrame.ChangesCheck.Checked := True;
+  // Filter wirkt auch hier.
+  FFrame.Filter.Text := 'old';
+  Text := Joined(FFrame.ComparisonText);
+  Assert.IsTrue(Pos('App.Old', Text) > 0);
+  Assert.AreEqual(0, Pos('App.Data.Cache', Text));
+  FFrame.Filter.Text := '';
+  Cleared := False;
+  FFrame.OnClearComparison :=
+    procedure
+    begin
+      Cleared := True;
+    end;
+  FFrame.ClearCompareButton.Click;
+  Assert.IsTrue(Cleared);
+  FFrame.OnClearComparison := nil;
+end;
+
+procedure TAtlasArchitectureFrameTests.WithoutComparisonShowsHint;
+var
+  Model: TAtlasArchitectureModel;
+  Enabled: Boolean;
+  Answer: string;
+begin
+  Assert.AreEqual(0, Integer(Length(FFrame.ComparisonText)));
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ArchitectureNoComparison), FFrame.ComparisonInfo.Caption);
+  Assert.IsFalse(FFrame.ChangesCheck.Enabled);
+  Assert.IsFalse(FFrame.ClearCompareButton.Enabled);
+  Assert.IsTrue(FFrame.SaveStateButton.Enabled);
+  Assert.IsTrue(FFrame.CompareButton.Enabled);
+  // Unlesbarer Stand: Meldung im Reiter und in der Statuszeile, die Übersicht bleibt.
+  Answer := SampleAnswer;
+  Answer := Copy(Answer, 1, Length(Answer) - 1) + ',"comparisonError":"Architekturstand ist beschädigt"}';
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(Answer, Model, Enabled));
+  FFrame.SetModel(Model);
+  Assert.IsTrue(Pos('beschädigt', FFrame.ComparisonInfo.Caption) > 0);
+  Assert.IsTrue(Pos('beschädigt', FFrame.StatusLabel.Caption) > 0);
+  Assert.IsTrue(FFrame.ClearCompareButton.Enabled);
+  Assert.AreEqual(3, Integer(Length(FFrame.CentralText)));
 end;
 
 initialization
