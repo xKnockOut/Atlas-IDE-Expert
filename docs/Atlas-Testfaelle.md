@@ -2555,6 +2555,7 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | EL17 | Ohne Leiste: Palette › „Zum interface-Teil“, dann Palette › „Zurück zum Ausgangspunkt des Abschnittssprungs“ | Sprung und Rücksprung wie mit Leiste |
 | EL18 | Dunkles Thema; `editor.breadcrumbsIdeColors` an bzw. aus | Leiste in den Farben der IDE-Werkzeugleisten bzw. der Atlas-Palette wie die Brotkrumen; Wechsel ohne Neustart |
 | EL19 | 150 % und 200 % Skalierung | Symbole scharf und geglättet, 24 bzw. 32 px, Leiste eine Zeile |
+| EL21 | Jeden Knopf der Leiste anklicken, auch Zahnrad und „»“; dann auf einem Knopf drücken, auf einem anderen loslassen | Jeder Klick führt den Befehl aus (atlas.log: „Editorleiste: Klick auf …“), nichts flackert nur; beim Loslassen auf einem anderen Knopf passiert nichts |
 | EL20 | Leiste durch einen Fehler abgeschaltet (atlas.log „Editorleiste: durch die Sicherung abgeschaltet“), dann Atlas › Abgeschaltete Funktionen einschalten | Leiste verschwindet und kommt ohne Neustart zurück |
 | BK29 | Gegenprobe zur Zugriffsverletzung beim Beenden (`rtl370`, `TEditWindow.Notification`): Brotkrumen an, atlas.log nennt „über die Option … der IDE“, IDE dreimal beenden | Tritt die Zugriffsverletzung nicht mehr auf, war das Umhängen die Ursache; tritt sie weiter auf, liegt sie nicht am Umhängen (Bericht M3) |
 

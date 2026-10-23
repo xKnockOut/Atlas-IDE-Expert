@@ -12,7 +12,11 @@
 //   (gedämpft, Tooltip nennt den Grund), Punkt (Befunde).
 // - Klick meldet OnCommand mit der Befehlskennung, der Rücksprung OnReturn;
 //   Zahnrad, Rechtsklick und „Leiste anpassen …“ im Überlauf melden
-//   OnCustomize. Ausgelöst wird beim Loslassen auf demselben Knopf.
+//   OnCustomize. Ausgelöst wird beim Loslassen über dem Knopf; nur wer auf
+//   einem anderen Knopf gedrückt hat, bricht ab. Das Verlassen der Leiste
+//   zwischen Drücken und Loslassen bricht nicht ab: In der IDE kommt es bei
+//   jedem Klick (Mausfang, die IDE holt den Fokus in den Editor), früher lief
+//   dadurch jeder Klick ins Leere.
 // - Tooltip je Knopf: Name und Taste.
 // - PreferredWidth: Breite ohne Überlauf (Inline: so breit, wie nötig).
 
@@ -696,7 +700,7 @@ end;
 procedure TAtlasEditorToolbar.CMMouseLeave(var Message: TMessage);
 begin
   inherited;
-  FDown := PartNone;
+  // FDown bleibt: Das Verlassen kommt in der IDE zwischen Drücken und Loslassen jedes Klicks (siehe oben).
   if FHot = PartNone then
     Exit;
   FHot := PartNone;
@@ -713,6 +717,7 @@ end;
 procedure TAtlasEditorToolbar.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   Part: TPoint;
+  Released: Integer;
 begin
   inherited MouseUp(Button, Shift, X, Y);
   if Button = mbRight then
@@ -724,9 +729,11 @@ begin
   end;
   if Button <> mbLeft then
     Exit;
-  // Erst beim Loslassen auf demselben Knopf; die IDE holt beim Drücken den Fokus in den Editor.
-  if (FDown <> PartNone) and (PartAt(X, Y) = FDown) then
-    Fire(FDown);
+  // Erst beim Loslassen, wie in der Brotkrumenleiste: Die IDE holt beim Drücken den Fokus in den Editor. Ein
+  // Drücken muss die Leiste dafür nicht gesehen haben; nur ein Drücken auf einem anderen Knopf bricht ab.
+  Released := PartAt(X, Y);
+  if (Released <> PartNone) and ((FDown = PartNone) or (FDown = Released)) then
+    Fire(Released);
   FDown := PartNone;
 end;
 

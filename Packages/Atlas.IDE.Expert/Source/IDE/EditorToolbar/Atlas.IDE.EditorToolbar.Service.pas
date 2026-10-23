@@ -447,6 +447,8 @@ begin
       Id: string;
     begin
       Id := AId;
+      // Im Protokoll: Der Klick kam an (Handtest zu „Klick ohne Wirkung“).
+      TAtlasGuard.Log('Editorleiste: Klick auf ' + Id);
       // Nach dem Klick: Die IDE holt den Fokus in den Editor; Popups und Dialoge erst danach.
       Later(
         procedure
@@ -463,6 +465,7 @@ begin
   Bar.OnReturn :=
     procedure
     begin
+      TAtlasGuard.Log('Editorleiste: Klick auf Rücksprung');
       Later(
         procedure
         begin
@@ -472,6 +475,7 @@ begin
   Bar.OnCustomize :=
     procedure
     begin
+      TAtlasGuard.Log('Editorleiste: Klick auf Leiste anpassen');
       Later(
         procedure
         begin
