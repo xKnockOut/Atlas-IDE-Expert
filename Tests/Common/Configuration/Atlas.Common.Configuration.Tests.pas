@@ -572,6 +572,9 @@ begin
   // Schnellkorrekturen an Compilermeldungen (#549)
   Assert.IsTrue(Parse('{}', Issues).Refactoring.CompilerFixes);
   Assert.IsFalse(Parse('{"refactoring": {"compilerFixes": false}}', Issues).Refactoring.CompilerFixes);
+  // Unit nicht gefunden: Suchpfad ergänzen (#550)
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.MissingUnit);
+  Assert.IsFalse(Parse('{"refactoring": {"missingUnit": false}}', Issues).Refactoring.MissingUnit);
   // Warnung gezielt abschalten (#531)
   Assert.IsTrue(Parse('{}', Issues).Refactoring.DisableWarning);
   Assert.IsTrue(Parse('{}', Issues).Refactoring.DisableWarningReason);

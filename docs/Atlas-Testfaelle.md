@@ -1847,6 +1847,24 @@ Voraussetzung: VCL-Projekt `Kasse.dproj` (Main.pas, Daten.pas), einmal erfolgrei
 | SK11 | `refactoring.compilerFixes` = false | Keine dieser Aktionen |
 | SK12 | Deutsche IDE (Meldungen auf Deutsch), SK1, SK2, SK4 | Gleiche Korrekturen wie mit englischer Ausgabe |
 
+## Unit nicht gefunden: Suchpfad ergänzen (#550)
+
+Vorbereitung: Projekt `Kasse.dproj` mit den Konfigurationen Debug und Release (Win32, Win64); Unit `Werkzeug.pas` in `Source\Common`, das in keinem Suchpfad steht; Ordner `..\Gemeinsam\Debug` mit `Protokoll.pas` nur im Suchpfad von Debug.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UG1 | `uses Werkzeug;` in `Kasse.dpr`, bauen (F2613), Strg+. auf der uses-Zeile | „Ordner Source\Common in den Suchpfad von Debug aufnehmen“ (bevorzugt), „… aller Konfigurationen aufnehmen“, „Werkzeug.pas ins Projekt aufnehmen“ (**Abnahme**) |
+| UG2 | UG1, „… in den Suchpfad von Debug aufnehmen“, *Projekt › Optionen › Delphi-Compiler › Suchpfad* (Debug) | `Source\Common` steht vorn, relativ; das Geerbte (`$(DCC_UnitSearchPath)`) bleibt; das Projekt gilt als geändert; erneut bauen kompiliert (**Abnahme**) |
+| UG3 | UG1, „… aller Konfigurationen aufnehmen“ | Eintrag in der Basiskonfiguration („Alle Konfigurationen“); Debug und Release kompilieren |
+| UG4 | Aktive Konfiguration Release, `uses Protokoll;`, bauen | „Ordner ..\Gemeinsam\Debug in den Suchpfad von Release aufnehmen (steht in Debug, Win32)“; danach kompiliert Release (**Abnahme**) |
+| UG5 | UG1, „Werkzeug.pas ins Projekt aufnehmen“ | Die Unit steht in der Projektverwaltung und in der dpr; erneut ausführen: „Werkzeug.pas gehört schon zum Projekt …“ |
+| UG6 | Aktion aus UG2 zweimal ausführen | Zweites Mal: „Source\Common steht schon im Suchpfad …“, kein doppelter Eintrag |
+| UG7 | Plattform Linux64 (oder eine andere Nicht-Windows-Plattform), Unit mit `uses Winapi.Windows;`, bauen | Eine Aktion „Winapi.Windows gibt es für Linux64 nicht (nur Win32, Win64)“; kein Pfadvorschlag; Klick zeigt den Hinweis |
+| UG8 | `uses GibtEsNicht;`, bauen, Strg+. | „GibtEsNicht nicht gefunden: durchsuchte Orte anzeigen“; Klick zeigt Projektordner, Projekte der Gruppe, Suchpfade der anderen Konfigurationen, Bibliotheken und Index |
+| UG9 | Projektgruppe mit zweitem Projekt, dessen Ordner `Teile.pas` enthält; im ersten `uses Teile;`, bauen | „Ordner … in den Suchpfad … aufnehmen (aus <Projekt2>.dproj)“ |
+| UG10 | `refactoring.missingUnit` = false | Keine dieser Aktionen |
+| UG11 | Deutsche IDE (Meldung F2613 auf Deutsch) sowie eine Meldung F1026 (Datei 'Werkzeug.dcu' nicht gefunden) | Gleiche Aktionen wie UG1 |
+
 ## Units suchen (#777)
 
 Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testprojekt; Server läuft; Einstellungen auf Vorgabe.
