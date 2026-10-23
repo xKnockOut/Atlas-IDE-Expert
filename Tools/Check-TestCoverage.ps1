@@ -57,6 +57,11 @@ $Exempt = @{
 
 $testFiles = Get-ChildItem -Path (Join-Path $Root 'Tests') -Recurse -File -Filter '*.pas'
 $testText = ($testFiles | ForEach-Object { [IO.File]::ReadAllText($_.FullName) }) -join "`n"
+# Alle vollständigen Bezeichner der Tests einmal einsammeln: Eine Unit gilt als genannt, wenn ein ganzer Bezeichner
+# (Folge aus Wortzeichen und Punkten) "<Unit>" oder "<Unit>.Tests" lautet. Ein Suchlauf je Unit über den ganzen Text
+# dauerte Minuten.
+$testNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+foreach ($match in [regex]::Matches($testText, '[\w.]+')) { [void]$testNames.Add($match.Value) }
 $dpr = [IO.File]::ReadAllText((Join-Path $Root 'Tests/Atlas.Tests.dpr'))
 $problems = @()
 
@@ -65,8 +70,7 @@ foreach ($dir in $SourceDirs) {
     if (-not (Test-Path $path)) { continue }
     foreach ($file in Get-ChildItem -Path $path -Recurse -File -Filter '*.pas') {
         $unit = $file.BaseName
-        $pattern = '(?<![\w.])' + [regex]::Escape($unit) + '(\.Tests)?(?![\w.])'
-        $tested = [regex]::IsMatch($testText, $pattern, 'IgnoreCase')
+        $tested = $testNames.Contains($unit) -or $testNames.Contains("$unit.Tests")
         $relative = [IO.Path]::GetRelativePath($Root, $file.FullName)
         if ($Exempt.ContainsKey($unit)) {
             if ($tested) { $problems += "${relative}: hat jetzt Tests, Ausnahme streichen" }
