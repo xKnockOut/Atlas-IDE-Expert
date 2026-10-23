@@ -4097,7 +4097,7 @@ begin
         MainMenu.UpdateImage;
       if StatusField <> nil then
         StatusField.RequestRefresh;
-      TAtlasIdeResultsWindow.UpdateIcon;
+      TAtlasIdeResultsWindow.ApplyTheme;
       if Welcome <> nil then
         Welcome.ThemeChanged;
       if DiagnosticMode <> nil then

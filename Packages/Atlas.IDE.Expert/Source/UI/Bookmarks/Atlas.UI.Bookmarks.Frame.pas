@@ -80,6 +80,8 @@ type
     procedure ListEdited(Sender: TObject; Item: TListItem; var S: string);
     procedure ListDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState; var Accept: Boolean);
     procedure ListDragDrop(Sender, Source: TObject; X, Y: Integer);
+    function ListColor(AColor: TColor): TColor;
+    procedure RowColors(ACanvas: TCanvas; AState: TCustomDrawState; AGray: Boolean);
     procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
       var DefaultDraw: Boolean);
     procedure ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem; SubItem: Integer;
@@ -137,6 +139,7 @@ implementation
 uses
   Winapi.Windows,
   Winapi.CommCtrl,
+  Vcl.Themes,
   Atlas.UI.Strings;
 
 {$R *.dfm}
@@ -578,25 +581,45 @@ begin
   Drop(SelectedId, Before);
 end;
 
+function TAtlasBookmarksFrame.ListColor(AColor: TColor): TColor;
+begin
+  // Stil der Liste, nicht der globale: Die IDE themt ihre Fenster je Formular.
+  Result := ColorToRGB(StyleServices(FList).GetSystemColor(AColor));
+end;
+
+procedure TAtlasBookmarksFrame.RowColors(ACanvas: TCanvas; AState: TCustomDrawState; AGray: Boolean);
+begin
+  // Farben ausdrücklich aus dem Stil der Liste: Nach einer geänderten Schriftfarbe zeichnet die Liste sonst mit den
+  // Systemfarben, im dunklen Thema also weiße Zellen.
+  if cdsSelected in AState then
+  begin
+    ACanvas.Brush.Color := ListColor(clHighlight);
+    ACanvas.Font.Color := ListColor(clHighlightText);
+  end
+  else
+  begin
+    ACanvas.Brush.Color := ListColor(FList.Color);
+    if AGray then
+      ACanvas.Font.Color := ListColor(clGrayText)
+    else
+      ACanvas.Font.Color := ListColor(FList.Font.Color);
+  end;
+end;
+
 procedure TAtlasBookmarksFrame.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
   State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
   DefaultDraw := True;
   // Nicht gefunden: ganze Zeile grau; ohne Namen ist der abgeleitete Name grau (#1104).
-  if (Item <> nil) and (Item.Index <= High(FShown)) and (FShown[Item.Index].Lost or FShown[Item.Index].Unnamed) then
-    Sender.Canvas.Font.Color := clGrayText;
+  RowColors(Sender.Canvas, State, (Item <> nil) and (Item.Index <= High(FShown)) and
+    (FShown[Item.Index].Lost or FShown[Item.Index].Unnamed));
 end;
 
 procedure TAtlasBookmarksFrame.ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem; SubItem: Integer;
   State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
   DefaultDraw := True;
-  if (Item = nil) or (Item.Index > High(FShown)) then
-    Exit;
-  if FShown[Item.Index].Lost then
-    Sender.Canvas.Font.Color := clGrayText
-  else
-    Sender.Canvas.Font.Color := FList.Font.Color;
+  RowColors(Sender.Canvas, State, (Item <> nil) and (Item.Index <= High(FShown)) and FShown[Item.Index].Lost);
 end;
 
 procedure TAtlasBookmarksFrame.MenuPopup(Sender: TObject);
