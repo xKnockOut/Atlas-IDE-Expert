@@ -184,7 +184,8 @@ const
   BaseGap = 13;
   BaseGear = 22;
   Margin = 4;
-  Padding = 4;
+  /// <summary>Innenabstand je Feld; eigener Name, weil TControl.Padding in den Methoden die Konstante verdeckt.</summary>
+  SlotPadding = 4;
   /// <summary>Kürzstufen: die Methode zuerst, die Zähler nie.</summary>
   ShrinkMethod = 1;
   ShrinkLive = 2;
@@ -329,30 +330,30 @@ begin
   case APart of
     TAtlasStatusBarPart.Status:
       begin
-        Width_ := Scale(Padding) + DotSize + Scale(5) + TextWidthOf(FView.StatusText, False) + Scale(Padding);
-        Minimum := Scale(Padding) + DotSize + Scale(5) + TextWidthOf(Ellipsis, False) + Scale(Padding);
+        Width_ := Scale(SlotPadding) + DotSize + Scale(5) + TextWidthOf(FView.StatusText, False) + Scale(SlotPadding);
+        Minimum := Scale(SlotPadding) + DotSize + Scale(5) + TextWidthOf(Ellipsis, False) + Scale(SlotPadding);
         Result := TAtlasStatusSlot.Create(Width_, Minimum, ShrinkStatus);
       end;
     TAtlasStatusBarPart.Findings:
       begin
-        Width_ := Scale(Padding);
+        Width_ := Scale(SlotPadding);
         for Index := 0 to High(Kinds) do
           Inc(Width_, KindWidth(Kinds[Index]));
         Result := TAtlasStatusSlot.Create(Width_, Width_, ShrinkFindings);
       end;
     TAtlasStatusBarPart.LiveCheck:
       begin
-        Width_ := Scale(Padding) + IconSize + Scale(4) + TextWidthOf(FView.LiveText, False) + Scale(Padding);
-        Minimum := Scale(Padding) + IconSize + Scale(4) + TextWidthOf(Ellipsis, False) + Scale(Padding);
+        Width_ := Scale(SlotPadding) + IconSize + Scale(4) + TextWidthOf(FView.LiveText, False) + Scale(SlotPadding);
+        Minimum := Scale(SlotPadding) + IconSize + Scale(4) + TextWidthOf(Ellipsis, False) + Scale(SlotPadding);
         Result := TAtlasStatusSlot.Create(Width_, Minimum, ShrinkLive);
       end;
   else
     begin
       // Methode: Zeichen, Name (kürzbar), Kennzahlen (bleiben).
-      Width_ := Scale(Padding) + TextWidthOf(MethodSign, True) + Scale(4) + TextWidthOf(FView.MethodName, False) +
-        Scale(Padding);
-      Minimum := Scale(Padding) + TextWidthOf(MethodSign, True) + Scale(4) + TextWidthOf(Ellipsis, False) +
-        Scale(Padding);
+      Width_ := Scale(SlotPadding) + TextWidthOf(MethodSign, True) + Scale(4) + TextWidthOf(FView.MethodName, False) +
+        Scale(SlotPadding);
+      Minimum := Scale(SlotPadding) + TextWidthOf(MethodSign, True) + Scale(4) + TextWidthOf(Ellipsis, False) +
+        Scale(SlotPadding);
       if FView.MethodDetail <> '' then
       begin
         Inc(Width_, Scale(6) + TextWidthOf(FView.MethodDetail, False));
@@ -406,7 +407,7 @@ begin
       SetLength(KindWidths, Length(Kinds));
       for Kind := 0 to High(Kinds) do
         KindWidths[Kind] := KindWidth(Kinds[Kind]);
-      FKindSpans := TAtlasStatusBarLayout.Place(KindWidths, FSpans[Index].Left + Scale(Padding), 0);
+      FKindSpans := TAtlasStatusBarLayout.Place(KindWidths, FSpans[Index].Left + Scale(SlotPadding), 0);
     end;
   FGearRect := Rect(ClientWidth - Scale(Margin) - Gear, 0, ClientWidth - Scale(Margin), ClientHeight);
 end;
@@ -494,7 +495,7 @@ var
   Part: TRect;
 begin
   Center := (ARect.Top + ARect.Bottom) div 2;
-  Left_ := ARect.Left + Scale(Padding);
+  Left_ := ARect.Left + Scale(SlotPadding);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(FView.StatusColor);
   Canvas.Pen.Color := ToColor(FView.StatusColor);
@@ -502,7 +503,7 @@ begin
   Canvas.Font := Font;
   Canvas.Font.Color := ToColor(FColors.Text);
   Canvas.Brush.Style := bsClear;
-  Part := Rect(Left_ + DotSize + Scale(5), ARect.Top, ARect.Right - Scale(Padding), ARect.Bottom);
+  Part := Rect(Left_ + DotSize + Scale(5), ARect.Top, ARect.Right - Scale(SlotPadding), ARect.Bottom);
   DrawText(Canvas.Handle, PChar(FView.StatusText), -1, Part, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
     DT_NOPREFIX or DT_END_ELLIPSIS);
 end;
@@ -568,7 +569,7 @@ var
   Top_: Integer;
 begin
   Top_ := ARect.Top + (ARect.Height - IconSize) div 2;
-  Icon := Rect(ARect.Left + Scale(Padding), Top_, ARect.Left + Scale(Padding) + IconSize, Top_ + IconSize);
+  Icon := Rect(ARect.Left + Scale(SlotPadding), Top_, ARect.Left + Scale(SlotPadding) + IconSize, Top_ + IconSize);
   if FView.LiveBusy then
     Tone := ToColor(FColors.Accent)
   else
@@ -577,7 +578,7 @@ begin
   Canvas.Font := Font;
   Canvas.Font.Color := ToColor(FColors.Text);
   Canvas.Brush.Style := bsClear;
-  Part := Rect(Icon.Right + Scale(4), ARect.Top, ARect.Right - Scale(Padding), ARect.Bottom);
+  Part := Rect(Icon.Right + Scale(4), ARect.Top, ARect.Right - Scale(SlotPadding), ARect.Bottom);
   DrawText(Canvas.Handle, PChar(FView.LiveText), -1, Part, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
     DT_NOPREFIX or DT_END_ELLIPSIS);
 end;
@@ -594,7 +595,7 @@ begin
     Tone := ToColor(FColors.Text)
   else
     Tone := ToColor(FColors.Muted);
-  Left_ := ARect.Left + Scale(Padding);
+  Left_ := ARect.Left + Scale(SlotPadding);
   Canvas.Brush.Style := bsClear;
   Canvas.Font := Font;
   Canvas.Font.Style := [fsBold];
@@ -608,7 +609,7 @@ begin
   if FView.MethodDetail <> '' then
     Detail := Scale(6) + TextWidthOf(FView.MethodDetail, False);
   // Erst die Kennzahlen rechts, der Name kürzt sich davor.
-  Part := Rect(Left_, ARect.Top, Max(Left_, ARect.Right - Scale(Padding) - Detail), ARect.Bottom);
+  Part := Rect(Left_, ARect.Top, Max(Left_, ARect.Right - Scale(SlotPadding) - Detail), ARect.Bottom);
   DrawText(Canvas.Handle, PChar(FView.MethodName), -1, Part, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
     DT_NOPREFIX or DT_END_ELLIPSIS);
   if Detail = 0 then
@@ -617,7 +618,7 @@ begin
   if not FView.MethodOver then
     Canvas.Font.Color := ToColor(FColors.Muted);
   Part := Rect(Min(Left_ + TextWidthOf(FView.MethodName, False), Part.Right) + Scale(6), ARect.Top,
-    ARect.Right - Scale(Padding), ARect.Bottom);
+    ARect.Right - Scale(SlotPadding), ARect.Bottom);
   DrawText(Canvas.Handle, PChar(FView.MethodDetail), -1, Part, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
     DT_NOPREFIX);
 end;

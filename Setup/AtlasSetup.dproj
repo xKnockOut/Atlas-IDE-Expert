@@ -84,6 +84,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.Catalog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.Transfer.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.ToolbarItems.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.StatusBarItems.pas"/>
         <DCCReference Include="Source\Core\Setup.Core.Contract.pas"/>
         <DCCReference Include="Source\Core\Setup.Core.Ides.pas"/>
         <DCCReference Include="Source\Core\Setup.Core.Installer.pas"/>
