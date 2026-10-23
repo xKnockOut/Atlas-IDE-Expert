@@ -139,6 +139,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Semantics.SystemIntrinsics,
+  Atlas.Common.Semantics.Attributes,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Editing.InterfaceStubs,
@@ -610,6 +611,45 @@ begin
       Exit(Index);
 end;
 
+/// <summary>Steht der Name an APosition in einer Attributklammer ("[TestCase(")? ANameToken: sein Token.</summary>
+function AttributeName(ATree: TSyntaxTree; const APosition: TTextPosition; out ANameToken: TPascalToken): Boolean;
+var
+  Tokens: TArray<TPascalToken>;
+  Index, Prev: Integer;
+begin
+  Result := False;
+  Tokens := ATree.Tokens;
+  for Index := 0 to High(Tokens) do
+    if (Tokens[Index].StartPos.Line = APosition.Line) and (Tokens[Index].StartPos.Character = APosition.Character) then
+    begin
+      Prev := Index - 1;
+      while (Prev >= 0) and (Tokens[Prev].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+        Dec(Prev);
+      ANameToken := Tokens[Index];
+      Exit((Tokens[Index].Kind = TPascalTokenKind.Identifier) and TAttributes.InBracket(Tokens, Prev));
+    end;
+end;
+
+/// <summary>Attribut (#465): Konstruktor der Attributklasse hinter dem Namen; [Foo] meint zuerst FooAttribute.
+/// </summary>
+function AttributeConstructor(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  const APosition: TTextPosition; const AResolved: TResolvedSymbol; out ACtor: TResolvedSymbol): Boolean;
+var
+  NameToken: TPascalToken;
+  AttributeClass: TResolvedSymbol;
+begin
+  Result := False;
+  ACtor := Default(TResolvedSymbol);
+  if not AttributeName(ATree, APosition, NameToken) then
+    Exit;
+  if not AResolver.AttributeClassOf(AResolved, AttributeClass) and
+    not AResolver.AttributeClassOf(AResolver.ResolveChain(ATree, AFileName,
+      TArray<string>.Create(TAttributes.ShortName(NameToken.Text) + 'Attribute'), NameToken.Offset), AttributeClass) then
+    Exit;
+  Result := AResolver.DeclaredMember(AttributeClass, 'Create', ACtor) and
+    (ACtor.SymbolKind = TIndexSymbolKind.Constructor_);
+end;
+
 /// <summary>Routinen der Unit System ohne Quelltext (#880): Signaturen aus der eingebauten Liste.</summary>
 function IntrinsicSignatures(const AName: string): TArray<TSignature>;
 var
@@ -662,12 +702,16 @@ var
   Nested: TResolvedSymbol;
   IntrinsicName: string;
   Routine: TFormatRoutine;
+  Ctor: TResolvedSymbol;
 begin
   Result := Default(TSignatureHelp);
   Site := CallSiteAt(ATree, APosition);
   if not Site.Found then
     Exit;
   Resolved := AResolver.Resolve(ATree, AFileName, Site.NamePosition);
+  // Attribut (#465): [TestCase('Name', |] zeigt den Konstruktor von TestCaseAttribute.
+  if AttributeConstructor(AResolver, ATree, AFileName, Site.NamePosition, Resolved, Ctor) then
+    Resolved := Ctor;
   if not (Resolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) then
   begin
     // Unbekannt: vielleicht eine Routine von System ohne Quelltext (SetLength, Inc ...; #880).

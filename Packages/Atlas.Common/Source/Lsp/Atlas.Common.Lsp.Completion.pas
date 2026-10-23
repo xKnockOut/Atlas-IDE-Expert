@@ -487,6 +487,7 @@ uses
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Lsp.CompletionEnums,
   Atlas.Common.Lsp.CompletionGenerics,
+  Atlas.Common.Lsp.CompletionAttributes,
   Atlas.Common.Editing.DataFieldNames,
   Atlas.Common.Editing.GuardFree,
   Atlas.Common.Editing.ContextSnippets,
@@ -1096,6 +1097,13 @@ begin
     Result.Filter := TCompletionFilter.InheritedCall
   else if TypePosition(Tokens, Last, Result.Place, Result.TypeKeywords) then
     Result.Filter := TCompletionFilter.Types;
+  // Attribut nach "[" vor einer Deklaration (#465); ob es gilt, entscheidet Collect nach der Einstellung.
+  if (Result.Filter = TCompletionFilter.Any) and TCompletionAttributes.SiteAt(Tokens, Last) then
+  begin
+    Result.Attribute := True;
+    Result.Filter := TCompletionFilter.Types;
+    Exit;
+  end;
   // Typargument nach "TFoo<" (#450); ob TFoo ein generischer Typ ist, klärt Collect.
   if Result.Filter <> TCompletionFilter.InheritedCall then
   begin
@@ -1703,6 +1711,14 @@ begin
   end
   else
     Context.Generic := False;
+  // Attribute (#465): erst die ganze Liste filtern und sortieren, deshalb nicht gestaffelt.
+  if Context.Attribute and not ARequest.Settings.Attributes then
+  begin
+    Context.Attribute := False;
+    Context.Filter := TCompletionFilter.Any;
+  end;
+  if Context.Attribute then
+    OnPartial := nil;
   // Diagnoselog (#647): nur Art und Längen, nie die Namen selbst.
   TRequestDiagnostics.Note('ctx', ContextCodes[Context.Kind]);
   TRequestDiagnostics.Note('prefixLen', Length(Context.Prefix));
@@ -1719,6 +1735,8 @@ begin
     ARequest.Resolver.PinTree(ARequest.Tree, ARequest.FileName);
   Collector := TCompletionCollector.Create(ARequest, Context, Expected, OnPartial);
   try
+    if Context.Attribute then
+      Collector.SetAdmit(TCompletionAttributes.Admit(ARequest.Resolver));
     case Context.Kind of
       TCompletionContextKind.UsesClause:
         // Gruppen, Hinweise und Zirkelbezüge (#469); aus: alle Units als schlichte Liste.
@@ -1791,7 +1809,10 @@ begin
             // Danach die nicht eingebundenen Units.
             Collector.SendStage;
             if Length(Context.Prefix) >= MinImportPrefix then
-              Collector.AddFromOtherUnits;
+              Collector.AddFromOtherUnits
+            else if Context.Attribute then
+              // Bekannte Attribute (DUnitX, JSON) schon nach "[" mit uses-Eintrag (#465).
+              Collector.AddFromOtherUnits(TCompletionAttributes.KnownClassNames);
             Collector.AddUnavailable;
             Collector.AddKeywords(KeywordsAt(Context));
           end;
@@ -1803,6 +1824,8 @@ begin
     Result.Items := Collector.Finish(Result.Incomplete);
     if Context.Generic then
       Result.Items := TCompletionGenerics.Apply(ARequest, Context, GenericOwner, Result.Items);
+    if Context.Attribute then
+      Result.Items := TCompletionAttributes.Apply(ARequest, Context, Result.Items);
     Result.Items := Result.Items + Postfix;
   finally
     Collector.Free;

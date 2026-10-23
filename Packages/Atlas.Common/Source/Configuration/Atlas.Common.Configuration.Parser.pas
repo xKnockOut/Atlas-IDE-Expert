@@ -1584,6 +1584,8 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.UsesDetails)
     else if Key = 'inheritedCall' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.InheritedCall)
+    else if Key = 'attributes' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.Attributes)
     else if Key = 'sameNameVariants' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.SameNameVariants)
     else if Key = 'showFmxUnits' then

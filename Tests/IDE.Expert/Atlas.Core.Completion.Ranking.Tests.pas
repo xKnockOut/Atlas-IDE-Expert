@@ -36,6 +36,8 @@ type
     [Test]
     procedure TypeArgumentsGetHeaderAndFooter;
     [Test]
+    procedure AttributesGetBadge;
+    [Test]
     procedure DataNamesCarrySource;
     [Test]
     procedure UsesUnitsGroupedWithHeaders;
@@ -579,6 +581,32 @@ begin
     if Tag.Text = '→ string' then
       Found := True;
   Assert.IsTrue(Found);
+end;
+
+procedure TAtlasRankingTests.AttributesGetBadge;
+var
+  Json: TJSONObject;
+  Item: TAtlasCompletionItem;
+begin
+  // Attribute nach "[" (#465): Badge "at", rechts die Konstruktorparameter.
+  Json := TJSONObject.ParseJSONValue('{"label":"TestCase","kind":7,"detail":"(const AName: string)",' +
+    '"insertText":"TestCase","data":{"attribute":true}}') as TJSONObject;
+  try
+    Item := TAtlasServerCompletionProvider.ItemFromLsp(Json, 0);
+  finally
+    Json.Free;
+  end;
+  Assert.IsTrue(Item.Attribute);
+  Assert.AreEqual('at', TAtlasItemPresentation.Badge(Item).Code);
+  Assert.IsTrue(TAtlasItemPresentation.Badge(Item).Kind = TAtlasBadgeKind.Type_);
+  Json := TJSONObject.ParseJSONValue('{"label":"TKunde","kind":7}') as TJSONObject;
+  try
+    Item := TAtlasServerCompletionProvider.ItemFromLsp(Json, 0);
+  finally
+    Json.Free;
+  end;
+  Assert.IsFalse(Item.Attribute);
+  Assert.AreEqual('ty', TAtlasItemPresentation.Badge(Item).Code);
 end;
 
 procedure TAtlasRankingTests.TypeArgumentsGetHeaderAndFooter;

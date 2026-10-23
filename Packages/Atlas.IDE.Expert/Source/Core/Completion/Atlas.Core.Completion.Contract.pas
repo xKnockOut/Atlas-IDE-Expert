@@ -205,6 +205,8 @@ type
     Constraint: string;
     ConstraintHint: string;
     HiddenKinds: string;
+    /// <summary>Attribut nach "[" (#465): Name ohne Endung Attribute, Badge "at".</summary>
+    Attribute: Boolean;
     /// <summary>uses-Abschnitt (#469): Gruppe ("project", "rtl", "library"), Abschnitt, in dem die Unit schon steht
     /// ("interface", "implementation"; '' sonst), Kette eines Zirkelbezugs ("uA → uB → Haupt"; '' ohne), die ersten
     /// exportierten Typen samt ihrer Gesamtzahl und die schon eingebundenen Units für die Fußzeile.</summary>

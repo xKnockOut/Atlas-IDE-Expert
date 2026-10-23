@@ -262,6 +262,8 @@ begin
     Result.Constraint := Data.GetValue<string>('constraint', '');
     Result.ConstraintHint := Data.GetValue<string>('constraintHint', '');
     Result.HiddenKinds := Data.GetValue<string>('hiddenKinds', '');
+    // Attribute nach "[" (#465).
+    Result.Attribute := Data.GetValue('attribute') is TJSONTrue;
     // uses-Abschnitt (#469): gefiltert wird nach dem Namensteil ab dem Getippten ("Classes" für System.Classes).
     Result.UsesGroup := Data.GetValue<string>('usesGroup', '');
     if Data.GetValue<string>('usesFilter', '') <> '' then

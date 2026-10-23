@@ -421,6 +421,11 @@ type
     /// stünden (#417).</summary>
     function TypeDescendsFrom(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer;
       const ATypeName, ATargetName: string): Boolean;
+    /// <summary>Attributklasse hinter ASymbol (#465): ein Alias wird verfolgt, die Klasse muss von
+    /// TCustomAttribute abstammen. Strenger als die Auflösung von [Foo]: Bricht die Kette an einem unbekannten
+    /// Vorfahren ab, zählt sie nur, wenn dessen Name auf Attribute endet. TCustomAttribute selbst zählt nicht.
+    /// </summary>
+    function AttributeClassOf(const ASymbol: TResolvedSymbol; out AClass: TResolvedSymbol): Boolean;
     /// <summary>Unit-Namespaces des Projekts (DCC_Namespace) für uses ohne Präfix.</summary>
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
     /// <summary>Ist AName der Anfang eines Unit-Namens im Bereich (Atlas in Atlas.Core.Foo.Bar, Winapi in
@@ -1295,6 +1300,30 @@ begin
     Current := Next;
   end;
   Result := True;
+end;
+
+function TNameResolver.AttributeClassOf(const ASymbol: TResolvedSymbol; out AClass: TResolvedSymbol): Boolean;
+var
+  Current, Next: TResolvedSymbol;
+  Depth: Integer;
+begin
+  Result := False;
+  AClass := NoResult;
+  if not ASymbol.Found or not ASymbol.IsType or not TypeOf(ASymbol, Current) or
+    (Current.SymbolKind <> TIndexSymbolKind.ClassType) or SameText(Current.Name, 'TCustomAttribute') then
+    Exit;
+  AClass := Current;
+  for Depth := 0 to MaxDepth do
+  begin
+    if SameText(Current.Name, 'TCustomAttribute') then
+      Exit(True);
+    if (Length(Current.Ancestors) = 0) or SameText(Current.Ancestors[0], 'TObject') or
+      SameText(Current.Ancestors[0], 'System.TObject') then
+      Exit;
+    if not AncestorOf(Current, Next) then
+      Exit(EndsText('Attribute', Current.Ancestors[0]));
+    Current := Next;
+  end;
 end;
 
 function TNameResolver.CurrentClass(out AType: TResolvedSymbol): Boolean;
