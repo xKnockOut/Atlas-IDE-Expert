@@ -11,6 +11,9 @@
 // "// ERWARTET-INDEX: <regel>" markiert Treffer von Regeln, die die RTL im
 // Index brauchen (z. B. legacy-stack-queue, #1106). Der Golden-Korpus prüft
 // je Datei ohne Index; diese Marker prüfen die Tests der Regel mit RTL-Stubs.
+// "// ERWARTET-OPTION: <regel>" markiert Treffer von Regeln, die erst mit
+// Optionen etwas melden (forbidden-symbol, #1133); die Tests der Regel prüfen
+// sie mit der Liste aus README.md.
 
 interface
 
@@ -150,6 +153,24 @@ procedure Umwandeln(AKnoten: TKnoten; ABlatt: TBlatt);
 begin
   TAst(ABlatt).Kinder := 1; // ERWARTET: unrelated-class-cast
   TAst(AKnoten).Kinder := 2; // KEIN-TREFFER: unrelated-class-cast
+end;
+
+procedure AltMelden(const AText: string);
+begin
+end;
+
+procedure Melden(const AText: string);
+var
+  mAufgabe: TThreadProcedure;
+begin
+  Writeln(AText); // ERWARTET-OPTION: forbidden-symbol
+  Writeln(ErrOutput, AText);
+  AltMelden(AText); // ERWARTET-OPTION: forbidden-symbol
+  mAufgabe := procedure
+    begin
+    end;
+  TThread.Queue(nil, mAufgabe); // ERWARTET-OPTION: forbidden-symbol
+  TThread.Queue(TThread.CurrentThread, mAufgabe);
 end;
 
 end.

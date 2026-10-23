@@ -184,6 +184,53 @@
       ]
     },
     {
+      "id": "forbidden-symbol",
+      "name": "Forbidden symbol used",
+      "category": "code-smell",
+      "severity": "warning",
+      "group": "architecture",
+      "description": "A list under \"symbols\" in atlas.json forbids routines, types, constants, fields, properties, enum values or identifiers, each with a message and a replacement. Matching uses name resolution, not text: System.SysUtils.FileExists also hits FileExists, but not an own method of the same name. An entry may shorten the name from a dot boundary (TThread.Queue) and contain *. Identifiers of System without source (Writeln, Halt) count as System.<Name>. If the left part of a qualified name cannot be resolved at all (unit not indexed), the written name is compared with the end of the entry. Per entry: kind (routine, type, constant, field, property, enumValue, identifier = by name without resolution), message, replacement, severity, units (unit name globs, \"!\" excludes), firstArgument (only with this first argument, e.g. nil) and allowFirstArgument (allowed with this first argument, e.g. ErrOutput); both compare the argument text or the name of its type (TextFile). Off by default and silent without a list; on in the strict profile. High confidence. Quick fix: replace with the configured replacement.",
+      "bad": "// atlas.json: \"forbidden-symbol\": {\"symbols\": [{\"name\": \"System.Write*\", \"kind\": \"routine\", \"message\": \"Only via ILogger\"}]}\nprocedure TImport.Report(const AText: string);\nbegin\n  Writeln(AText);\nend;",
+      "good": "procedure TImport.Report(const AText: string);\nbegin\n  FLogger.Info(AText);\nend;",
+      "options": [
+        {
+          "name": "symbols",
+          "type": "object-list",
+          "columns": [
+            {
+              "name": "name"
+            },
+            {
+              "name": "kind"
+            },
+            {
+              "name": "message"
+            },
+            {
+              "name": "replacement"
+            },
+            {
+              "name": "severity"
+            },
+            {
+              "name": "units",
+              "list": true
+            },
+            {
+              "name": "firstArgument",
+              "list": true
+            },
+            {
+              "name": "allowFirstArgument",
+              "list": true
+            }
+          ],
+          "default": [],
+          "description": "Table of forbidden symbols, one object per entry: name (qualified, * allowed), kind (routine, type, constant, field, property, enumValue or identifier), message, replacement, severity, units (globs, ! excludes), firstArgument and allowFirstArgument (argument texts or type names)."
+        }
+      ]
+    },
+    {
       "id": "thread-vcl-access",
       "name": "VCL access from a thread",
       "category": "bug",

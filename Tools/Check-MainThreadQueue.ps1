@@ -16,7 +16,9 @@
     davon nicht betroffen.
 
     Kommentare und Strings werden übergangen. Eine einzelne Zeile lässt sich
-    mit dem Kommentar "// mainthread-ok" freigeben.
+    mit dem Kommentar "// mainthread-ok" oder "// lsp-ignore: forbidden-symbol"
+    freigeben. Dasselbe Verbot steht als Regel forbidden-symbol in atlas.json
+    (#1133).
 
     Exit-Code 0: keine Verstöße, 1: mindestens ein Verstoß.
 
@@ -30,6 +32,10 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+# Freigabe je Zeile: "// mainthread-ok" oder wie bei der Atlas-Regel forbidden-symbol (#1133)
+# "// lsp-ignore: forbidden-symbol" in derselben Zeile.
+$Exempt = '//\s*(mainthread-ok|lsp-ignore:[^\r\n]*\bforbidden-symbol\b)'
 
 $SourceDirs = @('Packages/Atlas.IDE.Expert/Source')
 
@@ -63,7 +69,7 @@ foreach ($dir in $SourceDirs) {
 
         foreach ($match in [regex]::Matches($text, $Pattern)) {
             $line = Get-LineNumber $text $match.Index
-            if ($originalLines[$line - 1] -match '//\s*mainthread-ok') { continue }
+            if ($originalLines[$line - 1] -match $Exempt) { continue }
             $violations += "${relative}:${line}: $Message"
         }
     }

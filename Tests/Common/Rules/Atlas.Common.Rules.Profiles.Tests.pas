@@ -199,7 +199,8 @@ begin
   // hardcoded-string (#56), random-without-randomize (#153), die freiwillige Regel todo-comment (#68),
   // die Architekturregeln des Rollenkonzepts (ohne "prefixes" stumm, Code-Review A-12).
   Assert.AreEqual(Merged(All, ['architecture-contract-content', 'architecture-role-import',
-    'catch-all-without-raise', 'default-parameter', 'file-header', 'global-variable', 'hardcoded-string',
+    'catch-all-without-raise', 'default-parameter', 'file-header', 'forbidden-symbol', 'global-variable',
+    'hardcoded-string',
     'implicit-variants-unit', 'legacy-stack-queue', 'legacy-tlist', 'line-length', 'loop-invariant-call', 'magic-number',
     'managed-param-without-const', 'missing-begin-update', 'money-as-float', 'narrowing-assignment',
     'override-case-mismatch', 'public-field', 'random-without-randomize', 'redundant-begin-end',

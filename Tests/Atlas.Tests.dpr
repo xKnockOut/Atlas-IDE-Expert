@@ -157,6 +157,7 @@ uses
   Atlas.Common.Rules.ProjectFiles.Tests in 'Common\Rules\Atlas.Common.Rules.ProjectFiles.Tests.pas',
   Atlas.Common.Rules.Builtin.XmlDoc.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.Tests.pas',
   Atlas.Common.Rules.Builtin.Casts.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Casts.Tests.pas',
+  Atlas.Common.Rules.Builtin.ForbiddenSymbols.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.ForbiddenSymbols.Tests.pas',
   Atlas.Common.Rules.Builtin.Unresolved.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas',
   Atlas.Common.Projects.UnitLookup.Tests in 'Common\Projects\Atlas.Common.Projects.UnitLookup.Tests.pas',
   Atlas.Common.Rules.Builtin.Packages.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas',
