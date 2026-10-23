@@ -86,6 +86,7 @@ uses
   Atlas.Common.Lsp.PublishedMembers.Tests in 'Common\Lsp\Atlas.Common.Lsp.PublishedMembers.Tests.pas',
   Atlas.Common.Lsp.TypeInfoClasses.Tests in 'Common\Lsp\Atlas.Common.Lsp.TypeInfoClasses.Tests.pas',
   Atlas.Common.Lsp.References.Tests in 'Common\Lsp\Atlas.Common.Lsp.References.Tests.pas',
+  Atlas.Common.Lsp.ReferenceConfidence.Tests in 'Common\Lsp\Atlas.Common.Lsp.ReferenceConfidence.Tests.pas',
   Atlas.Common.Lsp.Rename.Tests in 'Common\Lsp\Atlas.Common.Lsp.Rename.Tests.pas',
   Atlas.Common.Lsp.Completion.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Tests.pas',
   Atlas.Common.Lsp.Completion.Handle.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Handle.Tests.pas',

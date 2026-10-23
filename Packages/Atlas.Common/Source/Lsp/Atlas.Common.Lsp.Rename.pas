@@ -8,6 +8,9 @@
 // (Button1Click) mit umbenannt (#45).
 // Betrifft das Umbenennen ein binär gespeichertes Formular, bricht es ab (#121):
 // Die Positionen stammen aus der umgewandelten Textform und passen nicht zur Datei.
+// Geändert werden nur sichere Stellen (#1119) und solche in inaktiven Zweigen,
+// die eindeutig auf das Symbol auflösen. Die übrigen erschlossenen Stellen
+// nennt die Antwort im Feld atlasUnchanged, damit der Editor sie zum Prüfen zeigt.
 
 interface
 
@@ -20,6 +23,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.References;
 
 type
@@ -51,6 +55,7 @@ type
     FFiles: TReferenceFilesProvider;
     FNamespaces: TArray<string>;
     FRenameHandlers: Boolean;
+    FSettingsFor: TReferenceSettingsProvider;
     function ProjectFiles: TArray<string>;
     function HandlePrepare(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleRename(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -81,8 +86,18 @@ type
     class function Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition; const ANewName: string;
       const AFiles: TArray<string>; const AReadText: TReferenceReadText;
-      const ACancellation: IJsonRpcCancellationToken = nil; ARenameHandlers: Boolean = True): TArray<TRenameEdit>; static;
+      const ACancellation: IJsonRpcCancellationToken = nil; ARenameHandlers: Boolean = True): TArray<TRenameEdit>;
+      overload; static;
+    /// <summary>Wie oben; AUnchanged erhält die erschlossenen Stellen nach ASettings, die nicht geändert werden
+    /// (#1119).</summary>
+    class function Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName: string; const APosition: TTextPosition; const ANewName: string;
+      const AFiles: TArray<string>; const AReadText: TReferenceReadText;
+      const ACancellation: IJsonRpcCancellationToken; ARenameHandlers: Boolean; const ASettings: TReferenceSettings;
+      out AUnchanged: TArray<TReferenceLocation>): TArray<TRenameEdit>; overload; static;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
+    /// <summary>Einstellungen references.* je Datei; nicht gesetzt: Vorgaben.</summary>
+    property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
     /// <summary>Handler wie Button1Click beim Umbenennen von Button1 anpassen (Standard True).</summary>
     property RenameHandlers: Boolean read FRenameHandlers write FRenameHandlers;
   end;
@@ -98,6 +113,7 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.Definition,
+  Atlas.Common.Lsp.ReferenceConfidence,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TreeCache,
@@ -432,12 +448,25 @@ class function TLspRename.Edits(AResolver: TNameResolver; const AIndex: ISymbolI
   const AFiles: TArray<string>; const AReadText: TReferenceReadText;
   const ACancellation: IJsonRpcCancellationToken; ARenameHandlers: Boolean): TArray<TRenameEdit>;
 var
+  Unchanged: TArray<TReferenceLocation>;
+begin
+  Result := Edits(AResolver, AIndex, ATree, AFileName, APosition, ANewName, AFiles, AReadText, ACancellation,
+    ARenameHandlers, TReferenceSettings.SureOnly, Unchanged);
+end;
+
+class function TLspRename.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string; const APosition: TTextPosition; const ANewName: string;
+  const AFiles: TArray<string>; const AReadText: TReferenceReadText;
+  const ACancellation: IJsonRpcCancellationToken; ARenameHandlers: Boolean; const ASettings: TReferenceSettings;
+  out AUnchanged: TArray<TReferenceLocation>): TArray<TRenameEdit>;
+var
   Checked: TRenameCheck;
-  Locations: TArray<TReferenceLocation>;
+  Found, Locations: TArray<TReferenceLocation>;
   Location: TReferenceLocation;
   Edit: TRenameEdit;
   Reason: string;
 begin
+  AUnchanged := nil;
   if not IsValidName(ANewName) then
 
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('"%s" ist kein gültiger Bezeichner.', [ANewName]));
@@ -445,8 +474,14 @@ begin
   if Checked.Error <> '' then
     raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, Checked.Error);
   Result := nil;
-  Locations := TLspReferences.Find(AResolver, AIndex, ATree, AFileName, APosition, True, AFiles, AReadText,
+  Found := TLspReferences.Find(AResolver, AIndex, ATree, AFileName, APosition, True, AFiles, AReadText, ASettings,
     ACancellation);
+  Locations := nil;
+  for Location in Found do
+    if Location.Confidence.Renameable then
+      Locations := Locations + [Location]
+    else
+      AUnchanged := AUnchanged + [Location];
   Reason := Conflict(AResolver, ATree, AFileName, APosition, ANewName, Locations, AReadText);
   if Reason <> '' then
     raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, Reason);
@@ -528,6 +563,9 @@ var
   Changes: TJSONObject;
   List: TJSONArray;
   Item: TJSONObject;
+  Settings: TReferenceSettings;
+  Unchanged: TArray<TReferenceLocation>;
+  Location: TReferenceLocation;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue) and
@@ -539,11 +577,15 @@ begin
   Cancellation := TRequestCancellation.Create(ACancellation);
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
   Tree := Shared.Tree;
+  if Assigned(FSettingsFor) then
+    Settings := FSettingsFor(Uri)
+  else
+    Settings := TReferenceSettings.Default;
   Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
     Resolver.Namespaces := Namespaces;
     Found := Edits(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
-      Trim(NewName), ProjectFiles, FReadText, ACancellation, FRenameHandlers);
+      Trim(NewName), ProjectFiles, FReadText, ACancellation, FRenameHandlers, Settings, Unchanged);
   finally
     Resolver.Free;
   end;
@@ -569,6 +611,20 @@ begin
     raise;
   end;
   TJSONObject(Result).AddPair('changes', Changes);
+  // Erweiterung (#1119): erschlossene Stellen, die nicht geändert werden; Editoren ohne Kenntnis übergehen sie.
+  if Length(Unchanged) > 0 then
+  begin
+    List := TJSONArray.Create;
+    TJSONObject(Result).AddPair('atlasUnchanged', List);
+    for Location in Unchanged do
+    begin
+      Item := TJSONObject.Create;
+      Item.AddPair('uri', TDocumentUris.FromPath(Location.FileName));
+      Item.AddPair('range', TLspPositions.RangeToJson(Location.Range));
+      Item.AddPair('atlasConfidence', Location.Confidence.ToJson);
+      List.AddElement(Item);
+    end;
+  end;
 end;
 
 end.
