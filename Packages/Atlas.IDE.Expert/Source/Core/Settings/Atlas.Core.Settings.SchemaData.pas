@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2001] of string = (
+  Lines: array[0..2014] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -39,6 +39,21 @@ const
     '      "x-page": "Allgemein",',
     '      "x-control": "Auswahl aus den installierten Versionen",',
     '      "x-issue": "#47, #258"',
+    '    },',
+    '    "minDelphiVersion": {',
+    '      "type": "string",',
+    '      "pattern": "^[0-9]+(\\.[0-9]+)?$",',
+    '      "description": "Älteste Delphi-Version, mit der das Projekt übersetzen muss, als Produktnummer (\"12\", \"11\") oder wie in der Registry (\"23.0\"). Atlas meldet Sprachmerkmale neuerer Versionen' +
+      ' (Regel language-feature, z. B. \"is not\" oder If-Ausdruck bei \"12\"), und Code-Aktionen, Schnellbefehle und Formatieren erzeugen sie nicht. Gilt die ältere aus dieser und der gewählten Version (del' +
+      'phiVersion bzw. laufende IDE). Leer: nur die gewählte Version.",',
+    '      "examples": [',
+    '        "23.0",',
+    '        "22.0"',
+    '      ],',
+    '      "x-scope": "project",',
+    '      "x-page": "Projekt",',
+    '      "x-control": "Auswahl aller bekannten Delphi-Versionen",',
+    '      "x-issue": "#1126"',
     '    },',
     '    "language": {',
     '      "type": "string",',

@@ -83,6 +83,8 @@ type
     [Test]
     procedure ReadsDelphiProductNumbers;
     [Test]
+    procedure ReadsMinDelphiVersion;
+    [Test]
     procedure ReadsSortUses;
   end;
 
@@ -1143,6 +1145,22 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.AreEqual('19.0', Parse('{"delphiVersion": "10.2"}', Issues).DelphiVersion);
   Assert.AreEqual(0, Integer(Length(Issues)));
+end;
+
+procedure TServerSettingsTests.ReadsMinDelphiVersion;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // #1126: älteste Version, mit der das Projekt übersetzen muss; Produktnummern wie bei delphiVersion.
+  Assert.AreEqual('', Parse('{}', Issues).MinDelphiVersion);
+  Assert.AreEqual('23.0', Parse('{"minDelphiVersion": "12"}', Issues).MinDelphiVersion);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('22.0', Parse('{"minDelphiVersion": "22.0"}', Issues).MinDelphiVersion);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('', Parse('{"minDelphiVersion": "7"}', Issues).MinDelphiVersion);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Die globale delphiVersion bleibt davon unberührt.
+  Assert.AreEqual('', Parse('{"minDelphiVersion": "12"}', Issues).DelphiVersion);
 end;
 
 procedure TServerSettingsTests.ReadsSortUses;

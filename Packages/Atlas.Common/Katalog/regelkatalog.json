@@ -36,6 +36,17 @@
       ]
     },
     {
+      "id": "language-feature",
+      "name": "Language feature of a newer Delphi version",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "The code uses a language feature that the project's language level does not know yet: inline variable and constant (Delphi 10.3), managed record with class operator Initialize/Finalize (Delphi 10.4), digit separator 1_000 and binary literal %1010 (Delphi 11), multiline string ''' (Delphi 12), if expression, \"is not\" and \"not in\" (Delphi 13). The language level is the older of delphiVersion and minDelphiVersion in atlas.json: minDelphiVersion names the oldest Delphi version the project must still compile with (e.g. \"12\" for code shared by Delphi 12 and 13). Without either setting nothing is reported. Inactive {$IF CompilerVersion >= …} branches are not reported, so code for several versions can live side by side. Reported in the editor, by --check, check_code and the Claude Code hook (hook_check). Code actions and slash commands do not generate features beyond the language level.",
+      "bad": "// minDelphiVersion \"12\"\nif Sender is not TButton then\n  Exit;",
+      "good": "if not (Sender is TButton) then\n  Exit;",
+      "level": "A"
+    },
+    {
       "id": "unused-suppression",
       "name": "Unused suppression",
       "category": "code-smell",

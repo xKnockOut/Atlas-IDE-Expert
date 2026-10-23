@@ -115,6 +115,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Profiles,
   Atlas.Common.Rules.Suppressions;
@@ -509,8 +510,9 @@ begin
       if OverridingRule(Descriptor.Id, ARules, Settings, AContext.RelativePath, AContext.UnitName) <> '' then
         Continue;
       Context := Shared;
+      // Sprachstand (#1126): Korrekturen erzeugen keine Merkmale, die minDelphiVersion nicht kennt.
       if Context.DelphiVersion = '' then
-        Context.DelphiVersion := Settings.DelphiVersion;
+        Context.DelphiVersion := TLanguageFeatures.LanguageLevel(Settings.DelphiVersion, Settings.MinDelphiVersion);
       Context.Options := RuleOptions(Descriptor.Id, Settings);
       Context.DfmPropertyRules := Settings.DfmPropertyRules;
       Context.NoSignatureSync := not Settings.Refactoring.SyncSignatures;

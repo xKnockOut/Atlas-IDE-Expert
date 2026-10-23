@@ -400,6 +400,10 @@ type
     /// <summary>Stelle des Werts von "delphiVersion" in der gelesenen Datei, für die Warnung, wenn diese
     /// Version nicht installiert ist (#47); leer ohne Angabe.</summary>
     DelphiVersionRange: TTextRange;
+    /// <summary>Älteste Delphi-Version, mit der das Projekt übersetzen muss, als BDS-Version wie DelphiVersion
+    /// (#1126); '' = keine. Sprachmerkmale neuerer Versionen meldet die Regel language-feature, und Code-Aktionen
+    /// erzeugen sie nicht (TLanguageFeatures.LanguageLevel).</summary>
+    MinDelphiVersion: string;
     /// <summary>Sprache der Meldungen, "de" oder "en".</summary>
     Language: string;
     /// <summary>Vorgabe-Codepage für Dateien ohne BOM, wenn die Erkennung nicht entscheidet (#121);
@@ -879,6 +883,7 @@ end;
 class function TServerSettings.Default: TServerSettings;
 begin
   Result.DelphiVersion := '';
+  Result.MinDelphiVersion := '';
   Result.Language := 'de';
   Result.DefaultEncoding := 65001;
   Result.Project := '';

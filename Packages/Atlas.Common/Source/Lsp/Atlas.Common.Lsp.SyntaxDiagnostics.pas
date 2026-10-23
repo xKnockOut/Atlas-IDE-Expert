@@ -239,7 +239,6 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Scopes,
-  Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Checker,
@@ -902,7 +901,6 @@ var
   RuleFinding: TRuleFinding;
   Findings: TArray<TRuleFinding>;
 var
-  Finding: TLanguageFeatureFinding;
   Region: TLspInactiveRegion;
   Data: TJSONObject;
   Tags: TJSONArray;
@@ -920,16 +918,11 @@ begin
   // Code und Korrektur wie bei den übrigen Regeln. Ohne Konfiguration gilt Default = Fehler.
   for RuleFinding in TFileChecker.SyntaxFindings(Tree.Diagnostics, ARules.Settings) do
     Items.AddElement(FindingToJson(RuleFinding));
-  // Merkmale in inaktiven Zweigen ({$IF CompilerVersion >= …}) sind gewollt (#109).
-  for Finding in TLanguageFeatures.Check(Tree, ADelphiVersion, TLspInactiveRegions.RangesOf(AInactive)) do
-  begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(Finding.StartPos, Finding.EndPos)));
-    Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Warning));
-    Item.AddPair('source', Source);
-    Item.AddPair('message', Finding.Message);
-    Items.AddElement(Item);
-  end;
+  // Merkmale in inaktiven Zweigen ({$IF CompilerVersion >= …}) sind gewollt (#109). Als Treffer der Regel
+  // language-feature wie im Linter und in den MCP-Werkzeugen (#1126); ADelphiVersion ist der Sprachstand.
+  for RuleFinding in TFileChecker.LanguageFeatureFindings(Tree, ARules.Settings, ADelphiVersion,
+    TLspInactiveRegions.RangesOf(AInactive)) do
+    Items.AddElement(FindingToJson(RuleFinding));
   if Length(ARules.Rules) > 0 then
   begin
     // Abbruch (ERuleCheckCancelled): Die bis dahin gesammelten Meldungen freigeben.

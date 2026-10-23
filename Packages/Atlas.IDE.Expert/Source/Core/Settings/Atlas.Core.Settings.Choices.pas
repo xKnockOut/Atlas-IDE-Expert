@@ -3,6 +3,8 @@
 // Auswahllisten des Einstellungsdialogs (#227), die nicht im Schema stehen:
 //   - delphiVersion: installierte Versionen als „Delphi 12 (23.0)“, gespeichert
 //     wird die Registry-Nummer ("23.0").
+//   - minDelphiVersion (#1126): alle bekannten Versionen, auch nicht installierte,
+//     denn das Projekt muss mit ihnen übersetzen, nicht diese IDE.
 //   - config und platform: aus der .dproj des Projekts (BuildConfiguration,
 //     Platforms).
 //   - profile und testProfile: eingebaute Profile und die eigenen aus "profiles".
@@ -31,6 +33,8 @@ type
     class function DelphiCaption(const ARegistryVersion: string): string; static;
     /// <summary>Installierte Versionen (Registry-Nummern), neueste zuerst, ohne Doppelte.</summary>
     class function DelphiVersions(const AInstalled: TArray<string>): TArray<TAtlasSettingChoice>; static;
+    /// <summary>Alle bekannten Versionen (Registry-Nummern), neueste zuerst; für minDelphiVersion (#1126).</summary>
+    class function KnownVersions: TArray<string>; static;
     /// <summary>Build-Konfigurationen der .dproj ohne "Base", in der Reihenfolge der Datei.</summary>
     class function DprojConfigs(const ADprojText: string): TArray<string>; static;
     /// <summary>Aktive Plattformen der .dproj (Platform value="…" mit True).</summary>
@@ -138,6 +142,15 @@ begin
     Result := Trim(ARegistryVersion)
   else
     Result := Format('%s (%s)', [Product, Trim(ARegistryVersion)]);
+end;
+
+class function TAtlasSettingChoices.KnownVersions: TArray<string>;
+var
+  Product: TDelphiProduct;
+begin
+  Result := nil;
+  for Product in Products do
+    Result := Result + [Product.Version];
 end;
 
 class function TAtlasSettingChoices.DelphiVersions(const AInstalled: TArray<string>): TArray<TAtlasSettingChoice>;

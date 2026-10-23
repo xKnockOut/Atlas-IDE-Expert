@@ -129,7 +129,10 @@ begin
       Result := Result + [Action];
       First := False;
     end;
-    if SameText(Finding.RuleId, 'unused-suppression') or SameText(Finding.RuleId, 'syntax') then
+    // Syntaxfehler und Sprachmerkmale (#1126) laufen nicht über die Engine, ein lsp-ignore wirkt dort nicht;
+    // Sprachmerkmale für neuere Versionen gehören in {$IF CompilerVersion >= …}.
+    if SameText(Finding.RuleId, 'unused-suppression') or SameText(Finding.RuleId, 'syntax') or
+      SameText(Finding.RuleId, 'language-feature') then
       Continue;
     Action := Default(TCodeAction);
     Action.Title := Format('"%s" für diese Zeile unterdrücken', [Finding.RuleId]);
