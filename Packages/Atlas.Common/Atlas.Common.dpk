@@ -154,6 +154,8 @@ contains
   Atlas.Common.Architecture.UsesGraph in 'Source\Architecture\Atlas.Common.Architecture.UsesGraph.pas',
   Atlas.Common.Architecture.UsesLocator in 'Source\Architecture\Atlas.Common.Architecture.UsesLocator.pas',
   Atlas.Common.Architecture.UsesService in 'Source\Architecture\Atlas.Common.Architecture.UsesService.pas',
+  Atlas.Common.Architecture.Louvain in 'Source\Architecture\Atlas.Common.Architecture.Louvain.pas',
+  Atlas.Common.Architecture.Overview in 'Source\Architecture\Atlas.Common.Architecture.Overview.pas',
   Atlas.Common.Rules.Builtin.Todos in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.pas',
   Atlas.Common.Rules.Builtin.Recursion in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.pas',
   Atlas.Common.Lsp.Todos in 'Source\Lsp\Atlas.Common.Lsp.Todos.pas',
