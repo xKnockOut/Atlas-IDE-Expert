@@ -14,6 +14,10 @@
 //     der Debugger der IDE schon lesbar an.
 //   - Geändert: Wert anders als beim letzten Halt in derselben Routine.
 //     Clear (Fortsetzen) und Start merken die fertigen Werte dafür.
+//   - Kein Zugriff (#840): Ein Fehlertext, den TAtlasDebugUnavailable als
+//     „kein Zugriff“ erkennt, erscheint mit SetUnavailable als
+//     „Name = ‹kein Zugriff›“; andere Fehler und ohne SetUnavailable fehlt
+//     der Name wie bisher. Die Ursache nennt der Hover über dem Namen.
 
 interface
 
@@ -23,7 +27,7 @@ uses
 
 type
   {$SCOPEDENUMS ON}
-  TAtlasInlineValueState = (Pending, Ready, Failed);
+  TAtlasInlineValueState = (Pending, Ready, Failed, Unavailable);
   {$SCOPEDENUMS OFF}
 
   TAtlasInlineValueItem = record
@@ -62,6 +66,8 @@ type
     FPrevious: TDictionary<string, string>;
     FPreviousContext: string;
     FNext: Integer;
+    FUnavailableText: string;
+    FUnavailablePatterns: TArray<string>;
     /// <summary>Fertige Werte für die Hervorhebung beim nächsten Halt merken.</summary>
     procedure Remember;
     class function KeyOf(const AName: string): string; static;
@@ -78,9 +84,14 @@ type
     procedure Reset;
     /// <summary>Nächster Name ohne Wert in der Reihenfolge der Auswertung; False, wenn alle da sind.</summary>
     function NextPending(out AName: string): Boolean;
-    /// <summary>Wert für AName; AOk = False: der Debugger kennt ihn nicht (wird nicht angezeigt).</summary>
+    /// <summary>„Kein Zugriff“ zeigen (#840): AText statt des Werts, wenn der Fehlertext als solcher erkannt
+    /// wird (bekannte Texte und APatterns); AText = '' blendet solche Namen wie andere Fehler aus.</summary>
+    procedure SetUnavailable(const AText: string; const APatterns: TArray<string>);
+    /// <summary>Wert für AName; AOk = False: der Debugger kennt ihn nicht (wird nicht angezeigt, außer bei
+    /// „kein Zugriff“ mit SetUnavailable).</summary>
     procedure Put(const AName, ARaw: string; AOk: Boolean);
-    /// <summary>Werte der Zeile ALine (0-basiert) in AFileName, in der Reihenfolge im Text; nur fertige.</summary>
+    /// <summary>Werte der Zeile ALine (0-basiert) in AFileName, in der Reihenfolge im Text; nur fertige und
+    /// „kein Zugriff“.</summary>
     function Line(const AFileName: string; ALine: Integer): TAtlasInlineValueItems;
     /// <summary>Gibt es Bezeichner für den Halt?</summary>
     function Active: Boolean;
@@ -99,7 +110,8 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Defaults,
-  Atlas.Core.Hover.DebugValue;
+  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Debug.Unavailable;
 
 const
   // Gültige Tage von TDateTime (0001-01-01 bis 9999-12-31).
@@ -302,12 +314,23 @@ begin
     Value.State := TAtlasInlineValueState.Ready;
     Value.Text := Display(FTypes[Key], Value.Raw);
   end
+  else if (FUnavailableText <> '') and TAtlasDebugUnavailable.IsUnavailable(Value.Raw, FUnavailablePatterns) then
+  begin
+    Value.State := TAtlasInlineValueState.Unavailable;
+    Value.Text := FUnavailableText;
+  end
   else
   begin
     Value.State := TAtlasInlineValueState.Failed;
     Value.Text := '';
   end;
   FValues[Key] := Value;
+end;
+
+procedure TAtlasInlineValues.SetUnavailable(const AText: string; const APatterns: TArray<string>);
+begin
+  FUnavailableText := AText;
+  FUnavailablePatterns := APatterns;
 end;
 
 function TAtlasInlineValues.Line(const AFileName: string; ALine: Integer): TAtlasInlineValueItems;
@@ -323,12 +346,13 @@ begin
   for Key in Names do
   begin
     Value := FValues[Key];
-    if Value.State <> TAtlasInlineValueState.Ready then
+    if not (Value.State in [TAtlasInlineValueState.Ready, TAtlasInlineValueState.Unavailable]) then
       Continue;
     Item.Name := FSpellings[Key];
     Item.Text := Value.Text;
     Item.State := Value.State;
-    Item.Changed := FPrevious.TryGetValue(Key, Previous) and (Previous <> Value.Raw);
+    Item.Changed := (Value.State = TAtlasInlineValueState.Ready) and FPrevious.TryGetValue(Key, Previous) and
+      (Previous <> Value.Raw);
     Result := Result + [Item];
   end;
 end;

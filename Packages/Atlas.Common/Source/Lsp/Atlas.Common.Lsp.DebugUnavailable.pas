@@ -89,7 +89,8 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.ApplyEdit,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.TreeCache;
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Text.Lines;
 
 function LastPart(const AName: string): string;
 begin
@@ -217,14 +218,6 @@ begin
   Result := Found;
 end;
 
-function LineBreakOf(const AText: string): string;
-begin
-  if Pos(#13#10, AText) > 0 then
-    Result := #13#10
-  else
-    Result := #10;
-end;
-
 /// <summary>Zeile hinter dem Kopf "unit X;" bzw. "program X;"; 0 ohne Kopf.</summary>
 function LineAfterHeader(const ATokens: TArray<TPascalToken>): Integer;
 var
@@ -279,7 +272,7 @@ begin
   Result.FirstUse := -1;
   Result.LastUse := -1;
   Tokens := ATree.Tokens;
-  LineEnd := LineBreakOf(AText);
+  LineEnd := TTextLines.LineBreakOf(AText);
   Result.UnitFix := TArray<TTextEdit>.Create(TTextEdit.Create(TTextRange.Create(LineAfterHeader(Tokens), 0,
     LineAfterHeader(Tokens), 0), '{$O-}' + LineEnd));
   Offset := LineOffset(Tokens, AStoppedLine);
