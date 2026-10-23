@@ -954,7 +954,9 @@ uses
   Atlas.Core.Debug.Unavailable.Tests in 'IDE.Expert\Atlas.Core.Debug.Unavailable.Tests.pas',
   Atlas.Common.Lsp.ExpressionCompletion.Tests in 'Common\Lsp\Atlas.Common.Lsp.ExpressionCompletion.Tests.pas',
   Atlas.Core.Debug.DialogCompletion.Tests in 'IDE.Expert\Atlas.Core.Debug.DialogCompletion.Tests.pas',
-  Atlas.Core.Completion.Providers.Expression.Tests in 'IDE.Expert\Atlas.Core.Completion.Providers.Expression.Tests.pas';
+  Atlas.Core.Completion.Providers.Expression.Tests in 'IDE.Expert\Atlas.Core.Completion.Providers.Expression.Tests.pas',
+  Atlas.Core.Debug.Evaluate.Tests in 'IDE.Expert\Atlas.Core.Debug.Evaluate.Tests.pas',
+  Atlas.UI.Debug.EvaluateFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.EvaluateFrame.Tests.pas';
 
 // Atlas-Symbol (#751) für die UI-Tests.
 {$R '..\Packages\Atlas.IDE.Expert\Resources\Symbol\Atlas.Symbol.res'}

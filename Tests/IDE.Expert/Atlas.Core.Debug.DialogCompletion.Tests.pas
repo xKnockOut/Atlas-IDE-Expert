@@ -30,6 +30,9 @@ type
     procedure HistoryKeepsTwentyNewestFirst;
     [Test]
     procedure HistoryRoundTrip;
+    /// <summary>#784: 50 Einträge im Fenster „Auswerten“, Entfernen für festgeheftete Ausdrücke.</summary>
+    [Test]
+    procedure HistoryLimitAndRemove;
   end;
 
 implementation
@@ -159,6 +162,26 @@ begin
     Assert.AreEqual(2, Integer(Length(Loaded.Items('b'))));
   finally
     Loaded.Free;
+    History.Free;
+  end;
+end;
+
+procedure TAtlasDebugDialogCompletionTests.HistoryLimitAndRemove;
+var
+  History: TAtlasExpressionHistory;
+  Index: Integer;
+begin
+  History := TAtlasExpressionHistory.Create(50);
+  try
+    Assert.AreEqual(50, History.Limit);
+    for Index := 1 to 60 do
+      History.Add('P', 'W' + IntToStr(Index));
+    Assert.AreEqual(50, Integer(Length(History.Items('P'))));
+    Assert.IsTrue(History.Remove('P', ' W60 '));
+    Assert.AreEqual('W59', History.Items('P')[0]);
+    Assert.IsFalse(History.Remove('P', 'W60'), 'schon weg');
+    Assert.IsFalse(History.Remove('Q', 'W1'), 'anderes Projekt');
+  finally
     History.Free;
   end;
 end;

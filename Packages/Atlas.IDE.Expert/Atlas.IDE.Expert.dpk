@@ -572,6 +572,10 @@ contains
   Atlas.IDE.Debug.Unavailable in 'Source\IDE\Debug\Atlas.IDE.Debug.Unavailable.pas',
   Atlas.Core.Debug.DialogCompletion in 'Source\Core\Debug\Atlas.Core.Debug.DialogCompletion.pas',
   Atlas.IDE.Debug.DialogCompletion in 'Source\IDE\Debug\Atlas.IDE.Debug.DialogCompletion.pas',
-  Atlas.Core.Completion.Providers.Expression in 'Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Expression.pas';
+  Atlas.Core.Completion.Providers.Expression in 'Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Expression.pas',
+  Atlas.Core.Debug.Evaluate in 'Source\Core\Debug\Atlas.Core.Debug.Evaluate.pas',
+  Atlas.UI.Debug.EvaluateFrame in 'Source\UI\Debug\Atlas.UI.Debug.EvaluateFrame.pas' {AtlasDebugEvaluateFrame: TFrame},
+  Atlas.IDE.Debug.EvaluateWindow in 'Source\IDE\Debug\Atlas.IDE.Debug.EvaluateWindow.pas',
+  Atlas.IDE.Debug.Evaluate in 'Source\IDE\Debug\Atlas.IDE.Debug.Evaluate.pas';
 
 end.

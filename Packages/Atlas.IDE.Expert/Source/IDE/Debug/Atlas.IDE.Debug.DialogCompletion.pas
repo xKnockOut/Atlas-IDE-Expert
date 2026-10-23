@@ -24,6 +24,9 @@
 //     markiert) oder mit denen das Feld verlassen wurde, kommen in
 //     %LOCALAPPDATA%\Atlas\debug-expressions.json, 20 je Projekt. Pfeil nach
 //     unten im leeren Feld zeigt sie; Übernehmen ersetzt das ganze Feld.
+//   - Fenster „Auswerten“ (#784): Sein Eingabefeld meldet OwnField; es gilt
+//     als Ausdrucksfeld von „Auswerten/Ändern“. Verlauf (50 je Projekt) und
+//     Pfeil nach unten im leeren Feld übernimmt dort das Fenster selbst.
 // Ohne debug.completionInDialogs läuft kein Zeitgeber und kein Hook. Nur im
 // Hauptthread verwenden.
 
@@ -63,6 +66,9 @@ type
       function WantsKey(AKey: Word; AShift: TShiftState): Boolean; override;
       procedure HandleKey(AKey: Word; AShift: TShiftState); override;
     end;
+  public class var
+    /// <summary>True für das Eingabefeld des Fensters „Auswerten“ (#784); setzt TAtlasIdeDebugEvaluate.</summary>
+    OwnField: TFunc<TWinControl, Boolean>;
   private class var
     FInstance: TAtlasIdeDebugDialogCompletion;
   private
@@ -87,6 +93,8 @@ type
     FAllSelected: Boolean;
     FWordStart: Integer;
     FHistoryMode: Boolean;
+    // Feld des Atlas-Fensters „Auswerten“: ohne eigenen Verlauf.
+    FOwnField: Boolean;
     FLogged: TStringList;
     constructor Create(const ASession: TAtlasDialogSessionFunc; const ALog: TProc<string>;
       const AProvider: TAtlasDialogProviderFactory);
@@ -340,6 +348,9 @@ var
   Changed: Boolean;
   Text: string;
 begin
+  // Das Fenster „Auswerten“ führt seinen Verlauf selbst.
+  if FOwnField then
+    Exit;
   LoadHistory;
   FHistoryLock.Acquire;
   try
@@ -464,11 +475,21 @@ begin
   Form := GetParentForm(Control);
   if Form = nil then
     Exit;
-  Dialog := TAtlasDebugDialogs.DialogOf(Form.ClassName, Form.Caption);
-  if Dialog = TAtlasDebugDialog.None then
-    Exit;
-  LogDialog(Form);
-  Field := TAtlasDebugDialogs.FieldOf(Dialog, LabelOf(Form, Control));
+  FOwnField := Assigned(OwnField) and OwnField(Control);
+  if FOwnField then
+  begin
+    // Angedockt ist Form das Hauptfenster der IDE: an Titel und Klasse nicht zu erkennen.
+    Dialog := TAtlasDebugDialog.Evaluate;
+    Field := TAtlasDebugField.Expression;
+  end
+  else
+  begin
+    Dialog := TAtlasDebugDialogs.DialogOf(Form.ClassName, Form.Caption);
+    if Dialog = TAtlasDebugDialog.None then
+      Exit;
+    LogDialog(Form);
+    Field := TAtlasDebugDialogs.FieldOf(Dialog, LabelOf(Form, Control));
+  end;
   if not TAtlasDebugDialogs.Completes(Field) then
     Exit;
   FEdit := AFocus;
@@ -495,6 +516,7 @@ begin
   FEdit := 0;
   FForm := nil;
   FDialog := TAtlasDebugDialog.None;
+  FOwnField := False;
   FText := '';
 end;
 
@@ -734,8 +756,8 @@ begin
     Exit;
   if FController.Visible and NavigationOf(AKey, Navigation) then
     Exit(True);
-  // Verlauf (#538): Pfeil nach unten im leeren Feld.
-  Result := (AKey = VK_DOWN) and not FController.Active and (WindowText(FEdit) = '');
+  // Verlauf (#538): Pfeil nach unten im leeren Feld; im Fenster „Auswerten“ zeigt das Fenster seinen eigenen.
+  Result := (AKey = VK_DOWN) and not FOwnField and not FController.Active and (WindowText(FEdit) = '');
 end;
 
 procedure TAtlasIdeDebugDialogCompletion.HandleKey(AKey: Word; AShift: TShiftState);
