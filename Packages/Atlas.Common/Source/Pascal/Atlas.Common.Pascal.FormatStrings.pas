@@ -32,6 +32,11 @@ type
     Dynamic: Boolean;
   end;
 
+  /// <summary>Art eines Arguments im Sinn von TVarRec (#56, #451).</summary>
+  {$SCOPEDENUMS ON}
+  TFormatArgumentClass = (Unknown, Integer_, Float, Text, Character, Bool, Variant_, Enum, Object_, Pointer_);
+  {$SCOPEDENUMS OFF}
+
   TFormatString = record
     Specs: TArray<TFormatSpec>;
     /// <summary>Kein ungültiger Platzhalter?</summary>
@@ -49,6 +54,21 @@ type
     /// gemischt ('a'#13#10'b'). False für anderen Text, mehrzeilige Literale (''') und Codes über $FFFF.
     /// </summary>
     class function LiteralValue(const AText: string; out AValue: string): Boolean; static;
+    /// <summary>Wie LiteralValue; AOffsets nennt je Zeichen des Werts seine Stelle in AText (ab 0): das
+    /// Zeichen selbst, bei '' das erste Hochkomma, bei #13 das #.</summary>
+    class function LiteralOffsets(const AText: string; out AValue: string; out AOffsets: TArray<Integer>): Boolean;
+      static;
+    /// <summary>Wert eines Ausdrucks aus Literalen, die mit + verbunden sind ('a' + #13 + 'b').</summary>
+    class function ExpressionValue(const AText: string; out AValue: string): Boolean; static;
+    /// <summary>Wert einer Konstanten aus ihrer Signatur ("cFormat = 'Text'", "cFormat: string = 'Text'");
+    /// False bei gekürzter Signatur oder anderem Wert.</summary>
+    class function ConstantValue(const ASignature: string; out AValue: string): Boolean; static;
+    /// <summary>Art eines einzelnen Literals (String, Zeichen, Zahl, auch negativ); Unknown für anderes.
+    /// ATypeName: "ein String" bzw. "eine Zahl".</summary>
+    class function LiteralClass(const AText: string; out ATypeName: string): TFormatArgumentClass; static;
+    /// <summary>Passt die Art AClass zum Typbuchstaben AType ('*' für Breite bzw. Genauigkeit)? Unbekannte
+    /// Arten und Variants passen immer.</summary>
+    class function Fits(AType: Char; AClass: TFormatArgumentClass): Boolean; static;
   end;
 
 implementation
@@ -246,10 +266,26 @@ end;
 
 class function TFormatString.LiteralValue(const AText: string; out AValue: string): Boolean;
 var
-  mPos, mCode, mDigits: Integer;
+  mOffsets: TArray<Integer>;
+begin
+  Result := LiteralOffsets(AText, AValue, mOffsets);
+end;
+
+class function TFormatString.LiteralOffsets(const AText: string; out AValue: string;
+  out AOffsets: TArray<Integer>): Boolean;
+var
+  mPos, mCode, mDigits, mStart: Integer;
   mHex: Boolean;
+
+  procedure Add(AChar: Char; AOffset: Integer);
+  begin
+    AValue := AValue + AChar;
+    AOffsets := AOffsets + [AOffset];
+  end;
+
 begin
   AValue := '';
+  AOffsets := nil;
   Result := False;
   // Mehrzeiliges Literal: ''' und ein Zeilenende (Delphi 12).
   if (AText = '') or AText.StartsWith('''''''') and (Length(AText) > 3) and CharInSet(AText[4], [#10, #13]) then
@@ -267,19 +303,20 @@ begin
             begin
               if (mPos < Length(AText)) and (AText[mPos + 1] = '''') then
               begin
-                AValue := AValue + '''';
+                Add('''', mPos - 1);
                 Inc(mPos, 2);
                 Continue;
               end;
               Inc(mPos);
               Break;
             end;
-            AValue := AValue + AText[mPos];
+            Add(AText[mPos], mPos - 1);
             Inc(mPos);
           until False;
         end;
       '#':
         begin
+          mStart := mPos;
           Inc(mPos);
           mHex := (mPos <= Length(AText)) and (AText[mPos] = '$');
           if mHex then
@@ -300,7 +337,7 @@ begin
           end;
           if mDigits = 0 then
             Exit;
-          AValue := AValue + Char(mCode);
+          Add(Char(mCode), mStart - 1);
         end;
       ' ', #9, #10, #13:
         Inc(mPos);
@@ -308,6 +345,88 @@ begin
       Exit;
     end;
   Result := True;
+end;
+
+class function TFormatString.ExpressionValue(const AText: string; out AValue: string): Boolean;
+var
+  mPos, mStart: Integer;
+  mQuoted: Boolean;
+  mPart: string;
+begin
+  AValue := '';
+  mQuoted := False;
+  mStart := 1;
+  for mPos := 1 to Length(AText) + 1 do
+  begin
+    if (mPos <= Length(AText)) and (AText[mPos] = '''') then
+      mQuoted := not mQuoted;
+    if (mPos > Length(AText)) or not mQuoted and (AText[mPos] = '+') then
+    begin
+      if not LiteralValue(Trim(Copy(AText, mStart, mPos - mStart)), mPart) then
+        Exit(False);
+      AValue := AValue + mPart;
+      mStart := mPos + 1;
+    end;
+  end;
+  Result := True;
+end;
+
+class function TFormatString.ConstantValue(const ASignature: string; out AValue: string): Boolean;
+var
+  mEqual, mQuote: Integer;
+begin
+  AValue := '';
+  mEqual := Pos('=', ASignature);
+  mQuote := Pos('''', ASignature);
+  // Gekürzte Signatur bzw. "=" erst im Literal.
+  if (mEqual = 0) or (Copy(ASignature, Length(ASignature), 1) = #$2026) or ((mQuote > 0) and (mQuote < mEqual)) then
+    Exit(False);
+  Result := ExpressionValue(Trim(Copy(ASignature, mEqual + 1, MaxInt)), AValue);
+end;
+
+class function TFormatString.LiteralClass(const AText: string; out ATypeName: string): TFormatArgumentClass;
+var
+  mText, mValue: string;
+begin
+  ATypeName := '';
+  Result := TFormatArgumentClass.Unknown;
+  mText := Trim(AText);
+  if (mText <> '') and (mText[1] = '-') then
+    mText := Trim(Copy(mText, 2, MaxInt));
+  if mText = '' then
+    Exit;
+  if CharInSet(mText[1], ['''', '#']) and LiteralValue(mText, mValue) then
+  begin
+    ATypeName := 'ein String';
+    if Length(mValue) = 1 then
+      Exit(TFormatArgumentClass.Character);
+    Exit(TFormatArgumentClass.Text);
+  end;
+  if CharInSet(mText[1], ['0'..'9', '$']) then
+  begin
+    ATypeName := 'eine Zahl';
+    if (mText[1] <> '$') and ((Pos('.', mText) > 0) or (Pos('e', LowerCase(mText)) > 0)) then
+      Exit(TFormatArgumentClass.Float);
+    Exit(TFormatArgumentClass.Integer_);
+  end;
+end;
+
+class function TFormatString.Fits(AType: Char; AClass: TFormatArgumentClass): Boolean;
+begin
+  if AClass in [TFormatArgumentClass.Unknown, TFormatArgumentClass.Variant_] then
+    Exit(True);
+  case AType of
+    'd', 'u', 'x', '*':
+      Result := AClass = TFormatArgumentClass.Integer_;
+    'e', 'f', 'g', 'n', 'm':
+      Result := AClass = TFormatArgumentClass.Float;
+    's':
+      Result := AClass in [TFormatArgumentClass.Text, TFormatArgumentClass.Character];
+    'p':
+      Result := AClass in [TFormatArgumentClass.Pointer_, TFormatArgumentClass.Object_];
+  else
+    Result := True;
+  end;
 end;
 
 end.

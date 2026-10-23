@@ -1044,13 +1044,13 @@ begin
     '      "category": "bug",' + #10 +
     '      "severity": "error",' + #10 +
     '      "group": "find-bugs",' + #10 +
-    '      "description": "Format, FmtStr, WideFormat, WideFmtStr, Exception.CreateFmt or CreateFmtHelp and TStringBuilder.AppendFormat with a known format string (a literal, literals joined with +, a cons' +
-    't or resourcestring of the file or the index) whose placeholders do not match the argument list [...]: an invalid placeholder (%q, ''%'' or ''%5'' at the end, %0: without a type letter), fewer arguments t' +
-    'han placeholders, or an argument of the wrong type: %d %u %x take only integers, %e %f %g %n %m only floating-point numbers, %s strings, characters and variants, %p pointers and objects, a * for width' +
-    ' or precision an integer; variants fit everywhere. Boolean and enumeration values are reported at every type letter with Ord(...) or BoolToStr(..., True) as advice. All of this raises EConvertError at' +
-    ' runtime. An argument behind the last used one is reported with medium confidence (only without an index in the format string), it is never printed. Types are only checked when they are known for sure' +
-    '; format strings from variables, index * and ranges stay silent. Own routines named Format stay silent when name resolution finds them. Shares its format string parser with format-without-settings. No' +
-    ' quick fix. High confidence.",' + #10 +
+    '      "description": "Format, FmtStr, FormatBuf, StrFmt, StrLFmt, WideFormat, WideFmtStr, Exception.CreateFmt or CreateFmtHelp and TStringBuilder.AppendFormat with a known format string (a literal, li' +
+    'terals joined with +, a const or resourcestring of the file or the index) whose placeholders do not match the argument list [...]: an invalid placeholder (%q, ''%'' or ''%5'' at the end, %0: without a typ' +
+    'e letter), fewer arguments than placeholders, or an argument of the wrong type: %d %u %x take only integers, %e %f %g %n %m only floating-point numbers, %s strings, characters and variants, %p pointer' +
+    's and objects, a * for width or precision an integer; variants fit everywhere. Boolean and enumeration values are reported at every type letter with Ord(...) or BoolToStr(..., True) as advice. All of ' +
+    'this raises EConvertError at runtime. An argument behind the last used one is reported with medium confidence (only without an index in the format string), it is never printed. Types are only checked ' +
+    'when they are known for sure; format strings from variables, index * and ranges stay silent. Own routines named Format stay silent when name resolution finds them. Shares its format string parser with' +
+    ' format-without-settings. No quick fix. High confidence.",' + #10 +
     '      "bad": "Result := Format(''%d orders for %s'', [ACustomer.Name]);",' + #10 +
     '      "good": "Result := Format(''%d orders for %s'', [ACustomer.OrderCount, ACustomer.Name]);",' + #10 +
     '      "options": [' + #10 +
@@ -5609,13 +5609,13 @@ begin
     '    {' + #10 +
     '      "id": "format-args",' + #10 +
     '      "name": "Formatstring passt nicht zu den Argumenten",' + #10 +
-    '      "description": "Format, FmtStr, WideFormat, WideFmtStr, Exception.CreateFmt bzw. CreateFmtHelp und TStringBuilder.AppendFormat mit bekanntem Formatstring (Literal, mit + verbundene Literale, con' +
-    'st oder resourcestring der Datei bzw. des Index), dessen Platzhalter nicht zur Argumentliste [...] passen: ungültiger Platzhalter (%q, ''%'' bzw. ''%5'' am Ende, %0: ohne Typbuchstaben), weniger Argumente' +
-    ' als Platzhalter oder ein Argument vom falschen Typ: %d %u %x nur Ganzzahlen, %e %f %g %n %m nur Gleitkommazahlen, %s Strings, Zeichen und Variants, %p Zeiger und Objekte, ein * für Breite bzw. Genaui' +
-    'gkeit eine Ganzzahl; Variants passen überall. Boolean und Aufzählungswerte werden bei jedem Typbuchstaben gemeldet, mit Ord(...) bzw. BoolToStr(..., True) als Hinweis. All das löst zur Laufzeit EConve' +
-    'rtError aus. Ein Argument hinter dem letzten verwendeten wird mit mittlerer Sicherheit gemeldet (nur ohne Index im Formatstring), es wird nie ausgegeben. Typen werden nur geprüft, wenn sie sicher beka' +
-    'nnt sind; Formatstrings aus Variablen, Index * und Bereiche bleiben still. Eigene Routinen namens Format bleiben still, wenn die Namensauflösung sie findet. Teilt die Zerlegung der Formatstrings mit f' +
-    'ormat-without-settings. Keine Korrektur. Sicherheit hoch.",' + #10 +
+    '      "description": "Format, FmtStr, FormatBuf, StrFmt, StrLFmt, WideFormat, WideFmtStr, Exception.CreateFmt bzw. CreateFmtHelp und TStringBuilder.AppendFormat mit bekanntem Formatstring (Literal, mi' +
+    't + verbundene Literale, const oder resourcestring der Datei bzw. des Index), dessen Platzhalter nicht zur Argumentliste [...] passen: ungültiger Platzhalter (%q, ''%'' bzw. ''%5'' am Ende, %0: ohne Typbu' +
+    'chstaben), weniger Argumente als Platzhalter oder ein Argument vom falschen Typ: %d %u %x nur Ganzzahlen, %e %f %g %n %m nur Gleitkommazahlen, %s Strings, Zeichen und Variants, %p Zeiger und Objekte, ' +
+    'ein * für Breite bzw. Genauigkeit eine Ganzzahl; Variants passen überall. Boolean und Aufzählungswerte werden bei jedem Typbuchstaben gemeldet, mit Ord(...) bzw. BoolToStr(..., True) als Hinweis. All ' +
+    'das löst zur Laufzeit EConvertError aus. Ein Argument hinter dem letzten verwendeten wird mit mittlerer Sicherheit gemeldet (nur ohne Index im Formatstring), es wird nie ausgegeben. Typen werden nur g' +
+    'eprüft, wenn sie sicher bekannt sind; Formatstrings aus Variablen, Index * und Bereiche bleiben still. Eigene Routinen namens Format bleiben still, wenn die Namensauflösung sie findet. Teilt die Zerle' +
+    'gung der Formatstrings mit format-without-settings. Keine Korrektur. Sicherheit hoch.",' + #10 +
     '      "options": [' + #10 +
     '        {' + #10 +
     '          "name": "formatMethods",' + #10 +

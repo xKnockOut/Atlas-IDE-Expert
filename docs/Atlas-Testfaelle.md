@@ -2409,6 +2409,29 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | UT5 | `TStringList.Create(Unbekannt, ` (nicht deklarierter Name) | Keine Variante wegen des Typs gedämpft |
 | UT6 | In UT1 mit Alt+↑ die gedämpfte Variante wählen | Sie wird gezeigt, bleibt aber gedämpft |
 
+## Parameter-Hint: Platzhalter von Format (#451)
+
+Voraussetzung: Server läuft in der IDE, `completion.formatPlaceholders` an (Vorgabe).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FP1 | `Format('%s hat %d Einträge', [AName, ` tippen | Hint-Zeile oben in der Doku-Fläche in Akzentfarbe: „Platzhalter 2 von 2 erwartet ganzzahlig“; im Editor `%s` und `AName` in einer Farbe, `%d` in einer zweiten |
+| FP2 | In FP1 den Cursor in `AName` setzen | Nach kurzer Pause „Platzhalter 1 von 2 erwartet String“ |
+| FP3 | In FP1 `Count, X` weitertippen | Fehlerfarbe: „Mehr Argumente als Platzhalter: Argument 3 wird nicht ausgegeben.“ |
+| FP4 | `Format('%d', ['Text'` | Fehlerfarbe: „Platzhalter 1 (%d) erwartet ganzzahlig, Argument 1 ist ein String: EConvertError zur Laufzeit.“ |
+| FP5 | `Format('%q', [` | Fehlerfarbe: „Ungültiger Platzhalter %q: EConvertError zur Laufzeit.“; `%q` nicht eingefärbt |
+| FP6 | `Format('%1:s %0:s', [A, B` mit Cursor in `A` | „Platzhalter 2 von 2 erwartet String“; `%0:s` und `A` gleich gefärbt |
+| FP7 | `Format('%*.*f', [Breite, Stellen, Wert` mit Cursor in `Breite` bzw. `Stellen` | „Breite für Platzhalter 1 von 1 (%*.*f), ganzzahlig“ bzw. „Genauigkeit …“; alle drei Argumente in der Farbe des Platzhalters |
+| FP8 | `const cMuster = 'Kunde %s';` und `Format(cMuster, [` | Zeile „Platzhalter 1 von 1 erwartet String“; im Formatstring nichts eingefärbt (steht nicht im Aufruf), das Argument schon |
+| FP9 | `Format('%s' + ' (%d)', [A, B` | Beide Platzhalter in ihren Stücken eingefärbt, Zuordnung wie in einem Literal |
+| FP10 | `FmtStr(mText, '%d', [N`, `StrFmt(mPuffer, '%s', [S`, `raise Exception.CreateFmt('%s', [S` | Zeile und Farben wie in FP1 |
+| FP11 | `.atlas` mit `"formatFunctions": [{"name": "Protokoll", "formatIndex": 1}]`, eigene `procedure Protokoll(AStufe: Integer; const AFormat: string; const AArgs: array of const)`; `Protokoll(1, '%s', [` | Zeile und Farben wie bei Format; ohne den Eintrag nichts |
+| FP12 | atlas.json `"format-args": {"formatMethods": ["TLogger.LogFmt"]}`; `Log.LogFmt('%d', [` | Zeile und Farben wie bei Format |
+| FP13 | Hint mit Esc schließen bzw. Cursor aus dem Aufruf bewegen | Färbung im Editor verschwindet sofort |
+| FP14 | Tools › Optionen › Atlas › Vervollständigung: „Platzhalter von Format im Parameter-Hint zuordnen und einfärben“ aus; FP1 | Hint wie bisher ohne Platzhalter-Zeile, keine Färbung; der Schalter ist ohne Parameter-Hint ausgegraut |
+| FP15 | Helles und dunkles Thema; FP1 mit sieben Platzhaltern | Farben gut lesbar, der siebte Platzhalter hat die Farbe des ersten |
+| FP16 | `Format(mMuster, [A` mit Variable `mMuster` | Keine Platzhalter-Zeile, keine Färbung; Hint sonst wie bisher |
+
 ## Typargumente nach Constraints (#450)
 
 | Nr. | Schritte | Erwartet |

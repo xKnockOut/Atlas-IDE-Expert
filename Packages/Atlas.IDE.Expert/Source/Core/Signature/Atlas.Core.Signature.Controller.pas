@@ -10,6 +10,8 @@
 //   - Argumenttypen (#498): Meldet der Server, dass ein bisheriges Argument nicht zum Parametertyp passt
 //     (TypeMismatch), passt die Überladung nicht, erscheint gedämpft und wird nicht vorgewählt. Die Zahl der
 //     Argumente zählt weiter lokal.
+//   - Platzhalter (#451): Ändert sich der Text im Aufruf einer Formatroutine, fragt der Editor neu; UpdateFormat
+//     übernimmt nur die neue Zuordnung, Überladung und Parameter bleiben.
 
 interface
 
@@ -42,6 +44,8 @@ type
     procedure Show(const AHelp: TAtlasSignatureHelp; AParameter: Integer);
     /// <summary>Der aktive Parameter hat sich beim Tippen geändert.</summary>
     procedure UpdateParameter(AParameter: Integer);
+    /// <summary>Neue Platzhalter-Zuordnung zum selben Aufruf (#451).</summary>
+    procedure UpdateFormat(const AFormat: TAtlasSignatureFormat);
     procedure NextOverload;
     procedure PreviousOverload;
     /// <summary>Wählt die Überladung AIndex (Klick im Hint).</summary>
@@ -135,6 +139,14 @@ begin
   // Automatischer Wechsel nur, wenn die gezeigte Variante nicht mehr passt (#437).
   if not Fits(FSignature, AParameter) then
     FSignature := FirstFitting(AParameter);
+  Update;
+end;
+
+procedure TAtlasSignatureController.UpdateFormat(const AFormat: TAtlasSignatureFormat);
+begin
+  if not FActive then
+    Exit;
+  FHelp.Format := AFormat;
   Update;
 end;
 
