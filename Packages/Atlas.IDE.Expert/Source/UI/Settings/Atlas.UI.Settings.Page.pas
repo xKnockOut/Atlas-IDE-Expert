@@ -314,6 +314,7 @@ type
     FPeekReferencesKey: TEdit;
     FReferencesInferred: TCheckBox;
     FReferencesTextMatches: TCheckBox;
+    FCallHierarchyDiagram: TCheckBox;
     FOutline: TCheckBox;
     FOutlineAlphabetical: TCheckBox;
     FOutlineFollowCursor: TCheckBox;
@@ -1599,6 +1600,8 @@ begin
   Attach(Panel, FEditorToolbarItems);
   FEditorToolbarReturnButton := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbarReturnButton));
   FEditorToolbarLabels := AddCheck(TAtlasStrings.Text(TAtlasTextId.EditorToolbarLabels));
+  // Aufrufdiagramm (#1122).
+  FCallHierarchyDiagram := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCallHierarchyDiagram));
   // Mitlaufender Kopf (#506, experimentell).
   FStickyScroll := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScroll));
   FStickyScrollMaxLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollMaxLines));
@@ -2725,6 +2728,7 @@ begin
   FMarks.Bind(FPeekReferencesKey, ['PeekReferencesKey']);
   FMarks.Bind(FReferencesInferred, ['ReferencesInferred']);
   FMarks.Bind(FReferencesTextMatches, ['ReferencesTextMatches']);
+  FMarks.Bind(FCallHierarchyDiagram, ['CallHierarchyDiagram']);
   FMarks.Bind(FOutline, ['Outline']);
   FMarks.Bind(FOutlineAlphabetical, ['OutlineAlphabetical']);
   FMarks.Bind(FOutlineFollowCursor, ['OutlineFollowCursor']);
@@ -4835,6 +4839,7 @@ begin
   FPeekReferencesKey.Text := ShortCutToText(TShortCut(ASettings.PeekReferencesKey));
   FReferencesInferred.Checked := ASettings.ReferencesInferred;
   FReferencesTextMatches.Checked := ASettings.ReferencesTextMatches;
+  FCallHierarchyDiagram.Checked := ASettings.CallHierarchyDiagram;
   FOutline.Checked := ASettings.Outline;
   FOutlineAlphabetical.Checked := ASettings.OutlineAlphabetical;
   FOutlineFollowCursor.Checked := ASettings.OutlineFollowCursor;
@@ -5255,6 +5260,7 @@ begin
   ASettings.PeekReferencesKey := Integer(TextToShortCut(Trim(FPeekReferencesKey.Text)));
   ASettings.ReferencesInferred := FReferencesInferred.Checked;
   ASettings.ReferencesTextMatches := FReferencesTextMatches.Checked;
+  ASettings.CallHierarchyDiagram := FCallHierarchyDiagram.Checked;
   ASettings.Outline := FOutline.Checked;
   ASettings.OutlineAlphabetical := FOutlineAlphabetical.Checked;
   ASettings.OutlineFollowCursor := FOutlineFollowCursor.Checked;

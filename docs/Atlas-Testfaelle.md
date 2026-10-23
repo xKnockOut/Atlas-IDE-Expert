@@ -6165,3 +6165,24 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index. Beispiel: `IKunde
 | TS8 | „Auch Namen in Strings als Verwendung melden“ an, TS1 wiederholen | Zusätzlich `MethodAddress('Speichern')` unter „Erschlossen“ mit „[im Text]“, markiert ist nur der Name ohne Anführungszeichen; das Kontrollkästchen ist nur bedienbar, solange „Erschlossene Verwendungen zeigen“ an ist |
 | TS9 | In Claude Code `find_references` und `rename_symbol` (dryRun) für `TKunde.Speichern` | „n Verwendungen …, a sicher, b erschlossen:“, sichere zuerst, dann „Erschlossen, vor dem Umbenennen prüfen:“ mit „– erschlossen (interface): …“; rename_symbol endet mit „Nicht geändert, bitte prüfen (b erschlossene Stellen):“ |
 | TS10 | Englische IDE-Sprache | „Sure (n)“, „Inferred (n) · check before renaming“, „Sure only“, Gründe auf Englisch |
+
+## Aufrufdiagramm (#1122)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index. Beispiel: `TForm1.Start` ruft `Laden` und `Speichern`, `Laden` ruft `Lesen` (drei Ebenen); `Lesen` ruft über `S: ISpeicher` `S.Schreiben` mit zwei umsetzenden Klassen; `Rekursiv` ruft sich selbst; `Viele` ruft zehn Routinen; `Start` ruft auch `IntToStr`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AD1 | Cursor auf `TForm1.Start`, Befehlspalette „Aufrufdiagramm“ | Ergebnisfenster im Diagramm: links `TForm1.Start`, daneben die erste Ebene `Laden` und `Speichern` mit Datei:Zeile; Umschalter „Diagramm“ angehakt, Leiste mit „Ausgehend: Aufgerufene“ gewählt (**Abnahme**) |
+| AD2 | Klick auf `Laden`, erneut Klick, nochmals Klick | Erster Klick lädt `Lesen` als neue Spalte; zweiter klappt zu, dritter wieder auf ohne neue Anfrage (**Abnahme**) |
+| AD3 | Doppelklick auf `Lesen`; Enter auf einem gewählten Kasten | Editor springt zur Deklaration von `Lesen` bzw. der gewählten Routine (**Abnahme**) |
+| AD4 | `Lesen` aufklappen | Kante zu `ISpeicher.Schreiben` gestrichelt mit „2 Umsetzungen“; Tooltip mit Fundstelle und Erklärung (**Abnahme**) |
+| AD5 | Aufrufdiagramm für `Rekursiv` | Bogen in Warnfarbe zurück zu `Rekursiv`, kein weiterer Kasten, kein Hängen (**Abnahme**) |
+| AD6 | Aufrufdiagramm für `Viele` | Acht Kästen und „+ 2 …“; Klick darauf zeigt alle zehn (**Abnahme**) |
+| AD7 | „Nur Projekt-Units“ abhaken und wieder anhaken | `IntToStr` (System.SysUtils) erscheint abgesetzt und verschwindet wieder (**Abnahme**) |
+| AD8 | „Eingehend: Aufrufer“ wählen | Titel „Aufrufer von …“, dieselbe Wurzel mit ihren Aufrufern; zurück auf „Ausgehend“ lädt wieder die Aufgerufenen (**Abnahme**) |
+| AD9 | „Als HTML speichern …“, Datei im Browser ohne Netz öffnen | Datei entsteht (Titelzeile „… · Aufrufdiagramm gespeichert: …“); im Browser dieselben Kästen, gestrichelte Kante mit Zahl, Bogen zurück, „+ N …“; Klick klappt auf und zu, „nur Projekt-Units“ filtert, Mausrad zoomt (**Abnahme**) |
+| AD10 | Mausrad, Ziehen, Tasten + − 0, „Einpassen“ | Zoom um den Mauszeiger, Verschieben, Einpassen des ganzen Diagramms |
+| AD11 | *Aufrufer* aus dem Menü Atlas, Umschalter „Diagramm“ an und aus | Wechsel zwischen Baum und Diagramm; bei *Vorfahren*/*Nachfahren* ist der Umschalter ausgeblendet |
+| AD12 | Optionen › Atlas › Editor: „Aufrufdiagramm …“ aus (auch als Schnellschalter) | Umschalter im Ergebnisfenster weg, Befehl fehlt in Palette und Menü Atlas; nach Neustart auch im Kontextmenü (**Abnahme**) |
+| AD13 | Hell und dunkel, englische IDE-Sprache | Kästen, Linien und Schrift gut lesbar; „Call diagram“, „Diagram“, „Project units only“, „Save as HTML …“ |
+| AD14 | Claude Code: `get_call_hierarchy` für `Lesen`, `direction: "outgoing"` | `Schreiben` mit „[über Interface, 2 Umsetzungen]“ |

@@ -142,6 +142,11 @@ type
     Raw: string;
     /// <summary>Eingehende Aufrufe (#1119): sicher oder erschlossen.</summary>
     Confidence: TAtlasConfidence;
+    /// <summary>Aufruf über ein Interface bzw. eine virtuelle Methode (#1122): "interface", "virtual" oder ''
+    /// (atlasDispatch des Servers).</summary>
+    Dispatch: string;
+    /// <summary>Umsetzungen, die der Aufruf erreichen kann; 0 ohne Dispatch.</summary>
+    Implementations: Integer;
   end;
 
 implementation

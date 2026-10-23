@@ -47,6 +47,13 @@ type
     /// </summary>
     class function AllDescendantsOf(const AIndex: ISymbolIndex; const ATypeName: string): TArray<TSymbolLocation>;
       static;
+    /// <summary>Ist ATypeName (qualifiziert oder kurz) im Index ein Interface?</summary>
+    class function IsInterfaceType(const AIndex: ISymbolIndex; const ATypeName: string): Boolean; static;
+    /// <summary>Umsetzungen der Methode AName von AContainer, die ein Aufruf erreichen kann (#1122): bei einem
+    /// Interface die Klassen, die es umsetzen (auch über Vorfahren), sonst die Methode selbst und jede
+    /// Nachfahrenklasse, die sie neu deklariert. 0 ohne Index.</summary>
+    class function ImplementationCount(const AIndex: ISymbolIndex; const AContainer, AName: string;
+      AInterface: Boolean): Integer; static;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
   end;
 
@@ -248,6 +255,57 @@ class function TLspImplementations.AllDescendantsOf(const AIndex: ISymbolIndex;
   const ATypeName: string): TArray<TSymbolLocation>;
 begin
   Result := AllDescendants(AIndex, ATypeName);
+end;
+
+class function TLspImplementations.IsInterfaceType(const AIndex: ISymbolIndex; const ATypeName: string): Boolean;
+var
+  Location: TSymbolLocation;
+  Short: string;
+begin
+  Result := False;
+  if AIndex = nil then
+    Exit;
+  Short := ATypeName;
+  if Short.LastIndexOf('.') >= 0 then
+    Short := Copy(Short, Short.LastIndexOf('.') + 2, MaxInt);
+  for Location in AIndex.FindSymbols(Short) do
+    if (Location.Symbol.Kind = TIndexSymbolKind.InterfaceType) and
+      (SameText(Location.Symbol.QualifiedName, ATypeName) or SameText(Location.Symbol.Name, ATypeName)) then
+      Exit(True);
+end;
+
+class function TLspImplementations.ImplementationCount(const AIndex: ISymbolIndex; const AContainer, AName: string;
+  AInterface: Boolean): Integer;
+var
+  Location: TSymbolLocation;
+  Owner: TUnitIndex;
+  Symbol: TIndexSymbol;
+begin
+  Result := 0;
+  if AIndex = nil then
+    Exit;
+  // Eine virtuelle Methode ist selbst ein mögliches Ziel; ein Interface hat keinen Rumpf.
+  if not AInterface then
+    Result := 1;
+  for Location in AllDescendants(AIndex, AContainer) do
+  begin
+    if not (Location.Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType]) then
+      Continue;
+    if AInterface then
+    begin
+      Inc(Result);
+      Continue;
+    end;
+    if not AIndex.FindFile(Location.FileName, Owner) then
+      Continue;
+    for Symbol in Owner.Symbols do
+      if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, Location.Symbol.QualifiedName) and
+        SameText(Symbol.Name, AName) then
+      begin
+        Inc(Result);
+        Break;
+      end;
+  end;
 end;
 
 procedure TLspImplementations.Attach(ADispatcher: TJsonRpcDispatcher);

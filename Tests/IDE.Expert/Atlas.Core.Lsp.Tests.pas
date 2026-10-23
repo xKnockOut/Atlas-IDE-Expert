@@ -1716,7 +1716,7 @@ var
   Seen: TStringList;
   Client: TLspClient;
   Session: TLspSession;
-  Roots, Callers, Supers: TArray<TAtlasHierarchyItem>;
+  Roots, Callers, Supers, Callees: TArray<TAtlasHierarchyItem>;
 begin
   Replies := TDictionary<string, string>.Create;
   Seen := TStringList.Create;
@@ -1726,6 +1726,10 @@ begin
     Replies.Add('textDocument/prepareCallHierarchy', '[' + Format(Item, ['Laden', 'TKunde', 4, 9, 4, 4, 1]) + ']');
     Replies.Add('callHierarchy/incomingCalls', '[{"from":' + Format(Item, ['Start', 'TForm1', 30, 40, 30, 30, 2]) +
       ',"fromRanges":[]}]');
+    // Aufruf über ein Interface mit zwei Umsetzungen (#1122) und ein gewöhnlicher.
+    Replies.Add('callHierarchy/outgoingCalls', '[{"to":' + Format(Item, ['Speichern', 'ISpeicher', 7, 7, 7, 7, 5]) +
+      ',"fromRanges":[],"atlasDispatch":{"kind":"interface","implementations":2}},{"to":' +
+      Format(Item, ['Fertig', '', 8, 8, 8, 8, 6]) + ',"fromRanges":[]}]');
     Replies.Add('textDocument/prepareTypeHierarchy', '[' + Format(Item, ['TKunde', '', 2, 2, 2, 2, 3]) + ']');
     Replies.Add('typeHierarchy/supertypes', '[' + Format(Item, ['TPerson', '', 1, 1, 1, 1, 4]) + ']');
     Roots := Session.PrepareHierarchy(TAtlasHierarchyDirection.Incoming, 'C:\P\A.pas', 4, 12);
@@ -1741,6 +1745,12 @@ begin
     // Der Server bekommt seinen Eintrag samt data zurück.
     Assert.Contains(Seen.Text, 'callHierarchy/incomingCalls {"item":{"name":"Laden"');
     Assert.Contains(Seen.Text, '"data":{"id":1}');
+    Callees := Session.HierarchyChildren(TAtlasHierarchyDirection.Outgoing, Roots[0]);
+    Assert.AreEqual(2, Integer(Length(Callees)));
+    Assert.AreEqual('interface', Callees[0].Dispatch);
+    Assert.AreEqual(2, Callees[0].Implementations);
+    Assert.AreEqual('', Callees[1].Dispatch);
+    Assert.AreEqual(0, Callees[1].Implementations);
     Roots := Session.PrepareHierarchy(TAtlasHierarchyDirection.Supertypes, 'C:\P\A.pas', 2, 3);
     Supers := Session.HierarchyChildren(TAtlasHierarchyDirection.Supertypes, Roots[0]);
     Assert.AreEqual(1, Integer(Length(Supers)));

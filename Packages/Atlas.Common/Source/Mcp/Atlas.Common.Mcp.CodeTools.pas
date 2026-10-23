@@ -172,6 +172,24 @@ begin
     Result := TReferenceSettings.Default;
 end;
 
+/// <summary>Aufruf über Interface bzw. virtuelle Methode (#1122): " [über Interface, 3 Umsetzungen]".</summary>
+function DispatchSuffix(const ACall: THierarchyCall): string;
+begin
+  Result := '';
+  if ACall.Dispatch = TReferenceReason.Interface_ then
+    Result := 'über Interface'
+  else if ACall.Dispatch = TReferenceReason.Virtual then
+    Result := 'virtuell'
+  else
+    Exit;
+  if ACall.Implementations <= 0 then
+    Result := ' [' + Result + ']'
+  else if ACall.Implementations = 1 then
+    Result := ' [' + Result + ', 1 Umsetzung]'
+  else
+    Result := Format(' [%s, %d Umsetzungen]', [Result, ACall.Implementations]);
+end;
+
 /// <summary>" – erschlossen (interface): Aufruf über …" für erschlossene Treffer, sonst ''.</summary>
 function ConfidenceSuffix(const AConfidence: TReferenceConfidence): string;
 begin
@@ -303,8 +321,8 @@ begin
   for Round := 0 to 1 do
     for Call in ACalls do
       if Call.Confidence.IsSure = (Round = 0) then
-        ALines.Add(Format('  %s %s (%d×)%s', [AArrow, DescribeItem(Call.Item), Length(Call.Ranges),
-          ConfidenceSuffix(Call.Confidence)]));
+        ALines.Add(Format('  %s %s (%d×)%s%s', [AArrow, DescribeItem(Call.Item), Length(Call.Ranges),
+          DispatchSuffix(Call), ConfidenceSuffix(Call.Confidence)]));
   if Sure < Length(ACalls) then
     ALines.Add(Format('  %d sicher, %d erschlossen', [Sure, Length(ACalls) - Sure]));
 end;
@@ -341,7 +359,7 @@ begin
           AddCalls(Lines, 'Aufgerufen von:', '←',
             TLspHierarchies.IncomingCalls(Resolver, FIndex, Item, Files, FReadText, SettingsOf(Item.FileName), nil));
         if ADirection in [TMcpCallDirection.Outgoing, TMcpCallDirection.Both] then
-          AddCalls(Lines, 'Ruft auf:', '→', TLspHierarchies.OutgoingCalls(Resolver, Item, FReadText));
+          AddCalls(Lines, 'Ruft auf:', '→', TLspHierarchies.OutgoingCalls(Resolver, FIndex, Item, FReadText, nil));
       finally
         Resolver.Free;
       end;

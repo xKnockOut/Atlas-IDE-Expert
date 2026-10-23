@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4229] of string = (
+  Lines: array[0..4244] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -3142,6 +3142,22 @@ const
     '      "x-parent": "references.inferred",',
     '      "x-node": "commands.references",',
     '      "x-issue": "#1119"',
+    '    },',
+    '    "CallHierarchyDiagram": {',
+    '      "description": "Aufrufhierarchie auch als Diagramm: Umschalter „Diagramm“ im Ergebnisfenster und Befehl „Aufrufdiagramm“ (ausgehend oder eingehend, Ebenen aufklappbar, Aufrufe über Interface ode' +
+      'r virtuelle Methode gestrichelt, Export als HTML). Aus = nur die Baumansicht.",',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "callHierarchy.diagram",',
+    '      "x-area": "editor",',
+    '      "x-page": "Editor",',
+    '      "x-parent": "",',
+    '      "x-node": "",',
+    '      "x-control": "Kontrollkästchen „Aufrufdiagramm“; Umschalter „Diagramm“ im Ergebnisfenster",',
+    '      "x-quickToggle": true,',
+    '      "x-caption": "Aufrufdiagramm",',
+    '      "x-captionEn": "Call diagram",',
+    '      "x-issue": "#1122"',
     '    },',
     '    "PeekHeightLines": {',
     '      "description": "Höhe des Fensters von „Definition einblenden“ in Editorzeilen (5 bis 60).",',

@@ -19,6 +19,12 @@
 // Unit gruppiert; erschlossene Zeilen tragen ≈ und ihren Grund, der Hinweis
 // unter der Maus erklärt ihn. „Nur sichere“ in der Titelzeile blendet die
 // erschlossenen aus. Erschlossene Aufrufer der Hierarchie sind ebenso markiert.
+// Aufrufhierarchien (#1122) lassen sich als Diagramm zeigen: Umschalter
+// „Diagramm“ in der Titelzeile (nur mit DiagramAllowed, also
+// callHierarchy.diagram), darunter eine Leiste mit Richtung (ausgehend oder
+// eingehend, lädt mit denselben Wurzeln neu), „Nur Projekt-Units“,
+// „Einpassen“ und „Als HTML speichern …“; die Ansicht selbst ist
+// TAtlasCallDiagramView, ihre Ebenen kommen über OnExpand wie im Baum.
 
 interface
 
@@ -37,7 +43,8 @@ uses
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
   Atlas.Core.Undo.Contract,
-  Atlas.Core.Notes.Store;
+  Atlas.Core.Notes.Store,
+  Atlas.UI.Results.CallDiagram;
 
 type
   TAtlasResultsOpen = reference to procedure(const AFileName: string; ALine, ACharacter: Integer);
@@ -97,6 +104,19 @@ type
     FSureCaption: string;
     FInferredCaption: string;
     FHintNode: TTreeNode;
+    /// <summary>Aufrufdiagramm (#1122).</summary>
+    FDiagramToggle: TCheckBox;
+    FDiagramBar: TPanel;
+    FOutgoing: TRadioButton;
+    FIncoming: TRadioButton;
+    FProjectOnly: TCheckBox;
+    FFitButton: TButton;
+    FSaveButton: TButton;
+    FDiagram: TAtlasCallDiagramView;
+    FRoots: TArray<TAtlasHierarchyItem>;
+    FDiagramAllowed: Boolean;
+    FUpdatingDiagram: Boolean;
+    FHierarchyTitle: string;
     function AddNode(AParent: TTreeNode; const AText: string; const AData: TNodeData): TTreeNode;
     function DataOf(ANode: TTreeNode): TNodeData;
     procedure AddHierarchy(AParent: TTreeNode; const AItems: TArray<TAtlasHierarchyItem>);
@@ -116,6 +136,20 @@ type
     procedure DiffClick(Sender: TObject);
     procedure NoteEditClick(Sender: TObject);
     procedure NoteDeleteClick(Sender: TObject);
+    function IsCallHierarchy: Boolean;
+    procedure UpdateDiagramControls;
+    procedure SetDiagramAllowed(AValue: Boolean);
+    function GetShowsDiagram: Boolean;
+    procedure SetShowsDiagram(AValue: Boolean);
+    procedure SetIsProjectFile(const AValue: TFunc<string, Boolean>);
+    procedure DiagramToggleClick(Sender: TObject);
+    procedure DirectionClick(Sender: TObject);
+    procedure ProjectOnlyClick(Sender: TObject);
+    procedure FitClick(Sender: TObject);
+    procedure SaveClick(Sender: TObject);
+    function DiagramLoad(ADirection: TAtlasHierarchyDirection;
+      const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
+    procedure DiagramOpen(const AItem: TAtlasHierarchyItem);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -127,7 +161,14 @@ type
       const ASureCaption, AInferredCaption: string);
     /// <summary>Wurzeln einer Hierarchie; die erste Ebene wird gleich geladen.</summary>
     procedure ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
-      const ARoots: TArray<TAtlasHierarchyItem>);
+      const ARoots: TArray<TAtlasHierarchyItem>); overload;
+    /// <summary>Wie oben; AAsDiagram: Aufrufhierarchie gleich als Diagramm (#1122, nur mit DiagramAllowed).</summary>
+    procedure ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
+      const ARoots: TArray<TAtlasHierarchyItem>; AAsDiagram: Boolean); overload;
+    /// <summary>Aufrufhierarchie in Richtung ADirection mit denselben Wurzeln neu laden (Baum und Diagramm).</summary>
+    procedure SwitchDirection(ADirection: TAtlasHierarchyDirection);
+    /// <summary>Diagramm als eigenständige HTML-Datei (#1122) mit dem Titel des Fensters.</summary>
+    function DiagramHtml: string;
     /// <summary>Liste „Atlas-Änderungen“ (#721): neueste Sätze zuerst, je Satz seine Dateien (zugeklappt).
     /// AKeepSelection: den bisher gewählten Satz wieder wählen (nach Zurücknehmen).</summary>
     procedure ShowChanges(const ATitle: string; const ASets: TArray<TAtlasChangeSet>; ANow: TDateTime;
@@ -173,12 +214,27 @@ type
     property OnNoteDelete: TAtlasNoteAction read FOnNoteDelete write FOnNoteDelete;
     /// <summary>„Nur sichere“ (#1119); sichtbar, solange erschlossene Treffer da sind.</summary>
     property OnlySure: TCheckBox read FOnlySure;
+    /// <summary>Diagramm erlaubt (callHierarchy.diagram, #1122); aus: Umschalter fehlt, nur der Baum.</summary>
+    property DiagramAllowed: Boolean read FDiagramAllowed write SetDiagramAllowed;
+    /// <summary>Zeigt gerade das Aufrufdiagramm statt des Baums.</summary>
+    property ShowsDiagram: Boolean read GetShowsDiagram write SetShowsDiagram;
+    /// <summary>Gehört die Datei zu einem Projekt der Gruppe („Nur Projekt-Units“)? nil: alle.</summary>
+    property IsProjectFile: TFunc<string, Boolean> write SetIsProjectFile;
+    property Direction: TAtlasHierarchyDirection read FDirection;
+    property DiagramToggle: TCheckBox read FDiagramToggle;
+    property DiagramBar: TPanel read FDiagramBar;
+    property OutgoingButton: TRadioButton read FOutgoing;
+    property IncomingButton: TRadioButton read FIncoming;
+    property ProjectOnly: TCheckBox read FProjectOnly;
+    property Diagram: TAtlasCallDiagramView read FDiagram;
   end;
 
 implementation
 
 uses
   Winapi.Windows,
+  System.IOUtils,
+  Vcl.Dialogs,
   Atlas.UI.Strings,
   Atlas.UI.Undo.Messages;
 
@@ -213,6 +269,15 @@ begin
   FOnlySure.Width := 110;
   FOnlySure.Visible := False;
   FOnlySure.OnClick := OnlySureClick;
+  // Umschalter Liste/Diagramm (#1122), nur bei Aufrufhierarchien.
+  FDiagramToggle := TCheckBox.Create(Self);
+  FDiagramToggle.Parent := Header;
+  FDiagramToggle.Align := alRight;
+  FDiagramToggle.AlignWithMargins := True;
+  FDiagramToggle.Caption := TAtlasStrings.Text(TAtlasTextId.CallDiagramToggle);
+  FDiagramToggle.Width := 90;
+  FDiagramToggle.Visible := False;
+  FDiagramToggle.OnClick := DiagramToggleClick;
   FTitle := TLabel.Create(Self);
   FTitle.Parent := Header;
   FTitle.Align := alClient;
@@ -220,6 +285,60 @@ begin
   FTitle.AlignWithMargins := True;
   FTitle.ShowAccelChar := False;
   FTitle.EllipsisPosition := epEndEllipsis;
+  // Leiste des Diagramms: Richtung, Filter, Einpassen, HTML.
+  FDiagramBar := TPanel.Create(Self);
+  FDiagramBar.Parent := Self;
+  FDiagramBar.Align := alTop;
+  FDiagramBar.Top := Header.Top + Header.Height;
+  FDiagramBar.BevelOuter := bvNone;
+  FDiagramBar.ParentBackground := True;
+  FDiagramBar.Height := 26;
+  FDiagramBar.Visible := False;
+  FOutgoing := TRadioButton.Create(Self);
+  FOutgoing.Parent := FDiagramBar;
+  FOutgoing.Align := alLeft;
+  FOutgoing.AlignWithMargins := True;
+  FOutgoing.Width := 160;
+  FOutgoing.Caption := TAtlasStrings.Text(TAtlasTextId.CallDiagramOutgoing);
+  FOutgoing.OnClick := DirectionClick;
+  FIncoming := TRadioButton.Create(Self);
+  FIncoming.Parent := FDiagramBar;
+  FIncoming.Align := alLeft;
+  FIncoming.AlignWithMargins := True;
+  FIncoming.Left := FOutgoing.Left + FOutgoing.Width + 1;
+  FIncoming.Width := 150;
+  FIncoming.Caption := TAtlasStrings.Text(TAtlasTextId.CallDiagramIncoming);
+  FIncoming.OnClick := DirectionClick;
+  FProjectOnly := TCheckBox.Create(Self);
+  FProjectOnly.Parent := FDiagramBar;
+  FProjectOnly.Align := alLeft;
+  FProjectOnly.AlignWithMargins := True;
+  FProjectOnly.Left := FIncoming.Left + FIncoming.Width + 1;
+  FProjectOnly.Width := 140;
+  FProjectOnly.Caption := TAtlasStrings.Text(TAtlasTextId.CallDiagramProjectOnly);
+  FProjectOnly.Checked := True;
+  FProjectOnly.OnClick := ProjectOnlyClick;
+  FSaveButton := TButton.Create(Self);
+  FSaveButton.Parent := FDiagramBar;
+  FSaveButton.Align := alRight;
+  FSaveButton.AlignWithMargins := True;
+  FSaveButton.Width := 150;
+  FSaveButton.Caption := TAtlasStrings.Text(TAtlasTextId.CallDiagramSaveHtml);
+  FSaveButton.OnClick := SaveClick;
+  FFitButton := TButton.Create(Self);
+  FFitButton.Parent := FDiagramBar;
+  FFitButton.Align := alRight;
+  FFitButton.AlignWithMargins := True;
+  FFitButton.Width := 90;
+  FFitButton.Caption := TAtlasStrings.Text(TAtlasTextId.CallDiagramFit);
+  FFitButton.OnClick := FitClick;
+  FDiagram := TAtlasCallDiagramView.Create(Self);
+  FDiagram.Parent := Self;
+  FDiagram.Align := alClient;
+  FDiagram.Visible := False;
+  FDiagram.Hint := TAtlasStrings.Text(TAtlasTextId.CallDiagramHint);
+  FDiagram.OnLoad := DiagramLoad;
+  FDiagram.OnOpen := DiagramOpen;
   FTree := TTreeView.Create(Self);
   FTree.Parent := Self;
   FTree.Align := alClient;
@@ -330,6 +449,8 @@ end;
 
 procedure TAtlasResultsFrame.Clear(const ATitle: string);
 begin
+  // Andere Listen zeigen immer den Baum; der Umschalter behält seinen Stand für die nächste Aufrufhierarchie.
+  FRoots := nil;
   FShowsChanges := False;
   FShowsNotes := False;
   FOnlySure.Visible := False;
@@ -343,6 +464,7 @@ begin
     FTree.Items.EndUpdate;
   end;
   FData.Clear;
+  UpdateDiagramControls;
 end;
 
 procedure TAtlasResultsFrame.AddGroups(AParent: TTreeNode; const AGroups: TArray<TAtlasResultGroup>);
@@ -481,8 +603,15 @@ end;
 procedure TAtlasResultsFrame.ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
   const ARoots: TArray<TAtlasHierarchyItem>);
 begin
+  ShowHierarchy(ATitle, ADirection, ARoots, False);
+end;
+
+procedure TAtlasResultsFrame.ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
+  const ARoots: TArray<TAtlasHierarchyItem>; AAsDiagram: Boolean);
+begin
   Clear(ATitle);
   FDirection := ADirection;
+  FRoots := ARoots;
   FTree.Items.BeginUpdate;
   try
     AddHierarchy(nil, ARoots);
@@ -494,6 +623,153 @@ begin
     FTree.Selected := FTree.Items[0];
     FTree.Items[0].Expand(False);
   end;
+  FHierarchyTitle := ATitle;
+  UpdateDiagramControls;
+  if AAsDiagram or FDiagramToggle.Checked then
+    SetShowsDiagram(True);
+end;
+
+function TAtlasResultsFrame.IsCallHierarchy: Boolean;
+begin
+  Result := (Length(FRoots) > 0) and ((FDirection = TAtlasHierarchyDirection.Incoming) or
+    (FDirection = TAtlasHierarchyDirection.Outgoing));
+end;
+
+procedure TAtlasResultsFrame.UpdateDiagramControls;
+var
+  Possible, Showing: Boolean;
+begin
+  Possible := FDiagramAllowed and IsCallHierarchy;
+  FDiagramToggle.Visible := Possible;
+  Showing := Possible and FDiagramToggle.Checked;
+  FUpdatingDiagram := True;
+  try
+    FOutgoing.Checked := FDirection = TAtlasHierarchyDirection.Outgoing;
+    FIncoming.Checked := FDirection = TAtlasHierarchyDirection.Incoming;
+  finally
+    FUpdatingDiagram := False;
+  end;
+  FDiagramBar.Visible := Showing;
+  FDiagram.Visible := Showing;
+  FTree.Visible := not Showing;
+end;
+
+procedure TAtlasResultsFrame.SetDiagramAllowed(AValue: Boolean);
+begin
+  FDiagramAllowed := AValue;
+  if not AValue then
+    SetShowsDiagram(False)
+  else
+    UpdateDiagramControls;
+end;
+
+function TAtlasResultsFrame.GetShowsDiagram: Boolean;
+begin
+  Result := FDiagram.Visible;
+end;
+
+procedure TAtlasResultsFrame.SetShowsDiagram(AValue: Boolean);
+begin
+  AValue := AValue and FDiagramAllowed and IsCallHierarchy;
+  FUpdatingDiagram := True;
+  try
+    FDiagramToggle.Checked := AValue;
+  finally
+    FUpdatingDiagram := False;
+  end;
+  // Erst beim Umschalten laden; ein Wechsel zurück zum Baum behält die geladenen Ebenen nicht.
+  if AValue then
+  begin
+    FDiagram.ProjectOnly := FProjectOnly.Checked;
+    FDiagram.ShowRoots(FDirection, FRoots);
+  end;
+  UpdateDiagramControls;
+  if AValue and FDiagram.CanFocus then
+    FDiagram.SetFocus;
+end;
+
+procedure TAtlasResultsFrame.SetIsProjectFile(const AValue: TFunc<string, Boolean>);
+begin
+  FDiagram.IsProjectFile := AValue;
+end;
+
+procedure TAtlasResultsFrame.SwitchDirection(ADirection: TAtlasHierarchyDirection);
+const
+  Titles: array[TAtlasHierarchyDirection] of TAtlasTextId = (TAtlasTextId.ResultsIncoming,
+    TAtlasTextId.ResultsOutgoing, TAtlasTextId.ResultsSupertypes, TAtlasTextId.ResultsSubtypes);
+var
+  Roots: TArray<TAtlasHierarchyItem>;
+  AsDiagram: Boolean;
+begin
+  if (Length(FRoots) = 0) or (ADirection = FDirection) then
+    Exit;
+  Roots := FRoots;
+  AsDiagram := ShowsDiagram;
+  ShowHierarchy(TAtlasStrings.Fmt(Titles[ADirection], [Roots[0].Name]), ADirection, Roots, AsDiagram);
+end;
+
+procedure TAtlasResultsFrame.DiagramToggleClick(Sender: TObject);
+begin
+  if not FUpdatingDiagram then
+    SetShowsDiagram(FDiagramToggle.Checked);
+end;
+
+procedure TAtlasResultsFrame.DirectionClick(Sender: TObject);
+begin
+  if FUpdatingDiagram then
+    Exit;
+  if FOutgoing.Checked then
+    SwitchDirection(TAtlasHierarchyDirection.Outgoing)
+  else if FIncoming.Checked then
+    SwitchDirection(TAtlasHierarchyDirection.Incoming);
+end;
+
+procedure TAtlasResultsFrame.ProjectOnlyClick(Sender: TObject);
+begin
+  FDiagram.ProjectOnly := FProjectOnly.Checked;
+end;
+
+procedure TAtlasResultsFrame.FitClick(Sender: TObject);
+begin
+  FDiagram.FitView;
+end;
+
+function TAtlasResultsFrame.DiagramHtml: string;
+begin
+  Result := FDiagram.Html(FHierarchyTitle);
+end;
+
+procedure TAtlasResultsFrame.SaveClick(Sender: TObject);
+var
+  Dialog: TSaveDialog;
+begin
+  Dialog := TSaveDialog.Create(Self);
+  try
+    Dialog.Filter := TAtlasStrings.Text(TAtlasTextId.CallDiagramSaveFilter);
+    Dialog.DefaultExt := 'html';
+    Dialog.FileName := TAtlasStrings.Text(TAtlasTextId.CallDiagramCommand) + '.html';
+    Dialog.Options := Dialog.Options + [ofOverwritePrompt, ofPathMustExist];
+    if not Dialog.Execute then
+      Exit;
+    TFile.WriteAllText(Dialog.FileName, DiagramHtml, TEncoding.UTF8);
+    FTitle.Caption := FHierarchyTitle + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.CallDiagramSaved, [Dialog.FileName]);
+  finally
+    Dialog.Free;
+  end;
+end;
+
+function TAtlasResultsFrame.DiagramLoad(ADirection: TAtlasHierarchyDirection;
+  const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
+begin
+  Result := nil;
+  if Assigned(FOnExpand) then
+    Result := FOnExpand(ADirection, AItem);
+end;
+
+procedure TAtlasResultsFrame.DiagramOpen(const AItem: TAtlasHierarchyItem);
+begin
+  if Assigned(FOnOpen) and (AItem.FileName <> '') then
+    FOnOpen(AItem.FileName, AItem.Line, AItem.Character);
 end;
 
 procedure TAtlasResultsFrame.TreeExpanding(Sender: TObject; Node: TTreeNode; var AllowExpansion: Boolean);
