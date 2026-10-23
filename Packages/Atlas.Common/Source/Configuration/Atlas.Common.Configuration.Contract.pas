@@ -398,6 +398,8 @@ type
     ConditionalExpression: Boolean;
     /// <summary>Code-Aktionen zwischen lokaler Routine und Methode bzw. Routine der Unit (#663).</summary>
     NestedRoutine: Boolean;
+    /// <summary>Code-Aktionen zwischen lokaler Variable und Feld (#668).</summary>
+    PromoteVariable: Boolean;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -858,6 +860,7 @@ begin
   Result.Conditions := True;
   Result.ConditionalExpression := True;
   Result.NestedRoutine := True;
+  Result.PromoteVariable := True;
 end;
 
 { TCompletionSettings }

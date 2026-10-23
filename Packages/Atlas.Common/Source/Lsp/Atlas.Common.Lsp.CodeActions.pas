@@ -82,6 +82,9 @@ type
     class function Capability: TJSONObject; static;
     /// <summary>Eine Aktion als LSP-CodeAction. Der Aufrufer übernimmt das Objekt.</summary>
     class function ActionToJson(const AUri: string; const AAction: TCodeAction): TJSONObject; static;
+    /// <summary>WorkspaceEdit {"changes": {AUri: [...]}} für Befehle, die Änderungen liefern (#668). Der Aufrufer
+    /// übernimmt das Objekt.</summary>
+    class function WorkspaceEditJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject; static;
     /// <summary>Ohne Zuweisung werden uses nicht sortiert.</summary>
     property SortUsesFor: TSortUsesProvider read FSortUsesFor write FSortUsesFor;
     /// <summary>"sortUses": "namespace"; ohne Zuweisung rein alphabetisch.</summary>
@@ -173,6 +176,16 @@ begin
     Item.AddPair('newText', Edit.NewText);
     Result.AddElement(Item);
   end;
+end;
+
+class function TLspCodeActions.WorkspaceEditJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
+var
+  Changes: TJSONObject;
+begin
+  Changes := TJSONObject.Create;
+  Changes.AddPair(AUri, EditsToJson(AEdits));
+  Result := TJSONObject.Create;
+  Result.AddPair('changes', Changes);
 end;
 
 class function TLspCodeActions.ActionToJson(const AUri: string; const AAction: TCodeAction): TJSONObject;

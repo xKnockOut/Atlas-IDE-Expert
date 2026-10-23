@@ -646,6 +646,8 @@ begin
   Assert.IsFalse(Parse('{"refactoring": {"conditionalExpression": false}}', Issues).Refactoring.ConditionalExpression);
   Assert.IsTrue(Parse('{}', Issues).Refactoring.NestedRoutine);
   Assert.IsFalse(Parse('{"refactoring": {"nestedRoutine": false}}', Issues).Refactoring.NestedRoutine);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.PromoteVariable);
+  Assert.IsFalse(Parse('{"refactoring": {"promoteVariable": false}}', Issues).Refactoring.PromoteVariable);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"refactoring": {"propertyFromAccessorsPrefixes": "Get", "propertyFromAccessorsReplaceCalls": "ja", ' +
     '"propertyFromAccessorsSection": "private", "propertyFromAccessorsHideAccessors": "public"}}', Issues);

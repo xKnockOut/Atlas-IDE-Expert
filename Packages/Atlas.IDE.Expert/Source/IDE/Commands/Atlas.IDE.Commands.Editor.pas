@@ -16,7 +16,8 @@
 //   Freigabe, #915), atlas.showSignatureHelp setzt ihn ebenso und öffnet
 //   den Parameter-Hint (OnSignatureHelp, setzt die Composition; #1007),
 //   atlas.changeSignature (#100) und
-//   atlas.moveClass (#103) öffnen ihren Dialog, alle anderen gehen als
+//   atlas.moveClass (#103) öffnen ihren Dialog, atlas.invertBoolean (#715) und
+//   atlas.promoteVariable (#668) fragen einen Namen, alle anderen gehen als
 //   workspace/executeCommand an den Server.
 // - Auswahl erweitern und verkleinern (textDocument/selectionRange).
 // - Gehe zu Typdefinition (textDocument/typeDefinition); Gehe zu
@@ -202,6 +203,7 @@ uses
   Atlas.IDE.Editor.MoveClass,
   Atlas.IDE.Editor.PropertyFromAccessors,
   Atlas.IDE.Editor.InvertBoolean,
+  Atlas.IDE.Editor.PromoteVariable,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
@@ -1427,6 +1429,17 @@ begin
   begin
     // Client-Befehl: Namen abfragen und „Boolean umkehren“ (#715); er fragt den Server selbst.
     TAtlasIdeInvertBoolean.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdePromoteVariable.ClientCommand then
+  begin
+    // Client-Befehl: Namen abfragen und „Lokale Variable und Feld umwandeln“ (#668); er fragt den Server selbst.
+    TAtlasIdePromoteVariable.Execute(Session, AArgumentsJson,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
       procedure(AText: string)
       begin

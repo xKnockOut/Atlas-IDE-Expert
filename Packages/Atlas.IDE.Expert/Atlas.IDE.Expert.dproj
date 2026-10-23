@@ -195,6 +195,8 @@
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.MoveClass.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.PropertyFromAccessors.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.InvertBoolean.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.NamedRefactoring.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.PromoteVariable.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.KeyHook.pas"/>
         <DCCReference Include="Source\IDE\Signature\Atlas.IDE.Signature.Editor.pas"/>
         <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.Editor.pas"/>
