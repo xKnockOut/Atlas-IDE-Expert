@@ -280,8 +280,9 @@ begin
       Result_ := TTextChanges.Apply(ALayout.Text, [TClassEdits.InsertMembers(ALayout,
         TClassVisibility.StrictProtected, False, ['procedure DoIt; virtual;'])]);
     end);
-  Assert.IsTrue(Result_.Contains('write FB;'#10'  strict protected'#10'    procedure DoIt; virtual;'#10'  end;'),
-    Result_);
+  // Zwischen private und public, nach Sichtbarkeit geordnet.
+  Assert.IsTrue(Result_.Contains('function GetName: string;'#10'  strict protected'#10'    procedure DoIt; virtual;'#10 +
+    '  public'), Result_);
   Assert.IsTrue(Parses(Result_), Result_);
 end;
 

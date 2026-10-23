@@ -154,6 +154,7 @@ contains
   Atlas.IDE.Editor.MoveClass in 'Source\IDE\Editor\Atlas.IDE.Editor.MoveClass.pas',
   Atlas.IDE.Editor.ExtractInterface in 'Source\IDE\Editor\Atlas.IDE.Editor.ExtractInterface.pas',
   Atlas.IDE.Editor.ExtractSuperclass in 'Source\IDE\Editor\Atlas.IDE.Editor.ExtractSuperclass.pas',
+  Atlas.IDE.Editor.MoveMember in 'Source\IDE\Editor\Atlas.IDE.Editor.MoveMember.pas',
   Atlas.IDE.Editor.PropertyFromAccessors in 'Source\IDE\Editor\Atlas.IDE.Editor.PropertyFromAccessors.pas',
   Atlas.IDE.Editor.InvertBoolean in 'Source\IDE\Editor\Atlas.IDE.Editor.InvertBoolean.pas',
   Atlas.IDE.Foundation.KeyHook in 'Source\IDE\Foundation\Atlas.IDE.Foundation.KeyHook.pas',

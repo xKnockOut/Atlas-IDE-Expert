@@ -710,7 +710,11 @@ type
     // „Basisklasse herauslösen“ (#713) im selben Dialog.
     ExtractMembersField, ExtractMembersAbstractMethod, ExtractMembersAbstract, ExtractMembersTakeNeeds,
     ExtractMembersMissing, ExtractSuperTitle, ExtractSuperFailed, ExtractSuperNothing, ExtractSuperPreviewHint,
-    ExtractSuperDone);
+    ExtractSuperDone,
+    // „Mitglied in Vorfahr/Nachfahren verschieben“ (#675) im selben Dialog.
+    ExtractMembersTarget, ExtractMembersTargets, ExtractMembersTargetItem, ExtractMembersNoTarget,
+    ExtractMembersOverrideSiblings, ExtractMembersKeepAbstract, MoveUpTitle, MoveDownTitle, MoveMemberFailed,
+    MoveMemberNothing, MoveMemberPreviewHint, MoveMemberApply, MoveMemberDone);
 
   TAtlasStrings = class
   private class var
@@ -2332,7 +2336,20 @@ const
      'Basisklasse herauslösen fehlgeschlagen: %s',
      'Basisklasse herauslösen: nichts zu ändern.',
      'Basisklasse %s: %d Änderungen in %d Dateien',
-     'Basisklasse %s herausgelöst: %d Änderungen in %d Dateien übernommen.'),
+     'Basisklasse %s herausgelöst: %d Änderungen in %d Dateien übernommen.',
+     'Ziel:',
+     'Nachfahren:',
+     '%s (%s)',
+     'Bitte mindestens ein Ziel wählen.',
+     'Gleichnamige Methoden anderer Nachfahren überschreiben (override)',
+     'Methoden im Vorfahren abstrakt lassen (Nachfahren überschreiben sie)',
+     '„%s“ in Vorfahr verschieben',
+     '„%s“ in Nachfahren verschieben',
+     'Mitglied verschieben fehlgeschlagen: %s',
+     'Mitglied verschieben: nichts zu ändern.',
+     '%d Mitglieder: %d Änderungen in %d Dateien',
+     'Verschieben',
+     '%d Mitglieder verschoben: %d Änderungen in %d Dateien übernommen.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3858,7 +3875,20 @@ const
      'Extract superclass failed: %s',
      'Extract superclass: nothing to change.',
      'Superclass %s: %d changes in %d files',
-     'Superclass %s extracted: %d changes applied in %d files.'));
+     'Superclass %s extracted: %d changes applied in %d files.',
+     'Target:',
+     'Descendants:',
+     '%s (%s)',
+     'Select at least one target.',
+     'Override methods of the same name in other descendants',
+     'Keep the methods abstract in the ancestor (descendants override them)',
+     'Pull “%s” up into ancestor',
+     'Push “%s” down into descendants',
+     'Move member failed: %s',
+     'Move member: nothing to change.',
+     '%d members: %d changes in %d files',
+     'Move',
+     '%d members moved: %d changes applied in %d files.'));
 
 { TAtlasStrings }
 

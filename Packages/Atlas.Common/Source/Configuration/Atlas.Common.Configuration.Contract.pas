@@ -402,6 +402,8 @@ type
     ExtractSuperclassMethodMode: string;
     /// <summary>Sichtbarkeit gehobener private-Mitglieder: protected oder strictProtected (#713).</summary>
     ExtractSuperclassRaiseVisibility: string;
+    /// <summary>Code-Aktionen „In Vorfahr/Nachfahren verschieben“ (#675).</summary>
+    MoveMember: Boolean;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -864,6 +866,7 @@ begin
   Result.ExtractSuperclassNameSuffix := 'Base';
   Result.ExtractSuperclassMethodMode := 'move';
   Result.ExtractSuperclassRaiseVisibility := 'protected';
+  Result.MoveMember := True;
 end;
 
 { TCompletionSettings }

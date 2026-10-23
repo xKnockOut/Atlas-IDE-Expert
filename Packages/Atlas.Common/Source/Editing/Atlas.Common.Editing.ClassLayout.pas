@@ -190,8 +190,8 @@ type
       ABodies: Boolean): TArray<TTextEdit>; static;
     /// <summary>ADeclarations (ohne Einrückung, je Eintrag eine oder mehrere Zeilen mit #10) in den Abschnitt
     /// AVisibility von ALayout einfügen. Felder (AFields) kommen vor die erste Methode bzw. Property des letzten
-    /// solchen Abschnitts, sonst ans Ende des letzten solchen Abschnitts; ohne einen ein neuer Abschnitt vor end.
-    /// </summary>
+    /// solchen Abschnitts, sonst ans Ende des letzten solchen Abschnitts; ohne einen ein neuer Abschnitt vor dem
+    /// ersten Abschnitt höherer Sichtbarkeit bzw. vor end.</summary>
     class function InsertMembers(ALayout: TClassLayout; AVisibility: TClassVisibility; AFields: Boolean;
       const ADeclarations: TArray<string>): TTextEdit; static;
     /// <summary>Vorfahrenliste durch AAncestors ersetzen (leer: Liste entfernen).</summary>
@@ -1183,8 +1183,12 @@ begin
       Found := Index;
   if Found < 0 then
   begin
-    // Neuer Abschnitt vor end.
-    Result := InsertBeforeLine(ALayout.Text, ALayout.EndLine, ALayout.Indent + VisibilityName(AVisibility) +
+    // Neuer Abschnitt in der Reihenfolge der Sichtbarkeit: vor den ersten mit höherer, sonst vor end.
+    Line := ALayout.EndLine;
+    for Index := High(ALayout.Sections) downto 0 do
+      if (ALayout.Sections[Index].HeadLine >= 0) and (ALayout.Sections[Index].Visibility > AVisibility) then
+        Line := ALayout.Sections[Index].HeadLine;
+    Result := InsertBeforeLine(ALayout.Text, Line, ALayout.Indent + VisibilityName(AVisibility) +
       ALayout.LineBreak + Body);
     Exit;
   end;

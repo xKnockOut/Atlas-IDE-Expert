@@ -7,8 +7,13 @@
 // JSON für den Server ({name, unit, members, abstract}). Für die Basisklasse
 // kommen dazu: Methoden nur abstrakt nach oben (canAbstract/abstract), die
 // Abhängigkeiten der Mitglieder (needs) mit Prüfung und „Abhängigkeiten
-// mitnehmen“ und das voreingestellte Ziel (unit). Die Prüfung liefert die Art
-// des Fehlers, den Text wählt die Oberfläche in ihrer Sprache.
+// mitnehmen“ und das voreingestellte Ziel (unit). Für „Mitglied verschieben“
+// (#675) statt Name und Unit die Ziele (targets: ein Vorfahr bzw. mehrere
+// Nachfahren), eine Wahl (option: andere Nachfahren überschreiben bzw.
+// abstrakt im Vorfahren lassen) und ob Abhängigkeiten Pflicht sind
+// (needsRequired); das JSON ist dann {members, abstract, targets, option}.
+// Die Prüfung liefert die Art des Fehlers, den Text wählt die Oberfläche in
+// ihrer Sprache.
 
 interface
 
@@ -19,7 +24,7 @@ uses
 type
   {$SCOPEDENUMS ON}
   /// <summary>Erster Fehler der Eingabe.</summary>
-  TAtlasExtractionProblem = (None, BadName, SameName, NoMembers, BadUnit, MissingDependency);
+  TAtlasExtractionProblem = (None, BadName, SameName, NoMembers, BadUnit, MissingDependency, NoTarget);
   {$SCOPEDENUMS OFF}
 
   TAtlasExtractionMember = record
@@ -43,6 +48,13 @@ type
     Needs: TArray<Integer>;
   end;
 
+  /// <summary>Ziel von „Mitglied verschieben“: Klasse und ihre Unit.</summary>
+  TAtlasExtractionTarget = record
+    Name: string;
+    UnitName: string;
+    Checked: Boolean;
+  end;
+
   TAtlasClassExtractionModel = class
   private
     FSourceClass: string;
@@ -52,9 +64,18 @@ type
     FUnits: TArray<string>;
     FNotes: TArray<string>;
     FMembers: TArray<TAtlasExtractionMember>;
+    FMember: string;
+    FDirection: string;
+    FTargets: TArray<TAtlasExtractionTarget>;
+    FMultiTarget: Boolean;
+    FNeedsRequired: Boolean;
+    FOptionKind: string;
+    FOption: Boolean;
     function GetMember(AIndex: Integer): TAtlasExtractionMember;
     function GetCount: Integer;
     function IndexOfId(AId: Integer): Integer;
+    function GetTarget(AIndex: Integer): TAtlasExtractionTarget;
+    function GetTargetCount: Integer;
   public
     /// <summary>Aus der Antwort von prepare ({className, ownUnit, name, candidates, notes, units}).</summary>
     constructor Create(const APrepared: TJSONObject);
@@ -85,6 +106,12 @@ type
     function RequestJson: TJSONObject;
     /// <summary>Ziel-Unit für den Server; '' = die Unit der Klasse (auch wenn ihr Name eingetragen ist).</summary>
     function Target: string;
+    /// <summary>„Mitglied verschieben“: Ziele statt Name und Unit.</summary>
+    function IsMove: Boolean;
+    /// <summary>Ziel an- bzw. abhaken; mit nur einem Ziel wählt es dieses allein.</summary>
+    procedure SetTargetChecked(AIndex: Integer; AChecked: Boolean);
+    /// <summary>Namen der gewählten Ziele.</summary>
+    function CheckedTargets: TArray<string>;
     property SourceClass: string read FSourceClass;
     /// <summary>Unit der Klasse.</summary>
     property OwnUnit: string read FOwnUnit;
@@ -96,6 +123,19 @@ type
     property Notes: TArray<string> read FNotes;
     property Members[AIndex: Integer]: TAtlasExtractionMember read GetMember; default;
     property Count: Integer read GetCount;
+    /// <summary>Mitglied an der Stelle der Code-Aktion (#675); '' sonst.</summary>
+    property MemberName: string read FMember;
+    /// <summary>'up' oder 'down' (#675); '' sonst.</summary>
+    property Direction: string read FDirection;
+    property Targets[AIndex: Integer]: TAtlasExtractionTarget read GetTarget;
+    property TargetCount: Integer read GetTargetCount;
+    /// <summary>Mehrere Ziele wählbar (Nachfahren).</summary>
+    property MultiTarget: Boolean read FMultiTarget;
+    /// <summary>Fehlende Abhängigkeiten sperren das Absenden.</summary>
+    property NeedsRequired: Boolean read FNeedsRequired;
+    /// <summary>'overrideSiblings', 'keepAbstract' oder '' ohne Wahl.</summary>
+    property OptionKind: string read FOptionKind;
+    property Option: Boolean read FOption write FOption;
   end;
 
 implementation
@@ -174,6 +214,7 @@ var
   Value, Item: TJSONValue;
   Member: TAtlasExtractionMember;
   Entry: TJSONObject;
+  Target_: TAtlasExtractionTarget;
 begin
   inherited Create;
   FSourceClass := StringOf(APrepared, 'className');
@@ -182,8 +223,30 @@ begin
   FNotes := StringsOf(APrepared, 'notes');
   FUnits := StringsOf(APrepared, 'units');
   FTargetUnit := StringOf(APrepared, 'unit');
+  FMember := StringOf(APrepared, 'member');
+  FDirection := StringOf(APrepared, 'direction');
+  FNeedsRequired := True;
   if APrepared = nil then
     Exit;
+  FNeedsRequired := BoolOf(APrepared, 'needsRequired', True);
+  FMultiTarget := BoolOf(APrepared, 'multiTarget', False);
+  if APrepared.GetValue('option') is TJSONObject then
+  begin
+    Entry := TJSONObject(APrepared.GetValue('option'));
+    FOptionKind := StringOf(Entry, 'kind');
+    FOption := BoolOf(Entry, 'value', False);
+  end;
+  Value := APrepared.GetValue('targets');
+  if Value is TJSONArray then
+    for Item in TJSONArray(Value) do
+      if Item is TJSONObject then
+      begin
+        Target_ := Default(TAtlasExtractionTarget);
+        Target_.Name := StringOf(TJSONObject(Item), 'name');
+        Target_.UnitName := StringOf(TJSONObject(Item), 'unit');
+        Target_.Checked := BoolOf(TJSONObject(Item), 'checked', False);
+        FTargets := FTargets + [Target_];
+      end;
   Value := APrepared.GetValue('candidates');
   if not (Value is TJSONArray) then
     Exit;
@@ -217,6 +280,47 @@ end;
 function TAtlasClassExtractionModel.GetCount: Integer;
 begin
   Result := Length(FMembers);
+end;
+
+function TAtlasClassExtractionModel.GetTarget(AIndex: Integer): TAtlasExtractionTarget;
+begin
+  Result := FTargets[AIndex];
+end;
+
+function TAtlasClassExtractionModel.GetTargetCount: Integer;
+begin
+  Result := Length(FTargets);
+end;
+
+function TAtlasClassExtractionModel.IsMove: Boolean;
+begin
+  Result := FTargets <> nil;
+end;
+
+procedure TAtlasClassExtractionModel.SetTargetChecked(AIndex: Integer; AChecked: Boolean);
+var
+  Index: Integer;
+begin
+  if (AIndex < 0) or (AIndex > High(FTargets)) then
+    Exit;
+  if not FMultiTarget then
+  begin
+    // Ein Vorfahr: genau einer gewählt.
+    for Index := 0 to High(FTargets) do
+      FTargets[Index].Checked := Index = AIndex;
+    Exit;
+  end;
+  FTargets[AIndex].Checked := AChecked;
+end;
+
+function TAtlasClassExtractionModel.CheckedTargets: TArray<string>;
+var
+  Item: TAtlasExtractionTarget;
+begin
+  Result := nil;
+  for Item in FTargets do
+    if Item.Checked then
+      Result := Result + [Item.Name];
 end;
 
 function TAtlasClassExtractionModel.IndexOfId(AId: Integer): Integer;
@@ -333,19 +437,26 @@ var
 begin
   Candidate := Trim(FName);
   ASubject := Candidate;
-  if not IsName(Candidate) then
+  if not IsMove and not IsName(Candidate) then
     Exit(TAtlasExtractionProblem.BadName);
-  if SameText(Candidate, FSourceClass) then
+  if not IsMove and SameText(Candidate, FSourceClass) then
     Exit(TAtlasExtractionProblem.SameName);
   if CheckedCount = 0 then
   begin
     ASubject := '';
     Exit(TAtlasExtractionProblem.NoMembers);
   end;
-  if MissingDependency(Candidate, Needed) then
+  if FNeedsRequired and MissingDependency(Candidate, Needed) then
   begin
     ASubject := Candidate;
     Exit(TAtlasExtractionProblem.MissingDependency);
+  end;
+  if IsMove then
+  begin
+    ASubject := '';
+    if CheckedTargets = nil then
+      Exit(TAtlasExtractionProblem.NoTarget);
+    Exit(TAtlasExtractionProblem.None);
   end;
   Candidate := Target;
   if (Candidate <> '') and not IsUnitName(Candidate) then
@@ -375,10 +486,14 @@ function TAtlasClassExtractionModel.RequestJson: TJSONObject;
 var
   List, Abstracts: TJSONArray;
   Member: TAtlasExtractionMember;
+  Name: string;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('name', Trim(FName));
-  Result.AddPair('unit', Target);
+  if not IsMove then
+  begin
+    Result.AddPair('name', Trim(FName));
+    Result.AddPair('unit', Target);
+  end;
   List := TJSONArray.Create;
   for Member in FMembers do
     if Member.Checked then
@@ -394,6 +509,14 @@ begin
     end;
   if Abstracts <> nil then
     Result.AddPair('abstract', Abstracts);
+  if not IsMove then
+    Exit;
+  List := TJSONArray.Create;
+  for Name in CheckedTargets do
+    List.Add(Name);
+  Result.AddPair('targets', List);
+  if FOptionKind <> '' then
+    Result.AddPair('option', TJSONBool.Create(FOption));
 end;
 
 end.

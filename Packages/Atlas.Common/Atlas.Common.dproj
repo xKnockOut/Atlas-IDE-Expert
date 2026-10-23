@@ -320,6 +320,9 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ExtractInterface.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ExtractSuperclass.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ExtractSuperclass.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.MemberTransfer.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.MoveMember.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MoveMember.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.InvertBoolean.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InvertBoolean.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Unwrap.pas"/>
