@@ -1,4 +1,4 @@
-unit Atlas.Common.Lsp.SafeDelete.Tests;
+﻿unit Atlas.Common.Lsp.SafeDelete.Tests;
 
 // Tests für „Sicher löschen“ über das Protokoll (#716): Angebot der
 // Code-Aktion, Löschen ohne Verwendungen, Verwendungen in einer anderen Unit
