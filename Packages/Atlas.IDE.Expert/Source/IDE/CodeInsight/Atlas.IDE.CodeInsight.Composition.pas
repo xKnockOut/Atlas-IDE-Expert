@@ -86,6 +86,7 @@ uses
   Atlas.Core.Editor.NewLine,
   Atlas.IDE.Editor.NewLine,
   Atlas.IDE.Editor.Unwrap,
+  Atlas.IDE.Editor.ExpressionType,
   Atlas.IDE.Editor.WrapSelection,
   Atlas.IDE.Editor.CommentContinuation,
   Atlas.IDE.Editor.PatternContinuation,
@@ -1077,6 +1078,16 @@ begin
   TAtlasIdeUnwrap.Run;
 end;
 
+function ExpressionTypeVisible: Boolean;
+begin
+  Result := TAtlasIdeExpressionType.Enabled;
+end;
+
+procedure ShowExpressionType;
+begin
+  TAtlasIdeExpressionType.Run;
+end;
+
 procedure CompleteStatement;
 begin
   TAtlasIdeStatementCompletion.Run;
@@ -1306,6 +1317,8 @@ begin
     NewLineAroundVisible);
   // Umschließung entfernen (#657); nur sichtbar, solange keys.unwrap an ist.
   Add('Atlas.Unwrap', TAtlasTextId.UnwrapCommand, Guarded(TAtlasFeature.Unwrap, Unwrap), UnwrapVisible);
+  Add('Atlas.ExpressionType', TAtlasTextId.ExpressionTypeCommand,
+    Guarded(TAtlasFeature.ExpressionType, ShowExpressionType), ExpressionTypeVisible);
   // Mehrere Einfügemarken (#589).
   Add('Atlas.MultiCursorNext', TAtlasTextId.MultiCursorNextCommand,
     Guarded(TAtlasFeature.MultiCursor, MultiCursorNext), MultiCursorVisible);
@@ -2533,6 +2546,18 @@ begin
     begin
       MessageLine(AText);
     end);
+  // Typ des markierten Ausdrucks (#689): Tooltip und Hervorhebung; Fehler in der Meldungsansicht.
+  TAtlasIdeExpressionType.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
   // Übersichtsleiste an der Scrollleiste (#519).
   // Mit schnellen Lesezeichen (#1104) zeigt die Art „bookmarks“ die Lesezeichen von Atlas.
   TAtlasIdeOverviewRuler.Bookmarks :=
@@ -2591,6 +2616,7 @@ begin
   TAtlasIdeLineMove.Uninstall;
   TAtlasIdeBlockComment.Uninstall;
   TAtlasIdeUnwrap.Uninstall;
+  TAtlasIdeExpressionType.Uninstall;
   TAtlasIdeSmartPaste.Uninstall;
   TAtlasIdeWrapSelection.Uninstall;
   TAtlasIdeLinkedEditing.Uninstall;

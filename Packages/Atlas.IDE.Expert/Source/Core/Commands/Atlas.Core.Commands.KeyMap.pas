@@ -372,6 +372,8 @@ begin
       Result := 'Atlas.NextBookmark';
     TAtlasKeyFunction.PreviousBookmark:
       Result := 'Atlas.PreviousBookmark';
+    TAtlasKeyFunction.ExpressionType:
+      Result := 'Atlas.ExpressionType';
   else
     Result := '';
   end;

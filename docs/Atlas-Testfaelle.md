@@ -3339,6 +3339,113 @@ end;
 | UZ19 | Thema hell/dunkel wechseln | Linie in beiden Themen sichtbar, aber zurückhaltend |
 | UZ20 | Großer Unit (5000 Zeilen) öffnen und tippen | Editor bleibt flüssig; die Anfrage läuft im Hintergrund |
 
+## Typ des markierten Ausdrucks (#689)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; Einstellungen auf Vorgabe (`hints.expressionType` an, Umwandlungen und Wert an, Kürzel Strg+Umschalt+T); Unit `Ausdruck.pas` mit
+
+```pascal
+unit Ausdruck;
+
+interface
+
+uses
+  System.SysUtils, System.Generics.Collections;
+
+type
+  TFarbe = (Rot, Gruen, Blau);
+  TFarben = set of TFarbe;
+  TKunde = class
+    Name: string;
+  end;
+  PKunde = ^TKunde;
+  TPreis = Currency;
+  TRec = record
+    A: Integer;
+    B: Byte;
+    C: Int64;
+  end;
+  TGruppen = TList<TKunde>;
+
+implementation
+
+function Max(A, B: Integer): Integer; overload;
+begin
+  Result := A;
+end;
+
+function Max(A, B: Double): Double; overload;
+begin
+  Result := A;
+end;
+
+procedure Leer;
+begin
+end;
+
+procedure Probe;
+const
+  Faktor = 3;
+var
+  Price, Shipping: TPreis;
+  Count: Integer;
+  Big: Int64;
+  D: Double;
+  S: string;
+  V: Variant;
+  G: TGruppen;
+  K: TKunde;
+  P: PKunde;
+  Farben: TFarben;
+  F: TProc;
+begin
+  Price := Price * Count + Shipping;
+  Big := Count + Big;
+  D := Max(D, Count);
+  Count := SizeOf(TRec) * 2;
+  Count := Faktor * 4;
+  S := V;
+  K := G[0];
+  K := G.First;
+  S := P^.Name;
+  Farben := Farben + [Blau];
+  K := TKunde(K);
+  F := procedure begin end;
+  Count := Count + S;
+  Count := Unbekannt + 1;
+  Leer;
+end;
+
+end.
+```
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| AY1 | `Price * Count + Shipping` markieren, Strg+Umschalt+T | Tooltip unter der Schreibmarke: Ausdruck, darunter fett in Akzentfarbe `TPreis = Currency`, dann „Count: Integer wird zu Currency erweitert“ und „Strg+Umschalt+T erneut: umschließender Ausdruck“; der Ausdruck ist im Editor dezent hinterlegt (**Abnahme**) |
+| AY2 | Ohne Markierung Schreibmarke in `Count` derselben Zeile, Strg+Umschalt+T | Ausdruck `Count`, Typ `Integer` |
+| AY3 | Direkt danach noch einmal Strg+Umschalt+T | Ausdruck `Price * Count`, Hervorhebung wächst mit (**Abnahme**) |
+| AY4 | Noch einmal | `Price * Count + Shipping` |
+| AY5 | Noch einmal | Tooltip bleibt unverändert (die Zuweisung ist kein Ausdruck) |
+| AY6 | Schreibmarke eine Stelle weiter, Strg+Umschalt+T | Beginnt wieder beim kleinsten Ausdruck an der neuen Stelle |
+| AY7 | `Count + Big` markieren | `Int64`, „Count: Integer wird zu Int64 erweitert“ |
+| AY8 | `Max(D, Count)` markieren | `Double`, Zeile „Überladung: function Max(A, B: Double): Double;“, Umwandlung von `Count` zu Double |
+| AY9 | `SizeOf(TRec) * 2` markieren | `Integer`, Zeile `= 32` |
+| AY10 | `Faktor * 4` markieren | `Integer`, `= 12` |
+| AY11 | In `S := V` die Schreibmarke auf `V` | `Variant`, „V: Variant wird zu string umgewandelt“ |
+| AY12 | `G[0]` und `G.First` je markieren | `TKunde` (T der Liste eingesetzt, Standard-Property) |
+| AY13 | In `K := G[0]` die Schreibmarke auf `G` | `TGruppen = TList<TKunde>` |
+| AY14 | `P^.Name`, `Farben + [Blau]`, `TKunde(K)` je markieren | `string`, `TFarben`, `TKunde` |
+| AY15 | `procedure begin end` markieren | `reference to procedure` |
+| AY16 | `Count + S` markieren | Statt des Typs in Fehlerfarbe „Kein Typ: + passt nicht zu Integer und string“ |
+| AY17 | `Unbekannt + 1` markieren, dann Schreibmarke auf `Leer` | „Kein Typ: unbekannter Name Unbekannt“ bzw. „Kein Typ: Leer liefert keinen Wert“ |
+| AY18 | Schreibmarke auf `begin` | „Kein Ausdruck an dieser Stelle“, ohne Zeile zum Erweitern |
+| AY19 | AY1 wiederholen, auf `TPreis = Currency` klicken | Tooltip schließt, der Editor springt zur Deklaration `TPreis = Currency;` (**Abnahme**) |
+| AY20 | Tooltip zeigen, dann Esc bzw. eine Pfeiltaste bzw. ein Klick in den Editor bzw. Mausrad bzw. Tippen bzw. anderer Editorreiter | Tooltip und Hervorhebung verschwinden; nur Esc wird geschluckt, alle anderen Tasten wirken im Editor |
+| AY21 | Optionen › Editor › Typ des Ausdrucks: „Implizite Umwandlungen nennen“ und „Wert konstanter Ausdrücke zeigen“ aus, AY1 und AY9 wiederholen | Ohne Umwandlungszeile bzw. ohne `= 32` |
+| AY22 | „Typ des markierten Ausdrucks anzeigen“ aus | Strg+Umschalt+T fügt wieder einen To-Do-Eintrag ein (IDE), Befehlspalette ohne „Typ des Ausdrucks“ (**Abnahme**) |
+| AY23 | Kürzel auf Strg+Alt+Y ändern, Tastenkürzel-Übersicht öffnen | Neue Taste wirkt, Übersicht nennt „Typ des Ausdrucks“ mit der neuen Taste |
+| AY24 | Sprache Englisch, AY1 | „Count: Integer is widened to Currency“, „Ctrl+Shift+T again: enclosing expression“ |
+| AY25 | Bei angehaltenem Server Strg+Umschalt+T | Zeile in der Meldungsansicht, kein Tooltip |
+
 ## Forward-Deklaration ergänzen (#685)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; neue Unit `Tree.pas`.
