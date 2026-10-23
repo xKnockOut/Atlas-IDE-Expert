@@ -12,8 +12,8 @@ name: Release
 #    für atlas.json (#759) in atlas-ide-expert-<Version>.zip.
 # 3. Packt das Claude-Code-Plugin mit der EXE.
 # 4. Legt ein GitHub Release mit EXE, ZIP, Plugin, der Versionsdatei
-#    atlas-version.json (Update-Prüfung des Plugins, #495) und dem Abschnitt aus
-#    CHANGELOG.md an.
+#    atlas-version.json (Update-Prüfung des Plugins, #495) und den Release-Notizen
+#    an (docs/Release-Notizen/<Version>.md, sonst der Abschnitt aus CHANGELOG.md).
 
 on:
   push:
@@ -36,6 +36,10 @@ jobs:
           $version = '${{ github.ref_name }}'.TrimStart('v')
           ./Tools/Check-Version.ps1 -Expected $version
           "version=$version" >> $env:GITHUB_OUTPUT
+      - name: Release-Notizen prüfen
+        shell: pwsh
+        # Vor dem Bauen: GitHub lehnt Notizen über 125000 Zeichen ab, das Release scheiterte sonst erst am Ende.
+        run: ./Tools/Get-ReleaseNotes.ps1 -Version ('${{ github.ref_name }}'.TrimStart('v')) | Out-Null
 
   server:
     needs: version
@@ -184,9 +188,10 @@ jobs:
           printf '{"version": "%s", "changes": "%s"}\n' "$VERSION" \
             "${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}" > atlas-version.json
           cat atlas-version.json
-      - name: Changelog-Abschnitt
+      - name: Release-Notizen
         shell: pwsh
-        run: ./Tools/Get-ChangelogSection.ps1 -Version $env:VERSION | Set-Content -Encoding utf8 release-notes.md
+        # Kurze Fassung aus docs/Release-Notizen/<Version>.md, sonst der Abschnitt aus CHANGELOG.md.
+        run: ./Tools/Get-ReleaseNotes.ps1 -Version $env:VERSION | Set-Content -Encoding utf8 release-notes.md
       - name: Release anlegen
         uses: softprops/action-gh-release@v2
         with:

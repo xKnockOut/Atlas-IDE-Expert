@@ -25,7 +25,7 @@ Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/At
 
 ## Quick start
 
-You need RAD Studio or Delphi 12 or later. Ready-made downloads are on the [releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) page; release 1.0.0 contains the plugin for Delphi 13 only.
+You need RAD Studio or Delphi 12 or later. Ready-made downloads are on the [releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) page; releases 1.0.0 and 1.1.0 contain the plugin for Delphi 13 only. What is new in 1.1.0 is listed in the [changelog](CHANGELOG.md) (German).
 
 **Option A – with the installer:**
 
@@ -183,8 +183,8 @@ The server offers Claude Code 19 MCP tools: find symbols, read declarations and 
 
 Not yet in `main`, tracked as issues:
 
-- More than 100 further check rules (sub-issues of #909, #1086)
-- Compiler messages as Atlas rules of their own, reported while typing instead of only when compiling (#1024)
+- Further check rules (sub-issues of #1086)
+- Debugging (#614) and designer features for later versions
 
 ## Installation
 
