@@ -2,7 +2,8 @@
 
 // Darstellung eines Eintrags in der Liste (#420, #421), ohne Fenster:
 //   - Badge: Kürzel und Farbart nach der Art; Funktion oder Prozedur nach
-//     der Signatur, solange der Server beides als Methode meldet.
+//     der Signatur, solange der Server beides als Methode meldet. Attribute
+//     nach "[" (#465) tragen "at" in der Farbe der Typen.
 //   - Detail: gedämpfter Text rechts (Typ, Klasse, Unit-Datei).
 //   - Tags: "+ Unit" für Einträge aus nicht eingebundenen Units (#180),
 //     "deprecated", "constructor"/"destructor", "+2" bei drei Überladungen
@@ -201,6 +202,8 @@ var
   Signature: string;
 begin
   Signature := LowerCase(TrimLeft(AItem.Signature));
+  if AItem.Attribute then
+    Exit(MakeBadge(TAtlasBadgeKind.Type_, 'at'));
   case AItem.Kind of
     TAtlasItemKind.Procedure_, TAtlasItemKind.Destructor_:
       Result := MakeBadge(TAtlasBadgeKind.Procedure_, 'pr');

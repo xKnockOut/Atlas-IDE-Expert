@@ -18,7 +18,9 @@ interface
 uses
   System.SysUtils,
   System.Math,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.CompletionRequest;
@@ -67,14 +69,16 @@ type
     /// generische Typ, AParameter der aktive Typparameter.</summary>
     class function Apply(ARequest: TCompletionRequest; const AContext: TCompletionContext;
       const AOwner: TResolvedSymbol; const AItems: TArray<TCompletionItem>): TArray<TCompletionItem>; static;
+    /// <summary>Symbol eines Eintrags über Datei und Namensposition aus dem Index, die eigene Unit aus dem Baum;
+    /// AUnits merkt sich die Units je Datei. False ohne Quelle (Schlüsselwörter, Grundtypen).</summary>
+    class function ItemSymbol(ARequest: TCompletionRequest; AUnits: TDictionary<string, TUnitIndex>;
+      const AItem: TCompletionItem; out ASymbol: TResolvedSymbol): Boolean; static;
   end;
 
 implementation
 
 uses
   System.StrUtils,
-  System.Generics.Collections,
-  Atlas.Common.Index.Contract,
   Atlas.Common.Index.Files,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.FuzzyMatch;
@@ -345,6 +349,35 @@ begin
       Exit(True);
 end;
 
+class function TCompletionGenerics.ItemSymbol(ARequest: TCompletionRequest; AUnits: TDictionary<string, TUnitIndex>;
+  const AItem: TCompletionItem; out ASymbol: TResolvedSymbol): Boolean;
+var
+  UnitInfo: TUnitIndex;
+  Symbol: TIndexSymbol;
+begin
+  Result := False;
+  ASymbol := Default(TResolvedSymbol);
+  if AItem.SourceFile = '' then
+    Exit;
+  if not AUnits.TryGetValue(UpperCase(AItem.SourceFile), UnitInfo) then
+  begin
+    // Die eigene Unit aus dem Baum, sie steht vielleicht noch nicht (aktuell) im Index.
+    if SameText(AItem.SourceFile, ARequest.FileName) and (ARequest.Tree <> nil) then
+      UnitInfo := ARequest.UnitIndex
+    else if (ARequest.Index = nil) or not TIndexFiles.UnitOf(ARequest.Index, AItem.SourceFile, UnitInfo) then
+      UnitInfo := Default(TUnitIndex);
+    AUnits.Add(UpperCase(AItem.SourceFile), UnitInfo);
+  end;
+  for Symbol in UnitInfo.Symbols do
+    if (Symbol.SelectionRange.StartPos.Line = AItem.SourcePosition.Line) and
+      (Symbol.SelectionRange.StartPos.Character = AItem.SourcePosition.Character) and
+      SameText(Symbol.Name, AItem.Name) then
+    begin
+      ASymbol := ARequest.Resolver.SymbolFrom(UnitInfo, Symbol);
+      Exit(True);
+    end;
+end;
+
 class function TCompletionGenerics.Apply(ARequest: TCompletionRequest; const AContext: TCompletionContext;
   const AOwner: TResolvedSymbol; const AItems: TArray<TCompletionItem>): TArray<TCompletionItem>;
 var
@@ -357,7 +390,6 @@ var
   Names: TDictionary<string, Boolean>;
   HiddenKinds: TList<string>;
   UnitInfo: TUnitIndex;
-  Symbol: TIndexSymbol;
   Resolved, ConstraintType: TResolvedSymbol;
   Kind: TTypeArgKind;
   Found, IsInterface: Boolean;
@@ -451,29 +483,7 @@ begin
     for Item in AItems do
     begin
       // Art aus dem Index, über Datei und Namensposition des Eintrags.
-      Found := False;
-      Resolved := Default(TResolvedSymbol);
-      if Item.SourceFile <> '' then
-      begin
-        if not Units.TryGetValue(UpperCase(Item.SourceFile), UnitInfo) then
-        begin
-          // Die eigene Unit aus dem Baum, sie steht vielleicht noch nicht (aktuell) im Index.
-          if SameText(Item.SourceFile, ARequest.FileName) and (ARequest.Tree <> nil) then
-            UnitInfo := ARequest.UnitIndex
-          else if (ARequest.Index = nil) or not TIndexFiles.UnitOf(ARequest.Index, Item.SourceFile, UnitInfo) then
-            UnitInfo := Default(TUnitIndex);
-          Units.Add(UpperCase(Item.SourceFile), UnitInfo);
-        end;
-        for Symbol in UnitInfo.Symbols do
-          if (Symbol.SelectionRange.StartPos.Line = Item.SourcePosition.Line) and
-            (Symbol.SelectionRange.StartPos.Character = Item.SourcePosition.Character) and
-            SameText(Symbol.Name, Item.Name) then
-          begin
-            Resolved := Resolver.SymbolFrom(UnitInfo, Symbol);
-            Found := True;
-            Break;
-          end;
-      end;
+      Found := ItemSymbol(ARequest, Units, Item, Resolved);
       if Found then
         Kind := KindOfSymbol(Resolved)
       else if MatchText(Item.Name, ValueTypes) then

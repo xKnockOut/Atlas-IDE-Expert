@@ -112,6 +112,8 @@ type
     [Test]
     procedure MethodBadgeFollowsSignature;
     [Test]
+    procedure AttributeBadge;
+    [Test]
     procedure MissingUnitBecomesTag;
     [Test]
     procedure UnitDetailIsFileName;
@@ -561,6 +563,20 @@ begin
     'function Add(const S: string): Integer')).Code);
   // Ohne Signatur: Funktion.
   Assert.AreEqual('fn', TAtlasItemPresentation.Badge(Item('Add', TAtlasItemKind.Method)).Code);
+end;
+
+procedure TAtlasPresentationTests.AttributeBadge;
+var
+  Entry: TAtlasCompletionItem;
+begin
+  // Attribut nach "[" (#465): "at" statt "ty", auch bei Compiler-Attributen (Art Schlüsselwort).
+  Entry := Item('TestCase', TAtlasItemKind.Class_);
+  Entry.Attribute := True;
+  Assert.AreEqual('at', TAtlasItemPresentation.Badge(Entry).Code);
+  Entry := Item('weak', TAtlasItemKind.Keyword);
+  Entry.Attribute := True;
+  Assert.AreEqual('at', TAtlasItemPresentation.Badge(Entry).Code);
+  Assert.AreEqual('ty', TAtlasItemPresentation.Badge(Item('TKunde', TAtlasItemKind.Class_)).Code);
 end;
 
 procedure TAtlasPresentationTests.MissingUnitBecomesTag;

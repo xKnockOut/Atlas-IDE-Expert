@@ -55,6 +55,8 @@ type
     Generic: Boolean;
     GenericOwnerPos: TTextPosition;
     GenericParam: Integer;
+    /// <summary>Name in einer Attributklammer vor einer Deklaration (#465): nur Attributklassen.</summary>
+    Attribute: Boolean;
   end;
 
   /// <summary>Zeile von „Alle Felder zuweisen“ (#491) für die Liste mit Kontrollkästchen.</summary>
@@ -210,6 +212,8 @@ type
     SameNameInsert: string;
     SameNameUnits: TArray<string>;
     SameNameHidden: TArray<string>;
+    /// <summary>Attribut nach "[" (#465): Name ohne Endung Attribute; Atlas zeigt das Badge "at".</summary>
+    Attribute: Boolean;
   end;
 
   TCompletionItems = record

@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2083] of string = (
+  Lines: array[0..2089] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1124,6 +1124,14 @@ const
       'gen Überladungen, in Konstruktoren und Destruktoren auch die übrigen Konstruktoren bzw. Destruktoren der Vorfahren. Abstrakte Vorfahrmethoden fehlen, die Fußzeile nennt sie. In Funktionen ergänzt die ' +
       'Übernahme „Result := “, wenn vor inherited nichts in der Zeile steht. Aus: nur die Namen der Vorfahrmethoden.",',
     '          "x-issue": "#482"',
+    '        },',
+    '        "attributes": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Nach „[“ vor einer Typ-, Methoden-, Feld-, Property- oder Parameterdeklaration nur Attributklassen (Nachfahren von TCustomAttribute) ohne die Endung Attribute anbieten; bekan' +
+      'nte zuerst (DUnitX Test, TestCase, TestFixture, Setup, TearDown, JSONName, JSONMarshalled, die Compiler-Attribute weak, unsafe, volatile, Ref), rechts die Parameter des Konstruktors bzw. die Unit, aus' +
+      ' nicht eingebundenen Units mit uses-Eintrag. Nach „(“ zeigt der Parameter-Hint den Konstruktor. Aus: die gewöhnliche Liste.",',
+    '          "x-issue": "#465"',
     '        },',
     '        "sameNameVariants": {',
     '          "type": "boolean",',
