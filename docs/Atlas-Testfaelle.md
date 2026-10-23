@@ -3539,6 +3539,90 @@ end.
 | MO24 | Sprache Englisch, MO1 | „Order methods“, „↑ 4  TKunde.Speichern“, „stays: inside a region  TKunde.Laden“ |
 | MO25 | MO10 und anschließend „Letzte Atlas-Änderung zurücknehmen“ (Strg+Alt+Z) | Keine Zugriffsverletzung; Meldung zu fehlendem bzw. abweichendem Stand oder Zurücknahme der letzten Atlas-Änderung |
 
+## var-Block pflegen (#644)
+
+Voraussetzung: Server läuft in der IDE mit Projekt, Delphi 10.3 oder neuer; `refactoring.varBlock`, `refactoring.varBlockMerge` und `refactoring.varBlockSort` auf Vorgabe (`true`, `true`, `usage`); Unit `Bloecke.pas` mit
+
+```pascal
+unit Bloecke;
+
+interface
+
+implementation
+
+uses
+  System.Classes, System.SysUtils;
+
+procedure Rechnen(B: Boolean);
+var
+  Text: string;
+  Unbenutzt: Integer;
+  C: Integer;
+  A: Integer;
+  // Zwischenspeicher
+  Liste: TStringList; // wird freigegeben
+begin
+  A := 1;
+  C := 2;
+  if B then
+  begin
+    Text := IntToStr(A);
+  end;
+  Liste := TStringList.Create;
+  try
+    Liste.Add(Text);
+  finally
+    Liste.Free;
+  end;
+  Writeln(C);
+end;
+
+procedure Sicher;
+var
+  Wert: Integer;
+begin
+  try
+    Wert := 1;
+  except
+    Writeln(Wert);
+  end;
+end;
+
+procedure Verschieben;
+begin
+  var Anzahl: Integer := 3;
+  var Name := 'x';
+  var Puffer := TStringList.Create;
+  // Ergebnis
+  var Summe: Int64; // wird gleich gesetzt
+  Summe := Anzahl;
+  Writeln(Name, Summe, Puffer.Count);
+end;
+
+end.
+```
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| VB1 | Schreibmarke auf `A` im var-Abschnitt von `Rechnen`, Strg+. | Glühbirnen „In Inline-Variable umwandeln (var A)“ und „var-Block aufräumen (ungenutzt: Unbenutzt)“ |
+| VB2 | In VB1 „In Inline-Variable umwandeln“ | `A: Integer;` verschwindet, `A := 1;` wird `var A := 1;`; Unit kompiliert (**Abnahme**) |
+| VB3 | Strg+Z, Schreibmarke auf `Text`, Strg+. › „In Inline-Variable umwandeln“ | `var Text: string;` steht vor `if B then` (nicht im inneren Block, weil `Liste.Add(Text)` außen liest) (**Abnahme**) |
+| VB4 | Strg+Z, Schreibmarke auf `Liste`, Strg+. › „In Inline-Variable umwandeln“ | `// Zwischenspeicher` und `var Liste := TStringList.Create; // wird freigegeben` stehen an der Zuweisung (Typ offensichtlich, Kommentare wandern mit); Unit kompiliert |
+| VB5 | Strg+Z; in `Sicher` Schreibmarke auf `Wert`, Strg+. › „In Inline-Variable umwandeln“ | `var Wert: Integer;` steht vor `try`, nicht im try-Teil, weil der except-Teil `Wert` liest (**Abnahme**) |
+| VB6 | Strg+Z; in `Rechnen` `TThread.Queue(nil, procedure begin Writeln(C) end);` ergänzen, Schreibmarke auf `C`, Strg+. | Keine Glühbirne „In Inline-Variable umwandeln“ (Capture in anonymer Methode) (**Abnahme**) |
+| VB7 | Strg+Z; Schreibmarke im var-Abschnitt (auf `var`), Strg+. › „var-Block aufräumen (ungenutzt: Unbenutzt)“ | Abschnitt: `A, C: Integer;`, `Text: string;`, `// Zwischenspeicher`, `Liste: TStringList; // wird freigegeben` (Reihenfolge der ersten Verwendung, `Unbenutzt` entfernt, Kommentare bleiben bei `Liste`); Unit kompiliert (**Abnahme**) |
+| VB8 | Strg+Z, atlas.json `"refactoring": {"varBlockSort": "alpha"}`, VB7 | Reihenfolge `A, C: Integer;`, `Liste` mit Kommentaren, `Text: string;` |
+| VB9 | atlas.json `"varBlockMerge": false` dazu, VB7 | `A: Integer;` und `C: Integer;` in eigenen Zeilen |
+| VB10 | atlas.json zurücksetzen, VB7 zweimal | Beim zweiten Mal keine Glühbirne „var-Block aufräumen“ (nichts mehr zu tun) |
+| VB11 | In `Verschieben` Schreibmarke auf `Anzahl`, Strg+. › „In var-Block verschieben (Anzahl)“ | Neuer Abschnitt `var` / `  Anzahl: Integer;` vor `begin`, die Zeile wird `Anzahl := 3;` (**Abnahme**) |
+| VB12 | Schreibmarke auf `Name`, Strg+. › „In var-Block verschieben (Name)“ | Eintrag `Name: string;` (Typ aus dem Ausdruck), Zeile `Name := 'x';` |
+| VB13 | Schreibmarke auf `Puffer`, Strg+. › „In var-Block verschieben (Puffer)“ | Eintrag `Puffer: TStringList;`, Zeile `Puffer := TStringList.Create;`; ohne `System.Classes` in uses ergänzt die Aktion es |
+| VB14 | Schreibmarke auf `Summe`, Strg+. › „In var-Block verschieben (Summe)“ | `// Ergebnis` und `Summe: Int64; // wird gleich gesetzt` stehen im var-Abschnitt, die Zeile im Rumpf ist weg |
+| VB15 | VB11 bis VB14, dann auf `Anzahl` im Abschnitt „In Inline-Variable umwandeln“ | Wieder `var Anzahl := 3;` (Hin und zurück ohne Bedeutungsänderung) |
+| VB16 | atlas.json `"refactoring": {"varBlock": false}`, VB1 und VB11 | Keine der drei Glühbirnen (**Abnahme**) |
+| VB17 | atlas.json `"delphiVersion": "19.0"` (Delphi 10.2), VB1 | „var-Block aufräumen“ ja, „In Inline-Variable umwandeln“ nein |
+| VB18 | `{$IFDEF DEBUG}` … `{$ENDIF}` um `Writeln(C);`, Schreibmarke auf `C`, Strg+. | Keine Umwandlung (bedingte Übersetzung) |
+
 ## Forward-Deklaration ergänzen (#685)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; neue Unit `Tree.pas`.
