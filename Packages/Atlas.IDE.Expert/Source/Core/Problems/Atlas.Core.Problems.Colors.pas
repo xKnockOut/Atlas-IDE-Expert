@@ -7,6 +7,7 @@
 // Fenster „Atlas-Prüfung“ (#1108): Text und Symbole nicht geöffneter Units
 // ausgegraut (Text mit mindestens 4,5 : 1 Kontrast, Symbole aufgehellt in
 // derselben Form), Zeilen der aktiven Unit leicht in Akzentfarbe hinterlegt.
+// Neu dazugekommene Befunde kurz in Warnfarbe hinterlegt, ebenso je Thema.
 
 interface
 
@@ -27,6 +28,8 @@ const
   AtlasMixDimmedIcon = 0.45;
   /// <summary>Anteil des Akzents über der Fläche für die angepinnte aktive Unit (hell etwa #EEF4FB).</summary>
   AtlasMixPinned = 0.07;
+  /// <summary>Anteil der Warnfarbe über der Fläche für neu dazugekommene Befunde.</summary>
+  AtlasMixNew = 0.2;
 
 /// <summary>Text einer ausgegrauten Zeile: AText zur Fläche ABack hin gemischt, aber mit mindestens 4,5 : 1
 /// Kontrast.</summary>
@@ -35,6 +38,8 @@ function DimmedTextColor(AText, ABack: TAtlasColor): TAtlasColor;
 function DimmedIconColor(AIcon, ABack: TAtlasColor): TAtlasColor;
 /// <summary>Hintergrund der angepinnten aktiven Unit auf der Fläche ABack.</summary>
 function PinnedBackColor(ABack: TAtlasColor): TAtlasColor;
+/// <summary>Hintergrund eines neu dazugekommenen Befunds auf der Fläche ABack (hell wie dunkel lesbar).</summary>
+function NewBackColor(ABack: TAtlasColor): TAtlasColor;
 
 implementation
 
@@ -89,6 +94,11 @@ end;
 function PinnedBackColor(ABack: TAtlasColor): TAtlasColor;
 begin
   Result := TAtlasColorMath.Mix(TAtlasColors.ForBackground(ABack).Accent, ABack, AtlasMixPinned);
+end;
+
+function NewBackColor(ABack: TAtlasColor): TAtlasColor;
+begin
+  Result := TAtlasColorMath.Mix(TAtlasColors.ForBackground(ABack).Warn, ABack, AtlasMixNew);
 end;
 
 end.

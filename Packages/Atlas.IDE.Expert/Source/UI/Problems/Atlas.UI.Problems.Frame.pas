@@ -466,12 +466,13 @@ end;
 
 function TAtlasProblemsFrame.ListBack: TColor;
 begin
-  Result := ColorToRGB(StyleServices.GetSystemColor(FList.Color));
+  // Stil der Liste, nicht der globale: Die IDE themt ihre Fenster je Formular; global käme im dunklen Thema Weiß.
+  Result := ColorToRGB(StyleServices(FList).GetSystemColor(FList.Color));
 end;
 
 function TAtlasProblemsFrame.ListText: TColor;
 begin
-  Result := ColorToRGB(StyleServices.GetSystemColor(FList.Font.Color));
+  Result := ColorToRGB(StyleServices(FList).GetSystemColor(FList.Font.Color));
 end;
 
 procedure TAtlasProblemsFrame.BuildImages;
@@ -1230,17 +1231,26 @@ begin
     Sender.Canvas.Font.Style := [fsBold]
   else
     Sender.Canvas.Font.Style := [];
-  // Offene Units zuerst (#1108): aktive Unit hinterlegt, nicht geöffnete ausgegraut (nicht über der Auswahl).
-  if not (cdsSelected in State) then
+  // Farben ausdrücklich aus dem Stil der Liste: Nach einer geänderten Schrift (fett bei Gruppen) zeichnet die
+  // Liste sonst mit den Systemfarben, im dunklen Thema also weiße Zellen.
+  if cdsSelected in State then
   begin
+    Sender.Canvas.Brush.Color := ColorToRGB(StyleServices(FList).GetSystemColor(clHighlight));
+    Sender.Canvas.Font.Color := ColorToRGB(StyleServices(FList).GetSystemColor(clHighlightText));
+  end
+  else
+  begin
+    Sender.Canvas.Brush.Color := ListBack;
+    Sender.Canvas.Font.Color := ListText;
+    // Offene Units zuerst (#1108): aktive Unit hinterlegt, nicht geöffnete ausgegraut.
     if Row.Pinned then
       Sender.Canvas.Brush.Color := TColor(PinnedBackColor(TAtlasColor(ListBack)));
     if Row.Dimmed then
       Sender.Canvas.Font.Color := TColor(DimmedTextColor(TAtlasColor(ListText), TAtlasColor(ListBack)));
+    // Neu dazugekommen: kurz hinterlegt.
+    if Row.IsNew then
+      Sender.Canvas.Brush.Color := TColor(NewBackColor(TAtlasColor(ListBack)));
   end;
-  // Neu dazugekommen: kurz hinterlegt (nicht über der Auswahl).
-  if Row.IsNew and not (cdsSelected in State) then
-    Sender.Canvas.Brush.Color := $00C8F0FF;
 end;
 
 procedure TAtlasProblemsFrame.NewTimerTick(Sender: TObject);
