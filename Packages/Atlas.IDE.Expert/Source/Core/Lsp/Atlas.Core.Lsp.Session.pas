@@ -42,6 +42,7 @@ uses
   Atlas.Core.Lsp.Progress,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Lsp.Contract,
+  Atlas.Core.Lsp.DataFlow,
   Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Projects.Contract,
   Atlas.Core.InlayHints.Store,
@@ -258,6 +259,8 @@ type
     /// <summary>Nächste Ebene unter AItem in Richtung ADirection (#400).</summary>
     function HierarchyChildren(ADirection: TAtlasHierarchyDirection;
       const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
+    /// <summary>Woher kommt bzw. wohin geht der Wert des Symbols an der Stelle (atlas/dataFlow, #690).</summary>
+    function DataFlow(const ARequest: TAtlasDataFlowRequest): TAtlasDataFlowResult;
     /// <summary>Code-Aktionen für ARange (textDocument/codeAction, #399), Reihenfolge des Servers.</summary>
     function CodeActions(const AFileName: string; const ARange: TLspRange): TArray<TLspCodeAction>; overload;
     /// <summary>Wie oben mit eigener Wartezeit, etwa für die Glühbirne der Zeilenleiste (#768), die den Editor
@@ -1254,6 +1257,19 @@ begin
       for Item in TJSONArray(Response) do
         if Item is TJSONObject then
           Result := Result + [HierarchyItemOf(Item)];
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.DataFlow(const ARequest: TAtlasDataFlowRequest): TAtlasDataFlowResult;
+var
+  Response: TJSONValue;
+begin
+  // Projektweit über die Referenzsuche; dafür so viel Zeit wie für die Hierarchien.
+  Response := FClient.Request(TAtlasDataFlowJson.Method, TAtlasDataFlowJson.Params(ARequest), FTimeoutMs * 10);
+  try
+    Result := TAtlasDataFlowJson.Parse(Response);
   finally
     Response.Free;
   end;

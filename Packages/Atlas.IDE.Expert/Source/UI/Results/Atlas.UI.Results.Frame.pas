@@ -14,6 +14,10 @@
 // Die Liste der persönlichen Notizen (#545) zeigt je Datei „Zeile: Titel“ und
 // verwaiste Notizen in einer Gruppe am Ende; Doppelklick oder Enter springt,
 // das Kontextmenü bearbeitet oder löscht die Notiz (Entf löscht ebenfalls).
+// Datenfluss (#690): je Stelle „Art: Ausdruck · über X   Datei:Zeile: Quelltextzeile“, zusammengefasste
+// Stellen mit ihren Fundorten darunter, dann die Quellen bzw. Ziele (← bzw. →), die beim Aufklappen über
+// OnFlowExpand die nächste Ebene holen, bis zur Tiefengrenze. Konstanten, Stellen außerhalb des Projekts und
+// Zyklen bleiben Blätter. Oben die Filter „Nur Projektcode“ und „Tests ausblenden“ (OnFlowFilter).
 
 interface
 
@@ -29,6 +33,8 @@ uses
   Vcl.Menus,
   Vcl.ExtCtrls,
   Atlas.Core.Results.Model,
+  Atlas.Core.Lsp.DataFlow,
+  Atlas.Core.Results.DataFlow,
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
   Atlas.Core.Undo.Contract,
@@ -44,11 +50,17 @@ type
   TAtlasChangeDiff = reference to procedure(ASetId: Integer; const AFileName: string);
   /// <summary>Notiz (#545) bearbeiten bzw. löschen.</summary>
   TAtlasNoteAction = reference to procedure(const ANoteId: string);
+  /// <summary>Nächste Ebene des Datenflusses (#690) unter ASource; APath: Schlüssel der Vorfahren samt ASource.
+  /// </summary>
+  TAtlasDataFlowExpand = reference to function(ADirection: TAtlasDataFlowDirection;
+    const ASource: TAtlasDataFlowSymbol; const APath: TArray<string>): TAtlasDataFlowResult;
+  /// <summary>Filter des Datenflusses geändert: die erste Ebene neu holen.</summary>
+  TAtlasDataFlowFilter = reference to procedure(AOnlyProject, AExcludeTests: Boolean);
 
   TAtlasResultsFrame = class(TFrame)
   private type
 {$SCOPEDENUMS ON}
-    TNodeKind = (Group, Entry, Hierarchy, Placeholder, ChangeSet, ChangeFile, Note);
+    TNodeKind = (Group, Entry, Hierarchy, Placeholder, ChangeSet, ChangeFile, Note, Flow, FlowPlace, FlowSource);
 {$SCOPEDENUMS OFF}
     TNodeData = record
       Kind: TNodeKind;
@@ -62,6 +74,10 @@ type
       State: TAtlasChangeSetState;
       /// <summary>Kennung der Notiz (#545).</summary>
       NoteId: string;
+      /// <summary>Datenfluss (#690): Quelle, Pfad bis einschließlich der Quelle und Ebene ihrer Stelle.</summary>
+      FlowSource: TAtlasDataFlowSymbol;
+      FlowPath: TArray<string>;
+      FlowLevel: Integer;
     end;
   private
     FTitle: TLabel;
@@ -84,6 +100,15 @@ type
     FShowsNotes: Boolean;
     FOnNoteEdit: TAtlasNoteAction;
     FOnNoteDelete: TAtlasNoteAction;
+    FFlowBar: TPanel;
+    FOnlyProject: TCheckBox;
+    FExcludeTests: TCheckBox;
+    FShowsFlow: Boolean;
+    FFlowDirection: TAtlasDataFlowDirection;
+    FFlowMaxDepth: Integer;
+    FSettingFilter: Boolean;
+    FOnFlowExpand: TAtlasDataFlowExpand;
+    FOnFlowFilter: TAtlasDataFlowFilter;
     function AddNode(AParent: TTreeNode; const AText: string; const AData: TNodeData): TTreeNode;
     function DataOf(ANode: TTreeNode): TNodeData;
     procedure AddHierarchy(AParent: TTreeNode; const AItems: TArray<TAtlasHierarchyItem>);
@@ -99,6 +124,10 @@ type
     procedure DiffClick(Sender: TObject);
     procedure NoteEditClick(Sender: TObject);
     procedure NoteDeleteClick(Sender: TObject);
+    procedure AddFlowNodes(AParent: TTreeNode; const ANodes: TArray<TAtlasDataFlowNode>; ALevel: Integer;
+      const APath: TArray<string>);
+    procedure ExpandFlowSource(ANode: TTreeNode; var AllowExpansion: Boolean);
+    procedure FlowFilterClick(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -133,6 +162,20 @@ type
     class function EntryText(const AEntry: TAtlasResultEntry): string; static;
     /// <summary>Text eines Hierarchie-Eintrags: "Laden · TKunde  (Kunden.pas:12)".</summary>
     class function HierarchyText(const AItem: TAtlasHierarchyItem): string; static;
+    /// <summary>Datenfluss (#690): erste Ebene; AMaxDepth = navigation.dataFlow.maxDepth, die Filter wie
+    /// angefragt.</summary>
+    procedure ShowDataFlow(const ATitle: string; ADirection: TAtlasDataFlowDirection;
+      const AResult: TAtlasDataFlowResult; AMaxDepth: Integer; AOnlyProject, AExcludeTests: Boolean);
+    /// <summary>"Zuweisung" bzw. bei mehreren "3 Zuweisungen".</summary>
+    class function FlowKindText(AKind: TAtlasDataFlowKind; ACount: Integer): string; static;
+    /// <summary>"Zuweisung: A + B · über Summe  ⚠ unsicher: Zeiger   Haupt.pas:12: X := A + B;"; bei
+    /// zusammengefassten Stellen ohne Fundort (der steht darunter).</summary>
+    class function FlowNodeText(const ANode: TAtlasDataFlowNode): string; static;
+    /// <summary>"Haupt.pas:12: X := A + B;".</summary>
+    class function FlowPlaceText(const APlace: TAtlasDataFlowPlace): string; static;
+    /// <summary>"← Summe  (Daten.pas:11)" bzw. "→ A …", mit "· Konstante", "· Zyklus", "· Tiefe erreicht".</summary>
+    class function FlowSourceText(const AChild: TAtlasDataFlowChild; ADirection: TAtlasDataFlowDirection): string;
+      static;
     property Tree: TTreeView read FTree;
     property OnOpen: TAtlasResultsOpen read FOnOpen write FOnOpen;
     property OnExpand: TAtlasHierarchyExpand read FOnExpand write FOnExpand;
@@ -147,6 +190,12 @@ type
     property ShowsNotes: Boolean read FShowsNotes;
     property OnNoteEdit: TAtlasNoteAction read FOnNoteEdit write FOnNoteEdit;
     property OnNoteDelete: TAtlasNoteAction read FOnNoteDelete write FOnNoteDelete;
+    /// <summary>Zeigt gerade einen Datenfluss (#690).</summary>
+    property ShowsFlow: Boolean read FShowsFlow;
+    property OnlyProjectCheck: TCheckBox read FOnlyProject;
+    property ExcludeTestsCheck: TCheckBox read FExcludeTests;
+    property OnFlowExpand: TAtlasDataFlowExpand read FOnFlowExpand write FOnFlowExpand;
+    property OnFlowFilter: TAtlasDataFlowFilter read FOnFlowFilter write FOnFlowFilter;
   end;
 
 implementation
@@ -185,6 +234,30 @@ begin
   FTitle.AlignWithMargins := True;
   FTitle.ShowAccelChar := False;
   FTitle.EllipsisPosition := epEndEllipsis;
+  // Filter des Datenflusses (#690); nur sichtbar, solange er gezeigt wird.
+  FFlowBar := TPanel.Create(Self);
+  FFlowBar.Parent := Self;
+  FFlowBar.Align := alTop;
+  FFlowBar.Top := Header.Top + Header.Height;
+  FFlowBar.BevelOuter := bvNone;
+  FFlowBar.ParentBackground := True;
+  FFlowBar.Height := 24;
+  FFlowBar.Visible := False;
+  FOnlyProject := TCheckBox.Create(Self);
+  FOnlyProject.Parent := FFlowBar;
+  FOnlyProject.Align := alLeft;
+  FOnlyProject.AlignWithMargins := True;
+  FOnlyProject.Width := 150;
+  FOnlyProject.Caption := TAtlasStrings.Text(TAtlasTextId.DataFlowOnlyProject);
+  FOnlyProject.OnClick := FlowFilterClick;
+  FExcludeTests := TCheckBox.Create(Self);
+  FExcludeTests.Parent := FFlowBar;
+  FExcludeTests.Align := alLeft;
+  FExcludeTests.AlignWithMargins := True;
+  FExcludeTests.Left := FOnlyProject.Left + FOnlyProject.Width + 1;
+  FExcludeTests.Width := 150;
+  FExcludeTests.Caption := TAtlasStrings.Text(TAtlasTextId.DataFlowExcludeTests);
+  FExcludeTests.OnClick := FlowFilterClick;
   FTree := TTreeView.Create(Self);
   FTree.Parent := Self;
   FTree.Align := alClient;
@@ -269,6 +342,8 @@ procedure TAtlasResultsFrame.Clear(const ATitle: string);
 begin
   FShowsChanges := False;
   FShowsNotes := False;
+  FShowsFlow := False;
+  FFlowBar.Visible := False;
   FTitle.Caption := ATitle;
   FTree.Items.BeginUpdate;
   try
@@ -360,6 +435,11 @@ var
   Children: TArray<TAtlasHierarchyItem>;
 begin
   Data := DataOf(Node);
+  if (Data.Kind = TNodeKind.FlowSource) and not Data.Loaded then
+  begin
+    ExpandFlowSource(Node, AllowExpansion);
+    Exit;
+  end;
   if (Data.Kind <> TNodeKind.Hierarchy) or Data.Loaded then
     Exit;
   Index := NativeInt(Node.Data) - 1;
@@ -589,6 +669,211 @@ begin
   ShowSelectedDiff;
 end;
 
+class function TAtlasResultsFrame.FlowKindText(AKind: TAtlasDataFlowKind; ACount: Integer): string;
+const
+  Singular: array[TAtlasDataFlowKind] of TAtlasTextId = (TAtlasTextId.DataFlowAssignment,
+    TAtlasTextId.DataFlowVarArgument, TAtlasTextId.DataFlowOutArgument, TAtlasTextId.DataFlowInput,
+    TAtlasTextId.DataFlowInitializer, TAtlasTextId.DataFlowLoop, TAtlasTextId.DataFlowCallerArgument,
+    TAtlasTextId.DataFlowReturn, TAtlasTextId.DataFlowPropertyWrite, TAtlasTextId.DataFlowPropertyRead,
+    TAtlasTextId.DataFlowModify, TAtlasTextId.DataFlowArgument, TAtlasTextId.DataFlowOutput, TAtlasTextId.DataFlowUse,
+    TAtlasTextId.DataFlowConstant, TAtlasTextId.DataFlowOutside, TAtlasTextId.DataFlowAddress,
+    TAtlasTextId.DataFlowPlace);
+  Plural: array[TAtlasDataFlowKind] of TAtlasTextId = (TAtlasTextId.DataFlowAssignments,
+    TAtlasTextId.DataFlowVarArguments, TAtlasTextId.DataFlowOutArguments, TAtlasTextId.DataFlowInputs,
+    TAtlasTextId.DataFlowInitializers, TAtlasTextId.DataFlowLoops, TAtlasTextId.DataFlowCallerArguments,
+    TAtlasTextId.DataFlowReturns, TAtlasTextId.DataFlowPropertyWrites, TAtlasTextId.DataFlowPropertyReads,
+    TAtlasTextId.DataFlowModifies, TAtlasTextId.DataFlowArguments, TAtlasTextId.DataFlowOutputs,
+    TAtlasTextId.DataFlowUses, TAtlasTextId.DataFlowConstants, TAtlasTextId.DataFlowOutsides,
+    TAtlasTextId.DataFlowAddresses, TAtlasTextId.DataFlowPlaces);
+begin
+  if ACount > 1 then
+    Result := Format('%d %s', [ACount, TAtlasStrings.Text(Plural[AKind])])
+  else
+    Result := TAtlasStrings.Text(Singular[AKind]);
+end;
+
+function UnsafeText(const AReason: string): string;
+begin
+  if AReason = 'pointer' then
+    Result := TAtlasStrings.Text(TAtlasTextId.DataFlowUnsafePointer)
+  else if AReason = 'address' then
+    Result := TAtlasStrings.Text(TAtlasTextId.DataFlowUnsafeAddress)
+  else if AReason = 'move' then
+    Result := 'Move'
+  else if AReason = 'fillchar' then
+    Result := 'FillChar'
+  else
+    Result := AReason;
+end;
+
+class function TAtlasResultsFrame.FlowPlaceText(const APlace: TAtlasDataFlowPlace): string;
+begin
+  Result := Format('%s:%d: %s', [ExtractFileName(APlace.FileName), APlace.Line + 1, APlace.LineText]);
+end;
+
+class function TAtlasResultsFrame.FlowNodeText(const ANode: TAtlasDataFlowNode): string;
+var
+  Origin: TAtlasDataFlowOrigin;
+begin
+  Result := FlowKindText(ANode.Kind, Length(ANode.Places));
+  if ANode.Detail <> '' then
+    Result := Result + ': ' + ANode.Detail;
+  if ANode.Via <> '' then
+    Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.DataFlowVia, [ANode.Via]);
+  // Herkunft eines Blatts nur, wo die Art sie nicht schon nennt.
+  Origin := TAtlasDataFlowTree.Origin(ANode);
+  case Origin of
+    TAtlasDataFlowOrigin.Literal:
+      Result := Result + ' — ' + TAtlasStrings.Text(TAtlasTextId.DataFlowOriginLiteral);
+    TAtlasDataFlowOrigin.Open:
+      Result := Result + ' — ' + TAtlasStrings.Text(TAtlasTextId.DataFlowOriginOpen);
+    TAtlasDataFlowOrigin.Outside:
+      if ANode.Kind <> TAtlasDataFlowKind.Outside then
+        Result := Result + ' — ' + TAtlasStrings.Text(TAtlasTextId.DataFlowOriginOutside);
+    TAtlasDataFlowOrigin.Address:
+      Result := Result + ' — ' + TAtlasStrings.Text(TAtlasTextId.DataFlowOriginAddress);
+  end;
+  if ANode.Unsafe then
+    Result := Result + '  ⚠ ' + TAtlasStrings.Fmt(TAtlasTextId.DataFlowUnsafe, [UnsafeText(ANode.UnsafeReason)]);
+  if Length(ANode.Places) = 1 then
+    Result := Result + '   ' + FlowPlaceText(ANode.Places[0]);
+end;
+
+class function TAtlasResultsFrame.FlowSourceText(const AChild: TAtlasDataFlowChild;
+  ADirection: TAtlasDataFlowDirection): string;
+begin
+  if ADirection = TAtlasDataFlowDirection.Targets then
+    Result := '→ '
+  else
+    Result := '← ';
+  Result := Result + AChild.Source.Name;
+  if AChild.Source.FileName <> '' then
+    Result := Result + Format('  (%s:%d)', [ExtractFileName(AChild.Source.FileName), AChild.Source.Line + 1]);
+  case AChild.Source.Leaf of
+    TAtlasDataFlowLeaf.Constant:
+      Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.DataFlowLeafConstant);
+    TAtlasDataFlowLeaf.Outside:
+      Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.DataFlowLeafOutside);
+    TAtlasDataFlowLeaf.Cycle:
+      Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.DataFlowLeafCycle);
+  else
+    if AChild.DepthReached then
+      Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.DataFlowLeafDepth);
+  end;
+end;
+
+procedure TAtlasResultsFrame.AddFlowNodes(AParent: TTreeNode; const ANodes: TArray<TAtlasDataFlowNode>;
+  ALevel: Integer; const APath: TArray<string>);
+var
+  Node: TAtlasDataFlowNode;
+  Child: TAtlasDataFlowChild;
+  Place: TAtlasDataFlowPlace;
+  Data: TNodeData;
+  FlowNode, SourceNode: TTreeNode;
+begin
+  for Node in ANodes do
+  begin
+    Place := TAtlasDataFlowTree.FirstPlace(Node);
+    Data := Default(TNodeData);
+    Data.Kind := TNodeKind.Flow;
+    Data.FileName := Place.FileName;
+    Data.Line := Place.Line;
+    Data.Character := Place.Character;
+    FlowNode := AddNode(AParent, FlowNodeText(Node), Data);
+    for Child in TAtlasDataFlowTree.Children(Node, ALevel, FFlowMaxDepth) do
+    begin
+      Data := Default(TNodeData);
+      if Child.Kind = TAtlasDataFlowChildKind.Place then
+      begin
+        Data.Kind := TNodeKind.FlowPlace;
+        Data.FileName := Child.Place.FileName;
+        Data.Line := Child.Place.Line;
+        Data.Character := Child.Place.Character;
+        AddNode(FlowNode, FlowPlaceText(Child.Place), Data);
+        Continue;
+      end;
+      Data.Kind := TNodeKind.FlowSource;
+      Data.FileName := Child.Source.FileName;
+      Data.Line := Child.Source.Line;
+      Data.Character := Child.Source.Character;
+      Data.FlowSource := Child.Source;
+      Data.FlowPath := TAtlasDataFlowTree.ChildPath(APath, Child.Source.Key);
+      Data.FlowLevel := ALevel;
+      Data.Loaded := not Child.Expandable;
+      SourceNode := AddNode(FlowNode, FlowSourceText(Child, FFlowDirection), Data);
+      if Child.Expandable then
+      begin
+        // Platzhalter, damit sich die Quelle aufklappen lässt; geladen wird erst dann.
+        Data := Default(TNodeData);
+        Data.Kind := TNodeKind.Placeholder;
+        AddNode(SourceNode, '…', Data);
+      end;
+    end;
+  end;
+end;
+
+procedure TAtlasResultsFrame.ShowDataFlow(const ATitle: string; ADirection: TAtlasDataFlowDirection;
+  const AResult: TAtlasDataFlowResult; AMaxDepth: Integer; AOnlyProject, AExcludeTests: Boolean);
+begin
+  Clear(ATitle);
+  FShowsFlow := True;
+  FFlowDirection := ADirection;
+  FFlowMaxDepth := TAtlasDataFlowTree.ClampDepth(AMaxDepth);
+  FSettingFilter := True;
+  try
+    FOnlyProject.Checked := AOnlyProject;
+    FExcludeTests.Checked := AExcludeTests;
+  finally
+    FSettingFilter := False;
+  end;
+  FFlowBar.Visible := True;
+  FTree.Items.BeginUpdate;
+  try
+    AddFlowNodes(nil, AResult.Nodes, 1, TArray<string>.Create(AResult.Symbol.Key));
+  finally
+    FTree.Items.EndUpdate;
+  end;
+  if FTree.Items.Count > 0 then
+    FTree.Selected := FTree.Items[0];
+end;
+
+procedure TAtlasResultsFrame.ExpandFlowSource(ANode: TTreeNode; var AllowExpansion: Boolean);
+var
+  Index: NativeInt;
+  Data: TNodeData;
+  Flow: TAtlasDataFlowResult;
+begin
+  Data := DataOf(ANode);
+  Index := NativeInt(ANode.Data) - 1;
+  Data.Loaded := True;
+  FData[Integer(Index)] := Data;
+  Flow := Default(TAtlasDataFlowResult);
+  if Assigned(FOnFlowExpand) then
+  begin
+    Screen.Cursor := crHourGlass;
+    try
+      Flow := FOnFlowExpand(FFlowDirection, Data.FlowSource, Data.FlowPath);
+    finally
+      Screen.Cursor := crDefault;
+    end;
+  end;
+  FTree.Items.BeginUpdate;
+  try
+    ANode.DeleteChildren;
+    AddFlowNodes(ANode, Flow.Nodes, Data.FlowLevel + 1, Data.FlowPath);
+  finally
+    FTree.Items.EndUpdate;
+  end;
+  AllowExpansion := ANode.HasChildren;
+end;
+
+procedure TAtlasResultsFrame.FlowFilterClick(Sender: TObject);
+begin
+  if FSettingFilter or not FShowsFlow or not Assigned(FOnFlowFilter) then
+    Exit;
+  FOnFlowFilter(FOnlyProject.Checked, FExcludeTests.Checked);
+end;
+
 procedure TAtlasResultsFrame.OpenSelected;
 var
   Data: TNodeData;
@@ -601,7 +886,8 @@ begin
     Exit;
   end;
   // Notizen (#545) springen zu ihrer Zeile, verwaiste zur zuletzt bekannten.
-  if (Data.Kind in [TNodeKind.Entry, TNodeKind.Hierarchy, TNodeKind.Note]) and (Data.FileName <> '') and
+  if (Data.Kind in [TNodeKind.Entry, TNodeKind.Hierarchy, TNodeKind.Note, TNodeKind.Flow, TNodeKind.FlowPlace,
+    TNodeKind.FlowSource]) and (Data.FileName <> '') and
     Assigned(FOnOpen) then
     FOnOpen(Data.FileName, Data.Line, Data.Character);
 end;

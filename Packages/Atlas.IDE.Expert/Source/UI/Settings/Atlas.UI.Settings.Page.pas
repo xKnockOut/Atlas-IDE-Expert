@@ -318,6 +318,9 @@ type
     FPeek: TCheckBox;
     FPeekHeightLines: TEdit;
     FPeekShowImplementation: TCheckBox;
+    FDataFlow: TCheckBox;
+    FDataFlowMaxDepth: TEdit;
+    FDataFlowExcludeTests: TCheckBox;
     FPeekDefinitionKey: TEdit;
     FPeekReferencesKey: TEdit;
     FOutline: TCheckBox;
@@ -1126,6 +1129,9 @@ type
     property SelectionMatchesNavigateF3Check: TCheckBox read FSelectionMatchesNavigateF3;
     property SelectionMatchesMaxMatches: TEdit read FSelectionMatchesMaxMatches;
     property RecursionMarkersDepthEdit: TEdit read FRecursionMarkersDepth;
+    property DataFlowCheck: TCheckBox read FDataFlow;
+    property DataFlowMaxDepthEdit: TEdit read FDataFlowMaxDepth;
+    property DataFlowExcludeTestsCheck: TCheckBox read FDataFlowExcludeTests;
     property HideElementKey: TEdit read FHideElementKey;
     /// <summary>Zum Testen: Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).</summary>
     property InlineDiagnostics: TAtlasChoiceBox read FInlineDiagnostics;
@@ -1903,6 +1909,10 @@ begin
   FPeekShowImplementation := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPeekImplementation));
   FPeekDefinitionKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PeekDefinitionCommand));
   FPeekReferencesKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PeekReferencesCommand));
+  // Datenfluss im Ergebnisfenster (#690).
+  FDataFlow := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDataFlow));
+  FDataFlowMaxDepth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsDataFlowMaxDepth));
+  FDataFlowExcludeTests := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDataFlowExcludeTests));
   FOutline := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutline));
   FOutlineAlphabetical := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineAlphabetical));
   FOutlineFollowCursor := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineFollowCursor));
@@ -2749,6 +2759,9 @@ begin
   FMarks.Bind(FPeek, ['Peek']);
   FMarks.Bind(FPeekHeightLines, ['PeekHeightLines']);
   FMarks.Bind(FPeekShowImplementation, ['PeekShowImplementation']);
+  FMarks.Bind(FDataFlow, ['DataFlow']);
+  FMarks.Bind(FDataFlowMaxDepth, ['DataFlowMaxDepth']);
+  FMarks.Bind(FDataFlowExcludeTests, ['DataFlowExcludeTests']);
   FMarks.Bind(FPeekDefinitionKey, ['PeekDefinitionKey']);
   FMarks.Bind(FPeekReferencesKey, ['PeekReferencesKey']);
   FMarks.Bind(FOutline, ['Outline']);
@@ -4866,6 +4879,9 @@ begin
   FPeek.Checked := ASettings.Peek;
   FPeekHeightLines.Text := IntToStr(ASettings.PeekHeightLines);
   FPeekShowImplementation.Checked := ASettings.PeekShowImplementation;
+  FDataFlow.Checked := ASettings.DataFlow;
+  FDataFlowMaxDepth.Text := IntToStr(ASettings.DataFlowMaxDepth);
+  FDataFlowExcludeTests.Checked := ASettings.DataFlowExcludeTests;
   FPeekDefinitionKey.Text := ShortCutToText(TShortCut(ASettings.PeekDefinitionKey));
   FPeekReferencesKey.Text := ShortCutToText(TShortCut(ASettings.PeekReferencesKey));
   FOutline.Checked := ASettings.Outline;
@@ -5293,6 +5309,9 @@ begin
   ASettings.Peek := FPeek.Checked;
   ASettings.PeekHeightLines := StrToIntDef(FPeekHeightLines.Text, ASettings.PeekHeightLines);
   ASettings.PeekShowImplementation := FPeekShowImplementation.Checked;
+  ASettings.DataFlow := FDataFlow.Checked;
+  ASettings.DataFlowMaxDepth := StrToIntDef(FDataFlowMaxDepth.Text, ASettings.DataFlowMaxDepth);
+  ASettings.DataFlowExcludeTests := FDataFlowExcludeTests.Checked;
   ASettings.PeekDefinitionKey := Integer(TextToShortCut(Trim(FPeekDefinitionKey.Text)));
   ASettings.PeekReferencesKey := Integer(TextToShortCut(Trim(FPeekReferencesKey.Text)));
   ASettings.Outline := FOutline.Checked;

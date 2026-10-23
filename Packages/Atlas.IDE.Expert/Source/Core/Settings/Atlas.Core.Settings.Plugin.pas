@@ -49,6 +49,9 @@ type
     MaxXmlDocLines = 50;
     MinPeekLines = 5;
     MaxPeekLines = 60;
+    /// <summary>Grenzen für navigation.dataFlow.maxDepth (#690).</summary>
+    MinDataFlowDepth = 1;
+    MaxDataFlowDepth = 20;
     /// <summary>Grenzen für editor.stickyScrollMaxLines (#506).</summary>
     MinStickyLines = 1;
     MaxStickyLines = 10;
@@ -690,6 +693,13 @@ type
     PeekHeightLines: Integer;
     /// <summary>Bei Routinen auch die Implementierung zeigen (#505, peek.showImplementation).</summary>
     PeekShowImplementation: Boolean;
+    /// <summary>„Woher kommt der Wert?“ und „Wohin geht der Wert?“ im Ergebnisfenster (#690, navigation.dataFlow).</summary>
+    DataFlow: Boolean;
+    /// <summary>Größte Tiefe beim Aufklappen (#690, navigation.dataFlow.maxDepth), MinDataFlowDepth bis
+    /// MaxDataFlowDepth.</summary>
+    DataFlowMaxDepth: Integer;
+    /// <summary>Filter „Tests ausblenden“ zu Beginn an (#690, navigation.dataFlow.excludeTests).</summary>
+    DataFlowExcludeTests: Boolean;
     /// <summary>Kürzel „Definition einblenden“ (#505, keys.peekDefinition); Vorgabe Alt+F12.</summary>
     PeekDefinitionKey: Integer;
     /// <summary>Kürzel „Referenzen einblenden“ (#505, keys.peekReferences); Vorgabe Umschalt+Alt+F12.</summary>
@@ -1523,6 +1533,9 @@ begin
   Result.Peek := True;
   Result.PeekHeightLines := 15;
   Result.PeekShowImplementation := True;
+  Result.DataFlow := True;
+  Result.DataFlowMaxDepth := 6;
+  Result.DataFlowExcludeTests := False;
   Result.PeekDefinitionKey := $807B; // Alt+F12
   Result.PeekReferencesKey := $A07B; // Umschalt+Alt+F12
   Result.Outline := True;
@@ -1814,6 +1827,7 @@ begin
   NavForwardKey := EnsureRange(NavForwardKey, 0, $FFFF);
   LastEditKey := EnsureRange(LastEditKey, 0, $FFFF);
   PeekHeightLines := EnsureRange(PeekHeightLines, MinPeekLines, MaxPeekLines);
+  DataFlowMaxDepth := EnsureRange(DataFlowMaxDepth, MinDataFlowDepth, MaxDataFlowDepth);
   StickyScrollMaxLines := EnsureRange(StickyScrollMaxLines, MinStickyLines, MaxStickyLines);
   SelectionMatchesMinLength := EnsureRange(SelectionMatchesMinLength, MinSelectionMatchLength,
     MaxSelectionMatchLength);
@@ -2158,6 +2172,9 @@ begin
   PeekHeightLines := AStore.ReadInteger('PeekHeightLines', Default.PeekHeightLines);
   PeekShowImplementation := AStore.ReadInteger('PeekShowImplementation',
     BoolValue(Default.PeekShowImplementation)) <> 0;
+  DataFlow := AStore.ReadInteger('DataFlow', BoolValue(Default.DataFlow)) <> 0;
+  DataFlowMaxDepth := AStore.ReadInteger('DataFlowMaxDepth', Default.DataFlowMaxDepth);
+  DataFlowExcludeTests := AStore.ReadInteger('DataFlowExcludeTests', BoolValue(Default.DataFlowExcludeTests)) <> 0;
   PeekDefinitionKey := AStore.ReadInteger('PeekDefinitionKey', Default.PeekDefinitionKey);
   PeekReferencesKey := AStore.ReadInteger('PeekReferencesKey', Default.PeekReferencesKey);
   Outline := AStore.ReadInteger('Outline', BoolValue(Default.Outline)) <> 0;
@@ -2595,6 +2612,9 @@ begin
   AStore.WriteInteger('Peek', BoolValue(Peek));
   AStore.WriteInteger('PeekHeightLines', PeekHeightLines);
   AStore.WriteInteger('PeekShowImplementation', BoolValue(PeekShowImplementation));
+  AStore.WriteInteger('DataFlow', BoolValue(DataFlow));
+  AStore.WriteInteger('DataFlowMaxDepth', DataFlowMaxDepth);
+  AStore.WriteInteger('DataFlowExcludeTests', BoolValue(DataFlowExcludeTests));
   AStore.WriteInteger('PeekDefinitionKey', PeekDefinitionKey);
   AStore.WriteInteger('PeekReferencesKey', PeekReferencesKey);
   AStore.WriteInteger('Outline', BoolValue(Outline));

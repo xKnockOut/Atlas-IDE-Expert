@@ -6248,6 +6248,31 @@ Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert. Unit mit `TK
 | VD18 | `debug.completionInDialogs` aus (Schnellschalter) | Kein Popup, Pfeil runter öffnet die Liste der IDE wie ohne Atlas, kein Eintrag im Diagnoselog, keine Anfrage `atlas/expressionCompletion` (**Abnahme**) |
 | VD19 | Dunkles Thema | Popup wie im Editor gut lesbar |
 
+## Datenfluss (#690)
+
+Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert. Unit `Daten` mit `TKonto = class` (Feld `FWert: Integer`, `property Wert: Integer read FWert write SetWert`, Setter `SetWert(AWert: Integer)` mit `FWert := AWert`), Funktion `Summe(A, B: Integer): Integer` mit `Result := A + B`, Konstante `cMax = 10`; Unit `Haupt` mit `X := 0` an zwei Stellen, `X := Summe(1, cMax)`, `Konto.Wert := X`, `Inc(X)`, `ReadLn(X)`, `P := @X` und eine DUnitX-Testunit `Haupt.Tests` mit `X := 99`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DF1 | Cursor auf `X`, Menü Atlas › Suchen › „Woher kommt der Wert?“ | Ergebnisfenster „Woher kommt X? (n Stellen)“, je Stelle Art, Ausdruck, `Haupt.pas:Zeile: Quelltextzeile` (**Abnahme**) |
+| DF2 | DF1 | „2 Zuweisungen: 0 — Literal“ mit beiden Fundorten darunter; `Inc(X)` als Änderung mit Zyklus; `ReadLn(X)` als Eingabe |
+| DF3 | Unter „Zuweisung: Summe(1, cMax)“ die Quelle „← Summe“ aufklappen | Lädt erst jetzt (kurz Sanduhr); darunter „Rückgabe: A + B“ mit „← A“, „← B“; unter A die Argumente der Aufrufer (`1`), `cMax` als Blatt „· Konstante“ (**Abnahme**) |
+| DF4 | Doppelklick bzw. Enter auf eine Stelle, einen Fundort, eine Quelle | Editor springt zur Zeile bzw. zur Deklaration (**Abnahme**) |
+| DF5 | Cursor auf `X`, „Wohin geht der Wert?“ | „Wohin geht X?“: `Konto.Wert := X` als Schreiben über die Property „über SetWert“, aufklappbar bis `FWert` |
+| DF6 | Unter einer Quelle immer weiter aufklappen | Nach `navigation.dataFlow.maxDepth` Ebenen (Vorgabe 6) „· Tiefe erreicht“ ohne Pfeil; Wert 2 in den Einstellungen und neu fragen: schon nach 2 Ebenen |
+| DF7 | Zwei Variablen, die sich gegenseitig zugewiesen werden (`A := B; B := A`), A aufklappen | Unter B steht A als „· Zyklus“, kein Endlosbaum |
+| DF8 | `P := @X` bzw. `Move(Y, X, 4)` | Stelle mit „⚠ unsicher: Adresse“ bzw. „Move“ |
+| DF9 | Filter „Tests ausblenden“ an | Die Zuweisung aus `Haupt.Tests` verschwindet, der Baum wird neu geholt; aus: wieder da |
+| DF10 | Filter „Nur Projektcode“ an, Cursor auf einem Parameter, dessen Routine auch aus einer Bibliothek aufgerufen wird | Nur Aufrufer aus Projektdateien |
+| DF11 | `navigation.dataFlow.excludeTests` an, neu fragen | „Tests ausblenden“ ist vorbelegt |
+| DF12 | Befehlspalette: „Woher kommt der Wert?“ und „Wohin geht der Wert?“ | Beide Befehle vorhanden, gleiches Ergebnis wie über das Menü |
+| DF13 | Cursor auf einem Leerzeichen bzw. Schlüsselwort | Meldungsansicht „nichts gefunden“, Ergebnisfenster unverändert |
+| DF14 | Server beendet, Befehl ausführen | Zeile „kein Server“, kein Dialog, kein Hänger |
+| DF15 | Andere Liste zeigen (Referenzen) | Filterleiste verschwindet |
+| DF16 | `navigation.dataFlow` aus (Schnellschalter) | Menüeinträge und Palettenbefehle verborgen; ein über eine Tastenbelegung ausgelöster Befehl meldet nur „Datenfluss ist ausgeschaltet …“, keine Anfrage `atlas/dataFlow` im Diagnoselog (**Abnahme**) |
+| DF17 | Dunkles und helles Thema | Baum, Pfeile, ⚠ und Filterleiste gut lesbar |
+| DF18 | Property `Wert` aus DF5: auf `FWert` in `read FWert` F12 bzw. Referenzen | Springt zum Feld, Referenzen enthalten die Property-Zeile (Ursache aus #690 behoben) |
+
 ## Fenster „Auswerten“ (#784)
 
 Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert, Diagnoselog an. Unit mit `TKunde = class` (Felder `FName: string`, `FUmsatz: Integer`, Eigenschaft `Name` mit Getter), Record `TPunkt = record X, Y: Integer; end`, eine Methode von `TKunde` mit lokalen Variablen `Liste: TStringList` (drei Zeilen), `Zahl: Integer`, `Json: string` (`'{"a":1}'`), `P: TPunkt`, `Werte: array[0..2] of Integer`; in einer Schleife ändert sich `Zahl`. Haltepunkt in der Schleife. Win32 und Win64 je einmal.
