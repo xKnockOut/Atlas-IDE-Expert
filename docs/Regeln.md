@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 72 |
+| [Fehler finden](#gruppe-find-bugs) | 73 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
@@ -95,6 +95,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`constant-condition`](#constant-condition) | Bedingung ist immer gleich | Bug | Warnung |
 | [`infinite-loop`](#infinite-loop) | Schleife ohne Ausgang | Bug | Fehler |
 | [`loop-condition-unchanged`](#loop-condition-unchanged) | Schleifenbedingung ändert sich im Rumpf nie | Bug | Warnung |
+| [`loop-runs-at-most-once`](#loop-runs-at-most-once) | Schleife läuft höchstens einmal | Bug | Warnung |
 | [`unconditional-recursion`](#unconditional-recursion) | Rekursion ohne Abbruch | Bug | Fehler |
 | [`pos-arguments-swapped`](#pos-arguments-swapped) | Argumente von Pos vertauscht | Bug | Warnung |
 | [`integer-division-to-float`](#integer-division-to-float) | Ganzzahldivision an Gleitkommazahl | Bug | Warnung |
@@ -6963,6 +6964,36 @@ begin
   Check(List[I]);
   Inc(I);
 end;
+```
+
+<a id="loop-runs-at-most-once"></a>
+### loop-runs-at-most-once
+
+**Schleife läuft höchstens einmal** · Bug · Warnung · Gruppe Fehler finden
+
+Jeder Weg durch den Rumpf einer for-, for-in-, while- oder repeat-Schleife endet mit Exit, Break, raise, Halt, Abort, RunError, ExitProcess oder dem Aufruf einer Routine der Datei, die eine Ausnahme auslöst; die Schleife läuft also höchstens einmal. Meist fehlt ein if vor dem Sprung, oder ein Continue war gemeint. Ein Weg zählt als Sprung bei if mit else und beiden Zweigen, case mit else und allen Zweigen, try … finally mit try- oder finally-Teil und try … except mit try-Teil und jedem Behandler. Still bei Continue dieser Schleife, goto bzw. Marken und bedingten Direktiven im Rumpf; ein Break innerer Schleifen zählt nicht. Ergänzt infinite-loop und loop-condition-unchanged. Keine Korrektur, die Absicht ist unklar; steht der Sprung direkt hinter einem if ohne else, fragt die Meldung, ob er in den if-Zweig gehört. Sicherheit hoch.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowFirstElement` | boolean | `false` | for-in aus einfachen Anweisungen, das mit Exit bzw. Break endet (erstes Element holen), nicht melden. |
+
+Mit Treffer:
+
+```pascal
+for mCustomer in FCustomers do
+begin
+  if mCustomer.Id = AId then
+    Result := mCustomer;
+  Exit;
+end;
+```
+
+Richtig:
+
+```pascal
+for mCustomer in FCustomers do
+  if mCustomer.Id = AId then
+    Exit(mCustomer);
 ```
 
 <a id="unconditional-recursion"></a>
