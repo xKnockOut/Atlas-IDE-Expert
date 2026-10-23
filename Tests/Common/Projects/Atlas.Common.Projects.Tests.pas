@@ -38,6 +38,8 @@ type
     [Test]
     procedure CombinesAndNormalizesWindowsPaths;
     [Test]
+    procedure CombinesPosixFolderWithProjectPaths;
+    [Test]
     procedure KeepsAbsolutePaths;
     [Test]
     procedure SplitsNamesAndExtensions;
@@ -310,6 +312,16 @@ begin
   Assert.AreEqual('C:\Work', TProjectPaths.Combine('C:\Work\App', '..'));
   Assert.AreEqual('C:\', TProjectPaths.Normalize('C:\..\..'));
   Assert.AreEqual('C:\a\b', TProjectPaths.Normalize('C:/a//b/'));
+end;
+
+procedure TProjectPathsTests.CombinesPosixFolderWithProjectPaths;
+begin
+  // Linux-Bau (#1109): Projektordner mit "/", Pfade aus dem .dproj mit "\".
+  Assert.AreEqual('/home/u/Packages/Atlas.Text/Atlas.Text.dproj',
+    TProjectPaths.Combine('/home/u', 'Packages\Atlas.Text\Atlas.Text.dproj'));
+  Assert.AreEqual('/home/Shared/Source', TProjectPaths.Combine('/home/u/App', '..\..\Shared\Source\'));
+  Assert.AreEqual('/a/b', TProjectPaths.Normalize('/a\\b/'));
+  Assert.AreEqual('Source\Unit1.pas', TProjectPaths.Normalize('Source/Unit1.pas\'));
 end;
 
 procedure TProjectPathsTests.KeepsAbsolutePaths;

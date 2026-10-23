@@ -11,3 +11,4 @@
 *.res      binary
 *.bat      text eol=crlf
 EULA.txt   text eol=crlf
+*.sh       text eol=lf

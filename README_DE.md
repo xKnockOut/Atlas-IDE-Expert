@@ -211,6 +211,7 @@ Gebaut und geprüft wird bisher nur mit RAD Studio 13 in der 32-Bit-IDE. Was ohn
 
 - **Claude Code:** MCP-Werkzeuge und LSP als Plugin, siehe [Editors/ClaudeCode](Editors/ClaudeCode/README.md)
 - **CI und Kommandozeile:** `AtlasServer.exe --check`, siehe [Linter-Modus](#linter-modus)
+- **Claude Code in der Cloud (Linux):** Der SessionStart-Hook des Repositorys baut den Server mit Free Pascal und legt ihn als `AtlasServer` (und `AtlasServer.exe`) nach `/usr/local/bin`; das Plugin startet ohne weitere Einrichtung ([ADR 0013](docs/adr/0013-linux-bau.md), [Bauen unter Linux](#bauen-unter-linux))
 
 Ausführlich: [docs/Installation.md](docs/Installation.md).
 
@@ -231,6 +232,7 @@ Ausführlich: [docs/Installation.md](docs/Installation.md).
 | `Packages/Atlas.Text` | Package, nur RTL (frei von Windows und VCL); das IDE-Plugin bindet es als Quelltext ein |
 | `Packages/Atlas.Common` | Package, frei von Windows und VCL |
 | `Packages/Atlas.Windows` | Package für Windows-spezifische Funktionen, frei von VCL |
+| `Packages/Atlas.Linux` | Linux-Gegenstücke der Windows-Adapter des Servers, nur Quelltext, für den Bau mit Free Pascal (ADR 0013) |
 | `Application/AtlasServer` | Der Server (Konsolenprogramm, spricht LSP über stdin/stdout) |
 | `Packages/Atlas.IDE.Expert` | Das IDE-Plugin (Designtime-Package; Win32 für die klassische IDE, Win64 für die 64-Bit-IDE ab Delphi 12.3), Schichten `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
 | `Tests/Atlas.Tests` | DUnitX-Tests |
@@ -255,6 +257,16 @@ msbuild Atlas.groupproj /t:Build /p:Config=Debug /p:Platform=Win32
 ```
 
 Die Ausgabe landet in `Output\<Plattform>\<Konfiguration>\` (`Bin`, `Bpl`, `Dcp`, `Dcu`).
+
+### Bauen unter Linux
+
+Nur der Server, nur für Claude-Code-Sitzungen in der Cloud und andere Linux-Rechner ohne Delphi ([ADR 0013](docs/adr/0013-linux-bau.md)):
+
+```bash
+Tools/Linux/Build-AtlasServer.sh --install /usr/local/bin
+```
+
+Das Skript baut einmalig Free Pascal trunk in einem festen Stand (etwa 10 Minuten, unter `~/.cache/atlas-fpc`), bereitet den Quelltext mit `Tools/Linux/Convert-ForFpc.py` auf und übersetzt nach `Output/Linux64/Bin/AtlasServer`. Hat sich der Quelltext nicht geändert, baut es nicht neu. Plattform-Adapter liegen in `Packages/Atlas.Linux`, die Auswahl trifft `Shell.Platform`. Der Linux-Bau ersetzt den Delphi-Bau vor dem Merge nicht.
 
 ## Testen
 

@@ -941,6 +941,8 @@
         <DCCReference Include="Application\Shell\Shell.Commands.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.VcsChanges.pas"/>
         <DCCReference Include="Application\Shell\Shell.VcsChanges.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Platform.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Platform.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.pas"/>
         <DCCReference Include="Application\Shell\Shell.Linter.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.NestedOverloads.Tests.pas"/>

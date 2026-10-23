@@ -1,4 +1,4 @@
-# Entscheidungsprotokoll (ADR)
+﻿# Entscheidungsprotokoll (ADR)
 
 Hier stehen Architekturentscheidungen mit Kontext, Entscheidung und Folgen. Eine Entscheidung wird nicht nachträglich umgeschrieben; wird sie ersetzt, bekommt sie den Status „Ersetzt durch NNNN“ und eine neue Datei erklärt die neue Entscheidung.
 
@@ -16,6 +16,7 @@ Hier stehen Architekturentscheidungen mit Kontext, Entscheidung und Folgen. Eine
 | [0010](0010-binaerer-index-cache.md) | Binärer Index-Cache mit String-Tabelle und Prüfsumme | Angenommen |
 | [0011](0011-willkommensseite.md) | Atlas-Bereiche als Plugins der IDE-Willkommensseite, Layout über die Registry | Angenommen |
 | [0012](0012-gemeinsamer-text-code.md) | Plugin ohne Atlas.Common; gemeinsamer Code in Atlas.Text | Angenommen |
+| [0013](0013-linux-bau.md) | AtlasServer unter Linux mit Free Pascal für Cloud-Sitzungen | Angenommen |
 
 ## Vorlage
 

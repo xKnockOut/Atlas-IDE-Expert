@@ -211,6 +211,7 @@ So far it is built and checked only with RAD Studio 13 in the 32-bit IDE. What r
 
 - **Claude Code:** MCP tools and LSP as a plugin, see [Editors/ClaudeCode](Editors/ClaudeCode/README.md)
 - **CI and command line:** `AtlasServer.exe --check`, see [Linter mode](#linter-mode)
+- **Claude Code in the cloud (Linux):** the repository's SessionStart hook builds the server with Free Pascal and installs it as `AtlasServer` (and `AtlasServer.exe`) in `/usr/local/bin`; the plugin starts without further setup ([ADR 0013](docs/adr/0013-linux-bau.md), [Building on Linux](#building-on-linux))
 
 More: [docs/Installation.md](docs/Installation.md).
 
@@ -231,6 +232,7 @@ More: [docs/Installation.md](docs/Installation.md).
 | `Packages/Atlas.Text` | Package, RTL only (free of Windows and VCL); the IDE plugin includes it as source |
 | `Packages/Atlas.Common` | Package, free of Windows and VCL |
 | `Packages/Atlas.Windows` | Package for Windows-specific functions, free of VCL |
+| `Packages/Atlas.Linux` | Linux counterparts of the server's Windows adapters, source only, for the Free Pascal build (ADR 0013) |
 | `Application/AtlasServer` | The server (console program, speaks LSP over stdin/stdout) |
 | `Packages/Atlas.IDE.Expert` | The IDE plugin (design-time package; Win32 for the classic IDE, Win64 for the 64-bit IDE from Delphi 12.3), layers `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
 | `Tests/Atlas.Tests` | DUnitX tests |
@@ -255,6 +257,16 @@ msbuild Atlas.groupproj /t:Build /p:Config=Debug /p:Platform=Win32
 ```
 
 Output goes to `Output\<platform>\<config>\` (`Bin`, `Bpl`, `Dcp`, `Dcu`).
+
+### Building on Linux
+
+Only the server, only for Claude Code sessions in the cloud and other Linux machines without Delphi ([ADR 0013](docs/adr/0013-linux-bau.md)):
+
+```bash
+Tools/Linux/Build-AtlasServer.sh --install /usr/local/bin
+```
+
+The script builds Free Pascal trunk at a pinned commit once (about 10 minutes, under `~/.cache/atlas-fpc`), prepares the source with `Tools/Linux/Convert-ForFpc.py` and compiles to `Output/Linux64/Bin/AtlasServer`. If the source has not changed, it does not rebuild. Platform adapters live in `Packages/Atlas.Linux`; `Shell.Platform` picks them. The Linux build does not replace the Delphi build before a merge.
 
 ## Testing
 

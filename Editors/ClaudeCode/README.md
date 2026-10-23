@@ -22,6 +22,10 @@ Ohne `PATH`: Jedes Release enthält `atlas-claude-plugin-<Version>.zip` mit der 
 
 Die Version von Plugin und Marketplace-Eintrag setzt `Tools/Set-Version.ps1` mit der Release-Version; `Tools/Check-Version.ps1` prüft sie.
 
+### In Cloud-Sitzungen (Linux)
+
+In Claude-Code-Sitzungen in der Cloud baut der SessionStart-Hook dieses Repositorys (`.claude/hooks/session-start.sh`) den Server mit Free Pascal und legt ihn als `/usr/local/bin/AtlasServer` samt Verweis `AtlasServer.exe` ab. Das Plugin findet ihn dort; `claude mcp list` zeigt `plugin:atlas:delphi` als verbunden. Der erste Start eines Containers dauert dadurch einmalig länger ([ADR 0013](../../docs/adr/0013-linux-bau.md)).
+
 ### Nur MCP-Werkzeuge (ein Befehl)
 
 ```

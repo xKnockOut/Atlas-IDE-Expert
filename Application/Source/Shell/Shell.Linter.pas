@@ -68,7 +68,6 @@ uses
   Atlas.Common.Index.ProjectFiles,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.IncludeFiles,
-  Atlas.Windows.Projects.DelphiInstallation,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Filter,
@@ -89,8 +88,7 @@ uses
   Atlas.Common.Rules.ChangedFiles,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Index.Adapters.CacheDirectory,
-  Atlas.Windows.Console.StdStreams,
-  Atlas.Windows.Compiler.Adapters.ProcessRunner,
+  Shell.Platform,
   Shell.VcsChanges,
   Shell.Bootstrap;
 
