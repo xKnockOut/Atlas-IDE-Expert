@@ -5,8 +5,8 @@
 // Testquelle. Knöpfe nur in der aktiven Zeile und nur eingeschaltet, Liste
 // aus welcomePage.quickActions.items, Klicks und Tasten erreichen die Quelle
 // über die Nachrichtenschleife, ein gesperrter Pull tut nichts, die Auswahl
-// (Konfiguration und Plattform, Startprofil, Testprojekt), Texte von
-// Knöpfen, Fortschritt und Ergebnis sowie das Kontextmenü.
+// (Konfiguration und Plattform, Startprofil, Testprojekt, Projektaufgabe
+// #900), Texte von Knöpfen, Fortschritt und Ergebnis sowie das Kontextmenü.
 
 interface
 
@@ -31,6 +31,7 @@ type
     FState: TAtlasQuickActionState;
     FNowMs: UInt64;
     FTests: TArray<string>;
+    FTaskNames: TArray<string>;
     Calls: TArray<string>;
     constructor Create;
     function Enabled: Boolean;
@@ -44,6 +45,8 @@ type
     procedure RunTests(const AProject, ATestProject: string);
     function Profiles(const AProject: string; out AActive: string): TArray<string>;
     procedure Run(const AProject, AProfile: string);
+    function TaskNames(const AProject: string): TArray<string>;
+    procedure RunTask(const AProject, AName: string);
     function BuildKey: Integer;
     function TestKey: Integer;
     function ConsoleProgram: string;
@@ -82,6 +85,8 @@ type
     procedure EnglishTexts;
     [Test]
     procedure ContextMenuFollowsRow;
+    [Test]
+    procedure TasksChooseAndShowResult;
   end;
 
 implementation
@@ -113,6 +118,7 @@ begin
   Vcs.Changed := 0;
   FState := TAtlasQuickActionState.Idle;
   FNowMs := 100000;
+  FTaskNames := TArray<string>.Create('Delphi-12-Prüfung', 'Konfigurationsdoku');
 end;
 
 function TAtlasFakeQuickActions.Enabled: Boolean;
@@ -173,6 +179,16 @@ end;
 procedure TAtlasFakeQuickActions.Run(const AProject, AProfile: string);
 begin
   Calls := Calls + ['run ' + AProject + ' ' + AProfile];
+end;
+
+function TAtlasFakeQuickActions.TaskNames(const AProject: string): TArray<string>;
+begin
+  Result := FTaskNames;
+end;
+
+procedure TAtlasFakeQuickActions.RunTask(const AProject, AName: string);
+begin
+  Calls := Calls + ['task ' + AProject + ' ' + AName];
 end;
 
 function TAtlasFakeQuickActions.BuildKey: Integer;
@@ -308,9 +324,10 @@ begin
   try
     Assert.IsTrue(Host.Bar.Active);
     Buttons := Host.Bar.ButtonsOf(0);
-    Assert.AreEqual(6, Integer(Length(Buttons)), 'alle sechs Knöpfe');
+    Assert.AreEqual(7, Integer(Length(Buttons)), 'alle sieben Knöpfe');
     Assert.IsTrue(Buttons[0].Action = TAtlasQuickAction.Build);
     Assert.IsTrue(Buttons[5].Action = TAtlasQuickAction.Console);
+    Assert.IsTrue(Buttons[6].Action = TAtlasQuickAction.Tasks);
     // items ohne console: nur dieser Knopf fehlt.
     Fake.Items := TAtlasWelcomeQuickActions.ParseItems('build,tests,run,pull,folder');
     Host.Bar.SetRows([ProjectOne, ProjectTwo]);
@@ -667,6 +684,71 @@ begin
   finally
     Host.Free;
   end;
+end;
+
+procedure TAtlasQuickActionsBarTests.TasksChooseAndShowResult;
+var
+  Fake: TAtlasFakeQuickActions;
+  Source: IAtlasQuickActionsSource;
+  Host: TBarHost;
+  Items: TMenuItem;
+  Menu: TPopupMenu;
+  Index: Integer;
+  Button: TAtlasQuickActionButton;
+  State: TAtlasQuickActionState;
+begin
+  Fake := TAtlasFakeQuickActions.Create;
+  Source := Fake;
+  Fake.Items := [TAtlasQuickAction.Folder, TAtlasQuickAction.Tasks];
+  Host := TBarHost.Create(Source);
+  try
+    // „Aufgaben ▾“: Überschrift, dann die Aufgaben der atlas.json in ihrer Reihenfolge.
+    Items := Host.Bar.Menu.Items;
+    Assert.IsTrue(Host.Bar.ButtonsOf(0)[1].HasMenu);
+    Assert.IsTrue(Host.Bar.FillChoices(Items, 0, 1));
+    Assert.AreEqual(4, Integer(Items.Count));
+    Assert.AreEqual('Projektaufgabe', StripHotkey(Items[0].Caption));
+    Assert.AreEqual('Delphi-12-Prüfung', StripHotkey(Items[2].Caption));
+    Assert.AreEqual('Konfigurationsdoku', StripHotkey(Items[3].Caption));
+    Items[3].Click;
+    CheckSynchronize;
+    Assert.AreEqual(1, Integer(Length(Fake.Calls)));
+    Assert.AreEqual('task ' + ProjectOne + ' Konfigurationsdoku', Fake.Calls[0]);
+    // Kontextmenü: Untermenü „Aufgabe ausführen“ ohne Überschrift.
+    Menu := TPopupMenu.Create(Host.Host);
+    Host.Bar.AttachMenu(Menu);
+    Host.Bar.PrepareMenu(1);
+    Items := nil;
+    for Index := 0 to Menu.Items.Count - 1 do
+      if StripHotkey(Menu.Items[Index].Caption) = 'Aufgabe ausführen' then
+        Items := Menu.Items[Index];
+    Assert.IsNotNull(Items);
+    Assert.IsTrue(Items.Visible);
+    Assert.AreEqual(2, Integer(Items.Count));
+    Items[0].Click;
+    CheckSynchronize;
+    Assert.AreEqual('task ' + ProjectTwo + ' Delphi-12-Prüfung', Fake.Calls[1]);
+    // Ohne Aufgaben keine Auswahl.
+    Fake.FTaskNames := nil;
+    Assert.IsFalse(Host.Bar.FillChoices(Host.Bar.Menu.Items, 0, 1));
+    Host.Bar.PrepareMenu(0);
+    Assert.IsFalse(Items.Visible);
+  finally
+    Host.Free;
+  end;
+  // Texte: Knopf, Fortschritt, Ergebnis aus der IDE-Schicht, nicht gestartet, Tooltip.
+  Button := Default(TAtlasQuickActionButton);
+  Button.Action := TAtlasQuickAction.Tasks;
+  Button.Enabled := True;
+  Assert.AreEqual('Aufgaben ▾', TAtlasQuickActionsBar.Caption(Button, TAtlasQuickActionState.Idle, 0));
+  State := TAtlasQuickActionState.Started(TAtlasQuickAction.Tasks, 1000);
+  Assert.AreEqual('Aufgabe … 3 s', TAtlasQuickActionsBar.Caption(Button, State, 4200));
+  State.Phase := TAtlasQuickActionPhase.Failed;
+  State.Detail := 'Delphi-12-Prüfung: 2 Fehler 14:03';
+  Assert.AreEqual('Delphi-12-Prüfung: 2 Fehler 14:03', TAtlasQuickActionsBar.StateText(State, 0, False));
+  State.Phase := TAtlasQuickActionPhase.Refused;
+  Assert.AreEqual('Aufgabe nicht gestartet', TAtlasQuickActionsBar.StateText(State, 0, False));
+  Assert.IsTrue(TAtlasQuickActionsBar.ButtonHint(Button, False, 0, '').Contains('Atlas-Aufgaben'));
 end;
 
 initialization

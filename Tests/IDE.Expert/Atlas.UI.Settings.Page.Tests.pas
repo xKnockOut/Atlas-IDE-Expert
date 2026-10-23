@@ -41,6 +41,9 @@ type
     /// </summary>
     [Test]
     procedure OpenBuildRoundTrip;
+    /// <summary>#900: Projektaufgaben auf dem Reiter Compiler hin und zurück, Vorgaben wie im Issue.</summary>
+    [Test]
+    procedure TasksRoundTrip;
     [Test]
     procedure ListModeRoundTrip;
     /// <summary>#69: Code Lens auf dem Reiter Editor, Tests ausführen, vorher bauen, nach dem Build und
@@ -1145,6 +1148,45 @@ begin
   end;
 end;
 
+procedure TAtlasSettingsPageTests.TasksRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.TasksEnabledCheck.Checked, 'standardmäßig an');
+    Assert.IsTrue(Page.TasksProblemsFromOutputCheck.Checked);
+    Assert.AreEqual(0, Page.TasksBeforeBuildChoice.Choice, 'vor dem Build: aus');
+    Assert.IsTrue(Page.TasksSaveBeforeRunCheck.Checked);
+    Assert.IsFalse(Page.TasksRunChecksParallelCheck.Checked);
+    Assert.IsFalse(Page.TasksOnlyFindingsCheck.Checked);
+    Page.TasksEnabledCheck.Checked := False;
+    Page.TasksProblemsFromOutputCheck.Checked := False;
+    Page.TasksBeforeBuildChoice.Choice := 2;
+    Page.TasksSaveBeforeRunCheck.Checked := False;
+    Page.TasksRunChecksParallelCheck.Checked := True;
+    Page.TasksOnlyFindingsCheck.Checked := True;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.TasksEnabled, 'abschaltbar');
+    Assert.IsFalse(Saved.TasksProblemsFromOutput);
+    Assert.AreEqual('block', Saved.TasksBeforeBuild);
+    Assert.IsFalse(Saved.TasksSaveBeforeRun);
+    Assert.IsTrue(Saved.TasksRunChecksParallel);
+    Assert.IsTrue(Saved.TasksOnlyFindings);
+    Page.LoadFrom(Saved);
+    Assert.AreEqual(2, Page.TasksBeforeBuildChoice.Choice);
+    Assert.IsFalse(Page.TasksEnabledCheck.Checked);
+    Page.TasksBeforeBuildChoice.Choice := 1;
+    Page.SaveTo(Saved);
+    Assert.AreEqual('warn', Saved.TasksBeforeBuild);
+  finally
+    Page.Free;
+  end;
+end;
+
 procedure TAtlasSettingsPageTests.HideElementRoundTrip;
 var
   Page: TAtlasSettingsPage;
@@ -1592,6 +1634,7 @@ begin
     Assert.IsTrue(Page.WelcomeQuickActions.Checked);
     Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Build).Checked);
     Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked);
+    Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Tasks).Checked, 'Aufgaben (#900)');
     Assert.AreEqual('wt.exe', Page.WelcomeQuickActionsConsole.Text);
     Assert.AreEqual(ShortCutToText($4042), Page.WelcomeQuickActionsBuildKey.Text);
     Assert.AreEqual(ShortCutToText($4054), Page.WelcomeQuickActionsTestKey.Text);
@@ -1708,7 +1751,7 @@ begin
     Assert.AreEqual('[{kennung}] ', Saved.WelcomePageIssuesCommitPattern, 'Leerzeichen am Ende bleibt');
     Assert.IsFalse(Saved.TrackerLogin);
     Assert.IsFalse(Saved.WelcomePageQuickActions);
-    Assert.AreEqual('build,tests,pull,folder', Saved.WelcomePageQuickActionsItems, 'ohne run und console');
+    Assert.AreEqual('build,tests,pull,folder,tasks', Saved.WelcomePageQuickActionsItems, 'ohne run und console');
     Assert.AreEqual('pwsh.exe', Saved.WelcomePageQuickActionsConsole);
     Assert.AreEqual(0, Saved.WelcomePageQuickActionsBuildKey, 'leer = keine Taste');
     Assert.AreEqual($C054, Saved.WelcomePageQuickActionsTestKey);

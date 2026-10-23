@@ -3,9 +3,11 @@
 // Schnellaktionen je Projekt auf der Willkommensseite (#764, Mockup #ws10),
 // Teil ohne VCL und Open Tools API:
 // - Knöpfe in fester Reihenfolge „Öffnen und bauen“, „Tests“, „Startprofil ▾“,
-//   „Pull“, „Ordner“, „Konsole“; welche erscheinen, legt
+//   „Pull“, „Ordner“, „Konsole“, „Aufgaben ▾“; welche erscheinen, legt
 //   welcomePage.quickActions.items fest (Liste aus build, tests, run, pull,
-//   folder, console; Vorgabe alle, leer = keiner).
+//   folder, console, tasks; Vorgabe alle, leer = keiner). „Aufgaben ▾“
+//   startet eine Projektaufgabe aus atlas.json (#900); die IDE-Schicht zeigt
+//   ihn nur bei eingeschalteten Aufgaben und mit Aufgaben im Projekt.
 // - Sperrlogik von „Pull“: gesperrt bei lokalen Änderungen im Projektordner
 //   (wie die Marke „N geändert“ des Bereichs „Projekte“, #592) mit dem Tooltip
 //   „Erst lokale Änderungen sichern“, ohne Arbeitskopie und solange auf dem
@@ -39,7 +41,7 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  TAtlasQuickAction = (Build, Tests, Run, Pull, Folder, Console);
+  TAtlasQuickAction = (Build, Tests, Run, Pull, Folder, Console, Tasks);
   /// <summary>Stand einer Aktion je Projekt: läuft, fertig (ok bzw. fehlgeschlagen) oder nicht ausgeführt.</summary>
   TAtlasQuickActionPhase = (Idle, Running, Succeeded, Failed, Refused);
   /// <summary>Grund, aus dem „Pull“ gesperrt ist.</summary>
@@ -57,7 +59,7 @@ type
     Block: TAtlasPullBlock;
     /// <summary>Pull heißt „Aktualisieren“ (SVN).</summary>
     Update: Boolean;
-    /// <summary>Der Knopf hat eine Auswahl (▾): Konfiguration und Plattform bzw. Startprofil.</summary>
+    /// <summary>Der Knopf hat eine Auswahl (▾): Konfiguration und Plattform, Startprofil bzw. Aufgabe.</summary>
     HasMenu: Boolean;
   end;
 
@@ -96,8 +98,8 @@ type
 
   TAtlasWelcomeQuickActions = class
   public const
-    Names: array[TAtlasQuickAction] of string = ('build', 'tests', 'run', 'pull', 'folder', 'console');
-    DefaultItems = 'build,tests,run,pull,folder,console';
+    Names: array[TAtlasQuickAction] of string = ('build', 'tests', 'run', 'pull', 'folder', 'console', 'tasks');
+    DefaultItems = 'build,tests,run,pull,folder,console,tasks';
     DefaultConsole = 'wt.exe';
     FallbackConsole = 'cmd.exe';
     /// <summary>Strg+B und Strg+T als TShortCut (scCtrl or Ord(Taste)).</summary>
@@ -393,7 +395,8 @@ begin
     // Die IDE öffnet immer nur ein Projekt zur Zeit.
     if AIdeBusy and UsesIde(Action) then
       Button.Enabled := False;
-    Button.HasMenu := (Action = TAtlasQuickAction.Build) or (Action = TAtlasQuickAction.Run);
+    Button.HasMenu := (Action = TAtlasQuickAction.Build) or (Action = TAtlasQuickAction.Run) or
+      (Action = TAtlasQuickAction.Tasks);
     if Action = TAtlasQuickAction.Pull then
     begin
       Button.Update := IsUpdate(AVcs);
