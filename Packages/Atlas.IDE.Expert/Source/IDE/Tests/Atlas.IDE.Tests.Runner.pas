@@ -21,9 +21,9 @@
 //   Fehlschlag eine anklickbare Zeile in der Meldungsansicht (Gruppe Atlas),
 //   Abschnitt "tests" der Projekt-Zusammenfassung (Haken OnFinished, #592,
 //   #763) und der Stand je Test für die Code Lens.
-// - Nach einem Build des Benutzers ruft die Composition BuildFinished; mit
-//   „Tests nach dem Build“ laufen dann die Tests des gebauten Testprojekts
-//   (ohne erneut zu bauen).
+// - Nach einem Build des Benutzers ruft die Composition BuildFinished mit der
+//   Bewertung aus #530 (Atlas.Core.Build.Verdict); mit „Tests nach dem Build“
+//   laufen dann die Tests des gebauten Testprojekts (ohne erneut zu bauen).
 // - Für „Test debuggen“ (#585, Atlas.IDE.Tests.Debug): Projektwahl, Ziel,
 //   Build vorab, Sperre während der Sitzung (Debugging) und das Ergebnis aus
 //   dem XML-Bericht des Laufs im Debugger (ReportRun).
@@ -40,7 +40,6 @@ uses
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Build.Events,
-  Atlas.Core.Build.Messages,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Tests.Run,
@@ -108,9 +107,9 @@ type
     /// False mit AReason, wenn „Tests ausführen“ aus ist, schon ein Lauf läuft oder AProject nicht offen ist.
     /// </summary>
     function RunProject(const AProject: string; out AReason: string): Boolean;
-    /// <summary>Ein Build ist fertig (Meldungen gelesen): mit „Tests nach dem Build“ laufen die Tests.</summary>
-    procedure BuildFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean;
-      const AMessages: TArray<TAtlasCompilerMessage>);
+    /// <summary>Ein Build ist fertig und bewertet (#530): mit „Tests nach dem Build“ laufen die Tests, wenn er als
+    /// erfolgreich gilt (ASucceeded = TAtlasBuildVerdict.Effective).</summary>
+    procedure BuildFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean);
     /// <summary>Stand eines Tests bzw. einer Fixture (AMethod = '') nach den Läufen dieser Sitzung.</summary>
     function StatusOf(const AUnitName, AFixture, AMethod: string): TAtlasTestStatus; overload;
     /// <summary>Stand eines Falls ACaseName (#585); '' = alle Fälle.</summary>
@@ -502,8 +501,7 @@ begin
   Result := True;
 end;
 
-procedure TAtlasIdeTests.BuildFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean;
-  const AMessages: TArray<TAtlasCompilerMessage>);
+procedure TAtlasIdeTests.BuildFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean);
 var
   Project: IOTAProject;
 begin
@@ -511,7 +509,7 @@ begin
     Exit;
   Project := ProjectByFile(AProject.FileName);
   if not TAtlasTestRun.ShouldRunAfterBuild(TAtlasIdeSettings.Current, ASucceeded, AProject.Background,
-    AProject.RequestedBy, TAtlasTestRun.WarningsAndHints(AMessages), Project <> nil) then
+    AProject.RequestedBy, Project <> nil) then
     Exit;
   // Gerade gebaut: nicht noch einmal.
   Start(Project, nil, False);

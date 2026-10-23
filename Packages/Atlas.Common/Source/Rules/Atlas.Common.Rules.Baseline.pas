@@ -31,6 +31,13 @@
 // entfernte und unveränderte Einträge und nennt Einträge ohne Datei (Datei
 // umbenannt, verschoben oder gelöscht), bevor sie herausfallen.
 //
+// Compilermeldungen (#530) stehen in derselben Datei: "rule" ist dann der
+// Code der Meldung ("w1035", "h2164"; IsCompilerCode). Sie entstehen nur über
+// ReplaceCompiler (Befehl „Aktuelle Compilermeldungen in die Basislinie“).
+// Update (Regeln neu schreiben) übernimmt sie unverändert, solange ihre Datei
+// existiert, und Classify/AbsentOf melden sie nie als Absent: Die Regelprüfung
+// sieht keine Compilermeldungen und darf sie nicht als verschwunden werten.
+//
 // Format:
 //   {"version": 1, "findings": [
 //     {"path": "Src/U.pas", "rule": "empty-except", "fingerprint": "1a2b3c4d",
@@ -71,6 +78,17 @@ type
     Match: TBaselineMatch;
   end;
 
+  /// <summary>Ein Eintrag der Datei: Treffer gleicher Datei, Regel, Routine und Fingerabdrücke mit Anzahl.
+  /// </summary>
+  TBaselineEntry = record
+    Path: string;
+    RuleId: string;
+    Routine: string;
+    Fingerprint: string;
+    Context: string;
+    Count: Integer;
+  end;
+
   /// <summary>Unveränderlich nach dem Laden, daher aus mehreren Threads lesbar.</summary>
   IRuleBaseline = interface
     ['{6C1D8C3E-3A0B-4C59-9E0A-2F0F7B7D5A11}']
@@ -95,6 +113,8 @@ type
     function LegacyCount: Integer;
     /// <summary>Pfade mit Einträgen, wie in der Datei (mit "/"), sortiert.</summary>
     function Paths: TArray<string>;
+    /// <summary>Alle Einträge in der Reihenfolge der Datei.</summary>
+    function Entries: TArray<TBaselineEntry>;
   end;
 
   /// <summary>Eine geprüfte Datei als Grundlage einer neuen Baseline.</summary>
@@ -129,6 +149,9 @@ type
     Unchanged: Integer;
     /// <summary>Davon aus Einträgen ohne Routine (ältere Datei), jetzt mit Routine und Kontext.</summary>
     Completed: Integer;
+    /// <summary>Übernommene Compilermeldungen (#530); zählen nicht zu Total, Added, Removed und Unchanged.
+    /// </summary>
+    Compiler: Integer;
     /// <summary>Einträge ohne Datei, die herausfallen; nach Pfad sortiert.</summary>
     Orphans: TArray<TBaselineOrphan>;
     /// <summary>Summe der Treffer in Orphans.</summary>
@@ -142,14 +165,7 @@ type
     /// <summary>Zeilen vor und nach dem Treffer im Kontext-Fingerabdruck.</summary>
     ContextLines = 2;
   private type
-    TEntry = record
-      Path: string;
-      RuleId: string;
-      Routine: string;
-      Fingerprint: string;
-      Context: string;
-      Count: Integer;
-    end;
+    TEntry = TBaselineEntry;
   private
     FEntries: TList<TEntry>;
     /// <summary>Pfad, Regel, Routine, Zeile → Einträge (mit Routine).</summary>
@@ -167,8 +183,8 @@ type
     class function LegacyKey(const APath, ARuleId, AFingerprint: string): string; static;
     class function MarksOf(const ALines: TArray<string>; const AScopes: TFindingScopes;
       const AFindings: TArray<TRuleFinding>): TArray<TBaselineMark>; static;
-    class function BuildJson(const ASources: TArray<TBaselineSource>;
-      const AScopes: TArray<TFindingScopes>): string; static;
+    class function BuildJson(const ASources: TArray<TBaselineSource>; const AScopes: TArray<TFindingScopes>;
+      const AKept: TArray<TBaselineEntry>): string; static;
   public
     constructor Create;
     destructor Destroy; override;
@@ -183,6 +199,7 @@ type
     function CountOf(const ARelativePath: string): Integer;
     function LegacyCount: Integer;
     function Paths: TArray<string>;
+    function Entries: TArray<TBaselineEntry>;
     /// <summary>Liest eine Baseline-Datei. Löst ERuleBaseline bei ungültigem Inhalt aus.</summary>
     class function FromJson(const AJson: string): IRuleBaseline; static;
     /// <summary>Neue Baseline aus den aktuellen Treffern, als JSON mit fester Reihenfolge.</summary>
@@ -192,6 +209,15 @@ type
     /// </summary>
     class function Update(const AOld: IRuleBaseline; const ASources: TArray<TBaselineSource>;
       const AExists: TBaselineFileExists): TBaselineUpdate; static;
+    /// <summary>Neue Baseline für Compilermeldungen (#530): ASources tragen je Datei die aktuellen Meldungen
+    /// (RuleId = Code). Deren bisherige Compiler-Einträge werden ersetzt, alle übrigen Einträge von AOld
+    /// (Regeln, Compilermeldungen anderer Dateien) bleiben. Ein Make meldet nur neu übersetzte Units; deren
+    /// Einträge bleiben so erhalten. Zähler: Total = Compilermeldungen in der neuen Datei, Added, Unchanged und
+    /// Removed für die Dateien aus ASources.</summary>
+    class function ReplaceCompiler(const AOld: IRuleBaseline; const ASources: TArray<TBaselineSource>):
+      TBaselineUpdate; static;
+    /// <summary>Ist ARuleId der Code einer Compilermeldung (Buchstabe E, W, H oder F und vier Ziffern)?</summary>
+    class function IsCompilerCode(const ARuleId: string): Boolean; static;
     /// <summary>Treffer mit Fingerabdrücken, ohne Baseline (State None).</summary>
     class function Mark(const AText: string; const AScopes: TFindingScopes;
       const AFindings: TArray<TRuleFinding>): TArray<TBaselineMark>; static;
@@ -317,8 +343,8 @@ begin
   Builder := TStringBuilder.Create;
   try
     Builder.Append(Format('{"total": %d, "files": %d, "added": %d, "removed": %d, "unchanged": %d, ' +
-      '"completed": %d, "orphaned": {"count": %d, "entries": [', [Total, Files, Added, Removed, Unchanged, Completed,
-      OrphanCount]));
+      '"completed": %d, "compiler": %d, "orphaned": {"count": %d, "entries": [', [Total, Files, Added, Removed,
+      Unchanged, Completed, Compiler, OrphanCount]));
     for Index := 0 to High(Orphans) do
     begin
       if Index > 0 then
@@ -477,6 +503,22 @@ begin
   end;
 end;
 
+function TRuleBaseline.Entries: TArray<TBaselineEntry>;
+begin
+  Result := FEntries.ToArray;
+end;
+
+class function TRuleBaseline.IsCompilerCode(const ARuleId: string): Boolean;
+var
+  Index: Integer;
+begin
+  Result := (Length(ARuleId) = 5) and CharInSet(UpCase(ARuleId[1]), ['E', 'W', 'H', 'F']);
+  if Result then
+    for Index := 2 to 5 do
+      if not CharInSet(ARuleId[Index], ['0'..'9']) then
+        Exit(False);
+end;
+
 class function TRuleBaseline.MarksOf(const ALines: TArray<string>; const AScopes: TFindingScopes;
   const AFindings: TArray<TRuleFinding>): TArray<TBaselineMark>;
 var
@@ -600,6 +642,9 @@ begin
     begin
       Remaining := Left[EntryIndex];
       Entry := FEntries[EntryIndex];
+      // Compilermeldungen (#530) sieht die Regelprüfung nicht: nie als verschwunden melden.
+      if IsCompilerCode(Entry.RuleId) then
+        Continue;
       for Copies := 1 to Remaining do
         Result := Result + [AbsentMark(Entry.RuleId, Entry.Routine, Entry.Fingerprint, Entry.Context)];
     end;
@@ -621,6 +666,8 @@ begin
   for Index in Indices do
   begin
     Entry := FEntries[Index];
+    if IsCompilerCode(Entry.RuleId) then
+      Continue;
     for Copies := 1 to Entry.Count do
       Result := Result + [AbsentMark(Entry.RuleId, Entry.Routine, Entry.Fingerprint, Entry.Context)];
   end;
@@ -719,14 +766,7 @@ begin
 end;
 
 type
-  TBuildEntry = record
-    Path: string;
-    RuleId: string;
-    Routine: string;
-    Fingerprint: string;
-    Context: string;
-    Count: Integer;
-  end;
+  TBuildEntry = TBaselineEntry;
 
 function CompareBuildEntries(const ALeft, ARight: TBuildEntry): Integer;
 begin
@@ -742,7 +782,7 @@ begin
 end;
 
 class function TRuleBaseline.BuildJson(const ASources: TArray<TBaselineSource>;
-  const AScopes: TArray<TFindingScopes>): string;
+  const AScopes: TArray<TFindingScopes>; const AKept: TArray<TBaselineEntry>): string;
 var
   Entries: TDictionary<string, TBuildEntry>;
   Sorted: TList<TBuildEntry>;
@@ -773,6 +813,18 @@ begin
           Entry.Count := 1;
         Entries.AddOrSetValue(K, Entry);
       end;
+    // Übernommene Einträge (#530) unverändert; trifft einer einen neuen, zählen beide zusammen.
+    for Entry in AKept do
+    begin
+      K := ExactKey(Entry.Path, Entry.RuleId, Entry.Routine, Entry.Fingerprint) + #0 + Entry.Context;
+      if Entries.TryGetValue(K, Existing) then
+      begin
+        Existing.Count := Existing.Count + Entry.Count;
+        Entries[K] := Existing;
+      end
+      else
+        Entries.Add(K, Entry);
+    end;
     Sorted.AddRange(Entries.Values);
     Sorted.Sort;
     Builder.Append('{').Append(sLineBreak);
@@ -816,7 +868,7 @@ end;
 
 class function TRuleBaseline.Build(const ASources: TArray<TBaselineSource>): string;
 begin
-  Result := BuildJson(ASources, ScopesOf(ASources));
+  Result := BuildJson(ASources, ScopesOf(ASources), nil);
 end;
 
 class function TRuleBaseline.Update(const AOld: IRuleBaseline; const ASources: TArray<TBaselineSource>;
@@ -828,19 +880,32 @@ var
   Mark: TBaselineMark;
   Path: string;
   Orphan: TBaselineOrphan;
+  Kept: TArray<TBaselineEntry>;
+  Entry: TBaselineEntry;
 begin
   Result := Default(TBaselineUpdate);
   Result.Orphans := nil;
   Scopes := ScopesOf(ASources);
-  Result.Json := BuildJson(ASources, Scopes);
   Result.Files := Length(ASources);
+  Kept := nil;
   Checked := TList<string>.Create;
   try
+    for Index := 0 to High(ASources) do
+      Checked.Add(PathKey(ASources[Index].Path));
+    // Compilermeldungen (#530) entstehen nicht aus den Regeln: übernehmen, solange ihre Datei existiert.
+    if AOld <> nil then
+      for Entry in AOld.Entries do
+        if IsCompilerCode(Entry.RuleId) and (Checked.Contains(PathKey(Entry.Path)) or
+          (Assigned(AExists) and AExists(Entry.Path))) then
+          begin
+            Kept := Kept + [Entry];
+            Inc(Result.Compiler, Entry.Count);
+          end;
+    Result.Json := BuildJson(ASources, Scopes, Kept);
     Matched := 0;
     for Index := 0 to High(ASources) do
     begin
       Inc(Result.Total, Length(ASources[Index].Findings));
-      Checked.Add(PathKey(ASources[Index].Path));
       if AOld = nil then
         Continue;
       for Mark in AOld.Classify(ASources[Index].Path, ASources[Index].Text, Scopes[Index],
@@ -864,7 +929,8 @@ begin
       Exit;
     end;
     Result.Unchanged := Matched;
-    Result.Removed := AOld.Count - Matched;
+    // Herausgefallene Compilermeldungen (Datei weg) zählen mit, übernommene nicht.
+    Result.Removed := AOld.Count - Matched - Result.Compiler;
     for Path in AOld.Paths do
       if not Checked.Contains(PathKey(Path)) and not (Assigned(AExists) and AExists(Path)) then
       begin
@@ -874,6 +940,59 @@ begin
       end;
   finally
     Checked.Free;
+  end;
+end;
+
+class function TRuleBaseline.ReplaceCompiler(const AOld: IRuleBaseline;
+  const ASources: TArray<TBaselineSource>): TBaselineUpdate;
+var
+  Scopes: TArray<TFindingScopes>;
+  Replaced: TList<string>;
+  Kept: TArray<TBaselineEntry>;
+  Entry: TBaselineEntry;
+  Mark: TBaselineMark;
+  Index, Before, Matched: Integer;
+begin
+  Result := Default(TBaselineUpdate);
+  Result.Orphans := nil;
+  Result.Files := Length(ASources);
+  Scopes := ScopesOf(ASources);
+  Kept := nil;
+  Before := 0;
+  Matched := 0;
+  Replaced := TList<string>.Create;
+  try
+    for Index := 0 to High(ASources) do
+    begin
+      Replaced.Add(PathKey(ASources[Index].Path));
+      Inc(Result.Total, Length(ASources[Index].Findings));
+    end;
+    if AOld <> nil then
+    begin
+      for Entry in AOld.Entries do
+        if IsCompilerCode(Entry.RuleId) and Replaced.Contains(PathKey(Entry.Path)) then
+          Inc(Before, Entry.Count)
+        else
+        begin
+          Kept := Kept + [Entry];
+          if IsCompilerCode(Entry.RuleId) then
+            Inc(Result.Total, Entry.Count);
+        end;
+      for Index := 0 to High(ASources) do
+        for Mark in AOld.Classify(ASources[Index].Path, ASources[Index].Text, Scopes[Index],
+          ASources[Index].Findings) do
+          if Mark.State = TBaselineState.Unchanged then
+            Inc(Matched);
+    end;
+    Result.Json := BuildJson(ASources, Scopes, Kept);
+    Result.Compiler := Result.Total;
+    Result.Unchanged := Matched;
+    for Index := 0 to High(ASources) do
+      Inc(Result.Added, Length(ASources[Index].Findings));
+    Dec(Result.Added, Matched);
+    Result.Removed := Before - Matched;
+  finally
+    Replaced.Free;
   end;
 end;
 

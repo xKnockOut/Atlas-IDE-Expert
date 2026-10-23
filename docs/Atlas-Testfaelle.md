@@ -1793,6 +1793,26 @@ Voraussetzung: VCL-Projekt `Kasse.dproj` (Main.pas, Daten.pas), einmal erfolgrei
 | PV10 | Server beenden (Statusfeld › Server beenden), Syntaxfehler, *Compilieren* | Keine Prüfung, der Server startet nicht; der Compiler meldet den Fehler |
 | PV11 | `build.gate` = off | Keine Prüfung; der Release-Wächter (#533) meldet in Release weiter nur |
 
+## Schranke für Hinweise und Warnungen (#530)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SH1 | Projekt mit einer unbenutzten lokalen Variablen (H2164) bauen, Vorgaben | Atlas-Gruppe des Meldungsfensters (Reiter bleibt „Build“): „Build <Projekt> erfolgreich, aber 1 Hinweis“, darunter die Meldung H2164; Doppelklick springt in die Zeile |
+| SH2 | Dasselbe Projekt ohne Warnungen und Hinweise bauen | „Build <Projekt> erfolgreich: 0 Fehler, 0 Warnungen, 0 Hinweise“, keine Meldungszeile |
+| SH3 | `build.zeroHints` an, Build aus SH1 | „Build <Projekt> gilt als gescheitert: 1 Hinweis (build.zeroHints)“, die Atlas-Gruppe kommt nach vorn; Benachrichtigungszentrale: roter Eintrag „Build gilt als gescheitert (build.zeroHints)“ mit „Zur Meldung“ |
+| SH4 | Wie SH3 mit einem DUnitX-Testprojekt und „Tests nach dem Build“ an | Die Tests starten nicht; ohne den Hinweis starten sie |
+| SH5 | `build.zeroHints` aus, `build.warningsAsErrors` = `W1035`, Build mit W1035 (Funktion ohne Ergebniszuweisung) und W1036 | „… gilt als gescheitert: 2 Warnungen; W1035 zählt als Fehler (build.warningsAsErrors)“, Meldungszeile zeigt auf W1035; nur W1036: erfolgreich mit „1 Warnung“ |
+| SH6 | Einstellungsseite *Compiler*: in „Codes, die als Fehler zählen“ `w1035 h2164 x1` eintragen, speichern, Seite neu öffnen | Steht als `W1035, H2164` da |
+| SH7 | Build aus SH1, dann *Aktuelle Compilermeldungen in die Basislinie* (Befehlspalette) | Meldungsfenster: „Compilermeldungen in die Basislinie übernommen: …\atlas-baseline.json (1 Compilermeldungen; 1 neu, 0 entfernt, 0 unverändert)“; die Datei enthält einen Eintrag mit `"rule": "h2164"` |
+| SH8 | Nach SH7 erneut bauen, `build.zeroHints` an | „Build <Projekt> erfolgreich: 0 Fehler, 0 Warnungen, 0 Hinweise (1 weitere in der Basislinie)“; Tests nach dem Build laufen |
+| SH9 | Nach SH7 zwei Zeilen über der Variablen einfügen und bauen | Die Meldung zählt weiter nicht (Zuordnung über den Zeileninhalt) |
+| SH10 | Nach SH7 eine zweite unbenutzte Variable hinzufügen und bauen | „… 1 Hinweis (1 weitere in der Basislinie)“; die Meldungszeile zeigt auf die neue Variable |
+| SH11 | Nach SH7 *Baseline des Projekts aktualisieren* (#97) | Der Eintrag `h2164` bleibt in `atlas-baseline.json`; SH8 gilt weiter |
+| SH12 | Server beenden (Atlas aus- und wieder einschalten, ohne Datei zu öffnen), Build aus SH8 | Ohne laufenden Server zählt die Meldung wieder („1 Hinweis“), Atlas startet den Server dafür nicht |
+| SH13 | `build.summary` aus, Build aus SH1; dann zusätzlich `build.zeroHints` an | Ohne zeroHints keine Zusammenfassung; mit zeroHints erscheint die rote Zusammenfassung trotzdem |
+| SH14 | `baseline.update` aus | *Aktuelle Compilermeldungen in die Basislinie* fehlt in der Befehlspalette |
+| SH15 | Befehl aus SH7 ohne vorherigen Build bzw. nach einem Build ohne Warnungen | „Keine Warnungen oder Hinweise aus dem letzten Build von <Projekt> für die Basislinie.“ |
+
 ## Units suchen (#777)
 
 Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testprojekt; Server läuft; Einstellungen auf Vorgabe.
