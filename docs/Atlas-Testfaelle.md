@@ -1103,23 +1103,6 @@ Vorbereitung: Git-Projekt `GitDemo` (mindestens 8 Units) mit Remote `origin` (z.
 | WA10 | WA8 ohne `git fetch`, `welcomePage.continue.fetch` aus | „Keine neuen Commits zu deinen Dateien.“; kein Netzzugriff (Prozess-Monitor: kein `git fetch`) |
 | WA11 | `welcomePage.continue.fetch` an, Remote erreichbar; dann Remote unerreichbar bzw. SSH-Remote ohne Schlüssel | Commit erscheint ohne manuellen Abruf; unerreichbar: Hinweis „Abruf (fetch) fehlgeschlagen, Stand des letzten Abrufs.“, kein Anmeldedialog, die Seite hängt nicht (höchstens 5 s im Hintergrund) |
 | WA12 | `SvnDemo` und `OhneVcs` öffnen, Reiter öffnen, schließen | Einträge erscheinen; kein Abschnitt „Neu seit …“, keine Meldung, kein Fehler im Protokoll (**Abnahme**) |
-
-## Schnellkorrekturen für Compilermeldungen, Teil 2 (#549)
-
-| Nr. | Schritte | Erwartet |
-|---|---|---|
-| SK1 | Unit mit `TJSONArray.Count` ohne `System.Generics.Collections` bauen (H2443), Strg+. auf der Zeile | „uses System.Generics.Collections ergänzen (H2443)“ trägt die Unit ins implementation-uses ein; der nächste Compile meldet H2443 nicht mehr |
-| SK2 | `var L: TStringList;` ohne `System.Classes`, bauen (E2003), Strg+. am Zeilenanfang | „uses System.Classes ergänzen (E2003: TStringList)“ an erster Stelle |
-| SK3 | Wie SK2, Cursor auf `TStringList` | Nur die gewohnte Aktion „uses System.Classes ergänzen“, nicht doppelt |
-| SK4 | `X := 0;` direkt vor `X := 1;` (H2077) | „Wirkungslose Zuweisung an X entfernen (H2077)“ löscht die Zeile |
-| SK5 | `X := Foo();` mit unbenutztem Ergebnis (H2077) | „Zuweisung an X entfernen, nur Foo aufrufen“ ergibt `Foo();`; der Aufruf bleibt |
-| SK6 | `X := Zaehler;` (Funktion ohne Klammern, H2077) | Keine Korrektur für H2077 |
-| SK7 | `function F: Integer;` mit Result nur in einem if-Zweig (W1035), Strg+. auf dem end | `Result := Default(Integer);` direkt hinter begin, mit der Einrückung der ersten Anweisung |
-| SK8 | `S := A;` mit `A: AnsiString` (W1057) bzw. umgekehrt (W1058) | `S := string(A);` bzw. `A := AnsiString(S);` |
-| SK9 | Zwei W1057 in der Datei | Zusätzlich „Alle W1057 in der Datei beheben (2)“; ein Strg+Z nimmt beide zurück |
-| SK10 | Jede Korrektur aus SK1–SK8, danach Strg+Z | Die Korrektur ist mit einem Schritt vollständig zurückgenommen |
-| SK11 | `refactoring.compilerFixes` = false | Keine dieser Aktionen |
-| SK12 | Deutsche IDE (Meldungen auf Deutsch), SK1, SK2, SK4 | Gleiche Korrekturen wie mit englischer Ausgabe |
 | WA13 | Reiter „Gemerkt“ | Liste mit Notizen und Lesezeichen aus beiden Projekten (Art, Text, Datei:Zeile, Projekt) und dem Favoriten („Favorit“, `TStringList.Add`, Unit, „alle Projekte“); Filter „kunde“ grenzt ein (**Abnahme**) |
 | WA14 | Doppelklick bzw. Enter auf eine Notiz, ein Lesezeichen und den Favoriten | Projekt öffnet sich bei Bedarf, die Datei an der Zeile; Lesezeichen über ihren Anker (auch nach verschobenem Code); Favorit springt zur Deklaration in der Unit (Bibliothek aus dem Index-Cache); ohne Cache Meldung „Favorit …: Unit … nicht im Index-Cache gefunden.“ (**Abnahme**) |
 | WA15 | Befehlspalette „Letzten Arbeitsstand fortsetzen“ | Wie „Fortsetzen“ für den obersten Eintrag; ohne Arbeitsstand Meldung „Es gibt noch keinen gespeicherten Arbeitsstand.“ |
@@ -1846,6 +1829,23 @@ Voraussetzung: VCL-Projekt `Kasse.dproj` (Main.pas, Daten.pas), einmal erfolgrei
 | WA10 | Begründungsdialog mit Abbrechen schließen | Nichts eingefügt |
 | WA11 | `refactoring.disableWarning` = false | Keine dieser Aktionen im Menü |
 | WA12 | Fehlerzeile (E2003) und Zeile ohne Meldung | Keine dieser Aktionen |
+
+## Schnellkorrekturen für Compilermeldungen, Teil 2 (#549)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SK1 | Unit mit `TJSONArray.Count` ohne `System.Generics.Collections` bauen (H2443), Strg+. auf der Zeile | „uses System.Generics.Collections ergänzen (H2443)“ trägt die Unit ins implementation-uses ein; der nächste Compile meldet H2443 nicht mehr |
+| SK2 | `var L: TStringList;` ohne `System.Classes`, bauen (E2003), Strg+. am Zeilenanfang | „uses System.Classes ergänzen (E2003: TStringList)“ an erster Stelle |
+| SK3 | Wie SK2, Cursor auf `TStringList` | Nur die gewohnte Aktion „uses System.Classes ergänzen“, nicht doppelt |
+| SK4 | `X := 0;` direkt vor `X := 1;` (H2077) | „Wirkungslose Zuweisung an X entfernen (H2077)“ löscht die Zeile |
+| SK5 | `X := Foo();` mit unbenutztem Ergebnis (H2077) | „Zuweisung an X entfernen, nur Foo aufrufen“ ergibt `Foo();`; der Aufruf bleibt |
+| SK6 | `X := Zaehler;` (Funktion ohne Klammern, H2077) | Keine Korrektur für H2077 |
+| SK7 | `function F: Integer;` mit Result nur in einem if-Zweig (W1035), Strg+. auf dem end | `Result := Default(Integer);` direkt hinter begin, mit der Einrückung der ersten Anweisung |
+| SK8 | `S := A;` mit `A: AnsiString` (W1057) bzw. umgekehrt (W1058) | `S := string(A);` bzw. `A := AnsiString(S);` |
+| SK9 | Zwei W1057 in der Datei | Zusätzlich „Alle W1057 in der Datei beheben (2)“; ein Strg+Z nimmt beide zurück |
+| SK10 | Jede Korrektur aus SK1–SK8, danach Strg+Z | Die Korrektur ist mit einem Schritt vollständig zurückgenommen |
+| SK11 | `refactoring.compilerFixes` = false | Keine dieser Aktionen |
+| SK12 | Deutsche IDE (Meldungen auf Deutsch), SK1, SK2, SK4 | Gleiche Korrekturen wie mit englischer Ausgabe |
 
 ## Units suchen (#777)
 
