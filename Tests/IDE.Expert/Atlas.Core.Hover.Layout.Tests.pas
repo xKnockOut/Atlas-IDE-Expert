@@ -42,6 +42,10 @@ type
     [Test]
     procedure FailedDebugValueIsHidden;
     [Test]
+    procedure UnavailableValueShowsCauseAndFixes;
+    [Test]
+    procedure UnavailableValuePendingAndChecked;
+    [Test]
     procedure PathChipsProduceHits;
     [Test]
     procedure PinnedShowsActions;
@@ -193,6 +197,8 @@ begin
   Result.Texts.SourceInactive := 'inaktiv';
   Result.Texts.Stale := 'alt';
   Result.Texts.DebugPending := 'eval';
+  Result.Texts.DebugExplaining := 'sucht';
+  Result.Texts.DebugChecked := 'geprüft';
 end;
 
 function THoverLayoutTests.Build(const AInput: TAtlasHoverInput): TAtlasHoverLayout;
@@ -361,13 +367,75 @@ var
   Layout: TAtlasHoverLayout;
   Item: TAtlasHoverItem;
 begin
-  // Fehler der Auswertung zeigt der Tooltip nicht (#840 erklärt sie später).
+  // Fehler der Auswertung ohne Erklärung zeigt der Tooltip nicht (#840 erklärt nur „kein Zugriff“).
   HoverView := View('var Count: Integer');
   HoverView.DebugValue := TAtlasDebugValue.Failed('Count', 'E2003 Undeclared identifier');
   Layout := Build(HoverView, 300);
   for Item in Layout.Items do
     Assert.IsFalse(Item.Text = 'Count', 'kein Abschnitt für den Wert');
   Assert.AreEqual(Integer(0), CountKind(Layout, TAtlasHoverItemKind.RoundFill));
+end;
+
+function Unavailable(const AReason: string): TAtlasDebugValue;
+begin
+  Result := TAtlasDebugValue.Failed('Summe', 'Inaccessible value');
+  Result.Note.Caption := 'kein Zugriff';
+  Result.Note.Reason := AReason;
+end;
+
+procedure THoverLayoutTests.UnavailableValueShowsCauseAndFixes;
+var
+  HoverView: TAtlasHoverView;
+  Layout: TAtlasHoverLayout;
+  Colors: TAtlasColors;
+  Hit: TAtlasHoverHit;
+  Fixes: Integer;
+begin
+  // „kein Zugriff“ (#840): Kennzeichen in der Warnfarbe, Ursache, Herkunft, Korrekturen als Klickflächen.
+  HoverView := View('');
+  HoverView.DebugValue := Unavailable('O+');
+  HoverView.DebugValue.Note.Origin := '{$O+} in Kunden.pas, Zeile 12';
+  HoverView.DebugValue.Note.Fixes := [TAtlasDebugValueFix.Create(1, 'Routine'), TAtlasDebugValueFix.Create(2,
+    'Unit')];
+  Layout := Build(HoverView, 300);
+  Colors := TAtlasColors.Light;
+  Assert.AreEqual('Summe', Layout.Items[0].Text);
+  Assert.AreEqual('kein Zugriff', Layout.Items[1].Text);
+  Assert.AreEqual(Colors.Warn, Layout.Items[1].Color);
+  Assert.AreEqual('O+', Layout.Items[2].Text);
+  Assert.AreEqual('{$O+} in Kunden.pas, Zeile 12', Layout.Items[3].Text);
+  Assert.AreEqual(Colors.Muted, Layout.Items[3].Color);
+  Fixes := 0;
+  for Hit in Layout.Hits do
+    if Hit.Kind = TAtlasHoverHitKind.DebugFix then
+    begin
+      Assert.AreEqual(Fixes, Hit.Index, 'Index in Note.Fixes');
+      Inc(Fixes);
+    end;
+  Assert.AreEqual(2, Fixes);
+end;
+
+procedure THoverLayoutTests.UnavailableValuePendingAndChecked;
+var
+  HoverView: TAtlasHoverView;
+  Layout: TAtlasHoverLayout;
+  Hit: TAtlasHoverHit;
+begin
+  HoverView := View('');
+  HoverView.DebugValue := Unavailable('');
+  HoverView.DebugValue.Note.Pending := True;
+  Layout := Build(HoverView, 300);
+  Assert.AreEqual('kein Zugriff', Layout.Items[1].Text);
+  Assert.AreEqual('sucht', Layout.Items[2].Text, 'solange der Server antwortet');
+  HoverView.DebugValue := Unavailable('unbekannt');
+  HoverView.DebugValue.Note.Checked := ['Start', 'Schalter'];
+  Layout := Build(HoverView, 300);
+  Assert.AreEqual('unbekannt', Layout.Items[2].Text);
+  Assert.AreEqual('geprüft', Layout.Items[3].Text);
+  Assert.AreEqual('• Start', Layout.Items[4].Text);
+  Assert.AreEqual('• Schalter', Layout.Items[5].Text);
+  for Hit in Layout.Hits do
+    Assert.IsFalse(Hit.Kind = TAtlasHoverHitKind.DebugFix, 'ohne Korrekturen keine Klickfläche');
 end;
 
 procedure THoverLayoutTests.PathChipsProduceHits;

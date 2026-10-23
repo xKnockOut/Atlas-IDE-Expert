@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4244] of string = (
+  Lines: array[0..4256] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -912,6 +912,18 @@ const
     '      "x-caption": "Werte im Hover beim Debuggen",',
     '      "x-captionEn": "Values in the hover while debugging",',
     '      "x-issue": "#891"',
+    '    },',
+    '    "DebugExplainUnavailable": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "debug.explainUnavailable",',
+    '      "x-area": "debug",',
+    '      "x-feature": "Debugger",',
+    '      "x-page": "Debuggen",',
+    '      "x-quickToggle": true,',
+    '      "x-caption": "„kein Zugriff“ beim Debuggen erklären",',
+    '      "x-captionEn": "Explain \"no access\" while debugging",',
+    '      "x-issue": "#840"',
     '    },',
     '    "DebugExceptionHistory": {',
     '      "type": "boolean",',

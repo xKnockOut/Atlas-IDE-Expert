@@ -3,7 +3,8 @@
 // Werte im Editor beim Debuggen (#508): je Zeile jeder Name einmal und höchstens
 // n Werte, nur schlichte Bezeichner, Auswertung ab der Zeile des Halts,
 // lesbare Datumswerte, Kürzen, Hervorheben geänderter Werte nur in derselben
-// Routine, Fortsetzen leert die Anzeige.
+// Routine, Fortsetzen leert die Anzeige, „kein Zugriff“ erkannt und angezeigt
+// (#840).
 
 interface
 
@@ -33,6 +34,8 @@ type
     procedure EvaluatesStoppedLineFirst;
     [Test]
     procedure FailedValuesAreHidden;
+    [Test]
+    procedure UnavailableValuesShowCaption;
     [Test]
     procedure ShowsDatesAndShortensLongValues;
     [Test]
@@ -133,6 +136,27 @@ begin
   Assert.AreEqual(0, Integer(Length(FValues.Line('C:\P\A.pas', 12))), 'Count steht noch aus, Name fehlt');
   FValues.Put('COUNT', '3', True);
   Assert.AreEqual('Count = 3', TAtlasInlineValues.LineText(FValues.Line('C:\P\A.pas', 12)));
+end;
+
+procedure TAtlasInlineValuesTests.UnavailableValuesShowCaption;
+var
+  Items: TAtlasInlineValueItems;
+begin
+  FValues.SetUnavailable('<kein Zugriff>', TArray<string>.Create('nicht lesbar'));
+  FValues.Start('C:\P\A.pas', 'x', 12, Refs, 5);
+  FValues.Put('Name', 'Inaccessible value', False);
+  FValues.Put('Count', 'Wert nicht lesbar', False);
+  Items := FValues.Line('C:\P\A.pas', 12);
+  Assert.AreEqual('Name = <kein Zugriff>, Count = <kein Zugriff>', TAtlasInlineValues.LineText(Items),
+    'bekannter Text und Ergänzung');
+  Assert.AreEqual(Ord(TAtlasInlineValueState.Unavailable), Ord(Items[0].State));
+  Assert.IsFalse(Items[0].Changed);
+  // Andere Fehler und ohne Beschriftung bleibt der Name weg.
+  FValues.Put('Name', 'Zugriffsverletzung', False);
+  Assert.AreEqual('Count = <kein Zugriff>', TAtlasInlineValues.LineText(FValues.Line('C:\P\A.pas', 12)));
+  FValues.SetUnavailable('', nil);
+  FValues.Put('Count', 'Inaccessible value', False);
+  Assert.AreEqual(0, Integer(Length(FValues.Line('C:\P\A.pas', 12))));
 end;
 
 procedure TAtlasInlineValuesTests.ShowsDatesAndShortensLongValues;

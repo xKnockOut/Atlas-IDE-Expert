@@ -1042,6 +1042,7 @@ begin
     Assert.IsTrue(Page.TestDebugCheck.Checked, 'Test debuggen standardmäßig an');
     Assert.IsTrue(Page.TestBreakAtStartCheck.Checked, 'Haltepunkt am Anfang standardmäßig an');
     Assert.IsTrue(Page.DebugHoverValuesCheck.Checked, 'Werte im Hover standardmäßig an (#891)');
+    Assert.IsTrue(Page.DebugExplainUnavailableCheck.Checked, 'debug.explainUnavailable (#840)');
     Assert.IsTrue(Page.DebugExceptionHistoryCheck.Checked, 'debug.exceptionHistory (#517)');
     Assert.IsTrue(Page.DebugJustMyCodeCheck.Checked, 'debug.justMyCode (#578)');
     Assert.IsFalse(Page.DebugExceptionBannerCheck.Checked, 'debug.exceptionBanner (#783)');
@@ -1052,6 +1053,7 @@ begin
     Page.TestDebugCheck.Checked := False;
     Page.TestBreakAtStartCheck.Checked := False;
     Page.DebugHoverValuesCheck.Checked := False;
+    Page.DebugExplainUnavailableCheck.Checked := False;
     Page.DebugExceptionHistoryCheck.Checked := False;
     Page.DebugJustMyCodeCheck.Checked := False;
     Page.DebugExceptionBannerCheck.Checked := True;
@@ -1064,6 +1066,7 @@ begin
     Assert.IsFalse(Saved.TestDebug);
     Assert.IsFalse(Saved.TestBreakAtStart);
     Assert.IsFalse(Saved.DebugHoverValues);
+    Assert.IsFalse(Saved.DebugExplainUnavailable);
     Assert.IsFalse(Saved.DebugExceptionHistory);
     Assert.IsFalse(Saved.DebugJustMyCode);
     Assert.IsTrue(Saved.DebugExceptionBanner);
@@ -1073,6 +1076,7 @@ begin
     Assert.AreEqual('C:\Komponenten', Saved.DebugOwnCodeFolders, 'bereinigt (#578)');
     Saved.TestBreakAtStart := True;
     Saved.DebugHoverValues := True;
+    Saved.DebugExplainUnavailable := True;
     Saved.DebugExceptionHistory := True;
     Saved.DebugJustMyCode := True;
     Saved.DebugExceptionBanner := False;
@@ -1082,6 +1086,7 @@ begin
     Assert.IsFalse(Page.TestDebugCheck.Checked);
     Assert.IsTrue(Page.TestBreakAtStartCheck.Checked);
     Assert.IsTrue(Page.DebugHoverValuesCheck.Checked);
+    Assert.IsTrue(Page.DebugExplainUnavailableCheck.Checked);
     Assert.IsTrue(Page.DebugExceptionHistoryCheck.Checked);
     Assert.IsTrue(Page.DebugJustMyCodeCheck.Checked);
     Assert.IsFalse(Page.DebugExceptionBannerCheck.Checked);

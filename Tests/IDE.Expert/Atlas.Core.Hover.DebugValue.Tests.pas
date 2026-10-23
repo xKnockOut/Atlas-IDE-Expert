@@ -160,10 +160,16 @@ begin
   Value := TAtlasDebugValue.Evaluated('Count', '3');
   Assert.IsTrue(Value.Visible);
   Assert.AreEqual('Count = 3', Value.PlainText);
-  // Fehler zeigt der Tooltip nicht (#840 erklärt sie später).
+  // Fehler ohne Erklärung zeigt der Tooltip nicht; mit Erklärung „kein Zugriff“ schon (#840).
   Value := TAtlasDebugValue.Failed('Count', 'Undeclared identifier');
   Assert.IsFalse(Value.Visible);
+  Assert.IsFalse(Value.Explained);
   Assert.AreEqual('', Value.PlainText);
+  Value.Note.Caption := '<kein Zugriff>';
+  Value.Note.Reason := 'Optimierung an.';
+  Assert.IsTrue(Value.Visible);
+  Assert.IsTrue(Value.Explained);
+  Assert.AreEqual('Count = <kein Zugriff>' + sLineBreak + 'Optimierung an.', Value.PlainText);
 end;
 
 initialization

@@ -658,6 +658,8 @@
         </DCCReference>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.SwitchesWindow.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.CompilerSwitches.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Unavailable.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Unavailable.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

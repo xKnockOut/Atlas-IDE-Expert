@@ -7,8 +7,10 @@
 //     Zahlen; keiner mit Klammer vor dem Punkt (Get(X).Name) und keiner mit
 //     Klammer im Index, damit die Auswertung nie etwas im Programm ausführt.
 //   - Zustand des Werts im Tooltip: ausstehend (der Debugger antwortet
-//     verzögert, Win64/LLDB), Wert, Fehler. Fehler zeigt der Tooltip nicht;
-//     die Erklärung folgt mit #840.
+//     verzögert, Win64/LLDB), Wert, Fehler. Fehler zeigt der Tooltip nur mit
+//     Erklärung (#840, Note): „‹kein Zugriff›“, Ursache, Herkunft des
+//     Schalters, geprüfte Punkte und Korrekturen als Verweise. Die Erklärung
+//     setzt die Debug-Schicht; hier stehen nur die fertigen Texte.
 //   - Lange Werte werden für den Tooltip gekürzt.
 
 interface
@@ -18,17 +20,42 @@ type
   TAtlasDebugValueState = (None, Pending, Value, Failed);
   {$SCOPEDENUMS OFF}
 
+  /// <summary>Korrektur unter der Erklärung (#840): Kennung der Debug-Schicht und Beschriftung.</summary>
+  TAtlasDebugValueFix = record
+    Id: Integer;
+    Caption: string;
+    class function Create(AId: Integer; const ACaption: string): TAtlasDebugValueFix; static;
+  end;
+
+  /// <summary>Erklärung eines Fehlers „kein Zugriff“ (#840); Caption = '' ohne.</summary>
+  TAtlasDebugValueNote = record
+    /// <summary>„‹kein Zugriff›“.</summary>
+    Caption: string;
+    /// <summary>Die Ursache wird noch ermittelt (Anfrage an den Server).</summary>
+    Pending: Boolean;
+    Reason: string;
+    /// <summary>Herkunft des Schalters („{$O+} in Kunden.pas, Zeile 12“); '' ohne.</summary>
+    Origin: string;
+    /// <summary>Bei unbekannter Ursache: die geprüften Punkte.</summary>
+    Checked: TArray<string>;
+    Fixes: TArray<TAtlasDebugValueFix>;
+  end;
+
   /// <summary>Wert eines Ausdrucks im angehaltenen Debugger.</summary>
   TAtlasDebugValue = record
     State: TAtlasDebugValueState;
     Expression: string;
     Text: string;
+    /// <summary>Erklärung eines Fehlers „kein Zugriff“ (#840).</summary>
+    Note: TAtlasDebugValueNote;
     class function Pending(const AExpression: string): TAtlasDebugValue; static;
     /// <summary>Ausgewerteter Wert, auf TAtlasDebugExpression.MaxValueLength gekürzt.</summary>
     class function Evaluated(const AExpression, AText: string): TAtlasDebugValue; static;
     class function Failed(const AExpression, AText: string): TAtlasDebugValue; static;
-    /// <summary>Zeigt der Tooltip den Abschnitt (ausstehend oder Wert)?</summary>
+    /// <summary>Zeigt der Tooltip den Abschnitt (ausstehend, Wert oder erklärter Fehler)?</summary>
     function Visible: Boolean;
+    /// <summary>Fehler mit Erklärung „kein Zugriff“ (#840).</summary>
+    function Explained: Boolean;
     /// <summary>„Ausdruck = Wert“ als Klartext für den Tooltip der IDE; '' ohne Wert.</summary>
     function PlainText: string;
   end;
@@ -97,14 +124,36 @@ end;
 
 function TAtlasDebugValue.Visible: Boolean;
 begin
-  Result := (Expression <> '') and (State in [TAtlasDebugValueState.Pending, TAtlasDebugValueState.Value]);
+  Result := (Expression <> '') and ((State in [TAtlasDebugValueState.Pending, TAtlasDebugValueState.Value]) or
+    Explained);
+end;
+
+function TAtlasDebugValue.Explained: Boolean;
+begin
+  Result := (State = TAtlasDebugValueState.Failed) and (Note.Caption <> '');
 end;
 
 function TAtlasDebugValue.PlainText: string;
 begin
   Result := '';
-  if (State = TAtlasDebugValueState.Value) and (Expression <> '') then
-    Result := Expression + ' = ' + Text;
+  if Expression = '' then
+    Exit;
+  if State = TAtlasDebugValueState.Value then
+    Result := Expression + ' = ' + Text
+  else if Explained then
+  begin
+    Result := Expression + ' = ' + Note.Caption;
+    if Note.Reason <> '' then
+      Result := Result + sLineBreak + Note.Reason;
+  end;
+end;
+
+{ TAtlasDebugValueFix }
+
+class function TAtlasDebugValueFix.Create(AId: Integer; const ACaption: string): TAtlasDebugValueFix;
+begin
+  Result.Id := AId;
+  Result.Caption := ACaption;
 end;
 
 { TAtlasDebugExpression }

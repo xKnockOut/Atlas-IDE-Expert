@@ -891,6 +891,18 @@
       "x-captionEn": "Values in the hover while debugging",
       "x-issue": "#891"
     },
+    "DebugExplainUnavailable": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.explainUnavailable",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "„kein Zugriff“ beim Debuggen erklären",
+      "x-captionEn": "Explain \"no access\" while debugging",
+      "x-issue": "#840"
+    },
     "DebugExceptionHistory": {
       "type": "boolean",
       "default": true,

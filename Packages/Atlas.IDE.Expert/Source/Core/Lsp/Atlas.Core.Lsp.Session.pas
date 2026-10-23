@@ -199,6 +199,10 @@ type
     /// Abgleich: Sync vorher im Hauptthread. Threadsicher wie Completion. Gehört dem Aufrufer; nil ohne Antwort.
     /// </summary>
     function CompilerSwitches(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>atlas/debugUnavailable (#840): Schalter D, L, O, Routine, Lebensdauer von AName und Korrekturen
+    /// am Halt in ALine (0-basiert); gehört dem Aufrufer.</summary>
+    function DebugUnavailable(const AFileName: string; ALine: Integer; const AName: string;
+      ATimeoutMs: Cardinal): TJSONValue;
     procedure Initialize;
     /// <summary>Parameter von initialize (#396, #397, #408, #648, #652). AApplyEdit: workspace.applyEdit
     /// ankündigen. Gehört dem Aufrufer.</summary>
@@ -1323,6 +1327,19 @@ begin
   Params.AddPair('position', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ALine))
     .AddPair('character', TJSONNumber.Create(ACharacter)));
   Result := FClient.Request('atlas/compilerSwitches', Params, ATimeoutMs);
+end;
+
+function TLspSession.DebugUnavailable(const AFileName: string; ALine: Integer; const AName: string;
+  ATimeoutMs: Cardinal): TJSONValue;
+var
+  Params: TJSONObject;
+begin
+  Params := TJSONObject.Create;
+  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  Params.AddPair('position', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ALine))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Params.AddPair('name', AName);
+  Result := FClient.Request('atlas/debugUnavailable', Params, ATimeoutMs);
 end;
 
 class function TLspSession.InlineValueRefsOf(const AResponse: TJSONValue): TAtlasInlineValueRefs;

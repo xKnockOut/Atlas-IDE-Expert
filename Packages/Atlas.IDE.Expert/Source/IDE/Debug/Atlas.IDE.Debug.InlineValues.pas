@@ -22,6 +22,9 @@
 //     TAtlasLineTail. Reines GDI zwischen SaveDC und RestoreDC.
 //   - Fortsetzen, neuer Halt und Ende der Sitzung verwerfen die Werte und
 //     laufende Anfragen.
+//   - Kein Zugriff (#840): Mit debug.explainUnavailable steht ein Name, dessen
+//     Auswertung mit einem bekannten Text scheitert, als „Name = ‹kein
+//     Zugriff›“ da (TAtlasIdeDebugUnavailable); die Ursache zeigt der Hover.
 // Ohne debug.inlineValues ist nichts angemeldet. Nur im Hauptthread verwenden.
 
 interface
@@ -146,7 +149,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Debug.Sources;
+  Atlas.IDE.Debug.Sources,
+  Atlas.IDE.Debug.Unavailable;
 
 { TAtlasIdeDebugInlineValues.TListener }
 
@@ -327,6 +331,7 @@ begin
   Drop(False);
   if not Enabled then
     Exit;
+  FValues.SetUnavailable(TAtlasIdeDebugUnavailable.InlineCaption, TAtlasIdeDebugUnavailable.Patterns);
   FStop := TAtlasIdeDebugSession.StopCount;
   FRetries := 0;
   FPhase := TPhase.Location;

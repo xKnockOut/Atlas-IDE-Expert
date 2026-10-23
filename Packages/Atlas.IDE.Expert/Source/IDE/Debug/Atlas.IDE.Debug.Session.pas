@@ -4,7 +4,10 @@
 // folgende): ein IOTADebuggerNotifier für alle, die Ereignisse gehen an
 // angemeldete Zuhörer.
 //   - Gestartet: erster Prozess angelegt (ProcessCreated). Projekt,
-//     Konfiguration und Plattform des Starts merkt BeforeProgramLaunch (#840).
+//     Konfiguration und Plattform des Starts merkt BeforeProgramLaunch (#840),
+//     dazu die Projektoptionen LaunchOptionNames dieser Konfiguration: Wechselt
+//     der Anwender danach die Konfiguration, gilt für den laufenden Prozess
+//     weiter der Stand beim Start.
 //   - Angehalten: ProcessStateChanged mit psStopped (Haltepunkt, Schritt,
 //     Pause), psException (Sprach-Exception) bzw. psFault/psResFault
 //     (Exception des Betriebssystems, etwa Zugriffsverletzung).
@@ -56,6 +59,11 @@ type
   end;
 
   TAtlasIdeDebugSession = class
+  public const
+    /// <summary>Beim Start festgehaltene Projektoptionen (#840): Debug-Informationen, lokale Symbole,
+    /// Optimierung, Debug-DCUs.</summary>
+    LaunchOptionNames: array[0..3] of string = ('DCC_DebugInformation', 'DCC_LocalDebugSymbols', 'DCC_Optimize',
+      'DCC_DebugDCUs');
   private type
     TNotifier = class(TNotifierObject, IOTADebuggerNotifier, IOTADebuggerNotifier90)
     public
@@ -81,6 +89,7 @@ type
     FProject: string;
     FConfiguration: string;
     FPlatform: string;
+    FLaunchValues: array[0..3] of string;
     class procedure Dispatch(const AEvent: TProc<IAtlasIdeDebugListener>); static;
     class procedure StateChanged(const AProcess: IOTAProcess); static;
     class procedure Ended; static;
@@ -106,6 +115,9 @@ type
     class function LaunchProject: string; static;
     class function LaunchConfiguration: string; static;
     class function LaunchPlatform: string; static;
+    /// <summary>Wert der Projektoption AName (aus LaunchOptionNames) beim Start; '' = unbekannt oder Vorgabe.
+    /// </summary>
+    class function LaunchValue(const AName: string): string; static;
     /// <summary>Um eigene Auswertungen: Zustandswechsel dazwischen werden nicht gemeldet.</summary>
     class procedure BeginInternal; static;
     class procedure EndInternal; static;
@@ -125,7 +137,8 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread;
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.IDE.Projects.Context;
 
 function Debugger: IOTADebuggerServices;
 begin
@@ -205,6 +218,7 @@ end;
 function TAtlasIdeDebugSession.TNotifier.BeforeProgramLaunch(const Project: IOTAProject): Boolean;
 var
   Options: IOTAProjectOptionsConfigurations;
+  Index: Integer;
 begin
   // Nie den Start verhindern.
   Result := True;
@@ -212,6 +226,8 @@ begin
     TAtlasIdeDebugSession.FProject := '';
     TAtlasIdeDebugSession.FConfiguration := '';
     TAtlasIdeDebugSession.FPlatform := '';
+    for Index := Low(TAtlasIdeDebugSession.FLaunchValues) to High(TAtlasIdeDebugSession.FLaunchValues) do
+      TAtlasIdeDebugSession.FLaunchValues[Index] := '';
     if Project = nil then
       Exit;
     TAtlasIdeDebugSession.FProject := Project.FileName;
@@ -219,6 +235,10 @@ begin
     if Supports(Project.ProjectOptions, IOTAProjectOptionsConfigurations, Options) and
       (Options.ActiveConfiguration <> nil) then
       TAtlasIdeDebugSession.FConfiguration := Options.ActiveConfiguration.Name;
+    for Index := Low(TAtlasIdeDebugSession.LaunchOptionNames) to High(TAtlasIdeDebugSession.LaunchOptionNames) do
+      TAtlasIdeDebugSession.FLaunchValues[Index] := Trim(TAtlasIdeProjectContext.ConfigurationValue(Project,
+        TAtlasIdeDebugSession.FConfiguration, TAtlasIdeDebugSession.FPlatform,
+        TAtlasIdeDebugSession.LaunchOptionNames[Index]));
   except
     // Nur Merkwerte; der Start geht in jedem Fall weiter.
   end;
@@ -407,6 +427,16 @@ end;
 class function TAtlasIdeDebugSession.LaunchPlatform: string;
 begin
   Result := FPlatform;
+end;
+
+class function TAtlasIdeDebugSession.LaunchValue(const AName: string): string;
+var
+  Index: Integer;
+begin
+  Result := '';
+  for Index := Low(LaunchOptionNames) to High(LaunchOptionNames) do
+    if SameText(LaunchOptionNames[Index], AName) then
+      Exit(FLaunchValues[Index]);
 end;
 
 class procedure TAtlasIdeDebugSession.BeginInternal;

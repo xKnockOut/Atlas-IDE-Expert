@@ -184,6 +184,7 @@ uses
   Atlas.IDE.Debug.OwnCode,
   Atlas.IDE.Debug.ExceptionBar,
   Atlas.IDE.Debug.InlineValues,
+  Atlas.IDE.Debug.Unavailable,
   Atlas.IDE.Build.CompilerSwitches,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.TeamFile,
@@ -193,6 +194,8 @@ uses
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Editor.TestUnitLens,
   Atlas.IDE.Hover.Editor,
+  Atlas.IDE.Hover.DebugValue,
+  Atlas.Core.Hover.DebugValue,
   Atlas.Core.Lsp.TextChanges,
   Atlas.IDE.Completion.Editor,
   Atlas.Core.Undo.Contract,
@@ -2934,6 +2937,41 @@ begin
     end);
 end;
 
+/// <summary>„kein Zugriff auf Wert“ erklären (#840): Erklärung und Korrekturen im Hover; der Tooltip kennt die
+/// Debug-Schicht nicht (A-09).</summary>
+procedure StartDebugUnavailable;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  TAtlasIdeDebugUnavailable.Start(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+  TAtlasEditorHover.OnExplain :=
+    function(const AValue: TAtlasDebugValue; const ADone: TAtlasDebugValueEvent): TAtlasDebugValue
+    begin
+      Result := TAtlasIdeDebugUnavailable.Explain(AValue, ADone);
+    end;
+  TAtlasEditorHover.OnDebugFix :=
+    procedure(const AValue: TAtlasDebugValue; AFix: Integer)
+    begin
+      TAtlasIdeDebugUnavailable.Fix(AValue, AFix);
+    end;
+end;
+
+procedure ReleaseDebugUnavailable;
+begin
+  TAtlasEditorHover.OnExplain := nil;
+  TAtlasEditorHover.OnDebugFix := nil;
+  TAtlasIdeDebugUnavailable.Release;
+end;
+
 const
   CompilerSwitchesExtra = 'compilerSwitches';
 
@@ -4016,6 +4054,17 @@ begin
       Result := TAtlasIdeDebugInlineValues.Started;
     end,
     StartDebugInlineValues, TAtlasIdeDebugInlineValues.Release);
+  // „kein Zugriff auf Wert“ erklären (#840): Hover und Werte im Editor; aus = Fehler wie bisher ausgeblendet.
+  Features.AddWanted('DebugUnavailable',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugExplainUnavailable;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugUnavailable.Started;
+    end,
+    StartDebugUnavailable, ReleaseDebugUnavailable);
   // Wirksame Compiler-Schalter an der Cursorposition (#558): Fenster, Befehl und Statusfeld; aus = kein Zeitgeber.
   Features.AddWanted('CompilerSwitches',
     function(ALevel: TAtlasSafeLevel): Boolean
@@ -4344,6 +4393,8 @@ begin
       TAtlasIdeCompilerSwitches.ApplySettings;
       // debug.exceptionBanner* (#783).
       TAtlasIdeDebugExceptionBar.ApplySettings;
+      // debug.explainUnavailable (#840): Ergänzungen der Fehlertexte neu lesen.
+      TAtlasIdeDebugUnavailable.ApplySettings;
       // editor.gitGutter, editor.gitBlame (#507).
       TAtlasIdeLineChanges.ApplySettings;
       // editor.overviewRuler, editor.overviewRulerKinds (#519).

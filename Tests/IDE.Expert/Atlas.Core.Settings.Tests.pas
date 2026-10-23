@@ -249,6 +249,7 @@ begin
   Assert.IsTrue(Settings.TestDebug, 'Test debuggen standardmäßig da (#585)');
   Assert.IsTrue(Settings.TestBreakAtStart, 'debug.testBreakAtStart standardmäßig an (#585)');
   Assert.IsTrue(Settings.DebugHoverValues, 'debug.hoverValues standardmäßig an (#891)');
+  Assert.IsTrue(Settings.DebugExplainUnavailable, 'debug.explainUnavailable (#840)');
   Assert.IsTrue(Settings.DebugExceptionHistory, 'debug.exceptionHistory (#517)');
   Assert.IsTrue(Settings.DebugJustMyCode, 'debug.justMyCode (#578)');
   Assert.IsFalse(Settings.DebugExceptionBanner, 'debug.exceptionBanner (#783)');
@@ -356,6 +357,7 @@ begin
   Settings.TestDebug := False;
   Settings.TestBreakAtStart := False;
   Settings.DebugHoverValues := False;
+  Settings.DebugExplainUnavailable := False;
   Settings.DebugExceptionHistory := False;
   Settings.DebugJustMyCode := False;
   Settings.DebugExceptionBanner := True;
@@ -448,6 +450,7 @@ begin
   Assert.IsFalse(Loaded.TestDebug, 'Test debuggen (#585)');
   Assert.IsFalse(Loaded.TestBreakAtStart, 'debug.testBreakAtStart (#585)');
   Assert.IsFalse(Loaded.DebugHoverValues, 'debug.hoverValues (#891)');
+  Assert.IsFalse(Loaded.DebugExplainUnavailable, 'debug.explainUnavailable (#840)');
   Assert.IsFalse(Loaded.DebugExceptionHistory, 'debug.exceptionHistory (#517)');
   Assert.IsFalse(Loaded.DebugJustMyCode, 'debug.justMyCode (#578)');
   Assert.IsTrue(Loaded.DebugExceptionBanner, 'debug.exceptionBanner (#783)');
