@@ -340,6 +340,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Documentation.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.HoverValues.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LinkedEditing.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlineValues.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Formatting.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FuzzyMatch.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceSymbols.pas"/>

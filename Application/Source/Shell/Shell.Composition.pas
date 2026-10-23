@@ -29,6 +29,7 @@ uses
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Common.Lsp.FoldingRanges,
   Atlas.Common.Lsp.LinkedEditing,
+  Atlas.Common.Lsp.InlineValues,
   Atlas.Common.Lsp.Formatting,
   Atlas.Common.Lsp.SelectionRanges,
   Atlas.Common.Lsp.Definition,
@@ -118,6 +119,7 @@ type
     FDocumentSymbols: TLspDocumentSymbols;
     FFoldingRanges: TLspFoldingRanges;
     FLinkedEditing: TLspLinkedEditing;
+    FInlineValues: TLspInlineValues;
     FFormatting: TLspFormatting;
     FSlashMenu: TLspSlashMenu;
     FSelectionRanges: TLspSelectionRanges;
@@ -1043,6 +1045,9 @@ begin
   // Lokale Bezeichner brauchen den Index (#658).
   FLinkedEditing := TLspLinkedEditing.Create(FDocuments, FIndex, EnsureUnit);
   FLinkedEditing.Attach(FDispatcher);
+  // Werte beim Debuggen am Zeilenende (#508).
+  FInlineValues := TLspInlineValues.Create(FDocuments, FIndex, EnsureUnit);
+  FInlineValues.Attach(FDispatcher);
   FReferences := TLspReferences.Create(FDocuments, FIndex,
     ReadSourceText,
     ProjectSourceFiles,
@@ -2033,6 +2038,7 @@ begin
   FDocumentSymbols.Free;
   FFoldingRanges.Free;
   FLinkedEditing.Free;
+  FInlineValues.Free;
   FFormatting.Free;
   FSlashMenu.Free;
   FSelectionRanges.Free;
@@ -4156,6 +4162,7 @@ begin
   FHover.Namespaces := Namespaces;
   FDocumentHighlights.Namespaces := Namespaces;
   FLinkedEditing.Namespaces := Namespaces;
+  FInlineValues.Namespaces := Namespaces;
   FReferences.Namespaces := Namespaces;
   FRename.Namespaces := Namespaces;
   FCompletion.Namespaces := Namespaces;
@@ -4845,6 +4852,7 @@ begin
   Result.AddPair('callHierarchyProvider', TJSONBool.Create(True));
   Result.AddPair('implementationProvider', TJSONBool.Create(True));
   Result.AddPair('inlayHintProvider', TJSONBool.Create(True));
+  Result.AddPair('inlineValueProvider', TJSONBool.Create(True));
   Result.AddPair('codeLensProvider', TLspCodeLens.Capability);
   Result.AddPair('semanticTokensProvider', TLspSemanticTokens.Capability);
   Result.AddPair('codeActionProvider', TLspCodeActions.Capability);

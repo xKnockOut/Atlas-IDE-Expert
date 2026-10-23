@@ -188,6 +188,7 @@ uses
   Atlas.Common.Lsp.HoverTypes.Tests in 'Common\Lsp\Atlas.Common.Lsp.HoverTypes.Tests.pas',
   Atlas.Common.Lsp.HoverValues.Tests in 'Common\Lsp\Atlas.Common.Lsp.HoverValues.Tests.pas',
   Atlas.Common.Lsp.LinkedEditing.Tests in 'Common\Lsp\Atlas.Common.Lsp.LinkedEditing.Tests.pas',
+  Atlas.Common.Lsp.InlineValues.Tests in 'Common\Lsp\Atlas.Common.Lsp.InlineValues.Tests.pas',
   Atlas.Common.Lsp.Formatting.Tests in 'Common\Lsp\Atlas.Common.Lsp.Formatting.Tests.pas',
   Atlas.Common.Lsp.FuzzyMatch.Tests in 'Common\Lsp\Atlas.Common.Lsp.FuzzyMatch.Tests.pas',
   Atlas.Common.Lsp.WorkspaceSymbols.Tests in 'Common\Lsp\Atlas.Common.Lsp.WorkspaceSymbols.Tests.pas',
