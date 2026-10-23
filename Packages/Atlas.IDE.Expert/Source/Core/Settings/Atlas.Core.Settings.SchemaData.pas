@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2043] of string = (
+  Lines: array[0..2049] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1258,6 +1258,15 @@ const
     '          "description": "Sichtbarkeit für private Mitglieder, die in die Basisklasse wandern und unten weiter benutzt werden.",',
     '          "x-control": "Auswahl",',
     '          "x-issue": "#713"',
+    '        },',
+    '        "moveMember": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen „„Run“ in Vorfahr verschieben …“ und „„Run“ in Nachfahren verschieben …“ auf einem Feld, einer Methode oder einer Property: Ein Dialog zeigt die Mitglieder zum ' +
+      'Ankreuzen (benutzte zum Mitnehmen), das Ziel (Vorfahren bzw. direkte Nachfahren im Projekt), nach oben je Methode verschieben oder abstrakt deklarieren und ob gleichnamige Methoden anderer Nachfahren ' +
+      'override werden, nach unten ob die Methoden im Vorfahren abstrakt bleiben. Benutzt fremder Code das Mitglied über den Vorfahr-Typ, verbietet Atlas das Verschieben nach unten. Private Mitglieder werden' +
+      ' bei Bedarf protected, fehlende uses ergänzt. Vorschau vor dem Übernehmen.",',
+    '          "x-issue": "#675"',
     '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',

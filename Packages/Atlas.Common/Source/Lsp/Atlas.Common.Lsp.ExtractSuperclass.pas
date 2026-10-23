@@ -84,6 +84,7 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.TextChanges,
   Atlas.Common.Editing.ExtractInterface,
+  Atlas.Common.Editing.MemberTransfer,
   Atlas.Common.Editing.ExtractSuperclass,
   Atlas.Common.Editing.MoveClass,
   Atlas.Common.Lsp.Contract,
@@ -96,12 +97,12 @@ begin
   Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Basisklasse herauslösen: ' + AMessage);
 end;
 
-function KindText(AKind: TSuperclassMemberKind): string;
+function KindText(AKind: TTransferKind): string;
 begin
   case AKind of
-    TSuperclassMemberKind.Field:
+    TTransferKind.Field:
       Result := 'field';
-    TSuperclassMemberKind.Property_:
+    TTransferKind.Property_:
       Result := 'property';
   else
     Result := 'method';
@@ -194,7 +195,7 @@ class function TLspExtractSuperclass.Prepare(ATree: TSyntaxTree; const AText: st
 var
   Info: TSuperclassInfo;
   Reason, Note, NewUnit: string;
-  Item: TSuperclassCandidate;
+  Item: TTransferCandidate;
   List, Notes, Units, Needs: TJSONArray;
   Entry: TJSONObject;
   Need: Integer;

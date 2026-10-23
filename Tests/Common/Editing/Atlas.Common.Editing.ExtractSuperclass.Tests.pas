@@ -51,6 +51,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ClassLayout,
+  Atlas.Common.Editing.MemberTransfer,
   Atlas.Common.Editing.ExtractSuperclass;
 
 const
@@ -191,7 +192,7 @@ var
   Tree: TSyntaxTree;
   Info: TSuperclassInfo;
   Reason: string;
-  Item: TSuperclassCandidate;
+  Item: TTransferCandidate;
   Names: string;
 begin
   Tree := TPascalParser.Parse(Export_);

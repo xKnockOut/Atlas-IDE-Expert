@@ -3019,6 +3019,27 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit Unit `Expor
 | ES12 | Name `TPdfExport`, `begin` oder ein vorhandener Typ | Fehlerzeile bzw. Meldung vom Server, nichts geändert |
 | ES13 | `"refactoring": {"extractSuperclass": false}` in atlas.json | Keine Aktion mehr (**Abnahme**) |
 
+## Mitglied in Vorfahr oder Nachfahren verschieben (#675)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit Unit `Shapes.pas`: `TShape = class protected FName: string; public procedure Draw; virtual; end;`, `TCircle = class(TShape) private FRadius: Double; function Area: Double; public procedure Scale(AFactor: Double); procedure Describe; end;` und `TSquare = class(TShape) public procedure Describe; end;`. `Scale` setzt `FRadius`, `Describe` ruft `Area`. Zweite Unit `Shapes.Extra.pas` mit `TRing = class(TCircle) end;` und einer Prozedur, die `TCircle.Scale` aufruft.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MM1 | Strg+. auf `procedure Describe;` in `TCircle` | „„Describe“ in Vorfahr verschieben …“ und „„Describe“ in Nachfahren verschieben …“; auf `TCircle = class` keine dieser Aktionen |
+| MM2 | Strg+. auf `procedure Describe;` in `TSquare` | Nur „in Vorfahr verschieben …“ (keine Nachfahren) |
+| MM3 | MM1, „in Vorfahr verschieben …“ | Dialog mit Ziel-Klappliste `TShape`, `Describe` angehakt, Kästchen „Gleichnamige Methoden anderer Nachfahren überschreiben (override)“ angehakt, Knöpfe „Abhängigkeiten“ und „Nur abstrakt“ |
+| MM4 | Nur `Describe` angehakt lassen | Fehlerzeile, dass `Describe` `Area` benutzt; „Abhängigkeiten“ hakt `Area` an, Fehler weg |
+| MM5 | Vorschau, Übernehmen | `Describe` und `Area` stehen in `TShape` (`Describe` mit `virtual`), Rümpfe heißen `TShape.…`; `TSquare.Describe` hat `override`; Atlas springt zu `TShape` |
+| MM6 | Rückgängig, MM3 mit „Nur abstrakt“ auf `Describe` | `TShape` bekommt `procedure Describe; virtual; abstract;`, `TCircle.Describe` `override` und bleibt samt Rumpf; `Area` wird nicht verlangt |
+| MM7 | Rückgängig, MM3 ohne Kästchen „… überschreiben (override)“ | Vorschau warnt, dass `TSquare.Describe` die neue Methode verdeckt; keine `override` in `TSquare` |
+| MM8 | `FRadius` nach oben verschieben, `Scale` bleibt | `FRadius` steht in `TShape` als `protected`, Hinweis in der Vorschau |
+| MM9 | In `TShape` eine Methode `Describe` anlegen, MM3 | Meldung „TShape hat schon ein Mitglied Describe.“; nichts geändert |
+| MM10 | Strg+. auf `procedure Scale` in `TCircle`, „in Nachfahren verschieben …“ | Meldung mit Fundstelle `Shapes.Extra.pas:N`, weil `Scale` außerhalb benutzt wird |
+| MM11 | Aufruf in `Shapes.Extra.pas` entfernen, MM10 wiederholen | Dialog mit Kontrollliste `TRing (Shapes.Extra)`, Kästchen „Methoden im Vorfahren abstrakt lassen …“ angehakt; Übernehmen: `TCircle.Scale` wird `virtual; abstract;`, `TRing` bekommt `procedure Scale(AFactor: Double); override;` samt Rumpf, `Shapes.Extra` die nötigen uses |
+| MM12 | Rückgängig, MM11 ohne „abstrakt lassen“ | `Scale` verschwindet aus `TCircle` ganz und steht in `TRing`; `FRadius` wird `protected` |
+| MM13 | Klasse ohne Abschnitte (`TFoo = class(TShape) FX: Integer; end;`), Feld nach oben | `FX` steht in `TShape` vor den Methoden im passenden Abschnitt, Code übersetzt |
+| MM14 | `"refactoring": {"moveMember": false}` in atlas.json | Keine Aktion mehr (**Abnahme**) |
+
 ## Atlas-Spalte in der Zeilenleiste (#768)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TBasis = class procedure Zeichne; virtual; end;`, `TKnopf = class(TBasis) procedure Zeichne; override; end;` und einer zweiten Nachfahrklasse, die `Zeichne` ebenfalls überschreibt; ein Compilerfehler in einer Zeile.
