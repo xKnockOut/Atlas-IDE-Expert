@@ -158,6 +158,8 @@ contains
   Atlas.Common.Lsp.ExitPoints in 'Source\Lsp\Atlas.Common.Lsp.ExitPoints.pas',
   Atlas.Common.Lsp.Reassigned in 'Source\Lsp\Atlas.Common.Lsp.Reassigned.pas',
   Atlas.Common.Lsp.ExpressionType in 'Source\Lsp\Atlas.Common.Lsp.ExpressionType.pas',
+  Atlas.Common.Lsp.MethodOrder in 'Source\Lsp\Atlas.Common.Lsp.MethodOrder.pas',
+  Atlas.Common.Editing.MethodOrder in 'Source\Editing\Atlas.Common.Editing.MethodOrder.pas',
   Atlas.Common.Lsp.OverrideMarks in 'Source\Lsp\Atlas.Common.Lsp.OverrideMarks.pas',
   Atlas.Common.Lsp.Baseline in 'Source\Lsp\Atlas.Common.Lsp.Baseline.pas',
   Atlas.Common.Lsp.SemanticTokens in 'Source\Lsp\Atlas.Common.Lsp.SemanticTokens.pas',

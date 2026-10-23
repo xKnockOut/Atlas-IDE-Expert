@@ -60,6 +60,7 @@ uses
   Atlas.Common.Lsp.ExitPoints,
   Atlas.Common.Lsp.Reassigned,
   Atlas.Common.Lsp.ExpressionType,
+  Atlas.Common.Lsp.MethodOrder,
   Atlas.Common.Editing.SuggestConst,
   Atlas.Common.Semantics.ResolvedSignatures,
   Atlas.Common.Lsp.OverrideMarks,
@@ -1511,6 +1512,12 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := TLspExpressionType.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, AArguments);
+    end);
+  // Methodenrümpfe in Deklarationsreihenfolge für Befehl und Einfügen im Plugin (#660).
+  FCommands.Register(TLspMethodOrder.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TLspMethodOrder.Execute(FDocuments, AArguments);
     end);
   // Überschreibungen für die Atlas-Spalte der Zeilenleiste (#768).
   FCommands.Register(TLspOverrideMarks.Command,
