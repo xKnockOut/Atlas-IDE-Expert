@@ -2528,7 +2528,7 @@ end;
 procedure TParser.ParseInlineDecl(AParent: TSyntaxNode);
 var
   Start: Integer;
-  Node: TSyntaxNode;
+  Node, mAttributes: TSyntaxNode;
   Names: string;
 begin
   // var X: Integer := 1; var A, B: string; const C = 5; var Y := Ausdruck;
@@ -2539,6 +2539,17 @@ begin
     Node := StartNode(TSyntaxKind.InlineVar);
   AParent.Add(Node);
   Advance;
+  // var [Weak] Obj: IInterface := nil; (#1167): Die Kinder der Inline-Variablen bleiben Typ und Wert, die
+  // Attribute fallen weg; untyped-pointer-refcount liest [Weak]/[Unsafe] aus den Token.
+  if IsSym('[') then
+  begin
+    mAttributes := StartNode(TSyntaxKind.Attribute);
+    try
+      ParseAttributes(mAttributes);
+    finally
+      mAttributes.Free;
+    end;
+  end;
   Names := ExpectIdent;
   while AcceptSym(',') do
     Names := Names + ',' + ExpectIdent;
@@ -2892,8 +2903,8 @@ begin
   while not AtEnd and not IsSym(ACloser) do
   begin
     // Benanntes Argument der OLE-Automation: Open(FileName := 'a.docx') (#849); der Name gehört zur
-    // Schnittstelle des Servers und wird nicht aufgelöst.
-    if IsIdent and PeekIsSym(1, ':=') then
+    // Schnittstelle des Servers und wird nicht aufgelöst. Auch ein reserviertes Wort: Foo(Type := 1) (#1167).
+    if (IsIdent or (Current.Kind = TPascalTokenKind.Keyword)) and PeekIsSym(1, ':=') then
     begin
       Advance;
       Advance;
@@ -2920,6 +2931,9 @@ begin
     ParseParameters(Result);
   if AcceptSym(':') then
     ParseTypeReference(Result);
+  // Aufrufkonvention: function(const S: string): Boolean register begin … end (#1167).
+  while IsIdent and InWords(Current.Text, CallingConventions) do
+    Advance;
   // Lokale Abschnitte und Routinen vor dem begin (#849).
   while IsKw(['var', 'const', 'type', 'label']) or IsRoutineStart do
     if IsRoutineStart then
