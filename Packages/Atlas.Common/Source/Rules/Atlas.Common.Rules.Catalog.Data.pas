@@ -918,6 +918,27 @@ begin
     '      "good": "ShowMessage(PChar(string(C)));"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "unrelated-class-cast",' + #10 +
+    '      "name": "Hard cast between unrelated classes",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "TButton(Obj) checks nothing. If the static type of Obj is neither an ancestor nor a descendant of TButton (e.g. TEdit or TForm), the access reads memory of an object with a diffe' +
+    'rent layout. Reported only when both types are known for sure, both inheritance chains are known up to TObject and both declarations are always compiled together with the cast. Interfaces, pointers, n' +
+    'umbers, TObject as source and casts to or from class references (class of) stay silent, as does the accessor class trick: the target and its ancestors up to a common ancestor declare neither fields no' +
+    'r new virtual methods (THackControl = class(TControl)), so the layout is the same. High confidence. Quick fix: (Obj as TButton) checks the type at run time.",' + #10 +
+    '      "bad": "procedure TForm1.EditExit(Sender: TObject);\nvar\n  mEdit: TEdit;\nbegin\n  mEdit := Sender as TEdit;\n  TButton(mEdit).Caption := ''OK'';\nend;",' + #10 +
+    '      "good": "procedure TForm1.EditExit(Sender: TObject);\nvar\n  mEdit: TEdit;\nbegin\n  mEdit := Sender as TEdit;\n  (mEdit as TButton).Caption := ''OK'';\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowTypes",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Types that may be hard cast on purpose: a type name (as source or target) or a pair \"Source=Target\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "float-equality",' + #10 +
     '      "name": "Floating-point comparison with = or <>",' + #10 +
     '      "category": "bug",' + #10 +
@@ -5389,6 +5410,20 @@ begin
     '      "id": "char-to-pchar",' + #10 +
     '      "name": "Char nach PChar umgewandelt",' + #10 +
     '      "description": "PChar(C) mit einer Char-Variablen macht aus dem Zeichencode eine Adresse. Gemeint war ein String."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unrelated-class-cast",' + #10 +
+    '      "name": "Harte Umwandlung zwischen nicht verwandten Klassen",' + #10 +
+    '      "description": "TButton(Obj) prüft nichts. Ist der statische Typ von Obj weder Vorfahr noch Nachfahr von TButton (z. B. TEdit oder TForm), liest der Zugriff Speicher eines Objekts mit anderem Au' +
+    'fbau. Gemeldet wird nur, wenn beide Typen sicher bekannt sind, beide Vererbungsketten bis TObject bekannt sind und beide Deklarationen immer mit der Umwandlung übersetzt werden. Interfaces, Zeiger, Za' +
+    'hlen, TObject als Quelle und Umwandlungen in oder aus Klassenreferenzen (class of) bleiben still, ebenso der Zugriffsklassen-Trick: Das Ziel und seine Vorfahren bis zu einem gemeinsamen Vorfahren dekl' +
+    'arieren weder Felder noch neue virtuelle Methoden (THackControl = class(TControl)), der Aufbau ist also derselbe. Sicherheit hoch. Korrektur: (Obj as TButton) prüft den Typ zur Laufzeit.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowTypes",' + #10 +
+    '          "description": "Typen, die absichtlich hart umgewandelt werden: ein Typname (als Quelle oder Ziel) oder ein Paar \"Quelle=Ziel\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "float-equality",' + #10 +

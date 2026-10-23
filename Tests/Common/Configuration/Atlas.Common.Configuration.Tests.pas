@@ -1002,6 +1002,12 @@ begin
   Parse('{"rules": {"xmldoc-mismatch": {"checkReturns": "nein"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.Contains(Issues[0].Message, '"checkReturns"');
+  // allowTypes von unrelated-class-cast (#1129).
+  Parse('{"rules": {"unrelated-class-cast": {"allowTypes": ["TEdit=TButton", "THackControl"]}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"unrelated-class-cast": {"allowTypes": "TEdit"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"allowTypes"');
 end;
 
 procedure TConfigurationParserTests.ChecksTodoKeywordsOption;

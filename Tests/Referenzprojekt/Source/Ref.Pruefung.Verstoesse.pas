@@ -135,4 +135,21 @@ begin
   end;
 end;
 
+type
+  TBlatt = class(TKnoten)
+  public
+    Wert: Integer;
+  end;
+
+  TAst = class(TKnoten)
+  public
+    Kinder: Integer;
+  end;
+
+procedure Umwandeln(AKnoten: TKnoten; ABlatt: TBlatt);
+begin
+  TAst(ABlatt).Kinder := 1; // ERWARTET: unrelated-class-cast
+  TAst(AKnoten).Kinder := 2; // KEIN-TREFFER: unrelated-class-cast
+end;
+
 end.

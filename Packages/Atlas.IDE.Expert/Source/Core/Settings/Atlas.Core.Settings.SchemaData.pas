@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2001] of string = (
+  Lines: array[0..2009] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -595,6 +595,14 @@ const
     '                "type": "boolean",',
     '                "default": true,',
     '                "description": "Nur xmldoc-mismatch: <returns> an Routinen ohne Ergebnis und fehlendes <returns> prüfen (#979)."',
+    '              },',
+    '              "allowTypes": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "default": [],',
+    '                "description": "Nur unrelated-class-cast: Typen, die absichtlich hart umgewandelt werden, als Typname (Quelle oder Ziel) oder Paar \"Quelle=Ziel\", z. B. [\"TEdit=TButton\"] (#1129)."',
     '              },',
     '              "allowTables": {',
     '                "type": "array",',

@@ -190,7 +190,7 @@ const
     'security-tls-verification-disabled,security-weak-crypto,self-as-interface-in-constructor,self-assignment,self-free-in-event-handler,setlength-in-loop,setter-recursion,shadowed-name,signature-mismatch,signed-unsigned-mix,sizeof-pointer,' +
     'slash-command,sql-write-without-where,string-index-base,string-length-limit,stringlist-objects-leak,stringlist-unsorted,suspicious-string-pointer-cast,synchronize-in-destructor,task-exception-unobserved,text-after-final-end,thread-free-with-free-on-terminate,thread-loop-without-terminated,thread-resume-suspend,' +
     'thread-unsafe-increment,thread-use-after-free-on-terminate,thread-vcl-access,threadvar-managed,transaction-without-rollback,type-restriction-violated,type-too-large,type-used-before-declaration,typed-constant-modified,typeinfo-invalid,' +
-    'ui-call-in-console-or-service,unchecked-conversion,unchecked-enum-cast,unconditional-recursion,unit-name-conflict,unit-name-mismatch,unneeded-forward-declaration,unreachable-code,unresolved-attribute,unresolved-identifier,unresolved-type,unsatisfied-forward,' +
+    'ui-call-in-console-or-service,unchecked-conversion,unchecked-enum-cast,unconditional-recursion,unit-name-conflict,unit-name-mismatch,unneeded-forward-declaration,unreachable-code,unrelated-class-cast,unresolved-attribute,unresolved-identifier,unresolved-type,unsatisfied-forward,' +
     'untyped-pointer-refcount,unused-assignment,unused-local,unused-parameter,unused-private-member,unused-public-member,use-after-free,uses-unit-not-found,variant-record-managed-field,virtual-instead-of-override,with-statement,' +
     'write-only-property,writeln-in-gui-app,xmldoc-mismatch';
 begin
@@ -219,7 +219,7 @@ begin
     'security-sql-injection,security-tls-verification-disabled,self-as-interface-in-constructor,self-assignment,self-free-in-event-handler,setter-recursion,signature-mismatch,signed-unsigned-mix,sizeof-pointer,' +
     'sql-write-without-where,string-index-base,string-length-limit,stringlist-objects-leak,stringlist-unsorted,suspicious-string-pointer-cast,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-loop-without-terminated,' +
     'thread-unsafe-increment,thread-use-after-free-on-terminate,' +
-    'thread-vcl-access,threadvar-managed,transaction-without-rollback,type-restriction-violated,type-too-large,type-used-before-declaration,typed-constant-modified,typeinfo-invalid,ui-call-in-console-or-service,unchecked-conversion,unchecked-enum-cast,unconditional-recursion,unit-name-conflict,unit-name-mismatch,unreachable-code,unresolved-attribute,unresolved-identifier,unresolved-type,unsatisfied-forward,untyped-pointer-refcount,use-after-free,uses-unit-not-found,' +
+    'thread-vcl-access,threadvar-managed,transaction-without-rollback,type-restriction-violated,type-too-large,type-used-before-declaration,typed-constant-modified,typeinfo-invalid,ui-call-in-console-or-service,unchecked-conversion,unchecked-enum-cast,unconditional-recursion,unit-name-conflict,unit-name-mismatch,unreachable-code,unrelated-class-cast,unresolved-attribute,unresolved-identifier,unresolved-type,unsatisfied-forward,untyped-pointer-refcount,use-after-free,uses-unit-not-found,' +
     'variant-record-managed-field,virtual-instead-of-override,writeln-in-gui-app',
     ActiveRules('fast'));
   Assert.AreEqual('bidi-control,confusable-identifier,invisible-char,security-command-injection,security-insecure-http,' +
