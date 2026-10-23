@@ -92,6 +92,8 @@ Fehlalarm.
 | `redundant-cast` | Regel im Katalog (#1139), in `Ref.Pruefung.Verstoesse` |
 | `first-char-address` | Regel im Katalog (#1130), in `Ref.Pruefung.Verstoesse` |
 | `loop-runs-at-most-once` | Regel im Katalog (#1131), in `Ref.Pruefung.Verstoesse` |
+| `override-only-inherited` | Regel im Katalog (#1143), in `Ref.Pruefung.Verstoesse` |
+| `inherited-without-ancestor` | Regel im Katalog (#1144), in `Ref.Pruefung.Verstoesse` |
 | `format-args` | Regel im Katalog (#56), in `Ref.Pruefung.Verstoesse` |
 | `forbidden-symbol` | Regel im Katalog (#1133), `ERWARTET-OPTION`, in `Ref.Pruefung.Verstoesse` |
 

@@ -1963,6 +1963,16 @@
       "description": "inherited mit ausdrücklichem Methodennamen, etwa inherited Zeichnen(C), obwohl die Methode im Vorfahren abstract ist (wie E2373). Ein bloßes inherited; übergeht der Compiler bei abstrakten Methoden still; das meldet die Regel nicht. Die Methode löst die Namensauflösung samt Überladungen auf; gemeldet wird nur, wenn jede passende Überladung abstrakt ist. Korrektur: den Aufruf entfernen, wenn er als eigene Anweisung in einem begin…end steht."
     },
     {
+      "id": "override-only-inherited",
+      "name": "override ruft nur inherited auf",
+      "description": "Eine überschreibende Methode, deren Rumpf nur die geerbte Methode aufruft: ein bloßes inherited;, inherited Name oder inherited Name(A, B) mit den eigenen Parametern in unveränderter Reihenfolge, in Funktionen nur Result := inherited Name(…). Sie tut nichts Eigenes und täuscht ein geändertes Verhalten vor. Still, wenn die Methode die Sichtbarkeit der geerbten ändert (protected zu public), ein Attribut, Standardwerte oder die Direktiven final, deprecated, experimental, platform, library oder reintroduce trägt, lokale Deklarationen, mehr als eine Anweisung, Kommentare oder bedingte Direktiven im Rumpf hat oder die überschriebene Methode unbekannt ist (Vorfahr nicht im Index; virtuelle Methoden von TObject gelten als public). Sicherheit hoch. Korrektur: Deklaration und Rumpf entfernen, samt XMLDoc-Kommentaren und der Leerzeile hinter dem Rumpf."
+    },
+    {
+      "id": "inherited-without-ancestor",
+      "name": "inherited ohne Methode im Vorfahr",
+      "description": "Ein bloßes inherited; in einer Methode, die kein Vorfahr deklariert (neue Methode, kein override), tut nichts. Das deutet auf ein vergessenes override oder einen Tippfehler im Namen. Nicht gemeldet: Message-Handler (inherited ruft dort DefaultHandler), Klassen- und statische Methoden, Konstruktoren und Destruktoren, override und reintroduce, inherited in anonymen Methoden, Vorfahren mit einem gleichnamigen Mitglied (auch nicht virtuell) und unbekannte Vorfahren. Vorfahren aus anderen Units liefert der Symbolindex; Methoden von TObject gelten als bekannt, wenn System nicht im Index steht. Sicherheit hoch. Korrektur: inherited entfernen, wenn es als eigene Anweisung in einem begin…end steht."
+    },
+    {
       "id": "generic-constraint-violated",
       "name": "Typargument verletzt eine Einschränkung",
       "description": "Ein Typargument erfüllt die Einschränkung seines Typparameters nicht: class (wie E2511), record (wie E2512), constructor (wie E2513), ein Interface (wie E2514) oder eine Basisklasse (wie E2515). In Methoden eines generischen Typs dieser Datei meldet die Regel außerdem T.Create ohne constructor-Einschränkung (wie E2568) und Methodenaufrufe auf Werten eines Typparameters ganz ohne Einschränkung (wie E2571). Den generischen Typ löst die Namensauflösung samt Zahl der Typparameter auf, seine Einschränkungen stammen aus seiner Deklaration in der Datei oder im Symbolindex. Argumente, die selbst Typparameter sind, Aliase und Typen mit unvollständiger Vorfahrenkette meldet die Regel nicht. Korrektur für einen Typparameter dieser Datei, der allein in seiner Gruppe steht: die Einschränkung ergänzen (T: class, constructor bzw. T: class)."

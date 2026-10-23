@@ -16,6 +16,9 @@
     "loop-runs-at-most-once": {
       "allowFirstElement": true
     },
+    "override-only-inherited": {
+      "exclude": ["Tests/Common/Editing/Atlas.Common.Editing.ClassActions.OverrideGolden.pas"]
+    },
     "architecture-role-import": {
       "severity": "warning",
       "prefixes": ["Atlas.Text", "Atlas.Common", "Atlas.Windows", "Atlas.Core", "Atlas.UI", "Atlas.IDE"],
