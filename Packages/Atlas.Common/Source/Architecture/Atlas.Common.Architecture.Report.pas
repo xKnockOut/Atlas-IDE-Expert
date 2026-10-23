@@ -54,6 +54,8 @@ type
     class function Markdown(const AOverview: TArchitectureOverview): string; static;
     /// <summary>Eigenständige HTML-Seite mit eingebetteten Daten und Skript (offline, keine externen Verweise).</summary>
     class function Html(const AOverview: TArchitectureOverview): string; static;
+    /// <summary>Bericht passend zur Endung von AFileName: .html/.htm HTML, sonst Markdown.</summary>
+    class function ForFile(const AOverview: TArchitectureOverview; const AFileName: string): string; static;
     /// <summary>Kompakter Text eines Abschnitts für get_architecture; Listen auf ALimit gekürzt mit Gesamtzahl.</summary>
     class function Text(const AOverview: TArchitectureOverview; ASection: TArchitectureSection;
       ALimit: Integer): string; static;
@@ -599,6 +601,17 @@ begin
   Data := StringReplace(Json(AOverview, TArchitectureLayouter.Compute(AOverview)), '</', '<\/', [rfReplaceAll]);
   Result := StringReplace(ArchitectureMapHtml, '{{TITLE}}', HtmlEscape(AOverview.Title), [rfReplaceAll]);
   Result := StringReplace(Result, '{{DATA}}', Data, []);
+end;
+
+class function TArchitectureReport.ForFile(const AOverview: TArchitectureOverview; const AFileName: string): string;
+var
+  Extension: string;
+begin
+  Extension := LowerCase(ExtractFileExt(AFileName));
+  if (Extension = '.html') or (Extension = '.htm') then
+    Result := Html(AOverview)
+  else
+    Result := Markdown(AOverview);
 end;
 
 function Limited(const AText: string; ACount, ALimit: Integer): string;

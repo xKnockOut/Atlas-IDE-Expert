@@ -53,6 +53,8 @@ type
     [Test]
     procedure MetricsAsMarkdownAndJson;
     [Test]
+    procedure ArchitectureAsMarkdownAndHtml;
+    [Test]
     procedure SuppressionStatsGiveZero;
     [Test]
     procedure UpdatedBaselineHidesFindings;
@@ -204,6 +206,31 @@ begin
   Assert.IsTrue(Trim(OutputText) <> '');
   Assert.AreEqual(0, Run(['--check', TPath.Combine(FFolder, 'Src'), '--metrics', '--format', 'json']));
   Assert.Contains(OutputText, 'Gut.pas');
+end;
+
+procedure TShellLinterTests.ArchitectureAsMarkdownAndHtml;
+var
+  Report: string;
+begin
+  // Architekturbericht (#1118): Gut verwendet Kaputt nicht; ein eigener Zyklus A ↔ B über implementation.
+  TFile.WriteAllText(Path('Src/A.pas'), 'unit A;'#13#10'interface'#13#10'uses B;'#13#10'implementation'#13#10'end.');
+  TFile.WriteAllText(Path('Src/B.pas'), 'unit B;'#13#10'interface'#13#10'implementation'#13#10'uses A;'#13#10'end.');
+  Report := Path('Bericht/architektur.md');
+  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
+    '--architecture', Report])));
+  Assert.Contains(TFile.ReadAllText(Report, TEncoding.UTF8), '# Architektur: Src');
+  Assert.Contains(TFile.ReadAllText(Report, TEncoding.UTF8), 'A → B → A');
+  Report := Path('architektur.html');
+  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
+    '--architecture', Report])));
+  Assert.Contains(TFile.ReadAllText(Report, TEncoding.UTF8), '"name":"Gut"');
+  Assert.AreEqual(3, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
+    '--architecture', Path('architektur.pdf')])));
+  Assert.AreEqual(3, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Path('Fehlt'),
+    '--architecture', Report])));
+  TFile.WriteAllText(Path('Src/atlas.json'), '{"architecture": {"enabled": false}}');
+  Assert.AreEqual(3, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
+    '--architecture', Report])), 'ausgeschaltet: kein Bericht');
 end;
 
 procedure TShellLinterTests.SuppressionStatsGiveZero;

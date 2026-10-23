@@ -34,6 +34,9 @@ begin
     TShutdownLeaks.SetLogFile(Options.LogFile);
     if Options.ClearCache then
       Exit(TLinterShell.ClearCache);
+    // Vor --check: Das Ziel aus --check ist hier nur das Projekt des Berichts.
+    if Options.ArchitectureFile <> '' then
+      Exit(TLinterShell.Architecture(Options));
     if Options.CheckTarget <> '' then
       Exit(TLinterShell.Run(Options));
     if Options.Mcp then

@@ -46,6 +46,9 @@ type
   TLinterShell = class
   public
     class function Run(const AOptions: TCommandLineOptions): Integer; static;
+    /// <summary>--architecture (#1118): Architekturbericht des Ziels aus --check (sonst des aktuellen Ordners)
+    /// als Markdown oder HTML nach der Endung der Datei; Exit-Code 0, bei Fehlern 3.</summary>
+    class function Architecture(const AOptions: TCommandLineOptions): Integer; static;
     /// <summary>--clear-cache: löscht alle Index-Caches, die keine laufende Instanz nutzt (#184).</summary>
     class function ClearCache: Integer; static;
   end;
@@ -88,6 +91,12 @@ uses
   Atlas.Common.Rules.ChangedFiles,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Architecture.Overview,
+  Atlas.Common.Architecture.Service,
+  Atlas.Common.Architecture.Report,
   Shell.Platform,
   Shell.VcsChanges,
   Shell.Bootstrap;
@@ -365,6 +374,102 @@ begin
     end);
   if Result = '' then
     Result := ExcludeTrailingPathDelimiter(AConfigRoot);
+end;
+
+class function TLinterShell.Architecture(const AOptions: TCommandLineOptions): Integer;
+var
+  Target, ConfigRoot, Root, FileName, Text: string;
+  Settings: TServerSettings;
+  Sources: TCheckSourceFunc;
+  Source: TCheckSource;
+  Index: ISymbolIndex;
+  Service: TArchitectureService;
+  Request: TArchitectureRequest;
+  Overview: TArchitectureOverview;
+  FileFormat: TFileFormat;
+  Warning, Extension: string;
+begin
+  for Warning in AOptions.Warnings do
+    WriteError(Warning);
+  Extension := LowerCase(ExtractFileExt(AOptions.ArchitectureFile));
+  if (Extension <> '.md') and (Extension <> '.html') and (Extension <> '.htm') then
+  begin
+    WriteError('--architecture erwartet eine .md- oder .html-Datei');
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  Target := AOptions.CheckTarget;
+  if Target = '' then
+    Target := GetCurrentDir;
+  if not (TFile.Exists(Target) or TDirectory.Exists(Target)) then
+  begin
+    WriteError(Format('Ziel "%s" nicht gefunden', [Target]));
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  try
+    if TDirectory.Exists(Target) then
+      ConfigRoot := TPath.GetFullPath(Target)
+    else
+      ConfigRoot := ExtractFileDir(TPath.GetFullPath(Target));
+    Settings := LoadSettings(ConfigRoot);
+    if not Settings.ArchitectureEnabled then
+    begin
+      WriteError('Architekturübersicht ist ausgeschaltet (architecture.enabled in atlas.json oder settings.json)');
+      Exit(TFindingsOutput.ExitFailure);
+    end;
+    TFileEncodingDefaults.SetFolder(ConfigRoot, Settings.DefaultEncoding);
+    // Dieselben Dateien und Symbole wie --check; der Index enthält nur das Projekt (keine Bibliothek).
+    Index := TSymbolIndex.Create;
+    for FileName in CollectFiles(Target, Settings, Root, Sources) do
+      try
+        Text := TFileEncoding.LoadFromFile(FileName, FileFormat);
+        Source := Sources(FileName);
+        Index.AddUnit(TIndexExtractor.ExtractText(Text, FileName, Source.Defines, Source.ResolveInclude));
+      except
+        on E: Exception do
+          WriteError(Format('%s: %s', [FileName, E.Message]));
+      end;
+    Service := TArchitectureService.Create(Index,
+      function(const AFileName: string; out AText: string): Boolean
+      var
+        Format_: TFileFormat;
+      begin
+        try
+          AText := TFileEncoding.LoadFromFile(AFileName, Format_);
+          Result := True;
+        except
+          AText := '';
+          Result := False;
+        end;
+      end,
+      function(const AFileName: string): TArray<string>
+      begin
+        Result := Sources(AFileName).Defines;
+      end);
+    try
+      Request := TArchitectureRequest.FromSettings(Settings);
+      Request.Root := Root;
+      if TDirectory.Exists(Target) then
+        Request.Title := ExtractFileName(ExcludeTrailingPathDelimiter(TPath.GetFullPath(Target)))
+      else
+        Request.Title := ChangeFileExt(ExtractFileName(Target), '');
+      Overview := Service.Overview(Request);
+    finally
+      Service.Free;
+    end;
+    ForceDirectories(ExtractFileDir(TPath.GetFullPath(AOptions.ArchitectureFile)));
+    TFile.WriteAllBytes(AOptions.ArchitectureFile, TEncoding.UTF8.GetBytes(TArchitectureReport.ForFile(Overview,
+      AOptions.ArchitectureFile)));
+    WriteError(Format('Architekturbericht %s: %d Units, %d Teilsysteme, %d Zyklen, %d Querverbindungen',
+      [AOptions.ArchitectureFile, Length(Overview.Units), Length(Overview.Subsystems), Length(Overview.Cycles),
+      Length(Overview.CrossLinks)]));
+    Result := 0;
+  except
+    on E: Exception do
+    begin
+      WriteError(E.Message);
+      Result := TFindingsOutput.ExitFailure;
+    end;
+  end;
 end;
 
 class function TLinterShell.ClearCache: Integer;

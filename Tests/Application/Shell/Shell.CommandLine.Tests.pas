@@ -190,6 +190,11 @@ begin
   Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--todos']);
   Assert.AreEqual(0, Integer(Length(Options.Warnings)));
   Assert.IsTrue(Options.Todos, '--todos (#68)');
+  Assert.AreEqual('', Options.ArchitectureFile);
+  Options := TCommandLineOptions.Parse(['--architecture=Bericht.html']);
+  Assert.AreEqual(0, Integer(Length(Options.Warnings)));
+  Assert.AreEqual('Bericht.html', Options.ArchitectureFile, '--architecture (#1118)');
+  Assert.AreEqual('', Options.CheckTarget);
 end;
 
 procedure TCommandLineOptionsTests.ReadsFailOnAndSourceRoot;
