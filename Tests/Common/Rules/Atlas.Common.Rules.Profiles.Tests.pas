@@ -197,11 +197,12 @@ begin
   Assert.AreEqual(All, ActiveRules('standard'));
   // strict schaltet experimentelle Regeln ein (#146): security-path-traversal (#149), file-header und
   // hardcoded-string (#56), random-without-randomize (#153), die freiwillige Regel todo-comment (#68),
-  // die Architekturregeln des Rollenkonzepts (ohne "prefixes" stumm, Code-Review A-12), prefer-case (#646).
+  // die Architekturregeln des Rollenkonzepts (ohne "prefixes" stumm, Code-Review A-12), prefer-case (#646),
+  // method-without-self (#686).
   Assert.AreEqual(Merged(All, ['architecture-contract-content', 'architecture-role-import',
     'catch-all-without-raise', 'default-parameter', 'file-header', 'global-variable', 'hardcoded-string',
     'implicit-variants-unit', 'legacy-stack-queue', 'legacy-tlist', 'line-length', 'loop-invariant-call', 'magic-number',
-    'managed-param-without-const', 'missing-begin-update', 'money-as-float', 'narrowing-assignment',
+    'managed-param-without-const', 'method-without-self', 'missing-begin-update', 'money-as-float', 'narrowing-assignment',
     'override-case-mismatch', 'prefer-case', 'public-field', 'random-without-randomize', 'redundant-begin-end',
     'redundant-parens', 'security-path-traversal', 'sql-select-star', 'string-concat-in-loop', 'string-if-chain',
     'todo-comment']), ActiveRules('strict'));

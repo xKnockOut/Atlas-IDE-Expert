@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2045] of string = (
+  Lines: array[0..2063] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1273,6 +1273,27 @@ const
       'iebene Variablen).",',
     '          "x-control": "Auswahl",',
     '          "x-issue": "#680"',
+    '        },',
+    '        "methodKind": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Methoden ohne Self erkennen (kein Feld, keine Property, keine Instanzmethode, kein Self, auch nicht implizit; nicht virtual/override, nicht als Ereignis in der Formulardatei,' +
+      ' nicht als Methodenzeiger, nicht Teil eines Interfaces) und umwandeln: „In class-Methode umwandeln“ (wahlweise auch die Aufrufe über Instanzen auf TKlasse.X), „In freie Routine umwandeln“ (Aufrufe ver' +
+      'lieren den Objektbezug, uses in anderen Units) und „In Record-Helper verschieben“ (erster Parameter eines einfachen Typs wird Self, Aufrufe S.X; Warnung, wenn schon ein Helper für den Typ sichtbar ist' +
+      '). Vorher eine Vorschau mit allen geänderten Aufrufen, ein Rückgängig-Schritt je Datei. Die Hinweis-Diagnose dazu ist die Regel method-without-self.",',
+    '          "x-issue": "#686"',
+    '        },',
+    '        "methodKindMarker": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Marke „ohne Self“ am Kopf solcher Methoden; aus = die Aktionen nur über Strg+.",',
+    '          "x-issue": "#686"',
+    '        },',
+    '        "methodKindStatic": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "„In class-Methode umwandeln“ setzt static (ohne verstecktes Self der Klasse); bei Records immer.",',
+    '          "x-issue": "#686"',
     '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',

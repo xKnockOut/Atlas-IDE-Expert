@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 14 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 44 |
+| [Stil und Metriken](#gruppe-style) | 45 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
@@ -366,6 +366,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`string-if-chain`](#string-if-chain) | Lange if-Kette über denselben String | Code Smell | Hinweis |
 | [`prefer-case`](#prefer-case) | if-Kette lässt sich als case schreiben | Code Smell | Hinweis |
 | [`empty-finally`](#empty-finally) | Leerer finally-Block | Code Smell | Hinweis |
+| [`method-without-self`](#method-without-self) | Methode braucht Self nicht | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -7783,4 +7784,29 @@ Richtig:
 
 ```pascal
 Versenden(Kunde.Mail, 'Rechnung', Text);
+```
+
+<a id="method-without-self"></a>
+### method-without-self
+
+**Methode braucht Self nicht** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine Methode einer Klasse oder eines Records nutzt weder Self noch Instanzmitglieder (Felder, Properties, Instanzmethoden, inherited). Sie ist nicht virtuell, kein Ereignis der Formulardatei, implementiert kein Interface und wird nicht als Methodenzeiger verwendet. Experimentell: nur aktiv, wenn in atlas.json eingeschaltet; schweigt mit refactoring.methodKind aus. Schnellkorrektur: in eine class-Methode umwandeln (class … static mit refactoring.methodKindStatic); die Code-Aktionen bieten außerdem Aufrufe über die Klasse, eine freie Routine und einen Record-Helper für den Typ des ersten Parameters, jeweils mit Vorschau aller geänderten Aufrufe.
+
+Mit Treffer:
+
+```pascal
+function TRechner.Doppelt(A: Integer): Integer;
+begin
+  Result := A * 2;  // no field, no Self
+end;
+```
+
+Richtig:
+
+```pascal
+class function TRechner.Doppelt(A: Integer): Integer; static;
+begin
+  Result := A * 2;
+end;
 ```

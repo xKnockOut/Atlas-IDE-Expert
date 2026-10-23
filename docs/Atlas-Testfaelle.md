@@ -2658,6 +2658,23 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | AMU9 | Dasselbe für eine Methode an `Timer1.OnTimer` (TNotifyEvent), eine Methode, die in der .dfm steht, die zweimal übergeben oder direkt aufgerufen wird | Keine Einbetten-Aktion |
 | AMU10 | `refactoring.anonymousMethod` aus | Keine der beiden Aktionen; „Lokale Variable und Feld umwandeln“ fragt weiter den Namen und zeigt die Vorschau wie vorher |
 
+## Methode ohne Self (#686)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MOS1 | In einer Klasse `function TRechner.Doppelt(A: Integer): Integer; begin Result := A * 2; end;` (ohne Felder), Datei öffnen | Hinter dem Kopf der Implementierung die graue Marke „ohne Self“ (englische IDE: „no Self“); nicht hinter Methoden, die Felder, Properties, Self oder inherited nutzen |
+| MOS2 | Rechtsklick auf die Marke, „Ausblenden“ hier; danach Einstellung „Marke ohne Self“ auf der Seite Editor aus | Marke verschwindet an dieser Zeile bzw. überall; nach Wiedereinschalten wieder da |
+| MOS3 | Cursor auf den Kopf von `Doppelt`, Alt+Enter | Aktionen „In class-Methode umwandeln“, „In class-Methode umwandeln, Aufrufe über TRechner“, „In freie Routine umwandeln“; ohne Parameter einfachen Typs kein Helper |
+| MOS4 | „In class-Methode umwandeln“, Vorschau prüfen, übernehmen, übersetzen | Deklaration `class function Doppelt(A: Integer): Integer; static;`, Implementierung `class function TRechner.Doppelt…`; Aufrufe über Instanzen unverändert; Projekt übersetzt |
+| MOS5 | `refactoring.methodKindStatic` = false, MOS4 wiederholen; dann eine Methode, die eine class-Methode der Klasse aufruft | Ohne `static`; im zweiten Fall auch mit Schalter an kein `static`, die Vorschau warnt |
+| MOS6 | „…, Aufrufe über TRechner“ mit Aufrufen `R.Doppelt(2)` in zwei Units und einem `Liefere.Doppelt(2)` | Vorschau listet jeden Aufruf „Datei, Zeile n: alt → neu“; `R.Doppelt` wird `TRechner.Doppelt`; bei `Liefere` Warnung, dass der Ausdruck nicht mehr ausgewertet wird; übersetzt |
+| MOS7 | „In freie Routine umwandeln“ für eine Methode, die nur in der eigenen Unit aufgerufen wird | Methode aus der Klasse entfernt, Routine steht vor ihrem ersten Aufrufer, Aufrufe ohne Empfänger; class-Konstanten der Klasse im Rumpf als `TRechner.X`; übersetzt |
+| MOS8 | Wie MOS7, aber eine zweite Unit ruft auf, die selbst eine Routine gleichen Namens hat | Deklaration vor `implementation`; in der zweiten Unit `Rechner.Doppelt(…)`; übersetzt |
+| MOS9 | `function TPruefer.IstLeer(const S: string): Boolean; begin Result := Trim(S) = ''; end;` in einer Unit mit `uses System.SysUtils`, „In Record-Helper für string verschieben“ | Neuer Helper `T<Unit>StringHelper` (weil der RTL-Helper sichtbar ist) mit Warnung in der Vorschau, Aufrufe `P.IstLeer(X)` → `X.IstLeer`; übersetzt; in einer Unit mit eigenem Record-Helper für string wird dieser erweitert |
+| MOS10 | Methode, die als Ereignis in der .dfm steht, virtuelle Methode, Überladung, Methode, die als `@TObj.M` oder Methodenzeiger übergeben wird | Keine Marke, keine Aktion; über atlas.server.methodKind ein Fehler mit Grund |
+| MOS11 | In atlas.json `"rules": { "method-without-self": "hint" }`, Problems-Ansicht | Hinweis „TRechner.Doppelt braucht Self nicht …“ mit Schnellkorrektur „In class-Methode umwandeln“; ohne Eintrag kein Hinweis (experimentell); im Profil strict aktiv |
+| MOS12 | `refactoring.methodKind` aus | Keine Marke, keine Aktionen, kein Hinweis; `refactoring.methodKindMarker` aus: Aktionen bleiben, nur die Marke fehlt |
+
 ## Methode aus Aufruf anlegen (#472)
 
 | Nr. | Schritte | Erwartet |

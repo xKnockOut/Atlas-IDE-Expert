@@ -706,7 +706,11 @@ type
     // Element „Schnelle Lesezeichen“ im Menü „Ausblenden“ (#1104).
     ElementQuickBookmarks, ElementQuickBookmarksPlural,
     // Seite Prüfregeln: Weg zum Dialog der globalen Einstellungen (#909).
-    RulesGlobalButton);
+    RulesGlobalButton,
+    // Methode ohne Self (#686): Marke und Code-Aktion.
+    SettingsInlayMethodHints, ElementInlayMethodHints, ElementInlayMethodHintsPlural, InlayMethodWithoutSelf,
+    MethodKindTitle, MethodKindFailed, MethodKindNothing, MethodKindPreviewHint, MethodKindApply, MethodKindDone,
+    MethodKindWarning);
 
   TAtlasStrings = class
   private class var
@@ -2312,7 +2316,18 @@ const
      'Schnelle Lesezeichen sind ausgeschaltet (bookmarks.quick).',
      'Nr.',
      'nur diese Datei', 'Marker eines schnellen Lesezeichens', 'Marker der schnellen Lesezeichen',
-     'Globale Prüfregeln bearbeiten …'),
+     'Globale Prüfregeln bearbeiten …',
+     'Methoden ohne Self markieren (ohne Self)',
+     'Marke „ohne Self“',
+     'Marken „ohne Self“',
+     'ohne Self',
+     'Methode ohne Self umwandeln',
+     'Umwandeln fehlgeschlagen: %s',
+     'Umwandeln: nichts zu ändern.',
+     '%d Änderungen in %d Datei',
+     'Umwandeln',
+     'Umgewandelt: %d Änderungen in %d Dateien',
+     'Warnung: %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3822,7 +3837,18 @@ const
      'Quick bookmarks are switched off (bookmarks.quick).',
      'No.',
      'this file only', 'quick bookmark marker', 'quick bookmark markers',
-     'Edit global rules …'));
+     'Edit global rules …',
+     'Mark methods without Self (no Self)',
+     '“no Self” marker',
+     '“no Self” markers',
+     'no Self',
+     'Convert method without Self',
+     'Converting failed: %s',
+     'Convert: nothing to change.',
+     '%d changes in %d file',
+     'Convert',
+     'Converted: %d changes in %d files',
+     'Warning: %s'));
 
 { TAtlasStrings }
 
