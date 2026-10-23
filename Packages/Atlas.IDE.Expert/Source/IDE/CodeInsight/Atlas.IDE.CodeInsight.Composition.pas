@@ -184,6 +184,7 @@ uses
   Atlas.IDE.Debug.OwnCode,
   Atlas.IDE.Debug.ExceptionBar,
   Atlas.IDE.Debug.InlineValues,
+  Atlas.IDE.Build.CompilerSwitches,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Foundation.Elements,
@@ -949,6 +950,11 @@ begin
   Result := TAtlasIdeSettings.Current.BookmarksNamed or TAtlasIdeSettings.Current.QuickBookmarks;
 end;
 
+function CompilerSwitchesVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.BuildCompilerSwitches;
+end;
+
 function DebugExceptionsVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.DebugExceptionHistory;
@@ -1357,6 +1363,9 @@ begin
     Guarded(TAtlasFeature.QuickBookmarks, TAtlasIdeBookmarks.NextBookmark), QuickBookmarksVisible);
   Add('Atlas.PreviousBookmark', TAtlasTextId.PreviousBookmarkCommand,
     Guarded(TAtlasFeature.QuickBookmarks, TAtlasIdeBookmarks.PreviousBookmark), QuickBookmarksVisible);
+  // Wirksame Compiler-Schalter (#558); nur sichtbar, solange build.compilerSwitches an ist.
+  Add('Atlas.CompilerSwitches', TAtlasTextId.CompilerSwitchesCommand,
+    Guarded(TAtlasFeature.Build, TAtlasIdeCompilerSwitches.ShowWindow), CompilerSwitchesVisible);
   // Exception-Verlauf beim Debuggen (#517); nur sichtbar, solange debug.exceptionHistory an ist.
   Add('Atlas.DebugExceptions', TAtlasTextId.DebugExceptionsCommand,
     Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugExceptions.ShowWindow), DebugExceptionsVisible);
@@ -2925,6 +2934,38 @@ begin
     end);
 end;
 
+const
+  CompilerSwitchesExtra = 'compilerSwitches';
+
+/// <summary>Wirksame Compiler-Schalter (#558): Fenster und Zusatzfeld der Statusleiste mit den Abweichungen.
+/// </summary>
+procedure StartCompilerSwitches;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  TAtlasIdeCompilerSwitches.Start(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(const AText, AHint: string)
+    begin
+      if StatusField = nil then
+        Exit;
+      if AText = '' then
+      begin
+        StatusField.SetExtra(CompilerSwitchesExtra, '', '', nil);
+        Exit;
+      end;
+      StatusField.SetExtra(CompilerSwitchesExtra, AText, AHint,
+        procedure(APoint: TPoint)
+        begin
+          TAtlasIdeCompilerSwitches.ShowWindow;
+        end);
+    end);
+end;
+
 procedure ToggleDebugJustMyCode;
 begin
   TAtlasIdeDebugOwnCode.ToggleSetting(
@@ -3975,6 +4016,17 @@ begin
       Result := TAtlasIdeDebugInlineValues.Started;
     end,
     StartDebugInlineValues, TAtlasIdeDebugInlineValues.Release);
+  // Wirksame Compiler-Schalter an der Cursorposition (#558): Fenster, Befehl und Statusfeld; aus = kein Zeitgeber.
+  Features.AddWanted('CompilerSwitches',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.BuildCompilerSwitches;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeCompilerSwitches.Started;
+    end,
+    StartCompilerSwitches, TAtlasIdeCompilerSwitches.Release);
   // Gleichen Text wie die Markierung hervorheben (#709): nur im normalen Start oder mit Einstellung.
   Features.AddWanted('SelectionMatches',
     function(ALevel: TAtlasSafeLevel): Boolean
@@ -4233,6 +4285,7 @@ begin
       TAtlasIdeOverviewRuler.ThemeChanged;
       TAtlasIdeMinimap.ThemeChanged;
       TAtlasIdeDebugExceptions.ThemeChanged;
+      TAtlasIdeCompilerSwitches.ThemeChanged;
       TAtlasIdeDebugExceptionBar.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
@@ -4287,6 +4340,8 @@ begin
       TAtlasIdeStickyScroll.ApplySettings;
       // debug.exceptionHistory (#517).
       TAtlasIdeDebugExceptions.ApplySettings;
+      // build.compilerSwitches, build.showSwitchesInStatusBar (#558).
+      TAtlasIdeCompilerSwitches.ApplySettings;
       // debug.exceptionBanner* (#783).
       TAtlasIdeDebugExceptionBar.ApplySettings;
       // editor.gitGutter, editor.gitBlame (#507).

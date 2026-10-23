@@ -984,6 +984,10 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.ExceptionBanner.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Debug\Atlas.UI.Debug.ExceptionBar.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.InlineValues.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.CompilerSwitches.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompilerSwitches.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Build.CompilerSwitches.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Build.SwitchesFrame.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

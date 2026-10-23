@@ -407,6 +407,15 @@ type
     /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530). Wirkt
     /// bisher auf „Tests nach dem Build“ (#69).</summary>
     BuildZeroHints: Boolean;
+    /// <summary>Fenster „Compiler-Schalter“ (#558, build.compilerSwitches, Befehl Atlas.CompilerSwitches): wirksame
+    /// Schalter R, Q, O, C, I, A, HINTS, WARNINGS, abgeschaltete Warnungen und aktive Symbole an der Cursorposition
+    /// mit Herkunft (Projektoption, Include-Datei, Direktive mit Zeile); Abweichungen von der .dproj hervorgehoben.
+    /// Aus = kein Fenster, kein Befehl, keine Anfrage.</summary>
+    BuildCompilerSwitches: Boolean;
+    /// <summary>Feld in der Statusleiste mit den Schaltern, die an der Cursorposition von der .dproj abweichen („R−
+    /// Q− HINTS OFF“; #558, build.showSwitchesInStatusBar); ohne Abweichung kein Feld. Ein Klick öffnet das Fenster
+    /// „Compiler-Schalter“.</summary>
+    BuildSwitchesInStatusBar: Boolean;
     /// <summary>Release-Build-Wächter (#533, build.releaseGuard): vor make und build in einer Release-Konfiguration
     /// die Projektoptionen prüfen, dazu der Befehl „Release-Build prüfen“ (Atlas.CheckRelease) mit Tipp. Aus = keine
     /// Prüfung, Befehl und Tipp verschwinden.</summary>
@@ -1390,6 +1399,8 @@ begin
   Result.TestsAfterBuild := False;
   Result.TestsBuildFirst := True;
   Result.BuildZeroHints := False;
+  Result.BuildCompilerSwitches := True;
+  Result.BuildSwitchesInStatusBar := False;
   Result.ReleaseGuard := True;
   Result.BuildGate := 'off';
   Result.ReleaseConfigs := TAtlasReleaseGuard.ReleaseConfiguration;
@@ -2002,6 +2013,8 @@ begin
   TestsAfterBuild := AStore.ReadInteger('TestsAfterBuild', BoolValue(Default.TestsAfterBuild)) <> 0;
   TestsBuildFirst := AStore.ReadInteger('TestsBuildFirst', BoolValue(Default.TestsBuildFirst)) <> 0;
   BuildZeroHints := AStore.ReadInteger('BuildZeroHints', BoolValue(Default.BuildZeroHints)) <> 0;
+  BuildCompilerSwitches := AStore.ReadInteger('BuildCompilerSwitches', BoolValue(Default.BuildCompilerSwitches)) <> 0;
+  BuildSwitchesInStatusBar := AStore.ReadInteger('BuildSwitchesInStatusBar', BoolValue(Default.BuildSwitchesInStatusBar)) <> 0;
   ReleaseGuard := AStore.ReadInteger('ReleaseGuard', BoolValue(Default.ReleaseGuard)) <> 0;
   BuildGate := AStore.ReadString('BuildGate', Default.BuildGate);
   ReleaseConfigs := AStore.ReadString('ReleaseConfigs', Default.ReleaseConfigs);
@@ -2452,6 +2465,8 @@ begin
   AStore.WriteInteger('TestsAfterBuild', BoolValue(TestsAfterBuild));
   AStore.WriteInteger('TestsBuildFirst', BoolValue(TestsBuildFirst));
   AStore.WriteInteger('BuildZeroHints', BoolValue(BuildZeroHints));
+  AStore.WriteInteger('BuildCompilerSwitches', BoolValue(BuildCompilerSwitches));
+  AStore.WriteInteger('BuildSwitchesInStatusBar', BoolValue(BuildSwitchesInStatusBar));
   AStore.WriteInteger('ReleaseGuard', BoolValue(ReleaseGuard));
   AStore.WriteString('BuildGate', BuildGate);
   AStore.WriteString('ReleaseConfigs', ReleaseConfigs);

@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4221] of string = (
+  Lines: array[0..4244] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -1029,6 +1029,29 @@ const
     '      "x-caption": "Build nur ohne Warnungen und Hinweise erfolgreich",',
     '      "x-captionEn": "Build succeeds only without warnings and hints",',
     '      "x-issue": "#530"',
+    '    },',
+    '    "BuildCompilerSwitches": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "build.compilerSwitches",',
+    '      "x-area": "build",',
+    '      "x-feature": "Build",',
+    '      "x-page": "Compiler",',
+    '      "x-quickToggle": true,',
+    '      "x-caption": "Fenster „Compiler-Schalter“",',
+    '      "x-captionEn": "Compiler switches window",',
+    '      "x-issue": "#558"',
+    '    },',
+    '    "BuildSwitchesInStatusBar": {',
+    '      "type": "boolean",',
+    '      "default": false,',
+    '      "x-key": "build.showSwitchesInStatusBar",',
+    '      "x-area": "build",',
+    '      "x-page": "Compiler",',
+    '      "x-parent": "build.compilerSwitches",',
+    '      "x-caption": "Abweichende Compiler-Schalter in der Statusleiste",',
+    '      "x-captionEn": "Deviating compiler switches in the status bar",',
+    '      "x-issue": "#558"',
     '    },',
     '    "WelcomePage": {',
     '      "type": "boolean",',

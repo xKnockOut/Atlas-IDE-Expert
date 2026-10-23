@@ -563,6 +563,10 @@ contains
   Atlas.UI.Debug.ExceptionBar in 'Source\UI\Debug\Atlas.UI.Debug.ExceptionBar.pas',
   Atlas.IDE.Debug.ExceptionBar in 'Source\IDE\Debug\Atlas.IDE.Debug.ExceptionBar.pas',
   Atlas.Core.Debug.InlineValues in 'Source\Core\Debug\Atlas.Core.Debug.InlineValues.pas',
-  Atlas.IDE.Debug.InlineValues in 'Source\IDE\Debug\Atlas.IDE.Debug.InlineValues.pas';
+  Atlas.IDE.Debug.InlineValues in 'Source\IDE\Debug\Atlas.IDE.Debug.InlineValues.pas',
+  Atlas.Core.Build.CompilerSwitches in 'Source\Core\Build\Atlas.Core.Build.CompilerSwitches.pas',
+  Atlas.UI.Build.SwitchesFrame in 'Source\UI\Build\Atlas.UI.Build.SwitchesFrame.pas' {AtlasBuildSwitchesFrame: TFrame},
+  Atlas.IDE.Build.SwitchesWindow in 'Source\IDE\Build\Atlas.IDE.Build.SwitchesWindow.pas',
+  Atlas.IDE.Build.CompilerSwitches in 'Source\IDE\Build\Atlas.IDE.Build.CompilerSwitches.pas';
 
 end.
