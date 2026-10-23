@@ -943,3 +943,11 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Regel-Editor schmal (nach dem Push bemerkt):** `TAtlasRulesEditor.CanAutoSize` setzte `NewWidth := Width`; `CheckNewSize` fragt aber mit der neuen Breite, so blieb jedes `SetBounds` bei den 185 Pixeln eines frischen Panels. Jetzt bleibt die angefragte Breite. Der Test prüfte ohne Fenster, da war auch der Behälter schmal; `KeepsRequestedWidth` und die Dialogtests messen jetzt mit Fenster.
 - **Protokoll lesen:** Das Bash-Werkzeug sieht `%LOCALAPPDATA%` virtualisiert (Kopie unter `AppData\Local\Packages\Claude_…\LocalCache`, Stand 22.10.). Das echte `atlas.log` nur mit PowerShell lesen. Das Plugin-Protokoll läuft normal, eine Lücke gibt es nicht.
 - **Nebenbefund Server-Diagnose:** `workspace/diagnostic` brauchte 17 s mit `slowRule=inline-not-expanded` (16,4 s) in einer Unit mit fehlenden Units; nicht untersucht.
+
+## Editorleiste: Klick ohne Wirkung (23.10.2026, Branch `feature/1101-editorleiste-klick` ab main, ungebaut)
+
+- **Meldung (Marco):** Klick auf die Knöpfe der Editorleiste (#1101) tut nichts, Delphi flackert nur.
+- **Ursache:** `TAtlasEditorToolbar.MouseUp` löste nur aus, wenn `FDown` (in `MouseDown` gemerkt) noch gesetzt war; `CMMouseLeave` setzte `FDown` zurück. In der IDE kommt zwischen Drücken und Loslassen ein Mausverlassen (Mausfang der Leiste, die IDE holt beim Drücken den Fokus in den Editor), damit lief jeder Klick ins Leere; zu sehen war nur das Zurücksetzen der Hervorhebung und der Fokuswechsel. Die Brotkrumenleiste im selben Elternfenster reagiert, weil sie nur auf das Loslassen schaut.
+- **Behebung:** Auslösen beim Loslassen über dem Knopf; abgebrochen wird nur, wenn auf einem anderen Knopf gedrückt wurde. `CMMouseLeave` lässt `FDown` stehen. Jeder Klick schreibt „Editorleiste: Klick auf …“ ins atlas.log (Handtest EL21).
+- **Test:** `TAtlasEditorToolbarTests.MouseClickSurvivesMouseLeave` schickt `WM_LBUTTONDOWN`, `CM_MOUSELEAVE`, `WM_LBUTTONUP` an die Leiste (nur mit Delphi, VCL).
+- **Beim Handtest prüfen:** Fehlt die Zeile „Editorleiste: Klick auf …“ trotz Klick, kommt das Loslassen gar nicht an der Leiste an; dann wie bei der Brotkrumenleiste (Bericht M2) das Fenster unter der Maus untersuchen.

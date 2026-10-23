@@ -4,6 +4,8 @@
 // Rücksprung hinter den angehefteten Abschnittssymbolen, Überlauf » mit den
 // hinteren Knöpfen, Zahnrad rechts, gesperrte Knöpfe melden keinen Befehl,
 // Tooltips; Inline in der Brotkrumenzeile lässt den Gliedern den Platz links.
+// Klick mit der Maus über die Fensternachrichten: Ein Mausverlassen zwischen
+// Drücken und Loslassen (in der IDE bei jedem Klick) bricht nicht ab.
 
 interface
 
@@ -35,6 +37,8 @@ type
     [Test]
     procedure ClicksAndDisabledButtons;
     [Test]
+    procedure MouseClickSurvivesMouseLeave;
+    [Test]
     procedure HintsNameCommandAndReason;
     [Test]
     procedure InlineLeavesCrumbsTheLeftSide;
@@ -43,6 +47,8 @@ type
 implementation
 
 uses
+  Winapi.Windows,
+  Winapi.Messages,
   System.SysUtils,
   System.Classes,
   System.Types,
@@ -51,6 +57,12 @@ uses
   Atlas.Core.EditorToolbar.Icons,
   Atlas.Core.Outline.Breadcrumbs,
   Atlas.UI.Outline.Breadcrumbs;
+
+/// <summary>Punkt als lParam einer Mausnachricht.</summary>
+function MousePoint(const APoint: TPoint): LPARAM;
+begin
+  Result := MakeLParam(Word(APoint.X), Word(APoint.Y));
+end;
 
 function Sample: TArray<TAtlasToolbarButton>;
 var
@@ -204,6 +216,58 @@ begin
   Assert.IsTrue(Customized);
   FBar.OnCommand := nil;
   FBar.OnReturn := nil;
+  FBar.OnCustomize := nil;
+end;
+
+/// <summary>Regression (#1101): Ein Klick tat in der IDE nichts, Delphi flackerte nur. Zwischen Drücken und
+/// Loslassen kommt dort CM_MOUSELEAVE, und das löschte den gedrückten Knopf.</summary>
+procedure TAtlasEditorToolbarTests.MouseClickSurvivesMouseLeave;
+var
+  Fired: string;
+  Customized: Boolean;
+  Back, Problems, Gear: LPARAM;
+begin
+  Fired := '';
+  Customized := False;
+  FBar.OnCommand :=
+    procedure(const AId: string)
+    begin
+      Fired := AId;
+    end;
+  FBar.OnCustomize :=
+    procedure
+    begin
+      Customized := True;
+    end;
+  FBar.SetButtons(Sample);
+  // Mauspunkte als lParam der Fensternachrichten.
+  Back := MousePoint(FBar.ButtonRect('Atlas.NavBack').CenterPoint);
+  Problems := MousePoint(FBar.ButtonRect('Atlas.ProblemsWindow').CenterPoint);
+  Gear := MousePoint(FBar.GearRect.CenterPoint);
+  // Drücken, Mausverlassen (Mausfang, Fokus in den Editor), Loslassen auf demselben Knopf.
+  FBar.Perform(WM_LBUTTONDOWN, MK_LBUTTON, Back);
+  FBar.Perform(CM_MOUSELEAVE, 0, 0);
+  FBar.Perform(WM_LBUTTONUP, 0, Back);
+  Assert.AreEqual('Atlas.NavBack', Fired, 'Klick trotz Mausverlassen');
+  Fired := '';
+  FBar.Perform(WM_LBUTTONDOWN, MK_LBUTTON, Gear);
+  FBar.Perform(CM_MOUSELEAVE, 0, 0);
+  FBar.Perform(WM_LBUTTONUP, 0, Gear);
+  Assert.IsTrue(Customized, 'Zahnrad trotz Mausverlassen');
+  // Ohne gesehenes Drücken zählt das Loslassen über dem Knopf.
+  FBar.Perform(WM_LBUTTONUP, 0, Problems);
+  Assert.AreEqual('Atlas.ProblemsWindow', Fired, 'Loslassen ohne Drücken');
+  Fired := '';
+  // Auf einem Knopf gedrückt, auf einem anderen losgelassen: kein Befehl.
+  FBar.Perform(WM_LBUTTONDOWN, MK_LBUTTON, Back);
+  FBar.Perform(WM_LBUTTONUP, 0, Problems);
+  Assert.AreEqual('', Fired, 'auf anderem Knopf losgelassen');
+  // Danach ist nichts mehr gedrückt: Der nächste Klick gilt wieder.
+  FBar.Perform(WM_LBUTTONDOWN, MK_LBUTTON, Problems);
+  FBar.Perform(WM_LBUTTONUP, 0, Problems);
+  Assert.AreEqual('Atlas.ProblemsWindow', Fired, 'nächster Klick');
+  Fired := '';
+  FBar.OnCommand := nil;
   FBar.OnCustomize := nil;
 end;
 
