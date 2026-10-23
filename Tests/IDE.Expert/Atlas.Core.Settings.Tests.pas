@@ -809,6 +809,10 @@ begin
   Settings.ExitPointsExceptions := False;
   Settings.ExitPointsLoops := False;
   Settings.ExitPointsBadge := False;
+  Settings.Reassigned := False;
+  Settings.ReassignedTargets := 'fields,locals';
+  Settings.ReassignedStyle := 'wavy';
+  Settings.ReassignedColor := '#00ff80';
   Settings.InlineDiagnostics := 'off';
   Settings.ProblemsStatusCounter := False;
   Settings.NextProblemKey := 0;
@@ -827,6 +831,10 @@ begin
   Assert.IsFalse(Loaded.ExitPointsExceptions);
   Assert.IsFalse(Loaded.ExitPointsLoops);
   Assert.IsFalse(Loaded.ExitPointsBadge);
+  Assert.IsFalse(Loaded.Reassigned, 'Unterstreichung abschaltbar (#712)');
+  Assert.AreEqual('locals,fields', Loaded.ReassignedTargets, 'feste Reihenfolge');
+  Assert.AreEqual('wavy', Loaded.ReassignedStyle);
+  Assert.AreEqual('#00FF80', Loaded.ReassignedColor);
   Assert.AreEqual('off', Loaded.InlineDiagnostics, 'Fehlertext abschaltbar');
   Assert.IsFalse(Loaded.ProblemsStatusCounter, 'Zähler abschaltbar');
   Assert.AreEqual(0, Loaded.NextProblemKey);

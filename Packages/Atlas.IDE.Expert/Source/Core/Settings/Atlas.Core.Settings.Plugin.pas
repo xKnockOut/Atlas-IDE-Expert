@@ -760,6 +760,15 @@ type
     ExitPointsLoops: Boolean;
     /// <summary>Marke mit der Anzahl am Routinenkopf (#698).</summary>
     ExitPointsBadge: Boolean;
+    /// <summary>Neu zugewiesene Variablen unterstreichen (#712, highlight.reassigned).</summary>
+    Reassigned: Boolean;
+    /// <summary>Arten, kommagetrennt: locals, loopVars, valueParams, varParams, fields (#712), siehe
+    /// TAtlasReassignedNames.</summary>
+    ReassignedTargets: string;
+    /// <summary>Linie: dotted, solid oder wavy (#712).</summary>
+    ReassignedStyle: string;
+    /// <summary>Farbe: theme oder #RRGGBB (#712).</summary>
+    ReassignedColor: string;
     /// <summary>Blockkommentar umschalten (#703, keys.toggleBlockComment); aus = Kürzel frei.</summary>
     ToggleBlockComment: Boolean;
     /// <summary>Kürzel „Blockkommentar umschalten“ (#703); Vorgabe Umschalt+Alt+A.</summary>
@@ -1064,6 +1073,7 @@ uses
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Build.OpenBuild,
   Atlas.Core.Settings.OverviewKinds,
+  Atlas.Core.Settings.Reassigned,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Settings.ToolbarItems;
 
@@ -1516,6 +1526,10 @@ begin
   Result.ExitPointsExceptions := True;
   Result.ExitPointsLoops := True;
   Result.ExitPointsBadge := True;
+  Result.Reassigned := True;
+  Result.ReassignedTargets := TAtlasReassignedNames.TargetsText(TAtlasReassignedNames.DefaultTargets);
+  Result.ReassignedStyle := 'dotted';
+  Result.ReassignedColor := TAtlasReassignedNames.ThemeColor;
   Result.ToggleBlockComment := True;
   Result.ToggleBlockCommentKey := $A041; // Umschalt+Alt+A
   Result.ToggleBlockCommentStyle := 'braces';
@@ -1779,6 +1793,9 @@ begin
   NextChangeKey := EnsureRange(NextChangeKey, 0, $FFFF);
   PreviousChangeKey := EnsureRange(PreviousChangeKey, 0, $FFFF);
   OverviewRulerKinds := TAtlasOverviewKindNames.Normalize(OverviewRulerKinds);
+  ReassignedTargets := TAtlasReassignedNames.NormalizeTargets(ReassignedTargets);
+  ReassignedStyle := Choice(ReassignedStyle, TAtlasReassignedNames.Styles);
+  ReassignedColor := TAtlasReassignedNames.NormalizeColor(ReassignedColor);
   JumpToMatchKey := EnsureRange(JumpToMatchKey, 0, $FFFF);
   JumpToMatchSelectKey := EnsureRange(JumpToMatchSelectKey, 0, $FFFF);
   MoveLinesUpKey := EnsureRange(MoveLinesUpKey, 0, $FFFF);
@@ -2152,6 +2169,10 @@ begin
   ExitPointsExceptions := AStore.ReadInteger('ExitPointsExceptions', BoolValue(Default.ExitPointsExceptions)) <> 0;
   ExitPointsLoops := AStore.ReadInteger('ExitPointsLoops', BoolValue(Default.ExitPointsLoops)) <> 0;
   ExitPointsBadge := AStore.ReadInteger('ExitPointsBadge', BoolValue(Default.ExitPointsBadge)) <> 0;
+  Reassigned := AStore.ReadInteger('Reassigned', BoolValue(Default.Reassigned)) <> 0;
+  ReassignedTargets := AStore.ReadString('ReassignedTargets', Default.ReassignedTargets);
+  ReassignedStyle := AStore.ReadString('ReassignedStyle', Default.ReassignedStyle);
+  ReassignedColor := AStore.ReadString('ReassignedColor', Default.ReassignedColor);
   ToggleBlockComment := AStore.ReadInteger('ToggleBlockComment', BoolValue(Default.ToggleBlockComment)) <> 0;
   ToggleBlockCommentKey := AStore.ReadInteger('ToggleBlockCommentKey', Default.ToggleBlockCommentKey);
   ToggleBlockCommentStyle := AStore.ReadString('ToggleBlockCommentStyle', Default.ToggleBlockCommentStyle);
@@ -2567,6 +2588,10 @@ begin
   AStore.WriteInteger('ExitPointsExceptions', BoolValue(ExitPointsExceptions));
   AStore.WriteInteger('ExitPointsLoops', BoolValue(ExitPointsLoops));
   AStore.WriteInteger('ExitPointsBadge', BoolValue(ExitPointsBadge));
+  AStore.WriteInteger('Reassigned', BoolValue(Reassigned));
+  AStore.WriteString('ReassignedTargets', ReassignedTargets);
+  AStore.WriteString('ReassignedStyle', ReassignedStyle);
+  AStore.WriteString('ReassignedColor', ReassignedColor);
   AStore.WriteInteger('ToggleBlockComment', BoolValue(ToggleBlockComment));
   AStore.WriteInteger('ToggleBlockCommentKey', ToggleBlockCommentKey);
   AStore.WriteString('ToggleBlockCommentStyle', ToggleBlockCommentStyle);

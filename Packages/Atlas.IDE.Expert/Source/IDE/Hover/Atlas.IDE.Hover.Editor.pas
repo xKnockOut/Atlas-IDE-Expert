@@ -205,7 +205,8 @@ uses
   Atlas.IDE.Results.Commands,
   Atlas.Core.Documentation.Contract,
   Atlas.UI.Strings,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.Core.Settings.Reassigned;
 
 { TAtlasEditorHover.TEvents }
 
@@ -370,6 +371,9 @@ begin
 end;
 
 function TAtlasEditorHover.CurrentView: TAtlasHoverView;
+var
+  Targets, Style, Color: string;
+  Target: TAtlasReassignedTarget;
 begin
   Result := TAtlasHoverView.Create(FHistory.Current);
   Result.Path := FHistory.Path;
@@ -383,6 +387,11 @@ begin
   else
     Result.Display := TAtlasDocDisplay.Create(TAtlasDocDisplay.ExpandOf(TAtlasIdeSettings.Current.XmlDocExpand),
       TAtlasIdeSettings.Current.XmlDocMaxLines);
+  // Neu zugewiesen (#712): nur mit der Einstellung und für die gewählten Arten; der Server kennt sie nicht.
+  if not TAtlasIdeSettings.ReassignedOn(Targets, Style, Color) or TAtlasGuard.Disabled(TAtlasFeature.Reassigned) or
+    not TAtlasReassignedNames.TryTarget(Result.Data.ReassignedTarget, Target) or
+    not (Target in TAtlasReassignedNames.ParseTargets(Targets)) then
+    Result.Data.ClearReassigned;
   // Probleme und der Wert im Debugger gehören zur Stelle im Editor, nicht zu angeklickten Typen.
   if FHistory.Count <= 1 then
   begin

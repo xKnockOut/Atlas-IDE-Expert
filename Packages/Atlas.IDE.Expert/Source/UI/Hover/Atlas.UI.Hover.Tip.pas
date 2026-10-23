@@ -429,6 +429,8 @@ begin
   Result.Configure := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuConfigure);
   Result.Stale := TAtlasStrings.Text(TAtlasTextId.ProblemsStale);
   Result.DebugPending := TAtlasStrings.Text(TAtlasTextId.HoverDebugPending);
+  Result.ReassignedOne := TAtlasStrings.Text(TAtlasTextId.ReassignedOne);
+  Result.ReassignedCount := TAtlasStrings.Text(TAtlasTextId.ReassignedCount);
   Result.PublishedSummary := TAtlasStrings.Text(TAtlasTextId.PublishedSummary);
   Result.PublishedInherited := TAtlasStrings.Text(TAtlasTextId.PublishedInherited);
   Result.PublishedOnlyDefaults := TAtlasStrings.Text(TAtlasTextId.PublishedOnlyDefaults);

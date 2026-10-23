@@ -178,6 +178,7 @@ uses
   Atlas.IDE.Bookmarks.QuickChord,
   Atlas.IDE.Editor.SelectionMatches,
   Atlas.IDE.Editor.ExitPoints,
+  Atlas.IDE.Editor.Reassigned,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Bookmarks.Gutter,
@@ -3015,6 +3016,23 @@ begin
   TAtlasIdeExitPoints.Uninstall;
 end;
 
+procedure StartReassigned;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  TAtlasIdeReassigned.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end);
+end;
+
+procedure StopReassigned;
+begin
+  TAtlasIdeReassigned.Uninstall;
+end;
+
 procedure StartCompletionKey;
 begin
   CompletionKey := TAtlasIdeKeyBinding.Create('Atlas.Completion', 'Atlas-Vervollständigung',
@@ -3906,6 +3924,18 @@ begin
       Result := TAtlasIdeExitPoints.Installed;
     end,
     StartExitPoints, StopExitPoints);
+  // Neu zugewiesene Variablen unterstreichen (#712): nur im normalen Start oder mit Einstellung.
+  Features.AddWanted('Reassigned',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
+        TAtlasIdeSettings.Current.Reassigned);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeReassigned.Installed;
+    end,
+    StartReassigned, StopReassigned);
   Features.AddWanted('CompletionKey',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin

@@ -704,7 +704,12 @@ type
     RulesGlobalButton,
     // Austrittspunkte hervorheben (#698): Optionsseite, Marke, Element.
     SettingsExitPoints, SettingsExitPointsExceptions, SettingsExitPointsLoops, SettingsExitPointsBadge,
-    ExitPointsOne, ExitPointsCount, ExitPointsResultMissing, ElementExitPoints, ElementExitPointsPlural);
+    ExitPointsOne, ExitPointsCount, ExitPointsResultMissing, ElementExitPoints, ElementExitPointsPlural,
+    // Neu zugewiesene Variablen (#712): Optionsseite, Hover, Element.
+    SettingsReassigned, SettingsReassignedLocals, SettingsReassignedLoopVars, SettingsReassignedValueParams,
+    SettingsReassignedVarParams, SettingsReassignedFields, SettingsReassignedStyle, SettingsReassignedStyleDotted,
+    SettingsReassignedStyleSolid, SettingsReassignedStyleWavy, SettingsReassignedColor, ReassignedOne,
+    ReassignedCount, ElementReassigned, ElementReassignedPlural);
 
   TAtlasStrings = class
   private class var
@@ -2296,7 +2301,12 @@ const
      'Austrittspunkte hervorheben', 'Auf except/on die auslösenden Aufrufe zeigen',
      'Auf Break/Continue die Schleife zeigen', 'Marke mit der Anzahl am Routinenkopf',
      '1 Austritt', '%d Austritte', 'Result fehlt auf einem Weg',
-     'Hervorhebung der Austrittspunkte', 'Hervorhebungen der Austrittspunkte'),
+     'Hervorhebung der Austrittspunkte', 'Hervorhebungen der Austrittspunkte',
+     'Neu zugewiesene Variablen unterstreichen', 'Lokale Variablen', 'Schleifenzähler', 'Wertparameter',
+     'var- und out-Parameter', 'Felder, die nur eine Methode schreibt', 'Linie', 'gepunktet', 'durchgezogen',
+     'Welle', 'Farbe (theme oder #RRGGBB)', 'Einmal neu zugewiesen (Zeile %s)',
+     'Neu zugewiesen: %d Zuweisungen (Zeilen %s)', 'Unterstreichung einer neu zugewiesenen Variablen',
+     'Unterstreichungen neu zugewiesener Variablen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3792,7 +3802,12 @@ const
      'Highlight exit points', 'On except/on, show the calls that raise',
      'On Break/Continue, show the loop', 'Badge with the count at the routine header',
      '1 exit', '%d exits', 'Result missing on a path',
-     'exit point highlight', 'exit point highlights'));
+     'exit point highlight', 'exit point highlights',
+     'Underline reassigned variables', 'Local variables', 'Loop counters', 'Value parameters',
+     'var and out parameters', 'Fields written by one method only', 'Line', 'dotted', 'solid',
+     'wavy', 'Color (theme or #RRGGBB)', 'Reassigned once (line %s)',
+     'Reassigned: %d assignments (lines %s)', 'reassigned variable underline',
+     'reassigned variable underlines'));
 
 { TAtlasStrings }
 
