@@ -17,6 +17,11 @@
 //   zwischen Drücken und Loslassen bricht nicht ab: In der IDE kommt es bei
 //   jedem Klick (Mausfang, die IDE holt den Fokus in den Editor), früher lief
 //   dadurch jeder Klick ins Leere.
+// - Die Leiste lässt sich von außen nicht sperren (SetEnabled): Die IDE setzt
+//   Enabled bei Steuerelementen im Editor-Panel auf False (Protokoll der
+//   Brotkrumen: „Fenster ist gesperrt“), danach kam kein Klick mehr an. Die
+//   Knöpfe sperrt die Leiste selbst; ein Klick auf einen gesperrten Knopf
+//   steht samt Grund im Protokoll.
 // - Tooltip je Knopf: Name und Taste.
 // - PreferredWidth: Breite ohne Überlauf (Inline: so breit, wie nötig).
 
@@ -116,6 +121,7 @@ type
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
   protected
+    procedure SetEnabled(Value: Boolean); override;
     procedure Paint; override;
     procedure Resize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -164,6 +170,7 @@ implementation
 uses
   System.Math,
   Vcl.Forms,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.UI.EditorToolbar.Glyphs;
 
 const
@@ -707,6 +714,12 @@ begin
   Invalidate;
 end;
 
+procedure TAtlasEditorToolbar.SetEnabled(Value: Boolean);
+begin
+  // Immer bedienbar (siehe oben); gesperrt werden nur einzelne Knöpfe.
+  inherited SetEnabled(True);
+end;
+
 procedure TAtlasEditorToolbar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   inherited MouseDown(Button, Shift, X, Y);
@@ -761,7 +774,10 @@ begin
       if Assigned(FOnCustomize) then
         FOnCustomize();
   else
-    if FButtons[APart].Enabled and Assigned(FOnCommand) then
+    if not FButtons[APart].Enabled then
+      TAtlasGuard.Log(Format('Editorleiste: Klick auf gesperrten Knopf %s (%s)', [FButtons[APart].Id,
+        PartHint(APart)]))
+    else if Assigned(FOnCommand) then
       FOnCommand(FButtons[APart].Id);
   end;
 end;

@@ -38,6 +38,10 @@ type
     procedure ClicksAndDisabledButtons;
     [Test]
     procedure MouseClickSurvivesMouseLeave;
+    /// <summary>Die IDE setzt Enabled bei Steuerelementen im Editor-Panel auf False; die Leiste bleibt bedienbar
+    /// (Windows schickt gesperrten Fenstern keine Mausnachrichten).</summary>
+    [Test]
+    procedure StaysEnabledWhenDisabledFromOutside;
     [Test]
     procedure HintsNameCommandAndReason;
     [Test]
@@ -269,6 +273,15 @@ begin
   Fired := '';
   FBar.OnCommand := nil;
   FBar.OnCustomize := nil;
+end;
+
+procedure TAtlasEditorToolbarTests.StaysEnabledWhenDisabledFromOutside;
+begin
+  FBar.SetButtons(Sample);
+  FBar.HandleNeeded;
+  FBar.Enabled := False;
+  Assert.IsTrue(FBar.Enabled, 'Eigenschaft');
+  Assert.IsTrue(IsWindowEnabled(FBar.Handle), 'Fenster');
 end;
 
 procedure TAtlasEditorToolbarTests.HintsNameCommandAndReason;

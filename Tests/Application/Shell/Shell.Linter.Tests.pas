@@ -91,6 +91,13 @@ begin
   finally
     TearDown;
   end;
+  // Der erste Symbolindex im Prozess legt bleibende Strukturen und einen Thread des Pools an (#1112).
+  Setup;
+  try
+    IndexKnowsTypesOfOtherUnits;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TShellLinterTests.Setup;
