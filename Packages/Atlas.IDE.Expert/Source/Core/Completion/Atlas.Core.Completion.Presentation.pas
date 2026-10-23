@@ -106,6 +106,8 @@ end;
 
 function MakeTag(const AText: string; AKind: TAtlasTagKind): TAtlasTag;
 begin
+  // Alle Felder auf den Ausgangswert, auch die später hinzugekommenen (Filled, #481).
+  Result := Default(TAtlasTag);
   Result.Text := AText;
   Result.Kind := AKind;
   Result.Id := TAtlasTagId.Plain;
