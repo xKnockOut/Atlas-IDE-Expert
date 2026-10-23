@@ -382,6 +382,9 @@ type
     FreeFields: Boolean;
     /// <summary>Form der Freigabe: free (FFeld.Free) oder freeAndNil (#666).</summary>
     FreeFieldsStyle: string;
+    /// <summary>Glühbirne „Als Konstante deklarieren“ für Variablen, die genau einmal zugewiesen und nie geändert
+    /// werden (#712); nur, wenn die Sprachversion Inline-Konstanten kennt.</summary>
+    SuggestConst: Boolean;
     /// <summary>Code-Aktion „Bedeutung umkehren“ für Boolean-Symbole (#715).</summary>
     InvertBoolean: Boolean;
     /// <summary>Eigene Gegensatzpaare als "A=B", vor den eingebauten (#715).</summary>
@@ -842,6 +845,7 @@ begin
   Result.PropertyFromAccessorsHideAccessors := 'off';
   Result.FreeFields := True;
   Result.FreeFieldsStyle := 'free';
+  Result.SuggestConst := False;
   Result.InvertBoolean := True;
   Result.InvertBooleanAntonyms := nil;
   Result.InvertBooleanFallbackPrefix := 'Not';

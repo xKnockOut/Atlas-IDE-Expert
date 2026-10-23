@@ -24,6 +24,10 @@
 // In FieldByName('…'), FindField('…') und ParamByName('…') meldet der Hover
 // einen Namen, den die Datenmenge laut Formulardatei nicht kennt, als Hinweis
 // „Feld nicht gefunden in qryOrders“ (#461); keine Diagnose.
+//
+// Wird der Name neu zugewiesen (#712), nennt atlas.reassigned das Ziel
+// (locals, valueParams …), die Zahl der Zuweisungen und ihre Zeilen; das
+// Plugin zeigt das unter der Unterstreichung.
 
 interface
 
@@ -92,6 +96,12 @@ type
     ChainOf: string;
     /// <summary>Vererbungskette ab ChainOf aufwärts; leer bei anderen Arten.</summary>
     Ancestors: TArray<THoverTypeRef>;
+    /// <summary>Neu zugewiesener Name an der Stelle (#712): Ziel wie in highlight.reassigned.targets (locals,
+    /// loopVars, valueParams, varParams, fields); '' ohne.</summary>
+    ReassignedTarget: string;
+    /// <summary>Zahl der schreibenden Stellen und ihre Zeilen (ab 0).</summary>
+    ReassignedWrites: Integer;
+    ReassignedLines: TArray<Integer>;
     function Found: Boolean;
     function ToMarkdown: string;
     /// <summary>Derselbe Inhalt ohne Markdown-Auszeichnung.</summary>
@@ -135,6 +145,9 @@ type
     /// <summary>Teile des Hovers für den Atlas-Tooltip (#442): Doku strukturiert in documentation (#654) und
     /// als Klartext in documentationText, Hinweis als Klartext.</summary>
     class function AtlasJson(const AInfo: THoverInfo): TJSONObject; static;
+    /// <summary>Trägt in AInfo ein, ob der Name an APosition neu zugewiesen wird (#712).</summary>
+    class procedure AddReassigned(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
+      const APosition: TTextPosition; var AInfo: THoverInfo); static;
     /// <summary>Antwort als Markdown (Vorgabe) oder als Klartext.</summary>
     property Markdown: Boolean read FMarkdown write FMarkdown;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
@@ -175,6 +188,8 @@ uses
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Dfm.FormFiles,
   Atlas.Common.Editing.DataFieldNames,
+  Atlas.Common.Semantics.Reassigned,
+  Atlas.Common.Lsp.Reassigned,
   Atlas.Text.Lines;
 
 function ComparePositions(const A, B: TTextPosition): Integer;
@@ -276,6 +291,8 @@ var
   Link: THoverLink;
   Ancestor: THoverTypeRef;
   Item, Members: TJSONObject;
+  Written: TJSONArray;
+  Line: Integer;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('declaration', AInfo.Declaration);
@@ -329,6 +346,30 @@ begin
       Ancestors.AddElement(TypeRefJson(Ancestor));
     Result.AddPair('ancestors', Ancestors);
   end;
+  if AInfo.ReassignedTarget <> '' then
+  begin
+    Item := TJSONObject.Create;
+    Item.AddPair('target', AInfo.ReassignedTarget);
+    Item.AddPair('writes', TJSONNumber.Create(AInfo.ReassignedWrites));
+    Written := TJSONArray.Create;
+    for Line in AInfo.ReassignedLines do
+      Written.Add(Line);
+    Item.AddPair('lines', Written);
+    Result.AddPair('reassigned', Item);
+  end;
+end;
+
+class procedure TLspHover.AddReassigned(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
+  AText: string; const APosition: TTextPosition; var AInfo: THoverInfo);
+var
+  Symbol: TReassignedSymbol;
+begin
+  if not TReassigned.SymbolAt(TLspReassigned.Analyze(AResolver, ATree, AFileName, AText), APosition, Symbol) or
+    not Symbol.IsReassigned then
+    Exit;
+  AInfo.ReassignedTarget := TReassigned.TargetNames[Symbol.Target];
+  AInfo.ReassignedWrites := Symbol.WriteCount;
+  AInfo.ReassignedLines := Symbol.WriteLines;
 end;
 
 function THoverInfo.Found: Boolean;
@@ -819,6 +860,10 @@ begin
       Resolver.Namespaces := Namespaces;
       Info := InfoAt(Resolver, FIndex, Tree, Text, TDocumentUris.ToPath(Uri),
         TLspPositions.ReadPosition(PositionValue), FReadText, DelphiVersion);
+      // Wie oft der Name geschrieben wird, für die Unterstreichung im Plugin (#712).
+      if Info.Found then
+        AddReassigned(Resolver, Tree, TDocumentUris.ToPath(Uri), Text, TLspPositions.ReadPosition(PositionValue),
+          Info);
     finally
       Resolver.Free;
     end;

@@ -58,6 +58,9 @@ uses
   Atlas.Common.Lsp.Todos,
   Atlas.Common.Lsp.Recursion,
   Atlas.Common.Lsp.ExitPoints,
+  Atlas.Common.Lsp.Reassigned,
+  Atlas.Common.Editing.SuggestConst,
+  Atlas.Common.Semantics.ResolvedSignatures,
   Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.SlashMenu,
   Atlas.Common.Editing.SlashCommands,
@@ -349,6 +352,8 @@ type
     function Unwrap(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable an APosition.</summary>
     function ExplicitTypeActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>„Als Konstante deklarieren“ (#712, refactoring.suggestConst).</summary>
+    function SuggestConstActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>Extrahieren, „case vervollständigen“ und „with auflösen“ (#50).</summary>
     function RefactoringActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
     /// <summary>Index, Einstellungen, Sprachversion und Formatstil für die Aktionen aus #50.</summary>
@@ -1378,6 +1383,7 @@ begin
       Result := Result + PropertyFromAccessorsActions(AUri, ARange.StartPos);
       Result := Result + InvertBooleanActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
+      Result := Result + SuggestConstActions(AUri, ARange.StartPos);
       Result := Result + RefactoringActions(AUri, ARange);
     end;
   FCodeActions.Attach(FDispatcher);
@@ -1492,6 +1498,12 @@ begin
     begin
       Result := TLspExitPoints.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, ReadSourceTextRef,
         FDocumentHighlights.SettingsFor, AArguments);
+    end);
+  // Neu zugewiesene Variablen für die Unterstreichung im Plugin (#712).
+  FCommands.Register(TLspReassigned.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TLspReassigned.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, AArguments);
     end);
   // Überschreibungen für die Atlas-Spalte der Zeilenleiste (#768).
   FCommands.Register(TLspOverrideMarks.Command,
@@ -3449,6 +3461,39 @@ begin
     if TLspInlayHints.ExplicitTypeAction(Resolver, Shared.Tree, TDocumentUris.ToPath(AUri), APosition, LineBreak,
       Action) then
       Result := [TLspCodeActions.ActionToJson(AUri, Action)];
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.SuggestConstActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Action: TCodeAction;
+  FileName: string;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).SuggestConst or
+    not TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, DelphiVersionFor(AUri)) or
+    not FDocuments.TryGet(AUri, Document) or not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  FileName := TDocumentUris.ToPath(AUri);
+  // Dieselbe Übergabeart von Argumenten wie die Unterstreichung im Plugin (atlas.server.reassigned).
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, FileName);
+    try
+      if TSuggestConst.Action(Document.Text, Shared.Tree, APosition,
+        TResolvedSignatures.Lookup(Resolver, Shared.Tree, FileName), Action) then
+        Result := [TLspCodeActions.ActionToJson(AUri, Action)];
+    finally
+      Resolver.UnpinTree;
+    end;
   finally
     Resolver.Free;
   end;

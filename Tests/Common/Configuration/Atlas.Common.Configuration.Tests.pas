@@ -623,6 +623,9 @@ begin
   Assert.IsFalse(Parse('{"refactoring": {"freeFields": false}}', Issues).Refactoring.FreeFields);
   Assert.AreEqual('freeAndNil', Parse('{"refactoring": {"freeFieldsStyle": "FreeAndNil"}}',
     Issues).Refactoring.FreeFieldsStyle);
+  // #712: Als Konstante deklarieren.
+  Assert.IsFalse(Parse('{}', Issues).Refactoring.SuggestConst);
+  Assert.IsTrue(Parse('{"refactoring": {"suggestConst": true}}', Issues).Refactoring.SuggestConst);
   // #715: Boolean umkehren.
   Assert.IsTrue(Parse('{}', Issues).Refactoring.InvertBoolean);
   Assert.IsTrue(Parse('{}', Issues).Refactoring.InvertBooleanIncludeDfm);
