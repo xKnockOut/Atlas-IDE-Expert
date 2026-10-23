@@ -3709,6 +3709,24 @@
       ]
     },
     {
+      "id": "prefer-case",
+      "name": "if chain can be written as case",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "An if … else if chain with at least min branches (the final else counts) that compares the same ordinal expression (integer, character, enumeration; no side effects, no function call) with constants: X = a, a = X, X in [a, b..c], (X >= a) and (X <= b), also combined with or. Labels must be literals, constant expressions, untyped constants or enumeration values, without duplicates or overlaps. The type comes from name resolution; chains with unknown types and chains with directives stay silent. Off by default, high confidence. Quick fix: the code action In case umwandeln (#646, refactoring.ifCase); begin … end only where a branch has several statements, comments in the branches stay.",
+      "bad": "if Kind = 1 then Neu\nelse if (Kind = 2) or (Kind = 3) then Oeffnen\nelse if (Kind >= 4) and (Kind <= 6) then Speichern\nelse Beenden;",
+      "good": "case Kind of\n  1: Neu;\n  2, 3: Oeffnen;\n  4..6: Speichern;\nelse\n  Beenden;\nend;",
+      "options": [
+        {
+          "name": "min",
+          "type": "integer",
+          "default": 4,
+          "description": "Number of branches (the final else included) from which the rule reports; at least 2."
+        }
+      ]
+    },
+    {
       "id": "constant-condition",
       "name": "Condition is always the same",
       "category": "bug",

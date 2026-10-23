@@ -294,6 +294,9 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CaseCompletion.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AssignFields.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RoutineBody.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ExpressionText.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.StatementText.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.IfCase.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RoutineLocals.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MoveClass.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UnitRename.pas"/>

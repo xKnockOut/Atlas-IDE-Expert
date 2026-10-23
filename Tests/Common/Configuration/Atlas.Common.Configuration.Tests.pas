@@ -635,6 +635,9 @@ begin
     Issues).Refactoring.InvertBooleanFallbackPrefix);
   Assert.AreEqual('Verbose=Silent', string.Join(',', Parse('{"refactoring": {"invertBooleanAntonyms": ' +
     '{"Verbose": "Silent"}}}', Issues).Refactoring.InvertBooleanAntonyms));
+  // #646: if-Kette und case.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.IfCase);
+  Assert.IsFalse(Parse('{"refactoring": {"ifCase": false}}', Issues).Refactoring.IfCase);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"refactoring": {"propertyFromAccessorsPrefixes": "Get", "propertyFromAccessorsReplaceCalls": "ja", ' +
     '"propertyFromAccessorsSection": "private", "propertyFromAccessorsHideAccessors": "public"}}', Issues);

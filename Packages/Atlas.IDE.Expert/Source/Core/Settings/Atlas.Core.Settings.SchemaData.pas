@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2001] of string = (
+  Lines: array[0..2007] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1212,6 +1212,14 @@ const
       'ird mit umgedreht. Aus: Formulare bleiben, die Vorschau warnt.",',
     '          "x-issue": "#715"',
     '        },',
+    '        "ifCase": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen „In case umwandeln“ auf einer if-Kette, die denselben ordinalen Ausdruck ohne Seiteneffekte mit Konstanten vergleicht (X = a, X in [a, b..c], (X >= a) and (X <=' +
+      ' b), mit or verknüpft), und „In if-Kette umwandeln“ auf einem case. Kommentare in den Zweigen bleiben, begin … end nur bei mehreren Anweisungen. Der Hinweis auf lange umwandelbare if-Ketten ist die Re' +
+      'gel prefer-case.",',
+    '          "x-issue": "#646"',
+    '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',
     '          "default": true,',
@@ -1316,7 +1324,7 @@ const
     '      "x-scope": "project",',
     '      "x-page": "Vervollständigung",',
     '      "x-control": "Kontrollkästchen",',
-    '      "x-issue": "#42, #50, #100, #188, #453, #472, #666, #682, #685, #715"',
+    '      "x-issue": "#42, #50, #100, #188, #453, #472, #646, #666, #682, #685, #715"',
     '    },',
     '    "usesCommand": {',
     '      "type": "boolean",',

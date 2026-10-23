@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 14 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 43 |
+| [Stil und Metriken](#gruppe-style) | 44 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
@@ -363,6 +363,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`now-for-elapsed-time`](#now-for-elapsed-time) | Laufzeit mit Now gemessen | Code Smell | Hinweis |
 | [`money-as-float`](#money-as-float) | Geldbetrag als Gleitkommazahl | Bug | Hinweis |
 | [`string-if-chain`](#string-if-chain) | Lange if-Kette über denselben String | Code Smell | Hinweis |
+| [`prefer-case`](#prefer-case) | if-Kette lässt sich als case schreiben | Code Smell | Hinweis |
 | [`empty-finally`](#empty-finally) | Leerer finally-Block | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
@@ -6757,6 +6758,38 @@ case IndexStr(Befehl, ['neu', 'oeffnen', 'speichern', 'beenden']) of
   1: Oeffnen;
   2: Speichern;
   3: Beenden;
+end;
+```
+
+<a id="prefer-case"></a>
+### prefer-case
+
+**if-Kette lässt sich als case schreiben** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine if … else if-Kette mit mindestens min Zweigen (das abschließende else zählt mit) vergleicht denselben ordinalen Ausdruck (Ganzzahl, Zeichen, Aufzählung; ohne Seiteneffekte, kein Funktionsaufruf) mit Konstanten: X = a, a = X, X in [a, b..c], (X >= a) and (X <= b), auch mit or verknüpft. Die Marken sind Literale, Konstantenausdrücke, untypisierte Konstanten oder Aufzählungswerte, ohne Doppelte und Überlappungen. Den Typ liefert die Namensauflösung; Ketten mit unbekanntem Typ und Ketten mit Direktiven bleiben still. Standard aus, Konfidenz hoch. Schnellkorrektur: die Code-Aktion „In case umwandeln“ (#646, refactoring.ifCase); begin … end nur, wo ein Zweig mehrere Anweisungen hat, Kommentare in den Zweigen bleiben.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `min` | integer | `4` | Ab so vielen Zweigen (das abschließende else eingeschlossen) meldet die Regel; mindestens 2. |
+
+Mit Treffer:
+
+```pascal
+if Kind = 1 then Neu
+else if (Kind = 2) or (Kind = 3) then Oeffnen
+else if (Kind >= 4) and (Kind <= 6) then Speichern
+else Beenden;
+```
+
+Richtig:
+
+```pascal
+case Kind of
+  1: Neu;
+  2, 3: Oeffnen;
+  4..6: Speichern;
+else
+  Beenden;
 end;
 ```
 
