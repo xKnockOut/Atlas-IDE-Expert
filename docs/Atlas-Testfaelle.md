@@ -2679,6 +2679,33 @@ Vorbereitung: Ein kleines VCL-Projekt mit `FList: TStringList` (drei Einträge),
 | DH11 | Schnellschalter bzw. *Tools › Optionen › Atlas › Debuggen*: „Variablenwerte im Hover beim Debuggen“ aus | Hover zeigt keinen Wert mehr; wieder an: Wert wieder da |
 | DH12 | Atlas-Tooltip aus (`editor.hoverTooltip`), Maus auf `I` am Haltepunkt | Tooltip der IDE zeigt `I = <Wert>` vor dem Hover-Text |
 | DH13 | Sprachausgabe (Narrator) an, Maus auf `I` | Ansage beginnt mit `I = <Wert>` |
+
+## Visualisierer für häufige Typen (#835)
+
+Vorbereitung: VCL-Projekt (Win32) mit `Kunden: TObjectList<TKunde>` (drei Kunden mit `Name`), `Werte: TList<Integer>` (1, 2, 3), `Index: TDictionary<string, Integer>` (zwei Paare), einer `TFDQuery` (oder `TClientDataSet`) mit 10 Sätzen und Feldern `Name`, `Ort`, `Daten: TBytes` (300 Bytes), `Strom: TMemoryStream` mit „Hello“, `Json: TJSONObject` (`{"a":1,"b":[1,2]}`), `Farbe: TColor = clWebDodgerBlue`, `G: TGUID`, `P: TPoint`, `R: TRect`, `Bild: TBitmap` (64 × 32, 24 Bit, bunt). Haltepunkt nach dem Füllen; `Query.Edit` vorher aufrufen und `Name` ändern. `debug.visualizers` an, Auswertung „auch Getter von Eigenschaften“.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VI1 | F9 bis zum Haltepunkt, `Kunden` in Überwachte Ausdrücke | Wert `TObjectList<TKunde> · Count = 3 · [Meier, Schulz, Öztürk]` (**Abnahme**) |
+| VI2 | `Werte`, `Index` überwachen | `TList<Integer> · Count = 3 · [1, 2, 3]`; `TDictionary<string,Integer> · Count = 2 · {…: …}` |
+| VI3 | `Query` überwachen (im Zustand Edit, Satz 3) | `TFDQuery · dsEdit · 3/10 · Name = …, Ort = …` (**Abnahme**) |
+| VI4 | `Daten`, `Strom` überwachen | `300 Bytes · 48 65 …` mit Text; Stream mit Länge und „Hello“ |
+| VI5 | `Json` überwachen, Auswertung auf „auch Funktionsaufrufe“ | `{"a":1,"b":[1,2]}`; mit „nur Felder“ bzw. „Getter“ Anzahl und Schlüssel ohne Aufruf |
+| VI6 | `Farbe`, `G`, `P`, `R` überwachen | `clWebDodgerBlue · $1E90FF`; `{XXXXXXXX-…}`; `(10, 20)`; `(10, 20)–(110, 70)` |
+| VI7 | `Bild` überwachen | `TBitmap · 64 × 32 · pf24bit` |
+| VI8 | Lupe an `Kunden` → „Mit Atlas anzeigen …“ | Fenster mit Tabelle Nr./Wert, drei Zeilen; Zeilen markieren, Strg+C, in den Editor einfügen: Text mit Tabulatoren (**Abnahme**) |
+| VI9 | Lupe an `Query` | Tabelle Feld/Typ/Wert/Alter Wert; beim geänderten Feld steht der alte Wert |
+| VI10 | Lupe an `Daten` und an einem `TBytes` mit 16 MB | Hex-Zeilen mit Adresse, Bytes und Text; 16 MB scrollen flüssig |
+| VI11 | Lupe an `Json` (Auswertung „auch Funktionsaufrufe“) | Baum mit `a: 1`, `b [2]` usw. |
+| VI12 | Lupe an `Bild` und an `Farbe` | Bild in Originalgröße vor Schachbrett; Farbfeld in DodgerBlue mit Text |
+| VI13 | Ansichtsfenster offen lassen, F8 | Inhalt ausgegraut, „Nicht verfügbar: Das Programm läuft.“; nach dem Halt neuer Inhalt |
+| VI14 | Maus im Editor auf `Kunden` (Atlas-Tooltip) | Oben im Tooltip die aufbereitete Zeile statt der Objektdarstellung |
+| VI15 | Win64-Debugger: Maus auf `Kunden` und `Query` | Tooltip zeigt die aufbereitete Zeile (IDE-Visualisierer laufen dort nicht) |
+| VI16 | Optionen › Debuggen: „Datenmengen“ aus, OK | `Query` zeigt wieder den Text der IDE; Liste unverändert |
+| VI17 | `debug.visualizers.timeoutMs` = 20, große Liste mit langsamen Gettern | Kein Hänger; Wert fällt auf den Text der IDE zurück |
+| VI18 | Hauptschalter (Schnellschalter) aus | Überwachte Ausdrücke und Tooltip zeigen die Texte der IDE; Optionen › Debugger › Visualisierer listet keine Atlas-Einträge mehr |
+| VI19 | Package bei offenem Ansichtsfenster deinstallieren | Fenster schließt, kein Fehler |
+| VI20 | Optionen › Debugger › Visualisierer der IDE | Je eingeschalteter Art ein Eintrag „Atlas: …“ mit Beschreibung |
 ## Kein Hängen, während der Server indexiert (#874)
 
 Vorher: Eine große Projektgruppe öffnen (Index läuft, Fortschritt im Statusfeld), „Diagnosemodus“ an.

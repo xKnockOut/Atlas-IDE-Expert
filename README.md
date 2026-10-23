@@ -18,7 +18,7 @@ Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/At
 | [Code analysis](#code-analysis) | 170 74 73 75 75 76 75 76 75 71 76 75 73 75 75 75 73 4 76 279 check rules (bugs, code smells, security), profiles, confidence, baseline, compiler check on save, CI linter with SARIF |
 | [Refactorings and code actions](#refactorings-and-code-actions) | Rename including forms, change signature, extract method, implement interface, generate properties and many quick fixes (Alt+Enter) |
 | [Forms](#forms) | Sync with the designer, form components in completion, checks between form and code |
-| [Build, test, debug](#build-test-debug) | Release build guard, DUnitX tests from the editor, launch profiles, values in the hover while debugging |
+| [Build, test, debug](#build-test-debug) | Release build guard, DUnitX tests from the editor, launch profiles, values in the hover while debugging, visualizers for lists, datasets, JSON, colors and images |
 | [IDE comfort](#ide-comfort) | Welcome page, command palette, notifications, Git/SVN change marks, safe start |
 | [Settings](#settings) | Every feature can be switched off, options page as a tree, team-wide project file `.atlas` |
 | [Claude Code](#claude-code-and-mcp) | 19 MCP tools to read, check, build, test and rename |
@@ -151,6 +151,7 @@ Alt+Enter opens the code actions; everything is also in the *Atlas* menu and the
 - **DUnitX tests** run from the editor, and a single test starts in the debugger (code lens on `[Test]` and `[TestFixture]`)
 - **Launch profiles** for parameters, working folder, environment and host application
 - **Values in the hover while debugging** (see [Understanding](#understanding))
+- **Visualizers for common types** (`debug.visualizers`): one-line summaries instead of raw object dumps in the hover, Watches and Local Variables, e.g. `TObjectList<TKunde> · Count = 3 · [Meier, Schulz, Öztürk]`, `TFDQuery · dsEdit · 3/10 · Name = Meier, Ort = Berlin`, `clWebDodgerBlue · $1E90FF`; the magnifier opens a viewer with a table, hex view, JSON tree, image or color swatch. Lists, dictionaries, datasets, bytes and streams, JSON, colors, TGUID, TPoint/TRect/TSize and bitmaps, each switchable; evaluation with a time limit and without side effects unless allowed (`debug.visualizers.evaluation`)
 - **Build tool for Claude Code:** `build_project` builds open projects with the IDE's compiler, even in the Starter edition
 
 ### IDE comfort

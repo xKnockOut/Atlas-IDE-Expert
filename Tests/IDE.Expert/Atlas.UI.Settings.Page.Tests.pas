@@ -57,6 +57,8 @@ type
     /// <summary>#585: Test debuggen und Haltepunkt am Anfang auf dem Reiter Debuggen.</summary>
     [Test]
     procedure TestDebugRoundTrip;
+    [Test]
+    procedure DebugVisualizersRoundTrip;
     /// <summary>Benannte Lesezeichen (#622): zwei Schalter auf dem Reiter Editor, Taste bei den Befehlen.</summary>
     [Test]
     procedure BookmarksRoundTrip;
@@ -172,6 +174,7 @@ uses
   System.Classes,
   System.UITypes,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Debug.Visualizers,
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.QuickActions,
@@ -1050,6 +1053,44 @@ begin
     Assert.IsFalse(Page.TestDebugCheck.Checked);
     Assert.IsTrue(Page.TestBreakAtStartCheck.Checked);
     Assert.IsTrue(Page.DebugHoverValuesCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.DebugVisualizersRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+  Kind: TAtlasVisualizerKind;
+begin
+  // #835: Hauptschalter, Haken je Art, Namensfelder, Grenzen, Auswertung als Auswahl.
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.DebugVisualizersCheck.Checked);
+    for Kind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+      Assert.IsTrue(Page.DebugVisualizerKindCheck(Kind).Checked);
+    Assert.AreEqual('Name,Caption,Text', Page.DebugVisualizerNameFieldsEdit.Text);
+    Assert.AreEqual('120', Page.DebugVisualizerMaxLengthEdit.Text);
+    Assert.AreEqual(Ord(TAtlasVisualizerEvaluation.Properties), Page.DebugVisualizerEvaluationBox.Choice);
+    Page.DebugVisualizersCheck.Checked := False;
+    Page.DebugVisualizerKindCheck(TAtlasVisualizerKind.Json).Checked := False;
+    Page.DebugVisualizerKindCheck(TAtlasVisualizerKind.Graphics).Checked := False;
+    Page.DebugVisualizerNameFieldsEdit.Text := 'Bezeichnung, Name';
+    Page.DebugVisualizerMaxLengthEdit.Text := '99999';
+    Page.DebugVisualizerEvaluationBox.Choice := Ord(TAtlasVisualizerEvaluation.Calls);
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.DebugVisualizers);
+    Assert.AreEqual('lists,dictionaries,dataSets,bytes,colors,guid,geometry', Saved.DebugVisualizerTypes);
+    Assert.AreEqual('Bezeichnung,Name', Saved.DebugVisualizerNameFields);
+    Assert.AreEqual(TAtlasVisualizerOptions.MaxMaxLength, Saved.DebugVisualizerMaxLength);
+    Assert.AreEqual('calls', Saved.DebugVisualizerEvaluation);
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.DebugVisualizerKindCheck(TAtlasVisualizerKind.Json).Checked);
+    Assert.IsTrue(Page.DebugVisualizerKindCheck(TAtlasVisualizerKind.Lists).Checked);
+    Assert.AreEqual(Ord(TAtlasVisualizerEvaluation.Calls), Page.DebugVisualizerEvaluationBox.Choice);
   finally
     Page.Free;
   end;
