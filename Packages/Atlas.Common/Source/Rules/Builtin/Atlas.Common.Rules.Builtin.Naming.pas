@@ -85,6 +85,7 @@ procedure RegisterNamingRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  System.Types,
   System.StrUtils,
   System.JSON,
   System.Generics.Collections,
@@ -242,8 +243,12 @@ type
     function ImplementationOf(const AQualified: string; APosition: Integer; const AName: string): TSyntaxNode;
     function DeclarationOf(ARoutine: TSyntaxNode): TSyntaxNode;
     function EditsFor(const AIndexes: TArray<Integer>; const ANewName: string): TArray<TRuleEdit>;
+    /// <summary>Kommt AName in einem der Bereiche (Offsets von X bis vor Y) vor? Ohne Bereiche: in der Datei.
+    /// </summary>
+    function OccursIn(const AName: string; const AScopes: TArray<TPoint>): Boolean;
     procedure Report(AKind: TRuleNamingKind; ADeclaration: TSyntaxNode; const AName: string;
-      const AEdits: TArray<Integer>; ACanFix: Boolean);
+      const AEdits: TArray<Integer>; ACanFix: Boolean;
+    const AScopes: TArray<TPoint>);
     function Wanted(AKind: TRuleNamingKind; const AName: string): Boolean;
     procedure CheckLocal(ADecl: TSyntaxNode; const AName: string; AKind: TRuleNamingKind);
     procedure CheckInlineFor(AFor: TSyntaxNode);
@@ -356,6 +361,21 @@ begin
   for Token in FTokens do
     if (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and SameText(Token.Text, AName) then
       Exit(True);
+  Result := False;
+end;
+
+function TNamingCheck.OccursIn(const AName: string; const AScopes: TArray<TPoint>): Boolean;
+var
+  Token: TPascalToken;
+  Scope: TPoint;
+begin
+  if AScopes = nil then
+    Exit(OccursInFile(AName));
+  for Token in FTokens do
+    if (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and SameText(Token.Text, AName) then
+      for Scope in AScopes do
+        if (Token.Offset >= Scope.X) and (Token.Offset < Scope.Y) then
+          Exit(True);
   Result := False;
 end;
 
@@ -697,7 +717,8 @@ begin
 end;
 
 procedure TNamingCheck.Report(AKind: TRuleNamingKind; ADeclaration: TSyntaxNode; const AName: string;
-  const AEdits: TArray<Integer>; ACanFix: Boolean);
+  const AEdits: TArray<Integer>; ACanFix: Boolean;
+  const AScopes: TArray<TPoint>);
 var
   NewName, Message: string;
   At: Integer;
@@ -709,7 +730,8 @@ begin
   Message := Format('%s %s ohne Präfix %s (erwartet: %s)', [KindTexts[AKind], AName, FConvention.Prefixes[AKind],
     NewName]);
   Fixes := nil;
-  if ACanFix and (Length(AEdits) > 0) and not OccursInFile(NewName) then
+  // Nur wo umbenannt wird, kann der neue Name kollidieren (ABuf als Parameter einer anderen Methode stört nicht).
+  if ACanFix and (Length(AEdits) > 0) and not OccursIn(NewName, AScopes) then
     Fixes := [TRuleFix.Create(Format('In %s umbenennen', [NewName]), EditsFor(AEdits, NewName))];
   FReport.Add(TTextRange.Create(FTokens[At].StartPos, FTokens[At].EndPos), Message, TRuleConfidence.High, Fixes);
 end;
@@ -737,7 +759,8 @@ begin
     Stop := Scope.EndOffset;
   end;
   CanFix := not ContainsKind(Scope, TSyntaxKind.WithStatement) and not Redeclares(Scope, ADecl, AName);
-  Report(AKind, ADecl, AName, NameTokens(Start, Stop, AName, []), CanFix);
+  Report(AKind, ADecl, AName, NameTokens(Start, Stop, AName, []), CanFix,
+    [Point(Scope.StartOffset, Scope.EndOffset)]);
 end;
 
 function TNamingCheck.IsInlineFor(AFor: TSyntaxNode): Boolean;
@@ -760,8 +783,10 @@ begin
   Scope := EnclosingScope(AFor);
   CanFix := (Scope <> nil) and not ContainsKind(AFor, TSyntaxKind.WithStatement) and
     not Redeclares(AFor, AFor, AFor.Name);
+  if Scope = nil then
+    Scope := AFor;
   Report(TRuleNamingKind.Local, AFor, AFor.Name, NameTokens(AFor.StartOffset, AFor.EndOffset, AFor.Name, []),
-    CanFix);
+    CanFix, [Point(Scope.StartOffset, Scope.EndOffset)]);
 end;
 
 procedure TNamingCheck.CheckMember(ABody, ADecl: TSyntaxNode; const AName: string; AKind: TRuleNamingKind);
@@ -772,7 +797,9 @@ var
   Methods: TArray<TSyntaxNode>;
   Edits: TArray<Integer>;
   Index: Integer;
+  Scopes: TArray<TPoint>;
 begin
+  Methods := nil;
   Visibility := VisibilityOf(ABody, ADecl, Implicit);
   // Komponenten und gestreamte Felder: Ihre Namen stehen in der Formulardatei.
   if (AKind = TRuleNamingKind.Field) and (ABody.Kind = TSyntaxKind.ClassType) and
@@ -802,7 +829,11 @@ begin
         (not FTokens[Index - 1].IsSymbol('.') and InAny(Index, Methods))) then
         Edits := Edits + [Index];
   end;
-  Report(AKind, ADecl, AName, Edits, CanFix);
+  // Kollisionen in der Klasse und ihren Methoden; ein gleichnamiges Feld einer anderen Klasse stört nicht.
+  Scopes := [Point(ABody.StartOffset, ABody.EndOffset)];
+  for Method in Methods do
+    Scopes := Scopes + [Point(Method.StartOffset, Method.EndOffset)];
+  Report(AKind, ADecl, AName, Edits, CanFix, Scopes);
 end;
 
 procedure TNamingCheck.CheckUnitConstant(ADecl: TSyntaxNode);
@@ -821,7 +852,7 @@ begin
   CanFix := ((Section = nil) or (Section.Kind = TSyntaxKind.ImplementationSection)) and
     not ContainsKind(FRoot, TSyntaxKind.WithStatement) and not Redeclares(FRoot, ADecl, ADecl.Name);
   Report(TRuleNamingKind.Constant, ADecl, ADecl.Name, NameTokens(ADecl.StartOffset, FRoot.EndOffset, ADecl.Name,
-    []), CanFix);
+    []), CanFix, nil);
 end;
 
 procedure TNamingCheck.CheckParameters(AParams: TSyntaxNode);
@@ -833,6 +864,7 @@ var
   Implicit, Known, CanFix: Boolean;
   Edits: TArray<Integer>;
   Param: TSyntaxNode;
+  Scopes: TArray<TPoint>;
 begin
   Names := ParameterNames(AParams);
   // Ereignis-Handler: Die Namen gibt der Ereignistyp vor (FormClose(Sender; var Action)).
@@ -892,11 +924,14 @@ begin
         Continue;
       Edits := NameTokens(Param.StartOffset, Param.EndOffset, Trim(Name), []);
       CanFix := True;
+      // Kollisionen in der Parameterliste und dort, wo umbenannt wird (Rumpf bzw. Implementierung).
+      Scopes := [Point(AParams.StartOffset, AParams.EndOffset)];
       if Scope <> nil then
       begin
         // Rumpf der Routine bzw. der anonymen Methode (ohne die Parameterliste selbst).
         CanFix := not ContainsKind(Scope, TSyntaxKind.WithStatement) and not Redeclares(Scope, Param, Trim(Name));
         Edits := Edits + NameTokens(AParams.EndOffset, Scope.EndOffset, Trim(Name), []);
+        Scopes := Scopes + [Point(Scope.StartOffset, Scope.EndOffset)];
       end
       else if Header <> nil then
       begin
@@ -911,9 +946,10 @@ begin
           CanFix := not ContainsKind(Implementation_, TSyntaxKind.WithStatement) and
             not RedeclaresInBody(Implementation_, Trim(Name));
           Edits := Edits + NameTokens(Implementation_.StartOffset, Implementation_.EndOffset, Trim(Name), []);
+          Scopes := Scopes + [Point(Implementation_.StartOffset, Implementation_.EndOffset)];
         end;
       end;
-      Report(TRuleNamingKind.Parameter, Param, Trim(Name), Edits, CanFix);
+      Report(TRuleNamingKind.Parameter, Param, Trim(Name), Edits, CanFix, Scopes);
     end;
   end;
 end;
