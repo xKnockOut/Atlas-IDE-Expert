@@ -226,6 +226,7 @@ begin
   try
     Assert.AreEqual('V,Y,Z', Names(Graph, Graph.RecompileSet(Graph.IndexOf('X'))));
     Assert.AreEqual('W', Names(Graph, Graph.RecompileSet(Graph.IndexOf('Z'))));
+    Assert.AreEqual(3, Graph.RecompileCount(Graph.IndexOf('X')));
   finally
     Graph.Free;
   end;
