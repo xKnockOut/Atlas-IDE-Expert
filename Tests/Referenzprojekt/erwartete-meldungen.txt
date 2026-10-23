@@ -9,3 +9,4 @@
 
 Ref.Pruefung.Verstoesse.pas  W1035  OhneErgebnis   # Rückgabewert könnte undefiniert sein (result-not-set)
 Ref.Pruefung.Verstoesse.pas  H2164  Unbenutzt      # Variable deklariert, aber nie verwendet (unused-local)
+Ref.Pruefung.Verstoesse.pas  H2219  Vergessen      # Privates Symbol deklariert, aber nie verwendet (unused-private-member, #64)

@@ -29,6 +29,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Eingabehilfen | `slashCommands`: `enabled`, `disabled`, `headerTemplate`, `logCall`, `componentPalette`, `todoOwner`, `todoCategory`, `sortUsesRemoveUnused`, `enumHelper`, `setHelper` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Liste | #293 |
 | Eingabehilfen | `sortUses` | `false` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl | #182, #284 |
 | Eingabehilfen | `usesKeep` | `` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Liste | #284 |
+| Prüfregeln | `deadCode`: `keepAttributes`, `keepPatterns` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Liste mit Hinzufügen/Entfernen | #64 |
 | Prüfregeln | `dfmPropertyRules` | `` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Eigener Editor (Klasse und Property aus dem Index) | #309 |
 | Speicher | `memoryBudgetMb` | `768` | settings.json (Tools › Optionen › Atlas) | nein | Zahlenfeld (MB) | #185, #492 |
 | Speicher | `index`: `projectGroup`, `searchPaths`, `libraryPaths`, `usages`, `removeOrphans`, `cacheMaxAgeDays`, `cacheMaxMb`, `exclude` | – | settings.json (Tools › Optionen › Atlas); `exclude` in atlas.json | nein | Kontrollkästchen, Liste mit Hinzufügen/Entfernen | #648, #492, #905 |
