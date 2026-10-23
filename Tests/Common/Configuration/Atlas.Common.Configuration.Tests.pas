@@ -1010,6 +1010,12 @@ begin
   Parse('{"rules": {"unrelated-class-cast": {"allowTypes": "TEdit"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.Contains(Issues[0].Message, '"allowTypes"');
+  // formatMethods von format-args (#56).
+  Parse('{"rules": {"format-args": {"formatMethods": ["TLogger.LogFmt", "Protokoll"]}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"format-args": {"formatMethods": "Protokoll"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"formatMethods"');
   // checkFree von redundant-cast (#1139).
   Parse('{"rules": {"redundant-cast": {"checkFree": false}}}', Issues);
   Assert.AreEqual(0, Integer(Length(Issues)));

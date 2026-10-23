@@ -77,6 +77,7 @@ uses
   Atlas.Common.Rules.Builtin.XmlDoc,
   Atlas.Common.Rules.Builtin.Casts,
   Atlas.Common.Rules.Builtin.StringAddress,
+  Atlas.Common.Rules.Builtin.FormatArgs,
   Atlas.Common.Rules.Builtin.ForbiddenSymbols,
   Atlas.Common.Rules.Builtin.Unresolved;
 
@@ -150,6 +151,7 @@ begin
     RegisterXmlDocRules(Registry);
     RegisterCastRules(Registry);
     RegisterStringAddressRules(Registry);
+    RegisterFormatArgsRules(Registry);
     RegisterForbiddenSymbolRules(Registry);
     Result := Registry.Rules;
   finally
