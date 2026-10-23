@@ -18,7 +18,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Debug.CallStack;
 
 type
   TAtlasDebugException = record
@@ -42,6 +43,8 @@ type
     Count: Integer;
     /// <summary>Atlas hat die Exception still fortgesetzt (Ignorier-Liste, #783); nur im Verlauf gezählt.</summary>
     Ignored: Boolean;
+    /// <summary>Aufrufstapel des letzten Auftretens (#578: Anzeige im Fenster, Kopieren).</summary>
+    Frames: TAtlasDebugFrames;
     class function Create(ATime: TDateTime; const AClass, AMessage: string; AThreadId: Cardinal;
       const AThreadName, AFileName: string; ALine: Integer; const ARoutine: string): TAtlasDebugException; static;
     /// <summary>Schlüssel für „gleiche Exception am gleichen Ort“: Klasse, Datei und Zeile ohne Groß/klein.
@@ -51,7 +54,7 @@ type
     function LocationText: string;
     /// <summary>„Hauptthread 1234“ bzw. „Name (1234)“.</summary>
     function ThreadText(const AMainLabel: string): string;
-    /// <summary>Klasse, Meldung, Ort, Thread und Anzahl als Text zum Kopieren.</summary>
+    /// <summary>Klasse, Meldung, Ort, Thread, Anzahl und Aufrufstapel als Text zum Kopieren.</summary>
     function CopyText: string;
     function HasSource: Boolean;
     /// <summary>Passt zum Filter? AClass = '' für alle Klassen, sonst genau diese (ohne Groß/klein); jedes Wort
@@ -205,6 +208,7 @@ end;
 function TAtlasDebugException.CopyText: string;
 var
   Lines: TStringBuilder;
+  Frame: TAtlasDebugFrame;
 begin
   Lines := TStringBuilder.Create;
   try
@@ -224,6 +228,13 @@ begin
     Lines.Append('Thread ').Append(ThreadText('')).AppendLine;
     if Count > 1 then
       Lines.Append(Count).Append(' x').AppendLine;
+    for Frame in Frames do
+    begin
+      Lines.Append('  ').Append(Frame.Header);
+      if Frame.HasSource then
+        Lines.Append(' (').Append(ExtractFileName(Frame.FileName)).Append(':').Append(Frame.Line).Append(')');
+      Lines.AppendLine;
+    end;
     Result := Lines.ToString.TrimRight;
   finally
     Lines.Free;
@@ -302,6 +313,7 @@ begin
     Entry.Message := AException.Message;
     Entry.ThreadId := AException.ThreadId;
     Entry.ThreadName := AException.ThreadName;
+    Entry.Frames := AException.Frames;
     // Ein Halt mit Dialog zählt als „nicht ignoriert“.
     Entry.Ignored := Entry.Ignored and AException.Ignored;
     FItems[Result] := Entry;

@@ -937,7 +937,9 @@ uses
   Atlas.Core.Debug.CallStack.Tests in 'IDE.Expert\Atlas.Core.Debug.CallStack.Tests.pas',
   Atlas.Core.Debug.IgnoreList.Tests in 'IDE.Expert\Atlas.Core.Debug.IgnoreList.Tests.pas',
   Atlas.Core.Debug.ExceptionDialog.Tests in 'IDE.Expert\Atlas.Core.Debug.ExceptionDialog.Tests.pas',
-  Atlas.UI.Debug.ExceptionsFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.ExceptionsFrame.Tests.pas';
+  Atlas.UI.Debug.ExceptionsFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.ExceptionsFrame.Tests.pas',
+  Atlas.Core.Debug.OwnCode in '..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.OwnCode.pas',
+  Atlas.Core.Debug.OwnCode.Tests in 'IDE.Expert\Atlas.Core.Debug.OwnCode.Tests.pas';
 
 // Atlas-Symbol (#751) für die UI-Tests.
 {$R '..\Packages\Atlas.IDE.Expert\Resources\Symbol\Atlas.Symbol.res'}

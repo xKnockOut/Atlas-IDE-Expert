@@ -555,6 +555,9 @@ contains
   Atlas.IDE.Debug.Session in 'Source\IDE\Debug\Atlas.IDE.Debug.Session.pas',
   Atlas.IDE.Debug.ExceptionDialog in 'Source\IDE\Debug\Atlas.IDE.Debug.ExceptionDialog.pas',
   Atlas.IDE.Debug.ExceptionsWindow in 'Source\IDE\Debug\Atlas.IDE.Debug.ExceptionsWindow.pas',
-  Atlas.IDE.Debug.Exceptions in 'Source\IDE\Debug\Atlas.IDE.Debug.Exceptions.pas';
+  Atlas.IDE.Debug.Exceptions in 'Source\IDE\Debug\Atlas.IDE.Debug.Exceptions.pas',
+  Atlas.Core.Debug.OwnCode in 'Source\Core\Debug\Atlas.Core.Debug.OwnCode.pas',
+  Atlas.IDE.Debug.Sources in 'Source\IDE\Debug\Atlas.IDE.Debug.Sources.pas',
+  Atlas.IDE.Debug.OwnCode in 'Source\IDE\Debug\Atlas.IDE.Debug.OwnCode.pas';
 
 end.

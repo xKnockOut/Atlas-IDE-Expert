@@ -18,7 +18,7 @@ Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/At
 | [Code analysis](#code-analysis) | 170 74 73 75 75 76 75 76 75 71 76 75 73 75 75 75 73 4 76 279 check rules (bugs, code smells, security), profiles, confidence, baseline, compiler check on save, CI linter with SARIF |
 | [Refactorings and code actions](#refactorings-and-code-actions) | Rename including forms, change signature, extract method, implement interface, generate properties and many quick fixes (Alt+Enter) |
 | [Forms](#forms) | Sync with the designer, form components in completion, checks between form and code |
-| [Build, test, debug](#build-test-debug) | Release build guard, DUnitX tests from the editor, launch profiles, values in the hover while debugging, exception history |
+| [Build, test, debug](#build-test-debug) | Release build guard, DUnitX tests from the editor, launch profiles, values in the hover while debugging, exception history, just my code |
 | [IDE comfort](#ide-comfort) | Welcome page, command palette, notifications, Git/SVN change marks, safe start |
 | [Settings](#settings) | Every feature can be switched off, options page as a tree, team-wide project file `.atlas` |
 | [Claude Code](#claude-code-and-mcp) | 19 MCP tools to read, check, build, test and rename |
@@ -152,6 +152,7 @@ Alt+Enter opens the code actions; everything is also in the *Atlas* menu and the
 - **Launch profiles** for parameters, working folder, environment and host application
 - **Values in the hover while debugging** (see [Understanding](#understanding))
 - **Exception history:** dockable window “Atlas: Exceptions” with every exception of the debug session (time, class, message from the IDE's dialog, count of equal exceptions at the same place, location, thread), filter by class and text, Enter jumps to the line, Ctrl+C copies class, message and call stack; “Ignore class from now on” continues silently on that class (`debug.exceptionHistory`)
+- **Just my code:** after an exception in library code Atlas jumps to the first line of your own code in the call stack and marks it; F7 into code without source runs on until it returns; the exception history shows library frames faded and collapsed to “… 7 library frames” (`debug.justMyCode`, own code = project folders plus `debug.ownCodeFolders`)
 - **Build tool for Claude Code:** `build_project` builds open projects with the IDE's compiler, even in the Starter edition
 
 ### IDE comfort

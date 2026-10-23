@@ -11,7 +11,11 @@
 // Quelltext), Strg+C kopiert die Meldung (OnCopy). Kontextmenü: Springen,
 // „Klasse künftig ignorieren“ bzw. „Wieder anhalten“ (OnIgnoreClass mit
 // True/False), „Meldung kopieren“, „Verlauf leeren“ (OnClear). Die
-// IDE-Schicht hält den Verlauf und ruft nach jeder Änderung SetHistory. Die
+// IDE-Schicht hält den Verlauf und ruft nach jeder Änderung SetHistory.
+// Unten der Aufrufstapel des gewählten Eintrags (#578): mit JustMyCode sind
+// Bibliotheksrahmen grau, zwei und mehr in Folge stehen als „… n
+// Bibliotheksrahmen“ (Doppelklick oder Enter klappt auf); Doppelklick oder
+// Enter auf einem Rahmen mit Quelltext springt (OnOpenFrame). Die
 // DFM ist leer, weil TCustomFrame.Create für abgeleitete Frames eine Ressource
 // verlangt; aufgebaut wird im Code.
 
@@ -28,7 +32,9 @@ uses
   Vcl.Menus,
   Vcl.Forms,
   Atlas.Core.Debug.Exceptions,
-  Atlas.Core.Debug.IgnoreList;
+  Atlas.Core.Debug.IgnoreList,
+  Atlas.Core.Debug.CallStack,
+  Atlas.Core.Debug.OwnCode;
 
 type
   TAtlasDebugExceptionsFrame = class(TFrame)
@@ -37,6 +43,15 @@ type
     FClassBox: TComboBox;
     FFilter: TEdit;
     FList: TListView;
+    FSplitter: TSplitter;
+    FStack: TListView;
+    FStackFrames: TAtlasDebugFrames;
+    FStackRows: TAtlasDebugStackRows;
+    /// <summary>Aufgeklappte Gruppen (Startindex) des gezeigten Stapels; neu bei anderem Eintrag.</summary>
+    FExpanded: TArray<Integer>;
+    FStackKey: string;
+    FJustMyCode: Boolean;
+    FOnOpenFrame: TProc<TAtlasDebugFrame>;
     FEmpty: TLabel;
     FSummary: TLabel;
     FMenu: TPopupMenu;
@@ -55,7 +70,8 @@ type
     FOnCopy: TProc<TAtlasDebugException>;
     FOnIgnoreClass: TProc<string, Boolean>;
     FOnClear: TProc;
-    function AddColumn(const ACaption: string; AWidth: Integer): TListColumn;
+    function AddColumn(const ACaption: string; AWidth: Integer): TListColumn; overload;
+    function AddColumn(AList: TListView; const ACaption: string; AWidth: Integer): TListColumn; overload;
     function AddMenuItem(const ACaption: string; AClick: TNotifyEvent): TMenuItem;
     function ClassFilter: string;
     procedure FillClasses;
@@ -76,6 +92,16 @@ type
     procedure StopClick(Sender: TObject);
     procedure CopyClick(Sender: TObject);
     procedure ClearClick(Sender: TObject);
+    procedure FillStack;
+    procedure ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+    procedure StackDblClick(Sender: TObject);
+    procedure StackKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure StackCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
+      var DefaultDraw: Boolean);
+    procedure StackCustomDrawSubItem(Sender: TCustomListView; Item: TListItem; SubItem: Integer;
+      State: TCustomDrawState; var DefaultDraw: Boolean);
+    function StackRowFaded(AItem: TListItem): Boolean;
+    procedure SetJustMyCode(AValue: Boolean);
   protected
     procedure CreateWnd; override;
   public
@@ -100,6 +126,16 @@ type
     /// <summary>Klasse und True = künftig ignorieren, False = wieder anhalten.</summary>
     property OnIgnoreClass: TProc<string, Boolean> read FOnIgnoreClass write FOnIgnoreClass;
     property OnClear: TProc read FOnClear write FOnClear;
+    /// <summary>Stapelzeile ausführen: Gruppe aufklappen bzw. zum Rahmen springen (OnOpenFrame).</summary>
+    procedure OpenStackRow(AIndex: Integer);
+    /// <summary>Text einer Stapelzeile: Kopf bzw. „… n Bibliotheksrahmen“ und Ort.</summary>
+    class function StackCells(const AFrames: TAtlasDebugFrames; const ARow: TAtlasDebugStackRow): TArray<string>;
+      static;
+    property Stack: TListView read FStack;
+    property StackRows: TAtlasDebugStackRows read FStackRows;
+    /// <summary>Bibliotheksrahmen abgeschwächt und zusammengefasst (debug.justMyCode, #578).</summary>
+    property JustMyCode: Boolean read FJustMyCode write SetJustMyCode;
+    property OnOpenFrame: TProc<TAtlasDebugFrame> read FOnOpenFrame write FOnOpenFrame;
   end;
 
 implementation
@@ -152,6 +188,31 @@ begin
   FSummary.Font.Color := clGrayText;
   FSummary.Caption := '';
 
+  // Aufrufstapel des gewählten Eintrags (#578) über der Summe.
+  FStack := TListView.Create(Self);
+  FStack.Parent := Self;
+  FStack.Align := alBottom;
+  FStack.AlignWithMargins := True;
+  FStack.Height := MulDiv(140, CurrentPPI, 96);
+  FStack.ViewStyle := vsReport;
+  FStack.RowSelect := True;
+  FStack.HideSelection := False;
+  FStack.ReadOnly := True;
+  FStack.MultiSelect := False;
+  FStack.ColumnClick := False;
+  AddColumn(FStack, TAtlasStrings.Text(TAtlasTextId.DebugExceptionsStackCaption), 330);
+  AddColumn(FStack, TAtlasStrings.Text(TAtlasTextId.DebugExceptionsColumnLocation), 170);
+  FStack.OnDblClick := StackDblClick;
+  FStack.OnKeyDown := StackKeyDown;
+  FStack.OnCustomDrawItem := StackCustomDrawItem;
+  FStack.OnCustomDrawSubItem := StackCustomDrawSubItem;
+
+  FSplitter := TSplitter.Create(Self);
+  FSplitter.Parent := Self;
+  FSplitter.Align := alBottom;
+  FSplitter.Top := FStack.Top - 1;
+  FSplitter.MinSize := MulDiv(40, CurrentPPI, 96);
+
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
   FOpenItem := AddMenuItem(TAtlasStrings.Text(TAtlasTextId.DebugExceptionsGoTo), OpenClick);
@@ -179,6 +240,7 @@ begin
   AddColumn(TAtlasStrings.Text(TAtlasTextId.DebugExceptionsColumnLocation), 170);
   AddColumn(TAtlasStrings.Text(TAtlasTextId.DebugExceptionsColumnThread), 110);
   FList.OnDblClick := ListDblClick;
+  FList.OnSelectItem := ListSelectItem;
   FList.OnKeyDown := ListKeyDown;
   FList.OnCustomDrawItem := ListCustomDrawItem;
   FList.OnCustomDrawSubItem := ListCustomDrawSubItem;
@@ -205,7 +267,13 @@ end;
 
 function TAtlasDebugExceptionsFrame.AddColumn(const ACaption: string; AWidth: Integer): TListColumn;
 begin
-  Result := FList.Columns.Add;
+  Result := AddColumn(FList, ACaption, AWidth);
+end;
+
+function TAtlasDebugExceptionsFrame.AddColumn(AList: TListView; const ACaption: string;
+  AWidth: Integer): TListColumn;
+begin
+  Result := AList.Columns.Add;
   Result.Caption := ACaption;
   Result.Width := MulDiv(AWidth, CurrentPPI, 96);
 end;
@@ -324,6 +392,9 @@ begin
   end;
   FEmpty.Visible := FHistory = nil;
   FList.Visible := FHistory <> nil;
+  FStack.Visible := FHistory <> nil;
+  FSplitter.Visible := FHistory <> nil;
+  FillStack;
   FSummary.Caption := TAtlasStrings.Fmt(TAtlasTextId.DebugExceptionsSummary, [Length(FHistory), FTotal]);
 end;
 
@@ -386,6 +457,128 @@ begin
     CopySelected;
     Key := 0;
   end;
+end;
+
+procedure TAtlasDebugExceptionsFrame.SetJustMyCode(AValue: Boolean);
+begin
+  if FJustMyCode = AValue then
+    Exit;
+  FJustMyCode := AValue;
+  FExpanded := nil;
+  FillStack;
+end;
+
+class function TAtlasDebugExceptionsFrame.StackCells(const AFrames: TAtlasDebugFrames;
+  const ARow: TAtlasDebugStackRow): TArray<string>;
+var
+  Frame: TAtlasDebugFrame;
+  Where: string;
+begin
+  if ARow.Kind = TAtlasDebugStackRowKind.LibraryGroup then
+    Exit(TArray<string>.Create(TAtlasStrings.Fmt(TAtlasTextId.DebugExceptionsStackLibrary, [ARow.Count]), ''));
+  Frame := AFrames[ARow.First];
+  Where := '';
+  if Frame.HasSource then
+    Where := ExtractFileName(Frame.FileName) + ':' + IntToStr(Frame.Line);
+  Result := TArray<string>.Create(Frame.Header, Where);
+end;
+
+procedure TAtlasDebugExceptionsFrame.FillStack;
+var
+  Entry: TAtlasDebugException;
+  Row: TAtlasDebugStackRow;
+  Texts: TArray<string>;
+  Item: TListItem;
+begin
+  if FStack = nil then
+    Exit;
+  if TrySelected(Entry) then
+  begin
+    if Entry.Key <> FStackKey then
+      FExpanded := nil;
+    FStackKey := Entry.Key;
+    FStackFrames := Entry.Frames;
+  end
+  else
+  begin
+    FStackKey := '';
+    FStackFrames := nil;
+    FExpanded := nil;
+  end;
+  FStackRows := TAtlasDebugOwnCode.Rows(FStackFrames, FJustMyCode, FExpanded);
+  FStack.Items.BeginUpdate;
+  try
+    FStack.Items.Clear;
+    for Row in FStackRows do
+    begin
+      Texts := StackCells(FStackFrames, Row);
+      Item := FStack.Items.Add;
+      Item.Caption := Texts[0];
+      Item.SubItems.Add(Texts[1]);
+    end;
+    if (FStackRows = nil) and (FStackKey <> '') then
+      FStack.Items.Add.Caption := TAtlasStrings.Text(TAtlasTextId.DebugExceptionsStackEmpty);
+  finally
+    FStack.Items.EndUpdate;
+  end;
+end;
+
+procedure TAtlasDebugExceptionsFrame.ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+begin
+  FillStack;
+end;
+
+procedure TAtlasDebugExceptionsFrame.OpenStackRow(AIndex: Integer);
+var
+  Row: TAtlasDebugStackRow;
+begin
+  if (AIndex < 0) or (AIndex > High(FStackRows)) then
+    Exit;
+  Row := FStackRows[AIndex];
+  if Row.Kind = TAtlasDebugStackRowKind.LibraryGroup then
+  begin
+    FExpanded := FExpanded + [Row.First];
+    FillStack;
+    if AIndex < FStack.Items.Count then
+      FStack.Items[AIndex].Selected := True;
+    Exit;
+  end;
+  if FStackFrames[Row.First].HasSource and Assigned(FOnOpenFrame) then
+    FOnOpenFrame(FStackFrames[Row.First]);
+end;
+
+procedure TAtlasDebugExceptionsFrame.StackDblClick(Sender: TObject);
+begin
+  if FStack.Selected <> nil then
+    OpenStackRow(FStack.Selected.Index);
+end;
+
+procedure TAtlasDebugExceptionsFrame.StackKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if (Key = VK_RETURN) and (FStack.Selected <> nil) then
+  begin
+    OpenStackRow(FStack.Selected.Index);
+    Key := 0;
+  end;
+end;
+
+function TAtlasDebugExceptionsFrame.StackRowFaded(AItem: TListItem): Boolean;
+begin
+  Result := (AItem <> nil) and (AItem.Index <= High(FStackRows)) and FStackRows[AItem.Index].Faded;
+end;
+
+procedure TAtlasDebugExceptionsFrame.StackCustomDrawItem(Sender: TCustomListView; Item: TListItem;
+  State: TCustomDrawState; var DefaultDraw: Boolean);
+begin
+  DefaultDraw := True;
+  RowColors(Sender.Canvas, State, StackRowFaded(Item));
+end;
+
+procedure TAtlasDebugExceptionsFrame.StackCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
+  SubItem: Integer; State: TCustomDrawState; var DefaultDraw: Boolean);
+begin
+  DefaultDraw := True;
+  RowColors(Sender.Canvas, State, StackRowFaded(Item));
 end;
 
 function TAtlasDebugExceptionsFrame.ListColor(AColor: TColor): TColor;

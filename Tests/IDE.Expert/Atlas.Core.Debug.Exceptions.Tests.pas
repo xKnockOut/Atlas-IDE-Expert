@@ -61,7 +61,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Debug.CallStack;
 
 function Sample(ATime: TDateTime; const AClass, AMessage, AFile: string; ALine: Integer): TAtlasDebugException;
 begin
@@ -87,6 +88,7 @@ begin
   FHistory.Add(Sample(1, 'EConvertError', 'eins', 'C:\P\Unit1.pas', 42));
   Entry := Sample(2, 'econverterror', 'zwei', 'c:\p\UNIT1.pas', 42);
   Entry.ThreadId := 99;
+  Entry.Frames := TArray<TAtlasDebugFrame>.Create(TAtlasDebugFrame.Create('Unit1.Laden', 'C:\P\Unit1.pas', 42));
   Assert.AreEqual(0, FHistory.Add(Entry));
   Assert.AreEqual(1, FHistory.Count, 'gleiche Klasse am gleichen Ort ohne Groß/klein');
   Assert.AreEqual(2, FHistory[0].Count);
@@ -95,6 +97,7 @@ begin
   Assert.IsTrue(FHistory[0].FirstTime = 1, 'zuerst gesehen bleibt');
   Assert.IsTrue(FHistory[0].LastTime = 2, 'zuletzt gesehen');
   Assert.AreEqual(2, FHistory.Total);
+  Assert.AreEqual(1, Integer(Length(FHistory[0].Frames)), 'Stapel des letzten Auftretens (#578)');
 end;
 
 procedure TAtlasDebugExceptionsTests.OtherLineIsNewEntry;
@@ -251,12 +254,16 @@ var
 begin
   Entry := Sample(1, 'EConvertError', 'kein Integer', 'C:\P\Unit1.pas', 42);
   Entry.Count := 3;
+  Entry.Frames := TArray<TAtlasDebugFrame>.Create(TAtlasDebugFrame.Create(':0040A1B2 System._RaiseExcept', '', 0),
+    TAtlasDebugFrame.Create('Unit1.TForm1.Button1Click(Self=$02A3F2C0)', 'C:\P\Unit1.pas', 42));
   Text := Entry.CopyText;
   Assert.StartsWith('EConvertError: kein Integer', Text);
   Assert.IsTrue(Pos('Unit1.TForm1.Button1Click', Text) > 0);
   Assert.IsTrue(Pos('C:\P\Unit1.pas(42)', Text) > 0);
   Assert.IsTrue(Pos('Thread 1234', Text) > 0);
   Assert.IsTrue(Pos('3 x', Text) > 0);
+  Assert.IsTrue(Pos('  :0040A1B2 System._RaiseExcept', Text) > 0, 'Aufrufstapel (#578)');
+  Assert.IsTrue(Pos('  Unit1.TForm1.Button1Click(Self=$02A3F2C0) (Unit1.pas:42)', Text) > 0);
 end;
 
 procedure TAtlasDebugExceptionsTests.ParseEnglishDialog;

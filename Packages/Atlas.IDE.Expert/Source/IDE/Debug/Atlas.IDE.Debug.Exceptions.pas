@@ -86,7 +86,6 @@ type
     FStackDone: Boolean;
     FMessage: TProc<string>;
     FOnException: TArray<TAtlasDebugExceptionEvent>;
-    FSourceCache: TStringList;
     /// <summary>Quelle der Klasse schon protokolliert (Studie #783, Punkt S3; einmal je Sitzung).</summary>
     FStatusLogged: Boolean;
     class procedure Captured(AFault: Boolean); static;
@@ -114,9 +113,6 @@ type
     /// </summary>
     class procedure AddExceptionHandler(const AHandler: TAtlasDebugExceptionEvent); static;
     class procedure ClearExceptionHandlers; static;
-    /// <summary>Datei aus dem Aufrufstapel zu einem Pfad, den die IDE öffnen kann ('' wenn unbekannt): absolut und
-    /// vorhanden, sonst gleichnamige Datei der Projektgruppe.</summary>
-    class function ResolveSource(const AFileName: string): string; static;
     class function History: TAtlasDebugExceptionHistory; static;
     class function IgnoreList: TAtlasDebugIgnoreList; static;
     class procedure SaveIgnoreList(const AList: TAtlasDebugIgnoreList); static;
@@ -133,6 +129,8 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.ExceptionsWindow,
+  Atlas.IDE.Debug.Sources,
+  Atlas.Core.Debug.OwnCode,
   Atlas.UI.Strings;
 
 { TAtlasIdeDebugExceptions.TListener }
@@ -145,8 +143,7 @@ begin
   FDialog.NewSession;
   FStatusLogged := False;
   FHasPending := False;
-  if FSourceCache <> nil then
-    FSourceCache.Clear;
+  TAtlasIdeDebugSources.Clear;
   RefreshWindow;
 end;
 
@@ -199,11 +196,6 @@ begin
       FTicker := TTicker.Create;
     FRetry.OnTimer := FTicker.Tick;
   end;
-  if FSourceCache = nil then
-  begin
-    FSourceCache := TStringList.Create;
-    FSourceCache.CaseSensitive := False;
-  end;
   TAtlasIdeDebugExceptionsWindow.OnFrame :=
     procedure(AFrame: TAtlasDebugExceptionsFrame)
     begin
@@ -230,7 +222,7 @@ begin
   FreeAndNil(FTicker);
   FreeAndNil(FDialog);
   FreeAndNil(FHistory);
-  FreeAndNil(FSourceCache);
+  TAtlasIdeDebugSources.Release;
   FMessage := nil;
 end;
 
@@ -241,8 +233,14 @@ end;
 
 class procedure TAtlasIdeDebugExceptions.ApplySettings;
 begin
+  // debug.ownCodeFolders bzw. debug.justMyCode geändert (#578): Ordner neu, Anzeige des Stapels neu.
+  TAtlasIdeDebugSources.Clear;
   if not TAtlasIdeSettings.Current.DebugExceptionHistory then
+  begin
     TAtlasIdeDebugExceptionsWindow.Hide;
+    Exit;
+  end;
+  RefreshWindow;
 end;
 
 class procedure TAtlasIdeDebugExceptions.ThemeChanged;
@@ -389,8 +387,11 @@ begin
       end;
     TAtlasDebugStackRead.Ready:
       begin
+        // Pfade auflösen, eigenen Code markieren (#578); mit debug.justMyCode ist der Ort der erste eigene Rahmen.
+        TAtlasIdeDebugSources.MarkFrames(Frames);
         FPending.Frames := Frames;
-        Index := TAtlasDebugCallStack.FirstWithSource(Frames);
+        FPending.Exception.Frames := Frames;
+        Index := TAtlasDebugOwnCode.LocationIndex(Frames, TAtlasIdeSettings.Current.DebugJustMyCode);
         if Index >= 0 then
         begin
           FPending.Exception.FileName := Frames[Index].FileName;
@@ -466,54 +467,6 @@ begin
       end);
 end;
 
-class function TAtlasIdeDebugExceptions.ResolveSource(const AFileName: string): string;
-var
-  Modules: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-  Project: IOTAProject;
-  ProjectIndex, FileIndex: Integer;
-  Name, Candidate: string;
-  Files: TStringList;
-begin
-  Result := '';
-  if AFileName = '' then
-    Exit;
-  if TPath.IsPathRooted(AFileName) and FileExists(AFileName) then
-    Exit(AFileName);
-  if (FSourceCache <> nil) and (FSourceCache.IndexOfName(AFileName) >= 0) then
-    Exit(FSourceCache.Values[AFileName]);
-  Name := ExtractFileName(AFileName);
-  if Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
-  begin
-    Group := Modules.MainProjectGroup;
-    Files := TStringList.Create;
-    try
-      if Group <> nil then
-        for ProjectIndex := 0 to Group.ProjectCount - 1 do
-        begin
-          Project := Group.Projects[ProjectIndex];
-          Files.Clear;
-          Project.GetCompleteFileList(Files);
-          for FileIndex := 0 to Files.Count - 1 do
-          begin
-            Candidate := Files[FileIndex];
-            if SameText(ExtractFileName(Candidate), Name) and FileExists(Candidate) then
-            begin
-              Result := Candidate;
-              Break;
-            end;
-          end;
-          if Result <> '' then
-            Break;
-        end;
-    finally
-      Files.Free;
-    end;
-  end;
-  if FSourceCache <> nil then
-    FSourceCache.Values[AFileName] := Result;
-end;
-
 class procedure TAtlasIdeDebugExceptions.SetIgnored(const AClass: string; AIgnore: Boolean);
 var
   List: TAtlasDebugIgnoreList;
@@ -543,11 +496,17 @@ begin
     var
       Path: string;
     begin
-      Path := ResolveSource(AException.FileName);
+      Path := TAtlasIdeDebugSources.Resolve(AException.FileName);
       if Path <> '' then
         TAtlasIdeNavigation.GoToLocation(Path, AException.Line - 1, 0)
       else if Assigned(FMessage) then
         FMessage(TAtlasStrings.Fmt(TAtlasTextId.DebugExceptionsNoSource, [AException.FileName]));
+    end;
+  // Rahmen aus dem Aufrufstapel (#578): Pfad ist schon aufgelöst.
+  AFrame.OnOpenFrame :=
+    procedure(AFrameInfo: TAtlasDebugFrame)
+    begin
+      TAtlasIdeNavigation.GoToLocation(AFrameInfo.FileName, AFrameInfo.Line - 1, 0);
     end;
   AFrame.OnCopy :=
     procedure(AException: TAtlasDebugException)
@@ -566,6 +525,7 @@ begin
         FHistory.Clear;
       RefreshWindow;
     end;
+  AFrame.JustMyCode := TAtlasIdeSettings.Current.DebugJustMyCode;
   AFrame.SetHistory(FHistory, FIgnore);
 end;
 
@@ -575,7 +535,10 @@ var
 begin
   Frame := TAtlasIdeDebugExceptionsWindow.ExistingFrame;
   if Frame <> nil then
+  begin
+    Frame.JustMyCode := TAtlasIdeSettings.Current.DebugJustMyCode;
     Frame.SetHistory(FHistory, FIgnore);
+  end;
 end;
 
 end.

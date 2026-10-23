@@ -288,6 +288,8 @@ type
     FTestBreakAtStart: TCheckBox;
     FDebugHoverValues: TCheckBox;
     FDebugExceptionHistory: TCheckBox;
+    FDebugJustMyCode: TCheckBox;
+    FDebugOwnCodeFolders: TEdit;
     FActionsKey: TEdit;
     FExpandKey: TEdit;
     FShrinkKey: TEdit;
@@ -1065,6 +1067,8 @@ type
     property TestBreakAtStartCheck: TCheckBox read FTestBreakAtStart;
     property DebugHoverValuesCheck: TCheckBox read FDebugHoverValues;
     property DebugExceptionHistoryCheck: TCheckBox read FDebugExceptionHistory;
+    property DebugJustMyCodeCheck: TCheckBox read FDebugJustMyCode;
+    property DebugOwnCodeFoldersEdit: TEdit read FDebugOwnCodeFolders;
     /// <summary>Zum Testen: benannte Lesezeichen (#622).</summary>
     property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
     property BookmarksSharedCheck: TCheckBox read FBookmarksShared;
@@ -1182,6 +1186,7 @@ implementation
 uses
   System.Math,
   System.StrUtils,
+  Atlas.Core.Debug.OwnCode,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Problems.InlineHints,
   Atlas.Core.Product.Version,
@@ -1800,6 +1805,9 @@ begin
   FDebugHoverValues := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugHoverValues));
   // Exception-Verlauf beim Debuggen (#517).
   FDebugExceptionHistory := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExceptionHistory));
+  // Nur eigener Code beim Debuggen (#578).
+  FDebugJustMyCode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugJustMyCode));
+  FDebugOwnCodeFolders := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsDebugOwnCodeFolders));
 
   // Editorbefehle (#399): ein Vorrang für alle.
   AddSheet(TAtlasTextId.SettingsTabCommands);
@@ -2927,6 +2935,8 @@ begin
   FMarks.Bind(FTestBreakAtStart, ['TestBreakAtStart']);
   FMarks.Bind(FDebugHoverValues, ['DebugHoverValues']);
   FMarks.Bind(FDebugExceptionHistory, ['DebugExceptionHistory']);
+  FMarks.Bind(FDebugJustMyCode, ['DebugJustMyCode']);
+  FMarks.Bind(FDebugOwnCodeFolders, ['DebugOwnCodeFolders']);
   FMarks.Bind(FSafeAsk, ['SafeAskAfterCrash']);
   FMarks.Bind(FSafeAuto, ['SafeAutoAfterRepeatedCrash']);
   FMarks.Bind(FSafeKey, ['SafeStartupKey']);
@@ -5066,6 +5076,8 @@ begin
   FTestBreakAtStart.Checked := ASettings.TestBreakAtStart;
   FDebugHoverValues.Checked := ASettings.DebugHoverValues;
   FDebugExceptionHistory.Checked := ASettings.DebugExceptionHistory;
+  FDebugJustMyCode.Checked := ASettings.DebugJustMyCode;
+  FDebugOwnCodeFolders.Text := ASettings.DebugOwnCodeFolders;
   FSafeAsk.Checked := ASettings.SafeAskAfterCrash;
   FSafeAuto.Checked := ASettings.SafeAutoAfterRepeatedCrash;
   case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
@@ -5517,6 +5529,9 @@ begin
   ASettings.TestBreakAtStart := FTestBreakAtStart.Checked;
   ASettings.DebugHoverValues := FDebugHoverValues.Checked;
   ASettings.DebugExceptionHistory := FDebugExceptionHistory.Checked;
+  ASettings.DebugJustMyCode := FDebugJustMyCode.Checked;
+  ASettings.DebugOwnCodeFolders := TAtlasDebugOwnCode.FoldersText(TAtlasDebugOwnCode.ParseFolders(
+    FDebugOwnCodeFolders.Text));
   ASettings.SafeAskAfterCrash := FSafeAsk.Checked;
   ASettings.SafeAutoAfterRepeatedCrash := FSafeAuto.Checked;
   case FSafeKey.Choice of

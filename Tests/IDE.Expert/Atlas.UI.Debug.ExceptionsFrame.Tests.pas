@@ -2,7 +2,8 @@
 
 // Exception-Verlauf (#517), Oberfläche: Spalten, Zeilen zuletzt gesehen
 // zuerst, Anzahl mit „ignoriert“, Filter nach Text und Klasse, Hinweis ohne
-// Einträge, Zusammenfassung, Enter springt nur mit Quelltext, Strg+C kopiert.
+// Einträge, Zusammenfassung, Enter springt nur mit Quelltext, Strg+C kopiert;
+// Aufrufstapel mit zusammengefassten Bibliotheksrahmen (#578).
 
 interface
 
@@ -30,6 +31,8 @@ type
     procedure EmptyHistoryShowsHint;
     [Test]
     procedure EnterOpensOnlyWithSource;
+    [Test]
+    procedure StackGroupsLibraryFrames;
   end;
 
 implementation
@@ -41,6 +44,8 @@ uses
   Vcl.Forms,
   Atlas.Core.Debug.Exceptions,
   Atlas.Core.Debug.IgnoreList,
+  Atlas.Core.Debug.CallStack,
+  Atlas.Core.Debug.OwnCode,
   Atlas.UI.Debug.ExceptionsFrame;
 
 function Sample(ATime: TDateTime; const AClass, AMessage, AFile: string; ALine: Integer): TAtlasDebugException;
@@ -209,6 +214,61 @@ begin
     Frame.List.OnKeyDown(Frame.List, Key, []);
     Assert.AreEqual('C:\P\Kunde.pas', Opened);
     Assert.AreEqual(0, Integer(Key));
+  finally
+    Host.Free;
+    History.Free;
+  end;
+end;
+
+procedure TAtlasDebugExceptionsFrameTests.StackGroupsLibraryFrames;
+var
+  Host: TForm;
+  Frame: TAtlasDebugExceptionsFrame;
+  History: TAtlasDebugExceptionHistory;
+  Entry: TAtlasDebugException;
+  Own: TAtlasDebugFrame;
+  Opened: string;
+begin
+  History := TAtlasDebugExceptionHistory.Create;
+  Host := TForm.CreateNew(nil);
+  try
+    Entry := Sample(EncodeTime(10, 0, 0, 0), 'EConvertError', 'kein Integer', 'C:\P\Kunde.pas', 10);
+    Own := TAtlasDebugFrame.Create('Kunde.TKunde.Laden', 'C:\P\Kunde.pas', 10);
+    Own.Own := True;
+    Entry.Frames := TArray<TAtlasDebugFrame>.Create(
+      TAtlasDebugFrame.Create(':7714C3E2 KERNELBASE.RaiseException', '', 0),
+      TAtlasDebugFrame.Create('System.SysUtils.StrToInt', '', 0), Own);
+    History.Add(Entry);
+    Frame := TAtlasDebugExceptionsFrame.Create(Host);
+    Frame.Parent := Host;
+    Frame.HandleNeeded;
+    Frame.JustMyCode := True;
+    Frame.SetHistory(History, TAtlasDebugIgnoreList.Empty);
+    Opened := '';
+    Frame.OnOpenFrame :=
+      procedure(AFrame: TAtlasDebugFrame)
+      begin
+        Opened := AFrame.FileName + ':' + IntToStr(AFrame.Line);
+      end;
+    Assert.AreEqual(0, Integer(Frame.Stack.Items.Count), 'ohne Auswahl kein Stapel');
+    Frame.List.Items[0].Selected := True;
+    Assert.AreEqual(2, Integer(Frame.Stack.Items.Count));
+    Assert.AreEqual('… 2 Bibliotheksrahmen', Frame.Stack.Items[0].Caption);
+    Assert.AreEqual('Kunde.pas:10', Frame.Stack.Items[1].SubItems[0]);
+    Frame.OpenStackRow(1);
+    Assert.AreEqual('C:\P\Kunde.pas:10', Opened);
+    // Gruppe aufklappen: drei Zeilen, die ersten beiden abgeschwächt.
+    Frame.OpenStackRow(0);
+    Assert.AreEqual(3, Integer(Frame.Stack.Items.Count));
+    Assert.IsTrue(Frame.StackRows[0].Faded);
+    Assert.IsFalse(Frame.StackRows[2].Faded);
+    Opened := '';
+    Frame.OpenStackRow(0);
+    Assert.AreEqual('', Opened, 'Rahmen ohne Quelltext springt nicht');
+    // Ohne „Nur eigener Code“ jeder Rahmen einzeln.
+    Frame.JustMyCode := False;
+    Assert.AreEqual(3, Integer(Frame.Stack.Items.Count));
+    Assert.IsFalse(Frame.StackRows[0].Faded);
   finally
     Host.Free;
     History.Free;
