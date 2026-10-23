@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="generator" content="Atlas (#1118)">
+<title>Architektur: {{TITLE}}</title>
+<!-- Vorlage des HTML-Berichts der Architekturübersicht (#1118). Tools/Update-ArchitectureMap.ps1 bettet sie in
+     Atlas.Common.Architecture.MapTemplate ein; Atlas setzt Titel und Daten (JSON, Format 1) ein. Keine externen
+     Verweise: Die Seite läuft offline. -->
+<style>
+:root {
+  --bg: #f4f5f7; --panel: #fff; --line: #d6d9e0; --fg: #1d2330; --muted: #5d6576; --edge: #b4bac6;
+  --accent: #2f6fb3; --path: #d9480f; --cycle: #c92a2a; --error: #c92a2a;
+  --c0: #2f6fb3; --c1: #7a4fb0; --c2: #2e7d4f; --c3: #b07a1d; --c4: #a33c5a;
+  --c5: #1b8a8f; --c6: #6b6f1d; --c7: #c2571a; --c8: #4a5ab8; --c9: #8a4f3a;
+  --sans: "Segoe UI", system-ui, -apple-system, sans-serif; --mono: Consolas, "Cascadia Mono", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #15181e; --panel: #1e222a; --line: #333946; --fg: #e3e6ec; --muted: #9aa2b2; --edge: #4c5465;
+  --accent: #6aa6e6; --path: #ff8a4c; --cycle: #ff6b6b; --error: #ff6b6b;
+  --c0: #6aa6e6; --c1: #b28be0; --c2: #6cc293; --c3: #e0b257; --c4: #e07a98;
+  --c5: #5cc6c9; --c6: #c3c75a; --c7: #f0945a; --c8: #94a0f0; --c9: #d09a83;
+  color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 var(--sans); padding: 20px 16px 40px; }
+.wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 14px; }
+h1 { font-size: 22px; margin: 0; font-weight: 600; }
+h2 { font-size: 17px; margin: 18px 0 6px; font-weight: 600; }
+h3 { font-size: 14px; margin: 0; font-weight: 600; }
+.muted { color: var(--muted); font-size: 12.5px; }
+.mono { font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
+nav.toc { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; }
+a { color: var(--accent); }
+.bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; font-size: 13px; }
+.grp { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+select, button, input[type=text] { font: inherit; font-size: 13px; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 3px; padding: 3px 8px; max-width: 220px; }
+button { cursor: pointer; background: var(--panel); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 14px; }
+@media (max-width: 880px) { .main { grid-template-columns: 1fr; } }
+.map { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; height: 640px; overflow: hidden; }
+@media (max-width: 880px) { .map { height: 460px; } }
+.map svg { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; user-select: none; }
+.hint { position: absolute; left: 10px; bottom: 6px; font-size: 11.5px; color: var(--muted); pointer-events: none; }
+.side { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; display: grid; gap: 6px; min-width: 0; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 12.5px; }
+.kv span:nth-child(odd) { color: var(--muted); }
+ol.steps { margin: 0; padding-left: 20px; display: grid; gap: 2px; font-size: 12.5px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 8px; font-size: 12px; }
+.legend button { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px; border-radius: 10px; }
+.legend button[aria-pressed="false"] { opacity: .4; }
+.sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+.node circle { stroke: var(--panel); stroke-width: 1.5; }
+.node text { font-size: 10px; }
+.node text, .group text { font-family: var(--mono); fill: var(--fg); pointer-events: none; paint-order: stroke; stroke: var(--panel); stroke-width: 3px; }
+.group text { font-weight: 600; }
+circle.ring { fill: none; stroke: var(--line); stroke-dasharray: 4 4; }
+.group circle.body { fill-opacity: .25; stroke-width: 2; }
+.dim { opacity: .15; }
+.link { stroke: var(--edge); stroke-width: 1; fill: none; }
+.link.impl { stroke-dasharray: 3 3; }
+.link.path { stroke: var(--path); stroke-width: 3; opacity: 1; }
+.link.cycle { stroke: var(--cycle); stroke-width: 2.5; opacity: 1; }
+.node.onpath circle { stroke: var(--path); stroke-width: 3; }
+.node.oncycle circle { stroke: var(--cycle); stroke-width: 3; }
+.node.sel circle { stroke: var(--fg); stroke-width: 3; }
+table { border-collapse: collapse; width: 100%; background: var(--panel); border: 1px solid var(--line); font-size: 13px; }
+th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { cursor: pointer; white-space: nowrap; font-weight: 600; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+.scroll { overflow-x: auto; }
+details { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; margin-bottom: 6px; }
+summary { cursor: pointer; }
+.error { color: var(--error); font-weight: 600; }
+.tag { font-size: 11px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); color: var(--muted); }
+.unit-link { cursor: pointer; color: var(--accent); text-decoration: underline dotted; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="title"></h1>
+    <div class="muted" id="stamp"></div>
+    <div id="counts"></div>
+    <div class="muted" id="scope"></div>
+  </header>
+  <nav class="toc">
+    <a href="#karte">Architekturkarte</a><a href="#zentrale-units">Zentrale Units</a><a href="#teilsysteme">Teilsysteme</a>
+    <a href="#ausreisser">Ausreißer</a><a href="#zyklen">Zyklen</a><a href="#querverbindungen">Querverbindungen</a>
+  </nav>
+
+  <h2 id="karte">Architekturkarte</h2>
+  <div class="bar">
+    <div class="grp">
+      <label for="from">Von</label><select id="from"></select>
+      <label for="to">nach</label><select id="to"></select>
+      <button id="go" class="primary" type="button">Weg zeigen</button>
+      <button id="clear" type="button">Zurücksetzen</button>
+    </div>
+    <div class="grp">
+      <label><input id="cyc" type="checkbox"> Zyklen markieren</label>
+      <label><input id="impl" type="checkbox" checked> implementation-uses</label>
+      <label><input id="lbl" type="checkbox" checked> Namen</label>
+    </div>
+    <div class="grp">
+      <label for="q">Suchen</label><input id="q" type="text" placeholder="Unit-Name" size="14">
+      <button id="expand" type="button" hidden>Alle aufklappen</button>
+    </div>
+  </div>
+  <div class="main">
+    <div class="map">
+      <svg id="svg" role="img" aria-label="Karte der Unit-Abhängigkeiten"><g id="view"><g id="rings"></g><g id="links"></g><g id="nodes"></g></g></svg>
+      <div class="hint" id="hint">Ziehen verschiebt, Mausrad zoomt · Klick wählt eine Unit · Umschalt+Klick setzt das Ziel</div>
+    </div>
+    <div class="side">
+      <div class="card"><h3>Teilsysteme</h3><div class="legend" id="legend"></div><div class="muted">Klick blendet ein Teilsystem aus und ein.</div></div>
+      <div class="card"><h3>Weg</h3><div class="muted" id="pathInfo">Von und nach wählen, dann „Weg zeigen“.</div><ol class="steps" id="steps"></ol></div>
+      <div class="card"><h3>Unit</h3><div id="unitInfo" class="muted">Klick auf eine Unit zeigt ihren Steckbrief.</div></div>
+    </div>
+  </div>
+
+  <h2 id="zentrale-units">Zentrale Units</h2>
+  <div class="muted">„gesamt abhängig“: Units, die neu übersetzt werden, wenn sich das interface der Unit ändert. Klick auf eine Spaltenüberschrift sortiert.</div>
+  <div class="scroll"><table id="central"></table></div>
+
+  <h2 id="teilsysteme">Teilsysteme</h2>
+  <div class="scroll"><table id="subsystems"></table></div>
+  <div id="subsystemDetails"></div>
+
+  <h2 id="ausreisser">Ausreißer</h2>
+  <div id="outliers"></div>
+
+  <h2 id="zyklen">Zyklen</h2>
+  <div id="cycles"></div>
+
+  <h2 id="querverbindungen">Querverbindungen</h2>
+  <div id="crossLinks"></div>
+</div>
+<script id="atlas-data" type="application/json">{{DATA}}</script>
+<script>
+(function () {
+  'use strict';
+  var D = JSON.parse(document.getElementById('atlas-data').textContent);
+  var U = D.units, S = D.subsystems, NS = 'http://www.w3.org/2000/svg';
+  var COLLAPSE_FROM = 500;
+  function $(id) { return document.getElementById(id); }
+  function el(tag, attrs, text) {
+    var e = document.createElement(tag);
+    for (var k in attrs) if (Object.prototype.hasOwnProperty.call(attrs, k)) e.setAttribute(k, attrs[k]);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function svgEl(tag, attrs) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) if (Object.prototype.hasOwnProperty.call(attrs, k)) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function color(s) { return 'var(--c' + (s % 10) + ')'; }
+  function section(k) { return k === 'i' ? 'interface' : 'implementation'; }
+  function roleCaption(r) { return r === 'foundation' ? 'Fundament' : r === 'hub' ? 'Drehscheibe' : ''; }
+  function cycleCaption(c) { return c.interfaceOnly ? 'Zyklus nur über interface (Compilerfehler F2047)' : 'Zyklus über implementation'; }
+  function where(e) { return e.file ? e.file + ':' + e.line + ':' + e.character : ''; }
+  function edgeText(e) { var w = where(e); return U[e.source].name + ' → ' + U[e.target].name + ' (' + e.section + (w ? ', ' + w : '') + ')'; }
+
+  // Kopf
+  $('title').textContent = 'Architektur: ' + D.title;
+  $('stamp').textContent = 'Stand ' + D.created.replace('T', ' ').substring(0, 16) + ' · Index-Generation ' + D.generation + ' · Rechendauer ' + D.durationMs + ' ms';
+  var sm = D.summary;
+  $('counts').textContent = 'Units: ' + sm.units + ' · uses-Kanten: ' + sm.edges + ' · Teilsysteme: ' + sm.subsystems + ' · Zyklen: ' + sm.cycles +
+    (sm.interfaceCycles ? ' (davon nur interface: ' + sm.interfaceCycles + ')' : '') + ' · Querverbindungen: ' + sm.crossLinks + ' · Ausreißer: ' + sm.outliers;
+  $('scope').textContent = 'Umfang: ' + (D.scope === 'project' ? 'Projekt' : 'Projektgruppe') + (D.includeLibrary ? ', mit' : ', ohne') + ' Bibliotheks-Units' +
+    (D.excludes.length ? ', ausgeschlossen: ' + D.excludes.join(', ') : '');
+
+  // Graph
+  var out = U.map(function () { return []; }), inn = U.map(function () { return []; });
+  var links = D.edges.map(function (e, i) { var l = { i: i, s: e[0], t: e[1], k: e[2] }; out[e[0]].push(l); inn[e[1]].push(l); return l; });
+  var cycleOf = {};
+  D.cycles.forEach(function (c, i) { c.component.forEach(function (u) { if (cycleOf[u] === undefined) cycleOf[u] = i; }); });
+  var hidden = {}, expanded = {}, pathLinks = null, pathNodes = null, selected = -1;
+  var collapsed = U.length >= COLLAPSE_FROM;
+  if (collapsed) { $('expand').hidden = false; $('hint').textContent = 'Teilsysteme als Knoten: Doppelklick klappt eines auf · Ziehen verschiebt, Mausrad zoomt'; }
+  function isOpen(s) { return !collapsed || !!expanded[s]; }
+  function visibleUnit(u) { return !hidden[U[u].subsystem]; }
+
+  // Ansicht: Verschieben und Zoomen über eine Transformation
+  var svg = $('svg'), view = $('view'), tx = 0, ty = 0, scale = 1;
+  function applyView() { view.setAttribute('transform', 'translate(' + tx + ',' + ty + ') scale(' + scale + ')'); }
+  function fit() {
+    var r = svg.getBoundingClientRect(), minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    S.forEach(function (s) { minX = Math.min(minX, s.x - s.r); minY = Math.min(minY, s.y - s.r); maxX = Math.max(maxX, s.x + s.r); maxY = Math.max(maxY, s.y + s.r); });
+    if (!isFinite(minX)) return;
+    scale = Math.min(r.width / (maxX - minX + 40), r.height / (maxY - minY + 40), 2);
+    tx = r.width / 2 - (minX + maxX) / 2 * scale; ty = r.height / 2 - (minY + maxY) / 2 * scale; applyView();
+  }
+  svg.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    var r = svg.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, f = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+    var ns = Math.max(0.05, Math.min(8, scale * f)); tx = mx - (mx - tx) * ns / scale; ty = my - (my - ty) * ns / scale; scale = ns; applyView();
+  }, { passive: false });
+  var drag = null;
+  svg.addEventListener('pointerdown', function (e) {
+    var t = e.target.closest('[data-u]');
+    drag = { x: e.clientX, y: e.clientY, tx: tx, ty: ty, u: t ? +t.getAttribute('data-u') : -1, moved: false, id: e.pointerId };
+  });
+  svg.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    // Erst beim Ziehen festhalten: Mit Pointer-Capture ginge der Klick an das SVG statt an die Unit.
+    if (!drag.moved && Math.abs(dx) + Math.abs(dy) > 3) { drag.moved = true; svg.setPointerCapture(drag.id); }
+    if (!drag.moved) return;
+    if (drag.u >= 0 && isOpen(U[drag.u].subsystem)) { U[drag.u].x += dx / scale; U[drag.u].y += dy / scale; drag.x = e.clientX; drag.y = e.clientY; draw(); }
+    else { tx = drag.tx + dx; ty = drag.ty + dy; applyView(); }
+  });
+  svg.addEventListener('pointerup', function () { setTimeout(function () { drag = null; }, 0); });
+
+  // Zeichnen
+  function nodeRadius(u) { return 5 + Math.sqrt(U[u].total) * 1.8; }
+  function anchor(u) { var s = U[u].subsystem; return isOpen(s) ? { x: U[u].x, y: U[u].y, r: nodeRadius(u) } : { x: S[s].x, y: S[s].y, r: groupRadius(s) }; }
+  // Zugeklappt füllt ein Teilsystem den größten Teil seines Platzes auf der Karte.
+  function groupRadius(s) { return Math.max(20, S[s].r * 0.8); }
+  function groupFont(s) { return Math.max(12, groupRadius(s) / 5); }
+  function draw() {
+    var rings = $('rings'), lg = $('links'), ng = $('nodes'), showCyc = $('cyc').checked, useImpl = $('impl').checked, labels = $('lbl').checked;
+    var q = $('q').value.trim().toLowerCase();
+    rings.textContent = ''; lg.textContent = ''; ng.textContent = '';
+    // Kanten; zugeklappte Teilsysteme fassen ihre Kanten zu einer zusammen.
+    var seen = {};
+    links.forEach(function (l) {
+      if (!visibleUnit(l.s) || !visibleUnit(l.t) || (!useImpl && l.k === 'm')) return;
+      var a = anchor(l.s), b = anchor(l.t), ss = U[l.s].subsystem, ts = U[l.t].subsystem;
+      var key = (isOpen(ss) ? 'u' + l.s : 's' + ss) + '>' + (isOpen(ts) ? 'u' + l.t : 's' + ts);
+      if (!isOpen(ss) && !isOpen(ts) && ss === ts) return;
+      var onPath = pathLinks && pathLinks.indexOf(l) >= 0;
+      if (seen[key] && !onPath) return; seen[key] = true;
+      var dx = b.x - a.x, dy = b.y - a.y, len = Math.sqrt(dx * dx + dy * dy) || 1;
+      var cls = 'link' + (l.k === 'm' ? ' impl' : '');
+      if (onPath) cls += ' path';
+      else if (showCyc && cycleOf[l.s] !== undefined && cycleOf[l.s] === cycleOf[l.t]) cls += ' cycle';
+      else if (pathLinks) cls += ' dim';
+      lg.appendChild(svgEl('line', { 'class': cls, x1: a.x, y1: a.y, x2: b.x - dx / len * (b.r + 2), y2: b.y - dy / len * (b.r + 2), 'marker-end': 'url(#' + (onPath ? 'arrP' : 'arr') + ')' }));
+    });
+    S.forEach(function (s, i) {
+      if (hidden[i]) return;
+      if (isOpen(i)) {
+        if (collapsed || S.length > 1) rings.appendChild(svgEl('circle', { 'class': 'ring', cx: s.x, cy: s.y, r: s.r }));
+        if (collapsed) {
+          var g0 = svgEl('g', { 'class': 'group', 'data-s': i });
+          var t0 = svgEl('text', { x: s.x, y: s.y - s.r - 6, 'text-anchor': 'middle', 'font-size': groupFont(i) });
+          t0.textContent = s.name; g0.appendChild(t0);
+          rings.appendChild(g0);
+        }
+        return;
+      }
+      var g = svgEl('g', { 'class': 'group', 'data-s': i, tabindex: 0 });
+      g.appendChild(svgEl('circle', { 'class': 'body', cx: s.x, cy: s.y, r: groupRadius(i), fill: color(i), stroke: color(i) }));
+      var t = svgEl('text', { x: s.x, y: s.y + groupFont(i) / 3, 'text-anchor': 'middle', 'font-size': groupFont(i) });
+      t.textContent = s.name + ' (' + s.units.length + ')';
+      g.appendChild(t);
+      var ti = svgEl('title', {}); ti.textContent = s.name + ': ' + s.units.length + ' Units · Doppelklick klappt auf'; g.appendChild(ti);
+      ng.appendChild(g);
+    });
+    U.forEach(function (u, i) {
+      if (!visibleUnit(i) || !isOpen(u.subsystem)) return;
+      var cls = 'node';
+      if (pathNodes) { if (pathNodes[i]) cls += ' onpath'; else cls += ' dim'; }
+      else if (q && u.name.toLowerCase().indexOf(q) < 0) cls += ' dim';
+      if (showCyc && cycleOf[i] !== undefined) cls += ' oncycle';
+      if (i === selected) cls += ' sel';
+      var g = svgEl('g', { 'class': cls, 'data-u': i, tabindex: 0, transform: 'translate(' + u.x + ',' + u.y + ')' });
+      g.appendChild(svgEl('circle', { r: nodeRadius(i), fill: color(u.subsystem) }));
+      if (labels) { var t = svgEl('text', { x: nodeRadius(i) + 3, y: 3 }); t.textContent = u.name; g.appendChild(t); }
+      var ti = svgEl('title', {}); ti.textContent = u.name + ' · ' + S[u.subsystem].name; g.appendChild(ti);
+      ng.appendChild(g);
+    });
+  }
+  var defs = svgEl('defs', {});
+  [['arr', 'var(--edge)'], ['arrP', 'var(--path)']].forEach(function (m) {
+    var mk = svgEl('marker', { id: m[0], viewBox: '0 -4 8 8', refX: 8, markerWidth: 6, markerHeight: 6, orient: 'auto' });
+    mk.appendChild(svgEl('path', { d: 'M0,-4L8,0L0,4', fill: m[1] })); defs.appendChild(mk);
+  });
+  svg.insertBefore(defs, view);
+
+  svg.addEventListener('click', function (e) {
+    if (drag && drag.moved) return;
+    var t = e.target.closest('[data-u]');
+    if (!t) return;
+    var u = +t.getAttribute('data-u');
+    if (e.shiftKey && selected >= 0) { $('from').value = selected; $('to').value = u; showPath(); } else select(u);
+  });
+  svg.addEventListener('dblclick', function (e) {
+    var t = e.target.closest('[data-s]');
+    if (!t || !collapsed) return;
+    var s = +t.getAttribute('data-s'); expanded[s] = !expanded[s]; draw();
+  });
+  svg.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    var t = e.target.closest('[data-u]'), g = e.target.closest('[data-s]');
+    if (t) select(+t.getAttribute('data-u')); else if (g && collapsed) { var s = +g.getAttribute('data-s'); expanded[s] = !expanded[s]; draw(); }
+  });
+  $('expand').addEventListener('click', function () {
+    var all = S.every(function (s, i) { return expanded[i]; });
+    S.forEach(function (s, i) { expanded[i] = !all; });
+    $('expand').textContent = all ? 'Alle aufklappen' : 'Alle zuklappen'; draw();
+  });
+
+  // Weg: Breitensuche über uses (wie find_path mit via: ["uses"])
+  var order = U.map(function (u, i) { return i; }).sort(function (a, b) { return U[a].name.localeCompare(U[b].name); });
+  order.forEach(function (i) { $('from').add(new Option(U[i].name, i)); $('to').add(new Option(U[i].name, i)); });
+  function shortest(a, b) {
+    var useImpl = $('impl').checked, prev = {}, queue = [a], head = 0; prev[a] = null;
+    while (head < queue.length) {
+      var x = queue[head++]; if (x === b) break;
+      for (var j = 0; j < out[x].length; j++) {
+        var l = out[x][j];
+        if (prev[l.t] !== undefined || (!useImpl && l.k === 'm') || !visibleUnit(l.t)) continue;
+        prev[l.t] = l; queue.push(l.t);
+      }
+    }
+    if (prev[b] === undefined) return null;
+    var res = [], cur = b; while (prev[cur]) { res.unshift(prev[cur]); cur = prev[cur].s; } return res;
+  }
+  function showPath() {
+    var a = +$('from').value, b = +$('to').value, info = $('pathInfo'), ol = $('steps');
+    ol.textContent = ''; pathLinks = null; pathNodes = null;
+    if (a === b) { info.textContent = 'Start und Ziel sind gleich.'; draw(); return; }
+    var p = shortest(a, b);
+    if (!p) { info.textContent = 'Kein Weg: ' + U[a].name + ' hängt weder direkt noch indirekt von ' + U[b].name + ' ab.'; draw(); return; }
+    pathLinks = p; pathNodes = {}; pathNodes[a] = true; expanded[U[a].subsystem] = true;
+    info.textContent = 'Kürzester Weg: ' + p.length + (p.length === 1 ? ' Schritt' : ' Schritte') + '; gestrichelt = implementation-uses.';
+    ol.appendChild(el('li', { 'class': 'mono' }, U[a].name));
+    p.forEach(function (l) { pathNodes[l.t] = true; expanded[U[l.t].subsystem] = true; ol.appendChild(el('li', { 'class': 'mono' }, U[l.t].name + '  (uses im ' + section(l.k) + ')')); });
+    draw();
+  }
+  $('go').addEventListener('click', showPath);
+  $('clear').addEventListener('click', function () {
+    pathLinks = null; pathNodes = null; selected = -1; $('steps').textContent = '';
+    $('pathInfo').textContent = 'Von und nach wählen, dann „Weg zeigen“.'; $('unitInfo').textContent = 'Klick auf eine Unit zeigt ihren Steckbrief.'; draw();
+  });
+  ['cyc', 'impl', 'lbl'].forEach(function (id) { $(id).addEventListener('change', function () { if (pathLinks) showPath(); else draw(); }); });
+  $('q').addEventListener('input', function () {
+    var q = $('q').value.trim().toLowerCase();
+    if (collapsed && q) U.forEach(function (u) { if (u.name.toLowerCase().indexOf(q) >= 0) expanded[u.subsystem] = true; });
+    draw();
+  });
+
+  // Steckbrief
+  function select(u) {
+    selected = u; $('from').value = u; var x = U[u], box = $('unitInfo'); box.textContent = ''; box.className = '';
+    box.appendChild(el('div', { 'class': 'mono', style: 'font-weight:600' }, x.name));
+    box.appendChild(el('div', { 'class': 'muted mono' }, x.file));
+    var kv = el('div', { 'class': 'kv' });
+    var rows = [['Teilsystem', S[x.subsystem].name], ['direkt abhängig', x.direct], ['gesamt abhängig', x.total], ['verwendet', x.uses]];
+    if (x.role) rows.push(['Rolle', roleCaption(x.role)]);
+    rows.push(['Zyklus', cycleOf[u] !== undefined ? cycleCaption(D.cycles[cycleOf[u]]) : 'keiner']);
+    D.outliers.forEach(function (o) { if (o.unit === u) rows.push(['Ausreißer', 'gehört eher zu ' + S[o.suggested].name]); });
+    rows.forEach(function (r) { kv.appendChild(el('span', {}, r[0])); kv.appendChild(el('span', {}, String(r[1]))); });
+    box.appendChild(kv);
+    box.appendChild(el('div', { 'class': 'muted' }, 'Umschalt+Klick auf eine andere Unit zeigt den Weg dorthin.'));
+    draw();
+  }
+  function unitLink(u) { var a = el('span', { 'class': 'unit-link mono', tabindex: 0 }, U[u].name); a.addEventListener('click', function () { expanded[U[u].subsystem] = true; select(u); $('karte').scrollIntoView(); }); return a; }
+
+  // Legende
+  S.forEach(function (s, i) {
+    var b = el('button', { type: 'button', 'aria-pressed': 'true' });
+    var sw = el('span', { 'class': 'sw' }); sw.style.background = color(i); b.appendChild(sw);
+    b.appendChild(document.createTextNode(s.name + ' ')); b.appendChild(el('span', { 'class': 'muted' }, String(s.units.length)));
+    b.addEventListener('click', function () { hidden[i] = !hidden[i]; b.setAttribute('aria-pressed', String(!hidden[i])); draw(); });
+    $('legend').appendChild(b);
+  });
+
+  // Tabellen
+  function table(target, head, rows, numeric) {
+    var t = $(target), sortCol = -1, asc = true;
+    function render() {
+      t.textContent = '';
+      var tr = el('tr');
+      head.forEach(function (h, c) {
+        var th = el('th', numeric[c] ? { 'class': 'n' } : {}, h + (c === sortCol ? (asc ? ' ▲' : ' ▼') : ''));
+        th.addEventListener('click', function () { asc = sortCol === c ? !asc : !numeric[c]; sortCol = c; render(); });
+        tr.appendChild(th);
+      });
+      t.appendChild(tr);
+      var r = rows.slice();
+      if (sortCol >= 0) r.sort(function (a, b) {
+        var x = a[sortCol].v, y = b[sortCol].v, d = numeric[sortCol] ? x - y : String(x).localeCompare(String(y));
+        return (asc ? d : -d) || a[0].v - b[0].v;
+      });
+      r.forEach(function (row) {
+        var tr2 = el('tr');
+        row.forEach(function (cell, c) { var td = el('td', numeric[c] ? { 'class': 'n' } : {}); if (cell.node) td.appendChild(cell.node()); else td.textContent = cell.v; tr2.appendChild(td); });
+        t.appendChild(tr2);
+      });
+    }
+    render();
+  }
+  table('central', ['#', 'Unit', 'Teilsystem', 'direkt abhängig', 'gesamt abhängig', 'verwendet', 'Rolle'],
+    D.central.map(function (u, i) { var x = U[u]; return [{ v: i + 1 }, { v: x.name, node: function () { return unitLink(u); } }, { v: S[x.subsystem].name }, { v: x.direct }, { v: x.total }, { v: x.uses }, { v: roleCaption(x.role) }]; }),
+    [true, false, false, true, true, true, false]);
+  table('subsystems', ['#', 'Teilsystem', 'Units', 'zentrale Unit', 'Zusammenhalt %', 'Kanten innen', 'Kanten nach außen'],
+    S.map(function (s, i) { return [{ v: i + 1 }, { v: s.name }, { v: s.units.length }, { v: s.central >= 0 ? U[s.central].name : '' }, { v: Math.round(s.cohesion * 100) }, { v: s.inner }, { v: s.outer }]; }),
+    [true, false, true, false, true, true, true]);
+  var outlierOf = {}; D.outliers.forEach(function (o) { outlierOf[o.unit] = o; });
+  S.forEach(function (s) {
+    var d = el('details'); d.appendChild(el('summary', {}, s.name + ' · ' + s.units.length + ' Units · Zusammenhalt ' + Math.round(s.cohesion * 100) + ' %'));
+    var p = el('div');
+    s.units.forEach(function (u, k) {
+      if (k) p.appendChild(document.createTextNode(', '));
+      p.appendChild(unitLink(u));
+      if (outlierOf[u]) p.appendChild(el('span', { 'class': 'tag' }, 'Ausreißer → ' + S[outlierOf[u].suggested].name));
+    });
+    d.appendChild(p); $('subsystemDetails').appendChild(d);
+  });
+  if (!D.outliers.length) $('outliers').appendChild(el('p', { 'class': 'muted' }, 'Keine.'));
+  else {
+    var ot = el('table'); ot.id = 'outlierTable'; $('outliers').appendChild(ot);
+    table('outlierTable', ['Unit', 'in Teilsystem', 'Vorschlag', 'Grund', 'Kanten im eigenen', 'Kanten zum Vorschlag'],
+      D.outliers.map(function (o) { return [{ v: U[o.unit].name, node: function () { return unitLink(o.unit); } }, { v: S[U[o.unit].subsystem].name }, { v: S[o.suggested].name },
+        { v: o.reason === 'namespace' ? 'Namensraum passt zu einem anderen Teilsystem' : 'mehr Kanten in ein anderes Teilsystem' }, { v: o.inside }, { v: o.toward }]; }),
+      [false, false, false, false, true, true]);
+  }
+  if (!D.cycles.length) $('cycles').appendChild(el('p', { 'class': 'muted' }, 'Keine.'));
+  D.cycles.forEach(function (c, i) {
+    var d = el('details'); d.open = i < 5;
+    var s = el('summary'); s.appendChild(el('span', c.interfaceOnly ? { 'class': 'error' } : {}, (i + 1) + '. ' + cycleCaption(c)));
+    var path = c.edges.length ? U[c.edges[0].source].name : '';
+    c.edges.forEach(function (e) { path += ' → ' + U[e.target].name; });
+    s.appendChild(el('div', { 'class': 'mono' }, path)); d.appendChild(s);
+    var ul = el('ul'); c.edges.forEach(function (e) { ul.appendChild(el('li', { 'class': 'mono' }, edgeText(e))); });
+    if (c.component.length > c.units.length) ul.appendChild(el('li', {}, 'Komponente: ' + c.component.map(function (u) { return U[u].name; }).join(', ')));
+    d.appendChild(ul); $('cycles').appendChild(d);
+  });
+  if (!D.crossLinks.length) $('crossLinks').appendChild(el('p', { 'class': 'muted' }, 'Keine.'));
+  else {
+    var ct = el('table'); ct.id = 'crossTable'; $('crossLinks').appendChild(ct);
+    table('crossTable', ['Von', 'Nach', 'Abschnitt', 'Teilsysteme', 'Grund', 'Fundstelle'],
+      D.crossLinks.map(function (l) { return [{ v: U[l.source].name, node: function () { return unitLink(l.source); } }, { v: U[l.target].name, node: function () { return unitLink(l.target); } }, { v: l.section },
+        { v: S[l.from].name + ' → ' + S[l.to].name }, { v: (l.reason === 'rare' ? 'selten' : 'gegen die Hauptrichtung') + ' (' + l.forward + ' hin, ' + l.backward + ' zurück)' }, { v: where(l) }]; }),
+      [false, false, false, false, false, false]);
+  }
+
+  if (U.length > 1) { $('from').value = D.central.length ? D.central[D.central.length - 1] : order[0]; $('to').value = D.central.length ? D.central[0] : order[1]; }
+  draw(); fit();
+  window.addEventListener('resize', fit);
+})();
+</script>
+</body>
+</html>

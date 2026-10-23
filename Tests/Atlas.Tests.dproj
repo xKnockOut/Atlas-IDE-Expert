@@ -177,6 +177,8 @@
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.UsesService.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Louvain.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Overview.Tests.pas"/>
+        <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Layout.Tests.pas"/>
+        <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Report.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Todos.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.Tests.pas"/>
