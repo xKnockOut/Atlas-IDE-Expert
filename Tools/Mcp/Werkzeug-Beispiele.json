@@ -1,0 +1,113 @@
+{
+  "$comment": [
+    "Beispielaufrufe aller MCP-Werkzeuge für Tools/Test-McpTools.ps1 (#1125), bezogen auf Tests/Referenzprojekt.",
+    "Jedes Werkzeug aus tools/list braucht hier einen Eintrag, sonst scheitert der Probelauf.",
+    "arguments: Argumente von tools/call. Platzhalter in Zeichenketten: {{zeile:Text}} = erste Zeile in 'file', die Text enthält;",
+    "  {{spalte:Text}} = Spalte (ab 1) von Text in der Zeile aus 'line'. So bleiben die Beispiele stabil, wenn sich Zeilen verschieben.",
+    "contains: Text, der in der Antwort stehen muss (Groß-/Kleinschreibung zählt).",
+    "process: true = Werkzeug startet einen Prozess oder braucht die IDE; läuft nur mit -WithProcessTools.",
+    "expectError: true = isError in der Antwort ist hier richtig."
+  ],
+  "root": "Tests/Referenzprojekt",
+  "tools": {
+    "find_symbol": {
+      "arguments": { "name": "TRefAnzeige" },
+      "contains": "Ref.Komponenten.Anzeige"
+    },
+    "get_declaration": {
+      "arguments": { "name": "TRefAnzeige" },
+      "contains": "TGraphicControl"
+    },
+    "get_type_hierarchy": {
+      "arguments": { "name": "TRefAnzeige" },
+      "contains": "TGraphicControl"
+    },
+    "get_component_info": {
+      "arguments": { "name": "TRefAnzeige" },
+      "contains": "TRefAnzeige"
+    },
+    "get_unit_outline": {
+      "arguments": { "unit": "Ref.Komponenten.Anzeige" },
+      "contains": "TRefAnzeige"
+    },
+    "find_references": {
+      "arguments": { "name": "TKundenSuche" },
+      "contains": "Ref.Daten.Suche"
+    },
+    "get_call_hierarchy": {
+      "arguments": { "name": "TKundenSuche.Suchen", "direction": "incoming" }
+    },
+    "qualified_name": {
+      "arguments": {
+        "file": "Source/Ref.Komponenten.Anzeige.pas",
+        "line": "{{zeile:procedure TRefAnzeige.SetStil}}",
+        "column": "{{spalte:SetStil}}"
+      },
+      "contains": "TRefAnzeige.SetStil"
+    },
+    "get_diagnostics": {
+      "arguments": { "file": "Source/Ref.Pruefung.Verstoesse.pas" },
+      "contains": "with-statement"
+    },
+    "hook_check": {
+      "arguments": { "file": "Source/Ref.Pruefung.Verstoesse.pas", "severity": "hint" },
+      "contains": "PostToolUse"
+    },
+    "get_metrics": {
+      "arguments": { "file": "Source/Ref.Pruefung.Verstoesse.pas", "format": "json" }
+    },
+    "get_todos": {
+      "arguments": { "file": "Source/Ref.Pruefung.Verstoesse.pas", "format": "json" }
+    },
+    "check_code": {
+      "arguments": {
+        "file": "Source/Ref.Daten.Suche.pas",
+        "text": "unit Ref.Daten.Suche;\r\n\r\ninterface\r\n\r\nprocedure Probe;\r\n\r\nimplementation\r\n\r\nprocedure Probe;\r\nbegin\r\n  with TObject.Create do\r\n    Free;\r\nend;\r\n\r\nend.\r\n"
+      },
+      "contains": "with-statement"
+    },
+    "get_dfm_info": {
+      "arguments": { "file": "Source/Ref.Formulare.Haupt.dfm" },
+      "contains": "TButton"
+    },
+    "explain_finding": {
+      "arguments": {
+        "file": "Source/Ref.Pruefung.Verstoesse.pas",
+        "line": "{{zeile:with APunkt do}}",
+        "rule": "with-statement"
+      },
+      "contains": "with-statement"
+    },
+    "rename_symbol": {
+      "arguments": {
+        "file": "Source/Ref.Daten.Suche.pas",
+        "line": "{{zeile:TKundenSuche = class}}",
+        "column": "{{spalte:TKundenSuche}}",
+        "newName": "TKundenSucher",
+        "dryRun": true
+      },
+      "contains": "TKundenSucher"
+    },
+    "apply_code_action": {
+      "arguments": {
+        "file": "Source/Ref.Pruefung.Verstoesse.pas",
+        "line": "{{zeile:Unbenutzt: Integer;}}",
+        "dryRun": true
+      }
+    },
+    "get_last_build": {
+      "arguments": {}
+    },
+    "build_project": {
+      "arguments": { "project": "RefApp", "mode": "check" },
+      "process": true
+    },
+    "run_tests": {
+      "arguments": {},
+      "process": true
+    }
+  },
+  "resources": {
+    "delphi://conventions": { "contains": "with-statement" }
+  }
+}
