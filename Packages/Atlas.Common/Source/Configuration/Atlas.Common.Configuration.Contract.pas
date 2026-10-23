@@ -316,6 +316,9 @@ type
     /// <summary>Nach "inherited " zuerst der vollständige Aufruf der Vorfahrmethode mit den eigenen Parametern,
     /// in Konstruktoren und Destruktoren auch die übrigen; abstrakte fehlen (#482). Aus: nur die Namen.</summary>
     InheritedCall: Boolean;
+    /// <summary>Nach "[" vor einer Deklaration nur Attributklassen ohne Endung Attribute, bekannte zuerst, dazu
+    /// die Compiler-Attribute (#465). Aus: die gewöhnliche Liste.</summary>
+    Attributes: Boolean;
     /// <summary>Gleichnamige Bezeichner aus verschiedenen Units als Varianten mit ihrer Unit; die vom Compiler
     /// gewählte zuerst mit „aktiv“ (#475). Aus: nur die aktive.</summary>
     SameNameVariants: Boolean;
@@ -869,6 +872,7 @@ begin
   Result.AssignAllFields := False;
   Result.UsesDetails := True;
   Result.InheritedCall := True;
+  Result.Attributes := True;
   Result.SameNameVariants := True;
   Result.SameNameInsert := TCompletionSameNameInsert.Prefix;
   Result.ShowFmxUnits := False;

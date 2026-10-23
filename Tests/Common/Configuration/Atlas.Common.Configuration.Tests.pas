@@ -494,6 +494,12 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"completion": {"inheritedCall": 1}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Attribute nach "[" (#465)
+  Assert.IsTrue(Parse('{}', Issues).Completion.Attributes);
+  Assert.IsFalse(Parse('{"completion": {"attributes": false}}', Issues).Completion.Attributes);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"attributes": "ja"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Gleiche Namen aus verschiedenen Units (#475)
   Assert.IsTrue(Parse('{}', Issues).Completion.SameNameVariants);
   Assert.IsTrue(Parse('{}', Issues).Completion.SameNameInsert = TCompletionSameNameInsert.Prefix);

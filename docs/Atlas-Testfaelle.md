@@ -2432,6 +2432,23 @@ Voraussetzung: Server läuft in der IDE, `completion.formatPlaceholders` an (Vor
 | FP15 | Helles und dunkles Thema; FP1 mit sieben Platzhaltern | Farben gut lesbar, der siebte Platzhalter hat die Farbe des ersten |
 | FP16 | `Format(mMuster, [A` mit Variable `mMuster` | Keine Platzhalter-Zeile, keine Färbung; Hint sonst wie bisher |
 
+## Attribute nach „[“ (#465)
+
+Voraussetzung: Server läuft in der IDE, DUnitX im Bibliothekspfad indiziert, `completion.attributes` an (Vorgabe).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AT1 | Unit ohne DUnitX in uses; vor einer Methode `[Te` tippen | `Test`, `TestCase`, `TearDown` mit Badge `at` und Marke „+ DUnitX.TestFramework“; nur je einmal |
+| AT2 | AT1, `TestCase` übernehmen | Eingefügt `TestCase` (ohne Attribute), `DUnitX.TestFramework` in uses ergänzt |
+| AT3 | Mit DUnitX in uses `[` tippen bzw. Strg+Leer nach `[` | Oben `Test`, `TestCase`, `TestFixture`, `Setup`, `TearDown`, dann `weak`, `unsafe`, `volatile`, `Ref`, danach eigene Attribute; keine anderen Klassen |
+| AT4 | `[TestCase` in der Liste markieren | Rechts `(const ACaseName: string; const AValues: string; …)`; bei einem Attribut ohne eigenen Konstruktor die Unit |
+| AT5 | `[TestCase('Fall', ` tippen | Parameter-Hint mit dem Konstruktor von TestCaseAttribute, zweiter Parameter hervorgehoben |
+| AT6 | `[Test, Te` und `[TestCase('a', '1'), Te` | Wieder nur Attribute |
+| AT7 | `procedure Lies([` in der Deklaration; `[R` | `Ref` angeboten |
+| AT8 | `if X in [`, `A := [`, `Liste[`, `IFoo = interface` und darunter `[` | Gewöhnliche Liste bzw. keine Attribute |
+| AT9 | Eigenes `MarkeAttribute = class(TCustomAttribute)` und `TNurKlasse = class` in der Unit; `[` | `Marke` angeboten, `TNurKlasse` nicht |
+| AT10 | `"completion": {"attributes": false}` in atlas.json; AT1 | Gewöhnliche Liste mit `TestAttribute` usw. samt Endung |
+
 ## Typargumente nach Constraints (#450)
 
 | Nr. | Schritte | Erwartet |

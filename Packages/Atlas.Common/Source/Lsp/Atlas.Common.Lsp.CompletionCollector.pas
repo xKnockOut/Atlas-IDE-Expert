@@ -61,6 +61,9 @@ const
   CompletionMinImportPrefix = 2;
 
 type
+  /// <summary>Vorfilter für Kandidaten und Symbole aus anderen Units (#465: nur Attributklassen).</summary>
+  TCompletionAdmitFunc = reference to function(const ASymbol: TResolvedSymbol): Boolean;
+
   TScoredItem = record
     Item: TCompletionItem;
     Score: Integer;
@@ -102,6 +105,7 @@ type
     FBaseTypes: TDictionary<string, string>;
     FUsed: TArray<string>;
     FUsedReady: Boolean;
+    FAdmit: TCompletionAdmitFunc;
     function MemberFits(const AMember: TResolvedSymbol): Boolean;
     /// <summary>Typ nach Aliasen bis zu einem eingebauten Typ oder TDateTime (TCaption → string); Aufzählungen
     /// mit dem Präfix "enum:". Unbekannte bleiben, wie sie sind.</summary>
@@ -114,6 +118,8 @@ type
     procedure MarkOwnConditions;
     function TakeStage(AStaged: Boolean): TArray<TCompletionItem>;
     function KnownNames: TDictionary<string, Boolean>;
+    /// <summary>Wie AddFromOtherUnits; AWanted = nil heißt alle Namen, sonst nur diese (Großbuchstaben).</summary>
+    procedure AddImports(AWanted: TDictionary<string, Boolean>);
   public
     /// <summary>ARequest liefert Baum, Resolver, Index, Datei und Matching; AExpected ist der erwartete Typ
     /// (#417), '' ohne. AOnPartial bekommt die Teilergebnisse von SendStage; nil = alles in Finish.</summary>
@@ -144,7 +150,10 @@ type
     procedure AddUnavailable;
     /// <summary>Symbole aus nicht eingebundenen Units (#180) mit uses-Eintrag; Projekt-Units vor Bibliotheken.
     /// </summary>
-    procedure AddFromOtherUnits;
+    procedure AddFromOtherUnits; overload;
+    /// <summary>Nur die Symbole namens ANames aus nicht eingebundenen Units (#465: bekannte Attributklassen schon
+    /// nach "[" ohne Eingabe); der Name muss zum getippten Anfang passen.</summary>
+    procedure AddFromOtherUnits(const ANames: TArray<string>); overload;
     /// <summary>Gleichnamige Bezeichner aus anderen Units (#475): je Eintrag aus einer eingebundenen Unit, dessen
     /// Name weitere Units deklarieren, diese Varianten direkt dahinter; der Eintrag selbst trägt „aktiv“.
     /// Nach den Units aus uses aufrufen, vor dem Senden ihrer Stufe.</summary>
@@ -159,6 +168,9 @@ type
     procedure MarkUsedShadows;
     /// <summary>Vorfilter des Resolvers nach dem Getippten an (#616) bzw. aus.</summary>
     procedure SetNameFilter(AOn: Boolean);
+    /// <summary>Nur Kandidaten (AddCandidates) und Symbole anderer Units (AddFromOtherUnits), für die AAdmit
+    /// True liefert; nil = alle. Vor dem Kürzen auf die Höchstzahl, damit passende nicht wegfallen.</summary>
+    procedure SetAdmit(const AAdmit: TCompletionAdmitFunc);
     /// <summary>Teilergebnis senden (#616); ohne AOnPartial bleibt alles für Finish liegen.</summary>
     procedure SendStage;
     /// <summary>Rest der Liste, sortiert und gekürzt. AIncomplete nur, wenn beim Weitertippen etwas dazukommen
@@ -797,6 +809,26 @@ begin
 end;
 
 procedure TCompletionCollector.AddFromOtherUnits;
+begin
+  AddImports(nil);
+end;
+
+procedure TCompletionCollector.AddFromOtherUnits(const ANames: TArray<string>);
+var
+  Wanted: TDictionary<string, Boolean>;
+  Name: string;
+begin
+  Wanted := TDictionary<string, Boolean>.Create;
+  try
+    for Name in ANames do
+      Wanted.AddOrSetValue(UpperCase(Name), True);
+    AddImports(Wanted);
+  finally
+    Wanted.Free;
+  end;
+end;
+
+procedure TCompletionCollector.AddImports(AWanted: TDictionary<string, Boolean>);
 var
   Known: TDictionary<string, Boolean>;
   Used: TArray<string>;
@@ -843,10 +875,13 @@ begin
         Continue;
       UnitInfo := Names.Units[Entry.UnitPos];
       Symbol := UnitInfo.Symbols[Entry.SymbolPos];
-      if Known.ContainsKey(UpperCase(Symbol.Name)) or
+      if ((AWanted <> nil) and not AWanted.ContainsKey(UpperCase(Symbol.Name))) or
+        Known.ContainsKey(UpperCase(Symbol.Name)) or
         ((FContext.Filter = TCompletionFilter.Types) and not (Symbol.Kind in IndexTypeKinds)) then
         Continue;
       if MatchScore(Symbol.Name, FContext.Prefix, FRequest.Matching) = TFuzzyMatch.NoMatch then
+        Continue;
+      if Assigned(FAdmit) and not FAdmit(FRequest.Resolver.SymbolFrom(UnitInfo, Symbol)) then
         Continue;
       // Fest #13#10 wie bisher (eigener Befund: uses-Eintrag in LF-Dateien, siehe CHANGELOG).
       if not TUsesClauses.AddUnit(FRequest.Tree.Tokens, FContext.Offset, UnitInfo.UnitName, #13#10, Edit) then
@@ -1278,6 +1313,11 @@ begin
   end;
 end;
 
+procedure TCompletionCollector.SetAdmit(const AAdmit: TCompletionAdmitFunc);
+begin
+  FAdmit := AAdmit;
+end;
+
 procedure TCompletionCollector.AddCandidates(const ACandidates: TArray<TResolvedSymbol>);
 var
   Candidate: TResolvedSymbol;
@@ -1286,6 +1326,8 @@ begin
   begin
     // Typposition (#31): nur Typen.
     if (FContext.Filter = TCompletionFilter.Types) and not Candidate.IsType then
+      Continue;
+    if Assigned(FAdmit) and not FAdmit(Candidate) then
       Continue;
     if Candidate.TypeName <> '' then
       Add(Candidate.Name, Candidate.TypeName, CompletionKindOf(Candidate.SymbolKind), Candidate)
