@@ -167,7 +167,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Search.MessageList;
+  Atlas.IDE.Search.MessageList,
+  Atlas.IDE.Foundation.DockWindow;
 
 const
   // Takt bei offener Leiste und Frist, in der ein Fokusverlust nach dem Klick als zurückgeholt gilt.
@@ -399,11 +400,8 @@ begin
 end;
 
 class procedure TAtlasIdeSearch.ThemeBar(ABar: TAtlasSearchBar);
-var
-  Theming: IOTAIDEThemingServices;
 begin
-  if Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) and Theming.IDEThemingEnabled then
-    Theming.ApplyTheme(ABar);
+  TAtlasIdeDockWindow.ApplyIdeTheme(ABar);
 end;
 
 class procedure TAtlasIdeSearch.Say(const AText: string);

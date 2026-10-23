@@ -15,6 +15,11 @@
 //   Experten), sonst kennt die IDE beim Laden des Start-Desktops die Kennung
 //   noch nicht.
 // Die Entscheidungen ohne VCL/OTA liegen in Atlas.Core.Dock.Plan (getestet).
+// ApplyIdeTheme: Thema der IDE auf den Inhalt eines Atlas-Fensters, auch beim
+// Wechsel Dunkel → Hell. ApplyTheme setzt im dunklen Thema feste Farben in
+// Listen und Bäume, beim Wechsel zurück aber keine Systemfarben; Listen und
+// Bäume deshalb vorher auf clWindow/clWindowText, ListViews danach mit neuem
+// Fenster (Kopfzeile im neuen Stil).
 
 interface
 
@@ -52,14 +57,20 @@ type
     /// <summary>Wirklich zu sehen: Form und alle Gastgeber sichtbar, Reiterseite aktiv.</summary>
     function Shown: Boolean;
     procedure Hide;
+    /// <summary>Thema der IDE auf AControl anwenden (beim Anlegen und bei jedem Themenwechsel).</summary>
+    class procedure ApplyIdeTheme(AControl: TWinControl); static;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  Vcl.Graphics,
   Vcl.ComCtrls,
   Atlas.Core.Dock.Plan;
+
+type
+  TWinControlAccess = class(TWinControl);
 
 { TAtlasIdeDockWindow }
 
@@ -231,6 +242,48 @@ procedure TAtlasIdeDockWindow.Hide;
 begin
   if FForm <> nil then
     FForm.Hide;
+end;
+
+class procedure TAtlasIdeDockWindow.ApplyIdeTheme(AControl: TWinControl);
+var
+  Theming: IOTAIDEThemingServices;
+  Views: TArray<TListView>;
+  View: TListView;
+
+  procedure Reset(AParent: TWinControl);
+  var
+    Index: Integer;
+    Child: TControl;
+  begin
+    for Index := 0 to AParent.ControlCount - 1 do
+    begin
+      Child := AParent.Controls[Index];
+      if Child is TListView then
+      begin
+        TListView(Child).Color := clWindow;
+        TListView(Child).Font.Color := clWindowText;
+        Views := Views + [TListView(Child)];
+      end
+      else if Child is TTreeView then
+      begin
+        TTreeView(Child).Color := clWindow;
+        TTreeView(Child).Font.Color := clWindowText;
+      end;
+      if Child is TWinControl then
+        Reset(TWinControl(Child));
+    end;
+  end;
+
+begin
+  if (AControl = nil) or not Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) or
+    not Theming.IDEThemingEnabled then
+    Exit;
+  Views := nil;
+  Reset(AControl);
+  Theming.ApplyTheme(AControl);
+  for View in Views do
+    if View.HandleAllocated then
+      TWinControlAccess(View).RecreateWnd;
 end;
 
 end.
