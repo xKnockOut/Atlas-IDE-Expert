@@ -922,3 +922,12 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Neue Falle in `CLAUDE.md`: anonyme Methode in einer eingefangenen Variablen derselben Routine.
 - Lokaler Branch `features-v110` gelöscht (Marcos Wunsch; war 8746138c).
 - **Push wartet auf Marco:** Er prüft den Stand erst selbst in Delphi.
+
+## Prüfregeln nur in den Einstellungsdialogen (23.10.2026, Marcos Entscheidung)
+
+- **Vorher:** Globale Prüfregeln doppelt, in Tools › Optionen › Atlas › Prüfregeln (#909) und in „Weitere globale Einstellungen…“.
+- **Jetzt:** Die Regeln stehen nur noch im Projektdialog (atlas.json) und in „Weitere globale Einstellungen…“ (settings.json). Beide Dialoge haben links einen Baum statt der Liste; unter der Seite mit `rules` hängt je Gruppe ein Knoten mit Hauptschalter (Aufbau wie früher in den Optionen). `SelectRule` öffnet den Knoten der Gruppe und markiert die Regel.
+- **Tools › Optionen › Atlas › Prüfregeln:** keine Regeltabellen und Gruppenknoten mehr; Hauptknoten mit Hinweis und den Knöpfen „Projekt-Prüfregeln bearbeiten …“ und „Globale Prüfregeln bearbeiten …“, darunter „Prüffenster“, „Compiler vorab“ (problems.compilerMerge, problems.showCompilerCode) und „Profile und Baseline“. Entfallen: Katalog-Laden der Optionsseite (`OnRulesCatalog`, `RulesLoaded`, `RulesChanges`, Haken `CommandWithArguments`), `Reveal('rule:…')`, die Sperre der beiden Compiler-Einstellungen über den Hauptschalter der Gruppe.
+- **„Regel einstellen…“** (Hover, Fenster „Atlas-Prüfung“): `TAtlasProjectSettings.ShowRule` öffnet den Projektdialog, ohne Projekt den globalen, im Knoten der Gruppe.
+- **Außerdem behoben:** `inaccessible-member` bei Überladungen mit gemischter Sichtbarkeit (`TMonitor.Enter`), `missing-begin-end` setzt mit `format.elsePlacement: sameLine` `end else`, Regel-Editor in den Dialogen in voller Breite, Hinweis oben ohne leeren Streifen.
+- Handtests AP17, AP19, AP20, AP23–AP25, CV1, CV7 angepasst. Noch nicht gepusht (Marco prüft erst).

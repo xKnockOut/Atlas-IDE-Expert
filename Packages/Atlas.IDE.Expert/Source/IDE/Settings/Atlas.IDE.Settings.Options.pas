@@ -21,13 +21,9 @@
 // die Seite „Atlas“ in der Baumansicht des Dialogs (soweit sie sich finden
 // lässt) und zeigt dort die Einstellung mit markierter Zeile (Reveal).
 // ShowRule (#909, „Regel einstellen…“ im Fenster „Atlas-Prüfung“ und im
-// Befund-Hover) tut dasselbe mit "rule:<id>": Die Seite öffnet den Knoten der
-// Gruppe auf der Seite Prüfregeln und markiert die Regel.
-// Seite Prüfregeln (#909): Den Regelkatalog holt CommandWithArguments im
-// Hintergrund, "rules" kommt aus der globalen settings.json; mit OK schreibt
-// DialogClosed nur die geänderten Regeln dorthin (TAtlasJsonText,
-// Kommentare bleiben). Der Server liest die Datei über seinen
-// Dateibeobachter neu ein; ein Neustart ist nicht nötig.
+// Befund-Hover) öffnet den Dialog der Projekt-Einstellungen (ohne Projekt den
+// der globalen) im Knoten der Gruppe der Regel: Die Prüfregeln stehen nur
+// dort, nicht in Tools › Optionen. Die Seite Prüfregeln zeigt den Weg dorthin.
 
 interface
 
@@ -40,9 +36,6 @@ type
   /// <summary>Befehl an den Server im Hintergrund (#874); ADone im Hauptthread mit der Antwort, nil ohne Server
   /// oder bei Fehler. Den Wert gibt der Aufrufer von ADone frei.</summary>
   TAtlasServerCommand = reference to procedure(ACommand: string; ADone: TProc<TJSONValue>);
-  /// <summary>Wie TAtlasServerCommand mit Argumenten als JSON-Array (#909).</summary>
-  TAtlasServerCommandWithArguments = reference to procedure(ACommand, AArgumentsJson: string;
-    ADone: TProc<TJSONValue>);
 
   /// <summary>Was die Optionsseiten von anderen Features brauchen; setzt die Composition (A-09: die Seiten
   /// importieren Befehlszählung, Tipps, Code Insight-Manager und Vervollständigung nicht). Nicht gesetzte Haken
@@ -52,8 +45,6 @@ type
     ResetHistory: TProc;
     /// <summary>Befehl an den Server (#492).</summary>
     Command: TAtlasServerCommand;
-    /// <summary>Befehl mit Argumenten, z. B. der Regelkatalog in der Sprache der Oberfläche (#909).</summary>
-    CommandWithArguments: TAtlasServerCommandWithArguments;
     /// <summary>Zählung der Befehle zurücksetzen (#757).</summary>
     ResetUsage: TProc;
     /// <summary>Gesperrte Tipps wieder zeigen (#757).</summary>
@@ -118,7 +109,6 @@ uses
   Atlas.IDE.Foundation.StructureSwitch,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Settings.TeamFile,
-  Atlas.Core.Settings.JsonText,
   Atlas.IDE.Foundation.TeamFile;
 
 type
@@ -132,7 +122,6 @@ type
     procedure Run(const ACommand: string; const AText: TFunc<TJSONValue, string>);
     /// <summary>Seite Prüfregeln (#909): Katalog im Hintergrund holen und mit "rules" der globalen Datei
     /// übergeben.</summary>
-    procedure LoadRules;
   public
     function GetArea: string;
     function GetCaption: string;
@@ -348,30 +337,6 @@ begin
   Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageBaselineCount, [Count, Entries]);
 end;
 
-/// <summary>Wert von "rules" in der globalen settings.json als JSON-Text; '' ohne Datei oder ohne Regeln.
-/// </summary>
-function GlobalRules: string;
-var
-  Text: string;
-  Root: TJSONObject;
-  Rules: TJSONValue;
-begin
-  Result := '';
-  Text := TAtlasIdeSettings.GlobalText;
-  if Text = '' then
-    Exit;
-  Root := TAtlasJsonText.Parse(Text);
-  try
-    if Root = nil then
-      Exit;
-    Rules := Root.GetValue('rules');
-    if Rules is TJSONObject then
-      Result := Rules.ToJSON;
-  finally
-    Root.Free;
-  end;
-end;
-
 /// <summary>AtlasServer.exe mit AArguments im Projektordner; '' bei Erfolg, sonst die Meldung.</summary>
 function RunTool(const AArguments: string; ATimeoutMs: Cardinal; out AOutput: string): string;
 var
@@ -418,39 +383,6 @@ begin
     end);
 end;
 
-procedure TAtlasAddInOptions.LoadRules;
-var
-  Keep: INTAAddInOptions;
-  Owner: TAtlasAddInOptions;
-  Generation: Integer;
-  Language: string;
-begin
-  // Wie Run: Die Antwort gilt nur für die Seite, für die sie bestellt wurde (#874).
-  Keep := Self;
-  Owner := Self;
-  Generation := FGeneration;
-  Language := 'de';
-  if TAtlasStrings.Language = TAtlasLanguage.English then
-    Language := 'en';
-  if not Assigned(Hooks.CommandWithArguments) then
-  begin
-    if FPage <> nil then
-      FPage.RulesLoaded(nil, GlobalRules);
-    Exit;
-  end;
-  Hooks.CommandWithArguments(TAtlasProjectSettings.CatalogCommand, '["' + Language + '"]',
-    procedure(AAnswer: TJSONValue)
-    begin
-      if (Keep <> nil) and (Owner.FPage <> nil) and (Owner.FGeneration = Generation) then
-        TAtlasGuard.Run(TAtlasFeature.Settings,
-          procedure
-          begin
-            // Die Seite kopiert den Katalog; den Wert gibt der Absender frei.
-            Owner.FPage.RulesLoaded(AAnswer, GlobalRules);
-          end);
-    end);
-end;
-
 function TAtlasAddInOptions.GetArea: string;
 begin
   // Leer: unter „Drittanbieter“, wie die Open Tools API empfiehlt.
@@ -479,16 +411,16 @@ begin
       Result := TAtlasServerTool.FileVersion(APath);
     end;
   FPage.OnResetHistory := Hooks.ResetHistory;
-  // Seite Prüfregeln (#909): Katalog und globale Regeln, Projektdialog, Baseline.
-  FPage.OnRulesCatalog :=
-    procedure
-    begin
-      LoadRules;
-    end;
+  // Seite Prüfregeln (#909): Wege zu den Regeln im Projekt- und im globalen Dialog, Baseline.
   FPage.OnRulesProject :=
     procedure
     begin
       TAtlasProjectSettings.Execute;
+    end;
+  FPage.OnRulesGlobal :=
+    procedure
+    begin
+      TAtlasProjectSettings.ExecuteGlobal;
     end;
   FPage.OnBaselineInfo :=
     function: string
@@ -632,7 +564,6 @@ end;
 procedure TAtlasAddInOptions.DialogClosed(Accepted: Boolean);
 var
   Settings: TAtlasPluginSettings;
-  Changes: TArray<TPair<string, string>>;
 begin
   PendingReveal := '';
   try
@@ -641,11 +572,6 @@ begin
       Settings := TAtlasIdeSettings.Stored;
       FPage.SaveTo(Settings);
       TAtlasIdeSettings.Update(Settings);
-      // Prüfregeln (#909): nur die geänderten Regeln in die globale settings.json.
-      Changes := FPage.RulesChanges;
-      // SaveGlobalText schreibt nicht, wenn die Datei da, aber nicht lesbar ist.
-      if Length(Changes) > 0 then
-        TAtlasIdeSettings.SaveGlobalText(TAtlasJsonText.ApplyChanges(TAtlasIdeSettings.GlobalText, Changes));
     end;
     // Strukturhervorhebung und Help Insight der IDE erst nach dem Dialog abgleichen: Mit OK
     // schreibt die IDE danach ihre Editoroptionen aus dem Speicher zurück, auch die Schalter,
@@ -1044,7 +970,7 @@ end;
 
 class procedure TAtlasOptionsRegistration.ShowRule(const ARuleId: string);
 begin
-  ShowSetting(TAtlasSettingsPage.RuleRevealPrefix + ARuleId);
+  TAtlasProjectSettings.ShowRule(ARuleId);
 end;
 
 class procedure TAtlasOptionsRegistration.ShowSetting(const AKey: string);

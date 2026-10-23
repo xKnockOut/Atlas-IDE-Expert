@@ -3293,15 +3293,15 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit einigen Bef
 | AP14 | `problems.live` aus | Anzeige „Angehalten“, Liste ändert sich erst beim Speichern |
 | AP15 | Maus über einen Befund im Editor | Tooltip: Pille „Fehler“/„Warnung“/„Info“, Fehler zuerst, darunter „Atlas · regel-id“ bzw. „dcc · W1036“ und die Aktionszeile „Alt+Enter: …“, „Für diese Zeile unterdrücken“, „Regel einstellen…“ (**Abnahme**) |
 | AP16 | Tooltip festhalten, Tab/Umschalt+Tab, Enter | Aktionen werden der Reihe nach markiert, Enter führt die markierte aus |
-| AP17 | „Regel einstellen…“ im Tooltip | Optionen öffnen sich auf der Seite der Gruppe, die Regel ist markiert |
+| AP17 | „Regel einstellen…“ im Tooltip | Der Dialog der Projekt-Einstellungen (ohne Projekt der globale) öffnet sich im Knoten der Gruppe, die Regel ist markiert |
 | AP18 | `hover.problemActions` aus | Kein Aktionsblock im Tooltip, Pille und Regelzeile bleiben |
-| AP19 | *Tools › Optionen › Atlas › Prüfregeln › Threads*, Hauptschalter aus, OK | settings.json enthält `"group:threads": "off"`; Tabelle und Detailfelder gesperrt, Knoten grau; keine Thread-Befunde mehr (**Abnahme**) |
-| AP20 | Seite „Stil und Metriken“, Regel `magic-number`: Schweregrad Fehler, Ausnahme `Tests\*.pas`, Option `maxDigits` 5, OK | settings.json `"magic-number": {"severity": "error", "exclude": ["Tests\\*.pas"], "options": {"maxDigits": 5}}`; Befunde als Fehler, in Tests keine |
+| AP19 | *Tools › Optionen › Atlas › Server › Weitere globale Einstellungen… › Prüfregeln › Threads*, Hauptschalter aus, OK | settings.json enthält `"group:threads": "off"`; Tabelle und Detailfelder gesperrt, Knoten grau; keine Thread-Befunde mehr (**Abnahme**) |
+| AP20 | Im selben Dialog Knoten „Stil und Metriken“, Regel `magic-number`: Schweregrad Fehler, Ausnahme `Tests\*.pas`, Option `maxDigits` 5, OK | settings.json `"magic-number": {"severity": "error", "exclude": ["Tests\\*.pas"], "options": {"maxDigits": 5}}`; Befunde als Fehler, in Tests keine |
 | AP21 | Option mit ungültigem Wert (Buchstaben in einer Zahl) | Hinweis in Rot, der Wert wird nicht übernommen |
 | AP22 | Haken einer Regel in der Tabelle entfernen | Schweregrad „Aus“, Befunde weg |
-| AP23 | *Atlas › Projekt-Einstellungen*, Reiter Regeln | Derselbe Editor; Werte aus settings.json als „(global: …)“; Änderung landet in atlas.json |
-| AP24 | Server beenden, Optionen öffnen | Seite zeigt „Ohne laufenden Server fehlt der Regelkatalog; hier stehen nur die eingestellten Regeln.“ und nur diese Regeln |
-| AP25 | Knoten „Profile und Baseline“ | Knopf „Projekt-Einstellungen…“, Baseline-Stand, „Aktualisieren“ und „Löschen“ arbeiten |
+| AP23 | *Atlas › Projekt-Einstellungen*, Seite Prüfregeln und Knoten je Gruppe | Derselbe Aufbau; Werte aus settings.json als „(global: …)“; Änderung landet in atlas.json |
+| AP24 | Server beenden, „Weitere globale Einstellungen…“ öffnen | Seite Prüfregeln zeigt „Ohne laufenden Server fehlt der Regelkatalog; hier stehen nur die eingestellten Regeln.“ und nur diese Regeln |
+| AP25 | *Tools › Optionen › Atlas › Prüfregeln* | Keine Regeltabelle; Hinweis auf atlas.json und settings.json, „Projekt-Prüfregeln bearbeiten …“ und „Globale Prüfregeln bearbeiten …“ öffnen die Dialoge; Knoten „Profile und Baseline“: Baseline-Stand, „Aktualisieren“ und „Löschen“ arbeiten |
 | AP26 | Oberfläche auf Englisch | Fenster, Tooltip und Seite englisch, Katalogtexte englisch |
 
 ## Atlas-Prüfung: offene Units zuerst (#1108)
@@ -4425,13 +4425,13 @@ Voraussetzung: Server läuft in der IDE mit Projekt; eine Unit mit `Versenden(Ku
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| CV1 | Tools › Optionen › Atlas › Prüfregeln › Compiler vorab öffnen | Hauptschalter „Regeln der Gruppe „Compiler vorab“ prüfen“, darunter „Regeln der Stufe T prüfen …“, die Regeltabelle, „Bestätigte Compilermeldungen“ und „Compilercode (E2035 …) zu Befunden zeigen“ |
+| CV1 | *Atlas › Projekt-Einstellungen › Prüfregeln › Compiler vorab* und *Tools › Optionen › Atlas › Prüfregeln › Compiler vorab* öffnen | Im Dialog Hauptschalter „Regeln der Gruppe „Compiler vorab“ prüfen“, darunter „Regeln der Stufe T prüfen …“ und die Regeltabelle; in den Optionen „Bestätigte Compilermeldungen“ und „Compilercode (E2035 …) zu Befunden zeigen“ |
 | CV2 | Projekt bauen (Strg+F9) mit dem Fehler aus AK1 | Ein Eintrag an der Zeile: Atlas-Befund mit Herkunft „Atlas + dcc · argument-count-mismatch · vom Compiler bestätigt (E2035)“ im Hover; im Fenster „Atlas-Prüfung“ mit „Compilermeldungen im Fenster zeigen“ Spalte „Compiler“ = „E2035 · Atlas + dcc“, keine zweite Zeile von dcc (**Abnahme**) |
 | CV3 | „Bestätigte Compilermeldungen“ = „beide zeigen“, OK | Atlas-Befund und dcc-Meldung stehen beide da; der Atlas-Befund bleibt „vom Compiler bestätigt“ |
 | CV4 | Fehler beheben, erneut bauen | Weder Atlas-Befund noch dcc-Meldung; ein anderer dcc-Fehler an einer anderen Zeile bleibt als eigene Zeile |
 | CV5 | „Compilercode … zeigen“ aus | Meldungen ohne „(wie E2035)“, Spalte „Compiler“ verschwindet (Spaltenlayout bleibt gemerkt), Hover nur „vom Compiler bestätigt“ |
 | CV6 | „Regeln der Stufe T prüfen“ aus | In atlas.json steht `"group:compiler": {"typeLevel": "off"}`; `argument-count-mismatch` und die übrigen Regeln der Stufe T (Regeln.md) melden nichts, `duplicate-case-label` (Stufe B) meldet weiter |
-| CV7 | Hauptschalter der Gruppe aus | `"group:compiler": {"typeLevel": "off", "severity": "off"}` bzw. `"off"`; Tabelle, Stufe T und die beiden Plugin-Einstellungen gesperrt, Knoten grau; keine Regel der Gruppe meldet |
+| CV7 | Hauptschalter der Gruppe aus | `"group:compiler": {"typeLevel": "off", "severity": "off"}` bzw. `"off"`; Tabelle und Stufe T gesperrt, Knoten grau; die beiden Plugin-Einstellungen in Tools › Optionen bleiben bedienbar; keine Regel der Gruppe meldet |
 | CV8 | `"group:compiler": {"typeLevel": "maybe"}` in atlas.json | Hinweis „"typeLevel" muss "certain" oder "off" sein“ beim Laden der Konfiguration |
 
 ## Ende des Servers mit Ursache (Bericht H5)
