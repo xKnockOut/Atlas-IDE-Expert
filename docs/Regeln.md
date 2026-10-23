@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 73 |
+| [Fehler finden](#gruppe-find-bugs) | 74 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
@@ -50,6 +50,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`first-char-address`](#first-char-address) | Adresse des ersten Zeichens über S[1] | Bug | Warnung |
 | [`float-equality`](#float-equality) | Gleitkommavergleich mit = oder <> | Bug | Hinweis |
 | [`constructor-on-instance`](#constructor-on-instance) | Konstruktor auf einer Instanz aufgerufen | Bug | Warnung |
+| [`format-args`](#format-args) | Formatstring passt nicht zu den Argumenten | Bug | Fehler |
 | [`unresolved-identifier`](#unresolved-identifier) | Nicht deklarierter Bezeichner | Bug | Warnung |
 | [`type-used-before-declaration`](#type-used-before-declaration) | Typ vor seiner Deklaration benutzt | Bug | Fehler |
 | [`field-not-freed`](#field-not-freed) | Feld erzeugt, aber nie freigegeben | Bug | Warnung |
@@ -2187,6 +2188,29 @@ Richtig:
 
 ```pascal
 Line := Format('%.2f', [Amount], TFormatSettings.Invariant);
+```
+
+<a id="format-args"></a>
+### format-args
+
+**Formatstring passt nicht zu den Argumenten** · Bug · Fehler · Gruppe Fehler finden
+
+Format, FmtStr, WideFormat, WideFmtStr, Exception.CreateFmt bzw. CreateFmtHelp und TStringBuilder.AppendFormat mit bekanntem Formatstring (Literal, mit + verbundene Literale, const oder resourcestring der Datei bzw. des Index), dessen Platzhalter nicht zur Argumentliste [...] passen: ungültiger Platzhalter (%q, '%' bzw. '%5' am Ende, %0: ohne Typbuchstaben), weniger Argumente als Platzhalter oder ein Argument vom falschen Typ: %d %u %x nur Ganzzahlen, %e %f %g %n %m nur Gleitkommazahlen, %s Strings, Zeichen und Variants, %p Zeiger und Objekte, ein * für Breite bzw. Genauigkeit eine Ganzzahl; Variants passen überall. Boolean und Aufzählungswerte werden bei jedem Typbuchstaben gemeldet, mit Ord(...) bzw. BoolToStr(..., True) als Hinweis. All das löst zur Laufzeit EConvertError aus. Ein Argument hinter dem letzten verwendeten wird mit mittlerer Sicherheit gemeldet (nur ohne Index im Formatstring), es wird nie ausgegeben. Typen werden nur geprüft, wenn sie sicher bekannt sind; Formatstrings aus Variablen, Index * und Bereiche bleiben still. Eigene Routinen namens Format bleiben still, wenn die Namensauflösung sie findet. Teilt die Zerlegung der Formatstrings mit format-without-settings. Keine Korrektur. Sicherheit hoch.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `formatMethods` | string-list | `[]` | Weitere Routinen mit Formatstring und folgender Argumentliste array of const, z. B. "TLogger.LogFmt" oder "Protokoll". Mit Punkt zählt ohne Namensauflösung der Methodenname hinter einem beliebigen Qualifizierer. |
+
+Mit Treffer:
+
+```pascal
+Result := Format('%d orders for %s', [ACustomer.Name]);
+```
+
+Richtig:
+
+```pascal
+Result := Format('%d orders for %s', [ACustomer.OrderCount, ACustomer.Name]);
 ```
 
 <a id="generic-exception-raised"></a>

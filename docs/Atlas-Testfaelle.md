@@ -6138,6 +6138,21 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | SE6 | `"loop-runs-at-most-once": {"allowFirstElement": true}`; `for mKunde in FKunden do begin Result := mKunde; Exit; end;` und das Beispiel aus SE1 | Erstes still, SE1 weiterhin gemeldet (die Bedingung liest mKunde). Im Atlas-Repo ist die Option an: keine Meldung in den Quellen |
 | SE7 | `"loop-runs-at-most-once": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden | Keine Meldung; die Regel steht mit Schalter, Schweregrad und der Option `allowFirstElement` in der Gruppe |
 
+## Formatstring und Argumente (#56)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FA1 | Das Beispiel aus #56: `S := Format('%d', [Name]);` mit `Name: string` | Fehler `format-args` an `Name`: „%d erwartet eine Ganzzahl, Name ist vom Typ string: EConvertError zur Laufzeit.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover; keine Schnellkorrektur (**Abnahme**) |
+| FA2 | `Format('%s', [Name])`, `Format(Fmt, [Name])` mit einer Variablen `Fmt`, `Format('%0:s %0:s', [A])` | Keine Meldung (**Abnahme**) |
+| FA3 | `Format('Wert %q', [N])`, `Format('100%', [])`, `Format('Breite %5', [N])`, `Format('%0:', [N])` | Je „Ungültiger Formatstring: …“ am Formatstring |
+| FA4 | `Format('%s hat %d', [Name])`; `Format('%s', [Name, N])` | Erstes: „braucht 2 Argumente, die Liste hat 1“; zweites mit mittlerer Sicherheit: „Argument 2 (N) kommt im Formatstring nicht vor …“ |
+| FA5 | `Format('%d', [AArt])` mit einer Aufzählung, `Format('%d', [AAktiv])` mit Boolean, `Format('%*d', [Name, N])` | Meldungen mit „Ord(AArt) übergeben.“, „BoolToStr(AAktiv, True) übergeben.“ bzw. „Das * in %*d erwartet eine Ganzzahl …“ |
+| FA6 | Formatstring als `const cZeile = cKopf + '%s: %d';` bzw. `resourcestring rsFehler = 'Fehler %d';` in derselben Unit und in einer anderen Unit des Projekts | Wie FA1 und FA4 geprüft |
+| FA7 | `raise EImport.CreateFmt('Zeile %d', [Name])`, `FmtStr(S, '%d', [Name])`; eine eigene Funktion `Format(const AText: string; const AWerte: array of const)` in der Unit | Die ersten beiden gemeldet, die eigene Funktion still |
+| FA8 | `"format-args": {"formatMethods": ["TLogger.LogFmt"]}`; `Log.LogFmt('%d', [Name])` | Erst mit der Option gemeldet |
+| FA9 | `"format-args": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden; `Format('%.2f', [X])` ohne TFormatSettings | Keine Meldung; die Regel steht mit Schalter, Schweregrad und der Option `formatMethods` in der Gruppe; `format-without-settings` meldet weiterhin |
 ## Adresse des ersten Zeichens (#1130)
 
 Voraussetzung: Server läuft in der IDE mit Projekt und Index (RTL-Quellen indiziert).

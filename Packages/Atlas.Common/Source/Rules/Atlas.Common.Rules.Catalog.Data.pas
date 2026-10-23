@@ -1039,6 +1039,31 @@ begin
     '      "good": "Line := Format(''%.2f'', [Amount], TFormatSettings.Invariant);"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "format-args",' + #10 +
+    '      "name": "Format string does not match its arguments",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "Format, FmtStr, WideFormat, WideFmtStr, Exception.CreateFmt or CreateFmtHelp and TStringBuilder.AppendFormat with a known format string (a literal, literals joined with +, a cons' +
+    't or resourcestring of the file or the index) whose placeholders do not match the argument list [...]: an invalid placeholder (%q, ''%'' or ''%5'' at the end, %0: without a type letter), fewer arguments t' +
+    'han placeholders, or an argument of the wrong type: %d %u %x take only integers, %e %f %g %n %m only floating-point numbers, %s strings, characters and variants, %p pointers and objects, a * for width' +
+    ' or precision an integer; variants fit everywhere. Boolean and enumeration values are reported at every type letter with Ord(...) or BoolToStr(..., True) as advice. All of this raises EConvertError at' +
+    ' runtime. An argument behind the last used one is reported with medium confidence (only without an index in the format string), it is never printed. Types are only checked when they are known for sure' +
+    '; format strings from variables, index * and ranges stay silent. Own routines named Format stay silent when name resolution finds them. Shares its format string parser with format-without-settings. No' +
+    ' quick fix. High confidence.",' + #10 +
+    '      "bad": "Result := Format(''%d orders for %s'', [ACustomer.Name]);",' + #10 +
+    '      "good": "Result := Format(''%d orders for %s'', [ACustomer.OrderCount, ACustomer.Name]);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "formatMethods",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Further routines with a format string followed by an array of const argument list, e.g. \"TLogger.LogFmt\" or \"Protokoll\". With a dot the method name after any qualifier co' +
+    'unts when name resolution cannot find the routine."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "generic-exception-raised",' + #10 +
     '      "name": "Generic exception raised",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -5580,6 +5605,24 @@ begin
     '      "description": "Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenne' +
     'r, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format(''%d'', …) wird nicht gemeldet, ebenso wenig FormatDateTime und FormatFloat mit festem Bild ohne Trennzeichen (' +
     ': / . ,) wie ''yyyy\"-\"mm\"-\"dd'' oder ''ddddd t''."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "format-args",' + #10 +
+    '      "name": "Formatstring passt nicht zu den Argumenten",' + #10 +
+    '      "description": "Format, FmtStr, WideFormat, WideFmtStr, Exception.CreateFmt bzw. CreateFmtHelp und TStringBuilder.AppendFormat mit bekanntem Formatstring (Literal, mit + verbundene Literale, con' +
+    'st oder resourcestring der Datei bzw. des Index), dessen Platzhalter nicht zur Argumentliste [...] passen: ungültiger Platzhalter (%q, ''%'' bzw. ''%5'' am Ende, %0: ohne Typbuchstaben), weniger Argumente' +
+    ' als Platzhalter oder ein Argument vom falschen Typ: %d %u %x nur Ganzzahlen, %e %f %g %n %m nur Gleitkommazahlen, %s Strings, Zeichen und Variants, %p Zeiger und Objekte, ein * für Breite bzw. Genaui' +
+    'gkeit eine Ganzzahl; Variants passen überall. Boolean und Aufzählungswerte werden bei jedem Typbuchstaben gemeldet, mit Ord(...) bzw. BoolToStr(..., True) als Hinweis. All das löst zur Laufzeit EConve' +
+    'rtError aus. Ein Argument hinter dem letzten verwendeten wird mit mittlerer Sicherheit gemeldet (nur ohne Index im Formatstring), es wird nie ausgegeben. Typen werden nur geprüft, wenn sie sicher beka' +
+    'nnt sind; Formatstrings aus Variablen, Index * und Bereiche bleiben still. Eigene Routinen namens Format bleiben still, wenn die Namensauflösung sie findet. Teilt die Zerlegung der Formatstrings mit f' +
+    'ormat-without-settings. Keine Korrektur. Sicherheit hoch.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "formatMethods",' + #10 +
+    '          "description": "Weitere Routinen mit Formatstring und folgender Argumentliste array of const, z. B. \"TLogger.LogFmt\" oder \"Protokoll\". Mit Punkt zählt ohne Namensauflösung der Methodenna' +
+    'me hinter einem beliebigen Qualifizierer."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "generic-exception-raised",' + #10 +
