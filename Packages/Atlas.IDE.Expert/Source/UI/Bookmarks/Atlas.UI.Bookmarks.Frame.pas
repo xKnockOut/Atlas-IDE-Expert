@@ -81,7 +81,7 @@ type
     procedure ListDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState; var Accept: Boolean);
     procedure ListDragDrop(Sender, Source: TObject; X, Y: Integer);
     function ListColor(AColor: TColor): TColor;
-    procedure RowColors(ACanvas: TCanvas; AState: TCustomDrawState; AGray: Boolean);
+    procedure RowColors(ACanvas: TCanvas; ASelected, AGray: Boolean);
     procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
       var DefaultDraw: Boolean);
     procedure ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem; SubItem: Integer;
@@ -587,11 +587,12 @@ begin
   Result := ColorToRGB(StyleServices(FList).GetSystemColor(AColor));
 end;
 
-procedure TAtlasBookmarksFrame.RowColors(ACanvas: TCanvas; AState: TCustomDrawState; AGray: Boolean);
+procedure TAtlasBookmarksFrame.RowColors(ACanvas: TCanvas; ASelected, AGray: Boolean);
 begin
   // Farben ausdrücklich aus dem Stil der Liste: Nach einer geänderten Schriftfarbe zeichnet die Liste sonst mit den
-  // Systemfarben, im dunklen Thema also weiße Zellen.
-  if cdsSelected in AState then
+  // Systemfarben, im dunklen Thema also weiße Zellen. ASelected aus Item.Selected: Mit cdsSelected war in der
+  // Prüfliste jede Zeile blau, auch die nicht gewählten.
+  if ASelected then
   begin
     ACanvas.Brush.Color := ListColor(clHighlight);
     ACanvas.Font.Color := ListColor(clHighlightText);
@@ -611,7 +612,7 @@ procedure TAtlasBookmarksFrame.ListCustomDrawItem(Sender: TCustomListView; Item:
 begin
   DefaultDraw := True;
   // Nicht gefunden: ganze Zeile grau; ohne Namen ist der abgeleitete Name grau (#1104).
-  RowColors(Sender.Canvas, State, (Item <> nil) and (Item.Index <= High(FShown)) and
+  RowColors(Sender.Canvas, (Item <> nil) and Item.Selected, (Item <> nil) and (Item.Index <= High(FShown)) and
     (FShown[Item.Index].Lost or FShown[Item.Index].Unnamed));
 end;
 
@@ -619,7 +620,8 @@ procedure TAtlasBookmarksFrame.ListCustomDrawSubItem(Sender: TCustomListView; It
   State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
   DefaultDraw := True;
-  RowColors(Sender.Canvas, State, (Item <> nil) and (Item.Index <= High(FShown)) and FShown[Item.Index].Lost);
+  RowColors(Sender.Canvas, (Item <> nil) and Item.Selected, (Item <> nil) and (Item.Index <= High(FShown)) and
+    FShown[Item.Index].Lost);
 end;
 
 procedure TAtlasBookmarksFrame.MenuPopup(Sender: TObject);

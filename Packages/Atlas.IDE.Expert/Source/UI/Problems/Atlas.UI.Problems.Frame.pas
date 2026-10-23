@@ -1234,8 +1234,9 @@ begin
   else
     Sender.Canvas.Font.Style := [];
   // Farben ausdrücklich aus dem Stil der Liste: Nach einer geänderten Schrift (fett bei Gruppen) zeichnet die
-  // Liste sonst mit den Systemfarben, im dunklen Thema also weiße Zellen.
-  if cdsSelected in State then
+  // Liste sonst mit den Systemfarben, im dunklen Thema also weiße Zellen. Ausgewählt laut Item.Selected
+  // (LVM_GETITEMSTATE): Mit cdsSelected war in der IDE jede Zeile blau, auch die nicht gewählten.
+  if Item.Selected then
   begin
     Sender.Canvas.Brush.Color := ColorToRGB(StyleServices(FList).GetSystemColor(clHighlight));
     Sender.Canvas.Font.Color := ColorToRGB(StyleServices(FList).GetSystemColor(clHighlightText));
