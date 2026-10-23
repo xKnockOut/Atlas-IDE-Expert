@@ -1145,6 +1145,12 @@
           "description": "Code-Aktionen „In case umwandeln“ auf einer if-Kette, die denselben ordinalen Ausdruck ohne Seiteneffekte mit Konstanten vergleicht (X = a, X in [a, b..c], (X >= a) and (X <= b), mit or verknüpft), und „In if-Kette umwandeln“ auf einem case. Kommentare in den Zweigen bleiben, begin … end nur bei mehreren Anweisungen. Der Hinweis auf lange umwandelbare if-Ketten ist die Regel prefer-case.",
           "x-issue": "#646"
         },
+        "conditions": {
+          "type": "boolean",
+          "default": true,
+          "description": "Code-Aktionen zum Umformen von Bedingungen: „Bedingung umkehren“ (then und else tauschen, Bedingung lesbar verneint: Vergleiche drehen, De Morgan in gleicher Reihenfolge), „Frühen Ausstieg einführen“ (if ohne else am Ende einer Routine bzw. Schleife wird if … then Exit bzw. Continue), „Verschachtelte if zusammenfassen“ (if A then if B → if A and B) und „Doppelte Verneinung entfernen“. Klammern nur, wo der Vorrang sie verlangt; Kommentare in den Zweigen bleiben.",
+          "x-issue": "#656"
+        },
         "tryFinally": {
           "type": "boolean",
           "default": true,
@@ -1234,7 +1240,7 @@
       "x-scope": "project",
       "x-page": "Vervollständigung",
       "x-control": "Kontrollkästchen",
-      "x-issue": "#42, #50, #100, #188, #453, #472, #646, #666, #682, #685, #715"
+      "x-issue": "#42, #50, #100, #188, #453, #472, #646, #656, #666, #682, #685, #715"
     },
     "usesCommand": {
       "type": "boolean",

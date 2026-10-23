@@ -53,10 +53,7 @@ type
     class function KindOfType(const AType: TResolvedSymbol): TCaseSelectorKind; static;
   end;
 
-  TIfCaseConversion = record
-    Title: string;
-    Edit: TTextEdit;
-  end;
+  TIfCaseConversion = TStatementRewrite;
 
   TIfCase = class
   public const
@@ -86,7 +83,6 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Editing.RoutineBody,
@@ -124,34 +120,6 @@ type
     function Read(AHead: TSyntaxNode): Boolean;
     property Selector: TSyntaxNode read FSelector;
   end;
-
-function IfStatementAt(ATree: TSyntaxTree; const APosition: TTextPosition; AKind: TSyntaxKind): TSyntaxNode;
-var
-  Found: TSyntaxNode;
-begin
-  Result := nil;
-  if (ATree = nil) or (ATree.Root = nil) then
-    Exit;
-  Found := nil;
-  // Innerster Knoten der Art, dessen Kopf (bis zum ersten Kind nach der Bedingung bzw. dem Ausdruck) die
-  // Position enthält.
-  ATree.Root.Walk(
-    function(ANode: TSyntaxNode): Boolean
-    var
-      HeadEnd: TTextPosition;
-    begin
-      Result := True;
-      if (ANode.Kind = AKind) and (ANode.ChildCount >= 2) then
-      begin
-        HeadEnd := ANode[1].StartPos;
-        if ((ANode.StartPos.Line < APosition.Line) or ((ANode.StartPos.Line = APosition.Line) and
-          (ANode.StartPos.Character <= APosition.Character))) and ((APosition.Line < HeadEnd.Line) or
-          ((APosition.Line = HeadEnd.Line) and (APosition.Character <= HeadEnd.Character))) then
-          Found := ANode;
-      end;
-    end);
-  Result := Found;
-end;
 
 function IsChainElse(AIf: TSyntaxNode): Boolean;
 begin
@@ -415,32 +383,6 @@ begin
     TCaseSelectorKind.SetElement]);
 end;
 
-/// <summary>Bereiche, die das Umschreiben aus den Anweisungen der Zweige mitnimmt (samt Kommentaren).</summary>
-function BranchSpans(ATree: TSyntaxTree; const ABranches: TArray<TSyntaxNode>): TArray<TStatementSpan>;
-var
-  Branch: TSyntaxNode;
-  Statements: TArray<TSyntaxNode>;
-  Index: Integer;
-begin
-  Result := nil;
-  for Branch in ABranches do
-  begin
-    Statements := TStatementText.Statements(Branch);
-    for Index := 0 to High(Statements) do
-      Result := Result + [TStatementText.SpanOf(ATree, Statements[Index], Index = High(Statements))];
-  end;
-end;
-
-function LastSpanEnd(const ASpans: TArray<TStatementSpan>): Integer;
-var
-  Span: TStatementSpan;
-begin
-  Result := -1;
-  for Span in ASpans do
-    if Span.EndOffset > Result then
-      Result := Span.EndOffset;
-end;
-
 /// <summary>Bereiche der Zweige einer if-Kette.</summary>
 function ChainSpans(ATree: TSyntaxTree; const ALinks: TArray<TChainLink>; AElse: TSyntaxNode): TArray<TStatementSpan>;
 var
@@ -452,7 +394,7 @@ begin
     Branches := Branches + [Link.Branch];
   if AElse <> nil then
     Branches := Branches + [AElse];
-  Result := BranchSpans(ATree, Branches);
+  Result := TStatementText.Spans(ATree, Branches);
 end;
 
 /// <summary>Kommentar in einer Bedingung oder zwischen den Schlüsselwörtern der Kette, der beim Umschreiben
@@ -461,22 +403,6 @@ function ChainComments(ATree: TSyntaxTree; AHead: TSyntaxNode; const ALinks: TAr
   AElse: TSyntaxNode): Boolean;
 begin
   Result := TStatementText.Uncovered(ATree, AHead.StartOffset, AHead.EndOffset, ChainSpans(ATree, ALinks, AElse));
-end;
-
-/// <summary>Zweig als Text hinter einer Marke bzw. then/else; ein inneres if vor else bekommt begin … end.
-/// </summary>
-function BranchText(const AText: string; ATree: TSyntaxTree; ABranch: TSyntaxNode; const ALayout: TStatementLayout;
-  ABeforeElse: Boolean): string;
-var
-  Statements: TArray<TSyntaxNode>;
-begin
-  Statements := TStatementText.Statements(ABranch);
-  if ABeforeElse and (Length(Statements) = 1) and (Statements[0].Kind = TSyntaxKind.IfStatement) then
-    Result := ALayout.LineBreak + ALayout.Indent + 'begin' + ALayout.LineBreak +
-      TStatementText.List(AText, ATree, Statements, ALayout.Indent + ALayout.IndentUnit, ALayout.LineBreak) +
-      ALayout.LineBreak + ALayout.Indent + 'end'
-  else
-    Result := TStatementText.Branch(AText, ATree, Statements, ALayout, True);
 end;
 
 function LabelText(const AText: string; const ALabel: TCaseLabel): string;
@@ -593,15 +519,13 @@ var
   Link: TChainLink;
   Labels: TArray<string>;
   Item: TCaseLabel;
-  Body, Code, LineBreak: string;
+  Body, Code, LineBreak, Suffix: string;
   Statements: TArray<TSyntaxNode>;
   EndPos: TTextPosition;
-  Tokens: TArray<TPascalToken>;
-  Next: Integer;
 begin
   Result := False;
   AConversion := Default(TIfCaseConversion);
-  Head := IfStatementAt(ATree, APosition, TSyntaxKind.IfStatement);
+  Head := TStatementText.HeadAt(ATree, APosition, TSyntaxKind.IfStatement);
   while (Head <> nil) and IsChainElse(Head) do
     Head := Head.Parent;
   if Head = nil then
@@ -624,9 +548,9 @@ begin
       Statements := TStatementText.Statements(Link.Branch);
       // Mehrere Anweisungen: begin … end eine Stufe unter der Marke.
       if Length(Statements) > 1 then
-        Body := BranchText(AText, ATree, Link.Branch, ItemLayout.Deeper, False)
+        Body := TStatementText.GuardedBranch(AText, ATree, Link.Branch, ItemLayout.Deeper, False)
       else
-        Body := BranchText(AText, ATree, Link.Branch, ItemLayout, False);
+        Body := TStatementText.GuardedBranch(AText, ATree, Link.Branch, ItemLayout, False);
       // Eine einzeilige Anweisung steht hinter der Marke, sonst in den folgenden Zeilen.
       if (Length(Statements) = 1) and (Pos(LineBreak, Trim(Body)) = 0) and (Pos(#0, Body) = 0) then
         Body := ' ' + Trim(Body);
@@ -643,22 +567,12 @@ begin
       if Statements <> nil then
         Code := Code + LineBreak + TStatementText.List(AText, ATree, Statements, ItemLayout.Indent, LineBreak);
     end;
-    Code := Code + LineBreak + Layout.Indent + 'end';
     // Kommentare hinter der letzten Anweisung (… B := 0; // Rest) wandern ins case; die Ersetzung reicht dann
     // bis hinter sie, das Semikolon steht hinter end.
-    EndPos := Head.EndPos;
-    Tokens := ATree.Tokens;
-    Next := TRoutineBody.TokenAt(Tokens, Head.EndOffset);
-    while (Next <= High(Tokens)) and (Tokens[Next].Offset < LastSpanEnd(ChainSpans(ATree, Reader.Links,
-      Reader.ElseBranch))) do
-    begin
-      if Tokens[Next].IsSymbol(';') then
-        Code := Code + ';';
-      EndPos := Tokens[Next].EndPos;
-      Inc(Next);
-    end;
-    AConversion.Title := ToCaseTitle;
-    AConversion.Edit := TTextEdit.Create(TTextRange.Create(Head.StartPos, EndPos), Code);
+    EndPos := TStatementText.ReplacementEnd(ATree, Head, ChainSpans(ATree, Reader.Links, Reader.ElseBranch), Suffix);
+    Code := Code + LineBreak + Layout.Indent + 'end' + Suffix;
+    AConversion := TStatementRewrite.Create(ToCaseTitle, TTextEdit.Create(TTextRange.Create(Head.StartPos, EndPos),
+      Code));
     Result := True;
   finally
     Reader.Free;
@@ -753,12 +667,10 @@ var
   SelectorPart: TExpressionPart;
   First: Boolean;
   EndPos: TTextPosition;
-  Tokens: TArray<TPascalToken>;
-  Next: Integer;
 begin
   Result := False;
   AConversion := Default(TIfCaseConversion);
-  CaseNode := IfStatementAt(ATree, APosition, TSyntaxKind.CaseStatement);
+  CaseNode := TStatementText.HeadAt(ATree, APosition, TSyntaxKind.CaseStatement);
   if CaseNode = nil then
     Exit;
   Selector := CaseNode[0];
@@ -787,24 +699,14 @@ begin
       Exit;
   end;
   // Kommentare zwischen case und of, in den Marken oder hinter else gingen verloren.
-  Spans := BranchSpans(ATree, Branches);
+  Spans := TStatementText.Spans(ATree, Branches);
   for Index := 0 to High(ElseStatements) do
     Spans := Spans + [TStatementText.SpanOf(ATree, ElseStatements[Index], Index = High(ElseStatements))];
   if (Count = 0) or TStatementText.Uncovered(ATree, CaseNode.StartOffset, CaseNode.EndOffset, Spans) then
     Exit;
   LineBreak := ALayout.LineBreak;
   Layout := TStatementLayout.Create(TTextLines.IndentOf(AText, CaseNode.StartPos.Line), ALayout.IndentUnit, LineBreak);
-  // Das Semikolon hinter end gehört zur Ersetzung: Ein Kommentar hinter der letzten Anweisung (// …) stünde
-  // sonst vor ihm und schlösse es aus.
-  EndPos := CaseNode.EndPos;
-  Suffix := '';
-  Tokens := ATree.Tokens;
-  Next := TRoutineBody.TokenAt(Tokens, CaseNode.EndOffset);
-  if (Next <= High(Tokens)) and Tokens[Next].IsSymbol(';') then
-  begin
-    EndPos := Tokens[Next].EndPos;
-    Suffix := ';';
-  end;
+  EndPos := TStatementText.ReplacementEnd(ATree, CaseNode, Spans, Suffix);
   SelectorPart := TExpressionText.Part(AText, TExpressionText.Strip(Selector));
   Code := '';
   First := True;
@@ -823,16 +725,16 @@ begin
     Dec(Count);
     // Vor einem weiteren else: ein inneres if braucht begin … end.
     if (Count > 0) or (ElseStatements <> nil) then
-      Code := Code + TStatementText.Finish(BranchText(AText, ATree, ItemBranch(Item), Layout, True), '')
+      Code := Code + TStatementText.Finish(TStatementText.GuardedBranch(AText, ATree, ItemBranch(Item), Layout, True), '')
     else
-      Code := Code + TStatementText.Finish(BranchText(AText, ATree, ItemBranch(Item), Layout, False),
+      Code := Code + TStatementText.Finish(TStatementText.GuardedBranch(AText, ATree, ItemBranch(Item), Layout, False),
         Suffix);
   end;
   if ElseStatements <> nil then
     Code := Code + LineBreak + Layout.Indent + 'else' + TStatementText.Finish(TStatementText.Branch(AText, ATree,
       ElseStatements, Layout, True), Suffix);
-  AConversion.Title := ToIfTitle;
-  AConversion.Edit := TTextEdit.Create(TTextRange.Create(CaseNode.StartPos, EndPos), Code);
+  AConversion := TStatementRewrite.Create(ToIfTitle, TTextEdit.Create(TTextRange.Create(CaseNode.StartPos, EndPos),
+    Code));
   Result := True;
 end;
 

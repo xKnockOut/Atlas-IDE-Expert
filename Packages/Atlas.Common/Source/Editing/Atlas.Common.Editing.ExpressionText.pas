@@ -74,6 +74,10 @@ type
     class function IsSideEffectFree(ANode: TSyntaxNode): Boolean; static;
     /// <summary>True oder False als Name bzw. Literal.</summary>
     class function IsBooleanLiteral(ANode: TSyntaxNode): Boolean; static;
+    /// <summary>Mindestvorrang, den ein Ersatz für ANode an seiner Stelle braucht, damit er ohne Klammern
+    /// dasselbe bedeutet (siehe TExpressionPart.AtLeast): Operand eines Operators, Empfänger eines Aufrufs,
+    /// Indexzugriffs oder Mitglieds; sonst (Bedingung, Argument, Klammer) PrecedenceIfExpr.</summary>
+    class function ContextPrecedence(ANode: TSyntaxNode): Integer; static;
   end;
 
 implementation
@@ -199,6 +203,36 @@ class function TExpressionText.IsBooleanLiteral(ANode: TSyntaxNode): Boolean;
 begin
   Result := (ANode <> nil) and (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.Literal]) and
     (SameText(ANode.Name, 'True') or SameText(ANode.Name, 'False'));
+end;
+
+class function TExpressionText.ContextPrecedence(ANode: TSyntaxNode): Integer;
+var
+  Parent: TSyntaxNode;
+  Level: Integer;
+begin
+  Result := PrecedenceIfExpr;
+  Parent := ANode.Parent;
+  if Parent = nil then
+    Exit;
+  case Parent.Kind of
+    TSyntaxKind.BinaryExpr:
+      if Parent.ChildCount = 2 then
+      begin
+        // Wie Combine: links derselbe Vorrang, rechts und bei Vergleichen beidseitig ein höherer.
+        Level := OperatorPrecedence(Parent.Name);
+        if Level < 0 then
+          Level := PrecedenceRelational;
+        if (Parent[1] = ANode) or (Level = PrecedenceRelational) then
+          Result := Level + 1
+        else
+          Result := Level;
+      end;
+    TSyntaxKind.UnaryExpr:
+      Result := PrecedenceUnary;
+    TSyntaxKind.AddressOf, TSyntaxKind.Call, TSyntaxKind.IndexAccess, TSyntaxKind.MemberAccess:
+      if Parent[0] = ANode then
+        Result := PrecedenceOperand;
+  end;
 end;
 
 class function TExpressionText.Negate(const AText: string; ANode: TSyntaxNode): TExpressionPart;

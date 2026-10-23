@@ -40,6 +40,8 @@ type
     [Test]
     procedure ParsesStatements;
     [Test]
+    procedure KeepsEmptyThenBeforeElse;
+    [Test]
     procedure ParsesInlineVarAndAnonymousMethod;
     [Test]
     procedure ReportsRangesInUtf16;
@@ -437,6 +439,26 @@ begin
     AssertNoDiagnostics(Tree);
     Assert.AreEqual('BinaryExpr:+(Literal:1,BinaryExpr:*(Literal:2,Literal:3))',
       Outline(FindFirst(Tree.Root, TSyntaxKind.BinaryExpr)));
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TPascalParserTests.KeepsEmptyThenBeforeElse;
+var
+  Tree: TSyntaxTree;
+  Node: TSyntaxNode;
+begin
+  // if A then else B: Der then-Zweig ist leer, B gehört ins else (#656).
+  Tree := TPascalParser.Parse(Lines(['program P;', 'begin', '  if A then else B;', '  if C then ;', 'end.']));
+  try
+    AssertNoDiagnostics(Tree);
+    Node := FindFirst(Tree.Root, TSyntaxKind.IfStatement);
+    Assert.AreEqual(3, Node.ChildCount);
+    Assert.AreEqual(Ord(TSyntaxKind.EmptyStatement), Ord(Node[1].Kind));
+    Assert.AreEqual(Ord(TSyntaxKind.CallStatement), Ord(Node[2].Kind));
+    // Ohne else bleibt es bei Bedingung allein.
+    Assert.AreEqual(1, Node.Parent[1].ChildCount);
   finally
     Tree.Free;
   end;

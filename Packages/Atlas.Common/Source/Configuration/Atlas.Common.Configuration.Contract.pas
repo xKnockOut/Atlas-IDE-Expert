@@ -392,6 +392,8 @@ type
     InvertBooleanIncludeDfm: Boolean;
     /// <summary>Code-Aktionen „In case umwandeln“ und „In if-Kette umwandeln“ (#646).</summary>
     IfCase: Boolean;
+    /// <summary>Code-Aktionen zum Umformen von Bedingungen (#656).</summary>
+    Conditions: Boolean;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -849,6 +851,7 @@ begin
   Result.InvertBooleanFallbackPrefix := 'Not';
   Result.InvertBooleanIncludeDfm := True;
   Result.IfCase := True;
+  Result.Conditions := True;
 end;
 
 { TCompletionSettings }
