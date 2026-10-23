@@ -15,13 +15,15 @@
 //   Experten), sonst kennt die IDE beim Laden des Start-Desktops die Kennung
 //   noch nicht.
 // Die Entscheidungen ohne VCL/OTA liegen in Atlas.Core.Dock.Plan (getestet).
-// ApplyIdeTheme: Thema der IDE auf den Inhalt eines Atlas-Fensters, auch beim
-// Wechsel Dunkel → Hell. ApplyTheme setzt im dunklen Thema feste Farben und
-// den Dunkelmodus von Windows in Listen, Bäume, Eingabefelder und
-// Kontrollkästchen, beim Wechsel zurück aber nicht wieder die Systemfarben.
-// Deshalb vorher auf clWindow/clWindowText bzw. die Farbe des Elternteils,
-// danach mit neuem Fenster (Kopfzeile, Bildlaufleisten und Kästchen im neuen
-// Thema). Der Notifier ruft das mehrfach verzögert (Atlas.IDE.Foundation.Symbol).
+// ApplyIdeTheme: Thema der IDE auf den Inhalt eines Atlas-Fensters, beim
+// Anlegen und bei jedem Themenwechsel. ApplyTheme färbt nur Steuerelemente
+// ohne Style-Hook (Labels, Panels); Listen, Felder, Combos und Kästchen
+// zeichnet der VCL-Stil, den sie über StyleName vom Elternteil erben. Nach
+// einem Wechsel lieferte diese Kette noch den alten Stil (Fenster blieben
+// hell bzw. dunkel). Deshalb steht der Stil der IDE ausdrücklich an der
+// Wurzel des Atlas-Fensters, alle Kinder erben; ein geänderter Name legt die
+// Fenster mit dem neuen Stil neu an. Liefert die Wurzel danach trotzdem einen
+// anderen Stil, steht die Kette im Protokoll.
 
 interface
 
@@ -68,12 +70,10 @@ implementation
 uses
   System.SysUtils,
   Vcl.Graphics,
-  Vcl.StdCtrls,
+  Vcl.Themes,
   Vcl.ComCtrls,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Dock.Plan;
-
-type
-  TWinControlAccess = class(TWinControl);
 
 { TAtlasIdeDockWindow }
 
@@ -250,10 +250,9 @@ end;
 class procedure TAtlasIdeDockWindow.ApplyIdeTheme(AControl: TWinControl);
 var
   Theming: IOTAIDEThemingServices;
-  Renewed: TArray<TWinControl>;
-  Control: TWinControl;
+  Style: TCustomStyleServices;
 
-  procedure Reset(AParent: TWinControl);
+  procedure ResetColors(AParent: TWinControl);
   var
     Index: Integer;
     Child: TControl;
@@ -265,28 +264,41 @@ var
       begin
         TListView(Child).Color := clWindow;
         TListView(Child).Font.Color := clWindowText;
-        Renewed := Renewed + [TWinControl(Child)];
       end
       else if Child is TTreeView then
       begin
         TTreeView(Child).Color := clWindow;
         TTreeView(Child).Font.Color := clWindowText;
-      end
-      else if (Child is TCustomEdit) or (Child is TCustomListBox) then
-      begin
-        // TEdit, TButtonedEdit, TMemo, TListBox, TCheckListBox: Farbe und Schrift erst dort veröffentlicht.
-        TWinControlAccess(Child).Color := clWindow;
-        TWinControlAccess(Child).Font.Color := clWindowText;
-        Renewed := Renewed + [TWinControl(Child)];
-      end
-      else if Child is TCustomCheckBox then
-      begin
-        TWinControlAccess(Child).ParentColor := True;
-        TWinControlAccess(Child).Font.Color := clWindowText;
-        Renewed := Renewed + [TWinControl(Child)];
       end;
       if Child is TWinControl then
-        Reset(TWinControl(Child));
+        ResetColors(TWinControl(Child));
+    end;
+  end;
+
+  procedure Inherit(AParent: TWinControl);
+  var
+    Index: Integer;
+    Child: TControl;
+  begin
+    for Index := 0 to AParent.ControlCount - 1 do
+    begin
+      Child := AParent.Controls[Index];
+      Child.StyleName := '';
+      if Child is TWinControl then
+        Inherit(TWinControl(Child));
+    end;
+  end;
+
+  function Chain: string;
+  var
+    Control: TControl;
+  begin
+    Result := '';
+    Control := AControl;
+    while Control <> nil do
+    begin
+      Result := Result + Format(' < %s "%s"', [Control.ClassName, Control.StyleName]);
+      Control := Control.Parent;
     end;
   end;
 
@@ -294,12 +306,17 @@ begin
   if (AControl = nil) or not Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) or
     not Theming.IDEThemingEnabled then
     Exit;
-  Renewed := nil;
-  Reset(AControl);
+  ResetColors(AControl);
   Theming.ApplyTheme(AControl);
-  for Control in Renewed do
-    if Control.HandleAllocated then
-      TWinControlAccess(Control).RecreateWnd;
+  Style := Theming.StyleServices;
+  if Style = nil then
+    Exit;
+  Inherit(AControl);
+  if TStyleManager.Style[Style.Name] = Style then
+    AControl.StyleName := Style.Name;
+  if StyleServices(AControl) <> Style then
+    TAtlasGuard.Log(Format('Thema: %s zeichnet mit Stil "%s" statt "%s";%s', [AControl.ClassName,
+      StyleServices(AControl).Name, Style.Name, Chain]));
 end;
 
 end.

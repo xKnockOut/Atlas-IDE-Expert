@@ -55,20 +55,16 @@ type
     procedure ChangedTheme;
   end;
 
-  /// <summary>Weitere Durchläufe nach dem Themenwechsel.</summary>
+  /// <summary>Zweiter Durchlauf nach dem Themenwechsel.</summary>
   TLater = class
     procedure Tick(Sender: TObject);
   end;
 
 const
-  /// <summary>Abstände der späten Durchläufe: Die IDE braucht für den Wechsel je nach Zahl der Fenster deutlich
-  /// länger als 400 ms; ApplyTheme zu früh setzte in Listen und Feldern wieder die Farben des alten Themas.
-  /// </summary>
-  LaterMs: array[0..2] of Integer = (400, 1500, 4000);
+  LaterMs = 400;
 
 var
   Later: TTimer;
-  LaterStep: Integer;
   Later_: TLater;
   Collection: TImageCollection;
   Images: TVirtualImageList;
@@ -123,26 +119,16 @@ begin
     Later.OnTimer := Later_.Tick;
   end;
   Later.Enabled := False;
-  LaterStep := 0;
-  Later.Interval := LaterMs[0];
+  Later.Interval := LaterMs;
   Later.Enabled := True;
 end;
 
 { TLater }
 
 procedure TLater.Tick(Sender: TObject);
-var
-  Ms: Integer;
 begin
   Later.Enabled := False;
-  Ms := LaterMs[LaterStep];
-  Inc(LaterStep);
-  if LaterStep <= High(LaterMs) then
-  begin
-    Later.Interval := LaterMs[LaterStep] - Ms;
-    Later.Enabled := True;
-  end;
-  Run(Ms);
+  Run(LaterMs);
 end;
 
 { TAtlasIdeSymbol }
