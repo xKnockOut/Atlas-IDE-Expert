@@ -89,6 +89,12 @@ type
     /// <summary>Gleichnamige Deklarationen weiter außen, die dieser Eintrag verdeckt (#488), als Text wie
     /// "Feld TKunde.Total"; nur bei Kandidaten für die Vervollständigung.</summary>
     Hides: TArray<string>;
+    /// <summary>Mitglied eines with-Objekts (#481): der Ausdruck des Elements wie im Quelltext ("qryOrders");
+    /// '' sonst. Nur bei Kandidaten für die Vervollständigung.</summary>
+    WithOrigin: string;
+    /// <summary>Bei WithOrigin: verdeckte gleichnamige lokale Namen und Mitglieder von Self (#481), als Text wie
+    /// "Self.Name" bzw. "lokale Variable Name".</summary>
+    WithShadows: TArray<string>;
     /// <summary>Wie im Index (#263).</summary>
     TypeArgs: string;
     AncestorArgs: string;
@@ -124,6 +130,9 @@ type
 
   TNameResolver = class
   private type
+    /// <summary>Was OwnScopeCandidates gerade sammelt (#481): Verdeckt ein with-Mitglied einen Namen dieser Stufe,
+    /// kommt er in WithShadows.</summary>
+    TScopeStage = (Other, Local, OwnClass);
     /// <summary>Mit PinTree vorab ausgewerteter Baum (Code-Review P-01/P-02).</summary>
     TPin = record
       Tree: TSyntaxTree;
@@ -156,6 +165,7 @@ type
     FScopeUnit: TUnitIndex;
     FScopeInImplementation: Boolean;
     FScopeOpen: Boolean;
+    FScopeStage: TScopeStage;
     // Pro Aufruf von Resolve
     FTree: TSyntaxTree;
     FCurrent: TUnitIndex;
@@ -227,6 +237,13 @@ type
     function LookupWith(const AName: string; out AResults: TArray<TResolvedSymbol>; out AStop: Boolean): Boolean;
     function LookupWithOwner(const AName: string; out AResults: TArray<TResolvedSymbol>; out AStop: Boolean;
       out AWith: TSyntaxNode; out AElement: Integer): Boolean;
+    /// <summary>with-Anweisungen, in deren Rumpf FOffset liegt, innerste zuerst.</summary>
+    function EnclosingWiths: TArray<TSyntaxNode>;
+    /// <summary>Typ des Elements AIndex von AWith, aufgelöst an seiner eigenen Stelle.</summary>
+    function WithElementType(AWith: TSyntaxNode; AIndex: Integer; out AType: TResolvedSymbol): Boolean;
+    /// <summary>Mitglieder der with-Objekte am Cursor (#481): innerstes with zuerst, darin das letzte Element.
+    /// </summary>
+    procedure CollectWithMembers(AList: TList<TResolvedSymbol>; ASeen: TDictionary<string, Boolean>);
     function FindReceiver(AEndOffset: Integer): TSyntaxNode;
     function FindCall(ACalleeEnd: Integer): TSyntaxNode;
     function IsForVar(ANode: TSyntaxNode): Boolean;
@@ -2260,13 +2277,9 @@ end;
 function TNameResolver.LookupWithOwner(const AName: string; out AResults: TArray<TResolvedSymbol>;
   out AStop: Boolean; out AWith: TSyntaxNode; out AElement: Integer): Boolean;
 var
-  Withs: TList<TSyntaxNode>;
-  Node, WithNode: TSyntaxNode;
+  WithNode: TSyntaxNode;
   Index: Integer;
-  Descended: Boolean;
-  Value, TypeInfo: TResolvedSymbol;
-  SavedOffset: Integer;
-  Known: Boolean;
+  TypeInfo: TResolvedSymbol;
 begin
   Result := False;
   AStop := False;
@@ -2275,50 +2288,121 @@ begin
   AElement := -1;
   if FTree = nil then
     Exit;
-  // with-Anweisungen, in deren Rumpf FOffset liegt, innerste zuerst.
-  Withs := TList<TSyntaxNode>.Create;
+  for WithNode in EnclosingWiths do
+    for Index := WithNode.ChildCount - 2 downto 0 do
+    begin
+      if not WithElementType(WithNode, Index, TypeInfo) then
+      begin
+        // Unbekannter Typ: der Name könnte ein Mitglied sein, also lieber nichts liefern.
+        AStop := True;
+        Exit;
+      end;
+      AResults := FindMembers(TypeInfo, AName);
+      if Length(AResults) > 0 then
+      begin
+        AWith := WithNode;
+        AElement := Index;
+        Exit(True);
+      end;
+    end;
+end;
+
+function TNameResolver.EnclosingWiths: TArray<TSyntaxNode>;
+var
+  Node: TSyntaxNode;
+  Index: Integer;
+  Descended: Boolean;
+begin
+  Result := nil;
+  if FTree = nil then
+    Exit;
+  Node := FTree.Root;
+  repeat
+    Descended := False;
+    for Index := 0 to Node.ChildCount - 1 do
+      if Contains(Node[Index], FOffset) then
+      begin
+        Node := Node[Index];
+        if (Node.Kind = TSyntaxKind.WithStatement) and (Node.ChildCount >= 2) and
+          Contains(Node[Node.ChildCount - 1], FOffset) then
+          Result := [Node] + Result;
+        Descended := True;
+        Break;
+      end;
+  until not Descended;
+end;
+
+function TNameResolver.WithElementType(AWith: TSyntaxNode; AIndex: Integer; out AType: TResolvedSymbol): Boolean;
+var
+  Value: TResolvedSymbol;
+  SavedOffset: Integer;
+begin
+  // Den Ausdruck an seiner eigenen Stelle auflösen, außerhalb des with-Rumpfs.
+  SavedOffset := FOffset;
+  FOffset := AWith[AIndex].StartOffset;
   try
-    Node := FTree.Root;
-    repeat
-      Descended := False;
-      for Index := 0 to Node.ChildCount - 1 do
-        if Contains(Node[Index], FOffset) then
-        begin
-          Node := Node[Index];
-          if (Node.Kind = TSyntaxKind.WithStatement) and (Node.ChildCount >= 2) and
-            Contains(Node[Node.ChildCount - 1], FOffset) then
-            Withs.Insert(0, Node);
-          Descended := True;
-          Break;
-        end;
-    until not Descended;
-    for WithNode in Withs do
+    Result := ExprSymbol(AWith[AIndex], Value) and TypeOf(Value, AType);
+  finally
+    FOffset := SavedOffset;
+  end;
+end;
+
+/// <summary>Quelltext von ANode aus den Tokens von ATree, in einer Zeile; Leerraum dazwischen als ein Leerzeichen.
+/// </summary>
+function NodeSource(ATree: TSyntaxTree; ANode: TSyntaxNode): string;
+var
+  Token: TPascalToken;
+  LastEnd: Integer;
+begin
+  Result := '';
+  LastEnd := -1;
+  for Token in ATree.Tokens do
+  begin
+    if Token.Offset >= ANode.EndOffset then
+      Break;
+    if (Token.Offset < ANode.StartOffset) or (Token.Kind in [TPascalTokenKind.Comment,
+      TPascalTokenKind.Directive]) then
+      Continue;
+    if (LastEnd >= 0) and (Token.Offset > LastEnd) then
+      Result := Result + ' ';
+    Result := Result + Token.Text;
+    LastEnd := Token.Offset + Length(Token.Text);
+  end;
+end;
+
+procedure TNameResolver.CollectWithMembers(AList: TList<TResolvedSymbol>; ASeen: TDictionary<string, Boolean>);
+var
+  WithNode: TSyntaxNode;
+  Index: Integer;
+  TypeInfo, Member: TResolvedSymbol;
+  Members: TList<TResolvedSymbol>;
+  Seen: TDictionary<string, Boolean>;
+  Origin: string;
+begin
+  Members := TList<TResolvedSymbol>.Create;
+  Seen := TDictionary<string, Boolean>.Create;
+  try
+    for WithNode in EnclosingWiths do
       for Index := WithNode.ChildCount - 2 downto 0 do
       begin
-        // Den Ausdruck an seiner eigenen Stelle auflösen, außerhalb des with-Rumpfs.
-        SavedOffset := FOffset;
-        FOffset := WithNode[Index].StartOffset;
-        try
-          Known := ExprSymbol(WithNode[Index], Value) and TypeOf(Value, TypeInfo);
-        finally
-          FOffset := SavedOffset;
-        end;
-        if not Known then
+        // Unbekannter Typ: keine Mitglieder; Namen weiter außen bleiben dann ohne Hinweis.
+        if not WithElementType(WithNode, Index, TypeInfo) then
+          Continue;
+        // Eigene Sammlung: Unsichtbare Mitglieder des with-Typs dürfen äußere Namen nicht ausblenden.
+        Members.Clear;
+        Seen.Clear;
+        CollectMembers(TypeInfo, Members, Seen);
+        Origin := NodeSource(FTree, WithNode[Index]);
+        for Member in Members do
         begin
-          // Unbekannter Typ: der Name könnte ein Mitglied sein, also lieber nichts liefern.
-          AStop := True;
-          Exit;
-        end;
-        AResults := FindMembers(TypeInfo, AName);
-        if Length(AResults) > 0 then
-        begin
-          AWith := WithNode;
-          AElement := Index;
-          Exit(True);
+          TypeInfo := Member;
+          TypeInfo.WithOrigin := Origin;
+          AddCandidate(AList, ASeen, TypeInfo);
         end;
       end;
   finally
-    Withs.Free;
+    Seen.Free;
+    Members.Free;
   end;
 end;
 
@@ -2565,6 +2649,18 @@ begin
           Params := ShadowText(ASymbol);
           if not MatchText(Params, Existing.Hides) then
             Existing.Hides := Existing.Hides + [Params];
+          // with-Mitglied über einem lokalen Namen oder einem Mitglied von Self (#481): Warnung in der Liste.
+          if Existing.WithOrigin <> '' then
+          begin
+            case FScopeStage of
+              TScopeStage.Local: Params := ShadowText(ASymbol);
+              TScopeStage.OwnClass: Params := 'Self.' + ASymbol.Name;
+            else
+              Params := '';
+            end;
+            if (Params <> '') and not MatchText(Params, Existing.WithShadows) then
+              Existing.WithShadows := Existing.WithShadows + [Params];
+          end;
           AList[Index] := Existing;
         end;
         Break;
@@ -2747,6 +2843,10 @@ begin
   Prepare(ATree, AFileName, AOffset);
   List := TList<TResolvedSymbol>.Create;
   try
+    // with-Objekte verdecken alles weiter außen (#481); innerstes zuerst.
+    FScopeStage := TScopeStage.Other;
+    CollectWithMembers(List, FScopeSeen);
+    FScopeStage := TScopeStage.Local;
     for Routine in EnclosingRoutines do
     begin
       // Lokale Namen vor den Parametern (#488): Stufe 1 vor Stufe 2.
@@ -2780,8 +2880,10 @@ begin
       ResultSymbol.SymbolKind := TIndexSymbolKind.Variable;
       ResultSymbol.TypeName := ClassType.QualifiedName;
       AddCandidate(List, FScopeSeen, ResultSymbol);
+      FScopeStage := TScopeStage.OwnClass;
       CollectMembers(ClassType, List, FScopeSeen);
     end;
+    FScopeStage := TScopeStage.Other;
     CollectUnit(FCurrent, not FInImplementation, List, FScopeSeen);
     // Für den zweiten Teil merken: Andere Aufrufe dazwischen (z. B. Typprüfungen) bereiten den Zustand neu vor.
     FScopeUnit := FCurrent;

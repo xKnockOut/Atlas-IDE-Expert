@@ -1588,6 +1588,8 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.Attributes)
     else if Key = 'anonymousMethods' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.AnonymousMethods)
+    else if Key = 'withOrigin' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.WithOrigin)
     else if Key = 'sameNameVariants' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.SameNameVariants)
     else if Key = 'showFmxUnits' then
