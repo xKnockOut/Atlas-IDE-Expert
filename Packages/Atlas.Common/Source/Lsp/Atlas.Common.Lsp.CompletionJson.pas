@@ -242,6 +242,23 @@ begin
     AData.AddPair('unit', AItem.UnitName);
 end;
 
+/// <summary>Mitglied eines with-Objekts (#481): Ausdruck und verdeckte Namen.</summary>
+procedure WriteWith(const AItem: TCompletionItem; AData: TJSONObject);
+var
+  Shadows: TJSONArray;
+  Text: string;
+begin
+  if AItem.WithOrigin = '' then
+    Exit;
+  AData.AddPair('withOrigin', AItem.WithOrigin);
+  if Length(AItem.WithShadows) = 0 then
+    Exit;
+  Shadows := TJSONArray.Create;
+  AData.AddPair('withShadows', Shadows);
+  for Text in AItem.WithShadows do
+    Shadows.Add(Text);
+end;
+
 procedure WriteHides(const AItem: TCompletionItem; AData: TJSONObject);
 var
   Hides: TJSONArray;
@@ -384,12 +401,12 @@ end;
 const
   /// <summary>Reihenfolge der Felder unter data; das Plugin liest nach Namen, die Golden-Tests nach Text.
   /// </summary>
-  DataWriters: array[0..35] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
+  DataWriters: array[0..36] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
     WriteDepth, WriteHelper, WriteParameters, WriteCondition, WriteVariant, WriteUnavailable, WriteScope, WriteOrdinal,
     WriteSetOf, WriteLinked, WritePinned, WriteCount, WriteUnknown, WriteBatch, WriteHint, WriteForm, WriteByType, WriteSender,
     WriteConversion, WriteAssignments, WriteDataSet, WriteGuard, WriteUnit, WriteHides, WriteOverloads, WriteTypeArg,
     WriteBindings, WriteUses, WriteInherited, WriteSameName, WriteAttribute,
-    WriteMethodRef);
+    WriteMethodRef, WriteWith);
 
 function NeedsData(const AItem: TCompletionItem): Boolean;
 begin

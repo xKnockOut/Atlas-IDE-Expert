@@ -201,6 +201,13 @@ begin
       for Value in TJSONArray(Data.GetValue('hides')) do
         if Value is TJSONString then
           Result.Hides := Result.Hides + [TJSONString(Value).Value];
+    // Mitglied eines with-Objekts (#481).
+    Result.WithOrigin := Data.GetValue<string>('withOrigin', '');
+    Value := Data.GetValue('withShadows');
+    if Value is TJSONArray then
+      for Value in TJSONArray(Data.GetValue('withShadows')) do
+        if Value is TJSONString then
+          Result.WithShadows := Result.WithShadows + [TJSONString(Value).Value];
     Result.HasParameters := Data.GetValue('parameters') is TJSONTrue;
     Result.ExpectedType := Data.GetValue<string>('expected', '');
     Result.Fits := Data.GetValue('fits') is TJSONTrue;
@@ -580,12 +587,13 @@ var
   Callback: TAtlasDetailsCallback;
   Item: TJSONObject;
   Hides: TArray<string>;
-  LossyFrom, LossyTo: string;
+  WithOrigin, LossyFrom, LossyTo: string;
 begin
   Result := False;
   if AItem.ResolveData = '' then
     Exit;
   Hides := AItem.Hides;
+  WithOrigin := AItem.WithOrigin;
   LossyFrom := AItem.Lossy;
   LossyTo := '';
   if LossyFrom <> '' then
@@ -622,6 +630,7 @@ begin
         Response.Free;
       end;
       Details.Hides := Hides;
+      Details.WithOrigin := WithOrigin;
       Details.LossyFrom := LossyFrom;
       Details.LossyTo := LossyTo;
       // Der Rückruf zeigt das Detailpanel; die Hülle zählt seine Fehler für die Vervollständigung (S-05, A-02).

@@ -506,6 +506,12 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"completion": {"anonymousMethods": 0}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Herkunft in with-Blöcken (#481)
+  Assert.IsTrue(Parse('{}', Issues).Completion.WithOrigin);
+  Assert.IsFalse(Parse('{"completion": {"withOrigin": false}}', Issues).Completion.WithOrigin);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"withOrigin": "nein"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Gleiche Namen aus verschiedenen Units (#475)
   Assert.IsTrue(Parse('{}', Issues).Completion.SameNameVariants);
   Assert.IsTrue(Parse('{}', Issues).Completion.SameNameInsert = TCompletionSameNameInsert.Prefix);

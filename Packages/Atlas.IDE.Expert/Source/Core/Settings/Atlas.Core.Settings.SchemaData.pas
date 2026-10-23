@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2095] of string = (
+  Lines: array[0..2101] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1140,6 +1140,13 @@ const
       'e ein Gerüst mit passender Signatur anbieten: procedure(const Value: TKunde) bzw. function(const Value: TKunde): Boolean mit begin/end und Cursor im Rumpf. Die Parameter Arg1, Arg2 der generischen RTL' +
       '-Typen heißen Value bzw. nach ihrem Typ, mit dem Parameterpräfix des Projekts. Nach „(“ erscheint das Gerüst von selbst. Aus: kein Gerüst.",',
     '          "x-issue": "#468"',
+    '        },',
+    '        "withOrigin": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "In with-Blöcken Mitglieder des with-Objekts kennzeichnen: Marke „aus qryOrders“ (bei verschachtelten with das innerste passende Objekt, wie der Compiler), und wenn das Mitgli' +
+      'ed einen gleichnamigen lokalen Namen oder ein Mitglied von Self verdeckt, die Warnmarke „verdeckt Self.Name“ mit Warnfläche. Das Detailpanel nennt beide Bedeutungen. Aus: Mitglieder ohne Herkunft.",',
+    '          "x-issue": "#481"',
     '        },',
     '        "sameNameVariants": {',
     '          "type": "boolean",',
