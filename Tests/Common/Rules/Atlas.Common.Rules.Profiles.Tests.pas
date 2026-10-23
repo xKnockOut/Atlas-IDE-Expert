@@ -184,7 +184,7 @@ const
     'invalid-var-argument,invisible-char,jump-outside-allowed-scope,label-misuse,' +
     'load-without-encoding,local-routine-as-callback,lock-without-finally,loop-condition-unchanged,loop-off-by-one,managed-type-raw-memory,member-hides-ancestor,message-handler-without-inherited,message-method-invalid,metric-boolean-operands,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,' +
     'metric-exit-points,metric-inheritance-depth,metric-local-count,metric-method-length,metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-begin-end,missing-inherited,now-for-elapsed-time,null-compare,operator-declaration-invalid,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-only-inherited,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,parallel-for-shared-write,path-concat-without-delimiter,pchar-of-temporary,pos-arguments-swapped,' +
-    'possibly-uninitialized,processmessages-in-loop,property-accessor-invalid,property-redeclaration-invalid,published-type-invalid,queue-nil-in-package,raise-in-finally,raw-memory-leak,readonly-property-assigned,redundant-assigned-free,registry-hklm-write,reraise-exception-object,reraise-outside-handler,' +
+    'possibly-uninitialized,processmessages-in-loop,property-accessor-invalid,property-redeclaration-invalid,published-type-invalid,queue-nil-in-package,raise-in-finally,raw-memory-leak,readonly-property-assigned,redundant-assigned-free,redundant-jump,registry-hklm-write,reraise-exception-object,reraise-outside-handler,' +
     'result-not-set,' +
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
     'security-tls-verification-disabled,security-weak-crypto,self-as-interface-in-constructor,self-assignment,self-free-in-event-handler,setlength-in-loop,setter-recursion,shadowed-name,signature-mismatch,signed-unsigned-mix,sizeof-pointer,' +
@@ -230,7 +230,7 @@ begin
     'component-hardcoded-color,component-palette-icon,component-setter-without-invalidate,deprecated-symbol,dfm-property,dunitx-test-without-assert,empty-except,empty-finally,empty-routine,' +
     'forbidden-uses,foreign-form-control-access,format-without-settings,generic-exception-raised,getter-side-effect,hardcoded-path,implicit-package-import,inherited-without-ancestor,inline-not-expanded,' +
     'metric-boolean-operands,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-exit-points,metric-inheritance-depth,metric-local-count,metric-method-length,' +
-    'metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-begin-end,now-for-elapsed-time,null-compare,override-only-inherited,processmessages-in-loop,redundant-assigned-free,' +
+    'metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-begin-end,now-for-elapsed-time,null-compare,override-only-inherited,processmessages-in-loop,redundant-assigned-free,redundant-jump,' +
     'reraise-exception-object,setlength-in-loop,shadowed-name,slash-command,task-exception-unobserved,text-after-final-end,thread-resume-suspend,unneeded-forward-declaration,' +
     'unused-assignment,unused-local,' +
     'unused-parameter,unused-private-member,unused-public-member,with-statement,write-only-property,xmldoc-mismatch',

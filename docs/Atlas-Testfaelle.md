@@ -6173,3 +6173,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | IO4 | Message-Handler (`message WM_PAINT`), Konstruktor, Destruktor, `class procedure`, Methode mit `override`, TBasis mit gleichnamiger (auch statischer) Methode, Vorfahr aus einer nicht indizierten Unit, `inherited;` in einer anonymen Methode | Keine Meldung (**Abnahme**) |
 | IO5 | TBasis in einer anderen Unit des Projekts, einmal mit, einmal ohne `Vorbereiten` | Mit: keine Meldung; ohne: Meldung wie IO1 |
 | IO6 | `"inherited-without-ancestor": "off"` bzw. `exclude`; Seite Prüfregeln › Stil | Keine Meldung; die Regel steht in der Gruppe |
+
+## Überflüssiges Exit oder Continue (#1141)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RJ1 | Methode mit `Inc(FLaenge); Exit;` als letzten Anweisungen | Hinweis `redundant-jump` am `Exit`: „Exit am Ende der Routine ist überflüssig.“ |
+| RJ2 | Alt+Enter, „Anweisung entfernen“ | Die Zeile `Exit;` verschwindet, die Einrückung des Rests bleibt; ein Undo-Schritt (**Abnahme**) |
+| RJ3 | `for … in`, `for … to`, `while` und `repeat` mit `Continue;` als letzter Anweisung im Rumpf, auch im letzten Zweig eines `if` | Hinweis „Continue am Ende des Schleifenrumpfs ist überflüssig.“; als bloßer `if`-Zweig ohne `begin … end` ohne Schnellkorrektur |
+| RJ4 | `if … then Continue else if … then … else …` am Rumpfende, `Exit(Wert)`, `Exit` vor weiteren Anweisungen, `Exit`/`Continue` in `try … finally` oder `try … except`, `Continue` in einem `case`-Zweig, `System.Continue`, `{$IFDEF}` im Rumpf, Ziel eines `goto` | Keine Meldung |
+| RJ5 | `Exit;` am Ende einer anonymen Methode | Hinweis wie RJ1 |
+| RJ6 | `"redundant-jump": "off"` bzw. `exclude`; Seite Prüfregeln › Stil | Keine Meldung; die Regel steht in der Gruppe |
