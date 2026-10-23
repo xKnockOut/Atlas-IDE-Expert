@@ -6124,6 +6124,20 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index (VCL-Quellen indiz
 | HU7 | Klasse mit Vorfahr aus einer Unit, die nicht im Index steht | Keine Meldung (Kette unbekannt) |
 | HU8 | `"unrelated-class-cast": "off"`, `"group:find-bugs": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden | Keine Meldung; die Regel steht mit Schalter, Schweregrad und der Option `allowTypes` in der Gruppe |
 
+## Adresse des ersten Zeichens (#1130)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index (RTL-Quellen indiziert).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EZ1 | Das Beispiel aus #1130: `procedure Senden(const AText: string);` mit `WriteBuffer(@AText[1], Length(AText) * SizeOf(Char));` | Warnung `first-char-address` an `@AText[1]`: „Bei leerem AText löst @AText[1] mit Bereichsprüfung einen Fehler aus. PChar(AText) ist auch für leere Strings sicher.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| EZ2 | Schnellkorrektur „Durch PChar(AText) ersetzen“, danach Strg+Z | `WriteBuffer(PChar(AText), …)`; ein Undo-Schritt. `PChar(@AText[1])` und `Pointer(@AText[1])` werden als Ganzes zu `PChar(AText)` bzw. `Pointer(AText)` |
+| EZ3 | `@AText[Low(AText)]`; `const A: AnsiString` bzw. `RawByteString` mit `@A[1]` | Gemeldet; bei AnsiString-Typen lautet die Korrektur `PAnsiChar(A)` |
+| EZ4 | `@AText[2]`, `@AKurz[1]` mit `ShortString`, `@ABytes[0]` mit `TBytes`, `PChar(AText)` | Keine Meldung |
+| EZ5 | Lokale Variable bzw. `var`-Parameter: `@mText[1]` | Meldung „… Zum Lesen ist PChar(mText) auch für leere Strings sicher, zum Schreiben vorher UniqueString(mText).“, keine Schnellkorrektur |
+| EZ6 | Projekt mit `{$R+}`: `@AText[1]` mit leerem `AText` ausführen | Laufzeitfehler ERangeError bestätigt die Meldung; mit `PChar(AText)` keiner |
+| EZ7 | `"first-char-address": "off"`, `"group:find-bugs": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden | Keine Meldung; die Regel steht mit Schalter und Schweregrad in der Gruppe |
+
 ## Überflüssige Typumwandlung (#1139)
 
 Voraussetzung: Server läuft in der IDE mit Projekt und Index (RTL-Quellen indiziert).
