@@ -65,6 +65,9 @@ type
     procedure Placeholders;
     [Test]
     procedure OffAndExclude;
+    /// <summary>#1138: () setzt alle Felder bzw. Elemente auf null und ist kein Befund.</summary>
+    [Test]
+    procedure EmptyInitializerIsSilent;
   end;
 
   [TestFixture]
@@ -381,6 +384,12 @@ begin
     Found[0].Message);
   Assert.IsTrue(Pos('(1, 2, 0{stGeschlossen}, 0{stArchiviert});', Applied(StatusUnit('const'#10 +
     '  Kurz: array[TStatus] of Integer = (1, 2);'#10), Found[0].Fixes[0])) > 0);
+end;
+
+procedure TConstantInitializerMismatchTests.EmptyInitializerIsSilent;
+begin
+  Assert.AreEqual(0, Integer(Length(InitFindings(StatusUnit('  TRec = record'#10'    A: Integer;'#10'  end;'#10 +
+    'const'#10'  Leer: TRec = ();'#10'  Feld: array[TStatus] of Integer = ( );'#10'var'#10'  Start: TRec = ();'#10)))));
 end;
 
 procedure TConstantInitializerMismatchTests.TooManyAndSubranges;

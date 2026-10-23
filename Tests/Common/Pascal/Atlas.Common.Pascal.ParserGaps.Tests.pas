@@ -28,6 +28,13 @@ type
     /// <summary>#1137: PlainName nimmt genau ein Escape-& je Namensteil, SourceName setzt es wieder.</summary>
     [Test]
     procedure PlainAndSourceNames;
+    /// <summary>#1138 (Probe p02): () an Unit-, Klassen- und lokalen Konstanten und Variablen ohne Diagnose.
+    /// </summary>
+    [Test]
+    procedure EmptyRecordConstant;
+    /// <summary>#1138: () bleibt außerhalb einer Initialisierung ein Syntaxfehler.</summary>
+    [Test]
+    procedure EmptyParenOnlyAsInitializer;
   end;
 
 implementation
@@ -54,6 +61,11 @@ const
     'class function TValue.&&op_Equality(const L, R: TValue): Boolean;'#10'begin'#10'  Result := True;'#10 +
     'end;'#10'procedure TValue.Danach;'#10'begin'#10'  if TValue.&&op_Equality(Self, Self) then'#10'    Exit;'#10 +
     'end;'#10'procedure Zuletzt;'#10'begin'#10'end;'#10'end.';
+  EmptyRecord =
+    'unit p02_empty_record_const;'#10'interface'#10'type'#10'  TRec = record'#10'    A: Integer;'#10'  end;'#10 +
+    '  TComparer = record'#10'    const Ordinal: TRec = ();'#10'  end;'#10'const'#10'  Empty: TRec = ();'#10 +
+    '  EmptyGuid: TGUID = ( );'#10'var'#10'  Start: TRec = ();'#10'implementation'#10'procedure P;'#10'const'#10 +
+    '  Lokal: TRec = ();'#10'begin'#10'end;'#10'end.';
   EscapedMember =
     'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'    procedure &Type;'#10'  end;'#10'implementation'#10 +
     'procedure TFoo.&Type;'#10'begin'#10'end;'#10'procedure P(F: TFoo);'#10'begin'#10'  F.&Type;'#10'end;'#10'end.';
@@ -243,6 +255,33 @@ begin
   Assert.AreEqual('&&op_Equality', TPascalLexer.SourceName('&op_Equality'));
   Assert.AreEqual('Wert', TPascalLexer.SourceName('Wert'));
   Assert.AreEqual('', TPascalLexer.SourceName(''));
+end;
+
+procedure TParserGapsTests.EmptyRecordConstant;
+var
+  Tree: TSyntaxTree;
+  Decl: TSyntaxNode;
+begin
+  Assert.AreEqual('', Diagnostics(EmptyRecord));
+  Tree := TPascalParser.Parse(EmptyRecord);
+  try
+    Decl := Find(Tree.Root, TSyntaxKind.ConstDecl, 'Empty');
+    Assert.IsNotNull(Decl);
+    Assert.IsTrue(Decl[Decl.ChildCount - 1].Kind = TSyntaxKind.ParenExpr);
+    Assert.AreEqual(0, Decl[Decl.ChildCount - 1].ChildCount);
+    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.ConstDecl, 'Ordinal'), 'Klassenkonstante');
+    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.ConstDecl, 'Lokal'), 'lokale Konstante');
+    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.RoutineDecl, 'P'), 'Routine dahinter');
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TParserGapsTests.EmptyParenOnlyAsInitializer;
+begin
+  Assert.AreNotEqual('', Diagnostics('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'var'#10 +
+    '  R: TRec;'#10'begin'#10'  R := ();'#10'end;'#10'end.'));
+  Assert.AreNotEqual('', Diagnostics('unit U;'#10'interface'#10'const'#10'  C = ();'#10'implementation'#10'end.'));
 end;
 
 initialization

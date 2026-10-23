@@ -6118,3 +6118,4 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index. Proben aus `werkz
 | PX1 | Probe `p05_double_ampersand.pas` öffnen (`class function &&op_Equality(…)` im Record und im implementation-Teil) | Kein Syntaxfehler, Gliederung zeigt `&op_Equality` im Typ und `TValue.&op_Equality` im implementation-Teil (**Abnahme**: Spring4D `Spring.pas` ohne Syntaxfehler) |
 | PX2 | In einer Methode `TValue.&&op_Equality(A, B)` schreiben, Strg+Klick und Hover auf `op_Equality` | Sprung zur Deklaration im Record, Hover mit der Signatur |
 | PX3 | Klasse mit `procedure &Type;`, im Code `F.` tippen und `Type` wählen | Vorschlag „Type“, eingefügt wird `&Type`; Strg+Klick auf `&Type` springt zur Deklaration |
+| PX4 | Probe `p02_empty_record_const.pas` öffnen; dazu `const Ordinal: TRec = ();` in einem Record und `const Lokal: TRec = ();` in einer Routine | Kein Syntaxfehler, kein Befund `constant-initializer-mismatch`; `R := ();` im Rumpf bleibt ein Syntaxfehler |
