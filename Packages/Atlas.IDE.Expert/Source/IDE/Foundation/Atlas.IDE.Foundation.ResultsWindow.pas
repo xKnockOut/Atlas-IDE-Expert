@@ -16,6 +16,7 @@ uses
   Atlas.Core.Results.Model,
   Atlas.Core.Undo.Contract,
   Atlas.Core.Notes.Store,
+  Atlas.Core.SymbolPath.Model,
   Atlas.UI.Results.Frame;
 
 type
@@ -32,6 +33,8 @@ type
     /// <summary>Liste der Notizen (#545): bearbeiten, löschen.</summary>
     OnNoteEdit: TAtlasNoteAction;
     OnNoteDelete: TAtlasNoteAction;
+    /// <summary>„In Architekturkarte zeigen“ eines Wegs zwischen Symbolen (#1117).</summary>
+    OnShowRoute: TAtlasShowRoute;
   public
     /// <summary>Fenster zeigen (bei Bedarf anlegen); nil, wenn die IDE keine andockbaren Fenster anbietet.</summary>
     class function Frame: TAtlasResultsFrame; static;
@@ -43,6 +46,11 @@ type
     /// <summary>Notizen des Projekts (#545); ASelectId: diese Notiz wählen.</summary>
     class procedure ShowNotes(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>;
       const ASelectId: string); static;
+    /// <summary>Weg zwischen Symbolen (#1117) als gezeichnete Kette.</summary>
+    class procedure ShowSymbolPath(const ATitle: string; const AAnswer: TAtlasSymbolPathAnswer;
+      AMapAvailable: Boolean); static;
+    /// <summary>Hinweis statt einer Kette (Suche läuft, Fehler).</summary>
+    class procedure ShowSymbolPathMessage(const ATitle, AText: string); static;
     /// <summary>Frame, falls das Fenster schon existiert; legt nichts an und holt nichts nach vorn.</summary>
     class function ExistingFrame: TAtlasResultsFrame; static;
     /// <summary>Fenstersymbol (#751) zum aktiven IDE-Thema.</summary>
@@ -156,6 +164,12 @@ begin
     begin
       if Assigned(TAtlasIdeResultsWindow.OnNoteDelete) then
         TAtlasIdeResultsWindow.OnNoteDelete(ANoteId);
+    end;
+  ResultsFrame.OnShowRoute :=
+    procedure(const AUnits: TArray<string>)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnShowRoute) then
+        TAtlasIdeResultsWindow.OnShowRoute(AUnits);
     end;
   ResultsFrame.OnExpand :=
     function(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>
@@ -271,6 +285,25 @@ begin
     Target.ShowNotes(ATitle, AGroups, ASelectId);
 end;
 
+class procedure TAtlasIdeResultsWindow.ShowSymbolPath(const ATitle: string; const AAnswer: TAtlasSymbolPathAnswer;
+  AMapAvailable: Boolean);
+var
+  Target: TAtlasResultsFrame;
+begin
+  Target := Frame;
+  if Target <> nil then
+    Target.ShowSymbolPath(ATitle, AAnswer, AMapAvailable);
+end;
+
+class procedure TAtlasIdeResultsWindow.ShowSymbolPathMessage(const ATitle, AText: string);
+var
+  Target: TAtlasResultsFrame;
+begin
+  Target := Frame;
+  if Target <> nil then
+    Target.ShowSymbolPathMessage(ATitle, AText);
+end;
+
 class function TAtlasIdeResultsWindow.ExistingFrame: TAtlasResultsFrame;
 begin
   Result := nil;
@@ -317,6 +350,7 @@ begin
   OnChangeDiff := nil;
   OnNoteEdit := nil;
   OnNoteDelete := nil;
+  OnShowRoute := nil;
   // Meldet ab und gibt die Form nur frei, wenn die IDE sie nicht schon zerstört hat.
   FreeAndNil(Host);
 end;

@@ -21,7 +21,7 @@ Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnoc
 | [Bauen, Testen, Debuggen](#bauen-testen-debuggen) | Release-Build-Wächter, DUnitX-Tests aus dem Editor, Startprofile, Werte im Hover beim Debuggen |
 | [IDE-Komfort](#ide-komfort) | Willkommensseite, Befehlspalette, Benachrichtigungen, Änderungsmarken aus Git/SVN, abgesicherter Start |
 | [Einstellungen](#einstellungen) | Jede Funktion einzeln abschaltbar, Optionsseite als Baum, teamweite Projektdatei `.atlas` |
-| [Claude Code](#claude-code-und-mcp) | 20 MCP-Werkzeuge zum Lesen, Prüfen, Bauen, Testen und Umbenennen |
+| [Claude Code](#claude-code-und-mcp) | 21 MCP-Werkzeuge zum Lesen, Prüfen, Bauen, Testen und Umbenennen |
 
 ## Schnellstart
 
@@ -78,6 +78,7 @@ Alles Folgende ist in `main` umgesetzt. Funktionen mit *(experimentell)* sind ab
 - **Rekursion im Rand**, **inaktive `{$IFDEF}`-Zweige** abgeschwächt mit Grund im Tooltip, **ungenutzte uses** abgeblendet
 - **Klammer- und Blockpaare** farbig nach Tiefe, mit eigenen Blocklinien
 - **Architekturübersicht** (Fenster *Atlas-Architektur*, *Ansicht › Atlas › Architektur*): Teilsysteme als Gruppen eng verbundener Units auf einer Karte zum Zoomen und Verschieben, zentrale Units mit direkt und gesamt abhängigen Units und Rolle (Fundament, Drehscheibe), Zyklen mit Rundweg und den uses-Einträgen, die ihn schließen, Querverbindungen zwischen Teilsystemen (selten oder gegen die Hauptrichtung) und Ausreißer; Doppelklick öffnet Unit oder uses-Eintrag. Als HTML- oder Markdown-Bericht speicherbar, auch mit `AtlasServer --architecture` und im MCP-Werkzeug `get_architecture`
+- **Weg zwischen Symbolen** (*Atlas › Weg zwischen Symbolen …*, Befehlspalette, Kontextmenü im Editor *Weg von hier nach …*): Wie hängt `TKundenForm` mit `TDatenbank` zusammen? Atlas findet die kürzeste Kette über uses, Vererbung, Interface-Umsetzungen, Felder, Parameter, Ergebnisse, Aufrufe und Mitglieder und zeichnet sie im Ergebnisfenster, je Schritt mit Kantenart und Fundstelle (erschlossene Kanten gestrichelt); Doppelklick springt hin, *In Architekturkarte zeigen* markiert die Units des Wegs auf der Karte. Dieselbe Suche wie das MCP-Werkzeug `find_path`; Schalter: `navigation.symbolPath`
 
 ### Navigieren
 
@@ -178,7 +179,7 @@ Alle Schlüssel: [docs/Einstellungen.md](docs/Einstellungen.md) und [docs/Konfig
 
 ### Claude Code und MCP
 
-Der Server bietet Claude Code 20 MCP-Werkzeuge: Symbole suchen, die Architektur des Projekts überblicken (`get_architecture`), Deklarationen und Typ- und Aufrufhierarchien lesen, Komponenten- und Formularinfos, Diagnosen, Metriken und TODOs abfragen, geplanten Code mit `check_code` vor dem Schreiben prüfen, Treffer erklären, über die IDE bauen (`build_project`, `get_last_build`), DUnitX-Tests ausführen und schreibend umbenennen oder Code-Aktionen anwenden (mit Vorschau). Dazu die Ressource `delphi://conventions` mit den Konventionen des Projekts. Einrichtung: [Editors/ClaudeCode](Editors/ClaudeCode/README.md), Werkzeuge: [docs/MCP.md](docs/MCP.md).
+Der Server bietet Claude Code 21 MCP-Werkzeuge: Symbole suchen, die Architektur des Projekts überblicken (`get_architecture`), den kürzesten Weg zwischen zwei Symbolen oder Units finden (`find_path`), Deklarationen und Typ- und Aufrufhierarchien lesen, Komponenten- und Formularinfos, Diagnosen, Metriken und TODOs abfragen, geplanten Code mit `check_code` vor dem Schreiben prüfen, Treffer erklären, über die IDE bauen (`build_project`, `get_last_build`), DUnitX-Tests ausführen und schreibend umbenennen oder Code-Aktionen anwenden (mit Vorschau). Dazu die Ressource `delphi://conventions` mit den Konventionen des Projekts. Einrichtung: [Editors/ClaudeCode](Editors/ClaudeCode/README.md), Werkzeuge: [docs/MCP.md](docs/MCP.md).
 
 ### Geplant
 

@@ -943,3 +943,11 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Regel-Editor schmal (nach dem Push bemerkt):** `TAtlasRulesEditor.CanAutoSize` setzte `NewWidth := Width`; `CheckNewSize` fragt aber mit der neuen Breite, so blieb jedes `SetBounds` bei den 185 Pixeln eines frischen Panels. Jetzt bleibt die angefragte Breite. Der Test prüfte ohne Fenster, da war auch der Behälter schmal; `KeepsRequestedWidth` und die Dialogtests messen jetzt mit Fenster.
 - **Protokoll lesen:** Das Bash-Werkzeug sieht `%LOCALAPPDATA%` virtualisiert (Kopie unter `AppData\Local\Packages\Claude_…\LocalCache`, Stand 22.10.). Das echte `atlas.log` nur mit PowerShell lesen. Das Plugin-Protokoll läuft normal, eine Lücke gibt es nicht.
 - **Nebenbefund Server-Diagnose:** `workspace/diagnostic` brauchte 17 s mit `slowRule=inline-not-expanded` (16,4 s) in einer Unit mit fehlenden Units; nicht untersucht.
+
+## Weg zwischen Symbolen (#1117, 23.10.2026, Entwurfs-PR, nur FPC)
+
+- **Server:** `Atlas.Common.Architecture.SymbolPath` (Suche, Text, JSON) und `Atlas.Common.Lsp.SymbolPath` (`atlas/symbolPath`, Befehl `atlas.symbolPath`); MCP-Werkzeug `find_path` in `Shell.Mcp` mit eigenem Uses-Graphen samt Bibliotheks-Units. Neu für alle MCP-Werkzeuge: `notifications/cancelled` bricht ab wie `$/cancelRequest` (`TJsonRpcPendingRequests.Observe`).
+- **Index-Eigenheit:** Routinen stehen zweimal im Index (Deklaration und Rumpf); die Suche führt beide auf einen Knoten zusammen (`Canonical`), sonst gab es Scheinmehrdeutigkeiten.
+- **Plugin:** `Atlas.Core.SymbolPath.Model`, `Atlas.UI.SymbolPath.Chain`/`Dialog`, `Atlas.IDE.SymbolPath.Service`; Ergebnisfenster zeigt die Kette statt des Baums; Karte `ShowRoute`; Kontextmenü kennt jetzt Einträge mit Sichtbarkeit (`AddWhen`, `UpdateVisibility`).
+- **Einstellung:** `navigation.symbolPath` (Seite Befehle statt „Editor“ wie im Issue, gleiche Seite wie #1120). Auf dem Branch von #1120 liegt im selben Abschnitt `navigation` auch `impact`; beim Zusammenführen beide Felder behalten.
+- Ungebaut in Delphi; Handtests SP1–SP19 in `docs/Atlas-Testfaelle.md`.
