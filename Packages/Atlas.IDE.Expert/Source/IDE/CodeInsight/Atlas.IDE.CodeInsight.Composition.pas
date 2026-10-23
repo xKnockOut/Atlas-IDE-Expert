@@ -2853,8 +2853,6 @@ begin
     TAtlasProblemsController.Current.ClearTests;
 end;
 
-/// <summary>Projektaufgaben (#900): Läufer mit Neubau nach bestandener Prüfung über den Build-Läufer (#261) und
-/// Ergebnis für die Schnellaktion „Aufgaben“ (#764).</summary>
 /// <summary>Prozessstart der Projektaufgaben (Adapter, #900); eigene Routine, damit die Referenz nichts aus
 /// StartTasks einfängt.</summary>
 function TaskProcess: TAtlasTaskProcessRun;
@@ -2867,6 +2865,8 @@ begin
     end;
 end;
 
+/// <summary>Projektaufgaben (#900): Läufer mit Neubau nach bestandener Prüfung über den Build-Läufer (#261) und
+/// Ergebnis für die Schnellaktion „Aufgaben“ (#764).</summary>
 procedure StartTasks;
 begin
   ProjectTasks := TAtlasIdeTasks.Create(TaskProcess());
