@@ -58,6 +58,22 @@ Treffer tragen `// ERWARTET-INDEX: <regel-id>`. Für `legacy-stack-queue`
 Units unter `Source` mit RTL-Stubs im Index: genau die markierten Zeilen
 müssen gemeldet werden, jede weitere Meldung ist ein Fehlalarm.
 
+Regeln, die erst mit Optionen etwas melden, schweigen im Golden-Korpus mit den
+Standardeinstellungen. Ihre Treffer tragen `// ERWARTET-OPTION: <regel-id>`.
+Für `forbidden-symbol` (#1133) prüft
+`TForbiddenSymbolTests.ReferenceProjectMatchesMarkers` alle Units unter `Source`
+mit `TThread` als Stub im Index und dieser Liste:
+
+```json
+[{"name": "System.Write*", "kind": "routine", "message": "Nur über das Protokoll",
+  "allowFirstArgument": ["ErrOutput", "TextFile", "Text"]},
+ {"name": "Ref.Pruefung.Verstoesse.AltMelden", "replacement": "Melden", "units": ["Ref.*"]},
+ {"name": "System.Classes.TThread.*Queue", "firstArgument": ["nil"], "units": ["Ref.Pruefung.*"]}]
+```
+
+Genau die markierten Zeilen müssen gemeldet werden, jede weitere Meldung ist ein
+Fehlalarm.
+
 ## Marker-IDs und zuständige Regeln
 
 | Marker-ID | Stand |
@@ -73,6 +89,7 @@ müssen gemeldet werden, jede weitere Meldung ist ein Fehlalarm.
 | `possible-leak` | geplant, `geplante-regeln.txt`, Issue #56 |
 | `legacy-stack-queue` | Regel im Katalog (#1106), `ERWARTET-INDEX`, in `Ref.Pruefung.Verstoesse` |
 | `unrelated-class-cast` | Regel im Katalog (#1129), in `Ref.Pruefung.Verstoesse` |
+| `forbidden-symbol` | Regel im Katalog (#1133), `ERWARTET-OPTION`, in `Ref.Pruefung.Verstoesse` |
 
 Jede ID steht im Regelkatalog oder in `geplante-regeln.txt` mit dem
 offenen Issue, das sie in den Katalog übernimmt. Eine ID ohne Issue lässt

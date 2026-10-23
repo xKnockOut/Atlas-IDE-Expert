@@ -218,6 +218,60 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "forbidden-symbol",' + #10 +
+    '      "name": "Forbidden symbol used",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "architecture",' + #10 +
+    '      "description": "A list under \"symbols\" in atlas.json forbids routines, types, constants, fields, properties, enum values or identifiers, each with a message and a replacement. Matching uses na' +
+    'me resolution, not text: System.SysUtils.FileExists also hits FileExists, but not an own method of the same name. An entry may shorten the name from a dot boundary (TThread.Queue) and contain *. Ident' +
+    'ifiers of System without source (Writeln, Halt) count as System.<Name>. If the left part of a qualified name cannot be resolved at all (unit not indexed), the written name is compared with the end of ' +
+    'the entry. Per entry: kind (routine, type, constant, field, property, enumValue, identifier = by name without resolution), message, replacement, severity, units (unit name globs, \"!\" excludes), firs' +
+    'tArgument (only with this first argument, e.g. nil) and allowFirstArgument (allowed with this first argument, e.g. ErrOutput); both compare the argument text or the name of its type (TextFile). Off by' +
+    ' default and silent without a list; on in the strict profile. High confidence. Quick fix: replace with the configured replacement.",' + #10 +
+    '      "bad": "// atlas.json: \"forbidden-symbol\": {\"symbols\": [{\"name\": \"System.Write*\", \"kind\": \"routine\", \"message\": \"Only via ILogger\"}]}\nprocedure TImport.Report(const AText: strin' +
+    'g);\nbegin\n  Writeln(AText);\nend;",' + #10 +
+    '      "good": "procedure TImport.Report(const AText: string);\nbegin\n  FLogger.Info(AText);\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "symbols",' + #10 +
+    '          "type": "object-list",' + #10 +
+    '          "columns": [' + #10 +
+    '            {' + #10 +
+    '              "name": "name"' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "kind"' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "message"' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "replacement"' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "severity"' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "units",' + #10 +
+    '              "list": true' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "firstArgument",' + #10 +
+    '              "list": true' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "allowFirstArgument",' + #10 +
+    '              "list": true' + #10 +
+    '            }' + #10 +
+    '          ],' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Table of forbidden symbols, one object per entry: name (qualified, * allowed), kind (routine, type, constant, field, property, enumValue or identifier), message, replacement,' +
+    ' severity, units (globs, ! excludes), firstArgument and allowFirstArgument (argument texts or type names)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "thread-vcl-access",' + #10 +
     '      "name": "VCL access from a thread",' + #10 +
     '      "category": "bug",' + #10 +
@@ -5023,6 +5077,24 @@ begin
     '        {' + #10 +
     '          "name": "allow",' + #10 +
     '          "description": "Genehmigte Ausnahmen \"Unit.Typ\" als Glob."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "forbidden-symbol",' + #10 +
+    '      "name": "Verbotenes Symbol verwendet",' + #10 +
+    '      "description": "Eine Liste unter \"symbols\" in atlas.json verbietet Routinen, Typen, Konstanten, Felder, Properties, Aufzählungswerte oder Bezeichner, jeweils mit Meldung und Ersatz. Verglichen' +
+    ' wird über die Namensauflösung, nicht über Text: System.SysUtils.FileExists trifft auch FileExists, aber nicht eine eigene Methode gleichen Namens. Ein Eintrag darf den Namen ab einer Punktgrenze kürz' +
+    'en (TThread.Queue) und * enthalten. Bezeichner aus System ohne Quelltext (Writeln, Halt) gelten als System.<Name>. Ist der linke Teil eines qualifizierten Namens gar nicht auflösbar (Unit nicht indexi' +
+    'ert), wird der geschriebene Name mit dem Ende des Eintrags verglichen. Je Eintrag: kind (routine, type, constant, field, property, enumValue, identifier = nach Namen ohne Auflösung), message, replacem' +
+    'ent, severity, units (Muster der Unit-Namen, \"!\" schließt aus), firstArgument (nur mit diesem ersten Argument, z. B. nil) und allowFirstArgument (erlaubt mit diesem ersten Argument, z. B. ErrOutput)' +
+    '; beide vergleichen den Text des Arguments oder den Namen seines Typs (TextFile). Standard aus und ohne Liste stumm; im Profil strict an. Sicherheit hoch. Schnellkorrektur: durch den konfigurierten Er' +
+    'satz ersetzen.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "symbols",' + #10 +
+    '          "description": "Tabelle der verbotenen Symbole, ein Objekt je Eintrag: name (qualifiziert, * erlaubt), kind (routine, type, constant, field, property, enumValue oder identifier), message, re' +
+    'placement, severity, units (Muster, ! schließt aus), firstArgument und allowFirstArgument (Texte oder Typnamen des Arguments)."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +

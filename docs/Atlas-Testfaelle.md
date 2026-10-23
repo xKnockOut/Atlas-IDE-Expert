@@ -6123,3 +6123,20 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index (VCL-Quellen indiz
 | HU6 | `"unrelated-class-cast": {"allowTypes": ["TEdit=TButton"]}` in atlas.json | Beispiel aus HU1 meldet nichts mehr; `TEdit(mButton)` weiterhin |
 | HU7 | Klasse mit Vorfahr aus einer Unit, die nicht im Index steht | Keine Meldung (Kette unbekannt) |
 | HU8 | `"unrelated-class-cast": "off"`, `"group:find-bugs": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden | Keine Meldung; die Regel steht mit Schalter, Schweregrad und der Option `allowTypes` in der Gruppe |
+
+## Verbotenes Symbol (#1133)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index (RTL-Quellen indiziert).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VB1 | In atlas.json `"forbidden-symbol": {"symbols": [{"name": "System.Write*", "kind": "routine", "message": "Nur über ILogger"}]}`; in einer Methode `Writeln(AText);` | Warnung `forbidden-symbol` an `Writeln`: „Writeln ist in diesem Projekt verboten: Nur über ILogger (atlas.json › forbidden-symbol).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| VB2 | Eigene Methode `procedure Writeln(const AText: string);` in der Klasse und Aufruf `Writeln('x')` darin | Keine Meldung (aufgelöst als eigene Methode) |
+| VB3 | Eintrag `{"name": "System.SysUtils.FileExists", "replacement": "TFile.Exists"}`; `if FileExists(mName) then` und `System.SysUtils.FileExists(mName)` | Beide gemeldet; Schnellkorrektur „Durch TFile.Exists ersetzen“ ersetzt den ganzen Namen, Strg+Z nimmt sie in einem Schritt zurück |
+| VB4 | Eintrag `{"name": "Vcl.Forms.TApplication.ProcessMessages", "severity": "error"}`; `Application.ProcessMessages;` in einer Schleife | Fehler an `Application.ProcessMessages` |
+| VB5 | Eintrag `{"name": "System.Classes.TThread.*Queue", "firstArgument": ["nil"], "units": ["Atlas.IDE.*"]}`; `TThread.Queue(nil, P)` und `TThread.Queue(Self, P)` in einer Unit `Atlas.IDE.X` und in `Atlas.Common.X` | Nur `TThread.Queue(nil, P)` in `Atlas.IDE.X` gemeldet; mit `// lsp-ignore: forbidden-symbol` am Zeilenende keine Meldung |
+| VB6 | Eintrag `{"name": "System.Writeln", "allowFirstArgument": ["ErrOutput", "TextFile"]}`; `Writeln(ErrOutput, 'x')`, `Writeln(mLog, 'x')` mit `mLog: TextFile`, `Writeln('x')` | Nur `Writeln('x')` gemeldet |
+| VB7 | Arten: `kind` `type` (`var mListe: TList;`), `constant`, `field`, `property`, `enumValue` (`clRed`), `identifier` (Name ohne Auflösung) | Je ein Treffer an der Verwendung; Deklarationen gleichnamiger eigener Symbole und Werte einer eigenen Aufzählung bleiben still |
+| VB8 | Tools › Optionen › Atlas › Prüfregeln › Architektur › „Verbotenes Symbol verwendet“: Schalter an, Schweregrad Warnung, in der Tabelle „symbols“ eine Zeile `System.Writeln` / `routine` / `Nur über ILogger` eintragen, unten erscheint eine leere Zeile; danach eine Zeile leeren | atlas.json enthält `"symbols": [{"name": "System.Writeln", "kind": "routine", "message": "Nur über ILogger"}]`; die Spalten `units`, `firstArgument` und `allowFirstArgument` nehmen Listen mit „;“; die geleerte Zeile fällt weg, ohne Zeilen entfällt `symbols` (**Abnahme**) |
+| VB9 | Ohne `symbols` bzw. mit `[]`; `"forbidden-symbol": "off"`; Profil strict | Ohne Liste keine Meldung; aus keine Meldung; im Profil strict ist die Regel an |
+| VB10 | Atlas-Repo selbst öffnen (seine atlas.json verbietet Write/Writeln, GetStdHandle(STD_OUTPUT_HANDLE) und TThread.Queue/ForceQueue(nil, …) im Plugin) | Keine Meldung in den Quellen; eine eingefügte Zeile `TThread.Queue(nil, nil);` in einer Unit unter `Packages/Atlas.IDE.Expert/Source` wird als Fehler gemeldet, ebenso von `pwsh Tools/Check-MainThreadQueue.ps1` |
