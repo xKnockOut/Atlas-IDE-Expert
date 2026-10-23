@@ -24,6 +24,10 @@ type
     procedure HandlerAnswerBeforeTimeoutWins;
     [Test]
     procedure WatchWithoutResponderOnlyCancels;
+    /// <summary>Die Fehlerantwort des Watchdogs zählt als laufende Arbeit: WaitForWork meldet erst Ruhe, wenn sie
+    /// geschrieben ist (sonst ging sie beim Beenden der Verbindung verloren).</summary>
+    [Test]
+    procedure TimeoutAnswerCountsAsWork;
   end;
 
 implementation
@@ -290,6 +294,50 @@ begin
     Pending.Release(Id, Token);
   finally
     Id.Free;
+  end;
+end;
+
+procedure TJsonRpcWatchdogTests.TimeoutAnswerCountsAsWork;
+var
+  Pending: IJsonRpcPendingRequests;
+  Watchdog: IJsonRpcWatchdog;
+  Id: TJSONValue;
+  Token: IJsonRpcCancellationToken;
+  Gate: TEvent;
+  Writing: Integer;
+begin
+  Pending := TJsonRpcPendingRequests.Create;
+  Assert.IsTrue(Pending.WaitForWork(0), 'ohne Arbeit ruhig');
+  Writing := 0;
+  Gate := TEvent.Create(nil, True, False, '');
+  try
+    Watchdog := TJsonRpcWatchdog.Create(Pending, 20, nil);
+    Id := TJSONNumber.Create(4);
+    try
+      Token := Pending.Acquire(Id);
+      // Die Antwort "schreibt" so lange, bis der Test das Tor öffnet.
+      Watchdog.Watch(Id, 'test/slow', Token,
+        procedure(const AResponse: TJSONObject)
+        begin
+          TInterlocked.Increment(Writing);
+          Gate.WaitFor(5000);
+          AResponse.Free;
+        end);
+      Assert.IsTrue(WaitUntil(
+        function: Boolean
+        begin
+          Result := Writing > 0;
+        end, 2000), 'Watchdog antwortet nicht');
+      Assert.IsFalse(Pending.WaitForWork(50), 'Ruhe gemeldet, bevor die Antwort geschrieben ist');
+      Gate.SetEvent;
+      Assert.IsTrue(Pending.WaitForWork(2000), 'nach der Antwort ruhig');
+      Pending.Release(Id, Token);
+    finally
+      Id.Free;
+    end;
+    Watchdog := nil;
+  finally
+    Gate.Free;
   end;
 end;
 

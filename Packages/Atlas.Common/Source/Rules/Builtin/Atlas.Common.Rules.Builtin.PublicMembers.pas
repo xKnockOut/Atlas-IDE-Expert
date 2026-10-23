@@ -717,14 +717,17 @@ begin
     CollectFiles;
     for Symbol in Local.Symbols do
     begin
-      if not Wanted(Symbol) then
+      if Symbol.Unavailable or (Symbol.FileName <> '') then
         Continue;
-      // Nur die erste Deklaration (im Typ bzw. im interface-Teil), nicht der Rumpf; Überladungen einzeln.
+      // Nur die erste Deklaration (im Typ bzw. im interface-Teil) entscheidet, nicht der Rumpf; Überladungen
+      // einzeln. Auch eine nicht gewünschte Deklaration (protected) zählt als gesehen, sonst prüfte die Regel den
+      // Rumpf, der im Index als public steht.
       Key := LowerCase(Symbol.Container + '.' + Symbol.Name + '(' + string.Join(',', Symbol.ParamTypes) + ')');
       if Seen.ContainsKey(Key) then
         Continue;
       Seen.Add(Key, True);
-      CheckSymbol(Symbol);
+      if Wanted(Symbol) then
+        CheckSymbol(Symbol);
     end;
   finally
     Resolver.Free;

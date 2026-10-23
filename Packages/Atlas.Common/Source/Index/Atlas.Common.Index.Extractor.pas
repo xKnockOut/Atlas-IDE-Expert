@@ -342,6 +342,11 @@ begin
     TIndexSymbolKind.Property_, TIndexSymbolKind.Method, TIndexSymbolKind.Routine] then
   begin
     Symbol.TypeName := DeclaredType(ANode);
+    // type AnsiString(Codepage) ist ein eigener Stringtyp (RawByteString, UTF8String): Die Namensauflösung darf
+    // ihn nicht bis AnsiString verfolgen, sonst meldet z. B. suspicious-string-pointer-cast "R ist AnsiString".
+    if (AKind = TIndexSymbolKind.TypeAlias) and SameText(Symbol.TypeName, 'AnsiString') and
+      (DeclaredTypeNode(ANode).ChildCount > 0) then
+      Symbol.TypeName := '';
     if Symbol.TypeName <> '' then
       Symbol.TypeArgs := GenericArgsText(DeclaredTypeNode(ANode));
   end

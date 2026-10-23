@@ -200,10 +200,19 @@ begin
     if (AEntry.Token <> nil) and Assigned(AEntry.Responder) then
     begin
       // Abbrechen und die Antwort beanspruchen: Wer zuerst kommt (Worker oder Watchdog), antwortet.
-      Answered := FPending.Expire(AEntry.Token);
-      if Answered then
-        AEntry.Responder(TJsonRpcMessages.Error(AEntry.Id, TJsonRpcErrorCode.RequestCancelled,
-          Format('Zeitlimit von %d ms überschritten', [Limit])));
+      // Die Antwort zählt als laufende Arbeit, und zwar schon vor dem Beanspruchen: Der Worker verwirft seine
+      // Antwort, sobald der Watchdog sie beansprucht hat, und meldet sein Ende. Ohne eigene Zählung meldete
+      // WaitForWork dann Ruhe, bevor die Fehlerantwort geschrieben war; beim Beenden der Verbindung ging sie
+      // verloren (Dauerlauf ConnectionSoakDetectsWorkerLeak unter Last: 100 statt 101 Antworten).
+      FPending.BeginWork;
+      try
+        Answered := FPending.Expire(AEntry.Token);
+        if Answered then
+          AEntry.Responder(TJsonRpcMessages.Error(AEntry.Id, TJsonRpcErrorCode.RequestCancelled,
+            Format('Zeitlimit von %d ms überschritten', [Limit])));
+      finally
+        FPending.EndWork;
+      end;
     end
     else
       FPending.Cancel(AEntry.Id);
