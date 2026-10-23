@@ -569,6 +569,9 @@ begin
   // Typ ausschreiben (#453)
   Assert.IsTrue(Parse('{}', Issues).Refactoring.ExplicitType);
   Assert.IsFalse(Parse('{"refactoring": {"explicitType": false}}', Issues).Refactoring.ExplicitType);
+  // Schnellkorrekturen an Compilermeldungen (#549)
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.CompilerFixes);
+  Assert.IsFalse(Parse('{"refactoring": {"compilerFixes": false}}', Issues).Refactoring.CompilerFixes);
   // Warnung gezielt abschalten (#531)
   Assert.IsTrue(Parse('{}', Issues).Refactoring.DisableWarning);
   Assert.IsTrue(Parse('{}', Issues).Refactoring.DisableWarningReason);

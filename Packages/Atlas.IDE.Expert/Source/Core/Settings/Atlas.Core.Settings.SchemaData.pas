@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2013] of string = (
+  Lines: array[0..2019] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1232,6 +1232,14 @@ const
     '          "description": "Code-Aktion „Typ ausschreiben“ auf dem Namen von var X := …, const X = … und for var X in … ohne Typangabe: fügt den abgeleiteten Typ ein (var Count: Integer := Lines.Count) ' +
       'und trägt seine Unit bei Bedarf ins uses ein.",',
     '          "x-issue": "#453"',
+    '        },',
+    '        "compilerFixes": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Schnellkorrekturen an Meldungen des letzten Compilerlaufs: H2443 trägt die Unit aus der Meldung ins uses ein, E2003 bietet die Units an, die den Bezeichner deklarieren (RTL u' +
+      'nd VCL zuerst), H2077 entfernt eine wirkungslose Zuweisung (bei einem Aufruf bleibt nur der Aufruf), W1035 fügt Result := Default(<Typ>); am Anfang der Funktion ein, W1057/W1058 setzen eine explizite ' +
+      'Umwandlung (string(…), AnsiString(…)). Gibt es dieselbe Meldung mehrmals in der Datei, dazu „Alle … in der Datei beheben“. Jede Korrektur ist ein Rückgängig-Schritt.",',
+    '          "x-issue": "#549"',
     '        },',
     '        "disableWarning": {',
     '          "type": "boolean",',
