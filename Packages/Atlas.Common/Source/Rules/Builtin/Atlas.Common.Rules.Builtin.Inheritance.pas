@@ -28,6 +28,15 @@
 //                                       (H2269, nur Klassen im interface-Teil), Getter/Setter Get<Name>
 //                                       bzw. Set<Name> anders geschrieben (H2367), inline-Methode greift
 //                                       auf ein weniger sichtbares Mitglied zu (H2440)
+//   override-only-inherited             override, dessen Rumpf nur inherited mit unveränderten Parametern
+//                                       aufruft (#1143); still bei geänderter Sichtbarkeit, Attributen,
+//                                       Kommentaren oder Direktiven im Rumpf, final, deprecated, Standardwerten
+//                                       und lokalen Deklarationen. Korrektur entfernt Deklaration und Rumpf
+//                                       samt XMLDoc
+//   inherited-without-ancestor          bloßes inherited; in einer neuen Methode, die kein Vorfahr kennt
+//                                       (#1144): tut nichts, meist fehlt override. Nicht in Konstruktoren,
+//                                       Destruktoren und Message-Handlern; unbekannter Vorfahr: still.
+//                                       Korrektur entfernt das inherited
 //
 // Vorfahren werden zuerst in der Datei, dann im Symbolindex gesucht (auch RTL
 // und VCL, soweit eingelesen). Ist ein Vorfahr nicht auflösbar oder mehrdeutig,
@@ -183,9 +192,23 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TOverrideOnlyInheritedRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TInheritedWithoutAncestorRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 const
   MemberHidesAncestorRuleId = 'member-hides-ancestor';
   OverrideCaseMismatchRuleId = 'override-case-mismatch';
+  OverrideOnlyInheritedRuleId = 'override-only-inherited';
+  InheritedWithoutAncestorRuleId = 'inherited-without-ancestor';
 
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 
@@ -599,6 +622,100 @@ begin
   if Result then
     AFix := TRuleFix.Create(Format('"%s" ergänzen', [ADirective]),
       [TRuleEdit.Create(TTextRange.Create(Position, Position), ' ' + ADirective + ';')]);
+end;
+
+/// <summary>Erweitert [AStart, AEnd) (Offsets ab 0) auf ganze Zeilen samt Zeilenumbruch, wenn davor und dahinter
+/// auf der Zeile nur Leerraum steht; sonst False. ADocComments: darüberstehende ///-Zeilen gehören dazu.
+/// ABlankAfter: Steht über dem Bereich eine Leerzeile, fällt auch eine Leerzeile dahinter weg.</summary>
+function WholeLines(const AText: string; AStart, AEnd: Integer; ADocComments, ABlankAfter: Boolean;
+  out ALineStart, ALineEnd: Integer): Boolean;
+
+  /// <summary>Anfang der Zeile vor der Zeile, die bei AOffset beginnt; AContent ist ihr Text.</summary>
+  function PreviousLine(AOffset: Integer; out AContent: string): Integer;
+  var
+    mEnd: Integer;
+  begin
+    mEnd := AOffset - 1;
+    if (mEnd > 0) and (AText[mEnd] = #13) then
+      Dec(mEnd);
+    Result := mEnd;
+    while (Result > 0) and not CharInSet(AText[Result], [#10, #13]) do
+      Dec(Result);
+    AContent := Copy(AText, Result + 1, mEnd - Result);
+  end;
+
+  /// <summary>Ende der Zeile, die bei AOffset beginnt, samt Zeilenumbruch; AContent ist ihr Text.</summary>
+  function LineEndFrom(AOffset: Integer; out AContent: string): Integer;
+  begin
+    Result := AOffset;
+    while (Result < Length(AText)) and not CharInSet(AText[Result + 1], [#10, #13]) do
+      Inc(Result);
+    AContent := Copy(AText, AOffset + 1, Result - AOffset);
+    if (Result < Length(AText)) and (AText[Result + 1] = #13) then
+      Inc(Result);
+    if (Result < Length(AText)) and (AText[Result + 1] = #10) then
+      Inc(Result);
+  end;
+
+var
+  mStart, mEnd, mPrevious, mNext: Integer;
+  mContent, mAfter: string;
+begin
+  Result := False;
+  mStart := AStart;
+  while (mStart > 0) and CharInSet(AText[mStart], [' ', #9]) do
+    Dec(mStart);
+  if (mStart > 0) and not CharInSet(AText[mStart], [#10, #13]) then
+    Exit;
+  mEnd := AEnd;
+  while (mEnd < Length(AText)) and CharInSet(AText[mEnd + 1], [' ', #9]) do
+    Inc(mEnd);
+  if (mEnd < Length(AText)) and not CharInSet(AText[mEnd + 1], [#10, #13]) then
+    Exit;
+  mEnd := LineEndFrom(mEnd, mContent);
+  while ADocComments and (mStart > 0) do
+  begin
+    mPrevious := PreviousLine(mStart, mContent);
+    if not StartsStr('///', TrimLeft(mContent)) then
+      Break;
+    mStart := mPrevious;
+  end;
+  // Die Leerzeile hinter dem Rumpf trennte ihn vom Nächsten; sie geht mit.
+  if ABlankAfter and (mEnd < Length(AText)) then
+  begin
+    mNext := LineEndFrom(mEnd, mAfter);
+    if Trim(mAfter) = '' then
+      mEnd := mNext;
+  end;
+  ALineStart := mStart;
+  ALineEnd := mEnd;
+  Result := True;
+end;
+
+/// <summary>Korrektur, die die Anweisung AStatement samt Semikolon entfernt, allein auf der Zeile die ganze Zeile.
+/// </summary>
+function RemoveStatementFix(const ACache: IRuleDerivedCache; const AContext: TRuleContext; AStatement: TSyntaxNode;
+  const ATitle: string): TRuleFix;
+var
+  mText: string;
+  mStart, mEnd, mLineStart, mLineEnd: Integer;
+begin
+  mText := AContext.Text;
+  mStart := AStatement.StartOffset;
+  mEnd := AStatement.EndOffset;
+  while (mEnd < Length(mText)) and CharInSet(mText[mEnd + 1], [' ', #9]) do
+    Inc(mEnd);
+  if (mEnd < Length(mText)) and (mText[mEnd + 1] = ';') then
+    Inc(mEnd)
+  else
+    mEnd := AStatement.EndOffset;
+  if WholeLines(mText, mStart, mEnd, False, False, mLineStart, mLineEnd) then
+  begin
+    mStart := mLineStart;
+    mEnd := mLineEnd;
+  end;
+  Result := TRuleFix.Create(ATitle, [TRuleEdit.Create(TRuleDerived.OffsetRange(ACache, AContext, mStart, mEnd),
+    '')]);
 end;
 
 /// <summary>Methodendeklarationen aller Klassen der Datei.</summary>
@@ -1993,43 +2110,6 @@ var
       Result := Node;
   end;
 
-  /// <summary>Korrektur „Aufruf entfernen“: die Anweisung samt Semikolon, allein auf der Zeile die ganze Zeile.
-  /// </summary>
-  function RemoveFix(AStatement: TSyntaxNode): TRuleFix;
-  var
-    StartOffset, EndOffset, LineStart, LineEnd: Integer;
-    Text: string;
-  begin
-    Text := AContext.Text;
-    StartOffset := AStatement.StartOffset;
-    EndOffset := AStatement.EndOffset;
-    while (EndOffset < Length(Text)) and CharInSet(Text[EndOffset + 1], [' ', #9]) do
-      Inc(EndOffset);
-    if (EndOffset < Length(Text)) and (Text[EndOffset + 1] = ';') then
-      Inc(EndOffset)
-    else
-      EndOffset := AStatement.EndOffset;
-    LineStart := StartOffset;
-    while (LineStart > 0) and CharInSet(Text[LineStart], [' ', #9]) do
-      Dec(LineStart);
-    LineEnd := EndOffset;
-    while (LineEnd < Length(Text)) and CharInSet(Text[LineEnd + 1], [' ', #9]) do
-      Inc(LineEnd);
-    // Allein auf der Zeile: die Zeile samt Zeilenumbruch entfernen.
-    if ((LineStart = 0) or CharInSet(Text[LineStart], [#10, #13])) and
-      ((LineEnd = Length(Text)) or CharInSet(Text[LineEnd + 1], [#10, #13])) then
-    begin
-      StartOffset := LineStart;
-      EndOffset := LineEnd;
-      if (EndOffset < Length(Text)) and (Text[EndOffset + 1] = #13) then
-        Inc(EndOffset);
-      if (EndOffset < Length(Text)) and (Text[EndOffset + 1] = #10) then
-        Inc(EndOffset);
-    end;
-    Result := TRuleFix.Create('Aufruf entfernen', [TRuleEdit.Create(TRuleDerived.OffsetRange(Cache, AContext,
-      StartOffset, EndOffset), '')]);
-  end;
-
   procedure CheckCall(AExpr: TSyntaxNode; ANameToken: Integer);
   var
     Candidates: TArray<TResolvedSymbol>;
@@ -2048,7 +2128,7 @@ var
     Fixes := nil;
     Statement := OwnStatement(AExpr);
     if Statement <> nil then
-      Fixes := [RemoveFix(Statement)];
+      Fixes := [RemoveStatementFix(Cache, AContext, Statement, 'Aufruf entfernen')];
     AReport.Add(TTextRange.Create(AExpr.StartPos, AExpr.EndPos), Format('%s.%s ist abstrakt; der Aufruf über ' +
       'inherited ist nicht erlaubt (wie E2373).', [Candidates[0].Container, Candidates[0].Name]),
       TRuleConfidence.High, Fixes);
@@ -2916,6 +2996,425 @@ begin
   end;
 end;
 
+{ Hilfen für override-only-inherited und inherited-without-ancestor }
+
+const
+  // Öffentliche Methoden von TObject, falls System nicht im Index steht (#1144).
+  ObjectMethodNames: array[0..21] of string = ('Create', 'Free', 'DisposeOf', 'ClassType', 'ClassName',
+    'ClassNameIs', 'ClassParent', 'ClassInfo', 'InstanceSize', 'InheritsFrom', 'MethodAddress', 'MethodName',
+    'QualifiedClassName', 'FieldAddress', 'GetInterface', 'GetInterfaceEntry', 'GetInterfaceTable', 'UnitName',
+    'UnitScope', 'CleanupInstance', 'InitInstance', 'NewInstance');
+
+/// <summary>Implementierungen von Methoden (TKlasse.Methode) auf oberster Ebene, ohne lokale Routinen.</summary>
+function MethodBodies(const ACache: IRuleDerivedCache; const AContext: TRuleContext): TArray<TSyntaxNode>;
+var
+  mRoutine: TSyntaxNode;
+begin
+  Result := nil;
+  for mRoutine in TRuleDerived.Routines(ACache, AContext) do
+    if (Pos('.', mRoutine.Name) > 0) and ((mRoutine.Parent = nil) or
+      (mRoutine.Parent.Kind <> TSyntaxKind.RoutineDecl)) then
+      Result := Result + [mRoutine];
+end;
+
+/// <summary>Klasse und Methode aus "TAussen.TKlasse<T>.Methode": TKlasse und Methode.</summary>
+procedure SplitMethodName(const AName: string; out AClassName, AMethodName: string);
+var
+  mParts: TArray<string>;
+  mText: string;
+  mDepth, mIndex: Integer;
+begin
+  // Punkte in Typargumenten (TDictionary<System.string, …>) trennen nicht.
+  mText := '';
+  mDepth := 0;
+  for mIndex := 1 to Length(AName) do
+  begin
+    if AName[mIndex] = '<' then
+      Inc(mDepth)
+    else if AName[mIndex] = '>' then
+      Dec(mDepth)
+    else if mDepth = 0 then
+      mText := mText + AName[mIndex];
+  end;
+  mParts := mText.Split(['.']);
+  AClassName := '';
+  AMethodName := '';
+  if Length(mParts) < 2 then
+    Exit;
+  AClassName := mParts[High(mParts) - 1];
+  AMethodName := mParts[High(mParts)];
+end;
+
+/// <summary>Parameter des Kopfs AHeader als "name:typ:modifizierer" je Name, klein geschrieben.</summary>
+function ParameterKeys(AHeader: TSyntaxNode): TArray<string>;
+var
+  mSection, mParameter, mType: TSyntaxNode;
+  mIndex: Integer;
+  mName, mTypeName: string;
+begin
+  Result := nil;
+  if AHeader = nil then
+    Exit;
+  mSection := AHeader.FindChild(TSyntaxKind.Parameters);
+  if mSection = nil then
+    Exit;
+  for mIndex := 0 to mSection.ChildCount - 1 do
+  begin
+    mParameter := mSection[mIndex];
+    mType := mParameter.FindChild(TSyntaxKind.TypeReference);
+    mTypeName := '';
+    if mType <> nil then
+      mTypeName := BareName(mType.Name);
+    for mName in mParameter.Name.Split([',']) do
+      Result := Result + [LowerCase(Trim(mName) + ':' + mTypeName + ':' + IntToStr(Ord(mParameter.Modifier)))];
+  end;
+end;
+
+/// <summary>Namen der Parameter des Kopfs AHeader in Reihenfolge.</summary>
+function ParameterNames(AHeader: TSyntaxNode): TArray<string>;
+var
+  mKey: string;
+begin
+  Result := nil;
+  for mKey in ParameterKeys(AHeader) do
+    Result := Result + [Copy(mKey, 1, Pos(':', mKey) - 1)];
+end;
+
+/// <summary>Hat ein Parameter des Kopfs AHeader einen Standardwert?</summary>
+function HasDefaultValues(AHeader: TSyntaxNode): Boolean;
+var
+  mSection: TSyntaxNode;
+  mIndex, mChild: Integer;
+begin
+  Result := False;
+  mSection := AHeader.FindChild(TSyntaxKind.Parameters);
+  if mSection <> nil then
+    for mIndex := 0 to mSection.ChildCount - 1 do
+      for mChild := 0 to mSection[mIndex].ChildCount - 1 do
+        if mSection[mIndex][mChild].Kind <> TSyntaxKind.TypeReference then
+          Exit(True);
+end;
+
+/// <summary>Rumpf der Methode AMethod aus ABodies; bei Überladungen der mit denselben Parametern. nil, wenn es
+/// keinen eindeutigen gibt.</summary>
+function BodyOf(const AMethod: TMethodDecl; const ABodies: TArray<TSyntaxNode>): TSyntaxNode;
+var
+  mBody: TSyntaxNode;
+  mCandidates: TArray<TSyntaxNode>;
+  mClassName, mMethodName: string;
+  mKeys: TArray<string>;
+begin
+  Result := nil;
+  mCandidates := nil;
+  for mBody in ABodies do
+  begin
+    SplitMethodName(mBody.Name, mClassName, mMethodName);
+    if SameText(mClassName, AMethod.ClassName) and SameText(mMethodName, AMethod.Symbol.Name) then
+      mCandidates := mCandidates + [mBody];
+  end;
+  if Length(mCandidates) = 1 then
+    Exit(mCandidates[0]);
+  mKeys := ParameterKeys(AMethod.Header);
+  for mBody in mCandidates do
+    if string.Join(',', ParameterKeys(mBody.FindChild(TSyntaxKind.RoutineHeader))) = string.Join(',', mKeys) then
+    begin
+      if Result <> nil then
+        Exit(nil);
+      Result := mBody;
+    end;
+end;
+
+/// <summary>Bereich des Methodennamens im Kopf AHeader ("TKlasse.Name"); sonst der ganze Kopf.</summary>
+function MethodNameRange(const AContext: TRuleContext; AHeader: TSyntaxNode; const AName: string): TTextRange;
+var
+  mToken: TPascalToken;
+begin
+  Result := TTextRange.Create(AHeader.StartPos, AHeader.EndPos);
+  for mToken in AContext.Tree.Tokens do
+  begin
+    if mToken.Offset < AHeader.StartOffset then
+      Continue;
+    if (mToken.Offset >= AHeader.EndOffset) or mToken.IsSymbol('(') or mToken.IsSymbol(';') or
+      mToken.IsSymbol(':') then
+      Break;
+    if (mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, AName) then
+      Result := TTextRange.Create(mToken.StartPos, mToken.EndPos);
+  end;
+end;
+
+/// <summary>Steht zwischen AStart und AEnd ein Kommentar oder eine Direktive?</summary>
+function HasCommentBetween(const AContext: TRuleContext; AStart, AEnd: Integer): Boolean;
+var
+  mToken: TPascalToken;
+begin
+  for mToken in AContext.Tree.Tokens do
+  begin
+    if mToken.Offset < AStart then
+      Continue;
+    if mToken.Offset >= AEnd then
+      Break;
+    if mToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+      Exit(True);
+  end;
+  Result := False;
+end;
+
+{ TOverrideOnlyInheritedRule }
+
+function TOverrideOnlyInheritedRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(OverrideOnlyInheritedRuleId, TRuleSeverity.Hint,
+    'override ruft nur inherited auf');
+end;
+
+/// <summary>Ruft AStatement nur die geerbte Methode AMethodName mit den Parametern AParams in ihrer Reihenfolge auf?
+/// In Funktionen nur "Result := inherited Name(…)": ein bloßes inherited; verwirft dort das Ergebnis.</summary>
+function OnlyInherited(AStatement: TSyntaxNode; const AMethodName: string; const AParams: TArray<string>;
+  AFunction: Boolean): Boolean;
+var
+  mExpr: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := False;
+  if AFunction then
+  begin
+    if (AStatement.Kind <> TSyntaxKind.AssignStatement) or (AStatement.ChildCount <> 2) or
+      (AStatement[0].Kind <> TSyntaxKind.Identifier) or not SameText(AStatement[0].Name, 'Result') then
+      Exit;
+    mExpr := AStatement[1];
+  end
+  else
+  begin
+    if (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount <> 1) then
+      Exit;
+    mExpr := AStatement[0];
+    // Ein bloßes inherited; übergibt die eigenen Parameter unverändert.
+    if (mExpr.Kind = TSyntaxKind.InheritedExpr) and (mExpr.Name = '') then
+      Exit(True);
+  end;
+  if mExpr.Kind = TSyntaxKind.InheritedExpr then
+    Exit(SameText(mExpr.Name, AMethodName) and (Length(AParams) = 0));
+  if (mExpr.Kind <> TSyntaxKind.Call) or (mExpr.ChildCount <> Length(AParams) + 1) or
+    (mExpr[0].Kind <> TSyntaxKind.InheritedExpr) or not SameText(mExpr[0].Name, AMethodName) then
+    Exit;
+  for mIndex := 0 to High(AParams) do
+    if (mExpr[mIndex + 1].Kind <> TSyntaxKind.Identifier) or not SameText(mExpr[mIndex + 1].Name, AParams[mIndex]) then
+      Exit;
+  Result := True;
+end;
+
+/// <summary>Steht vor dem Kopf in der Klasse ein Attribut ([Weak] procedure …)?</summary>
+function HasAttribute(AHeader: TSyntaxNode): Boolean;
+var
+  mParent: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := False;
+  mParent := AHeader.Parent;
+  if mParent = nil then
+    Exit;
+  for mIndex := 1 to mParent.ChildCount - 1 do
+    if mParent[mIndex] = AHeader then
+      Exit(mParent[mIndex - 1].Kind = TSyntaxKind.Attribute);
+end;
+
+procedure TOverrideOnlyInheritedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+const
+  // Direktiven, mit denen das Überschreiben selbst etwas bewirkt.
+  cMeaningful: array[0..5] of string = ('final', 'deprecated', 'experimental', 'platform', 'library', 'reintroduce');
+var
+  mCache: IRuleDerivedCache;
+  mAncestry: TAncestry;
+  mBodies: TArray<TSyntaxNode>;
+  mMethod: TMethodDecl;
+  mBody, mBlock, mHeader: TSyntaxNode;
+  mDeclStart, mDeclEnd, mBodyStart, mBodyEnd: Integer;
+  mDirective: string;
+  mSkip: Boolean;
+  mOverridden: TInherited;
+  mVisibility: TIndexVisibility;
+  mFixes: TArray<TRuleFix>;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'inherited') then
+    Exit;
+  mCache := TRuleDerived.Open(AContext);
+  mBodies := MethodBodies(mCache, AContext);
+  if mBodies = nil then
+    Exit;
+  mAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(mCache, AContext));
+  try
+    for mMethod in ClassMethods(AContext, mAncestry) do
+    begin
+      if not mMethod.Has('override') or HasAttribute(mMethod.Header) or HasDefaultValues(mMethod.Header) then
+        Continue;
+      mSkip := False;
+      for mDirective in cMeaningful do
+        mSkip := mSkip or mMethod.Has(mDirective);
+      if mSkip then
+        Continue;
+      mBody := BodyOf(mMethod, mBodies);
+      if mBody = nil then
+        Continue;
+      // Nur Kopf und Rumpf: keine lokalen Variablen, Konstanten oder Routinen.
+      mHeader := mBody.FindChild(TSyntaxKind.RoutineHeader);
+      mBlock := mBody.FindChild(TSyntaxKind.Block);
+      if (mHeader = nil) or (mBlock = nil) or (mBody.ChildCount <> 2) or (mBlock.ChildCount <> 1) or
+        HasCommentBetween(AContext, mBlock.StartOffset, mBlock.EndOffset) or
+        not OnlyInherited(mBlock[0], mMethod.Symbol.Name, ParameterNames(mMethod.Header),
+        mMethod.Keyword = 'function') then
+        Continue;
+      // Eine geänderte Sichtbarkeit (protected -> public) ist der Zweck der Methode.
+      mOverridden := mAncestry.InheritedVirtual(mMethod);
+      if mOverridden.Found then
+        mVisibility := mOverridden.Symbol.Visibility
+      else if MatchText(mMethod.Symbol.Name, ObjectVirtualNames) then
+        mVisibility := TIndexVisibility.Public
+      else
+        Continue;
+      if mVisibility <> mMethod.Symbol.Visibility then
+        Continue;
+      mFixes := nil;
+      if WholeLines(AContext.Text, mMethod.Header.StartOffset, mMethod.Header.EndOffset, True, False, mDeclStart,
+        mDeclEnd) and WholeLines(AContext.Text, mBody.StartOffset, mBody.EndOffset, True, True, mBodyStart,
+        mBodyEnd) then
+        mFixes := [TRuleFix.Create('Methode entfernen', [
+          TRuleEdit.Create(TRuleDerived.OffsetRange(mCache, AContext, mDeclStart, mDeclEnd), ''),
+          TRuleEdit.Create(TRuleDerived.OffsetRange(mCache, AContext, mBodyStart, mBodyEnd), '')])];
+      AReport.Add(MethodNameRange(AContext, mHeader, mMethod.Symbol.Name),
+        Format('%s.%s ruft nur inherited auf und kann entfallen.', [mMethod.ClassName, mMethod.Symbol.Name]),
+        TRuleConfidence.High, mFixes);
+    end;
+  finally
+    mAncestry.Free;
+  end;
+end;
+
+{ TInheritedWithoutAncestorRule }
+
+function TInheritedWithoutAncestorRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(InheritedWithoutAncestorRuleId, TRuleSeverity.Hint,
+    'inherited ohne Methode im Vorfahr');
+end;
+
+/// <summary>Anweisungen "inherited;" ohne Namen im Block ABlock, ohne anonyme Methoden.</summary>
+function BareInheritedStatements(ABlock: TSyntaxNode): TArray<TSyntaxNode>;
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := nil;
+  // Iterativ (Bericht M1).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ABlock);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.AnonymousMethod then
+        Continue;
+      if (mNode.Kind = TSyntaxKind.CallStatement) and (mNode.ChildCount = 1) and
+        (mNode[0].Kind = TSyntaxKind.InheritedExpr) and (mNode[0].Name = '') then
+      begin
+        Result := Result + [mNode];
+        Continue;
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+        mPending.Push(mNode[mIndex]);
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TInheritedWithoutAncestorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mCache: IRuleDerivedCache;
+  mAncestry: TAncestry;
+  mBodies: TArray<TSyntaxNode>;
+
+  /// <summary>Hat ein Vorfahr von AClassName ein Mitglied AName? True auch, wenn die Kette nicht bekannt ist.
+  /// </summary>
+  function AncestorKnows(const AClassName, AName: string): Boolean;
+  var
+    mChain: TArray<TSymbolLocation>;
+    mLocation: TSymbolLocation;
+    mMember: TIndexSymbol;
+    mComplete, mObjectMissing: Boolean;
+  begin
+    mChain := mAncestry.Ancestors(AClassName, mComplete, mObjectMissing);
+    if not mComplete then
+      Exit(True);
+    for mLocation in mChain do
+      for mMember in mAncestry.Members(mLocation) do
+        if SameText(mMember.Name, AName) then
+          Exit(True);
+    Result := mObjectMissing and (MatchText(AName, ObjectMethodNames) or MatchText(AName, ObjectVirtualNames));
+  end;
+
+var
+  mMethod: TMethodDecl;
+  mBody, mBlock, mStatement: TSyntaxNode;
+  mClassName, mMethodName: string;
+  mStatements: TArray<TSyntaxNode>;
+  mFixes: TArray<TRuleFix>;
+  mChecked: TDictionary<string, Boolean>;
+  mKnown: Boolean;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'inherited') then
+    Exit;
+  mCache := TRuleDerived.Open(AContext);
+  mBodies := MethodBodies(mCache, AContext);
+  if mBodies = nil then
+    Exit;
+  mAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(mCache, AContext));
+  mChecked := TDictionary<string, Boolean>.Create;
+  try
+    // ClassMethods lässt Klassenmethoden, statische Methoden und Message-Handler aus: Dort ruft inherited
+    // DefaultHandler bzw. ist kein Fall.
+    for mMethod in ClassMethods(AContext, mAncestry) do
+    begin
+      if (mMethod.Keyword = 'constructor') or (mMethod.Keyword = 'destructor') or mMethod.Has('override') or
+        mMethod.Has('reintroduce') or mChecked.ContainsKey(LowerCase(mMethod.ClassName + '.' + mMethod.Symbol.Name)) then
+        Continue;
+      mChecked.Add(LowerCase(mMethod.ClassName + '.' + mMethod.Symbol.Name), True);
+      mKnown := False;
+      for mBody in mBodies do
+      begin
+        SplitMethodName(mBody.Name, mClassName, mMethodName);
+        if not SameText(mClassName, mMethod.ClassName) or not SameText(mMethodName, mMethod.Symbol.Name) then
+          Continue;
+        mBlock := mBody.FindChild(TSyntaxKind.Block);
+        if mBlock = nil then
+          Continue;
+        mStatements := BareInheritedStatements(mBlock);
+        if mStatements = nil then
+          Continue;
+        // Erst bei einem Treffer die Vorfahren befragen.
+        if not mKnown then
+        begin
+          if AncestorKnows(mMethod.ClassName, mMethod.Symbol.Name) then
+            Break;
+          mKnown := True;
+        end;
+        for mStatement in mStatements do
+        begin
+          mFixes := nil;
+          if (mStatement.Parent <> nil) and (mStatement.Parent.Kind = TSyntaxKind.Block) then
+            mFixes := [RemoveStatementFix(mCache, AContext, mStatement, 'inherited entfernen')];
+          AReport.Add(TTextRange.Create(mStatement.StartPos, mStatement.EndPos),
+            Format('Kein Vorfahr von %s hat %s: inherited tut nichts. Fehlt override?',
+            [mMethod.ClassName, mMethod.Symbol.Name]), TRuleConfidence.High, mFixes);
+        end;
+      end;
+    end;
+  finally
+    mChecked.Free;
+    mAncestry.Free;
+  end;
+end;
+
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDestroyWithoutOverrideRule.Create);
@@ -2929,6 +3428,8 @@ begin
   ARegistry.Register(TClassReferenceNonvirtualConstructorRule.Create);
   ARegistry.Register(TMemberHidesAncestorRule.Create);
   ARegistry.Register(TOverrideCaseMismatchRule.Create);
+  ARegistry.Register(TOverrideOnlyInheritedRule.Create);
+  ARegistry.Register(TInheritedWithoutAncestorRule.Create);
 end;
 
 end.

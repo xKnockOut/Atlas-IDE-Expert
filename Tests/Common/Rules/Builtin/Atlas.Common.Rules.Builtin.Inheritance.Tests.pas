@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Rules.Builtin.Inheritance.Tests;
 
 // Tests für die Vererbungsregeln (#125), shadowed-name (#934) und
-// inherited-abstract-call (#1026).
+// inherited-abstract-call (#1026), override-only-inherited (#1143) und
+// inherited-without-ancestor (#1144).
 
 interface
 
@@ -86,6 +87,24 @@ type
     procedure ClassRefConstructorSilentCases;
     [Test]
     procedure ClassRefConstructorOptions;
+    [Test]
+    procedure OverrideOnlyInheritedIssueExample;
+    [Test]
+    procedure OverrideOnlyInheritedForms;
+    [Test]
+    procedure OverrideOnlyInheritedSilentCases;
+    [Test]
+    procedure OverrideOnlyInheritedObjectMethods;
+    [Test]
+    procedure OverrideOnlyInheritedOptions;
+    [Test]
+    procedure InheritedWithoutAncestorIssueExample;
+    [Test]
+    procedure InheritedWithoutAncestorSilentCases;
+    [Test]
+    procedure InheritedWithoutAncestorFromIndex;
+    [Test]
+    procedure InheritedWithoutAncestorOptions;
   end;
 
 implementation
@@ -1007,6 +1026,254 @@ begin
     '{"rules": {"group:compiler": "off"}}', 'U.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, Source,
     '{"rules": {"class-reference-nonvirtual-constructor": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+end;
+
+/// <summary>TFoo erbt Lauf und Wert von TBasis; AMembers steht im protected-Abschnitt von TFoo, AImplementation
+/// hinter den Rümpfen von TBasis. Beide enden mit einem Zeilenumbruch.</summary>
+function Erben(const AMembers, AImplementation: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  TBasis = class'#10'  protected'#10 +
+    '    procedure Lauf(A, B: Integer); virtual;'#10'    function Wert(X: Integer): Integer; virtual;'#10 +
+    '  end;'#10'  TFoo = class(TBasis)'#10'  protected'#10 + AMembers + '  end;'#10'implementation'#10 +
+    'procedure TBasis.Lauf(A, B: Integer);'#10'begin'#10'end;'#10#10 +
+    'function TBasis.Wert(X: Integer): Integer;'#10'begin'#10'  Result := X;'#10'end;'#10#10 + AImplementation +
+    'end.';
+end;
+
+const
+  LaufDecl = '    procedure Lauf(A, B: Integer); override;'#10;
+  WertDecl = '    function Wert(X: Integer): Integer; override;'#10;
+
+procedure TInheritanceRulesTests.OverrideOnlyInheritedIssueExample;
+const
+  FormsSource = 'unit Vcl.Forms;'#10'interface'#10'type'#10'  TForm = class'#10'  protected'#10 +
+    '    procedure Loaded; virtual;'#10'  end;'#10'implementation'#10'end.';
+
+  function Kunden(const AMembers, AImplementation: string): string;
+  begin
+    Result := 'unit Kunden;'#10'interface'#10'uses Vcl.Forms;'#10'type'#10'  TKundenForm = class(TForm)'#10 +
+      '  protected'#10 + AMembers + '    procedure Zeigen;'#10'  end;'#10'implementation'#10 + AImplementation +
+      'procedure TKundenForm.Zeigen;'#10'begin'#10'end;'#10'end.';
+  end;
+
+var
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+  mIndex: ISymbolIndex;
+begin
+  mIndex := IndexWith([FormsSource]);
+  mSource := Kunden('    /// <summary>Liest nach.</summary>'#10'    procedure Loaded; override;'#10,
+    '/// <summary>Liest nach.</summary>'#10'procedure TKundenForm.Loaded;'#10'begin'#10'  inherited Loaded;'#10'end;'#10#10);
+  mFindings := TRuleAssert.IndexFindings(TOverrideOnlyInheritedRule.Create, mSource, mIndex, '', 'Kunden.pas');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('TKundenForm.Loaded ruft nur inherited auf und kann entfallen.', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  // Gemeldet am Namen in der Implementierung.
+  Assert.AreEqual(12, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(22, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(28, mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Methode entfernen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes[0].Edits)));
+  // Deklaration und Rumpf samt XMLDoc und Leerzeile verschwinden.
+  mFixed := Applied(mSource, mFindings[0].Fixes[0]);
+  Assert.AreEqual(Kunden('', ''), mFixed);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TOverrideOnlyInheritedRule.Create, mFixed, mIndex, '',
+    'Kunden.pas'))));
+end;
+
+procedure TInheritanceRulesTests.OverrideOnlyInheritedForms;
+var
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
+begin
+  // inherited Name(A, B) mit unveränderten Parametern und bloßes inherited.
+  mSource := Erben(LaufDecl, 'procedure TFoo.Lauf(A, B: Integer);'#10'begin'#10'  inherited Lauf(A, B);'#10'end;'#10);
+  mFindings := TRuleAssert.Findings(TOverrideOnlyInheritedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('TFoo.Lauf ruft nur inherited auf und kann entfallen.', mFindings[0].Message);
+  Assert.AreEqual(Erben('', ''), Applied(mSource, mFindings[0].Fixes[0]));
+  TRuleAssert.Reports(TOverrideOnlyInheritedRule.Create,
+    Erben(LaufDecl, 'procedure TFoo.Lauf(A, B: Integer);'#10'begin'#10'  inherited;'#10'end;'#10));
+  TRuleAssert.Reports(TOverrideOnlyInheritedRule.Create,
+    Erben(LaufDecl, 'procedure TFoo.Lauf(A, B: Integer);'#10'begin'#10'  inherited Lauf(A, B)'#10'end;'#10));
+  // Funktion: nur Result := inherited Name(…).
+  TRuleAssert.Reports(TOverrideOnlyInheritedRule.Create,
+    Erben(WertDecl, 'function TFoo.Wert(X: Integer): Integer;'#10'begin'#10'  Result := inherited Wert(X);'#10 +
+    'end;'#10));
+  // Beide in einer Unit, andere Schreibweise des Namens.
+  TRuleAssert.Reports(TOverrideOnlyInheritedRule.Create, Erben(LaufDecl + WertDecl,
+    'procedure TFoo.Lauf(A, B: Integer);'#10'begin'#10'  inherited lauf(a, b);'#10'end;'#10#10 +
+    'function TFoo.Wert(X: Integer): Integer;'#10'begin'#10'  Result := inherited Wert(X);'#10'end;'#10), 2);
+end;
+
+procedure TInheritanceRulesTests.OverrideOnlyInheritedSilentCases;
+
+  procedure Lauf(const AMembers, ABody: string);
+  begin
+    TRuleAssert.Silent(TOverrideOnlyInheritedRule.Create,
+      Erben(AMembers, 'procedure TFoo.Lauf(A, B: Integer);'#10 + ABody + 'end;'#10));
+  end;
+
+begin
+  // Geänderte oder vertauschte Parameter, weitere Anweisungen, lokale Variable, Kommentar im Rumpf.
+  Lauf(LaufDecl, 'begin'#10'  inherited Lauf(B, A);'#10);
+  Lauf(LaufDecl, 'begin'#10'  inherited Lauf(A, 1);'#10);
+  Lauf(LaufDecl, 'begin'#10'  inherited;'#10'  Inc(A);'#10);
+  Lauf(LaufDecl, 'var'#10'  C: Integer;'#10'begin'#10'  inherited;'#10);
+  Lauf(LaufDecl, 'begin'#10'  // Absicht: Haken für später'#10'  inherited;'#10);
+  Lauf(LaufDecl, 'begin'#10'  inherited; {$IFDEF X} Inc(A); {$ENDIF}'#10);
+  Lauf(LaufDecl, 'begin'#10'end;'#10'procedure TFoo.Weiter;'#10'begin'#10);
+  // Sichtbarkeit geändert (protected -> public), Attribut, final, deprecated.
+  Lauf('  public'#10 + LaufDecl, 'begin'#10'  inherited;'#10);
+  Lauf('    [Weak]'#10 + LaufDecl, 'begin'#10'  inherited;'#10);
+  Lauf('    procedure Lauf(A, B: Integer); override; final;'#10, 'begin'#10'  inherited;'#10);
+  Lauf('    procedure Lauf(A, B: Integer); override; deprecated;'#10, 'begin'#10'  inherited;'#10);
+  // Ohne override (verdeckt) und neue virtuelle Methode.
+  Lauf('    procedure Lauf(A, B: Integer); reintroduce;'#10, 'begin'#10'  inherited;'#10);
+  // Funktion mit bloßem inherited oder ohne Ergebnis: Das Ergebnis bleibt undefiniert, das ist kein Fall hier.
+  TRuleAssert.Silent(TOverrideOnlyInheritedRule.Create, Erben(WertDecl,
+    'function TFoo.Wert(X: Integer): Integer;'#10'begin'#10'  inherited;'#10'end;'#10));
+  TRuleAssert.Silent(TOverrideOnlyInheritedRule.Create, Erben(WertDecl,
+    'function TFoo.Wert(X: Integer): Integer;'#10'begin'#10'  Result := inherited Wert(X) + 1;'#10'end;'#10));
+  // Unbekannter Vorfahr: Sichtbarkeit nicht prüfbar.
+  TRuleAssert.Silent(TOverrideOnlyInheritedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TFoo = class(TUnbekannt)'#10'  protected'#10'    procedure Loaded; override;'#10'  end;'#10 +
+    'implementation'#10'procedure TFoo.Loaded;'#10'begin'#10'  inherited;'#10'end;'#10'end.');
+  // Standardwerte (andere Werte als der Vorfahr wären der Zweck).
+  TRuleAssert.Silent(TOverrideOnlyInheritedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TA = class'#10'  public'#10'    procedure P(X: Integer = 1); virtual;'#10'  end;'#10 +
+    '  TB = class(TA)'#10'  public'#10'    procedure P(X: Integer = 2); override;'#10'  end;'#10 +
+    'implementation'#10'procedure TA.P(X: Integer);'#10'begin'#10'end;'#10 +
+    'procedure TB.P(X: Integer);'#10'begin'#10'  inherited P(X);'#10'end;'#10'end.');
+end;
+
+procedure TInheritanceRulesTests.OverrideOnlyInheritedObjectMethods;
+const
+  Source = 'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'  public'#10 +
+    '    destructor Destroy; override;'#10'    procedure AfterConstruction; override;'#10 +
+    '  protected'#10'    function ToString: string; override;'#10'  end;'#10'implementation'#10 +
+    'destructor TFoo.Destroy;'#10'begin'#10'  inherited;'#10'end;'#10 +
+    'procedure TFoo.AfterConstruction;'#10'begin'#10'  inherited AfterConstruction;'#10'end;'#10 +
+    'function TFoo.ToString: string;'#10'begin'#10'  Result := inherited ToString;'#10'end;'#10'end.';
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // TObject steht nicht im Index: Seine virtuellen Methoden sind öffentlich. ToString wird protected, bleibt stumm.
+  mFindings := TRuleAssert.Findings(TOverrideOnlyInheritedRule.Create, Source);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('TFoo.Destroy ruft nur inherited auf und kann entfallen.', mFindings[0].Message);
+  Assert.AreEqual('TFoo.AfterConstruction ruft nur inherited auf und kann entfallen.', mFindings[1].Message);
+end;
+
+procedure TInheritanceRulesTests.OverrideOnlyInheritedOptions;
+var
+  mSource: string;
+begin
+  mSource := Erben(LaufDecl, 'procedure TFoo.Lauf(A, B: Integer);'#10'begin'#10'  inherited;'#10'end;'#10);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TOverrideOnlyInheritedRule.Create, mSource, '',
+    'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverrideOnlyInheritedRule.Create, mSource,
+    '{"rules": {"override-only-inherited": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverrideOnlyInheritedRule.Create, mSource,
+    '{"rules": {"override-only-inherited": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+end;
+
+/// <summary>Das Beispiel aus #1144: TImport erbt von TBasis, AMembers steht im public-Abschnitt von TImport,
+/// ABody ist der Rumpf von TImport.Vorbereiten.</summary>
+function Importe(const ABasis, AMembers, ABody: string): string;
+begin
+  Result := 'unit Importe;'#10'interface'#10'type'#10'  TBasis = class' + ABasis + #10'  public'#10 +
+    '    procedure Lauf; virtual;'#10'  end;'#10'  TImport = class(TBasis)'#10'  private'#10 +
+    '    FZeilen: TStringList;'#10'  public'#10'    procedure Vorbereiten;'#10 + AMembers + '  end;'#10 +
+    'implementation'#10'procedure TBasis.Lauf;'#10'begin'#10'end;'#10'procedure TImport.Vorbereiten;'#10 +
+    'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+procedure TInheritanceRulesTests.InheritedWithoutAncestorIssueExample;
+var
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+begin
+  mSource := Importe('', '', '  inherited;'#10'  FZeilen.Clear;'#10);
+  mFindings := TRuleAssert.Findings(TInheritedWithoutAncestorRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Kein Vorfahr von TImport hat Vorbereiten: inherited tut nichts. Fehlt override?',
+    mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(19, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('inherited entfernen', mFindings[0].Fixes[0].Title);
+  mFixed := Applied(mSource, mFindings[0].Fixes[0]);
+  Assert.AreEqual(Importe('', '', '  FZeilen.Clear;'#10), mFixed);
+  TRuleAssert.Silent(TInheritedWithoutAncestorRule.Create, mFixed);
+  // In einem Zweig: gemeldet, ohne Korrektur (sonst bliebe ein leeres then).
+  mFindings := TRuleAssert.Findings(TInheritedWithoutAncestorRule.Create,
+    Importe('', '', '  if FZeilen <> nil then'#10'    inherited;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+  // Ohne Vorfahr (TObject) ebenso, zweimal im Rumpf zweimal.
+  TRuleAssert.Reports(TInheritedWithoutAncestorRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TFoo = class'#10'  public'#10'    procedure Lauf;'#10'  end;'#10'implementation'#10 +
+    'procedure TFoo.Lauf;'#10'begin'#10'  inherited;'#10'  inherited;'#10'end;'#10'end.', 2);
+end;
+
+procedure TInheritanceRulesTests.InheritedWithoutAncestorSilentCases;
+begin
+  // override, Message-Handler, Konstruktor, Destruktor, Klassenmethode.
+  TRuleAssert.Silent(TInheritedWithoutAncestorRule.Create, Importe('',
+    '    procedure Lauf; override;'#10'    procedure WMPaint(var Msg: TMessage); message WM_PAINT;'#10 +
+    '    constructor Create;'#10'    destructor Destroy; override;'#10'    class procedure Melden;'#10,
+    '  FZeilen.Clear;'#10'end;'#10'procedure TImport.Lauf;'#10'begin'#10'  inherited;'#10'end;'#10 +
+    'procedure TImport.WMPaint(var Msg: TMessage);'#10'begin'#10'  inherited;'#10'end;'#10 +
+    'constructor TImport.Create;'#10'begin'#10'  inherited;'#10'end;'#10 +
+    'destructor TImport.Destroy;'#10'begin'#10'  inherited;'#10'end;'#10 +
+    'class procedure TImport.Melden;'#10'begin'#10'  inherited;'#10));
+  // Der Vorfahr hat eine gleichnamige Methode (auch statisch), benanntes inherited, anonyme Methode.
+  TRuleAssert.Silent(TInheritedWithoutAncestorRule.Create, Importe(#10'  public'#10'    procedure Vorbereiten;', '',
+    '  inherited;'#10'end;'#10'procedure TBasis.Vorbereiten;'#10'begin'#10));
+  TRuleAssert.Silent(TInheritedWithoutAncestorRule.Create, Importe('', '', '  inherited Vorbereiten;'#10));
+  // Unbekannter Vorfahr.
+  TRuleAssert.Silent(TInheritedWithoutAncestorRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TFoo = class(TUnbekannt)'#10'  public'#10'    procedure Lauf;'#10'  end;'#10'implementation'#10 +
+    'procedure TFoo.Lauf;'#10'begin'#10'  inherited;'#10'end;'#10'end.');
+  // Methoden von TObject, wenn System nicht im Index steht.
+  TRuleAssert.Silent(TInheritedWithoutAncestorRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TFoo = class'#10'  public'#10'    procedure AfterConstruction;'#10'    procedure Free;'#10'  end;'#10 +
+    'implementation'#10'procedure TFoo.AfterConstruction;'#10'begin'#10'  inherited;'#10'end;'#10 +
+    'procedure TFoo.Free;'#10'begin'#10'  inherited;'#10'end;'#10'end.');
+end;
+
+procedure TInheritanceRulesTests.InheritedWithoutAncestorFromIndex;
+const
+  MitSource = 'unit Basis;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10 +
+    '    procedure Vorbereiten;'#10'  end;'#10'implementation'#10'end.';
+  OhneSource = 'unit Basis;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10 +
+    '    procedure Lauf;'#10'  end;'#10'implementation'#10'end.';
+  Source = 'unit U;'#10'interface'#10'uses Basis;'#10'type'#10'  TImport = class(TBasis)'#10'  public'#10 +
+    '    procedure Vorbereiten;'#10'  end;'#10'implementation'#10'procedure TImport.Vorbereiten;'#10'begin'#10 +
+    '  inherited;'#10'end;'#10'end.';
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TInheritedWithoutAncestorRule.Create, Source,
+    IndexWith([MitSource]), '', 'U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TInheritedWithoutAncestorRule.Create, Source,
+    IndexWith([OhneSource]), '', 'U.pas'))));
+end;
+
+procedure TInheritanceRulesTests.InheritedWithoutAncestorOptions;
+var
+  mSource: string;
+begin
+  mSource := Importe('', '', '  inherited;'#10);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TInheritedWithoutAncestorRule.Create, mSource, '',
+    'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedWithoutAncestorRule.Create, mSource,
+    '{"rules": {"inherited-without-ancestor": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedWithoutAncestorRule.Create, mSource,
+    '{"rules": {"inherited-without-ancestor": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
 initialization
