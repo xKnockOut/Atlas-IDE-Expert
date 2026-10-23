@@ -145,6 +145,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.GenericLists.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.StringLiterals.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.References.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ReferenceConfidence.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Rename.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Handle.Tests.pas"/>
@@ -616,6 +617,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Notes\Atlas.UI.Notes.Tip.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Notes\Atlas.UI.Notes.Dialog.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Notes.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Results.Frame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Bookmarks\Atlas.Core.Bookmarks.Store.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Bookmarks.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Bookmarks\Atlas.Core.Bookmarks.Quick.pas"/>

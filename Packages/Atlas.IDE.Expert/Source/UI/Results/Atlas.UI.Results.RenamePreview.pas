@@ -5,6 +5,8 @@
 // „Umbenennen“ übernimmt die Änderungen; Doppelklick zeigt die Stelle im
 // Editor, ohne den Dialog zu schließen. Andere Befehle mit WorkspaceEdit
 // (Eigenschaftsregeln anwenden, #309) nennen ihren eigenen Knopf.
+// Nennt der Server erschlossene Stellen, die er nicht ändert (#1119), stehen
+// sie unter „Nicht geändert, bitte prüfen“, die Änderungen unter „Wird geändert“.
 
 interface
 
@@ -47,6 +49,8 @@ var
   Results: TAtlasResultsFrame;
   Buttons: TPanel;
   Apply, Cancel: TButton;
+  Group: TAtlasResultGroup;
+  Entries: TArray<TAtlasResultEntry>;
 begin
   Dialog := TForm.CreateNew(nil);
   try
@@ -83,7 +87,14 @@ begin
     Results.Parent := Dialog;
     Results.Align := alClient;
     Results.OnOpen := AOnOpen;
-    Results.ShowEntries(AHint, AGroups);
+    Entries := nil;
+    for Group in AGroups do
+      Entries := Entries + Group.Entries;
+    if TAtlasResults.InferredCount(Entries) > 0 then
+      Results.ShowRated(AHint, Entries, TAtlasStrings.Text(TAtlasTextId.RenameChangedGroup),
+        TAtlasStrings.Text(TAtlasTextId.RenameUnchangedGroup))
+    else
+      Results.ShowEntries(AHint, AGroups);
     Dialog.ActiveControl := Apply;
     Result := Dialog.ShowModal = mrOk;
   finally

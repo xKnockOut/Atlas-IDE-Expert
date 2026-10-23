@@ -36,6 +36,8 @@ type
     /// <summary>Fenster zeigen (bei Bedarf anlegen); nil, wenn die IDE keine andockbaren Fenster anbietet.</summary>
     class function Frame: TAtlasResultsFrame; static;
     class procedure ShowEntries(const ATitle: string; const AEntries: TArray<TAtlasResultEntry>); static;
+    /// <summary>Verwendungen getrennt nach Treffersicherheit (#1119): „Sicher“ und „Erschlossen“.</summary>
+    class procedure ShowReferences(const ATitle: string; const AEntries: TArray<TAtlasResultEntry>); static;
     class procedure ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
       const ARoots: TArray<TAtlasHierarchyItem>); static;
     /// <summary>Liste „Atlas-Änderungen“ (#721), neueste Sätze zuerst.</summary>
@@ -240,6 +242,17 @@ begin
   Target := Frame;
   if Target <> nil then
     Target.ShowEntries(ATitle, TAtlasResults.Group(AEntries));
+end;
+
+class procedure TAtlasIdeResultsWindow.ShowReferences(const ATitle: string;
+  const AEntries: TArray<TAtlasResultEntry>);
+var
+  Target: TAtlasResultsFrame;
+begin
+  Target := Frame;
+  if Target <> nil then
+    Target.ShowRated(ATitle, AEntries, TAtlasStrings.Text(TAtlasTextId.ResultsSureGroup),
+      TAtlasStrings.Text(TAtlasTextId.ResultsInferredGroup));
 end;
 
 class procedure TAtlasIdeResultsWindow.ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;

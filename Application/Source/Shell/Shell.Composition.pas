@@ -398,6 +398,8 @@ type
     function ConditionalContextFor(const AUri: string): TConditionalContext;
     function RefactoringSettingsFor(const AUri: string): TRefactoringSettings;
     function CompletionSettingsFor(const AUri: string): TCompletionSettings;
+    /// <summary>"references" (#1119): Treffersicherheit für Verwendungen, Aufrufer und Umbenennen.</summary>
+    function ReferenceSettingsFor(const AUri: string): TReferenceSettings;
     /// <summary>"stringLiteral" für AUri; AMultiline nach Stil und Delphi-Version (#312).</summary>
     function StringLiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
     function FormatStyleFor(const AUri: string): TFormatStyle;
@@ -1058,11 +1060,13 @@ begin
     ReadSourceText,
     ProjectSourceFiles,
     EnsureUnit);
+  FReferences.SettingsFor := ReferenceSettingsFor;
   FReferences.Attach(FDispatcher);
   FRename := TLspRename.Create(FDocuments, FIndex,
     ReadSourceText,
     ProjectSourceFiles,
     EnsureUnit);
+  FRename.SettingsFor := ReferenceSettingsFor;
   FRename.Attach(FDispatcher);
 end;
 
@@ -1183,6 +1187,7 @@ begin
     ReadSourceText,
     ProjectSourceFiles,
     EnsureUnit);
+  FHierarchies.SettingsFor := ReferenceSettingsFor;
   FHierarchies.Attach(FDispatcher);
   FImplementations := TLspImplementations.Create(FDocuments, FIndex,
     EnsureUnit);
@@ -3925,6 +3930,11 @@ end;
 function TServerComposition.CompletionSettingsFor(const AUri: string): TCompletionSettings;
 begin
   Result := SettingsFor(AUri).Completion;
+end;
+
+function TServerComposition.ReferenceSettingsFor(const AUri: string): TReferenceSettings;
+begin
+  Result := SettingsFor(AUri).References;
 end;
 
 function TServerComposition.RefactoringSettingsFor(const AUri: string): TRefactoringSettings;

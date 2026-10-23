@@ -15,12 +15,15 @@
 // Positionen sind 0-basiert in UTF-16-Einheiten wie im LSP. Mehrere
 // Änderungen gelten alle für den Text vor der ersten; überlappende sind ein
 // Fehler. Gleicher Anfang: in der Reihenfolge der Liste (LSP 3.17).
+// Beim Umbenennen nennt der Atlas-Server erschlossene Stellen, die er nicht
+// ändert, in atlasUnchanged (#1119); sie stehen in Unchanged.
 
 interface
 
 uses
   System.SysUtils,
   System.JSON,
+  Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.TextChanges;
 
 type
@@ -65,8 +68,19 @@ type
     class function FromJson(const AValue: TJSONObject; out AResult: TLspFileOperation): Boolean; static;
   end;
 
+  /// <summary>Erschlossene Stelle, die das Umbenennen nicht ändert (#1119).</summary>
+  TLspUnchangedPlace = record
+    FileName: string;
+    /// <summary>0-basiert.</summary>
+    Line: Integer;
+    Character: Integer;
+    Confidence: TAtlasConfidence;
+  end;
+
   TLspWorkspaceEdit = record
     Files: TArray<TLspFileEdits>;
+    /// <summary>atlasUnchanged der Antwort auf textDocument/rename (#1119); sonst leer.</summary>
+    Unchanged: TArray<TLspUnchangedPlace>;
     /// <summary>Dateioperationen in der Reihenfolge des Servers (#721).</summary>
     Operations: TArray<TLspFileOperation>;
     /// <summary>Dateioperationen, die Atlas nicht lesen kann (unbekannte Art, fehlende Adresse).</summary>
@@ -230,11 +244,23 @@ var
   Uri: string;
   FileEdits: TLspFileEdits;
   Operation: TLspFileOperation;
+  Unchanged: TJSONArray;
+  Place: TLspUnchangedPlace;
 begin
   Result := Default(TLspWorkspaceEdit);
   if not (AValue is TJSONObject) then
     Exit;
   Edit := TJSONObject(AValue);
+  if Edit.TryGetValue<TJSONArray>('atlasUnchanged', Unchanged) then
+    for Item in Unchanged do
+      if (Item is TJSONObject) and TJSONObject(Item).TryGetValue<string>('uri', Uri) then
+      begin
+        Place.FileName := TLspSession.UriToPath(Uri);
+        Place.Line := TJSONObject(Item).GetValue<Integer>('range.start.line', 0);
+        Place.Character := TJSONObject(Item).GetValue<Integer>('range.start.character', 0);
+        Place.Confidence := TAtlasConfidence.FromJson(Item);
+        Result.Unchanged := Result.Unchanged + [Place];
+      end;
   // documentChanges hat Vorrang, wenn der Server beides schickt.
   if Edit.TryGetValue<TJSONArray>('documentChanges', DocumentChanges) then
   begin

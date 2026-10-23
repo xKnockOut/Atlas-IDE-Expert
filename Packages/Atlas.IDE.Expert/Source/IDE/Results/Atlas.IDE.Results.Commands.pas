@@ -194,10 +194,15 @@ end;
 class function TAtlasIdeResults.Entries(const ALocations: TArray<TLspLocation>): TArray<TAtlasResultEntry>;
 var
   Location: TLspLocation;
+  Entry: TAtlasResultEntry;
 begin
   Result := nil;
   for Location in ALocations do
-    Result := Result + [TAtlasResultEntry.Create(Location.FileName, Location.Line, Location.Character)];
+  begin
+    Entry := TAtlasResultEntry.Create(Location.FileName, Location.Line, Location.Character);
+    Entry.Confidence := Location.Confidence;
+    Result := Result + [Entry];
+  end;
   TAtlasResults.FillText(Result,
     function(const AFileName: string): string
     begin
@@ -233,7 +238,7 @@ begin
     Screen.Cursor := crDefault;
   end;
   Result := Length(Found);
-  TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.ResultsReferences,
+  TAtlasIdeResultsWindow.ShowReferences(TAtlasStrings.Fmt(TAtlasTextId.ResultsReferences,
     [AName, Length(Found), Length(TAtlasResults.Group(Found))]), Found);
 end;
 
