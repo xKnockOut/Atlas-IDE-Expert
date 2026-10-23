@@ -201,7 +201,8 @@ begin
   Assert.AreEqual(Merged(All, ['architecture-contract-content', 'architecture-role-import',
     'catch-all-without-raise', 'default-parameter', 'file-header', 'global-variable', 'hardcoded-string',
     'implicit-variants-unit', 'legacy-stack-queue', 'legacy-tlist', 'line-length', 'loop-invariant-call', 'magic-number',
-    'managed-param-without-const', 'missing-begin-update', 'money-as-float', 'narrowing-assignment',
+    'managed-param-without-const', 'missing-begin-update', 'money-as-float', 'naming-prefix',
+    'narrowing-assignment',
     'override-case-mismatch', 'public-field', 'random-without-randomize', 'redundant-begin-end',
     'redundant-parens', 'security-path-traversal', 'sql-select-star', 'string-concat-in-loop', 'string-if-chain',
     'todo-comment']), ActiveRules('strict'));
