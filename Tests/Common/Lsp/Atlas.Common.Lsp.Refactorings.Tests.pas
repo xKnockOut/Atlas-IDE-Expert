@@ -37,6 +37,10 @@ type
     procedure ProbeFindsTypeAndKind;
     [Test]
     procedure SettingsSwitchActionsOff;
+    /// <summary>if-Kette und case (#646): Typ des Ausdrucks über den Index, Einrückung nach dem Formatstil.
+    /// </summary>
+    [Test]
+    procedure ConvertsCaseAndIfChain;
     /// <summary>Strg+Leertaste auf dem Wort with bietet „with auflösen“ an.</summary>
     [Test]
     procedure CompletionOffersWithItem;
@@ -339,13 +343,27 @@ procedure TLspRefactoringsTests.SettingsSwitchActionsOff;
 var
   Off: TRefactoringContext;
 begin
-  Assert.AreEqual('case vervollständigen (4 fehlende Werte)|', Titles(UnitHaupt, 17, 4, Context));
+  Assert.AreEqual('case vervollständigen (4 fehlende Werte)|In if-Kette umwandeln|', Titles(UnitHaupt, 17, 4,
+    Context));
   Assert.AreEqual('with auflösen|', Titles(UnitHaupt, 25, 3, Context));
   Off := Context;
   Off.Settings.CompleteCase := False;
   Off.Settings.ResolveWith := False;
+  Off.Settings.IfCase := False;
   Assert.AreEqual('', Titles(UnitHaupt, 17, 4, Off));
   Assert.AreEqual('', Titles(UnitHaupt, 25, 3, Off));
+end;
+
+procedure TLspRefactoringsTests.ConvertsCaseAndIfChain;
+var
+  Chain: string;
+begin
+  Chain := StringReplace(UnitHaupt, '  case A of'#10'    alNone: ;'#10'    alTop: ;'#10'    alBottom: ;'#10'  end;'#10,
+    '  if A = alNone then'#10'    Exit'#10'  else if A in [alTop, alBottom] then'#10'    Exit;'#10, []);
+  Assert.AreEqual(StringReplace(UnitHaupt, '  case A of'#10'    alNone: ;'#10'    alTop: ;'#10'    alBottom: ;'#10,
+    '  case A of'#10'    alNone: Exit;'#10'    alTop, alBottom: Exit;'#10, []), Applied(Chain, 'In case umwandeln', 17,
+    4));
+  Assert.AreEqual('-', Applied(Chain, 'In if-Kette umwandeln', 17, 4));
 end;
 
 procedure TLspRefactoringsTests.CompletionOffersWithItem;

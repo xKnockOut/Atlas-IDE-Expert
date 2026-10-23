@@ -36,6 +36,12 @@ type
     procedure ChainSilentCases;
     [Test]
     procedure ChainOptions;
+    [Test]
+    procedure PreferCaseExampleWithFix;
+    [Test]
+    procedure PreferCaseSilentCases;
+    [Test]
+    procedure PreferCaseOptions;
   end;
 
 implementation
@@ -53,6 +59,7 @@ const
   // Niedrige Konfidenz und Standard aus: erst mit minConfidence low und eingeschalteter Regel sichtbar.
   MoneyOn = '{"minConfidence": "low", "rules": {"money-as-float": "hint"}}';
   ChainOn = '{"rules": {"string-if-chain": "hint"}}';
+  PreferCaseOn = '{"rules": {"prefer-case": "hint"}}';
 
 function TypeUnit(const ATypes: string): string;
 begin
@@ -391,6 +398,62 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.AreEqual('"min" muss eine ganze Zahl ab 2 sein', Issues[0].Message);
   Issues := nil;
+end;
+
+{ prefer-case }
+
+function KindUnit(const ABody: string): string;
+begin
+  Result := 'unit Werkzeug;'#10'interface'#10'implementation'#10'procedure Neu;'#10'begin'#10'end;'#10 +
+    'procedure Ausfuehren(Kind: Integer);'#10'var'#10'  S: string;'#10'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+const
+  KindChain = '  if Kind = 1 then Neu'#10'  else if (Kind = 2) or (Kind = 3) then Neu'#10 +
+    '  else if (Kind >= 4) and (Kind <= 6) then Neu'#10'  else Kind := 0;';
+
+procedure TIdiomRulesTests.PreferCaseExampleWithFix;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := KindUnit(KindChain);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPreferCaseRule.Create, Source))), 'Standard aus');
+  Findings := TRuleAssert.Findings(TPreferCaseRule.Create, Source, PreferCaseOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Vier Zweige vergleichen denselben Ausdruck mit Konstanten; als case ist die Kette kürzer.',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('In case umwandeln', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(KindUnit('  case Kind of'#10'    1: Neu;'#10'    2, 3: Neu;'#10'    4..6: Neu;'#10'  else'#10 +
+    '    Kind := 0;'#10'  end;'), Fixed);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPreferCaseRule.Create, Fixed, PreferCaseOn))));
+end;
+
+procedure TIdiomRulesTests.PreferCaseSilentCases;
+begin
+  // Drei Zweige, Strings, verschiedene Ausdrücke, Direktive in der Kette.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPreferCaseRule.Create, KindUnit(
+    '  if Kind = 1 then Neu'#10'  else if Kind = 2 then Neu'#10'  else Neu;'#10 +
+    '  if S = ''a'' then Neu'#10'  else if S = ''b'' then Neu'#10'  else if S = ''c'' then Neu'#10'  else Neu;'#10 +
+    '  if Kind = 1 then Neu'#10'  else if Length(S) = 2 then Neu'#10'  else if Kind = 3 then Neu'#10'  else Neu;'#10 +
+    '  if Kind = 1 then Neu'#10'{$IFDEF DEBUG}'#10'  else if Kind = 2 then Neu'#10'{$ENDIF}'#10 +
+    '  else if Kind = 3 then Neu'#10'  else Neu;'), PreferCaseOn))));
+end;
+
+procedure TIdiomRulesTests.PreferCaseOptions;
+var
+  Source: string;
+begin
+  Source := KindUnit('  if Kind = 1 then Neu'#10'  else if Kind = 2 then Neu'#10'  else Neu;');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TPreferCaseRule.Create, Source,
+    '{"rules": {"prefer-case": {"severity": "hint", "min": 3}}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPreferCaseRule.Create, KindUnit(KindChain),
+    '{"rules": {"prefer-case": {"severity": "hint", "min": 5}}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPreferCaseRule.Create, KindUnit(KindChain),
+    '{"rules": {"prefer-case": "off"}}'))));
 end;
 
 initialization

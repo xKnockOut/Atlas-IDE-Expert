@@ -2577,6 +2577,20 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | EX13 | Cursor auf das Wort `with`, Strg+Leertaste | Erster Eintrag „with auflösen“; Enter löst wie EX10 auf |
 | EX14 | `refactoring.extract`, `refactoring.completeCase` bzw. `refactoring.resolveWith` aus | Die jeweiligen Aktionen (und der Eintrag aus EX13) fehlen |
 
+## if-Kette und case (#646)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IFC1 | `if Kind = 1 then Neu else if (Kind = 2) or (Kind = 3) then Oeffnen else if (Kind >= 4) and (Kind <= 6) then Speichern else Beenden;` (Kind: Integer), Cursor auf dem ersten `if`, Alt+Enter | „In case umwandeln“ ergibt `case Kind of 1: Neu; 2, 3: Oeffnen; 4..6: Speichern; else Beenden; end;`, eingerückt wie die Umgebung (`format.indent`) |
+| IFC2 | Dasselbe mit `Kind in [7, 9..11]` und mit Aufzählungswerten (`Align = alLeft`) bzw. Zeichen (`C = 'a'`) | Marken `7, 9..11` bzw. `alLeft` bzw. `'a'` |
+| IFC3 | Ein Zweig mit zwei Anweisungen in begin … end, ein Zweig mit Kommentar davor und dahinter | Nur dieser Zweig bekommt begin … end; beide Kommentare stehen danach im case, nichts geht verloren |
+| IFC4 | Kette mit `Kind = 2` doppelt, mit überlappendem Bereich, mit `GetKind() = 1`, mit String-Vergleich, mit unbekanntem Typ | Aktion fehlt |
+| IFC5 | Kette mit `{$IFDEF}` zwischen den Zweigen bzw. mit einem Kommentar zwischen `else` und `if` | Aktion fehlt (Kommentar ginge sonst verloren) |
+| IFC6 | `case Kind of 1: Neu; 2, 3: Oeffnen; 4..6: Speichern; else Beenden; end;`, Cursor auf `case`, „In if-Kette umwandeln“ | `if Kind in [2, 3] then …` bzw. für Kind: Integer `Kind in [2, 3]` (0..255) und `(Kind >= 4) and (Kind <= 6)`; else-Zweig als letztes else; Bei Zeichen-Selektor eine or-Kette statt Menge (keine W1050) |
+| IFC7 | case mit leerem Zweig `5: ;` bzw. mit verschachteltem if ohne else | Leerer Zweig wird `begin end`, das innere if bekommt begin … end, damit else nicht an ihm hängt |
+| IFC8 | `refactoring.ifCase` aus | Beide Aktionen fehlen |
+| IFC9 | Regel `prefer-case` in atlas.json einschalten (`"prefer-case": {"severity": "hint"}`), Kette mit 4 Zweigen und mit 3 Zweigen; dann `"min": 3` | Hinweis „4 Zweige vergleichen denselben Ausdruck …“ nur bei der langen Kette, mit `min` 3 auch bei der kürzeren; Schnellkorrektur wie IFC1 |
+
 ## Methode aus Aufruf anlegen (#472)
 
 | Nr. | Schritte | Erwartet |
