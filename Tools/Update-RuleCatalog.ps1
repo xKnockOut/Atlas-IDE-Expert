@@ -8,6 +8,7 @@
 
     - Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data.pas
     - docs/Regeln.md
+    - die Regelzahlen in README.md und README_DE.md
 
     Zusätzlich wird geprüft, dass jede implementierte Regel (TRuleDescriptor.Create
     und die RuleId-Konstanten) im Katalog steht, jede Katalogregel implementiert ist
@@ -249,6 +250,54 @@ function Sync-File([string] $Path, [string] $Content) {
 
 Sync-File $UnitPath $UnitText
 Sync-File $DocPath $DocText
+
+# Regelzahlen in README.md und README_DE.md kommen aus dem Katalog. Von Hand gepflegt liefen sie bei parallelen
+# Branches auseinander, und ein Zusammenführen hinterließ Zahlenreihen wie „170 74 73 … 279“; das Muster
+# \d+( \d+)* repariert auch die.
+$Counts = @{ 'bug' = 0; 'code-smell' = 0; 'vulnerability' = 0; 'security-hotspot' = 0 }
+foreach ($Rule in $Base.rules) {
+    if (-not $Counts.ContainsKey($Rule.category)) {
+        $Problems.Add("Regel $($Rule.id): unbekannte Kategorie $($Rule.category)")
+        continue
+    }
+    $Counts[$Rule.category]++
+}
+$Total = @($Base.rules).Count
+$Number = '\d+(?: \d+)*'
+$ReadmeCounts = @(
+    @{ File = 'README.md'; Patterns = @(
+        @{ Find = "with $Number check rules,"; Text = "with $Total check rules," },
+        @{ Find = "\| $Number check rules \("; Text = "| $Total check rules (" },
+        @{ Find = "\*\*$Number check rules\*\* in four categories: $Number bugs, $Number code smells, $Number vulnerabilities, $Number security hotspots";
+           Text = "**$Total check rules** in four categories: $($Counts['bug']) bugs, $($Counts['code-smell']) code smells, $($Counts['vulnerability']) vulnerabilities, $($Counts['security-hotspot']) security hotspots" }) },
+    @{ File = 'README_DE.md'; Patterns = @(
+        @{ Find = "mit $Number Prüfregeln,"; Text = "mit $Total Prüfregeln," },
+        @{ Find = "\| $Number Prüfregeln \("; Text = "| $Total Prüfregeln (" },
+        @{ Find = "\*\*$Number Prüfregeln\*\* in vier Kategorien: $Number Fehler, $Number Code-Smells, $Number Schwachstellen, $Number Sicherheits-Hotspots";
+           Text = "**$Total Prüfregeln** in vier Kategorien: $($Counts['bug']) Fehler, $($Counts['code-smell']) Code-Smells, $($Counts['vulnerability']) Schwachstellen, $($Counts['security-hotspot']) Sicherheits-Hotspots" }) }
+)
+$Utf8 = New-Object System.Text.UTF8Encoding($false)
+foreach ($Readme in $ReadmeCounts) {
+    $Path = Join-Path $Root $Readme.File
+    $Text = Read-Text $Path
+    $New = $Text
+    foreach ($Pattern in $Readme.Patterns) {
+        $Found = [regex]::Matches($New, $Pattern.Find).Count
+        if ($Found -ne 1) {
+            $Problems.Add("$($Readme.File): Stelle für die Regelzahl ($($Pattern.Text)) $Found-mal statt einmal gefunden")
+            continue
+        }
+        $New = [regex]::Replace($New, $Pattern.Find, { param($Match) $Pattern.Text })
+    }
+    if ($New -ceq $Text) { continue }
+    if ($Check) {
+        $Problems.Add("$($Readme.File): Regelzahlen veraltet; pwsh Tools/Update-RuleCatalog.ps1 ausführen")
+    }
+    else {
+        [System.IO.File]::WriteAllText($Path, $New, $Utf8)
+        Write-Host "Geschrieben: $Path"
+    }
+}
 
 if ($Problems.Count -gt 0) {
     $Problems | ForEach-Object { Write-Host "FEHLER: $_" }
