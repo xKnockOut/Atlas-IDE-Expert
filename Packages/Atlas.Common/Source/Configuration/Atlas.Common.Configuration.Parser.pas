@@ -108,6 +108,7 @@ type
     procedure ReadCompletion(ANode: TJsonNode);
     procedure ReadDiagnostics(ANode: TJsonNode);
     procedure ReadIndex(ANode: TJsonNode);
+    procedure ReadArchitecture(ANode: TJsonNode);
     procedure ReadFormat(ANode: TJsonNode);
     function ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
     /// <summary>Wurzel oder nil nach gemeldetem Syntaxfehler.</summary>
@@ -1653,6 +1654,57 @@ begin
   end;
 end;
 
+procedure TValidator.ReadArchitecture(ANode: TJsonNode);
+var
+  Index, Item, Number: Integer;
+  Key, Value: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"architecture" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'enabled' then
+      ExpectBoolean(ANode[Index], Key, FSettings.ArchitectureEnabled)
+    else if Key = 'scope' then
+    begin
+      if (ANode[Index].Kind = TJsonKind.String_) and ((ANode[Index].Value = 'project') or
+        (ANode[Index].Value = 'projectGroup')) then
+        FSettings.ArchitectureScope := ANode[Index].Value
+      else
+        ReportNode(ANode[Index], '"architecture.scope" muss "project" oder "projectGroup" sein');
+    end
+    else if Key = 'includeLibraryUnits' then
+      ExpectBoolean(ANode[Index], Key, FSettings.ArchitectureIncludeLibraryUnits)
+    else if Key = 'centralUnits' then
+    begin
+      if (ANode[Index].Kind = TJsonKind.Number) and TryStrToInt(ANode[Index].Value, Number) and (Number >= 5) and
+        (Number <= 100) then
+        FSettings.ArchitectureCentralUnits := Number
+      else
+        ReportNode(ANode[Index], '"architecture.centralUnits" muss eine ganze Zahl von 5 bis 100 sein');
+    end
+    else if Key = 'exclude' then
+    begin
+      if ANode[Index].Kind <> TJsonKind.Array_ then
+      begin
+        ReportNode(ANode[Index], '"architecture.exclude" muss eine Liste von Mustern sein');
+        Continue;
+      end;
+      FSettings.ArchitectureExclude := nil;
+      for Item := 0 to ANode[Index].Count - 1 do
+        if ExpectString(ANode[Index][Item], 'architecture.exclude', Value) then
+          FSettings.ArchitectureExclude := FSettings.ArchitectureExclude + [Value];
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "architecture.%s"', [Key]), False);
+  end;
+end;
+
 procedure TValidator.ReadFormat(ANode: TJsonNode);
 var
   Index, Size: Integer;
@@ -1908,6 +1960,8 @@ begin
         ReadDiagnostics(Value)
       else if Key = 'index' then
         ReadIndex(Value)
+      else if Key = 'architecture' then
+        ReadArchitecture(Value)
       else if Key = 'usesCommand' then
         ExpectBoolean(Value, Key, FSettings.UsesCommand)
       else if Key = 'completeBlocks' then
@@ -2268,6 +2322,14 @@ begin
       Result.IndexRemoveOrphans := FileSettings.IndexRemoveOrphans;
       Result.IndexCacheMaxAgeDays := FileSettings.IndexCacheMaxAgeDays;
       Result.IndexCacheMaxMb := FileSettings.IndexCacheMaxMb;
+    end
+    else if Key = 'architecture' then
+    begin
+      Result.ArchitectureEnabled := FileSettings.ArchitectureEnabled;
+      Result.ArchitectureScope := FileSettings.ArchitectureScope;
+      Result.ArchitectureIncludeLibraryUnits := FileSettings.ArchitectureIncludeLibraryUnits;
+      Result.ArchitectureCentralUnits := FileSettings.ArchitectureCentralUnits;
+      Result.ArchitectureExclude := FileSettings.ArchitectureExclude;
     end
     else if Key = 'usesCommand' then
       Result.UsesCommand := FileSettings.UsesCommand
