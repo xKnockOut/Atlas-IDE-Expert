@@ -644,6 +644,11 @@ begin
   Assert.AreEqual(2, Integer(Length(Issues)));
   Parse('{"refactoring": {"invertBooleanAntonyms": {"Hidden": "1x"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // #664: Interface aus Klasse herauslösen.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.ExtractInterface);
+  Assert.IsFalse(Parse('{"refactoring": {"extractInterface": false}}', Issues).Refactoring.ExtractInterface);
+  Parse('{"refactoring": {"extractInterface": "ja"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Speicherbudget (#185)
   Assert.AreEqual(768, Parse('{}', Issues).MemoryBudgetMb, 'Vorgabe 768 MB (Rückmeldung 15.10.2026)');
   Assert.AreEqual(0, Parse('{"memoryBudgetMb": 0}', Issues).MemoryBudgetMb, '0 = unbegrenzt');

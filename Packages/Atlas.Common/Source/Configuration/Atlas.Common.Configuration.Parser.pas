@@ -1370,6 +1370,8 @@ begin
     end
     else if Key = 'invertBooleanIncludeDfm' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InvertBooleanIncludeDfm)
+    else if Key = 'extractInterface' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ExtractInterface)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);

@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2001] of string = (
+  Lines: array[0..2007] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1211,6 +1211,15 @@ const
     '          "description": "Published Properties auch in den Formularen (.dfm, .fmx) der Klasse und ihrer Nachfahren umkehren: Name und Wert (Hidden = True → Visible = False); der default der Property w' +
       'ird mit umgedreht. Aus: Formulare bleiben, die Vorschau warnt.",',
     '          "x-issue": "#715"',
+    '        },',
+    '        "extractInterface": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktion „Interface aus TFoo herauslösen …“ auf der Kopfzeile einer Klasse: Ein Dialog zeigt die public- und published-Methoden und -Properties zum Ankreuzen (vorab alle p' +
+      'ublic-Methoden), den Namen (I + Klassenname ohne T) und das Ziel (dieselbe Unit, eine Unit des Projekts oder eine neue). Das Interface bekommt eine neue GUID, die Signaturen samt Doku-Kommentaren und ' +
+      'die Properties; liest eine Property ein Feld, legt Atlas Get- und Set-Methoden an. Die Klasse erhält das Interface in ihrer Vorfahrenliste (statt TObject TInterfacedObject). Vorschau vor dem Übernehme' +
+      'n.",',
+    '          "x-issue": "#664"',
     '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',
