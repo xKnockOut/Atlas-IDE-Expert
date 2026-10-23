@@ -186,6 +186,8 @@ begin
                   end;
                   TIndexSymbolKind.EnumType:
                     Result.IsValue := True;
+                else
+                  // Übrige Werte bewusst ohne Wirkung.
                 end;
             if (Result.TypeUnit = '') and Resolved.Found and not Resolved.Builtin then
               Result.TypeUnit := Resolved.UnitName;

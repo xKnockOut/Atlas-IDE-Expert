@@ -36,25 +36,25 @@ uses
 procedure TAtlasTextTip.ShowText(const AText: string; const APoint: TPoint);
 var
   Area, Bounds: TRect;
-  Width, Height: Integer;
+  mWidth, mHeight: Integer;
 begin
   FText := AText;
   Canvas.Font := Font;
   Area := WorkAreaAt(APoint);
-  Width := Min(Canvas.TextWidth(AText) + Scale(18), Area.Width);
-  Height := Canvas.TextHeight('Wg') + Scale(10);
-  Bounds := TRect.Create(APoint, Width, Height);
+  mWidth := Min(Canvas.TextWidth(AText) + Scale(18), Area.Width);
+  mHeight := Canvas.TextHeight('Wg') + Scale(10);
+  Bounds := TRect.Create(APoint, mWidth, mHeight);
   if Bounds.Right > Area.Right then
-    Bounds.SetLocation(Max(Area.Left, Area.Right - Width), Bounds.Top);
+    Bounds.SetLocation(Max(Area.Left, Area.Right - mWidth), Bounds.Top);
   if Bounds.Bottom > Area.Bottom then
-    Bounds.SetLocation(Bounds.Left, Area.Bottom - Height);
+    Bounds.SetLocation(Bounds.Left, Area.Bottom - mHeight);
   ShowAt(Bounds);
   Invalidate;
 end;
 
 procedure TAtlasTextTip.Paint;
 var
-  Text: TRect;
+  mText: TRect;
 begin
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Surface);
@@ -62,8 +62,8 @@ begin
   Canvas.Font := Font;
   Canvas.Font.Color := ToColor(Colors.Text);
   Canvas.Brush.Style := bsClear;
-  Text := Rect(Scale(9), 0, ClientWidth - Scale(9), ClientHeight);
-  DrawText(Canvas.Handle, PChar(FText), -1, Text, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
+  mText := Rect(Scale(9), 0, ClientWidth - Scale(9), ClientHeight);
+  DrawText(Canvas.Handle, PChar(FText), -1, mText, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
     DT_END_ELLIPSIS);
   Canvas.Brush.Style := bsSolid;
   PaintBorder;

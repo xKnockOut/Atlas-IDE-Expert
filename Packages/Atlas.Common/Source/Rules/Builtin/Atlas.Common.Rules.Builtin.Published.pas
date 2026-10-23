@@ -301,6 +301,8 @@ var
           else if IsTypeName(Target) then
             Result := NamedKind(StringReplace(Target, ' ', '', [rfReplaceAll]), nil, ADepth + 1);
         end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 
@@ -546,6 +548,8 @@ var
               AReport.Add(NameRange(Member, Name), Format('Nur eine Überladung von %s darf published sein ' +
                 '(wie E2266).', [Name]), TRuleConfidence.High, Fixes);
           end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
     end;
   end;

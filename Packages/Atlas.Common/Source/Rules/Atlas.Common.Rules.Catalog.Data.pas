@@ -1881,7 +1881,8 @@ begin
     '      "description": "A parameter, local or inline variable has the same name as a field or property of the class (also inherited and visible there, resolved through the file and the symbol index) or ' +
     'as a global variable of the unit declared before the routine. Especially treacherous in form methods: Caption, Name, Tag, Left. If VCL is not in the index, the members of TComponent and TControl are k' +
     'nown when the ancestor chain ends at a VCL base class. Parameters of event handlers (with Sender) are skipped because the event type dictates the signature. High confidence. Quick fix: rename to AName' +
-    ' (parameter, also in the declaration) or LName (local variable) within the routine. Option ignore lists name patterns that are never reported (default Sender, Value).",' + #10 +
+    ' (parameter, also in the declaration) or LName (local variable) within the routine; with prefixes in the project file .atlas (naming) these are used instead, e.g. mName. Option ignore lists name patte' +
+    'rns that are never reported (default Sender, Value).",' + #10 +
     '      "bad": "procedure TfrmKunde.Laden(const Caption: string);\nbegin\n  Caption := Caption + '' (geladen)'';\nend;",' + #10 +
     '      "good": "procedure TfrmKunde.Laden(const ACaption: string);\nbegin\n  Caption := ACaption + '' (geladen)'';\nend;",' + #10 +
     '      "options": [' + #10 +
@@ -1893,6 +1894,55 @@ begin
     '            "Value"' + #10 +
     '          ],' + #10 +
     '          "description": "Name patterns (* and ?) that are never reported."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "naming-prefix",' + #10 +
+    '      "name": "Name without the prefix of its kind",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A local variable (also inline and for var), field (also class var), parameter or constant (const, also local, in classes and inline; not resourcestring) lacks the prefix of its k' +
+    'ind. Defaults: local m, field F, parameter A, constant c; after a prefix ending in a letter an upper-case letter or digit must follow (mIndex, not menu). Global variables are not checked. Per kind the' +
+    ' prefix comes from the option in atlas.json, else from the project file .atlas (naming, also constant), else the default; an empty value switches the kind off. Off by default: the rule runs only when ' +
+    'atlas.json switches it on. Exceptions: one-letter loop counters, Sender, Self and Result, names matching ignore, published fields and fields before the first visibility section of a form, frame or dat' +
+    'a module (components), parameters of methods with override or message, of published methods, of event handlers (a parameter named Sender) and of methods implementing an interface method (in the file o' +
+    'r the symbol index; unknown interface: silent). Parameters are reported at the declaration only. Quick fix: rename to the expected name in the routine or the block after an inline declaration, for par' +
+    'ameters also in declaration and implementation, for private fields and class constants in the class and its methods (also Self.Name and TType.Name), for implementation constants in the whole unit. No ' +
+    'fix when the new name already occurs in the file, the scope contains with, a nested routine redeclares the name, or the name is visible outside the file.",' + #10 +
+    '      "bad": "procedure TKunde.Laden(const Datei: string);\nvar\n  Zeilen: TStringList;\nbegin\nend;",' + #10 +
+    '      "good": "procedure TKunde.Laden(const ADatei: string);\nvar\n  mZeilen: TStringList;\nbegin\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "local",' + #10 +
+    '          "type": "string",' + #10 +
+    '          "default": "m",' + #10 +
+    '          "description": "Prefix of local variables; empty = not checked."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "field",' + #10 +
+    '          "type": "string",' + #10 +
+    '          "default": "F",' + #10 +
+    '          "description": "Prefix of fields; empty = not checked."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "parameter",' + #10 +
+    '          "type": "string",' + #10 +
+    '          "default": "A",' + #10 +
+    '          "description": "Prefix of parameters; empty = not checked."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "constant",' + #10 +
+    '          "type": "string",' + #10 +
+    '          "default": "c",' + #10 +
+    '          "description": "Prefix of constants; empty = not checked."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "ignore",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Name patterns (* and ?) that are never reported, e.g. fields of API records."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +
@@ -5964,12 +6014,47 @@ begin
     '      "description": "Ein Parameter, eine lokale oder Inline-Variable heißt wie ein Feld oder eine Property der Klasse (auch geerbt und dort sichtbar, aufgelöst über die Datei und den Symbolindex) ode' +
     'r wie eine globale Variable der Unit, die vor der Routine deklariert ist. In Formularmethoden besonders tückisch: Caption, Name, Tag, Left. Steht die VCL nicht im Index, kennt die Regel die Mitglieder' +
     ' von TComponent und TControl, wenn die Vorfahrenkette an einer VCL-Grundklasse endet. Parameter von Ereignis-Handlern (mit Sender) bleiben außen vor, weil der Ereignistyp die Signatur vorgibt. Konfide' +
-    'nz hoch. Schnellkorrektur: in der Routine in AName (Parameter, auch in der Deklaration) bzw. LName (lokale Variable) umbenennen. Die Option ignore nennt Namensmuster, die nie gemeldet werden (Vorgabe ' +
-    'Sender, Value).",' + #10 +
+    'nz hoch. Schnellkorrektur: in der Routine in AName (Parameter, auch in der Deklaration) bzw. LName (lokale Variable) umbenennen; setzt die Projektdatei .atlas Präfixe (naming), gelten diese, z. B. mNa' +
+    'me. Die Option ignore nennt Namensmuster, die nie gemeldet werden (Vorgabe Sender, Value).",' + #10 +
     '      "options": [' + #10 +
     '        {' + #10 +
     '          "name": "ignore",' + #10 +
     '          "description": "Namensmuster (* und ?), die nie gemeldet werden."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "naming-prefix",' + #10 +
+    '      "name": "Name ohne das Präfix seiner Art",' + #10 +
+    '      "description": "Einer lokalen Variable (auch Inline und for var), einem Feld (auch class var), einem Parameter oder einer Konstante (const, auch lokal, in Klassen und Inline; nicht resourcestrin' +
+    'g) fehlt das Präfix ihrer Art. Standard: lokal m, Feld F, Parameter A, Konstante c; hinter einem Präfix, das auf einen Buchstaben endet, folgt ein Großbuchstabe oder eine Ziffer (mIndex, nicht menu). ' +
+    'Globale Variablen prüft die Regel nicht. Je Art kommt das Präfix aus der Option in atlas.json, sonst aus der Projektdatei .atlas (naming, auch constant), sonst der Standard; ein leerer Wert schaltet d' +
+    'ie Art ab. Standardmäßig aus: Die Regel läuft nur, wenn atlas.json sie einschaltet. Ausnahmen: Schleifenzähler aus einem Buchstaben, Sender, Self und Result, Namen nach ignore, published-Felder und Fe' +
+    'lder vor dem ersten Sichtbarkeitsabschnitt eines Formulars, Frames oder Datenmoduls (Komponenten), Parameter von Methoden mit override oder message, von published-Methoden, von Ereignis-Handlern (ein ' +
+    'Parameter heißt Sender) und von Methoden, die eine Interface-Methode erfüllen (in der Datei oder im Symbolindex; unbekanntes Interface: still). Parameter werden nur an der Deklaration gemeldet. Schnel' +
+    'lkorrektur: in den erwarteten Namen umbenennen, in der Routine bzw. im Block ab einer Inline-Deklaration, bei Parametern auch in Deklaration und Implementierung, bei privaten Feldern und Klassenkonsta' +
+    'nten in der Klasse und ihren Methoden (auch Self.Name und TTyp.Name), bei Konstanten der implementation in der ganzen Unit. Keine Korrektur, wenn der neue Name in der Datei schon vorkommt, der Bereich' +
+    ' with enthält, eine verschachtelte Routine den Namen neu deklariert oder der Name außerhalb der Datei sichtbar ist.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "local",' + #10 +
+    '          "description": "Präfix lokaler Variablen; leer = nicht prüfen."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "field",' + #10 +
+    '          "description": "Präfix von Feldern; leer = nicht prüfen."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "parameter",' + #10 +
+    '          "description": "Präfix von Parametern; leer = nicht prüfen."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "constant",' + #10 +
+    '          "description": "Präfix von Konstanten; leer = nicht prüfen."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "ignore",' + #10 +
+    '          "description": "Namensmuster (* und ?), die nie gemeldet werden, z. B. Felder von API-Records."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +

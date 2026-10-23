@@ -597,6 +597,8 @@ begin
               Continue;
             end;
           end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
       for Index := Node.ChildCount - 1 downto 0 do
         Stack.Push(Node[Index]);

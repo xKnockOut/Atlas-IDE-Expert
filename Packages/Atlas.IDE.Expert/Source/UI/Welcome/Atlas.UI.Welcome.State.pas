@@ -209,21 +209,21 @@ end;
 
 function TAtlasWelcomeStateFrame.BodyHeight: Integer;
 var
-  Rows: Integer;
+  mRows: Integer;
 begin
-  Rows := Max(Length(FRows), 1);
-  Result := Rows * ScaleValue(RowHeight) + ScaleValue(Indent) + BarHeight;
+  mRows := Max(Length(FRows), 1);
+  Result := mRows * ScaleValue(RowHeight) + ScaleValue(Indent) + BarHeight;
 end;
 
 function TAtlasWelcomeStateFrame.LayoutButtons: Integer;
 var
   Kind: TAtlasStateButton;
-  Left, Top, Width, Right: Integer;
+  mLeft, mTop, mWidth, Right: Integer;
   Measure: TBitmap;
 begin
   Result := 1;
-  Left := ScaleValue(Indent);
-  Top := ScaleValue(ButtonGap);
+  mLeft := ScaleValue(Indent);
+  mTop := ScaleValue(ButtonGap);
   Right := FBar.ClientWidth - ScaleValue(Indent);
   // Messen auf einer Bitmap: Der Frame hat beim Anlegen noch kein Fenster.
   Measure := TBitmap.Create;
@@ -233,16 +233,16 @@ begin
     begin
       if not FButtons[Kind].Visible then
         Continue;
-      Width := Measure.Canvas.TextWidth(FButtons[Kind].Caption) + 2 * ScaleValue(ButtonPadding);
+      mWidth := Measure.Canvas.TextWidth(FButtons[Kind].Caption) + 2 * ScaleValue(ButtonPadding);
       // Zu schmal: nächste Reihe (nicht für den ersten Knopf einer Reihe).
-      if (Left > ScaleValue(Indent)) and (Right > 0) and (Left + Width > Right) then
+      if (mLeft > ScaleValue(Indent)) and (Right > 0) and (mLeft + mWidth > Right) then
       begin
-        Left := ScaleValue(Indent);
-        Inc(Top, ScaleValue(ButtonHeight) + ScaleValue(ButtonGap));
+        mLeft := ScaleValue(Indent);
+        Inc(mTop, ScaleValue(ButtonHeight) + ScaleValue(ButtonGap));
         Inc(Result);
       end;
-      FButtons[Kind].SetBounds(Left, Top, Width, ScaleValue(ButtonHeight));
-      Inc(Left, Width + ScaleValue(ButtonGap));
+      FButtons[Kind].SetBounds(mLeft, mTop, mWidth, ScaleValue(ButtonHeight));
+      Inc(mLeft, mWidth + ScaleValue(ButtonGap));
     end;
   finally
     Measure.Free;
@@ -305,9 +305,9 @@ end;
 procedure TAtlasWelcomeStateFrame.BoxPaint(Sender: TObject);
 var
   Canvas: TCanvas;
-  Index, Left, Top, Dot, TextTop, DetailWidth, Right: Integer;
+  Index, mLeft, mTop, Dot, TextTop, DetailWidth, Right: Integer;
   Row: TAtlasStateRow;
-  Text, Detail: string;
+  mText, Detail: string;
   TextColor, MutedColor: TColor;
   TextRect: TRect;
 begin
@@ -321,16 +321,16 @@ begin
   for Index := 0 to High(FRows) do
   begin
     Row := FRows[Index];
-    Top := RowTop(Index);
-    Left := ScaleValue(Indent);
-    TextTop := Top + (ScaleValue(RowHeight) - Canvas.TextHeight('Wg')) div 2;
+    mTop := RowTop(Index);
+    mLeft := ScaleValue(Indent);
+    TextTop := mTop + (ScaleValue(RowHeight) - Canvas.TextHeight('Wg')) div 2;
     Canvas.Brush.Style := bsSolid;
     Canvas.Brush.Color := DotColor(Row.State);
     Canvas.Pen.Color := Canvas.Brush.Color;
-    Canvas.Ellipse(Left, Top + (ScaleValue(RowHeight) - Dot) div 2, Left + Dot,
-      Top + (ScaleValue(RowHeight) - Dot) div 2 + Dot);
+    Canvas.Ellipse(mLeft, mTop + (ScaleValue(RowHeight) - Dot) div 2, mLeft + Dot,
+      mTop + (ScaleValue(RowHeight) - Dot) div 2 + Dot);
     Canvas.Brush.Style := bsClear;
-    Inc(Left, Dot + ScaleValue(6));
+    Inc(mLeft, Dot + ScaleValue(6));
     // Zusatz rechtsbündig in der gedämpften Farbe, Text davor gekürzt.
     Detail := DetailText(Row);
     DetailWidth := 0;
@@ -346,9 +346,9 @@ begin
       Canvas.Font.Style := [fsUnderline]
     else
       Canvas.Font.Style := [];
-    Text := RowText(Row);
-    TextRect := Rect(Left, TextTop, Max(Left, Right - DetailWidth), TextTop + Canvas.TextHeight('Wg'));
-    Canvas.TextRect(TextRect, Text, [tfLeft, tfSingleLine, tfEndEllipsis, tfNoPrefix]);
+    mText := RowText(Row);
+    TextRect := Rect(mLeft, TextTop, Max(mLeft, Right - DetailWidth), TextTop + Canvas.TextHeight('Wg'));
+    Canvas.TextRect(TextRect, mText, [tfLeft, tfSingleLine, tfEndEllipsis, tfNoPrefix]);
     Canvas.Font.Style := [];
   end;
 end;
@@ -365,32 +365,32 @@ end;
 
 procedure TAtlasWelcomeStateFrame.ClickRow(ARow: Integer);
 var
-  Source: IAtlasStateSource;
+  mSource: IAtlasStateSource;
   Id: string;
 begin
   if (FSource = nil) or (ARow < 0) or (ARow > High(FRows)) or not FRows[ARow].HasAction then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Id := FRows[ARow].Id;
   // Die Aktion öffnet Fenster oder ändert den Zustand: nicht im eigenen Mausereignis.
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.RunRow(Id);
+      mSource.RunRow(Id);
     end);
 end;
 
 procedure TAtlasWelcomeStateFrame.ClickButton(AButton: TAtlasStateButton);
 var
-  Source: IAtlasStateSource;
+  mSource: IAtlasStateSource;
 begin
   if FSource = nil then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.Run(AButton);
+      mSource.Run(AButton);
     end);
 end;
 

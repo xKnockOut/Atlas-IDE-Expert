@@ -659,16 +659,16 @@ end;
 procedure TAtlasWelcomeTestResultsFrame.PaintRow(ACanvas: TCanvas; AIndex: Integer; ANowUtc: TDateTime);
 var
   Data: TAtlasTestRow;
-  Top, Left, Dot, Limit, Width, Radius: Integer;
-  Text, Mismatch: string;
+  mTop, mLeft, Dot, Limit, mWidth, Radius: Integer;
+  mText, Mismatch: string;
   TextColor, MutedColor: TColor;
   Pill: TRect;
 begin
   Data := FView.Rows[AIndex];
   TextColor := StyleServices(Self).GetSystemColor(clWindowText);
   MutedColor := StyleServices(Self).GetSystemColor(clGrayText);
-  Top := RowTop(AIndex);
-  Left := ScaleValue(Indent);
+  mTop := RowTop(AIndex);
+  mLeft := ScaleValue(Indent);
   Dot := ScaleValue(DotSize);
   Limit := FBox.Width - ScaleValue(Indent);
   // Gewählte Zeile mit einem Balken in der Markierungsfarbe des Themas (wie „Projekte“, #758).
@@ -676,7 +676,7 @@ begin
   begin
     ACanvas.Brush.Style := bsSolid;
     ACanvas.Brush.Color := StyleServices(Self).GetSystemColor(clHighlight);
-    ACanvas.FillRect(Rect(0, Top, ScaleValue(BarWidth), Top + RowHeight(AIndex) - ScaleValue(RowGap)));
+    ACanvas.FillRect(Rect(0, mTop, ScaleValue(BarWidth), mTop + RowHeight(AIndex) - ScaleValue(RowGap)));
   end;
   // Ampel des lokalen Laufs (ohne lokalen Lauf die des Servers).
   ACanvas.Brush.Style := bsSolid;
@@ -685,23 +685,23 @@ begin
   else
     ACanvas.Brush.Color := LevelColor(Data.CiLevel);
   ACanvas.Pen.Color := ACanvas.Brush.Color;
-  ACanvas.Ellipse(Left, Top + ScaleValue(6), Left + Dot, Top + ScaleValue(6) + Dot);
+  ACanvas.Ellipse(mLeft, mTop + ScaleValue(6), mLeft + Dot, mTop + ScaleValue(6) + Dot);
   ACanvas.Brush.Style := bsClear;
-  Inc(Left, Dot + ScaleValue(6));
+  Inc(mLeft, Dot + ScaleValue(6));
   ACanvas.Font.Assign(Font);
   ACanvas.Font.Color := TextColor;
   ACanvas.Font.Style := [fsBold];
-  ACanvas.TextRect(Rect(Left, Top + ScaleValue(2), Limit, Top + ScaleValue(LineHeight)), Left, Top + ScaleValue(2),
+  ACanvas.TextRect(Rect(mLeft, mTop + ScaleValue(2), Limit, mTop + ScaleValue(LineHeight)), mLeft, mTop + ScaleValue(2),
     Data.Name);
-  Inc(Left, ACanvas.TextWidth(Data.Name) + ScaleValue(8));
+  Inc(mLeft, ACanvas.TextWidth(Data.Name) + ScaleValue(8));
   ACanvas.Font.Style := [];
   // Marke des lokalen Laufs.
-  if Data.Local.Known and (Left < Limit) then
+  if Data.Local.Known and (mLeft < Limit) then
   begin
     ACanvas.Font.Size := Font.Size - 1;
-    Text := PillText(Data);
-    Width := ACanvas.TextWidth(Text) + 2 * ScaleValue(PillPadding);
-    Pill := Rect(Left, Top + ScaleValue(2), Left + Width, Top + ScaleValue(2) + ScaleValue(PillHeight));
+    mText := PillText(Data);
+    mWidth := ACanvas.TextWidth(mText) + 2 * ScaleValue(PillPadding);
+    Pill := Rect(mLeft, mTop + ScaleValue(2), mLeft + mWidth, mTop + ScaleValue(2) + ScaleValue(PillHeight));
     Radius := ScaleValue(PillHeight);
     ACanvas.Brush.Style := bsSolid;
     ACanvas.Brush.Color := LevelColor(Data.LocalLevel);
@@ -709,52 +709,52 @@ begin
     ACanvas.RoundRect(Pill.Left, Pill.Top, Pill.Right, Pill.Bottom, Radius, Radius);
     ACanvas.Brush.Style := bsClear;
     ACanvas.Font.Color := clWhite;
-    ACanvas.TextOut(Pill.Left + ScaleValue(PillPadding), Pill.Top + (Pill.Height - ACanvas.TextHeight(Text)) div 2,
-      Text);
+    ACanvas.TextOut(Pill.Left + ScaleValue(PillPadding), Pill.Top + (Pill.Height - ACanvas.TextHeight(mText)) div 2,
+      mText);
     ACanvas.Font.Size := Font.Size;
-    Left := Pill.Right + ScaleValue(8);
+    mLeft := Pill.Right + ScaleValue(8);
   end;
   // Zahlen, Dauer und Zeit in gedämpfter Schrift (Mockup: mono).
-  Text := LocalText(Data, ANowUtc);
-  if (Text <> '') and (Left < Limit) then
+  mText := LocalText(Data, ANowUtc);
+  if (mText <> '') and (mLeft < Limit) then
   begin
     ACanvas.Font.Name := MonoFont;
     ACanvas.Font.Size := Font.Size - 1;
     ACanvas.Font.Color := MutedColor;
-    ACanvas.TextRect(Rect(Left, Top + ScaleValue(3), Limit, Top + ScaleValue(LineHeight)), Left,
-      Top + ScaleValue(3), Text);
+    ACanvas.TextRect(Rect(mLeft, mTop + ScaleValue(3), Limit, mTop + ScaleValue(LineHeight)), mLeft,
+      mTop + ScaleValue(3), mText);
     ACanvas.Font.Assign(Font);
   end;
   if not Data.HasCi then
     Exit;
   // Zeile des Build-Servers: kleiner Punkt, Text, Abweichung hervorgehoben.
-  Top := Top + ScaleValue(LineHeight);
-  Left := ScaleValue(Indent) + Dot + ScaleValue(6);
+  mTop := mTop + ScaleValue(LineHeight);
+  mLeft := ScaleValue(Indent) + Dot + ScaleValue(6);
   ACanvas.Brush.Style := bsSolid;
   ACanvas.Brush.Color := LevelColor(Data.CiLevel);
   ACanvas.Pen.Color := ACanvas.Brush.Color;
-  ACanvas.Ellipse(Left, Top + ScaleValue(5), Left + Dot - ScaleValue(2), Top + ScaleValue(5) + Dot - ScaleValue(2));
+  ACanvas.Ellipse(mLeft, mTop + ScaleValue(5), mLeft + Dot - ScaleValue(2), mTop + ScaleValue(5) + Dot - ScaleValue(2));
   ACanvas.Brush.Style := bsClear;
-  Inc(Left, Dot + ScaleValue(4));
+  Inc(mLeft, Dot + ScaleValue(4));
   ACanvas.Font.Assign(Font);
   ACanvas.Font.Size := Font.Size - 1;
   ACanvas.Font.Color := MutedColor;
-  Text := CiText(Data, ANowUtc);
-  ACanvas.TextRect(Rect(Left, Top + ScaleValue(1), Limit, Top + ScaleValue(CiLineHeight)), Left,
-    Top + ScaleValue(1), Text);
+  mText := CiText(Data, ANowUtc);
+  ACanvas.TextRect(Rect(mLeft, mTop + ScaleValue(1), Limit, mTop + ScaleValue(CiLineHeight)), mLeft,
+    mTop + ScaleValue(1), mText);
   Mismatch := MismatchText(Data.Mismatch);
   if Mismatch <> '' then
   begin
-    Inc(Left, ACanvas.TextWidth(Text) + ScaleValue(10));
-    if Left < Limit then
+    Inc(mLeft, ACanvas.TextWidth(mText) + ScaleValue(10));
+    if mLeft < Limit then
     begin
       ACanvas.Font.Style := [fsBold];
       if Data.Mismatch = TAtlasTestMismatch.LocalGreenServerRed then
         ACanvas.Font.Color := LevelColor(TAtlasTestLevel.Failed)
       else
         ACanvas.Font.Color := LevelColor(TAtlasTestLevel.Warning);
-      ACanvas.TextRect(Rect(Left, Top + ScaleValue(1), Limit, Top + ScaleValue(CiLineHeight)), Left,
-        Top + ScaleValue(1), Mismatch);
+      ACanvas.TextRect(Rect(mLeft, mTop + ScaleValue(1), Limit, mTop + ScaleValue(CiLineHeight)), mLeft,
+        mTop + ScaleValue(1), Mismatch);
     end;
   end;
   ACanvas.Font.Assign(Font);
@@ -763,89 +763,89 @@ end;
 procedure TAtlasWelcomeTestResultsFrame.PaintFailure(ACanvas: TCanvas; AIndex: Integer);
 var
   Item: TAtlasTestFailureItem;
-  Top, Left, Limit, Width, Radius: Integer;
-  Tag: TRect;
-  Text: string;
+  mTop, mLeft, Limit, mWidth, Radius: Integer;
+  mTag: TRect;
+  mText: string;
   TextColor, MutedColor: TColor;
 begin
   Item := FView.Failures[AIndex];
   TextColor := StyleServices(Self).GetSystemColor(clWindowText);
   MutedColor := StyleServices(Self).GetSystemColor(clGrayText);
-  Top := FailureTop(AIndex);
-  Left := ScaleValue(Indent);
+  mTop := FailureTop(AIndex);
+  mLeft := ScaleValue(Indent);
   Limit := FBox.Width - ScaleValue(Indent);
   if AIndex = FFailure then
   begin
     ACanvas.Brush.Style := bsSolid;
     ACanvas.Brush.Color := StyleServices(Self).GetSystemColor(clBtnFace);
-    ACanvas.FillRect(Rect(Left, Top, Limit, Top + ScaleValue(FailureHeight) - ScaleValue(4)));
+    ACanvas.FillRect(Rect(mLeft, mTop, Limit, mTop + ScaleValue(FailureHeight) - ScaleValue(4)));
   end;
   // Roter Balken links (Mockup).
   ACanvas.Brush.Style := bsSolid;
   ACanvas.Brush.Color := LevelColor(TAtlasTestLevel.Failed);
-  ACanvas.FillRect(Rect(Left, Top, Left + ScaleValue(BarWidth), Top + ScaleValue(FailureHeight) - ScaleValue(4)));
+  ACanvas.FillRect(Rect(mLeft, mTop, mLeft + ScaleValue(BarWidth), mTop + ScaleValue(FailureHeight) - ScaleValue(4)));
   ACanvas.Brush.Style := bsClear;
-  Inc(Left, ScaleValue(BarWidth) + ScaleValue(8));
+  Inc(mLeft, ScaleValue(BarWidth) + ScaleValue(8));
   // Marke „Server“ rechts.
   if Item.Server then
   begin
     ACanvas.Font.Assign(Font);
     ACanvas.Font.Size := Font.Size - 2;
-    Text := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsServerTag);
-    Width := ACanvas.TextWidth(Text) + 2 * ScaleValue(PillPadding);
-    Tag := Rect(Limit - Width, Top + ScaleValue(2), Limit, Top + ScaleValue(2) + ScaleValue(PillHeight) - 2);
+    mText := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsServerTag);
+    mWidth := ACanvas.TextWidth(mText) + 2 * ScaleValue(PillPadding);
+    mTag := Rect(Limit - mWidth, mTop + ScaleValue(2), Limit, mTop + ScaleValue(2) + ScaleValue(PillHeight) - 2);
     Radius := ScaleValue(PillHeight);
     ACanvas.Brush.Style := bsSolid;
     ACanvas.Brush.Color := LevelColor(TAtlasTestLevel.Unknown);
     ACanvas.Pen.Color := ACanvas.Brush.Color;
-    ACanvas.RoundRect(Tag.Left, Tag.Top, Tag.Right, Tag.Bottom, Radius, Radius);
+    ACanvas.RoundRect(mTag.Left, mTag.Top, mTag.Right, mTag.Bottom, Radius, Radius);
     ACanvas.Brush.Style := bsClear;
     ACanvas.Font.Color := clWhite;
-    ACanvas.TextOut(Tag.Left + ScaleValue(PillPadding), Tag.Top + (Tag.Height - ACanvas.TextHeight(Text)) div 2,
-      Text);
-    Limit := Tag.Left - ScaleValue(6);
+    ACanvas.TextOut(mTag.Left + ScaleValue(PillPadding), mTag.Top + (mTag.Height - ACanvas.TextHeight(mText)) div 2,
+      mText);
+    Limit := mTag.Left - ScaleValue(6);
   end;
   ACanvas.Font.Assign(Font);
   ACanvas.Font.Name := MonoFont;
   ACanvas.Font.Color := TextColor;
-  ACanvas.TextRect(Rect(Left, Top + ScaleValue(1), Limit, Top + ScaleValue(18)), Left, Top + ScaleValue(1),
+  ACanvas.TextRect(Rect(mLeft, mTop + ScaleValue(1), Limit, mTop + ScaleValue(18)), mLeft, mTop + ScaleValue(1),
     Item.Test);
   ACanvas.Font.Assign(Font);
   ACanvas.Font.Size := Font.Size - 1;
   ACanvas.Font.Color := MutedColor;
-  ACanvas.TextRect(Rect(Left, Top + ScaleValue(18), FBox.Width - ScaleValue(Indent), Top + ScaleValue(34)), Left,
-    Top + ScaleValue(18), FailureDetail(Item));
+  ACanvas.TextRect(Rect(mLeft, mTop + ScaleValue(18), FBox.Width - ScaleValue(Indent), mTop + ScaleValue(34)), mLeft,
+    mTop + ScaleValue(18), FailureDetail(Item));
   ACanvas.Font.Assign(Font);
 end;
 
 procedure TAtlasWelcomeTestResultsFrame.PaintButtons(ACanvas: TCanvas);
 var
   Button: TAtlasTestResultsButton;
-  Left, Top, Width: Integer;
-  Text: string;
+  mLeft, mTop, mWidth: Integer;
+  mText: string;
   Area: TRect;
-  Enabled: Boolean;
+  mEnabled: Boolean;
   Accent, TextColor, MutedColor, LineColor: TColor;
 begin
   Accent := StyleServices(Self).GetSystemColor(clHighlight);
   TextColor := StyleServices(Self).GetSystemColor(clWindowText);
   MutedColor := StyleServices(Self).GetSystemColor(clGrayText);
   LineColor := StyleServices(Self).GetSystemColor(clBtnShadow);
-  Left := ScaleValue(Indent);
-  Top := ButtonsTop + (ScaleValue(ButtonsHeight) - ScaleValue(ButtonHeight)) div 2;
+  mLeft := ScaleValue(Indent);
+  mTop := ButtonsTop + (ScaleValue(ButtonsHeight) - ScaleValue(ButtonHeight)) div 2;
   ACanvas.Font.Assign(Font);
   for Button := Low(TAtlasTestResultsButton) to High(TAtlasTestResultsButton) do
   begin
     FButtonRects[Button] := TRect.Empty;
     if not ButtonVisible(Button) then
       Continue;
-    Text := ButtonText(Button);
-    Width := ACanvas.TextWidth(Text) + 2 * ScaleValue(ButtonPadding);
-    Area := Rect(Left, Top, Left + Width, Top + ScaleValue(ButtonHeight));
+    mText := ButtonText(Button);
+    mWidth := ACanvas.TextWidth(mText) + 2 * ScaleValue(ButtonPadding);
+    Area := Rect(mLeft, mTop, mLeft + mWidth, mTop + ScaleValue(ButtonHeight));
     FButtonRects[Button] := Area;
-    Enabled := ButtonEnabled(Button);
+    mEnabled := ButtonEnabled(Button);
     // „Fehlgeschlagene erneut ausführen“ ist die Hauptaktion (Mockup: primary).
-    if (Button = TAtlasTestResultsButton.Rerun) and Enabled then
+    if (Button = TAtlasTestResultsButton.Rerun) and mEnabled then
     begin
       ACanvas.Brush.Style := bsSolid;
       ACanvas.Brush.Color := Accent;
@@ -858,15 +858,15 @@ begin
       ACanvas.Brush.Style := bsClear;
       ACanvas.Pen.Color := LineColor;
       ACanvas.RoundRect(Area.Left, Area.Top, Area.Right, Area.Bottom, ScaleValue(6), ScaleValue(6));
-      if Enabled then
+      if mEnabled then
         ACanvas.Font.Color := TextColor
       else
         ACanvas.Font.Color := MutedColor;
     end;
     ACanvas.Brush.Style := bsClear;
-    ACanvas.TextOut(Area.Left + (Area.Width - ACanvas.TextWidth(Text)) div 2,
-      Area.Top + (Area.Height - ACanvas.TextHeight(Text)) div 2, Text);
-    Left := Area.Right + ScaleValue(8);
+    ACanvas.TextOut(Area.Left + (Area.Width - ACanvas.TextWidth(mText)) div 2,
+      Area.Top + (Area.Height - ACanvas.TextHeight(mText)) div 2, mText);
+    mLeft := Area.Right + ScaleValue(8);
   end;
 end;
 
@@ -932,7 +932,7 @@ end;
 
 procedure TAtlasWelcomeTestResultsFrame.ClickAt(const AHit: TAtlasTestResultsHit);
 var
-  Source: IAtlasTestResultsSource;
+  mSource: IAtlasTestResultsSource;
   Row: TAtlasTestRow;
   Item: TAtlasTestFailureItem;
   Tests: TArray<string>;
@@ -940,7 +940,7 @@ var
 begin
   if (FSource = nil) or not FView.SelectedRow(Row) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   case AHit.Kind of
     // Leerraum und die Zeile „… weitere“ sind keine Schaltflächen.
     TAtlasTestResultsHitKind.None, TAtlasTestResultsHitKind.More: ;
@@ -954,7 +954,7 @@ begin
         TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
           procedure
           begin
-            Source.Select(Project);
+            mSource.Select(Project);
           end);
       end;
     TAtlasTestResultsHitKind.Failure:
@@ -970,7 +970,7 @@ begin
         TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
           procedure
           begin
-            Source.RerunFailed(Row, Tests);
+            mSource.RerunFailed(Row, Tests);
           end);
       end;
     TAtlasTestResultsHitKind.Debug:
@@ -978,27 +978,27 @@ begin
         TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
           procedure
           begin
-            Source.Debug(Row, Item);
+            mSource.Debug(Row, Item);
           end);
     TAtlasTestResultsHitKind.Browse:
       if ButtonEnabled(TAtlasTestResultsButton.Browse) then
         TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
           procedure
           begin
-            Source.Browse(Row);
+            mSource.Browse(Row);
           end);
   end;
 end;
 
 procedure TAtlasWelcomeTestResultsFrame.DoubleClickAt(const AHit: TAtlasTestResultsHit);
 var
-  Source: IAtlasTestResultsSource;
+  mSource: IAtlasTestResultsSource;
   Row: TAtlasTestRow;
   Item: TAtlasTestFailureItem;
 begin
   if (FSource = nil) or not FView.SelectedRow(Row) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   if (AHit.Kind = TAtlasTestResultsHitKind.Failure) and (AHit.Index >= 0) and
     (AHit.Index <= High(FView.Failures)) then
   begin
@@ -1007,7 +1007,7 @@ begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
       procedure
       begin
-        Source.OpenTest(Row, Item);
+        mSource.OpenTest(Row, Item);
       end);
   end
   else if (AHit.Kind = TAtlasTestResultsHitKind.Row) and (AHit.Index >= 0) and (AHit.Index <= High(FView.Rows)) then
@@ -1016,7 +1016,7 @@ begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
       procedure
       begin
-        Source.OpenProject(Row);
+        mSource.OpenProject(Row);
       end);
   end;
 end;
@@ -1098,46 +1098,46 @@ end;
 
 procedure TAtlasWelcomeTestResultsFrame.QueryClick(Sender: TObject);
 var
-  Source: IAtlasTestResultsSource;
+  mSource: IAtlasTestResultsSource;
   Row: TAtlasTestRow;
 begin
   if not MenuTarget(Row) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.QueryNow(Row);
+      mSource.QueryNow(Row);
     end);
 end;
 
 procedure TAtlasWelcomeTestResultsFrame.CredentialsClick(Sender: TObject);
 var
-  Source: IAtlasTestResultsSource;
+  mSource: IAtlasTestResultsSource;
   Row: TAtlasTestRow;
 begin
   if not MenuTarget(Row) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.Credentials(Row);
+      mSource.Credentials(Row);
     end);
 end;
 
 procedure TAtlasWelcomeTestResultsFrame.OpenClick(Sender: TObject);
 var
-  Source: IAtlasTestResultsSource;
+  mSource: IAtlasTestResultsSource;
   Row: TAtlasTestRow;
 begin
   if not MenuTarget(Row) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.OpenProject(Row);
+      mSource.OpenProject(Row);
     end);
 end;
 

@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 14 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 43 |
+| [Stil und Metriken](#gruppe-style) | 44 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
@@ -342,6 +342,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`todo-comment`](#todo-comment) | Offener TODO-Kommentar | Code Smell | Hinweis |
 | [`unneeded-forward-declaration`](#unneeded-forward-declaration) | Überflüssige Forward-Deklaration | Code Smell | Hinweis |
 | [`shadowed-name`](#shadowed-name) | Lokaler Name verdeckt Feld oder Property | Code Smell | Hinweis |
+| [`naming-prefix`](#naming-prefix) | Name ohne das Präfix seiner Art | Code Smell | Hinweis |
 | [`boolean-assign-if`](#boolean-assign-if) | if, das nur True oder False zuweist | Code Smell | Hinweis |
 | [`magic-number`](#magic-number) | Zahl ohne Namen im Code | Code Smell | Hinweis |
 | [`line-length`](#line-length) | Zeile zu lang | Code Smell | Hinweis |
@@ -3585,7 +3586,7 @@ if not Preise.TryGetValue(Artikel.Nummer, Preis) then
 
 **Lokaler Name verdeckt Feld oder Property** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Ein Parameter, eine lokale oder Inline-Variable heißt wie ein Feld oder eine Property der Klasse (auch geerbt und dort sichtbar, aufgelöst über die Datei und den Symbolindex) oder wie eine globale Variable der Unit, die vor der Routine deklariert ist. In Formularmethoden besonders tückisch: Caption, Name, Tag, Left. Steht die VCL nicht im Index, kennt die Regel die Mitglieder von TComponent und TControl, wenn die Vorfahrenkette an einer VCL-Grundklasse endet. Parameter von Ereignis-Handlern (mit Sender) bleiben außen vor, weil der Ereignistyp die Signatur vorgibt. Konfidenz hoch. Schnellkorrektur: in der Routine in AName (Parameter, auch in der Deklaration) bzw. LName (lokale Variable) umbenennen. Die Option ignore nennt Namensmuster, die nie gemeldet werden (Vorgabe Sender, Value).
+Ein Parameter, eine lokale oder Inline-Variable heißt wie ein Feld oder eine Property der Klasse (auch geerbt und dort sichtbar, aufgelöst über die Datei und den Symbolindex) oder wie eine globale Variable der Unit, die vor der Routine deklariert ist. In Formularmethoden besonders tückisch: Caption, Name, Tag, Left. Steht die VCL nicht im Index, kennt die Regel die Mitglieder von TComponent und TControl, wenn die Vorfahrenkette an einer VCL-Grundklasse endet. Parameter von Ereignis-Handlern (mit Sender) bleiben außen vor, weil der Ereignistyp die Signatur vorgibt. Konfidenz hoch. Schnellkorrektur: in der Routine in AName (Parameter, auch in der Deklaration) bzw. LName (lokale Variable) umbenennen; setzt die Projektdatei .atlas Präfixe (naming), gelten diese, z. B. mName. Die Option ignore nennt Namensmuster, die nie gemeldet werden (Vorgabe Sender, Value).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -3606,6 +3607,41 @@ Richtig:
 procedure TfrmKunde.Laden(const ACaption: string);
 begin
   Caption := ACaption + ' (geladen)';
+end;
+```
+
+<a id="naming-prefix"></a>
+### naming-prefix
+
+**Name ohne das Präfix seiner Art** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Einer lokalen Variable (auch Inline und for var), einem Feld (auch class var), einem Parameter oder einer Konstante (const, auch lokal, in Klassen und Inline; nicht resourcestring) fehlt das Präfix ihrer Art. Standard: lokal m, Feld F, Parameter A, Konstante c; hinter einem Präfix, das auf einen Buchstaben endet, folgt ein Großbuchstabe oder eine Ziffer (mIndex, nicht menu). Globale Variablen prüft die Regel nicht. Je Art kommt das Präfix aus der Option in atlas.json, sonst aus der Projektdatei .atlas (naming, auch constant), sonst der Standard; ein leerer Wert schaltet die Art ab. Standardmäßig aus: Die Regel läuft nur, wenn atlas.json sie einschaltet. Ausnahmen: Schleifenzähler aus einem Buchstaben, Sender, Self und Result, Namen nach ignore, published-Felder und Felder vor dem ersten Sichtbarkeitsabschnitt eines Formulars, Frames oder Datenmoduls (Komponenten), Parameter von Methoden mit override oder message, von published-Methoden, von Ereignis-Handlern (ein Parameter heißt Sender) und von Methoden, die eine Interface-Methode erfüllen (in der Datei oder im Symbolindex; unbekanntes Interface: still). Parameter werden nur an der Deklaration gemeldet. Schnellkorrektur: in den erwarteten Namen umbenennen, in der Routine bzw. im Block ab einer Inline-Deklaration, bei Parametern auch in Deklaration und Implementierung, bei privaten Feldern und Klassenkonstanten in der Klasse und ihren Methoden (auch Self.Name und TTyp.Name), bei Konstanten der implementation in der ganzen Unit. Keine Korrektur, wenn der neue Name in der Datei schon vorkommt, der Bereich with enthält, eine verschachtelte Routine den Namen neu deklariert oder der Name außerhalb der Datei sichtbar ist.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `local` | string | `"m"` | Präfix lokaler Variablen; leer = nicht prüfen. |
+| `field` | string | `"F"` | Präfix von Feldern; leer = nicht prüfen. |
+| `parameter` | string | `"A"` | Präfix von Parametern; leer = nicht prüfen. |
+| `constant` | string | `"c"` | Präfix von Konstanten; leer = nicht prüfen. |
+| `ignore` | string-list | `[]` | Namensmuster (* und ?), die nie gemeldet werden, z. B. Felder von API-Records. |
+
+Mit Treffer:
+
+```pascal
+procedure TKunde.Laden(const Datei: string);
+var
+  Zeilen: TStringList;
+begin
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TKunde.Laden(const ADatei: string);
+var
+  mZeilen: TStringList;
+begin
 end;
 ```
 

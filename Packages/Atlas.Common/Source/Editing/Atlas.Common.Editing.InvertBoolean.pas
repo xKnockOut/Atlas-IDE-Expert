@@ -437,6 +437,8 @@ begin
     TSyntaxKind.MemberAccess, TSyntaxKind.InheritedExpr:
       if FTokenAtEnd.TryGetValue(ANode.EndOffset, Token) then
         Result := FTokens[Token].Offset;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 
@@ -463,6 +465,8 @@ begin
       Result := (ANode.ChildCount > 0) and
         (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.InheritedExpr]) and
         InvertedName(NameOffset(ANode[0]), Name) and Name.Invert;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 
@@ -749,6 +753,8 @@ begin
           Exit(NodeText(ANode[0]) + Between(ANode[0], ANode[1], True, Op) + NodeText(ANode[1]));
         end;
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   if IsAtomic(Result) then
     Result := 'not ' + Result
@@ -855,6 +861,8 @@ begin
           Exit;
         end;
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   Result := Rebuild(ANode);
   if ANegate then
@@ -1063,6 +1071,8 @@ begin
         VisitDeclaration(ANode);
         Exit;
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   for Index := 0 to ANode.ChildCount - 1 do
   begin

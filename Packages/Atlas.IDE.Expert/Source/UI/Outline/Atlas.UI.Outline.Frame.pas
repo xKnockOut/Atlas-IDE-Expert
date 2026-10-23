@@ -532,7 +532,7 @@ end;
 
 function TAtlasOutlineFrame.HighlightAt(ALine, ACharacter: Integer): Boolean;
 var
-  Node, Parent, Index: Integer;
+  Node, mParent, Index: Integer;
   Opened: Boolean;
 begin
   Result := False;
@@ -541,16 +541,16 @@ begin
     Exit;
   // Eltern aufklappen, damit der Eintrag zu sehen ist.
   Opened := False;
-  Parent := FNodes[Node].Parent;
-  while Parent >= 0 do
+  mParent := FNodes[Node].Parent;
+  while mParent >= 0 do
   begin
-    Index := FCollapsed.IndexOf(PathOf(Parent));
+    Index := FCollapsed.IndexOf(PathOf(mParent));
     if Index >= 0 then
     begin
       FCollapsed.Delete(Index);
       Opened := True;
     end;
-    Parent := FNodes[Parent].Parent;
+    mParent := FNodes[mParent].Parent;
   end;
   if Opened then
     Refill;

@@ -25,6 +25,9 @@
 //                         (--format text) oder Metrikdaten (--format json)
 //   --todos               statt der Treffer die offenen TODO-Einträge (#68): Markdown-Übersicht
 //                         (--format text) oder TODO-Daten (--format json)
+//   --no-index            ohne Symbolindex prüfen (#1112); Regeln, die Typen anderer Units
+//                         oder der RTL brauchen, schweigen dann
+//   --index-cache <Ordner> Ordner der Index-Caches (Standard wie der Server, %LOCALAPPDATA%\Atlas)
 //
 // MCP-Modus (#48):
 //   --mcp                 Symbolindex über das Model Context Protocol anbieten
@@ -71,6 +74,10 @@ type
     Metrics: Boolean;
     /// <summary>Statt der Treffer die offenen TODO-Einträge ausgeben (#68).</summary>
     Todos: Boolean;
+    /// <summary>--check ohne Symbolindex (#1112).</summary>
+    NoIndex: Boolean;
+    /// <summary>Ordner der Index-Caches für --check (#1112); '' = wie der Server.</summary>
+    IndexCacheFolder: string;
     /// <summary>Baseline-Datei (#97); '' = atlas-baseline.json neben atlas.json, falls vorhanden.</summary>
     BaselineFile: string;
     /// <summary>Baseline aus den aktuellen Treffern neu schreiben statt zu prüfen.</summary>
@@ -212,13 +219,14 @@ begin
   Strings := [StringOption('--log', @Result.LogFile), StringOption('--trace', @Result.TraceFile),
     StringOption('--check', @Result.CheckTarget), StringOption('--output', @Result.OutputFile),
     StringOption('--source-root', @Result.SourceRoot), StringOption('--profile', @Result.Profile),
-    StringOption('--baseline', @Result.BaselineFile), StringOption('--root', @Result.McpRoot)];
+    StringOption('--baseline', @Result.BaselineFile), StringOption('--root', @Result.McpRoot),
+    StringOption('--index-cache', @Result.IndexCacheFolder)];
   Flags := [FlagOption('--log-names', @Result.LogNames), FlagOption('--mcp', @Result.Mcp),
     FlagOption('--restricted', @Result.Restricted), FlagOption('--clear-cache', @Result.ClearCache),
     FlagOption('--include-uncommitted', @Result.IncludeUncommitted),
     FlagOption('--changed-lines', @Result.ChangedLines), FlagOption('--update-baseline', @Result.UpdateBaseline),
     FlagOption('--suppression-stats', @Result.SuppressionStats), FlagOption('--metrics', @Result.Metrics),
-    FlagOption('--todos', @Result.Todos)];
+    FlagOption('--todos', @Result.Todos), FlagOption('--no-index', @Result.NoIndex)];
 
   Index := Low(AArgs);
   while Index <= High(AArgs) do

@@ -254,6 +254,8 @@ begin
             SameText(Node[1].Name, 'nil')) or (TFreeFields.ObjectCreation(FContext.Tree, FContext.Text,
             FContext.Index, Node[1], TypeName, Owned) and not Owned)) then
             Harmless(Node[0]);
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
       for Index := Node.ChildCount - 1 downto 0 do
         Pending.Push(Node[Index]);

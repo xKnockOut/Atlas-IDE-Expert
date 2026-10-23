@@ -461,27 +461,27 @@ end;
 
 procedure TAtlasProjectSettingsDialog.UpdateState(AIndex: Integer);
 var
-  Text: string;
+  mText: string;
 begin
   if FStates[AIndex] = nil then
     Exit;
   case FModel.Origin(AIndex) of
     TAtlasSettingOrigin.Project:
-      Text := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsFromProject);
+      mText := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsFromProject);
     TAtlasSettingOrigin.Global:
       if FModel.Global then
-        Text := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsFromGlobal)
+        mText := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsFromGlobal)
       else
-        Text := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsInherited,
+        mText := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsInherited,
           [Copy(TAtlasSettingsSchema.Display(FModel.Inherited_(AIndex)), 1, 60)]);
   else
     if FModel.Fields[AIndex].DefaultJson <> '' then
-      Text := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsDefault,
+      mText := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsDefault,
         [Copy(TAtlasSettingsSchema.Display(FModel.Fields[AIndex].DefaultJson), 1, 60)])
     else
-      Text := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsDefaultNone);
+      mText := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsDefaultNone);
   end;
-  FStates[AIndex].Caption := Text;
+  FStates[AIndex].Caption := mText;
   if FResets[AIndex] <> nil then
     FResets[AIndex].Enabled := FModel.Current(AIndex) <> '';
 end;
@@ -499,7 +499,7 @@ end;
 procedure TAtlasProjectSettingsDialog.ShowPage(APage: Integer);
 var
   Index, Y, Choice, Width_: Integer;
-  Name, Note: TLabel;
+  mName, Note: TLabel;
   Check: TCheckBox;
   Edit: TEdit;
   Combo: TComboBox;
@@ -520,13 +520,13 @@ begin
     Field := FModel.Fields[Index];
     if not SameText(Field.Page, FPages[APage]) then
       Continue;
-    Name := TLabel.Create(FBox);
-    Name.Parent := FBox;
-    Name.SetBounds(Gap * 2, Y, 400, 16);
-    Name.Font.Style := [fsBold];
-    Name.Caption := Field.Path;
+    mName := TLabel.Create(FBox);
+    mName.Parent := FBox;
+    mName.SetBounds(Gap * 2, Y, 400, 16);
+    mName.Font.Style := [fsBold];
+    mName.Caption := Field.Path;
     if Field.Experimental then
-      Name.Caption := Name.Caption + '  [' + TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalTag) + ']';
+      mName.Caption := mName.Caption + '  [' + TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalTag) + ']';
     Inc(Y, 20);
     if Field.Description <> '' then
       Inc(Y, AddLabel(Field.Description, Y).Height + 4);
@@ -663,6 +663,8 @@ begin
             Memo.OnChange := MemoChange;
             Control := Memo;
           end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
     if Control <> nil then
     begin
@@ -792,17 +794,17 @@ end;
 procedure TAtlasProjectSettingsDialog.EditChange(Sender: TObject);
 var
   Index, Number: Integer;
-  Text: string;
+  mText: string;
 begin
   Index := TEdit(Sender).Tag;
-  Text := Trim(TEdit(Sender).Text);
-  FRaw[Index] := Text;
+  mText := Trim(TEdit(Sender).Text);
+  FRaw[Index] := mText;
   FRawValid[Index] := True;
-  if Text = '' then
+  if mText = '' then
     FModel.SetValue(Index, '')
   else if FModel.Fields[Index].Kind = TAtlasSettingKind.Text then
-    FModel.SetValue(Index, TAtlasJsonText.Quote(Text))
-  else if TryStrToInt(Text, Number) then
+    FModel.SetValue(Index, TAtlasJsonText.Quote(mText))
+  else if TryStrToInt(mText, Number) then
     FModel.SetValue(Index, IntToStr(Number))
   else
     FRawValid[Index] := False;
@@ -822,23 +824,23 @@ end;
 procedure TAtlasProjectSettingsDialog.TextComboChange(Sender: TObject);
 var
   Index, Choice: Integer;
-  Text: string;
+  mText: string;
 begin
   Index := TComboBox(Sender).Tag;
-  Text := Trim(TComboBox(Sender).Text);
-  FRaw[Index] := Text;
+  mText := Trim(TComboBox(Sender).Text);
+  FRaw[Index] := mText;
   // Eine Anzeige aus der Liste speichert ihren Wert ("Delphi 12 (23.0)" → "23.0"), sonst den Text.
   for Choice := 0 to High(FTextChoices[Index]) do
-    if FTextChoices[Index][Choice].Caption = Text then
+    if FTextChoices[Index][Choice].Caption = mText then
     begin
       FModel.SetValue(Index, FTextChoices[Index][Choice].Json);
       UpdateState(Index);
       Exit;
     end;
-  if Text = '' then
+  if mText = '' then
     FModel.SetValue(Index, '')
   else
-    FModel.SetValue(Index, TAtlasJsonText.Quote(Text));
+    FModel.SetValue(Index, TAtlasJsonText.Quote(mText));
   UpdateState(Index);
 end;
 
@@ -867,16 +869,16 @@ end;
 procedure TAtlasProjectSettingsDialog.JsonChange(Sender: TObject);
 var
   Index: Integer;
-  Text: string;
+  mText: string;
 begin
   Index := TMemo(Sender).Tag;
-  Text := Trim(TMemo(Sender).Text);
-  FRaw[Index] := Text;
-  FRawValid[Index] := (Text = '') or IsJsonValue(Text);
-  if Text = '' then
+  mText := Trim(TMemo(Sender).Text);
+  FRaw[Index] := mText;
+  FRawValid[Index] := (mText = '') or IsJsonValue(mText);
+  if mText = '' then
     FModel.SetValue(Index, '')
   else if FRawValid[Index] then
-    FModel.SetValue(Index, Text);
+    FModel.SetValue(Index, mText);
   if FRawValid[Index] then
     TMemo(Sender).Font.Color := clWindowText
   else

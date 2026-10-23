@@ -367,7 +367,7 @@ end;
 
 procedure TAtlasWelcomeUnsavedFrame.LayoutButtons;
 var
-  Row, Width, Top, Right: Integer;
+  Row, mWidth, mTop, Right: Integer;
   Canvas: TCanvas;
 begin
   // Schaltfläche rechts, mittig in der Zeile; die Rechtecke dienen auch dem Treffertest. Nur beim Zeichnen.
@@ -377,18 +377,18 @@ begin
   Right := FBox.Width - ScaleValue(Indent);
   for Row := 0 to High(FView.Rows) do
   begin
-    Width := Canvas.TextWidth(ButtonText(FView.Rows[Row].Item)) + 2 * ScaleValue(ButtonPadding);
-    Top := RowTop(Row) + (ScaleValue(RowHeight) - ScaleValue(ButtonHeight)) div 2;
-    FButtonRects[Row] := Rect(Right - Width, Top, Right, Top + ScaleValue(ButtonHeight));
+    mWidth := Canvas.TextWidth(ButtonText(FView.Rows[Row].Item)) + 2 * ScaleValue(ButtonPadding);
+    mTop := RowTop(Row) + (ScaleValue(RowHeight) - ScaleValue(ButtonHeight)) div 2;
+    FButtonRects[Row] := Rect(Right - mWidth, mTop, Right, mTop + ScaleValue(ButtonHeight));
   end;
 end;
 
 procedure TAtlasWelcomeUnsavedFrame.BoxPaint(Sender: TObject);
 var
   Canvas: TCanvas;
-  Row, Left, Top, Dot, Limit: Integer;
+  Row, mLeft, mTop, Dot, Limit: Integer;
   Data: TAtlasUnsavedRow;
-  Text, Branch: string;
+  mText, Branch: string;
   TextColor, MutedColor, LineColor: TColor;
   Button: TRect;
   Stamp: TDateTime;
@@ -412,44 +412,44 @@ begin
   for Row := 0 to High(FView.Rows) do
   begin
     Data := FView.Rows[Row];
-    Top := RowTop(Row);
-    Left := ScaleValue(Indent);
+    mTop := RowTop(Row);
+    mLeft := ScaleValue(Indent);
     Button := FButtonRects[Row];
     // Ampel.
     Canvas.Brush.Style := bsSolid;
     Canvas.Brush.Color := LevelColor(Data.Level);
     Canvas.Pen.Color := Canvas.Brush.Color;
-    Canvas.Ellipse(Left, Top + ScaleValue(6), Left + Dot, Top + ScaleValue(6) + Dot);
+    Canvas.Ellipse(mLeft, mTop + ScaleValue(6), mLeft + Dot, mTop + ScaleValue(6) + Dot);
     Canvas.Brush.Style := bsClear;
-    Inc(Left, Dot + ScaleValue(6));
+    Inc(mLeft, Dot + ScaleValue(6));
     Limit := Button.Left - ScaleValue(Indent);
     Canvas.Font.Assign(Font);
     Canvas.Font.Color := TextColor;
     Canvas.Font.Style := [fsBold];
-    Canvas.TextRect(Rect(Left, Top + ScaleValue(3), Limit, Top + ScaleValue(21)), Left, Top + ScaleValue(3),
+    Canvas.TextRect(Rect(mLeft, mTop + ScaleValue(3), Limit, mTop + ScaleValue(21)), mLeft, mTop + ScaleValue(3),
       Data.Name);
-    Inc(Left, Canvas.TextWidth(Data.Name));
+    Inc(mLeft, Canvas.TextWidth(Data.Name));
     Canvas.Font.Style := [];
     Branch := Data.Branch;
-    if (Branch <> '') and (Left < Limit) then
+    if (Branch <> '') and (mLeft < Limit) then
     begin
       Canvas.Font.Color := MutedColor;
-      Canvas.TextRect(Rect(Left, Top + ScaleValue(3), Limit, Top + ScaleValue(21)), Left, Top + ScaleValue(3),
+      Canvas.TextRect(Rect(mLeft, mTop + ScaleValue(3), Limit, mTop + ScaleValue(21)), mLeft, mTop + ScaleValue(3),
         Separator + Branch);
     end;
     // Zweite Zeile.
-    Left := ScaleValue(Indent) + Dot + ScaleValue(6);
+    mLeft := ScaleValue(Indent) + Dot + ScaleValue(6);
     Canvas.Font.Color := MutedColor;
-    Canvas.TextRect(Rect(Left, Top + ScaleValue(23), Limit, Top + ScaleValue(41)), Left, Top + ScaleValue(23),
+    Canvas.TextRect(Rect(mLeft, mTop + ScaleValue(23), Limit, mTop + ScaleValue(41)), mLeft, mTop + ScaleValue(23),
       DetailText(Data, Stamp));
     // Schaltfläche.
     Canvas.Pen.Color := LineColor;
     Canvas.Brush.Style := bsClear;
     Canvas.RoundRect(Button.Left, Button.Top, Button.Right, Button.Bottom, ScaleValue(6), ScaleValue(6));
     Canvas.Font.Color := TextColor;
-    Text := ButtonText(Data.Item);
-    Canvas.TextOut(Button.Left + (Button.Width - Canvas.TextWidth(Text)) div 2,
-      Button.Top + (Button.Height - Canvas.TextHeight(Text)) div 2, Text);
+    mText := ButtonText(Data.Item);
+    Canvas.TextOut(Button.Left + (Button.Width - Canvas.TextWidth(mText)) div 2,
+      Button.Top + (Button.Height - Canvas.TextHeight(mText)) div 2, mText);
   end;
 end;
 
@@ -471,21 +471,21 @@ end;
 
 procedure TAtlasWelcomeUnsavedFrame.ClickAt(const AHit: TAtlasUnsavedHit);
 var
-  Source: IAtlasUnsavedSource;
+  mSource: IAtlasUnsavedSource;
   Row: TAtlasUnsavedRow;
 begin
   if (FSource = nil) or not AHit.Button or (AHit.Row < 0) or (AHit.Row > High(FView.Rows)) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Row := FView.Rows[AHit.Row];
   // Die Quelle füllt den Bereich danach neu (und „Push …“ zeigt einen Dialog): nicht im eigenen Mausereignis.
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
       if Row.Item.CanPush then
-        Source.Push(Row)
+        mSource.Push(Row)
       else
-        Source.Show(Row);
+        mSource.Show(Row);
     end);
 end;
 
@@ -535,31 +535,31 @@ end;
 
 procedure TAtlasWelcomeUnsavedFrame.OpenFolderClick(Sender: TObject);
 var
-  Source: IAtlasUnsavedSource;
+  mSource: IAtlasUnsavedSource;
   Row: TAtlasUnsavedRow;
 begin
   if not MenuTarget(Row) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.OpenFolder(Row);
+      mSource.OpenFolder(Row);
     end);
 end;
 
 procedure TAtlasWelcomeUnsavedFrame.IgnoreClick(Sender: TObject);
 var
-  Source: IAtlasUnsavedSource;
+  mSource: IAtlasUnsavedSource;
   Row: TAtlasUnsavedRow;
 begin
   if not MenuTarget(Row) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.Ignore(Row);
+      mSource.Ignore(Row);
     end);
 end;
 

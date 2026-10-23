@@ -370,8 +370,9 @@ type
     /// <summary>Kennungen der Prüfregeln, die in Zeile ALine von AText treffen (/ignore, #297); False ohne
     /// Prüfregeln für die Datei.</summary>
     function SlashRuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
-    /// <summary>Index und usesKeep für /sortuses (#297); False, solange die Code-Aktionen fehlen.</summary>
-    function SlashUsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
+    /// <summary>Index und usesKeep für /sortuses (#297) und die uses-Diagnosen (#621); False, solange die
+    /// Code-Aktionen fehlen.</summary>
+    function UsesContextFor(const AUri: string; out AContext: TUsesContext): Boolean;
     /// <summary>Regeltreffer der Zeile ALine mit Erklärung aus dem Katalog und sicherer Korrektur (/fix,
     /// /explain, #300); False ohne Prüfregeln für die Datei.</summary>
     function SlashFindingsAt(const AUri, AText: string; ALine: Integer; out AFindings: TArray<TSlashFinding>): Boolean;
@@ -393,6 +394,12 @@ type
     /// <summary>Formatstil mit .editorconfig, ohne Editor-Optionen (#43); für Schnellbefehle und try/finally.</summary>
     function ResolvedFormatStyleFor(const AUri: string): TFormatStyle;
     function RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
+    /// <summary>Zielplattform und Konfiguration des Projekts zu AUri für den Hinweis inaktiver Zweige (#615).
+    /// </summary>
+    function BuildTargetFor(const AUri: string; out APlatform, AConfig: string): Boolean;
+    /// <summary>Dienste der Syntaxprüfung; sie lösen erst beim Aufruf auf, die Felder dahinter entstehen in den
+    /// späteren Wire-Schritten vor der ersten Nachricht.</summary>
+    function SyntaxDiagnosticsProviders: TSyntaxDiagnosticsProviders;
     /// <summary>Namespaces aller Projekte an die Features weitergeben, Diagnosen neu prüfen.</summary>
     procedure ProjectLoaded;
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
@@ -454,7 +461,6 @@ type
     class function GlobalSettingsPath: string; static;
     /// <summary>Verarbeitet Nachrichten bis exit oder Ende der Eingabe und liefert den Exit-Code.</summary>
     function Run: Integer;
-    property Logger: ILogger read FLogger;
     /// <summary>Geöffnete Dokumente, für Features, die Dateien auswerten.</summary>
     property Documents: IDocumentStore read FDocuments;
     property Index: ISymbolIndex read FIndex;
@@ -488,6 +494,7 @@ uses
   Shell.Commands.Index,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.ProjectFiles,
+  Atlas.Common.Rules.Checker,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Builtin.General,
@@ -534,24 +541,6 @@ uses
 const
   /// <summary>Ohne Zeitlimit warten (INFINITE, ohne Winapi.Windows).</summary>
   WaitForever = Cardinal($FFFFFFFF);
-
-// Antworten für implicit-package-import (#46): nicht gefundene Packages sind unbekannt, damit die Regel
-// still bleibt statt falsch zu melden.
-function PackageAnswers(ALocator: TPackageLocator): TRulePackageProvides;
-begin
-  Result :=
-    function(const APackage, AUnitName: string): TRulePackageAnswer
-    var
-      Contains: Boolean;
-    begin
-      if not ALocator.Provides(APackage, AUnitName, Contains) then
-        Result := TRulePackageAnswer.Unknown
-      else if Contains then
-        Result := TRulePackageAnswer.Yes
-      else
-        Result := TRulePackageAnswer.No;
-    end;
-end;
 
 // PowerShell für cc.ps1 (#261): pwsh aus PATH, sonst Windows PowerShell. Der Prozessläufer
 // durchsucht PATH nicht selbst.
@@ -670,7 +659,7 @@ begin
     end);
   FTextDocumentSync := TLspTextDocumentSync.Create(FDocuments);
   FTextDocumentSync.Attach(FDispatcher);
-  FSyntaxDiagnostics := TLspSyntaxDiagnostics.Create(FDocuments, FTransport);
+  FSyntaxDiagnostics := TLspSyntaxDiagnostics.Create(FDocuments, FTransport, SyntaxDiagnosticsProviders);
   FSyntaxDiagnostics.OnError :=
     procedure(AError: Exception)
     begin
@@ -702,11 +691,6 @@ begin
           FLogger.Warning('Build-Log der IDE nicht lesbar: ' + E.ClassName);
       end;
     end);
-  FSyntaxDiagnostics.CompilerMessagesProvider :=
-    function(const AFileName: string): TArray<TCompilerMessage>
-    begin
-      Result := FCompilerResults.MessagesFor(AFileName);
-    end;
   FSyntaxDiagnostics.Attach;
   FPullDiagnostics := TLspPullDiagnostics.Create(FDocuments, FSyntaxDiagnostics, FTransport, ProjectSourceFiles,
     function(const AFileName: string; out AStamp: Int64): Boolean
@@ -894,7 +878,7 @@ begin
     end;
   // /ignore und /sortuses (#297): Regeltreffer der Zeile und ungenutzte uses.
   SlashHost.RuleIdsOf := SlashRuleIdsAt;
-  SlashHost.UsesContextOf := SlashUsesContext;
+  SlashHost.UsesContextOf := UsesContextFor;
   SlashHost.FindingsOf := SlashFindingsAt;
   FFormatting.SlashHost := SlashHost;
   // resourcestring in eine andere Unit (#473): Die Schnittstelle hält den Host am Leben.
@@ -932,50 +916,25 @@ begin
     end);
   FDocuments.Subscribe(HandleDocumentEvent);
   FDispatcher.RegisterNotification(TLspConfiguration.DidChangeConfigurationMethod, HandleDidChangeConfiguration);
-  FSyntaxDiagnostics.DefinesProvider := DefinesFor;
   // Editor-Baum nur aus den aktiven Zweigen des Projekts (#845).
   TSyntaxTreeCache.SetDefinesProvider(DefinesFor);
-  // Zielplattform und Konfiguration für den Hinweis inaktiver Zweige (#615).
-  FSyntaxDiagnostics.BuildTargetProvider :=
-    function(const AUri: string; out APlatform, AConfig: string): Boolean
-    var
-      Workspace: TShellWorkspace;
-      Project: TProjectInfo;
-    begin
-      APlatform := '';
-      AConfig := '';
-      TMonitor.Enter(FWorkspacesLock);
-      try
-        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
-        Result := (Workspace <> nil) and Workspace.Project(Project);
-      finally
-        TMonitor.Exit(FWorkspacesLock);
-      end;
-      if Result then
-      begin
-        APlatform := Project.Platform;
-        AConfig := Project.Config;
-      end;
-    end;
   // $I-Dateien im Editor-Baum, in Syntaxprüfung und Abblenden (#264, #860): Suchpfade des Projekts.
   TSyntaxTreeCache.SetIncludeProvider(IncludeResolverFor);
-  FSyntaxDiagnostics.VersionProvider := DelphiVersionFor;
-  FSyntaxDiagnostics.RuleProvider := RuleContextFor;
 end;
 
 procedure TServerComposition.WireIndex;
 var
-  Index: ISymbolIndex;
+  mIndex: ISymbolIndex;
 begin
   FIndex := TSymbolIndex.Create;
   // Declared(X) in {$IF} fragt den Index (#847). Die Referenz hält den Index, bis Destroy den Anbieter abmeldet.
-  Index := FIndex;
+  mIndex := FIndex;
   TPascalPreprocessor.SetDeclaredProvider(
     function(const AName: string): Boolean
     var
       Location: TSymbolLocation;
     begin
-      for Location in Index.FindSymbols(AName) do
+      for Location in mIndex.FindSymbols(AName) do
         if Location.Symbol.Container = '' then
           Exit(True);
       Result := False;
@@ -1365,8 +1324,6 @@ begin
     end;
   FTestPrograms := TDictionary<string, TPair<string, UInt64>>.Create;
   FTestUnits := TLspTestUnits.Create(FDocuments, TestUnitContextFor);
-  // Ungenutzte uses (#621): dieselbe Analyse wie die uses-Aktionen, auch für die Diagnosen.
-  FSyntaxDiagnostics.UsesProvider := FCodeActions.UsesContextFor;
   FCodeActions.DefinesFor := DefinesFor;
   FCodeActions.ExtraActions :=
     function(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>
@@ -1874,6 +1831,12 @@ begin
       for Workspace in Affected do
         Workspace.Reload;
     end;
+  // Neue Präfixe aus .atlas (#1111): naming-prefix und shadowed-name prüfen neu, das Projekt bleibt geladen.
+  FIdeProject.OnNamingChanged :=
+    procedure(const AContext: TIdeProjectContext)
+    begin
+      FSyntaxDiagnostics.RefreshLater;
+    end;
   FIdeProject.Attach(FDispatcher);
 end;
 
@@ -2113,7 +2076,7 @@ end;
 procedure TServerComposition.AddWorkspace(const AFolder: TWorkspaceFolder);
 var
   Projects: TArray<string>;
-  Index: Integer;
+  mIndex: Integer;
   HasOthers: Boolean;
 begin
   Projects := ProjectsOf(AFolder);
@@ -2130,9 +2093,9 @@ begin
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
-  for Index := 0 to High(Projects) do
-    AddProjectWorkspace(ExtractFileDir(Projects[Index]), ChangeFileExt(ExtractFileName(Projects[Index]), ''),
-      Projects[Index], AFolder.Key, HasOthers or (Index > 0));
+  for mIndex := 0 to High(Projects) do
+    AddProjectWorkspace(ExtractFileDir(Projects[mIndex]), ChangeFileExt(ExtractFileName(Projects[mIndex]), ''),
+      Projects[mIndex], AFolder.Key, HasOthers or (mIndex > 0));
 end;
 
 procedure TServerComposition.AddProjectWorkspace(const ARoot, AName, AProjectFile, AOrigin: string;
@@ -2263,7 +2226,7 @@ end;
 
 procedure TServerComposition.RemoveWorkspace(const AFolder: TWorkspaceFolder);
 var
-  Index: Integer;
+  mIndex: Integer;
   Removed: TArray<TShellWorkspace>;
   Remaining: TArray<TShellWorkspace>;
   Workspace: TShellWorkspace;
@@ -2275,9 +2238,9 @@ begin
   Removed := nil;
   TMonitor.Enter(FWorkspacesLock);
   try
-    for Index := FWorkspaces.Count - 1 downto 0 do
-      if SameText(FWorkspaces[Index].Origin, AFolder.Key) then
-        Removed := Removed + [FWorkspaces.Extract(FWorkspaces[Index])];
+    for mIndex := FWorkspaces.Count - 1 downto 0 do
+      if SameText(FWorkspaces[mIndex].Origin, AFolder.Key) then
+        Removed := Removed + [FWorkspaces.Extract(FWorkspaces[mIndex])];
     Remaining := FWorkspaces.ToArray;
     Inc(FWorkspacesStamp);
   finally
@@ -2365,7 +2328,7 @@ var
   Folders: TArray<TWorkspaceFolder>;
   Workspace: TShellWorkspace;
   Candidates: TArray<TShellWorkspace>;
-  Index: Integer;
+  mIndex: Integer;
 begin
   // Die .dproj gehört zu ihrem eigenen Projekt (#46), auch wenn mehrere im selben Ordner liegen.
   if SameText(ExtractFileExt(AFileName), '.dproj') then
@@ -2385,11 +2348,11 @@ begin
   Folders := nil;
   for Workspace in FWorkspaces do
     Folders := Folders + [TWorkspaceFolder.Create(Workspace.Root, Workspace.Name)];
-  Index := TLspWorkspaceFolders.FolderOf(Folders, AFileName);
-  if Index < 0 then
+  mIndex := TLspWorkspaceFolders.FolderOf(Folders, AFileName);
+  if mIndex < 0 then
     Result := nil
   else
-    Result := FWorkspaces[Index];
+    Result := FWorkspaces[mIndex];
 end;
 
 function TServerComposition.IsSelectedProject(AWorkspace: TShellWorkspace): Boolean;
@@ -2598,12 +2561,11 @@ end;
 function TServerComposition.RuleProjects: TArray<TRuleProject>;
 var
   Workspace: TShellWorkspace;
-  Info: TProjectInfo;
-  Stamp, Index: Integer;
+  Stamp, mIndex: Integer;
   Built: TArray<TRuleProject>;
   Project: TRuleProject;
   MainSources: TArray<string>;
-  Source, Text: string;
+  MainSource: string;
 begin
   Built := nil;
   MainSources := nil;
@@ -2613,36 +2575,17 @@ begin
       Exit(FRuleProjects);
     Stamp := FWorkspacesStamp;
     for Workspace in FWorkspaces do
-      if Workspace.Project(Info) then
+      if Workspace.RuleProject(Project, MainSource) then
       begin
-        Project := Default(TRuleProject);
-        Project.FileName := Workspace.ProjectFileName;
-        Project.Sources := Workspace.ProjectFiles;
         Built := Built + [Project];
-        MainSources := MainSources + [Info.MainSource];
+        MainSources := MainSources + [MainSource];
       end;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
   // Hauptquelltexte und Formulardateien außerhalb der Sperre lesen.
-  for Index := 0 to High(Built) do
-  begin
-    if ReadSourceText(MainSources[Index], Text) then
-    begin
-      Built[Index].Kind := TRuleProjectFiles.KindOfSource(MainSources[Index], Text);
-      Built[Index].IsTest := TRuleProjectFiles.IsTestSource(Text);
-    end
-    else if SameText(ExtractFileExt(MainSources[Index]), '.dpk') then
-      Built[Index].Kind := TRuleProjectKind.Package;
-    for Source in Built[Index].Sources do
-      if SameText(ExtractFileExt(Source), '.pas') then
-      begin
-        if TFile.Exists(ChangeFileExt(Source, '.dfm')) then
-          Built[Index].Forms := Built[Index].Forms + [ChangeFileExt(Source, '.dfm')]
-        else if TFile.Exists(ChangeFileExt(Source, '.fmx')) then
-          Built[Index].Forms := Built[Index].Forms + [ChangeFileExt(Source, '.fmx')];
-      end;
-  end;
+  for mIndex := 0 to High(Built) do
+    TShellWorkspace.CompleteRuleProject(Built[mIndex], MainSources[mIndex], ReadSourceText);
   TMonitor.Enter(FWorkspacesLock);
   try
     // Inzwischen ein anderes Projekt geladen: Das Ergebnis gilt für diese Prüfung, aber nicht als Vorrat.
@@ -2660,25 +2603,13 @@ end;
 function TServerComposition.RuleProjectsComplete(out AReason: string): Boolean;
 var
   Workspace: TShellWorkspace;
-  Info: TProjectInfo;
 begin
   AReason := '';
   TMonitor.Enter(FWorkspacesLock);
   try
     for Workspace in FWorkspaces do
-    begin
-      // Ein Arbeitsbereich ohne geladenes Projekt kann Verwendungen enthalten, die keiner kennt.
-      if Workspace.ProjectPending or not Workspace.Project(Info) then
-      begin
-        AReason := 'Projekte werden geladen';
+      if not Workspace.RuleReady(AReason) then
         Exit(False);
-      end;
-      if Workspace.IndexLoading >= 0 then
-      begin
-        AReason := 'Index wird aufgebaut';
-        Exit(False);
-      end;
-    end;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
@@ -3841,7 +3772,7 @@ begin
   end;
 end;
 
-function TServerComposition.SlashUsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
+function TServerComposition.UsesContextFor(const AUri: string; out AContext: TUsesContext): Boolean;
 begin
   AContext := Default(TUsesContext);
   Result := (FCodeActions <> nil) and Assigned(FCodeActions.UsesContextFor) and
@@ -4019,22 +3950,55 @@ begin
     end);
 end;
 
-function TServerComposition.RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
+function TServerComposition.BuildTargetFor(const AUri: string; out APlatform, AConfig: string): Boolean;
 var
   Workspace: TShellWorkspace;
-  FileName, Folder: string;
-  Locator: TPackageLocator;
   Project: TProjectInfo;
-  HasProject, Member: Boolean;
-  ProjectUnit: TProjectUnit;
-  Pair: TPair<string, string>;
-  ConsoleTarget, MainText: string;
+begin
+  APlatform := '';
+  AConfig := '';
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
+    Result := (Workspace <> nil) and Workspace.Project(Project);
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  if Result then
+  begin
+    APlatform := Project.Platform;
+    AConfig := Project.Config;
+  end;
+end;
+
+function TServerComposition.SyntaxDiagnosticsProviders: TSyntaxDiagnosticsProviders;
+begin
+  Result := Default(TSyntaxDiagnosticsProviders);
+  Result.Defines := DefinesFor;
+  Result.Version := DelphiVersionFor;
+  Result.BuildTarget := BuildTargetFor;
+  Result.Rules := RuleContextFor;
+  Result.CompilerMessages :=
+    function(const AFileName: string): TArray<TCompilerMessage>
+    begin
+      Result := FCompilerResults.MessagesFor(AFileName);
+    end;
+  // Ungenutzte uses (#621): dieselbe Analyse wie die uses-Aktionen, auch für die Diagnosen.
+  Result.UsesContext := UsesContextFor;
+end;
+
+function TServerComposition.RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
+var
+  Workspace, Other: TShellWorkspace;
+  FileName, Folder: string;
+  Project: TProjectInfo;
+  Projects: TArray<TProjectInfo>;
+  RuleProject: TCheckProject;
 begin
   AContext := Default(TRuleCheckContext);
   FileName := TDocumentUris.ToPath(AUri);
   AContext.FileName := FileName;
-  Locator := nil;
-  HasProject := False;
+  Projects := nil;
   TMonitor.Enter(FWorkspacesLock);
   try
     Workspace := PickWorkspace(FileName);
@@ -4045,45 +4009,37 @@ begin
       AContext.Settings := Workspace.Configuration.Settings;
       AContext.RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(Workspace.Root), FileName);
       AContext.Baseline := Workspace.Baseline;
-      AContext.Namespaces := Workspace.Namespaces;
-      Locator := Workspace.PackageLocator;
-      // Unit-Suche wie beim Compiler für uses-unit-not-found (#1016).
-      AContext.Units := Workspace.UnitLookup;
-      HasProject := Workspace.Project(Project);
+      // Index, Namespaces, Unit-Suche, Packages und Namenskonvention auf demselben Weg wie MCP und Linter
+      // (#1112).
+      AContext.Services := Workspace.RuleServices;
+      if Workspace.Project(Project) then
+        Projects := Projects + [Project];
+      // Weitere Projekte mit der Datei (#1112): Eine Unit im Testprogramm und im Package hat keine
+      // eindeutige Anwendungsart (MergeRuleProjects).
+      for Other in FWorkspaces do
+        if (Other <> Workspace) and Other.ContainsFile(FileName) and Other.Project(Project) then
+          Projects := Projects + [Project];
     end;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
-  // Anwendungsart für writeln-in-gui-app (#926) und queue-nil-in-package (#943), nur für Dateien des Projekts.
-  if HasProject and (Project.MainSource <> '') then
+  // Anwendungsart, Projektname und Formulare der .dpr (#926, #943, #956, #1055), wie bei MCP und Linter.
+  if Projects <> nil then
   begin
-    Member := SameText(Project.MainSource, FileName);
-    for ProjectUnit in Project.Units do
-      if SameText(ProjectUnit.FileName, FileName) then
-        Member := True;
-    ConsoleTarget := '';
-    for Pair in Project.Properties do
-      if SameText(Pair.Key, 'DCC_ConsoleTarget') then
-        ConsoleTarget := Pair.Value;
-    if Member and ReadSourceText(Project.MainSource, MainText) then
-    begin
-      AContext.Application := TWritelnInGuiAppRule.ApplicationKind(ConsoleTarget, MainText);
-      AContext.ProjectName := ChangeFileExt(ExtractFileName(Project.MainSource), '');
-      // Reihenfolge von Application.CreateForm für form-access-before-create (#956).
-      AContext.AutoCreateForms := TFormAccessBeforeCreateRule.AutoCreatedForms(MainText);
-      // .dpr für die Korrektur von form-autocreate-and-manual (#1055).
-      AContext.ProjectMainSource := Project.MainSource;
-    end;
+    RuleProject := TShellWorkspace.RuleProjectOf(Projects, FileName, ReadSourceText);
+    AContext.Application := RuleProject.Application;
+    AContext.ProjectName := RuleProject.Name;
+    AContext.AutoCreateForms := RuleProject.AutoCreateForms;
+    AContext.ProjectMainSource := RuleProject.ProjectMainSource;
   end;
-  // requires-Packages für implicit-package-import (#46); der Locator lebt so lange wie der Arbeitsbereich.
-  if Locator <> nil then
-    AContext.PackageProvides := PackageAnswers(Locator);
   // Neue Instanzen je Prüfung: Regeln dürfen so Zustand halten, ohne Threads zu teilen.
   AContext.Rules := BuiltinRules;
-  AContext.Index := FIndex;
-  AContext.EnsureUnit := EnsureUnit;
+  // Der Server hält alle Ordner: ein Index, Nachladen über alle Ordner (auch für Dateien ohne Ordner) und die
   // Projekte der Gruppe für unused-public-member (#1102); still, solange Projekte laden oder der Index läuft.
-  AContext.ProjectFiles := TRuleProjectFiles.Create(RuleProjects, FIndex, ReadSourceText, RuleProjectsComplete);
+  AContext.Services.Index := FIndex;
+  AContext.Services.EnsureUnit := EnsureUnit;
+  AContext.Services.ProjectFiles := TRuleProjectFiles.Create(RuleProjects, FIndex, ReadSourceText,
+    RuleProjectsComplete);
   // Formulardatei neben der Unit für den Abgleich von Feldern und Objekten (#123).
   // Mit Pfad, damit Korrekturen die Formulardatei ändern können (#309).
   if SameText(ExtractFileExt(FileName), '.pas') then
@@ -4188,6 +4144,8 @@ begin
           FIndexRefresh.Closed(TDocumentUris.ToPath(ADocument.Uri));
           HandleWatchedFiles([TFileChange.Create(TDocumentUris.ToPath(ADocument.Uri), TFileChangeKind.Changed)]);
         end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   if FDeriveWorkspaces and (AKind = TDocumentEventKind.Opened) and StartsText('file:', ADocument.Uri) then
     DeriveWorkspace(TDocumentUris.ToPath(ADocument.Uri));
@@ -4480,7 +4438,7 @@ procedure TServerComposition.CompileWithDcc(const AJob: TShellCompileJob);
 var
   Lines: TList<string>;
   Messages: TArray<TCompilerMessage>;
-  Code, Index: Integer;
+  Code, mIndex: Integer;
   Output: string;
   Choice: TCompilerBackendChoice;
   IdeJob: TShellCompileJob;
@@ -4524,9 +4482,9 @@ begin
       // Abbruch ohne eine einzige Meldung: Der Compiler selbst ist nicht nutzbar.
       // Bisherige Meldungen bleiben stehen.
       Output := '';
-      for Index := 0 to Min(Lines.Count, 3) - 1 do
-        if Trim(Lines[Index]) <> '' then
-          Output := Output + ' ' + Trim(Lines[Index]);
+      for mIndex := 0 to Min(Lines.Count, 3) - 1 do
+        if Trim(Lines[mIndex]) <> '' then
+          Output := Output + ' ' + Trim(Lines[mIndex]);
       CompilerUnavailable(TCompilerBackendChoice.Unavailable(Format('%s endet mit Exit-Code %d ohne Meldungen:%s',
         [ExtractFileName(AJob.Request.Executable), Code, Output]), ''), False);
       FCompileProgress.Finish('Compiler nicht nutzbar');
@@ -4713,7 +4671,7 @@ end;
 class function TServerComposition.CreateForStdio(const AOptions: TCommandLineOptions): TServerComposition;
 var
   LoggerImpl: TLogger;
-  Logger: ILogger;
+  mLogger: ILogger;
   Transport: IJsonRpcTransport;
   Warning: string;
   TraceName: string;
@@ -4730,7 +4688,7 @@ begin
   // Plattform sie braucht.
   TShellPlatform.InstallGuards;
   LoggerImpl := TLogger.Create;
-  Logger := LoggerImpl;
+  mLogger := LoggerImpl;
   DebugSink := TShellPlatform.DebugLogSink;
   if DebugSink <> nil then
     LoggerImpl.AddSink(DebugSink, TLogLevel.Debug);
@@ -4752,17 +4710,17 @@ begin
         CreateTraceStream(AOptions.TraceFile, IntToStr(TParentWatcher.CurrentProcessId), TraceName), True);
       Transport := Tracing;
       if not SameText(TraceName, AOptions.TraceFile) then
-        Logger.Info(Format('Mitschnitt "%s" ist belegt, schreibe nach "%s"', [AOptions.TraceFile, TraceName]));
+        mLogger.Info(Format('Mitschnitt "%s" ist belegt, schreibe nach "%s"', [AOptions.TraceFile, TraceName]));
     except
       on E: Exception do
-        Logger.Error(Format('Mitschnitt "%s" kann nicht angelegt werden: %s', [AOptions.TraceFile, E.Message]));
+        mLogger.Error(Format('Mitschnitt "%s" kann nicht angelegt werden: %s', [AOptions.TraceFile, E.Message]));
     end;
   LoggerImpl.AddSink(TLspLogMessageSink.Create(Transport), AOptions.LogLevel);
 
   for Warning in AOptions.Warnings do
-    Logger.Warning(Warning);
+    mLogger.Warning(Warning);
 
-  Result := TServerComposition.Create(Transport, Logger);
+  Result := TServerComposition.Create(Transport, mLogger);
   if Tracing <> nil then
   begin
     Result.FTracing := Tracing;
@@ -4771,7 +4729,7 @@ begin
     Tracing.OnFailed :=
       procedure(const AReason: string)
       begin
-        Logger.Warning('Mitschnitt abgebrochen, der Server arbeitet ohne weiter: ' + AReason);
+        mLogger.Warning('Mitschnitt abgebrochen, der Server arbeitet ohne weiter: ' + AReason);
       end;
   end;
   Result.FRecentLog := RecentLog;
@@ -4779,7 +4737,7 @@ begin
   Result.FRestricted := AOptions.Restricted;
   Result.FClientProcessId := AOptions.ClientProcessId;
   if AOptions.Restricted then
-    Logger.Info('Eingeschränkter Modus (Arbeitsbereich nicht vertrauenswürdig): der Compiler wird nicht gestartet');
+    mLogger.Info('Eingeschränkter Modus (Arbeitsbereich nicht vertrauenswürdig): der Compiler wird nicht gestartet');
 end;
 
 procedure TServerComposition.WatchParent(const AInitializeParams: TJSONObject);

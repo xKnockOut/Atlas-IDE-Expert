@@ -499,7 +499,7 @@ end;
 procedure TAtlasQuickActionsBar.MouseMove(ARow, X, Y: Integer);
 var
   Row, Index, OldButton: Integer;
-  Menu, Changed: Boolean;
+  mMenu, Changed: Boolean;
 begin
   Changed := ARow <> FHoverRow;
   // Maus in eine andere Zeile: Sie wird die aktive.
@@ -507,7 +507,7 @@ begin
     FUseKey := False;
   FHoverRow := ARow;
   OldButton := FHoverButton;
-  if not HitTest(X, Y, Row, Index, Menu) or (Row <> ARow) then
+  if not HitTest(X, Y, Row, Index, mMenu) or (Row <> ARow) then
     Index := -1;
   FHoverButton := Index;
   if (Changed or (OldButton <> Index)) and (FBox <> nil) then
@@ -741,11 +741,11 @@ end;
 function TAtlasQuickActionsBar.ClickAt(X, Y: Integer): Boolean;
 var
   Row, Index: Integer;
-  Menu: Boolean;
+  mMenu: Boolean;
 begin
-  Result := HitTest(X, Y, Row, Index, Menu);
+  Result := HitTest(X, Y, Row, Index, mMenu);
   if Result then
-    Activate(Row, Index, Menu);
+    Activate(Row, Index, mMenu);
 end;
 
 procedure TAtlasQuickActionsBar.Queue(const AProc: TProc);
@@ -763,9 +763,9 @@ end;
 
 procedure TAtlasQuickActionsBar.Activate(ARow, AIndex: Integer; AMenu: Boolean);
 var
-  Source: IAtlasQuickActionsSource;
+  mSource: IAtlasQuickActionsSource;
   Button: TAtlasQuickActionButton;
-  Name: string;
+  mName: string;
   Candidates: TArray<string>;
 begin
   if (FSource = nil) or not ValidRow(ARow) or (AIndex < 0) or (AIndex > High(ButtonsOf(ARow))) then
@@ -773,8 +773,8 @@ begin
   Button := FButtons[ARow][AIndex];
   if not Button.Enabled then
     Exit;
-  Source := FSource;
-  Name := FProjects[ARow];
+  mSource := FSource;
+  mName := FProjects[ARow];
   case Button.Action of
     TAtlasQuickAction.Build:
       if AMenu then
@@ -790,18 +790,20 @@ begin
       end;
     TAtlasQuickAction.Tests:
       begin
-        Candidates := Source.TestProjects(Name);
+        Candidates := mSource.TestProjects(mName);
         if Length(Candidates) > 1 then
         begin
           PopupAt(ARow, AIndex);
           Exit;
         end;
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   Queue(
     procedure
     begin
-      Source.Execute(Name, Button.Action);
+      mSource.Execute(mName, Button.Action);
     end);
 end;
 
@@ -876,20 +878,20 @@ end;
 procedure TAtlasQuickActionsBar.FillProfiles(AParent: TMenuItem; const AProject: string);
 var
   Names: TArray<string>;
-  Name, Active, Text: string;
+  mName, Active, Text: string;
   Choice: TChoice;
 begin
   Names := FSource.Profiles(AProject, Active);
   Choice := Default(TChoice);
   Choice.Kind := TChoiceKind.Profile;
   Choice.Project := AProject;
-  for Name in Names do
+  for mName in Names do
   begin
-    Choice.A := Name;
-    Text := Name;
-    if SameText(Name, Active) then
-      Text := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickProfileActive, [Name]);
-    AddChoice(AParent, Text, Choice, SameText(Name, Active));
+    Choice.A := mName;
+    Text := mName;
+    if SameText(mName, Active) then
+      Text := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickProfileActive, [mName]);
+    AddChoice(AParent, Text, Choice, SameText(mName, Active));
   end;
   Choice.A := '';
   AddChoice(AParent, TAtlasStrings.Text(TAtlasTextId.WelcomeQuickProfileNone), Choice, Active = '');
@@ -930,7 +932,7 @@ end;
 function TAtlasQuickActionsBar.FillChoices(AParent: TMenuItem; ARow, AIndex: Integer): Boolean;
 var
   Buttons: TAtlasQuickActionButtons;
-  Name: string;
+  mName: string;
   Candidates: TArray<string>;
 begin
   Result := False;
@@ -940,25 +942,25 @@ begin
   AParent.Clear;
   if AParent = FMenu.Items then
     FChoices := nil;
-  Name := FProjects[ARow];
+  mName := FProjects[ARow];
   case Buttons[AIndex].Action of
     TAtlasQuickAction.Build:
       begin
         AddTitle(AParent, TAtlasTextId.WelcomeQuickTargetsTitle);
-        FillTargets(AParent, Name);
+        FillTargets(AParent, mName);
       end;
     TAtlasQuickAction.Run:
       begin
         AddTitle(AParent, TAtlasTextId.WelcomeQuickProfilesTitle);
-        FillProfiles(AParent, Name);
+        FillProfiles(AParent, mName);
       end;
     TAtlasQuickAction.Tests:
       begin
-        Candidates := FSource.TestProjects(Name);
+        Candidates := FSource.TestProjects(mName);
         if Length(Candidates) < 2 then
           Exit;
         AddTitle(AParent, TAtlasTextId.WelcomeQuickTestsChoose);
-        FillTestProjects(AParent, Name, Candidates);
+        FillTestProjects(AParent, mName, Candidates);
       end;
   else
     Exit;
@@ -969,24 +971,24 @@ end;
 procedure TAtlasQuickActionsBar.ChoiceClick(Sender: TObject);
 var
   Choice: TChoice;
-  Source: IAtlasQuickActionsSource;
+  mSource: IAtlasQuickActionsSource;
   Index: Integer;
 begin
   Index := TMenuItem(Sender).Tag;
   if (FSource = nil) or (Index < 0) or (Index > High(FChoices)) then
     Exit;
   Choice := FChoices[Index];
-  Source := FSource;
+  mSource := FSource;
   Queue(
     procedure
     begin
       case Choice.Kind of
         TChoiceKind.Target:
-          Source.Build(Choice.Project, Choice.A, Choice.B);
+          mSource.Build(Choice.Project, Choice.A, Choice.B);
         TChoiceKind.Profile:
-          Source.Run(Choice.Project, Choice.A);
+          mSource.Run(Choice.Project, Choice.A);
       else
-        Source.RunTests(Choice.Project, Choice.A);
+        mSource.RunTests(Choice.Project, Choice.A);
       end;
     end);
 end;
@@ -1076,12 +1078,12 @@ end;
 function TAtlasQuickActionsBar.HintAt(X, Y: Integer; out AHint: string): Boolean;
 var
   Row, Index, Key: Integer;
-  Menu: Boolean;
+  mMenu: Boolean;
   Button: TAtlasQuickActionButton;
   Console: string;
 begin
   AHint := '';
-  Result := HitTest(X, Y, Row, Index, Menu);
+  Result := HitTest(X, Y, Row, Index, mMenu);
   if not Result then
     Exit;
   Button := FButtons[Row][Index];
@@ -1246,6 +1248,8 @@ begin
           Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickUpdating, [Seconds])
         else
           Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickPulling, [Seconds]);
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
     Exit;
   end;
@@ -1287,6 +1291,8 @@ begin
     TAtlasQuickAction.Console:
       if AState.Phase <> TAtlasQuickActionPhase.Succeeded then
         Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickConsoleFailed);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 
@@ -1318,6 +1324,8 @@ begin
       Exit(TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPullNoWorkingCopy));
     TAtlasPullBlock.Busy:
       Exit(TAtlasStrings.Text(TAtlasTextId.WelcomeQuickBusy));
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   if not AButton.Enabled then
   begin

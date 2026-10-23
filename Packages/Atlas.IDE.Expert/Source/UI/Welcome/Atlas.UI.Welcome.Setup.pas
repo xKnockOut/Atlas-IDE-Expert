@@ -535,7 +535,7 @@ end;
 
 procedure TAtlasWelcomeSetupFrame.Arrange;
 var
-  Left, TextLeft, Right, Top, X, RowHeight, Wide: Integer;
+  mLeft, TextLeft, Right, mTop, X, RowHeight, Wide: Integer;
   Measure: TBitmap;
   Step: TAtlasSetupStep;
   Index: Integer;
@@ -554,10 +554,10 @@ var
     if (X > TextLeft) and (X + AWidth > Right) then
     begin
       X := TextLeft;
-      Inc(Top, RowHeight + ScaleValue(Gap) div 2);
+      Inc(mTop, RowHeight + ScaleValue(Gap) div 2);
       RowHeight := 0;
     end;
-    AControl.SetBounds(X, Top, AWidth, AHeight);
+    AControl.SetBounds(X, mTop, AWidth, AHeight);
     Inc(X, AWidth + ScaleValue(Gap));
     RowHeight := Max(RowHeight, AHeight);
   end;
@@ -565,7 +565,7 @@ var
   procedure NextRow;
   begin
     if RowHeight > 0 then
-      Inc(Top, RowHeight + ScaleValue(Gap) div 2);
+      Inc(mTop, RowHeight + ScaleValue(Gap) div 2);
     RowHeight := 0;
     X := TextLeft;
   end;
@@ -587,10 +587,10 @@ begin
   try
     FillTemplates;
     // Breite des Frames statt der Inhaltsfläche: Die richtet sich erst später nach dem Frame aus.
-    Left := ScaleValue(Indent);
-    TextLeft := Left + ScaleValue(MarkWidth);
+    mLeft := ScaleValue(Indent);
+    TextLeft := mLeft + ScaleValue(MarkWidth);
     Right := ClientWidth - ScaleValue(Indent);
-    Top := ScaleValue(Gap) div 2;
+    mTop := ScaleValue(Gap) div 2;
     RowHeight := 0;
     X := TextLeft;
     Measure := TBitmap.Create;
@@ -600,12 +600,12 @@ begin
       begin
         for Step := Low(TAtlasSetupStep) to High(TAtlasSetupStep) do
         begin
-          FMarks[Step].SetBounds(Left, Top + ScaleValue(4), ScaleValue(MarkWidth), FMarks[Step].Height);
+          FMarks[Step].SetBounds(mLeft, mTop + ScaleValue(4), ScaleValue(MarkWidth), FMarks[Step].Height);
           X := TextLeft;
           Wide := Measure.Canvas.TextWidth(FTexts[Step].Caption);
           // Text etwas tiefer, damit er mittig neben den Knöpfen steht.
           Place(FTexts[Step], Wide, FTexts[Step].Height);
-          FTexts[Step].Top := Top + ScaleValue(4);
+          FTexts[Step].Top := mTop + ScaleValue(4);
           RowHeight := Max(RowHeight, ScaleValue(ButtonHeight));
           case Step of
             TAtlasSetupStep.Config:
@@ -623,6 +623,8 @@ begin
               if FButtons[TAtlasSetupButton.Paths].Visible then
                 Place(FButtons[TAtlasSetupButton.Paths], ButtonWidth(FButtons[TAtlasSetupButton.Paths]),
                   ScaleValue(ButtonHeight));
+          else
+            // Übrige Werte bewusst ohne Wirkung.
           end;
           NextRow;
           if Step = TAtlasSetupStep.Baseline then
@@ -641,20 +643,20 @@ begin
             end;
           end;
         end;
-        X := Left;
+        X := mLeft;
         Place(FDismiss, Measure.Canvas.TextWidth(FDismiss.Caption), FDismiss.Height);
-        FDismiss.Left := Left;
+        FDismiss.Left := mLeft;
         NextRow;
       end;
       if FCard.ShowNew then
       begin
-        Inc(Top, ScaleValue(Gap) div 2);
-        X := Left;
+        Inc(mTop, ScaleValue(Gap) div 2);
+        X := mLeft;
         Place(FNewLabel, Measure.Canvas.TextWidth(FNewLabel.Caption), FNewLabel.Height);
-        FNewLabel.Left := Left;
-        FNewLabel.Top := Top + ScaleValue(4);
+        FNewLabel.Left := mLeft;
+        FNewLabel.Top := mTop + ScaleValue(4);
         RowHeight := Max(RowHeight, ScaleValue(ButtonHeight));
-        X := Left + Measure.Canvas.TextWidth(FNewLabel.Caption) + ScaleValue(Gap);
+        X := mLeft + Measure.Canvas.TextWidth(FNewLabel.Caption) + ScaleValue(Gap);
         for Kind := Low(TAtlasNewFileKind) to High(TAtlasNewFileKind) do
         begin
           Setup := TAtlasSetupButton(Ord(TAtlasSetupButton.NewUnit) + Ord(Kind));
@@ -665,7 +667,7 @@ begin
     finally
       Measure.Free;
     end;
-    FContentHeight := Top + ScaleValue(Gap) div 2;
+    FContentHeight := mTop + ScaleValue(Gap) div 2;
   finally
     FArranging := False;
   end;
@@ -694,7 +696,7 @@ end;
 
 procedure TAtlasWelcomeSetupFrame.ClickButton(AButton: TAtlasSetupButton);
 var
-  Source: IAtlasSetupSource;
+  mSource: IAtlasSetupSource;
   Open: Boolean;
   Template: TAtlasSetupTemplate;
 begin
@@ -704,7 +706,7 @@ begin
     Exit;
   if (AButton = TAtlasSetupButton.Dismiss) and not FDismiss.Visible then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Open := FCard.ProjectOpen;
   Template := SelectedTemplate;
   // Nicht im Klick des Knopfs: Vorschau und Projektoptionen sind modale Dialoge.
@@ -713,27 +715,27 @@ begin
     begin
       case AButton of
         TAtlasSetupButton.CreateConfig:
-          Source.CreateConfig(Template);
+          mSource.CreateConfig(Template);
         TAtlasSetupButton.Baseline:
           if Open then
-            Source.StartBaseline
+            mSource.StartBaseline
           else
-            Source.OpenProject;
+            mSource.OpenProject;
         TAtlasSetupButton.Paths:
           if Open then
-            Source.CheckPaths
+            mSource.CheckPaths
           else
-            Source.OpenProject;
+            mSource.OpenProject;
         TAtlasSetupButton.Options:
-          Source.OpenOptions;
+          mSource.OpenOptions;
         TAtlasSetupButton.Dismiss:
-          Source.Dismiss;
+          mSource.Dismiss;
         TAtlasSetupButton.NewUnit:
-          Source.NewFile(TAtlasNewFileKind.UnitFile);
+          mSource.NewFile(TAtlasNewFileKind.UnitFile);
         TAtlasSetupButton.NewForm:
-          Source.NewFile(TAtlasNewFileKind.FormFile);
+          mSource.NewFile(TAtlasNewFileKind.FormFile);
       else
-        Source.NewFile(TAtlasNewFileKind.TestFile);
+        mSource.NewFile(TAtlasNewFileKind.TestFile);
       end;
     end);
 end;

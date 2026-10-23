@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2001] of string = (
+  Lines: array[0..2021] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -229,8 +229,29 @@ const
     '                "items": {',
     '                  "type": "string"',
     '                },',
-    '                "description": "Nur unused-local, unused-parameter, unused-assignment und shadowed-name (#934): Namensmuster (* und ?), die nie gemeldet werden. Bei shadowed-name ohne Angabe Sender un' +
-      'd Value."',
+    '                "description": "Nur unused-local, unused-parameter, unused-assignment, shadowed-name (#934) und naming-prefix (#1111): Namensmuster (* und ?), die nie gemeldet werden. Bei shadowed-nam' +
+      'e ohne Angabe Sender und Value."',
+    '              },',
+    '              "local": {',
+    '                "type": "string",',
+    '                "default": "m",',
+    '                "description": "Nur naming-prefix (#1111): Präfix lokaler Variablen (auch Inline-var und for var); leer = nicht prüfen. Ohne Angabe gilt naming.local der Projektdatei .atlas, sonst m."',
+    '              },',
+    '              "field": {',
+    '                "type": "string",',
+    '                "default": "F",',
+    '                "description": "Nur naming-prefix (#1111): Präfix von Feldern (auch class var); leer = nicht prüfen. Ohne Angabe gilt naming.field der Projektdatei .atlas, sonst F."',
+    '              },',
+    '              "parameter": {',
+    '                "type": "string",',
+    '                "default": "A",',
+    '                "description": "Nur naming-prefix (#1111): Präfix von Parametern; leer = nicht prüfen. Ohne Angabe gilt naming.parameter der Projektdatei .atlas, sonst A."',
+    '              },',
+    '              "constant": {',
+    '                "type": "string",',
+    '                "default": "c",',
+    '                "description": "Nur naming-prefix (#1111): Präfix von Konstanten (const, auch lokal, in Klassen und Inline-const; nicht resourcestring); leer = nicht prüfen. Ohne Angabe gilt naming.co' +
+      'nstant der Projektdatei .atlas, sonst c."',
     '              },',
     '              "deferredApis": {',
     '                "type": "array",',

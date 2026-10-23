@@ -52,11 +52,13 @@ Fehlalarm. `TKundenSuche.Anmelden` ist markiert, weil nur RefDaten es aufruft un
 RefDaten nicht zu RefApp gehört.
 
 Regeln, die die RTL im Index brauchen (z. B. `System.Contnrs.TObjectStack`),
-schweigen im Golden-Korpus, weil er je Datei ohne Symbolindex prüft. Ihre
-Treffer tragen `// ERWARTET-INDEX: <regel-id>`. Für `legacy-stack-queue`
-(#1106) prüft `TLegacyStackQueueTests.ReferenceProjectMatchesMarkers` alle
-Units unter `Source` mit RTL-Stubs im Index: genau die markierten Zeilen
-müssen gemeldet werden, jede weitere Meldung ist ein Fehlalarm.
+schweigen ohne Symbolindex. Ihre Treffer tragen `// ERWARTET-INDEX: <regel-id>`.
+Der Golden-Korpus läuft zweimal (#1112): ohne Index zählen nur `ERWARTET`, mit
+Index (`TGoldenCorpusTests.ReferenceProjectWithIndexMatchesMarkers`, alle Units
+unter `Source` und RTL-Stubs im Index) zählen `ERWARTET` und `ERWARTET-INDEX`.
+Genau die markierten Zeilen müssen gemeldet werden, jede weitere Meldung ist ein
+Fehlalarm. `TLegacyStackQueueTests.ReferenceProjectMatchesMarkers` prüft
+`legacy-stack-queue` (#1106) zusätzlich für sich.
 
 ## Marker-IDs und zuständige Regeln
 

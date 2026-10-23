@@ -350,6 +350,8 @@ begin
     TPascalTokenKind.Identifier:
       if SameText(Token.Text, 'True') or SameText(Token.Text, 'False') then
         Result := 'Boolean';
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

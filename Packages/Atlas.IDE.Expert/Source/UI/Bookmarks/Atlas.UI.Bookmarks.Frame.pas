@@ -539,19 +539,19 @@ end;
 
 procedure TAtlasBookmarksFrame.ListEdited(Sender: TObject; Item: TListItem; var S: string);
 var
-  Id, Name: string;
+  Id, mName: string;
 begin
   Id := IdAt(Item.Index);
-  Name := Trim(S);
+  mName := Trim(S);
   // Leer bleibt beim alten Namen.
-  if (Id = '') or (Name = '') then
+  if (Id = '') or (mName = '') then
   begin
     S := Item.Caption;
     Exit;
   end;
-  S := Name;
+  S := mName;
   if Assigned(FOnRename) then
-    FOnRename(Id, Name);
+    FOnRename(Id, mName);
 end;
 
 procedure TAtlasBookmarksFrame.ListDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState;

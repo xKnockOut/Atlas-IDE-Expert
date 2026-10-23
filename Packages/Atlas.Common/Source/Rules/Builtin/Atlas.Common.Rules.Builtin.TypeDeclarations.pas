@@ -866,6 +866,8 @@ var
                 '(wie E2210).', [Child[Inner].Name]), TRuleConfidence.High);
         TSyntaxKind.PropertyDecl:
           CheckPropertyClauses(Child);
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
     end;
     CheckInheritedMembers(AType, AName);

@@ -552,7 +552,7 @@ end;
 
 procedure TAtlasWelcomeContinueFrame.OpenSelected;
 var
-  Source: IAtlasContinueSource;
+  mSource: IAtlasContinueSource;
   Item: TAtlasSavedItem;
   Index: Integer;
 begin
@@ -561,13 +561,13 @@ begin
   Index := FList.Selected.Index;
   if (Index < 0) or (Index > High(FShownSaved)) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Item := FShownSaved[Index];
   // Die Quelle öffnet Projekt und Datei: nicht im eigenen Ereignis.
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.OpenSaved(Item);
+      mSource.OpenSaved(Item);
     end);
 end;
 
@@ -759,43 +759,43 @@ end;
 
 class function TAtlasWelcomeContinueFrame.SavedCells(const AItem: TAtlasSavedItem): TArray<string>;
 var
-  Text, Project: string;
+  mText, Project: string;
 begin
-  Text := AItem.Text;
+  mText := AItem.Text;
   if AItem.Lost then
-    Text := Text + ' ' + TAtlasStrings.Text(TAtlasTextId.WelcomeSavedLost);
+    mText := mText + ' ' + TAtlasStrings.Text(TAtlasTextId.WelcomeSavedLost);
   Project := AItem.ProjectName;
   if AItem.Kind = TAtlasSavedKind.Favorite then
     Project := TAtlasStrings.Text(TAtlasTextId.WelcomeSavedAllProjects);
-  Result := [KindText(AItem.Kind), Text, AItem.Place, Project];
+  Result := [KindText(AItem.Kind), mText, AItem.Place, Project];
 end;
 
 procedure TAtlasWelcomeContinueFrame.LayoutButtons;
 var
-  Row, Width, Top, Right: Integer;
+  Row, mWidth, mTop, Right: Integer;
   Canvas: TCanvas;
-  Text: string;
+  mText: string;
 begin
   // „Fortsetzen“ rechts, mittig in der Zeile; die Rechtecke dienen auch dem Treffertest. Nur beim Zeichnen.
   SetLength(FButtonRects, Length(FEntries));
   Canvas := FBox.Canvas;
   Canvas.Font.Assign(Font);
-  Text := TAtlasStrings.Text(TAtlasTextId.WelcomeContinueResume);
+  mText := TAtlasStrings.Text(TAtlasTextId.WelcomeContinueResume);
   Right := FBox.Width - ScaleValue(Indent);
   for Row := 0 to High(FEntries) do
   begin
-    Width := Canvas.TextWidth(Text) + 2 * ScaleValue(ButtonPadding);
-    Top := RowTop(Row) + (ScaleValue(RowHeight) - ScaleValue(ButtonHeight)) div 2;
-    FButtonRects[Row] := Rect(Right - Width, Top, Right, Top + ScaleValue(ButtonHeight));
+    mWidth := Canvas.TextWidth(mText) + 2 * ScaleValue(ButtonPadding);
+    mTop := RowTop(Row) + (ScaleValue(RowHeight) - ScaleValue(ButtonHeight)) div 2;
+    FButtonRects[Row] := Rect(Right - mWidth, mTop, Right, mTop + ScaleValue(ButtonHeight));
   end;
 end;
 
 procedure TAtlasWelcomeContinueFrame.BoxPaint(Sender: TObject);
 var
   Canvas: TCanvas;
-  Row, Left, Top, Limit, Index, Line, Active: Integer;
+  Row, mLeft, mTop, Limit, Index, Line, Active: Integer;
   Entry: TAtlasContinueEntry;
-  Text, Age: string;
+  mText, Age: string;
   TextColor, MutedColor, LineColor, LinkColor: TColor;
   Button, QuickRect: TRect;
   Stamp: TDateTime;
@@ -820,18 +820,18 @@ begin
   for Row := 0 to High(FEntries) do
   begin
     Entry := FEntries[Row];
-    Top := RowTop(Row);
-    Left := ScaleValue(Indent);
+    mTop := RowTop(Row);
+    mLeft := ScaleValue(Indent);
     Button := FButtonRects[Row];
     Limit := Button.Left - ScaleValue(Indent);
     // Schnellaktionen (#764): aktive Zeile hinterlegt, Knöpfe statt des Zeitpunkts links von „Fortsetzen“.
-    FQuick.PaintBackground(Canvas, Row, Rect(0, Top, FBox.Width, Top + ScaleValue(RowHeight) - ScaleValue(2)));
+    FQuick.PaintBackground(Canvas, Row, Rect(0, mTop, FBox.Width, mTop + ScaleValue(RowHeight) - ScaleValue(2)));
     if Row = Active then
     begin
       Canvas.Font.Assign(Font);
       Canvas.Font.Size := Font.Size - 1;
-      Limit := FQuick.LayoutRow(Canvas, Row, Rect(ScaleValue(Indent) + ScaleValue(80), Top, Limit,
-        Top + ScaleValue(RowHeight) - ScaleValue(2))) - ScaleValue(Indent);
+      Limit := FQuick.LayoutRow(Canvas, Row, Rect(ScaleValue(Indent) + ScaleValue(80), mTop, Limit,
+        mTop + ScaleValue(RowHeight) - ScaleValue(2))) - ScaleValue(Indent);
     end
     else
     begin
@@ -839,11 +839,11 @@ begin
       Canvas.Font.Assign(Font);
       State := FQuick.StateOf(Row);
       Canvas.Font.Size := Font.Size - 1;
-      Text := TAtlasQuickActionsBar.StateText(State, FQuick.NowMs, IsUpdateRow(Row));
-      if Text <> '' then
+      mText := TAtlasQuickActionsBar.StateText(State, FQuick.NowMs, IsUpdateRow(Row));
+      if mText <> '' then
       begin
-        QuickRect := Rect(Limit - Canvas.TextWidth(Text) - ScaleValue(12), Top + ScaleValue(3), Limit,
-          Top + ScaleValue(19));
+        QuickRect := Rect(Limit - Canvas.TextWidth(mText) - ScaleValue(12), mTop + ScaleValue(3), Limit,
+          mTop + ScaleValue(19));
         Canvas.Brush.Style := bsSolid;
         Canvas.Brush.Color := TAtlasQuickActionsBar.StateColor(State);
         Canvas.Pen.Color := Canvas.Brush.Color;
@@ -851,8 +851,8 @@ begin
           ScaleValue(16));
         Canvas.Brush.Style := bsClear;
         Canvas.Font.Color := clWhite;
-        Canvas.TextOut(QuickRect.Left + ScaleValue(6), QuickRect.Top + (QuickRect.Height - Canvas.TextHeight(Text)) div 2,
-          Text);
+        Canvas.TextOut(QuickRect.Left + ScaleValue(6), QuickRect.Top + (QuickRect.Height - Canvas.TextHeight(mText)) div 2,
+          mText);
         Limit := QuickRect.Left - ScaleValue(Indent);
       end
       else
@@ -863,7 +863,7 @@ begin
         Age := AgeText(Entry.State.At, Stamp);
         if Age <> '' then
         begin
-          Canvas.TextOut(Limit - Canvas.TextWidth(Age), Top + ScaleValue(3), Age);
+          Canvas.TextOut(Limit - Canvas.TextWidth(Age), mTop + ScaleValue(3), Age);
           Limit := Limit - Canvas.TextWidth(Age) - ScaleValue(Indent);
         end;
       end;
@@ -871,33 +871,33 @@ begin
     Canvas.Font.Assign(Font);
     Canvas.Font.Color := TextColor;
     Canvas.Font.Style := [fsBold];
-    Canvas.TextRect(Rect(Left, Top + ScaleValue(3), Limit, Top + ScaleValue(21)), Left, Top + ScaleValue(3),
+    Canvas.TextRect(Rect(mLeft, mTop + ScaleValue(3), Limit, mTop + ScaleValue(21)), mLeft, mTop + ScaleValue(3),
       Entry.Name);
-    Inc(Left, Canvas.TextWidth(Entry.Name));
+    Inc(mLeft, Canvas.TextWidth(Entry.Name));
     Canvas.Font.Style := [];
-    if Left < Limit then
+    if mLeft < Limit then
     begin
       Canvas.Font.Color := MutedColor;
-      Canvas.TextRect(Rect(Left, Top + ScaleValue(3), Limit, Top + ScaleValue(21)), Left, Top + ScaleValue(3),
+      Canvas.TextRect(Rect(mLeft, mTop + ScaleValue(3), Limit, mTop + ScaleValue(21)), mLeft, mTop + ScaleValue(3),
         Separator + TabsText(Entry.State.TabCount));
     end;
     // Zweite Zeile: Datei und Methode.
-    Left := ScaleValue(Indent);
+    mLeft := ScaleValue(Indent);
     Canvas.Font.Color := MutedColor;
     if Row = Active then
-      Canvas.TextRect(Rect(Left, Top + ScaleValue(23), Limit, Top + ScaleValue(41)), Left, Top + ScaleValue(23),
+      Canvas.TextRect(Rect(mLeft, mTop + ScaleValue(23), Limit, mTop + ScaleValue(41)), mLeft, mTop + ScaleValue(23),
         DetailText(Entry))
     else
-      Canvas.TextRect(Rect(Left, Top + ScaleValue(23), Button.Left - ScaleValue(Indent), Top + ScaleValue(41)), Left,
-        Top + ScaleValue(23), DetailText(Entry));
+      Canvas.TextRect(Rect(mLeft, mTop + ScaleValue(23), Button.Left - ScaleValue(Indent), mTop + ScaleValue(41)), mLeft,
+        mTop + ScaleValue(23), DetailText(Entry));
     // Schaltfläche.
     Canvas.Pen.Color := LineColor;
     Canvas.Brush.Style := bsClear;
     Canvas.RoundRect(Button.Left, Button.Top, Button.Right, Button.Bottom, ScaleValue(6), ScaleValue(6));
     Canvas.Font.Color := TextColor;
-    Text := TAtlasStrings.Text(TAtlasTextId.WelcomeContinueResume);
-    Canvas.TextOut(Button.Left + (Button.Width - Canvas.TextWidth(Text)) div 2,
-      Button.Top + (Button.Height - Canvas.TextHeight(Text)) div 2, Text);
+    mText := TAtlasStrings.Text(TAtlasTextId.WelcomeContinueResume);
+    Canvas.TextOut(Button.Left + (Button.Width - Canvas.TextWidth(mText)) div 2,
+      Button.Top + (Button.Height - Canvas.TextHeight(mText)) div 2, mText);
     if Row = Active then
     begin
       Canvas.Font.Assign(Font);
@@ -907,8 +907,8 @@ begin
   end;
   // Neu seit deinem letzten Öffnen (für den obersten Eintrag).
   Line := 0;
-  Top := IncomingTop;
-  Left := ScaleValue(Indent);
+  mTop := IncomingTop;
+  mLeft := ScaleValue(Indent);
   Limit := FBox.Width - ScaleValue(Indent);
   if ShowsIncoming then
   begin
@@ -916,39 +916,39 @@ begin
     Canvas.Font.Style := [fsBold];
     Canvas.Font.Color := TextColor;
     if FIncoming.Upstream <> '' then
-      Text := TAtlasStrings.Fmt(TAtlasTextId.WelcomeContinueIncomingTitle, [FIncoming.Upstream])
+      mText := TAtlasStrings.Fmt(TAtlasTextId.WelcomeContinueIncomingTitle, [FIncoming.Upstream])
     else
-      Text := TAtlasStrings.Fmt(TAtlasTextId.WelcomeContinueIncomingTitle, ['…']);
-    Canvas.TextRect(Rect(Left, Top, Limit, Top + ScaleValue(LineHeight)), Left, Top, Text);
+      mText := TAtlasStrings.Fmt(TAtlasTextId.WelcomeContinueIncomingTitle, ['…']);
+    Canvas.TextRect(Rect(mLeft, mTop, Limit, mTop + ScaleValue(LineHeight)), mLeft, mTop, mText);
     Inc(Line);
     Canvas.Font.Style := [];
     for Index := 0 to High(FIncoming.Commits) do
     begin
       Canvas.Font.Color := LinkColor;
-      Canvas.TextRect(Rect(Left, Top + Line * ScaleValue(LineHeight), Limit, Top + (Line + 1) * ScaleValue(LineHeight)),
-        Left + ScaleValue(Indent), Top + Line * ScaleValue(LineHeight), CommitText(FIncoming.Commits[Index]));
+      Canvas.TextRect(Rect(mLeft, mTop + Line * ScaleValue(LineHeight), Limit, mTop + (Line + 1) * ScaleValue(LineHeight)),
+        mLeft + ScaleValue(Indent), mTop + Line * ScaleValue(LineHeight), CommitText(FIncoming.Commits[Index]));
       Inc(Line);
     end;
     Canvas.Font.Color := MutedColor;
     if Length(FIncoming.Commits) = 0 then
     begin
       if FQuerying then
-        Text := TAtlasStrings.Text(TAtlasTextId.WelcomeContinueIncomingQuerying)
+        mText := TAtlasStrings.Text(TAtlasTextId.WelcomeContinueIncomingQuerying)
       else
-        Text := TAtlasStrings.Text(TAtlasTextId.WelcomeContinueIncomingNone);
-      Canvas.TextRect(Rect(Left, Top + Line * ScaleValue(LineHeight), Limit, Top + (Line + 1) * ScaleValue(LineHeight)),
-        Left + ScaleValue(Indent), Top + Line * ScaleValue(LineHeight), Text);
+        mText := TAtlasStrings.Text(TAtlasTextId.WelcomeContinueIncomingNone);
+      Canvas.TextRect(Rect(mLeft, mTop + Line * ScaleValue(LineHeight), Limit, mTop + (Line + 1) * ScaleValue(LineHeight)),
+        mLeft + ScaleValue(Indent), mTop + Line * ScaleValue(LineHeight), mText);
       Inc(Line);
     end;
     if FIncoming.More then
     begin
-      Canvas.TextOut(Left + ScaleValue(Indent), Top + Line * ScaleValue(LineHeight),
+      Canvas.TextOut(mLeft + ScaleValue(Indent), mTop + Line * ScaleValue(LineHeight),
         TAtlasStrings.Text(TAtlasTextId.WelcomeContinueIncomingMore));
       Inc(Line);
     end;
     if FIncoming.FetchFailed then
     begin
-      Canvas.TextOut(Left + ScaleValue(Indent), Top + Line * ScaleValue(LineHeight),
+      Canvas.TextOut(mLeft + ScaleValue(Indent), mTop + Line * ScaleValue(LineHeight),
         TAtlasStrings.Text(TAtlasTextId.WelcomeContinueIncomingFetchFailed));
       Inc(Line);
     end;
@@ -958,8 +958,8 @@ begin
   begin
     Canvas.Font.Assign(Font);
     Canvas.Font.Color := TColor($001A8CC9);
-    Canvas.TextRect(Rect(Left, Top + Line * ScaleValue(LineHeight), Limit, Top + (Line + 1) * ScaleValue(LineHeight)),
-      Left, Top + Line * ScaleValue(LineHeight), FNotice);
+    Canvas.TextRect(Rect(mLeft, mTop + Line * ScaleValue(LineHeight), Limit, mTop + (Line + 1) * ScaleValue(LineHeight)),
+      mLeft, mTop + Line * ScaleValue(LineHeight), FNotice);
   end;
 end;
 
@@ -989,13 +989,13 @@ end;
 
 procedure TAtlasWelcomeContinueFrame.ClickAt(const AHit: TAtlasContinueHit);
 var
-  Source: IAtlasContinueSource;
+  mSource: IAtlasContinueSource;
   Project: string;
   Commit: TAtlasContinueCommit;
 begin
   if FSource = nil then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   if AHit.Button and (AHit.Row >= 0) and (AHit.Row <= High(FEntries)) then
   begin
     Project := FEntries[AHit.Row].Project;
@@ -1003,7 +1003,7 @@ begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
       procedure
       begin
-        Source.Resume(Project);
+        mSource.Resume(Project);
       end);
     Exit;
   end;
@@ -1014,7 +1014,7 @@ begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
       procedure
       begin
-        Source.ShowCommit(Project, Commit);
+        mSource.ShowCommit(Project, Commit);
       end);
   end;
 end;
@@ -1022,7 +1022,7 @@ end;
 procedure TAtlasWelcomeContinueFrame.BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
 var
   Hit: TAtlasContinueHit;
-  Key, Hint, State: string;
+  Key, mHint, State: string;
   QuickRow, QuickButton: Integer;
   OnMenu: Boolean;
 begin
@@ -1038,8 +1038,8 @@ begin
   if Key = FHintKey then
     Exit;
   FHintKey := Key;
-  if (QuickButton >= 0) and FQuick.HintAt(X, Y, Hint) then
-    FBox.Hint := Hint
+  if (QuickButton >= 0) and FQuick.HintAt(X, Y, mHint) then
+    FBox.Hint := mHint
   else if Hit.Row >= 0 then
   begin
     FBox.Hint := HintFor(FEntries[Hit.Row]);

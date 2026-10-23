@@ -200,6 +200,7 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Unused,
+  Atlas.Common.Rules.Builtin.Naming,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
@@ -1184,11 +1185,12 @@ var
     end
     else
       Message := Message + '.';
-    // Umbenennen: AName für Parameter, LName für lokale Variablen; alle Vorkommen in der Routine.
+    // Umbenennen: AName für Parameter, LName für lokale Variablen, mit den Präfixen der Projektdatei .atlas
+    // (#1111, z. B. mName); alle Vorkommen in der Routine.
     if AIsParameter then
-      NewName := 'A' + AName
+      NewName := TNamingConvention.Expected(AName, NamingPrefixFor(AContext, TRuleNamingKind.Parameter, 'A'))
     else
-      NewName := 'L' + AName;
+      NewName := TNamingConvention.Expected(AName, NamingPrefixFor(AContext, TRuleNamingKind.Local, 'L'));
     Fixes := nil;
     Positions := NameTokens(ARoutine, AName);
     Header := nil;
@@ -2482,6 +2484,8 @@ var
             // Virtuelle Methoden meldet hides-virtual.
             Found := (Symbol.Kind = TIndexSymbolKind.Method) and not Symbol.IsVirtual and not IsClassMember(Symbol) and
               SameSignature(Symbol, AOwn);
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         if Found then
         begin

@@ -3,7 +3,9 @@
 // Tests für den Linter-Modus ohne Editor (#95) (#415): TLinterShell.Run mit
 // Optionen aus TCommandLineOptions.Parse auf Dateien in einem Temp-Ordner.
 // Exit-Codes (0 sauber, 1 Treffer, 3 Aufruf- oder Lesefehler), Formate,
-// Metriken (#66), TODOs (#68), Unterdrückungen (#147) und Baseline (#97).
+// Metriken (#66), TODOs (#68), Unterdrückungen (#147) und Baseline (#97),
+// dazu der Lauf mit und ohne Symbolindex (#1112). Index-Caches liegen im
+// Temp-Ordner (--index-cache), nie bei denen des Benutzers.
 // Jede Ausgabe geht in eine Datei (--output), nie auf stdout.
 // TLinterShell.ClearCache bleibt ungetestet: Es löscht die echten Index-Caches
 // des Benutzers.
@@ -58,6 +60,10 @@ type
     procedure UpdatedBaselineHidesFindings;
     [Test]
     procedure DefaultBaselineBesideConfiguration;
+    /// <summary>Mit Index kennt legacy-stack-queue TObjectStack aus einer anderen Unit, mit --no-index nicht.
+    /// </summary>
+    [Test]
+    procedure IndexKnowsTypesOfOtherUnits;
   end;
 
 implementation
@@ -115,7 +121,8 @@ function TShellLinterTests.Run(const AArgs: TArray<string>): Integer;
 begin
   if TFile.Exists(FOutput) then
     TFile.Delete(FOutput);
-  Result := TLinterShell.Run(TCommandLineOptions.Parse(AArgs + ['--output', FOutput]));
+  Result := TLinterShell.Run(TCommandLineOptions.Parse(AArgs + ['--output', FOutput, '--index-cache',
+    Path('IndexCache')]));
 end;
 
 function TShellLinterTests.OutputText: string;
@@ -233,6 +240,45 @@ begin
   Assert.AreEqual(0, Run(['--check', TPath.Combine(FFolder, 'Src'), '--update-baseline']));
   Assert.IsTrue(TFile.Exists(Path('Src/atlas-baseline.json')));
   Assert.AreEqual(0, Run(['--check', TPath.Combine(FFolder, 'Src'), '--format', 'json']));
+end;
+
+procedure TShellLinterTests.IndexKnowsTypesOfOtherUnits;
+const
+  Dproj = '<?xml version="1.0" encoding="utf-8"?>'#13#10 +
+    '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'#13#10 +
+    '  <PropertyGroup>'#13#10'    <MainSource>Lauf.dpr</MainSource>'#13#10 +
+    '    <Config Condition="''$(Config)''==''''">Debug</Config>'#13#10 +
+    '    <Platform Condition="''$(Platform)''==''''">Win32</Platform>'#13#10'  </PropertyGroup>'#13#10 +
+    '  <ItemGroup>'#13#10 +
+    '    <DelphiCompile Include="$(MainSource)"><MainSource>MainSource</MainSource></DelphiCompile>'#13#10 +
+    '    <DCCReference Include="Contnrs.pas"/>'#13#10'    <DCCReference Include="Suche.pas"/>'#13#10 +
+    '  </ItemGroup>'#13#10'</Project>'#13#10;
+  // RTL-Stub ohne Namespace wie in den Quellen von Free Pascal.
+  Stub = 'unit Contnrs;'#13#10'interface'#13#10'type'#13#10'  TOrderedList = class(TObject)'#13#10 +
+    '  public'#13#10'    function Push(AItem: Pointer): Pointer;'#13#10'    function Pop: Pointer;'#13#10 +
+    '  end;'#13#10'  TStack = class(TOrderedList)'#13#10'  end;'#13#10'  TObjectStack = class(TStack)'#13#10 +
+    '  public'#13#10'    function Pop: TObject;'#13#10'  end;'#13#10'implementation'#13#10 +
+    'function TOrderedList.Push(AItem: Pointer): Pointer;'#13#10'begin'#13#10'  Result := AItem;'#13#10'end;'#13#10 +
+    'function TOrderedList.Pop: Pointer;'#13#10'begin'#13#10'  Result := nil;'#13#10'end;'#13#10 +
+    'function TObjectStack.Pop: TObject;'#13#10'begin'#13#10'  Result := nil;'#13#10'end;'#13#10'end.'#13#10;
+  Suche = 'unit Suche;'#13#10'interface'#13#10'uses'#13#10'  Contnrs;'#13#10'type'#13#10'  TKnoten = class'#13#10 +
+    '  end;'#13#10'  TSuche = class'#13#10'  private'#13#10'    FOffen: TObjectStack;'#13#10'  public'#13#10 +
+    '    procedure Lauf;'#13#10'  end;'#13#10'implementation'#13#10'procedure TSuche.Lauf;'#13#10'var'#13#10 +
+    '  Knoten: TKnoten;'#13#10'begin'#13#10'  Knoten := TKnoten(FOffen.Pop);'#13#10'end;'#13#10'end.'#13#10;
+  Programm = 'program Lauf;'#13#10'uses'#13#10'  Suche in ''Suche.pas'';'#13#10'begin'#13#10'end.'#13#10;
+begin
+  ForceDirectories(Path('Idx'));
+  TFile.WriteAllText(Path('Idx/Lauf.dproj'), Dproj);
+  TFile.WriteAllText(Path('Idx/Lauf.dpr'), Programm);
+  TFile.WriteAllText(Path('Idx/Contnrs.pas'), Stub);
+  TFile.WriteAllText(Path('Idx/Suche.pas'), Suche);
+  TFile.WriteAllText(Path('Idx/atlas.json'), '{"rules": {"legacy-stack-queue": "info"}}');
+  Assert.AreEqual(0, Run(['--check', Path('Idx/Lauf.dproj'), '--format', 'json', '--fail-on', 'never',
+    '--units', 'Suche']));
+  Assert.IsTrue(Pos('"legacy-stack-queue"', OutputText) > 0, OutputText);
+  Assert.AreEqual(0, Run(['--check', Path('Idx/Lauf.dproj'), '--format', 'json', '--fail-on', 'never',
+    '--units', 'Suche', '--no-index']));
+  Assert.IsFalse(Pos('"legacy-stack-queue"', OutputText) > 0, OutputText);
 end;
 
 initialization

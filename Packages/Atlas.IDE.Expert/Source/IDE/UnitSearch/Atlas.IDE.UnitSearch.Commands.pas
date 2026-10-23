@@ -768,6 +768,8 @@ begin
       end;
     TAtlasUnitSearchAction.ShowExplorer:
       ShellExecute(0, 'open', 'explorer.exe', PChar('/select,"' + AEntries[0].FileName + '"'), nil, SW_SHOWNORMAL);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

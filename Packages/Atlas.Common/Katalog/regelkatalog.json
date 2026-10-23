@@ -1710,7 +1710,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "A parameter, local or inline variable has the same name as a field or property of the class (also inherited and visible there, resolved through the file and the symbol index) or as a global variable of the unit declared before the routine. Especially treacherous in form methods: Caption, Name, Tag, Left. If VCL is not in the index, the members of TComponent and TControl are known when the ancestor chain ends at a VCL base class. Parameters of event handlers (with Sender) are skipped because the event type dictates the signature. High confidence. Quick fix: rename to AName (parameter, also in the declaration) or LName (local variable) within the routine. Option ignore lists name patterns that are never reported (default Sender, Value).",
+      "description": "A parameter, local or inline variable has the same name as a field or property of the class (also inherited and visible there, resolved through the file and the symbol index) or as a global variable of the unit declared before the routine. Especially treacherous in form methods: Caption, Name, Tag, Left. If VCL is not in the index, the members of TComponent and TControl are known when the ancestor chain ends at a VCL base class. Parameters of event handlers (with Sender) are skipped because the event type dictates the signature. High confidence. Quick fix: rename to AName (parameter, also in the declaration) or LName (local variable) within the routine; with prefixes in the project file .atlas (naming) these are used instead, e.g. mName. Option ignore lists name patterns that are never reported (default Sender, Value).",
       "bad": "procedure TfrmKunde.Laden(const Caption: string);\nbegin\n  Caption := Caption + ' (geladen)';\nend;",
       "good": "procedure TfrmKunde.Laden(const ACaption: string);\nbegin\n  Caption := ACaption + ' (geladen)';\nend;",
       "options": [
@@ -1722,6 +1722,48 @@
             "Value"
           ],
           "description": "Name patterns (* and ?) that are never reported."
+        }
+      ]
+    },
+    {
+      "id": "naming-prefix",
+      "name": "Name without the prefix of its kind",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "A local variable (also inline and for var), field (also class var), parameter or constant (const, also local, in classes and inline; not resourcestring) lacks the prefix of its kind. Defaults: local m, field F, parameter A, constant c; after a prefix ending in a letter an upper-case letter or digit must follow (mIndex, not menu). Global variables are not checked. Per kind the prefix comes from the option in atlas.json, else from the project file .atlas (naming, also constant), else the default; an empty value switches the kind off. Off by default: the rule runs only when atlas.json switches it on. Exceptions: one-letter loop counters, Sender, Self and Result, names matching ignore, published fields and fields before the first visibility section of a form, frame or data module (components), parameters of methods with override or message, of published methods, of event handlers (a parameter named Sender) and of methods implementing an interface method (in the file or the symbol index; unknown interface: silent). Parameters are reported at the declaration only. Quick fix: rename to the expected name in the routine or the block after an inline declaration, for parameters also in declaration and implementation, for private fields and class constants in the class and its methods (also Self.Name and TType.Name), for implementation constants in the whole unit. No fix when the new name already occurs in the file, the scope contains with, a nested routine redeclares the name, or the name is visible outside the file.",
+      "bad": "procedure TKunde.Laden(const Datei: string);\nvar\n  Zeilen: TStringList;\nbegin\nend;",
+      "good": "procedure TKunde.Laden(const ADatei: string);\nvar\n  mZeilen: TStringList;\nbegin\nend;",
+      "options": [
+        {
+          "name": "local",
+          "type": "string",
+          "default": "m",
+          "description": "Prefix of local variables; empty = not checked."
+        },
+        {
+          "name": "field",
+          "type": "string",
+          "default": "F",
+          "description": "Prefix of fields; empty = not checked."
+        },
+        {
+          "name": "parameter",
+          "type": "string",
+          "default": "A",
+          "description": "Prefix of parameters; empty = not checked."
+        },
+        {
+          "name": "constant",
+          "type": "string",
+          "default": "c",
+          "description": "Prefix of constants; empty = not checked."
+        },
+        {
+          "name": "ignore",
+          "type": "string-list",
+          "default": [],
+          "description": "Name patterns (* and ?) that are never reported, e.g. fields of API records."
         }
       ]
     },

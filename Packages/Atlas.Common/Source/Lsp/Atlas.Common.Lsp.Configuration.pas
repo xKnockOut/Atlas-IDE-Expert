@@ -182,13 +182,13 @@ end;
 function TLspConfiguration.FileIssues(const AText: string): TArray<TConfigurationIssue>;
 var
   Misplaced: TArray<TConfigurationIssue>;
-  Settings: TServerSettings;
+  mSettings: TServerSettings;
 begin
-  Settings := TConfigurationParser.Parse(AText, Result);
+  mSettings := TConfigurationParser.Parse(AText, Result);
   TConfigurationScopes.Filter(AText, TConfigurationScope.Project, Misplaced);
   Result := Result + Misplaced;
   if Assigned(FExtraIssues) then
-    Result := Result + FExtraIssues(Settings);
+    Result := Result + FExtraIssues(mSettings);
 end;
 
 procedure TLspConfiguration.Revalidate;
@@ -401,6 +401,8 @@ begin
         LoadFromDisk
       else
         Publish(ADocument.Uri, -1, nil);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

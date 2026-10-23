@@ -272,6 +272,8 @@ begin
           Exit;
       TSyntaxKind.Block, TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection:
         InBody := True;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
     Child := Node;
     Node := Node.Parent;

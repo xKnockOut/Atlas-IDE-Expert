@@ -364,10 +364,10 @@ end;
 
 procedure TAtlasMinimapView.PaintRow(ACanvas: TCanvas; ARow, ATop, AHeight: Integer);
 var
-  Line, Index, Column, Left, Right, Height: Integer;
+  Line, Index, Column, mLeft, Right, mHeight: Integer;
   Run: TAtlasMinimapRun;
-  Text: string;
-  Color: TAtlasColor;
+  mText: string;
+  mColor: TAtlasColor;
 begin
   Line := FMap.LineOf(ARow);
   if (Line < 0) or (Line > High(FRuns)) then
@@ -375,43 +375,43 @@ begin
   if FOptions.Render = TAtlasMinimapRender.Characters then
   begin
     if Line <= High(FLines) then
-      Text := TAtlasMinimap.Expand(FLines[Line], FOptions.MaxColumn, FTabWidth)
+      mText := TAtlasMinimap.Expand(FLines[Line], FOptions.MaxColumn, FTabWidth)
     else
-      Text := '';
+      mText := '';
     for Run in FRuns[Line] do
     begin
       ACanvas.Brush.Color := TColor(TokenColor(FColors, Run.Kind));
-      for Column := Run.Start to Min(Run.Stop, Length(Text)) - 1 do
+      for Column := Run.Start to Min(Run.Stop, Length(mText)) - 1 do
       begin
-        Height := TAtlasMinimap.GlyphHeight(Text[Column + 1], AHeight);
-        if Height <= 0 then
+        mHeight := TAtlasMinimap.GlyphHeight(mText[Column + 1], AHeight);
+        if mHeight <= 0 then
           Continue;
-        Left := FOptions.ColumnX(Column, ClientWidth);
-        Right := Max(Left + 1, FOptions.ColumnX(Column + 1, ClientWidth));
+        mLeft := FOptions.ColumnX(Column, ClientWidth);
+        Right := Max(mLeft + 1, FOptions.ColumnX(Column + 1, ClientWidth));
         // Zeichen stehen auf der Grundlinie; eine Lücke trennt Nachbarn.
-        if Right - Left > 1 then
+        if Right - mLeft > 1 then
           Dec(Right);
-        ACanvas.FillRect(TRect.Create(Left, ATop + AHeight - Height, Right, ATop + AHeight));
+        ACanvas.FillRect(TRect.Create(mLeft, ATop + AHeight - mHeight, Right, ATop + AHeight));
       end;
     end;
     Exit;
   end;
   // Balken je Wort, eine Spur dünner als die Zeile.
-  Height := Max(1, AHeight - AHeight div 3);
+  mHeight := Max(1, AHeight - AHeight div 3);
   for Index := 0 to High(FRuns[Line]) do
   begin
     Run := FRuns[Line][Index];
-    Color := TAtlasColorMath.Mix(TokenColor(FColors, Run.Kind), FColors.Surface, 0.8);
-    ACanvas.Brush.Color := TColor(Color);
-    Left := FOptions.ColumnX(Run.Start, ClientWidth);
-    Right := Max(Left + 1, FOptions.ColumnX(Run.Stop, ClientWidth));
-    ACanvas.FillRect(TRect.Create(Left, ATop, Right, ATop + Height));
+    mColor := TAtlasColorMath.Mix(TokenColor(FColors, Run.Kind), FColors.Surface, 0.8);
+    ACanvas.Brush.Color := TColor(mColor);
+    mLeft := FOptions.ColumnX(Run.Start, ClientWidth);
+    Right := Max(mLeft + 1, FOptions.ColumnX(Run.Stop, ClientWidth));
+    ACanvas.FillRect(TRect.Create(mLeft, ATop, Right, ATop + mHeight));
   end;
 end;
 
 procedure TAtlasMinimapView.EnsureCode;
 var
-  Row, Top, Bottom, Line: Integer;
+  Row, mTop, Bottom, Line: Integer;
   Same: Boolean;
 begin
   EnsureMap;
@@ -429,11 +429,11 @@ begin
       if (Line < 0) or (Line >= FMap.LineCount) or (FMap.LineOf(FMap.RowOf(Line)) <> Line) then
         Continue;
       Row := FMap.RowOf(Line);
-      Top := FMap.PixelOfRow(Row);
+      mTop := FMap.PixelOfRow(Row);
       Bottom := FMap.PixelOfRow(Row + 1);
       FCode.Canvas.Brush.Color := TColor(FColors.Surface);
-      FCode.Canvas.FillRect(TRect.Create(0, Top, FCode.Width, Bottom));
-      PaintRow(FCode.Canvas, Row, Top, Bottom - Top);
+      FCode.Canvas.FillRect(TRect.Create(0, mTop, FCode.Width, Bottom));
+      PaintRow(FCode.Canvas, Row, mTop, Bottom - mTop);
     end;
     FDirty := nil;
     Exit;
@@ -444,9 +444,9 @@ begin
   FCode.Canvas.FillRect(TRect.Create(0, 0, FCode.Width, FCode.Height));
   for Row := 0 to FMap.RowCount - 1 do
   begin
-    Top := FMap.PixelOfRow(Row);
-    Bottom := Max(Top + 1, FMap.PixelOfRow(Row + 1));
-    PaintRow(FCode.Canvas, Row, Top, Bottom - Top);
+    mTop := FMap.PixelOfRow(Row);
+    Bottom := Max(mTop + 1, FMap.PixelOfRow(Row + 1));
+    PaintRow(FCode.Canvas, Row, mTop, Bottom - mTop);
   end;
   FCodeValid := True;
   FCodeWidth := ClientWidth;
@@ -458,7 +458,7 @@ end;
 
 procedure TAtlasMinimapView.PaintOverlays;
 var
-  First, Last, Top, Bottom: Integer;
+  First, Last, mTop, Bottom: Integer;
   Bar: TAtlasOverviewBar;
   Header: TAtlasMinimapHeader;
   Span: TAtlasMinimapSpan;
@@ -467,9 +467,9 @@ begin
   // Routine am Cursor.
   if FOptions.HighlightMethod and (FCursorLine >= 0) and TAtlasMinimap.MethodAt(FNodes, FCursorLine, First, Last) then
   begin
-    Top := FMap.PixelOfLine(First);
-    Bottom := Max(Top + 1, FMap.PixelOfRow(FMap.RowOf(Last) + 1));
-    Blend(Canvas, TRect.Create(0, Top, ClientWidth, Bottom), FColors.Accent, MethodAlpha);
+    mTop := FMap.PixelOfLine(First);
+    Bottom := Max(mTop + 1, FMap.PixelOfRow(FMap.RowOf(Last) + 1));
+    Blend(Canvas, TRect.Create(0, mTop, ClientWidth, Bottom), FColors.Accent, MethodAlpha);
   end;
   // Marken: Zeilenband bzw. Streifen am linken Rand.
   if FOptions.Markers then

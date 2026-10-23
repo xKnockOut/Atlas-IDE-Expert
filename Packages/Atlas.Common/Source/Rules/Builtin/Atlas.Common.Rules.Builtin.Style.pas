@@ -1118,6 +1118,8 @@ var
           TSyntaxKind.Literal:
             if InBody then
               CheckLiteral(Node);
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         for Index := Node.ChildCount - 1 downto 0 do
         begin
@@ -1311,6 +1313,8 @@ var
               CheckType(Node, True, 'public');
           TSyntaxKind.Block, TSyntaxKind.AsmBlock:
             Continue;
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         for Index := Node.ChildCount - 1 downto 0 do
           Pending.Push(Node[Index]);
@@ -1906,6 +1910,8 @@ begin
           if (Lead >= 0) and FTokens[Lead].IsSymbol(':') then
             Add('case', Keyword, Lead, Keyword, Last, Routine);
         end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 end;

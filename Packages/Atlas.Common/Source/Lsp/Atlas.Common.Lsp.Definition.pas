@@ -180,6 +180,8 @@ begin
         Result := [Target(AFileName, Resolved.Range, Resolved.SelectionRange)];
         Exit;
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 
   Result := [Target(Resolved.FileName, Resolved.Range, Resolved.SelectionRange)];

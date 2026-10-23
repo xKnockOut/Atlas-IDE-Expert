@@ -280,7 +280,7 @@ function TShellIdeCompiler.EnsureInstance(const AScript, AProject: string; out A
 var
   Output: TArray<string>;
   Running: TArray<Cardinal>;
-  Pid, Other: Cardinal;
+  mPid, Other: Cardinal;
   Code: Integer;
 begin
   AError := '';
@@ -293,21 +293,21 @@ begin
   Running := FIdes();
   Code := Run(FProcess, AScript, TCompilerIdeCommand.StartArguments(AProject),
     TProjectPaths.DirectoryOf(AProject), Output);
-  if not TCompilerIdeCommand.ParsePid(Output, Pid) then
+  if not TCompilerIdeCommand.ParsePid(Output, mPid) then
   begin
     AError := Format('cc.ps1 start hat keine IDE gestartet (Exit-Code %d)', [Code]);
     Exit(False);
   end;
   for Other in Running do
-    if Other = Pid then
+    if Other = mPid then
     begin
       // Nie in eine fremde IDE bauen, etwa die des Benutzers (ADR 0007).
-      AError := Format('cc.ps1 start nannte die schon laufende IDE %d; Atlas baut nur in einer eigenen IDE', [Pid]);
+      AError := Format('cc.ps1 start nannte die schon laufende IDE %d; Atlas baut nur in einer eigenen IDE', [mPid]);
       Exit(False);
     end;
-  FPid := Pid;
+  FPid := mPid;
   FScript := AScript;
-  FLogger.Info(Format('Eigene IDE für das Kompilieren gestartet (pid %d)', [Pid]));
+  FLogger.Info(Format('Eigene IDE für das Kompilieren gestartet (pid %d)', [mPid]));
   Result := True;
 end;
 

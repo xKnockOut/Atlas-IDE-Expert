@@ -743,6 +743,8 @@ begin
           not ((ANode[1].Kind = TSyntaxKind.Literal) and SameText(ANode[1].Name, 'nil')) then
           SetUnclear(Field, Format('wird in %s auch ohne Create zugewiesen', [AMethod]));
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 
@@ -795,6 +797,8 @@ begin
             FFields := FFields + [Field];
           end;
         end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 end;

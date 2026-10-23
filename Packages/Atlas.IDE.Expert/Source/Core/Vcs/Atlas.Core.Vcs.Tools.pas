@@ -109,6 +109,8 @@ begin
           IncludeTrailingPathDelimiter(Dir) + 'SlikSvn' + PathDelim + 'bin',
           IncludeTrailingPathDelimiter(Dir) + 'CollabNet' + PathDelim + 'Subversion Client',
           IncludeTrailingPathDelimiter(Dir) + 'VisualSVN Server' + PathDelim + 'bin'];
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 end;

@@ -478,7 +478,7 @@ procedure TAtlasPaletteWindow.Paint;
 var
   Input: TRect;
   Row: Integer;
-  Text: string;
+  mText: string;
 begin
   Canvas.Font := Font;
   Canvas.Brush.Color := ToColor(FColors.Surface);
@@ -493,14 +493,14 @@ begin
   if FPattern = '' then
   begin
     Canvas.Font.Color := ToColor(FColors.Muted);
-    Text := FPrompt;
+    mText := FPrompt;
   end
   else
   begin
     Canvas.Font.Color := ToColor(FColors.Text);
-    Text := FPattern + '|';
+    mText := FPattern + '|';
   end;
-  DrawText(Canvas.Handle, PChar(Text), -1, Input, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+  DrawText(Canvas.Handle, PChar(mText), -1, Input, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
   Canvas.Brush.Style := bsSolid;
   for Row := 0 to VisibleRows - 1 do
     if FTop + Row <= High(FOrder) then

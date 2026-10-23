@@ -104,8 +104,8 @@ end;
 
 function TAtlasSmartPasteWindow.Layout(ADraw: Boolean): TSize;
 var
-  X, Y, TextHeight, Width, Index, Option: Integer;
-  Text, Accept, Cancel: string;
+  X, Y, TextHeight, mWidth, Index, Option: Integer;
+  mText, Accept, Cancel: string;
   Choice: TAtlasPasteChoice;
   Rects: TArray<TRect>;
 begin
@@ -115,14 +115,14 @@ begin
     Canvas.Brush.Style := bsClear;
   X := Scale(Pad);
   Y := Scale(Pad);
-  Text := Title;
+  mText := Title;
   Canvas.Font.Style := [fsBold];
   if ADraw then
   begin
     Canvas.Font.Color := ToColor(Colors.Text);
-    Canvas.TextOut(X, Y, Text);
+    Canvas.TextOut(X, Y, mText);
   end;
-  Width := X + Canvas.TextWidth(Text);
+  mWidth := X + Canvas.TextWidth(mText);
   Canvas.Font.Style := [];
   SetLength(FOptionRects, Length(FAnalysis.Choices));
   for Index := 0 to High(FAnalysis.Choices) do
@@ -130,17 +130,17 @@ begin
     Choice := FAnalysis.Choices[Index];
     Y := Y + TextHeight + Scale(RowGap);
     X := Scale(Pad);
-    Text := Choice.Name + ':  ';
+    mText := Choice.Name + ':  ';
     if Index = FRow then
-      Text := Marker + Text
+      mText := Marker + mText
     else
       X := X + Canvas.TextWidth(Marker);
     if ADraw then
     begin
       Canvas.Font.Color := ToColor(Colors.Muted);
-      Canvas.TextOut(X, Y, Text);
+      Canvas.TextOut(X, Y, mText);
     end;
-    Inc(X, Canvas.TextWidth(Text));
+    Inc(X, Canvas.TextWidth(mText));
     Rects := nil;
     for Option := -1 to High(Choice.Units) do
     begin
@@ -152,26 +152,26 @@ begin
           Canvas.TextOut(X, Y, Separator);
         end;
         Inc(X, Canvas.TextWidth(Separator));
-        Text := Choice.Units[Option];
+        mText := Choice.Units[Option];
       end
       else
-        Text := TAtlasStrings.Text(TAtlasTextId.SmartPasteNoUnit);
+        mText := TAtlasStrings.Text(TAtlasTextId.SmartPasteNoUnit);
       if Option = Choice.Chosen then
         Canvas.Font.Style := [fsBold];
-      Rects := Rects + [Rect(X, Y, X + Canvas.TextWidth(Text), Y + TextHeight)];
+      Rects := Rects + [Rect(X, Y, X + Canvas.TextWidth(mText), Y + TextHeight)];
       if ADraw then
       begin
         if Option = Choice.Chosen then
           Canvas.Font.Color := ToColor(Colors.Accent)
         else
           Canvas.Font.Color := ToColor(Colors.Text);
-        Canvas.TextOut(X, Y, Text);
+        Canvas.TextOut(X, Y, mText);
       end;
-      Inc(X, Canvas.TextWidth(Text));
+      Inc(X, Canvas.TextWidth(mText));
       Canvas.Font.Style := [];
     end;
     FOptionRects[Index] := Rects;
-    Width := Max(Width, X);
+    mWidth := Max(mWidth, X);
   end;
   // Fußzeile mit den beiden Links.
   Y := Y + TextHeight + Scale(RowGap) * 2;
@@ -193,10 +193,10 @@ begin
     Canvas.Font.Color := ToColor(Colors.Accent);
     Canvas.TextOut(X, Y, Cancel);
   end;
-  Width := Max(Width, FCancelRect.Right);
+  mWidth := Max(mWidth, FCancelRect.Right);
   if ADraw then
     Canvas.Brush.Style := bsSolid;
-  Result.cx := Width + Scale(Pad);
+  Result.cx := mWidth + Scale(Pad);
   Result.cy := Y + TextHeight + Scale(Pad);
 end;
 
@@ -204,7 +204,7 @@ procedure TAtlasSmartPasteWindow.ShowFor(const AAnalysis: TAtlasPasteAnalysis; c
 var
   Size: TSize;
   Area: TRect;
-  Left, Top: Integer;
+  mLeft, mTop: Integer;
 begin
   FAnalysis := AAnalysis;
   FRow := 0;
@@ -213,12 +213,12 @@ begin
   HandleNeeded;
   Size := Layout(False);
   Area := WorkAreaAt(APoint);
-  Left := Min(APoint.X, Area.Right - Size.cx);
-  Top := APoint.Y + Scale(Gap);
-  if Top + Size.cy > Area.Bottom then
-    Top := APoint.Y - Scale(Gap) - Size.cy;
-  ShowAt(Rect(Max(Left, Area.Left), Max(Top, Area.Top), Max(Left, Area.Left) + Size.cx,
-    Max(Top, Area.Top) + Size.cy));
+  mLeft := Min(APoint.X, Area.Right - Size.cx);
+  mTop := APoint.Y + Scale(Gap);
+  if mTop + Size.cy > Area.Bottom then
+    mTop := APoint.Y - Scale(Gap) - Size.cy;
+  ShowAt(Rect(Max(mLeft, Area.Left), Max(mTop, Area.Top), Max(mLeft, Area.Left) + Size.cx,
+    Max(mTop, Area.Top) + Size.cy));
   Announce(Title);
 end;
 

@@ -798,6 +798,8 @@ begin
       end;
     TAtlasSearchScope.Selection:
       Place := ', ' + TAtlasStrings.Text(TAtlasTextId.SearchScopeSelection);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   TAtlasIdeSearchMessages.Show(FFileName, TAtlasStrings.Fmt(TAtlasTextId.SearchListTitle,
     [FLast.Text, Mode, ExtractFileName(FFileName), Place, Length(Hits)]),

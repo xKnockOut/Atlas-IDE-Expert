@@ -174,6 +174,8 @@ begin
             Separator := '#10';
           TStringLiteralBreak.Space:
             Line := Line + ' ';
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
       if AMaxLineLength > 0 then
         Parts := Chunks(Line, AMaxLineLength - Length(AIndent) - Length(Separator) - 2)

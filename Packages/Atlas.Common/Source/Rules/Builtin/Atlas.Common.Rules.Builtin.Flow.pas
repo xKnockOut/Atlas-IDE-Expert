@@ -231,6 +231,8 @@ begin
           for Index := 0 to ANode.ChildCount - 2 do
             if SameText(RootName(ANode[Index]), Name) then
               Result := TSyntaxSearchStep.Found;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
     end) <> nil;
 end;
@@ -389,6 +391,8 @@ var
                 Result := True;
               end;
         end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 
@@ -416,6 +420,8 @@ var
                 Result := True;
               end;
         end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 
@@ -439,6 +445,8 @@ var
         end;
       TSyntaxKind.Block:
         Result := (AStatement.ChildCount > 0) and Leaves(AStatement[AStatement.ChildCount - 1]);
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 
@@ -1017,6 +1025,8 @@ var
               for Index := 0 to E.ChildCount - 1 do
                 if SameText(FreedPath(E[Index]), APath) then
                   AGuarded := True;
+          else
+            // Übrige Werte bewusst ohne Wirkung.
           end;
           for Index := E.ChildCount - 1 downto First do
             Pending.Push(E[Index]);
@@ -2300,6 +2310,8 @@ var
         TSyntaxKind.CaseStatement:
           if ANode[Index].Kind in [TSyntaxKind.CaseItem, TSyntaxKind.CaseElse] then
             Result := Result + [ANode[Index]];
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
   end;
 
@@ -2642,6 +2654,8 @@ var
                   SameText(ANode[1 - Index].Name, 'nil') then
                   AddChecked(FreedPath(ANode[Index]));
           end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
     end;
 

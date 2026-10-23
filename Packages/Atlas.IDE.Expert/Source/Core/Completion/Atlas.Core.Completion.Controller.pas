@@ -412,16 +412,16 @@ end;
 procedure TAtlasCompletionController.SelectChipAt(AIndex: Integer);
 var
   Counts: TAtlasChipCounts;
-  Chip: TAtlasChip;
+  mChip: TAtlasChip;
 begin
   // Wie angezeigt: nur Chips mit Treffern, "Alle" immer.
   Counts := TAtlasRanking.ChipCounts(FItems, FPrefix);
-  for Chip := Low(TAtlasChip) to High(TAtlasChip) do
-    if (Chip = TAtlasChip.All) or (Counts[Chip] > 0) then
+  for mChip := Low(TAtlasChip) to High(TAtlasChip) do
+    if (mChip = TAtlasChip.All) or (Counts[mChip] > 0) then
     begin
       if AIndex = 0 then
       begin
-        SelectChip(Chip);
+        SelectChip(mChip);
         Exit;
       end;
       Dec(AIndex);
@@ -625,8 +625,8 @@ procedure TAtlasCompletionController.Refresh(AKeepSelection: Boolean);
 var
   SelectedIndex, Position, Shown: Integer;
   Options: TAtlasRankOptions;
-  Usage: TAtlasUsage;
-  Items: TAtlasCompletionItems;
+  mUsage: TAtlasUsage;
+  mItems: TAtlasCompletionItems;
   Timings: TAtlasQueryTimings;
   Stamp: Int64;
 begin
@@ -649,12 +649,12 @@ begin
     Options.ListMode := FListMode;
   if FUsage <> nil then
   begin
-    Usage := FUsage;
-    Items := FItems;
+    mUsage := FUsage;
+    mItems := FItems;
     Options.Boost :=
       function(AIndex: Integer): Integer
       begin
-        Result := Usage.Boost(Items[AIndex]);
+        Result := mUsage.Boost(mItems[AIndex]);
       end;
   end;
   FOrder := TAtlasRanking.Order(FItems, FPrefix, Options, FRestStart);

@@ -73,6 +73,8 @@ begin
         TFile.Delete(AFileName);
     TAtlasNewFilesMode.Delete:
       TFile.Delete(AFileName);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

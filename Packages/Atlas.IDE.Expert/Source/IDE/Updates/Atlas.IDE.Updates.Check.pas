@@ -233,20 +233,20 @@ end;
 procedure TAtlasIdeUpdates.CheckNow;
 var
   Source: IAtlasVersionSource;
-  State: TAtlasUpdateState;
+  mState: TAtlasUpdateState;
 begin
   if (FSource = nil) or (FThread <> nil) or TAtlasShutdown.Signalled or
     not TAtlasIdeSettings.Current.UpdatesCheck or not TAtlasUpdates.IsDue(FState.LastCheck, Now) then
     Exit;
   Source := FSource;
-  State := FState;
+  mState := FState;
   FThread := TThread.CreateAnonymousThread(
     procedure
     var
       Outcome: TAtlasUpdateResult;
       Checked: TAtlasUpdateState;
     begin
-      Checked := State;
+      Checked := mState;
       try
         Outcome := TAtlasUpdates.Run(Source, Checked, True, TAtlasPluginVersion.Version,
           TAtlasUpdates.IdeVersion, Now);
@@ -314,6 +314,8 @@ begin
       Log('Update-Prüfung: aktuell');
     TAtlasUpdateOutcome.Failed:
       Log('Update-Prüfung fehlgeschlagen: ' + AResult.Error);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

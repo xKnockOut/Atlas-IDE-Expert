@@ -95,7 +95,7 @@ end;
 function TAtlasNoteTip.Measure(const ATitle, AText: string; const ALinks: TArray<string>): TSize;
 var
   Body: TRect;
-  TitleWidth, Width, LinkWidth, LineHeight: Integer;
+  TitleWidth, mWidth, LinkWidth, LineHeight: Integer;
   Link: string;
 begin
   FTitle := ATitle;
@@ -106,15 +106,15 @@ begin
   Canvas.Font := UIFont;
   TitleWidth := Canvas.TextWidth(FTitle);
   Body := MeasureText(Scale(MaxWidth));
-  Width := Max(TitleWidth, Body.Width);
+  mWidth := Max(TitleWidth, Body.Width);
   LineHeight := Canvas.TextHeight('Wg');
   for Link in FLinks do
   begin
     LinkWidth := Canvas.TextWidth(Link);
-    if LinkWidth > Width then
-      Width := LinkWidth;
+    if LinkWidth > mWidth then
+      mWidth := LinkWidth;
   end;
-  Result.cx := Min(Width, Scale(MaxWidth)) + 2 * Scale(Padding);
+  Result.cx := Min(mWidth, Scale(MaxWidth)) + 2 * Scale(Padding);
   Result.cy := LineHeight + Scale(4) + Body.Height + 2 * Scale(Padding) - Scale(2);
   if Length(FLinks) > 0 then
     Inc(Result.cy, Scale(6) + Length(FLinks) * (LineHeight + Scale(2)));
@@ -184,7 +184,7 @@ end;
 procedure TAtlasNoteTip.Paint;
 var
   Area, LinkArea: TRect;
-  TitleHeight, Top, Index: Integer;
+  TitleHeight, mTop, Index: Integer;
 begin
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Surface);
@@ -209,15 +209,15 @@ begin
   begin
     Canvas.Font.Color := ToColor(Colors.Accent);
     Canvas.Font.Style := [fsUnderline];
-    Top := Area.Bottom + Scale(6);
+    mTop := Area.Bottom + Scale(6);
     for Index := 0 to High(FLinks) do
     begin
-      LinkArea := Rect(Scale(Padding), Top, Min(ClientWidth - Scale(Padding), Scale(Padding) +
-        Canvas.TextWidth(FLinks[Index])), Top + TitleHeight);
+      LinkArea := Rect(Scale(Padding), mTop, Min(ClientWidth - Scale(Padding), Scale(Padding) +
+        Canvas.TextWidth(FLinks[Index])), mTop + TitleHeight);
       DrawText(Canvas.Handle, PChar(FLinks[Index]), -1, LinkArea, DT_LEFT or DT_SINGLELINE or DT_NOPREFIX or
         DT_END_ELLIPSIS);
       FLinkRects[Index] := LinkArea;
-      Inc(Top, TitleHeight + Scale(2));
+      Inc(mTop, TitleHeight + Scale(2));
     end;
     Canvas.Font.Style := [];
   end;

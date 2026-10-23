@@ -16,6 +16,7 @@ uses
   Shell.Composition in 'Source\Shell\Shell.Composition.pas',
   Shell.CommandLine in 'Source\Shell\Shell.CommandLine.pas',
   Shell.Workspace in 'Source\Shell\Shell.Workspace.pas',
+  Shell.WorkspaceGroup in 'Source\Shell\Shell.WorkspaceGroup.pas',
   Shell.Linter in 'Source\Shell\Shell.Linter.pas',
   Shell.SlashHost in 'Source\Shell\Shell.SlashHost.pas',
   Shell.VcsChanges in 'Source\Shell\Shell.VcsChanges.pas',

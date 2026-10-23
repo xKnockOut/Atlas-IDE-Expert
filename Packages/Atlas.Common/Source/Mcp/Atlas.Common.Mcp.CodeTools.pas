@@ -4,7 +4,8 @@
 // und Befunde der Prüfregeln. Das Symbol wird per Name über den Index gefunden
 // und dann wie im LSP an seiner Deklaration aufgelöst.
 // Befunde und check_code lesen die Dateien mit den Symbolen des Projekts und
-// dessen Include-Dateien (CheckSource, #860), wie der Editor.
+// dessen Include-Dateien (CheckSource, #860), wie der Editor, und geben den
+// Regeln den Symbolindex und die Projektdienste mit (CheckProject, #1112).
 
 interface
 
@@ -34,6 +35,7 @@ type
     FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
     FCheckSource: TCheckSourceFunc;
+    FCheckProject: TCheckProjectFunc;
     function Locate(const AName: string; out ALocation: TSymbolLocation; out AHint: string): Boolean;
     function LineText(const AFileName: string; ALine: Integer): string;
   public
@@ -54,6 +56,11 @@ type
     class function Diagnostics(const ARules: TArray<IRule>; const ASettings: TServerSettings;
       const ARoot: string; const AFiles: TArray<string>; const AReadText: TReferenceReadText;
       const ASource: TCheckSourceFunc): string; overload; static;
+    /// <summary>Wie oben mit Projekt, Symbolindex und Projektdiensten je Datei aus AProject (#1112), wie im
+    /// Server.</summary>
+    class function Diagnostics(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+      const ARoot: string; const AFiles: TArray<string>; const AReadText: TReferenceReadText;
+      const ASource: TCheckSourceFunc; const AProject: TCheckProjectFunc): string; overload; static;
     class function ParseDirection(const AText: string): TMcpCallDirection; static;
     /// <summary>get_metrics (#66): Kennzahlen je Methode mit den Grenzwerten aus ASettings; Markdown-Bericht
     /// oder mit AJson die Metrikdaten. Pfade relativ zu ARoot.</summary>
@@ -78,6 +85,8 @@ type
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
     /// <summary>Symbole und Include-Dateien für check_code (#860); nil = Vordefinitionen (Win32).</summary>
     property CheckSource: TCheckSourceFunc read FCheckSource write FCheckSource;
+    /// <summary>Projekt, Symbolindex und Projektdienste für check_code (#1112); nil = ohne Index.</summary>
+    property CheckProject: TCheckProjectFunc read FCheckProject write FCheckProject;
   end;
 
 implementation
@@ -91,6 +100,7 @@ uses
   Atlas.Common.Lsp.Hierarchies,
   Atlas.Common.Lsp.QualifiedNames,
   Atlas.Common.Pascal.Preprocessor,
+  Atlas.Common.Rules.Scopes,
   Atlas.Common.Rules.Output,
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Mcp.Server,
@@ -356,11 +366,19 @@ end;
 class function TMcpCodeTools.Diagnostics(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const ARoot: string; const AFiles: TArray<string>; const AReadText: TReferenceReadText;
   const ASource: TCheckSourceFunc): string;
+begin
+  Result := Diagnostics(ARules, ASettings, ARoot, AFiles, AReadText, ASource, nil);
+end;
+
+class function TMcpCodeTools.Diagnostics(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const ARoot: string; const AFiles: TArray<string>; const AReadText: TReferenceReadText;
+  const ASource: TCheckSourceFunc; const AProject: TCheckProjectFunc): string;
 var
   Lines: TStringList;
   FileName, RelativePath, Text: string;
   Finding: TRuleFinding;
   Count, Checked: Integer;
+  Scopes: TFindingScopes;
 begin
   Lines := TStringList.Create;
   try
@@ -378,7 +396,7 @@ begin
       if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), FileName) then
         RelativePath := Copy(FileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
       for Finding in TFileChecker.CheckText(ARules, ASettings, RelativePath, Text,
-        TFileChecker.SourceOf(ASource, FileName)) do
+        TFileChecker.ProjectOf(AProject, FileName), TFileChecker.SourceOf(ASource, FileName), Scopes) do
       begin
         Inc(Count);
         if Count <= MaxFindings then
@@ -450,6 +468,7 @@ var
   CheckNames: Boolean;
   Source: TCheckSource;
   Processed: TPreprocessorResult;
+  Scopes: TFindingScopes;
 begin
   if AStartLine > 0 then
   begin
@@ -466,7 +485,8 @@ begin
   try
     Count := 0;
     Source := TFileChecker.SourceOf(FCheckSource, AFileName);
-    for Finding in TFileChecker.CheckText(ARules, ASettings, RelativePath, NewText, Source) do
+    for Finding in TFileChecker.CheckText(ARules, ASettings, RelativePath, NewText,
+      TFileChecker.ProjectOf(FCheckProject, AFileName), Source, Scopes) do
     begin
       Inc(Count);
       if Count <= MaxFindings then

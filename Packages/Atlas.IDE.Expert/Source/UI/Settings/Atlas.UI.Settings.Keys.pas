@@ -261,20 +261,20 @@ end;
 
 procedure TAtlasKeysPage.UpdateRow(AIndex: Integer);
 var
-  Owner, Text: string;
+  mOwner, mText: string;
   Status: TAtlasKeyStatus;
 begin
-  Text := Trim(FRows[AIndex].Key.Text);
-  if (Text <> '') and (TextToShortCut(Text) = 0) then
+  mText := Trim(FRows[AIndex].Key.Text);
+  if (mText <> '') and (TextToShortCut(mText) = 0) then
   begin
-    FRows[AIndex].Status.Caption := TAtlasStrings.Fmt(TAtlasTextId.KeysInvalid, [Text]);
+    FRows[AIndex].Status.Caption := TAtlasStrings.Fmt(TAtlasTextId.KeysInvalid, [mText]);
     Exit;
   end;
-  Owner := '';
+  mOwner := '';
   if Assigned(FOwnerOf) and (FEntries[AIndex].Key <> 0) then
-    Owner := FOwnerOf(FEntries[AIndex].Key);
-  Status := FEntries[AIndex].Status(Owner);
-  FRows[AIndex].Status.Caption := StatusText(FEntries[AIndex], Owner);
+    mOwner := FOwnerOf(FEntries[AIndex].Key);
+  Status := FEntries[AIndex].Status(mOwner);
+  FRows[AIndex].Status.Caption := StatusText(FEntries[AIndex], mOwner);
   FUpdating := True;
   try
     FRows[AIndex].Choice.Choice := Ord(FEntries[AIndex].Choice);

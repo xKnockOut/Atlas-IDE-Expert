@@ -213,6 +213,7 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.ConsideredUsed.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.ProjectFiles.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Naming.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.UnitLookup.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas"/>
@@ -272,6 +273,7 @@
         <DCCReference Include="Support\Atlas.Tests.LeakMonitor.pas"/>
         <DCCReference Include="Support\Atlas.Tests.LeakMonitor.Tests.pas"/>
         <DCCReference Include="Support\Atlas.Tests.RuleAssert.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.RtlStubs.pas"/>
         <DCCReference Include="Support\Atlas.Tests.SmallStack.pas"/>
         <DCCReference Include="Support\Atlas.Tests.SlashHost.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Engine.Tests.pas"/>
@@ -921,6 +923,7 @@
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.BuildTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Paths.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Workspace.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.WorkspaceGroup.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Compiler.pas"/>
         <DCCReference Include="Application\Shell\Shell.Compiler.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.pas"/>
@@ -936,6 +939,7 @@
         <DCCReference Include="Application\Shell\Shell.Diagnostics.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.SlashHost.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Workspace.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.WorkspaceGroup.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Bootstrap.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Commands.Build.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Commands.Index.pas"/>
