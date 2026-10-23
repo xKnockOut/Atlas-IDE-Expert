@@ -323,6 +323,12 @@ begin
   // Gerüst einer anonymen Methode (#468): der erwartete Typ.
   if AItem.MethodRef <> '' then
     Result := Result + [MakeTag(AItem.MethodRef, TAtlasTagKind.Accent)];
+  // Exception-Klassen (#483): Ein früherer Zweig fängt die Klasse schon, dieser würde nie erreicht.
+  if AItem.Unreachable <> '' then
+  begin
+    Result := Result + [MakeTag('nie erreicht: ' + AItem.Unreachable + ' davor', TAtlasTagKind.Warn)];
+    Result[High(Result)].Filled := True;
+  end;
   if AItem.Count > 0 then
     Result := Result + [MakeTag(IntToStr(AItem.Count), TAtlasTagKind.Accent)];
   // Zirkelbezug im uses-Abschnitt (#469).

@@ -57,6 +57,10 @@ type
     GenericParam: Integer;
     /// <summary>Name in einer Attributklammer vor einer Deklaration (#465): nur Attributklassen.</summary>
     Attribute: Boolean;
+    /// <summary>Name nach "raise " bzw. "on E: " (#483): nur Exception-Klassen; ExceptionToken ist das Token davor
+    /// (raise bzw. ":").</summary>
+    Exceptions: Boolean;
+    ExceptionToken: Integer;
   end;
 
   /// <summary>Zeile von „Alle Felder zuweisen“ (#491) für die Liste mit Kontrollkästchen.</summary>
@@ -222,6 +226,11 @@ type
     /// <summary>Gerüst einer anonymen Methode (#468): der erwartete Methodenreferenztyp; Atlas zeigt ihn als Tag.
     /// '' sonst.</summary>
     MethodRef: string;
+    /// <summary>Exception-Klassen (#483): 'raise' (Übernahme mit Create), 'try' (Gruppe „Aus dem try-Block“),
+    /// 'general' („Allgemein“); '' sonst. Unreachable: Klasse eines früheren Zweigs, die diese schon fängt.
+    /// </summary>
+    ExceptionGroup: string;
+    Unreachable: string;
   end;
 
   TCompletionItems = record

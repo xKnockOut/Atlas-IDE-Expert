@@ -214,6 +214,11 @@ type
     /// <summary>Gerüst einer anonymen Methode (#468): erwarteter Methodenreferenztyp, als Tag gezeigt; '' sonst.
     /// </summary>
     MethodRef: string;
+    /// <summary>Exception-Klassen (#483): Gruppe ("raise" nach raise, "try" bzw. "general" nach "on E: " mit den
+    /// Überschriften „Aus dem try-Block“ und „Allgemein“; '' sonst) und die Klasse eines früheren Zweigs, die diese
+    /// schon fängt (Marke „nie erreicht“; '' sonst).</summary>
+    ExceptionGroup: string;
+    Unreachable: string;
     /// <summary>uses-Abschnitt (#469): Gruppe ("project", "rtl", "library"), Abschnitt, in dem die Unit schon steht
     /// ("interface", "implementation"; '' sonst), Kette eines Zirkelbezugs ("uA → uB → Haupt"; '' ohne), die ersten
     /// exportierten Typen samt ihrer Gesamtzahl und die schon eingebundenen Units für die Fußzeile.</summary>

@@ -325,6 +325,10 @@ type
     /// <summary>In with-Blöcken Mitglieder des with-Objekts mit „aus Ausdruck“ und der Warnung „verdeckt Self.Name“
     /// bzw. „verdeckt lokale Variable Name“ (#481). Aus: ohne Herkunft.</summary>
     WithOrigin: Boolean;
+    /// <summary>Nach "raise " und "on E: " nur Exception-Klassen; nach raise mit Create('') bzw. CreateFmt, nach on
+    /// zuerst die aus dem try-Block (XMLDoc), ohne schon behandelte, mit Warnung bei unerreichbaren Zweigen (#483).
+    /// Aus: die gewöhnliche Liste.</summary>
+    ExceptionClasses: Boolean;
     /// <summary>Gleichnamige Bezeichner aus verschiedenen Units als Varianten mit ihrer Unit; die vom Compiler
     /// gewählte zuerst mit „aktiv“ (#475). Aus: nur die aktive.</summary>
     SameNameVariants: Boolean;
@@ -881,6 +885,7 @@ begin
   Result.Attributes := True;
   Result.AnonymousMethods := True;
   Result.WithOrigin := True;
+  Result.ExceptionClasses := True;
   Result.SameNameVariants := True;
   Result.SameNameInsert := TCompletionSameNameInsert.Prefix;
   Result.ShowFmxUnits := False;

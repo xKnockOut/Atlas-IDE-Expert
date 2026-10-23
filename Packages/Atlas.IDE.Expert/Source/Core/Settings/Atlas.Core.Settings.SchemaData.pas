@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2101] of string = (
+  Lines: array[0..2107] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1147,6 +1147,15 @@ const
     '          "description": "In with-Blöcken Mitglieder des with-Objekts kennzeichnen: Marke „aus qryOrders“ (bei verschachtelten with das innerste passende Objekt, wie der Compiler), und wenn das Mitgli' +
       'ed einen gleichnamigen lokalen Namen oder ein Mitglied von Self verdeckt, die Warnmarke „verdeckt Self.Name“ mit Warnfläche. Das Detailpanel nennt beide Bedeutungen. Aus: Mitglieder ohne Herkunft.",',
     '          "x-issue": "#481"',
+    '        },',
+    '        "exceptionClasses": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Nach „raise “ und „on E: “ nur Exception-Klassen anbieten. Nach raise Projektklassen vor denen der Bibliotheken, Übernahme als EFoo.Create('''') mit dem Cursor zwischen den A' +
+      'nführungszeichen, dazu je Klasse ein Eintrag EFoo.CreateFmt. Nach „on E: “ zuerst die Gruppe „Aus dem try-Block“ mit den Klassen aus <exception cref> der dort aufgerufenen Routinen (und bekannten Fäll' +
+      'en der RTL wie StrToInt → EConvertError), darunter „Allgemein“; im selben except schon behandelte Klassen fehlen, Klassen, die ein früherer Zweig schon fängt, tragen die Warnung „nie erreicht“. Aus: d' +
+      'ie gewöhnliche Liste.",',
+    '          "x-issue": "#483"',
     '        },',
     '        "sameNameVariants": {',
     '          "type": "boolean",',

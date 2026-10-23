@@ -512,6 +512,12 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"completion": {"withOrigin": "nein"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Exception-Klassen (#483)
+  Assert.IsTrue(Parse('{}', Issues).Completion.ExceptionClasses);
+  Assert.IsFalse(Parse('{"completion": {"exceptionClasses": false}}', Issues).Completion.ExceptionClasses);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"exceptionClasses": []}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Gleiche Namen aus verschiedenen Units (#475)
   Assert.IsTrue(Parse('{}', Issues).Completion.SameNameVariants);
   Assert.IsTrue(Parse('{}', Issues).Completion.SameNameInsert = TCompletionSameNameInsert.Prefix);
