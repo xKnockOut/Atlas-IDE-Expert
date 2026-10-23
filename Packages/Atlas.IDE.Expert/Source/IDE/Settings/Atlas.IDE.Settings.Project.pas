@@ -33,7 +33,7 @@ type
   private class var
     FCommand: TAtlasSettingsCommand;
   private
-    class procedure ExecuteFile(const AFileName: string; AGlobal: Boolean); static;
+    class procedure ExecuteFile(const AFileName: string; AGlobal: Boolean; const ARuleId: string); static;
   public const
     CheckCommand = 'atlas.server.checkSettings';
     CatalogCommand = 'atlas.server.settingsCatalog';
@@ -48,6 +48,9 @@ type
     class procedure Execute; static;
     /// <summary>Dialog für die globale Datei zeigen und Änderungen schreiben.</summary>
     class procedure ExecuteGlobal; static;
+    /// <summary>„Regel einstellen…“ (#909): Dialog des aktiven Projekts, ohne Projekt der globale, im Knoten der
+    /// Gruppe der Regel mit markierter Regel.</summary>
+    class procedure ShowRule(const ARuleId: string); static;
     /// <summary>Inhalt der Datei als Text (ohne BOM); '' wenn es sie nicht gibt.</summary>
     class function ReadText(const AFileName: string; out AHasBom: Boolean): string; static;
     /// <summary>atlas.json des aktiven Projekts als Objekt; nil ohne Projekt, ohne Datei oder bei ungültigem
@@ -217,7 +220,7 @@ begin
       PChar(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsTitle)), MB_ICONINFORMATION or MB_OK);
     Exit;
   end;
-  ExecuteFile(FileName, False);
+  ExecuteFile(FileName, False, '');
 end;
 
 class procedure TAtlasProjectSettings.ExecuteGlobal;
@@ -226,10 +229,27 @@ var
 begin
   FileName := GlobalFile;
   if FileName <> '' then
-    ExecuteFile(FileName, True);
+    ExecuteFile(FileName, True, '');
 end;
 
-class procedure TAtlasProjectSettings.ExecuteFile(const AFileName: string; AGlobal: Boolean);
+class procedure TAtlasProjectSettings.ShowRule(const ARuleId: string);
+var
+  FileName: string;
+begin
+  // Im Projekt, wenn eins aktiv ist: Dort wirkt die Einstellung für diesen Befund; sonst global.
+  FileName := SettingsFile;
+  if FileName <> '' then
+    ExecuteFile(FileName, False, ARuleId)
+  else
+  begin
+    FileName := GlobalFile;
+    if FileName <> '' then
+      ExecuteFile(FileName, True, ARuleId);
+  end;
+end;
+
+class procedure TAtlasProjectSettings.ExecuteFile(const AFileName: string; AGlobal: Boolean;
+  const ARuleId: string);
 var
   Content: TAtlasTextFileContent;
   GlobalText, Title, Project, DprojText: string;
@@ -294,6 +314,8 @@ begin
     try
       Dialog.Catalog := Catalog;
       Dialog.ServerChecks := Catalog <> nil;
+      if ARuleId <> '' then
+        Dialog.SelectRule(ARuleId);
       if not AGlobal then
       begin
         Dialog.ProjectHint := ExtractFileName(Project);

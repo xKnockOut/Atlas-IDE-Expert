@@ -112,6 +112,10 @@ type
     procedure DialogShowsOriginAndResetsToGlobal;
     [Test]
     procedure DialogRuleTableChangesOnlyThatRule;
+    /// <summary>Die Dialoge der Einstellungsdateien zeigen die Prüfregeln mit einem Knoten je Gruppe (#909).
+    /// </summary>
+    [Test]
+    procedure DialogRulesByGroupNodes;
     [Test]
     procedure DialogValidatesBeforeSaving;
     [Test]
@@ -145,7 +149,7 @@ type
     /// <summary>#909: Bereich Prüfregeln mit Prüffenster, Knoten je Gruppe, Hauptschalter, Reveal einer Regel
     /// und den Änderungen für settings.json.</summary>
     [Test]
-    procedure RulesAreaEditsGlobalRules;
+    procedure RulesAreaLinksToDialogs;
     /// <summary>#1108: offene Units zuerst auf dem Knoten „Prüffenster“; der Schalter sperrt seine Unterpunkte.
     /// </summary>
     [Test]
@@ -2398,6 +2402,48 @@ begin
   end;
 end;
 
+procedure TAtlasSettingsPageTests.DialogRulesByGroupNodes;
+const
+  CatalogText = '{"rules": [{"id": "magic-number", "name": "Magische Zahl", "category": "code-smell",' +
+    ' "severity": "hint", "group": "style"}, {"id": "lock-without-finally", "name": "Sperre ohne finally",' +
+    ' "category": "bug", "severity": "warning", "group": "threads"}]}';
+var
+  Model: TAtlasSettingsModel;
+  Dialog: TAtlasProjectSettingsDialog;
+  Catalog: TJSONValue;
+begin
+  Catalog := TJSONObject.ParseJSONValue(CatalogText);
+  Model := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson), '{}', '', True);
+  try
+    Dialog := TAtlasProjectSettingsDialog.CreateDialog(nil, Model, 'C:\Users\X\settings.json');
+    try
+      Dialog.Catalog := Catalog;
+      // Unter der Seite mit "rules" je Gruppe ein Knoten (Aufbau wie früher in Tools › Optionen).
+      Assert.IsNotNull(Dialog.GroupNode('threads'));
+      Assert.IsNotNull(Dialog.GroupNode('style'));
+      Assert.AreEqual(Model.Fields[Model.IndexOf('rules')].Page, Dialog.GroupNode('threads').Parent.Text);
+      // Knoten der Gruppe: nur ihre Regeln; der Hauptschalter schreibt "group:threads".
+      Dialog.PageTree.Selected := Dialog.GroupNode('threads');
+      Assert.AreEqual('threads', Dialog.RuleEditor.FixedGroup);
+      Assert.AreEqual(1, Dialog.RuleList.Items.Count);
+      Dialog.RuleEditor.Master.Checked := False;
+      Assert.Contains(Model.ResultText, '"group:threads"');
+      // „Regel einstellen…“: Knoten der Gruppe der Regel, die Regel markiert.
+      Assert.IsTrue(Dialog.SelectRule('magic-number'));
+      Assert.IsTrue(Dialog.PageTree.Selected = Dialog.GroupNode('style'));
+      Assert.AreEqual('style', Dialog.RuleEditor.FixedGroup);
+      Assert.IsNotNull(Dialog.RuleList.Selected);
+      Assert.AreEqual('magic-number', Dialog.RuleList.Selected.Caption);
+      Assert.IsFalse(Dialog.SelectRule('unbekannt'));
+    finally
+      Dialog.Free;
+    end;
+  finally
+    Model.Free;
+    Catalog.Free;
+  end;
+end;
+
 procedure TAtlasSettingsPageTests.DialogValidatesBeforeSaving;
 var
   Model: TAtlasSettingsModel;
@@ -2543,79 +2589,44 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsPageTests.RulesAreaEditsGlobalRules;
-const
-  CatalogText = '{"rules": [{"id": "magic-number", "name": "Magische Zahl", "category": "code-smell",' +
-    ' "severity": "hint", "group": "style"}, {"id": "lock-without-finally", "name": "Sperre ohne finally",' +
-    ' "category": "bug", "severity": "warning", "group": "threads"}]}';
+procedure TAtlasSettingsPageTests.RulesAreaLinksToDialogs;
 var
   Host: TForm;
   Page: TAtlasSettingsPage;
-  Catalog: TJSONValue;
-  Threads, Style: TAtlasRulesEditor;
-  Changes: TArray<TPair<string, string>>;
-  Change: TPair<string, string>;
-  Found: Boolean;
   Settings: TAtlasPluginSettings;
-  Requested: Integer;
+  Project, Global: Integer;
 begin
   TAtlasSettingsPage.ForgetTreeState;
-  Catalog := TJSONObject.ParseJSONValue(CatalogText);
   Host := TForm.CreateNew(nil);
   try
     Page := TAtlasSettingsPage.Create(Host);
     Page.Parent := Host;
     Page.HandleNeeded;
-    // Knoten: Prüffenster mit den Einstellungen des Fensters, „Profile und Baseline“, je Gruppe einer.
+    // Knoten: Prüffenster, Compiler vorab, „Profile und Baseline“; die Regeln stehen in den Dialogen der
+    // Einstellungsdateien.
     Assert.IsTrue(SheetOf(Page.ProblemsWindowCheck) = Page.NodeSheet('rules.window'));
     Assert.IsTrue(SheetOf(Page.ProblemsLiveCheck) = Page.NodeSheet('rules.window'));
     Assert.IsNotNull(Page.NodeSheet('rules.profiles'));
     Assert.IsTrue(SheetOf(Page.BaselineInfoLabel) = Page.NodeSheet('rules.profiles'));
-    Threads := Page.RulesEditor('threads');
-    Style := Page.RulesEditor('style');
-    Assert.IsNotNull(Threads);
-    Assert.IsNotNull(Style);
-    // Tabelle und Auswahllisten entstehen mit dem Fenster (wie beim Öffnen des Knotens).
-    Threads.HandleNeeded;
-    Assert.IsTrue(SheetOf(Threads) = Page.NodeSheet('rules.group.threads'));
-    Assert.IsNotNull(Page.RulesEditor(''), 'Hauptknoten mit allen Regeln');
-    Assert.AreEqual('', Page.NodeOfSheet(SheetOf(Page.RulesEditor(''))));
-    // Katalog einmal anfordern; bis dahin „wird geladen“.
-    Requested := 0;
-    Page.OnRulesCatalog :=
+    Assert.IsNull(Page.NodeSheet('rules.group.threads'), 'keine Regelgruppen in Tools › Optionen');
+    // Hauptknoten: Wege zum Projekt- und zum globalen Dialog.
+    Project := 0;
+    Global := 0;
+    Page.OnRulesProject :=
       procedure
       begin
-        Inc(Requested);
+        Inc(Project);
       end;
-    Assert.AreEqual(1, Requested);
-    Assert.IsTrue(Threads.Status.Visible);
-    Page.RulesLoaded(Catalog, '{"magic-number": "off" }');
-    Assert.AreEqual(1, Threads.List.Items.Count);
-    Assert.AreEqual(0, Integer(Length(Page.RulesChanges)), 'ohne Änderung nichts zu schreiben');
-    // Hauptschalter der Gruppe: alle Knoten sehen denselben Wert; nur der Schalter ist zu schreiben.
-    Threads.Master.Checked := False;
-    Assert.IsFalse(Threads.List.Enabled, 'Tabelle gesperrt');
-    Assert.IsTrue(Page.RulesEditor('').RulesJson.Contains('"group:threads":"off"'));
-    Changes := Page.RulesChanges;
-    Assert.AreEqual(1, Integer(Length(Changes)));
-    Assert.AreEqual('rules.group:threads', Changes[0].Key);
-    Assert.AreEqual('"off"', Changes[0].Value);
-    // „Regel einstellen…“ öffnet den Knoten der Gruppe und markiert die Regel.
-    Assert.IsTrue(Page.Reveal(TAtlasSettingsPage.RuleRevealPrefix + 'magic-number'));
-    Assert.IsTrue(Page.Pages.ActivePage = Page.NodeSheet('rules.group.style'));
-    Assert.IsNotNull(Style.List.Selected);
-    Assert.AreEqual('magic-number', Style.List.Selected.Caption);
-    Style.SetSeverity('error');
-    Changes := Page.RulesChanges;
-    Assert.AreEqual(2, Integer(Length(Changes)));
-    Found := False;
-    for Change in Changes do
-      if Change.Key = 'rules.magic-number' then
+    Page.OnRulesGlobal :=
+      procedure
       begin
-        Assert.AreEqual('"error"', Change.Value);
-        Found := True;
+        Inc(Global);
       end;
-    Assert.IsTrue(Found);
+    Assert.AreEqual('', Page.NodeOfSheet(SheetOf(Page.RulesProjectButton)));
+    Page.RulesProjectButton.Click;
+    Page.RulesGlobalButton.Click;
+    Assert.AreEqual(1, Project);
+    Assert.AreEqual(1, Global);
     // Einstellungen des Prüffensters im Rundweg.
     Settings := TAtlasPluginSettings.Defaults;
     Settings.ProblemsWindowScope := 'project';
@@ -2629,7 +2640,7 @@ begin
     Assert.IsFalse(Page.HoverProblemActionsCheck.Checked, 'Hover-Aktionen geladen');
     Page.ProblemsWindowScopeChoice.Choice := 0;
     Page.ProblemsWindowCompilerCheck.Checked := True;
-    // Gruppe „Compiler vorab“ (#1024): im Knoten der Gruppe unter dem Regel-Editor.
+    // Gruppe „Compiler vorab“ (#1024): eigener Knoten mit den Plugin-Einstellungen der Gruppe.
     Assert.AreEqual(0, Page.ProblemsCompilerMergeChoice.Choice);
     Assert.IsTrue(Page.ProblemsShowCompilerCodeCheck.Checked);
     Assert.IsTrue(SheetOf(Page.ProblemsShowCompilerCodeCheck) = Page.NodeSheet('rules.group.compiler'));
@@ -2646,7 +2657,6 @@ begin
     Assert.IsFalse(Settings.HoverProblemActions, 'Hover-Aktionen gespeichert');
   finally
     Host.Free;
-    Catalog.Free;
     TAtlasSettingsPage.ForgetTreeState;
   end;
 end;

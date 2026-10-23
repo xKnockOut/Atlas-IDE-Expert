@@ -699,7 +699,9 @@ type
     SettingsEditorToolbarCustomize, EditorToolbarOk, EditorToolbarCancel,
     SettingsQuickBookmarks, SettingsQuickBookmarksGutter, SettingsQuickBookmarksGutterClick, SettingsQuickBookmarksNumberedKeys, SettingsQuickBookmarkChordWait, SettingsQuickBookmarksScope, SettingsQuickBookmarksScopeProject, SettingsQuickBookmarksScopeFile, SettingsQuickBookmarksImportIde, QuickBookmarkToggleCommand, NextBookmarkCommand, PreviousBookmarkCommand, QuickBookmarkSetCommand, QuickBookmarkJumpCommand, QuickBookmarkSetN, QuickBookmarkJumpN, QuickBookmarkNotAssigned, QuickBookmarkNotFound, QuickBookmarkOtherFile, QuickBookmarkNoneInFile, QuickBookmarkTipTitle, QuickBookmarkTipUnnumbered, QuickBookmarkTipMore, QuickBookmarkTipJump, QuickBookmarkTipFree, QuickBookmarkMenuNumber, QuickBookmarkMenuNumberUsed, QuickBookmarkMenuName, QuickBookmarkMenuRemove, QuickBookmarkMenuRemoveFile, QuickBookmarkMenuWindow, QuickBookmarkImported, QuickBookmarkChordFailed, QuickBookmarkDisabled, BookmarksColumnNumber, BookmarksOnlyFile,
     // Element „Schnelle Lesezeichen“ im Menü „Ausblenden“ (#1104).
-    ElementQuickBookmarks, ElementQuickBookmarksPlural);
+    ElementQuickBookmarks, ElementQuickBookmarksPlural,
+    // Seite Prüfregeln: Weg zum Dialog der globalen Einstellungen (#909).
+    RulesGlobalButton);
 
   TAtlasStrings = class
   private class var
@@ -2135,7 +2137,7 @@ const
      'Ohne laufenden Server fehlt der Regelkatalog; hier stehen nur die eingestellten Regeln.',
      'Keine Regeln gefunden.',
      'Regel in der Tabelle wählen, um sie einzustellen.',
-     'Gilt für alle Projekte (settings.json); atlas.json eines Projekts übersteuert je Regel.',
+     'Die Prüfregeln stehen im Projekt (atlas.json) und für alle Projekte in settings.json, je Gruppe mit Hauptschalter; atlas.json übersteuert je Regel.',
      'Fehler finden',
      'Exceptions',
      'Threads',
@@ -2286,7 +2288,8 @@ const
      'Faltungsakkord Strg+Umschalt+K, %s ließ sich nicht an die IDE weiterreichen.',
      'Schnelle Lesezeichen sind ausgeschaltet (bookmarks.quick).',
      'Nr.',
-     'nur diese Datei', 'Marker eines schnellen Lesezeichens', 'Marker der schnellen Lesezeichen'),
+     'nur diese Datei', 'Marker eines schnellen Lesezeichens', 'Marker der schnellen Lesezeichen',
+     'Globale Prüfregeln bearbeiten …'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3627,7 +3630,7 @@ const
      'Without a running server the rule catalog is missing; only the configured rules are listed.',
      'No rules found.',
      'Select a rule in the table to configure it.',
-     'Applies to all projects (settings.json); a project''s atlas.json overrides it per rule.',
+     'Rules are set per project (atlas.json) and for all projects (settings.json), with a master switch per group; atlas.json overrides per rule.',
      'Find bugs',
      'Exceptions',
      'Threads',
@@ -3777,7 +3780,8 @@ const
      'Folding chord Ctrl+Shift+K, %s could not be passed on to the IDE.',
      'Quick bookmarks are switched off (bookmarks.quick).',
      'No.',
-     'this file only', 'quick bookmark marker', 'quick bookmark markers'));
+     'this file only', 'quick bookmark marker', 'quick bookmark markers',
+     'Edit global rules …'));
 
 { TAtlasStrings }
 

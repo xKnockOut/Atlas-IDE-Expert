@@ -12,10 +12,12 @@
 //     Delphi-Versionen, Konfigurationen und Plattformen der .dproj, Profile.
 //   - Textfelder mit Beispielen im Schema als Auswahl mit freier Eingabe.
 //   - Dateiauswahl für x-control „Datei wählen“ (logFile, traceFile).
-//   - "rules" mit dem Regel-Editor der Seite Prüfregeln (TAtlasRulesEditor,
-//     #909) aus dem Regelkatalog (Catalog): Gruppen mit Hauptschalter,
-//     Schweregrad, Ausnahmen und Optionen; Werte der globalen Datei als
-//     „(global: …)“. Geändert wird je Regel nur ihr Wert in der Datei.
+//   - "rules" mit dem Regel-Editor (TAtlasRulesEditor, #909) aus dem
+//     Regelkatalog (Catalog): auf der Seite alle Regeln mit Suche, darunter im
+//     Seitenbaum ein Knoten je Gruppe mit Hauptschalter. Schweregrad, Ausnahmen
+//     und Optionen; Werte der globalen Datei als „(global: …)“. Geändert wird je
+//     Regel nur ihr Wert in der Datei. Die Prüfregeln stehen nur hier (Projekt
+//     und „Weitere globale Einstellungen“), nicht in Tools › Optionen.
 //   - Übrige Werte (profiles, overrides, dfmPropertyRules, profile als Objekt)
 //     als JSON-Text.
 // Vor dem Schließen mit OK prüft OnValidate den neuen Text (beim Server, sonst
@@ -62,7 +64,15 @@ type
     FFileEdits: TArray<TEdit>;
     FTextChoices: TArray<TArray<TAtlasSettingChoice>>;
     FPages: TArray<string>;
-    FPageList: TListBox;
+    FPageTree: TTreeView;
+    /// <summary>Knoten je Seite (Index wie FPages) und je Regelgruppe (Index wie FGroups).</summary>
+    FPageNodes: TArray<TTreeNode>;
+    FGroups: TArray<string>;
+    FGroupNodes: TArray<TTreeNode>;
+    /// <summary>Gezeigt: Seite FCurrentPage oder Gruppe FCurrentGroup (Index), das andere -1.</summary>
+    FCurrentPage: Integer;
+    FCurrentGroup: Integer;
+    FSelecting: Boolean;
     FBox: TScrollBox;
     FHint: TLabel;
     FOnOpenFile: TProc;
@@ -81,13 +91,17 @@ type
     function ChoicesOf(AIndex: Integer): TArray<TAtlasSettingChoice>;
     function ResetCaption: string;
     function AddLabel(const AText: string; ATop: Integer): TLabel;
+    procedure ClearBox;
     procedure ShowPage(APage: Integer);
+    procedure ShowGroup(AGroup: Integer);
+    procedure ShowCurrent;
+    procedure SelectNode(ANode: TTreeNode);
     procedure UpdateState(AIndex: Integer);
     procedure UpdateHint;
-    function AddRuleTable(ATop: Integer): Integer;
+    function AddRuleTable(ATop: Integer; const AGroup: string): Integer;
     procedure RuleEditorChange(Sender: TObject);
     function GetRuleList: TListView;
-    procedure PageClick(Sender: TObject);
+    procedure PageTreeChange(Sender: TObject; Node: TTreeNode);
     procedure CheckClick(Sender: TObject);
     procedure EditChange(Sender: TObject);
     procedure ComboChange(Sender: TObject);
@@ -114,10 +128,16 @@ type
     function StateText(const APath: string): string;
     /// <summary>Schweregrad einer Regel wie über die Tabelle setzen ('' = Vorgabe); False ohne die Regel.</summary>
     function SetRuleSeverity(const AId, ASeverity: string): Boolean;
+    /// <summary>Knoten der Gruppe der Regel zeigen und die Regel markieren („Regel einstellen…“, #909); False
+    /// ohne Katalog, ohne "rules" oder ohne die Regel.</summary>
+    function SelectRule(const AId: string): Boolean;
+    /// <summary>Knoten der Regelgruppe AGroup; nil ohne.</summary>
+    function GroupNode(const AGroup: string): TTreeNode;
     /// <summary>Prüfen wie bei OK; True, wenn gespeichert werden darf.</summary>
     function Validate: Boolean;
     property Model: TAtlasSettingsModel read FModel;
     property Pages: TArray<string> read FPages;
+    property PageTree: TTreeView read FPageTree;
     property RuleList: TListView read GetRuleList;
     /// <summary>Regel-Editor auf der gezeigten Seite; nil ohne "rules".</summary>
     property RuleEditor: TAtlasRulesEditor read FRuleEditor;
@@ -149,6 +169,8 @@ const
   Gap = 8;
   ControlWidth = 320;
   RulesPath = 'rules';
+  /// <summary>Data der Gruppenknoten ab hier; darunter der Index der Seite.</summary>
+  GroupBase = 10000;
 
 /// <summary>Gültiger JSON-Wert (auch Zahl oder String)?</summary>
 function IsJsonValue(const AText: string): Boolean;
@@ -167,9 +189,12 @@ var
   Bottom: TPanel;
   Button: TButton;
   FileLabel: TLabel;
-  Page: string;
+  Group: string;
+  Node: TTreeNode;
 begin
   inherited CreateNew(AOwner);
+  FCurrentPage := -1;
+  FCurrentGroup := -1;
   FModel := AModel;
   if FModel.Global then
     Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsGlobalTitle)
@@ -244,14 +269,36 @@ begin
   FHint.Font.Color := clGrayText;
   FHint.Visible := False;
 
-  FPageList := TListBox.Create(Self);
-  FPageList.Parent := Self;
-  FPageList.Align := alLeft;
-  FPageList.Width := 170;
-  FPageList.OnClick := PageClick;
+  FPageTree := TTreeView.Create(Self);
+  FPageTree.Parent := Self;
+  FPageTree.Align := alLeft;
+  FPageTree.Width := 190;
+  FPageTree.ReadOnly := True;
+  FPageTree.HideSelection := False;
+  FPageTree.ShowLines := False;
+  FPageTree.RowSelect := True;
+  FPageTree.OnChange := PageTreeChange;
   FPages := TAtlasSettingsSchema.Pages(FModel.AllFields);
-  for Page in FPages do
-    FPageList.Items.Add(Page);
+  SetLength(FPageNodes, Length(FPages));
+  for Index := 0 to High(FPages) do
+  begin
+    FPageNodes[Index] := FPageTree.Items.Add(nil, FPages[Index]);
+    FPageNodes[Index].Data := Pointer(NativeInt(Index));
+  end;
+  // Prüfregeln (#909): unter der Seite mit "rules" je Gruppe ein Knoten mit Hauptschalter und Tabelle.
+  if FRuleIndex >= 0 then
+    for Index := 0 to High(FPages) do
+      if SameText(FPages[Index], FModel.Fields[FRuleIndex].Page) then
+      begin
+        for Group in TAtlasRuleTable.GroupIds do
+        begin
+          Node := FPageTree.Items.AddChild(FPageNodes[Index], AtlasRuleGroupCaption(Group));
+          Node.Data := Pointer(NativeInt(GroupBase + Length(FGroups)));
+          FGroups := FGroups + [Group];
+          FGroupNodes := FGroupNodes + [Node];
+        end;
+        FPageNodes[Index].Expand(False);
+      end;
 
   FBox := TScrollBox.Create(Self);
   FBox.Parent := Self;
@@ -259,11 +306,8 @@ begin
   FBox.BorderStyle := bsNone;
   FBox.VertScrollBar.Tracking := True;
 
-  if FPageList.Items.Count > 0 then
-  begin
-    FPageList.ItemIndex := 0;
-    ShowPage(0);
-  end;
+  if Length(FPageNodes) > 0 then
+    SelectNode(FPageNodes[0]);
 end;
 
 function TAtlasProjectSettingsDialog.SelectPage(const APage: string): Boolean;
@@ -273,11 +317,79 @@ begin
   for Index := 0 to High(FPages) do
     if SameText(FPages[Index], APage) then
     begin
-      FPageList.ItemIndex := Index;
-      ShowPage(Index);
+      SelectNode(FPageNodes[Index]);
       Exit(True);
     end;
   Result := False;
+end;
+
+procedure TAtlasProjectSettingsDialog.SelectNode(ANode: TTreeNode);
+begin
+  // Auch ein schon gewählter Knoten baut neu auf; OnChange käme dann nicht.
+  FSelecting := True;
+  try
+    FPageTree.Selected := ANode;
+  finally
+    FSelecting := False;
+  end;
+  PageTreeChange(FPageTree, ANode);
+end;
+
+procedure TAtlasProjectSettingsDialog.PageTreeChange(Sender: TObject; Node: TTreeNode);
+var
+  Tag: NativeInt;
+begin
+  if FSelecting or (Node = nil) or (FBox = nil) then
+    Exit;
+  Tag := NativeInt(Node.Data);
+  if Tag >= GroupBase then
+    ShowGroup(Tag - GroupBase)
+  else
+    ShowPage(Tag);
+end;
+
+procedure TAtlasProjectSettingsDialog.ShowCurrent;
+begin
+  if FCurrentGroup >= 0 then
+    ShowGroup(FCurrentGroup)
+  else if FCurrentPage >= 0 then
+    ShowPage(FCurrentPage);
+end;
+
+function TAtlasProjectSettingsDialog.GroupNode(const AGroup: string): TTreeNode;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(FGroups) do
+    if SameText(FGroups[Index], AGroup) then
+      Exit(FGroupNodes[Index]);
+  Result := nil;
+end;
+
+function TAtlasProjectSettingsDialog.SelectRule(const AId: string): Boolean;
+var
+  Row: TAtlasRuleRow;
+  Target: TTreeNode;
+  Index: Integer;
+begin
+  Result := False;
+  if (FRuleIndex < 0) or (FCatalog = nil) then
+    Exit;
+  Target := nil;
+  for Row in TAtlasRuleTable.Rows(FCatalog, FRulesJson, FGlobalRulesJson) do
+    if SameText(Row.Id, AId) then
+    begin
+      // Knoten der Gruppe der Regel, sonst die Seite mit allen Regeln.
+      Target := GroupNode(Row.Group);
+      if Target = nil then
+        for Index := 0 to High(FPages) do
+          if SameText(FPages[Index], FModel.Fields[FRuleIndex].Page) then
+            Target := FPageNodes[Index];
+    end;
+  if Target = nil then
+    Exit;
+  SelectNode(Target);
+  Result := (FRuleEditor <> nil) and FRuleEditor.SelectRule(AId);
 end;
 
 function TAtlasProjectSettingsDialog.StateText(const APath: string): string;
@@ -338,8 +450,7 @@ end;
 procedure TAtlasProjectSettingsDialog.SetProjectHint(const AValue: string);
 begin
   FProjectHint := AValue;
-  if FPageList.ItemIndex >= 0 then
-    ShowPage(FPageList.ItemIndex);
+  ShowCurrent;
 end;
 
 procedure TAtlasProjectSettingsDialog.SetServerChecks(AValue: Boolean);
@@ -400,16 +511,9 @@ var
   Field: TAtlasSettingField;
   Choices: TArray<TAtlasSettingChoice>;
 begin
-  FBox.VertScrollBar.Position := 0;
-  while FBox.ControlCount > 0 do
-    FBox.Controls[0].Free;
-  FRuleEditor := nil;
-  for Index := 0 to High(FStates) do
-  begin
-    FStates[Index] := nil;
-    FResets[Index] := nil;
-    FFileEdits[Index] := nil;
-  end;
+  ClearBox;
+  FCurrentPage := APage;
+  FCurrentGroup := -1;
   Y := Gap;
   for Index := 0 to FModel.Count - 1 do
   begin
@@ -442,7 +546,7 @@ begin
     Width_ := ControlWidth;
     if Index = FRuleIndex then
       // Regeltabelle aus dem Katalog; der Zustand gilt für "rules" als Ganzes.
-      Y := AddRuleTable(Y)
+      Y := AddRuleTable(Y, '')
     else if not FModel.Typed(Index) then
     begin
       // JSON-Text für alles, was mehr als ein einfacher Wert ist.
@@ -587,13 +691,46 @@ begin
   end;
 end;
 
-function TAtlasProjectSettingsDialog.AddRuleTable(ATop: Integer): Integer;
+procedure TAtlasProjectSettingsDialog.ClearBox;
+var
+  Index: Integer;
 begin
-  // Regel-Editor der Seite Prüfregeln (#909); er braucht für Tabelle und Auswahllisten ein Fenster.
+  FBox.VertScrollBar.Position := 0;
+  while FBox.ControlCount > 0 do
+    FBox.Controls[0].Free;
+  FRuleEditor := nil;
+  for Index := 0 to High(FStates) do
+  begin
+    FStates[Index] := nil;
+    FResets[Index] := nil;
+    FFileEdits[Index] := nil;
+  end;
+end;
+
+procedure TAtlasProjectSettingsDialog.ShowGroup(AGroup: Integer);
+var
+  Title: TLabel;
+begin
+  ClearBox;
+  FCurrentPage := -1;
+  FCurrentGroup := AGroup;
+  Title := TLabel.Create(FBox);
+  Title.Parent := FBox;
+  Title.SetBounds(Gap * 2, Gap, 400, 16);
+  Title.Font.Style := [fsBold];
+  Title.Caption := AtlasRuleGroupCaption(FGroups[AGroup]);
+  AddRuleTable(Gap + 24, FGroups[AGroup]);
+end;
+
+function TAtlasProjectSettingsDialog.AddRuleTable(ATop: Integer; const AGroup: string): Integer;
+begin
+  // Regel-Editor (#909); er braucht für Tabelle und Auswahllisten ein Fenster. Mit AGroup nur diese Gruppe mit
+  // ihrem Hauptschalter.
   FRuleEditor := TAtlasRulesEditor.Create(FBox);
   FRuleEditor.Parent := FBox;
   FRuleEditor.SetBounds(Gap * 2, ATop, FBox.ClientWidth - Gap * 5, 400);
   FRuleEditor.Anchors := [akLeft, akTop, akRight];
+  FRuleEditor.FixedGroup := AGroup;
   FRuleEditor.SetRules(FCatalog, FRulesJson, FGlobalRulesJson);
   FRuleEditor.OnChange := RuleEditorChange;
   FRuleEditor.HandleNeeded;
@@ -638,12 +775,6 @@ begin
   for Change in TAtlasRuleTable.Changes(FRulesJson, Updated) do
     FModel.SetPath(Change.Key, Change.Value);
   FRulesJson := Updated;
-end;
-
-procedure TAtlasProjectSettingsDialog.PageClick(Sender: TObject);
-begin
-  if FPageList.ItemIndex >= 0 then
-    ShowPage(FPageList.ItemIndex);
 end;
 
 procedure TAtlasProjectSettingsDialog.CheckClick(Sender: TObject);
@@ -786,8 +917,7 @@ begin
   TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
     procedure
     begin
-      if FPageList.ItemIndex >= 0 then
-        ShowPage(FPageList.ItemIndex);
+      ShowCurrent;
     end);
 end;
 
