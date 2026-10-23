@@ -1586,6 +1586,8 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.InheritedCall)
     else if Key = 'attributes' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.Attributes)
+    else if Key = 'anonymousMethods' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.AnonymousMethods)
     else if Key = 'sameNameVariants' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.SameNameVariants)
     else if Key = 'showFmxUnits' then

@@ -264,6 +264,8 @@ begin
     Result.HiddenKinds := Data.GetValue<string>('hiddenKinds', '');
     // Attribute nach "[" (#465).
     Result.Attribute := Data.GetValue('attribute') is TJSONTrue;
+    // Anonyme Methoden (#468).
+    Result.MethodRef := Data.GetValue<string>('methodRef', '');
     // uses-Abschnitt (#469): gefiltert wird nach dem Namensteil ab dem Getippten ("Classes" für System.Classes).
     Result.UsesGroup := Data.GetValue<string>('usesGroup', '');
     if Data.GetValue<string>('usesFilter', '') <> '' then
@@ -381,11 +383,12 @@ var
 begin
   Result := nil;
   // Postfix-Vorlagen (#188) haben ihren eigenen Schalter completion.postfixTemplates. Einträge, die Code erzeugen
-  // (resourcestring auslagern, #473), bleiben ohne Platzhalter.
+  // (resourcestring auslagern, #473), und Gerüste anonymer Methoden (#468, eigener Schalter
+  // completion.anonymousMethods) bleiben ohne Platzhalter.
   for Item in AItems do
     if (Item.Snippet = '') or Item.Postfix then
       Result := Result + [Item]
-    else if Item.IsAction then
+    else if Item.IsAction or (Item.MethodRef <> '') then
       Result := Result + [Plain(Item)];
 end;
 

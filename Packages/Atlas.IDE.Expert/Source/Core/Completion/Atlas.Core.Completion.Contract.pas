@@ -207,6 +207,9 @@ type
     HiddenKinds: string;
     /// <summary>Attribut nach "[" (#465): Name ohne Endung Attribute, Badge "at".</summary>
     Attribute: Boolean;
+    /// <summary>Gerüst einer anonymen Methode (#468): erwarteter Methodenreferenztyp, als Tag gezeigt; '' sonst.
+    /// </summary>
+    MethodRef: string;
     /// <summary>uses-Abschnitt (#469): Gruppe ("project", "rtl", "library"), Abschnitt, in dem die Unit schon steht
     /// ("interface", "implementation"; '' sonst), Kette eines Zirkelbezugs ("uA → uB → Haupt"; '' ohne), die ersten
     /// exportierten Typen samt ihrer Gesamtzahl und die schon eingebundenen Units für die Fußzeile.</summary>

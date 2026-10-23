@@ -18,6 +18,8 @@ type
     [Test]
     procedure ReadsScopeUnitAndHiddenNames;
     [Test]
+    procedure KeepsAnonymousMethodsWithoutSnippets;
+    [Test]
     procedure ReadsItemArrayAndNull;
     [Test]
     procedure PartialItemsContinueRank;
@@ -251,6 +253,29 @@ begin
   Assert.AreEqual(10, Items[0].TextEdit.EndCharacter);
   Assert.AreEqual('for var Item in Liste do'#10'    ', Items[0].TextEdit.NewText);
   Assert.IsFalse(Items[1].HasTextEdit);
+end;
+
+procedure TAtlasCompletionProviderTests.KeepsAnonymousMethodsWithoutSnippets;
+var
+  Response: TJSONValue;
+  Items: TAtlasCompletionItems;
+begin
+  // #468: Typ als methodRef; completion.snippets aus macht das Gerüst zu Klartext, statt es zu entfernen.
+  Response := TJSONObject.ParseJSONValue(
+    '{"isIncomplete":false,"items":[' +
+    '{"label":"procedure","kind":15,"insertTextFormat":2,' +
+    '"textEdit":{"range":{"start":{"line":3,"character":12},"end":{"line":3,"character":12}},' +
+    '"newText":"procedure\n  begin\n    $0\n  end"},"data":{"methodRef":"TProc","action":"anonymous"}}]}');
+  try
+    Items := TAtlasServerCompletionProvider.ItemsFromLsp(Response);
+  finally
+    Response.Free;
+  end;
+  Assert.AreEqual('TProc', Items[0].MethodRef);
+  Items := TAtlasServerCompletionProvider.WithoutSnippets(Items);
+  Assert.AreEqual(1, Integer(Length(Items)));
+  Assert.AreEqual('', Items[0].Snippet);
+  Assert.AreEqual('procedure'#10'  begin'#10'    '#10'  end', Items[0].TextEdit.NewText);
 end;
 
 procedure TAtlasCompletionProviderTests.ReadsScopeUnitAndHiddenNames;

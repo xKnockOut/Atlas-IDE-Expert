@@ -500,6 +500,12 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"completion": {"attributes": "ja"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Anonyme Methoden (#468)
+  Assert.IsTrue(Parse('{}', Issues).Completion.AnonymousMethods);
+  Assert.IsFalse(Parse('{"completion": {"anonymousMethods": false}}', Issues).Completion.AnonymousMethods);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"anonymousMethods": 0}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Gleiche Namen aus verschiedenen Units (#475)
   Assert.IsTrue(Parse('{}', Issues).Completion.SameNameVariants);
   Assert.IsTrue(Parse('{}', Issues).Completion.SameNameInsert = TCompletionSameNameInsert.Prefix);

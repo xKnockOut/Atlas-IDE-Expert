@@ -374,14 +374,22 @@ begin
     AData.AddPair('attribute', TJSONBool.Create(True));
 end;
 
+/// <summary>Gerüst einer anonymen Methode (#468): erwarteter Methodenreferenztyp.</summary>
+procedure WriteMethodRef(const AItem: TCompletionItem; AData: TJSONObject);
+begin
+  if AItem.MethodRef <> '' then
+    AData.AddPair('methodRef', AItem.MethodRef);
+end;
+
 const
   /// <summary>Reihenfolge der Felder unter data; das Plugin liest nach Namen, die Golden-Tests nach Text.
   /// </summary>
-  DataWriters: array[0..34] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
+  DataWriters: array[0..35] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
     WriteDepth, WriteHelper, WriteParameters, WriteCondition, WriteVariant, WriteUnavailable, WriteScope, WriteOrdinal,
     WriteSetOf, WriteLinked, WritePinned, WriteCount, WriteUnknown, WriteBatch, WriteHint, WriteForm, WriteByType, WriteSender,
     WriteConversion, WriteAssignments, WriteDataSet, WriteGuard, WriteUnit, WriteHides, WriteOverloads, WriteTypeArg,
-    WriteBindings, WriteUses, WriteInherited, WriteSameName, WriteAttribute);
+    WriteBindings, WriteUses, WriteInherited, WriteSameName, WriteAttribute,
+    WriteMethodRef);
 
 function NeedsData(const AItem: TCompletionItem): Boolean;
 begin
@@ -391,7 +399,8 @@ begin
     (AItem.Sender <> '') or (AItem.DataSet <> '') or (AItem.Guard <> '') or (AItem.TypeParam <> '') or
     (Length(AItem.Bindings) > 0) or (AItem.Conversion <> '') or (AItem.Lossy <> '') or
     (Length(AItem.Assignments) > 0) or (AItem.UsesGroup <> '') or (AItem.InheritedMatch <> '') or
-    (Length(AItem.InheritedAbstract) > 0) or (Length(AItem.SameNameUnits) > 0) or AItem.Attribute;
+    (Length(AItem.InheritedAbstract) > 0) or (Length(AItem.SameNameUnits) > 0) or AItem.Attribute or
+    (AItem.MethodRef <> '');
 end;
 
 function EditToJson(const AEdit: TRuleEdit): TJSONObject;
