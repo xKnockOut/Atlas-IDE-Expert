@@ -943,3 +943,14 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Regel-Editor schmal (nach dem Push bemerkt):** `TAtlasRulesEditor.CanAutoSize` setzte `NewWidth := Width`; `CheckNewSize` fragt aber mit der neuen Breite, so blieb jedes `SetBounds` bei den 185 Pixeln eines frischen Panels. Jetzt bleibt die angefragte Breite. Der Test prüfte ohne Fenster, da war auch der Behälter schmal; `KeepsRequestedWidth` und die Dialogtests messen jetzt mit Fenster.
 - **Protokoll lesen:** Das Bash-Werkzeug sieht `%LOCALAPPDATA%` virtualisiert (Kopie unter `AppData\Local\Packages\Claude_…\LocalCache`, Stand 22.10.). Das echte `atlas.log` nur mit PowerShell lesen. Das Plugin-Protokoll läuft normal, eine Lücke gibt es nicht.
 - **Nebenbefund Server-Diagnose:** `workspace/diagnostic` brauchte 17 s mit `slowRule=inline-not-expanded` (16,4 s) in einer Unit mit fehlenden Units; nicht untersucht.
+
+## Atlas-MCP in Cloud-Sitzungen (23.10.2026, Branch `claude/project-thread-e74he2`, Thread „Werkzeuge für MCP und Atlas“)
+
+- **Ursache, warum `plugin:atlas:delphi` in der Cloud fehlte:**
+  - Das Projekt führte dasselbe Repository unter den alten Namen `BetterDelphiLSP` und `Argus-IDE-Expert`. Für Claude-Projekte waren das zwei Repositories; Threads starteten oberhalb der Klone, und Hooks, Berechtigungen und `env` aus `.claude/settings.json` galten nicht (auch der Grund für die vielen Freigabe-Abfragen). Marco hat das Projekt auf `xKnockOut/Atlas-IDE-Expert` umgestellt.
+  - Claude Code startet den stdio-MCP-Server beim Sitzungsstart und versucht es nicht erneut; jede Cloud-Sitzung ist ein frischer Container, der Bau dauerte rund 12 Minuten.
+- **Umgesetzt (Commit a4c4cb7):** Workflow `linux-server.yml` (Linux-Bau, MCP-Startprobe, Vorab-Release `cloud-linux` bei Pushes auf main), `Build-AtlasServer.sh` lädt fertigen Server (0,6 s im Test) oder fertigen FPC (dann nur Serverbau, etwa 2 bis 4 Minuten), `flock`, Optionen `--no-download`, `--package`, `--fingerprint`, `ATLAS_ASSET_DIR`. Setup-Skript für die Cloud-Umgebung steht in `Editors/ClaudeCode/README.md`.
+- **Nach dem Merge zu tun:** Setup-Skript in der Cloud-Umgebung eintragen (Marco), prüfen, dass der Workflow das Release `cloud-linux` anlegt, dann in einem neuen Thread `claude mcp list` bzw. die Fehlermeldung beim Start prüfen.
+- **Ungeprüft:** ob das Setup-Skript schon die Klone sieht (sonst greift nur der SessionStart-Hook, und der MCP-Server fehlt in der ersten Sitzung trotzdem); ob der Proxy im Setup-Skript Release-Dateien des privaten Repositorys lädt.
+- **Ebenfalls auf dem Branch (Commit fc56a8e), weitergeführt in eigenen Threads:** MCP-Werkzeug `hook_check` mit Plugin-Hook, Skill `/atlas:bauen`, Repo-Hook `nach-bearbeitung.sh` (Thread „Hooks und Bauen-Befehl im Atlas-Plugin“), `Tools/Start-McpInspector.ps1` (Thread „MCP Inspector für Atlas-Tools“). Delphi-Bau steht für beides aus.
+
