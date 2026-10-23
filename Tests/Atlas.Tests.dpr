@@ -956,7 +956,13 @@ uses
   Atlas.Core.Debug.DialogCompletion.Tests in 'IDE.Expert\Atlas.Core.Debug.DialogCompletion.Tests.pas',
   Atlas.Core.Completion.Providers.Expression.Tests in 'IDE.Expert\Atlas.Core.Completion.Providers.Expression.Tests.pas',
   Atlas.Core.Debug.Evaluate.Tests in 'IDE.Expert\Atlas.Core.Debug.Evaluate.Tests.pas',
-  Atlas.UI.Debug.EvaluateFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.EvaluateFrame.Tests.pas';
+  Atlas.UI.Debug.EvaluateFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.EvaluateFrame.Tests.pas',
+  Atlas.Common.Lsp.DataFlow.Tests in 'Common\Lsp\Atlas.Common.Lsp.DataFlow.Tests.pas',
+  Atlas.Core.Lsp.DataFlow in '..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.DataFlow.pas',
+  Atlas.Core.Lsp.DataFlow.Tests in 'IDE.Expert\Atlas.Core.Lsp.DataFlow.Tests.pas',
+  Atlas.Core.Results.DataFlow in '..\Packages\Atlas.IDE.Expert\Source\Core\Results\Atlas.Core.Results.DataFlow.pas',
+  Atlas.Core.Results.DataFlow.Tests in 'IDE.Expert\Atlas.Core.Results.DataFlow.Tests.pas',
+  Atlas.UI.Results.DataFlow.Tests in 'IDE.Expert\Atlas.UI.Results.DataFlow.Tests.pas';
 
 // Atlas-Symbol (#751) für die UI-Tests.
 {$R '..\Packages\Atlas.IDE.Expert\Resources\Symbol\Atlas.Symbol.res'}

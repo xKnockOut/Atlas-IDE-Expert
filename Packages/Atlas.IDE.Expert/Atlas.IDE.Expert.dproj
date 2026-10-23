@@ -671,6 +671,8 @@
         </DCCReference>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.EvaluateWindow.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Evaluate.pas"/>
+        <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.DataFlow.pas"/>
+        <DCCReference Include="Source\Core\Results\Atlas.Core.Results.DataFlow.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

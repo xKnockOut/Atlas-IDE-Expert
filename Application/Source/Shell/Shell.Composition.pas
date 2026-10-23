@@ -56,6 +56,7 @@ uses
   Atlas.Common.Pascal.CompilerSwitches,
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Lsp.Hierarchies,
+  Atlas.Common.Lsp.DataFlow,
   Atlas.Common.Lsp.Implementations,
   Atlas.Common.Lsp.InlayHints,
   Atlas.Common.Lsp.CodeLens,
@@ -155,6 +156,8 @@ type
     FExpressionCompletion: TLspExpressionCompletion;
     FSignatureHelp: TLspSignatureHelp;
     FHierarchies: TLspHierarchies;
+    // Datenfluss „Woher/Wohin geht der Wert?“ (#690).
+    FDataFlow: TLspDataFlow;
     FImplementations: TLspImplementations;
     FInlayHints: TLspInlayHints;
     FCodeLens: TLspCodeLens;
@@ -1194,6 +1197,11 @@ begin
     ProjectSourceFiles,
     EnsureUnit);
   FHierarchies.Attach(FDispatcher);
+  FDataFlow := TLspDataFlow.Create(FDocuments, FIndex,
+    ReadSourceText,
+    ProjectSourceFiles,
+    EnsureUnit);
+  FDataFlow.Attach(FDispatcher);
   FImplementations := TLspImplementations.Create(FDocuments, FIndex,
     EnsureUnit);
   FImplementations.Attach(FDispatcher);
@@ -2074,6 +2082,7 @@ begin
   FBaseline.Free;
   FInlayHints.Free;
   FImplementations.Free;
+  FDataFlow.Free;
   FHierarchies.Free;
   FSignatureHelp.Free;
   FExpressionCompletion.Free;
@@ -4237,6 +4246,7 @@ begin
   FCompletion.Namespaces := Namespaces;
   FSignatureHelp.Namespaces := Namespaces;
   FHierarchies.Namespaces := Namespaces;
+  FDataFlow.Namespaces := Namespaces;
   FImplementations.Namespaces := Namespaces;
   FInlayHints.Namespaces := Namespaces;
   FCodeLens.Namespaces := Namespaces;

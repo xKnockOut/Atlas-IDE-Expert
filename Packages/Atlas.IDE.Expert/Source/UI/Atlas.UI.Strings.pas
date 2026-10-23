@@ -756,7 +756,20 @@ type
     DebugEvaluateLinesFailed, DebugEvaluateModifyTitle, DebugEvaluateModifyPrompt, DebugEvaluateModifyFailed,
     DebugEvaluateHistoryEmpty, DebugEvaluateNoFields,
     // Fenster „Auswerten“ (#784), Fortsetzung
-    DebugEvaluateTimeout);
+    DebugEvaluateTimeout,
+    // Datenfluss „Woher kommt der Wert?“ / „Wohin geht der Wert?“ (#690)
+    SettingsDataFlow, SettingsDataFlowExcludeTests, SettingsDataFlowMaxDepth, MenuDataFlowSources,
+    MenuDataFlowTargets, ResultsDataFlowSources, ResultsDataFlowTargets, ResultsDataFlowOff, DataFlowOnlyProject,
+    DataFlowExcludeTests, DataFlowAssignment, DataFlowAssignments, DataFlowVarArgument, DataFlowVarArguments,
+    DataFlowOutArgument, DataFlowOutArguments, DataFlowInput, DataFlowInputs, DataFlowInitializer,
+    DataFlowInitializers, DataFlowLoop, DataFlowLoops, DataFlowCallerArgument, DataFlowCallerArguments,
+    DataFlowReturn, DataFlowReturns, DataFlowPropertyWrite, DataFlowPropertyWrites, DataFlowPropertyRead,
+    DataFlowPropertyReads, DataFlowModify, DataFlowModifies, DataFlowArgument, DataFlowArguments, DataFlowOutput,
+    DataFlowOutputs, DataFlowUse, DataFlowUses, DataFlowConstant, DataFlowConstants, DataFlowOutside,
+    DataFlowOutsides, DataFlowAddress, DataFlowAddresses, DataFlowPlace, DataFlowPlaces, DataFlowVia,
+    DataFlowUnsafe, DataFlowUnsafePointer, DataFlowUnsafeAddress, DataFlowOriginLiteral, DataFlowOriginInput,
+    DataFlowOriginOutput, DataFlowOriginUse, DataFlowOriginOutside, DataFlowOriginAddress, DataFlowOriginOpen,
+    DataFlowLeafConstant, DataFlowLeafOutside, DataFlowLeafCycle, DataFlowLeafDepth);
 
   TAtlasStrings = class
   private class var
@@ -2414,7 +2427,20 @@ const
      'Diese Ansicht passt nicht zum Wert; gezeigt wird der Text.',
      'Keine Zeilen: „%s“ ließ sich nicht auswerten (%s).', 'Wert ändern', 'Neuer Wert für %s:',
      'Ändern von %s fehlgeschlagen: %s', '(kein Verlauf)', '(keine Felder)',
-     '‹keine Antwort des Debuggers›'),
+     '‹keine Antwort des Debuggers›',
+     'Datenfluss: „Woher kommt der Wert?“ und „Wohin geht der Wert?“', 'Tests zu Beginn ausblenden',
+     'Größte Tiefe beim Aufklappen (1 bis 20):', 'Woher kommt der Wert?', 'Wohin geht der Wert?',
+     'Woher kommt %s? (%d Stellen)', 'Wohin geht %s? (%d Stellen)',
+     'Datenfluss ist ausgeschaltet (Tools › Optionen › Atlas › Befehle).', 'Nur Projektcode', 'Tests ausblenden',
+     'Zuweisung', 'Zuweisungen', 'var-Argument', 'var-Argumente', 'out-Argument', 'out-Argumente',
+     'Externe Eingabe', 'Externe Eingaben', 'Initialisierung', 'Initialisierungen', 'Schleifenvariable',
+     'Schleifenvariablen', 'Aufruf', 'Aufrufe', 'Rückgabe', 'Rückgaben', 'Zuweisung an Property',
+     'Zuweisungen an Property', 'Property liest', 'Properties lesen', 'Änderung', 'Änderungen', 'Argument',
+     'Argumente', 'Externe Ausgabe', 'Externe Ausgaben', 'Verwendung', 'Verwendungen', 'Konstante', 'Konstanten',
+     'Außerhalb des Projekts', 'Außerhalb des Projekts', 'Adresse genommen', 'Adressen genommen', 'Stelle',
+     'Stellen', 'über %s', 'unsicher: %s', 'Zeiger', 'Adresse', 'Literal', 'Wert kommt von außen',
+     'Wert geht nach außen', 'nur verwendet', 'außerhalb des Projekts', 'Wert kann sich über die Adresse ändern',
+     'ohne bekannte Quelle', 'Konstante', 'außerhalb des Projekts', 'Zyklus', 'Tiefe erreicht'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3968,7 +3994,20 @@ const
      'evaluating …', '‹program not stopped›', 'Select a row to see its value.',
      'This view does not fit the value; showing the text.', 'No lines: “%s” could not be evaluated (%s).',
      'Modify value', 'New value for %s:', 'Modifying %s failed: %s', '(no history)', '(no fields)',
-     '‹no answer from the debugger›'));
+     '‹no answer from the debugger›',
+     'Data flow: "Where does the value come from?" and "Where does the value go?"', 'Hide tests initially',
+     'Maximum depth when expanding (1 to 20):', 'Where does the value come from?', 'Where does the value go?',
+     'Where does %s come from? (%d places)', 'Where does %s go? (%d places)',
+     'Data flow is turned off (Tools › Options › Atlas › Commands).', 'Project code only', 'Hide tests',
+     'Assignment', 'Assignments', 'var argument', 'var arguments', 'out argument', 'out arguments',
+     'External input', 'External inputs', 'Initialization', 'Initializations', 'Loop variable', 'Loop variables',
+     'Call', 'Calls', 'Return', 'Returns', 'Property assignment', 'Property assignments', 'Property reads',
+     'Properties read', 'Change', 'Changes', 'Argument', 'Arguments', 'External output', 'External outputs',
+     'Use', 'Uses', 'Constant', 'Constants', 'Outside the project', 'Outside the project', 'Address taken',
+     'Addresses taken', 'Place', 'Places', 'via %s', 'unsafe: %s', 'pointer', 'address', 'literal',
+     'value comes from outside', 'value leaves the program', 'only used', 'outside the project',
+     'value may change through the address', 'no known source', 'constant', 'outside the project', 'cycle',
+     'depth reached'));
 
 { TAtlasStrings }
 

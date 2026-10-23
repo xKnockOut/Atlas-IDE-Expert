@@ -88,6 +88,7 @@ Everything below is implemented in `main`. Features marked *(experimental)* are 
 - **Quick open** of files and symbols (Ctrl+P) across project, project group and search path; project-wide **symbol search**
 - **Unit search** (Ctrl+F12) in its own window with preview, groups, filters and "add to uses"
 - **Results window** "Atlas Results" for references (including forms), implementations, callers, calls and inheritance
+- **Data flow:** "Where does the value come from?" and "Where does the value go?" show a tree in the results window: assignments, var/out arguments, callers' arguments for a parameter, `Result` and `Exit(…)` of a function, property setters and getters, each with file, line and source line. Equal places are grouped ("3 assignments"), deeper levels load when expanded up to `navigation.dataFlow.maxDepth`, cycles, constants and code outside the project end the path, unsafe edges (pointers, `absolute`, `Move`, `FillChar`, `@`) are marked. Enter or double-click jumps; filters "Project code only" and "Hide tests". Switched by `navigation.dataFlow`
 - **Navigation history** across files
 - **Named bookmarks** (Ctrl+Alt+K) and personal **notes** on code lines that never go into the source
 - **Quick bookmarks** in a column left of the line numbers: click to set and remove, Ctrl+Shift+1…9 numbers them, Ctrl+1…9 jumps project-wide, Ctrl+Shift+K unnumbered (the IDE's folding chords keep working); they follow code changes and take over the IDE bookmarks

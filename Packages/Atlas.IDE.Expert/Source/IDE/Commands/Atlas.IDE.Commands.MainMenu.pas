@@ -100,6 +100,8 @@ type
     /// <summary>„Atlas: Exception-Verlauf“ (#517), sichtbar nach debug.exceptionHistory.</summary>
     FDebugExceptionsItem: TMenuItem;
     FDebugEvaluateItem: TMenuItem;
+    /// <summary>„Woher/Wohin kommt der Wert?“ (#690), sichtbar nach navigation.dataFlow.</summary>
+    FDataFlowItems: TArray<TMenuItem>;
     /// <summary>„Atlas: Compiler-Schalter“ (#558), sichtbar nach build.compilerSwitches.</summary>
     FCompilerSwitchesItem: TMenuItem;
     FViewAtlas: TMenuItem;
@@ -190,6 +192,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Results.Model,
+  Atlas.Core.Lsp.DataFlow,
   Atlas.Core.Setup.Checklist,
   Atlas.Core.Lsp.Progress;
 
@@ -198,8 +201,9 @@ const
   EditorIds: array[0..11] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
     'Atlas.TypeDefinition', 'Atlas.CopyQualifiedName', 'Atlas.CopyQualifiedNameParams', 'Atlas.ToggleMethod',
     'Atlas.SwitchTestUnit', 'Atlas.UnitSearch', 'Atlas.UnitSearchIde', 'Atlas.GenerateMenu', 'Atlas.FormatCode');
-  ResultsIds: array[0..7] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
-    'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow');
+  ResultsIds: array[0..9] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
+    'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow',
+    'Atlas.DataFlowSources', 'Atlas.DataFlowTargets');
   // Editorleiste (#1101), je Tag von SectionClick.
   SectionIds: array[0..5] of string = ('Atlas.GotoInterface', 'Atlas.GotoImplementation', 'Atlas.GotoUses',
     'Atlas.GotoInitialization', 'Atlas.ReturnFromSection', 'Atlas.FindMethod');
@@ -297,6 +301,9 @@ begin
   AddItem(TAtlasTextId.MenuOutgoing, 4, ResultsClick);
   AddItem(TAtlasTextId.MenuSupertypes, 5, ResultsClick);
   AddItem(TAtlasTextId.MenuSubtypes, 6, ResultsClick);
+  // Datenfluss (#690).
+  FDataFlowItems := [AddItem(TAtlasTextId.MenuDataFlowSources, 8, ResultsClick),
+    AddItem(TAtlasTextId.MenuDataFlowTargets, 9, ResultsClick)];
   FParent.Add(NewLine);
   AddItem(TAtlasTextId.MenuResultsWindow, 7, ResultsClick);
   AddGroup(TAtlasTextId.MenuGroupCopy);
@@ -681,6 +688,9 @@ begin
     FDebugExceptionsItem.Visible := TAtlasIdeSettings.Current.DebugExceptionHistory;
   if FDebugEvaluateItem <> nil then
     FDebugEvaluateItem.Visible := TAtlasIdeSettings.Current.DebugEvaluateWindow;
+  // Datenfluss (#690) nach navigation.dataFlow.
+  for Item in FDataFlowItems do
+    Item.Visible := TAtlasIdeSettings.Current.DataFlow;
   // Compiler-Schalter (#558) nach build.compilerSwitches.
   if FCompilerSwitchesItem <> nil then
     FCompilerSwitchesItem.Visible := TAtlasIdeSettings.Current.BuildCompilerSwitches;
@@ -751,6 +761,8 @@ begin
         4: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Outgoing);
         5: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Supertypes);
         6: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Subtypes);
+        8: TAtlasIdeResults.ShowDataFlow(TAtlasDataFlowDirection.Sources);
+        9: TAtlasIdeResults.ShowDataFlow(TAtlasDataFlowDirection.Targets);
       else
         TAtlasIdeResults.ShowWindow;
       end;

@@ -44,6 +44,8 @@ type
     procedure NavHistoryOptions;
     [Test]
     procedure PeekOptions;
+    [Test]
+    procedure DataFlowOptions;
     /// <summary>Gliederungsfenster (#537): an, Quelltextreihenfolge, Cursor folgen; Speichern und Laden.</summary>
     [Test]
     procedure OutlineOptions;
@@ -1242,6 +1244,34 @@ begin
   Assert.IsFalse(Loaded.PeekShowImplementation);
   Assert.AreEqual(0, Loaded.PeekDefinitionKey);
   Assert.AreEqual($C07B, Loaded.PeekReferencesKey);
+end;
+
+procedure TAtlasPluginSettingsTests.DataFlowOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // Datenfluss (#690): an, Tiefe 6, Tests sichtbar.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DataFlow, 'navigation.dataFlow (#690)');
+  Assert.AreEqual(6, Settings.DataFlowMaxDepth);
+  Assert.IsFalse(Settings.DataFlowExcludeTests);
+  Settings.DataFlowMaxDepth := 0;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinDataFlowDepth, Settings.DataFlowMaxDepth);
+  Settings.DataFlowMaxDepth := 99;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MaxDataFlowDepth, Settings.DataFlowMaxDepth);
+  Settings.DataFlow := False;
+  Settings.DataFlowMaxDepth := 3;
+  Settings.DataFlowExcludeTests := True;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DataFlow);
+  Assert.AreEqual(3, Loaded.DataFlowMaxDepth);
+  Assert.IsTrue(Loaded.DataFlowExcludeTests);
 end;
 
 procedure TAtlasPluginSettingsTests.OutlineOptions;

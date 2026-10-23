@@ -68,6 +68,7 @@ uses
   Atlas.IDE.Editor.Rename,
   Atlas.IDE.Editor.DfmPropertyRules,
   Atlas.Core.Results.Model,
+  Atlas.Core.Lsp.DataFlow,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Commands.QuickOpen,
@@ -972,6 +973,11 @@ begin
   Result := TAtlasIdeSettings.Current.DebugEvaluateWindow;
 end;
 
+function DataFlowVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DataFlow;
+end;
+
 function DebugExceptionBarVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.DebugExceptionHistory and TAtlasIdeSettings.Current.DebugExceptionBanner;
@@ -1239,6 +1245,15 @@ procedure RegisterPalette;
       end;
   end;
 
+  function DataFlow(ADirection: TAtlasDataFlowDirection): TProc;
+  begin
+    Result :=
+      procedure
+      begin
+        TAtlasIdeResults.ShowDataFlow(ADirection);
+      end;
+  end;
+
   /// <summary>AProc abgesichert je Feature (#493).</summary>
   function Guarded(AFeature: TAtlasFeature; const AProc: TProc): TProc;
   begin
@@ -1349,6 +1364,11 @@ begin
   Add('Atlas.Calls', TAtlasTextId.MenuOutgoing, Hierarchy(TAtlasHierarchyDirection.Outgoing));
   Add('Atlas.Supertypes', TAtlasTextId.MenuSupertypes, Hierarchy(TAtlasHierarchyDirection.Supertypes));
   Add('Atlas.Subtypes', TAtlasTextId.MenuSubtypes, Hierarchy(TAtlasHierarchyDirection.Subtypes));
+  // Datenfluss (#690); nur sichtbar, solange navigation.dataFlow an ist.
+  Add('Atlas.DataFlowSources', TAtlasTextId.MenuDataFlowSources,
+    Guarded(TAtlasFeature.Results, DataFlow(TAtlasDataFlowDirection.Sources)), DataFlowVisible);
+  Add('Atlas.DataFlowTargets', TAtlasTextId.MenuDataFlowTargets,
+    Guarded(TAtlasFeature.Results, DataFlow(TAtlasDataFlowDirection.Targets)), DataFlowVisible);
   Add('Atlas.ResultsWindow', TAtlasTextId.MenuResultsWindow, TAtlasIdeResults.ShowWindow);
   // Atlas-Änderungen über mehrere Dateien (#721).
   Add('Atlas.UndoChange', TAtlasTextId.UndoMenu, TAtlasIdeUndo.UndoLast);

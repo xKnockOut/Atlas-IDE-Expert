@@ -1216,6 +1216,13 @@ begin
     Assert.IsTrue(Page.DimUnusedUsesCheck.Checked, 'uses abblenden standardmäßig an (#621)');
     Assert.IsTrue(Page.RecursionMarkersCheck.Checked, 'Rekursionssymbole standardmäßig an (#623)');
     Assert.AreEqual('4', Page.RecursionMarkersDepthEdit.Text);
+    // Datenfluss (#690).
+    Assert.IsTrue(Page.DataFlowCheck.Checked, 'navigation.dataFlow (#690)');
+    Assert.AreEqual('6', Page.DataFlowMaxDepthEdit.Text);
+    Assert.IsFalse(Page.DataFlowExcludeTestsCheck.Checked);
+    Page.DataFlowCheck.Checked := False;
+    Page.DataFlowMaxDepthEdit.Text := '9';
+    Page.DataFlowExcludeTestsCheck.Checked := True;
     // Atlas-Spalte in der Zeilenleiste (#768).
     Assert.IsTrue(Page.GutterColumnCheck.Checked, 'Atlas-Spalte standardmäßig an (#768)');
     Assert.IsTrue(Page.GutterColumnProblemsCheck.Checked);
@@ -1279,6 +1286,9 @@ begin
     Assert.IsFalse(Saved.DimUnusedUses);
     Assert.IsFalse(Saved.RecursionMarkers);
     Assert.AreEqual(2, Saved.RecursionMarkersDepth);
+    Assert.IsFalse(Saved.DataFlow);
+    Assert.AreEqual(9, Saved.DataFlowMaxDepth);
+    Assert.IsTrue(Saved.DataFlowExcludeTests);
     Assert.IsTrue(Saved.GutterColumn);
     Assert.IsTrue(Saved.GutterColumnProblems);
     Assert.IsFalse(Saved.GutterColumnCodeActions);
