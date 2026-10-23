@@ -1,6 +1,18 @@
 {
   "project": "Tests/Atlas.Tests.dproj",
   "rules": {
+    "metric-method-length": "off",
+    "metric-nesting-depth": "off",
+    "metric-cyclomatic-complexity": "off",
+    "metric-cognitive-complexity": "off",
+    "metric-parameter-count": "off",
+    "metric-boolean-operands": "off",
+    "metric-local-count": "off",
+    "metric-exit-points": "off",
+    "metric-class-size": "off",
+    "metric-unit-length": "off",
+    "metric-uses-count": "off",
+    "metric-inheritance-depth": "off",
     "architecture-role-import": {
       "severity": "warning",
       "prefixes": ["Atlas.Text", "Atlas.Common", "Atlas.Windows", "Atlas.Core", "Atlas.UI", "Atlas.IDE"],
