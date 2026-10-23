@@ -2449,6 +2449,23 @@ Voraussetzung: Server läuft in der IDE, DUnitX im Bibliothekspfad indiziert, `c
 | AT9 | Eigenes `MarkeAttribute = class(TCustomAttribute)` und `TNurKlasse = class` in der Unit; `[` | `Marke` angeboten, `TNurKlasse` nicht |
 | AT10 | `"completion": {"attributes": false}` in atlas.json; AT1 | Gewöhnliche Liste mit `TestAttribute` usw. samt Endung |
 
+## Unvollständiger Code (#457)
+
+Voraussetzung: Server läuft in der IDE, `completion.syntaxNotice` an (Vorgabe). Unit mit Klasse `TF` und zwei Methoden `A` und `B`.
+
+| Nr. | Schritte | Erwartet |
+| --- | --- | --- |
+| UC1 | In `B` vor dem Cursor `X := (1 + ;` schreiben, eine Zeile tiefer Strg+Leer | Liste mit Einträgen, oben Warnleiste „Ergebnisse möglicherweise unvollständig · Syntaxfehler in Zeile n“ (n = Zeile des Fehlers) |
+| UC2 | UC1, auf „Zeile n“ klicken | Liste schließt, Caret steht in der genannten Zeile an der Fehlerstelle |
+| UC3 | In `A` ein `end;` entfernen (Block bleibt offen), in `B` Strg+Leer | keine Warnleiste |
+| UC4 | In `B` `X := Foo.` tippen | Mitgliederliste ohne Warnleiste (die Tippstelle zählt nicht) |
+| UC5 | Fehler nur hinter dem Cursor in derselben Methode | keine Warnleiste |
+| UC6 | In der Klassendeklaration `procedure A(;`, eine Zeile tiefer Strg+Leer | Warnleiste mit der Zeile von `A` |
+| UC7 | Fehler in einer anderen Klasse derselben Unit | keine Warnleiste |
+| UC8 | Stelle, an der der Server nichts vorschlägt (UC1, Fehler davor), Strg+Leer | leerer Zustand mit Leiste „Kontext unklar · Syntaxfehler in Zeile n“ und dem Fehlertext darunter |
+| UC9 | UC1, Fehler beheben, weitertippen | Warnleiste verschwindet mit der nächsten Antwort |
+| UC10 | `"completion": {"syntaxNotice": false}` in atlas.json; UC1 | keine Warnleiste |
+
 ## Exception-Klassen (#483)
 
 Voraussetzung: Server läuft in der IDE, `completion.exceptionClasses` an (Vorgabe), Code-Vorlagen an. Projekt mit eigener Klasse `EAppError = class(Exception)` und einer Klasse `TWorker`.

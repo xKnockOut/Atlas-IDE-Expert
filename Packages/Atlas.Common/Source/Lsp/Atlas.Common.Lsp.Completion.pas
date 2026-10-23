@@ -507,6 +507,7 @@ uses
   Atlas.Common.Lsp.CompletionGenerics,
   Atlas.Common.Lsp.CompletionAttributes,
   Atlas.Common.Lsp.CompletionExceptions,
+  Atlas.Common.Lsp.CompletionSyntax,
   Atlas.Common.Editing.DataFieldNames,
   Atlas.Common.Editing.GuardFree,
   Atlas.Common.Editing.ContextSnippets,
@@ -2586,6 +2587,10 @@ begin
           Items := Items + Answer.Prefetched;
         Items := Items + Answer.Body + Answer.Tail;
         Result := CompletionListToJson(Items, Answer.Incomplete, Answer.SentCount);
+        // Hinweis bei unvollständigem Code (#457): Syntaxfehler vor dem Cursor in der aktuellen Routine.
+        if Request.Settings.SyntaxNotice then
+          TCompletionSyntax.WriteJson(Result as TJSONObject, TCompletionSyntax.Assess(Request.Tree, Request.Text, Request.Position,
+            Answer.SentCount + Length(Items)));
         // Vorab als $/progress gesendete Einträge zählen mit (#616).
         TRequestDiagnostics.ResultCount(Answer.SentCount + Length(Items));
         if Answer.SentCount + Length(Items) = 0 then

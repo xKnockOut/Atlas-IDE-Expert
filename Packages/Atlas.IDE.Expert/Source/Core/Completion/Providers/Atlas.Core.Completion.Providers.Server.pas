@@ -47,7 +47,7 @@ type
     function IsFailure(E: Exception): Boolean; override;
     function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; override;
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
-      const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; override;
+      const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems; override;
   public
     constructor Create(const ASession: TAtlasSessionFunc; ATimeoutMs: Cardinal = DefaultTimeoutMs);
     /// <summary>LSP-CompletionItemKind → Art des Eintrags.</summary>
@@ -58,6 +58,8 @@ type
     class function ItemsFromLsp(AResponse: TJSONValue; AFirstRank: Integer = 0): TAtlasCompletionItems; static;
     /// <summary>AItems ohne Code-Vorlagen des Servers (Einträge mit Snippet, #51); Postfix-Vorlagen bleiben.</summary>
     class function WithoutSnippets(const AItems: TAtlasCompletionItems): TAtlasCompletionItems; static;
+    /// <summary>Hinweis bei unvollständigem Code (#457) aus "syntaxNotice" der CompletionList; Sure ohne.</summary>
+    class function SyntaxNoticeOf(AResponse: TJSONValue): TAtlasSyntaxNotice; static;
     /// <summary>AItem ohne Platzhalter: Vorgabetexte eingesetzt, auch in verknüpften Zusatzänderungen.</summary>
     class function Plain(const AItem: TAtlasCompletionItem): TAtlasCompletionItem; static;
     /// <summary>Details aus der Antwort auf completionItem/resolve (data.atlas, sonst detail/documentation).</summary>
@@ -386,6 +388,31 @@ begin
   Result.LinkedEdits := False;
 end;
 
+class function TAtlasServerCompletionProvider.SyntaxNoticeOf(AResponse: TJSONValue): TAtlasSyntaxNotice;
+var
+  Notice: TJSONValue;
+  Trust: string;
+begin
+  Result := Default(TAtlasSyntaxNotice);
+  Result.Line := -1;
+  Result.Character := -1;
+  if not (AResponse is TJSONObject) then
+    Exit;
+  Notice := TJSONObject(AResponse).GetValue('syntaxNotice');
+  if not (Notice is TJSONObject) then
+    Exit;
+  Trust := TJSONObject(Notice).GetValue<string>('trust', '');
+  if Trust = 'limited' then
+    Result.Trust := TAtlasSyntaxTrust.Limited
+  else if Trust = 'unknown' then
+    Result.Trust := TAtlasSyntaxTrust.Unknown
+  else
+    Exit;
+  Result.Line := TJSONObject(Notice).GetValue<Integer>('line', -1);
+  Result.Character := TJSONObject(Notice).GetValue<Integer>('character', -1);
+  Result.Message := TJSONObject(Notice).GetValue<string>('message', '');
+end;
+
 class function TAtlasServerCompletionProvider.WithoutSnippets(
   const AItems: TAtlasCompletionItems): TAtlasCompletionItems;
 var
@@ -455,7 +482,7 @@ begin
 end;
 
 function TAtlasServerCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems;
 var
   Response: TJSONValue;
   NextRank: Integer;
@@ -463,7 +490,7 @@ var
   Watch: TStopwatch;
   Snippets: Boolean;
 begin
-  AIncomplete := False;
+  AState := Default(TAtlasFetchState);
   NextRank := 0;
   Emit := AEmit;
   Snippets := FSnippets;
@@ -495,8 +522,9 @@ begin
       Exit(nil);
     // CompletionList mit isIncomplete: Der Server hat gekürzt und will beim Weitertippen neu gefragt werden.
     // Ohne GetValue<Boolean>: das lässt über TValue Speicher liegen (Leck-Monitor).
-    AIncomplete := (Response is TJSONObject) and (TJSONObject(Response).GetValue('isIncomplete') is TJSONBool) and
+    AState.Incomplete := (Response is TJSONObject) and (TJSONObject(Response).GetValue('isIncomplete') is TJSONBool) and
       TJSONBool(TJSONObject(Response).GetValue('isIncomplete')).AsBoolean;
+    AState.Syntax := SyntaxNoticeOf(Response);
     Result := ItemsFromLsp(Response, NextRank);
     if not Snippets then
       Result := WithoutSnippets(Result);

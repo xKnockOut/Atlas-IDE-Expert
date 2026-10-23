@@ -49,6 +49,8 @@ type
     [Test]
     procedure CompleteListFiltersLocallyUntilPrefixShrinks;
     [Test]
+    procedure SyntaxNoticeReachesView;
+    [Test]
     procedure PartialResultsReplaceThenAppend;
   end;
 
@@ -81,9 +83,12 @@ uses
   Atlas.Core.Diagnostics.Timing;
 
 type
-  TFakeView = class(TInterfacedObject, IAtlasCompletionView)
+  TFakeView = class(TInterfacedObject, IAtlasCompletionView, IAtlasCompletionSyntaxView)
   public
     Shown: Boolean;
+    /// <summary>Hinweis bei unvollständigem Code (#457) und wie oft er kam.</summary>
+    Syntax: TAtlasSyntaxNotice;
+    SyntaxCount: Integer;
     ShowCount: Integer;
     Names: string;
     Selected: Integer;
@@ -95,7 +100,14 @@ type
     procedure ShowEmpty(const APrefix: string; ATotal: Integer);
     function PageSize: Integer;
     procedure ShowChips(const ACounts: TAtlasChipCounts; AActive: TAtlasChip; AVisible: Boolean);
+    procedure ShowSyntax(const ANotice: TAtlasSyntaxNotice);
   end;
+
+procedure TFakeView.ShowSyntax(const ANotice: TAtlasSyntaxNotice);
+begin
+  Syntax := ANotice;
+  Inc(SyntaxCount);
+end;
 
 procedure TFakeView.ShowChips(const ACounts: TAtlasChipCounts; AActive: TAtlasChip; AVisible: Boolean);
 begin
@@ -149,6 +161,8 @@ type
     CompleteList: Boolean;
     /// <summary>Jeden Eintrag als eigenes Teilergebnis liefern (#616).</summary>
     Staged: Boolean;
+    /// <summary>Hinweis bei unvollständigem Code (#457); Sure = keiner.</summary>
+    Syntax: TAtlasSyntaxNotice;
     procedure Query(const AContext: TAtlasContext; const ASink: IAtlasCompletionSink);
     procedure Cancel;
   end;
@@ -171,6 +185,8 @@ begin
     ASink.AddItems([First, Second]);
   if not CompleteList then
     ASink.MarkIncomplete;
+  if Syntax.Trust <> TAtlasSyntaxTrust.Sure then
+    ASink.MarkSyntax(Syntax);
   ASink.Complete;
 end;
 
@@ -606,6 +622,59 @@ begin
     Assert.AreEqual(2, Provider.Queries);
     Assert.AreEqual('abc1,abc2', View.Names);
     Assert.IsTrue(View.Shown);
+  finally
+    Controller.Free;
+  end;
+end;
+
+procedure TAtlasCompletionControllerTests.SyntaxNoticeReachesView;
+var
+  View: TFakeView;
+  ViewRef: IAtlasCompletionView;
+  Provider: TPrefixProvider;
+  ProviderRef: IAtlasCompletionProvider;
+  Controller: TAtlasCompletionController;
+begin
+  // #457: Der Hinweis der Quelle geht an die Ansicht; die nächste Abfrage ohne Hinweis blendet ihn aus.
+  View := TFakeView.Create;
+  ViewRef := View;
+  Provider := TPrefixProvider.Create;
+  Provider.Syntax.Trust := TAtlasSyntaxTrust.Limited;
+  Provider.Syntax.Line := 12;
+  Provider.Syntax.Message := 'Ausdruck erwartet';
+  ProviderRef := Provider;
+  Controller := TAtlasCompletionController.Create(ProviderRef, ViewRef);
+  try
+    Controller.Start(Context('ab'));
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Assert.AreEqual(Ord(TAtlasSyntaxTrust.Limited), Ord(Controller.Syntax.Trust));
+    Assert.AreEqual(Ord(TAtlasSyntaxTrust.Limited), Ord(View.Syntax.Trust));
+    Assert.AreEqual(12, View.Syntax.Line);
+    Assert.AreEqual('ab1,ab2', View.Names, 'Einträge bleiben');
+    Provider.Syntax := Default(TAtlasSyntaxNotice);
+    Controller.Requery(Context('abc'));
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Assert.AreEqual(Ord(TAtlasSyntaxTrust.Sure), Ord(Controller.Syntax.Trust));
+    Assert.AreEqual(Ord(TAtlasSyntaxTrust.Sure), Ord(View.Syntax.Trust));
+    // Schließen setzt zurück.
+    Provider.Syntax.Trust := TAtlasSyntaxTrust.Unknown;
+    Controller.Requery(Context('abcd'));
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Assert.AreEqual(Ord(TAtlasSyntaxTrust.Unknown), Ord(Controller.Syntax.Trust));
+    Controller.Close;
+    Assert.AreEqual(Ord(TAtlasSyntaxTrust.Sure), Ord(Controller.Syntax.Trust));
   finally
     Controller.Free;
   end;
