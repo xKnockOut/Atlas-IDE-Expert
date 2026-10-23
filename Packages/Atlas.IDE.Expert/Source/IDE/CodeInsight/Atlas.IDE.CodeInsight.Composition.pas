@@ -1471,19 +1471,7 @@ begin
       if (Welcome <> nil) and TAtlasIdeSettings.Current.WelcomePage then
         Welcome.ShowStart;
     end);
-  Add('Atlas.WelcomeApply', TAtlasTextId.MenuWelcomeApply,
-    procedure
-    begin
-      if (Welcome <> nil) and TAtlasIdeSettings.Current.WelcomePage then
-        Welcome.ApplyLayout;
-    end);
-  Add('Atlas.WelcomeReset', TAtlasTextId.MenuWelcomeReset,
-    procedure
-    begin
-      if Welcome <> nil then
-        Welcome.ResetLayout;
-    end);
-  // Seite anpassen (#767): Bearbeitungsmodus der Willkommensseite bzw. von „Atlas-Start“; sichtbar mit
+  // Seite anpassen (#767): Bearbeitungsmodus von „Atlas-Start“ (öffnet das Fenster); sichtbar mit
   // welcomePage.customLayout.
   Add(TAtlasIdeWelcomeLayouts.CommandId, TAtlasTextId.CommandWelcomeCustomize,
     procedure
@@ -1495,7 +1483,7 @@ begin
     begin
       Result := (Welcome <> nil) and Welcome.Layouts.CanCustomize;
     end);
-  // Karte „Neu in Atlas“ (#756): wie das Kontextmenü; zeigt die Willkommensseite bzw. „Atlas-Start“.
+  // Karte „Neu in Atlas“ (#756): wie das Kontextmenü; öffnet „Atlas-Start“.
   Add('Atlas.WhatsNew', TAtlasTextId.WelcomeNewsShowCurrent,
     procedure
     begin
@@ -3474,18 +3462,10 @@ begin
         KeyMap.ShowWindow;
     end;
   MainMenu.OnWelcome :=
-    procedure(ACommand: TAtlasWelcomeCommand)
+    procedure
     begin
-      if Welcome = nil then
-        Exit;
-      case ACommand of
-        TAtlasWelcomeCommand.Start:
-          Welcome.ShowStart;
-        TAtlasWelcomeCommand.Apply:
-          Welcome.ApplyLayout;
-      else
-        Welcome.ResetLayout;
-      end;
+      if Welcome <> nil then
+        Welcome.ShowStart;
     end;
 end;
 

@@ -385,7 +385,7 @@ begin
     'C:\Projekte\Atlas\Atlas.dproj'),
     FileHit('Atlas.IDE.Expert.WelcomePage.pas', 'Atlas'),
     FileHit('Haupt.pas', 'Atlas'),
-    CommandHit('Atlas-Layout anwenden', 'Atlas.WelcomeApply'),
+    CommandHit('Atlas-Start', 'Atlas.WelcomeStart'),
     CommandHit('Protokoll zeigen', 'Atlas.Log')];
 end;
 
@@ -414,7 +414,7 @@ begin
   Assert.AreEqual('Atlas.IDE.Expert.WelcomePage.pas', Group.Hits[0].Caption);
   Assert.IsTrue(GroupOf(Results, TAtlasWelcomeSearchGroup.Commands, Group));
   Assert.AreEqual(1, Integer(Length(Group.Hits)));
-  Assert.AreEqual('Atlas-Layout anwenden', Group.Hits[0].Caption);
+  Assert.AreEqual('Atlas-Start', Group.Hits[0].Caption);
   Assert.IsFalse(GroupOf(Results, TAtlasWelcomeSearchGroup.Projects, Group));
 end;
 

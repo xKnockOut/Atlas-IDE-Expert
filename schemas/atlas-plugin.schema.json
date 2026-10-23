@@ -933,8 +933,8 @@
       "x-feature": "WelcomePage",
       "x-page": "Willkommensseite",
       "x-quickToggle": true,
-      "x-caption": "Atlas auf der Willkommensseite",
-      "x-captionEn": "Atlas on the welcome page",
+      "x-caption": "Atlas-Willkommensseite",
+      "x-captionEn": "Atlas welcome page",
       "x-issue": "#753"
     },
     "WelcomePageProjectSetup": {
@@ -3572,27 +3572,23 @@
       "x-control": "Kontrollkästchen je Art",
       "x-issue": "#519"
     },
-    "WelcomePageHost": {
-      "type": "string",
-      "enum": [
-        "welcomePage",
-        "dockWindow"
-      ],
-      "default": "welcomePage",
-      "x-key": "welcomePage.host",
+    "WelcomePageOpenOnStart": {
+      "description": "Fenster „Atlas-Start“ beim Start der IDE öffnen; sonst nur über Ansicht › Atlas-Start, das Atlas-Menü, die Befehlspalette und den Desktop der IDE.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "welcomePage.openOnStart",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-page": "Willkommensseite",
+      "x-issue": "#1114"
     },
-    "WelcomePageLayout": {
-      "type": "string",
-      "enum": [
-        "off",
-        "atlas"
-      ],
-      "default": "off",
-      "x-key": "welcomePage.layout",
+    "WelcomePageOpenWhenNoProject": {
+      "description": "Fenster „Atlas-Start“ öffnen, sobald das letzte Projekt bzw. die Projektgruppe geschlossen ist (nicht beim Beenden der IDE).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.openWhenNoProject",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-page": "Willkommensseite",
+      "x-issue": "#1114"
     },
     "WelcomePageHeader": {
       "type": "boolean",
