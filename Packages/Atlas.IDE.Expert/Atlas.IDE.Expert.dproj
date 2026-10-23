@@ -645,6 +645,9 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.OwnCode.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Sources.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.OwnCode.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ExceptionBanner.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.ExceptionBar.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ExceptionBar.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

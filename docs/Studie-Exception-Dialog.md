@@ -73,3 +73,18 @@ end;
 | S9 | Heißt die Aktion „Einzelne Anweisung“ (F7) `RunTraceIntoCommand`? | Diagnoseprotokoll nach dem Start: fehlt die Zeile „Aktion „Einzelne Anweisung“ nicht gefunden“, hat Atlas sie gefunden (sonst über F7 als Tastenkürzel) | | | | |
 | S10 | Ist der Exception-Dialog modal (`Application.ModalLevel` > 0)? | Testfall EC1: springt Atlas erst nach „Anhalten“? | | | | |
 | S11 | Kommt „Bis zur Rückkehr“ aus Code ohne Quelltext zurück? | Testfall EC3 | | | | |
+
+## Ergänzung für die Exception-Leiste (#783)
+
+Vorbereitung: *Tools › Optionen › Atlas › Debuggen* „Exception-Leiste statt Dialog“ an (Vorgabe aus), Diagnoseprotokoll an. Atlas setzt keinen Code-Hook: Es erkennt den Dialog wie oben (S2) und schließt ihn über seinen Knopf „Anhalten“; danach steht die Leiste oben im Editor.
+
+| Nr. | Frage | Vorgehen | D12 Win32 | D12 Win64 | D13 Win32 | D13 Win64 (LLDB) |
+|---|---|---|---|---|---|---|
+| S12 | Schließt „Anhalten“ den Dialog, und bleibt der Prozess stehen? | Knopf 1: Dialog verschwindet von selbst, der Editor steht auf der Zeile, die Leiste ist da; *Ausführen › Programm-Status* „angehalten“ | | | | |
+| S13 | Stört das kurze Aufblitzen des Dialogs (bis 100 ms)? | Knopf 1 mehrmals; Eindruck notieren. Stört es, prüft Atlas als Nächstes das Abfangen beim Aktivieren des Fensters | | | | |
+| S14 | Setzt „Fortsetzen“ in der Leiste (und F9) fort wie der Knopf im Dialog? | Knopf 1, dann F9 bzw. Knopf „Fortsetzen“: Programm läuft weiter, Leiste weg | | | | |
+| S15 | Stilles Fortsetzen nach Ort | „Nur an dieser Stelle ignorieren“, Programm neu, Knopf 1: kein Halt, Eintrag grau im Verlauf; Knopf 2 (andere Zeile, gleiche Klasse) hält | | | | |
+| S16 | Unbekannte Version | Nur mit einem Paket für eine andere IDE: Statusfeld „Exception-Leiste: IDE-Version nicht geprüft …“, Dialog bleibt, Leiste nach „Anhalten“ | | | | |
+| S17 | Ignoriert die IDE selbst die Klasse (Debugger-Optionen), kommt dann eine Leiste? | Wie S1 mit eingeschalteter Leiste | | | | |
+
+**Entscheidung #783:** Tragen S12, S14 und S15 in allen vier Varianten und stört S13 nicht, wird die Vorgabe von `debug.exceptionBanner` „an“ (Schema, Parser, Test, `Update-ConfigDoc.ps1`). Sonst bleibt sie „aus“, und das Ergebnis steht in #783.

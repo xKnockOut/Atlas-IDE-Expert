@@ -939,7 +939,11 @@ uses
   Atlas.Core.Debug.ExceptionDialog.Tests in 'IDE.Expert\Atlas.Core.Debug.ExceptionDialog.Tests.pas',
   Atlas.UI.Debug.ExceptionsFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.ExceptionsFrame.Tests.pas',
   Atlas.Core.Debug.OwnCode in '..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.OwnCode.pas',
-  Atlas.Core.Debug.OwnCode.Tests in 'IDE.Expert\Atlas.Core.Debug.OwnCode.Tests.pas';
+  Atlas.Core.Debug.OwnCode.Tests in 'IDE.Expert\Atlas.Core.Debug.OwnCode.Tests.pas',
+  Atlas.Core.Debug.ExceptionBanner.Tests in 'IDE.Expert\Atlas.Core.Debug.ExceptionBanner.Tests.pas',
+  Atlas.UI.Debug.ExceptionBar.Tests in 'IDE.Expert\Atlas.UI.Debug.ExceptionBar.Tests.pas',
+  Atlas.Core.Debug.ExceptionBanner in '..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.ExceptionBanner.pas',
+  Atlas.UI.Debug.ExceptionBar in '..\Packages\Atlas.IDE.Expert\Source\UI\Debug\Atlas.UI.Debug.ExceptionBar.pas';
 
 // Atlas-Symbol (#751) für die UI-Tests.
 {$R '..\Packages\Atlas.IDE.Expert\Resources\Symbol\Atlas.Symbol.res'}

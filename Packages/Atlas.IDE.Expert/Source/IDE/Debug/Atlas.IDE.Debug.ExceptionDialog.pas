@@ -8,7 +8,8 @@
 // Feldern, Beschriftungen der Knöpfe. Ob es der Exception-Dialog ist,
 // entscheidet TAtlasDebugExceptionDialog (Kern). Erkannt meldet OnFound
 // einmal je Halt mit dem Ergebnis; ContinueFound schließt den Dialog über
-// seinen Knopf „Fortsetzen“ (still fortsetzen, Ignorier-Liste).
+// seinen Knopf „Fortsetzen“ (still fortsetzen, Ignorier-Liste), BreakFound
+// über „Anhalten“ (die Exception-Leiste ersetzt ihn, #783).
 // Fortsetzen, Ende der Sitzung oder Cancel beenden die Suche.
 // Für die Studie aus #783 steht im Protokoll einmal je Sitzung die Klasse des
 // erkannten Fensters und seine Knöpfe, nie die Meldung (sie kann Daten des
@@ -45,6 +46,8 @@ type
     function ScanForm(AForm: TCustomForm): Boolean;
     procedure Collect(AControl: TWinControl; var ATexts, AButtons: TArray<string>;
       var AButtonControls: TArray<TControl>);
+    /// <summary>Knopf AIndex des erkannten Dialogs drücken, solange er noch sichtbar ist.</summary>
+    function ClickFound(AIndex: Integer): Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -55,6 +58,8 @@ type
     /// <summary>Den erkannten Dialog mit „Fortsetzen“ schließen; False, wenn er nicht mehr da ist oder keinen
     /// solchen Knopf hat.</summary>
     function ContinueFound: Boolean;
+    /// <summary>Den erkannten Dialog mit „Anhalten“ schließen; der Prozess bleibt stehen (#783).</summary>
+    function BreakFound: Boolean;
     /// <summary>Für das Protokoll vergessen, dass der Dialog schon beschrieben ist (neue Sitzung).</summary>
     procedure NewSession;
     function Watching: Boolean;
@@ -221,13 +226,23 @@ begin
 end;
 
 function TAtlasIdeExceptionDialog.ContinueFound: Boolean;
+begin
+  Result := FScan.CanContinue and ClickFound(FScan.ContinueIndex);
+end;
+
+function TAtlasIdeExceptionDialog.BreakFound: Boolean;
+begin
+  Result := FScan.CanContinue and ClickFound(FScan.BreakIndex);
+end;
+
+function TAtlasIdeExceptionDialog.ClickFound(AIndex: Integer): Boolean;
 var
   Index: Integer;
   Form: TCustomForm;
   Alive: Boolean;
 begin
   Result := False;
-  if (FForm = nil) or not FScan.CanContinue or (FScan.ContinueIndex > High(FButtons)) then
+  if (FForm = nil) or (AIndex < 0) or (AIndex > High(FButtons)) then
     Exit;
   // Das Fenster kann inzwischen zu sein; nur ein noch angemeldetes, sichtbares zählt.
   Alive := False;
@@ -242,9 +257,9 @@ begin
   end;
   if not Alive then
     Exit;
-  if FButtons[FScan.ContinueIndex] is TButton then
+  if FButtons[AIndex] is TButton then
   begin
-    TButton(FButtons[FScan.ContinueIndex]).Click;
+    TButton(FButtons[AIndex]).Click;
     Result := True;
   end;
   FForm := nil;
