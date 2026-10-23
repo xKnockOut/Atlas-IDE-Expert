@@ -307,6 +307,8 @@ uses
   Atlas.Core.Hover.Layout.Tests in 'IDE.Expert\Atlas.Core.Hover.Layout.Tests.pas',
   Atlas.Core.Hover.DebugValue in '..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas',
   Atlas.Core.Hover.DebugValue.Tests in 'IDE.Expert\Atlas.Core.Hover.DebugValue.Tests.pas',
+  Atlas.Core.Debug.Visualizers in '..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.Visualizers.pas',
+  Atlas.Core.Debug.Visualizers.Tests in 'IDE.Expert\Atlas.Core.Debug.Visualizers.Tests.pas',
   Atlas.Core.Hover.Tests in 'IDE.Expert\Atlas.Core.Hover.Tests.pas',
   Atlas.Core.Documentation.Contract in '..\Packages\Atlas.IDE.Expert\Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas',
   Atlas.Core.Documentation.Layout in '..\Packages\Atlas.IDE.Expert\Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas',

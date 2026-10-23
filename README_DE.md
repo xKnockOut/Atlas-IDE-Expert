@@ -18,7 +18,7 @@ Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnoc
 | [Code-Analyse](#code-analyse) | 170 74 73 75 75 76 75 76 75 71 76 75 73 75 75 75 73 4 76 279 Prüfregeln (Fehler, Code-Smells, Sicherheit), Profile, Konfidenz, Baseline, Compilerprüfung nach dem Speichern, Linter für CI mit SARIF |
 | [Refactorings und Code-Aktionen](#refactorings-und-code-aktionen) | Umbenennen samt Formularen, Signatur ändern, Methode extrahieren, Interface implementieren, Property erzeugen und viele Schnellkorrekturen (Alt+Enter) |
 | [Formulare](#formulare) | Abgleich mit dem Designer, Komponenten in der Vervollständigung, Prüfungen zwischen Formular und Code |
-| [Bauen, Testen, Debuggen](#bauen-testen-debuggen) | Release-Build-Wächter, DUnitX-Tests aus dem Editor, Startprofile, Werte im Hover beim Debuggen |
+| [Bauen, Testen, Debuggen](#bauen-testen-debuggen) | Release-Build-Wächter, DUnitX-Tests aus dem Editor, Startprofile, Werte im Hover beim Debuggen, Visualisierer für Listen, Datenmengen, JSON, Farben und Bilder |
 | [IDE-Komfort](#ide-komfort) | Willkommensseite, Befehlspalette, Benachrichtigungen, Änderungsmarken aus Git/SVN, abgesicherter Start |
 | [Einstellungen](#einstellungen) | Jede Funktion einzeln abschaltbar, Optionsseite als Baum, teamweite Projektdatei `.atlas` |
 | [Claude Code](#claude-code-und-mcp) | 19 MCP-Werkzeuge zum Lesen, Prüfen, Bauen, Testen und Umbenennen |
@@ -151,6 +151,7 @@ Code-Aktionen öffnet Alt+Enter; alles steht auch im Menü *Atlas* und im Kontex
 - **DUnitX-Tests** aus dem Editor ausführen und einen einzelnen Test im Debugger starten (Code Lens an `[Test]` und `[TestFixture]`)
 - **Startprofile** für Parameter, Arbeitsordner, Umgebung und Host-Anwendung
 - **Werte im Hover beim Debuggen** (siehe [Verstehen](#verstehen))
+- **Visualisierer für häufige Typen** (`debug.visualizers`): einzeilige Zusammenfassung statt roher Objektdarstellung im Hover, in Überwachten Ausdrücken und Lokalen Variablen, etwa `TObjectList<TKunde> · Count = 3 · [Meier, Schulz, Öztürk]`, `TFDQuery · dsEdit · 3/10 · Name = Meier, Ort = Berlin`, `clWebDodgerBlue · $1E90FF`; die Lupe öffnet ein Ansichtsfenster mit Tabelle, Hex-Ansicht, JSON-Baum, Bild oder Farbfeld. Listen, Dictionaries, Datenmengen, Bytes und Streams, JSON, Farben, TGUID, TPoint/TRect/TSize und Bitmaps, je Art abschaltbar; Auswertung mit Zeitlimit und ohne Nebenwirkungen, soweit nicht erlaubt (`debug.visualizers.evaluation`)
 - **Bauen-Werkzeug für Claude Code:** `build_project` baut offene Projekte über den Compiler der IDE, auch in der Starter-Edition
 
 ### IDE-Komfort

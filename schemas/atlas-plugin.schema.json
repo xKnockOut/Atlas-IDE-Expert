@@ -891,6 +891,97 @@
       "x-captionEn": "Values in the hover while debugging",
       "x-issue": "#891"
     },
+    "DebugVisualizers": {
+      "description": "Visualisierer für häufige Typen beim Debuggen: einzeiliger Ersatztext im Hover, in Überwachten Ausdrücken und Lokalen Variablen sowie ein Ansichtsfenster über die Lupe (Tabelle, Hex, JSON-Baum, Bild, Farbe). Aus = die IDE zeigt ihre eigenen Texte.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.visualizers",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Visualisierer für häufige Typen",
+      "x-captionEn": "Visualizers for common types",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#835"
+    },
+    "DebugVisualizerTypes": {
+      "description": "Welche Arten Atlas aufbereitet, kommagetrennt: lists, dictionaries, dataSets, bytes, json, colors, guid, geometry, graphics; unbekannte Namen fallen weg, leer = keine.",
+      "type": "string",
+      "default": "lists,dictionaries,dataSets,bytes,json,colors,guid,geometry,graphics",
+      "x-key": "debug.visualizers.types",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.visualizers",
+      "x-control": "Kontrollkästchen je Art",
+      "x-issue": "#835"
+    },
+    "DebugVisualizerNameFields": {
+      "description": "Felder bzw. Eigenschaften, deren Wert ein Objekt in Listen kurz benennt, kommagetrennt in dieser Reihenfolge.",
+      "type": "string",
+      "default": "Name,Caption,Text",
+      "x-key": "debug.visualizers.nameFields",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.visualizers",
+      "x-control": "Textfeld",
+      "x-issue": "#835"
+    },
+    "DebugVisualizerMaxLength": {
+      "description": "Höchstlänge des einzeiligen Ersatztexts in Zeichen (20 bis 2000); längere Texte enden mit „…“.",
+      "type": "integer",
+      "minimum": 20,
+      "maximum": 2000,
+      "default": 120,
+      "x-key": "debug.visualizers.maxLength",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.visualizers",
+      "x-control": "Zahl",
+      "x-issue": "#835"
+    },
+    "DebugVisualizerTimeoutMs": {
+      "description": "Zeitlimit je Auswertung im Debugger in Millisekunden (20 bis 5000); danach bleibt der Text der IDE.",
+      "type": "integer",
+      "minimum": 20,
+      "maximum": 5000,
+      "default": 200,
+      "x-key": "debug.visualizers.timeoutMs",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.visualizers",
+      "x-control": "Zahl",
+      "x-issue": "#835"
+    },
+    "DebugVisualizerMaxImagePixels": {
+      "description": "Größtes Bild in Pixeln (Breite × Höhe, 10000 bis 64000000), das das Ansichtsfenster aus dem Programm liest; größere zeigt es nur mit Maßen.",
+      "type": "integer",
+      "minimum": 10000,
+      "maximum": 64000000,
+      "default": 4000000,
+      "x-key": "debug.visualizers.maxImagePixels",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.visualizers",
+      "x-control": "Zahl",
+      "x-issue": "#835"
+    },
+    "DebugVisualizerEvaluation": {
+      "description": "Wie weit Atlas für einen Ersatztext im Programm auswerten darf: fields = nur Felder (keine Nebenwirkungen), properties = auch Getter von Eigenschaften (Count, RecNo, Fields), calls = auch Funktionsaufrufe (ToString, ToJSON).",
+      "type": "string",
+      "enum": [
+        "fields",
+        "properties",
+        "calls"
+      ],
+      "default": "properties",
+      "x-key": "debug.visualizers.evaluation",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.visualizers",
+      "x-control": "Auswahl",
+      "x-issue": "#835"
+    },
     "TestsBuildFirst": {
       "type": "boolean",
       "default": true,
