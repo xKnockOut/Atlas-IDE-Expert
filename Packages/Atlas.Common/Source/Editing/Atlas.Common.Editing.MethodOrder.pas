@@ -45,6 +45,10 @@ type
     Name: string;
     /// <summary>Zeile des Kopfs im Text vor der Änderung.</summary>
     Line: Integer;
+    /// <summary>Zeile des Kopfs danach; bei stehen bleibenden Rümpfen -1.</summary>
+    NewLine: Integer;
+    /// <summary>Zeilen vom Kopf bis zum abschließenden end.</summary>
+    Size: Integer;
     /// <summary>Verschiebung in Rümpfen; negativ = nach oben.</summary>
     Delta: Integer;
     /// <summary>Bleibt stehen (Grund in Reason).</summary>
@@ -320,12 +324,14 @@ begin
   Result := True;
 end;
 
-function MoveOf(const ABlock: TBlock; ADelta: Integer): TMethodMove;
+function MoveOf(const ABlock: TBlock; ADelta, ANewLine: Integer): TMethodMove;
 begin
   Result := Default(TMethodMove);
   Result.TypeName := ABlock.TypeName;
   Result.Name := ABlock.Name;
   Result.Line := ABlock.Header;
+  Result.NewLine := ANewLine;
+  Result.Size := ABlock.Last - ABlock.Header + 1;
   Result.Delta := ADelta;
   Result.Fixed := ABlock.Fixed;
   Result.Reason := ABlock.Reason;
@@ -374,6 +380,7 @@ class function TMethodOrder.Arrange(ATree: TSyntaxTree; const AText: string;
 var
   Lines, NewLines: TArray<string>;
   Blocks, Slots, Target: TBlocks;
+  TargetLines: TArray<Integer>;
   Block: TBlock;
   Line, Slot, Index: Integer;
   Edit: TTextEdit;
@@ -390,11 +397,13 @@ begin
   Target := Sorted(Slots, APlacement);
   // Jeder Platz bekommt den Rumpf, der in der Ordnung an seiner Stelle steht.
   NewLines := nil;
+  SetLength(TargetLines, Length(Target));
   Line := 0;
   Slot := 0;
   while Line < Length(Lines) do
     if (Slot < Length(Slots)) and (Line = Slots[Slot].First) then
     begin
+      TargetLines[Slot] := Length(NewLines) + Target[Slot].Header - Target[Slot].First;
       NewLines := NewLines + BlockLines(Lines, Target[Slot]);
       Line := Slots[Slot].Last + 1;
       Inc(Slot);
@@ -409,10 +418,11 @@ begin
   Result.Edits := [Edit];
   for Index := 0 to High(Target) do
     if IndexOfBlock(Slots, Target[Index]) <> Index then
-      Result.Moves := Result.Moves + [MoveOf(Target[Index], Index - IndexOfBlock(Slots, Target[Index]))];
+      Result.Moves := Result.Moves + [MoveOf(Target[Index], Index - IndexOfBlock(Slots, Target[Index]),
+        TargetLines[Index])];
   for Block in Blocks do
     if Block.Fixed then
-      Result.Moves := Result.Moves + [MoveOf(Block, 0)];
+      Result.Moves := Result.Moves + [MoveOf(Block, 0, -1)];
 end;
 
 class function TMethodOrder.PlaceNew(ATree: TSyntaxTree; const AText, ABefore: string;
@@ -591,7 +601,13 @@ begin
   end;
   for Index := 0 to High(Final) do
     if Final[Index].New and Moved[IndexOfBlock(News, Final[Index])] then
-      Result.Moves := Result.Moves + [MoveOf(Final[Index], Index - IndexOfBlock(Movable, Final[Index]))];
+    begin
+      // Der Kopf eines neuen Rumpfs kam vorher nicht vor: seine erste Fundstelle ist die neue Zeile.
+      Line := 0;
+      while (Line < High(NewLines)) and (NewLines[Line] <> Lines[Final[Index].Header]) do
+        Inc(Line);
+      Result.Moves := Result.Moves + [MoveOf(Final[Index], Index - IndexOfBlock(Movable, Final[Index]), Line)];
+    end;
 end;
 
 end.
