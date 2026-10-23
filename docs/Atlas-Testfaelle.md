@@ -1813,6 +1813,23 @@ Voraussetzung: VCL-Projekt `Kasse.dproj` (Main.pas, Daten.pas), einmal erfolgrei
 | SH14 | `baseline.update` aus | *Aktuelle Compilermeldungen in die Basislinie* fehlt in der Befehlspalette |
 | SH15 | Befehl aus SH7 ohne vorherigen Build bzw. nach einem Build ohne Warnungen | „Keine Warnungen oder Hinweise aus dem letzten Build von <Projekt> für die Basislinie.“ |
 
+## Compilerwarnung gezielt abschalten (#531)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WA1 | Aufruf einer `deprecated`-Routine, bauen (W1000), Cursor auf die Zeile, Strg+. | Aktionen „W1000 hier abschalten ({$WARN SYMBOL_DEPRECATED OFF})“ (bevorzugt), „W1000 in <Routine> abschalten …“, „W1000 in der ganzen Unit abschalten …“, „W1000 im ganzen Projekt abschalten (Projektoptionen)“ |
+| WA2 | „hier abschalten“, Begründung „Altlast“ | Über der Zeile `{$WARN SYMBOL_DEPRECATED OFF} // Altlast`, darunter `{$WARN SYMBOL_DEPRECATED ON}`, beide mit der Einrückung der Zeile; nach dem nächsten Compile ist W1000 weg |
+| WA3 | Nach WA2 einmal Strg+Z | Beide Schalter sind auf einmal weg |
+| WA4 | Unbenutzte lokale Variable (H2164), bauen, Strg+. auf der Variablen | Kein „hier abschalten“; „H2164 in <Routine> abschalten ({$HINTS OFF})“ ist bevorzugt; ausgeführt steht `{$HINTS OFF}` vor dem Routinenkopf und `{$HINTS ON}` hinter ihrem `end;`, nach dem Compile ist H2164 weg |
+| WA5 | Hinweis außerhalb einer Ablaufmeldung (z. B. H2443), „hier abschalten“ | `{$HINTS OFF}` … `{$HINTS ON}` um die Zeile; prüfen, ob der Hinweis danach weg ist |
+| WA6 | „in der ganzen Unit abschalten“ | Eine Zeile `{$WARN … OFF}` direkt unter `unit X;`, kein ON |
+| WA7 | Warnung ohne Bezeichner in der Tabelle (z. B. W1073 unter Delphi 12) | Titel „… ({$WARNINGS OFF}: betrifft alle Warnungen)“; nach dem Ausführen im Meldungsfenster der Hinweis, dass alle Warnungen betroffen sind |
+| WA8 | „im ganzen Projekt abschalten“, Rückfrage mit Nein, dann mit Ja | Nein: nichts geändert. Ja: Projekt geändert (Sternchen), *Projekt › Optionen › Compiler-Meldungen* zeigt die Warnung aus; in der .dproj steht `<DCC_SYMBOL_DEPRECATED>false</DCC_SYMBOL_DEPRECATED>` in der Basiskonfiguration; nach dem Compile ist W1000 im ganzen Projekt weg |
+| WA9 | `refactoring.disableWarningReason` = false, WA2 wiederholen | Keine Rückfrage, kein Kommentar |
+| WA10 | Begründungsdialog mit Abbrechen schließen | Nichts eingefügt |
+| WA11 | `refactoring.disableWarning` = false | Keine dieser Aktionen im Menü |
+| WA12 | Fehlerzeile (E2003) und Zeile ohne Meldung | Keine dieser Aktionen |
+
 ## Units suchen (#777)
 
 Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testprojekt; Server läuft; Einstellungen auf Vorgabe.

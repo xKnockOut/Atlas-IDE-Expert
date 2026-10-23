@@ -710,7 +710,11 @@ type
     BuildCountWarning, BuildCountWarnings, BuildCountHint, BuildCountHints, BuildCountJoin,
     NotificationsBuildRejected, NotificationsBuildRejectedCodes, NotificationsGoToMessage,
     NotificationsBuildBaselined, CompilerBaselineCommand, CompilerBaselineNone, CompilerBaselineDone,
-    CompilerBaselineSkipped, CompilerBaselineFailed, CompilerBaselineNoProject);
+    CompilerBaselineSkipped, CompilerBaselineFailed, CompilerBaselineNoProject,
+    // Compilerwarnung gezielt abschalten (#531).
+    DisableWarningTitle, DisableWarningReasonPrompt, DisableWarningFailed, DisableWarningDone,
+    DisableWarningAllWarnings, DisableWarningProjectConfirm, DisableWarningProjectDone, DisableWarningProjectFailed,
+    DisableWarningNoProject);
 
   TAtlasStrings = class
   private class var
@@ -2330,7 +2334,18 @@ const
      'Compilermeldungen in die Basislinie übernommen: %s (%d Compilermeldungen; %d neu, %d entfernt, %d unverändert)',
      '%d Meldungen nicht übernommen: Datei nicht lesbar oder außerhalb des Projektordners.',
      'Compilermeldungen nicht in die Basislinie übernommen (Server nicht erreichbar oder Basislinie nicht lesbar).',
-     'Kein aktives Projekt für die Basislinie.'),
+     'Kein aktives Projekt für die Basislinie.',
+     'Warnung abschalten',
+     'Begründung als Kommentar (leer: ohne):',
+     'Warnung nicht abgeschaltet: %s',
+     '%s abgeschaltet: %s',
+     'Achtung: {$WARNINGS OFF} schaltet dort alle Warnungen ab, %s hat keinen eigenen Bezeichner.',
+     '%s (%s) für das ganze Projekt %s abschalten?' + sLineBreak + sLineBreak +
+       'Atlas trägt %s = false in die Basiskonfiguration der Compiler-Optionen ein; sie gilt für alle ' +
+       'Konfigurationen und Plattformen, die den Wert nicht selbst setzen.',
+     '%s im Projekt %s abgeschaltet (%s = false); wirkt ab dem nächsten Compile. Speichern nicht vergessen.',
+     '%s nicht in die Projektoptionen eingetragen: %s',
+     'Kein geöffnetes Projekt enthält %s.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3852,7 +3867,18 @@ const
      'Compiler messages added to the baseline: %s (%d compiler messages; %d new, %d removed, %d unchanged)',
      '%d messages not added: file not readable or outside the project folder.',
      'Compiler messages not added to the baseline (server not reachable or baseline not readable).',
-     'No active project for the baseline.'));
+     'No active project for the baseline.',
+     'Disable warning',
+     'Reason as a comment (empty: none):',
+     'Warning not disabled: %s',
+     '%s disabled: %s',
+     'Note: {$WARNINGS OFF} disables all warnings there, %s has no identifier of its own.',
+     'Disable %s (%s) for the whole project %s?' + sLineBreak + sLineBreak +
+       'Atlas sets %s = false in the base configuration of the compiler options; it applies to all ' +
+       'configurations and platforms that do not set the value themselves.',
+     '%s disabled in project %s (%s = false); takes effect with the next compile. Remember to save.',
+     '%s not added to the project options: %s',
+     'No open project contains %s.'));
 
 { TAtlasStrings }
 

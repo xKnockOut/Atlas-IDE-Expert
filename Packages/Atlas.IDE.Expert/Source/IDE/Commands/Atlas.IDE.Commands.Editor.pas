@@ -197,6 +197,7 @@ uses
   Atlas.IDE.Editor.MoveClass,
   Atlas.IDE.Editor.PropertyFromAccessors,
   Atlas.IDE.Editor.InvertBoolean,
+  Atlas.IDE.Editor.DisableWarning,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
@@ -1389,6 +1390,27 @@ begin
     // Client-Befehl: Namen abfragen und „Boolean umkehren“ (#715); er fragt den Server selbst.
     TAtlasIdeInvertBoolean.Execute(Session, AArgumentsJson,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeDisableWarning.ClientCommand then
+  begin
+    // Client-Befehl: Begründung abfragen und Schalter um die Meldung setzen (#531); er fragt den Server selbst.
+    TAtlasIdeDisableWarning.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeDisableWarning.ProjectCommand then
+  begin
+    // Client-Befehl: Warnung nach Rückfrage in den Projektoptionen abschalten (#531).
+    TAtlasIdeDisableWarning.ExecuteProject(AArgumentsJson,
       procedure(AText: string)
       begin
         Say(AText);
