@@ -115,10 +115,13 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Diagnostics.StackCapture,
   Atlas.IDE.Outline.Cache;
 
 const
   TickMs = 150;
+  /// <summary>So oft je Sitzung den Aufrufer protokollieren, der eine Leiste sperrt.</summary>
+  MaxDisabledLogs = 3;
   /// <summary>Befehlsliste und offene Dateien nur alle so viele Takte neu lesen (etwa 2 s).</summary>
   SlowTicks = 13;
   PositionBelow = 'belowBreadcrumbs';
@@ -159,6 +162,7 @@ type
     FLineCounts: TDictionary<string, Integer>;
     FLastFile: string;
     FLastLine: Integer;
+    FDisabledLogged: Integer;
     procedure Tick(Sender: TObject);
     function ToolbarOn: Boolean;
     function EditorOf(const AWindow: INTAEditWindow): TWinControl;
@@ -176,6 +180,7 @@ type
     function CommandOf(const AId: string; out ACommand: TAtlasCommand): Boolean;
     procedure ForgetClosedFiles;
     procedure Later(const AAction: TProc);
+    procedure BarDisabled(Sender: TObject);
   public
     constructor Create;
     destructor Destroy; override;
@@ -441,6 +446,7 @@ begin
   Bar.MoreHint := TAtlasStrings.Text(TAtlasTextId.EditorToolbarMore);
   Bar.GearHint := TAtlasStrings.Text(TAtlasTextId.EditorToolbarCustomizeCommand);
   Bar.CustomizeCaption := TAtlasStrings.Text(TAtlasTextId.EditorToolbarCustomizeCommand);
+  Bar.OnDisabled := BarDisabled;
   Bar.OnCommand :=
     procedure(const AId: string)
     var
@@ -531,6 +537,28 @@ begin
   end
   else if ABar.Top < Crumbs.Top then
     ABar.Top := Crumbs.Top + Crumbs.Height;
+end;
+
+/// <summary>Etwas außerhalb von Atlas sperrt die Leiste; danach kommt kein Klick mehr an. Den Aufrufer
+/// protokollieren, damit die Ursache feststeht (das Protokoll der Brotkrumen nannte nur den Zustand).</summary>
+procedure TToolbarState.BarDisabled(Sender: TObject);
+var
+  Chain: string;
+  Control: TControl;
+begin
+  // Die ersten Male reichen, um den Aufrufer zu sehen; ein Stapel hat bis zu 32 Zeilen.
+  if FDisabledLogged >= MaxDisabledLogs then
+    Exit;
+  Inc(FDisabledLogged);
+  Chain := '';
+  Control := TControl(Sender).Parent;
+  while Control <> nil do
+  begin
+    Chain := Chain + ' < ' + Control.ClassName + ' ' + Control.Name;
+    Control := Control.Parent;
+  end;
+  TAtlasGuard.Log('Editorleiste: wird gesperrt (Enabled := False), in' + Chain + '; Aufrufer:' + sLineBreak +
+    TAtlasIdeStackCapture.CurrentStack(1));
 end;
 
 procedure TToolbarState.ShowBars(AShown: Boolean);

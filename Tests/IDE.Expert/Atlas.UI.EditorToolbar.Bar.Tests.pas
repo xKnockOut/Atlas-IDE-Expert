@@ -38,10 +38,10 @@ type
     procedure ClicksAndDisabledButtons;
     [Test]
     procedure MouseClickSurvivesMouseLeave;
-    /// <summary>Die IDE setzt Enabled bei Steuerelementen im Editor-Panel auf False; die Leiste bleibt bedienbar
-    /// (Windows schickt gesperrten Fenstern keine Mausnachrichten).</summary>
+    /// <summary>Sperrt jemand die Leiste, meldet OnDisabled das, solange sie noch bedienbar ist (der Aufrufer steht
+    /// dann noch auf dem Stapel); danach ist sie gesperrt.</summary>
     [Test]
-    procedure StaysEnabledWhenDisabledFromOutside;
+    procedure ReportsDisablingBeforeItHappens;
     [Test]
     procedure HintsNameCommandAndReason;
     [Test]
@@ -275,13 +275,28 @@ begin
   FBar.OnCustomize := nil;
 end;
 
-procedure TAtlasEditorToolbarTests.StaysEnabledWhenDisabledFromOutside;
+procedure TAtlasEditorToolbarTests.ReportsDisablingBeforeItHappens;
+var
+  Calls: Integer;
+  EnabledAtCall: Boolean;
 begin
-  FBar.SetButtons(Sample);
-  FBar.HandleNeeded;
+  Calls := 0;
+  EnabledAtCall := False;
+  FBar.OnDisabled :=
+    procedure(Sender: TObject)
+    begin
+      Inc(Calls);
+      EnabledAtCall := TAtlasEditorToolbar(Sender).Enabled;
+    end;
   FBar.Enabled := False;
-  Assert.IsTrue(FBar.Enabled, 'Eigenschaft');
-  Assert.IsTrue(IsWindowEnabled(FBar.Handle), 'Fenster');
+  Assert.AreEqual(1, Calls);
+  Assert.IsTrue(EnabledAtCall, 'gemeldet, bevor gesperrt');
+  Assert.IsFalse(FBar.Enabled);
+  // Schon gesperrt oder wieder frei: keine Meldung.
+  FBar.Enabled := False;
+  FBar.Enabled := True;
+  Assert.AreEqual(1, Calls);
+  FBar.OnDisabled := nil;
 end;
 
 procedure TAtlasEditorToolbarTests.HintsNameCommandAndReason;
