@@ -586,6 +586,7 @@ begin
   Assert.AreEqual('Editorleiste', TAtlasGuard.FeatureName(TAtlasFeature.EditorToolbar));
   Assert.AreEqual('Schnelle Lesezeichen', TAtlasGuard.FeatureName(TAtlasFeature.QuickBookmarks));
   Assert.AreEqual('Architekturübersicht', TAtlasGuard.FeatureName(TAtlasFeature.Architecture));
+  Assert.AreEqual('Weg zwischen Symbolen', TAtlasGuard.FeatureName(TAtlasFeature.SymbolPath));
 end;
 
 procedure TAtlasGuardTests.SlowProviderLogsOncePerInterval;

@@ -14,6 +14,9 @@
 // Die Liste der persönlichen Notizen (#545) zeigt je Datei „Zeile: Titel“ und
 // verwaiste Notizen in einer Gruppe am Ende; Doppelklick oder Enter springt,
 // das Kontextmenü bearbeitet oder löscht die Notiz (Entf löscht ebenfalls).
+// Ein Weg zwischen Symbolen (#1117) erscheint statt des Baums als gezeichnete
+// Kette (TAtlasSymbolPathChain) mit Statuszeile; „In Architekturkarte
+// zeigen“ meldet die Units des ersten Wegs über OnShowRoute.
 
 interface
 
@@ -32,7 +35,9 @@ uses
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
   Atlas.Core.Undo.Contract,
-  Atlas.Core.Notes.Store;
+  Atlas.Core.Notes.Store,
+  Atlas.Core.SymbolPath.Model,
+  Atlas.UI.SymbolPath.Chain;
 
 type
   TAtlasResultsOpen = reference to procedure(const AFileName: string; ALine, ACharacter: Integer);
@@ -44,6 +49,8 @@ type
   TAtlasChangeDiff = reference to procedure(ASetId: Integer; const AFileName: string);
   /// <summary>Notiz (#545) bearbeiten bzw. löschen.</summary>
   TAtlasNoteAction = reference to procedure(const ANoteId: string);
+  /// <summary>Units eines Wegs (#1117) auf der Architekturkarte zeigen.</summary>
+  TAtlasShowRoute = reference to procedure(const AUnits: TArray<string>);
 
   TAtlasResultsFrame = class(TFrame)
   private type
@@ -84,6 +91,17 @@ type
     FShowsNotes: Boolean;
     FOnNoteEdit: TAtlasNoteAction;
     FOnNoteDelete: TAtlasNoteAction;
+    /// <summary>Weg zwischen Symbolen (#1117): Leiste, Statuszeile, Kette in einer Scrollbox.</summary>
+    FPathPanel: TPanel;
+    FPathStatus: TLabel;
+    FPathMap: TButton;
+    FPathBox: TScrollBox;
+    FPathChain: TAtlasSymbolPathChain;
+    FShowsPath: Boolean;
+    FOnShowRoute: TAtlasShowRoute;
+    procedure ShowPathPanel(AVisible: Boolean);
+    procedure PathMapClick(Sender: TObject);
+    procedure PathBoxResize(Sender: TObject);
     function AddNode(AParent: TTreeNode; const AText: string; const AData: TNodeData): TTreeNode;
     function DataOf(ANode: TTreeNode): TNodeData;
     procedure AddHierarchy(AParent: TTreeNode; const AItems: TArray<TAtlasHierarchyItem>);
@@ -121,6 +139,11 @@ type
     /// <summary>Wie oben; ASelectId: diese Notiz wählen (nach Bearbeiten).</summary>
     procedure ShowNotes(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>;
       const ASelectId: string); overload;
+    /// <summary>Weg zwischen Symbolen (#1117) als Kette; AMapAvailable: Knopf „In Architekturkarte zeigen“
+    /// anbieten (Architekturübersicht an und ein Weg gefunden).</summary>
+    procedure ShowSymbolPath(const ATitle: string; const AAnswer: TAtlasSymbolPathAnswer; AMapAvailable: Boolean);
+    /// <summary>Statt der Kette nur ein Hinweis (Suche läuft, kein Server, Fehler).</summary>
+    procedure ShowSymbolPathMessage(const ATitle, AText: string);
     /// <summary>Kennung der gewählten Notiz; '' ohne.</summary>
     function SelectedNoteId: string;
     procedure EditSelectedNote;
@@ -147,6 +170,12 @@ type
     property ShowsNotes: Boolean read FShowsNotes;
     property OnNoteEdit: TAtlasNoteAction read FOnNoteEdit write FOnNoteEdit;
     property OnNoteDelete: TAtlasNoteAction read FOnNoteDelete write FOnNoteDelete;
+    /// <summary>Zeigt gerade einen Weg zwischen Symbolen (#1117).</summary>
+    property ShowsPath: Boolean read FShowsPath;
+    property PathChain: TAtlasSymbolPathChain read FPathChain;
+    property PathStatus: TLabel read FPathStatus;
+    property PathMapButton: TButton read FPathMap;
+    property OnShowRoute: TAtlasShowRoute read FOnShowRoute write FOnShowRoute;
   end;
 
 implementation
@@ -221,6 +250,45 @@ begin
   FNoteDeleteItem.OnClick := NoteDeleteClick;
   FMenu.Items.Add(FNoteDeleteItem);
   FTree.PopupMenu := FMenu;
+  // Weg zwischen Symbolen (#1117): anfangs verborgen, ersetzt den Baum.
+  FPathPanel := TPanel.Create(Self);
+  FPathPanel.Parent := Self;
+  FPathPanel.Align := alClient;
+  FPathPanel.BevelOuter := bvNone;
+  FPathPanel.ShowCaption := False;
+  FPathPanel.ParentBackground := True;
+  FPathPanel.Visible := False;
+  FPathMap := TButton.Create(Self);
+  FPathMap.Parent := FPathPanel;
+  FPathMap.Align := alTop;
+  FPathMap.AlignWithMargins := True;
+  FPathMap.Caption := TAtlasStrings.Text(TAtlasTextId.SymbolPathShowMap);
+  FPathMap.OnClick := PathMapClick;
+  FPathMap.Visible := False;
+  FPathStatus := TLabel.Create(Self);
+  FPathStatus.Parent := FPathPanel;
+  FPathStatus.Align := alTop;
+  FPathStatus.AlignWithMargins := True;
+  FPathStatus.ShowAccelChar := False;
+  FPathStatus.WordWrap := True;
+  FPathBox := TScrollBox.Create(Self);
+  FPathBox.Parent := FPathPanel;
+  FPathBox.Align := alClient;
+  FPathBox.BorderStyle := bsNone;
+  FPathBox.VertScrollBar.Tracking := True;
+  FPathBox.HorzScrollBar.Visible := False;
+  FPathBox.OnResize := PathBoxResize;
+  FPathChain := TAtlasSymbolPathChain.Create(Self);
+  FPathChain.Parent := FPathBox;
+  FPathChain.Left := 0;
+  FPathChain.Top := 0;
+  FPathChain.Width := FPathBox.ClientWidth;
+  FPathChain.OnOpen :=
+    procedure(const AFileName: string; ALine, ACharacter: Integer)
+    begin
+      if Assigned(FOnOpen) then
+        FOnOpen(AFileName, ALine, ACharacter);
+    end;
 end;
 
 destructor TAtlasResultsFrame.Destroy;
@@ -265,8 +333,50 @@ begin
     Result := FData[Integer(Index)];
 end;
 
+procedure TAtlasResultsFrame.ShowPathPanel(AVisible: Boolean);
+begin
+  FShowsPath := AVisible;
+  FPathPanel.Visible := AVisible;
+  FTree.Visible := not AVisible;
+end;
+
+procedure TAtlasResultsFrame.PathBoxResize(Sender: TObject);
+begin
+  FPathChain.Width := FPathBox.ClientWidth;
+end;
+
+procedure TAtlasResultsFrame.PathMapClick(Sender: TObject);
+begin
+  if Assigned(FOnShowRoute) and (Length(FPathChain.Answer.Routes) > 0) then
+    FOnShowRoute(FPathChain.Answer.Routes[0].UnitNames);
+end;
+
+procedure TAtlasResultsFrame.ShowSymbolPath(const ATitle: string; const AAnswer: TAtlasSymbolPathAnswer;
+  AMapAvailable: Boolean);
+begin
+  Clear(ATitle);
+  ShowPathPanel(True);
+  FPathStatus.Caption := TAtlasSymbolPathChain.StatusText(AAnswer);
+  FPathMap.Visible := AMapAvailable and (Length(AAnswer.Routes) > 0);
+  FPathChain.SetAnswer(AAnswer);
+  FPathBox.VertScrollBar.Position := 0;
+  // Nur im gezeigten Fenster; SetFocus in einem verborgenen löst eine Ausnahme aus.
+  if FPathChain.Showing and FPathChain.CanFocus then
+    FPathChain.SetFocus;
+end;
+
+procedure TAtlasResultsFrame.ShowSymbolPathMessage(const ATitle, AText: string);
+begin
+  Clear(ATitle);
+  ShowPathPanel(True);
+  FPathStatus.Caption := AText;
+  FPathMap.Visible := False;
+  FPathChain.SetAnswer(Default(TAtlasSymbolPathAnswer));
+end;
+
 procedure TAtlasResultsFrame.Clear(const ATitle: string);
 begin
+  ShowPathPanel(False);
   FShowsChanges := False;
   FShowsNotes := False;
   FTitle.Caption := ATitle;

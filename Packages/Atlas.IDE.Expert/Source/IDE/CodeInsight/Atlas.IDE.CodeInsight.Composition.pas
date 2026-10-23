@@ -76,6 +76,7 @@ uses
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Architecture.Service,
+  Atlas.IDE.SymbolPath.Service,
   Atlas.IDE.Outline.Breadcrumbs,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.UI.EditorToolbar.Customize,
@@ -976,6 +977,11 @@ begin
   Result := TAtlasIdeSettings.Current.ArchitectureEnabled;
 end;
 
+function SymbolPathVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.SymbolPath;
+end;
+
 function JumpToMatchVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.JumpToMatch;
@@ -1260,6 +1266,9 @@ begin
   // Architekturübersicht (#1118); nur sichtbar, solange architecture.enabled an ist.
   Add('Atlas.Architecture', TAtlasTextId.ArchitectureCommand,
     Guarded(TAtlasFeature.Architecture, TAtlasIdeArchitecture.ShowWindow), ArchitectureVisible);
+  // Weg zwischen Symbolen (#1117); nur sichtbar, solange navigation.symbolPath an ist.
+  Add('Atlas.SymbolPath', TAtlasTextId.SymbolPathCommand,
+    Guarded(TAtlasFeature.SymbolPath, TAtlasIdeSymbolPath.ShowDialog), SymbolPathVisible);
   // Brotkrumenleiste (#590): Fokus auf das letzte Glied; nur sichtbar, solange editor.breadcrumbs an ist.
   Add('Atlas.Breadcrumbs', TAtlasTextId.BreadcrumbsCommand,
     Guarded(TAtlasFeature.Breadcrumbs, TAtlasIdeBreadcrumbs.Focus), BreadcrumbsVisible);
@@ -2428,6 +2437,19 @@ begin
       Result := (Manager <> nil) and (Manager.ActiveSession <> nil) and
         Manager.RunCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
     end);
+  // Weg zwischen Symbolen (#1117): Suche über RunCommandAsync, Vorschläge aus der Symbolsuche.
+  TAtlasIdeSymbolPath.Install(
+    function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
+    begin
+      Result := (Manager <> nil) and (Manager.ActiveSession <> nil) and
+        Manager.RunCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
+    end,
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.ActiveSession;
+    end);
   TAtlasIdeBreadcrumbs.Install;
   // Atlas-Editorleiste (#1101) nach den Brotkrumen (Position „in der Brotkrumenzeile“).
   StartEditorToolbar;
@@ -2613,6 +2635,7 @@ begin
   TAtlasIdeCommentContinuation.Uninstall;
   TAtlasIdeStatementCompletion.Uninstall;
   TAtlasIdeOutline.Uninstall;
+  TAtlasIdeSymbolPath.Uninstall;
   TAtlasIdeArchitecture.Uninstall;
   TAtlasIdeOutlineCache.Uninstall;
   TAtlasIdeNavHistory.Uninstall;
@@ -4180,6 +4203,8 @@ begin
       TAtlasIdeOutline.ApplySettings;
       // architecture.* (#1118).
       TAtlasIdeArchitecture.ApplySettings;
+      // navigation.symbolPath (#1117): Kontextmenü „Weg von hier nach …“.
+      TAtlasIdeEditorCommands.ApplySettings;
       // editor.breadcrumbs* (#590).
       TAtlasIdeBreadcrumbs.ApplySettings;
       // editor.toolbar* (#1101).

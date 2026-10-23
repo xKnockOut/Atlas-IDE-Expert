@@ -727,6 +727,13 @@ procedure TAtlasArchitectureFrame.UpdateInfo;
 var
   Item: TAtlasArchUnit;
 begin
+  if Length(FMap.Route) > 0 then
+  begin
+    // Fester Weg aus „Weg zwischen Symbolen“ (#1117).
+    FInfo.Caption := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureRoute, [Length(FMap.Route),
+      FModel.RouteText(FMap.Route)]);
+    Exit;
+  end;
   if FMap.PathFrom >= 0 then
   begin
     if FMap.PathFound then

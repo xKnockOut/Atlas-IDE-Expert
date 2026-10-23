@@ -21,6 +21,9 @@
 // - Zwischen Deklaration und Implementierung wechseln (#775): ohne Server,
 //   direkt aus dem Puffer (Atlas.Core.Editor.MethodToggle).
 // - Qualifizierten Namen kopieren (atlas.server.qualifiedName, #128).
+// - „Weg von hier nach …“ (#1117): Dialog „Weg zwischen Symbolen“ mit dem
+//   qualifizierten Namen am Cursor als „Von“; nur sichtbar, solange
+//   navigation.symbolPath an ist (ApplySettings).
 // - Zwischen Unit und Testunit wechseln (atlas.server.testUnit, #189): öffnet
 //   das Gegenstück; fehlt die Testunit, legt das Edit des Servers sie an und
 //   trägt sie ins Testprojekt ein (#274), danach wird sie geöffnet.
@@ -101,6 +104,9 @@ type
     class procedure Apply(const AAction: TLspCodeAction); static;
     class procedure RunCommand(const ACommand, AArgumentsJson: string); static;
     class procedure RunSlash(const AView: IOTAEditView; AKind: TAtlasSlashKind); static;
+    /// <summary>Qualifizierter Name am Cursor (#128); False mit Meldung ohne Server oder Editor, True mit
+    /// AName = '' ohne Symbol.</summary>
+    class function FetchQualifiedName(AWithParameters: Boolean; out AName: string): Boolean; static;
   public
     /// <summary>ASessionOf: laufende Sitzung (Server bei Bedarf gestartet) oder nil; AMessage: Zeile für
     /// die Meldungsansicht.</summary>
@@ -131,6 +137,13 @@ type
     /// passender Markierung an die IDE.</summary>
     class function TryFindSelection(ABackward: Boolean): Boolean; static;
     class procedure CopyQualifiedName(AWithParameters: Boolean); static;
+    /// <summary>Qualifizierter Name am Cursor der oberen Datei (ohne Parameter); False mit Meldung ohne Server,
+    /// Editor oder Symbol.</summary>
+    class function QualifiedNameHere(out AName: string): Boolean; static;
+    /// <summary>„Weg von hier nach …“ (#1117).</summary>
+    class procedure SymbolPathFromHere; static;
+    /// <summary>Nach geänderten Einstellungen: Sichtbarkeit der Kontextmenüeinträge.</summary>
+    class procedure ApplySettings; static;
     /// <summary>Zur Testunit bzw. getesteten Unit der oberen Datei; legt eine fehlende Testunit an (#189).</summary>
     class procedure SwitchTestUnit; static;
     /// <summary>Obere Datei formatieren (#43): mit Auswahl nur deren Zeilen. Ausgeschaltet oder ohne Änderung eine
@@ -204,6 +217,7 @@ uses
   Atlas.IDE.Editor.SmartPaste,
   Atlas.IDE.Editor.Unwrap,
   Atlas.IDE.EditorToolbar.Service,
+  Atlas.IDE.SymbolPath.Service,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Navigation;
 
@@ -509,6 +523,17 @@ begin
     procedure
     begin
       CopyQualifiedName(True);
+    end);
+  // Weg zwischen Symbolen (#1117).
+  FContextMenu.AddWhen(TAtlasFeature.SymbolPath, 'Atlas.SymbolPath',
+    TAtlasStrings.Text(TAtlasTextId.SymbolPathFromHere), nil,
+    procedure
+    begin
+      SymbolPathFromHere;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSymbolPath.Enabled;
     end);
   // Atlas-Änderungen über mehrere Dateien (#721).
   FContextMenu.Add('-', nil, nil);
@@ -992,7 +1017,25 @@ begin
     Say(TAtlasStrings.Text(TAtlasTextId.EditorMethodToggleNone));
 end;
 
-class procedure TAtlasIdeEditorCommands.CopyQualifiedName(AWithParameters: Boolean);
+class procedure TAtlasIdeEditorCommands.SymbolPathFromHere;
+var
+  Name: string;
+begin
+  if not TAtlasIdeSymbolPath.Enabled then
+    Exit;
+  // Ohne Symbol am Cursor trotzdem den Dialog: „Von“ lässt sich dort eintippen.
+  if not QualifiedNameHere(Name) then
+    Name := '';
+  TAtlasIdeSymbolPath.ShowDialogFrom(Name);
+end;
+
+class procedure TAtlasIdeEditorCommands.ApplySettings;
+begin
+  if FContextMenu <> nil then
+    FContextMenu.UpdateVisibility;
+end;
+
+class function TAtlasIdeEditorCommands.FetchQualifiedName(AWithParameters: Boolean; out AName: string): Boolean;
 var
   View: IOTAEditView;
   FileName, Arguments: string;
@@ -1001,6 +1044,8 @@ var
   Values: TJSONArray;
   Answer: TJSONValue;
 begin
+  AName := '';
+  Result := False;
   if not Current(View, FileName, Lines, Selection) then
     Exit;
   Values := TJSONArray.Create;
@@ -1023,16 +1068,32 @@ begin
     end;
   end;
   try
-    if not (Answer is TJSONString) or (Answer.Value = '') then
-    begin
-      Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
-      Exit;
-    end;
-    Clipboard.AsText := Answer.Value;
-    Say(TAtlasStrings.Fmt(TAtlasTextId.EditorCopied, [Answer.Value]));
+    if Answer is TJSONString then
+      AName := Answer.Value;
+    Result := True;
   finally
     Answer.Free;
   end;
+end;
+
+class function TAtlasIdeEditorCommands.QualifiedNameHere(out AName: string): Boolean;
+begin
+  Result := FetchQualifiedName(False, AName) and (AName <> '');
+end;
+
+class procedure TAtlasIdeEditorCommands.CopyQualifiedName(AWithParameters: Boolean);
+var
+  Name: string;
+begin
+  if not FetchQualifiedName(AWithParameters, Name) then
+    Exit;
+  if Name = '' then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
+    Exit;
+  end;
+  Clipboard.AsText := Name;
+  Say(TAtlasStrings.Fmt(TAtlasTextId.EditorCopied, [Name]));
 end;
 
 class procedure TAtlasIdeEditorCommands.FormatCode;
