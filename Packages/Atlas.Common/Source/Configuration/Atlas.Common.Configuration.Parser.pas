@@ -1376,6 +1376,8 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.Conditions)
     else if Key = 'conditionalExpression' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ConditionalExpression)
+    else if Key = 'nestedRoutine' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.NestedRoutine)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);

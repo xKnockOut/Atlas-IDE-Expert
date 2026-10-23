@@ -6,9 +6,12 @@
 //   in einem Fenster wie die Befehlspalette, in der Reihenfolge des Servers,
 //   bevorzugte zuerst (Ersatz für die Glühbirne). Die gewählte ändert die
 //   Puffer über TAtlasIdeWorkspaceEdit (je Datei ein Rückgängig-Schritt, #397)
-//   und führt danach ihren Befehl aus: atlas.copyText legt das erste Argument
-//   in die Zwischenablage, atlas.openFile öffnet die Datei der URI im ersten
-//   Argument (Testunit, #274/#189), atlas.goToPosition setzt den Cursor im
+//   und führt danach ihren Befehl aus. Trägt die Aktion eine Vorschau
+//   (data.preview, #663), zeigt Atlas vorher die Änderungen mit diesem Text wie
+//   beim Umbenennen und übernimmt erst nach Bestätigung. Gesperrte Aktionen
+//   (disabled) stehen als Hinweis am Ende und nennen beim Wählen den Grund.
+//   Befehle: atlas.copyText legt das erste Argument in die Zwischenablage,
+//   atlas.openFile öffnet die Datei der URI im ersten Argument (Testunit, #274/#189), atlas.goToPosition setzt den Cursor im
 //   oberen Editor auf Zeile und Zeichen aus den Argumenten (Sprung zur
 //   Freigabe, #915), atlas.showSignatureHelp setzt ihn ebenso und öffnet
 //   den Parameter-Hint (OnSignatureHelp, setzt die Composition; #1007),
@@ -99,6 +102,8 @@ type
     class procedure Select(const AView: IOTAEditView; const ALines: TArray<string>; const ARange: TLspRange); static;
     class procedure Step(AExpand: Boolean); static;
     class procedure Apply(const AAction: TLspCodeAction); static;
+    /// <summary>Vorschau der Änderungen mit AAction.Preview als Hinweis; True, wenn übernommen werden soll.</summary>
+    class function ConfirmPreview(const AAction: TLspCodeAction): Boolean; static;
     class procedure RunCommand(const ACommand, AArgumentsJson: string); static;
     class procedure RunSlash(const AView: IOTAEditView; AKind: TAtlasSlashKind); static;
   public
@@ -205,7 +210,10 @@ uses
   Atlas.IDE.Editor.Unwrap,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.Core.Results.Model,
+  Atlas.UI.Results.Frame,
+  Atlas.UI.Results.RenamePreview;
 
 const
   // Code-Aktionen und Befehle des Servers; Befehle können projektweit arbeiten.
@@ -1200,6 +1208,10 @@ begin
   for Action in Found do
     if not Action.Preferred and (Action.Disabled = '') then
       Usable := Usable + [Action];
+  // Hinweis statt Aktion (#663): am Ende, wählen nennt den Grund.
+  for Action in Found do
+    if Action.Disabled <> '' then
+      Usable := Usable + [Action];
   if Length(Usable) = 0 then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.EditorNoActions));
@@ -1212,6 +1224,8 @@ begin
     Command.Id := IntToStr(Index);
     Command.Caption := Usable[Index].Title;
     Command.Path := KindCaption(Usable[Index].Kind);
+    if Usable[Index].Disabled <> '' then
+      Command.Path := TAtlasStrings.Text(TAtlasTextId.EditorActionNote);
     if Usable[Index].Preferred then
       Command.ShortCut := '★';
     Commands := Commands + [Command];
@@ -1275,13 +1289,38 @@ begin
   Say(TAtlasStrings.Text(TAtlasTextId.UsesActionMissing));
 end;
 
+class function TAtlasIdeEditorCommands.ConfirmPreview(const AAction: TLspCodeAction): Boolean;
+var
+  Preview: TArray<TAtlasResultEntry>;
+  Open: TAtlasResultsOpen;
+begin
+  Preview := TAtlasResults.RenamePreview(AAction.Edit,
+    function(const AFileName: string): string
+    begin
+      Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
+    end);
+  Open :=
+    procedure(const AFileName: string; ALine, ACharacter: Integer)
+    begin
+      TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
+    end;
+  Result := TAtlasRenamePreview.Execute(AAction.Title, AAction.Preview, TAtlasResults.Group(Preview), Open);
+end;
+
 class procedure TAtlasIdeEditorCommands.Apply(const AAction: TLspCodeAction);
 var
   Outcome: TAtlasWorkspaceEditResult;
 begin
+  if AAction.Disabled <> '' then
+  begin
+    Say(TAtlasStrings.Fmt(TAtlasTextId.EditorActionDisabled, [AAction.Title, AAction.Disabled]));
+    Exit;
+  end;
   // LSP: erst die Änderung, dann der Befehl.
   if not AAction.Edit.IsEmpty then
   begin
+    if (AAction.Preview <> '') and not ConfirmPreview(AAction) then
+      Exit;
     Outcome := TAtlasIdeWorkspaceEdit.Apply(AAction.Edit,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
       AAction.Title);

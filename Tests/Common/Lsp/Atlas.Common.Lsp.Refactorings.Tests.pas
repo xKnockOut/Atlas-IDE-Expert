@@ -48,6 +48,10 @@ type
     /// </summary>
     [Test]
     procedure ConvertsConditionalExpression;
+    /// <summary>Lokale Routine herauslösen (#663): Record über die Namensauflösung als const, Vorschau,
+    /// abschaltbar.</summary>
+    [Test]
+    procedure ExtractsNestedRoutine;
     /// <summary>Strg+Leertaste auf dem Wort with bietet „with auflösen“ an.</summary>
     [Test]
     procedure CompletionOffersWithItem;
@@ -81,6 +85,7 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.Extract,
+  Atlas.Common.Editing.NestedRoutines,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.Completion;
 
@@ -412,6 +417,41 @@ begin
   Old.Settings.ConditionalExpression := False;
   Assert.AreEqual(0, Pos('In bedingten Ausdruck umwandeln', Titles(Statement, 17, 3, Old)));
   Assert.AreEqual(0, Pos('In if-Anweisung umwandeln', Titles(Expression, 17, 9, Old)));
+end;
+
+procedure TLspRefactoringsTests.ExtractsNestedRoutine;
+const
+  Text =
+    'unit Haupt;'#10 +                            // 0
+    'interface'#10 +                              // 1
+    'type'#10 +                                   // 2
+    '  TPunkt = record X: Integer; end;'#10 +     // 3
+    'implementation'#10 +                         // 4
+    'procedure Zeige;'#10 +                       // 5
+    'var'#10 +                                    // 6
+    '  P: TPunkt;'#10 +                           // 7
+    '  N: Integer;'#10 +                          // 8
+    #10 +                                         // 9
+    '  procedure Lies;'#10 +                      // 10
+    '  begin'#10 +                                // 11
+    '    N := P.X;'#10 +                          // 12
+    '  end;'#10 +                                 // 13
+    #10 +                                         // 14
+    'begin'#10 +                                  // 15
+    '  Lies;'#10 +                                // 16
+    'end;'#10 +                                   // 17
+    'end.'#10;
+var
+  Done: string;
+  Off: TRefactoringContext;
+begin
+  Done := Applied(Text, TNestedRoutines.ToUnitRoutineTitle, 10, 4);
+  Assert.IsTrue(Pos('procedure Lies(var N: Integer; const P: TPunkt);'#10'begin'#10'  N := P.X;', Done) > 0, Done);
+  Assert.IsTrue(Pos('  Lies(N, P);'#10, Done) > 0, Done);
+  Assert.IsTrue(Pos(TNestedRoutines.ToUnitRoutineTitle + '|', Titles(Text, 10, 4, Context)) > 0);
+  Off := Context;
+  Off.Settings.NestedRoutine := False;
+  Assert.AreEqual(0, Pos(TNestedRoutines.ToUnitRoutineTitle, Titles(Text, 10, 4, Off)));
 end;
 
 procedure TLspRefactoringsTests.CompletionOffersWithItem;

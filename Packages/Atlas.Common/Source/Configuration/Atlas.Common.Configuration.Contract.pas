@@ -396,6 +396,8 @@ type
     Conditions: Boolean;
     /// <summary>Code-Aktionen zwischen if-Anweisung und Bedingungsausdruck, IfThen ersetzen (#684).</summary>
     ConditionalExpression: Boolean;
+    /// <summary>Code-Aktionen zwischen lokaler Routine und Methode bzw. Routine der Unit (#663).</summary>
+    NestedRoutine: Boolean;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -855,6 +857,7 @@ begin
   Result.IfCase := True;
   Result.Conditions := True;
   Result.ConditionalExpression := True;
+  Result.NestedRoutine := True;
 end;
 
 { TCompletionSettings }
