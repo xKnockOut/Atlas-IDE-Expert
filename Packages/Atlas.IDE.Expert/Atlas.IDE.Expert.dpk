@@ -576,6 +576,8 @@ contains
   Atlas.Core.Debug.Evaluate in 'Source\Core\Debug\Atlas.Core.Debug.Evaluate.pas',
   Atlas.UI.Debug.EvaluateFrame in 'Source\UI\Debug\Atlas.UI.Debug.EvaluateFrame.pas' {AtlasDebugEvaluateFrame: TFrame},
   Atlas.IDE.Debug.EvaluateWindow in 'Source\IDE\Debug\Atlas.IDE.Debug.EvaluateWindow.pas',
-  Atlas.IDE.Debug.Evaluate in 'Source\IDE\Debug\Atlas.IDE.Debug.Evaluate.pas';
+  Atlas.IDE.Debug.Evaluate in 'Source\IDE\Debug\Atlas.IDE.Debug.Evaluate.pas',
+  Atlas.Core.Lsp.DataFlow in 'Source\Core\Lsp\Atlas.Core.Lsp.DataFlow.pas',
+  Atlas.Core.Results.DataFlow in 'Source\Core\Results\Atlas.Core.Results.DataFlow.pas';
 
 end.

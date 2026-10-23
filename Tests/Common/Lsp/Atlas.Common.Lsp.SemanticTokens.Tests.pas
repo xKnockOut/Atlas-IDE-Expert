@@ -129,7 +129,8 @@ begin
   // +0 declaration, +1 readonly, +2 defaultLibrary
   Assert.AreEqual('2 enum+0|12 enumMember+0|17 enumMember+0|', Describe(Tokens, 4));
   Assert.AreEqual('4 field+0|', Describe(Tokens, 6));
-  Assert.AreEqual('13 property+0|', Describe(Tokens, 8));
+  // read FWert löst seit #690 zum Feld auf.
+  Assert.AreEqual('13 property+0|32 field|', Describe(Tokens, 8));
   Assert.AreEqual('13 event+0|', Describe(Tokens, 9));
   Assert.AreEqual('2 variable+0+1|', Describe(Tokens, 12));
 end;

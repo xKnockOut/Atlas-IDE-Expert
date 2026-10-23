@@ -995,6 +995,12 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Providers.Expression.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Evaluate.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.EvaluateFrame.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DataFlow.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.DataFlow.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.DataFlow.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Results\Atlas.Core.Results.DataFlow.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Results.DataFlow.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Results.DataFlow.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
