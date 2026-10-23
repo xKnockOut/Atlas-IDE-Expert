@@ -429,6 +429,25 @@ type
     /// <summary>Verhalten bei Verstößen (build.gate, #529): off, warn (beide melden nur) oder block (bricht den
     /// Build ab). Wirkt bisher nur auf den Release-Wächter.</summary>
     BuildGate: string;
+    /// <summary>Projektaufgaben (#900, tasks.enabled): Aufgaben aus dem Abschnitt „tasks“ von atlas.json mit Befehlen,
+    /// Menü Atlas › Aufgaben, Tasten je Aufgabe, Statusfeld und Schnellaktion. Aus = keine Befehle, kein Menü, keine
+    /// Tasten und kein Lauf vor dem Build.</summary>
+    TasksEnabled: Boolean;
+    /// <summary>Fundstellen der Ausgabe als Befunde in Problemliste und Editor (tasks.problemsFromOutput); aus = nur
+    /// die Ausgabe im Register „Atlas-Aufgaben“.</summary>
+    TasksProblemsFromOutput: Boolean;
+    /// <summary>Aufgaben der Gruppe „check“ vor jedem Compile/Build (tasks.beforeBuild): off, warn (Build läuft,
+    /// Befunde erscheinen) oder block (Exit-Code ungleich 0 oder Fehler brechen den Build ab). „beforeBuild“ einer
+    /// Aufgabe überschreibt den Wert.</summary>
+    TasksBeforeBuild: string;
+    /// <summary>Geänderte Dateien vor dem Start einer Aufgabe speichern (tasks.saveBeforeRun).</summary>
+    TasksSaveBeforeRun: Boolean;
+    /// <summary>„Alle Prüfungen ausführen“ und der Lauf vor dem Build starten die check-Aufgaben gleichzeitig
+    /// (tasks.runChecksParallel); aus = nacheinander.</summary>
+    TasksRunChecksParallel: Boolean;
+    /// <summary>Register „Atlas-Aufgaben“ zeigt nur die erkannten Fundstellen (tasks.onlyFindings); aus = die ganze
+    /// Ausgabe. Umschaltbar über den Befehl „Aufgaben: nur Befunde / ganze Ausgabe“.</summary>
+    TasksOnlyFindings: Boolean;
     /// <summary>Konfigurationen, die außer „Release“ als Release gelten (build.releaseConfigs), durch Komma
     /// getrennt.</summary>
     ReleaseConfigs: string;
@@ -979,7 +998,7 @@ type
     /// Knöpfe in der Zeile unter der Maus bzw. mit dem Fokus; aus = keine Knöpfe, keine Tasten.</summary>
     WelcomePageQuickActions: Boolean;
     /// <summary>Gezeigte Knöpfe (#764, welcomePage.quickActions.items): Namen durch Komma getrennt, in der
-    /// Reihenfolge build, tests, run, pull, folder, console; '' = keiner.</summary>
+    /// Reihenfolge build, tests, run, pull, folder, console, tasks (#900); '' = keiner.</summary>
     WelcomePageQuickActionsItems: string;
     /// <summary>Programm für „Konsole“ (#764, welcomePage.quickActions.console): wt.exe (Vorgabe), cmd.exe,
     /// powershell.exe, pwsh.exe oder ein anderes; ohne Windows-Terminal nimmt Atlas cmd.exe.</summary>
@@ -1094,8 +1113,22 @@ const
 const
   /// <summary>Knöpfe der Schnellaktionen (#764) wie TAtlasWelcomeQuickActions.Names (Test prüft Gleichheit; die
   /// Einstellungen kennen die Willkommensseite nicht, A-09).</summary>
-  QuickActionNames: array[0..5] of string = ('build', 'tests', 'run', 'pull', 'folder', 'console');
+  QuickActionNames: array[0..6] of string = ('build', 'tests', 'run', 'pull', 'folder', 'console', 'tasks');
   QuickActionsDefaultConsole = 'wt.exe';
+  /// <summary>Werte von tasks.beforeBuild (#900) wie TAtlasTasks.BeforeBuildNames; die Einstellungen kennen die
+  /// Projektaufgaben nicht (A-09, sonst Feature-Zyklus), der Test hält beide gleich.</summary>
+  TasksBeforeBuildNames: array[0..2] of string = ('off', 'warn', 'block');
+
+/// <summary>tasks.beforeBuild: bekannter Wert klein, sonst „off“.</summary>
+function NormalizedTasksBeforeBuild(const AText: string): string;
+var
+  Name: string;
+begin
+  for Name in TasksBeforeBuildNames do
+    if SameText(Trim(AText), Name) then
+      Exit(Name);
+  Result := TasksBeforeBuildNames[0];
+end;
 
 /// <summary>Bekannte Knöpfe aus AText (Komma, Semikolon, Leerzeichen; Groß-/Kleinschreibung egal) in fester
 /// Reihenfolge, jeder einmal; '' = keiner.</summary>
@@ -1103,7 +1136,7 @@ function NormalizedQuickActionItems(const AText: string): string;
 var
   Part: string;
   Index: Integer;
-  Wanted: array[0..5] of Boolean;
+  Wanted: array[Low(QuickActionNames)..High(QuickActionNames)] of Boolean;
 begin
   for Index := Low(Wanted) to High(Wanted) do
     Wanted[Index] := False;
@@ -1380,6 +1413,12 @@ begin
   Result.BuildZeroHints := False;
   Result.ReleaseGuard := True;
   Result.BuildGate := 'off';
+  Result.TasksEnabled := True;
+  Result.TasksProblemsFromOutput := True;
+  Result.TasksBeforeBuild := 'off';
+  Result.TasksSaveBeforeRun := True;
+  Result.TasksRunChecksParallel := False;
+  Result.TasksOnlyFindings := False;
   Result.ReleaseConfigs := TAtlasReleaseGuard.ReleaseConfiguration;
   Result.ReleaseChecks := TAtlasReleaseChecks.Defaults.ToText;
   Result.TestDebug := True;
@@ -1705,6 +1744,7 @@ begin
   if WelcomePageActiveLayout = '' then
     WelcomePageActiveLayout := DefaultWelcomeLayoutName;
   BuildGate := TAtlasReleaseGuard.GateNames[TAtlasReleaseGuard.GateOf(BuildGate)];
+  TasksBeforeBuild := NormalizedTasksBeforeBuild(TasksBeforeBuild);
   ReleaseConfigs := TAtlasReleaseGuard.NormalizedConfigurations(ReleaseConfigs);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
   CheckKey := EnsureRange(CheckKey, 0, $FFFF);
@@ -1989,6 +2029,14 @@ begin
   BuildZeroHints := AStore.ReadInteger('BuildZeroHints', BoolValue(Default.BuildZeroHints)) <> 0;
   ReleaseGuard := AStore.ReadInteger('ReleaseGuard', BoolValue(Default.ReleaseGuard)) <> 0;
   BuildGate := AStore.ReadString('BuildGate', Default.BuildGate);
+  TasksEnabled := AStore.ReadInteger('TasksEnabled', BoolValue(Default.TasksEnabled)) <> 0;
+  TasksProblemsFromOutput := AStore.ReadInteger('TasksProblemsFromOutput',
+    BoolValue(Default.TasksProblemsFromOutput)) <> 0;
+  TasksBeforeBuild := AStore.ReadString('TasksBeforeBuild', Default.TasksBeforeBuild);
+  TasksSaveBeforeRun := AStore.ReadInteger('TasksSaveBeforeRun', BoolValue(Default.TasksSaveBeforeRun)) <> 0;
+  TasksRunChecksParallel := AStore.ReadInteger('TasksRunChecksParallel',
+    BoolValue(Default.TasksRunChecksParallel)) <> 0;
+  TasksOnlyFindings := AStore.ReadInteger('TasksOnlyFindings', BoolValue(Default.TasksOnlyFindings)) <> 0;
   ReleaseConfigs := AStore.ReadString('ReleaseConfigs', Default.ReleaseConfigs);
   ReleaseChecks := AStore.ReadString('ReleaseChecks', Default.ReleaseChecks);
   TestDebug := AStore.ReadInteger('TestDebug', BoolValue(Default.TestDebug)) <> 0;
@@ -2437,6 +2485,12 @@ begin
   AStore.WriteInteger('BuildZeroHints', BoolValue(BuildZeroHints));
   AStore.WriteInteger('ReleaseGuard', BoolValue(ReleaseGuard));
   AStore.WriteString('BuildGate', BuildGate);
+  AStore.WriteInteger('TasksEnabled', BoolValue(TasksEnabled));
+  AStore.WriteInteger('TasksProblemsFromOutput', BoolValue(TasksProblemsFromOutput));
+  AStore.WriteString('TasksBeforeBuild', TasksBeforeBuild);
+  AStore.WriteInteger('TasksSaveBeforeRun', BoolValue(TasksSaveBeforeRun));
+  AStore.WriteInteger('TasksRunChecksParallel', BoolValue(TasksRunChecksParallel));
+  AStore.WriteInteger('TasksOnlyFindings', BoolValue(TasksOnlyFindings));
   AStore.WriteString('ReleaseConfigs', ReleaseConfigs);
   AStore.WriteString('ReleaseChecks', ReleaseChecks);
   AStore.WriteInteger('TestDebug', BoolValue(TestDebug));

@@ -267,6 +267,14 @@ type
     FOpenBuildScope: TAtlasChoiceBox;
     FOpenBuildDelay: TEdit;
     FOpenBuildExclude: TEdit;
+    /// <summary>Projektaufgaben (#900, tasks.*): Schalter, Befunde, vor dem Build (aus / warnen / abbrechen),
+    /// speichern, Prüfungen gleichzeitig, nur Befunde in der Ausgabe.</summary>
+    FTasksEnabled: TCheckBox;
+    FTasksProblemsFromOutput: TCheckBox;
+    FTasksBeforeBuild: TAtlasChoiceBox;
+    FTasksSaveBeforeRun: TCheckBox;
+    FTasksRunChecksParallel: TCheckBox;
+    FTasksOnlyFindings: TCheckBox;
     /// <summary>DUnitX-Tests ausführen (#69): Befehle, vorher bauen, nach dem Build; Build ohne Hinweise (#530).
     /// </summary>
     FTestRun: TCheckBox;
@@ -738,6 +746,9 @@ type
     procedure AddOpenBuildSection;
     procedure LoadOpenBuild(const ASettings: TAtlasPluginSettings);
     procedure SaveOpenBuild(var ASettings: TAtlasPluginSettings);
+    procedure AddTasksSection;
+    procedure LoadTasks(const ASettings: TAtlasPluginSettings);
+    procedure SaveTasks(var ASettings: TAtlasPluginSettings);
     procedure LoadRelease(const ASettings: TAtlasPluginSettings);
     procedure SaveRelease(var ASettings: TAtlasPluginSettings);
     procedure AddUndoSection;
@@ -1046,6 +1057,13 @@ type
     property ListScopeChoice: TAtlasChoiceBox read FListScope;
     property OpenBuildDelayEdit: TEdit read FOpenBuildDelay;
     property OpenBuildExcludeEdit: TEdit read FOpenBuildExclude;
+    /// <summary>Zum Testen: Projektaufgaben (#900).</summary>
+    property TasksEnabledCheck: TCheckBox read FTasksEnabled;
+    property TasksProblemsFromOutputCheck: TCheckBox read FTasksProblemsFromOutput;
+    property TasksBeforeBuildChoice: TAtlasChoiceBox read FTasksBeforeBuild;
+    property TasksSaveBeforeRunCheck: TCheckBox read FTasksSaveBeforeRun;
+    property TasksRunChecksParallelCheck: TCheckBox read FTasksRunChecksParallel;
+    property TasksOnlyFindingsCheck: TCheckBox read FTasksOnlyFindings;
     /// <summary>Zum Testen: Tests ausführen (#69).</summary>
     property CodeLensTestsCheck: TCheckBox read FCodeLensTests;
     property TestRunCheck: TCheckBox read FTestRun;
@@ -1198,6 +1216,7 @@ uses
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Build.OpenBuild,
+  Atlas.Core.Tasks.Definitions,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Settings.Transfer,
   Atlas.Core.Settings.Experimental,
@@ -1219,6 +1238,8 @@ begin
       Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
     TAtlasQuickAction.Folder:
       Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickFolder);
+    TAtlasQuickAction.Tasks:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickTasks);
   else
     Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickConsole);
   end;
@@ -1760,6 +1781,8 @@ begin
   FStartProfilesStatusField := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfilesStatusField));
   // Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen).
   AddOpenBuildSection;
+  // Projektaufgaben aus atlas.json (#900).
+  AddTasksSection;
 
   // Prüfregeln (#909): oben der Weg zu den Regeln (sie stehen in den Dialogen der Einstellungsdateien), darunter
   // das Fenster „Atlas-Prüfung“ und die laufende Prüfung (Unterpunkt „Prüffenster“). „Profile und Baseline“
@@ -2545,6 +2568,46 @@ begin
   ASettings.BuildOnOpenExclude := TAtlasOpenBuild.NormalizedExclude(FOpenBuildExclude.Text);
 end;
 
+procedure TAtlasSettingsPage.AddTasksSection;
+begin
+  AddTitle(TAtlasTextId.SettingsTasksTitle);
+  FTasksEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTasksEnabled));
+  FTasksProblemsFromOutput := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTasksProblemsFromOutput));
+  // Reihenfolge wie TAtlasTaskBeforeBuild: off, warn, block.
+  FTasksBeforeBuild := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsTasksBeforeBuild),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsTasksBeforeBuildOff),
+    TAtlasStrings.Text(TAtlasTextId.SettingsTasksBeforeBuildWarn),
+    TAtlasStrings.Text(TAtlasTextId.SettingsTasksBeforeBuildBlock)]);
+  FTasksSaveBeforeRun := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTasksSaveBeforeRun));
+  FTasksRunChecksParallel := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTasksRunChecksParallel));
+  FTasksOnlyFindings := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTasksOnlyFindings));
+end;
+
+procedure TAtlasSettingsPage.LoadTasks(const ASettings: TAtlasPluginSettings);
+var
+  Mode: TAtlasTaskBeforeBuild;
+begin
+  FTasksEnabled.Checked := ASettings.TasksEnabled;
+  FTasksProblemsFromOutput.Checked := ASettings.TasksProblemsFromOutput;
+  TAtlasTasks.TryBeforeBuild(ASettings.TasksBeforeBuild, Mode);
+  FTasksBeforeBuild.Choice := Ord(Mode);
+  FTasksSaveBeforeRun.Checked := ASettings.TasksSaveBeforeRun;
+  FTasksRunChecksParallel.Checked := ASettings.TasksRunChecksParallel;
+  FTasksOnlyFindings.Checked := ASettings.TasksOnlyFindings;
+end;
+
+procedure TAtlasSettingsPage.SaveTasks(var ASettings: TAtlasPluginSettings);
+begin
+  ASettings.TasksEnabled := FTasksEnabled.Checked;
+  ASettings.TasksProblemsFromOutput := FTasksProblemsFromOutput.Checked;
+  if (FTasksBeforeBuild.Choice >= Ord(Low(TAtlasTaskBeforeBuild))) and
+    (FTasksBeforeBuild.Choice <= Ord(High(TAtlasTaskBeforeBuild))) then
+    ASettings.TasksBeforeBuild := TAtlasTasks.BeforeBuildNames[TAtlasTaskBeforeBuild(FTasksBeforeBuild.Choice)];
+  ASettings.TasksSaveBeforeRun := FTasksSaveBeforeRun.Checked;
+  ASettings.TasksRunChecksParallel := FTasksRunChecksParallel.Checked;
+  ASettings.TasksOnlyFindings := FTasksOnlyFindings.Checked;
+end;
+
 procedure TAtlasSettingsPage.AddReleaseSection;
 const
   Captions: array[TAtlasReleaseCheck] of TAtlasTextId = (TAtlasTextId.SettingsReleaseCheckDebugDefine,
@@ -3020,6 +3083,12 @@ begin
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
   FMarks.Bind(FOpenBuildDelay, ['BuildOnOpenDelayMs']);
   FMarks.Bind(FOpenBuildExclude, ['BuildOnOpenExclude']);
+  FMarks.Bind(FTasksEnabled, ['TasksEnabled']);
+  FMarks.Bind(FTasksProblemsFromOutput, ['TasksProblemsFromOutput']);
+  FMarks.Bind(FTasksBeforeBuild, ['TasksBeforeBuild']);
+  FMarks.Bind(FTasksSaveBeforeRun, ['TasksSaveBeforeRun']);
+  FMarks.Bind(FTasksRunChecksParallel, ['TasksRunChecksParallel']);
+  FMarks.Bind(FTasksOnlyFindings, ['TasksOnlyFindings']);
   FMarks.Bind(FReleaseGuard, ['ReleaseGuard']);
   FMarks.Bind(FBuildGate, ['BuildGate']);
   FMarks.Bind(FReleaseConfigs, ['ReleaseConfigs']);
@@ -5063,6 +5132,7 @@ begin
   FCheckMax.Text := IntToStr(ASettings.CheckOnSaveMaxMs);
   FMcpBuild.Checked := ASettings.McpBuild;
   LoadOpenBuild(ASettings);
+  LoadTasks(ASettings);
   FTestRun.Checked := ASettings.TestRun;
   FTestsBuildFirst.Checked := ASettings.TestsBuildFirst;
   FTestsAfterBuild.Checked := ASettings.TestsAfterBuild;
@@ -5517,6 +5587,7 @@ begin
   ASettings.CheckOnSaveMaxMs := StrToIntDef(FCheckMax.Text, ASettings.CheckOnSaveMaxMs);
   ASettings.McpBuild := FMcpBuild.Checked;
   SaveOpenBuild(ASettings);
+  SaveTasks(ASettings);
   ASettings.TestRun := FTestRun.Checked;
   ASettings.TestsBuildFirst := FTestsBuildFirst.Checked;
   ASettings.TestsAfterBuild := FTestsAfterBuild.Checked;

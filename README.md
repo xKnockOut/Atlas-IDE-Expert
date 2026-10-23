@@ -87,6 +87,7 @@ Everything below is implemented in `main`. Features marked *(experimental)* are 
 - **Peek definition** (Alt+F12) below the line without switching files
 - **Quick open** of files and symbols (Ctrl+P) across project, project group and search path; project-wide **symbol search**
 - **Search bar** below the editor (Ctrl+F) with **replace** (Ctrl+H, "Replace all" as one undo step), **regular expressions** with a "before → after" preview, search and replace **history** (arrow up/down, kept across restarts) and the scopes method, unit, selection, **open files, project and project group** (searched in the background, unsaved buffers first, replacing checked matches across files)
+- **Project tasks** from `atlas.json` (`tasks`): run scripts such as `pwsh Tools/Check-Delphi12.ps1` from the command palette, the Atlas menu, a key per task, the status field or a welcome page quick action; output in the "Atlas tasks" tab with a green or red header, matches (dcc, pwsh, msbuild, generic or your own regex) as findings in the problem list and the editor, optionally before every build (`warn` or `block`)
 - **Unit search** (Ctrl+F12) in its own window with preview, groups, filters and "add to uses"
 - **Results window** "Atlas Results" for references (including forms), implementations, callers, calls and inheritance
 - **Navigation history** across files
