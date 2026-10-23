@@ -22,6 +22,8 @@ type
     procedure RejectsUnknownFormatAndScope;
     [Test]
     procedure SavesMarkdownAndHtml;
+    [Test]
+    procedure CommandAnswersLikeRequest;
   end;
 
 implementation
@@ -73,6 +75,7 @@ begin
       ASettings.ArchitectureEnabled := Enabled;
       ARequest := TArchitectureRequest.FromSettings(ASettings);
       ARequest.Title := 'Beispiel';
+      ARequest.Root := 'C:\Projekt';
       LastScope := AScope;
       Result := True;
     end);
@@ -246,6 +249,35 @@ begin
   finally
     if TDirectory.Exists(Folder) then
       TDirectory.Delete(Folder, True);
+    Lsp.Free;
+    Service.Free;
+  end;
+end;
+
+procedure TLspArchitectureTests.CommandAnswersLikeRequest;
+var
+  Service: TArchitectureService;
+  Lsp: TLspArchitecture;
+  Arguments: TJSONArray;
+  Answer: TJSONObject;
+begin
+  Enabled := True;
+  Service := NewService(NewIndex);
+  Lsp := NewLsp(Service);
+  Arguments := TJSONObject.ParseJSONValue('["file:///C:/Projekt/App.dpr", {"scope": "project", "format": "text", ' +
+    '"unit": "App.Data"}]') as TJSONArray;
+  try
+    Answer := Lsp.Execute(Arguments) as TJSONObject;
+    try
+      Assert.AreEqual('project', LastScope);
+      Assert.AreEqual('text', Answer.GetValue<string>('format'));
+      Assert.AreEqual('C:\Projekt', Answer.GetValue<string>('root'), 'root nur in der Antwort');
+      Assert.IsTrue(Pos('App.Data', Answer.GetValue<string>('text')) > 0);
+    finally
+      Answer.Free;
+    end;
+  finally
+    Arguments.Free;
     Lsp.Free;
     Service.Free;
   end;

@@ -134,6 +134,8 @@ type
     [Test]
     procedure RoutesServerSettingsToGlobalFile;
     [Test]
+    procedure ArchitectureSettingsLiveInGlobalFile;
+    [Test]
     procedure KeepsCommentsAndOtherKeys;
     [Test]
     procedure MigratesRegistryValuesOnce;
@@ -1844,6 +1846,51 @@ begin
   Assert.IsFalse(TAtlasSettingsScopes.TryRouted('PairColors', Setting));
   Assert.AreEqual(Integer(Length(TAtlasSettingsScopes.Routed) + 1), Integer(Length(TAtlasSettingsScopes.IdeManagedPaths)));
   Assert.AreEqual('delphiVersion', TAtlasSettingsScopes.IdeManagedPaths[0]);
+end;
+
+procedure TAtlasSettingsScopesTests.ArchitectureSettingsLiveInGlobalFile;
+var
+  Registry: IAtlasSettingsStore;
+  Routed: TAtlasRoutedSettingsStore;
+  Store: IAtlasSettingsStore;
+  Settings, Loaded: TAtlasPluginSettings;
+begin
+  // Architekturübersicht (#1118): Plugin und Server lesen architecture.* aus settings.json.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.ArchitectureEnabled);
+  Assert.AreEqual('projectGroup', Settings.ArchitectureScope);
+  Assert.IsFalse(Settings.ArchitectureIncludeLibraryUnits);
+  Assert.AreEqual(15, Settings.ArchitectureCentralUnits);
+  Registry := TMemoryStore.Create;
+  Routed := TAtlasRoutedSettingsStore.Create(Registry, '');
+  Store := Routed;
+  Settings.ArchitectureEnabled := False;
+  Settings.ArchitectureScope := 'project';
+  Settings.ArchitectureIncludeLibraryUnits := True;
+  Settings.ArchitectureCentralUnits := 30;
+  Settings.Save(Store);
+  Assert.Contains(Routed.Text, '"architecture": {');
+  Assert.Contains(Routed.Text, '"scope": "project"');
+  Assert.Contains(Routed.Text, '"includeLibraryUnits": true');
+  Assert.Contains(Routed.Text, '"centralUnits": 30');
+  Assert.AreEqual(-1, Registry.ReadInteger('ArchitectureEnabled', -1), 'nicht in der Registry');
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.ArchitectureEnabled);
+  Assert.AreEqual('project', Loaded.ArchitectureScope);
+  Assert.IsTrue(Loaded.ArchitectureIncludeLibraryUnits);
+  Assert.AreEqual(30, Loaded.ArchitectureCentralUnits);
+  // Unbekannter Umfang und Zahl außerhalb der Grenzen fallen auf gültige Werte.
+  Loaded.ArchitectureScope := 'irgendwas';
+  Loaded.ArchitectureCentralUnits := 0;
+  Loaded.Normalize;
+  Assert.AreEqual('projectGroup', Loaded.ArchitectureScope);
+  Assert.AreEqual(5, Loaded.ArchitectureCentralUnits);
+  // Der Zustand „Fenster einmal rechts angelegt“ bleibt in der Registry.
+  Assert.IsFalse(TAtlasPluginSettings.Defaults.ArchitectureWindowPlaced);
+  Loaded.ArchitectureWindowPlaced := True;
+  Loaded.Save(Store);
+  Assert.AreEqual(1, Registry.ReadInteger('ArchitectureWindowPlaced', -1));
 end;
 
 procedure TAtlasSettingsScopesTests.KeepsCommentsAndOtherKeys;

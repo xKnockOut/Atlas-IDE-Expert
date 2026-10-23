@@ -75,6 +75,7 @@ uses
   Atlas.IDE.Results.Peek,
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Service,
+  Atlas.IDE.Architecture.Service,
   Atlas.IDE.Outline.Breadcrumbs,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.UI.EditorToolbar.Customize,
@@ -970,6 +971,11 @@ begin
   Result := TAtlasIdeSettings.Current.Outline;
 end;
 
+function ArchitectureVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.ArchitectureEnabled;
+end;
+
 function JumpToMatchVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.JumpToMatch;
@@ -1251,6 +1257,9 @@ begin
   // Gliederungsfenster (#537); nur sichtbar, solange outline.enabled an ist.
   Add('Atlas.Outline', TAtlasTextId.OutlineCommand,
     Guarded(TAtlasFeature.Outline, TAtlasIdeOutline.ShowWindow), OutlineVisible);
+  // Architekturübersicht (#1118); nur sichtbar, solange architecture.enabled an ist.
+  Add('Atlas.Architecture', TAtlasTextId.ArchitectureCommand,
+    Guarded(TAtlasFeature.Architecture, TAtlasIdeArchitecture.ShowWindow), ArchitectureVisible);
   // Brotkrumenleiste (#590): Fokus auf das letzte Glied; nur sichtbar, solange editor.breadcrumbs an ist.
   Add('Atlas.Breadcrumbs', TAtlasTextId.BreadcrumbsCommand,
     Guarded(TAtlasFeature.Breadcrumbs, TAtlasIdeBreadcrumbs.Focus), BreadcrumbsVisible);
@@ -2412,6 +2421,13 @@ begin
         Result := Manager.ActiveSession;
     end);
   TAtlasIdeOutline.Install;
+  // Fenster „Atlas-Architektur“ (#1118): fragt den Server über RunCommandAsync.
+  TAtlasIdeArchitecture.Install(
+    function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
+    begin
+      Result := (Manager <> nil) and (Manager.ActiveSession <> nil) and
+        Manager.RunCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
+    end);
   TAtlasIdeBreadcrumbs.Install;
   // Atlas-Editorleiste (#1101) nach den Brotkrumen (Position „in der Brotkrumenzeile“).
   StartEditorToolbar;
@@ -2597,6 +2613,7 @@ begin
   TAtlasIdeCommentContinuation.Uninstall;
   TAtlasIdeStatementCompletion.Uninstall;
   TAtlasIdeOutline.Uninstall;
+  TAtlasIdeArchitecture.Uninstall;
   TAtlasIdeOutlineCache.Uninstall;
   TAtlasIdeNavHistory.Uninstall;
   TAtlasIdeSearch.Uninstall;
@@ -4111,6 +4128,7 @@ begin
       TAtlasIdeBookmarks.ThemeChanged;
       TAtlasIdeProblems.ThemeChanged;
       TAtlasIdeOutline.ThemeChanged;
+      TAtlasIdeArchitecture.ThemeChanged;
       TAtlasIdeBreadcrumbs.ThemeChanged;
       TAtlasIdeEditorToolbar.ThemeChanged;
       TAtlasIdeSearch.ThemeChanged;
@@ -4160,6 +4178,8 @@ begin
       TAtlasIdeProblems.ApplySettings;
       // outline.* (#537).
       TAtlasIdeOutline.ApplySettings;
+      // architecture.* (#1118).
+      TAtlasIdeArchitecture.ApplySettings;
       // editor.breadcrumbs* (#590).
       TAtlasIdeBreadcrumbs.ApplySettings;
       // editor.toolbar* (#1101).

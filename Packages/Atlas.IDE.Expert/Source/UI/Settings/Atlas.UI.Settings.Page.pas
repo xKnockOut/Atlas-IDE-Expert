@@ -227,6 +227,11 @@ type
     FDiagnosticMode: TCheckBox;
     /// <summary>„Prozesse am Projekt…“ (#62).</summary>
     FDiagnosticsProcesses: TCheckBox;
+    // Architekturübersicht (#1118).
+    FArchitecture: TCheckBox;
+    FArchitectureScope: TAtlasChoiceBox;
+    FArchitectureLibrary: TCheckBox;
+    FArchitectureCentral: TEdit;
     FSetupChecklist: TCheckBox;
     FShortcutTips: TCheckBox;
     FShortcutTipsScope: TAtlasChoiceBox;
@@ -1109,6 +1114,9 @@ type
     property ProblemsWindowKey: TEdit read FProblemsWindowKey;
     /// <summary>Zum Testen: Prüffenster und Seite Prüfregeln (#909).</summary>
     property ProblemsWindowCheck: TCheckBox read FProblemsWindow;
+    property ArchitectureCheck: TCheckBox read FArchitecture;
+    property ArchitectureScopeChoice: TAtlasChoiceBox read FArchitectureScope;
+    property ArchitectureCentralEdit: TEdit read FArchitectureCentral;
     property ProblemsWindowScopeChoice: TAtlasChoiceBox read FProblemsWindowScope;
     property ProblemsWindowGroupByChoice: TAtlasChoiceBox read FProblemsWindowGroupBy;
     property ProblemsWindowCompilerCheck: TCheckBox read FProblemsWindowCompiler;
@@ -1448,6 +1456,13 @@ begin
   FDiagnosticMode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticMode));
   // Menüeintrag „Prozesse am Projekt…“ (#62).
   FDiagnosticsProcesses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticsProcesses));
+  // Architekturübersicht (#1118): Unterpunkt „Architektur“ über x-node; Reihenfolge wie die Werte von
+  // architecture.scope (projectGroup, project).
+  FArchitecture := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsArchitecture));
+  FArchitectureScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureScope),
+    [TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeGroup), TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeProject)]);
+  FArchitectureLibrary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureLibrary));
+  FArchitectureCentral := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureCentral));
   // Prüfliste der Einrichtung beim Start (#625); aus: nur auf Abruf.
   FSetupChecklist := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSetupChecklist));
   // Hauptschalter der experimentellen Funktionen (#834).
@@ -1943,6 +1958,7 @@ begin
   Bind('InlayCharHints', FInlayCharHints);
   Bind('Problems', FProblems);
   Bind('ProblemsWindow', FProblemsWindow);
+  Bind('ArchitectureEnabled', FArchitecture);
   Bind('ProblemsLive', FProblemsLive);
   Bind('HoverProblemActions', FHoverProblemActions);
   Bind('Notes', FNotes);
@@ -2893,6 +2909,10 @@ begin
   FMarks.Bind(FStatusField, ['StatusField']);
   FMarks.Bind(FDiagnosticMode, ['DiagnosticMode']);
   FMarks.Bind(FDiagnosticsProcesses, ['DiagnosticsProcesses']);
+  FMarks.Bind(FArchitecture, ['ArchitectureEnabled']);
+  FMarks.Bind(FArchitectureScope, ['ArchitectureScope']);
+  FMarks.Bind(FArchitectureLibrary, ['ArchitectureIncludeLibraryUnits']);
+  FMarks.Bind(FArchitectureCentral, ['ArchitectureCentralUnits']);
   FMarks.Bind(FExperimentalEnabled, ['ExperimentalEnabled']);
   FMarks.Bind(FSetupChecklist, ['SetupChecklist']);
   FMarks.Bind(FShortcutTips, ['ShortcutTips']);
@@ -5012,6 +5032,10 @@ begin
   FStatusField.Checked := ASettings.StatusField;
   FDiagnosticMode.Checked := ASettings.DiagnosticMode;
   FDiagnosticsProcesses.Checked := ASettings.DiagnosticsProcesses;
+  FArchitecture.Checked := ASettings.ArchitectureEnabled;
+  FArchitectureScope.Choice := Max(0, IndexText(ASettings.ArchitectureScope, ['projectGroup', 'project']));
+  FArchitectureLibrary.Checked := ASettings.ArchitectureIncludeLibraryUnits;
+  FArchitectureCentral.Text := IntToStr(ASettings.ArchitectureCentralUnits);
   FExperimentalEnabled.Checked := ASettings.ExperimentalEnabled;
   // Checked löst OnClick nur bei einer Änderung aus.
   FHangTestRow.Visible := ASettings.DiagnosticMode;
@@ -5463,6 +5487,13 @@ begin
   ASettings.StatusField := FStatusField.Checked;
   ASettings.DiagnosticMode := FDiagnosticMode.Checked;
   ASettings.DiagnosticsProcesses := FDiagnosticsProcesses.Checked;
+  ASettings.ArchitectureEnabled := FArchitecture.Checked;
+  if FArchitectureScope.Choice = 1 then
+    ASettings.ArchitectureScope := 'project'
+  else
+    ASettings.ArchitectureScope := 'projectGroup';
+  ASettings.ArchitectureIncludeLibraryUnits := FArchitectureLibrary.Checked;
+  ASettings.ArchitectureCentralUnits := StrToIntDef(FArchitectureCentral.Text, ASettings.ArchitectureCentralUnits);
   ASettings.ExperimentalEnabled := FExperimentalEnabled.Checked;
   ASettings.SetupChecklist := FSetupChecklist.Checked;
   ASettings.ShortcutTips := FShortcutTips.Checked;
