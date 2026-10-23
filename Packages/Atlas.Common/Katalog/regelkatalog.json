@@ -767,6 +767,20 @@
       ]
     },
     {
+      "id": "conditional-expression-version",
+      "name": "Conditional expression before Delphi 13",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "The conditional expression X := if C then A else B exists only from Delphi 13 on; a project that must still compile with Delphi 12 or older fails here (like E2029). Reported is the outermost expression, not inside {$IF} branches that test CompilerVersion, RTLVersion, VERnnn or Declared. Silent without a known Delphi version. Quick fix (also for the whole unit): convert to an if statement, the statement repeated per branch; not offered when the rest of the statement has side effects.",
+      "bad": "Caption := if Done then 'Ready' else 'Busy';",
+      "good": "if Done then\n  Caption := 'Ready'\nelse\n  Caption := 'Busy';",
+      "level": "A",
+      "compilerCodes": [
+        "E2029"
+      ]
+    },
+    {
       "id": "exception-not-raised",
       "name": "Exception created but not raised",
       "category": "bug",

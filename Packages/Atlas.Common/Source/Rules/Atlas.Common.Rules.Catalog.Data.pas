@@ -830,6 +830,22 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "conditional-expression-version",' + #10 +
+    '      "name": "Conditional expression before Delphi 13",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The conditional expression X := if C then A else B exists only from Delphi 13 on; a project that must still compile with Delphi 12 or older fails here (like E2029). Reported is t' +
+    'he outermost expression, not inside {$IF} branches that test CompilerVersion, RTLVersion, VERnnn or Declared. Silent without a known Delphi version. Quick fix (also for the whole unit): convert to an ' +
+    'if statement, the statement repeated per branch; not offered when the rest of the statement has side effects.",' + #10 +
+    '      "bad": "Caption := if Done then ''Ready'' else ''Busy'';",' + #10 +
+    '      "good": "if Done then\n  Caption := ''Ready''\nelse\n  Caption := ''Busy'';",' + #10 +
+    '      "level": "A",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2029"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "exception-not-raised",' + #10 +
     '      "name": "Exception created but not raised",' + #10 +
     '      "category": "bug",' + #10 +
@@ -5366,6 +5382,13 @@ begin
     '      "description": "Die Schleife beginnt beim oberen Wert (High, Count - 1) und endet beim unteren, verwendet aber to. Sie läuft nie; gemeint war downto. Ebenso Schleifen mit konstanten Grenzen, die' +
     ' nie laufen, etwa for I := 10 to 1, auch mit Vorzeichen, Hex- oder Zeichenliteralen (wie H2135). Gleiche Grenzen, Ausdrücke, benannte Konstanten und aufsteigende Grenzen bleiben still. Korrektur: to d' +
     'urch downto ersetzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "conditional-expression-version",' + #10 +
+    '      "name": "Bedingungsausdruck vor Delphi 13",' + #10 +
+    '      "description": "Den Bedingungsausdruck X := if C then A else B gibt es erst ab Delphi 13; ein Projekt, das noch mit Delphi 12 oder älter übersetzen muss, scheitert hier (wie E2029). Gemeldet wir' +
+    'd der äußerste Ausdruck, nicht in Zweigen von {$IF}, die nach CompilerVersion, RTLVersion, VERnnn oder Declared fragen. Ohne bekannte Delphi-Version still. Korrektur (auch für die ganze Unit): in eine' +
+    ' if-Anweisung umwandeln, die Anweisung je Zweig wiederholt; nicht angeboten, wenn der Rest der Anweisung Seiteneffekte hat."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "exception-not-raised",' + #10 +

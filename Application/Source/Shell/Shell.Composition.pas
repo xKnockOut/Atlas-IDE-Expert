@@ -3457,6 +3457,7 @@ begin
   Result.ReadText := ReadSourceText;
   Result.InlineVar := Result.Settings.InlineVar and
     TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, DelphiVersionFor(AUri));
+  Result.IfExpression := TLanguageFeatures.IsAvailable(TLanguageFeature.IfExpression, DelphiVersionFor(AUri));
   Result.Style := ResolvedFormatStyleFor(AUri);
 end;
 
@@ -3473,7 +3474,7 @@ begin
   Context := RefactoringContextFor(AUri);
   if not (Context.Settings.Extract or Context.Settings.CompleteCase or Context.Settings.ResolveWith or
     Context.Settings.CreateMethod or Context.Settings.InlineCode or Context.Settings.IfCase or
-    Context.Settings.Conditions) then
+    Context.Settings.Conditions or Context.Settings.ConditionalExpression) then
     Exit;
   Shared := TSyntaxTreeCache.Get(Document, nil);
   for Action in TLspRefactorings.Actions(Shared.Tree, Document.Text, ARange, Context) do

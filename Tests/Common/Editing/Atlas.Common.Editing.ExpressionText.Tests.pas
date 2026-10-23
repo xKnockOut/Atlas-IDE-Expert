@@ -187,6 +187,19 @@ begin
   finally
     Tree.Free;
   end;
+  // Bedingungsausdruck: Bedingung und Wert vor else brauchen Klammern, der Wert nach else nicht.
+  Text := Program_('(if A then B else C)');
+  Tree := TPascalParser.Parse(Text);
+  try
+    Condition := ConditionOf(Tree);
+    while Condition.Kind <> TSyntaxKind.IfExpr do
+      Condition := Condition[0];
+    Assert.AreEqual(PrecedenceIfExpr + 1, TExpressionText.ContextPrecedence(Condition[0]));
+    Assert.AreEqual(PrecedenceIfExpr + 1, TExpressionText.ContextPrecedence(Condition[1]));
+    Assert.AreEqual(PrecedenceIfExpr, TExpressionText.ContextPrecedence(Condition[2]));
+  finally
+    Tree.Free;
+  end;
 end;
 
 initialization

@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 76 |
+| [Compiler vorab](#gruppe-compiler) | 77 |
 | [Robustheit und Muster](#gruppe-robustness) | 13 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -150,6 +150,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|---|---|
 | [`syntax`](#syntax) | Syntaxfehler | Bug | Fehler |
 | [`for-high-to-low`](#for-high-to-low) | for-Schleife zählt mit to abwärts | Bug | Warnung |
+| [`conditional-expression-version`](#conditional-expression-version) | Bedingungsausdruck vor Delphi 13 | Bug | Fehler |
 | [`deprecated-symbol`](#deprecated-symbol) | Veraltetes oder gebundenes Symbol | Code Smell | Warnung |
 | [`signature-mismatch`](#signature-mismatch) | Implementierung weicht von der Deklaration ab | Bug | Fehler |
 | [`interface-not-implemented`](#interface-not-implemented) | Interface-Methode fehlt in der Klasse | Bug | Fehler |
@@ -1894,6 +1895,32 @@ Richtig:
 ```pascal
 for I := 10 downto 1 do
   Countdown(I);
+```
+
+<a id="conditional-expression-version"></a>
+### conditional-expression-version
+
+**Bedingungsausdruck vor Delphi 13** · Bug · Fehler · Gruppe Compiler vorab
+
+Den Bedingungsausdruck X := if C then A else B gibt es erst ab Delphi 13; ein Projekt, das noch mit Delphi 12 oder älter übersetzen muss, scheitert hier (wie E2029). Gemeldet wird der äußerste Ausdruck, nicht in Zweigen von {$IF}, die nach CompilerVersion, RTLVersion, VERnnn oder Declared fragen. Ohne bekannte Delphi-Version still. Korrektur (auch für die ganze Unit): in eine if-Anweisung umwandeln, die Anweisung je Zweig wiederholt; nicht angeboten, wenn der Rest der Anweisung Seiteneffekte hat.
+
+Entspricht der Compilermeldung `E2029`.
+
+Stufe A (Parser genügt).
+
+Mit Treffer:
+
+```pascal
+Caption := if Done then 'Ready' else 'Busy';
+```
+
+Richtig:
+
+```pascal
+if Done then
+  Caption := 'Ready'
+else
+  Caption := 'Busy';
 ```
 
 <a id="exception-not-raised"></a>

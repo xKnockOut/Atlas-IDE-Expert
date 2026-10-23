@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2013] of string = (
+  Lines: array[0..2019] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1228,6 +1228,15 @@ const
       'g entfernen“. Klammern nur, wo der Vorrang sie verlangt; Kommentare in den Zweigen bleiben.",',
     '          "x-issue": "#656"',
     '        },',
+    '        "conditionalExpression": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen zwischen if-Anweisung und Bedingungsausdruck (Delphi 13: X := if C then A else B): „In bedingten Ausdruck umwandeln“ auf einem if mit else, dessen Zweige an das' +
+      'selbe Ziel zuweisen, Exit aufrufen oder denselben Aufruf mit genau einem anderen Argument ohne Seiteneffekte machen (bis zu zwei Bedingungen, verträgliche Typen), „In if-Anweisung umwandeln“ als Rückw' +
+      'eg und „IfThen durch bedingten Ausdruck ersetzen“ (IfThen wertet beide Zweige aus). Muss das Projekt mit Delphi 12 oder älter übersetzen, gibt es nur den Rückweg; vorhandene Bedingungsausdrücke meldet' +
+      ' dann die Regel conditional-expression-version.",',
+    '          "x-issue": "#684"',
+    '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',
     '          "default": true,',
@@ -1332,7 +1341,7 @@ const
     '      "x-scope": "project",',
     '      "x-page": "Vervollständigung",',
     '      "x-control": "Kontrollkästchen",',
-    '      "x-issue": "#42, #50, #100, #188, #453, #472, #646, #656, #666, #682, #685, #715"',
+    '      "x-issue": "#42, #50, #100, #188, #453, #472, #646, #656, #666, #682, #684, #685, #715"',
     '    },',
     '    "usesCommand": {',
     '      "type": "boolean",',

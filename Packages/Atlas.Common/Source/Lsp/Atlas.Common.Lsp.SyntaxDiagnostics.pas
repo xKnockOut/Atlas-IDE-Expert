@@ -923,6 +923,9 @@ begin
   // Merkmale in inaktiven Zweigen ({$IF CompilerVersion >= …}) sind gewollt (#109).
   for Finding in TLanguageFeatures.Check(Tree, ADelphiVersion, TLspInactiveRegions.RangesOf(AInactive)) do
   begin
+    // Bedingungsausdrücke meldet die Regel conditional-expression-version (#684) als Fehler mit Korrektur.
+    if Finding.Feature = TLanguageFeature.IfExpression then
+      Continue;
     Item := TJSONObject.Create;
     Item.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(Finding.StartPos, Finding.EndPos)));
     Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Warning));
