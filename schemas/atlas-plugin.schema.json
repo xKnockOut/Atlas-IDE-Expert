@@ -1084,6 +1084,16 @@
       "x-area": "completion",
       "x-page": "Einfügen"
     },
+    "FormatPlaceholders": {
+      "description": "Im Parameter-Hint von Format und anderen Formatroutinen nennt eine Zeile den Platzhalter zum Argument am Cursor (\"Platzhalter 2 von 2 erwartet ganzzahlig\") und warnt in Fehlerfarbe bei überzähligen Argumenten, ungültigen Platzhaltern und Typkonflikten mit Literalen; Platzhalter und Argument bekommen im Editor dieselbe Hintergrundfarbe (sechs Farben, danach wiederholt). Eigene Formatroutinen: formatFunctions in der Projektdatei .atlas bzw. formatMethods der Regel format-args in atlas.json.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "completion.formatPlaceholders",
+      "x-area": "completion",
+      "x-page": "Einfügen",
+      "x-parent": "completion.parameterHints",
+      "x-issue": "#451"
+    },
     "OpenDelayMs": {
       "type": "integer",
       "default": 150,

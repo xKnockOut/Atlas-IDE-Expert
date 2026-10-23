@@ -50,6 +50,9 @@ type
     procedure LightPairsStandOut;
     [Test]
     procedure DarkPairsStandOut;
+    /// <summary>#451: sechs unterscheidbare Platzhalterfarben, keine wie die Fehlerfarbe.</summary>
+    [Test]
+    procedure PlaceholderColorsDiffer;
     [Test]
     procedure InlayHintColorsMixFromBackground;
     [Test]
@@ -291,6 +294,27 @@ procedure TAtlasPaletteTests.DarkPairsStandOut;
 begin
   // Editor dunkel: Hintergrund und Text des dunklen Schemas der IDE.
   CheckPairs(TAtlasColors.Dark, 'Dunkel', ['#1E1E1E', '#2B2B2B'], ['#D4D4D4', '#FFFFFF']);
+end;
+
+procedure TAtlasPaletteTests.PlaceholderColorsDiffer;
+
+  procedure Check(const AColors: TAtlasColors; const AMode: string);
+  var
+    Index, Other: Integer;
+  begin
+    for Index := 0 to High(AColors.Placeholders) do
+    begin
+      Assert.IsTrue(TAtlasColorMath.DeltaE2000(AColors.Placeholders[Index], AColors.Error) >= 20,
+        Format('%s Platzhalter %d gegen Fehler', [AMode, Index]));
+      for Other := Index + 1 to High(AColors.Placeholders) do
+        Assert.IsTrue(TAtlasColorMath.DeltaE2000(AColors.Placeholders[Index], AColors.Placeholders[Other]) >= 15,
+          Format('%s Platzhalter %d gegen %d', [AMode, Index, Other]));
+    end;
+  end;
+
+begin
+  Check(TAtlasColors.Light, 'Hell');
+  Check(TAtlasColors.Dark, 'Dunkel');
 end;
 
 procedure TAtlasPaletteTests.CheckContrast(const AColors: TAtlasColors; const AMode: string);

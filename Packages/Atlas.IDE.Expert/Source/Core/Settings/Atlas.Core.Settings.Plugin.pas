@@ -169,6 +169,8 @@ type
     AutoUses: Boolean;
     /// <summary>Parameter-Hint bei "(" und "," (#436).</summary>
     ParameterHints: Boolean;
+    /// <summary>Platzhalter von Format im Parameter-Hint zuordnen und im Editor einfärben (#451).</summary>
+    FormatPlaceholders: Boolean;
     /// <summary>Millisekunden zwischen automatischem Auslösen (".") und dem Öffnen der Liste (ARG-046).</summary>
     OpenDelayMs: Integer;
     /// <summary>Tastenkürzel der Befehlspalette und der Syntaxprüfung (TShortCut, 0 = keins, #494).</summary>
@@ -1253,6 +1255,7 @@ begin
   Result.CommitCharacters := True;
   Result.AutoUses := True;
   Result.ParameterHints := True;
+  Result.FormatPlaceholders := True;
   Result.OpenDelayMs := 150;
   Result.PaletteKey := $6050; // Strg+Umschalt+P
   Result.CheckKey := $C078; // Strg+Alt+F9
@@ -1850,6 +1853,7 @@ begin
   CommitCharacters := AStore.ReadInteger('CommitCharacters', BoolValue(Default.CommitCharacters)) <> 0;
   AutoUses := AStore.ReadInteger('AutoUses', BoolValue(Default.AutoUses)) <> 0;
   ParameterHints := AStore.ReadInteger('ParameterHints', BoolValue(Default.ParameterHints)) <> 0;
+  FormatPlaceholders := AStore.ReadInteger('FormatPlaceholders', BoolValue(Default.FormatPlaceholders)) <> 0;
   OpenDelayMs := AStore.ReadInteger('OpenDelayMs', Default.OpenDelayMs);
   PaletteKey := AStore.ReadInteger('PaletteKey', Default.PaletteKey);
   CheckKey := AStore.ReadInteger('CheckKey', Default.CheckKey);
@@ -2299,6 +2303,7 @@ begin
   AStore.WriteInteger('CommitCharacters', BoolValue(CommitCharacters));
   AStore.WriteInteger('AutoUses', BoolValue(AutoUses));
   AStore.WriteInteger('ParameterHints', BoolValue(ParameterHints));
+  AStore.WriteInteger('FormatPlaceholders', BoolValue(FormatPlaceholders));
   AStore.WriteInteger('OpenDelayMs', OpenDelayMs);
   AStore.WriteInteger('PaletteKey', PaletteKey);
   AStore.WriteInteger('CheckKey', CheckKey);
