@@ -42,6 +42,7 @@ uses
   Vcl.VirtualImageList,
   ToolsAPI,
   Atlas.Core.Product.Version,
+  Atlas.Core.Style.Color,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.UI.Style.Symbol,
@@ -54,16 +55,20 @@ type
     procedure ChangedTheme;
   end;
 
-  /// <summary>Zweiter Durchlauf nach dem Themenwechsel.</summary>
+  /// <summary>Weitere Durchläufe nach dem Themenwechsel.</summary>
   TLater = class
     procedure Tick(Sender: TObject);
   end;
 
 const
-  LaterMs = 400;
+  /// <summary>Abstände der späten Durchläufe: Die IDE braucht für den Wechsel je nach Zahl der Fenster deutlich
+  /// länger als 400 ms; ApplyTheme zu früh setzte in Listen und Feldern wieder die Farben des alten Themas.
+  /// </summary>
+  LaterMs: array[0..2] of Integer = (400, 1500, 4000);
 
 var
   Later: TTimer;
+  LaterStep: Integer;
   Later_: TLater;
   Collection: TImageCollection;
   Images: TVirtualImageList;
@@ -77,6 +82,27 @@ begin
   Result := TAtlasStrings.Fmt(TAtlasTextId.SymbolTitle, [TAtlasPluginVersion.Version]);
 end;
 
+/// <summary>Ein Durchlauf AMs nach der Meldung; die Zeile im Protokoll zeigt, welches Thema die IDE da liefert.
+/// </summary>
+procedure Run(AMs: Integer);
+var
+  Theming: IOTAIDEThemingServices;
+  Name: string;
+begin
+  try
+    Name := '';
+    if Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) then
+      Name := Theming.ActiveTheme;
+    TAtlasGuard.Log(Format('Themenwechsel +%d ms: %s, Hintergrund %s', [AMs, Name,
+      TAtlasColorMath.ToHex(TAtlasIdeStyle.Colors.Surface)]));
+    if Assigned(TAtlasIdeSymbol.OnThemeChanged) then
+      TAtlasIdeSymbol.OnThemeChanged();
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Status, E);
+  end;
+end;
+
 { TThemeNotifier }
 
 procedure TThemeNotifier.ChangingTheme;
@@ -85,13 +111,7 @@ end;
 
 procedure TThemeNotifier.ChangedTheme;
 begin
-  try
-    if Assigned(TAtlasIdeSymbol.OnThemeChanged) then
-      TAtlasIdeSymbol.OnThemeChanged();
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Status, E);
-  end;
+  Run(0);
   // Die IDE meldet den Wechsel, bevor ihre StyleServices das neue Thema liefern: Hell/Dunkel wäre noch das
   // alte (Logo im Menü, Farben der Panels). Kurz danach noch einmal; ein Eintrag in der Warteschlange kam noch
   // zu früh.
@@ -103,22 +123,26 @@ begin
     Later.OnTimer := Later_.Tick;
   end;
   Later.Enabled := False;
-  Later.Interval := LaterMs;
+  LaterStep := 0;
+  Later.Interval := LaterMs[0];
   Later.Enabled := True;
 end;
 
 { TLater }
 
 procedure TLater.Tick(Sender: TObject);
+var
+  Ms: Integer;
 begin
   Later.Enabled := False;
-  try
-    if Assigned(TAtlasIdeSymbol.OnThemeChanged) then
-      TAtlasIdeSymbol.OnThemeChanged();
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Status, E);
+  Ms := LaterMs[LaterStep];
+  Inc(LaterStep);
+  if LaterStep <= High(LaterMs) then
+  begin
+    Later.Interval := LaterMs[LaterStep] - Ms;
+    Later.Enabled := True;
   end;
+  Run(Ms);
 end;
 
 { TAtlasIdeSymbol }

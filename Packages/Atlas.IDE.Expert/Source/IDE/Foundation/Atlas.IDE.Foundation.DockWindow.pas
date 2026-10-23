@@ -16,10 +16,12 @@
 //   noch nicht.
 // Die Entscheidungen ohne VCL/OTA liegen in Atlas.Core.Dock.Plan (getestet).
 // ApplyIdeTheme: Thema der IDE auf den Inhalt eines Atlas-Fensters, auch beim
-// Wechsel Dunkel → Hell. ApplyTheme setzt im dunklen Thema feste Farben in
-// Listen und Bäume, beim Wechsel zurück aber keine Systemfarben; Listen und
-// Bäume deshalb vorher auf clWindow/clWindowText, ListViews danach mit neuem
-// Fenster (Kopfzeile im neuen Stil).
+// Wechsel Dunkel → Hell. ApplyTheme setzt im dunklen Thema feste Farben und
+// den Dunkelmodus von Windows in Listen, Bäume, Eingabefelder und
+// Kontrollkästchen, beim Wechsel zurück aber nicht wieder die Systemfarben.
+// Deshalb vorher auf clWindow/clWindowText bzw. die Farbe des Elternteils,
+// danach mit neuem Fenster (Kopfzeile, Bildlaufleisten und Kästchen im neuen
+// Thema). Der Notifier ruft das mehrfach verzögert (Atlas.IDE.Foundation.Symbol).
 
 interface
 
@@ -66,6 +68,7 @@ implementation
 uses
   System.SysUtils,
   Vcl.Graphics,
+  Vcl.StdCtrls,
   Vcl.ComCtrls,
   Atlas.Core.Dock.Plan;
 
@@ -247,8 +250,8 @@ end;
 class procedure TAtlasIdeDockWindow.ApplyIdeTheme(AControl: TWinControl);
 var
   Theming: IOTAIDEThemingServices;
-  Views: TArray<TListView>;
-  View: TListView;
+  Renewed: TArray<TWinControl>;
+  Control: TWinControl;
 
   procedure Reset(AParent: TWinControl);
   var
@@ -262,12 +265,25 @@ var
       begin
         TListView(Child).Color := clWindow;
         TListView(Child).Font.Color := clWindowText;
-        Views := Views + [TListView(Child)];
+        Renewed := Renewed + [TWinControl(Child)];
       end
       else if Child is TTreeView then
       begin
         TTreeView(Child).Color := clWindow;
         TTreeView(Child).Font.Color := clWindowText;
+      end
+      else if (Child is TCustomEdit) or (Child is TCustomListBox) then
+      begin
+        // TEdit, TButtonedEdit, TMemo, TListBox, TCheckListBox: Farbe und Schrift erst dort veröffentlicht.
+        TWinControlAccess(Child).Color := clWindow;
+        TWinControlAccess(Child).Font.Color := clWindowText;
+        Renewed := Renewed + [TWinControl(Child)];
+      end
+      else if Child is TCustomCheckBox then
+      begin
+        TWinControlAccess(Child).ParentColor := True;
+        TWinControlAccess(Child).Font.Color := clWindowText;
+        Renewed := Renewed + [TWinControl(Child)];
       end;
       if Child is TWinControl then
         Reset(TWinControl(Child));
@@ -278,12 +294,12 @@ begin
   if (AControl = nil) or not Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) or
     not Theming.IDEThemingEnabled then
     Exit;
-  Views := nil;
+  Renewed := nil;
   Reset(AControl);
   Theming.ApplyTheme(AControl);
-  for View in Views do
-    if View.HandleAllocated then
-      TWinControlAccess(View).RecreateWnd;
+  for Control in Renewed do
+    if Control.HandleAllocated then
+      TWinControlAccess(Control).RecreateWnd;
 end;
 
 end.
