@@ -64,6 +64,18 @@
 //                             setzt (#924); bei verwalteten Typen hat ihn der
 //                             Aufrufer schon geleert. Korrektur out -> var in
 //                             Implementierung und Deklaration.
+//   noreturn-returns          Eine noreturn-Routine (ab Delphi 13) kann normal
+//                             zurückkehren (#1132): Ein Weg erreicht das Ende des
+//                             Rumpfs oder ein Exit, ohne über raise, Abort, Halt,
+//                             RunError oder den Aufruf einer anderen noreturn-
+//                             Routine zu gehen. Die Direktive zählt an der
+//                             Implementierung und an der Deklaration (interface,
+//                             Klasse). Aufrufe, deren Ziel weder die Datei, die
+//                             Standardroutinen noch der Symbolindex kennt, könnten
+//                             selbst noreturn sein und beenden den Weg ebenfalls;
+//                             gemeldet wird also nur ein Weg ganz aus bekannten
+//                             Anweisungen. Exit wird an der Anweisung gemeldet,
+//                             das Ende des Rumpfs am Routinennamen.
 //
 // Was der Graph nicht sieht, macht die Variable "unbekannt" und erzeugt keinen
 // Treffer: Übergabe als Argument (var/out-Parameter, SetLength, FillChar,
@@ -145,6 +157,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TNoreturnReturnsRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 const
   OutParamReadRuleId = 'out-param-read';
   UseAfterFreeRuleId = 'use-after-free';
@@ -152,6 +170,7 @@ const
   FieldFreeWithoutNilRuleId = 'field-free-without-nil';
   DestructorNotNilSafeRuleId = 'destructor-not-nil-safe';
   HandleLeakRuleId = 'handle-leak';
+  NoreturnReturnsRuleId = 'noreturn-returns';
 
 /// <summary>Wird AName in ABlock so benutzt, dass der Kontrollfluss die Zuweisung nicht sieht?</summary>
 function HasOpaqueUse(ABlock: TSyntaxNode; const AName: string): Boolean;
@@ -168,6 +187,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived;
 
@@ -3858,6 +3878,243 @@ begin
   end;
 end;
 
+{ TNoreturnReturnsRule }
+
+type
+  /// <summary>Was ein Aufruf für den Weg einer noreturn-Routine bedeutet.</summary>
+  TNoreturnCallEffect = (Returns, Ends, Unknown);
+
+/// <summary>AName ohne Typparameter (TListe<T>.Fehler -> TListe.Fehler), klein geschrieben.</summary>
+function WithoutTypeParams(const AName: string): string;
+var
+  mIndex, mDepth: Integer;
+begin
+  Result := '';
+  mDepth := 0;
+  for mIndex := 1 to Length(AName) do
+    if AName[mIndex] = '<' then
+      Inc(mDepth)
+    else if AName[mIndex] = '>' then
+      Dec(mDepth)
+    else if mDepth = 0 then
+      Result := Result + AName[mIndex];
+  Result := LowerCase(Result);
+end;
+
+function HasNoreturn(AHeader: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+begin
+  if AHeader <> nil then
+    for mIndex := 0 to AHeader.ChildCount - 1 do
+      if (AHeader[mIndex].Kind = TSyntaxKind.Directive) and SameText(AHeader[mIndex].Name, 'noreturn') then
+        Exit(True);
+  Result := False;
+end;
+
+/// <summary>Voller Name eines Routinenkopfs: TKlasse.Name in einer Klassendeklaration, sonst der Name der
+/// Routine (bei Methoden TKlasse.Name).</summary>
+function HeaderFullName(AHeader: TSyntaxNode): string;
+var
+  mParent: TSyntaxNode;
+begin
+  if (AHeader.Parent <> nil) and (AHeader.Parent.Kind = TSyntaxKind.RoutineDecl) then
+    Exit(WithoutTypeParams(AHeader.Parent.Name));
+  mParent := AHeader.Parent;
+  while (mParent <> nil) and (mParent.Kind <> TSyntaxKind.TypeDecl) do
+    mParent := mParent.Parent;
+  if mParent = nil then
+    Result := WithoutTypeParams(AHeader.Name)
+  else
+    Result := WithoutTypeParams(mParent.Name + '.' + AHeader.Name);
+end;
+
+/// <summary>Exit oder Exit(Wert) als eigene Anweisung (nicht TMonitor.Exit).</summary>
+function IsExitStatement(ASyntax: TSyntaxNode): Boolean;
+var
+  mCallee: TSyntaxNode;
+begin
+  Result := False;
+  if (ASyntax = nil) or (ASyntax.Kind <> TSyntaxKind.CallStatement) or (ASyntax.ChildCount = 0) then
+    Exit;
+  mCallee := ASyntax[0];
+  if (mCallee.Kind = TSyntaxKind.Call) and (mCallee.ChildCount > 0) then
+    mCallee := mCallee[0];
+  Result := IsName(mCallee, 'Exit');
+end;
+
+function TNoreturnReturnsRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(NoreturnReturnsRuleId, TRuleSeverity.Warning,
+    'noreturn-Routine kann normal zurückkehren');
+end;
+
+procedure TNoreturnReturnsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mNoreturnFull, mNoreturnShort, mKnownShort: TDictionary<string, Boolean>;
+  mCache: IRuleDerivedCache;
+  mRoutine: TSyntaxNode;
+  mGraph: TControlFlowGraph;
+  mExits: TArray<TFlowNode>;
+  mExit: TFlowNode;
+  mToEnd: TArray<Boolean>;
+  mName: string;
+
+  procedure CollectHeaders;
+  var
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
+    mShort: string;
+  begin
+    mPending := TStack<TSyntaxNode>.Create;
+    try
+      mPending.Push(AContext.Tree.Root);
+      while mPending.Count > 0 do
+      begin
+        mNode := mPending.Pop;
+        for mIndex := 0 to mNode.ChildCount - 1 do
+          mPending.Push(mNode[mIndex]);
+        if mNode.Kind <> TSyntaxKind.RoutineHeader then
+          Continue;
+        mShort := LowerCase(ShortName(HeaderFullName(mNode)));
+        mKnownShort.AddOrSetValue(mShort, True);
+        if HasNoreturn(mNode) then
+        begin
+          mNoreturnFull.AddOrSetValue(HeaderFullName(mNode), True);
+          mNoreturnShort.AddOrSetValue(mShort, True);
+        end;
+      end;
+    finally
+      mPending.Free;
+    end;
+  end;
+
+  function IndexEffect(const AShort: string): TNoreturnCallEffect;
+  var
+    mLocation: TSymbolLocation;
+  begin
+    Result := TNoreturnCallEffect.Unknown;
+    if AContext.Index = nil then
+      Exit;
+    for mLocation in AContext.Index.FindSymbols(AShort) do
+      if mLocation.Symbol.HasDirective('noreturn') then
+        Exit(TNoreturnCallEffect.Ends)
+      else
+        Result := TNoreturnCallEffect.Returns;
+  end;
+
+  /// <summary>Wirkung der Anweisung ASyntax: Ends bei Halt, RunError und noreturn-Routinen, Unknown bei
+  /// Aufrufen mit unbekanntem Ziel (inherited, Methoden fremder Typen ohne Index).</summary>
+  function CallEffect(ASyntax: TSyntaxNode): TNoreturnCallEffect;
+  var
+    mCallee: TSyntaxNode;
+    mShort: string;
+    mMode: TFlowArgumentMode;
+  begin
+    Result := TNoreturnCallEffect.Returns;
+    if (ASyntax = nil) or (ASyntax.Kind <> TSyntaxKind.CallStatement) or (ASyntax.ChildCount = 0) then
+      Exit;
+    mCallee := ASyntax[0];
+    if (mCallee.Kind = TSyntaxKind.Call) and (mCallee.ChildCount > 0) then
+      mCallee := mCallee[0];
+    mShort := LowerCase(mCallee.Name);
+    if mCallee.Kind = TSyntaxKind.Identifier then
+    begin
+      if MatchText(mShort, ['halt', 'runerror']) then
+        Exit(TNoreturnCallEffect.Ends);
+      // Sprünge modelliert der Graph selbst.
+      if MatchText(mShort, ['exit', 'break', 'continue', 'abort']) then
+        Exit;
+    end
+    else if mCallee.Kind <> TSyntaxKind.MemberAccess then
+      Exit(TNoreturnCallEffect.Unknown);
+    if mNoreturnShort.ContainsKey(mShort) then
+      Exit(TNoreturnCallEffect.Ends);
+    if mKnownShort.ContainsKey(mShort) or
+      ((mCallee.Kind = TSyntaxKind.Identifier) and TFlowSignatures.TryBuiltin(mShort, 0, mMode)) then
+      Exit;
+    Result := IndexEffect(mShort);
+  end;
+
+  /// <summary>Knoten, die vom Anfang aus erreichbar sind, ohne einen Knoten zu verlassen, der den Weg
+  /// beendet; von solchen Knoten führen nur die Ausnahmekanten weiter. Mit AStopAtExit enden die Wege auch
+  /// an Exit.</summary>
+  function Reachable(AStopAtExit: Boolean): TArray<Boolean>;
+  var
+    mPending: TStack<TFlowNode>;
+    mNode, mNext: TFlowNode;
+    mEnds: Boolean;
+  begin
+    SetLength(Result, mGraph.Nodes.Count);
+    mPending := TStack<TFlowNode>.Create;
+    try
+      mPending.Push(mGraph.Entry);
+      Result[mGraph.Entry.Index] := True;
+      while mPending.Count > 0 do
+      begin
+        mNode := mPending.Pop;
+        mEnds := (AStopAtExit and IsExitStatement(mNode.Syntax)) or
+          (CallEffect(mNode.Syntax) <> TNoreturnCallEffect.Returns);
+        for mNext in mNode.Successors do
+          if not Result[mNext.Index] and (not mEnds or mNode.IsImplicitRaiseEdge(mNext)) then
+          begin
+            Result[mNext.Index] := True;
+            mPending.Push(mNext);
+          end;
+      end;
+    finally
+      mPending.Free;
+    end;
+  end;
+
+  function ExitsReached: TArray<TFlowNode>;
+  var
+    mSeen: TArray<Boolean>;
+    mNode: TFlowNode;
+  begin
+    Result := nil;
+    mSeen := Reachable(False);
+    for mNode in mGraph.Nodes do
+      if mSeen[mNode.Index] and (mNode.Kind = TFlowNodeKind.Statement) and IsExitStatement(mNode.Syntax) then
+        Result := Result + [mNode];
+  end;
+
+begin
+  if (AContext.Tree = nil) or not ContainsText(AContext.Text, 'noreturn') then
+    Exit;
+  mNoreturnFull := TDictionary<string, Boolean>.Create;
+  mNoreturnShort := TDictionary<string, Boolean>.Create;
+  mKnownShort := TDictionary<string, Boolean>.Create;
+  try
+    CollectHeaders;
+    mCache := TRuleDerived.Open(AContext);
+    for mRoutine in TRuleDerived.Routines(mCache, AContext) do
+    begin
+      if not (HasNoreturn(mRoutine.FindChild(TSyntaxKind.RoutineHeader)) or
+        mNoreturnFull.ContainsKey(WithoutTypeParams(mRoutine.Name))) then
+        Continue;
+      mGraph := TRuleDerived.Graph(mCache, AContext, mRoutine);
+      if not mGraph.Complete then
+        Continue;
+      mName := ShortName(mRoutine.Name);
+      mExits := ExitsReached;
+      for mExit in mExits do
+        AReport.Add(NodeRange(mExit.Syntax),
+          Format('Exit verlässt %s normal, obwohl die Routine noreturn ist.', [mName]), TRuleConfidence.High);
+      mToEnd := Reachable(True);
+      if mToEnd[mGraph.ExitNode.Index] then
+        AReport.Add(HeaderNameRange(AContext, mRoutine),
+          Format('%s kann am Ende normal zurückkehren, obwohl die Routine noreturn ist.', [mName]),
+          TRuleConfidence.High);
+    end;
+  finally
+    mKnownShort.Free;
+    mNoreturnShort.Free;
+    mNoreturnFull.Free;
+  end;
+end;
+
 procedure RegisterFlowRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TResultNotSetRule.Create);
@@ -3869,6 +4126,7 @@ begin
   ARegistry.Register(TDestructorNotNilSafeRule.Create);
   ARegistry.Register(THandleLeakRule.Create);
   ARegistry.Register(TOutParamReadRule.Create);
+  ARegistry.Register(TNoreturnReturnsRule.Create);
 end;
 
 end.

@@ -6186,3 +6186,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | RJ4 | `if … then Continue else if … then … else …` am Rumpfende, `Exit(Wert)`, `Exit` vor weiteren Anweisungen, `Exit`/`Continue` in `try … finally` oder `try … except`, `Continue` in einem `case`-Zweig, `System.Continue`, `{$IFDEF}` im Rumpf, Ziel eines `goto` | Keine Meldung |
 | RJ5 | `Exit;` am Ende einer anonymen Methode | Hinweis wie RJ1 |
 | RJ6 | `"redundant-jump": "off"` bzw. `exclude`; Seite Prüfregeln › Stil | Keine Meldung; die Regel steht in der Gruppe |
+
+## noreturn-Routine kann normal zurückkehren (#1132)
+
+Voraussetzung: Delphi 13 (noreturn gibt es erst dort), Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NR1 | Das Beispiel aus #1132: `procedure Fehler(const AText: string); noreturn;` im interface, im Rumpf nur `if AText <> '' then raise EImport.Create(AText);` | Warnung `noreturn-returns` am Namen der Implementierung: „Fehler kann am Ende normal zurückkehren, obwohl die Routine noreturn ist.“ |
+| NR2 | `if AText = '' then Exit;` vor dem `raise` | Warnung am `Exit`: „Exit verlässt Fehler normal, …“, keine am Namen |
+| NR3 | Rumpf endet mit `raise`, `Abort`, `Halt(1)`, `RunError(204)` oder dem Aufruf einer anderen noreturn-Routine (auch einer Methode, deren Klassendeklaration `noreturn` trägt) | Keine Meldung |
+| NR4 | Rumpf ruft nur `Protokolliere(AText)` aus einer anderen Unit des Projekts auf, einmal ohne, einmal mit `noreturn` an Protokolliere | Ohne: Warnung wie NR1 (Index bekannt); mit: keine Meldung |
+| NR5 | Delphi 13 übersetzt das Beispiel aus NR1 | Der Compiler meldet selbst nichts; Atlas meldet NR1 (**Abnahme**: Die Regel deckt ab, was der Compiler nicht prüft) |
+| NR6 | `"noreturn-returns": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden | Keine Meldung; die Regel steht mit Schalter und Schweregrad in der Gruppe |
