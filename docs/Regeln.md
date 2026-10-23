@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 14 |
 | [Architektur](#gruppe-architecture) | 4 |
-| [Stil und Metriken](#gruppe-style) | 43 |
+| [Stil und Metriken](#gruppe-style) | 44 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
@@ -331,6 +331,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`bool-compare`](#bool-compare) | Vergleich mit True oder False | Code Smell | Hinweis |
 | [`redundant-assigned-free`](#redundant-assigned-free) | Assigned-Prüfung vor Free | Code Smell | Hinweis |
 | [`redundant-parens`](#redundant-parens) | Überflüssige Klammern | Code Smell | Hinweis |
+| [`redundant-cast`](#redundant-cast) | Überflüssige Typumwandlung | Code Smell | Hinweis |
 | [`redundant-begin-end`](#redundant-begin-end) | begin … end um eine einzelne Anweisung | Code Smell | Hinweis |
 | [`with-statement`](#with-statement) | with-Anweisung | Code Smell | Hinweis |
 | [`metric-method-length`](#metric-method-length) | Methode zu lang | Code Smell | Hinweis |
@@ -2446,6 +2447,37 @@ Richtig:
 ```pascal
 if Done then
   Exit;
+```
+
+<a id="redundant-cast"></a>
+### redundant-cast
+
+**Überflüssige Typumwandlung** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+TStringList(Liste) mit Liste: TStringList, X as TFoo mit X: TFoo oder Integer(Anzahl) mit Anzahl: Integer ändern nichts. Ebenso TObject(Obj).Free: Free ruft den virtuellen Destruktor und braucht keine Umwandlung (Option checkFree). Gemeldet wird nur, wenn der Typ der Quelle sicher bekannt und genau mit dem Namen des Ziels deklariert ist; Aliase (TFarbIndex = Integer), Konstanten, Routinen ohne Aufruf, überladene Routinen als Quelle, Argumente überladener Aufrufe (die Umwandlung kann die Überladung wählen), as mit Interfaces (QueryInterface) und in der Klassenkette neu deklariertes Free bleiben still. Sicherheit hoch. Korrektur: die Umwandlung entfernen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `checkFree` | boolean | `true` | Auch eine Klassenumwandlung melden, die nur vor Free steht (CastAndFree). |
+
+Mit Treffer:
+
+```pascal
+procedure TImport.Cleanup;
+begin
+  TStringList(FLines).Clear;
+  TObject(FStream).Free;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TImport.Cleanup;
+begin
+  FLines.Clear;
+  FStream.Free;
+end;
 ```
 
 <a id="redundant-begin-end"></a>

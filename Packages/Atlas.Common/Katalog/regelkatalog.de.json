@@ -536,6 +536,17 @@
       "description": "Klammern um eine ganze Bedingung oder einen einzelnen Bezeichner bringen nichts. Standardmäßig aus."
     },
     {
+      "id": "redundant-cast",
+      "name": "Überflüssige Typumwandlung",
+      "description": "TStringList(Liste) mit Liste: TStringList, X as TFoo mit X: TFoo oder Integer(Anzahl) mit Anzahl: Integer ändern nichts. Ebenso TObject(Obj).Free: Free ruft den virtuellen Destruktor und braucht keine Umwandlung (Option checkFree). Gemeldet wird nur, wenn der Typ der Quelle sicher bekannt und genau mit dem Namen des Ziels deklariert ist; Aliase (TFarbIndex = Integer), Konstanten, Routinen ohne Aufruf, überladene Routinen als Quelle, Argumente überladener Aufrufe (die Umwandlung kann die Überladung wählen), as mit Interfaces (QueryInterface) und in der Klassenkette neu deklariertes Free bleiben still. Sicherheit hoch. Korrektur: die Umwandlung entfernen.",
+      "options": [
+        {
+          "name": "checkFree",
+          "description": "Auch eine Klassenumwandlung melden, die nur vor Free steht (CastAndFree)."
+        }
+      ]
+    },
+    {
       "id": "redundant-begin-end",
       "name": "begin … end um eine einzelne Anweisung",
       "description": "Ein begin … end-Block mit genau einer Anweisung kann entfallen. Standardmäßig aus."

@@ -1081,6 +1081,24 @@
       "good": "if Done then\n  Exit;"
     },
     {
+      "id": "redundant-cast",
+      "name": "Redundant type cast",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "TStringList(List) with List: TStringList, X as TFoo with X: TFoo or Integer(Count) with Count: Integer change nothing. Likewise TObject(Obj).Free: Free calls the virtual destructor and needs no cast (option checkFree). Reported only when the type of the source is known for sure and is declared with exactly the target name; aliases (TColorIndex = Integer), constants, routines without a call, overloaded routines as source, arguments of overloaded calls (the cast may steer the overload), as with interfaces (QueryInterface) and Free redeclared in the class chain stay silent. High confidence. Quick fix: remove the cast.",
+      "bad": "procedure TImport.Cleanup;\nbegin\n  TStringList(FLines).Clear;\n  TObject(FStream).Free;\nend;",
+      "good": "procedure TImport.Cleanup;\nbegin\n  FLines.Clear;\n  FStream.Free;\nend;",
+      "options": [
+        {
+          "name": "checkFree",
+          "type": "boolean",
+          "default": true,
+          "description": "Also report a class cast that only precedes Free (CastAndFree)."
+        }
+      ]
+    },
+    {
       "id": "redundant-begin-end",
       "name": "begin … end around a single statement",
       "category": "code-smell",
