@@ -100,6 +100,8 @@ type
     procedure OverviewRulerOptions;
     [Test]
     procedure DebugVisualizerOptions;
+    [Test]
+    procedure DebugDisplayRuleOptions;
     /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure GenerateMenuOptions;
@@ -1811,6 +1813,26 @@ begin
   Loaded.OverviewRulerKinds := '';
   Loaded.Normalize;
   Assert.AreEqual('', Loaded.OverviewRulerKinds, 'leer = keine Marken');
+end;
+
+procedure TAtlasPluginSettingsTests.DebugDisplayRuleOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // #854: an, Aufrufe aus; beide überleben Speichern und Laden.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugDisplayRules);
+  Assert.IsFalse(Settings.DebugDisplayRulesAllowCalls);
+  Settings.DebugDisplayRules := False;
+  Settings.DebugDisplayRulesAllowCalls := True;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Loaded.Normalize;
+  Assert.IsFalse(Loaded.DebugDisplayRules);
+  Assert.IsTrue(Loaded.DebugDisplayRulesAllowCalls);
 end;
 
 procedure TAtlasPluginSettingsTests.DebugVisualizerOptions;

@@ -126,6 +126,7 @@
         <DCCReference Include="Source\Index\Atlas.Common.Index.Contract.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Files.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.TypeMembers.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.SymbolIndex.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.NameIndex.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.LibraryUnits.pas"/>
@@ -242,6 +243,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionEnums.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionGenerics.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionUses.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionDebugDisplay.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionInherited.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionSameNames.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionRequest.pas"/>
@@ -264,8 +266,10 @@
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Scanner.pas"/>
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Report.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DebugDisplay.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Todos.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DebugDisplay.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Recursion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.OverrideMarks.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Baseline.pas"/>

@@ -1292,6 +1292,18 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "debug-display-placeholder",' + #10 +
+    '      "name": "Debugger display names an unknown member",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "robustness",' + #10 +
+    '      "description": "A debugger display rule above a type (// atlas-debug: ''{Name}, {City}'', [AtlasDebugDisplay(''…'')], // atlas-debug-children: Name, City or [AtlasDebugChildren(''…'')]) names a placeh' +
+    'older or child that is not a field, property or method of the type or one of its ancestors, or the template is invalid (unclosed or empty brace). In the debugger such a placeholder stays empty ({?Name' +
+    '}). Ancestors come from the unit and the index; when an ancestor is unknown the rule stays silent for that type. Members of TObject (ClassName, ToString, …) are always known.",' + #10 +
+    '      "bad": "// atlas-debug: ''{Name}, {Stadt}''\nTKunde = class\n  Name, Ort: string;\nend;",' + #10 +
+    '      "good": "// atlas-debug: ''{Name}, {Ort}''\nTKunde = class\n  Name, Ort: string;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "component-palette-icon",' + #10 +
     '      "name": "Registered component without palette icon",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -5609,6 +5621,14 @@ begin
     '          "description": "Marken offener TODO-Einträge (nur Buchstaben)."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "debug-display-placeholder",' + #10 +
+    '      "name": "Wertdarstellung nennt unbekanntes Mitglied",' + #10 +
+    '      "description": "Eine Regel für die Wertdarstellung beim Debuggen über einem Typ (// atlas-debug: ''{Name}, {Ort}'', [AtlasDebugDisplay(''…'')], // atlas-debug-children: Name, Ort oder [AtlasDebugChi' +
+    'ldren(''…'')]) nennt einen Platzhalter oder ein Unterelement, das weder Feld noch Eigenschaft noch Methode des Typs oder eines Vorfahren ist, oder die Vorlage ist ungültig (offene oder leere Klammer). I' +
+    'm Debugger bliebe ein solcher Platzhalter leer ({?Name}). Vorfahren kommen aus der Unit und dem Index; ist ein Vorfahr unbekannt, schweigt die Regel für den Typ. Mitglieder von TObject (ClassName, ToS' +
+    'tring, …) gelten immer als bekannt."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "component-palette-icon",' + #10 +

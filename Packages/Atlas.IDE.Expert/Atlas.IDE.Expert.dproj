@@ -103,6 +103,7 @@
         <DCCReference Include="..\Atlas.Text\Source\Entities\Atlas.Text.Entities.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Defines\Atlas.Text.Defines.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Checkin\Atlas.Text.Checkin.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\DebugDisplay\Atlas.Text.DebugDisplay.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\DUnitX\Atlas.Text.DUnitX.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\TestResults\Atlas.Text.TestResults.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\MapFile\Atlas.Text.MapFile.pas"/>
@@ -127,6 +128,7 @@
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Layout.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Visualizers.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.DisplayRules.pas"/>
         <DCCReference Include="Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas"/>
         <DCCReference Include="Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas"/>
         <DCCReference Include="Source\Core\Signature\Atlas.Core.Signature.CallScanner.pas"/>
@@ -282,6 +284,7 @@
         <DCCReference Include="Source\IDE\Hover\Atlas.IDE.Hover.DebugValue.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Evaluator.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Visualizers.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.DisplayRules.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.Viewer.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Preview.pas"/>
         <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.Preview.pas"/>

@@ -982,6 +982,31 @@
       "x-control": "Auswahl",
       "x-issue": "#835"
     },
+    "DebugDisplayRules": {
+      "description": "Eigene Wertdarstellungen beim Debuggen: Typen mit einer Regel (// atlas-debug: '{Name}, {Ort}' oder [AtlasDebugDisplay('…')] über der Deklaration, debugDisplayRules in der Projektdatei .atlas für fremde Klassen) erscheinen im Hover, in Überwachten Ausdrücken und Lokalen Variablen nach ihrer Vorlage; Nachfahren ohne eigene Regel erben sie. // atlas-debug-children: beschränkt die Unterelemente im Atlas-Ansichtsfenster. Aus = die IDE zeigt ihre eigenen Werte.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.displayRules",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Eigene Wertdarstellungen",
+      "x-captionEn": "Custom value display",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#854"
+    },
+    "DebugDisplayRulesAllowCalls": {
+      "description": "Getter von Eigenschaften und Funktionsaufrufe ({GetName()}) in Vorlagen auswerten; aus = nur Felder und Eigenschaften mit direktem Feldzugriff, andere Platzhalter zeigen {?Name}.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.displayRules.allowCalls",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.displayRules",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#854"
+    },
     "TestsBuildFirst": {
       "type": "boolean",
       "default": true,
