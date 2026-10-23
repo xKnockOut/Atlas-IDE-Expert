@@ -1007,3 +1007,11 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Angebunden:** Konstante einführen (auch die Korrektur von magic-number), Variable einführen, with auflösen (`TExtractOptions.Names`), Parameter von „Methode anlegen“ (`TRefactoringContext.NewNames`, im Server `TServerComposition.NewNamesFor`), feste Namen in Regelkorrekturen (Capture `Ergebnis`/`…Kopie`, Ownership, RtlTypePatterns `Wert`/`Befehl`/`FS`), Umbenennungen von shadowed-name (`NamingPrefixFor` bevorzugt die Präfixe der Namensregel).
 - **Nicht angebunden:** Parameter von „Methode extrahieren“ (übernehmen die Namen der Variablen, Umbenennen im Rumpf nötig), Resourcestrings (prüft die Regel nicht), Postfix-Vorlagen.
 - **Tests:** `NewNamesFollowActiveRule`, `FixesFollowNamingRule` (magic-number + naming-prefix → `cNewConstant`), `NewNamesWithPrefixes` (Extract). Regelkatalog DE/EN um den Satz zu neuen Namen ergänzt.
+
+## Spätabend 23.10.2026: Umbenennung bei Namensregel nur im Gültigkeitsbereich prüfen (lokal, UNGETESTET)
+
+- **Marcos Frage:** „In ABuf umbenennen“ war deaktiviert, weil `ABuf` in einer anderen Routine der Datei vorkommt (`OccursInFile`).
+- **Änderung:** `TNamingPrefixRule.Report` bekommt die Bereiche, in denen der neue Name kollidieren kann (`OccursIn`): lokal = Routine, Inline-for = umgebender Bereich, Member = Klassenrumpf + Methoden, Unit-Konstante = ganze Datei, Parameter = Parameterliste + Rumpf bzw. Implementation. Test `FixWhenNewNameOnlyElsewhere`; Katalog DE/EN und Regeln.md angepasst.
+- **Stand:** Commit ohne Build/Test (Marcos Wunsch: herunterfahren ohne Tests). Nächste Schritte: wtgroup bauen (Gruppe, wegen Common-DCUs), volle Tests, installieren, Delphi neu starten.
+- **Neues Issue:** #1155 Atlas-Statusleiste unten am Editor (Mockup abgenommen).
+- **Weiter offen:** Linter-Leck #1112, modale Dialoge ohne IDE-Thema. Nichts gepusht (origin/main c631816b).

@@ -34,6 +34,10 @@ type
     procedure InterfaceImplementationsKeepNames;
     [Test]
     procedure NoFixWhenUnsafe;
+    /// <summary>Der neue Name zählt nur dort, wo umbenannt wird: ABuf als Parameter einer anderen Routine sperrt
+    /// die Korrektur nicht, ein Nachbarparameter ABuf schon.</summary>
+    [Test]
+    procedure FixWhenNewNameOnlyElsewhere;
     [Test]
     procedure ConfigurationAndProjectFile;
     [Test]
@@ -437,6 +441,21 @@ begin
   Fixed := FixText('{"minConfidence": "low", "rules": {"magic-number": "hint", "naming-prefix": "hint"}}');
   Assert.IsTrue(Pos('cNewConstant = 0.93', Fixed) > 0, Fixed);
   Assert.IsTrue(Pos('APreis * cNewConstant', Fixed) > 0, Fixed);
+end;
+
+procedure TNamingRulesTests.FixWhenNewNameOnlyElsewhere;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := Findings(UnitOf('', 'procedure Q(const ABuf; ACount: Integer);'#10'begin'#10'end;'#10 +
+    'procedure P(const Buf; ACount: Integer);'#10'begin'#10'end;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)), Messages(Found));
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)), 'ABuf steht nur in Q');
+  Assert.AreEqual('In ABuf umbenennen', Found[0].Fixes[0].Title);
+  // Ein Nachbarparameter heißt schon so.
+  Found := Findings(UnitOf('', 'procedure P(const Buf; ABuf: Integer);'#10'begin'#10'end;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)), Messages(Found));
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
 end;
 
 initialization
