@@ -990,6 +990,9 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Build.SwitchesFrame.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DebugUnavailable.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Unavailable.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ExpressionCompletion.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.DialogCompletion.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Providers.Expression.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

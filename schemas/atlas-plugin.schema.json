@@ -903,6 +903,18 @@
       "x-captionEn": "Explain \"no access\" while debugging",
       "x-issue": "#840"
     },
+    "DebugCompletionInDialogs": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.completionInDialogs",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Vervollständigung in Debugger-Dialogen",
+      "x-captionEn": "Completion in debugger dialogs",
+      "x-issue": "#538"
+    },
     "DebugExceptionHistory": {
       "type": "boolean",
       "default": true,

@@ -6222,6 +6222,32 @@ Vorbereitung: Atlas-Server läuft, Projekt mit den Konfigurationen Debug (Vorgab
 | KZ16 | `debug.explainUnavailable` aus (Schnellschalter) | Fehler wie vorher ausgeblendet, kein `‹kein Zugriff›` im Editor, keine Anfrage `atlas/debugUnavailable` (Diagnoseprotokoll) (**Abnahme**) |
 | KZ17 | Dunkles Thema | Kennzeichen in der Warnfarbe, Ursache, Herkunft und Verweise gut lesbar |
 
+## Vervollständigung in Debugger-Dialogen (#538)
+
+Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert. Unit mit `TKunde = class` (Felder `Name: string`, `Umsatz: Integer`) und einer Routine mit lokalen Variablen `Kunde: TKunde` und `Summe: Integer`, Parameter `Anzahl`; Haltepunkt in einer Zeile mitten im Rumpf. Diagnoselog an (*Atlas › Diagnose*).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VD1 | Deutsche IDE (Delphi 12 und 13), Programm am Haltepunkt, Strg+F7, ein Feld anklicken | Diagnoselog: „Debug-Dialog erkannt: ‹Klasse› „Auswerten/Ändern“, Beschriftungen: …“; Klasse, Titel und Beschriftungen im Issue notieren (**Studie**) |
+| VD2 | VD1, im Ausdrucksfeld `Kun` tippen | Atlas-Popup unter dem Feld mit `Kunde` (lokale Variable), ohne Schlüsselwörter (**Abnahme**) |
+| VD3 | VD2, Enter | Feld enthält `Kunde`, Schreibmarke dahinter; Strg+Z im Feld nimmt es zurück |
+| VD4 | `Kunde.` tippen | Popup mit `Name` und `Umsatz` (Elemente von `TKunde`), keine lokalen Namen (**Abnahme**) |
+| VD5 | `Kunde.Na`, Tab | `Kunde.Name`; Enter danach wertet aus wie ohne Atlas |
+| VD6 | Popup offen, Pfeil hoch/runter, Bild auf/ab, Esc | Auswahl wandert; Esc schließt nur das Popup, nicht den Dialog |
+| VD7 | Popup zu, Esc | Dialog schließt wie ohne Atlas |
+| VD8 | Im leeren Feld Strg+Leer | Popup mit allen Namen am Ausführungspunkt (`Kunde`, `Summe`, `Anzahl`, Felder von `Self`, globale Namen) |
+| VD9 | `Kunde.Name` und `Summe` auswerten, Dialog schließen, neu öffnen, im leeren Feld Pfeil runter | Popup „Verlauf“ mit `Summe` vor `Kunde.Name`; Enter ersetzt das ganze Feld (**Abnahme**) |
+| VD10 | 25 verschiedene Ausdrücke auswerten, Pfeil runter im leeren Feld | Höchstens 20 Einträge, neuester zuerst; anderes Projekt aktiv: eigener Verlauf; IDE neu starten: Verlauf bleibt (`%LOCALAPPDATA%\Atlas\debug-expressions.json`) |
+| VD11 | Überwachung hinzufügen (Strg+F5), Ausdrucksfeld `Su` | Popup mit `Summe`; im Feld „Gruppenname“ kein Popup |
+| VD12 | Haltepunkt in einer anderen Routine bearbeiten (Rechtsklick › Haltepunkt-Eigenschaften), Feld „Bedingung“ `An` | Vorschläge aus dem Gültigkeitsbereich der Haltepunktzeile (Parameter jener Routine), nicht des Ausführungspunkts (**Abnahme**) |
+| VD13 | VD12, Weitere › „Ausdruck auswerten“ | Ebenso Popup; im Feld „Meldung protokollieren“ keins |
+| VD14 | Programm läuft nicht, Strg+F7, `Ku` | Vorschläge aus der Cursorzeile im Editor |
+| VD15 | Englische IDE: VD1, VD2, VD11, VD12 | Ebenso erkannt; Beschriftungen notieren (fehlende in `TAtlasDebugDialogs.FieldOf` nachtragen) |
+| VD16 | Server beendet, Strg+F7, `Ku` | Kein Popup, kein Hänger; Pfeil runter im leeren Feld zeigt den Verlauf weiter |
+| VD17 | Popup über dem modalen Dialog, Klick in einen Eintrag | Popup bleibt vor dem Dialog; Doppelklick übernimmt, der Fokus bleibt im Feld |
+| VD18 | `debug.completionInDialogs` aus (Schnellschalter) | Kein Popup, Pfeil runter öffnet die Liste der IDE wie ohne Atlas, kein Eintrag im Diagnoselog, keine Anfrage `atlas/expressionCompletion` (**Abnahme**) |
+| VD19 | Dunkles Thema | Popup wie im Editor gut lesbar |
+
 ## Werte im Editor beim Debuggen (#508)
 
 Vorbereitung: Atlas-Server läuft (Projekt geöffnet, Indexierung fertig). Testunit mit einer Methode wie im Test `Atlas.Common.Lsp.InlineValues.Tests` (Felder `FCount`, `FName`, Parameter `Anzahl`, lokale `Summe`, `for var I`, `with Andere do`, Aufruf `GetSize`, Eigenschaft `Size`, eine `TDateTime`-Variable). *Tools › Optionen › Atlas › Debuggen* „Werte im Editor beim Debuggen“ an. Win32 und Win64.

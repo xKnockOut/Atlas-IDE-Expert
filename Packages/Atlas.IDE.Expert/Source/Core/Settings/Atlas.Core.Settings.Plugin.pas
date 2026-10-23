@@ -445,6 +445,11 @@ type
     /// (Release-Start, $D-/$L-, $O+, Lebensdauer, inline, Bibliothek ohne Debug-DCUs), Herkunft des Schalters und
     /// Korrekturen. Aus = Fehler wie bisher ausgeblendet, keine Anfrage.</summary>
     DebugExplainUnavailable: Boolean;
+    /// <summary>Vervollständigung in Debugger-Dialogen (#538, debug.completionInDialogs): In „Auswerten/Ändern“, im
+    /// Überwachungsausdruck und in Bedingung und Log-Ausdruck eines Haltepunkts bietet Atlas Bezeichner aus dem
+    /// Gültigkeitsbereich des Ausführungspunkts bzw. der Haltepunktzeile an; Pfeil nach unten im leeren Feld zeigt
+    /// die letzten 20 Ausdrücke des Projekts. Aus = kein Zeitgeber, keine Anfrage, kein Verlauf.</summary>
+    DebugCompletionInDialogs: Boolean;
     /// <summary>Exception-Verlauf beim Debuggen (#517, debug.exceptionHistory): Jeder Halt wegen einer Exception
     /// landet mit Klasse, Meldung, Ort, Thread und Anzahl im Fenster „Atlas: Exceptions“ (Befehl
     /// Atlas.DebugExceptions); Klassen lassen sich dort ignorieren, Atlas setzt dann still fort. Aus = kein Verlauf,
@@ -1414,6 +1419,7 @@ begin
   Result.TestBreakAtStart := True;
   Result.DebugHoverValues := True;
   Result.DebugExplainUnavailable := True;
+  Result.DebugCompletionInDialogs := True;
   Result.DebugExceptionHistory := True;
   Result.DebugJustMyCode := True;
   Result.DebugExceptionBanner := False;
@@ -2029,6 +2035,7 @@ begin
   TestBreakAtStart := AStore.ReadInteger('TestBreakAtStart', BoolValue(Default.TestBreakAtStart)) <> 0;
   DebugHoverValues := AStore.ReadInteger('DebugHoverValues', BoolValue(Default.DebugHoverValues)) <> 0;
   DebugExplainUnavailable := AStore.ReadInteger('DebugExplainUnavailable', BoolValue(Default.DebugExplainUnavailable)) <> 0;
+  DebugCompletionInDialogs := AStore.ReadInteger('DebugCompletionInDialogs', BoolValue(Default.DebugCompletionInDialogs)) <> 0;
   DebugExceptionHistory := AStore.ReadInteger('DebugExceptionHistory', BoolValue(Default.DebugExceptionHistory)) <> 0;
   DebugJustMyCode := AStore.ReadInteger('DebugJustMyCode', BoolValue(Default.DebugJustMyCode)) <> 0;
   DebugExceptionBanner := AStore.ReadInteger('DebugExceptionBanner', BoolValue(Default.DebugExceptionBanner)) <> 0;
@@ -2482,6 +2489,7 @@ begin
   AStore.WriteInteger('TestBreakAtStart', BoolValue(TestBreakAtStart));
   AStore.WriteInteger('DebugHoverValues', BoolValue(DebugHoverValues));
   AStore.WriteInteger('DebugExplainUnavailable', BoolValue(DebugExplainUnavailable));
+  AStore.WriteInteger('DebugCompletionInDialogs', BoolValue(DebugCompletionInDialogs));
   AStore.WriteInteger('DebugExceptionHistory', BoolValue(DebugExceptionHistory));
   AStore.WriteInteger('DebugJustMyCode', BoolValue(DebugJustMyCode));
   AStore.WriteInteger('DebugExceptionBanner', BoolValue(DebugExceptionBanner));
