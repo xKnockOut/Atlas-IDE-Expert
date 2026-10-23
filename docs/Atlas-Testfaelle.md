@@ -2558,6 +2558,31 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | EL20 | Leiste durch einen Fehler abgeschaltet (atlas.log „Editorleiste: durch die Sicherung abgeschaltet“), dann Atlas › Abgeschaltete Funktionen einschalten | Leiste verschwindet und kommt ohne Neustart zurück |
 | BK29 | Gegenprobe zur Zugriffsverletzung beim Beenden (`rtl370`, `TEditWindow.Notification`): Brotkrumen an, atlas.log nennt „über die Option … der IDE“, IDE dreimal beenden | Tritt die Zugriffsverletzung nicht mehr auf, war das Umhängen die Ursache; tritt sie weiter auf, liegt sie nicht am Umhängen (Bericht M3) |
 
+## Atlas-Statusleiste (#1155)
+
+Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `problems.live` an, Regel `metric-method-length` mit `max` 40.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ASL1 | uKundeForm öffnen | Unten im Editorfenster direkt über der Statuszeile der IDE eine Zeile: Punkt mit „Atlas · bereit“, die drei Zähler mit den Symbolen aus „Atlas-Prüfung“ (2, 5, 1), „live · geprüft vor 2 s“, Methode am Cursor, rechts das Zahnrad. Höhe 22 px bei 100 %, Farben wie Brotkrumen- und Editorleiste |
+| ASL2 | Statuszeile der IDE ansehen | Das Atlas-Feld ist dort verschwunden (Breite 0); die übrigen Felder der IDE rücken zusammen |
+| ASL3 | Klick auf den Status bzw. Rechtsklick darauf | Statusfenster bzw. Schnellschalter öffnen sich an der Leiste, nicht unten an der Statuszeile |
+| ASL4 | Klick auf den Warnzähler, mehrmals | Caret springt zur nächsten Warnung der Unit hinter dem Cursor, nach der letzten wieder zur ersten; Klick auf einen Zähler mit 0 meldet „keine Befunde dieser Art“ |
+| ASL5 | Doppelklick auf einen Zähler | „Atlas-Prüfung“ öffnet sich mit Bereich „Aktuelle Datei“; der Doppelklick springt nicht zusätzlich |
+| ASL6 | Tippen, ohne zu speichern | Kurz „prüft …“ mit Symbol in Akzentfarbe, danach „live · geprüft vor 0 s“, die Sekunden zählen hoch; Tooltip „Letzte Prüfung: … in … ms um …“ |
+| ASL7 | `problems.live` aus | „beim Speichern“; nach Strg+S zählen die Sekunden wieder ab der Prüfung |
+| ASL8 | Caret in `btnSpeichernClick` (48 Zeilen, CC 9) | `TfrmKunde.btnSpeichernClick · 48 Zeilen · CC 9`, Zeilen in Warnfarbe, Tooltip nennt „(Grenze 40)“; Klick springt zum Methodenkopf. Außerhalb einer Methode gedämpft „keine Methode“, Klick tut nichts |
+| ASL9 | Editorfenster schmal ziehen | Erst kürzt sich der Methodenname („…“), dann die Live-Prüfung, dann der Status; reicht es nicht, fallen Elemente ganz weg (Methode zuerst, die Zähler zuletzt). Nie zwei Zeilen |
+| ASL10 | Zahnrad bzw. Rechtsklick neben dem Status › „Leiste anpassen …“ | Menü mit Häkchen für Server-Status, Meldungen dieser Unit, Live-Prüfung, Aktuelle Methode und „Statusleiste ausblenden“; jede Änderung wirkt sofort und steht danach in `editor.statusBar.items` |
+| ASL11 | Server-Status abwählen | Das Atlas-Feld kehrt in die Statuszeile der IDE zurück und öffnet seine Fenster wieder dort |
+| ASL12 | „Statusleiste ausblenden“ bzw. `editor.statusBar` aus (Optionen › Editor, Schnellschalter) | Leisten verschwinden ohne Neustart, das Atlas-Feld steht wieder in der Statuszeile; wieder an: Leisten und Umzug kommen zurück |
+| ASL13 | Zweites Editorfenster (Ansicht › Neues Editierfenster) | Auch dort eine Leiste; die Zähler und die Methode zeigt nur die des obersten Fensters, die anderen nur den Status |
+| ASL14 | Suchleiste öffnen (Strg+F) | Die Suchleiste steht über der Statusleiste; die Statusleiste bleibt ganz unten |
+| ASL15 | Dunkles Thema; Wechsel des Themas | Leiste in den Farben der übrigen Atlas-Leisten, Wechsel ohne Neustart |
+| ASL16 | 150 % und 200 % Skalierung | Leiste eine Zeile, Symbole und Zahnrad scharf |
+| ASL17 | Leiste durch einen Fehler abgeschaltet (atlas.log „Atlas-Statusleiste: durch die Sicherung abgeschaltet“), dann Atlas › Abgeschaltete Funktionen einschalten | Leisten verschwinden und das Atlas-Feld kehrt in die Statuszeile zurück; nach dem Einschalten ohne Neustart wieder da |
+| ASL18 | Optionen › Editor | „Atlas-Statusleiste …“ und das Feld „Elemente“; unbekannte oder doppelte Einträge verschwinden beim Speichern |
+
 ## Extrahieren, case und with (#50)
 
 | Nr. | Schritte | Erwartet |

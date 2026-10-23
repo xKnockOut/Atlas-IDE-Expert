@@ -585,6 +585,7 @@ begin
   Assert.AreEqual('Gehe zu Definition', TAtlasGuard.FeatureName(TAtlasFeature.GoToDefinition));
   Assert.AreEqual('Editorleiste', TAtlasGuard.FeatureName(TAtlasFeature.EditorToolbar));
   Assert.AreEqual('Schnelle Lesezeichen', TAtlasGuard.FeatureName(TAtlasFeature.QuickBookmarks));
+  Assert.AreEqual('Atlas-Statusleiste', TAtlasGuard.FeatureName(TAtlasFeature.StatusBar));
 end;
 
 procedure TAtlasGuardTests.SlowProviderLogsOncePerInterval;

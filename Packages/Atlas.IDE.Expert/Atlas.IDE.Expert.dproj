@@ -629,6 +629,12 @@
         <DCCReference Include="Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Bar.pas"/>
         <DCCReference Include="Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Customize.pas"/>
         <DCCReference Include="Source\IDE\EditorToolbar\Atlas.IDE.EditorToolbar.Service.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.StatusBarItems.pas"/>
+        <DCCReference Include="Source\Core\StatusBar\Atlas.Core.StatusBar.Layout.pas"/>
+        <DCCReference Include="Source\Core\StatusBar\Atlas.Core.StatusBar.Content.pas"/>
+        <DCCReference Include="Source\UI\Problems\Atlas.UI.Problems.KindIcon.pas"/>
+        <DCCReference Include="Source\UI\StatusBar\Atlas.UI.StatusBar.Bar.pas"/>
+        <DCCReference Include="Source\IDE\StatusBar\Atlas.IDE.StatusBar.Service.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
