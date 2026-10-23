@@ -400,6 +400,11 @@ type
     NestedRoutine: Boolean;
     /// <summary>Code-Aktionen zwischen lokaler Variable und Feld (#668).</summary>
     PromoteVariable: Boolean;
+    /// <summary>Code-Aktionen zwischen anonymer Methode und Methode (#680).</summary>
+    AnonymousMethod: Boolean;
+    /// <summary>Später laufende anonyme Methode mit erfassten Variablen: forward (Weiterleitung bleibt) oder fields
+    /// (Werte als Felder) (#680).</summary>
+    AnonymousMethodDeferredCapture: string;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -861,6 +866,8 @@ begin
   Result.ConditionalExpression := True;
   Result.NestedRoutine := True;
   Result.PromoteVariable := True;
+  Result.AnonymousMethod := True;
+  Result.AnonymousMethodDeferredCapture := 'forward';
 end;
 
 { TCompletionSettings }

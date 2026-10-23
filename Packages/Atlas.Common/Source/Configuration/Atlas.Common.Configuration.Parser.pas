@@ -1380,6 +1380,18 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.NestedRoutine)
     else if Key = 'promoteVariable' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.PromoteVariable)
+    else if Key = 'anonymousMethod' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.AnonymousMethod)
+    else if Key = 'anonymousMethodDeferredCapture' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if SameText(Value, 'forward') then
+          FSettings.Refactoring.AnonymousMethodDeferredCapture := 'forward'
+        else if SameText(Value, 'fields') then
+          FSettings.Refactoring.AnonymousMethodDeferredCapture := 'fields'
+        else
+          ReportNode(ANode[Index], '"refactoring.anonymousMethodDeferredCapture" muss "forward" oder "fields" sein');
+    end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);

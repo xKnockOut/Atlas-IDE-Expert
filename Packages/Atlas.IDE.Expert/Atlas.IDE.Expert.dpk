@@ -155,6 +155,7 @@ contains
   Atlas.IDE.Editor.InvertBoolean in 'Source\IDE\Editor\Atlas.IDE.Editor.InvertBoolean.pas',
   Atlas.IDE.Editor.NamedRefactoring in 'Source\IDE\Editor\Atlas.IDE.Editor.NamedRefactoring.pas',
   Atlas.IDE.Editor.PromoteVariable in 'Source\IDE\Editor\Atlas.IDE.Editor.PromoteVariable.pas',
+  Atlas.IDE.Editor.AnonymousMethod in 'Source\IDE\Editor\Atlas.IDE.Editor.AnonymousMethod.pas',
   Atlas.IDE.Foundation.KeyHook in 'Source\IDE\Foundation\Atlas.IDE.Foundation.KeyHook.pas',
   Atlas.IDE.Signature.Editor in 'Source\IDE\Signature\Atlas.IDE.Signature.Editor.pas',
   Atlas.IDE.Completion.Editor in 'Source\IDE\Completion\Atlas.IDE.Completion.Editor.pas',

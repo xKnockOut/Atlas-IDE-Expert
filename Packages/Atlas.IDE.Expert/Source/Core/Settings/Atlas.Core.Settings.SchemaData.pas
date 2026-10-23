@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2031] of string = (
+  Lines: array[0..2045] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1254,6 +1254,25 @@ const
       'er Methode erzeugt und freigegeben wird) und „In lokale Variable umwandeln“ auf einem privaten Feld, das nur eine Methode benutzt und dort auf jedem Weg zuerst schreibt (nicht bei Property, published,' +
       ' Formularfeld). Vorher eine Vorschau, ein Rückgängig-Schritt.",',
     '          "x-issue": "#668"',
+    '        },',
+    '        "anonymousMethod": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen zwischen anonymer Methode und Methode: „In Methode umwandeln“ auf dem Kopf einer anonymen Methode (private Methode der Klasse, in freien Routinen eine Routine d' +
+      'er Unit; Name aus dem Zusammenhang wie HandleClick oder CompareByName, änderbar). Ohne erfasste Variablen steht an der Stelle der Methodenname; erfasste Variablen werden Parameter (var, wenn geschrieb' +
+      'en), und eine kurze anonyme Weiterleitung ruft die Methode mit ihnen auf. „Als anonyme Methode einbetten“ auf einer privaten Methode, die genau einmal als Wert an ein reference to übergeben und nie au' +
+      'fgerufen wird (nicht für Ereignisse der Formulardatei). Vorher eine Vorschau, ein Rückgängig-Schritt.",',
+    '          "x-issue": "#680"',
+    '        },',
+    '        "anonymousMethodDeferredCapture": {',
+    '          "type": "string",',
+    '          "enum": ["forward", "fields"],',
+    '          "default": "forward",',
+    '          "description": "Wenn eine anonyme Methode mit erfassten Variablen später läuft (TThread.Queue, TTask.Run, Ereignis): forward lässt eine kurze anonyme Weiterleitung stehen, die die Variablen ' +
+      'weiter festhält (Verhalten bleibt gleich); fields kopiert die Werte vor der Anweisung in Felder und setzt den Methodennamen ein (spätere Änderungen sieht die Methode nicht; nur in Methoden ohne geschr' +
+      'iebene Variablen).",',
+    '          "x-control": "Auswahl",',
+    '          "x-issue": "#680"',
     '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',

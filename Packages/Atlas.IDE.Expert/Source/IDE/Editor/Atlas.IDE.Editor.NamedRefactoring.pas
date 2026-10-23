@@ -1,11 +1,12 @@
 ﻿unit Atlas.IDE.Editor.NamedRefactoring;
 
 // Ablauf für Code-Aktionen, die einen Namen brauchen und projektweit ändern
-// (Boolean umkehren #715, Variable und Feld umwandeln #668): Der Server bietet
-// sie als Client-Befehl mit [uri, position, vorgeschlagener Name] an. Atlas
-// fragt den Namen ab, schickt die offenen Puffer, holt die Antwort des
-// Server-Befehls ({"edit", "warnings", "places", "files"}), zeigt die
-// Vorschau wie beim Umbenennen mit den Warnungen und übernimmt erst nach
+// (Boolean umkehren #715, Variable und Feld umwandeln #668, anonyme Methode
+// umwandeln #680): Der Server bietet sie als Client-Befehl mit [uri,
+// position, vorgeschlagener Name] an. Atlas fragt den Namen ab, schickt die
+// offenen Puffer, holt die Antwort des Server-Befehls ({"edit", "warnings",
+// "places", "files", optional "preview"}), zeigt die Vorschau wie beim
+// Umbenennen mit dem Vorschautext und den Warnungen und übernimmt erst nach
 // Bestätigung, je Datei ein Rückgängig-Schritt. Die Texte kommen je Aktion
 // aus TAtlasNamedRefactoringTexts. Nur im Hauptthread.
 
@@ -71,7 +72,7 @@ var
   Arguments, Answer, Item: TJSONValue;
   Values, List: TJSONArray;
   Reply: TJSONObject;
-  Name, ApplyArguments, Hint, Warning: string;
+  Name, ApplyArguments, Hint, Warning, Explanation: string;
   Warnings: TArray<string>;
   Places, Files: Integer;
   Edit: TLspWorkspaceEdit;
@@ -112,6 +113,7 @@ begin
   Warnings := nil;
   Places := 0;
   Files := 0;
+  Explanation := '';
   try
     Answer := ASession.RunCommand(AApplyCommand, ApplyArguments, TimeoutMs);
     try
@@ -124,6 +126,9 @@ begin
         Edit := TLspWorkspaceEdit.FromJson(Reply.GetValue('edit'));
         Places := NumberOf(Reply, 'places');
         Files := NumberOf(Reply, 'files');
+        // Erklärung des Servers, z. B. die Form der Umwandlung (#680).
+        if Reply.GetValue('preview') is TJSONString then
+          Explanation := Reply.GetValue('preview').Value;
         if Reply.GetValue('warnings') is TJSONArray then
           for Item in TJSONArray(Reply.GetValue('warnings')) do
             Warnings := Warnings + [Item.Value];
@@ -144,6 +149,8 @@ begin
     Exit;
   end;
   Hint := TAtlasStrings.Fmt(ATexts.PreviewHint, [Places, Files]);
+  if Explanation <> '' then
+    Hint := Hint + sLineBreak + Explanation;
   for Warning in Warnings do
     Hint := Hint + sLineBreak + TAtlasStrings.Fmt(ATexts.Warning, [Warning]);
   Preview := TAtlasResults.RenamePreview(Edit,
