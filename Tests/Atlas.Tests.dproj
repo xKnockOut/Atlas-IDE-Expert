@@ -224,6 +224,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Baseline.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompilerBaseline.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DisableWarning.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompilerFixes.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SemanticTokens.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WorkspaceSymbols.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DocumentHighlights.Tests.pas"/>
@@ -376,6 +377,8 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.InvertBoolean.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DisableWarning.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.CompilerFixes.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.CompilerFixesGolden.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InvertBoolean.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Unwrap.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Unwrap.Tests.pas"/>
