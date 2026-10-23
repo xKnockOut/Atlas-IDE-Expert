@@ -205,6 +205,9 @@ type
     function ParseGenericParams(AParent: TSyntaxNode): Boolean;
     procedure ParseConstSection(AParent: TSyntaxNode);
     procedure ParseConstDecl(AParent: TSyntaxNode);
+    /// <summary>Wert einer typisierten Konstante oder initialisierten Variable; () ist die leere Record- bzw.
+    /// Array-Initialisierung, alle Felder null (#1138).</summary>
+    procedure ParseInitializer(AParent: TSyntaxNode);
     function IsDeclStart: Boolean;
     /// <summary>Steht auf "["; folgt den Attributen ein Deklarationsname (#849)? Sonst gehören sie zur
     /// nächsten Methode oder Property und beenden den Abschnitt.</summary>
@@ -1147,12 +1150,37 @@ begin
   AParent.Add(Node);
   Node.Name := ExpectIdent;
   if AcceptSym(':') then
+  begin
     ParseType(Node);
-  ExpectSym('=');
-  ParseExpression(Node);
+    ExpectSym('=');
+    ParseInitializer(Node);
+  end
+  else
+  begin
+    ExpectSym('=');
+    ParseExpression(Node);
+  end;
   ParseHints;
   ExpectSym(';');
   FinishNode(Node, Start);
+end;
+
+procedure TParser.ParseInitializer(AParent: TSyntaxNode);
+var
+  Start: Integer;
+  Node: TSyntaxNode;
+begin
+  if IsSym('(') and PeekToken(1).IsSymbol(')') then
+  begin
+    Start := NodeStart;
+    Node := StartNode(TSyntaxKind.ParenExpr);
+    AParent.Add(Node);
+    Advance;
+    Advance;
+    FinishNode(Node, Start);
+  end
+  else
+    ParseExpression(AParent);
 end;
 
 procedure TParser.ParseVarSection(AParent: TSyntaxNode);
@@ -1195,7 +1223,7 @@ begin
     ParseExpression(Node);
   end
   else if AcceptSym('=') then
-    ParseExpression(Node);
+    ParseInitializer(Node);
   ParseHints;
   ExpectSym(';');
   FinishNode(Node, Start);
