@@ -120,6 +120,7 @@ type
       out ACycle: TUsesCycle): Boolean;
     function Components(ASections: TUsesSections): TArray<TArray<Integer>>;
     function CyclesOf(ASections: TUsesSections): TArray<TUsesCycle>;
+    function RecompileMarks(ANode: Integer; out ACount: Integer): TArray<Boolean>;
   public
     constructor Create(const AOptions: TUsesGraphOptions); overload;
     constructor Create(const AUnits: TArray<TUnitIndex>; const AOptions: TUsesGraphOptions); overload;
@@ -154,6 +155,8 @@ type
     /// Verwender und, über interface-uses weitergereicht, deren Verwender (#554, #593, #1118 „gesamt
     /// abhängig“). Ohne ANode, nach Name sortiert.</summary>
     function RecompileSet(ANode: Integer): TArray<Integer>;
+    /// <summary>Länge von RecompileSet, ohne die Liste zu bauen.</summary>
+    function RecompileCount(ANode: Integer): Integer;
     /// <summary>Kürzester Weg von AFrom nach ATo als Kanten (Breitensuche, bei Gleichstand die Kante, die im
     /// Quelltext früher steht); leer, wenn es keinen gibt oder AFrom = ATo.</summary>
     function Path(AFrom, ATo: Integer; ASections: TUsesSections): TUsesEdges;
@@ -651,12 +654,13 @@ function TUsesGraph.Dependencies(ANode: Integer; ASections: TUsesSections): TArr
 var
   Seen: TArray<Boolean>;
   Stack: TStack<Integer>;
+  Found: TList<Integer>;
   Current, Next: Integer;
 begin
-  Result := nil;
   SetLength(Seen, FNodes.Count);
   Seen[ANode] := True;
   Stack := TStack<Integer>.Create;
+  Found := TList<Integer>.Create;
   try
     Stack.Push(ANode);
     while Stack.Count > 0 do
@@ -666,11 +670,13 @@ begin
         if not Seen[Next] then
         begin
           Seen[Next] := True;
-          Result := Result + [Next];
+          Found.Add(Next);
           Stack.Push(Next);
         end;
     end;
+    Result := Found.ToArray;
   finally
+    Found.Free;
     Stack.Free;
   end;
   SortByName(Self, Result);
@@ -680,12 +686,13 @@ function TUsesGraph.Dependents(ANode: Integer; ASections: TUsesSections): TArray
 var
   Seen: TArray<Boolean>;
   Stack: TStack<Integer>;
+  Found: TList<Integer>;
   Current, Next: Integer;
 begin
-  Result := nil;
   SetLength(Seen, FNodes.Count);
   Seen[ANode] := True;
   Stack := TStack<Integer>.Create;
+  Found := TList<Integer>.Create;
   try
     Stack.Push(ANode);
     while Stack.Count > 0 do
@@ -695,30 +702,31 @@ begin
         if not Seen[Next] then
         begin
           Seen[Next] := True;
-          Result := Result + [Next];
+          Found.Add(Next);
           Stack.Push(Next);
         end;
     end;
+    Result := Found.ToArray;
   finally
+    Found.Free;
     Stack.Free;
   end;
   SortByName(Self, Result);
 end;
 
-function TUsesGraph.RecompileSet(ANode: Integer): TArray<Integer>;
+function TUsesGraph.RecompileMarks(ANode: Integer; out ACount: Integer): TArray<Boolean>;
 var
-  Seen, Spreads: TArray<Boolean>;
+  Spreads: TArray<Boolean>;
   Queue: TQueue<Integer>;
   Current: Integer;
   Ref: TUsesEdgeRef;
-  Edge: TUsesEdge;
+  Source: TUsesNode;
 begin
   // Ändert sich das interface von X, übersetzt der Compiler jeden Verwender von X neu. Verwendet ein Verwender X
   // im interface, ändert sich dadurch auch seine Schnittstelle, und seine Verwender folgen.
-  Result := nil;
-  SetLength(Seen, FNodes.Count);
+  ACount := 0;
+  SetLength(Result, FNodes.Count);
   SetLength(Spreads, FNodes.Count);
-  Seen[ANode] := True;
   Spreads[ANode] := True;
   Queue := TQueue<Integer>.Create;
   try
@@ -728,15 +736,15 @@ begin
       Current := Queue.Dequeue;
       for Ref in FNodes[Current].Incoming do
       begin
-        if not FNodes[Ref.Source].Active then
+        Source := FNodes[Ref.Source];
+        if not Source.Active then
           Continue;
-        Edge := FNodes[Ref.Source].Outgoing[Ref.Item];
-        if not Seen[Ref.Source] then
+        if (Ref.Source <> ANode) and not Result[Ref.Source] then
         begin
-          Seen[Ref.Source] := True;
-          Result := Result + [Ref.Source];
+          Result[Ref.Source] := True;
+          Inc(ACount);
         end;
-        if (Edge.Section = TUsesSection.Interface_) and not Spreads[Ref.Source] then
+        if (Source.Outgoing[Ref.Item].Section = TUsesSection.Interface_) and not Spreads[Ref.Source] then
         begin
           Spreads[Ref.Source] := True;
           Queue.Enqueue(Ref.Source);
@@ -746,7 +754,28 @@ begin
   finally
     Queue.Free;
   end;
+end;
+
+function TUsesGraph.RecompileSet(ANode: Integer): TArray<Integer>;
+var
+  Marks: TArray<Boolean>;
+  Count, Node_: Integer;
+begin
+  Marks := RecompileMarks(ANode, Count);
+  SetLength(Result, Count);
+  Count := 0;
+  for Node_ := 0 to High(Marks) do
+    if Marks[Node_] then
+    begin
+      Result[Count] := Node_;
+      Inc(Count);
+    end;
   SortByName(Self, Result);
+end;
+
+function TUsesGraph.RecompileCount(ANode: Integer): Integer;
+begin
+  RecompileMarks(ANode, Result);
 end;
 
 function TUsesGraph.Path(AFrom, ATo: Integer; ASections: TUsesSections): TUsesEdges;
