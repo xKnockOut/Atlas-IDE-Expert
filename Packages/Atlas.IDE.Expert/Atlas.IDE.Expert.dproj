@@ -660,6 +660,9 @@
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.CompilerSwitches.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Unavailable.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Unavailable.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.DialogCompletion.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.DialogCompletion.pas"/>
+        <DCCReference Include="Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Expression.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

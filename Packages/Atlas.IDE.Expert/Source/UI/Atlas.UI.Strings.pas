@@ -744,7 +744,9 @@ type
     DebugUnavailableFixRestart, DebugUnavailableFixRoutine, DebugUnavailableFixUnit, DebugUnavailableFixDcus,
     DebugUnavailableFixDirective, DebugUnavailableConfirmEdit, DebugUnavailableConfirmRestart,
     DebugUnavailableConfirmDcus, DebugUnavailableDcusDone, DebugUnavailableEditDone,
-    DebugUnavailableNoDebugConfiguration, DebugUnavailableNoResetAction);
+    DebugUnavailableNoDebugConfiguration, DebugUnavailableNoResetAction,
+    // Vervollständigung in Debugger-Dialogen (#538)
+    SettingsDebugCompletionInDialogs, DebugExpressionHistory);
 
   TAtlasStrings = class
   private class var
@@ -2390,7 +2392,8 @@ const
      'Atlas: Debug-DCUs in „%s“ eingeschaltet (vorher %s); zurück in den Projektoptionen.',
      'Atlas: %s in %s eingefügt; Strg+Z nimmt es zurück.',
      'Atlas: Das Projekt hat keine Konfiguration mit Debug-Informationen.',
-     'Atlas: „Programm zurücksetzen“ der IDE nicht gefunden.'),
+     'Atlas: „Programm zurücksetzen“ der IDE nicht gefunden.',
+     'Vervollständigung in Debugger-Dialogen (Auswerten, Überwachung, Haltepunkt)', 'Verlauf'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3934,7 +3937,8 @@ const
      'Atlas: debug DCUs turned on in "%s" (was %s); revert in the project options.',
      'Atlas: %s inserted into %s; Ctrl+Z undoes it.',
      'Atlas: the project has no configuration with debug information.',
-     'Atlas: the IDE''s "Program Reset" was not found.'));
+     'Atlas: the IDE''s "Program Reset" was not found.',
+     'Completion in debugger dialogs (evaluate, watch, breakpoint)', 'History'));
 
 { TAtlasStrings }
 

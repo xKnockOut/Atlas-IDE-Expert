@@ -185,6 +185,9 @@ uses
   Atlas.IDE.Debug.ExceptionBar,
   Atlas.IDE.Debug.InlineValues,
   Atlas.IDE.Debug.Unavailable,
+  Atlas.IDE.Debug.DialogCompletion,
+  Atlas.Core.Completion.Contract,
+  Atlas.Core.Completion.Providers.Expression,
   Atlas.IDE.Build.CompilerSwitches,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.TeamFile,
@@ -2965,6 +2968,41 @@ begin
     end;
 end;
 
+procedure StartDebugDialogCompletion;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  TAtlasIdeDebugDialogCompletion.Start(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      LogLine(AText);
+    end,
+    function(const AHistory: TFunc<TArray<string>>): IAtlasCompletionProvider
+    var
+      Provider: TAtlasExpressionCompletionProvider;
+    begin
+      Provider := TAtlasExpressionCompletionProvider.Create(
+        function: TLspSession
+        begin
+          Result := nil;
+          if Manager <> nil then
+            Result := Manager.RunningSession;
+        end, AHistory,
+        function(AResponse: TJSONValue): TAtlasCompletionItems
+        begin
+          Result := TAtlasServerCompletionProvider.ItemsFromLsp(AResponse);
+        end, TAtlasExpressionCompletionProvider.DefaultTimeoutMs);
+      Provider.HistoryCaption := TAtlasStrings.Text(TAtlasTextId.DebugExpressionHistory);
+      Result := Provider;
+    end);
+  TAtlasIdeDebugDialogCompletion.ApplySettings;
+end;
+
 procedure ReleaseDebugUnavailable;
 begin
   TAtlasEditorHover.OnExplain := nil;
@@ -4065,6 +4103,17 @@ begin
       Result := TAtlasIdeDebugUnavailable.Started;
     end,
     StartDebugUnavailable, ReleaseDebugUnavailable);
+  // Vervollständigung in Debugger-Dialogen (#538): aus = kein Zeitgeber, kein Tastatur-Hook.
+  Features.AddWanted('DebugDialogCompletion',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugCompletionInDialogs;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugDialogCompletion.Started;
+    end,
+    StartDebugDialogCompletion, TAtlasIdeDebugDialogCompletion.Release);
   // Wirksame Compiler-Schalter an der Cursorposition (#558): Fenster, Befehl und Statusfeld; aus = kein Zeitgeber.
   Features.AddWanted('CompilerSwitches',
     function(ALevel: TAtlasSafeLevel): Boolean
@@ -4395,6 +4444,8 @@ begin
       TAtlasIdeDebugExceptionBar.ApplySettings;
       // debug.explainUnavailable (#840): Ergänzungen der Fehlertexte neu lesen.
       TAtlasIdeDebugUnavailable.ApplySettings;
+      // debug.completionInDialogs (#538): Breiten des Popups.
+      TAtlasIdeDebugDialogCompletion.ApplySettings;
       // editor.gitGutter, editor.gitBlame (#507).
       TAtlasIdeLineChanges.ApplySettings;
       // editor.overviewRuler, editor.overviewRulerKinds (#519).

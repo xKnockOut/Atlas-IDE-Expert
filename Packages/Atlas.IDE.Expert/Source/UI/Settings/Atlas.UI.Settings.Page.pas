@@ -290,6 +290,7 @@ type
     FTestBreakAtStart: TCheckBox;
     FDebugHoverValues: TCheckBox;
     FDebugExplainUnavailable: TCheckBox;
+    FDebugCompletionInDialogs: TCheckBox;
     FDebugExceptionHistory: TCheckBox;
     FDebugJustMyCode: TCheckBox;
     FDebugExceptionBanner: TCheckBox;
@@ -1076,6 +1077,7 @@ type
     property TestBreakAtStartCheck: TCheckBox read FTestBreakAtStart;
     property DebugHoverValuesCheck: TCheckBox read FDebugHoverValues;
     property DebugExplainUnavailableCheck: TCheckBox read FDebugExplainUnavailable;
+    property DebugCompletionInDialogsCheck: TCheckBox read FDebugCompletionInDialogs;
     property DebugExceptionHistoryCheck: TCheckBox read FDebugExceptionHistory;
     property DebugJustMyCodeCheck: TCheckBox read FDebugJustMyCode;
     property DebugExceptionBannerCheck: TCheckBox read FDebugExceptionBanner;
@@ -1822,6 +1824,8 @@ begin
   FDebugHoverValues := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugHoverValues));
   // „kein Zugriff auf Wert“ erklären (#840).
   FDebugExplainUnavailable := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExplainUnavailable));
+  // Vervollständigung in Debugger-Dialogen (#538).
+  FDebugCompletionInDialogs := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugCompletionInDialogs));
   // Exception-Verlauf beim Debuggen (#517).
   FDebugExceptionHistory := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExceptionHistory));
   // Nur eigener Code beim Debuggen (#578).
@@ -2963,6 +2967,7 @@ begin
   FMarks.Bind(FTestBreakAtStart, ['TestBreakAtStart']);
   FMarks.Bind(FDebugHoverValues, ['DebugHoverValues']);
   FMarks.Bind(FDebugExplainUnavailable, ['DebugExplainUnavailable']);
+  FMarks.Bind(FDebugCompletionInDialogs, ['DebugCompletionInDialogs']);
   FMarks.Bind(FDebugExceptionHistory, ['DebugExceptionHistory']);
   FMarks.Bind(FDebugJustMyCode, ['DebugJustMyCode']);
   FMarks.Bind(FDebugExceptionBanner, ['DebugExceptionBanner']);
@@ -5111,6 +5116,7 @@ begin
   FTestBreakAtStart.Checked := ASettings.TestBreakAtStart;
   FDebugHoverValues.Checked := ASettings.DebugHoverValues;
   FDebugExplainUnavailable.Checked := ASettings.DebugExplainUnavailable;
+  FDebugCompletionInDialogs.Checked := ASettings.DebugCompletionInDialogs;
   FDebugExceptionHistory.Checked := ASettings.DebugExceptionHistory;
   FDebugJustMyCode.Checked := ASettings.DebugJustMyCode;
   FDebugExceptionBanner.Checked := ASettings.DebugExceptionBanner;
@@ -5571,6 +5577,7 @@ begin
   ASettings.TestBreakAtStart := FTestBreakAtStart.Checked;
   ASettings.DebugHoverValues := FDebugHoverValues.Checked;
   ASettings.DebugExplainUnavailable := FDebugExplainUnavailable.Checked;
+  ASettings.DebugCompletionInDialogs := FDebugCompletionInDialogs.Checked;
   ASettings.DebugExceptionHistory := FDebugExceptionHistory.Checked;
   ASettings.DebugJustMyCode := FDebugJustMyCode.Checked;
   ASettings.DebugExceptionBanner := FDebugExceptionBanner.Checked;

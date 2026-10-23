@@ -569,6 +569,9 @@ contains
   Atlas.IDE.Build.SwitchesWindow in 'Source\IDE\Build\Atlas.IDE.Build.SwitchesWindow.pas',
   Atlas.IDE.Build.CompilerSwitches in 'Source\IDE\Build\Atlas.IDE.Build.CompilerSwitches.pas',
   Atlas.Core.Debug.Unavailable in 'Source\Core\Debug\Atlas.Core.Debug.Unavailable.pas',
-  Atlas.IDE.Debug.Unavailable in 'Source\IDE\Debug\Atlas.IDE.Debug.Unavailable.pas';
+  Atlas.IDE.Debug.Unavailable in 'Source\IDE\Debug\Atlas.IDE.Debug.Unavailable.pas',
+  Atlas.Core.Debug.DialogCompletion in 'Source\Core\Debug\Atlas.Core.Debug.DialogCompletion.pas',
+  Atlas.IDE.Debug.DialogCompletion in 'Source\IDE\Debug\Atlas.IDE.Debug.DialogCompletion.pas',
+  Atlas.Core.Completion.Providers.Expression in 'Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Expression.pas';
 
 end.

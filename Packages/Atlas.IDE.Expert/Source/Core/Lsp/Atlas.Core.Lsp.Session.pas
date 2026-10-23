@@ -203,6 +203,11 @@ type
     /// am Halt in ALine (0-basiert); gehört dem Aufrufer.</summary>
     function DebugUnavailable(const AFileName: string; ALine: Integer; const AName: string;
       ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>atlas/expressionCompletion (#538): Vorschläge für AExpression im Gültigkeitsbereich der Zeile
+    /// ALine (0-basiert) von AFileName, Schreibmarke ACharacter im Ausdruck. Ohne Abgleich; gehört dem Aufrufer.
+    /// </summary>
+    function ExpressionCompletion(const AFileName: string; ALine: Integer; const AExpression: string;
+      ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
     procedure Initialize;
     /// <summary>Parameter von initialize (#396, #397, #408, #648, #652). AApplyEdit: workspace.applyEdit
     /// ankündigen. Gehört dem Aufrufer.</summary>
@@ -1340,6 +1345,20 @@ begin
     .AddPair('character', TJSONNumber.Create(0)));
   Params.AddPair('name', AName);
   Result := FClient.Request('atlas/debugUnavailable', Params, ATimeoutMs);
+end;
+
+function TLspSession.ExpressionCompletion(const AFileName: string; ALine: Integer; const AExpression: string;
+  ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
+var
+  Params: TJSONObject;
+begin
+  Params := TJSONObject.Create;
+  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  Params.AddPair('position', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ALine))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Params.AddPair('expression', AExpression);
+  Params.AddPair('character', TJSONNumber.Create(ACharacter));
+  Result := FClient.Request('atlas/expressionCompletion', Params, ATimeoutMs);
 end;
 
 class function TLspSession.InlineValueRefsOf(const AResponse: TJSONValue): TAtlasInlineValueRefs;
