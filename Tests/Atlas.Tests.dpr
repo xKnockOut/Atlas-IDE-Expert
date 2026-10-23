@@ -83,6 +83,7 @@ uses
   Atlas.Common.Editing.MethodOrder.Tests in 'Common\Editing\Atlas.Common.Editing.MethodOrder.Tests.pas',
   Atlas.Common.Lsp.MethodOrder.Tests in 'Common\Lsp\Atlas.Common.Lsp.MethodOrder.Tests.pas',
   Atlas.Common.Editing.SuggestConst.Tests in 'Common\Editing\Atlas.Common.Editing.SuggestConst.Tests.pas',
+  Atlas.Common.Editing.VarBlock.Tests in 'Common\Editing\Atlas.Common.Editing.VarBlock.Tests.pas',
   Atlas.Common.Semantics.OrdinalConstants.Tests in 'Common\Semantics\Atlas.Common.Semantics.OrdinalConstants.Tests.pas',
   Atlas.Common.Semantics.ConstantValues.Tests in 'Common\Semantics\Atlas.Common.Semantics.ConstantValues.Tests.pas',
   Atlas.Common.Pascal.ConditionalBranches.Tests in 'Common\Pascal\Atlas.Common.Pascal.ConditionalBranches.Tests.pas',

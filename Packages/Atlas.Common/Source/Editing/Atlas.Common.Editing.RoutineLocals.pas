@@ -279,10 +279,10 @@ var
   Names, Kept: TArray<string>;
   Name: string;
   Tokens: TArray<TPascalToken>;
-  Colon: Integer;
+  Colon, Next: Integer;
   Section: TSyntaxNode;
   Index: Integer;
-  AllRemoved: Boolean;
+  AllRemoved, Shared: Boolean;
 begin
   Names := ADecl.Name.Split([',']);
   Kept := nil;
@@ -311,16 +311,31 @@ begin
       for Name in Section[Index].Name.Split([',']) do
         if IndexText(Trim(Name), ARemoved) < 0 then
           AllRemoved := False;
-  if AllRemoved then
+  if AllRemoved and (Section[0] = ADecl) then
   begin
-    if Section[0] = ADecl then
-      AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Section.StartPos.Line, 0, ADecl.EndPos.Line + 1, 0),
-        '')]
-    else
-      AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ADecl.StartPos.Line, 0, ADecl.EndPos.Line + 1, 0), '')];
-  end
+    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Section.StartPos.Line, 0, ADecl.EndPos.Line + 1, 0), '')];
+    Exit;
+  end;
+  // Steht auf den Zeilen des Eintrags weiterer Code ("var" davor, ein Eintrag dahinter, #644), fällt nur der
+  // Eintrag selbst weg, nicht die Zeile.
+  Tokens := ATree.Tokens;
+  Next := -1;
+  Shared := False;
+  for Index := 0 to High(Tokens) do
+    if (Tokens[Index].Kind <> TPascalTokenKind.Comment) and (Tokens[Index].Text <> '') and
+      (Tokens[Index].StartPos.Line >= ADecl.StartPos.Line) and (Tokens[Index].StartPos.Line <= ADecl.EndPos.Line) and
+      ((Tokens[Index].Offset < ADecl.StartOffset) or (Tokens[Index].Offset >= ADecl.EndOffset)) then
+    begin
+      Shared := True;
+      if (Next < 0) and (Tokens[Index].Offset >= ADecl.EndOffset) then
+        Next := Index;
+    end;
+  if not Shared then
+    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ADecl.StartPos.Line, 0, ADecl.EndPos.Line + 1, 0), '')]
+  else if Next >= 0 then
+    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ADecl.StartPos, Tokens[Next].StartPos), '')]
   else
-    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ADecl.StartPos.Line, 0, ADecl.EndPos.Line + 1, 0), '')];
+    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ADecl.StartPos, ADecl.EndPos), '')];
 end;
 
 end.
