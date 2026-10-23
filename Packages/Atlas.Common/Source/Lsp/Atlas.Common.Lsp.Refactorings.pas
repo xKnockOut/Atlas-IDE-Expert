@@ -21,8 +21,12 @@
 // verglichenen Ausdrucks und Konstanten über TIfCaseLookup.FromResolver.
 // Dazu die Umformungen von Bedingungen (#656) aus Atlas.Common.Editing.Conditions,
 // ohne Namensauflösung.
+// Dazu if-Anweisung und Bedingungsausdruck ineinander umwandeln und IfThen
+// ersetzen (#684): Typen der Werte und Herkunft von IfThen über
+// TConditionalLookup.FromResolver; vor Delphi 13 nur „In if-Anweisung umwandeln“.
 // Was refactoring.extract, .completeCase, .resolveWith, .createMethod,
-// .inline, .ifCase und .conditions abschalten, kommt nicht.
+// .inline, .ifCase, .conditions und .conditionalExpression abschalten, kommt
+// nicht.
 
 interface
 
@@ -49,6 +53,8 @@ type
     Settings: TRefactoringSettings;
     /// <summary>Inline-Variablen erlaubt (Einstellung und Sprachversion).</summary>
     InlineVar: Boolean;
+    /// <summary>Bedingungsausdrücke erlaubt (Sprachversion, #684); sonst nur der Rückweg zur if-Anweisung.</summary>
+    IfExpression: Boolean;
     Style: TFormatStyle;
   end;
 
@@ -97,7 +103,10 @@ type
     /// <summary>Bedingung umkehren, früher Ausstieg, if zusammenfassen, doppelte Verneinung (#656).</summary>
     class function ConditionActions(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition;
       const AContext: TRefactoringContext): TArray<TCodeAction>; static;
-    /// <summary>Alle eingeschalteten Aktionen aus #50, #103, #472, #646 und #656 für ARange.</summary>
+    /// <summary>In bedingten Ausdruck bzw. if-Anweisung umwandeln, IfThen ersetzen (#684).</summary>
+    class function ConditionalExpressionActions(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
+      const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>; static;
+    /// <summary>Alle eingeschalteten Aktionen aus #50, #103, #472, #646, #656 und #684 für ARange.</summary>
     class function Actions(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
       const AContext: TRefactoringContext): TArray<TCodeAction>; static;
   end;
@@ -117,6 +126,7 @@ uses
   Atlas.Common.Editing.StatementText,
   Atlas.Common.Editing.IfCase,
   Atlas.Common.Editing.Conditions,
+  Atlas.Common.Editing.ConditionalExpression,
   Atlas.Common.Lsp.InlayHints,
   Atlas.Common.Lsp.Completion;
 
@@ -625,6 +635,38 @@ begin
   end;
 end;
 
+class function TLspRefactorings.ConditionalExpressionActions(AResolver: TNameResolver; ATree: TSyntaxTree;
+  const AText: string; const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>;
+var
+  Lookup: TConditionalLookup;
+  Rewrite: TStatementRewrite;
+
+  procedure Add;
+  var
+    Action: TCodeAction;
+  begin
+    Action := Default(TCodeAction);
+    Action.Title := Rewrite.Title;
+    Action.Kind := RewriteKind;
+    Action.Edits := [Rewrite.Edit];
+    Result := Result + [Action];
+  end;
+
+begin
+  Result := nil;
+  Lookup := TConditionalLookup.FromResolver(AResolver, ATree, AContext.FileName);
+  if AContext.IfExpression then
+  begin
+    if TConditionalExpression.ToExpression(AText, ATree, APosition, Lookup, Rewrite) then
+      Add;
+    if TConditionalExpression.ReplaceIfThen(AText, ATree, APosition, Lookup, Rewrite) then
+      Add;
+  end;
+  if TConditionalExpression.ToStatement(AText, ATree, APosition, TStatementLayout.Create('',
+    TRoutineBody.IndentUnit(AContext.Style), TTextLines.LineBreakOf(AText)), Rewrite) then
+    Add;
+end;
+
 class function TLspRefactorings.Actions(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
   const AContext: TRefactoringContext): TArray<TCodeAction>;
 var
@@ -640,7 +682,7 @@ begin
   if AContext.Settings.Conditions then
     Result := Result + ConditionActions(ATree, AText, ARange.StartPos, AContext);
   if not (AContext.Settings.CompleteCase or AContext.Settings.ResolveWith or AContext.Settings.CreateMethod or
-    AContext.Settings.InlineCode or AContext.Settings.IfCase) then
+    AContext.Settings.InlineCode or AContext.Settings.IfCase or AContext.Settings.ConditionalExpression) then
     Exit;
   Resolver := NewResolver(AContext);
   try
@@ -664,6 +706,8 @@ begin
         Result := Result + InlineActions(Resolver, ATree, AText, ARange.StartPos, AContext);
       if AContext.Settings.IfCase then
         Result := Result + IfCaseActions(Resolver, ATree, AText, ARange.StartPos, AContext);
+      if AContext.Settings.ConditionalExpression then
+        Result := Result + ConditionalExpressionActions(Resolver, ATree, AText, ARange.StartPos, AContext);
     finally
       Resolver.UnpinTree;
     end;

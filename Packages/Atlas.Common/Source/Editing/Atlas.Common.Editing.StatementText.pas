@@ -87,6 +87,10 @@ type
     /// case … of, while … do) APosition enthält; nil ohne.</summary>
     class function HeadAt(ATree: TSyntaxTree; const APosition: TTextPosition; AKind: TSyntaxKind): TSyntaxNode;
       static;
+    /// <summary>Liegt APosition in ANode (Anfang und Ende eingeschlossen)?</summary>
+    class function Encloses(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean; static;
+    /// <summary>Stelle von AChild unter den Kindern von AParent; -1, wenn es keins ist.</summary>
+    class function ChildIndex(AParent, AChild: TSyntaxNode): Integer; static;
   end;
 
 implementation
@@ -386,6 +390,23 @@ begin
     Result := Tokens[Index].EndPos;
     Inc(Index);
   end;
+end;
+
+class function TStatementText.Encloses(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
+begin
+  Result := ((ANode.StartPos.Line < APosition.Line) or ((ANode.StartPos.Line = APosition.Line) and
+    (ANode.StartPos.Character <= APosition.Character))) and ((APosition.Line < ANode.EndPos.Line) or
+    ((APosition.Line = ANode.EndPos.Line) and (APosition.Character <= ANode.EndPos.Character)));
+end;
+
+class function TStatementText.ChildIndex(AParent, AChild: TSyntaxNode): Integer;
+var
+  Index: Integer;
+begin
+  for Index := 0 to AParent.ChildCount - 1 do
+    if AParent[Index] = AChild then
+      Exit(Index);
+  Result := -1;
 end;
 
 class function TStatementText.HeadAt(ATree: TSyntaxTree; const APosition: TTextPosition;

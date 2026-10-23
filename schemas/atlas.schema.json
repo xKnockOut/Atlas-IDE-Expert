@@ -1151,6 +1151,12 @@
           "description": "Code-Aktionen zum Umformen von Bedingungen: „Bedingung umkehren“ (then und else tauschen, Bedingung lesbar verneint: Vergleiche drehen, De Morgan in gleicher Reihenfolge), „Frühen Ausstieg einführen“ (if ohne else am Ende einer Routine bzw. Schleife wird if … then Exit bzw. Continue), „Verschachtelte if zusammenfassen“ (if A then if B → if A and B) und „Doppelte Verneinung entfernen“. Klammern nur, wo der Vorrang sie verlangt; Kommentare in den Zweigen bleiben.",
           "x-issue": "#656"
         },
+        "conditionalExpression": {
+          "type": "boolean",
+          "default": true,
+          "description": "Code-Aktionen zwischen if-Anweisung und Bedingungsausdruck (Delphi 13: X := if C then A else B): „In bedingten Ausdruck umwandeln“ auf einem if mit else, dessen Zweige an dasselbe Ziel zuweisen, Exit aufrufen oder denselben Aufruf mit genau einem anderen Argument ohne Seiteneffekte machen (bis zu zwei Bedingungen, verträgliche Typen), „In if-Anweisung umwandeln“ als Rückweg und „IfThen durch bedingten Ausdruck ersetzen“ (IfThen wertet beide Zweige aus). Muss das Projekt mit Delphi 12 oder älter übersetzen, gibt es nur den Rückweg; vorhandene Bedingungsausdrücke meldet dann die Regel conditional-expression-version.",
+          "x-issue": "#684"
+        },
         "tryFinally": {
           "type": "boolean",
           "default": true,
@@ -1240,7 +1246,7 @@
       "x-scope": "project",
       "x-page": "Vervollständigung",
       "x-control": "Kontrollkästchen",
-      "x-issue": "#42, #50, #100, #188, #453, #472, #646, #656, #666, #682, #685, #715"
+      "x-issue": "#42, #50, #100, #188, #453, #472, #646, #656, #666, #682, #684, #685, #715"
     },
     "usesCommand": {
       "type": "boolean",

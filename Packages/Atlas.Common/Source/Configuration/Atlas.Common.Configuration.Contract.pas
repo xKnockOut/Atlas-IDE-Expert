@@ -394,6 +394,8 @@ type
     IfCase: Boolean;
     /// <summary>Code-Aktionen zum Umformen von Bedingungen (#656).</summary>
     Conditions: Boolean;
+    /// <summary>Code-Aktionen zwischen if-Anweisung und Bedingungsausdruck, IfThen ersetzen (#684).</summary>
+    ConditionalExpression: Boolean;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -852,6 +854,7 @@ begin
   Result.InvertBooleanIncludeDfm := True;
   Result.IfCase := True;
   Result.Conditions := True;
+  Result.ConditionalExpression := True;
 end;
 
 { TCompletionSettings }

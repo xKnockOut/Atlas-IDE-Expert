@@ -44,6 +44,10 @@ type
     /// <summary>Bedingungen umformen (#656): angeboten auf dem if, abschaltbar.</summary>
     [Test]
     procedure RewritesConditions;
+    /// <summary>Bedingungsausdruck (#684): Typen über den Index, vor Delphi 13 nur der Rückweg, abschaltbar.
+    /// </summary>
+    [Test]
+    procedure ConvertsConditionalExpression;
     /// <summary>Strg+Leertaste auf dem Wort with bietet „with auflösen“ an.</summary>
     [Test]
     procedure CompletionOffersWithItem;
@@ -258,6 +262,7 @@ begin
   Result.ReadText := ReadFile;
   Result.Settings := TRefactoringSettings.Default;
   Result.InlineVar := True;
+  Result.IfExpression := True;
   Result.Style := TFormatStyle.Default;
 end;
 
@@ -383,6 +388,30 @@ begin
   Off := Context;
   Off.Settings.Conditions := False;
   Assert.AreEqual(0, Pos('Bedingung umkehren', Titles(Chain, 17, 4, Off)));
+end;
+
+procedure TLspRefactoringsTests.ConvertsConditionalExpression;
+const
+  CaseText = '  case A of'#10'    alNone: ;'#10'    alTop: ;'#10'    alBottom: ;'#10'  end;'#10;
+var
+  Statement, Expression: string;
+  Old: TRefactoringContext;
+begin
+  Statement := StringReplace(UnitHaupt, CaseText, '  if A = alNone then'#10'    Zeige(alTop)'#10'  else'#10 +
+    '    Zeige(alLeft);'#10, []);
+  Expression := StringReplace(UnitHaupt, CaseText, '  Zeige(if A = alNone then alTop else alLeft);'#10, []);
+  // Die Aufzählungswerte haben über die Namensauflösung denselben Typ.
+  Assert.AreEqual(Expression, Applied(Statement, 'In bedingten Ausdruck umwandeln', 17, 3));
+  Assert.AreEqual(Statement, Applied(Expression, 'In if-Anweisung umwandeln', 17, 9));
+  // Delphi 12: nur der Rückweg.
+  Old := Context;
+  Old.IfExpression := False;
+  Assert.AreEqual(0, Pos('In bedingten Ausdruck umwandeln', Titles(Statement, 17, 3, Old)));
+  Assert.IsTrue(Pos('In if-Anweisung umwandeln|', Titles(Expression, 17, 9, Old)) > 0);
+  Old := Context;
+  Old.Settings.ConditionalExpression := False;
+  Assert.AreEqual(0, Pos('In bedingten Ausdruck umwandeln', Titles(Statement, 17, 3, Old)));
+  Assert.AreEqual(0, Pos('In if-Anweisung umwandeln', Titles(Expression, 17, 9, Old)));
 end;
 
 procedure TLspRefactoringsTests.CompletionOffersWithItem;
