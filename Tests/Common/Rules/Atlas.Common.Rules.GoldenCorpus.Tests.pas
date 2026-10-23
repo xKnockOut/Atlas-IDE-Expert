@@ -316,6 +316,32 @@ var
   Scopes: TFindingScopes;
   Outcome: TGoldenResult;
   FileIndex: Integer;
+  Settings: TServerSettings;
+  Marker: TGoldenMarker;
+
+  function HasPlain(const AText: string; const AMarker: TGoldenMarker): Boolean;
+  var
+    Plain: TGoldenMarker;
+  begin
+    for Plain in TGoldenCorpus.Markers(AText) do
+      if (Plain.Line = AMarker.Line) and SameText(Plain.RuleId, AMarker.RuleId) then
+        Exit(True);
+    Result := False;
+  end;
+
+  procedure Enable(const ARuleId: string);
+  var
+    Setting: TRuleSetting;
+  begin
+    for Setting in Settings.Rules do
+      if SameText(Setting.Id, ARuleId) then
+        Exit;
+    Setting := Default(TRuleSetting);
+    Setting.Id := ARuleId;
+    Setting.Severity := TRuleSeverity.Information;
+    Settings.Rules := Settings.Rules + [Setting];
+  end;
+
 begin
   // Wie TShellWorkspaceGroup.RuleProject: Die Regeln bekommen den Index über TCheckProject.Services. Ohne
   // Dateinamen wie der Lauf ohne Index, damit nur der Index den Unterschied macht.
@@ -339,11 +365,18 @@ begin
   end;
   Project := Default(TCheckProject);
   Project.Services.Index := Index;
+  // Regeln, die nur mit Index treffen (ERWARTET-INDEX), sind teils experimentell (legacy-stack-queue) und liefen
+  // mit den Standardeinstellungen nie: ausdrücklich einschalten, wie es ein Projekt in atlas.json täte.
+  Settings := TServerSettings.Default;
+  for FileIndex := 0 to High(Texts) do
+    for Marker in TGoldenCorpus.Markers(Texts[FileIndex], True) do
+      if Marker.Expected and not HasPlain(Texts[FileIndex], Marker) then
+        Enable(Marker.RuleId);
   Problems := '';
   for FileIndex := 0 to High(Files) do
   begin
     Outcome := TGoldenCorpus.Compare(ExtractFileName(Files[FileIndex]),
-      TGoldenCorpus.Markers(Texts[FileIndex], True), TFileChecker.CheckText(Rules, TServerSettings.Default,
+      TGoldenCorpus.Markers(Texts[FileIndex], True), TFileChecker.CheckText(Rules, Settings,
       ExtractFileName(Files[FileIndex]), Texts[FileIndex], Project, TCheckSource.Default, Scopes), Known, Planned);
     for Line in Outcome.Missing + Outcome.FalseAlarms + Outcome.Unknown do
       Problems := Problems + sLineBreak + Line;

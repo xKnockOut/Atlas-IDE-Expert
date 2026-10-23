@@ -390,16 +390,16 @@ begin
   ATimedOut := TimedOut;
 end;
 
-/// <summary>AWorkspace.CheckSource als Methodenreferenz. Als anonyme Methode, weil Free Pascal (Linux-Bau) an der
+/// <summary>AGroup.Main.CheckSource als Methodenreferenz. Als anonyme Methode, weil Free Pascal (Linux-Bau) an der
 /// Umwandlung einer Methode eines anderen Objekts intern abbricht; in eigener Routine, weil eine anonyme Methode in
 /// einer Variablen, die die anderen anonymen Methoden derselben Routine einfangen, ihren eigenen Rahmen festhält
-/// (Leck unter Delphi).</summary>
-function CheckSourceOf(AWorkspace: TShellWorkspace): TCheckSourceFunc;
+/// (Leck unter Delphi). Main erst beim Aufruf: Tests registrieren die Werkzeuge ohne Gruppe.</summary>
+function CheckSourceOf(AGroup: TShellWorkspaceGroup): TCheckSourceFunc;
 begin
   Result :=
     function(const AFileName: string): TCheckSource
     begin
-      Result := AWorkspace.CheckSource(AFileName);
+      Result := AGroup.Main.CheckSource(AFileName);
     end;
 end;
 
@@ -420,7 +420,7 @@ var
   CheckSource: TCheckSourceFunc;
   CheckProject: TCheckProjectFunc;
 begin
-  CheckSource := CheckSourceOf(AGroup.Main);
+  CheckSource := CheckSourceOf(AGroup);
   // Symbolindex und Projektdienste für die Prüfregeln wie im Server (#1112).
   CheckProject := CheckProjectOf(AGroup);
   AServer.AddTool('find_symbol',
@@ -970,7 +970,7 @@ begin
     end);
   Edit.DirtyFiles := EditorDirtyFiles;
   // Regelprüfung mit den Symbolen und Include-Dateien des Projekts (#860).
-  Edit.CheckSource := CheckSourceOf(Workspace);
+  Edit.CheckSource := CheckSourceOf(Group);
   Code.CheckSource := Edit.CheckSource;
   // Prüfregeln mit Symbolindex und Projektdiensten wie im Server (#1112).
   Edit.CheckProject := CheckProjectOf(Group);

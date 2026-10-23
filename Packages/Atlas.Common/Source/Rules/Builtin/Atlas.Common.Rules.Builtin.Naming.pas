@@ -826,7 +826,6 @@ begin
   Header := nil;
   Body := nil;
   Scope := nil;
-  Implementation_ := nil;
   case Owner.Kind of
     TSyntaxKind.RoutineHeader:
       begin

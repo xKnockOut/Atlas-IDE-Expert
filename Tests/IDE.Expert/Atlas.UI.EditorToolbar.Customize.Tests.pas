@@ -13,6 +13,10 @@ type
   [TestFixture]
   TAtlasToolbarCustomizeDialogTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen: Der erste Dialog im Prozess legt einmalig Speicher der VCL
+    /// an, der sonst je nach Reihenfolge der Tests als Leck zählt.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure AvailableListsTheRest;
     [Test]
@@ -42,6 +46,11 @@ begin
   Result.Items := TAtlasToolbarItems.Parse(AItems);
   Result.Labels := False;
   Result.Position := 'inbreadcrumbs';
+end;
+
+procedure TAtlasToolbarCustomizeDialogTests.WarmUpFirstUse;
+begin
+  AvailableListsTheRest;
 end;
 
 procedure TAtlasToolbarCustomizeDialogTests.AvailableListsTheRest;
