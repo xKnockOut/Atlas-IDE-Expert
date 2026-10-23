@@ -307,6 +307,7 @@ contains
   Atlas.Common.Lsp.Documentation in 'Source\Lsp\Atlas.Common.Lsp.Documentation.pas',
   Atlas.Common.Lsp.HoverValues in 'Source\Lsp\Atlas.Common.Lsp.HoverValues.pas',
   Atlas.Common.Lsp.LinkedEditing in 'Source\Lsp\Atlas.Common.Lsp.LinkedEditing.pas',
+  Atlas.Common.Lsp.InlineValues in 'Source\Lsp\Atlas.Common.Lsp.InlineValues.pas',
   Atlas.Common.Lsp.Formatting in 'Source\Lsp\Atlas.Common.Lsp.Formatting.pas',
   Atlas.Common.Lsp.FuzzyMatch in 'Source\Lsp\Atlas.Common.Lsp.FuzzyMatch.pas',
   Atlas.Common.Lsp.WorkspaceSymbols in 'Source\Lsp\Atlas.Common.Lsp.WorkspaceSymbols.pas',

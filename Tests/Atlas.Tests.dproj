@@ -123,6 +123,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.HoverTypes.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.HoverValues.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.LinkedEditing.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InlineValues.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Formatting.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.FuzzyMatch.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DocWiki.Tests.pas"/>
@@ -982,6 +983,7 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.ExceptionBar.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.ExceptionBanner.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Debug\Atlas.UI.Debug.ExceptionBar.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.InlineValues.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

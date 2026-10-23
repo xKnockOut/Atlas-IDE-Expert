@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4199] of string = (
+  Lines: array[0..4221] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -961,6 +961,28 @@ const
     '      "x-caption": "Nur an dieser Stelle ignorieren",',
     '      "x-captionEn": "Ignore only here",',
     '      "x-issue": "#783"',
+    '    },',
+    '    "DebugInlineValues": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "debug.inlineValues",',
+    '      "x-area": "debug",',
+    '      "x-feature": "Debugger",',
+    '      "x-page": "Debuggen",',
+    '      "x-quickToggle": true,',
+    '      "x-caption": "Werte im Editor beim Debuggen",',
+    '      "x-captionEn": "Inline values while debugging",',
+    '      "x-issue": "#508"',
+    '    },',
+    '    "DebugInlineValuesPerLine": {',
+    '      "type": "integer",',
+    '      "default": 5,',
+    '      "description": "Höchstens so viele Werte je Zeile (1 bis 20); weitere Bezeichner der Zeile bleiben ohne Wert.",',
+    '      "x-key": "debug.inlineValuesPerLine",',
+    '      "x-area": "debug",',
+    '      "x-page": "Debuggen",',
+    '      "x-parent": "debug.inlineValues",',
+    '      "x-issue": "#508"',
     '    },',
     '    "DebugOwnCodeFolders": {',
     '      "type": "string",',
