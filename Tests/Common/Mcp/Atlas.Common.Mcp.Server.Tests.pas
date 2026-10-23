@@ -21,6 +21,8 @@ type
     procedure UnknownToolIsInvalidParams;
     [Test]
     procedure BuildsStringSchema;
+    [Test]
+    procedure ResourceTemplatesAreEmptyList;
   end;
 
 implementation
@@ -173,5 +175,23 @@ end;
 
 initialization
   TDUnitX.RegisterTestFixture(TMcpServerTests);
+
+procedure TMcpServerTests.ResourceTemplatesAreEmptyList;
+var
+  Server: TMcpServer;
+  Result_: TJSONObject;
+begin
+  Server := NewServer;
+  try
+    Result_ := Server.ListResourceTemplates;
+    try
+      Assert.AreEqual(0, Integer(Result_.GetValue<TJSONArray>('resourceTemplates').Count));
+    finally
+      Result_.Free;
+    end;
+  finally
+    Server.Free;
+  end;
+end;
 
 end.

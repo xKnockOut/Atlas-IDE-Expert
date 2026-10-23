@@ -4,7 +4,7 @@
 
 *Deutsche Fassung: [README_DE.md](README_DE.md). The detailed documentation in `docs/` is in German.*
 
-Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 170 74 73 75 75 76 75 76 75 71 76 75 73 75 75 75 73 4 76 279 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code.
+Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 279 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code.
 
 Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
@@ -21,7 +21,7 @@ Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/At
 | [Build, test, debug](#build-test-debug) | Release build guard, DUnitX tests from the editor, launch profiles, values in the hover while debugging |
 | [IDE comfort](#ide-comfort) | Welcome page, command palette, notifications, Git/SVN change marks, safe start |
 | [Settings](#settings) | Every feature can be switched off, options page as a tree, team-wide project file `.atlas` |
-| [Claude Code](#claude-code-and-mcp) | 19 MCP tools to read, check, build, test and rename |
+| [Claude Code](#claude-code-and-mcp) | 20 MCP tools to read, check, build, test and rename |
 
 ## Quick start
 
@@ -177,7 +177,9 @@ All keys (German): [docs/Einstellungen.md](docs/Einstellungen.md) and [docs/Konf
 
 ### Claude Code and MCP
 
-The server offers Claude Code 19 MCP tools: find symbols, read declarations and type and call hierarchies, component and form info, query diagnostics, metrics and TODOs, check planned code with `check_code` before writing it, explain findings, build through the IDE (`build_project`, `get_last_build`), run DUnitX tests, and rename or apply code actions (with preview). Plus the resource `delphi://conventions` with the project's conventions. Setup: [Editors/ClaudeCode](Editors/ClaudeCode/README.md), tools: [docs/MCP.md](docs/MCP.md).
+The server offers Claude Code 20 MCP tools: find symbols, read declarations and type and call hierarchies, component and form info, query diagnostics, metrics and TODOs, check planned code with `check_code` before writing it, explain findings, report findings to Claude Code hooks (`hook_check`), build through the IDE (`build_project`, `get_last_build`), run DUnitX tests, and rename or apply code actions (with preview). Plus the resource `delphi://conventions` with the project's conventions. Setup: [Editors/ClaudeCode](Editors/ClaudeCode/README.md), tools: [docs/MCP.md](docs/MCP.md).
+
+Developing new tools: `pwsh Tools/Start-McpInspector.ps1` opens the [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) against the server (browser, terminal or command line) and shows every tool, its schema and the raw JSON-RPC messages; `pwsh Tools/Test-McpTools.ps1` calls every tool once with sample arguments against the reference project and writes the raw transcript. See [docs/MCP.md](docs/MCP.md#werkzeuge-entwickeln-und-prüfen).
 
 ### Planned
 
