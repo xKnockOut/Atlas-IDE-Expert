@@ -107,6 +107,8 @@
         <DCCReference Include="Common\Index\Atlas.Common.Index.Content.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ControlFlow.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Recursion.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ExitPoints.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ExitPoints.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.OrdinalConstants.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ConstantValues.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ConditionalBranches.Tests.pas"/>

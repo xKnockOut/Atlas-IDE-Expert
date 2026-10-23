@@ -73,6 +73,8 @@ uses
   Atlas.Common.Index.Content.Tests in 'Common\Index\Atlas.Common.Index.Content.Tests.pas',
   Atlas.Common.Semantics.ControlFlow.Tests in 'Common\Semantics\Atlas.Common.Semantics.ControlFlow.Tests.pas',
   Atlas.Common.Semantics.Recursion.Tests in 'Common\Semantics\Atlas.Common.Semantics.Recursion.Tests.pas',
+  Atlas.Common.Semantics.ExitPoints.Tests in 'Common\Semantics\Atlas.Common.Semantics.ExitPoints.Tests.pas',
+  Atlas.Common.Lsp.ExitPoints.Tests in 'Common\Lsp\Atlas.Common.Lsp.ExitPoints.Tests.pas',
   Atlas.Common.Semantics.OrdinalConstants.Tests in 'Common\Semantics\Atlas.Common.Semantics.OrdinalConstants.Tests.pas',
   Atlas.Common.Semantics.ConstantValues.Tests in 'Common\Semantics\Atlas.Common.Semantics.ConstantValues.Tests.pas',
   Atlas.Common.Pascal.ConditionalBranches.Tests in 'Common\Pascal\Atlas.Common.Pascal.ConditionalBranches.Tests.pas',
