@@ -31,6 +31,11 @@ type
     procedure ReadsRegistrations;
     [Test]
     procedure FindsUnitInPackage;
+    /// <summary>#1123: Begründungen in get_declaration und get_rationale.</summary>
+    [Test]
+    procedure DeclarationListsRationale;
+    [Test]
+    procedure ListsRationaleOfUnitAndSymbol;
   end;
 
 implementation
@@ -40,6 +45,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.Lsp.Rationale,
   Atlas.Common.Mcp.IndexTools;
 
 const
@@ -93,6 +99,39 @@ const
     '  RegisterComponents(''Beispiele'', [TKnopf]);'#10 +
     'end;'#10 +
     'end.';
+
+const
+  KasseFile = 'C:\P\Kasse.pas';
+  KasseUnit =
+    'unit Kasse;'#10 +
+    '// NOTE: Siehe ADR-0007.'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TKasse = class'#10 +
+    '    // WHY: Rundet kaufmaennisch, siehe #312.'#10 +
+    '    procedure Buche;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TKasse.Buche;'#10 +
+    'begin'#10 +
+    '  // HACK: Umgeht einen Fehler der RTL.'#10 +
+    '  // TODO: Aufraeumen.'#10 +
+    'end;'#10 +
+    'end.';
+
+function KasseTools: TMcpIndexTools;
+var
+  Index: ISymbolIndex;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText(KasseUnit, KasseFile, nil));
+  Result := TMcpIndexTools.Create(Index,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      AText := KasseUnit;
+      Result := SameText(AFileName, KasseFile);
+    end);
+end;
 
 function NewTools: TMcpIndexTools;
 var
@@ -289,6 +328,55 @@ begin
   Assert.IsTrue(TMcpIndexTools.PackageContains(Dpk, 'Knopf'));
   Assert.IsTrue(TMcpIndexTools.PackageContains(Dpk, 'leiste'));
   Assert.IsFalse(TMcpIndexTools.PackageContains(Dpk, 'Paket'));
+end;
+
+procedure TMcpIndexToolsTests.DeclarationListsRationale;
+var
+  Tools: TMcpIndexTools;
+  Text: string;
+begin
+  Tools := KasseTools;
+  try
+    Text := Tools.Declaration('TKasse.Buche');
+    Assert.Contains(Text, 'Begründungen:');
+    Assert.Contains(Text, '- WHY (Zeile 6): Rundet kaufmaennisch, siehe #312.');
+    Assert.Contains(Text, '- HACK (Zeile 12): Umgeht einen Fehler der RTL.');
+    Assert.DoesNotContain(Text, '- TODO');
+    // hints.rationale aus: kein Abschnitt.
+    Tools.RationaleOptionsFunc :=
+      function: TRationaleOptions
+      begin
+        Result := TRationaleOptions.Default;
+        Result.Enabled := False;
+      end;
+    Assert.DoesNotContain(Tools.Declaration('TKasse.Buche'), 'Begründungen');
+  finally
+    Tools.Free;
+  end;
+end;
+
+procedure TMcpIndexToolsTests.ListsRationaleOfUnitAndSymbol;
+var
+  Tools: TMcpIndexTools;
+  Text: string;
+begin
+  Tools := KasseTools;
+  try
+    Text := Tools.Rationale('Kasse', '');
+    Assert.Contains(Text, 'unit Kasse');
+    Assert.Contains(Text, '- NOTE (Zeile 2): Siehe ADR-0007.');
+    Assert.Contains(Text, 'C:\P\Kasse.pas:7');
+    Assert.Contains(Text, '- HACK (Zeile 12)');
+    Assert.DoesNotContain(Text, 'TODO');
+    Text := Tools.Rationale('', 'TKasse.Buche');
+    Assert.Contains(Text, '- WHY (Zeile 6)');
+    Assert.Contains(Text, '- HACK (Zeile 12)');
+    Assert.AreEqual('Keine Begründungen zu "TKasse".', Tools.Rationale('', 'TKasse'));
+    Assert.AreEqual('Genau eins von "unit" und "name" angeben.', Tools.Rationale('Kasse', 'TKasse'));
+    Assert.AreEqual('Unit "Fehlt" nicht im Index.', Tools.Rationale('Fehlt', ''));
+  finally
+    Tools.Free;
+  end;
 end;
 
 initialization

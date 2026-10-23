@@ -62,6 +62,13 @@ type
     procedure ShowsSetsAndResourceStrings;
     [Test]
     procedure HintsUnknownDataFieldNames;
+    /// <summary>#1123: Begründung über der Deklaration und im Rumpf der Implementierung.</summary>
+    [Test]
+    procedure ShowsRationaleOfDeclarationAndBody;
+    [Test]
+    procedure ShowsRationaleOfUnit;
+    [Test]
+    procedure WritesRationale;
   end;
 
 implementation
@@ -76,6 +83,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.XmlDoc,
+  Atlas.Common.Rationale.Contract,
   Atlas.Common.Lsp.DocWiki;
 
 const
@@ -96,9 +104,11 @@ const
 
   UnitWerkzeug =
     'unit Werkzeug;'#10 +
+    '// NOTE: Nur fuer die Tests.'#10 +
     'interface'#10 +
     'type'#10 +
     '  TRechner = class'#10 +
+    '    // WHY: Ganzzahlen genuegen, siehe #312.'#10 +
     '    /// <summary>Addiert zwei Zahlen.</summary>'#10 +
     '    /// <param name="A">Erster Wert</param>'#10 +
     '    function Summe(A, B: Integer): Integer;'#10 +
@@ -136,6 +146,7 @@ const
     'end;'#10 +
     'function TRechner.Summe(A, B: Integer): Integer;'#10 +
     'begin'#10 +
+    '  // HACK: Ueberlauf wird nicht geprueft.'#10 +
     '  Result := A + B;'#10 +
     'end;'#10 +
     'end.';
@@ -586,6 +597,59 @@ begin
   Assert.IsFalse(Hint('  qryOrders.FieldByName(''currency'').AsString;', Text));
   Assert.IsFalse(Hint('  qryAll.FieldByName(''IRGENDWAS'').AsString;', Text));
   Assert.IsFalse(Hint('  qryLaufzeit.FieldByName(''IRGENDWAS'').AsString;', Text));
+end;
+
+procedure TLspHoverTests.ShowsRationaleOfDeclarationAndBody;
+var
+  Info: THoverInfo;
+begin
+  Info := InfoAt('Summe');
+  Assert.AreEqual(2, Integer(Length(Info.Rationale)));
+  Assert.AreEqual('WHY', Info.Rationale[0].Marker);
+  Assert.AreEqual('Ganzzahlen genuegen, siehe #312.', Info.Rationale[0].Text);
+  Assert.AreEqual('HACK', Info.Rationale[1].Marker);
+  Assert.AreEqual(PositionOf(UnitWerkzeug, '// HACK', 1).Line, Info.Rationale[1].Line);
+end;
+
+procedure TLspHoverTests.ShowsRationaleOfUnit;
+var
+  Info: THoverInfo;
+begin
+  Info := InfoAt('Werkzeug;');
+  Assert.AreEqual(1, Integer(Length(Info.Rationale)));
+  Assert.AreEqual('NOTE', Info.Rationale[0].Marker);
+end;
+
+procedure TLspHoverTests.WritesRationale;
+var
+  Info: THoverInfo;
+  Atlas: TJSONObject;
+  Sections, Runs: TJSONArray;
+begin
+  Info := Default(THoverInfo);
+  Info.Declaration := 'procedure P;';
+  Info.Rationale := [TRationaleEntry.Create('WHY', 'Siehe ADR-0007 und #312.', 4)];
+  Info.AdrFiles := ['C:\P\docs\adr\0007-ganzzahlen.md'];
+  Assert.AreEqual('```pascal'#10'procedure P;'#10'```'#10#10'**Begründung**'#10#10 +
+    '- **WHY:** Siehe ADR-0007 und #312.', Info.ToMarkdown);
+  Assert.AreEqual('procedure P;'#10#10'Begründung'#10'WHY: Siehe ADR-0007 und #312.', Info.ToPlainText);
+  Atlas := TLspHover.AtlasJson(Info);
+  try
+    Sections := Atlas.GetValue<TJSONArray>('documentation.sections');
+    Assert.AreEqual(1, Sections.Count);
+    Assert.AreEqual('rationale', Sections.Items[0].GetValue<string>('kind'));
+    Assert.AreEqual('WHY', Sections.Items[0].GetValue<string>('name'));
+    Runs := Sections.Items[0].GetValue<TJSONArray>('runs');
+    Assert.AreEqual(5, Runs.Count);
+    Assert.AreEqual('Siehe ', Runs.Items[0].GetValue<string>('text'));
+    Assert.AreEqual('ref', Runs.Items[1].GetValue<string>('kind'));
+    Assert.AreEqual('C:\P\docs\adr\0007-ganzzahlen.md', Runs.Items[1].GetValue<string>('file'));
+    Assert.AreEqual('link', Runs.Items[3].GetValue<string>('kind'));
+    Assert.AreEqual('issue:312', Runs.Items[3].GetValue<string>('target'));
+    Assert.AreEqual('.', Runs.Items[4].GetValue<string>('text'));
+  finally
+    Atlas.Free;
+  end;
 end;
 
 initialization
