@@ -204,6 +204,7 @@ uses
   Atlas.IDE.Editor.SmartPaste,
   Atlas.IDE.Editor.Unwrap,
   Atlas.IDE.Editor.ExpressionType,
+  Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Navigation;
@@ -302,6 +303,12 @@ begin
     begin
       TAtlasIdeExpressionType.Dismiss;
     end);
+  // Methodenreihenfolge (#660): Neue Rümpfe zählen gegen den Stand der neuen Ansicht.
+  TAtlasGuard.Run(TAtlasFeature.MethodPlacement,
+    procedure
+    begin
+      TAtlasIdeMethodPlacement.Dismiss;
+    end);
 end;
 
 procedure TEditorNotifier.EditorViewModified(const EditWindow: INTAEditWindow; const EditView: IOTAEditView);
@@ -351,6 +358,12 @@ begin
     procedure
     begin
       TAtlasIdeExpressionType.EditorModified;
+    end);
+  // Methodenreihenfolge (#660): nach der Ruhezeit auf neue Rümpfe sehen.
+  TAtlasGuard.Run(TAtlasFeature.MethodPlacement,
+    procedure
+    begin
+      TAtlasIdeMethodPlacement.EditorModified;
     end);
 end;
 
@@ -480,6 +493,13 @@ begin
     procedure
     begin
       FormatCode;
+    end);
+  // Methodenrümpfe wie die Klasse ordnen (#660); abgeschaltet meldet der Aufruf das.
+  FContextMenu.AddGuarded(TAtlasFeature.MethodPlacement, 'Atlas.MethodOrder',
+    TAtlasStrings.Text(TAtlasTextId.MethodOrderCommand), nil,
+    procedure
+    begin
+      TAtlasIdeMethodPlacement.Run;
     end);
   FContextMenu.Add('Atlas.References', TAtlasStrings.Text(TAtlasTextId.MenuReferences), nil,
     procedure

@@ -3446,6 +3446,99 @@ end.
 | AY24 | Sprache Englisch, AY1 | „Count: Integer is widened to Currency“, „Ctrl+Shift+T again: enclosing expression“ |
 | AY25 | Bei angehaltenem Server Strg+Umschalt+T | Zeile in der Meldungsansicht, kein Tooltip |
 
+## Methoden in Deklarationsreihenfolge (#660)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; `editor.methodPlacement` auf Vorgabe (`declaration`); Unit `Reihe.pas` mit
+
+```pascal
+unit Reihe;
+
+interface
+
+type
+  TKunde = class
+  public
+    procedure Laden;
+    procedure Speichern(A: Integer); overload;
+    procedure Speichern(const S: string); overload;
+    class function Neu: TKunde;
+    procedure Pruefen;
+  end;
+
+  TAussen = class
+  public type
+    TInnen = class
+      procedure Lauf;
+    end;
+  public
+    procedure Machen;
+  end;
+
+implementation
+
+procedure TAussen.Machen;
+begin
+end;
+
+// Speichert als Text.
+procedure TKunde.Speichern(const S: string);
+begin
+end;
+
+procedure Hilfe;
+begin
+end;
+
+class function TKunde.Neu: TKunde;
+begin
+  Result := nil;
+end;
+
+{$REGION 'Laden'}
+procedure TKunde.Laden;
+begin
+end;
+{$ENDREGION}
+
+procedure TAussen.TInnen.Lauf;
+begin
+end;
+
+procedure TKunde.Speichern(A: Integer);
+begin
+end;
+
+end.
+```
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| MO1 | Menü Atlas › „implementation wie Klasse ordnen“ | Vorschau „Methoden ordnen“ mit „4 Methoden wandern an die Stelle ihrer Deklaration, 1 bleiben stehen.“; Einträge „↑ 4  TKunde.Speichern“, „↓ 3  TAussen.Machen“, „↓ 1  TAussen.TInnen.Lauf“, „bleibt: in einer Region  TKunde.Laden“ (**Abnahme**) |
+| MO2 | In MO1 „Ordnen“ | Reihenfolge: `TKunde.Speichern(A: Integer)`, `// Speichert als Text.` mit `TKunde.Speichern(const S: string)`, `Hilfe`, `TKunde.Neu`, Region mit `TKunde.Laden`, `TAussen.Machen`, `TAussen.TInnen.Lauf`; Meldung „4 Methoden verschoben.“; Unit kompiliert (**Abnahme**) |
+| MO3 | Strg+Z nach MO2 | Ursprüngliche Reihenfolge in einem Schritt |
+| MO4 | MO2 wiederholen, dann den Befehl erneut | Meldung „Die Methoden stehen schon in der Reihenfolge der Klasse.“, keine Vorschau |
+| MO5 | In MO1 auf einen Eintrag doppelklicken | Editor springt zum Kopf der Methode |
+| MO6 | In MO1 „Abbrechen“ | Text unverändert |
+| MO7 | Rumpf `TKunde.Neu` in `{$IFDEF DEBUG}` … `{$ENDIF}` setzen, MO1 | Eintrag „bleibt: in einem {$IFDEF}  TKunde.Neu“, der Rumpf bleibt beim Ordnen stehen |
+| MO8 | Kommentar über `TKunde.Speichern(const S: string)` mit einer Leerzeile Abstand, MO2 | Kommentar bleibt an seiner Stelle, nur der Rumpf wandert |
+| MO9 | Befehlspalette „implementation wie Klasse ordnen“ und Kontextmenü des Editors › Atlas › „implementation wie Klasse ordnen“ | Gleiche Vorschau wie MO1 |
+| MO10 | Nach MO2 Schreibmarke in `Pruefen` (Deklaration), Strg+Umschalt+C | Der neue Rumpf `procedure TKunde.Pruefen;` steht direkt hinter `TKunde.Neu` (vor der Region), die Schreibmarke im neuen Rumpf (**Abnahme**) |
+| MO11 | Strg+Z direkt nach MO10 | Ein Schritt: Deklaration und Rumpf wie vor Strg+Umschalt+C, nichts verschoben übrig (**Abnahme**) |
+| MO12 | In `TKunde` vor `Laden` `procedure Erste;` deklarieren, Strg+Umschalt+C | Neuer Rumpf vor `TKunde.Speichern(A: Integer)` (erste Methode der Klasse, `Laden` steht in der Region) |
+| MO13 | In `TKunde` hinter `Pruefen` `procedure Letzte;` deklarieren, Strg+Umschalt+C | Neuer Rumpf direkt hinter `TKunde.Pruefen` |
+| MO14 | Neue Klasse `TLeer = class procedure Eins; end;` hinter `TAussen`, Strg+Umschalt+C | Rumpf `TLeer.Eins` hinter `TAussen.TInnen.Lauf` (letzter Rumpf der Klasse davor) |
+| MO15 | Code-Aktion „Methode anlegen“ (#443) für eine neue Methode von `TKunde` | Der Rumpf landet an der Stelle seiner Deklaration |
+| MO16 | Methode von Hand tippen: `procedure TKunde.Hand;`, `begin`, `end;` am Ende vor `end.`, mit Pausen | Atlas verschiebt nichts, solange keine Deklaration passt; nach dem Deklarieren von `Hand` hinter `Neu` bleibt der Rumpf, wo er ist |
+| MO17 | Rumpf von Hand mit Ausschneiden/Einfügen an eine andere Stelle setzen | Atlas verschiebt ihn nicht zurück (der Kopf war schon da) |
+| MO18 | Optionen › Editor › „Methodenrümpfe ordnen“: „alphabetisch“, MO1 | Je Klasse nach dem Namen: `TKunde.Neu`, `TKunde.Pruefen`, `TKunde.Speichern(A: Integer)`, `TKunde.Speichern(const S: string)` |
+| MO19 | Optionen: „aus“, MO10 wiederholen | Rumpf bleibt, wo die IDE ihn hinsetzt; Menüeintrag fehlt, Kontextmenü und Palette melden „Methodenreihenfolge ist abgeschaltet (editor.methodPlacement = off).“ (**Abnahme**) |
+| MO20 | Atlas über das Menü ausschalten, MO10 | Kein Verschieben |
+| MO21 | Server anhalten, MO1 | Zeile „kein Server“ in der Meldungsansicht, keine Vorschau |
+| MO22 | Server anhalten, MO10 | Rumpf bleibt, wo die IDE ihn hinsetzt, keine Meldung |
+| MO23 | Zwei Units offen, Strg+Umschalt+C in der zweiten direkt nach dem Wechsel und nach einer Sekunde | Nach einer Sekunde wie MO10; unmittelbar nach dem Wechsel darf der Rumpf stehen bleiben |
+| MO24 | Sprache Englisch, MO1 | „Order methods“, „↑ 4  TKunde.Speichern“, „stays: inside a region  TKunde.Laden“ |
+| MO25 | MO10 und anschließend „Letzte Atlas-Änderung zurücknehmen“ (Strg+Alt+Z) | Keine Zugriffsverletzung; Meldung zu fehlendem bzw. abweichendem Stand oder Zurücknahme der letzten Atlas-Änderung |
+
 ## Forward-Deklaration ergänzen (#685)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; neue Unit `Tree.pas`.

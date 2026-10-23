@@ -715,7 +715,12 @@ type
     SettingsExpressionTypeConstValue, ExpressionTypeValue, ExpressionTypeWiden, ExpressionTypeConvert,
     ExpressionTypeOverload, ExpressionTypeNoExpression, ExpressionTypeUnknownName, ExpressionTypeOperator,
     ExpressionTypeOperatorUnary, ExpressionTypeNoResult, ExpressionTypeUnknown, ExpressionTypeExpand,
-    ExpressionTypeFailed, ExpressionTypeGoTo);
+    ExpressionTypeFailed, ExpressionTypeGoTo,
+    // Methodenrümpfe in Deklarationsreihenfolge (#660): Befehl, Vorschau, Meldungen, Optionsseite.
+    MethodOrderCommand, MethodOrderTitle, MethodOrderHint, MethodOrderApply, MethodOrderNothing, MethodOrderOff,
+    MethodOrderDone, MethodOrderFailed, MethodOrderUp, MethodOrderDown, MethodOrderStays, MethodOrderRegion,
+    MethodOrderConditional, MethodOrderSharedLine, SettingsMethodPlacement, SettingsMethodPlacementDeclaration,
+    SettingsMethodPlacementAlphabetical, SettingsMethodPlacementOff);
 
   TAtlasStrings = class
   private class var
@@ -2318,7 +2323,13 @@ const
      'Überladung: %s', 'Kein Ausdruck an dieser Stelle', 'Kein Typ: unbekannter Name %s',
      'Kein Typ: %s passt nicht zu %s und %s', 'Kein Typ: %s passt nicht zu %s', 'Kein Typ: %s liefert keinen Wert',
      'Kein Typ: %s nicht auflösbar', '%s erneut: umschließender Ausdruck', 'Typ des Ausdrucks: %s',
-     'Klick: zur Deklaration von %s'),
+     'Klick: zur Deklaration von %s',
+     'implementation wie Klasse ordnen', 'Methoden ordnen',
+     '%d Methoden wandern an die Stelle ihrer Deklaration, %d bleiben stehen.', 'Ordnen',
+     'Die Methoden stehen schon in der Reihenfolge der Klasse.',
+     'Methodenreihenfolge ist abgeschaltet (editor.methodPlacement = off).', '%d Methoden verschoben.',
+     'Methoden ordnen fehlgeschlagen: %s', '↑ %d', '↓ %d', 'bleibt: %s', 'in einer Region', 'in einem {$IFDEF}',
+     'teilt eine Zeile mit anderem Code', 'Methodenrümpfe ordnen', 'wie die Deklaration', 'alphabetisch', 'aus'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3825,7 +3836,13 @@ const
      'Overload: %s', 'No expression here', 'No type: unknown name %s',
      'No type: %s does not fit %s and %s', 'No type: %s does not fit %s', 'No type: %s returns no value',
      'No type: cannot resolve %s', '%s again: enclosing expression', 'Expression type: %s',
-     'Click: go to declaration of %s'));
+     'Click: go to declaration of %s',
+     'Order implementation like class', 'Order methods',
+     '%d methods move to the position of their declaration, %d stay.', 'Order',
+     'The methods are already in class order.',
+     'Method order is switched off (editor.methodPlacement = off).', '%d methods moved.',
+     'Ordering methods failed: %s', '↑ %d', '↓ %d', 'stays: %s', 'inside a region', 'inside an {$IFDEF}',
+     'shares a line with other code', 'Order method bodies', 'like the declaration', 'alphabetically', 'off'));
 
 { TAtlasStrings }
 

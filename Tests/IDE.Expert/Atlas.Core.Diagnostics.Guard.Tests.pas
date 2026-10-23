@@ -588,6 +588,7 @@ begin
   Assert.AreEqual('Austrittspunkte', TAtlasGuard.FeatureName(TAtlasFeature.ExitPoints));
   Assert.AreEqual('Neu zugewiesene Variablen', TAtlasGuard.FeatureName(TAtlasFeature.Reassigned));
   Assert.AreEqual('Typ des Ausdrucks', TAtlasGuard.FeatureName(TAtlasFeature.ExpressionType));
+  Assert.AreEqual('Methodenreihenfolge', TAtlasGuard.FeatureName(TAtlasFeature.MethodPlacement));
 end;
 
 procedure TAtlasGuardTests.SlowProviderLogsOncePerInterval;
