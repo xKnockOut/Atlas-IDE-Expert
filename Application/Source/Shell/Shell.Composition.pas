@@ -62,6 +62,7 @@ uses
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Lsp.Baseline,
   Atlas.Common.Lsp.CompilerBaseline,
+  Atlas.Common.Lsp.DisableWarning,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Projects.Selection,
@@ -351,6 +352,9 @@ type
     function Unwrap(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable an APosition.</summary>
     function ExplicitTypeActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>„Warnung hier abschalten“ auf Meldungen des letzten Compilerlaufs (#531).</summary>
+    function DisableWarningActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
+    function DisableWarning(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Extrahieren, „case vervollständigen“ und „with auflösen“ (#50).</summary>
     function RefactoringActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
     /// <summary>Index, Einstellungen, Sprachversion und Formatstil für die Aktionen aus #50.</summary>
@@ -1392,6 +1396,7 @@ begin
       Result := Result + PropertyFromAccessorsActions(AUri, ARange.StartPos);
       Result := Result + InvertBooleanActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
+      Result := Result + DisableWarningActions(AUri, ARange);
       Result := Result + RefactoringActions(AUri, ARange);
     end;
   FCodeActions.Attach(FDispatcher);
@@ -1469,6 +1474,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := InvertBoolean(AArguments);
+    end);
+  FCommands.Register(TLspDisableWarning.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := DisableWarning(AArguments);
     end);
   FCommands.Register(TLspUnwrap.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -3474,6 +3484,47 @@ begin
   finally
     Resolver.Free;
   end;
+end;
+
+function TServerComposition.DisableWarningActions(const AUri: string;
+  const ARange: TTextRange): TArray<TJSONObject>;
+var
+  Options: TDisableWarningOptions;
+  Messages: TArray<TCompilerMessage>;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+begin
+  Result := nil;
+  Options := Default(TDisableWarningOptions);
+  Options.Enabled := RefactoringSettingsFor(AUri).DisableWarning;
+  if not Options.Enabled or not FDocuments.TryGet(AUri, Document) then
+    Exit;
+  Messages := FCompilerResults.MessagesFor(TDocumentUris.ToPath(AUri));
+  if Messages = nil then
+    Exit;
+  Options.AskReason := RefactoringSettingsFor(AUri).DisableWarningReason;
+  Options.Version := DelphiVersionFor(AUri);
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspDisableWarning.Actions(Options, Shared.Tree, AUri, ARange.StartPos.Line, ARange.EndPos.Line,
+    Messages);
+end;
+
+function TServerComposition.DisableWarning(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+begin
+  if (AArguments = nil) or (AArguments.Count < 1) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argument "uri" fehlt');
+  Uri := AArguments.Items[0].Value;
+  if not RefactoringSettingsFor(Uri).DisableWarning then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Warnung abschalten" ist abgeschaltet (refactoring.disableWarning).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspDisableWarning.Execute(AArguments, Document.Text, Shared.Tree, DelphiVersionFor(Uri));
 end;
 
 function TServerComposition.RefactoringContextFor(const AUri: string): TRefactoringContext;
