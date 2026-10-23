@@ -35,6 +35,13 @@ type
     /// <summary>#1138: () bleibt außerhalb einer Initialisierung ein Syntaxfehler.</summary>
     [Test]
     procedure EmptyParenOnlyAsInitializer;
+    /// <summary>#1134 (Proben p01, p09): Methodenzuordnung einer Funktion, auch mit generischem Interface,
+    /// meldet kein E2023; die Zuordnung steht im Baum.</summary>
+    [Test]
+    procedure FunctionResolutionWithoutResultType;
+    /// <summary>#1134 Gegentest: function GetX; in einer Klasse meldet E2023 weiterhin.</summary>
+    [Test]
+    procedure FunctionWithoutResultStillReported;
   end;
 
 implementation
@@ -66,6 +73,16 @@ const
     '  TComparer = record'#10'    const Ordinal: TRec = ();'#10'  end;'#10'const'#10'  Empty: TRec = ();'#10 +
     '  EmptyGuid: TGUID = ( );'#10'var'#10'  Start: TRec = ();'#10'implementation'#10'procedure P;'#10'const'#10 +
     '  Lokal: TRec = ();'#10'begin'#10'end;'#10'end.';
+  FunctionResolution =
+    'unit p01_resolution_function;'#10'interface'#10'type'#10'  IFoo = interface'#10 +
+    '    function GetX: Integer;'#10'  end;'#10'  TFoo = class(TInterfacedObject, IFoo)'#10 +
+    '    function IFoo.GetX = MyGetX;'#10'    function MyGetX: Integer;'#10'  end;'#10 +
+    'implementation'#10'function TFoo.MyGetX: Integer;'#10'begin'#10'  Result := 1;'#10'end;'#10'end.';
+  GenericResolution =
+    'unit p09_generic_resolution;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'type'#10 +
+    '  TGenerator<T> = class(TInterfacedObject, TFunc<T>)'#10'  private'#10 +
+    '    function TFunc<T>.Invoke = Bind;'#10'  public'#10'    function Bind: T;'#10'  end;'#10 +
+    'implementation'#10'function TGenerator<T>.Bind: T;'#10'begin'#10'  Result := Default(T);'#10'end;'#10'end.';
   EscapedMember =
     'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'    procedure &Type;'#10'  end;'#10'implementation'#10 +
     'procedure TFoo.&Type;'#10'begin'#10'end;'#10'procedure P(F: TFoo);'#10'begin'#10'  F.&Type;'#10'end;'#10'end.';
@@ -282,6 +299,31 @@ begin
   Assert.AreNotEqual('', Diagnostics('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'var'#10 +
     '  R: TRec;'#10'begin'#10'  R := ();'#10'end;'#10'end.'));
   Assert.AreNotEqual('', Diagnostics('unit U;'#10'interface'#10'const'#10'  C = ();'#10'implementation'#10'end.'));
+end;
+
+procedure TParserGapsTests.FunctionResolutionWithoutResultType;
+var
+  Tree: TSyntaxTree;
+  Header: TSyntaxNode;
+begin
+  Assert.AreEqual('', Diagnostics(FunctionResolution));
+  Assert.AreEqual('', Diagnostics(GenericResolution));
+  Tree := TPascalParser.Parse(GenericResolution);
+  try
+    Header := Find(Find(Tree.Root, TSyntaxKind.TypeDecl, 'TGenerator'), TSyntaxKind.RoutineHeader, '');
+    Assert.IsNotNull(Header);
+    Assert.IsTrue(Header.IsMethodResolution, Header.Name);
+    Assert.AreEqual('Bind', Header.ResolutionTarget);
+    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.RoutineHeader, 'Bind'), 'Methode dahinter');
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TParserGapsTests.FunctionWithoutResultStillReported;
+begin
+  Assert.Contains(Diagnostics('unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'    function GetX;'#10 +
+    '  end;'#10'implementation'#10'end.'), 'E2023');
 end;
 
 initialization
