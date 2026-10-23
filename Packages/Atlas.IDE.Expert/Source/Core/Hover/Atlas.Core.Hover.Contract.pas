@@ -8,6 +8,8 @@
 // wird der Klartext wie bisher in Deklaration und Doku geteilt.
 // Bei Komponentenklassen (#110) kommen die published-Properties und Ereignisse
 // samt geerbter aus "atlas.published", dazu die Standard-Property.
+// Neu zugewiesene Variablen (#712) aus "atlas.reassigned": Art, Zahl der
+// Zuweisungen und ihre Zeilen.
 
 interface
 
@@ -64,6 +66,8 @@ type
     KindClassRef = 'classref';
     /// <summary>Bis zu so vielen Gliedern zeigt der Tooltip die ganze Kette.</summary>
     MaxChainShown = 5;
+    /// <summary>So viele Zeilen nennt ReassignedText.</summary>
+    MaxReassignedLines = 5;
   public
     Declaration: string;
     UnitName: string;
@@ -91,7 +95,18 @@ type
     /// <summary>Standard-Property (Array-Property mit default), z. B. "Strings[Index: Integer]: string"; '' ohne.
     /// </summary>
     DefaultProperty: string;
+    /// <summary>Art des neu zugewiesenen Namens (#712): locals, loopVars, valueParams, varParams, fields; ''
+    /// ohne.</summary>
+    ReassignedTarget: string;
+    ReassignedWrites: Integer;
+    /// <summary>Zeilen der Zuweisungen (0-basiert).</summary>
+    ReassignedLines: TArray<Integer>;
     function Found: Boolean;
+    /// <summary>Zeile „Neu zugewiesen: …“ (#712) mit 1-basierten Zeilen, höchstens MaxReassignedLines, dann
+    /// „…“; AOne mit %s für die Zeile, ACount mit %d und %s. '' ohne Angabe.</summary>
+    function ReassignedText(const AOne, ACount: string): string;
+    /// <summary>Angabe verwerfen (Einstellung aus oder Art nicht gewählt).</summary>
+    procedure ClearReassigned;
     /// <summary>Zahl der published-Properties bzw. -Ereignisse (#110).</summary>
     function MemberCount(AEvents: Boolean): Integer;
     /// <summary>Indizes in Members: Properties oder Ereignisse; ohne AInherited nur die der Klasse selbst
@@ -118,7 +133,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
+  System.StrUtils,
+  System.Math;
 
 { TAtlasHoverTypeRef }
 
@@ -172,6 +188,36 @@ end;
 function TAtlasHoverData.Found: Boolean;
 begin
   Result := Declaration <> '';
+end;
+
+function TAtlasHoverData.ReassignedText(const AOne, ACount: string): string;
+var
+  Index: Integer;
+  Lines: string;
+begin
+  Result := '';
+  if (ReassignedTarget = '') or (ReassignedWrites <= 0) then
+    Exit;
+  Lines := '';
+  for Index := 0 to Min(High(ReassignedLines), MaxReassignedLines - 1) do
+  begin
+    if Lines <> '' then
+      Lines := Lines + ', ';
+    Lines := Lines + IntToStr(ReassignedLines[Index] + 1);
+  end;
+  if Length(ReassignedLines) > MaxReassignedLines then
+    Lines := Lines + ', …';
+  if ReassignedWrites = 1 then
+    Result := Format(AOne, [Lines])
+  else
+    Result := Format(ACount, [ReassignedWrites, Lines]);
+end;
+
+procedure TAtlasHoverData.ClearReassigned;
+begin
+  ReassignedTarget := '';
+  ReassignedWrites := 0;
+  ReassignedLines := nil;
 end;
 
 function TAtlasHoverData.MemberCount(AEvents: Boolean): Integer;
@@ -402,6 +448,16 @@ begin
       for Value in List do
         if Value is TJSONObject then
           Result.Members := Result.Members + [MemberFromJson(TJSONObject(Value))];
+  end;
+  // Neu zugewiesene Variablen (#712).
+  if Atlas.TryGetValue<TJSONObject>('reassigned', Item) then
+  begin
+    Result.ReassignedTarget := Item.GetValue<string>('target', '');
+    Result.ReassignedWrites := Item.GetValue<Integer>('writes', 0);
+    if Item.TryGetValue<TJSONArray>('lines', List) then
+      for Value in List do
+        if Value is TJSONNumber then
+          Result.ReassignedLines := Result.ReassignedLines + [TJSONNumber(Value).AsInt];
   end;
   // Der angezeigte Typ selbst: erstes Kettenglied mit demselben Fundort.
   if (Length(Result.Ancestors) > 0) and (Result.Ancestors[0].Key = Result.Location.Key) then

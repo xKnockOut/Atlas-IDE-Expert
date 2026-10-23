@@ -172,6 +172,7 @@ uses
   System.Classes,
   System.UITypes,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.Reassigned,
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.QuickActions,
@@ -1163,6 +1164,13 @@ begin
     Assert.IsTrue(Page.ExitPointsExceptionsCheck.Checked);
     Assert.IsTrue(Page.ExitPointsLoopsCheck.Checked);
     Assert.IsTrue(Page.ExitPointsBadgeCheck.Checked);
+    Assert.IsTrue(Page.ReassignedCheck.Checked, 'Unterstreichung standardmaessig an (#712)');
+    Assert.IsTrue(Page.ReassignedTargetCheck(TAtlasReassignedTarget.Locals).Checked);
+    Assert.IsFalse(Page.ReassignedTargetCheck(TAtlasReassignedTarget.LoopVars).Checked);
+    Assert.IsTrue(Page.ReassignedTargetCheck(TAtlasReassignedTarget.ValueParams).Checked);
+    Assert.IsFalse(Page.ReassignedTargetCheck(TAtlasReassignedTarget.Fields).Checked);
+    Assert.AreEqual(0, Page.ReassignedStyleBox.Choice, 'gepunktet');
+    Assert.AreEqual('theme', Page.ReassignedColorEdit.Text);
     // Atlas-Spalte in der Zeilenleiste (#768).
     Assert.IsTrue(Page.GutterColumnCheck.Checked, 'Atlas-Spalte standardmäßig an (#768)');
     Assert.IsTrue(Page.GutterColumnProblemsCheck.Checked);
@@ -1216,6 +1224,11 @@ begin
     Page.RecursionMarkersDepthEdit.Text := '2';
     Page.ExitPointsCheck.Checked := False;
     Page.ExitPointsBadgeCheck.Checked := False;
+    Page.ReassignedCheck.Checked := False;
+    Page.ReassignedTargetCheck(TAtlasReassignedTarget.ValueParams).Checked := False;
+    Page.ReassignedTargetCheck(TAtlasReassignedTarget.VarParams).Checked := True;
+    Page.ReassignedStyleBox.Choice := 1;
+    Page.ReassignedColorEdit.Text := 'rot';
     Page.InlineDiagnostics.Choice := 2;
     Page.ProblemsStatusCounterCheck.Checked := False;
     Page.PreviousProblemKey.Text := '';
@@ -1232,6 +1245,10 @@ begin
     Assert.IsTrue(Saved.ExitPointsExceptions);
     Assert.IsTrue(Saved.ExitPointsLoops);
     Assert.IsFalse(Saved.ExitPointsBadge);
+    Assert.IsFalse(Saved.Reassigned);
+    Assert.AreEqual('locals,varParams', Saved.ReassignedTargets);
+    Assert.AreEqual('solid', Saved.ReassignedStyle);
+    Assert.AreEqual('theme', Saved.ReassignedColor, 'Unlesbares wird theme');
     Assert.IsTrue(Saved.GutterColumn);
     Assert.IsTrue(Saved.GutterColumnProblems);
     Assert.IsFalse(Saved.GutterColumnCodeActions);
@@ -1267,6 +1284,9 @@ begin
     Assert.IsFalse(Page.RecursionMarkersCheck.Checked);
     Assert.IsFalse(Page.ExitPointsCheck.Checked);
     Assert.IsFalse(Page.ExitPointsBadgeCheck.Checked);
+    Assert.IsFalse(Page.ReassignedCheck.Checked);
+    Assert.IsTrue(Page.ReassignedTargetCheck(TAtlasReassignedTarget.VarParams).Checked);
+    Assert.AreEqual(1, Page.ReassignedStyleBox.Choice);
     Assert.IsFalse(Page.GutterColumnOverridesCheck.Checked);
     Assert.IsTrue(Page.SelectionMatchesWholeWordCheck.Checked);
     Assert.AreEqual(1, Page.ToggleBlockCommentScope.Choice);

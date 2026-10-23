@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2001] of string = (
+  Lines: array[0..2007] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1178,6 +1178,14 @@ const
     '          "description": "Form der Freigabe im Destruktor: free schreibt FFeld.Free, freeAndNil schreibt FreeAndNil(FFeld).",',
     '          "x-control": "Auswahl",',
     '          "x-issue": "#666"',
+    '        },',
+    '        "suggestConst": {',
+    '          "type": "boolean",',
+    '          "default": false,',
+    '          "description": "Glühbirne „Als Konstante deklarieren“ auf einer Variablen, die genau einmal zugewiesen und nie geändert wird: var X := … wird const X = …, eine Variable aus dem var-Abschnitt' +
+      ' mit einer einzigen Zuweisung im Rumpf wird an dieser Stelle eine Inline-Konstante mit ihrem Typ (const X: T = …) und verschwindet aus dem var-Abschnitt. Nur, wenn die Sprachversion Inline-Konstanten ' +
+      'kennt (Delphi 10.3 und neuer). Gegenstück zur Unterstreichung neu zugewiesener Variablen im Plugin (highlight.reassigned).",',
+    '          "x-issue": "#712"',
     '        },',
     '        "invertBoolean": {',
     '          "type": "boolean",',

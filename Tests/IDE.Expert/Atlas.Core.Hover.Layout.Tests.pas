@@ -30,6 +30,8 @@ type
     [Test]
     procedure DeclarationOnlyHasOneTextLine;
     [Test]
+    procedure ReassignedLineInDescription;
+    [Test]
     procedure LongDeclarationWrapsWithIndent;
     [Test]
     procedure ProblemsProduceBlockAndBar;
@@ -193,6 +195,8 @@ begin
   Result.Texts.SourceInactive := 'inaktiv';
   Result.Texts.Stale := 'alt';
   Result.Texts.DebugPending := 'eval';
+  Result.Texts.ReassignedOne := 'einmal %s';
+  Result.Texts.ReassignedCount := '%d mal %s';
 end;
 
 function THoverLayoutTests.Build(const AInput: TAtlasHoverInput): TAtlasHoverLayout;
@@ -319,6 +323,27 @@ begin
   Assert.AreEqual(Colors.Accent, Layout.Items[Bar].Color);
   // Ohne Deklaration und Probleme endet der Tooltip nach dem Wert.
   Assert.AreEqual(50, Layout.Height);
+end;
+
+procedure THoverLayoutTests.ReassignedLineInDescription;
+var
+  HoverView: TAtlasHoverView;
+  Layout: TAtlasHoverLayout;
+  Index: Integer;
+begin
+  HoverView := View('Summe: Integer');
+  HoverView.Data.ReassignedTarget := 'locals';
+  HoverView.Data.ReassignedWrites := 2;
+  HoverView.Data.ReassignedLines := TArray<Integer>.Create(3, 9);
+  Layout := Build(HoverView, 300);
+  Index := FirstKind(Layout, TAtlasHoverItemKind.Block);
+  Assert.IsTrue(Index >= 0, 'Zeile unter der Linie');
+  Assert.AreEqual('2 mal 4, 10', Layout.Items[Index].Text);
+  Assert.AreEqual(TAtlasColors.Light.Muted, Layout.Items[Index].Color);
+  // Ausgeblendet (Art nicht gewaehlt): keine Beschreibung.
+  HoverView.Data.ClearReassigned;
+  Layout := Build(HoverView, 300);
+  Assert.AreEqual(-1, FirstKind(Layout, TAtlasHoverItemKind.Block));
 end;
 
 procedure THoverLayoutTests.DebugValuePendingShowsPlaceholder;

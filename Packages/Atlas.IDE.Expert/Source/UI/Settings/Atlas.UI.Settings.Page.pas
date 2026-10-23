@@ -56,6 +56,7 @@ uses
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Groups,
   Atlas.Core.Editor.Overview,
+  Atlas.Core.Settings.Reassigned,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
   Atlas.UI.Strings,
@@ -353,6 +354,10 @@ type
     FExitPointsExceptions: TCheckBox;
     FExitPointsLoops: TCheckBox;
     FExitPointsBadge: TCheckBox;
+    FReassigned: TCheckBox;
+    FReassignedTargets: array[TAtlasReassignedTarget] of TCheckBox;
+    FReassignedStyle: TAtlasChoiceBox;
+    FReassignedColor: TEdit;
     FNextChangeKey: TEdit;
     FPreviousChangeKey: TEdit;
     FOverviewRuler: TCheckBox;
@@ -1107,6 +1112,11 @@ type
     property ExitPointsExceptionsCheck: TCheckBox read FExitPointsExceptions;
     property ExitPointsLoopsCheck: TCheckBox read FExitPointsLoops;
     property ExitPointsBadgeCheck: TCheckBox read FExitPointsBadge;
+    property ReassignedCheck: TCheckBox read FReassigned;
+    /// <summary>Zum Testen: Häkchen je Art, Linie und Farbe (#712).</summary>
+    function ReassignedTargetCheck(ATarget: TAtlasReassignedTarget): TCheckBox;
+    property ReassignedStyleBox: TAtlasChoiceBox read FReassignedStyle;
+    property ReassignedColorEdit: TEdit read FReassignedColor;
     property RecursionMarkersDepthEdit: TEdit read FRecursionMarkersDepth;
     property HideElementKey: TEdit read FHideElementKey;
     /// <summary>Zum Testen: Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).</summary>
@@ -1631,6 +1641,23 @@ begin
   FExitPointsExceptions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPointsExceptions));
   FExitPointsLoops := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPointsLoops));
   FExitPointsBadge := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPointsBadge));
+  // Neu zugewiesene Variablen (#712): an/aus, je Art ein Häkchen, Linie und Farbe.
+  FReassigned := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassigned));
+  FReassignedTargets[TAtlasReassignedTarget.Locals] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedLocals));
+  FReassignedTargets[TAtlasReassignedTarget.LoopVars] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedLoopVars));
+  FReassignedTargets[TAtlasReassignedTarget.ValueParams] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedValueParams));
+  FReassignedTargets[TAtlasReassignedTarget.VarParams] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedVarParams));
+  FReassignedTargets[TAtlasReassignedTarget.Fields] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedFields));
+  FReassignedStyle := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedStyle),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsReassignedStyleDotted),
+    TAtlasStrings.Text(TAtlasTextId.SettingsReassignedStyleSolid),
+    TAtlasStrings.Text(TAtlasTextId.SettingsReassignedStyleWavy)]);
+  FReassignedColor := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedColor));
   // Übersichtsleiste (#519): an/aus und je Art ein Häkchen.
   FOverviewRuler := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewRuler));
   FOverviewKinds[TAtlasOverviewKind.Diagnostics] :=
@@ -1947,6 +1974,7 @@ begin
   Bind('GutterColumn', FGutterColumn);
   Bind('SelectionMatches', FSelectionMatches);
   Bind('ExitPoints', FExitPoints);
+  Bind('Reassigned', FReassigned);
   Bind('OverviewRuler', FOverviewRuler);
   Bind('RecursionMarkers', FRecursionMarkers);
   Bind('InlineDiagnostics', FInlineDiagnostics);
@@ -2475,6 +2503,11 @@ begin
   end;
 end;
 
+function TAtlasSettingsPage.ReassignedTargetCheck(ATarget: TAtlasReassignedTarget): TCheckBox;
+begin
+  Result := FReassignedTargets[ATarget];
+end;
+
 function TAtlasSettingsPage.AddTextLine(const ACaption: string): TEdit;
 var
   Panel: TWinControl;
@@ -2692,6 +2725,7 @@ var
   Series: TAtlasTrendSeries;
   Action: TAtlasQuickAction;
   Kind: TAtlasOverviewKind;
+  Target: TAtlasReassignedTarget;
 begin
   // Aus SaveTo: Element und die Einstellungen, die es schreibt. Listen aus mehreren Haken zeigen keinen Punkt
   // (der gälte für jeden Haken), lassen sich aber zurücksetzen.
@@ -2759,6 +2793,11 @@ begin
   FMarks.Bind(FExitPointsExceptions, ['ExitPointsExceptions']);
   FMarks.Bind(FExitPointsLoops, ['ExitPointsLoops']);
   FMarks.Bind(FExitPointsBadge, ['ExitPointsBadge']);
+  FMarks.Bind(FReassigned, ['Reassigned']);
+  for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
+    FMarks.Bind(FReassignedTargets[Target], ['ReassignedTargets']);
+  FMarks.Bind(FReassignedStyle, ['ReassignedStyle']);
+  FMarks.Bind(FReassignedColor, ['ReassignedColor']);
   FMarks.Bind(FNextChangeKey, ['NextChangeKey']);
   FMarks.Bind(FPreviousChangeKey, ['PreviousChangeKey']);
   FMarks.Bind(FOverviewRuler, ['OverviewRuler']);
@@ -4800,6 +4839,8 @@ var
   Action: TAtlasQuickAction;
   Kind: TAtlasOverviewKind;
   Kinds: TAtlasOverviewKinds;
+  Target: TAtlasReassignedTarget;
+  Targets: TAtlasReassignedTargets;
 begin
   FWidths := ASettings;
   FEnabled.Checked := ASettings.Enabled;
@@ -4867,6 +4908,12 @@ begin
   FExitPointsExceptions.Checked := ASettings.ExitPointsExceptions;
   FExitPointsLoops.Checked := ASettings.ExitPointsLoops;
   FExitPointsBadge.Checked := ASettings.ExitPointsBadge;
+  FReassigned.Checked := ASettings.Reassigned;
+  Targets := TAtlasReassignedNames.ParseTargets(ASettings.ReassignedTargets);
+  for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
+    FReassignedTargets[Target].Checked := Target in Targets;
+  FReassignedStyle.Choice := Ord(TAtlasReassignedNames.StyleOf(ASettings.ReassignedStyle));
+  FReassignedColor.Text := ASettings.ReassignedColor;
   FNextChangeKey.Text := ShortCutToText(TShortCut(ASettings.NextChangeKey));
   FPreviousChangeKey.Text := ShortCutToText(TShortCut(ASettings.PreviousChangeKey));
   FOverviewRuler.Checked := ASettings.OverviewRuler;
@@ -5219,6 +5266,8 @@ var
   Action: TAtlasQuickAction;
   Kind: TAtlasOverviewKind;
   Kinds: TAtlasOverviewKinds;
+  Target: TAtlasReassignedTarget;
+  Targets: TAtlasReassignedTargets;
 begin
   ASettings.Enabled := FEnabled.Checked;
   ASettings.ServerPath := Trim(FServerPath.Text);
@@ -5294,6 +5343,15 @@ begin
   ASettings.ExitPointsExceptions := FExitPointsExceptions.Checked;
   ASettings.ExitPointsLoops := FExitPointsLoops.Checked;
   ASettings.ExitPointsBadge := FExitPointsBadge.Checked;
+  ASettings.Reassigned := FReassigned.Checked;
+  Targets := [];
+  for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
+    if FReassignedTargets[Target].Checked then
+      Include(Targets, Target);
+  ASettings.ReassignedTargets := TAtlasReassignedNames.TargetsText(Targets);
+  ASettings.ReassignedStyle := TAtlasReassignedNames.Styles[TAtlasReassignedStyle(EnsureRange(
+    FReassignedStyle.Choice, 0, Ord(High(TAtlasReassignedStyle))))];
+  ASettings.ReassignedColor := TAtlasReassignedNames.NormalizeColor(FReassignedColor.Text);
   ASettings.NextChangeKey := Integer(TextToShortCut(Trim(FNextChangeKey.Text)));
   ASettings.PreviousChangeKey := Integer(TextToShortCut(Trim(FPreviousChangeKey.Text)));
   ASettings.OverviewRuler := FOverviewRuler.Checked;
