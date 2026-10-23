@@ -19,8 +19,10 @@
 // Bibliotheken).
 // Dazu „In case umwandeln“ und „In if-Kette umwandeln“ (#646): Typ des
 // verglichenen Ausdrucks und Konstanten über TIfCaseLookup.FromResolver.
+// Dazu die Umformungen von Bedingungen (#656) aus Atlas.Common.Editing.Conditions,
+// ohne Namensauflösung.
 // Was refactoring.extract, .completeCase, .resolveWith, .createMethod,
-// .inline und .ifCase abschalten, kommt nicht.
+// .inline, .ifCase und .conditions abschalten, kommt nicht.
 
 interface
 
@@ -92,7 +94,10 @@ type
     /// <summary>„In case umwandeln“ bzw. „In if-Kette umwandeln“ (#646) für den Kopf an APosition.</summary>
     class function IfCaseActions(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
       const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>; static;
-    /// <summary>Alle eingeschalteten Aktionen aus #50, #103, #472 und #646 für ARange.</summary>
+    /// <summary>Bedingung umkehren, früher Ausstieg, if zusammenfassen, doppelte Verneinung (#656).</summary>
+    class function ConditionActions(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition;
+      const AContext: TRefactoringContext): TArray<TCodeAction>; static;
+    /// <summary>Alle eingeschalteten Aktionen aus #50, #103, #472, #646 und #656 für ARange.</summary>
     class function Actions(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
       const AContext: TRefactoringContext): TArray<TCodeAction>; static;
   end;
@@ -111,6 +116,7 @@ uses
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.StatementText,
   Atlas.Common.Editing.IfCase,
+  Atlas.Common.Editing.Conditions,
   Atlas.Common.Lsp.InlayHints,
   Atlas.Common.Lsp.Completion;
 
@@ -601,6 +607,24 @@ begin
     Add;
 end;
 
+class function TLspRefactorings.ConditionActions(ATree: TSyntaxTree; const AText: string;
+  const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>;
+var
+  Rewrite: TStatementRewrite;
+  Action: TCodeAction;
+begin
+  Result := nil;
+  for Rewrite in TConditions.Actions(AText, ATree, APosition, TStatementLayout.Create('',
+    TRoutineBody.IndentUnit(AContext.Style), TTextLines.LineBreakOf(AText))) do
+  begin
+    Action := Default(TCodeAction);
+    Action.Title := Rewrite.Title;
+    Action.Kind := RewriteKind;
+    Action.Edits := [Rewrite.Edit];
+    Result := Result + [Action];
+  end;
+end;
+
 class function TLspRefactorings.Actions(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
   const AContext: TRefactoringContext): TArray<TCodeAction>;
 var
@@ -613,6 +637,8 @@ begin
     Exit;
   if AContext.Settings.Extract then
     Result := Result + TExtractRefactoring.Actions(AText, ATree, ARange, OptionsOf(AContext));
+  if AContext.Settings.Conditions then
+    Result := Result + ConditionActions(ATree, AText, ARange.StartPos, AContext);
   if not (AContext.Settings.CompleteCase or AContext.Settings.ResolveWith or AContext.Settings.CreateMethod or
     AContext.Settings.InlineCode or AContext.Settings.IfCase) then
     Exit;

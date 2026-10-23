@@ -129,7 +129,7 @@ Alt+Enter opens the code actions; everything is also in the *Atlas* menu and the
 
 - **Rename** project-wide with preview, including `.dfm`/`.fmx` and automatically named event handlers
 - **Change signature** in a dialog: add, remove, move and rename parameters, with preview
-- **Extract method**, **introduce variable**, **extract condition to function**, **resolve `with`**, **complete `case`**, **convert `if` chain ⇄ `case`** (in both directions, sets and ranges included, comments stay)
+- **Extract method**, **introduce variable**, **extract condition to function**, **resolve `with`**, **complete `case`**, **convert `if` chain ⇄ `case`** (in both directions, sets and ranges included, comments stay), **rewrite conditions** (invert a condition with readable negation, introduce an early `Exit`/`Continue`, merge nested `if`s, remove double negation)
 - **Inline variable and method** *(experimental)*, **move class to its own unit** *(experimental)*, **update uses after renaming a unit** *(experimental)*
 - **Class actions:** implement interface, override methods, generate getter, setter and field, property from existing accessors, create method from a call, add forward declaration
 - **Strings:** move a string literal to a `resourcestring`

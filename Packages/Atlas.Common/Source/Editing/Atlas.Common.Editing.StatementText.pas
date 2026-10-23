@@ -10,9 +10,17 @@
 interface
 
 uses
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree;
 
 type
+  /// <summary>Eine Umformung als Code-Aktion: Titel und Textänderung.</summary>
+  TStatementRewrite = record
+    Title: string;
+    Edit: TTextEdit;
+    class function Create(const ATitle: string; const AEdit: TTextEdit): TStatementRewrite; static;
+  end;
+
   /// <summary>Layout für neu geschriebene Anweisungen.</summary>
   TStatementLayout = record
     /// <summary>Einrückung der Zeile mit dem Schlüsselwort (if, case, Zweig).</summary>
@@ -64,6 +72,21 @@ type
       static;
     /// <summary>Steht ein Kommentar zwischen AStart und AEnd (Offsets), den das Umschreiben verlöre?</summary>
     class function HasComment(ATree: TSyntaxTree; AStart, AEnd: Integer): Boolean; static;
+    /// <summary>Bereiche aller Anweisungen der Zweige ABranches (je Zweig die letzte mit ALast).</summary>
+    class function Spans(ATree: TSyntaxTree; const ABranches: TArray<TSyntaxNode>): TArray<TStatementSpan>; static;
+    /// <summary>Wie Branch für den Zweig ABranch; vor einem else (ABeforeElse) bekommt ein einzelnes inneres if
+    /// begin … end, sonst gehörte das else zu ihm. Ohne Anweisung ein leerer begin … end-Block.</summary>
+    class function GuardedBranch(const AText: string; ATree: TSyntaxTree; ABranch: TSyntaxNode;
+      const ALayout: TStatementLayout; ABeforeElse: Boolean): string; static;
+    /// <summary>Ende der Ersetzung für die Anweisung ANode: hinter ihr, über ein folgendes Semikolon und die
+    /// Kommentare dahinter, die ASpans mitnehmen. ASuffix ist ';', wenn die Ersetzung ein Semikolon schluckt.
+    /// </summary>
+    class function ReplacementEnd(ATree: TSyntaxTree; ANode: TSyntaxNode; const ASpans: TArray<TStatementSpan>;
+      out ASuffix: string): TTextPosition; static;
+    /// <summary>Innerste Anweisung der Art AKind, deren Kopf (vom Anfang bis zum zweiten Kind, etwa if … then,
+    /// case … of, while … do) APosition enthält; nil ohne.</summary>
+    class function HeadAt(ATree: TSyntaxTree; const APosition: TTextPosition; AKind: TSyntaxKind): TSyntaxNode;
+      static;
   end;
 
 implementation
@@ -74,6 +97,14 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Text.Lines;
+
+{ TStatementRewrite }
+
+class function TStatementRewrite.Create(const ATitle: string; const AEdit: TTextEdit): TStatementRewrite;
+begin
+  Result.Title := ATitle;
+  Result.Edit := AEdit;
+end;
 
 { TStatementLayout }
 
@@ -294,6 +325,94 @@ begin
     Inc(Index);
   end;
   Result := False;
+end;
+
+class function TStatementText.Spans(ATree: TSyntaxTree; const ABranches: TArray<TSyntaxNode>): TArray<TStatementSpan>;
+var
+  Branch_: TSyntaxNode;
+  Items: TArray<TSyntaxNode>;
+  Index: Integer;
+begin
+  Result := nil;
+  for Branch_ in ABranches do
+  begin
+    Items := Statements(Branch_);
+    for Index := 0 to High(Items) do
+      Result := Result + [SpanOf(ATree, Items[Index], Index = High(Items))];
+  end;
+end;
+
+class function TStatementText.GuardedBranch(const AText: string; ATree: TSyntaxTree; ABranch: TSyntaxNode;
+  const ALayout: TStatementLayout; ABeforeElse: Boolean): string;
+var
+  Items: TArray<TSyntaxNode>;
+begin
+  Items := Statements(ABranch);
+  if ABeforeElse and (Length(Items) = 1) and (Items[0].Kind = TSyntaxKind.IfStatement) then
+    Result := ALayout.LineBreak + ALayout.Indent + 'begin' + ALayout.LineBreak +
+      List(AText, ATree, Items, ALayout.Indent + ALayout.IndentUnit, ALayout.LineBreak) +
+      ALayout.LineBreak + ALayout.Indent + 'end'
+  else
+    Result := Branch(AText, ATree, Items, ALayout, True);
+end;
+
+class function TStatementText.ReplacementEnd(ATree: TSyntaxTree; ANode: TSyntaxNode;
+  const ASpans: TArray<TStatementSpan>; out ASuffix: string): TTextPosition;
+var
+  Tokens: TArray<TPascalToken>;
+  Index, Stop: Integer;
+  Span_: TStatementSpan;
+begin
+  Result := ANode.EndPos;
+  ASuffix := '';
+  Stop := ANode.EndOffset;
+  for Span_ in ASpans do
+    if Span_.EndOffset > Stop then
+      Stop := Span_.EndOffset;
+  Tokens := ATree.Tokens;
+  Index := TRoutineBody.TokenAt(Tokens, ANode.EndOffset);
+  // Das Semikolon gehört zur Ersetzung: Ein Kommentar hinter der letzten Anweisung (// …) stünde sonst vor ihm
+  // und schlösse es aus.
+  if (Index <= High(Tokens)) and Tokens[Index].IsSymbol(';') then
+  begin
+    ASuffix := ';';
+    Result := Tokens[Index].EndPos;
+    Inc(Index);
+  end;
+  while (Index <= High(Tokens)) and (Tokens[Index].Offset < Stop) do
+  begin
+    if Tokens[Index].IsSymbol(';') then
+      ASuffix := ';';
+    Result := Tokens[Index].EndPos;
+    Inc(Index);
+  end;
+end;
+
+class function TStatementText.HeadAt(ATree: TSyntaxTree; const APosition: TTextPosition;
+  AKind: TSyntaxKind): TSyntaxNode;
+var
+  Found: TSyntaxNode;
+begin
+  Result := nil;
+  if (ATree = nil) or (ATree.Root = nil) then
+    Exit;
+  Found := nil;
+  ATree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    var
+      HeadEnd: TTextPosition;
+    begin
+      Result := True;
+      if (ANode.Kind = AKind) and (ANode.ChildCount >= 2) then
+      begin
+        HeadEnd := ANode[1].StartPos;
+        if ((ANode.StartPos.Line < APosition.Line) or ((ANode.StartPos.Line = APosition.Line) and
+          (ANode.StartPos.Character <= APosition.Character))) and ((APosition.Line < HeadEnd.Line) or
+          ((APosition.Line = HeadEnd.Line) and (APosition.Character <= HeadEnd.Character))) then
+          Found := ANode;
+      end;
+    end);
+  Result := Found;
 end;
 
 end.

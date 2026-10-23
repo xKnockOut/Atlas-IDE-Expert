@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2007] of string = (
+  Lines: array[0..2013] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1220,6 +1220,14 @@ const
       'gel prefer-case.",',
     '          "x-issue": "#646"',
     '        },',
+    '        "conditions": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen zum Umformen von Bedingungen: „Bedingung umkehren“ (then und else tauschen, Bedingung lesbar verneint: Vergleiche drehen, De Morgan in gleicher Reihenfolge), „F' +
+      'rühen Ausstieg einführen“ (if ohne else am Ende einer Routine bzw. Schleife wird if … then Exit bzw. Continue), „Verschachtelte if zusammenfassen“ (if A then if B → if A and B) und „Doppelte Verneinun' +
+      'g entfernen“. Klammern nur, wo der Vorrang sie verlangt; Kommentare in den Zweigen bleiben.",',
+    '          "x-issue": "#656"',
+    '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',
     '          "default": true,',
@@ -1324,7 +1332,7 @@ const
     '      "x-scope": "project",',
     '      "x-page": "Vervollständigung",',
     '      "x-control": "Kontrollkästchen",',
-    '      "x-issue": "#42, #50, #100, #188, #453, #472, #646, #666, #682, #685, #715"',
+    '      "x-issue": "#42, #50, #100, #188, #453, #472, #646, #656, #666, #682, #685, #715"',
     '    },',
     '    "usesCommand": {',
     '      "type": "boolean",',

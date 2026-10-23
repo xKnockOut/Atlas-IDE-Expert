@@ -638,6 +638,9 @@ begin
   // #646: if-Kette und case.
   Assert.IsTrue(Parse('{}', Issues).Refactoring.IfCase);
   Assert.IsFalse(Parse('{"refactoring": {"ifCase": false}}', Issues).Refactoring.IfCase);
+  // #656: Bedingungen umformen.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.Conditions);
+  Assert.IsFalse(Parse('{"refactoring": {"conditions": false}}', Issues).Refactoring.Conditions);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"refactoring": {"propertyFromAccessorsPrefixes": "Get", "propertyFromAccessorsReplaceCalls": "ja", ' +
     '"propertyFromAccessorsSection": "private", "propertyFromAccessorsHideAccessors": "public"}}', Issues);
