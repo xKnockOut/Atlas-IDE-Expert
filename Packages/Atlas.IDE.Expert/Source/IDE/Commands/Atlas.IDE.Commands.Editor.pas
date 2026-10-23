@@ -203,6 +203,7 @@ uses
   Atlas.IDE.Editor.LinkedEditing,
   Atlas.IDE.Editor.SmartPaste,
   Atlas.IDE.Editor.Unwrap,
+  Atlas.IDE.Editor.ExpressionType,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Navigation;
@@ -295,6 +296,12 @@ begin
     begin
       TAtlasIdeUnwrap.Dismiss;
     end);
+  // Typ des Ausdrucks (#689): Der Tooltip gilt nur in seiner Ansicht.
+  TAtlasGuard.Run(TAtlasFeature.ExpressionType,
+    procedure
+    begin
+      TAtlasIdeExpressionType.Dismiss;
+    end);
 end;
 
 procedure TEditorNotifier.EditorViewModified(const EditWindow: INTAEditWindow; const EditView: IOTAEditView);
@@ -338,6 +345,12 @@ begin
     procedure
     begin
       TAtlasIdeUnwrap.EditorModified;
+    end);
+  // Typ des Ausdrucks (#689): Jede Änderung schließt den Tooltip.
+  TAtlasGuard.Run(TAtlasFeature.ExpressionType,
+    procedure
+    begin
+      TAtlasIdeExpressionType.EditorModified;
     end);
 end;
 

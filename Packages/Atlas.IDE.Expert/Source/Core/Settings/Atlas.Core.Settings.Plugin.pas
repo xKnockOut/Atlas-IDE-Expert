@@ -794,6 +794,15 @@ type
     Unwrap: Boolean;
     /// <summary>Kürzel „Umschließung entfernen“ (#657); Vorgabe Strg+Umschalt+Entf.</summary>
     UnwrapKey: Integer;
+    /// <summary>Typ des markierten Ausdrucks (#689, hints.expressionType): Kürzel und Tooltip; aus = Kürzel frei,
+    /// kein Menüeintrag.</summary>
+    ExpressionType: Boolean;
+    /// <summary>Implizite Umwandlungen im Tooltip nennen (#689).</summary>
+    ExpressionTypeConversions: Boolean;
+    /// <summary>Wert konstanter Ausdrücke im Tooltip zeigen (#689).</summary>
+    ExpressionTypeConstValue: Boolean;
+    /// <summary>Kürzel „Typ des Ausdrucks“ (#689, keys.expressionType); Vorgabe Strg+Umschalt+T.</summary>
+    ExpressionTypeKey: Integer;
     /// <summary>Kürzel „Nächste Änderung“ (#507, keys.nextChange); Vorgabe Strg+Alt+Bild↓.</summary>
     NextChangeKey: Integer;
     /// <summary>Kürzel „Vorherige Änderung“ (#507, keys.previousChange); Vorgabe Strg+Alt+Bild↑.</summary>
@@ -1542,6 +1551,10 @@ begin
   Result.NewLineAroundStatementAware := True;
   Result.Unwrap := True;
   Result.UnwrapKey := $602E; // Strg+Umschalt+Entf
+  Result.ExpressionType := True;
+  Result.ExpressionTypeConversions := True;
+  Result.ExpressionTypeConstValue := True;
+  Result.ExpressionTypeKey := $6054; // Strg+Umschalt+T
   // Strg+Alt+↑/↓ springt in RAD Studio schon zwischen Methoden.
   Result.NextChangeKey := $C022; // Strg+Alt+Bild↓
   Result.PreviousChangeKey := $C021; // Strg+Alt+Bild↑
@@ -1772,6 +1785,7 @@ begin
   NewLineBelowKey := EnsureRange(NewLineBelowKey, 0, $FFFF);
   NewLineAboveKey := EnsureRange(NewLineAboveKey, 0, $FFFF);
   UnwrapKey := EnsureRange(UnwrapKey, 0, $FFFF);
+  ExpressionTypeKey := EnsureRange(ExpressionTypeKey, 0, $FFFF);
   MinimapRender := Choice(MinimapRender, ['blocks', 'characters']);
   MinimapWidth := EnsureRange(MinimapWidth, MinMinimapWidth, MaxMinimapWidth);
   MinimapScale := EnsureRange(MinimapScale, MinMinimapScale, MaxMinimapScale);
@@ -2188,6 +2202,12 @@ begin
     BoolValue(Default.NewLineAroundStatementAware)) <> 0;
   Unwrap := AStore.ReadInteger('Unwrap', BoolValue(Default.Unwrap)) <> 0;
   UnwrapKey := AStore.ReadInteger('UnwrapKey', Default.UnwrapKey);
+  ExpressionType := AStore.ReadInteger('ExpressionType', BoolValue(Default.ExpressionType)) <> 0;
+  ExpressionTypeConversions := AStore.ReadInteger('ExpressionTypeConversions',
+    BoolValue(Default.ExpressionTypeConversions)) <> 0;
+  ExpressionTypeConstValue := AStore.ReadInteger('ExpressionTypeConstValue',
+    BoolValue(Default.ExpressionTypeConstValue)) <> 0;
+  ExpressionTypeKey := AStore.ReadInteger('ExpressionTypeKey', Default.ExpressionTypeKey);
   NextChangeKey := AStore.ReadInteger('NextChangeKey', Default.NextChangeKey);
   PreviousChangeKey := AStore.ReadInteger('PreviousChangeKey', Default.PreviousChangeKey);
   OverviewRuler := AStore.ReadInteger('OverviewRuler', BoolValue(Default.OverviewRuler)) <> 0;
@@ -2604,6 +2624,10 @@ begin
   AStore.WriteInteger('NewLineAroundStatementAware', BoolValue(NewLineAroundStatementAware));
   AStore.WriteInteger('Unwrap', BoolValue(Unwrap));
   AStore.WriteInteger('UnwrapKey', UnwrapKey);
+  AStore.WriteInteger('ExpressionType', BoolValue(ExpressionType));
+  AStore.WriteInteger('ExpressionTypeConversions', BoolValue(ExpressionTypeConversions));
+  AStore.WriteInteger('ExpressionTypeConstValue', BoolValue(ExpressionTypeConstValue));
+  AStore.WriteInteger('ExpressionTypeKey', ExpressionTypeKey);
   AStore.WriteInteger('NextChangeKey', NextChangeKey);
   AStore.WriteInteger('PreviousChangeKey', PreviousChangeKey);
   AStore.WriteInteger('OverviewRuler', BoolValue(OverviewRuler));

@@ -587,6 +587,7 @@ begin
   Assert.AreEqual('Schnelle Lesezeichen', TAtlasGuard.FeatureName(TAtlasFeature.QuickBookmarks));
   Assert.AreEqual('Austrittspunkte', TAtlasGuard.FeatureName(TAtlasFeature.ExitPoints));
   Assert.AreEqual('Neu zugewiesene Variablen', TAtlasGuard.FeatureName(TAtlasFeature.Reassigned));
+  Assert.AreEqual('Typ des Ausdrucks', TAtlasGuard.FeatureName(TAtlasFeature.ExpressionType));
 end;
 
 procedure TAtlasGuardTests.SlowProviderLogsOncePerInterval;

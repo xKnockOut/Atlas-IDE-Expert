@@ -1171,6 +1171,10 @@ begin
     Assert.IsFalse(Page.ReassignedTargetCheck(TAtlasReassignedTarget.Fields).Checked);
     Assert.AreEqual(0, Page.ReassignedStyleBox.Choice, 'gepunktet');
     Assert.AreEqual('theme', Page.ReassignedColorEdit.Text);
+    Assert.IsTrue(Page.ExpressionTypeCheck.Checked, 'Typ des Ausdrucks standardmaessig an (#689)');
+    Assert.IsTrue(Page.ExpressionTypeConversionsCheck.Checked);
+    Assert.IsTrue(Page.ExpressionTypeConstValueCheck.Checked);
+    Assert.AreEqual(ShortCutToText($6054), Page.ExpressionTypeKey.Text);
     // Atlas-Spalte in der Zeilenleiste (#768).
     Assert.IsTrue(Page.GutterColumnCheck.Checked, 'Atlas-Spalte standardmäßig an (#768)');
     Assert.IsTrue(Page.GutterColumnProblemsCheck.Checked);
@@ -1229,6 +1233,9 @@ begin
     Page.ReassignedTargetCheck(TAtlasReassignedTarget.VarParams).Checked := True;
     Page.ReassignedStyleBox.Choice := 1;
     Page.ReassignedColorEdit.Text := 'rot';
+    Page.ExpressionTypeCheck.Checked := False;
+    Page.ExpressionTypeConstValueCheck.Checked := False;
+    Page.ExpressionTypeKey.Text := '';
     Page.InlineDiagnostics.Choice := 2;
     Page.ProblemsStatusCounterCheck.Checked := False;
     Page.PreviousProblemKey.Text := '';
@@ -1249,6 +1256,10 @@ begin
     Assert.AreEqual('locals,varParams', Saved.ReassignedTargets);
     Assert.AreEqual('solid', Saved.ReassignedStyle);
     Assert.AreEqual('theme', Saved.ReassignedColor, 'Unlesbares wird theme');
+    Assert.IsFalse(Saved.ExpressionType);
+    Assert.IsTrue(Saved.ExpressionTypeConversions);
+    Assert.IsFalse(Saved.ExpressionTypeConstValue);
+    Assert.AreEqual(0, Saved.ExpressionTypeKey, 'leer = kein Kuerzel');
     Assert.IsTrue(Saved.GutterColumn);
     Assert.IsTrue(Saved.GutterColumnProblems);
     Assert.IsFalse(Saved.GutterColumnCodeActions);
@@ -1287,6 +1298,8 @@ begin
     Assert.IsFalse(Page.ReassignedCheck.Checked);
     Assert.IsTrue(Page.ReassignedTargetCheck(TAtlasReassignedTarget.VarParams).Checked);
     Assert.AreEqual(1, Page.ReassignedStyleBox.Choice);
+    Assert.IsFalse(Page.ExpressionTypeCheck.Checked);
+    Assert.IsFalse(Page.ExpressionTypeConstValueCheck.Checked);
     Assert.IsFalse(Page.GutterColumnOverridesCheck.Checked);
     Assert.IsTrue(Page.SelectionMatchesWholeWordCheck.Checked);
     Assert.AreEqual(1, Page.ToggleBlockCommentScope.Choice);

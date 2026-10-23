@@ -142,6 +142,7 @@ uses
   Atlas.Core.Editor.NewLine,
   Atlas.IDE.Editor.NewLine,
   Atlas.IDE.Editor.Unwrap,
+  Atlas.IDE.Editor.ExpressionType,
   Atlas.IDE.Problems.Service;
 
 /// <summary>Zeilen verschieben bzw. duplizieren (#634), gesichert.</summary>
@@ -549,6 +550,19 @@ begin
             TAtlasIdeUnwrap.Run;
           end);
       end);
+  // Typ des markierten Ausdrucks (#689): Strg+Umschalt+T ist in der IDE „To-Do-Eintrag hinzufügen“; mit Vorrang
+  // übernommen. Aus = das Kürzel gehört der IDE.
+  if Settings.ExpressionType then
+    AddPriorityKey(TAtlasFeature.ExpressionType, Settings.ExpressionTypeKey,
+      TAtlasStrings.Text(TAtlasTextId.ExpressionTypeCommand),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.ExpressionType,
+          procedure
+          begin
+            TAtlasIdeExpressionType.Run;
+          end);
+      end, True);
   // Units suchen (#777): aus = keine eigene Taste (die IDE behält Strg+F12 für ihren Dialog).
   if Settings.UnitSearchEnabled then
     AddKey(TAtlasFeature.UnitSearch, Settings.UnitSearchKey, TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle),

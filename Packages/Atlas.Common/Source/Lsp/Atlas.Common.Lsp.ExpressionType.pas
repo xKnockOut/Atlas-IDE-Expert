@@ -17,6 +17,8 @@
 //    "overload": "function Max(A, B: Double): Double;", "value": 48,
 //    "error": {"kind": "noExpression" | "unknownName" | "operator" |
 //              "noResult" | "unknown", "detail": "…"}}
+//   detail: unknownName der Name, noResult die Routine, unknown der Ausdruck;
+//   operator "Operator|links|rechts" (binär) bzw. "Operator||Operand" (unär).
 // "location", "value" und "error" fehlen ohne Angabe. Die Analyse steht in
 // Atlas.Common.Semantics.ExpressionTypes.
 

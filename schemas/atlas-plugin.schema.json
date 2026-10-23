@@ -110,6 +110,10 @@
       "caption": "Neu zugewiesene Variablen",
       "captionEn": "Reassigned variables"
     },
+    "hints.expressionType": {
+      "caption": "Typ des Ausdrucks",
+      "captionEn": "Expression type"
+    },
     "editor.overviewRuler": {
       "caption": "Übersichtsleiste",
       "captionEn": "Overview ruler"
@@ -3635,6 +3639,51 @@
       "x-page": "Editor",
       "x-control": "Textfeld",
       "x-issue": "#712"
+    },
+    "ExpressionType": {
+      "description": "Typ des markierten Ausdrucks: Strg+Umschalt+T zeigt in einem Tooltip den Typ der Markierung bzw. ohne Markierung des kleinsten Ausdrucks an der Schreibmarke, erneutes Drücken erweitert auf den umschließenden Ausdruck. Arithmetik, Indizes, Eigenschaften, Aufrufe, Mengen, Typumwandlungen und anonyme Methoden; Generika aufgelöst, Aliase mit Grundtyp, die gewählte Überladung, ein Fehlergrund statt eines Typs. Ein Klick auf den Typ springt zu seiner Deklaration. Aus = Kürzel frei (in der IDE „To-Do-Eintrag hinzufügen“), kein Eintrag in der Befehlspalette.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "hints.expressionType",
+      "x-area": "editor",
+      "x-feature": "ExpressionType",
+      "x-page": "Editor",
+      "x-node": "hints.expressionType",
+      "x-caption": "Typ des markierten Ausdrucks anzeigen",
+      "x-captionEn": "Show type of the selected expression",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#689"
+    },
+    "ExpressionTypeConversions": {
+      "description": "Implizite Umwandlungen im Tooltip nennen, etwa „Count: Integer wird zu Currency erweitert“ oder „V: Variant wird zu string umgewandelt“.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "hints.expressionType.conversions",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#689"
+    },
+    "ExpressionTypeConstValue": {
+      "description": "Wert konstanter Ausdrücke im Tooltip zeigen, etwa SizeOf(TRec) * 2 → Integer = 48.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "hints.expressionType.constValue",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#689"
+    },
+    "ExpressionTypeKey": {
+      "description": "Tastenkürzel „Typ des Ausdrucks“ (0 = keins). Atlas nimmt es mit Vorrang vor der Belegung der IDE.",
+      "type": "integer",
+      "default": 24660,
+      "x-key": "keys.expressionType",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Editor",
+      "x-parent": "hints.expressionType",
+      "x-issue": "#689"
     },
     "NextChangeKey": {
       "description": "Tastenkürzel „Nächste Änderung“: springt reihum zum nächsten Block mit Änderungsmarke (0 = keins).",

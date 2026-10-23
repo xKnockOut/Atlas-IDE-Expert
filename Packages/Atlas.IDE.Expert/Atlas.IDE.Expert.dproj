@@ -172,6 +172,7 @@
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.NewLine.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.WrapSelection.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Unwrap.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ExpressionType.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Metrics.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Todos.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.UnitRename.pas"/>
@@ -343,6 +344,7 @@
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.NewLine.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.WrapSelection.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Unwrap.pas"/>
+        <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.ExpressionType.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Store.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Findings.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Pairs.pas"/>
@@ -621,6 +623,7 @@
         <DCCReference Include="Source\UI\Notifications\Atlas.UI.Notifications.Notice.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.SmartPaste.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.Unwrap.pas"/>
+        <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.ExpressionType.pas"/>
         <DCCReference Include="Source\IDE\Notifications\Atlas.IDE.Notifications.Service.pas"/>
         <DCCReference Include="Source\Core\Dock\Atlas.Core.Dock.Plan.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DockWindow.pas"/>
