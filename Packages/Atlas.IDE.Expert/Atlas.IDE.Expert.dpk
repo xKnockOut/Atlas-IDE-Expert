@@ -546,6 +546,15 @@ contains
   Atlas.UI.EditorToolbar.Glyphs in 'Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Glyphs.pas',
   Atlas.UI.EditorToolbar.Bar in 'Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Bar.pas',
   Atlas.UI.EditorToolbar.Customize in 'Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Customize.pas',
-  Atlas.IDE.EditorToolbar.Service in 'Source\IDE\EditorToolbar\Atlas.IDE.EditorToolbar.Service.pas';
+  Atlas.IDE.EditorToolbar.Service in 'Source\IDE\EditorToolbar\Atlas.IDE.EditorToolbar.Service.pas',
+  Atlas.Core.Debug.Exceptions in 'Source\Core\Debug\Atlas.Core.Debug.Exceptions.pas',
+  Atlas.Core.Debug.CallStack in 'Source\Core\Debug\Atlas.Core.Debug.CallStack.pas',
+  Atlas.Core.Debug.IgnoreList in 'Source\Core\Debug\Atlas.Core.Debug.IgnoreList.pas',
+  Atlas.Core.Debug.ExceptionDialog in 'Source\Core\Debug\Atlas.Core.Debug.ExceptionDialog.pas',
+  Atlas.UI.Debug.ExceptionsFrame in 'Source\UI\Debug\Atlas.UI.Debug.ExceptionsFrame.pas' {AtlasDebugExceptionsFrame: TFrame},
+  Atlas.IDE.Debug.Session in 'Source\IDE\Debug\Atlas.IDE.Debug.Session.pas',
+  Atlas.IDE.Debug.ExceptionDialog in 'Source\IDE\Debug\Atlas.IDE.Debug.ExceptionDialog.pas',
+  Atlas.IDE.Debug.ExceptionsWindow in 'Source\IDE\Debug\Atlas.IDE.Debug.ExceptionsWindow.pas',
+  Atlas.IDE.Debug.Exceptions in 'Source\IDE\Debug\Atlas.IDE.Debug.Exceptions.pas';
 
 end.

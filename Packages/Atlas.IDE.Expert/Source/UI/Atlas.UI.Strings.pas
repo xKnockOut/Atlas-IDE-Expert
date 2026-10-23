@@ -701,7 +701,16 @@ type
     // Element „Schnelle Lesezeichen“ im Menü „Ausblenden“ (#1104).
     ElementQuickBookmarks, ElementQuickBookmarksPlural,
     // Seite Prüfregeln: Weg zum Dialog der globalen Einstellungen (#909).
-    RulesGlobalButton);
+    RulesGlobalButton,
+    // Exception-Verlauf beim Debuggen (#517).
+    SettingsDebugExceptionHistory, DebugExceptionsCommand, DebugExceptionsCaption, DebugExceptionsFilterHint,
+    DebugExceptionsGoTo, DebugExceptionsIgnoreClass, DebugExceptionsStopAgain, DebugExceptionsIgnoreClassNamed,
+    DebugExceptionsStopAgainNamed, DebugExceptionsCopy, DebugExceptionsClear, DebugExceptionsColumnTime,
+    DebugExceptionsColumnClass, DebugExceptionsColumnMessage, DebugExceptionsColumnCount,
+    DebugExceptionsColumnLocation, DebugExceptionsColumnThread, DebugExceptionsEmpty, DebugExceptionsIgnored,
+    DebugExceptionsThread, DebugExceptionsAllClasses, DebugExceptionsSummary, DebugExceptionsFault,
+    DebugExceptionsUnknownClass, DebugExceptionsIgnoredClassSaid, DebugExceptionsStopAgainSaid,
+    DebugExceptionsNoSource);
 
   TAtlasStrings = class
   private class var
@@ -2289,7 +2298,15 @@ const
      'Schnelle Lesezeichen sind ausgeschaltet (bookmarks.quick).',
      'Nr.',
      'nur diese Datei', 'Marker eines schnellen Lesezeichens', 'Marker der schnellen Lesezeichen',
-     'Globale Prüfregeln bearbeiten …'),
+     'Globale Prüfregeln bearbeiten …',
+     'Exception-Verlauf beim Debuggen (Fenster „Atlas: Exceptions“)', 'Atlas: Exception-Verlauf',
+     'Atlas: Exceptions', 'Filtern nach Klasse, Meldung, Ort', 'Zur Stelle springen', 'Klasse künftig ignorieren',
+     'Bei dieser Klasse wieder anhalten', '%s künftig ignorieren', 'Bei %s wieder anhalten',
+     'Kopieren (Klasse, Meldung, Aufrufstapel)', 'Verlauf leeren', 'Zeit', 'Klasse', 'Meldung', 'Anzahl', 'Ort',
+     'Thread', 'Noch keine Exception in dieser Debug-Sitzung.', 'ignoriert', 'Hauptthread', 'Alle Klassen',
+     '%d Einträge, %d Exceptions in dieser Sitzung', 'Fehler des Betriebssystems', 'Exception',
+     'Atlas: %s wird künftig ignoriert; Atlas setzt bei dieser Klasse still fort.',
+     'Atlas: Bei %s hält der Debugger wieder an.', 'Atlas: Quelltext %s nicht gefunden.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3781,7 +3798,15 @@ const
      'Quick bookmarks are switched off (bookmarks.quick).',
      'No.',
      'this file only', 'quick bookmark marker', 'quick bookmark markers',
-     'Edit global rules …'));
+     'Edit global rules …',
+     'Exception history while debugging (window “Atlas: Exceptions”)', 'Atlas: Exception history',
+     'Atlas: Exceptions', 'Filter by class, message, location', 'Go to location', 'Ignore class from now on',
+     'Stop again on this class', 'Ignore %s from now on', 'Stop again on %s', 'Copy (class, message, call stack)',
+     'Clear history', 'Time', 'Class', 'Message', 'Count', 'Location', 'Thread',
+     'No exception in this debug session yet.', 'ignored', 'Main thread', 'All classes',
+     '%d entries, %d exceptions in this session', 'Operating system fault', 'Exception',
+     'Atlas: %s is ignored from now on; Atlas continues silently on this class.',
+     'Atlas: The debugger stops on %s again.', 'Atlas: Source %s not found.'));
 
 { TAtlasStrings }
 

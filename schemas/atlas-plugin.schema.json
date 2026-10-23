@@ -891,6 +891,18 @@
       "x-captionEn": "Values in the hover while debugging",
       "x-issue": "#891"
     },
+    "DebugExceptionHistory": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.exceptionHistory",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Exception-Verlauf beim Debuggen",
+      "x-captionEn": "Exception history while debugging",
+      "x-issue": "#517"
+    },
     "TestsBuildFirst": {
       "type": "boolean",
       "default": true,
