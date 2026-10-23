@@ -75,6 +75,7 @@ müssen gemeldet werden, jede weitere Meldung ist ein Fehlalarm.
 | `override-only-inherited` | Regel im Katalog (#1143), in `Ref.Pruefung.Verstoesse` |
 | `inherited-without-ancestor` | Regel im Katalog (#1144), in `Ref.Pruefung.Verstoesse` |
 | `redundant-jump` | Regel im Katalog (#1141), in `Ref.Pruefung.Verstoesse` |
+| `noreturn-returns` | Regel im Katalog (#1132), nur in `mutationen.txt` (noreturn gibt es erst ab Delphi 13, das Referenzprojekt übersetzt auch mit Delphi 12) |
 
 Jede ID steht im Regelkatalog oder in `geplante-regeln.txt` mit dem
 offenen Issue, das sie in den Katalog übernimmt. Eine ID ohne Issue lässt

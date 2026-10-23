@@ -1558,6 +1558,16 @@
       "good": "procedure Anhaengen(var Text: string);\nbegin\n  Text := Text + sLineBreak + 'Ende';\nend;"
     },
     {
+      "id": "noreturn-returns",
+      "name": "noreturn routine can return normally",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "A routine marked noreturn (Delphi 13 and later) may only end through raise, Abort, Halt, RunError or a call to another noreturn routine. When a path reaches the end of the body or an Exit, the routine returns normally; the compiler has dropped the code after the call, the behaviour is undefined. The directive counts on the implementation and on the declaration (interface, class). Calls whose target neither the file, the standard routines nor the symbol index knows might be noreturn themselves and end the path too, so only paths made of known statements are reported. Incomplete control flow (asm, syntax errors) stays silent. Exit is reported at the statement, the end of the body at the routine name. High confidence. No quick fix.",
+      "bad": "procedure Fehler(const AText: string); noreturn;\nbegin\n  if AText <> '' then\n    raise EImport.Create(AText);\nend;",
+      "good": "procedure Fehler(const AText: string); noreturn;\nbegin\n  if AText = '' then\n    raise EImport.Create('Unbekannter Fehler');\n  raise EImport.Create(AText);\nend;"
+    },
+    {
       "id": "stringlist-unsorted",
       "name": "Find or Duplicates on an unsorted TStringList",
       "category": "bug",

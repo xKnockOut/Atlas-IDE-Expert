@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 70 |
+| [Fehler finden](#gruppe-find-bugs) | 71 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
@@ -68,6 +68,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`managed-type-raw-memory`](#managed-type-raw-memory) | FillChar, Move oder GetMem auf verwaltete Typen | Bug | Fehler |
 | [`pchar-of-temporary`](#pchar-of-temporary) | PChar auf einen temporären String | Bug | Warnung |
 | [`out-param-read`](#out-param-read) | out-Parameter gelesen, bevor er gesetzt ist | Bug | Warnung |
+| [`noreturn-returns`](#noreturn-returns) | noreturn-Routine kann normal zurückkehren | Bug | Warnung |
 | [`stringlist-unsorted`](#stringlist-unsorted) | Find oder Duplicates auf einer unsortierten TStringList | Bug | Warnung |
 | [`writeln-in-gui-app`](#writeln-in-gui-app) | Writeln in einem Programm ohne Konsole | Bug | Warnung |
 | [`duplicate-condition`](#duplicate-condition) | Doppelte Bedingung oder gleiche Zweige | Bug | Warnung |
@@ -3323,6 +3324,34 @@ Richtig:
 procedure Anhaengen(var Text: string);
 begin
   Text := Text + sLineBreak + 'Ende';
+end;
+```
+
+<a id="noreturn-returns"></a>
+### noreturn-returns
+
+**noreturn-Routine kann normal zurückkehren** · Bug · Warnung · Gruppe Fehler finden
+
+Eine mit noreturn markierte Routine (ab Delphi 13) darf nur über raise, Abort, Halt, RunError oder den Aufruf einer anderen noreturn-Routine enden. Erreicht ein Weg das Ende des Rumpfs oder ein Exit, kehrt sie normal zurück; der Compiler hat den Code nach dem Aufruf weggelassen, das Verhalten ist undefiniert. Die Direktive zählt an der Implementierung und an der Deklaration (interface, Klasse). Aufrufe, deren Ziel weder die Datei, die Standardroutinen noch der Symbolindex kennt, könnten selbst noreturn sein und beenden den Weg ebenfalls; gemeldet werden also nur Wege aus bekannten Anweisungen. Unvollständiger Kontrollfluss (asm, Syntaxfehler) bleibt still. Exit wird an der Anweisung gemeldet, das Ende des Rumpfs am Routinennamen. Konfidenz hoch. Keine Schnellkorrektur.
+
+Mit Treffer:
+
+```pascal
+procedure Fehler(const AText: string); noreturn;
+begin
+  if AText <> '' then
+    raise EImport.Create(AText);
+end;
+```
+
+Richtig:
+
+```pascal
+procedure Fehler(const AText: string); noreturn;
+begin
+  if AText = '' then
+    raise EImport.Create('Unbekannter Fehler');
+  raise EImport.Create(AText);
 end;
 ```
 

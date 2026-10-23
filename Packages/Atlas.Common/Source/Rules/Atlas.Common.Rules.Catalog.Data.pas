@@ -1700,6 +1700,19 @@ begin
     '      "good": "procedure Anhaengen(var Text: string);\nbegin\n  Text := Text + sLineBreak + ''Ende'';\nend;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "noreturn-returns",' + #10 +
+    '      "name": "noreturn routine can return normally",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "A routine marked noreturn (Delphi 13 and later) may only end through raise, Abort, Halt, RunError or a call to another noreturn routine. When a path reaches the end of the body o' +
+    'r an Exit, the routine returns normally; the compiler has dropped the code after the call, the behaviour is undefined. The directive counts on the implementation and on the declaration (interface, cla' +
+    'ss). Calls whose target neither the file, the standard routines nor the symbol index knows might be noreturn themselves and end the path too, so only paths made of known statements are reported. Incom' +
+    'plete control flow (asm, syntax errors) stays silent. Exit is reported at the statement, the end of the body at the routine name. High confidence. No quick fix.",' + #10 +
+    '      "bad": "procedure Fehler(const AText: string); noreturn;\nbegin\n  if AText <> '''' then\n    raise EImport.Create(AText);\nend;",' + #10 +
+    '      "good": "procedure Fehler(const AText: string); noreturn;\nbegin\n  if AText = '''' then\n    raise EImport.Create(''Unbekannter Fehler'');\n  raise EImport.Create(AText);\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "stringlist-unsorted",' + #10 +
     '      "name": "Find or Duplicates on an unsorted TStringList",' + #10 +
     '      "category": "bug",' + #10 +
@@ -5889,6 +5902,15 @@ begin
     '      "description": "Ein out-Parameter wird auf einem Weg durch den Kontrollfluss gelesen, bevor die Routine ihn setzt. Bei verwalteten Typen (string, Interfaces, dynamische Arrays, Variant) hat der ' +
     'Aufrufer ihn schon geleert, der alte Wert ist weg; bei anderen Typen ist der Wert undefiniert. Gemeint war meist var. Verwendungen, denen der Kontrollflussgraph nicht folgen kann (Übergabe an eine Rou' +
     'tine, Setzen eines Felds, @Param), bleiben still. Konfidenz hoch. Schnellkorrektur: aus out wird var in Implementierung und Deklaration."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "noreturn-returns",' + #10 +
+    '      "name": "noreturn-Routine kann normal zurückkehren",' + #10 +
+    '      "description": "Eine mit noreturn markierte Routine (ab Delphi 13) darf nur über raise, Abort, Halt, RunError oder den Aufruf einer anderen noreturn-Routine enden. Erreicht ein Weg das Ende des ' +
+    'Rumpfs oder ein Exit, kehrt sie normal zurück; der Compiler hat den Code nach dem Aufruf weggelassen, das Verhalten ist undefiniert. Die Direktive zählt an der Implementierung und an der Deklaration (' +
+    'interface, Klasse). Aufrufe, deren Ziel weder die Datei, die Standardroutinen noch der Symbolindex kennt, könnten selbst noreturn sein und beenden den Weg ebenfalls; gemeldet werden also nur Wege aus ' +
+    'bekannten Anweisungen. Unvollständiger Kontrollfluss (asm, Syntaxfehler) bleibt still. Exit wird an der Anweisung gemeldet, das Ende des Rumpfs am Routinennamen. Konfidenz hoch. Keine Schnellkorrektur' +
+    '."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "stringlist-unsorted",' + #10 +
