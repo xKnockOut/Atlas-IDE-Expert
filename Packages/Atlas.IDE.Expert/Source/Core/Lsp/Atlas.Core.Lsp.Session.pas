@@ -55,6 +55,8 @@ type
     Line: Integer;
     /// <summary>0-basiert.</summary>
     Character: Integer;
+    /// <summary>Referenzsuche (#1119): sicher oder erschlossen; sonst sicher.</summary>
+    Confidence: TAtlasConfidence;
   end;
 
   /// <summary>Code-Aktion oder Befehl aus textDocument/codeAction (#399).</summary>
@@ -794,6 +796,7 @@ begin
           Location.FileName := UriToPath(TJSONObject(Item).GetValue<string>('uri', ''));
           Location.Line := TJSONObject(Item).GetValue<Integer>('range.start.line', 0);
           Location.Character := TJSONObject(Item).GetValue<Integer>('range.start.character', 0);
+          Location.Confidence := TAtlasConfidence.FromJson(Item);
           if Location.FileName <> '' then
             Result := Result + [Location];
         end;
@@ -820,6 +823,7 @@ class function TLspSession.LocationsOf(const AResponse: TJSONValue): TArray<TLsp
     Location.FileName := UriToPath(Uri);
     Location.Line := TJSONObject(AItem).GetValue<Integer>(Prefix + '.start.line', 0);
     Location.Character := TJSONObject(AItem).GetValue<Integer>(Prefix + '.start.character', 0);
+    Location.Confidence := TAtlasConfidence.FromJson(AItem);
     if Location.FileName <> '' then
       Result := Result + [Location];
   end;
@@ -1247,6 +1251,7 @@ const
   Members: array[TAtlasHierarchyDirection] of string = ('from', 'to', '', '');
 var
   Raw, Response, Item, Inner: TJSONValue;
+  Child: TAtlasHierarchyItem;
 begin
   Result := nil;
   Raw := TJSONObject.ParseJSONValue(AItem.Raw);
@@ -1265,7 +1270,12 @@ begin
       if (Members[ADirection] <> '') and (Item is TJSONObject) then
         Inner := TJSONObject(Item).GetValue(Members[ADirection]);
       if Inner is TJSONObject then
-        Result := Result + [HierarchyItemOf(Inner)];
+      begin
+        Child := HierarchyItemOf(Inner);
+        // Eingehende Aufrufe (#1119): atlasConfidence steht am Aufruf, nicht am Element.
+        Child.Confidence := TAtlasConfidence.FromJson(Item);
+        Result := Result + [Child];
+      end;
     end;
   finally
     Response.Free;

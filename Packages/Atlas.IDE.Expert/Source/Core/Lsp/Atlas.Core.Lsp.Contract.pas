@@ -1,7 +1,8 @@
 ﻿unit Atlas.Core.Lsp.Contract;
 
 // Werttypen, die der LSP-Client (TLspSession) liefert und die Features darüber verwenden (A-09): Probleme
-// (Diagnosen, #398), Symbole der projektweiten Suche und Einträge der Typ- und Aufrufhierarchie (#400).
+// (Diagnosen, #398), Symbole der projektweiten Suche und Einträge der Typ- und Aufrufhierarchie (#400),
+// Treffersicherheit einer Fundstelle (#1119).
 // Sie liegen im Lsp-Feature, weil die Protokollschicht unten liegt; Atlas.Core.Problems.Contract und
 // Atlas.Core.Results.Model führen sie als Alias weiter. Positionen sind 0-basiert in UTF-16-Einheiten.
 
@@ -110,6 +111,19 @@ type
     Character: Integer;
   end;
 
+  /// <summary>Treffersicherheit einer Fundstelle (#1119) aus atlasConfidence des Servers.</summary>
+  TAtlasConfidence = record
+    /// <summary>Erschlossen statt sicher: vor dem Umbenennen prüfen.</summary>
+    Inferred: Boolean;
+    /// <summary>Grund wie im LSP: "interface", "virtual", "ambiguous", "unresolved", "inactiveBranch", "text";
+    /// '' bei sicheren Treffern.</summary>
+    Reason: string;
+    /// <summary>Erklärung des Servers für den Hinweis, etwa „Aufruf über ISpeicherbar.Speichern …“.</summary>
+    Explanation: string;
+    /// <summary>Aus dem Feld atlasConfidence von AItem; ohne das Feld sicher (ältere Server).</summary>
+    class function FromJson(const AItem: TJSONValue): TAtlasConfidence; static;
+  end;
+
 {$SCOPEDENUMS ON}
   /// <summary>Richtung einer Hierarchie: Aufrufer, Aufgerufene, Vorfahren, Nachfahren.</summary>
   TAtlasHierarchyDirection = (Incoming, Outgoing, Supertypes, Subtypes);
@@ -126,9 +140,31 @@ type
     Character: Integer;
     /// <summary>Der Eintrag als JSON, so wie ihn der Server für Folgeanfragen zurückhaben will.</summary>
     Raw: string;
+    /// <summary>Eingehende Aufrufe (#1119): sicher oder erschlossen.</summary>
+    Confidence: TAtlasConfidence;
   end;
 
 implementation
+
+{ TAtlasConfidence }
+
+class function TAtlasConfidence.FromJson(const AItem: TJSONValue): TAtlasConfidence;
+var
+  Value: TJSONValue;
+begin
+  Result := Default(TAtlasConfidence);
+  if not (AItem is TJSONObject) then
+    Exit;
+  Value := TJSONObject(AItem).GetValue('atlasConfidence');
+  if not (Value is TJSONObject) then
+    Exit;
+  Result.Inferred := TJSONObject(Value).GetValue<string>('level', '') = 'inferred';
+  if Result.Inferred then
+  begin
+    Result.Reason := TJSONObject(Value).GetValue<string>('reason', '');
+    Result.Explanation := TJSONObject(Value).GetValue<string>('detail', '');
+  end;
+end;
 
 { TAtlasProblem }
 

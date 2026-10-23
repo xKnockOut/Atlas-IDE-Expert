@@ -307,6 +307,8 @@ type
     FPeekShowImplementation: TCheckBox;
     FPeekDefinitionKey: TEdit;
     FPeekReferencesKey: TEdit;
+    FReferencesInferred: TCheckBox;
+    FReferencesTextMatches: TCheckBox;
     FOutline: TCheckBox;
     FOutlineAlphabetical: TCheckBox;
     FOutlineFollowCursor: TCheckBox;
@@ -1854,6 +1856,9 @@ begin
   FPeekShowImplementation := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPeekImplementation));
   FPeekDefinitionKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PeekDefinitionCommand));
   FPeekReferencesKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PeekReferencesCommand));
+  // Treffersicherheit der Verwendungen (#1119).
+  FReferencesInferred := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReferencesInferred));
+  FReferencesTextMatches := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReferencesTextMatches));
   FOutline := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutline));
   FOutlineAlphabetical := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineAlphabetical));
   FOutlineFollowCursor := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineFollowCursor));
@@ -2702,6 +2707,8 @@ begin
   FMarks.Bind(FPeekShowImplementation, ['PeekShowImplementation']);
   FMarks.Bind(FPeekDefinitionKey, ['PeekDefinitionKey']);
   FMarks.Bind(FPeekReferencesKey, ['PeekReferencesKey']);
+  FMarks.Bind(FReferencesInferred, ['ReferencesInferred']);
+  FMarks.Bind(FReferencesTextMatches, ['ReferencesTextMatches']);
   FMarks.Bind(FOutline, ['Outline']);
   FMarks.Bind(FOutlineAlphabetical, ['OutlineAlphabetical']);
   FMarks.Bind(FOutlineFollowCursor, ['OutlineFollowCursor']);
@@ -4806,6 +4813,8 @@ begin
   FPeekShowImplementation.Checked := ASettings.PeekShowImplementation;
   FPeekDefinitionKey.Text := ShortCutToText(TShortCut(ASettings.PeekDefinitionKey));
   FPeekReferencesKey.Text := ShortCutToText(TShortCut(ASettings.PeekReferencesKey));
+  FReferencesInferred.Checked := ASettings.ReferencesInferred;
+  FReferencesTextMatches.Checked := ASettings.ReferencesTextMatches;
   FOutline.Checked := ASettings.Outline;
   FOutlineAlphabetical.Checked := ASettings.OutlineAlphabetical;
   FOutlineFollowCursor.Checked := ASettings.OutlineFollowCursor;
@@ -5220,6 +5229,8 @@ begin
   ASettings.PeekShowImplementation := FPeekShowImplementation.Checked;
   ASettings.PeekDefinitionKey := Integer(TextToShortCut(Trim(FPeekDefinitionKey.Text)));
   ASettings.PeekReferencesKey := Integer(TextToShortCut(Trim(FPeekReferencesKey.Text)));
+  ASettings.ReferencesInferred := FReferencesInferred.Checked;
+  ASettings.ReferencesTextMatches := FReferencesTextMatches.Checked;
   ASettings.Outline := FOutline.Checked;
   ASettings.OutlineAlphabetical := FOutlineAlphabetical.Checked;
   ASettings.OutlineFollowCursor := FOutlineFollowCursor.Checked;

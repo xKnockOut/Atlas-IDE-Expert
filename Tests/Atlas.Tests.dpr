@@ -514,6 +514,7 @@ uses
   Atlas.UI.Notes.Tip in '..\Packages\Atlas.IDE.Expert\Source\UI\Notes\Atlas.UI.Notes.Tip.pas',
   Atlas.UI.Notes.Dialog in '..\Packages\Atlas.IDE.Expert\Source\UI\Notes\Atlas.UI.Notes.Dialog.pas',
   Atlas.UI.Notes.Tests in 'IDE.Expert\Atlas.UI.Notes.Tests.pas',
+  Atlas.UI.Results.Frame.Tests in 'IDE.Expert\Atlas.UI.Results.Frame.Tests.pas',
   Atlas.Core.Bookmarks.Store in '..\Packages\Atlas.IDE.Expert\Source\Core\Bookmarks\Atlas.Core.Bookmarks.Store.pas',
   Atlas.Core.Bookmarks.Tests in 'IDE.Expert\Atlas.Core.Bookmarks.Tests.pas',
   Atlas.Core.Bookmarks.Quick in '..\Packages\Atlas.IDE.Expert\Source\Core\Bookmarks\Atlas.Core.Bookmarks.Quick.pas',
