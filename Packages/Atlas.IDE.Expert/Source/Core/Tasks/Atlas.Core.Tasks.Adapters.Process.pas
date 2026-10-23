@@ -20,15 +20,8 @@ uses
   Atlas.Core.Tasks.Runs;
 
 type
-  TAtlasTaskLineProc = reference to procedure(const ALine: string);
-
-  TAtlasTaskProcessResult = record
-    Outcome: TAtlasTaskOutcome;
-    ExitCode: Integer;
-    /// <summary>StartFailed: Grund oder fehlender Arbeitsordner; ProgramMissing: der Befehl.</summary>
-    Error: string;
-  end;
-
+  /// <summary>Umsetzung von TAtlasTaskProcessRun (Atlas.IDE.Tasks.Runner); die Kompositionswurzel reicht Run
+  /// hinein.</summary>
   TAtlasTaskProcess = class
   public const
     SliceMs = 10;

@@ -111,13 +111,18 @@ var
   Lines: TAtlasTaskLines;
   Data: TBytes;
 begin
-  Assert.IsTrue(TAtlasTaskLines.IsUtf8(Bytes('Prüfung ✓'), 0, Length(Bytes('Prüfung ✓'))));
-  Data := TBytes.Create($50, $72, $FC, $66);
-  Assert.IsFalse(TAtlasTaskLines.IsUtf8(Data, 0, Length(Data)), 'ü als ein Byte');
-  Data := TBytes.Create($C0, $80);
-  Assert.IsFalse(TAtlasTaskLines.IsUtf8(Data, 0, Length(Data)), 'überlange Form');
-  Data := TBytes.Create($E2, $9C);
-  Assert.IsFalse(TAtlasTaskLines.IsUtf8(Data, 0, Length(Data)), 'abgeschnitten');
+  // Gültiges UTF-8 gewinnt auch mit Codepage; überlange Formen und abgeschnittene Folgen nicht.
+  Lines := TAtlasTaskLines.Create(1252);
+  try
+    Data := Bytes('Prüfung ✓' + #10);
+    Assert.AreEqual('Prüfung ✓', string.Join('|', Lines.Feed(Data, Length(Data))));
+    Data := TBytes.Create($C0, $80, 10);
+    Assert.AreEqual(#$00C0#$20AC, string.Join('|', Lines.Feed(Data, Length(Data))), 'überlange Form');
+    Data := TBytes.Create($E2, $9C, 10);
+    Assert.AreEqual(#$00E2#$0153, string.Join('|', Lines.Feed(Data, Length(Data))), 'abgeschnitten');
+  finally
+    Lines.Free;
+  end;
   // 1252: FC = ü.
   Lines := TAtlasTaskLines.Create(1252);
   try

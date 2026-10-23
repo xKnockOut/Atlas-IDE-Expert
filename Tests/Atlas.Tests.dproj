@@ -915,6 +915,12 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.Matchers.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.Runs.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.Commands.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tasks\Atlas.Core.Tasks.Reports.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tasks\Atlas.Core.Tasks.PreBuild.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Tasks\Atlas.UI.Tasks.Texts.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.Reports.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.PreBuild.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Tasks.Texts.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Search\Atlas.UI.Search.ReplaceFrame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Search.ReplaceFrame.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.SnapshotPolicy.Tests.pas"/>

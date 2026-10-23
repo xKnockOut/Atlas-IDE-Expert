@@ -29,6 +29,16 @@ type
   TAtlasTaskOutcome = (Finished, ProgramMissing, StartFailed, TimedOut, Cancelled);
 {$SCOPEDENUMS OFF}
 
+  TAtlasTaskLineProc = reference to procedure(const ALine: string);
+
+  /// <summary>Ergebnis des Prozesses einer Aufgabe (Atlas.Core.Tasks.Adapters.Process).</summary>
+  TAtlasTaskProcessResult = record
+    Outcome: TAtlasTaskOutcome;
+    ExitCode: Integer;
+    /// <summary>StartFailed: Grund oder fehlender Arbeitsordner; ProgramMissing: der Befehl.</summary>
+    Error: string;
+  end;
+
   TAtlasTaskLines = class
   private
     FPending: TBytes;
@@ -41,8 +51,6 @@ type
     function Feed(const ABytes: TBytes; ACount: Integer): TArray<string>;
     /// <summary>Rest ohne Zeilenende am Schluss; leer, wenn nichts mehr da ist.</summary>
     function Flush: TArray<string>;
-    /// <summary>Gültiges UTF-8 (ohne überlange Formen)?</summary>
-    class function IsUtf8(const ABytes: TBytes; AStart, ACount: Integer): Boolean; static;
     /// <summary>Zeile ohne CR und ohne Farbfolgen.</summary>
     class function Clean(const ALine: string): string; static;
   end;
@@ -143,7 +151,8 @@ type
 implementation
 
 uses
-  System.DateUtils;
+  System.DateUtils,
+  Atlas.Text.Encoding;
 
 { TAtlasTaskLines }
 
@@ -151,36 +160,6 @@ constructor TAtlasTaskLines.Create(ACodePage: Integer);
 begin
   inherited Create;
   FCodePage := ACodePage;
-end;
-
-class function TAtlasTaskLines.IsUtf8(const ABytes: TBytes; AStart, ACount: Integer): Boolean;
-var
-  Index, Stop, Follow, Extra: Integer;
-  Value: Byte;
-begin
-  Index := AStart;
-  Stop := AStart + ACount;
-  while Index < Stop do
-  begin
-    Value := ABytes[Index];
-    if Value < $80 then
-      Extra := 0
-    else if (Value >= $C2) and (Value <= $DF) then
-      Extra := 1
-    else if (Value >= $E0) and (Value <= $EF) then
-      Extra := 2
-    else if (Value >= $F0) and (Value <= $F4) then
-      Extra := 3
-    else
-      Exit(False);
-    if Index + Extra >= Stop then
-      Exit(False);
-    for Follow := 1 to Extra do
-      if (ABytes[Index + Follow] and $C0) <> $80 then
-        Exit(False);
-    Inc(Index, Extra + 1);
-  end;
-  Result := True;
 end;
 
 class function TAtlasTaskLines.Clean(const ALine: string): string;
@@ -221,7 +200,8 @@ var
 begin
   if ACount <= 0 then
     Exit('');
-  if (FCodePage = 0) or IsUtf8(ABytes, AStart, ACount) then
+  // Gültiges UTF-8 (ohne überlange Formen, Atlas.Text) geht vor der Codepage.
+  if (FCodePage = 0) or TTextEncodingProbe.IsValidUtf8(Copy(ABytes, AStart, ACount), 0) then
     Exit(Clean(TEncoding.UTF8.GetString(ABytes, AStart, ACount)));
   try
     Encoding := TEncoding.GetEncoding(FCodePage);
