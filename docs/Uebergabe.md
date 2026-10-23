@@ -948,7 +948,7 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 
 - **Auswahl:** Liste der nächsten Issues in `/mnt/project-files/planung/naechste-issues-nach-v1.1.0.md`; Marco: „Mach den Teil den du für sinnvoll hältst“. Branches heißen `after-release/NN-name`, je ein Entwurfs-PR gegen `main`.
 - **#268 Uses-Graph:** Branch `after-release/268-uses-graph`, PR #1146.
-- **#1118 Architekturübersicht:** Branch `after-release/1118-architekturuebersicht`, PR #1149.
+- **#1118 Architekturübersicht:** Branch `after-release/1118-architekturuebersicht` (enthält #268), PR #1149.
 - **#1119 Treffersicherheit:** Branch `after-release/1119-treffersicherheit`, PR #1153. Server: `Atlas.Common.Lsp.ReferenceConfidence` (`TReferenceClassifier`), `atlasConfidence` je Treffer, `atlasUnchanged` beim Umbenennen, MCP trennt sicher/erschlossen, Einstellungen `references.inferred`/`references.textMatches`. Plugin: Ergebnisfenster mit Abschnitten und Filter „Nur sichere“, Umbenennen-Vorschau „Nicht geändert, bitte prüfen“. Umbenennen ändert dieselbe Menge wie vorher. Handtests TS1–TS10. Die Pfadsuche aus #1117 ist nicht enthalten.
 - **Erkenntnis:** Auch der Syntaxbaum des Editors (nur aktive Zweige) enthält alle Token (`TParser.FAllTokens`); inaktive Treffer erkennt man deshalb über die Position, nicht über fehlende Token.
 - **Offen:** Delphi-Build und Tests aller drei Branches; Anhebung von #268 auf high wartet auf Marco.
