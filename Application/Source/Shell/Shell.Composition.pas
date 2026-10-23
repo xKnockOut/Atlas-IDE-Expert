@@ -57,6 +57,7 @@ uses
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Todos,
   Atlas.Common.Lsp.DebugDisplay,
+  Atlas.Common.Lsp.EventHandlers,
   Atlas.Common.Lsp.Recursion,
   Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.SlashMenu,
@@ -156,6 +157,7 @@ type
     FTodos: TLspTodos;
     /// <summary>Eigene Wertdarstellungen beim Debuggen (#854): Befehl atlas.server.debugDisplayRules.</summary>
     FDebugDisplay: TLspDebugDisplay;
+    FEventHandlers: TLspEventHandlers;
     FRecursion: TLspRecursion;
     /// <summary>Baseline für Altprojekte (#97): Befehl atlas.updateBaseline.</summary>
     FBaseline: TLspBaseline;
@@ -1211,6 +1213,8 @@ begin
   // Wertdarstellungen (#854): Dateien wie die TODO-Übersicht, Typen und Vorfahren aus dem Index.
   FDebugDisplay := TLspDebugDisplay.Create(MetricsSourceFor, ReadSourceText);
   FDebugDisplay.Index := FIndex;
+  FEventHandlers := TLspEventHandlers.Create(MetricsSourceFor, ReadSourceText);
+  FEventHandlers.Index := FIndex;
   // Rekursionssymbole im Editorrand (#623).
   FRecursion := TLspRecursion.Create(ReadSourceText);
   // Baseline (#97): dieselben Dateien wie die Metriken, Prüfung wie im Editor (Regeln, Index, Formulardatei).
@@ -1497,6 +1501,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FDebugDisplay.Execute(AArguments);
+    end);
+  FCommands.Register(TLspEventHandlers.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FEventHandlers.Execute(AArguments);
     end);
   FCommands.Register(TLspRecursion.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2065,6 +2074,7 @@ begin
   FMetrics.Free;
   FTodos.Free;
   FDebugDisplay.Free;
+  FEventHandlers.Free;
   FRecursion.Free;
   FBaseline.Free;
   FInlayHints.Free;

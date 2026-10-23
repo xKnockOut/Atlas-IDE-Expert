@@ -222,6 +222,7 @@
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.Parser.pas"/>
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.Navigation.pas"/>
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.FormModel.pas"/>
+        <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.EventHandlers.pas"/>
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.FormInfo.pas"/>
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.BinaryForm.pas"/>
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.FormFiles.pas"/>
@@ -270,6 +271,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Todos.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DebugDisplay.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.EventHandlers.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Recursion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.OverrideMarks.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Baseline.pas"/>

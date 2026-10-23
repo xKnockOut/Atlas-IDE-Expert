@@ -2756,6 +2756,35 @@ Vorbereitung: VCL-Projekt (Win32, Debug) mit `TKunde = class` (Eigenschaft `Name
 | GH17 | Tastenkürzel-Übersicht öffnen | Eintrag „Gezielt hineinspringen“ mit Strg+Alt+F7, Konflikt rot, falls die IDE die Taste belegt |
 | GH18 | Package deinstallieren, während die Liste offen bzw. ein Sprung läuft | Kein Fehler; keine Atlas-Haltepunkte bleiben zurück |
 
+## Beim nächsten Ereignis anhalten (#856)
+
+Vorbereitung: VCL-Projekt (Win32, Debug) mit Formular `TfrmKunde` (`frmKunde`): Knöpfe `btnSpeichern` und `btnOk`, beide `OnClick = btnSpeichernClick`; Knopf `btnHilfe` ohne Handler, dem `FormCreate` per Code `btnHilfe.OnClick := HilfeClick;` zuweist; `TFDMemTable` `Tabelle` mit `BeforePost`; `TActionList` mit `actDrucken` (`OnExecute`, `OnUpdate`); `TTimer` `Timer1` mit `Interval = 50` und `OnTimer`; `OnPaint` an einer `TPaintBox`, `OnMouseMove` am Formular. Zweites Formular `TfrmInfo`, anfangs unsichtbar. Programm mit F9 starten. Optionen › Debuggen: „Beim nächsten Ereignis anhalten“ an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EB1 | Menü Start › „Beim nächsten Ereignis anhalten…“ | Dialog mit Ereignisarten (Maus, Tastatur, Aktionen vorgewählt), „Häufige Ereignisse einschließen“ aus, „Alle Formulare“; darunter „N Handler an M Stellen“ |
+| EB2 | In EB1 nur „Maus“, OK; im Programm auf `btnSpeichern` klicken | Halt in der ersten Anweisung von `btnSpeichernClick`; Leiste „Angehalten: btnSpeichern.OnClick → TfrmKunde.btnSpeichernClick“ (**Abnahme**) |
+| EB3 | Nach EB2 Haltepunktliste öffnen | Keine Haltepunkte der Gruppe `Atlas.Ereignis` mehr (**Abnahme**) |
+| EB4 | Wie EB2, aber auf `btnOk` klicken | Leiste nennt `btnOk.OnClick` (über `Sender.Name`) (**Abnahme**) |
+| EB5 | Nach EB2 in der Leiste „Weiter beobachten“, dann auf `btnOk` klicken | Zweiter Halt in `btnSpeichernClick`, Leiste nennt `btnOk.OnClick` (**Abnahme**) |
+| EB6 | „Maus“, OK; Maus über das Formular bewegen und die PaintBox neu zeichnen lassen | Kein Halt in `OnMouseMove`/`OnPaint` (**Abnahme**) |
+| EB7 | Wie EB6 mit „Häufige Ereignisse einschließen“ | Halt beim ersten `OnMouseMove` bzw. `OnPaint` |
+| EB8 | „Maus“, OK; auf `btnHilfe` klicken | Halt in `HilfeClick` (im Code zugewiesen) (**Abnahme**) |
+| EB9 | Nur „Timer“, OK | `Timer1` (50 ms) ist ausgenommen, die Zahl im Dialog zählt ihn nicht; mit „Häufige Ereignisse“ hält er |
+| EB10 | Nur „Datenbank“, OK; Datensatz speichern | Halt in `TabelleBeforePost`, Leiste „Tabelle.BeforePost → …“ |
+| EB11 | Nur „Aktionen“, OK; Menüpunkt mit `actDrucken` | Halt in `OnExecute`, nicht in `OnUpdate` (ausgenommen) |
+| EB12 | „Nur sichtbare Formulare“ bei laufendem Programm | Atlas hält kurz an und läuft weiter; Handler von `TfrmInfo` bekommen keinen Haltepunkt (Zahl in der Meldung) |
+| EB13 | „Ein Formular“ › `TfrmInfo` | Nur dessen Handler; Klick auf `btnSpeichern` hält nicht |
+| EB14 | Während der Beobachtung Befehl erneut aufrufen | Meldung „Beobachtung beendet, Haltepunkte entfernt“; Haltepunktliste ohne `Atlas.Ereignis` |
+| EB15 | Während der Beobachtung Programm beenden | Meldung „Das Programm ist beendet …“; keine Atlas-Haltepunkte zurück |
+| EB16 | Haltepunkt des Benutzers an anderer Stelle greift während der Beobachtung | Meldung „hielt an einer anderen Stelle …“; Atlas-Haltepunkte entfernt, der des Benutzers bleibt |
+| EB17 | Ohne laufendes Programm Befehlspalette › „Beim nächsten Ereignis anhalten“ | Meldung „Es läuft kein Programm im Debugger.“ |
+| EB18 | Optionen › Debuggen: aus | Menüpunkt unter Start und Eintrag in der Befehlspalette fehlen (**Abnahme**) |
+| EB19 | `debug.breakOnNextEvent.excluded` auf `OnPaint; OnResize` | Gespeichert als `OnPaint, OnResize`; `OnMouseMove` gilt nicht mehr als häufig, `OnResize` schon |
+| EB20 | Handler `FormShow` nur im Vorfahren `TfrmBasis` implementiert | Halt im Vorfahren; nicht auffindbare Rümpfe werden gemeldet („… bleiben unbeobachtet“) |
+| EB21 | EB2 und EB5 unter dem Win64-Debugger (LLDB) | Wie unter Win32 (**Abnahme**) |
+| EB22 | Package deinstallieren während der Beobachtung | Kein Fehler; keine Atlas-Haltepunkte bleiben zurück |
+
 ## Kein Hängen, während der Server indexiert (#874)
 
 Vorher: Eine große Projektgruppe öffnen (Index läuft, Fortschritt im Statusfeld), „Diagnosemodus“ an.
