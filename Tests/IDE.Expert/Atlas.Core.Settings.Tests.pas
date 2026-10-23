@@ -94,6 +94,10 @@ type
     procedure UnwrapOptions;
     [Test]
     procedure ExpressionTypeOptions;
+    /// <summary>Methodenrümpfe in Deklarationsreihenfolge (#660): Vorgabe, Werte normalisiert, Speichern und
+    /// Laden.</summary>
+    [Test]
+    procedure MethodPlacementOptions;
     /// <summary>Markierung beim Tippen umschließen (#672): Vorgaben, Speichern und Laden.</summary>
     [Test]
     procedure WrapSelectionOptions;
@@ -1778,6 +1782,27 @@ begin
   Settings.ExpressionTypeKey := -3;
   Settings.Normalize;
   Assert.AreEqual(0, Settings.ExpressionTypeKey);
+end;
+
+procedure TAtlasPluginSettingsTests.MethodPlacementOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('declaration', Settings.MethodPlacement);
+  Settings.MethodPlacement := 'Alphabetical';
+  Settings.Normalize;
+  Assert.AreEqual('alphabetical', Settings.MethodPlacement);
+  Settings.MethodPlacement := 'irgendwie';
+  Settings.Normalize;
+  Assert.AreEqual('declaration', Settings.MethodPlacement, 'Unbekanntes wird zur Vorgabe');
+  Settings.MethodPlacement := 'off';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.AreEqual('off', Loaded.MethodPlacement, 'abschaltbar');
 end;
 
 procedure TAtlasPluginSettingsTests.UnwrapOptions;

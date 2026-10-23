@@ -14,6 +14,11 @@
 // Methoden ohne Rumpf und Rümpfe ohne Deklaration. AddDeclaration ergänzt eine
 // fehlende Deklaration im private-Abschnitt des Typs.
 //
+// DeclaredMethods (#660) liefert dieselbe Zuordnung von der anderen Seite:
+// je Typ der Datei die deklarierten Methoden in ihrer Reihenfolge, jede mit
+// ihrem Rumpf, falls es ihn gibt; die Reihenfolge der Rümpfe im
+// implementation-Teil richtet sich danach.
+//
 // Pairs (#996) ordnet Deklarationen und Rümpfe ohne Gegenstück einander zu,
 // deren Köpfe abweichen: gleicher Typ und Name, bei Überladungen die
 // nächstliegende Deklaration (Parameteranzahl, dann Typen, Namen und
@@ -70,12 +75,28 @@ type
     BodyShape: TSignatureShape;
   end;
 
+  /// <summary>Deklarierte Methode eines Typs mit ihrem Rumpf (#660).</summary>
+  TDeclaredMethod = record
+    /// <summary>Typ, ggf. mit umgebendem Typ (TAussen.TInnen).</summary>
+    TypeName: string;
+    /// <summary>Stelle des Typs in der Datei, ab 0 in der Reihenfolge der Typen.</summary>
+    TypeOrder: Integer;
+    /// <summary>Stelle der Deklaration im Typ, ab 0.</summary>
+    DeclarationOrder: Integer;
+    Declaration: TIndexSymbol;
+    HasBody: Boolean;
+    Body: TIndexSymbol;
+  end;
+
   TClassCompletion = class
   public
     /// <summary>Methoden ohne Gegenstück in Typen dieser Datei. Abstrakte, externe und forward-
     /// Methoden sowie generische Typen werden übergangen; Rümpfe zu Typen, die nicht in der
     /// Datei stehen, ebenfalls.</summary>
     class function Unmatched(ATree: TSyntaxTree; const AText: string): TArray<TUnmatchedMethod>; static;
+    /// <summary>Je Typ der Datei (in ihrer Reihenfolge) die deklarierten Methoden in Deklarationsreihenfolge mit
+    /// ihrem Rumpf (#660). Abstrakte, externe und forward-Methoden fehlen, generische Typen ebenso.</summary>
+    class function DeclaredMethods(ATree: TSyntaxTree; const AText: string): TArray<TDeclaredMethod>; static;
     /// <summary>Fügt die Deklaration zu einem Rumpf ohne Deklaration im private-Abschnitt ein
     /// (legt ihn bei Bedarf an); False, wenn der Typ nicht passend aufgebaut ist.</summary>
     class function AddDeclaration(ATree: TSyntaxTree; const AText: string; const AMethod: TUnmatchedMethod;
@@ -814,95 +835,159 @@ begin
 end;
 
 
-class function TClassCompletion.Unmatched(ATree: TSyntaxTree; const AText: string): TArray<TUnmatchedMethod>;
+type
+  /// <summary>Zuordnung von Deklarationen und Rümpfen eines Typs (Unmatched, DeclaredMethods).</summary>
+  TTypeMatch = record
+    TypeName: string;
+    Declarations: TArray<TIndexSymbol>;
+    DeclarationHeaders: TArray<string>;
+    /// <summary>Rumpf je Deklaration als Index in Bodies; -1 ohne Rumpf, -2 übergangen (abstract, external,
+    /// forward).</summary>
+    BodyOf: TArray<Integer>;
+    Bodies: TArray<TIndexSymbol>;
+    BodyHeaders: TArray<string>;
+    BodyUsed: TArray<Boolean>;
+  end;
+
+/// <summary>Deklarationen und Rümpfe je Typ der Datei, in der Reihenfolge der Typen; generische Typen fehlen.
+/// </summary>
+function MatchMethods(ATree: TSyntaxTree; const AText: string): TArray<TTypeMatch>;
 var
   Lines: TArray<string>;
   UnitIndex: TUnitIndex;
   TypeSymbol, Symbol: TIndexSymbol;
-  Declarations, Bodies: TList<TIndexSymbol>;
-  BodyKeys, BodyConventions: TList<string>;
-  TypeName, Rest, Header, Key: string;
-  Index: Integer;
-  Item: TUnmatchedMethod;
+  Match: TTypeMatch;
+  BodyKeys, BodyConventions: TArray<string>;
+  Rest, Header, Key: string;
+  Declaration, Body: Integer;
+
+  function FreeBody(const AKey: string): Integer;
+  var
+    Candidate: Integer;
+  begin
+    for Candidate := 0 to High(BodyKeys) do
+      if not Match.BodyUsed[Candidate] and (BodyKeys[Candidate] = AKey) then
+        Exit(Candidate);
+    Result := -1;
+  end;
+
 begin
   Result := nil;
   Lines := TTextLines.SplitLines(AText);
   UnitIndex := TIndexExtractor.Extract(ATree, '');
-  Declarations := TList<TIndexSymbol>.Create;
-  Bodies := TList<TIndexSymbol>.Create;
-  BodyKeys := TList<string>.Create;
-  BodyConventions := TList<string>.Create;
-  try
-    for TypeSymbol in UnitIndex.Symbols do
+  for TypeSymbol in UnitIndex.Symbols do
+  begin
+    if not (TypeSymbol.Kind in TypeKinds) then
+      Continue;
+    // Generische Typen brauchen die Typparameter im Kopf; die kennt der Index nicht.
+    Rest := Copy(Lines[TypeSymbol.SelectionRange.EndPos.Line], TypeSymbol.SelectionRange.EndPos.Character + 1,
+      MaxInt);
+    if (TypeSymbol.TypeParams <> '') or TrimLeft(Rest).StartsWith('<') then
+      Continue;
+    Match := Default(TTypeMatch);
+    Match.TypeName := TypeNameOf(TypeSymbol);
+    BodyKeys := nil;
+    BodyConventions := nil;
+    for Symbol in UnitIndex.Symbols do
     begin
-      if not (TypeSymbol.Kind in TypeKinds) then
+      if not (Symbol.Kind in MethodKinds) or not SameText(Symbol.Container, Match.TypeName) then
         Continue;
-      // Generische Typen brauchen die Typparameter im Kopf; die kennt der Index nicht.
-      Rest := Copy(Lines[TypeSymbol.SelectionRange.EndPos.Line], TypeSymbol.SelectionRange.EndPos.Character + 1,
-        MaxInt);
-      if (TypeSymbol.TypeParams <> '') or TrimLeft(Rest).StartsWith('<') then
-        Continue;
-      TypeName := TypeNameOf(TypeSymbol);
-      Declarations.Clear;
-      Bodies.Clear;
-      BodyKeys.Clear;
-      BodyConventions.Clear;
-      for Symbol in UnitIndex.Symbols do
+      Header := Signature(RangeText(Lines, Symbol.Range), Rest);
+      if ContainsLine(TypeSymbol.Range, Symbol.Range.StartPos.Line) then
       begin
-        if not (Symbol.Kind in MethodKinds) or not SameText(Symbol.Container, TypeName) then
-          Continue;
-        if ContainsLine(TypeSymbol.Range, Symbol.Range.StartPos.Line) then
-          Declarations.Add(Symbol)
-        else
-        begin
-          Bodies.Add(Symbol);
-          Header := Signature(RangeText(Lines, Symbol.Range), Rest);
-          BodyKeys.Add(LowerCase(Symbol.Name) + ParameterKey(Header) + ResultKey(Header));
-          BodyConventions.Add(ConventionOfRest(Rest));
-        end;
-      end;
-      for Symbol in Declarations do
+        Match.Declarations := Match.Declarations + [Symbol];
+        Match.DeclarationHeaders := Match.DeclarationHeaders + [Header];
+      end
+      else
       begin
-        Header := Signature(RangeText(Lines, Symbol.Range), Rest);
-        if HasWord(Rest, 'abstract') or HasWord(Rest, 'external') or HasWord(Rest, 'forward') then
-          Continue;
-        Key := LowerCase(Symbol.Name) + ParameterKey(Header) + ResultKey(Header);
-        Index := BodyKeys.IndexOf(Key);
-        // Ohne Parameterliste im Rumpf passt er zur ersten Deklaration gleichen Namens.
-        if Index < 0 then
-          Index := BodyKeys.IndexOf(LowerCase(Symbol.Name));
-        // Eine andere ausdrückliche Aufrufkonvention im Rumpf passt nicht (E2037).
-        if (Index >= 0) and ConventionDiffers(BodyConventions[Index], ConventionOfRest(Rest)) then
-          Index := -1;
-        if Index >= 0 then
-        begin
-          BodyKeys.Delete(Index);
-          BodyConventions.Delete(Index);
-          Bodies.Delete(Index);
-          Continue;
-        end;
-        Item := Default(TUnmatchedMethod);
-        Item.TypeName := TypeName;
-        Item.Symbol := Symbol;
-        Item.Declared := True;
-        Item.Header := Header;
-        Result := Result + [Item];
-      end;
-      for Symbol in Bodies do
-      begin
-        Item := Default(TUnmatchedMethod);
-        Item.TypeName := TypeName;
-        Item.Symbol := Symbol;
-        Item.Header := Signature(RangeText(Lines, Symbol.Range), Rest);
-        Result := Result + [Item];
+        Match.Bodies := Match.Bodies + [Symbol];
+        Match.BodyHeaders := Match.BodyHeaders + [Header];
+        Match.BodyUsed := Match.BodyUsed + [False];
+        BodyKeys := BodyKeys + [LowerCase(Symbol.Name) + ParameterKey(Header) + ResultKey(Header)];
+        BodyConventions := BodyConventions + [ConventionOfRest(Rest)];
       end;
     end;
-  finally
-    BodyConventions.Free;
-    BodyKeys.Free;
-    Bodies.Free;
-    Declarations.Free;
+    SetLength(Match.BodyOf, Length(Match.Declarations));
+    for Declaration := 0 to High(Match.Declarations) do
+    begin
+      Symbol := Match.Declarations[Declaration];
+      Signature(RangeText(Lines, Symbol.Range), Rest);
+      if HasWord(Rest, 'abstract') or HasWord(Rest, 'external') or HasWord(Rest, 'forward') then
+      begin
+        Match.BodyOf[Declaration] := -2;
+        Continue;
+      end;
+      Header := Match.DeclarationHeaders[Declaration];
+      Key := LowerCase(Symbol.Name) + ParameterKey(Header) + ResultKey(Header);
+      Body := FreeBody(Key);
+      // Ohne Parameterliste im Rumpf passt er zur ersten Deklaration gleichen Namens.
+      if Body < 0 then
+        Body := FreeBody(LowerCase(Symbol.Name));
+      // Eine andere ausdrückliche Aufrufkonvention im Rumpf passt nicht (E2037).
+      if (Body >= 0) and ConventionDiffers(BodyConventions[Body], ConventionOfRest(Rest)) then
+        Body := -1;
+      if Body >= 0 then
+        Match.BodyUsed[Body] := True;
+      Match.BodyOf[Declaration] := Body;
+    end;
+    Result := Result + [Match];
   end;
+end;
+
+class function TClassCompletion.Unmatched(ATree: TSyntaxTree; const AText: string): TArray<TUnmatchedMethod>;
+var
+  Match: TTypeMatch;
+  Index: Integer;
+  Item: TUnmatchedMethod;
+begin
+  Result := nil;
+  for Match in MatchMethods(ATree, AText) do
+  begin
+    for Index := 0 to High(Match.Declarations) do
+      if Match.BodyOf[Index] = -1 then
+      begin
+        Item := Default(TUnmatchedMethod);
+        Item.TypeName := Match.TypeName;
+        Item.Symbol := Match.Declarations[Index];
+        Item.Declared := True;
+        Item.Header := Match.DeclarationHeaders[Index];
+        Result := Result + [Item];
+      end;
+    for Index := 0 to High(Match.Bodies) do
+      if not Match.BodyUsed[Index] then
+      begin
+        Item := Default(TUnmatchedMethod);
+        Item.TypeName := Match.TypeName;
+        Item.Symbol := Match.Bodies[Index];
+        Item.Header := Match.BodyHeaders[Index];
+        Result := Result + [Item];
+      end;
+  end;
+end;
+
+class function TClassCompletion.DeclaredMethods(ATree: TSyntaxTree; const AText: string): TArray<TDeclaredMethod>;
+var
+  Matches: TArray<TTypeMatch>;
+  TypeIndex, Index: Integer;
+  Item: TDeclaredMethod;
+begin
+  Result := nil;
+  Matches := MatchMethods(ATree, AText);
+  for TypeIndex := 0 to High(Matches) do
+    for Index := 0 to High(Matches[TypeIndex].Declarations) do
+    begin
+      if Matches[TypeIndex].BodyOf[Index] = -2 then
+        Continue;
+      Item := Default(TDeclaredMethod);
+      Item.TypeName := Matches[TypeIndex].TypeName;
+      Item.TypeOrder := TypeIndex;
+      Item.DeclarationOrder := Index;
+      Item.Declaration := Matches[TypeIndex].Declarations[Index];
+      Item.HasBody := Matches[TypeIndex].BodyOf[Index] >= 0;
+      if Item.HasBody then
+        Item.Body := Matches[TypeIndex].Bodies[Matches[TypeIndex].BodyOf[Index]];
+      Result := Result + [Item];
+    end;
 end;
 
 class function TClassCompletion.AddDeclaration(ATree: TSyntaxTree; const AText: string;

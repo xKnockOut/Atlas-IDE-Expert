@@ -1175,6 +1175,7 @@ begin
     Assert.IsTrue(Page.ExpressionTypeConversionsCheck.Checked);
     Assert.IsTrue(Page.ExpressionTypeConstValueCheck.Checked);
     Assert.AreEqual(ShortCutToText($6054), Page.ExpressionTypeKey.Text);
+    Assert.AreEqual(0, Page.MethodPlacementBox.Choice, 'Methoden wie die Deklaration (#660)');
     // Atlas-Spalte in der Zeilenleiste (#768).
     Assert.IsTrue(Page.GutterColumnCheck.Checked, 'Atlas-Spalte standardmäßig an (#768)');
     Assert.IsTrue(Page.GutterColumnProblemsCheck.Checked);
@@ -1236,6 +1237,7 @@ begin
     Page.ExpressionTypeCheck.Checked := False;
     Page.ExpressionTypeConstValueCheck.Checked := False;
     Page.ExpressionTypeKey.Text := '';
+    Page.MethodPlacementBox.Choice := 2;
     Page.InlineDiagnostics.Choice := 2;
     Page.ProblemsStatusCounterCheck.Checked := False;
     Page.PreviousProblemKey.Text := '';
@@ -1259,6 +1261,7 @@ begin
     Assert.IsFalse(Saved.ExpressionType);
     Assert.IsTrue(Saved.ExpressionTypeConversions);
     Assert.IsFalse(Saved.ExpressionTypeConstValue);
+    Assert.AreEqual('off', Saved.MethodPlacement, 'Methodenreihenfolge abschaltbar');
     Assert.AreEqual(0, Saved.ExpressionTypeKey, 'leer = kein Kuerzel');
     Assert.IsTrue(Saved.GutterColumn);
     Assert.IsTrue(Saved.GutterColumnProblems);
