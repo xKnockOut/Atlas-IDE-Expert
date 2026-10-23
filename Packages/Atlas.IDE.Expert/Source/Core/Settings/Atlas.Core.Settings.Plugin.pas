@@ -661,6 +661,12 @@ type
     EditorToolbarReturnButton: Boolean;
     /// <summary>Text neben den Symbolen (#1101, editor.toolbar.labels).</summary>
     EditorToolbarLabels: Boolean;
+    /// <summary>Atlas-Statusleiste unten am Editor (#1155, editor.statusBar); Hauptschalter. Mit dem Element status
+    /// zieht das Atlas-Feld aus der Statuszeile der IDE in die Leiste.</summary>
+    EditorStatusBar: Boolean;
+    /// <summary>Sichtbare Elemente in Reihenfolge: status, findings, liveCheck, method, durch Komma getrennt (#1155,
+    /// editor.statusBar.items); leer = keine.</summary>
+    EditorStatusBarItems: string;
     /// <summary>Schnelle Lesezeichen, nummeriert und unnummeriert (#1104, bookmarks.quick); Hauptschalter.</summary>
     QuickBookmarks: Boolean;
     /// <summary>Spalte links der Zeilennummern mit den Markern (#1104, bookmarks.quick.gutter).</summary>
@@ -1058,7 +1064,8 @@ uses
   Atlas.Core.Build.OpenBuild,
   Atlas.Core.Settings.OverviewKinds,
   Atlas.Core.Notifications.Sources,
-  Atlas.Core.Settings.ToolbarItems;
+  Atlas.Core.Settings.ToolbarItems,
+  Atlas.Core.Settings.StatusBarItems;
 
 const
   /// <summary>Reihen des Projektverlaufs (#758) wie TAtlasProjectSummaries.TrendKeys (Test prüft Gleichheit).</summary>
@@ -1463,6 +1470,8 @@ begin
   Result.EditorToolbarItems := TAtlasToolbarItems.DefaultText;
   Result.EditorToolbarReturnButton := True;
   Result.EditorToolbarLabels := False;
+  Result.EditorStatusBar := True;
+  Result.EditorStatusBarItems := TAtlasStatusBarItems.DefaultText;
   Result.QuickBookmarks := True;
   Result.QuickBookmarksGutter := True;
   Result.QuickBookmarksGutterClick := True;
@@ -1758,6 +1767,7 @@ begin
   BreadcrumbsKey := EnsureRange(BreadcrumbsKey, 0, $FFFF);
   EditorToolbarPosition := Choice(EditorToolbarPosition, ['belowBreadcrumbs', 'aboveBreadcrumbs', 'inBreadcrumbs']);
   EditorToolbarItems := TAtlasToolbarItems.Normalize(EditorToolbarItems);
+  EditorStatusBarItems := TAtlasStatusBarItems.Normalize(EditorStatusBarItems);
   QuickBookmarkKey := EnsureRange(QuickBookmarkKey, 0, $FFFF);
   QuickBookmarkChordWait := EnsureRange(QuickBookmarkChordWait, 0, MaxQuickChordWait);
   QuickBookmarkSetKey := EnsureRange(QuickBookmarkSetKey, 0, $FFFF);
@@ -2076,6 +2086,8 @@ begin
   EditorToolbarReturnButton := AStore.ReadInteger('EditorToolbarReturnButton',
     BoolValue(Default.EditorToolbarReturnButton)) <> 0;
   EditorToolbarLabels := AStore.ReadInteger('EditorToolbarLabels', BoolValue(Default.EditorToolbarLabels)) <> 0;
+  EditorStatusBar := AStore.ReadInteger('EditorStatusBar', BoolValue(Default.EditorStatusBar)) <> 0;
+  EditorStatusBarItems := AStore.ReadString('EditorStatusBarItems', Default.EditorStatusBarItems);
   QuickBookmarks := AStore.ReadInteger('QuickBookmarks', BoolValue(Default.QuickBookmarks)) <> 0;
   QuickBookmarksGutter := AStore.ReadInteger('QuickBookmarksGutter', BoolValue(Default.QuickBookmarksGutter)) <> 0;
   QuickBookmarksGutterClick := AStore.ReadInteger('QuickBookmarksGutterClick',
@@ -2499,6 +2511,8 @@ begin
   AStore.WriteString('EditorToolbarItems', EditorToolbarItems);
   AStore.WriteInteger('EditorToolbarReturnButton', BoolValue(EditorToolbarReturnButton));
   AStore.WriteInteger('EditorToolbarLabels', BoolValue(EditorToolbarLabels));
+  AStore.WriteInteger('EditorStatusBar', BoolValue(EditorStatusBar));
+  AStore.WriteString('EditorStatusBarItems', EditorStatusBarItems);
   AStore.WriteInteger('QuickBookmarks', BoolValue(QuickBookmarks));
   AStore.WriteInteger('QuickBookmarksGutter', BoolValue(QuickBookmarksGutter));
   AStore.WriteInteger('QuickBookmarksGutterClick', BoolValue(QuickBookmarksGutterClick));

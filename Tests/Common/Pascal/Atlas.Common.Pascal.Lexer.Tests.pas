@@ -103,6 +103,8 @@ end;
 procedure TPascalLexerTests.EscapedReservedWordIsIdentifier;
 begin
   Assert.AreEqual('Identifier:&begin|Symbol:.|Identifier:Name', Describe('&begin.Name'));
+  // #1137: && vor einem Bezeichner gehört zum Bezeichner.
+  Assert.AreEqual('Identifier:TValue|Symbol:.|Identifier:&&op_Equality|Symbol:(', Describe('TValue.&&op_Equality('));
 end;
 
 procedure TPascalLexerTests.ReservedWordAfterAtIsIdentifier;
@@ -118,6 +120,8 @@ begin
   Assert.AreEqual('Number:42|Number:3.14|Number:1e10|Number:2.5E-3|Number:1_000',
     Describe('42 3.14 1e10 2.5E-3 1_000'));
   Assert.AreEqual('Number:$FF|Number:$00_ff|Number:%1010|Number:&17', Describe('$FF $00_ff %1010 &17'));
+  // #1142: führender Trenner wie bei $_FF.
+  Assert.AreEqual('Number:%_0101|Number:$_FF', Describe('%_0101 $_FF'));
 end;
 
 procedure TPascalLexerTests.KeepsRangeOperatorAfterNumber;

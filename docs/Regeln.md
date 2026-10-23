@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 70 |
+| [Fehler finden](#gruppe-find-bugs) | 71 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 14 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 44 |
+| [Stil und Metriken](#gruppe-style) | 47 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
@@ -68,6 +68,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`managed-type-raw-memory`](#managed-type-raw-memory) | FillChar, Move oder GetMem auf verwaltete Typen | Bug | Fehler |
 | [`pchar-of-temporary`](#pchar-of-temporary) | PChar auf einen temporären String | Bug | Warnung |
 | [`out-param-read`](#out-param-read) | out-Parameter gelesen, bevor er gesetzt ist | Bug | Warnung |
+| [`noreturn-returns`](#noreturn-returns) | noreturn-Routine kann normal zurückkehren | Bug | Warnung |
 | [`stringlist-unsorted`](#stringlist-unsorted) | Find oder Duplicates auf einer unsortierten TStringList | Bug | Warnung |
 | [`writeln-in-gui-app`](#writeln-in-gui-app) | Writeln in einem Programm ohne Konsole | Bug | Warnung |
 | [`duplicate-condition`](#duplicate-condition) | Doppelte Bedingung oder gleiche Zweige | Bug | Warnung |
@@ -365,6 +366,9 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`money-as-float`](#money-as-float) | Geldbetrag als Gleitkommazahl | Bug | Hinweis |
 | [`string-if-chain`](#string-if-chain) | Lange if-Kette über denselben String | Code Smell | Hinweis |
 | [`empty-finally`](#empty-finally) | Leerer finally-Block | Code Smell | Hinweis |
+| [`override-only-inherited`](#override-only-inherited) | override ruft nur inherited auf | Code Smell | Hinweis |
+| [`inherited-without-ancestor`](#inherited-without-ancestor) | inherited ohne Methode im Vorfahr | Code Smell | Hinweis |
+| [`redundant-jump`](#redundant-jump) | Überflüssiges Exit oder Continue | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -3321,6 +3325,34 @@ Richtig:
 procedure Anhaengen(var Text: string);
 begin
   Text := Text + sLineBreak + 'Ende';
+end;
+```
+
+<a id="noreturn-returns"></a>
+### noreturn-returns
+
+**noreturn-Routine kann normal zurückkehren** · Bug · Warnung · Gruppe Fehler finden
+
+Eine mit noreturn markierte Routine (ab Delphi 13) darf nur über raise, Abort, Halt, RunError oder den Aufruf einer anderen noreturn-Routine enden. Erreicht ein Weg das Ende des Rumpfs oder ein Exit, kehrt sie normal zurück; der Compiler hat den Code nach dem Aufruf weggelassen, das Verhalten ist undefiniert. Die Direktive zählt an der Implementierung und an der Deklaration (interface, Klasse). Aufrufe, deren Ziel weder die Datei, die Standardroutinen noch der Symbolindex kennt, könnten selbst noreturn sein und beenden den Weg ebenfalls; gemeldet werden also nur Wege aus bekannten Anweisungen. Unvollständiger Kontrollfluss (asm, Syntaxfehler) bleibt still. Exit wird an der Anweisung gemeldet, das Ende des Rumpfs am Routinennamen. Konfidenz hoch. Keine Schnellkorrektur.
+
+Mit Treffer:
+
+```pascal
+procedure Fehler(const AText: string); noreturn;
+begin
+  if AText <> '' then
+    raise EImport.Create(AText);
+end;
+```
+
+Richtig:
+
+```pascal
+procedure Fehler(const AText: string); noreturn;
+begin
+  if AText = '' then
+    raise EImport.Create('Unbekannter Fehler');
+  raise EImport.Create(AText);
 end;
 ```
 
@@ -7484,6 +7516,88 @@ Richtig:
 procedure TKreis.Zeichnen(C: TCanvas);
 begin
   C.Ellipse(FRahmen);
+end;
+```
+
+<a id="override-only-inherited"></a>
+### override-only-inherited
+
+**override ruft nur inherited auf** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine überschreibende Methode, deren Rumpf nur die geerbte Methode aufruft: ein bloßes inherited;, inherited Name oder inherited Name(A, B) mit den eigenen Parametern in unveränderter Reihenfolge, in Funktionen nur Result := inherited Name(…). Sie tut nichts Eigenes und täuscht ein geändertes Verhalten vor. Still, wenn die Methode die Sichtbarkeit der geerbten ändert (protected zu public), ein Attribut, Standardwerte oder die Direktiven final, deprecated, experimental, platform, library oder reintroduce trägt, lokale Deklarationen, mehr als eine Anweisung, Kommentare oder bedingte Direktiven im Rumpf hat oder die überschriebene Methode unbekannt ist (Vorfahr nicht im Index; virtuelle Methoden von TObject gelten als public). Sicherheit hoch. Korrektur: Deklaration und Rumpf entfernen, samt XMLDoc-Kommentaren und der Leerzeile hinter dem Rumpf.
+
+Mit Treffer:
+
+```pascal
+type
+  TKundenForm = class(TForm)
+  protected
+    procedure Loaded; override;
+  end;
+
+procedure TKundenForm.Loaded;
+begin
+  inherited Loaded;
+end;
+```
+
+Richtig:
+
+```pascal
+type
+  TKundenForm = class(TForm)
+  end;
+```
+
+<a id="inherited-without-ancestor"></a>
+### inherited-without-ancestor
+
+**inherited ohne Methode im Vorfahr** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Ein bloßes inherited; in einer Methode, die kein Vorfahr deklariert (neue Methode, kein override), tut nichts. Das deutet auf ein vergessenes override oder einen Tippfehler im Namen. Nicht gemeldet: Message-Handler (inherited ruft dort DefaultHandler), Klassen- und statische Methoden, Konstruktoren und Destruktoren, override und reintroduce, inherited in anonymen Methoden, Vorfahren mit einem gleichnamigen Mitglied (auch nicht virtuell) und unbekannte Vorfahren. Vorfahren aus anderen Units liefert der Symbolindex; Methoden von TObject gelten als bekannt, wenn System nicht im Index steht. Sicherheit hoch. Korrektur: inherited entfernen, wenn es als eigene Anweisung in einem begin…end steht.
+
+Mit Treffer:
+
+```pascal
+procedure TImport.Vorbereiten;
+begin
+  inherited;
+  FZeilen.Clear;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TImport.Vorbereiten;
+begin
+  FZeilen.Clear;
+end;
+```
+
+<a id="redundant-jump"></a>
+### redundant-jump
+
+**Überflüssiges Exit oder Continue** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Ein bloßes Exit; als letzte Anweisung einer Routine oder anonymen Methode, oder ein bloßes Continue; als letzte Anweisung eines Schleifenrumpfs (for, for-in, while, repeat), auch im letzten Zweig eines if am Ende (der then-Zweig nur ohne else; then Continue else … bewacht eine else-if-Kette). Der Sprung ändert nichts. Nicht gemeldet: Exit mit Wert, Sprünge in try…finally oder try…except (der Sprung löst den finally-Teil bewusst aus), in case, qualifizierte Namen wie System.Continue, Anweisungen mit goto-Marke und Rümpfe mit bedingten Direktiven. Sicherheit hoch. Korrektur: die Anweisung entfernen, wenn sie in einem begin…end oder direkt in repeat steht.
+
+Mit Treffer:
+
+```pascal
+procedure TPuffer.Leeren;
+begin
+  FLaenge := 0;
+  Exit;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TPuffer.Leeren;
+begin
+  FLaenge := 0;
 end;
 ```
 

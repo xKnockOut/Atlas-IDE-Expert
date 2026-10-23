@@ -92,6 +92,8 @@ type
     [Test]
     procedure EditorToolbarRoundTrip;
     [Test]
+    procedure EditorStatusBarRoundTrip;
+    [Test]
     procedure QuickBookmarksRoundTrip;
     [Test]
     procedure WelcomeSettingsRoundTrip;
@@ -2121,6 +2123,27 @@ begin
     Assert.AreEqual('Atlas.NavBack', Saved.EditorToolbarItems);
     Assert.IsTrue(Saved.EditorToolbar);
     Assert.IsTrue(Saved.EditorToolbarReturnButton);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.EditorStatusBarRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // #1155: Schalter und Elemente als Text; beim Speichern bereinigt (unbekannte weg, doppelte einmal).
+  Settings := TAtlasPluginSettings.Defaults;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.AreEqual('status,findings,liveCheck,method', Page.EditorStatusBarItemsEdit.Text);
+    Page.EditorStatusBarItemsEdit.Text := ' method , foo, status, method ';
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.AreEqual('method,status', Saved.EditorStatusBarItems);
+    Assert.IsTrue(Saved.EditorStatusBar);
   finally
     Page.Free;
   end;

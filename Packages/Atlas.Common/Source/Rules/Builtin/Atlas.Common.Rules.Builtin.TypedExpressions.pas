@@ -866,7 +866,8 @@ var
     Last: TSyntaxNode;
   begin
     Dimensions := AArray.ChildCount - 1;
-    if AValue.Kind <> TSyntaxKind.ParenExpr then
+    // () setzt alle Elemente auf null, wie bei Records (#1138).
+    if (AValue.Kind <> TSyntaxKind.ParenExpr) or (AValue.ChildCount = 0) then
       Exit;
     if ADimension >= Dimensions then
     begin

@@ -16,7 +16,10 @@
 // Korrektur, bedingtes Anlegen, Hilfsmethode des Destruktors, Option
 // onlyAfterRaisingCode, stille Muster, Abschalten und Ausnahmen; handle-leak
 // (#1088): Beispiel mit Korrektur, Prüfung auf INVALID_HANDLE_VALUE, out-
-// Argument (RegOpenKeyEx), nicht jeder Weg, Option pairs, stille Muster.
+// Argument (RegOpenKeyEx), nicht jeder Weg, Option pairs, stille Muster;
+// noreturn-returns (#1132): Beispiel, Exit, Methoden, Ende über raise, Halt
+// und andere noreturn-Routinen, unbekannte Aufrufe mit und ohne Index,
+// Abschalten.
 
 interface
 
@@ -109,6 +112,21 @@ type
     procedure HandleLeakPairsAndOff;
   end;
 
+  [TestFixture]
+  TNoreturnReturnsTests = class
+  public
+    [Test]
+    procedure IssueExample;
+    [Test]
+    procedure ExitAndMethods;
+    [Test]
+    procedure EndingPathsAreSilent;
+    [Test]
+    procedure UnknownCallsUseIndex;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
 implementation
 
 uses
@@ -126,6 +144,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Configuration.Parser,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Tests.RuleAssert;
 
 function Routine(const ABody: string; const AHeader: string = 'function F: Integer;';
@@ -1133,7 +1154,140 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
+{ TNoreturnReturnsTests }
+
+/// <summary>Unit mit der noreturn-Deklaration im interface und dem Rumpf ABody der Implementierung.</summary>
+function Abbruch(const ABody: string): string;
+begin
+  Result := 'unit Import;'#10'interface'#10'procedure Fehler(const AText: string); noreturn;'#10 +
+    'procedure Melden(const AText: string);'#10'implementation'#10 +
+    'procedure Melden(const AText: string);'#10'begin'#10'end;'#10 +
+    'procedure Fehler(const AText: string);'#10'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+function NoreturnFindings(const ASource: string; const AConfig: string = ''; const APath: string = ''):
+  TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.Findings(TNoreturnReturnsRule.Create, ASource, AConfig, APath);
+end;
+
+function IndexWith(const ASource: string): ISymbolIndex;
+var
+  mTree: TSyntaxTree;
+begin
+  Result := TSymbolIndex.Create;
+  mTree := TPascalParser.Parse(ASource);
+  try
+    Result.AddUnit(TIndexExtractor.Extract(mTree, 'C:\Quellen\Werkzeug.pas'));
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TNoreturnReturnsTests.IssueExample;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := NoreturnFindings(Abbruch('  if AText <> '''' then'#10'    raise EImport.Create(AText);'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Fehler kann am Ende normal zurückkehren, obwohl die Routine noreturn ist.', mFound[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[0].Confidence));
+  // Am Namen der Implementierung (Zeile 8), nicht an der Deklaration.
+  Assert.AreEqual(8, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(10, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
+  // Leerer Rumpf und Rumpf ohne raise.
+  Assert.AreEqual(1, Integer(Length(NoreturnFindings(Abbruch('')))));
+  Assert.AreEqual(1, Integer(Length(NoreturnFindings(Abbruch('  Melden(AText);'#10)))));
+end;
+
+procedure TNoreturnReturnsTests.ExitAndMethods;
+const
+  cKlasse = 'unit Import;'#10'interface'#10'type'#10'  TImport = class'#10 +
+    '    procedure Abbrechen; noreturn;'#10'    procedure Beenden; noreturn;'#10'  end;'#10'implementation'#10 +
+    'procedure TImport.Abbrechen;'#10'begin'#10'  %s'#10'end;'#10 +
+    'procedure TImport.Beenden;'#10'begin'#10'  %s'#10'end;'#10'end.';
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // Exit an der Anweisung; der Weg danach endet mit raise.
+  mFound := NoreturnFindings(Abbruch('  if AText = '''' then'#10'    Exit;'#10'  raise EImport.Create(AText);'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Exit verlässt Fehler normal, obwohl die Routine noreturn ist.', mFound[0].Message);
+  Assert.AreEqual(11, mFound[0].Range.StartPos.Line);
+  // Methoden: Direktive an der Klassendeklaration; Aufruf einer anderen noreturn-Methode beendet den Weg.
+  mFound := NoreturnFindings(Format(cKlasse, ['raise EAbort.Create(''x'');', 'Abbrechen;']));
+  Assert.AreEqual(0, Integer(Length(mFound)));
+  mFound := NoreturnFindings(Format(cKlasse, ['Beenden;', 'Self.Abbrechen;']));
+  Assert.AreEqual(0, Integer(Length(mFound)));
+  mFound := NoreturnFindings(Format(cKlasse, ['Beenden;', '']));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Beenden kann am Ende normal zurückkehren, obwohl die Routine noreturn ist.', mFound[0].Message);
+end;
+
+procedure TNoreturnReturnsTests.EndingPathsAreSilent;
+const
+  cBodies: array[0..7] of string = (
+    '  raise EImport.Create(AText);'#10,
+    '  if AText = '''' then'#10'    raise EImport.Create(''leer'')'#10'  else'#10 +
+      '    raise EImport.Create(AText);'#10,
+    '  Melden(AText);'#10'  Halt(1);'#10,
+    '  RunError(204);'#10,
+    '  Abort;'#10,
+    '  try'#10'    Melden(AText);'#10'  finally'#10'    Melden(''x'');'#10'  end;'#10'  raise EImport.Create(AText);'#10,
+    // Ende über eine andere noreturn-Routine (hier die Routine selbst: Rekursion).
+    '  Fehler(AText + ''!'');'#10,
+    // Exit nach Halt ist nicht erreichbar.
+    '  Halt(1);'#10'  Exit;'#10);
+var
+  mBody: string;
+begin
+  for mBody in cBodies do
+    Assert.AreEqual(0, Integer(Length(NoreturnFindings(Abbruch(mBody)))), mBody);
+  // Ohne noreturn meldet die Regel nichts.
+  Assert.AreEqual(0, Integer(Length(NoreturnFindings(Abbruch('').Replace(' noreturn;', '')))));
+  // asm: Der Graph ist unvollständig.
+  Assert.AreEqual(0, Integer(Length(NoreturnFindings(Abbruch('  asm'#10'    nop'#10'  end;'#10)))));
+end;
+
+procedure TNoreturnReturnsTests.UnknownCallsUseIndex;
+const
+  cWerkzeug = 'unit Werkzeug;'#10'interface'#10'procedure Protokolliere(const AText: string);'#10 +
+    'procedure Ausnahme(const AText: string); noreturn;'#10'implementation'#10 +
+    'procedure Protokolliere(const AText: string);'#10'begin'#10'end;'#10 +
+    'procedure Ausnahme(const AText: string);'#10'begin'#10'  raise EImport.Create(AText);'#10'end;'#10'end.';
+var
+  mIndex: ISymbolIndex;
+  mSource: string;
+begin
+  // Ohne Index könnte Protokolliere selbst noreturn sein: still.
+  mSource := Abbruch('  Protokolliere(AText);'#10);
+  Assert.AreEqual(0, Integer(Length(NoreturnFindings(mSource))));
+  Assert.AreEqual(0, Integer(Length(NoreturnFindings(Abbruch('  FLog.Add(AText);'#10)))));
+  Assert.AreEqual(0, Integer(Length(NoreturnFindings(Abbruch('  inherited;'#10)))));
+  // Mit Index: Protokolliere kehrt zurück, Ausnahme nicht.
+  mIndex := IndexWith(cWerkzeug);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TNoreturnReturnsRule.Create, mSource, mIndex, '',
+    'Import.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TNoreturnReturnsRule.Create,
+    Abbruch('  Protokolliere(AText);'#10'  Ausnahme(AText);'#10), mIndex, '', 'Import.pas'))));
+end;
+
+procedure TNoreturnReturnsTests.OffAndExclude;
+var
+  mSource: string;
+begin
+  mSource := Abbruch('');
+  Assert.AreEqual(1, Integer(Length(NoreturnFindings(mSource, '', 'Source/Import.pas'))));
+  Assert.AreEqual(0, Integer(Length(NoreturnFindings(mSource, '{"rules": {"noreturn-returns": "off"}}',
+    'Source/Import.pas'))));
+  Assert.AreEqual(0, Integer(Length(NoreturnFindings(mSource,
+    '{"rules": {"noreturn-returns": {"exclude": ["Source/*.pas"]}}}', 'Source/Import.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TFlowRulesTests);
+  TDUnitX.RegisterTestFixture(TNoreturnReturnsTests);
 
 end.

@@ -14,6 +14,10 @@
 //   dem Fehlertext am Zeilenende (#509).
 // - Kein Klickziel: Die Werte sind Information; die Regeln metric-* melden
 //   Überschreitungen als Problem.
+// Die Atlas-Statusleiste (#1155) liest Zeilen und CC der Methode am Cursor
+// aus demselben Abruf (Latest); braucht sie Metriken, meldet sie das über
+// Want, dann fragt der Zeitgeber auch bei ausgeschalteter Lens (gezeichnet
+// wird nur mit Lens). So gibt es eine Anfrage je Stand, nicht zwei.
 // Abschaltbar über die Einstellung „Code Lens mit Code-Metriken“
 // (codeLens.metrics, auch als Schnellschalter); die Server-Einstellung
 // codeLens.metrics in settings.json schaltet sie ebenfalls ab. Ausblenden am
@@ -66,6 +70,8 @@ type
     FFormats: TAtlasMetricFormats;
     FStructureFormats: TAtlasStructureFormats;
     FShowing: Boolean;
+    class var FCurrent: TAtlasEditorMetricsLens;
+    class var FDemand: Boolean;
     procedure Tick(Sender: TObject);
     procedure Fetch;
     procedure Clear;
@@ -77,6 +83,10 @@ type
   public
     constructor Create(const ASession: TAtlasMetricsLensSessionFunc);
     destructor Destroy; override;
+    /// <summary>Metriken auch ohne Lens holen (Atlas-Statusleiste, #1155).</summary>
+    class procedure Want(AOn: Boolean); static;
+    /// <summary>Letzte Antwort für AFileName; False ohne (andere Datei, noch nicht geholt, kein Server).</summary>
+    class function Latest(const AFileName: string; out AMetrics: TAtlasFileMetrics): Boolean; static;
   end;
 
 implementation
@@ -132,12 +142,15 @@ begin
   FTimer.Interval := 250;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
+  FCurrent := Self;
 end;
 
 destructor TAtlasEditorMetricsLens.Destroy;
 var
   Services: INTACodeEditorServices;
 begin
+  if FCurrent = Self then
+    FCurrent := nil;
   FTimer.Free;
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
@@ -181,6 +194,26 @@ begin
     not TAtlasGuard.Disabled(TAtlasFeature.CodeLens);
 end;
 
+/// <summary>Holen: für die Lens oder auf Wunsch der Statusleiste (Want).</summary>
+function Fetching(const ASettings: TAtlasPluginSettings; ADemand: Boolean): Boolean;
+begin
+  Result := Wanted(ASettings) or (ADemand and ASettings.Enabled and ASettings.Metrics and
+    not TAtlasGuard.Disabled(TAtlasFeature.CodeLens));
+end;
+
+class procedure TAtlasEditorMetricsLens.Want(AOn: Boolean);
+begin
+  FDemand := AOn;
+end;
+
+class function TAtlasEditorMetricsLens.Latest(const AFileName: string; out AMetrics: TAtlasFileMetrics): Boolean;
+begin
+  AMetrics := Default(TAtlasFileMetrics);
+  Result := (FCurrent <> nil) and (FCurrent.FFetchedFile <> '') and SameText(FCurrent.FFetchedFile, AFileName);
+  if Result then
+    AMetrics := FCurrent.FMetrics;
+end;
+
 function IsSource(const AFileName: string): Boolean;
 var
   Extension: string;
@@ -210,7 +243,7 @@ var
   Moment: Cardinal;
 begin
   try
-    if not Wanted(TAtlasIdeSettings.Current) then
+    if not Fetching(TAtlasIdeSettings.Current, FDemand) then
     begin
       Clear;
       Exit;
@@ -289,7 +322,9 @@ begin
   FFormats := Formats;
   FStructureFormats := StructureFormats;
   FShowing := Metrics.Enabled and ((Length(Metrics.Methods) > 0) or (Length(Metrics.Structures) > 0));
-  Invalidate;
+  // Nur für die Statusleiste geholt: Der Editor zeigt nichts davon.
+  if Wanted(TAtlasIdeSettings.Current) then
+    Invalidate;
 end;
 
 procedure TAtlasEditorMetricsLens.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;

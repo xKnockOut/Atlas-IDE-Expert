@@ -227,7 +227,8 @@ uses
   Vcl.Themes,
   Atlas.Core.Style.Color,
   Atlas.Core.Problems.Colors,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Problems.KindIcon;
 
 {$R *.dfm}
 
@@ -238,7 +239,6 @@ const
   NewMs = 1500;
   IconSize = 16;
   /// <summary>Symbole der Arten; dahinter dieselben ausgegraut (#1108).</summary>
-  KindColors: array[TAtlasFindingKind] of TColor = ($003C3CD8, $0020A8F0, $00D08030);
   DimmedImageOffset = 3;
   PinMark = #$D83D#$DCCC;
   CheckMark = #$2713;
@@ -479,20 +479,18 @@ procedure TAtlasProblemsFrame.BuildImages;
 var
   Kind: TAtlasFindingKind;
   Bitmap: TBitmap;
-  Size, Pad, Pass: Integer;
-  Points: array[0..2] of TPoint;
-  mColor, Mark: TColor;
+  Size, Pass: Integer;
+  mColor, Mark, WarningMark: TColor;
 begin
   // Zuerst die drei Arten, dahinter dieselben Formen ausgegraut für nicht geöffnete Units (#1108): aufgehellt bzw.
   // abgedunkelt zur Fläche der Liste, damit Fehler weiter von Warnungen unterscheidbar bleiben.
   FImagesBack := ListBack;
   FImages.Clear;
   Size := FImages.Width;
-  Pad := Size div 8;
   for Pass := 0 to 1 do
     for Kind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
     begin
-      mColor := KindColors[Kind];
+      mColor := TAtlasFindingIcon.KindColor(Kind);
       Mark := clWhite;
       if Pass = 1 then
       begin
@@ -504,50 +502,11 @@ begin
         Bitmap.SetSize(Size, Size);
         Bitmap.Canvas.Brush.Color := clFuchsia;
         Bitmap.Canvas.FillRect(Rect(0, 0, Size, Size));
-        Bitmap.Canvas.Brush.Color := mColor;
-        Bitmap.Canvas.Pen.Color := mColor;
-        Bitmap.Canvas.Font.Color := Mark;
-        Bitmap.Canvas.Font.Style := [fsBold];
-        Bitmap.Canvas.Font.Height := -(Size - 2 * Pad);
-        Bitmap.Canvas.Pen.Width := Max(1, Size div 8);
-        case Kind of
-          TAtlasFindingKind.Error:
-            begin
-              // Rotes Kreuz im Kreis.
-              Bitmap.Canvas.Ellipse(Pad, Pad, Size - Pad, Size - Pad);
-              Bitmap.Canvas.Pen.Color := Mark;
-              Bitmap.Canvas.MoveTo(Size div 3, Size div 3);
-              Bitmap.Canvas.LineTo(Size - Size div 3, Size - Size div 3);
-              Bitmap.Canvas.MoveTo(Size - Size div 3 - 1, Size div 3);
-              Bitmap.Canvas.LineTo(Size div 3 - 1, Size - Size div 3);
-            end;
-          TAtlasFindingKind.Warning:
-            begin
-              // Gelb-oranges Dreieck mit Ausrufezeichen.
-              Points[0] := Point(Size div 2, Pad);
-              Points[1] := Point(Size - Pad, Size - Pad);
-              Points[2] := Point(Pad, Size - Pad);
-              Bitmap.Canvas.Polygon(Points);
-              if Pass = 1 then
-                Bitmap.Canvas.Pen.Color := TColor(DimmedIconColor(TAtlasColor(clBlack), TAtlasColor(FImagesBack)))
-              else
-                Bitmap.Canvas.Pen.Color := clBlack;
-              Bitmap.Canvas.MoveTo(Size div 2, Size * 2 div 5);
-              Bitmap.Canvas.LineTo(Size div 2, Size * 2 div 3);
-              Bitmap.Canvas.MoveTo(Size div 2, Size - 2 * Pad - 1);
-              Bitmap.Canvas.LineTo(Size div 2, Size - 2 * Pad);
-            end;
-        else
-          begin
-            // Blauer Kreis mit „i“.
-            Bitmap.Canvas.Ellipse(Pad, Pad, Size - Pad, Size - Pad);
-            Bitmap.Canvas.Pen.Color := Mark;
-            Bitmap.Canvas.MoveTo(Size div 2, Size * 2 div 5 + 1);
-            Bitmap.Canvas.LineTo(Size div 2, Size - Size div 4);
-            Bitmap.Canvas.MoveTo(Size div 2, Size div 4);
-            Bitmap.Canvas.LineTo(Size div 2, Size div 4 + 1);
-          end;
-        end;
+        // Schwarzes Ausrufezeichen auf dem Dreieck, ausgegraut wie die Fläche.
+        WarningMark := clBlack;
+        if Pass = 1 then
+          WarningMark := TColor(DimmedIconColor(TAtlasColor(clBlack), TAtlasColor(FImagesBack)));
+        TAtlasFindingIcon.Draw(Bitmap.Canvas, Rect(0, 0, Size, Size), Kind, mColor, Mark, WarningMark);
         FImages.AddMasked(Bitmap, clFuchsia);
       finally
         Bitmap.Free;

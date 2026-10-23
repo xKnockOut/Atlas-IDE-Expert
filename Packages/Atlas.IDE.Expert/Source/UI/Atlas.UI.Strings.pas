@@ -700,7 +700,14 @@ type
     // Element „Schnelle Lesezeichen“ im Menü „Ausblenden“ (#1104).
     ElementQuickBookmarks, ElementQuickBookmarksPlural,
     // Seite Prüfregeln: Weg zum Dialog der globalen Einstellungen (#909).
-    RulesGlobalButton);
+    RulesGlobalButton,
+    // Atlas-Statusleiste unten am Editor (#1155).
+    SettingsEditorStatusBar, SettingsEditorStatusBarItems, StatusBarCustomize, StatusBarItemStatus,
+    StatusBarItemFindings, StatusBarItemLiveCheck, StatusBarItemMethod, StatusBarHide, StatusBarLive, StatusBarOnSave,
+    StatusBarChecking, StatusBarCheckedAgo, StatusBarSeconds, StatusBarMinutes, StatusBarHours, StatusBarLines,
+    StatusBarCyclomatic, StatusBarLimit, StatusBarFindingsHint, StatusBarLiveOnHint, StatusBarLiveOffHint,
+    StatusBarLastCheck, StatusBarMethodJump, StatusBarNoMethod, StatusBarNoFindingOfKind, StatusBarStatusClicks,
+    StatusBarReady);
 
   TAtlasStrings = class
   private class var
@@ -2286,7 +2293,17 @@ const
      'Schnelle Lesezeichen sind ausgeschaltet (bookmarks.quick).',
      'Nr.',
      'nur diese Datei', 'Marker eines schnellen Lesezeichens', 'Marker der schnellen Lesezeichen',
-     'Globale Prüfregeln bearbeiten …'),
+     'Globale Prüfregeln bearbeiten …',
+     'Atlas-Statusleiste unten am Editor (Status, Meldungen dieser Unit, Live-Prüfung, aktuelle Methode)',
+     'Elemente (status, findings, liveCheck, method; leer = keine):',
+     'Leiste anpassen …', 'Server-Status', 'Meldungen dieser Unit', 'Live-Prüfung', 'Aktuelle Methode',
+     'Statusleiste ausblenden', 'live', 'beim Speichern', 'prüft …', 'geprüft vor %s', '%d s', '%d min', '%d h',
+     '%d Zeilen', 'CC %d', '%s (Grenze %d)',
+     'In dieser Unit: %d Fehler, %d Warnungen, %d Hinweise. Klick: nächster Befund dieser Art, Doppelklick: ' +
+     '„Atlas-Prüfung“ für diese Unit.',
+     'Prüft beim Tippen (problems.live).', 'Prüft erst nach dem Speichern (problems.live aus).',
+     'Letzte Prüfung: %s in %d ms um %s', 'Klick: zum Methodenkopf', 'keine Methode',
+     'Keine Befunde dieser Art in der Unit.', 'Klick: Atlas-Status · Rechtsklick: Schnellschalter', 'bereit'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3778,7 +3795,17 @@ const
      'Quick bookmarks are switched off (bookmarks.quick).',
      'No.',
      'this file only', 'quick bookmark marker', 'quick bookmark markers',
-     'Edit global rules …'));
+     'Edit global rules …',
+     'Atlas status bar below the editor (status, findings in this unit, live check, current method)',
+     'Items (status, findings, liveCheck, method; empty = none):',
+     'Customize bar …', 'Server status', 'Findings in this unit', 'Live check', 'Current method',
+     'Hide status bar', 'live', 'on save', 'checking …', 'checked %s ago', '%d s', '%d min', '%d h',
+     '%d lines', 'CC %d', '%s (limit %d)',
+     'In this unit: %d errors, %d warnings, %d hints. Click: next finding of this kind, double-click: ' +
+     '“Atlas check” for this unit.',
+     'Checks while you type (problems.live).', 'Checks only after saving (problems.live off).',
+     'Last check: %s in %d ms at %s', 'Click: go to the method header', 'no method',
+     'No findings of this kind in this unit.', 'Click: Atlas status · Right-click: quick toggles', 'ready'));
 
 { TAtlasStrings }
 

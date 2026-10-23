@@ -57,6 +57,11 @@ jobs:
       - name: Versionen von Server und Claude-Code-Plugin gleich
         shell: pwsh
         run: ./Tools/Check-Version.ps1
+      - name: Release-Notizen der aktuellen Version passen in ein GitHub Release
+        shell: pwsh
+        run: |
+          $unit = Get-Content -Raw Packages/Atlas.Text/Source/Product/Atlas.Text.Product.Version.pas
+          ./Tools/Get-ReleaseNotes.ps1 -Version ([regex]::Match($unit, "Version\s*=\s*'([^']+)'").Groups[1].Value) | Out-Null
       - name: Keine Embarcadero-Quellen in Tests (#77)
         shell: pwsh
         run: ./Tools/Check-NoEmbarcaderoSources.ps1

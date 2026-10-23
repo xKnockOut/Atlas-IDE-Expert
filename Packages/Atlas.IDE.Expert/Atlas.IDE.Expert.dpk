@@ -546,6 +546,12 @@ contains
   Atlas.UI.EditorToolbar.Glyphs in 'Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Glyphs.pas',
   Atlas.UI.EditorToolbar.Bar in 'Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Bar.pas',
   Atlas.UI.EditorToolbar.Customize in 'Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Customize.pas',
-  Atlas.IDE.EditorToolbar.Service in 'Source\IDE\EditorToolbar\Atlas.IDE.EditorToolbar.Service.pas';
+  Atlas.IDE.EditorToolbar.Service in 'Source\IDE\EditorToolbar\Atlas.IDE.EditorToolbar.Service.pas',
+  Atlas.Core.Settings.StatusBarItems in 'Source\Core\Settings\Atlas.Core.Settings.StatusBarItems.pas',
+  Atlas.Core.StatusBar.Layout in 'Source\Core\StatusBar\Atlas.Core.StatusBar.Layout.pas',
+  Atlas.Core.StatusBar.Content in 'Source\Core\StatusBar\Atlas.Core.StatusBar.Content.pas',
+  Atlas.UI.Problems.KindIcon in 'Source\UI\Problems\Atlas.UI.Problems.KindIcon.pas',
+  Atlas.UI.StatusBar.Bar in 'Source\UI\StatusBar\Atlas.UI.StatusBar.Bar.pas',
+  Atlas.IDE.StatusBar.Service in 'Source\IDE\StatusBar\Atlas.IDE.StatusBar.Service.pas';
 
 end.
