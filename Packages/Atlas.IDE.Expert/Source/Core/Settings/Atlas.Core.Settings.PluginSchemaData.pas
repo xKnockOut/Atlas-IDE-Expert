@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4254] of string = (
+  Lines: array[0..4277] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -1033,6 +1033,31 @@ const
     '      "x-parent": "debug.displayRules",',
     '      "x-control": "Kontrollkästchen",',
     '      "x-issue": "#854"',
+    '    },',
+    '    "DebugStepIntoTarget": {',
+    '      "description": "Gezielt hineinspringen: Strg+Alt+F7 (auch im Kontextmenü des Editors und in der Befehlspalette) zeigt im angehaltenen Zustand alle Aufrufe der Anweisung am Ausführungspunkt in Au' +
+      'sführungsreihenfolge (Argumente vor dem Aufruf, Getter gekennzeichnet) und springt in den gewählten; Wahl mit ↑/↓ und Enter oder 1–9. Routinen ohne Quelltext und Bibliothekscode ohne Debug-DCUs stehen' +
+      ' ausgegraut da. Bei virtuellen Methoden entscheidet der Laufzeittyp. Hat die Anweisung nur einen Aufruf, wirkt der Befehl wie F7. Aus = Kürzel frei, kein Menüeintrag.",',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "debug.stepIntoTarget",',
+    '      "x-area": "debug",',
+    '      "x-feature": "Debugger",',
+    '      "x-page": "Debuggen",',
+    '      "x-caption": "Gezielt hineinspringen",',
+    '      "x-captionEn": "Step into specific call",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "x-issue": "#836"',
+    '    },',
+    '    "DebugStepIntoTargetKey": {',
+    '      "description": "Tastenkürzel „Gezielt hineinspringen“ (0 = keins).",',
+    '      "type": "integer",',
+    '      "default": 49270,',
+    '      "x-key": "debug.stepIntoTarget.key",',
+    '      "x-area": "debug",',
+    '      "x-format": "shortcut",',
+    '      "x-page": "Debuggen",',
+    '      "x-issue": "#836"',
     '    },',
     '    "TestsBuildFirst": {',
     '      "type": "boolean",',

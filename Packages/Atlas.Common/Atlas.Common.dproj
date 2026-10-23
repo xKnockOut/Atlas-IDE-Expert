@@ -321,6 +321,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InvertBoolean.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Unwrap.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Unwrap.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StepTargets.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.InterfaceStubs.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StringLiteralCommands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SlashMenu.pas"/>
@@ -443,6 +444,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Preprocessor.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.XmlDoc.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.SystemIntrinsics.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.StepCalls.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -187,6 +187,7 @@ uses
   Atlas.IDE.StartProfiles.Service,
   Atlas.IDE.Debug.Visualizers,
   Atlas.IDE.Debug.DisplayRules,
+  Atlas.IDE.Debug.StepInto,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Editor.TestUnitLens,
   Atlas.IDE.Hover.Editor,
@@ -1077,6 +1078,16 @@ begin
   TAtlasIdeUnwrap.Run;
 end;
 
+function StepIntoTargetVisible: Boolean;
+begin
+  Result := TAtlasIdeStepInto.Enabled;
+end;
+
+procedure StepIntoTarget;
+begin
+  TAtlasIdeStepInto.Run;
+end;
+
 procedure CompleteStatement;
 begin
   TAtlasIdeStatementCompletion.Run;
@@ -1306,6 +1317,9 @@ begin
     NewLineAroundVisible);
   // Umschließung entfernen (#657); nur sichtbar, solange keys.unwrap an ist.
   Add('Atlas.Unwrap', TAtlasTextId.UnwrapCommand, Guarded(TAtlasFeature.Unwrap, Unwrap), UnwrapVisible);
+  // Gezielt hineinspringen (#836); nur sichtbar, solange debug.stepIntoTarget an ist.
+  Add('Atlas.StepIntoTarget', TAtlasTextId.StepIntoTargetCommand,
+    Guarded(TAtlasFeature.Debugger, StepIntoTarget), StepIntoTargetVisible);
   // Mehrere Einfügemarken (#589).
   Add('Atlas.MultiCursorNext', TAtlasTextId.MultiCursorNextCommand,
     Guarded(TAtlasFeature.MultiCursor, MultiCursorNext), MultiCursorVisible);
@@ -2533,6 +2547,18 @@ begin
     begin
       MessageLine(AText);
     end);
+  // Gezielt hineinspringen (#836): Liste der Aufrufe am Ausführungspunkt; Meldungen in der Meldungsansicht.
+  TAtlasIdeStepInto.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
   // Übersichtsleiste an der Scrollleiste (#519).
   // Mit schnellen Lesezeichen (#1104) zeigt die Art „bookmarks“ die Lesezeichen von Atlas.
   TAtlasIdeOverviewRuler.Bookmarks :=
@@ -2591,6 +2617,7 @@ begin
   TAtlasIdeLineMove.Uninstall;
   TAtlasIdeBlockComment.Uninstall;
   TAtlasIdeUnwrap.Uninstall;
+  TAtlasIdeStepInto.Uninstall;
   TAtlasIdeSmartPaste.Uninstall;
   TAtlasIdeWrapSelection.Uninstall;
   TAtlasIdeLinkedEditing.Uninstall;

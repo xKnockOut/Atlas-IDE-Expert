@@ -382,6 +382,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InvertBoolean.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Unwrap.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Unwrap.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.StepTargets.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.InterfaceStubs.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Postfix.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ContextSnippets.Tests.pas"/>
@@ -441,6 +442,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Visualizers.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.DisplayRules.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.DisplayRules.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.StepInto.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.StepInto.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas"/>
@@ -749,6 +752,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Editor.SmartPaste.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Editor\Atlas.UI.Editor.Unwrap.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Editor.Unwrap.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Debug\Atlas.UI.Debug.StepInto.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.StepInto.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.QuickToggles.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.QuickToggles.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.Transfer.Tests.pas"/>,
@@ -959,6 +964,7 @@
         <DCCReference Include="Application\Shell\Shell.Linter.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.NestedOverloads.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.SystemIntrinsics.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.StepCalls.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Dock\Atlas.Core.Dock.Plan.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Dock.Plan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.Sections.pas"/>

@@ -452,6 +452,12 @@ type
     /// <summary>Getter und Funktionsaufrufe in Vorlagen auswerten (debug.displayRules.allowCalls); aus = nur Felder
     /// und Eigenschaften mit direktem Feldzugriff.</summary>
     DebugDisplayRulesAllowCalls: Boolean;
+    /// <summary>Gezielt hineinspringen (#836, debug.stepIntoTarget): Befehl mit Tastenkürzel, Kontextmenü und
+    /// Befehlspalette, der im angehaltenen Zustand die Aufrufe der Anweisung zur Wahl stellt; aus = Kürzel frei, kein
+    /// Menüeintrag.</summary>
+    DebugStepIntoTarget: Boolean;
+    /// <summary>Tastenkürzel „Gezielt hineinspringen“ (debug.stepIntoTarget.key, 0 = keins).</summary>
+    DebugStepIntoTargetKey: Integer;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -1396,6 +1402,8 @@ begin
   Result.DebugVisualizerEvaluation := TAtlasVisualizers.EvaluationNames[TAtlasVisualizerEvaluation.Properties];
   Result.DebugDisplayRules := True;
   Result.DebugDisplayRulesAllowCalls := False;
+  Result.DebugStepIntoTarget := True;
+  Result.DebugStepIntoTargetKey := $C076; // Strg+Alt+F7
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
   Result.TodoList := True;
@@ -1780,6 +1788,7 @@ begin
   NewLineBelowKey := EnsureRange(NewLineBelowKey, 0, $FFFF);
   NewLineAboveKey := EnsureRange(NewLineAboveKey, 0, $FFFF);
   UnwrapKey := EnsureRange(UnwrapKey, 0, $FFFF);
+  DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
   MinimapRender := Choice(MinimapRender, ['blocks', 'characters']);
   MinimapWidth := EnsureRange(MinimapWidth, MinMinimapWidth, MaxMinimapWidth);
   MinimapScale := EnsureRange(MinimapScale, MinMinimapScale, MaxMinimapScale);
@@ -2018,6 +2027,8 @@ begin
   DebugDisplayRules := AStore.ReadInteger('DebugDisplayRules', BoolValue(Default.DebugDisplayRules)) <> 0;
   DebugDisplayRulesAllowCalls := AStore.ReadInteger('DebugDisplayRulesAllowCalls',
     BoolValue(Default.DebugDisplayRulesAllowCalls)) <> 0;
+  DebugStepIntoTarget := AStore.ReadInteger('DebugStepIntoTarget', BoolValue(Default.DebugStepIntoTarget)) <> 0;
+  DebugStepIntoTargetKey := AStore.ReadInteger('DebugStepIntoTargetKey', Default.DebugStepIntoTargetKey);
   StartProfiles := AStore.ReadInteger('StartProfiles', BoolValue(Default.StartProfiles)) <> 0;
   StartProfilesStatusField := AStore.ReadInteger('StartProfilesStatusField',
     BoolValue(Default.StartProfilesStatusField)) <> 0;
@@ -2470,6 +2481,8 @@ begin
   AStore.WriteString('DebugVisualizerEvaluation', DebugVisualizerEvaluation);
   AStore.WriteInteger('DebugDisplayRules', BoolValue(DebugDisplayRules));
   AStore.WriteInteger('DebugDisplayRulesAllowCalls', BoolValue(DebugDisplayRulesAllowCalls));
+  AStore.WriteInteger('DebugStepIntoTarget', BoolValue(DebugStepIntoTarget));
+  AStore.WriteInteger('DebugStepIntoTargetKey', DebugStepIntoTargetKey);
   AStore.WriteInteger('StartProfiles', BoolValue(StartProfiles));
   AStore.WriteInteger('StartProfilesStatusField', BoolValue(StartProfilesStatusField));
   AStore.WriteInteger('TodoList', BoolValue(TodoList));
