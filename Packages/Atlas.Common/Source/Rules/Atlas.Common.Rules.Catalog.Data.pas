@@ -1168,6 +1168,27 @@ begin
     '      "good": "if Done then\n  Exit;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "redundant-cast",' + #10 +
+    '      "name": "Redundant type cast",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "TStringList(List) with List: TStringList, X as TFoo with X: TFoo or Integer(Count) with Count: Integer change nothing. Likewise TObject(Obj).Free: Free calls the virtual destruct' +
+    'or and needs no cast (option checkFree). Reported only when the type of the source is known for sure and is declared with exactly the target name; aliases (TColorIndex = Integer), constants, routines ' +
+    'without a call, overloaded routines as source, arguments of overloaded calls (the cast may steer the overload), as with interfaces (QueryInterface) and Free redeclared in the class chain stay silent. ' +
+    'High confidence. Quick fix: remove the cast.",' + #10 +
+    '      "bad": "procedure TImport.Cleanup;\nbegin\n  TStringList(FLines).Clear;\n  TObject(FStream).Free;\nend;",' + #10 +
+    '      "good": "procedure TImport.Cleanup;\nbegin\n  FLines.Clear;\n  FStream.Free;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "checkFree",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Also report a class cast that only precedes Free (CastAndFree)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "redundant-begin-end",' + #10 +
     '      "name": "begin … end around a single statement",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -5596,6 +5617,20 @@ begin
     '      "id": "redundant-parens",' + #10 +
     '      "name": "Überflüssige Klammern",' + #10 +
     '      "description": "Klammern um eine ganze Bedingung oder einen einzelnen Bezeichner bringen nichts. Standardmäßig aus."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "redundant-cast",' + #10 +
+    '      "name": "Überflüssige Typumwandlung",' + #10 +
+    '      "description": "TStringList(Liste) mit Liste: TStringList, X as TFoo mit X: TFoo oder Integer(Anzahl) mit Anzahl: Integer ändern nichts. Ebenso TObject(Obj).Free: Free ruft den virtuellen Destru' +
+    'ktor und braucht keine Umwandlung (Option checkFree). Gemeldet wird nur, wenn der Typ der Quelle sicher bekannt und genau mit dem Namen des Ziels deklariert ist; Aliase (TFarbIndex = Integer), Konstan' +
+    'ten, Routinen ohne Aufruf, überladene Routinen als Quelle, Argumente überladener Aufrufe (die Umwandlung kann die Überladung wählen), as mit Interfaces (QueryInterface) und in der Klassenkette neu dek' +
+    'lariertes Free bleiben still. Sicherheit hoch. Korrektur: die Umwandlung entfernen.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "checkFree",' + #10 +
+    '          "description": "Auch eine Klassenumwandlung melden, die nur vor Free steht (CastAndFree)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "redundant-begin-end",' + #10 +

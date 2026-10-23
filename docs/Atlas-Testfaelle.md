@@ -6124,6 +6124,21 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index (VCL-Quellen indiz
 | HU7 | Klasse mit Vorfahr aus einer Unit, die nicht im Index steht | Keine Meldung (Kette unbekannt) |
 | HU8 | `"unrelated-class-cast": "off"`, `"group:find-bugs": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden | Keine Meldung; die Regel steht mit Schalter, Schweregrad und der Option `allowTypes` in der Gruppe |
 
+## Überflüssige Typumwandlung (#1139)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index (RTL-Quellen indiziert).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UT1 | Das Beispiel aus #1139: Felder `FZeilen: TStringList; FStrom: TFileStream;` und in einer Methode `TStringList(FZeilen).Clear; TObject(FStrom).Free;` | Hinweis `redundant-cast` an `TStringList(FZeilen)`: „FZeilen ist schon TStringList: Die Umwandlung ist überflüssig.“ und an `TObject(FStrom)`: „Free ruft den virtuellen Destruktor: Die Umwandlung von FStrom nach TObject ist überflüssig.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| UT2 | Schnellkorrektur „Umwandlung entfernen“ an beiden, danach Strg+Z | `FZeilen.Clear; FStrom.Free;`; je ein Undo-Schritt. `(FZeilen as TStringList).Clear` wird zu `FZeilen.Clear` (Klammern fallen mit weg) |
+| UT3 | `mZahl: Integer; mZahl := Integer(mZahl);` und `mText := string(mText);` | Beide gemeldet |
+| UT4 | `type TFarbe = Integer;` mit `Integer(mFarbe)`; `Byte(mZahl)`; `Integer(cGrenze)` mit einer untypisierten Konstante | Keine Meldung |
+| UT5 | `Assert.AreEqual(2, Integer(mListe.Count))` und eine eigene überladene Prozedur `Zeigen(Integer)`/`Zeigen(Int64)` mit `Zeigen(Integer(mZahl))` | Keine Meldung (die Umwandlung kann die Überladung wählen); mit einer nicht überladenen Prozedur gemeldet |
+| UT6 | `TObject(mZeiger).Free` mit `mZeiger: Pointer`; Klasse mit eigener Methode `Free` und `TBasis(mEigen).Free` | Keine Meldung |
+| UT7 | `"redundant-cast": {"checkFree": false}` in atlas.json; Seite Prüfregeln › Stil | `TObject(FStrom).Free` meldet nichts mehr, `TStringList(FZeilen)` weiterhin; die Regel steht mit Schalter, Schweregrad und der Option `checkFree` in der Gruppe |
+| UT8 | `"redundant-cast": "off"` bzw. `exclude` | Keine Meldung |
+
 ## Verbotenes Symbol (#1133)
 
 Voraussetzung: Server läuft in der IDE mit Projekt und Index (RTL-Quellen indiziert).

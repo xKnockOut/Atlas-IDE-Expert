@@ -18,6 +18,18 @@
 //                     der Aufbau ist also derselbe. Option allowTypes erlaubt
 //                     weitere Typen bzw. Paare "Quelle=Ziel". Korrektur:
 //                     (mEdit as TButton).
+//   redundant-cast    TStringList(FZeilen) bzw. FZeilen as TStringList, wenn
+//                     FZeilen schon als TStringList deklariert ist (#1139),
+//                     sowie TObject(FStrom).Free (Option checkFree): Free ruft
+//                     den virtuellen Destruktor und braucht keine Umwandlung.
+//                     Gleich heißt: derselbe aufgelöste Typ und derselbe Name in
+//                     der Deklaration der Quelle; Aliase (TFarbe = Integer)
+//                     bleiben stumm, ebenso Konstanten, Routinen ohne Aufruf,
+//                     überladene Routinen als Quelle, Argumente von Aufrufen,
+//                     deren Ziel nicht genau eine bekannte Routine ist (die
+//                     Umwandlung kann die Überladung wählen), Interfaces bei
+//                     as (QueryInterface) und Free, das eine Klasse der Kette
+//                     neu deklariert. Korrektur: die Umwandlung entfernen.
 
 interface
 
@@ -27,6 +39,7 @@ uses
 
 const
   UnrelatedClassCastRuleId = 'unrelated-class-cast';
+  RedundantCastRuleId = 'redundant-cast';
 
 type
   TUnrelatedClassCastRule = class(TInterfacedObject, IRule)
@@ -37,6 +50,12 @@ type
     /// (Quelle oder Ziel) oder Paare "Quelle=Ziel", ohne Groß-/Kleinschreibung, mit oder ohne Unit-Präfix.
     /// </summary>
     class function Allowed(const AAllowTypes: TArray<string>; const ASource, ATarget: string): Boolean; static;
+  end;
+
+  TRedundantCastRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
 procedure RegisterCastRules(const ARegistry: TRuleRegistry);
@@ -88,6 +107,28 @@ begin
   Result := SameText(ASymbol.Name, 'TObject') and ((ASymbol.UnitName = '') or SameText(ASymbol.UnitName, 'System'));
 end;
 
+/// <summary>Kette von AType bis TObject (AType zuerst); False, wenn ein Vorfahr unbekannt ist.</summary>
+function ClassChain(AResolver: TNameResolver; const AType: TResolvedSymbol;
+  out AChain: TArray<TResolvedSymbol>): Boolean;
+var
+  mCurrent, mNext: TResolvedSymbol;
+  mDepth: Integer;
+begin
+  AChain := nil;
+  mCurrent := AType;
+  for mDepth := 0 to cMaxChain do
+  begin
+    AChain := AChain + [mCurrent];
+    // Ohne Vorfahr erbt eine Klasse von TObject; TObject selbst steht ohne Index nicht im Baum.
+    if IsTObject(mCurrent) or (Length(mCurrent.Ancestors) = 0) then
+      Exit(True);
+    if not AResolver.AncestorOf(mCurrent, mNext) or not IsPlainClass(mNext) then
+      Exit(False);
+    mCurrent := mNext;
+  end;
+  Result := False;
+end;
+
 { TUnrelatedClassCastRule }
 
 function TUnrelatedClassCastRule.Descriptor: TRuleDescriptor;
@@ -130,27 +171,6 @@ procedure TUnrelatedClassCastRule.Check(const AContext: TRuleContext; const ARep
 var
   mScope: TTypedScope;
   mAllowTypes: TArray<string>;
-
-  /// <summary>Kette von AType bis TObject (AType zuerst); False, wenn ein Vorfahr unbekannt ist.</summary>
-  function Chain(const AType: TResolvedSymbol; out AChain: TArray<TResolvedSymbol>): Boolean;
-  var
-    mCurrent, mNext: TResolvedSymbol;
-    mDepth: Integer;
-  begin
-    AChain := nil;
-    mCurrent := AType;
-    for mDepth := 0 to cMaxChain do
-    begin
-      AChain := AChain + [mCurrent];
-      // Ohne Vorfahr erbt eine Klasse von TObject; TObject selbst steht ohne Index nicht im Baum.
-      if IsTObject(mCurrent) or (Length(mCurrent.Ancestors) = 0) then
-        Exit(True);
-      if not mScope.Resolver.AncestorOf(mCurrent, mNext) or not IsPlainClass(mNext) then
-        Exit(False);
-      mCurrent := mNext;
-    end;
-    Result := False;
-  end;
 
   function Contains(const AChain: TArray<TResolvedSymbol>; const AType: TResolvedSymbol): Boolean;
   var
@@ -224,7 +244,8 @@ var
     if not mScope.SureType(mArgument, mSourceSymbol, mSourceType) or mSourceSymbol.IsType or
       not IsPlainClass(mSourceType) or IsTObject(mSourceType) or SameType(mSourceType, mTargetType) then
       Exit;
-    if not Chain(mTargetType, mTargetChain) or not Chain(mSourceType, mSourceChain) then
+    if not ClassChain(mScope.Resolver, mTargetType, mTargetChain) or
+      not ClassChain(mScope.Resolver, mSourceType, mSourceChain) then
       Exit;
     if Contains(mTargetChain, mSourceType) or Contains(mSourceChain, mTargetType) then
       Exit;
@@ -277,9 +298,262 @@ begin
   end;
 end;
 
+{ TRedundantCastRule }
+
+function TRedundantCastRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(RedundantCastRuleId, TRuleSeverity.Hint, 'Überflüssige Typumwandlung');
+end;
+
+procedure TRedundantCastRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScope: TTypedScope;
+  mCheckFree: Boolean;
+
+  /// <summary>Letzter Teil eines qualifizierten Namens ("System.Classes.TStringList" → "TStringList").</summary>
+  function LastName(const AName: string): string;
+  var
+    mDot: Integer;
+  begin
+    Result := Trim(AName);
+    mDot := LastDelimiter('.', Result);
+    if mDot > 0 then
+      Result := Copy(Result, mDot + 1, MaxInt);
+  end;
+
+  /// <summary>Zieltyp der Umwandlung ANode: T(X) als Aufruf oder X as T; ATypeNode ist der Typname im Text,
+  /// ASource der umgewandelte Ausdruck.</summary>
+  function CastParts(ANode: TSyntaxNode; out ATypeNode, ASource: TSyntaxNode; out AIsAs: Boolean): Boolean;
+  begin
+    ATypeNode := nil;
+    ASource := nil;
+    AIsAs := (ANode.Kind = TSyntaxKind.BinaryExpr) and SameText(ANode.Name, 'as') and (ANode.ChildCount = 2);
+    if AIsAs then
+    begin
+      ATypeNode := ANode[1];
+      ASource := Unwrapped(ANode[0]);
+    end
+    else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 2) then
+    begin
+      ATypeNode := ANode[0];
+      ASource := Unwrapped(ANode[1]);
+    end;
+    Result := (ATypeNode <> nil) and (ASource <> nil) and
+      (ATypeNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+      (ATypeNode.FindChild(TSyntaxKind.GenericArgs) = nil);
+  end;
+
+  /// <summary>Zieltyp ATypeNode der Umwandlung. Eingebaute Typen (Integer, string) und TObject ohne Index findet
+  /// die Auflösung nicht; sie gelten nur, wenn der Name auf nichts anderes zeigt.</summary>
+  function TargetOf(ATypeNode: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
+  var
+    mSymbol: TResolvedSymbol;
+    mFound: Boolean;
+  begin
+    if mScope.SureType(ATypeNode, mSymbol, AType) then
+      Exit(mSymbol.IsType);
+    if (ATypeNode.Kind <> TSyntaxKind.Identifier) or mScope.Resolver.NodeType(AContext.Tree, mScope.FileName,
+      ATypeNode, mSymbol, AType, mFound) then
+      Exit(False);
+    AType := Default(TResolvedSymbol);
+    AType.Kind := TResolvedKind.Symbol;
+    AType.Name := ATypeNode.Name;
+    AType.UnitName := 'System';
+    AType.Builtin := True;
+    AType.SymbolKind := TIndexSymbolKind.RecordType;
+    if SameText(ATypeNode.Name, 'TObject') then
+      AType.SymbolKind := TIndexSymbolKind.ClassType;
+    Result := SameText(ATypeNode.Name, 'TObject') or TNameResolver.IsBuiltinTypeName(ATypeNode.Name);
+  end;
+
+  /// <summary>Typ der Quelle sicher bekannt und als Wert verwendbar: keine Typen, keine Konstanten (untypisierte
+  /// Konstanten ändern mit der Umwandlung ihren Typ), keine überladenen Routinen, Routinen nur als Aufruf.
+  /// </summary>
+  function SureSource(ASource: TSyntaxNode; out ASymbol, AType: TResolvedSymbol): Boolean;
+  begin
+    Result := mScope.SureType(ASource, ASymbol, AType) and not ASymbol.IsType and
+      not (ASymbol.SymbolKind in [TIndexSymbolKind.Constant, TIndexSymbolKind.EnumMember]);
+    if Result and (ASymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine,
+      TIndexSymbolKind.Constructor_]) then
+      Result := (ASource.Kind = TSyntaxKind.Call) and (ASymbol.Overloads = nil) and
+        (Length(ASymbol.VariantParams) <= 1);
+  end;
+
+  /// <summary>Steht ANode als Argument in einem Aufruf, dessen Ziel nicht genau eine Routine ist? Bei
+  /// Überladungen kann die Umwandlung die Auswahl steuern; bei unbekanntem Ziel (Assert.AreEqual aus einer
+  /// Bibliothek ohne Index) ist das nicht auszuschließen.</summary>
+  function InOverloadedCall(ANode: TSyntaxNode): Boolean;
+  var
+    mParent: TSyntaxNode;
+  begin
+    mParent := ANode.Parent;
+    while (mParent <> nil) and (mParent.Kind = TSyntaxKind.ParenExpr) do
+    begin
+      ANode := mParent;
+      mParent := mParent.Parent;
+    end;
+    Result := (mParent <> nil) and (mParent.Kind = TSyntaxKind.Call) and (mParent.ChildCount > 0) and
+      (mParent[0] <> ANode) and
+      (Length(mScope.Resolver.CallCandidates(AContext.Tree, mScope.FileName, mParent[0])) <> 1);
+  end;
+
+  /// <summary>Zu ersetzender Bereich: bei "(X as T)" samt Klammern, das Ergebnis ist ein einfacher Ausdruck.
+  /// </summary>
+  function ReplacedNode(ANode: TSyntaxNode): TSyntaxNode;
+  begin
+    Result := ANode;
+    while (Result.Parent <> nil) and (Result.Parent.Kind = TSyntaxKind.ParenExpr) and
+      (Result.Parent.ChildCount = 1) do
+      Result := Result.Parent;
+  end;
+
+  procedure Report(ANode, ASource: TSyntaxNode; const AMessage: string);
+  var
+    mRange: TTextRange;
+    mReplaced: TSyntaxNode;
+  begin
+    mReplaced := ReplacedNode(ANode);
+    mRange := TTextRange.Create(mReplaced.StartPos, mReplaced.EndPos);
+    AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), AMessage, TRuleConfidence.High,
+      [TRuleFix.Create('Umwandlung entfernen', [TTextEdit.Create(mRange, mScope.Text(ASource))])]);
+  end;
+
+  /// <summary>Deklariert eine Klasse der Kette außer TObject ein eigenes Free?</summary>
+  function DeclaresFree(const AChain: TArray<TResolvedSymbol>): Boolean;
+  var
+    mItem: TResolvedSymbol;
+    mUnit: TUnitIndex;
+    mSymbol: TIndexSymbol;
+  begin
+    for mItem in AChain do
+    begin
+      if IsTObject(mItem) then
+        Continue;
+      if not mScope.Resolver.DeclaringUnit(mItem, mUnit) then
+        Exit(True);
+      for mSymbol in mUnit.Symbols do
+        if SameText(mSymbol.Container, mItem.QualifiedName) and SameText(mSymbol.Name, 'Free') then
+          Exit(True);
+    end;
+    Result := False;
+  end;
+
+  /// <summary>Gleicher Typ: derselbe aufgelöste Typ und derselbe Name wie in der Deklaration der Quelle.
+  /// </summary>
+  function SameDeclared(const ASourceSymbol, ASourceType, ATargetType: TResolvedSymbol;
+    ATypeNode: TSyntaxNode): Boolean;
+  begin
+    Result := SameType(ASourceType, ATargetType) and (ASourceSymbol.TypeName <> '') and
+      SameText(LastName(ASourceSymbol.TypeName), LastName(mScope.Text(ATypeNode)));
+  end;
+
+  /// <summary>Gleichheit für Typen ohne Deklaration im Index (Integer, string): nur der Name.</summary>
+  function SameBuiltin(const ASourceSymbol, ASourceType, ATargetType: TResolvedSymbol;
+    ATypeNode: TSyntaxNode): Boolean;
+  begin
+    Result := ASourceType.Builtin and ATargetType.Builtin and (ASourceSymbol.TypeName <> '') and
+      SameText(LastName(ASourceSymbol.TypeName), LastName(mScope.Text(ATypeNode))) and
+      SameText(ASourceType.Name, ATargetType.Name);
+  end;
+
+  procedure CheckCast(ANode: TSyntaxNode);
+  var
+    mTypeNode, mSource: TSyntaxNode;
+    mIsAs: Boolean;
+    mTargetType, mSourceSymbol, mSourceType: TResolvedSymbol;
+  begin
+    if not CastParts(ANode, mTypeNode, mSource, mIsAs) then
+      Exit;
+    if not TargetOf(mTypeNode, mTargetType) then
+      Exit;
+    // as mit Interface ruft QueryInterface und kann ein anderes Objekt liefern.
+    if mIsAs and not IsPlainClass(mTargetType) then
+      Exit;
+    if not SureSource(mSource, mSourceSymbol, mSourceType) then
+      Exit;
+    if not SameDeclared(mSourceSymbol, mSourceType, mTargetType, mTypeNode) and
+      not SameBuiltin(mSourceSymbol, mSourceType, mTargetType, mTypeNode) then
+      Exit;
+    if InOverloadedCall(ReplacedNode(ANode)) then
+      Exit;
+    Report(ANode, mSource, Format('%s ist schon %s: Die Umwandlung ist überflüssig.',
+      [mScope.Text(mSource), mScope.Text(mTypeNode)]));
+  end;
+
+  /// <summary>TObject(FStrom).Free: Umwandlung einer Klasse in eine Klasse nur für Free.</summary>
+  procedure CheckFree(ANode: TSyntaxNode);
+  var
+    mCast, mTypeNode, mSource: TSyntaxNode;
+    mIsAs: Boolean;
+    mTargetType, mSourceSymbol, mSourceType: TResolvedSymbol;
+    mTargetChain, mSourceChain: TArray<TResolvedSymbol>;
+  begin
+    if not SameText(ANode.Name, 'Free') or (ANode.ChildCount = 0) then
+      Exit;
+    // Free(…) mit Argumenten ist nicht TObject.Free.
+    if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] = ANode) and
+      (ANode.Parent.ChildCount > 1) then
+      Exit;
+    mCast := Unwrapped(ANode[0]);
+    if not CastParts(mCast, mTypeNode, mSource, mIsAs) then
+      Exit;
+    if not TargetOf(mTypeNode, mTargetType) or not (IsPlainClass(mTargetType) or IsTObject(mTargetType)) then
+      Exit;
+    if not SureSource(mSource, mSourceSymbol, mSourceType) or not IsPlainClass(mSourceType) then
+      Exit;
+    // Gleicher Typ meldet CheckCast.
+    if SameDeclared(mSourceSymbol, mSourceType, mTargetType, mTypeNode) then
+      Exit;
+    if not ClassChain(mScope.Resolver, mSourceType, mSourceChain) or DeclaresFree(mSourceChain) then
+      Exit;
+    if not IsTObject(mTargetType) and (not ClassChain(mScope.Resolver, mTargetType, mTargetChain) or
+      DeclaresFree(mTargetChain)) then
+      Exit;
+    Report(mCast, mSource, Format('Free ruft den virtuellen Destruktor: Die Umwandlung von %s nach %s ist ' +
+      'überflüssig.', [mScope.Text(mSource), mScope.Text(mTypeNode)]));
+  end;
+
+  procedure Visit(ARoot: TSyntaxNode);
+  var
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
+  begin
+    // Iterativ (Bericht M1).
+    mPending := TStack<TSyntaxNode>.Create;
+    try
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
+      begin
+        mNode := mPending.Pop;
+        if mNode.Kind in [TSyntaxKind.Call, TSyntaxKind.BinaryExpr] then
+          CheckCast(mNode)
+        else if mCheckFree and (mNode.Kind = TSyntaxKind.MemberAccess) then
+          CheckFree(mNode);
+        for mIndex := mNode.ChildCount - 1 downto 0 do
+          mPending.Push(mNode[mIndex]);
+      end;
+    finally
+      mPending.Free;
+    end;
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  mCheckFree := TRuleOptions.Bool(AContext.Options, 'checkFree', True);
+  mScope := TTypedScope.Create(AContext);
+  try
+    Visit(AContext.Tree.Root);
+  finally
+    mScope.Free;
+  end;
+end;
+
 procedure RegisterCastRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TUnrelatedClassCastRule.Create);
+  ARegistry.Register(TRedundantCastRule.Create);
 end;
 
 end.
