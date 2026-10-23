@@ -1136,6 +1136,12 @@ begin
   Result := TAtlasIdeSettings.Current.Notes;
 end;
 
+/// <summary>Befehl „Aufrufdiagramm“ (#1122) sichtbar?</summary>
+function CallDiagramVisible: Boolean;
+begin
+  Result := TAtlasIdeResults.CallDiagramAllowed;
+end;
+
 /// <summary>Export, Import und Zurücksetzen der Einstellungen (#723): settings.exportImport.</summary>
 function SettingsTransferVisible: Boolean;
 begin
@@ -1324,6 +1330,9 @@ begin
     Guarded(TAtlasFeature.MultiCursor, MultiCursorBelow), MultiCursorVisible);
   Add('Atlas.Callers', TAtlasTextId.MenuIncoming, Hierarchy(TAtlasHierarchyDirection.Incoming));
   Add('Atlas.Calls', TAtlasTextId.MenuOutgoing, Hierarchy(TAtlasHierarchyDirection.Outgoing));
+  // Aufrufdiagramm (#1122); nur sichtbar, solange callHierarchy.diagram an ist.
+  Add('Atlas.CallDiagram', TAtlasTextId.CallDiagramCommand,
+    Guarded(TAtlasFeature.Results, TAtlasIdeResults.ShowCallDiagram), CallDiagramVisible);
   Add('Atlas.Supertypes', TAtlasTextId.MenuSupertypes, Hierarchy(TAtlasHierarchyDirection.Supertypes));
   Add('Atlas.Subtypes', TAtlasTextId.MenuSubtypes, Hierarchy(TAtlasHierarchyDirection.Subtypes));
   Add('Atlas.ResultsWindow', TAtlasTextId.MenuResultsWindow, TAtlasIdeResults.ShowWindow);
@@ -4180,6 +4189,8 @@ begin
       TAtlasIdeOutline.ApplySettings;
       // architecture.* (#1118).
       TAtlasIdeArchitecture.ApplySettings;
+      // callHierarchy.diagram (#1122).
+      TAtlasIdeResultsWindow.ApplySettings;
       // editor.breadcrumbs* (#590).
       TAtlasIdeBreadcrumbs.ApplySettings;
       // editor.toolbar* (#1101).

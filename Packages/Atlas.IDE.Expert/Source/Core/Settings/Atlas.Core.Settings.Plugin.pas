@@ -644,6 +644,8 @@ type
     ReferencesInferred: Boolean;
     /// <summary>Namen in String-Literalen als erschlossene Verwendung (#1119, references.textMatches).</summary>
     ReferencesTextMatches: Boolean;
+    /// <summary>Aufrufhierarchie auch als Diagramm (#1122, callHierarchy.diagram).</summary>
+    CallHierarchyDiagram: Boolean;
     /// <summary>Kürzel „Definition einblenden“ (#505, keys.peekDefinition); Vorgabe Alt+F12.</summary>
     PeekDefinitionKey: Integer;
     /// <summary>Kürzel „Referenzen einblenden“ (#505, keys.peekReferences); Vorgabe Umschalt+Alt+F12.</summary>
@@ -1472,6 +1474,7 @@ begin
   Result.PeekShowImplementation := True;
   Result.ReferencesInferred := True;
   Result.ReferencesTextMatches := False;
+  Result.CallHierarchyDiagram := True;
   Result.PeekDefinitionKey := $807B; // Alt+F12
   Result.PeekReferencesKey := $A07B; // Umschalt+Alt+F12
   Result.Outline := True;
@@ -2102,6 +2105,7 @@ begin
     BoolValue(Default.PeekShowImplementation)) <> 0;
   ReferencesInferred := AStore.ReadInteger('ReferencesInferred', BoolValue(Default.ReferencesInferred)) <> 0;
   ReferencesTextMatches := AStore.ReadInteger('ReferencesTextMatches', BoolValue(Default.ReferencesTextMatches)) <> 0;
+  CallHierarchyDiagram := AStore.ReadInteger('CallHierarchyDiagram', BoolValue(Default.CallHierarchyDiagram)) <> 0;
   PeekDefinitionKey := AStore.ReadInteger('PeekDefinitionKey', Default.PeekDefinitionKey);
   PeekReferencesKey := AStore.ReadInteger('PeekReferencesKey', Default.PeekReferencesKey);
   Outline := AStore.ReadInteger('Outline', BoolValue(Default.Outline)) <> 0;
@@ -2533,6 +2537,7 @@ begin
   AStore.WriteInteger('PeekShowImplementation', BoolValue(PeekShowImplementation));
   AStore.WriteInteger('ReferencesInferred', BoolValue(ReferencesInferred));
   AStore.WriteInteger('ReferencesTextMatches', BoolValue(ReferencesTextMatches));
+  AStore.WriteInteger('CallHierarchyDiagram', BoolValue(CallHierarchyDiagram));
   AStore.WriteInteger('PeekDefinitionKey', PeekDefinitionKey);
   AStore.WriteInteger('PeekReferencesKey', PeekReferencesKey);
   AStore.WriteInteger('Outline', BoolValue(Outline));

@@ -87,6 +87,7 @@ type
     FWelcomeLine: TMenuItem;
     FViewStart: TMenuItem;
     FNoteItems: TArray<TMenuItem>;
+    FCallDiagramItem: TMenuItem;
     FBookmarkItems: TArray<TMenuItem>;
     FQuickItems: TArray<TMenuItem>;
     /// <summary>„Erzeugen…“ (#719), sichtbar nach keys.generateMenu.</summary>
@@ -195,8 +196,8 @@ const
   EditorIds: array[0..11] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
     'Atlas.TypeDefinition', 'Atlas.CopyQualifiedName', 'Atlas.CopyQualifiedNameParams', 'Atlas.ToggleMethod',
     'Atlas.SwitchTestUnit', 'Atlas.UnitSearch', 'Atlas.UnitSearchIde', 'Atlas.GenerateMenu', 'Atlas.FormatCode');
-  ResultsIds: array[0..7] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
-    'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow');
+  ResultsIds: array[0..8] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
+    'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow', 'Atlas.CallDiagram');
   // Editorleiste (#1101), je Tag von SectionClick.
   SectionIds: array[0..5] of string = ('Atlas.GotoInterface', 'Atlas.GotoImplementation', 'Atlas.GotoUses',
     'Atlas.GotoInitialization', 'Atlas.ReturnFromSection', 'Atlas.FindMethod');
@@ -288,6 +289,8 @@ begin
   AddItem(TAtlasTextId.MenuImplementations, 1, ResultsClick);
   AddItem(TAtlasTextId.MenuIncoming, 3, ResultsClick);
   AddItem(TAtlasTextId.MenuOutgoing, 4, ResultsClick);
+  // Aufrufdiagramm (#1122) nach callHierarchy.diagram.
+  FCallDiagramItem := AddItem(TAtlasTextId.CallDiagramCommand, 8, ResultsClick);
   AddItem(TAtlasTextId.MenuSupertypes, 5, ResultsClick);
   AddItem(TAtlasTextId.MenuSubtypes, 6, ResultsClick);
   FParent.Add(NewLine);
@@ -656,6 +659,9 @@ begin
   // Prozesse am Projekt (#62) nach diagnostics.processes.
   if FProcessesItem <> nil then
     FProcessesItem.Visible := TAtlasIdeSettings.Current.DiagnosticsProcesses;
+  // Aufrufdiagramm (#1122) nach callHierarchy.diagram.
+  if FCallDiagramItem <> nil then
+    FCallDiagramItem.Visible := TAtlasIdeSettings.Current.CallHierarchyDiagram;
   // Notizen (#545) nach ihrer Einstellung.
   for Item in FNoteItems do
     Item.Visible := TAtlasIdeSettings.Current.Notes;
@@ -747,6 +753,7 @@ begin
         4: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Outgoing);
         5: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Supertypes);
         6: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Subtypes);
+        8: TAtlasIdeResults.ShowCallDiagram;
       else
         TAtlasIdeResults.ShowWindow;
       end;

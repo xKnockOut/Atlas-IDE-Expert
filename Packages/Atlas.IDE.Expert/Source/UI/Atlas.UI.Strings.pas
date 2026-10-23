@@ -726,7 +726,11 @@ type
     // Treffersicherheit der Verwendungen (#1119).
     ResultsSureGroup, ResultsInferredGroup, ResultsOnlySure, RenameChangedGroup, RenameUnchangedGroup,
     ReferenceReasonInterface, ReferenceReasonVirtual, ReferenceReasonAmbiguous, ReferenceReasonUnresolved, ReferenceReasonInactiveBranch, ReferenceReasonText,
-    SettingsReferencesInferred, SettingsReferencesTextMatches);
+    SettingsReferencesInferred, SettingsReferencesTextMatches,
+    // Aufrufdiagramm (#1122).
+    CallDiagramCommand, CallDiagramToggle, CallDiagramOutgoing, CallDiagramIncoming, CallDiagramProjectOnly,
+    CallDiagramSaveHtml, CallDiagramSaveFilter, CallDiagramImplementations, CallDiagramImplementation, CallDiagramMore,
+    CallDiagramHint, CallDiagramSaved, CallDiagramFit, SettingsCallHierarchyDiagram);
 
   TAtlasStrings = class
   private class var
@@ -2408,7 +2412,21 @@ const
      'inaktiver Zweig',
      'im Text',
      'Erschlossene Verwendungen zeigen (Interface, überschriebene Methode, unklare Überladung, inaktiver Zweig)',
-     'Auch Namen in Strings als Verwendung melden (RTTI, MethodAddress)'),
+     'Auch Namen in Strings als Verwendung melden (RTTI, MethodAddress)',
+     'Aufrufdiagramm',
+     'Diagramm',
+     'Ausgehend: Aufgerufene',
+     'Eingehend: Aufrufer',
+     'Nur Projekt-Units',
+     'Als HTML speichern …',
+     'HTML-Datei (*.html)|*.html',
+     '%d Umsetzungen',
+     '1 Umsetzung',
+     '+ %d …',
+     'Klick klappt auf und zu · Doppelklick springt in den Code · Ziehen verschiebt · Mausrad zoomt · 0 passt ein',
+     'Aufrufdiagramm gespeichert: %s',
+     'Einpassen',
+     'Aufrufdiagramm: Umschalter „Liste/Diagramm“ in der Aufrufhierarchie und Befehl „Aufrufdiagramm“'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3994,7 +4012,21 @@ const
      'inactive branch',
      'in a string',
      'Show inferred usages (interface, overridden method, ambiguous overload, inactive branch)',
-     'Also report names in strings as usages (RTTI, MethodAddress)'));
+     'Also report names in strings as usages (RTTI, MethodAddress)',
+     'Call diagram',
+     'Diagram',
+     'Outgoing: callees',
+     'Incoming: callers',
+     'Project units only',
+     'Save as HTML …',
+     'HTML file (*.html)|*.html',
+     '%d implementations',
+     '1 implementation',
+     '+ %d …',
+     'Click expands and collapses · double-click jumps to the code · drag pans · mouse wheel zooms · 0 fits',
+     'Call diagram saved: %s',
+     'Fit',
+     'Call diagram: "List/Diagram" switch in the call hierarchy and "Call diagram" command'));
 
 { TAtlasStrings }
 

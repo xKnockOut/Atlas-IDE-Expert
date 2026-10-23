@@ -21,6 +21,9 @@ type
     /// <summary>#1101: Atlas-Editorleiste, Lage, Belegung, Rücksprung, Text, Tasten der Abschnittssprünge.</summary>
     [Test]
     procedure EditorToolbarOptions;
+    /// <summary>#1122: Aufrufdiagramm standardmäßig an, abschaltbar, übersteht Speichern und Laden.</summary>
+    [Test]
+    procedure CallHierarchyDiagramOption;
     /// <summary>Schnelle Lesezeichen (#1104): Vorgaben laut Issue, Grenzen, Speichern und Laden.</summary>
     [Test]
     procedure QuickBookmarkOptions;
@@ -2092,6 +2095,22 @@ begin
   Assert.IsFalse(Loaded.ProblemsWindowOpenFirst);
   Assert.AreEqual('normal', Loaded.ProblemsWindowClosedUnits);
   Assert.IsFalse(Loaded.ProblemsWindowShowCleanActive);
+end;
+
+procedure TAtlasPluginSettingsTests.CallHierarchyDiagramOption;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.CallHierarchyDiagram, 'Aufrufdiagramm standardmäßig an');
+  Settings.CallHierarchyDiagram := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('CallHierarchyDiagram', 1));
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.CallHierarchyDiagram);
 end;
 
 procedure TAtlasPluginSettingsTests.EditorToolbarOptions;

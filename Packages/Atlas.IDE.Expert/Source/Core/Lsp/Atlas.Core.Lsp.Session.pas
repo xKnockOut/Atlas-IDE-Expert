@@ -1274,6 +1274,12 @@ begin
         Child := HierarchyItemOf(Inner);
         // Eingehende Aufrufe (#1119): atlasConfidence steht am Aufruf, nicht am Element.
         Child.Confidence := TAtlasConfidence.FromJson(Item);
+        // Aufruf über Interface oder virtuelle Methode (#1122), ebenfalls am Aufruf.
+        if Item is TJSONObject then
+        begin
+          Child.Dispatch := TJSONObject(Item).GetValue<string>('atlasDispatch.kind', '');
+          Child.Implementations := TJSONObject(Item).GetValue<Integer>('atlasDispatch.implementations', 0);
+        end;
         Result := Result + [Child];
       end;
     end;

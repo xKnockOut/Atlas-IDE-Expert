@@ -55,6 +55,8 @@ type
     /// <summary>Der Auflöser wählt das Symbol (sicher, in einem inaktiven Zweig oder als beste von mehreren
     /// Überladungen).</summary>
     Matched: Boolean;
+    /// <summary>Gründe interface und virtual: Umsetzungen, die der Aufruf erreichen kann (#1122); sonst 0.</summary>
+    Implementations: Integer;
     class function Sure: TReferenceConfidence; static;
     class function Inferred(AReason: TReferenceReason; const ADetail: string;
       AMatched: Boolean): TReferenceConfidence; static;
@@ -66,6 +68,8 @@ type
     /// <summary>Kennzeichen wie im LSP: '', "interface", "virtual", "ambiguous", "unresolved",
     /// "inactiveBranch", "text".</summary>
     function ReasonName: string;
+    /// <summary>Kennzeichen eines Grundes wie ReasonName (auch für atlasDispatch, #1122).</summary>
+    class function NameOfReason(AReason: TReferenceReason): string; static;
     /// <summary>{"level", "reason", "detail"} für atlasConfidence; der Aufrufer übernimmt das Objekt.</summary>
     function ToJson: TJSONObject;
   end;
@@ -194,6 +198,7 @@ end;
 class function TReferenceConfidence.Inferred(AReason: TReferenceReason; const ADetail: string;
   AMatched: Boolean): TReferenceConfidence;
 begin
+  Result := Default(TReferenceConfidence);
   Result.Level := TReferenceLevel.Inferred;
   Result.Reason := AReason;
   Result.Detail := ADetail;
@@ -221,6 +226,11 @@ end;
 function TReferenceConfidence.ReasonName: string;
 begin
   Result := ReasonNames[Reason];
+end;
+
+class function TReferenceConfidence.NameOfReason(AReason: TReferenceReason): string;
+begin
+  Result := ReasonNames[AReason];
 end;
 
 function TReferenceConfidence.ToJson: TJSONObject;
@@ -328,14 +338,8 @@ begin
 end;
 
 function TReferenceClassifier.ContainerIsInterface(const AContainer: string): Boolean;
-var
-  Location: TSymbolLocation;
 begin
-  for Location in FIndex.FindSymbols(ShortName(AContainer)) do
-    if (Location.Symbol.Kind = TIndexSymbolKind.InterfaceType) and
-      (SameText(Location.Symbol.QualifiedName, AContainer) or SameText(Location.Symbol.Name, AContainer)) then
-      Exit(True);
-  Result := False;
+  Result := TLspImplementations.IsInterfaceType(FIndex, AContainer);
 end;
 
 function TReferenceClassifier.InheritedCall(const AResolved: TResolvedSymbol;
@@ -375,6 +379,7 @@ begin
       AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Interface_,
         Format('Aufruf über %s.%s; %s ist eine von %d Umsetzungen', [AResolved.Container, AResolved.Name,
         FSymbol.Container, Classes]), False);
+    AConfidence.Implementations := Classes;
     Exit(True);
   end;
   // Statische Methoden gleichen Namens verdecken nur; erreicht wird das Symbol nur über virtual.
@@ -383,6 +388,8 @@ begin
   AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Virtual,
     Format('Aufruf von %s.%s; %s.%s überschreibt sie', [AResolved.Container, AResolved.Name, FSymbol.Container,
     FSymbol.Name]), False);
+  AConfidence.Implementations := TLspImplementations.ImplementationCount(FIndex, AResolved.Container, AResolved.Name,
+    False);
   Result := True;
 end;
 

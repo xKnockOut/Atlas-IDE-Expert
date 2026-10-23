@@ -473,6 +473,15 @@ begin
     begin
       TAtlasIdeResults.FindReferences;
     end);
+  // Aufrufdiagramm (#1122): Das Kontextmenü entsteht einmal, deshalb gilt callHierarchy.diagram hier ab dem
+  // nächsten Start; Palette und Menü Atlas folgen sofort.
+  if TAtlasIdeResults.CallDiagramAllowed then
+    FContextMenu.AddGuarded(TAtlasFeature.Results, 'Atlas.CallDiagram',
+      TAtlasStrings.Text(TAtlasTextId.CallDiagramCommand), nil,
+      procedure
+      begin
+        TAtlasIdeResults.ShowCallDiagram;
+      end);
   FContextMenu.Add('-', nil, nil);
   FContextMenu.Add('Atlas.SwitchTestUnit', TAtlasStrings.Text(TAtlasTextId.EditorTestUnit),
     function: Integer

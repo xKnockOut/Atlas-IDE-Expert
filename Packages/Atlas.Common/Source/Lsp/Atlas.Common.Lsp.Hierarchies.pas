@@ -49,6 +49,10 @@ type
     Ranges: TArray<TTextRange>;
     /// <summary>Einstufung der Aufrufstellen (#1119); ausgehende Aufrufe sind immer sicher.</summary>
     Confidence: TReferenceConfidence;
+    /// <summary>Aufruf über ein Interface bzw. eine virtuelle Methode (#1122), sonst None; mit der Zahl der
+    /// Umsetzungen, die er erreichen kann. Als atlasDispatch im LSP.</summary>
+    Dispatch: TReferenceReason;
+    Implementations: Integer;
   end;
 
   TLspHierarchies = class
@@ -103,7 +107,15 @@ type
       const AFiles: TArray<string>; const AReadText: TReferenceReadText; const ASettings: TReferenceSettings;
       const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>; overload; static;
     class function OutgoingCalls(AResolver: TNameResolver; const AItem: THierarchyItem;
-      const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken = nil): TArray<THierarchyCall>; static;
+      const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken = nil): TArray<THierarchyCall>; overload; static;
+    /// <summary>Wie oben; mit AIndex sind Aufrufe über ein Interface oder eine virtuelle Methode samt Zahl der
+    /// Umsetzungen gekennzeichnet (#1122).</summary>
+    class function OutgoingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AItem: THierarchyItem;
+      const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
+      overload; static;
+    /// <summary>Art des Aufrufs von AResolved (#1122): Interface_, Virtual oder None, dazu die Umsetzungen.</summary>
+    class function DispatchOf(const AIndex: ISymbolIndex; const AResolved: TResolvedSymbol;
+      out AImplementations: Integer): TReferenceReason; static;
     /// <summary>TypeHierarchyItem bzw. CallHierarchyItem. Der Aufrufer übernimmt das Objekt.</summary>
     class function ItemToJson(const AItem: THierarchyItem): TJSONObject; static;
     class function ItemFromJson(const AValue: TJSONValue; out AItem: THierarchyItem): Boolean; static;
@@ -124,6 +136,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.Lsp.Implementations,
   Atlas.Common.Lsp.Internals.Cancellation;
 
 type
@@ -521,6 +534,14 @@ begin
         Call.Item := Caller;
         Call.Ranges := [Location.Range];
         Call.Confidence := Location.Confidence;
+        // Erschlossen über Interface oder virtual: derselbe Aufruf erreicht auch andere Umsetzungen (#1122).
+        Call.Dispatch := TReferenceReason.None;
+        Call.Implementations := 0;
+        if Location.Confidence.Reason in [TReferenceReason.Interface_, TReferenceReason.Virtual] then
+        begin
+          Call.Dispatch := Location.Confidence.Reason;
+          Call.Implementations := Location.Confidence.Implementations;
+        end;
         Keys.Add(Key, Calls.Count);
         Calls.Add(Call);
       end;
@@ -535,6 +556,31 @@ end;
 
 class function TLspHierarchies.OutgoingCalls(AResolver: TNameResolver; const AItem: THierarchyItem;
   const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
+begin
+  Result := OutgoingCalls(AResolver, nil, AItem, AReadText, ACancellation);
+end;
+
+class function TLspHierarchies.DispatchOf(const AIndex: ISymbolIndex; const AResolved: TResolvedSymbol;
+  out AImplementations: Integer): TReferenceReason;
+begin
+  Result := TReferenceReason.None;
+  AImplementations := 0;
+  if (AIndex = nil) or (AResolved.Kind <> TResolvedKind.Symbol) or (AResolved.Container = '') or
+    not (AResolved.SymbolKind in RoutineKinds) then
+    Exit;
+  if TLspImplementations.IsInterfaceType(AIndex, AResolved.Container) then
+    Result := TReferenceReason.Interface_
+  else if AResolved.IsVirtual then
+    Result := TReferenceReason.Virtual
+  else
+    Exit;
+  AImplementations := TLspImplementations.ImplementationCount(AIndex, AResolved.Container, AResolved.Name,
+    Result = TReferenceReason.Interface_);
+end;
+
+class function TLspHierarchies.OutgoingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const AItem: THierarchyItem; const AReadText: TReferenceReadText;
+  const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
 var
   Text: string;
   Tree: TSyntaxTree;
@@ -583,6 +629,7 @@ begin
         Call.Item := Callee;
         Call.Ranges := [TTextRange.Create(Token.StartPos, Token.EndPos)];
         Call.Confidence := TReferenceConfidence.Sure;
+        Call.Dispatch := DispatchOf(AIndex, Resolved, Call.Implementations);
         Keys.Add(Key, Calls.Count);
         Calls.Add(Call);
       end;
@@ -650,7 +697,7 @@ end;
 class function TLspHierarchies.CallsToJson(const ACalls: TArray<THierarchyCall>; const AKey: string): TJSONArray;
 var
   Call: THierarchyCall;
-  Entry: TJSONObject;
+  Entry, Dispatch: TJSONObject;
   Ranges: TJSONArray;
   Range: TTextRange;
 begin
@@ -666,6 +713,14 @@ begin
       Ranges.AddElement(TLspPositions.RangeToJson(Range));
     // Erweiterung (#1119); Editoren ohne Kenntnis übergehen das Feld.
     Entry.AddPair('atlasConfidence', Call.Confidence.ToJson);
+    // Erweiterung (#1122): Aufruf über Interface bzw. virtuelle Methode mit der Zahl der Umsetzungen.
+    if Call.Dispatch <> TReferenceReason.None then
+    begin
+      Dispatch := TJSONObject.Create;
+      Dispatch.AddPair('kind', TReferenceConfidence.NameOfReason(Call.Dispatch));
+      Dispatch.AddPair('implementations', TJSONNumber.Create(Call.Implementations));
+      Entry.AddPair('atlasDispatch', Dispatch);
+    end;
   end;
 end;
 
@@ -794,7 +849,7 @@ var
 begin
   Resolver := NewResolver;
   try
-    Result := CallsToJson(OutgoingCalls(Resolver, ReadItem(AParams), FReadText, ACancellation), 'to');
+    Result := CallsToJson(OutgoingCalls(Resolver, FIndex, ReadItem(AParams), FReadText, ACancellation), 'to');
   finally
     Resolver.Free;
   end;

@@ -93,6 +93,9 @@ type
     procedure EditorToolbarRoundTrip;
     [Test]
     procedure QuickBookmarksRoundTrip;
+    /// <summary>#1122: Kontrollkästchen „Aufrufdiagramm“ liest und schreibt callHierarchy.diagram.</summary>
+    [Test]
+    procedure CallHierarchyDiagramRoundTrip;
     [Test]
     procedure WelcomeSettingsRoundTrip;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
@@ -2122,6 +2125,29 @@ begin
     Assert.AreEqual('Atlas.NavBack', Saved.EditorToolbarItems);
     Assert.IsTrue(Saved.EditorToolbar);
     Assert.IsTrue(Saved.EditorToolbarReturnButton);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.CallHierarchyDiagramRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Settings.CallHierarchyDiagram := False;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Saved := TAtlasPluginSettings.Defaults;
+    Assert.IsTrue(Saved.CallHierarchyDiagram);
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.CallHierarchyDiagram, 'aus bleibt aus');
+    Settings.CallHierarchyDiagram := True;
+    Page.LoadFrom(Settings);
+    Page.SaveTo(Saved);
+    Assert.IsTrue(Saved.CallHierarchyDiagram, 'an bleibt an');
   finally
     Page.Free;
   end;
