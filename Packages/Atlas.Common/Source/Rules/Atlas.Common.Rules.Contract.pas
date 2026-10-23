@@ -185,6 +185,18 @@ type
     function ReadText(const AFileName: string; out AText: string): Boolean;
   end;
 
+  /// <summary>Art eines Namens mit Präfix-Vorgabe (#1111).</summary>
+{$SCOPEDENUMS ON}
+  TRuleNamingKind = (Local, Field, Parameter, Constant);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Präfix-Vorgaben der Projektdatei .atlas (naming, #452, #1111); Known = gesetzt, auch leer (= ohne
+  /// Präfix).</summary>
+  TRuleNaming = record
+    Prefixes: array[TRuleNamingKind] of string;
+    Known: array[TRuleNamingKind] of Boolean;
+  end;
+
   /// <summary>Alles, was eine Regel über die geprüfte Datei wissen darf.</summary>
   TRuleContext = record
     /// <summary>Pfad relativ zum Ordner der Konfiguration, '' wenn unbekannt.</summary>
@@ -256,6 +268,9 @@ type
     /// <summary>Projekte der Gruppe für projektweite Regeln (#1102); nil = unbekannt, diese Regeln schweigen.
     /// </summary>
     ProjectFiles: IRuleProjectFiles;
+    /// <summary>Präfixe der Projektdatei .atlas aus dem Projektkontext der IDE (#1111); ohne IDE (Linter) leer.
+    /// </summary>
+    Naming: TRuleNaming;
   end;
 
   /// <summary>Sammelt die Treffer einer Regel. Ohne Angabe gilt Konfidenz High.</summary>

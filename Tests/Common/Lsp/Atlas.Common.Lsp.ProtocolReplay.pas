@@ -118,7 +118,7 @@ begin
   FDocuments := TDocumentStore.Create;
   FTextDocumentSync := TLspTextDocumentSync.Create(FDocuments);
   FTextDocumentSync.Attach(FDispatcher);
-  FSyntaxDiagnostics := TLspSyntaxDiagnostics.Create(FDocuments, FTransport, 0);
+  FSyntaxDiagnostics := TLspSyntaxDiagnostics.Create(FDocuments, FTransport, Default(TSyntaxDiagnosticsProviders), 0);
   FSyntaxDiagnostics.Attach;
   FDocumentSymbols := TLspDocumentSymbols.Create(FDocuments);
   FDocumentSymbols.Attach(FDispatcher);

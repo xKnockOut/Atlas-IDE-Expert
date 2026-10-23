@@ -121,9 +121,12 @@ begin
   Context.HasNaming[TAtlasProjectNamingKind.Field] := True;
   Context.Naming[TAtlasProjectNamingKind.Field] := 'F';
   Context.HasNaming[TAtlasProjectNamingKind.Local] := True;
+  // Konstanten für naming-prefix (#1111).
+  Context.HasNaming[TAtlasProjectNamingKind.Constant] := True;
+  Context.Naming[TAtlasProjectNamingKind.Constant] := 'c';
   Json := Context.ToJson;
   try
-    Assert.AreEqual('{"field":"F","local":""}', Json.GetValue<TJSONObject>('naming').ToJSON);
+    Assert.AreEqual('{"field":"F","local":"","constant":"c"}', Json.GetValue<TJSONObject>('naming').ToJSON);
   finally
     Json.Free;
   end;

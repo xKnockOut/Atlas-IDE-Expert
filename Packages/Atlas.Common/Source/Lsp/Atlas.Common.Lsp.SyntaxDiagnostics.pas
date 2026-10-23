@@ -4,27 +4,29 @@
 // Nach didOpen und didChange wird das Dokument nach einer kurzen Verzögerung
 // geparst (Debouncing beim Tippen); bei didClose werden die Meldungen gelöscht.
 // Jede Meldung trägt Zeile, Spalte und Endposition in UTF-16.
-// Sind die Symbole des Projekts bekannt (DefinesProvider), kommen inaktive
+// Sind die Symbole des Projekts bekannt (Providers.Defines), kommen inaktive
 // {$IFDEF}-Bereiche als Hinweise mit dem Tag Unnecessary dazu; der Editor
 // blendet sie ab. Ohne Projekt wird nichts abgeblendet, weil die aktiven
 // Symbole dann nicht bekannt sind. Jeder Bereich nennt die Bedingung seines
-// Zweigs und, mit BuildTargetProvider, Zielplattform und Konfiguration (#615):
+// Zweigs und, mit Providers.BuildTarget, Zielplattform und Konfiguration (#615):
 // „Inaktiv: Bedingung WIN64 nicht erfüllt (Zielplattform Win32 · Debug)“,
 // dieselben Angaben einzeln in data.inactive.
-// Ist die Delphi-Version bekannt (VersionProvider), werden Sprachmerkmale,
+// Ist die Delphi-Version bekannt (Providers.Version), werden Sprachmerkmale,
 // die diese Version noch nicht kennt, als Warnung gemeldet.
-// Meldungen des letzten Compilerlaufs (CompilerMessagesProvider, #40) kommen
+// Meldungen des letzten Compilerlaufs (Providers.CompilerMessages, #40) kommen
 // mit der Quelle "dcc" dazu, auch für Dateien, die nicht geöffnet sind.
 // Include-Dateien (#264) sucht der Präprozessor über den Include-Resolver des
 // gemeinsamen Baums (TSyntaxTreeCache.SetIncludeProvider, #860); deren
 // $DEFINE wählen die Zweige. Baum, Syntaxfehler, Abblenden und Include-Befunde
 // kommen aus demselben Präprozessor-Lauf je Dokumentversion.
 // Ein Include-Zyklus ist eine Warnung, eine nicht gefundene Datei ein Hinweis.
-// Mit UsesProvider (#621) kommen ungenutzte uses-Einträge als Hinweise mit
+// Mit Providers.UsesContext (#621) kommen ungenutzte uses-Einträge als Hinweise mit
 // dem Tag Unnecessary dazu („Aus Vcl.Grids wird nichts verwendet“), dazu ohne
 // Tag die, die wegen initialization oder "usesKeep" bleiben, und interface-
 // Einträge, die nur die implementation braucht; Unit und Zustand stehen in
 // data.uses. Inaktive Zweige zählen nicht. Bei Syntaxfehlern fehlen sie.
+// Die Dienste (TSyntaxDiagnosticsProviders) übergibt der Konstruktor; danach
+// ändern sie sich nicht, die Prüfung im Hintergrund liest sie ohne Sperre.
 
 interface
 
@@ -87,6 +89,8 @@ type
     ProjectMainSource: string;
     /// <summary>Projekte der Gruppe für projektweite Regeln (#1102); nil = keine.</summary>
     ProjectFiles: IRuleProjectFiles;
+    /// <summary>Präfixe der Projektdatei .atlas (#1111); leer ohne Projektkontext der IDE.</summary>
+    Naming: TRuleNaming;
     /// <summary>Abbruch zwischen den Prüfregeln; nil = nie. Setzt Compute.</summary>
     Cancelled: TRuleCancelled;
   end;
@@ -97,6 +101,23 @@ type
   TCompilerMessagesProvider = reference to function(const AFileName: string): TArray<TCompilerMessage>;
   /// <summary>Index und Einstellungen für die uses-Prüfung (#284, #621); False ohne Index.</summary>
   TUsesContextProvider = reference to function(const AUri: string; out AContext: TUsesContext): Boolean;
+
+  /// <summary>Dienste der Prüfung; der Konstruktor übernimmt sie, danach ändern sie sich nicht mehr (#1109).
+  /// nil = die Prüfung entfällt (keine Symbole, keine Regeln, keine Compilermeldungen, keine uses-Diagnosen).
+  /// </summary>
+  TSyntaxDiagnosticsProviders = record
+    /// <summary>Symbole für das Abblenden inaktiver Bereiche.</summary>
+    Defines: TDefinesProvider;
+    Version: TDelphiVersionProvider;
+    /// <summary>Zielplattform und Konfiguration für den Hinweis inaktiver Bereiche (#615).</summary>
+    BuildTarget: TBuildTargetProvider;
+    /// <summary>Regeln und Einstellungen; ohne laufen keine Prüfregeln.</summary>
+    Rules: TRuleContextProvider;
+    /// <summary>Meldungen des letzten Compilerlaufs.</summary>
+    CompilerMessages: TCompilerMessagesProvider;
+    /// <summary>Index und usesKeep für ungenutzte uses (#621).</summary>
+    UsesContext: TUsesContextProvider;
+  end;
 
   TLspSyntaxDiagnostics = class
   public const
@@ -122,13 +143,7 @@ type
     FRefreshDebouncer: TDebouncer;
     /// <summary>Hält Prüfen und Senden zusammen, damit nach dem Schließen nichts Veraltetes mehr kommt.</summary>
     FSendLock: TObject;
-    FDefinesLock: TObject;
-    FDefinesProvider: TDefinesProvider;
-    FVersionProvider: TDelphiVersionProvider;
-    FTargetProvider: TBuildTargetProvider;
-    FRuleProvider: TRuleContextProvider;
-    FCompilerProvider: TCompilerMessagesProvider;
-    FUsesProvider: TUsesContextProvider;
+    FProviders: TSyntaxDiagnosticsProviders;
     FPullMode: Boolean;
     FOnPullChanged: TProc;
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
@@ -138,21 +153,18 @@ type
     function GetOnError: TProc<Exception>;
     procedure SetOnError(const AValue: TProc<Exception>);
     function CurrentDefines(const AUri: string; out ADefines: TArray<string>): Boolean;
-    procedure SetDefinesProvider(const AValue: TDefinesProvider);
     function CurrentVersion(const AUri: string): string;
-    procedure SetVersionProvider(const AValue: TDelphiVersionProvider);
     function CurrentTarget(const AUri: string; out APlatform, AConfig: string): Boolean;
-    procedure SetTargetProvider(const AValue: TBuildTargetProvider);
     function CurrentRules(const AUri: string; out AContext: TRuleCheckContext): Boolean;
-    procedure SetRuleProvider(const AValue: TRuleContextProvider);
     function CurrentCompilerMessages(const AFileName: string): TArray<TCompilerMessage>;
-    procedure SetCompilerProvider(const AValue: TCompilerMessagesProvider);
     function CurrentUses(const AUri: string; out AContext: TUsesContext): Boolean;
-    procedure SetUsesProvider(const AValue: TUsesContextProvider);
   public
     /// <summary>Bei ADelayMs = 0 wird sofort im Thread der Nachrichtenschleife geparst.</summary>
     constructor Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
-      ADelayMs: Cardinal = DefaultDelayMs);
+      const AProviders: TSyntaxDiagnosticsProviders; ADelayMs: Cardinal); overload;
+    /// <summary>Mit DefaultDelayMs.</summary>
+    constructor Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
+      const AProviders: TSyntaxDiagnosticsProviders); overload;
     destructor Destroy; override;
     /// <summary>Meldet sich am Dokumentspeicher an.</summary>
     procedure Attach;
@@ -212,17 +224,6 @@ type
     class function UsesStateName(AState: TUsesEntryState): string; static;
     /// <summary>Wird bei Ausnahmen beim Parsen im Hintergrund aufgerufen.</summary>
     property OnError: TProc<Exception> read GetOnError write SetOnError;
-    /// <summary>Liefert die Symbole für das Abblenden inaktiver Bereiche.</summary>
-    property DefinesProvider: TDefinesProvider write SetDefinesProvider;
-    property VersionProvider: TDelphiVersionProvider write SetVersionProvider;
-    /// <summary>Zielplattform und Konfiguration für den Hinweis inaktiver Bereiche (#615).</summary>
-    property BuildTargetProvider: TBuildTargetProvider write SetTargetProvider;
-    /// <summary>Liefert Regeln und Einstellungen; ohne Provider laufen keine Prüfregeln.</summary>
-    property RuleProvider: TRuleContextProvider write SetRuleProvider;
-    /// <summary>Liefert die Meldungen des letzten Compilerlaufs; ohne Provider keine.</summary>
-    property CompilerMessagesProvider: TCompilerMessagesProvider write SetCompilerProvider;
-    /// <summary>Index und usesKeep für ungenutzte uses (#621); ohne Provider keine.</summary>
-    property UsesProvider: TUsesContextProvider write SetUsesProvider;
     /// <summary>Der Client holt Diagnosen selbst ab (#82): nichts senden, bei Änderungen
     /// stattdessen OnPullChanged aufrufen.</summary>
     property PullMode: Boolean read FPullMode write FPullMode;
@@ -267,18 +268,24 @@ end;
 { TLspSyntaxDiagnostics }
 
 constructor TLspSyntaxDiagnostics.Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
-  ADelayMs: Cardinal);
+  const AProviders: TSyntaxDiagnosticsProviders; ADelayMs: Cardinal);
 begin
   inherited Create;
   FStore := AStore;
   FTransport := ATransport;
+  FProviders := AProviders;
   FSendLock := TObject.Create;
-  FDefinesLock := TObject.Create;
   FDebouncer := TDebouncer.Create(ADelayMs);
   if ADelayMs = 0 then
     FRefreshDebouncer := TDebouncer.Create(0)
   else
     FRefreshDebouncer := TDebouncer.Create(RefreshDelayMs);
+end;
+
+constructor TLspSyntaxDiagnostics.Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
+  const AProviders: TSyntaxDiagnosticsProviders);
+begin
+  Create(AStore, ATransport, AProviders, DefaultDelayMs);
 end;
 
 destructor TLspSyntaxDiagnostics.Destroy;
@@ -287,7 +294,6 @@ begin
   FRefreshDebouncer.Free;
   FDebouncer.Free;
   FSendLock.Free;
-  FDefinesLock.Free;
   inherited;
 end;
 
@@ -311,62 +317,27 @@ function TLspSyntaxDiagnostics.CurrentDefines(const AUri: string; out ADefines: 
 var
   Provider: TDefinesProvider;
 begin
-  TMonitor.Enter(FDefinesLock);
-  try
-    Provider := FDefinesProvider;
-  finally
-    TMonitor.Exit(FDefinesLock);
-  end;
+  Provider := FProviders.Defines;
   ADefines := nil;
   Result := Assigned(Provider) and Provider(AUri, ADefines);
-end;
-
-procedure TLspSyntaxDiagnostics.SetDefinesProvider(const AValue: TDefinesProvider);
-begin
-  TMonitor.Enter(FDefinesLock);
-  try
-    FDefinesProvider := AValue;
-  finally
-    TMonitor.Exit(FDefinesLock);
-  end;
 end;
 
 function TLspSyntaxDiagnostics.CurrentVersion(const AUri: string): string;
 var
   Provider: TDelphiVersionProvider;
 begin
-  TMonitor.Enter(FDefinesLock);
-  try
-    Provider := FVersionProvider;
-  finally
-    TMonitor.Exit(FDefinesLock);
-  end;
+  Provider := FProviders.Version;
   if Assigned(Provider) then
     Result := Provider(AUri)
   else
     Result := '';
 end;
 
-procedure TLspSyntaxDiagnostics.SetVersionProvider(const AValue: TDelphiVersionProvider);
-begin
-  TMonitor.Enter(FDefinesLock);
-  try
-    FVersionProvider := AValue;
-  finally
-    TMonitor.Exit(FDefinesLock);
-  end;
-end;
-
 function TLspSyntaxDiagnostics.CurrentTarget(const AUri: string; out APlatform, AConfig: string): Boolean;
 var
   Provider: TBuildTargetProvider;
 begin
-  TMonitor.Enter(FDefinesLock);
-  try
-    Provider := FTargetProvider;
-  finally
-    TMonitor.Exit(FDefinesLock);
-  end;
+  Provider := FProviders.BuildTarget;
   APlatform := '';
   AConfig := '';
   Result := Assigned(Provider) and Provider(AUri, APlatform, AConfig);
@@ -377,62 +348,22 @@ begin
   end;
 end;
 
-procedure TLspSyntaxDiagnostics.SetTargetProvider(const AValue: TBuildTargetProvider);
-begin
-  TMonitor.Enter(FDefinesLock);
-  try
-    FTargetProvider := AValue;
-  finally
-    TMonitor.Exit(FDefinesLock);
-  end;
-end;
-
 function TLspSyntaxDiagnostics.CurrentRules(const AUri: string; out AContext: TRuleCheckContext): Boolean;
 var
   Provider: TRuleContextProvider;
 begin
-  TMonitor.Enter(FDefinesLock);
-  try
-    Provider := FRuleProvider;
-  finally
-    TMonitor.Exit(FDefinesLock);
-  end;
+  Provider := FProviders.Rules;
   AContext := Default(TRuleCheckContext);
   Result := Assigned(Provider) and Provider(AUri, AContext);
-end;
-
-procedure TLspSyntaxDiagnostics.SetRuleProvider(const AValue: TRuleContextProvider);
-begin
-  TMonitor.Enter(FDefinesLock);
-  try
-    FRuleProvider := AValue;
-  finally
-    TMonitor.Exit(FDefinesLock);
-  end;
 end;
 
 function TLspSyntaxDiagnostics.CurrentUses(const AUri: string; out AContext: TUsesContext): Boolean;
 var
   Provider: TUsesContextProvider;
 begin
-  TMonitor.Enter(FDefinesLock);
-  try
-    Provider := FUsesProvider;
-  finally
-    TMonitor.Exit(FDefinesLock);
-  end;
+  Provider := FProviders.UsesContext;
   AContext := Default(TUsesContext);
   Result := Assigned(Provider) and Provider(AUri, AContext);
-end;
-
-procedure TLspSyntaxDiagnostics.SetUsesProvider(const AValue: TUsesContextProvider);
-begin
-  TMonitor.Enter(FDefinesLock);
-  try
-    FUsesProvider := AValue;
-  finally
-    TMonitor.Exit(FDefinesLock);
-  end;
 end;
 
 class function TLspSyntaxDiagnostics.UsesStateName(AState: TUsesEntryState): string;
@@ -494,26 +425,11 @@ function TLspSyntaxDiagnostics.CurrentCompilerMessages(const AFileName: string):
 var
   Provider: TCompilerMessagesProvider;
 begin
-  TMonitor.Enter(FDefinesLock);
-  try
-    Provider := FCompilerProvider;
-  finally
-    TMonitor.Exit(FDefinesLock);
-  end;
+  Provider := FProviders.CompilerMessages;
   if Assigned(Provider) then
     Result := Provider(AFileName)
   else
     Result := nil;
-end;
-
-procedure TLspSyntaxDiagnostics.SetCompilerProvider(const AValue: TCompilerMessagesProvider);
-begin
-  TMonitor.Enter(FDefinesLock);
-  try
-    FCompilerProvider := AValue;
-  finally
-    TMonitor.Exit(FDefinesLock);
-  end;
 end;
 
 class function TLspSyntaxDiagnostics.CompilerMessageToJson(const AMessage: TCompilerMessage;
@@ -996,6 +912,7 @@ begin
   Context.AutoCreateForms := ARules.AutoCreateForms;
   Context.ProjectMainSource := ARules.ProjectMainSource;
   Context.ProjectFiles := ARules.ProjectFiles;
+  Context.Naming := ARules.Naming;
   Context.Cancelled := ARules.Cancelled;
   Result := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
 end;
