@@ -655,6 +655,9 @@ begin
   Pill := FirstKind(Layout, TAtlasHoverItemKind.CenterText);
   Assert.AreEqual(Colors.Error, Layout.Items[Pill].Color);
   Assert.AreEqual(20, Layout.Items[Pill].Rect.Left);
+  // Gemessen und gezeichnet mit derselben Schrift fester Größe; die Badge-Schrift hängt an der Kästchenhöhe.
+  Assert.IsTrue(Layout.Items[Pill].Face.Font = TAtlasHoverFont.SmallUi, 'Schrift der Pille');
+  Assert.AreEqual(15, Layout.Items[Pill].Rect.Height, 'eine Zeile kleine Schrift plus Rand');
   Assert.IsTrue(Layout.Items[FirstKind(Layout, TAtlasHoverItemKind.Block)].Rect.Left >=
     Layout.Items[Pill].Rect.Right + 6);
   // Ohne Aktionszeile keine Klickflächen.

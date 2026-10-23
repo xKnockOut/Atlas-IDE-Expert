@@ -15,6 +15,10 @@ type
     procedure IconsOfKnownCommands;
     [Test]
     procedure GlyphsStayInTheBox;
+    /// <summary>Das Zahnrad ist ein geschlossener Zahnkranz mit Loch, keine Strahlen (sah aus wie eine Sonne).
+    /// </summary>
+    [Test]
+    procedure GearHasTeethNotRays;
   end;
 
 implementation
@@ -63,6 +67,34 @@ begin
       end;
     end;
   end;
+end;
+
+procedure TAtlasToolbarIconsTests.GearHasTeethNotRays;
+var
+  Shapes: TArray<TAtlasGlyphShape>;
+  Shape: TAtlasGlyphShape;
+  Point: TAtlasGlyphPoint;
+  Radius: Double;
+  Outer, Inner: Integer;
+begin
+  Shapes := TAtlasGlyphs.Shapes(TAtlasToolbarIcon.Gear);
+  Assert.AreEqual(2, Integer(Length(Shapes)), 'Zahnkranz und Loch');
+  for Shape in Shapes do
+    Assert.IsTrue(Shape.Closed, 'nur geschlossene Umrisse, keine Strahlen');
+  Outer := 0;
+  Inner := 0;
+  for Point in Shapes[0].Points do
+  begin
+    Radius := Sqrt(Sqr(Point.X - 8) + Sqr(Point.Y - 8));
+    if Abs(Radius - 6.8) < 0.01 then
+      Inc(Outer)
+    else if Abs(Radius - 5) < 0.01 then
+      Inc(Inner)
+    else
+      Assert.Fail(Format('Punkt %.2f/%.2f weder Kopf noch Fuß', [Point.X, Point.Y]));
+  end;
+  Assert.AreEqual(16, Outer, 'acht Zähne mit je zwei Kopfpunkten');
+  Assert.AreEqual(16, Inner, 'acht Lücken mit je zwei Fußpunkten');
 end;
 
 initialization

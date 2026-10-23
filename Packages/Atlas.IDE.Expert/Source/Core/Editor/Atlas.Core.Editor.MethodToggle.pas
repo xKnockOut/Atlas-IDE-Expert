@@ -12,6 +12,9 @@
 // Gegenstück: gleicher Name auf der anderen Seite; bei Überladungen gewinnt die
 // gleiche Parameterliste (Typen), dann die gleiche Anzahl, sonst die erste.
 // Ein Implementierungskopf ohne Parameterliste passt zur einzigen Deklaration.
+// Bedingte Übersetzung wie beim Compiler (Atlas.Core.Editor.Conditionals): Nur
+// aktive Zweige werden zu Token; alternative Rümpfe in $IFDEF-Zweigen brachten
+// den Aufbau sonst durcheinander, ab dort fand sich keine Routine mehr.
 // Zeilen und Zeichen sind 0-basiert, #13 zählt nicht.
 
 interface
@@ -42,23 +45,27 @@ type
 
   TAtlasMethodToggle = class
   public
-    /// <summary>Alle Deklarationen und Implementierungen in AText, in Textreihenfolge.</summary>
-    class function Places(const AText: string): TArray<TAtlasMethodPlace>; static;
+    /// <summary>Alle Deklarationen und Implementierungen in AText, in Textreihenfolge. ADefines: gesetzte Symbole
+    /// der bedingten Übersetzung; nil = Delphi für Win32 (TTextDefines.Predefined).</summary>
+    class function Places(const AText: string; const ADefines: TArray<string> = nil): TArray<TAtlasMethodPlace>;
+      static;
     /// <summary>Stelle unter dem Cursor (Zeile, Zeichen); False außerhalb jedes Kopfs und Rumpfs.</summary>
     class function PlaceAt(const APlaces: TArray<TAtlasMethodPlace>; ALine, ACharacter: Integer;
       out APlace: TAtlasMethodPlace): Boolean; static;
     /// <summary>Gegenstück zu ASource unter APlaces; False, wenn es keins gibt.</summary>
     class function Match(const APlaces: TArray<TAtlasMethodPlace>; const ASource: TAtlasMethodPlace;
       out ATarget: TAtlasMethodPlace): Boolean; static;
-    /// <summary>Gegenstück der Methode am Cursor: Deklaration ⇄ Implementierung.</summary>
-    class function Counterpart(const AText: string; ALine, ACharacter: Integer;
-      out ATarget: TAtlasMethodPlace): Boolean; static;
+    /// <summary>Gegenstück der Methode am Cursor: Deklaration ⇄ Implementierung; ADefines wie bei Places.</summary>
+    class function Counterpart(const AText: string; ALine, ACharacter: Integer; out ATarget: TAtlasMethodPlace;
+      const ADefines: TArray<string> = nil): Boolean; static;
   end;
 
 implementation
 
 uses
-  Atlas.Text.Chars;
+  Atlas.Text.Chars,
+  Atlas.Text.Defines,
+  Atlas.Core.Editor.Conditionals;
 
 type
   TTokenKind = (tkIdent, tkNumber, tkString, tkSymbol, tkEof);
@@ -91,6 +98,7 @@ type
     FEof: TToken;
     FPlaces: TArray<TAtlasMethodPlace>;
     FPlaceCount: Integer;
+    FConditionals: TAtlasConditionals;
     procedure Lex(const AText: string);
     procedure AddToken(const AText: string; AKind: TTokenKind; ALine, ACharacter: Integer; AEscaped: Boolean);
     function Tok(AOffset: Integer): TToken;
@@ -115,7 +123,7 @@ type
     procedure ParseRoutine(const AOwner: string; AInInterface, ACollect: Boolean);
     procedure AddPlace(const AName: string; const AHeading: THeading; AFirst, ALast: Integer; AIsBody: Boolean);
   public
-    function Run(const AText: string): TArray<TAtlasMethodPlace>;
+    function Run(const AText: string; const ADefines: TArray<string>): TArray<TAtlasMethodPlace>;
   end;
 
 { TParser }
@@ -124,6 +132,9 @@ procedure TParser.AddToken(const AText: string; AKind: TTokenKind; ALine, AChara
 var
   Token: TToken;
 begin
+  // Inaktiver Zweig der bedingten Übersetzung: kein Token.
+  if not FConditionals.Active then
+    Exit;
   Token.Text := AText;
   Token.Lower := LowerCase(AText);
   Token.Kind := AKind;
@@ -187,16 +198,20 @@ begin
     end
     else if C = '{' then
     begin
+      Start := I;
       while (I <= Len) and (AText[I] <> '}') do
       begin
         if AText[I] = #10 then
           NewLine;
         Inc(I);
       end;
+      if (Start < Len) and (AText[Start + 1] = '$') then
+        FConditionals.Handle(Copy(AText, Start + 2, I - Start - 2));
       Inc(I);
     end
     else if (C = '(') and (I < Len) and (AText[I + 1] = '*') then
     begin
+      Start := I;
       Inc(I, 2);
       while (I <= Len) and not ((AText[I] = '*') and (I < Len) and (AText[I + 1] = ')')) do
       begin
@@ -204,6 +219,8 @@ begin
           NewLine;
         Inc(I);
       end;
+      if (Start + 2 <= Len) and (AText[Start + 2] = '$') then
+        FConditionals.Handle(Copy(AText, Start + 3, I - Start - 3));
       Inc(I, 2);
     end
     else if C = '''' then
@@ -845,16 +862,25 @@ begin
   end;
 end;
 
-function TParser.Run(const AText: string): TArray<TAtlasMethodPlace>;
+function TParser.Run(const AText: string; const ADefines: TArray<string>): TArray<TAtlasMethodPlace>;
 var
   InInterface: Boolean;
   Before: Integer;
+  Defines: TArray<string>;
 begin
   FEof.Kind := tkEof;
   FEof.Line := MaxInt;
   FPlaces := nil;
   FPlaceCount := 0;
-  Lex(AText);
+  Defines := ADefines;
+  if Defines = nil then
+    Defines := TTextDefines.Predefined('Win32', CompilerVersion);
+  FConditionals := TAtlasConditionals.Create(Defines, CompilerVersion);
+  try
+    Lex(AText);
+  finally
+    FreeAndNil(FConditionals);
+  end;
   FPos := 0;
   // Programme und Bibliotheken haben keinen interface-Teil.
   InInterface := False;
@@ -901,13 +927,14 @@ end;
 
 { TAtlasMethodToggle }
 
-class function TAtlasMethodToggle.Places(const AText: string): TArray<TAtlasMethodPlace>;
+class function TAtlasMethodToggle.Places(const AText: string;
+  const ADefines: TArray<string>): TArray<TAtlasMethodPlace>;
 var
   Parser: TParser;
 begin
   Parser := TParser.Create;
   try
-    Result := Parser.Run(AText);
+    Result := Parser.Run(AText, ADefines);
   finally
     Parser.Free;
   end;
@@ -967,13 +994,13 @@ begin
 end;
 
 class function TAtlasMethodToggle.Counterpart(const AText: string; ALine, ACharacter: Integer;
-  out ATarget: TAtlasMethodPlace): Boolean;
+  out ATarget: TAtlasMethodPlace; const ADefines: TArray<string>): Boolean;
 var
   All: TArray<TAtlasMethodPlace>;
   Source: TAtlasMethodPlace;
 begin
   ATarget := Default(TAtlasMethodPlace);
-  All := Places(AText);
+  All := Places(AText, ADefines);
   Result := PlaceAt(All, ALine, ACharacter, Source) and Match(All, Source, ATarget);
 end;
 
