@@ -29,6 +29,9 @@ type
     procedure ReadsInlayHints;
     [Test]
     procedure ReadsCodeLens;
+    /// <summary>"references" (#1119): erschlossene Treffer an, Textfunde aus.</summary>
+    [Test]
+    procedure ReadsReferences;
     [Test]
     procedure MetricsSwitchesOffMetricRules;
     [Test]
@@ -940,6 +943,30 @@ begin
   // Die Datei ersetzt den Block aus dem Editor.
   Settings := TConfigurationParser.ParseLayered('{"codeLens": {"metrics": false}}', '{"codeLens": {}}', Issues);
   Assert.IsTrue(Settings.CodeLens.Metrics);
+end;
+
+procedure TConfigurationParserTests.ReadsReferences;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.References.Inferred);
+  Assert.IsFalse(Settings.References.TextMatches);
+  Settings := Parse('{"references": {"inferred": false, "textMatches": true}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.References.Inferred);
+  Assert.IsTrue(Settings.References.TextMatches);
+  Settings := Parse('{"references": {"inferred": 1, "x": true}}', Issues);
+  Assert.IsTrue(Settings.References.Inferred);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Assert.IsTrue(Issues[0].IsError);
+  Assert.IsFalse(Issues[1].IsError);
+  Parse('{"references": true}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Die Datei ersetzt den Block aus dem Editor.
+  Settings := TConfigurationParser.ParseLayered('{"references": {"inferred": false}}', '{"references": {}}', Issues);
+  Assert.IsTrue(Settings.References.Inferred);
 end;
 
 procedure TConfigurationParserTests.MetricsSwitchesOffMetricRules;

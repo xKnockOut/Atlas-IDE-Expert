@@ -43,6 +43,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `highlight` | global (settings.json) | object | – |  | Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. |
 | `inlayHints` | global (settings.json) | object | – |  | Inlay Hints im Editor. |
 | `codeLens` | global (settings.json) | object | – |  | Code Lens im Editor. |
+| `references` | global (settings.json) | object | – |  | Treffersicherheit von Verwendungen, Aufrufhierarchie und Umbenennen: Neben den sicheren (eindeutig aufgelösten) Stellen erscheinen erschlossene mit Grund, etwa Aufrufe über ein Interface oder in einem inaktiven {$IFDEF}-Zweig. Umbenennen ändert nur sichere Stellen und listet die erschlossenen. |
 | `hints` | global (settings.json) | object | – |  | Anzeige von XMLDoc-Kommentaren (///) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku immer vollständig auf; die Werte steuern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas. |
 | `directives` | global (settings.json) | object | – |  | Hilfen in Compiler-Direktiven: Vervollständigung und Hover für Direktiven wie {$R+} oder {$WARN …} und für bedingte Symbole in {$IFDEF}, {$IFNDEF}, {$IF Defined(…)}, {$DEFINE} und {$UNDEF}. |
 | `stringLiteral` | Projekt (atlas.json) | object | – |  | Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“. |
@@ -203,6 +204,13 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
 | `codeLens.metrics` | global (settings.json) | boolean | `true` |  | Kennzahlen über jeder Methode: Länge in Codezeilen, Verschachtelungstiefe, zyklomatische und kognitive Komplexität, Parameteranzahl. Die Grenzwerte stehen bei den Regeln metric-* unter "max". |
+
+## references
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `references.inferred` | global (settings.json) | boolean | `true` |  | Erschlossene Treffer zeigen: über ein Interface, das die Klasse umsetzt, über die überschriebene Methode eines Vorfahren, nicht eindeutige Überladungen, gleicher Name mit unbekanntem Typ (with, unbekannter Ausdruck) und Stellen in inaktiven Zweigen; aus = nur sichere Treffer wie bisher. |
+| `references.textMatches` | global (settings.json) | boolean | `false` |  | Auch den Namen in String-Literalen als erschlossen melden, etwa für RTTI oder MethodAddress('Speichern'). |
 
 ## hints
 

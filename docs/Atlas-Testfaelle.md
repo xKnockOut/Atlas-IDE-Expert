@@ -6108,3 +6108,20 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index; Metrik-Linse (`co
 | JM6 | Vorfahr aus einer Unit, die nicht im Index steht | Linse „Vererbungstiefe mindestens n“; Meldung nur, wenn schon die bekannten Vorfahren über der Grenze liegen |
 | JM7 | Metrik-Linse über einer Methode | „… · 2 Parameter · Operanden 6 (> 5) · 3 lokale · 1 Ausstiege“; Werte über der Grenze farbig. Auf Englisch: „operands 6 (> 5) · 3 locals · 1 exits“ |
 | JM8 | `"metric-boolean-operands": {"max": 6}`, `"metric-local-count": "off"`, `"metric-exit-points": {"exclude": ["Alt/*.pas"]}`, `"group:style": "off"` | Beispiel aus JM1 meldet nichts mehr; keine lokale-Variablen-Meldung; keine Ausstiege-Meldung in `Alt/`; mit der Gruppe aus keine der vier Regeln |
+
+## Treffersicherheit der Verwendungen (#1119)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index. Beispiel: `IKunde` mit `Speichern`, `TKunde = class(TBasis, IKunde)` überschreibt `TBasis.Speichern` (virtual); Aufrufe über `S: IKunde`, `B: TBasis`, `K: TKunde`, einer in `{$IFDEF DEBUG}` bei Release-Konfiguration, und `MethodAddress('Speichern')`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TS1 | Cursor auf `TKunde.Speichern`, *Referenzen* | Ergebnisfenster mit „Sicher (n)“ (Aufrufe über `K`, Deklaration, Rumpf) und „Erschlossen (n) · vor dem Umbenennen prüfen“; beide aufgeklappt (**Abnahme**) |
+| TS2 | Maus über die erschlossenen Zeilen | Zeilen beginnen mit „≈“ und enden mit „[über Interface]“, „[überschrieben]“ bzw. „[inaktiver Zweig]“; Tooltip etwa „Aufruf über IKunde.Speichern; TKunde ist die einzige Umsetzung“ bzw. „In einem inaktiven Zweig: Bedingung DEBUG nicht erfüllt“ |
+| TS3 | „Nur sichere“ rechts im Kopf an- und abhaken | Nur die sicheren Zeilen ohne Abschnittsköpfe, danach wieder beide Abschnitte. Bei *Implementierungen* oder einem Symbol ohne erschlossene Treffer ist der Filter ausgeblendet |
+| TS4 | *Symbol umbenennen…* auf `TKunde.Speichern` | Vorschau „Wird geändert (n)“ (sichere und der inaktive Zweig) und „Nicht geändert, bitte prüfen (n)“ (Interface, überschrieben); nach dem Übernehmen sind nur die Stellen aus „Wird geändert“ geändert, ein Rückgängig-Schritt (Strg+Alt+Z) |
+| TS5 | *Aufrufer* von `TKunde.Speichern` | Aufrufer über `K` oben, über `S` und `B` darunter mit „≈“ und Grund; Aufklappen lädt weiter |
+| TS6 | *Definition einblenden* der Verwendungen (Peek) | Erschlossene Ausschnitte mit „≈“ vor der Zeile |
+| TS7 | Optionen › Atlas › Befehle › Verwendungen: „Erschlossene Verwendungen zeigen“ aus, TS1 wiederholen | Nur sichere Treffer wie vor #1119, kein Filter, keine Abschnitte; auch als Schnellschalter |
+| TS8 | „Auch Namen in Strings als Verwendung melden“ an, TS1 wiederholen | Zusätzlich `MethodAddress('Speichern')` unter „Erschlossen“ mit „[im Text]“, markiert ist nur der Name ohne Anführungszeichen; das Kontrollkästchen ist nur bedienbar, solange „Erschlossene Verwendungen zeigen“ an ist |
+| TS9 | In Claude Code `find_references` und `rename_symbol` (dryRun) für `TKunde.Speichern` | „n Verwendungen …, a sicher, b erschlossen:“, sichere zuerst, dann „Erschlossen, vor dem Umbenennen prüfen:“ mit „– erschlossen (interface): …“; rename_symbol endet mit „Nicht geändert, bitte prüfen (b erschlossene Stellen):“ |
+| TS10 | Englische IDE-Sprache | „Sure (n)“, „Inferred (n) · check before renaming“, „Sure only“, Gründe auf Englisch |
