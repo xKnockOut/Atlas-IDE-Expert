@@ -722,7 +722,17 @@ type
     DebugBannerIdeDialogOn, DebugBannerIdeDialogOff, DebugBannerIgnoredLocationSaid, DebugBannerUnknownVersion,
     DebugBannerUnknownVersionSummary,
     // Werte im Editor beim Debuggen (#508).
-    SettingsDebugInlineValues, SettingsDebugInlineValuesPerLine);
+    SettingsDebugInlineValues, SettingsDebugInlineValuesPerLine,
+    // Fenster „Compiler-Schalter“ (#558).
+    SettingsBuildCompilerSwitches, SettingsBuildSwitchesInStatusBar, CompilerSwitchesCommand,
+    CompilerSwitchesCaption, CompilerSwitchesColumnName, CompilerSwitchesColumnValue,
+    CompilerSwitchesColumnProject, CompilerSwitchesColumnOrigin, CompilerSwitchesSectionSwitches,
+    CompilerSwitchesSectionMessages, CompilerSwitchesSectionDefines, CompilerSwitchesSectionTarget,
+    CompilerSwitchesPlatform, CompilerSwitchesConfiguration, CompilerSwitchesOriginDefault,
+    CompilerSwitchesOriginProject, CompilerSwitchesOriginProjectNamed, CompilerSwitchesOriginLine,
+    CompilerSwitchesOriginInclude, CompilerSwitchesEmpty, CompilerSwitchesNoServer, CompilerSwitchesWaiting,
+    CompilerSwitchesNoProject, CompilerSwitchesAt, CompilerSwitchesDeviations, CompilerSwitchesNoDeviations,
+    CompilerSwitchesGoTo, CompilerSwitchesOptions, CompilerSwitchesCopy, CompilerSwitchesStatusHint);
 
   TAtlasStrings = class
   private class var
@@ -2336,7 +2346,16 @@ const
      'Exception-Leiste: IDE-Version nicht geprüft, der Dialog der IDE bleibt (Leiste danach)',
      'Exception-Dialog bleibt',
      'Werte im Editor beim Debuggen (am Zeilenende, solange der Prozess angehalten ist)',
-     'Höchstens Werte je Zeile:'),
+     'Höchstens Werte je Zeile:',
+     'Fenster „Compiler-Schalter“ (wirksame Schalter an der Cursorposition mit Herkunft)',
+     'Abweichende Schalter in der Statusleiste zeigen', 'Atlas: Compiler-Schalter', 'Atlas: Compiler-Schalter',
+     'Schalter', 'Wert', 'Projekt', 'Herkunft', 'Schalter', 'Hinweise und Warnungen', 'Bedingte Symbole', 'Ziel',
+     'Plattform', 'Konfiguration', 'Compiler-Vorgabe', 'Projektoption', 'Projektoption %s', 'gesetzt in Zeile %d',
+     'gesetzt in %s, Zeile %d', 'Keine Pascal-Datei im Editor.', 'Der Atlas-Server läuft nicht.',
+     'Wird berechnet …', 'Ohne Projekt: Werte nur aus der Datei und den Compiler-Vorgaben.', '%s, Zeile %d',
+     'Abweichend von der .dproj: %s', 'Keine Abweichung von der .dproj.', 'Zur Direktive springen',
+     'Projektoptionen öffnen', 'Kopieren',
+     'Compiler-Schalter abweichend von der .dproj (Klick: Fenster „Compiler-Schalter“)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3852,7 +3871,15 @@ const
      'Atlas: %s at %s is continued silently in this project from now on (counted in the history).',
      'Exception bar: IDE version not verified, the IDE dialog stays (bar afterwards)', 'Exception dialog stays',
      'Inline values while debugging (at the end of the line while the process is stopped)',
-     'At most values per line:'));
+     'At most values per line:',
+     'Compiler switches window (effective switches at the cursor with their origin)',
+     'Show deviating switches in the status bar', 'Atlas: Compiler switches', 'Atlas: Compiler switches',
+     'Switch', 'Value', 'Project', 'Origin', 'Switches', 'Hints and warnings', 'Conditional symbols', 'Target',
+     'Platform', 'Configuration', 'Compiler default', 'Project option', 'Project option %s', 'set in line %d',
+     'set in %s, line %d', 'No Pascal file in the editor.', 'The Atlas server is not running.', 'Calculating …',
+     'Without a project: values only from the file and the compiler defaults.', '%s, line %d',
+     'Deviating from the .dproj: %s', 'No deviation from the .dproj.', 'Go to directive', 'Open project options',
+     'Copy', 'Compiler switches deviating from the .dproj (click: Compiler switches window)'));
 
 { TAtlasStrings }
 

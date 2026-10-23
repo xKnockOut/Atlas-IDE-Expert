@@ -6175,6 +6175,29 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index; Metrik-Linse (`co
 | JM7 | Metrik-Linse über einer Methode | „… · 2 Parameter · Operanden 6 (> 5) · 3 lokale · 1 Ausstiege“; Werte über der Grenze farbig. Auf Englisch: „operands 6 (> 5) · 3 locals · 1 exits“ |
 | JM8 | `"metric-boolean-operands": {"max": 6}`, `"metric-local-count": "off"`, `"metric-exit-points": {"exclude": ["Alt/*.pas"]}`, `"group:style": "off"` | Beispiel aus JM1 meldet nichts mehr; keine lokale-Variablen-Meldung; keine Ausstiege-Meldung in `Alt/`; mit der Gruppe aus keine der vier Regeln |
 
+## Compiler-Schalter an der Cursorposition (#558)
+
+Vorbereitung: Atlas-Server läuft, Projekt geöffnet. Unit mit `{$R-}` in Zeile 10 und Code bis Zeile 30, Include-Datei `Optionen.inc` mit `{$Q-}` und `{$WARN SYMBOL_PLATFORM OFF}`, eingebunden in Zeile 5 einer zweiten Unit. Menü *Atlas › Atlas: Compiler-Schalter* bzw. Befehl `Atlas.CompilerSwitches`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CS1 | Cursor in Zeile 20 der ersten Unit | Zeile `R (RANGECHECKS)` mit Wert `−`, Projekt `+`, Herkunft „gesetzt in Zeile 10“, fett in der Warnfarbe (**Abnahme**) |
+| CS2 | Cursor in Zeile 5 (vor der Direktive) | `R` mit dem Wert der .dproj, Herkunft „Projektoption DCC_RangeChecking“ oder „Compiler-Vorgabe“; Wechsel spätestens 150 ms nach der letzten Bewegung |
+| CS3 | Cursor hinter `{$I Optionen.inc}` in der zweiten Unit | `Q` = `−`, Herkunft „gesetzt in Optionen.inc, Zeile …“; `SYMBOL_PLATFORM OFF` unter „Hinweise und Warnungen“ (**Abnahme**) |
+| CS4 | Unit ohne Direktiven | Alle Werte gleich der Projektoptionen (Debug: `R+`, `Q+`, `O−`; Release: `O+`), keine Zeile hervorgehoben, unten „Keine Abweichung von der .dproj.“ (**Abnahme**) |
+| CS5 | Projektoptionen: Ausrichtung 4, Hinweise aus, Warnung „Plattformspezifisches Symbol“ aus; speichern | `A` = `4`, `HINTS` = `OFF`, `SYMBOL_PLATFORM` = `OFF`, je Herkunft „Projektoption DCC_…“ (prüft die Eigenschaftsnamen) |
+| CS6 | `{$WARN SYMBOL_DEPRECATED OFF}` in Zeile 12, `{$WARN SYMBOL_DEPRECATED ON}` in Zeile 18; Cursor in 15 und 25 | In 15 `SYMBOL_DEPRECATED OFF` mit „gesetzt in Zeile 12“, in 25 keine Zeile mehr (**Abnahme**) |
+| CS7 | `{$PUSHOPT}{$R-}` … `{$POPOPT}`, Cursor dahinter | `R` wieder mit dem Wert davor |
+| CS8 | `{$IFDEF NIE}{$R-}{$ENDIF}` | Keine Wirkung auf `R` |
+| CS9 | Doppelklick auf die Zeile aus CS1 bzw. CS3 | Editor springt in Zeile 10 bzw. öffnet `Optionen.inc` an der Direktive |
+| CS10 | Doppelklick auf `Q` mit Herkunft Projektoption | Dialog „Projektoptionen“ öffnet sich; nach dem Schließen sofort neuer Stand |
+| CS11 | Abschnitt „Bedingte Symbole“ und „Ziel“ | `DEBUG` mit „Konfiguration Debug (.dproj)“, `WIN64` mit „Compiler-Vorgabe (Plattform Win64)“; Plattform und Konfiguration wie in der Projektverwaltung |
+| CS12 | `build.showSwitchesInStatusBar` an, Cursor aus CS1 | Statusleiste zeigt `R−`; Tooltip „R −: gesetzt in Zeile 10“; Klick öffnet das Fenster. Cursor in CS4: kein Feld (**Abnahme**) |
+| CS13 | Strg+C in der Liste | Zwischenablage enthält Abschnitte und Zeilen mit Tabulatoren |
+| CS14 | Server beendet bzw. Formular (.dfm) aktiv | Hinweis „Der Atlas-Server läuft nicht.“ bzw. „Keine Pascal-Datei im Editor.“; kein Statusfeld |
+| CS15 | Dunkles Thema | Liste, Köpfe und hervorgehobene Werte gut lesbar |
+| CS16 | `build.compilerSwitches` aus (Schnellschalter) | Fenster schließt, Befehl und Menüeintrag fehlen, kein Statusfeld, keine Anfrage an den Server (Diagnoseprotokoll) (**Abnahme**) |
+
 ## Werte im Editor beim Debuggen (#508)
 
 Vorbereitung: Atlas-Server läuft (Projekt geöffnet, Indexierung fertig). Testunit mit einer Methode wie im Test `Atlas.Common.Lsp.InlineValues.Tests` (Felder `FCount`, `FName`, Parameter `Anzahl`, lokale `Summe`, `for var I`, `with Andere do`, Aufruf `GetSize`, Eigenschaft `Size`, eine `TDateTime`-Variable). *Tools › Optionen › Atlas › Debuggen* „Werte im Editor beim Debuggen“ an. Win32 und Win64.
