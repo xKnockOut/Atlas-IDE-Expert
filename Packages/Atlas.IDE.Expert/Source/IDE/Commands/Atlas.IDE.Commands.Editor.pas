@@ -12,9 +12,10 @@
 //   oberen Editor auf Zeile und Zeichen aus den Argumenten (Sprung zur
 //   Freigabe, #915), atlas.showSignatureHelp setzt ihn ebenso und öffnet
 //   den Parameter-Hint (OnSignatureHelp, setzt die Composition; #1007),
-//   atlas.changeSignature (#100), atlas.moveClass (#103) und
-//   atlas.extractInterface (#664) öffnen ihren Dialog, alle anderen gehen als
-//   workspace/executeCommand an den Server.
+//   atlas.changeSignature (#100), atlas.moveClass (#103),
+//   atlas.extractInterface (#664) und atlas.extractSuperclass (#713) öffnen
+//   ihren Dialog, alle anderen gehen als workspace/executeCommand an den
+//   Server.
 // - Auswahl erweitern und verkleinern (textDocument/selectionRange).
 // - Gehe zu Typdefinition (textDocument/typeDefinition); Gehe zu
 //   Implementierung liegt im Ergebnisfenster (#400).
@@ -196,6 +197,7 @@ uses
   Atlas.IDE.Editor.ChangeSignature,
   Atlas.IDE.Editor.MoveClass,
   Atlas.IDE.Editor.ExtractInterface,
+  Atlas.IDE.Editor.ExtractSuperclass,
   Atlas.IDE.Editor.PropertyFromAccessors,
   Atlas.IDE.Editor.InvertBoolean,
   Atlas.IDE.Editor.EnterWatch,
@@ -1400,6 +1402,17 @@ begin
   begin
     // Client-Befehl: Dialog und „Interface herauslösen“ (#664); er fragt den Server selbst.
     TAtlasIdeExtractInterface.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeExtractSuperclass.ClientCommand then
+  begin
+    // Client-Befehl: Dialog und „Basisklasse herauslösen“ (#713); er fragt den Server selbst.
+    TAtlasIdeExtractSuperclass.Execute(Session, AArgumentsJson,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
       procedure(AText: string)
       begin

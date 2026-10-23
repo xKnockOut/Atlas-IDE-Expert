@@ -5,8 +5,12 @@
 // der Klasse, eine Unit des Projekts oder ein neuer Name), Liste der
 // Mitglieder mit Häkchen, Art, Sichtbarkeit und Hinweis (gesperrte Einträge
 // grau mit Grund), Knöpfe „Alle“ und „Keine“ und die Hinweise des Servers.
-// Fehler zeigt die Zeile über den Knöpfen; „Vorschau …“ geht erst ohne
-// Fehler. Reine VCL; das Modell ist TAtlasClassExtractionModel.
+// Für die Basisklasse zusätzlich „Abhängigkeiten“ (hakt an, was die gewählten
+// Mitglieder benutzen) und „Nur abstrakt“ für die markierte Methode; beides
+// erscheint nur, wenn das Modell solche Kandidaten hat. Die Ziel-Unit steht
+// am Anfang auf dem Ziel des Servers. Fehler zeigt die Zeile über den
+// Knöpfen; „Vorschau …“ geht erst ohne Fehler. Reine VCL; das Modell ist
+// TAtlasClassExtractionModel.
 
 interface
 
@@ -29,6 +33,8 @@ type
     FList: TListView;
     FAll: TButton;
     FNone: TButton;
+    FNeeds: TButton;
+    FAbstract: TCheckBox;
     FError: TLabel;
     FNotes: TLabel;
     FOk: TButton;
@@ -39,10 +45,16 @@ type
     function OwnUnitCaption: string;
     procedure FillList;
     procedure Refresh;
+    procedure ShowMode;
+    function KindText(AIndex: Integer): string;
+    function ProblemText(AProblem: TAtlasExtractionProblem; const ASubject: string): string;
     procedure NameChange(Sender: TObject);
     procedure UnitChange(Sender: TObject);
     procedure AllClick(Sender: TObject);
     procedure NoneClick(Sender: TObject);
+    procedure NeedsClick(Sender: TObject);
+    procedure AbstractClick(Sender: TObject);
+    procedure ListSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
     procedure ListChecked(Sender: TObject; Item: TListItem);
     procedure ListCustomDraw(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
       var DefaultDraw: Boolean);
@@ -151,8 +163,20 @@ begin
   Right.BevelOuter := bvNone;
   FAll := AddButton(Right, TAtlasStrings.Text(TAtlasTextId.ExtractMembersAll), AllClick);
   FNone := AddButton(Right, TAtlasStrings.Text(TAtlasTextId.ExtractMembersNone), NoneClick);
+  FNeeds := AddButton(Right, TAtlasStrings.Text(TAtlasTextId.ExtractMembersTakeNeeds), NeedsClick);
+  FAbstract := TCheckBox.Create(Self);
+  FAbstract.Parent := Right;
+  FAbstract.Caption := TAtlasStrings.Text(TAtlasTextId.ExtractMembersAbstract);
+  FAbstract.Height := ScaleValue(23);
+  FAbstract.OnClick := AbstractClick;
   FAll.Top := ScaleValue(Gap);
   FNone.Top := FAll.Top + FAll.Height + ScaleValue(4);
+  FNeeds.Top := FNone.Top + FNone.Height + ScaleValue(3 * Gap);
+  FAbstract.Top := FNeeds.Top + FNeeds.Height + ScaleValue(Gap);
+  // Nur für die Basisklasse (#713): Abhängigkeiten und abstrakte Methoden.
+  FNeeds.Visible := AModel.HasNeeds;
+  FAbstract.Visible := AModel.HasModes;
+  FAbstract.Enabled := False;
   for Row := 0 to Right.ControlCount - 1 do
   begin
     Right.Controls[Row].Left := ScaleValue(Gap);
@@ -171,6 +195,7 @@ begin
   FList.HideSelection := False;
   FList.Checkboxes := True;
   FList.OnItemChecked := ListChecked;
+  FList.OnSelectItem := ListSelect;
   FList.OnCustomDrawItem := ListCustomDraw;
   Column := FList.Columns.Add;
   Column.Caption := TAtlasStrings.Text(TAtlasTextId.ExtractMembersColMember);
@@ -224,6 +249,7 @@ end;
 procedure TAtlasExtractMembersDialog.DoShow;
 var
   Name: string;
+  Index: Integer;
 begin
   inherited;
   // Liste und Auswahlfeld brauchen ein Fenster: erst hier füllen.
@@ -236,6 +262,15 @@ begin
         if not SameText(Name, FModel.OwnUnit) then
           FUnit.Items.Add(Name);
       FUnit.ItemIndex := 0;
+      // Ziel des Servers (refactoring.extractSuperclassTarget) vorwählen.
+      if FModel.Target <> '' then
+      begin
+        Index := FUnit.Items.IndexOf(FModel.Target);
+        if Index >= 0 then
+          FUnit.ItemIndex := Index
+        else
+          FUnit.Text := FModel.Target;
+      end;
     finally
       FUpdating := False;
     end;
@@ -244,12 +279,30 @@ begin
   FName.SelectAll;
 end;
 
+function TAtlasExtractMembersDialog.KindText(AIndex: Integer): string;
+var
+  Member: TAtlasExtractionMember;
+begin
+  Member := FModel[AIndex];
+  if Member.Kind = 'property' then
+    Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersProperty)
+  else if Member.Kind = 'field' then
+    Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersField)
+  else if Member.Abstract then
+    Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersAbstractMethod)
+  else
+    Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersMethod);
+end;
+
 procedure TAtlasExtractMembersDialog.FillList;
 var
-  Index: Integer;
+  Index, Selected: Integer;
   Item: TListItem;
   Member: TAtlasExtractionMember;
 begin
+  Selected := -1;
+  if FList.Selected <> nil then
+    Selected := FList.Selected.Index;
   FUpdating := True;
   try
     FList.Items.BeginUpdate;
@@ -260,10 +313,7 @@ begin
         Member := FModel[Index];
         Item := FList.Items.Add;
         Item.Caption := Member.Display;
-        if Member.Kind = 'property' then
-          Item.SubItems.Add(TAtlasStrings.Text(TAtlasTextId.ExtractMembersProperty))
-        else
-          Item.SubItems.Add(TAtlasStrings.Text(TAtlasTextId.ExtractMembersMethod));
+        Item.SubItems.Add(KindText(Index));
         Item.SubItems.Add(Member.Visibility);
         Item.SubItems.Add(Member.Reason);
         Item.Checked := Member.Checked;
@@ -271,14 +321,44 @@ begin
     finally
       FList.Items.EndUpdate;
     end;
+    if (Selected >= 0) and (Selected < FList.Items.Count) then
+      FList.Items[Selected].Selected := True;
   finally
     FUpdating := False;
   end;
+  ShowMode;
   Refresh;
 end;
 
+/// <summary>„Nur abstrakt“ nach der markierten Methode.</summary>
+procedure TAtlasExtractMembersDialog.ShowMode;
+var
+  Member: TAtlasExtractionMember;
+begin
+  if not FAbstract.Visible then
+    Exit;
+  FUpdating := True;
+  try
+    if (FList.Selected <> nil) and (FList.Selected.Index < FModel.Count) then
+    begin
+      Member := FModel[FList.Selected.Index];
+      FAbstract.Enabled := Member.CanAbstract;
+      FAbstract.Checked := Member.Abstract;
+    end
+    else
+    begin
+      FAbstract.Enabled := False;
+      FAbstract.Checked := False;
+    end;
+  finally
+    FUpdating := False;
+  end;
+end;
+
 /// <summary>Meldung zum Fehler der Eingabe in der Sprache der Oberfläche; '' ohne Fehler.</summary>
-function ProblemText(AProblem: TAtlasExtractionProblem; const ASubject: string): string;
+function TAtlasExtractMembersDialog.ProblemText(AProblem: TAtlasExtractionProblem; const ASubject: string): string;
+var
+  Member, Needed: string;
 begin
   case AProblem of
     TAtlasExtractionProblem.BadName:
@@ -289,6 +369,11 @@ begin
       Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersNoMembers);
     TAtlasExtractionProblem.BadUnit:
       Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractMembersBadUnit, [ASubject]);
+    TAtlasExtractionProblem.MissingDependency:
+      begin
+        FModel.MissingDependency(Member, Needed);
+        Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractMembersMissing, [Member, Needed]);
+      end;
   else
     Result := '';
   end;
@@ -332,6 +417,27 @@ procedure TAtlasExtractMembersDialog.NoneClick(Sender: TObject);
 begin
   FModel.CheckAll(False);
   FillList;
+end;
+
+procedure TAtlasExtractMembersDialog.NeedsClick(Sender: TObject);
+begin
+  FModel.TakeDependencies;
+  FillList;
+end;
+
+procedure TAtlasExtractMembersDialog.AbstractClick(Sender: TObject);
+begin
+  if FUpdating or (FList.Selected = nil) then
+    Exit;
+  FModel.SetAbstract(FList.Selected.Index, FAbstract.Checked);
+  FList.Selected.SubItems[0] := KindText(FList.Selected.Index);
+  Refresh;
+end;
+
+procedure TAtlasExtractMembersDialog.ListSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
+begin
+  if not FUpdating then
+    ShowMode;
 end;
 
 procedure TAtlasExtractMembersDialog.ListChecked(Sender: TObject; Item: TListItem);

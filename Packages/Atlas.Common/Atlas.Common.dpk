@@ -201,6 +201,8 @@ contains
   Atlas.Common.Editing.ExtractInterface in 'Source\Editing\Atlas.Common.Editing.ExtractInterface.pas',
   Atlas.Common.Lsp.WorkspaceChanges in 'Source\Lsp\Atlas.Common.Lsp.WorkspaceChanges.pas',
   Atlas.Common.Lsp.ExtractInterface in 'Source\Lsp\Atlas.Common.Lsp.ExtractInterface.pas',
+  Atlas.Common.Editing.ExtractSuperclass in 'Source\Editing\Atlas.Common.Editing.ExtractSuperclass.pas',
+  Atlas.Common.Lsp.ExtractSuperclass in 'Source\Lsp\Atlas.Common.Lsp.ExtractSuperclass.pas',
   Atlas.Common.Editing.InvertBoolean in 'Source\Editing\Atlas.Common.Editing.InvertBoolean.pas',
   Atlas.Common.Lsp.InvertBoolean in 'Source\Lsp\Atlas.Common.Lsp.InvertBoolean.pas',
   Atlas.Common.Editing.Unwrap in 'Source\Editing\Atlas.Common.Editing.Unwrap.pas',

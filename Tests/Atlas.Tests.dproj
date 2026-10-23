@@ -374,6 +374,8 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassLayout.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ExtractInterface.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ExtractInterface.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.ExtractSuperclass.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ExtractSuperclass.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WorkspaceChanges.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.InvertBoolean.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InvertBoolean.Tests.pas"/>

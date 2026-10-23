@@ -926,6 +926,8 @@ uses
   Atlas.Common.Editing.ClassLayout.Tests in 'Common\Editing\Atlas.Common.Editing.ClassLayout.Tests.pas',
   Atlas.Common.Editing.ExtractInterface.Tests in 'Common\Editing\Atlas.Common.Editing.ExtractInterface.Tests.pas',
   Atlas.Common.Lsp.ExtractInterface.Tests in 'Common\Lsp\Atlas.Common.Lsp.ExtractInterface.Tests.pas',
+  Atlas.Common.Editing.ExtractSuperclass.Tests in 'Common\Editing\Atlas.Common.Editing.ExtractSuperclass.Tests.pas',
+  Atlas.Common.Lsp.ExtractSuperclass.Tests in 'Common\Lsp\Atlas.Common.Lsp.ExtractSuperclass.Tests.pas',
   Atlas.Common.Lsp.WorkspaceChanges.Tests in 'Common\Lsp\Atlas.Common.Lsp.WorkspaceChanges.Tests.pas',
   Atlas.Common.Editing.InvertBoolean.Tests in 'Common\Editing\Atlas.Common.Editing.InvertBoolean.Tests.pas',
   Atlas.Common.Lsp.InvertBoolean.Tests in 'Common\Lsp\Atlas.Common.Lsp.InvertBoolean.Tests.pas',

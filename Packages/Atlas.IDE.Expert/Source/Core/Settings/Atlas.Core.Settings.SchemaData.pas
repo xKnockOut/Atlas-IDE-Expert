@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2007] of string = (
+  Lines: array[0..2043] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1220,6 +1220,44 @@ const
       'die Properties; liest eine Property ein Feld, legt Atlas Get- und Set-Methoden an. Die Klasse erhält das Interface in ihrer Vorfahrenliste (statt TObject TInterfacedObject). Vorschau vor dem Übernehme' +
       'n.",',
     '          "x-issue": "#664"',
+    '        },',
+    '        "extractSuperclass": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktion „Basisklasse herauslösen …“ auf der Kopfzeile einer Klasse: Ein Dialog zeigt Felder, Methoden und Properties zum Ankreuzen, je Methode verschieben oder abstrakt d' +
+      'eklarieren, den Namen und das Ziel (dieselbe Unit oberhalb der Klasse oder eine neue Unit). Die neue Klasse erbt vom bisherigen Vorfahren, die Klasse von ihr; Anweisungen im Konstruktor bzw. Destrukto' +
+      'r für verschobene Felder wandern mit, private Mitglieder, die die Klasse weiter benutzt, werden gehoben. Vorschau vor dem Übernehmen.",',
+    '          "x-issue": "#713"',
+    '        },',
+    '        "extractSuperclassTarget": {',
+    '          "type": "string",',
+    '          "enum": ["sameUnit", "newUnit"],',
+    '          "default": "sameUnit",',
+    '          "description": "Vorgabe für das Ziel im Dialog: sameUnit (oberhalb der Klasse) oder newUnit (neue Unit mit dem Klassennamen ohne T).",',
+    '          "x-control": "Auswahl",',
+    '          "x-issue": "#713"',
+    '        },',
+    '        "extractSuperclassNameSuffix": {',
+    '          "type": "string",',
+    '          "default": "Base",',
+    '          "description": "Endung für den vorgeschlagenen Namen (TPdfExport → TExportBase); Custom wird zum Präfix (TCustomExport).",',
+    '          "x-issue": "#713"',
+    '        },',
+    '        "extractSuperclassMethodMode": {',
+    '          "type": "string",',
+    '          "enum": ["move", "abstract"],',
+    '          "default": "move",',
+    '          "description": "Vorgabe je Methode: move (Rumpf wandert mit) oder abstract (oben virtual; abstract;, unten override).",',
+    '          "x-control": "Auswahl",',
+    '          "x-issue": "#713"',
+    '        },',
+    '        "extractSuperclassRaiseVisibility": {',
+    '          "type": "string",',
+    '          "enum": ["protected", "strictProtected"],',
+    '          "default": "protected",',
+    '          "description": "Sichtbarkeit für private Mitglieder, die in die Basisklasse wandern und unten weiter benutzt werden.",',
+    '          "x-control": "Auswahl",',
+    '          "x-issue": "#713"',
     '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',
