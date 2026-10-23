@@ -725,6 +725,8 @@ begin
   // Ändert sich das interface von X, übersetzt der Compiler jeden Verwender von X neu. Verwendet ein Verwender X
   // im interface, ändert sich dadurch auch seine Schnittstelle, und seine Verwender folgen.
   ACount := 0;
+  // Result kann auf ein altes Feld des Aufrufers zeigen: frisch anlegen.
+  Result := nil;
   SetLength(Result, FNodes.Count);
   SetLength(Spreads, FNodes.Count);
   Spreads[ANode] := True;
