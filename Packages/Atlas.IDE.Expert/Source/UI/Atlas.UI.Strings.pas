@@ -701,7 +701,12 @@ type
     // Element „Schnelle Lesezeichen“ im Menü „Ausblenden“ (#1104).
     ElementQuickBookmarks, ElementQuickBookmarksPlural,
     // Seite Prüfregeln: Weg zum Dialog der globalen Einstellungen (#909).
-    RulesGlobalButton);
+    RulesGlobalButton,
+    // Dialog „Mitglieder herauslösen“ und „Interface herauslösen“ (#664).
+    ExtractMembersName, ExtractMembersUnit, ExtractMembersOwnUnit, ExtractMembersColMember, ExtractMembersColKind, ExtractMembersColVisibility,
+    ExtractMembersColReason, ExtractMembersAll, ExtractMembersNone, ExtractMembersPreview, ExtractMembersCancel, ExtractMembersBadName,
+    ExtractMembersSameName, ExtractMembersNoMembers, ExtractMembersBadUnit, ExtractMembersMethod, ExtractMembersProperty, ExtractIntfTitle,
+    ExtractIntfFailed, ExtractIntfNothing, ExtractIntfPreviewHint, ExtractIntfApply, ExtractIntfDone, ExtractIntfWarning);
 
   TAtlasStrings = class
   private class var
@@ -2289,7 +2294,31 @@ const
      'Schnelle Lesezeichen sind ausgeschaltet (bookmarks.quick).',
      'Nr.',
      'nur diese Datei', 'Marker eines schnellen Lesezeichens', 'Marker der schnellen Lesezeichen',
-     'Globale Prüfregeln bearbeiten …'),
+     'Globale Prüfregeln bearbeiten …',
+     'Name:',
+     'Ziel-Unit:',
+     '%s (diese Unit)',
+     'Mitglied',
+     'Art',
+     'Sichtbarkeit',
+     'Hinweis',
+     'Alle',
+     'Keine',
+     'Vorschau …',
+     'Abbrechen',
+     '„%s“ ist kein gültiger Bezeichner.',
+     'Der neue Typ darf nicht wie die Klasse heißen.',
+     'Bitte mindestens ein Mitglied wählen.',
+     '„%s“ ist kein gültiger Unit-Name.',
+     'Methode',
+     'Property',
+     'Interface aus %s herauslösen',
+     'Interface herauslösen fehlgeschlagen: %s',
+     'Interface herauslösen: nichts zu ändern.',
+     'Interface %s: %d Änderungen in %d Dateien',
+     'Herauslösen',
+     'Interface %s herausgelöst: %d Änderungen in %d Dateien übernommen.',
+     'Hinweis: %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3781,7 +3810,31 @@ const
      'Quick bookmarks are switched off (bookmarks.quick).',
      'No.',
      'this file only', 'quick bookmark marker', 'quick bookmark markers',
-     'Edit global rules …'));
+     'Edit global rules …',
+     'Name:',
+     'Target unit:',
+     '%s (this unit)',
+     'Member',
+     'Kind',
+     'Visibility',
+     'Note',
+     'All',
+     'None',
+     'Preview …',
+     'Cancel',
+     '“%s” is not a valid identifier.',
+     'The new type must not have the class''s name.',
+     'Select at least one member.',
+     '“%s” is not a valid unit name.',
+     'Method',
+     'Property',
+     'Extract interface from %s',
+     'Extract interface failed: %s',
+     'Extract interface: nothing to change.',
+     'Interface %s: %d changes in %d files',
+     'Extract',
+     'Interface %s extracted: %d changes applied in %d files.',
+     'Note: %s'));
 
 { TAtlasStrings }
 

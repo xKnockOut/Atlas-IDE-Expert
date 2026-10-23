@@ -2981,6 +2981,24 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TPanelHost = 
 | IB10 | `"refactoring": {"invertBooleanAntonyms": {"Verbose": "Silent"}}`, Strg+. auf `FVerbose` | „Bedeutung umkehren (FVerbose → FSilent)“ (**Abnahme**) |
 | IB11 | `"refactoring": {"invertBoolean": false}` in atlas.json | Keine Aktion „Bedeutung umkehren“ mehr (**Abnahme**) |
 
+## Interface aus Klasse herauslösen (#664)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit Unit `Kunden.pas`: `TKunde = class private FName: string; public constructor Create; procedure Speichern(const APfad: string = ''); function Laden(AStream: TStream): Boolean; overload; class function Neu: TKunde; property Name: string read FName write FName; end;` und eine zweite Unit `Bestand.pas` im Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EI1 | Strg+. auf `TKunde = class` | „Interface aus TKunde herauslösen …“; auf `Speichern` nicht |
+| EI2 | Aktion wählen | Dialog mit Name `IKunde`, Ziel-Unit „Kunden (diese Unit)“; `Speichern`, `Laden` und `Name` angehakt; `Create` und `Neu` grau mit Grund; „Keine“ sperrt „Vorschau …“ mit Hinweis, „Alle“ hakt nur die wählbaren an |
+| EI3 | „Vorschau …“, dann „Herauslösen“ | Vor `TKunde` steht `IKunde = interface` mit `['{GUID}']`, `procedure Speichern(const APfad: string = '');`, `function Laden(AStream: TStream): Boolean; overload;`, `function GetName: string;`, `procedure SetName(const Value: string);` und `property Name: string read GetName write SetName;`; `TKunde = class(TInterfacedObject, IKunde)`, private `GetName`/`SetName` mit Rumpf, Property liest über sie; kompiliert; Strg+Z nimmt es in einem Schritt zurück (**Abnahme**) |
+| EI4 | Wie EI3, Ziel-Unit `Kunden.Schnittstellen` eintippen | Neue Unit mit dem Interface und `uses System.Classes;` (für `TStream`), eingetragen in `.dpr` und `.dproj`; `Kunden.pas` bindet sie im interface ein; die neue Unit öffnet sich; Projekt kompiliert (**Abnahme**) |
+| EI5 | Wie EI3, Ziel-Unit `Bestand` aus der Liste | Interface am Ende des interface-Teils von `Bestand.pas`, deren uses um fehlende Units ergänzt |
+| EI6 | Klasse `TKunde = class(TComponent)` | Vorfahr bleibt, Liste `class(TComponent, IKunde)`; kein Hinweis |
+| EI7 | Klasse `TKunde = class(TPersistent)` | `class(TPersistent, IKunde)`; Hinweis „TPersistent implementiert IInterface nicht: TKunde fehlen _AddRef, _Release und QueryInterface …“ im Dialog und in der Vorschau |
+| EI8 | Getter `GetName` protected, Property `Name` angehakt | `GetName` kommt ins Interface, Hinweis in der Vorschau |
+| EI9 | Methode mit Parameter vom Typ aus `Kunden.pas` selbst, Ziel `Kunden.Schnittstellen` | Abbruch mit Meldung „… Kreisverweis …“ |
+| EI10 | Name `TKunde` oder `begin` im Dialog | Fehlerzeile, „Vorschau …“ gesperrt; Name eines vorhandenen Typs: Meldung vom Server |
+| EI11 | `"refactoring": {"extractInterface": false}` in atlas.json | Keine Aktion mehr (**Abnahme**) |
+
 ## Atlas-Spalte in der Zeilenleiste (#768)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TBasis = class procedure Zeichne; virtual; end;`, `TKnopf = class(TBasis) procedure Zeichne; override; end;` und einer zweiten Nachfahrklasse, die `Zeichne` ebenfalls überschreibt; ein Compilerfehler in einer Zeile.
