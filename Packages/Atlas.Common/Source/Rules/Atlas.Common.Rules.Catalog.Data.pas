@@ -1700,6 +1700,19 @@ begin
     '      "good": "procedure Anhaengen(var Text: string);\nbegin\n  Text := Text + sLineBreak + ''Ende'';\nend;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "noreturn-returns",' + #10 +
+    '      "name": "noreturn routine can return normally",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "A routine marked noreturn (Delphi 13 and later) may only end through raise, Abort, Halt, RunError or a call to another noreturn routine. When a path reaches the end of the body o' +
+    'r an Exit, the routine returns normally; the compiler has dropped the code after the call, the behaviour is undefined. The directive counts on the implementation and on the declaration (interface, cla' +
+    'ss). Calls whose target neither the file, the standard routines nor the symbol index knows might be noreturn themselves and end the path too, so only paths made of known statements are reported. Incom' +
+    'plete control flow (asm, syntax errors) stays silent. Exit is reported at the statement, the end of the body at the routine name. High confidence. No quick fix.",' + #10 +
+    '      "bad": "procedure Fehler(const AText: string); noreturn;\nbegin\n  if AText <> '''' then\n    raise EImport.Create(AText);\nend;",' + #10 +
+    '      "good": "procedure Fehler(const AText: string); noreturn;\nbegin\n  if AText = '''' then\n    raise EImport.Create(''Unbekannter Fehler'');\n  raise EImport.Create(AText);\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "stringlist-unsorted",' + #10 +
     '      "name": "Find or Duplicates on an unsorted TStringList",' + #10 +
     '      "category": "bug",' + #10 +
@@ -4780,6 +4793,46 @@ begin
     '      "level": "B"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "override-only-inherited",' + #10 +
+    '      "name": "Override only calls inherited",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "An overriding method whose body only calls the inherited method: a bare inherited;, inherited Name or inherited Name(A, B) with its own parameters in unchanged order, in function' +
+    's only Result := inherited Name(…). It does nothing of its own and pretends a changed behaviour. Silent when the method changes the visibility of the ancestor''s method (protected to public), carries a' +
+    'n attribute, default values or the directives final, deprecated, experimental, platform, library or reintroduce, has local declarations, more than one statement, comments or conditional directives in ' +
+    'the body, or when the overridden method is unknown (ancestor not indexed; virtual methods of TObject count as public). High confidence. Quick fix: remove declaration and body, including XMLDoc comment' +
+    's and the blank line after the body.",' + #10 +
+    '      "bad": "type\n  TKundenForm = class(TForm)\n  protected\n    procedure Loaded; override;\n  end;\n\nprocedure TKundenForm.Loaded;\nbegin\n  inherited Loaded;\nend;",' + #10 +
+    '      "good": "type\n  TKundenForm = class(TForm)\n  end;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inherited-without-ancestor",' + #10 +
+    '      "name": "inherited without a method in the ancestor",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A bare inherited; in a method that no ancestor declares (a new method, no override) does nothing. This points to a forgotten override or a misspelled name. Not reported: message ' +
+    'handlers (inherited calls DefaultHandler there), class and static methods, constructors and destructors, override and reintroduce, inherited inside anonymous methods, ancestors with a member of that n' +
+    'ame (also non-virtual) and unknown ancestors. Ancestors from other units come from the symbol index; methods of TObject count as known when System is not indexed. High confidence. Quick fix: remove in' +
+    'herited when it is a statement of its own in a begin…end block.",' + #10 +
+    '      "bad": "procedure TImport.Vorbereiten;\nbegin\n  inherited;\n  FZeilen.Clear;\nend;",' + #10 +
+    '      "good": "procedure TImport.Vorbereiten;\nbegin\n  FZeilen.Clear;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "redundant-jump",' + #10 +
+    '      "name": "Redundant Exit or Continue",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A bare Exit; as the last statement of a routine or anonymous method, or a bare Continue; as the last statement of a loop body (for, for-in, while, repeat), also in the last branc' +
+    'h of an if at the end (the then branch only without else; then Continue else … guards an else-if chain). The jump changes nothing. Not reported: Exit with a value, jumps inside try…finally or try…exce' +
+    'pt (the jump deliberately triggers the finally part), inside case, qualified names such as System.Continue, statements with a goto label and bodies with conditional directives. High confidence. Quick ' +
+    'fix: remove the statement when it stands in a begin…end block or directly in repeat.",' + #10 +
+    '      "bad": "procedure TPuffer.Leeren;\nbegin\n  FLaenge := 0;\n  Exit;\nend;",' + #10 +
+    '      "good": "procedure TPuffer.Leeren;\nbegin\n  FLaenge := 0;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "generic-constraint-violated",' + #10 +
     '      "name": "Type argument violates a constraint",' + #10 +
     '      "category": "bug",' + #10 +
@@ -5901,6 +5954,15 @@ begin
     '      "description": "Ein out-Parameter wird auf einem Weg durch den Kontrollfluss gelesen, bevor die Routine ihn setzt. Bei verwalteten Typen (string, Interfaces, dynamische Arrays, Variant) hat der ' +
     'Aufrufer ihn schon geleert, der alte Wert ist weg; bei anderen Typen ist der Wert undefiniert. Gemeint war meist var. Verwendungen, denen der Kontrollflussgraph nicht folgen kann (Übergabe an eine Rou' +
     'tine, Setzen eines Felds, @Param), bleiben still. Konfidenz hoch. Schnellkorrektur: aus out wird var in Implementierung und Deklaration."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "noreturn-returns",' + #10 +
+    '      "name": "noreturn-Routine kann normal zurückkehren",' + #10 +
+    '      "description": "Eine mit noreturn markierte Routine (ab Delphi 13) darf nur über raise, Abort, Halt, RunError oder den Aufruf einer anderen noreturn-Routine enden. Erreicht ein Weg das Ende des ' +
+    'Rumpfs oder ein Exit, kehrt sie normal zurück; der Compiler hat den Code nach dem Aufruf weggelassen, das Verhalten ist undefiniert. Die Direktive zählt an der Implementierung und an der Deklaration (' +
+    'interface, Klasse). Aufrufe, deren Ziel weder die Datei, die Standardroutinen noch der Symbolindex kennt, könnten selbst noreturn sein und beenden den Weg ebenfalls; gemeldet werden also nur Wege aus ' +
+    'bekannten Anweisungen. Unvollständiger Kontrollfluss (asm, Syntaxfehler) bleibt still. Exit wird an der Anweisung gemeldet, das Ende des Rumpfs am Routinennamen. Konfidenz hoch. Keine Schnellkorrektur' +
+    '."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "stringlist-unsorted",' + #10 +
@@ -7562,6 +7624,31 @@ begin
     '      "description": "inherited mit ausdrücklichem Methodennamen, etwa inherited Zeichnen(C), obwohl die Methode im Vorfahren abstract ist (wie E2373). Ein bloßes inherited; übergeht der Compiler bei ' +
     'abstrakten Methoden still; das meldet die Regel nicht. Die Methode löst die Namensauflösung samt Überladungen auf; gemeldet wird nur, wenn jede passende Überladung abstrakt ist. Korrektur: den Aufruf ' +
     'entfernen, wenn er als eigene Anweisung in einem begin…end steht."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "override-only-inherited",' + #10 +
+    '      "name": "override ruft nur inherited auf",' + #10 +
+    '      "description": "Eine überschreibende Methode, deren Rumpf nur die geerbte Methode aufruft: ein bloßes inherited;, inherited Name oder inherited Name(A, B) mit den eigenen Parametern in unverände' +
+    'rter Reihenfolge, in Funktionen nur Result := inherited Name(…). Sie tut nichts Eigenes und täuscht ein geändertes Verhalten vor. Still, wenn die Methode die Sichtbarkeit der geerbten ändert (protecte' +
+    'd zu public), ein Attribut, Standardwerte oder die Direktiven final, deprecated, experimental, platform, library oder reintroduce trägt, lokale Deklarationen, mehr als eine Anweisung, Kommentare oder ' +
+    'bedingte Direktiven im Rumpf hat oder die überschriebene Methode unbekannt ist (Vorfahr nicht im Index; virtuelle Methoden von TObject gelten als public). Sicherheit hoch. Korrektur: Deklaration und R' +
+    'umpf entfernen, samt XMLDoc-Kommentaren und der Leerzeile hinter dem Rumpf."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inherited-without-ancestor",' + #10 +
+    '      "name": "inherited ohne Methode im Vorfahr",' + #10 +
+    '      "description": "Ein bloßes inherited; in einer Methode, die kein Vorfahr deklariert (neue Methode, kein override), tut nichts. Das deutet auf ein vergessenes override oder einen Tippfehler im Na' +
+    'men. Nicht gemeldet: Message-Handler (inherited ruft dort DefaultHandler), Klassen- und statische Methoden, Konstruktoren und Destruktoren, override und reintroduce, inherited in anonymen Methoden, Vo' +
+    'rfahren mit einem gleichnamigen Mitglied (auch nicht virtuell) und unbekannte Vorfahren. Vorfahren aus anderen Units liefert der Symbolindex; Methoden von TObject gelten als bekannt, wenn System nicht' +
+    ' im Index steht. Sicherheit hoch. Korrektur: inherited entfernen, wenn es als eigene Anweisung in einem begin…end steht."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "redundant-jump",' + #10 +
+    '      "name": "Überflüssiges Exit oder Continue",' + #10 +
+    '      "description": "Ein bloßes Exit; als letzte Anweisung einer Routine oder anonymen Methode, oder ein bloßes Continue; als letzte Anweisung eines Schleifenrumpfs (for, for-in, while, repeat), auch' +
+    ' im letzten Zweig eines if am Ende (der then-Zweig nur ohne else; then Continue else … bewacht eine else-if-Kette). Der Sprung ändert nichts. Nicht gemeldet: Exit mit Wert, Sprünge in try…finally oder' +
+    ' try…except (der Sprung löst den finally-Teil bewusst aus), in case, qualifizierte Namen wie System.Continue, Anweisungen mit goto-Marke und Rümpfe mit bedingten Direktiven. Sicherheit hoch. Korrektur' +
+    ': die Anweisung entfernen, wenn sie in einem begin…end oder direkt in repeat steht."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "generic-constraint-violated",' + #10 +

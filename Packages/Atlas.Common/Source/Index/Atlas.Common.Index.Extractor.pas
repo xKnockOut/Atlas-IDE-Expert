@@ -158,6 +158,7 @@ uses
   System.RegularExpressions,
   System.Generics.Defaults,
   Atlas.Common.Pascal.XmlDoc,
+  Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Text.Lines;
@@ -328,11 +329,12 @@ var
 begin
   if AName = '' then
     Exit;
-  Symbol.Name := AName;
-  Symbol.Container := AContainer;
+  // Der Index führt die Namen ohne Escape-&, wie die Namensauflösung sie sucht (#1137).
+  Symbol.Name := TPascalLexer.PlainName(AName);
+  Symbol.Container := TPascalLexer.PlainName(AContainer);
   Symbol.Kind := AKind;
   Symbol.Range := NodeRange(ANode);
-  Symbol.SelectionRange := NameRange(ANode, AName);
+  Symbol.SelectionRange := NameRange(ANode, Symbol.Name);
   Symbol.InInterface := FInInterface;
   Symbol.Ancestors := AAncestors;
   Symbol.TypeArgs := '';
@@ -1076,7 +1078,7 @@ var
 begin
   for Name in AList.Split([',']) do
     if Name.Trim <> '' then
-      ANames.AddOrSetValue(LowerCase(Name.Trim.Replace('&', '')), True);
+      ANames.AddOrSetValue(LowerCase(TPascalLexer.PlainName(Name.Trim)), True);
 end;
 
 /// <summary>Liegt ANode in AOuter (oder ist es selbst)?</summary>
@@ -1138,7 +1140,7 @@ var
     Name, Key: string;
     Member: TIndexSymbol;
   begin
-    Name := AIdent.Name.Replace('&', '');
+    Name := TPascalLexer.PlainName(AIdent.Name);
     Key := LowerCase(Name);
     if (Name = '') or Locals.ContainsKey(Key) then
       Exit;
@@ -1165,7 +1167,7 @@ var
   var
     Name: string;
   begin
-    Name := AType.Name.Replace('&', '');
+    Name := TPascalLexer.PlainName(AType.Name);
     if (Name = '') or SameText(Name, 'string') or SameText(Name, 'const') or SameText(Name, 'file') or
       Locals.ContainsKey(LowerCase(Name)) or Own.ContainsKey(LowerCase(Name)) or
       ((AContainer <> '') and Members.ContainsKey(LowerCase(Name))) then

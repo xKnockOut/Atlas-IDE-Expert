@@ -78,6 +78,8 @@ uses
   Atlas.IDE.Outline.Breadcrumbs,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.UI.EditorToolbar.Customize,
+  Atlas.IDE.StatusBar.Service,
+  Atlas.IDE.Editor.MetricsLens,
   Atlas.IDE.Outline.StickyScroll,
   Atlas.IDE.Editor.LineChanges,
   Atlas.Core.Editor.LineMove,
@@ -1729,6 +1731,8 @@ begin
         StatusLines.Refresh;
     end;
   StatusField.OnOpenLog := OpenLog;
+  // Zeigt die Atlas-Statusleiste das Element status, öffnen Statusfenster und Schnellschalter dort (#1155).
+  StatusField.OnRelocatedAnchor := TAtlasIdeStatusBar.Anchor;
   // Rechtsklick auf das Feld: Schnellschalter (#604).
   StatusField.OnContext :=
     procedure(APoint: TPoint)
@@ -2293,6 +2297,38 @@ begin
   TAtlasIdeEditorToolbar.Install(Hooks);
 end;
 
+/// <summary>Atlas-Statusleiste (#1155): Atlas-Feld, Metriken aus dem Lens-Abruf (#66) und Meldungen über Hooks.
+/// Zeigt die Leiste das Element status, öffnet das Feld Statusfenster und Schnellschalter an der Leiste.</summary>
+procedure StartStatusBar;
+var
+  Hooks: TAtlasIdeStatusBar.THooks;
+begin
+  Hooks := Default(TAtlasIdeStatusBar.THooks);
+  Hooks.Field :=
+    function: TAtlasStatusField
+    begin
+      Result := StatusField;
+    end;
+  Hooks.Metrics :=
+    function(const AFileName: string; out AMetrics: TAtlasFileMetrics): Boolean
+    begin
+      Result := TAtlasEditorMetricsLens.Latest(AFileName, AMetrics);
+    end;
+  Hooks.WantMetrics :=
+    procedure(AOn: Boolean)
+    begin
+      TAtlasEditorMetricsLens.Want(AOn);
+    end;
+  Hooks.Message :=
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end;
+  TAtlasIdeStatusBar.Install(Hooks);
+  if StatusField <> nil then
+    StatusField.RequestRefresh;
+end;
+
 procedure StartCommands;
 begin
   CommandsInstalled := True;
@@ -2403,6 +2439,7 @@ begin
   TAtlasIdeBreadcrumbs.Install;
   // Atlas-Editorleiste (#1101) nach den Brotkrumen (Position „in der Brotkrumenzeile“).
   StartEditorToolbar;
+  StartStatusBar;
   // Mitlaufender Kopf (#506) aus demselben Gliederungsstand.
   TAtlasIdeStickyScroll.Install;
   // Änderungsmarken und Zeilenhistorie (#507).
@@ -2569,6 +2606,7 @@ begin
   TAtlasIdePeek.Uninstall;
   TAtlasIdeStickyScroll.Uninstall;
   TAtlasIdeEditorToolbar.Uninstall;
+  TAtlasIdeStatusBar.Uninstall;
   TAtlasIdeBreadcrumbs.Uninstall;
   TAtlasIdeMinimap.Uninstall;
   TAtlasIdeOverviewRuler.Uninstall;
@@ -4093,6 +4131,7 @@ begin
       TAtlasIdeOutline.ThemeChanged;
       TAtlasIdeBreadcrumbs.ThemeChanged;
       TAtlasIdeEditorToolbar.ThemeChanged;
+      TAtlasIdeStatusBar.ThemeChanged;
       TAtlasIdeSearch.ThemeChanged;
       TAtlasIdeLineChanges.ThemeChanged;
       TAtlasIdeOverviewRuler.ThemeChanged;
@@ -4144,6 +4183,8 @@ begin
       TAtlasIdeBreadcrumbs.ApplySettings;
       // editor.toolbar* (#1101).
       TAtlasIdeEditorToolbar.ApplySettings;
+      // editor.statusBar* (#1155); das Atlas-Feld zieht um oder zurück (RequestRefresh unten).
+      TAtlasIdeStatusBar.ApplySettings;
       // search.resultsInMessages (#878).
       TAtlasIdeSearch.ApplySettings;
       // editor.stickyScroll* (#506).

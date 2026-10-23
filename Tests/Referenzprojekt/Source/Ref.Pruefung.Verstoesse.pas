@@ -108,6 +108,18 @@ begin
   AName := AName; // ERWARTET: self-assignment
 end;
 
+procedure Abzaehlen(var AZaehler: Integer);
+var
+  I: Integer;
+begin
+  for I := 1 to 3 do
+  begin
+    Inc(AZaehler, I);
+    Continue; // ERWARTET: redundant-jump
+  end;
+  Exit; // ERWARTET: redundant-jump
+end;
+
 procedure StapelLesen;
 var
   Offen: TObjectStack; // ERWARTET-INDEX: legacy-stack-queue
@@ -133,6 +145,46 @@ begin
   finally
     Fertig.Free;
   end;
+end;
+
+type
+  TGeraet = class
+  protected
+    procedure Starten(AStufe: Integer); virtual;
+    procedure Stoppen; virtual;
+  end;
+
+  TDrucker = class(TGeraet)
+  protected
+    procedure Starten(AStufe: Integer); override;
+    procedure Stoppen; override;
+  public
+    procedure Vorbereiten;
+  end;
+
+procedure TGeraet.Starten(AStufe: Integer);
+begin
+end;
+
+procedure TGeraet.Stoppen;
+begin
+end;
+
+procedure TDrucker.Starten(AStufe: Integer); // ERWARTET: override-only-inherited
+begin
+  inherited Starten(AStufe);
+end;
+
+procedure TDrucker.Stoppen; // KEIN-TREFFER: override-only-inherited
+begin
+  inherited;
+  Vorbereiten;
+end;
+
+procedure TDrucker.Vorbereiten;
+begin
+  inherited; // ERWARTET: inherited-without-ancestor
+  Stoppen;
 end;
 
 end.

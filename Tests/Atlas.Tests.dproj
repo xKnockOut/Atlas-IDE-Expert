@@ -241,6 +241,7 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.VariantRecords.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.HelperAncestors.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.LanguageGaps.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ParserGaps.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.IncludeDefines.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.SyntaxTree.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.IncludeFiles.Tests.pas"/>
@@ -972,6 +973,15 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.EditorToolbar.Bar.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Customize.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.EditorToolbar.Customize.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.StatusBarItems.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Settings.StatusBarItems.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\StatusBar\Atlas.Core.StatusBar.Layout.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.StatusBar.Layout.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\StatusBar\Atlas.Core.StatusBar.Content.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.StatusBar.Content.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Problems\Atlas.UI.Problems.KindIcon.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\StatusBar\Atlas.UI.StatusBar.Bar.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.StatusBar.Bar.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -26,7 +26,8 @@
 // Laufende Prüfung (#909, problems.live): an = 400 ms nach der letzten
 // Änderung holen; aus = erst, wenn der Puffer wieder ungeändert ist (nach
 // dem Speichern). Die letzte Prüfung einer Datei (Datei, Dauer, Zeitpunkt)
-// steht in LastCheck für die Statuszeile des Fensters „Atlas-Prüfung“.
+// steht in LastCheck für die Statuszeile des Fensters „Atlas-Prüfung“;
+// Checking meldet eine laufende Anfrage für die Atlas-Statusleiste (#1155).
 // Ergebnisse kommen über TThread.Queue in den Hauptthread; der Speicher wird
 // nur dort benutzt. Shutdown hält die Threads an, bevor die Sitzung endet: Der
 // Manager schließt dazwischen die Verbindung, damit laufende Anfragen sofort
@@ -190,6 +191,8 @@ type
     class property OnCounts: TAtlasProblemCountsProc read FOnCounts write FOnCounts;
     /// <summary>Letzte Prüfung einer Datei (#909); im Hauptthread.</summary>
     class property LastCheck: TAtlasProblemsCheck read FLastCheck;
+    /// <summary>Läuft gerade eine Prüfung (textDocument/diagnostic) des laufenden Controllers? (#1155)</summary>
+    class function Checking: Boolean; static;
   end;
 
 implementation
@@ -414,6 +417,8 @@ end;
 var
   // Speicher des laufenden Controllers (#615).
   CurrentStore: TAtlasProblemStore = nil;
+  // Laufender Controller für Checking (#1155).
+  CurrentController: TAtlasProblemsController = nil;
 
 constructor TAtlasProblemsController.Create(const ASession: TAtlasProblemsSessionFunc;
   const ALog: TAtlasProblemsLogProc);
@@ -423,6 +428,7 @@ begin
   FLog := ALog;
   FStore := TAtlasProblemStore.Create;
   CurrentStore := FStore;
+  CurrentController := Self;
   FPainter := TAtlasProblemsPainter.Create(FStore);
   FList := TAtlasProblemsList.Create;
   FRetired := TObjectList<TThread>.Create(True);
@@ -445,10 +451,18 @@ begin
   Result := CurrentStore;
 end;
 
+class function TAtlasProblemsController.Checking: Boolean;
+begin
+  Result := (CurrentController <> nil) and (CurrentController.FDocuments <> nil) and
+    not CurrentController.FDocuments.Idle;
+end;
+
 destructor TAtlasProblemsController.Destroy;
 begin
   if CurrentStore = FStore then
     CurrentStore := nil;
+  if CurrentController = Self then
+    CurrentController := nil;
   FTimer.Free;
   BeginShutdown;
   WaitShutdown;

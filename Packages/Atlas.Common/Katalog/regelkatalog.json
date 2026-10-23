@@ -1558,6 +1558,16 @@
       "good": "procedure Anhaengen(var Text: string);\nbegin\n  Text := Text + sLineBreak + 'Ende';\nend;"
     },
     {
+      "id": "noreturn-returns",
+      "name": "noreturn routine can return normally",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "A routine marked noreturn (Delphi 13 and later) may only end through raise, Abort, Halt, RunError or a call to another noreturn routine. When a path reaches the end of the body or an Exit, the routine returns normally; the compiler has dropped the code after the call, the behaviour is undefined. The directive counts on the implementation and on the declaration (interface, class). Calls whose target neither the file, the standard routines nor the symbol index knows might be noreturn themselves and end the path too, so only paths made of known statements are reported. Incomplete control flow (asm, syntax errors) stays silent. Exit is reported at the statement, the end of the body at the routine name. High confidence. No quick fix.",
+      "bad": "procedure Fehler(const AText: string); noreturn;\nbegin\n  if AText <> '' then\n    raise EImport.Create(AText);\nend;",
+      "good": "procedure Fehler(const AText: string); noreturn;\nbegin\n  if AText = '' then\n    raise EImport.Create('Unbekannter Fehler');\n  raise EImport.Create(AText);\nend;"
+    },
+    {
       "id": "stringlist-unsorted",
       "name": "Find or Duplicates on an unsorted TStringList",
       "category": "bug",
@@ -4130,6 +4140,36 @@
         "E2373"
       ],
       "level": "B"
+    },
+    {
+      "id": "override-only-inherited",
+      "name": "Override only calls inherited",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "An overriding method whose body only calls the inherited method: a bare inherited;, inherited Name or inherited Name(A, B) with its own parameters in unchanged order, in functions only Result := inherited Name(…). It does nothing of its own and pretends a changed behaviour. Silent when the method changes the visibility of the ancestor's method (protected to public), carries an attribute, default values or the directives final, deprecated, experimental, platform, library or reintroduce, has local declarations, more than one statement, comments or conditional directives in the body, or when the overridden method is unknown (ancestor not indexed; virtual methods of TObject count as public). High confidence. Quick fix: remove declaration and body, including XMLDoc comments and the blank line after the body.",
+      "bad": "type\n  TKundenForm = class(TForm)\n  protected\n    procedure Loaded; override;\n  end;\n\nprocedure TKundenForm.Loaded;\nbegin\n  inherited Loaded;\nend;",
+      "good": "type\n  TKundenForm = class(TForm)\n  end;"
+    },
+    {
+      "id": "inherited-without-ancestor",
+      "name": "inherited without a method in the ancestor",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "A bare inherited; in a method that no ancestor declares (a new method, no override) does nothing. This points to a forgotten override or a misspelled name. Not reported: message handlers (inherited calls DefaultHandler there), class and static methods, constructors and destructors, override and reintroduce, inherited inside anonymous methods, ancestors with a member of that name (also non-virtual) and unknown ancestors. Ancestors from other units come from the symbol index; methods of TObject count as known when System is not indexed. High confidence. Quick fix: remove inherited when it is a statement of its own in a begin…end block.",
+      "bad": "procedure TImport.Vorbereiten;\nbegin\n  inherited;\n  FZeilen.Clear;\nend;",
+      "good": "procedure TImport.Vorbereiten;\nbegin\n  FZeilen.Clear;\nend;"
+    },
+    {
+      "id": "redundant-jump",
+      "name": "Redundant Exit or Continue",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "A bare Exit; as the last statement of a routine or anonymous method, or a bare Continue; as the last statement of a loop body (for, for-in, while, repeat), also in the last branch of an if at the end (the then branch only without else; then Continue else … guards an else-if chain). The jump changes nothing. Not reported: Exit with a value, jumps inside try…finally or try…except (the jump deliberately triggers the finally part), inside case, qualified names such as System.Continue, statements with a goto label and bodies with conditional directives. High confidence. Quick fix: remove the statement when it stands in a begin…end block or directly in repeat.",
+      "bad": "procedure TPuffer.Leeren;\nbegin\n  FLaenge := 0;\n  Exit;\nend;",
+      "good": "procedure TPuffer.Leeren;\nbegin\n  FLaenge := 0;\nend;"
     },
     {
       "id": "generic-constraint-violated",

@@ -2562,6 +2562,31 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | EL20 | Leiste durch einen Fehler abgeschaltet (atlas.log „Editorleiste: durch die Sicherung abgeschaltet“), dann Atlas › Abgeschaltete Funktionen einschalten | Leiste verschwindet und kommt ohne Neustart zurück |
 | BK29 | Gegenprobe zur Zugriffsverletzung beim Beenden (`rtl370`, `TEditWindow.Notification`): Brotkrumen an, atlas.log nennt „über die Option … der IDE“, IDE dreimal beenden | Tritt die Zugriffsverletzung nicht mehr auf, war das Umhängen die Ursache; tritt sie weiter auf, liegt sie nicht am Umhängen (Bericht M3) |
 
+## Atlas-Statusleiste (#1155)
+
+Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `problems.live` an, Regel `metric-method-length` mit `max` 40.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ASL1 | uKundeForm öffnen | Unten im Editorfenster direkt über der Statuszeile der IDE eine Zeile: Punkt mit „Atlas · bereit“, die drei Zähler mit den Symbolen aus „Atlas-Prüfung“ (2, 5, 1), „live · geprüft vor 2 s“, Methode am Cursor, rechts das Zahnrad. Höhe 22 px bei 100 %, Farben wie Brotkrumen- und Editorleiste |
+| ASL2 | Statuszeile der IDE ansehen | Das Atlas-Feld ist dort verschwunden (Breite 0); die übrigen Felder der IDE rücken zusammen |
+| ASL3 | Klick auf den Status bzw. Rechtsklick darauf | Statusfenster bzw. Schnellschalter öffnen sich an der Leiste, nicht unten an der Statuszeile |
+| ASL4 | Klick auf den Warnzähler, mehrmals | Caret springt zur nächsten Warnung der Unit hinter dem Cursor, nach der letzten wieder zur ersten; Klick auf einen Zähler mit 0 meldet „keine Befunde dieser Art“ |
+| ASL5 | Doppelklick auf einen Zähler | „Atlas-Prüfung“ öffnet sich mit Bereich „Aktuelle Datei“; der Doppelklick springt nicht zusätzlich |
+| ASL6 | Tippen, ohne zu speichern | Kurz „prüft …“ mit Symbol in Akzentfarbe, danach „live · geprüft vor 0 s“, die Sekunden zählen hoch; Tooltip „Letzte Prüfung: … in … ms um …“ |
+| ASL7 | `problems.live` aus | „beim Speichern“; nach Strg+S zählen die Sekunden wieder ab der Prüfung |
+| ASL8 | Caret in `btnSpeichernClick` (48 Zeilen, CC 9) | `TfrmKunde.btnSpeichernClick · 48 Zeilen · CC 9`, Zeilen in Warnfarbe, Tooltip nennt „(Grenze 40)“; Klick springt zum Methodenkopf. Außerhalb einer Methode gedämpft „keine Methode“, Klick tut nichts |
+| ASL9 | Editorfenster schmal ziehen | Erst kürzt sich der Methodenname („…“), dann die Live-Prüfung, dann der Status; reicht es nicht, fallen Elemente ganz weg (Methode zuerst, die Zähler zuletzt). Nie zwei Zeilen |
+| ASL10 | Zahnrad bzw. Rechtsklick neben dem Status › „Leiste anpassen …“ | Menü mit Häkchen für Server-Status, Meldungen dieser Unit, Live-Prüfung, Aktuelle Methode und „Statusleiste ausblenden“; jede Änderung wirkt sofort und steht danach in `editor.statusBar.items` |
+| ASL11 | Server-Status abwählen | Das Atlas-Feld kehrt in die Statuszeile der IDE zurück und öffnet seine Fenster wieder dort |
+| ASL12 | „Statusleiste ausblenden“ bzw. `editor.statusBar` aus (Optionen › Editor, Schnellschalter) | Leisten verschwinden ohne Neustart, das Atlas-Feld steht wieder in der Statuszeile; wieder an: Leisten und Umzug kommen zurück |
+| ASL13 | Zweites Editorfenster (Ansicht › Neues Editierfenster) | Auch dort eine Leiste; die Zähler und die Methode zeigt nur die des obersten Fensters, die anderen nur den Status |
+| ASL14 | Suchleiste öffnen (Strg+F) | Die Suchleiste steht über der Statusleiste; die Statusleiste bleibt ganz unten |
+| ASL15 | Dunkles Thema; Wechsel des Themas | Leiste in den Farben der übrigen Atlas-Leisten, Wechsel ohne Neustart |
+| ASL16 | 150 % und 200 % Skalierung | Leiste eine Zeile, Symbole und Zahnrad scharf |
+| ASL17 | Leiste durch einen Fehler abgeschaltet (atlas.log „Atlas-Statusleiste: durch die Sicherung abgeschaltet“), dann Atlas › Abgeschaltete Funktionen einschalten | Leisten verschwinden und das Atlas-Feld kehrt in die Statuszeile zurück; nach dem Einschalten ohne Neustart wieder da |
+| ASL18 | Optionen › Editor | „Atlas-Statusleiste …“ und das Feld „Elemente“; unbekannte oder doppelte Einträge verschwinden beim Speichern |
+
 ## Extrahieren, case und with (#50)
 
 | Nr. | Schritte | Erwartet |
@@ -6112,3 +6137,69 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index; Metrik-Linse (`co
 | JM6 | Vorfahr aus einer Unit, die nicht im Index steht | Linse „Vererbungstiefe mindestens n“; Meldung nur, wenn schon die bekannten Vorfahren über der Grenze liegen |
 | JM7 | Metrik-Linse über einer Methode | „… · 2 Parameter · Operanden 6 (> 5) · 3 lokale · 1 Ausstiege“; Werte über der Grenze farbig. Auf Englisch: „operands 6 (> 5) · 3 locals · 1 exits“ |
 | JM8 | `"metric-boolean-operands": {"max": 6}`, `"metric-local-count": "off"`, `"metric-exit-points": {"exclude": ["Alt/*.pas"]}`, `"group:style": "off"` | Beispiel aus JM1 meldet nichts mehr; keine lokale-Variablen-Meldung; keine Ausstiege-Meldung in `Alt/`; mit der Gruppe aus keine der vier Regeln |
+
+## Parser-Lücken aus der Gegenprüfung mit DelphiAST (#1137, #1138, #1134, #1140, #1142, #1167)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index. Proben aus `werkzeuge/delphiast/gegenpruefung/proben` (Projektdateien).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PX1 | Probe `p05_double_ampersand.pas` öffnen (`class function &&op_Equality(…)` im Record und im implementation-Teil) | Kein Syntaxfehler, Gliederung zeigt `&op_Equality` im Typ und `TValue.&op_Equality` im implementation-Teil (**Abnahme**: Spring4D `Spring.pas` ohne Syntaxfehler) |
+| PX2 | In einer Methode `TValue.&&op_Equality(A, B)` schreiben, Strg+Klick und Hover auf `op_Equality` | Sprung zur Deklaration im Record, Hover mit der Signatur |
+| PX3 | Klasse mit `procedure &Type;`, im Code `F.` tippen und `Type` wählen | Vorschlag „Type“, eingefügt wird `&Type`; Strg+Klick auf `&Type` springt zur Deklaration |
+| PX4 | Probe `p02_empty_record_const.pas` öffnen; dazu `const Ordinal: TRec = ();` in einem Record und `const Lokal: TRec = ();` in einer Routine | Kein Syntaxfehler, kein Befund `constant-initializer-mismatch`; `R := ();` im Rumpf bleibt ein Syntaxfehler |
+| PX5 | Proben `p01_resolution_function.pas` und `p09_generic_resolution.pas` öffnen; dann in einer Klasse `function GetX;` ohne Typ | In den Proben kein Syntaxfehler (**Abnahme**: DUnitX `DUnitX.Generics.pas`, `DUnitX.Test.pas`, `DUnitX.TestFixture.pas` ohne Syntaxfehler); `function GetX;` meldet „braucht einen Ergebnistyp (wie E2023)“ |
+| PX6 | Proben `p03_class_threadvar.pas`, `p04_class_operator_in.pas` und `p06_codepage_string.pas` öffnen | Kein Syntaxfehler (**Abnahme**: Spring4D `Spring.HazardEra.pas`, `Spring.Patterns.Specification.pas`, mORMot2 `mormot.core.base.pas`); Gliederung zeigt `FCurrent`, den Operator `In` und die Typen `WinAnsiString`, `RawUnicode`; Strg+Klick auf `FCurrent` im Rumpf springt zum Feld |
+| PX7 | Proben `p07_record_align.pas`, `p08_variant_attribute.pas`, `p10_generic_default_param.pas` und `p11_binary_separator.pas` öffnen; die Probe p10 außerdem mit Delphi übersetzen | Kein Syntaxfehler, `TMyRecord`, `ValueWithAttribute`, `TFoo.Bar` und die Konstanten stehen in der Gliederung. Übersetzt Delphi p10 nicht, ist Atlas hier zu großzügig: bitte melden (das Issue verlangt die Gegenprüfung mit Delphi) |
+| PX8 | Proben `p13_named_arg_keyword.pas`, `p14_anon_callconv.pas` und `p15_inline_var_attribute.pas` öffnen (#1167); alle drei außerdem mit Delphi 13 übersetzen und das Ergebnis in #1167 vermerken | Kein Syntaxfehler; in p14 zeigt die Gliederung die Routinen nach der anonymen Methode. Lehnt Delphi eine Form ab, bitte melden: Atlas bleibt dort bewusst nachsichtig |
+
+## override ruft nur inherited auf (#1143)
+
+Voraussetzung: Server läuft in der IDE mit Projekt, VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OE1 | Das Beispiel aus #1143: Formular `TKundenForm` mit `procedure Loaded; override;` und Rumpf `inherited Loaded;` | Hinweis `override-only-inherited` am Namen `Loaded` im Rumpf: „TKundenForm.Loaded ruft nur inherited auf und kann entfallen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| OE2 | Alt+Enter, „Methode entfernen“ | Deklaration und Rumpf verschwinden samt `///`-Kommentaren und der Leerzeile dahinter; ein Undo-Schritt; das Projekt übersetzt (**Abnahme**) |
+| OE3 | `procedure Lauf(A, B: Integer); override;` mit `inherited;`, `inherited Lauf(A, B);` bzw. `function Wert(X: Integer): Integer; override;` mit `Result := inherited Wert(X);` | Je eine Meldung |
+| OE4 | `inherited Lauf(B, A)`, eine zweite Anweisung, eine lokale Variable, ein Kommentar oder `{$IFDEF}` im Rumpf, Methode im Abschnitt `public` statt `protected` wie im Vorfahr, `[Weak]` davor, `final` oder `deprecated` dahinter, Vorfahr aus einer nicht indizierten Unit | Keine Meldung (**Abnahme**) |
+| OE5 | `"override-only-inherited": "off"` bzw. `exclude`; Seite Prüfregeln › Stil | Keine Meldung; die Regel steht mit Schalter und Schweregrad in der Gruppe |
+
+## inherited ohne Methode im Vorfahr (#1144)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IO1 | Das Beispiel aus #1144: `TImport = class(TBasis)` mit neuer Methode `Vorbereiten`, Rumpf `inherited; FZeilen.Clear;`; TBasis hat kein Vorbereiten | Hinweis `inherited-without-ancestor` an `inherited`: „Kein Vorfahr von TImport hat Vorbereiten: inherited tut nichts. Fehlt override?“ (**Abnahme**) |
+| IO2 | Alt+Enter, „inherited entfernen“ | Die Zeile `inherited;` verschwindet, `FZeilen.Clear;` bleibt; ein Undo-Schritt (**Abnahme**) |
+| IO3 | `inherited;` in einem if-Zweig | Meldung ohne Schnellkorrektur |
+| IO4 | Message-Handler (`message WM_PAINT`), Konstruktor, Destruktor, `class procedure`, Methode mit `override`, TBasis mit gleichnamiger (auch statischer) Methode, Vorfahr aus einer nicht indizierten Unit, `inherited;` in einer anonymen Methode | Keine Meldung (**Abnahme**) |
+| IO5 | TBasis in einer anderen Unit des Projekts, einmal mit, einmal ohne `Vorbereiten` | Mit: keine Meldung; ohne: Meldung wie IO1 |
+| IO6 | `"inherited-without-ancestor": "off"` bzw. `exclude`; Seite Prüfregeln › Stil | Keine Meldung; die Regel steht in der Gruppe |
+
+## Überflüssiges Exit oder Continue (#1141)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RJ1 | Methode mit `Inc(FLaenge); Exit;` als letzten Anweisungen | Hinweis `redundant-jump` am `Exit`: „Exit am Ende der Routine ist überflüssig.“ |
+| RJ2 | Alt+Enter, „Anweisung entfernen“ | Die Zeile `Exit;` verschwindet, die Einrückung des Rests bleibt; ein Undo-Schritt (**Abnahme**) |
+| RJ3 | `for … in`, `for … to`, `while` und `repeat` mit `Continue;` als letzter Anweisung im Rumpf, auch im letzten Zweig eines `if` | Hinweis „Continue am Ende des Schleifenrumpfs ist überflüssig.“; als bloßer `if`-Zweig ohne `begin … end` ohne Schnellkorrektur |
+| RJ4 | `if … then Continue else if … then … else …` am Rumpfende, `Exit(Wert)`, `Exit` vor weiteren Anweisungen, `Exit`/`Continue` in `try … finally` oder `try … except`, `Continue` in einem `case`-Zweig, `System.Continue`, `{$IFDEF}` im Rumpf, Ziel eines `goto` | Keine Meldung |
+| RJ5 | `Exit;` am Ende einer anonymen Methode | Hinweis wie RJ1 |
+| RJ6 | `"redundant-jump": "off"` bzw. `exclude`; Seite Prüfregeln › Stil | Keine Meldung; die Regel steht in der Gruppe |
+
+## noreturn-Routine kann normal zurückkehren (#1132)
+
+Voraussetzung: Delphi 13 (noreturn gibt es erst dort), Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NR1 | Das Beispiel aus #1132: `procedure Fehler(const AText: string); noreturn;` im interface, im Rumpf nur `if AText <> '' then raise EImport.Create(AText);` | Warnung `noreturn-returns` am Namen der Implementierung: „Fehler kann am Ende normal zurückkehren, obwohl die Routine noreturn ist.“ |
+| NR2 | `if AText = '' then Exit;` vor dem `raise` | Warnung am `Exit`: „Exit verlässt Fehler normal, …“, keine am Namen |
+| NR3 | Rumpf endet mit `raise`, `Abort`, `Halt(1)`, `RunError(204)` oder dem Aufruf einer anderen noreturn-Routine (auch einer Methode, deren Klassendeklaration `noreturn` trägt) | Keine Meldung |
+| NR4 | Rumpf ruft nur `Protokolliere(AText)` aus einer anderen Unit des Projekts auf, einmal ohne, einmal mit `noreturn` an Protokolliere | Ohne: Warnung wie NR1 (Index bekannt); mit: keine Meldung |
+| NR5 | Delphi 13 übersetzt das Beispiel aus NR1 | Der Compiler meldet selbst nichts; Atlas meldet NR1 (**Abnahme**: Die Regel deckt ab, was der Compiler nicht prüft) |
+| NR6 | `"noreturn-returns": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden | Keine Meldung; die Regel steht mit Schalter und Schweregrad in der Gruppe |

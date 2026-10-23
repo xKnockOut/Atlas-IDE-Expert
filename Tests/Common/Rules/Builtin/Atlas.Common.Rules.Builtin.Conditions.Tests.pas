@@ -12,6 +12,9 @@
 // repeat, Änderungen (Inc, Zuweisung, Argument, Methode, X[…]), stille Fälle
 // (Aufruf, Feld, var-Parameter, Ausgang, Warteschleife, anonyme Methode,
 // lokale Routine, nur X.Eigenschaft), Abschalten.
+// redundant-jump (#1141): Beispiel aus dem Issue mit Korrektur, Continue am
+// Ende (auch im letzten if-Zweig, repeat, anonyme Methode), stille Fälle
+// (Exit(Wert), innere Blöcke, try, Marke, Direktiven), Abschalten.
 
 interface
 
@@ -64,6 +67,19 @@ type
     procedure ChangesAreSilent;
     [Test]
     procedure UnknownConditionsAreSilent;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TRedundantJumpTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure ContinueAtEndOfLoop;
+    [Test]
+    procedure SilentCases;
     [Test]
     procedure OffAndExclude;
   end;
@@ -393,9 +409,121 @@ begin
     '{"rules": {"loop-condition-unchanged": {"exclude": ["Source/*.pas"]}}}', 'Source/Daten.pas'))));
 end;
 
+{ TRedundantJumpTests }
+
+/// <summary>Das Beispiel aus #1141: TImport.Schreiben mit ABody als Rumpf.</summary>
+function Schreiben(const ABody: string): string;
+begin
+  Result := 'unit Import;'#10'interface'#10'type'#10'  TImport = class'#10'  private'#10'    FLaenge: Integer;'#10 +
+    '    FListe: TArray<Integer>;'#10'    procedure Schreiben;'#10'  end;'#10'implementation'#10 +
+    'procedure TImport.Schreiben;'#10'var'#10'  mWert: Integer;'#10'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+function JumpFindings(const ASource: string; const AConfig: string = ''; const APath: string = ''):
+  TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.Findings(TRedundantJumpRule.Create, ASource, AConfig, APath);
+end;
+
+procedure TRedundantJumpTests.IssueExampleWithFix;
+var
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  mSource := Schreiben('  Inc(FLaenge);'#10'  Exit;'#10);
+  mFound := JumpFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Exit am Ende der Routine ist überflüssig.', mFound[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFound[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[0].Confidence));
+  Assert.AreEqual(15, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('Anweisung entfernen', mFound[0].Fixes[0].Title);
+  Assert.AreEqual(Schreiben('  Inc(FLaenge);'#10), TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits));
+  // Auch am Ende einer anonymen Methode und einer lokalen Routine.
+  Assert.AreEqual(2, Integer(Length(JumpFindings(Schreiben('  TThread.Queue(nil,'#10'    procedure'#10 +
+    '    begin'#10'      Inc(FLaenge);'#10'      Exit;'#10'    end);'#10'  exit;'#10)))));
+end;
+
+procedure TRedundantJumpTests.ContinueAtEndOfLoop;
+var
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  mSource := Schreiben('  for mWert in FListe do'#10'  begin'#10'    Inc(FLaenge, mWert);'#10'    Continue;'#10 +
+    '  end;'#10);
+  mFound := JumpFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Continue am Ende des Schleifenrumpfs ist überflüssig.', mFound[0].Message);
+  Assert.AreEqual(Schreiben('  for mWert in FListe do'#10'  begin'#10'    Inc(FLaenge, mWert);'#10'  end;'#10),
+    TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits));
+  // Im letzten Zweig eines if am Rumpfende: in begin … end mit Korrektur, als bloßer Zweig ohne.
+  mFound := JumpFindings(Schreiben('  while FLaenge > 0 do'#10'  begin'#10'    Dec(FLaenge);'#10 +
+    '    if FLaenge = 5 then'#10'    begin'#10'      Inc(FLaenge, 0);'#10'      Continue;'#10'    end;'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  mFound := JumpFindings(Schreiben('  while FLaenge > 0 do'#10'    if FLaenge = 5 then'#10'      Dec(FLaenge, 2)'#10 +
+    '    else if FLaenge = 4 then'#10'      Dec(FLaenge)'#10'    else'#10'      Continue;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
+  // repeat und for … to.
+  Assert.AreEqual(1, Integer(Length(JumpFindings(Schreiben('  repeat'#10'    Dec(FLaenge);'#10'    Continue;'#10 +
+    '  until FLaenge = 0;'#10)))));
+  Assert.AreEqual(1, Integer(Length(JumpFindings(Schreiben('  for mWert := 1 to 3 do'#10'    if mWert > 1 then'#10 +
+    '      Continue;'#10)))));
+end;
+
+procedure TRedundantJumpTests.SilentCases;
+const
+  Bodies: array[0..10] of string = (
+    // Exit mit Wert, Exit in einem inneren Block, nicht am Ende.
+    '  Exit(FLaenge);'#10,
+    '  if FLaenge > 0 then'#10'    Exit;'#10,
+    '  Exit;'#10'  Inc(FLaenge);'#10,
+    // try … finally und try … except: Der Sprung löst den finally-Teil bewusst aus.
+    '  try'#10'    Inc(FLaenge);'#10'    Exit;'#10'  finally'#10'    Dec(FLaenge);'#10'  end;'#10,
+    '  for mWert in FListe do'#10'    try'#10'      Inc(FLaenge);'#10'      Continue;'#10'    except'#10 +
+      '      Dec(FLaenge);'#10'    end;'#10,
+    // Continue nicht am Ende, in case, mit Qualifizierer bzw. als eigene Methode.
+    '  for mWert in FListe do'#10'  begin'#10'    if mWert = 0 then'#10'      Continue;'#10 +
+      '    Inc(FLaenge);'#10'  end;'#10,
+    '  for mWert in FListe do'#10'    case mWert of'#10'      0: Continue;'#10'    end;'#10,
+    '  for mWert in FListe do'#10'    System.Continue;'#10,
+    // then-Zweig mit folgendem else: Wächter einer else-if-Kette.
+    '  for mWert in FListe do'#10'    if mWert = 0 then'#10'      Continue'#10'    else if mWert = 1 then'#10 +
+      '      Inc(FLaenge)'#10'    else'#10'      Dec(FLaenge);'#10,
+    // Bedingte Direktiven im Rumpf.
+    '  Inc(FLaenge);'#10'  {$IFDEF DEBUG}'#10'  Exit;'#10'  {$ENDIF}'#10,
+    '  for mWert in FListe do'#10'  begin'#10'    Inc(FLaenge);'#10'    {$IFDEF X} Continue; {$ENDIF}'#10'  end;'#10);
+var
+  mBody: string;
+begin
+  for mBody in Bodies do
+    Assert.AreEqual(0, Integer(Length(JumpFindings(Schreiben(mBody)))), mBody);
+  // Mit Marke: Ziel eines goto.
+  Assert.AreEqual(0, Integer(Length(JumpFindings(Schreiben('  goto Ende;'#10'  Inc(FLaenge);'#10'Ende:'#10 +
+    '  Exit;'#10).Replace('var'#10, 'label'#10'  Ende;'#10'var'#10)))));
+end;
+
+procedure TRedundantJumpTests.OffAndExclude;
+var
+  mSource: string;
+begin
+  mSource := Schreiben('  Inc(FLaenge);'#10'  Exit;'#10);
+  Assert.AreEqual(1, Integer(Length(JumpFindings(mSource, '', 'Source/Import.pas'))));
+  Assert.AreEqual(0, Integer(Length(JumpFindings(mSource, '{"rules": {"redundant-jump": "off"}}',
+    'Source/Import.pas'))));
+  Assert.AreEqual(0, Integer(Length(JumpFindings(mSource, '{"rules": {"group:style": "off"}}',
+    'Source/Import.pas'))));
+  Assert.AreEqual(0, Integer(Length(JumpFindings(mSource,
+    '{"rules": {"redundant-jump": {"exclude": ["Source/*.pas"]}}}', 'Source/Import.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TConstantConditionTests);
   TDUnitX.RegisterTestFixture(TInfiniteLoopTests);
   TDUnitX.RegisterTestFixture(TLoopConditionUnchangedTests);
+  TDUnitX.RegisterTestFixture(TRedundantJumpTests);
 
 end.

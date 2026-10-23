@@ -195,6 +195,7 @@ implementation
 uses
   System.Math,
   System.StrUtils,
+  Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.NameIndex,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.InterfaceStubs,
@@ -621,6 +622,9 @@ begin
     Exit(False);
   Dec(Scored.Score, APenalty);
   Scored.Item.Name := AName;
+  // Der Index führt Namen ohne Escape-&; reservierte Wörter und &-Namen brauchen es im Quelltext (#1137).
+  if (ASymbol.Name <> '') and (TPascalLexer.SourceName(AName) <> AName) then
+    Scored.Item.InsertText := TPascalLexer.SourceName(AName);
   Scored.Item.AdditionalEdits := AEdits;
   // Gebundene Typparameter (#450): FItems: TObjectList<TKunde> zeigt Add(const Value: TKunde), ohne Unit davor.
   for Binding in ASymbol.Bindings do

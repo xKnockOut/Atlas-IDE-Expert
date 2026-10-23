@@ -42,6 +42,11 @@
 //   selbst (Delphi 12: Absturz in PanelRect über ein freigegebenes Panel).
 //   Deshalb sind sie vom eigenen Typ TFieldPanel und melden ihre Freigabe dem
 //   Haken; der vergisst sie, und das nächste Refresh legt sie neu an.
+// - Atlas-Statusleiste (#1155): Zeigt sie das Element status (Relocated),
+//   ist das Atlas-Panel 0 breit; die Leiste liest Text, State und Tooltip und
+//   öffnet über OpenWindowAt bzw. ContextAt dasselbe Statusfenster bzw. die
+//   Schnellschalter. Anchor fragt dann OnRelocatedAnchor (Element der Leiste).
+//   Zusatzfelder bleiben in der Statuszeile.
 
 interface
 
@@ -60,6 +65,9 @@ uses
   Atlas.UI.Status.Window;
 
 type
+  /// <summary>Linke Oberkante eines Felds (Bildschirm); False ohne.</summary>
+  TAtlasStatusAnchorFunc = reference to function(out APoint: TPoint): Boolean;
+
   TAtlasStatusField = class(TComponent)
   public const
     RedrawMs = 250;
@@ -131,6 +139,7 @@ type
     FBadgeState: TAtlasStatusState;
     FBadgeHint: string;
     FOnBadge: TProc<TPoint>;
+    FOnRelocatedAnchor: TAtlasStatusAnchorFunc;
     function BadgeText: string;
     /// <summary>Breite der Plakette samt Abstand in Gerätepixeln; 0 ohne.</summary>
     function BadgeWidth(ABar: TStatusBar): Integer;
@@ -152,6 +161,9 @@ type
     procedure BarMessage(AHook: THook; var Message: TMessage);
     procedure OpenWindow(AHook: THook);
     procedure OpenContext(AHook: THook);
+    /// <summary>Atlas-Panel in der Statuszeile zeigen: statusField.enabled und nicht in die Statusleiste
+    /// umgezogen.</summary>
+    class function PanelShown: Boolean; static;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
@@ -165,8 +177,21 @@ type
     property OnRestart: TProc read FOnRestart write FOnRestart;
     /// <summary>Rechtsklick und Doppelklick auf das Feld; Punkt = linke Oberkante des Felds (Bildschirm).</summary>
     property OnContext: TProc<TPoint> read FOnContext write FOnContext;
-    /// <summary>Linke Oberkante des Felds im obersten Editorfenster (Bildschirm); False ohne Feld.</summary>
+    /// <summary>Linke Oberkante des Felds im obersten Editorfenster (Bildschirm); False ohne Feld. Umgezogen:
+    /// OnRelocatedAnchor.</summary>
     function Anchor(out APoint: TPoint): Boolean;
+    /// <summary>Zeigt die Atlas-Statusleiste das Element status (#1155)? Dann ist das Panel 0 breit.</summary>
+    class function Relocated: Boolean; static;
+    /// <summary>Statusfenster über APoint (Bildschirm, linke Oberkante des Felds) öffnen; ein zweiter Aufruf
+    /// schließt es.</summary>
+    procedure OpenWindowAt(const APoint: TPoint);
+    /// <summary>Schnellschalter über APoint wie beim Rechtsklick auf das Feld.</summary>
+    procedure ContextAt(const APoint: TPoint);
+    /// <summary>Kurztext, Gesamtzustand und Tooltip des letzten Refresh.</summary>
+    property Text: string read FText;
+    property State: TAtlasStatusState read FState;
+    property Tooltip: string read FTooltip;
+    property OnRelocatedAnchor: TAtlasStatusAnchorFunc read FOnRelocatedAnchor write FOnRelocatedAnchor;
     /// <summary>Zusatzfeld AId setzen (Text, Tooltip, Linksklick mit der linken Oberkante des Panels); AText ''
     /// entfernt es. Nur im Hauptthread.</summary>
     procedure SetExtra(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
@@ -188,6 +213,7 @@ uses
   Atlas.Core.Status.Registry,
   Atlas.Core.Status.Lines,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.StatusBarItems,
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
@@ -688,6 +714,7 @@ var
   Hook: THook;
   Bars: TList<TStatusBar>;
   ProgressId: string;
+  Shown: Boolean;
 begin
   if Assigned(FOnRefresh) then
     FOnRefresh();
@@ -707,8 +734,9 @@ begin
   end;
   if FWindow <> nil then
     FWindow.SetItems(FItems);
+  Shown := PanelShown;
   // Ohne Atlas-Feld bleiben die Leisten nur für Zusatzfelder eingehängt (#575).
-  if not Settings.StatusField and (Length(FExtras) = 0) then
+  if not Shown and (Length(FExtras) = 0) then
   begin
     UnhookAll;
     Exit;
@@ -737,7 +765,7 @@ begin
         Hook.Panel := Hook.NewPanel(psOwnerDraw);
       Hook.Bar.Canvas.Font := Hook.Bar.Font;
       Width_ := 0;
-      if Settings.StatusField then
+      if Shown then
         Width_ := Hook.Bar.Canvas.TextWidth(FText) + MulDiv(30, Hook.Bar.CurrentPPI, 96) +
           SymbolWidth(Hook.Bar.CurrentPPI) + BadgeWidth(Hook.Bar);
       // Text nur zum Erkennen und für Screenreader; gezeichnet wird in DrawPanel.
@@ -983,6 +1011,20 @@ begin
   FOnContext(AHook.Bar.ClientToScreen(Point(Area.Left, Area.Top)));
 end;
 
+class function TAtlasStatusField.Relocated: Boolean;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  Settings := TAtlasIdeSettings.Current;
+  Result := Settings.EditorStatusBar and TAtlasStatusBarItems.Contains(TAtlasStatusBarItems.Parse(
+    Settings.EditorStatusBarItems), TAtlasStatusBarItems.Status) and not TAtlasGuard.Disabled(TAtlasFeature.StatusBar);
+end;
+
+class function TAtlasStatusField.PanelShown: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.StatusField and not Relocated;
+end;
+
 function TAtlasStatusField.Anchor(out APoint: TPoint): Boolean;
 var
   Services: INTAEditorServices;
@@ -992,6 +1034,12 @@ var
 begin
   APoint := Point(0, 0);
   Result := False;
+  if Relocated then
+  begin
+    if Assigned(FOnRelocatedAnchor) then
+      Result := FOnRelocatedAnchor(APoint);
+    Exit;
+  end;
   if not Supports(BorlandIDEServices, INTAEditorServices, Services) then
     Exit;
   Window := Services.TopEditWindow;
@@ -1011,6 +1059,12 @@ procedure TAtlasStatusField.OpenWindow(AHook: THook);
 var
   Area: TRect;
 begin
+  Area := PanelRect(AHook);
+  OpenWindowAt(AHook.Bar.ClientToScreen(Point(Area.Left, Area.Top)));
+end;
+
+procedure TAtlasStatusField.OpenWindowAt(const APoint: TPoint);
+begin
   // Zweiter Klick schließt.
   if FWindow <> nil then
   begin
@@ -1023,8 +1077,16 @@ begin
   FWindow.OnOpenLog := FOnOpenLog;
   FWindow.OnRestart := FOnRestart;
   FWindow.SetItems(FItems);
-  Area := PanelRect(AHook);
-  FWindow.ShowAbove(AHook.Bar.ClientToScreen(Point(Area.Left, Area.Top)));
+  FWindow.ShowAbove(APoint);
+end;
+
+procedure TAtlasStatusField.ContextAt(const APoint: TPoint);
+begin
+  if not Assigned(FOnContext) then
+    Exit;
+  if FWindow <> nil then
+    FWindow.Dismiss;
+  FOnContext(APoint);
 end;
 
 end.

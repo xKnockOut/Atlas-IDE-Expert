@@ -98,6 +98,7 @@ uses
   Atlas.Common.Lsp.FormFiles,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Internals.Cancellation;
 
@@ -377,19 +378,21 @@ end;
 function TSymbolBuilder.NewSymbol(ANode: TSyntaxNode; const AName: string; AKind: Integer;
   const ADetail: string): TJSONObject;
 var
-  Condition: string;
+  Condition, Name: string;
 begin
   Result := TJSONObject.Create;
+  // Namen ohne Escape-& wie im Index: &begin heißt begin, &&op_Equality heißt &op_Equality (#1137).
+  Name := TPascalLexer.PlainName(AName);
   // VS Code lehnt Symbole mit leerem Namen ab.
-  if AName = '' then
+  if Name = '' then
     Result.AddPair('name', '?')
   else
-    Result.AddPair('name', AName);
+    Result.AddPair('name', Name);
   if ADetail <> '' then
     Result.AddPair('detail', ADetail);
   Result.AddPair('kind', TJSONNumber.Create(AKind));
   Result.AddPair('range', TLspPositions.RangeToJson(NodeRange(ANode)));
-  Result.AddPair('selectionRange', TLspPositions.RangeToJson(NameRange(ANode, AName)));
+  Result.AddPair('selectionRange', TLspPositions.RangeToJson(NameRange(ANode, Name)));
   Condition := ConditionOf(ANode);
   if Condition <> '' then
     Result.AddPair('atlas', TJSONObject.Create(TJSONPair.Create('condition', Condition)));

@@ -336,6 +336,8 @@ type
     FEditorToolbarReturnButton: TCheckBox;
     FEditorToolbarLabels: TCheckBox;
     FEditorToolbarCustomize: TButton;
+    FEditorStatusBar: TCheckBox;
+    FEditorStatusBarItems: TEdit;
     FOnToolbarCommands: TFunc<TArray<TAtlasToolbarCommandInfo>>;
     FGitGutter: TCheckBox;
     FGitBlame: TCheckBox;
@@ -1008,6 +1010,7 @@ type
     property EditorToolbarItemsEdit: TEdit read FEditorToolbarItems;
     property EditorToolbarPositionBox: TAtlasChoiceBox read FEditorToolbarPosition;
     property EditorToolbarCustomizeButton: TButton read FEditorToolbarCustomize;
+    property EditorStatusBarItemsEdit: TEdit read FEditorStatusBarItems;
     property UnblockTipsButton: TButton read FUnblockTips;
     /// <summary>Zum Testen: Bereich „Hilfe und Rückmeldung“ (#766).</summary>
     property WelcomeHelp: TCheckBox read FWelcomeHelp;
@@ -1198,6 +1201,7 @@ uses
   Atlas.Core.Settings.Transfer,
   Atlas.Core.Settings.Experimental,
   Atlas.Core.Settings.ToolbarItems,
+  Atlas.Core.Settings.StatusBarItems,
   Atlas.UI.Notifications.Window;
 
 /// <summary>Bezeichnung einer Reihe des Projektverlaufs (#758) wie auf ihrer Kachel.</summary>
@@ -1582,6 +1586,9 @@ begin
   Attach(Panel, FEditorToolbarItems);
   FEditorToolbarReturnButton := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbarReturnButton));
   FEditorToolbarLabels := AddCheck(TAtlasStrings.Text(TAtlasTextId.EditorToolbarLabels));
+  // Atlas-Statusleiste unten im Editorfenster (#1155).
+  FEditorStatusBar := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorStatusBar));
+  FEditorStatusBarItems := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsEditorStatusBarItems));
   // Mitlaufender Kopf (#506, experimentell).
   FStickyScroll := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScroll));
   FStickyScrollMaxLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollMaxLines));
@@ -2713,6 +2720,8 @@ begin
   FMarks.Bind(FEditorToolbarItems, ['EditorToolbarItems']);
   FMarks.Bind(FEditorToolbarReturnButton, ['EditorToolbarReturnButton']);
   FMarks.Bind(FEditorToolbarLabels, ['EditorToolbarLabels']);
+  FMarks.Bind(FEditorStatusBar, ['EditorStatusBar']);
+  FMarks.Bind(FEditorStatusBarItems, ['EditorStatusBarItems']);
   FMarks.Bind(FStickyScroll, ['StickyScroll']);
   FMarks.Bind(FStickyScrollMaxLines, ['StickyScrollMaxLines']);
   FMarks.Bind(FMinimap, ['Minimap']);
@@ -4819,6 +4828,8 @@ begin
   FEditorToolbarItems.Text := ASettings.EditorToolbarItems;
   FEditorToolbarReturnButton.Checked := ASettings.EditorToolbarReturnButton;
   FEditorToolbarLabels.Checked := ASettings.EditorToolbarLabels;
+  FEditorStatusBar.Checked := ASettings.EditorStatusBar;
+  FEditorStatusBarItems.Text := ASettings.EditorStatusBarItems;
   FStickyScroll.Checked := ASettings.StickyScroll;
   FStickyScrollMaxLines.Text := IntToStr(ASettings.StickyScrollMaxLines);
   FMinimap.Checked := ASettings.Minimap;
@@ -5232,6 +5243,8 @@ begin
   ASettings.EditorToolbarItems := TAtlasToolbarItems.Normalize(FEditorToolbarItems.Text);
   ASettings.EditorToolbarReturnButton := FEditorToolbarReturnButton.Checked;
   ASettings.EditorToolbarLabels := FEditorToolbarLabels.Checked;
+  ASettings.EditorStatusBar := FEditorStatusBar.Checked;
+  ASettings.EditorStatusBarItems := TAtlasStatusBarItems.Normalize(FEditorStatusBarItems.Text);
   ASettings.StickyScroll := FStickyScroll.Checked;
   ASettings.StickyScrollMaxLines := StrToIntDef(FStickyScrollMaxLines.Text, ASettings.StickyScrollMaxLines);
   ASettings.Minimap := FMinimap.Checked;
