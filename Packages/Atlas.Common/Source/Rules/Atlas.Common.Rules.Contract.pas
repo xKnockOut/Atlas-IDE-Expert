@@ -225,6 +225,12 @@ type
     NoFreeFields: Boolean;
     /// <summary>Freigabe als FreeAndNil(FFeld) statt FFeld.Free (refactoring.freeFieldsStyle, #666).</summary>
     FreeFieldsFreeAndNil: Boolean;
+    /// <summary>Methoden ohne Self nicht melden (refactoring.methodKind aus, #686); setzt TRuleEngine.Run.
+    /// </summary>
+    NoMethodKind: Boolean;
+    /// <summary>class-Methoden als static anlegen (refactoring.methodKindStatic, #686); setzt TRuleEngine.Run.
+    /// </summary>
+    MethodKindStatic: Boolean;
     /// <summary>Zugriffsmethoden im protected-Abschnitt anlegen (completion.accessorSection, #467, für #1001).
     /// </summary>
     AccessorsProtected: Boolean;

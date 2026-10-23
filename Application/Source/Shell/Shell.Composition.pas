@@ -352,6 +352,11 @@ type
     function AnonymousMethodActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>Anonyme Methode in Methode umwandeln (#680): das WorkspaceEdit mit dem gewählten Namen.</summary>
     function AnonymousMethod(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Methode ohne Self umwandeln (#686): Code-Aktionen an APosition.</summary>
+    function MethodKindActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Methode ohne Self umwandeln (#686): das WorkspaceEdit der gewählten Umwandlung über alle Dateien.
+    /// </summary>
+    function MethodKind(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Umschließung entfernen“ (#657): Konstrukte am Cursor mit Varianten und Vorschau.</summary>
     function Unwrap(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable an APosition.</summary>
@@ -510,6 +515,7 @@ uses
   Atlas.Common.Lsp.InvertBoolean,
   Atlas.Common.Lsp.PromoteVariable,
   Atlas.Common.Lsp.AnonymousMethods,
+  Atlas.Common.Lsp.MethodWithoutSelf,
   Atlas.Common.Lsp.Unwrap,
   Atlas.Common.Lsp.UnitRename,
   Atlas.Common.Lsp.SmartPaste,
@@ -1388,6 +1394,7 @@ begin
       Result := Result + InvertBooleanActions(AUri, ARange.StartPos);
       Result := Result + PromoteVariableActions(AUri, ARange.StartPos);
       Result := Result + AnonymousMethodActions(AUri, ARange.StartPos);
+      Result := Result + MethodKindActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
       Result := Result + RefactoringActions(AUri, ARange);
     end;
@@ -1476,6 +1483,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := AnonymousMethod(AArguments);
+    end);
+  FCommands.Register(TLspMethodWithoutSelf.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := MethodKind(AArguments);
     end);
   FCommands.Register(TLspUnwrap.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -3419,6 +3431,76 @@ begin
   Result := Answer;
 end;
 
+function TServerComposition.MethodKindActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).MethodKind or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(AUri));
+    try
+      Result := TLspMethodWithoutSelf.Actions(Shared.Tree, Document.Text, AUri, APosition,
+        TLspMethodWithoutSelf.Lookup(Resolver, Shared.Tree, TDocumentUris.ToPath(AUri), ReadSourceText));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.MethodKind(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+  Settings: TRefactoringSettings;
+  Context: TMethodKindContext;
+begin
+  // Argumente: URI, Position, Umwandlung.
+  if (AArguments = nil) or (AArguments.Count < 3) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      'Argumente "uri", "position" und "conversion" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  Settings := RefactoringSettingsFor(Uri);
+  if not Settings.MethodKind then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Methode ohne Self umwandeln" ist abgeschaltet (refactoring.methodKind).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context.Index := FIndex;
+  Context.Files := ProjectSourceFiles;
+  Context.ReadText := ReadSourceText;
+  Context.WithStatic := Settings.MethodKindStatic;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspMethodWithoutSelf.Execute(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text,
+      Position, Trim(AArguments.Items[2].Value), Context, ResolvedFormatStyleFor(Uri));
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Methode ohne Self umwandeln: %d Änderungen, %d Aufrufe, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('calls') as TJSONNumber).AsInt,
+    (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
 function TServerComposition.Unwrap(const AArguments: TJSONArray): TJSONValue;
 var
   Uri: string;
@@ -4109,8 +4191,13 @@ begin
 end;
 
 function TServerComposition.InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
+var
+  Settings: TServerSettings;
 begin
-  Result := SettingsFor(AUri).InlayHints;
+  Settings := SettingsFor(AUri);
+  Result := Settings.InlayHints;
+  // Marke „ohne Self“ (#686) hängt an der Umwandlung, nicht an inlayHints.
+  Result.MethodWithoutSelf := Settings.Refactoring.MethodKind and Settings.Refactoring.MethodKindMarker;
 end;
 
 function TServerComposition.HintSettingsFor(const AUri: string): THintSettings;

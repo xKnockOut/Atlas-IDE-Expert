@@ -330,6 +330,10 @@ type
     /// <summary>Passt der Zieltyp ATarget eines Helpers (ggf. mit Unit-Präfix) zu AType? string und
     /// UnicodeString gelten als gleich.</summary>
     class function HelperTargets(const ATarget: string; const AType: TResolvedSymbol): Boolean; static;
+    /// <summary>Helper für den Typ ATypeName (auch eingebaute wie string), der an AOffset wirkt (#686): der
+    /// zuletzt sichtbare, eigene Unit zuerst. False ohne.</summary>
+    function VisibleHelper(ATree: TSyntaxTree; const AFileName, ATypeName: string; AOffset: Integer;
+      out AHelper: TResolvedSymbol): Boolean;
     /// <summary>Deklaration und Typ des Ausdrucks ANode aus ATree (#1005): Variable, Feld, Property (bei Liste[i]
     /// die indizierte bzw. Default-Property), Funktion eines Aufrufs. False, wenn der Ausdruck nicht sicher
     /// auflösbar ist; ATypeFound sagt, ob der Typ bekannt ist (Aliase verfolgt).</summary>
@@ -1425,6 +1429,24 @@ begin
   end;
   FHelpers.AddOrSetValue(Key, AHelper);
   Result := AHelper.Found;
+end;
+
+function TNameResolver.VisibleHelper(ATree: TSyntaxTree; const AFileName, ATypeName: string; AOffset: Integer;
+  out AHelper: TResolvedSymbol): Boolean;
+var
+  Target: TResolvedSymbol;
+begin
+  AHelper := NoResult;
+  if (ATree = nil) or (Trim(ATypeName) = '') then
+    Exit(False);
+  Prepare(ATree, AFileName, AOffset);
+  if not ResolveTypeName(Trim(ATypeName), FCurrent, FInImplementation, Target) then
+  begin
+    // Eingebaute Typen ohne Deklaration: Der Name genügt für den Vergleich mit dem Zieltyp.
+    Target := NoResult;
+    Target.Name := Trim(ATypeName);
+  end;
+  Result := HelperFor(Target, AHelper);
 end;
 
 function TNameResolver.HelperParent(const AHelper: TResolvedSymbol; out AParent: TResolvedSymbol): Boolean;

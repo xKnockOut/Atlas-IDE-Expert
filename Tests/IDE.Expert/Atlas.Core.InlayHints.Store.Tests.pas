@@ -36,6 +36,9 @@ type
     /// <summary>Steuerzeichen-Codes (#862): eigene Liste, je Stelle einmal.</summary>
     [Test]
     procedure KeepsCharHintsApart;
+    /// <summary>Marken für Methoden ohne Self (#686): eigene Liste.</summary>
+    [Test]
+    procedure KeepsMethodHintsApart;
   end;
 
 implementation
@@ -251,6 +254,29 @@ begin
     Assert.AreEqual('#3|#27', string.Join('|', Store.CharsOnLine('A.pas', 1)));
     Assert.AreEqual(0, Integer(Length(Store.DefinesOnLine('A.pas', 1))), 'keine Include-Symbole');
     Assert.AreEqual(0, Integer(Length(Store.OnLine('A.pas', 1))), 'keine Parameternamen');
+  finally
+    Store.Free;
+  end;
+end;
+
+procedure TAtlasInlayHintStoreTests.KeepsMethodHintsApart;
+var
+  Store: TAtlasInlayHintStore;
+  Text: string;
+  Marks: TArray<TAtlasInlayHint>;
+begin
+  Text := 'implementation' + sLineBreak + 'function TA.Mal(N: Integer): Integer;';
+  Marks := [H(1, 37, 'ohne Self'), H(1, 37, 'ohne Self')];
+  Marks[0].MethodHint := True;
+  Marks[1].MethodHint := True;
+  Store := TAtlasInlayHintStore.Create;
+  try
+    Store.SetText('A.pas', Text);
+    Store.Put('A.pas', Text, 0, 1, Marks);
+    Assert.IsTrue(Store.MethodOnLine('A.pas', 1));
+    Assert.IsFalse(Store.MethodOnLine('A.pas', 0));
+    Assert.AreEqual(0, Integer(Length(Store.OnLine('A.pas', 1))), 'keine Parameternamen');
+    Assert.AreEqual(0, Integer(Length(Store.TypesOnLine('A.pas', 1))), 'keine Typmarken');
   finally
     Store.Free;
   end;

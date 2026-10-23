@@ -8,7 +8,9 @@
 // "places", "files", optional "preview"}), zeigt die Vorschau wie beim
 // Umbenennen mit dem Vorschautext und den Warnungen und übernimmt erst nach
 // Bestätigung, je Datei ein Rückgängig-Schritt. Die Texte kommen je Aktion
-// aus TAtlasNamedRefactoringTexts. Nur im Hauptthread.
+// aus TAtlasNamedRefactoringTexts. Aktionen ohne Namen (Methode ohne Self
+// #686) reichen ihre Argumente unverändert über ExecuteWithoutName weiter.
+// Nur im Hauptthread.
 
 interface
 
@@ -33,10 +35,21 @@ type
   end;
 
   TAtlasIdeNamedRefactoring = class
+  private
+    /// <summary>Server-Befehl mit AApplyArguments ausführen, Vorschau zeigen und nach Bestätigung übernehmen.
+    /// </summary>
+    class procedure Run(ASession: TLspSession; const AApplyArguments, AApplyCommand: string;
+      const ATexts: TAtlasNamedRefactoringTexts; APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
+      static;
   public
     /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position, name]); AApplyCommand: Befehl des
     /// Servers; ASession: laufende Sitzung oder nil; AMessage: Zeile für die Meldungsansicht.</summary>
     class procedure Execute(ASession: TLspSession; const AArgumentsJson, AApplyCommand: string;
+      const ATexts: TAtlasNamedRefactoringTexts; APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
+      static;
+    /// <summary>Wie Execute, aber ohne Namensabfrage: AArgumentsJson geht unverändert an AApplyCommand;
+    /// ATexts.Prompt bleibt ungenutzt.</summary>
+    class procedure ExecuteWithoutName(ASession: TLspSession; const AArgumentsJson, AApplyCommand: string;
       const ATexts: TAtlasNamedRefactoringTexts; APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
       static;
   end;
@@ -69,16 +82,9 @@ end;
 class procedure TAtlasIdeNamedRefactoring.Execute(ASession: TLspSession; const AArgumentsJson, AApplyCommand: string;
   const ATexts: TAtlasNamedRefactoringTexts; APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  Arguments, Answer, Item: TJSONValue;
+  Arguments: TJSONValue;
   Values, List: TJSONArray;
-  Reply: TJSONObject;
-  Name, ApplyArguments, Hint, Warning, Explanation: string;
-  Warnings: TArray<string>;
-  Places, Files: Integer;
-  Edit: TLspWorkspaceEdit;
-  Outcome: TAtlasWorkspaceEditResult;
-  Preview: TArray<TAtlasResultEntry>;
-  Open: TAtlasResultsOpen;
+  Name, ApplyArguments: string;
 begin
   if ASession = nil then
   begin
@@ -109,13 +115,41 @@ begin
   finally
     Arguments.Free;
   end;
+  Run(ASession, ApplyArguments, AApplyCommand, ATexts, APolicy, AMessage);
+end;
+
+class procedure TAtlasIdeNamedRefactoring.ExecuteWithoutName(ASession: TLspSession; const AArgumentsJson,
+  AApplyCommand: string; const ATexts: TAtlasNamedRefactoringTexts; APolicy: TAtlasUnopenedPolicy;
+  const AMessage: TProc<string>);
+begin
+  if ASession = nil then
+  begin
+    AMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+    Exit;
+  end;
+  Run(ASession, AArgumentsJson, AApplyCommand, ATexts, APolicy, AMessage);
+end;
+
+class procedure TAtlasIdeNamedRefactoring.Run(ASession: TLspSession; const AApplyArguments, AApplyCommand: string;
+  const ATexts: TAtlasNamedRefactoringTexts; APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
+var
+  Answer, Item: TJSONValue;
+  Reply: TJSONObject;
+  Hint, Warning, Explanation: string;
+  Warnings: TArray<string>;
+  Places, Files: Integer;
+  Edit: TLspWorkspaceEdit;
+  Outcome: TAtlasWorkspaceEditResult;
+  Preview: TArray<TAtlasResultEntry>;
+  Open: TAtlasResultsOpen;
+begin
   TAtlasIdeRename.SyncOpenBuffers(ASession);
   Warnings := nil;
   Places := 0;
   Files := 0;
   Explanation := '';
   try
-    Answer := ASession.RunCommand(AApplyCommand, ApplyArguments, TimeoutMs);
+    Answer := ASession.RunCommand(AApplyCommand, AApplyArguments, TimeoutMs);
     try
       Reply := nil;
       if Answer is TJSONObject then

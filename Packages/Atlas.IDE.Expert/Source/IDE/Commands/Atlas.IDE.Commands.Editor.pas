@@ -205,6 +205,7 @@ uses
   Atlas.IDE.Editor.InvertBoolean,
   Atlas.IDE.Editor.PromoteVariable,
   Atlas.IDE.Editor.AnonymousMethod,
+  Atlas.IDE.Editor.MethodKind,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
@@ -1452,6 +1453,17 @@ begin
   begin
     // Client-Befehl: Namen abfragen und „Anonyme Methode in Methode umwandeln“ (#680); er fragt den Server selbst.
     TAtlasIdeAnonymousMethod.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeMethodKind.ClientCommand then
+  begin
+    // Client-Befehl: Methode ohne Self umwandeln (#686); er fragt den Server selbst, ohne Namensabfrage.
+    TAtlasIdeMethodKind.Execute(Session, AArgumentsJson,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
       procedure(AText: string)
       begin

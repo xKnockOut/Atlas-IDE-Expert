@@ -39,6 +39,9 @@ type
     procedure BindsGenericMethodArguments;
     [Test]
     procedure UsesHelpersForBuiltinAndClassTypes;
+    /// <summary>#686: sichtbarer Helper zu einem Typnamen, auch für eingebaute Typen.</summary>
+    [Test]
+    procedure VisibleHelperForTypeName;
     [Test]
     procedure WithFindsMembersOfExpression;
     [Test]
@@ -374,6 +377,29 @@ begin
   Assert.AreEqual('System.SysUtils', R.UnitName);
   Assert.AreEqual('TKundeHelper', ResolveAt(Source, 'Anrede').Container);
   Assert.IsFalse(ResolveAt(Source, 'Split', 2).Found);
+end;
+
+procedure TNameResolverStage2Tests.VisibleHelperForTypeName;
+const
+  Source = Head + '  S := '''';' + Tail;
+var
+  Tree: TSyntaxTree;
+  Offset: Integer;
+  Helper: TResolvedSymbol;
+begin
+  Tree := TPascalParser.Parse(Source);
+  try
+    Offset := Pos('S := ''''', Source) - 1;
+    Assert.IsTrue(FResolver.VisibleHelper(Tree, 'C:\P\Haupt.pas', 'string', Offset, Helper));
+    Assert.AreEqual('TStringHelper', Helper.Name);
+    Assert.AreEqual('System.SysUtils', Helper.UnitName);
+    Assert.IsTrue(FResolver.VisibleHelper(Tree, 'C:\P\Haupt.pas', 'TKunde', Offset, Helper));
+    Assert.AreEqual('TKundeHelper', Helper.Name);
+    Assert.IsFalse(FResolver.VisibleHelper(Tree, 'C:\P\Haupt.pas', 'Integer', Offset, Helper));
+    Assert.IsFalse(FResolver.VisibleHelper(Tree, 'C:\P\Haupt.pas', '', Offset, Helper));
+  finally
+    Tree.Free;
+  end;
 end;
 
 procedure TNameResolverStage2Tests.WithFindsMembersOfExpression;

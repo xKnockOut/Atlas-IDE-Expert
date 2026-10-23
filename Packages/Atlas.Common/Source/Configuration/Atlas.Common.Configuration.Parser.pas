@@ -1392,6 +1392,12 @@ begin
         else
           ReportNode(ANode[Index], '"refactoring.anonymousMethodDeferredCapture" muss "forward" oder "fields" sein');
     end
+    else if Key = 'methodKind' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.MethodKind)
+    else if Key = 'methodKindMarker' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.MethodKindMarker)
+    else if Key = 'methodKindStatic' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.MethodKindStatic)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);

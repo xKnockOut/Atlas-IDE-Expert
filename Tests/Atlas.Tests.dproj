@@ -153,6 +153,8 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.RoutineParts.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.AnonymousMethods.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.AnonymousMethods.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.MethodWithoutSelf.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.MethodWithoutSelf.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.PromoteVariable.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.PromoteVariable.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.References.Tests.pas"/>
@@ -224,6 +226,7 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.ConsideredUsed.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.ProjectFiles.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.MethodWithoutSelf.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.UnitLookup.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas"/>

@@ -4933,6 +4933,19 @@ begin
     '        "E2035"' + #10 +
     '      ],' + #10 +
     '      "level": "T"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "method-without-self",' + #10 +
+    '      "name": "Method does not need Self",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A method of a class or record uses neither Self nor instance members (fields, properties, instance methods, inherited). It is not virtual, not an event of the form file, does not' +
+    ' implement an interface and is not used as a method pointer. Experimental: only active when switched on in atlas.json; silent with refactoring.methodKind off. Quick fix: turn into a class method (clas' +
+    's … static with refactoring.methodKindStatic); the code actions also offer calls via the class, a free routine and a record helper for the type of the first parameter, each with a preview of all chang' +
+    'ed calls.",' + #10 +
+    '      "bad": "function TRechner.Doppelt(A: Integer): Integer;\nbegin\n  Result := A * 2;  // no field, no Self\nend;",' + #10 +
+    '      "good": "class function TRechner.Doppelt(A: Integer): Integer; static;\nbegin\n  Result := A * 2;\nend;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -7604,6 +7617,14 @@ begin
     ' wird nur, wenn der Name sicher genau eine Routine meint: Überladungen, varargs, Typumwandlungen, Variablen prozeduralen Typs, Bezeichner von System ohne Quelltext und Deklarationen in bedingten Zweig' +
     'en bleiben beim Compiler (E2250). Eine Funktion mit zu vielen Argumenten meldet die Regel nur bei bekanntem, nicht prozeduralem Ergebnistyp. Korrektur: Signaturhilfe öffnen setzt die Schreibmarke in d' +
     'ie Klammern und öffnet den Parameter-Hint (ergänzt () bei Bedarf)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "method-without-self",' + #10 +
+    '      "name": "Methode braucht Self nicht",' + #10 +
+    '      "description": "Eine Methode einer Klasse oder eines Records nutzt weder Self noch Instanzmitglieder (Felder, Properties, Instanzmethoden, inherited). Sie ist nicht virtuell, kein Ereignis der F' +
+    'ormulardatei, implementiert kein Interface und wird nicht als Methodenzeiger verwendet. Experimentell: nur aktiv, wenn in atlas.json eingeschaltet; schweigt mit refactoring.methodKind aus. Schnellkorr' +
+    'ektur: in eine class-Methode umwandeln (class … static mit refactoring.methodKindStatic); die Code-Aktionen bieten außerdem Aufrufe über die Klasse, eine freie Routine und einen Record-Helper für den ' +
+    'Typ des ersten Parameters, jeweils mit Vorschau aller geänderten Aufrufe."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

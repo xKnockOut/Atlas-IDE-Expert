@@ -1314,7 +1314,8 @@ begin
         Continue;
       Entry := TJSONObject(Item);
       // Parameternamen (kind 2), Typmarken (kind 1, #453), Endmarken ohne kind mit "// …" (#620) und
-      // Include-Symbole ohne kind mit data.includeDefines (#860) und Steuerzeichen mit data.controlChar (#862).
+      // Include-Symbole ohne kind mit data.includeDefines (#860), Steuerzeichen mit data.controlChar (#862) und
+      // Methoden ohne Self mit data.methodWithoutSelf (#686).
       Kind := Entry.GetValue<Integer>('kind', 0);
       if (Kind <> 2) and (Kind <> 1) and (Kind <> 0) then
         Continue;
@@ -1343,6 +1344,9 @@ begin
       end
       else if (Kind = 0) and (Entry.GetValue<Integer>('data.controlChar.code', -1) >= 0) then
         Hint.CharHint := True
+      else if (Kind = 0) and Entry.GetValue<Boolean>('data.methodWithoutSelf', False) then
+        // Methode ohne Self (#686); die Beschriftung baut die Oberfläche in der Sprache der IDE.
+        Hint.MethodHint := True
       else if Kind = 0 then
       begin
         if not Text.StartsWith('//') then
