@@ -1,17 +1,22 @@
 ﻿unit Atlas.UI.Architecture.Frame;
 
 // Inhalt des Seitenfensters „Atlas-Architektur“ (#1118), reine VCL: oben
-// „Neu berechnen“, „Bericht speichern …“, Umfang (Projektgruppe, Projekt),
-// „Bibliotheks-Units“ und ein Filter nach Unit-Namen; darunter fünf Reiter:
+// „Neu berechnen“, „Bericht speichern …“, „Stand speichern …“ und
+// „Vergleichen mit …“ (#1121, Datei .json), Umfang (Projektgruppe, Projekt),
+// „Bibliotheks-Units“ und ein Filter nach Unit-Namen; darunter sechs Reiter:
 // - Übersicht: „Einpassen“, „Namen“, „implementation-uses“, „Zyklen
-//   markieren“ und „Teilsysteme ▾“ (ein- und ausblenden), die Karte
-//   (TAtlasArchitectureMap), darunter Angaben zur gewählten Unit bzw. der
-//   Weg nach Umschalt+Klick,
+//   markieren“, „Änderungen zum Stand“ (nur mit Vergleich) und „Teilsysteme ▾“
+//   (ein- und ausblenden), die Karte (TAtlasArchitectureMap), darunter Angaben
+//   zur gewählten Unit bzw. der Weg nach Umschalt+Klick,
 // - Zentrale Units: Tabelle, Klick auf eine Spalte sortiert (nochmals:
 //   umgekehrt),
 // - Teilsysteme: Baum mit Zusammenhalt und Units, Ausreißer mit Grund,
 // - Zyklen: je Zyklus der Weg und die uses-Einträge mit Fundstelle,
-// - Querverbindungen: seltene Kanten und Kanten gegen die Hauptrichtung.
+// - Querverbindungen: seltene Kanten und Kanten gegen die Hauptrichtung,
+// - Vergleich (#1121): gegen welchen Stand, „Vergleich aufheben“ und je
+//   Abschnitt (neue Zyklen, Querverbindungen, Kanten zwischen Teilsystemen,
+//   Wechsel, Wachstum, Units) die Einträge; ohne Vergleich ein Hinweis, bei
+//   unlesbarem Stand die Meldung.
 // Unten die Statuszeile (Zahlen, Index-Stand, Rechendauer und Ausschlüsse
 // bzw. ein Hinweis).
 // Doppelklick oder Enter öffnet die Unit (OnOpenUnit) bzw. springt zum
@@ -43,6 +48,8 @@ type
     FTop: TPanel;
     FRefresh: TButton;
     FSave: TButton;
+    FSaveState: TButton;
+    FCompare: TButton;
     FScope: TComboBox;
     FLibrary: TCheckBox;
     FFilter: TEdit;
@@ -52,6 +59,7 @@ type
     FNames: TCheckBox;
     FImplementation: TCheckBox;
     FMarkCycles: TCheckBox;
+    FChanges: TCheckBox;
     FSubsystemsButton: TButton;
     FSubsystemsMenu: TPopupMenu;
     FMap: TAtlasArchitectureMap;
@@ -60,6 +68,10 @@ type
     FSubsystems: TTreeView;
     FCycles: TTreeView;
     FCrossLinks: TListView;
+    FCompareBar: TPanel;
+    FCompareInfo: TLabel;
+    FClearCompare: TButton;
+    FComparison: TTreeView;
     FStatus: TLabel;
     FModel: TAtlasArchitectureModel;
     FHasModel: Boolean;
@@ -76,6 +88,9 @@ type
     FCrossRows: TArray<Integer>;
     FOnRefresh: TProc;
     FOnSave: TProc<string>;
+    FOnSaveState: TProc<string>;
+    FOnCompare: TProc<string>;
+    FOnClearComparison: TProc;
     FOnScopeChanged: TProc<string>;
     FOnLibraryChanged: TProc<Boolean>;
     FOnOpenUnit: TProc<string>;
@@ -96,10 +111,16 @@ type
     procedure FillSubsystems;
     procedure FillCycles;
     procedure FillCrossLinks;
+    procedure FillComparison;
+    function ChangeCaption(AKind: TAtlasArchChangeKind; const AChange: TAtlasArchChange): string;
     procedure UpdateStatus;
     procedure UpdateInfo;
     procedure RefreshClick(Sender: TObject);
     procedure SaveClick(Sender: TObject);
+    procedure SaveStateClick(Sender: TObject);
+    procedure CompareClick(Sender: TObject);
+    procedure ClearCompareClick(Sender: TObject);
+    procedure ChangesClick(Sender: TObject);
     procedure ScopeChange(Sender: TObject);
     procedure LibraryClick(Sender: TObject);
     procedure FilterChange(Sender: TObject);
@@ -141,12 +162,19 @@ type
     function SubsystemText: TArray<string>;
     function CycleText: TArray<string>;
     function CrossLinkText: TArray<string>;
+    function ComparisonText: TArray<string>;
     property Model: TAtlasArchitectureModel read FModel;
     property HasModel: Boolean read FHasModel;
     property Map: TAtlasArchitectureMap read FMap;
     property Pages: TPageControl read FPages;
     property RefreshButton: TButton read FRefresh;
     property SaveButton: TButton read FSave;
+    property SaveStateButton: TButton read FSaveState;
+    property CompareButton: TButton read FCompare;
+    property ClearCompareButton: TButton read FClearCompare;
+    property ChangesCheck: TCheckBox read FChanges;
+    property ComparisonTree: TTreeView read FComparison;
+    property ComparisonInfo: TLabel read FCompareInfo;
     property LibraryCheck: TCheckBox read FLibrary;
     property Filter: TEdit read FFilter;
     property CentralList: TListView read FCentral;
@@ -167,6 +195,12 @@ type
     property OnRefresh: TProc read FOnRefresh write FOnRefresh;
     /// <summary>Gewählte Zieldatei (.html oder .md).</summary>
     property OnSave: TProc<string> read FOnSave write FOnSave;
+    /// <summary>Gewählte Zieldatei für den Stand (.json, #1121).</summary>
+    property OnSaveState: TProc<string> read FOnSaveState write FOnSaveState;
+    /// <summary>Gewählter gespeicherter Stand (.json), mit dem verglichen werden soll.</summary>
+    property OnCompare: TProc<string> read FOnCompare write FOnCompare;
+    /// <summary>Vergleich aufheben (auch den mit architecture.baseline).</summary>
+    property OnClearComparison: TProc read FOnClearComparison write FOnClearComparison;
     property OnScopeChanged: TProc<string> read FOnScopeChanged write FOnScopeChanged;
     property OnLibraryChanged: TProc<Boolean> read FOnLibraryChanged write FOnLibraryChanged;
     property OnOpenUnit: TProc<string> read FOnOpenUnit write FOnOpenUnit;
@@ -229,11 +263,29 @@ begin
   FSave.Width := 130;
   FSave.OnClick := SaveClick;
 
+  FSaveState := TButton.Create(Self);
+  FSaveState.Parent := FTop;
+  FSaveState.Align := alLeft;
+  FSaveState.AlignWithMargins := True;
+  FSaveState.Left := FSave.Left + FSave.Width + 1;
+  FSaveState.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureSaveState);
+  FSaveState.Width := 120;
+  FSaveState.OnClick := SaveStateClick;
+
+  FCompare := TButton.Create(Self);
+  FCompare.Parent := FTop;
+  FCompare.Align := alLeft;
+  FCompare.AlignWithMargins := True;
+  FCompare.Left := FSaveState.Left + FSaveState.Width + 1;
+  FCompare.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureCompare);
+  FCompare.Width := 130;
+  FCompare.OnClick := CompareClick;
+
   FScope := TComboBox.Create(Self);
   FScope.Parent := FTop;
   FScope.Align := alLeft;
   FScope.AlignWithMargins := True;
-  FScope.Left := FSave.Left + FSave.Width + 1;
+  FScope.Left := FCompare.Left + FCompare.Width + 1;
   FScope.Style := csDropDownList;
   FScope.Width := 130;
   FScope.OnChange := ScopeChange;
@@ -315,11 +367,21 @@ begin
   FMarkCycles.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureMarkCycles);
   FMarkCycles.Width := 130;
   FMarkCycles.OnClick := MarkCyclesClick;
+  FChanges := TCheckBox.Create(Self);
+  FChanges.Parent := FMapBar;
+  FChanges.Align := alLeft;
+  FChanges.AlignWithMargins := True;
+  FChanges.Left := FMarkCycles.Left + FMarkCycles.Width + 1;
+  FChanges.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureShowChanges);
+  FChanges.Width := 150;
+  FChanges.Checked := True;
+  FChanges.Enabled := False;
+  FChanges.OnClick := ChangesClick;
   FSubsystemsButton := TButton.Create(Self);
   FSubsystemsButton.Parent := FMapBar;
   FSubsystemsButton.Align := alLeft;
   FSubsystemsButton.AlignWithMargins := True;
-  FSubsystemsButton.Left := FMarkCycles.Left + FMarkCycles.Width + 1;
+  FSubsystemsButton.Left := FChanges.Left + FChanges.Width + 1;
   FSubsystemsButton.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureSubsystemsButton);
   FSubsystemsButton.Width := 110;
   FSubsystemsButton.OnClick := SubsystemsClick;
@@ -369,6 +431,31 @@ begin
   AddColumn(FCrossLinks, TAtlasStrings.Text(TAtlasTextId.ArchitectureColSubsystem), 180);
   AddColumn(FCrossLinks, TAtlasStrings.Text(TAtlasTextId.ArchitectureColReason), 160);
   AddColumn(FCrossLinks, TAtlasStrings.Text(TAtlasTextId.ArchitectureColLocation), 200);
+
+  Sheet := NewSheet(TAtlasStrings.Text(TAtlasTextId.ArchitectureTabComparison));
+  FCompareBar := TPanel.Create(Self);
+  FCompareBar.Parent := Sheet;
+  FCompareBar.Align := alTop;
+  FCompareBar.BevelOuter := bvNone;
+  FCompareBar.ShowCaption := False;
+  FCompareBar.AutoSize := True;
+  FClearCompare := TButton.Create(Self);
+  FClearCompare.Parent := FCompareBar;
+  FClearCompare.Align := alRight;
+  FClearCompare.AlignWithMargins := True;
+  FClearCompare.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureClearComparison);
+  FClearCompare.Width := 140;
+  FClearCompare.Enabled := False;
+  FClearCompare.OnClick := ClearCompareClick;
+  FCompareInfo := TLabel.Create(Self);
+  FCompareInfo.Parent := FCompareBar;
+  FCompareInfo.Align := alClient;
+  FCompareInfo.AlignWithMargins := True;
+  FCompareInfo.Layout := tlCenter;
+  FCompareInfo.ShowAccelChar := False;
+  FCompareInfo.EllipsisPosition := epEndEllipsis;
+  FCompareInfo.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureNoComparison);
+  FComparison := NewTree(Sheet);
 end;
 
 function TAtlasArchitectureFrame.NewSheet(const ACaption: string): TTabSheet;
@@ -544,6 +631,7 @@ begin
   FillSubsystems;
   FillCycles;
   FillCrossLinks;
+  FillComparison;
   UpdateStatus;
   UpdateInfo;
 end;
@@ -702,6 +790,111 @@ begin
   end;
 end;
 
+function TAtlasArchitectureFrame.ChangeCaption(AKind: TAtlasArchChangeKind; const AChange: TAtlasArchChange): string;
+var
+  Detail: string;
+begin
+  Result := AChange.Text;
+  case AKind of
+    TAtlasArchChangeKind.NewCycles, TAtlasArchChangeKind.RemovedCycles:
+      if AChange.Section = 'interface' then
+        Result := TAtlasStrings.Text(TAtlasTextId.ArchitectureCycleInterface) + ': ' + Result
+      else
+        Result := TAtlasStrings.Text(TAtlasTextId.ArchitectureCycleImplementation) + ': ' + Result;
+    TAtlasArchChangeKind.Growth:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureGrowthLine, [AChange.Text, AChange.From, AChange.To_]);
+    TAtlasArchChangeKind.Moves:
+      Result := Result + ' (' + AChange.From + ' → ' + AChange.To_ + ')';
+    TAtlasArchChangeKind.NewCrossLinks, TAtlasArchChangeKind.RemovedCrossLinks, TAtlasArchChangeKind.NewEdges,
+    TAtlasArchChangeKind.RemovedEdges:
+      begin
+        Detail := AChange.From + ' → ' + AChange.To_;
+        if AChange.Section <> '' then
+          Detail := Detail + ', ' + AChange.Section;
+        if AChange.Reason = 'rare' then
+          Detail := Detail + ', ' + TAtlasStrings.Text(TAtlasTextId.ArchitectureReasonRare)
+        else if AChange.Reason <> '' then
+          Detail := Detail + ', ' + TAtlasStrings.Text(TAtlasTextId.ArchitectureReasonAgainst);
+        Result := Result + ' (' + Detail + ')';
+      end;
+  end;
+end;
+
+procedure TAtlasArchitectureFrame.FillComparison;
+const
+  Titles: array[TAtlasArchChangeKind] of TAtlasTextId = (TAtlasTextId.ArchitectureChangeNewCycles,
+    TAtlasTextId.ArchitectureChangeRemovedCycles, TAtlasTextId.ArchitectureChangeNewCrossLinks,
+    TAtlasTextId.ArchitectureChangeRemovedCrossLinks, TAtlasTextId.ArchitectureChangeNewEdges,
+    TAtlasTextId.ArchitectureChangeRemovedEdges, TAtlasTextId.ArchitectureChangeMoves,
+    TAtlasTextId.ArchitectureChangeGrowth, TAtlasTextId.ArchitectureChangeNewUnits,
+    TAtlasTextId.ArchitectureChangeRemovedUnits);
+var
+  Comparison: TAtlasArchComparison;
+  Section: TAtlasArchChangeSection;
+  Change: TAtlasArchChange;
+  Shown: TArray<TAtlasArchChange>;
+  Group, Node: TTreeNode;
+  Info: string;
+begin
+  Comparison := FModel.Comparison;
+  FChanges.Enabled := Comparison.Present;
+  FMap.ShowChanges := FChanges.Checked;
+  FClearCompare.Enabled := FHasModel and ((Comparison.Baseline <> '') or (Comparison.Error <> ''));
+  if Comparison.Error <> '' then
+    Info := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureComparisonError, [Comparison.Error])
+  else if Comparison.Present then
+  begin
+    Info := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureComparisonInfo, [ExtractFileName(Comparison.Baseline),
+      Comparison.BaselineTitle, Comparison.BaselineUnits, Comparison.BaselineEdges, Comparison.Count]);
+    if Length(Comparison.Failed) > 0 then
+      Info := Info + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureComparisonFailed,
+        [string.Join(', ', Comparison.Failed)]);
+  end
+  else
+    Info := TAtlasStrings.Text(TAtlasTextId.ArchitectureNoComparison);
+  FCompareInfo.Caption := Info;
+  FCompareInfo.Hint := Comparison.Baseline;
+  FCompareInfo.ShowHint := Comparison.Baseline <> '';
+  if not CanFill(FComparison) then
+    Exit;
+  FComparison.Items.BeginUpdate;
+  try
+    FComparison.Items.Clear;
+    if not Comparison.Present then
+      Exit;
+    if Comparison.Count = 0 then
+    begin
+      FComparison.Items.Add(nil, TAtlasStrings.Text(TAtlasTextId.ArchitectureNoChanges)).Data := nil;
+      Exit;
+    end;
+    for Section in Comparison.Sections do
+    begin
+      // Der Filter wirkt wie in den anderen Listen auf die Namen; entfernte Units zählen mit ihrem Namen.
+      Shown := nil;
+      for Change in Section.Items do
+        if (Trim(FFilter.Text) = '') or (Pos(LowerCase(Trim(FFilter.Text)), LowerCase(Change.Text)) > 0) or
+          FModel.Matches(Change.Unit_, FFilter.Text) then
+          Shown := Shown + [Change];
+      if Length(Shown) = 0 then
+        Continue;
+      Group := FComparison.Items.Add(nil, TAtlasStrings.Fmt(Titles[Section.Kind], [Length(Shown)]));
+      Group.Data := nil;
+      for Change in Shown do
+      begin
+        Node := FComparison.Items.AddChild(Group, ChangeCaption(Section.Kind, Change));
+        // Wie im Baum der Teilsysteme: Unit als −1 − Nummer; entfernte Units haben keine.
+        if Change.Unit_ >= 0 then
+          Node.Data := Pointer(NativeInt(-1 - Change.Unit_))
+        else
+          Node.Data := nil;
+      end;
+      Group.Expanded := Length(Shown) <= 20;
+    end;
+  finally
+    FComparison.Items.EndUpdate;
+  end;
+end;
+
 procedure TAtlasArchitectureFrame.UpdateStatus;
 begin
   if FMessageText <> '' then
@@ -719,8 +912,15 @@ begin
     if Length(FModel.Excludes) > 0 then
       FStatus.Caption := FStatus.Caption + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusExcludes,
         [string.Join(', ', FModel.Excludes)]);
+    if FModel.Comparison.Present then
+      FStatus.Caption := FStatus.Caption + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusComparison,
+        [FModel.Comparison.Count])
+    else if FModel.Comparison.Error <> '' then
+      FStatus.Caption := FStatus.Caption + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureComparisonError,
+        [FModel.Comparison.Error]);
   end;
   FSave.Enabled := FHasModel and (Length(FModel.Units) > 0);
+  FSaveState.Enabled := FSave.Enabled;
 end;
 
 procedure TAtlasArchitectureFrame.UpdateInfo;
@@ -790,6 +990,53 @@ begin
   end;
 end;
 
+procedure TAtlasArchitectureFrame.SaveStateClick(Sender: TObject);
+var
+  Dialog: TSaveDialog;
+begin
+  Dialog := TSaveDialog.Create(nil);
+  try
+    Dialog.Filter := TAtlasStrings.Text(TAtlasTextId.ArchitectureStateFilter);
+    Dialog.DefaultExt := 'json';
+    Dialog.Options := Dialog.Options + [ofOverwritePrompt, ofPathMustExist];
+    if FModel.Title <> '' then
+      Dialog.FileName := 'Architektur-' + FModel.Title + '.json';
+    if Dialog.Execute and Assigned(FOnSaveState) then
+      FOnSaveState(Dialog.FileName);
+  finally
+    Dialog.Free;
+  end;
+end;
+
+procedure TAtlasArchitectureFrame.CompareClick(Sender: TObject);
+var
+  Dialog: TOpenDialog;
+begin
+  Dialog := TOpenDialog.Create(nil);
+  try
+    Dialog.Filter := TAtlasStrings.Text(TAtlasTextId.ArchitectureStateFilter);
+    Dialog.DefaultExt := 'json';
+    Dialog.Options := Dialog.Options + [ofFileMustExist, ofPathMustExist];
+    if FModel.Comparison.Baseline <> '' then
+      Dialog.FileName := FModel.Comparison.Baseline;
+    if Dialog.Execute and Assigned(FOnCompare) then
+      FOnCompare(Dialog.FileName);
+  finally
+    Dialog.Free;
+  end;
+end;
+
+procedure TAtlasArchitectureFrame.ClearCompareClick(Sender: TObject);
+begin
+  if Assigned(FOnClearComparison) then
+    FOnClearComparison();
+end;
+
+procedure TAtlasArchitectureFrame.ChangesClick(Sender: TObject);
+begin
+  FMap.ShowChanges := FChanges.Checked;
+end;
+
 procedure TAtlasArchitectureFrame.ScopeChange(Sender: TObject);
 begin
   if FUpdating or (FScope.ItemIndex < 0) or (FScope.ItemIndex > High(ScopeValues)) then
@@ -815,6 +1062,7 @@ begin
   FLinks := nil;
   FillCycles;
   FillCrossLinks;
+  FillComparison;
 end;
 
 procedure TAtlasArchitectureFrame.FitClick(Sender: TObject);
@@ -994,6 +1242,15 @@ begin
   Result := nil;
   for Index := 0 to FCycles.Items.Count - 1 do
     Result := Result + [StringOfChar(' ', 2 * FCycles.Items[Index].Level) + FCycles.Items[Index].Text];
+end;
+
+function TAtlasArchitectureFrame.ComparisonText: TArray<string>;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  for Index := 0 to FComparison.Items.Count - 1 do
+    Result := Result + [StringOfChar(' ', 2 * FComparison.Items[Index].Level) + FComparison.Items[Index].Text];
 end;
 
 function TAtlasArchitectureFrame.CrossLinkText: TArray<string>;

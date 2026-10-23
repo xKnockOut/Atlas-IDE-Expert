@@ -1699,6 +1699,31 @@ begin
         if ExpectString(ANode[Index][Item], 'architecture.exclude', Value) then
           FSettings.ArchitectureExclude := FSettings.ArchitectureExclude + [Value];
     end
+    else if Key = 'baseline' then
+    begin
+      if ExpectString(ANode[Index], 'architecture.baseline', Value) then
+        FSettings.ArchitectureBaseline := Trim(Value);
+    end
+    else if Key = 'failOn' then
+    begin
+      if ANode[Index].Kind <> TJsonKind.Array_ then
+      begin
+        ReportNode(ANode[Index], '"architecture.failOn" muss eine Liste aus newCycle, newCrossLink, ' +
+          'subsystemChange und centralGrowth sein');
+        Continue;
+      end;
+      FSettings.ArchitectureFailOn := nil;
+      for Item := 0 to ANode[Index].Count - 1 do
+        if ExpectString(ANode[Index][Item], 'architecture.failOn', Value) then
+        begin
+          if (Value = 'newCycle') or (Value = 'newCrossLink') or (Value = 'subsystemChange') or
+            (Value = 'centralGrowth') then
+            FSettings.ArchitectureFailOn := FSettings.ArchitectureFailOn + [Value]
+          else
+            ReportNode(ANode[Index][Item], Format('"architecture.failOn": unbekannte Abweichung "%s" (erlaubt: ' +
+              'newCycle, newCrossLink, subsystemChange, centralGrowth)', [Value]));
+        end;
+    end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "architecture.%s"', [Key]), False);
@@ -2330,6 +2355,8 @@ begin
       Result.ArchitectureIncludeLibraryUnits := FileSettings.ArchitectureIncludeLibraryUnits;
       Result.ArchitectureCentralUnits := FileSettings.ArchitectureCentralUnits;
       Result.ArchitectureExclude := FileSettings.ArchitectureExclude;
+      Result.ArchitectureBaseline := FileSettings.ArchitectureBaseline;
+      Result.ArchitectureFailOn := FileSettings.ArchitectureFailOn;
     end
     else if Key = 'usesCommand' then
       Result.UsesCommand := FileSettings.UsesCommand

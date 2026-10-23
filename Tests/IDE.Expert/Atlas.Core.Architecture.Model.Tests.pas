@@ -2,7 +2,8 @@
 
 // Fenster „Atlas-Architektur“ (#1118), Kern: Antwort des Servers lesen
 // (dieselben Daten wie TArchitectureReport.Json), Sortieren, Filter, Pfade,
-// Farben und Umrechnung der Karte.
+// Farben und Umrechnung der Karte; Vergleich mit einem gespeicherten Stand
+// (#1121) und die Argumente dazu.
 
 interface
 
@@ -29,10 +30,19 @@ type
     procedure CommandArguments;
     [Test]
     procedure ShortestPathOverUses;
+    [Test]
+    procedure ParsesComparison;
+    [Test]
+    procedure ComparisonErrorAndAbsence;
+    [Test]
+    procedure CommandArgumentsWithComparison;
   end;
 
 /// <summary>Antwort von atlas.architecture zu einem kleinen Projekt mit Zyklus (für Kern- und UI-Tests).</summary>
 function SampleAnswer: string;
+/// <summary>Wie SampleAnswer mit Vergleich (#1121): Im alten Stand gab es App.Old, aber weder den Zyklus
+/// Db ↔ Cache noch App.Ui.Grid → App.Data.</summary>
+function SampleComparisonAnswer: string;
 
 implementation
 
@@ -46,23 +56,34 @@ uses
   Atlas.Common.Architecture.Service,
   Atlas.Common.Architecture.Layout,
   Atlas.Common.Architecture.Report,
+  Atlas.Common.Architecture.Snapshot,
+  Atlas.Common.Architecture.Comparison,
   Atlas.Common.Architecture.UsesGraph.Tests,
   Atlas.Core.Architecture.Model;
 
-function SampleAnswer: string;
+/// <summary>Kleines Projekt; AOlder: der frühere Stand (siehe SampleComparisonAnswer).</summary>
+function SampleOverview(AOlder: Boolean): TArchitectureOverview;
 var
   Index: ISymbolIndex;
   Service: TArchitectureService;
   Request: TArchitectureRequest;
-  Overview: TArchitectureOverview;
 begin
   Index := TSymbolIndex.Create;
   Index.AddUnit(UsesUnit('App.Main', ['App.Data', 'App.Ui.Form'], nil));
   Index.AddUnit(UsesUnit('App.Data', ['App.Data.Db'], nil));
   Index.AddUnit(UsesUnit('App.Data.Db', ['App.Data.Cache'], nil));
-  Index.AddUnit(UsesUnit('App.Data.Cache', nil, ['App.Data.Db']));
   Index.AddUnit(UsesUnit('App.Ui.Form', ['App.Ui.Grid'], nil));
-  Index.AddUnit(UsesUnit('App.Ui.Grid', ['App.Data'], nil));
+  if AOlder then
+  begin
+    Index.AddUnit(UsesUnit('App.Data.Cache', nil, nil));
+    Index.AddUnit(UsesUnit('App.Ui.Grid', nil, nil));
+    Index.AddUnit(UsesUnit('App.Old', ['App.Data'], nil));
+  end
+  else
+  begin
+    Index.AddUnit(UsesUnit('App.Data.Cache', nil, ['App.Data.Db']));
+    Index.AddUnit(UsesUnit('App.Ui.Grid', ['App.Data'], nil));
+  end;
   Service := TArchitectureService.Create(Index,
     function(const AFileName: string; out AText: string): Boolean
     begin
@@ -80,12 +101,33 @@ begin
     Request.Scope := 'project';
     Request.CentralUnits := 3;
     Request.Exclude := ['Tests/**'];
-    Overview := Service.Overview(Request);
-    Result := '{"enabled":true,"root":"C:\\Projekt","format":"json","data":' +
-      TArchitectureReport.Json(Overview, TArchitectureLayouter.Compute(Overview)) + '}';
+    Result := Service.Overview(Request);
   finally
     Service.Free;
   end;
+end;
+
+function AnswerOf(const AOverview: TArchitectureOverview; const AExtra: string): string;
+begin
+  Result := '{"enabled":true,"root":"C:\\Projekt","format":"json","data":' +
+    TArchitectureReport.Json(AOverview, TArchitectureLayouter.Compute(AOverview)) + AExtra + '}';
+end;
+
+function SampleAnswer: string;
+begin
+  Result := AnswerOf(SampleOverview(False), '');
+end;
+
+function SampleComparisonAnswer: string;
+var
+  Current: TArchitectureOverview;
+  Comparison: TArchitectureComparison;
+begin
+  Current := SampleOverview(False);
+  Comparison := TArchitectureComparer.Compare(TArchitectureSnapshots.FromOverview(SampleOverview(True)),
+    TArchitectureSnapshots.FromOverview(Current));
+  Result := AnswerOf(Current, ',"baseline":"C:\\Projekt\\stand.json","comparison":' +
+    TArchitectureComparer.Json(Comparison, TArchitectureComparer.DefaultFailOn));
 end;
 
 { TAtlasArchitectureModelTests }
@@ -303,6 +345,107 @@ begin
   Assert.IsTrue(Model.IsHidden(Cache, Hidden));
   Assert.IsFalse(Model.ShortestPath(Main, Cache, True, Hidden, Path));
   Assert.AreEqual(-1, Model.IndexOf('Fehlt'));
+end;
+
+procedure TAtlasArchitectureModelTests.ParsesComparison;
+var
+  Model: TAtlasArchitectureModel;
+  Enabled: Boolean;
+  Cycles, Removed, Added: TArray<TAtlasArchChange>;
+  Edge: Integer;
+  Names: TArray<string>;
+begin
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleComparisonAnswer, Model, Enabled));
+  Assert.IsTrue(Model.Comparison.Present);
+  Assert.AreEqual('C:\Projekt\stand.json', Model.Comparison.Baseline);
+  Assert.AreEqual('App', Model.Comparison.BaselineTitle);
+  Assert.AreEqual(7, Model.Comparison.BaselineUnits);
+  Assert.AreEqual(Integer(Ord(High(TAtlasArchChangeKind)) + 1), Integer(Length(Model.Comparison.Sections)),
+    'alle Abschnitte, auch leere');
+  Cycles := Model.Comparison.Section(TAtlasArchChangeKind.NewCycles);
+  Assert.AreEqual(1, Integer(Length(Cycles)));
+  Assert.Contains(Cycles[0].Text, 'App.Data.Cache');
+  Assert.IsTrue(Cycles[0].Unit_ >= 0, 'Unit zum Springen');
+  Assert.AreEqual(1, Integer(Length(Model.Comparison.Failed)));
+  Assert.AreEqual('newCycle', Model.Comparison.Failed[0]);
+  Removed := Model.Comparison.Section(TAtlasArchChangeKind.RemovedUnits);
+  Assert.AreEqual(1, Integer(Length(Removed)));
+  Assert.AreEqual('App.Old', Removed[0].Text);
+  Assert.AreEqual(-1, Removed[0].Unit_, 'entfernte Unit gibt es nicht mehr');
+  Assert.AreEqual(0, Integer(Length(Model.Comparison.Section(TAtlasArchChangeKind.RemovedCycles))));
+  Assert.IsTrue(Model.Comparison.Count >= 2);
+  // Karte: neue Kanten als Nummern in Edges (Grid → Data, Cache → Db), entfernte nur zwischen Units, die es gibt.
+  Names := nil;
+  for Edge in Model.Comparison.AddedEdges do
+    Names := Names + [Model.Units[Model.Edges[Edge].Source].Name + '>' + Model.Units[Model.Edges[Edge].Target].Name];
+  Assert.AreEqual(2, Integer(Length(Names)));
+  Assert.Contains(string.Join(' ', Names), 'App.Ui.Grid>App.Data');
+  Assert.Contains(string.Join(' ', Names), 'App.Data.Cache>App.Data.Db');
+  Assert.AreEqual(0, Integer(Length(Model.Comparison.DroppedEdges)), 'App.Old → App.Data: App.Old fehlt');
+  Added := Model.Comparison.Section(TAtlasArchChangeKind.NewUnits);
+  Assert.AreEqual(0, Integer(Length(Added)));
+end;
+
+procedure TAtlasArchitectureModelTests.ComparisonErrorAndAbsence;
+var
+  Model: TAtlasArchitectureModel;
+  Enabled: Boolean;
+  Answer: string;
+begin
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, Model, Enabled));
+  Assert.IsFalse(Model.Comparison.Present);
+  Assert.AreEqual('', Model.Comparison.Error);
+  Assert.AreEqual(0, Model.Comparison.Count);
+  // Unlesbarer Stand: die Übersicht kommt trotzdem, dazu die Meldung.
+  Answer := SampleAnswer;
+  Answer := Copy(Answer, 1, Length(Answer) - 1) + ',"comparisonError":"Architekturstand ist beschädigt"}';
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(Answer, Model, Enabled));
+  Assert.IsFalse(Model.Comparison.Present);
+  Assert.AreEqual('Architekturstand ist beschädigt', Model.Comparison.Error);
+  Assert.AreEqual(6, Integer(Length(Model.Units)));
+end;
+
+procedure TAtlasArchitectureModelTests.CommandArgumentsWithComparison;
+var
+  Value: TJSONValue;
+  Options: TJSONObject;
+begin
+  Value := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', 'project', False,
+    'C:\P\stand.json', True));
+  try
+    Options := (Value as TJSONArray).Items[1] as TJSONObject;
+    Assert.AreEqual('C:\P\stand.json', Options.GetValue<string>('compareWith'));
+    Assert.IsNull(Options.GetValue('compare'));
+  finally
+    Value.Free;
+  end;
+  // Vergleich aufgehoben: auch nicht mit architecture.baseline.
+  Value := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', 'project', False,
+    '', False));
+  try
+    Options := (Value as TJSONArray).Items[1] as TJSONObject;
+    Assert.IsNull(Options.GetValue('compareWith'));
+    Assert.IsFalse(Options.GetValue<Boolean>('compare'));
+  finally
+    Value.Free;
+  end;
+  // Vorgabe: Server vergleicht mit architecture.baseline, keine Angabe nötig.
+  Value := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', 'project', False));
+  try
+    Options := (Value as TJSONArray).Items[1] as TJSONObject;
+    Assert.IsNull(Options.GetValue('compareWith'));
+    Assert.IsNull(Options.GetValue('compare'));
+  finally
+    Value.Free;
+  end;
+  Value := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.SaveArguments('file:///C:/P/App.dproj',
+    'C:\P\stand.json', 'project', False, '', False));
+  try
+    Assert.AreEqual('C:\P\stand.json', (Value as TJSONArray).Items[1].Value);
+    Assert.IsFalse(((Value as TJSONArray).Items[2] as TJSONObject).GetValue<Boolean>('compare'));
+  finally
+    Value.Free;
+  end;
 end;
 
 initialization

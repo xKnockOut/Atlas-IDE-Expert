@@ -28,6 +28,10 @@
 //                    "from": 0, "to": 1, "reason": "rare", "forward": 1,
 //                    "backward": 0, "file": "A.pas", "line": 9, "character": 3}]}
 // "file"/"line"/"character" fehlen bei Kanten ohne Fundstelle.
+// Mit Vergleich (#1121) steht zusätzlich "comparison" mit den Daten aus
+// TArchitectureComparer.Json da; Markdown und HTML bekommen den Abschnitt
+// „Vergleich“, die HTML-Karte zeigt neue Kanten grün und entfernte rot
+// gestrichelt.
 
 interface
 
@@ -35,7 +39,8 @@ interface
 
 uses
   Atlas.Common.Architecture.Overview,
-  Atlas.Common.Architecture.Layout;
+  Atlas.Common.Architecture.Layout,
+  Atlas.Common.Architecture.Comparison;
 
 type
   TArchitectureSection = (Overview, Central, Subsystems, Cycles, CrossLinks);
@@ -50,12 +55,26 @@ type
     /// <summary>overview, central, subsystems, cycles, crossLinks (ohne Groß-/Kleinschreibung); '' = overview.</summary>
     class function ParseSection(const AText: string; out ASection: TArchitectureSection): Boolean; static;
     /// <summary>Daten der Übersicht samt Lage der Karte (siehe Kopf der Unit).</summary>
-    class function Json(const AOverview: TArchitectureOverview; const ALayout: TArchitectureLayout): string; static;
-    class function Markdown(const AOverview: TArchitectureOverview): string; static;
+    class function Json(const AOverview: TArchitectureOverview; const ALayout: TArchitectureLayout): string;
+      overload; static;
+    /// <summary>Wie oben mit "comparison" (#1121).</summary>
+    class function Json(const AOverview: TArchitectureOverview; const ALayout: TArchitectureLayout;
+      const AComparison: TArchitectureComparison; AFailOn: TArchitectureFailKinds): string; overload; static;
+    class function Markdown(const AOverview: TArchitectureOverview): string; overload; static;
+    /// <summary>Wie oben, am Ende der Abschnitt „Vergleich“ (#1121).</summary>
+    class function Markdown(const AOverview: TArchitectureOverview;
+      const AComparison: TArchitectureComparison): string; overload; static;
     /// <summary>Eigenständige HTML-Seite mit eingebetteten Daten und Skript (offline, keine externen Verweise).</summary>
-    class function Html(const AOverview: TArchitectureOverview): string; static;
+    class function Html(const AOverview: TArchitectureOverview): string; overload; static;
+    /// <summary>Wie oben mit Abschnitt „Vergleich“ und geänderten Kanten auf der Karte (#1121).</summary>
+    class function Html(const AOverview: TArchitectureOverview; const AComparison: TArchitectureComparison;
+      AFailOn: TArchitectureFailKinds): string; overload; static;
     /// <summary>Bericht passend zur Endung von AFileName: .html/.htm HTML, sonst Markdown.</summary>
-    class function ForFile(const AOverview: TArchitectureOverview; const AFileName: string): string; static;
+    class function ForFile(const AOverview: TArchitectureOverview; const AFileName: string): string; overload;
+      static;
+    /// <summary>Wie oben mit Vergleich (#1121).</summary>
+    class function ForFile(const AOverview: TArchitectureOverview; const AFileName: string;
+      const AComparison: TArchitectureComparison; AFailOn: TArchitectureFailKinds): string; overload; static;
     /// <summary>Kompakter Text eines Abschnitts für get_architecture; Listen auf ALimit gekürzt mit Gesamtzahl.</summary>
     class function Text(const AOverview: TArchitectureOverview; ASection: TArchitectureSection;
       ALimit: Integer): string; static;
@@ -72,6 +91,10 @@ type
     class function CycleCaption(const ACycle: TOverviewCycle): string; static;
     /// <summary>"A → B → A" eines Zyklus.</summary>
     class function CyclePath(const AOverview: TArchitectureOverview; const ACycle: TOverviewCycle): string; static;
+  private
+    class function JsonWith(const AOverview: TArchitectureOverview; const ALayout: TArchitectureLayout;
+      const AExtra: string): string; static;
+    class function MarkdownWith(const AOverview: TArchitectureOverview; AWithComparison: Boolean): string; static;
   end;
 
 implementation
@@ -306,6 +329,20 @@ end;
 
 class function TArchitectureReport.Json(const AOverview: TArchitectureOverview;
   const ALayout: TArchitectureLayout): string;
+begin
+  Result := JsonWith(AOverview, ALayout, '');
+end;
+
+class function TArchitectureReport.Json(const AOverview: TArchitectureOverview; const ALayout: TArchitectureLayout;
+  const AComparison: TArchitectureComparison; AFailOn: TArchitectureFailKinds): string;
+begin
+  Result := JsonWith(AOverview, ALayout, ',' + LineBreak + '"comparison":' + TArchitectureComparer.Json(AComparison,
+    AFailOn));
+end;
+
+/// <summary>Daten der Übersicht; AExtra steht vor der schließenden Klammer (z. B. ',"comparison":…').</summary>
+class function TArchitectureReport.JsonWith(const AOverview: TArchitectureOverview; const ALayout: TArchitectureLayout;
+  const AExtra: string): string;
 var
   Builder: TStringBuilder;
   Index, Inner: Integer;
@@ -441,7 +478,7 @@ begin
         Builder.Append('"againstDirection"');
       Builder.Append(',"forward":').Append(Link.Forward).Append(',"backward":').Append(Link.Backward).Append('}');
     end;
-    Builder.Append(']}');
+    Builder.Append(']').Append(AExtra).Append('}');
     Result := Builder.ToString;
   finally
     Builder.Free;
@@ -449,6 +486,18 @@ begin
 end;
 
 class function TArchitectureReport.Markdown(const AOverview: TArchitectureOverview): string;
+begin
+  Result := MarkdownWith(AOverview, False);
+end;
+
+class function TArchitectureReport.Markdown(const AOverview: TArchitectureOverview;
+  const AComparison: TArchitectureComparison): string;
+begin
+  Result := MarkdownWith(AOverview, True) + LineBreak + TArchitectureComparer.Markdown(AComparison);
+end;
+
+class function TArchitectureReport.MarkdownWith(const AOverview: TArchitectureOverview;
+  AWithComparison: Boolean): string;
 var
   Builder: TStringBuilder;
   Index, Member, Number: Integer;
@@ -472,7 +521,10 @@ begin
       .Append('- [Teilsysteme](#teilsysteme)').Append(LineBreak)
       .Append('- [Ausreißer](#ausreißer)').Append(LineBreak)
       .Append('- [Zyklen](#zyklen)').Append(LineBreak)
-      .Append('- [Querverbindungen](#querverbindungen)').Append(LineBreak).Append(LineBreak);
+      .Append('- [Querverbindungen](#querverbindungen)').Append(LineBreak);
+    if AWithComparison then
+      Builder.Append('- [Vergleich](#vergleich)').Append(LineBreak);
+    Builder.Append(LineBreak);
 
     Builder.Append('## Zentrale Units').Append(LineBreak).Append(LineBreak);
     Builder.Append('„gesamt abhängig“: Units, die neu übersetzt werden, wenn sich das interface der Unit ändert.')
@@ -593,25 +645,47 @@ begin
   Result := StringReplace(Result, '"', '&quot;', [rfReplaceAll]);
 end;
 
-class function TArchitectureReport.Html(const AOverview: TArchitectureOverview): string;
-var
-  Data: string;
+function Page(const ATitle, AData: string): string;
 begin
   // In einem <script> darf "</" nicht vorkommen (schlösse das Element); \/ ist in JSON gleichwertig.
-  Data := StringReplace(Json(AOverview, TArchitectureLayouter.Compute(AOverview)), '</', '<\/', [rfReplaceAll]);
-  Result := StringReplace(ArchitectureMapHtml, '{{TITLE}}', HtmlEscape(AOverview.Title), [rfReplaceAll]);
-  Result := StringReplace(Result, '{{DATA}}', Data, []);
+  Result := StringReplace(ArchitectureMapHtml, '{{TITLE}}', HtmlEscape(ATitle), [rfReplaceAll]);
+  Result := StringReplace(Result, '{{DATA}}', StringReplace(AData, '</', '<\/', [rfReplaceAll]), []);
 end;
 
-class function TArchitectureReport.ForFile(const AOverview: TArchitectureOverview; const AFileName: string): string;
+class function TArchitectureReport.Html(const AOverview: TArchitectureOverview): string;
+begin
+  Result := Page(AOverview.Title, Json(AOverview, TArchitectureLayouter.Compute(AOverview)));
+end;
+
+class function TArchitectureReport.Html(const AOverview: TArchitectureOverview;
+  const AComparison: TArchitectureComparison; AFailOn: TArchitectureFailKinds): string;
+begin
+  Result := Page(AOverview.Title, Json(AOverview, TArchitectureLayouter.Compute(AOverview), AComparison, AFailOn));
+end;
+
+function IsHtmlFile(const AFileName: string): Boolean;
 var
   Extension: string;
 begin
   Extension := LowerCase(ExtractFileExt(AFileName));
-  if (Extension = '.html') or (Extension = '.htm') then
+  Result := (Extension = '.html') or (Extension = '.htm');
+end;
+
+class function TArchitectureReport.ForFile(const AOverview: TArchitectureOverview; const AFileName: string): string;
+begin
+  if IsHtmlFile(AFileName) then
     Result := Html(AOverview)
   else
     Result := Markdown(AOverview);
+end;
+
+class function TArchitectureReport.ForFile(const AOverview: TArchitectureOverview; const AFileName: string;
+  const AComparison: TArchitectureComparison; AFailOn: TArchitectureFailKinds): string;
+begin
+  if IsHtmlFile(AFileName) then
+    Result := Html(AOverview, AComparison, AFailOn)
+  else
+    Result := Markdown(AOverview, AComparison);
 end;
 
 function Limited(const AText: string; ACount, ALimit: Integer): string;

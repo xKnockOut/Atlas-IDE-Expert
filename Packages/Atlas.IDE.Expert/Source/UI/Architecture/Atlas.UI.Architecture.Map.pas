@@ -13,7 +13,10 @@
 // - implementation-uses ein und aus (ShowImplementation), Namen ein und aus,
 // - Umschalt+Klick zeigt den kürzesten Weg über uses von der gewählten Unit
 //   zur angeklickten (ShowPath, TAtlasArchitectureModel.ShortestPath), alles
-//   andere tritt zurück; Esc hebt ihn auf (OnPathChanged).
+//   andere tritt zurück; Esc hebt ihn auf (OnPathChanged),
+// - „Änderungen zum Stand“ (ShowChanges, #1121): Mit einem Vergleich stehen
+//   neue uses-Kanten grün, entfernte (zwischen Units, die es noch gibt) rot
+//   gestrichelt.
 // Bedienung sonst: Mausrad zoomt um den Mauszeiger, Ziehen verschiebt, Klick
 // wählt eine Unit (OnSelect; ihre Kanten werden hervorgehoben), Doppelklick
 // oder Enter öffnet sie (OnOpen), + und − zoomen, 0 passt ein. Namen
@@ -43,6 +46,9 @@ type
     FShowNames: Boolean;
     FShowImplementation: Boolean;
     FMarkCycles: Boolean;
+    FShowChanges: Boolean;
+    /// <summary>Je Kante in Model.Edges: neu gegenüber dem gespeicherten Stand.</summary>
+    FAddedEdges: TArray<Boolean>;
     FCentral: TArray<Boolean>;
     FCycleEdges: TDictionary<Int64, Boolean>;
     /// <summary>Ausgeblendete Teilsysteme, je Teilsystem.</summary>
@@ -72,6 +78,8 @@ type
     procedure SetShowNames(AValue: Boolean);
     procedure SetShowImplementation(AValue: Boolean);
     procedure SetMarkCycles(AValue: Boolean);
+    procedure SetShowChanges(AValue: Boolean);
+    function HasChanges: Boolean;
     procedure ComputePath;
     procedure PathChanged;
     procedure DrawEdge(const AEdge: TAtlasArchEdge);
@@ -110,6 +118,8 @@ type
     property ShowNames: Boolean read FShowNames write SetShowNames;
     property ShowImplementation: Boolean read FShowImplementation write SetShowImplementation;
     property MarkCycles: Boolean read FMarkCycles write SetMarkCycles;
+    /// <summary>Geänderte Kanten des Vergleichs zeigen (wirkt nur mit Model.Comparison.Present).</summary>
+    property ShowChanges: Boolean read FShowChanges write SetShowChanges;
     property SubsystemVisible[ASubsystem: Integer]: Boolean read GetSubsystemVisible write SetSubsystemVisible;
     /// <summary>Start und Ziel des Wegs, -1 ohne Weg.</summary>
     property PathFrom: Integer read FPathFrom;
@@ -156,6 +166,7 @@ begin
   FPathTo := -1;
   FShowNames := True;
   FShowImplementation := True;
+  FShowChanges := True;
   FView := Default(TAtlasArchitectureView);
   FView.Scale := 1;
   FCycleEdges := TDictionary<Int64, Boolean>.Create;
@@ -242,6 +253,11 @@ begin
   for Cycle in FModel.Cycles do
     for Link in Cycle.Edges do
       FCycleEdges.AddOrSetValue(EdgeKey(Link.Source, Link.Target), True);
+  FAddedEdges := nil;
+  SetLength(FAddedEdges, Length(FModel.Edges));
+  for Member in FModel.Comparison.AddedEdges do
+    if (Member >= 0) and (Member <= High(FAddedEdges)) then
+      FAddedEdges[Member] := True;
   FHidden := nil;
   SetLength(FHidden, Length(FModel.Subsystems));
   FPathFrom := -1;
@@ -373,6 +389,17 @@ begin
   Invalidate;
 end;
 
+procedure TAtlasArchitectureMap.SetShowChanges(AValue: Boolean);
+begin
+  FShowChanges := AValue;
+  Invalidate;
+end;
+
+function TAtlasArchitectureMap.HasChanges: Boolean;
+begin
+  Result := FShowChanges and FModel.Comparison.Present;
+end;
+
 procedure TAtlasArchitectureMap.Resize;
 begin
   inherited Resize;
@@ -389,7 +416,7 @@ end;
 procedure TAtlasArchitectureMap.Paint;
 var
   Colors: TAtlasColors;
-  Dark, Touches, OnCycle, Visible, Major, Pathing: Boolean;
+  Dark, Touches, OnCycle, Visible, Major, Pathing, Changes, Added: Boolean;
   Index: Integer;
   Subsystem: TAtlasArchSubsystem;
   Edge: TAtlasArchEdge;
@@ -409,6 +436,7 @@ begin
   Canvas.Font.Color := ToColor(Colors.Text);
   Filtered := Trim(FFilter) <> '';
   Pathing := HasPath;
+  Changes := HasChanges and not Pathing;
   // Teilsysteme: gestrichelter Kreis in ihrer Farbe, Name oben.
   for Index := 0 to High(FModel.Subsystems) do
   begin
@@ -438,7 +466,8 @@ begin
       Continue;
     OnCycle := FMarkCycles and FCycleEdges.ContainsKey(EdgeKey(Edge.Source, Edge.Target));
     Touches := not Pathing and (FSelected >= 0) and ((Edge.Source = FSelected) or (Edge.Target = FSelected));
-    if OnCycle or Touches or (Pathing and FPathEdges[Index]) then
+    Added := Changes and FAddedEdges[Index];
+    if OnCycle or Touches or Added or (Pathing and FPathEdges[Index]) then
       Continue;
     if Edge.Interface_ then
       Canvas.Pen.Style := psSolid
@@ -455,16 +484,31 @@ begin
       Continue;
     OnCycle := FMarkCycles and FCycleEdges.ContainsKey(EdgeKey(Edge.Source, Edge.Target));
     Touches := not Pathing and (FSelected >= 0) and ((Edge.Source = FSelected) or (Edge.Target = FSelected));
-    if not (OnCycle or Touches) or (Pathing and FPathEdges[Index]) then
+    Added := Changes and FAddedEdges[Index];
+    if not (OnCycle or Touches or Added) or (Pathing and FPathEdges[Index]) then
       Continue;
     Canvas.Pen.Style := psSolid;
     Canvas.Pen.Width := 2;
+    // Wie die HTML-Karte: Zyklus vor gewählt vor neu.
     if OnCycle then
       Canvas.Pen.Color := ToColor(Colors.Error)
+    else if Touches then
+      Canvas.Pen.Color := ToColor(Colors.Accent)
     else
-      Canvas.Pen.Color := ToColor(Colors.Accent);
+      Canvas.Pen.Color := ToColor(Colors.Add);
     DrawEdge(Edge);
   end;
+  // Entfernte Kanten gibt es in Edges nicht mehr: rot gestrichelt zwischen den Units, die noch da sind.
+  if Changes then
+    for Edge in FModel.Comparison.DroppedEdges do
+    begin
+      if not EdgeVisible(Edge) or (not Edge.Interface_ and not FShowImplementation) then
+        Continue;
+      Canvas.Pen.Style := psDash;
+      Canvas.Pen.Width := 1;
+      Canvas.Pen.Color := ToColor(Colors.Error);
+      DrawEdge(Edge);
+    end;
   if Pathing then
     for Index in FPath do
     begin

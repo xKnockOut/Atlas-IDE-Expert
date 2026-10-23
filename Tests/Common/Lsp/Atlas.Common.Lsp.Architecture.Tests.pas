@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.Architecture.Tests;
 
 // Tests der Anfrage atlas/architecture und des Befehls
-// atlas.architecture.saveReport (#1118).
+// atlas.architecture.saveReport (#1118), Stand und Vergleich (#1121).
 
 interface
 
@@ -24,6 +24,8 @@ type
     procedure SavesMarkdownAndHtml;
     [Test]
     procedure CommandAnswersLikeRequest;
+    [Test]
+    procedure SavesStateAndCompares;
   end;
 
 implementation
@@ -43,6 +45,9 @@ uses
 var
   Enabled: Boolean;
   LastScope: string;
+  /// <summary>architecture.baseline und Projektordner der Anfrage (#1121).</summary>
+  BaselineSetting: string;
+  ProjectRoot: string = 'C:\Projekt';
 
 function NewIndex: ISymbolIndex;
 begin
@@ -73,12 +78,26 @@ begin
     begin
       ASettings := TServerSettings.Default;
       ASettings.ArchitectureEnabled := Enabled;
+      ASettings.ArchitectureBaseline := BaselineSetting;
       ARequest := TArchitectureRequest.FromSettings(ASettings);
       ARequest.Title := 'Beispiel';
-      ARequest.Root := 'C:\Projekt';
+      ARequest.Root := ProjectRoot;
       LastScope := AScope;
       Result := True;
     end);
+end;
+
+/// <summary>Pfad als JSON-Zeichenkette.</summary>
+function JsonPath(const APath: string): string;
+var
+  Value: TJSONString;
+begin
+  Value := TJSONString.Create(APath);
+  try
+    Result := Value.ToJSON;
+  finally
+    Value.Free;
+  end;
 end;
 
 function Ask(ALsp: TLspArchitecture; const AParams: string): TJSONObject;
@@ -278,6 +297,99 @@ begin
     end;
   finally
     Arguments.Free;
+    Lsp.Free;
+    Service.Free;
+  end;
+end;
+
+procedure TLspArchitectureTests.SavesStateAndCompares;
+var
+  Service, Later: TArchitectureService;
+  Lsp, LaterLsp: TLspArchitecture;
+  Folder, Target: string;
+  Arguments: TJSONArray;
+  Answer: TJSONObject;
+  Index: ISymbolIndex;
+begin
+  Enabled := True;
+  Service := NewService(NewIndex);
+  Lsp := NewLsp(Service);
+  // Später: App.Data braucht App.Main, ein neuer Zyklus.
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(UsesUnit('App.Main', ['App.Data'], nil));
+  Index.AddUnit(UsesUnit('App.Data', nil, ['App.Main']));
+  Later := NewService(Index);
+  LaterLsp := NewLsp(Later);
+  Folder := TPath.Combine(TPath.GetTempPath, 'atlas-vergleich-' + IntToStr(Random(1000000)));
+  try
+    Target := TPath.Combine(Folder, 'stand.json');
+    Arguments := TJSONArray.Create;
+    try
+      Arguments.Add('');
+      Arguments.Add(Target);
+      Lsp.SaveReport(Arguments).Free;
+    finally
+      Arguments.Free;
+    end;
+    Assert.Contains(TFile.ReadAllText(Target, TEncoding.UTF8), '"format": 2');
+    Answer := Ask(LaterLsp, '{"compareWith": ' + JsonPath(Target) + '}');
+    try
+      Assert.AreEqual(Target, Answer.GetValue<string>('baseline'));
+      Assert.AreEqual(1, Answer.GetValue<TJSONObject>('comparison').GetValue<TJSONArray>('newCycles').Count);
+      Assert.AreEqual('newCycle', Answer.GetValue<TJSONObject>('comparison').GetValue<TJSONArray>('failed')
+        .Items[0].Value);
+      Assert.IsNotNull(Answer.GetValue('data'));
+    finally
+      Answer.Free;
+    end;
+    Answer := Ask(LaterLsp, '{"format": "text", "compareWith": ' + JsonPath(Target) + '}');
+    try
+      Assert.Contains(Answer.GetValue<string>('text'), 'Neue Zyklen: 1');
+    finally
+      Answer.Free;
+    end;
+    // architecture.baseline relativ zum Projekt; "compare": false schaltet ab.
+    BaselineSetting := 'stand.json';
+    ProjectRoot := Folder;
+    Answer := Ask(LaterLsp, '{"format": "markdown"}');
+    try
+      Assert.Contains(Answer.GetValue<string>('text'), '## Vergleich');
+    finally
+      Answer.Free;
+    end;
+    Answer := Ask(LaterLsp, '{"compare": false}');
+    try
+      Assert.IsNull(Answer.GetValue('comparison'));
+    finally
+      Answer.Free;
+    end;
+    Target := TPath.Combine(Folder, 'bericht.md');
+    Arguments := TJSONArray.Create;
+    try
+      Arguments.Add('');
+      Arguments.Add(Target);
+      LaterLsp.SaveReport(Arguments).Free;
+    finally
+      Arguments.Free;
+    end;
+    Assert.Contains(TFile.ReadAllText(Target, TEncoding.UTF8), '### Neue Zyklen (1)');
+    // Fehlender Stand: Meldung, die Übersicht kommt trotzdem.
+    BaselineSetting := 'fehlt.json';
+    Answer := Ask(LaterLsp, '{}');
+    try
+      Assert.Contains(Answer.GetValue<string>('comparisonError'), 'nicht gefunden');
+      Assert.IsNotNull(Answer.GetValue('data'));
+      Assert.IsNull(Answer.GetValue('comparison'));
+    finally
+      Answer.Free;
+    end;
+  finally
+    BaselineSetting := '';
+    ProjectRoot := 'C:\Projekt';
+    if TDirectory.Exists(Folder) then
+      TDirectory.Delete(Folder, True);
+    LaterLsp.Free;
+    Later.Free;
     Lsp.Free;
     Service.Free;
   end;

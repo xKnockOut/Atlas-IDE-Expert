@@ -12,7 +12,12 @@
 //   bzw. architecture.includeLibraryUnits (settings.json, wie der Server) und
 //   rechnen neu.
 // - „Bericht speichern …“ geht an atlas.architecture.saveReport; der Server
-//   schreibt HTML oder Markdown nach der Endung.
+//   schreibt HTML oder Markdown nach der Endung, „Stand speichern …“ (#1121)
+//   ebenso den Stand als .json.
+// - Vergleich (#1121): Ohne Wahl vergleicht der Server mit
+//   architecture.baseline; „Vergleichen mit …“ setzt den Stand für diese
+//   Sitzung ("compareWith"), „Vergleich aufheben“ schaltet ihn ab ("compare":
+//   false). Beides gilt auch für gespeicherte Berichte.
 // - Doppelklick öffnet die Unit bzw. springt zum uses-Eintrag.
 // - architecture.enabled aus schließt das Fenster.
 // Den Server erreicht der Dienst über ARun (Install), damit er die
@@ -72,10 +77,16 @@ type
     FPending: Boolean;
     FScope: string;
     FIncludeLibrary: Boolean;
+    /// <summary>Gewählter Stand ("compareWith"); '' = architecture.baseline bzw. keiner.</summary>
+    FCompareWith: string;
+    /// <summary>False nach „Vergleich aufheben“.</summary>
+    FCompare: Boolean;
     procedure Wire(AFrame: TAtlasArchitectureFrame);
     function ProjectUri(out AUri: string): Boolean;
     procedure ChangeScope(const AScope: string);
     procedure ChangeLibrary(AValue: Boolean);
+    procedure CompareWith(const AFileName: string);
+    procedure ClearComparison;
   public
     constructor Create(const ARun: TAtlasArchitectureRun);
     destructor Destroy; override;
@@ -97,6 +108,7 @@ constructor TArchitectureState.Create(const ARun: TAtlasArchitectureRun);
 begin
   inherited Create;
   FRun := ARun;
+  FCompare := True;
   FScope := TAtlasIdeSettings.Current.ArchitectureScope;
   FIncludeLibrary := TAtlasIdeSettings.Current.ArchitectureIncludeLibraryUnits;
   TAtlasIdeArchitectureWindow.OnFrame :=
@@ -123,6 +135,9 @@ begin
   begin
     Frame.OnRefresh := nil;
     Frame.OnSave := nil;
+    Frame.OnSaveState := nil;
+    Frame.OnCompare := nil;
+    Frame.OnClearComparison := nil;
     Frame.OnScopeChanged := nil;
     Frame.OnLibraryChanged := nil;
     Frame.OnOpenUnit := nil;
@@ -151,6 +166,26 @@ begin
         procedure
         begin
           Save(AFileName);
+        end);
+    end;
+  // Der Server unterscheidet Bericht und Stand an der Endung.
+  AFrame.OnSaveState := AFrame.OnSave;
+  AFrame.OnCompare :=
+    procedure(AFileName: string)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Architecture,
+        procedure
+        begin
+          CompareWith(AFileName);
+        end);
+    end;
+  AFrame.OnClearComparison :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Architecture,
+        procedure
+        begin
+          ClearComparison;
         end);
     end;
   AFrame.OnScopeChanged :=
@@ -224,6 +259,22 @@ begin
   Refresh;
 end;
 
+procedure TArchitectureState.CompareWith(const AFileName: string);
+begin
+  if AFileName = '' then
+    Exit;
+  FCompareWith := AFileName;
+  FCompare := True;
+  Refresh;
+end;
+
+procedure TArchitectureState.ClearComparison;
+begin
+  FCompareWith := '';
+  FCompare := False;
+  Refresh;
+end;
+
 procedure TArchitectureState.Refresh;
 var
   Frame: TAtlasArchitectureFrame;
@@ -243,7 +294,7 @@ begin
   FPending := True;
   Frame.SetMessage(TAtlasStrings.Text(TAtlasTextId.ArchitectureLoading), True);
   if not FRun(TAtlasArchitectureCommands.Command,
-    TAtlasArchitectureCommands.Arguments(Uri, FScope, FIncludeLibrary), TimeoutMs,
+    TAtlasArchitectureCommands.Arguments(Uri, FScope, FIncludeLibrary, FCompareWith, FCompare), TimeoutMs,
     procedure(AAnswer: string)
     var
       Model: TAtlasArchitectureModel;
@@ -290,7 +341,8 @@ begin
     Exit;
   end;
   if not FRun(TAtlasArchitectureCommands.SaveCommand,
-    TAtlasArchitectureCommands.SaveArguments(Uri, AFileName, FScope, FIncludeLibrary), TimeoutMs,
+    TAtlasArchitectureCommands.SaveArguments(Uri, AFileName, FScope, FIncludeLibrary, FCompareWith, FCompare),
+    TimeoutMs,
     procedure(AAnswer: string)
     var
       Saved: string;
