@@ -1,5 +1,5 @@
 {
-  "description": "Atlas prüft jede von Claude bearbeitete Pascal-Datei mit den Prüfregeln des Projekts (MCP-Werkzeug hook_check) und gibt Warnungen und Fehler sofort an Claude zurück. Abschalten: \"mcp\": {\"disabledTools\": [\"hook_check\"]} in atlas.json.",
+  "description": "Atlas prüft jede von Claude bearbeitete Pascal-Datei mit den Prüfregeln des Projekts (MCP-Werkzeug hook_check) und gibt Warnungen und Fehler sofort an Claude zurück. Andere Dateien filtert hook_check selbst heraus. Abschalten: \"mcp\": {\"disabledTools\": [\"hook_check\"]} in atlas.json.",
   "hooks": {
     "PostToolUse": [
       {
@@ -7,31 +7,6 @@
         "hooks": [
           {
             "type": "mcp_tool",
-            "if": "Edit(**/*.pas)",
-            "server": "plugin:atlas:delphi",
-            "tool": "hook_check",
-            "input": { "file": "${tool_input.file_path}" },
-            "timeout": 60
-          },
-          {
-            "type": "mcp_tool",
-            "if": "Edit(**/*.dpr)",
-            "server": "plugin:atlas:delphi",
-            "tool": "hook_check",
-            "input": { "file": "${tool_input.file_path}" },
-            "timeout": 60
-          },
-          {
-            "type": "mcp_tool",
-            "if": "Edit(**/*.dpk)",
-            "server": "plugin:atlas:delphi",
-            "tool": "hook_check",
-            "input": { "file": "${tool_input.file_path}" },
-            "timeout": 60
-          },
-          {
-            "type": "mcp_tool",
-            "if": "Edit(**/*.inc)",
             "server": "plugin:atlas:delphi",
             "tool": "hook_check",
             "input": { "file": "${tool_input.file_path}" },

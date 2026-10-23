@@ -1813,6 +1813,16 @@ begin
             FSettings.DelphiVersionRange := TTextRange.Create(PositionAt(Value.Start), PositionAt(Value.Stop));
           end;
       end
+      else if Key = 'minDelphiVersion' then
+      begin
+        if ExpectString(Value, Key, Text) then
+          if Text = '' then
+            FSettings.MinDelphiVersion := ''
+          else if BdsVersionOf(Text) = '' then
+            ReportNode(Value, 'Unbekannte Delphi-Version; erwartet z. B. "12" oder "23.0" für Delphi 12, "11" oder "22.0" für Delphi 11')
+          else
+            FSettings.MinDelphiVersion := BdsVersionOf(Text);
+      end
       else if Key = 'language' then
       begin
         if ExpectString(Value, Key, Text) then
@@ -2184,6 +2194,8 @@ begin
       Result.DelphiVersion := FileSettings.DelphiVersion;
       Result.DelphiVersionRange := FileSettings.DelphiVersionRange;
     end
+    else if Key = 'minDelphiVersion' then
+      Result.MinDelphiVersion := FileSettings.MinDelphiVersion
     else if Key = 'language' then
       Result.Language := FileSettings.Language
     else if Key = 'encoding' then

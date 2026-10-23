@@ -365,6 +365,10 @@ type
     /// <summary>Include-Resolver mit den Suchpfaden des Projekts von AUri (#860).</summary>
     function IncludeResolverFor(const AUri: string): TIncludeResolver;
     function DelphiVersionFor(const AUri: string): string;
+    /// <summary>Sprachstand von AUri (#1126): die ältere aus DelphiVersionFor und minDelphiVersion des Projekts.
+    /// Gilt für Diagnosen, Code-Aktionen, Schnellbefehle und Formatieren; Hover und Hilfe-Links nehmen weiter
+    /// DelphiVersionFor.</summary>
+    function LanguageLevelFor(const AUri: string): string;
     /// <summary>Schnellbefehle (#293): False = aus; ADisabled samt "uses" bei usesCommand = false.</summary>
     function SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
     /// <summary>Kennungen der Prüfregeln, die in Zeile ALine von AText treffen (/ignore, #297); False ohne
@@ -773,7 +777,7 @@ begin
         AText := TFileEncoding.LoadText(AFileName);
     end);
   FFormatting.SlashCommandsFor := SlashCommandsFor;
-  FFormatting.DelphiVersionFor := DelphiVersionFor;
+  FFormatting.DelphiVersionFor := LanguageLevelFor;
   FFormatting.DocCommentsFor := DocCommentsFor;
   SlashHost := TShellSlashHost.Create(
     function(const AUri: string): TShellWorkspace
@@ -908,7 +912,7 @@ begin
   // Erzeugen-Menü (#719): dieselben Schalter, Versionen und derselbe Host wie die Schnellbefehle nach Enter.
   FSlashMenu := TLspSlashMenu.Create(FDocuments);
   FSlashMenu.SlashCommandsFor := SlashCommandsFor;
-  FSlashMenu.DelphiVersionFor := DelphiVersionFor;
+  FSlashMenu.DelphiVersionFor := LanguageLevelFor;
   FSlashMenu.SlashHost := SlashHost;
   // Einrückung wie beim Formatieren (#43), ohne Editor-Optionen: .editorconfig und "format".
   FSlashMenu.FormatStyleFor := ResolvedFormatStyleFor;
@@ -959,7 +963,7 @@ begin
     end;
   // $I-Dateien im Editor-Baum, in Syntaxprüfung und Abblenden (#264, #860): Suchpfade des Projekts.
   TSyntaxTreeCache.SetIncludeProvider(IncludeResolverFor);
-  FSyntaxDiagnostics.VersionProvider := DelphiVersionFor;
+  FSyntaxDiagnostics.VersionProvider := LanguageLevelFor;
   FSyntaxDiagnostics.RuleProvider := RuleContextFor;
 end;
 
@@ -1080,7 +1084,7 @@ begin
       Result := TPostfixOptions.Default;
       Result.Enabled := CompletionSettingsFor(AUri).PostfixTemplates;
       Result.InlineVar := RefactoringSettingsFor(AUri).InlineVar and
-        TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, DelphiVersionFor(AUri));
+        TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, LanguageLevelFor(AUri));
     end;
   // with auflösen über Strg+Leer auf with (#50), abschaltbar mit refactoring.resolveWith.
   FCompletion.WithFor :=
@@ -1271,7 +1275,7 @@ begin
     begin
       Result := TClassActionContext.Default;
       Result.Index := FIndex;
-      Result.DelphiVersion := DelphiVersionFor(AUri);
+      Result.DelphiVersion := LanguageLevelFor(AUri);
       Result.Uri := AUri;
       Result.Host := FFormatting.SlashHost;
     end;
@@ -3456,7 +3460,7 @@ begin
   Result.FileName := TDocumentUris.ToPath(AUri);
   Result.ReadText := ReadSourceText;
   Result.InlineVar := Result.Settings.InlineVar and
-    TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, DelphiVersionFor(AUri));
+    TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, LanguageLevelFor(AUri));
   Result.Style := ResolvedFormatStyleFor(AUri);
 end;
 
@@ -3886,6 +3890,11 @@ begin
   end;
 end;
 
+function TServerComposition.LanguageLevelFor(const AUri: string): string;
+begin
+  Result := TLanguageFeatures.LanguageLevel(DelphiVersionFor(AUri), SettingsFor(AUri).MinDelphiVersion);
+end;
+
 function TServerComposition.CompletionSettingsFor(const AUri: string): TCompletionSettings;
 begin
   Result := SettingsFor(AUri).Completion;
@@ -3899,7 +3908,7 @@ end;
 function TServerComposition.StringLiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
 begin
   Result := SettingsFor(AUri).StringLiteral;
-  AMultiline := TStringLiterals.UseMultiline(Result.Style, DelphiVersionFor(AUri));
+  AMultiline := TStringLiterals.UseMultiline(Result.Style, LanguageLevelFor(AUri));
 end;
 
 function TServerComposition.MetricsSourceFor(const AFileName: string; AProject: Boolean;

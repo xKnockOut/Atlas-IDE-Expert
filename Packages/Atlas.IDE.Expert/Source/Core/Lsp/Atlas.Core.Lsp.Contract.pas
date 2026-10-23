@@ -23,6 +23,9 @@ type
     ConfirmedSource = 'Atlas + dcc';
     /// <summary>Regel der Syntaxfehler des Servers (#1022); lässt sich nicht per Kommentar unterdrücken.</summary>
     SyntaxCode = 'syntax';
+    /// <summary>Sprachmerkmal einer neueren Delphi-Version (#1126); ebenfalls ohne Unterdrückung per Kommentar.
+    /// </summary>
+    LanguageFeatureCode = 'language-feature';
     /// <summary>Zustände aus data.uses.state (#621).</summary>
     UsesUnused = 'unused';
     UsesInitialization = 'initialization';
@@ -210,7 +213,7 @@ end;
 
 function TAtlasProblem.CanSuppress: Boolean;
 begin
-  Result := (Code <> '') and not SameText(Code, SyntaxCode);
+  Result := (Code <> '') and not SameText(Code, SyntaxCode) and not SameText(Code, LanguageFeatureCode);
 end;
 
 function TAtlasProblem.InactiveHint(const AConditionFormat, ATargetFormat, AFallback: string): string;
