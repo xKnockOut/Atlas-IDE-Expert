@@ -100,17 +100,10 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Editing.CreateMethod;
 
 type
-  /// <summary>Änderung in Offsets des Dokuments.</summary>
-  TOffsetEdit = record
-    Start: Integer;
-    Stop: Integer;
-    Text: string;
-    class function Create(AStart, AStop: Integer; const AText: string): TOffsetEdit; static;
-  end;
-
   /// <summary>Name der äußeren Routine, den die lokale nutzt.</summary>
   TCaptured = record
     Local: TRoutineLocal;
@@ -119,360 +112,11 @@ type
     InAnonymous: Boolean;
   end;
 
-  /// <summary>Ein Parameter einer Deklaration, einzeln auch bei "A, B: Integer".</summary>
-  TParameterText = record
-    Modifier: string;
-    Name: string;
-    /// <summary>": Typ" samt Vorgabewert; '' ohne Typ.</summary>
-    Rest: string;
-    function Text: string;
-  end;
-
-  /// <summary>Lokale Namen je Routine, einmal gesammelt.</summary>
-  TLocalsCache = class
-  private
-    FText: string;
-    FTree: TSyntaxTree;
-    FLocals: TDictionary<TSyntaxNode, TArray<TRoutineLocal>>;
-  public
-    constructor Create(const AText: string; ATree: TSyntaxTree);
-    destructor Destroy; override;
-    function Locals(ARoutine: TSyntaxNode): TArray<TRoutineLocal>;
-    /// <summary>Deklariert ARoutine den Namen AName (lokal, lokale Routine, lokaler Typ, Result) für AOffset?</summary>
-    function Declares(ARoutine: TSyntaxNode; const AName: string; AOffset: Integer): Boolean;
-  end;
-
-{ TOffsetEdit }
-
-class function TOffsetEdit.Create(AStart, AStop: Integer; const AText: string): TOffsetEdit;
-begin
-  Result.Start := AStart;
-  Result.Stop := AStop;
-  Result.Text := AText;
-end;
-
-{ TParameterText }
-
-function TParameterText.Text: string;
-begin
-  Result := Name + Rest;
-  if Modifier <> '' then
-    Result := Modifier + ' ' + Result;
-end;
-
 { Hilfen }
 
 function Fail(const AReason: string; out AOut: string): Boolean;
 begin
   AOut := AReason;
-  Result := False;
-end;
-
-/// <summary>Kopf einer Routine.</summary>
-function HeaderOf(ARoutine: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-end;
-
-/// <summary>Ist die Routine eine Funktion (Ergebnistyp im Kopf)?</summary>
-function IsFunction(ARoutine: TSyntaxNode): Boolean;
-var
-  Header: TSyntaxNode;
-begin
-  Header := HeaderOf(ARoutine);
-  Result := (Header <> nil) and (Header.FindChild(TSyntaxKind.TypeReference) <> nil);
-end;
-
-function Encloses(ANode: TSyntaxNode; AOffset: Integer): Boolean;
-begin
-  Result := (ANode <> nil) and (ANode.StartOffset <= AOffset) and (AOffset <= ANode.EndOffset);
-end;
-
-/// <summary>Innerste Routine, deren Kopf AOffset enthält; nil ohne.</summary>
-function RoutineWithHeaderAt(ATree: TSyntaxTree; AOffset: Integer): TSyntaxNode;
-var
-  Found: TSyntaxNode;
-  Offset: Integer;
-begin
-  Found := nil;
-  Offset := AOffset;
-  ATree.Root.Walk(
-    function(ANode: TSyntaxNode): Boolean
-    var
-      Header: TSyntaxNode;
-    begin
-      Result := Encloses(ANode, Offset);
-      if Result and (ANode.Kind = TSyntaxKind.RoutineDecl) then
-      begin
-        Header := HeaderOf(ANode);
-        if Encloses(Header, Offset) then
-          Found := ANode;
-      end;
-    end);
-  Result := Found;
-end;
-
-function LineIsBlank(const ALines: TArray<string>; ALine: Integer): Boolean;
-begin
-  Result := (ALine >= 0) and (ALine <= High(ALines)) and (Trim(ALines[ALine]) = '');
-end;
-
-/// <summary>Wendet AEdits (Offsets in AText, ab ABase) auf ASource = Copy(AText, ABase + 1, …) an.</summary>
-function ApplyEdits(const ASource: string; ABase: Integer; AEdits: TArray<TOffsetEdit>): string;
-var
-  Index, Inner: Integer;
-  Edit: TOffsetEdit;
-begin
-  // Von hinten nach vorn; nach Start sortiert (einfaches Einfügen, die Listen sind kurz).
-  for Index := 1 to High(AEdits) do
-  begin
-    Edit := AEdits[Index];
-    Inner := Index - 1;
-    while (Inner >= 0) and (AEdits[Inner].Start > Edit.Start) do
-    begin
-      AEdits[Inner + 1] := AEdits[Inner];
-      Dec(Inner);
-    end;
-    AEdits[Inner + 1] := Edit;
-  end;
-  Result := ASource;
-  for Index := High(AEdits) downto 0 do
-    Result := Copy(Result, 1, AEdits[Index].Start - ABase) + AEdits[Index].Text +
-      Copy(Result, AEdits[Index].Stop - ABase + 1, MaxInt);
-end;
-
-/// <summary>Token-Bereich des Namens im Kopf (TKunde.Rechne bzw. Rechne).</summary>
-function NameTokens(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode; out AFirst, ALast: Integer): Boolean;
-var
-  Index: Integer;
-begin
-  Result := False;
-  Index := TRoutineBody.TokenAt(ATokens, AHeader.StartOffset);
-  while (Index <= High(ATokens)) and (ATokens[Index].Offset < AHeader.EndOffset) and
-    (ATokens[Index].IsKeyword('class') or ATokens[Index].IsKeyword('procedure') or
-    ATokens[Index].IsKeyword('function') or (ATokens[Index].Kind in [TPascalTokenKind.Comment,
-    TPascalTokenKind.Directive])) do
-    Inc(Index);
-  if (Index > High(ATokens)) or (ATokens[Index].Kind <> TPascalTokenKind.Identifier) then
-    Exit;
-  AFirst := Index;
-  ALast := Index;
-  while (ALast + 2 <= High(ATokens)) and ATokens[ALast + 1].IsSymbol('.') and
-    (ATokens[ALast + 2].Kind = TPascalTokenKind.Identifier) do
-    Inc(ALast, 2);
-  Result := True;
-end;
-
-/// <summary>Beginnt der Kopf mit class (Klassenmethode)?</summary>
-function IsClassHeader(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode): Boolean;
-var
-  Index: Integer;
-begin
-  Index := TRoutineBody.TokenAt(ATokens, AHeader.StartOffset);
-  Result := (Index <= High(ATokens)) and ATokens[Index].IsKeyword('class');
-end;
-
-/// <summary>Steht im Bereich des Knotens ein Token mit dem Text AWord (Direktive wie static, virtual)?</summary>
-function HasWord(const ATokens: TArray<TPascalToken>; ANode: TSyntaxNode; const AWords: array of string): Boolean;
-var
-  Index: Integer;
-begin
-  Index := TRoutineBody.TokenAt(ATokens, ANode.StartOffset);
-  while (Index <= High(ATokens)) and (ATokens[Index].Offset < ANode.EndOffset) do
-  begin
-    if (ATokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
-      MatchText(ATokens[Index].Text, AWords) then
-      Exit(True);
-    Inc(Index);
-  end;
-  Result := False;
-end;
-
-/// <summary>Parameter des Kopfs einzeln, mit Modifizierer und Typ.</summary>
-function ParameterTexts(const AText: string; AHeader: TSyntaxNode): TArray<TParameterText>;
-var
-  Parameters, Node: TSyntaxNode;
-  Index, Colon: Integer;
-  Source, Head, Modifier, Name: string;
-  Item: TParameterText;
-begin
-  Result := nil;
-  Parameters := AHeader.FindChild(TSyntaxKind.Parameters);
-  if Parameters = nil then
-    Exit;
-  for Index := 0 to Parameters.ChildCount - 1 do
-  begin
-    Node := Parameters[Index];
-    Source := Trim(TRoutineBody.TextOf(AText, Node));
-    if EndsStr(';', Source) then
-      Source := Trim(Copy(Source, 1, Length(Source) - 1));
-    Colon := Pos(':', Source);
-    if Colon > 0 then
-    begin
-      Head := Trim(Copy(Source, 1, Colon - 1));
-      Item.Rest := ': ' + Trim(Copy(Source, Colon + 1, MaxInt));
-    end
-    else
-    begin
-      Head := Source;
-      Item.Rest := '';
-    end;
-    Modifier := '';
-    if MatchText(Head.Split([' '])[0], ['const', 'var', 'out', 'constref']) then
-    begin
-      Modifier := Head.Split([' '])[0];
-      Head := Trim(Copy(Head, Length(Modifier) + 1, MaxInt));
-    end;
-    if StartsText('[ref]', Head) then
-      Exit(nil);
-    Item.Modifier := Modifier;
-    for Name in Head.Split([',']) do
-    begin
-      Item.Name := Trim(Name);
-      Result := Result + [Item];
-    end;
-  end;
-end;
-
-function JoinParameters(const AParameters: TArray<TParameterText>): string;
-var
-  Index: Integer;
-begin
-  Result := '';
-  for Index := 0 to High(AParameters) do
-  begin
-    if Index > 0 then
-      Result := Result + '; ';
-    Result := Result + AParameters[Index].Text;
-  end;
-end;
-
-/// <summary>Kopf als Text mit neuem Namen und neuen Parametern (ohne Direktiven, mit ';').</summary>
-function HeadText(const AText: string; const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode;
-  const AName: string; const AParameters: TArray<TParameterText>; AClass: Boolean): string;
-var
-  ResultType: TSyntaxNode;
-begin
-  if IsFunction(AHeader.Parent) then
-    Result := 'function '
-  else
-    Result := 'procedure ';
-  if AClass then
-    Result := 'class ' + Result;
-  Result := Result + AName;
-  if AParameters <> nil then
-    Result := Result + '(' + JoinParameters(AParameters) + ')';
-  ResultType := AHeader.FindChild(TSyntaxKind.TypeReference);
-  if ResultType <> nil then
-    Result := Result + ': ' + TRoutineBody.TextOf(AText, ResultType);
-  Result := Result + ';';
-end;
-
-/// <summary>Namen der Kinder von ANode ("A, B" einzeln).</summary>
-function ChildNames(ANode: TSyntaxNode): TArray<string>;
-var
-  Index: Integer;
-  Name: string;
-begin
-  Result := nil;
-  for Index := 0 to ANode.ChildCount - 1 do
-    for Name in ANode[Index].Name.Split([',']) do
-      if Trim(Name) <> '' then
-        Result := Result + [Trim(Name)];
-end;
-
-/// <summary>Namen auf Unit-Ebene: Routinen, Typen, Variablen und Konstanten beider Teile.</summary>
-function UnitNames(ARoot: TSyntaxNode): TArray<string>;
-var
-  Section, Child: TSyntaxNode;
-  Index, Inner: Integer;
-  Name: string;
-begin
-  Result := nil;
-  for Index := 0 to ARoot.ChildCount - 1 do
-  begin
-    Section := ARoot[Index];
-    if not (Section.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection]) then
-      Continue;
-    for Inner := 0 to Section.ChildCount - 1 do
-    begin
-      Child := Section[Inner];
-      case Child.Kind of
-        TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader:
-          if TRoutineBody.QualifierOf(Child.Name) = '' then
-            Result := Result + [Child.Name];
-        TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.TypeSection:
-          for Name in ChildNames(Child) do
-            Result := Result + [Name];
-      end;
-    end;
-  end;
-end;
-
-/// <summary>Freier Name aus ABase: ABase, ABase2, ABase3 …, der in ATaken nicht vorkommt.</summary>
-function FreeName(const ABase: string; const ATaken: TArray<string>): string;
-var
-  Number: Integer;
-begin
-  Result := ABase;
-  Number := 1;
-  while IndexText(Result, ATaken) >= 0 do
-  begin
-    Inc(Number);
-    Result := ABase + IntToStr(Number);
-  end;
-end;
-
-{ TLocalsCache }
-
-constructor TLocalsCache.Create(const AText: string; ATree: TSyntaxTree);
-begin
-  inherited Create;
-  FText := AText;
-  FTree := ATree;
-  FLocals := TDictionary<TSyntaxNode, TArray<TRoutineLocal>>.Create;
-end;
-
-destructor TLocalsCache.Destroy;
-begin
-  FLocals.Free;
-  inherited;
-end;
-
-function TLocalsCache.Locals(ARoutine: TSyntaxNode): TArray<TRoutineLocal>;
-begin
-  if not FLocals.TryGetValue(ARoutine, Result) then
-  begin
-    Result := nil;
-    if TRoutineBody.BodyOf(ARoutine) <> nil then
-      Result := TRoutineLocals.Collect(FText, FTree, ARoutine);
-    FLocals.Add(ARoutine, Result);
-  end;
-end;
-
-function TLocalsCache.Declares(ARoutine: TSyntaxNode; const AName: string; AOffset: Integer): Boolean;
-var
-  Local: TRoutineLocal;
-  Index: Integer;
-  Child: TSyntaxNode;
-  Name: string;
-begin
-  if SameText(AName, 'Result') and IsFunction(ARoutine) then
-    Exit(True);
-  for Local in Locals(ARoutine) do
-    if SameText(Local.Name, AName) and ((Local.Kind in [TRoutineLocalKind.Parameter, TRoutineLocalKind.Variable,
-      TRoutineLocalKind.Constant]) or ((Local.ScopeStart <= AOffset) and (AOffset <= Local.ScopeEnd))) then
-      Exit(True);
-  for Index := 0 to ARoutine.ChildCount - 1 do
-  begin
-    Child := ARoutine[Index];
-    if (Child.Kind = TSyntaxKind.RoutineDecl) and SameText(Child.Name, AName) then
-      Exit(True);
-    if Child.Kind = TSyntaxKind.TypeSection then
-      for Name in ChildNames(Child) do
-        if SameText(Name, AName) then
-          Exit(True);
-  end;
   Result := False;
 end;
 
@@ -564,37 +208,6 @@ begin
   AEdits := AEdits + [TOffsetEdit.Create(ANode.StartOffset, ANode.EndOffset, ANewName + '(' + AArguments + ')')];
 end;
 
-/// <summary>Rumpf von ANode bis AStop (ausschließlich): liegt ANode in einer anonymen Methode?</summary>
-function InAnonymous(ANode, AStop: TSyntaxNode): Boolean;
-var
-  Node: TSyntaxNode;
-begin
-  Node := ANode.Parent;
-  while (Node <> nil) and (Node <> AStop) do
-  begin
-    if Node.Kind = TSyntaxKind.AnonymousMethod then
-      Exit(True);
-    Node := Node.Parent;
-  end;
-  Result := False;
-end;
-
-/// <summary>Deklariert eine Routine zwischen ANode und AStop (AStop eingeschlossen, wenn AWithStop) den Namen?
-/// </summary>
-function Shadowed(ACache: TLocalsCache; ANode, AStop: TSyntaxNode; const AName: string; AWithStop: Boolean): Boolean;
-var
-  Node: TSyntaxNode;
-begin
-  Node := ANode.Parent;
-  while (Node <> nil) and (Node <> AStop) do
-  begin
-    if (Node.Kind = TSyntaxKind.RoutineDecl) and ACache.Declares(Node, AName, ANode.StartOffset) then
-      Exit(True);
-    Node := Node.Parent;
-  end;
-  Result := AWithStop and (Node = AStop) and ACache.Declares(AStop, AName, ANode.StartOffset);
-end;
-
 /// <summary>Kommt ein Bezeichner AName unter AIdentifiers vor?</summary>
 function UsesName(const AIdentifiers: TArray<TSyntaxNode>; const AName: string): Boolean;
 var
@@ -613,7 +226,7 @@ var
   Node: TSyntaxNode;
 begin
   for Node in AIdentifiers do
-    if SameText(Node.Name, AName) and not Shadowed(ACache, Node, ARoutine, AName, False) and
+    if SameText(Node.Name, AName) and not TRoutineParts.Shadowed(ACache, Node, ARoutine, AName, False) and
       (TRoutineLocals.AccessOf(Node, AFlow) <> TLocalAccess.Read) then
       Exit(True);
   Result := False;
@@ -649,7 +262,7 @@ begin
   if (ATree = nil) or (ATree.Root = nil) then
     Exit(Fail('kein Baum', AReason));
   Lines := TLineTable.Build(AText);
-  Inner := RoutineWithHeaderAt(ATree, Lines.OffsetAt(APosition));
+  Inner := TRoutineParts.RoutineWithHeaderAt(ATree, Lines.OffsetAt(APosition));
   if (Inner = nil) or (Inner.Parent = nil) or (Inner.Parent.Kind <> TSyntaxKind.RoutineDecl) then
     Exit(Fail('keine lokale Routine', AReason));
   Outer := Inner.Parent;
@@ -667,15 +280,15 @@ begin
     Exit(True);
   end;
   Tokens := ATree.Tokens;
-  Header := HeaderOf(Inner);
-  OuterHeader := HeaderOf(Outer);
+  Header := TRoutineParts.HeaderOf(Inner);
+  OuterHeader := TRoutineParts.HeaderOf(Outer);
   if (Header = nil) or (OuterHeader = nil) or (TRoutineBody.BodyOf(Inner) = nil) then
     Exit(Fail('Routine ohne Rumpf', AReason));
-  if HasWord(Tokens, Header, ['forward', 'external', 'overload', 'assembler']) or
+  if TRoutineParts.HasWord(Tokens, Header, ['forward', 'external', 'overload', 'assembler']) or
     TRoutineLocals.HasKind(Inner, TSyntaxKind.WithStatement) or (Pos('<', ClassName) > 0) then
     Exit(Fail('nicht unterstützte Form', AReason));
-  IsClass := IsClassHeader(Tokens, OuterHeader);
-  InnerIsFunction := IsFunction(Inner);
+  IsClass := TRoutineParts.IsClassHeader(Tokens, OuterHeader);
+  InnerIsFunction := TRoutineParts.IsFunction(Inner);
   TypeBody := nil;
   if IsMethod then
   begin
@@ -694,11 +307,11 @@ begin
     TRoutineLocals.CollectKind(Inner, TSyntaxKind.Identifier, Identifiers);
     for Node in Identifiers do
     begin
-      if Shadowed(Cache, Node, Inner, Node.Name, True) then
+      if TRoutineParts.Shadowed(Cache, Node, Inner, Node.Name, True) then
         Continue;
       if SameText(Node.Name, Inner.Name) then
         Continue;
-      if SameText(Node.Name, 'Result') and IsFunction(Outer) then
+      if SameText(Node.Name, 'Result') and TRoutineParts.IsFunction(Outer) then
         Exit(Fail('Result der äußeren Routine', AReason));
       if not IsMethod and SameText(Node.Name, Outer.Name) then
         Exit(Fail('ruft die äußere Routine auf', AReason));
@@ -716,7 +329,7 @@ begin
           if (Child <> Inner) and (Child.Kind = TSyntaxKind.RoutineDecl) and SameText(Child.Name, Node.Name) and
             (Child.StartOffset < Inner.StartOffset) then
             Exit(Fail('nutzt die lokale Routine ' + Child.Name, AReason));
-          if (Child.Kind = TSyntaxKind.TypeSection) and (IndexText(Node.Name, ChildNames(Child)) >= 0) and
+          if (Child.Kind = TSyntaxKind.TypeSection) and (IndexText(Node.Name, TRoutineParts.ChildNames(Child)) >= 0) and
             (Child.StartOffset < Inner.StartOffset) then
             Exit(Fail('nutzt den lokalen Typ ' + Node.Name, AReason));
         end;
@@ -734,7 +347,7 @@ begin
       end;
       if TRoutineLocals.AccessOf(Node, ALookup.Flow) <> TLocalAccess.Read then
         Captured[Index].Written := True;
-      if InAnonymous(Node, Inner) then
+      if TRoutineParts.InAnonymous(Node, Inner) then
         Captured[Index].InAnonymous := True;
     end;
     // Lokale Typen der äußeren Routine auch in Typangaben.
@@ -742,11 +355,11 @@ begin
     TRoutineLocals.CollectKind(Inner, TSyntaxKind.TypeReference, Identifiers);
     for Node in Identifiers do
       for Index := 0 to Outer.ChildCount - 1 do
-        if (Outer[Index].Kind = TSyntaxKind.TypeSection) and (IndexText(Node.Name, ChildNames(Outer[Index])) >= 0) and
-          not Shadowed(Cache, Node, Inner, Node.Name, True) then
+        if (Outer[Index].Kind = TSyntaxKind.TypeSection) and (IndexText(Node.Name, TRoutineParts.ChildNames(Outer[Index])) >= 0) and
+          not TRoutineParts.Shadowed(Cache, Node, Inner, Node.Name, True) then
           Exit(Fail('nutzt den lokalen Typ ' + Node.Name, AReason));
     // Neue Parameter; untypisierte Konstanten wandern als Konstanten mit.
-    Parameters := ParameterTexts(AText, Header);
+    Parameters := TRoutineParts.ParameterTexts(AText, Header);
     if (Parameters = nil) and (Header.FindChild(TSyntaxKind.Parameters) <> nil) and
       (Header.FindChild(TSyntaxKind.Parameters).ChildCount > 0) then
       Exit(Fail('nicht unterstützte Parameter', AReason));
@@ -784,8 +397,8 @@ begin
     if IsMethod then
       Taken := TRoutineBody.MemberNames(TypeBody)
     else
-      Taken := UnitNames(ATree.Root);
-    NewName := FreeName(Inner.Name, Taken);
+      Taken := TRoutineParts.UnitNames(ATree.Root);
+    NewName := TRoutineParts.FreeName(Inner.Name, Taken);
     // Aufrufe in der äußeren Routine (auch in den anderen lokalen Routinen) und in der lokalen selbst.
     Calls := 0;
     Identifiers.Clear;
@@ -797,16 +410,16 @@ begin
       if TRoutineBody.Within(Node, Inner) then
       begin
         // Rekursion: Ein innerer Name verdeckt die Routine oder ein neues Argument.
-        if Shadowed(Cache, Node, Inner, Node.Name, True) then
+        if TRoutineParts.Shadowed(Cache, Node, Inner, Node.Name, True) then
           Continue;
         for Index := 0 to High(Captured) do
-          if Shadowed(Cache, Node, Inner, Captured[Index].Local.Name, False) then
+          if TRoutineParts.Shadowed(Cache, Node, Inner, Captured[Index].Local.Name, False) then
             Exit(Fail('ein Name verdeckt ' + Captured[Index].Local.Name, AReason));
         if not CallEdit(Tokens, Node, InnerIsFunction, NewName, Arguments, InnerEdits) then
           Exit(Fail(Inner.Name + ' wird nicht nur aufgerufen', AReason));
         Continue;
       end;
-      if Shadowed(Cache, Node, Outer, Node.Name, False) then
+      if TRoutineParts.Shadowed(Cache, Node, Outer, Node.Name, False) then
         Continue;
       // Eine Inline- oder Schleifenvariable gleichen Namens verdeckt die Routine.
       Found := TRoutineLocals.IndexOf(OuterLocals, Node.Name, Node.StartOffset);
@@ -815,7 +428,7 @@ begin
         Continue;
       for Index := 0 to High(Captured) do
       begin
-        if Shadowed(Cache, Node, Outer, Captured[Index].Local.Name, False) then
+        if TRoutineParts.Shadowed(Cache, Node, Outer, Captured[Index].Local.Name, False) then
           Exit(Fail('ein Name verdeckt ' + Captured[Index].Local.Name, AReason));
         Found := TRoutineLocals.IndexOf(OuterLocals, Captured[Index].Local.Name, Node.StartOffset);
         if (Found >= 0) and (OuterLocals[Found].Decl <> Captured[Index].Local.Decl) then
@@ -826,19 +439,19 @@ begin
       Inc(Calls);
     end;
     // Kopf der neuen Routine.
-    if not NameTokens(Tokens, Header, NameFirst, NameLast) then
+    if not TRoutineParts.NameTokens(Tokens, Header, NameFirst, NameLast) then
       Exit(Fail('Kopf nicht lesbar', AReason));
     Name := NewName;
     if IsMethod then
       Name := ClassName + '.' + NewName;
     InnerEdits := InnerEdits + [TOffsetEdit.Create(Header.StartOffset, Header.EndOffset,
-      HeadText(AText, Tokens, Header, Name, Parameters, IsClass) + ConstLines)];
-    Declaration := HeadText(AText, Tokens, Header, NewName, Parameters, IsClass);
+      TRoutineParts.HeadText(AText, Header, Name, Parameters, IsClass) + ConstLines)];
+    Declaration := TRoutineParts.HeadText(AText, Header, NewName, Parameters, IsClass);
     // Eine statische Klassenmethode hat kein Self: die neue auch nicht.
     if IsClass then
       for Index := 0 to TypeBody.ChildCount - 1 do
         if (TypeBody[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(TypeBody[Index].Name,
-          TRoutineBody.ShortNameOf(Outer.Name)) and HasWord(Tokens, TypeBody[Index], ['static']) then
+          TRoutineBody.ShortNameOf(Outer.Name)) and TRoutineParts.HasWord(Tokens, TypeBody[Index], ['static']) then
         begin
           Declaration := Declaration + ' static;';
           Break;
@@ -848,7 +461,7 @@ begin
     LastLine := Inner.EndPos.Line;
     TextLines := TTextLines.SplitLines(AText);
     Indent := TTextLines.IndentOf(AText, Outer.StartPos.Line);
-    Moved := ApplyEdits(Copy(AText, Lines.OffsetAt(TTextPosition.Create(FirstLine, 0)) + 1,
+    Moved := TRoutineParts.ApplyEdits(Copy(AText, Lines.OffsetAt(TTextPosition.Create(FirstLine, 0)) + 1,
       Inner.EndOffset - Lines.OffsetAt(TTextPosition.Create(FirstLine, 0))),
       Lines.OffsetAt(TTextPosition.Create(FirstLine, 0)), InnerEdits);
     Moved := TRoutineBody.Reindent(TrimLeft(Moved), InnerIndent, Indent, LineBreak);
@@ -857,9 +470,9 @@ begin
     // Folgt dann begin, auch die Leerzeile davor.
     RemoveStart := FirstLine;
     RemoveEnd := LastLine + 1;
-    if LineIsBlank(TextLines, FirstLine - 1) and LineIsBlank(TextLines, RemoveEnd) then
+    if TRoutineParts.LineIsBlank(TextLines, FirstLine - 1) and TRoutineParts.LineIsBlank(TextLines, RemoveEnd) then
       Inc(RemoveEnd);
-    if LineIsBlank(TextLines, RemoveStart - 1) and (RemoveEnd = TRoutineBody.BodyOf(Outer).StartPos.Line) then
+    if TRoutineParts.LineIsBlank(TextLines, RemoveStart - 1) and (RemoveEnd = TRoutineBody.BodyOf(Outer).StartPos.Line) then
       Dec(RemoveStart);
     Edits := Edits + [TTextEdit.Create(TTextRange.Create(RemoveStart, 0, RemoveEnd, 0), '')];
     for Index := 0 to High(OuterEdits) do
@@ -881,7 +494,7 @@ begin
         Moved + LineBreak + LineBreak)];
     end;
     AAction.Edits := Edits;
-    AAction.Preview := Format('Neue Signatur: %s', [HeadText(AText, Tokens, Header, Name, Parameters, IsClass)]) +
+    AAction.Preview := Format('Neue Signatur: %s', [TRoutineParts.HeadText(AText, Header, Name, Parameters, IsClass)]) +
       LineBreak + Format('Geänderte Aufrufe: %d', [Calls]);
     Result := True;
   finally
@@ -891,39 +504,6 @@ begin
 end;
 
 { Umwandlung: Routine hinein }
-
-/// <summary>Routine der Implementierung zum Kopf an AOffset, auch über die Deklaration in der Klasse.</summary>
-function TopRoutineAt(ATree: TSyntaxTree; AOffset: Integer; out ADeclaration: TSyntaxNode): TSyntaxNode;
-var
-  Found, Implementation_: TSyntaxNode;
-  Offset, Index: Integer;
-  Name: string;
-begin
-  ADeclaration := nil;
-  Result := RoutineWithHeaderAt(ATree, AOffset);
-  if Result <> nil then
-    Exit;
-  Found := nil;
-  Offset := AOffset;
-  ATree.Root.Walk(
-    function(ANode: TSyntaxNode): Boolean
-    begin
-      Result := Encloses(ANode, Offset);
-      if Result and (ANode.Kind = TSyntaxKind.RoutineHeader) and (ANode.Parent <> nil) and
-        (ANode.Parent.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType]) then
-        Found := ANode;
-    end);
-  if (Found = nil) or (Found.Parent.Parent = nil) then
-    Exit;
-  ADeclaration := Found;
-  Name := Found.Parent.Parent.Name + '.' + Found.Name;
-  Implementation_ := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
-  if Implementation_ = nil then
-    Exit;
-  for Index := 0 to Implementation_.ChildCount - 1 do
-    if (Implementation_[Index].Kind = TSyntaxKind.RoutineDecl) and SameText(Implementation_[Index].Name, Name) then
-      Exit(Implementation_[Index]);
-end;
 
 function EmbedCore(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
   const ALookup: TNestedRoutineLookup; const AStyle: TFormatStyle; ARemovePassThrough: Boolean;
@@ -954,17 +534,17 @@ begin
     Exit(Fail('kein Baum', AReason));
   Lines := TLineTable.Build(AText);
   Tokens := ATree.Tokens;
-  Routine := TopRoutineAt(ATree, Lines.OffsetAt(APosition), Declaration);
+  Routine := TRoutineParts.TopRoutineAt(ATree, Lines.OffsetAt(APosition), Declaration);
   if (Routine = nil) or (Routine.Parent = nil) or (Routine.Parent.Kind <> TSyntaxKind.ImplementationSection) then
     Exit(Fail('keine Routine der Implementierung', AReason));
-  Header := HeaderOf(Routine);
+  Header := TRoutineParts.HeaderOf(Routine);
   if (Header = nil) or (TRoutineBody.BodyOf(Routine) = nil) then
     Exit(Fail('Routine ohne Rumpf', AReason));
   Short := TRoutineBody.ShortNameOf(Routine.Name);
   ClassName := TRoutineBody.QualifierOf(Routine.Name);
   IsMethod := ClassName <> '';
-  IsClass := IsClassHeader(Tokens, Header);
-  if HasWord(Tokens, Header, ['overload', 'forward', 'external', 'export', 'assembler']) or (Pos('<', ClassName) > 0) or
+  IsClass := TRoutineParts.IsClassHeader(Tokens, Header);
+  if TRoutineParts.HasWord(Tokens, Header, ['overload', 'forward', 'external', 'export', 'assembler']) or (Pos('<', ClassName) > 0) or
     (Pos('.', ClassName) > 0) then
     Exit(Fail('nicht unterstützte Form', AReason));
   TypeBody := nil;
@@ -985,7 +565,7 @@ begin
       Exit(Fail('Deklaration fehlt', AReason));
     if not MatchText(TRoutineBody.VisibilityOf(TypeBody, Declaration), ['private', 'strict private']) then
       Exit(Fail('nicht privat', AReason));
-    if HasWord(Tokens, Declaration, ['virtual', 'dynamic', 'override', 'abstract', 'message', 'overload',
+    if TRoutineParts.HasWord(Tokens, Declaration, ['virtual', 'dynamic', 'override', 'abstract', 'message', 'overload',
       'reintroduce', 'final', 'static']) then
       Exit(Fail('virtuell, Botschaft oder überladen', AReason));
   end
@@ -1021,7 +601,7 @@ begin
         if not IsMethod or (Node[0].Kind <> TSyntaxKind.Identifier) or not SameText(Node[0].Name, 'Self') then
           Exit(Fail('über ein anderes Objekt benutzt', AReason));
       end
-      else if Shadowed(Cache, Node, nil, Short, False) then
+      else if TRoutineParts.Shadowed(Cache, Node, nil, Short, False) then
         Continue;
       if TRoutineBody.Within(Node, Routine) then
       begin
@@ -1040,21 +620,21 @@ begin
       not TRoutineBody.Within(Reference, TRoutineBody.BodyOf(Caller)) then
       Exit(Fail('Aufrufer ist keine Routine der Implementierung', AReason));
     if IsMethod and (not SameText(TRoutineBody.QualifierOf(Caller.Name), ClassName) or
-      (IsClassHeader(Tokens, HeaderOf(Caller)) <> IsClass)) then
+      (TRoutineParts.IsClassHeader(Tokens, TRoutineParts.HeaderOf(Caller)) <> IsClass)) then
       Exit(Fail('Aufrufer ist keine Methode derselben Art', AReason));
     // Nur Aufrufe, kein Methodenzeiger oder Ereignis.
     Call := nil;
     Node := Reference.Parent;
     if (Node.Kind = TSyntaxKind.Call) and (Node[0] = Reference) then
       Call := Node
-    else if (Node.Kind <> TSyntaxKind.CallStatement) and (not IsFunction(Routine) or
+    else if (Node.Kind <> TSyntaxKind.CallStatement) and (not TRoutineParts.IsFunction(Routine) or
       (Node.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.Call, TSyntaxKind.AddressOf])) then
       Exit(Fail('nicht als Aufruf benutzt', AReason));
     Arguments := nil;
     if Call <> nil then
       for Index := 1 to Call.ChildCount - 1 do
         Arguments := Arguments + [Call[Index]];
-    Parameters := ParameterTexts(AText, Header);
+    Parameters := TRoutineParts.ParameterTexts(AText, Header);
     if (Parameters = nil) and (Header.FindChild(TSyntaxKind.Parameters) <> nil) and
       (Header.FindChild(TSyntaxKind.Parameters).ChildCount > 0) then
       Exit(Fail('nicht unterstützte Parameter', AReason));
@@ -1107,7 +687,7 @@ begin
       Members := TRoutineBody.MemberNames(TRoutineBody.TypeBody(ATree.Root, TRoutineBody.QualifierOf(Caller.Name)));
     for Node in Identifiers do
     begin
-      if Shadowed(Cache, Node, Routine, Node.Name, True) then
+      if TRoutineParts.Shadowed(Cache, Node, Routine, Node.Name, True) then
         Continue;
       if Renamed.ContainsValue(Node.Name) then
         Continue;
@@ -1120,7 +700,7 @@ begin
     Collected.Clear;
     TRoutineLocals.CollectKind(Routine, TSyntaxKind.TypeReference, Collected);
     for Node in Collected do
-      if not Shadowed(Cache, Node, Routine, Node.Name, True) and Cache.Declares(Caller, Node.Name,
+      if not TRoutineParts.Shadowed(Cache, Node, Routine, Node.Name, True) and Cache.Declares(Caller, Node.Name,
         CallerBody.StartOffset - 1) then
         Exit(Fail(Caller.Name + ' verdeckt ' + Node.Name, AReason));
     if SameText(Short, 'Result') then
@@ -1131,15 +711,15 @@ begin
       if not Removed[Index] then
         Kept := Kept + [Parameters[Index]];
     RoutineEdits := [TOffsetEdit.Create(Header.StartOffset, Header.EndOffset,
-      HeadText(AText, Tokens, Header, Short, Kept, False))];
+      TRoutineParts.HeadText(AText, Header, Short, Kept, False))];
     for Node in Identifiers do
-      if Renamed.TryGetValue(LowerCase(Node.Name), Target) and not Shadowed(Cache, Node, Routine, Node.Name, False) and
+      if Renamed.TryGetValue(LowerCase(Node.Name), Target) and not TRoutineParts.Shadowed(Cache, Node, Routine, Node.Name, False) and
         not SameText(Node.Name, Target) then
         RoutineEdits := RoutineEdits + [TOffsetEdit.Create(Node.StartOffset, Node.EndOffset, Target)];
     LineBreak := TTextLines.LineBreakOf(AText);
     TextLines := TTextLines.SplitLines(AText);
     FirstLine := TRoutineBody.RoutineInsertLine(AText, Routine);
-    Moved := ApplyEdits(Copy(AText, Lines.OffsetAt(TTextPosition.Create(FirstLine, 0)) + 1,
+    Moved := TRoutineParts.ApplyEdits(Copy(AText, Lines.OffsetAt(TTextPosition.Create(FirstLine, 0)) + 1,
       Routine.EndOffset - Lines.OffsetAt(TTextPosition.Create(FirstLine, 0))),
       Lines.OffsetAt(TTextPosition.Create(FirstLine, 0)), RoutineEdits);
     Indent := TTextLines.IndentOf(AText, Caller.StartPos.Line) + TRoutineBody.IndentUnit(AStyle);
@@ -1150,13 +730,13 @@ begin
       Exit(Fail('begin des Aufrufers steht nicht am Zeilenanfang', AReason));
     Edits := nil;
     RemoveEnd := Routine.EndPos.Line + 1;
-    if LineIsBlank(TextLines, FirstLine - 1) and LineIsBlank(TextLines, RemoveEnd) then
+    if TRoutineParts.LineIsBlank(TextLines, FirstLine - 1) and TRoutineParts.LineIsBlank(TextLines, RemoveEnd) then
       Inc(RemoveEnd);
     Edits := Edits + [TTextEdit.Create(TTextRange.Create(FirstLine, 0, RemoveEnd, 0), '')];
     if Declaration <> nil then
       Edits := Edits + [TTextEdit.Create(TTextRange.Create(Declaration.StartPos.Line, 0,
         Declaration.EndPos.Line + 1, 0), '')];
-    if LineIsBlank(TextLines, BeginLine - 1) then
+    if TRoutineParts.LineIsBlank(TextLines, BeginLine - 1) then
       Moved := Moved + LineBreak + LineBreak
     else
       Moved := LineBreak + Moved + LineBreak + LineBreak;
@@ -1187,7 +767,7 @@ begin
     AAction.Kind := RewriteKind;
     AAction.Edits := Edits;
     AAction.Preview := Format('Neue lokale Routine in %s: %s', [Caller.Name,
-      HeadText(AText, Tokens, Header, Short, Kept, False)]) + LineBreak + 'Geänderte Aufrufe: 1';
+      TRoutineParts.HeadText(AText, Header, Short, Kept, False)]) + LineBreak + 'Geänderte Aufrufe: 1';
     Result := True;
   finally
     Renamed.Free;
