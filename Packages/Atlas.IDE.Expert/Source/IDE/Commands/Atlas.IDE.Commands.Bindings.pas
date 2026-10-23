@@ -129,6 +129,7 @@ uses
   Atlas.Core.Bookmarks.Quick,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Editor.Hide,
+  Atlas.IDE.Editor.ExitPoints,
   Atlas.IDE.Notifications.Service,
   Atlas.IDE.Outline.Breadcrumbs,
   Atlas.IDE.EditorToolbar.Service,
@@ -417,13 +418,15 @@ begin
       AddAttemptKey(TAtlasFeature.Search, Settings.SearchNextKey, TAtlasStrings.Text(TAtlasTextId.SearchNextCommand),
         function: Boolean
         begin
-          Result := TAtlasIdeSearch.TryNext(False) or TAtlasIdeEditorCommands.TryFindSelection(False);
+          Result := TAtlasIdeExitPoints.TryJump(False) or TAtlasIdeSearch.TryNext(False) or
+            TAtlasIdeEditorCommands.TryFindSelection(False);
         end, False);
     if Settings.SearchPreviousKey <> 0 then
       AddAttemptKey(TAtlasFeature.Search, Settings.SearchPreviousKey, TAtlasStrings.Text(TAtlasTextId.SearchPreviousCommand),
         function: Boolean
         begin
-          Result := TAtlasIdeSearch.TryNext(True) or TAtlasIdeEditorCommands.TryFindSelection(True);
+          Result := TAtlasIdeExitPoints.TryJump(True) or TAtlasIdeSearch.TryNext(True) or
+            TAtlasIdeEditorCommands.TryFindSelection(True);
         end, False);
   end;
   AddKey(TAtlasFeature.Search, Settings.SearchMethodKey, TAtlasStrings.Text(TAtlasTextId.SearchInMethodCommand),
@@ -431,16 +434,18 @@ begin
     begin
       TAtlasIdeSearch.ShowInMethod;
     end);
-  // Markierung suchen: F3 bzw. Umschalt+F3 mit einzeiliger Markierung; sonst „Erneut suchen“ der IDE.
+  // Austrittspunkte (#698): F3 bzw. Umschalt+F3 springt reihum, solange die Hervorhebung steht und der Cursor auf
+  // einer ihrer Stellen liegt (dann gibt es keine Markierung). Markierung suchen: mit einzeiliger Markierung; sonst
+  // „Erneut suchen“ der IDE.
   AddAttemptKey(TAtlasFeature.EditorCommands, ShortCut(VK_F3, []), 'F3',
     function: Boolean
     begin
-      Result := TAtlasIdeEditorCommands.TryFindSelection(False);
+      Result := TAtlasIdeExitPoints.TryJump(False) or TAtlasIdeEditorCommands.TryFindSelection(False);
     end, False);
   AddAttemptKey(TAtlasFeature.EditorCommands, ShortCut(VK_F3, [ssShift]), 'Umschalt+F3',
     function: Boolean
     begin
-      Result := TAtlasIdeEditorCommands.TryFindSelection(True);
+      Result := TAtlasIdeExitPoints.TryJump(True) or TAtlasIdeEditorCommands.TryFindSelection(True);
     end, False);
   // Ausblenden am Element (#628): mit Rückfall, ohne Element behält die IDE die Taste (Strg+. = IDE Insight).
   if Settings.HideElementKey <> 0 then

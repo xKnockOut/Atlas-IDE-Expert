@@ -3224,6 +3224,64 @@ Voraussetzung: Einstellungen auf Vorgabe; Unit, in der `Kunde` mehrfach vorkommt
 | GT11 | Strg+. auf der Anzahl › Ausblenden „In dieser Datei“ | Keine Hervorhebung in dieser Datei, in anderen weiter |
 | GT12 | Thema hell/dunkel wechseln | Hervorhebung und Anzahl in beiden Themen gut lesbar |
 
+## Austrittspunkte hervorheben (#698)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index; Einstellungen auf Vorgabe; Unit `Austritt.pas` mit
+
+```pascal
+uses Lader; // Lader: /// <exception cref="EFehler"> an procedure Lade; EFehler = class(EBasis)
+
+procedure Fehler;
+begin
+  raise EFehler.Create('x');
+end;
+
+function TKunde.Wert(A: Integer): Integer;
+var
+  I: Integer;
+begin
+  if A < 0 then
+    Exit;
+  if A = 0 then
+    Exit(1);
+  if A > 99 then
+    Fehler;
+  try
+    Lade;
+  except
+    on E: EBasis do
+      raise;
+  end;
+  for I := 0 to A do
+  begin
+    if I = 5 then
+      Break;
+    Continue;
+  end;
+  Result := A;
+end;
+```
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AX1 | Cursor auf das erste `Exit` | Nach kurzer Pause in der Warnfarbe hinterlegt: beide `Exit`, der Aufruf `Fehler` (löst immer aus), `raise;` und das abschließende `end` nicht (vorher steht `Result := A`, der Weg endet dort trotzdem: `end` hinterlegt); das erste `Exit` in der Fehlerfarbe, weil dort `Result` fehlt. Hinter dem Kopf `TKunde.Wert` die Marke „5 Austritte · Result fehlt auf einem Weg“ (**Abnahme**) |
+| AX2 | Cursor auf `Wert` im Kopf, dann auf `raise` | Dieselbe Hervorhebung und Marke wie in AX1 |
+| AX3 | Cursor auf `Result` | Zusätzlich `Result := A` in der Farbe für Hinzugefügtes; Austritte ohne Ergebnis rot; Marke wie in AX1 |
+| AX4 | In AX1 F3 mehrmals, dann Umschalt+F3 | Springt reihum von Stelle zu Stelle (auch auf das `end`), am Ende wieder zur ersten; Umschalt+F3 rückwärts. Die Hervorhebung bleibt dabei stehen (**Abnahme**) |
+| AX5 | Cursor auf `on` bzw. auf `EBasis` im Handler | `Lade` in der Fehlerfarbe (löst laut XMLDoc `EFehler` aus, das von `EBasis` abstammt), der Handler selbst in der Warnfarbe; keine Marke am Kopf |
+| AX6 | Cursor auf `Break` | `for`, `do`, das `end` der Schleife, `Break` und `Continue` in der Akzentfarbe |
+| AX7 | Cursor auf eine Zeile ohne Auslöser (z. B. `Lade`), oder etwas tippen | Hervorhebung und Marke verschwinden sofort |
+| AX8 | Text mit F3 markiert lassen (Markierungssuche, #709) | F3 springt zum nächsten gleichen Text wie bisher, nicht zu Austritten |
+| AX9 | Lokale Routine und anonyme Methode mit eigenem `Exit` in `Wert`; Cursor auf das `Exit` der äußeren Routine | Nur die Austritte von `Wert` hinterlegt, nicht die der lokalen Routine oder der anonymen Methode |
+| AX10 | Optionen › Editor › Austrittspunkte: „Auf except/on die auslösenden Aufrufe zeigen“ aus; Cursor auf `on` | Keine Hervorhebung |
+| AX11 | „Auf Break/Continue die Schleife zeigen“ aus; Cursor auf `Break` | Keine Hervorhebung |
+| AX12 | „Marke mit der Anzahl am Routinenkopf“ aus | Hervorhebung wie in AX1, aber ohne Marke |
+| AX13 | In `atlas.json` `"highlight": {"exitKeywords": ["raise"]}`, Cursor auf `raise` | Die `Exit` zählen nicht mehr als Austritt; Aufrufe von Routinen, die immer auslösen, weiter |
+| AX14 | Strg+. auf der Marke › „In dieser Datei ausblenden“ | In dieser Datei keine Hervorhebung, in anderen weiter |
+| AX15 | Schnellschalter „Austrittspunkte hervorheben“ aus (`editor.exitPoints`) | Keine Hervorhebung, keine Marke; F3 wie ohne #698 (**Abnahme**) |
+| AX16 | Server beenden, Cursor auf `Exit` | Keine Hervorhebung, kein Hängen des Editors; nach dem Neustart des Servers wieder da |
+| AX17 | Thema hell/dunkel wechseln | Farben und Marke in beiden Themen gut lesbar |
+
 ## Forward-Deklaration ergänzen (#685)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; neue Unit `Tree.pas`.

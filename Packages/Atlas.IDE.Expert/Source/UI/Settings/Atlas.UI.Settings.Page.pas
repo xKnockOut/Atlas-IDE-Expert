@@ -349,6 +349,10 @@ type
     FSelectionMatchesWholeWord: TCheckBox;
     FSelectionMatchesNavigateF3: TCheckBox;
     FSelectionMatchesMaxMatches: TEdit;
+    FExitPoints: TCheckBox;
+    FExitPointsExceptions: TCheckBox;
+    FExitPointsLoops: TCheckBox;
+    FExitPointsBadge: TCheckBox;
     FNextChangeKey: TEdit;
     FPreviousChangeKey: TEdit;
     FOverviewRuler: TCheckBox;
@@ -1099,6 +1103,10 @@ type
     property SelectionMatchesWholeWordCheck: TCheckBox read FSelectionMatchesWholeWord;
     property SelectionMatchesNavigateF3Check: TCheckBox read FSelectionMatchesNavigateF3;
     property SelectionMatchesMaxMatches: TEdit read FSelectionMatchesMaxMatches;
+    property ExitPointsCheck: TCheckBox read FExitPoints;
+    property ExitPointsExceptionsCheck: TCheckBox read FExitPointsExceptions;
+    property ExitPointsLoopsCheck: TCheckBox read FExitPointsLoops;
+    property ExitPointsBadgeCheck: TCheckBox read FExitPointsBadge;
     property RecursionMarkersDepthEdit: TEdit read FRecursionMarkersDepth;
     property HideElementKey: TEdit read FHideElementKey;
     /// <summary>Zum Testen: Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).</summary>
@@ -1618,6 +1626,11 @@ begin
   FSelectionMatchesWholeWord := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesWholeWord));
   FSelectionMatchesNavigateF3 := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesF3));
   FSelectionMatchesMaxMatches := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesMax));
+  // Austrittspunkte hervorheben (#698).
+  FExitPoints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPoints));
+  FExitPointsExceptions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPointsExceptions));
+  FExitPointsLoops := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPointsLoops));
+  FExitPointsBadge := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPointsBadge));
   // Übersichtsleiste (#519): an/aus und je Art ein Häkchen.
   FOverviewRuler := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewRuler));
   FOverviewKinds[TAtlasOverviewKind.Diagnostics] :=
@@ -1933,6 +1946,7 @@ begin
   Bind('GitBlame', FGitBlame);
   Bind('GutterColumn', FGutterColumn);
   Bind('SelectionMatches', FSelectionMatches);
+  Bind('ExitPoints', FExitPoints);
   Bind('OverviewRuler', FOverviewRuler);
   Bind('RecursionMarkers', FRecursionMarkers);
   Bind('InlineDiagnostics', FInlineDiagnostics);
@@ -2741,6 +2755,10 @@ begin
   FMarks.Bind(FSelectionMatchesWholeWord, ['SelectionMatchesWholeWord']);
   FMarks.Bind(FSelectionMatchesNavigateF3, ['SelectionMatchesNavigateF3']);
   FMarks.Bind(FSelectionMatchesMaxMatches, ['SelectionMatchesMaxMatches']);
+  FMarks.Bind(FExitPoints, ['ExitPoints']);
+  FMarks.Bind(FExitPointsExceptions, ['ExitPointsExceptions']);
+  FMarks.Bind(FExitPointsLoops, ['ExitPointsLoops']);
+  FMarks.Bind(FExitPointsBadge, ['ExitPointsBadge']);
   FMarks.Bind(FNextChangeKey, ['NextChangeKey']);
   FMarks.Bind(FPreviousChangeKey, ['PreviousChangeKey']);
   FMarks.Bind(FOverviewRuler, ['OverviewRuler']);
@@ -4845,6 +4863,10 @@ begin
   FSelectionMatchesWholeWord.Checked := ASettings.SelectionMatchesWholeWord;
   FSelectionMatchesNavigateF3.Checked := ASettings.SelectionMatchesNavigateF3;
   FSelectionMatchesMaxMatches.Text := IntToStr(ASettings.SelectionMatchesMaxMatches);
+  FExitPoints.Checked := ASettings.ExitPoints;
+  FExitPointsExceptions.Checked := ASettings.ExitPointsExceptions;
+  FExitPointsLoops.Checked := ASettings.ExitPointsLoops;
+  FExitPointsBadge.Checked := ASettings.ExitPointsBadge;
   FNextChangeKey.Text := ShortCutToText(TShortCut(ASettings.NextChangeKey));
   FPreviousChangeKey.Text := ShortCutToText(TShortCut(ASettings.PreviousChangeKey));
   FOverviewRuler.Checked := ASettings.OverviewRuler;
@@ -5268,6 +5290,10 @@ begin
   ASettings.SelectionMatchesNavigateF3 := FSelectionMatchesNavigateF3.Checked;
   ASettings.SelectionMatchesMaxMatches := StrToIntDef(FSelectionMatchesMaxMatches.Text,
     ASettings.SelectionMatchesMaxMatches);
+  ASettings.ExitPoints := FExitPoints.Checked;
+  ASettings.ExitPointsExceptions := FExitPointsExceptions.Checked;
+  ASettings.ExitPointsLoops := FExitPointsLoops.Checked;
+  ASettings.ExitPointsBadge := FExitPointsBadge.Checked;
   ASettings.NextChangeKey := Integer(TextToShortCut(Trim(FNextChangeKey.Text)));
   ASettings.PreviousChangeKey := Integer(TextToShortCut(Trim(FPreviousChangeKey.Text)));
   ASettings.OverviewRuler := FOverviewRuler.Checked;

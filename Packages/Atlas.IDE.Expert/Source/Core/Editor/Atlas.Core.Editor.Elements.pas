@@ -75,7 +75,9 @@ type
     /// <summary>Codes von Steuerzeichen wie ^C (#862).</summary>
     InlayCharHints,
     /// <summary>Marker der schnellen Lesezeichen links der Zeilennummern (#1104).</summary>
-    QuickBookmarks);
+    QuickBookmarks,
+    /// <summary>Hervorgehobene Austrittspunkte samt Marke am Routinenkopf (#698).</summary>
+    ExitPoints);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -204,6 +206,9 @@ begin
       Result := Make(AElement, 'InlayCharHints', AllScopes, True, False);
     TAtlasDrawnElement.QuickBookmarks:
       Result := Make(AElement, 'QuickBookmarksGutter', AllScopes, False, True);
+    // Nur solange der Cursor steht; Ausblenden je Datei oder überall an der Marke.
+    TAtlasDrawnElement.ExitPoints:
+      Result := Make(AElement, 'ExitPoints', FileScopes, True, False);
   else
     Result := Make(AElement, '', [], False, False);
   end;
