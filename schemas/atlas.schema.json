@@ -197,6 +197,62 @@
                   }
                 }
               },
+              "symbols": {
+                "type": "array",
+                "description": "Nur forbidden-symbol (#1133): verbotene Symbole. Ohne Liste ist die Regel stumm.",
+                "default": [],
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "name"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "Voll qualifizierter Name (Unit.Typ.Mitglied) oder ab einer Punktgrenze gekürzt, * erlaubt, z. B. \"System.Write*\" oder \"TThread.Queue\"."
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": ["routine", "type", "constant", "field", "property", "enumValue", "identifier"],
+                      "description": "Art des Symbols; ohne Angabe jede Art. identifier vergleicht nur den geschriebenen Namen, ohne Namensauflösung."
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Begründung in der Meldung, z. B. \"Nur über ILogger\"."
+                    },
+                    "replacement": {
+                      "type": "string",
+                      "description": "Ersatz für die Schnellkorrektur."
+                    },
+                    "severity": {
+                      "type": "string",
+                      "enum": ["off", "hint", "info", "warning", "error"],
+                      "description": "Schweregrad dieses Eintrags; ohne Angabe der der Regel."
+                    },
+                    "units": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Units, in denen das Verbot gilt, als Muster; \"!\" davor schließt aus. Ohne Angabe überall."
+                    },
+                    "firstArgument": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Nur melden, wenn das erste Argument einer dieser Texte ist oder diesen Typ hat, z. B. [\"nil\"]."
+                    },
+                    "allowFirstArgument": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Erlaubt, wenn das erste Argument einer dieser Texte ist oder diesen Typ hat, z. B. [\"ErrOutput\", \"TextFile\"]."
+                    }
+                  }
+                }
+              },
               "ignore": {
                 "type": "array",
                 "items": {

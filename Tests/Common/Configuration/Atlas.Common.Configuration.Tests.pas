@@ -36,6 +36,8 @@ type
     [Test]
     procedure ChecksTodoKeywordsOption;
     [Test]
+    procedure ChecksForbiddenSymbolsOption;
+    [Test]
     procedure ReadsHints;
     [Test]
     procedure ReadsMcpDisabledTools;
@@ -1008,6 +1010,34 @@ begin
   Parse('{"rules": {"unrelated-class-cast": {"allowTypes": "TEdit"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.Contains(Issues[0].Message, '"allowTypes"');
+end;
+
+procedure TConfigurationParserTests.ChecksForbiddenSymbolsOption;
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  // symbols von forbidden-symbol (#1133).
+  Parse('{"rules": {"forbidden-symbol": {"symbols": [{"name": "System.Write*", "kind": "routine", ' +
+    '"message": "Nur über ILogger", "replacement": "Log", "severity": "error", "units": ["App.*", "!App.Cli"], ' +
+    '"firstArgument": ["nil"], "allowFirstArgument": ["ErrOutput"]}, {"name": "Vcl.Forms.TApplication.' +
+    'ProcessMessages"}]}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Parse('{"rules": {"forbidden-symbol": {"symbols": {"name": "X"}}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, '"symbols"');
+  Parse('{"rules": {"forbidden-symbol": {"symbols": [{"kind": "type"}, "X", {"name": ""}]}}}', mIssues);
+  Assert.AreEqual(3, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, 'ohne "name"');
+  Assert.Contains(mIssues[1].Message, 'ein Objekt');
+  Assert.Contains(mIssues[2].Message, '"name"');
+  Parse('{"rules": {"forbidden-symbol": {"symbols": [{"name": "X", "kind": "methode", "severity": "laut", ' +
+    '"units": "App", "message": 1, "farbe": "rot"}]}}}', mIssues);
+  Assert.AreEqual(5, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, '"kind"');
+  Assert.Contains(mIssues[1].Message, 'Schweregrad');
+  Assert.Contains(mIssues[2].Message, '"units"');
+  Assert.Contains(mIssues[3].Message, '"message"');
+  Assert.Contains(mIssues[4].Message, '"farbe"');
 end;
 
 procedure TConfigurationParserTests.ChecksTodoKeywordsOption;

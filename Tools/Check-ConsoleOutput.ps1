@@ -10,7 +10,9 @@
     - GetStdHandle(STD_OUTPUT_HANDLE) außerhalb von Atlas.Windows.Console.StdStreams
 
     Das Testprojekt ist ausgenommen, der DUnitX-Runner schreibt bewusst auf die Konsole.
-    Eine einzelne Zeile lässt sich mit dem Kommentar "// console-ok" freigeben.
+    Eine einzelne Zeile lässt sich mit dem Kommentar "// console-ok" oder
+    "// lsp-ignore: forbidden-symbol" freigeben. Dieselben Verbote stehen als
+    Regel forbidden-symbol in atlas.json (#1133).
 
     Exit-Code 0: keine Verstöße, 1: mindestens ein Verstoß.
 
@@ -24,6 +26,10 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+# Freigabe je Zeile: "// console-ok" oder wie bei der Atlas-Regel forbidden-symbol (#1133)
+# "// lsp-ignore: forbidden-symbol" in derselben Zeile.
+$Exempt = '//\s*(console-ok|lsp-ignore:[^\r\n]*\bforbidden-symbol\b)'
 
 $SourceDirs = @('Packages', 'Application', 'Setup')
 $StdHandleOwner = 'Atlas.Windows.Console.StdStreams.pas'
@@ -56,7 +62,7 @@ foreach ($dir in $SourceDirs) {
         # Write/Writeln als Aufruf, nicht als Methode (".Write") oder Deklaration ("procedure Write").
         foreach ($match in [regex]::Matches($text, '(?i)(?<![\w.])(?<!procedure\s+)(?<!function\s+)\b(write|writeln)\b\s*(?<rest>\(|;|\bend\b|\belse\b)')) {
             $line = Get-LineNumber $text $match.Index
-            if ($originalLines[$line - 1] -match '//\s*console-ok') { continue }
+            if ($originalLines[$line - 1] -match $Exempt) { continue }
             if ($match.Groups['rest'].Value -eq '(') {
                 $after = $text.Substring($match.Index + $match.Length)
                 if ($after -match '^\s*ErrOutput\s*[,)]') { continue }
@@ -67,7 +73,7 @@ foreach ($dir in $SourceDirs) {
         if ($file.Name -ne $StdHandleOwner) {
             foreach ($match in [regex]::Matches($text, '(?i)GetStdHandle\s*\(\s*STD_OUTPUT_HANDLE\s*\)')) {
                 $line = Get-LineNumber $text $match.Index
-                if ($originalLines[$line - 1] -match '//\s*console-ok') { continue }
+                if ($originalLines[$line - 1] -match $Exempt) { continue }
                 $violations += "${relative}:${line}: stdout-Handle nur über TStdStreams verwenden"
             }
         }

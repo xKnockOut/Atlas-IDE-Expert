@@ -40,6 +40,8 @@ type
     procedure ChangesListOnlyChangedRules;
     [Test]
     procedure OverridingRuleOnlyWhenEnabled;
+    [Test]
+    procedure ObjectListTableRoundTrips;
   end;
 
 implementation
@@ -333,6 +335,48 @@ begin
   finally
     Value.Free;
   end;
+end;
+
+procedure TAtlasRuleTableTests.ObjectListTableRoundTrips;
+var
+  mValue: TJSONValue;
+  mRows: TArray<TAtlasRuleRow>;
+  mOption: TAtlasRuleOption;
+  mCells: TArray<TArray<string>>;
+begin
+  // Tabelle der Symbole von forbidden-symbol (#1133).
+  mValue := TJSONObject.ParseJSONValue('{"rules": [{"id": "forbidden-symbol", "name": "Verboten", ' +
+    '"category": "code-smell", "severity": "warning", "group": "architecture", "options": [{"name": "symbols", ' +
+    '"type": "object-list", "columns": [{"name": "name"}, {"name": "kind"}, {"name": "units", "list": true}], ' +
+    '"default": [], "description": "Verbote"}]}]}');
+  try
+    mRows := TAtlasRuleTable.Rows(mValue, '{"forbidden-symbol": {"symbols": [{"name": "System.Write*", ' +
+      '"units": ["App.*", "!App.Cli"], "severity": "error"}, {"name": "TThread.Queue", "kind": "routine"}]}}');
+  finally
+    mValue.Free;
+  end;
+  mOption := mRows[0].Options[0];
+  Assert.AreEqual('object-list', mOption.Kind);
+  Assert.AreEqual(3, Integer(Length(mOption.Columns)));
+  Assert.IsTrue(mOption.Columns[2].List);
+  Assert.IsFalse(mOption.Columns[0].List);
+  mCells := TAtlasRuleTable.TableCells(mOption);
+  Assert.AreEqual(2, Integer(Length(mCells)));
+  Assert.AreEqual('System.Write*', mCells[0][0]);
+  Assert.AreEqual('', mCells[0][1]);
+  Assert.AreEqual('App.*; !App.Cli', mCells[0][2]);
+  Assert.AreEqual('routine', mCells[1][1]);
+  // Unbekannte Schlüssel (severity) stehen in keiner Spalte und fallen beim Zurückschreiben weg.
+  Assert.AreEqual('[{"name":"System.Write*","units":["App.*","!App.Cli"]},{"name":"TThread.Queue","kind":"routine"}]',
+    TAtlasRuleTable.TableJson(mOption, mCells));
+  // Leere Zeilen entfallen.
+  Assert.AreEqual('[{"kind":"type"}]', TAtlasRuleTable.TableJson(mOption,
+    [TArray<string>.Create(' ', '', ''), TArray<string>.Create('', 'type')]));
+  Assert.AreEqual('[]', TAtlasRuleTable.TableJson(mOption, nil));
+  mOption.ValueJson := '';
+  Assert.AreEqual(0, Integer(Length(TAtlasRuleTable.TableCells(mOption))));
+  mCells := nil;
+  mRows := nil;
 end;
 
 initialization

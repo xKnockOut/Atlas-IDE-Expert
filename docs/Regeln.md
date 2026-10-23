@@ -16,7 +16,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 14 |
-| [Architektur](#gruppe-architecture) | 3 |
+| [Architektur](#gruppe-architecture) | 4 |
 | [Stil und Metriken](#gruppe-style) | 43 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 4 |
@@ -316,6 +316,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`forbidden-uses`](#forbidden-uses) | Verbotene uses-Beziehung | Code Smell | Fehler |
 | [`architecture-role-import`](#architecture-role-import) | Import verletzt die Rollenmatrix | Code Smell | Warnung |
 | [`architecture-contract-content`](#architecture-contract-content) | Klasse in einer Contract-Unit | Code Smell | Warnung |
+| [`forbidden-symbol`](#forbidden-symbol) | Verbotenes Symbol verwendet | Code Smell | Warnung |
 
 <a id="gruppe-style"></a>
 ### Stil und Metriken
@@ -639,6 +640,36 @@ interface
 type
   IOrderList = interface
   end;
+```
+
+<a id="forbidden-symbol"></a>
+### forbidden-symbol
+
+**Verbotenes Symbol verwendet** · Code Smell · Warnung · Gruppe Architektur
+
+Eine Liste unter "symbols" in atlas.json verbietet Routinen, Typen, Konstanten, Felder, Properties, Aufzählungswerte oder Bezeichner, jeweils mit Meldung und Ersatz. Verglichen wird über die Namensauflösung, nicht über Text: System.SysUtils.FileExists trifft auch FileExists, aber nicht eine eigene Methode gleichen Namens. Ein Eintrag darf den Namen ab einer Punktgrenze kürzen (TThread.Queue) und * enthalten. Bezeichner aus System ohne Quelltext (Writeln, Halt) gelten als System.<Name>. Ist der linke Teil eines qualifizierten Namens gar nicht auflösbar (Unit nicht indexiert), wird der geschriebene Name mit dem Ende des Eintrags verglichen. Je Eintrag: kind (routine, type, constant, field, property, enumValue, identifier = nach Namen ohne Auflösung), message, replacement, severity, units (Muster der Unit-Namen, "!" schließt aus), firstArgument (nur mit diesem ersten Argument, z. B. nil) und allowFirstArgument (erlaubt mit diesem ersten Argument, z. B. ErrOutput); beide vergleichen den Text des Arguments oder den Namen seines Typs (TextFile). Standard aus und ohne Liste stumm; im Profil strict an. Sicherheit hoch. Schnellkorrektur: durch den konfigurierten Ersatz ersetzen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `symbols` | object-list | `[]` | Tabelle der verbotenen Symbole, ein Objekt je Eintrag: name (qualifiziert, * erlaubt), kind (routine, type, constant, field, property, enumValue oder identifier), message, replacement, severity, units (Muster, ! schließt aus), firstArgument und allowFirstArgument (Texte oder Typnamen des Arguments). |
+
+Mit Treffer:
+
+```pascal
+// atlas.json: "forbidden-symbol": {"symbols": [{"name": "System.Write*", "kind": "routine", "message": "Only via ILogger"}]}
+procedure TImport.Report(const AText: string);
+begin
+  Writeln(AText);
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TImport.Report(const AText: string);
+begin
+  FLogger.Info(AText);
+end;
 ```
 
 <a id="thread-vcl-access"></a>

@@ -58,6 +58,9 @@ const
     'keepAttributes', 'keepPatterns', 'allowUnits', 'allow', 'allowAttributes', 'allowTypes');
   /// <summary>Erlaubte Einträge von kinds bei deprecated-symbol (#1018).</summary>
   DeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
+  /// <summary>Erlaubte Arten in symbols von forbidden-symbol (#1133); wie TForbiddenSymbolRule.TryParseKind.</summary>
+  ForbiddenSymbolKinds: array[0..6] of string = ('routine', 'type', 'constant', 'field', 'property', 'enumValue',
+    'identifier');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
   NumberListRuleOptions: array[0..0] of string = ('allowed');
   /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
@@ -94,6 +97,7 @@ type
     procedure ReadInlayHints(ANode: TJsonNode);
     procedure ReadCodeLens(ANode: TJsonNode);
     procedure CheckTodoKeywords(ANode: TJsonNode);
+    procedure CheckForbiddenSymbols(ANode: TJsonNode);
     procedure ReadHints(ANode: TJsonNode);
     procedure ReadDirectives(ANode: TJsonNode);
     procedure ReadStringLiteral(ANode: TJsonNode);
@@ -367,6 +371,9 @@ begin
           else if (Value.Keys[Inner] = 'kinds') and (Rule.Id = 'deprecated-symbol') and
             not IsStringListOf(Value[Inner], DeprecationKinds) then
             ReportNode(Value[Inner], '"kinds" darf nur "deprecated", "experimental", "platform" und "library" enthalten')
+          // Verbotene Symbole von forbidden-symbol (#1133).
+          else if (Value.Keys[Inner] = 'symbols') and (Rule.Id = 'forbidden-symbol') then
+            CheckForbiddenSymbols(Value[Inner])
           // Suchquelle von uses-unit-not-found (#1016).
           else if (Value.Keys[Inner] = 'searchPaths') and
             (IndexStr(Value[Inner].Value, ['project', 'atlas', 'both']) < 0) then
@@ -790,6 +797,67 @@ begin
         Valid := False;
     if not Valid then
       ReportNode(ANode[Index], 'Eine Marke besteht nur aus Buchstaben und ist nicht DONE, z. B. "HACK"');
+  end;
+end;
+
+procedure TValidator.CheckForbiddenSymbols(ANode: TJsonNode);
+var
+  mIndex, mInner: Integer;
+  mItem, mValue: TJsonNode;
+  mKey: string;
+  mSeverity: TRuleSeverity;
+  mHasName: Boolean;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"symbols" muss eine Liste von Objekten mit "name" sein');
+    Exit;
+  end;
+  for mIndex := 0 to ANode.Count - 1 do
+  begin
+    mItem := ANode[mIndex];
+    if mItem.Kind <> TJsonKind.Object_ then
+    begin
+      ReportNode(mItem, 'Ein Eintrag von "symbols" ist ein Objekt mit "name", z. B. {"name": "System.Writeln"}');
+      Continue;
+    end;
+    mHasName := False;
+    for mInner := 0 to mItem.Count - 1 do
+    begin
+      mKey := mItem.Keys[mInner];
+      mValue := mItem[mInner];
+      if mKey = 'name' then
+      begin
+        mHasName := True;
+        if (mValue.Kind <> TJsonKind.String_) or (Trim(mValue.Value) = '') then
+          ReportNode(mValue, '"name" muss ein nicht leerer Text sein');
+      end
+      else if mKey = 'kind' then
+      begin
+        if (mValue.Kind <> TJsonKind.String_) or (IndexText(mValue.Value, ForbiddenSymbolKinds) < 0) then
+          ReportNode(mValue, '"kind" muss routine, type, constant, field, property, enumValue oder identifier sein');
+      end
+      else if (mKey = 'message') or (mKey = 'replacement') then
+      begin
+        if mValue.Kind <> TJsonKind.String_ then
+          ReportNode(mValue, Format('"%s" muss ein Text sein', [mKey]));
+      end
+      else if mKey = 'severity' then
+      begin
+        if (mValue.Kind <> TJsonKind.String_) or not TConfigurationParser.TryParseSeverity(mValue.Value, mSeverity) then
+          ReportNode(mValue, 'Unbekannter Schweregrad; erlaubt: off, hint, info, warning, error');
+      end
+      else if (mKey = 'units') or (mKey = 'firstArgument') or (mKey = 'allowFirstArgument') then
+      begin
+        if not IsStringList(mValue) then
+          ReportNode(mValue, Format('"%s" muss eine Liste von Texten sein', [mKey]));
+      end
+      else
+        ReportNode(mValue, Format('Unbekannter Schlüssel "%s"; erlaubt: name, kind, message, replacement, ' +
+          'severity, units, firstArgument, allowFirstArgument', [mKey]));
+    end;
+    if not mHasName then
+      ReportNode(mItem, 'Eintrag von "symbols" ohne "name"');
   end;
 end;
 

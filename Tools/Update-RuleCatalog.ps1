@@ -64,7 +64,7 @@ $LevelNames = @{
     'B' = 'B (Namensauflösung über Units)'
     'T' = 'T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar)'
 }
-$OptionKinds = @('integer', 'boolean', 'string', 'string-list', 'number-list', 'json')
+$OptionKinds = @('integer', 'boolean', 'string', 'string-list', 'number-list', 'object-list', 'json')
 
 # Vollständigkeit der Einträge
 foreach ($Rule in $Base.rules) {
@@ -85,6 +85,11 @@ foreach ($Rule in $Base.rules) {
             }
             if (($Option.PSObject.Properties.Name -contains 'type') -and ($OptionKinds -notcontains $Option.type)) {
                 $Problems.Add("Regel '$($Rule.id)': Option '$($Option.name)' hat unbekannten Typ '$($Option.type)'")
+            }
+            # Tabelle der Seite Prüfregeln (#1133): Spalten mit Namen.
+            if (($Option.PSObject.Properties.Name -contains 'type') -and ($Option.type -eq 'object-list') -and
+                (-not ($Option.PSObject.Properties.Name -contains 'columns') -or @($Option.columns | Where-Object { [string]::IsNullOrWhiteSpace($_.name) }).Count -gt 0 -or @($Option.columns).Count -eq 0)) {
+                $Problems.Add("Regel '$($Rule.id)': Option '$($Option.name)' braucht 'columns' mit Namen")
             }
         }
     }
