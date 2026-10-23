@@ -347,6 +347,8 @@ type
     ClassActions: Boolean;
     /// <summary>Code-Aktion „Typ ausschreiben“ für var X := … ohne Typangabe (#453).</summary>
     ExplicitType: Boolean;
+    /// <summary>Schnellkorrekturen an Compilermeldungen, Teil 2 (#549).</summary>
+    CompilerFixes: Boolean;
     /// <summary>Code-Aktionen „Warnung hier abschalten“ auf Compilermeldungen (#531).</summary>
     DisableWarning: Boolean;
     /// <summary>Beim Abschalten einer Warnung nach einer Begründung fragen (#531).</summary>
@@ -829,6 +831,7 @@ begin
   Result.TryFinally := True;
   Result.ClassActions := True;
   Result.ExplicitType := True;
+  Result.CompilerFixes := True;
   Result.DisableWarning := True;
   Result.DisableWarningReason := True;
   Result.Extract := True;

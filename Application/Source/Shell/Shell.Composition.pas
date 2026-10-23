@@ -63,6 +63,8 @@ uses
   Atlas.Common.Lsp.Baseline,
   Atlas.Common.Lsp.CompilerBaseline,
   Atlas.Common.Lsp.DisableWarning,
+  Atlas.Common.Lsp.CompilerFixes,
+  Atlas.Common.Editing.CompilerFixes,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Projects.Selection,
@@ -355,6 +357,8 @@ type
     /// <summary>„Warnung hier abschalten“ auf Meldungen des letzten Compilerlaufs (#531).</summary>
     function DisableWarningActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
     function DisableWarning(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Schnellkorrekturen an Meldungen des letzten Compilerlaufs (#549).</summary>
+    function CompilerFixActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
     /// <summary>Extrahieren, „case vervollständigen“ und „with auflösen“ (#50).</summary>
     function RefactoringActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
     /// <summary>Index, Einstellungen, Sprachversion und Formatstil für die Aktionen aus #50.</summary>
@@ -1396,6 +1400,7 @@ begin
       Result := Result + PropertyFromAccessorsActions(AUri, ARange.StartPos);
       Result := Result + InvertBooleanActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
+      Result := Result + CompilerFixActions(AUri, ARange);
       Result := Result + DisableWarningActions(AUri, ARange);
       Result := Result + RefactoringActions(AUri, ARange);
     end;
@@ -3507,6 +3512,30 @@ begin
   Shared := TSyntaxTreeCache.Get(Document, nil);
   Result := TLspDisableWarning.Actions(Options, Shared.Tree, AUri, ARange.StartPos.Line, ARange.EndPos.Line,
     Messages);
+end;
+
+function TServerComposition.CompilerFixActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
+var
+  Messages: TArray<TCompilerMessage>;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Uses_: TUsesContext;
+  Context: TCompilerFixContext;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).CompilerFixes or not FDocuments.TryGet(AUri, Document) then
+    Exit;
+  Messages := FCompilerResults.MessagesFor(TDocumentUris.ToPath(AUri));
+  if Messages = nil then
+    Exit;
+  Context := Default(TCompilerFixContext);
+  if FCodeActions.UsesContextFor(AUri, Uses_) then
+  begin
+    Context.Declaring := Uses_.Declaring;
+    Context.Namespaces := Uses_.Namespaces;
+  end;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspCompilerFixes.Actions(True, Document.Text, Shared.Tree, AUri, ARange, Messages, Context);
 end;
 
 function TServerComposition.DisableWarning(const AArguments: TJSONArray): TJSONValue;
