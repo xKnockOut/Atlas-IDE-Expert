@@ -175,6 +175,8 @@
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.UsesGraph.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.UsesLocator.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.UsesService.Tests.pas"/>
+        <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.SymbolPath.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SymbolPath.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Louvain.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Overview.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Layout.Tests.pas"/>

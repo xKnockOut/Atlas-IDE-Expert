@@ -15,6 +15,8 @@ type
     procedure ToolsListMatchesDocumentation;
     [Test]
     procedure ListsArchitectureTool;
+    [Test]
+    procedure ListsFindPathTool;
   end;
 
 implementation
@@ -70,6 +72,18 @@ begin
   for Name in TMcpShell.ToolNames do
     Found := Found or (Name = 'get_architecture');
   Assert.IsTrue(Found, 'get_architecture fehlt in tools/list');
+end;
+
+procedure TMcpShellTests.ListsFindPathTool;
+var
+  Name: string;
+  Found: Boolean;
+begin
+  // Weg zwischen Symbolen (#1117).
+  Found := False;
+  for Name in TMcpShell.ToolNames do
+    Found := Found or (Name = 'find_path');
+  Assert.IsTrue(Found, 'find_path fehlt in tools/list');
 end;
 
 initialization

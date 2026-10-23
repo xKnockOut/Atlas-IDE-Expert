@@ -118,6 +118,8 @@ uses
   Atlas.Common.Architecture.UsesGraph.Tests in 'Common\Architecture\Atlas.Common.Architecture.UsesGraph.Tests.pas',
   Atlas.Common.Architecture.UsesLocator.Tests in 'Common\Architecture\Atlas.Common.Architecture.UsesLocator.Tests.pas',
   Atlas.Common.Architecture.UsesService.Tests in 'Common\Architecture\Atlas.Common.Architecture.UsesService.Tests.pas',
+  Atlas.Common.Architecture.SymbolPath.Tests in 'Common\Architecture\Atlas.Common.Architecture.SymbolPath.Tests.pas',
+  Atlas.Common.Lsp.SymbolPath.Tests in 'Common\Lsp\Atlas.Common.Lsp.SymbolPath.Tests.pas',
   Atlas.Common.Architecture.Louvain.Tests in 'Common\Architecture\Atlas.Common.Architecture.Louvain.Tests.pas',
   Atlas.Common.Architecture.Overview.Tests in 'Common\Architecture\Atlas.Common.Architecture.Overview.Tests.pas',
   Atlas.Common.Architecture.Layout.Tests in 'Common\Architecture\Atlas.Common.Architecture.Layout.Tests.pas',

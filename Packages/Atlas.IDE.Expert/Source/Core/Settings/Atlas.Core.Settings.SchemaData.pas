@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2054] of string = (
+  Lines: array[0..2071] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1777,6 +1777,25 @@ const
     '      "x-page": "Editor",',
     '      "x-control": "Kontrollkästchen",',
     '      "x-issue": "#66"',
+    '    },',
+    '    "navigation": {',
+    '      "type": "object",',
+    '      "description": "Navigation über den Code: Weg zwischen zwei Symbolen oder Units über Aufrufe, Felder, Interfaces, Vererbung und uses (Plugin-Befehl „Weg zwischen Symbolen…“, MCP-Werkzeug find_pa' +
+      'th).",',
+    '      "additionalProperties": false,',
+    '      "properties": {',
+    '        "symbolPath": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Befehl „Weg zwischen Symbolen…“ im Plugin mit Einträgen im Menü Atlas, im Kontextmenü des Editors („Weg von hier nach…“) und in der Befehlspalette; aus = Befehl und Menüeintr' +
+      'äge fehlen. Das MCP-Werkzeug schaltet mcp.disabledTools (find_path) ab."',
+    '        }',
+    '      },',
+    '      "x-scope": "global",',
+    '      "x-area": "editor",',
+    '      "x-page": "Befehle",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "x-issue": "#1117"',
     '    },',
     '    "hints": {',
     '      "type": "object",',
