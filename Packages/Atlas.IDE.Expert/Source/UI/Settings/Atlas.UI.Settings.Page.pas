@@ -358,6 +358,10 @@ type
     FReassignedTargets: array[TAtlasReassignedTarget] of TCheckBox;
     FReassignedStyle: TAtlasChoiceBox;
     FReassignedColor: TEdit;
+    FExpressionType: TCheckBox;
+    FExpressionTypeConversions: TCheckBox;
+    FExpressionTypeConstValue: TCheckBox;
+    FExpressionTypeKey: TEdit;
     FNextChangeKey: TEdit;
     FPreviousChangeKey: TEdit;
     FOverviewRuler: TCheckBox;
@@ -1117,6 +1121,11 @@ type
     function ReassignedTargetCheck(ATarget: TAtlasReassignedTarget): TCheckBox;
     property ReassignedStyleBox: TAtlasChoiceBox read FReassignedStyle;
     property ReassignedColorEdit: TEdit read FReassignedColor;
+    /// <summary>Zum Testen: Typ des markierten Ausdrucks (#689).</summary>
+    property ExpressionTypeCheck: TCheckBox read FExpressionType;
+    property ExpressionTypeConversionsCheck: TCheckBox read FExpressionTypeConversions;
+    property ExpressionTypeConstValueCheck: TCheckBox read FExpressionTypeConstValue;
+    property ExpressionTypeKey: TEdit read FExpressionTypeKey;
     property RecursionMarkersDepthEdit: TEdit read FRecursionMarkersDepth;
     property HideElementKey: TEdit read FHideElementKey;
     /// <summary>Zum Testen: Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).</summary>
@@ -1658,6 +1667,11 @@ begin
     TAtlasStrings.Text(TAtlasTextId.SettingsReassignedStyleSolid),
     TAtlasStrings.Text(TAtlasTextId.SettingsReassignedStyleWavy)]);
   FReassignedColor := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedColor));
+  // Typ des markierten Ausdrucks (#689): an/aus, Umwandlungen, Wert und Kürzel.
+  FExpressionType := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExpressionType));
+  FExpressionTypeConversions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExpressionTypeConversions));
+  FExpressionTypeConstValue := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExpressionTypeConstValue));
+  FExpressionTypeKey := AddKey(TAtlasStrings.Text(TAtlasTextId.ExpressionTypeCommand));
   // Übersichtsleiste (#519): an/aus und je Art ein Häkchen.
   FOverviewRuler := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewRuler));
   FOverviewKinds[TAtlasOverviewKind.Diagnostics] :=
@@ -1975,6 +1989,7 @@ begin
   Bind('SelectionMatches', FSelectionMatches);
   Bind('ExitPoints', FExitPoints);
   Bind('Reassigned', FReassigned);
+  Bind('ExpressionType', FExpressionType);
   Bind('OverviewRuler', FOverviewRuler);
   Bind('RecursionMarkers', FRecursionMarkers);
   Bind('InlineDiagnostics', FInlineDiagnostics);
@@ -2798,6 +2813,10 @@ begin
     FMarks.Bind(FReassignedTargets[Target], ['ReassignedTargets']);
   FMarks.Bind(FReassignedStyle, ['ReassignedStyle']);
   FMarks.Bind(FReassignedColor, ['ReassignedColor']);
+  FMarks.Bind(FExpressionType, ['ExpressionType']);
+  FMarks.Bind(FExpressionTypeConversions, ['ExpressionTypeConversions']);
+  FMarks.Bind(FExpressionTypeConstValue, ['ExpressionTypeConstValue']);
+  FMarks.Bind(FExpressionTypeKey, ['ExpressionTypeKey']);
   FMarks.Bind(FNextChangeKey, ['NextChangeKey']);
   FMarks.Bind(FPreviousChangeKey, ['PreviousChangeKey']);
   FMarks.Bind(FOverviewRuler, ['OverviewRuler']);
@@ -4914,6 +4933,10 @@ begin
     FReassignedTargets[Target].Checked := Target in Targets;
   FReassignedStyle.Choice := Ord(TAtlasReassignedNames.StyleOf(ASettings.ReassignedStyle));
   FReassignedColor.Text := ASettings.ReassignedColor;
+  FExpressionType.Checked := ASettings.ExpressionType;
+  FExpressionTypeConversions.Checked := ASettings.ExpressionTypeConversions;
+  FExpressionTypeConstValue.Checked := ASettings.ExpressionTypeConstValue;
+  FExpressionTypeKey.Text := ShortCutToText(TShortCut(ASettings.ExpressionTypeKey));
   FNextChangeKey.Text := ShortCutToText(TShortCut(ASettings.NextChangeKey));
   FPreviousChangeKey.Text := ShortCutToText(TShortCut(ASettings.PreviousChangeKey));
   FOverviewRuler.Checked := ASettings.OverviewRuler;
@@ -5352,6 +5375,10 @@ begin
   ASettings.ReassignedStyle := TAtlasReassignedNames.Styles[TAtlasReassignedStyle(EnsureRange(
     FReassignedStyle.Choice, 0, Ord(High(TAtlasReassignedStyle))))];
   ASettings.ReassignedColor := TAtlasReassignedNames.NormalizeColor(FReassignedColor.Text);
+  ASettings.ExpressionType := FExpressionType.Checked;
+  ASettings.ExpressionTypeConversions := FExpressionTypeConversions.Checked;
+  ASettings.ExpressionTypeConstValue := FExpressionTypeConstValue.Checked;
+  ASettings.ExpressionTypeKey := Integer(TextToShortCut(Trim(FExpressionTypeKey.Text)));
   ASettings.NextChangeKey := Integer(TextToShortCut(Trim(FNextChangeKey.Text)));
   ASettings.PreviousChangeKey := Integer(TextToShortCut(Trim(FPreviousChangeKey.Text)));
   ASettings.OverviewRuler := FOverviewRuler.Checked;

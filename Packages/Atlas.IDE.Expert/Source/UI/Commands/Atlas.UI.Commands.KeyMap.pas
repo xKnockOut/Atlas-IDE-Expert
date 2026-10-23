@@ -354,6 +354,8 @@ begin
       Id := TAtlasTextId.NextBookmarkCommand;
     TAtlasKeyFunction.PreviousBookmark:
       Id := TAtlasTextId.PreviousBookmarkCommand;
+    TAtlasKeyFunction.ExpressionType:
+      Id := TAtlasTextId.ExpressionTypeCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;
