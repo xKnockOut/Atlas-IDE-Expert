@@ -33,6 +33,8 @@ type
     [Test]
     procedure ReadsReferences;
     [Test]
+    procedure ReadsNavigation;
+    [Test]
     procedure MetricsSwitchesOffMetricRules;
     [Test]
     procedure ChecksMetricLimitOption;
@@ -967,6 +969,30 @@ begin
   // Die Datei ersetzt den Block aus dem Editor.
   Settings := TConfigurationParser.ParseLayered('{"references": {"inferred": false}}', '{"references": {}}', Issues);
   Assert.IsTrue(Settings.References.Inferred);
+end;
+
+procedure TConfigurationParserTests.ReadsNavigation;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Navigation.Impact);
+  Assert.AreEqual(2, Settings.Navigation.ImpactDepth);
+  Settings := Parse('{"navigation": {"impact": false, "impactDepth": 4}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Navigation.Impact);
+  Assert.AreEqual(4, Settings.Navigation.ImpactDepth);
+  // Außerhalb von 1 bis 5 bleibt die Vorgabe; unbekannte Schlüssel sind Warnungen.
+  Settings := Parse('{"navigation": {"impactDepth": 9, "x": 1}}', Issues);
+  Assert.AreEqual(2, Settings.Navigation.ImpactDepth);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Assert.IsTrue(Issues[0].IsError);
+  Assert.IsFalse(Issues[1].IsError);
+  Parse('{"navigation": true}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"navigation": {"impactDepth": 5}}', '{"navigation": {}}', Issues);
+  Assert.AreEqual(2, Settings.Navigation.ImpactDepth);
 end;
 
 procedure TConfigurationParserTests.MetricsSwitchesOffMetricRules;

@@ -140,6 +140,9 @@ type
     class procedure EditorModified(const AView: IOTAEditView); static;
     /// <summary>Untermenü Atlas in die Kontextmenüs der Editorfenster hängen.</summary>
     class procedure EnsureContextMenus; static;
+    /// <summary>Nach einer Einstellungsänderung: abschaltbare Einträge des Kontextmenüs (#1120) ein- bzw. ausblenden.
+    /// </summary>
+    class procedure UpdateContextMenus; static;
     /// <summary>Kontextmenü „Test am Cursor ausführen“ (#585); setzt die Composition, nil = ausgeschaltet (der
     /// Eintrag meldet das).</summary>
     class property OnRunTest: TProc read FOnRunTest write FOnRunTest;
@@ -186,6 +189,7 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Results.Commands,
+  Atlas.IDE.Results.Impact,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Notes.Service,
@@ -473,6 +477,16 @@ begin
     begin
       TAtlasIdeResults.FindReferences;
     end);
+  // Auswirkungen anzeigen (#1120), nur mit navigation.impact.
+  FContextMenu.AddWhen(TAtlasFeature.Results, 'Atlas.Impact', TAtlasStrings.Text(TAtlasTextId.ImpactCommand), nil,
+    procedure
+    begin
+      TAtlasIdeImpact.ShowAtCursor;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeImpact.Enabled;
+    end);
   FContextMenu.Add('-', nil, nil);
   FContextMenu.Add('Atlas.SwitchTestUnit', TAtlasStrings.Text(TAtlasTextId.EditorTestUnit),
     function: Integer
@@ -641,6 +655,12 @@ class procedure TAtlasIdeEditorCommands.EnsureContextMenus;
 begin
   if FContextMenu <> nil then
     FContextMenu.EnsureAll;
+end;
+
+class procedure TAtlasIdeEditorCommands.UpdateContextMenus;
+begin
+  if FContextMenu <> nil then
+    FContextMenu.UpdateVisibility;
 end;
 
 class function TAtlasIdeEditorCommands.Session: TLspSession;

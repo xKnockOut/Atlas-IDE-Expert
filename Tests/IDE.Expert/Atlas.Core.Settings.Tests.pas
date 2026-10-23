@@ -239,6 +239,8 @@ begin
   Assert.IsTrue(Settings.CodeLensMetrics, 'Code Lens Metriken standardmäßig an (#66)');
   Assert.IsTrue(Settings.ReferencesInferred, 'erschlossene Verwendungen standardmäßig an (#1119)');
   Assert.IsFalse(Settings.ReferencesTextMatches, 'Textfunde standardmäßig aus (#1119)');
+  Assert.IsTrue(Settings.Impact, 'Auswirkungen anzeigen standardmäßig an (#1120)');
+  Assert.AreEqual(2, Settings.ImpactDepth, 'Tiefe der Auswirkungsanalyse standardmäßig 2 (#1120)');
   Assert.IsTrue(Settings.CodeLensTests, 'Code Lens „Test ausführen“ standardmäßig an (#69)');
   Assert.IsTrue(Settings.TestRun, 'Tests ausführen standardmäßig da (#69)');
   Assert.IsFalse(Settings.TestsAfterBuild, 'Tests nach dem Build standardmäßig aus (#69)');
@@ -651,6 +653,13 @@ begin
   Settings.ShortcutTipsScope := 'ide';
   Settings.Normalize;
   Assert.AreEqual('all', Settings.ShortcutTipsScope, 'unbekannt: all');
+  // navigation.impactDepth (#1120): 1 bis 5.
+  Settings.ImpactDepth := 0;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinImpactDepth, Settings.ImpactDepth);
+  Settings.ImpactDepth := 9;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MaxImpactDepth, Settings.ImpactDepth);
 end;
 
 procedure TAtlasPluginSettingsTests.OneActionAfterSaving;
@@ -1831,6 +1840,8 @@ begin
   Store.WriteInteger('CodeLensMetrics', 0);
   Store.WriteInteger('ReferencesInferred', 0);
   Store.WriteInteger('ReferencesTextMatches', 1);
+  Store.WriteInteger('Impact', 0);
+  Store.WriteInteger('ImpactDepth', 4);
   Store.WriteInteger('PairColors', 0);
   Store.WriteString('ServerPath', 'C:\Atlas\AtlasServer.exe');
   Assert.Contains(Routed.Text, '"slashCommands": {');
@@ -1842,6 +1853,11 @@ begin
   Assert.Contains(Routed.Text, '"references": {');
   Assert.Contains(Routed.Text, '"inferred": false');
   Assert.Contains(Routed.Text, '"textMatches": true');
+  // Auswirkungsanalyse (#1120): navigation.* für Plugin, Server und MCP.
+  Assert.Contains(Routed.Text, '"navigation": {');
+  Assert.Contains(Routed.Text, '"impact": false');
+  Assert.Contains(Routed.Text, '"impactDepth": 4');
+  Assert.AreEqual(4, Store.ReadInteger('ImpactDepth', 2));
   Assert.AreEqual(0, Store.ReadInteger('ReferencesInferred', 1));
   Assert.AreEqual(-1, Registry.ReadInteger('ReferencesInferred', -1));
   // Reine Plugin-Werte bleiben in der Registry.

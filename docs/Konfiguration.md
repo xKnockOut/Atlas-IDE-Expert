@@ -44,6 +44,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `inlayHints` | global (settings.json) | object | – |  | Inlay Hints im Editor. |
 | `codeLens` | global (settings.json) | object | – |  | Code Lens im Editor. |
 | `references` | global (settings.json) | object | – |  | Treffersicherheit von Verwendungen, Aufrufhierarchie und Umbenennen: Neben den sicheren (eindeutig aufgelösten) Stellen erscheinen erschlossene mit Grund, etwa Aufrufe über ein Interface oder in einem inaktiven {$IFDEF}-Zweig. Umbenennen ändert nur sichere Stellen und listet die erschlossenen. |
+| `navigation` | global (settings.json) | object | – |  | Auswirkungsanalyse: Was ist betroffen, wenn ich ein Symbol ändere? Aufrufer, Verweise, Overrides, Interface-Umsetzungen und Formularbindungen nach Ebenen, dazu die betroffenen Tests (Plugin-Befehl „Auswirkungen anzeigen“, MCP-Werkzeug get_impact). |
 | `hints` | global (settings.json) | object | – |  | Anzeige von XMLDoc-Kommentaren (///) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku immer vollständig auf; die Werte steuern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas. |
 | `directives` | global (settings.json) | object | – |  | Hilfen in Compiler-Direktiven: Vervollständigung und Hover für Direktiven wie {$R+} oder {$WARN …} und für bedingte Symbole in {$IFDEF}, {$IFNDEF}, {$IF Defined(…)}, {$DEFINE} und {$UNDEF}. |
 | `stringLiteral` | Projekt (atlas.json) | object | – |  | Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“. |
@@ -211,6 +212,13 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 |---|---|---|---|---|---|
 | `references.inferred` | global (settings.json) | boolean | `true` |  | Erschlossene Treffer zeigen: über ein Interface, das die Klasse umsetzt, über die überschriebene Methode eines Vorfahren, nicht eindeutige Überladungen, gleicher Name mit unbekanntem Typ (with, unbekannter Ausdruck) und Stellen in inaktiven Zweigen; aus = nur sichere Treffer wie bisher. |
 | `references.textMatches` | global (settings.json) | boolean | `false` |  | Auch den Namen in String-Literalen als erschlossen melden, etwa für RTTI oder MethodAddress('Speichern'). |
+
+## navigation
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `navigation.impact` | global (settings.json) | boolean | `true` |  | Befehl „Auswirkungen anzeigen“ im Plugin mit Einträgen im Kontextmenü, im Menü Atlas und in der Befehlspalette; aus = Befehl und Menüeinträge fehlen. Das MCP-Werkzeug schaltet mcp.disabledTools (get_impact) ab. |
+| `navigation.impactDepth` | global (settings.json) | integer | `2` | 1…5 | Vorgabe der Tiefe der Auswirkungsanalyse in IDE und MCP: 1 = nur direkte Aufrufer und Verweise, jede weitere Ebene geht einen Schritt weiter zurück. |
 
 ## hints
 

@@ -56,6 +56,7 @@ uses
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Mcp.CodeTools,
+  Atlas.Common.Lsp.Impact,
   Atlas.Common.Todos.Contract,
   Atlas.Common.Mcp.BuildTools,
   Atlas.Common.Mcp.Paths,
@@ -479,6 +480,31 @@ begin
       ACode.Namespaces := AWorkspace.Namespaces;
       Result := ACode.CallHierarchy(TMcpServer.RequiredString(AArguments, 'name'),
         TMcpCodeTools.ParseDirection(TMcpServer.OptionalString(AArguments, 'direction')));
+    end);
+  AServer.AddTool('get_impact',
+    'Auswirkungsanalyse (#1120): Was ist betroffen, wenn sich ein Symbol ändert? Aufrufer und Verweise, ' +
+    'Overrides, überschriebene Basismethode, Interface-Methode und Umsetzungen sowie Formularbindungen, nach ' +
+    'Ebenen bis zur Tiefe (Vorgabe navigation.impactDepth), dazu die betroffenen DUnitX-Tests mit den Namen ' +
+    'für run_tests. Erschlossene Treffer mit Grund (#1119); erreichte Grenzen stehen am Ende.',
+    '{"type":"object","properties":{' +
+      '"name":{"type":"string","description":"Symbol, am besten qualifiziert (TFoo.Bar)"},' +
+      '"depth":{"type":"integer","minimum":1,"maximum":5,"description":"Ebenen; leer = navigation.impactDepth"},' +
+      '"format":{"type":"string","enum":["text","json"],"description":"text (Vorgabe) oder json wie atlas/impact"}' +
+      '},"required":["name"]}',
+    function(const AArguments: TJSONObject): string
+    var
+      Name, Format: string;
+      Depth: Integer;
+    begin
+      Name := TMcpServer.RequiredString(AArguments, 'name');
+      Format := TMcpServer.OptionalString(AArguments, 'format');
+      if (Format <> '') and not SameText(Format, 'text') and not SameText(Format, 'json') then
+        raise EMcpToolError.Create('"format" ist text oder json');
+      ACode.Namespaces := AWorkspace.Namespaces;
+      if AArguments.TryGetValue<Integer>('depth', Depth) then
+        Result := ACode.Impact(Name, Depth, SameText(Format, 'json'))
+      else
+        Result := ACode.Impact(Name, SameText(Format, 'json'));
     end);
   AServer.AddTool('get_last_build',
     'Ergebnis des letzten Builds, den der Benutzer in der IDE gestartet hat: Erfolg, Art, Zeitpunkt, Dauer, ' +
@@ -989,6 +1015,40 @@ begin
       Result := Workspace.Configuration.Settings.References;
     end;
   Edit.SettingsFor := Code.SettingsFor;
+  // Auswirkungsanalyse (#1120): Tiefe aus navigation, Testunits aus testUnits und dem Testprogramm.
+  Code.ImpactOptionsFor :=
+    function(const AUri: string): TImpactOptions
+    var
+      Settings: TServerSettings;
+      Project, Candidate, Text: string;
+      Info: TProjectInfo;
+    begin
+      Settings := Workspace.Configuration.Settings;
+      Result := TImpactOptions.Default;
+      Result.Depth := Settings.Navigation.ImpactDepth;
+      Result.References := Settings.References;
+      // Kein Watchdog wie im LSP: großzügig, die Antwort meldet das erreichte Limit.
+      Result.TimeoutMs := 60000;
+      Project := Settings.TestUnits.Project;
+      if (Project <> '') and not TPath.IsPathRooted(Project) then
+        Project := TPath.Combine(Root, Project);
+      if Project = '' then
+        for Candidate in ProjectFilesUnder(Root) do
+          if IsTestProject(Candidate) then
+          begin
+            Project := Candidate;
+            Break;
+          end;
+      Text := '';
+      if (Project <> '') and FileExists(ChangeFileExt(Project, '.dproj')) and
+        LoadProject(ChangeFileExt(Project, '.dproj'), '', '', Info) and (Info.MainSource <> '') then
+        Project := Info.MainSource
+      else if Project <> '' then
+        Project := ChangeFileExt(Project, '.dpr');
+      if (Project <> '') and not ReadSourceText(Project, Text) then
+        Text := '';
+      Result.Tests := TImpactTestScope.FromProgram(Settings.TestUnits.Pattern, Text);
+    end;
   Edit.Audit :=
     procedure(const AText: string)
     begin

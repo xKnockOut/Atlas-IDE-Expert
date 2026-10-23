@@ -6125,3 +6125,21 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index. Beispiel: `IKunde
 | TS8 | „Auch Namen in Strings als Verwendung melden“ an, TS1 wiederholen | Zusätzlich `MethodAddress('Speichern')` unter „Erschlossen“ mit „[im Text]“, markiert ist nur der Name ohne Anführungszeichen; das Kontrollkästchen ist nur bedienbar, solange „Erschlossene Verwendungen zeigen“ an ist |
 | TS9 | In Claude Code `find_references` und `rename_symbol` (dryRun) für `TKunde.Speichern` | „n Verwendungen …, a sicher, b erschlossen:“, sichere zuerst, dann „Erschlossen, vor dem Umbenennen prüfen:“ mit „– erschlossen (interface): …“; rename_symbol endet mit „Nicht geändert, bitte prüfen (b erschlossene Stellen):“ |
 | TS10 | Englische IDE-Sprache | „Sure (n)“, „Inferred (n) · check before renaming“, „Sure only“, Gründe auf Englisch |
+
+## Auswirkungsanalyse (#1120)
+
+Voraussetzung: Server läuft in der IDE mit Projekt, Index und Testprojekt (DUnitX). Beispiel: `Ziel` wird von `Hilfe` zweimal aufgerufen, `Hilfe` von `Oben`, vom initialization-Teil einer Unit und vom Test `TWerkzeugTests.PrueftHilfe`; `Oben` vom Handler `TForm1.Button1Click`, der in der .dfm an `OnClick` hängt. Dazu `TBasis.Arbeite` (virtual) mit Override `TKind.Arbeite` und `IRechner.Rechne`, umgesetzt von `TKind.Rechne`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AW1 | Cursor auf `Ziel`, Kontextmenü *Atlas › Auswirkungen anzeigen* | Erst „Ermittle Auswirkungen von Ziel (Tiefe 2) …“, die IDE bleibt bedienbar; dann Titel „Auswirkungen von Ziel · Tiefe 2 · n Stellen“, „Direkt (1)“ mit „Hilfe … ×2“, „Indirekt (n)“ mit Hilfe › Oben, Unit-Ebene, PrueftHilfe · Test (**Abnahme**) |
+| AW2 | Rechts im Kopf „Tiefe:“ auf 3 | Neu gerechnet; unter Oben steht `Button1Click` mit Unterzeile „Formular: OnClick = Button1Click  (Unit1.dfm:n)“; „⚠ Tiefe 3 erreicht: …“ nur, wenn es weiterginge |
+| AW3 | Doppelklick auf eine Stelle und auf die Formularzeile | Sprung zur Verwendung der Ursache in der Stelle bzw. in die .dfm-Zeile |
+| AW4 | „Betroffene Tests (1)“ und „Betroffene Tests ausführen“ | Der Testläufer (#69) startet nur `…TWerkzeugTests.PrueftHilfe`; ohne betroffene Tests ist der Knopf gesperrt und die Zeile „Keine betroffenen Tests“ erscheint |
+| AW5 | Auswirkungen von `TBasis.Arbeite`, dann von `TKind.Arbeite` | „TKind.Arbeite · Override“ bzw. „TBasis.Arbeite · überschriebene Basismethode“ |
+| AW6 | Auswirkungen von `IRechner.Rechne`, dann von `TKind.Rechne` | „TKind.Rechne · Umsetzung“ bzw. „IRechner.Rechne · Interface-Methode“ |
+| AW7 | Zwei Routinen, die sich gegenseitig aufrufen, Tiefe 5 | Jede erscheint einmal, kein endloser Baum |
+| AW8 | Großes Projekt, Symbol mit vielen Verwendungen, Tiefe 5 | Ergebnis kommt innerhalb des Zeitlimits mit „⚠ Zeitlimit von … ms erreicht“ bzw. „Höchstzahl von 1000 Stellen erreicht“; die IDE friert nicht ein |
+| AW9 | *Optionen › Atlas › Befehle › Auswirkungen*: Befehl aus, Vorgabe der Tiefe 4 | Eintrag fehlt im Kontextmenü, unter *Atlas › Suchen* und in der Befehlspalette; wieder an: da, und die Analyse beginnt mit Tiefe 4 |
+| AW10 | In Claude Code `get_impact` mit `name` = `Ziel`, ohne und mit `depth` 3, dann `format` `json` | Text mit Baum, „Betroffene Tests:“, „run_tests tests: …“ und Grenzen; JSON wie atlas/impact |
+| AW11 | Englische IDE-Sprache | „Show impact“, „Direct (n)“, „Indirect (n)“, „Affected tests (n)“, „Run affected tests“, „Depth:“ |
