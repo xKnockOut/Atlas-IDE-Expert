@@ -6108,3 +6108,13 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index; Metrik-Linse (`co
 | JM6 | Vorfahr aus einer Unit, die nicht im Index steht | Linse „Vererbungstiefe mindestens n“; Meldung nur, wenn schon die bekannten Vorfahren über der Grenze liegen |
 | JM7 | Metrik-Linse über einer Methode | „… · 2 Parameter · Operanden 6 (> 5) · 3 lokale · 1 Ausstiege“; Werte über der Grenze farbig. Auf Englisch: „operands 6 (> 5) · 3 locals · 1 exits“ |
 | JM8 | `"metric-boolean-operands": {"max": 6}`, `"metric-local-count": "off"`, `"metric-exit-points": {"exclude": ["Alt/*.pas"]}`, `"group:style": "off"` | Beispiel aus JM1 meldet nichts mehr; keine lokale-Variablen-Meldung; keine Ausstiege-Meldung in `Alt/`; mit der Gruppe aus keine der vier Regeln |
+
+## Parser-Lücken aus der Gegenprüfung mit DelphiAST (#1137, #1138, #1134, #1140, #1142)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index. Proben aus `werkzeuge/delphiast/gegenpruefung/proben` (Projektdateien).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PX1 | Probe `p05_double_ampersand.pas` öffnen (`class function &&op_Equality(…)` im Record und im implementation-Teil) | Kein Syntaxfehler, Gliederung zeigt `&op_Equality` im Typ und `TValue.&op_Equality` im implementation-Teil (**Abnahme**: Spring4D `Spring.pas` ohne Syntaxfehler) |
+| PX2 | In einer Methode `TValue.&&op_Equality(A, B)` schreiben, Strg+Klick und Hover auf `op_Equality` | Sprung zur Deklaration im Record, Hover mit der Signatur |
+| PX3 | Klasse mit `procedure &Type;`, im Code `F.` tippen und `Type` wählen | Vorschlag „Type“, eingefügt wird `&Type`; Strg+Klick auf `&Type` springt zur Deklaration |

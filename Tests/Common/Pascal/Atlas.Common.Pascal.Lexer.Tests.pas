@@ -103,6 +103,8 @@ end;
 procedure TPascalLexerTests.EscapedReservedWordIsIdentifier;
 begin
   Assert.AreEqual('Identifier:&begin|Symbol:.|Identifier:Name', Describe('&begin.Name'));
+  // #1137: && vor einem Bezeichner gehört zum Bezeichner.
+  Assert.AreEqual('Identifier:TValue|Symbol:.|Identifier:&&op_Equality|Symbol:(', Describe('TValue.&&op_Equality('));
 end;
 
 procedure TPascalLexerTests.ReservedWordAfterAtIsIdentifier;

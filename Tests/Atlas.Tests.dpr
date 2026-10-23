@@ -226,6 +226,7 @@ uses
   Atlas.Common.Pascal.VariantRecords.Tests in 'Common\Pascal\Atlas.Common.Pascal.VariantRecords.Tests.pas',
   Atlas.Common.Pascal.HelperAncestors.Tests in 'Common\Pascal\Atlas.Common.Pascal.HelperAncestors.Tests.pas',
   Atlas.Common.Pascal.LanguageGaps.Tests in 'Common\Pascal\Atlas.Common.Pascal.LanguageGaps.Tests.pas',
+  Atlas.Common.Pascal.ParserGaps.Tests in 'Common\Pascal\Atlas.Common.Pascal.ParserGaps.Tests.pas',
   Atlas.Common.Pascal.IncludeDefines.Tests in 'Common\Pascal\Atlas.Common.Pascal.IncludeDefines.Tests.pas',
   Atlas.Common.Pascal.SyntaxTree.Tests in 'Common\Pascal\Atlas.Common.Pascal.SyntaxTree.Tests.pas',
   Atlas.Common.Pascal.IncludeFiles.Tests in 'Common\Pascal\Atlas.Common.Pascal.IncludeFiles.Tests.pas',
