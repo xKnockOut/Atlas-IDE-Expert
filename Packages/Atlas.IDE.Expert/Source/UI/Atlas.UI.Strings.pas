@@ -706,7 +706,11 @@ type
     ExtractMembersName, ExtractMembersUnit, ExtractMembersOwnUnit, ExtractMembersColMember, ExtractMembersColKind, ExtractMembersColVisibility,
     ExtractMembersColReason, ExtractMembersAll, ExtractMembersNone, ExtractMembersPreview, ExtractMembersCancel, ExtractMembersBadName,
     ExtractMembersSameName, ExtractMembersNoMembers, ExtractMembersBadUnit, ExtractMembersMethod, ExtractMembersProperty, ExtractIntfTitle,
-    ExtractIntfFailed, ExtractIntfNothing, ExtractIntfPreviewHint, ExtractIntfApply, ExtractIntfDone, ExtractIntfWarning);
+    ExtractIntfFailed, ExtractIntfNothing, ExtractIntfPreviewHint, ExtractIntfApply, ExtractIntfDone, ExtractIntfWarning,
+    // „Basisklasse herauslösen“ (#713) im selben Dialog.
+    ExtractMembersField, ExtractMembersAbstractMethod, ExtractMembersAbstract, ExtractMembersTakeNeeds,
+    ExtractMembersMissing, ExtractSuperTitle, ExtractSuperFailed, ExtractSuperNothing, ExtractSuperPreviewHint,
+    ExtractSuperDone);
 
   TAtlasStrings = class
   private class var
@@ -2318,7 +2322,17 @@ const
      'Interface %s: %d Änderungen in %d Dateien',
      'Herauslösen',
      'Interface %s herausgelöst: %d Änderungen in %d Dateien übernommen.',
-     'Hinweis: %s'),
+     'Hinweis: %s',
+     'Feld',
+     'Methode (abstrakt)',
+     'Nur abstrakt',
+     'Abhängigkeiten',
+     '„%s“ benutzt „%s“: bitte mitnehmen oder abstrakt deklarieren.',
+     'Basisklasse aus %s herauslösen',
+     'Basisklasse herauslösen fehlgeschlagen: %s',
+     'Basisklasse herauslösen: nichts zu ändern.',
+     'Basisklasse %s: %d Änderungen in %d Dateien',
+     'Basisklasse %s herausgelöst: %d Änderungen in %d Dateien übernommen.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3834,7 +3848,17 @@ const
      'Interface %s: %d changes in %d files',
      'Extract',
      'Interface %s extracted: %d changes applied in %d files.',
-     'Note: %s'));
+     'Note: %s',
+     'Field',
+     'Method (abstract)',
+     'Abstract only',
+     'Dependencies',
+     '“%s” uses “%s”: take it along or declare it abstract.',
+     'Extract superclass from %s',
+     'Extract superclass failed: %s',
+     'Extract superclass: nothing to change.',
+     'Superclass %s: %d changes in %d files',
+     'Superclass %s extracted: %d changes applied in %d files.'));
 
 { TAtlasStrings }
 

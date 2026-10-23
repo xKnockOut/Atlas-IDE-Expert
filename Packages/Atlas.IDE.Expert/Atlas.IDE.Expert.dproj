@@ -195,6 +195,7 @@
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ChangeSignature.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.MoveClass.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ExtractInterface.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ExtractSuperclass.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.PropertyFromAccessors.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.InvertBoolean.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.KeyHook.pas"/>

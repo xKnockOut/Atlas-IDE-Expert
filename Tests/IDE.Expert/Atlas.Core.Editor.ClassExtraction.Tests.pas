@@ -2,7 +2,8 @@
 
 // Eingabemaske „Mitglieder herauslösen“ (#664, #713) ohne VCL: Laden der
 // Antwort von prepare, Häkchen (gesperrte bleiben), Prüfung von Name,
-// Auswahl und Ziel-Unit sowie das JSON für den Server.
+// Auswahl und Ziel-Unit sowie das JSON für den Server; für die Basisklasse
+// abstrakte Methoden, Abhängigkeiten und das vorgewählte Ziel.
 
 interface
 
@@ -40,6 +41,18 @@ type
     procedure EmptyAnswerGivesEmptyModel;
     [Test]
     procedure OwnUnitMeansSameUnit;
+    [Test]
+    procedure LoadsSuperclassModesAndTarget;
+    [Test]
+    procedure AbstractOnlyWhereAllowed;
+    [Test]
+    procedure ReportsMissingDependency;
+    [Test]
+    procedure AbstractMethodNeedsNothing;
+    [Test]
+    procedure TakesDependenciesTransitively;
+    [Test]
+    procedure RequestJsonCarriesAbstractIds;
   end;
 
 implementation
@@ -58,6 +71,18 @@ const
     '{"id":7,"name":"Name","kind":"property","display":"property Name: string","visibility":"public",' +
     '"checked":false,"enabled":true,"reason":"bekommt GetName und SetName"}],' +
     '"notes":["TKunde erbt jetzt von TInterfacedObject"],"units":["Haupt","Kunden.Daten"]}';
+
+  // Basisklasse (#713): Run benutzt Helper, Helper benutzt FItems; Show darf abstrakt werden, Done nicht.
+  Super = '{"className":"TPdfExport","ownUnit":"Export","name":"TExportBase","unit":"ExportBase","candidates":[' +
+    '{"id":1,"name":"FItems","kind":"field","display":"FItems: TStrings;","visibility":"private",' +
+    '"enabled":true,"canAbstract":false,"abstract":false,"needs":[]},' +
+    '{"id":2,"name":"Helper","kind":"method","display":"procedure Helper;","visibility":"private",' +
+    '"enabled":true,"canAbstract":true,"abstract":false,"needs":[1]},' +
+    '{"id":3,"name":"Run","kind":"method","display":"procedure Run;","visibility":"public",' +
+    '"enabled":true,"canAbstract":true,"abstract":true,"needs":[2]},' +
+    '{"id":4,"name":"Done","kind":"method","display":"class procedure Done;","visibility":"public",' +
+    '"enabled":true,"canAbstract":false,"abstract":true,"reason":"Klassenmethode","needs":[]}],' +
+    '"notes":[],"units":["ExportBase"]}';
 
 function TClassExtractionModelTests.Prepared(const AJson: string): TAtlasClassExtractionModel;
 var
@@ -200,6 +225,105 @@ begin
   Request := FModel.RequestJson;
   try
     Assert.AreEqual('', Request.GetValue('unit').Value);
+  finally
+    Request.Free;
+  end;
+end;
+
+procedure TClassExtractionModelTests.LoadsSuperclassModesAndTarget;
+var
+  Model: TAtlasClassExtractionModel;
+begin
+  Model := Prepared(Super);
+  Assert.AreEqual('ExportBase', Model.TargetUnit);
+  Assert.AreEqual('ExportBase', Model.Target);
+  Assert.AreEqual('field', Model[0].Kind);
+  Assert.IsTrue(Model.HasModes);
+  Assert.IsTrue(Model.HasNeeds);
+  Assert.IsTrue(Model[2].Abstract);
+  // Der Server darf abstract nur setzen, wo canAbstract gilt.
+  Assert.IsFalse(Model[3].Abstract);
+  Assert.AreEqual(1, Integer(Length(Model[2].Needs)));
+  Assert.AreEqual(2, Model[2].Needs[0]);
+end;
+
+procedure TClassExtractionModelTests.AbstractOnlyWhereAllowed;
+var
+  Model: TAtlasClassExtractionModel;
+begin
+  Model := Prepared(Super);
+  Model.SetAbstract(3, True);
+  Assert.IsFalse(Model[3].Abstract);
+  Model.SetAbstract(1, True);
+  Assert.IsTrue(Model[1].Abstract);
+  Model.SetAbstract(2, False);
+  Assert.IsFalse(Model[2].Abstract);
+  Model.SetAbstract(-1, True);
+  Model.SetAbstract(99, True);
+end;
+
+procedure TClassExtractionModelTests.ReportsMissingDependency;
+var
+  Model: TAtlasClassExtractionModel;
+  Subject, Member, Needed: string;
+begin
+  Model := Prepared(Super);
+  Model.SetChecked(1, True);
+  Assert.AreEqual(Ord(TAtlasExtractionProblem.MissingDependency), Ord(Model.Validate(Subject)));
+  Assert.AreEqual('Helper', Subject);
+  Assert.IsTrue(Model.MissingDependency(Member, Needed));
+  Assert.AreEqual('Helper', Member);
+  Assert.AreEqual('FItems', Needed);
+  Model.SetChecked(0, True);
+  Assert.AreEqual(Ord(TAtlasExtractionProblem.None), Ord(Model.Validate));
+  Assert.IsFalse(Model.MissingDependency(Member, Needed));
+  Assert.AreEqual('', Member);
+end;
+
+procedure TClassExtractionModelTests.AbstractMethodNeedsNothing;
+var
+  Model: TAtlasClassExtractionModel;
+begin
+  Model := Prepared(Super);
+  // Run wandert nur abstrakt: Helper muss nicht mit.
+  Model.SetChecked(2, True);
+  Assert.AreEqual(Ord(TAtlasExtractionProblem.None), Ord(Model.Validate));
+  Model.SetAbstract(2, False);
+  Assert.AreEqual(Ord(TAtlasExtractionProblem.MissingDependency), Ord(Model.Validate));
+end;
+
+procedure TClassExtractionModelTests.TakesDependenciesTransitively;
+var
+  Model: TAtlasClassExtractionModel;
+begin
+  Model := Prepared(Super);
+  Model.SetChecked(2, True);
+  Model.SetAbstract(2, False);
+  Assert.AreEqual(2, Model.TakeDependencies);
+  Assert.IsTrue(Model[1].Checked);
+  Assert.IsTrue(Model[0].Checked);
+  Assert.AreEqual(Ord(TAtlasExtractionProblem.None), Ord(Model.Validate));
+  Assert.AreEqual(0, Model.TakeDependencies);
+end;
+
+procedure TClassExtractionModelTests.RequestJsonCarriesAbstractIds;
+var
+  Model: TAtlasClassExtractionModel;
+  Request: TJSONObject;
+begin
+  Model := Prepared(Super);
+  Request := Model.RequestJson;
+  try
+    // Nichts angehakt: kein abstract.
+    Assert.IsNull(Request.GetValue('abstract'));
+  finally
+    Request.Free;
+  end;
+  Model.SetChecked(2, True);
+  Model.SetChecked(3, True);
+  Request := Model.RequestJson;
+  try
+    Assert.AreEqual('{"name":"TExportBase","unit":"ExportBase","members":[3,4],"abstract":[3]}', Request.ToJSON);
   finally
     Request.Free;
   end;
