@@ -28,6 +28,9 @@ type
     procedure DescendantsAndLocalClassesSeeProtected;
     [Test]
     procedure StrictPrivateInSameUnit;
+    /// <summary>Überladung mit public-Variante neben einer strict private (wie System.TMonitor.Enter).</summary>
+    [Test]
+    procedure OverloadWithPublicVariantIsVisible;
     [Test]
     procedure PropertyReferencesAncestorPrivate;
     [Test]
@@ -63,7 +66,8 @@ uses
   Atlas.Common.Rules.Builtin.Visibility,
   Atlas.Tests.RuleAssert;
 
-/// <summary>System mit TObject und Unit Basis mit TBasis (private, strict private, protected, public).</summary>
+/// <summary>System mit TObject und Unit Basis mit TBasis (private, strict private, protected, public) und TSperre
+/// (Überladung strict private und public wie System.TMonitor.Enter).</summary>
 function BasisIndex: ISymbolIndex;
 begin
   Result := TSymbolIndex.Create;
@@ -73,8 +77,13 @@ begin
   Result.AddUnit(TIndexExtractor.ExtractText('unit Basis;'#10'interface'#10'type'#10'  TBasis = class'#10 +
     '  private'#10'    FGeheim: Integer;'#10'  strict private'#10'    FStreng: Integer;'#10'  protected'#10 +
     '    procedure Schuetzen;'#10'  strict protected'#10'    procedure StrengSchuetzen;'#10'  public'#10 +
-    '    procedure Oeffnen;'#10'  end;'#10'implementation'#10'procedure TBasis.Schuetzen;'#10'begin'#10'end;'#10 +
+    '    procedure Oeffnen;'#10'  end;'#10'  TSperre = record'#10'  strict private'#10 +
+    '    function Betreten(Zeit: Cardinal): Boolean; overload;'#10'  public'#10 +
+    '    class procedure Betreten(const AObjekt: TObject); overload; static;'#10'  end;'#10'implementation'#10 +
+    'procedure TBasis.Schuetzen;'#10'begin'#10'end;'#10 +
     'procedure TBasis.StrengSchuetzen;'#10'begin'#10'end;'#10'procedure TBasis.Oeffnen;'#10'begin'#10'end;'#10 +
+    'function TSperre.Betreten(Zeit: Cardinal): Boolean;'#10'begin'#10'  Result := True;'#10'end;'#10 +
+    'class procedure TSperre.Betreten(const AObjekt: TObject);'#10'begin'#10'end;'#10 +
     'end.', 'C:\Projekt\Basis.pas', nil));
 end;
 
@@ -187,6 +196,11 @@ begin
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual('TLager.FReserve ist strict private und hier nicht sichtbar (wie E2361).', Found[0].Message);
   Assert.AreEqual(16, Found[0].Range.StartPos.Line);
+end;
+
+procedure TInaccessibleMemberTests.OverloadWithPublicVariantIsVisible;
+begin
+  Assert.AreEqual(0, Integer(Length(Findings(Fremd('', '  TSperre.Betreten(B);'#10)))));
 end;
 
 procedure TInaccessibleMemberTests.PropertyReferencesAncestorPrivate;
