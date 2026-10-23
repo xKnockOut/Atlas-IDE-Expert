@@ -185,6 +185,7 @@ uses
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Editor.Hide,
   Atlas.IDE.StartProfiles.Service,
+  Atlas.IDE.Debug.Visualizers,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Editor.TestUnitLens,
   Atlas.IDE.Hover.Editor,
@@ -3637,6 +3638,24 @@ begin
       Result := TAtlasIdeStartProfiles.Started;
     end,
     StartStartProfiles, StopStartProfiles);
+  // Visualisierer für häufige Typen (#835): nur im normalen Start und solange debug.visualizers an ist.
+  Features.AddWanted('Visualizers',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.DebugVisualizers;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeVisualizers.Started;
+    end,
+    procedure
+    begin
+      TAtlasIdeVisualizers.Start;
+    end,
+    procedure
+    begin
+      TAtlasIdeVisualizers.Stop;
+    end);
   // Änderungsprotokoll vor den Tasten: Strg+Alt+Z braucht es (#721).
   Features.Add('Undo', TAtlasSafeLevel.Safe,
     function: Boolean
@@ -4181,6 +4200,8 @@ begin
       TAtlasIdeTeamFile.Refresh;
       // Wirksame experimentelle Funktionen im Statusfeld und im Protokoll (#834).
       TAtlasIdeExperimental.ApplySettings;
+      // debug.visualizers aus: abmelden; Arten geändert: neu anmelden (#835).
+      TAtlasIdeVisualizers.ApplySettings;
       // startProfiles.enabled aus: Zeitgeber und Feld weg (RegisterFeatures startet sie wieder);
       // startProfiles.statusField oder .atlas geändert: Feld neu melden (#575).
       if not TAtlasIdeSettings.Current.StartProfiles then

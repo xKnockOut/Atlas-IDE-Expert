@@ -56,6 +56,7 @@ uses
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Groups,
   Atlas.Core.Editor.Overview,
+  Atlas.Core.Debug.Visualizers,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
   Atlas.UI.Strings,
@@ -287,6 +288,14 @@ type
     FTestDebug: TCheckBox;
     FTestBreakAtStart: TCheckBox;
     FDebugHoverValues: TCheckBox;
+    /// <summary>Visualisierer für häufige Typen (#835).</summary>
+    FDebugVisualizers: TCheckBox;
+    FDebugVisualizerKinds: array[TAtlasVisualizerKind] of TCheckBox;
+    FDebugVisualizerNameFields: TEdit;
+    FDebugVisualizerMaxLength: TEdit;
+    FDebugVisualizerTimeout: TEdit;
+    FDebugVisualizerMaxImagePixels: TEdit;
+    FDebugVisualizerEvaluation: TAtlasChoiceBox;
     FActionsKey: TEdit;
     FExpandKey: TEdit;
     FShrinkKey: TEdit;
@@ -1063,6 +1072,11 @@ type
     property TestDebugCheck: TCheckBox read FTestDebug;
     property TestBreakAtStartCheck: TCheckBox read FTestBreakAtStart;
     property DebugHoverValuesCheck: TCheckBox read FDebugHoverValues;
+    property DebugVisualizersCheck: TCheckBox read FDebugVisualizers;
+    property DebugVisualizerNameFieldsEdit: TEdit read FDebugVisualizerNameFields;
+    property DebugVisualizerMaxLengthEdit: TEdit read FDebugVisualizerMaxLength;
+    property DebugVisualizerEvaluationBox: TAtlasChoiceBox read FDebugVisualizerEvaluation;
+    function DebugVisualizerKindCheck(AKind: TAtlasVisualizerKind): TCheckBox;
     /// <summary>Zum Testen: benannte Lesezeichen (#622).</summary>
     property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
     property BookmarksSharedCheck: TCheckBox read FBookmarksShared;
@@ -1796,6 +1810,35 @@ begin
   FTestBreakAtStart := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestBreakAtStart));
   // Variablenwerte im Hover beim Debuggen (#891).
   FDebugHoverValues := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugHoverValues));
+  // Visualisierer für häufige Typen (#835): Hauptschalter, Arten, Namensfelder, Grenzen, Auswertung.
+  FDebugVisualizers := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugVisualizers));
+  FDebugVisualizerKinds[TAtlasVisualizerKind.Lists] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.DebugVisualizerKindLists));
+  FDebugVisualizerKinds[TAtlasVisualizerKind.Dictionaries] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.DebugVisualizerKindDictionaries));
+  FDebugVisualizerKinds[TAtlasVisualizerKind.DataSets] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.DebugVisualizerKindDataSets));
+  FDebugVisualizerKinds[TAtlasVisualizerKind.Bytes] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.DebugVisualizerKindBytes));
+  FDebugVisualizerKinds[TAtlasVisualizerKind.Json] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.DebugVisualizerKindJson));
+  FDebugVisualizerKinds[TAtlasVisualizerKind.Colors] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.DebugVisualizerKindColors));
+  FDebugVisualizerKinds[TAtlasVisualizerKind.Guid] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.DebugVisualizerKindGuid));
+  FDebugVisualizerKinds[TAtlasVisualizerKind.Geometry] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.DebugVisualizerKindGeometry));
+  FDebugVisualizerKinds[TAtlasVisualizerKind.Graphics] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.DebugVisualizerKindGraphics));
+  FDebugVisualizerNameFields := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsDebugVisualizerNameFields));
+  FDebugVisualizerMaxLength := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsDebugVisualizerMaxLength));
+  FDebugVisualizerTimeout := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsDebugVisualizerTimeout));
+  FDebugVisualizerMaxImagePixels := AddNumber(
+    TAtlasStrings.Text(TAtlasTextId.SettingsDebugVisualizerMaxImagePixels));
+  FDebugVisualizerEvaluation := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsDebugVisualizerEvaluation),
+    [TAtlasStrings.Text(TAtlasTextId.DebugVisualizerEvaluationFields),
+    TAtlasStrings.Text(TAtlasTextId.DebugVisualizerEvaluationProperties),
+    TAtlasStrings.Text(TAtlasTextId.DebugVisualizerEvaluationCalls)]);
 
   // Editorbefehle (#399): ein Vorrang für alle.
   AddSheet(TAtlasTextId.SettingsTabCommands);
@@ -2678,6 +2721,7 @@ var
   Series: TAtlasTrendSeries;
   Action: TAtlasQuickAction;
   Kind: TAtlasOverviewKind;
+  VisualizerKind: TAtlasVisualizerKind;
 begin
   // Aus SaveTo: Element und die Einstellungen, die es schreibt. Listen aus mehreren Haken zeigen keinen Punkt
   // (der gälte für jeden Haken), lassen sich aber zurücksetzen.
@@ -2922,6 +2966,14 @@ begin
   FMarks.Bind(FTestDebug, ['TestDebug']);
   FMarks.Bind(FTestBreakAtStart, ['TestBreakAtStart']);
   FMarks.Bind(FDebugHoverValues, ['DebugHoverValues']);
+  FMarks.Bind(FDebugVisualizers, ['DebugVisualizers']);
+  for VisualizerKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+    FMarks.Bind(FDebugVisualizerKinds[VisualizerKind], ['DebugVisualizerTypes']);
+  FMarks.Bind(FDebugVisualizerNameFields, ['DebugVisualizerNameFields']);
+  FMarks.Bind(FDebugVisualizerMaxLength, ['DebugVisualizerMaxLength']);
+  FMarks.Bind(FDebugVisualizerTimeout, ['DebugVisualizerTimeoutMs']);
+  FMarks.Bind(FDebugVisualizerMaxImagePixels, ['DebugVisualizerMaxImagePixels']);
+  FMarks.Bind(FDebugVisualizerEvaluation, ['DebugVisualizerEvaluation']);
   FMarks.Bind(FSafeAsk, ['SafeAskAfterCrash']);
   FMarks.Bind(FSafeAuto, ['SafeAutoAfterRepeatedCrash']);
   FMarks.Bind(FSafeKey, ['SafeStartupKey']);
@@ -4560,6 +4612,11 @@ begin
   Result.SetChoices(AItems);
 end;
 
+function TAtlasSettingsPage.DebugVisualizerKindCheck(AKind: TAtlasVisualizerKind): TCheckBox;
+begin
+  Result := FDebugVisualizerKinds[AKind];
+end;
+
 function TAtlasSettingsPage.AddCheck(const ACaption: string): TCheckBox;
 begin
   Result := TCheckBox.Create(Self);
@@ -4782,6 +4839,8 @@ var
   Action: TAtlasQuickAction;
   Kind: TAtlasOverviewKind;
   Kinds: TAtlasOverviewKinds;
+  VisualizerKind: TAtlasVisualizerKind;
+  VisualizerKinds: TAtlasVisualizerKinds;
 begin
   FWidths := ASettings;
   FEnabled.Checked := ASettings.Enabled;
@@ -5060,6 +5119,15 @@ begin
   FTestDebug.Checked := ASettings.TestDebug;
   FTestBreakAtStart.Checked := ASettings.TestBreakAtStart;
   FDebugHoverValues.Checked := ASettings.DebugHoverValues;
+  FDebugVisualizers.Checked := ASettings.DebugVisualizers;
+  VisualizerKinds := TAtlasVisualizers.ParseKinds(ASettings.DebugVisualizerTypes);
+  for VisualizerKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+    FDebugVisualizerKinds[VisualizerKind].Checked := VisualizerKind in VisualizerKinds;
+  FDebugVisualizerNameFields.Text := ASettings.DebugVisualizerNameFields;
+  FDebugVisualizerMaxLength.Text := IntToStr(ASettings.DebugVisualizerMaxLength);
+  FDebugVisualizerTimeout.Text := IntToStr(ASettings.DebugVisualizerTimeoutMs);
+  FDebugVisualizerMaxImagePixels.Text := IntToStr(ASettings.DebugVisualizerMaxImagePixels);
+  FDebugVisualizerEvaluation.Choice := Ord(TAtlasVisualizers.ParseEvaluation(ASettings.DebugVisualizerEvaluation));
   FSafeAsk.Checked := ASettings.SafeAskAfterCrash;
   FSafeAuto.Checked := ASettings.SafeAutoAfterRepeatedCrash;
   case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
@@ -5197,6 +5265,8 @@ var
   Action: TAtlasQuickAction;
   Kind: TAtlasOverviewKind;
   Kinds: TAtlasOverviewKinds;
+  VisualizerKind: TAtlasVisualizerKind;
+  VisualizerKinds: TAtlasVisualizerKinds;
 begin
   ASettings.Enabled := FEnabled.Checked;
   ASettings.ServerPath := Trim(FServerPath.Text);
@@ -5510,6 +5580,21 @@ begin
   ASettings.TestDebug := FTestDebug.Checked;
   ASettings.TestBreakAtStart := FTestBreakAtStart.Checked;
   ASettings.DebugHoverValues := FDebugHoverValues.Checked;
+  ASettings.DebugVisualizers := FDebugVisualizers.Checked;
+  VisualizerKinds := [];
+  for VisualizerKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+    if FDebugVisualizerKinds[VisualizerKind].Checked then
+      Include(VisualizerKinds, VisualizerKind);
+  ASettings.DebugVisualizerTypes := TAtlasVisualizers.KindsText(VisualizerKinds);
+  ASettings.DebugVisualizerNameFields := TAtlasVisualizers.NormalizeNameFields(FDebugVisualizerNameFields.Text);
+  ASettings.DebugVisualizerMaxLength := StrToIntDef(Trim(FDebugVisualizerMaxLength.Text),
+    ASettings.DebugVisualizerMaxLength);
+  ASettings.DebugVisualizerTimeoutMs := StrToIntDef(Trim(FDebugVisualizerTimeout.Text),
+    ASettings.DebugVisualizerTimeoutMs);
+  ASettings.DebugVisualizerMaxImagePixels := StrToIntDef(Trim(FDebugVisualizerMaxImagePixels.Text),
+    ASettings.DebugVisualizerMaxImagePixels);
+  ASettings.DebugVisualizerEvaluation := TAtlasVisualizers.EvaluationNames[TAtlasVisualizerEvaluation(
+    EnsureRange(FDebugVisualizerEvaluation.Choice, 0, Ord(High(TAtlasVisualizerEvaluation))))];
   ASettings.SafeAskAfterCrash := FSafeAsk.Checked;
   ASettings.SafeAutoAfterRepeatedCrash := FSafeAuto.Checked;
   case FSafeKey.Choice of
