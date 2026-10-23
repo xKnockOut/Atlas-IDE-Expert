@@ -362,6 +362,7 @@ type
     FExpressionTypeConversions: TCheckBox;
     FExpressionTypeConstValue: TCheckBox;
     FExpressionTypeKey: TEdit;
+    FMethodPlacement: TAtlasChoiceBox;
     FNextChangeKey: TEdit;
     FPreviousChangeKey: TEdit;
     FOverviewRuler: TCheckBox;
@@ -1126,6 +1127,8 @@ type
     property ExpressionTypeConversionsCheck: TCheckBox read FExpressionTypeConversions;
     property ExpressionTypeConstValueCheck: TCheckBox read FExpressionTypeConstValue;
     property ExpressionTypeKey: TEdit read FExpressionTypeKey;
+    /// <summary>Zum Testen: Methodenrümpfe in Deklarationsreihenfolge (#660).</summary>
+    property MethodPlacementBox: TAtlasChoiceBox read FMethodPlacement;
     property RecursionMarkersDepthEdit: TEdit read FRecursionMarkersDepth;
     property HideElementKey: TEdit read FHideElementKey;
     /// <summary>Zum Testen: Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).</summary>
@@ -1672,6 +1675,11 @@ begin
   FExpressionTypeConversions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExpressionTypeConversions));
   FExpressionTypeConstValue := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExpressionTypeConstValue));
   FExpressionTypeKey := AddKey(TAtlasStrings.Text(TAtlasTextId.ExpressionTypeCommand));
+  // Methodenrümpfe in Deklarationsreihenfolge (#660): wie die Deklaration, alphabetisch oder aus.
+  FMethodPlacement := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacement),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementDeclaration),
+    TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementAlphabetical),
+    TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementOff)]);
   // Übersichtsleiste (#519): an/aus und je Art ein Häkchen.
   FOverviewRuler := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewRuler));
   FOverviewKinds[TAtlasOverviewKind.Diagnostics] :=
@@ -2817,6 +2825,7 @@ begin
   FMarks.Bind(FExpressionTypeConversions, ['ExpressionTypeConversions']);
   FMarks.Bind(FExpressionTypeConstValue, ['ExpressionTypeConstValue']);
   FMarks.Bind(FExpressionTypeKey, ['ExpressionTypeKey']);
+  FMarks.Bind(FMethodPlacement, ['MethodPlacement']);
   FMarks.Bind(FNextChangeKey, ['NextChangeKey']);
   FMarks.Bind(FPreviousChangeKey, ['PreviousChangeKey']);
   FMarks.Bind(FOverviewRuler, ['OverviewRuler']);
@@ -4937,6 +4946,7 @@ begin
   FExpressionTypeConversions.Checked := ASettings.ExpressionTypeConversions;
   FExpressionTypeConstValue.Checked := ASettings.ExpressionTypeConstValue;
   FExpressionTypeKey.Text := ShortCutToText(TShortCut(ASettings.ExpressionTypeKey));
+  FMethodPlacement.Choice := Max(0, IndexText(ASettings.MethodPlacement, AtlasMethodPlacements));
   FNextChangeKey.Text := ShortCutToText(TShortCut(ASettings.NextChangeKey));
   FPreviousChangeKey.Text := ShortCutToText(TShortCut(ASettings.PreviousChangeKey));
   FOverviewRuler.Checked := ASettings.OverviewRuler;
@@ -5379,6 +5389,8 @@ begin
   ASettings.ExpressionTypeConversions := FExpressionTypeConversions.Checked;
   ASettings.ExpressionTypeConstValue := FExpressionTypeConstValue.Checked;
   ASettings.ExpressionTypeKey := Integer(TextToShortCut(Trim(FExpressionTypeKey.Text)));
+  ASettings.MethodPlacement := AtlasMethodPlacements[EnsureRange(FMethodPlacement.Choice, 0,
+    High(AtlasMethodPlacements))];
   ASettings.NextChangeKey := Integer(TextToShortCut(Trim(FNextChangeKey.Text)));
   ASettings.PreviousChangeKey := Integer(TextToShortCut(Trim(FPreviousChangeKey.Text)));
   ASettings.OverviewRuler := FOverviewRuler.Checked;

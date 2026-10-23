@@ -3685,6 +3685,25 @@
       "x-parent": "hints.expressionType",
       "x-issue": "#689"
     },
+    "MethodPlacement": {
+      "description": "Reihenfolge der Methodenrümpfe im implementation-Teil (#660): declaration ordnet sie wie die Deklarationen in der Klasse, alphabetical je Klasse nach dem Namen. Neue Rümpfe aus der Klassenvervollständigung der IDE (Strg+Umschalt+C) oder aus Atlas-Aktionen wandern an ihre Stelle, im selben Rückgängig-Schritt; der Befehl „implementation wie Klasse ordnen“ ordnet die ganze Unit nach einer Vorschau. Freie Routinen, Regionen und Rümpfe in {$IFDEF}-Zweigen bleiben stehen. off schaltet Verschieben und Befehl ab.",
+      "type": "string",
+      "enum": [
+        "declaration",
+        "alphabetical",
+        "off"
+      ],
+      "default": "declaration",
+      "x-key": "editor.methodPlacement",
+      "x-area": "editor",
+      "x-feature": "MethodPlacement",
+      "x-page": "Editor",
+      "x-offValue": "off",
+      "x-control": "Auswahl",
+      "x-caption": "Methodenrümpfe ordnen",
+      "x-captionEn": "Order method bodies",
+      "x-issue": "#660"
+    },
     "NextChangeKey": {
       "description": "Tastenkürzel „Nächste Änderung“: springt reihum zum nächsten Block mit Änderungsmarke (0 = keins).",
       "type": "integer",

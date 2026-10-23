@@ -18,6 +18,8 @@ uses
 const
   /// <summary>Werte von bookmarks.quick.scope (#1104) in der Reihenfolge der Optionsseite.</summary>
   AtlasQuickBookmarkScopes: array[0..1] of string = ('project', 'file');
+  /// <summary>Werte von editor.methodPlacement (#660).</summary>
+  AtlasMethodPlacements: array[0..2] of string = ('declaration', 'alphabetical', 'off');
 
 type
   /// <summary>Ablage für Einstellungen; Werte als ganze Zahlen (Wahrheitswerte 0/1).</summary>
@@ -803,6 +805,9 @@ type
     ExpressionTypeConstValue: Boolean;
     /// <summary>Kürzel „Typ des Ausdrucks“ (#689, keys.expressionType); Vorgabe Strg+Umschalt+T.</summary>
     ExpressionTypeKey: Integer;
+    /// <summary>Methodenrümpfe in Deklarationsreihenfolge (#660, editor.methodPlacement): off, declaration oder
+    /// alphabetical; off schaltet Verschieben und Befehl ab.</summary>
+    MethodPlacement: string;
     /// <summary>Kürzel „Nächste Änderung“ (#507, keys.nextChange); Vorgabe Strg+Alt+Bild↓.</summary>
     NextChangeKey: Integer;
     /// <summary>Kürzel „Vorherige Änderung“ (#507, keys.previousChange); Vorgabe Strg+Alt+Bild↑.</summary>
@@ -1555,6 +1560,7 @@ begin
   Result.ExpressionTypeConversions := True;
   Result.ExpressionTypeConstValue := True;
   Result.ExpressionTypeKey := $6054; // Strg+Umschalt+T
+  Result.MethodPlacement := 'declaration';
   // Strg+Alt+↑/↓ springt in RAD Studio schon zwischen Methoden.
   Result.NextChangeKey := $C022; // Strg+Alt+Bild↓
   Result.PreviousChangeKey := $C021; // Strg+Alt+Bild↑
@@ -1786,6 +1792,7 @@ begin
   NewLineAboveKey := EnsureRange(NewLineAboveKey, 0, $FFFF);
   UnwrapKey := EnsureRange(UnwrapKey, 0, $FFFF);
   ExpressionTypeKey := EnsureRange(ExpressionTypeKey, 0, $FFFF);
+  MethodPlacement := Choice(MethodPlacement, AtlasMethodPlacements);
   MinimapRender := Choice(MinimapRender, ['blocks', 'characters']);
   MinimapWidth := EnsureRange(MinimapWidth, MinMinimapWidth, MaxMinimapWidth);
   MinimapScale := EnsureRange(MinimapScale, MinMinimapScale, MaxMinimapScale);
@@ -2208,6 +2215,7 @@ begin
   ExpressionTypeConstValue := AStore.ReadInteger('ExpressionTypeConstValue',
     BoolValue(Default.ExpressionTypeConstValue)) <> 0;
   ExpressionTypeKey := AStore.ReadInteger('ExpressionTypeKey', Default.ExpressionTypeKey);
+  MethodPlacement := AStore.ReadString('MethodPlacement', Default.MethodPlacement);
   NextChangeKey := AStore.ReadInteger('NextChangeKey', Default.NextChangeKey);
   PreviousChangeKey := AStore.ReadInteger('PreviousChangeKey', Default.PreviousChangeKey);
   OverviewRuler := AStore.ReadInteger('OverviewRuler', BoolValue(Default.OverviewRuler)) <> 0;
@@ -2628,6 +2636,7 @@ begin
   AStore.WriteInteger('ExpressionTypeConversions', BoolValue(ExpressionTypeConversions));
   AStore.WriteInteger('ExpressionTypeConstValue', BoolValue(ExpressionTypeConstValue));
   AStore.WriteInteger('ExpressionTypeKey', ExpressionTypeKey);
+  AStore.WriteString('MethodPlacement', MethodPlacement);
   AStore.WriteInteger('NextChangeKey', NextChangeKey);
   AStore.WriteInteger('PreviousChangeKey', PreviousChangeKey);
   AStore.WriteInteger('OverviewRuler', BoolValue(OverviewRuler));

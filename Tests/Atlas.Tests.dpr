@@ -790,6 +790,8 @@ uses
   Atlas.Core.Editor.Unwrap.Tests in 'IDE.Expert\Atlas.Core.Editor.Unwrap.Tests.pas',
   Atlas.Core.Editor.ExpressionType in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.ExpressionType.pas',
   Atlas.Core.Editor.ExpressionType.Tests in 'IDE.Expert\Atlas.Core.Editor.ExpressionType.Tests.pas',
+  Atlas.Core.Editor.MethodPlacement in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.MethodPlacement.pas',
+  Atlas.Core.Editor.MethodPlacement.Tests in 'IDE.Expert\Atlas.Core.Editor.MethodPlacement.Tests.pas',
   Atlas.Core.Editor.Pairs.Tests in 'IDE.Expert\Atlas.Core.Editor.Pairs.Tests.pas',
   Atlas.Core.Editor.Match in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Match.pas',
   Atlas.Core.Editor.Match.Tests in 'IDE.Expert\Atlas.Core.Editor.Match.Tests.pas',

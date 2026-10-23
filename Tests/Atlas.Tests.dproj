@@ -886,6 +886,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Unwrap.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.ExpressionType.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.ExpressionType.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.MethodPlacement.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.MethodPlacement.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Pairs.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Match.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Match.Tests.pas"/>

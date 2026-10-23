@@ -87,6 +87,7 @@ uses
   Atlas.IDE.Editor.NewLine,
   Atlas.IDE.Editor.Unwrap,
   Atlas.IDE.Editor.ExpressionType,
+  Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.Editor.WrapSelection,
   Atlas.IDE.Editor.CommentContinuation,
   Atlas.IDE.Editor.PatternContinuation,
@@ -1088,6 +1089,16 @@ begin
   TAtlasIdeExpressionType.Run;
 end;
 
+function MethodOrderVisible: Boolean;
+begin
+  Result := TAtlasIdeMethodPlacement.Enabled;
+end;
+
+procedure ArrangeMethods;
+begin
+  TAtlasIdeMethodPlacement.Run;
+end;
+
 procedure CompleteStatement;
 begin
   TAtlasIdeStatementCompletion.Run;
@@ -1319,6 +1330,8 @@ begin
   Add('Atlas.Unwrap', TAtlasTextId.UnwrapCommand, Guarded(TAtlasFeature.Unwrap, Unwrap), UnwrapVisible);
   Add('Atlas.ExpressionType', TAtlasTextId.ExpressionTypeCommand,
     Guarded(TAtlasFeature.ExpressionType, ShowExpressionType), ExpressionTypeVisible);
+  Add('Atlas.MethodOrder', TAtlasTextId.MethodOrderCommand, Guarded(TAtlasFeature.MethodPlacement, ArrangeMethods),
+    MethodOrderVisible);
   // Mehrere Einfügemarken (#589).
   Add('Atlas.MultiCursorNext', TAtlasTextId.MultiCursorNextCommand,
     Guarded(TAtlasFeature.MultiCursor, MultiCursorNext), MultiCursorVisible);
@@ -2558,6 +2571,22 @@ begin
     begin
       MessageLine(AText);
     end);
+  // Methodenrümpfe in Deklarationsreihenfolge (#660): neue Rümpfe an ihre Stelle, Befehl mit Vorschau.
+  TAtlasIdeMethodPlacement.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end,
+    function: TAtlasUnopenedPolicy
+    begin
+      Result := TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits);
+    end);
   // Übersichtsleiste an der Scrollleiste (#519).
   // Mit schnellen Lesezeichen (#1104) zeigt die Art „bookmarks“ die Lesezeichen von Atlas.
   TAtlasIdeOverviewRuler.Bookmarks :=
@@ -2617,6 +2646,7 @@ begin
   TAtlasIdeBlockComment.Uninstall;
   TAtlasIdeUnwrap.Uninstall;
   TAtlasIdeExpressionType.Uninstall;
+  TAtlasIdeMethodPlacement.Uninstall;
   TAtlasIdeSmartPaste.Uninstall;
   TAtlasIdeWrapSelection.Uninstall;
   TAtlasIdeLinkedEditing.Uninstall;
