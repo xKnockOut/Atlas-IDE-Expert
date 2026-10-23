@@ -67,6 +67,9 @@ type
     /// <summary>Grenzen für editor.blockEndLabels.minLines (#620).</summary>
     MinBlockEndLines = 1;
     MaxBlockEndLines = 1000;
+    /// <summary>Grenzen für debug.inlineValuesPerLine (#508).</summary>
+    MinInlineValuesPerLine = 1;
+    MaxInlineValuesPerLine = 20;
     /// <summary>Höchste Wartezeit in ms auf den zweiten Teil der Faltungsakkorde (#1104,
     /// bookmarks.quick.chordWait).</summary>
     MaxQuickChordWait = 5000;
@@ -450,6 +453,13 @@ type
     /// Kombination erneut ein, setzt Atlas still fort und zählt nur im Verlauf. Aus = kein Knopf, gemerkte Orte
     /// wirken nicht.</summary>
     DebugExceptionBannerIgnoreAtLocation: Boolean;
+    /// <summary>Werte im Editor beim Debuggen (#508, debug.inlineValues): Steht der Prozess, zeigt Atlas am Ende der
+    /// Zeilen der Routine mit dem Ausführungspunkt gedimmt die Werte der lokalen Variablen, Parameter und Felder von
+    /// Self (Count = 3, Name = 'Meier'); seit dem letzten Halt geänderte Werte hervorgehoben. Aus = keine Anfrage,
+    /// keine Auswertung, nichts gezeichnet.</summary>
+    DebugInlineValues: Boolean;
+    /// <summary>Höchstens so viele Werte je Zeile (#508, debug.inlineValuesPerLine, 1 bis 20).</summary>
+    DebugInlineValuesPerLine: Integer;
     /// <summary>Weitere Ordner mit eigenem Code (#578, debug.ownCodeFolders), durch „;“ getrennt; die Projektordner
     /// der Gruppe gelten immer.</summary>
     DebugOwnCodeFolders: string;
@@ -1391,6 +1401,8 @@ begin
   Result.DebugJustMyCode := True;
   Result.DebugExceptionBanner := False;
   Result.DebugExceptionBannerIgnoreAtLocation := True;
+  Result.DebugInlineValues := True;
+  Result.DebugInlineValuesPerLine := 5;
   Result.DebugOwnCodeFolders := '';
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
@@ -1678,6 +1690,7 @@ begin
   XmlDocExpand := Choice(XmlDocExpand, ['last', 'collapsed', 'expanded']);
   BlockEndLabelsMinLines := EnsureRange(BlockEndLabelsMinLines, MinBlockEndLines, MaxBlockEndLines);
   RecursionMarkersDepth := EnsureRange(RecursionMarkersDepth, MinRecursionDepth, MaxRecursionDepth);
+  DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, MinInlineValuesPerLine, MaxInlineValuesPerLine);
   ContinuePatternMinLines := EnsureRange(ContinuePatternMinLines, MinPatternLines, MaxPatternLines);
   OpenDelayMs := EnsureRange(OpenDelayMs, 0, MaxOpenDelay);
   MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb);
@@ -2000,6 +2013,8 @@ begin
   DebugJustMyCode := AStore.ReadInteger('DebugJustMyCode', BoolValue(Default.DebugJustMyCode)) <> 0;
   DebugExceptionBanner := AStore.ReadInteger('DebugExceptionBanner', BoolValue(Default.DebugExceptionBanner)) <> 0;
   DebugExceptionBannerIgnoreAtLocation := AStore.ReadInteger('DebugExceptionBannerIgnoreAtLocation', BoolValue(Default.DebugExceptionBannerIgnoreAtLocation)) <> 0;
+  DebugInlineValues := AStore.ReadInteger('DebugInlineValues', BoolValue(Default.DebugInlineValues)) <> 0;
+  DebugInlineValuesPerLine := AStore.ReadInteger('DebugInlineValuesPerLine', Default.DebugInlineValuesPerLine);
   DebugOwnCodeFolders := AStore.ReadString('DebugOwnCodeFolders', Default.DebugOwnCodeFolders);
   StartProfiles := AStore.ReadInteger('StartProfiles', BoolValue(Default.StartProfiles)) <> 0;
   StartProfilesStatusField := AStore.ReadInteger('StartProfilesStatusField',
@@ -2448,6 +2463,8 @@ begin
   AStore.WriteInteger('DebugJustMyCode', BoolValue(DebugJustMyCode));
   AStore.WriteInteger('DebugExceptionBanner', BoolValue(DebugExceptionBanner));
   AStore.WriteInteger('DebugExceptionBannerIgnoreAtLocation', BoolValue(DebugExceptionBannerIgnoreAtLocation));
+  AStore.WriteInteger('DebugInlineValues', BoolValue(DebugInlineValues));
+  AStore.WriteInteger('DebugInlineValuesPerLine', DebugInlineValuesPerLine);
   AStore.WriteString('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AStore.WriteInteger('StartProfiles', BoolValue(StartProfiles));
   AStore.WriteInteger('StartProfilesStatusField', BoolValue(StartProfilesStatusField));

@@ -1041,6 +1041,8 @@ begin
     Assert.IsFalse(Page.DebugExceptionBannerCheck.Checked, 'debug.exceptionBanner (#783)');
     Assert.IsTrue(Page.DebugExceptionBannerIgnoreAtLocationCheck.Checked,
       'debug.exceptionBanner.ignoreAtLocation (#783)');
+    Assert.IsTrue(Page.DebugInlineValuesCheck.Checked, 'debug.inlineValues (#508)');
+    Assert.AreEqual('5', Page.DebugInlineValuesPerLineEdit.Text, 'debug.inlineValuesPerLine (#508)');
     Page.TestDebugCheck.Checked := False;
     Page.TestBreakAtStartCheck.Checked := False;
     Page.DebugHoverValuesCheck.Checked := False;
@@ -1048,6 +1050,8 @@ begin
     Page.DebugJustMyCodeCheck.Checked := False;
     Page.DebugExceptionBannerCheck.Checked := True;
     Page.DebugExceptionBannerIgnoreAtLocationCheck.Checked := False;
+    Page.DebugInlineValuesCheck.Checked := False;
+    Page.DebugInlineValuesPerLineEdit.Text := '3';
     Page.DebugOwnCodeFoldersEdit.Text := 'C:\Komponenten\; ;c:\komponenten';
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
@@ -1058,6 +1062,8 @@ begin
     Assert.IsFalse(Saved.DebugJustMyCode);
     Assert.IsTrue(Saved.DebugExceptionBanner);
     Assert.IsFalse(Saved.DebugExceptionBannerIgnoreAtLocation);
+    Assert.IsFalse(Saved.DebugInlineValues);
+    Assert.AreEqual(3, Saved.DebugInlineValuesPerLine);
     Assert.AreEqual('C:\Komponenten', Saved.DebugOwnCodeFolders, 'bereinigt (#578)');
     Saved.TestBreakAtStart := True;
     Saved.DebugHoverValues := True;
@@ -1065,6 +1071,7 @@ begin
     Saved.DebugJustMyCode := True;
     Saved.DebugExceptionBanner := False;
     Saved.DebugExceptionBannerIgnoreAtLocation := True;
+    Saved.DebugInlineValues := True;
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.TestDebugCheck.Checked);
     Assert.IsTrue(Page.TestBreakAtStartCheck.Checked);
@@ -1073,6 +1080,7 @@ begin
     Assert.IsTrue(Page.DebugJustMyCodeCheck.Checked);
     Assert.IsFalse(Page.DebugExceptionBannerCheck.Checked);
     Assert.IsTrue(Page.DebugExceptionBannerIgnoreAtLocationCheck.Checked);
+    Assert.IsTrue(Page.DebugInlineValuesCheck.Checked);
   finally
     Page.Free;
   end;

@@ -251,6 +251,8 @@ begin
   Assert.IsTrue(Settings.DebugJustMyCode, 'debug.justMyCode (#578)');
   Assert.IsFalse(Settings.DebugExceptionBanner, 'debug.exceptionBanner (#783)');
   Assert.IsTrue(Settings.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
+  Assert.IsTrue(Settings.DebugInlineValues, 'debug.inlineValues (#508)');
+  Assert.AreEqual(5, Settings.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
   Assert.AreEqual('', Settings.DebugOwnCodeFolders, 'debug.ownCodeFolders leer (#578)');
   Assert.IsTrue(Settings.TodoList, 'Befehl standardmäßig da (#68)');
   Assert.IsTrue(Settings.MetricsReport, 'Befehl standardmäßig da (#66)');
@@ -354,6 +356,8 @@ begin
   Settings.DebugJustMyCode := False;
   Settings.DebugExceptionBanner := True;
   Settings.DebugExceptionBannerIgnoreAtLocation := False;
+  Settings.DebugInlineValues := False;
+  Settings.DebugInlineValuesPerLine := 7;
   Settings.DebugOwnCodeFolders := '  C:\Komponenten;D:\Lib ';
   Settings.TodoList := False;
   Settings.MetricsReport := False;
@@ -442,6 +446,8 @@ begin
   Assert.IsFalse(Loaded.DebugJustMyCode, 'debug.justMyCode (#578)');
   Assert.IsTrue(Loaded.DebugExceptionBanner, 'debug.exceptionBanner (#783)');
   Assert.IsFalse(Loaded.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
+  Assert.IsFalse(Loaded.DebugInlineValues, 'debug.inlineValues (#508)');
+  Assert.AreEqual(7, Loaded.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
   Assert.AreEqual('C:\Komponenten;D:\Lib', Loaded.DebugOwnCodeFolders, 'debug.ownCodeFolders ohne Leerraum (#578)');
   Assert.IsFalse(Loaded.TodoList);
   Assert.IsFalse(Loaded.MetricsReport);
@@ -813,7 +819,10 @@ begin
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.MinBlockEndLines, Settings.BlockEndLabelsMinLines, 'unten begrenzt');
   Settings.BlockEndLabelsMinLines := 5000;
+  Settings.DebugInlineValuesPerLine := 0;
   Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinInlineValuesPerLine, Settings.DebugInlineValuesPerLine,
+    'debug.inlineValuesPerLine unten begrenzt (#508)');
   Assert.AreEqual(TAtlasPluginSettings.MaxBlockEndLines, Settings.BlockEndLabelsMinLines, 'oben begrenzt');
   Settings.BlockEndLabels := False;
   Settings.BlockEndLabelsMinLines := 40;

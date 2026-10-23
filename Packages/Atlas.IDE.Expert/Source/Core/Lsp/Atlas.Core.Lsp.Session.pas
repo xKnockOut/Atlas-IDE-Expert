@@ -187,6 +187,14 @@ type
     /// Include-Symbole hinter {$I} (#860) kommen als DefineHint mit den Symbolen aus data.includeDefines.</summary>
     function InlayHints(const AFileName: string; AFromLine, AToLine, AEndMarkerMinLines: Integer;
       ATimeoutMs: Cardinal): TArray<TAtlasInlayHint>; overload;
+    /// <summary>Bezeichner für Werte beim Debuggen (#508, textDocument/inlineValue) in den Zeilen
+    /// AFromLine..AToLine (0-basiert), Halt an AStoppedLine; ohne Abgleich: Sync vorher im Hauptthread.
+    /// Threadsicher wie Completion.</summary>
+    function InlineValues(const AFileName: string; AFromLine, AToLine, AStoppedLine: Integer;
+      ATimeoutMs: Cardinal): TAtlasInlineValueRefs;
+    /// <summary>Bezeichner aus der Antwort auf textDocument/inlineValue; nur InlineValueVariableLookup mit
+    /// variableName.</summary>
+    class function InlineValueRefsOf(const AResponse: TJSONValue): TAtlasInlineValueRefs; static;
     procedure Initialize;
     /// <summary>Parameter von initialize (#396, #397, #408, #648, #652). AApplyEdit: workspace.applyEdit
     /// ankündigen. Gehört dem Aufrufer.</summary>
@@ -1269,6 +1277,58 @@ begin
     end;
   finally
     Response.Free;
+  end;
+end;
+
+function TLspSession.InlineValues(const AFileName: string; AFromLine, AToLine, AStoppedLine: Integer;
+  ATimeoutMs: Cardinal): TAtlasInlineValueRefs;
+var
+  Params, Range, Stopped: TJSONObject;
+  Response: TJSONValue;
+begin
+  Range := TJSONObject.Create;
+  Range.AddPair('start', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AFromLine))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Range.AddPair('end', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AToLine + 1))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Stopped := TJSONObject.Create;
+  Stopped.AddPair('start', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AStoppedLine))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Stopped.AddPair('end', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AStoppedLine))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Params := TJSONObject.Create;
+  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  Params.AddPair('range', Range);
+  Params.AddPair('context', TJSONObject.Create.AddPair('frameId', TJSONNumber.Create(0))
+    .AddPair('stoppedLocation', Stopped));
+  Response := FClient.Request('textDocument/inlineValue', Params, ATimeoutMs);
+  try
+    Result := InlineValueRefsOf(Response);
+  finally
+    Response.Free;
+  end;
+end;
+
+class function TLspSession.InlineValueRefsOf(const AResponse: TJSONValue): TAtlasInlineValueRefs;
+var
+  Item: TJSONValue;
+  Entry: TJSONObject;
+  Name: string;
+begin
+  Result := nil;
+  if not (AResponse is TJSONArray) then
+    Exit;
+  for Item in TJSONArray(AResponse) do
+  begin
+    if not (Item is TJSONObject) then
+      Continue;
+    Entry := TJSONObject(Item);
+    // InlineValueText (text) und InlineValueEvaluatableExpression (expression) wertet Atlas nicht aus.
+    Name := Entry.GetValue<string>('variableName', '');
+    if Name = '' then
+      Continue;
+    Result := Result + [TAtlasInlineValueRef.Create(Entry.GetValue<Integer>('range.start.line', -1),
+      Entry.GetValue<Integer>('range.start.character', 0), Name, Entry.GetValue<string>('atlasType', ''))];
   end;
 end;
 

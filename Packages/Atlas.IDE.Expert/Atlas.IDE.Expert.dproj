@@ -648,6 +648,8 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ExceptionBanner.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.ExceptionBar.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ExceptionBar.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.InlineValues.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.InlineValues.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

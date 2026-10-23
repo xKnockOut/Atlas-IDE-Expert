@@ -183,6 +183,7 @@ uses
   Atlas.IDE.Debug.Exceptions,
   Atlas.IDE.Debug.OwnCode,
   Atlas.IDE.Debug.ExceptionBar,
+  Atlas.IDE.Debug.InlineValues,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Foundation.Elements,
@@ -2912,6 +2913,18 @@ begin
     end, TAtlasStatusRegistry.Default);
 end;
 
+procedure StartDebugInlineValues;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  TAtlasIdeDebugInlineValues.Start(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end);
+end;
+
 procedure ToggleDebugJustMyCode;
 begin
   TAtlasIdeDebugOwnCode.ToggleSetting(
@@ -3951,6 +3964,17 @@ begin
       Result := TAtlasIdeDebugExceptionBar.Started;
     end,
     StartDebugExceptionBar, TAtlasIdeDebugExceptionBar.Release);
+  // Werte im Editor beim Debuggen (#508): Zuhörer der Debug-Sitzung und Zeichner; aus = nichts angemeldet.
+  Features.AddWanted('DebugInlineValues',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugInlineValues;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugInlineValues.Started;
+    end,
+    StartDebugInlineValues, TAtlasIdeDebugInlineValues.Release);
   // Gleichen Text wie die Markierung hervorheben (#709): nur im normalen Start oder mit Einstellung.
   Features.AddWanted('SelectionMatches',
     function(ALevel: TAtlasSafeLevel): Boolean
