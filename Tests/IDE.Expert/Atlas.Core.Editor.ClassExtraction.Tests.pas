@@ -3,7 +3,8 @@
 // Eingabemaske „Mitglieder herauslösen“ (#664, #713) ohne VCL: Laden der
 // Antwort von prepare, Häkchen (gesperrte bleiben), Prüfung von Name,
 // Auswahl und Ziel-Unit sowie das JSON für den Server; für die Basisklasse
-// abstrakte Methoden, Abhängigkeiten und das vorgewählte Ziel.
+// abstrakte Methoden, Abhängigkeiten und das vorgewählte Ziel; für „Mitglied
+// verschieben“ Ziele, Wahl und freiwillige Abhängigkeiten.
 
 interface
 
@@ -53,6 +54,10 @@ type
     procedure TakesDependenciesTransitively;
     [Test]
     procedure RequestJsonCarriesAbstractIds;
+    [Test]
+    procedure MoveUpPicksOneTarget;
+    [Test]
+    procedure MoveDownTakesSeveralTargets;
   end;
 
 implementation
@@ -83,6 +88,22 @@ const
     '{"id":4,"name":"Done","kind":"method","display":"class procedure Done;","visibility":"public",' +
     '"enabled":true,"canAbstract":false,"abstract":true,"reason":"Klassenmethode","needs":[]}],' +
     '"notes":[],"units":["ExportBase"]}';
+
+  // Mitglied verschieben (#675): nach oben ein Ziel, nach unten mehrere.
+  MoveUp = '{"className":"TChild","ownUnit":"Kind","member":"Fill","direction":"up","name":"","candidates":[' +
+    '{"id":0,"name":"FItems","kind":"field","display":"FItems: TStrings;","visibility":"private",' +
+    '"checked":false,"enabled":true,"canAbstract":false,"needs":[]},' +
+    '{"id":2,"name":"Fill","kind":"method","display":"procedure Fill;","visibility":"public",' +
+    '"checked":true,"enabled":true,"canAbstract":true,"needs":[0]}],' +
+    '"targets":[{"name":"TBase","unit":"Basis","checked":true},{"name":"TRoot","unit":"Root","checked":false}],' +
+    '"multiTarget":false,"needsRequired":true,"option":{"kind":"overrideSiblings","value":true},"notes":[]}';
+  MoveDown = '{"className":"TBase","ownUnit":"Basis","member":"Show","direction":"down","name":"","candidates":[' +
+    '{"id":0,"name":"FData","kind":"field","display":"FData: string;","visibility":"private",' +
+    '"checked":false,"enabled":true,"needs":[]},' +
+    '{"id":1,"name":"Show","kind":"method","display":"procedure Show;","visibility":"public",' +
+    '"checked":true,"enabled":true,"needs":[0]}],' +
+    '"targets":[{"name":"TChild","unit":"Kind","checked":true},{"name":"TOther","unit":"Kind","checked":true}],' +
+    '"multiTarget":true,"needsRequired":false,"option":{"kind":"keepAbstract","value":false},"notes":[]}';
 
 function TClassExtractionModelTests.Prepared(const AJson: string): TAtlasClassExtractionModel;
 var
@@ -324,6 +345,61 @@ begin
   Request := Model.RequestJson;
   try
     Assert.AreEqual('{"name":"TExportBase","unit":"ExportBase","members":[3,4],"abstract":[3]}', Request.ToJSON);
+  finally
+    Request.Free;
+  end;
+end;
+
+procedure TClassExtractionModelTests.MoveUpPicksOneTarget;
+var
+  Model: TAtlasClassExtractionModel;
+  Request: TJSONObject;
+  Subject: string;
+begin
+  Model := Prepared(MoveUp);
+  Assert.IsTrue(Model.IsMove);
+  Assert.AreEqual('Fill', Model.MemberName);
+  Assert.AreEqual('up', Model.Direction);
+  Assert.AreEqual(2, Model.TargetCount);
+  Assert.AreEqual('Basis', Model.Targets[0].UnitName);
+  Assert.AreEqual('overrideSiblings', Model.OptionKind);
+  Assert.IsTrue(Model.Option);
+  // Kein Name noetig, aber Fill braucht FItems.
+  Assert.AreEqual(Ord(TAtlasExtractionProblem.MissingDependency), Ord(Model.Validate(Subject)));
+  Model.SetChecked(0, True);
+  Assert.AreEqual(Ord(TAtlasExtractionProblem.None), Ord(Model.Validate));
+  // Nur ein Vorfahr waehlbar.
+  Model.SetTargetChecked(1, True);
+  Assert.AreEqual(1, Integer(Length(Model.CheckedTargets)));
+  Assert.AreEqual('TRoot', Model.CheckedTargets[0]);
+  Model.Option := False;
+  Request := Model.RequestJson;
+  try
+    Assert.AreEqual('{"members":[0,2],"targets":["TRoot"],"option":false}', Request.ToJSON);
+  finally
+    Request.Free;
+  end;
+end;
+
+procedure TClassExtractionModelTests.MoveDownTakesSeveralTargets;
+var
+  Model: TAtlasClassExtractionModel;
+  Request: TJSONObject;
+begin
+  Model := Prepared(MoveDown);
+  Assert.IsTrue(Model.MultiTarget);
+  Assert.IsFalse(Model.NeedsRequired);
+  // Show benutzt FData, das oben bleiben darf.
+  Assert.AreEqual(Ord(TAtlasExtractionProblem.None), Ord(Model.Validate));
+  Model.SetTargetChecked(1, False);
+  Assert.AreEqual(1, Integer(Length(Model.CheckedTargets)));
+  Model.SetTargetChecked(0, False);
+  Assert.AreEqual(Ord(TAtlasExtractionProblem.NoTarget), Ord(Model.Validate));
+  Model.SetTargetChecked(1, True);
+  Model.Option := True;
+  Request := Model.RequestJson;
+  try
+    Assert.AreEqual('{"members":[1],"targets":["TOther"],"option":true}', Request.ToJSON);
   finally
     Request.Free;
   end;

@@ -1411,6 +1411,8 @@ begin
           ReportNode(ANode[Index], '"refactoring.extractSuperclassRaiseVisibility" muss "protected" oder ' +
             '"strictProtected" sein');
     end
+    else if Key = 'moveMember' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.MoveMember)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);

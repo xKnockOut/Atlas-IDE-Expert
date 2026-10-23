@@ -353,6 +353,10 @@ type
     function ExtractSuperclassActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Basisklasse herauslösen“ (#713): APrepare = Kandidaten, sonst das WorkspaceEdit.</summary>
     function ExtractSuperclass(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
+    /// <summary>„In Vorfahr/Nachfahren verschieben“ an APosition (#675).</summary>
+    function MoveMemberActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>„Mitglied verschieben“ (#675): APrepare = Kandidaten und Ziele, sonst das WorkspaceEdit.</summary>
+    function MoveMember(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
     /// <summary>„Bedeutung umkehren“ an APosition (#715).</summary>
     function InvertBooleanActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Boolean umkehren“ (#715): das WorkspaceEdit für alle Stellen.</summary>
@@ -512,6 +516,7 @@ uses
   Atlas.Common.Lsp.MoveClass,
   Atlas.Common.Lsp.ExtractInterface,
   Atlas.Common.Lsp.ExtractSuperclass,
+  Atlas.Common.Lsp.MoveMember,
   Atlas.Common.Editing.PropertyFromAccessors,
   Atlas.Common.Lsp.PropertyFromAccessors,
   Atlas.Common.Lsp.InvertBoolean,
@@ -1391,6 +1396,7 @@ begin
       Result := Result + PropertyFromAccessorsActions(AUri, ARange.StartPos);
       Result := Result + ExtractInterfaceActions(AUri, ARange.StartPos);
       Result := Result + ExtractSuperclassActions(AUri, ARange.StartPos);
+      Result := Result + MoveMemberActions(AUri, ARange.StartPos);
       Result := Result + InvertBooleanActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
       Result := Result + RefactoringActions(AUri, ARange);
@@ -1480,6 +1486,16 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := ExtractSuperclass(AArguments, False);
+    end);
+  FCommands.Register(TLspMoveMember.PrepareCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := MoveMember(AArguments, True);
+    end);
+  FCommands.Register(TLspMoveMember.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := MoveMember(AArguments, False);
     end);
   FCommands.Register(TLspPropertyFromAccessors.ApplyCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -3522,6 +3538,65 @@ begin
   end;
   // Nur Zahlen ins Log, keine Namen und Pfade (#647).
   FLogger.Info(Format('Basisklasse herauslösen: %d Mitglieder', [(Answer.GetValue('moved') as TJSONNumber).AsInt]));
+  Result := Answer;
+end;
+
+function TServerComposition.MoveMemberActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).MoveMember or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspMoveMember.Actions(True, Shared.Tree, Document.Text, TDocumentUris.ToPath(AUri), AUri, APosition,
+    FIndex);
+end;
+
+function TServerComposition.MoveMember(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
+var
+  Uri, FileName, Direction: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Context: TMoveMemberContext;
+  Answer: TJSONObject;
+begin
+  // Argumente: URI, Position, Richtung, beim Ausführen {members, abstract, targets, option}.
+  if (AArguments = nil) or (AArguments.Count < 3) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri", "position" und Richtung fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  Direction := AArguments.Items[2].Value;
+  if not RefactoringSettingsFor(Uri).MoveMember then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Mitglied verschieben" ist abgeschaltet (refactoring.moveMember).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  FileName := TDocumentUris.ToPath(Uri);
+  Context := Default(TMoveMemberContext);
+  Context.Index := FIndex;
+  Context.ReadText := ReadSourceText;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  if APrepare then
+    Exit(TLspMoveMember.Prepare(Shared.Tree, Document.Text, FileName, Position, Direction, Context));
+  if AArguments.Count < 4 then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argument mit Mitgliedern und Zielen fehlt');
+  Context.Files := ProjectSourceFiles;
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspMoveMember.Execute(Resolver, Shared.Tree, FileName, Document.Text, Position, Direction,
+      AArguments.Items[3], Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Mitglied verschieben: %d Mitglieder', [(Answer.GetValue('moved') as TJSONNumber).AsInt]));
   Result := Answer;
 end;
 

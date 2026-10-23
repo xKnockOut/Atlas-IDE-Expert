@@ -131,7 +131,7 @@ Alt+Enter opens the code actions; everything is also in the *Atlas* menu and the
 - **Change signature** in a dialog: add, remove, move and rename parameters, with preview
 - **Extract method**, **introduce variable**, **extract condition to function**, **resolve `with`**, **complete `case`**
 - **Inline variable and method** *(experimental)*, **move class to its own unit** *(experimental)*, **update uses after renaming a unit** *(experimental)*
-- **Class actions:** implement interface, override methods, generate getter, setter and field, property from existing accessors, extract interface from a class, extract superclass, create method from a call, add forward declaration
+- **Class actions:** implement interface, override methods, generate getter, setter and field, property from existing accessors, extract interface from a class, extract superclass, pull members up or push them down, create method from a call, add forward declaration
 - **Strings:** move a string literal to a `resourcestring`
 - **uses:** add the missing unit, sort, remove unused ones
 - **Quick fixes** for many check rules, also "fix all"

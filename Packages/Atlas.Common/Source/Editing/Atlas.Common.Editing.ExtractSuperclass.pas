@@ -34,39 +34,19 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.ClassLayout,
+  Atlas.Common.Editing.MemberTransfer,
   Atlas.Common.Editing.ExtractInterface;
 
 type
-  {$SCOPEDENUMS ON}
-  TSuperclassMemberKind = (Field, Method, Property_);
-  {$SCOPEDENUMS OFF}
-
   /// <summary>Ist AName ein Interface (für den ersten Eintrag der Vorfahrenliste)?</summary>
   TIsInterfaceType = reference to function(const AName: string): Boolean;
-
-  TSuperclassCandidate = record
-    /// <summary>Index des Mitglieds in TClassLayout.Members.</summary>
-    Id: Integer;
-    Name: string;
-    Kind: TSuperclassMemberKind;
-    /// <summary>Deklaration bzw. Kopf ohne Direktiven.</summary>
-    Display: string;
-    Visibility: TClassVisibility;
-    Enabled: Boolean;
-    /// <summary>Warum nicht wählbar bzw. warum nicht abstrakt; '' sonst.</summary>
-    Reason: string;
-    /// <summary>Methode, die oben abstrakt deklariert werden kann.</summary>
-    CanAbstract: Boolean;
-    /// <summary>Ids der Mitglieder, die dieses Mitglied in Deklaration und Rumpf benutzt.</summary>
-    Needs: TArray<Integer>;
-  end;
 
   TSuperclassInfo = record
     ClassName: string;
     SuggestedName: string;
     /// <summary>Bisheriger Vorfahr (ohne Interfaces); '' ohne.</summary>
     Ancestor: string;
-    Candidates: TArray<TSuperclassCandidate>;
+    Candidates: TArray<TTransferCandidate>;
     Notes: TArray<string>;
   end;
 
@@ -126,11 +106,6 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.TextChanges;
 
-const
-  /// <summary>Direktiven, die eine abstrakte Deklaration oben behält.</summary>
-  KeptDirectives: array[0..5] of string = ('overload', 'stdcall', 'safecall', 'cdecl', 'register', 'pascal');
-  HintDirectives: array[0..3] of string = ('deprecated', 'platform', 'library', 'experimental');
-
 type
   /// <summary>Aufteilung eines Konstruktors bzw. Destruktors.</summary>
   TStatementSplit = record
@@ -147,26 +122,6 @@ function Fail(const AReason: string; out AOut: string): Boolean;
 begin
   AOut := AReason;
   Result := False;
-end;
-
-function Contains(const AList: TArray<Integer>; AValue: Integer): Boolean;
-var
-  Item: Integer;
-begin
-  for Item in AList do
-    if Item = AValue then
-      Exit(True);
-  Result := False;
-end;
-
-function AllIn(const AItems, AList: TArray<Integer>): Boolean;
-var
-  Item: Integer;
-begin
-  for Item in AItems do
-    if not Contains(AList, Item) then
-      Exit(False);
-  Result := True;
 end;
 
 function ContainsText(const AList: TArray<string>; const AValue: string): Boolean;
@@ -203,40 +158,6 @@ begin
     end;
   if Start <= Length(AName) then
     Result := Result + [Copy(AName, Start, MaxInt)];
-end;
-
-/// <summary>Kandidat für Basisklassen: Feld, Klassenvariable, Methode oder Property.</summary>
-function KindOf(const AMember: TClassMember; out AKind: TSuperclassMemberKind): Boolean;
-begin
-  Result := True;
-  case AMember.Kind of
-    TClassMemberKind.Field, TClassMemberKind.ClassVar:
-      AKind := TSuperclassMemberKind.Field;
-    TClassMemberKind.Method:
-      AKind := TSuperclassMemberKind.Method;
-    TClassMemberKind.Property_:
-      AKind := TSuperclassMemberKind.Property_;
-  else
-    Result := False;
-  end;
-end;
-
-/// <summary>Warum eine Methode oben nicht abstrakt werden kann; '' wenn doch.</summary>
-function AbstractBlocker(const AMember: TClassMember): string;
-begin
-  if AMember.Kind <> TClassMemberKind.Method then
-    Exit('nur Methoden');
-  if AMember.IsGeneric then
-    Exit('generische Methoden können nicht virtuell sein');
-  if AMember.HasDirective('static') then
-    Exit('statische Klassenmethoden können nicht virtuell sein');
-  if AMember.HasDirective('message') then
-    Exit('Message-Methoden bleiben, wie sie sind');
-  if AMember.HasDirective('override') then
-    Exit('überschreibt schon eine Methode des Vorfahren');
-  if AMember.IsAbstract then
-    Exit('ist schon abstrakt');
-  Result := '';
 end;
 
 /// <summary>Namen, die ANode benutzt: Bezeichner und Self.X.</summary>
@@ -395,115 +316,14 @@ begin
   Result := TTextRange.Create(AFirstLine, 0, ALastLine + 1, 0);
 end;
 
-/// <summary>Direktiven des Kopfs AHeader als Text in Reihenfolge.</summary>
-function DirectiveTexts(ALayout: TClassLayout; AHeader: TSyntaxNode): TArray<string>;
-var
-  Index: Integer;
-begin
-  Result := nil;
-  for Index := 0 to AHeader.ChildCount - 1 do
-    if AHeader[Index].Kind = TSyntaxKind.Directive then
-      Result := Result + [CollapseSpace(ALayout.TextOf(AHeader[Index]))];
-end;
-
-/// <summary>Änderungen, die aus dem Kopf AHeader eine überschreibende Methode machen: virtual/dynamic →
-/// override, reintroduce und abstract weg; ohne virtual mit AAddOverride override vor den Hinweisdirektiven bzw.
-/// am Ende.</summary>
-function OverrideEdits(ALayout: TClassLayout; AHeader: TSyntaxNode; AAddOverride: Boolean): TArray<TTextEdit>;
-var
-  Index, Offset: Integer;
-  Directive: TSyntaxNode;
-  Found: Boolean;
-  Lines: TLineTable;
-  HintPos: TTextPosition;
-  HasHint: Boolean;
-begin
-  Result := nil;
-  Found := False;
-  HasHint := False;
-  HintPos := AHeader.EndPos;
-  Lines := TLineTable.Build(ALayout.Text);
-  for Index := 0 to AHeader.ChildCount - 1 do
-  begin
-    Directive := AHeader[Index];
-    if Directive.Kind <> TSyntaxKind.Directive then
-      Continue;
-    if MatchText(Directive.Name, ['virtual', 'dynamic']) and not Found then
-    begin
-      Result := Result + [TTextEdit.Create(TTextRange.Create(Directive.StartPos, Directive.EndPos), 'override')];
-      Found := True;
-    end
-    else if MatchText(Directive.Name, ['reintroduce', 'abstract', 'virtual', 'dynamic']) then
-    begin
-      // "; reintroduce" samt Semikolon davor entfernen.
-      Offset := Directive.StartOffset;
-      while (Offset > 0) and CharInSet(ALayout.Text[Offset], [' ', #9, #13, #10]) do
-        Dec(Offset);
-      if (Offset > 0) and (ALayout.Text[Offset] = ';') then
-        Dec(Offset);
-      Result := Result + [TTextEdit.Create(TTextRange.Create(Lines.PositionAt(Offset), Directive.EndPos), '')];
-    end
-    else if MatchText(Directive.Name, HintDirectives) and not HasHint then
-    begin
-      HasHint := True;
-      HintPos := Directive.StartPos;
-    end;
-  end;
-  if Found or not AAddOverride then
-    Exit;
-  if HasHint then
-    Result := Result + [TTextEdit.Create(TTextRange.Create(HintPos, HintPos), 'override; ')]
-  else
-    Result := Result + [TTextEdit.Create(TTextRange.Create(AHeader.EndPos, AHeader.EndPos), ' override;')];
-end;
-
-/// <summary>Abstrakte Deklaration für oben: Kopf, behaltene Direktiven, virtual; abstract;.</summary>
-function AbstractDeclaration(ALayout: TClassLayout; AIndex: Integer): string;
-var
-  Directive: string;
-begin
-  Result := ALayout.Head(AIndex);
-  // reintroduce bleibt: Die Basisklasse verdeckt dann die Methode des alten Vorfahren (sonst W1010).
-  if ALayout.Members[AIndex].HasDirective('reintroduce') then
-    Result := Result + ' reintroduce;';
-  for Directive in ALayout.Members[AIndex].Directives do
-    if MatchText(Directive, KeptDirectives) then
-      Result := Result + ' ' + Directive + ';';
-  Result := Result + ' virtual; abstract;';
-end;
-
 /// <summary>Deklaration eines aufgeteilten Konstruktors bzw. Destruktors für oben (wie unten).</summary>
 function SplitDeclaration(ALayout: TClassLayout; AIndex: Integer): string;
 var
   Directive: string;
 begin
   Result := ALayout.Head(AIndex);
-  for Directive in DirectiveTexts(ALayout, ALayout.Members[AIndex].Node) do
+  for Directive in TMemberTransfer.DirectiveTexts(ALayout, ALayout.Members[AIndex].Node) do
     Result := Result + ' ' + Directive + ';';
-end;
-
-/// <summary>Deklarationszeilen eines Mitglieds für oben (samt Doku und Attributen, Einrückung wie in der
-/// Klasse); eine Feldgruppe nur mit dem einen Namen.</summary>
-function MemberLines(ALayout: TClassLayout; AIndex: Integer): TArray<string>;
-var
-  Member: TClassMember;
-  Line: Integer;
-  Doc: string;
-begin
-  Result := nil;
-  Member := ALayout.Members[AIndex];
-  if Member.IsFieldGroup then
-  begin
-    for Doc in ALayout.DocLines(AIndex) do
-      Result := Result + [ALayout.MemberIndent + Doc];
-    Result := Result + [ALayout.MemberIndent + ALayout.Declaration(AIndex)];
-    Exit;
-  end;
-  for Line := Member.FirstLine to Member.LastLine do
-    Result := Result + [ALayout.Lines[Line]];
-  // Aus einem class-var-Abschnitt: oben ohne den Abschnitt, also mit class var davor.
-  if (Member.Kind = TClassMemberKind.ClassVar) and not StartsText('class', TrimLeft(Result[High(Result)])) then
-    Result[High(Result)] := ALayout.MemberIndent + 'class var ' + TrimLeft(Result[High(Result)]);
 end;
 
 /// <summary>Typparameter ohne Einschränkungen ("&lt;T: class; U&gt;" → "&lt;T, U&gt;"); '' ohne.</summary>
@@ -548,60 +368,20 @@ begin
   Result := Text;
 end;
 
-/// <summary>Benutzt Code außerhalb der Klasse und ihrer Rümpfe AName als ".AName"?</summary>
-function UsedOutside(ALayout: TClassLayout; const AName: string): Boolean;
-var
-  Tokens: TArray<TPascalToken>;
-  Index, Previous, Line: Integer;
-  Member: TClassMember;
-  Inside: Boolean;
+/// <summary>Ein aufgeteilter Konstruktor bzw. Destruktor benutzt AName nur noch, wenn die bleibenden Anweisungen
+/// es tun.</summary>
+function StaysUsed(const ASplits: TArray<TStatementSplit>; const AName: string): TStillUses;
 begin
-  Tokens := ALayout.Tree.Tokens;
-  for Index := 1 to High(Tokens) do
-  begin
-    if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or not SameText(Tokens[Index].Text, AName) then
-      Continue;
-    Previous := Index - 1;
-    while (Previous >= 0) and (Tokens[Previous].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-      Dec(Previous);
-    if (Previous < 0) or not Tokens[Previous].IsSymbol('.') then
-      Continue;
-    Line := Tokens[Index].StartPos.Line;
-    Inside := (Line >= ALayout.FirstLine) and (Line <= ALayout.EndLine);
-    for Member in ALayout.Members do
-      if (Member.Body <> nil) and (Line >= Member.BodyFirstLine) and (Line <= Member.BodyLastLine) then
-        Inside := True;
-    if not Inside then
-      Exit(True);
-  end;
-  Result := False;
-end;
-
-/// <summary>Mitglied in ALayout, das dem Mitglied AOld (aus einem früheren Stand) entspricht: Name, Art und
-/// Parametertypen; -1 ohne.</summary>
-function Same(ALayout: TClassLayout; const AOld: TClassMember): Integer;
-var
-  Index: Integer;
-begin
-  for Index in ALayout.Find(AOld.Name) do
-    if (ALayout.Members[Index].Kind = AOld.Kind) and
-      (string.Join(',', ALayout.Members[Index].ParameterTypes) = string.Join(',', AOld.ParameterTypes)) then
-      Exit(Index);
-  Result := -1;
-end;
-
-function ParseLayout(const AText, AName: string; out ATree: TSyntaxTree): TClassLayout;
-var
-  Decl: TSyntaxNode;
-begin
-  ATree := TPascalParser.Parse(AText);
-  Decl := TClassLayout.DeclNamed(ATree, AName);
-  if Decl = nil then
-  begin
-    FreeAndNil(ATree);
-    Exit(nil);
-  end;
-  Result := TClassLayout.Read(ATree, AText, Decl);
+  Result :=
+    function(AUser: Integer): Boolean
+    var
+      Split: TStatementSplit;
+    begin
+      Result := True;
+      for Split in ASplits do
+        if Split.Member = AUser then
+          Result := ContainsText(Split.Remaining, AName);
+    end;
 end;
 
 { TExtractSuperclass }
@@ -631,10 +411,8 @@ class function TExtractSuperclass.Prepare(ATree: TSyntaxTree; const AText: strin
 var
   Decl: TSyntaxNode;
   Layout: TClassLayout;
-  Index, Need, Counter: Integer;
+  Counter: Integer;
   Member: TClassMember;
-  Item: TSuperclassCandidate;
-  Kind: TSuperclassMemberKind;
   Name, Suffix: string;
   HasSplit: Boolean;
 begin
@@ -649,38 +427,10 @@ begin
     if (Layout.Ancestors <> nil) and not SameText(Layout.Ancestors[0], 'TObject') then
       AInfo.Ancestor := Layout.Ancestors[0];
     HasSplit := False;
-    for Index := 0 to High(Layout.Members) do
-    begin
-      Member := Layout.Members[Index];
+    for Member in Layout.Members do
       if Member.Kind in [TClassMemberKind.Constructor_, TClassMemberKind.Destructor_] then
         HasSplit := True;
-      if not KindOf(Member, Kind) then
-        Continue;
-      Item := Default(TSuperclassCandidate);
-      Item.Id := Index;
-      Item.Name := Member.Name;
-      Item.Kind := Kind;
-      Item.Visibility := Member.Visibility;
-      Item.Enabled := True;
-      if Kind = TSuperclassMemberKind.Method then
-        Item.Display := Layout.Head(Index)
-      else
-        Item.Display := Layout.Declaration(Index);
-      if Member.IsRedeclaration then
-      begin
-        Item.Enabled := False;
-        Item.Reason := 'ändert nur die Sichtbarkeit eines geerbten Mitglieds';
-      end
-      else if Kind = TSuperclassMemberKind.Method then
-      begin
-        Item.Reason := AbstractBlocker(Member);
-        Item.CanAbstract := Item.Reason = '';
-      end;
-      for Need in Layout.UsedBy(Index) do
-        if KindOf(Layout.Members[Need], Kind) then
-          Item.Needs := Item.Needs + [Need];
-      AInfo.Candidates := AInfo.Candidates + [Item];
-    end;
+    AInfo.Candidates := TMemberTransfer.Candidates(Layout);
     if AInfo.Candidates = nil then
       Exit(Fail(Format('%s hat keine Felder, Methoden oder Properties für eine Basisklasse.', [Layout.Name]),
         AReason));
@@ -720,20 +470,21 @@ var
   Layout, Next: TClassLayout;
   Tree: TSyntaxTree;
   Info: TSuperclassInfo;
-  Candidate: TSuperclassCandidate;
-  Id, Index, Need, Line, FirstBody: Integer;
+  Candidate: TTransferCandidate;
+  Id, Index, Line, FirstBody: Integer;
   Member: TClassMember;
+  Olds: TArray<TClassMember>;
   Moved, Abstracts, Chosen, Relocate: TArray<Integer>;
-  Missing, AllowedNames, OwnNames, BaseLines, Bodies, Ancestors, Declarations: TArray<string>;
+  Missing, AllowedNames, OwnNames, BaseLines, Bodies, Ancestors: TArray<string>;
   Visibilities: array[TClassVisibility] of TArray<string>;
   FinalVisibility: array of TClassVisibility;
   Splits: TArray<TStatementSplit>;
   Split: TStatementSplit;
   Edits: TArray<TTextEdit>;
   Visibility: TClassVisibility;
-  Used, ForwardNeeded: Boolean;
+  ForwardNeeded: Boolean;
   LineBreak, Indent, Text, Header, Body, Name, Ancestor, BaseText, Statement: string;
-  User, HeaderOffset: Integer;
+  HeaderOffset: Integer;
 begin
   APlan := Default(TSuperclassPlan);
   AReason := '';
@@ -751,25 +502,22 @@ begin
   Chosen := nil;
   for Id in ARequest.Members do
   begin
-    Index := -1;
-    for Need := 0 to High(Info.Candidates) do
-      if Info.Candidates[Need].Id = Id then
-        Index := Need;
+    Index := TMemberTransfer.IndexOf(Info.Candidates, Id);
     if Index < 0 then
       Exit(Fail(Format('Mitglied %d ist kein Kandidat.', [Id]), AReason));
     if not Info.Candidates[Index].Enabled then
       Exit(Fail(Format('%s kann nicht wandern: %s.', [Info.Candidates[Index].Name, Info.Candidates[Index].Reason]),
         AReason));
-    if not Contains(Chosen, Id) then
+    if not TMemberTransfer.Has(Chosen, Id) then
       Chosen := Chosen + [Id];
   end;
   Moved := nil;
   Abstracts := nil;
   for Candidate in Info.Candidates do
   begin
-    if not Contains(Chosen, Candidate.Id) then
+    if not TMemberTransfer.Has(Chosen, Candidate.Id) then
       Continue;
-    if Contains(ARequest.Abstract, Candidate.Id) then
+    if TMemberTransfer.Has(ARequest.Abstract, Candidate.Id) then
     begin
       if not Candidate.CanAbstract then
         Exit(Fail(Format('%s kann nicht abstrakt werden: %s.', [Candidate.Name, Candidate.Reason]), AReason));
@@ -781,18 +529,7 @@ begin
   Layout := TClassLayout.Read(ATree, AText, ClassAt(ATree, ALine));
   try
     // Was wandert, darf nur benutzen, was mitwandert (abstrakt zählt).
-    Missing := nil;
-    for Id in Moved do
-      for Need in Layout.UsedBy(Id) do
-        if Contains(Chosen, Need) or not (Layout.Members[Need].Kind in [TClassMemberKind.Field,
-          TClassMemberKind.ClassVar, TClassMemberKind.Method, TClassMemberKind.Property_]) then
-          Continue
-        else
-        begin
-          Text := Format('%s braucht %s', [Layout.Members[Id].Name, Layout.Members[Need].Name]);
-          if not ContainsText(Missing, Text) then
-            Missing := Missing + [Text];
-        end;
+    Missing := TMemberTransfer.MissingNeeds(Layout, Moved, Chosen);
     if Missing <> nil then
       Exit(Fail(string.Join('; ', Missing) + '. Bitte mitnehmen oder abstrakt deklarieren.', AReason));
     LineBreak := Layout.LineBreak;
@@ -802,7 +539,7 @@ begin
     AllowedNames := nil;
     OwnNames := nil;
     for Index := 0 to High(Layout.Members) do
-      if Contains(Chosen, Index) then
+      if TMemberTransfer.Has(Chosen, Index) then
         AllowedNames := AllowedNames + [Layout.Members[Index].Name]
       else if Layout.Members[Index].Kind <> TClassMemberKind.Other then
         OwnNames := OwnNames + [Layout.Members[Index].Name];
@@ -821,57 +558,34 @@ begin
     for Id in Chosen do
     begin
       Member := Layout.Members[Id];
-      if not (Member.Visibility in [TClassVisibility.StrictPrivate, TClassVisibility.Private_]) then
-        Continue;
-      if (Member.Visibility = TClassVisibility.Private_) and ARequest.SameUnit then
-        Continue;
-      Used := Contains(Abstracts, Id);
-      if not Used then
-        for User in Layout.UsersOf(Id) do
-        begin
-          if Contains(Moved, User) then
-            Continue;
-          if Layout.Members[User].Kind in [TClassMemberKind.Constructor_, TClassMemberKind.Destructor_] then
-          begin
-            Used := True;
-            for Split in Splits do
-              if Split.Member = User then
-                Used := ContainsText(Split.Remaining, Member.Name);
-          end
-          else
-            Used := True;
-          if Used then
-            Break;
-        end;
-      if not Used and (Member.Visibility = TClassVisibility.Private_) then
-        Used := UsedOutside(Layout, Member.Name);
-      if not Used then
+      if not TMemberTransfer.MustRaise(Layout, Id, Moved, TMemberTransfer.Has(Abstracts, Id), ARequest.SameUnit,
+        StaysUsed(Splits, Member.Name)) then
         Continue;
       FinalVisibility[Id] := ARequest.RaiseVisibility;
       APlan.Raised := APlan.Raised + [Member.Name];
       APlan.Warnings := APlan.Warnings + [Format('%s wird %s, weil %s es weiter benutzt.', [Member.Name,
         TClassEdits.VisibilityName(ARequest.RaiseVisibility), Layout.Name])];
       // Die Überschreibung unten braucht dieselbe Sichtbarkeit (sonst H2269).
-      if Contains(Abstracts, Id) then
+      if TMemberTransfer.Has(Abstracts, Id) then
         Relocate := Relocate + [Id];
     end;
     // Deklarationen oben, je Abschnitt Felder vor Methoden und Properties.
     for Visibility := Low(TClassVisibility) to High(TClassVisibility) do
       Visibilities[Visibility] := nil;
     for Index := 0 to High(Layout.Members) do
-      if Contains(Moved, Index) and (Layout.Members[Index].Kind in [TClassMemberKind.Field,
+      if TMemberTransfer.Has(Moved, Index) and (Layout.Members[Index].Kind in [TClassMemberKind.Field,
         TClassMemberKind.ClassVar]) then
-        Visibilities[FinalVisibility[Index]] := Visibilities[FinalVisibility[Index]] + MemberLines(Layout, Index);
+        Visibilities[FinalVisibility[Index]] := Visibilities[FinalVisibility[Index]] + TMemberTransfer.MemberLines(Layout, Index);
     for Split in Splits do
       Visibilities[Layout.Members[Split.Member].Visibility] := Visibilities[Layout.Members[Split.Member].Visibility] +
         [Layout.MemberIndent + SplitDeclaration(Layout, Split.Member)];
     for Index := 0 to High(Layout.Members) do
-      if Contains(Abstracts, Index) then
+      if TMemberTransfer.Has(Abstracts, Index) then
         Visibilities[FinalVisibility[Index]] := Visibilities[FinalVisibility[Index]] +
-          [Layout.MemberIndent + AbstractDeclaration(Layout, Index)]
-      else if Contains(Moved, Index) and not (Layout.Members[Index].Kind in [TClassMemberKind.Field,
+          [Layout.MemberIndent + TMemberTransfer.AbstractDeclaration(Layout, Index)]
+      else if TMemberTransfer.Has(Moved, Index) and not (Layout.Members[Index].Kind in [TClassMemberKind.Field,
         TClassMemberKind.ClassVar]) then
-        Visibilities[FinalVisibility[Index]] := Visibilities[FinalVisibility[Index]] + MemberLines(Layout, Index);
+        Visibilities[FinalVisibility[Index]] := Visibilities[FinalVisibility[Index]] + TMemberTransfer.MemberLines(Layout, Index);
     Indent := Layout.Indent;
     Ancestor := '';
     if (Layout.Ancestors <> nil) and not SameText(Layout.Ancestors[0], 'TObject') then
@@ -937,28 +651,23 @@ begin
       APlan.Split := APlan.Split + [Member.Name];
     end;
     for Index := 0 to High(Layout.Members) do
-      if Contains(Moved, Index) and (Layout.Members[Index].Body <> nil) then
+      if TMemberTransfer.Has(Moved, Index) and (Layout.Members[Index].Body <> nil) then
         Bodies := Bodies + [TClassEdits.BodyText(Layout, Index, Name)];
     for Index := 0 to High(Layout.Members) do
-      if Contains(Moved, Index) then
+      if TMemberTransfer.Has(Moved, Index) then
         APlan.Moved := APlan.Moved + [Layout.Members[Index].Name]
-      else if Contains(Abstracts, Index) then
+      else if TMemberTransfer.Has(Abstracts, Index) then
         APlan.Abstracts := APlan.Abstracts + [Layout.Members[Index].Name];
     // Schritt 1: Klasse ändern; Abschnitte, deren Mitglieder alle wandern, fallen weg.
-    Edits := TClassEdits.DeleteMembers(Layout, Moved, True);
-    for Index := 0 to High(Layout.Sections) do
-      if (Layout.Sections[Index].HeadLine >= 0) and (Layout.Sections[Index].Members <> nil) and
-        AllIn(Layout.Sections[Index].Members, Moved) then
-        Edits := Edits + [TTextEdit.Create(LinesRange(Layout.Sections[Index].HeadLine,
-          Layout.Sections[Index].HeadLine), '')];
+    Edits := TClassEdits.DeleteMembers(Layout, Moved, True) + TMemberTransfer.EmptiedSections(Layout, Moved);
     for Id in Abstracts do
-      Edits := Edits + OverrideEdits(Layout, Layout.Members[Id].Node, True);
+      Edits := Edits + TMemberTransfer.OverrideEdits(Layout, Layout.Members[Id].Node, True);
     for Split in Splits do
     begin
       Member := Layout.Members[Split.Member];
       // Oben steht er wie bisher; unten überschreibt er ihn (virtual) bzw. verdeckt ihn ohne reintroduce.
       if Member.HasDirective('virtual') or Member.HasDirective('dynamic') or Member.HasDirective('reintroduce') then
-        Edits := Edits + OverrideEdits(Layout, Member.Node, False);
+        Edits := Edits + TMemberTransfer.OverrideEdits(Layout, Member.Node, False);
       Statement := '';
       if (Split.Inherited_ = nil) or (Member.Kind = TClassMemberKind.Destructor_) then
       begin
@@ -979,46 +688,13 @@ begin
     Edits := Edits + [TClassEdits.SetAncestors(Layout, Ancestors)];
     Text := TTextChanges.Apply(AText, Edits);
     // Schritt 2: gehobene abstrakte Methoden unten in den Abschnitt der neuen Sichtbarkeit.
-    if Relocate <> nil then
-    begin
-      Next := ParseLayout(Text, Layout.Name, Tree);
-      if Next = nil then
-        Exit(Fail('Die Klasse ist nach dem Umbau nicht mehr lesbar.', AReason));
-      try
-        Edits := nil;
-        Declarations := nil;
-        Chosen := nil;
-        for Id in Relocate do
-        begin
-          Index := Same(Next, Layout.Members[Id]);
-          if Index < 0 then
-            Continue;
-          Chosen := Chosen + [Index];
-          Edits := Edits + TClassEdits.DeleteMember(Next, Index, False);
-          Statement := '';
-          for Line := Next.Members[Index].FirstLine to Next.Members[Index].LastLine do
-          begin
-            if Statement <> '' then
-              Statement := Statement + #10;
-            Statement := Statement + Trim(Next.Lines[Line]);
-          end;
-          Declarations := Declarations + [Statement];
-        end;
-        for Index := 0 to High(Next.Sections) do
-          if (Next.Sections[Index].HeadLine >= 0) and (Next.Sections[Index].Members <> nil) and
-            AllIn(Next.Sections[Index].Members, Chosen) then
-            Edits := Edits + [TTextEdit.Create(LinesRange(Next.Sections[Index].HeadLine,
-              Next.Sections[Index].HeadLine), '')];
-        if Declarations <> nil then
-          Edits := Edits + [TClassEdits.InsertMembers(Next, ARequest.RaiseVisibility, False, Declarations)];
-        Text := TTextChanges.Apply(Text, Edits);
-      finally
-        Next.Free;
-        Tree.Free;
-      end;
-    end;
+    Olds := nil;
+    for Id in Relocate do
+      Olds := Olds + [Layout.Members[Id]];
+    if not TMemberTransfer.Relocate(Text, Layout.Name, Olds, ARequest.RaiseVisibility) then
+      Exit(Fail('Die Klasse ist nach dem Umbau nicht mehr lesbar.', AReason));
     // Schritt 3: Basisklasse über die Klasse, ihre Rümpfe vor die der Klasse.
-    Next := ParseLayout(Text, Layout.Name, Tree);
+    Next := TMemberTransfer.ParseLayout(Text, Layout.Name, Tree);
     if Next = nil then
       Exit(Fail('Die Klasse ist nach dem Umbau nicht mehr lesbar.', AReason));
     try

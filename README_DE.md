@@ -131,7 +131,7 @@ Code-Aktionen öffnet Alt+Enter; alles steht auch im Menü *Atlas* und im Kontex
 - **Signatur ändern** im Dialog: Parameter hinzufügen, entfernen, verschieben, umbenennen, mit Vorschau
 - **Methode extrahieren**, **Variable einführen**, **Bedingung in Funktion auslagern**, **with auflösen**, **case ergänzen**
 - **Variable und Methode einbetten** *(experimentell)*, **Klasse in eigene Unit verschieben** *(experimentell)*, **uses nachziehen nach dem Umbenennen einer Unit** *(experimentell)*
-- **Klassen-Aktionen:** Interface implementieren, Methoden überschreiben, Getter, Setter und Feld erzeugen, Property aus vorhandenen Zugriffsmethoden, Interface aus einer Klasse herauslösen, Basisklasse herauslösen, Methode aus einem Aufruf anlegen, Forward-Deklaration ergänzen
+- **Klassen-Aktionen:** Interface implementieren, Methoden überschreiben, Getter, Setter und Feld erzeugen, Property aus vorhandenen Zugriffsmethoden, Interface aus einer Klasse herauslösen, Basisklasse herauslösen, Mitglied in Vorfahr oder Nachfahren verschieben, Methode aus einem Aufruf anlegen, Forward-Deklaration ergänzen
 - **Texte:** String als `resourcestring` auslagern
 - **uses:** fehlende Unit ergänzen, sortieren, ungenutzte entfernen
 - **Schnellkorrekturen** zu vielen Prüfregeln, auch „Alle korrigieren“
