@@ -458,6 +458,13 @@ type
     DebugStepIntoTarget: Boolean;
     /// <summary>Tastenkürzel „Gezielt hineinspringen“ (debug.stepIntoTarget.key, 0 = keins).</summary>
     DebugStepIntoTargetKey: Integer;
+    /// <summary>Beim nächsten Ereignis anhalten (#856, debug.breakOnNextEvent): Befehl im Menü Start und in der
+    /// Befehlspalette, der vorübergehende Haltepunkte auf die Ereignis-Handler setzt; aus = kein Befehl, kein
+    /// Menüeintrag.</summary>
+    DebugBreakOnNextEvent: Boolean;
+    /// <summary>Häufige Ereignisse, die nur auf ausdrückliche Wahl beobachtet werden
+    /// (debug.breakOnNextEvent.excluded, kommagetrennt).</summary>
+    DebugBreakOnNextEventExcluded: string;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -1087,6 +1094,7 @@ uses
   Atlas.Core.Build.OpenBuild,
   Atlas.Core.Settings.OverviewKinds,
   Atlas.Core.Debug.Visualizers,
+  Atlas.Core.Debug.EventBreak,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Settings.ToolbarItems;
 
@@ -1404,6 +1412,8 @@ begin
   Result.DebugDisplayRulesAllowCalls := False;
   Result.DebugStepIntoTarget := True;
   Result.DebugStepIntoTargetKey := $C076; // Strg+Alt+F7
+  Result.DebugBreakOnNextEvent := True;
+  Result.DebugBreakOnNextEventExcluded := TAtlasEventBreak.DefaultExcluded;
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
   Result.TodoList := True;
@@ -1812,6 +1822,7 @@ begin
   OverviewRulerKinds := TAtlasOverviewKindNames.Normalize(OverviewRulerKinds);
   DebugVisualizerTypes := TAtlasVisualizers.NormalizeKinds(DebugVisualizerTypes);
   DebugVisualizerNameFields := TAtlasVisualizers.NormalizeNameFields(DebugVisualizerNameFields);
+  DebugBreakOnNextEventExcluded := TAtlasEventBreak.NormalizeExcluded(DebugBreakOnNextEventExcluded);
   DebugVisualizerMaxLength := EnsureRange(DebugVisualizerMaxLength, TAtlasVisualizerOptions.MinMaxLength,
     TAtlasVisualizerOptions.MaxMaxLength);
   DebugVisualizerTimeoutMs := EnsureRange(DebugVisualizerTimeoutMs, TAtlasVisualizerOptions.MinTimeoutMs,
@@ -2029,6 +2040,9 @@ begin
     BoolValue(Default.DebugDisplayRulesAllowCalls)) <> 0;
   DebugStepIntoTarget := AStore.ReadInteger('DebugStepIntoTarget', BoolValue(Default.DebugStepIntoTarget)) <> 0;
   DebugStepIntoTargetKey := AStore.ReadInteger('DebugStepIntoTargetKey', Default.DebugStepIntoTargetKey);
+  DebugBreakOnNextEvent := AStore.ReadInteger('DebugBreakOnNextEvent', BoolValue(Default.DebugBreakOnNextEvent)) <> 0;
+  DebugBreakOnNextEventExcluded := AStore.ReadString('DebugBreakOnNextEventExcluded',
+    Default.DebugBreakOnNextEventExcluded);
   StartProfiles := AStore.ReadInteger('StartProfiles', BoolValue(Default.StartProfiles)) <> 0;
   StartProfilesStatusField := AStore.ReadInteger('StartProfilesStatusField',
     BoolValue(Default.StartProfilesStatusField)) <> 0;
@@ -2483,6 +2497,8 @@ begin
   AStore.WriteInteger('DebugDisplayRulesAllowCalls', BoolValue(DebugDisplayRulesAllowCalls));
   AStore.WriteInteger('DebugStepIntoTarget', BoolValue(DebugStepIntoTarget));
   AStore.WriteInteger('DebugStepIntoTargetKey', DebugStepIntoTargetKey);
+  AStore.WriteInteger('DebugBreakOnNextEvent', BoolValue(DebugBreakOnNextEvent));
+  AStore.WriteString('DebugBreakOnNextEventExcluded', DebugBreakOnNextEventExcluded);
   AStore.WriteInteger('StartProfiles', BoolValue(StartProfiles));
   AStore.WriteInteger('StartProfilesStatusField', BoolValue(StartProfilesStatusField));
   AStore.WriteInteger('TodoList', BoolValue(TodoList));

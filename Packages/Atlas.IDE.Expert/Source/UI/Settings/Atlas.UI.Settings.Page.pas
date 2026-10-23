@@ -57,6 +57,7 @@ uses
   Atlas.Core.Settings.Groups,
   Atlas.Core.Editor.Overview,
   Atlas.Core.Debug.Visualizers,
+  Atlas.Core.Debug.EventBreak,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
   Atlas.UI.Strings,
@@ -302,6 +303,8 @@ type
     /// <summary>Gezielt hineinspringen (#836).</summary>
     FDebugStepIntoTarget: TCheckBox;
     FDebugStepIntoTargetKey: TEdit;
+    FDebugBreakOnNextEvent: TCheckBox;
+    FDebugBreakOnNextEventExcluded: TEdit;
     FActionsKey: TEdit;
     FExpandKey: TEdit;
     FShrinkKey: TEdit;
@@ -1086,6 +1089,8 @@ type
     property DebugDisplayRulesAllowCallsCheck: TCheckBox read FDebugDisplayRulesAllowCalls;
     property DebugStepIntoTargetCheck: TCheckBox read FDebugStepIntoTarget;
     property DebugStepIntoTargetKeyEdit: TEdit read FDebugStepIntoTargetKey;
+    property DebugBreakOnNextEventCheck: TCheckBox read FDebugBreakOnNextEvent;
+    property DebugBreakOnNextEventExcludedEdit: TEdit read FDebugBreakOnNextEventExcluded;
     function DebugVisualizerKindCheck(AKind: TAtlasVisualizerKind): TCheckBox;
     /// <summary>Zum Testen: benannte Lesezeichen (#622).</summary>
     property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
@@ -1855,6 +1860,10 @@ begin
   // Gezielt hineinspringen (#836): Schalter und Tastenkürzel.
   FDebugStepIntoTarget := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugStepIntoTarget));
   FDebugStepIntoTargetKey := AddKey(TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand));
+  // Beim nächsten Ereignis anhalten (#856): Schalter und ausgenommene Ereignisse.
+  FDebugBreakOnNextEvent := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugBreakOnNextEvent));
+  FDebugBreakOnNextEventExcluded := AddTextLine(
+    TAtlasStrings.Text(TAtlasTextId.SettingsDebugBreakOnNextEventExcluded));
 
   // Editorbefehle (#399): ein Vorrang für alle.
   AddSheet(TAtlasTextId.SettingsTabCommands);
@@ -2994,6 +3003,8 @@ begin
   FMarks.Bind(FDebugDisplayRulesAllowCalls, ['DebugDisplayRulesAllowCalls']);
   FMarks.Bind(FDebugStepIntoTarget, ['DebugStepIntoTarget']);
   FMarks.Bind(FDebugStepIntoTargetKey, ['DebugStepIntoTargetKey']);
+  FMarks.Bind(FDebugBreakOnNextEvent, ['DebugBreakOnNextEvent']);
+  FMarks.Bind(FDebugBreakOnNextEventExcluded, ['DebugBreakOnNextEventExcluded']);
   FMarks.Bind(FSafeAsk, ['SafeAskAfterCrash']);
   FMarks.Bind(FSafeAuto, ['SafeAutoAfterRepeatedCrash']);
   FMarks.Bind(FSafeKey, ['SafeStartupKey']);
@@ -5152,6 +5163,8 @@ begin
   FDebugDisplayRulesAllowCalls.Checked := ASettings.DebugDisplayRulesAllowCalls;
   FDebugStepIntoTarget.Checked := ASettings.DebugStepIntoTarget;
   FDebugStepIntoTargetKey.Text := ShortCutToText(TShortCut(ASettings.DebugStepIntoTargetKey));
+  FDebugBreakOnNextEvent.Checked := ASettings.DebugBreakOnNextEvent;
+  FDebugBreakOnNextEventExcluded.Text := ASettings.DebugBreakOnNextEventExcluded;
   FSafeAsk.Checked := ASettings.SafeAskAfterCrash;
   FSafeAuto.Checked := ASettings.SafeAutoAfterRepeatedCrash;
   case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
@@ -5623,6 +5636,8 @@ begin
   ASettings.DebugDisplayRulesAllowCalls := FDebugDisplayRulesAllowCalls.Checked;
   ASettings.DebugStepIntoTarget := FDebugStepIntoTarget.Checked;
   ASettings.DebugStepIntoTargetKey := Integer(TextToShortCut(Trim(FDebugStepIntoTargetKey.Text)));
+  ASettings.DebugBreakOnNextEvent := FDebugBreakOnNextEvent.Checked;
+  ASettings.DebugBreakOnNextEventExcluded := TAtlasEventBreak.NormalizeExcluded(FDebugBreakOnNextEventExcluded.Text);
   ASettings.SafeAskAfterCrash := FSafeAsk.Checked;
   ASettings.SafeAutoAfterRepeatedCrash := FSafeAuto.Checked;
   case FSafeKey.Choice of

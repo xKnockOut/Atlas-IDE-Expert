@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4277] of string = (
+  Lines: array[0..4301] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -1058,6 +1058,32 @@ const
     '      "x-format": "shortcut",',
     '      "x-page": "Debuggen",',
     '      "x-issue": "#836"',
+    '    },',
+    '    "DebugBreakOnNextEvent": {',
+    '      "description": "Beim nächsten Ereignis anhalten: Befehl im Menü Start und in der Befehlspalette, nutzbar solange das Programm läuft. Nach der Wahl der Ereignisarten (Maus, Tastatur, Timer, Fenst' +
+      'er, Datenbank, Aktionen, Sonstige) und der Formulare setzt Atlas vorübergehende Haltepunkte auf alle passenden Ereignis-Handler aus Formulardateien und Code; beim ersten Halt sind sie wieder entfernt,' +
+      ' eine Leiste nennt Komponente, Ereignis und Handler. „Weiter beobachten“ setzt sie erneut. Aus = kein Befehl, kein Menüeintrag.",',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "debug.breakOnNextEvent",',
+    '      "x-area": "debug",',
+    '      "x-feature": "Debugger",',
+    '      "x-page": "Debuggen",',
+    '      "x-caption": "Beim nächsten Ereignis anhalten",',
+    '      "x-captionEn": "Break on next event",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "x-issue": "#856"',
+    '    },',
+    '    "DebugBreakOnNextEventExcluded": {',
+    '      "description": "Häufig feuernde Ereignisse, die nur beobachtet werden, wenn man „Häufige Ereignisse einschließen“ wählt, kommagetrennt. Timer unter 100 ms zählen immer dazu.",',
+    '      "type": "string",',
+    '      "default": "OnPaint, OnMouseMove, OnUpdate",',
+    '      "x-key": "debug.breakOnNextEvent.excluded",',
+    '      "x-area": "debug",',
+    '      "x-page": "Debuggen",',
+    '      "x-parent": "debug.breakOnNextEvent",',
+    '      "x-control": "Textfeld",',
+    '      "x-issue": "#856"',
     '    },',
     '    "TestsBuildFirst": {',
     '      "type": "boolean",',

@@ -68,8 +68,8 @@ type
     FCaption: string;
     FTarget: TAtlasStepTarget;
     FFollowLine: Integer;
-    FTargetBreak: IOTABreakpoint;
-    FFollowBreak: IOTABreakpoint;
+    /// <summary>Vorübergehende Haltepunkte auf Ziel und Folgeanweisung.</summary>
+    FBreaks: TArray<IOTABreakpoint>;
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
     procedure KeyDown(const Msg: TMsg; var Handled: Boolean);
     procedure Tick(Sender: TObject);
@@ -82,10 +82,6 @@ type
     procedure RemoveBreakpoints;
     procedure Report(const AText: string);
     function SourceText(const AFileName: string; out AText: string): Boolean;
-    class function Debugger: IOTADebuggerServices; static;
-    class function StoppedProcess: IOTAProcess; static;
-    class function Position(const AThread: IOTAThread; out AFileName: string; out ALine: Integer): Boolean; static;
-    class function NewBreakpoint(const AFileName: string; ALine: Integer): IOTABreakpoint; static;
     class function CanBreak(const AFileName: string): Boolean; static;
     class function Evaluate(const AExpression: string; out AValue: string): Boolean; static;
   public
@@ -127,7 +123,8 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Projects.Context,
-  Atlas.IDE.Debug.Evaluator;
+  Atlas.IDE.Debug.Evaluator,
+  Atlas.IDE.Debug.Breakpoints;
 
 function IsEditorWindow(AWnd: HWND): Boolean;
 var
@@ -199,28 +196,9 @@ begin
   Result := Settings.Enabled and Settings.DebugStepIntoTarget;
 end;
 
-class function TAtlasIdeStepInto.Debugger: IOTADebuggerServices;
-begin
-  if not Supports(BorlandIDEServices, IOTADebuggerServices, Result) then
-    Result := nil;
-end;
-
-class function TAtlasIdeStepInto.StoppedProcess: IOTAProcess;
-var
-  Services: IOTADebuggerServices;
-begin
-  Result := nil;
-  Services := Debugger;
-  if (Services = nil) or (Services.ProcessCount = 0) then
-    Exit;
-  Result := Services.CurrentProcess;
-  if (Result <> nil) and not (Result.ProcessState in [psStopped, psFault, psException]) then
-    Result := nil;
-end;
-
 class function TAtlasIdeStepInto.Stopped: Boolean;
 begin
-  Result := StoppedProcess <> nil;
+  Result := TAtlasIdeBreakpoints.StoppedProcess <> nil;
 end;
 
 class function TAtlasIdeStepInto.Active: Boolean;
@@ -262,18 +240,6 @@ procedure TAtlasIdeStepInto.Report(const AText: string);
 begin
   if Assigned(FMessage) then
     FMessage(AText);
-end;
-
-class function TAtlasIdeStepInto.Position(const AThread: IOTAThread; out AFileName: string;
-  out ALine: Integer): Boolean;
-begin
-  AFileName := '';
-  ALine := -1;
-  if AThread = nil then
-    Exit(False);
-  AFileName := AThread.CurrentFile;
-  ALine := Integer(AThread.CurrentLine) - 1;
-  Result := (AFileName <> '') and (ALine >= 0);
 end;
 
 function TAtlasIdeStepInto.SourceText(const AFileName: string; out AText: string): Boolean;
@@ -341,13 +307,13 @@ begin
   Close;
   if FRunning then
     Exit;
-  Process := StoppedProcess;
+  Process := TAtlasIdeBreakpoints.StoppedProcess;
   if Process = nil then
   begin
     Report(TAtlasStrings.Text(TAtlasTextId.StepIntoTargetNotStopped));
     Exit;
   end;
-  if not Position(Process.CurrentThread, FFileName, Line) or not SourceText(FFileName, Text) then
+  if not TAtlasIdeBreakpoints.Position(Process.CurrentThread, FFileName, Line) or not SourceText(FFileName, Text) then
   begin
     Report(TAtlasStrings.Text(TAtlasTextId.StepIntoTargetNoSourceAt));
     Exit;
@@ -432,7 +398,7 @@ procedure TAtlasIdeStepInto.StepInto;
 var
   Process: IOTAProcess;
 begin
-  Process := StoppedProcess;
+  Process := TAtlasIdeBreakpoints.StoppedProcess;
   if Process <> nil then
     Process.Run(ormStmtStepInto);
 end;
@@ -454,49 +420,24 @@ begin
   Launch(FRows[AIndex]);
 end;
 
-class function TAtlasIdeStepInto.NewBreakpoint(const AFileName: string; ALine: Integer): IOTABreakpoint;
-var
-  Services: IOTADebuggerServices;
-  Index: Integer;
-  Existing: IOTASourceBreakpoint;
-begin
-  Result := nil;
-  Services := Debugger;
-  if (Services = nil) or (AFileName = '') or (ALine < 0) then
-    Exit;
-  // Ein Haltepunkt des Benutzers an derselben Stelle bleibt, wie er ist, und hält ohnehin.
-  for Index := 0 to Services.SourceBkptCount - 1 do
-  begin
-    Existing := Services.SourceBkpts[Index];
-    if (Existing <> nil) and SameText(Existing.FileName, AFileName) and (Existing.LineNumber = ALine + 1) then
-      Exit;
-  end;
-  try
-    Result := Services.NewSourceBreakpoint(AFileName, ALine + 1, nil);
-  except
-    on Exception do
-      Result := nil;
-  end;
-end;
-
 procedure TAtlasIdeStepInto.Launch(const ARow: TAtlasStepRow);
 var
   Process: IOTAProcess;
 begin
-  Process := StoppedProcess;
+  Process := TAtlasIdeBreakpoints.StoppedProcess;
   if Process = nil then
   begin
     Report(TAtlasStrings.Text(TAtlasTextId.StepIntoTargetNotStopped));
     Exit;
   end;
-  Position(Process.CurrentThread, FStartFile, FStartLine);
+  TAtlasIdeBreakpoints.Position(Process.CurrentThread, FStartFile, FStartLine);
   FTarget := ARow.Target;
   FCaption := ARow.Caption;
   FFollowLine := FAnswer.FollowLine;
-  FTargetBreak := NewBreakpoint(FTarget.FileName, FTarget.Line);
+  FBreaks := [TAtlasIdeBreakpoints.Add(FTarget.FileName, FTarget.Line)];
   // Hält das Programm zuerst an der Folgeanweisung, ist der Aufruf nicht erfolgt.
   if (FFollowLine >= 0) and not (SameText(FTarget.FileName, FFileName) and (FTarget.Line = FFollowLine)) then
-    FFollowBreak := NewBreakpoint(FFileName, FFollowLine);
+    FBreaks := FBreaks + [TAtlasIdeBreakpoints.Add(FFileName, FFollowLine)];
   FRunning := True;
   FSeenRunning := False;
   FTimer.Enabled := True;
@@ -504,22 +445,8 @@ begin
 end;
 
 procedure TAtlasIdeStepInto.RemoveBreakpoints;
-var
-  Services: IOTADebuggerServices;
 begin
-  Services := Debugger;
-  try
-    if Services <> nil then
-    begin
-      if FTargetBreak <> nil then
-        Services.RemoveBreakpoint(FTargetBreak);
-      if FFollowBreak <> nil then
-        Services.RemoveBreakpoint(FFollowBreak);
-    end;
-  finally
-    FTargetBreak := nil;
-    FFollowBreak := nil;
-  end;
+  TAtlasIdeBreakpoints.RemoveAll(FBreaks);
 end;
 
 procedure TAtlasIdeStepInto.Finish;
@@ -544,7 +471,7 @@ begin
         FTimer.Enabled := False;
         Exit;
       end;
-      Services := Debugger;
+      Services := TAtlasIdeBreakpoints.Debugger;
       // Programm beendet: nur aufräumen.
       if (Services = nil) or (Services.ProcessCount = 0) then
       begin
@@ -560,7 +487,7 @@ begin
         Exit;
       end;
       // Noch am Start und nie gelaufen: Run ist noch nicht angekommen.
-      Position(Process.CurrentThread, FileName, Line);
+      TAtlasIdeBreakpoints.Position(Process.CurrentThread, FileName, Line);
       if not FSeenRunning and SameText(FileName, FStartFile) and (Line = FStartLine) then
         Exit;
       Finish;
