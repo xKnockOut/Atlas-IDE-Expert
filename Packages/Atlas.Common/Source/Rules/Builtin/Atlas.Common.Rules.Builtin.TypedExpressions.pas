@@ -718,6 +718,8 @@ var
                 end;
               end;
             end;
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         Break;
       end;
@@ -1124,6 +1126,8 @@ var
         TIndexSymbolKind.Constant:
           if ASymbol.TypeName <> '' then
             Result := 'eine typisierte Konstante';
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
   end;
 
@@ -1214,6 +1218,8 @@ var
             CheckFor(Node);
           TSyntaxKind.ArrayType:
             CheckBounds(Node);
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         for Index := Node.ChildCount - 1 downto 0 do
           Pending.Push(Node[Index]);

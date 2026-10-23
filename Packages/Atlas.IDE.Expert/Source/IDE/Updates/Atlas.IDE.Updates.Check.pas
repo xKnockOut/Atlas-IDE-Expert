@@ -314,6 +314,8 @@ begin
       Log('Update-Prüfung: aktuell');
     TAtlasUpdateOutcome.Failed:
       Log('Update-Prüfung fehlgeschlagen: ' + AResult.Error);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

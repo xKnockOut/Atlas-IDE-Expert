@@ -240,6 +240,8 @@ begin
       TSyntaxKind.GenericParams:
         if Result.GenericParams = nil then
           Result.GenericParams := Child;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 end;
@@ -1105,6 +1107,8 @@ begin
     TSyntaxKind.Identifier:
       if (ANode.Parent <> nil) and (ANode.Parent.Kind in [TSyntaxKind.GenericParams, TSyntaxKind.EnumType]) then
         Result := [ANode.Name];
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 
@@ -1149,6 +1153,8 @@ begin
       TSyntaxKind.RoutineDecl:
         if Pos('.', Child.Name) = 0 then
           Result := Result + [Child.Name];
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 end;
@@ -1733,6 +1739,8 @@ begin
           CheckHeader(Node);
         TSyntaxKind.MemberAccess:
           CheckCall(Node);
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
     end;
     CheckLocalSymbols;
@@ -2013,6 +2021,8 @@ var
           TSyntaxKind.ConstSection:
             Report('E2437', KeywordRange(Member), 'Lokale und anonyme Records dürfen keine Konstanten ' +
               'deklarieren (wie E2437).', nil);
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
       end;
       Exit;
@@ -2147,6 +2157,8 @@ var
               Report('E2358', NameRange(Member), 'Class-Helfer erlauben keine Klassenkonstruktoren (wie E2358).',
                 nil);
           end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
     end;
     // Konstruktoren eines Class-Helfers rufen zuerst den parameterlosen Konstruktor auf (E2296).
@@ -2467,6 +2479,8 @@ begin
             CheckThreadVars(Node);
         TSyntaxKind.TypeReference:
           CheckHelperReference(Node);
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
     end;
     CheckInlineLocalSymbols;
@@ -2660,6 +2674,8 @@ begin
         TSyntaxKind.GenericParams:
           for Index := 0 to Node.ChildCount - 1 do
             AddOther(Node[Index].Name);
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
   finally
     Nodes.Free;
@@ -2831,6 +2847,8 @@ var
           TSyntaxKind.IndexAccess, TSyntaxKind.RangeExpr:
             for Index := Node.ChildCount - 1 downto 0 do
               Pending.Push(Node[Index]);
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
       end;
     finally
@@ -3086,6 +3104,8 @@ begin
         for Inner := 0 to Section.ChildCount - 1 do
           if SameText(LastPart(Section[Inner].Name), AName) then
             AResolution := TNameResolution.Create(TNameMeaning.Other, Section[Inner], nil);
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
   Result := AResolution.Meaning <> TNameMeaning.NotFound;
@@ -3110,6 +3130,8 @@ begin
         for Inner := 0 to Child.ChildCount - 1 do
           if SameText(Child[Inner].Name, AName) then
             AResolution := TNameResolution.Create(TNameMeaning.TypeName, Child[Inner], nil);
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
   if (AResolution.Meaning = TNameMeaning.NotFound) and SameText(AName, 'Result') and
@@ -3227,6 +3249,8 @@ var
               Exit;
             Exit(TNameResolution.Create(TNameMeaning.NotFound, nil, nil));
           end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
       Node := Parent;
     end;

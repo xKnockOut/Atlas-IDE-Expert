@@ -207,7 +207,7 @@ type
     Tree: TSyntaxTree;
     /// <summary>Optionen der Regel aus atlas.json als JSON-Text, sonst ''.</summary>
     Options: string;
-    /// <summary>Symbolindex für Vorfahren aus anderen Units (#125); nil ohne Index (z. B. Linter).
+    /// <summary>Symbolindex für Vorfahren aus anderen Units (#125); nil ohne Index (--no-index).
     /// Regeln treffen dann keine Aussage, die ihn bräuchte.</summary>
     Index: ISymbolIndex;
     /// <summary>Units bedarfsweise nachladen (Namensauflösung, #178); nil = nur der vorhandene Index.</summary>
@@ -271,6 +271,29 @@ type
     /// <summary>Präfixe der Projektdatei .atlas aus dem Projektkontext der IDE (#1111); ohne IDE (Linter) leer.
     /// </summary>
     Naming: TRuleNaming;
+  end;
+
+  /// <summary>Dienste des Projekts für die Regeln (#1112): Symbolindex, Nachladen von Units, Unit-Suche,
+  /// Packages, Projekte der Gruppe und Namenskonvention. Ein Weg für LSP-Server, MCP und Linter: Der
+  /// Arbeitsbereich liefert sie (TShellWorkspace.RuleServices), ApplyTo trägt sie in den Regelkontext ein.
+  /// Default = ohne Index; Regeln, die ihn brauchen, schweigen dann.</summary>
+  TRuleServices = record
+    /// <summary>Symbolindex für Typen aus anderen Units und der RTL (#125); nil = keiner.</summary>
+    Index: ISymbolIndex;
+    /// <summary>Units bedarfsweise nachladen (Namensauflösung, #178); nil = nur der vorhandene Index.</summary>
+    EnsureUnit: TEnsureUnitFunc;
+    /// <summary>Namespaces des Projekts für Unit-Namen ohne Präfix; leer ohne Projekt.</summary>
+    Namespaces: TArray<string>;
+    /// <summary>Unit-Suche wie beim Compiler (#1016); nil = unbekannt.</summary>
+    Units: IRuleUnitLookup;
+    /// <summary>Inhalt der Packages aus requires (#46); nil = unbekannt.</summary>
+    PackageProvides: TRulePackageProvides;
+    /// <summary>Projekte der Gruppe für projektweite Regeln (#1102); nil = unbekannt.</summary>
+    ProjectFiles: IRuleProjectFiles;
+    /// <summary>Präfixe der Projektdatei .atlas (#1111); leer = unbekannt.</summary>
+    Naming: TRuleNaming;
+    /// <summary>Trägt die Dienste in AContext ein.</summary>
+    procedure ApplyTo(var AContext: TRuleContext);
   end;
 
   /// <summary>Sammelt die Treffer einer Regel. Ohne Angabe gilt Konfidenz High.</summary>
@@ -339,6 +362,19 @@ begin
   else
     Result := 'high';
   end;
+end;
+
+{ TRuleServices }
+
+procedure TRuleServices.ApplyTo(var AContext: TRuleContext);
+begin
+  AContext.Index := Index;
+  AContext.EnsureUnit := EnsureUnit;
+  AContext.Namespaces := Namespaces;
+  AContext.Units := Units;
+  AContext.PackageProvides := PackageProvides;
+  AContext.ProjectFiles := ProjectFiles;
+  AContext.Naming := Naming;
 end;
 
 { TRuleDescriptor }

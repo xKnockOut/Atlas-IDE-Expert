@@ -435,7 +435,7 @@ end;
 
 procedure TAtlasWelcomeProjectsFrame.LayoutPills;
 var
-  Row, Index, Right, Width, Top: Integer;
+  Row, Index, Right, mWidth, mTop: Integer;
   Canvas: TCanvas;
 begin
   // Marken rechtsbündig in der ersten Zeile; die Rechtecke dienen auch dem Treffertest. Nur beim Zeichnen.
@@ -447,12 +447,12 @@ begin
   begin
     SetLength(FPillRects[Row], Length(FPills[Row]));
     Right := FBox.Width - ScaleValue(Indent);
-    Top := RowTop(Row) + ScaleValue(3);
+    mTop := RowTop(Row) + ScaleValue(3);
     for Index := High(FPills[Row]) downto 0 do
     begin
-      Width := Canvas.TextWidth(PillText(FPills[Row][Index])) + 2 * ScaleValue(PillPadding);
-      FPillRects[Row][Index] := Rect(Right - Width, Top, Right, Top + ScaleValue(PillHeight));
-      Dec(Right, Width + ScaleValue(PillGap));
+      mWidth := Canvas.TextWidth(PillText(FPills[Row][Index])) + 2 * ScaleValue(PillPadding);
+      FPillRects[Row][Index] := Rect(Right - mWidth, mTop, Right, mTop + ScaleValue(PillHeight));
+      Dec(Right, mWidth + ScaleValue(PillGap));
     end;
   end;
 end;
@@ -460,11 +460,11 @@ end;
 procedure TAtlasWelcomeProjectsFrame.BoxPaint(Sender: TObject);
 var
   Canvas: TCanvas;
-  Row, Index, Left, Top, Dot, Radius: Integer;
+  Row, Index, mLeft, mTop, Dot, Radius: Integer;
   Entry: TAtlasProjectEntry;
   Pill: TAtlasProjectPill;
   PillRect: TRect;
-  Text, Branch: string;
+  mText, Branch: string;
   TextColor, MutedColor: TColor;
   Selected, Active, Limit, Right: Integer;
   State: TAtlasQuickActionState;
@@ -492,18 +492,18 @@ begin
   for Row := 0 to High(FEntries) do
   begin
     Entry := FEntries[Row];
-    Top := RowTop(Row);
-    Left := ScaleValue(Indent);
+    mTop := RowTop(Row);
+    mLeft := ScaleValue(Indent);
     // Schnellaktionen (#764): aktive Zeile hinterlegt, Fokusrahmen der Tastatur.
-    FQuick.PaintBackground(Canvas, Row, Rect(0, Top, FBox.Width, Top + ScaleValue(RowHeight) - ScaleValue(2)));
+    FQuick.PaintBackground(Canvas, Row, Rect(0, mTop, FBox.Width, mTop + ScaleValue(RowHeight) - ScaleValue(2)));
     // Rechte Grenze für Name, Branch und zweite Zeile: die Knopfleiste der aktiven Zeile bzw. die Marken.
     Limit := FBox.Width - ScaleValue(Indent);
     if Row = Active then
     begin
       Canvas.Font.Assign(Font);
       Canvas.Font.Size := Font.Size - 1;
-      Limit := FQuick.LayoutRow(Canvas, Row, Rect(ScaleValue(Indent) + Dot + ScaleValue(80), Top,
-        FBox.Width - ScaleValue(Indent), Top + ScaleValue(RowHeight) - ScaleValue(2))) - ScaleValue(Indent);
+      Limit := FQuick.LayoutRow(Canvas, Row, Rect(ScaleValue(Indent) + Dot + ScaleValue(80), mTop,
+        FBox.Width - ScaleValue(Indent), mTop + ScaleValue(RowHeight) - ScaleValue(2))) - ScaleValue(Indent);
     end;
     // Für den Projektverlauf gewählte Zeile hinterlegen (#758), in der Markierungsfarbe des Themas.
     if Row = Selected then
@@ -511,35 +511,35 @@ begin
       Canvas.Brush.Style := bsSolid;
       Canvas.Brush.Color := StyleServices(Self).GetSystemColor(clHighlight);
       Canvas.Pen.Color := Canvas.Brush.Color;
-      Canvas.FillRect(Rect(0, Top, ScaleValue(3), Top + ScaleValue(RowHeight) - ScaleValue(2)));
+      Canvas.FillRect(Rect(0, mTop, ScaleValue(3), mTop + ScaleValue(RowHeight) - ScaleValue(2)));
       Canvas.Brush.Style := bsClear;
     end;
     // Punkt mit der schlimmsten Stufe; ohne Angaben grau.
     Canvas.Brush.Style := bsSolid;
     Canvas.Brush.Color := PillColor(TAtlasWelcomeProjects.Level(FPills[Row]));
     Canvas.Pen.Color := Canvas.Brush.Color;
-    Canvas.Ellipse(Left, Top + ScaleValue(6), Left + Dot, Top + ScaleValue(6) + Dot);
+    Canvas.Ellipse(mLeft, mTop + ScaleValue(6), mLeft + Dot, mTop + ScaleValue(6) + Dot);
     Canvas.Brush.Style := bsClear;
-    Inc(Left, Dot + ScaleValue(6));
+    Inc(mLeft, Dot + ScaleValue(6));
     Canvas.Font.Assign(Font);
     Canvas.Font.Color := TextColor;
     Canvas.Font.Style := [fsBold];
-    Canvas.TextRect(Rect(Left, Top + ScaleValue(3), Limit, Top + ScaleValue(21)), Left, Top + ScaleValue(3),
+    Canvas.TextRect(Rect(mLeft, mTop + ScaleValue(3), Limit, mTop + ScaleValue(21)), mLeft, mTop + ScaleValue(3),
       Entry.Name);
-    Inc(Left, Canvas.TextWidth(Entry.Name) + ScaleValue(8));
+    Inc(mLeft, Canvas.TextWidth(Entry.Name) + ScaleValue(8));
     Canvas.Font.Style := [];
     Branch := Entry.Branch;
-    if (Branch <> '') and (Left < Limit) then
+    if (Branch <> '') and (mLeft < Limit) then
     begin
       Canvas.Font.Color := MutedColor;
-      Canvas.TextRect(Rect(Left, Top + ScaleValue(3), Limit, Top + ScaleValue(21)), Left, Top + ScaleValue(3),
+      Canvas.TextRect(Rect(mLeft, mTop + ScaleValue(3), Limit, mTop + ScaleValue(21)), mLeft, mTop + ScaleValue(3),
         Branch);
     end;
     // Zweite Zeile.
     Canvas.Font.Assign(Font);
     Canvas.Font.Color := MutedColor;
-    Canvas.TextRect(Rect(ScaleValue(Indent) + Dot + ScaleValue(6), Top + ScaleValue(23), Limit,
-      Top + ScaleValue(41)), ScaleValue(Indent) + Dot + ScaleValue(6), Top + ScaleValue(23), DetailText(Entry));
+    Canvas.TextRect(Rect(ScaleValue(Indent) + Dot + ScaleValue(6), mTop + ScaleValue(23), Limit,
+      mTop + ScaleValue(41)), ScaleValue(Indent) + Dot + ScaleValue(6), mTop + ScaleValue(23), DetailText(Entry));
     // Aktive Zeile: Knöpfe statt Marken.
     Canvas.Font.Size := Font.Size - 1;
     if Row = Active then
@@ -549,14 +549,14 @@ begin
     end;
     // Stand der letzten Schnellaktion links der Marken („baut … 12 s“, „Tests: 57 ok“).
     State := FQuick.StateOf(Row);
-    Text := TAtlasQuickActionsBar.StateText(State, FQuick.NowMs, IsUpdateRow(Row));
-    if Text <> '' then
+    mText := TAtlasQuickActionsBar.StateText(State, FQuick.NowMs, IsUpdateRow(Row));
+    if mText <> '' then
     begin
       Right := FBox.Width - ScaleValue(Indent);
       if Length(FPillRects[Row]) > 0 then
         Right := FPillRects[Row][0].Left - ScaleValue(PillGap);
-      QuickRect := Rect(Right - Canvas.TextWidth(Text) - 2 * ScaleValue(PillPadding), Top + ScaleValue(3), Right,
-        Top + ScaleValue(3) + ScaleValue(PillHeight));
+      QuickRect := Rect(Right - Canvas.TextWidth(mText) - 2 * ScaleValue(PillPadding), mTop + ScaleValue(3), Right,
+        mTop + ScaleValue(3) + ScaleValue(PillHeight));
       Canvas.Brush.Style := bsSolid;
       Canvas.Brush.Color := TAtlasQuickActionsBar.StateColor(State);
       Canvas.Pen.Color := Canvas.Brush.Color;
@@ -565,7 +565,7 @@ begin
       Canvas.Font.Color := clWhite;
       Canvas.Font.Style := [];
       Canvas.TextOut(QuickRect.Left + ScaleValue(PillPadding),
-        QuickRect.Top + (QuickRect.Height - Canvas.TextHeight(Text)) div 2, Text);
+        QuickRect.Top + (QuickRect.Height - Canvas.TextHeight(mText)) div 2, mText);
     end;
     // Marken.
     for Index := 0 to High(FPills[Row]) do
@@ -582,9 +582,9 @@ begin
         Canvas.Font.Style := [fsUnderline]
       else
         Canvas.Font.Style := [];
-      Text := PillText(Pill);
+      mText := PillText(Pill);
       Canvas.TextOut(PillRect.Left + ScaleValue(PillPadding),
-        PillRect.Top + (PillRect.Height - Canvas.TextHeight(Text)) div 2, Text);
+        PillRect.Top + (PillRect.Height - Canvas.TextHeight(mText)) div 2, mText);
     end;
   end;
 end;
@@ -689,7 +689,7 @@ var
   Hit: TAtlasProjectsHit;
   QuickRow, QuickButton: Integer;
   OnMenu: Boolean;
-  Key, Hint, State: string;
+  Key, mHint, State: string;
 begin
   Hit := HitTest(X, Y);
   FQuick.MouseMove(Hit.Row, X, Y);
@@ -703,8 +703,8 @@ begin
   if Key = FHintKey then
     Exit;
   FHintKey := Key;
-  if (QuickButton >= 0) and FQuick.HintAt(X, Y, Hint) then
-    FBox.Hint := Hint
+  if (QuickButton >= 0) and FQuick.HintAt(X, Y, mHint) then
+    FBox.Hint := mHint
   else if Hit.Row >= 0 then
   begin
     FBox.Hint := HintFor(FEntries[Hit.Row], (FSource <> nil) and FSource.Selectable);

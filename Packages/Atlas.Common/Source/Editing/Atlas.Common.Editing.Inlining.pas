@@ -323,6 +323,8 @@ begin
       Result := True;
     TSyntaxKind.IndexAccess, TSyntaxKind.Call:
       Result := Parent[0] = ATarget;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

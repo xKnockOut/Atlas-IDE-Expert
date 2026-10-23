@@ -1561,6 +1561,8 @@ var
                   'Klick, Formular schließen).' + ProcessMessagesAdvice, TRuleConfidence.Medium);
               Continue;
             end;
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         if Node.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
           TSyntaxKind.RepeatStatement] then
@@ -1903,6 +1905,8 @@ var
           TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement,
           TSyntaxKind.ForInStatement:
             Loop := Node;
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         if Routine <> nil then
           if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) and

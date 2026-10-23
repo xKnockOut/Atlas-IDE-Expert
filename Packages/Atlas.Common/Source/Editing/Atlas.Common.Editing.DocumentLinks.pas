@@ -204,6 +204,8 @@ begin
           FindUrls(Token, Result);
           FindStringFile(Token, AFileName, ASearchPaths, AFileExists, Result);
         end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
 end;
 

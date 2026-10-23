@@ -323,6 +323,8 @@ begin
         Inc(Warnings);
       TAtlasCompilerSeverity.Hint:
         Inc(Hints);
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   if ABackground then
   begin

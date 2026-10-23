@@ -2484,6 +2484,8 @@ var
             // Virtuelle Methoden meldet hides-virtual.
             Found := (Symbol.Kind = TIndexSymbolKind.Method) and not Symbol.IsVirtual and not IsClassMember(Symbol) and
               SameSignature(Symbol, AOwn);
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         if Found then
         begin

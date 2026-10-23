@@ -119,6 +119,8 @@ begin
       Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.UndoKindCreated);
     TAtlasFileChangeKind.Deleted:
       Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.UndoKindDeleted);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   if AChange.Undone then
     Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.UndoStateUndone);

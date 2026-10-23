@@ -190,6 +190,13 @@ begin
   Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--todos']);
   Assert.AreEqual(0, Integer(Length(Options.Warnings)));
   Assert.IsTrue(Options.Todos, '--todos (#68)');
+  // Symbolindex (#1112): Standard mit Index und dem Cache des Servers.
+  Assert.IsFalse(Options.NoIndex);
+  Assert.AreEqual('', Options.IndexCacheFolder);
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--no-index', '--index-cache', 'C:\Cache']);
+  Assert.AreEqual(0, Integer(Length(Options.Warnings)));
+  Assert.IsTrue(Options.NoIndex, '--no-index (#1112)');
+  Assert.AreEqual('C:\Cache', Options.IndexCacheFolder);
 end;
 
 procedure TCommandLineOptionsTests.ReadsFailOnAndSourceRoot;

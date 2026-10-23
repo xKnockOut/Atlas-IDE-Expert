@@ -275,6 +275,8 @@ begin
         Result := TAtlasStrings.Fmt(TAtlasTextId.SetupLibrarySize,
           [FormatFloat('0.0', Bytes / (1024 * 1024), FormatSettings)]);
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

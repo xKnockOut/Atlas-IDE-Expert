@@ -63,22 +63,17 @@ type
     RelativePath: string;
     /// <summary>Bekannte Treffer, die ausgeblendet werden (#97); nil = keine Baseline.</summary>
     Baseline: IRuleBaseline;
-    /// <summary>Symbolindex für Regeln, die Vorfahren auflösen (#125); nil = keiner.</summary>
-    Index: ISymbolIndex;
-    /// <summary>Units nachladen und Namespaces für die Namensauflösung (#178).</summary>
-    EnsureUnit: TEnsureUnitFunc;
-    Namespaces: TArray<string>;
+    /// <summary>Index, Nachladen, Unit-Suche, Packages, Projekte der Gruppe und Namenskonvention (#1112);
+    /// derselbe Weg wie bei MCP und Linter.</summary>
+    Services: TRuleServices;
     /// <summary>Formulardatei neben der Unit (#123); '' ohne.</summary>
     FormText: string;
     /// <summary>Pfad der Formulardatei (#309); '' ohne.</summary>
     FormFile: string;
     /// <summary>Dateien neben der Unit, z. B. .dcr (#114); nil = keine.</summary>
     ReadFile: TRuleFileReader;
-    /// <summary>Absoluter Pfad und Inhalt der requires-Packages für Package-Prüfungen (#46).</summary>
+    /// <summary>Absoluter Pfad der Datei (#46).</summary>
     FileName: string;
-    PackageProvides: TRulePackageProvides;
-    /// <summary>Unit-Suche wie beim Compiler (#1016); nil = keine.</summary>
-    Units: IRuleUnitLookup;
     /// <summary>Anwendungsart des Projekts der Datei (#926); Unknown ohne Projekt.</summary>
     Application: TRuleApplicationKind;
     /// <summary>Name des Projekts ohne Endung (#943); '' ohne Projekt.</summary>
@@ -87,10 +82,6 @@ type
     AutoCreateForms: TArray<string>;
     /// <summary>Pfad der .dpr zu AutoCreateForms (#1055); '' ohne Projekt.</summary>
     ProjectMainSource: string;
-    /// <summary>Projekte der Gruppe für projektweite Regeln (#1102); nil = keine.</summary>
-    ProjectFiles: IRuleProjectFiles;
-    /// <summary>Präfixe der Projektdatei .atlas (#1111); leer ohne Projektkontext der IDE.</summary>
-    Naming: TRuleNaming;
     /// <summary>Abbruch zwischen den Prüfregeln; nil = nie. Setzt Compute.</summary>
     Cancelled: TRuleCancelled;
   end;
@@ -571,6 +562,8 @@ begin
           TMonitor.Exit(FSendLock);
         end;
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 
@@ -898,21 +891,15 @@ begin
   Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARules.RelativePath, '/', '\', [rfReplaceAll])), '');
   Context.Text := AText;
   Context.Tree := ATree;
-  Context.Index := ARules.Index;
-  Context.EnsureUnit := ARules.EnsureUnit;
-  Context.Namespaces := ARules.Namespaces;
+  ARules.Services.ApplyTo(Context);
   Context.FormText := ARules.FormText;
   Context.FormFile := ARules.FormFile;
   Context.ReadFile := ARules.ReadFile;
   Context.FileName := ARules.FileName;
-  Context.PackageProvides := ARules.PackageProvides;
-  Context.Units := ARules.Units;
   Context.Application := ARules.Application;
   Context.ProjectName := ARules.ProjectName;
   Context.AutoCreateForms := ARules.AutoCreateForms;
   Context.ProjectMainSource := ARules.ProjectMainSource;
-  Context.ProjectFiles := ARules.ProjectFiles;
-  Context.Naming := ARules.Naming;
   Context.Cancelled := ARules.Cancelled;
   Result := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
 end;

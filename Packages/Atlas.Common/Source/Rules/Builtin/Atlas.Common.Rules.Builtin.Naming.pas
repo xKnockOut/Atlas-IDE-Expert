@@ -952,6 +952,8 @@ begin
       end;
     TSyntaxKind.Parameters:
       CheckParameters(ANode);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

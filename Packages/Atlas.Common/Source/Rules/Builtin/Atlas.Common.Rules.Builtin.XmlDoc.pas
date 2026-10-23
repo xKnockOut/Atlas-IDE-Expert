@@ -1313,6 +1313,8 @@ var
               [Member.Name]), [TRuleFix.Create('Doku-Kommentar erzeugen', [TRuleEdit.Create(TTextRange.Create(Row,
               0, Row, 0), TTextLines.JoinLines(Skeleton, LineBreak) + LineBreak)])]);
           end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
     end;
   end;

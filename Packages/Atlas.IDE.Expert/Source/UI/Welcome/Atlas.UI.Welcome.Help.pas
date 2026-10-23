@@ -158,7 +158,7 @@ end;
 
 procedure TAtlasWelcomeHelpFrame.Arrange;
 var
-  Left, Right, ButtonLeft, ButtonTop, ButtonWidth: Integer;
+  mLeft, Right, ButtonLeft, ButtonTop, ButtonWidth: Integer;
   Kind: TAtlasHelpButton;
   Measure: TBitmap;
 begin
@@ -168,9 +168,9 @@ begin
   FArranging := True;
   try
     // Breite des Frames statt der Inhaltsfläche: Die richtet sich erst später nach dem Frame aus.
-    Left := ScaleValue(Indent);
+    mLeft := ScaleValue(Indent);
     Right := ClientWidth - ScaleValue(Indent);
-    ButtonLeft := Left;
+    ButtonLeft := mLeft;
     ButtonTop := ScaleValue(Gap) div 2;
     Measure := TBitmap.Create;
     try
@@ -178,9 +178,9 @@ begin
       for Kind := Low(TAtlasHelpButton) to High(TAtlasHelpButton) do
       begin
         ButtonWidth := Measure.Canvas.TextWidth(FButtons[Kind].Caption) + 2 * ScaleValue(ButtonPadding);
-        if (ButtonLeft > Left) and (ButtonLeft + ButtonWidth > Right) then
+        if (ButtonLeft > mLeft) and (ButtonLeft + ButtonWidth > Right) then
         begin
-          ButtonLeft := Left;
+          ButtonLeft := mLeft;
           Inc(ButtonTop, ScaleValue(ButtonHeight) + ScaleValue(Gap) div 2);
         end;
         FButtons[Kind].SetBounds(ButtonLeft, ButtonTop, ButtonWidth, ScaleValue(ButtonHeight));
@@ -189,7 +189,7 @@ begin
     finally
       Measure.Free;
     end;
-    FNote.SetBounds(Left, ButtonTop + ScaleValue(ButtonHeight) + ScaleValue(Gap) div 2, FNote.Width, FNote.Height);
+    FNote.SetBounds(mLeft, ButtonTop + ScaleValue(ButtonHeight) + ScaleValue(Gap) div 2, FNote.Width, FNote.Height);
     FContentHeight := FNote.Top + FNote.Height + ScaleValue(Gap) div 2;
   finally
     FArranging := False;

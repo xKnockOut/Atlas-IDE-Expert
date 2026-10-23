@@ -195,6 +195,8 @@ begin
     TAtlasStartupKey.Ctrl:
       if GetAsyncKeyState(VK_CONTROL) < 0 then
         Result := AKey;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

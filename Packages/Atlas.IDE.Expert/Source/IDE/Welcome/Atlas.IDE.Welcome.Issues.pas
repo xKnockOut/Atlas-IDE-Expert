@@ -799,6 +799,8 @@ begin
         Changed;
         Exit;
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   Mode := TAtlasIssueStart.Branch;
   if AResult.Outcome = TAtlasIssueStartOutcome.Remembered then

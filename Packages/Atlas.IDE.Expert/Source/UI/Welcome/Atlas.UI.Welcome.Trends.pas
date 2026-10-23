@@ -244,15 +244,15 @@ end;
 
 function TAtlasWelcomeTrendsFrame.TileRect(AIndex, AWidth: Integer): TRect;
 var
-  Count, Column, Row, Width, Left, Top: Integer;
+  Count, Column, Row, mWidth, mLeft, mTop: Integer;
 begin
   Count := Columns(AWidth);
   Column := AIndex mod Count;
   Row := AIndex div Count;
-  Width := (AWidth - 2 * ScaleValue(Indent) - (Count - 1) * ScaleValue(TileGap)) div Count;
-  Left := ScaleValue(Indent) + Column * (Width + ScaleValue(TileGap));
-  Top := ScaleValue(HeadHeight) + Row * (ScaleValue(TileHeight) + ScaleValue(TileGap));
-  Result := Rect(Left, Top, Left + Width, Top + ScaleValue(TileHeight));
+  mWidth := (AWidth - 2 * ScaleValue(Indent) - (Count - 1) * ScaleValue(TileGap)) div Count;
+  mLeft := ScaleValue(Indent) + Column * (mWidth + ScaleValue(TileGap));
+  mTop := ScaleValue(HeadHeight) + Row * (ScaleValue(TileHeight) + ScaleValue(TileGap));
+  Result := Rect(mLeft, mTop, mLeft + mWidth, mTop + ScaleValue(TileHeight));
 end;
 
 function TAtlasWelcomeTrendsFrame.SparkRect(const ATileRect: TRect): TRect;
@@ -297,6 +297,8 @@ begin
       Result := Result + ' ' + TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsSeconds);
     TAtlasTrendSeries.MethodLength:
       Result := Result + ' ' + TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsLines);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 
@@ -405,19 +407,19 @@ end;
 
 function TAtlasWelcomeTrendsFrame.HitTest(X, Y: Integer): TAtlasTrendsHit;
 var
-  Index, Width: Integer;
+  Index, mWidth: Integer;
   Area: TRect;
 begin
   Result.Tile := -1;
   Result.Point := -1;
   if Length(FView.Points) = 0 then
     Exit;
-  Width := AreaWidth;
+  mWidth := AreaWidth;
   for Index := 0 to High(FView.Tiles) do
-    if TileRect(Index, Width).Contains(Point(X, Y)) then
+    if TileRect(Index, mWidth).Contains(Point(X, Y)) then
     begin
       Result.Tile := Index;
-      Area := SparkRect(TileRect(Index, Width));
+      Area := SparkRect(TileRect(Index, mWidth));
       // Ein paar Punkte Spielraum um die Linie: Sie ist dünn.
       if (Y >= Area.Top - ScaleValue(TilePadding)) and (Y <= Area.Bottom + ScaleValue(TilePadding)) then
         Result.Point := TAtlasWelcomeTrends.NearestPoint(X, Length(FView.Points), Area.Left, Area.Width);
@@ -442,7 +444,7 @@ var
   Count, Index, ZeroY, X, Y, Radius, ValueHeight, Chosen: Integer;
   Points: TArray<TPoint>;
   TextColor, MutedColor, LineColor, BackColor: TColor;
-  Text: string;
+  mText: string;
 begin
   Tile := FView.Tiles[AIndex];
   TextColor := StyleServices(Self).GetSystemColor(clWindowText);
@@ -467,12 +469,12 @@ begin
   ACanvas.Font.Size := Font.Size + 3;
   ACanvas.Font.Style := [fsBold];
   ACanvas.Font.Color := TextColor;
-  Text := ValueLine(Tile);
+  mText := ValueLine(Tile);
   X := ARect.Left + ScaleValue(TilePadding);
   Y := ARect.Top + ScaleValue(20);
-  ACanvas.TextOut(X, Y, Text);
-  Inc(X, ACanvas.TextWidth(Text) + ScaleValue(6));
-  ValueHeight := ACanvas.TextHeight(Text);
+  ACanvas.TextOut(X, Y, mText);
+  Inc(X, ACanvas.TextWidth(mText) + ScaleValue(6));
+  ValueHeight := ACanvas.TextHeight(mText);
   ACanvas.Font.Assign(Font);
   ACanvas.Font.Size := Font.Size - 1;
   ACanvas.Font.Color := MutedColor;
@@ -557,7 +559,7 @@ end;
 procedure TAtlasWelcomeTrendsFrame.BoxPaint(Sender: TObject);
 var
   Canvas: TCanvas;
-  Index, Width: Integer;
+  Index, mWidth: Integer;
   MutedColor: TColor;
   Info: string;
 begin
@@ -565,7 +567,7 @@ begin
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Assign(Font);
   MutedColor := StyleServices(Self).GetSystemColor(clGrayText);
-  Width := AreaWidth;
+  mWidth := AreaWidth;
   if FView.Project = '' then
   begin
     Canvas.Font.Color := MutedColor;
@@ -576,15 +578,15 @@ begin
   Canvas.TextOut(ScaleValue(Indent), ScaleValue(3), HeadingText);
   if Length(FView.Points) > 0 then
     for Index := 0 to High(FView.Tiles) do
-      DrawTile(Canvas, Index, TileRect(Index, Width));
+      DrawTile(Canvas, Index, TileRect(Index, mWidth));
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Assign(Font);
   Canvas.Font.Color := MutedColor;
   Info := InfoText;
   // Zu schmal für alles: die laufende Nummer weglassen.
-  if (ChosenTile >= 0) and (Canvas.TextWidth(Info) > Width - 2 * ScaleValue(Indent)) then
+  if (ChosenTile >= 0) and (Canvas.TextWidth(Info) > mWidth - 2 * ScaleValue(Indent)) then
     Info := PointInfo(FView, ChosenTile, ChosenPoint, False);
-  Canvas.TextOut(ScaleValue(Indent), InfoTop(Width) + ScaleValue(3), Info);
+  Canvas.TextOut(ScaleValue(Indent), InfoTop(mWidth) + ScaleValue(3), Info);
 end;
 
 procedure TAtlasWelcomeTrendsFrame.BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);

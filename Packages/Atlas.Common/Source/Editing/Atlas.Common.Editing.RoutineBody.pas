@@ -172,6 +172,8 @@ begin
     TSyntaxKind.RepeatStatement:
       // Das letzte Kind ist die Bedingung hinter until.
       Result := Parent[Parent.ChildCount - 1] <> AStatement;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   Result := Result and IsStatement(AStatement);
 end;
@@ -496,6 +498,8 @@ begin
         if (Node.ChildCount > 1) and (Child <> Node[0]) and (SameText(Node.Name, 'and') or
           SameText(Node.Name, 'or') or (Node.Kind = TSyntaxKind.IfExpr)) then
           Exit;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
     if TRoutineBody.IsStatement(Node) then
     begin

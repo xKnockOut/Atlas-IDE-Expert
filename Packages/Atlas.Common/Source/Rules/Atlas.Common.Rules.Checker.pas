@@ -6,7 +6,8 @@
 // Für die Baseline (#97) liefert CheckText auf Wunsch die Routinen der Datei
 // aus demselben Syntaxbaum mit, damit nicht zweimal geparst wird.
 // Gehört die Datei zu einem Package (contains einer .dpk), erfahren die Regeln
-// das über TCheckProject (queue-nil-in-package, #943).
+// das über TCheckProject (queue-nil-in-package, #943). Den Symbolindex und die
+// übrigen Projektdienste bringt TCheckProject.Services mit (#1112), wie im Server.
 // Syntaxfehler und Regeln sehen nur die aktiven {$IFDEF}-Zweige (#845, #860),
 // wie im Editor: TCheckSource bringt die Symbole des Projekts (Plattform,
 // Konfiguration, .dproj-Defines), den Dateinamen und den Include-Resolver mit,
@@ -51,6 +52,10 @@ type
     /// <summary>Absoluter Pfad der geprüften Datei (#1054); '' = unbekannt. Damit sehen die Regeln die
     /// Formulardatei daneben (FormText) und lesen Dateien neben der Unit (ReadFile) wie im Server.</summary>
     FileName: string;
+    /// <summary>Pfad der .dpr zu AutoCreateForms (#1055); '' = unbekannt.</summary>
+    ProjectMainSource: string;
+    /// <summary>Index und weitere Dienste des Projekts (#1112); Default = ohne Index.</summary>
+    Services: TRuleServices;
   end;
 
   /// <summary>Woher die Symbole einer geprüften Datei kommen (#860).</summary>
@@ -71,6 +76,8 @@ type
 
   /// <summary>Quelle der Symbole je Datei, etwa aus dem Projekt des MCP-Servers.</summary>
   TCheckSourceFunc = reference to function(const AFileName: string): TCheckSource;
+  /// <summary>Projekt und Dienste (Index, #1112) je Datei, etwa aus den Arbeitsbereichen des MCP-Servers.</summary>
+  TCheckProjectFunc = reference to function(const AFileName: string): TCheckProject;
 
   TFileChecker = class
   public
@@ -104,6 +111,8 @@ type
       out AScopes: TFindingScopes): TArray<TRuleFinding>; overload; static;
     /// <summary>ASource(AFileName), ohne Quelle TCheckSource.Default.</summary>
     class function SourceOf(const ASource: TCheckSourceFunc; const AFileName: string): TCheckSource; static;
+    /// <summary>AProject(AFileName), ohne Quelle nur der Dateiname (ohne Index).</summary>
+    class function ProjectOf(const AProject: TCheckProjectFunc; const AFileName: string): TCheckProject; static;
     /// <summary>Wie oben mit Projekt (#943) und Symbolen (#860) zugleich; alle anderen Fassungen rufen diese.
     /// </summary>
     class function CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
@@ -266,6 +275,17 @@ begin
     Result := TCheckSource.Default;
 end;
 
+class function TFileChecker.ProjectOf(const AProject: TCheckProjectFunc; const AFileName: string): TCheckProject;
+begin
+  if Assigned(AProject) then
+    Result := AProject(AFileName)
+  else
+  begin
+    Result := Default(TCheckProject);
+    Result.FileName := AFileName;
+  end;
+end;
+
 class function TFileChecker.PackageOf(const APackages: TArray<TPackageSource>; const AUnitName: string):
   TCheckProject;
 var
@@ -309,6 +329,9 @@ begin
     Context.Application := AProject.Application;
     Context.ProjectName := AProject.Name;
     Context.AutoCreateForms := AProject.AutoCreateForms;
+    Context.ProjectMainSource := AProject.ProjectMainSource;
+    // Index und Projektdienste auf demselben Weg wie im Server (#1112).
+    AProject.Services.ApplyTo(Context);
     // Pfad aus dem Projekt (#1054), sonst aus der Symbolquelle (#860): Formulardatei und Nachbardateien.
     FileName := AProject.FileName;
     if FileName = '' then
