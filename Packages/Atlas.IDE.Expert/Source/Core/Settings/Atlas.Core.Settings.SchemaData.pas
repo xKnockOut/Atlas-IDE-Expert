@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2084] of string = (
+  Lines: array[0..2106] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1810,6 +1810,30 @@ const
     '      "x-page": "Editor",',
     '      "x-control": "Kontrollkästchen",',
     '      "x-issue": "#66"',
+    '    },',
+    '    "references": {',
+    '      "type": "object",',
+    '      "description": "Treffersicherheit von Verwendungen, Aufrufhierarchie und Umbenennen: Neben den sicheren (eindeutig aufgelösten) Stellen erscheinen erschlossene mit Grund, etwa Aufrufe über ein I' +
+      'nterface oder in einem inaktiven {$IFDEF}-Zweig. Umbenennen ändert nur sichere Stellen und listet die erschlossenen.",',
+    '      "additionalProperties": false,',
+    '      "properties": {',
+    '        "inferred": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Erschlossene Treffer zeigen: über ein Interface, das die Klasse umsetzt, über die überschriebene Methode eines Vorfahren, nicht eindeutige Überladungen, gleicher Name mit unb' +
+      'ekanntem Typ (with, unbekannter Ausdruck) und Stellen in inaktiven Zweigen; aus = nur sichere Treffer wie bisher."',
+    '        },',
+    '        "textMatches": {',
+    '          "type": "boolean",',
+    '          "default": false,',
+    '          "description": "Auch den Namen in String-Literalen als erschlossen melden, etwa für RTTI oder MethodAddress(''Speichern'')."',
+    '        }',
+    '      },',
+    '      "x-scope": "global",',
+    '      "x-area": "editor",',
+    '      "x-page": "Befehle",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "x-issue": "#1119"',
     '    },',
     '    "hints": {',
     '      "type": "object",',

@@ -78,6 +78,7 @@ Everything below is implemented in `main`. Features marked *(experimental)* are 
 - **Recursion marks** in the gutter, **inactive `{$IFDEF}` branches** dimmed with the reason in the tooltip, **unused uses** dimmed
 - **Bracket and block pairs** coloured by depth, with matching block lines
 - **Architecture overview** (window *Atlas Architecture*, *View › Atlas › Architecture*): subsystems as groups of closely connected units on a map you can zoom and pan, central units with direct and total dependents and role (foundation, hub), cycles with their round trip and the uses entries that close it, cross links between subsystems (rare or against the main direction) and outliers; double-click opens the unit or the uses entry. Can be saved as an HTML or Markdown report, also with `AtlasServer --architecture` and in the MCP tool `get_architecture`. **Architecture comparison** (#1121): *Save state …* writes a stably sorted JSON state for version control, *Compare with …* (or automatically `architecture.baseline`) shows new and removed cycles, cross links and uses edges between subsystems, units that changed subsystem, grown central units and new or removed units in the *Comparison* tab; on the map new edges are green and removed ones red dashed. Reports get a *Comparison* section, `get_architecture` takes `compareWith`, and `AtlasServer --architecture new.json --compare old.json --fail-on newCycle` breaks a CI run
+- **Call diagram** (#1122, `callHierarchy.diagram`): the call hierarchy as an interactive diagram, switch *Diagram* in the results window, command *Call diagram* in the palette, the Atlas menu and the editor context menu. Start on the left, one column per level, boxes with method name and location; click loads and expands the next level, double-click jumps to the code, drag pans, mouse wheel zooms. Calls through an interface or a virtual method are dashed with the number of implementations, recursion is an arrow back without further expanding, more than 8 children collapse into "+ N …". Outgoing or incoming, filter *Project units only* (RTL/VCL hidden) and *Save as HTML …* (standalone file without external references)
 
 ### Navigating
 
@@ -88,7 +89,7 @@ Everything below is implemented in `main`. Features marked *(experimental)* are 
 - **Peek definition** (Alt+F12) below the line without switching files
 - **Quick open** of files and symbols (Ctrl+P) across project, project group and search path; project-wide **symbol search**
 - **Unit search** (Ctrl+F12) in its own window with preview, groups, filters and "add to uses"
-- **Results window** "Atlas Results" for references (including forms), implementations, callers, calls and inheritance
+- **Results window** "Atlas Results" for references (including forms), implementations, callers, calls and inheritance; usages split into "Sure" and "Inferred · check before renaming" with a reason (interface, override, ambiguous overload, inactive branch) and a "Sure only" filter
 - **Navigation history** across files
 - **Named bookmarks** (Ctrl+Alt+K) and personal **notes** on code lines that never go into the source
 - **Quick bookmarks** in a column left of the line numbers: click to set and remove, Ctrl+Shift+1…9 numbers them, Ctrl+1…9 jumps project-wide, Ctrl+Shift+K unnumbered (the IDE's folding chords keep working); they follow code changes and take over the IDE bookmarks

@@ -431,6 +431,9 @@ begin
       Result[Index].Target.HasBody := False;
       if (Place.Line >= 0) and (Place.Line <= High(Lines)) then
         Result[Index].Excerpt := TAtlasPeek.Excerpt(Lines[Place.Line]);
+      // Erschlossene Treffer (#1119) wie im Ergebnisfenster mit ≈.
+      if ALocations[Index].Confidence.Inferred then
+        Result[Index].Excerpt := '≈ ' + Result[Index].Excerpt;
       Result[Index].Rows := TAtlasPeek.ReferenceRows(Place, Lines, Tabs);
     end;
   finally

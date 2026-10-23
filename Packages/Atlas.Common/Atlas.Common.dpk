@@ -124,6 +124,7 @@ contains
   Atlas.Common.Editing.DocumentLinks in 'Source\Editing\Atlas.Common.Editing.DocumentLinks.pas',
   Atlas.Common.Editing.Colors in 'Source\Editing\Atlas.Common.Editing.Colors.pas',
   Atlas.Common.JsonRpc.Statistics in 'Source\JsonRpc\Atlas.Common.JsonRpc.Statistics.pas',
+  Atlas.Common.Lsp.ReferenceConfidence in 'Source\Lsp\Atlas.Common.Lsp.ReferenceConfidence.pas',
   Atlas.Common.Lsp.References in 'Source\Lsp\Atlas.Common.Lsp.References.pas',
   Atlas.Common.Lsp.Rename in 'Source\Lsp\Atlas.Common.Lsp.Rename.pas',
   Atlas.Common.Lsp.Completion in 'Source\Lsp\Atlas.Common.Lsp.Completion.pas',

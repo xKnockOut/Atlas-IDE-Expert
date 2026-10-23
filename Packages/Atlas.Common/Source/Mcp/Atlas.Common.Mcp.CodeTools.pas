@@ -5,6 +5,8 @@
 // und dann wie im LSP an seiner Deklaration aufgelöst.
 // Befunde und check_code lesen die Dateien mit den Symbolen des Projekts und
 // dessen Include-Dateien (CheckSource, #860), wie der Editor.
+// Verwendungen und Aufrufer sind nach Treffersicherheit getrennt (#1119):
+// erst die sicheren, dann die erschlossenen mit Grund.
 
 interface
 
@@ -34,8 +36,10 @@ type
     FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
     FCheckSource: TCheckSourceFunc;
+    FSettingsFor: TReferenceSettingsProvider;
     function Locate(const AName: string; out ALocation: TSymbolLocation; out AHint: string): Boolean;
     function LineText(const AFileName: string; ALine: Integer): string;
+    function SettingsOf(const AFileName: string): TReferenceSettings;
   public
     constructor Create(const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
       const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc = nil);
@@ -78,6 +82,8 @@ type
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
     /// <summary>Symbole und Include-Dateien für check_code (#860); nil = Vordefinitionen (Win32).</summary>
     property CheckSource: TCheckSourceFunc read FCheckSource write FCheckSource;
+    /// <summary>Einstellungen references.* (#1119); nicht gesetzt: Vorgaben.</summary>
+    property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
   end;
 
 implementation
@@ -86,10 +92,12 @@ uses
   System.Classes,
   System.StrUtils,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Hierarchies,
   Atlas.Common.Lsp.QualifiedNames,
+  Atlas.Common.Lsp.ReferenceConfidence,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Rules.Output,
   Atlas.Common.Mcp.IndexTools,
@@ -156,6 +164,41 @@ begin
   end;
 end;
 
+function TMcpCodeTools.SettingsOf(const AFileName: string): TReferenceSettings;
+begin
+  if Assigned(FSettingsFor) then
+    Result := FSettingsFor(TDocumentUris.FromPath(AFileName))
+  else
+    Result := TReferenceSettings.Default;
+end;
+
+/// <summary>Aufruf über Interface bzw. virtuelle Methode (#1122): " [über Interface, 3 Umsetzungen]".</summary>
+function DispatchSuffix(const ACall: THierarchyCall): string;
+begin
+  Result := '';
+  if ACall.Dispatch = TReferenceReason.Interface_ then
+    Result := 'über Interface'
+  else if ACall.Dispatch = TReferenceReason.Virtual then
+    Result := 'virtuell'
+  else
+    Exit;
+  if ACall.Implementations <= 0 then
+    Result := ' [' + Result + ']'
+  else if ACall.Implementations = 1 then
+    Result := ' [' + Result + ', 1 Umsetzung]'
+  else
+    Result := Format(' [%s, %d Umsetzungen]', [Result, ACall.Implementations]);
+end;
+
+/// <summary>" – erschlossen (interface): Aufruf über …" für erschlossene Treffer, sonst ''.</summary>
+function ConfidenceSuffix(const AConfidence: TReferenceConfidence): string;
+begin
+  if AConfidence.IsSure then
+    Result := ''
+  else
+    Result := Format(' – erschlossen (%s): %s', [AConfidence.ReasonName, AConfidence.Detail]);
+end;
+
 function TMcpCodeTools.QualifiedName(const AFileName: string; ALine, AColumn: Integer;
   AWithParameters: Boolean): string;
 var
@@ -193,7 +236,8 @@ var
   Found: TArray<TReferenceLocation>;
   Reference: TReferenceLocation;
   Lines: TStringList;
-  Count: Integer;
+  Count, Sure, Round: Integer;
+  Pass: Boolean;
 begin
   if not Locate(AName, Location, Hint) then
     Exit(Format('Kein Symbol "%s" im Index.', [AName]));
@@ -208,7 +252,7 @@ begin
     try
       Resolver.Namespaces := FNamespaces;
       Found := TLspReferences.Find(Resolver, FIndex, Tree, Location.FileName,
-        Location.Symbol.SelectionRange.StartPos, False, Files, FReadText);
+        Location.Symbol.SelectionRange.StartPos, False, Files, FReadText, SettingsOf(Location.FileName), nil);
     finally
       Resolver.Free;
     end;
@@ -217,20 +261,33 @@ begin
   end;
   Lines := TStringList.Create;
   try
-    Lines.Add(Format('%d Verwendungen von %s (%s:%d):', [Length(Found), Location.Symbol.QualifiedName,
-      Location.FileName, Location.Symbol.SelectionRange.StartPos.Line + 1]));
-    Count := 0;
+    Sure := 0;
     for Reference in Found do
+      if Reference.Confidence.IsSure then
+        Inc(Sure);
+    Lines.Add(Format('%d Verwendungen von %s (%s:%d), %d sicher, %d erschlossen:', [Length(Found),
+      Location.Symbol.QualifiedName, Location.FileName, Location.Symbol.SelectionRange.StartPos.Line + 1, Sure,
+      Length(Found) - Sure]));
+    // Erst die sicheren, dann die erschlossenen: Nur die sicheren ändert ein Umbenennen ohne Prüfung.
+    Count := 0;
+    for Round := 0 to 1 do
     begin
-      if Count >= MaxReferences then
+      Pass := Round = 0;
+      if not Pass and (Sure < Length(Found)) and (Count < MaxReferences) then
+        Lines.Add('Erschlossen, vor dem Umbenennen prüfen:');
+      for Reference in Found do
       begin
-        Lines.Add(Format('… %d weitere', [Length(Found) - Count]));
-        Break;
+        if Reference.Confidence.IsSure <> Pass then
+          Continue;
+        if Count >= MaxReferences then
+          Break;
+        Inc(Count);
+        Lines.Add(Format('%s:%d: %s%s', [Reference.FileName, Reference.Range.StartPos.Line + 1,
+          LineText(Reference.FileName, Reference.Range.StartPos.Line), ConfidenceSuffix(Reference.Confidence)]));
       end;
-      Inc(Count);
-      Lines.Add(Format('%s:%d: %s', [Reference.FileName, Reference.Range.StartPos.Line + 1,
-        LineText(Reference.FileName, Reference.Range.StartPos.Line)]));
     end;
+    if Count < Length(Found) then
+      Lines.Add(Format('… %d weitere', [Length(Found) - Count]));
     if Hint <> '' then
       Lines.Add(Hint);
     Result := TrimRight(Lines.Text);
@@ -251,12 +308,23 @@ end;
 procedure AddCalls(ALines: TStrings; const ATitle, AArrow: string; const ACalls: TArray<THierarchyCall>);
 var
   Call: THierarchyCall;
+  Sure, Round: Integer;
 begin
   ALines.Add(ATitle);
   if Length(ACalls) = 0 then
     ALines.Add('  (keine)');
+  Sure := 0;
   for Call in ACalls do
-    ALines.Add(Format('  %s %s (%d×)', [AArrow, DescribeItem(Call.Item), Length(Call.Ranges)]));
+    if Call.Confidence.IsSure then
+      Inc(Sure);
+  // Sichere Aufrufer zuerst, erschlossene mit Grund danach (#1119).
+  for Round := 0 to 1 do
+    for Call in ACalls do
+      if Call.Confidence.IsSure = (Round = 0) then
+        ALines.Add(Format('  %s %s (%d×)%s%s', [AArrow, DescribeItem(Call.Item), Length(Call.Ranges),
+          DispatchSuffix(Call), ConfidenceSuffix(Call.Confidence)]));
+  if Sure < Length(ACalls) then
+    ALines.Add(Format('  %d sicher, %d erschlossen', [Sure, Length(ACalls) - Sure]));
 end;
 
 function TMcpCodeTools.CallHierarchy(const AName: string; ADirection: TMcpCallDirection): string;
@@ -289,9 +357,9 @@ begin
         Lines.Add(DescribeItem(Item));
         if ADirection in [TMcpCallDirection.Incoming, TMcpCallDirection.Both] then
           AddCalls(Lines, 'Aufgerufen von:', '←',
-            TLspHierarchies.IncomingCalls(Resolver, FIndex, Item, Files, FReadText));
+            TLspHierarchies.IncomingCalls(Resolver, FIndex, Item, Files, FReadText, SettingsOf(Item.FileName), nil));
         if ADirection in [TMcpCallDirection.Outgoing, TMcpCallDirection.Both] then
-          AddCalls(Lines, 'Ruft auf:', '→', TLspHierarchies.OutgoingCalls(Resolver, Item, FReadText));
+          AddCalls(Lines, 'Ruft auf:', '→', TLspHierarchies.OutgoingCalls(Resolver, FIndex, Item, FReadText, nil));
       finally
         Resolver.Free;
       end;

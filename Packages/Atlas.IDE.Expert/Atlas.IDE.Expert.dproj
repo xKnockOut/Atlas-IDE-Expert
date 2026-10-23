@@ -422,6 +422,9 @@
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.ProjectChoice.pas"/>
         <DCCReference Include="Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas"/>
         <DCCReference Include="Source\Core\Results\Atlas.Core.Results.Model.pas"/>
+        <DCCReference Include="Source\Core\Results\Atlas.Core.Results.CallDiagramTemplate.pas"/>
+        <DCCReference Include="Source\Core\Results\Atlas.Core.Results.CallDiagram.pas"/>
+        <DCCReference Include="Source\UI\Results\Atlas.UI.Results.CallDiagram.pas"/>
         <DCCReference Include="Source\UI\Results\Atlas.UI.Results.Frame.pas">
             <Form>AtlasResultsFrame</Form>
             <FormType>dfm</FormType>

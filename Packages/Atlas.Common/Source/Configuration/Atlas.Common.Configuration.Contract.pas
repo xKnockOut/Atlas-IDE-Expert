@@ -93,6 +93,18 @@ type
     class function Default: TCodeLensSettings; static;
   end;
 
+  /// <summary>Treffersicherheit der Verwendungen ("references", #1119).</summary>
+  TReferenceSettings = record
+    /// <summary>Erschlossene Treffer zeigen (über ein Interface, eine überschriebene Methode, nicht eindeutige
+    /// Überladung, unbekannter Typ, inaktiver Zweig); aus = nur sichere, wie vor #1119.</summary>
+    Inferred: Boolean;
+    /// <summary>Auch Namen in String-Literalen als erschlossen melden (RTTI, MethodAddress).</summary>
+    TextMatches: Boolean;
+    class function Default: TReferenceSettings; static;
+    /// <summary>Nur sichere Treffer wie vor #1119, für Umbauten, die nur eindeutige Stellen ändern.</summary>
+    class function SureOnly: TReferenceSettings; static;
+  end;
+
   /// <summary>Anzeige von XMLDoc in Hover und Detailpanel des Plugins (#654, #770). Der Server bereitet die Doku
   /// immer vollständig auf und gibt die Werte nur weiter.</summary>
   THintSettings = record
@@ -438,6 +450,7 @@ type
     Formatting: TFormatStyle;
     InlayHints: TInlayHintSettings;
     CodeLens: TCodeLensSettings;
+    References: TReferenceSettings;
     Hints: THintSettings;
     Directives: TDirectiveSettings;
     Highlight: THighlightSettings;
@@ -733,6 +746,20 @@ begin
   Result.ControlChars := True;
 end;
 
+{ TReferenceSettings }
+
+class function TReferenceSettings.Default: TReferenceSettings;
+begin
+  Result.Inferred := True;
+  Result.TextMatches := False;
+end;
+
+class function TReferenceSettings.SureOnly: TReferenceSettings;
+begin
+  Result.Inferred := False;
+  Result.TextMatches := False;
+end;
+
 { TCodeLensSettings }
 
 class function TCodeLensSettings.Default: TCodeLensSettings;
@@ -912,6 +939,7 @@ begin
   Result.Formatting := TFormatStyle.Default;
   Result.InlayHints := TInlayHintSettings.Default;
   Result.CodeLens := TCodeLensSettings.Default;
+  Result.References := TReferenceSettings.Default;
   Result.Hints := THintSettings.Default;
   Result.Directives := TDirectiveSettings.Default;
   Result.Highlight := THighlightSettings.Default;

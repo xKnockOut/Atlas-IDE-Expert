@@ -4,7 +4,9 @@
 // Befehlspalette: Referenzen (samt Fundstellen in .dfm) und
 // Implementierungen des Symbols am Cursor, Aufrufer und Aufrufe, Vorfahren und
 // Nachfahren als Baum, dessen Ebenen beim Aufklappen nachgeladen werden, und
-// die projektweite Symbolsuche in einem Fenster wie die Befehlspalette.
+// die projektweite Symbolsuche in einem Fenster wie die Befehlspalette. Das
+// Aufrufdiagramm (#1122) zeigt die Aufrufhierarchie gleich als Diagramm,
+// ausgehend; nur solange callHierarchy.diagram an ist.
 // Vor jeder Anfrage bekommt der Server den aktuellen Text der offenen Dateien.
 // Meldungen nur als Zeile in der Meldungsansicht, nie als Dialog.
 
@@ -34,7 +36,13 @@ type
     class function AtCursor(out AFileName: string; out ALine, ACharacter: Integer; out AName: string): Boolean; static;
     class procedure FindReferences; static;
     class procedure FindImplementations; static;
-    class procedure ShowHierarchy(ADirection: TAtlasHierarchyDirection); static;
+    class procedure ShowHierarchy(ADirection: TAtlasHierarchyDirection); overload; static;
+    /// <summary>Wie oben; AAsDiagram: gleich als Aufrufdiagramm (#1122).</summary>
+    class procedure ShowHierarchy(ADirection: TAtlasHierarchyDirection; AAsDiagram: Boolean); overload; static;
+    /// <summary>Befehl „Aufrufdiagramm“ (#1122): ausgehende Aufrufe des Symbols am Cursor als Diagramm.</summary>
+    class procedure ShowCallDiagram; static;
+    /// <summary>callHierarchy.diagram an?</summary>
+    class function CallDiagramAllowed: Boolean; static;
     class procedure SearchSymbol; static;
     /// <summary>Referenzen auf ein Symbol an einem Fundort (z. B. aus dem Tooltip); Anzahl der Fundstellen.</summary>
     class function ShowReferences(const AFileName: string; ALine, ACharacter: Integer; const AName: string): Integer; static;
@@ -61,7 +69,9 @@ uses
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.Rename,
   Atlas.IDE.Foundation.ResultsWindow,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.Files;
 
 const
   // Projektweit über viele Units; deutlich länger als ein Hover.
@@ -112,6 +122,17 @@ begin
         end);
       Result := Children;
     end;
+  // Aufrufdiagramm (#1122): nach callHierarchy.diagram; „Nur Projekt-Units“ über die Projektgruppe.
+  TAtlasIdeResultsWindow.DiagramAllowed :=
+    function: Boolean
+    begin
+      Result := CallDiagramAllowed;
+    end;
+  TAtlasIdeResultsWindow.IsProjectFile :=
+    function(AFileName: string): Boolean
+    begin
+      Result := TAtlasIdeFiles.ProjectOfFile(AFileName) <> '';
+    end;
   // Früh anmelden: Die IDE speichert das Fenster im Desktop und legt es beim Laden selbst an (#879).
   TAtlasIdeResultsWindow.Prepare;
 end;
@@ -120,6 +141,8 @@ class procedure TAtlasIdeResults.Uninstall;
 begin
   FSessionOf := nil;
   FMessage := nil;
+  TAtlasIdeResultsWindow.DiagramAllowed := nil;
+  TAtlasIdeResultsWindow.IsProjectFile := nil;
   TAtlasIdeResultsWindow.Release;
 end;
 
@@ -194,10 +217,15 @@ end;
 class function TAtlasIdeResults.Entries(const ALocations: TArray<TLspLocation>): TArray<TAtlasResultEntry>;
 var
   Location: TLspLocation;
+  Entry: TAtlasResultEntry;
 begin
   Result := nil;
   for Location in ALocations do
-    Result := Result + [TAtlasResultEntry.Create(Location.FileName, Location.Line, Location.Character)];
+  begin
+    Entry := TAtlasResultEntry.Create(Location.FileName, Location.Line, Location.Character);
+    Entry.Confidence := Location.Confidence;
+    Result := Result + [Entry];
+  end;
   TAtlasResults.FillText(Result,
     function(const AFileName: string): string
     begin
@@ -233,7 +261,7 @@ begin
     Screen.Cursor := crDefault;
   end;
   Result := Length(Found);
-  TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.ResultsReferences,
+  TAtlasIdeResultsWindow.ShowReferences(TAtlasStrings.Fmt(TAtlasTextId.ResultsReferences,
     [AName, Length(Found), Length(TAtlasResults.Group(Found))]), Found);
 end;
 
@@ -284,6 +312,22 @@ begin
 end;
 
 class procedure TAtlasIdeResults.ShowHierarchy(ADirection: TAtlasHierarchyDirection);
+begin
+  ShowHierarchy(ADirection, False);
+end;
+
+class function TAtlasIdeResults.CallDiagramAllowed: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.CallHierarchyDiagram;
+end;
+
+class procedure TAtlasIdeResults.ShowCallDiagram;
+begin
+  if CallDiagramAllowed then
+    ShowHierarchy(TAtlasHierarchyDirection.Outgoing, True);
+end;
+
+class procedure TAtlasIdeResults.ShowHierarchy(ADirection: TAtlasHierarchyDirection; AAsDiagram: Boolean);
 const
   Titles: array[TAtlasHierarchyDirection] of TAtlasTextId = (TAtlasTextId.ResultsIncoming,
     TAtlasTextId.ResultsOutgoing, TAtlasTextId.ResultsSupertypes, TAtlasTextId.ResultsSubtypes);
@@ -313,7 +357,8 @@ begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
     Exit;
   end;
-  TAtlasIdeResultsWindow.ShowHierarchy(TAtlasStrings.Fmt(Titles[ADirection], [Roots[0].Name]), ADirection, Roots);
+  TAtlasIdeResultsWindow.ShowHierarchy(TAtlasStrings.Fmt(Titles[ADirection], [Roots[0].Name]), ADirection, Roots,
+    AAsDiagram);
 end;
 
 class procedure TAtlasIdeResults.SearchSymbol;

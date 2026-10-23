@@ -21,6 +21,9 @@ type
     /// <summary>#1101: Atlas-Editorleiste, Lage, Belegung, Rücksprung, Text, Tasten der Abschnittssprünge.</summary>
     [Test]
     procedure EditorToolbarOptions;
+    /// <summary>#1122: Aufrufdiagramm standardmäßig an, abschaltbar, übersteht Speichern und Laden.</summary>
+    [Test]
+    procedure CallHierarchyDiagramOption;
     /// <summary>Schnelle Lesezeichen (#1104): Vorgaben laut Issue, Grenzen, Speichern und Laden.</summary>
     [Test]
     procedure QuickBookmarkOptions;
@@ -239,6 +242,8 @@ begin
   Assert.AreEqual(0, Settings.TestUnitKey, 'Testunit-Wechsel ohne Kürzel (#189)');
   Assert.IsTrue(Settings.CodeLensTestUnit, 'Code Lens Testunit standardmäßig an (#189)');
   Assert.IsTrue(Settings.CodeLensMetrics, 'Code Lens Metriken standardmäßig an (#66)');
+  Assert.IsTrue(Settings.ReferencesInferred, 'erschlossene Verwendungen standardmäßig an (#1119)');
+  Assert.IsFalse(Settings.ReferencesTextMatches, 'Textfunde standardmäßig aus (#1119)');
   Assert.IsTrue(Settings.CodeLensTests, 'Code Lens „Test ausführen“ standardmäßig an (#69)');
   Assert.IsTrue(Settings.TestRun, 'Tests ausführen standardmäßig da (#69)');
   Assert.IsFalse(Settings.TestsAfterBuild, 'Tests nach dem Build standardmäßig aus (#69)');
@@ -1829,6 +1834,8 @@ begin
   Store.WriteInteger('InlayHints', 1);
   Store.WriteInteger('CompileOnSave', 1);
   Store.WriteInteger('CodeLensMetrics', 0);
+  Store.WriteInteger('ReferencesInferred', 0);
+  Store.WriteInteger('ReferencesTextMatches', 1);
   Store.WriteInteger('PairColors', 0);
   Store.WriteString('ServerPath', 'C:\Atlas\AtlasServer.exe');
   Assert.Contains(Routed.Text, '"slashCommands": {');
@@ -1836,6 +1843,12 @@ begin
   Assert.Contains(Routed.Text, '"parameterNames": true');
   Assert.Contains(Routed.Text, '"onSave": true');
   Assert.Contains(Routed.Text, '"metrics": false', 'codeLens.metrics in settings.json (#66)');
+  // Treffersicherheit (#1119): Server und Plugin lesen denselben Wert.
+  Assert.Contains(Routed.Text, '"references": {');
+  Assert.Contains(Routed.Text, '"inferred": false');
+  Assert.Contains(Routed.Text, '"textMatches": true');
+  Assert.AreEqual(0, Store.ReadInteger('ReferencesInferred', 1));
+  Assert.AreEqual(-1, Registry.ReadInteger('ReferencesInferred', -1));
   // Reine Plugin-Werte bleiben in der Registry.
   Assert.DoesNotContain(Routed.Text, 'PairColors');
   Assert.AreEqual(0, Registry.ReadInteger('PairColors', 1));
@@ -1989,7 +2002,8 @@ begin
   Assert.Contains(Paths, '|rules|');
   // Jedes umgeleitete Feld ist im Schema global.
   for Field in Fields do
-    if Pos('|' + Field.Path + '|', '|index.projectGroup|memoryBudgetMb|compiler.onSave|slashCommands.enabled|') > 0 then
+    if Pos('|' + Field.Path + '|',
+      '|index.projectGroup|memoryBudgetMb|compiler.onSave|slashCommands.enabled|references.inferred|') > 0 then
       Assert.IsTrue(Field.Global, Field.Path);
 end;
 
@@ -2081,6 +2095,22 @@ begin
   Assert.IsFalse(Loaded.ProblemsWindowOpenFirst);
   Assert.AreEqual('normal', Loaded.ProblemsWindowClosedUnits);
   Assert.IsFalse(Loaded.ProblemsWindowShowCleanActive);
+end;
+
+procedure TAtlasPluginSettingsTests.CallHierarchyDiagramOption;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.CallHierarchyDiagram, 'Aufrufdiagramm standardmäßig an');
+  Settings.CallHierarchyDiagram := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('CallHierarchyDiagram', 1));
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.CallHierarchyDiagram);
 end;
 
 procedure TAtlasPluginSettingsTests.EditorToolbarOptions;
