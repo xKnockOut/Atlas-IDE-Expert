@@ -51,6 +51,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.IndexTools,
@@ -981,6 +982,13 @@ begin
   // Regelprüfung mit den Symbolen und Include-Dateien des Projekts (#860).
   Edit.CheckSource := CheckSourceOf(Workspace);
   Code.CheckSource := Edit.CheckSource;
+  // Treffersicherheit wie im Editor (#1119).
+  Code.SettingsFor :=
+    function(const AUri: string): TReferenceSettings
+    begin
+      Result := Workspace.Configuration.Settings.References;
+    end;
+  Edit.SettingsFor := Code.SettingsFor;
   Edit.Audit :=
     procedure(const AText: string)
     begin
