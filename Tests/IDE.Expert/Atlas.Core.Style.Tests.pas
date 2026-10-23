@@ -118,6 +118,8 @@ type
     [Test]
     procedure WithOriginAndShadowTags;
     [Test]
+    procedure UnreachableExceptionTag;
+    [Test]
     procedure MissingUnitBecomesTag;
     [Test]
     procedure UnitDetailIsFileName;
@@ -615,6 +617,22 @@ begin
   // Ohne Verdeckung nur die Herkunft.
   Entry.WithShadows := nil;
   Assert.AreEqual('aus qryOrders', TAtlasItemPresentation.TagText(Entry));
+end;
+
+procedure TAtlasPresentationTests.UnreachableExceptionTag;
+var
+  Entry: TAtlasCompletionItem;
+  Tags: TAtlasTags;
+begin
+  // Exception-Klassen (#483): Ein früherer Zweig fängt die Klasse schon.
+  Entry := Item('EConvertError', TAtlasItemKind.Class_);
+  Entry.Unreachable := 'Exception';
+  Tags := TAtlasItemPresentation.Tags(Entry);
+  Assert.AreEqual('nie erreicht: Exception davor', TAtlasItemPresentation.TagText(Entry));
+  Assert.AreEqual(Ord(TAtlasTagKind.Warn), Ord(Tags[0].Kind));
+  Assert.IsTrue(Tags[0].Filled);
+  Entry.Unreachable := '';
+  Assert.AreEqual('', TAtlasItemPresentation.TagText(Entry));
 end;
 
 procedure TAtlasPresentationTests.MissingUnitBecomesTag;

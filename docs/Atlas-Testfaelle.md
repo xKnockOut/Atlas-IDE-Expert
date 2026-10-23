@@ -2449,6 +2449,25 @@ Voraussetzung: Server läuft in der IDE, DUnitX im Bibliothekspfad indiziert, `c
 | AT9 | Eigenes `MarkeAttribute = class(TCustomAttribute)` und `TNurKlasse = class` in der Unit; `[` | `Marke` angeboten, `TNurKlasse` nicht |
 | AT10 | `"completion": {"attributes": false}` in atlas.json; AT1 | Gewöhnliche Liste mit `TestAttribute` usw. samt Endung |
 
+## Exception-Klassen (#483)
+
+Voraussetzung: Server läuft in der IDE, `completion.exceptionClasses` an (Vorgabe), Code-Vorlagen an. Projekt mit eigener Klasse `EAppError = class(Exception)` und einer Klasse `TWorker`.
+
+| Nr. | Schritte | Erwartet |
+| --- | --- | --- |
+| EX1 | In einer Methode `raise ` tippen, Liste öffnen | nur Exception-Klassen; `EAppError` vor `Exception`, `EConvertError`; kein `TWorker`, keine Variablen |
+| EX2 | EX1, `EAppError` übernehmen | `raise EAppError.Create('')`, Cursor zwischen den Anführungszeichen |
+| EX3 | EX1, `EAppError.CreateFmt` übernehmen | `raise EAppError.CreateFmt('', [])`, Cursor im Text, Tab springt in die Klammer |
+| EX4 | `try Value := StrToInt(S); except on E: ` tippen | Überschrift „Aus dem try-Block“, darin zuerst `EConvertError`; darunter „Allgemein“ |
+| EX5 | Eigene Routine mit `/// <exception cref="EAppError">…</exception>` im try aufrufen, `on E: ` | `EAppError` in „Aus dem try-Block“, in der Reihenfolge der Aufrufe |
+| EX6 | `except on E: EConvertError do …; on E: ` | `EConvertError` fehlt in der Liste |
+| EX7 | `except on E: Exception do …; on E: ` | `EConvertError` u. a. mit Warnmarke „nie erreicht: Exception davor“ (Fläche) |
+| EX8 | Zweig vor `on E: Exception do` einfügen (`on E: ` darüber) | keine Warnmarke |
+| EX9 | `on E: ` in einem try ohne bekannte Aufrufe | keine Gruppenüberschriften, nur Exception-Klassen |
+| EX10 | Klasse aus nicht eingebundener Unit (z. B. `EFOpenError` ohne `System.Classes`) nach `LoadFromFile` im try | Eintrag mit „+ System.Classes“; Übernahme ergänzt uses |
+| EX11 | `"completion": {"snippets": false}`; EX2 | Übernahme `EAppError.Create('')` ohne Platzhalter, Einträge bleiben |
+| EX12 | `"completion": {"exceptionClasses": false}`; EX1 und EX4 | gewöhnliche Liste ohne Filter, Gruppen und Marken |
+
 ## with-Blöcke (#481)
 
 Voraussetzung: Server läuft in der IDE, `completion.withOrigin` an (Vorgabe). Formular `TForm1` mit Feld bzw. Eigenschaft `Name`, Methode mit `qryOrders: TFDQuery`.

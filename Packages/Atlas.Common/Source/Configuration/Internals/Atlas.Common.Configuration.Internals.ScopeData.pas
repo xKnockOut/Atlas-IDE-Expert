@@ -9,7 +9,7 @@ interface
 
 const
   /// <summary>Schlüssel für alle Projekte (settings.json).</summary>
-  GlobalSettingPaths: array[0..45] of string = (
+  GlobalSettingPaths: array[0..46] of string = (
     'delphiVersion',
     'language',
     'rules',
@@ -28,6 +28,7 @@ const
     'completion.attributes',
     'completion.anonymousMethods',
     'completion.withOrigin',
+    'completion.exceptionClasses',
     'completion.sameNameVariants',
     'completion.sameNameInsert',
     'completion.showFmxUnits',

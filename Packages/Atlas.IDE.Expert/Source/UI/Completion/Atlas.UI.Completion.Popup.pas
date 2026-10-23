@@ -675,6 +675,11 @@ begin
     // Interface implementieren (#466): „Fehlende Methoden von IExporter, IFlush“.
     else if FItems[FOrder[APosition + 1]].Batch then
       Text := TAtlasStrings.Fmt(TAtlasTextId.BatchHeader, [FItems[FOrder[APosition + 1]].SetOf])
+    // Exception-Klassen nach "on E: " (#483): „Aus dem try-Block“ und „Allgemein“.
+    else if FItems[FOrder[APosition + 1]].ExceptionGroup = 'try' then
+      Text := TAtlasStrings.Text(TAtlasTextId.ExceptionGroupTry)
+    else if FItems[FOrder[APosition + 1]].ExceptionGroup = 'general' then
+      Text := TAtlasStrings.Text(TAtlasTextId.ExceptionGroupGeneral)
     else if FItems[FOrder[APosition + 1]].SetOf <> '' then
     begin
       // Mengenmodus (#448): „TAnchors · Menge von TAnchorKind“, bei "X in [" nur „Menge von …“.

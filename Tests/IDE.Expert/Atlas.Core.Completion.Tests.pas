@@ -20,6 +20,8 @@ type
     [Test]
     procedure KeepsAnonymousMethodsWithoutSnippets;
     [Test]
+    procedure KeepsRaiseItemsWithoutSnippets;
+    [Test]
     procedure ReadsItemArrayAndNull;
     [Test]
     procedure PartialItemsContinueRank;
@@ -276,6 +278,32 @@ begin
   Assert.AreEqual(1, Integer(Length(Items)));
   Assert.AreEqual('', Items[0].Snippet);
   Assert.AreEqual('procedure'#10'  begin'#10'    '#10'  end', Items[0].TextEdit.NewText);
+end;
+
+procedure TAtlasCompletionProviderTests.KeepsRaiseItemsWithoutSnippets;
+var
+  Response: TJSONValue;
+  Items: TAtlasCompletionItems;
+begin
+  // #483: Gruppe und Reihenfolge-Warnung aus data; nach raise bleibt "EFoo.Create('')" ohne Platzhalter.
+  Response := TJSONObject.ParseJSONValue(
+    '{"isIncomplete":false,"items":[' +
+    '{"label":"EAppError","kind":7,"insertTextFormat":2,' +
+    '"textEdit":{"range":{"start":{"line":3,"character":8},"end":{"line":3,"character":8}},' +
+    '"newText":"EAppError.Create(''$0'')"},"data":{"exceptionGroup":"raise"}},' +
+    '{"label":"EConvertError","kind":7,"data":{"exceptionGroup":"general","unreachable":"Exception"}}]}');
+  try
+    Items := TAtlasServerCompletionProvider.ItemsFromLsp(Response);
+  finally
+    Response.Free;
+  end;
+  Assert.AreEqual('raise', Items[0].ExceptionGroup);
+  Assert.AreEqual('general', Items[1].ExceptionGroup);
+  Assert.AreEqual('Exception', Items[1].Unreachable);
+  Items := TAtlasServerCompletionProvider.WithoutSnippets(Items);
+  Assert.AreEqual(2, Integer(Length(Items)));
+  Assert.AreEqual('', Items[0].Snippet);
+  Assert.AreEqual('EAppError.Create('''')', Items[0].TextEdit.NewText);
 end;
 
 procedure TAtlasCompletionProviderTests.ReadsScopeUnitAndHiddenNames;
