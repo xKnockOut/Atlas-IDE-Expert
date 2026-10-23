@@ -14,11 +14,15 @@
 //     Liefert der Debugger den Stapel verzögert (csWait, LLDB), fragt Atlas
 //     bis zu StackRetries-mal nach.
 //   - Still fortsetzen: Steht die Klasse auf der Ignorier-Liste von Atlas
-//     („Klasse künftig ignorieren“ im Kontextmenü), schließt Atlas den Dialog
-//     mit „Fortsetzen“ und zählt den Eintrag nur (grau). Das wirkt ab dem
-//     nächsten Halt, also auch im nächsten Lauf. Ob die IDE Exceptions, die in
-//     ihren eigenen Debugger-Optionen ignoriert werden, überhaupt meldet, prüft
-//     die Studie (docs/Studie-Exception-Dialog.md, Punkt S1).
+//     („Klasse künftig ignorieren“ im Kontextmenü) oder Klasse + Datei + Zeile
+//     im gestarteten Projekt („Nur an dieser Stelle ignorieren“ der
+//     Exception-Leiste, #783, nur mit debug.exceptionBanner und
+//     debug.exceptionBanner.ignoreAtLocation), schließt Atlas den Dialog mit
+//     „Fortsetzen“ und zählt den Eintrag nur (grau). Ohne erkannten Dialog
+//     setzt Atlas den Prozess direkt fort. Das wirkt ab dem nächsten Halt, also
+//     auch im nächsten Lauf. Ob die IDE Exceptions, die in ihren eigenen
+//     Debugger-Optionen ignoriert werden, überhaupt meldet, prüft die Studie
+//     (docs/Studie-Exception-Dialog.md, Punkt S1).
 //   - Fenster „Exception-Verlauf“ (Befehl Atlas.DebugExceptions): Klick springt
 //     zur Stelle (Datei aus dem Stapel, notfalls über die Dateien der
 //     Projektgruppe gesucht), Kopieren, Klasse ignorieren und wieder anhalten,
@@ -56,6 +60,11 @@ type
 
   TAtlasDebugExceptionEvent = reference to procedure(const AStop: TAtlasDebugExceptionStop);
 
+  TAtlasDebugExceptionHandler = record
+    Handle: Integer;
+    Handler: TAtlasDebugExceptionEvent;
+  end;
+
   TAtlasIdeDebugExceptions = class
   public const
     StackRetries = 10;
@@ -85,7 +94,8 @@ type
     FDialogDone: Boolean;
     FStackDone: Boolean;
     FMessage: TProc<string>;
-    FOnException: TArray<TAtlasDebugExceptionEvent>;
+    FOnException: TArray<TAtlasDebugExceptionHandler>;
+    FNextHandle: Integer;
     /// <summary>Quelle der Klasse schon protokolliert (Studie #783, Punkt S3; einmal je Sitzung).</summary>
     FStatusLogged: Boolean;
     class procedure Captured(AFault: Boolean); static;
@@ -95,6 +105,8 @@ type
     class procedure DialogTimeout; static;
     /// <summary>Wenn Stapel und Dialog fertig sind: in den Verlauf, still fortsetzen, melden.</summary>
     class procedure Finish; static;
+    class procedure CallHandler(const AHandler: TAtlasDebugExceptionEvent;
+      const AStop: TAtlasDebugExceptionStop); static;
     class procedure WireFrame(AFrame: TAtlasDebugExceptionsFrame); static;
     class procedure RefreshWindow; static;
     class procedure StatusTexts(out AClass, AMessage: string); static;
@@ -110,14 +122,25 @@ type
     /// <summary>Fenster „Exception-Verlauf“ zeigen.</summary>
     class procedure ShowWindow; static;
     /// <summary>Für #578/#783: nach jedem aufgenommenen Halt wegen einer Exception (auch still fortgesetzt).
-    /// </summary>
-    class procedure AddExceptionHandler(const AHandler: TAtlasDebugExceptionEvent); static;
-    class procedure ClearExceptionHandlers; static;
+    /// Liefert die Kennung für RemoveExceptionHandler; 0, wenn AHandler fehlt.</summary>
+    class function AddExceptionHandler(const AHandler: TAtlasDebugExceptionEvent): Integer; static;
+    class procedure RemoveExceptionHandler(AHandle: Integer); static;
     class function History: TAtlasDebugExceptionHistory; static;
     class function IgnoreList: TAtlasDebugIgnoreList; static;
     class procedure SaveIgnoreList(const AList: TAtlasDebugIgnoreList); static;
     /// <summary>Den erkannten Dialog des aktuellen Halts mit „Fortsetzen“ schließen (#783).</summary>
     class function ContinueDialog: Boolean; static;
+    /// <summary>Den erkannten Dialog des aktuellen Halts mit „Anhalten“ schließen (#783: Leiste statt Dialog).
+    /// </summary>
+    class function BreakDialog: Boolean; static;
+    /// <summary>Klasse künftig still fortsetzen (Ignorier-Liste speichern, Meldung).</summary>
+    class procedure IgnoreClass(const AClass: string); static;
+    /// <summary>Klasse an Datei und Zeile im Projekt künftig still fortsetzen (#783). False, wenn sie schon
+    /// gemerkt war oder etwas fehlt.</summary>
+    class function IgnoreLocation(const AProject, AClass, AFileName: string; ALine: Integer): Boolean; static;
+    /// <summary>Gemerkte Orte wirken (debug.exceptionBanner und debug.exceptionBanner.ignoreAtLocation).
+    /// </summary>
+    class function LocationsActive: Boolean; static;
   end;
 
 implementation
@@ -131,6 +154,7 @@ uses
   Atlas.IDE.Debug.ExceptionsWindow,
   Atlas.IDE.Debug.Sources,
   Atlas.Core.Debug.OwnCode,
+  Atlas.Core.Debug.ExceptionBanner,
   Atlas.UI.Strings;
 
 { TAtlasIdeDebugExceptions.TListener }
@@ -262,15 +286,27 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeDebugExceptions.AddExceptionHandler(const AHandler: TAtlasDebugExceptionEvent);
+class function TAtlasIdeDebugExceptions.AddExceptionHandler(const AHandler: TAtlasDebugExceptionEvent): Integer;
+var
+  Entry: TAtlasDebugExceptionHandler;
 begin
-  if Assigned(AHandler) then
-    FOnException := FOnException + [AHandler];
+  Result := 0;
+  if not Assigned(AHandler) then
+    Exit;
+  Inc(FNextHandle);
+  Entry.Handle := FNextHandle;
+  Entry.Handler := AHandler;
+  FOnException := FOnException + [Entry];
+  Result := Entry.Handle;
 end;
 
-class procedure TAtlasIdeDebugExceptions.ClearExceptionHandlers;
+class procedure TAtlasIdeDebugExceptions.RemoveExceptionHandler(AHandle: Integer);
+var
+  Index: Integer;
 begin
-  FOnException := nil;
+  for Index := High(FOnException) downto 0 do
+    if FOnException[Index].Handle = AHandle then
+      Delete(FOnException, Index, 1);
 end;
 
 class function TAtlasIdeDebugExceptions.History: TAtlasDebugExceptionHistory;
@@ -293,6 +329,38 @@ end;
 class function TAtlasIdeDebugExceptions.ContinueDialog: Boolean;
 begin
   Result := (FDialog <> nil) and FDialog.ContinueFound;
+end;
+
+class function TAtlasIdeDebugExceptions.BreakDialog: Boolean;
+begin
+  Result := (FDialog <> nil) and FDialog.BreakFound;
+end;
+
+class procedure TAtlasIdeDebugExceptions.IgnoreClass(const AClass: string);
+begin
+  SetIgnored(AClass, True);
+end;
+
+class function TAtlasIdeDebugExceptions.IgnoreLocation(const AProject, AClass, AFileName: string;
+  ALine: Integer): Boolean;
+var
+  List: TAtlasDebugIgnoreList;
+begin
+  List := FIgnore;
+  Result := (AProject <> '') and (AFileName <> '') and (ALine > 0) and
+    List.AddLocation(AProject, AClass, AFileName, ALine);
+  if not Result then
+    Exit;
+  SaveIgnoreList(List);
+  if Assigned(FMessage) then
+    FMessage(TAtlasStrings.Fmt(TAtlasTextId.DebugBannerIgnoredLocationSaid,
+      [AClass, ExtractFileName(AFileName) + ':' + IntToStr(ALine)]));
+end;
+
+class function TAtlasIdeDebugExceptions.LocationsActive: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugExceptionBanner and
+    TAtlasIdeSettings.Current.DebugExceptionBannerIgnoreAtLocation;
 end;
 
 class procedure TAtlasIdeDebugExceptions.StatusTexts(out AClass, AMessage: string);
@@ -442,29 +510,46 @@ end;
 class procedure TAtlasIdeDebugExceptions.Finish;
 var
   Done: TAtlasDebugExceptionStop;
-  Handler: TAtlasDebugExceptionEvent;
-  Handlers: TArray<TAtlasDebugExceptionEvent>;
+  Entry: TAtlasDebugExceptionHandler;
+  Handlers: TArray<TAtlasDebugExceptionHandler>;
+  Auto: TAtlasDebugAutoContinue;
 begin
   if not FHasPending or not FDialogDone or not FStackDone then
     Exit;
   FHasPending := False;
   Done := FPending;
-  // Klasse auf der Ignorier-Liste: Dialog mit „Fortsetzen“ schließen und nur zählen.
-  if FIgnore.IgnoresClass(Done.Exception.ExceptionClass) and Done.Dialog.CanContinue and
-    FDialog.ContinueFound then
+  // Klasse bzw. Ort auf der Ignorier-Liste: Dialog mit „Fortsetzen“ schließen und nur zählen.
+  Auto := TAtlasDebugBannerRules.AutoContinue(FIgnore.IgnoresClass(Done.Exception.ExceptionClass),
+    FIgnore.IgnoresLocation(TAtlasIdeDebugSession.LaunchProject, Done.Exception.ExceptionClass,
+    Done.Exception.FileName, Done.Exception.Line), LocationsActive);
+  if Auto <> TAtlasDebugAutoContinue.None then
   begin
-    Done.Continued := True;
-    Done.Exception.Ignored := True;
+    // Ohne erkannten Dialog (keiner erschienen oder nicht lesbar) steht der Prozess nur: direkt fortsetzen.
+    if Done.Dialog.HasException then
+      Done.Continued := Done.Dialog.CanContinue and FDialog.ContinueFound
+    else
+      Done.Continued := (TAtlasIdeDebugSession.StopCount = Done.Stop) and TAtlasIdeDebugSession.Resume;
+    Done.Exception.Ignored := Done.Continued;
   end;
   FHistory.Add(Done.Exception);
   RefreshWindow;
   Handlers := FOnException;
-  for Handler in Handlers do
-    TAtlasGuard.Run(TAtlasFeature.Debugger,
-      procedure
-      begin
-        Handler(Done);
-      end);
+  for Entry in Handlers do
+    CallHandler(Entry.Handler, Done);
+end;
+
+/// <summary>Eigene Routine: Jeder Aufruf braucht seine eigene gefangene Variable.</summary>
+class procedure TAtlasIdeDebugExceptions.CallHandler(const AHandler: TAtlasDebugExceptionEvent;
+  const AStop: TAtlasDebugExceptionStop);
+var
+  Stop: TAtlasDebugExceptionStop;
+begin
+  Stop := AStop;
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      AHandler(Stop);
+    end);
 end;
 
 class procedure TAtlasIdeDebugExceptions.SetIgnored(const AClass: string; AIgnore: Boolean);

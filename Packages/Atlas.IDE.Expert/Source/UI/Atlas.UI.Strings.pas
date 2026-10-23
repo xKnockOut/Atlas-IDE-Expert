@@ -714,7 +714,13 @@ type
     // Nur eigener Code beim Debuggen (#578).
     SettingsDebugJustMyCode, SettingsDebugOwnCodeFolders, DebugJustMyCodeCommand, DebugJustMyCodeOn,
     DebugJustMyCodeOff, DebugJustMyCodeJumped, DebugExceptionsStackCaption, DebugExceptionsStackLibrary,
-    DebugExceptionsStackEmpty);
+    DebugExceptionsStackEmpty,
+    // Exception-Leiste beim Debuggen (#783).
+    SettingsDebugExceptionBanner, SettingsDebugExceptionBannerIgnoreAtLocation, DebugBannerBreak,
+    DebugBannerContinue, DebugBannerIgnoreClass, DebugBannerIgnoreLocation, DebugBannerCopy, DebugBannerThread,
+    DebugBannerCount, DebugBannerHidden, DebugBannerKeys, DebugBannerOpenHint, DebugBannerIdeDialogCommand,
+    DebugBannerIdeDialogOn, DebugBannerIdeDialogOff, DebugBannerIgnoredLocationSaid, DebugBannerUnknownVersion,
+    DebugBannerUnknownVersionSummary);
 
   TAtlasStrings = class
   private class var
@@ -2316,7 +2322,17 @@ const
      'Atlas: Nur eigener Code beim Debuggen ist an.',
      'Atlas: Nur eigener Code beim Debuggen ist aus; die IDE verhält sich wie ohne Atlas.',
      'Atlas: Exception in Bibliothekscode; eigener Code: %s:%d (%d Ebenen darüber, Ursprung im Aufrufstapel).',
-     'Aufrufstapel', '… %d Bibliotheksrahmen', 'Kein Aufrufstapel bekannt.'),
+     'Aufrufstapel', '… %d Bibliotheksrahmen', 'Kein Aufrufstapel bekannt.',
+     'Exception-Meldung als Leiste am Editor statt als Dialog (Delphi 12 und 13)',
+     'Knopf „Nur an dieser Stelle ignorieren“', 'Anhalten', 'Fortsetzen', 'Klasse ignorieren',
+     'Nur an dieser Stelle ignorieren', 'Meldung kopieren', 'Thread: %s', '%d× an dieser Stelle',
+     '%d Ebenen ausgeblendet', 'F9 Fortsetzen · F8/Esc Anhalten', 'Zur Zeile springen',
+     'Atlas: Exception-Dialog der IDE in dieser Debug-Sitzung zeigen',
+     'Atlas: Bis zum Ende der Debug-Sitzung zeigt die IDE ihren Exception-Dialog; die Leiste kommt danach dazu.',
+     'Atlas: Die Exception-Leiste ersetzt wieder den Dialog der IDE.',
+     'Atlas: %s an %s wird in diesem Projekt künftig still fortgesetzt (im Verlauf gezählt).',
+     'Exception-Leiste: IDE-Version nicht geprüft, der Dialog der IDE bleibt (Leiste danach)',
+     'Exception-Dialog bleibt'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3822,7 +3838,15 @@ const
      'Atlas: Just my code while debugging is on.',
      'Atlas: Just my code while debugging is off; the IDE behaves as without Atlas.',
      'Atlas: Exception in library code; own code: %s:%d (%d levels up, origin in the call stack).', 'Call stack',
-     '… %d library frames', 'No call stack known.'));
+     '… %d library frames', 'No call stack known.',
+     'Exception message as a bar on the editor instead of a dialog (Delphi 12 and 13)',
+     'Button “Ignore only here”', 'Break', 'Continue', 'Ignore class', 'Ignore only here', 'Copy message',
+     'Thread: %s', '%d× at this location', '%d levels hidden', 'F9 Continue · F8/Esc Break', 'Go to line',
+     'Atlas: Show the IDE exception dialog in this debug session',
+     'Atlas: Until the debug session ends, the IDE shows its exception dialog; the bar follows it.',
+     'Atlas: The exception bar replaces the IDE dialog again.',
+     'Atlas: %s at %s is continued silently in this project from now on (counted in the history).',
+     'Exception bar: IDE version not verified, the IDE dialog stays (bar afterwards)', 'Exception dialog stays'));
 
 { TAtlasStrings }
 

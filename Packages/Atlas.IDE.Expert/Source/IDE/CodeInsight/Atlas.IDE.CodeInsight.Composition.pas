@@ -182,6 +182,7 @@ uses
   Atlas.IDE.Bookmarks.Gutter,
   Atlas.IDE.Debug.Exceptions,
   Atlas.IDE.Debug.OwnCode,
+  Atlas.IDE.Debug.ExceptionBar,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Foundation.Elements,
@@ -952,6 +953,11 @@ begin
   Result := TAtlasIdeSettings.Current.DebugExceptionHistory;
 end;
 
+function DebugExceptionBarVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugExceptionHistory and TAtlasIdeSettings.Current.DebugExceptionBanner;
+end;
+
 function ProblemsWindowVisible: Boolean;
 begin
   Result := TAtlasIdeProblems.Enabled;
@@ -1356,6 +1362,9 @@ begin
   // Nur eigener Code beim Debuggen (#578): schaltet debug.justMyCode um, deshalb immer sichtbar.
   Add('Atlas.DebugJustMyCode', TAtlasTextId.DebugJustMyCodeCommand,
     Guarded(TAtlasFeature.Debugger, ToggleDebugJustMyCode));
+  // Exception-Leiste (#783): Dialog der IDE für die laufende Debug-Sitzung; nur mit debug.exceptionBanner.
+  Add('Atlas.DebugExceptionIdeDialog', TAtlasTextId.DebugBannerIdeDialogCommand,
+    Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugExceptionBar.ToggleIdeDialog), DebugExceptionBarVisible);
   // Fenster „Atlas-Prüfung“ (#909); nur sichtbar, solange problems.window an ist.
   Add('Atlas.ProblemsWindow', TAtlasTextId.ProblemsWindowCommand,
     Guarded(TAtlasFeature.Problems, TAtlasIdeProblems.ShowWindow), ProblemsWindowVisible);
@@ -2894,6 +2903,15 @@ begin
     end);
 end;
 
+procedure StartDebugExceptionBar;
+begin
+  TAtlasIdeDebugExceptionBar.Start(
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end, TAtlasStatusRegistry.Default);
+end;
+
 procedure ToggleDebugJustMyCode;
 begin
   TAtlasIdeDebugOwnCode.ToggleSetting(
@@ -3922,6 +3940,17 @@ begin
       Result := TAtlasIdeDebugOwnCode.Started;
     end,
     StartDebugOwnCode, TAtlasIdeDebugOwnCode.Release);
+  // Exception-Leiste (#783): baut auf dem Exception-Verlauf auf; aus = Dialog der IDE unverändert.
+  Features.AddWanted('DebugExceptionBar',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and DebugExceptionBarVisible;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugExceptionBar.Started;
+    end,
+    StartDebugExceptionBar, TAtlasIdeDebugExceptionBar.Release);
   // Gleichen Text wie die Markierung hervorheben (#709): nur im normalen Start oder mit Einstellung.
   Features.AddWanted('SelectionMatches',
     function(ALevel: TAtlasSafeLevel): Boolean
@@ -4180,6 +4209,7 @@ begin
       TAtlasIdeOverviewRuler.ThemeChanged;
       TAtlasIdeMinimap.ThemeChanged;
       TAtlasIdeDebugExceptions.ThemeChanged;
+      TAtlasIdeDebugExceptionBar.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -4233,6 +4263,8 @@ begin
       TAtlasIdeStickyScroll.ApplySettings;
       // debug.exceptionHistory (#517).
       TAtlasIdeDebugExceptions.ApplySettings;
+      // debug.exceptionBanner* (#783).
+      TAtlasIdeDebugExceptionBar.ApplySettings;
       // editor.gitGutter, editor.gitBlame (#507).
       TAtlasIdeLineChanges.ApplySettings;
       // editor.overviewRuler, editor.overviewRulerKinds (#519).

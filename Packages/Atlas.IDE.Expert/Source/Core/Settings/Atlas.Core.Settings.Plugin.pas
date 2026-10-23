@@ -439,6 +439,17 @@ type
     /// Bibliotheksrahmen zusammen. Eigener Code: Projektordner der Gruppe und debug.ownCodeFolders. Aus = IDE wie
     /// bisher.</summary>
     DebugJustMyCode: Boolean;
+    /// <summary>Exception-Leiste beim Debuggen (#783, debug.exceptionBanner): Hält der Debugger wegen einer
+    /// Exception, zeigt Atlas oben im Editor eine Leiste mit Klasse, Meldung, Thread, Anzahl an dieser Stelle und
+    /// der ersten eigenen Zeile; in Delphi 12 und 13 schließt Atlas den Dialog der IDE dafür über „Anhalten“, sonst
+    /// bleibt er und die Leiste kommt danach. Baut auf debug.exceptionHistory auf. Vorgabe aus bis zur
+    /// Studie.</summary>
+    DebugExceptionBanner: Boolean;
+    /// <summary>Knopf „Nur an dieser Stelle ignorieren“ der Exception-Leiste (#783,
+    /// debug.exceptionBanner.ignoreAtLocation): merkt Klasse, Datei und Zeile je Projekt; trifft dieselbe
+    /// Kombination erneut ein, setzt Atlas still fort und zählt nur im Verlauf. Aus = kein Knopf, gemerkte Orte
+    /// wirken nicht.</summary>
+    DebugExceptionBannerIgnoreAtLocation: Boolean;
     /// <summary>Weitere Ordner mit eigenem Code (#578, debug.ownCodeFolders), durch „;“ getrennt; die Projektordner
     /// der Gruppe gelten immer.</summary>
     DebugOwnCodeFolders: string;
@@ -1378,6 +1389,8 @@ begin
   Result.DebugHoverValues := True;
   Result.DebugExceptionHistory := True;
   Result.DebugJustMyCode := True;
+  Result.DebugExceptionBanner := False;
+  Result.DebugExceptionBannerIgnoreAtLocation := True;
   Result.DebugOwnCodeFolders := '';
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
@@ -1985,6 +1998,8 @@ begin
   DebugHoverValues := AStore.ReadInteger('DebugHoverValues', BoolValue(Default.DebugHoverValues)) <> 0;
   DebugExceptionHistory := AStore.ReadInteger('DebugExceptionHistory', BoolValue(Default.DebugExceptionHistory)) <> 0;
   DebugJustMyCode := AStore.ReadInteger('DebugJustMyCode', BoolValue(Default.DebugJustMyCode)) <> 0;
+  DebugExceptionBanner := AStore.ReadInteger('DebugExceptionBanner', BoolValue(Default.DebugExceptionBanner)) <> 0;
+  DebugExceptionBannerIgnoreAtLocation := AStore.ReadInteger('DebugExceptionBannerIgnoreAtLocation', BoolValue(Default.DebugExceptionBannerIgnoreAtLocation)) <> 0;
   DebugOwnCodeFolders := AStore.ReadString('DebugOwnCodeFolders', Default.DebugOwnCodeFolders);
   StartProfiles := AStore.ReadInteger('StartProfiles', BoolValue(Default.StartProfiles)) <> 0;
   StartProfilesStatusField := AStore.ReadInteger('StartProfilesStatusField',
@@ -2431,6 +2446,8 @@ begin
   AStore.WriteInteger('DebugHoverValues', BoolValue(DebugHoverValues));
   AStore.WriteInteger('DebugExceptionHistory', BoolValue(DebugExceptionHistory));
   AStore.WriteInteger('DebugJustMyCode', BoolValue(DebugJustMyCode));
+  AStore.WriteInteger('DebugExceptionBanner', BoolValue(DebugExceptionBanner));
+  AStore.WriteInteger('DebugExceptionBannerIgnoreAtLocation', BoolValue(DebugExceptionBannerIgnoreAtLocation));
   AStore.WriteString('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AStore.WriteInteger('StartProfiles', BoolValue(StartProfiles));
   AStore.WriteInteger('StartProfilesStatusField', BoolValue(StartProfilesStatusField));
