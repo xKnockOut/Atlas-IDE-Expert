@@ -110,8 +110,10 @@
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ExitPoints.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ExitPoints.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Reassigned.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ExpressionTypes.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ResolvedSignatures.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Reassigned.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ExpressionType.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SuggestConst.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.OrdinalConstants.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ConstantValues.Tests.pas"/>

@@ -59,6 +59,7 @@ uses
   Atlas.Common.Lsp.Recursion,
   Atlas.Common.Lsp.ExitPoints,
   Atlas.Common.Lsp.Reassigned,
+  Atlas.Common.Lsp.ExpressionType,
   Atlas.Common.Editing.SuggestConst,
   Atlas.Common.Semantics.ResolvedSignatures,
   Atlas.Common.Lsp.OverrideMarks,
@@ -1504,6 +1505,12 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := TLspReassigned.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, AArguments);
+    end);
+  // Typ des markierten Ausdrucks für das Tastenkürzel im Plugin (#689).
+  FCommands.Register(TLspExpressionType.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TLspExpressionType.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, AArguments);
     end);
   // Überschreibungen für die Atlas-Spalte der Zeilenleiste (#768).
   FCommands.Register(TLspOverrideMarks.Command,
