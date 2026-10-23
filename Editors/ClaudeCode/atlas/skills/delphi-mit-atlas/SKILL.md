@@ -14,7 +14,8 @@ sind schneller und genauer als Textsuche und das Lesen ganzer Dateien.
    und aktive Prüfregeln des Projekts. Neuen Code danach ausrichten.
 2. Typen und Aufrufe nachschlagen statt zu suchen:
    - `find_symbol` statt Textsuche nach einem Namen
-   - `get_declaration` für die Deklaration, auch aus RTL/VCL
+   - `get_declaration` für die Deklaration, auch aus RTL/VCL, samt Begründungen (`// WHY:`, `// HACK:` …)
+   - `get_rationale` vor einem Umbau: warum eine Unit oder ein Symbol so gebaut ist (Begründungskommentare mit Zeile)
    - `get_type_hierarchy` für Vorfahren und Nachfahren
    - `find_references` bzw. `get_call_hierarchy` für Verwendungen und Aufrufe
    - `get_unit_outline` statt eine ganze Unit zu lesen

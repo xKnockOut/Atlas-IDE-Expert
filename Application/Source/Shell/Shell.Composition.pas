@@ -34,6 +34,7 @@ uses
   Atlas.Common.Lsp.SelectionRanges,
   Atlas.Common.Lsp.Definition,
   Atlas.Common.Lsp.Hover,
+  Atlas.Common.Lsp.Rationale,
   Atlas.Common.Lsp.WorkspaceSymbols,
   Atlas.Common.Editing.Bookmarks,
   Atlas.Common.Lsp.DocumentHighlights,
@@ -387,6 +388,9 @@ type
     /// Ordner oder '' (einziger Arbeitsbereich).</summary>
     function MetricsSourceFor(const AFileName: string; AProject: Boolean; out ASource: TLspMetricsSource): Boolean;
     function HintSettingsFor(const AUri: string): THintSettings;
+    /// <summary>Begründungen (#1123): hints.rationale, Marken, TODO-Marken und ADR-Ordner des Arbeitsbereichs.
+    /// </summary>
+    function RationaleOptionsFor(const AUri: string): TRationaleOptions;
     /// <summary>Bedingte Symbole für Hover und Vervollständigung in Direktiven (#102): Symbole des Projekts mit
     /// Herkunft aus der .dproj, Compiler-Vorgaben, Include-Pfade und der Schalter "directives".</summary>
     function ConditionalContextFor(const AUri: string): TConditionalContext;
@@ -977,6 +981,7 @@ begin
     EnsureUnit);
   FHover.VersionProvider := DelphiVersionFor;
   FHover.HintsFor := HintSettingsFor;
+  FHover.RationaleFor := RationaleOptionsFor;
   // Zustand und Herkunft bedingter Symbole (#102).
   FHover.SymbolsFor := ConditionalContextFor;
   FHover.Attach(FDispatcher);
@@ -3915,6 +3920,23 @@ end;
 function TServerComposition.HintSettingsFor(const AUri: string): THintSettings;
 begin
   Result := SettingsFor(AUri).Hints;
+end;
+
+function TServerComposition.RationaleOptionsFor(const AUri: string): TRationaleOptions;
+var
+  Workspace: TShellWorkspace;
+begin
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
+    // ADR-Ordner relativ zum Arbeitsbereich; ohne Arbeitsbereich nur ein absoluter.
+    if Workspace = nil then
+      Result := TRationaleOptions.FromSettings(FLooseSettings, '')
+    else
+      Result := TRationaleOptions.FromSettings(Workspace.Configuration.Settings, Workspace.Root);
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
 end;
 
 function TServerComposition.ConditionalContextFor(const AUri: string): TConditionalContext;

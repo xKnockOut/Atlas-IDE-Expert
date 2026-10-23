@@ -57,6 +57,7 @@ uses
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.IndexTools,
+  Atlas.Common.Lsp.Rationale,
   Atlas.Common.Mcp.CodeTools,
   Atlas.Common.Todos.Contract,
   Atlas.Common.Mcp.BuildTools,
@@ -433,11 +434,23 @@ begin
       Result := ATools.FindSymbol(TMcpServer.RequiredString(AArguments, 'name'));
     end);
   AServer.AddTool('get_declaration',
-    'Vollständiger Quelltext der Deklaration eines Symbols, auch aus RTL/VCL, ohne die ganze Datei zu lesen.',
+    'Vollständiger Quelltext der Deklaration eines Symbols, auch aus RTL/VCL, ohne die ganze Datei zu lesen. ' +
+    'Dazu die Begründungen (// WHY:, // HACK:, // NOTE: … über der Deklaration und im Rumpf).',
     TMcpServer.StringSchema(['name'], ['Symbolname, am besten qualifiziert (TFoo.Bar)']),
     function(const AArguments: TJSONObject): string
     begin
       Result := ATools.Declaration(TMcpServer.RequiredString(AArguments, 'name'));
+    end);
+  AServer.AddTool('get_rationale',
+    'Begründungen (#1123): Kommentare wie // WHY:, // HACK:, // NOTE:, // IMPORTANT:, // RATIONALE: (Marken aus ' +
+    'hints.rationaleMarkers) einer Unit samt aller Symbole oder eines Symbols, mit Datei und Zeile. Erklärt, ' +
+    'warum Code so gebaut ist; Verweise wie ADR-0007 oder #312 stehen im Text.',
+    TMcpServer.StringSchema(['unit', 'name'], ['Unit-Name oder Pfad der .pas-Datei',
+      'Symbolname, am besten qualifiziert (TFoo.Bar); statt unit'], 0),
+    function(const AArguments: TJSONObject): string
+    begin
+      Result := ATools.Rationale(TMcpServer.OptionalString(AArguments, 'unit'),
+        TMcpServer.OptionalString(AArguments, 'name'));
     end);
   AServer.AddTool('get_type_hierarchy',
     'Vorfahren bis zur Wurzel und alle Nachfahren einer Klasse oder eines Interfaces mit Fundstellen.',
@@ -929,6 +942,12 @@ begin
       Result := Group.EnsureUnit(AUnitName);
     end;
   Tools := TMcpIndexTools.Create(Index, ReadSourceText);
+  // Begründungen (#1123): Einstellungen und ADR-Ordner des Arbeitsbereichs.
+  Tools.RationaleOptionsFunc :=
+    function: TRationaleOptions
+    begin
+      Result := TRationaleOptions.FromSettings(Workspace.Configuration.Settings, Root);
+    end;
   // Package einer Unit: .dpk unter dem Projektordner, deren contains sie führt.
   Tools.PackageOf :=
     function(const AUnitName: string): string

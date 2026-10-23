@@ -4,7 +4,9 @@
 // "data.atlas.documentation" der Resolve-Antwort: Abschnitte (summary, param,
 // typeparam, returns, value, exception, remarks, example, seealso) mit Läufen
 // (Text, Code, Verweis mit Fundort, Link, Absatz, Codeblock, Listenpunkt,
-// Tabellenzelle). Dazu die Anzeige-Einstellungen "xmlDoc" (zu- oder aufgeklappt
+// Tabellenzelle). Dazu Begründungen (#1123) als Abschnitte rationale, je
+// Eintrag einer mit der Marke als Name; ein Link "issue:312" darin zeigt auf ein
+// Issue im Tracker (TAtlasDocIssueUrl). Dazu die Anzeige-Einstellungen "xmlDoc" (zu- oder aufgeklappt
 // beim Öffnen, Zeilengrenze), die der Server je Projekt meldet, und die
 // Parameter der Signatur (#770) aus der Deklaration (Name, Art, Typ;
 // Ergebnistyp), damit die Doku jeden Parameter in der Reihenfolge der Signatur
@@ -23,7 +25,10 @@ type
   /// codeblock, bullet, cell).</summary>
   TAtlasDocRunKind = (Text, Code, Ref, Link, ParamRef, Keyword, LineBreak, Paragraph, CodeBlock, Bullet, Cell);
 
-  TAtlasDocSectionKind = (Summary, Param, TypeParam, Returns, Value, Exception, Remarks, Example, SeeAlso);
+  TAtlasDocSectionKind = (Summary, Param, TypeParam, Returns, Value, Exception, Remarks, Example, SeeAlso, Rationale);
+
+  /// <summary>Adresse des Issues AKey ("312") im Tracker des aktuellen Projekts; '' ohne Tracker.</summary>
+  TAtlasDocIssueUrl = reference to function(const AKey: string): string;
 
   /// <summary>XMLDoc beim Öffnen (#770, hints.xmlDocExpand): immer zugeklappt, wie zuletzt, immer aufgeklappt.
   /// </summary>
@@ -63,7 +68,7 @@ type
 
   TAtlasDocSection = record
     Kind: TAtlasDocSectionKind;
-    /// <summary>Param, TypeParam: Name; Exception: Klasse.</summary>
+    /// <summary>Param, TypeParam: Name; Exception: Klasse; Rationale: Marke (WHY).</summary>
     Name: string;
     /// <summary>Exception: Fundort der Klasse, wenn bekannt.</summary>
     NameRef: TAtlasDocTarget;
@@ -76,6 +81,8 @@ type
     Sections: TArray<TAtlasDocSection>;
     function IsEmpty: Boolean;
     function Has(AKind: TAtlasDocSectionKind): Boolean;
+    /// <summary>Abschnitte der Art AKind in Reihenfolge.</summary>
+    function SectionsOf(AKind: TAtlasDocSectionKind): TArray<TAtlasDocSection>;
     /// <summary>Objekt mit "sections"; nil bzw. anderes ergibt eine leere Doku.</summary>
     class function FromJson(const AValue: TJSONValue): TAtlasDoc; static;
     /// <summary>Klartext fremder Server als eine Beschreibung: Zeilenumbrüche bleiben, Leerzeilen trennen
@@ -138,7 +145,7 @@ const
   RunKindNames: array[TAtlasDocRunKind] of string = ('text', 'code', 'ref', 'link', 'paramref', 'keyword', 'br',
     'para', 'codeblock', 'bullet', 'cell');
   SectionKindNames: array[TAtlasDocSectionKind] of string = ('summary', 'param', 'typeparam', 'returns', 'value',
-    'exception', 'remarks', 'example', 'seealso');
+    'exception', 'remarks', 'example', 'seealso', 'rationale');
 
 { TAtlasDocTarget }
 
@@ -210,6 +217,16 @@ begin
     if Section.Kind = AKind then
       Exit(True);
   Result := False;
+end;
+
+function TAtlasDoc.SectionsOf(AKind: TAtlasDocSectionKind): TArray<TAtlasDocSection>;
+var
+  Section: TAtlasDocSection;
+begin
+  Result := nil;
+  for Section in Sections do
+    if Section.Kind = AKind then
+      Result := Result + [Section];
 end;
 
 class function TAtlasDoc.TryParseRunKind(const AName: string; out AKind: TAtlasDocRunKind): Boolean;

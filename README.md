@@ -21,7 +21,7 @@ Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/At
 | [Build, test, debug](#build-test-debug) | Release build guard, DUnitX tests from the editor, launch profiles, values in the hover while debugging |
 | [IDE comfort](#ide-comfort) | Welcome page, command palette, notifications, Git/SVN change marks, safe start |
 | [Settings](#settings) | Every feature can be switched off, options page as a tree, team-wide project file `.atlas` |
-| [Claude Code](#claude-code-and-mcp) | 19 MCP tools to read, check, build, test and rename |
+| [Claude Code](#claude-code-and-mcp) | 20 MCP tools to read, check, build, test and rename |
 
 ## Quick start
 
@@ -72,6 +72,7 @@ Everything below is implemented in `main`. Features marked *(experimental)* are 
 ### Understanding
 
 - **Hover tooltip** in Atlas style instead of Help Insight: declaration, XMLDoc in collapsible sections, clickable types, inheritance chain, values of constants, sets and resource strings, published members of components as a table, symbols in `{$IFDEF}` with their origin, actions (go to, usages, copy declaration, help)
+- **Rationale in the hover:** comments such as `// WHY: …`, `// HACK: …` or `// NOTE: …` above a declaration and inside the routine body appear under RATIONALE; `ADR-0007` opens the decision record, `#312` the issue in your tracker (#1123)
 - **Values while debugging:** when the process is paused, the tooltip shows the value of the expression under the mouse, evaluated by the IDE's debugger without side effects
 - **Type hints** after `var X := …` without a type
 - **Code metrics** as a lens after each method header (length, depth, cyclomatic and cognitive complexity, parameters, operands of the largest condition, local variables, exits), after each class (members, inheritance depth without RTL and VCL), the unit name (lines) and the first `uses` (units)
@@ -178,7 +179,7 @@ All keys (German): [docs/Einstellungen.md](docs/Einstellungen.md) and [docs/Konf
 
 ### Claude Code and MCP
 
-The server offers Claude Code 19 MCP tools: find symbols, read declarations and type and call hierarchies, component and form info, query diagnostics, metrics and TODOs, check planned code with `check_code` before writing it, explain findings, build through the IDE (`build_project`, `get_last_build`), run DUnitX tests, and rename or apply code actions (with preview). Plus the resource `delphi://conventions` with the project's conventions. Setup: [Editors/ClaudeCode](Editors/ClaudeCode/README.md), tools: [docs/MCP.md](docs/MCP.md).
+The server offers Claude Code 20 MCP tools: find symbols, read declarations with their rationale comments (`get_rationale`) and type and call hierarchies, component and form info, query diagnostics, metrics and TODOs, check planned code with `check_code` before writing it, explain findings, build through the IDE (`build_project`, `get_last_build`), run DUnitX tests, and rename or apply code actions (with preview). Plus the resource `delphi://conventions` with the project's conventions. Setup: [Editors/ClaudeCode](Editors/ClaudeCode/README.md), tools: [docs/MCP.md](docs/MCP.md).
 
 ### Planned
 

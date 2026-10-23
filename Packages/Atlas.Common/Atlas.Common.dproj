@@ -263,6 +263,9 @@
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Contract.pas"/>
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Scanner.pas"/>
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Report.pas"/>
+        <DCCReference Include="Source\Rationale\Atlas.Common.Rationale.Contract.pas"/>
+        <DCCReference Include="Source\Rationale\Atlas.Common.Rationale.References.pas"/>
+        <DCCReference Include="Source\Rationale\Atlas.Common.Rationale.Scanner.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Todos.pas"/>
@@ -338,6 +341,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.HoverTypes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Documentation.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Rationale.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.HoverValues.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LinkedEditing.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Formatting.pas"/>
