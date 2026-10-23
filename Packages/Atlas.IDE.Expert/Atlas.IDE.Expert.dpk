@@ -439,7 +439,6 @@ contains
   Atlas.UI.Welcome.Setup in 'Source\UI\Welcome\Atlas.UI.Welcome.Setup.pas',
   Atlas.UI.Welcome.SetupPreview in 'Source\UI\Welcome\Atlas.UI.Welcome.SetupPreview.pas',
   Atlas.UI.Welcome.Push in 'Source\UI\Welcome\Atlas.UI.Welcome.Push.pas',
-  Atlas.IDE.Welcome.Page in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Page.pas',
   Atlas.IDE.Welcome.Registry in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Registry.pas',
   Atlas.IDE.Welcome.Window in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Window.pas',
   Atlas.IDE.Welcome.Search in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Search.pas',

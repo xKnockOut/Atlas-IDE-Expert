@@ -795,39 +795,39 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 | PE23 | „Commit-Zeichen“, „uses ergänzen“, „Parameter-Hints“ je aus | `;` übernimmt nicht; keine uses-Ergänzung; kein Hint bei `(` |
 | PE24 | „Listenbreite automatisch“ an | Liste passt sich der Breite der Einträge an |
 
-## Willkommensseite (#753)
+## Willkommensseite (#753, seit #1114 nur „Atlas-Start“)
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| WP1 | RAD Studio 13 (und 12) mit Atlas starten, Willkommensseite ansehen | Bereich „Atlas“ mit Symbol, „Guten Morgen/Tag/Abend, <Vorname>“, „Atlas <Version> · Server startet mit dem ersten Projekt“; die Willkommensseite startet keinen Server |
-| WP2 | Projekt öffnen, Index aufbauen lassen, zur Willkommensseite wechseln | Kurzstatus „Server läuft · Index wird aufgebaut (n %)“, danach „Server läuft · 1.284 Units im Index“; ändert sich mit dem Statusfeld |
-| WP3 | Atlas-Bereiche der Willkommensseite (Kopf) über *Layout bearbeiten* verschieben, ausblenden, wieder einblenden | verhalten sich wie eingebaute Bereiche; Titel im Rahmen der IDE |
-| WP4 | *Atlas › Atlas-Layout anwenden*; IDE neu starten | Meldung „Atlas-Layout angewendet …“; `%LOCALAPPDATA%\Atlas\welcomepage-layout-backup.json` existiert; „Atlas“ steht oben über alle Spalten (zwei Zeilen), die übrigen Bereiche darunter in alter Anordnung; einzelne Atlas-Bereiche fehlen |
-| WP5 | Nach WP4: Wird das Layout sofort übernommen oder erst nach dem Neustart? | Ergebnis notieren (ADR 0011); nach dem Neustart gilt es in jedem Fall, die Datei `welcomepage-layout-pending` ist danach weg |
-| WP6 | „Atlas“ nach WP4 von Hand nach unten verschieben, IDE neu starten | bleibt, wo es ist |
-| WP7 | *Atlas › Atlas-Layout zurücksetzen*; IDE neu starten | Meldung „Das vorige Layout … wiederhergestellt“; Registry `…\BDS\<Version>\WelcomePage` wie vor WP4 (Export vergleichen), Sicherung gelöscht |
-| WP8 | Zurücksetzen ohne Sicherung | „Keine Sicherung des Layouts gefunden …“, nichts ändert sich |
-| WP9 | *Tools › Optionen › Atlas › Willkommensseite*: „Atlas-Layout verwenden“ an bzw. aus | wie WP4 bzw. WP7, ohne Meldung |
-| WP10 | Optionen: „Anzeigen in“ = Fenster „Atlas-Start“ | Willkommensseite ohne Atlas-Bereiche, Fenster „Atlas-Start“ öffnet sich (eine Spalte, andockbar); *Ansicht › Atlas-Start* öffnet es wieder |
+| WP1 | RAD Studio 13 (und 12) mit Atlas starten | Die Willkommensseite der IDE zeigt nur ihre eigenen Bereiche; „Atlas-Start“ öffnet sich nicht (Vorgabe „Beim Start der IDE öffnen“ aus) |
+| WP2 | *Ansicht › Atlas-Start* (ebenso *Atlas › Anzeige › Atlas-Start*, Befehlspalette „Atlas-Start“) | Andockbares Fenster mit Symbol, „Guten Morgen/Tag/Abend, <Vorname>“, „Atlas <Version> · Server startet mit dem ersten Projekt“ und allen Bereichen; das Fenster startet keinen Server |
+| WP3 | Projekt öffnen, Index aufbauen lassen, „Atlas-Start“ ansehen | Kurzstatus „Server läuft · Index wird aufgebaut (n %)“, danach „Server läuft · 1.284 Units im Index“; ändert sich mit dem Statusfeld |
+| WP4 | Umstieg mit Sicherung: Vorher mit einer älteren Fassung „Atlas-Layout anwenden“, IDE beenden, Registry `…\BDS\<Version>\WelcomePage` exportieren; Plugin mit #1114 installieren, IDE starten | Meldung „Atlas zeigt seine Bereiche nicht mehr auf der Willkommensseite der IDE …“; Registry wie vor „Atlas-Layout anwenden“; `welcomepage-layout-backup.json` gelöscht; Willkommensseite ohne Bereich „Atlas“ (**Abnahme**) |
+| WP5 | Nach WP4 IDE beenden und erneut starten | Keine Meldung mehr; `%LOCALAPPDATA%\Atlas\welcomepage-layout-pending` ist weg; Willkommensseite bleibt ohne Atlas-Bereiche. Notieren, ob die IDE das bereinigte Raster schon in WP4 zeigte oder erst jetzt (ADR 0013) |
+| WP6 | Umstieg ohne Sicherung: Atlas-Bereiche einer älteren Fassung einzeln auf der Willkommensseite (oder Sicherung vorher von Hand gelöscht); Plugin mit #1114 installieren, IDE starten | Meldung wie WP4; im Raster fehlen alle `Atlas.Welcome.*`, darunter liegende Bereiche rücken nach oben, keine leere Zeile; ausgeblendete Atlas-Bereiche fehlen auch in `AvailablePlugins` |
+| WP7 | Neuinstallation ohne frühere Atlas-Fassung | Keine Meldung; Registry `…\WelcomePage` unverändert (Export vergleichen) |
+| WP8 | *Tools › Optionen › Atlas › Willkommensseite*: „Beim Start der IDE öffnen“ an, IDE neu starten | „Atlas-Start“ öffnet sich beim Start; mit „aus“ öffnet es sich nicht, außer es war beim Beenden offen (Desktop der IDE, #879) |
+| WP9 | „Atlas-Start“ andocken, IDE beenden und starten; danach über das X schließen, IDE neu starten | Erscheint wieder am selben Platz; nach dem Schließen bleibt es zu |
+| WP10 | Befehle „Neu in Atlas“ nach einem Update, „Willkommensseite anpassen“ | Beide öffnen „Atlas-Start“ (anpassen im Bearbeitungsmodus) |
 | WP11 | Optionen: Kopf aus, dann Grußzeile aus | Kopf verschwindet; ohne Grußzeile steht „Atlas“ statt des Grußes |
-| WP12 | Schnellschalter „Atlas auf der Willkommensseite“ aus | alle Atlas-Bereiche und „Atlas-Start“ weg, Menüeinträge ausgeblendet |
-| WP13 | IDE-Stil hell/dunkel wechseln | Atlas-Bereiche und „Atlas-Start“ folgen dem Thema, Symbol in passender Variante |
-| WP14 | IDE ohne Schnittstelle der Willkommensseite (`WelcomePagePluginService` = nil), z. B. Willkommensseite abgeschaltet | „Atlas-Start“ ersetzt die Willkommensseite |
+| WP12 | Schnellschalter bzw. Optionen: „Atlas-Willkommensseite“ aus | „Atlas-Start“ schließt sich, Menüeintrag ausgeblendet, Befehl fehlt in der Befehlspalette; wieder an: Eintrag zurück, das Fenster öffnet sich erst auf Wunsch |
+| WP13 | IDE-Stil hell/dunkel wechseln | „Atlas-Start“ folgt dem Thema, Symbol in passender Variante |
+| WP14 | Befehlspalette: „Atlas-Layout anwenden“, „Atlas-Layout zurücksetzen“ suchen | Keine Treffer; im Atlas-Menü fehlen beide Einträge |
 
 ### Suchfeld (#760)
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| WS1 | Willkommensseite ohne geöffnetes Projekt, Strg+E, „wel“ tippen | Fokus im Suchfeld rechts im Kopf; Liste darunter mit Gruppen: Dateien mit `…WelcomePage.pas` (sofern ein Projekt mit dieser Unit schon einmal indiziert wurde), Symbole mit „Symbole nach dem Öffnen eines Projekts“, Befehle mit „Atlas-Layout anwenden“; je Gruppe höchstens 4, darunter „n weitere“ |
+| WS1 | „Atlas-Start“ ohne geöffnetes Projekt öffnen, hineinklicken, Strg+E, „wel“ tippen | Fokus im Suchfeld rechts im Kopf; Liste darunter mit Gruppen: Dateien mit `…WelcomePage.pas` (sofern ein Projekt mit dieser Unit schon einmal indiziert wurde), Symbole mit „Symbole nach dem Öffnen eines Projekts“, Befehle mit „Atlas-Start“; je Gruppe höchstens 4, darunter „n weitere“ |
 | WS2 | „Wlecome“ tippen | dieselbe Datei wie WS1 (Tippfehler-Toleranz) |
 | WS3 | Pfeiltasten, Enter auf eine Datei eines nicht geöffneten Projekts | Projekt öffnet sich, danach die Datei; Suchfeld leer, Liste weg |
-| WS4 | Projekt öffnen, Server läuft, zurück zur Willkommensseite, Klassennamen suchen | Gruppe „Symbole“ zeigt Treffer; Enter springt an die Deklaration |
+| WS4 | Projekt öffnen, Server läuft, in „Atlas-Start“ Klassennamen suchen | Gruppe „Symbole“ zeigt Treffer; Enter springt an die Deklaration |
 | WS5 | Ohne laufenden Server suchen | Gruppe „Symbole“ nur mit Hinweis; im Statusfeld startet kein Server |
 | WS6 | Projekt aus *Datei › Wieder öffnen* suchen und mit Enter öffnen | Gruppe „Projekte“ zeigt es (Name, Ordner); Enter öffnet es. Wenn die Gruppe leer bleibt: Export von `HKCU\Software\Embarcadero\BDS\<Version>\Closed Projects` an Marco/Claude (Format angenommen) |
 | WS7 | Esc im Suchfeld; Klick in die IDE daneben | Esc leert das Feld und schließt die Liste; Klick daneben schließt die Liste |
-| WS8 | Editor aktiv, Strg+E | inkrementelle Suche der IDE wie bisher (Atlas greift nur auf der Willkommensseite) |
-| WS9 | Optionen: Taste des Suchfelds auf Strg+Umschalt+F; dann „Gruppe Symbole“ aus; dann „Suchfeld zeigen“ aus | neue Taste wirkt; Gruppe „Symbole“ fehlt ganz; Suchfeld verschwindet, die Taste tut auf der Willkommensseite nichts |
-| WS10 | Fenster „Atlas-Start“ (WP10) | Suchfeld oben im Kopf, verhält sich wie auf der Willkommensseite |
+| WS8 | „Atlas-Start“ neben dem Editor angedockt, Editor aktiv, Strg+E | inkrementelle Suche der IDE wie bisher (Atlas greift nur, wenn der Fokus in „Atlas-Start“ liegt) |
+| WS9 | Optionen: Taste des Suchfelds auf Strg+Umschalt+F; dann „Gruppe Symbole“ aus; dann „Suchfeld zeigen“ aus | neue Taste wirkt; Gruppe „Symbole“ fehlt ganz; Suchfeld verschwindet, die Taste tut in „Atlas-Start“ nichts |
+| WS10 | „Atlas-Start“ abgedockt als eigenes Fenster, aktiv, Strg+E | Fokus im Suchfeld; schwebt das Fenster, aber die IDE ist aktiv, bleibt Strg+E bei der IDE |
 
 ### Neu in Atlas (#756)
 
@@ -2158,12 +2158,12 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; `settings.exportI
 
 ## Willkommensseite frei anordnen (#767)
 
-Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; *Tools › Optionen › Atlas › Willkommensseite*: „Atlas-Layout verwenden“ an (Bereich „Atlas“ oben), „Willkommensseite frei anordnen“ an, „Meine Issues“ aus. Vorher Registry `HKCU\Software\Atlas\…\WelcomePageLayouts` leer bzw. nicht vorhanden.
+Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; *Tools › Optionen › Atlas › Willkommensseite*: „Willkommensseite frei anordnen“ an, *Ansicht › Atlas-Start* geöffnet (seit #1114 gibt es die Bereiche nur dort), „Meine Issues“ aus. Vorher Registry `HKCU\Software\Atlas\…\WelcomePageLayouts` leer bzw. nicht vorhanden.
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
 | FL1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasWelcomeArrangeTests`, `TAtlasWelcomeFlowTests`, `TAtlasWelcomeLayoutsTests`, `TAtlasWelcomeCustomizingTests`, `TAtlasWelcomeArrangeBoardTests`, `TAtlasSettingsPageTests.WelcomeLayoutsOnPage`, `TAtlasSettingsTransferTests.WelcomeLayoutsTravel`, `TAtlasWhatsNewTests.AnnouncedItemsJoinTheirVersion` und `TAtlasWelcomeSettingsTests` grün |
-| FL2 | Willkommensseite ansehen | Unter dem Kopf eine Leiste mit „✎ Seite anpassen“; kein Layout-Umschalter (nur ein Layout); Anordnung wie im Mockup WS17 (links Weiterarbeiten, Projekte, Projektverlauf, Testergebnisse; rechts Zustandskachel, Nicht gesichert, Neu in Atlas, Atlas entdecken, Projekt einrichten, Hilfe) |
+| FL2 | „Atlas-Start“ ansehen | Unter dem Kopf eine Leiste mit „✎ Seite anpassen“; kein Layout-Umschalter (nur ein Layout); Anordnung wie im Mockup WS17 (links Weiterarbeiten, Projekte, Projektverlauf, Testergebnisse; rechts Zustandskachel, Nicht gesichert, Neu in Atlas, Atlas entdecken, Projekt einrichten, Hilfe) |
 | FL3 | „Seite anpassen“ | Leiste zeigt „Fertig“, „Layout: Standard ▾“, „Spalten 1 2 3“ (2 hervorgehoben), „Bereich hinzufügen ▾“, „Zurücksetzen“; jeder Bereich hat links einen Griff ⠿, rechts Breite und Auge; unten „Ausgeblendet: Meine Issues +“; eine blaue Einfügelinie am Ende der kürzeren Spalte |
 | FL4 | Zustandskachel am Griff nach links oben ziehen, loslassen; IDE neu starten | Beim Ziehen wandert die Einfügelinie mit; nach dem Loslassen steht die Kachel links oben; nach dem Neustart steht sie dort (**Abnahme**) |
 | FL5 | „Zurücksetzen“; dann mit Tab auf den Griff der Zustandskachel, Strg+← | Atlas-Layout wieder hergestellt; mit Strg+← steht die Kachel links oben, der Fokus bleibt am Griff; Strg+↑ am oberen Rand tut nichts und der Fokus wandert nicht; Esc während des Ziehens bricht ab (**Abnahme**) |
@@ -2176,9 +2176,9 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; *Tools › Option
 | FL12 | „Layout ▾ › Neues Layout …“ „Präsentation“; dort Projektverlauf ausblenden, Spalten 1; „Layout ▾ › Standard“ | Neues Layout ist Kopie und aktiv; in „Standard“ ist der Projektverlauf wieder da, zwei Spalten; zurück auf „Präsentation“: wieder ausgeblendet. Umbenennen in „Arbeit“ bzw. einen vergebenen Namen: Hinweis „Ein Layout … gibt es schon.“; Löschen fragt nach, das letzte Layout lässt sich nicht löschen (**Abnahme**) |
 | FL13 | „Fertig“; Kopf zeigt jetzt „Layout: Arbeit ▾“ | Umschalten zwischen „Arbeit“ und „Präsentation“ ohne Bearbeitungsmodus (**Abnahme**) |
 | FL14 | „Zurücksetzen“ im Bearbeitungsmodus | Plätze, Breiten und Spalten wie #753; ausgeblendete Bereiche bleiben ausgeblendet; das andere Layout bleibt unverändert (**Abnahme**) |
-| FL15 | *Ansicht › Atlas-Start* | Gleiche Anordnung wie auf der Willkommensseite; Bearbeitungsmodus gilt in beiden zugleich; schmales Fenster faltet Spalten untereinander (**Abnahme**) |
+| FL15 | „Atlas-Start“ schmal ziehen | Schmales Fenster faltet Spalten untereinander (**Abnahme**) |
 | FL16 | Rechtsklick auf einen Bereich (Titel oder Fläche) | Menü „Ausblenden“, „Einstellungen dazu …“, Trennlinie, „Seite anpassen“; „Ausblenden“ zeigt „Ausgeblendet“ mit „Rückgängig“ wie #628; „Einstellungen dazu …“ öffnet *Tools › Optionen › Atlas › Willkommensseite* mit der Zeile des Bereichs fett im Bild |
-| FL17 | Befehlspalette „Willkommensseite anpassen“; mit „Atlas-Layout verwenden“ aus | Schaltet den Bearbeitungsmodus um; ohne Bereich „Atlas“ öffnet der Befehl „Atlas-Start“ im Bearbeitungsmodus |
+| FL17 | „Atlas-Start“ schließen; Befehlspalette „Willkommensseite anpassen“ | Öffnet „Atlas-Start“ im Bearbeitungsmodus; noch einmal: schaltet den Bearbeitungsmodus um |
 | FL18 | „Willkommensseite frei anordnen“ aus (Optionen oder Schnellschalter) | Keine Leiste, kein Griff, kein Befehl in der Palette; festes Layout aus #753; Rechtsklick „Ausblenden“ geht weiter (**Abnahme**) |
 | FL19 | Optionen › Willkommensseite: „Aktives Layout“ wechseln, „Neu …“, „Umbenennen …“, „Löschen“, „Spalten der Seite“ | Häkchen der Bereiche folgen dem gewählten Layout; nach OK zeigt die Willkommensseite das gewählte Layout |
 | FL20 | Einstellungen exportieren (Bereich Willkommensseite), auf einem zweiten Profil importieren; „Seite zurücksetzen“ | `welcomePage.layouts`, `.activeLayout`, `.columns`, `.customLayout` in der Datei und nach dem Import wirksam; Zurücksetzen bringt ein Layout „Standard“ |
