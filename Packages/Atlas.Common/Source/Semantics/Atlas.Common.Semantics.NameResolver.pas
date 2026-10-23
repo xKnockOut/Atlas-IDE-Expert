@@ -2109,9 +2109,16 @@ begin
           Args := ANode.FindChild(TSyntaxKind.GenericArgs);
           if (Args <> nil) and (ANode.ChildCount > 0) and (ANode[0] <> Args) then
           begin
-            // Foo<Integer>: Typargumente an die Typparameter der Methode binden.
-            if not ExprSymbol(ANode[0], AResult) then
+            // Foo<Integer>: Typargumente an die Typparameter der Methode binden. Nur eine generische Überladung
+            // passt; eine gleichnamige ohne Typparameter wäre falsch (TJSONObject.GetValue(Name): TJSONValue
+            // neben TJSONValue.GetValue<T>). Ohne generischen Kandidaten bleibt der Ausdruck unbekannt.
+            Candidates := ExprCandidates(ANode[0]);
+            Index := 0;
+            while (Index <= High(Candidates)) and (Candidates[Index].TypeParams = '') do
+              Inc(Index);
+            if Index > High(Candidates) then
               Exit;
+            AResult := Candidates[Index];
             Arguments := nil;
             for Index := 0 to Args.ChildCount - 1 do
               Arguments := Arguments + [QualifyType(TIndexExtractor.TypeText(Args[Index]), FCurrent, FInImplementation)];

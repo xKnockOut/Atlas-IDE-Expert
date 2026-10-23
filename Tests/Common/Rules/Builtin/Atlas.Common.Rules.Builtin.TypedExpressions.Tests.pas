@@ -80,6 +80,10 @@ type
     procedure VariablesAsConstants;
     [Test]
     procedure OrdinalAndUnknownAreSilent;
+    /// <summary>Explizite Typargumente: nur die generische Überladung zählt (TJSONObject.GetValue&lt;Integer&gt;).
+    /// </summary>
+    [Test]
+    procedure GenericMethodWithTypeArguments;
     [Test]
     procedure OffAndExclude;
   end;
@@ -603,6 +607,26 @@ begin
   Assert.AreEqual('case braucht einen ordinalen Typ; Breit ist AnsiString (wie E2001).', Found[2].Message);
   // IndexStr nur für string.
   Assert.AreEqual(0, Integer(Length(Found[2].Fixes)));
+end;
+
+procedure TCaseSelectorNotOrdinalTests.GenericMethodWithTypeArguments;
+const
+  Source = 'unit Daten;'#10'interface'#10'type'#10'  TBasis = class'#10 +
+    '    function Wert<T>(const APfad: string; AVorgabe: T): T;'#10'  end;'#10'  TObjekt = class(TBasis)'#10 +
+    '    function Wert(const AName: string): TBasis; overload;'#10'  end;'#10'implementation'#10 +
+    'function TBasis.Wert<T>(const APfad: string; AVorgabe: T): T;'#10'begin'#10'  Result := AVorgabe;'#10'end;'#10 +
+    'function TObjekt.Wert(const AName: string): TBasis;'#10'begin'#10'  Result := nil;'#10'end;'#10 +
+    'procedure Lesen(Objekt: TObjekt; Basis: TBasis);'#10'begin'#10 +
+    '  case Objekt.Wert<Integer>(''severity'', 1) of'#10'    1: Exit;'#10'  end;'#10 +
+    '  case Basis.Wert<Integer>(''severity'', 1) of'#10'    1: Exit;'#10'  end;'#10 +
+    '  case Basis.Wert<Double>(''faktor'', 1.0) of'#10'    1: Exit;'#10'  end;'#10'end;'#10'end.';
+var
+  Found: TArray<TRuleFinding>;
+begin
+  // Die gleichnamige Überladung ohne Typparameter (wie TJSONObject.GetValue(Name): TJSONValue) gilt nicht.
+  Found := CaseFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)), 'nur Double');
+  Assert.Contains(Found[0].Message, 'Double');
 end;
 
 procedure TCaseSelectorNotOrdinalTests.ForWithFloatCounter;

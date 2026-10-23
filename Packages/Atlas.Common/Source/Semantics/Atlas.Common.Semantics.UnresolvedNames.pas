@@ -47,7 +47,11 @@ type
 
 implementation
 
+uses
+  Atlas.Common.Semantics.SystemIntrinsics;
+
 const
+  // Sonderfälle zusätzlich zu TSystemIntrinsics (dort die Bezeichner von System ohne Quelltext, #880).
   Intrinsics: array[0..63] of string = (
     'Abs', 'Addr', 'Assert', 'Assigned', 'AtomicCmpExchange', 'AtomicDecrement', 'AtomicExchange',
     'AtomicIncrement', 'Break', 'Chr', 'Concat', 'Continue', 'Copy', 'Dec', 'Default',
@@ -65,6 +69,9 @@ class function TUnresolvedNames.IsIntrinsic(const AName: string): Boolean;
 var
   Name: string;
 begin
+  // Dieselbe Liste wie Hover und Namensauflösung: Sqr, Pi, Int … fehlten hier und galten als nicht deklariert.
+  if TSystemIntrinsics.IsKnown(AName) then
+    Exit(True);
   for Name in Intrinsics do
     if SameText(Name, AName) then
       Exit(True);

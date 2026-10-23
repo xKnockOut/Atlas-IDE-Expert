@@ -311,6 +311,10 @@ begin
   Empty := TSymbolIndex.Create;
   Assert.IsFalse(TUnresolvedNames.Available(Empty));
   Assert.IsTrue(TUnresolvedNames.IsIntrinsic('writeln'));
+  // Aus TSystemIntrinsics (#880), früher als „nicht deklariert“ gemeldet.
+  Assert.IsTrue(TUnresolvedNames.IsIntrinsic('Sqr'));
+  Assert.IsTrue(TUnresolvedNames.IsIntrinsic('Pi'));
+  Assert.IsFalse(TUnresolvedNames.IsIntrinsic('GibtEsNicht'));
 end;
 
 procedure TUnresolvedNamesTests.UsesKnownNeedsEveryUnit;
