@@ -259,7 +259,7 @@ const
 var
   Routed: TAtlasRoutedSetting;
   Value: Integer;
-  Text: string;
+  mText: string;
   Before: string;
 begin
   Before := FText;
@@ -268,9 +268,9 @@ begin
       if not Routed.Legacy and (JsonValue(Routed.Path) = '') then
         if Routed.Text then
         begin
-          Text := FInner.ReadString(Routed.Name, '');
-          if Text <> '' then
-            WriteString(Routed.Name, Text);
+          mText := FInner.ReadString(Routed.Name, '');
+          if mText <> '' then
+            WriteString(Routed.Name, mText);
         end
         else
         begin

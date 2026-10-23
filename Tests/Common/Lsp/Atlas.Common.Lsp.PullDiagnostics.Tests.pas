@@ -90,15 +90,26 @@ type
     Store: IDocumentStore;
     Diagnostics: TLspSyntaxDiagnostics;
     Pull: TLspPullDiagnostics;
-    procedure Init;
+    procedure Init; overload;
+    /// <summary>Mit Prüfregeln aus ARules.</summary>
+    procedure Init(const ARules: TRuleContextProvider); overload;
     procedure Done;
   end;
 
 procedure TFixture.Init;
 begin
+  Init(nil);
+end;
+
+procedure TFixture.Init(const ARules: TRuleContextProvider);
+var
+  Providers: TSyntaxDiagnosticsProviders;
+begin
   Store := TDocumentStore.Create;
   Store.Open(TDocumentUris.FromPath(OpenFile), 'objectpascal', 1, Valid);
-  Diagnostics := TLspSyntaxDiagnostics.Create(Store, nil, 0);
+  Providers := Default(TSyntaxDiagnosticsProviders);
+  Providers.Rules := ARules;
+  Diagnostics := TLspSyntaxDiagnostics.Create(Store, nil, Providers, 0);
   Diagnostics.PullMode := True;
   Pull := TLspPullDiagnostics.Create(Store, Diagnostics, nil,
     function: TArray<string>
@@ -399,32 +410,33 @@ end;
 procedure TLspPullDiagnosticsTests.CancelStopsRuleChecks;
 var
   Fixture: TFixture;
+  Rules: TRuleContextProvider;
   Source: IJsonRpcCancellationSource;
   Runs: Integer;
 begin
-  Fixture.Init;
+  Rules :=
+    function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+    begin
+      AContext := Default(TRuleCheckContext);
+      AContext.Settings := TServerSettings.Default;
+      AContext.Rules := [
+        TCallbackRule.Create('erste',
+          procedure
+          begin
+            Inc(Runs);
+            Source.Cancel;
+          end),
+        TCallbackRule.Create('zweite',
+          procedure
+          begin
+            Inc(Runs);
+          end)];
+      Result := True;
+    end;
+  Fixture.Init(Rules);
   try
     Runs := 0;
     Source := TJsonRpcCancellation.Create;
-    Fixture.Diagnostics.RuleProvider :=
-      function(const AUri: string; out AContext: TRuleCheckContext): Boolean
-      begin
-        AContext := Default(TRuleCheckContext);
-        AContext.Settings := TServerSettings.Default;
-        AContext.Rules := [
-          TCallbackRule.Create('erste',
-            procedure
-            begin
-              Inc(Runs);
-              Source.Cancel;
-            end),
-          TCallbackRule.Create('zweite',
-            procedure
-            begin
-              Inc(Runs);
-            end)];
-        Result := True;
-      end;
     Assert.WillRaise(
       procedure
       begin
@@ -440,28 +452,29 @@ end;
 procedure TLspPullDiagnosticsTests.ParallelRequestsForSameStateComputeOnce;
 var
   Fixture: TFixture;
+  Rules: TRuleContextProvider;
   Runs: Integer;
   Worker: TThread;
   Mine, Other: TJSONObject;
 begin
-  Fixture.Init;
+  Rules :=
+    function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+    begin
+      AContext := Default(TRuleCheckContext);
+      AContext.Settings := TServerSettings.Default;
+      AContext.Rules := [
+        TCallbackRule.Create('langsam',
+          procedure
+          begin
+            TInterlocked.Increment(Runs);
+            Sleep(300);
+          end)];
+      Result := True;
+    end;
+  Fixture.Init(Rules);
   try
     Runs := 0;
     Other := nil;
-    Fixture.Diagnostics.RuleProvider :=
-      function(const AUri: string; out AContext: TRuleCheckContext): Boolean
-      begin
-        AContext := Default(TRuleCheckContext);
-        AContext.Settings := TServerSettings.Default;
-        AContext.Rules := [
-          TCallbackRule.Create('langsam',
-            procedure
-            begin
-              TInterlocked.Increment(Runs);
-              Sleep(300);
-            end)];
-        Result := True;
-      end;
     Worker := TThread.CreateAnonymousThread(
       procedure
       begin
@@ -619,6 +632,7 @@ procedure TLspPullDiagnosticsTests.WorkspaceSkipsFailingFile;
 var
   Store: IDocumentStore;
   Diagnostics: TLspSyntaxDiagnostics;
+  Providers: TSyntaxDiagnosticsProviders;
   Pull: TLspPullDiagnostics;
   Result_: TJSONValue;
   Items: TJSONArray;
@@ -626,11 +640,12 @@ var
   Joined: string;
 begin
   Store := TDocumentStore.Create;
-  Diagnostics := TLspSyntaxDiagnostics.Create(Store, nil, 0);
+  Providers := Default(TSyntaxDiagnosticsProviders);
+  Providers.Rules := FailingRules();
+  Diagnostics := TLspSyntaxDiagnostics.Create(Store, nil, Providers, 0);
   Pull := nil;
   try
     Diagnostics.PullMode := True;
-    Diagnostics.RuleProvider := FailingRules();
     // Die kaputte Datei steht vorn: früher scheiterte daran jede Anfrage, bis der Server starb.
     Pull := TLspPullDiagnostics.Create(Store, Diagnostics, nil,
       function: TArray<string>
@@ -681,16 +696,17 @@ end;
 procedure TLspPullDiagnosticsTests.DocumentErrorKeepsUnitForLog;
 var
   Fixture: TFixture;
+  Rules: TRuleContextProvider;
   Notes: TRequestNotes;
 begin
-  Fixture.Init;
+  Rules :=
+    function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+    begin
+      AContext := Default(TRuleCheckContext);
+      raise EArgumentException.Create('Unit kaputt');
+    end;
+  Fixture.Init(Rules);
   try
-    Fixture.Diagnostics.RuleProvider :=
-      function(const AUri: string; out AContext: TRuleCheckContext): Boolean
-      begin
-        AContext := Default(TRuleCheckContext);
-        raise EArgumentException.Create('Unit kaputt');
-      end;
     Fixture.Pull.FileLabel := LabelOfFile;
     TRequestDiagnostics.Open;
     try

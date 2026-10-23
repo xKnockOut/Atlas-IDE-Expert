@@ -205,24 +205,24 @@ end;
 
 procedure TAtlasWelcomeHelpFrame.ClickButton(AButton: TAtlasHelpButton);
 var
-  Source: IAtlasHelpSource;
+  mSource: IAtlasHelpSource;
 begin
   if (FSource = nil) or not FButtons[AButton].Enabled then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   // Nicht im Klick des Knopfs: „Problem melden“ zeigt einen modalen Dialog.
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
       case AButton of
         TAtlasHelpButton.Docs:
-          Source.OpenDocs;
+          mSource.OpenDocs;
         TAtlasHelpButton.Keys:
-          Source.ShowKeys;
+          mSource.ShowKeys;
         TAtlasHelpButton.Donate:
-          Source.Donate;
+          mSource.Donate;
       else
-        Source.ReportProblem;
+        mSource.ReportProblem;
       end;
     end);
 end;

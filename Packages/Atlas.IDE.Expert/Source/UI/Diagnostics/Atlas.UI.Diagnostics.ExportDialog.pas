@@ -58,7 +58,7 @@ constructor TAtlasDiagnosticExportDialog.CreateDialog(AOwner: TComponent; const 
 var
   Bottom: TPanel;
   Button: TButton;
-  Hint: TLabel;
+  mHint: TLabel;
   Memo: TMemo;
 begin
   inherited CreateNew(AOwner);
@@ -71,13 +71,13 @@ begin
   Width := 900;
   Height := 600;
 
-  Hint := TLabel.Create(Self);
-  Hint.Parent := Self;
-  Hint.Align := alTop;
-  Hint.AlignWithMargins := True;
-  Hint.Margins.SetBounds(Gap, Gap, Gap, Gap);
-  Hint.WordWrap := True;
-  Hint.Caption := AHint;
+  mHint := TLabel.Create(Self);
+  mHint.Parent := Self;
+  mHint.Align := alTop;
+  mHint.AlignWithMargins := True;
+  mHint.Margins.SetBounds(Gap, Gap, Gap, Gap);
+  mHint.WordWrap := True;
+  mHint.Caption := AHint;
 
   Bottom := TPanel.Create(Self);
   Bottom.Parent := Self;

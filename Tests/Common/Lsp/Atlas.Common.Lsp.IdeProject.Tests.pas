@@ -19,7 +19,8 @@ type
     procedure KeepsDprojValuesWithoutOptions;
     [Test]
     procedure LoadsInitializeAndReportsOnlyChanges;
-    /// <summary>#452: Präfix-Vorgaben werden gemerkt, laden das Projekt aber nicht neu.</summary>
+    /// <summary>#452: Präfix-Vorgaben werden gemerkt, laden das Projekt aber nicht neu; #1111: constant und
+    /// OnNamingChanged.</summary>
     [Test]
     procedure KeepsNamingWithoutReload;
     /// <summary>#46: Das aktive Projekt wird gemerkt und wechselt, ohne neu zu laden.</summary>
@@ -36,6 +37,7 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Index.Contract,
   Atlas.Common.Projects.Contract,
+  Atlas.Common.Rules.Contract,
   Atlas.Common.Lsp.IdeProject;
 
 const
@@ -167,7 +169,8 @@ var
   Store: TLspIdeProject;
   Dispatcher: TJsonRpcDispatcher;
   Context: TIdeProjectContext;
-  Changed: Integer;
+  Changed, NamingChanged: Integer;
+  Naming: TRuleNaming;
 begin
   Context := Parse('{"project":"C:\\P\\A.dproj","naming":{"field":"F","local":"","parameter":3}}');
   Assert.IsTrue(Context.HasNaming[TNamingKind.Field]);
@@ -176,23 +179,47 @@ begin
   Assert.AreEqual('', Context.Naming[TNamingKind.Local]);
   // Kein String: keine Vorgabe.
   Assert.IsFalse(Context.HasNaming[TNamingKind.Parameter]);
+  Assert.IsFalse(Context.HasConstantPrefix);
+  // Für die Prüfregeln (#1111) mit Konstanten.
+  Context := Parse('{"project":"C:\\P\\A.dproj","naming":{"field":"F","local":"m","constant":"c"}}');
+  Assert.IsTrue(Context.HasConstantPrefix);
+  Assert.AreEqual('c', Context.ConstantPrefix);
+  Naming := Context.RuleNaming;
+  Assert.IsTrue(Naming.Known[TRuleNamingKind.Field]);
+  Assert.AreEqual('F', Naming.Prefixes[TRuleNamingKind.Field]);
+  Assert.AreEqual('m', Naming.Prefixes[TRuleNamingKind.Local]);
+  Assert.AreEqual('c', Naming.Prefixes[TRuleNamingKind.Constant]);
+  Assert.IsFalse(Naming.Known[TRuleNamingKind.Parameter]);
+  Assert.AreNotEqual(Parse('{"project":"C:\\P\\A.dproj","naming":{"constant":"c"}}').NamingKey,
+    Parse('{"project":"C:\\P\\A.dproj","naming":{"constant":"k"}}').NamingKey);
   Store := TLspIdeProject.Create;
   Dispatcher := TJsonRpcDispatcher.Create;
   try
     Changed := 0;
+    NamingChanged := 0;
     Store.OnChanged :=
       procedure(const AContext: TIdeProjectContext)
       begin
         Inc(Changed);
       end;
+    Store.OnNamingChanged :=
+      procedure(const AContext: TIdeProjectContext)
+      begin
+        Inc(NamingChanged);
+      end;
     Store.Attach(Dispatcher);
     Notify(Dispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug"}');
     Assert.AreEqual(1, Changed);
+    Assert.AreEqual(0, NamingChanged, 'neues Projekt: OnChanged genügt');
     Notify(Dispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","naming":{"field":"F"}}');
     Assert.AreEqual(1, Changed);
+    Assert.AreEqual(1, NamingChanged);
     Assert.IsTrue(Store.Find('C:\P\A.dproj', Context));
     Assert.AreEqual('F', Context.Naming[TNamingKind.Field]);
     Assert.IsFalse(Context.HasNaming[TNamingKind.Local]);
+    // Gleiche Vorgaben: nichts Neues.
+    Notify(Dispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","naming":{"field":"F"}}');
+    Assert.AreEqual(1, NamingChanged);
   finally
     Dispatcher.Free;
     Store.Free;

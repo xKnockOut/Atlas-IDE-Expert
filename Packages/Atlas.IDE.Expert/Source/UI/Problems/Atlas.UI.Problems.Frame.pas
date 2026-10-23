@@ -249,7 +249,7 @@ constructor TAtlasProblemsFrame.Create(AOwner: TComponent);
 var
   Kind: TAtlasFindingKind;
   Button: TSpeedButton;
-  Left: Integer;
+  mLeft: Integer;
 begin
   inherited Create(AOwner);
   // Der Name aus der DFM stört, wenn mehrere Frames denselben Besitzer haben.
@@ -268,7 +268,7 @@ begin
     TAtlasStrings.Text(TAtlasTextId.ProblemsScopeProject), TAtlasStrings.Text(TAtlasTextId.ProblemsScopeGroup)];
   FScope := AddCombo(110);
   FScope.OnChange := ScopeChange;
-  Left := FScope.Left + FScope.Width + MulDiv(6, CurrentPPI, 96);
+  mLeft := FScope.Left + FScope.Width + MulDiv(6, CurrentPPI, 96);
   for Kind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
   begin
     Button := TSpeedButton.Create(Self);
@@ -276,7 +276,7 @@ begin
     Button.Top := MulDiv(2, CurrentPPI, 96);
     Button.Height := MulDiv(22, CurrentPPI, 96);
     Button.Width := MulDiv(78, CurrentPPI, 96);
-    Button.Left := Left;
+    Button.Left := mLeft;
     Button.Flat := True;
     // Je Umschalter eine eigene Gruppe: unabhängig an und aus.
     Button.GroupIndex := Ord(Kind) + 1;
@@ -284,14 +284,14 @@ begin
     Button.Down := True;
     Button.OnClick := ControlsChanged;
     FKinds[Kind] := Button;
-    Inc(Left, Button.Width + MulDiv(2, CurrentPPI, 96));
+    Inc(mLeft, Button.Width + MulDiv(2, CurrentPPI, 96));
   end;
   FCategoryTexts := [TAtlasStrings.Text(TAtlasTextId.ProblemsCategoryAll),
     CategoryText(TAtlasFindingCategory.Bug), CategoryText(TAtlasFindingCategory.Vulnerability),
     CategoryText(TAtlasFindingCategory.CodeSmell), CategoryText(TAtlasFindingCategory.SecurityHotspot),
     CategoryText(TAtlasFindingCategory.Compiler), CategoryText(TAtlasFindingCategory.Other)];
   FCategory := AddCombo(130);
-  FCategory.Left := Left + MulDiv(4, CurrentPPI, 96);
+  FCategory.Left := mLeft + MulDiv(4, CurrentPPI, 96);
   FCategory.OnChange := ControlsChanged;
   FGroupingTexts := [TAtlasStrings.Text(TAtlasTextId.ProblemsGroupNone),
     TAtlasStrings.Text(TAtlasTextId.ProblemsGroupFile), TAtlasStrings.Text(TAtlasTextId.ProblemsGroupRule),
@@ -433,11 +433,11 @@ end;
 
 procedure TAtlasProblemsFrame.FillCombo(ACombo: TComboBox; const ATexts: TArray<string>; AIndex: Integer);
 var
-  Text: string;
+  mText: string;
 begin
   if ACombo.Items.Count = 0 then
-    for Text in ATexts do
-      ACombo.Items.Add(Text);
+    for mText in ATexts do
+      ACombo.Items.Add(mText);
   if ACombo.ItemIndex < 0 then
     ACombo.ItemIndex := AIndex;
 end;
@@ -480,7 +480,7 @@ var
   Bitmap: TBitmap;
   Size, Pad, Pass: Integer;
   Points: array[0..2] of TPoint;
-  Color, Mark: TColor;
+  mColor, Mark: TColor;
 begin
   // Zuerst die drei Arten, dahinter dieselben Formen ausgegraut für nicht geöffnete Units (#1108): aufgehellt bzw.
   // abgedunkelt zur Fläche der Liste, damit Fehler weiter von Warnungen unterscheidbar bleiben.
@@ -491,11 +491,11 @@ begin
   for Pass := 0 to 1 do
     for Kind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
     begin
-      Color := KindColors[Kind];
+      mColor := KindColors[Kind];
       Mark := clWhite;
       if Pass = 1 then
       begin
-        Color := TColor(DimmedIconColor(TAtlasColor(Color), TAtlasColor(FImagesBack)));
+        mColor := TColor(DimmedIconColor(TAtlasColor(mColor), TAtlasColor(FImagesBack)));
         Mark := TColor(DimmedIconColor(TAtlasColor(clWhite), TAtlasColor(FImagesBack)));
       end;
       Bitmap := TBitmap.Create;
@@ -503,8 +503,8 @@ begin
         Bitmap.SetSize(Size, Size);
         Bitmap.Canvas.Brush.Color := clFuchsia;
         Bitmap.Canvas.FillRect(Rect(0, 0, Size, Size));
-        Bitmap.Canvas.Brush.Color := Color;
-        Bitmap.Canvas.Pen.Color := Color;
+        Bitmap.Canvas.Brush.Color := mColor;
+        Bitmap.Canvas.Pen.Color := mColor;
         Bitmap.Canvas.Font.Color := Mark;
         Bitmap.Canvas.Font.Style := [fsBold];
         Bitmap.Canvas.Font.Height := -(Size - 2 * Pad);
@@ -610,7 +610,7 @@ procedure TAtlasProblemsFrame.BuildColumns;
 var
   State: TAtlasFindingColumnState;
   Column: TListColumn;
-  Index, Position, Width: Integer;
+  Index, Position, mWidth: Integer;
   Item: TMenuItem;
 begin
   // Das Icon ist immer Spalte 0 (SmallImages zeichnet nur dort); die Reihenfolge der Anzeige setzt die
@@ -627,11 +627,11 @@ begin
     begin
       Column := FList.Columns.Add;
       Column.Caption := ColumnCaption(FShown[Index]);
-      Width := DefaultWidths[FShown[Index]];
+      mWidth := DefaultWidths[FShown[Index]];
       for State in FColumns do
         if (State.Column = FShown[Index]) and (State.Width > 0) then
-          Width := State.Width;
-      Column.Width := MulDiv(Width, CurrentPPI, 96);
+          mWidth := State.Width;
+      Column.Width := MulDiv(mWidth, CurrentPPI, 96);
     end;
   finally
     FList.Columns.EndUpdate;
@@ -1011,7 +1011,7 @@ end;
 procedure TAtlasProblemsFrame.DrawSection(ACanvas: TCanvas; AItem: TListItem; const ARow: TAtlasFindingRow);
 var
   Bounds: TRect;
-  Text: string;
+  mText: string;
   Back: TColor;
 begin
   // Trennzeile über die ganze Breite: Linie oben, Text klein und fett in Sekundärfarbe; die aktive Unit ohne
@@ -1030,10 +1030,10 @@ begin
     ACanvas.Font.Color := $0050A030
   else
     ACanvas.Font.Color := TColor(DimmedTextColor(TAtlasColor(ListText), TAtlasColor(Back)));
-  Text := SectionText(ARow);
+  mText := SectionText(ARow);
   Inc(Bounds.Left, MulDiv(6, CurrentPPI, 96));
   ACanvas.Brush.Style := bsClear;
-  DrawText(ACanvas.Handle, PChar(Text), Length(Text), Bounds, DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or
+  DrawText(ACanvas.Handle, PChar(mText), Length(mText), Bounds, DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or
     DT_NOPREFIX);
   ACanvas.Brush.Style := bsSolid;
 end;
@@ -1340,11 +1340,11 @@ end;
 
 procedure TAtlasProblemsFrame.CopySelection;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := TAtlasFindings.AsText(FView.FindingsOfRows(SelectedRows));
-  if Text <> '' then
-    Clipboard.AsText := Text;
+  mText := TAtlasFindings.AsText(FView.FindingsOfRows(SelectedRows));
+  if mText <> '' then
+    Clipboard.AsText := mText;
 end;
 
 procedure TAtlasProblemsFrame.MenuPopup(Sender: TObject);

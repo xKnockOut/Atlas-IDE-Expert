@@ -270,9 +270,9 @@ end;
 
 function TAtlasSignatureModel.Validate: TAtlasSignatureProblem;
 var
-  Name: string;
+  mName: string;
 begin
-  Result := Validate(Name);
+  Result := Validate(mName);
 end;
 
 function TAtlasSignatureModel.Validate(out AName: string): TAtlasSignatureProblem;

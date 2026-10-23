@@ -297,7 +297,7 @@ end;
 function TAtlasHideNoticeWindow.Layout(ADraw: Boolean): TSize;
 var
   X, Y, TextHeight, Width: Integer;
-  Undo, Separator, Detail: string;
+  Undo, Separator, mDetail: string;
 begin
   Canvas.Font := UIFont;
   TextHeight := Canvas.TextHeight('Wg');
@@ -308,7 +308,7 @@ begin
   if ADraw then
     Canvas.Brush.Style := bsClear;
   // Ohne Überschrift steht der Text in der ersten Zeile, in Textfarbe.
-  Detail := FDetail;
+  mDetail := FDetail;
   if FTitle <> '' then
   begin
     Canvas.Font.Style := [fsBold];
@@ -325,10 +325,10 @@ begin
     if ADraw then
     begin
       Canvas.Font.Color := ToColor(Colors.Text);
-      Canvas.TextOut(X, Y, Detail);
+      Canvas.TextOut(X, Y, mDetail);
     end;
-    Inc(X, Canvas.TextWidth(Detail));
-    Detail := '';
+    Inc(X, Canvas.TextWidth(mDetail));
+    mDetail := '';
   end;
   FUndoRect := TRect.Empty;
   if FCanUndo then
@@ -351,15 +351,15 @@ begin
     Inc(X, Canvas.TextWidth(Undo));
   end;
   Width := X;
-  if Detail <> '' then
+  if mDetail <> '' then
   begin
     Y := Y + TextHeight + Scale(RowGap);
     if ADraw then
     begin
       Canvas.Font.Color := ToColor(Colors.Muted);
-      Canvas.TextOut(Scale(Pad), Y, Detail);
+      Canvas.TextOut(Scale(Pad), Y, mDetail);
     end;
-    Width := Max(Width, Scale(Pad) + Canvas.TextWidth(Detail));
+    Width := Max(Width, Scale(Pad) + Canvas.TextWidth(mDetail));
   end;
   if ADraw then
     Canvas.Brush.Style := bsSolid;

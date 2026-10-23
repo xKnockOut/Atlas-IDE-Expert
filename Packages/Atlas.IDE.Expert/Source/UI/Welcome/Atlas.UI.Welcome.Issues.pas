@@ -662,13 +662,13 @@ end;
 
 procedure TAtlasWelcomeIssuesFrame.ClickAt(const AHit: TAtlasIssuesHit);
 var
-  Source: IAtlasIssuesSource;
+  mSource: IAtlasIssuesSource;
   Item: TAtlasTrackerIssue;
   Mode: TAtlasIssueStart;
 begin
   if (FSource = nil) or (AHit.Index < 0) or (AHit.Index > High(FView.Items)) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Item := FView.Items[AHit.Index];
   case AHit.Kind of
     // Leerraum und Zeilentext lösen nichts aus; sie zeigen nur den Hinweis (BoxMouseMove).
@@ -677,13 +677,13 @@ begin
       Post(
         procedure
         begin
-          Source.Browse(Item);
+          mSource.Browse(Item);
         end);
     TAtlasIssuesHitKind.PullRequest:
       Post(
         procedure
         begin
-          Source.BrowsePullRequest(Item);
+          mSource.BrowsePullRequest(Item);
         end);
     TAtlasIssuesHitKind.Start:
       if CanStart then
@@ -692,7 +692,7 @@ begin
         Post(
           procedure
           begin
-            Source.Start(Item, Mode);
+            mSource.Start(Item, Mode);
           end);
       end;
   end;
@@ -779,73 +779,73 @@ end;
 
 procedure TAtlasWelcomeIssuesFrame.StartBranchClick(Sender: TObject);
 var
-  Source: IAtlasIssuesSource;
+  mSource: IAtlasIssuesSource;
   Item: TAtlasTrackerIssue;
 begin
   if not CanStart or not MenuIssue(Item) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Post(
     procedure
     begin
-      Source.Start(Item, TAtlasIssueStart.Branch);
+      mSource.Start(Item, TAtlasIssueStart.Branch);
     end);
 end;
 
 procedure TAtlasWelcomeIssuesFrame.StartRememberClick(Sender: TObject);
 var
-  Source: IAtlasIssuesSource;
+  mSource: IAtlasIssuesSource;
   Item: TAtlasTrackerIssue;
 begin
   if not CanStart or not MenuIssue(Item) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Post(
     procedure
     begin
-      Source.Start(Item, TAtlasIssueStart.Remember);
+      mSource.Start(Item, TAtlasIssueStart.Remember);
     end);
 end;
 
 procedure TAtlasWelcomeIssuesFrame.QueryClick(Sender: TObject);
 var
-  Source: IAtlasIssuesSource;
+  mSource: IAtlasIssuesSource;
 begin
   if FSource = nil then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Post(
     procedure
     begin
-      Source.QueryNow;
+      mSource.QueryNow;
     end);
 end;
 
 procedure TAtlasWelcomeIssuesFrame.CredentialsClick(Sender: TObject);
 var
-  Source: IAtlasIssuesSource;
+  mSource: IAtlasIssuesSource;
 begin
   if FSource = nil then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Post(
     procedure
     begin
-      Source.Credentials;
+      mSource.Credentials;
     end);
 end;
 
 procedure TAtlasWelcomeIssuesFrame.EndClick(Sender: TObject);
 var
-  Source: IAtlasIssuesSource;
+  mSource: IAtlasIssuesSource;
 begin
   if FSource = nil then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Post(
     procedure
     begin
-      Source.EndActive;
+      mSource.EndActive;
     end);
 end;
 

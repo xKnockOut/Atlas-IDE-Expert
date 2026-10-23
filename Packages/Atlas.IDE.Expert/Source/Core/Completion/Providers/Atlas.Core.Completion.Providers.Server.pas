@@ -445,12 +445,12 @@ var
   NextRank: Integer;
   Emit: TAtlasEmitProc;
   Watch: TStopwatch;
-  Snippets: Boolean;
+  mSnippets: Boolean;
 begin
   AIncomplete := False;
   NextRank := 0;
   Emit := AEmit;
-  Snippets := FSnippets;
+  mSnippets := FSnippets;
   Watch := TStopwatch.StartNew;
   // Teilergebnisse kommen im Lese-Thread nacheinander und alle vor der Antwort.
   Response := TLspSession(AData).Completion(AContext.FileName, AContext.Line, AContext.Character, FTimeoutMs,
@@ -464,7 +464,7 @@ begin
       Items := ItemsFromLsp(AValue, NextRank);
       Inc(NextRank, TJSONArray(AValue).Count);
       // completion.snippets aus (#51): wie ohne die Funktion.
-      if not Snippets then
+      if not mSnippets then
         Items := WithoutSnippets(Items);
       Emit(Items);
     end);
@@ -482,7 +482,7 @@ begin
     AIncomplete := (Response is TJSONObject) and (TJSONObject(Response).GetValue('isIncomplete') is TJSONBool) and
       TJSONBool(TJSONObject(Response).GetValue('isIncomplete')).AsBoolean;
     Result := ItemsFromLsp(Response, NextRank);
-    if not Snippets then
+    if not mSnippets then
       Result := WithoutSnippets(Result);
   finally
     Response.Free;

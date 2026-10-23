@@ -479,7 +479,7 @@ var
   Index, Box: Integer;
   Row, Part, Check: TRect;
   Item: TAtlasQuickToggleItem;
-  Text: string;
+  mText: string;
 begin
   Canvas.Font := Font;
   Canvas.Brush.Color := ToColor(FColors.Surface);
@@ -489,14 +489,14 @@ begin
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(FColors.Text);
-  Text := 'Atlas · ' + TAtlasStrings.Text(TAtlasTextId.QuickTogglesTitle);
-  DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+  mText := 'Atlas · ' + TAtlasStrings.Text(TAtlasTextId.QuickTogglesTitle);
+  DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
   Canvas.Font.Style := [];
   if FAllOff then
   begin
     Canvas.Font.Color := ToColor(FColors.Warn);
-    Text := TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOffActive);
-    DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_RIGHT or DT_NOPREFIX);
+    mText := TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOffActive);
+    DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_RIGHT or DT_NOPREFIX);
   end;
   Canvas.Pen.Color := ToColor(FColors.Line);
   Canvas.MoveTo(0, HeaderHeight - ScaleValue(3));
@@ -520,10 +520,10 @@ begin
       Canvas.Font.Color := ToColor(FColors.Muted);
       Part := Rect(Row.Left + ScaleValue(6), Row.Top, Row.Right - ScaleValue(6), Row.Bottom);
       if IsCollapsed(FRows[Index].Text) then
-        Text := #$25B8' ' + FRows[Index].Text + ' (' + IntToStr(FRows[Index].Count) + ')'
+        mText := #$25B8' ' + FRows[Index].Text + ' (' + IntToStr(FRows[Index].Count) + ')'
       else
-        Text := #$25BE' ' + FRows[Index].Text;
-      DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+        mText := #$25BE' ' + FRows[Index].Text;
+      DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
       Canvas.Font.Style := [];
       Continue;
     end;
@@ -557,16 +557,16 @@ begin
     end;
     Canvas.Brush.Style := bsClear;
     Part := Rect(Check.Right + ScaleValue(8), Row.Top, Row.Right - ScaleValue(6), Row.Bottom);
-    Text := TagText(Item);
-    if Text <> '' then
+    mText := TagText(Item);
+    if mText <> '' then
     begin
       Canvas.Font.Color := ToColor(FColors.Muted);
-      DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_RIGHT or DT_NOPREFIX);
-      Part.Right := Part.Right - Canvas.TextWidth(Text) - ScaleValue(8);
+      DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_RIGHT or DT_NOPREFIX);
+      Part.Right := Part.Right - Canvas.TextWidth(mText) - ScaleValue(8);
     end;
     Canvas.Font.Color := ToColor(FColors.Text);
-    Text := FRows[Index].Text;
-    DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+    mText := FRows[Index].Text;
+    DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
   end;
   Canvas.Pen.Color := ToColor(FColors.Line);
   Canvas.MoveTo(0, ClientHeight - ButtonsHeight);

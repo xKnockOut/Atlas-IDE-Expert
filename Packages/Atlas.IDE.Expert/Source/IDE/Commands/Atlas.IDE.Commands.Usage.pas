@@ -169,7 +169,7 @@ end;
 
 class procedure TAtlasIdeCommandUsage.ResetCounts;
 var
-  Usage: TAtlasCommandUsage;
+  mUsage: TAtlasCommandUsage;
 begin
   if FInstance <> nil then
   begin
@@ -180,13 +180,13 @@ begin
   end
   else
   begin
-    Usage := TAtlasCommandUsage.Create;
+    mUsage := TAtlasCommandUsage.Create;
     try
-      Usage.LoadFromFiles(TipsFile, UsageFile);
-      Usage.ResetCounts;
-      Usage.SaveToFiles(TipsFile, UsageFile);
+      mUsage.LoadFromFiles(TipsFile, UsageFile);
+      mUsage.ResetCounts;
+      mUsage.SaveToFiles(TipsFile, UsageFile);
     finally
-      Usage.Free;
+      mUsage.Free;
     end;
   end;
   // Anonym: nur die Aktion.
