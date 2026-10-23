@@ -2449,6 +2449,25 @@ Voraussetzung: Server läuft in der IDE, DUnitX im Bibliothekspfad indiziert, `c
 | AT9 | Eigenes `MarkeAttribute = class(TCustomAttribute)` und `TNurKlasse = class` in der Unit; `[` | `Marke` angeboten, `TNurKlasse` nicht |
 | AT10 | `"completion": {"attributes": false}` in atlas.json; AT1 | Gewöhnliche Liste mit `TestAttribute` usw. samt Endung |
 
+## Anonyme Methoden (#468)
+
+Voraussetzung: Server läuft in der IDE, `completion.anonymousMethods` an (Vorgabe), Code-Vorlagen an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AM1 | `uses System.Threading;` in einer Methode `TTask.Run(` tippen | Liste öffnet sich allein mit einem Eintrag `procedure`, Badge `sn`, Tag `TProc`, rechts „anonyme Methode“ |
+| AM2 | AM1, Enter | `procedure`, darunter `begin` und `end` eine Ebene tiefer als die Aufrufzeile, Cursor eingerückt im Rumpf; danach `)` von Hand |
+| AM3 | `TList<TCustomer>`-Variable `L`; `L.Sort(TComparer<TCustomer>.Construct(` | Gerüst `function(const Left: TCustomer; const Right: TCustomer): Integer` (eigene Namen der Deklaration) mit `Result := ` |
+| AM4 | Eigene Methode `function Finde(const AFilter: TPredicate<TCustomer>): TCustomer;`, Aufruf `Finde(` | `function(const Value: TCustomer): Boolean`, im Rumpf `Result := ` mit Cursor dahinter |
+| AM5 | `TProc<string, Integer>` als Parameter; Aufruf mit `(` | `procedure(const Value1: string; const Value2: Integer)` |
+| AM6 | Projekt mit Parameterpräfix `A` (#452); AM4 | `function(const AValue: TCustomer): Boolean` |
+| AM7 | Variable `P: TProc<string>`; `P := ` und Strg+Leer | Gerüst oben, darunter die übrige Liste |
+| AM8 | `TTask.Run(pro` und Strg+Leer | Gerüst ersetzt `pro` |
+| AM9 | `Button1.OnClick := ` (Ereignis `of object`) | Kein Gerüst, nur die Ereignis-Zuweisung (#444) |
+| AM10 | Alias `TKundenFilter = TPredicate<TCustomer>;` als Parametertyp; Aufruf mit `(` | `function(const Value: TCustomer): Boolean` |
+| AM11 | `"completion": {"anonymousMethods": false}` in atlas.json; AM1 | Kein Gerüst; nach `(` bleibt die Liste zu |
+| AM12 | `"completion": {"snippets": false}`; AM2 | Gerüst als Klartext ohne Cursor im Rumpf; Einrückung prüfen |
+
 ## Typargumente nach Constraints (#450)
 
 | Nr. | Schritte | Erwartet |

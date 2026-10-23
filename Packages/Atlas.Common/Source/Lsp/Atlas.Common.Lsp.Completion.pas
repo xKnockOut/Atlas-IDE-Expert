@@ -53,7 +53,8 @@ uses
   Atlas.Common.Lsp.Internals.FormCache,
   Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.CompletionRequest,
-  Atlas.Common.Lsp.CompletionCollector;
+  Atlas.Common.Lsp.CompletionCollector,
+  Atlas.Common.Lsp.CompletionAnonymous;
 
 type
   // Typen der Vervollständigung stehen in Atlas.Common.Lsp.CompletionRequest (Code-Review S-01); hier
@@ -212,6 +213,11 @@ type
     /// linken Seite einer Zuweisung (auch Result); '' wenn unbekannt.</summary>
     class function ExpectedType(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
       const APosition: TTextPosition): string; static;
+    /// <summary>Wie ExpectedType, bei Zuweisungen aber samt Typargumenten der linken Seite (TProc&lt;string&gt;
+    /// statt TProc, #468). ExpectedType bleibt ohne, weil die Gruppierung nach Fits mit den Typnamen der
+    /// Kandidaten ohne Typargumente vergleicht.</summary>
+    class function ExpectedFullType(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+      const APosition: TTextPosition): string; static;
     class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition;
       AMatching: TCompletionMatching = TCompletionMatching.Fuzzy): TCompletionItems; overload; static;
@@ -321,6 +327,18 @@ type
     /// Kontrollkästchen. False außerhalb dieses Kontexts oder ohne Felder.</summary>
     class function AssignAllItem(ARequest: TCompletionRequest; ASnippets: Boolean;
       out AItem: TCompletionItem): Boolean; static;
+    /// <summary>Methodenreferenztyp ATypeText, so aufgelöst, wie er in AFromUnit stünde (#468): Deklaration aus
+    /// dem Index, Aliase bis TCompletionAnonymous.MaxAliasDepth verfolgt, Typparameter durch die Typargumente
+    /// ersetzt; ohne Deklaration im Index die von System.SysUtils (TProc, TFunc, TPredicate). False, wenn
+    /// ATypeText kein "reference to procedure/function" ist.</summary>
+    class function MethodRefOf(AResolver: TNameResolver; const AFromUnit: TUnitIndex; const ATypeText: string;
+      out AMethodRef: TMethodRef): Boolean; static;
+    /// <summary>Gerüst einer anonymen Methode (#468), wenn das Argument bzw. die Zuweisung am Cursor einen
+    /// Methodenreferenztyp erwartet und completion.anonymousMethods gilt; der Cursor steht ohne Wort oder hinter
+    /// einem Anfang von procedure bzw. function. Mit ASnippets im Platzhalter-Modus (/bin/bash im Rumpf). Das Präfix der
+    /// Parameter kommt aus ANamingFor bzw. NamingPrefix.</summary>
+    class function AnonymousItem(ARequest: TCompletionRequest; ASnippets: Boolean;
+      const ANamingFor: TCompletionNamingFunc; out AItem: TCompletionItem): Boolean; static;
     /// <summary>Komponenten des Formulars zur Unit (#455), wenn der Cursor ohne Punkt in einer Methode der
     /// Formularklasse steht. Quelle ist die Formulardatei über AReadText, also der Stand im Designer, solange das
     /// Formular offen ist. Je Komponente ein Feld mit ihrem Typ als Detail und Form = Formularname. Passt der Name
@@ -1122,8 +1140,10 @@ begin
   Result := CompletionKindOf(AKind);
 end;
 
-class function TLspCompletion.ExpectedType(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
-  const APosition: TTextPosition): string;
+/// <summary>Erwarteter Typ am Cursor (siehe TLspCompletion.ExpectedType); mit AWithArgs bei Zuweisungen samt
+/// Typargumenten der Variablen.</summary>
+function ExpectedTypeOf(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  const APosition: TTextPosition; AWithArgs: Boolean): string;
 var
   Site: TCallSite;
   Callee, Target: TResolvedSymbol;
@@ -1142,8 +1162,9 @@ begin
   if Site.Found then
   begin
     Callee := AResolver.Resolve(ATree, AFileName, Site.NamePosition);
+    // Mitglied einer generischen Instanz (TBox<TKunde>.Where): Typparameter der Klasse einsetzen (#468).
     if Callee.Found and (Site.ActiveParameter < Length(Callee.ParamTypes)) then
-      Result := Callee.ParamTypes[Site.ActiveParameter];
+      Result := TInterfaceStubs.SubstituteWords(Callee.ParamTypes[Site.ActiveParameter], Callee.Bindings);
     Exit;
   end;
   // Zuweisung: "Ziel := A.B.Anf|" – rückwärts über die Kette rechts bis zum ":=".
@@ -1197,7 +1218,11 @@ begin
   Target := AResolver.ResolveChain(ATree, AFileName, Names, Last);
   if Target.Found and not Target.IsType and (Target.SymbolKind <> TIndexSymbolKind.Routine) and
     (Target.SymbolKind <> TIndexSymbolKind.Method) then
+  begin
     Result := Target.TypeName;
+    if AWithArgs and (Result <> '') and (Target.TypeArgs <> '') then
+      Result := Result + '<' + Target.TypeArgs + '>';
+  end;
   // Result: Rückgabetyp der umgebenden Funktion.
   if (Result = '') and (Length(Names) = 1) and SameText(Names[0], 'Result') then
   begin
@@ -1207,6 +1232,18 @@ begin
         (Symbol.Range.StartPos.Line < APosition.Line) and (Symbol.Range.EndPos.Line >= APosition.Line) then
         Result := Symbol.TypeName;
   end;
+end;
+
+class function TLspCompletion.ExpectedType(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  const APosition: TTextPosition): string;
+begin
+  Result := ExpectedTypeOf(AResolver, ATree, AFileName, APosition, False);
+end;
+
+class function TLspCompletion.ExpectedFullType(AResolver: TNameResolver; ATree: TSyntaxTree;
+  const AFileName: string; const APosition: TTextPosition): string;
+begin
+  Result := ExpectedTypeOf(AResolver, ATree, AFileName, APosition, True);
 end;
 
 class function TLspCompletion.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -2200,6 +2237,24 @@ begin
         AAnswer.Exclusive)) then
         AAnswer.Exclusive := Default(TCompletionItems);
       Result := TCompletionOutcome.Answered;
+    end);
+  // Anonyme Methoden (#468): Erwartet das Argument einen Methodenreferenztyp, nach "(" nur das Gerüst (dort
+  // gibt es keine unbekannte Methode anzulegen), mit Strg+Leer ganz oben in der Liste.
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    var
+      Item: TCompletionItem;
+    begin
+      Result := TCompletionOutcome.Next;
+      if not AnonymousItem(ARequest, FSnippetSupport, FNamingFor, Item) then
+        Exit;
+      if ARequest.Trigger = '(' then
+      begin
+        AAnswer.Exclusive := Default(TCompletionItems);
+        AAnswer.Exclusive.Items := [Item];
+        Exit(TCompletionOutcome.Answered);
+      end;
+      AAnswer.Hints := AAnswer.Hints + [Item];
     end);
   // Methode aus Aufruf anlegen (#472): Nach "(" (Auslöser des Plugins) gibt es nur dieses Angebot oder nichts,
   // mit Strg+Leer auf dem Namen eines Aufrufs steht es oben in der Liste.
@@ -4953,6 +5008,117 @@ begin
   end
   else
     AItem.TextEdit.NewText := TAssignFields.Plain(Expr, Indent, LineBreak, Fields);
+  Result := True;
+end;
+
+
+class function TLspCompletion.MethodRefOf(AResolver: TNameResolver; const AFromUnit: TUnitIndex;
+  const ATypeText: string; out AMethodRef: TMethodRef): Boolean;
+var
+  TypeText, Base, Signature, Target: string;
+  Args, TypeParams: TArray<string>;
+  FromUnit: TUnitIndex;
+  Resolved: TResolvedSymbol;
+  Depth, Index: Integer;
+begin
+  AMethodRef := Default(TMethodRef);
+  Result := False;
+  TypeText := ATypeText;
+  FromUnit := AFromUnit;
+  for Depth := 0 to TCompletionAnonymous.MaxAliasDepth do
+  begin
+    Args := TCompletionAnonymous.TypeArgs(TypeText, Base);
+    Signature := '';
+    if (AResolver <> nil) and AResolver.ResolveTypeTextFrom(FromUnit, TypeText, Resolved) and
+      not Resolved.Builtin then
+      Signature := Resolved.Signature;
+    // Ohne Quellen der RTL im Index: die Deklarationen von System.SysUtils.
+    if Signature = '' then
+      Signature := TCompletionAnonymous.RtlDeclaration(Base, Length(Args));
+    if Signature = '' then
+      Exit;
+    if TCompletionAnonymous.Parse(Signature, TypeParams, AMethodRef, Target) then
+    begin
+      for Index := 0 to High(AMethodRef.Params) do
+        AMethodRef.Params[Index].TypeText := TCompletionAnonymous.Substitute(AMethodRef.Params[Index].TypeText,
+          TypeParams, Args);
+      AMethodRef.ResultType := TCompletionAnonymous.Substitute(AMethodRef.ResultType, TypeParams, Args);
+      Exit(True);
+    end;
+    // Alias ("TKundenFilter = TPredicate<TKunde>"): weiter mit dem Ziel, gelesen in der Unit des Alias.
+    if (Target = '') or not AResolver.DeclaringUnit(Resolved, FromUnit) then
+      Exit;
+    TypeText := TCompletionAnonymous.Substitute(Target, TypeParams, Args);
+  end;
+end;
+
+class function TLspCompletion.AnonymousItem(ARequest: TCompletionRequest; ASnippets: Boolean;
+  const ANamingFor: TCompletionNamingFunc; out AItem: TCompletionItem): Boolean;
+var
+  Context: TCompletionContext;
+  Expected, Prefix, LineText, Indent: string;
+  MethodRef: TMethodRef;
+  Start: TTextPosition;
+  Index: Integer;
+begin
+  AItem := Default(TCompletionItem);
+  Result := False;
+  if not ARequest.Settings.AnonymousMethods or (ARequest.Tree = nil) or (ARequest.Resolver = nil) then
+    Exit;
+  Context := Analyze(ARequest.Tree, ARequest.Position);
+  if (Context.Kind <> TCompletionContextKind.Scope) or (Context.Filter <> TCompletionFilter.Any) or
+    Context.Attribute or Context.Generic then
+    Exit;
+  if (Context.Prefix <> '') and not StartsText(Context.Prefix, 'procedure') and
+    not StartsText(Context.Prefix, 'function') then
+    Exit;
+  Expected := ExpectedFullType(ARequest.Resolver, ARequest.Tree, ARequest.FileName, ARequest.Position);
+  if (Expected = '') or not MethodRefOf(ARequest.Resolver, ARequest.UnitIndex, Expected, MethodRef) then
+    Exit;
+  // Bindungen generischer Instanzen sind qualifiziert ("Kunden.TKunde"); im Gerüst wie im Quelltext üblich.
+  Expected := ARequest.Resolver.UnqualifyType(Expected, ARequest.UnitIndex.UnitName);
+  for Index := 0 to High(MethodRef.Params) do
+    MethodRef.Params[Index].TypeText := ARequest.Resolver.UnqualifyType(MethodRef.Params[Index].TypeText,
+      ARequest.UnitIndex.UnitName);
+  MethodRef.ResultType := ARequest.Resolver.UnqualifyType(MethodRef.ResultType, ARequest.UnitIndex.UnitName);
+  if Assigned(ANamingFor) then
+    Prefix := ANamingFor(ARequest.Uri, TNamingKind.Parameter)
+  else
+    Prefix := NamingPrefix(ARequest.Index, TNamingKind.Parameter);
+  MethodRef := TCompletionAnonymous.Named(MethodRef, Prefix);
+  AItem.Name := TCompletionAnonymous.Header(MethodRef);
+  if MethodRef.IsFunction then
+    AItem.FilterText := 'function'
+  else
+    AItem.FilterText := 'procedure';
+  AItem.Kind := KindSnippet;
+  // Den Typ zeigt Atlas als Tag (MethodRef); rechts steht, was der Eintrag ist.
+  AItem.Detail := 'anonyme Methode';
+  AItem.MethodRef := Expected;
+  AItem.Expected := Expected;
+  AItem.Fits := True;
+  AItem.Pinned := True;
+  // Erzeugt Code: keine uses-Ergänzung.
+  AItem.Action := 'anonymous';
+  AItem.HasTextEdit := True;
+  Start := ARequest.Position;
+  Start.Character := Max(0, Start.Character - Length(Context.Prefix));
+  AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(Start, ARequest.Position), '');
+  if ASnippets then
+  begin
+    // Zeilen mit #10, die Einrückung der Zeile setzt der Editor davor.
+    AItem.Snippet := True;
+    AItem.TextEdit.NewText := TCompletionAnonymous.Snippet(MethodRef);
+  end
+  else
+  begin
+    LineText := ARequest.LineText(ARequest.Position.Line);
+    Index := 1;
+    while (Index <= Length(LineText)) and CharInSet(LineText[Index], [' ', #9]) do
+      Inc(Index);
+    Indent := Copy(LineText, 1, Index - 1);
+    AItem.TextEdit.NewText := TCompletionAnonymous.Plain(MethodRef, Indent, ARequest.LineBreak);
+  end;
   Result := True;
 end;
 

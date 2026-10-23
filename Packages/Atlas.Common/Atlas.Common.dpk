@@ -131,6 +131,7 @@ contains
   Atlas.Common.Lsp.CompletionEnums in 'Source\Lsp\Atlas.Common.Lsp.CompletionEnums.pas',
   Atlas.Common.Lsp.CompletionGenerics in 'Source\Lsp\Atlas.Common.Lsp.CompletionGenerics.pas',
   Atlas.Common.Lsp.CompletionAttributes in 'Source\Lsp\Atlas.Common.Lsp.CompletionAttributes.pas',
+  Atlas.Common.Lsp.CompletionAnonymous in 'Source\Lsp\Atlas.Common.Lsp.CompletionAnonymous.pas',
   Atlas.Common.Lsp.CompletionUses in 'Source\Lsp\Atlas.Common.Lsp.CompletionUses.pas',
   Atlas.Common.Lsp.CompletionInherited in 'Source\Lsp\Atlas.Common.Lsp.CompletionInherited.pas',
   Atlas.Common.Lsp.CompletionSameNames in 'Source\Lsp\Atlas.Common.Lsp.CompletionSameNames.pas',

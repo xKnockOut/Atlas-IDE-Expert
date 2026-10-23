@@ -243,6 +243,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionEnums.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionGenerics.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionAttributes.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionAnonymous.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionUses.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionInherited.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionSameNames.pas"/>

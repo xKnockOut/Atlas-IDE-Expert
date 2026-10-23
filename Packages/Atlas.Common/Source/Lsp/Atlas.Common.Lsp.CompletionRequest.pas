@@ -214,6 +214,9 @@ type
     SameNameHidden: TArray<string>;
     /// <summary>Attribut nach "[" (#465): Name ohne Endung Attribute; Atlas zeigt das Badge "at".</summary>
     Attribute: Boolean;
+    /// <summary>Gerüst einer anonymen Methode (#468): der erwartete Methodenreferenztyp; Atlas zeigt ihn als Tag.
+    /// '' sonst.</summary>
+    MethodRef: string;
   end;
 
   TCompletionItems = record

@@ -319,6 +319,9 @@ type
     /// <summary>Nach "[" vor einer Deklaration nur Attributklassen ohne Endung Attribute, bekannte zuerst, dazu
     /// die Compiler-Attribute (#465). Aus: die gewöhnliche Liste.</summary>
     Attributes: Boolean;
+    /// <summary>Erwartet ein Argument oder eine Zuweisung einen Methodenreferenztyp, oben ein Gerüst
+    /// "procedure(…) begin end" bzw. "function(…): T" mit passender Signatur (#468). Aus: kein Gerüst.</summary>
+    AnonymousMethods: Boolean;
     /// <summary>Gleichnamige Bezeichner aus verschiedenen Units als Varianten mit ihrer Unit; die vom Compiler
     /// gewählte zuerst mit „aktiv“ (#475). Aus: nur die aktive.</summary>
     SameNameVariants: Boolean;
@@ -873,6 +876,7 @@ begin
   Result.UsesDetails := True;
   Result.InheritedCall := True;
   Result.Attributes := True;
+  Result.AnonymousMethods := True;
   Result.SameNameVariants := True;
   Result.SameNameInsert := TCompletionSameNameInsert.Prefix;
   Result.ShowFmxUnits := False;

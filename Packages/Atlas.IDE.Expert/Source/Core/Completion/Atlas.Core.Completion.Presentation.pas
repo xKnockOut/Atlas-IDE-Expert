@@ -316,6 +316,9 @@ var
   Directive, MissingName: string;
 begin
   Result := nil;
+  // Gerüst einer anonymen Methode (#468): der erwartete Typ.
+  if AItem.MethodRef <> '' then
+    Result := Result + [MakeTag(AItem.MethodRef, TAtlasTagKind.Accent)];
   if AItem.Count > 0 then
     Result := Result + [MakeTag(IntToStr(AItem.Count), TAtlasTagKind.Accent)];
   // Zirkelbezug im uses-Abschnitt (#469).
