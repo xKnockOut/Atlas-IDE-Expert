@@ -300,6 +300,8 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Conditions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ConditionalExpression.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.NestedRoutines.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.PromoteVariable.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PromoteVariable.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RoutineLocals.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MoveClass.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UnitRename.pas"/>

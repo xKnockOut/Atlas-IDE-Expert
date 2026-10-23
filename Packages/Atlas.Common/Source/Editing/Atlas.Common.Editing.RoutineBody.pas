@@ -3,7 +3,8 @@
 // Gemeinsame Bausteine der Refactorings im Rumpf einer Routine (#50): Routine
 // und Anweisung an einer Stelle finden, Anweisungslisten erkennen (nur dort
 // darf eine neue Anweisung davor stehen), Text eines Knotens, Einrückung,
-// eindeutige Namen und neue Einträge im var- bzw. const-Abschnitt der Routine.
+// eindeutige Namen und neue Einträge im var- bzw. const-Abschnitt der Routine,
+// Mitglieder und Felder einer Klasse.
 // Ohne Namensauflösung; die Aufrufer bringen sie bei Bedarf mit.
 
 interface
@@ -63,6 +64,19 @@ type
     /// Zeilenanfang stehen muss.</summary>
     class function MemberDeclaration(const AText: string; ATree: TSyntaxTree; ABody: TSyntaxNode;
       const ASection, ADecl: string; const AStyle: TFormatStyle; out AEdit: TTextEdit): Boolean; static;
+    /// <summary>Feld ADecl ("FName: Typ;") hinter dem letzten Feld des private-Abschnitts der Klasse ABody (auch
+    /// strict private), ohne Feld direkt unter private (vor den Methoden); ohne Abschnitt wie MemberDeclaration.
+    /// </summary>
+    class function FieldDeclaration(const AText: string; ATree: TSyntaxTree; ABody: TSyntaxNode; const ADecl: string;
+      const AStyle: TFormatStyle; out AEdit: TTextEdit): Boolean; static;
+    /// <summary>Namen der Mitglieder (Felder, Methoden, Properties) der Typdeklaration ABody.</summary>
+    class function MemberNames(ABody: TSyntaxNode): TArray<string>; static;
+    /// <summary>Sichtbarkeit des Mitglieds AMember in ABody klein geschrieben ('' ohne Abschnitt).</summary>
+    class function VisibilityOf(ABody, AMember: TSyntaxNode): string; static;
+    /// <summary>Klasse vor dem Namen: TKunde aus TKunde.Rechne; '' ohne.</summary>
+    class function QualifierOf(const AName: string): string; static;
+    /// <summary>Name ohne Klasse: Rechne aus TKunde.Rechne.</summary>
+    class function ShortNameOf(const AName: string): string; static;
     /// <summary>Zeile, vor der eine neue Routine entsteht: Anfang von ARoutine samt Kommentaren direkt darüber.
     /// </summary>
     class function RoutineInsertLine(const AText: string; ARoutine: TSyntaxNode): Integer; static;
@@ -433,6 +447,86 @@ begin
   AEdit := TTextEdit.Create(TTextRange.Create(Position, Position), Indent + ASection + LineBreak + Indent +
     IndentUnit(AStyle) + ADecl + LineBreak);
   Result := True;
+end;
+
+class function TRoutineBody.FieldDeclaration(const AText: string; ATree: TSyntaxTree; ABody: TSyntaxNode;
+  const ADecl: string; const AStyle: TFormatStyle; out AEdit: TTextEdit): Boolean;
+var
+  Index: Integer;
+  Visibility, LastField: TSyntaxNode;
+  Position: TTextPosition;
+  Indent: string;
+begin
+  AEdit := Default(TTextEdit);
+  Visibility := nil;
+  LastField := nil;
+  for Index := 0 to ABody.ChildCount - 1 do
+    if ABody[Index].Kind = TSyntaxKind.Visibility then
+    begin
+      if Visibility <> nil then
+        Break;
+      if MatchText(ABody[Index].Name, ['private', 'strict private']) then
+        Visibility := ABody[Index];
+    end
+    else if (Visibility <> nil) and (ABody[Index].Kind = TSyntaxKind.Field) then
+      LastField := ABody[Index]
+    else if Visibility <> nil then
+      // Felder stehen vor Methoden und Properties (E2169).
+      Break;
+  if Visibility = nil then
+    Exit(MemberDeclaration(AText, ATree, ABody, 'private', ADecl, AStyle, AEdit));
+  if LastField <> nil then
+  begin
+    Indent := TTextLines.IndentOf(AText, LastField.StartPos.Line);
+    Position := TTextPosition.Create(LastField.EndPos.Line + 1, 0);
+  end
+  else
+  begin
+    Indent := TTextLines.IndentOf(AText, Visibility.StartPos.Line) + IndentUnit(AStyle);
+    Position := TTextPosition.Create(Visibility.EndPos.Line + 1, 0);
+  end;
+  AEdit := TTextEdit.Create(TTextRange.Create(Position, Position), Indent + ADecl + TTextLines.LineBreakOf(AText));
+  Result := True;
+end;
+
+class function TRoutineBody.MemberNames(ABody: TSyntaxNode): TArray<string>;
+var
+  Index: Integer;
+  Name: string;
+begin
+  Result := nil;
+  for Index := 0 to ABody.ChildCount - 1 do
+    if ABody[Index].Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.Field, TSyntaxKind.PropertyDecl] then
+      for Name in ABody[Index].Name.Split([',']) do
+        Result := Result + [Trim(Name)];
+end;
+
+class function TRoutineBody.VisibilityOf(ABody, AMember: TSyntaxNode): string;
+var
+  Index: Integer;
+begin
+  Result := '';
+  for Index := 0 to ABody.ChildCount - 1 do
+  begin
+    if ABody[Index] = AMember then
+      Exit;
+    if ABody[Index].Kind = TSyntaxKind.Visibility then
+      Result := LowerCase(ABody[Index].Name);
+  end;
+end;
+
+class function TRoutineBody.QualifierOf(const AName: string): string;
+begin
+  Result := '';
+  if AName.LastIndexOf('.') > 0 then
+    Result := AName.Substring(0, AName.LastIndexOf('.'));
+end;
+
+class function TRoutineBody.ShortNameOf(const AName: string): string;
+begin
+  Result := AName;
+  if Result.LastIndexOf('.') >= 0 then
+    Result := Result.Substring(Result.LastIndexOf('.') + 1);
 end;
 
 class function TRoutineBody.RoutineInsertLine(const AText: string; ARoutine: TSyntaxNode): Integer;

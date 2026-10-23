@@ -344,6 +344,10 @@ type
     function InvertBooleanActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Boolean umkehren“ (#715): das WorkspaceEdit für alle Stellen.</summary>
     function InvertBoolean(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>„In Feld umwandeln“ bzw. „In lokale Variable umwandeln“ an APosition (#668).</summary>
+    function PromoteVariableActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Lokale Variable und Feld umwandeln (#668): das WorkspaceEdit mit dem gewählten Namen.</summary>
+    function PromoteVariable(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Umschließung entfernen“ (#657): Konstrukte am Cursor mit Varianten und Vorschau.</summary>
     function Unwrap(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable an APosition.</summary>
@@ -500,6 +504,7 @@ uses
   Atlas.Common.Editing.PropertyFromAccessors,
   Atlas.Common.Lsp.PropertyFromAccessors,
   Atlas.Common.Lsp.InvertBoolean,
+  Atlas.Common.Lsp.PromoteVariable,
   Atlas.Common.Lsp.Unwrap,
   Atlas.Common.Lsp.UnitRename,
   Atlas.Common.Lsp.SmartPaste,
@@ -1376,6 +1381,7 @@ begin
       Result := Result + MoveClassActions(AUri, ARange.StartPos);
       Result := Result + PropertyFromAccessorsActions(AUri, ARange.StartPos);
       Result := Result + InvertBooleanActions(AUri, ARange.StartPos);
+      Result := Result + PromoteVariableActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
       Result := Result + RefactoringActions(AUri, ARange);
     end;
@@ -1454,6 +1460,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := InvertBoolean(AArguments);
+    end);
+  FCommands.Register(TLspPromoteVariable.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := PromoteVariable(AArguments);
     end);
   FCommands.Register(TLspUnwrap.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -3254,6 +3265,73 @@ begin
   FLogger.Info(Format('Boolean umkehren: %d Stellen in %d Dateien, %d Warnungen',
     [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt,
     (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.PromoteVariableActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).PromoteVariable or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(AUri));
+    try
+      Result := TLspPromoteVariable.Actions(Shared.Tree, Document.Text, AUri, APosition,
+        TLspPromoteVariable.Lookup(Resolver, Shared.Tree, TDocumentUris.ToPath(AUri), ReadSourceText));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.PromoteVariable(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+begin
+  // Argumente: URI, Position, Name.
+  if (AArguments = nil) or (AArguments.Count < 3) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri", "position" und "name" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).PromoteVariable then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Lokale Variable und Feld umwandeln" ist abgeschaltet (refactoring.promoteVariable).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(Uri));
+    try
+      Answer := TLspPromoteVariable.Execute(Shared.Tree, Document.Text, Uri, Position,
+        Trim(AArguments.Items[2].Value), TLspPromoteVariable.Lookup(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri),
+        ReadSourceText), ResolvedFormatStyleFor(Uri));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Variable/Feld umwandeln: %d Stellen, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('warnings') as TJSONArray).Count]));
   Result := Answer;
 end;
 
