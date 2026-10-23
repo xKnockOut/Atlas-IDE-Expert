@@ -5,8 +5,10 @@
 //   (#1114); auf der Willkommensseite der IDE meldet Atlas nichts mehr an.
 //   Das Fenster öffnet über Ansicht › Atlas-Start, das Atlas-Menü, die
 //   Befehlspalette und den Desktop der IDE; mit welcomePage.openOnStart auch
-//   beim Start. Sync füllt es nach den Einstellungen; welcomePage.enabled
-//   aus: Fenster zu, nichts angezeigt.
+//   beim Start, mit welcomePage.openWhenNoProject (Vorgabe an), sobald das
+//   letzte Projekt geschlossen ist (nicht beim Beenden der IDE). Sync füllt
+//   es nach den Einstellungen; welcomePage.enabled aus: Fenster zu, nichts
+//   angezeigt.
 // - Aufräumen beim Start (#1114, TAtlasWelcomeRetire): Gibt es noch die
 //   Sicherung %LOCALAPPDATA%\Atlas\welcomepage-layout-backup.json aus
 //   „Atlas-Layout anwenden“ früherer Fassungen, schreibt Atlas sie zurück und
@@ -99,6 +101,11 @@ type
     FDirty: TArray<string>;
     // Erster Sync gelaufen (welcomePage.openOnStart wirkt nur beim Start).
     FStarted: Boolean;
+    // Beobachter für geschlossene Projekte (welcomePage.openWhenNoProject); die IDE hält ihn.
+    FProjectWatch: TObject;
+    FProjectWatchIndex: Integer;
+    // Prüfung „noch ein Projekt offen?“ ist eingereiht.
+    FNoProjectQueued: Boolean;
     FAccess: IAtlasRegistryAccess;
     FSearch: TAtlasIdeWelcomeSearch;
     FWhatsNew: TAtlasIdeWhatsNew;
@@ -164,6 +171,14 @@ type
     function WelcomeKey: string;
     procedure CheckPending;
     procedure RetireIdeLayout;
+    procedure WatchProjects;
+    procedure UnwatchProjects;
+    /// <summary>Ein Projekt oder eine Projektgruppe wird geschlossen: danach prüfen, ob noch eines offen ist.
+    /// </summary>
+    procedure ProjectClosing;
+    procedure CheckNoProject;
+    class function OpenProjectCount: Integer; static;
+    class function IdeRunning: Boolean; static;
     procedure Report(const AText: string);
     class function AtlasFolder: string; static;
     class function PendingFile: string; static;
@@ -230,6 +245,8 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Winapi.Windows,
   System.IOUtils,
+  Vcl.Forms,
+  ToolsAPI,
   Atlas.Core.Product.Version,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
@@ -238,12 +255,25 @@ uses
   Atlas.Core.Welcome.Layout,
   Atlas.Core.Welcome.Layouts,
   Atlas.Core.Welcome.HostLayout,
+  Atlas.Core.Welcome.Projects,
+  Atlas.Core.Welcome.Search,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.WhatsNew,
   Atlas.UI.Welcome.Arrange,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Welcome.Registry,
   Atlas.IDE.Welcome.Window;
+
+type
+  // Meldet das Schließen von Projekten und Projektgruppen an die Steuerung (#1114).
+  TAtlasWelcomeProjectWatch = class(TNotifierObject, IOTAIDENotifier)
+  private
+    FOwner: TAtlasIdeWelcome;
+  public
+    procedure FileNotification(NotifyCode: TOTAFileNotification; const FileName: string; var Cancel: Boolean);
+    procedure BeforeCompile(const Project: IOTAProject; var Cancel: Boolean); overload;
+    procedure AfterCompile(Succeeded: Boolean); overload;
+  end;
 
 const
   NameDisplay = 3;
@@ -281,6 +311,32 @@ end;
 function Settings: TAtlasPluginSettings;
 begin
   Result := TAtlasIdeSettings.Current;
+end;
+
+{ TAtlasWelcomeProjectWatch }
+
+procedure TAtlasWelcomeProjectWatch.FileNotification(NotifyCode: TOTAFileNotification; const FileName: string;
+  var Cancel: Boolean);
+var
+  Owner: TAtlasIdeWelcome;
+begin
+  Owner := FOwner;
+  if (Owner = nil) or (NotifyCode <> ofnFileClosing) or not TAtlasWelcomeSearch.IsProjectFile(FileName) then
+    Exit;
+  // Keine Exception an die IDE (#493).
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      Owner.ProjectClosing;
+    end);
+end;
+
+procedure TAtlasWelcomeProjectWatch.BeforeCompile(const Project: IOTAProject; var Cancel: Boolean);
+begin
+end;
+
+procedure TAtlasWelcomeProjectWatch.AfterCompile(Succeeded: Boolean);
+begin
 end;
 
 { TAtlasIdeWelcome }
@@ -327,11 +383,14 @@ begin
   TAtlasIdeWelcomeWindow.Prepare;
   CheckPending;
   RetireIdeLayout;
+  FProjectWatchIndex := -1;
+  WatchProjects;
 end;
 
 destructor TAtlasIdeWelcome.Destroy;
 begin
   Instance := nil;
+  UnwatchProjects;
   // Vor den Frames: löst die Suchfelder, die noch leben.
   FreeAndNil(FSearch);
   TAtlasWelcomeSections.Default.RemoveListener(FSectionsListener);
@@ -749,6 +808,79 @@ procedure TAtlasIdeWelcome.Report(const AText: string);
 begin
   if Assigned(FMessage) then
     FMessage(AText);
+end;
+
+procedure TAtlasIdeWelcome.WatchProjects;
+var
+  Services: IOTAServices;
+  Watch: TAtlasWelcomeProjectWatch;
+begin
+  if (FProjectWatch <> nil) or not Supports(BorlandIDEServices, IOTAServices, Services) then
+    Exit;
+  Watch := TAtlasWelcomeProjectWatch.Create;
+  Watch.FOwner := Self;
+  FProjectWatch := Watch;
+  FProjectWatchIndex := Services.AddNotifier(Watch);
+end;
+
+procedure TAtlasIdeWelcome.UnwatchProjects;
+var
+  Services: IOTAServices;
+begin
+  if FProjectWatch = nil then
+    Exit;
+  TAtlasWelcomeProjectWatch(FProjectWatch).FOwner := nil;
+  // RemoveNotifier gibt die Referenz der IDE frei und damit den Beobachter (#493).
+  if (FProjectWatchIndex >= 0) and Supports(BorlandIDEServices, IOTAServices, Services) then
+    Services.RemoveNotifier(FProjectWatchIndex);
+  FProjectWatch := nil;
+  FProjectWatchIndex := -1;
+end;
+
+procedure TAtlasIdeWelcome.ProjectClosing;
+begin
+  // ofnFileClosing kommt, bevor das Projekt weg ist; eine Gruppe schließt mehrere Projekte nacheinander.
+  // Darum einmal danach über die Nachrichtenschleife prüfen.
+  if FNoProjectQueued then
+    Exit;
+  FNoProjectQueued := True;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      if Instance <> nil then
+        Instance.CheckNoProject;
+    end);
+end;
+
+procedure TAtlasIdeWelcome.CheckNoProject;
+var
+  Current: TAtlasPluginSettings;
+begin
+  FNoProjectQueued := False;
+  Current := Settings;
+  if TAtlasWelcomeAutoOpen.AfterProjectClosed(Current.WelcomePage, Current.WelcomePageOpenWhenNoProject,
+    OpenProjectCount, IdeRunning, TAtlasIdeWelcomeWindow.Visible) then
+    ShowStart;
+end;
+
+class function TAtlasIdeWelcome.OpenProjectCount: Integer;
+var
+  Services: IOTAModuleServices;
+  Group: IOTAProjectGroup;
+begin
+  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+    Exit(-1);
+  Group := Services.MainProjectGroup;
+  if Group = nil then
+    Exit(0);
+  Result := Group.ProjectCount;
+end;
+
+class function TAtlasIdeWelcome.IdeRunning: Boolean;
+begin
+  // Beim Beenden schließt die IDE alle Projekte; dann kein Fenster mehr anlegen.
+  Result := not Application.Terminated and (Application.MainForm <> nil) and Application.MainForm.Visible and
+    not (csDestroying in Application.MainForm.ComponentState);
 end;
 
 procedure TAtlasIdeWelcome.SectionChanged(const AId: string);

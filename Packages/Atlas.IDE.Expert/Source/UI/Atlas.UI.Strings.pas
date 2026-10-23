@@ -240,7 +240,8 @@ type
     WelcomeNight, WelcomeMorning, WelcomeDay, WelcomeEvening, WelcomeVersion, WelcomeServerRunning,
     WelcomeServerStarting, WelcomeServerStopped, WelcomeServerFailed, WelcomeServerIdle, WelcomeUnits,
     WelcomeIndexing, WelcomeIndexingPercent, WelcomeStartCaption, WelcomeHeaderTitle, MenuWelcomeStart,
-    WelcomeRetired, SettingsTabWelcome, SettingsWelcomeEnabled, SettingsWelcomeOpenOnStart, SettingsWelcomeHeader,
+    WelcomeRetired, SettingsTabWelcome, SettingsWelcomeEnabled, SettingsWelcomeOpenOnStart,
+    SettingsWelcomeOpenWhenNoProject, SettingsWelcomeHeader,
     SettingsWelcomeGreeting,
     WelcomeSearchHint, WelcomeSearchProjects, WelcomeSearchFiles, WelcomeSearchSymbols, WelcomeSearchCommands,
     WelcomeSearchMore, WelcomeSearchNoServer, WelcomeSearchForm, SettingsWelcomeSearch,
@@ -1217,6 +1218,7 @@ const
      'Atlas zeigt seine Bereiche nicht mehr auf der Willkommensseite der IDE; deren Layout ist aufgeräumt. ' +
      'Die Atlas-Willkommensseite öffnet sich über Ansicht › Atlas-Start.',
      'Willkommensseite', 'Atlas-Willkommensseite (Fenster „Atlas-Start“)', 'Beim Start der IDE öffnen',
+     'Öffnen, wenn kein Projekt mehr geladen ist',
      'Kopf mit Symbol und Version', 'Grußzeile im Kopf',
      'Projekte, Dateien, Symbole, Befehle suchen', 'Projekte', 'Dateien', 'Symbole', 'Befehle', '%d weitere',
      'Symbole nach dem Öffnen eines Projekts', 'Formular', 'Suchfeld zeigen',
@@ -2759,6 +2761,7 @@ const
      'Atlas no longer shows its sections on the IDE welcome page; its layout has been cleaned up. ' +
      'Open the Atlas welcome page via View › Atlas Start.',
      'Welcome page', 'Atlas welcome page (“Atlas Start” window)', 'Open when the IDE starts',
+     'Open when no project is loaded any more',
      'Header with symbol and version', 'Greeting in the header',
      'Search projects, files, symbols, commands', 'Projects', 'Files', 'Symbols', 'Commands', '%d more',
      'Symbols after opening a project', 'form', 'Show search field',

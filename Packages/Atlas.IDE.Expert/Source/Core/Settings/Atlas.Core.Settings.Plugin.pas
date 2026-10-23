@@ -863,6 +863,9 @@ type
     /// <summary>Fenster „Atlas-Start“ beim Start der IDE öffnen (welcomePage.openOnStart, #1114); sonst nur
     /// über Menü, Palette und Desktop.</summary>
     WelcomePageOpenOnStart: Boolean;
+    /// <summary>Fenster „Atlas-Start“ öffnen, sobald das letzte Projekt geschlossen ist
+    /// (welcomePage.openWhenNoProject, #1114).</summary>
+    WelcomePageOpenWhenNoProject: Boolean;
     /// <summary>Kopf mit Symbol und Version (welcomePage.header) und Grußzeile darin (welcomePage.greeting).</summary>
     WelcomePageHeader: Boolean;
     WelcomePageGreeting: Boolean;
@@ -1554,6 +1557,7 @@ begin
   Result.MultiCursorBelowKey := $C028; // Strg+Alt+↓
   Result.WelcomePage := True;
   Result.WelcomePageOpenOnStart := False;
+  Result.WelcomePageOpenWhenNoProject := True;
   Result.WelcomePageHeader := True;
   Result.WelcomePageGreeting := True;
   Result.WelcomePageSearch := True;
@@ -2182,6 +2186,8 @@ begin
   MultiCursorBelowKey := AStore.ReadInteger('MultiCursorBelowKey', Default.MultiCursorBelowKey);
   WelcomePage := AStore.ReadInteger('WelcomePage', BoolValue(Default.WelcomePage)) <> 0;
   WelcomePageOpenOnStart := AStore.ReadInteger('WelcomePageOpenOnStart', BoolValue(Default.WelcomePageOpenOnStart)) <> 0;
+  WelcomePageOpenWhenNoProject := AStore.ReadInteger('WelcomePageOpenWhenNoProject',
+    BoolValue(Default.WelcomePageOpenWhenNoProject)) <> 0;
   WelcomePageHeader := AStore.ReadInteger('WelcomePageHeader', BoolValue(Default.WelcomePageHeader)) <> 0;
   WelcomePageGreeting := AStore.ReadInteger('WelcomePageGreeting', BoolValue(Default.WelcomePageGreeting)) <> 0;
   WelcomePageSearch := AStore.ReadInteger('WelcomePageSearch', BoolValue(Default.WelcomePageSearch)) <> 0;
@@ -2585,6 +2591,7 @@ begin
   AStore.WriteInteger('MultiCursorBelowKey', MultiCursorBelowKey);
   AStore.WriteInteger('WelcomePage', BoolValue(WelcomePage));
   AStore.WriteInteger('WelcomePageOpenOnStart', BoolValue(WelcomePageOpenOnStart));
+  AStore.WriteInteger('WelcomePageOpenWhenNoProject', BoolValue(WelcomePageOpenWhenNoProject));
   AStore.WriteInteger('WelcomePageHeader', BoolValue(WelcomePageHeader));
   AStore.WriteInteger('WelcomePageGreeting', BoolValue(WelcomePageGreeting));
   AStore.WriteInteger('WelcomePageSearch', BoolValue(WelcomePageSearch));

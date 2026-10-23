@@ -502,6 +502,7 @@ type
     FSearchMessages: TCheckBox;
     FWelcomeEnabled: TCheckBox;
     FWelcomeOpenOnStart: TCheckBox;
+    FWelcomeOpenWhenNoProject: TCheckBox;
     // Freies Layout (#767): Schalter, Spalten, aktives Layout und dessen Verwaltung. FPageLayouts ist das
     // Modell der Seite; erst OK schreibt es in die Einstellungen.
     FWelcomeCustomLayout: TCheckBox;
@@ -952,6 +953,7 @@ type
     /// <summary>Zum Testen: Willkommensseite (#753).</summary>
     property WelcomeEnabled: TCheckBox read FWelcomeEnabled;
     property WelcomeOpenOnStart: TCheckBox read FWelcomeOpenOnStart;
+    property WelcomeOpenWhenNoProject: TCheckBox read FWelcomeOpenWhenNoProject;
     /// <summary>Zum Testen: freies Layout (#767).</summary>
     property WelcomeCustomLayout: TCheckBox read FWelcomeCustomLayout;
     property WelcomeColumns: TEdit read FWelcomeColumns;
@@ -2170,6 +2172,7 @@ begin
   // Atlas-Willkommensseite im Fenster „Atlas-Start“ (#753, #1114).
   FWelcomeEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeEnabled));
   FWelcomeOpenOnStart := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeOpenOnStart));
+  FWelcomeOpenWhenNoProject := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeOpenWhenNoProject));
   // Freies Layout (#767): Bearbeitungsmodus „Seite anpassen“, Spalten, benannte Layouts.
   FWelcomeCustomLayout := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeCustomLayout));
   FWelcomeColumns := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeColumns));
@@ -2991,6 +2994,7 @@ begin
   FMarks.Bind(FSearchMessages, ['SearchResultsInMessages']);
   FMarks.Bind(FWelcomeEnabled, ['WelcomePage']);
   FMarks.Bind(FWelcomeOpenOnStart, ['WelcomePageOpenOnStart']);
+  FMarks.Bind(FWelcomeOpenWhenNoProject, ['WelcomePageOpenWhenNoProject']);
   FMarks.Bind(FWelcomeCustomLayout, ['WelcomePageCustomLayout']);
   FMarks.Bind(FWelcomeColumns, ['WelcomePageColumns']);
   FMarks.Bind(FWelcomeActiveLayout, ['WelcomePageActiveLayout', 'WelcomePageLayouts']);
@@ -5240,6 +5244,7 @@ begin
   FSearchMessages.Checked := ASettings.SearchResultsInMessages;
   FWelcomeEnabled.Checked := ASettings.WelcomePage;
   FWelcomeOpenOnStart.Checked := ASettings.WelcomePageOpenOnStart;
+  FWelcomeOpenWhenNoProject.Checked := ASettings.WelcomePageOpenWhenNoProject;
   FWelcomeHeader.Checked := ASettings.WelcomePageHeader;
   FWelcomeGreeting.Checked := ASettings.WelcomePageGreeting;
   FWelcomeSearch.Checked := ASettings.WelcomePageSearch;
@@ -5684,6 +5689,7 @@ begin
   ASettings.SearchResultsInMessages := FSearchMessages.Checked;
   ASettings.WelcomePage := FWelcomeEnabled.Checked;
   ASettings.WelcomePageOpenOnStart := FWelcomeOpenOnStart.Checked;
+  ASettings.WelcomePageOpenWhenNoProject := FWelcomeOpenWhenNoProject.Checked;
   ASettings.WelcomePageHeader := FWelcomeHeader.Checked;
   ASettings.WelcomePageGreeting := FWelcomeGreeting.Checked;
   ASettings.WelcomePageSearch := FWelcomeSearch.Checked;

@@ -24,6 +24,9 @@
 //   workspace/diagnostic); der Server hat die Baseline schon abgezogen. Gezählt
 //   werden Treffer in Dateien unterhalb des Projektordners, nur wenn dort
 //   mindestens eine Datei geprüft ist („sofern bekannt“).
+// - Ohne Projekt (#1114): Ist das letzte Projekt geschlossen, öffnet sich das
+//   Fenster „Atlas-Start“ (welcomePage.openWhenNoProject), nur solange die IDE
+//   läuft und nicht beim Beenden.
 
 interface
 
@@ -125,6 +128,16 @@ type
     /// <summary>Pfad gekürzt auf höchstens AMaxLength Zeichen: Anfang, „…“ und so viele Ordner vom Ende wie
     /// passen.</summary>
     class function ShortPath(const APath: string; AMaxLength: Integer): string; static;
+  end;
+
+  /// <summary>Wann sich „Atlas-Start“ von selbst öffnet, nachdem ein Projekt geschlossen wurde (#1114).</summary>
+  TAtlasWelcomeAutoOpen = record
+    /// <summary>True, wenn das Fenster jetzt öffnen soll: Willkommensseite (AEnabled) und
+    /// welcomePage.openWhenNoProject (AWhenNoProject) an, kein Projekt mehr offen (AOpenProjects = 0; negativ =
+    /// unbekannt), die IDE läuft (AIdeRunning, nicht beim Beenden) und das Fenster ist noch nicht sichtbar
+    /// (AShowing).</summary>
+    class function AfterProjectClosed(AEnabled, AWhenNoProject: Boolean; AOpenProjects: Integer;
+      AIdeRunning, AShowing: Boolean): Boolean; static;
   end;
 
 implementation
@@ -473,6 +486,14 @@ begin
     Tail := Candidate;
   end;
   Result := Head + Tail;
+end;
+
+{ TAtlasWelcomeAutoOpen }
+
+class function TAtlasWelcomeAutoOpen.AfterProjectClosed(AEnabled, AWhenNoProject: Boolean; AOpenProjects: Integer;
+  AIdeRunning, AShowing: Boolean): Boolean;
+begin
+  Result := AEnabled and AWhenNoProject and (AOpenProjects = 0) and AIdeRunning and not AShowing;
 end;
 
 end.
