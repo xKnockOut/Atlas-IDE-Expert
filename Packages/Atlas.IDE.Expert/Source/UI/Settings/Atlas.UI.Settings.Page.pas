@@ -4071,6 +4071,8 @@ begin
         end;
         Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsLockedMaster, [mCaption, Where]);
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

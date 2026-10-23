@@ -1284,6 +1284,8 @@ begin
     TCompletionPlace.ClassBody:
       for Word in ClassBodyKeywords do
         Result := Result + [Word];
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 
@@ -1799,6 +1801,8 @@ begin
           if (Context.Kind = TCompletionContextKind.Member) and APostfix.Enabled and (ARequest.Text <> '') then
             Postfix := PostfixItems(ARequest, Context, Candidates, APostfix);
         end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
     Result.Items := Collector.Finish(Result.Incomplete);
     if Context.Generic then
@@ -4766,6 +4770,8 @@ begin
             First := Enum.Name + '.' + First;
           Exit(TAssignFields.DefaultValue(TAssignValueKind.Enum, ATypeName, First));
         end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
     if TypeInfo.SymbolKind <> TIndexSymbolKind.TypeAlias then
       Break;

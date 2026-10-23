@@ -343,6 +343,8 @@ begin
       TSyntaxKind.RoutineDecl:
         if (Pos('.', Node.Name) = 0) and not ANames.ContainsKey(LowerCase(Node.Name)) then
           ANames.Add(LowerCase(Node.Name), Node.StartOffset);
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 end;
@@ -371,6 +373,8 @@ begin
         TSyntaxKind.GenericParams:
           for Index := 0 to AChild.ChildCount - 1 do
             Names.AddOrSetValue(LowerCase(AChild[Index].Name), True);
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
       Result := True;
     end);
@@ -414,6 +418,8 @@ begin
           TSyntaxKind.TypeReference:
             if AChild.Name <> '' then
               Need.Names := AChild.Name.Split(['.']);
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         if Need.Names <> nil then
           Needs.Add(Need);

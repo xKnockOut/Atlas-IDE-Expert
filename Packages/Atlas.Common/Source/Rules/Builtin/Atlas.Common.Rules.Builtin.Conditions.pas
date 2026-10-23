@@ -499,6 +499,8 @@ begin
               Pending.Push(TSyntaxPostOrderEntry.Create(Node[0], False));
               Continue;
             end;
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
       Values.Push(Value);
     end;
@@ -624,6 +626,8 @@ var
           TSyntaxKind.RepeatStatement:
             if Node.ChildCount > 0 then
               Condition := Node[Node.ChildCount - 1];
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         if (Condition <> nil) and not Values.Conditional(Condition) then
         begin
@@ -829,6 +833,8 @@ begin
             if SameText(Name, 'Break') and not Inner then
               Exit(True);
           end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
       Inner := Inner or (Node.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement,
         TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement]);
@@ -1290,6 +1296,8 @@ var
           TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement:
             if SameText(Node.Name, AVariable.Name) then
               Exit(True);
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         for Index := Node.ChildCount - 1 downto 0 do
           Pending.Push(Node[Index]);

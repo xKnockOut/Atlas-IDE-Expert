@@ -153,6 +153,8 @@ begin
             Result.FileName := Resolved.FileName;
             Result.Position := Resolved.Range.StartPos;
           end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
     end;
 end;

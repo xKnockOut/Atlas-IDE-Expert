@@ -461,7 +461,6 @@ type
     class function GlobalSettingsPath: string; static;
     /// <summary>Verarbeitet Nachrichten bis exit oder Ende der Eingabe und liefert den Exit-Code.</summary>
     function Run: Integer;
-    property Logger: ILogger read FLogger;
     /// <summary>Geöffnete Dokumente, für Features, die Dateien auswerten.</summary>
     property Documents: IDocumentStore read FDocuments;
     property Index: ISymbolIndex read FIndex;
@@ -495,6 +494,7 @@ uses
   Shell.Commands.Index,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.ProjectFiles,
+  Atlas.Common.Rules.Checker,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Builtin.General,
@@ -541,24 +541,6 @@ uses
 const
   /// <summary>Ohne Zeitlimit warten (INFINITE, ohne Winapi.Windows).</summary>
   WaitForever = Cardinal($FFFFFFFF);
-
-// Antworten für implicit-package-import (#46): nicht gefundene Packages sind unbekannt, damit die Regel
-// still bleibt statt falsch zu melden.
-function PackageAnswers(ALocator: TPackageLocator): TRulePackageProvides;
-begin
-  Result :=
-    function(const APackage, AUnitName: string): TRulePackageAnswer
-    var
-      Contains: Boolean;
-    begin
-      if not ALocator.Provides(APackage, AUnitName, Contains) then
-        Result := TRulePackageAnswer.Unknown
-      else if Contains then
-        Result := TRulePackageAnswer.Yes
-      else
-        Result := TRulePackageAnswer.No;
-    end;
-end;
 
 // PowerShell für cc.ps1 (#261): pwsh aus PATH, sonst Windows PowerShell. Der Prozessläufer
 // durchsucht PATH nicht selbst.
@@ -2579,12 +2561,11 @@ end;
 function TServerComposition.RuleProjects: TArray<TRuleProject>;
 var
   Workspace: TShellWorkspace;
-  Info: TProjectInfo;
   Stamp, mIndex: Integer;
   Built: TArray<TRuleProject>;
   Project: TRuleProject;
   MainSources: TArray<string>;
-  Source, Text: string;
+  MainSource: string;
 begin
   Built := nil;
   MainSources := nil;
@@ -2594,36 +2575,17 @@ begin
       Exit(FRuleProjects);
     Stamp := FWorkspacesStamp;
     for Workspace in FWorkspaces do
-      if Workspace.Project(Info) then
+      if Workspace.RuleProject(Project, MainSource) then
       begin
-        Project := Default(TRuleProject);
-        Project.FileName := Workspace.ProjectFileName;
-        Project.Sources := Workspace.ProjectFiles;
         Built := Built + [Project];
-        MainSources := MainSources + [Info.MainSource];
+        MainSources := MainSources + [MainSource];
       end;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
   // Hauptquelltexte und Formulardateien außerhalb der Sperre lesen.
   for mIndex := 0 to High(Built) do
-  begin
-    if ReadSourceText(MainSources[mIndex], Text) then
-    begin
-      Built[mIndex].Kind := TRuleProjectFiles.KindOfSource(MainSources[mIndex], Text);
-      Built[mIndex].IsTest := TRuleProjectFiles.IsTestSource(Text);
-    end
-    else if SameText(ExtractFileExt(MainSources[mIndex]), '.dpk') then
-      Built[mIndex].Kind := TRuleProjectKind.Package;
-    for Source in Built[mIndex].Sources do
-      if SameText(ExtractFileExt(Source), '.pas') then
-      begin
-        if TFile.Exists(ChangeFileExt(Source, '.dfm')) then
-          Built[mIndex].Forms := Built[mIndex].Forms + [ChangeFileExt(Source, '.dfm')]
-        else if TFile.Exists(ChangeFileExt(Source, '.fmx')) then
-          Built[mIndex].Forms := Built[mIndex].Forms + [ChangeFileExt(Source, '.fmx')];
-      end;
-  end;
+    TShellWorkspace.CompleteRuleProject(Built[mIndex], MainSources[mIndex], ReadSourceText);
   TMonitor.Enter(FWorkspacesLock);
   try
     // Inzwischen ein anderes Projekt geladen: Das Ergebnis gilt für diese Prüfung, aber nicht als Vorrat.
@@ -2641,25 +2603,13 @@ end;
 function TServerComposition.RuleProjectsComplete(out AReason: string): Boolean;
 var
   Workspace: TShellWorkspace;
-  Info: TProjectInfo;
 begin
   AReason := '';
   TMonitor.Enter(FWorkspacesLock);
   try
     for Workspace in FWorkspaces do
-    begin
-      // Ein Arbeitsbereich ohne geladenes Projekt kann Verwendungen enthalten, die keiner kennt.
-      if Workspace.ProjectPending or not Workspace.Project(Info) then
-      begin
-        AReason := 'Projekte werden geladen';
+      if not Workspace.RuleReady(AReason) then
         Exit(False);
-      end;
-      if Workspace.IndexLoading >= 0 then
-      begin
-        AReason := 'Index wird aufgebaut';
-        Exit(False);
-      end;
-    end;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
@@ -4039,21 +3989,16 @@ end;
 
 function TServerComposition.RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
 var
-  Workspace: TShellWorkspace;
+  Workspace, Other: TShellWorkspace;
   FileName, Folder: string;
-  Locator: TPackageLocator;
   Project: TProjectInfo;
-  HasProject, Member: Boolean;
-  ProjectUnit: TProjectUnit;
-  Pair: TPair<string, string>;
-  ConsoleTarget, MainText: string;
-  IdeContext: TIdeProjectContext;
+  Projects: TArray<TProjectInfo>;
+  RuleProject: TCheckProject;
 begin
   AContext := Default(TRuleCheckContext);
   FileName := TDocumentUris.ToPath(AUri);
   AContext.FileName := FileName;
-  Locator := nil;
-  HasProject := False;
+  Projects := nil;
   TMonitor.Enter(FWorkspacesLock);
   try
     Workspace := PickWorkspace(FileName);
@@ -4064,48 +4009,37 @@ begin
       AContext.Settings := Workspace.Configuration.Settings;
       AContext.RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(Workspace.Root), FileName);
       AContext.Baseline := Workspace.Baseline;
-      AContext.Namespaces := Workspace.Namespaces;
-      Locator := Workspace.PackageLocator;
-      // Unit-Suche wie beim Compiler für uses-unit-not-found (#1016).
-      AContext.Units := Workspace.UnitLookup;
-      HasProject := Workspace.Project(Project);
+      // Index, Namespaces, Unit-Suche, Packages und Namenskonvention auf demselben Weg wie MCP und Linter
+      // (#1112).
+      AContext.Services := Workspace.RuleServices;
+      if Workspace.Project(Project) then
+        Projects := Projects + [Project];
+      // Weitere Projekte mit der Datei (#1112): Eine Unit im Testprogramm und im Package hat keine
+      // eindeutige Anwendungsart (MergeRuleProjects).
+      for Other in FWorkspaces do
+        if (Other <> Workspace) and Other.ContainsFile(FileName) and Other.Project(Project) then
+          Projects := Projects + [Project];
     end;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
-  // Anwendungsart für writeln-in-gui-app (#926) und queue-nil-in-package (#943), nur für Dateien des Projekts.
-  if HasProject and (Project.MainSource <> '') then
+  // Anwendungsart, Projektname und Formulare der .dpr (#926, #943, #956, #1055), wie bei MCP und Linter.
+  if Projects <> nil then
   begin
-    Member := SameText(Project.MainSource, FileName);
-    for ProjectUnit in Project.Units do
-      if SameText(ProjectUnit.FileName, FileName) then
-        Member := True;
-    ConsoleTarget := '';
-    for Pair in Project.Properties do
-      if SameText(Pair.Key, 'DCC_ConsoleTarget') then
-        ConsoleTarget := Pair.Value;
-    if Member and ReadSourceText(Project.MainSource, MainText) then
-    begin
-      AContext.Application := TWritelnInGuiAppRule.ApplicationKind(ConsoleTarget, MainText);
-      AContext.ProjectName := ChangeFileExt(ExtractFileName(Project.MainSource), '');
-      // Reihenfolge von Application.CreateForm für form-access-before-create (#956).
-      AContext.AutoCreateForms := TFormAccessBeforeCreateRule.AutoCreatedForms(MainText);
-      // .dpr für die Korrektur von form-autocreate-and-manual (#1055).
-      AContext.ProjectMainSource := Project.MainSource;
-    end;
+    RuleProject := TShellWorkspace.RuleProjectOf(Projects, FileName, ReadSourceText);
+    AContext.Application := RuleProject.Application;
+    AContext.ProjectName := RuleProject.Name;
+    AContext.AutoCreateForms := RuleProject.AutoCreateForms;
+    AContext.ProjectMainSource := RuleProject.ProjectMainSource;
   end;
-  // Präfixe der Projektdatei .atlas für naming-prefix und die Korrektur von shadowed-name (#1111).
-  if HasProject and FIdeProject.Find(Project.FileName, IdeContext) then
-    AContext.Naming := IdeContext.RuleNaming;
-  // requires-Packages für implicit-package-import (#46); der Locator lebt so lange wie der Arbeitsbereich.
-  if Locator <> nil then
-    AContext.PackageProvides := PackageAnswers(Locator);
   // Neue Instanzen je Prüfung: Regeln dürfen so Zustand halten, ohne Threads zu teilen.
   AContext.Rules := BuiltinRules;
-  AContext.Index := FIndex;
-  AContext.EnsureUnit := EnsureUnit;
+  // Der Server hält alle Ordner: ein Index, Nachladen über alle Ordner (auch für Dateien ohne Ordner) und die
   // Projekte der Gruppe für unused-public-member (#1102); still, solange Projekte laden oder der Index läuft.
-  AContext.ProjectFiles := TRuleProjectFiles.Create(RuleProjects, FIndex, ReadSourceText, RuleProjectsComplete);
+  AContext.Services.Index := FIndex;
+  AContext.Services.EnsureUnit := EnsureUnit;
+  AContext.Services.ProjectFiles := TRuleProjectFiles.Create(RuleProjects, FIndex, ReadSourceText,
+    RuleProjectsComplete);
   // Formulardatei neben der Unit für den Abgleich von Feldern und Objekten (#123).
   // Mit Pfad, damit Korrekturen die Formulardatei ändern können (#309).
   if SameText(ExtractFileExt(FileName), '.pas') then
@@ -4210,6 +4144,8 @@ begin
           FIndexRefresh.Closed(TDocumentUris.ToPath(ADocument.Uri));
           HandleWatchedFiles([TFileChange.Create(TDocumentUris.ToPath(ADocument.Uri), TFileChangeKind.Changed)]);
         end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   if FDeriveWorkspaces and (AKind = TDocumentEventKind.Opened) and StartsText('file:', ADocument.Uri) then
     DeriveWorkspace(TDocumentUris.ToPath(ADocument.Uri));

@@ -422,50 +422,50 @@ end;
 
 procedure TAtlasWelcomeWhatsNewFrame.Arrange;
 var
-  Width, Top, Gap, ButtonH, Index: Integer;
+  mWidth, mTop, Gap, ButtonH, Index: Integer;
   Version: TAtlasWhatsNewVersion;
   Row: TAtlasWhatsNewRow;
 
   procedure PlaceRow(const ARow: TAtlasWhatsNewRow);
   var
-    Left, Right, Bottom: Integer;
+    mLeft, Right, Bottom: Integer;
   begin
-    Left := ScaleValue(Indent);
-    Right := Width - ScaleValue(Indent);
+    mLeft := ScaleValue(Indent);
+    Right := mWidth - ScaleValue(Indent);
     if ARow.Section <> nil then
     begin
-      ARow.Section.SetBounds(Left, Top, ARow.Section.Width, ARow.Section.Height);
-      Inc(Top, ARow.Section.Height + Gap div 2);
+      ARow.Section.SetBounds(mLeft, mTop, ARow.Section.Width, ARow.Section.Height);
+      Inc(mTop, ARow.Section.Height + Gap div 2);
     end;
     if ARow.TryButton <> nil then
     begin
       Dec(Right, ScaleValue(TryWidth));
-      ARow.TryButton.SetBounds(Right, Top, ScaleValue(TryWidth), ButtonH);
+      ARow.TryButton.SetBounds(Right, mTop, ScaleValue(TryWidth), ButtonH);
       Dec(Right, Gap);
     end;
     if ARow.Switch <> nil then
     begin
       Dec(Right, ScaleValue(SwitchWidth));
-      ARow.Switch.SetBounds(Right, Top + (ButtonH - ARow.Switch.Height) div 2, ScaleValue(SwitchWidth),
+      ARow.Switch.SetBounds(Right, mTop + (ButtonH - ARow.Switch.Height) div 2, ScaleValue(SwitchWidth),
         ARow.Switch.Height);
       Dec(Right, Gap);
     end;
-    ARow.Title.SetBounds(Left, Top + (ButtonH - ARow.Title.Height) div 2, ARow.Title.Width, ARow.Title.Height);
+    ARow.Title.SetBounds(mLeft, mTop + (ButtonH - ARow.Title.Height) div 2, ARow.Title.Width, ARow.Title.Height);
     if ARow.Key <> nil then
-      ARow.Key.SetBounds(Left + ARow.Title.Width + Gap, ARow.Title.Top, ARow.Key.Width, ARow.Key.Height);
-    Bottom := Top + ButtonH;
+      ARow.Key.SetBounds(mLeft + ARow.Title.Width + Gap, ARow.Title.Top, ARow.Key.Width, ARow.Key.Height);
+    Bottom := mTop + ButtonH;
     if ARow.Text <> nil then
     begin
       // Breite zuerst: Das Label bricht danach um und passt seine Höhe an.
-      ARow.Text.Width := Max(Right - Left, ScaleValue(120));
+      ARow.Text.Width := Max(Right - mLeft, ScaleValue(120));
       // AutoSize neu setzen: Erst das misst den umbrochenen Text für die neue Breite.
       ARow.Text.AutoSize := False;
       ARow.Text.AutoSize := True;
-      ARow.Text.Left := Left;
+      ARow.Text.Left := mLeft;
       ARow.Text.Top := Bottom + 2;
       Bottom := ARow.Text.Top + ARow.Text.Height;
     end;
-    Top := Bottom + Gap;
+    mTop := Bottom + Gap;
   end;
 
 begin
@@ -476,17 +476,17 @@ begin
     Gap := ScaleValue(RowGap);
     ButtonH := ScaleValue(ButtonHeight);
     // Breite des Frames statt der Scrollbox: Die richtet sich erst später nach dem Frame aus.
-    Width := ClientWidth;
+    mWidth := ClientWidth;
     if FScroll.VertScrollBar.IsScrollBarVisible then
-      Dec(Width, GetSystemMetrics(SM_CXVSCROLL));
-    Top := Gap div 2 - FScroll.VertScrollBar.Position;
+      Dec(mWidth, GetSystemMetrics(SM_CXVSCROLL));
+    mTop := Gap div 2 - FScroll.VertScrollBar.Position;
     for Version in FVersions do
     begin
       for Index := 0 to High(FHeadings) do
         if FHeadingVersions[Index] = Version.Version then
         begin
-          FHeadings[Index].SetBounds(ScaleValue(Indent), Top, FHeadings[Index].Width, FHeadings[Index].Height);
-          Inc(Top, FHeadings[Index].Height + Gap div 2);
+          FHeadings[Index].SetBounds(ScaleValue(Indent), mTop, FHeadings[Index].Width, FHeadings[Index].Height);
+          Inc(mTop, FHeadings[Index].Height + Gap div 2);
         end;
       for Row in FRows do
         if Row.Version = Version.Version then
@@ -494,10 +494,10 @@ begin
     end;
     if FDismiss <> nil then
     begin
-      FDismiss.SetBounds(Width - ScaleValue(Indent) - ScaleValue(TryWidth), Top, ScaleValue(TryWidth), ButtonH);
-      Inc(Top, ButtonH + Gap div 2);
+      FDismiss.SetBounds(mWidth - ScaleValue(Indent) - ScaleValue(TryWidth), mTop, ScaleValue(TryWidth), ButtonH);
+      Inc(mTop, ButtonH + Gap div 2);
     end;
-    FContentHeight := Top + FScroll.VertScrollBar.Position;
+    FContentHeight := mTop + FScroll.VertScrollBar.Position;
   finally
     FArranging := False;
   end;

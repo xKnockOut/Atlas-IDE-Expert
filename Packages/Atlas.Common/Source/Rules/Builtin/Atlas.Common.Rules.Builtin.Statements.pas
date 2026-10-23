@@ -496,6 +496,8 @@ var
                 Inspect(DoIndex, StatementAfter(Node, Tokens[DoIndex].Offset),
                   Node.Kind <> TSyntaxKind.WithStatement);
             end;
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         for Index := Node.ChildCount - 1 downto 0 do
           Pending.Push(Node[Index]);
@@ -1415,6 +1417,8 @@ var
       TSyntaxKind.RepeatStatement:
         for Index := 0 to ANode.ChildCount - 2 do
           Result := Result + [ANode[Index]];
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 
@@ -1487,6 +1491,8 @@ var
                 Value := True;
                 Break;
               end;
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         Values.AddOrSetValue(Node, Value);
       end;

@@ -1695,6 +1695,8 @@ begin
           AResult := FromNode(Child, Child.Name, TIndexSymbolKind.Routine, False);
           Exit(True);
         end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
   Result := False;
@@ -2193,6 +2195,8 @@ begin
             Exit;
           Result := True;
         end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   finally
     Dec(FInferDepth);
@@ -2649,6 +2653,8 @@ begin
         AddCandidate(AList, ASeen, FromNode(Child, Child.Name, TIndexSymbolKind.TypeAlias, False));
       TSyntaxKind.RoutineDecl:
         AddCandidate(AList, ASeen, FromNode(Child, Child.Name, TIndexSymbolKind.Routine, False));
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 end;

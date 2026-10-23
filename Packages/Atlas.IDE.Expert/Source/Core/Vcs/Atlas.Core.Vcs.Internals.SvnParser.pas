@@ -200,6 +200,8 @@ begin
         TAtlasVcsXmlNode.EndTag:
           if Reader.Name = 'entry' then
             InEntry := False;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
   finally
     Reader.Free;

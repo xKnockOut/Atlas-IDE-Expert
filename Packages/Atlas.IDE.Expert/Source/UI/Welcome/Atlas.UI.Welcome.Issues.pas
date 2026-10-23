@@ -390,6 +390,8 @@ begin
       Result := Result + Separator + TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesChecksFailure);
     TAtlasTrackerChecks.Pending:
       Result := Result + Separator + TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesChecksPending);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 
@@ -479,13 +481,13 @@ end;
 procedure TAtlasWelcomeIssuesFrame.PaintChip(ACanvas: TCanvas; var ALeft: Integer; ATop, ALimit: Integer;
   const AText: string; AColor: TColor; AFilled: Boolean; out ARect: TRect);
 var
-  Width, Radius: Integer;
+  mWidth, Radius: Integer;
 begin
   ARect := TRect.Empty;
-  Width := ChipWidth(ACanvas, AText);
-  if ALeft + Width > ALimit then
+  mWidth := ChipWidth(ACanvas, AText);
+  if ALeft + mWidth > ALimit then
     Exit;
-  ARect := Rect(ALeft, ATop, ALeft + Width, ATop + ScaleValue(ChipHeight));
+  ARect := Rect(ALeft, ATop, ALeft + mWidth, ATop + ScaleValue(ChipHeight));
   Radius := 2 * ScaleValue(ChipRadius);
   ACanvas.Pen.Color := AColor;
   if AFilled then
@@ -508,17 +510,17 @@ end;
 
 procedure TAtlasWelcomeIssuesFrame.PaintStart(ACanvas: TCanvas; AIndex: Integer; ARight: Integer);
 var
-  Text: string;
+  mText: string;
   Area: TRect;
-  Top, Width: Integer;
+  mTop, mWidth: Integer;
   Accent: TColor;
 begin
   ACanvas.Font.Assign(Font);
-  Text := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesStart);
-  Width := ACanvas.TextWidth(Text) + 2 * ScaleValue(ButtonPadding);
+  mText := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesStart);
+  mWidth := ACanvas.TextWidth(mText) + 2 * ScaleValue(ButtonPadding);
   // Über beide Zeilen der Zeile mittig (Mockup).
-  Top := RowTop(AIndex) + (RowHeight(AIndex) - ScaleValue(ButtonHeight)) div 2;
-  Area := Rect(ARight - Width, Top, ARight, Top + ScaleValue(ButtonHeight));
+  mTop := RowTop(AIndex) + (RowHeight(AIndex) - ScaleValue(ButtonHeight)) div 2;
+  Area := Rect(ARight - mWidth, mTop, ARight, mTop + ScaleValue(ButtonHeight));
   FStartRects[AIndex] := Area;
   Accent := StyleServices(Self).GetSystemColor(clBtnShadow);
   ACanvas.Brush.Style := bsClear;
@@ -528,65 +530,65 @@ begin
     ACanvas.Font.Color := StyleServices(Self).GetSystemColor(clWindowText)
   else
     ACanvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
-  ACanvas.TextOut(Area.Left + (Area.Width - ACanvas.TextWidth(Text)) div 2,
-    Area.Top + (Area.Height - ACanvas.TextHeight(Text)) div 2, Text);
+  ACanvas.TextOut(Area.Left + (Area.Width - ACanvas.TextWidth(mText)) div 2,
+    Area.Top + (Area.Height - ACanvas.TextHeight(mText)) div 2, mText);
 end;
 
 procedure TAtlasWelcomeIssuesFrame.PaintRow(ACanvas: TCanvas; AIndex: Integer);
 var
   Item: TAtlasTrackerIssue;
-  Top, Left, Limit, Right: Integer;
+  mTop, mLeft, Limit, Right: Integer;
   TextColor, MutedColor, LineColor: TColor;
-  Field, Text: string;
+  Field, mText: string;
   Chip: TRect;
 begin
   Item := FView.Items[AIndex];
   TextColor := StyleServices(Self).GetSystemColor(clWindowText);
   MutedColor := StyleServices(Self).GetSystemColor(clGrayText);
   LineColor := StyleServices(Self).GetSystemColor(clBtnFace);
-  Top := RowTop(AIndex);
-  Left := ScaleValue(Indent);
+  mTop := RowTop(AIndex);
+  mLeft := ScaleValue(Indent);
   Right := FBox.Width - ScaleValue(Indent);
   // Trennlinie zwischen den Zeilen (Mockup).
   if AIndex > 0 then
   begin
     ACanvas.Pen.Color := LineColor;
-    ACanvas.MoveTo(Left, Top);
-    ACanvas.LineTo(Right, Top);
+    ACanvas.MoveTo(mLeft, mTop);
+    ACanvas.LineTo(Right, mTop);
   end;
   PaintStart(ACanvas, AIndex, Right);
   Limit := FStartRects[AIndex].Left - ScaleValue(8);
-  Inc(Top, ScaleValue(RowPadding));
+  Inc(mTop, ScaleValue(RowPadding));
   // Kennung grau in Festbreitenschrift.
   ACanvas.Brush.Style := bsClear;
   ACanvas.Font.Assign(Font);
   ACanvas.Font.Name := MonoFont;
   ACanvas.Font.Color := MutedColor;
-  FKeyRects[AIndex] := Rect(Left, Top, Min(Left + ACanvas.TextWidth(Item.Key), Limit), Top + ScaleValue(LineHeight));
-  ACanvas.TextRect(FKeyRects[AIndex], Left, Top + ScaleValue(1), Item.Key);
-  Left := Left + Max(ScaleValue(KeyWidth), ACanvas.TextWidth(Item.Key) + ScaleValue(8));
+  FKeyRects[AIndex] := Rect(mLeft, mTop, Min(mLeft + ACanvas.TextWidth(Item.Key), Limit), mTop + ScaleValue(LineHeight));
+  ACanvas.TextRect(FKeyRects[AIndex], mLeft, mTop + ScaleValue(1), Item.Key);
+  mLeft := mLeft + Max(ScaleValue(KeyWidth), ACanvas.TextWidth(Item.Key) + ScaleValue(8));
   // Titel, abgeschnitten.
   ACanvas.Font.Assign(Font);
   ACanvas.Font.Color := TextColor;
   if SameText(Item.Key, FView.Active.Key) then
     ACanvas.Font.Style := [fsBold];
-  if Left < Limit then
-    ACanvas.TextRect(Rect(Left, Top, Limit, Top + ScaleValue(LineHeight)), Left, Top + ScaleValue(1),
+  if mLeft < Limit then
+    ACanvas.TextRect(Rect(mLeft, mTop, Limit, mTop + ScaleValue(LineHeight)), mLeft, mTop + ScaleValue(1),
       Item.Title);
   ACanvas.Font.Style := [];
   // Zweite Zeile: Felder als Chips mit Rahmen, dann der Pull Request mit CI-Ampel.
-  Top := Top + ScaleValue(LineHeight) + (ScaleValue(ChipLineHeight) - ScaleValue(ChipHeight)) div 2;
+  mTop := mTop + ScaleValue(LineHeight) + (ScaleValue(ChipLineHeight) - ScaleValue(ChipHeight)) div 2;
   ACanvas.Font.Size := Font.Size - 1;
   FPullRects[AIndex] := TRect.Empty;
   if SameText(Item.Key, FView.Active.Key) then
-    PaintChip(ACanvas, Left, Top, Limit, TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesActive),
+    PaintChip(ACanvas, mLeft, mTop, Limit, TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesActive),
       StyleServices(Self).GetSystemColor(clHighlight), True, Chip);
   for Field in TAtlasWelcomeIssues.Fields(Item) do
-    PaintChip(ACanvas, Left, Top, Limit, Field, MutedColor, False, Chip);
-  Text := PullRequestText(Item.PullRequest);
-  if Text <> '' then
+    PaintChip(ACanvas, mLeft, mTop, Limit, Field, MutedColor, False, Chip);
+  mText := PullRequestText(Item.PullRequest);
+  if mText <> '' then
   begin
-    PaintChip(ACanvas, Left, Top, Limit, Text, ChecksColor(Item.PullRequest.Checks), False, Chip);
+    PaintChip(ACanvas, mLeft, mTop, Limit, mText, ChecksColor(Item.PullRequest.Checks), False, Chip);
     FPullRects[AIndex] := Chip;
   end;
   ACanvas.Font.Assign(Font);
@@ -595,14 +597,14 @@ end;
 procedure TAtlasWelcomeIssuesFrame.BoxPaint(Sender: TObject);
 var
   Canvas: TCanvas;
-  Index, Top: Integer;
-  Text: string;
+  Index, mTop: Integer;
+  mText: string;
 begin
   Canvas := FBox.Canvas;
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Assign(Font);
-  Text := StatusText(FView);
-  if Text <> '' then
+  mText := StatusText(FView);
+  if mText <> '' then
   begin
     Canvas.Font.Size := Font.Size - 1;
     if FView.Status in [TAtlasIssuesStatus.Failed, TAtlasIssuesStatus.Stale] then
@@ -611,25 +613,25 @@ begin
       Canvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
     Canvas.TextRect(Rect(ScaleValue(Indent), ScaleValue(Indent) div 2, FBox.Width - ScaleValue(Indent),
       ScaleValue(Indent) div 2 + ScaleValue(StatusHeight)), ScaleValue(Indent), ScaleValue(Indent) div 2 +
-      ScaleValue(2), Text);
+      ScaleValue(2), mText);
     Canvas.Font.Assign(Font);
   end;
   if Length(FStartRects) <> Length(FView.Items) then
     Exit;
   for Index := 0 to High(FView.Items) do
     PaintRow(Canvas, Index);
-  Text := FooterText(FView);
-  if Text = '' then
+  mText := FooterText(FView);
+  if mText = '' then
     Exit;
-  Top := FooterTop + ScaleValue(4);
+  mTop := FooterTop + ScaleValue(4);
   Canvas.Font.Assign(Font);
   Canvas.Font.Size := Font.Size - 1;
   if FView.NoticeFailed then
     Canvas.Font.Color := RedColor
   else
     Canvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
-  Canvas.TextRect(Rect(ScaleValue(Indent), Top, FBox.Width - ScaleValue(Indent), Top + ScaleValue(FooterHeight)),
-    ScaleValue(Indent), Top, Text);
+  Canvas.TextRect(Rect(ScaleValue(Indent), mTop, FBox.Width - ScaleValue(Indent), mTop + ScaleValue(FooterHeight)),
+    ScaleValue(Indent), mTop, mText);
   Canvas.Font.Assign(Font);
 end;
 

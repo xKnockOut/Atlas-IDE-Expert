@@ -388,6 +388,8 @@ begin
             if not ContinuesSequence(Node) then
               Inc(Flow.Cognitive);
           end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
       if Node.Kind in LoopKinds then
       begin
@@ -810,6 +812,8 @@ begin
         for Inner := 0 to Child.ChildCount - 1 do
           if Child[Inner].Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field] then
             Inc(Result, NameCount(Child[Inner].Name));
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 end;

@@ -104,6 +104,8 @@ begin
           Builder.Append(':unspecified')
         else
           Builder.Append(':').Append(ARequest.Reason);
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
     if ARequest.Document <> '' then
       Builder.Append(' ').Append(ARequest.Document).Append(' v').Append(ARequest.Version).Append(' len ')

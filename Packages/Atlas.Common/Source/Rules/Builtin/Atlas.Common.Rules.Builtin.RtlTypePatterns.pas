@@ -1148,6 +1148,8 @@ var
               Pending.Push(Node[1]);
               Pending.Push(Node[0]);
             end;
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
       end;
     finally
@@ -1618,6 +1620,8 @@ var
         // with X do Sorted := True ist nicht nachvollziehbar: als sortiert betrachten.
         for Index := 0 to ANode.ChildCount - 2 do
           NoteEscape(ANode[Index]);
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 
@@ -1986,6 +1990,8 @@ var
       TSyntaxKind.Call:
         if EndsText('ToStr', ANode.Name) or EndsText('ToHex', ANode.Name) or MatchText(ANode.Name, StringFunctions) then
           Result := Text(ANode);
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 
@@ -2278,6 +2284,8 @@ var
             Node := Node[1];
             Continue;
           end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
       Node := nil;
     end;
@@ -3760,6 +3768,8 @@ var
       TResolvedKind.Symbol:
         if not MatchText(Resolved.UnitName, ['System.SysUtils', 'SysUtils']) then
           Exit;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
     Result := not UnknownAncestor(AStatement.StartOffset);
   end;

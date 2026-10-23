@@ -115,7 +115,6 @@ implementation
 uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Prompt,
   Atlas.Common.Pascal.SyntaxTree,
@@ -229,9 +228,9 @@ var
   Index: ISymbolIndex;
   FileName: string;
 begin
-  if not AHasRules or (ARules.Index = nil) then
+  if not AHasRules or (ARules.Services.Index = nil) then
     Exit(nil);
-  Index := ARules.Index;
+  Index := ARules.Services.Index;
   FileName := TDocumentUris.ToPath(AUri);
   Result :=
     function(const AExpression: string): Boolean
@@ -250,7 +249,6 @@ var
   Tree: TSyntaxTree;
   Shared: ISharedSyntaxTree;
   Rules: TRuleCheckContext;
-  Context: TRuleContext;
   Findings: TArray<TRuleFinding>;
   Finding: TRuleFinding;
   Action, Completion: TCodeAction;
@@ -306,30 +304,9 @@ begin
   ACancellation.ThrowIfCancellationRequested;
   if Assigned(FRuleProvider) and FRuleProvider(Uri, Rules) then
     HasRules := True;
-  if HasRules and (Length(Rules.Rules) > 0) then
-  begin
-    Context := Default(TRuleContext);
-    Context.RelativePath := Rules.RelativePath;
-    Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(Rules.RelativePath, '/', '\', [rfReplaceAll])), '');
-    Context.Text := Document.Text;
-    Context.Tree := Tree;
-    Context.Index := Rules.Index;
-    Context.EnsureUnit := Rules.EnsureUnit;
-    Context.Namespaces := Rules.Namespaces;
-    Context.FormText := Rules.FormText;
-    Context.FormFile := Rules.FormFile;
-    Context.ReadFile := Rules.ReadFile;
-    Context.FileName := Rules.FileName;
-    Context.PackageProvides := Rules.PackageProvides;
-    Context.Units := Rules.Units;
-    Context.Application := Rules.Application;
-    Context.ProjectName := Rules.ProjectName;
-    Context.AutoCreateForms := Rules.AutoCreateForms;
-    Context.ProjectMainSource := Rules.ProjectMainSource;
-    Context.ProjectFiles := Rules.ProjectFiles;
-    Context.Naming := Rules.Naming;
-    Findings := TRuleEngine.Run(Rules.Rules, Rules.Settings, Context);
-  end;
+  // Derselbe Regelkontext wie in den Diagnosen (#1112).
+  if HasRules then
+    Findings := TLspSyntaxDiagnostics.RuleFindings(Document.Text, Tree, Rules);
   // Syntaxfehler mit der Korrektur des Parsers (#1022), auch ohne Prüfregeln; Schweregrad und Abschalten wie
   // in den Diagnosen.
   if HasRules then
@@ -384,7 +361,7 @@ begin
     begin
       FieldIndex := nil;
       if HasRules then
-        FieldIndex := Rules.Index;
+        FieldIndex := Rules.Services.Index;
       RuleOffersField := False;
       for Finding in Findings do
         if (Finding.RuleId = 'field-not-freed') and (Finding.Range.StartPos.Line = Range.StartPos.Line) then

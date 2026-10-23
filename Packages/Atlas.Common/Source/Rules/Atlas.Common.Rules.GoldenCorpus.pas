@@ -4,6 +4,8 @@
 // Markierungen am Zeilenende:
 //   // ERWARTET: regel-a, regel-b   diese Treffer müssen auf der Zeile kommen
 //   // KEIN-TREFFER: regel-a        dieser Treffer darf hier nicht kommen
+//   // ERWARTET-INDEX: regel-a      Treffer, der den Symbolindex braucht (#1112):
+//                                    erwartet nur beim Lauf mit Index
 // Compare gleicht die Markierungen mit den Treffern ab. Regel-IDs, die weder
 // eine Regel noch geplant sind, gelten als Fehler; jede geplante ID nennt das
 // offene Issue, das sie umsetzt (#94). Dazu Fehlalarmquoten aus
@@ -24,6 +26,7 @@ uses
 const
   ExpectedMarker = 'ERWARTET:';
   NoFindingMarker = 'KEIN-TREFFER:';
+  IndexMarker = 'ERWARTET-INDEX:';
 
 type
   /// <summary>Eine Markierung: Regel und Zeile (0-basiert).</summary>
@@ -84,8 +87,10 @@ type
 
   TGoldenCorpus = class
   public
-    /// <summary>Alle Markierungen in AText.</summary>
-    class function Markers(const AText: string): TArray<TGoldenMarker>; static;
+    /// <summary>Alle Markierungen in AText für den Lauf ohne Index.</summary>
+    class function Markers(const AText: string): TArray<TGoldenMarker>; overload; static;
+    /// <summary>Wie oben; mit AWithIndex zählt ERWARTET-INDEX wie ERWARTET (#1112).</summary>
+    class function Markers(const AText: string; AWithIndex: Boolean): TArray<TGoldenMarker>; overload; static;
     /// <summary>Geplante Regel-IDs aus einer Liste "regel-id  # Bemerkung"; leere Zeilen und # werden übersprungen.</summary>
     class function PlannedIds(const AText: string): TArray<string>; static;
     /// <summary>Geplante Regel-IDs, deren Bemerkung kein Issue (#Nummer) nennt.</summary>
@@ -172,6 +177,11 @@ end;
 { TGoldenCorpus }
 
 class function TGoldenCorpus.Markers(const AText: string): TArray<TGoldenMarker>;
+begin
+  Result := Markers(AText, False);
+end;
+
+class function TGoldenCorpus.Markers(const AText: string; AWithIndex: Boolean): TArray<TGoldenMarker>;
 
   procedure ReadMarkers(const ALine: string; ALineIndex: Integer; const AMarker: string; AExpected: Boolean;
     var AMarkers: TArray<TGoldenMarker>);
@@ -208,6 +218,8 @@ begin
   begin
     ReadMarkers(Lines[Index], Index, ExpectedMarker, True, Result);
     ReadMarkers(Lines[Index], Index, NoFindingMarker, False, Result);
+    if AWithIndex then
+      ReadMarkers(Lines[Index], Index, IndexMarker, True, Result);
   end;
 end;
 

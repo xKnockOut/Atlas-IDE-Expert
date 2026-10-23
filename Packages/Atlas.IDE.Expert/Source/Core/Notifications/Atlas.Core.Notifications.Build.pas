@@ -83,6 +83,8 @@ begin
         Inc(Result.Warnings);
       TAtlasCompilerSeverity.Hint:
         Inc(Result.Hints);
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   if ABackground then
   begin

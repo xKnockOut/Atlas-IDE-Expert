@@ -936,6 +936,8 @@ var
           end;
         TSyntaxKind.TypeReference:
           Result.ResultType := NodeKey(Child);
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
     end;
   end;
@@ -1126,6 +1128,8 @@ var
               AddRoutines(Node, Headers);
               CheckScope(Headers, True);
             end;
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         for Index := Node.ChildCount - 1 downto 0 do
           Pending.Push(Node[Index]);
@@ -1297,6 +1301,8 @@ var
           if Header <> nil then
             AddName(AChild, nil, Header.Name, 'Routine', 0, 1, NameToken(Header, Header.Name), True);
         end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 
@@ -1339,6 +1345,8 @@ var
           TSyntaxKind.VariantPart, TSyntaxKind.CaseItem, TSyntaxKind.Visibility:
             for Inner := Child.ChildCount - 1 downto 0 do
               Pending.Push(Child[Inner]);
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
       end;
     finally
@@ -1568,6 +1576,8 @@ var
               AddSections(Node);
               CheckNames;
             end;
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         for Index := Node.ChildCount - 1 downto 0 do
           Pending.Push(Node[Index]);
@@ -1830,6 +1840,8 @@ begin
           else
             AExact := False;
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 
@@ -1889,6 +1901,8 @@ begin
           Result := Result + Largest;
           ASize.Exact := False;
         end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
     if Result > TypeSizeCap then
       Result := TypeSizeCap;
@@ -1931,6 +1945,8 @@ begin
                 Result.Bytes := Result.Bytes + Part.Bytes;
                 Result.Nested := Result.Nested or Part.Nested or (Part.Bytes >= TypeSizeLimit);
               end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
       Result.Exact := False;
       Exit;
@@ -2070,6 +2086,8 @@ begin
         Result.Bytes := 4;
       TSyntaxKind.EnumType, TSyntaxKind.SetType, TSyntaxKind.SubrangeType:
         Result.Bytes := 1;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   finally
     Dec(FDepth);
@@ -2771,6 +2789,8 @@ var
               for Header in Declared do
                 CheckHeader(Header, Declared, nil);
             end;
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         for Index := Node.ChildCount - 1 downto 0 do
           Pending.Push(Node[Index]);

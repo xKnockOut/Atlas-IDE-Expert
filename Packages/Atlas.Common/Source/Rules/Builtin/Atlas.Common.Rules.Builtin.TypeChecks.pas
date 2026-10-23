@@ -428,6 +428,8 @@ begin
             Parameter.Modifier := 'out';
           TParameterModifier.ConstRefParam:
             Parameter.Modifier := 'constref';
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         AParams := AParams + [Parameter];
       end;
@@ -1242,7 +1244,11 @@ var
                 ADescription := Format('Der const-Parameter %s', [ADescription]);
                 Result := TVarArgumentKind.ConstantObject;
               end;
+          else
+            // Übrige Werte bewusst ohne Wirkung.
           end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 
@@ -1464,6 +1470,8 @@ begin
             // Die Bedingung hinter until ist das letzte Kind.
             if Node.ChildCount > 0 then
               CheckCondition(Node[Node.ChildCount - 1]);
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
     finally
       Resolver.UnpinTree;

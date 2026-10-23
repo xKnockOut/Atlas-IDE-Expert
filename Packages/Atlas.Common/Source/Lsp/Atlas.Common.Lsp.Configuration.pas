@@ -401,6 +401,8 @@ begin
         LoadFromDisk
       else
         Publish(ADocument.Uri, -1, nil);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

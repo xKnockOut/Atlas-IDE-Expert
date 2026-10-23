@@ -4,7 +4,7 @@
 
 *Deutsche Fassung: [README_DE.md](README_DE.md). The detailed documentation in `docs/` is in German.*
 
-Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 170 74 73 75 75 76 75 76 75 71 76 75 73 75 75 75 73 4 76 279 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code.
+Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 280 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code.
 
 Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
@@ -311,10 +311,12 @@ Values also work with `=` (`--log=server.log`). `--stdio` and `--clientProcessId
 
 `AtlasServer.exe --check <target>` checks without an editor. The target can be a `.dproj` (main file and units), a folder (all `.pas`, `.dpr` and `.dpk` below) or a file. `atlas.json` in the target's folder applies as in the editor. If it is missing, the former `delphi-lsp.json` applies (likewise `delphi-lsp-baseline.json` for the baseline).
 
-The linter has no symbol index: types from other units stay unknown, so rules that need them (for example ownership of fields whose type is declared elsewhere) stay silent or report with low confidence.
+The linter loads the same symbol index as the editor (#1112): the target's project and, with `index.projectGroup`, the other projects of the group, from the index cache if it is current. Rules that need types from other units (for example ownership of fields whose type is declared elsewhere, or `case` over an enumeration from another unit) therefore report the same findings as in the IDE. Without a project file the check runs without the index (stderr says so). The MCP server checks with the same index (`get_diagnostics`, `check_code`, `explain_finding`); while it is still loading, `get_diagnostics` says that findings needing the index may be missing.
 
 | Parameter | Meaning |
 |---|---|
+| `--no-index` | check without the symbol index (faster, but rules that need other units stay silent) |
+| `--index-cache <folder>` | folder for the index cache instead of `%LOCALAPPDATA%\Atlas`, e.g. a cache folder kept between CI runs |
 | `--format <kind>` | `text` (default, like compiler messages), `json`, `sarif` (SARIF 2.1.0 for GitHub code scanning) |
 | `--output <file>` | result into a file instead of stdout |
 | `--rules <a,b>` | only these rules, e.g. `syntax` |

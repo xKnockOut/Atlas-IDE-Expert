@@ -734,6 +734,8 @@ begin
           [TAtlasLinkedEditing.NameOf(FLines, FRanges[FPrimary])]);
       TAtlasLinkedProblem.Visible:
         Hint := TAtlasStrings.Fmt(TAtlasTextId.LinkedEditingVisible, [FDetail]);
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
     if Hint <> '' then
     begin
@@ -1031,6 +1033,8 @@ begin
               [TAtlasLinkedEditing.NameOf(FLines, FRanges[FPrimary])]);
           TAtlasLinkedProblem.Visible:
             Mark := TAtlasStrings.Fmt(TAtlasTextId.LinkedEditingVisible, [FDetail]);
+        else
+          // Übrige Werte bewusst ohne Wirkung.
         end;
         First := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(Text, Length(Text), TabWidth) + 2,
           Context.EditorLineNum);

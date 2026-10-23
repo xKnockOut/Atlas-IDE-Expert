@@ -1268,6 +1268,8 @@ begin
             AddText(FX, FY, 'nodefault', MonoFace, FColors.Muted);
             Inc(FX, Width(MonoFace, 'nodefault '));
           end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
       if Member.Stored <> '' then
         AddText(FX, FY, 'stored ' + Member.Stored, MonoFace, FColors.Muted);

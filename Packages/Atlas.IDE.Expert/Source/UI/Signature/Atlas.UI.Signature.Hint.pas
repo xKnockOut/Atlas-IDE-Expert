@@ -203,24 +203,24 @@ end;
 
 function TAtlasSignatureHint.SummaryText: string;
 var
-  Text: string;
+  mText: string;
 begin
   Result := '';
   if (FSignature < 0) or (FSignature > High(FHelp.Signatures)) then
     Exit;
-  Text := StringReplace(FHelp.Signatures[FSignature].Documentation, #13, '', [rfReplaceAll]);
+  mText := StringReplace(FHelp.Signatures[FSignature].Documentation, #13, '', [rfReplaceAll]);
   // Nur der erste Absatz: Die Zeile soll die Methode kurz nennen.
-  if Pos(#10#10, Text) > 0 then
-    Text := Copy(Text, 1, Pos(#10#10, Text) - 1);
-  Result := Trim(StringReplace(Text, #10, ' ', [rfReplaceAll]));
+  if Pos(#10#10, mText) > 0 then
+    mText := Copy(mText, 1, Pos(#10#10, mText) - 1);
+  Result := Trim(StringReplace(mText, #10, ' ', [rfReplaceAll]));
 end;
 
 function TAtlasSignatureHint.HasDocLine: Boolean;
 var
-  Name, Text: string;
+  mName, mText: string;
   Documented: Boolean;
 begin
-  Result := TooMany or ParameterDoc(Name, Text, Documented);
+  Result := TooMany or ParameterDoc(mName, mText, Documented);
 end;
 
 function TAtlasSignatureHint.DocRowHeight: Integer;
@@ -325,9 +325,9 @@ end;
 
 procedure TAtlasSignatureHint.Place;
 var
-  Width, Height, Widest, Available, Index, Line, Row: Integer;
+  mWidth, mHeight, Widest, Available, Index, Line, Row: Integer;
   Bounds, Area: TRect;
-  Name, Text: string;
+  mName, mText: string;
   Documented: Boolean;
 begin
   Prepare;
@@ -347,13 +347,13 @@ begin
     Inc(Row, Length(FLayouts[Index]));
   end;
   // Die Doku-Zeile verbreitert den Hint höchstens bis zur Maximalbreite.
-  if ParameterDoc(Name, Text, Documented) then
+  if ParameterDoc(mName, mText, Documented) then
   begin
     Canvas.Font := Font;
     Canvas.Font.Style := [fsBold];
-    Width := Canvas.TextWidth(Name) + Scale(8);
+    mWidth := Canvas.TextWidth(mName) + Scale(8);
     Canvas.Font := UIFont;
-    Widest := Max(Widest, Min(Width + Canvas.TextWidth(Text), Available));
+    Widest := Max(Widest, Min(mWidth + Canvas.TextWidth(mText), Available));
     Widest := Max(Widest, Min(Canvas.TextWidth(SummaryText), Available));
   end;
   if CrumbHeight > 0 then
@@ -362,25 +362,25 @@ begin
     Widest := Max(Widest, Min(Canvas.TextWidth(String.Join(' › ', CrumbParts)), Available));
   end;
   Canvas.Font := Font;
-  Width := Min(Widest + 2 * Gap + Bar + 2, Scale(MaxWidth));
-  Height := CrumbHeight + 2 * Pad + TotalRows * LineHeight;
+  mWidth := Min(Widest + 2 * Gap + Bar + 2, Scale(MaxWidth));
+  mHeight := CrumbHeight + 2 * Pad + TotalRows * LineHeight;
   if HasDocLine then
-    Inc(Height, DocHeight);
+    Inc(mHeight, DocHeight);
   if TooMany then
     BorderColor := Colors.Error
   else
     BorderColor := Colors.Accent;
   Area := WorkAreaAt(FAnchor.TopLeft);
   if FAbove then
-    Bounds := TRect.Create(Point(FAnchor.Left, FAnchor.Top - Height - 2), Width, Height)
+    Bounds := TRect.Create(Point(FAnchor.Left, FAnchor.Top - mHeight - 2), mWidth, mHeight)
   else
-    Bounds := TRect.Create(Point(FAnchor.Left, FAnchor.Bottom + 2), Width, Height);
+    Bounds := TRect.Create(Point(FAnchor.Left, FAnchor.Bottom + 2), mWidth, mHeight);
   if Bounds.Bottom > Area.Bottom then
-    Bounds.SetLocation(Bounds.Left, FAnchor.Top - Height - 2);
+    Bounds.SetLocation(Bounds.Left, FAnchor.Top - mHeight - 2);
   if Bounds.Top < Area.Top then
     Bounds.SetLocation(Bounds.Left, FAnchor.Bottom + 2);
   if Bounds.Right > Area.Right then
-    Bounds.SetLocation(Max(Area.Left, Area.Right - Width), Bounds.Top);
+    Bounds.SetLocation(Max(Area.Left, Area.Right - mWidth), Bounds.Top);
   ShowAt(Bounds);
 end;
 
@@ -445,7 +445,7 @@ var
   Band, Part: TRect;
   Parts: TArray<string>;
   Index, X: Integer;
-  Text: string;
+  mText: string;
 begin
   if CrumbHeight = 0 then
     Exit;
@@ -467,12 +467,12 @@ begin
       Canvas.Font.Color := ToColor(Colors.Text)
     else
       Canvas.Font.Color := ToColor(Colors.Muted);
-    Text := Parts[Index];
+    mText := Parts[Index];
     if Index < High(Parts) then
-      Text := Text + ' › ';
+      mText := mText + ' › ';
     Part := Rect(X, Band.Top, ClientWidth - Gap, Band.Bottom - 1);
-    DrawText(Canvas.Handle, PChar(Text), -1, Part, TextFlags or DT_END_ELLIPSIS);
-    Inc(X, Canvas.TextWidth(Text));
+    DrawText(Canvas.Handle, PChar(mText), -1, Part, TextFlags or DT_END_ELLIPSIS);
+    Inc(X, Canvas.TextWidth(mText));
   end;
   Canvas.Brush.Style := bsSolid;
 end;
@@ -491,7 +491,7 @@ end;
 procedure TAtlasSignatureHint.PaintDocLine(ATop: Integer);
 var
   Band, Part: TRect;
-  Name, Text, Summary, Heading: string;
+  mName, mText, Summary, Heading: string;
   X, Row, RuleY: Integer;
   Back, Fore: TAtlasColor;
   Documented: Boolean;
@@ -524,7 +524,7 @@ begin
     DrawText(Canvas.Handle, PChar(TAtlasStrings.Fmt(TAtlasTextId.NoOverloadWith, [FParameter + 1])), -1, Part,
       TextFlags or DT_END_ELLIPSIS);
   end
-  else if ParameterDoc(Name, Text, Documented) then
+  else if ParameterDoc(mName, mText, Documented) then
   begin
     // Überschrift in Kapitälchen mit Linie bis zum Rand, wie in Tooltip und Detailpanel.
     Heading := TAtlasStrings.Text(TAtlasTextId.DocParams);
@@ -541,8 +541,8 @@ begin
     Canvas.Font := Font;
     Canvas.Font.Style := [fsBold];
     Canvas.Font.Color := ToColor(Colors.Accent);
-    DrawText(Canvas.Handle, PChar(Name), -1, Part, TextFlags or DT_END_ELLIPSIS);
-    Part.Left := Part.Left + Canvas.TextWidth(Name) + Scale(8);
+    DrawText(Canvas.Handle, PChar(mName), -1, Part, TextFlags or DT_END_ELLIPSIS);
+    Part.Left := Part.Left + Canvas.TextWidth(mName) + Scale(8);
     Canvas.Font := UIFont;
     if Documented then
       Canvas.Font.Color := ToColor(Colors.Text)
@@ -551,7 +551,7 @@ begin
       Canvas.Font.Style := [fsItalic];
       Canvas.Font.Color := ToColor(Colors.Muted);
     end;
-    DrawText(Canvas.Handle, PChar(Text), -1, Part, TextFlags or DT_END_ELLIPSIS);
+    DrawText(Canvas.Handle, PChar(mText), -1, Part, TextFlags or DT_END_ELLIPSIS);
     Summary := SummaryText;
     if Summary <> '' then
     begin
@@ -569,7 +569,7 @@ end;
 procedure TAtlasSignatureHint.Paint;
 var
   Row, Part: TRect;
-  Height, Index, Line, RowIndex, Left, Right, X, Top: Integer;
+  mHeight, Index, Line, RowIndex, mLeft, Right, X, mTop: Integer;
 begin
   Canvas.Font := Font;
   Canvas.Brush.Style := bsSolid;
@@ -580,21 +580,21 @@ begin
     PaintBorder;
     Exit;
   end;
-  Height := LineHeight;
-  Left := Bar + Gap;
+  mHeight := LineHeight;
+  mLeft := Bar + Gap;
   Right := ClientWidth - Gap;
   RowIndex := 0;
   PaintCrumb;
-  Top := CrumbHeight + Pad;
+  mTop := CrumbHeight + Pad;
   for Index := 0 to High(FLayouts) do
   begin
     // Akzentbalken links neben der gewählten Überladung.
     if Index = FSignature then
-      FillRounded(Rect(Scale(3), Top + RowIndex * Height + Scale(3), Scale(3) + Bar,
-        Top + (RowIndex + Length(FLayouts[Index])) * Height - Scale(3)), Colors.Accent, 1);
+      FillRounded(Rect(Scale(3), mTop + RowIndex * mHeight + Scale(3), Scale(3) + Bar,
+        mTop + (RowIndex + Length(FLayouts[Index])) * mHeight - Scale(3)), Colors.Accent, 1);
     for Line := 0 to High(FLayouts[Index]) do
     begin
-      Row := Rect(Left, Top + RowIndex * Height, Right, Top + (RowIndex + 1) * Height);
+      Row := Rect(mLeft, mTop + RowIndex * mHeight, Right, mTop + (RowIndex + 1) * mHeight);
       if Line > 0 then
         Inc(Row.Left, Indent);
       X := Row.Left;
@@ -609,13 +609,13 @@ begin
     Canvas.Font := UIFont;
     Canvas.Font.Color := ToColor(Colors.Muted);
     Canvas.Brush.Style := bsClear;
-    Part := Rect(Left, Top + RowIndex * Height, Right, Top + (RowIndex + 1) * Height);
+    Part := Rect(mLeft, mTop + RowIndex * mHeight, Right, mTop + (RowIndex + 1) * mHeight);
     DrawText(Canvas.Handle, PChar(TAtlasStrings.Fmt(TAtlasTextId.MoreOverloads, [Length(FHelp.Signatures) - MaxSignatures])), -1, Part,
       TextFlags);
     Inc(RowIndex);
   end;
   if HasDocLine then
-    PaintDocLine(Top + RowIndex * Height + Pad);
+    PaintDocLine(mTop + RowIndex * mHeight + Pad);
   PaintBorder;
 end;
 

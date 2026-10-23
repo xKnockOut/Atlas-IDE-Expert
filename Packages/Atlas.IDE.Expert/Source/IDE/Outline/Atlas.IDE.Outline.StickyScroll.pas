@@ -251,6 +251,8 @@ begin
           InvalidateEditor;
         Exit;
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   if not SameText(Snapshot.FileName, FFileName) or (Snapshot.Stamp <> FStamp) then
   begin

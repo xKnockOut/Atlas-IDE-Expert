@@ -419,6 +419,8 @@ begin
       end;
     TAtlasOutlineStatus.Waiting:
       Exit;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   Cursor := View.CursorPos;
   if Cursor.Line < 1 then

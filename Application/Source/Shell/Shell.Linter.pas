@@ -34,6 +34,11 @@
 // Bei einer .dproj gelten deren Symbole für Plattform und Konfiguration aus
 // atlas.json, und {$I}-Dateien werden über ihre Suchpfade gelesen (#860);
 // sonst die Vordefinitionen von Delphi 13 für Win32 und $I aus dem Ordner der Datei.
+// Symbolindex (#1112): Wie im Server und im MCP-Modus baut --check den Index des
+// Projekts (Ordner, .dproj oder Ordner der Datei, mit index.projectGroup die
+// ganze Gruppe) und liest dabei den gemeinsamen Index-Cache (--index-cache,
+// sonst der Ordner des Servers), damit Regeln Typen aus anderen Units und der
+// RTL kennen. --no-index prüft wie früher jede Datei für sich.
 // Exit-Code: 1, wenn ein Treffer --fail-on erreicht (Standard error: mindestens
 // ein Fehler; Baseline-Treffer zählen nie), sonst 0; 3 Aufruf- oder Lesefehler.
 
@@ -56,6 +61,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.IOUtils,
+  System.Diagnostics,
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
@@ -88,6 +94,15 @@ uses
   Atlas.Common.Rules.ChangedFiles,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Processes,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Documents.Providers.DocumentStore,
+  Atlas.Common.Logging.Contract,
+  Atlas.Common.Logging.Providers.Logger,
+  Atlas.Common.Logging.Providers.StreamSink,
+  Shell.WorkspaceGroup,
   Shell.Platform,
   Shell.VcsChanges,
   Shell.Bootstrap;
@@ -367,6 +382,67 @@ begin
     Result := ExcludeTrailingPathDelimiter(AConfigRoot);
 end;
 
+const
+  /// <summary>Höchstens so lange auf den Index warten; danach mit dem bis dahin aufgebauten prüfen.</summary>
+  IndexTimeoutMs = 30 * 60 * 1000;
+
+/// <summary>Arbeitsbereiche mit Symbolindex für --check (#1112), wie im MCP-Modus; wartet auf den Index.
+/// </summary>
+function LoadIndex(const AOptions: TCommandLineOptions; const AConfigRoot: string): TShellWorkspaceGroup;
+var
+  LoggerImpl: TLogger;
+  Logger: ILogger;
+  Store: IDocumentStore;
+  Index: ISymbolIndex;
+  Identity: TIndexProcessInfo;
+  Watch: TStopwatch;
+begin
+  LoggerImpl := TLogger.Create;
+  Logger := LoggerImpl;
+  // Nur Warnungen und Fehler auf stderr; stdout gehört dem Ergebnis.
+  LoggerImpl.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Warning);
+  Store := TDocumentStore.Create(
+    function(const APath: string): string
+    begin
+      Result := TShellPlatform.CanonicalizePath(APath);
+    end);
+  Index := TSymbolIndex.Create;
+  // Als anonyme Methode statt TShellBootstrap.ReadSourceText: Free Pascal (Linux-Bau) bricht an der Umwandlung
+  // einer Klassenmethode in eine Methodenreferenz intern ab.
+  Result := TShellWorkspaceGroup.Create(ExcludeTrailingPathDelimiter(AConfigRoot), Store, Logger, Index,
+    'atlas-check-index',
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := TShellBootstrap.ReadSourceText(AFileName, AText);
+    end);
+  try
+    if SameText(ExtractFileExt(AOptions.CheckTarget), '.dproj') then
+      Result.Main.ProjectFile := TPath.GetFullPath(AOptions.CheckTarget);
+    if AOptions.IndexCacheFolder <> '' then
+      Result.CacheRoot := ExcludeTrailingPathDelimiter(TPath.GetFullPath(AOptions.IndexCacheFolder));
+    // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62).
+    Identity := Default(TIndexProcessInfo);
+    Identity.Pid := TShellPlatform.CurrentProcessId;
+    Identity.Kind := TIndexProcessInfo.KindCheck;
+    Identity.Client := 'atlas --check';
+    Result.ProcessIdentity := Identity;
+    Watch := TStopwatch.StartNew;
+    Result.Load(TShellBootstrap.LoadGlobalSettings(nil));
+    if not Result.WaitForIndex(IndexTimeoutMs) then
+      WriteError(Format('Symbolindex nach %d Minuten nicht fertig; Prüfung mit dem bisher aufgebauten Index',
+        [IndexTimeoutMs div 60000]))
+    else if Index.UnitCount = 0 then
+      WriteError('Kein Projekt gefunden; Prüfung ohne Symbolindex')
+    else
+      // Anzeige für Menschen auf stderr: Dezimaltrenner des Gebietsschemas.
+      WriteError(Format('Symbolindex: %d Units in %.1f s', [Index.UnitCount, Watch.ElapsedMilliseconds / 1000],
+        FormatSettings));
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
 class function TLinterShell.ClearCache: Integer;
 begin
   try
@@ -417,8 +493,9 @@ var
   TodoEntries: TArray<TTodoEntry>;
   Packages: TArray<TPackageSource>;
   Programs: TArray<string>;
-  Project: TCheckProject;
+  Project, Indexed: TCheckProject;
   CheckSources: TCheckSourceFunc;
+  Group: TShellWorkspaceGroup;
 begin
   for Warning in AOptions.Warnings do
     WriteError(Warning);
@@ -503,9 +580,13 @@ begin
     Metrics := nil;
     Todos := nil;
     Git := nil;
+    Group := nil;
     Stats := TSuppressionStats.Create;
     CheckedPaths := TList<string>.Create;
     try
+      // Metriken und TODOs brauchen keinen Index.
+      if not (AOptions.NoIndex or AOptions.Metrics or AOptions.Todos) then
+        Group := LoadIndex(AOptions, ConfigRoot);
       Candidates := CollectFiles(AOptions.CheckTarget, Settings, Root, CheckSources);
       Packages := ReadPackages(Candidates);
       Programs := ReadPrograms(Candidates);
@@ -553,6 +634,20 @@ begin
             ChangeFileExt(ExtractFileName(FileName), ''));
         // Formulardatei und Dateien neben der Unit wie im Server (form-resource-missing, #1054).
         Project.FileName := TPath.GetFullPath(FileName);
+        if Group <> nil then
+        begin
+          // Index, Nachladen und Projekte der Gruppe auf demselben Weg wie Server und MCP (#1112); gehört die
+          // Datei zu einem geladenen Projekt, gelten dessen Anwendungsart und Formulare.
+          Indexed := Group.RuleProject(Project.FileName);
+          Project.Services := Indexed.Services;
+          if Indexed.Application <> TRuleApplicationKind.Unknown then
+          begin
+            Project.Application := Indexed.Application;
+            Project.Name := Indexed.Name;
+            Project.AutoCreateForms := Indexed.AutoCreateForms;
+            Project.ProjectMainSource := Indexed.ProjectMainSource;
+          end;
+        end;
         Findings := TFileChecker.CheckText(Rules, Settings, RelativePath, Text, Project, CheckSources(FileName),
           Scopes);
         if AOptions.SuppressionStats then
@@ -637,6 +732,9 @@ begin
         Output := TFindingsOutput.Render(Files, AOptions.CheckFormat, Descriptors,
           SourceRootOf(AOptions, ConfigRoot));
     finally
+      if Group <> nil then
+        Group.Stop;
+      Group.Free;
       CheckedPaths.Free;
       Git.Free;
       Stats.Free;

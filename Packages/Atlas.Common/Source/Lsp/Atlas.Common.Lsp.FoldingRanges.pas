@@ -91,6 +91,8 @@ begin
         TSyntaxKind.ExceptBlock, TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptionHandler,
         TSyntaxKind.AnonymousMethod, TSyntaxKind.SetConstructor, TSyntaxKind.Call:
           AddRange(AList, Node.StartPos.Line, Node.EndPos.Line, '');
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
       for Index := 0 to Node.ChildCount - 1 do
         Pending.Push(Node[Index]);

@@ -100,18 +100,18 @@ end;
 class function TAtlasNoticeWindow.PlaceCorner(const AArea: TRect; AWidth, AHeight, AMargin: Integer;
   const AWorkArea: TRect): TRect;
 var
-  Left, Top, Right, Bottom: Integer;
+  mLeft, mTop, Right, Bottom: Integer;
 begin
   Right := Min(AArea.Right, AWorkArea.Right) - AMargin;
   Bottom := Min(AArea.Bottom, AWorkArea.Bottom) - AMargin;
-  Left := Max(Right - AWidth, AWorkArea.Left);
-  Top := Max(Bottom - AHeight, AWorkArea.Top);
-  Result := Rect(Left, Top, Left + AWidth, Top + AHeight);
+  mLeft := Max(Right - AWidth, AWorkArea.Left);
+  mTop := Max(Bottom - AHeight, AWorkArea.Top);
+  Result := Rect(mLeft, mTop, mLeft + AWidth, mTop + AHeight);
 end;
 
 function TAtlasNoticeWindow.Layout(ADraw: Boolean): TSize;
 var
-  X, Y, TextHeight, Width, Index: Integer;
+  X, Y, TextHeight, mWidth, Index: Integer;
   Line: string;
 begin
   Canvas.Font := UIFont;
@@ -126,16 +126,16 @@ begin
     Canvas.Font.Color := ToColor(Colors.Text);
     Canvas.TextOut(X, Y, FTitle);
   end;
-  Width := X + Canvas.TextWidth(FTitle);
+  mWidth := X + Canvas.TextWidth(FTitle);
   Canvas.Font.Style := [];
   // „×“ rechts neben der Überschrift; die endgültige Lage folgt der Breite.
-  Width := Width + Scale(Pad) * 2 + Canvas.TextWidth(CloseText);
+  mWidth := mWidth + Scale(Pad) * 2 + Canvas.TextWidth(CloseText);
   for Line in FText.Split([sLineBreak]) do
-    Width := Max(Width, Scale(Pad) + Canvas.TextWidth(Line));
+    mWidth := Max(mWidth, Scale(Pad) + Canvas.TextWidth(Line));
   if Length(FActions) > 0 then
-    Width := Max(Width, Scale(Pad) + Canvas.TextWidth(string.Join(Separator, FActions)));
-  Width := Width + Scale(Pad);
-  FCloseRect := Rect(Width - Scale(Pad) - Canvas.TextWidth(CloseText), Y, Width - Scale(Pad), Y + TextHeight);
+    mWidth := Max(mWidth, Scale(Pad) + Canvas.TextWidth(string.Join(Separator, FActions)));
+  mWidth := mWidth + Scale(Pad);
+  FCloseRect := Rect(mWidth - Scale(Pad) - Canvas.TextWidth(CloseText), Y, mWidth - Scale(Pad), Y + TextHeight);
   if ADraw then
   begin
     if FHot = HitClose then
@@ -183,7 +183,7 @@ begin
   end;
   if ADraw then
     Canvas.Brush.Style := bsSolid;
-  Result.cx := Width;
+  Result.cx := mWidth;
   Result.cy := Y + TextHeight + Scale(Pad);
 end;
 

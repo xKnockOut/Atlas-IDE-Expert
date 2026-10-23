@@ -797,6 +797,8 @@ begin
           Exit;
         end;
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   Queue(
     procedure
@@ -1246,6 +1248,8 @@ begin
           Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickUpdating, [Seconds])
         else
           Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickPulling, [Seconds]);
+    else
+      // Übrige Werte bewusst ohne Wirkung.
     end;
     Exit;
   end;
@@ -1287,6 +1291,8 @@ begin
     TAtlasQuickAction.Console:
       if AState.Phase <> TAtlasQuickActionPhase.Succeeded then
         Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickConsoleFailed);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 
@@ -1318,6 +1324,8 @@ begin
       Exit(TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPullNoWorkingCopy));
     TAtlasPullBlock.Busy:
       Exit(TAtlasStrings.Text(TAtlasTextId.WelcomeQuickBusy));
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   if not AButton.Enabled then
   begin

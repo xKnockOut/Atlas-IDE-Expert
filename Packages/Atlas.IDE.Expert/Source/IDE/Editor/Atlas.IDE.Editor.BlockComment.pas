@@ -159,6 +159,8 @@ begin
           FMessage(TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentRefused));
         Exit;
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   NewText := string.Join(LineBreak, Toggled.Lines);
   if TAtlasLineMover.Difference(Text, NewText, Start, OldLength, Insert) then

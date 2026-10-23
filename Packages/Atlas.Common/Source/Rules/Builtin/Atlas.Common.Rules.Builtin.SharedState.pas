@@ -156,6 +156,8 @@ begin
           // for var I := …
           if ContainsText(Copy(SourceText(Child), 1, 8), ' var ') then
             ANames := ANames + [Child.Name];
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
       if not (Child.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl]) then
         for Index := Child.ChildCount - 1 downto 0 do
