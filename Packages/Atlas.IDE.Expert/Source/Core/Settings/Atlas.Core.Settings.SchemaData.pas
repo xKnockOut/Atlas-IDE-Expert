@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2019] of string = (
+  Lines: array[0..2025] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1240,6 +1240,15 @@ const
       'nd VCL zuerst), H2077 entfernt eine wirkungslose Zuweisung (bei einem Aufruf bleibt nur der Aufruf), W1035 fügt Result := Default(<Typ>); am Anfang der Funktion ein, W1057/W1058 setzen eine explizite ' +
       'Umwandlung (string(…), AnsiString(…)). Gibt es dieselbe Meldung mehrmals in der Datei, dazu „Alle … in der Datei beheben“. Jede Korrektur ist ein Rückgängig-Schritt.",',
     '          "x-issue": "#549"',
+    '        },',
+    '        "missingUnit": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen auf „Unit nicht gefunden“ (F2613, F1026) des letzten Compilerlaufs: Atlas sucht die Unit im Projektordner und seinen Unterordnern, in den anderen Projekten der ' +
+      'Gruppe, in den Suchpfaden der anderen Konfigurationen und Plattformen, in den Bibliothekspfaden anderer Plattformen und im Index. Für einen Fund: „Ordner in den Suchpfad dieser Konfiguration aufnehmen' +
+      '“, „… aller Konfigurationen“ (relativ zur .dproj, über die Projektoptionen der IDE) und für eine Quelle „Unit ins Projekt aufnehmen“. Gibt es die Unit nur für andere Plattformen, sagt die Aktion das (' +
+      '„Winapi.Windows gibt es für Linux64 nicht“); ohne Fund nennt sie die durchsuchten Orte.",',
+    '          "x-issue": "#550"',
     '        },',
     '        "disableWarning": {',
     '          "type": "boolean",',

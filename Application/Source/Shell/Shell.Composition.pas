@@ -65,6 +65,8 @@ uses
   Atlas.Common.Lsp.DisableWarning,
   Atlas.Common.Lsp.CompilerFixes,
   Atlas.Common.Editing.CompilerFixes,
+  Atlas.Common.Projects.MissingUnit,
+  Atlas.Common.Lsp.MissingUnit,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Projects.Selection,
@@ -359,6 +361,10 @@ type
     function DisableWarning(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Schnellkorrekturen an Meldungen des letzten Compilerlaufs (#549).</summary>
     function CompilerFixActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
+    /// <summary>„Unit nicht gefunden“: Suchpfad ergänzen (#550).</summary>
+    function MissingUnitActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
+    /// <summary>Suche nach AUnitName im Projekt der Datei AFileName vorbereiten (#550).</summary>
+    function MissingUnitSetupFor(const AFileName, AUnitName: string; out ASetup: TMissingUnitSetup): Boolean;
     /// <summary>Extrahieren, „case vervollständigen“ und „with auflösen“ (#50).</summary>
     function RefactoringActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
     /// <summary>Index, Einstellungen, Sprachversion und Formatstil für die Aktionen aus #50.</summary>
@@ -1401,6 +1407,7 @@ begin
       Result := Result + InvertBooleanActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
       Result := Result + CompilerFixActions(AUri, ARange);
+      Result := Result + MissingUnitActions(AUri, ARange);
       Result := Result + DisableWarningActions(AUri, ARange);
       Result := Result + RefactoringActions(AUri, ARange);
     end;
@@ -3536,6 +3543,89 @@ begin
   end;
   Shared := TSyntaxTreeCache.Get(Document, nil);
   Result := TLspCompilerFixes.Actions(True, Document.Text, Shared.Tree, AUri, ARange, Messages, Context);
+end;
+
+function TServerComposition.MissingUnitActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
+var
+  FileName: string;
+  Messages: TArray<TCompilerMessage>;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).MissingUnit then
+    Exit;
+  FileName := TDocumentUris.ToPath(AUri);
+  Messages := FCompilerResults.MessagesFor(FileName);
+  if Messages = nil then
+    Exit;
+  Result := TLspMissingUnit.Actions(True, ARange.StartPos.Line, ARange.EndPos.Line, Messages,
+    function(const AUnitName: string; out ASetup: TMissingUnitSetup): Boolean
+    begin
+      Result := MissingUnitSetupFor(FileName, AUnitName, ASetup);
+    end);
+end;
+
+function TServerComposition.MissingUnitSetupFor(const AFileName, AUnitName: string;
+  out ASetup: TMissingUnitSetup): Boolean;
+var
+  Workspace, Other: TShellWorkspace;
+  Group: TArray<TMissingUnitProject>;
+  Member: TMissingUnitProject;
+  OtherProject: TProjectInfo;
+  Users: Integer;
+begin
+  ASetup := Default(TMissingUnitSetup);
+  Group := nil;
+  // Arbeitsbereich festhalten, die .dproj-Dateien aber außerhalb von FWorkspacesLock lesen (#647).
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := PickWorkspace(AFileName);
+    if Workspace = nil then
+      Exit(False);
+    for Other in FWorkspaces do
+      if (Other <> Workspace) and Other.Project(OtherProject) and
+        not SameFileName(OtherProject.FileName, Workspace.ProjectFileName) then
+      begin
+        Member.FileName := OtherProject.FileName;
+        Member.SearchPaths := OtherProject.SearchPaths;
+        Group := Group + [Member];
+      end;
+    if FWorkspaceUsers.TryGetValue(Workspace, Users) then
+      FWorkspaceUsers[Workspace] := Users + 1
+    else
+      FWorkspaceUsers.Add(Workspace, 1);
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  try
+    Result := Workspace.MissingUnitSetup(ASetup);
+  finally
+    TMonitor.Enter(FWorkspacesLock);
+    try
+      Users := FWorkspaceUsers[Workspace] - 1;
+      if Users = 0 then
+        FWorkspaceUsers.Remove(Workspace)
+      else
+        FWorkspaceUsers[Workspace] := Users;
+      TMonitor.PulseAll(FWorkspacesLock);
+    finally
+      TMonitor.Exit(FWorkspacesLock);
+    end;
+  end;
+  if not Result then
+    Exit;
+  ASetup.UnitName := AUnitName;
+  ASetup.GroupProjects := Group;
+  // Nur der Index: nichts nachladen, die Suche läuft bei jeder Code-Aktion auf der Zeile.
+  ASetup.IndexFile :=
+    function(AName: string): string
+    var
+      UnitIndex: TUnitIndex;
+    begin
+      if FIndex.FindUnit(AName, UnitIndex) then
+        Result := UnitIndex.FileName
+      else
+        Result := '';
+    end;
 end;
 
 function TServerComposition.DisableWarning(const AArguments: TJSONArray): TJSONValue;

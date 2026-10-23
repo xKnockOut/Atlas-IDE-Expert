@@ -272,6 +272,8 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerBaseline.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DisableWarning.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerFixes.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.MissingUnit.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MissingUnit.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SemanticTokens.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Commands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ApplyEdit.pas"/>

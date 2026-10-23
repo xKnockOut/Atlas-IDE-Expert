@@ -714,7 +714,11 @@ type
     // Compilerwarnung gezielt abschalten (#531).
     DisableWarningTitle, DisableWarningReasonPrompt, DisableWarningFailed, DisableWarningDone,
     DisableWarningAllWarnings, DisableWarningProjectConfirm, DisableWarningProjectDone, DisableWarningProjectFailed,
-    DisableWarningNoProject);
+    DisableWarningNoProject,
+    // Unit nicht gefunden: Suchpfad ergänzen (#550).
+    MissingUnitAllConfigs, MissingUnitSearchPathDone, MissingUnitSearchPathPresent,
+    MissingUnitSearchPathFailed, MissingUnitConfigNotFound, MissingUnitAdded, MissingUnitAlreadyInProject,
+    MissingUnitAddFailed, MissingUnitNoProject);
 
   TAtlasStrings = class
   private class var
@@ -2345,7 +2349,16 @@ const
        'Konfigurationen und Plattformen, die den Wert nicht selbst setzen.',
      '%s im Projekt %s abgeschaltet (%s = false); wirkt ab dem nächsten Compile. Speichern nicht vergessen.',
      '%s nicht in die Projektoptionen eingetragen: %s',
-     'Kein geöffnetes Projekt enthält %s.'),
+     'Kein geöffnetes Projekt enthält %s.',
+     'alle Konfigurationen',
+     'Suchpfad (%s) im Projekt %s ergänzt: %s; wirkt ab dem nächsten Compile. Speichern nicht vergessen.',
+     '%s steht schon im Suchpfad (%s) des Projekts %s.',
+     'Suchpfad nicht ergänzt: %s',
+     'Die Konfiguration %s gibt es im Projekt %s nicht.',
+     '%s ins Projekt %s aufgenommen. Speichern nicht vergessen.',
+     '%s gehört schon zum Projekt %s.',
+     '%s nicht ins Projekt aufgenommen: %s',
+     'Das Projekt %s ist nicht geöffnet.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3878,7 +3891,16 @@ const
        'configurations and platforms that do not set the value themselves.',
      '%s disabled in project %s (%s = false); takes effect with the next compile. Remember to save.',
      '%s not added to the project options: %s',
-     'No open project contains %s.'));
+     'No open project contains %s.',
+     'all configurations',
+     'Search path (%s) of project %s extended: %s; takes effect with the next compile. Remember to save.',
+     '%s is already in the search path (%s) of project %s.',
+     'Search path not extended: %s',
+     'Configuration %s does not exist in project %s.',
+     '%s added to project %s. Remember to save.',
+     '%s already belongs to project %s.',
+     '%s not added to the project: %s',
+     'Project %s is not open.'));
 
 { TAtlasStrings }
 

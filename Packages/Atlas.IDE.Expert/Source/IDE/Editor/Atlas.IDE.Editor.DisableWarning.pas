@@ -111,23 +111,6 @@ begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
 end;
 
-function ProjectByFileName(const AFileName: string): IOTAProject;
-var
-  Services: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-  Index: Integer;
-begin
-  Result := nil;
-  if (AFileName = '') or not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
-    Exit;
-  Group := Services.MainProjectGroup;
-  if Group = nil then
-    Exit;
-  for Index := 0 to Group.ProjectCount - 1 do
-    if SameFileName(Group.Projects[Index].FileName, AFileName) then
-      Exit(Group.Projects[Index]);
-end;
-
 class procedure TAtlasIdeDisableWarning.ExecuteProject(const AArgumentsJson: string; const AMessage: TProc<string>);
 var
   Request: TAtlasDisableWarningProject;
@@ -139,7 +122,7 @@ begin
   if not TAtlasDisableWarningProject.TryParse(AArgumentsJson, Request) then
     Exit;
   FileName := TLspSession.UriToPath(Request.Uri);
-  Project := ProjectByFileName(TAtlasIdeFiles.ProjectOfFile(FileName));
+  Project := TAtlasIdeFiles.GroupProject(TAtlasIdeFiles.ProjectOfFile(FileName));
   if Project = nil then
   begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningNoProject, [ExtractFileName(FileName)]));

@@ -160,6 +160,8 @@ contains
   Atlas.Common.Lsp.CompilerBaseline in 'Source\Lsp\Atlas.Common.Lsp.CompilerBaseline.pas',
   Atlas.Common.Lsp.DisableWarning in 'Source\Lsp\Atlas.Common.Lsp.DisableWarning.pas',
   Atlas.Common.Lsp.CompilerFixes in 'Source\Lsp\Atlas.Common.Lsp.CompilerFixes.pas',
+  Atlas.Common.Projects.MissingUnit in 'Source\Projects\Atlas.Common.Projects.MissingUnit.pas',
+  Atlas.Common.Lsp.MissingUnit in 'Source\Lsp\Atlas.Common.Lsp.MissingUnit.pas',
   Atlas.Common.Lsp.SemanticTokens in 'Source\Lsp\Atlas.Common.Lsp.SemanticTokens.pas',
   Atlas.Common.Lsp.Commands in 'Source\Lsp\Atlas.Common.Lsp.Commands.pas',
   Atlas.Common.Lsp.ApplyEdit in 'Source\Lsp\Atlas.Common.Lsp.ApplyEdit.pas',

@@ -198,6 +198,7 @@ uses
   Atlas.IDE.Editor.PropertyFromAccessors,
   Atlas.IDE.Editor.InvertBoolean,
   Atlas.IDE.Editor.DisableWarning,
+  Atlas.IDE.Editor.MissingUnit,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
@@ -1411,6 +1412,36 @@ begin
   begin
     // Client-Befehl: Warnung nach Rückfrage in den Projektoptionen abschalten (#531).
     TAtlasIdeDisableWarning.ExecuteProject(AArgumentsJson,
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeMissingUnit.SearchPathCommand then
+  begin
+    // Client-Befehl: Ordner in den Suchpfad des Projekts (#550).
+    TAtlasIdeMissingUnit.AddSearchPath(AArgumentsJson,
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeMissingUnit.AddUnitCommand then
+  begin
+    // Client-Befehl: gefundene Unit ins Projekt aufnehmen (#550).
+    TAtlasIdeMissingUnit.AddUnit(AArgumentsJson,
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeMissingUnit.InfoCommand then
+  begin
+    // Client-Befehl: Hinweis anzeigen, etwa die durchsuchten Orte (#550).
+    TAtlasIdeMissingUnit.ShowInfo(AArgumentsJson,
       procedure(AText: string)
       begin
         Say(AText);
