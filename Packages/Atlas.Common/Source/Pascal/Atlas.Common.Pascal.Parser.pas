@@ -2197,7 +2197,8 @@ var
   Parent: TSyntaxNode;
   Nodes: TList<TSyntaxNode>;
   Starts: TList<Integer>;
-  Index: Integer;
+  Index, Before: Integer;
+  Empty: TSyntaxNode;
 begin
   // else if-Ketten in einer Schleife statt rekursiv (#849): Jedes "else if" wird wie bisher ein
   // IfStatement im else-Zweig des vorigen, zählt aber nicht als weitere Ebene für MaxNesting.
@@ -2212,6 +2213,7 @@ begin
       Advance; // if
       ParseExpression(Nodes.Last);
       ExpectKw('then');
+      Before := Nodes.Last.ChildCount;
       ParseStatement(Nodes.Last);
       // if A then B; else C – außer in case- und on-Zweigen, wo "; else" deren else-Teil beginnt (#1022).
       if IsSym(';') and PeekIsKw(1, 'else') and not FInCaseItem then
@@ -2219,6 +2221,14 @@ begin
         DiagnoseCode('E2153', ''';'' vor ''else'' ist nicht erlaubt', Current.StartPos, Current.EndPos,
           ''';'' entfernen', [TTextEdit.Create(TTextRange.Create(Current.StartPos, Current.EndPos), '')], True);
         Advance;
+      end;
+      // Leerer then-Zweig vor else (if A then else B): eine leere Anweisung hält seinen Platz, sonst stünde der
+      // else-Zweig als then-Zweig im Baum.
+      if IsKw('else') and (Nodes.Last.ChildCount = Before) then
+      begin
+        Empty := StartNode(TSyntaxKind.EmptyStatement);
+        Nodes.Last.Add(Empty);
+        FinishNode(Empty, FIndex);
       end;
       if not AcceptKw('else') then
         Break;
