@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2065] of string = (
+  Lines: array[0..2070] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -659,6 +659,11 @@ const
     '                },',
     '                "default": [],',
     '                "description": "Nur unrelated-class-cast: Typen, die absichtlich hart umgewandelt werden, als Typname (Quelle oder Ziel) oder Paar \"Quelle=Ziel\", z. B. [\"TEdit=TButton\"] (#1129)."',
+    '              },',
+    '              "checkFree": {',
+    '                "type": "boolean",',
+    '                "default": true,',
+    '                "description": "Nur redundant-cast: auch eine Klassenumwandlung melden, die nur vor Free steht, z. B. TObject(FStrom).Free (#1139)."',
     '              },',
     '              "allowTables": {',
     '                "type": "array",',

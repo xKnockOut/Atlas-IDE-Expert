@@ -173,4 +173,11 @@ begin
   TThread.Queue(TThread.CurrentThread, mAufgabe);
 end;
 
+procedure Aufraeumen(ABlatt: TBlatt; AKnoten: TKnoten);
+begin
+  TBlatt(ABlatt).Wert := 0; // ERWARTET: redundant-cast
+  TBlatt(AKnoten).Wert := 1; // KEIN-TREFFER: redundant-cast
+  TObject(ABlatt).Free; // ERWARTET: redundant-cast
+end;
+
 end.

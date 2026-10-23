@@ -5,6 +5,10 @@
 // nur vor einem Zugriff, verwandte Klassen, unbekannte Vorfahren, Interfaces,
 // Zeiger, Klassenreferenzen, TObject als Quelle, Zugriffsklassen-Trick, Option
 // allowTypes, Typen aus dem Index, bedingte Deklarationen, Abschalten.
+// redundant-cast (#1139): Beispiel aus dem Issue mit Korrektur, as, eingebaute
+// Typen, Aliase, Konstanten und Routinen, Überladungen und unbekannte Aufrufe,
+// Free mit eigener Deklaration, Option checkFree, Typen aus dem Index,
+// Abschalten.
 
 interface
 
@@ -33,6 +37,33 @@ type
     procedure TypesFromIndex;
     [Test]
     procedure ConditionalDeclarationIsSilent;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TRedundantCastTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure AsWithSameClass;
+    [Test]
+    procedure BuiltinTypes;
+    [Test]
+    procedure DifferentTypesAreSilent;
+    [Test]
+    procedure AliasesAreSilent;
+    [Test]
+    procedure ConstantsAndRoutinesAreSilent;
+    [Test]
+    procedure OverloadedCallIsSilent;
+    [Test]
+    procedure OwnFreeIsSilent;
+    [Test]
+    procedure CheckFreeOption;
+    [Test]
+    procedure TypesFromIndex;
     [Test]
     procedure OffAndExclude;
   end;
@@ -237,7 +268,172 @@ begin
     '{"rules": {"unrelated-class-cast": {"exclude": ["Source/*.pas"]}}}', 'Source/Formular.pas'))));
 end;
 
+{ TRedundantCastTests }
+
+const
+  cImport = 'type'#10'  TStream = class'#10'  end;'#10'  TFileStream = class(TStream)'#10'  end;'#10 +
+    '  TStringList = class'#10'  public'#10'    procedure Clear;'#10'  end;'#10 +
+    '  TImport = class'#10'  private'#10'    FZeilen: TStringList;'#10'    FStrom: TFileStream;'#10 +
+    '  public'#10'    procedure Aufraeumen;'#10'  end;'#10;
+
+function RedundantFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TRedundantCastRule.Create, ASource);
+end;
+
+function RedundantFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TRedundantCastRule.Create, ASource, AConfig, APath);
+end;
+
+/// <summary>Unit mit den Typen aus cImport und ATypes und der Methode TImport.Aufraeumen mit Rumpf ABody.
+/// </summary>
+function ImportSource(const ATypes, ABody: string): string;
+begin
+  Result := 'unit Import;'#10'interface'#10 + cImport + ATypes + 'implementation'#10 +
+    'procedure TStringList.Clear;'#10'begin'#10'end;'#10 +
+    'procedure TImport.Aufraeumen;'#10'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+procedure TRedundantCastTests.IssueExampleWithFix;
+var
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  mSource := ImportSource('', '  TStringList(FZeilen).Clear;'#10'  TObject(FStrom).Free;'#10);
+  mFound := RedundantFindings(mSource);
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual(RedundantCastRuleId, mFound[0].RuleId);
+  Assert.AreEqual('FZeilen ist schon TStringList: Die Umwandlung ist überflüssig.', mFound[0].Message);
+  Assert.AreEqual('Free ruft den virtuellen Destruktor: Die Umwandlung von FStrom nach TObject ist überflüssig.',
+    mFound[1].Message);
+  Assert.AreEqual('Umwandlung entfernen', mFound[0].Fixes[0].Title);
+  mFixed := Applied(Applied(mSource, mFound[1].Fixes[0]), mFound[0].Fixes[0]);
+  Assert.IsTrue(mFixed.Contains('  FZeilen.Clear;'#10'  FStrom.Free;'#10), mFixed);
+end;
+
+procedure TRedundantCastTests.AsWithSameClass;
+var
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  mSource := ImportSource('', '  (FZeilen as TStringList).Clear;'#10'  FZeilen := FZeilen as TStringList;'#10);
+  mFound := RedundantFindings(mSource);
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.IsTrue(Applied(mSource, mFound[0].Fixes[0]).Contains(#10'  FZeilen.Clear;'#10));
+  Assert.IsTrue(Applied(mSource, mFound[1].Fixes[0]).Contains(#10'  FZeilen := FZeilen;'#10));
+  // as mit Interfaces ruft QueryInterface.
+  TRuleAssert.Silent(TRedundantCastRule.Create, Source('type'#10'  IZeilen = interface'#10'  end;'#10,
+    '  mListe: IZeilen;'#10, '  mListe := mListe as IZeilen;'#10));
+end;
+
+procedure TRedundantCastTests.BuiltinTypes;
+begin
+  TRuleAssert.Reports(TRedundantCastRule.Create, Source('', '  mZahl: Integer;'#10, '  mZahl := Integer(mZahl);'#10));
+  TRuleAssert.Reports(TRedundantCastRule.Create, Source('', '  mText: string;'#10, '  mText := string(mText);'#10));
+  TRuleAssert.Silent(TRedundantCastRule.Create, Source('', '  mZahl: Integer;'#10'  mKurz: Byte;'#10,
+    '  mKurz := Byte(mZahl);'#10'  mZahl := Int64(mZahl) div 2;'#10));
+end;
+
+procedure TRedundantCastTests.DifferentTypesAreSilent;
+begin
+  TRuleAssert.Silent(TRedundantCastRule.Create, ImportSource('', '  if TStream(FStrom) <> nil then'#10 +
+    '    Pointer(FZeilen) := nil;'#10));
+  // Free nach Umwandlung aus einem Zeiger ist nötig.
+  TRuleAssert.Silent(TRedundantCastRule.Create, Source(cControls, '  mZeiger: Pointer;'#10,
+    '  TObject(mZeiger).Free;'#10'  TControl(Sender).Free;'#10));
+end;
+
+procedure TRedundantCastTests.AliasesAreSilent;
+begin
+  TRuleAssert.Silent(TRedundantCastRule.Create, Source('type'#10'  TFarbe = Integer;'#10 +
+    '  TEigene = type Integer;'#10, '  mFarbe: TFarbe;'#10'  mZahl: Integer;'#10'  mEigene: TEigene;'#10,
+    '  mZahl := Integer(mFarbe);'#10'  mFarbe := TFarbe(mZahl);'#10'  mEigene := TEigene(mZahl);'#10));
+  TRuleAssert.Reports(TRedundantCastRule.Create, Source('type'#10'  TFarbe = Integer;'#10, '  mFarbe: TFarbe;'#10,
+    '  mFarbe := TFarbe(mFarbe);'#10));
+end;
+
+procedure TRedundantCastTests.ConstantsAndRoutinesAreSilent;
+begin
+  TRuleAssert.Silent(TRedundantCastRule.Create, Source('const'#10'  cGrenze = 5;'#10'  cTypisiert: Integer = 5;'#10 +
+    'function Liste: TObject;'#10'begin'#10'  Result := nil;'#10'end;'#10, '  mZahl: Integer;'#10,
+    '  mZahl := Integer(cGrenze) + Integer(cTypisiert);'#10'  TObject(Liste).Free;'#10));
+  TRuleAssert.Reports(TRedundantCastRule.Create, Source(cControls + 'function Knopf: TButton;'#10'begin'#10 +
+    '  Result := nil;'#10'end;'#10, '', '  TButton(Knopf()).Caption := '''';'#10));
+end;
+
+procedure TRedundantCastTests.OverloadedCallIsSilent;
+const
+  cZeigen = 'procedure Zeigen(AWert: Integer); overload;'#10'begin'#10'end;'#10 +
+    'procedure Zeigen(AWert: Int64); overload;'#10'begin'#10'end;'#10 +
+    'procedure Einmal(AWert: Integer);'#10'begin'#10'end;'#10;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := RedundantFindings(Source(cZeigen, '  mZahl: Integer;'#10,
+    '  Zeigen(Integer(mZahl));'#10'  Einmal(Integer(mZahl));'#10 +
+    '  Assert.AreEqual(2, Integer(mZahl));'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(17, mFound[0].Range.StartPos.Line);
+end;
+
+procedure TRedundantCastTests.OwnFreeIsSilent;
+begin
+  TRuleAssert.Silent(TRedundantCastRule.Create, Source('type'#10'  TBasis = class'#10'  end;'#10 +
+    '  TEigen = class(TBasis)'#10'  public'#10'    procedure Free;'#10'  end;'#10 +
+    'procedure TEigen.Free;'#10'begin'#10'end;'#10, '  mEigen: TEigen;'#10, '  TBasis(mEigen).Free;'#10));
+  // Unbekannter Vorfahr: Free könnte neu deklariert sein.
+  TRuleAssert.Silent(TRedundantCastRule.Create, Source('type'#10'  TFremd = class(TUnbekannt)'#10'  end;'#10,
+    '  mFremd: TFremd;'#10, '  TObject(mFremd).Free;'#10));
+end;
+
+procedure TRedundantCastTests.CheckFreeOption;
+var
+  mSource: string;
+begin
+  mSource := ImportSource('', '  TObject(FStrom).Free;'#10'  TStringList(FZeilen).Clear;'#10);
+  Assert.AreEqual(2, Integer(Length(RedundantFindings(mSource, '', 'Import.pas'))));
+  Assert.AreEqual(1, Integer(Length(RedundantFindings(mSource,
+    '{"rules": {"redundant-cast": {"checkFree": false}}}', 'Import.pas'))));
+end;
+
+procedure TRedundantCastTests.TypesFromIndex;
+var
+  mIndex: ISymbolIndex;
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit System;'#10'interface'#10'type'#10'  TObject = class'#10 +
+    '  public'#10'    procedure Free;'#10'  end;'#10'implementation'#10'end.', 'C:\BDS\source\System.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Steuerung;'#10'interface'#10 + cControls +
+    '  TLabel = class(TControl)'#10'  end;'#10'implementation'#10'end.', 'C:\Projekt\Steuerung.pas', nil));
+  mSource := 'unit Formular;'#10'interface'#10'uses Steuerung;'#10'implementation'#10 +
+    'procedure Pruefen(AEdit: TEdit; ALabel: Steuerung.TLabel; AControl: TControl);'#10'begin'#10 +
+    '  Steuerung.TEdit(AEdit).Caption := ''A'';'#10'  TLabel(ALabel).Caption := ''B'';'#10 +
+    '  TObject(AControl).Free;'#10'  TEdit(AControl).Caption := ''C'';'#10'end;'#10'end.';
+  mFound := TRuleAssert.IndexFindings(TRedundantCastRule.Create, mSource, mIndex, '', 'Formular.pas');
+  Assert.AreEqual(3, Integer(Length(mFound)));
+  Assert.AreEqual(6, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual('AEdit', mFound[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(7, mFound[1].Range.StartPos.Line);
+  Assert.AreEqual(8, mFound[2].Range.StartPos.Line);
+end;
+
+procedure TRedundantCastTests.OffAndExclude;
+var
+  mSource: string;
+begin
+  mSource := ImportSource('', '  TStringList(FZeilen).Clear;'#10);
+  Assert.AreEqual(1, Integer(Length(RedundantFindings(mSource, '', 'Source/Import.pas'))));
+  Assert.AreEqual(0, Integer(Length(RedundantFindings(mSource, '{"rules": {"redundant-cast": "off"}}',
+    'Source/Import.pas'))));
+  Assert.AreEqual(0, Integer(Length(RedundantFindings(mSource,
+    '{"rules": {"redundant-cast": {"exclude": ["Source/*.pas"]}}}', 'Source/Import.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TUnrelatedClassCastTests);
+  TDUnitX.RegisterTestFixture(TRedundantCastTests);
 
 end.

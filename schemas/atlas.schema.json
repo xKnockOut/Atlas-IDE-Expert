@@ -624,6 +624,11 @@
                 "default": [],
                 "description": "Nur unrelated-class-cast: Typen, die absichtlich hart umgewandelt werden, als Typname (Quelle oder Ziel) oder Paar \"Quelle=Ziel\", z. B. [\"TEdit=TButton\"] (#1129)."
               },
+              "checkFree": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur redundant-cast: auch eine Klassenumwandlung melden, die nur vor Free steht, z. B. TObject(FStrom).Free (#1139)."
+              },
               "allowTables": {
                 "type": "array",
                 "items": {

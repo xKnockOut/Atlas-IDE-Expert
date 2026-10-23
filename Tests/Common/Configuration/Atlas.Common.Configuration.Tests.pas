@@ -1010,6 +1010,12 @@ begin
   Parse('{"rules": {"unrelated-class-cast": {"allowTypes": "TEdit"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.Contains(Issues[0].Message, '"allowTypes"');
+  // checkFree von redundant-cast (#1139).
+  Parse('{"rules": {"redundant-cast": {"checkFree": false}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"redundant-cast": {"checkFree": "nein"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"checkFree"');
 end;
 
 procedure TConfigurationParserTests.ChecksForbiddenSymbolsOption;
