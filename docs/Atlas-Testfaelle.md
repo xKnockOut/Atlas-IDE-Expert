@@ -6174,3 +6174,24 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index; Metrik-Linse (`co
 | JM6 | Vorfahr aus einer Unit, die nicht im Index steht | Linse „Vererbungstiefe mindestens n“; Meldung nur, wenn schon die bekannten Vorfahren über der Grenze liegen |
 | JM7 | Metrik-Linse über einer Methode | „… · 2 Parameter · Operanden 6 (> 5) · 3 lokale · 1 Ausstiege“; Werte über der Grenze farbig. Auf Englisch: „operands 6 (> 5) · 3 locals · 1 exits“ |
 | JM8 | `"metric-boolean-operands": {"max": 6}`, `"metric-local-count": "off"`, `"metric-exit-points": {"exclude": ["Alt/*.pas"]}`, `"group:style": "off"` | Beispiel aus JM1 meldet nichts mehr; keine lokale-Variablen-Meldung; keine Ausstiege-Meldung in `Alt/`; mit der Gruppe aus keine der vier Regeln |
+
+## Werte im Editor beim Debuggen (#508)
+
+Vorbereitung: Atlas-Server läuft (Projekt geöffnet, Indexierung fertig). Testunit mit einer Methode wie im Test `Atlas.Common.Lsp.InlineValues.Tests` (Felder `FCount`, `FName`, Parameter `Anzahl`, lokale `Summe`, `for var I`, `with Andere do`, Aufruf `GetSize`, Eigenschaft `Size`, eine `TDateTime`-Variable). *Tools › Optionen › Atlas › Debuggen* „Werte im Editor beim Debuggen“ an. Win32 und Win64.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IV1 | Haltepunkt in der Schleife, F9 | Am Ende der Schleifenzeile gedimmt `Summe = …, I = 0`; darüber `Summe = …, Anzahl = …` usw. bis zum Routinenanfang (**Abnahme**) |
+| IV2 | Wie IV1, dann F8 | `I = 1` (und `Summe`) in der Warnfarbe, gleich gebliebene Werte gedimmt (**Abnahme**) |
+| IV3 | Zeile mit `GetSize` und `Size` | Kein Wert für `GetSize` oder `Size`; Haltepunkt in `GetSize` wird dabei nie getroffen (**Abnahme**: kein Aufruf) |
+| IV4 | Zeile `Andere.FCount := 1;` und `with Andere do FCount := …` | Wert für `Andere`, keiner für `FCount` in diesen Zeilen |
+| IV5 | Variable `TDateTime` mit Datum und Uhrzeit | `Datum = 2026-10-23 14:05:00` statt einer Gleitkommazahl; reines Datum ohne Uhrzeit |
+| IV6 | String mit 100 Zeichen | Wert gekürzt mit „ …“ |
+| IV7 | Zeile mit mehr als 5 Bezeichnern | Höchstens 5 Werte; nach `debug.inlineValuesPerLine` = 2 und neuem Halt höchstens 2 |
+| IV8 | F9 (Programm läuft weiter) | Werte verschwinden sofort (**Abnahme**) |
+| IV9 | Schleife mit 20 Variablen, F8 zehnmal schnell hintereinander | Schritte fühlen sich nicht langsamer an als mit ausgeschalteter Einstellung (höchstens 100 ms pro Schritt, **Abnahme**) |
+| IV10 | Halt in RTL-Code ohne Quelltext (F7 in `IntToStr` ohne Debug-DCUs) | Keine Werte, keine Meldung |
+| IV11 | Zeile im Editor während des Halts ändern | Werte der geänderten Zeile verschwinden, andere bleiben |
+| IV12 | Win64 (LLDB): IV1, IV2 und F8 direkt nach dem Halt | Werte kommen (verzögert); kein F8 geht verloren, die Debug-Sitzung meldet jeden Halt |
+| IV13 | Schnellschalter „Werte im Editor beim Debuggen“ aus, dann F8 | Keine Werte, keine Anfrage an den Server (Diagnoseprotokoll), Verhalten wie ohne Atlas (**Abnahme**) |
+| IV14 | Server beendet, Halt | Keine Werte, keine Fehlermeldung |

@@ -720,7 +720,9 @@ type
     DebugBannerContinue, DebugBannerIgnoreClass, DebugBannerIgnoreLocation, DebugBannerCopy, DebugBannerThread,
     DebugBannerCount, DebugBannerHidden, DebugBannerKeys, DebugBannerOpenHint, DebugBannerIdeDialogCommand,
     DebugBannerIdeDialogOn, DebugBannerIdeDialogOff, DebugBannerIgnoredLocationSaid, DebugBannerUnknownVersion,
-    DebugBannerUnknownVersionSummary);
+    DebugBannerUnknownVersionSummary,
+    // Werte im Editor beim Debuggen (#508).
+    SettingsDebugInlineValues, SettingsDebugInlineValuesPerLine);
 
   TAtlasStrings = class
   private class var
@@ -2332,7 +2334,9 @@ const
      'Atlas: Die Exception-Leiste ersetzt wieder den Dialog der IDE.',
      'Atlas: %s an %s wird in diesem Projekt künftig still fortgesetzt (im Verlauf gezählt).',
      'Exception-Leiste: IDE-Version nicht geprüft, der Dialog der IDE bleibt (Leiste danach)',
-     'Exception-Dialog bleibt'),
+     'Exception-Dialog bleibt',
+     'Werte im Editor beim Debuggen (am Zeilenende, solange der Prozess angehalten ist)',
+     'Höchstens Werte je Zeile:'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3846,7 +3850,9 @@ const
      'Atlas: Until the debug session ends, the IDE shows its exception dialog; the bar follows it.',
      'Atlas: The exception bar replaces the IDE dialog again.',
      'Atlas: %s at %s is continued silently in this project from now on (counted in the history).',
-     'Exception bar: IDE version not verified, the IDE dialog stays (bar afterwards)', 'Exception dialog stays'));
+     'Exception bar: IDE version not verified, the IDE dialog stays (bar afterwards)', 'Exception dialog stays',
+     'Inline values while debugging (at the end of the line while the process is stopped)',
+     'At most values per line:'));
 
 { TAtlasStrings }
 

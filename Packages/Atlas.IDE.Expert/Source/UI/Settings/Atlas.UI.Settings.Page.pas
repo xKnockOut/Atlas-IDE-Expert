@@ -291,6 +291,8 @@ type
     FDebugJustMyCode: TCheckBox;
     FDebugExceptionBanner: TCheckBox;
     FDebugExceptionBannerIgnoreAtLocation: TCheckBox;
+    FDebugInlineValues: TCheckBox;
+    FDebugInlineValuesPerLine: TEdit;
     FDebugOwnCodeFolders: TEdit;
     FActionsKey: TEdit;
     FExpandKey: TEdit;
@@ -1072,6 +1074,8 @@ type
     property DebugJustMyCodeCheck: TCheckBox read FDebugJustMyCode;
     property DebugExceptionBannerCheck: TCheckBox read FDebugExceptionBanner;
     property DebugExceptionBannerIgnoreAtLocationCheck: TCheckBox read FDebugExceptionBannerIgnoreAtLocation;
+    property DebugInlineValuesCheck: TCheckBox read FDebugInlineValues;
+    property DebugInlineValuesPerLineEdit: TEdit read FDebugInlineValuesPerLine;
     property DebugOwnCodeFoldersEdit: TEdit read FDebugOwnCodeFolders;
     /// <summary>Zum Testen: benannte Lesezeichen (#622).</summary>
     property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
@@ -1816,6 +1820,9 @@ begin
   FDebugExceptionBanner := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExceptionBanner));
   FDebugExceptionBannerIgnoreAtLocation :=
     AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExceptionBannerIgnoreAtLocation));
+  // Werte im Editor beim Debuggen (#508).
+  FDebugInlineValues := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugInlineValues));
+  FDebugInlineValuesPerLine := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsDebugInlineValuesPerLine));
 
   // Editorbefehle (#399): ein Vorrang für alle.
   AddSheet(TAtlasTextId.SettingsTabCommands);
@@ -2946,6 +2953,8 @@ begin
   FMarks.Bind(FDebugJustMyCode, ['DebugJustMyCode']);
   FMarks.Bind(FDebugExceptionBanner, ['DebugExceptionBanner']);
   FMarks.Bind(FDebugExceptionBannerIgnoreAtLocation, ['DebugExceptionBannerIgnoreAtLocation']);
+  FMarks.Bind(FDebugInlineValues, ['DebugInlineValues']);
+  FMarks.Bind(FDebugInlineValuesPerLine, ['DebugInlineValuesPerLine']);
   FMarks.Bind(FDebugOwnCodeFolders, ['DebugOwnCodeFolders']);
   FMarks.Bind(FSafeAsk, ['SafeAskAfterCrash']);
   FMarks.Bind(FSafeAuto, ['SafeAutoAfterRepeatedCrash']);
@@ -5089,6 +5098,8 @@ begin
   FDebugJustMyCode.Checked := ASettings.DebugJustMyCode;
   FDebugExceptionBanner.Checked := ASettings.DebugExceptionBanner;
   FDebugExceptionBannerIgnoreAtLocation.Checked := ASettings.DebugExceptionBannerIgnoreAtLocation;
+  FDebugInlineValues.Checked := ASettings.DebugInlineValues;
+  FDebugInlineValuesPerLine.Text := IntToStr(ASettings.DebugInlineValuesPerLine);
   FDebugOwnCodeFolders.Text := ASettings.DebugOwnCodeFolders;
   FSafeAsk.Checked := ASettings.SafeAskAfterCrash;
   FSafeAuto.Checked := ASettings.SafeAutoAfterRepeatedCrash;
@@ -5544,6 +5555,8 @@ begin
   ASettings.DebugJustMyCode := FDebugJustMyCode.Checked;
   ASettings.DebugExceptionBanner := FDebugExceptionBanner.Checked;
   ASettings.DebugExceptionBannerIgnoreAtLocation := FDebugExceptionBannerIgnoreAtLocation.Checked;
+  ASettings.DebugInlineValues := FDebugInlineValues.Checked;
+  ASettings.DebugInlineValuesPerLine := StrToIntDef(FDebugInlineValuesPerLine.Text, ASettings.DebugInlineValuesPerLine);
   ASettings.DebugOwnCodeFolders := TAtlasDebugOwnCode.FoldersText(TAtlasDebugOwnCode.ParseFolders(
     FDebugOwnCodeFolders.Text));
   ASettings.SafeAskAfterCrash := FSafeAsk.Checked;
