@@ -135,6 +135,10 @@ type
     procedure Place(ABar: TAtlasEditorStatusBar; AHost: TWinControl);
     procedure RemoveBars;
     procedure ShowBars(AShown: Boolean);
+    /// <summary>Gibt gesperrte Leisten frei, sobald wieder ein Editor aktiv ist. Beim Schließen aller Editoren
+    /// (Projektwechsel) sperrt die IDE jedes Steuerelement im Editor-Panel (Aufrufer laut Protokoll coreide370) und
+    /// gibt danach nur ihre eigenen wieder frei; ohne Abgleich blieben die Leisten bis zum Neustart taub.</summary>
+    procedure EnableBars;
     procedure Want(AOn: Boolean);
     procedure StatusInto(var AView: TAtlasStatusBarView);
     function ViewFor(const AView: IOTAEditView; const AItems: TArray<string>): TAtlasStatusBarView;
@@ -505,6 +509,18 @@ begin
   end;
 end;
 
+procedure TStatusBarState.EnableBars;
+var
+  Bar: TAtlasEditorStatusBar;
+begin
+  for Bar in FBars do
+    if not Bar.Enabled then
+    begin
+      Bar.Enabled := True;
+      TAtlasGuard.Log(LogPrefix + 'wieder freigegeben, ein Editor ist aktiv');
+    end;
+end;
+
 procedure TStatusBarState.ShowBars(AShown: Boolean);
 var
   Bar: TAtlasEditorStatusBar;
@@ -676,6 +692,8 @@ begin
       Items := TAtlasStatusBarItems.Parse(TAtlasIdeSettings.Current.EditorStatusBarItems);
       Want(TAtlasStatusBarItems.Contains(Items, TAtlasStatusBarItems.Method));
       EnsureBars;
+      if TAtlasEditorBuffer.ActiveView <> nil then
+        EnableBars;
       Top := TopBar;
       for Bar in FBars do
       begin
