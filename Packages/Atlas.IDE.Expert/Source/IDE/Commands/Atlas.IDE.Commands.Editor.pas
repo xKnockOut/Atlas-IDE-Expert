@@ -200,6 +200,7 @@ uses
   Atlas.IDE.Editor.ExtractSuperclass,
   Atlas.IDE.Editor.MoveMember,
   Atlas.IDE.Editor.PropertyFromAccessors,
+  Atlas.IDE.Editor.InlineAccessor,
   Atlas.IDE.Editor.InvertBoolean,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.IDE.Editor.PatternContinuation,
@@ -1381,6 +1382,17 @@ begin
   begin
     // Client-Befehl: Vorschau „Property aus Getter und Setter“ (#682); er fragt den Server selbst.
     TAtlasIdePropertyFromAccessors.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeInlineAccessor.ClientCommand then
+  begin
+    // Client-Befehl: Vorschau „Zugriffsmethode durch Feld ersetzen“ (#717); er fragt den Server selbst.
+    TAtlasIdeInlineAccessor.Execute(Session, AArgumentsJson,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
       procedure(AText: string)
       begin

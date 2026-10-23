@@ -41,6 +41,7 @@ uses
   Atlas.Common.Rules.Builtin.Deprecated,
   Atlas.Common.Rules.Builtin.ForwardDeclarations,
   Atlas.Common.Rules.Builtin.FreeFields,
+  Atlas.Common.Rules.Builtin.TrivialAccessor,
   Atlas.Common.Rules.Builtin.Packages,
   Atlas.Common.Rules.Builtin.OpenTools,
   Atlas.Common.Rules.Builtin.Testing,
@@ -111,6 +112,7 @@ begin
     RegisterDeprecatedRules(Registry);
     RegisterForwardDeclarationRules(Registry);
     RegisterFreeFieldRules(Registry);
+    RegisterTrivialAccessorRules(Registry);
     RegisterPackageRules(Registry);
     RegisterOpenToolsRules(Registry);
     RegisterTestingRules(Registry);

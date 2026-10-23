@@ -225,6 +225,12 @@ type
     NoFreeFields: Boolean;
     /// <summary>Freigabe als FreeAndNil(FFeld) statt FFeld.Free (refactoring.freeFieldsStyle, #666).</summary>
     FreeFieldsFreeAndNil: Boolean;
+    /// <summary>Triviale Zugriffsmethoden melden (refactoring.inlineAccessor und inlineAccessorDiagnostic, #717);
+    /// setzt TRuleEngine.Run.</summary>
+    InlineAccessorDiagnostic: Boolean;
+    /// <summary>Setter mit Gleichheitsprüfung nicht als trivial zählen (refactoring.inlineAccessorEqualityCheck
+    /// aus, #717).</summary>
+    NoAccessorEqualityCheck: Boolean;
     /// <summary>Zugriffsmethoden im protected-Abschnitt anlegen (completion.accessorSection, #467, für #1001).
     /// </summary>
     AccessorsProtected: Boolean;

@@ -3040,6 +3040,25 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit Unit `Shape
 | MM13 | Klasse ohne Abschnitte (`TFoo = class(TShape) FX: Integer; end;`), Feld nach oben | `FX` steht in `TShape` vor den Methoden im passenden Abschnitt, Code übersetzt |
 | MM14 | `"refactoring": {"moveMember": false}` in atlas.json | Keine Aktion mehr (**Abnahme**) |
 
+## Triviale Zugriffsmethode durch Feld ersetzen (#717)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit Unit `Kunde.pas`: `TKunde = class private FName: string; FAlter: Integer; FFarbe: TColor; function GetName: string; procedure SetName(const Value: string); function GetAlter: Integer; procedure SetAlter(const Value: Integer); procedure SetFarbe(const Value: TColor); public property Name: string read GetName write SetName; property Alter: Integer read GetAlter write SetAlter; property Farbe: TColor read FFarbe write SetFarbe; end;`. `GetName` = `Result := FName;`, `SetName` = `if FName <> Value then FName := Value;`, `GetAlter` = `Exit(FAlter);`, `SetAlter` = `FAlter := Value;`, `SetFarbe` setzt `FFarbe` und ruft `Invalidate`. Zweite Unit `Auswertung.pas` ruft `Kunde.GetAlter` auf.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TZ1 | Strg+. auf `property Name` | „Zugriffsmethoden GetName und SetName durch Feld ersetzen“, „Alle trivialen Zugriffsmethoden der Unit ersetzen (4)“, „Alle trivialen Zugriffsmethoden des Projekts ersetzen …“ |
+| TZ2 | Strg+. auf `procedure SetName` in der Klasse und im Rumpf | „Zugriffsmethode SetName durch Feld FName ersetzen“ samt Sammelaktionen |
+| TZ3 | Strg+. auf `property Farbe` und auf `SetFarbe` | Keine Aktion zum Ersetzen (Setter mit Benachrichtigung) |
+| TZ4 | TZ1, erste Aktion | Vorschau „2 Zugriffsmethoden: … Änderungen in 1 Dateien“; Übernehmen: `property Name: string read FName write FName;`, `GetName` und `SetName` samt Rümpfen weg, Code übersetzt; Rückgängig je Datei ein Schritt |
+| TZ5 | Strg+. auf `property Alter`, Aktion | Vorschau mit Hinweis „TKunde.GetAlter bleibt: Es wird noch aufgerufen (Auswertung.pas:N).“; nur `SetAlter` wird ersetzt (`read GetAlter write FAlter`) |
+| TZ6 | Strg+. auf `function GetAlter`, Aktion | Meldung „Zugriffsmethode durch Feld ersetzen fehlgeschlagen: TKunde.GetAlter bleibt: …“; nichts geändert |
+| TZ7 | Rückgängig, Strg+. auf `TKunde = class`, „… der Unit ersetzen (4)“ | Vorschau über alle vier, GetAlter mit Hinweis; danach nur noch GetAlter und SetFarbe in der Klasse |
+| TZ8 | Zweite Unit mit eigener Klasse und trivialem Getter, „… des Projekts ersetzen …“ | Vorschau über beide Units; beide übernommen |
+| TZ9 | `TKunde = class(TInterfacedObject, IKunde)`, `IKunde` deklariert `function GetName: string;` | Für `GetName` keine Aktion, für `SetName` weiter |
+| TZ10 | `GetName` als `virtual;` deklariert | Für `GetName` keine Aktion |
+| TZ11 | `"refactoring": {"inlineAccessorDiagnostic": true}` | Hinweis an `GetName`, `SetName`, `GetAlter`, `SetAlter` (Regel `trivial-accessor`), nicht an `SetFarbe`; Glühbirne an der Meldung bietet das Ersetzen; mit zusätzlich `"inlineAccessorEqualityCheck": false` kein Hinweis und keine Aktion an `SetName` |
+| TZ12 | `"refactoring": {"inlineAccessor": false}` bzw. `{"inlineAccessorBulk": false}` | Keine Aktion mehr bzw. nur noch die einzelne Aktion ohne Sammelaktionen (**Abnahme**) |
+
 ## Atlas-Spalte in der Zeilenleiste (#768)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TBasis = class procedure Zeichne; virtual; end;`, `TKnopf = class(TBasis) procedure Zeichne; override; end;` und einer zweiten Nachfahrklasse, die `Zeichne` ebenfalls überschreibt; ein Compilerfehler in einer Zeile.

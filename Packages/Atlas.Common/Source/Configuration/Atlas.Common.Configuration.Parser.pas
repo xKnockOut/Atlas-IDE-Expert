@@ -1413,6 +1413,14 @@ begin
     end
     else if Key = 'moveMember' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.MoveMember)
+    else if Key = 'inlineAccessor' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InlineAccessor)
+    else if Key = 'inlineAccessorEqualityCheck' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InlineAccessorEqualityCheck)
+    else if Key = 'inlineAccessorBulk' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InlineAccessorBulk)
+    else if Key = 'inlineAccessorDiagnostic' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InlineAccessorDiagnostic)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);

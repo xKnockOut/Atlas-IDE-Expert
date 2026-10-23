@@ -341,6 +341,9 @@ type
     function PropertyFromAccessorsActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Property aus Getter und Setter“ (#682): das WorkspaceEdit für Stelle und Aufrufe.</summary>
     function PropertyFromAccessors(const AArguments: TJSONArray): TJSONValue;
+    function InlineAccessorActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Befehl atlas.server.inlineAccessor: [uri, position, here|unit|project] (#717).</summary>
+    function InlineAccessor(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Projekt der Datei AFileName für Umbauten mit neuen Units; False ohne Projekt.</summary>
     function RefactoringProject(const AFileName: string; out AProject: TProjectInfo): Boolean;
     /// <summary>Gibt es die Datei auf der Platte oder als offenes Dokument?</summary>
@@ -519,6 +522,8 @@ uses
   Atlas.Common.Lsp.MoveMember,
   Atlas.Common.Editing.PropertyFromAccessors,
   Atlas.Common.Lsp.PropertyFromAccessors,
+  Atlas.Common.Editing.InlineAccessor,
+  Atlas.Common.Lsp.InlineAccessor,
   Atlas.Common.Lsp.InvertBoolean,
   Atlas.Common.Lsp.Unwrap,
   Atlas.Common.Lsp.UnitRename,
@@ -1394,6 +1399,7 @@ begin
       Result := Result + ChangeSignatureActions(AUri, ARange.StartPos);
       Result := Result + MoveClassActions(AUri, ARange.StartPos);
       Result := Result + PropertyFromAccessorsActions(AUri, ARange.StartPos);
+      Result := Result + InlineAccessorActions(AUri, ARange.StartPos);
       Result := Result + ExtractInterfaceActions(AUri, ARange.StartPos);
       Result := Result + ExtractSuperclassActions(AUri, ARange.StartPos);
       Result := Result + MoveMemberActions(AUri, ARange.StartPos);
@@ -1501,6 +1507,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := PropertyFromAccessors(AArguments);
+    end);
+  FCommands.Register(TLspInlineAccessor.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := InlineAccessor(AArguments);
     end);
   FCommands.Register(TLspInvertBoolean.ApplyCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -3228,6 +3239,75 @@ begin
   // Nur Zahlen ins Log, keine Namen und Pfade (#647).
   FLogger.Info(Format('Property aus Getter und Setter: %d Properties, %d Aufrufe',
     [(Answer.GetValue('properties') as TJSONNumber).AsInt, (Answer.GetValue('calls') as TJSONNumber).AsInt]));
+  Result := Answer;
+end;
+
+function InlineAccessorOptionsOf(const ASettings: TRefactoringSettings): TInlineAccessorOptions;
+begin
+  Result := TInlineAccessorOptions.Default;
+  Result.EqualityCheck := ASettings.InlineAccessorEqualityCheck;
+end;
+
+function TServerComposition.InlineAccessorActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Settings: TRefactoringSettings;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+begin
+  Result := nil;
+  Settings := RefactoringSettingsFor(AUri);
+  if not Settings.InlineAccessor or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspInlineAccessor.Actions(True, Settings.InlineAccessorBulk, Shared.Tree, Document.Text, AUri,
+    APosition, InlineAccessorOptionsOf(Settings), FIndex);
+end;
+
+function TServerComposition.InlineAccessor(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri, Scope: string;
+  Position: TTextPosition;
+  Settings: TRefactoringSettings;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Context: TInlineAccessorContext;
+  Answer: TJSONObject;
+begin
+  // Argumente: URI, Position, Bereich (here, unit, project).
+  if (AArguments = nil) or (AArguments.Count < 3) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri", "position" und "scope" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  Scope := AArguments.Items[2].Value;
+  Settings := RefactoringSettingsFor(Uri);
+  if not Settings.InlineAccessor then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Zugriffsmethode durch Feld ersetzen" ist abgeschaltet (refactoring.inlineAccessor).');
+  if (Scope <> TLspInlineAccessor.ScopeHere) and not Settings.InlineAccessorBulk then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      'Die Sammelaktion ist abgeschaltet (refactoring.inlineAccessorBulk).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context := Default(TInlineAccessorContext);
+  Context.Index := FIndex;
+  Context.Options := InlineAccessorOptionsOf(Settings);
+  Context.Files := ProjectSourceFiles;
+  Context.ReadText := ReadSourceText;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspInlineAccessor.Execute(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text,
+      Position, Scope, Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Zugriffsmethode durch Feld ersetzen: %d Methoden, %d Dateien',
+    [(Answer.GetValue('accessors') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt]));
   Result := Answer;
 end;
 
