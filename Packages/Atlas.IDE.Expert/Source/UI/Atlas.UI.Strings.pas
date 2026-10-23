@@ -746,7 +746,17 @@ type
     DebugUnavailableConfirmDcus, DebugUnavailableDcusDone, DebugUnavailableEditDone,
     DebugUnavailableNoDebugConfiguration, DebugUnavailableNoResetAction,
     // Vervollständigung in Debugger-Dialogen (#538)
-    SettingsDebugCompletionInDialogs, DebugExpressionHistory);
+    SettingsDebugCompletionInDialogs, DebugExpressionHistory,
+    // Fenster „Auswerten“ (#784)
+    SettingsDebugEvaluateWindow, SettingsDebugEvaluateReplaceCtrlF7, DebugEvaluateCommand,
+    DebugEvaluateIdeDialogCommand, DebugEvaluateCaption, DebugEvaluateSideEffects, DebugEvaluateInputHint,
+    DebugEvaluateViewText, DebugEvaluateViewLines, DebugEvaluateViewJson, DebugEvaluateViewHex,
+    DebugEvaluateModify, DebugEvaluatePin, DebugEvaluateUnpin, DebugEvaluateIdeDialog, DebugEvaluateKeys,
+    DebugEvaluatePending, DebugEvaluateNotStopped, DebugEvaluateNoSelection, DebugEvaluateViewUnfit,
+    DebugEvaluateLinesFailed, DebugEvaluateModifyTitle, DebugEvaluateModifyPrompt, DebugEvaluateModifyFailed,
+    DebugEvaluateHistoryEmpty, DebugEvaluateNoFields,
+    // Fenster „Auswerten“ (#784), Fortsetzung
+    DebugEvaluateTimeout);
 
   TAtlasStrings = class
   private class var
@@ -2393,7 +2403,18 @@ const
      'Atlas: %s in %s eingefügt; Strg+Z nimmt es zurück.',
      'Atlas: Das Projekt hat keine Konfiguration mit Debug-Informationen.',
      'Atlas: „Programm zurücksetzen“ der IDE nicht gefunden.',
-     'Vervollständigung in Debugger-Dialogen (Auswerten, Überwachung, Haltepunkt)', 'Verlauf'),
+     'Vervollständigung in Debugger-Dialogen (Auswerten, Überwachung, Haltepunkt)', 'Verlauf',
+     'Fenster „Auswerten“ (mehrere Ausdrücke, Baum, Ansichten, Ändern)',
+     'Strg+F7 öffnet das Atlas-Fenster statt „Auswerten/Ändern“', 'Atlas: Auswerten …',
+     'Atlas: Auswerten/Ändern (IDE-Dialog)', 'Atlas: Auswerten', 'Nebenwirkungen erlauben',
+     'Ausdruck eingeben, Enter fügt ihn hinzu', 'Text', 'Zeilen', 'JSON', 'Hex', 'Ändern …', 'Festheften',
+     'Lösen', 'IDE-Dialog',
+     'Enter: hinzufügen · Strg+Enter: festheften · Entf: entfernen · ↓ im leeren Feld: Verlauf · F2: ändern',
+     'wird ausgewertet …', '‹Programm nicht angehalten›', 'Eine Zeile wählen, um ihren Wert zu sehen.',
+     'Diese Ansicht passt nicht zum Wert; gezeigt wird der Text.',
+     'Keine Zeilen: „%s“ ließ sich nicht auswerten (%s).', 'Wert ändern', 'Neuer Wert für %s:',
+     'Ändern von %s fehlgeschlagen: %s', '(kein Verlauf)', '(keine Felder)',
+     '‹keine Antwort des Debuggers›'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3938,7 +3959,16 @@ const
      'Atlas: %s inserted into %s; Ctrl+Z undoes it.',
      'Atlas: the project has no configuration with debug information.',
      'Atlas: the IDE''s "Program Reset" was not found.',
-     'Completion in debugger dialogs (evaluate, watch, breakpoint)', 'History'));
+     'Completion in debugger dialogs (evaluate, watch, breakpoint)', 'History',
+     'Evaluate window (several expressions, tree, views, modify)',
+     'Ctrl+F7 opens the Atlas window instead of Evaluate/Modify', 'Atlas: Evaluate …',
+     'Atlas: Evaluate/Modify (IDE dialog)', 'Atlas: Evaluate', 'Allow side effects',
+     'Type an expression, Enter adds it', 'Text', 'Lines', 'JSON', 'Hex', 'Modify …', 'Pin', 'Unpin',
+     'IDE dialog', 'Enter: add · Ctrl+Enter: pin · Del: remove · ↓ in the empty field: history · F2: modify',
+     'evaluating …', '‹program not stopped›', 'Select a row to see its value.',
+     'This view does not fit the value; showing the text.', 'No lines: “%s” could not be evaluated (%s).',
+     'Modify value', 'New value for %s:', 'Modifying %s failed: %s', '(no history)', '(no fields)',
+     '‹no answer from the debugger›'));
 
 { TAtlasStrings }
 

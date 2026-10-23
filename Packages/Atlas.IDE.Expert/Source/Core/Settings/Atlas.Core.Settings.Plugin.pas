@@ -450,6 +450,15 @@ type
     /// Gültigkeitsbereich des Ausführungspunkts bzw. der Haltepunktzeile an; Pfeil nach unten im leeren Feld zeigt
     /// die letzten 20 Ausdrücke des Projekts. Aus = kein Zeitgeber, keine Anfrage, kein Verlauf.</summary>
     DebugCompletionInDialogs: Boolean;
+    /// <summary>Fenster „Auswerten“ (#784, debug.evaluateWindow): andockbares Fenster mit mehreren Ausdrücken, die
+    /// bei jedem Halt neu ausgewertet werden; Objekte, Records und Arrays klappen auf (Felder aus dem Atlas-Index),
+    /// geänderte Werte sind markiert, Ansichten Text, Zeilen, JSON und Hex, Ändern, Festheften, Verlauf mit 50
+    /// Ausdrücken je Projekt. Aus = kein Fenster, kein Befehl, Strg+F7 bleibt bei der IDE.</summary>
+    DebugEvaluateWindow: Boolean;
+    /// <summary>Strg+F7 öffnet das Fenster „Auswerten“ (#784, debug.evaluateWindow.replaceCtrlF7) mit dem Ausdruck
+    /// unter dem Cursor statt des Dialogs „Auswerten/Ändern“; mit Umschalttaste bzw. Befehl
+    /// Atlas.DebugEvaluateIdeDialog kommt der Dialog der IDE. Aus = Strg+F7 gehört der IDE.</summary>
+    DebugEvaluateReplaceCtrlF7: Boolean;
     /// <summary>Exception-Verlauf beim Debuggen (#517, debug.exceptionHistory): Jeder Halt wegen einer Exception
     /// landet mit Klasse, Meldung, Ort, Thread und Anzahl im Fenster „Atlas: Exceptions“ (Befehl
     /// Atlas.DebugExceptions); Klassen lassen sich dort ignorieren, Atlas setzt dann still fort. Aus = kein Verlauf,
@@ -1420,6 +1429,8 @@ begin
   Result.DebugHoverValues := True;
   Result.DebugExplainUnavailable := True;
   Result.DebugCompletionInDialogs := True;
+  Result.DebugEvaluateWindow := True;
+  Result.DebugEvaluateReplaceCtrlF7 := True;
   Result.DebugExceptionHistory := True;
   Result.DebugJustMyCode := True;
   Result.DebugExceptionBanner := False;
@@ -2036,6 +2047,8 @@ begin
   DebugHoverValues := AStore.ReadInteger('DebugHoverValues', BoolValue(Default.DebugHoverValues)) <> 0;
   DebugExplainUnavailable := AStore.ReadInteger('DebugExplainUnavailable', BoolValue(Default.DebugExplainUnavailable)) <> 0;
   DebugCompletionInDialogs := AStore.ReadInteger('DebugCompletionInDialogs', BoolValue(Default.DebugCompletionInDialogs)) <> 0;
+  DebugEvaluateWindow := AStore.ReadInteger('DebugEvaluateWindow', BoolValue(Default.DebugEvaluateWindow)) <> 0;
+  DebugEvaluateReplaceCtrlF7 := AStore.ReadInteger('DebugEvaluateReplaceCtrlF7', BoolValue(Default.DebugEvaluateReplaceCtrlF7)) <> 0;
   DebugExceptionHistory := AStore.ReadInteger('DebugExceptionHistory', BoolValue(Default.DebugExceptionHistory)) <> 0;
   DebugJustMyCode := AStore.ReadInteger('DebugJustMyCode', BoolValue(Default.DebugJustMyCode)) <> 0;
   DebugExceptionBanner := AStore.ReadInteger('DebugExceptionBanner', BoolValue(Default.DebugExceptionBanner)) <> 0;
@@ -2490,6 +2503,8 @@ begin
   AStore.WriteInteger('DebugHoverValues', BoolValue(DebugHoverValues));
   AStore.WriteInteger('DebugExplainUnavailable', BoolValue(DebugExplainUnavailable));
   AStore.WriteInteger('DebugCompletionInDialogs', BoolValue(DebugCompletionInDialogs));
+  AStore.WriteInteger('DebugEvaluateWindow', BoolValue(DebugEvaluateWindow));
+  AStore.WriteInteger('DebugEvaluateReplaceCtrlF7', BoolValue(DebugEvaluateReplaceCtrlF7));
   AStore.WriteInteger('DebugExceptionHistory', BoolValue(DebugExceptionHistory));
   AStore.WriteInteger('DebugJustMyCode', BoolValue(DebugJustMyCode));
   AStore.WriteInteger('DebugExceptionBanner', BoolValue(DebugExceptionBanner));

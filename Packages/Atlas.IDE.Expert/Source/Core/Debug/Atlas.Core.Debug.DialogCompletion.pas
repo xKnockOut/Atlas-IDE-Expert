@@ -61,15 +61,22 @@ type
     MaxPerProject = 20;
   private
     FProjects: TDictionary<string, TArray<string>>;
+    FMax: Integer;
     class function KeyOf(const AProject: string): string; static;
   public
-    constructor Create;
+    /// <summary>Höchstens MaxPerProject Einträge je Projekt.</summary>
+    constructor Create; overload;
+    /// <summary>Höchstens AMax Einträge je Projekt (Fenster „Auswerten“, #784: 50).</summary>
+    constructor Create(AMax: Integer); overload;
     destructor Destroy; override;
     /// <summary>AExpression (getrimmt) zuerst; ein gleicher Eintrag rückt nach vorn. Leer bleibt weg.
     /// True, wenn sich etwas geändert hat.</summary>
     function Add(const AProject, AExpression: string): Boolean;
     /// <summary>Neuester zuerst.</summary>
     function Items(const AProject: string): TArray<string>;
+    /// <summary>AExpression (getrimmt) entfernen; True, wenn es ihn gab.</summary>
+    function Remove(const AProject, AExpression: string): Boolean;
+    property Limit: Integer read FMax;
     procedure Clear;
     /// <summary>Liest AText; False bei ungültigem JSON oder falscher Form (dann leer).</summary>
     function LoadFromText(const AText: string): Boolean;
@@ -242,7 +249,15 @@ end;
 
 constructor TAtlasExpressionHistory.Create;
 begin
+  Create(MaxPerProject);
+end;
+
+constructor TAtlasExpressionHistory.Create(AMax: Integer);
+begin
   inherited Create;
+  FMax := AMax;
+  if FMax < 1 then
+    FMax := 1;
   FProjects := TDictionary<string, TArray<string>>.Create;
 end;
 
@@ -275,7 +290,7 @@ begin
     Exit;
   New := TArray<string>.Create(Expression);
   for Item in Old do
-    if (Item <> Expression) and (Length(New) < MaxPerProject) then
+    if (Item <> Expression) and (Length(New) < FMax) then
       New := New + [Item];
   FProjects.AddOrSetValue(Key, New);
   Result := True;
@@ -285,6 +300,30 @@ function TAtlasExpressionHistory.Items(const AProject: string): TArray<string>;
 begin
   if not FProjects.TryGetValue(KeyOf(AProject), Result) then
     Result := nil;
+end;
+
+function TAtlasExpressionHistory.Remove(const AProject, AExpression: string): Boolean;
+var
+  Key, Expression, Item: string;
+  Old, New: TArray<string>;
+begin
+  Result := False;
+  Key := KeyOf(AProject);
+  Expression := Trim(AExpression);
+  if not FProjects.TryGetValue(Key, Old) then
+    Exit;
+  New := nil;
+  for Item in Old do
+    if Item = Expression then
+      Result := True
+    else
+      New := New + [Item];
+  if not Result then
+    Exit;
+  if Length(New) = 0 then
+    FProjects.Remove(Key)
+  else
+    FProjects.AddOrSetValue(Key, New);
 end;
 
 procedure TAtlasExpressionHistory.Clear;
@@ -316,7 +355,8 @@ begin
       List := nil;
       for Value in TJSONArray(Pair.JsonValue) do
         // TJSONNumber erbt von TJSONString.
-        if (Value is TJSONString) and not (Value is TJSONNumber) and (Trim(Value.Value) <> '') and (Length(List) < MaxPerProject) then
+        if (Value is TJSONString) and not (Value is TJSONNumber) and (Trim(Value.Value) <> '') and
+          (Length(List) < FMax) then
           List := List + [Trim(Value.Value)];
       if Length(List) > 0 then
         FProjects.AddOrSetValue(KeyOf(Pair.JsonString.Value), List);

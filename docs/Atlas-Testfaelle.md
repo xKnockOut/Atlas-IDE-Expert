@@ -6248,6 +6248,35 @@ Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert. Unit mit `TK
 | VD18 | `debug.completionInDialogs` aus (Schnellschalter) | Kein Popup, Pfeil runter öffnet die Liste der IDE wie ohne Atlas, kein Eintrag im Diagnoselog, keine Anfrage `atlas/expressionCompletion` (**Abnahme**) |
 | VD19 | Dunkles Thema | Popup wie im Editor gut lesbar |
 
+## Fenster „Auswerten“ (#784)
+
+Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert, Diagnoselog an. Unit mit `TKunde = class` (Felder `FName: string`, `FUmsatz: Integer`, Eigenschaft `Name` mit Getter), Record `TPunkt = record X, Y: Integer; end`, eine Methode von `TKunde` mit lokalen Variablen `Liste: TStringList` (drei Zeilen), `Zahl: Integer`, `Json: string` (`'{"a":1}'`), `P: TPunkt`, `Werte: array[0..2] of Integer`; in einer Schleife ändert sich `Zahl`. Haltepunkt in der Schleife. Win32 und Win64 je einmal.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AW1 | Programm am Haltepunkt, Cursor auf `Zahl`, Strg+F7 | Fenster „Atlas: Auswerten“ öffnet (angedockt oder schwebend), Eingabefeld enthält `Zahl` markiert (**Abnahme**) |
+| AW2 | AW1, Enter | Zeile `Zahl = 3` (Wert am Halt); Feld leer für den nächsten Ausdruck |
+| AW3 | `Self`, Enter, Zeile aufklappen | Kinder `FName`, `FUmsatz` (Felder aus dem Index) mit Werten; `Name` (Eigenschaft) fehlt (**Abnahme**) |
+| AW4 | „Nebenwirkungen erlauben“ an | Alle Werte neu ausgewertet, unter `Self` jetzt auch `Name`; wieder aus: `Name` fällt weg |
+| AW5 | F9 bis zum nächsten Halt | `Zahl` neu und in der Warnfarbe; unveränderte Werte normal; `FUmsatz` geändert → markiert (**Abnahme**) |
+| AW6 | `P` und `Werte` hinzufügen, aufklappen | `X`, `Y` bzw. `[0]`, `[1]`, `[2]` mit Werten |
+| AW7 | Server beenden, `Self` entfernen und neu hinzufügen, aufklappen | Kinder aus dem Ergebnis-String (`FName = 'Meier'`, …), kein Hänger |
+| AW8 | `Liste` hinzufügen, wählen, Ansicht „Zeilen“ | Unten die drei Zeilen der Liste untereinander (**Abnahme**) |
+| AW9 | Ausdruck mit Steuerzeichen (`'a'#9'b'#13#10'c'`), Ansicht „Text“ | `a→b␍␊` und Umbruch, `c` |
+| AW10 | `Json` wählen, Ansicht „JSON“; dann `Zahl`, „Hex“; dann `Json`, „Hex“ | Eingerücktes JSON; `$00000003 (3)`; Hinweis „Diese Ansicht passt nicht zum Wert“ und der Text |
+| AW11 | `Zahl` wählen, „Ändern …“ (oder F2), `42`, OK | Zeile zeigt `Zahl = 42`; F8: Programm rechnet mit 42 (**Abnahme**) |
+| AW12 | „Ändern …“ mit `abc` für `Zahl` | Meldung „Ändern von Zahl fehlgeschlagen: …“, Wert unverändert |
+| AW13 | Im Eingabefeld `FUmsatz`, Strg+Enter | Zeile fett (festgeheftet); IDE neu starten, Projekt öffnen, Fenster öffnen: Zeile wieder da; anderes Projekt: nicht da (**Abnahme**) |
+| AW14 | Festgeheftete Zeile wählen, „Lösen“; Feld `FName` unter `Self` wählen, „Festheften“ | Zeile nicht mehr fett; `Self.FName` als eigene festgeheftete Zeile |
+| AW15 | Diagnoselog nach dem Start | „Auswerten: Strg+F7 über die IDE-Aktion ‹Name›“; Namen im Issue notieren (**Studie**) |
+| AW16 | Umschalt+Strg+F7 bzw. Menü Start › Auswerten/Ändern mit Umschalt-Klick; Befehl „Atlas: Auswerten/Ändern (IDE-Dialog)“ | Dialog „Auswerten/Ändern“ der IDE |
+| AW17 | `debug.evaluateWindow.replaceCtrlF7` aus, Strg+F7 | Dialog der IDE; Atlas-Fenster über das Menü weiter erreichbar |
+| AW18 | `debug.evaluateWindow` aus (Schnellschalter) | Fenster weg, Menüeintrag und Befehle unsichtbar, Strg+F7 öffnet den Dialog der IDE (**Abnahme**) |
+| AW19 | Im leeren Eingabefeld Pfeil runter | Menü mit den zuletzt hinzugefügten Ausdrücken, neuester zuerst, höchstens 50; Klick setzt ihn ins Feld |
+| AW20 | Im Eingabefeld `Ku` tippen (`debug.completionInDialogs` an) | Atlas-Popup wie in „Auswerten/Ändern“ (#538), auch angedockt; Pfeil runter im leeren Feld zeigt das Verlaufsmenü des Fensters, nicht das Popup |
+| AW21 | Entf auf einer Zeile bzw. auf einem Feld; Programm beenden | Zeile entfernt (auf dem Feld die ganze Zeile); nach dem Ende „‹Programm nicht angehalten›“ |
+| AW22 | Dunkles und helles Thema | Baum, Ansicht und Knöpfe gut lesbar, geänderte Werte deutlich |
+
 ## Werte im Editor beim Debuggen (#508)
 
 Vorbereitung: Atlas-Server läuft (Projekt geöffnet, Indexierung fertig). Testunit mit einer Methode wie im Test `Atlas.Common.Lsp.InlineValues.Tests` (Felder `FCount`, `FName`, Parameter `Anzahl`, lokale `Summe`, `for var I`, `with Andere do`, Aufruf `GetSize`, Eigenschaft `Size`, eine `TDateTime`-Variable). *Tools › Optionen › Atlas › Debuggen* „Werte im Editor beim Debuggen“ an. Win32 und Win64.

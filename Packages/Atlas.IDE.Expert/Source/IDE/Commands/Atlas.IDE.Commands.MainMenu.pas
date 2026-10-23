@@ -99,6 +99,7 @@ type
     FProblemsItem: TMenuItem;
     /// <summary>„Atlas: Exception-Verlauf“ (#517), sichtbar nach debug.exceptionHistory.</summary>
     FDebugExceptionsItem: TMenuItem;
+    FDebugEvaluateItem: TMenuItem;
     /// <summary>„Atlas: Compiler-Schalter“ (#558), sichtbar nach build.compilerSwitches.</summary>
     FCompilerSwitchesItem: TMenuItem;
     FViewAtlas: TMenuItem;
@@ -113,6 +114,7 @@ type
     procedure OutlineClick(Sender: TObject);
     procedure ProblemsClick(Sender: TObject);
     procedure DebugExceptionsClick(Sender: TObject);
+    procedure DebugEvaluateClick(Sender: TObject);
     procedure CompilerSwitchesClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     function AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
@@ -177,6 +179,7 @@ uses
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Debug.Exceptions,
+  Atlas.IDE.Debug.Evaluate,
   Atlas.IDE.Build.CompilerSwitches,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.UnitSearch.Commands,
@@ -268,6 +271,7 @@ begin
   FProblemsItem := AddItem(TAtlasTextId.ProblemsWindowCaption, 0, ProblemsClick);
   // Exception-Verlauf beim Debuggen (#517).
   FDebugExceptionsItem := AddItem(TAtlasTextId.DebugExceptionsCommand, 0, DebugExceptionsClick);
+  FDebugEvaluateItem := AddItem(TAtlasTextId.DebugEvaluateCommand, 0, DebugEvaluateClick);
   // Wirksame Compiler-Schalter an der Cursorposition (#558).
   FCompilerSwitchesItem := AddItem(TAtlasTextId.CompilerSwitchesCommand, 0, CompilerSwitchesClick);
   FRoot.Add(NewLine);
@@ -675,6 +679,8 @@ begin
   // Exception-Verlauf (#517) nach debug.exceptionHistory.
   if FDebugExceptionsItem <> nil then
     FDebugExceptionsItem.Visible := TAtlasIdeSettings.Current.DebugExceptionHistory;
+  if FDebugEvaluateItem <> nil then
+    FDebugEvaluateItem.Visible := TAtlasIdeSettings.Current.DebugEvaluateWindow;
   // Compiler-Schalter (#558) nach build.compilerSwitches.
   if FCompilerSwitchesItem <> nil then
     FCompilerSwitchesItem.Visible := TAtlasIdeSettings.Current.BuildCompilerSwitches;
@@ -882,6 +888,16 @@ begin
     procedure
     begin
       TAtlasIdeDebugExceptions.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.DebugEvaluateClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.DebugEvaluate');
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      TAtlasIdeDebugEvaluate.ShowWindow;
     end);
 end;
 
