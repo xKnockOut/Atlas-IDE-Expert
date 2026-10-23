@@ -69,9 +69,6 @@ type
     FMaxBytes: Int64;
     FMaxFiles: Integer;
     FLock: TCriticalSection;
-    /// <summary>Prozessübergreifende Sperre für FMutexFolder.</summary>
-    FMutex: TMutex;
-    FMutexFolder: string;
     /// <summary>Seit dem letzten gelungenen Schreiben verlorene Zeilen.</summary>
     FFailed: Integer;
     /// <summary>Verlorene Zeilen seit dem Start.</summary>
@@ -80,7 +77,6 @@ type
     FRotateError: string;
     FOnError: TAtlasLogError;
     procedure Rotate;
-    function Mutex: TMutex;
     function AppendLine(const ALine: string): string;
     function Clean(const AText: string): string;
   public
@@ -244,7 +240,6 @@ end;
 
 destructor TAtlasRotatingLog.Destroy;
 begin
-  FMutex.Free;
   FLock.Free;
   inherited;
 end;
@@ -261,17 +256,6 @@ begin
   for Index := 1 to Length(Key) do
     Hash := Cardinal((UInt64(Hash xor Ord(Key[Index])) * 16777619) and $FFFFFFFF);
   Result := 'Local\Atlas.Log.' + IntToHex(Hash, 8);
-end;
-
-function TAtlasRotatingLog.Mutex: TMutex;
-begin
-  if (FMutex = nil) or not SameText(FMutexFolder, FFolder) then
-  begin
-    FreeAndNil(FMutex);
-    FMutex := TMutex.Create(nil, False, MutexName(FFolder));
-    FMutexFolder := FFolder;
-  end;
-  Result := FMutex;
 end;
 
 class function TAtlasRotatingLog.DefaultFolder: string;
@@ -322,34 +306,40 @@ begin
   Result := '';
   try
     ForceDirectories(FFolder);
-    Lock := Mutex;
-    // Abgebrochen heißt: Ein anderer Prozess endete beim Schreiben; die Sperre gehört dann uns.
-    Owned := Lock.WaitFor(LockTimeoutMs) in [wrSignaled, wrAbandoned];
+    // Je Zeile öffnen statt im Objekt halten: Der Ordner kann wechseln (Tests stellen ihn um), und eine gehaltene
+    // Sperre bliebe samt Pfad stehen.
+    Lock := TMutex.Create(nil, False, MutexName(FFolder));
     try
-      Stamp := FormatDateTime('yyyy-mm-dd hh":"nn":"ss.zzz', Now) + ' ';
-      Lines := '';
-      if TFile.Exists(FileName) and (TFile.GetSize(FileName) >= FMaxBytes) then
-        try
-          Rotate;
-          FRotateError := '';
-        except
-          // Rotieren gescheitert (z. B. eine ältere Datei ist woanders gesperrt): trotzdem anhängen, die Datei wird
-          // dann größer. Früher ging dabei auch die Zeile verloren, bei jedem Versuch wieder.
-          on E: Exception do
-            if E.Message <> FRotateError then
-            begin
-              FRotateError := E.Message;
-              Lines := Stamp + 'Protokoll: Rotieren gescheitert (' + E.ClassName + ': ' + Clean(E.Message) +
-                '); schreibe weiter in atlas.log' + sLineBreak;
-            end;
-        end;
-      if FFailed > 0 then
-        Lines := Lines + Stamp + Format('Protokoll: %d Zeilen nicht geschrieben (zuletzt: %s)',
-          [FFailed, Clean(FLastError)]) + sLineBreak;
-      TFile.AppendAllText(FileName, Lines + ALine, TEncoding.UTF8);
+      // Abgebrochen heißt: Ein anderer Prozess endete beim Schreiben; die Sperre gehört dann uns.
+      Owned := Lock.WaitFor(LockTimeoutMs) in [wrSignaled, wrAbandoned];
+      try
+        Stamp := FormatDateTime('yyyy-mm-dd hh":"nn":"ss.zzz', Now) + ' ';
+        Lines := '';
+        if TFile.Exists(FileName) and (TFile.GetSize(FileName) >= FMaxBytes) then
+          try
+            Rotate;
+            FRotateError := '';
+          except
+            // Rotieren gescheitert (z. B. eine ältere Datei ist woanders gesperrt): trotzdem anhängen, die Datei wird
+            // dann größer. Früher ging dabei auch die Zeile verloren, bei jedem Versuch wieder.
+            on E: Exception do
+              if E.Message <> FRotateError then
+              begin
+                FRotateError := E.Message;
+                Lines := Stamp + 'Protokoll: Rotieren gescheitert (' + E.ClassName + ': ' + Clean(E.Message) +
+                  '); schreibe weiter in atlas.log' + sLineBreak;
+              end;
+          end;
+        if FFailed > 0 then
+          Lines := Lines + Stamp + Format('Protokoll: %d Zeilen nicht geschrieben (zuletzt: %s)',
+            [FFailed, Clean(FLastError)]) + sLineBreak;
+        TFile.AppendAllText(FileName, Lines + ALine, TEncoding.UTF8);
+      finally
+        if Owned then
+          Lock.Release;
+      end;
     finally
-      if Owned then
-        Lock.Release;
+      Lock.Free;
     end;
   except
     on E: Exception do

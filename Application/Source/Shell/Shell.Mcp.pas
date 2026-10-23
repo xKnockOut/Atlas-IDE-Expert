@@ -404,18 +404,25 @@ begin
   ATimedOut := TimedOut;
 end;
 
+/// <summary>AWorkspace.CheckSource als Methodenreferenz. Als anonyme Methode, weil Free Pascal (Linux-Bau) an der
+/// Umwandlung einer Methode eines anderen Objekts intern abbricht; in eigener Routine, weil eine anonyme Methode in
+/// einer Variablen, die die anderen anonymen Methoden derselben Routine einfangen, ihren eigenen Rahmen festhält
+/// (Leck unter Delphi).</summary>
+function CheckSourceOf(AWorkspace: TShellWorkspace): TCheckSourceFunc;
+begin
+  Result :=
+    function(const AFileName: string): TCheckSource
+    begin
+      Result := AWorkspace.CheckSource(AFileName);
+    end;
+end;
+
 procedure RegisterTools(AServer: TMcpServer; ATools: TMcpIndexTools; ACode: TMcpCodeTools;
   AWorkspace: TShellWorkspace; const ARoot: string; AGuard: TMcpPathGuard; AEdit: TMcpEditTools);
 var
   CheckSource: TCheckSourceFunc;
 begin
-  // Als anonyme Methode statt AWorkspace.CheckSource: Free Pascal (Linux-Bau) bricht an der Umwandlung einer
-  // Methode eines anderen Objekts in eine Methodenreferenz intern ab.
-  CheckSource :=
-    function(const AFileName: string): TCheckSource
-    begin
-      Result := AWorkspace.CheckSource(AFileName);
-    end;
+  CheckSource := CheckSourceOf(AWorkspace);
   AServer.AddTool('find_symbol',
     'Sucht Delphi-Symbole (Typen, Methoden, Felder, Konstanten …) im Projekt und in RTL/VCL. ' +
     'Liefert Art, Typ, Unit und Datei:Zeile. Name einfach ("Execute") oder qualifiziert ("TMyForm.Execute"); ' +
@@ -972,13 +979,7 @@ begin
     end);
   Edit.DirtyFiles := EditorDirtyFiles;
   // Regelprüfung mit den Symbolen und Include-Dateien des Projekts (#860).
-  // Als anonyme Methode statt Workspace.CheckSource: Free Pascal (Linux-Bau) bricht an der Umwandlung einer
-  // Methode eines anderen Objekts in eine Methodenreferenz intern ab.
-  Edit.CheckSource :=
-    function(const AFileName: string): TCheckSource
-    begin
-      Result := Workspace.CheckSource(AFileName);
-    end;
+  Edit.CheckSource := CheckSourceOf(Workspace);
   Code.CheckSource := Edit.CheckSource;
   Edit.Audit :=
     procedure(const AText: string)
