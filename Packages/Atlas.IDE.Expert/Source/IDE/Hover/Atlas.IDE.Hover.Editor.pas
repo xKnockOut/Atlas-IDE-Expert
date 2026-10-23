@@ -201,6 +201,7 @@ implementation
 uses
   Atlas.Core.Debug.Visualizers,
   Atlas.IDE.Debug.Visualizers,
+  Atlas.IDE.Debug.DisplayRules,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Winapi.Windows,
@@ -423,7 +424,10 @@ begin
     Chain := TArray<string>.Create(TAtlasVisualizers.DeclaredType(Data.Declaration));
     for Ancestor in Data.Ancestors do
       Chain := Chain + [Ancestor.Name];
-    FVisualized := TAtlasIdeVisualizers.HoverText(FDebugValue.Expression, Chain, FDebugValue.Text);
+    // Eigene Regel des Typs (#854) vor den Visualisierern für Bibliothekstypen (#835).
+    FVisualized := TAtlasIdeDisplayRules.HoverText(FDebugValue.Expression, Chain);
+    if FVisualized = '' then
+      FVisualized := TAtlasIdeVisualizers.HoverText(FDebugValue.Expression, Chain, FDebugValue.Text);
   end;
   if FVisualized <> '' then
     Result := TAtlasDebugValue.Evaluated(FDebugValue.Expression, FVisualized);

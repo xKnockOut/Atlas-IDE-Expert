@@ -56,6 +56,7 @@ uses
   Atlas.Common.Lsp.CodeLens,
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Todos,
+  Atlas.Common.Lsp.DebugDisplay,
   Atlas.Common.Lsp.Recursion,
   Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.SlashMenu,
@@ -153,6 +154,8 @@ type
     FMetrics: TLspMetrics;
     /// <summary>TODO-Übersicht (#68): Befehl atlas.server.todos.</summary>
     FTodos: TLspTodos;
+    /// <summary>Eigene Wertdarstellungen beim Debuggen (#854): Befehl atlas.server.debugDisplayRules.</summary>
+    FDebugDisplay: TLspDebugDisplay;
     FRecursion: TLspRecursion;
     /// <summary>Baseline für Altprojekte (#97): Befehl atlas.updateBaseline.</summary>
     FBaseline: TLspBaseline;
@@ -1203,6 +1206,9 @@ begin
   // Gleiche Quelle wie die Metriken: Einstellungen, Wurzel und Dateien des Projektmodells (#14).
   FTodos := TLspTodos.Create(MetricsSourceFor,
     ReadSourceText);
+  // Wertdarstellungen (#854): Dateien wie die TODO-Übersicht, Typen und Vorfahren aus dem Index.
+  FDebugDisplay := TLspDebugDisplay.Create(MetricsSourceFor, ReadSourceText);
+  FDebugDisplay.Index := FIndex;
   // Rekursionssymbole im Editorrand (#623).
   FRecursion := TLspRecursion.Create(ReadSourceText);
   // Baseline (#97): dieselben Dateien wie die Metriken, Prüfung wie im Editor (Regeln, Index, Formulardatei).
@@ -1479,6 +1485,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FTodos.Execute(AArguments);
+    end);
+  FCommands.Register(TLspDebugDisplay.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FDebugDisplay.Execute(AArguments);
     end);
   FCommands.Register(TLspRecursion.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2046,6 +2057,7 @@ begin
   FCodeLens.Free;
   FMetrics.Free;
   FTodos.Free;
+  FDebugDisplay.Free;
   FRecursion.Free;
   FBaseline.Free;
   FInlayHints.Free;

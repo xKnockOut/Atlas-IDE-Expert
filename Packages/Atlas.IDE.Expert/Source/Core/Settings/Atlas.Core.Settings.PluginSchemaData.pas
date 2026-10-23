@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4229] of string = (
+  Lines: array[0..4254] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -1005,6 +1005,34 @@ const
     '      "x-parent": "debug.visualizers",',
     '      "x-control": "Auswahl",',
     '      "x-issue": "#835"',
+    '    },',
+    '    "DebugDisplayRules": {',
+    '      "description": "Eigene Wertdarstellungen beim Debuggen: Typen mit einer Regel (// atlas-debug: ''{Name}, {Ort}'' oder [AtlasDebugDisplay(''…'')] über der Deklaration, debugDisplayRules in der Pr' +
+      'ojektdatei .atlas für fremde Klassen) erscheinen im Hover, in Überwachten Ausdrücken und Lokalen Variablen nach ihrer Vorlage; Nachfahren ohne eigene Regel erben sie. // atlas-debug-children: beschrän' +
+      'kt die Unterelemente im Atlas-Ansichtsfenster. Aus = die IDE zeigt ihre eigenen Werte.",',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "debug.displayRules",',
+    '      "x-area": "debug",',
+    '      "x-feature": "Debugger",',
+    '      "x-page": "Debuggen",',
+    '      "x-quickToggle": true,',
+    '      "x-caption": "Eigene Wertdarstellungen",',
+    '      "x-captionEn": "Custom value display",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "x-issue": "#854"',
+    '    },',
+    '    "DebugDisplayRulesAllowCalls": {',
+    '      "description": "Getter von Eigenschaften und Funktionsaufrufe ({GetName()}) in Vorlagen auswerten; aus = nur Felder und Eigenschaften mit direktem Feldzugriff, andere Platzhalter zeigen {?Name}.' +
+      '",',
+    '      "type": "boolean",',
+    '      "default": false,',
+    '      "x-key": "debug.displayRules.allowCalls",',
+    '      "x-area": "debug",',
+    '      "x-page": "Debuggen",',
+    '      "x-parent": "debug.displayRules",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "x-issue": "#854"',
     '    },',
     '    "TestsBuildFirst": {',
     '      "type": "boolean",',

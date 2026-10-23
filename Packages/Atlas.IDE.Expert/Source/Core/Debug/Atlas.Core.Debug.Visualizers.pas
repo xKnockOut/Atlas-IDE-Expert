@@ -104,6 +104,9 @@ type
     Summary: string;
     Columns: TArray<TAtlasVisualizerColumn>;
     Rows: TArray<TArray<string>>;
+    /// <summary>Tabelle: alle Felder, wenn Rows nur eine Auswahl zeigt (atlas-debug-children, #854); sonst nil.
+    /// </summary>
+    AllRows: TArray<TArray<string>>;
     /// <summary>Hex: gelesene Bytes; Total ist die ganze Länge (mehr als Bytes, wenn gekürzt).</summary>
     Bytes: TBytes;
     Total: Int64;

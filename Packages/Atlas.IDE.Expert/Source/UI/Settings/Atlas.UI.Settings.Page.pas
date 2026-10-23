@@ -296,6 +296,9 @@ type
     FDebugVisualizerTimeout: TEdit;
     FDebugVisualizerMaxImagePixels: TEdit;
     FDebugVisualizerEvaluation: TAtlasChoiceBox;
+    /// <summary>Eigene Wertdarstellungen (#854).</summary>
+    FDebugDisplayRules: TCheckBox;
+    FDebugDisplayRulesAllowCalls: TCheckBox;
     FActionsKey: TEdit;
     FExpandKey: TEdit;
     FShrinkKey: TEdit;
@@ -1076,6 +1079,8 @@ type
     property DebugVisualizerNameFieldsEdit: TEdit read FDebugVisualizerNameFields;
     property DebugVisualizerMaxLengthEdit: TEdit read FDebugVisualizerMaxLength;
     property DebugVisualizerEvaluationBox: TAtlasChoiceBox read FDebugVisualizerEvaluation;
+    property DebugDisplayRulesCheck: TCheckBox read FDebugDisplayRules;
+    property DebugDisplayRulesAllowCallsCheck: TCheckBox read FDebugDisplayRulesAllowCalls;
     function DebugVisualizerKindCheck(AKind: TAtlasVisualizerKind): TCheckBox;
     /// <summary>Zum Testen: benannte Lesezeichen (#622).</summary>
     property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
@@ -1839,6 +1844,9 @@ begin
     [TAtlasStrings.Text(TAtlasTextId.DebugVisualizerEvaluationFields),
     TAtlasStrings.Text(TAtlasTextId.DebugVisualizerEvaluationProperties),
     TAtlasStrings.Text(TAtlasTextId.DebugVisualizerEvaluationCalls)]);
+  // Eigene Wertdarstellungen (#854): Schalter und Aufrufe in Vorlagen.
+  FDebugDisplayRules := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugDisplayRules));
+  FDebugDisplayRulesAllowCalls := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugDisplayRulesAllowCalls));
 
   // Editorbefehle (#399): ein Vorrang für alle.
   AddSheet(TAtlasTextId.SettingsTabCommands);
@@ -2974,6 +2982,8 @@ begin
   FMarks.Bind(FDebugVisualizerTimeout, ['DebugVisualizerTimeoutMs']);
   FMarks.Bind(FDebugVisualizerMaxImagePixels, ['DebugVisualizerMaxImagePixels']);
   FMarks.Bind(FDebugVisualizerEvaluation, ['DebugVisualizerEvaluation']);
+  FMarks.Bind(FDebugDisplayRules, ['DebugDisplayRules']);
+  FMarks.Bind(FDebugDisplayRulesAllowCalls, ['DebugDisplayRulesAllowCalls']);
   FMarks.Bind(FSafeAsk, ['SafeAskAfterCrash']);
   FMarks.Bind(FSafeAuto, ['SafeAutoAfterRepeatedCrash']);
   FMarks.Bind(FSafeKey, ['SafeStartupKey']);
@@ -5128,6 +5138,8 @@ begin
   FDebugVisualizerTimeout.Text := IntToStr(ASettings.DebugVisualizerTimeoutMs);
   FDebugVisualizerMaxImagePixels.Text := IntToStr(ASettings.DebugVisualizerMaxImagePixels);
   FDebugVisualizerEvaluation.Choice := Ord(TAtlasVisualizers.ParseEvaluation(ASettings.DebugVisualizerEvaluation));
+  FDebugDisplayRules.Checked := ASettings.DebugDisplayRules;
+  FDebugDisplayRulesAllowCalls.Checked := ASettings.DebugDisplayRulesAllowCalls;
   FSafeAsk.Checked := ASettings.SafeAskAfterCrash;
   FSafeAuto.Checked := ASettings.SafeAutoAfterRepeatedCrash;
   case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
@@ -5595,6 +5607,8 @@ begin
     ASettings.DebugVisualizerMaxImagePixels);
   ASettings.DebugVisualizerEvaluation := TAtlasVisualizers.EvaluationNames[TAtlasVisualizerEvaluation(
     EnsureRange(FDebugVisualizerEvaluation.Choice, 0, Ord(High(TAtlasVisualizerEvaluation))))];
+  ASettings.DebugDisplayRules := FDebugDisplayRules.Checked;
+  ASettings.DebugDisplayRulesAllowCalls := FDebugDisplayRulesAllowCalls.Checked;
   ASettings.SafeAskAfterCrash := FSafeAsk.Checked;
   ASettings.SafeAutoAfterRepeatedCrash := FSafeAuto.Checked;
   case FSafeKey.Choice of

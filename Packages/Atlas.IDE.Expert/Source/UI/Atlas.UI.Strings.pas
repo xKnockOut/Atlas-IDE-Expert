@@ -705,7 +705,9 @@ type
     // Visualisierer beim Debuggen (#835).
     SettingsDebugVisualizers, DebugVisualizerKindLists, DebugVisualizerKindDictionaries, DebugVisualizerKindDataSets, DebugVisualizerKindBytes, DebugVisualizerKindJson, DebugVisualizerKindColors, DebugVisualizerKindGuid, DebugVisualizerKindGeometry, DebugVisualizerKindGraphics,
     SettingsDebugVisualizerNameFields, SettingsDebugVisualizerMaxLength, SettingsDebugVisualizerTimeout, SettingsDebugVisualizerMaxImagePixels, SettingsDebugVisualizerEvaluation, DebugVisualizerEvaluationFields, DebugVisualizerEvaluationProperties, DebugVisualizerEvaluationCalls, DebugVisualizerName, DebugVisualizerDescription, DebugViewerMenu,
-    DebugViewerTitle, DebugViewerColumnIndex, DebugViewerColumnValue, DebugViewerColumnKey, DebugViewerColumnField, DebugViewerColumnFieldType, DebugViewerColumnOldValue, DebugViewerRunning, DebugViewerOutOfScope, DebugViewerNeedsMore, DebugViewerEmpty, DebugViewerCopy, DebugViewerColor);
+    DebugViewerTitle, DebugViewerColumnIndex, DebugViewerColumnValue, DebugViewerColumnKey, DebugViewerColumnField, DebugViewerColumnFieldType, DebugViewerColumnOldValue, DebugViewerRunning, DebugViewerOutOfScope, DebugViewerNeedsMore, DebugViewerEmpty, DebugViewerCopy, DebugViewerColor,
+    // Eigene Wertdarstellung beim Debuggen (#854).
+    SettingsDebugDisplayRules, SettingsDebugDisplayRulesAllowCalls, DebugDisplayName, DebugDisplayDescription, DebugViewerAllFields);
 
   TAtlasStrings = class
   private class var
@@ -2327,7 +2329,12 @@ const
      'Mehr zeigt Atlas mit „Auswertung im Programm: auch Funktionsaufrufe“ (debug.visualizers.evaluation).',
      'Nichts zu zeigen.',
      'Kopieren',
-     'Farbe %s'),
+     'Farbe %s',
+     'Eigene Wertdarstellungen (// atlas-debug:, [AtlasDebugDisplay], Projektdatei)',
+     'Getter und Funktionsaufrufe in Vorlagen erlauben',
+     'Atlas: eigene Wertdarstellung',
+     'Zeigt Typen mit Regel (// atlas-debug:, [AtlasDebugDisplay], .atlas) nach ihrer Vorlage (#854).',
+     'Alle Felder'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3853,7 +3860,12 @@ const
      'Atlas shows more with “Evaluation in the program: also function calls” (debug.visualizers.evaluation).',
      'Nothing to show.',
      'Copy',
-     'Color %s'));
+     'Color %s',
+     'Custom value display (// atlas-debug:, [AtlasDebugDisplay], project file)',
+     'Allow getters and function calls in templates',
+     'Atlas: custom value display',
+     'Shows types with a rule (// atlas-debug:, [AtlasDebugDisplay], .atlas) by their template (#854).',
+     'All fields'));
 
 { TAtlasStrings }
 

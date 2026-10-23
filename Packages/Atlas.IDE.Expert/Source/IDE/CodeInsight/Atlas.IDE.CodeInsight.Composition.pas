@@ -186,6 +186,7 @@ uses
   Atlas.IDE.Editor.Hide,
   Atlas.IDE.StartProfiles.Service,
   Atlas.IDE.Debug.Visualizers,
+  Atlas.IDE.Debug.DisplayRules,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Editor.TestUnitLens,
   Atlas.IDE.Hover.Editor,
@@ -2800,6 +2801,18 @@ begin
   TAtlasIdeStartProfiles.Start;
 end;
 
+procedure StartDisplayRules;
+begin
+  // Nur eine laufende Sitzung; die Regeln warten sonst auf den nächsten Versuch.
+  TAtlasIdeDisplayRules.Start(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end);
+end;
+
 procedure StopStartProfiles;
 begin
   // Stop meldet noch Text '' und entfernt so das Feld; danach kein Empfänger mehr.
@@ -3656,6 +3669,21 @@ begin
     begin
       TAtlasIdeVisualizers.Stop;
     end);
+  // Eigene Wertdarstellungen (#854): nur im normalen Start und solange debug.displayRules an ist.
+  Features.AddWanted('DisplayRules',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.DebugDisplayRules;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDisplayRules.Started;
+    end,
+    StartDisplayRules,
+    procedure
+    begin
+      TAtlasIdeDisplayRules.Stop;
+    end);
   // Änderungsprotokoll vor den Tasten: Strg+Alt+Z braucht es (#721).
   Features.Add('Undo', TAtlasSafeLevel.Safe,
     function: Boolean
@@ -4202,6 +4230,8 @@ begin
       TAtlasIdeExperimental.ApplySettings;
       // debug.visualizers aus: abmelden; Arten geändert: neu anmelden (#835).
       TAtlasIdeVisualizers.ApplySettings;
+      // debug.displayRules aus: abmelden; an: Regeln beim nächsten Takt neu lesen (#854).
+      TAtlasIdeDisplayRules.ApplySettings;
       // startProfiles.enabled aus: Zeitgeber und Feld weg (RegisterFeatures startet sie wieder);
       // startProfiles.statusField oder .atlas geändert: Feld neu melden (#575).
       if not TAtlasIdeSettings.Current.StartProfiles then
