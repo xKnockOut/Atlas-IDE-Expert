@@ -323,6 +323,8 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MemberTransfer.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MoveMember.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MoveMember.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.InlineAccessor.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlineAccessor.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.InvertBoolean.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InvertBoolean.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Unwrap.pas"/>
@@ -371,6 +373,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Deprecated.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.ForwardDeclarations.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.FreeFields.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TrivialAccessor.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Expressions.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Statements.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeChecks.pas"/>

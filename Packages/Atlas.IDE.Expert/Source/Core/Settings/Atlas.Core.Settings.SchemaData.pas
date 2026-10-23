@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2049] of string = (
+  Lines: array[0..2073] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1267,6 +1267,33 @@ const
       'override werden, nach unten ob die Methoden im Vorfahren abstrakt bleiben. Benutzt fremder Code das Mitglied über den Vorfahr-Typ, verbietet Atlas das Verschieben nach unten. Private Mitglieder werden' +
       ' bei Bedarf protected, fehlende uses ergänzt. Vorschau vor dem Übernehmen.",',
     '          "x-issue": "#675"',
+    '        },',
+    '        "inlineAccessor": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktion „Zugriffsmethode GetName durch Feld FName ersetzen“ an einer Property und an einer trivialen Zugriffsmethode: Liefert ein Getter nur ein Feld (Result := FName;) o' +
+      'der setzt ein Setter nur ein Feld (FName := Value;), zeigt die Property danach direkt auf das Feld, Deklaration und Rumpf fallen weg. Nur für Methoden, die nicht virtuell sind, kein Interface implemen' +
+      'tieren, keinen index haben und nirgends direkt aufgerufen werden (Referenzsuche). Vorschau vor dem Übernehmen.",',
+    '          "x-issue": "#717"',
+    '        },',
+    '        "inlineAccessorEqualityCheck": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Setter mit Gleichheitsprüfung (if FName <> Value then FName := Value;) gelten als trivial. Setter mit Benachrichtigung (Changed, Invalidate) nie.",',
+    '          "x-issue": "#717"',
+    '        },',
+    '        "inlineAccessorBulk": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Zusätzlich die Sammelaktionen „Alle trivialen Zugriffsmethoden der Unit ersetzen (n)“ und „… des Projekts ersetzen“ mit Vorschau; Methoden mit Aufrufen bleiben, die Vorschau ' +
+      'nennt sie.",',
+    '          "x-issue": "#717"',
+    '        },',
+    '        "inlineAccessorDiagnostic": {',
+    '          "type": "boolean",',
+    '          "default": false,',
+    '          "description": "Hinweis-Diagnose trivial-accessor an trivialen Zugriffsmethoden (Schweregrad über die Regel einstellbar); die Glühbirne an der Meldung ersetzt sie.",',
+    '          "x-issue": "#717"',
     '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',

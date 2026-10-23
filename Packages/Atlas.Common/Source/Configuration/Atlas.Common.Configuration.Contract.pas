@@ -404,6 +404,14 @@ type
     ExtractSuperclassRaiseVisibility: string;
     /// <summary>Code-Aktionen „In Vorfahr/Nachfahren verschieben“ (#675).</summary>
     MoveMember: Boolean;
+    /// <summary>Code-Aktion „Zugriffsmethode durch Feld ersetzen“ (#717).</summary>
+    InlineAccessor: Boolean;
+    /// <summary>Setter mit Gleichheitsprüfung als trivial behandeln (#717).</summary>
+    InlineAccessorEqualityCheck: Boolean;
+    /// <summary>Sammelaktionen für Unit und Projekt (#717).</summary>
+    InlineAccessorBulk: Boolean;
+    /// <summary>Hinweis-Diagnose trivial-accessor an trivialen Zugriffsmethoden (#717).</summary>
+    InlineAccessorDiagnostic: Boolean;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -867,6 +875,10 @@ begin
   Result.ExtractSuperclassMethodMode := 'move';
   Result.ExtractSuperclassRaiseVisibility := 'protected';
   Result.MoveMember := True;
+  Result.InlineAccessor := True;
+  Result.InlineAccessorEqualityCheck := True;
+  Result.InlineAccessorBulk := True;
+  Result.InlineAccessorDiagnostic := False;
 end;
 
 { TCompletionSettings }

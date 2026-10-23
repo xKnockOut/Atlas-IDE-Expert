@@ -517,6 +517,9 @@ begin
       Context.NoForwardDeclaration := not Settings.Refactoring.ForwardDeclaration;
       Context.NoFreeFields := not Settings.Refactoring.FreeFields;
       Context.FreeFieldsFreeAndNil := SameText(Settings.Refactoring.FreeFieldsStyle, 'freeAndNil');
+      Context.InlineAccessorDiagnostic := Settings.Refactoring.InlineAccessor and
+        Settings.Refactoring.InlineAccessorDiagnostic;
+      Context.NoAccessorEqualityCheck := not Settings.Refactoring.InlineAccessorEqualityCheck;
       Context.AccessorsProtected := Settings.Completion.AccessorSection = TCompletionAccessorSection.Protected;
       Context.Formatting := Settings.Formatting;
       if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
