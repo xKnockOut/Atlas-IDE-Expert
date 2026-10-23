@@ -45,7 +45,8 @@ type
   /// Referenzen einblenden (#505), das Fenster „Atlas-Prüfung“ (#909) und die Abschnittssprünge zum interface- und
   /// implementation-Teil (#1101). Schnelle Lesezeichen (#1104): QuickBookmark (Strg+Umschalt+K), QuickBookmarkSet
   /// und QuickBookmarkJump (je eine Zeile für die Tasten 1–9, Key ist die Taste für 1) stehen mit eigener Wahl auch
-  /// auf der Seite „Tastenkonflikte“; NextBookmark und PreviousBookmark nur in der Übersicht. Neue Funktionen
+  /// auf der Seite „Tastenkonflikte“; NextBookmark und PreviousBookmark nur in der Übersicht. Gezielt
+  /// hineinspringen (#836) nur in der Übersicht. Neue Funktionen
   /// nur hinten anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht.</summary>
   TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle, DiagnosticMode, CodeActions,
     ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
@@ -57,7 +58,7 @@ type
     MultiCursorAbove, MultiCursorBelow, Search, SearchNext, SearchPrevious,
     SearchMethod, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove, Unwrap, ProblemsWindow,
     SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
-    PreviousBookmark);
+    PreviousBookmark, StepIntoTarget);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -269,7 +270,10 @@ begin
     Create(TAtlasKeyFunction.SectionImplementation, Word(ASettings.GotoImplementationKey), Shared),
     // Nächstes/voriges Lesezeichen (#1104): Vorgabe ohne Taste.
     Create(TAtlasKeyFunction.NextBookmark, Word(ASettings.NextBookmarkKey), Shared, ASettings.QuickBookmarks),
-    Create(TAtlasKeyFunction.PreviousBookmark, Word(ASettings.PreviousBookmarkKey), Shared, ASettings.QuickBookmarks)];
+    Create(TAtlasKeyFunction.PreviousBookmark, Word(ASettings.PreviousBookmarkKey), Shared, ASettings.QuickBookmarks),
+    // Gezielt hineinspringen (#836): nur im angehaltenen Zustand, sonst geht die Taste an die IDE; aus = Kürzel frei.
+    Create(TAtlasKeyFunction.StepIntoTarget, Word(ASettings.DebugStepIntoTargetKey), Shared,
+      ASettings.DebugStepIntoTarget)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -438,6 +442,8 @@ begin
         ASettings.NextBookmarkKey := Entry.Key;
       TAtlasKeyFunction.PreviousBookmark:
         ASettings.PreviousBookmarkKey := Entry.Key;
+      TAtlasKeyFunction.StepIntoTarget:
+        ASettings.DebugStepIntoTargetKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;

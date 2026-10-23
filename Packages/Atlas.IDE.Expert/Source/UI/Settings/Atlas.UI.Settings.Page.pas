@@ -299,6 +299,9 @@ type
     /// <summary>Eigene Wertdarstellungen (#854).</summary>
     FDebugDisplayRules: TCheckBox;
     FDebugDisplayRulesAllowCalls: TCheckBox;
+    /// <summary>Gezielt hineinspringen (#836).</summary>
+    FDebugStepIntoTarget: TCheckBox;
+    FDebugStepIntoTargetKey: TEdit;
     FActionsKey: TEdit;
     FExpandKey: TEdit;
     FShrinkKey: TEdit;
@@ -1081,6 +1084,8 @@ type
     property DebugVisualizerEvaluationBox: TAtlasChoiceBox read FDebugVisualizerEvaluation;
     property DebugDisplayRulesCheck: TCheckBox read FDebugDisplayRules;
     property DebugDisplayRulesAllowCallsCheck: TCheckBox read FDebugDisplayRulesAllowCalls;
+    property DebugStepIntoTargetCheck: TCheckBox read FDebugStepIntoTarget;
+    property DebugStepIntoTargetKeyEdit: TEdit read FDebugStepIntoTargetKey;
     function DebugVisualizerKindCheck(AKind: TAtlasVisualizerKind): TCheckBox;
     /// <summary>Zum Testen: benannte Lesezeichen (#622).</summary>
     property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
@@ -1847,6 +1852,9 @@ begin
   // Eigene Wertdarstellungen (#854): Schalter und Aufrufe in Vorlagen.
   FDebugDisplayRules := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugDisplayRules));
   FDebugDisplayRulesAllowCalls := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugDisplayRulesAllowCalls));
+  // Gezielt hineinspringen (#836): Schalter und Tastenkürzel.
+  FDebugStepIntoTarget := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugStepIntoTarget));
+  FDebugStepIntoTargetKey := AddKey(TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand));
 
   // Editorbefehle (#399): ein Vorrang für alle.
   AddSheet(TAtlasTextId.SettingsTabCommands);
@@ -2984,6 +2992,8 @@ begin
   FMarks.Bind(FDebugVisualizerEvaluation, ['DebugVisualizerEvaluation']);
   FMarks.Bind(FDebugDisplayRules, ['DebugDisplayRules']);
   FMarks.Bind(FDebugDisplayRulesAllowCalls, ['DebugDisplayRulesAllowCalls']);
+  FMarks.Bind(FDebugStepIntoTarget, ['DebugStepIntoTarget']);
+  FMarks.Bind(FDebugStepIntoTargetKey, ['DebugStepIntoTargetKey']);
   FMarks.Bind(FSafeAsk, ['SafeAskAfterCrash']);
   FMarks.Bind(FSafeAuto, ['SafeAutoAfterRepeatedCrash']);
   FMarks.Bind(FSafeKey, ['SafeStartupKey']);
@@ -5140,6 +5150,8 @@ begin
   FDebugVisualizerEvaluation.Choice := Ord(TAtlasVisualizers.ParseEvaluation(ASettings.DebugVisualizerEvaluation));
   FDebugDisplayRules.Checked := ASettings.DebugDisplayRules;
   FDebugDisplayRulesAllowCalls.Checked := ASettings.DebugDisplayRulesAllowCalls;
+  FDebugStepIntoTarget.Checked := ASettings.DebugStepIntoTarget;
+  FDebugStepIntoTargetKey.Text := ShortCutToText(TShortCut(ASettings.DebugStepIntoTargetKey));
   FSafeAsk.Checked := ASettings.SafeAskAfterCrash;
   FSafeAuto.Checked := ASettings.SafeAutoAfterRepeatedCrash;
   case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
@@ -5609,6 +5621,8 @@ begin
     EnsureRange(FDebugVisualizerEvaluation.Choice, 0, Ord(High(TAtlasVisualizerEvaluation))))];
   ASettings.DebugDisplayRules := FDebugDisplayRules.Checked;
   ASettings.DebugDisplayRulesAllowCalls := FDebugDisplayRulesAllowCalls.Checked;
+  ASettings.DebugStepIntoTarget := FDebugStepIntoTarget.Checked;
+  ASettings.DebugStepIntoTargetKey := Integer(TextToShortCut(Trim(FDebugStepIntoTargetKey.Text)));
   ASettings.SafeAskAfterCrash := FSafeAsk.Checked;
   ASettings.SafeAutoAfterRepeatedCrash := FSafeAuto.Checked;
   case FSafeKey.Choice of

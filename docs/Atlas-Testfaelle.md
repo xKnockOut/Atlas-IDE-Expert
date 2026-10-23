@@ -2731,6 +2731,31 @@ Vorbereitung: VCL-Projekt (Win32) mit `TKunde = class` (Felder `FName`, `FOrt`, 
 | WD16 | Schnellschalter „Eigene Wertdarstellungen“ aus | Überwachte Ausdrücke und Tooltip zeigen die Texte der IDE; „Atlas: eigene Wertdarstellung“ fehlt in Optionen › Debugger › Visualisierer |
 | WD17 | Package bei offenem Ansichtsfenster deinstallieren | Fenster schließt, kein Fehler |
 
+## Gezielt hineinspringen (#836)
+
+Vorbereitung: VCL-Projekt (Win32, Debug) mit `TKunde = class` (Eigenschaft `Name` mit Getter `GetName`, virtuelle Methode `Speichere`), `TStammkunde = class(TKunde)` mit `override` von `Speichere`, Prozedur `Pruefe(const S: string): Boolean`. In einer Methode die Zeile `Speichere(Kunde.Name, Format('%d', [N]));` und darunter `if Pruefe(A) and Pruefe(B) then Tu;`, `Kunde` zur Laufzeit ein `TStammkunde`. Haltepunkt auf die erste Zeile. Optionen › Debuggen: „Gezielt hineinspringen“ an, Taste Strg+Alt+F7.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GH1 | F9 bis zum Haltepunkt, Strg+Alt+F7 | Liste unter der Zeile: `1  TKunde.GetName  (Getter)`, `2  Format` ausgegraut „ohne Debug-DCUs“, `3  TStammkunde.Speichere` (**Abnahme**) |
+| GH2 | In GH1 Ziffer 3 | Programm hält am `begin` von `TStammkunde.Speichere`; `GetName` lief, ohne anzuhalten; keine Atlas-Haltepunkte in der Haltepunktliste (**Abnahme**) |
+| GH3 | Wie GH1, ↓ und Enter | ↓ überspringt die ausgegraute Zeile; Enter springt in `TStammkunde.Speichere` |
+| GH4 | Wie GH1, Ziffer 2 | Nichts passiert, die Liste bleibt offen |
+| GH5 | Wie GH1, Esc; dann Klick in den Editor | Liste schließt, das Programm bleibt angehalten |
+| GH6 | Projektoption „Mit Debug-DCUs“ an, neu bauen, GH1 | `Format` ist wählbar, Ziffer 2 hält in `System.SysUtils` |
+| GH7 | Zeile `if Pruefe(A) and Pruefe(B) then Tu;` mit `A` falsch, Strg+Alt+F7, das zweite `Pruefe` | Programm hält an der Folgezeile; Meldungsfenster: „… wurde nicht aufgerufen …“ |
+| GH8 | Zeile mit nur einem Aufruf (`Tu;`), Strg+Alt+F7 | Keine Liste, wirkt wie F7 |
+| GH9 | Zeile ohne Aufruf (`N := 1;`), Strg+Alt+F7 | Keine Liste, wirkt wie F7 |
+| GH10 | `Kunde` als `IKunde` (Interface) deklariert, GH1 | Laufzeitklasse über `(Kunde as TObject).ClassName`; Ziel ist `TStammkunde.Speichere` |
+| GH11 | Ohne laufendes Programm Strg+Alt+F7 im Editor | Die Taste geht an die IDE (oder tut nichts), keine Meldung von Atlas |
+| GH12 | Ohne laufendes Programm Befehlspalette › „Gezielt hineinspringen“ | Meldung „Gezielt hineinspringen geht nur, solange das Programm angehalten ist.“ |
+| GH13 | Kontextmenü › Atlas › „Gezielt hineinspringen“ im angehaltenen Programm | Wie GH1 |
+| GH14 | Haltepunkt des Benutzers in `TKunde.GetName`, GH1 und Ziffer 3 | Programm hält zuerst in `GetName`; die Atlas-Haltepunkte sind danach entfernt |
+| GH15 | Zeile mit `inherited Create(AOwner);` und `X := TListe.Create;` | `inherited` und `Konstruktor` als Art; Sprung in den Konstruktor des Vorfahren bzw. von `TListe` |
+| GH16 | „Gezielt hineinspringen“ aus, Strg+Alt+F7 | Die Taste gehört der IDE; Palette und Kontextmenü melden „Gezielt hineinspringen ist ausgeschaltet …“ |
+| GH17 | Tastenkürzel-Übersicht öffnen | Eintrag „Gezielt hineinspringen“ mit Strg+Alt+F7, Konflikt rot, falls die IDE die Taste belegt |
+| GH18 | Package deinstallieren, während die Liste offen bzw. ein Sprung läuft | Kein Fehler; keine Atlas-Haltepunkte bleiben zurück |
+
 ## Kein Hängen, während der Server indexiert (#874)
 
 Vorher: Eine große Projektgruppe öffnen (Index läuft, Fortschritt im Statusfeld), „Diagnosemodus“ an.
