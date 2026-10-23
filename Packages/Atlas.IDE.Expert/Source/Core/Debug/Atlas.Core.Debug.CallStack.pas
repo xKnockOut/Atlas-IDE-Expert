@@ -18,6 +18,9 @@ type
     FileName: string;
     /// <summary>Zeile, 1-basiert; 0 = unbekannt.</summary>
     Line: Integer;
+    /// <summary>Eigener Code (#578): Datei im Projekt oder in debug.ownCodeFolders; setzt die IDE-Schicht.
+    /// </summary>
+    Own: Boolean;
     class function Create(const AHeader, AFileName: string; ALine: Integer): TAtlasDebugFrame; static;
     function HasSource: Boolean;
     /// <summary>Routine ohne Parameterliste und Adresse.</summary>
@@ -49,6 +52,7 @@ begin
   Result.Header := AHeader;
   Result.FileName := AFileName;
   Result.Line := ALine;
+  Result.Own := False;
 end;
 
 function TAtlasDebugFrame.HasSource: Boolean;

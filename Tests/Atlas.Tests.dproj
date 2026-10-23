@@ -976,6 +976,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.IgnoreList.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.ExceptionDialog.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.ExceptionsFrame.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.OwnCode.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.OwnCode.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

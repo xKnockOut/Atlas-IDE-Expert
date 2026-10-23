@@ -433,6 +433,15 @@ type
     /// Atlas.DebugExceptions); Klassen lassen sich dort ignorieren, Atlas setzt dann still fort. Aus = kein Verlauf,
     /// kein Beobachter.</summary>
     DebugExceptionHistory: Boolean;
+    /// <summary>Nur eigener Code beim Debuggen (#578, debug.justMyCode): Nach einer Exception in Bibliothekscode
+    /// springt Atlas zur ersten eigenen Zeile des Aufrufstapels und markiert sie; landet F7 in Code ohne Quelltext,
+    /// setzt Atlas „Bis zur Rückkehr“ fort; der Exception-Verlauf nennt den ersten eigenen Rahmen als Ort und fasst
+    /// Bibliotheksrahmen zusammen. Eigener Code: Projektordner der Gruppe und debug.ownCodeFolders. Aus = IDE wie
+    /// bisher.</summary>
+    DebugJustMyCode: Boolean;
+    /// <summary>Weitere Ordner mit eigenem Code (#578, debug.ownCodeFolders), durch „;“ getrennt; die Projektordner
+    /// der Gruppe gelten immer.</summary>
+    DebugOwnCodeFolders: string;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -1368,6 +1377,8 @@ begin
   Result.TestBreakAtStart := True;
   Result.DebugHoverValues := True;
   Result.DebugExceptionHistory := True;
+  Result.DebugJustMyCode := True;
+  Result.DebugOwnCodeFolders := '';
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
   Result.TodoList := True;
@@ -1631,6 +1642,8 @@ end;
 
 procedure TAtlasPluginSettings.Normalize;
 begin
+  // Bereinigt (Trenner, doppelte) wird beim Speichern der Seite und beim Lesen in TAtlasDebugOwnCode.ParseFolders.
+  DebugOwnCodeFolders := Trim(DebugOwnCodeFolders);
   VisibleRows := EnsureRange(VisibleRows, MinVisibleRows, MaxVisibleRows);
   if ListWidth <> 0 then
     ListWidth := EnsureRange(ListWidth, MinListWidth, MaxListWidth);
@@ -1971,6 +1984,8 @@ begin
   TestBreakAtStart := AStore.ReadInteger('TestBreakAtStart', BoolValue(Default.TestBreakAtStart)) <> 0;
   DebugHoverValues := AStore.ReadInteger('DebugHoverValues', BoolValue(Default.DebugHoverValues)) <> 0;
   DebugExceptionHistory := AStore.ReadInteger('DebugExceptionHistory', BoolValue(Default.DebugExceptionHistory)) <> 0;
+  DebugJustMyCode := AStore.ReadInteger('DebugJustMyCode', BoolValue(Default.DebugJustMyCode)) <> 0;
+  DebugOwnCodeFolders := AStore.ReadString('DebugOwnCodeFolders', Default.DebugOwnCodeFolders);
   StartProfiles := AStore.ReadInteger('StartProfiles', BoolValue(Default.StartProfiles)) <> 0;
   StartProfilesStatusField := AStore.ReadInteger('StartProfilesStatusField',
     BoolValue(Default.StartProfilesStatusField)) <> 0;
@@ -2415,6 +2430,8 @@ begin
   AStore.WriteInteger('TestBreakAtStart', BoolValue(TestBreakAtStart));
   AStore.WriteInteger('DebugHoverValues', BoolValue(DebugHoverValues));
   AStore.WriteInteger('DebugExceptionHistory', BoolValue(DebugExceptionHistory));
+  AStore.WriteInteger('DebugJustMyCode', BoolValue(DebugJustMyCode));
+  AStore.WriteString('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AStore.WriteInteger('StartProfiles', BoolValue(StartProfiles));
   AStore.WriteInteger('StartProfilesStatusField', BoolValue(StartProfilesStatusField));
   AStore.WriteInteger('TodoList', BoolValue(TodoList));

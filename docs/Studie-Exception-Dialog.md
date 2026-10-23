@@ -65,3 +65,11 @@ end;
 - Trägt das Erkennen (S2, S5) in allen vier Varianten, bleibt der Weg „Dialog erkennen, auslesen, über ‚Fortsetzen‘ schließen“. #783 kann dann die Leiste zeigen und den Dialog sofort schließen (Fortsetzen bzw. Anhalten über die Knöpfe).
 - Fehlt der Dialog in einer Variante oder heißen die Knöpfe anders, ergänzt Atlas die Erkennung (`Atlas.Core.Debug.ExceptionDialog`, Test dazu) und prüft erneut.
 - Meldet die IDE ignorierte Klassen nicht (S1), steht das in der Doku: Der Verlauf zeigt nur, wobei der Debugger anhält.
+
+## Ergänzung für „Nur eigener Code“ (#578)
+
+| Nr. | Frage | Vorgehen | D12 Win32 | D12 Win64 | D13 Win32 | D13 Win64 (LLDB) |
+|---|---|---|---|---|---|---|
+| S9 | Heißt die Aktion „Einzelne Anweisung“ (F7) `RunTraceIntoCommand`? | Diagnoseprotokoll nach dem Start: fehlt die Zeile „Aktion „Einzelne Anweisung“ nicht gefunden“, hat Atlas sie gefunden (sonst über F7 als Tastenkürzel) | | | | |
+| S10 | Ist der Exception-Dialog modal (`Application.ModalLevel` > 0)? | Testfall EC1: springt Atlas erst nach „Anhalten“? | | | | |
+| S11 | Kommt „Bis zur Rückkehr“ aus Code ohne Quelltext zurück? | Testfall EC3 | | | | |

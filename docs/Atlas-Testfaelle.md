@@ -2683,6 +2683,24 @@ Vorbereitung: Testprogramm aus `docs/Studie-Exception-Dialog.md` (vier Knöpfe),
 | EV15 | Helles und dunkles Thema wechseln, Fenster offen | Liste, Filter und Auswahl folgen dem Thema; ignorierte Zeilen grau und lesbar |
 | EV16 | Studie `docs/Studie-Exception-Dialog.md` S1–S8 in Delphi 12 und 13 | Ergebnisse in die Tabelle eintragen und in #783 kommentieren |
 
+## Nur eigener Code beim Debuggen (#578)
+
+Vorbereitung: Testprogramm aus `docs/Studie-Exception-Dialog.md`, Projekt in `C:\Projekte\Demo`; ohne Debug-DCUs (*Projekt › Optionen › Delphi-Compiler › Kompilieren › Mit Debug-DCUs* aus). `debug.justMyCode` an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EC1 | F9, Knopf 1 (`StrToInt('x')`), im Dialog „Anhalten“ | Der Editor steht in Unit1.pas auf der Zeile mit `StrToInt`, die Zeile ist markiert; Meldung „Atlas: Exception in Bibliothekscode; eigener Code: Unit1.pas:<Zeile> (n Ebenen darüber …)“ (**Abnahme**) |
+| EC2 | Wie EC1 mit Debug-DCUs an | Die IDE zeigt erst System.SysUtils.pas, Atlas springt danach zur eigenen Zeile; der Aufrufstapel der IDE enthält weiter den Ursprung |
+| EC3 | Haltepunkt auf einer Zeile mit `StrToInt('1')`, F7 | Kein Sprung in die CPU-Ansicht; der Debugger steht auf der nächsten eigenen Zeile (**Abnahme**) |
+| EC4 | Haltepunkt auf einem Aufruf einer eigenen Methode, F7 | Normaler Schritt in die eigene Methode |
+| EC5 | Fenster „Atlas: Exceptions“, Eintrag aus EC1 wählen | Ort = eigene Zeile; unten der Aufrufstapel: „… n Bibliotheksrahmen“ grau, darunter `Button1Click` normal; Doppelklick auf die Gruppe klappt auf, Doppelklick auf `Button1Click` springt |
+| EC6 | Strg+C auf dem Eintrag | Text enthält den Aufrufstapel mit Dateien und Zeilen |
+| EC7 | *Tools › Optionen › Atlas › Debuggen*: „Weitere Ordner mit eigenem Code“ = Ordner einer Komponente mit Quelltext; Exception in der Komponente | Atlas springt nicht weg, die Komponente gilt als eigener Code |
+| EC8 | Befehlspalette „Atlas: Nur eigener Code beim Debuggen umschalten“ | Meldung „… ist aus“; EC1 und EC3 verhalten sich wie ohne Atlas (CPU-Ansicht bzw. Ursprung), der Stapel im Fenster ist nicht zusammengefasst; erneut: wieder an (**Abnahme**) |
+| EC9 | Knopf 1, im Dialog „Fortsetzen“ | Kein Sprung |
+| EC10 | Win64 (LLDB), EC1 und EC3 | Wie Win32 |
+| EC11 | Diagnoseprotokoll nach dem Start | Keine Zeile „Aktion „Einzelne Anweisung“ nicht gefunden“ (sonst Aktionsname für die Studie notieren) |
+
 ## Werte im Hover beim Debuggen (#891)
 
 Vorbereitung: Ein kleines VCL-Projekt mit `FList: TStringList` (drei Einträge), einem Record-Array `Kunden` und einer lokalen Variablen `I`, Haltepunkt in einer Methode, die alle drei verwendet. Atlas-Tooltip an (`editor.hoverTooltip`), `debug.hoverValues` an.
