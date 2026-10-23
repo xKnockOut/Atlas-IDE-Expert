@@ -1491,7 +1491,7 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := TLspExitPoints.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, ReadSourceTextRef,
-        AArguments);
+        FDocumentHighlights.SettingsFor, AArguments);
     end);
   // Überschreibungen für die Atlas-Spalte der Zeilenleiste (#768).
   FCommands.Register(TLspOverrideMarks.Command,

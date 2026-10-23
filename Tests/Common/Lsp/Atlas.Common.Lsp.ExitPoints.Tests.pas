@@ -9,7 +9,8 @@ uses
   DUnitX.TestFramework,
   System.JSON,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Index.Contract;
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Lsp.DocumentHighlights;
 
 type
   [TestFixture]
@@ -17,6 +18,7 @@ type
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
+    FSettingsFor: THighlightSettingsProvider;
     /// <summary>Führt den Befehl aus; ASettings ist der dritte Eintrag oder leer.</summary>
     function Run(const AText: string; ALine, ACharacter: Integer; const ASettings: string): TJSONObject;
     /// <summary>Arten und Positionen der Punkte als "kind@line:char", mit Leerzeichen getrennt.</summary>
@@ -32,6 +34,9 @@ type
     procedure ExceptionsFromDeclaringUnit;
     [Test]
     procedure SwitchesFromArguments;
+    /// <summary>highlight.exitKeywords der Konfiguration bestimmt, was als Austritt zählt.</summary>
+    [Test]
+    procedure KeywordsFromConfiguration;
     [Test]
     procedure UnknownDocumentGivesError;
   end;
@@ -41,6 +46,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.JsonRpc.Contract,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Index.SymbolIndex,
@@ -105,6 +111,7 @@ procedure TLspExitPointsTests.TearDown;
 begin
   FStore := nil;
   FIndex := nil;
+  FSettingsFor := nil;
 end;
 
 function TLspExitPointsTests.Run(const AText: string; ALine, ACharacter: Integer;
@@ -134,7 +141,7 @@ begin
         if Result then
           AText := UnitLoader;
       end,
-      Arguments);
+      FSettingsFor, Arguments);
   finally
     Arguments.Free;
   end;
@@ -219,6 +226,26 @@ begin
   end;
 end;
 
+procedure TLspExitPointsTests.KeywordsFromConfiguration;
+var
+  Reply: TJSONObject;
+begin
+  // Ohne Exit in der Liste bleibt in Wert nur das Ende.
+  FSettingsFor :=
+    function(const AUri: string): THighlightSettings
+    begin
+      Result := THighlightSettings.Default;
+      Result.ExitKeywords := TArray<string>.Create('raise');
+    end;
+  Reply := Run(UnitMain, 6, 10, '');
+  try
+    Assert.AreEqual('routine', Reply.GetValue('query').Value);
+    Assert.AreEqual('end@11:0', Points(Reply));
+  finally
+    Reply.Free;
+  end;
+end;
+
 procedure TLspExitPointsTests.UnknownDocumentGivesError;
 var
   Arguments: TJSONArray;
@@ -228,7 +255,7 @@ begin
     Assert.WillRaise(
       procedure
       begin
-        TLspExitPoints.Execute(FStore, FIndex, nil, nil, nil, Arguments).Free;
+        TLspExitPoints.Execute(FStore, FIndex, nil, nil, nil, nil, Arguments).Free;
       end,
       EJsonRpcError);
   finally

@@ -6,6 +6,8 @@
 //   - exceptions: auf except bzw. on die auslösenden Aufrufe zeigen
 //     (highlight.exitPoints.exceptions), loops: auf Break/Continue die Schleife
 //     (highlight.exitPoints.loops); fehlen sie, gilt true.
+//   - Was als Austritt zählt, steht in highlight.exitKeywords der Konfiguration
+//     zur Datei (dieselbe Liste wie für documentHighlight).
 // Antwort (Zeilen und Zeichen ab 0 wie im Protokoll):
 //   {"query": "routine" | "result" | "exceptions" | "loop" | "",
 //    "routine": {"name": "TFoo.Bar", "line": 12, "character": 15, "endCharacter": 18},
@@ -25,6 +27,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Lsp.DocumentHighlights,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ExitPoints,
   Atlas.Common.Lsp.Documentation;
@@ -45,16 +48,18 @@ type
     /// <summary>Vererbung über AResolver, sonst wie TExitPoints.TreeClassTest.</summary>
     class function ClassTest(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string):
       TExitPointClassTest; static;
-    /// <summary>Führt den Befehl aus; der Aufrufer übernimmt das Ergebnis.</summary>
+    /// <summary>Führt den Befehl aus; der Aufrufer übernimmt das Ergebnis. ASettingsFor liefert
+    /// highlight.exitKeywords zur Datei (nil = Standard).</summary>
     class function Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
       const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReadText: TDocReadText;
-      const AArguments: TJSONArray): TJSONValue; static;
+      const ASettingsFor: THighlightSettingsProvider; const AArguments: TJSONArray): TJSONValue; static;
   end;
 
 implementation
 
 uses
   Atlas.Text.Lines,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.Contract,
@@ -181,7 +186,7 @@ end;
 
 class function TLspExitPoints.Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReadText: TDocReadText;
-  const AArguments: TJSONArray): TJSONValue;
+  const ASettingsFor: THighlightSettingsProvider; const AArguments: TJSONArray): TJSONValue;
 var
   Uri, FileName: string;
   Document: ITextDocument;
@@ -198,6 +203,10 @@ begin
   if not AStore.TryGet(Uri, Document) then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet: ' + Uri);
   Options := TExitPointOptions.Default;
+  if Assigned(ASettingsFor) then
+    Options.Keywords := ASettingsFor(Uri).ExitKeywords
+  else
+    Options.Keywords := THighlightSettings.Default.ExitKeywords;
   if (AArguments.Count > 2) and (AArguments.Items[2] is TJSONObject) then
   begin
     Settings := TJSONObject(AArguments.Items[2]);
