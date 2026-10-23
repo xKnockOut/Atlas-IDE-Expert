@@ -658,6 +658,13 @@ begin
   Assert.AreEqual('forward', Parse('{"refactoring": {"anonymousMethodDeferredCapture": "felder"}}',
     Issues).Refactoring.AnonymousMethodDeferredCapture);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // #686: Methode ohne Self.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.MethodKind);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.MethodKindMarker);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.MethodKindStatic);
+  Assert.IsFalse(Parse('{"refactoring": {"methodKind": false}}', Issues).Refactoring.MethodKind);
+  Assert.IsFalse(Parse('{"refactoring": {"methodKindMarker": false}}', Issues).Refactoring.MethodKindMarker);
+  Assert.IsFalse(Parse('{"refactoring": {"methodKindStatic": false}}', Issues).Refactoring.MethodKindStatic);
   Parse('{}', Issues);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"refactoring": {"propertyFromAccessorsPrefixes": "Get", "propertyFromAccessorsReplaceCalls": "ja", ' +

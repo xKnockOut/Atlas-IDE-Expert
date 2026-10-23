@@ -22,6 +22,8 @@
 // Oberfläche in der Sprache der IDE („definiert COMPLIB_VCL“).
 // Steuerzeichen (#862): hinter ^C im Wert einer Konstanten der Code „#3“ (data.controlChar), mit eigener
 // Einstellung (InlayCharHints).
+// Methoden ohne Self (#686): am Ende des Kopfs die Marke „ohne Self“ (data.methodWithoutSelf); ob sie kommt,
+// entscheidet der Server (refactoring.methodKindMarker), die Beschriftung baut die Oberfläche.
 
 interface
 
@@ -45,6 +47,8 @@ type
     DefineHint: Boolean;
     /// <summary>Steuerzeichen (#862): Name ist der Code wie „#3“.</summary>
     CharHint: Boolean;
+    /// <summary>Methode ohne Self (#686): Marke am Ende des Kopfs.</summary>
+    MethodHint: Boolean;
     /// <summary>Endmarke: Anfang des Blocks (0-basiert), zu dem ein Klick springt; nur mit HasBlock.</summary>
     BlockLine: Integer;
     BlockCharacter: Integer;
@@ -71,6 +75,7 @@ type
       Types: TArray<TAtlasInlayHint>;
       Defines: TArray<TAtlasInlayHint>;
       Chars: TArray<TAtlasInlayHint>;
+      Methods: TArray<TAtlasInlayHint>;
     end;
   private
     FEntries: TObjectDictionary<string, TEntry>;
@@ -112,6 +117,8 @@ type
     function DefinesOnLine(const AFileName: string; ALine: Integer): TArray<string>;
     /// <summary>Codes der Steuerzeichen in der Zeile („#3“, #862) in Reihenfolge.</summary>
     function CharsOnLine(const AFileName: string; ALine: Integer): TArray<string>;
+    /// <summary>Steht in der Zeile die Marke einer Methode ohne Self (#686)?</summary>
+    function MethodOnLine(const AFileName: string; ALine: Integer): Boolean;
     /// <summary>„: Typ“, lange Typen gekürzt.</summary>
     class function TypeLabelOf(const ATypeName: string): string; static;
     /// <summary>Blockende-Beschriftung der Zeile: AText ist der Text der Marke ohne "//" (Anker), ALabel die
@@ -217,6 +224,7 @@ begin
   Entry.Types := nil;
   Entry.Defines := nil;
   Entry.Chars := nil;
+  Entry.Methods := nil;
 end;
 
 function TAtlasInlayHintStore.Missing(const AFileName: string; AFirst, ALast: Integer; out AFrom, ATo: Integer): Boolean;
@@ -286,8 +294,9 @@ begin
         Entry.Ends := Entry.Ends + [Hint];
       Continue;
     end;
-    // Typmarke (#453), Include-Symbole (#860) und Steuerzeichen (#862): jede Stelle einmal.
-    if Hint.TypeHint or Hint.DefineHint or Hint.CharHint then
+    // Typmarke (#453), Include-Symbole (#860), Steuerzeichen (#862) und Methoden ohne Self (#686): jede Stelle
+    // einmal.
+    if Hint.TypeHint or Hint.DefineHint or Hint.CharHint or Hint.MethodHint then
     begin
       if (Hint.Line < AFrom) or (Hint.Line > ATo) or (Hint.Line > High(Entry.Lines)) or (Hint.Name = '') then
         Continue;
@@ -295,6 +304,8 @@ begin
         AddOnce(Entry.Types, Hint)
       else if Hint.DefineHint then
         AddOnce(Entry.Defines, Hint)
+      else if Hint.MethodHint then
+        AddOnce(Entry.Methods, Hint)
       else
         AddOnce(Entry.Chars, Hint);
       Continue;
@@ -355,6 +366,14 @@ begin
   Entry := Find(AFileName);
   if Entry <> nil then
     Result := NamesOn(Entry.Chars, ALine);
+end;
+
+function TAtlasInlayHintStore.MethodOnLine(const AFileName: string; ALine: Integer): Boolean;
+var
+  Entry: TEntry;
+begin
+  Entry := Find(AFileName);
+  Result := (Entry <> nil) and (Length(NamesOn(Entry.Methods, ALine)) > 0);
 end;
 
 function TAtlasInlayHintStore.OnLine(const AFileName: string; ALine: Integer): TArray<string>;

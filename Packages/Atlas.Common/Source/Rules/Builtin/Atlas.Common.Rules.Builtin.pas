@@ -75,6 +75,7 @@ uses
   Atlas.Common.Rules.Builtin.Units,
   Atlas.Common.Rules.Builtin.PublicMembers,
   Atlas.Common.Rules.Builtin.XmlDoc,
+  Atlas.Common.Rules.Builtin.MethodWithoutSelf,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -145,6 +146,7 @@ begin
     RegisterUnitRules(Registry);
     RegisterPublicMemberRules(Registry);
     RegisterXmlDocRules(Registry);
+    RegisterMethodWithoutSelfRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;
