@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2075] of string = (
+  Lines: array[0..2083] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -669,6 +669,15 @@ const
     '                "type": "boolean",',
     '                "default": false,',
     '                "description": "Nur loop-runs-at-most-once: for-in aus einfachen Anweisungen, das mit Exit bzw. Break endet (erstes Element holen), nicht melden (#1131)."',
+    '              },',
+    '              "formatMethods": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "default": [],',
+    '                "description": "Nur format-args: weitere Routinen mit Formatstring und folgender Argumentliste [...], z. B. [\"TLogger.LogFmt\", \"Protokoll\"]; mit Punkt zählt ohne Namensauflösung de' +
+      'r Methodenname hinter einem beliebigen Qualifizierer (#56)."',
     '              },',
     '              "allowTables": {',
     '                "type": "array",',

@@ -223,6 +223,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
+  Atlas.Common.Pascal.FormatStrings,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
@@ -633,29 +634,13 @@ end;
 
 class function TFormatWithoutSettingsRule.HasLocaleSpecifier(const AFormat: string): Boolean;
 var
-  Index: Integer;
+  mValue: string;
 begin
-  Index := 1;
-  while Index <= Length(AFormat) do
-  begin
-    if AFormat[Index] = '%' then
-    begin
-      Inc(Index);
-      if (Index <= Length(AFormat)) and (AFormat[Index] = '%') then
-      begin
-        Inc(Index);
-        Continue;
-      end;
-      // Index, Ausrichtung, Breite, Genauigkeit: %0:-10.2f
-      while (Index <= Length(AFormat)) and CharInSet(AFormat[Index], ['0'..'9', ':', '-', '.', '*']) do
-        Inc(Index);
-      if (Index <= Length(AFormat)) and CharInSet(AFormat[Index], ['f', 'F', 'n', 'N', 'm', 'M', 'g', 'G',
-        'e', 'E']) then
-        Exit(True);
-    end;
-    Inc(Index);
-  end;
-  Result := False;
+  // Zerlegung gemeinsam mit format-args; ein Literal mit Hochkommas wird erst ausgewertet.
+  if TFormatString.LiteralValue(AFormat, mValue) then
+    Result := TFormatString.HasLocaleSpecifier(mValue)
+  else
+    Result := TFormatString.HasLocaleSpecifier(AFormat);
 end;
 
 class function TFormatWithoutSettingsRule.PictureDependsOnLocale(const AFunction, APicture: string): Boolean;

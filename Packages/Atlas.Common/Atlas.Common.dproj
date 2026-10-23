@@ -329,6 +329,7 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.OrdinalConstants.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ConstantValues.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ConditionalBranches.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.FormatStrings.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.DirectiveNames.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.PureRoutines.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.pas"/>
@@ -395,6 +396,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Casts.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.StringAddress.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.FormatArgs.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.ForbiddenSymbols.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.pas"/>

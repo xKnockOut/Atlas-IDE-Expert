@@ -205,4 +205,10 @@ begin
     end;
 end;
 
+function Beschriften(const AName: string; AAnzahl: Integer): string;
+begin
+  Result := Format('%d Einträge für %s', [AName, AAnzahl]); // ERWARTET: format-args
+  Result := Format('%s: %d Einträge', [AName, AAnzahl]); // KEIN-TREFFER: format-args
+end;
+
 end.
