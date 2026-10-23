@@ -48,6 +48,12 @@ var
 { TShutdownLeaks }
 
 class function TShutdownLeaks.AllocatedBytes: Int64;
+{$IFDEF FPC}
+begin
+  // Linux-Bau mit Free Pascal (#1109): der Heap von FPC statt FastMM.
+  Result := GetFPCHeapStatus.CurrHeapUsed;
+end;
+{$ELSE}
 var
   State: TMemoryManagerState;
   Index: Integer;
@@ -60,6 +66,7 @@ begin
     Inc(Result, Int64(State.SmallBlockTypeStates[Index].AllocatedBlockCount) *
       State.SmallBlockTypeStates[Index].UseableBlockSize);
 end;
+{$ENDIF}
 
 class function TShutdownLeaks.Describe(ABytes: Int64): string;
 begin

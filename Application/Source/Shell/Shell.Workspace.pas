@@ -297,7 +297,7 @@ uses
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Index.CacheHousekeeping,
   Atlas.Common.Diagnostics.ShutdownLeaks,
-  Atlas.Windows.Projects.DelphiInstallation,
+  Shell.Platform,
   Shell.Bootstrap;
 
 /// <summary>Neu eingelesene Units nach Grund und belegter Speicher, fürs Diagnoselog (Rückmeldung 22.10.2026).</summary>

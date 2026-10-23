@@ -96,8 +96,7 @@ uses
   Shell.Compiler,
   Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Index.Scheduler,
-  Atlas.Windows.Process.ParentWatcher,
-  Atlas.Windows.Documents.FileWatcher,
+  Shell.Platform,
   Shell.Workspace,
   Shell.Diagnostics;
 
@@ -463,9 +462,7 @@ type
 
 implementation
 
-// Winapi.Windows zuerst, damit die System-Units bei gleichen Namen Vorrang haben.
 uses
-  Winapi.Windows,
   System.IOUtils,
   System.Math,
   System.StrUtils,
@@ -525,24 +522,18 @@ uses
   Atlas.Common.Rules.Builtin.Metrics,
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Compiler.OutputParser,
-  Atlas.Windows.Compiler.Adapters.ProcessRunner,
-  Atlas.Windows.Projects.DelphiInstallation,
   Atlas.Common.Projects.DelphiVersions,
-  Atlas.Windows.Process.Instances,
   Atlas.Common.Compiler.Edition,
-  Atlas.Windows.Console.StdStreams,
-  Atlas.Windows.Documents.PathCanonicalizer,
-  Atlas.Windows.Documents.SharedRead,
-  Atlas.Windows.Diagnostics.Adapters.DebugOutputSink,
-  Atlas.Windows.Diagnostics.StackTrace,
-  Atlas.Windows.Diagnostics.StackGuard,
   Atlas.Common.Logging.RotatingFileStream,
-  Atlas.Windows.Editing.SystemColors,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.GroupReader,
   Atlas.Common.Projects.PackageLocator,
   Atlas.Common.Index.Cache,
   Atlas.Common.JsonRpc.Messages;
+
+const
+  /// <summary>Ohne Zeitlimit warten (INFINITE, ohne Winapi.Windows).</summary>
+  WaitForever = Cardinal($FFFFFFFF);
 
 // Antworten für implicit-package-import (#46): nicht gefundene Packages sind unbekannt, damit die Regel
 // still bleibt statt falsch zu melden.
@@ -651,7 +642,7 @@ begin
       if Length(Params) > 500 then
         Params := Copy(Params, 1, 500) + '…';
       FLogger.Error(Format('Anfrage %s fehlgeschlagen: %s: %s%sParameter: %s%s%s',
-        [AMethod, AError.ClassName, AError.Message, sLineBreak, Params, sLineBreak, AError.StackTrace]));
+        [AMethod, AError.ClassName, AError.Message, sLineBreak, Params, sLineBreak, TShellPlatform.StackTraceOf(AError)]));
     end;
   FLifecycle := TLspLifecycle.Create(TProductVersion.Name, TProductVersion.Version,
     function: TJSONObject
@@ -675,7 +666,7 @@ begin
   FDocuments := TDocumentStore.Create(
     function(const APath: string): string
     begin
-      Result := TWindowsPathCanonicalizer.Canonicalize(APath);
+      Result := TShellPlatform.CanonicalizePath(APath);
     end);
   FTextDocumentSync := TLspTextDocumentSync.Create(FDocuments);
   FTextDocumentSync.Attach(FDispatcher);
@@ -756,7 +747,13 @@ begin
       Result := FRequestTimeout;
     end;
   FPullDiagnostics.Attach(FDispatcher);
-  FSyntaxDiagnostics.OnPullChanged := FPullDiagnostics.Changed;
+  // Als anonyme Methode statt der Methode selbst: Free Pascal (Linux-Bau) bricht an der Zuweisung einer
+  // Methode an eine Methodenreferenz intern ab.
+  FSyntaxDiagnostics.OnPullChanged :=
+    procedure
+    begin
+      FPullDiagnostics.Changed;
+    end;
 end;
 
 procedure TServerComposition.WireEditing;
@@ -990,7 +987,7 @@ begin
   FSlashMenu.Index := FIndex;
   FEndReason := TDiagnosticEndReason.InputClosed;
   FRequestTimeout := RequestTimeoutMs;
-  FDiagnostics := TShellDiagnostics.Create(TShellDiagnostics.DefaultFolder, IntToStr(GetCurrentProcessId),
+  FDiagnostics := TShellDiagnostics.Create(TShellDiagnostics.DefaultFolder, IntToStr(TShellPlatform.CurrentProcessId),
     FDocuments, FIndex);
   FDiagnosticsRef := FDiagnostics;
   FDiagnostics.TimeoutMs :=
@@ -1399,12 +1396,19 @@ begin
       end;
     end);
   FDocumentLinks.Attach(FDispatcher);
-  FColors := TLspColors.Create(FDocuments, WindowsSystemColor);
+  FColors := TLspColors.Create(FDocuments, PlatformSystemColor);
   FColors.Attach(FDispatcher);
 end;
 
 procedure TServerComposition.WireCommands;
+var
+  ReadSourceTextRef: TCompletionReadText;
+  EnsureUnitRef: TEnsureUnitFunc;
 begin
+  // Methodenreferenz vorab: Free Pascal (Linux-Bau) bricht ab, wenn eine anonyme Methode die Methode selbst
+  // als Referenz weitergibt.
+  EnsureUnitRef := EnsureUnit;
+  ReadSourceTextRef := ReadSourceText;
   FCommands := TLspCommands.Create;
   FCommands.Register(TLspFormFiles.ConvertCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1485,7 +1489,7 @@ begin
   FCommands.Register(TLspOverrideMarks.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
-      Result := TLspOverrideMarks.Execute(FDocuments, FIndex, EnsureUnit, FDefinition.Namespaces, AArguments);
+      Result := TLspOverrideMarks.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, AArguments);
     end);
   FCommands.Register(TLspBaseline.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1542,18 +1546,18 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := TQualifiedNames.Execute(FDocuments, FIndex,
-        EnsureUnit, FDefinition.Namespaces, AArguments);
+        EnsureUnitRef, FDefinition.Namespaces, AArguments);
     end);
   FCommands.Register(TEnumValueCommands.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
-      Result := TEnumValueCommands.Execute(FDocuments, FIndex, EnsureUnit, FDefinition.Namespaces, ReadSourceText,
+      Result := TEnumValueCommands.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, ReadSourceTextRef,
         AArguments);
     end);
   FCommands.Register(TResourceStringCommands.AddCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
-      Result := TResourceStringCommands.ExecuteAdd(ReadSourceText, FResourceStringWrite, AArguments);
+      Result := TResourceStringCommands.ExecuteAdd(ReadSourceTextRef, FResourceStringWrite, AArguments);
     end);
   FCommands.Register(TStringLiteralCommands.PlainTextCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1590,8 +1594,8 @@ begin
       Workspaces: TArray<TLspProcessWorkspace>;
     begin
       Workspaces := CollectProcesses;
-      Result := TLspProcesses.ToJson(Workspaces, GetCurrentProcessId, Now);
-      FLogger.Info(TLspProcesses.ToMarkdown(Workspaces, GetCurrentProcessId, Now));
+      Result := TLspProcesses.ToJson(Workspaces, TShellPlatform.CurrentProcessId, Now);
+      FLogger.Info(TLspProcesses.ToMarkdown(Workspaces, TShellPlatform.CurrentProcessId, Now));
     end);
   // Einstellungsdialog des Plugins (#227): Prüfung mit dem Parser des Servers und Regelkatalog.
   FCommands.RegisterConcurrent(TLspSettingsCommands.CheckCommand,
@@ -2165,7 +2169,7 @@ begin
   Workspace.Selection := FProjectSelection;
   // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62).
   Identity := Default(TIndexProcessInfo);
-  Identity.Pid := GetCurrentProcessId;
+  Identity.Pid := TShellPlatform.CurrentProcessId;
   Identity.Kind := TIndexProcessInfo.KindLsp;
   Identity.Client := FClientName;
   Workspace.ProcessIdentity := Identity;
@@ -2316,7 +2320,7 @@ begin
     TMonitor.Enter(FWorkspacesLock);
     try
       while FWorkspaceUsers.ContainsKey(Workspace) do
-        TMonitor.Wait(FWorkspacesLock, INFINITE);
+        TMonitor.Wait(FWorkspacesLock, WaitForever);
     finally
       TMonitor.Exit(FWorkspacesLock);
     end;
@@ -2771,7 +2775,7 @@ begin
     begin
       ATarget := AFileName + '.defekt';
       // Eine ältere beiseitegelegte Datei wird in einem Schritt ersetzt: Die jüngere hat den neueren Stand.
-      Result := MoveFileEx(PChar(AFileName), PChar(ATarget), MOVEFILE_REPLACE_EXISTING);
+      Result := TShellPlatform.MoveReplacing(AFileName, ATarget);
     end;
 end;
 
@@ -3659,8 +3663,7 @@ begin
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
-  Input.Identity := [GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
-    GetEnvironmentVariable('USERDOMAIN')];
+  Input.Identity := TProcessInfo.IdentityNames;
   Text := TBugReport.Build(Input);
   Answer := TJSONObject.Create;
   Answer.AddPair('text', Text);
@@ -4718,19 +4721,19 @@ var
   RecentSink: TRecentLogSink;
   RecentLog: IRecentLogLines;
   Tracing: TJsonRpcTracingTransport;
+  DebugSink: ILogSink;
 begin
   Tracing := nil;
   // Stacktraces für das Absturzprotokoll (Exception.StackTrace).
   TStackTrace.Install;
-  // Nach einem abgefangenen Stapelüberlauf die Schutzseite neu setzen (#1094); sonst beendet der
-  // nächste Überlauf den Prozess.
-  TWindowsStackGuard.Install;
-  // Lesen mit FILE_SHARE_DELETE (Bericht M5): Das Plugin ersetzt settings.json, atlas.json und Units atomar,
-  // auch während der Server sie liest.
-  TWindowsSharedRead.Install;
+  // Schutzseite nach Stapelüberlauf (#1094) und Lesen mit FILE_SHARE_DELETE (Bericht M5), soweit die
+  // Plattform sie braucht.
+  TShellPlatform.InstallGuards;
   LoggerImpl := TLogger.Create;
   Logger := LoggerImpl;
-  LoggerImpl.AddSink(TDebugOutputLogSink.Create, TLogLevel.Debug);
+  DebugSink := TShellPlatform.DebugLogSink;
+  if DebugSink <> nil then
+    LoggerImpl.AddSink(DebugSink, TLogLevel.Debug);
   // stderr zeigt VS Code ebenfalls im Ausgabefenster; dort nur Fehler, um
   // Doppelungen mit window/logMessage zu vermeiden.
   LoggerImpl.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Error);
@@ -4803,11 +4806,14 @@ begin
 end;
 
 function TServerComposition.DescribeFailure(const AError: Exception): string;
+var
+  Stack: string;
 begin
   Result := Format('%s: %s%sLetzte Nachricht: %s', [AError.ClassName, AError.Message, sLineBreak,
     FDispatcher.LastMessage]);
-  if AError.StackTrace <> '' then
-    Result := Result + sLineBreak + AError.StackTrace;
+  Stack := TShellPlatform.StackTraceOf(AError);
+  if Stack <> '' then
+    Result := Result + sLineBreak + Stack;
 end;
 
 class function TServerComposition.BuildCapabilities: TJSONObject;

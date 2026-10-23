@@ -97,7 +97,7 @@ uses
   Atlas.Core.Vcs.Tools,
   Atlas.Core.Vcs.Detection,
   Atlas.Core.Vcs.Composition,
-  Atlas.Core.Vcs.Adapters.ProcessRunner;
+  Shell.Platform;
 
 { TVcsChanges }
 
@@ -251,7 +251,7 @@ begin
   if FSvn = '' then
     FSvn := 'svn';
   // Kommandozeile: kein Fenster, der Hauptthread darf warten.
-  Runner := TAtlasVcsProcessRunner.Create(True, nil);
+  Runner := TShellPlatform.CreateVcsRunner(True, nil);
   FVcs := TAtlasVersionControl.ForWorkingCopy(AWorkingCopy, Runner, ASvn, TAtlasVcsCommand.DefaultTimeoutMs * 4);
 end;
 

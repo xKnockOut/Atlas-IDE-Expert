@@ -35,7 +35,8 @@ uses
   Shell.Bootstrap in 'Source\Shell\Shell.Bootstrap.pas',
   Shell.Commands.Build in 'Source\Shell\Shell.Commands.Build.pas',
   Shell.Commands.Index in 'Source\Shell\Shell.Commands.Index.pas',
-  Shell.Compiler in 'Source\Shell\Shell.Compiler.pas';
+  Shell.Compiler in 'Source\Shell\Shell.Compiler.pas',
+  Shell.Platform in 'Source\Shell\Shell.Platform.pas';
 
 // Atlas-Symbol (#751) als Programmsymbol (MAINICON).
 {$R '..\Packages\Atlas.IDE.Expert\Resources\Symbol\Atlas.Icon.res'}

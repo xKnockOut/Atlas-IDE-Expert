@@ -37,9 +37,16 @@ type
 
 implementation
 
+/// <summary>Trenner für APath: Ein Windows-Anfang (Laufwerk, "\\server", "\") gibt "\", ein POSIX-Anfang ("/")
+/// gibt "/" vor (#1109: unter Linux steht der Projektordner mit "/" vor den "\"-Pfaden aus dem .dproj). Ein
+/// relativer Pfad behält "\", wenn er einen enthält.</summary>
 function SeparatorFor(const APath: string): Char;
 begin
-  if (Pos('\', APath) > 0) or ((Length(APath) >= 2) and (APath[2] = ':')) then
+  if ((Length(APath) >= 2) and (APath[2] = ':')) or APath.StartsWith('\') then
+    Result := '\'
+  else if APath.StartsWith('/') then
+    Result := '/'
+  else if Pos('\', APath) > 0 then
     Result := '\'
   else
     Result := '/';

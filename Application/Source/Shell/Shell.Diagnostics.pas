@@ -103,7 +103,7 @@ uses
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Logging.Providers.StreamSink,
   Atlas.Common.Logging.Providers.TransformSink,
-  Atlas.Windows.Diagnostics.ProcessInfo;
+  Shell.Platform;
 
 threadvar
   /// <summary>Rechenzeit des Handler-Threads beim Start der Anfrage.</summary>
@@ -249,7 +249,7 @@ begin
   begin
     // Nur Klasse und Aufrufstapel: Die Meldung kann Pfade oder Namen aus dem Projekt enthalten.
     ErrorClass := AError.ClassName;
-    Stack := AError.StackTrace;
+    Stack := TShellPlatform.StackTraceOf(AError);
   end;
   FLog.LogEnd(AReason, AExitCode, Process, ErrorClass, Stack);
   FLogImpl.Flush;

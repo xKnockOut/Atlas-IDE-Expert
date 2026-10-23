@@ -18,7 +18,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Diagnostics.ShutdownLeaks,
-  Atlas.Windows.Diagnostics.DebugOutput,
+  Shell.Platform,
   Shell.CommandLine,
   Shell.Composition,
   Shell.Mcp,

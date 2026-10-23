@@ -863,6 +863,8 @@ uses
   Shell.Commands.Tests in 'Application\Shell\Shell.Commands.Tests.pas',
   Shell.VcsChanges in '..\Application\Source\Shell\Shell.VcsChanges.pas',
   Shell.VcsChanges.Tests in 'Application\Shell\Shell.VcsChanges.Tests.pas',
+  Shell.Platform in '..\Application\Source\Shell\Shell.Platform.pas',
+  Shell.Platform.Tests in 'Application\Shell\Shell.Platform.Tests.pas',
   Shell.Linter in '..\Application\Source\Shell\Shell.Linter.pas',
   Shell.Linter.Tests in 'Application\Shell\Shell.Linter.Tests.pas',
   Atlas.Common.Rules.Builtin.FormFields.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.FormFields.Tests.pas',

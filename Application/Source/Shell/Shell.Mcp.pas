@@ -28,7 +28,10 @@ type
 implementation
 
 uses
+{$IFDEF MSWINDOWS}
+  // Für das inline-DeleteFile der RTL (H2443); die Plattformadapter kommen aus Shell.Platform.
   Winapi.Windows,
+{$ENDIF}
   System.SysUtils,
   System.Classes,
   System.SyncObjs,
@@ -62,7 +65,6 @@ uses
   Atlas.Common.Mcp.TestTools,
   Atlas.Common.Projects.DprojReader,
   Atlas.Common.Compiler.Contract,
-  Atlas.Windows.Compiler.Adapters.ProcessRunner,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
   Atlas.Text.TestResults,
@@ -78,9 +80,7 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Projects.Contract,
   System.Generics.Collections,
-  Atlas.Windows.Console.StdStreams,
-  Atlas.Windows.Process.ParentWatcher,
-  Atlas.Windows.Documents.PathCanonicalizer,
+  Shell.Platform,
   Atlas.Common.Diagnostics.Anonymizer,
   Shell.Workspace,
   Shell.Bootstrap,
@@ -102,24 +102,6 @@ end;
 
 procedure TSilentTransport.WriteMessage(const AMessage: TJSONObject);
 begin
-end;
-
-/// <summary>Läuft der Prozess noch?</summary>
-function ProcessRunning(APid: Cardinal): Boolean;
-const
-  QueryLimitedInformation = $1000;
-var
-  Process: THandle;
-  Code: Cardinal;
-begin
-  Process := OpenProcess(QueryLimitedInformation, False, APid);
-  if Process = 0 then
-    Exit(False);
-  try
-    Result := GetExitCodeProcess(Process, Code) and (Code = STILL_ACTIVE);
-  finally
-    CloseHandle(Process);
-  end;
 end;
 
 /// <summary>Datei des Plugins (editor-dirty-&lt;pid&gt;.json), UTF-8 mit oder ohne BOM. Über TFileEncoding: teilt
@@ -154,7 +136,7 @@ begin
     Json := TJSONObject.ParseJSONValue(Text);
     try
       if not (Json is TJSONObject) or not TJSONObject(Json).TryGetValue<Integer>('pid', Pid) or
-        not ProcessRunning(Cardinal(Pid)) then
+        not TProcessInstances.Running(Cardinal(Pid)) then
         Continue;
       if TJSONObject(Json).GetValue('files') is TJSONArray then
         for Item in TJSONArray(TJSONObject(Json).GetValue('files')) do
@@ -188,7 +170,7 @@ begin
     Json := TJSONObject.ParseJSONValue(Text);
     try
       if not (Json is TJSONObject) or not TJSONObject(Json).TryGetValue<Integer>('pid', Pid) or
-        not ProcessRunning(Cardinal(Pid)) or not (TJSONObject(Json).GetValue('open') is TJSONArray) then
+        not TProcessInstances.Running(Cardinal(Pid)) or not (TJSONObject(Json).GetValue('open') is TJSONArray) then
         Continue;
       for Item in TJSONArray(TJSONObject(Json).GetValue('open')) do
         if SameText(Item.Value, AFileName) then
@@ -217,7 +199,7 @@ begin
       on Exception do
         Continue;
     end;
-    if TMcpIdeBuilds.ParseEntry(Text, Entry) and ProcessRunning(Entry.Pid) then
+    if TMcpIdeBuilds.ParseEntry(Text, Entry) and TProcessInstances.Running(Entry.Pid) then
       Result := Result + [Entry];
   end;
 end;
@@ -424,7 +406,16 @@ end;
 
 procedure RegisterTools(AServer: TMcpServer; ATools: TMcpIndexTools; ACode: TMcpCodeTools;
   AWorkspace: TShellWorkspace; const ARoot: string; AGuard: TMcpPathGuard; AEdit: TMcpEditTools);
+var
+  CheckSource: TCheckSourceFunc;
 begin
+  // Als anonyme Methode statt AWorkspace.CheckSource: Free Pascal (Linux-Bau) bricht an der Umwandlung einer
+  // Methode eines anderen Objekts in eine Methodenreferenz intern ab.
+  CheckSource :=
+    function(const AFileName: string): TCheckSource
+    begin
+      Result := AWorkspace.CheckSource(AFileName);
+    end;
   AServer.AddTool('find_symbol',
     'Sucht Delphi-Symbole (Typen, Methoden, Felder, Konstanten …) im Projekt und in RTL/VCL. ' +
     'Liefert Art, Typ, Unit und Datei:Zeile. Name einfach ("Execute") oder qualifiziert ("TMyForm.Execute"); ' +
@@ -636,7 +627,7 @@ begin
       if Length(Files) = 0 then
         raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
       Result := TMcpCodeTools.Diagnostics(BuiltinRules, AWorkspace.Configuration.Settings, ARoot, Files,
-        ReadSourceText, AWorkspace.CheckSource);
+        ReadSourceText, CheckSource);
     end);
   AServer.AddTool('get_metrics',
     'Code-Metriken (#66) je Methode: Länge in Codezeilen, Verschachtelungstiefe, zyklomatische und kognitive ' +
@@ -902,14 +893,14 @@ begin
   Store := TDocumentStore.Create(
     function(const APath: string): string
     begin
-      Result := TWindowsPathCanonicalizer.Canonicalize(APath);
+      Result := TShellPlatform.CanonicalizePath(APath);
     end);
   Silent := TSilentTransport.Create;
   Workspace := TShellWorkspace.Create(Root, ExtractFileName(Root), Store, Silent, Logger, Index,
     'atlas-mcp-index');
   // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62); der MCP-Modus läuft für Claude Code.
   Identity := Default(TIndexProcessInfo);
-  Identity.Pid := GetCurrentProcessId;
+  Identity.Pid := TShellPlatform.CurrentProcessId;
   Identity.Kind := TIndexProcessInfo.KindMcp;
   Identity.Client := 'Claude Code';
   Workspace.ProcessIdentity := Identity;
@@ -968,7 +959,7 @@ begin
     end,
     function(APath: string): string
     begin
-      Result := TWindowsPathCanonicalizer.Canonicalize(APath);
+      Result := TShellPlatform.CanonicalizePath(APath);
     end);
   Edit := TMcpEditTools.Create(Index, ReadSourceText, WriteSourceText,
     function: TArray<string>
@@ -981,8 +972,14 @@ begin
     end);
   Edit.DirtyFiles := EditorDirtyFiles;
   // Regelprüfung mit den Symbolen und Include-Dateien des Projekts (#860).
-  Edit.CheckSource := Workspace.CheckSource;
-  Code.CheckSource := Workspace.CheckSource;
+  // Als anonyme Methode statt Workspace.CheckSource: Free Pascal (Linux-Bau) bricht an der Umwandlung einer
+  // Methode eines anderen Objekts in eine Methodenreferenz intern ab.
+  Edit.CheckSource :=
+    function(const AFileName: string): TCheckSource
+    begin
+      Result := Workspace.CheckSource(AFileName);
+    end;
+  Code.CheckSource := Edit.CheckSource;
   Edit.Audit :=
     procedure(const AText: string)
     begin
