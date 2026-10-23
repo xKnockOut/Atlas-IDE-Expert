@@ -931,3 +931,12 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **„Regel einstellen…“** (Hover, Fenster „Atlas-Prüfung“): `TAtlasProjectSettings.ShowRule` öffnet den Projektdialog, ohne Projekt den globalen, im Knoten der Gruppe.
 - **Außerdem behoben:** `inaccessible-member` bei Überladungen mit gemischter Sichtbarkeit (`TMonitor.Enter`), `missing-begin-end` setzt mit `format.elsePlacement: sameLine` `end else`, Regel-Editor in den Dialogen in voller Breite, Hinweis oben ohne leeren Streifen.
 - Handtests AP17, AP19, AP20, AP23–AP25, CV1, CV7 angepasst. Noch nicht gepusht (Marco prüft erst).
+
+## Dunkles Thema und Themenwechsel (23.10.2026, noch nicht gepusht)
+
+- **Fenster „Atlas-Prüfung“ im dunklen Thema:** `ListBack`/`ListText` aus `StyleServices(FList)` statt dem globalen Stil (die IDE themt je Formular, global kam Weiß). `ListCustomDrawItem` setzt die Farben jeder Zeile ausdrücklich (nach fetter Schrift zeichnete die Liste sonst mit Systemfarben). Neue Befunde: `NewBackColor` (Warnfarbe zu 20 % über dem Grund) statt festem Gelb.
+- **Fehlmeldungen behoben:** `unresolved-name` bei `Sqr` (fragt jetzt zuerst `TSystemIntrinsics.IsKnown`), Methodenaufruf mit Typargumenten (`GetValue<T>`) im Typ-Resolver.
+- **Wechsel Dunkel → Hell:** `ApplyTheme` der IDE setzt im dunklen Thema feste Farben (und den Dunkelmodus von Windows) in Listen, Feldern und Kästchen, beim Wechsel zurück aber nicht wieder die Systemfarben. `TAtlasIdeDockWindow.ApplyIdeTheme` setzt deshalb ListView, TreeView, Eingabefelder, Listboxen und Kontrollkästchen vorher zurück und legt ihre Fenster danach neu an; alle Atlas-Fenster und die Suchleiste nutzen es. Der Notifier (`Atlas.IDE.Foundation.Symbol`) läuft sofort und nach 400 ms, 1,5 s und 4 s und schreibt je Durchlauf `Themenwechsel +N ms: <Thema>, Hintergrund #RRGGBB` ins Protokoll.
+  - Erster Versuch (nur Listen, 0 und 400 ms) half nicht. Marco testet den zweiten (0f4131b8). Bleibt es dunkel, zeigen die Protokollzeilen, ob die IDE das neue Thema bis 4 s schon meldet.
+- **Protokoll lesen:** Das Bash-Werkzeug sieht `%LOCALAPPDATA%` virtualisiert (Kopie unter `AppData\Local\Packages\Claude_…\LocalCache`, Stand 22.10.). Das echte `atlas.log` nur mit PowerShell lesen. Das Plugin-Protokoll läuft normal, eine Lücke gibt es nicht.
+- **Nebenbefund Server-Diagnose:** `workspace/diagnostic` brauchte 17 s mit `slowRule=inline-not-expanded` (16,4 s) in einer Unit mit fehlenden Units; nicht untersucht.
