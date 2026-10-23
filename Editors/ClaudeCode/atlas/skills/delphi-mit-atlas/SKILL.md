@@ -25,6 +25,7 @@ sind schneller und genauer als Textsuche und das Lesen ganzer Dateien.
 - Geplanten Code mit `check_code` prüfen, bevor er in die Datei geht
   (Syntax, Prüfregeln, nicht auflösbare Bezeichner).
 - `get_diagnostics` für den Stand einer Datei oder des Projekts.
+- `find_unused_code` vor dem Aufräumen: ungenutzte Member, Deklarationen und Units des Projekts; `get_unit_dependencies` für uses, Nutzer und Zyklen einer Unit, bevor sie verschoben oder aufgeteilt wird.
 - `get_metrics` vor und nach einem Umbau: welche Methoden zu lang, zu tief verschachtelt oder zu komplex sind (Grenzwerte aus `atlas.json`).
 - `get_todos` vor einer Aufgabe oder einem Release: offene `TODO`/`FIXME` des Projekts, gefiltert nach Kategorie (`category`), Person (`owner`), Unit oder Marke; `includeDone` zeigt erledigte.
 - Befunde mit `explain_finding` erklären lassen (Regel, Ausschnitt, Vorher/Nachher).

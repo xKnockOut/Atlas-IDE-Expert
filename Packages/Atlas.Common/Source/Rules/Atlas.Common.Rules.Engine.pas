@@ -519,6 +519,8 @@ begin
       Context.FreeFieldsFreeAndNil := SameText(Settings.Refactoring.FreeFieldsStyle, 'freeAndNil');
       Context.AccessorsProtected := Settings.Completion.AccessorSection = TCompletionAccessorSection.Protected;
       Context.Formatting := Settings.Formatting;
+      Context.KeepAttributes := Settings.DeadCodeKeepAttributes;
+      Context.KeepPatterns := Settings.DeadCodeKeepPatterns;
       if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
         Continue;
       // Erst in einer Interface-Variablen halten: Check nimmt den Report als

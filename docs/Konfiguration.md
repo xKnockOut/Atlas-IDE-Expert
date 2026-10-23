@@ -35,6 +35,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `slashCommands` | global (settings.json) | object | – |  | Schnellbefehle: Eine Zeile, die mit /name beginnt, wird nach Enter ausgeführt und verschwindet. Nach / schlägt die Vervollständigung alle Befehle vor. |
 | `sortUses` | Projekt (atlas.json) | boolean string | `false` | `true`, `false`, `"alphabetic"`, `"namespace"` | "uses aufräumen" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder "alphabetic" alphabetisch, "namespace" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units. |
 | `usesKeep` | Projekt (atlas.json) | array<string> | `` |  | Units, die "ungenutzte uses entfernen" nie entfernt, zusätzlich zu allen Units mit initialization-Abschnitt. |
+| `deadCode` | Projekt (atlas.json) | object | – |  | Toter Code: Elemente, die als verwendet gelten, obwohl ihr Name im Code nicht vorkommt (RTTI, Serialisierung, Plugins). Gilt für unused-private-member, unused-public-member und unused-declaration, zusätzlich zu den Optionen keepAttributes und keepPatterns der Regeln. |
 | `dfmPropertyRules` | Projekt (atlas.json) | array<object> | `` |  | Eigenschaftsregeln für Formulardateien: Vorgaben für Komponenten-Properties, gemeldet als dfm-property am Feld der Komponente in der Unit. Nicht gespeicherte Properties gelten mit ihrem default-Wert. |
 | `memoryBudgetMb` | global (settings.json) | integer | `768` | 0… | Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst die Verwendungen ausgelagert (sie bleiben im Cache auf der Platte), dann Bibliotheks-Units (RTL, VCL) und zuletzt Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. |
 | `index` | gemischt, siehe unten | object | – |  | Umfang des Symbolindex. Standard: alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und alle Units der Bibliotheks- und Suchpfade der Delphi-Installation, auch wenn keine Unit sie einbindet. Reihenfolge: aktives Projekt, übrige Projekte, Suchpfade, Bibliothek; alles im Hintergrund, die Bibliothek aus dem gemeinsamen Cache. |
@@ -156,6 +157,13 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `slashCommands.sortUsesRemoveUnused` | global (settings.json) | boolean | `true` |  | /sortuses streicht auch ungenutzte Units laut Index. Units mit initialization oder finalization und die aus usesKeep bleiben. |
 | `slashCommands.enumHelper` | global (settings.json) | boolean | `true` |  | /helper für eine Aufzählung legt die Namenstabelle cNames sowie ToString und FromString an. Aus: ein leerer record helper wie bei anderen Typen. |
 | `slashCommands.setHelper` | global (settings.json) | boolean | `true` |  | /helper für eine Menge (set of) legt Contains, ToText, Toggle und All an. Aus: ein leerer record helper wie bei anderen Typen. |
+
+## deadCode
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `deadCode.keepAttributes` | Projekt (atlas.json) | array<string> | `` |  | Attributnamen ohne "Attribute", z. B. "JsonName": Alle Mitglieder eines Typs mit diesem Attribut gelten als verwendet. |
+| `deadCode.keepPatterns` | Projekt (atlas.json) | array<string> | `` |  | Namensmuster mit * und ?, auch als Typ.Name, z. B. "*Handler" oder "TPlugin.*": Passende Elemente gelten als verwendet. |
 
 ## index
 

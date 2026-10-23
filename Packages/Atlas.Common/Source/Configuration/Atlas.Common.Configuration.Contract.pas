@@ -485,6 +485,11 @@ type
     SortUsesByNamespace: Boolean;
     /// <summary>Units, die "ungenutzte uses entfernen" nie entfernt (#284).</summary>
     UsesKeep: TArray<string>;
+    /// <summary>Toter Code (#64): Attribute (z. B. JsonName) und Namensmuster (z. B. *Handler), deren Elemente als
+    /// verwendet gelten (deadCode.keepAttributes, deadCode.keepPatterns); für unused-private-member,
+    /// unused-public-member und unused-declaration.</summary>
+    DeadCodeKeepAttributes: TArray<string>;
+    DeadCodeKeepPatterns: TArray<string>;
     /// <summary>Klartext als String-Literal (#312).</summary>
     StringLiteral: TStringLiteralSettings;
     /// <summary>Klassenmitglieder ordnen (#89).</summary>
@@ -921,6 +926,8 @@ begin
   Result.SortUses := False;
   Result.SortUsesByNamespace := False;
   Result.UsesKeep := nil;
+  Result.DeadCodeKeepAttributes := nil;
+  Result.DeadCodeKeepPatterns := nil;
   Result.StringLiteral := TStringLiteralSettings.Default;
   Result.MemberOrder := TMemberOrderSettings.Default;
   Result.TestUnits := TTestUnitSettings.Default;

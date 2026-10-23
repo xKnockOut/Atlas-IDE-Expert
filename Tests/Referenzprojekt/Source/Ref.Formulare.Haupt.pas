@@ -27,7 +27,7 @@ implementation
 
 uses
   Ref.Daten.Suche,
-  Ref.Formulare.Detail;
+  Ref.Formulare.Detail; // ERWARTET-PROJEKT: uses-cycle
 
 {$R *.dfm}
 
