@@ -912,3 +912,13 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Offen (Entscheidung Marco):** Stil- und Metrikregeln (missing-begin-end etwa 36 600, metric-*, write-only-property, shadowed-name 174). `Setup/Beispiele` enthält absichtlich Fehler für die Vorführung (Rabatt, ungenutzte Parameter).
 - **Grenze:** `--check` hat keinen Symbolindex; Typen aus anderen Units bleiben unbekannt (owned-field-free-unclear bei `FBookmarks`).
 - **Beim Delphi-Build prüfen:** geänderte Signaturen (`TMessageHandlers.Overview`, `TRoutineLocals.RemoveVariables`, `TUnitSearch.ExecuteUnits`, `EditorModified` ohne View, `MessagesRead`, `HitTest(Y)` im Zustandsrahmen), `FormatSettings` als globale Variable in VCL-Units.
+
+## #1109 in main (23.10.2026, lokal, noch nicht gepusht)
+
+- `claude/project-thread-1p5ytv` (Linux-Server für Cloud-Sitzungen, Atlas-Regeln an Atlas, Metrikregeln aus) per Fast-Forward nach main. Delphi-Build sofort 0/0/0; die Vorprüfungen (Array-Längen, Zeilen über 1023 Zeichen, Prüfskripte, bekannte Fallen in neuen Zeilen) fanden nichts.
+- **Lecks behoben:**
+  - `Shell.Mcp.RegisterTools`: Die FPC-Umgehung legte die anonyme Methode für `CheckSource` in eine lokale Variable, die die übrigen Werkzeug-Closures einfangen; der gemeinsame Rahmen hielt sich selbst fest (248 Byte in `ToolsListMatchesDocumentation`). Jetzt baut `CheckSourceOf` die Referenz in eigener Routine (auch in `Run`), weiterhin ohne Methodenzeiger auf ein fremdes Objekt.
+  - `TAtlasRotatingLog` hielt den benannten Mutex samt Ordner im Objekt; nach dem Umstellen des Ordners in Tests blieb er stehen bzw. entstand im nächsten schreibenden Test neu (`ExceptionCountsForFeature`, danach wechselnd ein `BrokenFileSetAsideLockedFileKept`). Jetzt öffnet `AppendLine` den Mutex je Zeile.
+- Neue Falle in `CLAUDE.md`: anonyme Methode in einer eingefangenen Variablen derselben Routine.
+- Lokaler Branch `features-v110` gelöscht (Marcos Wunsch; war 8746138c).
+- **Push wartet auf Marco:** Er prüft den Stand erst selbst in Delphi.

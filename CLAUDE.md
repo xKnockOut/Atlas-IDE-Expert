@@ -34,4 +34,5 @@
   - `TArray.Sort`/`TList.Sort` sind nicht stabil: bei Gleichstand eindeutig weitersortieren.
   - Gleitkomma an Int64-Grenzen: Double hat 53 Bit Mantisse (FPC rechnet unter x86 mit Extended).
   - Referenzprojekt und Mutationen: `{$IFDEF WIN32}`/`WIN64`-Zweige sind unter Windows anders aktiv als unter Linux.
+  - Anonyme Methode in einer lokalen Variablen, die andere anonyme Methoden derselben Routine einfangen: Der gemeinsame Rahmen hält sich selbst fest (Leck). Die Methodenreferenz in einer eigenen Routine bauen.
   - Zeilenenden CRLF.
