@@ -1,8 +1,8 @@
 ﻿unit Atlas.IDE.Editor.ExtractInterface;
 
-// Code-Aktion „Interface aus … herauslösen …“ (#664): Der Server bietet sie
-// als Client-Befehl atlas.extractInterface mit URI und Position an. Atlas
-// schickt die offenen Puffer, holt die Kandidaten
+// Code-Aktion „Interface aus … herauslösen …“ (#664) auf der Kopfzeile einer
+// Klasse: Der Server bietet sie als Client-Befehl atlas.extractInterface
+// mit URI und Position an. Atlas schickt die offenen Puffer, holt die Kandidaten
 // (atlas.server.extractInterface.prepare), zeigt den Dialog „Mitglieder
 // herauslösen“ (Name, Ziel-Unit, Mitglieder), holt das WorkspaceEdit
 // (atlas.server.extractInterface), zeigt die Vorschau wie beim Umbenennen mit
