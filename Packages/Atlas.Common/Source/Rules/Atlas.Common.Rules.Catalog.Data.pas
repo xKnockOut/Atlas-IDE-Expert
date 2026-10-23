@@ -4427,6 +4427,28 @@ begin
     '      "good": "I := 0;\nwhile I < List.Count do\nbegin\n  Check(List[I]);\n  Inc(I);\nend;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "loop-runs-at-most-once",' + #10 +
+    '      "name": "Loop runs at most once",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "Every path through the body of a for, for-in, while or repeat loop ends with Exit, Break, raise, Halt, Abort, RunError, ExitProcess or a call of a routine of the file that raises' +
+    ', so the loop runs at most once. Usually an if is missing before the jump, or Continue was meant. A path counts as a jump for if with else and both branches, case with else and all branches, try … fin' +
+    'ally with the try or the finally part and try … except with the try part and every handler. Silent with Continue of this loop, goto or labels and conditional directives in the body; Break of inner loo' +
+    'ps does not count. Complements infinite-loop and loop-condition-unchanged. No quick fix, the intent is unclear; if the jump directly follows an if without else, the message asks whether it belongs int' +
+    'o the if branch. High confidence.",' + #10 +
+    '      "bad": "for mCustomer in FCustomers do\nbegin\n  if mCustomer.Id = AId then\n    Result := mCustomer;\n  Exit;\nend;",' + #10 +
+    '      "good": "for mCustomer in FCustomers do\n  if mCustomer.Id = AId then\n    Exit(mCustomer);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowFirstElement",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": false,' + #10 +
+    '          "description": "Do not report a for-in loop of simple statements that ends with Exit or Break (fetching the first element)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "unconditional-recursion",' + #10 +
     '      "name": "Recursion without a stop",' + #10 +
     '      "category": "bug",' + #10 +
@@ -7433,6 +7455,21 @@ begin
     'utine ist und mindestens eine direkt (nicht nur als X.Eigenschaft) vorkommt. Still bleiben Bedingungen mit Funktionsaufrufen, Feldern, globalen Variablen, var- und out-Parametern und Terminated, außer' +
     'dem Schleifen mit Ausgang (Break, Exit, raise …), Warteschleifen (Sleep, ProcessMessages …), with, Aufrufen lokaler Routinen und Variablen, die eine anonyme Methode erfasst. Änderungen über X[…] zähle' +
     'n nur, wenn die Bedingung X[…] liest."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "loop-runs-at-most-once",' + #10 +
+    '      "name": "Schleife läuft höchstens einmal",' + #10 +
+    '      "description": "Jeder Weg durch den Rumpf einer for-, for-in-, while- oder repeat-Schleife endet mit Exit, Break, raise, Halt, Abort, RunError, ExitProcess oder dem Aufruf einer Routine der Date' +
+    'i, die eine Ausnahme auslöst; die Schleife läuft also höchstens einmal. Meist fehlt ein if vor dem Sprung, oder ein Continue war gemeint. Ein Weg zählt als Sprung bei if mit else und beiden Zweigen, c' +
+    'ase mit else und allen Zweigen, try … finally mit try- oder finally-Teil und try … except mit try-Teil und jedem Behandler. Still bei Continue dieser Schleife, goto bzw. Marken und bedingten Direktive' +
+    'n im Rumpf; ein Break innerer Schleifen zählt nicht. Ergänzt infinite-loop und loop-condition-unchanged. Keine Korrektur, die Absicht ist unklar; steht der Sprung direkt hinter einem if ohne else, fra' +
+    'gt die Meldung, ob er in den if-Zweig gehört. Sicherheit hoch.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowFirstElement",' + #10 +
+    '          "description": "for-in aus einfachen Anweisungen, das mit Exit bzw. Break endet (erstes Element holen), nicht melden."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unconditional-recursion",' + #10 +

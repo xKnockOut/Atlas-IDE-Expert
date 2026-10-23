@@ -6124,6 +6124,20 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index (VCL-Quellen indiz
 | HU7 | Klasse mit Vorfahr aus einer Unit, die nicht im Index steht | Keine Meldung (Kette unbekannt) |
 | HU8 | `"unrelated-class-cast": "off"`, `"group:find-bugs": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden | Keine Meldung; die Regel steht mit Schalter, Schweregrad und der Option `allowTypes` in der Gruppe |
 
+## Schleife läuft höchstens einmal (#1131)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SE1 | Das Beispiel aus #1131: `for mKunde in FKunden do begin if mKunde.Id = AId then Result := mKunde; Exit; end;` | Warnung `loop-runs-at-most-once` an `for`: „Jeder Durchlauf endet mit Exit: Die Schleife prüft nur das erste Element von FKunden. Gehört Exit in den if-Zweig?“; im Fenster „Atlas-Prüfung“ und im Befund-Hover; keine Schnellkorrektur (**Abnahme**) |
+| SE2 | `Exit` in den if-Zweig verschieben (`begin Result := mKunde; Exit; end`) | Meldung verschwindet |
+| SE3 | `for I := 0 to 9 do begin Inc(N); Break; end;`, `while N > 0 do raise …`, `repeat … Fehler; until …` mit einer Routine `Fehler`, die immer auslöst | Je eine Meldung („läuft höchstens einmal“ bzw. bei repeat „läuft genau einmal“) |
+| SE4 | if mit else und Sprung in beiden Zweigen; `case` mit else und Exit in allen Zweigen | Meldung „… endet mit einem Sprung …“ bei verschiedenen Sprüngen |
+| SE5 | Continue im Rumpf, Break nur in einer inneren Schleife, Exit nur in einer anonymen Methode, `try Exit; except Inc(N); end`, `TMonitor.Enter/Exit` im try … finally, `{$IFDEF}` um den Sprung | Keine Meldung |
+| SE6 | `"loop-runs-at-most-once": {"allowFirstElement": true}`; `for mKunde in FKunden do begin Result := mKunde; Exit; end;` und das Beispiel aus SE1 | Erstes still, SE1 weiterhin gemeldet (die Bedingung liest mKunde). Im Atlas-Repo ist die Option an: keine Meldung in den Quellen |
+| SE7 | `"loop-runs-at-most-once": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden | Keine Meldung; die Regel steht mit Schalter, Schweregrad und der Option `allowFirstElement` in der Gruppe |
+
 ## Adresse des ersten Zeichens (#1130)
 
 Voraussetzung: Server läuft in der IDE mit Projekt und Index (RTL-Quellen indiziert).

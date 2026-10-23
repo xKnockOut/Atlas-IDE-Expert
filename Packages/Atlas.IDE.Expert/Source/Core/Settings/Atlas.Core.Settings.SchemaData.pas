@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2070] of string = (
+  Lines: array[0..2075] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -664,6 +664,11 @@ const
     '                "type": "boolean",',
     '                "default": true,',
     '                "description": "Nur redundant-cast: auch eine Klassenumwandlung melden, die nur vor Free steht, z. B. TObject(FStrom).Free (#1139)."',
+    '              },',
+    '              "allowFirstElement": {',
+    '                "type": "boolean",',
+    '                "default": false,',
+    '                "description": "Nur loop-runs-at-most-once: for-in aus einfachen Anweisungen, das mit Exit bzw. Break endet (erstes Element holen), nicht melden (#1131)."',
     '              },',
     '              "allowTables": {',
     '                "type": "array",',
