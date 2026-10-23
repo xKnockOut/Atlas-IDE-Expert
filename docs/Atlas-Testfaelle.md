@@ -1775,6 +1775,24 @@ Voraussetzung: VCL-Projekt `Kasse.dproj` mit den Konfigurationen Debug und Relea
 | RW17 | Hintergrundprüfung nach dem Speichern (#548) und Syntaxprüfung in Release mit DEBUG | Keine Meldung des Wächters, kein Abbruch |
 | RW18 | Projektgruppe mit zwei Release-Projekten, eines mit DEBUG, *Alle erzeugen* mit block | Das Projekt mit DEBUG wird abgebrochen, die Meldung nennt dessen Namen; das andere prüft der Wächter ohne Befund (ob die IDE danach weiterbaut, entscheidet sie) |
 
+## Prüfung vor dem Kompilieren (#529)
+
+Voraussetzung: VCL-Projekt `Kasse.dproj` (Main.pas, Daten.pas), einmal erfolgreich kompiliert, Server läuft, Optionen › Atlas › *Compiler*: „Prüfung vor dem Compile“ (`build.gate`) = block, Zeitlimit 300 ms. Regel `empty-except` auf Schweregrad Fehler, `with-statement` auf Warnung.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PV1 | In Main.pas ein `begin` löschen (Syntaxfehler, nicht speichern), *Projekt › Compilieren* | Der Compile startet nicht. Atlas-Gruppe: „Prüfung vor dem Compile: 1 Fehler in Kasse.dproj (1 geänderte Unit(s) geprüft):“, darunter „[syntax] …“ mit Datei und Zeile; „Compile abgebrochen (build.gate = block) …“ und „Atlas: Compile abgebrochen – Kasse.dproj: 1 Fehler der Prüfung vor dem Compile“. Doppelklick auf die Zeile springt an die Stelle (Akzeptanz: block mit Syntaxfehler) |
+| PV2 | Nach PV1 binnen 10 s noch einmal *Compilieren* | Der Compile läuft (und scheitert am Compiler); Meldung „bewusst übergangen …“. Nach mehr als 10 s wieder Abbruch |
+| PV3 | `build.gate` = warn, wie PV1 | Der Compile läuft; die Treffer stehen trotzdem in der Atlas-Gruppe (Akzeptanz: warn) |
+| PV4 | Fehler beheben, in Daten.pas ein leeres `except … end` einfügen (`empty-except` = Fehler), block, *Compilieren* | Abbruch mit „[empty-except] …“ in Daten.pas; nur Daten.pas wurde geprüft („1 geänderte Unit(s)“) |
+| PV5 | `empty-except` auf Warnung stellen, nur einen `with`-Block einfügen, *Compilieren* | Kein Treffer, kein Abbruch (Akzeptanz: Warnung blockiert nie) |
+| PV6 | Erfolgreich kompilieren, ohne Änderung noch einmal *Compilieren* | Keine Meldung von Atlas (keine geänderte Unit) |
+| PV7 | *Projekt › Syntaxprüfung*, Code Insight (Strg+Leertaste) und die Hintergrundprüfung nach dem Speichern bei einem Syntaxfehler | Keine Prüfung, kein Abbruch durch Atlas |
+| PV8 | `build_project` von Claude Code mit Syntaxfehler | Keine Prüfung durch Atlas (Auftrag) |
+| PV9 | Zeitlimit 50 ms, großes Projekt ohne Ausgabedatei (Clean), *Compilieren* | Der Compile läuft sofort; einmal „Zeitlimit von 50 ms (build.gateTimeoutMs) überschritten …“, beim nächsten Compile nicht mehr (Akzeptanz: höchstens Zeitlimit) |
+| PV10 | Server beenden (Statusfeld › Server beenden), Syntaxfehler, *Compilieren* | Keine Prüfung, der Server startet nicht; der Compiler meldet den Fehler |
+| PV11 | `build.gate` = off | Keine Prüfung; der Release-Wächter (#533) meldet in Release weiter nur |
+
 ## Units suchen (#777)
 
 Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testprojekt; Server läuft; Einstellungen auf Vorgabe.

@@ -147,6 +147,7 @@ Code-Aktionen öffnet Alt+Enter; alles steht auch im Menü *Atlas* und im Kontex
 
 ### Bauen, Testen, Debuggen
 
+- **Prüfung vor dem Kompilieren:** prüft vor jedem Build die seit dem letzten erfolgreichen Compile geänderten Units auf Syntaxfehler und Regelfehler; melden oder Build abbrechen (`build.gate`)
 - **Release-Build-Wächter:** prüft vor einem Release-Build die Projektoptionen (DEBUG-Symbol, Debug-Informationen, …)
 - **DUnitX-Tests** aus dem Editor ausführen und einen einzelnen Test im Debugger starten (Code Lens an `[Test]` und `[TestFixture]`)
 - **Startprofile** für Parameter, Arbeitsordner, Umgebung und Host-Anwendung

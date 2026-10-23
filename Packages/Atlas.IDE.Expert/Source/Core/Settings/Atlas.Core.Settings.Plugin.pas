@@ -408,9 +408,13 @@ type
     /// die Projektoptionen prüfen, dazu der Befehl „Release-Build prüfen“ (Atlas.CheckRelease) mit Tipp. Aus = keine
     /// Prüfung, Befehl und Tipp verschwinden.</summary>
     ReleaseGuard: Boolean;
-    /// <summary>Verhalten bei Verstößen (build.gate, #529): off, warn (beide melden nur) oder block (bricht den
-    /// Build ab). Wirkt bisher nur auf den Release-Wächter.</summary>
+    /// <summary>Verhalten bei Verstößen (build.gate, #529): off, warn oder block (bricht den Build ab). Gilt für die
+    /// Prüfung vor dem Kompilieren (off = keine Prüfung) und den Release-Wächter (#533, off und warn melden nur).
+    /// </summary>
     BuildGate: string;
+    /// <summary>Zeitlimit der Prüfung vor dem Kompilieren in ms (build.gateTimeoutMs, #529); danach läuft der
+    /// Compile ungeprüft.</summary>
+    BuildGateTimeoutMs: Integer;
     /// <summary>Konfigurationen, die außer „Release“ als Release gelten (build.releaseConfigs), durch Komma
     /// getrennt.</summary>
     ReleaseConfigs: string;
@@ -1054,6 +1058,7 @@ uses
   Atlas.Core.Generate.Contract,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.ReleaseGuard,
+  Atlas.Core.Build.Gate,
   Atlas.Core.Build.OpenBuild,
   Atlas.Core.Settings.OverviewKinds,
   Atlas.Core.Notifications.Sources,
@@ -1357,6 +1362,7 @@ begin
   Result.BuildZeroHints := False;
   Result.ReleaseGuard := True;
   Result.BuildGate := 'off';
+  Result.BuildGateTimeoutMs := TAtlasBuildGateCheck.DefaultTimeoutMs;
   Result.ReleaseConfigs := TAtlasReleaseGuard.ReleaseConfiguration;
   Result.ReleaseChecks := TAtlasReleaseChecks.Defaults.ToText;
   Result.TestDebug := True;
@@ -1682,6 +1688,8 @@ begin
   if WelcomePageActiveLayout = '' then
     WelcomePageActiveLayout := DefaultWelcomeLayoutName;
   BuildGate := TAtlasReleaseGuard.GateNames[TAtlasReleaseGuard.GateOf(BuildGate)];
+  BuildGateTimeoutMs := EnsureRange(BuildGateTimeoutMs, TAtlasBuildGateCheck.MinTimeoutMs,
+    TAtlasBuildGateCheck.MaxTimeoutMs);
   ReleaseConfigs := TAtlasReleaseGuard.NormalizedConfigurations(ReleaseConfigs);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
   CheckKey := EnsureRange(CheckKey, 0, $FFFF);
@@ -1959,6 +1967,7 @@ begin
   BuildZeroHints := AStore.ReadInteger('BuildZeroHints', BoolValue(Default.BuildZeroHints)) <> 0;
   ReleaseGuard := AStore.ReadInteger('ReleaseGuard', BoolValue(Default.ReleaseGuard)) <> 0;
   BuildGate := AStore.ReadString('BuildGate', Default.BuildGate);
+  BuildGateTimeoutMs := AStore.ReadInteger('BuildGateTimeoutMs', Default.BuildGateTimeoutMs);
   ReleaseConfigs := AStore.ReadString('ReleaseConfigs', Default.ReleaseConfigs);
   ReleaseChecks := AStore.ReadString('ReleaseChecks', Default.ReleaseChecks);
   TestDebug := AStore.ReadInteger('TestDebug', BoolValue(Default.TestDebug)) <> 0;
@@ -2402,6 +2411,7 @@ begin
   AStore.WriteInteger('BuildZeroHints', BoolValue(BuildZeroHints));
   AStore.WriteInteger('ReleaseGuard', BoolValue(ReleaseGuard));
   AStore.WriteString('BuildGate', BuildGate);
+  AStore.WriteInteger('BuildGateTimeoutMs', BuildGateTimeoutMs);
   AStore.WriteString('ReleaseConfigs', ReleaseConfigs);
   AStore.WriteString('ReleaseChecks', ReleaseChecks);
   AStore.WriteInteger('TestDebug', BoolValue(TestDebug));
