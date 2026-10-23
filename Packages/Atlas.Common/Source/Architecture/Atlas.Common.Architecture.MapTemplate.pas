@@ -11,7 +11,7 @@ function ArchitectureMapHtml: string;
 implementation
 
 const
-  Lines: array[0..451] of string = (
+  Lines: array[0..461] of string = (
     '<!doctype html>',
     '<html lang="de">',
     '<head>',
@@ -70,6 +70,8 @@ const
     '.sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }',
     '.node circle { stroke: var(--panel); stroke-width: 1.5; }',
     '.node text { font-size: 10px; }',
+    '/* Weit herausgezoomt nur die Namen zentraler, gewählter und markierter Units, sonst überdecken sie sich. */',
+    'svg.far .node text.minor { display: none; }',
     '.node text, .group text { font-family: var(--mono); fill: var(--fg); pointer-events: none; paint-order: stroke; stroke: var(--panel); stroke-width: 3px; }',
     '.group text { font-weight: 600; }',
     'circle.ring { fill: none; stroke: var(--line); stroke-dasharray: 4 4; }',
@@ -160,6 +162,7 @@ const
     '  ''use strict'';',
     '  var D = JSON.parse(document.getElementById(''atlas-data'').textContent);',
     '  var U = D.units, S = D.subsystems, NS = ''http://www.w3.org/2000/svg'';',
+    '  var isCentral = {}; D.central.forEach(function (u) { isCentral[u] = true; });',
     '  var COLLAPSE_FROM = 500;',
     '  function $(id) { return document.getElementById(id); }',
     '  function el(tag, attrs, text) {',
@@ -202,7 +205,10 @@ const
     '',
     '  // Ansicht: Verschieben und Zoomen über eine Transformation',
     '  var svg = $(''svg''), view = $(''view''), tx = 0, ty = 0, scale = 1;',
-    '  function applyView() { view.setAttribute(''transform'', ''translate('' + tx + '','' + ty + '') scale('' + scale + '')''); }',
+    '  function applyView() {',
+    '    view.setAttribute(''transform'', ''translate('' + tx + '','' + ty + '') scale('' + scale + '')'');',
+    '    svg.classList.toggle(''far'', scale < 0.9);',
+    '  }',
     '  function fit() {',
     '    var r = svg.getBoundingClientRect(), minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;',
     '    S.forEach(function (s) { minX = Math.min(minX, s.x - s.r); minY = Math.min(minY, s.y - s.r); maxX = Math.max(maxX, s.x + s.r); maxY = Math.max(maxY, s.y + s.r); });',
@@ -287,7 +293,11 @@ const
     '      if (i === selected) cls += '' sel'';',
     '      var g = svgEl(''g'', { ''class'': cls, ''data-u'': i, tabindex: 0, transform: ''translate('' + u.x + '','' + u.y + '')'' });',
     '      g.appendChild(svgEl(''circle'', { r: nodeRadius(i), fill: color(u.subsystem) }));',
-    '      if (labels) { var t = svgEl(''text'', { x: nodeRadius(i) + 3, y: 3 }); t.textContent = u.name; g.appendChild(t); }',
+    '      if (labels) {',
+    '        var major = isCentral[i] || i === selected || (pathNodes && pathNodes[i]) || (q && u.name.toLowerCase().indexOf(q) >= 0);',
+    '        var t = svgEl(''text'', major ? { x: nodeRadius(i) + 3, y: 3 } : { x: nodeRadius(i) + 3, y: 3, ''class'': ''minor'' });',
+    '        t.textContent = u.name; g.appendChild(t);',
+    '      }',
     '      var ti = svgEl(''title'', {}); ti.textContent = u.name + '' · '' + S[u.subsystem].name; g.appendChild(ti);',
     '      ng.appendChild(g);',
     '    });',

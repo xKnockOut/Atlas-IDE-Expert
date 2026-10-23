@@ -26,6 +26,10 @@
 //   --todos               statt der Treffer die offenen TODO-Einträge (#68): Markdown-Übersicht
 //                         (--format text) oder TODO-Daten (--format json)
 //
+// Architekturbericht (#1118):
+//   --architecture <Datei> Architekturübersicht des Ziels aus --check (Standard: aktueller Ordner)
+//                         als Markdown (.md) oder interaktive HTML-Seite (.html) schreiben
+//
 // MCP-Modus (#48):
 //   --mcp                 Symbolindex über das Model Context Protocol anbieten
 //   --root <Ordner>       Projektordner (Standard: aktuelles Verzeichnis)
@@ -71,6 +75,8 @@ type
     Metrics: Boolean;
     /// <summary>Statt der Treffer die offenen TODO-Einträge ausgeben (#68).</summary>
     Todos: Boolean;
+    /// <summary>--architecture: Zieldatei des Architekturberichts (#1118, .md oder .html); '' = keiner.</summary>
+    ArchitectureFile: string;
     /// <summary>Baseline-Datei (#97); '' = atlas-baseline.json neben atlas.json, falls vorhanden.</summary>
     BaselineFile: string;
     /// <summary>Baseline aus den aktuellen Treffern neu schreiben statt zu prüfen.</summary>
@@ -212,7 +218,8 @@ begin
   Strings := [StringOption('--log', @Result.LogFile), StringOption('--trace', @Result.TraceFile),
     StringOption('--check', @Result.CheckTarget), StringOption('--output', @Result.OutputFile),
     StringOption('--source-root', @Result.SourceRoot), StringOption('--profile', @Result.Profile),
-    StringOption('--baseline', @Result.BaselineFile), StringOption('--root', @Result.McpRoot)];
+    StringOption('--baseline', @Result.BaselineFile), StringOption('--root', @Result.McpRoot),
+    StringOption('--architecture', @Result.ArchitectureFile)];
   Flags := [FlagOption('--log-names', @Result.LogNames), FlagOption('--mcp', @Result.Mcp),
     FlagOption('--restricted', @Result.Restricted), FlagOption('--clear-cache', @Result.ClearCache),
     FlagOption('--include-uncommitted', @Result.IncludeUncommitted),

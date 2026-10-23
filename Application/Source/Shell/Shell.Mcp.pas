@@ -78,6 +78,10 @@ uses
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Index.Processes,
   Atlas.Common.Rules.Builtin,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Architecture.Overview,
+  Atlas.Common.Architecture.Service,
+  Atlas.Common.Architecture.Report,
   Atlas.Common.Projects.Contract,
   System.Generics.Collections,
   Shell.Platform,
@@ -417,8 +421,13 @@ begin
     end;
 end;
 
+type
+  /// <summary>Text der Architekturübersicht (#1118) zu Abschnitt bzw. Unit ('' = Abschnitt).</summary>
+  TMcpArchitectureFunc = reference to function(ASection: TArchitectureSection; const AUnit: string): string;
+
 procedure RegisterTools(AServer: TMcpServer; ATools: TMcpIndexTools; ACode: TMcpCodeTools;
-  AWorkspace: TShellWorkspace; const ARoot: string; AGuard: TMcpPathGuard; AEdit: TMcpEditTools);
+  AWorkspace: TShellWorkspace; const ARoot: string; AGuard: TMcpPathGuard; AEdit: TMcpEditTools;
+  const AArchitecture: TMcpArchitectureFunc);
 var
   CheckSource: TCheckSourceFunc;
 begin
@@ -661,6 +670,23 @@ begin
       Result := TMcpCodeTools.Metrics(AWorkspace.Configuration.Settings, ARoot, Files, ReadSourceText,
         SameText(Format, 'json'));
     end);
+  AServer.AddTool('get_architecture',
+    'Architekturübersicht (#1118) aus dem uses-Graphen: Teilsysteme (Gruppen eng verbundener Units), zentrale ' +
+    'Units, Zyklen und Querverbindungen zwischen Teilsystemen, je mit Datei:Zeile der uses-Einträge. Mit "unit" ' +
+    'der Steckbrief einer Unit (Teilsystem, Abhängigkeiten, Zyklen, Ausreißer). Umfang und Bibliotheks-Units ' +
+    'aus architecture.* in atlas.json.',
+    '{"type":"object","properties":{' +
+      '"section":{"type":"string","enum":["overview","central","subsystems","cycles","crossLinks"],' +
+        '"description":"Abschnitt; Vorgabe overview"},' +
+      '"unit":{"type":"string","description":"Steckbrief dieser Unit statt eines Abschnitts"}}}',
+    function(const AArguments: TJSONObject): string
+    var
+      Section: TArchitectureSection;
+    begin
+      if not TArchitectureReport.ParseSection(TMcpServer.OptionalString(AArguments, 'section'), Section) then
+        raise EMcpToolError.Create('"section" ist overview, central, subsystems, cycles oder crossLinks');
+      Result := AArchitecture(Section, TMcpServer.OptionalString(AArguments, 'unit'));
+    end);
   AServer.AddTool('get_todos',
     'TODO-Übersicht (#68): Kommentare // TODO, // FIXME und das Format der IDE-To-Do-Liste ' +
     '{ TODO 1 -oPerson -cKategorie : Text } aus allen Dateien des Projekts, mit Priorität, Person und Kategorie. ' +
@@ -840,7 +866,7 @@ begin
   // Nur registrieren, nicht aufrufen: Die Werkzeuge greifen erst beim Aufruf auf ihre Dienste zu.
   Server := TMcpServer.Create('Atlas', '0');
   try
-    RegisterTools(Server, nil, nil, nil, '', nil, nil);
+    RegisterTools(Server, nil, nil, nil, '', nil, nil, nil);
     Listed := Server.ListTools;
     try
       for Tool in Listed.GetValue<TJSONArray>('tools') do
@@ -877,6 +903,7 @@ var
   Main: TProjectInfo;
   ProjectFile: string;
   AllFiles: TFunc<TArray<string>>;
+  Architecture: TArchitectureService;
   EnsureAny: TFunc<string, Boolean>;
   GlobalSettings: string;
 begin
@@ -978,6 +1005,17 @@ begin
       Result := EnsureAny(AUnitName);
     end);
   Edit.DirtyFiles := EditorDirtyFiles;
+  // Architekturübersicht (#1118): derselbe Dienst wie atlas/architecture und --architecture.
+  Architecture := TArchitectureService.Create(Index,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    function(const AFileName: string): TArray<string>
+    begin
+      if not Workspace.Defines(Result) then
+        Result := nil;
+    end);
   // Regelprüfung mit den Symbolen und Include-Dateien des Projekts (#860).
   Edit.CheckSource := CheckSourceOf(Workspace);
   Code.CheckSource := Edit.CheckSource;
@@ -992,13 +1030,42 @@ begin
   try
     Server.Instructions := 'Delphi-Projekt in ' + Root + '. Für Fragen zu Typen, Units und Formularen ' +
       'zuerst diese Werkzeuge nutzen statt Quelldateien vollständig zu lesen.';
-    RegisterTools(Server, Tools, Code, Workspace, Root, Guard, Edit);
+    RegisterTools(Server, Tools, Code, Workspace, Root, Guard, Edit,
+      function(ASection: TArchitectureSection; const AUnit: string): string
+      var
+        Settings: TServerSettings;
+        Request: TArchitectureRequest;
+        Overview: TArchitectureOverview;
+      begin
+        Settings := Workspace.Configuration.Settings;
+        if not Settings.ArchitectureEnabled then
+          raise EMcpToolError.Create('Architekturübersicht ist ausgeschaltet (architecture.enabled)');
+        Request := TArchitectureRequest.FromSettings(Settings);
+        Request.Title := ExtractFileName(Root);
+        Request.Root := Root;
+        Request.Namespaces := Workspace.Namespaces;
+        // Projektgruppe (#648): die Dateien aller geladenen Projekte, sonst nur die des Hauptprojekts.
+        if Request.Scope = 'project' then
+          Request.Files := Workspace.ProjectFiles
+        else
+          Request.Files := AllFiles();
+        if Length(Request.Files) = 0 then
+          raise EMcpToolError.Create('Kein Projekt geladen');
+        Overview := Architecture.Overview(Request);
+        if AUnit <> '' then
+          Result := TArchitectureReport.UnitText(Overview, AUnit)
+        else
+          Result := TArchitectureReport.Text(Overview, ASection, TArchitectureReport.TextLimit);
+      end);
     // Sicherheit (#99).
     Server.Restricted := AOptions.Restricted;
     Server.OnDisabledTools :=
       function: TArray<string>
       begin
         Result := Workspace.Configuration.Settings.McpDisabledTools;
+        // Abgeschaltete Funktion (#227): Werkzeug gar nicht anbieten.
+        if not Workspace.Configuration.Settings.ArchitectureEnabled then
+          Result := Result + ['get_architecture'];
       end;
     Server.OnAudit :=
       procedure(AText: string)
@@ -1074,6 +1141,7 @@ begin
     Edit.Free;
     Code.Free;
     Tools.Free;
+    Architecture.Free;
     Workspace.Free;
   end;
 end;
