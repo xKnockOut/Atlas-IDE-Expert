@@ -114,6 +114,8 @@ type
     [Test]
     procedure AttributeBadge;
     [Test]
+    procedure MethodRefTag;
+    [Test]
     procedure MissingUnitBecomesTag;
     [Test]
     procedure UnitDetailIsFileName;
@@ -577,6 +579,18 @@ begin
   Entry.Attribute := True;
   Assert.AreEqual('at', TAtlasItemPresentation.Badge(Entry).Code);
   Assert.AreEqual('ty', TAtlasItemPresentation.Badge(Item('TKunde', TAtlasItemKind.Class_)).Code);
+end;
+
+procedure TAtlasPresentationTests.MethodRefTag;
+var
+  Entry: TAtlasCompletionItem;
+begin
+  // Gerüst einer anonymen Methode (#468): Badge "sn" der Vorlage, Tag mit dem erwarteten Typ.
+  Entry := Item('function(const Value: TCustomer): Boolean', TAtlasItemKind.Snippet);
+  Entry.MethodRef := 'TPredicate<TCustomer>';
+  Assert.AreEqual('sn', TAtlasItemPresentation.Badge(Entry).Code);
+  Assert.AreEqual('TPredicate<TCustomer>', TAtlasItemPresentation.TagText(Entry));
+  Assert.AreEqual('', TAtlasItemPresentation.TagText(Item('procedure', TAtlasItemKind.Snippet)));
 end;
 
 procedure TAtlasPresentationTests.MissingUnitBecomesTag;

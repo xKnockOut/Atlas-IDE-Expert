@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2089] of string = (
+  Lines: array[0..2095] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1132,6 +1132,14 @@ const
       'nte zuerst (DUnitX Test, TestCase, TestFixture, Setup, TearDown, JSONName, JSONMarshalled, die Compiler-Attribute weak, unsafe, volatile, Ref), rechts die Parameter des Konstruktors bzw. die Unit, aus' +
       ' nicht eingebundenen Units mit uses-Eintrag. Nach „(“ zeigt der Parameter-Hint den Konstruktor. Aus: die gewöhnliche Liste.",',
     '          "x-issue": "#465"',
+    '        },',
+    '        "anonymousMethods": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Erwartet ein Argument oder eine Zuweisung einen Methodenreferenztyp (reference to procedure/function, z. B. TProc, TFunc<T>, TPredicate<T> oder ein eigener), oben in der List' +
+      'e ein Gerüst mit passender Signatur anbieten: procedure(const Value: TKunde) bzw. function(const Value: TKunde): Boolean mit begin/end und Cursor im Rumpf. Die Parameter Arg1, Arg2 der generischen RTL' +
+      '-Typen heißen Value bzw. nach ihrem Typ, mit dem Parameterpräfix des Projekts. Nach „(“ erscheint das Gerüst von selbst. Aus: kein Gerüst.",',
+    '          "x-issue": "#468"',
     '        },',
     '        "sameNameVariants": {',
     '          "type": "boolean",',

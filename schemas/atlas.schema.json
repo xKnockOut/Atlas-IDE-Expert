@@ -1072,6 +1072,12 @@
           "description": "Nach „[“ vor einer Typ-, Methoden-, Feld-, Property- oder Parameterdeklaration nur Attributklassen (Nachfahren von TCustomAttribute) ohne die Endung Attribute anbieten; bekannte zuerst (DUnitX Test, TestCase, TestFixture, Setup, TearDown, JSONName, JSONMarshalled, die Compiler-Attribute weak, unsafe, volatile, Ref), rechts die Parameter des Konstruktors bzw. die Unit, aus nicht eingebundenen Units mit uses-Eintrag. Nach „(“ zeigt der Parameter-Hint den Konstruktor. Aus: die gewöhnliche Liste.",
           "x-issue": "#465"
         },
+        "anonymousMethods": {
+          "type": "boolean",
+          "default": true,
+          "description": "Erwartet ein Argument oder eine Zuweisung einen Methodenreferenztyp (reference to procedure/function, z. B. TProc, TFunc<T>, TPredicate<T> oder ein eigener), oben in der Liste ein Gerüst mit passender Signatur anbieten: procedure(const Value: TKunde) bzw. function(const Value: TKunde): Boolean mit begin/end und Cursor im Rumpf. Die Parameter Arg1, Arg2 der generischen RTL-Typen heißen Value bzw. nach ihrem Typ, mit dem Parameterpräfix des Projekts. Nach „(“ erscheint das Gerüst von selbst. Aus: kein Gerüst.",
+          "x-issue": "#468"
+        },
         "sameNameVariants": {
           "type": "boolean",
           "default": true,

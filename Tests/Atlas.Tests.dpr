@@ -96,6 +96,7 @@ uses
   Atlas.Common.Lsp.CompletionEnums.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionEnums.Tests.pas',
   Atlas.Common.Lsp.CompletionGenerics.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionGenerics.Tests.pas',
   Atlas.Common.Lsp.CompletionAttributes.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionAttributes.Tests.pas',
+  Atlas.Common.Lsp.CompletionAnonymous.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionAnonymous.Tests.pas',
   Atlas.Common.Lsp.CompletionUses.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionUses.Tests.pas',
   Atlas.Common.Lsp.CompletionInherited.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionInherited.Tests.pas',
   Atlas.Common.Lsp.CompletionSameNames.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionSameNames.Tests.pas',
