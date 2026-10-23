@@ -15,6 +15,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Logging.Contract,
+  Atlas.Common.Projects.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
@@ -340,6 +341,14 @@ type
     function PropertyFromAccessorsActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Property aus Getter und Setter“ (#682): das WorkspaceEdit für Stelle und Aufrufe.</summary>
     function PropertyFromAccessors(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Projekt der Datei AFileName für Umbauten mit neuen Units; False ohne Projekt.</summary>
+    function RefactoringProject(const AFileName: string; out AProject: TProjectInfo): Boolean;
+    /// <summary>Gibt es die Datei auf der Platte oder als offenes Dokument?</summary>
+    function SourceExists(const AFileName: string): Boolean;
+    /// <summary>Code-Aktion „Interface aus … herauslösen …“ an APosition (#664).</summary>
+    function ExtractInterfaceActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>„Interface herauslösen“ (#664): APrepare = Kandidaten, sonst das WorkspaceEdit.</summary>
+    function ExtractInterface(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
     /// <summary>„Bedeutung umkehren“ an APosition (#715).</summary>
     function InvertBooleanActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Boolean umkehren“ (#715): das WorkspaceEdit für alle Stellen.</summary>
@@ -497,6 +506,7 @@ uses
   Atlas.Common.Lsp.DfmPropertyRules,
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Lsp.MoveClass,
+  Atlas.Common.Lsp.ExtractInterface,
   Atlas.Common.Editing.PropertyFromAccessors,
   Atlas.Common.Lsp.PropertyFromAccessors,
   Atlas.Common.Lsp.InvertBoolean,
@@ -525,7 +535,6 @@ uses
   Atlas.Common.Projects.DelphiVersions,
   Atlas.Common.Compiler.Edition,
   Atlas.Common.Logging.RotatingFileStream,
-  Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.GroupReader,
   Atlas.Common.Projects.PackageLocator,
   Atlas.Common.Index.Cache,
@@ -1375,6 +1384,7 @@ begin
       Result := Result + ChangeSignatureActions(AUri, ARange.StartPos);
       Result := Result + MoveClassActions(AUri, ARange.StartPos);
       Result := Result + PropertyFromAccessorsActions(AUri, ARange.StartPos);
+      Result := Result + ExtractInterfaceActions(AUri, ARange.StartPos);
       Result := Result + InvertBooleanActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
       Result := Result + RefactoringActions(AUri, ARange);
@@ -1444,6 +1454,16 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := MoveClass(AArguments);
+    end);
+  FCommands.Register(TLspExtractInterface.PrepareCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := ExtractInterface(AArguments, True);
+    end);
+  FCommands.Register(TLspExtractInterface.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := ExtractInterface(AArguments, False);
     end);
   FCommands.Register(TLspPropertyFromAccessors.ApplyCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -3343,6 +3363,85 @@ begin
   // Nur Zahlen ins Log, keine Namen und Pfade (#647).
   FLogger.Info(Format('Klasse verschieben: %d Dateiänderungen',
     [TJSONArray(TJSONObject(Answer.GetValue('edit')).GetValue('documentChanges')).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.RefactoringProject(const AFileName: string; out AProject: TProjectInfo): Boolean;
+var
+  Workspace: TShellWorkspace;
+begin
+  AProject := Default(TProjectInfo);
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := PickWorkspace(AFileName);
+    Result := (Workspace <> nil) and Workspace.Project(AProject);
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+function TServerComposition.SourceExists(const AFileName: string): Boolean;
+var
+  Open: ITextDocument;
+begin
+  Result := FileExists(AFileName) or FDocuments.TryGet(TDocumentUris.FromPath(AFileName), Open);
+end;
+
+function TServerComposition.ExtractInterfaceActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).ExtractInterface or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspExtractInterface.Actions(True, Shared.Tree, Document.Text, AUri, APosition);
+end;
+
+function TServerComposition.ExtractInterface(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
+var
+  Uri, FileName: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Context: TExtractInterfaceContext;
+  Answer: TJSONObject;
+begin
+  // Argumente: URI, Position, beim Ausführen {name, unit, members}.
+  if (AArguments = nil) or (AArguments.Count < 2) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "position" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).ExtractInterface then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Interface herauslösen" ist abgeschaltet (refactoring.extractInterface).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  FileName := TDocumentUris.ToPath(Uri);
+  Context := Default(TExtractInterfaceContext);
+  Context.Index := FIndex;
+  Context.ReadText := ReadSourceText;
+  Context.Exists := SourceExists;
+  Context.HasProject := RefactoringProject(FileName, Context.Project);
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  if APrepare then
+    Exit(TLspExtractInterface.Prepare(Shared.Tree, Document.Text, Position, Context));
+  if AArguments.Count < 3 then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argument mit Name, Ziel und Mitgliedern fehlt');
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspExtractInterface.Execute(Resolver, Shared.Tree, FileName, Document.Text, Position,
+      AArguments.Items[2], Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Interface herauslösen: %d Methoden', [(Answer.GetValue('methods') as TJSONNumber).AsInt]));
   Result := Answer;
 end;
 

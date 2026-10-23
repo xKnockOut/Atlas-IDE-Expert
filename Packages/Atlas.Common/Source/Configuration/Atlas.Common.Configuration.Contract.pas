@@ -390,6 +390,8 @@ type
     InvertBooleanFallbackPrefix: string;
     /// <summary>Published Properties auch in den Formularen umkehren (#715).</summary>
     InvertBooleanIncludeDfm: Boolean;
+    /// <summary>Code-Aktion „Interface aus Klasse herauslösen“ (#664).</summary>
+    ExtractInterface: Boolean;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -846,6 +848,7 @@ begin
   Result.InvertBooleanAntonyms := nil;
   Result.InvertBooleanFallbackPrefix := 'Not';
   Result.InvertBooleanIncludeDfm := True;
+  Result.ExtractInterface := True;
 end;
 
 { TCompletionSettings }
