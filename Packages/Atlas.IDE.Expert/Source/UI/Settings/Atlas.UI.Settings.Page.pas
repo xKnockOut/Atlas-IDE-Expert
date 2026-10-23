@@ -291,6 +291,8 @@ type
     FDebugHoverValues: TCheckBox;
     FDebugExplainUnavailable: TCheckBox;
     FDebugCompletionInDialogs: TCheckBox;
+    FDebugEvaluateWindow: TCheckBox;
+    FDebugEvaluateReplaceCtrlF7: TCheckBox;
     FDebugExceptionHistory: TCheckBox;
     FDebugJustMyCode: TCheckBox;
     FDebugExceptionBanner: TCheckBox;
@@ -1078,6 +1080,8 @@ type
     property DebugHoverValuesCheck: TCheckBox read FDebugHoverValues;
     property DebugExplainUnavailableCheck: TCheckBox read FDebugExplainUnavailable;
     property DebugCompletionInDialogsCheck: TCheckBox read FDebugCompletionInDialogs;
+    property DebugEvaluateWindowCheck: TCheckBox read FDebugEvaluateWindow;
+    property DebugEvaluateReplaceCtrlF7Check: TCheckBox read FDebugEvaluateReplaceCtrlF7;
     property DebugExceptionHistoryCheck: TCheckBox read FDebugExceptionHistory;
     property DebugJustMyCodeCheck: TCheckBox read FDebugJustMyCode;
     property DebugExceptionBannerCheck: TCheckBox read FDebugExceptionBanner;
@@ -1826,6 +1830,9 @@ begin
   FDebugExplainUnavailable := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExplainUnavailable));
   // Vervollständigung in Debugger-Dialogen (#538).
   FDebugCompletionInDialogs := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugCompletionInDialogs));
+  // Fenster „Auswerten“ (#784).
+  FDebugEvaluateWindow := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugEvaluateWindow));
+  FDebugEvaluateReplaceCtrlF7 := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugEvaluateReplaceCtrlF7));
   // Exception-Verlauf beim Debuggen (#517).
   FDebugExceptionHistory := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExceptionHistory));
   // Nur eigener Code beim Debuggen (#578).
@@ -2968,6 +2975,8 @@ begin
   FMarks.Bind(FDebugHoverValues, ['DebugHoverValues']);
   FMarks.Bind(FDebugExplainUnavailable, ['DebugExplainUnavailable']);
   FMarks.Bind(FDebugCompletionInDialogs, ['DebugCompletionInDialogs']);
+  FMarks.Bind(FDebugEvaluateWindow, ['DebugEvaluateWindow']);
+  FMarks.Bind(FDebugEvaluateReplaceCtrlF7, ['DebugEvaluateReplaceCtrlF7']);
   FMarks.Bind(FDebugExceptionHistory, ['DebugExceptionHistory']);
   FMarks.Bind(FDebugJustMyCode, ['DebugJustMyCode']);
   FMarks.Bind(FDebugExceptionBanner, ['DebugExceptionBanner']);
@@ -5117,6 +5126,8 @@ begin
   FDebugHoverValues.Checked := ASettings.DebugHoverValues;
   FDebugExplainUnavailable.Checked := ASettings.DebugExplainUnavailable;
   FDebugCompletionInDialogs.Checked := ASettings.DebugCompletionInDialogs;
+  FDebugEvaluateWindow.Checked := ASettings.DebugEvaluateWindow;
+  FDebugEvaluateReplaceCtrlF7.Checked := ASettings.DebugEvaluateReplaceCtrlF7;
   FDebugExceptionHistory.Checked := ASettings.DebugExceptionHistory;
   FDebugJustMyCode.Checked := ASettings.DebugJustMyCode;
   FDebugExceptionBanner.Checked := ASettings.DebugExceptionBanner;
@@ -5578,6 +5589,8 @@ begin
   ASettings.DebugHoverValues := FDebugHoverValues.Checked;
   ASettings.DebugExplainUnavailable := FDebugExplainUnavailable.Checked;
   ASettings.DebugCompletionInDialogs := FDebugCompletionInDialogs.Checked;
+  ASettings.DebugEvaluateWindow := FDebugEvaluateWindow.Checked;
+  ASettings.DebugEvaluateReplaceCtrlF7 := FDebugEvaluateReplaceCtrlF7.Checked;
   ASettings.DebugExceptionHistory := FDebugExceptionHistory.Checked;
   ASettings.DebugJustMyCode := FDebugJustMyCode.Checked;
   ASettings.DebugExceptionBanner := FDebugExceptionBanner.Checked;

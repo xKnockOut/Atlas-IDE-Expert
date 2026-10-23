@@ -663,6 +663,14 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.DialogCompletion.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.DialogCompletion.pas"/>
         <DCCReference Include="Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Expression.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Evaluate.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.EvaluateFrame.pas">
+            <Form>AtlasDebugEvaluateFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.EvaluateWindow.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Evaluate.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

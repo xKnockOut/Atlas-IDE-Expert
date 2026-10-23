@@ -186,6 +186,7 @@ uses
   Atlas.IDE.Debug.InlineValues,
   Atlas.IDE.Debug.Unavailable,
   Atlas.IDE.Debug.DialogCompletion,
+  Atlas.IDE.Debug.Evaluate,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Providers.Expression,
   Atlas.IDE.Build.CompilerSwitches,
@@ -966,6 +967,11 @@ begin
   Result := TAtlasIdeSettings.Current.DebugExceptionHistory;
 end;
 
+function DebugEvaluateVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugEvaluateWindow;
+end;
+
 function DebugExceptionBarVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.DebugExceptionHistory and TAtlasIdeSettings.Current.DebugExceptionBanner;
@@ -1375,6 +1381,11 @@ begin
   // Exception-Verlauf beim Debuggen (#517); nur sichtbar, solange debug.exceptionHistory an ist.
   Add('Atlas.DebugExceptions', TAtlasTextId.DebugExceptionsCommand,
     Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugExceptions.ShowWindow), DebugExceptionsVisible);
+  // Fenster „Auswerten“ (#784) und der Dialog der IDE daneben; nur sichtbar, solange debug.evaluateWindow an ist.
+  Add('Atlas.DebugEvaluate', TAtlasTextId.DebugEvaluateCommand,
+    Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugEvaluate.ShowWindow), DebugEvaluateVisible);
+  Add('Atlas.DebugEvaluateIdeDialog', TAtlasTextId.DebugEvaluateIdeDialogCommand,
+    Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugEvaluate.OpenIdeDialog), DebugEvaluateVisible);
   // Nur eigener Code beim Debuggen (#578): schaltet debug.justMyCode um, deshalb immer sichtbar.
   Add('Atlas.DebugJustMyCode', TAtlasTextId.DebugJustMyCodeCommand,
     Guarded(TAtlasFeature.Debugger, ToggleDebugJustMyCode));
@@ -3003,6 +3014,18 @@ begin
   TAtlasIdeDebugDialogCompletion.ApplySettings;
 end;
 
+procedure StartDebugEvaluate;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  TAtlasIdeDebugEvaluate.Start(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end);
+end;
+
 procedure ReleaseDebugUnavailable;
 begin
   TAtlasEditorHover.OnExplain := nil;
@@ -4114,6 +4137,17 @@ begin
       Result := TAtlasIdeDebugDialogCompletion.Started;
     end,
     StartDebugDialogCompletion, TAtlasIdeDebugDialogCompletion.Release);
+  // Fenster „Auswerten“ (#784): aus = kein Fenster, kein Zuhörer, Strg+F7 bleibt bei der IDE.
+  Features.AddWanted('DebugEvaluate',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugEvaluateWindow;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugEvaluate.Started;
+    end,
+    StartDebugEvaluate, TAtlasIdeDebugEvaluate.Release);
   // Wirksame Compiler-Schalter an der Cursorposition (#558): Fenster, Befehl und Statusfeld; aus = kein Zeitgeber.
   Features.AddWanted('CompilerSwitches',
     function(ALevel: TAtlasSafeLevel): Boolean
@@ -4385,6 +4419,7 @@ begin
       TAtlasIdeDebugExceptions.ThemeChanged;
       TAtlasIdeCompilerSwitches.ThemeChanged;
       TAtlasIdeDebugExceptionBar.ThemeChanged;
+      TAtlasIdeDebugEvaluate.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -4446,6 +4481,8 @@ begin
       TAtlasIdeDebugUnavailable.ApplySettings;
       // debug.completionInDialogs (#538): Breiten des Popups.
       TAtlasIdeDebugDialogCompletion.ApplySettings;
+      // debug.evaluateWindow.replaceCtrlF7 (#784): Strg+F7 an- bzw. abhängen.
+      TAtlasIdeDebugEvaluate.ApplySettings;
       // editor.gitGutter, editor.gitBlame (#507).
       TAtlasIdeLineChanges.ApplySettings;
       // editor.overviewRuler, editor.overviewRulerKinds (#519).
