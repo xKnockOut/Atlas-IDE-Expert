@@ -62,6 +62,9 @@ type
     procedure ShowsSetsAndResourceStrings;
     [Test]
     procedure HintsUnknownDataFieldNames;
+    /// <summary>Neu zugewiesene Namen nennen Ziel, Zahl und Zeilen der Zuweisungen (#712).</summary>
+    [Test]
+    procedure ReassignedNamesInAtlasPart;
   end;
 
 implementation
@@ -400,6 +403,57 @@ begin
     Assert.AreEqual('Controls[Index: Integer]: TControl', Json.GetValue<string>('published.defaultProperty'));
   finally
     Json.Free;
+  end;
+end;
+
+procedure TLspHoverTests.ReassignedNamesInAtlasPart;
+const
+  Source =
+    'unit R;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure P(A: Integer);'#10 +
+    'var'#10 +
+    '  Total: Integer;'#10 +
+    'begin'#10 +
+    '  Total := 0;'#10 +
+    '  Total := Total + A;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Tree: TSyntaxTree;
+  Info: THoverInfo;
+  Json, Part: TJSONObject;
+begin
+  Tree := TPascalParser.Parse(Source);
+  try
+    Info := Default(THoverInfo);
+    Info.Declaration := 'Total: Integer;';
+    TLspHover.AddReassigned(FResolver, Tree, 'C:\P\R.pas', Source, TTextPosition.Create(8, 12), Info);
+    Assert.AreEqual('locals', Info.ReassignedTarget);
+    Assert.AreEqual(2, Info.ReassignedWrites);
+    Json := TLspHover.AtlasJson(Info);
+    try
+      Part := Json.GetValue('reassigned') as TJSONObject;
+      Assert.IsNotNull(Part);
+      Assert.AreEqual('locals', Part.GetValue('target').Value);
+      Assert.AreEqual('2', Part.GetValue('writes').Value);
+      Assert.AreEqual('[7,8]', Part.GetValue('lines').ToJSON);
+    finally
+      Json.Free;
+    end;
+    // A wird nur gelesen: kein Eintrag.
+    Info := Default(THoverInfo);
+    TLspHover.AddReassigned(FResolver, Tree, 'C:\P\R.pas', Source, TTextPosition.Create(8, 19), Info);
+    Assert.AreEqual('', Info.ReassignedTarget);
+    Json := TLspHover.AtlasJson(Info);
+    try
+      Assert.IsNull(Json.GetValue('reassigned'));
+    finally
+      Json.Free;
+    end;
+  finally
+    Tree.Free;
   end;
 end;
 

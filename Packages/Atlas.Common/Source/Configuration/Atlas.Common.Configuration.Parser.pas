@@ -1340,6 +1340,8 @@ begin
         else
           ReportNode(ANode[Index], '"refactoring.freeFieldsStyle" muss "free" oder "freeAndNil" sein');
     end
+    else if Key = 'suggestConst' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.SuggestConst)
     else if Key = 'invertBoolean' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InvertBoolean)
     else if Key = 'invertBooleanAntonyms' then
