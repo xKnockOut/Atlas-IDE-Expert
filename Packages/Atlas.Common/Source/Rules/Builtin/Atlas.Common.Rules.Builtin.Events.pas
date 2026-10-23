@@ -372,6 +372,39 @@ var
         Exit(AssignedFlag(Callee, Callee.EndOffset, 'Result', AName));
   end;
 
+  // Steht ATerm in APrefix als eigenes Glied einer and-Kette ("(a)and", "xand(a)and")?
+  function Conjunct(const APrefix, ATerm: string): Boolean;
+  var
+    Start, After: Integer;
+  begin
+    Result := False;
+    Start := Pos(ATerm, APrefix);
+    while not Result and (Start > 0) do
+    begin
+      After := Start + Length(ATerm);
+      Result := ((Start = 1) or (APrefix[Start - 1] = '(') or ((Start > 3) and (Copy(APrefix, Start - 3, 3) = 'and')))
+        and ((Copy(APrefix, After, 3) = 'and') or (Copy(APrefix, After, 1) = ')'));
+      Start := PosEx(ATerm, APrefix, Start + 1);
+    end;
+  end;
+
+  // "if … not Assigned(F) then Grund := 'aus';" vor dem Aufruf und "(Grund = '') and F(…)" bzw.
+  // "not Fehler and F(…)": Der Merker ist nur leer bzw. False, wenn F zugewiesen ist (#1109).
+  function MarkedUnassigned(ABranch: TSyntaxNode; const APrefix: string): Boolean;
+  var
+    Flag, Value: string;
+  begin
+    Result := False;
+    if (ABranch.Kind <> TSyntaxKind.AssignStatement) or (ABranch.ChildCount <> 2) or
+      (ABranch[0].Kind <> TSyntaxKind.Identifier) then
+      Exit;
+    Flag := LowerCase(ABranch[0].Name);
+    Value := Normalized(NodeText(ABranch[1]));
+    if (Value = '''''') or (Value = 'false') or (Value = 'nil') then
+      Exit;
+    Result := Conjunct(APrefix, Flag + '=''''') or ((Value = 'true') and Conjunct(APrefix, 'not' + Flag));
+  end;
+
   // Schützt eine Bedingung den Aufruf bei AOffset in ARoutine?
   function Guarded(ARoutine: TSyntaxNode; AOffset: Integer; const AName: string): Boolean;
   var
@@ -379,6 +412,7 @@ var
     Index: Integer;
     Condition, Prefix: string;
   begin
+    Prefix := '';
     Node := NodeAt(ARoutine, AOffset);
     // Kurzschluss im selben Ausdruck: "Assigned(F) and F(Self)", "not Assigned(F) or not F(Self)".
     Parent := Node;
@@ -389,6 +423,11 @@ var
     if (Parent <> nil) and (Parent <> ARoutine) then
     begin
       Prefix := Normalized(Copy(AContext.Text, Parent.StartOffset + 1, AOffset - Parent.StartOffset));
+      // Ab der Bedingung: "if (Grund = '') and not F(…)".
+      if Parent.Kind = TSyntaxKind.IfStatement then
+        Prefix := Copy(Prefix, 3, MaxInt)
+      else if Parent.Kind = TSyntaxKind.WhileStatement then
+        Prefix := Copy(Prefix, 6, MaxInt);
       if (Positive(Prefix, AName) and ContainsStr(Prefix, 'assigned(' + AName + ')and')) or
         (ContainsStr(Prefix, AName + '<>niland')) or
         (Negative(Prefix, AName) and (ContainsStr(Prefix, 'notassigned(' + AName + ')or') or
@@ -403,7 +442,10 @@ var
         Condition := Normalized(NodeText(Parent[0]));
         if (Node = Parent[1]) and (Positive(Condition, AName) or FlagFor(ARoutine, Parent.StartOffset, Condition,
           AName)) then
-          Exit(True)
+          Exit(True);
+        // Für MarkedUnassigned: "if Grund = '' then F(Self)" wirkt wie "(Grund = '') and F(…)".
+        if Node = Parent[1] then
+          Prefix := Prefix + '(' + Condition + ')and'
         else if (Parent.ChildCount > 2) and (Node = Parent[2]) and Negative(Condition, AName) then
           Exit(True);
       end;
@@ -427,6 +469,8 @@ var
           Continue;
         Branch := Node[1];
         Condition := Normalized(NodeText(Node[0]));
+        if Negative(Condition, AName) and MarkedUnassigned(Branch, Prefix) then
+          Exit(True);
         if not Leaves(Branch) then
           Continue;
         if Negative(Condition, AName) then

@@ -459,7 +459,6 @@ begin
     if not Item.Local.Known and not Item.HasCi then
       Continue;
     // Eine Projektgruppe und ihr Testprojekt tragen denselben Lauf: nur einmal zeigen.
-    Key := '';
     if Item.Local.Known and (Item.TestProject <> '') then
       Key := LowerCase(Item.TestProject)
     else

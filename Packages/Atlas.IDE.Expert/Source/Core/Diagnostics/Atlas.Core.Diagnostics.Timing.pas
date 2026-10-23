@@ -659,7 +659,7 @@ var
   Provider: TAtlasProviderTiming;
   Step: TAtlasTimingStep;
 begin
-  Result := FormatDateTime('hh:nn:ss', AQuery.Started) + ' ' + AQuery.Kind;
+  Result := FormatDateTime('hh":"nn":"ss', AQuery.Started) + ' ' + AQuery.Kind;
   if AFileNames and (AQuery.FileName <> '') then
     Result := Result + ', ' + AQuery.FileName;
   Result := Result + ' | Kontext ' + TAtlasTimingRows.Ms(AQuery.ContextMs) +
@@ -699,7 +699,7 @@ begin
   try
     Lines.Add('# Atlas-Diagnosemodus (#479)');
     Lines.Add('');
-    Lines.Add('Erstellt: ' + FormatDateTime('yyyy-mm-dd hh:nn', AInput.Created));
+    Lines.Add('Erstellt: ' + FormatDateTime('yyyy-mm-dd hh":"nn', AInput.Created));
     Lines.Add('Atlas: ' + AInput.AtlasVersion + ', IDE: ' + AInput.IdeVersion + ', Plattform: ' + AInput.Platform);
     Lines.Add(Format('Budget (#409): Kontext %d ms, Quelle %d ms, Filtern und Sortieren %d ms, Zeichnen %d ms, ' +
       'bis zur Liste %d ms. (!) = über dem Budget.', [TAtlasTimingBudget.ContextMs, TAtlasTimingBudget.ProviderMs,

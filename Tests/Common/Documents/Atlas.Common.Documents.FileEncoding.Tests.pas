@@ -74,6 +74,8 @@ type
     [Test]
     procedure LoadAndSaveUseFolderDefault;
     [Test]
+    procedure LoadTextAndLinesDetectEncoding;
+    [Test]
     procedure TextFormRoundTripKeepsBytes;
     [Test]
     procedure DetectsBinaryForms;
@@ -410,6 +412,28 @@ begin
   Assert.AreEqual(1250, Format.CodePage);
   TFileEncoding.SaveToFile(FileName, Text + #$0160, Format);
   Assert.IsTrue(SameBytes(Bytes([$61, $0D, $0A, $8A]), ReadAll(FileName)));
+end;
+
+procedure TFileEncodingDefaultTests.LoadTextAndLinesDetectEncoding;
+var
+  FileName: string;
+  Lines: TArray<string>;
+begin
+  FileName := FFolder + 'Projekt.dproj';
+  // UTF-8 ohne BOM: TFile.ReadAllText läse "Ã¤".
+  WriteBytes(FileName, Bytes([$C3, $A4, $0D, $0A, $62, $0D, $0A]));
+  Assert.AreEqual(#$E4#13#10'b'#13#10, TFileEncoding.LoadText(FileName));
+  Lines := TFileEncoding.LoadLines(FileName);
+  Assert.AreEqual(2, Integer(Length(Lines)));
+  Assert.AreEqual(#$E4, Lines[0]);
+  Assert.AreEqual('b', Lines[1]);
+  // ANSI (ungültiges UTF-8) bleibt ANSI.
+  WriteBytes(FileName, Bytes([$E4, $0A, $62]));
+  Lines := TFileEncoding.LoadLines(FileName);
+  Assert.AreEqual(2, Integer(Length(Lines)));
+  Assert.AreEqual(#$E4, Lines[0]);
+  WriteBytes(FileName, nil);
+  Assert.AreEqual(0, Integer(Length(TFileEncoding.LoadLines(FileName))));
 end;
 
 procedure TFileEncodingDefaultTests.TextFormRoundTripKeepsBytes;

@@ -84,8 +84,9 @@ const
   SensitiveHash: array[0..2] of string = ('password', 'secret', 'signature');
   SensitiveRandom: array[0..6] of string = ('token', 'password', 'passwort', 'salt', 'nonce', 'key', 'secret');
   // URLs, die kein Netzverkehr sind oder lokal bleiben.
-  HttpExceptions: array[0..5] of string = ('http://localhost', 'http://127.0.0.1', 'http://[::1]',
-    'http://www.w3.org/', 'http://schemas.', 'http://ns.');
+  // Dazu JSON-Schema-Kennungen ($schema, #1109).
+  HttpExceptions: array[0..6] of string = ('http://localhost', 'http://127.0.0.1', 'http://[::1]',
+    'http://www.w3.org/', 'http://schemas.', 'http://ns.', 'http://json-schema.org/');
 
 /// <summary>Token ohne Kommentare und Direktiven, je Lauf einmal berechnet (Review P-03, P-08).</summary>
 function CodeTokens(const AContext: TRuleContext): TArray<TPascalToken>;
@@ -183,6 +184,73 @@ begin
   Result := Joined and Variable;
 end;
 
+const
+  // Programme, die ihre Argumente als Befehle auslegen.
+  ShellPrograms: array[0..13] of string = ('cmd', 'cmd.exe', 'powershell', 'powershell.exe', 'pwsh', 'pwsh.exe',
+    'wscript', 'wscript.exe', 'cscript', 'cscript.exe', 'mshta', 'mshta.exe', 'bash', 'sh');
+
+/// <summary>Inhalt eines String-Literals ohne die äußeren Hochkommas ('' bleibt ').</summary>
+function LiteralValue(const AToken: TPascalToken): string;
+begin
+  Result := StringReplace(Copy(AToken.Text, 2, Length(AToken.Text) - 2), '''''', '''', [rfReplaceAll]);
+end;
+
+/// <summary>
+/// ShellExecute mit festem Programm, das keine Shell ist, und Parametern, deren eingesetzte Werte alle in
+/// Anführungszeichen stehen ('/select,"' + Pfad + '"'): Kein Befehlsinterpreter wertet die Parameter aus, und ein
+/// Windows-Pfad kann kein " enthalten (#1109).
+/// </summary>
+function QuotedForFixedProgram(const ATokens: TArray<TPascalToken>; const AArgs: TArray<TArray<Integer>>): Boolean;
+var
+  First, Last, Index, Part: Integer;
+  Parts: TArray<TArray<Integer>>;
+
+  function IsLiteral(const ARange: TArray<Integer>): Boolean;
+  begin
+    Result := (ARange[0] = ARange[1]) and (ATokens[ARange[0]].Kind = TPascalTokenKind.StringLiteral);
+  end;
+
+begin
+  Result := False;
+  if (Length(AArgs) < 4) or (AArgs[2][0] <> AArgs[2][1]) or
+    (ATokens[AArgs[2][0]].Kind <> TPascalTokenKind.StringLiteral) or
+    IsOneOf(ExtractFileName(LiteralValue(ATokens[AArgs[2][0]])), ShellPrograms) then
+    Exit;
+  First := AArgs[3][0];
+  Last := AArgs[3][1];
+  // PChar(…) um die Parameter.
+  if IsOneOf(ATokens[First].Text, ['PChar', 'PWideChar']) and (First < Last) and ATokens[First + 1].IsSymbol('(') and
+    (MatchingParen(ATokens, First + 1) = Last) then
+  begin
+    Inc(First, 2);
+    Dec(Last);
+  end;
+  // Glieder der Verkettung auf oberster Ebene.
+  Parts := nil;
+  Index := First;
+  Part := First;
+  while Index <= Last do
+  begin
+    if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
+      Index := MatchingParen(ATokens, Index)
+    else if ATokens[Index].IsSymbol('+') then
+    begin
+      Parts := Parts + [TArray<Integer>.Create(Part, Index - 1)];
+      Part := Index + 1;
+    end;
+    if Index < 0 then
+      Exit;
+    Inc(Index);
+  end;
+  Parts := Parts + [TArray<Integer>.Create(Part, Last)];
+  for Index := 0 to High(Parts) do
+    if not IsLiteral(Parts[Index]) and ((Index = 0) or (Index = High(Parts)) or not IsLiteral(Parts[Index - 1]) or
+      not IsLiteral(Parts[Index + 1]) or not EndsStr('"', LiteralValue(ATokens[Parts[Index - 1][0]])) or
+      not StartsStr('"', LiteralValue(ATokens[Parts[Index + 1][0]]))) then
+      Exit;
+  Result := True;
+end;
+
 /// <summary>Anfang der Anweisung vor AIndex: Token nach ";", begin, then, else, do; sonst 0.</summary>
 function StatementStart(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
@@ -238,6 +306,9 @@ begin
     begin
       Close := MatchingParen(Tokens, Index + 1);
       if Close < 0 then
+        Continue;
+      if StartsText('ShellExecute', Tokens[Index].Text) and
+        QuotedForFixedProgram(Tokens, Arguments(Tokens, Index + 1, Close)) then
         Continue;
       for Argument in Arguments(Tokens, Index + 1, Close) do
         if IsComposed(Tokens, Argument[0], Argument[1]) then
@@ -418,14 +489,22 @@ begin
     if Tokens[Index].Kind <> TPascalTokenKind.StringLiteral then
       Continue;
     Lower := LowerCase(Tokens[Index].Text);
-    Offset := Pos('http://', Lower);
-    if Offset = 0 then
+    if Pos('xmlns', Lower) > 0 then
       Continue;
-    Excepted := Pos('xmlns', Lower) > 0;
-    for Exception_ in HttpExceptions do
-      if Copy(Lower, Offset, Length(Exception_)) = Exception_ then
-        Excepted := True;
-    if Excepted then
+    // Erste URL mit Rechnernamen: Ein bloßes 'http://' (StartsText('http://', Url), Hilfetext "http:// oder
+    // https://") nennt kein Ziel (#1109).
+    Offset := Pos('http://', Lower);
+    while Offset > 0 do
+    begin
+      Excepted := not CharInSet(Copy(Lower + ' ', Offset + Length('http://'), 1)[1], ['a'..'z', '0'..'9', '[']);
+      for Exception_ in HttpExceptions do
+        if Copy(Lower, Offset, Length(Exception_)) = Exception_ then
+          Excepted := True;
+      if not Excepted then
+        Break;
+      Offset := PosEx('http://', Lower, Offset + 1);
+    end;
+    if Offset = 0 then
       Continue;
     // Einzeilige Strings: Spalte des "http://" im Token.
     if Tokens[Index].StartPos.Line <> Tokens[Index].EndPos.Line then
@@ -486,6 +565,10 @@ end;
 
 const
   SqlCalls: array[0..4] of string = ('ExecSQL', 'Open', 'ExecSQLScalar', 'ExecuteDirect', 'Execute');
+  // Allgemeine Namen (Dialog.Execute, Datei.Open): SQL nur, wenn ein Literal im Argument SQL enthält (#1109).
+  GenericSqlCalls: array[0..1] of string = ('Open', 'Execute');
+  SqlKeywords: array[0..9] of string = ('select', 'insert', 'update', 'delete', 'merge', 'where', 'from',
+    'values', 'exec', 'truncate');
   // Umwandlungen, deren Ergebnis keine SQL-Syntax einschleusen kann.
   SafeConversions: array[0..5] of string = ('IntToStr', 'QuotedStr', 'FloatToStr', 'IntToHex', 'BoolToStr',
     'UIntToStr');
@@ -521,6 +604,32 @@ begin
       ((Index = 0) or not ATokens[Index - 1].IsSymbol('.')) then
       Result := Result + [ATokens[Index].Text];
   end;
+end;
+
+/// <summary>Enthält ein String-Literal in ATokens[AFirst..ALast] ein SQL-Schlüsselwort als ganzes Wort?</summary>
+function HasSqlLiteral(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): Boolean;
+var
+  Index, Start, After: Integer;
+  Text, Word: string;
+begin
+  for Index := AFirst to ALast do
+    if ATokens[Index].Kind = TPascalTokenKind.StringLiteral then
+    begin
+      Text := LowerCase(LiteralValue(ATokens[Index]));
+      for Word in SqlKeywords do
+      begin
+        Start := Pos(Word, Text);
+        while Start > 0 do
+        begin
+          After := Start + Length(Word);
+          if ((Start = 1) or not CharInSet(Text[Start - 1], ['a'..'z', '0'..'9', '_'])) and
+            ((After > Length(Text)) or not CharInSet(Text[After], ['a'..'z', '0'..'9', '_'])) then
+            Exit(True);
+          Start := PosEx(Word, Text, Start + 1);
+        end;
+      end;
+    end;
+  Result := False;
 end;
 
 /// <summary>Ist der SQL-Ausdruck ATokens[AFirst..ALast] aus Nicht-Konstanten zusammengesetzt?
@@ -609,6 +718,8 @@ begin
     if (First < 0) or (Last < First) then
       Continue;
     if not IsComposedSql(Tokens, First, Last, Constants, FromInput) then
+      Continue;
+    if IsOneOf(Sink.Text, GenericSqlCalls) and not HasSqlLiteral(Tokens, First, Last) then
       Continue;
     if FromInput then
       Confidence := TRuleConfidence.High

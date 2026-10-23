@@ -60,10 +60,11 @@ type
 implementation
 
 uses
+  System.Classes,
   System.StrUtils,
-  System.IOUtils,
   Atlas.Text.Chars,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Documents.FileEncoding;
 
 function IsBlank(C: Char): Boolean;
 begin
@@ -329,11 +330,12 @@ begin
       Text := AText
     else
       try
-        Text := TFile.ReadAllText(Location.FileName);
+        Text := TFileEncoding.LoadText(Location.FileName);
       except
-        on EInOutError do
+        // Fehlt oder gesperrt (EFOpenError) bzw. Lesefehler.
+        on EStreamError do
           Continue;
-        on EFileNotFoundException do
+        on EInOutError do
           Continue;
       end;
     Declaration := RangeText(Text, Location.Symbol.Range);

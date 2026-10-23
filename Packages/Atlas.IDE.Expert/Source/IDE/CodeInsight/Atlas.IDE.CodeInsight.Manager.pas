@@ -610,7 +610,7 @@ begin
   if not FDiagnose then
     Exit;
   try
-    TFile.AppendAllText(DiagnoseLog, FormatDateTime('hh:nn:ss.zzz', Now) + ' ' + WithoutPaths(AMessage) + sLineBreak,
+    TFile.AppendAllText(DiagnoseLog, FormatDateTime('hh":"nn":"ss.zzz', Now) + ' ' + WithoutPaths(AMessage) + sLineBreak,
       TEncoding.UTF8);
   except
     // Diagnose darf die IDE nie stören.
@@ -1937,7 +1937,7 @@ end;
 procedure TAtlasCodeInsightManager.Report(const AMessage: string);
 begin
   try
-    TFile.AppendAllText(DiagnoseLog, FormatDateTime('hh:nn:ss.zzz', Now) + ' ' + WithoutPaths(AMessage) + sLineBreak,
+    TFile.AppendAllText(DiagnoseLog, FormatDateTime('hh":"nn":"ss.zzz', Now) + ' ' + WithoutPaths(AMessage) + sLineBreak,
       TEncoding.UTF8);
   except
     // Protokoll ist Beiwerk; ein gesperrtes Log darf die IDE nicht stören.

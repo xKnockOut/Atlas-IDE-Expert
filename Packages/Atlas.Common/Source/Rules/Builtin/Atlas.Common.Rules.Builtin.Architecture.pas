@@ -68,7 +68,7 @@ type
     /// <summary>Feature, z. B. "Logging"; beim Host die Host-Rolle, z. B. "Shell".</summary>
     Feature: string;
     Role: TArchitectureRole;
-    /// <summary>Role <> None.</summary>
+    /// <summary>Role &lt;&gt; None.</summary>
     function Known: Boolean;
     /// <summary>Gleiches Ausgabeartefakt und gleiches Feature (ohne Groß-/Kleinschreibung).</summary>
     function SameFeature(const AOther: TArchitectureUnit): Boolean;
@@ -412,6 +412,9 @@ begin
     Exit;
   for Used in TUsesClauses.References(AContext.Tree.Tokens) do
   begin
+    // contains eines Packages nimmt Units auf, statt sie einzubinden (#1109): Das Package ist keine Rolle.
+    if Used.List = TUsesListKind.ContainsList then
+      Continue;
     Target := TArchitectureMatrix.Classify(Used.Name, Options.Prefixes, Options.HostRoles);
     if TArchitectureMatrix.Allowed(Source, Target) or Approved(Options.Allow, OwnName, Used.Name) then
       Continue;

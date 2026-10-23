@@ -389,7 +389,7 @@ type
     /// weder der Typ noch eine Vorfahrklasse mit gleichem Namen und gleichen Parametertypen deklariert.
     /// Container ist das deklarierende Interface; Reihenfolge wie in der Vorfahrenliste, je Interface erst seine
     /// Methoden, dann die seiner Vorfahren. AAncestors: Vorfahrenliste wie im Quelltext samt Typargumenten
-    /// ("IComparer<TKunde>"); ohne gilt die des Index. Bei generischen Interfaces trägt jedes Ergebnis die
+    /// ("IComparer&lt;TKunde&gt;"); ohne gilt die des Index. Bei generischen Interfaces trägt jedes Ergebnis die
     /// Bindungen ("T=TKunde", ohne Unit-Präfix) in Bindings; verglichen wird mit eingesetzten Typen.</summary>
     function MissingInterfaceMembers(const AFromUnit: TUnitIndex; const ATypeName: string;
       const AAncestors: TArray<string> = nil): TArray<TResolvedSymbol>; overload;
@@ -3415,7 +3415,7 @@ const
     'TSingletonImplementation', 'TNoRefCountObject');
   InterfaceMethods: array[0..2] of string = ('QueryInterface', '_AddRef', '_Release');
 
-/// <summary>Name ohne Unit-Präfix und Typargumente: "Generics.IComparer<T>" → "IComparer".</summary>
+/// <summary>Name ohne Unit-Präfix und Typargumente: "Generics.IComparer&lt;T&gt;" → "IComparer".</summary>
 function BareTypeName(const AText: string): string;
 begin
   Result := Trim(AText);

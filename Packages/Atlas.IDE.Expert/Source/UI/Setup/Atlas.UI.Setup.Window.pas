@@ -273,7 +273,7 @@ begin
       begin
         Bytes := StrToInt64Def(Arg(AResult, 0), 0);
         Result := TAtlasStrings.Fmt(TAtlasTextId.SetupLibrarySize,
-          [FormatFloat('0.0', Bytes / (1024 * 1024))]);
+          [FormatFloat('0.0', Bytes / (1024 * 1024), FormatSettings)]);
       end;
   end;
 end;

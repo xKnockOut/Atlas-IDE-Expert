@@ -999,7 +999,7 @@ begin
   end;
   Title := TAtlasStrings.Fmt(TAtlasTextId.BlameCommitTitle, [Entry.Revision]);
   Text := TAtlasStrings.Fmt(TAtlasTextId.BlameCommitText,
-    [Entry.Author, FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(Entry.Date)), Entry.Summary]);
+    [Entry.Author, FormatDateTime('dd.mm.yyyy hh":"nn', TTimeZone.Local.ToLocalTime(Entry.Date)), Entry.Summary]);
   FTipChange := -1;
   FTip.OnLink := nil;
   TAtlasIdeStyle.Apply(FTip, FHoverScreen);

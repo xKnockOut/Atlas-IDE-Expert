@@ -22,6 +22,8 @@ type
     [Test]
     procedure SavesBesideAndReplaces;
     [Test]
+    procedure LoadTextAndLines;
+    [Test]
     procedure ReplacesFileHeldOpenByOthers;
     /// <summary>Hält ein fremdes Programm die Datei ohne FILE_SHARE_DELETE offen, scheitert Save nach dem Netz
     /// und lässt die Datei, wie sie war (früher: an Ort und Stelle überschrieben).</summary>
@@ -119,6 +121,27 @@ begin
     Assert.AreEqual<NativeInt>(6, Length(TFile.ReadAllBytes(FileName)));
     Assert.IsFalse(TFile.Exists(FileName + '.atlas-tmp'), 'keine Nachbardatei übrig');
     Assert.AreEqual('aä', TAtlasTextFile.Load(FileName).Text);
+  finally
+    TDirectory.Delete(Folder, True);
+  end;
+end;
+
+// UTF-8 ohne BOM liest LoadText als UTF-8 (TFile.ReadAllText nähme ANSI); LoadLines ohne leere letzte Zeile (#1109).
+procedure TAtlasTextFileTests.LoadTextAndLines;
+var
+  Folder, FileName: string;
+  Lines: TArray<string>;
+begin
+  Folder := TPath.Combine(TPath.GetTempPath, 'Atlas-TextFile-' + IntToStr(Random(MaxInt)));
+  TDirectory.CreateDirectory(Folder);
+  try
+    FileName := TPath.Combine(Folder, 'A.dproj');
+    TFile.WriteAllBytes(FileName, TBytes.Create($61, $C3, $A4, $0D, $0A, $62, $0D, $0A));
+    Assert.AreEqual('a'#$E4#13#10'b'#13#10, TAtlasTextFile.LoadText(FileName));
+    Lines := TAtlasTextFile.LoadLines(FileName);
+    Assert.AreEqual(2, Integer(Length(Lines)));
+    Assert.AreEqual('a'#$E4, Lines[0]);
+    Assert.AreEqual('b', Lines[1]);
   finally
     TDirectory.Delete(Folder, True);
   end;

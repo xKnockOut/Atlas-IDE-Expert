@@ -295,6 +295,7 @@ contains
   Atlas.Common.Semantics.ConstantValues in 'Source\Semantics\Atlas.Common.Semantics.ConstantValues.pas',
   Atlas.Common.Pascal.ConditionalBranches in 'Source\Pascal\Atlas.Common.Pascal.ConditionalBranches.pas',
   Atlas.Common.Pascal.DirectiveNames in 'Source\Pascal\Atlas.Common.Pascal.DirectiveNames.pas',
+  Atlas.Common.Pascal.PureRoutines in 'Source\Pascal\Atlas.Common.Pascal.PureRoutines.pas',
   Atlas.Common.Semantics.SystemIntrinsics in 'Source\Semantics\Atlas.Common.Semantics.SystemIntrinsics.pas',
   Atlas.Common.Semantics.NameResolver in 'Source\Semantics\Atlas.Common.Semantics.NameResolver.pas',
   Atlas.Common.Semantics.Attributes in 'Source\Semantics\Atlas.Common.Semantics.Attributes.pas',

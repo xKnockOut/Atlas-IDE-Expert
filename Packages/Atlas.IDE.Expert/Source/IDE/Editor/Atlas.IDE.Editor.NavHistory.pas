@@ -400,7 +400,7 @@ begin
     Command.Id := IntToStr(Index);
     Command.Caption := ExtractFileName(Entries[Index].Place.FileName) + ':' + IntToStr(Entries[Index].Place.Line);
     Command.Path := Entries[Index].Place.Excerpt;
-    Command.ShortCut := KindText(Entries[Index].Kind) + ' · ' + FormatDateTime('hh:nn', Entries[Index].Place.Time);
+    Command.ShortCut := KindText(Entries[Index].Kind) + ' · ' + FormatDateTime('hh":"nn', Entries[Index].Place.Time);
     Commands := Commands + [Command];
   end;
   if Length(Commands) = 0 then

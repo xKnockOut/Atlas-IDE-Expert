@@ -193,7 +193,8 @@ begin
   Stop;
   if (FEventsIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
     Services.RemoveEditorEventsNotifier(FEventsIndex);
-  FEvents.OnEditorPaintLine := nil;
+  if FEvents <> nil then
+    FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
   FKeys.Free;
   inherited Destroy;

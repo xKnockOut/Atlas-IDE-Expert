@@ -162,7 +162,7 @@ begin
   Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
 end;
 
-/// <summary>Typtext ohne Leerzeichen vor spitzen Klammern ("TArray <Integer>" aus dem Index).</summary>
+/// <summary>Typtext ohne Leerzeichen vor spitzen Klammern ("TArray &lt;Integer&gt;" aus dem Index).</summary>
 function NormalizedType(const AText: string): string;
 begin
   Result := Trim(AText).Replace(' <', '<').Replace('< ', '<').Replace(' >', '>');
@@ -237,7 +237,7 @@ begin
       Result := Node;
 end;
 
-/// <summary>Deklarierter Typ von ASymbol als Quelltext ("TArray<Double>", "array of Integer"); bei Aliasen
+/// <summary>Deklarierter Typ von ASymbol als Quelltext ("TArray&lt;Double&gt;", "array of Integer"); bei Aliasen
 /// der Typ hinter "=". Aus TypeName, sonst aus dem Kopf des Index, sonst aus der Deklaration im Baum (lokale
 /// Namen). '' wenn unbekannt.</summary>
 function DeclaredTypeText(const AContext: TRuleContext; const ASymbol: TResolvedSymbol): string;
@@ -1382,7 +1382,7 @@ var
   Local: TUnitIndex;
   Node: TSyntaxNode;
 
-  /// <summary>Vergleich, der aus dem Wert vom Typ AType eine Bedingung macht ('<> 0', '<> nil' ...); '' ohne
+  /// <summary>Vergleich, der aus dem Wert vom Typ AType eine Bedingung macht ('&lt;&gt; 0', '&lt;&gt; nil' ...); '' ohne
   /// sicheren Typ.</summary>
   function Comparison(const AType: TResolvedSymbol): string;
   var

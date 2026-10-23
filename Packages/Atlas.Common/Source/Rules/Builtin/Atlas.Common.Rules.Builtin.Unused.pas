@@ -12,13 +12,14 @@
 // inaktive Zweige nicht: Kommt der Name dann im Text vor, gibt es keinen
 // Treffer, sonst nur einen mit niedriger Konfidenz; unused-assignment
 // schweigt in solchen Routinen ganz. Routinen mit asm-Rumpf werden übergangen.
+// unused-assignment übergeht Variablen mit Interface-Typ (Referenzzähler: Bereichswächter, X := nil).
 //
 // unused-parameter nimmt aus:
 // - Parameter namens Sender und Routinen mit einem solchen (Ereignis-Handler),
 // - Methoden mit override, virtual, dynamic, abstract oder message,
 //   published-Methoden (DFM-Ereignisse), Methoden von Klassen mit Interfaces
 //   und Methoden, deren Typdeklaration nicht in der Datei steht,
-// - Routinen, die als Wert verwendet werden (@P, X := P, Aufruf(P)).
+// - Routinen, die als Wert verwendet werden (@P, X := P, X := Obj.P, Aufruf(P)).
 //
 // Option aller drei Regeln: {"ignore": ["Dummy*", "_*"]} nimmt Namen nach
 // Muster aus (* und ? als Platzhalter).
@@ -669,7 +670,9 @@ begin
   Result := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
-      if (AVisited.Kind = TSyntaxKind.Identifier) and SameText(AVisited.Name, Name) and IsValueUse(AVisited) then
+      // Auch Objekt.Methode (Writer.OnFindMethodName := Namer.FindMethodName): Der Name steht am MemberAccess.
+      if (AVisited.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and SameText(AVisited.Name, Name) and
+        IsValueUse(AVisited) then
         Exit(TSyntaxSearchStep.Found);
       Result := TSyntaxSearchStep.Descend;
     end) <> nil;
@@ -762,6 +765,23 @@ begin
         Exit(TSyntaxSearchStep.Found);
       Result := TSyntaxSearchStep.Skip;
     end) <> nil;
+end;
+
+/// <summary>Hat die var-Deklaration ADecl einen Interface-Typ (IFoo nach Delphi-Brauch)? Zuweisungen an solche
+/// Variablen wirken über den Referenzzähler: Activity := TAtlasActivity.Scope(…) hält einen Bereich bis zum Ende
+/// der Routine, Writer := nil gibt den Schreiber vorzeitig frei. Wie Delphis H2077 schweigt die Regel dort (#1109).</summary>
+function IsInterfaceTyped(ADecl: TSyntaxNode): Boolean;
+var
+  TypeNode: TSyntaxNode;
+  TypeName: string;
+begin
+  TypeNode := ADecl.FindChild(TSyntaxKind.TypeReference);
+  if TypeNode = nil then
+    Exit(False);
+  TypeName := TypeNode.Name;
+  if LastDelimiter('.', TypeName) > 0 then
+    TypeName := Copy(TypeName, LastDelimiter('.', TypeName) + 1, MaxInt);
+  Result := (Length(TypeName) > 1) and (TypeName[1] = 'I') and CharInSet(TypeName[2], ['A'..'Z']);
 end;
 
 procedure TUnusedAssignmentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -894,13 +914,14 @@ begin
         Section := Routine[Index];
         if Section.Kind = TSyntaxKind.VarSection then
           for Inner := 0 to Section.ChildCount - 1 do
-            if Section[Inner].Kind = TSyntaxKind.VarDecl then
+            if (Section[Inner].Kind = TSyntaxKind.VarDecl) and not IsInterfaceTyped(Section[Inner]) then
               Names := Names + SplitNames(Section[Inner].Name);
       end;
       Locals := nil;
       CollectInlineVars(Info.Block, Locals);
       for Decl in Locals do
-        Names := Names + SplitNames(Decl.Name);
+        if not IsInterfaceTyped(Decl) then
+          Names := Names + SplitNames(Decl.Name);
       Graph := nil;
       for Name in Names do
         CheckName;

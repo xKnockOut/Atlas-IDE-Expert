@@ -153,7 +153,7 @@ function ConvertTo-DelphiLiteral([string] $Text) {
 $Unit = New-Object System.Text.StringBuilder
 [void]$Unit.Append("unit Atlas.Common.Rules.Catalog.Data;`r`n`r`n")
 [void]$Unit.Append("// Erzeugt von Tools/Update-RuleCatalog.ps1 aus Katalog\regelkatalog*.json.`r`n")
-[void]$Unit.Append("// Nicht von Hand ändern.`r`n`r`ninterface`r`n`r`n")
+[void]$Unit.Append("// Nicht von Hand ändern.`r`n// Die Beispiele ""bad"" zeigen absichtlich unsichere URLs (#1109).`r`n// lsp-ignore-file: security-insecure-http`r`n`r`ninterface`r`n`r`n")
 [void]$Unit.Append("/// <summary>Englischer Grundkatalog als JSON.</summary>`r`nfunction RuleCatalogBaseJson: string;`r`n")
 [void]$Unit.Append("/// <summary>Übersetzung als JSON, '' für unbekannte Sprachen.</summary>`r`nfunction RuleCatalogOverlayJson(const ALanguage: string): string;`r`n`r`n")
 [void]$Unit.Append("implementation`r`n`r`nuses`r`n  System.SysUtils;`r`n`r`n")

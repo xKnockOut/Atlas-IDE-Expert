@@ -77,6 +77,7 @@ uses
   Atlas.Common.Semantics.ConstantValues.Tests in 'Common\Semantics\Atlas.Common.Semantics.ConstantValues.Tests.pas',
   Atlas.Common.Pascal.ConditionalBranches.Tests in 'Common\Pascal\Atlas.Common.Pascal.ConditionalBranches.Tests.pas',
   Atlas.Common.Pascal.DirectiveNames.Tests in 'Common\Pascal\Atlas.Common.Pascal.DirectiveNames.Tests.pas',
+  Atlas.Common.Pascal.PureRoutines.Tests in 'Common\Pascal\Atlas.Common.Pascal.PureRoutines.Tests.pas',
   Atlas.Common.Semantics.NameResolver.Tests in 'Common\Semantics\Atlas.Common.Semantics.NameResolver.Tests.pas',
   Atlas.Common.Semantics.Attributes.Tests in 'Common\Semantics\Atlas.Common.Semantics.Attributes.Tests.pas',
   Atlas.Common.Semantics.NameResolverStage2.Tests in 'Common\Semantics\Atlas.Common.Semantics.NameResolverStage2.Tests.pas',

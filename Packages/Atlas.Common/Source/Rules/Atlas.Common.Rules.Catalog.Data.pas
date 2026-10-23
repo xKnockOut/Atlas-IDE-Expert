@@ -2,6 +2,8 @@
 
 // Erzeugt von Tools/Update-RuleCatalog.ps1 aus Katalog\regelkatalog*.json.
 // Nicht von Hand ändern.
+// Die Beispiele "bad" zeigen absichtlich unsichere URLs (#1109).
+// lsp-ignore-file: security-insecure-http
 
 interface
 
@@ -358,7 +360,8 @@ begin
     '      "category": "code-smell",' + #10 +
     '      "severity": "hint",' + #10 +
     '      "group": "style",' + #10 +
-    '      "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077.",' + #10 +
+    '      "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077. Variables of an interface type are exempt: assigning them hol' +
+    'ds or releases a reference (scope guards, Writer := nil).",' + #10 +
     '      "bad": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := 0;\n  I := Calc;\n  Bar(I);\nend;",' + #10 +
     '      "good": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := Calc;\n  Bar(I);\nend;",' + #10 +
     '      "options": [' + #10 +
@@ -941,7 +944,8 @@ begin
     '      "severity": "hint",' + #10 +
     '      "group": "robustness",' + #10 +
     '      "description": "Format with %f, %n, %m, %g or %e and functions like FloatToStr, StrToFloat or DateToStr without a TFormatSettings parameter use the user''s locale (decimal separator, date format)' +
-    '. For files, protocols and logs pass fixed TFormatSettings. Format(''%d'', …) is not reported.",' + #10 +
+    '. For files, protocols and logs pass fixed TFormatSettings. Format(''%d'', …) is not reported, nor are FormatDateTime and FormatFloat with a fixed picture without separators (: / . ,), such as ''yyyy\"-\' +
+    '"mm\"-\"dd'' or ''ddddd t''.",' + #10 +
     '      "bad": "Line := Format(''%.2f'', [Amount]);",' + #10 +
     '      "good": "Line := Format(''%.2f'', [Amount], TFormatSettings.Invariant);"' + #10 +
     '    },' + #10 +
@@ -5080,7 +5084,8 @@ begin
     '    {' + #10 +
     '      "id": "unused-assignment",' + #10 +
     '      "name": "Zugewiesener Wert ungenutzt",' + #10 +
-    '      "description": "Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077.",' + #10 +
+    '      "description": "Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077. Variablen mit Interface-Typ sind ausgeno' +
+    'mmen: Die Zuweisung hält oder gibt eine Referenz frei (Bereichswächter, Writer := nil).",' + #10 +
     '      "options": [' + #10 +
     '        {' + #10 +
     '          "name": "ignore",' + #10 +
@@ -5399,7 +5404,8 @@ begin
     '      "id": "format-without-settings",' + #10 +
     '      "name": "Formatierung abhängig vom Gebietsschema",' + #10 +
     '      "description": "Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenne' +
-    'r, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format(''%d'', …) wird nicht gemeldet."' + #10 +
+    'r, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format(''%d'', …) wird nicht gemeldet, ebenso wenig FormatDateTime und FormatFloat mit festem Bild ohne Trennzeichen (' +
+    ': / . ,) wie ''yyyy\"-\"mm\"-\"dd'' oder ''ddddd t''."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "generic-exception-raised",' + #10 +

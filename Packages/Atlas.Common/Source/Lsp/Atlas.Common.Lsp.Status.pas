@@ -150,7 +150,7 @@ begin
           [Workspace.Name, Workspace.ProjectText, Workspace.LastIndexMs, Workspace.Parsed, Workspace.FromCache,
           Workspace.Missing]));
         if Workspace.LastUpdate <> 0 then
-          Builder.Append(', aktualisiert ').Append(FormatDateTime('dd.mm.yyyy hh:nn:ss', Workspace.LastUpdate));
+          Builder.Append(', aktualisiert ').Append(FormatDateTime('dd.mm.yyyy hh":"nn":"ss', Workspace.LastUpdate));
         Builder.Append(', Cache ').Append(MegaBytes(Workspace.CacheBytes + Workspace.LibraryCacheBytes));
         Builder.Append(#10);
       end;

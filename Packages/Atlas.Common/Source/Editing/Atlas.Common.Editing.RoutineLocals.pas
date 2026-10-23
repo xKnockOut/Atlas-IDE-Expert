@@ -59,7 +59,7 @@ type
     class function AccessOf(ANode: TSyntaxNode; const ALookup: TFlowSignatureLookup): TLocalAccess; static;
     /// <summary>Bearbeitungen, die die Namen ARemoved aus dem var-Eintrag ADecl entfernen (bei letztem Namen die
     /// Zeile, beim letzten Eintrag auch "var").</summary>
-    class procedure RemoveVariables(const AText: string; ATree: TSyntaxTree; ADecl: TSyntaxNode;
+    class procedure RemoveVariables(ATree: TSyntaxTree; ADecl: TSyntaxNode;
       const ARemoved: TArray<string>; var AEdits: TArray<TTextEdit>); static;
   end;
 
@@ -266,7 +266,7 @@ begin
   end;
 end;
 
-class procedure TRoutineLocals.RemoveVariables(const AText: string; ATree: TSyntaxTree; ADecl: TSyntaxNode;
+class procedure TRoutineLocals.RemoveVariables(ATree: TSyntaxTree; ADecl: TSyntaxNode;
   const ARemoved: TArray<string>; var AEdits: TArray<TTextEdit>);
 var
   Names, Kept: TArray<string>;

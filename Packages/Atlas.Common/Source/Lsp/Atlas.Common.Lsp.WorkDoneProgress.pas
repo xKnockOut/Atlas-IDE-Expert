@@ -29,7 +29,7 @@ type
     constructor Create(const ATransport: IJsonRpcTransport; const AToken: string);
     destructor Destroy; override;
     procedure Start(const ATitle: string);
-    /// <summary>APercent < 0: ohne Prozentangabe.</summary>
+    /// <summary>APercent &lt; 0: ohne Prozentangabe.</summary>
     procedure Report(const AMessage: string; APercent: Integer);
     procedure Finish(const AMessage: string);
     /// <summary>Adapter für den Symbolindex.</summary>

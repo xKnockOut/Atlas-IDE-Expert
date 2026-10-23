@@ -340,7 +340,8 @@ end;
 
 destructor TAtlasQuickActionsBar.Destroy;
 begin
-  FTimer.Enabled := False;
+  if FTimer <> nil then
+    FTimer.Enabled := False;
   FSource := nil;
   inherited;
 end;

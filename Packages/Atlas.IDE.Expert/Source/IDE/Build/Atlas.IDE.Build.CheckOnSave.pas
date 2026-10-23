@@ -214,8 +214,11 @@ destructor TAtlasIdeCheckOnSave.Destroy;
 var
   Keyboard: IOTAKeyboardServices;
 begin
-  FTimer.Enabled := False;
-  FTimer.Free;
+  if FTimer <> nil then
+  begin
+    FTimer.Enabled := False;
+    FTimer.Free;
+  end;
   if FBinding <> nil then
     FBinding.FOwner := nil;
   if (FBindingIndex >= 0) and Supports(BorlandIDEServices, IOTAKeyboardServices, Keyboard) then

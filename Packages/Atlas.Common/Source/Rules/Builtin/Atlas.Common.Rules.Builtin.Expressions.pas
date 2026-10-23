@@ -103,7 +103,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
-  Atlas.Common.Rules.Options;
+  Atlas.Common.Rules.Options,
+  Atlas.Common.Pascal.PureRoutines;
 
 type
   TTokens = TArray<TPascalToken>;
@@ -309,10 +310,6 @@ const
   ImpureCalls: array[0..11] of string = ('Read', 'Readln', 'Next', 'MoveNext', 'Pop', 'Dequeue', 'Extract',
     'Random', 'Execute', 'ExecSQL', 'GetTickCount', 'Now');
   FloatTypes: array[0..4] of string = ('Double', 'Single', 'Extended', 'Real', 'TDateTime');
-  // Aufrufe ohne Seiteneffekt; jeder andere Aufruf kann über var-Parameter oder Zustand etwas ändern.
-  PureCalls: array[0..17] of string = ('SameText', 'SameStr', 'Assigned', 'Length', 'Pos', 'ContainsText',
-    'ContainsStr', 'StartsText', 'StartsStr', 'EndsText', 'EndsStr', 'MatchText', 'MatchStr', 'Odd', 'Abs', 'Ord',
-    'UpperCase', 'LowerCase');
 
 function TDuplicateConditionRule.Descriptor: TRuleDescriptor;
 begin
@@ -395,7 +392,7 @@ var
         if (Node.Kind in [TSyntaxKind.Call, TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
           MatchText(Node.Name, ImpureCalls) then
           Exit(True);
-        if (Node.Kind = TSyntaxKind.Call) and not MatchText(Node.Name, PureCalls) then
+        if (Node.Kind = TSyntaxKind.Call) and not TPureRoutines.IsPure(Node.Name) then
           Exit(True);
         if Node.Kind = TSyntaxKind.AnonymousMethod then
           Exit(True);

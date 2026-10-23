@@ -23,10 +23,14 @@ uses
   Atlas.Common.Pascal.Contract;
 
 type
+  /// <summary>Art der Liste: uses bindet ein, contains (Package) nimmt auf, requires (Package) braucht ein Package.</summary>
+  TUsesListKind = (UsesList, ContainsList, RequiresList);
+
   /// <summary>Eintrag einer uses-, contains- oder requires-Liste mit Position (#183).</summary>
   TUsesReference = record
     Name: string;
     Range: TTextRange;
+    List: TUsesListKind;
   end;
 
   /// <summary>Eine uses-Liste (#284).</summary>
@@ -233,6 +237,7 @@ var
   Name: string;
   AfterIn: Boolean;
   Reference: TUsesReference;
+  List: TUsesListKind;
 begin
   Result := nil;
   Index := 0;
@@ -240,6 +245,11 @@ begin
   begin
     if IsListStart(ATokens, Index) then
     begin
+      List := TUsesListKind.UsesList;
+      if SameText(ATokens[Index].Text, 'contains') then
+        List := TUsesListKind.ContainsList
+      else if SameText(ATokens[Index].Text, 'requires') then
+        List := TUsesListKind.RequiresList;
       // uses A, B.C in 'b.pas', D; ein Eintrag je Name, Position über alle Namensteile.
       Name := '';
       First := -1;
@@ -254,6 +264,7 @@ begin
           begin
             Reference.Name := Name;
             Reference.Range := TTextRange.Create(ATokens[First].StartPos, ATokens[Last].EndPos);
+            Reference.List := List;
             Result := Result + [Reference];
           end;
           Name := '';

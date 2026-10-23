@@ -166,8 +166,11 @@ destructor TAtlasIdeElements.Destroy;
 var
   Services: INTACodeEditorServices;
 begin
-  FAppEvents.OnMessage := nil;
-  FAppEvents.Free;
+  if FAppEvents <> nil then
+  begin
+    FAppEvents.OnMessage := nil;
+    FAppEvents.Free;
+  end;
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
     Services.RemoveEditorEventsNotifier(FIndex);

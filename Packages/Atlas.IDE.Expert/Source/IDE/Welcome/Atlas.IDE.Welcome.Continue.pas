@@ -177,7 +177,6 @@ implementation
 
 uses
   Winapi.Windows,
-  System.IOUtils,
   System.DateUtils,
   System.TypInfo,
   Vcl.Forms,
@@ -200,7 +199,8 @@ uses
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Welcome.Search,
-  Atlas.IDE.Welcome.Projects;
+  Atlas.IDE.Welcome.Projects,
+  Atlas.Core.Files.TextFile;
 
 { TAtlasIdeContinue.TIdeNotifier }
 
@@ -1194,7 +1194,7 @@ begin
     Projects := Projects + [Project];
     if SameText(ExtractFileExt(Project), '.groupproj') and FileExists(Project) then
       try
-        for Member in TAtlasWelcomeSaved.GroupProjects(Project, TFile.ReadAllText(Project)) do
+        for Member in TAtlasWelcomeSaved.GroupProjects(Project, TAtlasTextFile.LoadText(Project)) do
           Projects := Projects + [Member];
       except
         // Gruppe nicht lesbar: nur ihr eigener Ordner.
@@ -1255,7 +1255,7 @@ begin
           Supports(Module.ModuleFileEditors[Index], IOTAEditBuffer, Buffer) then
           Exit(TAtlasEditorBuffer.Text(Buffer));
   end;
-  Result := TFile.ReadAllText(AFileName);
+  Result := TAtlasTextFile.LoadText(AFileName);
 end;
 
 procedure TAtlasIdeContinue.OpenFavorite(const AItem: TAtlasSavedItem);

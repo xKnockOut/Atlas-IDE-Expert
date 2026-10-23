@@ -52,11 +52,17 @@ type
     [Test]
     procedure CallbackRoutineIsSilent;
     [Test]
+    procedure MethodAssignedThroughObjectIsSilent;
+    [Test]
     procedure PlainMethodReports;
     [Test]
     procedure InterfaceImplementationIsSilent;
     [Test]
     procedure OverwrittenAssignmentReports;
+    [Test]
+    procedure InterfaceAssignmentIsSilent;
+    [Test]
+    procedure AssignmentBeforeFailingTryIsRead;
     [Test]
     procedure AssignmentReadLaterIsSilent;
     [Test]
@@ -299,6 +305,15 @@ begin
     'procedure P;'#10'begin'#10'  Register(@Cb);'#10'end;'#10'end.');
 end;
 
+// Writer.OnFindMethodName := Namer.FindMethodName: Die Methode erfüllt einen Ereignistyp (#1109).
+procedure TUnusedRulesTests.MethodAssignedThroughObjectIsSilent;
+begin
+  TRuleAssert.Silent(TUnusedParameterRule.Create,
+    ClassUnit('  public'#10'    procedure Name(Writer: TObject; var AName: string);',
+      'procedure TFoo.Name(Writer: TObject; var AName: string);'#10'begin'#10'  AName := '''';'#10'end;'#10 +
+      'procedure P(Foo: TFoo; W: TWriter);'#10'begin'#10'  W.OnFindMethodName := Foo.Name;'#10'end;'));
+end;
+
 procedure TUnusedRulesTests.PlainMethodReports;
 begin
   TRuleAssert.Reports(TUnusedParameterRule.Create,
@@ -310,6 +325,25 @@ begin
   TRuleAssert.Silent(TUnusedParameterRule.Create,
     ClassUnit('  public'#10'    procedure Run(A: Integer);', 'procedure TFoo.Run(A: Integer);'#10'begin'#10'end;',
       'TInterfacedObject, IRunner'));
+end;
+
+// Bereichswächter und vorzeitige Freigabe wirken über den Referenzzähler (#1109).
+procedure TUnusedRulesTests.InterfaceAssignmentIsSilent;
+begin
+  TRuleAssert.Silent(TUnusedAssignmentRule.Create,
+    Routine('  Activity := Scope(''x'');'#10'  Writer := Buffer.CreateWriter;'#10'  Writer.Insert(''a'');'#10 +
+      '  Writer := nil;'#10'  Work;', 'procedure P;', 'var'#10'  Activity: IInterface;'#10'  Writer: IOTAEditWriter;'#10));
+  // Andere Typen weiterhin.
+  TRuleAssert.Reports(TUnusedAssignmentRule.Create,
+    Routine('  Item := Load;'#10'  Work;', 'procedure P;', 'var'#10'  Item: TItem;'#10));
+end;
+
+// Recent := nil vor try: Wirft RecentProjects, liest die Schleife den alten Wert (#1109).
+procedure TUnusedRulesTests.AssignmentBeforeFailingTryIsRead;
+begin
+  TRuleAssert.Silent(TUnusedAssignmentRule.Create,
+    Routine('  Recent := nil;'#10'  try'#10'    Recent := RecentProjects;'#10'  except'#10'    Report;'#10'  end;'#10 +
+      '  for S in Recent do'#10'    Use(S);', 'procedure P;', 'var'#10'  Recent: TArray<string>;'#10'  S: string;'#10));
 end;
 
 procedure TUnusedRulesTests.OverwrittenAssignmentReports;

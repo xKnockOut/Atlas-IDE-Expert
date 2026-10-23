@@ -69,7 +69,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Semantics.NameResolver;
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Pascal.PureRoutines;
 
 type
   TTokens = TArray<TPascalToken>;
@@ -559,7 +560,7 @@ begin
     'IfThen wertet beide Zweige aus');
 end;
 
-/// <summary>Namen, die die Bedingung auf nil prüft: Assigned(X), X <> nil.</summary>
+/// <summary>Namen, die die Bedingung auf nil prüft: Assigned(X), X &lt;&gt; nil.</summary>
 function CheckedNames(const ATokens: TTokens; AFirst, ALast: Integer): TArray<string>;
 var
   Index, Next, Name: Integer;
@@ -581,6 +582,19 @@ begin
         Result := Result + [LowerCase(ATokens[Name].Text)];
     end;
   end;
+end;
+
+/// <summary>Ruft ATokens[AName] eine Standardroutine ohne Seiteneffekte auf (Copy, Format, string.Join; #1109)?
+/// Methoden eines Objekts (X.Name()) zählen nicht dazu.</summary>
+function PureCall(const ATokens: TTokens; AName: Integer): Boolean;
+var
+  Dot, Owner: Integer;
+begin
+  Dot := PreviousCode(ATokens, AName);
+  if (Dot < 0) or not ATokens[Dot].IsSymbol('.') then
+    Exit(TPureRoutines.IsPure(ATokens[AName].Text));
+  Owner := PreviousCode(ATokens, Dot);
+  Result := (Owner >= 0) and TPureRoutines.IsPure(ATokens[Owner].Text + '.' + ATokens[AName].Text);
 end;
 
 procedure TIfThenSideEffectRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -634,7 +648,7 @@ begin
           Found := True;
           Confidence := TRuleConfidence.High;
         end
-        else if (Next <= Args[Arg].Last) and Tokens[Next].IsSymbol('(') then
+        else if (Next <= Args[Arg].Last) and Tokens[Next].IsSymbol('(') and not PureCall(Tokens, Inner) then
           Found := True;
       end;
     if not Found then

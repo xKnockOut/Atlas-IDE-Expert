@@ -231,7 +231,7 @@ begin
     Canvas.Brush.Color := TColor(TAtlasColorMath.Mix(FColors.Text, FColors.Surface, 0.1));
     Canvas.FillRect(TRect.Create(0, Top, ClientWidth, Min(Bottom, ClientHeight)));
   end;
-  Inner := Max(3, (ClientWidth - Scale(2)) div 3);
+  Inner := Max(Scale(3), (ClientWidth - Scale(2)) div 3);
   for Bar in FBars do
   begin
     Lane := Scale(1);

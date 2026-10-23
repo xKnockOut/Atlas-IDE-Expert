@@ -2599,10 +2599,10 @@ begin
     Frame.Parent := Host;
     Frame.Source := Source;
     Row := Frame.ScaleValue(TAtlasWelcomeStateFrame.RowHeight);
-    Assert.AreEqual(-1, Frame.HitTest(10, 0));
-    Assert.AreEqual(0, Frame.HitTest(10, Frame.ScaleValue(TAtlasWelcomeStateFrame.Indent) div 2 + 1));
-    Assert.AreEqual(3, Frame.HitTest(10, Frame.ScaleValue(TAtlasWelcomeStateFrame.Indent) div 2 + 3 * Row + 1));
-    Assert.AreEqual(-1, Frame.HitTest(10, Frame.ScaleValue(TAtlasWelcomeStateFrame.Indent) div 2 + 5 * Row + 1));
+    Assert.AreEqual(-1, Frame.HitTest(0));
+    Assert.AreEqual(0, Frame.HitTest(Frame.ScaleValue(TAtlasWelcomeStateFrame.Indent) div 2 + 1));
+    Assert.AreEqual(3, Frame.HitTest(Frame.ScaleValue(TAtlasWelcomeStateFrame.Indent) div 2 + 3 * Row + 1));
+    Assert.AreEqual(-1, Frame.HitTest(Frame.ScaleValue(TAtlasWelcomeStateFrame.Indent) div 2 + 5 * Row + 1));
   finally
     Host.Free;
   end;
@@ -3581,7 +3581,7 @@ begin
     Assert.AreEqual('Unit4.pas › TKunde.Laden', TAtlasWelcomeContinueFrame.DetailText(Entry),
       'zuletzt bearbeitete Datei und Methode');
     Assert.AreEqual('1 Reiter', TAtlasWelcomeContinueFrame.TabsText(1));
-    Assert.Contains(TAtlasWelcomeContinueFrame.HintFor(Entry, NowUtc), 'Unit4.pas:42');
+    Assert.Contains(TAtlasWelcomeContinueFrame.HintFor(Entry), 'Unit4.pas:42');
     Assert.AreEqual('gerade eben', TAtlasWelcomeContinueFrame.AgeText(NowUtc - 10 * OneSecond, NowUtc));
     Assert.AreEqual('vor 5 Min.', TAtlasWelcomeContinueFrame.AgeText(NowUtc - 5 * OneMinute - OneSecond, NowUtc));
     Assert.AreEqual('', TAtlasWelcomeContinueFrame.AgeText(0, NowUtc), 'unbekannt');

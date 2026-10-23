@@ -311,6 +311,8 @@ Values also work with `=` (`--log=server.log`). `--stdio` and `--clientProcessId
 
 `AtlasServer.exe --check <target>` checks without an editor. The target can be a `.dproj` (main file and units), a folder (all `.pas`, `.dpr` and `.dpk` below) or a file. `atlas.json` in the target's folder applies as in the editor. If it is missing, the former `delphi-lsp.json` applies (likewise `delphi-lsp-baseline.json` for the baseline).
 
+The linter has no symbol index: types from other units stay unknown, so rules that need them (for example ownership of fields whose type is declared elsewhere) stay silent or report with low confidence.
+
 | Parameter | Meaning |
 |---|---|
 | `--format <kind>` | `text` (default, like compiler messages), `json`, `sarif` (SARIF 2.1.0 for GitHub code scanning) |

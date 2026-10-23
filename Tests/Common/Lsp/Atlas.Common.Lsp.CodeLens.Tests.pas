@@ -139,7 +139,7 @@ var
 begin
   Tree := TPascalParser.Parse(UnitHaupt);
   try
-    Overview := TMessageHandlers.Overview(FResolver, FIndex, Tree, HauptFile, 'TFoo',
+    Overview := TMessageHandlers.Overview(FResolver, Tree, HauptFile, 'TFoo',
       function(const AName: string; out AText: string): Boolean
       begin
         Result := ReadFile(AName, AText);

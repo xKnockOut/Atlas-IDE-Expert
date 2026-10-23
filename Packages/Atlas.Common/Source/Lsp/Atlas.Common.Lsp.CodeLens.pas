@@ -296,7 +296,7 @@ begin
         end;
         if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') then
         begin
-          Overview := TMessageHandlers.Overview(AResolver, AIndex, ATree, AFileName, Symbol.Name,
+          Overview := TMessageHandlers.Overview(AResolver, ATree, AFileName, Symbol.Name,
             function(const AName: string; out AText: string): Boolean
             begin
               Result := Assigned(AReadText) and AReadText(AName, AText);

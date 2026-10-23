@@ -178,7 +178,7 @@ type
     /// <summary>Ziele der Sprünge aus dem try-Teil; Routes[I] sammelt die Quellen zu Onward[I].</summary>
     Onward: TList<TJumpTarget>;
     Routes: TObjectList<TJumpTarget>;
-    constructor Create(ADepth: Integer);
+    constructor Create;
     destructor Destroy; override;
   end;
 
@@ -557,7 +557,7 @@ end;
 
 { TFinallyContext }
 
-constructor TFinallyContext.Create(ADepth: Integer);
+constructor TFinallyContext.Create;
 begin
   inherited Create;
   Onward := TList<TJumpTarget>.Create;
@@ -791,6 +791,24 @@ begin
     Result := Concat(Result, [Condition]);
 end;
 
+/// <summary>Ist die Bedingung der Schleife S die Konstante AValue (while True, until False; auch in Klammern)?
+/// Dann verlässt nur Break, Exit oder raise die Schleife (#1109).</summary>
+function ConstantCondition(S: TSyntaxNode; const AValue: string): Boolean;
+var
+  Index: Integer;
+  Condition: TSyntaxNode;
+begin
+  Result := False;
+  for Index := 0 to S.ChildCount - 1 do
+    if not IsStatement(S.Children[Index].Kind) then
+    begin
+      Condition := S.Children[Index];
+      while (Condition.Kind = TSyntaxKind.ParenExpr) and (Condition.ChildCount = 1) do
+        Condition := Condition.Children[0];
+      Exit((Condition.Kind in [TSyntaxKind.Identifier, TSyntaxKind.Literal]) and SameText(Condition.Name, AValue));
+    end;
+end;
+
 function TFlowBuilder.BuildLoop(S: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
 var
   Init, Condition: TFlowNode;
@@ -814,7 +832,10 @@ begin
   FLoops.Delete(FLoops.Count - 1);
   LinkAll(Body, Condition);
   Resolve(Loop.ContinueTarget, Condition);
-  Result := Concat([Condition], Loop.BreakTarget.Sources.ToArray);
+  if (S.Kind = TSyntaxKind.WhileStatement) and ConstantCondition(S, 'True') then
+    Result := Loop.BreakTarget.Sources.ToArray
+  else
+    Result := Concat([Condition], Loop.BreakTarget.Sources.ToArray);
 end;
 
 function TFlowBuilder.BuildRepeat(S: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
@@ -834,7 +855,10 @@ begin
   LinkAll(Body, Condition);
   Resolve(Loop.ContinueTarget, Condition);
   Link(Condition, Head);
-  Result := Concat([Condition], Loop.BreakTarget.Sources.ToArray);
+  if ConstantCondition(S, 'False') then
+    Result := Loop.BreakTarget.Sources.ToArray
+  else
+    Result := Concat([Condition], Loop.BreakTarget.Sources.ToArray);
 end;
 
 function TFlowBuilder.BuildTry(S: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
@@ -852,7 +876,7 @@ begin
   FinallyPart := S.FindChild(TSyntaxKind.FinallyBlock);
   if FinallyPart <> nil then
   begin
-    Context := TFinallyContext.Create(FFinallies.Count);
+    Context := TFinallyContext.Create;
     FFinallies.Add(Context);
     try
       // Ausnahmen im try-Teil verlassen den Bereich nach außen, also durch finally.
@@ -1422,7 +1446,7 @@ var
   // Zustand je Knoten: 0 = Weg ohne, 1 = Weg mit unsicherer Änderung dahinter.
   Seen: array[Boolean] of TArray<Boolean>;
   Stack: TStack<Integer>;
-  Node, Pred: TFlowNode;
+  Node: TFlowNode;
   Item: Integer;
   Touched: Boolean;
 
@@ -1445,6 +1469,22 @@ var
     ANodes := ANodes + [ANew];
   end;
 
+  // Vorgänger von ANext. Über die Ausnahmekante einer Zuweisung an AName (X := F im try) ist der Wert nie
+  // gespeichert worden: Die Ausnahme fliegt beim Rechnen der rechten Seite, es gilt der Wert davor (#1109).
+  procedure PushPredecessors(ANext: TFlowNode; ATouched: Boolean);
+  var
+    Before, Earlier: TFlowNode;
+  begin
+    for Before in ANext.Predecessors do
+      if Before.IsImplicitRaiseEdge(ANext) and SameText(Before.Defines, AName) then
+      begin
+        for Earlier in Before.Predecessors do
+          Push(Earlier, ATouched);
+      end
+      else
+        Push(Before, ATouched);
+  end;
+
 begin
   Result.Definitions := nil;
   Result.FromEntry := False;
@@ -1454,8 +1494,7 @@ begin
   SetLength(Seen[True], FNodes.Count);
   Stack := TStack<Integer>.Create;
   try
-    for Pred in ANode.Predecessors do
-      Push(Pred, False);
+    PushPredecessors(ANode, False);
     while Stack.Count > 0 do
     begin
       Item := Stack.Pop;
@@ -1478,8 +1517,7 @@ begin
         AddUnique(Result.Uncertain, Node);
         Touched := True;
       end;
-      for Pred in Node.Predecessors do
-        Push(Pred, Touched);
+      PushPredecessors(Node, Touched);
     end;
   finally
     Stack.Free;

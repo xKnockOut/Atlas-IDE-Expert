@@ -55,6 +55,8 @@ type
     [Test]
     procedure ChecksImplementationUses;
     [Test]
+    procedure PackageContainsIsNoImport;
+    [Test]
     procedure ParsesOptions;
   end;
 
@@ -351,6 +353,17 @@ begin
   Assert.AreEqual(1, Integer(Length(Findings)));
   Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
   Assert.IsTrue(Pos('fremde Internals aus Root', Findings[0].Message) > 0, Findings[0].Message);
+end;
+
+procedure TRoleImportRuleTests.PackageContainsIsNoImport;
+begin
+  // contains nimmt Units ins Package auf (#1109); dieselbe Unit im uses eines Programms wäre ein Import.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create,
+    'package Atlas.Common.Lsp;'#10'requires rtl;'#10'contains'#10 +
+    '  Atlas.Common.Index.Internals.Table in ''Table.pas'';'#10'end.', RoleConfig, 'Atlas.Common.Lsp.dpk'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create,
+    'program Atlas.Common.Lsp;'#10'uses'#10'  Atlas.Common.Index.Internals.Table in ''Table.pas'';'#10 +
+    'begin'#10'end.', RoleConfig, 'Atlas.Common.Lsp.dpr'))));
 end;
 
 procedure TRoleImportRuleTests.ParsesOptions;

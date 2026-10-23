@@ -31,7 +31,8 @@ uses
   Winapi.Windows,
   System.SysUtils,
   System.IOUtils,
-  Atlas.Text.MapFile;
+  Atlas.Text.MapFile,
+  Atlas.Common.Documents.FileEncoding;
 
 const
   MaxFrames = 48;
@@ -76,7 +77,7 @@ begin
       MapModule := ExtractFileName(ParamStr(0));
       try
         if TFile.Exists(MapName) then
-          Map := TMapFile.Create(TFile.ReadAllText(MapName));
+          Map := TMapFile.Create(TFileEncoding.LoadText(MapName));
       except
         // Eine unlesbare Map darf das Absturzprotokoll nicht verhindern.
         FreeAndNil(Map);

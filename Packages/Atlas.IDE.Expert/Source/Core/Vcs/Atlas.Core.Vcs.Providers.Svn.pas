@@ -208,7 +208,7 @@ begin
   Database := IncludeTrailingPathDelimiter(FRoot) + '.svn' + PathDelim + 'wc.db';
   if not FileAge(Database, Age) then
     Exit('');
-  Result := FloatToStr(Age);
+  Result := FloatToStr(Age, TFormatSettings.Invariant);
   if FindFirst(Database, faAnyFile, Info) = 0 then
   try
     Result := Result + '|' + IntToStr(Info.Size);

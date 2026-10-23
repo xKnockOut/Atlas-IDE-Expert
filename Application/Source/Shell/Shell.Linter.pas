@@ -189,7 +189,7 @@ begin
       Project := TDprojReader.Load(TPath.GetFullPath(ATarget), Options);
       // Symbole wie im Editor: .dproj, Plattform, Compilerversion und Schalter (#860).
       Version := TDelphiVersions.Choose(ASettings.DelphiVersion,
-        TDelphiVersions.ProjectVersionOf(TFile.ReadAllText(TPath.GetFullPath(ATarget))), TDelphiInstallation.Versions);
+        TDelphiVersions.ProjectVersionOf(TFileEncoding.LoadText(TPath.GetFullPath(ATarget))), TDelphiInstallation.Versions);
       ASources := CheckSourcesOf(TIndexProjectFiles.Defines(Project, Version), Project.SearchPaths);
       if (Project.MainSource <> '') and TFile.Exists(Project.MainSource) then
         Files.Add(Project.MainSource);

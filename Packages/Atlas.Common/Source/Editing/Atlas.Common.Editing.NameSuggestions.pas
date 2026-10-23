@@ -33,7 +33,7 @@ type
     NameRange: TTextRange;
     /// <summary>Getippter Name bis zum Cursor.</summary>
     Typed: string;
-    /// <summary>Typ rechts vom Caret, wie er dasteht: "TCustomerList", "TList<TCustomer>", "array of TCustomer".
+    /// <summary>Typ rechts vom Caret, wie er dasteht: "TCustomerList", "TList&lt;TCustomer&gt;", "array of TCustomer".
     /// </summary>
     TypeText: string;
     /// <summary>Offset des Namens im Text (für den Gültigkeitsbereich).</summary>

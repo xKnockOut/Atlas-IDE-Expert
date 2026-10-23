@@ -152,7 +152,6 @@ uses
   Winapi.Messages,
   Winapi.ShellAPI,
   System.Classes,
-  System.IOUtils,
   Vcl.Controls,
   Vcl.Forms,
   Vcl.Menus,
@@ -165,7 +164,8 @@ uses
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Vcs.Service,
-  Atlas.IDE.Commands.ShortcutTips;
+  Atlas.IDE.Commands.ShortcutTips,
+  Atlas.Core.Files.TextFile;
 
 function Settings: TAtlasPluginSettings;
 begin
@@ -176,7 +176,7 @@ function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean
 begin
   ALines := nil;
   try
-    ALines := TFile.ReadAllLines(AFileName);
+    ALines := TAtlasTextFile.LoadLines(AFileName);
     Result := True;
   except
     // Nicht lesbar: zählt wie nicht vorhanden.
@@ -464,7 +464,7 @@ begin
   if TAtlasWelcomeQuickActions.IsGroup(AProject) or not FileExists(AProject) then
     Exit;
   try
-    Text := TFile.ReadAllText(AProject);
+    Text := TAtlasTextFile.LoadText(AProject);
   except
     on Exception do
       Exit;

@@ -219,7 +219,7 @@ end;
 
 /// <summary>Bei Mengentypen "set of TBar · 4 mögliche Elemente" (#38); Aufzählungen über den Index gezählt.
 /// '' bei anderen Typen.</summary>
-function SetTypeValue(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AUnit: TUnitIndex;
+function SetTypeValue(AResolver: TNameResolver; const AUnit: TUnitIndex;
   const ADeclaration: string): string;
 var
   BaseType: string;
@@ -609,7 +609,7 @@ begin
         // Ganze Deklaration: Mengen und Texte über mehrere Zeilen (Resourcestrings, #38).
         Result.Value := THoverValues.ConstantValue(DeclarationText(Lines, Targets[0].Range))
       else if Symbol.Kind = TIndexSymbolKind.TypeAlias then
-        Result.Value := SetTypeValue(AResolver, AIndex, OwnerUnit, DeclarationText(Lines, Targets[0].Range))
+        Result.Value := SetTypeValue(AResolver, OwnerUnit, DeclarationText(Lines, Targets[0].Range))
       else if Symbol.Kind = TIndexSymbolKind.EnumMember then
         Result.Value := 'Ord = ' + IntToStr(EnumOrdinal(OwnerUnit, Symbol))
       else if (Symbol.Kind = TIndexSymbolKind.Field) and (Symbol.Container <> '') then
@@ -661,7 +661,7 @@ begin
       Result.DefaultProperty := TPublishedMembers.DefaultProperty(AIndex, Symbol.Name, ReadText);
       Result.Members := TPublishedMembers.ToMarkdown(Result.PublishedItems, Result.DefaultProperty);
       if SameText(Targets[0].FileName, AFileName) then
-        Result.Messages := TMessageHandlers.Overview(AResolver, AIndex, ATree, AFileName, Symbol.Name,
+        Result.Messages := TMessageHandlers.Overview(AResolver, ATree, AFileName, Symbol.Name,
           function(const AName: string; out AText: string): Boolean
           begin
             Result := ReadText(AName, AText);
@@ -670,7 +670,7 @@ begin
       begin
         ClassTree := TSyntaxTreeCache.Parse(Text);
         try
-          Result.Messages := TMessageHandlers.Overview(AResolver, AIndex, ClassTree, Targets[0].FileName, Symbol.Name,
+          Result.Messages := TMessageHandlers.Overview(AResolver, ClassTree, Targets[0].FileName, Symbol.Name,
             function(const AName: string; out AText: string): Boolean
             begin
               Result := ReadText(AName, AText);

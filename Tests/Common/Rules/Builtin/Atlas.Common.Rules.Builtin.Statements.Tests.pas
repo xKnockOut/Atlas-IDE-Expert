@@ -672,6 +672,16 @@ begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCaseMissingEnumValueRule.Create,
     Bestellung('  case Stand of'#10'    bsNeu: ;'#10'  end;'),
     '{"rules": {"case-missing-enum-value": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+  // Anonyme Methode als Argument eines Zweigs (#1109): Die Marken danach zählen mit, die Korrektur gibt es auch.
+  Source := Bestellung('  case Stand of'#10'    bsNeu:'#10'      Post('#10'        procedure'#10 +
+    '        begin'#10'          Anlegen;'#10'        end);'#10'    bsBezahlt, bsStorniert:'#10 +
+    '      Aufgabe := procedure'#10'        begin'#10'        end;'#10'  end;');
+  Findings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Fehlende Werte von TBestellStatus: bsZurueck.', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  TRuleAssert.Silent(TCaseMissingEnumValueRule.Create,
+    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
 end;
 
 procedure TStatementRulesTests.CaseMissingEnumValueSilentCases;

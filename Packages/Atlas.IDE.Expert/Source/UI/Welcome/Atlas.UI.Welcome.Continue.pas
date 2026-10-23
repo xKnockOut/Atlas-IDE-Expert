@@ -166,7 +166,7 @@ type
     /// <summary>Zeile eines Commits: „abc1234 Betreff — Autor · Kunde.pas“.</summary>
     class function CommitText(const ACommit: TAtlasContinueCommit): string; static;
     class function CommitHint(const ACommit: TAtlasContinueCommit): string; static;
-    class function HintFor(const AEntry: TAtlasContinueEntry; ANowUtc: TDateTime): string; static;
+    class function HintFor(const AEntry: TAtlasContinueEntry): string; static;
     /// <summary>Spalten einer Zeile der Liste „Gemerkt“: Art, Text, Datei und Zeile, Projekt.</summary>
     class function SavedCells(const AItem: TAtlasSavedItem): TArray<string>; static;
     class function KindText(AKind: TAtlasSavedKind): string; static;
@@ -717,7 +717,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeContinueFrame.HintFor(const AEntry: TAtlasContinueEntry; ANowUtc: TDateTime): string;
+class function TAtlasWelcomeContinueFrame.HintFor(const AEntry: TAtlasContinueEntry): string;
 var
   Lines: TStringList;
   Tab: TAtlasWorkTab;
@@ -1042,7 +1042,7 @@ begin
     FBox.Hint := Hint
   else if Hit.Row >= 0 then
   begin
-    FBox.Hint := HintFor(FEntries[Hit.Row], NowUtc);
+    FBox.Hint := HintFor(FEntries[Hit.Row]);
     // Stand der letzten Schnellaktion samt Grund (#764).
     State := TAtlasQuickActionsBar.StateText(FQuick.StateOf(Hit.Row), FQuick.NowMs, IsUpdateRow(Hit.Row));
     if (State <> '') and (FQuick.StateOf(Hit.Row).Detail <> '') then

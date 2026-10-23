@@ -473,7 +473,7 @@ begin
   begin
     if not FileAge(FileName, Age) then
       Age := 0;
-    Result := Result + FileName + '|' + FloatToStr(Age) + ';';
+    Result := Result + FileName + '|' + FloatToStr(Age, TFormatSettings.Invariant) + ';';
   end;
 end;
 

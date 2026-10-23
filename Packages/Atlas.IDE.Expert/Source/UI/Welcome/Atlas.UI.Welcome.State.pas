@@ -75,7 +75,7 @@ type
     constructor Create(AOwner: TComponent); override;
     procedure UpdateContent; override;
     /// <summary>Zeile an Y (Koordinaten der Zeichenfläche); -1 = keine.</summary>
-    function HitTest(X, Y: Integer): Integer;
+    function HitTest(Y: Integer): Integer;
     /// <summary>Klick auf eine Zeile wie mit der Maus (auch für Tests); nur Zeilen mit Aktion.</summary>
     procedure ClickRow(ARow: Integer);
     /// <summary>Klick auf einen Knopf wie mit der Maus (auch für Tests).</summary>
@@ -353,7 +353,7 @@ begin
   end;
 end;
 
-function TAtlasWelcomeStateFrame.HitTest(X, Y: Integer): Integer;
+function TAtlasWelcomeStateFrame.HitTest(Y: Integer): Integer;
 begin
   Result := -1;
   if (Y < RowTop(0)) or (Length(FRows) = 0) then
@@ -403,7 +403,7 @@ procedure TAtlasWelcomeStateFrame.BoxMouseMove(Sender: TObject; Shift: TShiftSta
 var
   Row: Integer;
 begin
-  Row := HitTest(X, Y);
+  Row := HitTest(Y);
   if (Row >= 0) and FRows[Row].HasAction then
     FBox.Cursor := crHandPoint
   else
@@ -422,7 +422,7 @@ procedure TAtlasWelcomeStateFrame.BoxMouseUp(Sender: TObject; Button: TMouseButt
   Y: Integer);
 begin
   if Button = mbLeft then
-    ClickRow(HitTest(X, Y));
+    ClickRow(HitTest(Y));
 end;
 
 end.

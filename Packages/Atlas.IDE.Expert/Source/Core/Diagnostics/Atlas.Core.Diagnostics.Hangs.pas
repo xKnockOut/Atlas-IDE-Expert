@@ -236,7 +236,7 @@ begin
     Inc(FWithAtlas);
   Lines := TStringBuilder.Create;
   try
-    Lines.AppendFormat('Hänger %d ms um %s', [AHang.DurationMs, FormatDateTime('hh:nn:ss', AHang.At)]);
+    Lines.AppendFormat('Hänger %d ms um %s', [AHang.DurationMs, FormatDateTime('hh":"nn":"ss', AHang.At)]);
     if AHang.Activity <> '' then
       Lines.AppendFormat('; Atlas: %s, %d ms', [AHang.Activity, AHang.DurationMs])
     else if InvolvesAtlas(AHang) then

@@ -71,7 +71,7 @@ type
     /// <summary>Keine Überladung hat so viele Parameter (#439).</summary>
     function TooMany: Boolean;
     /// <summary>Name und Beschreibung des aktiven Parameters der gewählten Überladung; ADocumented = False
-    /// ohne <param> (AText ist dann „nicht dokumentiert“). False ohne aktiven Parameter.</summary>
+    /// ohne &lt;param&gt; (AText ist dann „nicht dokumentiert“). False ohne aktiven Parameter.</summary>
     function ParameterDoc(out AName, AText: string; out ADocumented: Boolean): Boolean;
     /// <summary>Beschreibung der gewählten Überladung in einer Zeile; '' ohne.</summary>
     function SummaryText: string;

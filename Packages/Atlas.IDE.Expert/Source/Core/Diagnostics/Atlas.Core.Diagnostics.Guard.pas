@@ -326,7 +326,7 @@ begin
     // Abgebrochen heißt: Ein anderer Prozess endete beim Schreiben; die Sperre gehört dann uns.
     Owned := Lock.WaitFor(LockTimeoutMs) in [wrSignaled, wrAbandoned];
     try
-      Stamp := FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', Now) + ' ';
+      Stamp := FormatDateTime('yyyy-mm-dd hh":"nn":"ss.zzz', Now) + ' ';
       Lines := '';
       if TFile.Exists(FileName) and (TFile.GetSize(FileName) >= FMaxBytes) then
         try
@@ -364,7 +364,7 @@ var
 begin
   FLock.Enter;
   try
-    Failure := AppendLine(FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', Now) + ' ' + AText + sLineBreak);
+    Failure := AppendLine(FormatDateTime('yyyy-mm-dd hh":"nn":"ss.zzz', Now) + ' ' + AText + sLineBreak);
     if Failure = '' then
     begin
       Notify := FFailed > 0;

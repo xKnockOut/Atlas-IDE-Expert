@@ -300,7 +300,8 @@ begin
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
     Services.RemoveEditorEventsNotifier(FIndex);
-  FEvents.OnEditorPaintLine := nil;
+  if FEvents <> nil then
+    FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
   FreeAndNil(FMessages);
   FreeAndNil(FTimer);

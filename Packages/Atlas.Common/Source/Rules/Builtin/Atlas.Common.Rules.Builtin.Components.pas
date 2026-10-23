@@ -166,6 +166,9 @@ const
   ConstructorBases: array[0..13] of string = ('TThread', 'TStrings', 'TStringList', 'TList', 'TObjectList',
     'TDictionary', 'TObjectDictionary', 'TQueue', 'TStack', 'TStream', 'TFileStream', 'TMemoryStream',
     'TStringStream', 'TInterfacedPersistent');
+  // Konstruktoren der VCL-Vorfahren, die ein Konstruktor ohne inherited aufrufen darf: CreateNew legt ein Formular
+  // ohne DFM an und ruft selbst inherited Create (#1109).
+  AncestorConstructors: array[0..2] of string = ('CreateNew', 'CreateParented', 'CreateParentedControl');
   // Methoden, in denen Pixelwerte und Farben geprüft werden.
   PaintMethods: array[0..1] of string = ('Paint', 'Resize');
   // Aufrufe, deren Argumente schon skaliert werden.
@@ -826,7 +829,7 @@ begin
     TryStrToInt(ANode.Name, Value) and (Value > 1);
 end;
 
-/// <summary>Skaliert der Aufruf seinen Wert? Neben ScaleValue & Co. auch eigene Helfer wie Scale(3) oder
+/// <summary>Skaliert der Aufruf seinen Wert? Neben ScaleValue &amp; Co. auch eigene Helfer wie Scale(3) oder
 /// ScaleDpi(3), deren Name mit Scale beginnt (#647).</summary>
 function IsScaleCall(const AName: string): Boolean;
 var
@@ -937,6 +940,22 @@ begin
     'Feste Farbe in Paint statt Systemfarbe oder StyleServices');
 end;
 
+/// <summary>Sind alle Argumente des Aufrufs ACall Zahlenliterale (RGB(255, 0, 0), TColor($00FF00))?</summary>
+function LiteralArguments(ACall: TSyntaxNode): Boolean;
+var
+  Index: Integer;
+  Argument: TSyntaxNode;
+begin
+  Result := ACall.ChildCount > 1;
+  for Index := 1 to ACall.ChildCount - 1 do
+  begin
+    Argument := ACall[Index];
+    if (Argument.Kind <> TSyntaxKind.Literal) or (Argument.Name = '') or
+      not CharInSet(Argument.Name[1], ['$', '0'..'9']) then
+      Exit(False);
+  end;
+end;
+
 procedure CollectColors(ANode: TSyntaxNode; AList: TList<TSyntaxNode>);
 var
   List: TList<TSyntaxNode>;
@@ -949,10 +968,11 @@ begin
       Result := AVisited.Kind <> TSyntaxKind.AnonymousMethod;
       if not Result then
         Exit;
-      // RGB(…) und TColor(…)
+      // RGB(…) und TColor(…) mit Zahlen; TColor(FColors.Surface) wandelt eine Farbe des Themas um (#1109).
       if (AVisited.Kind = TSyntaxKind.Call) and IsIn(AVisited.Name, ['RGB', 'TColor']) then
       begin
-        List.Add(AVisited);
+        if LiteralArguments(AVisited) then
+          List.Add(AVisited);
         Exit(False);
       end;
       // $00BBGGRR oder eine Zahl, die einer …Color-Eigenschaft zugewiesen wird
@@ -1058,7 +1078,7 @@ var
     Result := False;
   end;
 
-  // Ruft der Rumpf einen anderen Konstruktor derselben Klasse auf (Create(nil), Self.Create(nil))?
+  // Ruft der Rumpf einen anderen Konstruktor derselben Klasse auf (Create(nil), Self.Create(nil)) oder CreateNew?
   function CallsOwnConstructor(ARoot: TSyntaxNode): Boolean;
   var
     Node, Target: TSyntaxNode;
@@ -1082,7 +1102,8 @@ var
             Target := Target[0];
           if ((Target.Kind = TSyntaxKind.Identifier) or ((Target.Kind = TSyntaxKind.MemberAccess) and
             (Target.ChildCount = 1) and (Target[0].Kind = TSyntaxKind.Identifier) and
-            SameText(Target[0].Name, 'Self'))) and IsIn(Target.Name, Constructors) then
+            SameText(Target[0].Name, 'Self'))) and (IsIn(Target.Name, Constructors) or
+            IsIn(Target.Name, AncestorConstructors)) then
             Exit(True);
         end;
         for Child := Node.ChildCount - 1 downto 0 do

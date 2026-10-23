@@ -831,6 +831,9 @@ begin
         FUses := TUsesState.NamePart;
         Exit;
       end;
+    TUsesState.ExpectName: ;
+    TUsesState.NamePart: ;
+    TUsesState.ExpectPath: ;
   end;
   if AChar = ',' then
   begin

@@ -279,6 +279,13 @@ procedure TRtlPatternRulesTests.IfThenWithoutSideEffectSilent;
 begin
   TRuleAssert.Silent(TIfThenSideEffectRule.Create, InRoutine('  S := IfThen(A > B, ''x'', ''y'');'#10 +
     '  N := IfThen(Flag, 1, 2);'));
+  // Standardroutinen ohne Seiteneffekte in den Zweigen (#1109).
+  TRuleAssert.Silent(TIfThenSideEffectRule.Create, InRoutine(
+    '  S := IfThen(C > 0, Copy(T, 1, C - 1), T);'#10 +
+    '  S := IfThen(A = '''', ''-'', Format(''%s: %s'', [A, ExtractFileExt(F)]));'#10 +
+    '  S := IfThen(Length(L) > 0, ''('' + string.Join('', '', L) + '')'', '''');'));
+  // Methode eines Objekts bleibt ein möglicher Seiteneffekt.
+  TRuleAssert.Reports(TIfThenSideEffectRule.Create, InRoutine('  S := IfThen(B, List.Join(''x''), '''');'));
 end;
 
 procedure TRtlPatternRulesTests.RandomWithoutRandomize;

@@ -155,7 +155,7 @@ type
     procedure StartWorker(const AText: string; AVersion: Cardinal; AMaxColumn, ATabWidth: Integer);
     procedure Accept(ARequest: Integer; const AFileName: string; AVersion: Cardinal; const ALines: TArray<string>;
       const ARuns: TAtlasMinimapLines);
-    procedure UpdateFolds(const AView: IOTAEditView; AMinimap: TAtlasMinimapView; ALineCount: Integer);
+    procedure UpdateFolds(AMinimap: TAtlasMinimapView; ALineCount: Integer);
     procedure UpdateMarks(const AView: IOTAEditView; AMinimap: TAtlasMinimapView; ALineCount: Integer);
     procedure Scroll(AMinimap: TAtlasMinimapView; ATopLine: Integer);
     procedure Jump(AMinimap: TAtlasMinimapView; ALine: Integer);
@@ -511,7 +511,7 @@ begin
   end;
 end;
 
-procedure TMinimapState.UpdateFolds(const AView: IOTAEditView; AMinimap: TAtlasMinimapView; ALineCount: Integer);
+procedure TMinimapState.UpdateFolds(AMinimap: TAtlasMinimapView; ALineCount: Integer);
 begin
   // Andere Zeilenzahl: Die bekannten Bereiche stimmen nicht mehr.
   if ALineCount <> FFoldLines then
@@ -576,7 +576,7 @@ begin
     FStamp := 0;
   end;
   UpdateContent(View, Minimap);
-  UpdateFolds(View, Minimap, LineCount);
+  UpdateFolds(Minimap, LineCount);
   if not Minimap.SliderDragging then
     Minimap.SetView(View.TopRow - 1, View.BottomRow - 1, View.CursorPos.Line - 1);
   if FOptions.SectionHeaders or FOptions.HighlightMethod then

@@ -311,16 +311,20 @@ begin
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
     Services.RemoveEditorEventsNotifier(FIndex);
   TAtlasKeyHook.Remove(FKeys);
-  FEvents.OnEditorMouseMove := nil;
-  FEvents.OnEditorMouseDown := nil;
-  {$IF CompilerVersion >= 37.0}
-  FEvents.OnEditorKeyDown := nil;
-  {$ENDIF}
-  FEvents.OnEditorScrolled := nil;
-  FEvents.OnEditorResized := nil;
+  if FEvents <> nil then
+  begin
+    FEvents.OnEditorMouseMove := nil;
+    FEvents.OnEditorMouseDown := nil;
+    {$IF CompilerVersion >= 37.0}
+    FEvents.OnEditorKeyDown := nil;
+    {$ENDIF}
+    FEvents.OnEditorScrolled := nil;
+    FEvents.OnEditorResized := nil;
+  end;
   FEventsRef := nil;
   // Laufende Anfragen zeigen nichts mehr; auf sie warten, bevor die Sitzung wegfällt.
-  FAlive.Alive := False;
+  if FAlive <> nil then
+    FAlive.Alive := False;
   ReapWorkers(True);
   FWorkers.Free;
   FDebug.Free;

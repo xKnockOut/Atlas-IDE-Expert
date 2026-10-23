@@ -761,12 +761,14 @@ var
   Owner: TResolvedSymbol;
 begin
   Origin := Source(AFileName);
+  if (Origin = nil) or (Origin.Tree = nil) then
+    raise Fail(Format('%s lässt sich nicht lesen.', [ExtractFileName(AFileName)]));
   Family := TLspChangeSignature.Family(FResolver, FContext.Index, Origin.Tree, AFileName, APosition,
     FContext.Files, FContext.ReadText, nil);
   if AAccessorCheck and (Family.Accessors <> nil) then
     raise Fail(Format('%s ist Zugriffsmethode einer Property (%s). Bitte die Property umkehren.',
       [Family.Name, Family.Accessors[0]]));
-  if AAccessorCheck and (Origin <> nil) then
+  if AAccessorCheck then
   begin
     Owner := ResolveAt(FResolver, Origin.Tree, AFileName, APosition);
     if (Owner.Container <> '') and (AccessingProperty(Owner.FileName, Owner.Container, Owner.Name) <> '') then
@@ -807,6 +809,8 @@ var
   Name: string;
 begin
   Origin := Source(AFileName);
+  if (Origin = nil) or (Origin.Tree = nil) then
+    raise Fail(Format('%s lässt sich nicht lesen.', [ExtractFileName(AFileName)]));
   Family := TLspChangeSignature.Family(FResolver, FContext.Index, Origin.Tree, AFileName, APosition,
     FContext.Files, FContext.ReadText, nil);
   Last := -1;

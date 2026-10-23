@@ -214,7 +214,7 @@ end;
 
 function SecondsText(AMs: Int64): string;
 begin
-  Result := FormatFloat('0.00', AMs / 1000);
+  Result := FormatFloat('0.00', AMs / 1000, FormatSettings);
 end;
 
 { TAtlasIdeTests }

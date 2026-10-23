@@ -267,7 +267,7 @@ begin
   if LastUpdate = 0 then
     Result := Result + '–'
   else
-    Result := Result + FormatDateTime('dd.mm.yyyy hh:nn:ss', LastUpdate);
+    Result := Result + FormatDateTime('dd.mm.yyyy hh":"nn":"ss', LastUpdate);
 end;
 
 { TLspIndexStatus }
@@ -348,8 +348,9 @@ begin
     Exit;
   Status := TJSONObject(AStatus);
   Bytes := Status.GetValue<Int64>('indexBytes', 0);
-  Result := Result + [Format('Atlas-Index: %d Units, %d Symbole, %.1f MB im Speicher, %s auf der Platte',
-    [Status.GetValue<Integer>('units', 0), Status.GetValue<Integer>('symbols', 0), Bytes / (1024 * 1024),
+  // Beide Größen wie SizeText mit Dezimalkomma, unabhängig vom Gebietsschema.
+  Result := Result + [Format('Atlas-Index: %d Units, %d Symbole, %s im Speicher, %s auf der Platte',
+    [Status.GetValue<Integer>('units', 0), Status.GetValue<Integer>('symbols', 0), SizeText(Bytes),
      SizeText(Status.GetValue<Int64>('diskBytes', 0))])];
   Workspaces := Status.GetValue('workspaces');
   if Workspaces is TJSONArray then

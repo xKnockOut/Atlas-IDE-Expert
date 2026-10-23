@@ -92,7 +92,7 @@ type
     /// <summary>Liste schließen ohne Änderung (Ansicht gewechselt).</summary>
     class procedure Dismiss; static;
     /// <summary>Aus EditorViewModified: Jede fremde Änderung schließt die Liste.</summary>
-    class procedure EditorModified(const AView: IOTAEditView); static;
+    class procedure EditorModified; static;
   end;
 
 implementation
@@ -234,7 +234,7 @@ begin
     FInstance.Close;
 end;
 
-class procedure TAtlasIdeUnwrap.EditorModified(const AView: IOTAEditView);
+class procedure TAtlasIdeUnwrap.EditorModified;
 begin
   if (FInstance <> nil) and not FInstance.FWriting then
     FInstance.Close;

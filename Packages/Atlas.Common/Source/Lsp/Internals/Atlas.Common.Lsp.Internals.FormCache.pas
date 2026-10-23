@@ -59,8 +59,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    /// <summary>Auszug für AFormFile, wenn er aus dem Stand AStamp stammt. Stand z. B. "v<Version>" für
-    /// offene Dokumente, "t<Dateizeit>" für Dateien auf der Platte.</summary>
+    /// <summary>Auszug für AFormFile, wenn er aus dem Stand AStamp stammt. Stand z. B. "v&lt;Version&gt;" für
+    /// offene Dokumente, "t&lt;Dateizeit&gt;" für Dateien auf der Platte.</summary>
     function TryGet(const AFormFile, AStamp: string; out ASnapshot: TFormSnapshot): Boolean;
     /// <summary>Merkt sich den Auszug; über MaxEntries fällt der am längsten nicht benutzte heraus.</summary>
     procedure Put(const AFormFile, AStamp: string; const ASnapshot: TFormSnapshot);

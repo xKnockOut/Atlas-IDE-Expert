@@ -673,7 +673,7 @@ begin
     if AInput.Platform <> '' then
       Versions := Versions + ', ' + AInput.Platform;
     Builder.Append(Versions).Append(sLineBreak);
-    Builder.Append(FormatDateTime('yyyy-mm-dd hh:nn', AInput.Created)).Append(sLineBreak);
+    Builder.Append(FormatDateTime('yyyy-mm-dd hh":"nn', AInput.Created)).Append(sLineBreak);
     Builder.Append(AInput.Summary).Append(sLineBreak).Append(sLineBreak);
     for Line in AInput.Lines do
       if Line.Indent then

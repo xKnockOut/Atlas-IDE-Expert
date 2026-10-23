@@ -158,7 +158,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Welcome.Search,
-  Atlas.IDE.Welcome.Projects;
+  Atlas.IDE.Welcome.Projects,
+  Atlas.Core.Files.TextFile;
 
 function FileThere(const AFileName: string): Boolean;
 begin
@@ -209,7 +210,7 @@ begin
   if TAtlasShutdown.Signalled or not FileExists(AFileName) then
     Exit(False);
   try
-    AText := TFile.ReadAllText(AFileName);
+    AText := TAtlasTextFile.LoadText(AFileName);
     Result := True;
   except
     on Exception do

@@ -176,7 +176,7 @@ begin
   end;
   Last := FQueries[High(FQueries)];
   FTitle.Caption := TAtlasStrings.Fmt(TAtlasTextId.DiagnosticLastQuery, [Last.Kind,
-    FormatDateTime('hh:nn:ss', Last.Started)]);
+    FormatDateTime('hh":"nn":"ss', Last.Started)]);
 end;
 
 procedure TAtlasTimingFrame.SetQueries(const AQueries: TArray<TAtlasQueryTiming>);

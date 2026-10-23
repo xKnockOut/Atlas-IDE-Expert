@@ -323,9 +323,9 @@ begin
   if ABytes < 1024 then
     Result := TAtlasStrings.Fmt(TAtlasTextId.ReportSizeBytes, [ABytes])
   else if ABytes < 1024 * 1024 then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ReportSizeKb, [FormatFloat('0.0', ABytes / 1024)])
+    Result := TAtlasStrings.Fmt(TAtlasTextId.ReportSizeKb, [FormatFloat('0.0', ABytes / 1024, FormatSettings)])
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ReportSizeMb, [FormatFloat('0.0', ABytes / (1024 * 1024))]);
+    Result := TAtlasStrings.Fmt(TAtlasTextId.ReportSizeMb, [FormatFloat('0.0', ABytes / (1024 * 1024), FormatSettings)]);
 end;
 
 procedure TAtlasReportDialog.Refresh;

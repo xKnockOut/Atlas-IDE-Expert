@@ -646,6 +646,9 @@ var
         TDUnitXAttribute.Setup, TDUnitXAttribute.TearDown, TDUnitXAttribute.SetupFixture,
         TDUnitXAttribute.TearDownFixture:
           NotTest := True;
+        TDUnitXAttribute.None: ;
+        TDUnitXAttribute.TestFixture: ;
+        TDUnitXAttribute.Category: ;
       end;
     if APublished and (Length(Pending) = 0) then
       IsTest := True;

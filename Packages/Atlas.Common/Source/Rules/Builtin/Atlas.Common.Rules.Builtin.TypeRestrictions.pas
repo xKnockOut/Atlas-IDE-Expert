@@ -1428,6 +1428,8 @@ var
           TConstraintKind.Invalid:
             Report(Constraint.Range, Format('%s ist keine gültige Einschränkung; erlaubt sind Klassen, Interfaces, ' +
               'class, record und constructor (wie E2510).', [Constraint.Text]));
+          TConstraintKind.Unknown: ;
+          TConstraintKind.InterfaceType: ;
         end;
       end;
     end;
@@ -3348,6 +3350,8 @@ var
             AReport.Add(NodeRange(Argument), Format('%s hat keine Typinformation: Aufzählungen mit festen Werten ' +
               'erzeugen keine RTTI (wie E2134).', [Name]), TRuleConfidence.High, nil);
         end;
+      TNameMeaning.Other: ;
+      TNameMeaning.Uncertain: ;
     end;
   end;
 

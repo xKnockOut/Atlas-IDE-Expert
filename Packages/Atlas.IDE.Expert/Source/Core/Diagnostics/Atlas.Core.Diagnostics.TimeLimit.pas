@@ -58,7 +58,7 @@ type
   public
     class constructor Create;
     class destructor Destroy;
-    /// <summary>AProc mit Zeitlimit ausführen (ALimitMs < 0: LimitMs). AError: Klasse und Meldung bei Failed.</summary>
+    /// <summary>AProc mit Zeitlimit ausführen (ALimitMs &lt; 0: LimitMs). AError: Klasse und Meldung bei Failed.</summary>
     class function Run(const AProc: TProc; out AError: string; ALimitMs: Integer = -1): TAtlasTimedOutcome; static;
     /// <summary>Alle Arbeiter beenden (nach TAtlasShutdown.Signal); True, wenn alle innerhalb von AMs enden.</summary>
     class function StopAll(AMs: Cardinal = 1000): Boolean; static;

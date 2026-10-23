@@ -39,7 +39,7 @@ type
     destructor Destroy; override;
     /// <summary>True, wenn das Package gefunden wurde; AContains sagt dann, ob es AUnitName liefert.</summary>
     function Provides(const APackage, AUnitName: string; out AContains: Boolean): Boolean;
-    /// <summary>Quelle <APackage>.dpk; False, wenn es keine gibt (auch, wenn nur ein .dcp da ist).</summary>
+    /// <summary>Quelle &lt;APackage&gt;.dpk; False, wenn es keine gibt (auch, wenn nur ein .dcp da ist).</summary>
     function FindSource(const APackage: string; out AFileName: string; out ASource: TPackageSource): Boolean;
     /// <summary>Kommt AUnitName als ganzer Name in den Bytes eines .dcp vor (ohne Groß-/Kleinschreibung)?</summary>
     class function CompiledContains(const AData: TBytes; const AUnitName: string): Boolean; static;

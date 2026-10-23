@@ -128,7 +128,7 @@ type
 const
   TypeBodies = [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType, TSyntaxKind.HelperType];
 
-/// <summary>Name ohne generische Parameter: "TFoo<T>.Bar" → "TFoo.Bar".</summary>
+/// <summary>Name ohne generische Parameter: "TFoo&lt;T&gt;.Bar" → "TFoo.Bar".</summary>
 function PlainName(const AName: string): string;
 var
   Index, Depth: Integer;

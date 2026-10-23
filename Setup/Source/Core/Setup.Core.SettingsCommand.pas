@@ -428,6 +428,7 @@ begin
             SaveState(ASystem, ARoamingDataDir, State.GlobalText, Next);
             Result.Outcome := TSetupSettingsOutcome.Done;
           end;
+        TSetupSettingsAction.None: ;
       end;
     except
       on E: Exception do

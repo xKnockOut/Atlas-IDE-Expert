@@ -41,7 +41,7 @@ type
     /// <summary>Message-Handler, die ATypeName in ATree selbst deklariert.</summary>
     class function InTree(ATree: TSyntaxTree; const AFileName, ATypeName: string): TArray<TMessageHandler>; static;
     /// <summary>Eigene Handler von ATypeName und die Vorfahren, die dieselben Nachrichten behandeln.</summary>
-    class function Overview(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+    class function Overview(AResolver: TNameResolver; ATree: TSyntaxTree;
       const AFileName, ATypeName: string; const AReadText: TMessageReadText): TMessageOverview; static;
   end;
 
@@ -236,7 +236,7 @@ begin
   end;
 end;
 
-class function TMessageHandlers.Overview(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+class function TMessageHandlers.Overview(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName, ATypeName: string; const AReadText: TMessageReadText): TMessageOverview;
 var
   Trees: TObjectDictionary<string, TSyntaxTree>;

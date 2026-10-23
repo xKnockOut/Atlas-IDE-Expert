@@ -462,7 +462,7 @@ begin
   try
     if TAtlasIdeSettings.History.Count > 0 then
       Result := TAtlasStrings.Fmt(TAtlasTextId.SafeRestore,
-        [DateTimeToStr(TTimeZone.Local.ToLocalTime(TAtlasIdeSettings.History[0].ChangedAt))]);
+        [DateTimeToStr(TTimeZone.Local.ToLocalTime(TAtlasIdeSettings.History[0].ChangedAt), FormatSettings)]);
   except
     on Exception do
       Result := '';
@@ -475,7 +475,7 @@ var
 begin
   if TAtlasIdeSettings.History.Count = 0 then
     Exit;
-  At := DateTimeToStr(TTimeZone.Local.ToLocalTime(TAtlasIdeSettings.History[0].ChangedAt));
+  At := DateTimeToStr(TTimeZone.Local.ToLocalTime(TAtlasIdeSettings.History[0].ChangedAt), FormatSettings);
   TAtlasIdeSettings.Restore(0);
   UpdateFeatures;
   Warn(TAtlasStrings.Fmt(TAtlasTextId.SafeRestored, [At]));

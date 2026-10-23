@@ -700,6 +700,7 @@ begin
       Result := Result + ' = `' + AMember.DefaultValue + '` (implizit)';
     TPublishedDefaultKind.NoDefault:
       Result := Result + ' · nodefault';
+    TPublishedDefaultKind.None: ;
   end;
   if AMember.Stored <> '' then
     Result := Result + ' · stored `' + AMember.Stored + '`';
