@@ -488,6 +488,10 @@ type
     FQuickOpenKey: TEdit;
     FSearchReplace: TCheckBox;
     FSearchMessages: TCheckBox;
+    FSearchReplaceBar: TCheckBox;
+    FSearchRegex: TCheckBox;
+    FSearchHistory: TEdit;
+    FSearchMultiFile: TCheckBox;
     FWelcomeEnabled: TCheckBox;
     FWelcomeHost: TAtlasChoiceBox;
     FWelcomeLayout: TCheckBox;
@@ -2954,6 +2958,10 @@ begin
   FMarks.Bind(FQuickOpenKey, ['QuickOpenKey']);
   FMarks.Bind(FSearchReplace, ['SearchReplaceIde']);
   FMarks.Bind(FSearchMessages, ['SearchResultsInMessages']);
+  FMarks.Bind(FSearchReplaceBar, ['SearchReplace']);
+  FMarks.Bind(FSearchRegex, ['SearchRegex']);
+  FMarks.Bind(FSearchHistory, ['SearchHistory']);
+  FMarks.Bind(FSearchMultiFile, ['SearchMultiFile']);
   FMarks.Bind(FWelcomeEnabled, ['WelcomePage']);
   FMarks.Bind(FWelcomeHost, ['WelcomePageHost']);
   FMarks.Bind(FWelcomeLayout, ['WelcomePageLayout']);
@@ -4500,6 +4508,11 @@ begin
   AddTitle(TAtlasTextId.SettingsSearchTitle);
   FSearchReplace := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchReplace));
   FSearchMessages := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchMessages));
+  // Ersetzen, Regex, Verlauf und Bereiche über Dateien (#893).
+  FSearchReplaceBar := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchReplaceBar));
+  FSearchRegex := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchRegex));
+  FSearchHistory := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSearchHistory));
+  FSearchMultiFile := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchMultiFile));
 end;
 
 procedure TAtlasSettingsPage.AddUndoSection;
@@ -5103,6 +5116,10 @@ begin
   FQuickOpenKey.Text := ShortCutToText(TShortCut(ASettings.QuickOpenKey));
   FSearchReplace.Checked := ASettings.SearchReplaceIde;
   FSearchMessages.Checked := ASettings.SearchResultsInMessages;
+  FSearchReplaceBar.Checked := ASettings.SearchReplace;
+  FSearchRegex.Checked := ASettings.SearchRegex;
+  FSearchHistory.Text := IntToStr(ASettings.SearchHistory);
+  FSearchMultiFile.Checked := ASettings.SearchMultiFile;
   FWelcomeEnabled.Checked := ASettings.WelcomePage;
   FWelcomeHost.Choice := 0;
   if ASettings.WelcomePageHost = 'dockWindow' then
@@ -5550,6 +5567,10 @@ begin
   ASettings.QuickOpenKey := Integer(TextToShortCut(Trim(FQuickOpenKey.Text)));
   ASettings.SearchReplaceIde := FSearchReplace.Checked;
   ASettings.SearchResultsInMessages := FSearchMessages.Checked;
+  ASettings.SearchReplace := FSearchReplaceBar.Checked;
+  ASettings.SearchRegex := FSearchRegex.Checked;
+  ASettings.SearchHistory := StrToIntDef(FSearchHistory.Text, ASettings.SearchHistory);
+  ASettings.SearchMultiFile := FSearchMultiFile.Checked;
   ASettings.WelcomePage := FWelcomeEnabled.Checked;
   ASettings.WelcomePageHost := 'welcomePage';
   if FWelcomeHost.Choice = 1 then

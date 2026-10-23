@@ -86,6 +86,7 @@ Alles Folgende ist in `main` umgesetzt. Funktionen mit *(experimentell)* sind ab
 - **Gliederung** als andockbares Fenster mit Filter
 - **Definition einblenden** (Alt+F12) unter der Zeile, ohne die Datei zu wechseln
 - **Datei und Symbol schnell öffnen** (Strg+P) über Projekt, Projektgruppe und Suchpfad; projektweite **Symbolsuche**
+- **Suchleiste** unter dem Editor (Strg+F) mit **Ersetzen** (Strg+H, „Alle ersetzen“ als ein Rückgängig-Schritt), **regulären Ausdrücken** mit Vorschau „vorher → nachher“, Such- und Ersetzen-**Verlauf** (Pfeil hoch/runter, über Neustarts) und den Bereichen Methode, Unit, Auswahl, **offene Dateien, Projekt und Projektgruppe** (Suche im Hintergrund, ungespeicherte Puffer zuerst, Ersetzen ausgewählter Treffer über Dateien mit Häkchen)
 - **Units suchen** (Strg+F12) im eigenen Fenster mit Vorschau, Gruppen, Filtern und „In uses aufnehmen“
 - **Ergebnisfenster** „Atlas-Ergebnisse“ für Referenzen (auch in Formularen), Implementierungen, Aufrufer, Aufrufe und Vererbung
 - **Navigationsverlauf** über Dateien hinweg

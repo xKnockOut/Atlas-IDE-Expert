@@ -413,6 +413,19 @@ begin
             end);
           Result := True;
         end, False);
+    // Strg+H (#893): nur mit search.replace, sonst gehört die Taste der IDE.
+    if Settings.SearchReplace and (Settings.SearchReplaceKey <> 0) then
+      AddAttemptKey(TAtlasFeature.Search, Settings.SearchReplaceKey,
+        TAtlasStrings.Text(TAtlasTextId.SearchReplaceCommand),
+        function: Boolean
+        begin
+          TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+            procedure
+            begin
+              TAtlasGuard.Run(TAtlasFeature.Search, TAtlasIdeSearch.ShowReplace);
+            end);
+          Result := True;
+        end, False);
     if Settings.SearchNextKey <> 0 then
       AddAttemptKey(TAtlasFeature.Search, Settings.SearchNextKey, TAtlasStrings.Text(TAtlasTextId.SearchNextCommand),
         function: Boolean

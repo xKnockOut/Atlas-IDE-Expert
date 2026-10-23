@@ -328,6 +328,8 @@ begin
       Id := TAtlasTextId.SearchPreviousCommand;
     TAtlasKeyFunction.SearchMethod:
       Id := TAtlasTextId.SearchInMethodCommand;
+    TAtlasKeyFunction.SearchReplace:
+      Id := TAtlasTextId.SearchReplaceCommand;
     TAtlasKeyFunction.FormatCode:
       Id := TAtlasTextId.FormatCodeCommand;
     TAtlasKeyFunction.ToggleBlockComment:

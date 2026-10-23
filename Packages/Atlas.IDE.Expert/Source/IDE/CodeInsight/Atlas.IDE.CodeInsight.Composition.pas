@@ -1120,6 +1120,11 @@ begin
   Result := TAtlasIdeSettings.Current.GenerateMenu;
 end;
 
+function SearchReplaceVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.SearchReplace;
+end;
+
 function MetricsReportVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.MetricsReport;
@@ -1405,6 +1410,8 @@ begin
   // Atlas-Suche (#877, #878).
   Add('Atlas.Search', TAtlasTextId.SearchCommand, TAtlasIdeSearch.Show);
   Add('Atlas.SearchInMethod', TAtlasTextId.SearchInMethodCommand, TAtlasIdeSearch.ShowInMethod);
+  // Ersetzen (#893); nur sichtbar, solange search.replace an ist.
+  Add('Atlas.SearchReplace', TAtlasTextId.SearchReplaceCommand, TAtlasIdeSearch.ShowReplace, SearchReplaceVisible);
   Add('Atlas.SearchNext', TAtlasTextId.SearchNextCommand, TAtlasIdeSearch.FindNext);
   Add('Atlas.SearchPrevious', TAtlasTextId.SearchPreviousCommand, TAtlasIdeSearch.FindPrevious);
   Add('Atlas.SearchClear', TAtlasTextId.SearchClearCommand, TAtlasIdeSearch.ClearHighlights);

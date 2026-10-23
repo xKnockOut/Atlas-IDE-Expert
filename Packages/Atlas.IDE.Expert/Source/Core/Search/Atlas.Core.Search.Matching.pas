@@ -11,6 +11,12 @@
 //   dem Namen, ohne Rücksicht auf Groß-/Kleinschreibung wie in Pascal.
 //   Reservierte Wörter zählen nur escapt (&begin). Mitglieder gleichen Namens
 //   hinter "." zählen mit: Der Lexer kennt keine Symbole.
+// - Regex (#893): Ausdruck nach System.RegularExpressions (PCRE) je Zeile;
+//   leere Treffer zählen nicht. Mit „ganzes Wort“ muss der Treffer an
+//   Wortgrenzen stehen, mit „Bezeichner statt Text“ ganz außerhalb von
+//   Kommentaren und Strings liegen (CodeOnly, derselbe Lexer wie der
+//   Bezeichner-Modus). Ein ungültiger Ausdruck findet nichts; den Fehlertext
+//   liefert TAtlasSearchRegex.Check.
 // - Bereich: Nur Treffer, die ganz im Bereich liegen (Routine, Unit, Auswahl;
 //   siehe Atlas.Core.Search.Scopes).
 // - Weitersuchen (F3/Umschalt+F3): vorwärts der erste Treffer ab der
@@ -21,13 +27,15 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.RegularExpressions;
 
 type
   {$SCOPEDENUMS ON}
   /// <summary>Suchbereich: ganze Unit (Vorgabe, auch für Default()), Routine am Cursor (mit lokalen
-  /// Deklarationen), Auswahl. Die Reihenfolge ist die der Bereichsliste in der Suchleiste.</summary>
-  TAtlasSearchScope = (UnitFile, Method, Selection);
+  /// Deklarationen), Auswahl; über Dateien (#893): offene Dateien, aktives Projekt, Projektgruppe. Die
+  /// Reihenfolge ist die der Bereichsliste in der Suchleiste.</summary>
+  TAtlasSearchScope = (UnitFile, Method, Selection, OpenFiles, Project, ProjectGroup);
   {$SCOPEDENUMS OFF}
 
   TAtlasSearchOptions = record
@@ -35,7 +43,11 @@ type
     WholeWord: Boolean;
     /// <summary>Nur Bezeichner, keine Kommentare und Strings (Groß-/Kleinschreibung egal wie in Pascal).</summary>
     Identifier: Boolean;
-    class function Create(ACaseSensitive, AWholeWord, AIdentifier: Boolean): TAtlasSearchOptions; static;
+    /// <summary>Suchtext ist ein regulärer Ausdruck (#893, search.regex).</summary>
+    Regex: Boolean;
+    class function Create(ACaseSensitive, AWholeWord, AIdentifier: Boolean): TAtlasSearchOptions; overload; static;
+    class function Create(ACaseSensitive, AWholeWord, AIdentifier, ARegex: Boolean): TAtlasSearchOptions; overload;
+      static;
   end;
 
   /// <summary>Position im Text, 0-basiert.</summary>
@@ -101,6 +113,20 @@ type
     class function WordAt(const ALine: string; ACharacter: Integer): string; static;
     /// <summary>Reserviertes Wort von Delphi (begin, end, if …), klein oder groß.</summary>
     class function IsReserved(const AWord: string): Boolean; static;
+    /// <summary>Zeilen ohne #13 am Ende, in denen Kommentare, Direktiven und Strings (auch mehrzeilige) durch
+    /// CodeMask ersetzt sind; Länge und Spalten bleiben gleich.</summary>
+    class function CodeOnly(const ALines: TArray<string>): TArray<string>; static;
+  public const
+    /// <summary>Ersatzzeichen in CodeOnly.</summary>
+    CodeMask = #0;
+  end;
+
+  TAtlasSearchRegex = class
+  public
+    /// <summary>Gültiger Ausdruck? Sonst False mit dem Fehlertext der Regex-Engine. Leer ist gültig.</summary>
+    class function Check(const APattern: string; out AError: string): Boolean; static;
+    /// <summary>Optionen der Engine zur Suche (Groß-/Kleinschreibung).</summary>
+    class function Options(const AOptions: TAtlasSearchOptions): TRegExOptions; static;
   end;
 
 implementation
@@ -116,6 +142,14 @@ begin
   Result.CaseSensitive := ACaseSensitive;
   Result.WholeWord := AWholeWord;
   Result.Identifier := AIdentifier;
+  Result.Regex := False;
+end;
+
+class function TAtlasSearchOptions.Create(ACaseSensitive, AWholeWord, AIdentifier,
+  ARegex: Boolean): TAtlasSearchOptions;
+begin
+  Result := Create(ACaseSensitive, AWholeWord, AIdentifier);
+  Result.Regex := ARegex;
 end;
 
 { TAtlasSearchPos }
@@ -309,17 +343,13 @@ begin
   end;
 end;
 
-/// <summary>Bezeichner-Modus: Lexer über alle Zeilen; Kommentare und Strings dürfen Zeilen überspannen.</summary>
-procedure FindIdentifiers(const ALines: TArray<string>; const ANeedle: string; const AArea: TAtlasSearchArea;
-  var AHits: TArray<TAtlasSearchHit>);
+class function TAtlasTextSearch.CodeOnly(const ALines: TArray<string>): TArray<string>;
 type
   TState = (Code, Brace, Paren, MultiString);
 var
   State: TState;
-  LineIndex, I, First, Count: Integer;
-  Line, Name, Needle: string;
-  Escaped: Boolean;
-  Hit: TAtlasSearchHit;
+  LineIndex, I, Count, Start: Integer;
+  Line: string;
 
   function RestIsBlank(AFrom: Integer): Boolean;
   var
@@ -331,17 +361,18 @@ var
         Exit(False);
   end;
 
+  procedure Mask(AFrom, ATo: Integer);
+  var
+    K: Integer;
+  begin
+    for K := AFrom to ATo do
+      if (K >= 1) and (K <= Count) then
+        Line[K] := CodeMask;
+  end;
+
 begin
-  Needle := ANeedle;
-  if (Needle <> '') and (Needle[1] = '&') then
-    Delete(Needle, 1, 1);
-  if Needle = '' then
-    Exit;
-  for I := 1 to Length(Needle) do
-    if not TTextChars.IsIdentChar(Needle[I]) then
-      Exit;
-  if Needle[1].IsDigit then
-    Exit;
+  Result := nil;
+  SetLength(Result, Length(ALines));
   State := TState.Code;
   for LineIndex := 0 to High(ALines) do
   begin
@@ -355,6 +386,7 @@ begin
           begin
             if Line[I] = '}' then
               State := TState.Code;
+            Mask(I, I);
             Inc(I);
             Continue;
           end;
@@ -363,9 +395,14 @@ begin
             if (Line[I] = '*') and (I < Count) and (Line[I + 1] = ')') then
             begin
               State := TState.Code;
+              Mask(I, I + 1);
+              Inc(I, 2);
+            end
+            else
+            begin
+              Mask(I, I);
               Inc(I);
             end;
-            Inc(I);
             Continue;
           end;
         TState.MultiString:
@@ -374,9 +411,12 @@ begin
             if Copy(TrimLeft(Line), 1, 3) = '''''''' then
             begin
               State := TState.Code;
-              I := Pos('''''''', Line) + 3;
+              Start := Pos('''''''', Line) + 3;
+              Mask(1, Start - 1);
+              I := Start;
               Continue;
             end;
+            Mask(1, Count);
             Break;
           end;
       end;
@@ -384,19 +424,24 @@ begin
         '{':
           begin
             State := TState.Brace;
+            Mask(I, I);
             Inc(I);
           end;
         '(':
           if (I < Count) and (Line[I + 1] = '*') then
           begin
             State := TState.Paren;
+            Mask(I, I + 1);
             Inc(I, 2);
           end
           else
             Inc(I);
         '/':
           if (I < Count) and (Line[I + 1] = '/') then
-            Break
+          begin
+            Mask(I, Count);
+            Break;
+          end
           else
             Inc(I);
         '''':
@@ -405,8 +450,10 @@ begin
             if (Copy(Line, I, 3) = '''''''') and RestIsBlank(I + 3) then
             begin
               State := TState.MultiString;
+              Mask(I, Count);
               Break;
             end;
+            Start := I;
             Inc(I);
             while I <= Count do
             begin
@@ -423,7 +470,48 @@ begin
               else
                 Inc(I);
             end;
+            Mask(Start, I - 1);
           end;
+      else
+        Inc(I);
+      end;
+    end;
+    Result[LineIndex] := Line;
+  end;
+end;
+
+/// <summary>Bezeichner-Modus: Bezeichner im Code (CodeOnly); Kommentare und Strings dürfen Zeilen überspannen.
+/// </summary>
+procedure FindIdentifiers(const ALines: TArray<string>; const ANeedle: string; const AArea: TAtlasSearchArea;
+  var AHits: TArray<TAtlasSearchHit>);
+var
+  Code: TArray<string>;
+  LineIndex, I, First, Count: Integer;
+  Line, Name, Needle: string;
+  Escaped: Boolean;
+  Hit: TAtlasSearchHit;
+begin
+  Needle := ANeedle;
+  if (Needle <> '') and (Needle[1] = '&') then
+    Delete(Needle, 1, 1);
+  if Needle = '' then
+    Exit;
+  for I := 1 to Length(Needle) do
+    if not TTextChars.IsIdentChar(Needle[I]) then
+      Exit;
+  if Needle[1].IsDigit then
+    Exit;
+  Code := TAtlasTextSearch.CodeOnly(ALines);
+  for LineIndex := AArea.Start.Line to AArea.Stop.Line do
+  begin
+    if (LineIndex < 0) or (LineIndex > High(Code)) then
+      Continue;
+    Line := Code[LineIndex];
+    Count := Length(Line);
+    I := 1;
+    while I <= Count do
+    begin
+      case Line[I] of
         '#', '$', '%', '0'..'9':
           begin
             // Zeichenkonstante, Hex-, Binärzahl oder Zahl: Ziffern und Buchstaben gehören dazu ($FF, 1E5).
@@ -457,14 +545,66 @@ begin
   end;
 end;
 
+/// <summary>Regex-Modus: Treffer je Zeile; ACode (CodeOnly) nur im Bezeichner-Modus, sonst nil.</summary>
+procedure FindPattern(const ALines, ACode: TArray<string>; const APattern: string;
+  const AOptions: TAtlasSearchOptions; const AArea: TAtlasSearchArea; var AHits: TArray<TAtlasSearchHit>);
+var
+  Expression: TRegEx;
+  Found: TMatch;
+  LineIndex, At, Stop: Integer;
+  Line: string;
+  Hit: TAtlasSearchHit;
+  Keep: Boolean;
+begin
+  Expression := TRegEx.Create(APattern, TAtlasSearchRegex.Options(AOptions));
+  for LineIndex := AArea.Start.Line to AArea.Stop.Line do
+  begin
+    if (LineIndex < 0) or (LineIndex > High(ALines)) then
+      Continue;
+    Line := CleanLine(ALines[LineIndex]);
+    Found := Expression.Match(Line);
+    while Found.Success do
+    begin
+      // Leere Treffer (^, x*) lassen sich weder markieren noch sinnvoll ersetzen.
+      if Found.Length > 0 then
+      begin
+        At := Found.Index;
+        Stop := At + Found.Length;
+        Keep := True;
+        if AOptions.WholeWord then
+          Keep := ((At = 1) or not TTextChars.IsIdentChar(Line[At - 1])) and
+            ((Stop > Length(Line)) or not TTextChars.IsIdentChar(Line[Stop]));
+        if Keep and (ACode <> nil) then
+          Keep := Pos(TAtlasTextSearch.CodeMask, Copy(ACode[LineIndex], At, Found.Length)) = 0;
+        Hit := TAtlasSearchHit.Create(LineIndex, At - 1, Found.Length);
+        if Keep and AArea.Covers(Hit.StartPos, Hit.StopPos) then
+          AHits := AHits + [Hit];
+      end;
+      Found := Found.NextMatch;
+    end;
+  end;
+end;
+
 class function TAtlasTextSearch.FindAll(const ALines: TArray<string>; const ANeedle: string;
   const AOptions: TAtlasSearchOptions; const AArea: TAtlasSearchArea): TArray<TAtlasSearchHit>;
 var
   LineIndex: Integer;
+  Error: string;
+  Code: TArray<string>;
 begin
   Result := nil;
   if (ANeedle = '') or AArea.IsEmpty then
     Exit;
+  if AOptions.Regex then
+  begin
+    if not TAtlasSearchRegex.Check(ANeedle, Error) then
+      Exit;
+    Code := nil;
+    if AOptions.Identifier then
+      Code := CodeOnly(ALines);
+    FindPattern(ALines, Code, ANeedle, AOptions, AArea, Result);
+    Exit;
+  end;
   if AOptions.Identifier then
   begin
     FindIdentifiers(ALines, Trim(ANeedle), AArea, Result);
@@ -499,6 +639,36 @@ begin
         Exit(Index);
     AWrapped := True;
     Result := 0;
+  end;
+end;
+
+{ TAtlasSearchRegex }
+
+class function TAtlasSearchRegex.Options(const AOptions: TAtlasSearchOptions): TRegExOptions;
+begin
+  Result := [];
+  if not AOptions.CaseSensitive then
+    Include(Result, roIgnoreCase);
+end;
+
+class function TAtlasSearchRegex.Check(const APattern: string; out AError: string): Boolean;
+var
+  Expression: TRegEx;
+begin
+  AError := '';
+  if APattern = '' then
+    Exit(True);
+  try
+    // Übersetzt wird beim ersten Vergleich; erst dann meldet die Engine einen Fehler.
+    Expression := TRegEx.Create(APattern);
+    Expression.IsMatch('');
+    Result := True;
+  except
+    on E: Exception do
+    begin
+      AError := E.Message;
+      Result := False;
+    end;
   end;
 end;
 
