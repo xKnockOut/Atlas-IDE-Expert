@@ -273,10 +273,13 @@ type
     FTestsBuildFirst: TCheckBox;
     FTestsAfterBuild: TCheckBox;
     FBuildZeroHints: TCheckBox;
-    /// <summary>Release-Build-Wächter (#533): Schalter, build.gate, weitere Release-Konfigurationen und je Prüfung
-    /// ein Haken (ohne Sollwert) bzw. eine Auswahl „nicht prüfen / Soll aus / Soll an“.</summary>
-    FReleaseGuard: TCheckBox;
+    /// <summary>Prüfung vor dem Compile (#529): build.gate (gilt auch für den Release-Wächter) und ihr Zeitlimit.
+    /// </summary>
     FBuildGate: TAtlasChoiceBox;
+    FBuildGateTimeout: TEdit;
+    /// <summary>Release-Build-Wächter (#533): Schalter, weitere Release-Konfigurationen und je Prüfung ein Haken
+    /// (ohne Sollwert) bzw. eine Auswahl „nicht prüfen / Soll aus / Soll an“.</summary>
+    FReleaseGuard: TCheckBox;
     FReleaseConfigs: TEdit;
     FReleaseCheckBoxes: array[TAtlasReleaseCheck] of TCheckBox;
     FReleaseCheckChoices: array[TAtlasReleaseCheck] of TAtlasChoiceBox;
@@ -1048,9 +1051,11 @@ type
     property TestsBuildFirstCheck: TCheckBox read FTestsBuildFirst;
     property TestsAfterBuildCheck: TCheckBox read FTestsAfterBuild;
     property BuildZeroHintsCheck: TCheckBox read FBuildZeroHints;
+    /// <summary>Zum Testen: Prüfung vor dem Compile (#529).</summary>
+    property BuildGateChoice: TAtlasChoiceBox read FBuildGate;
+    property BuildGateTimeoutEdit: TEdit read FBuildGateTimeout;
     /// <summary>Zum Testen: Release-Build-Wächter (#533).</summary>
     property ReleaseGuardCheck: TCheckBox read FReleaseGuard;
-    property BuildGateChoice: TAtlasChoiceBox read FBuildGate;
     property ReleaseConfigsEdit: TEdit read FReleaseConfigs;
     /// <summary>Haken einer Prüfung ohne Sollwert; nil für Prüfungen mit Sollwert.</summary>
     function ReleaseCheckBox(ACheck: TAtlasReleaseCheck): TCheckBox;
@@ -1180,6 +1185,7 @@ implementation
 uses
   System.Math,
   System.StrUtils,
+  Atlas.Core.Build.Gate,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Problems.InlineHints,
   Atlas.Core.Product.Version,
@@ -1751,6 +1757,11 @@ begin
   FTestsBuildFirst := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsBuildFirst));
   FTestsAfterBuild := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAfterBuild));
   FBuildZeroHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildZeroHints));
+  // Prüfung vor dem Compile (#529); Reihenfolge wie TAtlasBuildGate: off, warn, block.
+  FBuildGate := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsBuildGate),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsBuildGateOff), TAtlasStrings.Text(TAtlasTextId.SettingsBuildGateWarn),
+    TAtlasStrings.Text(TAtlasTextId.SettingsBuildGateBlock)]);
+  FBuildGateTimeout := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsBuildGateTimeout));
   // Startprofile (#575).
   FStartProfiles := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfiles));
   FStartProfilesStatusField := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfilesStatusField));
@@ -2552,10 +2563,7 @@ var
   Check: TAtlasReleaseCheck;
 begin
   FReleaseGuard := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReleaseGuard));
-  // Reihenfolge wie TAtlasBuildGate: off, warn, block.
-  FBuildGate := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsBuildGate),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsBuildGateOff), TAtlasStrings.Text(TAtlasTextId.SettingsBuildGateWarn),
-    TAtlasStrings.Text(TAtlasTextId.SettingsBuildGateBlock)]);
+  // build.gate steht beim Compiler (#529) und gilt auch hier.
   FReleaseConfigs := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsReleaseConfigs));
   AddTitle(TAtlasTextId.SettingsReleaseChecksTitle);
   for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
@@ -2584,7 +2592,6 @@ var
   Check: TAtlasReleaseCheck;
 begin
   FReleaseGuard.Checked := ASettings.ReleaseGuard;
-  FBuildGate.Choice := Ord(TAtlasReleaseGuard.GateOf(ASettings.BuildGate));
   FReleaseConfigs.Text := TAtlasReleaseGuard.NormalizedConfigurations(ASettings.ReleaseConfigs);
   Checks := TAtlasReleaseChecks.Parse(ASettings.ReleaseChecks);
   for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
@@ -2607,8 +2614,6 @@ var
   Check: TAtlasReleaseCheck;
 begin
   ASettings.ReleaseGuard := FReleaseGuard.Checked;
-  if (FBuildGate.Choice >= Ord(Low(TAtlasBuildGate))) and (FBuildGate.Choice <= Ord(High(TAtlasBuildGate))) then
-    ASettings.BuildGate := TAtlasReleaseGuard.GateNames[TAtlasBuildGate(FBuildGate.Choice)];
   ASettings.ReleaseConfigs := TAtlasReleaseGuard.NormalizedConfigurations(FReleaseConfigs.Text);
   Checks := TAtlasReleaseChecks.Parse(ASettings.ReleaseChecks);
   for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
@@ -2917,6 +2922,7 @@ begin
   FMarks.Bind(FTestsBuildFirst, ['TestsBuildFirst']);
   FMarks.Bind(FTestsAfterBuild, ['TestsAfterBuild']);
   FMarks.Bind(FBuildZeroHints, ['BuildZeroHints']);
+  FMarks.Bind(FBuildGateTimeout, ['BuildGateTimeoutMs']);
   FMarks.Bind(FStartProfiles, ['StartProfiles']);
   FMarks.Bind(FStartProfilesStatusField, ['StartProfilesStatusField']);
   FMarks.Bind(FTestDebug, ['TestDebug']);
@@ -5054,6 +5060,8 @@ begin
   FTestsBuildFirst.Checked := ASettings.TestsBuildFirst;
   FTestsAfterBuild.Checked := ASettings.TestsAfterBuild;
   FBuildZeroHints.Checked := ASettings.BuildZeroHints;
+  FBuildGate.Choice := Ord(TAtlasReleaseGuard.GateOf(ASettings.BuildGate));
+  FBuildGateTimeout.Text := IntToStr(ASettings.BuildGateTimeoutMs);
   LoadRelease(ASettings);
   FStartProfiles.Checked := ASettings.StartProfiles;
   FStartProfilesStatusField.Checked := ASettings.StartProfilesStatusField;
@@ -5504,6 +5512,10 @@ begin
   ASettings.TestsBuildFirst := FTestsBuildFirst.Checked;
   ASettings.TestsAfterBuild := FTestsAfterBuild.Checked;
   ASettings.BuildZeroHints := FBuildZeroHints.Checked;
+  if (FBuildGate.Choice >= Ord(Low(TAtlasBuildGate))) and (FBuildGate.Choice <= Ord(High(TAtlasBuildGate))) then
+    ASettings.BuildGate := TAtlasReleaseGuard.GateNames[TAtlasBuildGate(FBuildGate.Choice)];
+  ASettings.BuildGateTimeoutMs := EnsureRange(StrToIntDef(FBuildGateTimeout.Text, ASettings.BuildGateTimeoutMs),
+    TAtlasBuildGateCheck.MinTimeoutMs, TAtlasBuildGateCheck.MaxTimeoutMs);
   SaveRelease(ASettings);
   ASettings.StartProfiles := FStartProfiles.Checked;
   ASettings.StartProfilesStatusField := FStartProfilesStatusField.Checked;

@@ -818,6 +818,8 @@ uses
   Atlas.Core.Build.Inbox.Tests in 'IDE.Expert\Atlas.Core.Build.Inbox.Tests.pas',
   Atlas.Core.Build.ReleaseGuard in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.ReleaseGuard.pas',
   Atlas.Core.Build.ReleaseGuard.Tests in 'IDE.Expert\Atlas.Core.Build.ReleaseGuard.Tests.pas',
+  Atlas.Core.Build.Gate in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Gate.pas',
+  Atlas.Core.Build.Gate.Tests in 'IDE.Expert\Atlas.Core.Build.Gate.Tests.pas',
   Atlas.Core.Build.OpenBuild in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.OpenBuild.pas',
   Atlas.Core.Build.OpenBuild.Tests in 'IDE.Expert\Atlas.Core.Build.OpenBuild.Tests.pas',
   Atlas.Core.Build.IdleGate in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.IdleGate.pas',

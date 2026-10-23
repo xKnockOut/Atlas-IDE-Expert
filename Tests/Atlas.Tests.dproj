@@ -914,6 +914,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.Inbox.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.ReleaseGuard.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.ReleaseGuard.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Gate.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Build.Gate.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.OpenBuild.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.OpenBuild.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.IdleGate.pas"/>
