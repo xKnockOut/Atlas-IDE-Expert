@@ -463,21 +463,21 @@ end;
 
 procedure TAtlasUnitSearchWindow.RebuildRows;
 var
-  Index, Top: Integer;
+  Index, mTop: Integer;
 begin
   FRows := TAtlasUnitSearch.Rows(FEntries, FOrder, FGrouping, FOptions.Root, FOptions.ActiveProject, FCollapsed,
     Query.HasWords);
   SetLength(FRowTops, Length(FRows) + 1);
-  Top := 0;
+  mTop := 0;
   for Index := 0 to High(FRows) do
   begin
-    FRowTops[Index] := Top;
+    FRowTops[Index] := mTop;
     if FRows[Index].IsGroup then
-      Inc(Top, GroupHeight)
+      Inc(mTop, GroupHeight)
     else
-      Inc(Top, EntryHeight);
+      Inc(mTop, EntryHeight);
   end;
-  FRowTops[Length(FRows)] := Top;
+  FRowTops[Length(FRows)] := mTop;
 end;
 
 function TAtlasUnitSearchWindow.EntryKey(AIndex: Integer): string;
@@ -528,17 +528,17 @@ end;
 
 procedure TAtlasUnitSearchWindow.EnsureVisible;
 var
-  Visible: Integer;
+  mVisible: Integer;
 begin
   Layout;
   if (FSelected < 0) or (FSelected > High(FRows)) then
     Exit;
-  Visible := FListRect.Height;
+  mVisible := FListRect.Height;
   if FRowTops[FSelected] < FScroll then
     FScroll := FRowTops[FSelected]
-  else if FRowTops[FSelected + 1] > FScroll + Visible then
-    FScroll := FRowTops[FSelected + 1] - Visible;
-  FScroll := EnsureRange(FScroll, 0, Max(0, FRowTops[Length(FRows)] - Visible));
+  else if FRowTops[FSelected + 1] > FScroll + mVisible then
+    FScroll := FRowTops[FSelected + 1] - mVisible;
+  FScroll := EnsureRange(FScroll, 0, Max(0, FRowTops[Length(FRows)] - mVisible));
 end;
 
 procedure TAtlasUnitSearchWindow.ToggleGroup(ARow: Integer; ACollapse: Boolean);
@@ -793,18 +793,18 @@ const
   ShortCuts: array[TAtlasUnitSearchAction] of string = ('Enter', 'Shift+Enter', 'Alt+Enter', 'Ctrl+T', 'Ctrl+C',
     '', '');
 var
-  Action: TAtlasUnitSearchAction;
+  mAction: TAtlasUnitSearchAction;
   Item: TMenuItem;
 begin
-  for Action := Low(TAtlasUnitSearchAction) to High(TAtlasUnitSearchAction) do
+  for mAction := Low(TAtlasUnitSearchAction) to High(TAtlasUnitSearchAction) do
   begin
-    if not ActionVisible(Action) then
+    if not ActionVisible(mAction) then
       Continue;
     Item := TMenuItem.Create(FActionMenu);
-    Item.Caption := ActionCaption(Action);
-    if ShortCuts[Action] <> '' then
-      Item.Caption := Item.Caption + #9 + ShortCuts[Action];
-    Item.Tag := Ord(Action);
+    Item.Caption := ActionCaption(mAction);
+    if ShortCuts[mAction] <> '' then
+      Item.Caption := Item.Caption + #9 + ShortCuts[mAction];
+    Item.Tag := Ord(mAction);
     Item.OnClick := MenuClick;
     FActionMenu.Items.Add(Item);
   end;
@@ -982,7 +982,7 @@ procedure TAtlasUnitSearchWindow.DrawHeader;
 var
   Input, Segment: TRect;
   X, Index, SegmentWidth: Integer;
-  Text: string;
+  mText: string;
   Grouping: TAtlasUnitGrouping;
   Captions: array[TAtlasUnitGrouping] of string;
 begin
@@ -1035,16 +1035,16 @@ begin
   begin
     Canvas.Font.Color := C(FColors.Muted);
     if FOptions.FilterSyntax then
-      Text := TAtlasStrings.Text(TAtlasTextId.UnitSearchPrompt)
+      mText := TAtlasStrings.Text(TAtlasTextId.UnitSearchPrompt)
     else
-      Text := TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle) + ' …';
+      mText := TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle) + ' …';
   end
   else
   begin
     Canvas.Font.Color := C(FColors.Text);
-    Text := FPattern + '|';
+    mText := FPattern + '|';
   end;
-  DrawText(Canvas.Handle, PChar(Text), -1, Input, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+  DrawText(Canvas.Handle, PChar(mText), -1, Input, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
   Canvas.Brush.Style := bsSolid;
 end;
 
@@ -1076,7 +1076,7 @@ var
   Row: TAtlasUnitRow;
   Entry: TAtlasUnitEntry;
   Part, Badge, Box: TRect;
-  Text, Path: string;
+  mText, Path: string;
   Right, Width_, MaxChars: Integer;
   Marked: Boolean;
 begin
@@ -1093,12 +1093,12 @@ begin
     Canvas.Font.Style := [fsBold];
     Canvas.Font.Color := C(FColors.Muted);
     if Row.Collapsed then
-      Text := '▸  '
+      mText := '▸  '
     else
-      Text := '▾  ';
-    Text := Text + GroupCaption(Row.Group) + '   ' + IntToStr(Row.Count);
+      mText := '▾  ';
+    mText := mText + GroupCaption(Row.Group) + '   ' + IntToStr(Row.Count);
     Part := Rect(ARect.Left + S(10), ARect.Top, ARect.Right - S(10), ARect.Bottom);
-    DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+    DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
     if FGrouping = TAtlasUnitGrouping.Project then
     begin
       Canvas.Brush.Style := bsSolid;
@@ -1159,8 +1159,8 @@ begin
       DT_NOPREFIX or DT_END_ELLIPSIS);
     Right := Badge.Left - S(11);
   end;
-  Text := KindShort(Entry.Kind);
-  Width_ := Canvas.TextWidth(Text) + S(10);
+  mText := KindShort(Entry.Kind);
+  Width_ := Canvas.TextWidth(mText) + S(10);
   Badge := Rect(Right - Width_, ARect.Top + S(4), Right, ARect.Top + S(20));
   Canvas.Brush.Style := bsSolid;
   if Entry.Kind = TAtlasUnitKind.Test then
@@ -1173,7 +1173,7 @@ begin
   Canvas.RoundRect(Badge.Left, Badge.Top, Badge.Right, Badge.Bottom, S(6), S(6));
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Color := C(FColors.Text);
-  DrawText(Canvas.Handle, PChar(Text), -1, Badge, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
+  DrawText(Canvas.Handle, PChar(mText), -1, Badge, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
   Right := Badge.Left - S(8);
   if Entry.IsOpen then
   begin
@@ -1195,8 +1195,8 @@ begin
   if FOptions.PathStyle <> TAtlasUnitPathStyle.Absolute then
     while (MaxChars > 8) and (Canvas.TextWidth(TAtlasUnitSearch.MiddleEllipsis(Path, MaxChars)) > Part.Width) do
       Dec(MaxChars, Max(1, (MaxChars div 20)));
-  Text := TAtlasUnitSearch.MiddleEllipsis(Path, MaxChars);
-  DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_PATH_ELLIPSIS);
+  mText := TAtlasUnitSearch.MiddleEllipsis(Path, MaxChars);
+  DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_PATH_ELLIPSIS);
   Canvas.Brush.Style := bsSolid;
 end;
 
@@ -1320,8 +1320,8 @@ end;
 procedure TAtlasUnitSearchWindow.DrawPreview;
 var
   Area, Line: TRect;
-  Top: Integer;
-  Text: string;
+  mTop: Integer;
+  mText: string;
   Index_: Integer;
   Facts: TArray<string>;
   Section: TAtlasPreviewSection;
@@ -1338,7 +1338,7 @@ begin
     FPreviewRect.Bottom), 0);
   Area := FPreviewRect;
   InflateRect(Area, -S(12), -S(10));
-  Top := Area.Top;
+  mTop := Area.Top;
   Canvas.Brush.Style := bsClear;
   if not CurrentEntry(Index_) or (FPreview.FileName = '') then
   begin
@@ -1353,9 +1353,9 @@ begin
   Canvas.Font.Assign(FUIFont);
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := C(FColors.Text);
-  Line := Rect(Area.Left, Top, Area.Right, Top + S(20));
+  Line := Rect(Area.Left, mTop, Area.Right, mTop + S(20));
   DrawText(Canvas.Handle, PChar(FEntries[Index_].Name), -1, Line, DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
-  Inc(Top, S(22));
+  Inc(mTop, S(22));
   Canvas.Font.Assign(FSmallFont);
   Canvas.Font.Color := C(FColors.Muted);
   Facts := [TAtlasStrings.Fmt(TAtlasTextId.UnitSearchPreviewLines, [FPreview.Lines])];
@@ -1376,10 +1376,10 @@ begin
     Facts := Facts + [TAtlasStrings.Text(TAtlasTextId.UnitSearchGitRenamed)]
   else if FPreview.Git = 'conflict' then
     Facts := Facts + [TAtlasStrings.Text(TAtlasTextId.UnitSearchGitConflict)];
-  Line := Rect(Area.Left, Top, Area.Right, Top + S(16));
-  Text := string.Join(' · ', Facts);
-  DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
-  Inc(Top, S(22));
+  Line := Rect(Area.Left, mTop, Area.Right, mTop + S(16));
+  mText := string.Join(' · ', Facts);
+  DrawText(Canvas.Handle, PChar(mText), -1, Line, DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
+  Inc(mTop, S(22));
   // Abschnitte (#876): erst messen, dann einklappen, was nicht passt.
   for Section := Low(TAtlasPreviewSection) to High(TAtlasPreviewSection) do
   begin
@@ -1390,17 +1390,17 @@ begin
       Inputs[Section].OpenHeight := SectionHeadHeight + SectionBody(Section, Rect(Area.Left, 0, Area.Right, MaxInt div 2),
         False) + SectionGap;
   end;
-  FSections := TAtlasPreviewSections.Arrange(Inputs, FState.Sections, Area.Bottom - Top, FOptions.PreviewAutoCollapse);
+  FSections := TAtlasPreviewSections.Arrange(Inputs, FState.Sections, Area.Bottom - mTop, FOptions.PreviewAutoCollapse);
   for Section := Low(TAtlasPreviewSection) to High(TAtlasPreviewSection) do
   begin
     if FSections[Section] = TAtlasSectionState.Hidden then
       Continue;
-    if Top + SectionHeadHeight > Area.Bottom then
+    if mTop + SectionHeadHeight > Area.Bottom then
       Break;
-    DrawSectionHead(Section, Rect(Area.Left, Top, Area.Right, Top + SectionHeadHeight));
-    Inc(Top, SectionHeadHeight);
+    DrawSectionHead(Section, Rect(Area.Left, mTop, Area.Right, mTop + SectionHeadHeight));
+    Inc(mTop, SectionHeadHeight);
     if TAtlasPreviewSections.IsOpen(FSections[Section]) then
-      Inc(Top, SectionBody(Section, Rect(Area.Left, Top, Area.Right, Area.Bottom), True) + SectionGap);
+      Inc(mTop, SectionBody(Section, Rect(Area.Left, mTop, Area.Right, Area.Bottom), True) + SectionGap);
   end;
   Canvas.Brush.Style := bsSolid;
 end;
@@ -1458,31 +1458,31 @@ end;
 
 procedure TAtlasUnitSearchWindow.DrawSectionHead(ASection: TAtlasPreviewSection; const ARect: TRect);
 var
-  Line, Tag: TRect;
-  Text: string;
+  Line, mTag: TRect;
+  mText: string;
 begin
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Assign(FSmallFont);
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := C(FColors.Muted);
   if TAtlasPreviewSections.IsOpen(FSections[ASection]) then
-    Text := #$25BE' ' + SectionCaption(ASection)
+    mText := #$25BE' ' + SectionCaption(ASection)
   else
-    Text := #$25B8' ' + SectionCaption(ASection);
+    mText := #$25B8' ' + SectionCaption(ASection);
   Line := ARect;
   Line.Bottom := Line.Bottom - S(4);
   // Marke rechts, wenn Atlas den Abschnitt eingeklappt hat.
   if FSections[ASection] = TAtlasSectionState.AutoCollapsed then
   begin
     Canvas.Font.Style := [];
-    Tag := Line;
-    Tag.Left := Max(Line.Left, Line.Right - Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.UnitSearchPreviewAutoCollapsed)));
-    DrawText(Canvas.Handle, PChar(TAtlasStrings.Text(TAtlasTextId.UnitSearchPreviewAutoCollapsed)), -1, Tag,
+    mTag := Line;
+    mTag.Left := Max(Line.Left, Line.Right - Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.UnitSearchPreviewAutoCollapsed)));
+    DrawText(Canvas.Handle, PChar(TAtlasStrings.Text(TAtlasTextId.UnitSearchPreviewAutoCollapsed)), -1, mTag,
       DT_SINGLELINE or DT_VCENTER or DT_RIGHT or DT_NOPREFIX or DT_END_ELLIPSIS);
-    Line.Right := Tag.Left - S(8);
+    Line.Right := mTag.Left - S(8);
     Canvas.Font.Style := [fsBold];
   end;
-  DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+  DrawText(Canvas.Handle, PChar(mText), -1, Line, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
   AddArea(THit.Section, ARect, Ord(ASection));
 end;
 
@@ -1490,9 +1490,9 @@ function TAtlasUnitSearchWindow.SectionBody(ASection: TAtlasPreviewSection; cons
   ADraw: Boolean): Integer;
 var
   Line: TRect;
-  Text: string;
+  mText: string;
   Item: TAtlasUnitType;
-  Top, Count, Rest: Integer;
+  mTop, Count, Rest: Integer;
 begin
   Result := 0;
   case ASection of
@@ -1503,23 +1503,23 @@ begin
         Result := S(16);
         if ADraw then
         begin
-          Text := ExtractFilePath(FPreview.FileName);
+          mText := ExtractFilePath(FPreview.FileName);
           Line := Rect(AArea.Left, AArea.Top, AArea.Right, Min(AArea.Bottom, AArea.Top + Result));
-          DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_SINGLELINE or DT_NOPREFIX or DT_PATH_ELLIPSIS);
+          DrawText(Canvas.Handle, PChar(mText), -1, Line, DT_SINGLELINE or DT_NOPREFIX or DT_PATH_ELLIPSIS);
         end;
       end;
     TAtlasPreviewSection.Header:
       begin
         Canvas.Font.Assign(FMonoFont);
         Canvas.Font.Color := C(FColors.Comment);
-        Text := FPreview.Header.Replace(#10, sLineBreak);
+        mText := FPreview.Header.Replace(#10, sLineBreak);
         Line := Rect(AArea.Left, AArea.Top, AArea.Right, AArea.Top);
-        DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX or DT_EDITCONTROL);
+        DrawText(Canvas.Handle, PChar(mText), -1, Line, DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX or DT_EDITCONTROL);
         Result := Min(Line.Height, S(140));
         if ADraw then
         begin
           Line := Rect(AArea.Left, AArea.Top, AArea.Right, Min(AArea.Bottom, AArea.Top + Result));
-          DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_WORDBREAK or DT_NOPREFIX or DT_EDITCONTROL or
+          DrawText(Canvas.Handle, PChar(mText), -1, Line, DT_WORDBREAK or DT_NOPREFIX or DT_EDITCONTROL or
             DT_END_ELLIPSIS);
         end;
       end;
@@ -1528,8 +1528,8 @@ begin
         Result := SketchHeight(AArea.Width);
         if ADraw then
         begin
-          Top := AArea.Top;
-          DrawSketch(Top, AArea);
+          mTop := AArea.Top;
+          DrawSketch(mTop, AArea);
         end;
       end;
     TAtlasPreviewSection.Types:
@@ -1541,62 +1541,62 @@ begin
           Inc(Result, S(17));
         if not ADraw then
           Exit;
-        Top := AArea.Top;
+        mTop := AArea.Top;
         Count := 0;
         for Item in FPreview.Types do
         begin
           // Platz für die Zeile „+ n weitere“ lassen, wenn danach noch Typen kommen.
-          if (Top + S(17) > AArea.Bottom) or
-            ((Count < Length(FPreview.Types) - 1) and (Top + 2 * S(17) > AArea.Bottom)) then
+          if (mTop + S(17) > AArea.Bottom) or
+            ((Count < Length(FPreview.Types) - 1) and (mTop + 2 * S(17) > AArea.Bottom)) then
             Break;
           // Symbol: Anfangsbuchstabe der Art im Kästchen.
-          Line := Rect(AArea.Left, Top + S(1), AArea.Left + S(16), Top + S(15));
+          Line := Rect(AArea.Left, mTop + S(1), AArea.Left + S(16), mTop + S(15));
           Canvas.Brush.Style := bsSolid;
           Canvas.Brush.Color := C(FColors.Badges[TAtlasBadgeKind.Type_].Background);
           Canvas.Pen.Color := C(FColors.Badges[TAtlasBadgeKind.Type_].Background);
           Canvas.RoundRect(Line.Left, Line.Top, Line.Right, Line.Bottom, S(4), S(4));
           Canvas.Brush.Style := bsClear;
           Canvas.Font.Color := C(FColors.Badges[TAtlasBadgeKind.Type_].Text);
-          Text := UpperCase(Copy(Item.Kind, 1, 1));
-          DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
+          mText := UpperCase(Copy(Item.Kind, 1, 1));
+          DrawText(Canvas.Handle, PChar(mText), -1, Line, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
           Canvas.Font.Color := C(FColors.Text);
-          Line := Rect(AArea.Left + S(22), Top, AArea.Right, Top + S(16));
-          Text := Item.Name + '   ' + Item.Kind;
-          DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
+          Line := Rect(AArea.Left + S(22), mTop, AArea.Right, mTop + S(16));
+          mText := Item.Name + '   ' + Item.Kind;
+          DrawText(Canvas.Handle, PChar(mText), -1, Line, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
             DT_END_ELLIPSIS);
-          Inc(Top, S(17));
+          Inc(mTop, S(17));
           Inc(Count);
         end;
         Rest := FPreview.TypeCount - Count;
-        if (Rest > 0) and (Top + S(16) <= AArea.Bottom) then
+        if (Rest > 0) and (mTop + S(16) <= AArea.Bottom) then
         begin
           Canvas.Font.Color := C(FColors.Muted);
-          Line := Rect(AArea.Left + S(22), Top, AArea.Right, Top + S(16));
-          Text := TAtlasStrings.Fmt(TAtlasTextId.UnitSearchPreviewMore, [Rest]);
-          DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
-          Inc(Top, S(17));
+          Line := Rect(AArea.Left + S(22), mTop, AArea.Right, mTop + S(16));
+          mText := TAtlasStrings.Fmt(TAtlasTextId.UnitSearchPreviewMore, [Rest]);
+          DrawText(Canvas.Handle, PChar(mText), -1, Line, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+          Inc(mTop, S(17));
         end;
-        Result := Top - AArea.Top;
+        Result := mTop - AArea.Top;
       end;
     TAtlasPreviewSection.Uses_, TAtlasPreviewSection.UsedBy:
       begin
         Canvas.Font.Assign(FSmallFont);
         Canvas.Font.Color := C(FColors.Text);
         if ASection = TAtlasPreviewSection.Uses_ then
-          Text := string.Join(', ', FPreview.Uses_)
+          mText := string.Join(', ', FPreview.Uses_)
         else
         begin
-          Text := string.Join(', ', FPreview.UsedByUnits);
+          mText := string.Join(', ', FPreview.UsedByUnits);
           if FPreview.UsedBy > Length(FPreview.UsedByUnits) then
-            Text := Text + ' …';
+            mText := mText + ' …';
         end;
         Line := Rect(AArea.Left, AArea.Top, AArea.Right, AArea.Top);
-        DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
+        DrawText(Canvas.Handle, PChar(mText), -1, Line, DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
         Result := Line.Height;
         if ADraw then
         begin
           Line := Rect(AArea.Left, AArea.Top, AArea.Right, Min(AArea.Bottom, AArea.Top + Result));
-          DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_WORDBREAK or DT_NOPREFIX or DT_END_ELLIPSIS);
+          DrawText(Canvas.Handle, PChar(mText), -1, Line, DT_WORDBREAK or DT_NOPREFIX or DT_END_ELLIPSIS);
         end;
       end;
   end;
@@ -1612,8 +1612,8 @@ procedure TAtlasUnitSearchWindow.DrawActions;
 var
   Bar, Button: TRect;
   X: Integer;
-  Action: TAtlasUnitSearchAction;
-  Text: string;
+  mAction: TAtlasUnitSearchAction;
+  mText: string;
 begin
   if not FOptions.Actions then
     Exit;
@@ -1623,15 +1623,15 @@ begin
   Canvas.LineTo(Bar.Right, Bar.Top);
   Canvas.Font.Assign(FSmallFont);
   X := S(10);
-  for Action := Low(TAtlasUnitSearchAction) to High(TAtlasUnitSearchAction) do
+  for mAction := Low(TAtlasUnitSearchAction) to High(TAtlasUnitSearchAction) do
   begin
-    if not ActionVisible(Action) then
+    if not ActionVisible(mAction) then
       Continue;
-    Text := ActionCaption(Action);
-    Button := Rect(X, Bar.Top + S(6), X + Canvas.TextWidth(Text) + S(18), Bar.Bottom - S(6));
+    mText := ActionCaption(mAction);
+    Button := Rect(X, Bar.Top + S(6), X + Canvas.TextWidth(mText) + S(18), Bar.Bottom - S(6));
     if Button.Right > Bar.Right - S(10) then
       Break;
-    if Action = TAtlasUnitSearchAction.Open then
+    if mAction = TAtlasUnitSearchAction.Open then
     begin
       Canvas.Brush.Color := C(FColors.Accent);
       Canvas.Pen.Color := C(FColors.Accent);
@@ -1645,9 +1645,9 @@ begin
     end;
     Canvas.RoundRect(Button.Left, Button.Top, Button.Right, Button.Bottom, S(6), S(6));
     Canvas.Brush.Style := bsClear;
-    DrawText(Canvas.Handle, PChar(Text), -1, Button, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
+    DrawText(Canvas.Handle, PChar(mText), -1, Button, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
     Canvas.Brush.Style := bsSolid;
-    AddArea(THit.Action, Button, Ord(Action));
+    AddArea(THit.Action, Button, Ord(mAction));
     X := Button.Right + S(6);
   end;
 end;
@@ -1655,7 +1655,7 @@ end;
 procedure TAtlasUnitSearchWindow.DrawFooter;
 var
   Bar, Part: TRect;
-  Text: string;
+  mText: string;
   Index: Integer;
   CountWidth: Integer;
 begin
@@ -1665,19 +1665,19 @@ begin
   Canvas.Font.Assign(FSmallFont);
   Canvas.Font.Color := C(FColors.Muted);
   Canvas.Brush.Style := bsClear;
-  Text := TAtlasStrings.Fmt(TAtlasTextId.UnitSearchCount, [FMatchCount, Length(FEntries)]);
+  mText := TAtlasStrings.Fmt(TAtlasTextId.UnitSearchCount, [FMatchCount, Length(FEntries)]);
   if FMarked.Count > 0 then
-    Text := TAtlasStrings.Fmt(TAtlasTextId.UnitSearchMarked, [FMarked.Count]) + ' · ' + Text;
-  CountWidth := Canvas.TextWidth(Text);
+    mText := TAtlasStrings.Fmt(TAtlasTextId.UnitSearchMarked, [FMarked.Count]) + ' · ' + mText;
+  CountWidth := Canvas.TextWidth(mText);
   Part := Rect(Bar.Right - S(10) - CountWidth, Bar.Top, Bar.Right - S(10), Bar.Bottom);
-  DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+  DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
   // Voller Pfad der aktuellen Unit, sonst die Tasten.
   if CurrentEntry(Index) then
-    Text := FEntries[Index].FileName
+    mText := FEntries[Index].FileName
   else
-    Text := TAtlasStrings.Text(TAtlasTextId.UnitSearchHints);
+    mText := TAtlasStrings.Text(TAtlasTextId.UnitSearchHints);
   Part := Rect(Bar.Left + S(10), Bar.Top, Part.Left - S(16), Bar.Bottom);
-  DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_PATH_ELLIPSIS);
+  DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_PATH_ELLIPSIS);
   Canvas.Brush.Style := bsSolid;
 end;
 
@@ -1948,7 +1948,7 @@ end;
 procedure TAtlasUnitSearchWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
   Area: THitArea;
-  Text: string;
+  mText: string;
 begin
   inherited;
   if FDragSplitter then
@@ -1958,7 +1958,7 @@ begin
     Invalidate;
     Exit;
   end;
-  Text := '';
+  mText := '';
   if HitAt(X, Y, Area) then
   begin
     if Area.Kind = THit.Splitter then
@@ -1969,16 +1969,16 @@ begin
       Cursor := crDefault;
     // Voller Pfad als Tooltip.
     if (Area.Kind = THit.Row) and not FRows[Area.Value].IsGroup then
-      Text := FEntries[FRows[Area.Value].Entry].FileName
+      mText := FEntries[FRows[Area.Value].Entry].FileName
     else if (Area.Kind = THit.Section) and (TAtlasPreviewSection(Area.Value) = TAtlasPreviewSection.Path) then
-      Text := FPreview.FileName;
+      mText := FPreview.FileName;
   end
   else
     Cursor := crDefault;
-  if Text <> FLastHint then
+  if mText <> FLastHint then
   begin
-    FLastHint := Text;
-    Hint := Text;
+    FLastHint := mText;
+    Hint := mText;
     Application.CancelHint;
   end;
 end;

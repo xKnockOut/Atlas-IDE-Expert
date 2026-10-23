@@ -320,15 +320,15 @@ end;
 
 function TCompletionRequest.Lines: TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if not FLinesReady then
   begin
     FLines := nil;
     FLines := FText.Split([#10]);
-    for Index := 0 to High(FLines) do
-      if FLines[Index].EndsWith(#13) then
-        FLines[Index] := Copy(FLines[Index], 1, Length(FLines[Index]) - 1);
+    for mIndex := 0 to High(FLines) do
+      if FLines[mIndex].EndsWith(#13) then
+        FLines[mIndex] := Copy(FLines[mIndex], 1, Length(FLines[mIndex]) - 1);
     FLinesReady := True;
   end;
   Result := FLines;
@@ -361,17 +361,17 @@ end;
 
 function TCompletionRequest.OffsetAt(const APosition: TTextPosition): Integer;
 var
-  Index, Line: Integer;
+  mIndex, Line: Integer;
 begin
   Line := 0;
-  Index := 1;
-  while (Line < APosition.Line) and (Index <= Length(FText)) do
+  mIndex := 1;
+  while (Line < APosition.Line) and (mIndex <= Length(FText)) do
   begin
-    if FText[Index] = #10 then
+    if FText[mIndex] = #10 then
       Inc(Line);
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Index - 1 + APosition.Character;
+  Result := mIndex - 1 + APosition.Character;
 end;
 
 function TCompletionRequest.LineBreak: string;

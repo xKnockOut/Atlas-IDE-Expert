@@ -365,15 +365,15 @@ class function TAtlasSetupWindow.ReportLines(const AResults: TArray<TAtlasSetupR
 var
   Item: TAtlasSetupResult;
   Project: TAtlasSetupProject;
-  Text: string;
+  mText: string;
 begin
   Result := nil;
   for Item in AResults do
   begin
-    Text := ResultText(Item);
+    mText := ResultText(Item);
     if DetailText(Item) <> '' then
-      Text := Text + ' (' + DetailText(Item) + ')';
-    Result := Result + [TAtlasSetupReportLine.Create(Item.State, Text, False)];
+      mText := mText + ' (' + DetailText(Item) + ')';
+    Result := Result + [TAtlasSetupReportLine.Create(Item.State, mText, False)];
     for Project in Item.Projects do
       Result := Result + [TAtlasSetupReportLine.Create(ProjectState(Project), ProjectText(Project), True)];
   end;
@@ -414,7 +414,7 @@ var
   Line: TLine;
   Button: TButton;
   Area: TRect;
-  Text: string;
+  mText: string;
 begin
   Canvas.Font := Font;
   ClientWidth := ScaleValue(620);
@@ -439,10 +439,10 @@ begin
     Line.Height := RowHeight;
     FLines := FLines + [Line];
     Button := FFixButtons[Index];
-    Text := FixCaption(FResults[Index].Fix);
-    Button.Caption := Text;
-    Button.Visible := Text <> '';
-    ButtonWidth := Max(Canvas.TextWidth(Text) + ScaleValue(24), ScaleValue(90));
+    mText := FixCaption(FResults[Index].Fix);
+    Button.Caption := mText;
+    Button.Visible := mText <> '';
+    ButtonWidth := Max(Canvas.TextWidth(mText) + ScaleValue(24), ScaleValue(90));
     Button.SetBounds(ClientWidth - ButtonWidth - ScaleValue(12), Top_ + (Line.Height - ScaleValue(25)) div 2,
       ButtonWidth, ScaleValue(25));
     Inc(Top_, Line.Height);
@@ -594,7 +594,7 @@ var
   Line: TLine;
   Item: TAtlasSetupResult;
   Part: TRect;
-  Text, Detail, Before, After: string;
+  mText, Detail, Before, After: string;
   Right_, KeyAt, X: Integer;
 begin
   Canvas.Font := Font;
@@ -606,12 +606,12 @@ begin
   Part := Rect(ScaleValue(12), 0, ClientWidth - ScaleValue(12), HeaderHeight);
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(FColors.Text);
-  Text := TAtlasStrings.Text(TAtlasTextId.SetupTitle);
-  DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+  mText := TAtlasStrings.Text(TAtlasTextId.SetupTitle);
+  DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
   Canvas.Font.Style := [];
   Canvas.Font.Color := ToColor(FColors.Muted);
-  Text := ProgressText(FResults);
-  DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_RIGHT or DT_NOPREFIX);
+  mText := ProgressText(FResults);
+  DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_RIGHT or DT_NOPREFIX);
   Canvas.Pen.Color := ToColor(FColors.Line);
   Canvas.MoveTo(0, HeaderHeight - ScaleValue(2));
   Canvas.LineTo(ClientWidth, HeaderHeight - ScaleValue(2));
@@ -626,8 +626,8 @@ begin
       Canvas.Brush.Style := bsClear;
       Canvas.Font.Color := ToColor(FColors.Muted);
       Part := Rect(ScaleValue(50), Line.Top, ClientWidth - ScaleValue(12), Line.Top + Line.Height);
-      Text := ProjectText(Item.Projects[Line.Project]);
-      DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+      mText := ProjectText(Item.Projects[Line.Project]);
+      DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
       Continue;
     end;
     DrawDot(Point(ScaleValue(20), Line.Top + Line.Height div 2), ScaleValue(5), Item.State);
@@ -636,13 +636,13 @@ begin
     if (FixButton(Line.Result_) <> nil) and FixButton(Line.Result_).Visible then
       Right_ := FixButton(Line.Result_).Left - ScaleValue(8);
     Part := Rect(ScaleValue(34), Line.Top, Right_, Line.Top + Line.Height);
-    Text := ResultText(Item);
+    mText := ResultText(Item);
     Canvas.Font.Color := ToColor(FColors.Text);
-    DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+    DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
     Detail := DetailText(Item);
     if Detail <> '' then
     begin
-      Part.Left := Part.Left + Canvas.TextWidth(Text) + ScaleValue(10);
+      Part.Left := Part.Left + Canvas.TextWidth(mText) + ScaleValue(10);
       if Part.Left < Part.Right then
       begin
         Canvas.Font.Color := ToColor(FColors.Muted);
@@ -662,14 +662,14 @@ begin
   Canvas.Pen.Color := ToColor(FColors.Line);
   Canvas.MoveTo(0, FFooterTop);
   Canvas.LineTo(ClientWidth, FFooterTop);
-  Text := TAtlasStrings.Fmt(TAtlasTextId.SetupTryIt, [FTryKey]);
-  KeyAt := Pos(FTryKey, Text);
-  Before := Text;
+  mText := TAtlasStrings.Fmt(TAtlasTextId.SetupTryIt, [FTryKey]);
+  KeyAt := Pos(FTryKey, mText);
+  Before := mText;
   After := '';
   if KeyAt > 0 then
   begin
-    Before := Copy(Text, 1, KeyAt - 1);
-    After := Copy(Text, KeyAt + Length(FTryKey), MaxInt);
+    Before := Copy(mText, 1, KeyAt - 1);
+    After := Copy(mText, KeyAt + Length(FTryKey), MaxInt);
   end;
   X := ScaleValue(12);
   Part := Rect(X, FFooterTop, ClientWidth - ScaleValue(12), FFooterTop + RowHeight);

@@ -209,10 +209,10 @@ end;
 
 function TAtlasWelcomeStateFrame.BodyHeight: Integer;
 var
-  Rows: Integer;
+  mRows: Integer;
 begin
-  Rows := Max(Length(FRows), 1);
-  Result := Rows * ScaleValue(RowHeight) + ScaleValue(Indent) + BarHeight;
+  mRows := Max(Length(FRows), 1);
+  Result := mRows * ScaleValue(RowHeight) + ScaleValue(Indent) + BarHeight;
 end;
 
 function TAtlasWelcomeStateFrame.LayoutButtons: Integer;
@@ -365,32 +365,32 @@ end;
 
 procedure TAtlasWelcomeStateFrame.ClickRow(ARow: Integer);
 var
-  Source: IAtlasStateSource;
+  mSource: IAtlasStateSource;
   Id: string;
 begin
   if (FSource = nil) or (ARow < 0) or (ARow > High(FRows)) or not FRows[ARow].HasAction then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Id := FRows[ARow].Id;
   // Die Aktion öffnet Fenster oder ändert den Zustand: nicht im eigenen Mausereignis.
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.RunRow(Id);
+      mSource.RunRow(Id);
     end);
 end;
 
 procedure TAtlasWelcomeStateFrame.ClickButton(AButton: TAtlasStateButton);
 var
-  Source: IAtlasStateSource;
+  mSource: IAtlasStateSource;
 begin
   if FSource = nil then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.Run(AButton);
+      mSource.Run(AButton);
     end);
 end;
 

@@ -932,7 +932,7 @@ end;
 
 procedure TAtlasWelcomeTestResultsFrame.ClickAt(const AHit: TAtlasTestResultsHit);
 var
-  Source: IAtlasTestResultsSource;
+  mSource: IAtlasTestResultsSource;
   Row: TAtlasTestRow;
   Item: TAtlasTestFailureItem;
   Tests: TArray<string>;
@@ -940,7 +940,7 @@ var
 begin
   if (FSource = nil) or not FView.SelectedRow(Row) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   case AHit.Kind of
     // Leerraum und die Zeile „… weitere“ sind keine Schaltflächen.
     TAtlasTestResultsHitKind.None, TAtlasTestResultsHitKind.More: ;
@@ -954,7 +954,7 @@ begin
         TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
           procedure
           begin
-            Source.Select(Project);
+            mSource.Select(Project);
           end);
       end;
     TAtlasTestResultsHitKind.Failure:
@@ -970,7 +970,7 @@ begin
         TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
           procedure
           begin
-            Source.RerunFailed(Row, Tests);
+            mSource.RerunFailed(Row, Tests);
           end);
       end;
     TAtlasTestResultsHitKind.Debug:
@@ -978,27 +978,27 @@ begin
         TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
           procedure
           begin
-            Source.Debug(Row, Item);
+            mSource.Debug(Row, Item);
           end);
     TAtlasTestResultsHitKind.Browse:
       if ButtonEnabled(TAtlasTestResultsButton.Browse) then
         TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
           procedure
           begin
-            Source.Browse(Row);
+            mSource.Browse(Row);
           end);
   end;
 end;
 
 procedure TAtlasWelcomeTestResultsFrame.DoubleClickAt(const AHit: TAtlasTestResultsHit);
 var
-  Source: IAtlasTestResultsSource;
+  mSource: IAtlasTestResultsSource;
   Row: TAtlasTestRow;
   Item: TAtlasTestFailureItem;
 begin
   if (FSource = nil) or not FView.SelectedRow(Row) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   if (AHit.Kind = TAtlasTestResultsHitKind.Failure) and (AHit.Index >= 0) and
     (AHit.Index <= High(FView.Failures)) then
   begin
@@ -1007,7 +1007,7 @@ begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
       procedure
       begin
-        Source.OpenTest(Row, Item);
+        mSource.OpenTest(Row, Item);
       end);
   end
   else if (AHit.Kind = TAtlasTestResultsHitKind.Row) and (AHit.Index >= 0) and (AHit.Index <= High(FView.Rows)) then
@@ -1016,7 +1016,7 @@ begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
       procedure
       begin
-        Source.OpenProject(Row);
+        mSource.OpenProject(Row);
       end);
   end;
 end;
@@ -1098,46 +1098,46 @@ end;
 
 procedure TAtlasWelcomeTestResultsFrame.QueryClick(Sender: TObject);
 var
-  Source: IAtlasTestResultsSource;
+  mSource: IAtlasTestResultsSource;
   Row: TAtlasTestRow;
 begin
   if not MenuTarget(Row) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.QueryNow(Row);
+      mSource.QueryNow(Row);
     end);
 end;
 
 procedure TAtlasWelcomeTestResultsFrame.CredentialsClick(Sender: TObject);
 var
-  Source: IAtlasTestResultsSource;
+  mSource: IAtlasTestResultsSource;
   Row: TAtlasTestRow;
 begin
   if not MenuTarget(Row) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.Credentials(Row);
+      mSource.Credentials(Row);
     end);
 end;
 
 procedure TAtlasWelcomeTestResultsFrame.OpenClick(Sender: TObject);
 var
-  Source: IAtlasTestResultsSource;
+  mSource: IAtlasTestResultsSource;
   Row: TAtlasTestRow;
 begin
   if not MenuTarget(Row) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.OpenProject(Row);
+      mSource.OpenProject(Row);
     end);
 end;
 

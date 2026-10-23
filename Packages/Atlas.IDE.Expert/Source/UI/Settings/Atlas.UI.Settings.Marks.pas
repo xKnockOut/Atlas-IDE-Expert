@@ -217,14 +217,14 @@ end;
 procedure TAtlasSettingsMarks.Bind(AControl: TControl; const ANames: array of string; AMark: Boolean);
 var
   Binding: TAtlasSettingsBinding;
-  Name: string;
+  mName: string;
 begin
   if AControl = nil then
     Exit;
   Binding := Default(TAtlasSettingsBinding);
   Binding.Control := AControl;
-  for Name in ANames do
-    Binding.Names := Binding.Names + [Name];
+  for mName in ANames do
+    Binding.Names := Binding.Names + [mName];
   Binding.Mark := AMark;
   if AControl is TCheckBox then
   begin
@@ -344,16 +344,16 @@ end;
 procedure TAtlasSettingsMarks.Show(const AModified: TArray<string>; AEnabled: Boolean);
 var
   Index: Integer;
-  Name, Modified: string;
+  mName, Modified: string;
   Marked: Boolean;
 begin
   for Index := 0 to FBindings.Count - 1 do
   begin
     Marked := False;
     if AEnabled and FBindings[Index].Mark then
-      for Name in FBindings[Index].Names do
+      for mName in FBindings[Index].Names do
         for Modified in AModified do
-          if SameText(Name, Modified) then
+          if SameText(mName, Modified) then
             Marked := True;
     Apply(Index, Marked);
   end;
@@ -399,24 +399,24 @@ end;
 function TAtlasSettingsMarks.ControlOfName(const AName: string): TControl;
 var
   Binding: TAtlasSettingsBinding;
-  Name: string;
+  mName: string;
 begin
   Result := nil;
   for Binding in FBindings do
-    for Name in Binding.Names do
-      if SameText(Name, AName) then
+    for mName in Binding.Names do
+      if SameText(mName, AName) then
         Exit(Binding.Control);
 end;
 
 function TAtlasSettingsMarks.TextOfName(const AName: string): string;
 var
   Binding: TAtlasSettingsBinding;
-  Name: string;
+  mName: string;
 begin
   Result := '';
   for Binding in FBindings do
-    for Name in Binding.Names do
-      if SameText(Name, AName) then
+    for mName in Binding.Names do
+      if SameText(mName, AName) then
         Exit(StringReplace(Binding.Text, '&', '', [rfReplaceAll]));
 end;
 
@@ -468,16 +468,16 @@ procedure TAtlasSettingsMarks.MarkExperimental(const ANames: TArray<string>);
 var
   Index: Integer;
   Binding: TAtlasSettingsBinding;
-  Name, Experimental: string;
+  mName, Experimental: string;
   Found: Boolean;
 begin
   for Index := 0 to FBindings.Count - 1 do
   begin
     Binding := FBindings[Index];
     Found := False;
-    for Name in Binding.Names do
+    for mName in Binding.Names do
       for Experimental in ANames do
-        if SameText(Name, Experimental) then
+        if SameText(mName, Experimental) then
           Found := True;
     if Found = Binding.Experimental then
       Continue;

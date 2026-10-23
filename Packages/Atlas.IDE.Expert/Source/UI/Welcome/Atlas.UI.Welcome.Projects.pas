@@ -231,35 +231,35 @@ end;
 
 procedure TAtlasWelcomeProjectsFrame.QuickOpenRow(ARow: Integer);
 var
-  Source: IAtlasProjectsSource;
+  mSource: IAtlasProjectsSource;
   Project: string;
 begin
   // Enter ohne Knopf öffnet (wie Doppelklick bzw. Klick ohne Projektverlauf).
   if (FSource = nil) or (ARow < 0) or (ARow > High(FEntries)) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Project := FEntries[ARow].Project;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.Open(Project);
+      mSource.Open(Project);
     end);
 end;
 
 procedure TAtlasWelcomeProjectsFrame.QuickSelectRow(ARow: Integer);
 var
-  Source: IAtlasProjectsSource;
+  mSource: IAtlasProjectsSource;
   Project: string;
 begin
   // Mit Projektverlauf (#758) wählen die Pfeiltasten auch das Projekt des Verlaufs.
   if (FSource = nil) or (ARow < 0) or (ARow > High(FEntries)) or not FSource.Selectable then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Project := FEntries[ARow].Project;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.Select(Project);
+      mSource.Select(Project);
     end);
 end;
 
@@ -623,48 +623,48 @@ end;
 
 procedure TAtlasWelcomeProjectsFrame.ClickAt(const AHit: TAtlasProjectsHit);
 var
-  Source: IAtlasProjectsSource;
+  mSource: IAtlasProjectsSource;
   Project: string;
   Target: TAtlasProjectLocation;
   Jump, Choose: Boolean;
 begin
   if (FSource = nil) or (AHit.Row < 0) or (AHit.Row > High(FEntries)) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Project := FEntries[AHit.Row].Project;
   Jump := (AHit.Pill >= 0) and (AHit.Pill <= High(FPills[AHit.Row])) and FPills[AHit.Row][AHit.Pill].Clickable;
   Target := Default(TAtlasProjectLocation);
   if Jump then
     Target := FPills[AHit.Row][AHit.Pill].Target;
   // Mit Projektverlauf wählt der Klick (#758); rote Marken springen weiter zur Meldung.
-  Choose := not Jump and Source.Selectable;
+  Choose := not Jump and mSource.Selectable;
   // Die Quelle füllt den Bereich danach neu: nicht im eigenen Mausereignis.
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
       if Jump then
-        Source.OpenAt(Project, Target)
+        mSource.OpenAt(Project, Target)
       else if Choose then
-        Source.Select(Project)
+        mSource.Select(Project)
       else
-        Source.Open(Project);
+        mSource.Open(Project);
     end);
 end;
 
 procedure TAtlasWelcomeProjectsFrame.DoubleClickAt(const AHit: TAtlasProjectsHit);
 var
-  Source: IAtlasProjectsSource;
+  mSource: IAtlasProjectsSource;
   Project: string;
 begin
   // Ohne Auswahl öffnet schon der einfache Klick; ein zweites Öffnen wäre doppelt.
   if (FSource = nil) or (AHit.Row < 0) or (AHit.Row > High(FEntries)) or not FSource.Selectable then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Project := FEntries[AHit.Row].Project;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.Open(Project);
+      mSource.Open(Project);
     end);
 end;
 
@@ -776,49 +776,49 @@ end;
 
 procedure TAtlasWelcomeProjectsFrame.OpenClick(Sender: TObject);
 var
-  Source: IAtlasProjectsSource;
+  mSource: IAtlasProjectsSource;
   Project: string;
 begin
   if (FSource = nil) or (FMenuRow < 0) or (FMenuRow > High(FEntries)) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Project := FEntries[FMenuRow].Project;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.Open(Project);
+      mSource.Open(Project);
     end);
 end;
 
 procedure TAtlasWelcomeProjectsFrame.OpenFolderClick(Sender: TObject);
 var
-  Source: IAtlasProjectsSource;
+  mSource: IAtlasProjectsSource;
   Project: string;
 begin
   if (FSource = nil) or (FMenuRow < 0) or (FMenuRow > High(FEntries)) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Project := FEntries[FMenuRow].Project;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.OpenFolder(Project);
+      mSource.OpenFolder(Project);
     end);
 end;
 
 procedure TAtlasWelcomeProjectsFrame.RemoveClick(Sender: TObject);
 var
-  Source: IAtlasProjectsSource;
+  mSource: IAtlasProjectsSource;
   Project: string;
 begin
   if (FSource = nil) or (FMenuRow < 0) or (FMenuRow > High(FEntries)) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Project := FEntries[FMenuRow].Project;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.Remove(Project);
+      mSource.Remove(Project);
     end);
 end;
 

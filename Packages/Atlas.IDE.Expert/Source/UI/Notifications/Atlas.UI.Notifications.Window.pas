@@ -764,7 +764,7 @@ var
   Item: IAtlasNotification;
   Entry, Part, Chip: TRect;
   Line, Index: Integer;
-  Text, Right: string;
+  mText, Right: string;
   Actions: TArray<TAtlasNotificationAction>;
 begin
   Item := FItems[AIndex];
@@ -798,14 +798,14 @@ begin
   if not Item.Read then
     Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(FColors.Text);
-  Text := Item.Caption;
-  DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
+  mText := Item.Caption;
+  DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
   Canvas.Font.Style := [];
   // Text in der zweiten Zeile.
   Part := Rect(Entry.Left + ScaleValue(34), Part.Bottom, Entry.Right - ScaleValue(10), Part.Bottom + Line);
   Canvas.Font.Color := ToColor(FColors.Muted);
-  Text := Item.Text;
-  DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
+  mText := Item.Text;
+  DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
   // Aktionen als Knöpfe.
   Actions := Item.Actions;
   for Index := 0 to High(Actions) do
@@ -821,8 +821,8 @@ begin
       ScaleValue(2 * TAtlasDraw.ChipRadius));
     Canvas.Brush.Style := bsClear;
     Canvas.Font.Color := ToColor(FColors.Accent);
-    Text := Actions[Index].Caption;
-    DrawText(Canvas.Handle, PChar(Text), -1, Chip, DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
+    mText := Actions[Index].Caption;
+    DrawText(Canvas.Handle, PChar(mText), -1, Chip, DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
   end;
 end;
 
@@ -830,7 +830,7 @@ procedure TAtlasNotificationsWindow.Paint;
 var
   Index, Unread, ThumbHeight, ThumbTop: Integer;
   List, Part: TRect;
-  Text: string;
+  mText: string;
 begin
   Canvas.Font := Font;
   Canvas.Brush.Style := bsSolid;
@@ -844,9 +844,9 @@ begin
     begin
       Canvas.Brush.Style := bsClear;
       Canvas.Font.Color := ToColor(FColors.Muted);
-      Text := TAtlasStrings.Text(TAtlasTextId.NotificationsEmpty);
+      mText := TAtlasStrings.Text(TAtlasTextId.NotificationsEmpty);
       Part := List;
-      DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
+      DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
     end;
     for Index := 0 to High(FItems) do
     begin
@@ -871,9 +871,9 @@ begin
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(FColors.Text);
   Part := Rect(ScaleValue(12), 0, FFilterBox.Left - ScaleValue(8), HeaderHeight);
-  Text := TAtlasStrings.Text(TAtlasTextId.NotificationsCommand);
-  DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
-  Part.Left := Part.Left + Canvas.TextWidth(Text) + ScaleValue(8);
+  mText := TAtlasStrings.Text(TAtlasTextId.NotificationsCommand);
+  DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+  Part.Left := Part.Left + Canvas.TextWidth(mText) + ScaleValue(8);
   Canvas.Font.Style := [];
   Unread := 0;
   if FCenter <> nil then
@@ -881,8 +881,8 @@ begin
   if Unread > 0 then
   begin
     Canvas.Font.Color := ToColor(FColors.Muted);
-    Text := TAtlasStrings.Fmt(TAtlasTextId.NotificationsUnread, [Unread]);
-    DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+    mText := TAtlasStrings.Fmt(TAtlasTextId.NotificationsUnread, [Unread]);
+    DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
   end;
   Canvas.Pen.Color := ToColor(FColors.Line);
   Canvas.MoveTo(0, HeaderHeight - 1);

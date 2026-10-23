@@ -1381,7 +1381,7 @@ end;
 
 procedure TShellWorkspace.StartIndex(const ASettings: TServerSettings);
 var
-  ProjectFile, Signature, State, CacheFile, CacheOrigin: string;
+  mProjectFile, Signature, State, CacheFile, CacheOrigin: string;
   Installation: ILibraryPathProvider;
   Options: TDprojOptions;
   Project: TProjectInfo;
@@ -1411,15 +1411,15 @@ begin
       [FName]));
     Exit;
   end;
-  ProjectFile := FindProjectFile(ASettings);
-  if ProjectFile = '' then
+  mProjectFile := FindProjectFile(ASettings);
+  if mProjectFile = '' then
     Exit;
   // In der IDE bestimmt die IDE Konfiguration, Plattform, Optionen und Delphi-Version (#396).
   Context := Default(TIdeProjectContext);
-  HasContext := (FIdeProjects <> nil) and FIdeProjects.Find(ProjectFile, Context);
+  HasContext := (FIdeProjects <> nil) and FIdeProjects.Find(mProjectFile, Context);
   // Konfiguration vor ProjectVersion der .dproj vor neuester Installation (#47).
   try
-    ProjectVersion := TDelphiVersions.ProjectVersionOf(TFileEncoding.LoadText(ProjectFile));
+    ProjectVersion := TDelphiVersions.ProjectVersionOf(TFileEncoding.LoadText(mProjectFile));
   except
     on Exception do
       ProjectVersion := '';
@@ -1457,7 +1457,7 @@ begin
     begin
       Result := FileExists(AFileName);
     end;
-  RestoreBuild(ProjectFile);
+  RestoreBuild(mProjectFile);
   Options := Default(TDprojOptions);
   Options.Config := ASettings.Config;
   Options.Platform := ASettings.Platform;
@@ -1478,7 +1478,7 @@ begin
   if Installation <> nil then
     Options.Variables := Installation.Variables;
   try
-    Project := TDprojReader.Load(ProjectFile, Options);
+    Project := TDprojReader.Load(mProjectFile, Options);
     // Gemerkte Wahl (#46), die es im Projekt nicht mehr gibt: mit den Vorgaben weiter.
     if DropUnknownBuild(Project) then
     begin
@@ -1488,12 +1488,12 @@ begin
         Options.Config := Context.Configuration;
       if HasContext and (Context.Platform <> '') then
         Options.Platform := Context.Platform;
-      Project := TDprojReader.Load(ProjectFile, Options);
+      Project := TDprojReader.Load(mProjectFile, Options);
     end;
   except
     on E: EProjectError do
     begin
-      FLogger.Error(Format('Projekt %s nicht lesbar: %s', [ProjectFile, E.Message]));
+      FLogger.Error(Format('Projekt %s nicht lesbar: %s', [mProjectFile, E.Message]));
       Exit;
     end;
   end;
@@ -1594,7 +1594,7 @@ begin
   PackageFolders := nil;
   if Assigned(FOnPackageFolders) then
     PackageFolders := FOnPackageFolders();
-  Locator := TPackageLocator.Create(PackageFolders + [ExtractFileDir(ProjectFile)] + Project.SearchPaths +
+  Locator := TPackageLocator.Create(PackageFolders + [ExtractFileDir(mProjectFile)] + Project.SearchPaths +
     CompilerLibraryPaths);
   TMonitor.Enter(FLock);
   try
@@ -1698,7 +1698,7 @@ begin
     TMonitor.Exit(FLock);
   end;
   FLogger.Info(Format('Symbolindex für %s (%s, %s): %d Projektdateien, %d Units der Suchpfade, %d der Bibliothek, Cache %s',
-    [ProjectFile, Project.Config, Project.Platform, Length(Request.Files), Length(Request.SearchFiles),
+    [mProjectFile, Project.Config, Project.Platform, Length(Request.Files), Length(Request.SearchFiles),
      Length(Request.LibraryFiles), CacheFile]));
   IndexEvent(Format('index project#%d start files %d search %d library %d cache %s',
     [FPriority, Length(Request.Files), Length(Request.SearchFiles), Length(Request.LibraryFiles),

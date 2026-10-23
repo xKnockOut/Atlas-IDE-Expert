@@ -694,7 +694,7 @@ end;
 
 procedure TAtlasWelcomeSetupFrame.ClickButton(AButton: TAtlasSetupButton);
 var
-  Source: IAtlasSetupSource;
+  mSource: IAtlasSetupSource;
   Open: Boolean;
   Template: TAtlasSetupTemplate;
 begin
@@ -704,7 +704,7 @@ begin
     Exit;
   if (AButton = TAtlasSetupButton.Dismiss) and not FDismiss.Visible then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Open := FCard.ProjectOpen;
   Template := SelectedTemplate;
   // Nicht im Klick des Knopfs: Vorschau und Projektoptionen sind modale Dialoge.
@@ -713,27 +713,27 @@ begin
     begin
       case AButton of
         TAtlasSetupButton.CreateConfig:
-          Source.CreateConfig(Template);
+          mSource.CreateConfig(Template);
         TAtlasSetupButton.Baseline:
           if Open then
-            Source.StartBaseline
+            mSource.StartBaseline
           else
-            Source.OpenProject;
+            mSource.OpenProject;
         TAtlasSetupButton.Paths:
           if Open then
-            Source.CheckPaths
+            mSource.CheckPaths
           else
-            Source.OpenProject;
+            mSource.OpenProject;
         TAtlasSetupButton.Options:
-          Source.OpenOptions;
+          mSource.OpenOptions;
         TAtlasSetupButton.Dismiss:
-          Source.Dismiss;
+          mSource.Dismiss;
         TAtlasSetupButton.NewUnit:
-          Source.NewFile(TAtlasNewFileKind.UnitFile);
+          mSource.NewFile(TAtlasNewFileKind.UnitFile);
         TAtlasSetupButton.NewForm:
-          Source.NewFile(TAtlasNewFileKind.FormFile);
+          mSource.NewFile(TAtlasNewFileKind.FormFile);
       else
-        Source.NewFile(TAtlasNewFileKind.TestFile);
+        mSource.NewFile(TAtlasNewFileKind.TestFile);
       end;
     end);
 end;

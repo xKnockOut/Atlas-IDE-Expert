@@ -78,11 +78,11 @@ end;
 class function TAtlasSignatureController.TooManyArguments(const AHelp: TAtlasSignatureHelp;
   AParameter: Integer): Boolean;
 var
-  Signature: TAtlasSignature;
+  mSignature: TAtlasSignature;
 begin
   Result := Length(AHelp.Signatures) > 0;
-  for Signature in AHelp.Signatures do
-    if CountFits(Signature, AParameter) then
+  for mSignature in AHelp.Signatures do
+    if CountFits(mSignature, AParameter) then
       Exit(False);
 end;
 

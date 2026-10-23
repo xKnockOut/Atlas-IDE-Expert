@@ -616,7 +616,7 @@ var
   Index, Middle: Integer;
   Button: TAtlasToolbarButton;
   Area: TRect;
-  Text: string;
+  mText: string;
 begin
   Layout;
   Canvas.Brush.Style := bsSolid;
@@ -645,10 +645,10 @@ begin
       Canvas.LineTo(Middle, Area.Bottom - Scale(4));
       Continue;
     end;
-    Text := '';
+    mText := '';
     if FLabels then
-      Text := Button.Caption;
-    DrawButton(Area, Button.Icon, Button.Caption, Button.Enabled, Button.Pressed, FHot = Index, Button.Dot, Text);
+      mText := Button.Caption;
+    DrawButton(Area, Button.Icon, Button.Caption, Button.Enabled, Button.Pressed, FHot = Index, Button.Dot, mText);
   end;
   if not FReturnRect.IsEmpty then
   begin

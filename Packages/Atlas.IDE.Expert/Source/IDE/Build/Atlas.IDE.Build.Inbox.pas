@@ -108,12 +108,12 @@ end;
 procedure TAtlasIdeBuildInbox.Process(const ARequestFile: string);
 var
   Request: TAtlasBuildRequest;
-  Reason, Folder: string;
+  Reason, mFolder: string;
   OnMessage: TAtlasBuildInboxProc;
 begin
   if not TAtlasBuildInbox.Take(ARequestFile, Request, Reason) then
     Exit;
-  Folder := FFolder;
+  mFolder := FFolder;
   OnMessage := FOnMessage;
   if Assigned(OnMessage) then
     OnMessage(TAtlasStrings.Fmt(TAtlasTextId.McpBuildStarted, [ExtractFileName(Request.Project)]));
@@ -123,9 +123,9 @@ begin
     begin
       try
         if AError <> '' then
-          TAtlasBuildInbox.Answer(Folder, Request.Id, TAtlasBuildInbox.RefusalText(AError))
+          TAtlasBuildInbox.Answer(mFolder, Request.Id, TAtlasBuildInbox.RefusalText(AError))
         else
-          TAtlasBuildInbox.Answer(Folder, Request.Id, TAtlasBuildInbox.SuccessText(AReport));
+          TAtlasBuildInbox.Answer(mFolder, Request.Id, TAtlasBuildInbox.SuccessText(AReport));
         if Assigned(OnMessage) and (AError = '') then
           OnMessage(TAtlasStrings.Fmt(TAtlasTextId.McpBuildFinished, [ExtractFileName(Request.Project),
             ErrorCount(AReport.Messages)]));

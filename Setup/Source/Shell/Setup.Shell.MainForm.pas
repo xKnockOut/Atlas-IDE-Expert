@@ -104,7 +104,7 @@ end;
 constructor TSetupMainForm.CreateSetup(AOwner: TComponent; const ASystem: ISetupSystem;
   const APaths: TSetupPaths; const AVersion: string; AUninstall: Boolean);
 var
-  Top: Integer;
+  mTop: Integer;
 begin
   CreateNew(AOwner);
   FUninstallMode := AUninstall;
@@ -116,31 +116,31 @@ begin
   ClientWidth := FormWidth;
   Font.Name := 'Segoe UI';
   Font.Size := 9;
-  Top := Margin;
+  mTop := Margin;
   if AUninstall then
   begin
     Caption := TSetupTexts.Get(TSetupTextId.UninstallTitle);
-    BuildUninstall(Top);
+    BuildUninstall(mTop);
   end
   else
   begin
     Caption := TSetupTexts.Fmt(TSetupTextId.Title, [AVersion]);
-    BuildInstall(Top);
+    BuildInstall(mTop);
   end;
   FLog := TMemo.Create(Self);
   FLog.Parent := Self;
-  FLog.SetBounds(Margin, Top, FormWidth - 2 * Margin, 140);
+  FLog.SetBounds(Margin, mTop, FormWidth - 2 * Margin, 140);
   FLog.ReadOnly := True;
   FLog.ScrollBars := ssVertical;
-  Inc(Top, FLog.Height + Margin);
+  Inc(mTop, FLog.Height + Margin);
   FCloseButton := TButton.Create(Self);
   FCloseButton.Parent := Self;
   FCloseButton.Caption := TSetupTexts.Get(TSetupTextId.CloseButton);
-  FCloseButton.SetBounds(FormWidth - Margin - 100, Top, 100, 28);
+  FCloseButton.SetBounds(FormWidth - Margin - 100, mTop, 100, 28);
   FCloseButton.Cancel := True;
   FCloseButton.OnClick := CloseClick;
-  FActionButton.SetBounds(FCloseButton.Left - Margin - 120, Top, 120, 28);
-  ClientHeight := Top + 28 + Margin;
+  FActionButton.SetBounds(FCloseButton.Left - Margin - 120, mTop, 120, 28);
+  ClientHeight := mTop + 28 + Margin;
 end;
 
 destructor TSetupMainForm.Destroy;

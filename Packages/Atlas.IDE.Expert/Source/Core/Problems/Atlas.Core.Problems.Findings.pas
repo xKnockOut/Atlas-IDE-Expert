@@ -1151,14 +1151,14 @@ end;
 function TAtlasFindingsView.Counts: TAtlasFindingCounts;
 var
   Finding: TAtlasFinding;
-  Files, OpenUnits, ClosedUnits, HiddenUnits: TDictionary<string, Boolean>;
+  Files, OpenUnits, mClosedUnits, HiddenUnits: TDictionary<string, Boolean>;
   Tiers: Boolean;
 begin
   Result := Default(TAtlasFindingCounts);
   Tiers := TiersActive;
   Files := TDictionary<string, Boolean>.Create;
   OpenUnits := TDictionary<string, Boolean>.Create;
-  ClosedUnits := TDictionary<string, Boolean>.Create;
+  mClosedUnits := TDictionary<string, Boolean>.Create;
   HiddenUnits := TDictionary<string, Boolean>.Create;
   try
     for Finding in FFindings do
@@ -1176,7 +1176,7 @@ begin
       begin
         if Finding.Tier = TAtlasFindingTier.Closed then
         begin
-          ClosedUnits.AddOrSetValue(TAtlasFindings.UnitKey(Finding.FileName), True);
+          mClosedUnits.AddOrSetValue(TAtlasFindings.UnitKey(Finding.FileName), True);
           Inc(Result.ClosedFindings);
         end
         else
@@ -1198,11 +1198,11 @@ begin
     end;
     Result.Files := Files.Count;
     Result.OpenUnits := OpenUnits.Count;
-    Result.ClosedUnits := ClosedUnits.Count;
+    Result.ClosedUnits := mClosedUnits.Count;
     Result.HiddenUnits := HiddenUnits.Count;
   finally
     HiddenUnits.Free;
-    ClosedUnits.Free;
+    mClosedUnits.Free;
     OpenUnits.Free;
     Files.Free;
   end;

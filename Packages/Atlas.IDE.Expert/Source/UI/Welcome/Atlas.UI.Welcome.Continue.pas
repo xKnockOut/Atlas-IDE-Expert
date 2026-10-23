@@ -552,7 +552,7 @@ end;
 
 procedure TAtlasWelcomeContinueFrame.OpenSelected;
 var
-  Source: IAtlasContinueSource;
+  mSource: IAtlasContinueSource;
   Item: TAtlasSavedItem;
   Index: Integer;
 begin
@@ -561,13 +561,13 @@ begin
   Index := FList.Selected.Index;
   if (Index < 0) or (Index > High(FShownSaved)) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Item := FShownSaved[Index];
   // Die Quelle öffnet Projekt und Datei: nicht im eigenen Ereignis.
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.OpenSaved(Item);
+      mSource.OpenSaved(Item);
     end);
 end;
 
@@ -989,13 +989,13 @@ end;
 
 procedure TAtlasWelcomeContinueFrame.ClickAt(const AHit: TAtlasContinueHit);
 var
-  Source: IAtlasContinueSource;
+  mSource: IAtlasContinueSource;
   Project: string;
   Commit: TAtlasContinueCommit;
 begin
   if FSource = nil then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   if AHit.Button and (AHit.Row >= 0) and (AHit.Row <= High(FEntries)) then
   begin
     Project := FEntries[AHit.Row].Project;
@@ -1003,7 +1003,7 @@ begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
       procedure
       begin
-        Source.Resume(Project);
+        mSource.Resume(Project);
       end);
     Exit;
   end;
@@ -1014,7 +1014,7 @@ begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
       procedure
       begin
-        Source.ShowCommit(Project, Commit);
+        mSource.ShowCommit(Project, Commit);
       end);
   end;
 end;

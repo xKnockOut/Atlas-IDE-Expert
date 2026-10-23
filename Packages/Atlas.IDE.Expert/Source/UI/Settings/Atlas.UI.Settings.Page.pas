@@ -2005,7 +2005,7 @@ end;
 
 procedure TAtlasSettingsPage.AddExperimentalBanner;
 var
-  Text: TLabel;
+  mText: TLabel;
   Button: TButton;
 begin
   FExperimentalBanner := TAtlasSettingsRow.Create(Self);
@@ -2021,28 +2021,28 @@ begin
   Button.Width := 90;
   Button.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalAllow);
   Button.OnClick := ExperimentalAllowClick;
-  Text := TLabel.Create(Self);
-  Text.Parent := FExperimentalBanner;
-  Text.Align := alClient;
-  Text.Layout := tlCenter;
-  Text.WordWrap := True;
-  Text.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalOff);
+  mText := TLabel.Create(Self);
+  mText.Parent := FExperimentalBanner;
+  mText.Align := alClient;
+  mText.Layout := tlCenter;
+  mText.WordWrap := True;
+  mText.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalOff);
 end;
 
 procedure TAtlasSettingsPage.AddFilterRow;
 var
-  Caption: TLabel;
+  mCaption: TLabel;
 begin
   FFilterRow := TAtlasSettingsRow.Create(Self);
   FFilterRow.Parent := Self;
   FFilterRow.Align := alBottom;
   FFilterRow.AlignWithMargins := True;
   FFilterRow.Height := 26;
-  Caption := TLabel.Create(Self);
-  Caption.Parent := FFilterRow;
-  Caption.Left := 0;
-  Caption.Top := 5;
-  Caption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFilter);
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := FFilterRow;
+  mCaption.Left := 0;
+  mCaption.Top := 5;
+  mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFilter);
   // Reihenfolge wie TAtlasSettingsFilter.
   FFilter := TAtlasChoiceBox.Create(Self);
   FFilter.Parent := FFilterRow;
@@ -2116,7 +2116,7 @@ end;
 procedure TAtlasSettingsPage.ApplyReveal(const AKey: string);
 var
   Control, Master: TControl;
-  Parent: TWinControl;
+  mParent: TWinControl;
   Child: Integer;
   Names: TArray<string>;
   Lock: TAtlasSettingsLock;
@@ -2145,11 +2145,11 @@ begin
   // Knoten des Elements wählen, wie ein Klick im Baum links.
   SelectPage(PageOf(Control));
   // Ins Bild rollen.
-  Parent := Control.Parent;
-  while (Parent <> nil) and not (Parent is TScrollBox) do
-    Parent := Parent.Parent;
-  if Parent is TScrollBox then
-    TScrollBox(Parent).ScrollInView(Control);
+  mParent := Control.Parent;
+  while (mParent <> nil) and not (mParent is TScrollBox) do
+    mParent := mParent.Parent;
+  if mParent is TScrollBox then
+    TScrollBox(mParent).ScrollInView(Control);
   // Zeile hervorheben: Kontrollkästchen fett, sonst die Beschriftung der Zeile.
   if Control is TCheckBox then
     TCheckBox(Control).Font.Style := [fsBold]
@@ -2166,7 +2166,7 @@ end;
 procedure TAtlasSettingsPage.AddWelcomeSection;
 var
   Series: TAtlasTrendSeries;
-  Action: TAtlasQuickAction;
+  mAction: TAtlasQuickAction;
   Panel: TWinControl;
 begin
   // Atlas-Bereiche auf der Willkommensseite (#753).
@@ -2234,9 +2234,9 @@ begin
   FTrackerLogin := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTrackerLogin));
   // Schnellaktionen je Projekt (#764): Schalter, je Knopf ein Häkchen, Programm für „Konsole“, zwei Tasten.
   FWelcomeQuickActions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeQuickActions));
-  for Action := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
-    FWelcomeQuickActionsItems[Action] := AddCheck(TAtlasStrings.Fmt(TAtlasTextId.SettingsWelcomeQuickActionsItem,
-      [QuickActionTitle(Action)]));
+  for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
+    FWelcomeQuickActionsItems[mAction] := AddCheck(TAtlasStrings.Fmt(TAtlasTextId.SettingsWelcomeQuickActionsItem,
+      [QuickActionTitle(mAction)]));
   FWelcomeQuickActionsConsole := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeQuickActionsConsole));
   FWelcomeQuickActionsBuildKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeQuickActionsBuildKey));
   FWelcomeQuickActionsTestKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeQuickActionsTestKey));
@@ -2301,13 +2301,13 @@ procedure TAtlasSettingsPage.AddWelcomeLayoutButtons;
   end;
 
 var
-  Left: Integer;
+  mLeft: Integer;
 begin
-  Left := FWelcomeActiveLayout.Left + FWelcomeActiveLayout.Width + 6;
-  FWelcomeLayoutNew := AddButton(Left, TAtlasTextId.SettingsWelcomeLayoutNew, WelcomeLayoutNewClick);
-  FWelcomeLayoutRename := AddButton(Left + 102, TAtlasTextId.SettingsWelcomeLayoutRename,
+  mLeft := FWelcomeActiveLayout.Left + FWelcomeActiveLayout.Width + 6;
+  FWelcomeLayoutNew := AddButton(mLeft, TAtlasTextId.SettingsWelcomeLayoutNew, WelcomeLayoutNewClick);
+  FWelcomeLayoutRename := AddButton(mLeft + 102, TAtlasTextId.SettingsWelcomeLayoutRename,
     WelcomeLayoutRenameClick);
-  FWelcomeLayoutDelete := AddButton(Left + 204, TAtlasTextId.SettingsWelcomeLayoutDelete,
+  FWelcomeLayoutDelete := AddButton(mLeft + 204, TAtlasTextId.SettingsWelcomeLayoutDelete,
     WelcomeLayoutDeleteClick);
 end;
 
@@ -2433,16 +2433,16 @@ end;
 
 procedure TAtlasSettingsPage.WelcomeLayoutNewClick(Sender: TObject);
 var
-  Name: string;
+  mName: string;
   Layouts: TAtlasWelcomeLayouts;
 begin
-  Name := '';
-  if not AskLayoutName(Name) or (Trim(Name) = '') then
+  mName := '';
+  if not AskLayoutName(mName) or (Trim(mName) = '') then
     Exit;
   KeepWelcomeLayout;
-  if not FPageLayouts.Added(Trim(Name), Layouts) then
+  if not FPageLayouts.Added(Trim(mName), Layouts) then
   begin
-    ConfirmLayout(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeLayoutTaken, [Trim(Name)]), False);
+    ConfirmLayout(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeLayoutTaken, [Trim(mName)]), False);
     Exit;
   end;
   // Die Kopie übernimmt die Sichtbarkeit; die Häkchen bleiben.
@@ -2452,15 +2452,15 @@ end;
 
 procedure TAtlasSettingsPage.WelcomeLayoutRenameClick(Sender: TObject);
 var
-  Name: string;
+  mName: string;
   Layouts: TAtlasWelcomeLayouts;
 begin
-  Name := FPageLayouts.ActiveName;
-  if not AskLayoutName(Name) or (Trim(Name) = '') or (Trim(Name) = FPageLayouts.ActiveName) then
+  mName := FPageLayouts.ActiveName;
+  if not AskLayoutName(mName) or (Trim(mName) = '') or (Trim(mName) = FPageLayouts.ActiveName) then
     Exit;
-  if not FPageLayouts.Renamed(Trim(Name), Layouts) then
+  if not FPageLayouts.Renamed(Trim(mName), Layouts) then
   begin
-    ConfirmLayout(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeLayoutTaken, [Trim(Name)]), False);
+    ConfirmLayout(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeLayoutTaken, [Trim(mName)]), False);
     Exit;
   end;
   FPageLayouts := Layouts;
@@ -2717,7 +2717,7 @@ procedure TAtlasSettingsPage.BindControls;
 var
   Check: TAtlasReleaseCheck;
   Series: TAtlasTrendSeries;
-  Action: TAtlasQuickAction;
+  mAction: TAtlasQuickAction;
   Kind: TAtlasOverviewKind;
 begin
   // Aus SaveTo: Element und die Einstellungen, die es schreibt. Listen aus mehreren Haken zeigen keinen Punkt
@@ -3067,8 +3067,8 @@ begin
   end;
   for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
     FMarks.Bind(FWelcomeTrendsSeries[Series], ['WelcomePageTrendsSeries'], False);
-  for Action := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
-    FMarks.Bind(FWelcomeQuickActionsItems[Action], ['WelcomePageQuickActionsItems'], False);
+  for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
+    FMarks.Bind(FWelcomeQuickActionsItems[mAction], ['WelcomePageQuickActionsItems'], False);
 end;
 
 destructor TAtlasSettingsPage.Destroy;
@@ -3363,7 +3363,7 @@ var
   Page, Index: Integer;
   Box: TScrollBox;
   Row: TWinControl;
-  Text: TLabel;
+  mText: TLabel;
   Group: string;
 
   function AddRow(ATop: Integer): TWinControl;
@@ -3390,24 +3390,24 @@ begin
   // „Profile und Baseline“: Profile gelten je Projekt (atlas.json), die Baseline je Projekt.
   Page := AddNodePageCaption(FRulesArea, 'rules.profiles', TAtlasStrings.Text(TAtlasTextId.RulesProfilesNode));
   Box := FNodePages[Page].Box;
-  Text := TLabel.Create(Self);
-  Text.Parent := Box;
-  Text.Align := alTop;
-  Text.AlignWithMargins := True;
-  Text.WordWrap := True;
-  Text.ShowAccelChar := False;
-  Text.Caption := TAtlasStrings.Text(TAtlasTextId.RulesProfilesText);
-  Text.Top := 1000;
+  mText := TLabel.Create(Self);
+  mText.Parent := Box;
+  mText.Align := alTop;
+  mText.AlignWithMargins := True;
+  mText.WordWrap := True;
+  mText.ShowAccelChar := False;
+  mText.Caption := TAtlasStrings.Text(TAtlasTextId.RulesProfilesText);
+  mText.Top := 1000;
   Row := AddRow(2000);
   FRulesProject := AddButton(Row, TAtlasStrings.Text(TAtlasTextId.RulesProjectButton), 0, RulesProjectClick);
-  Text := TLabel.Create(Self);
-  Text.Parent := Box;
-  Text.Align := alTop;
-  Text.AlignWithMargins := True;
-  Text.ShowAccelChar := False;
-  Text.Font.Style := [fsBold];
-  Text.Caption := TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineTitle);
-  Text.Top := 3000;
+  mText := TLabel.Create(Self);
+  mText.Parent := Box;
+  mText.Align := alTop;
+  mText.AlignWithMargins := True;
+  mText.ShowAccelChar := False;
+  mText.Font.Style := [fsBold];
+  mText.Caption := TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineTitle);
+  mText.Top := 3000;
   FBaselineInfo := TLabel.Create(Self);
   FBaselineInfo.Parent := Box;
   FBaselineInfo.Align := alTop;
@@ -3737,7 +3737,7 @@ end;
 procedure TAtlasSettingsPage.AddOverview(AArea: Integer);
 var
   Overview, Frame: TAtlasSettingsGroup;
-  Caption, Details: TLabel;
+  mCaption, Details: TLabel;
   Row: TWinControl;
   Mirror: TCheckBox;
   Main, Index, Child: Integer;
@@ -3763,10 +3763,10 @@ begin
         Overview := TAtlasSettingsGroup.Create(Self);
         FPlaceTop := 100000;
         Place(Overview, FNodePages[Main].Box);
-        Caption := TLabel.Create(Self);
-        Caption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsOverviewTitle);
-        Caption.Font.Style := [fsBold];
-        Overview.SetMaster(Caption, '');
+        mCaption := TLabel.Create(Self);
+        mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsOverviewTitle);
+        mCaption.Font.Style := [fsBold];
+        Overview.SetMaster(mCaption, '');
         FOverviews := FOverviews + [Overview];
         FMarks.Pin(Overview);
       end;
@@ -3797,11 +3797,11 @@ begin
       end
       else
       begin
-        Caption := TLabel.Create(Self);
-        Caption.Parent := Row;
-        Caption.Align := alClient;
-        Caption.Layout := tlCenter;
-        Caption.Caption := FMarks.TextOfName(Frame.MasterName);
+        mCaption := TLabel.Create(Self);
+        mCaption.Parent := Row;
+        mCaption.Align := alClient;
+        mCaption.Layout := tlCenter;
+        mCaption.Caption := FMarks.TextOfName(Frame.MasterName);
       end;
     end;
   end;
@@ -3838,17 +3838,17 @@ end;
 
 function TAtlasSettingsPage.PageOf(AControl: TControl): Integer;
 var
-  Parent: TControl;
+  mParent: TControl;
   Index: Integer;
 begin
   Result := -1;
-  Parent := AControl;
-  while (Parent <> nil) and not (Parent is TTabSheet) do
-    Parent := Parent.Parent;
-  if Parent = nil then
+  mParent := AControl;
+  while (mParent <> nil) and not (mParent is TTabSheet) do
+    mParent := mParent.Parent;
+  if mParent = nil then
     Exit;
   for Index := 0 to High(FNodePages) do
-    if FNodePages[Index].Sheet = Parent then
+    if FNodePages[Index].Sheet = mParent then
       Exit(Index);
 end;
 
@@ -3958,7 +3958,7 @@ procedure TAtlasSettingsPage.RefreshTree;
 var
   Index, Page: Integer;
   Node: TTreeNode;
-  Text: string;
+  mText: string;
 begin
   if not FTree.HandleAllocated then
     Exit;
@@ -3969,11 +3969,11 @@ begin
     if (Page < 0) or (Page > High(FNodePages)) then
       Continue;
     // Punkt wie an den Einstellungen: Auf dieser Seite ist etwas geändert.
-    Text := FNodePages[Page].Caption;
+    mText := FNodePages[Page].Caption;
     if FMarks.HasMarked(FNodePages[Page].Box) then
-      Text := TAtlasSettingsMarks.Dot + Text;
-    if Node.Text <> Text then
-      Node.Text := Text;
+      mText := TAtlasSettingsMarks.Dot + mText;
+    if Node.Text <> mText then
+      Node.Text := mText;
   end;
   FTree.Invalidate;
 end;
@@ -4044,7 +4044,7 @@ end;
 function TAtlasSettingsPage.LockText(const ALock: TAtlasSettingsLock): string;
 var
   Page, Entry: Integer;
-  Where, Caption: string;
+  Where, mCaption: string;
 begin
   Result := '';
   case ALock.Reason of
@@ -4052,9 +4052,9 @@ begin
       Result := TAtlasStrings.Text(TAtlasTextId.SettingsLockedExperimental);
     lrMasterOff:
       begin
-        Caption := FMarks.TextOfName(ALock.Master);
-        if Caption = '' then
-          Caption := FGroups.KeyOf(ALock.Master);
+        mCaption := FMarks.TextOfName(ALock.Master);
+        if mCaption = '' then
+          mCaption := FGroups.KeyOf(ALock.Master);
         Where := '';
         Page := PageOf(FMarks.ControlOfName(ALock.Master));
         if Page >= 0 then
@@ -4069,7 +4069,7 @@ begin
           if Entry >= 0 then
             Where := Catalog.Entries[Entry].Page;
         end;
-        Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsLockedMaster, [Caption, Where]);
+        Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsLockedMaster, [mCaption, Where]);
       end;
   end;
 end;
@@ -4388,15 +4388,15 @@ end;
 procedure TAtlasSettingsPage.AddTitle(AId: TAtlasTextId);
 var
   Panel: TWinControl;
-  Caption: TLabel;
+  mCaption: TLabel;
 begin
   Panel := AddPanel(22);
-  Caption := TLabel.Create(Self);
-  Caption.Parent := Panel;
-  Caption.Caption := TAtlasStrings.Text(AId);
-  Caption.Font.Style := [fsBold];
-  Caption.Left := 0;
-  Caption.Top := 4;
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := Panel;
+  mCaption.Caption := TAtlasStrings.Text(AId);
+  mCaption.Font.Style := [fsBold];
+  mCaption.Left := 0;
+  mCaption.Top := 4;
 end;
 
 procedure TAtlasSettingsPage.AddIndexSection;
@@ -4532,7 +4532,7 @@ end;
 procedure TAtlasSettingsPage.RefreshFuse;
 var
   Feature: TAtlasFeature;
-  Name: string;
+  mName: string;
   Any: Boolean;
 begin
   // Ohne Fenster (IDE erzeugt die Seite vor dem Einhängen) folgt das in CreateWnd.
@@ -4544,8 +4544,8 @@ begin
     // Objects: Feature + 1; nil bei einer Quelle (Name im Text).
     for Feature in TAtlasGuard.DisabledSet do
       FFuseList.Items.AddObject(TAtlasGuard.FeatureName(Feature), TObject(NativeInt(Ord(Feature) + 1)));
-    for Name in TAtlasGuard.DisabledProviders do
-      FFuseList.Items.AddObject(Name, nil);
+    for mName in TAtlasGuard.DisabledProviders do
+      FFuseList.Items.AddObject(mName, nil);
     Any := FFuseList.Items.Count > 0;
     if not Any then
       FFuseList.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsFuseNone));
@@ -4560,14 +4560,14 @@ end;
 procedure TAtlasSettingsPage.FuseEnableSelectedClick(Sender: TObject);
 var
   Index: Integer;
-  Tag: NativeInt;
+  mTag: NativeInt;
 begin
   for Index := 0 to FFuseList.Items.Count - 1 do
     if FFuseList.Selected[Index] then
     begin
-      Tag := NativeInt(FFuseList.Items.Objects[Index]);
-      if Tag > 0 then
-        TAtlasGuard.Enable(TAtlasFeature(Tag - 1))
+      mTag := NativeInt(FFuseList.Items.Objects[Index]);
+      if mTag > 0 then
+        TAtlasGuard.Enable(TAtlasFeature(mTag - 1))
       else
         TAtlasGuard.EnableProvider(FFuseList.Items[Index]);
     end;
@@ -4583,18 +4583,18 @@ end;
 procedure TAtlasSettingsPage.AddSafeSection;
 var
   Panel: TWinControl;
-  Caption: TLabel;
+  mCaption: TLabel;
 begin
   // Abgesicherter Start nach einem Absturz (#722).
   AddTitle(TAtlasTextId.SettingsSafeTitle);
   FSafeAsk := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSafeAsk));
   FSafeAuto := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSafeAuto));
   Panel := AddPanel(26);
-  Caption := TLabel.Create(Self);
-  Caption.Parent := Panel;
-  Caption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsSafeKey);
-  Caption.Left := 0;
-  Caption.Top := 5;
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := Panel;
+  mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsSafeKey);
+  mCaption.Left := 0;
+  mCaption.Top := 5;
   FSafeKey := TAtlasChoiceBox.Create(Self);
   FSafeKey.Parent := Panel;
   FSafeKey.Left := FieldLeft;
@@ -4686,14 +4686,14 @@ end;
 function TAtlasSettingsPage.AddChoice(const ACaption: string; const AItems: array of string): TAtlasChoiceBox;
 var
   Panel: TWinControl;
-  Caption: TLabel;
+  mCaption: TLabel;
 begin
   Panel := AddPanel(26);
-  Caption := TLabel.Create(Self);
-  Caption.Parent := Panel;
-  Caption.Caption := ACaption;
-  Caption.Left := 0;
-  Caption.Top := 5;
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := Panel;
+  mCaption.Caption := ACaption;
+  mCaption.Left := 0;
+  mCaption.Top := 5;
   Result := TAtlasChoiceBox.Create(Self);
   Result.Parent := Panel;
   Result.Left := FieldLeft;
@@ -4729,16 +4729,16 @@ end;
 procedure TAtlasSettingsPage.AddNotificationSources;
 var
   Panel: TWinControl;
-  Caption: TLabel;
+  mCaption: TLabel;
   Names: TArray<string>;
   Source: string;
 begin
   Panel := AddPanel(26);
-  Caption := TLabel.Create(Self);
-  Caption.Parent := Panel;
-  Caption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsNotificationsSources);
-  Caption.Left := 0;
-  Caption.Top := 5;
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := Panel;
+  mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsNotificationsSources);
+  mCaption.Left := 0;
+  mCaption.Top := 5;
   Names := nil;
   for Source in TAtlasNotificationSources.Known do
     Names := Names + [TAtlasNotificationsWindow.SourceCaption(Source)];
@@ -4789,14 +4789,14 @@ end;
 function TAtlasSettingsPage.AddKey(const ACaption: string): TEdit;
 var
   Panel: TWinControl;
-  Caption: TLabel;
+  mCaption: TLabel;
 begin
   Panel := AddPanel(26);
-  Caption := TLabel.Create(Self);
-  Caption.Parent := Panel;
-  Caption.Caption := StringReplace(ACaption, '…', '', []);
-  Caption.Left := 0;
-  Caption.Top := 5;
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := Panel;
+  mCaption.Caption := StringReplace(ACaption, '…', '', []);
+  mCaption.Left := 0;
+  mCaption.Top := 5;
   // Als Text wie im Menü ("Strg+Umschalt+P"); leer = keine Taste.
   Result := TEdit.Create(Self);
   Result.Parent := Panel;
@@ -4808,15 +4808,15 @@ end;
 procedure TAtlasSettingsPage.AddSwatches(const ACaption: string; var ASwatches: array of TShape);
 var
   Panel: TWinControl;
-  Caption: TLabel;
+  mCaption: TLabel;
   Index: Integer;
 begin
   Panel := AddPanel(26);
-  Caption := TLabel.Create(Self);
-  Caption.Parent := Panel;
-  Caption.Caption := ACaption;
-  Caption.Left := 0;
-  Caption.Top := 5;
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := Panel;
+  mCaption.Caption := ACaption;
+  mCaption.Left := 0;
+  mCaption.Top := 5;
   for Index := 0 to High(ASwatches) do
   begin
     ASwatches[Index] := TShape.Create(Self);
@@ -4878,14 +4878,14 @@ end;
 function TAtlasSettingsPage.AddNumber(const ACaption: string): TEdit;
 var
   Panel: TWinControl;
-  Caption: TLabel;
+  mCaption: TLabel;
 begin
   Panel := AddPanel(26);
-  Caption := TLabel.Create(Self);
-  Caption.Parent := Panel;
-  Caption.Caption := ACaption;
-  Caption.Left := 0;
-  Caption.Top := 5;
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := Panel;
+  mCaption.Caption := ACaption;
+  mCaption.Left := 0;
+  mCaption.Top := 5;
   Result := TEdit.Create(Self);
   Result.Parent := Panel;
   Result.Left := FieldLeft;
@@ -4921,7 +4921,7 @@ var
   Shown: TAtlasTrendSeriesList;
   Series, Wanted: TAtlasTrendSeries;
   Items: TAtlasQuickActions;
-  Action: TAtlasQuickAction;
+  mAction: TAtlasQuickAction;
   Kind: TAtlasOverviewKind;
   Kinds: TAtlasOverviewKinds;
 begin
@@ -5300,8 +5300,8 @@ begin
   FTrackerLogin.Checked := ASettings.TrackerLogin;
   FWelcomeQuickActions.Checked := ASettings.WelcomePageQuickActions;
   Items := TAtlasWelcomeQuickActions.ParseItems(ASettings.WelcomePageQuickActionsItems);
-  for Action := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
-    FWelcomeQuickActionsItems[Action].Checked := Action in Items;
+  for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
+    FWelcomeQuickActionsItems[mAction].Checked := mAction in Items;
   FWelcomeQuickActionsConsole.Text := ASettings.WelcomePageQuickActionsConsole;
   FWelcomeQuickActionsBuildKey.Text := ShortCutToText(TShortCut(ASettings.WelcomePageQuickActionsBuildKey));
   FWelcomeQuickActionsTestKey.Text := ShortCutToText(TShortCut(ASettings.WelcomePageQuickActionsTestKey));
@@ -5336,7 +5336,7 @@ var
   Shown: TAtlasTrendSeriesList;
   Series: TAtlasTrendSeries;
   Items: TAtlasQuickActions;
-  Action: TAtlasQuickAction;
+  mAction: TAtlasQuickAction;
   Kind: TAtlasOverviewKind;
   Kinds: TAtlasOverviewKinds;
 begin
@@ -5753,9 +5753,9 @@ begin
   ASettings.TrackerLogin := FTrackerLogin.Checked;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];
-  for Action := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
-    if FWelcomeQuickActionsItems[Action].Checked then
-      Include(Items, Action);
+  for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
+    if FWelcomeQuickActionsItems[mAction].Checked then
+      Include(Items, mAction);
   ASettings.WelcomePageQuickActionsItems := TAtlasWelcomeQuickActions.ItemsText(Items);
   ASettings.WelcomePageQuickActionsConsole := TAtlasWelcomeQuickActions.NormalizedConsole(
     FWelcomeQuickActionsConsole.Text);

@@ -728,7 +728,7 @@ var
   Resolver: TNameResolver;
   Info: THoverInfo;
   Contents, Atlas: TJSONObject;
-  DelphiVersion, Markdown, SymbolMarkdown, ConditionMarkdown: string;
+  DelphiVersion, mMarkdown, SymbolMarkdown, ConditionMarkdown: string;
   Watch: TStopwatch;
   Symbols: TConditionalContext;
   HasSymbol, HasDirective: Boolean;
@@ -788,28 +788,28 @@ begin
         HasSymbol := True;
       end;
       HasDirective := TCompilerDirectives.HoverAt(Tree, TLspPositions.ReadPosition(PositionValue), DelphiVersion,
-        Markdown);
+        mMarkdown);
     end;
     if HasSymbol and HasDirective then
-      Markdown := SymbolMarkdown + #10#10'---'#10#10 + Markdown
+      mMarkdown := SymbolMarkdown + #10#10'---'#10#10 + mMarkdown
     else if HasSymbol then
-      Markdown := SymbolMarkdown;
+      mMarkdown := SymbolMarkdown;
     if HasSymbol or HasDirective then
     begin
       Contents := TJSONObject.Create;
       Contents.AddPair('kind', 'markdown');
-      Contents.AddPair('value', Markdown);
+      Contents.AddPair('value', mMarkdown);
       Result := TJSONObject.Create;
       TJSONObject(Result).AddPair('contents', Contents);
       Exit;
     end;
     // Unbekannter Feld- oder Parametername (#461).
     if DataNameHint(FIndex, Text, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue), FReadText,
-      Markdown) then
+      mMarkdown) then
     begin
       Contents := TJSONObject.Create;
       Contents.AddPair('kind', 'markdown');
-      Contents.AddPair('value', Markdown);
+      Contents.AddPair('value', mMarkdown);
       Result := TJSONObject.Create;
       TJSONObject(Result).AddPair('contents', Contents);
       Exit;
@@ -833,14 +833,14 @@ begin
     begin
       // Seltene Schlüsselwörter und Direktiven (#187), wenn kein Symbol so heißt.
       if not TKeywordReference.HoverAt(Text, TLspPositions.ReadPosition(PositionValue), DelphiVersion,
-        Markdown) then
+        mMarkdown) then
       begin
         TRequestDiagnostics.DefaultReason('noSymbol');
         Exit(TJSONNull.Create);
       end;
       Contents := TJSONObject.Create;
       Contents.AddPair('kind', 'markdown');
-      Contents.AddPair('value', Markdown);
+      Contents.AddPair('value', mMarkdown);
       Result := TJSONObject.Create;
       TJSONObject(Result).AddPair('contents', Contents);
       Exit;

@@ -471,21 +471,21 @@ end;
 
 procedure TAtlasWelcomeUnsavedFrame.ClickAt(const AHit: TAtlasUnsavedHit);
 var
-  Source: IAtlasUnsavedSource;
+  mSource: IAtlasUnsavedSource;
   Row: TAtlasUnsavedRow;
 begin
   if (FSource = nil) or not AHit.Button or (AHit.Row < 0) or (AHit.Row > High(FView.Rows)) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   Row := FView.Rows[AHit.Row];
   // Die Quelle füllt den Bereich danach neu (und „Push …“ zeigt einen Dialog): nicht im eigenen Mausereignis.
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
       if Row.Item.CanPush then
-        Source.Push(Row)
+        mSource.Push(Row)
       else
-        Source.Show(Row);
+        mSource.Show(Row);
     end);
 end;
 
@@ -535,31 +535,31 @@ end;
 
 procedure TAtlasWelcomeUnsavedFrame.OpenFolderClick(Sender: TObject);
 var
-  Source: IAtlasUnsavedSource;
+  mSource: IAtlasUnsavedSource;
   Row: TAtlasUnsavedRow;
 begin
   if not MenuTarget(Row) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.OpenFolder(Row);
+      mSource.OpenFolder(Row);
     end);
 end;
 
 procedure TAtlasWelcomeUnsavedFrame.IgnoreClick(Sender: TObject);
 var
-  Source: IAtlasUnsavedSource;
+  mSource: IAtlasUnsavedSource;
   Row: TAtlasUnsavedRow;
 begin
   if not MenuTarget(Row) then
     Exit;
-  Source := FSource;
+  mSource := FSource;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Source.Ignore(Row);
+      mSource.Ignore(Row);
     end);
 end;
 

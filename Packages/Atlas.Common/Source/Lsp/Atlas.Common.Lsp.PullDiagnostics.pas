@@ -466,15 +466,15 @@ end;
 
 procedure TLspPullDiagnostics.WaitForChange(const ACancellation: IJsonRpcCancellationToken; AWaitMs: Cardinal);
 var
-  Generation: Integer;
+  mGeneration: Integer;
   Clock: TStopwatch;
 begin
-  Generation := FGeneration;
+  mGeneration := FGeneration;
   Clock := TStopwatch.StartNew;
   // Changed und das Ende der prüfenden Anfrage wecken sofort (WakeAll); der Takt gilt nur dem Abbruch.
-  while (Clock.ElapsedMilliseconds < Int64(AWaitMs)) and (FGeneration = Generation) and (FWorkspaceActive <> 0) and
+  while (Clock.ElapsedMilliseconds < Int64(AWaitMs)) and (FGeneration = mGeneration) and (FWorkspaceActive <> 0) and
     not ACancellation.IsCancellationRequested do
-    WaitSlice(Generation);
+    WaitSlice(mGeneration);
 end;
 
 function TLspPullDiagnostics.DocumentReport(const AUri, APreviousResultId: string): TJSONObject;
@@ -621,7 +621,7 @@ var
   Items: TJSONArray;
   Complete: Boolean;
   Pending: Boolean;
-  Generation: Integer;
+  mGeneration: Integer;
   Clock: TStopwatch;
   Limit, PollMs: Cardinal;
 begin
@@ -646,7 +646,7 @@ begin
       for Entry in PreviousIds do
         if Entry.TryGetValue<string>('uri', Uri) and Entry.TryGetValue<string>('value', Value) then
           Previous.AddOrSetValue(Uri, Value);
-    Generation := FGeneration;
+    mGeneration := FGeneration;
     // Während des Indexaufbaus nichts prüfen, sondern warten, bis er fertig ist.
     Pending := IsBusy;
     Complete := True;
@@ -658,10 +658,10 @@ begin
     while (Items.Count = 0) and Complete and (Clock.ElapsedMilliseconds < Int64(PollMs)) and
       not ACancellation.IsCancellationRequested do
     begin
-      WaitSlice(Generation);
-      if (FGeneration <> Generation) or (Pending and not IsBusy) then
+      WaitSlice(mGeneration);
+      if (FGeneration <> mGeneration) or (Pending and not IsBusy) then
       begin
-        Generation := FGeneration;
+        mGeneration := FGeneration;
         Pending := IsBusy;
         if not Pending then
         begin
