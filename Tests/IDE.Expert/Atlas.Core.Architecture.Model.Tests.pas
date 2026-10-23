@@ -29,6 +29,8 @@ type
     procedure CommandArguments;
     [Test]
     procedure ShortestPathOverUses;
+    [Test]
+    procedure RouteOfSymbolPath;
   end;
 
 /// <summary>Antwort von atlas.architecture zu einem kleinen Projekt mit Zyklus (für Kern- und UI-Tests).</summary>
@@ -303,6 +305,34 @@ begin
   Assert.IsTrue(Model.IsHidden(Cache, Hidden));
   Assert.IsFalse(Model.ShortestPath(Main, Cache, True, Hidden, Path));
   Assert.AreEqual(-1, Model.IndexOf('Fehlt'));
+end;
+
+procedure TAtlasArchitectureModelTests.RouteOfSymbolPath;
+var
+  Model: TAtlasArchitectureModel;
+  Enabled: Boolean;
+  Units, Edges: TArray<Integer>;
+  Main, Data: Integer;
+begin
+  // Weg aus „Weg zwischen Symbolen“ (#1117): Wiederholungen und Units außerhalb des Umfangs fallen weg,
+  // Data → Cache hat keine direkte Kante und wird über Db überbrückt.
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, Model, Enabled));
+  Assert.IsTrue(Model.RouteOf(TArray<string>.Create('App.Main', 'app.main', 'App.Data', 'System.SysUtils',
+    'App.Data.Cache'), Units, Edges));
+  Assert.AreEqual('App.Main → App.Data → App.Data.Db → App.Data.Cache', Model.RouteText(Units));
+  Assert.AreEqual(3, Integer(Length(Edges)));
+  // Gegen die uses-Richtung (etwa über eine Umsetzung) gilt die Kante der Gegenrichtung.
+  Main := Model.IndexOf('App.Main');
+  Data := Model.IndexOf('App.Data');
+  Assert.IsTrue(Model.RouteOf(TArray<string>.Create('App.Data', 'App.Main'), Units, Edges));
+  Assert.AreEqual(1, Integer(Length(Edges)));
+  Assert.AreEqual(Main, Model.Edges[Edges[0]].Source);
+  Assert.AreEqual(Data, Model.Edges[Edges[0]].Target);
+  // Eine einzelne Unit ist ein Weg ohne Kanten, eine fremde keiner.
+  Assert.IsTrue(Model.RouteOf(TArray<string>.Create('App.Main'), Units, Edges));
+  Assert.AreEqual(0, Integer(Length(Edges)));
+  Assert.IsFalse(Model.RouteOf(TArray<string>.Create('System.SysUtils'), Units, Edges));
+  Assert.AreEqual(0, Integer(Length(Units)));
 end;
 
 initialization

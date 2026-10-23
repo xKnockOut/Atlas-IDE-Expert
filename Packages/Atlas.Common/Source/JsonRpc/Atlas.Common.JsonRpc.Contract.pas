@@ -30,6 +30,8 @@ type
 const
   /// <summary>Benachrichtigung, mit der die Gegenseite eine offene Anfrage abbricht.</summary>
   JsonRpcCancelRequestMethod = '$/cancelRequest';
+  /// <summary>Gegenstück im Model Context Protocol: params.requestId statt params.id (#1117).</summary>
+  McpCancelledMethod = 'notifications/cancelled';
 
 type
 

@@ -21,7 +21,7 @@ Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/At
 | [Build, test, debug](#build-test-debug) | Release build guard, DUnitX tests from the editor, launch profiles, values in the hover while debugging |
 | [IDE comfort](#ide-comfort) | Welcome page, command palette, notifications, Git/SVN change marks, safe start |
 | [Settings](#settings) | Every feature can be switched off, options page as a tree, team-wide project file `.atlas` |
-| [Claude Code](#claude-code-and-mcp) | 20 MCP tools to read, check, build, test and rename |
+| [Claude Code](#claude-code-and-mcp) | 21 MCP tools to read, check, build, test and rename |
 
 ## Quick start
 
@@ -78,6 +78,7 @@ Everything below is implemented in `main`. Features marked *(experimental)* are 
 - **Recursion marks** in the gutter, **inactive `{$IFDEF}` branches** dimmed with the reason in the tooltip, **unused uses** dimmed
 - **Bracket and block pairs** coloured by depth, with matching block lines
 - **Architecture overview** (window *Atlas Architecture*, *View › Atlas › Architecture*): subsystems as groups of closely connected units on a map you can zoom and pan, central units with direct and total dependents and role (foundation, hub), cycles with their round trip and the uses entries that close it, cross links between subsystems (rare or against the main direction) and outliers; double-click opens the unit or the uses entry. Can be saved as an HTML or Markdown report, also with `AtlasServer --architecture` and in the MCP tool `get_architecture`
+- **Path between symbols** (*Atlas › Path between symbols …*, command palette, editor context menu *Path from here to …*): how is `TCustomerForm` connected to `TDatabase`? Atlas finds the shortest chain over uses, inheritance, interface implementations, fields, parameters, results, calls and members and draws it in the results window, each step with its kind and location (inferred edges dashed); double-click jumps there, *Show on architecture map* marks the units of the path on the map. Same search as the MCP tool `find_path`; switch: `navigation.symbolPath`
 
 ### Navigating
 
@@ -178,7 +179,7 @@ All keys (German): [docs/Einstellungen.md](docs/Einstellungen.md) and [docs/Konf
 
 ### Claude Code and MCP
 
-The server offers Claude Code 20 MCP tools: find symbols, survey the project's architecture (`get_architecture`), read declarations and type and call hierarchies, component and form info, query diagnostics, metrics and TODOs, check planned code with `check_code` before writing it, explain findings, build through the IDE (`build_project`, `get_last_build`), run DUnitX tests, and rename or apply code actions (with preview). Plus the resource `delphi://conventions` with the project's conventions. Setup: [Editors/ClaudeCode](Editors/ClaudeCode/README.md), tools: [docs/MCP.md](docs/MCP.md).
+The server offers Claude Code 21 MCP tools: find symbols, survey the project's architecture (`get_architecture`), find the shortest path between two symbols or units (`find_path`), read declarations and type and call hierarchies, component and form info, query diagnostics, metrics and TODOs, check planned code with `check_code` before writing it, explain findings, build through the IDE (`build_project`, `get_last_build`), run DUnitX tests, and rename or apply code actions (with preview). Plus the resource `delphi://conventions` with the project's conventions. Setup: [Editors/ClaudeCode](Editors/ClaudeCode/README.md), tools: [docs/MCP.md](docs/MCP.md).
 
 ### Planned
 

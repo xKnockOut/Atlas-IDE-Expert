@@ -93,6 +93,13 @@ type
     class function Default: TCodeLensSettings; static;
   end;
 
+  /// <summary>Navigation über den Code ("navigation", #1117).</summary>
+  TNavigationSettings = record
+    /// <summary>IDE-Befehl „Weg zwischen Symbolen…“ mit Menü- und Kontextmenüeintrag.</summary>
+    SymbolPath: Boolean;
+    class function Default: TNavigationSettings; static;
+  end;
+
   /// <summary>Anzeige von XMLDoc in Hover und Detailpanel des Plugins (#654, #770). Der Server bereitet die Doku
   /// immer vollständig auf und gibt die Werte nur weiter.</summary>
   THintSettings = record
@@ -438,6 +445,7 @@ type
     Formatting: TFormatStyle;
     InlayHints: TInlayHintSettings;
     CodeLens: TCodeLensSettings;
+    Navigation: TNavigationSettings;
     Hints: THintSettings;
     Directives: TDirectiveSettings;
     Highlight: THighlightSettings;
@@ -728,6 +736,13 @@ begin
   Result.ControlChars := True;
 end;
 
+{ TNavigationSettings }
+
+class function TNavigationSettings.Default: TNavigationSettings;
+begin
+  Result.SymbolPath := True;
+end;
+
 { TCodeLensSettings }
 
 class function TCodeLensSettings.Default: TCodeLensSettings;
@@ -907,6 +922,7 @@ begin
   Result.Formatting := TFormatStyle.Default;
   Result.InlayHints := TInlayHintSettings.Default;
   Result.CodeLens := TCodeLensSettings.Default;
+  Result.Navigation := TNavigationSettings.Default;
   Result.Hints := THintSettings.Default;
   Result.Directives := TDirectiveSettings.Default;
   Result.Highlight := THighlightSettings.Default;
