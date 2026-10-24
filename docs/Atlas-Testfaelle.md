@@ -1,4 +1,4 @@
-# Atlas: Testfälle in der IDE
+﻿# Atlas: Testfälle in der IDE
 
 Bei Delphi 12 heißen BPL und Protokoll `…290.bpl` und `…290.log` statt `…370`.
 
@@ -6272,6 +6272,34 @@ Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert. Unit `Daten`
 | DF16 | `navigation.dataFlow` aus (Schnellschalter) | Menüeinträge und Palettenbefehle verborgen; ein über eine Tastenbelegung ausgelöster Befehl meldet nur „Datenfluss ist ausgeschaltet …“, keine Anfrage `atlas/dataFlow` im Diagnoselog (**Abnahme**) |
 | DF17 | Dunkles und helles Thema | Baum, Pfeile, ⚠ und Filterleiste gut lesbar |
 | DF18 | Property `Wert` aus DF5: auf `FWert` in `read FWert` F12 bzw. Referenzen | Springt zum Feld, Referenzen enthalten die Property-Zeile (Ursache aus #690 behoben) |
+
+## Zugriffsverletzung erklären (#865)
+
+Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert, `debug.exceptionHistory` an, `debug.exceptionBanner` an (sonst AV13). Unit `Kunden` mit `TAdresse = class` (Feld `FOrt: string`), `TKunde = class` (Felder `FName: string`, `FAdresse: TAdresse`, `property Adresse: TAdresse read FAdresse`, `property Name: string read GetName`), `TAuftrag = class` (Feld `FKunde: TKunde`, `property Kunde: TKunde read FKunde`, `function KundeLesen: TKunde`); im Formular Knöpfe mit `Auftrag.Kunde.Adresse.FOrt := 'Berlin'` (FKunde = nil), `Auftrag.Kunde.FAdresse.FOrt := 'x'` (FAdresse = nil), Zugriff nach `Kunde.Free`, `Liste[I].FName := 'x'` mit `{$R-}` und I = Länge, `Auftrag.KundeLesen.FName := 'x'`, zwei Anweisungen in einer Zeile (`A.F := 1; B.F := 2;` mit A und B nil). Win32 und Win64 (LLDB) je einmal.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AV1 | Knopf mit `Auftrag.Kunde.Adresse.FOrt := 'Berlin'`, `FKunde = nil` | Leiste: zuerst kurz „Atlas prüft …“, dann „`Auftrag.Kunde` ist nil“ in Rot; darunter „✓ Auftrag = $…“, „✗ Auftrag.Kunde = nil“ (**Abnahme**) |
+| AV2 | `Auftrag.Kunde.FAdresse.FOrt := 'x'` mit `FKunde = nil` (Leseadresse = Versatz von `FAdresse`, z. B. „Lesen von Adresse 0000001C“) | „`Auftrag.Kunde` ist nil · Zugriff auf Feld `FAdresse` (Versatz $1C)“; ohne „geschätzt“, wenn der Debugger den Versatz ausrechnet (**Abnahme**) |
+| AV3 | AV2, Diagnoselog | Anfrage `NativeInt(@TKunde(nil).FAdresse)` sichtbar; nimmt der Debugger sie nicht an, steht „(Versatz $…, geschätzt)“ |
+| AV4 | Projekt mit FastMM4 und `FullDebugMode` (bzw. FastMM5 im Debug-Modus), Zugriff auf ein freigegebenes Objekt | „`Kunde` ist bereits freigegeben“ mit Füllmuster bzw. „Kopf des Objekts trägt das Füllmuster“ (**Abnahme**) |
+| AV5 | AV4 ohne FullDebugMode | Kein falsches „freigegeben“; je nach Speicher „Ursache nicht eindeutig“ oder „Zugriff auf freigegebenen Speicher“ |
+| AV6 | `Liste[I].FName := 'x'` mit `{$R-}`, I = Length(Liste) | „Index I = n liegt außerhalb von Liste (Länge n)“ |
+| AV7 | `Auftrag.KundeLesen.FName := 'x'` bzw. Kette über die Property `Name` mit Getter, `allowCalls` aus | Glied „Auftrag.KundeLesen: nicht ausgewertet: ruft etwas auf …“; im Diagnoselog keine Auswertung mit Nebenwirkungen, ein Haltepunkt in `KundeLesen` hält nicht (**Abnahme**) |
+| AV8 | AV7 mit `debug.explainAccessViolation.allowCalls` an | Das Glied wird ausgewertet, Ergebnis wie AV1 |
+| AV9 | Zeile mit zwei Anweisungen, beide nil | „Ursache nicht eindeutig“ · „2 Glieder kommen in Frage“ · „2 Anweisungen in der Zeile“, beide Glieder mit ✗ |
+| AV10 | Englisches RAD Studio (oder englische Meldung „Read of address 0000001C“) | Adresse wird gelesen, Ergebnis wie AV1/AV2 (**Abnahme**) |
+| AV11 | AV1 und AV2 unter Win64 (LLDB) | Gleiches Ergebnis; Werte kommen verzögert, die Leiste zeigt bis dahin „Atlas prüft …“ (**Abnahme**) |
+| AV12 | AV1: Knöpfe „Wo wird Kunde zugewiesen?“, „Ausdruck auswerten“, „Erklärung kopieren“ | Ergebnisfenster „Woher kommt Kunde?“; Fenster „Auswerten“ mit Zeile `Auftrag.Kunde`; Zwischenablage mit Ergebnis, Meldung, Ort und Gliedern |
+| AV13 | `debug.exceptionBanner` aus, AV1 | Kein Balken; nach dem Schließen des IDE-Dialogs mit „Anhalten“ stehen „Zugriffsverletzung in Unit:Zeile: … ist nil“ und die Glieder in den Meldungen |
+| AV14 | AV1, Editor | `Auftrag.Kunde` ist rot unterstrichen; F9 bzw. Einzelschritt: Unterstreichung weg (**Abnahme**) |
+| AV15 | Zugriffsverletzung in der RTL (z. B. `TList.Get` ohne Debug-DCUs) | Leiste nur mit der Meldung, keine Erklärung, kein Hänger |
+| AV16 | `navigation.dataFlow` aus bzw. `debug.evaluateWindow` aus | Der jeweilige Knopf fehlt |
+| AV17 | Server beendet, AV1 | „Ursache nicht eindeutig“ · „Atlas-Server antwortet nicht“ |
+| AV18 | Dialog der IDE mit „Fortsetzen“ schließen | Keine Erklärung, keine Auswertung danach |
+| AV19 | `debug.explainAccessViolation` aus (Schnellschalter), AV1 | Leiste zeigt nur die Meldung, keine Auswertung im Diagnoselog, keine Unterstreichung (**Abnahme**) |
+| AV20 | Methode auf nil-Referenz mit implizitem Self (`FDaten.Count` in einer Methode, `Self = nil`) | „`Self` ist nil“, kein Knopf „Wo wird … zugewiesen?“ |
+| AV21 | Helles und dunkles Thema | Ergebniszeile, ✓/✗, Knöpfe und Unterstreichung gut lesbar |
 
 ## Fenster „Auswerten“ (#784)
 

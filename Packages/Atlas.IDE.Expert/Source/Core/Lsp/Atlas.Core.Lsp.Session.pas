@@ -43,6 +43,7 @@ uses
   Atlas.Core.Hover.Contract,
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.DataFlow,
+  Atlas.Core.Lsp.AccessChains,
   Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Projects.Contract,
   Atlas.Core.InlayHints.Store,
@@ -209,6 +210,10 @@ type
     /// </summary>
     function ExpressionCompletion(const AFileName: string; ALine: Integer; const AExpression: string;
       ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>atlas/accessChains (#865): Zugriffsketten der Anweisungen in ALine (0-basiert) von AFileName für
+    /// einen Prozess mit APointerSize. Ohne Abgleich: Sync vorher im Hauptthread. Found = False ohne Antwort.
+    /// </summary>
+    function AccessChains(const AFileName: string; ALine, APointerSize: Integer; ATimeoutMs: Cardinal): TAtlasAvChains;
     procedure Initialize;
     /// <summary>Parameter von initialize (#396, #397, #408, #648, #652). AApplyEdit: workspace.applyEdit
     /// ankündigen. Gehört dem Aufrufer.</summary>
@@ -1361,6 +1366,19 @@ begin
     .AddPair('character', TJSONNumber.Create(0)));
   Params.AddPair('name', AName);
   Result := FClient.Request('atlas/debugUnavailable', Params, ATimeoutMs);
+end;
+
+function TLspSession.AccessChains(const AFileName: string; ALine, APointerSize: Integer;
+  ATimeoutMs: Cardinal): TAtlasAvChains;
+var
+  Response: TJSONValue;
+begin
+  Response := FClient.Request(TAtlasAvJson.Method, TAtlasAvJson.Params(AFileName, ALine, APointerSize), ATimeoutMs);
+  try
+    Result := TAtlasAvJson.Parse(Response);
+  finally
+    Response.Free;
+  end;
 end;
 
 function TLspSession.ExpressionCompletion(const AFileName: string; ALine: Integer; const AExpression: string;

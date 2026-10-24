@@ -962,7 +962,11 @@ uses
   Atlas.Core.Lsp.DataFlow.Tests in 'IDE.Expert\Atlas.Core.Lsp.DataFlow.Tests.pas',
   Atlas.Core.Results.DataFlow in '..\Packages\Atlas.IDE.Expert\Source\Core\Results\Atlas.Core.Results.DataFlow.pas',
   Atlas.Core.Results.DataFlow.Tests in 'IDE.Expert\Atlas.Core.Results.DataFlow.Tests.pas',
-  Atlas.UI.Results.DataFlow.Tests in 'IDE.Expert\Atlas.UI.Results.DataFlow.Tests.pas';
+  Atlas.UI.Results.DataFlow.Tests in 'IDE.Expert\Atlas.UI.Results.DataFlow.Tests.pas',
+  Atlas.Common.Lsp.AccessChains.Tests in 'Common\Lsp\Atlas.Common.Lsp.AccessChains.Tests.pas',
+  Atlas.Core.Debug.AccessViolation.Tests in 'IDE.Expert\Atlas.Core.Debug.AccessViolation.Tests.pas',
+  Atlas.UI.Debug.AccessViolation.Tests in 'IDE.Expert\Atlas.UI.Debug.AccessViolation.Tests.pas',
+  Atlas.Core.Lsp.AccessChains.Tests in 'IDE.Expert\Atlas.Core.Lsp.AccessChains.Tests.pas';
 
 // Atlas-Symbol (#751) für die UI-Tests.
 {$R '..\Packages\Atlas.IDE.Expert\Resources\Symbol\Atlas.Symbol.res'}

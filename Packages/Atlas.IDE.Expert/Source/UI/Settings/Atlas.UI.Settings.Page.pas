@@ -293,6 +293,8 @@ type
     FDebugCompletionInDialogs: TCheckBox;
     FDebugEvaluateWindow: TCheckBox;
     FDebugEvaluateReplaceCtrlF7: TCheckBox;
+    FDebugExplainAccessViolation: TCheckBox;
+    FDebugExplainAccessViolationAllowCalls: TCheckBox;
     FDebugExceptionHistory: TCheckBox;
     FDebugJustMyCode: TCheckBox;
     FDebugExceptionBanner: TCheckBox;
@@ -1085,6 +1087,8 @@ type
     property DebugCompletionInDialogsCheck: TCheckBox read FDebugCompletionInDialogs;
     property DebugEvaluateWindowCheck: TCheckBox read FDebugEvaluateWindow;
     property DebugEvaluateReplaceCtrlF7Check: TCheckBox read FDebugEvaluateReplaceCtrlF7;
+    property DebugExplainAccessViolationCheck: TCheckBox read FDebugExplainAccessViolation;
+    property DebugExplainAccessViolationAllowCallsCheck: TCheckBox read FDebugExplainAccessViolationAllowCalls;
     property DebugExceptionHistoryCheck: TCheckBox read FDebugExceptionHistory;
     property DebugJustMyCodeCheck: TCheckBox read FDebugJustMyCode;
     property DebugExceptionBannerCheck: TCheckBox read FDebugExceptionBanner;
@@ -1839,6 +1843,10 @@ begin
   // Fenster „Auswerten“ (#784).
   FDebugEvaluateWindow := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugEvaluateWindow));
   FDebugEvaluateReplaceCtrlF7 := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugEvaluateReplaceCtrlF7));
+  // Zugriffsverletzung erklären (#865)
+  FDebugExplainAccessViolation := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExplainAccessViolation));
+  FDebugExplainAccessViolationAllowCalls :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExplainAccessViolationAllowCalls));
   // Exception-Verlauf beim Debuggen (#517).
   FDebugExceptionHistory := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExceptionHistory));
   // Nur eigener Code beim Debuggen (#578).
@@ -2990,6 +2998,8 @@ begin
   FMarks.Bind(FDebugCompletionInDialogs, ['DebugCompletionInDialogs']);
   FMarks.Bind(FDebugEvaluateWindow, ['DebugEvaluateWindow']);
   FMarks.Bind(FDebugEvaluateReplaceCtrlF7, ['DebugEvaluateReplaceCtrlF7']);
+  FMarks.Bind(FDebugExplainAccessViolation, ['DebugExplainAccessViolation']);
+  FMarks.Bind(FDebugExplainAccessViolationAllowCalls, ['DebugExplainAccessViolationAllowCalls']);
   FMarks.Bind(FDebugExceptionHistory, ['DebugExceptionHistory']);
   FMarks.Bind(FDebugJustMyCode, ['DebugJustMyCode']);
   FMarks.Bind(FDebugExceptionBanner, ['DebugExceptionBanner']);
@@ -5144,6 +5154,8 @@ begin
   FDebugCompletionInDialogs.Checked := ASettings.DebugCompletionInDialogs;
   FDebugEvaluateWindow.Checked := ASettings.DebugEvaluateWindow;
   FDebugEvaluateReplaceCtrlF7.Checked := ASettings.DebugEvaluateReplaceCtrlF7;
+  FDebugExplainAccessViolation.Checked := ASettings.DebugExplainAccessViolation;
+  FDebugExplainAccessViolationAllowCalls.Checked := ASettings.DebugExplainAccessViolationAllowCalls;
   FDebugExceptionHistory.Checked := ASettings.DebugExceptionHistory;
   FDebugJustMyCode.Checked := ASettings.DebugJustMyCode;
   FDebugExceptionBanner.Checked := ASettings.DebugExceptionBanner;
@@ -5610,6 +5622,8 @@ begin
   ASettings.DebugCompletionInDialogs := FDebugCompletionInDialogs.Checked;
   ASettings.DebugEvaluateWindow := FDebugEvaluateWindow.Checked;
   ASettings.DebugEvaluateReplaceCtrlF7 := FDebugEvaluateReplaceCtrlF7.Checked;
+  ASettings.DebugExplainAccessViolation := FDebugExplainAccessViolation.Checked;
+  ASettings.DebugExplainAccessViolationAllowCalls := FDebugExplainAccessViolationAllowCalls.Checked;
   ASettings.DebugExceptionHistory := FDebugExceptionHistory.Checked;
   ASettings.DebugJustMyCode := FDebugJustMyCode.Checked;
   ASettings.DebugExceptionBanner := FDebugExceptionBanner.Checked;

@@ -462,6 +462,13 @@ type
     /// unter dem Cursor statt des Dialogs „Auswerten/Ändern“; mit Umschalttaste bzw. Befehl
     /// Atlas.DebugEvaluateIdeDialog kommt der Dialog der IDE. Aus = Strg+F7 gehört der IDE.</summary>
     DebugEvaluateReplaceCtrlF7: Boolean;
+    /// <summary>debug.explainAccessViolation (#865): Beim Halt wegen einer Zugriffsverletzung in eigenem Code die
+    /// Zugriffsketten der Zeile auswerten und das nil-Glied, ein freigegebenes Objekt oder einen Index außerhalb in
+    /// der Exception-Leiste bzw. in den Meldungen nennen.</summary>
+    DebugExplainAccessViolation: Boolean;
+    /// <summary>debug.explainAccessViolation.allowCalls (#865): Glieder mit Getter oder Funktionsaufruf auswerten;
+    /// aus bleiben sie „nicht ausgewertet“.</summary>
+    DebugExplainAccessViolationAllowCalls: Boolean;
     /// <summary>Exception-Verlauf beim Debuggen (#517, debug.exceptionHistory): Jeder Halt wegen einer Exception
     /// landet mit Klasse, Meldung, Ort, Thread und Anzahl im Fenster „Atlas: Exceptions“ (Befehl
     /// Atlas.DebugExceptions); Klassen lassen sich dort ignorieren, Atlas setzt dann still fort. Aus = kein Verlauf,
@@ -1441,6 +1448,8 @@ begin
   Result.DebugCompletionInDialogs := True;
   Result.DebugEvaluateWindow := True;
   Result.DebugEvaluateReplaceCtrlF7 := True;
+  Result.DebugExplainAccessViolation := True;
+  Result.DebugExplainAccessViolationAllowCalls := False;
   Result.DebugExceptionHistory := True;
   Result.DebugJustMyCode := True;
   Result.DebugExceptionBanner := False;
@@ -2063,6 +2072,8 @@ begin
   DebugCompletionInDialogs := AStore.ReadInteger('DebugCompletionInDialogs', BoolValue(Default.DebugCompletionInDialogs)) <> 0;
   DebugEvaluateWindow := AStore.ReadInteger('DebugEvaluateWindow', BoolValue(Default.DebugEvaluateWindow)) <> 0;
   DebugEvaluateReplaceCtrlF7 := AStore.ReadInteger('DebugEvaluateReplaceCtrlF7', BoolValue(Default.DebugEvaluateReplaceCtrlF7)) <> 0;
+  DebugExplainAccessViolation := AStore.ReadInteger('DebugExplainAccessViolation', BoolValue(Default.DebugExplainAccessViolation)) <> 0;
+  DebugExplainAccessViolationAllowCalls := AStore.ReadInteger('DebugExplainAccessViolationAllowCalls', BoolValue(Default.DebugExplainAccessViolationAllowCalls)) <> 0;
   DebugExceptionHistory := AStore.ReadInteger('DebugExceptionHistory', BoolValue(Default.DebugExceptionHistory)) <> 0;
   DebugJustMyCode := AStore.ReadInteger('DebugJustMyCode', BoolValue(Default.DebugJustMyCode)) <> 0;
   DebugExceptionBanner := AStore.ReadInteger('DebugExceptionBanner', BoolValue(Default.DebugExceptionBanner)) <> 0;
@@ -2522,6 +2533,8 @@ begin
   AStore.WriteInteger('DebugCompletionInDialogs', BoolValue(DebugCompletionInDialogs));
   AStore.WriteInteger('DebugEvaluateWindow', BoolValue(DebugEvaluateWindow));
   AStore.WriteInteger('DebugEvaluateReplaceCtrlF7', BoolValue(DebugEvaluateReplaceCtrlF7));
+  AStore.WriteInteger('DebugExplainAccessViolation', BoolValue(DebugExplainAccessViolation));
+  AStore.WriteInteger('DebugExplainAccessViolationAllowCalls', BoolValue(DebugExplainAccessViolationAllowCalls));
   AStore.WriteInteger('DebugExceptionHistory', BoolValue(DebugExceptionHistory));
   AStore.WriteInteger('DebugJustMyCode', BoolValue(DebugJustMyCode));
   AStore.WriteInteger('DebugExceptionBanner', BoolValue(DebugExceptionBanner));
