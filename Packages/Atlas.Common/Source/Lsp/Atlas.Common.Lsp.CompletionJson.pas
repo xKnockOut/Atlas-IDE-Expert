@@ -242,6 +242,32 @@ begin
     AData.AddPair('unit', AItem.UnitName);
 end;
 
+/// <summary>Exception-Klassen (#483): Gruppe und früherer Zweig, der die Klasse schon fängt.</summary>
+procedure WriteException(const AItem: TCompletionItem; AData: TJSONObject);
+begin
+  if AItem.ExceptionGroup <> '' then
+    AData.AddPair('exceptionGroup', AItem.ExceptionGroup);
+  if AItem.Unreachable <> '' then
+    AData.AddPair('unreachable', AItem.Unreachable);
+end;
+
+/// <summary>Mitglied eines with-Objekts (#481): Ausdruck und verdeckte Namen.</summary>
+procedure WriteWith(const AItem: TCompletionItem; AData: TJSONObject);
+var
+  Shadows: TJSONArray;
+  Text: string;
+begin
+  if AItem.WithOrigin = '' then
+    Exit;
+  AData.AddPair('withOrigin', AItem.WithOrigin);
+  if Length(AItem.WithShadows) = 0 then
+    Exit;
+  Shadows := TJSONArray.Create;
+  AData.AddPair('withShadows', Shadows);
+  for Text in AItem.WithShadows do
+    Shadows.Add(Text);
+end;
+
 procedure WriteHides(const AItem: TCompletionItem; AData: TJSONObject);
 var
   Hides: TJSONArray;
@@ -367,14 +393,29 @@ begin
   end;
 end;
 
+/// <summary>Attribut nach "[" (#465).</summary>
+procedure WriteAttribute(const AItem: TCompletionItem; AData: TJSONObject);
+begin
+  if AItem.Attribute then
+    AData.AddPair('attribute', TJSONBool.Create(True));
+end;
+
+/// <summary>Gerüst einer anonymen Methode (#468): erwarteter Methodenreferenztyp.</summary>
+procedure WriteMethodRef(const AItem: TCompletionItem; AData: TJSONObject);
+begin
+  if AItem.MethodRef <> '' then
+    AData.AddPair('methodRef', AItem.MethodRef);
+end;
+
 const
   /// <summary>Reihenfolge der Felder unter data; das Plugin liest nach Namen, die Golden-Tests nach Text.
   /// </summary>
-  DataWriters: array[0..33] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
+  DataWriters: array[0..37] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
     WriteDepth, WriteHelper, WriteParameters, WriteCondition, WriteVariant, WriteUnavailable, WriteScope, WriteOrdinal,
     WriteSetOf, WriteLinked, WritePinned, WriteCount, WriteUnknown, WriteBatch, WriteHint, WriteForm, WriteByType, WriteSender,
     WriteConversion, WriteAssignments, WriteDataSet, WriteGuard, WriteUnit, WriteHides, WriteOverloads, WriteTypeArg,
-    WriteBindings, WriteUses, WriteInherited, WriteSameName);
+    WriteBindings, WriteUses, WriteInherited, WriteSameName, WriteAttribute,
+    WriteMethodRef, WriteWith, WriteException);
 
 function NeedsData(const AItem: TCompletionItem): Boolean;
 begin
@@ -384,7 +425,8 @@ begin
     (AItem.Sender <> '') or (AItem.DataSet <> '') or (AItem.Guard <> '') or (AItem.TypeParam <> '') or
     (Length(AItem.Bindings) > 0) or (AItem.Conversion <> '') or (AItem.Lossy <> '') or
     (Length(AItem.Assignments) > 0) or (AItem.UsesGroup <> '') or (AItem.InheritedMatch <> '') or
-    (Length(AItem.InheritedAbstract) > 0) or (Length(AItem.SameNameUnits) > 0);
+    (Length(AItem.InheritedAbstract) > 0) or (Length(AItem.SameNameUnits) > 0) or AItem.Attribute or
+    (AItem.MethodRef <> '') or (AItem.ExceptionGroup <> '') or (AItem.Unreachable <> '');
 end;
 
 function EditToJson(const AEdit: TRuleEdit): TJSONObject;

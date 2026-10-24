@@ -95,6 +95,12 @@ begin
   Changed := Sample;
   Changed.Active := True;
   Assert.AreNotEqual(Sample.Key, Changed.Key);
+  // Eigene Formatroutine der Projektdatei (#451).
+  Changed := Sample;
+  SetLength(Changed.FormatFunctions, 1);
+  Changed.FormatFunctions[0].Name := 'Log';
+  Changed.FormatFunctions[0].FormatIndex := 0;
+  Assert.AreNotEqual(Sample.Key, Changed.Key);
 end;
 
 procedure TAtlasProjectContextTests.WritesJson;
@@ -135,6 +141,18 @@ begin
   Json := Context.ToJson;
   try
     Assert.AreEqual('true', Json.GetValue('active').ToJSON);
+    Assert.IsNull(Json.FindValue('formatFunctions'));
+  finally
+    Json.Free;
+  end;
+  // Formatroutinen der Projektdatei (#451).
+  Context := Sample;
+  SetLength(Context.FormatFunctions, 1);
+  Context.FormatFunctions[0].Name := 'Log';
+  Context.FormatFunctions[0].FormatIndex := 1;
+  Json := Context.ToJson;
+  try
+    Assert.AreEqual('[{"name":"Log","formatIndex":1}]', Json.GetValue<TJSONArray>('formatFunctions').ToJSON);
   finally
     Json.Free;
   end;

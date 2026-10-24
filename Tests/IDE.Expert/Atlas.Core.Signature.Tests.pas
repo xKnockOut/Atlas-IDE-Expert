@@ -44,6 +44,10 @@ type
     procedure ReadsArgumentFitFromServer;
     [Test]
     procedure TooManyArgumentsCountsOnly;
+    [Test]
+    procedure ReadsFormatPlaceholders;
+    [Test]
+    procedure UpdateFormatKeepsOverload;
   end;
 
 implementation
@@ -311,6 +315,75 @@ begin
   Assert.AreEqual(0, Help.Signatures[0].MismatchArgument);
   Assert.IsFalse(Help.Signatures[1].TypeMismatch);
   Assert.IsFalse(Help.Signatures[2].TypeMismatch, 'Ohne Angabe passend');
+end;
+
+procedure TAtlasSignatureControllerTests.ReadsFormatPlaceholders;
+var
+  Response: TJSONValue;
+  Help: TAtlasSignatureHelp;
+begin
+  // Platzhalter (#451) wie vom Server.
+  Response := TJSONObject.ParseJSONValue(
+    '{"signatures":[{"label":"function Format(const Format: string; const Args: array of const): string",' +
+    '"parameters":[{"label":[16,37]},{"label":[39,66]}]}],"activeSignature":0,"activeParameter":1,' +
+    '"format":{"formatParameter":0,"listParameter":1,"argumentCount":2,"activeArgument":1,"placeholders":[' +
+    '{"text":"%s","type":"s","valid":true,"argument":0,"width":-1,"precision":-1,' +
+    '"range":{"start":{"line":3,"character":15},"end":{"line":3,"character":17}}},' +
+    '{"text":"%q","valid":false,"argument":-1,"width":-1,"precision":-1}],' +
+    '"arguments":[{"start":{"line":3,"character":35},"end":{"line":3,"character":43}}],' +
+    '"problem":{"kind":"typeConflict","placeholder":1,"argument":0,"argumentKind":"string"}}}');
+  try
+    Help := TAtlasServerSignatureProvider.HelpFromLsp(Response);
+  finally
+    Response.Free;
+  end;
+  Assert.IsTrue(Help.Format.Found);
+  Assert.AreEqual(1, Help.Format.ActiveArgument);
+  Assert.AreEqual(2, Help.Format.ArgumentCount);
+  Assert.AreEqual(2, Integer(Length(Help.Format.Placeholders)));
+  Assert.AreEqual('s', Help.Format.Placeholders[0].TypeChar);
+  Assert.IsTrue(Help.Format.Placeholders[0].HasRange);
+  Assert.AreEqual(15, Help.Format.Placeholders[0].Range.StartCharacter);
+  Assert.IsFalse(Help.Format.Placeholders[1].Valid);
+  Assert.IsFalse(Help.Format.Placeholders[1].HasRange);
+  Assert.AreEqual(35, Help.Format.Arguments[0].StartCharacter);
+  Assert.AreEqual(Ord(TAtlasFormatProblem.TypeConflict), Ord(Help.Format.Problem));
+  Assert.AreEqual('string', Help.Format.ProblemKind);
+  // Ohne "format" keine Platzhalter.
+  Assert.IsFalse(TAtlasServerSignatureProvider.HelpFromLsp(nil).Format.Found);
+end;
+
+procedure TAtlasSignatureControllerTests.UpdateFormatKeepsOverload;
+var
+  View: TFakeSignatureView;
+  ViewRef: IAtlasSignatureView;
+  Controller: TAtlasSignatureController;
+  Help: TAtlasSignatureHelp;
+  Format: TAtlasSignatureFormat;
+begin
+  View := TFakeSignatureView.Create;
+  ViewRef := View;
+  Controller := TAtlasSignatureController.Create(ViewRef);
+  try
+    Help := Default(TAtlasSignatureHelp);
+    SetLength(Help.Signatures, 2);
+    SetLength(Help.Signatures[0].Parameters, 1);
+    SetLength(Help.Signatures[1].Parameters, 2);
+    Help.ActiveSignature := 1;
+    Controller.Show(Help, 1);
+    Format := Default(TAtlasSignatureFormat);
+    Format.Found := True;
+    Format.ActiveArgument := 2;
+    Controller.UpdateFormat(Format);
+    Assert.AreEqual(1, Controller.Signature);
+    Assert.AreEqual(2, Controller.Help.Format.ActiveArgument);
+    Controller.Close;
+    // Geschlossen: nichts mehr.
+    Controller.UpdateFormat(Format);
+    Assert.IsFalse(Controller.Active);
+  finally
+    Controller.Free;
+  end;
 end;
 
 procedure TAtlasSignatureControllerTests.ReadsLspSignatureHelp;

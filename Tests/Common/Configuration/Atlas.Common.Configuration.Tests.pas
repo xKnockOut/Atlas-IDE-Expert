@@ -496,6 +496,36 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"completion": {"inheritedCall": 1}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Attribute nach "[" (#465)
+  Assert.IsTrue(Parse('{}', Issues).Completion.Attributes);
+  Assert.IsFalse(Parse('{"completion": {"attributes": false}}', Issues).Completion.Attributes);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"attributes": "ja"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Anonyme Methoden (#468)
+  Assert.IsTrue(Parse('{}', Issues).Completion.AnonymousMethods);
+  Assert.IsFalse(Parse('{"completion": {"anonymousMethods": false}}', Issues).Completion.AnonymousMethods);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"anonymousMethods": 0}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Herkunft in with-Blöcken (#481)
+  Assert.IsTrue(Parse('{}', Issues).Completion.WithOrigin);
+  Assert.IsFalse(Parse('{"completion": {"withOrigin": false}}', Issues).Completion.WithOrigin);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"withOrigin": "nein"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Exception-Klassen (#483)
+  Assert.IsTrue(Parse('{}', Issues).Completion.ExceptionClasses);
+  Assert.IsFalse(Parse('{"completion": {"exceptionClasses": false}}', Issues).Completion.ExceptionClasses);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"exceptionClasses": []}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Hinweis bei unvollständigem Code (#457)
+  Assert.IsTrue(Parse('{}', Issues).Completion.SyntaxNotice);
+  Assert.IsFalse(Parse('{"completion": {"syntaxNotice": false}}', Issues).Completion.SyntaxNotice);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"syntaxNotice": 1}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Gleiche Namen aus verschiedenen Units (#475)
   Assert.IsTrue(Parse('{}', Issues).Completion.SameNameVariants);
   Assert.IsTrue(Parse('{}', Issues).Completion.SameNameInsert = TCompletionSameNameInsert.Prefix);

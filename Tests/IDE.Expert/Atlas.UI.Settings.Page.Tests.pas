@@ -2273,6 +2273,7 @@ begin
   Settings.CommitCharacters := False;
   Settings.AutoUses := False;
   Settings.ParameterHints := False;
+  Settings.FormatPlaceholders := False;
   Settings.OpenDelayMs := 300;
   Settings.ListWidth := 400;
   Page := TAtlasSettingsPage.Create(nil);
@@ -2281,9 +2282,11 @@ begin
     Assert.IsFalse(Page.CommitChars.Checked);
     Assert.IsFalse(Page.AutoUses.Checked);
     Assert.IsFalse(Page.ParameterHints.Checked);
+    Assert.IsFalse(Page.FormatPlaceholders.Checked);
     Assert.AreEqual('300', Page.OpenDelay.Text);
     Assert.IsFalse(Page.AutoWidth.Checked);
     Page.CommitChars.Checked := True;
+    Page.FormatPlaceholders.Checked := True;
     Page.OpenDelay.Text := '0';
     Page.AutoWidth.Checked := True;
     Saved := TAtlasPluginSettings.Defaults;
@@ -2291,6 +2294,7 @@ begin
     Assert.IsTrue(Saved.CommitCharacters);
     Assert.IsFalse(Saved.AutoUses);
     Assert.IsFalse(Saved.ParameterHints);
+    Assert.IsTrue(Saved.FormatPlaceholders);
     Assert.AreEqual(0, Saved.OpenDelayMs);
     Assert.AreEqual(0, Saved.ListWidth, 'automatische Breite');
     // Version des Servers neben dem Pfad.

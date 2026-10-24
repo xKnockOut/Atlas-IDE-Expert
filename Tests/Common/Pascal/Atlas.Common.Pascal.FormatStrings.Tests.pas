@@ -2,7 +2,9 @@
 
 // Tests der Zerlegung von Formatstrings (#56): Platzhalter mit Index, Breite,
 // Genauigkeit und "*", "%%", ungültige Platzhalter, Argumentzahl, Platzhalter
-// abhängig vom Gebietsschema und Werte von Stringliteralen.
+// abhängig vom Gebietsschema und Werte von Stringliteralen. Für den
+// Parameter-Hint (#451): Lage der Zeichen, Verkettungen, Konstanten, Art
+// eines Literals und die Typtabelle.
 
 interface
 
@@ -25,6 +27,14 @@ type
     procedure LocaleSpecifiers;
     [Test]
     procedure LiteralValues;
+    [Test]
+    procedure LiteralOffsetsPointIntoSource;
+    [Test]
+    procedure ExpressionAndConstantValues;
+    [Test]
+    procedure LiteralClasses;
+    [Test]
+    procedure FitsByTypeChar;
   end;
 
 implementation
@@ -148,6 +158,70 @@ begin
   Assert.IsFalse(TFormatString.LiteralValue('#$110000', mValue));
   Assert.IsFalse(TFormatString.LiteralValue('''''''' + #13#10'  Text'#13#10'  ''''''', mValue));
   Assert.IsFalse(TFormatString.LiteralValue('', mValue));
+end;
+
+procedure TFormatStringsTests.LiteralOffsetsPointIntoSource;
+var
+  mValue: string;
+  mOffsets: TArray<Integer>;
+begin
+  // 'a''b'#13'c': a an 1, das doppelte Hochkomma an 2, b an 4, #13 an 6, c an 10.
+  Assert.IsTrue(TFormatString.LiteralOffsets('''a''''b''#13''c''', mValue, mOffsets));
+  Assert.AreEqual('a''b'#13'c', mValue);
+  Assert.AreEqual(5, Integer(Length(mOffsets)));
+  Assert.AreEqual(1, mOffsets[0]);
+  Assert.AreEqual(2, mOffsets[1]);
+  Assert.AreEqual(4, mOffsets[2]);
+  Assert.AreEqual(6, mOffsets[3]);
+  Assert.AreEqual(10, mOffsets[4]);
+  Assert.IsFalse(TFormatString.LiteralOffsets('''offen', mValue, mOffsets));
+end;
+
+procedure TFormatStringsTests.ExpressionAndConstantValues;
+var
+  mValue: string;
+begin
+  Assert.IsTrue(TFormatString.ExpressionValue('''%s'' + #13 + ''%d''', mValue));
+  Assert.AreEqual('%s'#13'%d', mValue);
+  Assert.IsFalse(TFormatString.ExpressionValue('''%s'' + cRest', mValue));
+  Assert.IsTrue(TFormatString.ConstantValue('cFormat = ''%s=%d''', mValue));
+  Assert.AreEqual('%s=%d', mValue);
+  Assert.IsTrue(TFormatString.ConstantValue('cFormat: string = ''a'' + ''b''', mValue));
+  Assert.AreEqual('ab', mValue);
+  // "=" erst im Literal, gekürzte Signatur, kein Wert.
+  Assert.IsFalse(TFormatString.ConstantValue('cText: string', mValue));
+  Assert.IsFalse(TFormatString.ConstantValue('cFormat = ''sehr lang' + #$2026, mValue));
+end;
+
+procedure TFormatStringsTests.LiteralClasses;
+var
+  mName: string;
+begin
+  Assert.AreEqual(Ord(TFormatArgumentClass.Text), Ord(TFormatString.LiteralClass('''Text''', mName)));
+  Assert.AreEqual('ein String', mName);
+  Assert.AreEqual(Ord(TFormatArgumentClass.Character), Ord(TFormatString.LiteralClass('#13', mName)));
+  Assert.AreEqual(Ord(TFormatArgumentClass.Integer_), Ord(TFormatString.LiteralClass('-5', mName)));
+  Assert.AreEqual('eine Zahl', mName);
+  Assert.AreEqual(Ord(TFormatArgumentClass.Integer_), Ord(TFormatString.LiteralClass('$FE', mName)));
+  Assert.AreEqual(Ord(TFormatArgumentClass.Float), Ord(TFormatString.LiteralClass('1.5', mName)));
+  Assert.AreEqual(Ord(TFormatArgumentClass.Float), Ord(TFormatString.LiteralClass('2E3', mName)));
+  Assert.AreEqual(Ord(TFormatArgumentClass.Unknown), Ord(TFormatString.LiteralClass('Name', mName)));
+  Assert.AreEqual('', mName);
+end;
+
+procedure TFormatStringsTests.FitsByTypeChar;
+begin
+  Assert.IsTrue(TFormatString.Fits('d', TFormatArgumentClass.Integer_));
+  Assert.IsFalse(TFormatString.Fits('d', TFormatArgumentClass.Text));
+  Assert.IsFalse(TFormatString.Fits('d', TFormatArgumentClass.Bool));
+  Assert.IsTrue(TFormatString.Fits('s', TFormatArgumentClass.Character));
+  Assert.IsFalse(TFormatString.Fits('s', TFormatArgumentClass.Integer_));
+  Assert.IsFalse(TFormatString.Fits('f', TFormatArgumentClass.Integer_));
+  Assert.IsTrue(TFormatString.Fits('p', TFormatArgumentClass.Object_));
+  Assert.IsFalse(TFormatString.Fits('*', TFormatArgumentClass.Float));
+  // Unbekannt und Variant passen immer.
+  Assert.IsTrue(TFormatString.Fits('d', TFormatArgumentClass.Unknown));
+  Assert.IsTrue(TFormatString.Fits('f', TFormatArgumentClass.Variant_));
 end;
 
 initialization

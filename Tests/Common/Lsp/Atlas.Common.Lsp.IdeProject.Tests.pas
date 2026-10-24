@@ -26,6 +26,8 @@ type
     /// <summary>#46: Das aktive Projekt wird gemerkt und wechselt, ohne neu zu laden.</summary>
     [Test]
     procedure TracksActiveProjectWithoutReload;
+    [Test]
+    procedure KeepsFormatFunctionsWithoutReload;
   end;
 
 implementation
@@ -220,6 +222,42 @@ begin
     // Gleiche Vorgaben: nichts Neues.
     Notify(Dispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","naming":{"field":"F"}}');
     Assert.AreEqual(1, NamingChanged);
+  finally
+    Dispatcher.Free;
+    Store.Free;
+  end;
+end;
+
+procedure TLspIdeProjectTests.KeepsFormatFunctionsWithoutReload;
+var
+  Store: TLspIdeProject;
+  Dispatcher: TJsonRpcDispatcher;
+  Context: TIdeProjectContext;
+  Changed: Integer;
+begin
+  // Eintrag ohne Name entfällt, ohne formatIndex gilt -1 (Argument vor der Liste) (#451).
+  Context := Parse('{"project":"C:\\P\\A.dproj","formatFunctions":[{"name":"Log","formatIndex":1},' +
+    '{"name":""},{"name":"TLogger.Fmt"}]}');
+  Assert.AreEqual(2, Integer(Length(Context.FormatFunctions)));
+  Assert.AreEqual('Log', Context.FormatFunctions[0].Name);
+  Assert.AreEqual(1, Context.FormatFunctions[0].FormatIndex);
+  Assert.AreEqual(-1, Context.FormatFunctions[1].FormatIndex);
+  Assert.IsTrue(Context.FormatFunctions[1].IsMethod);
+  Store := TLspIdeProject.Create;
+  Dispatcher := TJsonRpcDispatcher.Create;
+  try
+    Changed := 0;
+    Store.OnChanged :=
+      procedure(const AContext: TIdeProjectContext)
+      begin
+        Inc(Changed);
+      end;
+    Store.Attach(Dispatcher);
+    Notify(Dispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug"}');
+    Notify(Dispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","formatFunctions":[{"name":"Log"}]}');
+    Assert.AreEqual(1, Changed);
+    Assert.IsTrue(Store.Find('C:\P\A.dproj', Context));
+    Assert.AreEqual(1, Integer(Length(Context.FormatFunctions)));
   finally
     Dispatcher.Free;
     Store.Free;

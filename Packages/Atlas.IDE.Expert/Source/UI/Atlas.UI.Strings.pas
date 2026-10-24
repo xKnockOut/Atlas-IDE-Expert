@@ -8,7 +8,9 @@
 interface
 
 uses
-  Atlas.Core.Documentation.Layout;
+  Atlas.Core.Documentation.Layout,
+  Atlas.Core.Signature.Contract,
+  Atlas.Core.Signature.Format;
 
 {$SCOPEDENUMS ON}
 
@@ -75,7 +77,7 @@ type
     KeysStatusIdeKey, KeysStatusNone, KeysStatusAtlasWins, KeysStatusLeft, KeysForeign, KeysForeignNone, KeysInvalid,
     SettingsProviderTimeLimit, SettingsFuseTitle, SettingsFuseNone, SettingsFuseEnableSelected, SettingsFuseEnableAll,
     CompletionLimited, SettingsIndexUsages, SettingsMemoryBudget, SettingsIndexTitle, SettingsIndexRefresh, SettingsIndexRebuild, SettingsIndexClear, SettingsIndexClearConfirm,
-    HidesDeclaration,
+    HidesDeclaration, WithMemberOrigin, ExceptionGroupTry, ExceptionGroupGeneral, SyntaxLimited, SyntaxUnknown, SyntaxLine,
     StatusOpenLog, StatusRestartServer, SettingsStatusField, SettingsStatusSummary, SettingsStatusHidden,
     SettingsStatusToggles, SettingsStatusTogglesBoth, SettingsStatusTogglesRight, SettingsStatusTogglesDouble,
     SettingsIndexProgress, SettingsIndexProgressField, SettingsIndexProgressMenu, SettingsIndexProgressOff,
@@ -708,6 +710,12 @@ type
     StatusBarCyclomatic, StatusBarLimit, StatusBarFindingsHint, StatusBarLiveOnHint, StatusBarLiveOffHint,
     StatusBarLastCheck, StatusBarMethodJump, StatusBarNoMethod, StatusBarNoFindingOfKind, StatusBarStatusClicks,
     StatusBarReady);
+    RulesGlobalButton,
+    // Platzhalter im Parameter-Hint (#451).
+    FormatPlaceholder, FormatWidth, FormatPrecision, FormatUnused, FormatInvalid, FormatTooMany, FormatConflict,
+    FormatKindInteger, FormatKindUnsigned, FormatKindHex, FormatKindFloat, FormatKindMoney, FormatKindString,
+    FormatKindPointer, FormatLiteralString, FormatLiteralChar, FormatLiteralInteger, FormatLiteralFloat,
+    FormatLiteralBoolean, FormatLiteralOther, SettingsFormatPlaceholders);
 
   TAtlasStrings = class
   private class var
@@ -738,6 +746,10 @@ type
     /// <summary>Überschriften der XMLDoc-Abschnitte in der Sprache der Oberfläche; eine Stelle für Hover und
     /// Detailpanel (D-07).</summary>
     class function DocLabels: TAtlasDocLabels; static;
+    /// <summary>Zeile der Platzhalter im Parameter-Hint (#451); '' ohne.</summary>
+    class function SignatureFormatLine(const ALine: TAtlasFormatLine): string; static;
+    /// <summary>Art eines Typbuchstabens (d → ganzzahlig, s → String …).</summary>
+    class function FormatKind(AType: Char): string; static;
     class property Language: TAtlasLanguage read FLanguage write FLanguage;
   end;
 
@@ -954,6 +966,12 @@ const
      'Index löschen',
      'Alle Index-Caches auf der Platte löschen? Der Index wird danach neu aufgebaut.',
      'Verdeckt: %s',
+     'Mitglied von %s (with)',
+     'Aus dem try-Block',
+     'Allgemein',
+     'Ergebnisse möglicherweise unvollständig · Syntaxfehler in ',
+     'Kontext unklar · Syntaxfehler in ',
+     'Zeile %d',
      'Protokoll öffnen',
      'Server neu starten',
      'Atlas-Feld in der Statusleiste des Editors',
@@ -2304,6 +2322,18 @@ const
      'Prüft beim Tippen (problems.live).', 'Prüft erst nach dem Speichern (problems.live aus).',
      'Letzte Prüfung: %s in %d ms um %s', 'Klick: zum Methodenkopf', 'keine Methode',
      'Keine Befunde dieser Art in der Unit.', 'Klick: Atlas-Status · Rechtsklick: Schnellschalter', 'bereit'),
+     'Globale Prüfregeln bearbeiten …',
+     'Platzhalter %d von %d erwartet %s',
+     'Breite für Platzhalter %d von %d (%s), ganzzahlig',
+     'Genauigkeit für Platzhalter %d von %d (%s), ganzzahlig',
+     'Argument %d kommt im Formatstring nicht vor (%d Platzhalter).',
+     'Ungültiger Platzhalter %s: EConvertError zur Laufzeit.',
+     'Mehr Argumente als Platzhalter: Argument %d wird nicht ausgegeben.',
+     'Platzhalter %d (%s) erwartet %s, Argument %d ist %s: EConvertError zur Laufzeit.',
+     'ganzzahlig', 'ganzzahlig ohne Vorzeichen', 'ganzzahlig (hexadezimal)', 'Gleitkomma', 'Gleitkomma (Währung)',
+     'String', 'Zeiger', 'ein String', 'ein Zeichen', 'eine Ganzzahl', 'eine Gleitkommazahl', 'ein Wahrheitswert',
+     'ein anderer Typ',
+     'Platzhalter von Format im Parameter-Hint zuordnen und einfärben'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2507,6 +2537,12 @@ const
      'Delete index',
      'Delete all index caches on disk? The index is rebuilt afterwards.',
      'Hides: %s',
+     'Member of %s (with)',
+     'From the try block',
+     'General',
+     'Results may be incomplete · syntax error in ',
+     'Context unclear · syntax error in ',
+     'line %d',
      'Open log',
      'Restart server',
      'Atlas field in the editor status bar',
@@ -3806,6 +3842,18 @@ const
      'Checks while you type (problems.live).', 'Checks only after saving (problems.live off).',
      'Last check: %s in %d ms at %s', 'Click: go to the method header', 'no method',
      'No findings of this kind in this unit.', 'Click: Atlas status · Right-click: quick toggles', 'ready'));
+     'Edit global rules …',
+     'Placeholder %d of %d expects %s',
+     'Width for placeholder %d of %d (%s), integer',
+     'Precision for placeholder %d of %d (%s), integer',
+     'Argument %d does not occur in the format string (%d placeholders).',
+     'Invalid placeholder %s: EConvertError at run time.',
+     'More arguments than placeholders: argument %d is not printed.',
+     'Placeholder %d (%s) expects %s, argument %d is %s: EConvertError at run time.',
+     'integer', 'unsigned integer', 'integer (hexadecimal)', 'floating point', 'floating point (currency)',
+     'string', 'pointer', 'a string', 'a character', 'an integer', 'a floating-point number', 'a Boolean',
+     'another type',
+     'Match and colour Format placeholders in the parameter hint'));
 
 { TAtlasStrings }
 
@@ -3817,6 +3865,72 @@ end;
 class function TAtlasStrings.Fmt(AId: TAtlasTextId; const AArgs: array of const): string;
 begin
   Result := Format(Texts[FLanguage, AId], AArgs);
+end;
+
+class function TAtlasStrings.FormatKind(AType: Char): string;
+begin
+  case AType of
+    'd':
+      Result := Text(TAtlasTextId.FormatKindInteger);
+    'u':
+      Result := Text(TAtlasTextId.FormatKindUnsigned);
+    'x':
+      Result := Text(TAtlasTextId.FormatKindHex);
+    'e', 'f', 'g', 'n':
+      Result := Text(TAtlasTextId.FormatKindFloat);
+    'm':
+      Result := Text(TAtlasTextId.FormatKindMoney);
+    's':
+      Result := Text(TAtlasTextId.FormatKindString);
+    'p':
+      Result := Text(TAtlasTextId.FormatKindPointer);
+  else
+    Result := Text(TAtlasTextId.FormatKindInteger);
+  end;
+end;
+
+function LiteralKind(const AKind: string): string;
+begin
+  if AKind = 'string' then
+    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralString)
+  else if AKind = 'char' then
+    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralChar)
+  else if AKind = 'integer' then
+    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralInteger)
+  else if AKind = 'float' then
+    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralFloat)
+  else if AKind = 'boolean' then
+    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralBoolean)
+  else
+    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralOther);
+end;
+
+class function TAtlasStrings.SignatureFormatLine(const ALine: TAtlasFormatLine): string;
+begin
+  case ALine.Kind of
+    TAtlasFormatLineKind.Placeholder:
+      Result := Fmt(TAtlasTextId.FormatPlaceholder, [ALine.Placeholder + 1, ALine.Count, FormatKind(ALine.TypeChar)]);
+    TAtlasFormatLineKind.Width:
+      Result := Fmt(TAtlasTextId.FormatWidth, [ALine.Placeholder + 1, ALine.Count, ALine.PlaceholderText]);
+    TAtlasFormatLineKind.Precision:
+      Result := Fmt(TAtlasTextId.FormatPrecision, [ALine.Placeholder + 1, ALine.Count, ALine.PlaceholderText]);
+    TAtlasFormatLineKind.Unused:
+      Result := Fmt(TAtlasTextId.FormatUnused, [ALine.Argument + 1, ALine.Count]);
+    TAtlasFormatLineKind.Problem:
+      case ALine.Problem of
+        TAtlasFormatProblem.Invalid:
+          Result := Fmt(TAtlasTextId.FormatInvalid, [ALine.PlaceholderText]);
+        TAtlasFormatProblem.TooManyArguments:
+          Result := Fmt(TAtlasTextId.FormatTooMany, [ALine.Argument + 1]);
+        TAtlasFormatProblem.TypeConflict:
+          Result := Fmt(TAtlasTextId.FormatConflict, [ALine.Placeholder + 1, ALine.PlaceholderText,
+            FormatKind(ALine.TypeChar), ALine.Argument + 1, LiteralKind(ALine.ProblemKind)]);
+      else
+        Result := '';
+      end;
+  else
+    Result := '';
+  end;
 end;
 
 class function TAtlasStrings.DocLabels: TAtlasDocLabels;

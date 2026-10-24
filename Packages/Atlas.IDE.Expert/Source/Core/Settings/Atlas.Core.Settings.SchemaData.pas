@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2143] of string = (
+  Lines: array[0..2173] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1160,6 +1160,46 @@ const
       'gen Überladungen, in Konstruktoren und Destruktoren auch die übrigen Konstruktoren bzw. Destruktoren der Vorfahren. Abstrakte Vorfahrmethoden fehlen, die Fußzeile nennt sie. In Funktionen ergänzt die ' +
       'Übernahme „Result := “, wenn vor inherited nichts in der Zeile steht. Aus: nur die Namen der Vorfahrmethoden.",',
     '          "x-issue": "#482"',
+    '        },',
+    '        "attributes": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Nach „[“ vor einer Typ-, Methoden-, Feld-, Property- oder Parameterdeklaration nur Attributklassen (Nachfahren von TCustomAttribute) ohne die Endung Attribute anbieten; bekan' +
+      'nte zuerst (DUnitX Test, TestCase, TestFixture, Setup, TearDown, JSONName, JSONMarshalled, die Compiler-Attribute weak, unsafe, volatile, Ref), rechts die Parameter des Konstruktors bzw. die Unit, aus' +
+      ' nicht eingebundenen Units mit uses-Eintrag. Nach „(“ zeigt der Parameter-Hint den Konstruktor. Aus: die gewöhnliche Liste.",',
+    '          "x-issue": "#465"',
+    '        },',
+    '        "anonymousMethods": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Erwartet ein Argument oder eine Zuweisung einen Methodenreferenztyp (reference to procedure/function, z. B. TProc, TFunc<T>, TPredicate<T> oder ein eigener), oben in der List' +
+      'e ein Gerüst mit passender Signatur anbieten: procedure(const Value: TKunde) bzw. function(const Value: TKunde): Boolean mit begin/end und Cursor im Rumpf. Die Parameter Arg1, Arg2 der generischen RTL' +
+      '-Typen heißen Value bzw. nach ihrem Typ, mit dem Parameterpräfix des Projekts. Nach „(“ erscheint das Gerüst von selbst. Aus: kein Gerüst.",',
+    '          "x-issue": "#468"',
+    '        },',
+    '        "withOrigin": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "In with-Blöcken Mitglieder des with-Objekts kennzeichnen: Marke „aus qryOrders“ (bei verschachtelten with das innerste passende Objekt, wie der Compiler), und wenn das Mitgli' +
+      'ed einen gleichnamigen lokalen Namen oder ein Mitglied von Self verdeckt, die Warnmarke „verdeckt Self.Name“ mit Warnfläche. Das Detailpanel nennt beide Bedeutungen. Aus: Mitglieder ohne Herkunft.",',
+    '          "x-issue": "#481"',
+    '        },',
+    '        "exceptionClasses": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Nach „raise “ und „on E: “ nur Exception-Klassen anbieten. Nach raise Projektklassen vor denen der Bibliotheken, Übernahme als EFoo.Create('''') mit dem Cursor zwischen den A' +
+      'nführungszeichen, dazu je Klasse ein Eintrag EFoo.CreateFmt. Nach „on E: “ zuerst die Gruppe „Aus dem try-Block“ mit den Klassen aus <exception cref> der dort aufgerufenen Routinen (und bekannten Fäll' +
+      'en der RTL wie StrToInt → EConvertError), darunter „Allgemein“; im selben except schon behandelte Klassen fehlen, Klassen, die ein früherer Zweig schon fängt, tragen die Warnung „nie erreicht“. Aus: d' +
+      'ie gewöhnliche Liste.",',
+    '          "x-issue": "#483"',
+    '        },',
+    '        "syntaxNotice": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Hinweis bei unvollständigem Code: Steht vor dem Cursor in der aktuellen Routine bzw. Klassendeklaration ein Syntaxfehler, zeigt die Liste oben die Warnleiste „Ergebnisse mögl' +
+      'icherweise unvollständig · Syntaxfehler in Zeile n“; Klick auf die Zeilenangabe springt dorthin. Ohne Vorschläge zeigt der leere Zustand den Fehler. Fehler in anderen Routinen und die Stelle, an der g' +
+      'erade getippt wird, zählen nicht. Aus: kein Hinweis.",',
+    '          "x-issue": "#457"',
     '        },',
     '        "sameNameVariants": {',
     '          "type": "boolean",',

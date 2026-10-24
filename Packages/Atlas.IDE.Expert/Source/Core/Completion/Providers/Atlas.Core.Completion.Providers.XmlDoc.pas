@@ -34,7 +34,7 @@ type
     constructor Create;
   protected
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
-      const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; override;
+      const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems; override;
   end;
 
 implementation
@@ -169,11 +169,11 @@ begin
 end;
 
 function TAtlasXmlDocCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems;
 var
   All: TArray<string>;
 begin
-  AIncomplete := False;
+  AState := Default(TAtlasFetchState);
   Result := nil;
   All := Lines(AContext.Text);
   if (AContext.Line < 0) or (AContext.Line > High(All)) then

@@ -242,6 +242,10 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionEnums.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionGenerics.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionAttributes.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionAnonymous.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionExceptions.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionSyntax.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionUses.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionInherited.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionSameNames.pas"/>
@@ -250,6 +254,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionJson.pas"/>
         <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.CompletionSource.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SignatureHelp.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SignatureFormat.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hierarchies.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Implementations.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlayHints.pas"/>
@@ -333,6 +338,7 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ConstantValues.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ConditionalBranches.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.FormatStrings.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.FormatRoutines.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.DirectiveNames.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.PureRoutines.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.pas"/>

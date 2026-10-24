@@ -50,6 +50,9 @@ type
     procedure LightPairsStandOut;
     [Test]
     procedure DarkPairsStandOut;
+    /// <summary>#451: sechs unterscheidbare Platzhalterfarben, keine wie die Fehlerfarbe.</summary>
+    [Test]
+    procedure PlaceholderColorsDiffer;
     [Test]
     procedure InlayHintColorsMixFromBackground;
     [Test]
@@ -108,6 +111,14 @@ type
     procedure BadgesFollowKind;
     [Test]
     procedure MethodBadgeFollowsSignature;
+    [Test]
+    procedure AttributeBadge;
+    [Test]
+    procedure MethodRefTag;
+    [Test]
+    procedure WithOriginAndShadowTags;
+    [Test]
+    procedure UnreachableExceptionTag;
     [Test]
     procedure MissingUnitBecomesTag;
     [Test]
@@ -291,6 +302,27 @@ procedure TAtlasPaletteTests.DarkPairsStandOut;
 begin
   // Editor dunkel: Hintergrund und Text des dunklen Schemas der IDE.
   CheckPairs(TAtlasColors.Dark, 'Dunkel', ['#1E1E1E', '#2B2B2B'], ['#D4D4D4', '#FFFFFF']);
+end;
+
+procedure TAtlasPaletteTests.PlaceholderColorsDiffer;
+
+  procedure Check(const AColors: TAtlasColors; const AMode: string);
+  var
+    Index, Other: Integer;
+  begin
+    for Index := 0 to High(AColors.Placeholders) do
+    begin
+      Assert.IsTrue(TAtlasColorMath.DeltaE2000(AColors.Placeholders[Index], AColors.Error) >= 20,
+        Format('%s Platzhalter %d gegen Fehler', [AMode, Index]));
+      for Other := Index + 1 to High(AColors.Placeholders) do
+        Assert.IsTrue(TAtlasColorMath.DeltaE2000(AColors.Placeholders[Index], AColors.Placeholders[Other]) >= 15,
+          Format('%s Platzhalter %d gegen %d', [AMode, Index, Other]));
+    end;
+  end;
+
+begin
+  Check(TAtlasColors.Light, 'Hell');
+  Check(TAtlasColors.Dark, 'Dunkel');
 end;
 
 procedure TAtlasPaletteTests.CheckContrast(const AColors: TAtlasColors; const AMode: string);
@@ -537,6 +569,70 @@ begin
     'function Add(const S: string): Integer')).Code);
   // Ohne Signatur: Funktion.
   Assert.AreEqual('fn', TAtlasItemPresentation.Badge(Item('Add', TAtlasItemKind.Method)).Code);
+end;
+
+procedure TAtlasPresentationTests.AttributeBadge;
+var
+  Entry: TAtlasCompletionItem;
+begin
+  // Attribut nach "[" (#465): "at" statt "ty", auch bei Compiler-Attributen (Art Schlüsselwort).
+  Entry := Item('TestCase', TAtlasItemKind.Class_);
+  Entry.Attribute := True;
+  Assert.AreEqual('at', TAtlasItemPresentation.Badge(Entry).Code);
+  Entry := Item('weak', TAtlasItemKind.Keyword);
+  Entry.Attribute := True;
+  Assert.AreEqual('at', TAtlasItemPresentation.Badge(Entry).Code);
+  Assert.AreEqual('ty', TAtlasItemPresentation.Badge(Item('TKunde', TAtlasItemKind.Class_)).Code);
+end;
+
+procedure TAtlasPresentationTests.MethodRefTag;
+var
+  Entry: TAtlasCompletionItem;
+begin
+  // Gerüst einer anonymen Methode (#468): Badge "sn" der Vorlage, Tag mit dem erwarteten Typ.
+  Entry := Item('function(const Value: TCustomer): Boolean', TAtlasItemKind.Snippet);
+  Entry.MethodRef := 'TPredicate<TCustomer>';
+  Assert.AreEqual('sn', TAtlasItemPresentation.Badge(Entry).Code);
+  Assert.AreEqual('TPredicate<TCustomer>', TAtlasItemPresentation.TagText(Entry));
+  Assert.AreEqual('', TAtlasItemPresentation.TagText(Item('procedure', TAtlasItemKind.Snippet)));
+end;
+
+procedure TAtlasPresentationTests.WithOriginAndShadowTags;
+var
+  Entry: TAtlasCompletionItem;
+  Tags: TAtlasTags;
+begin
+  // with-Objekt (#481): „aus …“, dann je verdecktem Namen eine Warnmarke mit Fläche.
+  Entry := Item('Name', TAtlasItemKind.Field);
+  Entry.Scope := 6;
+  Entry.WithOrigin := 'qryOrders';
+  Entry.WithShadows := ['Self.Name', 'lokale Variable Name'];
+  Tags := TAtlasItemPresentation.Tags(Entry);
+  Assert.AreEqual('aus qryOrders, verdeckt Self.Name, verdeckt lokale Variable Name',
+    TAtlasItemPresentation.TagText(Entry));
+  Assert.AreEqual(Ord(TAtlasTagKind.Accent), Ord(Tags[0].Kind));
+  Assert.IsFalse(Tags[0].Filled);
+  Assert.AreEqual(Ord(TAtlasTagKind.Warn), Ord(Tags[1].Kind));
+  Assert.IsTrue(Tags[1].Filled);
+  // Ohne Verdeckung nur die Herkunft.
+  Entry.WithShadows := nil;
+  Assert.AreEqual('aus qryOrders', TAtlasItemPresentation.TagText(Entry));
+end;
+
+procedure TAtlasPresentationTests.UnreachableExceptionTag;
+var
+  Entry: TAtlasCompletionItem;
+  Tags: TAtlasTags;
+begin
+  // Exception-Klassen (#483): Ein früherer Zweig fängt die Klasse schon.
+  Entry := Item('EConvertError', TAtlasItemKind.Class_);
+  Entry.Unreachable := 'Exception';
+  Tags := TAtlasItemPresentation.Tags(Entry);
+  Assert.AreEqual('nie erreicht: Exception davor', TAtlasItemPresentation.TagText(Entry));
+  Assert.AreEqual(Ord(TAtlasTagKind.Warn), Ord(Tags[0].Kind));
+  Assert.IsTrue(Tags[0].Filled);
+  Entry.Unreachable := '';
+  Assert.AreEqual('', TAtlasItemPresentation.TagText(Entry));
 end;
 
 procedure TAtlasPresentationTests.MissingUnitBecomesTag;

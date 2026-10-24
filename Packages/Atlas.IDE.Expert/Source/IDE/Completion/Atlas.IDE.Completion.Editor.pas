@@ -528,6 +528,13 @@ begin
         TAtlasIdeNavigation.GoToLocation(ALink.Target.FileName, ALink.Target.Line, ALink.Target.Character);
       end;
     end;
+  // Zeilenangabe der Warnleiste (#457): Liste schließen, Caret an den Fehler.
+  FPopup.OnSyntaxLine :=
+    procedure(ALine, ACharacter: Integer)
+    begin
+      Close;
+      TAtlasIdeNavigation.GoToPosition(ALine, Max(0, ACharacter));
+    end;
   FPopup.OnChip :=
     procedure(AChip: TAtlasChip)
     begin
