@@ -55,6 +55,10 @@ type
     procedure InterfaceCostStopsAtImplementationUses;
     [Test]
     procedure InterfaceCostJsonAndLimit;
+    [Test]
+    procedure UseCandidatesMarkInterfaceCycles;
+    [Test]
+    procedure UseInfoJsonCarriesPaths;
   end;
 
 /// <summary>Quelltext einer Unit mit den uses-Listen (Zeilen getrennt durch #10).</summary>
@@ -459,6 +463,75 @@ begin
     Assert.AreEqual(4, Json.GetValue<Integer>('recompileCount'));
     Assert.AreEqual(2, Json.GetValue<TJSONArray>('units').Count);
     Assert.AreEqual('E', Json.GetValue<TJSONArray>('units').Items[1].Value);
+  finally
+    Json.Free;
+  end;
+end;
+
+/// <summary>„Unit verwenden“-Kandidaten in einem eigenen Graphen aus AUnits.</summary>
+function UseIn(const AUnits: TArray<TUnitIndex>; const AName: string): TUnitUseInfo;
+var
+  Graph: TUsesGraph;
+begin
+  Graph := TUsesGraph.Create(AUnits, TUsesGraphOptions.Default);
+  try
+    Result := TUnitRelationsBuilder.UseCandidates(Graph, FileOf(AName));
+  finally
+    Graph.Free;
+  end;
+end;
+
+procedure TUnitRelationsTests.UseCandidatesMarkInterfaceCycles;
+var
+  Units: TArray<TUnitIndex>;
+  Info: TUnitUseInfo;
+begin
+  // Oben → Mitte → Unten über interface-uses, Seite → Unten nur im implementation.
+  Units := TArray<TUnitIndex>.Create(UsesUnit('Oben', ['Mitte'], nil), UsesUnit('Mitte', ['Unten'], nil),
+    UsesUnit('Seite', nil, ['Unten']), UsesUnit('Unten', nil, nil), UsesUnit('Fremd', nil, nil));
+  Info := UseIn(Units, 'Unten');
+  Assert.IsTrue(Info.Found);
+  Assert.AreEqual('Unten', Info.UnitName);
+  Assert.AreEqual(3, Integer(Length(Info.Candidates)), 'Fremd verwendet Unten nicht');
+  Assert.AreEqual('Mitte', Info.Candidates[0].Name, 'nach Name');
+  Assert.AreEqual(FileOf('Mitte'), Info.Candidates[0].FileName);
+  // Unten nimmt Mitte ins interface: Mitte braucht Unten schon im interface, der Compiler lehnt das ab.
+  Assert.AreEqual('Unten → Mitte → Unten', Info.Candidates[0].InterfacePath);
+  Assert.AreEqual('Unten → Mitte → Unten', Info.Candidates[0].Path);
+  Assert.AreEqual('Oben', Info.Candidates[1].Name);
+  Assert.AreEqual('Unten → Oben → Mitte → Unten', Info.Candidates[1].InterfacePath, 'auch über Umwege');
+  // Seite verwendet Unten nur im implementation: erlaubter Kreis, nur ein Hinweis.
+  Assert.AreEqual('Seite', Info.Candidates[2].Name);
+  Assert.AreEqual('', Info.Candidates[2].InterfacePath);
+  Assert.AreEqual('Unten → Seite → Unten', Info.Candidates[2].Path);
+  // Oben verwendet niemand: kein Kreis möglich.
+  Assert.AreEqual(0, Integer(Length(UseIn(Units, 'Oben').Candidates)));
+  Info := UseIn(Units, 'Fehlt');
+  Assert.IsFalse(Info.Found, 'nicht im Graphen');
+  Assert.AreEqual('Fehlt', Info.UnitName);
+  Assert.IsNull(Info.Candidates);
+end;
+
+procedure TUnitRelationsTests.UseInfoJsonCarriesPaths;
+var
+  Units: TArray<TUnitIndex>;
+  Json: TJSONObject;
+  Cycles: TJSONArray;
+begin
+  Units := TArray<TUnitIndex>.Create(UsesUnit('Mitte', ['Unten'], nil), UsesUnit('Seite', nil, ['Unten']),
+    UsesUnit('Unten', nil, nil));
+  Json := TUnitRelationsBuilder.UseInfoToJson(UseIn(Units, 'Unten'));
+  try
+    Assert.IsTrue(Json.GetValue<Boolean>('found'));
+    Assert.AreEqual('Unten', Json.GetValue<string>('unit'));
+    Assert.AreEqual(FileOf('Unten'), Json.GetValue<string>('file'));
+    Cycles := Json.GetValue<TJSONArray>('cycles');
+    Assert.AreEqual(2, Cycles.Count);
+    Assert.AreEqual('Mitte', (Cycles.Items[0] as TJSONObject).GetValue<string>('name'));
+    Assert.AreEqual(FileOf('Mitte'), (Cycles.Items[0] as TJSONObject).GetValue<string>('file'));
+    Assert.AreEqual('Unten → Mitte → Unten', (Cycles.Items[0] as TJSONObject).GetValue('interfacePath').Value);
+    Assert.IsNull((Cycles.Items[1] as TJSONObject).GetValue('interfacePath'), 'nur über implementation');
+    Assert.AreEqual('Unten → Seite → Unten', (Cycles.Items[1] as TJSONObject).GetValue('path').Value);
   finally
     Json.Free;
   end;

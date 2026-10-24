@@ -47,6 +47,8 @@ type
     procedure MarksEntriesNeededOnlyInImplementation;
     [Test]
     procedure CostCommandAnswersRecompileCount;
+    [Test]
+    procedure UseUnitInfoListsInUsesAndCycles;
   end;
 
 implementation
@@ -412,6 +414,65 @@ begin
       procedure
       begin
         FRelations.Cost(Args).Free;
+      end, EJsonRpcError);
+  finally
+    Args.Free;
+  end;
+end;
+
+procedure TLspUnitRelationsTests.UseUnitInfoListsInUsesAndCycles;
+var
+  Args: TJSONArray;
+  Answer: TJSONValue;
+  Cycles: TJSONArray;
+begin
+  Args := Arguments([FileOf('A')]);
+  try
+    Answer := FRelations.UseUnitInfo(Args);
+    try
+      Assert.IsTrue(Answer.GetValue<Boolean>('found'));
+      Assert.AreEqual('A', Answer.GetValue<string>('unit'));
+      // „schon in uses“: beide Listen aus dem Text.
+      Assert.AreEqual(2, Answer.GetValue<TJSONArray>('inUses').Count);
+      Assert.AreEqual('B', Answer.GetValue<TJSONArray>('inUses').Items[0].Value);
+      Assert.AreEqual('C', Answer.GetValue<TJSONArray>('inUses').Items[1].Value);
+      // B verwendet A im interface (Kreis, den der Compiler ablehnt), D nur im implementation.
+      Cycles := Answer.GetValue<TJSONArray>('cycles');
+      Assert.AreEqual(2, Cycles.Count);
+      Assert.AreEqual('B', (Cycles.Items[0] as TJSONObject).GetValue<string>('name'));
+      Assert.AreEqual('A → B → A', (Cycles.Items[0] as TJSONObject).GetValue('interfacePath').Value);
+      Assert.AreEqual('D', (Cycles.Items[1] as TJSONObject).GetValue<string>('name'));
+      Assert.IsNull((Cycles.Items[1] as TJSONObject).GetValue('interfacePath'));
+      Assert.AreEqual('A → D → A', (Cycles.Items[1] as TJSONObject).GetValue('path').Value);
+      Assert.AreEqual(FIndex.Generation, Answer.GetValue<Int64>('generation'));
+    finally
+      Answer.Free;
+    end;
+  finally
+    Args.Free;
+  end;
+  Args := Arguments([FileOf('C')]);
+  try
+    Answer := FRelations.UseUnitInfo(Args);
+    try
+      Assert.AreEqual(0, Answer.GetValue<TJSONArray>('inUses').Count);
+      // A, B und D erreichen C nur über das implementation-uses von A: überall nur ein Hinweis.
+      Cycles := Answer.GetValue<TJSONArray>('cycles');
+      Assert.AreEqual(3, Cycles.Count);
+      Assert.AreEqual('C → B → A → C', (Cycles.Items[1] as TJSONObject).GetValue('path').Value);
+      Assert.IsNull((Cycles.Items[1] as TJSONObject).GetValue('interfacePath'));
+    finally
+      Answer.Free;
+    end;
+  finally
+    Args.Free;
+  end;
+  Args := TJSONArray.Create;
+  try
+    Assert.WillRaise(
+      procedure
+      begin
+        FRelations.UseUnitInfo(Args).Free;
       end, EJsonRpcError);
   finally
     Args.Free;

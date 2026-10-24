@@ -6229,3 +6229,26 @@ Voraussetzung: Server läuft in der IDE, Testprojekt mit der Kette `Oben` (inter
 | IK10 | `.dpr` im Editor; Server beenden | Kein Feld; ohne Server kein Feld und keine Fehlermeldung |
 | IK11 | *Compiler › Kosten einer interface-Änderung in der Statusleiste* aus | Feld verschwindet sofort, die beiden Befehle bleiben; `architecture.enabled` aus nimmt Feld und Befehle weg |
 | IK12 | Englische IDE-Sprache | „interface change: 2 units will be recompiled“, „Dependencies of this unit“, „Most expensive units for interface changes“ |
+
+## Unit verwenden und Formulare suchen (#786)
+
+Voraussetzung: Server läuft in der IDE, Testprojekt mit `Kunde.Import` (interface uses `Atlas.Common.Log.Format`, `SysUtils`), `Kunde.Ansicht` (interface uses `Kunde.Import`), `Kunde.Bericht` (implementation uses `Kunde.Import`), `Kunde.Daten`, `Kunde.Liste` (beide ohne Bezug), einem Formular, einem Frame und einem Datenmodul; `unitSearch.enabled`, `unitSearch.replaceUseUnitDialog`, `unitSearch.replaceFormsDialog` und `architecture.enabled` an. Index fertig.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UV1 | `Kunde.Import.pas` im Editor, Alt+F11 | Fenster mit Kopfzeile „Unit verwenden in Kunde.Import“, Umschalter rechts auf implementation |
+| UV2 | Nach `Format` suchen | `Atlas.Common.Log.Format` ausgegraut mit „schon in uses“ (**Abnahme**); `System.SysUtils` ebenso; `Kunde.Import` selbst ausgegraut |
+| UV3 | Zeile `Kunde.Ansicht` wählen | Kennzeichen „Kreis über Kunde.Ansicht“ grau (Hinweis), Fußzeile „Erlaubter Kreis (nur ein Hinweis): Kunde.Import → Kunde.Ansicht → Kunde.Import“ |
+| UV4 | Strg+I (oder Klick auf interface) | Kennzeichen wird zur Warnung „⚠ Kreis über Kunde.Ansicht“, Fußzeile „Kreisbezug, den der Compiler ablehnt (F2047): …“ (**Abnahme**); `Kunde.Bericht` bleibt Hinweis |
+| UV5 | Zurück auf implementation, `Kunde.Daten` und `Kunde.Liste` mit Leertaste markieren, Enter | Fenster schließt; beide stehen im implementation-uses von `Kunde.Import` (neu angelegt, falls keins da war), jede einmal; Meldung „2 Units … aufgenommen“ (**Abnahme**) |
+| UV6 | Strg+Z | Beide Einträge verschwinden in einem Schritt (**Abnahme**) |
+| UV7 | Alt+F11, `Atlas.Common.Log.Format` und `Kunde.Daten` markieren, Enter | Nur `Kunde.Daten` wird eingefügt, kein Duplikat |
+| UV8 | Alt+F11 mit einer `.dfm` oder ohne Editor | Meldung, dass keine Unit offen ist; kein Fenster |
+| UV9 | Umschalt+F12 | Fenster „Formulare suchen“, Chip `t:form\|frame\|dm` im Suchfeld, nur Formulare, Frames und Datenmodule (**Abnahme**) |
+| UV10 | Formular wählen, Enter; dann Umschalt+F12, Umschalt+Enter | Enter öffnet den Designer (**Abnahme**); Umschalt+Enter öffnet den Quelltext |
+| UV11 | Chip `t:form\|frame\|dm` entfernen | Alle Units erscheinen |
+| UV12 | Umschalttaste halten und *Datei › Unit verwenden* bzw. *Ansicht › Formulare* klicken; Befehlspalette „IDE-Dialog Unit verwenden“, „IDE-Dialog Formulare“ | Jeweils der Dialog der IDE |
+| UV13 | *Units suchen › Alt+F11 …* und *Umschalt+F12 …* aus, Alt+F11 und Umschalt+F12 | Die Dialoge der IDE, sofort ohne Neustart (**Abnahme**) |
+| UV14 | Server beenden, Alt+F11 | Meldung „kein Server“ und der Dialog der IDE |
+| UV15 | Befehlspalette „Unit verwenden (Atlas)“ und „Formulare suchen (Atlas)“ | Das Atlas-Fenster im jeweiligen Modus, auch mit abgeschalteter Übernahme |
+| UV16 | Englische IDE-Sprache | „Use unit in Kunde.Import“, „already in uses“, „Cycle via …“, „Find forms“ |

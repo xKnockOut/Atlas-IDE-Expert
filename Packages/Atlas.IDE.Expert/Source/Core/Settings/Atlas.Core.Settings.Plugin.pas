@@ -597,6 +597,10 @@ type
     UnitSearchEnabled: Boolean;
     /// <summary>Strg+F12 und Ansicht › Units öffnen das Atlas-Fenster statt des IDE-Dialogs (#777, unitSearch.replaceIdeDialog); Vorgabe an.</summary>
     UnitSearchReplaceIdeDialog: Boolean;
+    /// <summary>Alt+F11 und Datei › Unit verwenden öffnen das Atlas-Fenster im Modus „Unit verwenden“ (#786, unitSearch.replaceUseUnitDialog); Vorgabe an.</summary>
+    UnitSearchReplaceUseUnitDialog: Boolean;
+    /// <summary>Umschalt+F12 und Ansicht › Formulare öffnen das Atlas-Fenster mit Filter Formulare (#786, unitSearch.replaceFormsDialog); Vorgabe an.</summary>
+    UnitSearchReplaceFormsDialog: Boolean;
     /// <summary>Eingeklappte Gruppen je Projektgruppe merken (#777, unitSearch.rememberCollapsed); Vorgabe an.</summary>
     UnitSearchRememberCollapsed: Boolean;
     /// <summary>Chipzeile mit Herkunft und Art (#777, unitSearch.filters); Vorgabe an.</summary>
@@ -1457,6 +1461,8 @@ begin
   Result.BugReportAnonymize := True;
   Result.UnitSearchEnabled := True;
   Result.UnitSearchReplaceIdeDialog := True;
+  Result.UnitSearchReplaceUseUnitDialog := True;
+  Result.UnitSearchReplaceFormsDialog := True;
   Result.UnitSearchRememberCollapsed := True;
   Result.UnitSearchFilters := True;
   Result.UnitSearchFilterSyntax := True;
@@ -2089,6 +2095,10 @@ begin
   BugReportAnonymize := AStore.ReadInteger('BugReportAnonymize', BoolValue(Default.BugReportAnonymize)) <> 0;
   UnitSearchEnabled := AStore.ReadInteger('UnitSearchEnabled', BoolValue(Default.UnitSearchEnabled)) <> 0;
   UnitSearchReplaceIdeDialog := AStore.ReadInteger('UnitSearchReplaceIdeDialog', BoolValue(Default.UnitSearchReplaceIdeDialog)) <> 0;
+  UnitSearchReplaceUseUnitDialog := AStore.ReadInteger('UnitSearchReplaceUseUnitDialog',
+    BoolValue(Default.UnitSearchReplaceUseUnitDialog)) <> 0;
+  UnitSearchReplaceFormsDialog := AStore.ReadInteger('UnitSearchReplaceFormsDialog',
+    BoolValue(Default.UnitSearchReplaceFormsDialog)) <> 0;
   UnitSearchRememberCollapsed := AStore.ReadInteger('UnitSearchRememberCollapsed', BoolValue(Default.UnitSearchRememberCollapsed)) <> 0;
   UnitSearchFilters := AStore.ReadInteger('UnitSearchFilters', BoolValue(Default.UnitSearchFilters)) <> 0;
   UnitSearchFilterSyntax := AStore.ReadInteger('UnitSearchFilterSyntax', BoolValue(Default.UnitSearchFilterSyntax)) <> 0;
@@ -2525,6 +2535,8 @@ begin
   AStore.WriteInteger('BugReportAnonymize', BoolValue(BugReportAnonymize));
   AStore.WriteInteger('UnitSearchEnabled', BoolValue(UnitSearchEnabled));
   AStore.WriteInteger('UnitSearchReplaceIdeDialog', BoolValue(UnitSearchReplaceIdeDialog));
+  AStore.WriteInteger('UnitSearchReplaceUseUnitDialog', BoolValue(UnitSearchReplaceUseUnitDialog));
+  AStore.WriteInteger('UnitSearchReplaceFormsDialog', BoolValue(UnitSearchReplaceFormsDialog));
   AStore.WriteInteger('UnitSearchRememberCollapsed', BoolValue(UnitSearchRememberCollapsed));
   AStore.WriteInteger('UnitSearchFilters', BoolValue(UnitSearchFilters));
   AStore.WriteInteger('UnitSearchFilterSyntax', BoolValue(UnitSearchFilterSyntax));

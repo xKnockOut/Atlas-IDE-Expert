@@ -737,7 +737,11 @@ type
     UnitRelationsRemove, UnitRelationsCopyPath, UnitRelationsNoFile, UnitRelationsLoading, UnitRelationsNoServer, UnitRelationsFailed, UnitRelationsEditFailed, UnitRelationsEditRefused, UnitRelationsEditAction,
     // Kosten einer interface-Änderung (#554).
     InterfaceCostStatus, InterfaceCostStatusOne, InterfaceCostHint, InterfaceCostMore, UnitDependenciesCommand, InterfaceCostRankingCommand,
-    SettingsShowInterfaceCost, UnitRelationsOnlyImplementation, UnitRelationsOnlyImplementationHint, UnitRelationsUsedByInterface, UnitRelationsUsedByImplementation, UnitRelationsMovable);
+    SettingsShowInterfaceCost, UnitRelationsOnlyImplementation, UnitRelationsOnlyImplementationHint, UnitRelationsUsedByInterface, UnitRelationsUsedByImplementation, UnitRelationsMovable,
+    // „Unit verwenden“ und „Formulare suchen“ (#786).
+    UseUnitTitle, UseUnitTitleNone, FormsTitle, UseUnitInUses, UseUnitCycle, UseUnitCycleWarning, UseUnitCycleHint, UseUnitHints,
+    FormsHints, UseUnitNothing, UseUnitCommand, FormsCommand, UseUnitIdeDialog, FormsIdeDialog, SettingsUnitSearchReplaceUseUnit,
+    SettingsUnitSearchReplaceForms);
 
   TAtlasStrings = class
   private class var
@@ -2474,7 +2478,23 @@ const
      '%s wird nur im implementation-Teil gebraucht: ins implementation-uses verschieben, dann kostet eine Änderung dort weniger',
      'über interface-uses (%d)',
      'über implementation-uses (%d)',
-     '%d ins implementation-uses verschiebbar'),
+     '%d ins implementation-uses verschiebbar',
+     'Unit verwenden in %s',
+     'Unit verwenden',
+     'Formulare suchen',
+     'schon in uses',
+     'Kreis über %s',
+     'Kreisbezug, den der Compiler ablehnt (F2047): %s',
+     'Erlaubter Kreis (nur ein Hinweis): %s',
+     'Enter einfügen · Strg+I interface/implementation · Leertaste markieren · Esc schließt',
+     'Enter öffnet den Designer · Umschalt+Enter öffnet den Quelltext · Esc schließt',
+     'Die gewählten Units stehen schon in uses',
+     'Unit verwenden (Atlas)',
+     'Formulare suchen (Atlas)',
+     'IDE-Dialog Unit verwenden',
+     'IDE-Dialog Formulare',
+     'Alt+F11 und Datei › Unit verwenden öffnen das Atlas-Fenster',
+     'Umschalt+F12 und Ansicht › Formulare öffnen das Atlas-Fenster'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -4115,7 +4135,23 @@ const
      '%s is only needed in the implementation part: move it to the implementation uses, then a change there costs less',
      'via interface uses (%d)',
      'via implementation uses (%d)',
-     '%d movable to the implementation uses'));
+     '%d movable to the implementation uses',
+     'Use unit in %s',
+     'Use unit',
+     'Find forms',
+     'already in uses',
+     'Cycle via %s',
+     'Circular reference the compiler rejects (F2047): %s',
+     'Allowed cycle (only a hint): %s',
+     'Enter adds · Ctrl+I interface/implementation · Space marks · Esc closes',
+     'Enter opens the designer · Shift+Enter opens the source · Esc closes',
+     'The selected units are already in uses',
+     'Use unit (Atlas)',
+     'Find forms (Atlas)',
+     'IDE dialog Use Unit',
+     'IDE dialog Forms',
+     'Alt+F11 and File › Use Unit open the Atlas window',
+     'Shift+F12 and View › Forms open the Atlas window'));
 
 { TAtlasStrings }
 
