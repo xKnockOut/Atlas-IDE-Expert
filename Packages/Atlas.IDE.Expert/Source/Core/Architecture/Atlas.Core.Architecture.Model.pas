@@ -214,6 +214,13 @@ type
       out AEdges: TArray<Integer>): Boolean;
     /// <summary>„A → B → C“ für einen Weg aus ShortestPath.</summary>
     function PathText(AFrom: Integer; const AEdges: TArray<Integer>): string;
+    /// <summary>Weg aus „Weg zwischen Symbolen“ (#1117) auf der Karte: AUnits sind die Units der Kette nach
+    /// Namen. Units außerhalb des Umfangs fallen weg, direkte Wiederholungen ebenso. Zwischen zwei Units gilt
+    /// die uses-Kante in einer der beiden Richtungen; ohne direkte Kante überbrückt der kürzeste Weg über uses
+    /// (mit implementation). AEdges: Nummern in Edges. False, wenn keine Unit im Umfang liegt.</summary>
+    function RouteOf(const ANames: TArray<string>; out AUnits, AEdges: TArray<Integer>): Boolean;
+    /// <summary>„A → B → C“ zu Units aus RouteOf.</summary>
+    function RouteText(const AUnits: TArray<Integer>): string;
     /// <summary>Die Unit gehört zu einem Teilsystem, das AHidden ausblendet.</summary>
     function IsHidden(AUnit: Integer; const AHidden: TArray<Boolean>): Boolean;
   end;
@@ -973,6 +980,68 @@ begin
   for Edge in AEdges do
     if (Edge >= 0) and (Edge <= High(Edges)) then
       Result := Result + ' → ' + Units[Edges[Edge].Target].Name;
+end;
+
+function TAtlasArchitectureModel.RouteOf(const ANames: TArray<string>; out AUnits, AEdges: TArray<Integer>): Boolean;
+var
+  Name: string;
+  Unit_, Index, Edge, Previous: Integer;
+  Direct: Integer;
+  Bridge: TArray<Integer>;
+begin
+  AUnits := nil;
+  AEdges := nil;
+  for Name in ANames do
+  begin
+    Unit_ := IndexOf(Name);
+    if (Unit_ < 0) or ((Length(AUnits) > 0) and (AUnits[High(AUnits)] = Unit_)) then
+      Continue;
+    if Length(AUnits) > 0 then
+    begin
+      Previous := AUnits[High(AUnits)];
+      // Vorwärts zuerst; ein Weg über Vererbung oder Umsetzung kann auch gegen die uses-Richtung laufen.
+      Direct := -1;
+      for Index := 0 to High(Edges) do
+        if (Edges[Index].Source = Previous) and (Edges[Index].Target = Unit_) then
+        begin
+          Direct := Index;
+          Break;
+        end;
+      if Direct < 0 then
+        for Index := 0 to High(Edges) do
+          if (Edges[Index].Source = Unit_) and (Edges[Index].Target = Previous) then
+          begin
+            Direct := Index;
+            Break;
+          end;
+      if Direct >= 0 then
+        AEdges := AEdges + [Direct]
+      else if ShortestPath(Previous, Unit_, True, nil, Bridge) then
+        for Edge in Bridge do
+        begin
+          AEdges := AEdges + [Edge];
+          // Zwischen-Units der Brücke gehören zum Weg (Ziel der letzten Kante ist Unit_ selbst).
+          if Edges[Edge].Target <> Unit_ then
+            AUnits := AUnits + [Edges[Edge].Target];
+        end;
+    end;
+    AUnits := AUnits + [Unit_];
+  end;
+  Result := Length(AUnits) > 0;
+end;
+
+function TAtlasArchitectureModel.RouteText(const AUnits: TArray<Integer>): string;
+var
+  Unit_: Integer;
+begin
+  Result := '';
+  for Unit_ in AUnits do
+    if (Unit_ >= 0) and (Unit_ <= High(Units)) then
+    begin
+      if Result <> '' then
+        Result := Result + ' → ';
+      Result := Result + Units[Unit_].Name;
+    end;
 end;
 
 { TAtlasArchitectureCommands }

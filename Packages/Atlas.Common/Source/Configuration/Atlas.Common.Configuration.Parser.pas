@@ -116,6 +116,7 @@ type
     procedure ReadDiagnostics(ANode: TJsonNode);
     procedure ReadIndex(ANode: TJsonNode);
     procedure ReadArchitecture(ANode: TJsonNode);
+    procedure ReadNavigation(ANode: TJsonNode);
     procedure ReadFormat(ANode: TJsonNode);
     function ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
     /// <summary>Wurzel oder nil nach gemeldetem Syntaxfehler.</summary>
@@ -1821,6 +1822,29 @@ begin
   end;
 end;
 
+procedure TValidator.ReadNavigation(ANode: TJsonNode);
+var
+  Index: Integer;
+  Key: string;
+  Value: TJsonNode;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"navigation" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    Value := ANode[Index];
+    if Key = 'symbolPath' then
+      ExpectBoolean(Value, Key, FSettings.Navigation.SymbolPath)
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "navigation.%s"', [Key]), False);
+  end;
+end;
+
 procedure TValidator.ReadArchitecture(ANode: TJsonNode);
 var
   Index, Item, Number: Integer;
@@ -2166,6 +2190,8 @@ begin
         ReadIndex(Value)
       else if Key = 'architecture' then
         ReadArchitecture(Value)
+      else if Key = 'navigation' then
+        ReadNavigation(Value)
       else if Key = 'usesCommand' then
         ExpectBoolean(Value, Key, FSettings.UsesCommand)
       else if Key = 'completeBlocks' then
@@ -2535,6 +2561,8 @@ begin
       Result.IndexCacheMaxAgeDays := FileSettings.IndexCacheMaxAgeDays;
       Result.IndexCacheMaxMb := FileSettings.IndexCacheMaxMb;
     end
+    else if Key = 'navigation' then
+      Result.Navigation := FileSettings.Navigation
     else if Key = 'architecture' then
     begin
       Result.ArchitectureEnabled := FileSettings.ArchitectureEnabled;

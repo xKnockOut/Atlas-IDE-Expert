@@ -594,6 +594,10 @@
         </DCCReference>
         <DCCReference Include="Source\IDE\UnitRelations\Atlas.IDE.UnitRelations.Window.pas"/>
         <DCCReference Include="Source\IDE\UnitRelations\Atlas.IDE.UnitRelations.Service.pas"/>
+        <DCCReference Include="Source\Core\SymbolPath\Atlas.Core.SymbolPath.Model.pas"/>
+        <DCCReference Include="Source\UI\SymbolPath\Atlas.UI.SymbolPath.Chain.pas"/>
+        <DCCReference Include="Source\UI\SymbolPath\Atlas.UI.SymbolPath.Dialog.pas"/>
+        <DCCReference Include="Source\IDE\SymbolPath\Atlas.IDE.SymbolPath.Service.pas"/>
         <DCCReference Include="Source\UI\Outline\Atlas.UI.Outline.Frame.pas">
             <Form>AtlasOutlineFrame</Form>
             <FormType>dfm</FormType>

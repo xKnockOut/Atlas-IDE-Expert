@@ -240,6 +240,17 @@ begin
     end;
     Result := True;
   end
+  else if Method.Value = McpCancelledMethod then
+  begin
+    Params := AMessage.GetValue('params');
+    if Params is TJSONObject then
+    begin
+      Id := TJSONObject(Params).GetValue('requestId');
+      if Id <> nil then
+        Cancel(Id);
+    end;
+    Result := True;
+  end
   else if IsChangeMethod(Method.Value) then
   begin
     Uri := DocumentUri(AMessage);

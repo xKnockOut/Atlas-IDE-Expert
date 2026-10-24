@@ -189,6 +189,8 @@
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.UsesService.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.UnitRelations.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.UnitRelations.Tests.pas"/>
+        <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.SymbolPath.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SymbolPath.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Louvain.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Overview.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Layout.Tests.pas"/>
@@ -821,6 +823,11 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.UnitRelations.InterfaceCost.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\UnitRelations\Atlas.UI.UnitRelations.Frame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.UnitRelations.Frame.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\SymbolPath\Atlas.Core.SymbolPath.Model.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.SymbolPath.Model.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\SymbolPath\Atlas.UI.SymbolPath.Chain.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\SymbolPath\Atlas.UI.SymbolPath.Dialog.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.SymbolPath.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Outline\Atlas.Core.Outline.Breadcrumbs.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.Breadcrumbs.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas"/>

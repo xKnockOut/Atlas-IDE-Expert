@@ -47,6 +47,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `inlayHints` | global (settings.json) | object | – |  | Inlay Hints im Editor. |
 | `codeLens` | global (settings.json) | object | – |  | Code Lens im Editor. |
 | `references` | global (settings.json) | object | – |  | Treffersicherheit von Verwendungen, Aufrufhierarchie und Umbenennen: Neben den sicheren (eindeutig aufgelösten) Stellen erscheinen erschlossene mit Grund, etwa Aufrufe über ein Interface oder in einem inaktiven {$IFDEF}-Zweig. Umbenennen ändert nur sichere Stellen und listet die erschlossenen. |
+| `navigation` | global (settings.json) | object | – |  | Navigation über den Code: Weg zwischen zwei Symbolen oder Units über Aufrufe, Felder, Interfaces, Vererbung und uses (Plugin-Befehl „Weg zwischen Symbolen…“, MCP-Werkzeug find_path). |
 | `hints` | global (settings.json) | object | – |  | Anzeige von XMLDoc-Kommentaren (///) und Begründungen (// WHY: …, #1123) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku immer vollständig auf; die Werte steuern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas. |
 | `directives` | global (settings.json) | object | – |  | Hilfen in Compiler-Direktiven: Vervollständigung und Hover für Direktiven wie {$R+} oder {$WARN …} und für bedingte Symbole in {$IFDEF}, {$IFNDEF}, {$IF Defined(…)}, {$DEFINE} und {$UNDEF}. |
 | `stringLiteral` | Projekt (atlas.json) | object | – |  | Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“. |
@@ -240,6 +241,12 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 |---|---|---|---|---|---|
 | `references.inferred` | global (settings.json) | boolean | `true` |  | Erschlossene Treffer zeigen: über ein Interface, das die Klasse umsetzt, über die überschriebene Methode eines Vorfahren, nicht eindeutige Überladungen, gleicher Name mit unbekanntem Typ (with, unbekannter Ausdruck) und Stellen in inaktiven Zweigen; aus = nur sichere Treffer wie bisher. |
 | `references.textMatches` | global (settings.json) | boolean | `false` |  | Auch den Namen in String-Literalen als erschlossen melden, etwa für RTTI oder MethodAddress('Speichern'). |
+
+## navigation
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `navigation.symbolPath` | global (settings.json) | boolean | `true` |  | Befehl „Weg zwischen Symbolen…“ im Plugin mit Einträgen im Menü Atlas, im Kontextmenü des Editors („Weg von hier nach…“) und in der Befehlspalette; aus = Befehl und Menüeinträge fehlen. Das MCP-Werkzeug schaltet mcp.disabledTools (find_path) ab. |
 
 ## hints
 

@@ -107,6 +107,7 @@ type
     /// <summary>Fenster „Unit-Beziehungen“ (#593) im Atlas-Menü und unter Ansicht › Atlas.</summary>
     FUnitRelationsItem: TMenuItem;
     FViewUnitRelations: TMenuItem;
+    FSymbolPathItem: TMenuItem;
     procedure WelcomeClick(Sender: TObject);
     procedure RenameClick(Sender: TObject);
     procedure ResultsClick(Sender: TObject);
@@ -119,6 +120,7 @@ type
     procedure ProblemsClick(Sender: TObject);
     procedure ArchitectureClick(Sender: TObject);
     procedure UnitRelationsClick(Sender: TObject);
+    procedure SymbolPathClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     function AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     /// <summary>Untermenü im Atlas-Menü; folgende AddItem landen darin.</summary>
@@ -181,6 +183,7 @@ uses
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Architecture.Service,
   Atlas.IDE.UnitRelations.Service,
+  Atlas.IDE.SymbolPath.Service,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Commands.Editor,
@@ -272,6 +275,8 @@ begin
   FProblemsItem := AddItem(TAtlasTextId.ProblemsWindowCaption, 0, ProblemsClick);
   FArchitectureItem := AddItem(TAtlasTextId.ArchitectureCommand, 0, ArchitectureClick);
   FUnitRelationsItem := AddItem(TAtlasTextId.UnitRelationsCommand, 0, UnitRelationsClick);
+  // Weg zwischen Symbolen (#1117).
+  FSymbolPathItem := AddItem(TAtlasTextId.SymbolPathCommand, 0, SymbolPathClick);
   FRoot.Add(NewLine);
   AddGroup(TAtlasTextId.MenuGroupNavigation);
   AddItem(TAtlasTextId.EditorTypeDefinition, 3, EditorClick);
@@ -684,6 +689,9 @@ begin
     FViewUnitRelations.Visible := TAtlasIdeUnitRelations.Enabled;
   if FViewAtlas <> nil then
     FViewAtlas.Visible := TAtlasIdeProblems.Enabled or TAtlasIdeArchitecture.Enabled;
+  // Weg zwischen Symbolen (#1117) nach navigation.symbolPath.
+  if FSymbolPathItem <> nil then
+    FSymbolPathItem.Visible := TAtlasIdeSymbolPath.Enabled;
   // Benannte Lesezeichen (#622) nach bookmarks.named, schnelle (#1104) nach bookmarks.quick; das Fenster zeigt
   // beide.
   Marks := TAtlasIdeSettings.Current.BookmarksNamed or TAtlasIdeSettings.Current.QuickBookmarks;
@@ -899,6 +907,16 @@ begin
     procedure
     begin
       TAtlasIdeUnitRelations.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.SymbolPathClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.SymbolPath');
+  TAtlasGuard.Run(TAtlasFeature.SymbolPath,
+    procedure
+    begin
+      TAtlasIdeSymbolPath.ShowDialog;
     end);
 end;
 

@@ -30,6 +30,7 @@ sind schneller und genauer als Textsuche und das Lesen ganzer Dateien.
 - `get_metrics` vor und nach einem Umbau: welche Methoden zu lang, zu tief verschachtelt oder zu komplex sind (Grenzwerte aus `atlas.json`).
 - `get_todos` vor einer Aufgabe oder einem Release: offene `TODO`/`FIXME` des Projekts, gefiltert nach Kategorie (`category`), Person (`owner`), Unit oder Marke; `includeDone` zeigt erledigte.
 - `get_architecture` vor Umbauten oder in fremdem Code: Teilsysteme, zentrale Units, Zyklen und Querverbindungen des Projekts; mit `unit` der Steckbrief einer Unit (wovon sie abhängt, wer sie braucht, ob sie ins Teilsystem passt); mit `compareWith` (gespeicherter Stand, etwa `architektur.json`) nach einem Umbau prüfen, ob neue Zyklen oder Querverbindungen entstanden sind.
+- `find_path` bei „Wie hängt X mit Y zusammen?“ oder „Warum zieht diese Unit jene herein?“: ein Aufruf liefert die kürzeste Kette mit Kantenart und Datei:Zeile je Schritt, statt sich über `find_references` und `get_call_hierarchy` zu hangeln. „Kein Weg“ ist verlässlich; `[erschlossen]` heißt: über eine von mehreren Umsetzungen.
 - Befunde mit `explain_finding` erklären lassen (Regel, Ausschnitt, Vorher/Nachher).
 - `get_last_build` zeigt den letzten Build aus der IDE samt Compilermeldungen.
 - `build_project` baut das Projekt in der laufenden IDE (auch in der Starter Edition ohne

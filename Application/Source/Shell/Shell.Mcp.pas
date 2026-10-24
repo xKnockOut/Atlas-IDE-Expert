@@ -78,7 +78,6 @@ uses
   Atlas.Text.DUnitX,
   Atlas.Text.TestResults,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Scopes,
@@ -89,11 +88,14 @@ uses
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Index.Processes,
   Atlas.Common.Rules.Builtin,
-  Atlas.Common.Configuration.Contract,
   Atlas.Common.Architecture.Overview,
   Atlas.Common.Architecture.Service,
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.Comparison,
+  Atlas.Common.Architecture.UsesLocator,
+  Atlas.Common.Architecture.SymbolPath,
+  Atlas.Common.Lsp.SymbolPath,
+  Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Projects.Contract,
   Shell.Platform,
   Atlas.Common.Diagnostics.Anonymizer,
@@ -431,10 +433,63 @@ type
   /// (absoluter Pfad eines gespeicherten Stands, #1121) der Text des Vergleichs.</summary>
   TMcpArchitectureFunc = reference to function(ASection: TArchitectureSection;
     const AUnit, ACompareWith: string): string;
+  /// <summary>Antwort von find_path (#1117) als Text.</summary>
+  TMcpFindPathFunc = reference to function(const ARequest: TSymbolPathRequest): string;
+
+/// <summary>find_path über einen eigenen Uses-Graphen samt Bibliotheks-Units. In eigener Routine, damit die
+/// anonyme Methode nicht den Rahmen von Run einfängt (Leck unter Delphi).</summary>
+function FindPathOf(const AIndex: ISymbolIndex; AGraphs: TUsesGraphService; ALocator: TUsesLocator;
+  AWorkspace: TShellWorkspace; const AEnsure: TFunc<string, Boolean>; const ARoot: string): TMcpFindPathFunc;
+begin
+  Result :=
+    function(const ARequest: TSymbolPathRequest): string
+    var
+      Request: TSymbolPathRequest;
+      Options: TUsesGraphOptions;
+      Namespaces: TArray<string>;
+      Token: IJsonRpcCancellationToken;
+    begin
+      Request := ARequest;
+      // Grenze requestTimeoutMs; Abbruch über notifications/cancelled des MCP-Clients.
+      Request.TimeoutMs := AWorkspace.Configuration.Settings.RequestTimeoutMs;
+      Namespaces := AWorkspace.Namespaces;
+      if string.Join(',', AGraphs.Options.Namespaces) <> string.Join(',', Namespaces) then
+      begin
+        Options := AGraphs.Options;
+        Options.Namespaces := Namespaces;
+        AGraphs.SetOptions(Options);
+      end;
+      Token := TJsonRpcCurrentRequest.Token;
+      Result := TSymbolPathSearch.Text(TSymbolPathSearch.Run(AIndex, AGraphs, ALocator,
+        function(const AFileName: string; out AText: string): Boolean
+        begin
+          Result := ReadSourceText(AFileName, AText);
+        end,
+        function(const AUnitName: string): Boolean
+        begin
+          Result := Assigned(AEnsure) and AEnsure(AUnitName);
+        end, Namespaces, Request,
+        function: Boolean
+        begin
+          Result := (Token <> nil) and Token.IsCancellationRequested;
+        end), ARoot);
+    end;
+end;
+
+/// <summary>Argumente von find_path; EMcpToolError bei ungültigen Werten.</summary>
+function FindPathRequest(const AArguments: TJSONObject): TSymbolPathRequest;
+begin
+  try
+    Result := TLspSymbolPath.ReadRequest(AArguments);
+  except
+    on E: EJsonRpcError do
+      raise EMcpToolError.Create(E.Message);
+  end;
+end;
 
 procedure RegisterTools(AServer: TMcpServer; ATools: TMcpIndexTools; ACode: TMcpCodeTools;
   AGroup: TShellWorkspaceGroup; const ARoot: string; AGuard: TMcpPathGuard; AEdit: TMcpEditTools;
-  const AArchitecture: TMcpArchitectureFunc);
+  const AArchitecture: TMcpArchitectureFunc; const AFindPath: TMcpFindPathFunc);
 var
   CheckSource: TCheckSourceFunc;
   CheckProject: TCheckProjectFunc;
@@ -744,6 +799,26 @@ begin
         CompareWith := AGuard.Resolve(CompareWith);
       Result := AArchitecture(Section, TMcpServer.OptionalString(AArguments, 'unit'), CompareWith);
     end);
+  AServer.AddTool('find_path',
+    'Kürzester Weg zwischen zwei Symbolen oder Units (#1117), z. B. „Wie hängt TKundenForm mit TDatenbank ' +
+    'zusammen?“, in einem Aufruf statt vieler find_references/get_call_hierarchy. Kanten: uses, inherits, ' +
+    'implements (auch Interface → Umsetzung), hasField, parameter, result, calls, contains. Liefert die Kette ' +
+    'mit Kantenart und Datei:Zeile je Schritt; erschlossene Kanten (mehrere Umsetzungen) tragen [erschlossen]. ' +
+    '„Kein Weg“ ist eine verlässliche Antwort; bei mehrdeutigem Namen kommt die Trefferliste.',
+    '{"type":"object","properties":{' +
+      '"from":{"type":"string","description":"Start: Typ, Methode (TFoo.Bar), Routine, Feld, Property oder Unit"},' +
+      '"to":{"type":"string","description":"Ziel, Angabe wie bei from; ein Typ zählt samt seinen Mitgliedern"},' +
+      '"via":{"type":"array","items":{"type":"string","enum":["uses","inherits","implements","hasField",' +
+        '"parameter","result","calls","contains","library"]},' +
+        '"description":"Erlaubte Kantenarten (Vorgabe alle); library erlaubt RTL/VCL als Durchgang"},' +
+      '"maxSteps":{"type":"integer","minimum":1,"maximum":16,"description":"Höchstens so viele Schritte, ' +
+        'Vorgabe 8"},' +
+      '"all":{"type":"boolean","description":"Alle gleich kurzen Wege (höchstens 5) statt nur des ersten"}},' +
+      '"required":["from","to"]}',
+    function(const AArguments: TJSONObject): string
+    begin
+      Result := AFindPath(FindPathRequest(AArguments));
+    end);
   AServer.AddTool('get_todos',
     'TODO-Übersicht (#68): Kommentare // TODO, // FIXME und das Format der IDE-To-Do-Liste ' +
     '{ TODO 1 -oPerson -cKategorie : Text } aus allen Dateien des Projekts, mit Priorität, Person und Kategorie. ' +
@@ -990,7 +1065,7 @@ begin
   // Nur registrieren, nicht aufrufen: Die Werkzeuge greifen erst beim Aufruf auf ihre Dienste zu.
   Server := TMcpServer.Create('Atlas', '0');
   try
-    RegisterTools(Server, nil, nil, nil, '', nil, nil, nil);
+    RegisterTools(Server, nil, nil, nil, '', nil, nil, nil, nil);
     RegisterDeadCodeTools(Server, nil, nil, nil, nil, '', nil);
     Listed := Server.ListTools;
     try
@@ -1026,6 +1101,9 @@ var
   Anonymizer: ILogAnonymizer;
   AllFiles: TFunc<TArray<string>>;
   Architecture: TArchitectureService;
+  PathGraphs: TUsesGraphService;
+  PathLocator: TUsesLocator;
+  PathOptions: TUsesGraphOptions;
   EnsureAny: TFunc<string, Boolean>;
   GlobalSettings: string;
 begin
@@ -1134,6 +1212,21 @@ begin
       if not Group.WorkspaceOf(AFileName).Defines(Result) then
         Result := nil;
     end);
+  // Weg zwischen Symbolen (#1117): eigener Uses-Graph samt Bibliotheks-Units (Start oder Ziel).
+  PathOptions := TUsesGraphOptions.Default;
+  PathOptions.IncludeLibrary := True;
+  PathGraphs := TUsesGraphService.Create(Index, PathOptions);
+  PathLocator := TUsesLocator.Create(
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    function(const AFileName: string): TArray<string>
+    begin
+      // Defines des Projekts, zu dem die Datei gehört (Projektgruppe, #1112).
+      if not Group.WorkspaceOf(AFileName).Defines(Result) then
+        Result := nil;
+    end);
   // Regelprüfung mit den Symbolen und Include-Dateien des Projekts (#860).
   Edit.CheckSource := CheckSourceOf(Group);
   Code.CheckSource := Edit.CheckSource;
@@ -1195,7 +1288,7 @@ begin
           Result := TArchitectureReport.UnitText(Overview, AUnit)
         else
           Result := TArchitectureReport.Text(Overview, ASection, TArchitectureReport.TextLimit);
-      end);
+      end, FindPathOf(Index, PathGraphs, PathLocator, Workspace, EnsureAny, Root));
     RegisterDeadCodeTools(Server, Group, Index, Root, Guard);
     // Sicherheit (#99).
     Server.Restricted := AOptions.Restricted;
@@ -1206,6 +1299,8 @@ begin
         // Abgeschaltete Funktion (#227): Werkzeug gar nicht anbieten.
         if not Workspace.Configuration.Settings.ArchitectureEnabled then
           Result := Result + ['get_architecture'];
+        if not Workspace.Configuration.Settings.Navigation.SymbolPath then
+          Result := Result + ['find_path'];
       end;
     Server.OnAudit :=
       procedure(AText: string)
@@ -1269,6 +1364,8 @@ begin
     Code.Free;
     Tools.Free;
     Architecture.Free;
+    PathLocator.Free;
+    PathGraphs.Free;
     Group.Free;
   end;
 end;

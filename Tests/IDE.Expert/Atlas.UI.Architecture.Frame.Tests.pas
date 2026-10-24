@@ -45,6 +45,8 @@ type
     procedure ComparisonTabAndMapChanges;
     [Test]
     procedure WithoutComparisonShowsHint;
+    [Test]
+    procedure RouteFromSymbolPath;
   end;
 
 implementation
@@ -352,6 +354,38 @@ begin
   Assert.IsTrue(Pos('beschädigt', FFrame.StatusLabel.Caption) > 0);
   Assert.IsTrue(FFrame.ClearCompareButton.Enabled);
   Assert.AreEqual(3, Integer(Length(FFrame.CentralText)));
+end;
+
+procedure TAtlasArchitectureFrameTests.RouteFromSymbolPath;
+var
+  Units, Edges: TArray<Integer>;
+  Cache: Integer;
+begin
+  // Fester Weg aus „Weg zwischen Symbolen“ (#1117): Units und Kanten markiert, Zeile unter der Karte.
+  Assert.IsTrue(FFrame.Model.RouteOf(TArray<string>.Create('App.Main', 'App.Data', 'App.Data.Cache'), Units, Edges));
+  FFrame.Map.ShowRoute(Units, Edges);
+  Assert.IsTrue(FFrame.Map.PathFound);
+  Assert.AreEqual(4, Integer(Length(FFrame.Map.Route)));
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureRoute, [4,
+    'App.Main → App.Data → App.Data.Db → App.Data.Cache']), FFrame.InfoLabel.Caption);
+  // Er bleibt ohne implementation-uses stehen und blendet ein ausgeblendetes Teilsystem wieder ein.
+  FFrame.ImplementationCheck.Checked := False;
+  Assert.IsTrue(FFrame.Map.PathFound);
+  FFrame.ImplementationCheck.Checked := True;
+  Cache := FFrame.Model.IndexOf('App.Data.Cache');
+  FFrame.Map.SubsystemVisible[FFrame.Model.Units[Cache].Subsystem] := False;
+  FFrame.Map.ShowRoute(Units, Edges);
+  Assert.IsTrue(FFrame.Map.SubsystemVisible[FFrame.Model.Units[Cache].Subsystem]);
+  // Umschalt+Klick (ShowPath) und Esc heben ihn auf.
+  FFrame.Map.ShowPath(Units[0], Units[1]);
+  Assert.AreEqual(0, Integer(Length(FFrame.Map.Route)));
+  FFrame.Map.ShowRoute(Units, Edges);
+  FFrame.Map.ClearPath;
+  Assert.AreEqual(0, Integer(Length(FFrame.Map.Route)));
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ArchitectureMapHint), FFrame.InfoLabel.Caption);
+  // Ungültige Nummern: kein Weg.
+  FFrame.Map.ShowRoute(TArray<Integer>.Create(999), nil);
+  Assert.AreEqual(-1, FFrame.Map.PathFrom);
 end;
 
 initialization

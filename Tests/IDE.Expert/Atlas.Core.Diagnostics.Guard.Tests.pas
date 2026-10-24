@@ -588,6 +588,7 @@ begin
   Assert.AreEqual('Atlas-Statusleiste', TAtlasGuard.FeatureName(TAtlasFeature.StatusBar));
   Assert.AreEqual('Architekturübersicht', TAtlasGuard.FeatureName(TAtlasFeature.Architecture));
   Assert.AreEqual('Unit-Beziehungen', TAtlasGuard.FeatureName(TAtlasFeature.UnitRelations));
+  Assert.AreEqual('Weg zwischen Symbolen', TAtlasGuard.FeatureName(TAtlasFeature.SymbolPath));
 end;
 
 procedure TAtlasGuardTests.SlowProviderLogsOncePerInterval;

@@ -16,6 +16,8 @@ type
     [Test]
     procedure ReadsArchitectureComparisonSettings;
     [Test]
+    procedure ReadsNavigation;
+    [Test]
     procedure ReadsAllSettings;
     [Test]
     procedure EmptyObjectGivesDefaults;
@@ -196,6 +198,29 @@ begin
     '"failOn": ["subsystemChange"]}}', Issues);
   Assert.AreEqual('a.json', Settings.ArchitectureBaseline);
   Assert.AreEqual('subsystemChange', string.Join(',', Settings.ArchitectureFailOn));
+end;
+
+procedure TConfigurationParserTests.ReadsNavigation;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Navigation.SymbolPath);
+  Settings := Parse('{"navigation": {"symbolPath": false}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Navigation.SymbolPath);
+  // Unbekannte Schlüssel sind Warnungen, falscher Typ ein Fehler.
+  Settings := Parse('{"navigation": {"symbolPath": 1, "x": 1}}', Issues);
+  Assert.IsTrue(Settings.Navigation.SymbolPath);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Assert.IsTrue(Issues[0].IsError);
+  Assert.IsFalse(Issues[1].IsError);
+  Parse('{"navigation": true}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Steht navigation in der Datei, gilt ihr Objekt ganz, auch mit den Vorgaben.
+  Settings := TConfigurationParser.ParseLayered('{"navigation": {"symbolPath": false}}', '{"navigation": {}}', Issues);
+  Assert.IsTrue(Settings.Navigation.SymbolPath);
 end;
 
 procedure TConfigurationParserTests.ReadsArchitectureSettings;
