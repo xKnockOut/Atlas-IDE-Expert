@@ -76,6 +76,7 @@ uses
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Architecture.Service,
+  Atlas.IDE.UnitRelations.Service,
   Atlas.IDE.Outline.Breadcrumbs,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.UI.EditorToolbar.Customize,
@@ -976,6 +977,11 @@ begin
   Result := TAtlasIdeSettings.Current.ArchitectureEnabled;
 end;
 
+function UnitRelationsVisible: Boolean;
+begin
+  Result := TAtlasIdeUnitRelations.Enabled;
+end;
+
 function JumpToMatchVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.JumpToMatch;
@@ -1266,6 +1272,9 @@ begin
   // Architekturübersicht (#1118); nur sichtbar, solange architecture.enabled an ist.
   Add('Atlas.Architecture', TAtlasTextId.ArchitectureCommand,
     Guarded(TAtlasFeature.Architecture, TAtlasIdeArchitecture.ShowWindow), ArchitectureVisible);
+  // Unit-Beziehungen (#593); am selben Schalter wie die Architektur (derselbe Uses-Graph).
+  Add('Atlas.UnitRelations', TAtlasTextId.UnitRelationsCommand,
+    Guarded(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowWindow), UnitRelationsVisible);
   // Brotkrumenleiste (#590): Fokus auf das letzte Glied; nur sichtbar, solange editor.breadcrumbs an ist.
   Add('Atlas.Breadcrumbs', TAtlasTextId.BreadcrumbsCommand,
     Guarded(TAtlasFeature.Breadcrumbs, TAtlasIdeBreadcrumbs.Focus), BreadcrumbsVisible);
@@ -2437,6 +2446,21 @@ begin
       Result := (Manager <> nil) and (Manager.ActiveSession <> nil) and
         Manager.RunCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
     end);
+  // Fenster „Unit-Beziehungen“ (#593): fragt regelmäßig nach, daher nicht über den einen Hintergrundbefehl von
+  // RunCommandAsync (der bliebe sonst für Architektur und Co. belegt), und startet keinen Server.
+  TAtlasIdeUnitRelations.Install(
+    function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<TJSONValue>): Boolean
+    begin
+      Result := (Manager <> nil) and (Manager.RunningSession <> nil);
+      if Result then
+        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
+    end);
+  // Strg+Doppelklick in der Architekturkarte zeigt die Unit dort.
+  TAtlasIdeArchitecture.OnUnitRelations :=
+    procedure(AFileName: string)
+    begin
+      TAtlasIdeUnitRelations.ShowFor(AFileName);
+    end;
   TAtlasIdeBreadcrumbs.Install;
   // Atlas-Editorleiste (#1101) nach den Brotkrumen (Position „in der Brotkrumenzeile“).
   StartEditorToolbar;
@@ -2623,6 +2647,7 @@ begin
   TAtlasIdeStatementCompletion.Uninstall;
   TAtlasIdeOutline.Uninstall;
   TAtlasIdeArchitecture.Uninstall;
+  TAtlasIdeUnitRelations.Uninstall;
   TAtlasIdeOutlineCache.Uninstall;
   TAtlasIdeNavHistory.Uninstall;
   TAtlasIdeSearch.Uninstall;
@@ -4138,6 +4163,7 @@ begin
       TAtlasIdeProblems.ThemeChanged;
       TAtlasIdeOutline.ThemeChanged;
       TAtlasIdeArchitecture.ThemeChanged;
+      TAtlasIdeUnitRelations.ThemeChanged;
       TAtlasIdeBreadcrumbs.ThemeChanged;
       TAtlasIdeEditorToolbar.ThemeChanged;
       TAtlasIdeSearch.ThemeChanged;
@@ -4189,6 +4215,7 @@ begin
       TAtlasIdeOutline.ApplySettings;
       // architecture.* (#1118).
       TAtlasIdeArchitecture.ApplySettings;
+      TAtlasIdeUnitRelations.ApplySettings;
       // callHierarchy.diagram (#1122).
       TAtlasIdeResultsWindow.ApplySettings;
       // editor.breadcrumbs* (#590).

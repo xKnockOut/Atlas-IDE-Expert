@@ -20,7 +20,9 @@
 // Unten die Statuszeile (Zahlen, Index-Stand, Rechendauer und Ausschlüsse
 // bzw. ein Hinweis).
 // Doppelklick oder Enter öffnet die Unit (OnOpenUnit) bzw. springt zum
-// uses-Eintrag (OnOpenLocation, Zeile und Spalte ab 1). Der Filter wirkt auf
+// uses-Eintrag (OnOpenLocation, Zeile und Spalte ab 1); Strg+Doppelklick auf
+// eine Unit zeigt sie im Fenster „Unit-Beziehungen“ (OnUnitRelations, #593).
+// Der Filter wirkt auf
 // Karte und alle Listen. Die IDE-Schicht bettet den Frame in ein andockbares
 // Fenster ein, fragt den Server und ruft SetModel bzw. SetMessage. Die DFM
 // ist leer, weil TCustomFrame.Create für abgeleitete Frames eine Ressource
@@ -95,6 +97,7 @@ type
     FOnLibraryChanged: TProc<Boolean>;
     FOnOpenUnit: TProc<string>;
     FOnOpenLocation: TProc<string, Integer, Integer>;
+    FOnUnitRelations: TProc<string>;
     function NewSheet(const ACaption: string): TTabSheet;
     function NewList(AParent: TWinControl): TListView;
     function NewTree(AParent: TWinControl): TTreeView;
@@ -206,6 +209,9 @@ type
     property OnOpenUnit: TProc<string> read FOnOpenUnit write FOnOpenUnit;
     /// <summary>Absoluter Pfad, Zeile und Spalte ab 1.</summary>
     property OnOpenLocation: TProc<string, Integer, Integer> read FOnOpenLocation write FOnOpenLocation;
+    /// <summary>Strg+Doppelklick bzw. Strg+Enter auf eine Unit: Fenster „Unit-Beziehungen“ (#593), absoluter Pfad.
+    /// </summary>
+    property OnUnitRelations: TProc<string> read FOnUnitRelations write FOnUnitRelations;
   end;
 
 implementation
@@ -948,11 +954,16 @@ begin
 end;
 
 procedure TAtlasArchitectureFrame.OpenUnit(AUnit: Integer);
+var
+  FileName: string;
 begin
   if (AUnit < 0) or (AUnit > High(FModel.Units)) or (FModel.Units[AUnit].FileName = '') then
     Exit;
-  if Assigned(FOnOpenUnit) then
-    FOnOpenUnit(FModel.FullPath(FModel.Units[AUnit].FileName));
+  FileName := FModel.FullPath(FModel.Units[AUnit].FileName);
+  if (GetKeyState(VK_CONTROL) < 0) and Assigned(FOnUnitRelations) then
+    FOnUnitRelations(FileName)
+  else if Assigned(FOnOpenUnit) then
+    FOnOpenUnit(FileName);
 end;
 
 procedure TAtlasArchitectureFrame.OpenLink(const ALink: TAtlasArchLink);

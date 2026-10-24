@@ -57,7 +57,10 @@ uses
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Todos,
   Atlas.Common.Lsp.Architecture,
+  Atlas.Common.Lsp.UnitRelations,
   Atlas.Common.Architecture.Service,
+  Atlas.Common.Architecture.UsesGraph,
+  Atlas.Common.Architecture.UsesService,
   Atlas.Common.Lsp.Recursion,
   Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.SlashMenu,
@@ -159,6 +162,10 @@ type
     /// atlas/architecture und Befehl atlas.architecture.saveReport.</summary>
     FArchitectureService: TArchitectureService;
     FArchitecture: TLspArchitecture;
+    /// <summary>Unit-Beziehungen (#593): eigener Uses-Graph mit Bibliotheks-Units, Anfrage atlas/unitRelations
+    /// und Befehle zum Verschieben und Entfernen von uses-Einträgen.</summary>
+    FUnitRelationsGraph: TUsesGraphService;
+    FUnitRelations: TLspUnitRelations;
     FRecursion: TLspRecursion;
     /// <summary>Baseline für Altprojekte (#97): Befehl atlas.updateBaseline.</summary>
     FBaseline: TLspBaseline;
@@ -378,6 +385,9 @@ type
     function SlashRuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
     /// <summary>Index und usesKeep für /sortuses (#297); False, solange die Code-Aktionen fehlen.</summary>
     function SlashUsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
+    /// <summary>Optionen des Graphen der Unit-Beziehungen (#593): Wurzel und Namensräume des Projekts der
+    /// Datei, ohne Ausschlüsse der Architektur, damit „Wird verwendet von“ vollständig bleibt.</summary>
+    function UnitRelationsOptionsFor(const AFileName: string): TUsesGraphOptions;
     /// <summary>Regeltreffer der Zeile ALine mit Erklärung aus dem Katalog und sicherer Korrektur (/fix,
     /// /explain, #300); False ohne Prüfregeln für die Datei.</summary>
     function SlashFindingsAt(const AUri, AText: string; ALine: Integer; out AFindings: TArray<TSlashFinding>): Boolean;
@@ -1232,6 +1242,28 @@ begin
     end);
   FArchitecture := TLspArchitecture.Create(FArchitectureService, ArchitectureSourceFor);
   FArchitecture.Attach(FDispatcher);
+  // Unit-Beziehungen (#593): Wurzel und Namensräume wie die Architektur; die uses-Analyse der Code-Aktionen
+  // entsteht erst weiter unten, daher über SlashUsesContext.
+  FUnitRelationsGraph := TUsesGraphService.Create(FIndex, TUsesGraphOptions.Default);
+  FUnitRelations := TLspUnitRelations.Create(FUnitRelationsGraph,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    function(const AFileName: string): TArray<string>
+    begin
+      if not DefinesFor(TDocumentUris.FromPath(AFileName), Result) then
+        Result := nil;
+    end,
+    function(const AUri: string; out AContext: TUsesContext): Boolean
+    begin
+      Result := SlashUsesContext(AUri, AContext);
+    end,
+    function(const AFileName: string): TUsesGraphOptions
+    begin
+      Result := UnitRelationsOptionsFor(AFileName);
+    end);
+  FUnitRelations.Attach(FDispatcher);
   // Rekursionssymbole im Editorrand (#623).
   FRecursion := TLspRecursion.Create(ReadSourceText);
   // Baseline (#97): dieselben Dateien wie die Metriken, Prüfung wie im Editor (Regeln, Index, Formulardatei).
@@ -1518,6 +1550,21 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FArchitecture.SaveReport(AArguments);
+    end);
+  FCommands.Register(TLspUnitRelations.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitRelations.Execute(AArguments);
+    end);
+  FCommands.Register(TLspUnitRelations.MoveCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitRelations.Move(AArguments);
+    end);
+  FCommands.Register(TLspUnitRelations.RemoveCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitRelations.Remove(AArguments);
     end);
   FCommands.Register(TLspRecursion.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2087,6 +2134,8 @@ begin
   FTodos.Free;
   FArchitecture.Free;
   FArchitectureService.Free;
+  FUnitRelations.Free;
+  FUnitRelationsGraph.Free;
   FRecursion.Free;
   FBaseline.Free;
   FInlayHints.Free;
@@ -4034,6 +4083,28 @@ begin
     Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
     if Workspace <> nil then
       ARequest.Namespaces := Workspace.Namespaces;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+function TServerComposition.UnitRelationsOptionsFor(const AFileName: string): TUsesGraphOptions;
+var
+  Workspace: TShellWorkspace;
+begin
+  Result := TUsesGraphOptions.Default;
+  Result.IncludeLibrary := True;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := nil;
+    if AFileName <> '' then
+      Workspace := WorkspaceOf(AFileName);
+    Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
+    if Workspace <> nil then
+    begin
+      Result.Root := Workspace.Root;
+      Result.Namespaces := Workspace.Namespaces;
+    end;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
