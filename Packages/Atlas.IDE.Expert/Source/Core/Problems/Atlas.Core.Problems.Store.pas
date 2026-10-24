@@ -25,6 +25,11 @@
 // Update des Servers lässt sie stehen, Edit führt sie wie Atlas-Meldungen mit.
 // Eine Datei nur mit Tests gilt nicht als vom Server geprüft (Contains,
 // AllFiles).
+// Befunde von Projektaufgaben (#900) stehen als vierte Art daneben (Quelle =
+// Name der Aufgabe): SetTaskProblems ersetzt die einer Aufgabe in allen
+// Dateien, Update des Servers lässt sie stehen; ändert sich die Zeile eines
+// Befunds (Edit), fällt er weg, statt blass zu werden. Ausgeblendete Aufgaben
+// (SetTaskHidden) fehlen in ForFile und allem, was darauf aufbaut.
 // Gruppe „Compiler vorab“ (#1024): Meldet der letzte Build an der Zeile eines
 // Atlas-Befunds einen der Codes aus data.compilerCodes, ist der Befund „vom
 // Compiler bestätigt“ (Confirmed, ConfirmedCode). Mit CompilerMerge (Vorgabe,
@@ -67,6 +72,8 @@ type
       Compiler: TArray<TAtlasProblem>;
       /// <summary>Fehlgeschlagene Tests des letzten Laufs (#69).</summary>
       Tests: TArray<TAtlasProblem>;
+      /// <summary>Befunde von Projektaufgaben (#900), Source = Name der Aufgabe.</summary>
+      Tasks: TArray<TAtlasProblem>;
       /// <summary>Diagnosen des Servers kamen schon (Update); False bei einer Datei nur mit Tests.</summary>
       FromServer: Boolean;
       // ForFile bzw. Inactive, bis sich etwas ändert.
@@ -84,7 +91,10 @@ type
     FEntries: TObjectDictionary<string, TEntry>;
     FVersion: Integer;
     FCompilerMerge: Boolean;
+    FHiddenTasks: TArray<string>;
     procedure SetCompilerMerge(AValue: Boolean);
+    /// <summary>Einträge ohne Server, Tests und Aufgaben entfernen.</summary>
+    procedure DropEmpty;
     function Find(const AFileName: string): TEntry;
     function Ensure(const AFileName: string): TEntry;
     class procedure Shift(AEntry: TEntry; const ANewText: string); static;
@@ -107,6 +117,20 @@ type
     procedure SetTests(const AProblems: TArray<TPair<string, TAtlasProblem>>);
     /// <summary>Tests aller Dateien entfernen.</summary>
     procedure ClearTests;
+    /// <summary>Befunde der Projektaufgabe ATask (#900): ersetzt ihre Befunde in allen Dateien. AProblems je
+    /// Datei; Source wird ATask.</summary>
+    procedure SetTaskProblems(const ATask: string; const AProblems: TArray<TPair<string, TAtlasProblem>>);
+    /// <summary>Befunde der Aufgabe ATask entfernen.</summary>
+    procedure ClearTask(const ATask: string);
+    /// <summary>Befunde aller Aufgaben entfernen.</summary>
+    procedure ClearTasks;
+    /// <summary>Befunde der Aufgabe ATask aus- bzw. wieder einblenden (Problemliste, Editor).</summary>
+    procedure SetTaskHidden(const ATask: string; AHidden: Boolean);
+    function TaskHidden(const ATask: string): Boolean;
+    /// <summary>Aufgaben mit Befunden (auch ausgeblendete), nach Namen.</summary>
+    function TaskNames: TArray<string>;
+    /// <summary>Zahl der Befunde der Aufgabe ATask, auch ausgeblendet.</summary>
+    function TaskCount(const ATask: string): Integer;
     /// <summary>Hat der Server die Datei schon geliefert? Dateien nur mit Tests zählen nicht.</summary>
     function Contains(const AFileName: string): Boolean;
     function ResultId(const AFileName: string): string;
@@ -286,6 +310,8 @@ class procedure TAtlasProblemStore.Shift(AEntry: TEntry; const ANewText: string)
 var
   OldLines, NewLines: TArray<string>;
   Prefix, Suffix, ChangedEnd, Delta, Index: Integer;
+  Kept: TArray<TAtlasProblem>;
+  Problem: TAtlasProblem;
 
   procedure Map(var AProblem: TAtlasProblem; ACompiler: Boolean);
   begin
@@ -317,6 +343,21 @@ begin
     Map(AEntry.Compiler[Index], True);
   for Index := 0 to High(AEntry.Tests) do
     Map(AEntry.Tests[Index], False);
+  // Befunde von Aufgaben gelten für den Stand, den das Werkzeug sah: in der geänderten Stelle fallen sie weg.
+  Kept := nil;
+  for Index := 0 to High(AEntry.Tasks) do
+  begin
+    Problem := AEntry.Tasks[Index];
+    if (Problem.EndLine >= Prefix) and (Problem.StartLine < ChangedEnd) then
+      Continue;
+    if Problem.StartLine >= ChangedEnd then
+    begin
+      Inc(Problem.StartLine, Delta);
+      Inc(Problem.EndLine, Delta);
+    end;
+    Kept := Kept + [Problem];
+  end;
+  AEntry.Tasks := Kept;
   AEntry.Text := ANewText;
   AEntry.LinesValid := False;
   AEntry.VisibleValid := False;
@@ -498,28 +539,170 @@ begin
   Result := (Entry <> nil) and Entry.FromServer;
 end;
 
-procedure TAtlasProblemStore.ClearTests;
+procedure TAtlasProblemStore.DropEmpty;
 var
   Entry: TEntry;
   Emptied: TArray<string>;
   FileName: string;
+begin
+  Emptied := nil;
+  for Entry in FEntries.Values do
+    if not Entry.FromServer and (Length(Entry.Tests) = 0) and (Length(Entry.Tasks) = 0) then
+      Emptied := Emptied + [Entry.FileName];
+  for FileName in Emptied do
+    FEntries.Remove(Key(FileName));
+end;
+
+procedure TAtlasProblemStore.ClearTests;
+var
+  Entry: TEntry;
   Changed: Boolean;
 begin
   Changed := False;
-  Emptied := nil;
   for Entry in FEntries.Values do
     if Length(Entry.Tests) > 0 then
     begin
       Entry.Tests := nil;
       Entry.VisibleValid := False;
       Changed := True;
-      if not Entry.FromServer then
-        Emptied := Emptied + [Entry.FileName];
     end;
-  for FileName in Emptied do
-    FEntries.Remove(Key(FileName));
+  DropEmpty;
   if Changed then
     Inc(FVersion);
+end;
+
+procedure TAtlasProblemStore.ClearTask(const ATask: string);
+var
+  Entry: TEntry;
+  Kept: TArray<TAtlasProblem>;
+  Problem: TAtlasProblem;
+  Changed: Boolean;
+begin
+  Changed := False;
+  for Entry in FEntries.Values do
+  begin
+    Kept := nil;
+    for Problem in Entry.Tasks do
+      if not SameText(Problem.Source, ATask) then
+        Kept := Kept + [Problem];
+    if Length(Kept) <> Length(Entry.Tasks) then
+    begin
+      Entry.Tasks := Kept;
+      Entry.VisibleValid := False;
+      Changed := True;
+    end;
+  end;
+  DropEmpty;
+  if Changed then
+    Inc(FVersion);
+end;
+
+procedure TAtlasProblemStore.ClearTasks;
+var
+  Entry: TEntry;
+  Changed: Boolean;
+begin
+  Changed := False;
+  for Entry in FEntries.Values do
+    if Length(Entry.Tasks) > 0 then
+    begin
+      Entry.Tasks := nil;
+      Entry.VisibleValid := False;
+      Changed := True;
+    end;
+  DropEmpty;
+  if Changed then
+    Inc(FVersion);
+end;
+
+procedure TAtlasProblemStore.SetTaskProblems(const ATask: string;
+  const AProblems: TArray<TPair<string, TAtlasProblem>>);
+var
+  Item: TPair<string, TAtlasProblem>;
+  Entry: TEntry;
+  Problem: TAtlasProblem;
+begin
+  ClearTask(ATask);
+  for Item in AProblems do
+  begin
+    Entry := Ensure(Item.Key);
+    Problem := Item.Value;
+    Problem.Source := ATask;
+    Entry.Tasks := Entry.Tasks + [Problem];
+    Entry.VisibleValid := False;
+  end;
+  if Length(AProblems) > 0 then
+    Inc(FVersion);
+end;
+
+function TAtlasProblemStore.TaskHidden(const ATask: string): Boolean;
+var
+  Name: string;
+begin
+  for Name in FHiddenTasks do
+    if SameText(Name, ATask) then
+      Exit(True);
+  Result := False;
+end;
+
+procedure TAtlasProblemStore.SetTaskHidden(const ATask: string; AHidden: Boolean);
+var
+  Kept: TArray<string>;
+  Name: string;
+  Entry: TEntry;
+begin
+  if TaskHidden(ATask) = AHidden then
+    Exit;
+  if AHidden then
+    FHiddenTasks := FHiddenTasks + [ATask]
+  else
+  begin
+    Kept := nil;
+    for Name in FHiddenTasks do
+      if not SameText(Name, ATask) then
+        Kept := Kept + [Name];
+    FHiddenTasks := Kept;
+  end;
+  for Entry in FEntries.Values do
+    Entry.VisibleValid := False;
+  Inc(FVersion);
+end;
+
+function TAtlasProblemStore.TaskNames: TArray<string>;
+var
+  Entry: TEntry;
+  Problem: TAtlasProblem;
+  Name: string;
+  Known: Boolean;
+begin
+  Result := nil;
+  for Entry in FEntries.Values do
+    for Problem in Entry.Tasks do
+    begin
+      Known := False;
+      for Name in Result do
+        if SameText(Name, Problem.Source) then
+          Known := True;
+      if not Known then
+        Result := Result + [Problem.Source];
+    end;
+  TArray.Sort<string>(Result, TComparer<string>.Construct(
+    function(const A, B: string): Integer
+    begin
+      Result := CompareText(A, B);
+    end));
+end;
+
+function TAtlasProblemStore.TaskCount(const ATask: string): Integer;
+var
+  Entry: TEntry;
+  Problem: TAtlasProblem;
+begin
+  Result := 0;
+  for Entry in FEntries.Values do
+    for Problem in Entry.Tasks do
+      if SameText(Problem.Source, ATask) then
+        Inc(Result);
 end;
 
 procedure TAtlasProblemStore.SetTests(const AProblems: TArray<TPair<string, TAtlasProblem>>);
@@ -597,10 +780,13 @@ begin
   if Entry.VisibleValid then
     Exit(Entry.Visible);
   Visible := nil;
-  for Problem in Entry.Compiler + Entry.Atlas + Entry.Tests do
+  for Problem in Entry.Compiler + Entry.Atlas + Entry.Tests + Entry.Tasks do
   begin
     // Inaktive Zweige und uses-Hinweise (#621) sind keine Probleme.
     if Problem.Unnecessary or Problem.IsUses then
+      Continue;
+    // Ausgeblendete Projektaufgaben (#900).
+    if (FHiddenTasks <> nil) and TaskHidden(Problem.Source) then
       Continue;
     Duplicate := False;
     for Other in Visible do

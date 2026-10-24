@@ -45,7 +45,8 @@ type
     /// </summary>
     class function RoutineName(const ACaption: string): string; static;
     /// <summary>Suche für F3 mit einzeiliger Markierung ASelected: Ist ein anderer Text markiert als zuletzt
-    /// gesucht, wird er der Suchtext (Bereich Auswahl wird Unit, Bezeichner-Modus nur für einen Bezeichner);
+    /// gesucht, wird er der Suchtext (Bereich Auswahl wird Unit, Bezeichner-Modus nur für einen Bezeichner, Regex
+    /// aus);
     /// sonst bleibt ALast. AChanged: Suchtext gewechselt.</summary>
     class function FollowSelection(const ALast: TAtlasSearchQuery; const ASelected: string;
       out AChanged: Boolean): TAtlasSearchQuery; static;
@@ -154,6 +155,8 @@ begin
       Identifier := False;
   if not Identifier then
     Result.Options.Identifier := False;
+  // Die Markierung ist Text, kein Ausdruck (#893).
+  Result.Options.Regex := False;
 end;
 
 class function TAtlasSearchResults.StartQuery(const ALast: TAtlasSearchQuery; const AProposal: string;

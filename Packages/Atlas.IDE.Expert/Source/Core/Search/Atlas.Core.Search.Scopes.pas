@@ -10,6 +10,8 @@
 //   außen (zu hohe Stufen bleiben bei der äußersten).
 // - Unit: der ganze Text.
 // - Auswahl: der übergebene Bereich.
+// - Offene Dateien, Projekt, Projektgruppe (#893): je Datei der ganze Text;
+//   welche Dateien dazugehören, bestimmt die IDE-Schicht (SpansFiles).
 // Zeilen und Zeichen 0-basiert wie in Atlas.Core.Search.Matching.
 
 interface
@@ -35,6 +37,8 @@ type
     /// den Bereich nicht gibt (Cursor in keiner Routine, leere Auswahl).</summary>
     class function AreaFor(const AText: string; AScope: TAtlasSearchScope; const ACursor: TAtlasSearchPos;
       const ASelection: TAtlasSearchArea; ALevel: Integer; out AArea: TAtlasSearchArea): Boolean; static;
+    /// <summary>Bereich über mehrere Dateien (offene Dateien, Projekt, Projektgruppe)?</summary>
+    class function SpansFiles(AScope: TAtlasSearchScope): Boolean; static;
   end;
 
 implementation
@@ -142,6 +146,11 @@ begin
     AArea := TAtlasSearchArea.Whole(TTextLines.SplitLines(AText));
   end;
   Result := True;
+end;
+
+class function TAtlasSearchScopes.SpansFiles(AScope: TAtlasSearchScope): Boolean;
+begin
+  Result := AScope in [TAtlasSearchScope.OpenFiles, TAtlasSearchScope.Project, TAtlasSearchScope.ProjectGroup];
 end;
 
 end.
