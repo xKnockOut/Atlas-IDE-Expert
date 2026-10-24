@@ -11,7 +11,8 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   DUnitX.TestFramework,
-  Atlas.Core.Debug.Visualizers;
+  Atlas.Core.Debug.Visualizers,
+  Atlas.Core.Settings.VisualizerKinds;
 
 type
   [TestFixture]
@@ -123,17 +124,10 @@ begin
 end;
 
 procedure TVisualizerTests.KindsAndSettings;
-var
-  Fields: TArray<string>;
 begin
-  Assert.AreEqual('lists,json,colors', TAtlasVisualizers.NormalizeKinds(' Colors, lists ;JSON, unbekannt'));
-  Assert.AreEqual('', TAtlasVisualizers.NormalizeKinds(''));
+  // Lesen der Einstellungen prüft Atlas.Core.Settings.VisualizerKinds.Tests; hier die Vorgaben der Optionen.
   Assert.IsTrue(TAtlasVisualizerKind.Graphics in TAtlasVisualizerOptions.Defaults.Kinds);
-  Assert.AreEqual(Ord(TAtlasVisualizerEvaluation.Calls), Ord(TAtlasVisualizers.ParseEvaluation('CALLS')));
-  Assert.AreEqual(Ord(TAtlasVisualizerEvaluation.Properties), Ord(TAtlasVisualizers.ParseEvaluation('quatsch')));
-  Fields := TAtlasVisualizers.ParseNameFields(' Name, caption,, NAME, 1x, Text');
-  Assert.AreEqual(3, Integer(Length(Fields)));
-  Assert.AreEqual('Name,caption,Text', TAtlasVisualizers.NormalizeNameFields(' Name, caption,, NAME, 1x, Text'));
+  Assert.AreEqual(3, Integer(Length(TAtlasVisualizerOptions.Defaults.NameFields)));
   Assert.AreEqual(120, TAtlasVisualizerOptions.Defaults.MaxLength);
   Assert.AreEqual(Ord(TAtlasVisualizerEvaluation.Properties), Ord(TAtlasVisualizerOptions.Defaults.Evaluation));
 end;
@@ -182,7 +176,7 @@ begin
     end;
   Assert.IsTrue(Found);
   for Kind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
-    Assert.IsTrue(Length(TAtlasVisualizers.SupportedTypes(Kind)) > 0, TAtlasVisualizers.KindNames[Kind]);
+    Assert.IsTrue(Length(TAtlasVisualizers.SupportedTypes(Kind)) > 0, TAtlasVisualizerSettings.KindNames[Kind]);
   Found := False;
   for Item in TAtlasVisualizers.SupportedTypes(TAtlasVisualizerKind.DataSets) do
     if (Item.TypeName = 'Data.DB.TDataSet') and Item.AllDescendants and not Item.IsGeneric then

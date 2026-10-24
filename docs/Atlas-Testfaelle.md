@@ -1,4 +1,4 @@
-# Atlas: Testfälle in der IDE
+﻿# Atlas: Testfälle in der IDE
 
 Bei Delphi 12 heißen BPL und Protokoll `…290.bpl` und `…290.log` statt `…370`.
 
@@ -2659,6 +2659,72 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | SU17 | Zuletzt mit Bereich Methode gesucht; außerhalb jeder Methode (etwa im interface-Teil) einen Bezeichner markieren, F3 und Umschalt+F3 | Springt zum nächsten bzw. vorigen Vorkommen des markierten Bezeichners in der ganzen Unit; Meldung „außerhalb einer Methode, gesucht wird in der ganzen Unit“; weiteres F3 geht mit dem neuen Suchtext weiter |
 | SU18 | Leiste öffnen, ins Fenster Meldungen oder Struktur klicken, dann nacheinander ins Suchfeld, auf ein Kästchen, in die Bereichsliste und auf ↓ klicken | Jeder Klick wirkt beim ersten Mal (Fokus bleibt in der Leiste, Kästchen schaltet um); holt die IDE den Fokus zurück, steht „Suchleiste: Fokus nach dem Klick …“ mit Fensterklasse im Diagnoseprotokoll |
 | SU19 | In einer Methode Strg+F, Bereich auf „Methode“ stellen, Esc; dann erneut Strg+F (auch in einer anderen Methode) | Bereich steht wieder auf „Unit“ (erster Eintrag der Liste); „Methode“ nur nach gezielter Wahl in der Liste oder mit Strg+Umschalt+Alt+F |
+
+## Exception-Verlauf beim Debuggen (#517)
+
+Vorbereitung: Testprogramm aus `docs/Studie-Exception-Dialog.md` (vier Knöpfe), `debug.exceptionHistory` an, *Tools › Optionen › Debugger › Sprach-Exceptions* „Bei Sprach-Exceptions benachrichtigen“ an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EV1 | Atlas › „Atlas: Exception-Verlauf“ bzw. Befehlspalette `Atlas.DebugExceptions` | Andockbares Fenster „Atlas: Exceptions“ mit dem Hinweis „Noch keine Exception in dieser Debug-Sitzung.“ |
+| EV2 | F9, Knopf 1, zehnmal im Dialog „Fortsetzen“ | Ein Eintrag `EConvertError` mit Meldung `'x' is not a valid integer value` (bzw. deutsch), Anzahl 10, Ort `Unit1.pas:<Zeile von StrToInt>` (**Abnahme**) |
+| EV3 | Doppelklick bzw. Enter auf den Eintrag | Unit1.pas öffnet an der auslösenden Zeile (**Abnahme**) |
+| EV4 | Knopf 2, „Fortsetzen“ | Neuer Eintrag `EInvalidOp` mit Meldung `Nicht erlaubt: 'Wert'` (Hochkommas in der Meldung) |
+| EV5 | Knopf 3 | Eintrag `EAccessViolation` mit Ort `Unit1.pas:<Zeile>` |
+| EV6 | Knopf 4 | Eintrag `EAbort`, Spalte Thread „Lader (<Kennung>)“; die übrigen „Hauptthread <Kennung>“ |
+| EV7 | Klassenauswahl „EConvertError“, dann Filter „valid“ | Nur passende Einträge; „Alle Klassen“ zeigt wieder alle; ↓ im Filter führt in die Liste |
+| EV8 | Rechtsklick auf `EConvertError` › „EConvertError künftig ignorieren“; Programm neu starten (Strg+F2, F9), Knopf 1 | Meldungsansicht „Atlas: EConvertError wird künftig ignoriert …“; im neuen Lauf schließt Atlas jeden Dialog selbst, der Eintrag steht grau mit „10 · ignoriert“ (**Abnahme**) |
+| EV9 | Rechtsklick › „Bei EConvertError wieder anhalten“, Knopf 1 | Der Dialog bleibt wieder stehen |
+| EV10 | Strg+C auf einem Eintrag, in einen Editor einfügen | Klasse und Meldung, Routine, Datei(Zeile), Thread, Anzahl |
+| EV11 | Programm beenden, Fenster ansehen; erneut F9 | Verlauf bleibt nach dem Ende stehen; der neue Lauf beginnt leer |
+| EV12 | Kontextmenü › „Verlauf leeren“ | Liste leer, Hinweis wieder da |
+| EV13 | Win64 (Delphi 13: LLDB), EV2 bis EV5 | Wie Win32; liefert der Debugger den Stapel verzögert, steht der Ort trotzdem (bis 1 s später) |
+| EV14 | Schnellschalter bzw. *Tools › Optionen › Atlas › Debuggen* „Exception-Verlauf beim Debuggen“ aus, Knopf 2 | Fenster schließt, Befehl und Menüpunkt fehlen; der Dialog der IDE verhält sich wie ohne Atlas, auch für zuvor ignorierte Klassen |
+| EV15 | Helles und dunkles Thema wechseln, Fenster offen | Liste, Filter und Auswahl folgen dem Thema; ignorierte Zeilen grau und lesbar |
+| EV16 | Studie `docs/Studie-Exception-Dialog.md` S1–S8 in Delphi 12 und 13 | Ergebnisse in die Tabelle eintragen und in #783 kommentieren |
+
+## Nur eigener Code beim Debuggen (#578)
+
+Vorbereitung: Testprogramm aus `docs/Studie-Exception-Dialog.md`, Projekt in `C:\Projekte\Demo`; ohne Debug-DCUs (*Projekt › Optionen › Delphi-Compiler › Kompilieren › Mit Debug-DCUs* aus). `debug.justMyCode` an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EC1 | F9, Knopf 1 (`StrToInt('x')`), im Dialog „Anhalten“ | Der Editor steht in Unit1.pas auf der Zeile mit `StrToInt`, die Zeile ist markiert; Meldung „Atlas: Exception in Bibliothekscode; eigener Code: Unit1.pas:<Zeile> (n Ebenen darüber …)“ (**Abnahme**) |
+| EC2 | Wie EC1 mit Debug-DCUs an | Die IDE zeigt erst System.SysUtils.pas, Atlas springt danach zur eigenen Zeile; der Aufrufstapel der IDE enthält weiter den Ursprung |
+| EC3 | Haltepunkt auf einer Zeile mit `StrToInt('1')`, F7 | Kein Sprung in die CPU-Ansicht; der Debugger steht auf der nächsten eigenen Zeile (**Abnahme**) |
+| EC4 | Haltepunkt auf einem Aufruf einer eigenen Methode, F7 | Normaler Schritt in die eigene Methode |
+| EC5 | Fenster „Atlas: Exceptions“, Eintrag aus EC1 wählen | Ort = eigene Zeile; unten der Aufrufstapel: „… n Bibliotheksrahmen“ grau, darunter `Button1Click` normal; Doppelklick auf die Gruppe klappt auf, Doppelklick auf `Button1Click` springt |
+| EC6 | Strg+C auf dem Eintrag | Text enthält den Aufrufstapel mit Dateien und Zeilen |
+| EC7 | *Tools › Optionen › Atlas › Debuggen*: „Weitere Ordner mit eigenem Code“ = Ordner einer Komponente mit Quelltext; Exception in der Komponente | Atlas springt nicht weg, die Komponente gilt als eigener Code |
+| EC8 | Befehlspalette „Atlas: Nur eigener Code beim Debuggen umschalten“ | Meldung „… ist aus“; EC1 und EC3 verhalten sich wie ohne Atlas (CPU-Ansicht bzw. Ursprung), der Stapel im Fenster ist nicht zusammengefasst; erneut: wieder an (**Abnahme**) |
+| EC9 | Knopf 1, im Dialog „Fortsetzen“ | Kein Sprung |
+| EC10 | Win64 (LLDB), EC1 und EC3 | Wie Win32 |
+| EC11 | Diagnoseprotokoll nach dem Start | Keine Zeile „Aktion „Einzelne Anweisung“ nicht gefunden“ (sonst Aktionsname für die Studie notieren) |
+
+## Exception-Leiste beim Debuggen (#783)
+
+Vorbereitung: Testprogramm aus `docs/Studie-Exception-Dialog.md`, Projekt in `C:\Projekte\Demo`; *Tools › Optionen › Atlas › Debuggen* „Exception-Verlauf beim Debuggen“, „Nur eigener Code beim Debuggen“ und „Exception-Leiste statt Dialog“ an. Delphi 12 bzw. 13.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EB1 | F9, Knopf 1 (`StrToFloat('x')` statt `StrToInt`) | Kein Dialog bleibt stehen (höchstens kurzes Aufblitzen); oben im Editor die Leiste: `EConvertError`, Meldung, „Thread: Hauptthread …“, „n Ebenen ausgeblendet“, `Unit1.TForm1.Button1Click (Unit1.pas:<Zeile>)`; die Zeile ist markiert (**Abnahme**) |
+| EB2 | Wie EB1, dann F9 (Fokus im Editor) | Programm läuft weiter, Leiste weg (**Abnahme**) |
+| EB3 | Wie EB1, dann F8 bzw. Esc | Leiste weg, Prozess bleibt angehalten; danach wirkt F8 wieder als „Gesamte Routine“ (**Abnahme**) |
+| EB4 | Wie EB1, Knopf „Fortsetzen“ bzw. „Anhalten“ in der Leiste | Wie EB2 bzw. EB3 |
+| EB5 | Knopf 1 dreimal in einer Sitzung | Ab dem zweiten Mal rechts „2× an dieser Stelle“, dann „3×“ |
+| EB6 | „Nur an dieser Stelle ignorieren“, Programm neu starten, Knopf 1 | Kein Halt; im Fenster „Atlas: Exceptions“ ein grauer Eintrag, der zählt; Meldung „… wird in diesem Projekt künftig still fortgesetzt“ (**Abnahme**) |
+| EB7 | Nach EB6: eine zweite Zeile mit `StrToFloat('y')` in einer anderen Methode | Der Debugger hält dort mit Leiste (**Abnahme**) |
+| EB8 | „Klasse ignorieren“ | Prozess läuft weiter; Knopf 1 und EB7 halten nicht mehr; im Verlauf grau; Rechtsklick › „Wieder anhalten“ hebt es auf |
+| EB9 | „Meldung kopieren“, in einen Editor einfügen | Klasse, Meldung, Routine, Datei(Zeile), Thread und der Aufrufstapel |
+| EB10 | Klick auf die Ortszeile der Leiste | Springt zur Zeile und markiert sie |
+| EB11 | *Debuggen* „Nur an dieser Stelle ignorieren“ aus, Knopf 1 | Der Knopf fehlt; Orte aus EB6 wirken nicht mehr (Halt mit Leiste) |
+| EB12 | „Exception-Leiste statt Dialog“ aus (bzw. Schnellschalter), Knopf 1 | Der IDE-Dialog erscheint wie ohne Atlas, keine Leiste (**Abnahme**) |
+| EB13 | Befehlspalette „Atlas: Exception-Dialog der IDE in dieser Debug-Sitzung zeigen“, Knopf 1 | Dialog der IDE bleibt; nach „Anhalten“ im Dialog kommt die Leiste; nach Programmende und neuem Start ersetzt die Leiste den Dialog wieder |
+| EB14 | Knopf 1, im Dialog (EB13) „Fortsetzen“ | Keine Leiste |
+| EB15 | Win64 (Delphi 13: LLDB), EB1 bis EB7 | Wie Win32 (**Abnahme**) |
+| EB16 | Helles und dunkles Thema, Leiste offen | Fläche, Akzentrahmen, Knöpfe und Texte folgen dem Thema, alles lesbar |
+| EB17 | Brotkrumen und Editorleiste an, EB1 | Die Leiste steht ganz oben, darunter Brotkrumen und Editorleiste unverändert |
+| EB18 | Studie S12–S17 (`docs/Studie-Exception-Dialog.md`) | Ergebnisse eintragen und in #783 kommentieren (**Abnahme**) |
 
 ## Werte im Hover beim Debuggen (#891)
 
@@ -6185,3 +6251,179 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index; Metrik-Linse (`co
 | JM6 | Vorfahr aus einer Unit, die nicht im Index steht | Linse „Vererbungstiefe mindestens n“; Meldung nur, wenn schon die bekannten Vorfahren über der Grenze liegen |
 | JM7 | Metrik-Linse über einer Methode | „… · 2 Parameter · Operanden 6 (> 5) · 3 lokale · 1 Ausstiege“; Werte über der Grenze farbig. Auf Englisch: „operands 6 (> 5) · 3 locals · 1 exits“ |
 | JM8 | `"metric-boolean-operands": {"max": 6}`, `"metric-local-count": "off"`, `"metric-exit-points": {"exclude": ["Alt/*.pas"]}`, `"group:style": "off"` | Beispiel aus JM1 meldet nichts mehr; keine lokale-Variablen-Meldung; keine Ausstiege-Meldung in `Alt/`; mit der Gruppe aus keine der vier Regeln |
+
+## Compiler-Schalter an der Cursorposition (#558)
+
+Vorbereitung: Atlas-Server läuft, Projekt geöffnet. Unit mit `{$R-}` in Zeile 10 und Code bis Zeile 30, Include-Datei `Optionen.inc` mit `{$Q-}` und `{$WARN SYMBOL_PLATFORM OFF}`, eingebunden in Zeile 5 einer zweiten Unit. Menü *Atlas › Atlas: Compiler-Schalter* bzw. Befehl `Atlas.CompilerSwitches`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CS1 | Cursor in Zeile 20 der ersten Unit | Zeile `R (RANGECHECKS)` mit Wert `−`, Projekt `+`, Herkunft „gesetzt in Zeile 10“, fett in der Warnfarbe (**Abnahme**) |
+| CS2 | Cursor in Zeile 5 (vor der Direktive) | `R` mit dem Wert der .dproj, Herkunft „Projektoption DCC_RangeChecking“ oder „Compiler-Vorgabe“; Wechsel spätestens 150 ms nach der letzten Bewegung |
+| CS3 | Cursor hinter `{$I Optionen.inc}` in der zweiten Unit | `Q` = `−`, Herkunft „gesetzt in Optionen.inc, Zeile …“; `SYMBOL_PLATFORM OFF` unter „Hinweise und Warnungen“ (**Abnahme**) |
+| CS4 | Unit ohne Direktiven | Alle Werte gleich der Projektoptionen (Debug: `R+`, `Q+`, `O−`; Release: `O+`), keine Zeile hervorgehoben, unten „Keine Abweichung von der .dproj.“ (**Abnahme**) |
+| CS5 | Projektoptionen: Ausrichtung 4, Hinweise aus, Warnung „Plattformspezifisches Symbol“ aus; speichern | `A` = `4`, `HINTS` = `OFF`, `SYMBOL_PLATFORM` = `OFF`, je Herkunft „Projektoption DCC_…“ (prüft die Eigenschaftsnamen) |
+| CS6 | `{$WARN SYMBOL_DEPRECATED OFF}` in Zeile 12, `{$WARN SYMBOL_DEPRECATED ON}` in Zeile 18; Cursor in 15 und 25 | In 15 `SYMBOL_DEPRECATED OFF` mit „gesetzt in Zeile 12“, in 25 keine Zeile mehr (**Abnahme**) |
+| CS7 | `{$PUSHOPT}{$R-}` … `{$POPOPT}`, Cursor dahinter | `R` wieder mit dem Wert davor |
+| CS8 | `{$IFDEF NIE}{$R-}{$ENDIF}` | Keine Wirkung auf `R` |
+| CS9 | Doppelklick auf die Zeile aus CS1 bzw. CS3 | Editor springt in Zeile 10 bzw. öffnet `Optionen.inc` an der Direktive |
+| CS10 | Doppelklick auf `Q` mit Herkunft Projektoption | Dialog „Projektoptionen“ öffnet sich; nach dem Schließen sofort neuer Stand |
+| CS11 | Abschnitt „Bedingte Symbole“ und „Ziel“ | `DEBUG` mit „Konfiguration Debug (.dproj)“, `WIN64` mit „Compiler-Vorgabe (Plattform Win64)“; Plattform und Konfiguration wie in der Projektverwaltung |
+| CS12 | `build.showSwitchesInStatusBar` an, Cursor aus CS1 | Statusleiste zeigt `R−`; Tooltip „R −: gesetzt in Zeile 10“; Klick öffnet das Fenster. Cursor in CS4: kein Feld (**Abnahme**) |
+| CS13 | Strg+C in der Liste | Zwischenablage enthält Abschnitte und Zeilen mit Tabulatoren |
+| CS14 | Server beendet bzw. Formular (.dfm) aktiv | Hinweis „Der Atlas-Server läuft nicht.“ bzw. „Keine Pascal-Datei im Editor.“; kein Statusfeld |
+| CS15 | Dunkles Thema | Liste, Köpfe und hervorgehobene Werte gut lesbar |
+| CS16 | `build.compilerSwitches` aus (Schnellschalter) | Fenster schließt, Befehl und Menüeintrag fehlen, kein Statusfeld, keine Anfrage an den Server (Diagnoseprotokoll) (**Abnahme**) |
+
+## „kein Zugriff auf Wert“ erklärt (#840)
+
+Vorbereitung: Atlas-Server läuft, Projekt mit den Konfigurationen Debug (Vorgabe: `O−`, Debug-Informationen an) und Release (`O+`, ohne Debug-Informationen). Routine `Summe` mit lokalen Variablen `I`, `Wert` (erst ab Zeile 12 gebraucht) und `Ergebnis` (nach Zeile 15 nicht mehr), Haltepunkt in Zeile 14. Hover über Variablen beim Halt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KZ1 | Deutsche IDE, Release starten, Hover über `I` | Fehlertext der IDE wird erkannt: Hover zeigt `‹kein Zugriff›` und „Das Programm läuft in der Konfiguration „Release“ ohne Debug-Informationen.“, Verweis „Mit Debug neu starten“ (**Abnahme**); den genauen Fehlertext der IDE im Issue notieren |
+| KZ2 | Englische IDE oder Win64 (LLDB), wie KZ1 | Ebenso erkannt; Text im Issue notieren (fehlt er, in `KnownTexts` nachtragen) |
+| KZ3 | KZ1, Klick „Mit Debug neu starten“ | Vorschau nennt „Debug“ und die bisherige Konfiguration; OK setzt das Programm zurück, wählt Debug und startet neu; Abbrechen ändert nichts (**Abnahme**) |
+| KZ4 | Debug-Start, `{$O+}` in Zeile 3 der Unit, Hover über `Ergebnis` in Zeile 17 (nach dem Halt dort) | Ursache „Die Optimierung ist an ($O+) …“ mit Zusatz „Nach Zeile 16 wird sie nicht mehr gebraucht.“, Herkunft „{$O+} in Unit.pas, Zeile 3“, Verweise „Optimierung für die Routine aus“, „{$O-} am Unit-Anfang“, „Zur Direktive“ (**Abnahme**) |
+| KZ5 | KZ4, Klick „Optimierung für die Routine aus“ | Vorschau mit `{$OPTIMIZATION OFF}` vor und `{$OPTIMIZATION ON}` nach der Routine (Zeilennummern); OK fügt beides ein, ein Strg+Z nimmt es zurück (**Abnahme**) |
+| KZ6 | KZ4, Klick „{$O-} am Unit-Anfang“ | `{$O-}` direkt unter `unit …;`; Strg+Z bzw. „Letzte Atlas-Änderung zurücknehmen“ nimmt es zurück |
+| KZ7 | KZ4, Klick „Zur Direktive“ | Editor springt in Zeile 3 |
+| KZ8 | Debug-Start, aktive Konfiguration danach auf Release umschalten, Hover wie KZ4 ohne `{$O+}` | Keine Optimierungs-Ursache: Es gilt die Konfiguration des Starts (O−) |
+| KZ9 | `{$D-}` bzw. `{$L-}` am Unit-Anfang, Debug-Start | Ursache „… ohne Debug-Informationen übersetzt ($D-)“ bzw. „… ohne lokale Symbole ($L-) …“ mit Herkunft und „Zur Direktive“ |
+| KZ10 | Haltepunkt in einer `inline`-Routine, die eingebettet aufgerufen wird; Hover über eine lokale Variable | Ursache „Die Routine … ist inline …“ (sofern die IDE „kein Zugriff“ meldet) |
+| KZ11 | Debug ohne Debug-DCUs, F7 in `SysUtils` (nur mit Quelltext), Hover über eine lokale Variable | Ursache „Der Halt liegt in Bibliothekscode …“, Verweis „Debug-DCUs verwenden“; Vorschau nennt Konfiguration, Projekt und alten Wert; OK setzt `DCC_DebugDCUs`, Meldungsansicht nennt den Weg zurück |
+| KZ12 | Fall ohne bekannte Ursache (etwa Debug, `O−`, Variable gültig, aber Fehlertext erscheint) | „Ursache unbekannt.“ und „Geprüft, ohne Treffer:“ mit sechs Punkten in der Reihenfolge der Prüfung |
+| KZ13 | Werte im Editor an (`debug.inlineValues`), Halt wie KZ4 | Am Zeilenende `Ergebnis = ‹kein Zugriff›` statt nichts; andere Fehler weiterhin ausgeblendet |
+| KZ14 | Server beendet, Hover wie KZ1 | Erklärung ohne Server: Release-Ursache bzw. Bibliothek, sonst „Ursache unbekannt“; kein Hänger |
+| KZ15 | `%LOCALAPPDATA%\Atlas\debug-unavailable.txt` mit einer Zeile, die einen sonst unbekannten Fehlertext trifft; Einstellungen speichern | Dieser Text gilt jetzt als „kein Zugriff“ |
+| KZ16 | `debug.explainUnavailable` aus (Schnellschalter) | Fehler wie vorher ausgeblendet, kein `‹kein Zugriff›` im Editor, keine Anfrage `atlas/debugUnavailable` (Diagnoseprotokoll) (**Abnahme**) |
+| KZ17 | Dunkles Thema | Kennzeichen in der Warnfarbe, Ursache, Herkunft und Verweise gut lesbar |
+
+## Vervollständigung in Debugger-Dialogen (#538)
+
+Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert. Unit mit `TKunde = class` (Felder `Name: string`, `Umsatz: Integer`) und einer Routine mit lokalen Variablen `Kunde: TKunde` und `Summe: Integer`, Parameter `Anzahl`; Haltepunkt in einer Zeile mitten im Rumpf. Diagnoselog an (*Atlas › Diagnose*).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VD1 | Deutsche IDE (Delphi 12 und 13), Programm am Haltepunkt, Strg+F7, ein Feld anklicken | Diagnoselog: „Debug-Dialog erkannt: ‹Klasse› „Auswerten/Ändern“, Beschriftungen: …“; Klasse, Titel und Beschriftungen im Issue notieren (**Studie**) |
+| VD2 | VD1, im Ausdrucksfeld `Kun` tippen | Atlas-Popup unter dem Feld mit `Kunde` (lokale Variable), ohne Schlüsselwörter (**Abnahme**) |
+| VD3 | VD2, Enter | Feld enthält `Kunde`, Schreibmarke dahinter; Strg+Z im Feld nimmt es zurück |
+| VD4 | `Kunde.` tippen | Popup mit `Name` und `Umsatz` (Elemente von `TKunde`), keine lokalen Namen (**Abnahme**) |
+| VD5 | `Kunde.Na`, Tab | `Kunde.Name`; Enter danach wertet aus wie ohne Atlas |
+| VD6 | Popup offen, Pfeil hoch/runter, Bild auf/ab, Esc | Auswahl wandert; Esc schließt nur das Popup, nicht den Dialog |
+| VD7 | Popup zu, Esc | Dialog schließt wie ohne Atlas |
+| VD8 | Im leeren Feld Strg+Leer | Popup mit allen Namen am Ausführungspunkt (`Kunde`, `Summe`, `Anzahl`, Felder von `Self`, globale Namen) |
+| VD9 | `Kunde.Name` und `Summe` auswerten, Dialog schließen, neu öffnen, im leeren Feld Pfeil runter | Popup „Verlauf“ mit `Summe` vor `Kunde.Name`; Enter ersetzt das ganze Feld (**Abnahme**) |
+| VD10 | 25 verschiedene Ausdrücke auswerten, Pfeil runter im leeren Feld | Höchstens 20 Einträge, neuester zuerst; anderes Projekt aktiv: eigener Verlauf; IDE neu starten: Verlauf bleibt (`%LOCALAPPDATA%\Atlas\debug-expressions.json`) |
+| VD11 | Überwachung hinzufügen (Strg+F5), Ausdrucksfeld `Su` | Popup mit `Summe`; im Feld „Gruppenname“ kein Popup |
+| VD12 | Haltepunkt in einer anderen Routine bearbeiten (Rechtsklick › Haltepunkt-Eigenschaften), Feld „Bedingung“ `An` | Vorschläge aus dem Gültigkeitsbereich der Haltepunktzeile (Parameter jener Routine), nicht des Ausführungspunkts (**Abnahme**) |
+| VD13 | VD12, Weitere › „Ausdruck auswerten“ | Ebenso Popup; im Feld „Meldung protokollieren“ keins |
+| VD14 | Programm läuft nicht, Strg+F7, `Ku` | Vorschläge aus der Cursorzeile im Editor |
+| VD15 | Englische IDE: VD1, VD2, VD11, VD12 | Ebenso erkannt; Beschriftungen notieren (fehlende in `TAtlasDebugDialogs.FieldOf` nachtragen) |
+| VD16 | Server beendet, Strg+F7, `Ku` | Kein Popup, kein Hänger; Pfeil runter im leeren Feld zeigt den Verlauf weiter |
+| VD17 | Popup über dem modalen Dialog, Klick in einen Eintrag | Popup bleibt vor dem Dialog; Doppelklick übernimmt, der Fokus bleibt im Feld |
+| VD18 | `debug.completionInDialogs` aus (Schnellschalter) | Kein Popup, Pfeil runter öffnet die Liste der IDE wie ohne Atlas, kein Eintrag im Diagnoselog, keine Anfrage `atlas/expressionCompletion` (**Abnahme**) |
+| VD19 | Dunkles Thema | Popup wie im Editor gut lesbar |
+
+## Datenfluss (#690)
+
+Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert. Unit `Daten` mit `TKonto = class` (Feld `FWert: Integer`, `property Wert: Integer read FWert write SetWert`, Setter `SetWert(AWert: Integer)` mit `FWert := AWert`), Funktion `Summe(A, B: Integer): Integer` mit `Result := A + B`, Konstante `cMax = 10`; Unit `Haupt` mit `X := 0` an zwei Stellen, `X := Summe(1, cMax)`, `Konto.Wert := X`, `Inc(X)`, `ReadLn(X)`, `P := @X` und eine DUnitX-Testunit `Haupt.Tests` mit `X := 99`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DF1 | Cursor auf `X`, Menü Atlas › Suchen › „Woher kommt der Wert?“ | Ergebnisfenster „Woher kommt X? (n Stellen)“, je Stelle Art, Ausdruck, `Haupt.pas:Zeile: Quelltextzeile` (**Abnahme**) |
+| DF2 | DF1 | „2 Zuweisungen: 0 — Literal“ mit beiden Fundorten darunter; `Inc(X)` als Änderung mit Zyklus; `ReadLn(X)` als Eingabe |
+| DF3 | Unter „Zuweisung: Summe(1, cMax)“ die Quelle „← Summe“ aufklappen | Lädt erst jetzt (kurz Sanduhr); darunter „Rückgabe: A + B“ mit „← A“, „← B“; unter A die Argumente der Aufrufer (`1`), `cMax` als Blatt „· Konstante“ (**Abnahme**) |
+| DF4 | Doppelklick bzw. Enter auf eine Stelle, einen Fundort, eine Quelle | Editor springt zur Zeile bzw. zur Deklaration (**Abnahme**) |
+| DF5 | Cursor auf `X`, „Wohin geht der Wert?“ | „Wohin geht X?“: `Konto.Wert := X` als Schreiben über die Property „über SetWert“, aufklappbar bis `FWert` |
+| DF6 | Unter einer Quelle immer weiter aufklappen | Nach `navigation.dataFlow.maxDepth` Ebenen (Vorgabe 6) „· Tiefe erreicht“ ohne Pfeil; Wert 2 in den Einstellungen und neu fragen: schon nach 2 Ebenen |
+| DF7 | Zwei Variablen, die sich gegenseitig zugewiesen werden (`A := B; B := A`), A aufklappen | Unter B steht A als „· Zyklus“, kein Endlosbaum |
+| DF8 | `P := @X` bzw. `Move(Y, X, 4)` | Stelle mit „⚠ unsicher: Adresse“ bzw. „Move“ |
+| DF9 | Filter „Tests ausblenden“ an | Die Zuweisung aus `Haupt.Tests` verschwindet, der Baum wird neu geholt; aus: wieder da |
+| DF10 | Filter „Nur Projektcode“ an, Cursor auf einem Parameter, dessen Routine auch aus einer Bibliothek aufgerufen wird | Nur Aufrufer aus Projektdateien |
+| DF11 | `navigation.dataFlow.excludeTests` an, neu fragen | „Tests ausblenden“ ist vorbelegt |
+| DF12 | Befehlspalette: „Woher kommt der Wert?“ und „Wohin geht der Wert?“ | Beide Befehle vorhanden, gleiches Ergebnis wie über das Menü |
+| DF13 | Cursor auf einem Leerzeichen bzw. Schlüsselwort | Meldungsansicht „nichts gefunden“, Ergebnisfenster unverändert |
+| DF14 | Server beendet, Befehl ausführen | Zeile „kein Server“, kein Dialog, kein Hänger |
+| DF15 | Andere Liste zeigen (Referenzen) | Filterleiste verschwindet |
+| DF16 | `navigation.dataFlow` aus (Schnellschalter) | Menüeinträge und Palettenbefehle verborgen; ein über eine Tastenbelegung ausgelöster Befehl meldet nur „Datenfluss ist ausgeschaltet …“, keine Anfrage `atlas/dataFlow` im Diagnoselog (**Abnahme**) |
+| DF17 | Dunkles und helles Thema | Baum, Pfeile, ⚠ und Filterleiste gut lesbar |
+| DF18 | Property `Wert` aus DF5: auf `FWert` in `read FWert` F12 bzw. Referenzen | Springt zum Feld, Referenzen enthalten die Property-Zeile (Ursache aus #690 behoben) |
+
+## Zugriffsverletzung erklären (#865)
+
+Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert, `debug.exceptionHistory` an, `debug.exceptionBanner` an (sonst AV13). Unit `Kunden` mit `TAdresse = class` (Feld `FOrt: string`), `TKunde = class` (Felder `FName: string`, `FAdresse: TAdresse`, `property Adresse: TAdresse read FAdresse`, `property Name: string read GetName`), `TAuftrag = class` (Feld `FKunde: TKunde`, `property Kunde: TKunde read FKunde`, `function KundeLesen: TKunde`); im Formular Knöpfe mit `Auftrag.Kunde.Adresse.FOrt := 'Berlin'` (FKunde = nil), `Auftrag.Kunde.FAdresse.FOrt := 'x'` (FAdresse = nil), Zugriff nach `Kunde.Free`, `Liste[I].FName := 'x'` mit `{$R-}` und I = Länge, `Auftrag.KundeLesen.FName := 'x'`, zwei Anweisungen in einer Zeile (`A.F := 1; B.F := 2;` mit A und B nil). Win32 und Win64 (LLDB) je einmal.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AV1 | Knopf mit `Auftrag.Kunde.Adresse.FOrt := 'Berlin'`, `FKunde = nil` | Leiste: zuerst kurz „Atlas prüft …“, dann „`Auftrag.Kunde` ist nil“ in Rot; darunter „✓ Auftrag = $…“, „✗ Auftrag.Kunde = nil“ (**Abnahme**) |
+| AV2 | `Auftrag.Kunde.FAdresse.FOrt := 'x'` mit `FKunde = nil` (Leseadresse = Versatz von `FAdresse`, z. B. „Lesen von Adresse 0000001C“) | „`Auftrag.Kunde` ist nil · Zugriff auf Feld `FAdresse` (Versatz $1C)“; ohne „geschätzt“, wenn der Debugger den Versatz ausrechnet (**Abnahme**) |
+| AV3 | AV2, Diagnoselog | Anfrage `NativeInt(@TKunde(nil).FAdresse)` sichtbar; nimmt der Debugger sie nicht an, steht „(Versatz $…, geschätzt)“ |
+| AV4 | Projekt mit FastMM4 und `FullDebugMode` (bzw. FastMM5 im Debug-Modus), Zugriff auf ein freigegebenes Objekt | „`Kunde` ist bereits freigegeben“ mit Füllmuster bzw. „Kopf des Objekts trägt das Füllmuster“ (**Abnahme**) |
+| AV5 | AV4 ohne FullDebugMode | Kein falsches „freigegeben“; je nach Speicher „Ursache nicht eindeutig“ oder „Zugriff auf freigegebenen Speicher“ |
+| AV6 | `Liste[I].FName := 'x'` mit `{$R-}`, I = Length(Liste) | „Index I = n liegt außerhalb von Liste (Länge n)“ |
+| AV7 | `Auftrag.KundeLesen.FName := 'x'` bzw. Kette über die Property `Name` mit Getter, `allowCalls` aus | Glied „Auftrag.KundeLesen: nicht ausgewertet: ruft etwas auf …“; im Diagnoselog keine Auswertung mit Nebenwirkungen, ein Haltepunkt in `KundeLesen` hält nicht (**Abnahme**) |
+| AV8 | AV7 mit `debug.explainAccessViolation.allowCalls` an | Das Glied wird ausgewertet, Ergebnis wie AV1 |
+| AV9 | Zeile mit zwei Anweisungen, beide nil | „Ursache nicht eindeutig“ · „2 Glieder kommen in Frage“ · „2 Anweisungen in der Zeile“, beide Glieder mit ✗ |
+| AV10 | Englisches RAD Studio (oder englische Meldung „Read of address 0000001C“) | Adresse wird gelesen, Ergebnis wie AV1/AV2 (**Abnahme**) |
+| AV11 | AV1 und AV2 unter Win64 (LLDB) | Gleiches Ergebnis; Werte kommen verzögert, die Leiste zeigt bis dahin „Atlas prüft …“ (**Abnahme**) |
+| AV12 | AV1: Knöpfe „Wo wird Kunde zugewiesen?“, „Ausdruck auswerten“, „Erklärung kopieren“ | Ergebnisfenster „Woher kommt Kunde?“; Fenster „Auswerten“ mit Zeile `Auftrag.Kunde`; Zwischenablage mit Ergebnis, Meldung, Ort und Gliedern |
+| AV13 | `debug.exceptionBanner` aus, AV1 | Kein Balken; nach dem Schließen des IDE-Dialogs mit „Anhalten“ stehen „Zugriffsverletzung in Unit:Zeile: … ist nil“ und die Glieder in den Meldungen |
+| AV14 | AV1, Editor | `Auftrag.Kunde` ist rot unterstrichen; F9 bzw. Einzelschritt: Unterstreichung weg (**Abnahme**) |
+| AV15 | Zugriffsverletzung in der RTL (z. B. `TList.Get` ohne Debug-DCUs) | Leiste nur mit der Meldung, keine Erklärung, kein Hänger |
+| AV16 | `navigation.dataFlow` aus bzw. `debug.evaluateWindow` aus | Der jeweilige Knopf fehlt |
+| AV17 | Server beendet, AV1 | „Ursache nicht eindeutig“ · „Atlas-Server antwortet nicht“ |
+| AV18 | Dialog der IDE mit „Fortsetzen“ schließen | Keine Erklärung, keine Auswertung danach |
+| AV19 | `debug.explainAccessViolation` aus (Schnellschalter), AV1 | Leiste zeigt nur die Meldung, keine Auswertung im Diagnoselog, keine Unterstreichung (**Abnahme**) |
+| AV20 | Methode auf nil-Referenz mit implizitem Self (`FDaten.Count` in einer Methode, `Self = nil`) | „`Self` ist nil“, kein Knopf „Wo wird … zugewiesen?“ |
+| AV21 | Helles und dunkles Thema | Ergebniszeile, ✓/✗, Knöpfe und Unterstreichung gut lesbar |
+
+## Fenster „Auswerten“ (#784)
+
+Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert, Diagnoselog an. Unit mit `TKunde = class` (Felder `FName: string`, `FUmsatz: Integer`, Eigenschaft `Name` mit Getter), Record `TPunkt = record X, Y: Integer; end`, eine Methode von `TKunde` mit lokalen Variablen `Liste: TStringList` (drei Zeilen), `Zahl: Integer`, `Json: string` (`'{"a":1}'`), `P: TPunkt`, `Werte: array[0..2] of Integer`; in einer Schleife ändert sich `Zahl`. Haltepunkt in der Schleife. Win32 und Win64 je einmal.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AW1 | Programm am Haltepunkt, Cursor auf `Zahl`, Strg+F7 | Fenster „Atlas: Auswerten“ öffnet (angedockt oder schwebend), Eingabefeld enthält `Zahl` markiert (**Abnahme**) |
+| AW2 | AW1, Enter | Zeile `Zahl = 3` (Wert am Halt); Feld leer für den nächsten Ausdruck |
+| AW3 | `Self`, Enter, Zeile aufklappen | Kinder `FName`, `FUmsatz` (Felder aus dem Index) mit Werten; `Name` (Eigenschaft) fehlt (**Abnahme**) |
+| AW4 | „Nebenwirkungen erlauben“ an | Alle Werte neu ausgewertet, unter `Self` jetzt auch `Name`; wieder aus: `Name` fällt weg |
+| AW5 | F9 bis zum nächsten Halt | `Zahl` neu und in der Warnfarbe; unveränderte Werte normal; `FUmsatz` geändert → markiert (**Abnahme**) |
+| AW6 | `P` und `Werte` hinzufügen, aufklappen | `X`, `Y` bzw. `[0]`, `[1]`, `[2]` mit Werten |
+| AW7 | Server beenden, `Self` entfernen und neu hinzufügen, aufklappen | Kinder aus dem Ergebnis-String (`FName = 'Meier'`, …), kein Hänger |
+| AW8 | `Liste` hinzufügen, wählen, Ansicht „Zeilen“ | Unten die drei Zeilen der Liste untereinander (**Abnahme**) |
+| AW9 | Ausdruck mit Steuerzeichen (`'a'#9'b'#13#10'c'`), Ansicht „Text“ | `a→b␍␊` und Umbruch, `c` |
+| AW10 | `Json` wählen, Ansicht „JSON“; dann `Zahl`, „Hex“; dann `Json`, „Hex“ | Eingerücktes JSON; `$00000003 (3)`; Hinweis „Diese Ansicht passt nicht zum Wert“ und der Text |
+| AW11 | `Zahl` wählen, „Ändern …“ (oder F2), `42`, OK | Zeile zeigt `Zahl = 42`; F8: Programm rechnet mit 42 (**Abnahme**) |
+| AW12 | „Ändern …“ mit `abc` für `Zahl` | Meldung „Ändern von Zahl fehlgeschlagen: …“, Wert unverändert |
+| AW13 | Im Eingabefeld `FUmsatz`, Strg+Enter | Zeile fett (festgeheftet); IDE neu starten, Projekt öffnen, Fenster öffnen: Zeile wieder da; anderes Projekt: nicht da (**Abnahme**) |
+| AW14 | Festgeheftete Zeile wählen, „Lösen“; Feld `FName` unter `Self` wählen, „Festheften“ | Zeile nicht mehr fett; `Self.FName` als eigene festgeheftete Zeile |
+| AW15 | Diagnoselog nach dem Start | „Auswerten: Strg+F7 über die IDE-Aktion ‹Name›“; Namen im Issue notieren (**Studie**) |
+| AW16 | Umschalt+Strg+F7 bzw. Menü Start › Auswerten/Ändern mit Umschalt-Klick; Befehl „Atlas: Auswerten/Ändern (IDE-Dialog)“ | Dialog „Auswerten/Ändern“ der IDE |
+| AW17 | `debug.evaluateWindow.replaceCtrlF7` aus, Strg+F7 | Dialog der IDE; Atlas-Fenster über das Menü weiter erreichbar |
+| AW18 | `debug.evaluateWindow` aus (Schnellschalter) | Fenster weg, Menüeintrag und Befehle unsichtbar, Strg+F7 öffnet den Dialog der IDE (**Abnahme**) |
+| AW19 | Im leeren Eingabefeld Pfeil runter | Menü mit den zuletzt hinzugefügten Ausdrücken, neuester zuerst, höchstens 50; Klick setzt ihn ins Feld |
+| AW20 | Im Eingabefeld `Ku` tippen (`debug.completionInDialogs` an) | Atlas-Popup wie in „Auswerten/Ändern“ (#538), auch angedockt; Pfeil runter im leeren Feld zeigt das Verlaufsmenü des Fensters, nicht das Popup |
+| AW21 | Entf auf einer Zeile bzw. auf einem Feld; Programm beenden | Zeile entfernt (auf dem Feld die ganze Zeile); nach dem Ende „‹Programm nicht angehalten›“ |
+| AW22 | Dunkles und helles Thema | Baum, Ansicht und Knöpfe gut lesbar, geänderte Werte deutlich |
+
+## Werte im Editor beim Debuggen (#508)
+
+Vorbereitung: Atlas-Server läuft (Projekt geöffnet, Indexierung fertig). Testunit mit einer Methode wie im Test `Atlas.Common.Lsp.InlineValues.Tests` (Felder `FCount`, `FName`, Parameter `Anzahl`, lokale `Summe`, `for var I`, `with Andere do`, Aufruf `GetSize`, Eigenschaft `Size`, eine `TDateTime`-Variable). *Tools › Optionen › Atlas › Debuggen* „Werte im Editor beim Debuggen“ an. Win32 und Win64.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IV1 | Haltepunkt in der Schleife, F9 | Am Ende der Schleifenzeile gedimmt `Summe = …, I = 0`; darüber `Summe = …, Anzahl = …` usw. bis zum Routinenanfang (**Abnahme**) |
+| IV2 | Wie IV1, dann F8 | `I = 1` (und `Summe`) in der Warnfarbe, gleich gebliebene Werte gedimmt (**Abnahme**) |
+| IV3 | Zeile mit `GetSize` und `Size` | Kein Wert für `GetSize` oder `Size`; Haltepunkt in `GetSize` wird dabei nie getroffen (**Abnahme**: kein Aufruf) |
+| IV4 | Zeile `Andere.FCount := 1;` und `with Andere do FCount := …` | Wert für `Andere`, keiner für `FCount` in diesen Zeilen |
+| IV5 | Variable `TDateTime` mit Datum und Uhrzeit | `Datum = 2026-10-23 14:05:00` statt einer Gleitkommazahl; reines Datum ohne Uhrzeit |
+| IV6 | String mit 100 Zeichen | Wert gekürzt mit „ …“ |
+| IV7 | Zeile mit mehr als 5 Bezeichnern | Höchstens 5 Werte; nach `debug.inlineValuesPerLine` = 2 und neuem Halt höchstens 2 |
+| IV8 | F9 (Programm läuft weiter) | Werte verschwinden sofort (**Abnahme**) |
+| IV9 | Schleife mit 20 Variablen, F8 zehnmal schnell hintereinander | Schritte fühlen sich nicht langsamer an als mit ausgeschalteter Einstellung (höchstens 100 ms pro Schritt, **Abnahme**) |
+| IV10 | Halt in RTL-Code ohne Quelltext (F7 in `IntToStr` ohne Debug-DCUs) | Keine Werte, keine Meldung |
+| IV11 | Zeile im Editor während des Halts ändern | Werte der geänderten Zeile verschwinden, andere bleiben |
+| IV12 | Win64 (LLDB): IV1, IV2 und F8 direkt nach dem Halt | Werte kommen (verzögert); kein F8 geht verloren, die Debug-Sitzung meldet jeden Halt |
+| IV13 | Schnellschalter „Werte im Editor beim Debuggen“ aus, dann F8 | Keine Werte, keine Anfrage an den Server (Diagnoseprotokoll), Verhalten wie ohne Atlas (**Abnahme**) |
+| IV14 | Server beendet, Halt | Keine Werte, keine Fehlermeldung |

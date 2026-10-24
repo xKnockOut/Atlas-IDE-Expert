@@ -29,6 +29,8 @@ type
     [Test]
     procedure ResolvesMembersInMethodsAndSelf;
     [Test]
+    procedure ResolvesPropertyAccessors;
+    [Test]
     procedure LocalsHideFieldsOfTheSameName;
     [Test]
     procedure AnonymousMethodLocalsHideFields;
@@ -338,6 +340,40 @@ begin
   R := ResolveAt(Source, 'Run;', 2);
   Assert.AreEqual('TFoo.Run', R.QualifiedName);
   Assert.AreEqual(6, R.SelectionRange.StartPos.Line);
+end;
+
+procedure TNameResolverTests.ResolvesPropertyAccessors;
+const
+  Source =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFoo = class'#10 +
+    '  strict private'#10 +
+    '    FWert: Integer;'#10 +
+    '    procedure SetWert(AValue: Integer);'#10 +
+    '  public'#10 +
+    '    property Wert: Integer read FWert write SetWert;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TFoo.SetWert(AValue: Integer);'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'end.';
+var
+  R: TResolvedSymbol;
+begin
+  // read und write stehen im Bereich der Klasse, auch für strict private (#690).
+  R := ResolveAt(Source, 'FWert write');
+  Assert.IsTrue(R.Kind = TResolvedKind.Symbol);
+  Assert.AreEqual('TFoo.FWert', R.QualifiedName);
+  Assert.AreEqual(5, R.SelectionRange.StartPos.Line);
+  R := ResolveAt(Source, 'SetWert;');
+  Assert.AreEqual('TFoo.SetWert', R.QualifiedName);
+  Assert.AreEqual(6, R.SelectionRange.StartPos.Line);
+  // Der Typ der Property bleibt ein Typ.
+  R := ResolveAt(Source, 'Integer read');
+  Assert.AreNotEqual('TFoo', R.Container, 'Integer ist kein Mitglied');
 end;
 
 const

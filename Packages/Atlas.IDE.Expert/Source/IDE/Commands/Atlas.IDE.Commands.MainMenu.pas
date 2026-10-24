@@ -97,6 +97,13 @@ type
     FNotesGroup: TMenuItem;
     /// <summary>„Atlas-Prüfung“ (#909) im Atlas-Menü und unter Ansicht › Atlas.</summary>
     FProblemsItem: TMenuItem;
+    /// <summary>„Atlas: Exception-Verlauf“ (#517), sichtbar nach debug.exceptionHistory.</summary>
+    FDebugExceptionsItem: TMenuItem;
+    FDebugEvaluateItem: TMenuItem;
+    /// <summary>„Woher/Wohin kommt der Wert?“ (#690), sichtbar nach navigation.dataFlow.</summary>
+    FDataFlowItems: TArray<TMenuItem>;
+    /// <summary>„Atlas: Compiler-Schalter“ (#558), sichtbar nach build.compilerSwitches.</summary>
+    FCompilerSwitchesItem: TMenuItem;
     FViewAtlas: TMenuItem;
     procedure WelcomeClick(Sender: TObject);
     procedure RenameClick(Sender: TObject);
@@ -108,6 +115,9 @@ type
     procedure BookmarksClick(Sender: TObject);
     procedure OutlineClick(Sender: TObject);
     procedure ProblemsClick(Sender: TObject);
+    procedure DebugExceptionsClick(Sender: TObject);
+    procedure DebugEvaluateClick(Sender: TObject);
+    procedure CompilerSwitchesClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     function AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     /// <summary>Untermenü im Atlas-Menü; folgende AddItem landen darin.</summary>
@@ -170,6 +180,9 @@ uses
   Atlas.IDE.Outline.Service,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Problems.Service,
+  Atlas.IDE.Debug.Exceptions,
+  Atlas.IDE.Debug.Evaluate,
+  Atlas.IDE.Build.CompilerSwitches,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
@@ -179,6 +192,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Results.Model,
+  Atlas.Core.Lsp.DataFlow,
   Atlas.Core.Setup.Checklist,
   Atlas.Core.Lsp.Progress;
 
@@ -187,8 +201,9 @@ const
   EditorIds: array[0..11] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
     'Atlas.TypeDefinition', 'Atlas.CopyQualifiedName', 'Atlas.CopyQualifiedNameParams', 'Atlas.ToggleMethod',
     'Atlas.SwitchTestUnit', 'Atlas.UnitSearch', 'Atlas.UnitSearchIde', 'Atlas.GenerateMenu', 'Atlas.FormatCode');
-  ResultsIds: array[0..7] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
-    'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow');
+  ResultsIds: array[0..9] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
+    'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow',
+    'Atlas.DataFlowSources', 'Atlas.DataFlowTargets');
   // Editorleiste (#1101), je Tag von SectionClick.
   SectionIds: array[0..5] of string = ('Atlas.GotoInterface', 'Atlas.GotoImplementation', 'Atlas.GotoUses',
     'Atlas.GotoInitialization', 'Atlas.ReturnFromSection', 'Atlas.FindMethod');
@@ -258,6 +273,11 @@ begin
   AddItem(TAtlasTextId.UnitSearchMenu, 8, EditorClick);
   AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
   FProblemsItem := AddItem(TAtlasTextId.ProblemsWindowCaption, 0, ProblemsClick);
+  // Exception-Verlauf beim Debuggen (#517).
+  FDebugExceptionsItem := AddItem(TAtlasTextId.DebugExceptionsCommand, 0, DebugExceptionsClick);
+  FDebugEvaluateItem := AddItem(TAtlasTextId.DebugEvaluateCommand, 0, DebugEvaluateClick);
+  // Wirksame Compiler-Schalter an der Cursorposition (#558).
+  FCompilerSwitchesItem := AddItem(TAtlasTextId.CompilerSwitchesCommand, 0, CompilerSwitchesClick);
   FRoot.Add(NewLine);
   AddGroup(TAtlasTextId.MenuGroupNavigation);
   AddItem(TAtlasTextId.EditorTypeDefinition, 3, EditorClick);
@@ -281,6 +301,9 @@ begin
   AddItem(TAtlasTextId.MenuOutgoing, 4, ResultsClick);
   AddItem(TAtlasTextId.MenuSupertypes, 5, ResultsClick);
   AddItem(TAtlasTextId.MenuSubtypes, 6, ResultsClick);
+  // Datenfluss (#690).
+  FDataFlowItems := [AddItem(TAtlasTextId.MenuDataFlowSources, 8, ResultsClick),
+    AddItem(TAtlasTextId.MenuDataFlowTargets, 9, ResultsClick)];
   FParent.Add(NewLine);
   AddItem(TAtlasTextId.MenuResultsWindow, 7, ResultsClick);
   AddGroup(TAtlasTextId.MenuGroupCopy);
@@ -660,6 +683,17 @@ begin
     FProblemsItem.Visible := TAtlasIdeProblems.Enabled;
   if FViewAtlas <> nil then
     FViewAtlas.Visible := TAtlasIdeProblems.Enabled;
+  // Exception-Verlauf (#517) nach debug.exceptionHistory.
+  if FDebugExceptionsItem <> nil then
+    FDebugExceptionsItem.Visible := TAtlasIdeSettings.Current.DebugExceptionHistory;
+  if FDebugEvaluateItem <> nil then
+    FDebugEvaluateItem.Visible := TAtlasIdeSettings.Current.DebugEvaluateWindow;
+  // Datenfluss (#690) nach navigation.dataFlow.
+  for Item in FDataFlowItems do
+    Item.Visible := TAtlasIdeSettings.Current.DataFlow;
+  // Compiler-Schalter (#558) nach build.compilerSwitches.
+  if FCompilerSwitchesItem <> nil then
+    FCompilerSwitchesItem.Visible := TAtlasIdeSettings.Current.BuildCompilerSwitches;
   // Benannte Lesezeichen (#622) nach bookmarks.named, schnelle (#1104) nach bookmarks.quick; das Fenster zeigt
   // beide.
   Marks := TAtlasIdeSettings.Current.BookmarksNamed or TAtlasIdeSettings.Current.QuickBookmarks;
@@ -727,6 +761,8 @@ begin
         4: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Outgoing);
         5: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Supertypes);
         6: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Subtypes);
+        8: TAtlasIdeResults.ShowDataFlow(TAtlasDataFlowDirection.Sources);
+        9: TAtlasIdeResults.ShowDataFlow(TAtlasDataFlowDirection.Targets);
       else
         TAtlasIdeResults.ShowWindow;
       end;
@@ -854,6 +890,36 @@ begin
     procedure
     begin
       TAtlasIdeProblems.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.DebugExceptionsClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.DebugExceptions');
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      TAtlasIdeDebugExceptions.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.DebugEvaluateClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.DebugEvaluate');
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      TAtlasIdeDebugEvaluate.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.CompilerSwitchesClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.CompilerSwitches');
+  TAtlasGuard.Run(TAtlasFeature.Build,
+    procedure
+    begin
+      TAtlasIdeCompilerSwitches.ShowWindow;
     end);
 end;
 

@@ -56,7 +56,7 @@ uses
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Groups,
   Atlas.Core.Editor.Overview,
-  Atlas.Core.Debug.Visualizers,
+  Atlas.Core.Settings.VisualizerKinds,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
   Atlas.UI.Strings,
@@ -274,6 +274,8 @@ type
     FTestsBuildFirst: TCheckBox;
     FTestsAfterBuild: TCheckBox;
     FBuildZeroHints: TCheckBox;
+    FBuildCompilerSwitches: TCheckBox;
+    FBuildSwitchesInStatusBar: TCheckBox;
     /// <summary>Release-Build-Wächter (#533): Schalter, build.gate, weitere Release-Konfigurationen und je Prüfung
     /// ein Haken (ohne Sollwert) bzw. eine Auswahl „nicht prüfen / Soll aus / Soll an“.</summary>
     FReleaseGuard: TCheckBox;
@@ -302,6 +304,19 @@ type
     /// <summary>Gezielt hineinspringen (#836).</summary>
     FDebugStepIntoTarget: TCheckBox;
     FDebugStepIntoTargetKey: TEdit;
+    FDebugExplainUnavailable: TCheckBox;
+    FDebugCompletionInDialogs: TCheckBox;
+    FDebugEvaluateWindow: TCheckBox;
+    FDebugEvaluateReplaceCtrlF7: TCheckBox;
+    FDebugExplainAccessViolation: TCheckBox;
+    FDebugExplainAccessViolationAllowCalls: TCheckBox;
+    FDebugExceptionHistory: TCheckBox;
+    FDebugJustMyCode: TCheckBox;
+    FDebugExceptionBanner: TCheckBox;
+    FDebugExceptionBannerIgnoreAtLocation: TCheckBox;
+    FDebugInlineValues: TCheckBox;
+    FDebugInlineValuesPerLine: TEdit;
+    FDebugOwnCodeFolders: TEdit;
     FActionsKey: TEdit;
     FExpandKey: TEdit;
     FShrinkKey: TEdit;
@@ -320,6 +335,9 @@ type
     FPeek: TCheckBox;
     FPeekHeightLines: TEdit;
     FPeekShowImplementation: TCheckBox;
+    FDataFlow: TCheckBox;
+    FDataFlowMaxDepth: TEdit;
+    FDataFlowExcludeTests: TCheckBox;
     FPeekDefinitionKey: TEdit;
     FPeekReferencesKey: TEdit;
     FOutline: TCheckBox;
@@ -1063,6 +1081,8 @@ type
     property TestsBuildFirstCheck: TCheckBox read FTestsBuildFirst;
     property TestsAfterBuildCheck: TCheckBox read FTestsAfterBuild;
     property BuildZeroHintsCheck: TCheckBox read FBuildZeroHints;
+    property BuildCompilerSwitchesCheck: TCheckBox read FBuildCompilerSwitches;
+    property BuildSwitchesInStatusBarCheck: TCheckBox read FBuildSwitchesInStatusBar;
     /// <summary>Zum Testen: Release-Build-Wächter (#533).</summary>
     property ReleaseGuardCheck: TCheckBox read FReleaseGuard;
     property BuildGateChoice: TAtlasChoiceBox read FBuildGate;
@@ -1087,6 +1107,19 @@ type
     property DebugStepIntoTargetCheck: TCheckBox read FDebugStepIntoTarget;
     property DebugStepIntoTargetKeyEdit: TEdit read FDebugStepIntoTargetKey;
     function DebugVisualizerKindCheck(AKind: TAtlasVisualizerKind): TCheckBox;
+    property DebugExplainUnavailableCheck: TCheckBox read FDebugExplainUnavailable;
+    property DebugCompletionInDialogsCheck: TCheckBox read FDebugCompletionInDialogs;
+    property DebugEvaluateWindowCheck: TCheckBox read FDebugEvaluateWindow;
+    property DebugEvaluateReplaceCtrlF7Check: TCheckBox read FDebugEvaluateReplaceCtrlF7;
+    property DebugExplainAccessViolationCheck: TCheckBox read FDebugExplainAccessViolation;
+    property DebugExplainAccessViolationAllowCallsCheck: TCheckBox read FDebugExplainAccessViolationAllowCalls;
+    property DebugExceptionHistoryCheck: TCheckBox read FDebugExceptionHistory;
+    property DebugJustMyCodeCheck: TCheckBox read FDebugJustMyCode;
+    property DebugExceptionBannerCheck: TCheckBox read FDebugExceptionBanner;
+    property DebugExceptionBannerIgnoreAtLocationCheck: TCheckBox read FDebugExceptionBannerIgnoreAtLocation;
+    property DebugInlineValuesCheck: TCheckBox read FDebugInlineValues;
+    property DebugInlineValuesPerLineEdit: TEdit read FDebugInlineValuesPerLine;
+    property DebugOwnCodeFoldersEdit: TEdit read FDebugOwnCodeFolders;
     /// <summary>Zum Testen: benannte Lesezeichen (#622).</summary>
     property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
     property BookmarksSharedCheck: TCheckBox read FBookmarksShared;
@@ -1124,6 +1157,9 @@ type
     property SelectionMatchesNavigateF3Check: TCheckBox read FSelectionMatchesNavigateF3;
     property SelectionMatchesMaxMatches: TEdit read FSelectionMatchesMaxMatches;
     property RecursionMarkersDepthEdit: TEdit read FRecursionMarkersDepth;
+    property DataFlowCheck: TCheckBox read FDataFlow;
+    property DataFlowMaxDepthEdit: TEdit read FDataFlowMaxDepth;
+    property DataFlowExcludeTestsCheck: TCheckBox read FDataFlowExcludeTests;
     property HideElementKey: TEdit read FHideElementKey;
     /// <summary>Zum Testen: Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).</summary>
     property InlineDiagnostics: TAtlasChoiceBox read FInlineDiagnostics;
@@ -1204,6 +1240,7 @@ implementation
 uses
   System.Math,
   System.StrUtils,
+  Atlas.Core.Debug.OwnCode,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Problems.InlineHints,
   Atlas.Core.Product.Version,
@@ -1775,6 +1812,9 @@ begin
   FTestsBuildFirst := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsBuildFirst));
   FTestsAfterBuild := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAfterBuild));
   FBuildZeroHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildZeroHints));
+  // Wirksame Compiler-Schalter an der Cursorposition (#558).
+  FBuildCompilerSwitches := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildCompilerSwitches));
+  FBuildSwitchesInStatusBar := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildSwitchesInStatusBar));
   // Startprofile (#575).
   FStartProfiles := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfiles));
   FStartProfilesStatusField := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfilesStatusField));
@@ -1855,6 +1895,29 @@ begin
   // Gezielt hineinspringen (#836): Schalter und Tastenkürzel.
   FDebugStepIntoTarget := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugStepIntoTarget));
   FDebugStepIntoTargetKey := AddKey(TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand));
+  // „kein Zugriff auf Wert“ erklären (#840).
+  FDebugExplainUnavailable := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExplainUnavailable));
+  // Vervollständigung in Debugger-Dialogen (#538).
+  FDebugCompletionInDialogs := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugCompletionInDialogs));
+  // Fenster „Auswerten“ (#784).
+  FDebugEvaluateWindow := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugEvaluateWindow));
+  FDebugEvaluateReplaceCtrlF7 := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugEvaluateReplaceCtrlF7));
+  // Zugriffsverletzung erklären (#865)
+  FDebugExplainAccessViolation := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExplainAccessViolation));
+  FDebugExplainAccessViolationAllowCalls :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExplainAccessViolationAllowCalls));
+  // Exception-Verlauf beim Debuggen (#517).
+  FDebugExceptionHistory := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExceptionHistory));
+  // Nur eigener Code beim Debuggen (#578).
+  FDebugJustMyCode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugJustMyCode));
+  FDebugOwnCodeFolders := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsDebugOwnCodeFolders));
+  // Exception-Leiste beim Debuggen (#783).
+  FDebugExceptionBanner := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExceptionBanner));
+  FDebugExceptionBannerIgnoreAtLocation :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExceptionBannerIgnoreAtLocation));
+  // Werte im Editor beim Debuggen (#508).
+  FDebugInlineValues := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugInlineValues));
+  FDebugInlineValuesPerLine := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsDebugInlineValuesPerLine));
 
   // Editorbefehle (#399): ein Vorrang für alle.
   AddSheet(TAtlasTextId.SettingsTabCommands);
@@ -1913,6 +1976,10 @@ begin
   FPeekShowImplementation := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPeekImplementation));
   FPeekDefinitionKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PeekDefinitionCommand));
   FPeekReferencesKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PeekReferencesCommand));
+  // Datenfluss im Ergebnisfenster (#690).
+  FDataFlow := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDataFlow));
+  FDataFlowMaxDepth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsDataFlowMaxDepth));
+  FDataFlowExcludeTests := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDataFlowExcludeTests));
   FOutline := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutline));
   FOutlineAlphabetical := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineAlphabetical));
   FOutlineFollowCursor := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineFollowCursor));
@@ -2760,6 +2827,9 @@ begin
   FMarks.Bind(FPeek, ['Peek']);
   FMarks.Bind(FPeekHeightLines, ['PeekHeightLines']);
   FMarks.Bind(FPeekShowImplementation, ['PeekShowImplementation']);
+  FMarks.Bind(FDataFlow, ['DataFlow']);
+  FMarks.Bind(FDataFlowMaxDepth, ['DataFlowMaxDepth']);
+  FMarks.Bind(FDataFlowExcludeTests, ['DataFlowExcludeTests']);
   FMarks.Bind(FPeekDefinitionKey, ['PeekDefinitionKey']);
   FMarks.Bind(FPeekReferencesKey, ['PeekReferencesKey']);
   FMarks.Bind(FOutline, ['Outline']);
@@ -2977,6 +3047,8 @@ begin
   FMarks.Bind(FTestsBuildFirst, ['TestsBuildFirst']);
   FMarks.Bind(FTestsAfterBuild, ['TestsAfterBuild']);
   FMarks.Bind(FBuildZeroHints, ['BuildZeroHints']);
+  FMarks.Bind(FBuildCompilerSwitches, ['BuildCompilerSwitches']);
+  FMarks.Bind(FBuildSwitchesInStatusBar, ['BuildSwitchesInStatusBar']);
   FMarks.Bind(FStartProfiles, ['StartProfiles']);
   FMarks.Bind(FStartProfilesStatusField, ['StartProfilesStatusField']);
   FMarks.Bind(FTestDebug, ['TestDebug']);
@@ -2994,6 +3066,19 @@ begin
   FMarks.Bind(FDebugDisplayRulesAllowCalls, ['DebugDisplayRulesAllowCalls']);
   FMarks.Bind(FDebugStepIntoTarget, ['DebugStepIntoTarget']);
   FMarks.Bind(FDebugStepIntoTargetKey, ['DebugStepIntoTargetKey']);
+  FMarks.Bind(FDebugExplainUnavailable, ['DebugExplainUnavailable']);
+  FMarks.Bind(FDebugCompletionInDialogs, ['DebugCompletionInDialogs']);
+  FMarks.Bind(FDebugEvaluateWindow, ['DebugEvaluateWindow']);
+  FMarks.Bind(FDebugEvaluateReplaceCtrlF7, ['DebugEvaluateReplaceCtrlF7']);
+  FMarks.Bind(FDebugExplainAccessViolation, ['DebugExplainAccessViolation']);
+  FMarks.Bind(FDebugExplainAccessViolationAllowCalls, ['DebugExplainAccessViolationAllowCalls']);
+  FMarks.Bind(FDebugExceptionHistory, ['DebugExceptionHistory']);
+  FMarks.Bind(FDebugJustMyCode, ['DebugJustMyCode']);
+  FMarks.Bind(FDebugExceptionBanner, ['DebugExceptionBanner']);
+  FMarks.Bind(FDebugExceptionBannerIgnoreAtLocation, ['DebugExceptionBannerIgnoreAtLocation']);
+  FMarks.Bind(FDebugInlineValues, ['DebugInlineValues']);
+  FMarks.Bind(FDebugInlineValuesPerLine, ['DebugInlineValuesPerLine']);
+  FMarks.Bind(FDebugOwnCodeFolders, ['DebugOwnCodeFolders']);
   FMarks.Bind(FSafeAsk, ['SafeAskAfterCrash']);
   FMarks.Bind(FSafeAuto, ['SafeAutoAfterRepeatedCrash']);
   FMarks.Bind(FSafeKey, ['SafeStartupKey']);
@@ -4883,6 +4968,9 @@ begin
   FPeek.Checked := ASettings.Peek;
   FPeekHeightLines.Text := IntToStr(ASettings.PeekHeightLines);
   FPeekShowImplementation.Checked := ASettings.PeekShowImplementation;
+  FDataFlow.Checked := ASettings.DataFlow;
+  FDataFlowMaxDepth.Text := IntToStr(ASettings.DataFlowMaxDepth);
+  FDataFlowExcludeTests.Checked := ASettings.DataFlowExcludeTests;
   FPeekDefinitionKey.Text := ShortCutToText(TShortCut(ASettings.PeekDefinitionKey));
   FPeekReferencesKey.Text := ShortCutToText(TShortCut(ASettings.PeekReferencesKey));
   FOutline.Checked := ASettings.Outline;
@@ -5133,6 +5221,8 @@ begin
   FTestsBuildFirst.Checked := ASettings.TestsBuildFirst;
   FTestsAfterBuild.Checked := ASettings.TestsAfterBuild;
   FBuildZeroHints.Checked := ASettings.BuildZeroHints;
+  FBuildCompilerSwitches.Checked := ASettings.BuildCompilerSwitches;
+  FBuildSwitchesInStatusBar.Checked := ASettings.BuildSwitchesInStatusBar;
   LoadRelease(ASettings);
   FStartProfiles.Checked := ASettings.StartProfiles;
   FStartProfilesStatusField.Checked := ASettings.StartProfilesStatusField;
@@ -5140,18 +5230,31 @@ begin
   FTestBreakAtStart.Checked := ASettings.TestBreakAtStart;
   FDebugHoverValues.Checked := ASettings.DebugHoverValues;
   FDebugVisualizers.Checked := ASettings.DebugVisualizers;
-  VisualizerKinds := TAtlasVisualizers.ParseKinds(ASettings.DebugVisualizerTypes);
+  VisualizerKinds := TAtlasVisualizerSettings.ParseKinds(ASettings.DebugVisualizerTypes);
   for VisualizerKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
     FDebugVisualizerKinds[VisualizerKind].Checked := VisualizerKind in VisualizerKinds;
   FDebugVisualizerNameFields.Text := ASettings.DebugVisualizerNameFields;
   FDebugVisualizerMaxLength.Text := IntToStr(ASettings.DebugVisualizerMaxLength);
   FDebugVisualizerTimeout.Text := IntToStr(ASettings.DebugVisualizerTimeoutMs);
   FDebugVisualizerMaxImagePixels.Text := IntToStr(ASettings.DebugVisualizerMaxImagePixels);
-  FDebugVisualizerEvaluation.Choice := Ord(TAtlasVisualizers.ParseEvaluation(ASettings.DebugVisualizerEvaluation));
+  FDebugVisualizerEvaluation.Choice := Ord(TAtlasVisualizerSettings.ParseEvaluation(ASettings.DebugVisualizerEvaluation));
   FDebugDisplayRules.Checked := ASettings.DebugDisplayRules;
   FDebugDisplayRulesAllowCalls.Checked := ASettings.DebugDisplayRulesAllowCalls;
   FDebugStepIntoTarget.Checked := ASettings.DebugStepIntoTarget;
   FDebugStepIntoTargetKey.Text := ShortCutToText(TShortCut(ASettings.DebugStepIntoTargetKey));
+  FDebugExplainUnavailable.Checked := ASettings.DebugExplainUnavailable;
+  FDebugCompletionInDialogs.Checked := ASettings.DebugCompletionInDialogs;
+  FDebugEvaluateWindow.Checked := ASettings.DebugEvaluateWindow;
+  FDebugEvaluateReplaceCtrlF7.Checked := ASettings.DebugEvaluateReplaceCtrlF7;
+  FDebugExplainAccessViolation.Checked := ASettings.DebugExplainAccessViolation;
+  FDebugExplainAccessViolationAllowCalls.Checked := ASettings.DebugExplainAccessViolationAllowCalls;
+  FDebugExceptionHistory.Checked := ASettings.DebugExceptionHistory;
+  FDebugJustMyCode.Checked := ASettings.DebugJustMyCode;
+  FDebugExceptionBanner.Checked := ASettings.DebugExceptionBanner;
+  FDebugExceptionBannerIgnoreAtLocation.Checked := ASettings.DebugExceptionBannerIgnoreAtLocation;
+  FDebugInlineValues.Checked := ASettings.DebugInlineValues;
+  FDebugInlineValuesPerLine.Text := IntToStr(ASettings.DebugInlineValuesPerLine);
+  FDebugOwnCodeFolders.Text := ASettings.DebugOwnCodeFolders;
   FSafeAsk.Checked := ASettings.SafeAskAfterCrash;
   FSafeAuto.Checked := ASettings.SafeAutoAfterRepeatedCrash;
   case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
@@ -5312,6 +5415,9 @@ begin
   ASettings.Peek := FPeek.Checked;
   ASettings.PeekHeightLines := StrToIntDef(FPeekHeightLines.Text, ASettings.PeekHeightLines);
   ASettings.PeekShowImplementation := FPeekShowImplementation.Checked;
+  ASettings.DataFlow := FDataFlow.Checked;
+  ASettings.DataFlowMaxDepth := StrToIntDef(FDataFlowMaxDepth.Text, ASettings.DataFlowMaxDepth);
+  ASettings.DataFlowExcludeTests := FDataFlowExcludeTests.Checked;
   ASettings.PeekDefinitionKey := Integer(TextToShortCut(Trim(FPeekDefinitionKey.Text)));
   ASettings.PeekReferencesKey := Integer(TextToShortCut(Trim(FPeekReferencesKey.Text)));
   ASettings.Outline := FOutline.Checked;
@@ -5598,6 +5704,8 @@ begin
   ASettings.TestsBuildFirst := FTestsBuildFirst.Checked;
   ASettings.TestsAfterBuild := FTestsAfterBuild.Checked;
   ASettings.BuildZeroHints := FBuildZeroHints.Checked;
+  ASettings.BuildCompilerSwitches := FBuildCompilerSwitches.Checked;
+  ASettings.BuildSwitchesInStatusBar := FBuildSwitchesInStatusBar.Checked;
   SaveRelease(ASettings);
   ASettings.StartProfiles := FStartProfiles.Checked;
   ASettings.StartProfilesStatusField := FStartProfilesStatusField.Checked;
@@ -5609,20 +5717,34 @@ begin
   for VisualizerKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
     if FDebugVisualizerKinds[VisualizerKind].Checked then
       Include(VisualizerKinds, VisualizerKind);
-  ASettings.DebugVisualizerTypes := TAtlasVisualizers.KindsText(VisualizerKinds);
-  ASettings.DebugVisualizerNameFields := TAtlasVisualizers.NormalizeNameFields(FDebugVisualizerNameFields.Text);
+  ASettings.DebugVisualizerTypes := TAtlasVisualizerSettings.KindsText(VisualizerKinds);
+  ASettings.DebugVisualizerNameFields := TAtlasVisualizerSettings.NormalizeNameFields(FDebugVisualizerNameFields.Text);
   ASettings.DebugVisualizerMaxLength := StrToIntDef(Trim(FDebugVisualizerMaxLength.Text),
     ASettings.DebugVisualizerMaxLength);
   ASettings.DebugVisualizerTimeoutMs := StrToIntDef(Trim(FDebugVisualizerTimeout.Text),
     ASettings.DebugVisualizerTimeoutMs);
   ASettings.DebugVisualizerMaxImagePixels := StrToIntDef(Trim(FDebugVisualizerMaxImagePixels.Text),
     ASettings.DebugVisualizerMaxImagePixels);
-  ASettings.DebugVisualizerEvaluation := TAtlasVisualizers.EvaluationNames[TAtlasVisualizerEvaluation(
+  ASettings.DebugVisualizerEvaluation := TAtlasVisualizerSettings.EvaluationNames[TAtlasVisualizerEvaluation(
     EnsureRange(FDebugVisualizerEvaluation.Choice, 0, Ord(High(TAtlasVisualizerEvaluation))))];
   ASettings.DebugDisplayRules := FDebugDisplayRules.Checked;
   ASettings.DebugDisplayRulesAllowCalls := FDebugDisplayRulesAllowCalls.Checked;
   ASettings.DebugStepIntoTarget := FDebugStepIntoTarget.Checked;
   ASettings.DebugStepIntoTargetKey := Integer(TextToShortCut(Trim(FDebugStepIntoTargetKey.Text)));
+  ASettings.DebugExplainUnavailable := FDebugExplainUnavailable.Checked;
+  ASettings.DebugCompletionInDialogs := FDebugCompletionInDialogs.Checked;
+  ASettings.DebugEvaluateWindow := FDebugEvaluateWindow.Checked;
+  ASettings.DebugEvaluateReplaceCtrlF7 := FDebugEvaluateReplaceCtrlF7.Checked;
+  ASettings.DebugExplainAccessViolation := FDebugExplainAccessViolation.Checked;
+  ASettings.DebugExplainAccessViolationAllowCalls := FDebugExplainAccessViolationAllowCalls.Checked;
+  ASettings.DebugExceptionHistory := FDebugExceptionHistory.Checked;
+  ASettings.DebugJustMyCode := FDebugJustMyCode.Checked;
+  ASettings.DebugExceptionBanner := FDebugExceptionBanner.Checked;
+  ASettings.DebugExceptionBannerIgnoreAtLocation := FDebugExceptionBannerIgnoreAtLocation.Checked;
+  ASettings.DebugInlineValues := FDebugInlineValues.Checked;
+  ASettings.DebugInlineValuesPerLine := StrToIntDef(FDebugInlineValuesPerLine.Text, ASettings.DebugInlineValuesPerLine);
+  ASettings.DebugOwnCodeFolders := TAtlasDebugOwnCode.FoldersText(TAtlasDebugOwnCode.ParseFolders(
+    FDebugOwnCodeFolders.Text));
   ASettings.SafeAskAfterCrash := FSafeAsk.Checked;
   ASettings.SafeAutoAfterRepeatedCrash := FSafeAuto.Checked;
   case FSafeKey.Choice of

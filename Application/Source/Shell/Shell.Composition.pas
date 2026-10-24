@@ -29,6 +29,10 @@ uses
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Common.Lsp.FoldingRanges,
   Atlas.Common.Lsp.LinkedEditing,
+  Atlas.Common.Lsp.InlineValues,
+  Atlas.Common.Lsp.CompilerSwitches,
+  Atlas.Common.Lsp.DebugUnavailable,
+  Atlas.Common.Lsp.ExpressionCompletion,
   Atlas.Common.Lsp.Formatting,
   Atlas.Common.Lsp.SelectionRanges,
   Atlas.Common.Lsp.Definition,
@@ -49,8 +53,11 @@ uses
   Atlas.Common.Lsp.Refactorings,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Pascal.Preprocessor,
+  Atlas.Common.Pascal.CompilerSwitches,
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Lsp.Hierarchies,
+  Atlas.Common.Lsp.DataFlow,
+  Atlas.Common.Lsp.AccessChains,
   Atlas.Common.Lsp.Implementations,
   Atlas.Common.Lsp.InlayHints,
   Atlas.Common.Lsp.CodeLens,
@@ -119,6 +126,9 @@ type
     FDocumentSymbols: TLspDocumentSymbols;
     FFoldingRanges: TLspFoldingRanges;
     FLinkedEditing: TLspLinkedEditing;
+    FInlineValues: TLspInlineValues;
+    FCompilerSwitches: TLspCompilerSwitches;
+    FDebugUnavailable: TLspDebugUnavailable;
     FFormatting: TLspFormatting;
     FSlashMenu: TLspSlashMenu;
     FSelectionRanges: TLspSelectionRanges;
@@ -145,8 +155,13 @@ type
     /// <summary>Zuletzt gesetztes Zeitlimit für Anfragen, für die Einordnung als timeout.</summary>
     FRequestTimeout: Cardinal;
     FCompletion: TLspCompletion;
+    FExpressionCompletion: TLspExpressionCompletion;
     FSignatureHelp: TLspSignatureHelp;
     FHierarchies: TLspHierarchies;
+    // Datenfluss „Woher/Wohin geht der Wert?“ (#690).
+    FDataFlow: TLspDataFlow;
+    // Zugriffsketten am Ausführungspunkt (#865).
+    FAccessChains: TLspAccessChains;
     FImplementations: TLspImplementations;
     FInlayHints: TLspInlayHints;
     FCodeLens: TLspCodeLens;
@@ -389,6 +404,8 @@ type
     /// <summary>Bedingte Symbole für Hover und Vervollständigung in Direktiven (#102): Symbole des Projekts mit
     /// Herkunft aus der .dproj, Compiler-Vorgaben, Include-Pfade und der Schalter "directives".</summary>
     function ConditionalContextFor(const AUri: string): TConditionalContext;
+    /// <summary>Projektstand für atlas/compilerSwitches (#558), unabhängig von directives.*.</summary>
+    function CompilerSwitchContextFor(const AUri: string): TCompilerSwitchContext;
     function RefactoringSettingsFor(const AUri: string): TRefactoringSettings;
     function CompletionSettingsFor(const AUri: string): TCompletionSettings;
     /// <summary>"stringLiteral" für AUri; AMultiline nach Stil und Delphi-Version (#312).</summary>
@@ -1048,6 +1065,13 @@ begin
   // Lokale Bezeichner brauchen den Index (#658).
   FLinkedEditing := TLspLinkedEditing.Create(FDocuments, FIndex, EnsureUnit);
   FLinkedEditing.Attach(FDispatcher);
+  // Werte beim Debuggen am Zeilenende (#508).
+  FInlineValues := TLspInlineValues.Create(FDocuments, FIndex, EnsureUnit);
+  FInlineValues.Attach(FDispatcher);
+  FCompilerSwitches := TLspCompilerSwitches.Create(FDocuments, CompilerSwitchContextFor);
+  FCompilerSwitches.Attach(FDispatcher);
+  FDebugUnavailable := TLspDebugUnavailable.Create(FDocuments, FIndex, EnsureUnit, CompilerSwitchContextFor);
+  FDebugUnavailable.Attach(FDispatcher);
   FReferences := TLspReferences.Create(FDocuments, FIndex,
     ReadSourceText,
     ProjectSourceFiles,
@@ -1163,6 +1187,9 @@ begin
       FLogger.Debug(AText);
     end;
   FCompletion.Attach(FDispatcher);
+  // Ausdrücke in den Debug-Dialogen (#538) mit denselben Einträgen wie im Editor.
+  FExpressionCompletion := TLspExpressionCompletion.Create(FDocuments, FCompletion);
+  FExpressionCompletion.Attach(FDispatcher);
   // „Interface implementieren“ im Erzeugen-Menü (#719, #466) wie in der Vervollständigung.
   FSlashMenu.Completion := FCompletion;
 end;
@@ -1178,6 +1205,15 @@ begin
     ProjectSourceFiles,
     EnsureUnit);
   FHierarchies.Attach(FDispatcher);
+  FDataFlow := TLspDataFlow.Create(FDocuments, FIndex,
+    ReadSourceText,
+    ProjectSourceFiles,
+    EnsureUnit);
+  FDataFlow.Attach(FDispatcher);
+  FAccessChains := TLspAccessChains.Create(FDocuments, FIndex,
+    ReadSourceText,
+    EnsureUnit);
+  FAccessChains.Attach(FDispatcher);
   FImplementations := TLspImplementations.Create(FDocuments, FIndex,
     EnsureUnit);
   FImplementations.Attach(FDispatcher);
@@ -2051,6 +2087,9 @@ begin
   FDocumentSymbols.Free;
   FFoldingRanges.Free;
   FLinkedEditing.Free;
+  FInlineValues.Free;
+  FCompilerSwitches.Free;
+  FDebugUnavailable.Free;
   FFormatting.Free;
   FSlashMenu.Free;
   FSelectionRanges.Free;
@@ -2069,8 +2108,11 @@ begin
   FBaseline.Free;
   FInlayHints.Free;
   FImplementations.Free;
+  FAccessChains.Free;
+  FDataFlow.Free;
   FHierarchies.Free;
   FSignatureHelp.Free;
+  FExpressionCompletion.Free;
   FCompletion.Free;
   FRename.Free;
   FCodeActions.Free;
@@ -4052,6 +4094,56 @@ begin
   Result.Sources := TConditionalSymbols.SourcesOf(Own, Project.DefineOrigins, Predefined, Project.Platform);
 end;
 
+function TServerComposition.CompilerSwitchContextFor(const AUri: string): TCompilerSwitchContext;
+var
+  Workspace: TShellWorkspace;
+  Project: TProjectInfo;
+  Defines, Predefined, Own: TArray<string>;
+  IncludePaths: TArray<string>;
+  Define: string;
+  Source: TSymbolSource;
+  Kind: TSwitchOriginKind;
+begin
+  Result := Default(TCompilerSwitchContext);
+  Result.FileName := TDocumentUris.ToPath(AUri);
+  IncludePaths := nil;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := PickWorkspace(Result.FileName);
+    if Workspace <> nil then
+    begin
+      IncludePaths := Workspace.IncludePaths;
+      Result.HasProject := Workspace.Project(Project);
+    end;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  Result.ResolveInclude := TIncludeFiles.Resolver(IncludePaths);
+  if not Result.HasProject then
+    Project := Default(TProjectInfo);
+  Result.Configuration := Project.Config;
+  Result.Platform := Project.Platform;
+  Result.Input.Properties := Project.Properties;
+  // Dieselben Symbole und Schalterstände wie beim Abblenden inaktiver Zweige.
+  if not DefinesFor(AUri, Defines) then
+    Exit;
+  Result.Input.Defines := Defines;
+  Predefined := TPascalPreprocessor.PredefinedSymbols(Project.Platform,
+    TPascalPreprocessor.CompilerVersionFromDefines(Defines));
+  Own := nil;
+  for Define in Defines do
+    if (IndexText(Define, Predefined) < 0) and not TPascalPreprocessor.IsSwitchEntry(Define) then
+      Own := Own + [Define];
+  for Source in TConditionalSymbols.SourcesOf(Own, Project.DefineOrigins, Predefined, Project.Platform) do
+  begin
+    Kind := TSwitchOriginKind.Project;
+    if IndexText(Source.Name, Predefined) >= 0 then
+      Kind := TSwitchOriginKind.Default;
+    Result.Input.DefineOrigins := Result.Input.DefineOrigins +
+      [TSwitchDefineOrigin.Create(Source.Name, TSwitchOrigin.Make(Kind, Source.Origin))];
+  end;
+end;
+
 function TServerComposition.FormatStyleFor(const AUri: string): TFormatStyle;
 begin
   Result := SettingsFor(AUri).Formatting;
@@ -4205,11 +4297,14 @@ begin
   FHover.Namespaces := Namespaces;
   FDocumentHighlights.Namespaces := Namespaces;
   FLinkedEditing.Namespaces := Namespaces;
+  FInlineValues.Namespaces := Namespaces;
   FReferences.Namespaces := Namespaces;
   FRename.Namespaces := Namespaces;
   FCompletion.Namespaces := Namespaces;
   FSignatureHelp.Namespaces := Namespaces;
   FHierarchies.Namespaces := Namespaces;
+  FDataFlow.Namespaces := Namespaces;
+  FAccessChains.Namespaces := Namespaces;
   FImplementations.Namespaces := Namespaces;
   FInlayHints.Namespaces := Namespaces;
   FCodeLens.Namespaces := Namespaces;
@@ -4894,6 +4989,7 @@ begin
   Result.AddPair('callHierarchyProvider', TJSONBool.Create(True));
   Result.AddPair('implementationProvider', TJSONBool.Create(True));
   Result.AddPair('inlayHintProvider', TJSONBool.Create(True));
+  Result.AddPair('inlineValueProvider', TJSONBool.Create(True));
   Result.AddPair('codeLensProvider', TLspCodeLens.Capability);
   Result.AddPair('semanticTokensProvider', TLspSemanticTokens.Capability);
   Result.AddPair('codeActionProvider', TLspCodeActions.Capability);

@@ -33,7 +33,12 @@
 // debug.hoverValues (DebugHoverValues). Für Listen, Datenmengen, Farben und
 // die anderen Arten aus debug.visualizers.types bereiten die Visualisierer
 // (#835) den Wert auf, sobald der Server den Typ gemeldet hat; das gilt auch
-// unter Win64, wo die Visualisierer der IDE nicht laufen.
+// unter Win64, wo die Visualisierer der IDE nicht laufen. Den Ersatztext gibt
+// OnVisualize (die Debug-Schicht setzt es, der Tooltip kennt sie nicht, A-09).
+// debug.hoverValues (DebugHoverValues). Scheitert die Auswertung mit „kein
+// Zugriff“, erklärt OnExplain die Ursache (#840; die Debug-Schicht setzt es,
+// der Tooltip kennt sie nicht), Klicks auf ihre Korrekturen gehen an
+// OnDebugFix.
 // Die IDE zeigt dann keinen eigenen Tooltip: GetHintText und GetHelpInsightHtml
 // liefern '' (Manager). Bedient Atlas die Datei nicht (Hauptschalter, Server
 // fehlt, Sicherung), übernimmt die IDE und der Atlas-Tooltip bleibt zu.
@@ -73,6 +78,16 @@ type
   TAtlasHoverHandlesFunc = reference to function(const AFileName: string): Boolean;
   /// <summary>Code-Aktion mit Kennung ATag für den Bereich des Problems ausführen (#621).</summary>
   TAtlasHoverProblemActionProc = reference to procedure(const AProblem: TAtlasProblem; const ATag: string);
+  /// <summary>„kein Zugriff“ erklären (#840): AValue mit vorläufiger Erklärung oder unverändert (kein bekannter
+  /// Text, abgeschaltet); die fertige Erklärung kommt später im Hauptthread an ADone.</summary>
+  TAtlasHoverExplainFunc = reference to function(const AValue: TAtlasDebugValue;
+    const ADone: TAtlasDebugValueEvent): TAtlasDebugValue;
+  /// <summary>Korrektur AFix (Index in AValue.Note.Fixes) ausführen (#840).</summary>
+  TAtlasHoverDebugFixProc = reference to procedure(const AValue: TAtlasDebugValue; AFix: Integer);
+  /// <summary>Ersatztext für den Wert AExpression (eigene Regel #854, sonst Visualisierer #835); ATypeChain ist der
+  /// Typ, dann seine Vorfahren, AText der Text der IDE. '' = den Text der IDE lassen.</summary>
+  TAtlasHoverVisualizeFunc = reference to function(const AExpression: string; const ATypeChain: TArray<string>;
+    const AText: string): string;
 
   /// <summary>Lebt der Tooltip noch? Hintergrund-Anfragen prüfen das, bevor sie ihr Ergebnis zeigen.</summary>
   TAtlasHoverAlive = class(TInterfacedObject)
@@ -83,6 +98,9 @@ type
   TAtlasEditorHover = class
   private class var
     FOnProblemAction: TAtlasHoverProblemActionProc;
+    FOnExplain: TAtlasHoverExplainFunc;
+    FOnDebugFix: TAtlasHoverDebugFixProc;
+    FOnVisualize: TAtlasHoverVisualizeFunc;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -156,6 +174,9 @@ type
     /// <summary>Wert des Ausdrucks unter der Maus anfordern (#891); verzögerte Werte ergänzt DebugValueDone.</summary>
     procedure EvaluateDebugValue;
     procedure DebugValueDone(const AKey: string; const AValue: TAtlasDebugValue);
+    /// <summary>AValue mit Erklärung „kein Zugriff“ (#840), wenn OnExplain sie gibt; die fertige an
+    /// DebugValueDone.</summary>
+    function Explain(const AKey: string; const AValue: TAtlasDebugValue): TAtlasDebugValue;
     procedure ReapWorkers(AWait: Boolean);
     procedure ShowTimerTick(Sender: TObject);
     procedure HideTimerTick(Sender: TObject);
@@ -167,6 +188,7 @@ type
     /// <summary>Link (href) in der XMLDoc (#654): im Browser öffnen.</summary>
     procedure TipUrl(Sender: TObject; const AUrl: string);
     procedure TipProblemAction(Sender: TObject; AProblem: Integer; AAction: TAtlasHoverProblemAction);
+    procedure TipDebugFix(Sender: TObject; AIndex: Integer);
     function CurrentSession: TLspSession;
     function Fetch(const ARef: TAtlasHoverTypeRef; out AData: TAtlasHoverData): Boolean;
     function CurrentView: TAtlasHoverView;
@@ -194,14 +216,16 @@ type
     /// <summary>Aktion unter einem uses-Hinweis (#621); setzt die Kompositionswurzel (der Tooltip kennt die
     /// Editorbefehle nicht, A-09), ohne Zuweisung keine.</summary>
     class property OnProblemAction: TAtlasHoverProblemActionProc read FOnProblemAction write FOnProblemAction;
+    /// <summary>Erklärung und Korrekturen bei „kein Zugriff“ (#840); setzt die Kompositionswurzel.</summary>
+    class property OnExplain: TAtlasHoverExplainFunc read FOnExplain write FOnExplain;
+    class property OnDebugFix: TAtlasHoverDebugFixProc read FOnDebugFix write FOnDebugFix;
+    class property OnVisualize: TAtlasHoverVisualizeFunc read FOnVisualize write FOnVisualize;
   end;
 
 implementation
 
 uses
   Atlas.Core.Debug.Visualizers,
-  Atlas.IDE.Debug.Visualizers,
-  Atlas.IDE.Debug.DisplayRules,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Winapi.Windows,
@@ -283,6 +307,7 @@ begin
   FTip.OnAction := TipAction;
   FTip.OnUrl := TipUrl;
   FTip.OnProblemAction := TipProblemAction;
+  FTip.OnDebugFix := TipDebugFix;
   FKeys := THoverKeys.Create(Self);
   FHistory := TAtlasHoverHistory.Create(Fetch);
   FAlive := TAtlasHoverAlive.Create;
@@ -411,7 +436,7 @@ var
   Key: string;
 begin
   Result := FDebugValue;
-  if FDebugValue.State <> TAtlasDebugValueState.Value then
+  if (FDebugValue.State <> TAtlasDebugValueState.Value) or not Assigned(FOnVisualize) then
     Exit;
   Data := FHistory.Current;
   if not Data.Found then
@@ -424,10 +449,7 @@ begin
     Chain := TArray<string>.Create(TAtlasVisualizers.DeclaredType(Data.Declaration));
     for Ancestor in Data.Ancestors do
       Chain := Chain + [Ancestor.Name];
-    // Eigene Regel des Typs (#854) vor den Visualisierern für Bibliothekstypen (#835).
-    FVisualized := TAtlasIdeDisplayRules.HoverText(FDebugValue.Expression, Chain);
-    if FVisualized = '' then
-      FVisualized := TAtlasIdeVisualizers.HoverText(FDebugValue.Expression, Chain, FDebugValue.Text);
+    FVisualized := FOnVisualize(FDebugValue.Expression, Chain, FDebugValue.Text);
   end;
   if FVisualized <> '' then
     Result := TAtlasDebugValue.Evaluated(FDebugValue.Expression, FVisualized);
@@ -724,10 +746,32 @@ begin
   Owner := Self;
   Key := FKey;
   // Im Hauptthread: Der Debugger der IDE ist nicht threadsicher. Sofortige Werte stehen gleich im Tooltip.
-  FDebugValue := FDebug.Evaluate(FDebugExpression, FView.Buffer.FileName, FLine,
+  FDebugValue := Explain(Key, FDebug.Evaluate(FDebugExpression, FView.Buffer.FileName, FLine,
     procedure(const AValue: TAtlasDebugValue)
     begin
-      Owner.DebugValueDone(Key, AValue);
+      Owner.DebugValueDone(Key, Owner.Explain(Key, AValue));
+    end));
+end;
+
+function TAtlasEditorHover.Explain(const AKey: string; const AValue: TAtlasDebugValue): TAtlasDebugValue;
+var
+  Owner: TAtlasEditorHover;
+  Alive: TAtlasHoverAlive;
+  AliveRef: IInterface;
+begin
+  Result := AValue;
+  if (AValue.State <> TAtlasDebugValueState.Failed) or (AValue.Note.Caption <> '') or (AKey <> FKey) or
+    not Assigned(FOnExplain) then
+    Exit;
+  Owner := Self;
+  Alive := FAlive;
+  AliveRef := FAliveRef;
+  Result := FOnExplain(AValue,
+    procedure(const ADone: TAtlasDebugValue)
+    begin
+      // AliveRef hält die Markierung, bis die Erklärung kommt; das Objekt selbst kann schon weg sein.
+      if Alive.Alive and (AliveRef <> nil) then
+        Owner.DebugValueDone(AKey, ADone);
     end);
 end;
 
@@ -874,6 +918,22 @@ begin
     Problem := FTip.View.Problems[AProblem];
     Hide;
     FOnProblemAction(Problem, Tags[AAction]);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
+  end;
+end;
+
+procedure TAtlasEditorHover.TipDebugFix(Sender: TObject; AIndex: Integer);
+var
+  Value: TAtlasDebugValue;
+begin
+  try
+    Value := FTip.View.DebugValue;
+    if not Assigned(FOnDebugFix) or (AIndex < 0) or (AIndex > High(Value.Note.Fixes)) then
+      Exit;
+    Hide;
+    FOnDebugFix(Value, AIndex);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Hover, E);
