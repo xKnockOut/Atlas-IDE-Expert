@@ -332,6 +332,8 @@ begin
           Result := nil;
           if APath = 'delphiVersion' then
             Result := TAtlasSettingChoices.DelphiVersions(InstalledVersions)
+          else if APath = 'minDelphiVersion' then
+            Result := TAtlasSettingChoices.DelphiVersions(TAtlasSettingChoices.KnownVersions)
           else if APath = 'config' then
             Result := TAtlasSettingChoices.FromTexts(TAtlasSettingChoices.DprojConfigs(DprojText))
           else if APath = 'platform' then

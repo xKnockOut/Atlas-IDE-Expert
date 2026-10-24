@@ -78,6 +78,8 @@ begin
   Assert.IsTrue(Problem.CanSuppress);
   Problem.Code := 'syntax';
   Assert.IsFalse(Problem.CanSuppress);
+  Problem.Code := 'language-feature';
+  Assert.IsFalse(Problem.CanSuppress);
   Problem.Code := '';
   Assert.IsFalse(Problem.CanSuppress);
 end;

@@ -543,7 +543,7 @@ begin
     Filter.MinSeverity := AOptions.MinSeverity;
 
     Rules := BuiltinRules;
-    Descriptors := [TFileChecker.SyntaxDescriptor];
+    Descriptors := [TFileChecker.SyntaxDescriptor, TFileChecker.LanguageFeatureDescriptor];
     for Rule in Rules do
       Descriptors := Descriptors + [Rule.Descriptor];
 

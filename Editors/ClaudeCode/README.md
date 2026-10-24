@@ -17,6 +17,8 @@ Das Plugin bringt mit:
 - **LSP** (`.lsp.json`): Diagnosen und Navigation für `.pas`, `.dpr`, `.dpk`, `.inc`, `.dfm` und `.fmx`
 - **MCP** (`.mcp.json`): die Werkzeuge aus [docs/MCP.md](../../docs/MCP.md) und die Ressource `delphi://conventions`
 - **Skill** `delphi-mit-atlas`: wann welches Werkzeug hilft (z. B. `find_symbol` statt Textsuche, `rename_symbol` statt Suchen und Ersetzen)
+- **Hook** (`hooks/hooks.json`): Nach jedem Edit/Write prüft das MCP-Werkzeug `hook_check` die geänderte Pascal-Datei mit den Prüfregeln des Projekts und gibt Warnungen und Fehler sofort an Claude zurück; andere Dateien übergeht es. Mit `"minDelphiVersion": "12"` in atlas.json meldet es auch Sprachmerkmale, die Delphi 12 nicht kennt (If-Ausdruck, `is not`, `not in`; Regel `language-feature`). Abschalten: `"mcp": {"disabledTools": ["hook_check"]}`
+- **Befehl** `/atlas:bauen [make|build|check] [Projekt] [--ohne-tests]`: baut (eigenes `Tools/Build-Test.ps1` des Projekts oder `build_project` in der laufenden IDE), führt die Tests aus und fasst das Ergebnis nach 0 Fehlern, 0 Warnungen, 0 Hinweisen zusammen
 
 Ohne `PATH`: Jedes Release enthält `atlas-claude-plugin-<Version>.zip` mit der EXE unter `bin/`. Entpacken und mit `claude --plugin-dir <Ordner>/atlas` starten oder den Ordner als lokalen Marketplace eintragen.
 
