@@ -9,6 +9,10 @@
 //     Unit im Editor zu öffnen: Kopfkommentar, Typen im interface (mit
 //     Gesamtzahl typeCount), uses beider Abschnitte, Zeilenzahl, letzte
 //     Änderung, Git-Zustand, Formularskizze und „Verwendet von“.
+//   - Befehl atlas.server.addUses [uri, [Units], {"section"}]: „In uses
+//     aufnehmen“; ohne "section" entscheidet der interface-Teil, mit
+//     "interface" bzw. "implementation" gilt der Abschnitt fest („Unit
+//     verwenden“, Alt+F11, #786).
 // Art: Vorfahrenkette der Klassen im interface bis TForm/TCustomForm, TFrame/
 // TCustomFrame oder TDataModule; ohne bekannte Kette, aber mit .dfm/.fmx ein
 // Formular. Test: uses DUnitX.TestFramework bzw. TestFramework, oder die Unit
@@ -113,10 +117,14 @@ type
     /// Jede Unit kommt ins interface-uses, wenn ein Bezeichner des interface-Teils aus ihr stammt,
     /// sonst ins implementation-uses; vorhandene Units entfallen.</summary>
     class function AddUsesJson(const AUri, AText: string; const AUnits: TArray<string>;
-      const AUses: TUsesContext): TJSONObject; static;
+      const AUses: TUsesContext): TJSONObject; overload; static;
+    /// <summary>Wie oben mit festem Abschnitt ATarget (#786).</summary>
+    class function AddUsesJson(const AUri, AText: string; const AUnits: TArray<string>;
+      const AUses: TUsesContext; ATarget: TUsesAddTarget): TJSONObject; overload; static;
     function ExecuteUnits: TJSONValue;
     function ExecutePreview(const AArguments: TJSONArray): TJSONValue;
-    /// <summary>Argumente: [uri der Zieldatei, [Unit-Namen]].</summary>
+    /// <summary>Argumente: [uri der Zieldatei, [Unit-Namen], optional {"section": "interface" |
+    /// "implementation"}].</summary>
     function ExecuteAddUses(const AArguments: TJSONArray): TJSONValue;
   end;
 
@@ -795,6 +803,12 @@ end;
 
 class function TUnitSearch.AddUsesJson(const AUri, AText: string; const AUnits: TArray<string>;
   const AUses: TUsesContext): TJSONObject;
+begin
+  Result := AddUsesJson(AUri, AText, AUnits, AUses, TUsesAddTarget.Auto);
+end;
+
+class function TUnitSearch.AddUsesJson(const AUri, AText: string; const AUnits: TArray<string>;
+  const AUses: TUsesContext; ATarget: TUsesAddTarget): TJSONObject;
 var
   Edits: TArray<TRuleEdit>;
   Edit: TRuleEdit;
@@ -807,7 +821,7 @@ begin
   LineBreak := TTextLines.LineBreakOf(AText);
   AddedList := TJSONArray.Create;
   if (AText <> '') and TUsesActions.AddUnits(TPascalLexer.Tokenize(AText), AUnits, AUses.Declaring,
-    AUses.Namespaces, LineBreak, Edits, Added) then
+    AUses.Namespaces, ATarget, LineBreak, Edits, Added) then
   begin
     List := TJSONArray.Create;
     for Edit in Edits do
@@ -835,8 +849,9 @@ var
   Context: TUnitSearchContext;
   UsesContext: TUsesContext;
   Units: TArray<string>;
-  Value: TJSONValue;
+  Value, Section: TJSONValue;
   Uri: string;
+  Target: TUsesAddTarget;
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[0] is TJSONString) or
     not (AArguments.Items[1] is TJSONArray) then
@@ -851,7 +866,17 @@ begin
   UsesContext := Default(TUsesContext);
   if Assigned(Context.UsesFor) then
     UsesContext := Context.UsesFor(Uri);
-  Result := AddUsesJson(Uri, Context.ReadText(TDocumentUris.ToPath(Uri)), Units, UsesContext);
+  Target := TUsesAddTarget.Auto;
+  if (AArguments.Count > 2) and (AArguments.Items[2] is TJSONObject) then
+  begin
+    Section := TJSONObject(AArguments.Items[2]).GetValue('section');
+    if Section is TJSONString then
+      if SameText(Section.Value, 'interface') then
+        Target := TUsesAddTarget.Interface_
+      else if SameText(Section.Value, 'implementation') then
+        Target := TUsesAddTarget.Implementation_;
+  end;
+  Result := AddUsesJson(Uri, Context.ReadText(TDocumentUris.ToPath(Uri)), Units, UsesContext, Target);
 end;
 
 end.

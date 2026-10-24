@@ -579,6 +579,8 @@ uses
   Atlas.Core.UnitSearch.Tests in 'IDE.Expert\Atlas.Core.UnitSearch.Tests.pas',
   Atlas.Core.UnitSearch.Sections in '..\Packages\Atlas.IDE.Expert\Source\Core\UnitSearch\Atlas.Core.UnitSearch.Sections.pas',
   Atlas.Core.UnitSearch.Sections.Tests in 'IDE.Expert\Atlas.Core.UnitSearch.Sections.Tests.pas',
+  Atlas.Core.UnitSearch.UseUnit in '..\Packages\Atlas.IDE.Expert\Source\Core\UnitSearch\Atlas.Core.UnitSearch.UseUnit.pas',
+  Atlas.Core.UnitSearch.UseUnit.Tests in 'IDE.Expert\Atlas.Core.UnitSearch.UseUnit.Tests.pas',
   Atlas.Core.Forms.Text in '..\Packages\Atlas.IDE.Expert\Source\Core\Forms\Atlas.Core.Forms.Text.pas',
   Atlas.Core.Forms.Changes in '..\Packages\Atlas.IDE.Expert\Source\Core\Forms\Atlas.Core.Forms.Changes.pas',
   Atlas.Core.Forms.Tests in 'IDE.Expert\Atlas.Core.Forms.Tests.pas',
