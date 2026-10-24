@@ -98,7 +98,8 @@ type
     /// <summary>Fehlertext am Zeilenende (#509); Off, wenn das Plugin oder die Problem-Markierungen aus sind.
     /// </summary>
     class function InlineDiagnosticsMode: TAtlasInlineDiagnosticsMode; static;
-    /// <summary>Plugin, Probleme und Zähler in der Statusleiste an (#509).</summary>
+    /// <summary>Plugin, Probleme und Zähler in der Statusleiste an (#509), außer die Atlas-Statusleiste am Editor
+    /// zeigt ihre Befundzähler (#1155): Dann stünden Zahlen doppelt.</summary>
     class function ProblemsStatusCounterOn: Boolean; static;
     /// <summary>Übernimmt und speichert ASettings (gespeicherte Werte, ohne Sitzungswerte).</summary>
     class procedure Update(const ASettings: TAtlasPluginSettings); static;
@@ -146,6 +147,7 @@ uses
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Scopes,
   Atlas.Core.Settings.Experimental,
+  Atlas.Core.Settings.StatusBarItems,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Files.DataFile,
   Atlas.UI.Strings;
@@ -430,7 +432,9 @@ end;
 class function TAtlasIdeSettings.ProblemsStatusCounterOn: Boolean;
 begin
   EnsureLoaded;
-  Result := FEffective.Enabled and FEffective.Problems and FEffective.ProblemsStatusCounter;
+  Result := FEffective.Enabled and FEffective.Problems and FEffective.ProblemsStatusCounter and
+    not (FEffective.EditorStatusBar and TAtlasStatusBarItems.Contains(
+    TAtlasStatusBarItems.Parse(FEffective.EditorStatusBarItems), TAtlasStatusBarItems.Findings));
 end;
 
 class function TAtlasIdeSettings.Stored: TAtlasPluginSettings;
