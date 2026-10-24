@@ -408,6 +408,12 @@ begin
   // Umschließung entfernen (#657): Strg+Umschalt+Entf.
   Assert.AreEqual($602E, Integer(EntryOf(Entries, TAtlasKeyFunction.Unwrap).Key));
   Assert.AreEqual('Atlas.Unwrap', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.Unwrap));
+  // Typ des markierten Ausdrucks (#689): Strg+Umschalt+T mit Vorrang vor „To-Do-Eintrag hinzufügen“.
+  Assert.AreEqual($6054, Integer(EntryOf(Entries, TAtlasKeyFunction.ExpressionType).Key));
+  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.ExpressionType).Priority);
+  Assert.AreEqual(Ord(TAtlasKeyStatus.AtlasWins), Ord(EntryOf(Entries, TAtlasKeyFunction.ExpressionType).Status(
+    TAtlasKeyConflicts.OwnerOf($6054, TAtlasKeyConflicts.KnownIdeKeys))));
+  Assert.AreEqual('Atlas.ExpressionType', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.ExpressionType));
   // Fenster „Atlas-Prüfung“ (#909): Strg+Alt+P.
   Assert.AreEqual($C050, Integer(EntryOf(Entries, TAtlasKeyFunction.ProblemsWindow).Key));
   Assert.AreEqual('Atlas.ProblemsWindow', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.ProblemsWindow));
@@ -508,6 +514,7 @@ begin
   Settings.Unwrap := False;
   Settings.ProblemsWindow := False;
   Settings.DebugStepIntoTarget := False;
+  Settings.ExpressionType := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
@@ -523,7 +530,8 @@ begin
       TAtlasKeyFunction.MultiCursorSkip, TAtlasKeyFunction.MultiCursorLineEnds, TAtlasKeyFunction.MultiCursorAbove,
       TAtlasKeyFunction.MultiCursorBelow, TAtlasKeyFunction.FormatCode, TAtlasKeyFunction.ToggleBlockComment,
       TAtlasKeyFunction.NewLineBelow, TAtlasKeyFunction.NewLineAbove, TAtlasKeyFunction.Unwrap,
-      TAtlasKeyFunction.ProblemsWindow, TAtlasKeyFunction.StepIntoTarget] then
+      TAtlasKeyFunction.ProblemsWindow, TAtlasKeyFunction.StepIntoTarget,
+      TAtlasKeyFunction.ExpressionType] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),

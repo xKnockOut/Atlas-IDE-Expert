@@ -59,6 +59,7 @@ uses
   Atlas.Core.Settings.VisualizerKinds,
   Atlas.Core.Settings.EventBreakNames,
   Atlas.Text.StepFilter,
+  Atlas.Core.Settings.Reassigned,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
   Atlas.UI.Strings,
@@ -423,6 +424,19 @@ type
     FSelectionMatchesWholeWord: TCheckBox;
     FSelectionMatchesNavigateF3: TCheckBox;
     FSelectionMatchesMaxMatches: TEdit;
+    FExitPoints: TCheckBox;
+    FExitPointsExceptions: TCheckBox;
+    FExitPointsLoops: TCheckBox;
+    FExitPointsBadge: TCheckBox;
+    FReassigned: TCheckBox;
+    FReassignedTargets: array[TAtlasReassignedTarget] of TCheckBox;
+    FReassignedStyle: TAtlasChoiceBox;
+    FReassignedColor: TEdit;
+    FExpressionType: TCheckBox;
+    FExpressionTypeConversions: TCheckBox;
+    FExpressionTypeConstValue: TCheckBox;
+    FExpressionTypeKey: TEdit;
+    FMethodPlacement: TAtlasChoiceBox;
     FNextChangeKey: TEdit;
     FPreviousChangeKey: TEdit;
     FOverviewRuler: TCheckBox;
@@ -1230,6 +1244,22 @@ type
     property SelectionMatchesWholeWordCheck: TCheckBox read FSelectionMatchesWholeWord;
     property SelectionMatchesNavigateF3Check: TCheckBox read FSelectionMatchesNavigateF3;
     property SelectionMatchesMaxMatches: TEdit read FSelectionMatchesMaxMatches;
+    property ExitPointsCheck: TCheckBox read FExitPoints;
+    property ExitPointsExceptionsCheck: TCheckBox read FExitPointsExceptions;
+    property ExitPointsLoopsCheck: TCheckBox read FExitPointsLoops;
+    property ExitPointsBadgeCheck: TCheckBox read FExitPointsBadge;
+    property ReassignedCheck: TCheckBox read FReassigned;
+    /// <summary>Zum Testen: Häkchen je Art, Linie und Farbe (#712).</summary>
+    function ReassignedTargetCheck(ATarget: TAtlasReassignedTarget): TCheckBox;
+    property ReassignedStyleBox: TAtlasChoiceBox read FReassignedStyle;
+    property ReassignedColorEdit: TEdit read FReassignedColor;
+    /// <summary>Zum Testen: Typ des markierten Ausdrucks (#689).</summary>
+    property ExpressionTypeCheck: TCheckBox read FExpressionType;
+    property ExpressionTypeConversionsCheck: TCheckBox read FExpressionTypeConversions;
+    property ExpressionTypeConstValueCheck: TCheckBox read FExpressionTypeConstValue;
+    property ExpressionTypeKey: TEdit read FExpressionTypeKey;
+    /// <summary>Zum Testen: Methodenrümpfe in Deklarationsreihenfolge (#660).</summary>
+    property MethodPlacementBox: TAtlasChoiceBox read FMethodPlacement;
     property RecursionMarkersDepthEdit: TEdit read FRecursionMarkersDepth;
     property DataFlowCheck: TCheckBox read FDataFlow;
     property DataFlowMaxDepthEdit: TEdit read FDataFlowMaxDepth;
@@ -1778,6 +1808,38 @@ begin
   FSelectionMatchesWholeWord := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesWholeWord));
   FSelectionMatchesNavigateF3 := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesF3));
   FSelectionMatchesMaxMatches := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesMax));
+  // Austrittspunkte hervorheben (#698).
+  FExitPoints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPoints));
+  FExitPointsExceptions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPointsExceptions));
+  FExitPointsLoops := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPointsLoops));
+  FExitPointsBadge := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPointsBadge));
+  // Neu zugewiesene Variablen (#712): an/aus, je Art ein Häkchen, Linie und Farbe.
+  FReassigned := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassigned));
+  FReassignedTargets[TAtlasReassignedTarget.Locals] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedLocals));
+  FReassignedTargets[TAtlasReassignedTarget.LoopVars] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedLoopVars));
+  FReassignedTargets[TAtlasReassignedTarget.ValueParams] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedValueParams));
+  FReassignedTargets[TAtlasReassignedTarget.VarParams] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedVarParams));
+  FReassignedTargets[TAtlasReassignedTarget.Fields] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedFields));
+  FReassignedStyle := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedStyle),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsReassignedStyleDotted),
+    TAtlasStrings.Text(TAtlasTextId.SettingsReassignedStyleSolid),
+    TAtlasStrings.Text(TAtlasTextId.SettingsReassignedStyleWavy)]);
+  FReassignedColor := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedColor));
+  // Typ des markierten Ausdrucks (#689): an/aus, Umwandlungen, Wert und Kürzel.
+  FExpressionType := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExpressionType));
+  FExpressionTypeConversions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExpressionTypeConversions));
+  FExpressionTypeConstValue := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExpressionTypeConstValue));
+  FExpressionTypeKey := AddKey(TAtlasStrings.Text(TAtlasTextId.ExpressionTypeCommand));
+  // Methodenrümpfe in Deklarationsreihenfolge (#660): wie die Deklaration, alphabetisch oder aus.
+  FMethodPlacement := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacement),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementDeclaration),
+    TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementAlphabetical),
+    TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementOff)]);
   // Übersichtsleiste (#519): an/aus und je Art ein Häkchen.
   FOverviewRuler := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewRuler));
   FOverviewKinds[TAtlasOverviewKind.Diagnostics] :=
@@ -2189,6 +2251,9 @@ begin
   Bind('GitBlame', FGitBlame);
   Bind('GutterColumn', FGutterColumn);
   Bind('SelectionMatches', FSelectionMatches);
+  Bind('ExitPoints', FExitPoints);
+  Bind('Reassigned', FReassigned);
+  Bind('ExpressionType', FExpressionType);
   Bind('OverviewRuler', FOverviewRuler);
   Bind('RecursionMarkers', FRecursionMarkers);
   Bind('InlineDiagnostics', FInlineDiagnostics);
@@ -2716,6 +2781,11 @@ begin
   end;
 end;
 
+function TAtlasSettingsPage.ReassignedTargetCheck(ATarget: TAtlasReassignedTarget): TCheckBox;
+begin
+  Result := FReassignedTargets[ATarget];
+end;
+
 function TAtlasSettingsPage.AddTextLine(const ACaption: string): TEdit;
 var
   Panel: TWinControl;
@@ -2969,6 +3039,7 @@ var
   Kind: TAtlasOverviewKind;
   VisualizerKind: TAtlasVisualizerKind;
   StepFilterKind: TStepFilterKind;
+  Target: TAtlasReassignedTarget;
 begin
   // Aus SaveTo: Element und die Einstellungen, die es schreibt. Listen aus mehreren Haken zeigen keinen Punkt
   // (der gälte für jeden Haken), lassen sich aber zurücksetzen.
@@ -3042,6 +3113,20 @@ begin
   FMarks.Bind(FSelectionMatchesWholeWord, ['SelectionMatchesWholeWord']);
   FMarks.Bind(FSelectionMatchesNavigateF3, ['SelectionMatchesNavigateF3']);
   FMarks.Bind(FSelectionMatchesMaxMatches, ['SelectionMatchesMaxMatches']);
+  FMarks.Bind(FExitPoints, ['ExitPoints']);
+  FMarks.Bind(FExitPointsExceptions, ['ExitPointsExceptions']);
+  FMarks.Bind(FExitPointsLoops, ['ExitPointsLoops']);
+  FMarks.Bind(FExitPointsBadge, ['ExitPointsBadge']);
+  FMarks.Bind(FReassigned, ['Reassigned']);
+  for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
+    FMarks.Bind(FReassignedTargets[Target], ['ReassignedTargets']);
+  FMarks.Bind(FReassignedStyle, ['ReassignedStyle']);
+  FMarks.Bind(FReassignedColor, ['ReassignedColor']);
+  FMarks.Bind(FExpressionType, ['ExpressionType']);
+  FMarks.Bind(FExpressionTypeConversions, ['ExpressionTypeConversions']);
+  FMarks.Bind(FExpressionTypeConstValue, ['ExpressionTypeConstValue']);
+  FMarks.Bind(FExpressionTypeKey, ['ExpressionTypeKey']);
+  FMarks.Bind(FMethodPlacement, ['MethodPlacement']);
   FMarks.Bind(FNextChangeKey, ['NextChangeKey']);
   FMarks.Bind(FPreviousChangeKey, ['PreviousChangeKey']);
   FMarks.Bind(FOverviewRuler, ['OverviewRuler']);
@@ -5161,6 +5246,8 @@ var
   StepFilterKind: TStepFilterKind;
   VisualizerKinds: TAtlasVisualizerKinds;
   StepFilterKinds: TStepFilterKinds;
+  Target: TAtlasReassignedTarget;
+  Targets: TAtlasReassignedTargets;
 begin
   FWidths := ASettings;
   FEnabled.Checked := ASettings.Enabled;
@@ -5234,6 +5321,21 @@ begin
   FSelectionMatchesWholeWord.Checked := ASettings.SelectionMatchesWholeWord;
   FSelectionMatchesNavigateF3.Checked := ASettings.SelectionMatchesNavigateF3;
   FSelectionMatchesMaxMatches.Text := IntToStr(ASettings.SelectionMatchesMaxMatches);
+  FExitPoints.Checked := ASettings.ExitPoints;
+  FExitPointsExceptions.Checked := ASettings.ExitPointsExceptions;
+  FExitPointsLoops.Checked := ASettings.ExitPointsLoops;
+  FExitPointsBadge.Checked := ASettings.ExitPointsBadge;
+  FReassigned.Checked := ASettings.Reassigned;
+  Targets := TAtlasReassignedNames.ParseTargets(ASettings.ReassignedTargets);
+  for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
+    FReassignedTargets[Target].Checked := Target in Targets;
+  FReassignedStyle.Choice := Ord(TAtlasReassignedNames.StyleOf(ASettings.ReassignedStyle));
+  FReassignedColor.Text := ASettings.ReassignedColor;
+  FExpressionType.Checked := ASettings.ExpressionType;
+  FExpressionTypeConversions.Checked := ASettings.ExpressionTypeConversions;
+  FExpressionTypeConstValue.Checked := ASettings.ExpressionTypeConstValue;
+  FExpressionTypeKey.Text := ShortCutToText(TShortCut(ASettings.ExpressionTypeKey));
+  FMethodPlacement.Choice := Max(0, IndexText(ASettings.MethodPlacement, AtlasMethodPlacements));
   FNextChangeKey.Text := ShortCutToText(TShortCut(ASettings.NextChangeKey));
   FPreviousChangeKey.Text := ShortCutToText(TShortCut(ASettings.PreviousChangeKey));
   FOverviewRuler.Checked := ASettings.OverviewRuler;
@@ -5641,6 +5743,8 @@ var
   StepFilterKind: TStepFilterKind;
   VisualizerKinds: TAtlasVisualizerKinds;
   StepFilterKinds: TStepFilterKinds;
+  Target: TAtlasReassignedTarget;
+  Targets: TAtlasReassignedTargets;
 begin
   ASettings.Enabled := FEnabled.Checked;
   ASettings.ServerPath := Trim(FServerPath.Text);
@@ -5722,6 +5826,25 @@ begin
   ASettings.SelectionMatchesNavigateF3 := FSelectionMatchesNavigateF3.Checked;
   ASettings.SelectionMatchesMaxMatches := StrToIntDef(FSelectionMatchesMaxMatches.Text,
     ASettings.SelectionMatchesMaxMatches);
+  ASettings.ExitPoints := FExitPoints.Checked;
+  ASettings.ExitPointsExceptions := FExitPointsExceptions.Checked;
+  ASettings.ExitPointsLoops := FExitPointsLoops.Checked;
+  ASettings.ExitPointsBadge := FExitPointsBadge.Checked;
+  ASettings.Reassigned := FReassigned.Checked;
+  Targets := [];
+  for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
+    if FReassignedTargets[Target].Checked then
+      Include(Targets, Target);
+  ASettings.ReassignedTargets := TAtlasReassignedNames.TargetsText(Targets);
+  ASettings.ReassignedStyle := TAtlasReassignedNames.Styles[TAtlasReassignedStyle(EnsureRange(
+    FReassignedStyle.Choice, 0, Ord(High(TAtlasReassignedStyle))))];
+  ASettings.ReassignedColor := TAtlasReassignedNames.NormalizeColor(FReassignedColor.Text);
+  ASettings.ExpressionType := FExpressionType.Checked;
+  ASettings.ExpressionTypeConversions := FExpressionTypeConversions.Checked;
+  ASettings.ExpressionTypeConstValue := FExpressionTypeConstValue.Checked;
+  ASettings.ExpressionTypeKey := Integer(TextToShortCut(Trim(FExpressionTypeKey.Text)));
+  ASettings.MethodPlacement := AtlasMethodPlacements[EnsureRange(FMethodPlacement.Choice, 0,
+    High(AtlasMethodPlacements))];
   ASettings.NextChangeKey := Integer(TextToShortCut(Trim(FNextChangeKey.Text)));
   ASettings.PreviousChangeKey := Integer(TextToShortCut(Trim(FPreviousChangeKey.Text)));
   ASettings.OverviewRuler := FOverviewRuler.Checked;

@@ -18,6 +18,8 @@ uses
 const
   /// <summary>Werte von bookmarks.quick.scope (#1104) in der Reihenfolge der Optionsseite.</summary>
   AtlasQuickBookmarkScopes: array[0..1] of string = ('project', 'file');
+  /// <summary>Werte von editor.methodPlacement (#660).</summary>
+  AtlasMethodPlacements: array[0..2] of string = ('declaration', 'alphabetical', 'off');
 
 type
   /// <summary>Ablage für Einstellungen; Werte als ganze Zahlen (Wahrheitswerte 0/1).</summary>
@@ -978,6 +980,23 @@ type
     SelectionMatchesNavigateF3: Boolean;
     /// <summary>Höchstzahl der Treffer (#709).</summary>
     SelectionMatchesMaxMatches: Integer;
+    /// <summary>Austrittspunkte hervorheben (#698, editor.exitPoints).</summary>
+    ExitPoints: Boolean;
+    /// <summary>Auf except bzw. on die auslösenden Aufrufe zeigen (#698).</summary>
+    ExitPointsExceptions: Boolean;
+    /// <summary>Auf Break bzw. Continue die Schleife zeigen (#698).</summary>
+    ExitPointsLoops: Boolean;
+    /// <summary>Marke mit der Anzahl am Routinenkopf (#698).</summary>
+    ExitPointsBadge: Boolean;
+    /// <summary>Neu zugewiesene Variablen unterstreichen (#712, highlight.reassigned).</summary>
+    Reassigned: Boolean;
+    /// <summary>Arten, kommagetrennt: locals, loopVars, valueParams, varParams, fields (#712), siehe
+    /// TAtlasReassignedNames.</summary>
+    ReassignedTargets: string;
+    /// <summary>Linie: dotted, solid oder wavy (#712).</summary>
+    ReassignedStyle: string;
+    /// <summary>Farbe: theme oder #RRGGBB (#712).</summary>
+    ReassignedColor: string;
     /// <summary>Blockkommentar umschalten (#703, keys.toggleBlockComment); aus = Kürzel frei.</summary>
     ToggleBlockComment: Boolean;
     /// <summary>Kürzel „Blockkommentar umschalten“ (#703); Vorgabe Umschalt+Alt+A.</summary>
@@ -1003,6 +1022,18 @@ type
     Unwrap: Boolean;
     /// <summary>Kürzel „Umschließung entfernen“ (#657); Vorgabe Strg+Umschalt+Entf.</summary>
     UnwrapKey: Integer;
+    /// <summary>Typ des markierten Ausdrucks (#689, hints.expressionType): Kürzel und Tooltip; aus = Kürzel frei,
+    /// kein Menüeintrag.</summary>
+    ExpressionType: Boolean;
+    /// <summary>Implizite Umwandlungen im Tooltip nennen (#689).</summary>
+    ExpressionTypeConversions: Boolean;
+    /// <summary>Wert konstanter Ausdrücke im Tooltip zeigen (#689).</summary>
+    ExpressionTypeConstValue: Boolean;
+    /// <summary>Kürzel „Typ des Ausdrucks“ (#689, keys.expressionType); Vorgabe Strg+Umschalt+T.</summary>
+    ExpressionTypeKey: Integer;
+    /// <summary>Methodenrümpfe in Deklarationsreihenfolge (#660, editor.methodPlacement): off, declaration oder
+    /// alphabetical; off schaltet Verschieben und Befehl ab.</summary>
+    MethodPlacement: string;
     /// <summary>Kürzel „Nächste Änderung“ (#507, keys.nextChange); Vorgabe Strg+Alt+Bild↓.</summary>
     NextChangeKey: Integer;
     /// <summary>Kürzel „Vorherige Änderung“ (#507, keys.previousChange); Vorgabe Strg+Alt+Bild↑.</summary>
@@ -1288,6 +1319,7 @@ uses
   Atlas.Core.Settings.VisualizerKinds,
   Atlas.Core.Settings.EventBreakNames,
   Atlas.Text.StepFilter,
+  Atlas.Core.Settings.Reassigned,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Settings.ToolbarItems,
   Atlas.Core.Settings.StatusBarItems;
@@ -1819,6 +1851,14 @@ begin
   Result.SelectionMatchesWholeWord := False;
   Result.SelectionMatchesNavigateF3 := True;
   Result.SelectionMatchesMaxMatches := 1000;
+  Result.ExitPoints := True;
+  Result.ExitPointsExceptions := True;
+  Result.ExitPointsLoops := True;
+  Result.ExitPointsBadge := True;
+  Result.Reassigned := True;
+  Result.ReassignedTargets := TAtlasReassignedNames.TargetsText(TAtlasReassignedNames.DefaultTargets);
+  Result.ReassignedStyle := 'dotted';
+  Result.ReassignedColor := TAtlasReassignedNames.ThemeColor;
   Result.ToggleBlockComment := True;
   Result.ToggleBlockCommentKey := $A041; // Umschalt+Alt+A
   Result.ToggleBlockCommentStyle := 'braces';
@@ -1831,6 +1871,11 @@ begin
   Result.NewLineAroundStatementAware := True;
   Result.Unwrap := True;
   Result.UnwrapKey := $602E; // Strg+Umschalt+Entf
+  Result.ExpressionType := True;
+  Result.ExpressionTypeConversions := True;
+  Result.ExpressionTypeConstValue := True;
+  Result.ExpressionTypeKey := $6054; // Strg+Umschalt+T
+  Result.MethodPlacement := 'declaration';
   // Strg+Alt+↑/↓ springt in RAD Studio schon zwischen Methoden.
   Result.NextChangeKey := $C022; // Strg+Alt+Bild↓
   Result.PreviousChangeKey := $C021; // Strg+Alt+Bild↑
@@ -2073,6 +2118,8 @@ begin
   NewLineAboveKey := EnsureRange(NewLineAboveKey, 0, $FFFF);
   UnwrapKey := EnsureRange(UnwrapKey, 0, $FFFF);
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
+  ExpressionTypeKey := EnsureRange(ExpressionTypeKey, 0, $FFFF);
+  MethodPlacement := Choice(MethodPlacement, AtlasMethodPlacements);
   MinimapRender := Choice(MinimapRender, ['blocks', 'characters']);
   MinimapWidth := EnsureRange(MinimapWidth, MinMinimapWidth, MaxMinimapWidth);
   MinimapScale := EnsureRange(MinimapScale, MinMinimapScale, MaxMinimapScale);
@@ -2107,6 +2154,9 @@ begin
   DebugVisualizerMaxImagePixels := EnsureRange(DebugVisualizerMaxImagePixels,
     TAtlasVisualizerSettings.MinMaxImagePixels, TAtlasVisualizerSettings.MaxMaxImagePixels);
   DebugVisualizerEvaluation := Choice(DebugVisualizerEvaluation, TAtlasVisualizerSettings.EvaluationNames);
+  ReassignedTargets := TAtlasReassignedNames.NormalizeTargets(ReassignedTargets);
+  ReassignedStyle := Choice(ReassignedStyle, TAtlasReassignedNames.Styles);
+  ReassignedColor := TAtlasReassignedNames.NormalizeColor(ReassignedColor);
   JumpToMatchKey := EnsureRange(JumpToMatchKey, 0, $FFFF);
   JumpToMatchSelectKey := EnsureRange(JumpToMatchSelectKey, 0, $FFFF);
   MoveLinesUpKey := EnsureRange(MoveLinesUpKey, 0, $FFFF);
@@ -2547,6 +2597,14 @@ begin
   SelectionMatchesNavigateF3 := AStore.ReadInteger('SelectionMatchesNavigateF3',
     BoolValue(Default.SelectionMatchesNavigateF3)) <> 0;
   SelectionMatchesMaxMatches := AStore.ReadInteger('SelectionMatchesMaxMatches', Default.SelectionMatchesMaxMatches);
+  ExitPoints := AStore.ReadInteger('ExitPoints', BoolValue(Default.ExitPoints)) <> 0;
+  ExitPointsExceptions := AStore.ReadInteger('ExitPointsExceptions', BoolValue(Default.ExitPointsExceptions)) <> 0;
+  ExitPointsLoops := AStore.ReadInteger('ExitPointsLoops', BoolValue(Default.ExitPointsLoops)) <> 0;
+  ExitPointsBadge := AStore.ReadInteger('ExitPointsBadge', BoolValue(Default.ExitPointsBadge)) <> 0;
+  Reassigned := AStore.ReadInteger('Reassigned', BoolValue(Default.Reassigned)) <> 0;
+  ReassignedTargets := AStore.ReadString('ReassignedTargets', Default.ReassignedTargets);
+  ReassignedStyle := AStore.ReadString('ReassignedStyle', Default.ReassignedStyle);
+  ReassignedColor := AStore.ReadString('ReassignedColor', Default.ReassignedColor);
   ToggleBlockComment := AStore.ReadInteger('ToggleBlockComment', BoolValue(Default.ToggleBlockComment)) <> 0;
   ToggleBlockCommentKey := AStore.ReadInteger('ToggleBlockCommentKey', Default.ToggleBlockCommentKey);
   ToggleBlockCommentStyle := AStore.ReadString('ToggleBlockCommentStyle', Default.ToggleBlockCommentStyle);
@@ -2562,6 +2620,13 @@ begin
     BoolValue(Default.NewLineAroundStatementAware)) <> 0;
   Unwrap := AStore.ReadInteger('Unwrap', BoolValue(Default.Unwrap)) <> 0;
   UnwrapKey := AStore.ReadInteger('UnwrapKey', Default.UnwrapKey);
+  ExpressionType := AStore.ReadInteger('ExpressionType', BoolValue(Default.ExpressionType)) <> 0;
+  ExpressionTypeConversions := AStore.ReadInteger('ExpressionTypeConversions',
+    BoolValue(Default.ExpressionTypeConversions)) <> 0;
+  ExpressionTypeConstValue := AStore.ReadInteger('ExpressionTypeConstValue',
+    BoolValue(Default.ExpressionTypeConstValue)) <> 0;
+  ExpressionTypeKey := AStore.ReadInteger('ExpressionTypeKey', Default.ExpressionTypeKey);
+  MethodPlacement := AStore.ReadString('MethodPlacement', Default.MethodPlacement);
   NextChangeKey := AStore.ReadInteger('NextChangeKey', Default.NextChangeKey);
   PreviousChangeKey := AStore.ReadInteger('PreviousChangeKey', Default.PreviousChangeKey);
   OverviewRuler := AStore.ReadInteger('OverviewRuler', BoolValue(Default.OverviewRuler)) <> 0;
@@ -3026,6 +3091,14 @@ begin
   AStore.WriteInteger('SelectionMatchesWholeWord', BoolValue(SelectionMatchesWholeWord));
   AStore.WriteInteger('SelectionMatchesNavigateF3', BoolValue(SelectionMatchesNavigateF3));
   AStore.WriteInteger('SelectionMatchesMaxMatches', SelectionMatchesMaxMatches);
+  AStore.WriteInteger('ExitPoints', BoolValue(ExitPoints));
+  AStore.WriteInteger('ExitPointsExceptions', BoolValue(ExitPointsExceptions));
+  AStore.WriteInteger('ExitPointsLoops', BoolValue(ExitPointsLoops));
+  AStore.WriteInteger('ExitPointsBadge', BoolValue(ExitPointsBadge));
+  AStore.WriteInteger('Reassigned', BoolValue(Reassigned));
+  AStore.WriteString('ReassignedTargets', ReassignedTargets);
+  AStore.WriteString('ReassignedStyle', ReassignedStyle);
+  AStore.WriteString('ReassignedColor', ReassignedColor);
   AStore.WriteInteger('ToggleBlockComment', BoolValue(ToggleBlockComment));
   AStore.WriteInteger('ToggleBlockCommentKey', ToggleBlockCommentKey);
   AStore.WriteString('ToggleBlockCommentStyle', ToggleBlockCommentStyle);
@@ -3038,6 +3111,11 @@ begin
   AStore.WriteInteger('NewLineAroundStatementAware', BoolValue(NewLineAroundStatementAware));
   AStore.WriteInteger('Unwrap', BoolValue(Unwrap));
   AStore.WriteInteger('UnwrapKey', UnwrapKey);
+  AStore.WriteInteger('ExpressionType', BoolValue(ExpressionType));
+  AStore.WriteInteger('ExpressionTypeConversions', BoolValue(ExpressionTypeConversions));
+  AStore.WriteInteger('ExpressionTypeConstValue', BoolValue(ExpressionTypeConstValue));
+  AStore.WriteInteger('ExpressionTypeKey', ExpressionTypeKey);
+  AStore.WriteString('MethodPlacement', MethodPlacement);
   AStore.WriteInteger('NextChangeKey', NextChangeKey);
   AStore.WriteInteger('PreviousChangeKey', PreviousChangeKey);
   AStore.WriteInteger('OverviewRuler', BoolValue(OverviewRuler));

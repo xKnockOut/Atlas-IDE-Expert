@@ -138,7 +138,8 @@ const
     TAtlasTextId.ElementInlayTypeHints, TAtlasTextId.ElementGitGutter, TAtlasTextId.ElementGitBlame,
     TAtlasTextId.ElementPatternPreview, TAtlasTextId.ElementGutterColumn, TAtlasTextId.ElementSelectionMatches,
     TAtlasTextId.ElementInlayDefineHints, TAtlasTextId.ElementInlayCharHints, TAtlasTextId.ElementQuickBookmarks,
-    TAtlasTextId.ElementInlayMethodHints);
+    TAtlasTextId.ElementInlayMethodHints,
+    TAtlasTextId.ElementExitPoints, TAtlasTextId.ElementReassigned);
   Plural: array[TAtlasDrawnElement] of TAtlasTextId = (TAtlasTextId.ElementCodeLensMetricsPlural,
     TAtlasTextId.ElementCodeLensTestsPlural, TAtlasTextId.ElementCodeLensTestUnitPlural,
     TAtlasTextId.ElementBlockEndLabelsPlural, TAtlasTextId.ElementInlayHintsPlural,
@@ -151,7 +152,8 @@ const
     TAtlasTextId.ElementPatternPreviewPlural, TAtlasTextId.ElementGutterColumnPlural,
     TAtlasTextId.ElementSelectionMatchesPlural, TAtlasTextId.ElementInlayDefineHintsPlural,
     TAtlasTextId.ElementInlayCharHintsPlural, TAtlasTextId.ElementQuickBookmarksPlural,
-    TAtlasTextId.ElementInlayMethodHintsPlural);
+    TAtlasTextId.ElementInlayMethodHintsPlural,
+    TAtlasTextId.ElementExitPointsPlural, TAtlasTextId.ElementReassignedPlural);
 begin
   if APlural then
     Result := TAtlasStrings.Text(Plural[AElement])

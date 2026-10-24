@@ -3837,6 +3837,405 @@ Voraussetzung: Einstellungen auf Vorgabe; Unit, in der `Kunde` mehrfach vorkommt
 | GT11 | Strg+. auf der Anzahl › Ausblenden „In dieser Datei“ | Keine Hervorhebung in dieser Datei, in anderen weiter |
 | GT12 | Thema hell/dunkel wechseln | Hervorhebung und Anzahl in beiden Themen gut lesbar |
 
+## Austrittspunkte hervorheben (#698)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index; Einstellungen auf Vorgabe; Unit `Austritt.pas` mit
+
+```pascal
+uses Lader; // Lader: /// <exception cref="EFehler"> an procedure Lade; EFehler = class(EBasis)
+
+procedure Fehler;
+begin
+  raise EFehler.Create('x');
+end;
+
+function TKunde.Wert(A: Integer): Integer;
+var
+  I: Integer;
+begin
+  if A < 0 then
+    Exit;
+  if A = 0 then
+    Exit(1);
+  if A > 99 then
+    Fehler;
+  try
+    Lade;
+  except
+    on E: EBasis do
+      raise;
+  end;
+  for I := 0 to A do
+  begin
+    if I = 5 then
+      Break;
+    Continue;
+  end;
+  Result := A;
+end;
+```
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AX1 | Cursor auf das erste `Exit` | Nach kurzer Pause in der Warnfarbe hinterlegt: beide `Exit`, der Aufruf `Fehler` (löst immer aus), `raise;` und das abschließende `end` nicht (vorher steht `Result := A`, der Weg endet dort trotzdem: `end` hinterlegt); das erste `Exit` in der Fehlerfarbe, weil dort `Result` fehlt. Hinter dem Kopf `TKunde.Wert` die Marke „5 Austritte · Result fehlt auf einem Weg“ (**Abnahme**) |
+| AX2 | Cursor auf `Wert` im Kopf, dann auf `raise` | Dieselbe Hervorhebung und Marke wie in AX1 |
+| AX3 | Cursor auf `Result` | Zusätzlich `Result := A` in der Farbe für Hinzugefügtes; Austritte ohne Ergebnis rot; Marke wie in AX1 |
+| AX4 | In AX1 F3 mehrmals, dann Umschalt+F3 | Springt reihum von Stelle zu Stelle (auch auf das `end`), am Ende wieder zur ersten; Umschalt+F3 rückwärts. Die Hervorhebung bleibt dabei stehen (**Abnahme**) |
+| AX5 | Cursor auf `on` bzw. auf `EBasis` im Handler | `Lade` in der Fehlerfarbe (löst laut XMLDoc `EFehler` aus, das von `EBasis` abstammt), der Handler selbst in der Warnfarbe; keine Marke am Kopf |
+| AX6 | Cursor auf `Break` | `for`, `do`, das `end` der Schleife, `Break` und `Continue` in der Akzentfarbe |
+| AX7 | Cursor auf eine Zeile ohne Auslöser (z. B. `Lade`), oder etwas tippen | Hervorhebung und Marke verschwinden sofort |
+| AX8 | Text mit F3 markiert lassen (Markierungssuche, #709) | F3 springt zum nächsten gleichen Text wie bisher, nicht zu Austritten |
+| AX9 | Lokale Routine und anonyme Methode mit eigenem `Exit` in `Wert`; Cursor auf das `Exit` der äußeren Routine | Nur die Austritte von `Wert` hinterlegt, nicht die der lokalen Routine oder der anonymen Methode |
+| AX10 | Optionen › Editor › Austrittspunkte: „Auf except/on die auslösenden Aufrufe zeigen“ aus; Cursor auf `on` | Keine Hervorhebung |
+| AX11 | „Auf Break/Continue die Schleife zeigen“ aus; Cursor auf `Break` | Keine Hervorhebung |
+| AX12 | „Marke mit der Anzahl am Routinenkopf“ aus | Hervorhebung wie in AX1, aber ohne Marke |
+| AX13 | In `atlas.json` `"highlight": {"exitKeywords": ["raise"]}`, Cursor auf `raise` | Die `Exit` zählen nicht mehr als Austritt; Aufrufe von Routinen, die immer auslösen, weiter |
+| AX14 | Strg+. auf der Marke › „In dieser Datei ausblenden“ | In dieser Datei keine Hervorhebung, in anderen weiter |
+| AX15 | Schnellschalter „Austrittspunkte hervorheben“ aus (`editor.exitPoints`) | Keine Hervorhebung, keine Marke; F3 wie ohne #698 (**Abnahme**) |
+| AX16 | Server beenden, Cursor auf `Exit` | Keine Hervorhebung, kein Hängen des Editors; nach dem Neustart des Servers wieder da |
+| AX17 | Thema hell/dunkel wechseln | Farben und Marke in beiden Themen gut lesbar |
+
+## Neu zugewiesene Variablen unterstreichen (#712)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; Einstellungen auf Vorgabe (`highlight.reassigned` an, Arten „Lokale Variablen“ und „Wertparameter“, gepunktet, Themenfarbe); Unit `Zuweisung.pas` mit
+
+```pascal
+type
+  TZaehler = class
+    FStand: Integer;
+    procedure Rechne(A: Integer; var B: Integer; const C: Integer);
+  end;
+
+procedure Erhoehe(var X: Integer);
+begin
+  Inc(X);
+end;
+
+procedure TZaehler.Rechne(A: Integer; var B: Integer; const C: Integer);
+var
+  Summe, Fest, Zaehler, I: Integer;
+begin
+  Fest := 10;
+  Summe := 0;
+  for I := 1 to 3 do
+    Summe := Summe + I;
+  A := A + Fest;
+  B := A;
+  Erhoehe(Zaehler);
+  FStand := 1;
+  FStand := 2;
+  var Wert := C * 2;
+  B := B + Wert + Summe;
+end;
+```
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| UZ1 | Unit öffnen, 1 s warten | `Summe` und `A` sind an jeder Stelle gepunktet unterstrichen (Deklaration, Zuweisungen, Lesestellen); `Fest`, `Wert`, `C`, `I` und `B` nicht (**Abnahme**) |
+| UZ2 | Maus auf `Summe` | Hover zeigt unter der Linie „Neu zugewiesen: 2 Zuweisungen (Zeilen …)“ mit den Zeilen von `Summe := 0;` und `Summe := Summe + I;` (**Abnahme**) |
+| UZ3 | Maus auf `Fest` | Keine Zeile „Neu zugewiesen“ |
+| UZ4 | Maus auf `A` | „Einmal neu zugewiesen (Zeile …)“ mit der Zeile von `A := A + Fest;` |
+| UZ5 | `Zaehler`, dann eine zweite Zeile `Erhoehe(Zaehler);` | Zuerst nicht unterstrichen (eine Zuweisung über den var-Parameter); mit der zweiten Zeile unterstrichen, Hover „2 Zuweisungen“ |
+| UZ6 | Seite Atlas › Einstellungen › Hervorhebung › Neu zugewiesene Variablen: „Schleifenzähler“ an, OK | `I` ist jetzt unterstrichen, Hover „Einmal neu zugewiesen“ mit der Zeile der for-Schleife |
+| UZ7 | „Var-Parameter“ an | `B` unterstrichen (Zuweisungen `B := A;` und `B := B + …`) |
+| UZ8 | „Felder“ an | `FStand` unterstrichen, auch in der Klassendeklaration, nicht nur in `Rechne` |
+| UZ9 | „Wertparameter“ aus | `A` nicht mehr unterstrichen, Hover auf `A` ohne „Neu zugewiesen“ (**Abnahme**) |
+| UZ10 | Linienart „Durchgezogen“, dann „Welle“ | Linie sofort durchgezogen bzw. flache Welle; sie sitzt über der Wellenlinie eines Problems in derselben Zeile, beide lesbar |
+| UZ11 | Farbe `#FF00FF` | Linie magenta; `theme` wieder Akzentfarbe des Themas; unlesbarer Wert (`rot`) wird beim Speichern zu `theme` |
+| UZ12 | In `Summe := 0;` tippen (Zeile ändert sich) | Linie in dieser Zeile verschwindet sofort, nach der Tipp-Pause (0,7 s) erscheint der neue Stand; andere Zeilen bleiben ruhig (**Abnahme**) |
+| UZ13 | Neue Zeile `Fest := 11;` einfügen | Nach der Tipp-Pause ist `Fest` überall unterstrichen |
+| UZ14 | Rechtsklick bzw. Strg+. auf eine Linie › Element ausblenden „In dieser Datei“ | Keine Linien in dieser Datei, in anderen weiter |
+| UZ15 | Schnellschalter „Neu zugewiesene Variablen“ aus | Keine Linien, kein Hover-Zusatz; wieder an: Linien nach spätestens 1 s |
+| UZ16 | Server beenden | Keine Fehlermeldung, Linien bleiben bis zur nächsten Änderung; nach Neustart des Servers erscheinen sie wieder (nach höchstens 5 s) |
+| UZ17 | atlas.json `"refactoring": {"suggestConst": true}`, Cursor auf `Fest`, Strg+. | (UZ13 vorher rückgängig) „Als Konstante deklarieren (const Fest)“; Anwenden: `Fest` verschwindet aus dem var-Abschnitt, `Fest := 10;` wird `const Fest: Integer = 10;` |
+| UZ18 | Wie UZ17 auf `var Wert := C * 2;` | Wird `const Wert = C * 2;`; mit `minDelphiVersion` unter 10.3 kein Angebot |
+| UZ19 | Thema hell/dunkel wechseln | Linie in beiden Themen sichtbar, aber zurückhaltend |
+| UZ20 | Großer Unit (5000 Zeilen) öffnen und tippen | Editor bleibt flüssig; die Anfrage läuft im Hintergrund |
+
+## Typ des markierten Ausdrucks (#689)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; Einstellungen auf Vorgabe (`hints.expressionType` an, Umwandlungen und Wert an, Kürzel Strg+Umschalt+T); Unit `Ausdruck.pas` mit
+
+```pascal
+unit Ausdruck;
+
+interface
+
+uses
+  System.SysUtils, System.Generics.Collections;
+
+type
+  TFarbe = (Rot, Gruen, Blau);
+  TFarben = set of TFarbe;
+  TKunde = class
+    Name: string;
+  end;
+  PKunde = ^TKunde;
+  TPreis = Currency;
+  TRec = record
+    A: Integer;
+    B: Byte;
+    C: Int64;
+  end;
+  TGruppen = TList<TKunde>;
+
+implementation
+
+function Max(A, B: Integer): Integer; overload;
+begin
+  Result := A;
+end;
+
+function Max(A, B: Double): Double; overload;
+begin
+  Result := A;
+end;
+
+procedure Leer;
+begin
+end;
+
+procedure Probe;
+const
+  Faktor = 3;
+var
+  Price, Shipping: TPreis;
+  Count: Integer;
+  Big: Int64;
+  D: Double;
+  S: string;
+  V: Variant;
+  G: TGruppen;
+  K: TKunde;
+  P: PKunde;
+  Farben: TFarben;
+  F: TProc;
+begin
+  Price := Price * Count + Shipping;
+  Big := Count + Big;
+  D := Max(D, Count);
+  Count := SizeOf(TRec) * 2;
+  Count := Faktor * 4;
+  S := V;
+  K := G[0];
+  K := G.First;
+  S := P^.Name;
+  Farben := Farben + [Blau];
+  K := TKunde(K);
+  F := procedure begin end;
+  Count := Count + S;
+  Count := Unbekannt + 1;
+  Leer;
+end;
+
+end.
+```
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| AY1 | `Price * Count + Shipping` markieren, Strg+Umschalt+T | Tooltip unter der Schreibmarke: Ausdruck, darunter fett in Akzentfarbe `TPreis = Currency`, dann „Count: Integer wird zu Currency erweitert“ und „Strg+Umschalt+T erneut: umschließender Ausdruck“; der Ausdruck ist im Editor dezent hinterlegt (**Abnahme**) |
+| AY2 | Ohne Markierung Schreibmarke in `Count` derselben Zeile, Strg+Umschalt+T | Ausdruck `Count`, Typ `Integer` |
+| AY3 | Direkt danach noch einmal Strg+Umschalt+T | Ausdruck `Price * Count`, Hervorhebung wächst mit (**Abnahme**) |
+| AY4 | Noch einmal | `Price * Count + Shipping` |
+| AY5 | Noch einmal | Tooltip bleibt unverändert (die Zuweisung ist kein Ausdruck) |
+| AY6 | Schreibmarke eine Stelle weiter, Strg+Umschalt+T | Beginnt wieder beim kleinsten Ausdruck an der neuen Stelle |
+| AY7 | `Count + Big` markieren | `Int64`, „Count: Integer wird zu Int64 erweitert“ |
+| AY8 | `Max(D, Count)` markieren | `Double`, Zeile „Überladung: function Max(A, B: Double): Double;“, Umwandlung von `Count` zu Double |
+| AY9 | `SizeOf(TRec) * 2` markieren | `Integer`, Zeile `= 32` |
+| AY10 | `Faktor * 4` markieren | `Integer`, `= 12` |
+| AY11 | In `S := V` die Schreibmarke auf `V` | `Variant`, „V: Variant wird zu string umgewandelt“ |
+| AY12 | `G[0]` und `G.First` je markieren | `TKunde` (T der Liste eingesetzt, Standard-Property) |
+| AY13 | In `K := G[0]` die Schreibmarke auf `G` | `TGruppen = TList<TKunde>` |
+| AY14 | `P^.Name`, `Farben + [Blau]`, `TKunde(K)` je markieren | `string`, `TFarben`, `TKunde` |
+| AY15 | `procedure begin end` markieren | `reference to procedure` |
+| AY16 | `Count + S` markieren | Statt des Typs in Fehlerfarbe „Kein Typ: + passt nicht zu Integer und string“ |
+| AY17 | `Unbekannt + 1` markieren, dann Schreibmarke auf `Leer` | „Kein Typ: unbekannter Name Unbekannt“ bzw. „Kein Typ: Leer liefert keinen Wert“ |
+| AY18 | Schreibmarke auf `begin` | „Kein Ausdruck an dieser Stelle“, ohne Zeile zum Erweitern |
+| AY19 | AY1 wiederholen, auf `TPreis = Currency` klicken | Tooltip schließt, der Editor springt zur Deklaration `TPreis = Currency;` (**Abnahme**) |
+| AY20 | Tooltip zeigen, dann Esc bzw. eine Pfeiltaste bzw. ein Klick in den Editor bzw. Mausrad bzw. Tippen bzw. anderer Editorreiter | Tooltip und Hervorhebung verschwinden; nur Esc wird geschluckt, alle anderen Tasten wirken im Editor |
+| AY21 | Optionen › Editor › Typ des Ausdrucks: „Implizite Umwandlungen nennen“ und „Wert konstanter Ausdrücke zeigen“ aus, AY1 und AY9 wiederholen | Ohne Umwandlungszeile bzw. ohne `= 32` |
+| AY22 | „Typ des markierten Ausdrucks anzeigen“ aus | Strg+Umschalt+T fügt wieder einen To-Do-Eintrag ein (IDE), Befehlspalette ohne „Typ des Ausdrucks“ (**Abnahme**) |
+| AY23 | Kürzel auf Strg+Alt+Y ändern, Tastenkürzel-Übersicht öffnen | Neue Taste wirkt, Übersicht nennt „Typ des Ausdrucks“ mit der neuen Taste |
+| AY24 | Sprache Englisch, AY1 | „Count: Integer is widened to Currency“, „Ctrl+Shift+T again: enclosing expression“ |
+| AY25 | Bei angehaltenem Server Strg+Umschalt+T | Zeile in der Meldungsansicht, kein Tooltip |
+
+## Methoden in Deklarationsreihenfolge (#660)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; `editor.methodPlacement` auf Vorgabe (`declaration`); Unit `Reihe.pas` mit
+
+```pascal
+unit Reihe;
+
+interface
+
+type
+  TKunde = class
+  public
+    procedure Laden;
+    procedure Speichern(A: Integer); overload;
+    procedure Speichern(const S: string); overload;
+    class function Neu: TKunde;
+    procedure Pruefen;
+  end;
+
+  TAussen = class
+  public type
+    TInnen = class
+      procedure Lauf;
+    end;
+  public
+    procedure Machen;
+  end;
+
+implementation
+
+procedure TAussen.Machen;
+begin
+end;
+
+// Speichert als Text.
+procedure TKunde.Speichern(const S: string);
+begin
+end;
+
+procedure Hilfe;
+begin
+end;
+
+class function TKunde.Neu: TKunde;
+begin
+  Result := nil;
+end;
+
+{$REGION 'Laden'}
+procedure TKunde.Laden;
+begin
+end;
+{$ENDREGION}
+
+procedure TAussen.TInnen.Lauf;
+begin
+end;
+
+procedure TKunde.Speichern(A: Integer);
+begin
+end;
+
+end.
+```
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| MO1 | Menü Atlas › „implementation wie Klasse ordnen“ | Vorschau „Methoden ordnen“ mit „4 Methoden wandern an die Stelle ihrer Deklaration, 1 bleiben stehen.“; Einträge „↑ 4  TKunde.Speichern“, „↓ 3  TAussen.Machen“, „↓ 1  TAussen.TInnen.Lauf“, „bleibt: in einer Region  TKunde.Laden“ (**Abnahme**) |
+| MO2 | In MO1 „Ordnen“ | Reihenfolge: `TKunde.Speichern(A: Integer)`, `// Speichert als Text.` mit `TKunde.Speichern(const S: string)`, `Hilfe`, `TKunde.Neu`, Region mit `TKunde.Laden`, `TAussen.Machen`, `TAussen.TInnen.Lauf`; Meldung „4 Methoden verschoben.“; Unit kompiliert (**Abnahme**) |
+| MO3 | Strg+Z nach MO2 | Ursprüngliche Reihenfolge in einem Schritt |
+| MO4 | MO2 wiederholen, dann den Befehl erneut | Meldung „Die Methoden stehen schon in der Reihenfolge der Klasse.“, keine Vorschau |
+| MO5 | In MO1 auf einen Eintrag doppelklicken | Editor springt zum Kopf der Methode |
+| MO6 | In MO1 „Abbrechen“ | Text unverändert |
+| MO7 | Rumpf `TKunde.Neu` in `{$IFDEF DEBUG}` … `{$ENDIF}` setzen, MO1 | Eintrag „bleibt: in einem {$IFDEF}  TKunde.Neu“, der Rumpf bleibt beim Ordnen stehen |
+| MO8 | Kommentar über `TKunde.Speichern(const S: string)` mit einer Leerzeile Abstand, MO2 | Kommentar bleibt an seiner Stelle, nur der Rumpf wandert |
+| MO9 | Befehlspalette „implementation wie Klasse ordnen“ und Kontextmenü des Editors › Atlas › „implementation wie Klasse ordnen“ | Gleiche Vorschau wie MO1 |
+| MO10 | Nach MO2 Schreibmarke in `Pruefen` (Deklaration), Strg+Umschalt+C | Der neue Rumpf `procedure TKunde.Pruefen;` steht direkt hinter `TKunde.Neu` (vor der Region), die Schreibmarke im neuen Rumpf (**Abnahme**) |
+| MO11 | Strg+Z direkt nach MO10 | Ein Schritt: Deklaration und Rumpf wie vor Strg+Umschalt+C, nichts verschoben übrig (**Abnahme**) |
+| MO12 | In `TKunde` vor `Laden` `procedure Erste;` deklarieren, Strg+Umschalt+C | Neuer Rumpf vor `TKunde.Speichern(A: Integer)` (erste Methode der Klasse, `Laden` steht in der Region) |
+| MO13 | In `TKunde` hinter `Pruefen` `procedure Letzte;` deklarieren, Strg+Umschalt+C | Neuer Rumpf direkt hinter `TKunde.Pruefen` |
+| MO14 | Neue Klasse `TLeer = class procedure Eins; end;` hinter `TAussen`, Strg+Umschalt+C | Rumpf `TLeer.Eins` hinter `TAussen.TInnen.Lauf` (letzter Rumpf der Klasse davor) |
+| MO15 | Code-Aktion „Methode anlegen“ (#443) für eine neue Methode von `TKunde` | Der Rumpf landet an der Stelle seiner Deklaration |
+| MO16 | Methode von Hand tippen: `procedure TKunde.Hand;`, `begin`, `end;` am Ende vor `end.`, mit Pausen | Atlas verschiebt nichts, solange keine Deklaration passt; nach dem Deklarieren von `Hand` hinter `Neu` bleibt der Rumpf, wo er ist |
+| MO17 | Rumpf von Hand mit Ausschneiden/Einfügen an eine andere Stelle setzen | Atlas verschiebt ihn nicht zurück (der Kopf war schon da) |
+| MO18 | Optionen › Editor › „Methodenrümpfe ordnen“: „alphabetisch“, MO1 | Je Klasse nach dem Namen: `TKunde.Neu`, `TKunde.Pruefen`, `TKunde.Speichern(A: Integer)`, `TKunde.Speichern(const S: string)` |
+| MO19 | Optionen: „aus“, MO10 wiederholen | Rumpf bleibt, wo die IDE ihn hinsetzt; Menüeintrag fehlt, Kontextmenü und Palette melden „Methodenreihenfolge ist abgeschaltet (editor.methodPlacement = off).“ (**Abnahme**) |
+| MO20 | Atlas über das Menü ausschalten, MO10 | Kein Verschieben |
+| MO21 | Server anhalten, MO1 | Zeile „kein Server“ in der Meldungsansicht, keine Vorschau |
+| MO22 | Server anhalten, MO10 | Rumpf bleibt, wo die IDE ihn hinsetzt, keine Meldung |
+| MO23 | Zwei Units offen, Strg+Umschalt+C in der zweiten direkt nach dem Wechsel und nach einer Sekunde | Nach einer Sekunde wie MO10; unmittelbar nach dem Wechsel darf der Rumpf stehen bleiben |
+| MO24 | Sprache Englisch, MO1 | „Order methods“, „↑ 4  TKunde.Speichern“, „stays: inside a region  TKunde.Laden“ |
+| MO25 | MO10 und anschließend „Letzte Atlas-Änderung zurücknehmen“ (Strg+Alt+Z) | Keine Zugriffsverletzung; Meldung zu fehlendem bzw. abweichendem Stand oder Zurücknahme der letzten Atlas-Änderung |
+
+## var-Block pflegen (#644)
+
+Voraussetzung: Server läuft in der IDE mit Projekt, Delphi 10.3 oder neuer; `refactoring.varBlock`, `refactoring.varBlockMerge` und `refactoring.varBlockSort` auf Vorgabe (`true`, `true`, `usage`); Unit `Bloecke.pas` mit
+
+```pascal
+unit Bloecke;
+
+interface
+
+implementation
+
+uses
+  System.Classes, System.SysUtils;
+
+procedure Rechnen(B: Boolean);
+var
+  Text: string;
+  Unbenutzt: Integer;
+  C: Integer;
+  A: Integer;
+  // Zwischenspeicher
+  Liste: TStringList; // wird freigegeben
+begin
+  A := 1;
+  C := 2;
+  if B then
+  begin
+    Text := IntToStr(A);
+  end;
+  Liste := TStringList.Create;
+  try
+    Liste.Add(Text);
+  finally
+    Liste.Free;
+  end;
+  Writeln(C);
+end;
+
+procedure Sicher;
+var
+  Wert: Integer;
+begin
+  try
+    Wert := 1;
+  except
+    Writeln(Wert);
+  end;
+end;
+
+procedure Verschieben;
+begin
+  var Anzahl: Integer := 3;
+  var Name := 'x';
+  var Puffer := TStringList.Create;
+  // Ergebnis
+  var Summe: Int64; // wird gleich gesetzt
+  Summe := Anzahl;
+  Writeln(Name, Summe, Puffer.Count);
+end;
+
+end.
+```
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| VB1 | Schreibmarke auf `A` im var-Abschnitt von `Rechnen`, Strg+. | Glühbirnen „In Inline-Variable umwandeln (var A)“ und „var-Block aufräumen (ungenutzt: Unbenutzt)“ |
+| VB2 | In VB1 „In Inline-Variable umwandeln“ | `A: Integer;` verschwindet, `A := 1;` wird `var A := 1;`; Unit kompiliert (**Abnahme**) |
+| VB3 | Strg+Z, Schreibmarke auf `Text`, Strg+. › „In Inline-Variable umwandeln“ | `var Text: string;` steht vor `if B then` (nicht im inneren Block, weil `Liste.Add(Text)` außen liest) (**Abnahme**) |
+| VB4 | Strg+Z, Schreibmarke auf `Liste`, Strg+. › „In Inline-Variable umwandeln“ | `// Zwischenspeicher` und `var Liste := TStringList.Create; // wird freigegeben` stehen an der Zuweisung (Typ offensichtlich, Kommentare wandern mit); Unit kompiliert |
+| VB5 | Strg+Z; in `Sicher` Schreibmarke auf `Wert`, Strg+. › „In Inline-Variable umwandeln“ | `var Wert: Integer;` steht vor `try`, nicht im try-Teil, weil der except-Teil `Wert` liest (**Abnahme**) |
+| VB6 | Strg+Z; in `Rechnen` `TThread.Queue(nil, procedure begin Writeln(C) end);` ergänzen, Schreibmarke auf `C`, Strg+. | Keine Glühbirne „In Inline-Variable umwandeln“ (Capture in anonymer Methode) (**Abnahme**) |
+| VB7 | Strg+Z; Schreibmarke im var-Abschnitt (auf `var`), Strg+. › „var-Block aufräumen (ungenutzt: Unbenutzt)“ | Abschnitt: `A, C: Integer;`, `Text: string;`, `// Zwischenspeicher`, `Liste: TStringList; // wird freigegeben` (Reihenfolge der ersten Verwendung, `Unbenutzt` entfernt, Kommentare bleiben bei `Liste`); Unit kompiliert (**Abnahme**) |
+| VB8 | Strg+Z, atlas.json `"refactoring": {"varBlockSort": "alpha"}`, VB7 | Reihenfolge `A, C: Integer;`, `Liste` mit Kommentaren, `Text: string;` |
+| VB9 | atlas.json `"varBlockMerge": false` dazu, VB7 | `A: Integer;` und `C: Integer;` in eigenen Zeilen |
+| VB10 | atlas.json zurücksetzen, VB7 zweimal | Beim zweiten Mal keine Glühbirne „var-Block aufräumen“ (nichts mehr zu tun) |
+| VB11 | In `Verschieben` Schreibmarke auf `Anzahl`, Strg+. › „In var-Block verschieben (Anzahl)“ | Neuer Abschnitt `var` / `  Anzahl: Integer;` vor `begin`, die Zeile wird `Anzahl := 3;` (**Abnahme**) |
+| VB12 | Schreibmarke auf `Name`, Strg+. › „In var-Block verschieben (Name)“ | Eintrag `Name: string;` (Typ aus dem Ausdruck), Zeile `Name := 'x';` |
+| VB13 | Schreibmarke auf `Puffer`, Strg+. › „In var-Block verschieben (Puffer)“ | Eintrag `Puffer: TStringList;`, Zeile `Puffer := TStringList.Create;`; ohne `System.Classes` in uses ergänzt die Aktion es |
+| VB14 | Schreibmarke auf `Summe`, Strg+. › „In var-Block verschieben (Summe)“ | `// Ergebnis` und `Summe: Int64; // wird gleich gesetzt` stehen im var-Abschnitt, die Zeile im Rumpf ist weg |
+| VB15 | VB11 bis VB14, dann auf `Anzahl` im Abschnitt „In Inline-Variable umwandeln“ | Wieder `var Anzahl := 3;` (Hin und zurück ohne Bedeutungsänderung) |
+| VB16 | atlas.json `"refactoring": {"varBlock": false}`, VB1 und VB11 | Keine der drei Glühbirnen (**Abnahme**) |
+| VB17 | atlas.json `"delphiVersion": "19.0"` (Delphi 10.2), VB1 | „var-Block aufräumen“ ja, „In Inline-Variable umwandeln“ nein |
+| VB18 | `{$IFDEF DEBUG}` … `{$ENDIF}` um `Writeln(C);`, Schreibmarke auf `C`, Strg+. | Keine Umwandlung (bedingte Übersetzung) |
+
 ## Forward-Deklaration ergänzen (#685)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; neue Unit `Tree.pas`.

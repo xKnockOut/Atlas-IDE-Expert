@@ -100,6 +100,8 @@ uses
   Atlas.Core.Editor.NewLine,
   Atlas.IDE.Editor.NewLine,
   Atlas.IDE.Editor.Unwrap,
+  Atlas.IDE.Editor.ExpressionType,
+  Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.Editor.WrapSelection,
   Atlas.IDE.Editor.CommentContinuation,
   Atlas.IDE.Editor.PatternContinuation,
@@ -191,6 +193,8 @@ uses
   Atlas.Core.Editor.Overview,
   Atlas.IDE.Bookmarks.QuickChord,
   Atlas.IDE.Editor.SelectionMatches,
+  Atlas.IDE.Editor.ExitPoints,
+  Atlas.IDE.Editor.Reassigned,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Bookmarks.Gutter,
@@ -1237,6 +1241,26 @@ begin
   Result := TAtlasIdeDebugStepFilter.Started;
 end;
 
+function ExpressionTypeVisible: Boolean;
+begin
+  Result := TAtlasIdeExpressionType.Enabled;
+end;
+
+procedure ShowExpressionType;
+begin
+  TAtlasIdeExpressionType.Run;
+end;
+
+function MethodOrderVisible: Boolean;
+begin
+  Result := TAtlasIdeMethodPlacement.Enabled;
+end;
+
+procedure ArrangeMethods;
+begin
+  TAtlasIdeMethodPlacement.Run;
+end;
+
 procedure CompleteStatement;
 begin
   TAtlasIdeStatementCompletion.Run;
@@ -1631,6 +1655,10 @@ begin
     Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugStepFilter.ShowWindow));
   Add('Atlas.StepIntoAnyway', TAtlasTextId.StepFilterStepIntoAnywayCommand,
     Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugStepFilter.StepIntoAnyway), StepFilterRunning);
+  Add('Atlas.ExpressionType', TAtlasTextId.ExpressionTypeCommand,
+    Guarded(TAtlasFeature.ExpressionType, ShowExpressionType), ExpressionTypeVisible);
+  Add('Atlas.MethodOrder', TAtlasTextId.MethodOrderCommand, Guarded(TAtlasFeature.MethodPlacement, ArrangeMethods),
+    MethodOrderVisible);
   // Mehrere Einfügemarken (#589).
   Add('Atlas.MultiCursorNext', TAtlasTextId.MultiCursorNextCommand,
     Guarded(TAtlasFeature.MultiCursor, MultiCursorNext), MultiCursorVisible);
@@ -3106,6 +3134,34 @@ begin
     begin
       MessageLine(AText);
     end);
+  // Typ des markierten Ausdrucks (#689): Tooltip und Hervorhebung; Fehler in der Meldungsansicht.
+  TAtlasIdeExpressionType.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+  // Methodenrümpfe in Deklarationsreihenfolge (#660): neue Rümpfe an ihre Stelle, Befehl mit Vorschau.
+  TAtlasIdeMethodPlacement.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end,
+    function: TAtlasUnopenedPolicy
+    begin
+      Result := TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits);
+    end);
   // Übersichtsleiste an der Scrollleiste (#519).
   // Mit schnellen Lesezeichen (#1104) zeigt die Art „bookmarks“ die Lesezeichen von Atlas.
   TAtlasIdeOverviewRuler.Bookmarks :=
@@ -3168,6 +3224,8 @@ begin
   TAtlasIdeStepInto.Uninstall;
   TAtlasIdeEventBreak.Uninstall;
   TAtlasIdeDebugStepFilter.Uninstall;
+  TAtlasIdeExpressionType.Uninstall;
+  TAtlasIdeMethodPlacement.Uninstall;
   TAtlasIdeSmartPaste.Uninstall;
   TAtlasIdeWrapSelection.Uninstall;
   TAtlasIdeLinkedEditing.Uninstall;
@@ -3837,6 +3895,40 @@ end;
 procedure StartSelectionMatches;
 begin
   SelectionMatches := TAtlasIdeSelectionMatches.Create;
+end;
+
+procedure StartExitPoints;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  TAtlasIdeExitPoints.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end);
+end;
+
+procedure StopExitPoints;
+begin
+  TAtlasIdeExitPoints.Uninstall;
+end;
+
+procedure StartReassigned;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  TAtlasIdeReassigned.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end);
+end;
+
+procedure StopReassigned;
+begin
+  TAtlasIdeReassigned.Uninstall;
 end;
 
 procedure StartCompletionKey;
@@ -4896,6 +4988,30 @@ begin
     begin
       FreeAndNil(SelectionMatches);
     end);
+  // Austrittspunkte hervorheben (#698): nur im normalen Start oder mit Einstellung.
+  Features.AddWanted('ExitPoints',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
+        TAtlasIdeSettings.Current.ExitPoints);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeExitPoints.Installed;
+    end,
+    StartExitPoints, StopExitPoints);
+  // Neu zugewiesene Variablen unterstreichen (#712): nur im normalen Start oder mit Einstellung.
+  Features.AddWanted('Reassigned',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
+        TAtlasIdeSettings.Current.Reassigned);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeReassigned.Installed;
+    end,
+    StartReassigned, StopReassigned);
   Features.AddWanted('CompletionKey',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin

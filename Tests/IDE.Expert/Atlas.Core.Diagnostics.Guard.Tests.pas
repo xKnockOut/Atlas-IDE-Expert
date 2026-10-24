@@ -591,6 +591,10 @@ begin
   Assert.AreEqual('Weg zwischen Symbolen', TAtlasGuard.FeatureName(TAtlasFeature.SymbolPath));
   Assert.AreEqual('Projektaufgaben', TAtlasGuard.FeatureName(TAtlasFeature.Tasks));
   Assert.AreEqual('Debuggen', TAtlasGuard.FeatureName(TAtlasFeature.Debugger));
+  Assert.AreEqual('Austrittspunkte', TAtlasGuard.FeatureName(TAtlasFeature.ExitPoints));
+  Assert.AreEqual('Neu zugewiesene Variablen', TAtlasGuard.FeatureName(TAtlasFeature.Reassigned));
+  Assert.AreEqual('Typ des Ausdrucks', TAtlasGuard.FeatureName(TAtlasFeature.ExpressionType));
+  Assert.AreEqual('Methodenreihenfolge', TAtlasGuard.FeatureName(TAtlasFeature.MethodPlacement));
 end;
 
 procedure TAtlasGuardTests.SlowProviderLogsOncePerInterval;

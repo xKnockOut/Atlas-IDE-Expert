@@ -95,6 +95,12 @@ type
     /// highlight.selectionMatches.*, ohne Kopie des Einstellungsrecords.</summary>
     class function SelectionMatchesOn(out AOptions: TAtlasSelectionMatchOptions; out ANavigateF3: Boolean): Boolean;
       static;
+    /// <summary>Plugin eingeschaltet und Austrittspunkte hervorheben an (#698); die Schalter aus
+    /// editor.exitPoints.*, ohne Kopie des Einstellungsrecords.</summary>
+    class function ExitPointsOn(out AExceptions, ALoops, ABadge: Boolean): Boolean; static;
+    /// <summary>Plugin eingeschaltet und neu zugewiesene Variablen unterstreichen an (#712); Arten, Linie und Farbe
+    /// aus highlight.reassigned.*, ohne Kopie des Einstellungsrecords.</summary>
+    class function ReassignedOn(out ATargets, AStyle, AColor: string): Boolean; static;
     /// <summary>Plugin eingeschaltet und Problem-Markierungen an; ohne Kopie des Einstellungsrecords (P-10).</summary>
     class function ProblemMarksOn: Boolean; static;
     /// <summary>Fehlertext am Zeilenende (#509); Off, wenn das Plugin oder die Problem-Markierungen aus sind.
@@ -414,6 +420,24 @@ begin
   AOptions.MaxMatches := FEffective.SelectionMatchesMaxMatches;
   ANavigateF3 := FEffective.SelectionMatchesNavigateF3;
   Result := FEffective.Enabled and FEffective.SelectionMatches;
+end;
+
+class function TAtlasIdeSettings.ExitPointsOn(out AExceptions, ALoops, ABadge: Boolean): Boolean;
+begin
+  EnsureLoaded;
+  AExceptions := FEffective.ExitPointsExceptions;
+  ALoops := FEffective.ExitPointsLoops;
+  ABadge := FEffective.ExitPointsBadge;
+  Result := FEffective.Enabled and FEffective.ExitPoints;
+end;
+
+class function TAtlasIdeSettings.ReassignedOn(out ATargets, AStyle, AColor: string): Boolean;
+begin
+  EnsureLoaded;
+  ATargets := FEffective.ReassignedTargets;
+  AStyle := FEffective.ReassignedStyle;
+  AColor := FEffective.ReassignedColor;
+  Result := FEffective.Enabled and FEffective.Reassigned;
 end;
 
 class function TAtlasIdeSettings.RecursionMarkersDepth: Integer;

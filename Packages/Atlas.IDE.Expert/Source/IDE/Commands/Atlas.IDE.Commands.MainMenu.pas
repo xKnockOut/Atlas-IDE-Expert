@@ -96,6 +96,8 @@ type
     FGenerateItem: TMenuItem;
     /// <summary>„Formatieren“ (#43), nur mit editor.format.</summary>
     FFormatItem: TMenuItem;
+    /// <summary>„implementation wie Klasse ordnen“ (#660), nur mit editor.methodPlacement.</summary>
+    FMethodOrderItem: TMenuItem;
     /// <summary>„Gliederung …“ (#537), sichtbar nach outline.enabled.</summary>
     FOutlineItem: TMenuItem;
     /// <summary>Untermenü „Notizen und Lesezeichen“ (#545, #622).</summary>
@@ -211,6 +213,7 @@ uses
   Atlas.IDE.Debug.Evaluate,
   Atlas.IDE.Build.CompilerSwitches,
   Atlas.IDE.Commands.Editor,
+  Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Commands.KeyMap,
@@ -225,9 +228,10 @@ uses
 
 const
   // Kennungen der Befehlspalette für die Tastenkürzel-Tipps (#600), je Tag der Einträge.
-  EditorIds: array[0..11] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
+  EditorIds: array[0..12] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
     'Atlas.TypeDefinition', 'Atlas.CopyQualifiedName', 'Atlas.CopyQualifiedNameParams', 'Atlas.ToggleMethod',
-    'Atlas.SwitchTestUnit', 'Atlas.UnitSearch', 'Atlas.UnitSearchIde', 'Atlas.GenerateMenu', 'Atlas.FormatCode');
+    'Atlas.SwitchTestUnit', 'Atlas.UnitSearch', 'Atlas.UnitSearchIde', 'Atlas.GenerateMenu', 'Atlas.FormatCode',
+    'Atlas.MethodOrder');
   ResultsIds: array[0..11] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
     'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow', 'Atlas.CallDiagram',
     'Atlas.Impact', 'Atlas.DataFlowSources', 'Atlas.DataFlowTargets');
@@ -295,6 +299,8 @@ begin
   FGenerateItem := AddItem(TAtlasTextId.GenerateMenuCommand, 10, EditorClick);
   // Formatieren (#43).
   FFormatItem := AddItem(TAtlasTextId.FormatCodeCommand, 11, EditorClick);
+  // Methodenrümpfe wie die Klasse ordnen (#660).
+  FMethodOrderItem := AddItem(TAtlasTextId.MethodOrderCommand, 12, EditorClick);
   // Units suchen (#777).
   AddItem(TAtlasTextId.UnitSearchMenu, 8, EditorClick);
   AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
@@ -714,6 +720,9 @@ begin
   // Formatieren (#43) nach editor.format.
   if FFormatItem <> nil then
     FFormatItem.Visible := TAtlasIdeSettings.Current.FormatCode;
+  // Methodenreihenfolge (#660) nach editor.methodPlacement.
+  if FMethodOrderItem <> nil then
+    FMethodOrderItem.Visible := TAtlasIdeMethodPlacement.Enabled;
   // Gliederung (#537) nach outline.enabled.
   if FOutlineItem <> nil then
     FOutlineItem.Visible := TAtlasIdeSettings.Current.Outline;
@@ -850,6 +859,7 @@ begin
         9: TAtlasIdeUnitSearch.ShowIdeDialog;
         10: TAtlasIdeGenerate.Show;
         11: TAtlasIdeEditorCommands.FormatCode;
+        12: TAtlasGuard.Run(TAtlasFeature.MethodPlacement, TAtlasIdeMethodPlacement.Run);
       else
         TAtlasIdeEditorCommands.CopyQualifiedName(True);
       end;

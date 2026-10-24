@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2547] of string = (
+  Lines: array[0..2573] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1338,6 +1338,14 @@ const
     '          "x-control": "Auswahl",',
     '          "x-issue": "#666"',
     '        },',
+    '        "suggestConst": {',
+    '          "type": "boolean",',
+    '          "default": false,',
+    '          "description": "Glühbirne „Als Konstante deklarieren“ auf einer Variablen, die genau einmal zugewiesen und nie geändert wird: var X := … wird const X = …, eine Variable aus dem var-Abschnitt' +
+      ' mit einer einzigen Zuweisung im Rumpf wird an dieser Stelle eine Inline-Konstante mit ihrem Typ (const X: T = …) und verschwindet aus dem var-Abschnitt. Nur, wenn die Sprachversion Inline-Konstanten ' +
+      'kennt (Delphi 10.3 und neuer). Gegenstück zur Unterstreichung neu zugewiesener Variablen im Plugin (highlight.reassigned).",',
+    '          "x-issue": "#712"',
+    '        },',
     '        "invertBoolean": {',
     '          "type": "boolean",',
     '          "default": true,',
@@ -1488,6 +1496,30 @@ const
     '          "description": "„Namenstabelle anlegen“ schreibt je Element einen resourcestring (übersetzbar) und eine Tabelle array[TTyp] of PResStringRec mit @-Verweisen; lesen mit LoadResString(CTypName' +
       's[X]).",',
     '          "x-issue": "#667"',
+    '        },',
+    '        "varBlock": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen rund um lokale Variablen (Strg+.): „In Inline-Variable umwandeln“ auf einer Variablen des var-Abschnitts (an die erste Zuweisung als var X := …, sonst als var X' +
+      ': T; vor die erste Verwendung, nur ab Delphi 10.3 und nur, wenn alle Verwendungen im selben oder einem inneren Block liegen, nicht in anonymen Methoden), „In var-Block verschieben“ auf einer Inline-Va' +
+      'riablen (Typ bei var X := … aus dem Ausdruck) und „var-Block aufräumen“ im var-Abschnitt (ungenutzte Variablen entfernen, sortieren, gleiche Typen zusammenfassen). Kommentare an Variablen wandern mit.' +
+      '",',
+    '          "x-issue": "#644"',
+    '        },',
+    '        "varBlockMerge": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "„var-Block aufräumen“ fasst aufeinanderfolgende Variablen gleichen Typs zusammen (I, J: Integer). Aus: jede Variable in eine eigene Zeile. Einträge mit Kommentar und Typen oh' +
+      'ne Namen (array of …) bleiben, wie sie sind.",',
+    '          "x-issue": "#644"',
+    '        },',
+    '        "varBlockSort": {',
+    '          "type": "string",',
+    '          "enum": ["usage", "alpha", "none"],',
+    '          "default": "usage",',
+    '          "description": "Reihenfolge nach „var-Block aufräumen“: usage nach der ersten Verwendung in der Routine, alpha alphabetisch, none wie bisher.",',
+    '          "x-control": "Auswahl",',
+    '          "x-issue": "#644"',
     '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',

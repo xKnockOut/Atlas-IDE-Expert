@@ -76,6 +76,13 @@ uses
   Atlas.Common.Lsp.DebugDisplay,
   Atlas.Common.Lsp.EventHandlers,
   Atlas.Common.Lsp.Recursion,
+  Atlas.Common.Lsp.ExitPoints,
+  Atlas.Common.Lsp.Reassigned,
+  Atlas.Common.Lsp.ExpressionType,
+  Atlas.Common.Lsp.MethodOrder,
+  Atlas.Common.Editing.SuggestConst,
+  Atlas.Common.Editing.VarBlock,
+  Atlas.Common.Semantics.ResolvedSignatures,
   Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.SlashMenu,
   Atlas.Common.Editing.SlashCommands,
@@ -439,6 +446,10 @@ type
     function MissingUnitActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
     /// <summary>Suche nach AUnitName im Projekt der Datei AFileName vorbereiten (#550).</summary>
     function MissingUnitSetupFor(const AFileName, AUnitName: string; out ASetup: TMissingUnitSetup): Boolean;
+    /// <summary>„Als Konstante deklarieren“ (#712, refactoring.suggestConst).</summary>
+    function SuggestConstActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>var-Block pflegen (#644, refactoring.varBlock): umwandeln in beide Richtungen, aufräumen.</summary>
+    function VarBlockActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>Extrahieren, „case vervollständigen“ und „with auflösen“ (#50).</summary>
     function RefactoringActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
     /// <summary>Index, Einstellungen, Sprachversion und Formatstil für die Aktionen aus #50.</summary>
@@ -1573,6 +1584,8 @@ begin
       Result := Result + CompilerFixActions(AUri, ARange);
       Result := Result + MissingUnitActions(AUri, ARange);
       Result := Result + DisableWarningActions(AUri, ARange);
+      Result := Result + SuggestConstActions(AUri, ARange.StartPos);
+      Result := Result + VarBlockActions(AUri, ARange.StartPos);
       Result := Result + RefactoringActions(AUri, ARange);
     end;
   FCodeActions.Attach(FDispatcher);
@@ -1785,6 +1798,31 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FRecursion.Execute(AArguments);
+    end);
+  // Austrittspunkte am Cursor für die Hervorhebung im Plugin (#698).
+  FCommands.Register(TLspExitPoints.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TLspExitPoints.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, ReadSourceTextRef,
+        FDocumentHighlights.SettingsFor, AArguments);
+    end);
+  // Neu zugewiesene Variablen für die Unterstreichung im Plugin (#712).
+  FCommands.Register(TLspReassigned.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TLspReassigned.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, AArguments);
+    end);
+  // Typ des markierten Ausdrucks für das Tastenkürzel im Plugin (#689).
+  FCommands.Register(TLspExpressionType.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TLspExpressionType.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, AArguments);
+    end);
+  // Methodenrümpfe in Deklarationsreihenfolge für Befehl und Einfügen im Plugin (#660).
+  FCommands.Register(TLspMethodOrder.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TLspMethodOrder.Execute(FDocuments, AArguments);
     end);
   // Überschreibungen für die Atlas-Spalte der Zeilenleiste (#768).
   FCommands.Register(TLspOverrideMarks.Command,
@@ -4417,6 +4455,110 @@ begin
     raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
   Shared := TSyntaxTreeCache.Get(Document, nil);
   Result := TLspDisableWarning.Execute(AArguments, Document.Text, Shared.Tree, DelphiVersionFor(Uri));
+end;
+
+function TServerComposition.SuggestConstActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Action: TCodeAction;
+  FileName: string;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).SuggestConst or
+    not TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, LanguageLevelFor(AUri)) or
+    not FDocuments.TryGet(AUri, Document) or not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  FileName := TDocumentUris.ToPath(AUri);
+  // Dieselbe Übergabeart von Argumenten wie die Unterstreichung im Plugin (atlas.server.reassigned).
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, FileName);
+    try
+      if TSuggestConst.Action(Document.Text, Shared.Tree, APosition,
+        TResolvedSignatures.Lookup(Resolver, Shared.Tree, FileName), Action) then
+        Result := [TLspCodeActions.ActionToJson(AUri, Action)];
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
+/// <summary>Typ einer Inline-Variablen ohne Typangabe für „In var-Block verschieben“ (#644): dieselbe Ermittlung
+/// wie „Typ ausschreiben“ (#453), samt der uses, die ihn sichtbar machen.</summary>
+function VarBlockTypes(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
+  ALineBreak: string): TVarBlockTypeLookup;
+begin
+  Result :=
+    function(ADecl: TSyntaxNode; out AType: string; out AEdits: TArray<TTextEdit>): Boolean
+    var
+      Found: TInferredType;
+      Action: TCodeAction;
+    begin
+      AType := '';
+      AEdits := nil;
+      Result := False;
+      for Found in TLspInlayHints.Inferred(AResolver, ATree, AFileName, TTextRange.Create(ADecl.StartPos,
+        ADecl.EndPos)) do
+        if not Found.ForIn and TLspInlayHints.ExplicitTypeAction(AResolver, ATree, AFileName, Found.NameStart,
+          ALineBreak, Action) and (Action.Edits <> nil) then
+        begin
+          // Erstes Edit ": Typ", die übrigen ergänzen uses.
+          AType := Copy(Action.Edits[0].NewText, 3, MaxInt);
+          AEdits := Copy(Action.Edits, 1, MaxInt);
+          Exit(True);
+        end;
+    end;
+end;
+
+function TServerComposition.VarBlockActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Settings: TRefactoringSettings;
+  Options: TVarBlockOptions;
+  Action: TCodeAction;
+  FileName, LineBreak: string;
+begin
+  Result := nil;
+  Settings := RefactoringSettingsFor(AUri);
+  if not Settings.VarBlock or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  FileName := TDocumentUris.ToPath(AUri);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, FileName);
+    try
+      Options := TVarBlockOptions.Default;
+      Options.InlineVariables := TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable,
+        LanguageLevelFor(AUri));
+      Options.Merge := Settings.VarBlockMerge;
+      Options.Sort := TVarBlock.SortOf(Settings.VarBlockSort);
+      Options.Style := ResolvedFormatStyleFor(AUri);
+      Options.Lookup := TResolvedSignatures.Lookup(Resolver, Shared.Tree, FileName);
+      LineBreak := #10;
+      if Pos(#13#10, Document.Text) > 0 then
+        LineBreak := #13#10;
+      Options.Types := VarBlockTypes(Resolver, Shared.Tree, FileName, LineBreak);
+      for Action in TVarBlock.Actions(Document.Text, Shared.Tree, APosition, Options) do
+        Result := Result + [TLspCodeActions.ActionToJson(AUri, Action)];
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
 end;
 
 function TServerComposition.RefactoringContextFor(const AUri: string): TRefactoringContext;

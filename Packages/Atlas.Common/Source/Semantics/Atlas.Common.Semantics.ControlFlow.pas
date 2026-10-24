@@ -128,6 +128,7 @@ type
     FExit: TFlowNode;
     FRaiseExit: TFlowNode;
     FComplete: Boolean;
+    FFallThrough: TArray<TFlowNode>;
     FDominators: TArray<TArray<Boolean>>;
     procedure ComputeDominators;
   public
@@ -159,6 +160,9 @@ type
     property RaiseExit: TFlowNode read FRaiseExit;
     /// <summary>False bei asm oder Syntaxfehlern in der Routine.</summary>
     property Complete: Boolean read FComplete;
+    /// <summary>Letzte Knoten der Wege, die am Ende des Rumpfs herausfallen (ohne Exit, Halt oder raise); sie
+    /// führen direkt zu ExitNode. Leer, wenn jeder Weg vorher springt (#698).</summary>
+    property FallThrough: TArray<TFlowNode> read FFallThrough;
   end;
 
 implementation
@@ -1252,6 +1256,7 @@ begin
   if ContainsError(Body) then
     FGraph.FComplete := False;
   Ends := Statement(Body, [FGraph.FEntry]);
+  FGraph.FFallThrough := Ends;
   LinkAll(Ends, FGraph.FExit);
   Resolve(FExitTarget, FGraph.FExit);
   Resolve(FRaiseTarget, FGraph.FRaiseExit);

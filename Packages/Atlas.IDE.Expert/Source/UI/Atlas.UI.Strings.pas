@@ -932,7 +932,26 @@ type
     // Aufzählung mit Namenstabelle (#667).
     EnumTableTitle, EnumTablePrompt, EnumTableFailed, EnumTableNothing, EnumTablesPreviewHint, EnumTableApply,
     EnumTableDone, EnumTablesWarning, EnumTablesSyncTitle, EnumTablesSyncFailed, EnumTablesSyncNothing,
-    EnumTablesSyncApply, EnumTablesSyncDone);
+    EnumTablesSyncApply, EnumTablesSyncDone,
+    // Austrittspunkte hervorheben (#698): Optionsseite, Marke, Element.
+    SettingsExitPoints, SettingsExitPointsExceptions, SettingsExitPointsLoops, SettingsExitPointsBadge,
+    ExitPointsOne, ExitPointsCount, ExitPointsResultMissing, ElementExitPoints, ElementExitPointsPlural,
+    // Neu zugewiesene Variablen (#712): Optionsseite, Hover, Element.
+    SettingsReassigned, SettingsReassignedLocals, SettingsReassignedLoopVars, SettingsReassignedValueParams,
+    SettingsReassignedVarParams, SettingsReassignedFields, SettingsReassignedStyle, SettingsReassignedStyleDotted,
+    SettingsReassignedStyleSolid, SettingsReassignedStyleWavy, SettingsReassignedColor, ReassignedOne,
+    ReassignedCount, ElementReassigned, ElementReassignedPlural,
+    // Typ des markierten Ausdrucks (#689): Befehl, Optionsseite, Tooltip.
+    ExpressionTypeCommand, SettingsExpressionType, SettingsExpressionTypeConversions,
+    SettingsExpressionTypeConstValue, ExpressionTypeValue, ExpressionTypeWiden, ExpressionTypeConvert,
+    ExpressionTypeOverload, ExpressionTypeNoExpression, ExpressionTypeUnknownName, ExpressionTypeOperator,
+    ExpressionTypeOperatorUnary, ExpressionTypeNoResult, ExpressionTypeUnknown, ExpressionTypeExpand,
+    ExpressionTypeFailed, ExpressionTypeGoTo,
+    // Methodenrümpfe in Deklarationsreihenfolge (#660): Befehl, Vorschau, Meldungen, Optionsseite.
+    MethodOrderCommand, MethodOrderTitle, MethodOrderHint, MethodOrderApply, MethodOrderNothing, MethodOrderOff,
+    MethodOrderDone, MethodOrderFailed, MethodOrderUp, MethodOrderDown, MethodOrderStays, MethodOrderRegion,
+    MethodOrderConditional, MethodOrderSharedLine, SettingsMethodPlacement, SettingsMethodPlacementDeclaration,
+    SettingsMethodPlacementAlphabetical, SettingsMethodPlacementOff);
 
   TAtlasStrings = class
   private class var
@@ -3217,7 +3236,28 @@ const
      'Tabellen nachziehen fehlgeschlagen: %s',
      'Tabellen nachziehen: Alle Tabellen und case-Anweisungen passen schon.',
      'Nachziehen',
-     'Tabellen nachgezogen: %d Änderungen in %d Dateien'),
+     'Tabellen nachgezogen: %d Änderungen in %d Dateien',
+     'Austrittspunkte hervorheben', 'Auf except/on die auslösenden Aufrufe zeigen',
+     'Auf Break/Continue die Schleife zeigen', 'Marke mit der Anzahl am Routinenkopf',
+     '1 Austritt', '%d Austritte', 'Result fehlt auf einem Weg',
+     'Hervorhebung der Austrittspunkte', 'Hervorhebungen der Austrittspunkte',
+     'Neu zugewiesene Variablen unterstreichen', 'Lokale Variablen', 'Schleifenzähler', 'Wertparameter',
+     'var- und out-Parameter', 'Felder, die nur eine Methode schreibt', 'Linie', 'gepunktet', 'durchgezogen',
+     'Welle', 'Farbe (theme oder #RRGGBB)', 'Einmal neu zugewiesen (Zeile %s)',
+     'Neu zugewiesen: %d Zuweisungen (Zeilen %s)', 'Unterstreichung einer neu zugewiesenen Variablen',
+     'Unterstreichungen neu zugewiesener Variablen',
+     'Typ des Ausdrucks', 'Typ des markierten Ausdrucks anzeigen', 'Implizite Umwandlungen nennen',
+     'Wert konstanter Ausdrücke zeigen', '= %s', '%s: %s wird zu %s erweitert', '%s: %s wird zu %s umgewandelt',
+     'Überladung: %s', 'Kein Ausdruck an dieser Stelle', 'Kein Typ: unbekannter Name %s',
+     'Kein Typ: %s passt nicht zu %s und %s', 'Kein Typ: %s passt nicht zu %s', 'Kein Typ: %s liefert keinen Wert',
+     'Kein Typ: %s nicht auflösbar', '%s erneut: umschließender Ausdruck', 'Typ des Ausdrucks: %s',
+     'Klick: zur Deklaration von %s',
+     'implementation wie Klasse ordnen', 'Methoden ordnen',
+     '%d Methoden wandern an die Stelle ihrer Deklaration, %d bleiben stehen.', 'Ordnen',
+     'Die Methoden stehen schon in der Reihenfolge der Klasse.',
+     'Methodenreihenfolge ist abgeschaltet (editor.methodPlacement = off).', '%d Methoden verschoben.',
+     'Methoden ordnen fehlgeschlagen: %s', '↑ %d', '↓ %d', 'bleibt: %s', 'in einer Region', 'in einem {$IFDEF}',
+     'teilt eine Zeile mit anderem Code', 'Methodenrümpfe ordnen', 'wie die Deklaration', 'alphabetisch', 'aus'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -5388,7 +5428,28 @@ const
      'Updating the tables failed: %s',
      'Update tables: all tables and case statements already match.',
      'Update',
-     'Tables updated: %d changes in %d files'));
+     'Tables updated: %d changes in %d files',
+     'Highlight exit points', 'On except/on, show the calls that raise',
+     'On Break/Continue, show the loop', 'Badge with the count at the routine header',
+     '1 exit', '%d exits', 'Result missing on a path',
+     'exit point highlight', 'exit point highlights',
+     'Underline reassigned variables', 'Local variables', 'Loop counters', 'Value parameters',
+     'var and out parameters', 'Fields written by one method only', 'Line', 'dotted', 'solid',
+     'wavy', 'Color (theme or #RRGGBB)', 'Reassigned once (line %s)',
+     'Reassigned: %d assignments (lines %s)', 'reassigned variable underline',
+     'reassigned variable underlines',
+     'Expression type', 'Show type of the selected expression', 'Name implicit conversions',
+     'Show value of constant expressions', '= %s', '%s: %s is widened to %s', '%s: %s is converted to %s',
+     'Overload: %s', 'No expression here', 'No type: unknown name %s',
+     'No type: %s does not fit %s and %s', 'No type: %s does not fit %s', 'No type: %s returns no value',
+     'No type: cannot resolve %s', '%s again: enclosing expression', 'Expression type: %s',
+     'Click: go to declaration of %s',
+     'Order implementation like class', 'Order methods',
+     '%d methods move to the position of their declaration, %d stay.', 'Order',
+     'The methods are already in class order.',
+     'Method order is switched off (editor.methodPlacement = off).', '%d methods moved.',
+     'Ordering methods failed: %s', '↑ %d', '↓ %d', 'stays: %s', 'inside a region', 'inside an {$IFDEF}',
+     'shares a line with other code', 'Order method bodies', 'like the declaration', 'alphabetically', 'off'));
 
 { TAtlasStrings }
 

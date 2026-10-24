@@ -254,7 +254,6 @@ type
     function ResolveNames(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
       AOffset: Integer; AInherited: Boolean; AReceiver, ACall: TSyntaxNode): TArray<TResolvedSymbol>;
     function ResolveAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition): TArray<TResolvedSymbol>;
-    function TypeOf(const AResolved: TResolvedSymbol; out AType: TResolvedSymbol): Boolean;
     /// <summary>Im Typ AOuter selbst deklarierter Typ AName, ohne Sichtbarkeitsprüfung (Pfad im Methodenkopf).</summary>
     function NestedType(const AOuter: TResolvedSymbol; const AName: string; out AResult: TResolvedSymbol): Boolean;
     function IsAttributeClass(const AType: TResolvedSymbol): Boolean;
@@ -288,6 +287,9 @@ type
   public
     constructor Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc = nil);
     destructor Destroy; override;
+    /// <summary>Typ eines aufgelösten Namens, Aliase verfolgt (Typen sind ihr eigener Typ, TFoo.Create ein TFoo);
+    /// im Rahmen der zuletzt vorbereiteten Stelle (#689 nutzt es für den Grundtyp eines Alias).</summary>
+    function TypeOf(const AResolved: TResolvedSymbol; out AType: TResolvedSymbol): Boolean;
     /// <summary>Direkter Vorfahr eines Typs (ohne Angabe TObject bzw. IInterface); False ohne oder bei Helfern.</summary>
     function AncestorOf(const AType: TResolvedSymbol; out AAncestor: TResolvedSymbol): Boolean;
     /// <summary>Vorfahr-Helfer eines Helfers (class helper (TBaseHelper) for T, #848); False ohne.</summary>

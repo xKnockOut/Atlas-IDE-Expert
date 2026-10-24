@@ -77,7 +77,11 @@ type
     /// <summary>Marker der schnellen Lesezeichen links der Zeilennummern (#1104).</summary>
     QuickBookmarks,
     /// <summary>Marke „ohne Self“ hinter Methoden, die Self nicht brauchen (#686).</summary>
-    InlayMethodHints);
+    InlayMethodHints,
+    /// <summary>Hervorgehobene Austrittspunkte samt Marke am Routinenkopf (#698).</summary>
+    ExitPoints,
+    /// <summary>Unterstreichung neu zugewiesener Variablen (#712).</summary>
+    Reassigned);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -208,6 +212,12 @@ begin
       Result := Make(AElement, 'QuickBookmarksGutter', AllScopes, False, True);
     TAtlasDrawnElement.InlayMethodHints:
       Result := Make(AElement, 'InlayMethodHints', AllScopes, True, False);
+    // Nur solange der Cursor steht; Ausblenden je Datei oder überall an der Marke.
+    TAtlasDrawnElement.ExitPoints:
+      Result := Make(AElement, 'ExitPoints', FileScopes, True, False);
+    // Je Datei oder überall an einer Unterstreichung.
+    TAtlasDrawnElement.Reassigned:
+      Result := Make(AElement, 'Reassigned', FileScopes, True, False);
   else
     Result := Make(AElement, '', [], False, False);
   end;

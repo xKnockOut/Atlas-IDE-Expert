@@ -358,6 +358,8 @@ begin
       Id := TAtlasTextId.PreviousBookmarkCommand;
     TAtlasKeyFunction.StepIntoTarget:
       Id := TAtlasTextId.StepIntoTargetCommand;
+    TAtlasKeyFunction.ExpressionType:
+      Id := TAtlasTextId.ExpressionTypeCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

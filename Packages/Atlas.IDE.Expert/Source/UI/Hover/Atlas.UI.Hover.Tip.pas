@@ -438,6 +438,8 @@ begin
   Result.DebugPending := TAtlasStrings.Text(TAtlasTextId.HoverDebugPending);
   Result.DebugExplaining := TAtlasStrings.Text(TAtlasTextId.HoverDebugExplaining);
   Result.DebugChecked := TAtlasStrings.Text(TAtlasTextId.HoverDebugChecked);
+  Result.ReassignedOne := TAtlasStrings.Text(TAtlasTextId.ReassignedOne);
+  Result.ReassignedCount := TAtlasStrings.Text(TAtlasTextId.ReassignedCount);
   Result.PublishedSummary := TAtlasStrings.Text(TAtlasTextId.PublishedSummary);
   Result.PublishedInherited := TAtlasStrings.Text(TAtlasTextId.PublishedInherited);
   Result.PublishedOnlyDefaults := TAtlasStrings.Text(TAtlasTextId.PublishedOnlyDefaults);
