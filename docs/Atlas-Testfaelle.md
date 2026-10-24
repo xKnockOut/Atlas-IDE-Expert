@@ -6223,3 +6223,90 @@ Voraussetzung: Server läuft in der IDE mit Projekt; im Projektordner `docs/adr/
 | BG11 | Claude Code: `get_declaration` für die Methode aus BG1; `get_rationale` mit `unit` und mit `name` | Abschnitt „Begründungen:“ mit `- WHY (Zeile n): …` und `- HACK (Zeile m): …`; `get_rationale` listet Unit-Einträge und alle Symbole mit Datei:Zeile |
 | BG12 | `"hints": {"rationale": false}` | Kein Abschnitt BEGRÜNDUNG im Hover, keiner in `get_declaration`; `get_rationale` liefert weiter; mit `"mcp": {"disabledTools": ["get_rationale"]}` fehlt das Werkzeug |
 | BG13 | Server mit altem Index-Cache (Format 26) starten | Cache wird verworfen und neu aufgebaut, danach erscheinen die Begründungen ohne Neuindizieren von Hand |
+
+## Harte Umwandlung zwischen nicht verwandten Klassen (#1129)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index (VCL-Quellen indiziert).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HU1 | Das Beispiel aus #1129: `mEdit := Sender as TEdit; TButton(mEdit).Caption := 'OK';` | Warnung `unrelated-class-cast` an `TButton(mEdit)`: „TEdit und TButton sind nicht verwandt: Die Umwandlung zeigt auf ein Objekt mit anderem Aufbau.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| HU2 | Schnellkorrektur „In (mEdit as TButton) umwandeln“, danach Strg+Z | `(mEdit as TButton).Caption := 'OK';`, keine Meldung mehr; ein Undo-Schritt. `mButton := TButton(mEdit);` wird zu `mButton := mEdit as TButton;` (ohne Klammern) |
+| HU3 | `TButton(Sender)`, `TButton(mControl)` mit `mControl: TControl`, `TControl(mButton)` | Keine Meldung (TObject als Quelle, verwandte Klassen) |
+| HU4 | `TButton(mPointer)`, `TButton(mIntf)` mit einem Interface, `TControlClass(mEditClass)` | Keine Meldung |
+| HU5 | Zugriffsklasse `THackControl = class(TControl) end;` und `THackControl(mButton).Click`; danach ein Feld in `THackControl` ergänzen | Ohne Feld keine Meldung (gleicher Aufbau); mit Feld Meldung „TButton und THackControl sind nicht verwandt …“ |
+| HU6 | `"unrelated-class-cast": {"allowTypes": ["TEdit=TButton"]}` in atlas.json | Beispiel aus HU1 meldet nichts mehr; `TEdit(mButton)` weiterhin |
+| HU7 | Klasse mit Vorfahr aus einer Unit, die nicht im Index steht | Keine Meldung (Kette unbekannt) |
+| HU8 | `"unrelated-class-cast": "off"`, `"group:find-bugs": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden | Keine Meldung; die Regel steht mit Schalter, Schweregrad und der Option `allowTypes` in der Gruppe |
+
+## Schleife läuft höchstens einmal (#1131)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SE1 | Das Beispiel aus #1131: `for mKunde in FKunden do begin if mKunde.Id = AId then Result := mKunde; Exit; end;` | Warnung `loop-runs-at-most-once` an `for`: „Jeder Durchlauf endet mit Exit: Die Schleife prüft nur das erste Element von FKunden. Gehört Exit in den if-Zweig?“; im Fenster „Atlas-Prüfung“ und im Befund-Hover; keine Schnellkorrektur (**Abnahme**) |
+| SE2 | `Exit` in den if-Zweig verschieben (`begin Result := mKunde; Exit; end`) | Meldung verschwindet |
+| SE3 | `for I := 0 to 9 do begin Inc(N); Break; end;`, `while N > 0 do raise …`, `repeat … Fehler; until …` mit einer Routine `Fehler`, die immer auslöst | Je eine Meldung („läuft höchstens einmal“ bzw. bei repeat „läuft genau einmal“) |
+| SE4 | if mit else und Sprung in beiden Zweigen; `case` mit else und Exit in allen Zweigen | Meldung „… endet mit einem Sprung …“ bei verschiedenen Sprüngen |
+| SE5 | Continue im Rumpf, Break nur in einer inneren Schleife, Exit nur in einer anonymen Methode, `try Exit; except Inc(N); end`, `TMonitor.Enter/Exit` im try … finally, `{$IFDEF}` um den Sprung | Keine Meldung |
+| SE6 | `"loop-runs-at-most-once": {"allowFirstElement": true}`; `for mKunde in FKunden do begin Result := mKunde; Exit; end;` und das Beispiel aus SE1 | Erstes still, SE1 weiterhin gemeldet (die Bedingung liest mKunde). Im Atlas-Repo ist die Option an: keine Meldung in den Quellen |
+| SE7 | `"loop-runs-at-most-once": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden | Keine Meldung; die Regel steht mit Schalter, Schweregrad und der Option `allowFirstElement` in der Gruppe |
+
+## Formatstring und Argumente (#56)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FA1 | Das Beispiel aus #56: `S := Format('%d', [Name]);` mit `Name: string` | Fehler `format-args` an `Name`: „%d erwartet eine Ganzzahl, Name ist vom Typ string: EConvertError zur Laufzeit.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover; keine Schnellkorrektur (**Abnahme**) |
+| FA2 | `Format('%s', [Name])`, `Format(Fmt, [Name])` mit einer Variablen `Fmt`, `Format('%0:s %0:s', [A])` | Keine Meldung (**Abnahme**) |
+| FA3 | `Format('Wert %q', [N])`, `Format('100%', [])`, `Format('Breite %5', [N])`, `Format('%0:', [N])` | Je „Ungültiger Formatstring: …“ am Formatstring |
+| FA4 | `Format('%s hat %d', [Name])`; `Format('%s', [Name, N])` | Erstes: „braucht 2 Argumente, die Liste hat 1“; zweites mit mittlerer Sicherheit: „Argument 2 (N) kommt im Formatstring nicht vor …“ |
+| FA5 | `Format('%d', [AArt])` mit einer Aufzählung, `Format('%d', [AAktiv])` mit Boolean, `Format('%*d', [Name, N])` | Meldungen mit „Ord(AArt) übergeben.“, „BoolToStr(AAktiv, True) übergeben.“ bzw. „Das * in %*d erwartet eine Ganzzahl …“ |
+| FA6 | Formatstring als `const cZeile = cKopf + '%s: %d';` bzw. `resourcestring rsFehler = 'Fehler %d';` in derselben Unit und in einer anderen Unit des Projekts | Wie FA1 und FA4 geprüft |
+| FA7 | `raise EImport.CreateFmt('Zeile %d', [Name])`, `FmtStr(S, '%d', [Name])`; eine eigene Funktion `Format(const AText: string; const AWerte: array of const)` in der Unit | Die ersten beiden gemeldet, die eigene Funktion still |
+| FA8 | `"format-args": {"formatMethods": ["TLogger.LogFmt"]}`; `Log.LogFmt('%d', [Name])` | Erst mit der Option gemeldet |
+| FA9 | `"format-args": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden; `Format('%.2f', [X])` ohne TFormatSettings | Keine Meldung; die Regel steht mit Schalter, Schweregrad und der Option `formatMethods` in der Gruppe; `format-without-settings` meldet weiterhin |
+## Adresse des ersten Zeichens (#1130)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index (RTL-Quellen indiziert).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EZ1 | Das Beispiel aus #1130: `procedure Senden(const AText: string);` mit `WriteBuffer(@AText[1], Length(AText) * SizeOf(Char));` | Warnung `first-char-address` an `@AText[1]`: „Bei leerem AText löst @AText[1] mit Bereichsprüfung einen Fehler aus. PChar(AText) ist auch für leere Strings sicher.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| EZ2 | Schnellkorrektur „Durch PChar(AText) ersetzen“, danach Strg+Z | `WriteBuffer(PChar(AText), …)`; ein Undo-Schritt. `PChar(@AText[1])` und `Pointer(@AText[1])` werden als Ganzes zu `PChar(AText)` bzw. `Pointer(AText)` |
+| EZ3 | `@AText[Low(AText)]`; `const A: AnsiString` bzw. `RawByteString` mit `@A[1]` | Gemeldet; bei AnsiString-Typen lautet die Korrektur `PAnsiChar(A)` |
+| EZ4 | `@AText[2]`, `@AKurz[1]` mit `ShortString`, `@ABytes[0]` mit `TBytes`, `PChar(AText)` | Keine Meldung |
+| EZ5 | Lokale Variable bzw. `var`-Parameter: `@mText[1]` | Meldung „… Zum Lesen ist PChar(mText) auch für leere Strings sicher, zum Schreiben vorher UniqueString(mText).“, keine Schnellkorrektur |
+| EZ6 | Projekt mit `{$R+}`: `@AText[1]` mit leerem `AText` ausführen | Laufzeitfehler ERangeError bestätigt die Meldung; mit `PChar(AText)` keiner |
+| EZ7 | `"first-char-address": "off"`, `"group:find-bugs": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden | Keine Meldung; die Regel steht mit Schalter und Schweregrad in der Gruppe |
+
+## Überflüssige Typumwandlung (#1139)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index (RTL-Quellen indiziert).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UT1 | Das Beispiel aus #1139: Felder `FZeilen: TStringList; FStrom: TFileStream;` und in einer Methode `TStringList(FZeilen).Clear; TObject(FStrom).Free;` | Hinweis `redundant-cast` an `TStringList(FZeilen)`: „FZeilen ist schon TStringList: Die Umwandlung ist überflüssig.“ und an `TObject(FStrom)`: „Free ruft den virtuellen Destruktor: Die Umwandlung von FStrom nach TObject ist überflüssig.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| UT2 | Schnellkorrektur „Umwandlung entfernen“ an beiden, danach Strg+Z | `FZeilen.Clear; FStrom.Free;`; je ein Undo-Schritt. `(FZeilen as TStringList).Clear` wird zu `FZeilen.Clear` (Klammern fallen mit weg) |
+| UT3 | `mZahl: Integer; mZahl := Integer(mZahl);` und `mText := string(mText);` | Beide gemeldet |
+| UT4 | `type TFarbe = Integer;` mit `Integer(mFarbe)`; `Byte(mZahl)`; `Integer(cGrenze)` mit einer untypisierten Konstante | Keine Meldung |
+| UT5 | `Assert.AreEqual(2, Integer(mListe.Count))` und eine eigene überladene Prozedur `Zeigen(Integer)`/`Zeigen(Int64)` mit `Zeigen(Integer(mZahl))` | Keine Meldung (die Umwandlung kann die Überladung wählen); mit einer nicht überladenen Prozedur gemeldet |
+| UT6 | `TObject(mZeiger).Free` mit `mZeiger: Pointer`; Klasse mit eigener Methode `Free` und `TBasis(mEigen).Free` | Keine Meldung |
+| UT7 | `"redundant-cast": {"checkFree": false}` in atlas.json; Seite Prüfregeln › Stil | `TObject(FStrom).Free` meldet nichts mehr, `TStringList(FZeilen)` weiterhin; die Regel steht mit Schalter, Schweregrad und der Option `checkFree` in der Gruppe |
+| UT8 | `"redundant-cast": "off"` bzw. `exclude` | Keine Meldung |
+
+## Verbotenes Symbol (#1133)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index (RTL-Quellen indiziert).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VB1 | In atlas.json `"forbidden-symbol": {"symbols": [{"name": "System.Write*", "kind": "routine", "message": "Nur über ILogger"}]}`; in einer Methode `Writeln(AText);` | Warnung `forbidden-symbol` an `Writeln`: „Writeln ist in diesem Projekt verboten: Nur über ILogger (atlas.json › forbidden-symbol).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| VB2 | Eigene Methode `procedure Writeln(const AText: string);` in der Klasse und Aufruf `Writeln('x')` darin | Keine Meldung (aufgelöst als eigene Methode) |
+| VB3 | Eintrag `{"name": "System.SysUtils.FileExists", "replacement": "TFile.Exists"}`; `if FileExists(mName) then` und `System.SysUtils.FileExists(mName)` | Beide gemeldet; Schnellkorrektur „Durch TFile.Exists ersetzen“ ersetzt den ganzen Namen, Strg+Z nimmt sie in einem Schritt zurück |
+| VB4 | Eintrag `{"name": "Vcl.Forms.TApplication.ProcessMessages", "severity": "error"}`; `Application.ProcessMessages;` in einer Schleife | Fehler an `Application.ProcessMessages` |
+| VB5 | Eintrag `{"name": "System.Classes.TThread.*Queue", "firstArgument": ["nil"], "units": ["Atlas.IDE.*"]}`; `TThread.Queue(nil, P)` und `TThread.Queue(Self, P)` in einer Unit `Atlas.IDE.X` und in `Atlas.Common.X` | Nur `TThread.Queue(nil, P)` in `Atlas.IDE.X` gemeldet; mit `// lsp-ignore: forbidden-symbol` am Zeilenende keine Meldung |
+| VB6 | Eintrag `{"name": "System.Writeln", "allowFirstArgument": ["ErrOutput", "TextFile"]}`; `Writeln(ErrOutput, 'x')`, `Writeln(mLog, 'x')` mit `mLog: TextFile`, `Writeln('x')` | Nur `Writeln('x')` gemeldet |
+| VB7 | Arten: `kind` `type` (`var mListe: TList;`), `constant`, `field`, `property`, `enumValue` (`clRed`), `identifier` (Name ohne Auflösung) | Je ein Treffer an der Verwendung; Deklarationen gleichnamiger eigener Symbole und Werte einer eigenen Aufzählung bleiben still |
+| VB8 | Tools › Optionen › Atlas › Prüfregeln › Architektur › „Verbotenes Symbol verwendet“: Schalter an, Schweregrad Warnung, in der Tabelle „symbols“ eine Zeile `System.Writeln` / `routine` / `Nur über ILogger` eintragen, unten erscheint eine leere Zeile; danach eine Zeile leeren | atlas.json enthält `"symbols": [{"name": "System.Writeln", "kind": "routine", "message": "Nur über ILogger"}]`; die Spalten `units`, `firstArgument` und `allowFirstArgument` nehmen Listen mit „;“; die geleerte Zeile fällt weg, ohne Zeilen entfällt `symbols` (**Abnahme**) |
+| VB9 | Ohne `symbols` bzw. mit `[]`; `"forbidden-symbol": "off"`; Profil strict | Ohne Liste keine Meldung; aus keine Meldung; im Profil strict ist die Regel an |
+| VB10 | Atlas-Repo selbst öffnen (seine atlas.json verbietet Write/Writeln, GetStdHandle(STD_OUTPUT_HANDLE) und TThread.Queue/ForceQueue(nil, …) im Plugin) | Keine Meldung in den Quellen; eine eingefügte Zeile `TThread.Queue(nil, nil);` in einer Unit unter `Packages/Atlas.IDE.Expert/Source` wird als Fehler gemeldet, ebenso von `pwsh Tools/Check-MainThreadQueue.ps1` |
+

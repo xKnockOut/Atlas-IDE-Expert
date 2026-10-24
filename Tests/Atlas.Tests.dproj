@@ -110,6 +110,7 @@
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.OrdinalConstants.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ConstantValues.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ConditionalBranches.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.FormatStrings.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.DirectiveNames.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.PureRoutines.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.Tests.pas"/>
@@ -217,6 +218,10 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.ProjectFiles.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Naming.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Casts.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.StringAddress.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.FormatArgs.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.ForbiddenSymbols.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.UnitLookup.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas"/>
@@ -282,6 +287,7 @@
         <DCCReference Include="Support\Atlas.Tests.SlashHost.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Engine.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Derived.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.TypedScope.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.ManagedTypes.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.GoldenCorpus.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Profiles.Tests.pas"/>

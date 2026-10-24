@@ -25,11 +25,21 @@ type
   TRuleGroup = (FindBugs, Exceptions, Threads, Database, Compiler, Robustness, Performance, Security, Components,
     Forms, Architecture, Style, Packages, Internal);
 
+  /// <summary>Spalte einer Option der Art "object-list" (#1133): Schlüssel der Objekte.</summary>
+  TRuleOptionColumn = record
+    Name: string;
+    /// <summary>Der Wert ist eine Liste von Texten.</summary>
+    List: Boolean;
+  end;
+
   /// <summary>Eine Option einer Regel in "rules.&lt;id&gt;" (#909).</summary>
   TRuleOption = record
     Name: string;
-    /// <summary>"integer", "boolean", "string", "string-list", "number-list" (#937) oder "json".</summary>
+    /// <summary>"integer", "boolean", "string", "string-list", "number-list" (#937), "object-list" (#1133) oder
+    /// "json".</summary>
     Kind: string;
+    /// <summary>Nur "object-list": Spalten der Tabelle in der Reihenfolge der Seite Prüfregeln.</summary>
+    Columns: TArray<TRuleOptionColumn>;
     /// <summary>Vorgabe als JSON-Text, z. B. 60, ["TODO"] oder "".</summary>
     DefaultJson: string;
     Description: string;
@@ -105,7 +115,8 @@ const
   CategoryNames: array[TRuleCategory] of string = ('bug', 'vulnerability', 'code-smell', 'security-hotspot');
   GroupNames: array[TRuleGroup] of string = ('find-bugs', 'exceptions', 'threads', 'database', 'compiler',
     'robustness', 'performance', 'security', 'components', 'forms', 'architecture', 'style', 'packages', 'internal');
-  OptionKinds: array[0..5] of string = ('integer', 'boolean', 'string', 'string-list', 'number-list', 'json');
+  OptionKinds: array[0..6] of string = ('integer', 'boolean', 'string', 'string-list', 'number-list', 'object-list',
+    'json');
 
 var
   SharedLock: TCriticalSection;
@@ -134,6 +145,27 @@ begin
     Result := TJSONString(Value).Value
   else
     Result := '';
+end;
+
+/// <summary>Spalten "columns" einer Option der Art "object-list" (#1133).</summary>
+function ColumnsOf(AItem: TJSONObject; const AId, AName: string): TArray<TRuleOptionColumn>;
+var
+  mValue, mItem, mList: TJSONValue;
+  mColumn: TRuleOptionColumn;
+begin
+  Result := nil;
+  mValue := AItem.GetValue('columns');
+  if not (mValue is TJSONArray) or (TJSONArray(mValue).Count = 0) then
+    raise ERuleCatalog.CreateFmt('Regelkatalog: Option "%s" von "%s" braucht "columns"', [AName, AId]);
+  for mItem in TJSONArray(mValue) do
+  begin
+    if not (mItem is TJSONObject) or (StringOf(TJSONObject(mItem), 'name') = '') then
+      raise ERuleCatalog.CreateFmt('Regelkatalog: Spalte von "%s" in "%s" ohne "name"', [AName, AId]);
+    mColumn.Name := StringOf(TJSONObject(mItem), 'name');
+    mList := TJSONObject(mItem).GetValue('list');
+    mColumn.List := (mList is TJSONBool) and TJSONBool(mList).AsBoolean;
+    Result := Result + [mColumn];
+  end;
 end;
 
 function OptionsOf(AItem: TJSONObject; const AId: string): TArray<TRuleOption>;
@@ -166,6 +198,8 @@ begin
         Known := True;
     if not Known then
       raise ERuleCatalog.CreateFmt('Regelkatalog: Option "%s" von "%s" hat keinen gültigen Typ', [Option.Name, AId]);
+    if Option.Kind = 'object-list' then
+      Option.Columns := ColumnsOf(TJSONObject(Item), AId, Option.Name);
     DefaultValue := TJSONObject(Item).GetValue('default');
     if DefaultValue <> nil then
       Option.DefaultJson := DefaultValue.ToJSON;

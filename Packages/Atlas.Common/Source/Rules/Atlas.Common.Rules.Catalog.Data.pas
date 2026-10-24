@@ -233,6 +233,60 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "forbidden-symbol",' + #10 +
+    '      "name": "Forbidden symbol used",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "architecture",' + #10 +
+    '      "description": "A list under \"symbols\" in atlas.json forbids routines, types, constants, fields, properties, enum values or identifiers, each with a message and a replacement. Matching uses na' +
+    'me resolution, not text: System.SysUtils.FileExists also hits FileExists, but not an own method of the same name. An entry may shorten the name from a dot boundary (TThread.Queue) and contain *. Ident' +
+    'ifiers of System without source (Writeln, Halt) count as System.<Name>. If the left part of a qualified name cannot be resolved at all (unit not indexed), the written name is compared with the end of ' +
+    'the entry. Per entry: kind (routine, type, constant, field, property, enumValue, identifier = by name without resolution), message, replacement, severity, units (unit name globs, \"!\" excludes), firs' +
+    'tArgument (only with this first argument, e.g. nil) and allowFirstArgument (allowed with this first argument, e.g. ErrOutput); both compare the argument text or the name of its type (TextFile). Off by' +
+    ' default and silent without a list; on in the strict profile. High confidence. Quick fix: replace with the configured replacement.",' + #10 +
+    '      "bad": "// atlas.json: \"forbidden-symbol\": {\"symbols\": [{\"name\": \"System.Write*\", \"kind\": \"routine\", \"message\": \"Only via ILogger\"}]}\nprocedure TImport.Report(const AText: strin' +
+    'g);\nbegin\n  Writeln(AText);\nend;",' + #10 +
+    '      "good": "procedure TImport.Report(const AText: string);\nbegin\n  FLogger.Info(AText);\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "symbols",' + #10 +
+    '          "type": "object-list",' + #10 +
+    '          "columns": [' + #10 +
+    '            {' + #10 +
+    '              "name": "name"' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "kind"' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "message"' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "replacement"' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "severity"' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "units",' + #10 +
+    '              "list": true' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "firstArgument",' + #10 +
+    '              "list": true' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "allowFirstArgument",' + #10 +
+    '              "list": true' + #10 +
+    '            }' + #10 +
+    '          ],' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Table of forbidden symbols, one object per entry: name (qualified, * allowed), kind (routine, type, constant, field, property, enumValue or identifier), message, replacement,' +
+    ' severity, units (globs, ! excludes), firstArgument and allowFirstArgument (argument texts or type names)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "thread-vcl-access",' + #10 +
     '      "name": "VCL access from a thread",' + #10 +
     '      "category": "bug",' + #10 +
@@ -933,6 +987,41 @@ begin
     '      "good": "ShowMessage(PChar(string(C)));"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "unrelated-class-cast",' + #10 +
+    '      "name": "Hard cast between unrelated classes",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "TButton(Obj) checks nothing. If the static type of Obj is neither an ancestor nor a descendant of TButton (e.g. TEdit or TForm), the access reads memory of an object with a diffe' +
+    'rent layout. Reported only when both types are known for sure, both inheritance chains are known up to TObject and both declarations are always compiled together with the cast. Interfaces, pointers, n' +
+    'umbers, TObject as source and casts to or from class references (class of) stay silent, as does the accessor class trick: the target and its ancestors up to a common ancestor declare neither fields no' +
+    'r new virtual methods (THackControl = class(TControl)), so the layout is the same. High confidence. Quick fix: (Obj as TButton) checks the type at run time.",' + #10 +
+    '      "bad": "procedure TForm1.EditExit(Sender: TObject);\nvar\n  mEdit: TEdit;\nbegin\n  mEdit := Sender as TEdit;\n  TButton(mEdit).Caption := ''OK'';\nend;",' + #10 +
+    '      "good": "procedure TForm1.EditExit(Sender: TObject);\nvar\n  mEdit: TEdit;\nbegin\n  mEdit := Sender as TEdit;\n  (mEdit as TButton).Caption := ''OK'';\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowTypes",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Types that may be hard cast on purpose: a type name (as source or target) or a pair \"Source=Target\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "first-char-address",' + #10 +
+    '      "name": "Address of the first character via S[1]",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "@S[1] and PChar(@S[1]) raise a range check error for an empty string with {$R+}; without range checking they yield nil or garbage. The index access also forces a unique copy (Uni' +
+    'queString). PChar(S) and Pointer(S) are safe for empty strings too. Applies to string, UnicodeString, WideString, AnsiString, RawByteString and UTF8String, also S[Low(S)]; ShortString, arrays and othe' +
+    'r indexes stay silent. Reported only when the type of S is known for sure. High confidence. Quick fix for const parameters: replace with PChar(S) (PAnsiChar for AnsiString types), a surrounding PChar(' +
+    '…), PAnsiChar(…), PWideChar(…), PByte(…) or Pointer(…) is replaced as a whole. For other strings the pointer may be used for writing, where the unique copy is intended, so there is no quick fix and th' +
+    'e message names UniqueString(S).",' + #10 +
+    '      "bad": "procedure Send(const AText: string);\nbegin\n  WriteBuffer(@AText[1], Length(AText) * SizeOf(Char));\nend;",' + #10 +
+    '      "good": "procedure Send(const AText: string);\nbegin\n  WriteBuffer(PChar(AText), Length(AText) * SizeOf(Char));\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "float-equality",' + #10 +
     '      "name": "Floating-point comparison with = or <>",' + #10 +
     '      "category": "bug",' + #10 +
@@ -963,6 +1052,31 @@ begin
     '"mm\"-\"dd'' or ''ddddd t''.",' + #10 +
     '      "bad": "Line := Format(''%.2f'', [Amount]);",' + #10 +
     '      "good": "Line := Format(''%.2f'', [Amount], TFormatSettings.Invariant);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "format-args",' + #10 +
+    '      "name": "Format string does not match its arguments",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "Format, FmtStr, WideFormat, WideFmtStr, Exception.CreateFmt or CreateFmtHelp and TStringBuilder.AppendFormat with a known format string (a literal, literals joined with +, a cons' +
+    't or resourcestring of the file or the index) whose placeholders do not match the argument list [...]: an invalid placeholder (%q, ''%'' or ''%5'' at the end, %0: without a type letter), fewer arguments t' +
+    'han placeholders, or an argument of the wrong type: %d %u %x take only integers, %e %f %g %n %m only floating-point numbers, %s strings, characters and variants, %p pointers and objects, a * for width' +
+    ' or precision an integer; variants fit everywhere. Boolean and enumeration values are reported at every type letter with Ord(...) or BoolToStr(..., True) as advice. All of this raises EConvertError at' +
+    ' runtime. An argument behind the last used one is reported with medium confidence (only without an index in the format string), it is never printed. Types are only checked when they are known for sure' +
+    '; format strings from variables, index * and ranges stay silent. Own routines named Format stay silent when name resolution finds them. Shares its format string parser with format-without-settings. No' +
+    ' quick fix. High confidence.",' + #10 +
+    '      "bad": "Result := Format(''%d orders for %s'', [ACustomer.Name]);",' + #10 +
+    '      "good": "Result := Format(''%d orders for %s'', [ACustomer.OrderCount, ACustomer.Name]);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "formatMethods",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Further routines with a format string followed by an array of const argument list, e.g. \"TLogger.LogFmt\" or \"Protokoll\". With a dot the method name after any qualifier co' +
+    'unts when name resolution cannot find the routine."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "generic-exception-raised",' + #10 +
@@ -1106,6 +1220,27 @@ begin
     '      "description": "Parentheses around a whole condition or a single identifier add nothing. Off by default.",' + #10 +
     '      "bad": "if (Done) then\n  Exit;",' + #10 +
     '      "good": "if Done then\n  Exit;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "redundant-cast",' + #10 +
+    '      "name": "Redundant type cast",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "TStringList(List) with List: TStringList, X as TFoo with X: TFoo or Integer(Count) with Count: Integer change nothing. Likewise TObject(Obj).Free: Free calls the virtual destruct' +
+    'or and needs no cast (option checkFree). Reported only when the type of the source is known for sure and is declared with exactly the target name; aliases (TColorIndex = Integer), constants, routines ' +
+    'without a call, overloaded routines as source, arguments of overloaded calls (the cast may steer the overload), as with interfaces (QueryInterface) and Free redeclared in the class chain stay silent. ' +
+    'High confidence. Quick fix: remove the cast.",' + #10 +
+    '      "bad": "procedure TImport.Cleanup;\nbegin\n  TStringList(FLines).Clear;\n  TObject(FStream).Free;\nend;",' + #10 +
+    '      "good": "procedure TImport.Cleanup;\nbegin\n  FLines.Clear;\n  FStream.Free;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "checkFree",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Also report a class cast that only precedes Free (CastAndFree)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "redundant-begin-end",' + #10 +
@@ -4397,6 +4532,28 @@ begin
     '      "good": "I := 0;\nwhile I < List.Count do\nbegin\n  Check(List[I]);\n  Inc(I);\nend;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "loop-runs-at-most-once",' + #10 +
+    '      "name": "Loop runs at most once",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "Every path through the body of a for, for-in, while or repeat loop ends with Exit, Break, raise, Halt, Abort, RunError, ExitProcess or a call of a routine of the file that raises' +
+    ', so the loop runs at most once. Usually an if is missing before the jump, or Continue was meant. A path counts as a jump for if with else and both branches, case with else and all branches, try … fin' +
+    'ally with the try or the finally part and try … except with the try part and every handler. Silent with Continue of this loop, goto or labels and conditional directives in the body; Break of inner loo' +
+    'ps does not count. Complements infinite-loop and loop-condition-unchanged. No quick fix, the intent is unclear; if the jump directly follows an if without else, the message asks whether it belongs int' +
+    'o the if branch. High confidence.",' + #10 +
+    '      "bad": "for mCustomer in FCustomers do\nbegin\n  if mCustomer.Id = AId then\n    Result := mCustomer;\n  Exit;\nend;",' + #10 +
+    '      "good": "for mCustomer in FCustomers do\n  if mCustomer.Id = AId then\n    Exit(mCustomer);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowFirstElement",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": false,' + #10 +
+    '          "description": "Do not report a for-in loop of simple statements that ends with Exit or Break (fetching the first element)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "unconditional-recursion",' + #10 +
     '      "name": "Recursion without a stop",' + #10 +
     '      "category": "bug",' + #10 +
@@ -5135,6 +5292,24 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "forbidden-symbol",' + #10 +
+    '      "name": "Verbotenes Symbol verwendet",' + #10 +
+    '      "description": "Eine Liste unter \"symbols\" in atlas.json verbietet Routinen, Typen, Konstanten, Felder, Properties, Aufzählungswerte oder Bezeichner, jeweils mit Meldung und Ersatz. Verglichen' +
+    ' wird über die Namensauflösung, nicht über Text: System.SysUtils.FileExists trifft auch FileExists, aber nicht eine eigene Methode gleichen Namens. Ein Eintrag darf den Namen ab einer Punktgrenze kürz' +
+    'en (TThread.Queue) und * enthalten. Bezeichner aus System ohne Quelltext (Writeln, Halt) gelten als System.<Name>. Ist der linke Teil eines qualifizierten Namens gar nicht auflösbar (Unit nicht indexi' +
+    'ert), wird der geschriebene Name mit dem Ende des Eintrags verglichen. Je Eintrag: kind (routine, type, constant, field, property, enumValue, identifier = nach Namen ohne Auflösung), message, replacem' +
+    'ent, severity, units (Muster der Unit-Namen, \"!\" schließt aus), firstArgument (nur mit diesem ersten Argument, z. B. nil) und allowFirstArgument (erlaubt mit diesem ersten Argument, z. B. ErrOutput)' +
+    '; beide vergleichen den Text des Arguments oder den Namen seines Typs (TextFile). Standard aus und ohne Liste stumm; im Profil strict an. Sicherheit hoch. Schnellkorrektur: durch den konfigurierten Er' +
+    'satz ersetzen.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "symbols",' + #10 +
+    '          "description": "Tabelle der verbotenen Symbole, ein Objekt je Eintrag: name (qualifiziert, * erlaubt), kind (routine, type, constant, field, property, enumValue oder identifier), message, re' +
+    'placement, severity, units (Muster, ! schließt aus), firstArgument und allowFirstArgument (Texte oder Typnamen des Arguments)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "thread-vcl-access",' + #10 +
     '      "name": "VCL-Zugriff aus einem Thread",' + #10 +
     '      "description": "TThread.Execute, TThread.CreateAnonymousThread oder TTask greift außerhalb von Synchronize oder Queue auf die VCL zu (Application, Screen, ShowMessage, MessageDlg …). Die VCL ist' +
@@ -5520,6 +5695,29 @@ begin
     '      "description": "PChar(C) mit einer Char-Variablen macht aus dem Zeichencode eine Adresse. Gemeint war ein String."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "unrelated-class-cast",' + #10 +
+    '      "name": "Harte Umwandlung zwischen nicht verwandten Klassen",' + #10 +
+    '      "description": "TButton(Obj) prüft nichts. Ist der statische Typ von Obj weder Vorfahr noch Nachfahr von TButton (z. B. TEdit oder TForm), liest der Zugriff Speicher eines Objekts mit anderem Au' +
+    'fbau. Gemeldet wird nur, wenn beide Typen sicher bekannt sind, beide Vererbungsketten bis TObject bekannt sind und beide Deklarationen immer mit der Umwandlung übersetzt werden. Interfaces, Zeiger, Za' +
+    'hlen, TObject als Quelle und Umwandlungen in oder aus Klassenreferenzen (class of) bleiben still, ebenso der Zugriffsklassen-Trick: Das Ziel und seine Vorfahren bis zu einem gemeinsamen Vorfahren dekl' +
+    'arieren weder Felder noch neue virtuelle Methoden (THackControl = class(TControl)), der Aufbau ist also derselbe. Sicherheit hoch. Korrektur: (Obj as TButton) prüft den Typ zur Laufzeit.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowTypes",' + #10 +
+    '          "description": "Typen, die absichtlich hart umgewandelt werden: ein Typname (als Quelle oder Ziel) oder ein Paar \"Quelle=Ziel\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "first-char-address",' + #10 +
+    '      "name": "Adresse des ersten Zeichens über S[1]",' + #10 +
+    '      "description": "@S[1] und PChar(@S[1]) lösen bei leerem String mit {$R+} einen Bereichsfehler aus, ohne Bereichsprüfung ergibt sich nil oder Müll. Außerdem erzwingt der Indexzugriff eine eindeut' +
+    'ige Kopie (UniqueString). PChar(S) und Pointer(S) sind auch für leere Strings sicher. Gilt für string, UnicodeString, WideString, AnsiString, RawByteString und UTF8String, auch S[Low(S)]; ShortString,' +
+    ' Arrays und andere Indizes bleiben still. Gemeldet wird nur, wenn der Typ von S sicher bekannt ist. Sicherheit hoch. Korrektur bei const-Parametern: durch PChar(S) ersetzen (PAnsiChar bei AnsiString-T' +
+    'ypen), ein umgebendes PChar(…), PAnsiChar(…), PWideChar(…), PByte(…) oder Pointer(…) wird als Ganzes ersetzt. Bei anderen Strings kann der Zeiger zum Schreiben dienen, dann ist die eigene Kopie gewoll' +
+    't; dort gibt es keine Korrektur, die Meldung nennt UniqueString(S)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "float-equality",' + #10 +
     '      "name": "Gleitkommavergleich mit = oder <>",' + #10 +
     '      "description": "Gleitkommawerte sind nach Berechnungen selten exakt gleich. Mit SameValue aus System.Math und einer Toleranz vergleichen. Vergleiche mit 0 werden nicht gemeldet."' + #10 +
@@ -5536,6 +5734,24 @@ begin
     '      "description": "Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenne' +
     'r, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format(''%d'', …) wird nicht gemeldet, ebenso wenig FormatDateTime und FormatFloat mit festem Bild ohne Trennzeichen (' +
     ': / . ,) wie ''yyyy\"-\"mm\"-\"dd'' oder ''ddddd t''."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "format-args",' + #10 +
+    '      "name": "Formatstring passt nicht zu den Argumenten",' + #10 +
+    '      "description": "Format, FmtStr, WideFormat, WideFmtStr, Exception.CreateFmt bzw. CreateFmtHelp und TStringBuilder.AppendFormat mit bekanntem Formatstring (Literal, mit + verbundene Literale, con' +
+    'st oder resourcestring der Datei bzw. des Index), dessen Platzhalter nicht zur Argumentliste [...] passen: ungültiger Platzhalter (%q, ''%'' bzw. ''%5'' am Ende, %0: ohne Typbuchstaben), weniger Argumente' +
+    ' als Platzhalter oder ein Argument vom falschen Typ: %d %u %x nur Ganzzahlen, %e %f %g %n %m nur Gleitkommazahlen, %s Strings, Zeichen und Variants, %p Zeiger und Objekte, ein * für Breite bzw. Genaui' +
+    'gkeit eine Ganzzahl; Variants passen überall. Boolean und Aufzählungswerte werden bei jedem Typbuchstaben gemeldet, mit Ord(...) bzw. BoolToStr(..., True) als Hinweis. All das löst zur Laufzeit EConve' +
+    'rtError aus. Ein Argument hinter dem letzten verwendeten wird mit mittlerer Sicherheit gemeldet (nur ohne Index im Formatstring), es wird nie ausgegeben. Typen werden nur geprüft, wenn sie sicher beka' +
+    'nnt sind; Formatstrings aus Variablen, Index * und Bereiche bleiben still. Eigene Routinen namens Format bleiben still, wenn die Namensauflösung sie findet. Teilt die Zerlegung der Formatstrings mit f' +
+    'ormat-without-settings. Keine Korrektur. Sicherheit hoch.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "formatMethods",' + #10 +
+    '          "description": "Weitere Routinen mit Formatstring und folgender Argumentliste array of const, z. B. \"TLogger.LogFmt\" oder \"Protokoll\". Mit Punkt zählt ohne Namensauflösung der Methodenna' +
+    'me hinter einem beliebigen Qualifizierer."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "generic-exception-raised",' + #10 +
@@ -5618,6 +5834,20 @@ begin
     '      "id": "redundant-parens",' + #10 +
     '      "name": "Überflüssige Klammern",' + #10 +
     '      "description": "Klammern um eine ganze Bedingung oder einen einzelnen Bezeichner bringen nichts. Standardmäßig aus."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "redundant-cast",' + #10 +
+    '      "name": "Überflüssige Typumwandlung",' + #10 +
+    '      "description": "TStringList(Liste) mit Liste: TStringList, X as TFoo mit X: TFoo oder Integer(Anzahl) mit Anzahl: Integer ändern nichts. Ebenso TObject(Obj).Free: Free ruft den virtuellen Destru' +
+    'ktor und braucht keine Umwandlung (Option checkFree). Gemeldet wird nur, wenn der Typ der Quelle sicher bekannt und genau mit dem Namen des Ziels deklariert ist; Aliase (TFarbIndex = Integer), Konstan' +
+    'ten, Routinen ohne Aufruf, überladene Routinen als Quelle, Argumente überladener Aufrufe (die Umwandlung kann die Überladung wählen), as mit Interfaces (QueryInterface) und in der Klassenkette neu dek' +
+    'lariertes Free bleiben still. Sicherheit hoch. Korrektur: die Umwandlung entfernen.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "checkFree",' + #10 +
+    '          "description": "Auch eine Klassenumwandlung melden, die nur vor Free steht (CastAndFree)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "redundant-begin-end",' + #10 +
@@ -7443,6 +7673,21 @@ begin
     'utine ist und mindestens eine direkt (nicht nur als X.Eigenschaft) vorkommt. Still bleiben Bedingungen mit Funktionsaufrufen, Feldern, globalen Variablen, var- und out-Parametern und Terminated, außer' +
     'dem Schleifen mit Ausgang (Break, Exit, raise …), Warteschleifen (Sleep, ProcessMessages …), with, Aufrufen lokaler Routinen und Variablen, die eine anonyme Methode erfasst. Änderungen über X[…] zähle' +
     'n nur, wenn die Bedingung X[…] liest."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "loop-runs-at-most-once",' + #10 +
+    '      "name": "Schleife läuft höchstens einmal",' + #10 +
+    '      "description": "Jeder Weg durch den Rumpf einer for-, for-in-, while- oder repeat-Schleife endet mit Exit, Break, raise, Halt, Abort, RunError, ExitProcess oder dem Aufruf einer Routine der Date' +
+    'i, die eine Ausnahme auslöst; die Schleife läuft also höchstens einmal. Meist fehlt ein if vor dem Sprung, oder ein Continue war gemeint. Ein Weg zählt als Sprung bei if mit else und beiden Zweigen, c' +
+    'ase mit else und allen Zweigen, try … finally mit try- oder finally-Teil und try … except mit try-Teil und jedem Behandler. Still bei Continue dieser Schleife, goto bzw. Marken und bedingten Direktive' +
+    'n im Rumpf; ein Break innerer Schleifen zählt nicht. Ergänzt infinite-loop und loop-condition-unchanged. Keine Korrektur, die Absicht ist unklar; steht der Sprung direkt hinter einem if ohne else, fra' +
+    'gt die Meldung, ob er in den if-Zweig gehört. Sicherheit hoch.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowFirstElement",' + #10 +
+    '          "description": "for-in aus einfachen Anweisungen, das mit Exit bzw. Break endet (erstes Element holen), nicht melden."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unconditional-recursion",' + #10 +

@@ -195,6 +195,53 @@
       ]
     },
     {
+      "id": "forbidden-symbol",
+      "name": "Forbidden symbol used",
+      "category": "code-smell",
+      "severity": "warning",
+      "group": "architecture",
+      "description": "A list under \"symbols\" in atlas.json forbids routines, types, constants, fields, properties, enum values or identifiers, each with a message and a replacement. Matching uses name resolution, not text: System.SysUtils.FileExists also hits FileExists, but not an own method of the same name. An entry may shorten the name from a dot boundary (TThread.Queue) and contain *. Identifiers of System without source (Writeln, Halt) count as System.<Name>. If the left part of a qualified name cannot be resolved at all (unit not indexed), the written name is compared with the end of the entry. Per entry: kind (routine, type, constant, field, property, enumValue, identifier = by name without resolution), message, replacement, severity, units (unit name globs, \"!\" excludes), firstArgument (only with this first argument, e.g. nil) and allowFirstArgument (allowed with this first argument, e.g. ErrOutput); both compare the argument text or the name of its type (TextFile). Off by default and silent without a list; on in the strict profile. High confidence. Quick fix: replace with the configured replacement.",
+      "bad": "// atlas.json: \"forbidden-symbol\": {\"symbols\": [{\"name\": \"System.Write*\", \"kind\": \"routine\", \"message\": \"Only via ILogger\"}]}\nprocedure TImport.Report(const AText: string);\nbegin\n  Writeln(AText);\nend;",
+      "good": "procedure TImport.Report(const AText: string);\nbegin\n  FLogger.Info(AText);\nend;",
+      "options": [
+        {
+          "name": "symbols",
+          "type": "object-list",
+          "columns": [
+            {
+              "name": "name"
+            },
+            {
+              "name": "kind"
+            },
+            {
+              "name": "message"
+            },
+            {
+              "name": "replacement"
+            },
+            {
+              "name": "severity"
+            },
+            {
+              "name": "units",
+              "list": true
+            },
+            {
+              "name": "firstArgument",
+              "list": true
+            },
+            {
+              "name": "allowFirstArgument",
+              "list": true
+            }
+          ],
+          "default": [],
+          "description": "Table of forbidden symbols, one object per entry: name (qualified, * allowed), kind (routine, type, constant, field, property, enumValue or identifier), message, replacement, severity, units (globs, ! excludes), firstArgument and allowFirstArgument (argument texts or type names)."
+        }
+      ]
+    },
+    {
       "id": "thread-vcl-access",
       "name": "VCL access from a thread",
       "category": "bug",
@@ -863,6 +910,34 @@
       "good": "ShowMessage(PChar(string(C)));"
     },
     {
+      "id": "unrelated-class-cast",
+      "name": "Hard cast between unrelated classes",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "TButton(Obj) checks nothing. If the static type of Obj is neither an ancestor nor a descendant of TButton (e.g. TEdit or TForm), the access reads memory of an object with a different layout. Reported only when both types are known for sure, both inheritance chains are known up to TObject and both declarations are always compiled together with the cast. Interfaces, pointers, numbers, TObject as source and casts to or from class references (class of) stay silent, as does the accessor class trick: the target and its ancestors up to a common ancestor declare neither fields nor new virtual methods (THackControl = class(TControl)), so the layout is the same. High confidence. Quick fix: (Obj as TButton) checks the type at run time.",
+      "bad": "procedure TForm1.EditExit(Sender: TObject);\nvar\n  mEdit: TEdit;\nbegin\n  mEdit := Sender as TEdit;\n  TButton(mEdit).Caption := 'OK';\nend;",
+      "good": "procedure TForm1.EditExit(Sender: TObject);\nvar\n  mEdit: TEdit;\nbegin\n  mEdit := Sender as TEdit;\n  (mEdit as TButton).Caption := 'OK';\nend;",
+      "options": [
+        {
+          "name": "allowTypes",
+          "type": "string-list",
+          "default": [],
+          "description": "Types that may be hard cast on purpose: a type name (as source or target) or a pair \"Source=Target\"."
+        }
+      ]
+    },
+    {
+      "id": "first-char-address",
+      "name": "Address of the first character via S[1]",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "@S[1] and PChar(@S[1]) raise a range check error for an empty string with {$R+}; without range checking they yield nil or garbage. The index access also forces a unique copy (UniqueString). PChar(S) and Pointer(S) are safe for empty strings too. Applies to string, UnicodeString, WideString, AnsiString, RawByteString and UTF8String, also S[Low(S)]; ShortString, arrays and other indexes stay silent. Reported only when the type of S is known for sure. High confidence. Quick fix for const parameters: replace with PChar(S) (PAnsiChar for AnsiString types), a surrounding PChar(…), PAnsiChar(…), PWideChar(…), PByte(…) or Pointer(…) is replaced as a whole. For other strings the pointer may be used for writing, where the unique copy is intended, so there is no quick fix and the message names UniqueString(S).",
+      "bad": "procedure Send(const AText: string);\nbegin\n  WriteBuffer(@AText[1], Length(AText) * SizeOf(Char));\nend;",
+      "good": "procedure Send(const AText: string);\nbegin\n  WriteBuffer(PChar(AText), Length(AText) * SizeOf(Char));\nend;"
+    },
+    {
       "id": "float-equality",
       "name": "Floating-point comparison with = or <>",
       "category": "bug",
@@ -891,6 +966,24 @@
       "description": "Format with %f, %n, %m, %g or %e and functions like FloatToStr, StrToFloat or DateToStr without a TFormatSettings parameter use the user's locale (decimal separator, date format). For files, protocols and logs pass fixed TFormatSettings. Format('%d', …) is not reported, nor are FormatDateTime and FormatFloat with a fixed picture without separators (: / . ,), such as 'yyyy\"-\"mm\"-\"dd' or 'ddddd t'.",
       "bad": "Line := Format('%.2f', [Amount]);",
       "good": "Line := Format('%.2f', [Amount], TFormatSettings.Invariant);"
+    },
+    {
+      "id": "format-args",
+      "name": "Format string does not match its arguments",
+      "category": "bug",
+      "severity": "error",
+      "group": "find-bugs",
+      "description": "Format, FmtStr, WideFormat, WideFmtStr, Exception.CreateFmt or CreateFmtHelp and TStringBuilder.AppendFormat with a known format string (a literal, literals joined with +, a const or resourcestring of the file or the index) whose placeholders do not match the argument list [...]: an invalid placeholder (%q, '%' or '%5' at the end, %0: without a type letter), fewer arguments than placeholders, or an argument of the wrong type: %d %u %x take only integers, %e %f %g %n %m only floating-point numbers, %s strings, characters and variants, %p pointers and objects, a * for width or precision an integer; variants fit everywhere. Boolean and enumeration values are reported at every type letter with Ord(...) or BoolToStr(..., True) as advice. All of this raises EConvertError at runtime. An argument behind the last used one is reported with medium confidence (only without an index in the format string), it is never printed. Types are only checked when they are known for sure; format strings from variables, index * and ranges stay silent. Own routines named Format stay silent when name resolution finds them. Shares its format string parser with format-without-settings. No quick fix. High confidence.",
+      "bad": "Result := Format('%d orders for %s', [ACustomer.Name]);",
+      "good": "Result := Format('%d orders for %s', [ACustomer.OrderCount, ACustomer.Name]);",
+      "options": [
+        {
+          "name": "formatMethods",
+          "type": "string-list",
+          "default": [],
+          "description": "Further routines with a format string followed by an array of const argument list, e.g. \"TLogger.LogFmt\" or \"Protokoll\". With a dot the method name after any qualifier counts when name resolution cannot find the routine."
+        }
+      ]
     },
     {
       "id": "generic-exception-raised",
@@ -1025,6 +1118,24 @@
       "description": "Parentheses around a whole condition or a single identifier add nothing. Off by default.",
       "bad": "if (Done) then\n  Exit;",
       "good": "if Done then\n  Exit;"
+    },
+    {
+      "id": "redundant-cast",
+      "name": "Redundant type cast",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "TStringList(List) with List: TStringList, X as TFoo with X: TFoo or Integer(Count) with Count: Integer change nothing. Likewise TObject(Obj).Free: Free calls the virtual destructor and needs no cast (option checkFree). Reported only when the type of the source is known for sure and is declared with exactly the target name; aliases (TColorIndex = Integer), constants, routines without a call, overloaded routines as source, arguments of overloaded calls (the cast may steer the overload), as with interfaces (QueryInterface) and Free redeclared in the class chain stay silent. High confidence. Quick fix: remove the cast.",
+      "bad": "procedure TImport.Cleanup;\nbegin\n  TStringList(FLines).Clear;\n  TObject(FStream).Free;\nend;",
+      "good": "procedure TImport.Cleanup;\nbegin\n  FLines.Clear;\n  FStream.Free;\nend;",
+      "options": [
+        {
+          "name": "checkFree",
+          "type": "boolean",
+          "default": true,
+          "description": "Also report a class cast that only precedes Free (CastAndFree)."
+        }
+      ]
     },
     {
       "id": "redundant-begin-end",
@@ -3808,6 +3919,24 @@
       "description": "No variable of the while or until condition changes in the body: no assignment, no Inc/Dec, no argument (possibly var), no method or member access on the object of the condition, no for loop over it. Typically a forgotten Inc(I) or Next. The rule only reports when every variable of the condition is a local variable or value parameter of the routine and at least one appears directly (not only as X.Property). Conditions with function calls, fields, global variables, var and out parameters and Terminated are not reported, nor loops with an exit (Break, Exit, raise …), waiting loops (Sleep, ProcessMessages …), with, calls of local routines or variables captured by an anonymous method. Changes through X[…] count only when the condition reads X[…].",
       "bad": "I := 0;\nwhile I < List.Count do\nbegin\n  Check(List[I]);\nend;",
       "good": "I := 0;\nwhile I < List.Count do\nbegin\n  Check(List[I]);\n  Inc(I);\nend;"
+    },
+    {
+      "id": "loop-runs-at-most-once",
+      "name": "Loop runs at most once",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "Every path through the body of a for, for-in, while or repeat loop ends with Exit, Break, raise, Halt, Abort, RunError, ExitProcess or a call of a routine of the file that raises, so the loop runs at most once. Usually an if is missing before the jump, or Continue was meant. A path counts as a jump for if with else and both branches, case with else and all branches, try … finally with the try or the finally part and try … except with the try part and every handler. Silent with Continue of this loop, goto or labels and conditional directives in the body; Break of inner loops does not count. Complements infinite-loop and loop-condition-unchanged. No quick fix, the intent is unclear; if the jump directly follows an if without else, the message asks whether it belongs into the if branch. High confidence.",
+      "bad": "for mCustomer in FCustomers do\nbegin\n  if mCustomer.Id = AId then\n    Result := mCustomer;\n  Exit;\nend;",
+      "good": "for mCustomer in FCustomers do\n  if mCustomer.Id = AId then\n    Exit(mCustomer);",
+      "options": [
+        {
+          "name": "allowFirstElement",
+          "type": "boolean",
+          "default": false,
+          "description": "Do not report a for-in loop of simple statements that ends with Exit or Break (fetching the first element)."
+        }
+      ]
     },
     {
       "id": "unconditional-recursion",

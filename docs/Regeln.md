@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 71 |
+| [Fehler finden](#gruppe-find-bugs) | 75 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
@@ -16,8 +16,8 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 14 |
-| [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 47 |
+| [Architektur](#gruppe-architecture) | 4 |
+| [Stil und Metriken](#gruppe-style) | 48 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
@@ -46,8 +46,11 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`int32-mul-overflow`](#int32-mul-overflow) | Int32-Multiplikation an Int64 zugewiesen | Bug | Warnung |
 | [`sizeof-pointer`](#sizeof-pointer) | SizeOf eines Zeigers in Move oder FillChar | Bug | Fehler |
 | [`char-to-pchar`](#char-to-pchar) | Char nach PChar umgewandelt | Bug | Fehler |
+| [`unrelated-class-cast`](#unrelated-class-cast) | Harte Umwandlung zwischen nicht verwandten Klassen | Bug | Warnung |
+| [`first-char-address`](#first-char-address) | Adresse des ersten Zeichens über S[1] | Bug | Warnung |
 | [`float-equality`](#float-equality) | Gleitkommavergleich mit = oder <> | Bug | Hinweis |
 | [`constructor-on-instance`](#constructor-on-instance) | Konstruktor auf einer Instanz aufgerufen | Bug | Warnung |
+| [`format-args`](#format-args) | Formatstring passt nicht zu den Argumenten | Bug | Fehler |
 | [`unresolved-identifier`](#unresolved-identifier) | Nicht deklarierter Bezeichner | Bug | Warnung |
 | [`type-used-before-declaration`](#type-used-before-declaration) | Typ vor seiner Deklaration benutzt | Bug | Fehler |
 | [`field-not-freed`](#field-not-freed) | Feld erzeugt, aber nie freigegeben | Bug | Warnung |
@@ -94,6 +97,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`constant-condition`](#constant-condition) | Bedingung ist immer gleich | Bug | Warnung |
 | [`infinite-loop`](#infinite-loop) | Schleife ohne Ausgang | Bug | Fehler |
 | [`loop-condition-unchanged`](#loop-condition-unchanged) | Schleifenbedingung ändert sich im Rumpf nie | Bug | Warnung |
+| [`loop-runs-at-most-once`](#loop-runs-at-most-once) | Schleife läuft höchstens einmal | Bug | Warnung |
 | [`unconditional-recursion`](#unconditional-recursion) | Rekursion ohne Abbruch | Bug | Fehler |
 | [`pos-arguments-swapped`](#pos-arguments-swapped) | Argumente von Pos vertauscht | Bug | Warnung |
 | [`integer-division-to-float`](#integer-division-to-float) | Ganzzahldivision an Gleitkommazahl | Bug | Warnung |
@@ -317,6 +321,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`forbidden-uses`](#forbidden-uses) | Verbotene uses-Beziehung | Code Smell | Fehler |
 | [`architecture-role-import`](#architecture-role-import) | Import verletzt die Rollenmatrix | Code Smell | Warnung |
 | [`architecture-contract-content`](#architecture-contract-content) | Klasse in einer Contract-Unit | Code Smell | Warnung |
+| [`forbidden-symbol`](#forbidden-symbol) | Verbotenes Symbol verwendet | Code Smell | Warnung |
 
 <a id="gruppe-style"></a>
 ### Stil und Metriken
@@ -331,6 +336,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`bool-compare`](#bool-compare) | Vergleich mit True oder False | Code Smell | Hinweis |
 | [`redundant-assigned-free`](#redundant-assigned-free) | Assigned-Prüfung vor Free | Code Smell | Hinweis |
 | [`redundant-parens`](#redundant-parens) | Überflüssige Klammern | Code Smell | Hinweis |
+| [`redundant-cast`](#redundant-cast) | Überflüssige Typumwandlung | Code Smell | Hinweis |
 | [`redundant-begin-end`](#redundant-begin-end) | begin … end um eine einzelne Anweisung | Code Smell | Hinweis |
 | [`with-statement`](#with-statement) | with-Anweisung | Code Smell | Hinweis |
 | [`metric-method-length`](#metric-method-length) | Methode zu lang | Code Smell | Hinweis |
@@ -668,6 +674,36 @@ interface
 type
   IOrderList = interface
   end;
+```
+
+<a id="forbidden-symbol"></a>
+### forbidden-symbol
+
+**Verbotenes Symbol verwendet** · Code Smell · Warnung · Gruppe Architektur
+
+Eine Liste unter "symbols" in atlas.json verbietet Routinen, Typen, Konstanten, Felder, Properties, Aufzählungswerte oder Bezeichner, jeweils mit Meldung und Ersatz. Verglichen wird über die Namensauflösung, nicht über Text: System.SysUtils.FileExists trifft auch FileExists, aber nicht eine eigene Methode gleichen Namens. Ein Eintrag darf den Namen ab einer Punktgrenze kürzen (TThread.Queue) und * enthalten. Bezeichner aus System ohne Quelltext (Writeln, Halt) gelten als System.<Name>. Ist der linke Teil eines qualifizierten Namens gar nicht auflösbar (Unit nicht indexiert), wird der geschriebene Name mit dem Ende des Eintrags verglichen. Je Eintrag: kind (routine, type, constant, field, property, enumValue, identifier = nach Namen ohne Auflösung), message, replacement, severity, units (Muster der Unit-Namen, "!" schließt aus), firstArgument (nur mit diesem ersten Argument, z. B. nil) und allowFirstArgument (erlaubt mit diesem ersten Argument, z. B. ErrOutput); beide vergleichen den Text des Arguments oder den Namen seines Typs (TextFile). Standard aus und ohne Liste stumm; im Profil strict an. Sicherheit hoch. Schnellkorrektur: durch den konfigurierten Ersatz ersetzen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `symbols` | object-list | `[]` | Tabelle der verbotenen Symbole, ein Objekt je Eintrag: name (qualifiziert, * erlaubt), kind (routine, type, constant, field, property, enumValue oder identifier), message, replacement, severity, units (Muster, ! schließt aus), firstArgument und allowFirstArgument (Texte oder Typnamen des Arguments). |
+
+Mit Treffer:
+
+```pascal
+// atlas.json: "forbidden-symbol": {"symbols": [{"name": "System.Write*", "kind": "routine", "message": "Only via ILogger"}]}
+procedure TImport.Report(const AText: string);
+begin
+  Writeln(AText);
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TImport.Report(const AText: string);
+begin
+  FLogger.Info(AText);
+end;
 ```
 
 <a id="thread-vcl-access"></a>
@@ -2067,6 +2103,66 @@ Richtig:
 ShowMessage(PChar(string(C)));
 ```
 
+<a id="unrelated-class-cast"></a>
+### unrelated-class-cast
+
+**Harte Umwandlung zwischen nicht verwandten Klassen** · Bug · Warnung · Gruppe Fehler finden
+
+TButton(Obj) prüft nichts. Ist der statische Typ von Obj weder Vorfahr noch Nachfahr von TButton (z. B. TEdit oder TForm), liest der Zugriff Speicher eines Objekts mit anderem Aufbau. Gemeldet wird nur, wenn beide Typen sicher bekannt sind, beide Vererbungsketten bis TObject bekannt sind und beide Deklarationen immer mit der Umwandlung übersetzt werden. Interfaces, Zeiger, Zahlen, TObject als Quelle und Umwandlungen in oder aus Klassenreferenzen (class of) bleiben still, ebenso der Zugriffsklassen-Trick: Das Ziel und seine Vorfahren bis zu einem gemeinsamen Vorfahren deklarieren weder Felder noch neue virtuelle Methoden (THackControl = class(TControl)), der Aufbau ist also derselbe. Sicherheit hoch. Korrektur: (Obj as TButton) prüft den Typ zur Laufzeit.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowTypes` | string-list | `[]` | Typen, die absichtlich hart umgewandelt werden: ein Typname (als Quelle oder Ziel) oder ein Paar "Quelle=Ziel". |
+
+Mit Treffer:
+
+```pascal
+procedure TForm1.EditExit(Sender: TObject);
+var
+  mEdit: TEdit;
+begin
+  mEdit := Sender as TEdit;
+  TButton(mEdit).Caption := 'OK';
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TForm1.EditExit(Sender: TObject);
+var
+  mEdit: TEdit;
+begin
+  mEdit := Sender as TEdit;
+  (mEdit as TButton).Caption := 'OK';
+end;
+```
+
+<a id="first-char-address"></a>
+### first-char-address
+
+**Adresse des ersten Zeichens über S[1]** · Bug · Warnung · Gruppe Fehler finden
+
+@S[1] und PChar(@S[1]) lösen bei leerem String mit {$R+} einen Bereichsfehler aus, ohne Bereichsprüfung ergibt sich nil oder Müll. Außerdem erzwingt der Indexzugriff eine eindeutige Kopie (UniqueString). PChar(S) und Pointer(S) sind auch für leere Strings sicher. Gilt für string, UnicodeString, WideString, AnsiString, RawByteString und UTF8String, auch S[Low(S)]; ShortString, Arrays und andere Indizes bleiben still. Gemeldet wird nur, wenn der Typ von S sicher bekannt ist. Sicherheit hoch. Korrektur bei const-Parametern: durch PChar(S) ersetzen (PAnsiChar bei AnsiString-Typen), ein umgebendes PChar(…), PAnsiChar(…), PWideChar(…), PByte(…) oder Pointer(…) wird als Ganzes ersetzt. Bei anderen Strings kann der Zeiger zum Schreiben dienen, dann ist die eigene Kopie gewollt; dort gibt es keine Korrektur, die Meldung nennt UniqueString(S).
+
+Mit Treffer:
+
+```pascal
+procedure Send(const AText: string);
+begin
+  WriteBuffer(@AText[1], Length(AText) * SizeOf(Char));
+end;
+```
+
+Richtig:
+
+```pascal
+procedure Send(const AText: string);
+begin
+  WriteBuffer(PChar(AText), Length(AText) * SizeOf(Char));
+end;
+```
+
 <a id="float-equality"></a>
 ### float-equality
 
@@ -2122,6 +2218,29 @@ Richtig:
 
 ```pascal
 Line := Format('%.2f', [Amount], TFormatSettings.Invariant);
+```
+
+<a id="format-args"></a>
+### format-args
+
+**Formatstring passt nicht zu den Argumenten** · Bug · Fehler · Gruppe Fehler finden
+
+Format, FmtStr, WideFormat, WideFmtStr, Exception.CreateFmt bzw. CreateFmtHelp und TStringBuilder.AppendFormat mit bekanntem Formatstring (Literal, mit + verbundene Literale, const oder resourcestring der Datei bzw. des Index), dessen Platzhalter nicht zur Argumentliste [...] passen: ungültiger Platzhalter (%q, '%' bzw. '%5' am Ende, %0: ohne Typbuchstaben), weniger Argumente als Platzhalter oder ein Argument vom falschen Typ: %d %u %x nur Ganzzahlen, %e %f %g %n %m nur Gleitkommazahlen, %s Strings, Zeichen und Variants, %p Zeiger und Objekte, ein * für Breite bzw. Genauigkeit eine Ganzzahl; Variants passen überall. Boolean und Aufzählungswerte werden bei jedem Typbuchstaben gemeldet, mit Ord(...) bzw. BoolToStr(..., True) als Hinweis. All das löst zur Laufzeit EConvertError aus. Ein Argument hinter dem letzten verwendeten wird mit mittlerer Sicherheit gemeldet (nur ohne Index im Formatstring), es wird nie ausgegeben. Typen werden nur geprüft, wenn sie sicher bekannt sind; Formatstrings aus Variablen, Index * und Bereiche bleiben still. Eigene Routinen namens Format bleiben still, wenn die Namensauflösung sie findet. Teilt die Zerlegung der Formatstrings mit format-without-settings. Keine Korrektur. Sicherheit hoch.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `formatMethods` | string-list | `[]` | Weitere Routinen mit Formatstring und folgender Argumentliste array of const, z. B. "TLogger.LogFmt" oder "Protokoll". Mit Punkt zählt ohne Namensauflösung der Methodenname hinter einem beliebigen Qualifizierer. |
+
+Mit Treffer:
+
+```pascal
+Result := Format('%d orders for %s', [ACustomer.Name]);
+```
+
+Richtig:
+
+```pascal
+Result := Format('%d orders for %s', [ACustomer.OrderCount, ACustomer.Name]);
 ```
 
 <a id="generic-exception-raised"></a>
@@ -2409,6 +2528,37 @@ Richtig:
 ```pascal
 if Done then
   Exit;
+```
+
+<a id="redundant-cast"></a>
+### redundant-cast
+
+**Überflüssige Typumwandlung** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+TStringList(Liste) mit Liste: TStringList, X as TFoo mit X: TFoo oder Integer(Anzahl) mit Anzahl: Integer ändern nichts. Ebenso TObject(Obj).Free: Free ruft den virtuellen Destruktor und braucht keine Umwandlung (Option checkFree). Gemeldet wird nur, wenn der Typ der Quelle sicher bekannt und genau mit dem Namen des Ziels deklariert ist; Aliase (TFarbIndex = Integer), Konstanten, Routinen ohne Aufruf, überladene Routinen als Quelle, Argumente überladener Aufrufe (die Umwandlung kann die Überladung wählen), as mit Interfaces (QueryInterface) und in der Klassenkette neu deklariertes Free bleiben still. Sicherheit hoch. Korrektur: die Umwandlung entfernen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `checkFree` | boolean | `true` | Auch eine Klassenumwandlung melden, die nur vor Free steht (CastAndFree). |
+
+Mit Treffer:
+
+```pascal
+procedure TImport.Cleanup;
+begin
+  TStringList(FLines).Clear;
+  TObject(FStream).Free;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TImport.Cleanup;
+begin
+  FLines.Clear;
+  FStream.Free;
+end;
 ```
 
 <a id="redundant-begin-end"></a>
@@ -6931,6 +7081,36 @@ begin
   Check(List[I]);
   Inc(I);
 end;
+```
+
+<a id="loop-runs-at-most-once"></a>
+### loop-runs-at-most-once
+
+**Schleife läuft höchstens einmal** · Bug · Warnung · Gruppe Fehler finden
+
+Jeder Weg durch den Rumpf einer for-, for-in-, while- oder repeat-Schleife endet mit Exit, Break, raise, Halt, Abort, RunError, ExitProcess oder dem Aufruf einer Routine der Datei, die eine Ausnahme auslöst; die Schleife läuft also höchstens einmal. Meist fehlt ein if vor dem Sprung, oder ein Continue war gemeint. Ein Weg zählt als Sprung bei if mit else und beiden Zweigen, case mit else und allen Zweigen, try … finally mit try- oder finally-Teil und try … except mit try-Teil und jedem Behandler. Still bei Continue dieser Schleife, goto bzw. Marken und bedingten Direktiven im Rumpf; ein Break innerer Schleifen zählt nicht. Ergänzt infinite-loop und loop-condition-unchanged. Keine Korrektur, die Absicht ist unklar; steht der Sprung direkt hinter einem if ohne else, fragt die Meldung, ob er in den if-Zweig gehört. Sicherheit hoch.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowFirstElement` | boolean | `false` | for-in aus einfachen Anweisungen, das mit Exit bzw. Break endet (erstes Element holen), nicht melden. |
+
+Mit Treffer:
+
+```pascal
+for mCustomer in FCustomers do
+begin
+  if mCustomer.Id = AId then
+    Result := mCustomer;
+  Exit;
+end;
+```
+
+Richtig:
+
+```pascal
+for mCustomer in FCustomers do
+  if mCustomer.Id = AId then
+    Exit(mCustomer);
 ```
 
 <a id="unconditional-recursion"></a>

@@ -76,6 +76,10 @@ uses
   Atlas.Common.Rules.Builtin.PublicMembers,
   Atlas.Common.Rules.Builtin.XmlDoc,
   Atlas.Common.Rules.Builtin.Naming,
+  Atlas.Common.Rules.Builtin.Casts,
+  Atlas.Common.Rules.Builtin.StringAddress,
+  Atlas.Common.Rules.Builtin.FormatArgs,
+  Atlas.Common.Rules.Builtin.ForbiddenSymbols,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -147,6 +151,10 @@ begin
     RegisterPublicMemberRules(Registry);
     RegisterXmlDocRules(Registry);
     RegisterNamingRules(Registry);
+    RegisterCastRules(Registry);
+    RegisterStringAddressRules(Registry);
+    RegisterFormatArgsRules(Registry);
+    RegisterForbiddenSymbolRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

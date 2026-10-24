@@ -185,6 +185,15 @@ begin
         Assert.IsTrue(Option.GetValue<string>('description') <> '');
         Assert.IsTrue(Rule.GetValue<string>('bad') <> '');
       end;
+      // Tabelle der Symbole (#1133): Spalten, Listen markiert.
+      if Rule.GetValue<string>('id') = 'forbidden-symbol' then
+      begin
+        Option := Rule.GetValue<TJSONArray>('options').Items[0];
+        Assert.AreEqual('object-list', Option.GetValue<string>('type'));
+        Assert.AreEqual('name', Option.GetValue<TJSONArray>('columns').Items[0].GetValue<string>('name'));
+        Assert.IsNull(Option.GetValue<TJSONArray>('columns').Items[0].FindValue('list'));
+        Assert.IsTrue(Option.GetValue<TJSONArray>('columns').Items[5].GetValue<Boolean>('list'));
+      end;
       // Gegenregel (#1025).
       if Rule.GetValue<string>('id') = 'redundant-begin-end' then
       begin
