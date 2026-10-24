@@ -10,7 +10,9 @@
 // x-control (Bedienelement laut Issue), examples (Vorschläge für Textfelder),
 // x-restart (wirkt erst nach Neustart) und x-scope (Ort: "global" =
 // settings.json, "project" = atlas.json; ein Glied erbt den Ort seines
-// Objekts) werden mitgelesen.
+// Objekts) werden mitgelesen. Ein Glied mit eigenem x-page steht auf dieser
+// Seite (#896: diagnostics.usesCycleLive unter Prüfregeln, die übrigen
+// diagnostics.* unter Robustheit).
 
 interface
 
@@ -196,7 +198,7 @@ var
   begin
     Result := Default(TAtlasSettingField);
     Result.Path := APath;
-    Result.Page := APage;
+    Result.Page := ASchema.GetValue<string>('x-page', APage);
     Result.Description := DescriptionOf(ASchema);
     if Result.Description = '' then
       Result.Description := AFallback;

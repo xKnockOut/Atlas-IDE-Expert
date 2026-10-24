@@ -156,6 +156,8 @@ begin
         Step.UnitName := AGraph.Node(Edge.Target).UnitName;
         Step.FileName := AGraph.Node(Edge.Target).FileName;
         Step.InInterface := Edge.Section = TUsesSection.Interface_;
+        Step.SourceFileName := AGraph.Node(Edge.Source).FileName;
+        Step.UsesName := Edge.Name;
         Steps := Steps + [Step];
       end;
     end);
@@ -195,6 +197,8 @@ begin
         Step.UnitName := Source.UnitName;
         Step.FileName := Source.FileName;
         Step.InInterface := Source.Outgoing[Ref.Item].Section = TUsesSection.Interface_;
+        Step.SourceFileName := Source.FileName;
+        Step.UsesName := Source.Outgoing[Ref.Item].Name;
         Users := Users + [Step];
       end;
     end);

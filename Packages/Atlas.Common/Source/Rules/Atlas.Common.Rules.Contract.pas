@@ -64,12 +64,25 @@ type
     /// <summary>Edits in weiteren Dateien zusätzlich zu FileName, z. B. Verwendungen eines öffentlichen Felds in
     /// anderen Units (#1105); nil = keine. Solche Korrekturen sind nie Safe.</summary>
     OtherFiles: TArray<TRuleFileEdits>;
+    /// <summary>Aktion „Graph zeigen“ statt Änderung (#896): der Client öffnet die Unit-Beziehungen (#593) der
+    /// geprüften Datei. Edits bleiben leer.</summary>
+    ShowsUnitRelations: Boolean;
     constructor Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean = False);
     /// <summary>Aktion, die nur zu ATarget springt (#915).</summary>
     class function Jump(const ATitle: string; const ATarget: TTextPosition): TRuleFix; static;
     /// <summary>Aktion, die zu ATarget (in den Klammern eines Aufrufs) springt und dort den Parameter-Hint öffnet
     /// (#1007).</summary>
     class function SignatureHelp(const ATitle: string; const ATarget: TTextPosition): TRuleFix; static;
+    /// <summary>Aktion, die die Unit-Beziehungen der geprüften Datei zeigt (#896).</summary>
+    class function UnitRelations(const ATitle: string): TRuleFix; static;
+  end;
+
+  /// <summary>Weitere Stelle zu einem Treffer (#896), beim Client als relatedInformation: z. B. der uses-Eintrag
+  /// jeder Kante eines Unit-Zyklus. Message ist die Beschriftung im Befund-Hover.</summary>
+  TRuleRelated = record
+    FileName: string;
+    Range: TTextRange;
+    Message: string;
   end;
 
   /// <summary>Ein Treffer einer Regel. Severity setzt die Engine.</summary>
@@ -82,6 +95,8 @@ type
     Fixes: TArray<TRuleFix>;
     /// <summary>Zusatz für den Befund-Hover, z. B. der durchsuchte Bereich (#1102); '' ohne.</summary>
     Details: string;
+    /// <summary>Weitere Stellen (#896), z. B. die uses-Einträge eines Zyklus; nil ohne.</summary>
+    Related: TArray<TRuleRelated>;
   end;
 
   /// <summary>Liest eine Datei neben der Unit, z. B. die .dcr aus {$R *.dcr} (#114).</summary>
@@ -169,11 +184,14 @@ type
 {$SCOPEDENUMS OFF}
 
   /// <summary>Ein uses-Eintrag auf einem Weg durch den Uses-Graphen (#64): die Unit, zu der er führt, und ob
-  /// er im interface-Teil steht.</summary>
+  /// er im interface-Teil steht. SourceFileName ist die Datei mit dem Eintrag, UsesName der Name, wie er dort
+  /// steht (#896, Sprung zum Eintrag).</summary>
   TRuleUsesStep = record
     UnitName: string;
     FileName: string;
     InInterface: Boolean;
+    SourceFileName: string;
+    UsesName: string;
   end;
 
   /// <summary>Die Projekte der Gruppe für projektweite Regeln wie unused-public-member (#1102); nil = unbekannt
@@ -277,6 +295,19 @@ type
     /// eigenen Optionen dazu.</summary>
     KeepAttributes: TArray<string>;
     KeepPatterns: TArray<string>;
+    /// <summary>Prüfung für den Editor (#896): Diagnosen, Code-Aktionen und Baseline des Servers. Projektweite
+    /// Läufe (--check, find_unused_code) lassen es aus. Setzt der Aufrufer.</summary>
+    Live: Boolean;
+    /// <summary>diagnostics.usesCycleLive aus (#896): uses-cycle schweigt mit Live; setzt TRuleEngine.Run.
+    /// </summary>
+    NoUsesCycleLive: Boolean;
+    /// <summary>diagnostics.usesCycleImplementation (#896): mit Live auch Zyklen mit implementation-Kante, als
+    /// Hinweis; setzt TRuleEngine.Run.</summary>
+    UsesCycleImplementation: Boolean;
+    /// <summary>sortUses (#284): Korrekturen, die uses-Listen ändern, sortieren wie „uses aufräumen“; setzt
+    /// TRuleEngine.Run.</summary>
+    SortUses: Boolean;
+    SortUsesByNamespace: Boolean;
   end;
 
   /// <summary>Sammelt die Treffer einer Regel. Ohne Angabe gilt Konfidenz High.</summary>
@@ -294,6 +325,16 @@ type
     /// <summary>Treffer mit Zusatz für den Befund-Hover (TRuleFinding.Details, #1102).</summary>
     procedure AddWithDetails(const ARange: TTextRange; const AMessage, ADetails: string; AConfidence: TRuleConfidence;
       const AFixes: TArray<TRuleFix>);
+  end;
+
+  /// <summary>Erweiterung des Reports der Engine (#896): Treffer mit Schweregrad, Zusatz und weiteren Stellen
+  /// zugleich. Regeln fragen sie mit Supports ab; ohne sie (Test-Doubles) melden sie über IRuleReport ohne die
+  /// weiteren Stellen.</summary>
+  IRuleRelatedReport = interface
+    ['{9D2E4B71-3C58-4A06-B7F1-5E8A2C6D0F94}']
+    /// <summary>TRuleSeverity.Default = Schweregrad der Regel; Off meldet nichts.</summary>
+    procedure AddRelated(const ARange: TTextRange; const AMessage, ADetails: string; ASeverity: TRuleSeverity;
+      const AFixes: TArray<TRuleFix>; const ARelated: TArray<TRuleRelated>);
   end;
 
   IRule = interface
@@ -373,6 +414,7 @@ begin
   // Parameter-Hint (#1007) oder Edits fremder Dateien (#1105).
   OpensSignature := False;
   OtherFiles := nil;
+  ShowsUnitRelations := False;
 end;
 
 class function TRuleFix.Jump(const ATitle: string; const ATarget: TTextPosition): TRuleFix;
@@ -386,6 +428,12 @@ class function TRuleFix.SignatureHelp(const ATitle: string; const ATarget: TText
 begin
   Result := Jump(ATitle, ATarget);
   Result.OpensSignature := True;
+end;
+
+class function TRuleFix.UnitRelations(const ATitle: string): TRuleFix;
+begin
+  Result := TRuleFix.Create(ATitle, nil);
+  Result.ShowsUnitRelations := True;
 end;
 
 end.

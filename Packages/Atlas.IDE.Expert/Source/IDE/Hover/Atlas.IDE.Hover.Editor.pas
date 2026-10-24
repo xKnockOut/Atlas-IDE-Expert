@@ -159,7 +159,8 @@ type
     procedure TipAction(Sender: TObject; AAction: TAtlasHoverAction);
     /// <summary>Link (href) in der XMLDoc (#654): im Browser öffnen.</summary>
     procedure TipUrl(Sender: TObject; const AUrl: string);
-    procedure TipProblemAction(Sender: TObject; AProblem: Integer; AAction: TAtlasHoverProblemAction);
+    procedure TipProblemAction(Sender: TObject; AProblem: Integer; AAction: TAtlasHoverProblemAction;
+      AItem: Integer);
     function CurrentSession: TLspSession;
     function Fetch(const ARef: TAtlasHoverTypeRef; out AData: TAtlasHoverData): Boolean;
     function CurrentView: TAtlasHoverView;
@@ -817,19 +818,25 @@ begin
   end;
 end;
 
-procedure TAtlasEditorHover.TipProblemAction(Sender: TObject; AProblem: Integer; AAction: TAtlasHoverProblemAction);
+procedure TAtlasEditorHover.TipProblemAction(Sender: TObject; AProblem: Integer; AAction: TAtlasHoverProblemAction;
+  AItem: Integer);
 const
+  // Related und ShowGraph (#896) sind Client-Aktionen: „related:<Stelle>“ springt an Problem.Related[Stelle].
   Tags: array[TAtlasHoverProblemAction] of string = ('uses.remove', 'uses.removeAll', 'uses.move', 'rule.fix',
-    'rule.suppressLine', 'rule.configure');
+    'rule.suppressLine', 'rule.configure', 'related:', 'cycle.showGraph');
 var
   Problem: TAtlasProblem;
+  Tag: string;
 begin
   try
     if not Assigned(FOnProblemAction) or (AProblem < 0) or (AProblem > High(FTip.View.Problems)) then
       Exit;
     Problem := FTip.View.Problems[AProblem];
+    Tag := Tags[AAction];
+    if AAction = TAtlasHoverProblemAction.Related then
+      Tag := Tag + IntToStr(AItem);
     Hide;
-    FOnProblemAction(Problem, Tags[AAction]);
+    FOnProblemAction(Problem, Tag);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Hover, E);

@@ -41,7 +41,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `index` | gemischt, siehe unten | object | – |  | Umfang des Symbolindex. Standard: alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und alle Units der Bibliotheks- und Suchpfade der Delphi-Installation, auch wenn keine Unit sie einbindet. Reihenfolge: aktives Projekt, übrige Projekte, Suchpfade, Bibliothek; alles im Hintergrund, die Bibliothek aus dem gemeinsamen Cache. |
 | `architecture` | gemischt, siehe unten | object | – |  | Architekturübersicht aus dem Index: zentrale Units, Teilsysteme, Zyklen und Querverbindungen im Fenster „Atlas-Architektur“, als Bericht (Markdown oder HTML, auch AtlasServer --architecture) und im MCP-Werkzeug get_architecture. |
 | `requestTimeoutMs` | global (settings.json) | integer | `10000` | 1000… | Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. |
-| `diagnostics` | global (settings.json) | object | – |  | Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichnernamen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben. |
+| `diagnostics` | gemischt, siehe unten | object | – |  | Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichnernamen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben. |
 | `highlight` | global (settings.json) | object | – |  | Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. |
 | `inlayHints` | global (settings.json) | object | – |  | Inlay Hints im Editor. |
 | `codeLens` | global (settings.json) | object | – |  | Code Lens im Editor. |
@@ -199,6 +199,8 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `diagnostics.log` | global (settings.json) | boolean | `true` |  | Anonymisiertes Diagnoselog schreiben (%LOCALAPPDATA%\Atlas\Logs\Diagnose). |
 | `diagnostics.logDays` | global (settings.json) | integer | `7` | 1…365 | Aufbewahrung des Diagnoselogs in Tagen. |
 | `diagnostics.logMapFile` | global (settings.json) | boolean | `false` |  | Zuordnung Kurz-ID (doc#4) → Pfad lokal speichern, nur für die eigene Analyse. Der Export nimmt sie nie mit. |
+| `diagnostics.usesCycleLive` | Projekt (atlas.json) | boolean | `true` |  | Zirkuläre Unit-Referenz schon beim Tippen melden (Regel uses-cycle): Ein Zyklus, in dem jede Kante im interface-Teil liegt, ist ein Fehler am auslösenden uses-Eintrag mit dem kürzesten Pfad; jede Unit im Hover springt an ihren uses-Eintrag. Schnellkorrektur „In implementation-uses verschieben“, wenn kein Bezeichner der Unit im interface-Teil gebraucht wird, sonst Sprung zu diesen Bezeichnern und „Graph zeigen“. Berücksichtigt den ungespeicherten Stand offener Units. false: keine Meldung im Editor; die projektweite Prüfung (--check, find_unused_code) bleibt. |
+| `diagnostics.usesCycleImplementation` | Projekt (atlas.json) | boolean | `false` |  | Im Editor auch Zyklen mit mindestens einer implementation-Kante melden, als Hinweis (der Compiler erlaubt sie). Braucht usesCycleLive. |
 
 ## highlight
 

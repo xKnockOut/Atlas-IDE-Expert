@@ -10,7 +10,20 @@
 //                       vollständigen kürzesten Pfad, der Befund-Hover jede
 //                       Kante mit ihrem Abschnitt. Grundlage ist der
 //                       gemeinsame Uses-Graph (#268) über IRuleProjectFiles;
-//                       für die eigene Unit gilt der Editor-Stand.
+//                       für die eigene Unit gilt der Editor-Stand, für
+//                       andere offene Units ihr Puffer nach der Tipp-Pause.
+//                       Im Editor (TRuleContext.Live, #896) schaltet
+//                       diagnostics.usesCycleLive die Meldung ab, Zyklen mit
+//                       implementation-Kante erscheinen dort nur mit
+//                       diagnostics.usesCycleImplementation, als Hinweis.
+//                       Jede Unit des Pfads trägt die Stelle ihres
+//                       uses-Eintrags (TRuleRelated, Sprung aus dem Hover).
+//                       Korrekturen am interface-Eintrag: „In
+//                       implementation-uses verschieben“, wenn kein
+//                       Bezeichner der Unit im interface-Teil gebraucht wird
+//                       (sortiert mit sortUses), sonst Sprünge zu diesen
+//                       Bezeichnern und „Graph zeigen“ (Unit-Beziehungen,
+//                       #593). Ein Selbstverweis ist immer ein Fehler.
 //   unused-declaration  Routine, Typ, Konstante oder globale Variable aus dem
 //                       implementation-Teil (bzw. einem Programm), die in der
 //                       Unit nirgends vorkommt. Keine Verwendung sind die
@@ -79,7 +92,10 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.DirectiveNames,
+  Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.ConsideredUsed,
@@ -189,6 +205,24 @@ begin
   end;
 end;
 
+/// <summary>Kleinste Ersetzung, die AOld in ANew verwandelt (gemeinsamer Anfang und Schluss bleiben).</summary>
+function SmallestEdit(const AOld, ANew: string): TTextEdit;
+var
+  Prefix, Suffix: Integer;
+  Lines: TLineTable;
+begin
+  Prefix := 0;
+  while (Prefix < Length(AOld)) and (Prefix < Length(ANew)) and (AOld[Prefix + 1] = ANew[Prefix + 1]) do
+    Inc(Prefix);
+  Suffix := 0;
+  while (Suffix < Length(AOld) - Prefix) and (Suffix < Length(ANew) - Prefix) and
+    (AOld[Length(AOld) - Suffix] = ANew[Length(ANew) - Suffix]) do
+    Inc(Suffix);
+  Lines := TLineTable.Build(AOld);
+  Result := TTextEdit.Create(TTextRange.Create(Lines.PositionAt(Prefix), Lines.PositionAt(Length(AOld) - Suffix)),
+    Copy(ANew, Prefix + 1, Length(ANew) - Prefix - Suffix));
+end;
+
 { TUsesCycleRule }
 
 function TUsesCycleRule.Descriptor: TRuleDescriptor;
@@ -197,14 +231,22 @@ begin
 end;
 
 procedure TUsesCycleRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+const
+  // Höchstens so viele Sprünge zu Bezeichnern, die die Unit im interface brauchen (#896).
+  MaxJumps = 5;
 var
-  Reason, OwnName, PathText, Details: string;
+  Reason, OwnName, PathText, Details, Message: string;
   WithImplementation, AllInterface: Boolean;
   Reference: TUsesReference;
   Steps: TArray<TRuleUsesStep>;
   Step: TRuleUsesStep;
   Range: TTextRange;
   Previous: string;
+  Related: TArray<TRuleRelated>;
+  Fixes: TArray<TRuleFix>;
+  Severity: TRuleSeverity;
+  // Datei (groß) -> uses-Einträge, je Prüfung einmal gelesen.
+  Entries: TDictionary<string, TArray<TUsesReference>>;
 
   function SectionText(AInInterface: Boolean): string;
   begin
@@ -214,45 +256,211 @@ var
       Result := 'implementation';
   end;
 
+  function RelatedOf(const AFileName: string; const ARange: TTextRange; const AUnitName: string): TRuleRelated;
+  begin
+    Result.FileName := AFileName;
+    Result.Range := ARange;
+    Result.Message := AUnitName;
+  end;
+
+  /// <summary>Stelle des Eintrags AUsesName im Abschnitt AInInterface von AFileName; die eigene Datei im
+  /// Editor-Stand, andere über ReadText (offene Dokumente zuerst). Ohne Fund der Anfang der Datei.</summary>
+  function EntryRange(const AFileName, AUsesName: string; AInInterface: Boolean): TTextRange;
+  var
+    Text: string;
+    Found: TArray<TUsesReference>;
+    Entry: TUsesReference;
+  begin
+    if not Entries.TryGetValue(UpperCase(AFileName), Found) then
+    begin
+      Found := nil;
+      if SameText(AFileName, AContext.FileName) then
+        Found := TUsesClauses.References(AContext.Tree.Tokens)
+      else if AContext.ProjectFiles.ReadText(AFileName, Text) then
+        Found := TUsesClauses.References(TPascalLexer.Tokenize(Text));
+      Entries.Add(UpperCase(AFileName), Found);
+    end;
+    for Entry in Found do
+      if (Entry.List = TUsesListKind.UsesList) and (Entry.InInterface = AInInterface) and
+        SameText(Entry.Name, AUsesName) then
+        Exit(Entry.Range);
+    Result := Default(TTextRange);
+  end;
+
+  /// <summary>Korrekturen am interface-Eintrag (#896): ins implementation-uses verschieben, wenn kein
+  /// Bezeichner der Unit im interface-Teil gebraucht wird (sortiert wie sortUses); sonst Sprünge zu diesen
+  /// Bezeichnern, ihre Liste in ADetails und „Graph zeigen“.</summary>
+  function InterfaceFixes(var ADetails: string): TArray<TRuleFix>;
+  var
+    UnitIndex: TUnitIndex;
+    Symbol: TIndexSymbol;
+    AllNames, TopNames: TArray<string>;
+    Needed, Shown: TArray<TUsesInterfaceUsage>;
+    Edits, SortEdits: TArray<TTextEdit>;
+    LineBreak, NewText, Name, Need, Line: string;
+    Fix: TRuleFix;
+    Index: Integer;
+  begin
+    Result := nil;
+    if (AContext.Index = nil) or not AContext.Index.FindUnit(Reference.Name, UnitIndex) then
+      Exit;
+    AllNames := nil;
+    TopNames := nil;
+    for Symbol in UnitIndex.Symbols do
+      if Symbol.InInterface then
+      begin
+        AllNames := AllNames + [Symbol.Name];
+        if Symbol.Container = '' then
+          TopNames := TopNames + [Symbol.Name];
+      end;
+    Needed := TUsesActions.InterfaceUsages(AContext.Tree.Tokens, Reference.Name, AllNames);
+    if Needed = nil then
+    begin
+      LineBreak := TTextLines.LineBreakOf(AContext.Text);
+      if not TUsesActions.MoveUnits(AContext.Tree.Tokens, AContext.Text, TArray<string>.Create(Reference.Name),
+        LineBreak, Edits) then
+        Exit;
+      if AContext.SortUses then
+      begin
+        // Wie „uses aufräumen“ mit sortUses: erst verschieben, dann sortieren, als eine kleinste Ersetzung.
+        NewText := TChangeSignature.ApplyEdits(AContext.Text, Edits);
+        if TUsesClauses.Organize(TPascalLexer.Tokenize(NewText), NewText, True, LineBreak, SortEdits,
+          AContext.SortUsesByNamespace) then
+          NewText := TChangeSignature.ApplyEdits(NewText, SortEdits);
+        Edits := TArray<TTextEdit>.Create(SmallestEdit(AContext.Text, NewText));
+      end;
+      Result := TArray<TRuleFix>.Create(TRuleFix.Create('In implementation-uses verschieben', Edits));
+      Exit;
+    end;
+    // Erst die Typen, Routinen und Konstanten der Unit; nur Mitglieder (Create, Count) sind unsicherer.
+    Shown := TUsesActions.InterfaceUsages(AContext.Tree.Tokens, Reference.Name, TopNames);
+    if Shown = nil then
+      Shown := Needed;
+    Need := '';
+    for Index := 0 to High(Shown) do
+    begin
+      if Index >= MaxJumps then
+      begin
+        Need := Need + ', …';
+        Break;
+      end;
+      Name := Shown[Index].Name;
+      Line := IntToStr(Shown[Index].Range.StartPos.Line + 1);
+      if Need <> '' then
+        Need := Need + ', ';
+      Need := Need + Name + ' (Zeile ' + Line + ')';
+      Fix := TRuleFix.Jump('Zu ' + Name + ' springen (Zeile ' + Line + ', braucht ' + Reference.Name +
+        ' im interface)', Shown[Index].Range.StartPos);
+      Fix.Alternative := Index > 0;
+      Result := Result + [Fix];
+    end;
+    ADetails := ADetails + sLineBreak + 'Im interface-Teil gebraucht: ' + Need;
+  end;
+
+  /// <summary>Über die Erweiterung des Reports mit den Stellen des Pfads; ohne sie (Test-Doubles) ohne.</summary>
+  procedure AddFinding(const ARange: TTextRange; const AMessage, ADetails: string; ASeverity: TRuleSeverity;
+    const AFixes: TArray<TRuleFix>; const ARelated: TArray<TRuleRelated>);
+  var
+    Extended: IRuleRelatedReport;
+  begin
+    if Supports(AReport, IRuleRelatedReport, Extended) then
+      Extended.AddRelated(ARange, AMessage, ADetails, ASeverity, AFixes, ARelated)
+    else
+      AReport.AddWithSeverity(ARange, AMessage, ASeverity, AFixes);
+  end;
+
+  /// <summary>„Eintrag entfernen“ für einen Selbstverweis; nil, wenn die Liste das nicht zulässt.</summary>
+  function RemoveFixes(const ARange: TTextRange): TArray<TRuleFix>;
+  var
+    Edit: TTextEdit;
+  begin
+    Result := nil;
+    if TUsesActions.RemoveEntries(AContext.Text, TArray<TTextRange>.Create(ARange), Edit) then
+      Result := TArray<TRuleFix>.Create(TRuleFix.Create('Eintrag entfernen', TArray<TTextEdit>.Create(Edit)));
+  end;
+
 begin
-  if (AContext.Tree = nil) or (AContext.ProjectFiles = nil) or (AContext.FileName = '') or
-    IsProgramFile(AContext.FileName) or not UnitNameRange(AContext.Tree.Tokens, Range) or
-    not AContext.ProjectFiles.Complete(Reason) then
+  if (AContext.Tree = nil) or (AContext.FileName = '') or IsProgramFile(AContext.FileName) or
+    not UnitNameRange(AContext.Tree.Tokens, Range) then
+    Exit;
+  // diagnostics.usesCycleLive aus (#896): keine Meldung beim Tippen, die projektweite Prüfung bleibt.
+  if AContext.Live and AContext.NoUsesCycleLive then
+    Exit;
+  OwnName := TUsesClauses.OwnName(AContext.Tree.Tokens);
+  // Selbstverweis (#896): braucht keinen Graphen und ist immer ein Compilerfehler.
+  for Reference in TUsesClauses.References(AContext.Tree.Tokens) do
+    if (Reference.List = TUsesListKind.UsesList) and SameText(CleanName(Reference.Name), OwnName) then
+      AddFinding(Reference.Range, 'Zirkuläre Unit-Referenz: ' + OwnName + ' → ' + OwnName,
+        'Die Unit nennt sich selbst im uses: Der Compiler lehnt das ab (F2047).', TRuleSeverity.Error,
+        RemoveFixes(Reference.Range), TArray<TRuleRelated>.Create(RelatedOf(AContext.FileName, Reference.Range,
+        OwnName)));
+  if (AContext.ProjectFiles = nil) or not AContext.ProjectFiles.Complete(Reason) then
     Exit;
   WithImplementation := TRuleOptions.Bool(AContext.Options, 'implementation', True);
-  OwnName := TUsesClauses.OwnName(AContext.Tree.Tokens);
-  for Reference in TUsesClauses.References(AContext.Tree.Tokens) do
-  begin
-    if Reference.List <> TUsesListKind.UsesList then
-      Continue;
-    if Assigned(AContext.Cancelled) and AContext.Cancelled() then
-      raise ERuleCheckCancelled.Create(UsesCycleRuleId);
-    // Erst nur über interface: ein solcher Zyklus ist ein Compilerfehler und geht vor.
-    Steps := nil;
-    if Reference.InInterface then
-      Steps := AContext.ProjectFiles.UsesPath(Reference.Name, AContext.FileName, True);
-    AllInterface := Steps <> nil;
-    if (Steps = nil) and WithImplementation then
-      Steps := AContext.ProjectFiles.UsesPath(Reference.Name, AContext.FileName, False);
-    if Steps = nil then
-      Continue;
-    PathText := OwnName + ' → ' + Reference.Name;
-    // Verkettet statt Format: Der Pfeil bleibt so auch unter FPC ein Zeichen.
-    Details := OwnName + ' → ' + Reference.Name + ' (' + SectionText(Reference.InInterface) + ')';
-    Previous := Reference.Name;
-    for Step in Steps do
+  // Im Editor (#896) erscheinen erlaubte Zyklen über implementation nur mit diagnostics.usesCycleImplementation.
+  if AContext.Live then
+    WithImplementation := WithImplementation and AContext.UsesCycleImplementation;
+  Entries := TDictionary<string, TArray<TUsesReference>>.Create;
+  try
+    for Reference in TUsesClauses.References(AContext.Tree.Tokens) do
     begin
-      PathText := PathText + ' → ' + Step.UnitName;
-      Details := Details + sLineBreak + Previous + ' → ' + Step.UnitName + ' (' +
-        SectionText(Step.InInterface) + ')';
-      Previous := Step.UnitName;
+      if (Reference.List <> TUsesListKind.UsesList) or SameText(CleanName(Reference.Name), OwnName) then
+        Continue;
+      if Assigned(AContext.Cancelled) and AContext.Cancelled() then
+        raise ERuleCheckCancelled.Create(UsesCycleRuleId);
+      // Erst nur über interface: ein solcher Zyklus ist ein Compilerfehler und geht vor.
+      Steps := nil;
+      if Reference.InInterface then
+        Steps := AContext.ProjectFiles.UsesPath(Reference.Name, AContext.FileName, True);
+      AllInterface := Steps <> nil;
+      if (Steps = nil) and WithImplementation then
+        Steps := AContext.ProjectFiles.UsesPath(Reference.Name, AContext.FileName, False);
+      if Steps = nil then
+        Continue;
+      PathText := OwnName + ' → ' + Reference.Name;
+      // Verkettet statt Format: Der Pfeil bleibt so auch unter FPC ein Zeichen.
+      if AllInterface then
+        Details := 'Alle Kanten liegen im interface-Teil: Der Compiler lehnt den Zyklus ab (F2047).'
+      else
+        Details := 'Mindestens eine Kante liegt im implementation-Teil: Der Compiler erlaubt den Zyklus.';
+      Details := Details + sLineBreak + OwnName + ' → ' + Reference.Name + ' (' +
+        SectionText(Reference.InInterface) + ')';
+      // Jede Unit des Pfads springt im Hover an ihren uses-Eintrag (#896); die eigene an den letzten.
+      Related := TArray<TRuleRelated>.Create(RelatedOf(AContext.FileName, Reference.Range, Reference.Name));
+      Previous := Reference.Name;
+      for Step in Steps do
+      begin
+        PathText := PathText + ' → ' + Step.UnitName;
+        Details := Details + sLineBreak + Previous + ' → ' + Step.UnitName + ' (' +
+          SectionText(Step.InInterface) + ')';
+        Related := Related + [RelatedOf(Step.SourceFileName, EntryRange(Step.SourceFileName, Step.UsesName,
+          Step.InInterface), Step.UnitName)];
+        Previous := Step.UnitName;
+      end;
+      Related := TArray<TRuleRelated>.Create(RelatedOf(Related[High(Related)].FileName, Related[High(Related)].Range,
+        OwnName)) + Related;
+      Fixes := nil;
+      if Reference.InInterface then
+        Fixes := InterfaceFixes(Details);
+      if (Fixes = nil) or Fixes[0].HasJump then
+        Fixes := Fixes + [TRuleFix.UnitRelations('Graph zeigen (Unit-Beziehungen)')];
+      if AllInterface then
+      begin
+        Message := 'Zirkuläre Unit-Referenz: ' + PathText;
+        Severity := TRuleSeverity.Error;
+      end
+      else
+      begin
+        Message := 'Zirkuläre Unit-Referenz: ' + PathText + ' (über implementation-uses)';
+        // Im Editor nur als Hinweis (#896), projektweit mit dem Schweregrad der Regel (#64).
+        Severity := TRuleSeverity.Default;
+        if AContext.Live then
+          Severity := TRuleSeverity.Hint;
+      end;
+      AddFinding(Reference.Range, Message, Details, Severity, Fixes, Related);
     end;
-    if AllInterface then
-      AReport.AddWithSeverity(Reference.Range, 'Zirkuläre Unit-Referenz über interface-uses (wie F2047): ' +
-        PathText, TRuleSeverity.Error, [])
-    else
-      AReport.AddWithDetails(Reference.Range, 'Zirkuläre Unit-Referenz: ' + PathText + ' (über implementation-uses)',
-        Details, TRuleConfidence.High, []);
+  finally
+    Entries.Free;
   end;
 end;
 

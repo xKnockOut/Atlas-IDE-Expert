@@ -5919,8 +5919,8 @@ Voraussetzung: Server läuft in der IDE mit einer Projektgruppe aus Anwendung un
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| UZ1 | Unit A nennt B im interface-uses, B nennt A im implementation-uses | Warnung `uses-cycle` am uses-Eintrag in beiden Units: „Zirkuläre Unit-Referenz: A → B → A (über implementation-uses)“, im Hover die Kanten mit Abschnitt (**Abnahme**) |
-| UZ2 | Beide Einträge aus UZ1 ins interface-uses; dann mit Delphi übersetzen | Fehler „Zirkuläre Unit-Referenz über interface-uses (wie F2047): A → B → A“; dcc meldet F2047 an derselben Stelle |
+| UZ1 | Unit A nennt B im interface-uses, B nennt A im implementation-uses; `atlas --check` bzw. `find_unused_code` | Warnung `uses-cycle` am uses-Eintrag in beiden Units: „Zirkuläre Unit-Referenz: A → B → A (über implementation-uses)“ mit den Kanten und Abschnitt. Im Editor schweigt sie seit #896, solange `diagnostics.usesCycleImplementation` aus ist (**Abnahme**) |
+| UZ2 | Beide Einträge aus UZ1 ins interface-uses; dann mit Delphi übersetzen | Fehler „Zirkuläre Unit-Referenz: A → B → A“, in den Details „Alle Kanten liegen im interface-Teil: Der Compiler lehnt den Zyklus ab (F2047).“; dcc meldet F2047 an derselben Stelle |
 | UZ3 | Zyklus über drei Units (A → B → C → A); `"uses-cycle": {"implementation": false}` | Erst Meldung mit dem ganzen Rundweg; mit der Option nur noch reine interface-Zyklen |
 | UZ4 | Private Routine, Konstante, Variable und Typ nur im implementation-Teil, nirgends verwendet; eine davon nur in einer anderen ungenutzten Routine benutzt | Hinweise `unused-declaration` „Routine X wird nirgends verwendet.“ usw.; die nur intern benutzte bleibt still, solange ihr Nutzer existiert. Korrektur „Als bewusst vorhanden markieren (lsp-ignore)“ (**Abnahme**) |
 | UZ5 | Handler aus der .dfm, Routine per Name als String, Unit mit `{$I …}`, Deklaration auch im interface | Keine Meldung `unused-declaration` |
@@ -6270,3 +6270,21 @@ Voraussetzung: Server läuft in der IDE, Testprojekt mit `Kunde.Import` (interfa
 | UV14 | Server beenden, Alt+F11 | Meldung „kein Server“ und der Dialog der IDE |
 | UV15 | Befehlspalette „Unit verwenden (Atlas)“ und „Formulare suchen (Atlas)“ | Das Atlas-Fenster im jeweiligen Modus, auch mit abgeschalteter Übernahme |
 | UV16 | Englische IDE-Sprache | „Use unit in Kunde.Import“, „already in uses“, „Cycle via …“, „Find forms“ |
+
+## Zirkuläre Unit-Referenz beim Tippen (#896)
+
+Voraussetzung: Projektgruppe mit den Units uA, uB, uC (uA nennt uB, uB nennt uC, jeweils im interface-uses); Index fertig aufgebaut.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZL1 | In uC ins interface-uses `uA` tippen, nicht speichern | Nach kurzer Pause Fehler `uses-cycle` am Eintrag `uA`: „Zirkuläre Unit-Referenz: uC → uA → uB → uC“ (**Abnahme**) |
+| ZL2 | ZL1, dann uA und uB geöffnet lassen und dort ohne Speichern die Einträge ändern (z. B. `uB` aus uA entfernen) | Die Meldung in uC verschwindet ohne Speichern; nach Rückgängig erscheint sie wieder. Auch beim Öffnen von uC steht sie sofort da |
+| ZL3 | Maus über die Meldung aus ZL1 | Im Hover sind uC, uA, uB, uC Verweise; ein Klick springt an den uses-Eintrag der Unit in der jeweiligen Datei; dahinter der Verweis „Graph zeigen“ (**Abnahme**) |
+| ZL4 | „Graph zeigen“ im Hover oder die Korrektur „Graph zeigen (Unit-Beziehungen)“ | Das Fenster Unit-Beziehungen (#593) öffnet sich für die aktuelle Unit |
+| ZL5 | uC braucht im interface keinen Bezeichner aus uA; Glühbirne am Eintrag | Korrektur „In implementation-uses verschieben“; danach steht uA im implementation-uses, mit `sortUses` sortiert wie „uses aufräumen“; die Meldung verschwindet (**Abnahme**) |
+| ZL6 | uC nutzt im interface einen Typ aus uA (z. B. `TA` als Parametertyp) | Kein Verschieben; stattdessen „Zu TA springen (Zeile N, braucht uA im interface)“ (bis fünf Sprünge) und „Graph zeigen“; in den Details „Im interface-Teil gebraucht: TA (Zeile N)“ |
+| ZL7 | uC nennt sich selbst im uses | Fehler „Zirkuläre Unit-Referenz: uC → uC“ mit Korrektur „Eintrag entfernen“, auch ohne Projekt |
+| ZL8 | Zyklus nur über implementation-uses; erst Standard, dann Optionen › Atlas › Prüfregeln „Unit-Zyklen über implementation zeigen“ (`diagnostics.usesCycleImplementation`) an | Erst keine Meldung im Editor; danach ein Hinweis „… (über implementation-uses)“ |
+| ZL9 | `diagnostics.usesCycleLive` aus | Keine Meldung beim Tippen; `atlas --check` und `find_unused_code` melden den Zyklus weiter |
+| ZL10 | Problemliste, `check_code` über MCP und `atlas --check` nach ZL1 | Dieselbe Meldung mit demselben Text an derselben Stelle |
+| ZL11 | Projekt mit 2000 Units, Zyklus über alle; im uses tippen | Kein Hängen der IDE; die Meldung erscheint nach dem Tippen ohne merkliche Verzögerung |

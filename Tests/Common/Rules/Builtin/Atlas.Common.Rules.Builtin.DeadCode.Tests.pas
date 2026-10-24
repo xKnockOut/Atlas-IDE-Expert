@@ -8,6 +8,12 @@
 // unused-unit (nur das Programm nennt die Unit, Bezeichner im Programm,
 // initialization, Packages), die Einstellung deadCode im Parser, die Marker
 // ERWARTET-PROJEKT im Referenzprojekt und eine Zeitmessung.
+// Meldung im Editor (#896): Live-Modus mit Pfad und Stellen jeder Kante,
+// diagnostics.usesCycleLive und usesCycleImplementation, Selbstverweis,
+// mehrere Zyklen, kürzester Pfad, Bedingung und Textänderung von „In
+// implementation-uses verschieben“ (auch mit sortUses), Sprünge zu den
+// Bezeichnern im interface mit „Graph zeigen“, Einstellungen im Parser und
+// eine Zeitmessung mit 2000 Units.
 
 interface
 
@@ -39,6 +45,27 @@ type
     [Test]
     procedure UnusedUnitExceptions;
     [Test]
+    procedure LiveInterfaceCycleWithPathAndPlaces;
+    [Test]
+    procedure LiveImplementationCycleOnlyWhenEnabled;
+    [Test]
+    procedure LiveSwitchLeavesProjectCheck;
+    [Test]
+    procedure SelfReferenceIsError;
+    [Test]
+    procedure SeveralCyclesAndShortestPath;
+    [Test]
+    procedure MoveFixOnlyWithoutInterfaceUse;
+    [Test]
+    procedure MoveFixSortsLikeSortUses;
+    [Test]
+    procedure JumpsAndGraphWhenInterfaceNeedsUnit;
+    [Test]
+    procedure ParserReadsUsesCycleSettings;
+    [Test]
+    [Category('Benchmark')]
+    procedure LiveCycleCheckOf2000Units;
+    [Test]
     procedure ParserReadsDeadCode;
     [Test]
     procedure ReferenceProjectMatchesMarkers;
@@ -68,6 +95,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.ProjectFiles,
+  Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Rules.Builtin.DeadCode;
 
 const
@@ -85,6 +113,10 @@ type
     Config: string;
     Incomplete: Boolean;
     NoProjects: Boolean;
+    /// <summary>Prüfung wie im Editor (#896).</summary>
+    Live: Boolean;
+    /// <summary>So oft zusätzlich prüfen, mit demselben Graphen (Zeitmessung beim Tippen, #896).</summary>
+    Repeats: Integer;
     procedure Put(const AName, AText: string);
     function Text(const AName: string): string;
   end;
@@ -163,8 +195,14 @@ begin
   Result.Projects := [Project('C:\P\App.dproj', TRuleProjectKind.Application, Sources)];
 end;
 
+var
+  // Dauer der letzten Prüfung in Run ohne Aufbau von Index und Graph (Zeitmessung #896).
+  LastCheckMs: Int64;
+
 function Run(const AScenario: TScenario; const ACheck: string): TArray<TRuleFinding>;
 var
+  Watch: TStopwatch;
+  Round: Integer;
   Texts: TDictionary<string, string>;
   Index: ISymbolIndex;
   Entry: TTestFile;
@@ -198,6 +236,7 @@ begin
       Context.Tree := Tree;
       Context.Index := Index;
       Context.FormText := AScenario.Text(ChangeFileExt(ACheck, '.dfm'));
+      Context.Live := AScenario.Live;
       if not AScenario.NoProjects then
         Context.ProjectFiles := TRuleProjectFiles.Create(AScenario.Projects, Index,
           function(const AFileName: string; out AText: string): Boolean
@@ -210,8 +249,13 @@ begin
             if Incomplete then
               AReason := 'Index läuft';
           end);
-      Result := TRuleEngine.Run([TUsesCycleRule.Create, TUnusedDeclarationRule.Create, TUnusedUnitRule.Create],
-        Settings, Context);
+      for Round := 0 to AScenario.Repeats do
+      begin
+        Watch := TStopwatch.StartNew;
+        Result := TRuleEngine.Run([TUsesCycleRule.Create, TUnusedDeclarationRule.Create, TUnusedUnitRule.Create],
+          Settings, Context);
+        LastCheckMs := Watch.ElapsedMilliseconds;
+      end;
       Context.ProjectFiles := nil;
     finally
       Tree.Free;
@@ -247,7 +291,8 @@ begin
   // Am uses-Eintrag "B" in A (Zeile 4, Spalte 2).
   Assert.AreEqual(4, Found[0].Range.StartPos.Line);
   Assert.AreEqual(2, Found[0].Range.StartPos.Character);
-  Assert.AreEqual('A → B (implementation)'#13#10'B → C (interface)'#13#10'C → A (implementation)',
+  Assert.AreEqual('Mindestens eine Kante liegt im implementation-Teil: Der Compiler erlaubt den Zyklus.'#13#10 +
+    'A → B (implementation)'#13#10'B → C (interface)'#13#10'C → A (implementation)',
     StringReplace(Found[0].Details, sLineBreak, #13#10, [rfReplaceAll]));
   // Jede Unit des Zyklus meldet ihren Teil.
   Assert.AreEqual('Zirkuläre Unit-Referenz: B → C → A → B (über implementation-uses)'#10,
@@ -262,14 +307,13 @@ begin
   Data := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'C', ''),
     TArray<string>.Create('C', 'A', '')]);
   Found := Run(Data, FileOf('C'));
-  Assert.AreEqual('Zirkuläre Unit-Referenz über interface-uses (wie F2047): C → A → B → C'#10,
-    Messages(Found, UsesCycleRuleId));
+  Assert.AreEqual('Zirkuläre Unit-Referenz: C → A → B → C'#10, Messages(Found, UsesCycleRuleId));
   Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, Found[0].Severity);
+  Assert.IsTrue(StartsText('Alle Kanten liegen im interface-Teil', Found[0].Details), Found[0].Details);
   // Kürzester Weg: Mit einer zusätzlichen Abkürzung A -> C über implementation bleibt der interface-Zyklus
   // maßgeblich, weil er ein Compilerfehler ist.
   Data.Put(FileOf('A'), UnitText('A', 'B', 'C', ''));
-  Assert.AreEqual('Zirkuläre Unit-Referenz über interface-uses (wie F2047): C → A → B → C'#10,
-    Messages(Run(Data, FileOf('C')), UsesCycleRuleId));
+  Assert.AreEqual('Zirkuläre Unit-Referenz: C → A → B → C'#10, Messages(Run(Data, FileOf('C')), UsesCycleRuleId));
 end;
 
 procedure TDeadCodeTests.ImplementationOptionOff;
@@ -284,8 +328,7 @@ begin
   // Ein Zyklus nur über interface bleibt.
   Data.Put(FileOf('A'), UnitText('A', 'B', '', ''));
   Data.Put(FileOf('B'), UnitText('B', 'A', '', ''));
-  Assert.AreEqual('Zirkuläre Unit-Referenz über interface-uses (wie F2047): A → B → A'#10,
-    Messages(Run(Data, FileOf('A')), UsesCycleRuleId));
+  Assert.AreEqual('Zirkuläre Unit-Referenz: A → B → A'#10, Messages(Run(Data, FileOf('A')), UsesCycleRuleId));
   // off schaltet die Regel ganz ab.
   Data.Config := '{"rules": {"uses-cycle": "off"}}';
   Assert.AreEqual('', Messages(Run(Data, FileOf('A')), UsesCycleRuleId));
@@ -477,6 +520,235 @@ begin
   Data.Incomplete := False;
   Data.NoProjects := True;
   Assert.AreEqual('', Messages(Run(Data, FileOf('Waise')), UnusedUnitRuleId));
+end;
+
+/// <summary>Der erste Treffer der Regel uses-cycle; Default ohne.</summary>
+function CycleFinding(const AFindings: TArray<TRuleFinding>): TRuleFinding;
+var
+  Finding: TRuleFinding;
+begin
+  for Finding in AFindings do
+    if SameText(Finding.RuleId, UsesCycleRuleId) then
+      Exit(Finding);
+  Result := Default(TRuleFinding);
+end;
+
+/// <summary>"Unit@Datei:Zeile:Zeichen" je Stelle, durch Leerzeichen getrennt.</summary>
+function PlacesText(const AFinding: TRuleFinding): string;
+var
+  Related: TRuleRelated;
+begin
+  Result := '';
+  for Related in AFinding.Related do
+  begin
+    if Result <> '' then
+      Result := Result + ' ';
+    Result := Result + Format('%s@%s:%d:%d', [Related.Message, ExtractFileName(Related.FileName),
+      Related.Range.StartPos.Line, Related.Range.StartPos.Character]);
+  end;
+end;
+
+/// <summary>Titel der Korrekturen, je Zeile einer.</summary>
+function FixTitles(const AFinding: TRuleFinding): string;
+var
+  Fix: TRuleFix;
+begin
+  Result := '';
+  for Fix in AFinding.Fixes do
+    Result := Result + Fix.Title + #10;
+end;
+
+procedure TDeadCodeTests.LiveInterfaceCycleWithPathAndPlaces;
+var
+  Data: TScenario;
+  Found: TRuleFinding;
+begin
+  // Wie im Referenzprojekt: uA -> uB -> uC, dann uA im interface-uses von uC ergänzt.
+  Data := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'C', ''),
+    TArray<string>.Create('C', 'A', '')]);
+  Data.Live := True;
+  Found := CycleFinding(Run(Data, FileOf('C')));
+  Assert.AreEqual('Zirkuläre Unit-Referenz: C → A → B → C', Found.Message);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, Found.Severity);
+  Assert.AreEqual(3, Found.Range.StartPos.Line);
+  Assert.AreEqual(2, Found.Range.StartPos.Character);
+  // Jede Unit des Pfads mit ihrem uses-Eintrag: die eigene am Eintrag in B, dann jede Kante.
+  Assert.AreEqual('C@B.pas:3:2 A@C.pas:3:2 B@A.pas:3:2 C@B.pas:3:2', PlacesText(Found));
+  // Ungespeicherter Stand einer anderen offenen Unit: Ohne B -> C gibt es keinen Zyklus mehr.
+  Data.Put(FileOf('B'), UnitText('B', '', '', ''));
+  Assert.AreEqual('', Messages(Run(Data, FileOf('C')), UsesCycleRuleId));
+end;
+
+procedure TDeadCodeTests.LiveImplementationCycleOnlyWhenEnabled;
+var
+  Data: TScenario;
+  Found: TRuleFinding;
+begin
+  Data := Group([TArray<string>.Create('A', '', 'B'), TArray<string>.Create('B', '', 'A')]);
+  Data.Live := True;
+  Assert.AreEqual('', Messages(Run(Data, FileOf('A')), UsesCycleRuleId), 'im Editor erlaubt und still');
+  Data.Config := '{"diagnostics": {"usesCycleImplementation": true}}';
+  Found := CycleFinding(Run(Data, FileOf('A')));
+  Assert.AreEqual('Zirkuläre Unit-Referenz: A → B → A (über implementation-uses)', Found.Message);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Hint, Found.Severity);
+  // Ein Eintrag im implementation-uses lässt sich nicht weiter verschieben: nur „Graph zeigen“.
+  Assert.AreEqual('Graph zeigen (Unit-Beziehungen)'#10, FixTitles(Found));
+  Assert.IsTrue(Found.Fixes[0].ShowsUnitRelations);
+  // Projektweit (#64) bleibt es eine Warnung.
+  Data.Live := False;
+  Data.Config := '';
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, CycleFinding(Run(Data, FileOf('A'))).Severity);
+end;
+
+procedure TDeadCodeTests.LiveSwitchLeavesProjectCheck;
+var
+  Data: TScenario;
+begin
+  Data := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'A', '')]);
+  Data.Config := '{"diagnostics": {"usesCycleLive": false}}';
+  Data.Live := True;
+  Assert.AreEqual('', Messages(Run(Data, FileOf('A')), UsesCycleRuleId), 'keine Meldung beim Tippen');
+  Data.Live := False;
+  Assert.AreEqual('Zirkuläre Unit-Referenz: A → B → A'#10, Messages(Run(Data, FileOf('A')), UsesCycleRuleId),
+    'die projektweite Prüfung bleibt');
+end;
+
+procedure TDeadCodeTests.SelfReferenceIsError;
+var
+  Data: TScenario;
+  Found: TRuleFinding;
+  Fixed: string;
+begin
+  Data := Group([TArray<string>.Create('A', 'A', '')]);
+  Data.NoProjects := True;
+  Found := CycleFinding(Run(Data, FileOf('A')));
+  Assert.AreEqual('Zirkuläre Unit-Referenz: A → A', Found.Message);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, Found.Severity);
+  Assert.AreEqual('Eintrag entfernen'#10, FixTitles(Found));
+  Fixed := TChangeSignature.ApplyEdits(Data.Text(FileOf('A')), Found.Fixes[0].Edits);
+  Assert.AreEqual(0, Pos('uses', Fixed), Fixed);
+  // Auch mit Projekten nur eine Meldung, nicht noch eine über den Graphen.
+  Data.NoProjects := False;
+  Data.Live := True;
+  Assert.AreEqual('Zirkuläre Unit-Referenz: A → A'#10, Messages(Run(Data, FileOf('A')), UsesCycleRuleId));
+end;
+
+procedure TDeadCodeTests.SeveralCyclesAndShortestPath;
+var
+  Data: TScenario;
+begin
+  Data := Group([TArray<string>.Create('A', 'B, C', ''), TArray<string>.Create('B', 'A', ''),
+    TArray<string>.Create('C', 'A', '')]);
+  Data.Live := True;
+  Assert.AreEqual('Zirkuläre Unit-Referenz: A → B → A'#10'Zirkuläre Unit-Referenz: A → C → A'#10,
+    Messages(Run(Data, FileOf('A')), UsesCycleRuleId));
+  // B -> D -> E -> A ist länger als B -> C -> A, obwohl D zuerst im uses steht.
+  Data := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'D, C', ''),
+    TArray<string>.Create('C', 'A', ''), TArray<string>.Create('D', 'E', ''), TArray<string>.Create('E', 'A', '')]);
+  Data.Live := True;
+  Assert.AreEqual('Zirkuläre Unit-Referenz: A → B → C → A'#10, Messages(Run(Data, FileOf('A')), UsesCycleRuleId));
+end;
+
+procedure TDeadCodeTests.MoveFixOnlyWithoutInterfaceUse;
+var
+  Data: TScenario;
+  Found: TRuleFinding;
+  Fixed: string;
+begin
+  Data := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'C', ''),
+    TArray<string>.Create('C', 'A', 'B')]);
+  Data.Live := True;
+  Found := CycleFinding(Run(Data, FileOf('C')));
+  Assert.AreEqual('In implementation-uses verschieben'#10, FixTitles(Found));
+  Fixed := TChangeSignature.ApplyEdits(Data.Text(FileOf('C')), Found.Fixes[0].Edits);
+  Assert.AreEqual('unit C;'#10'interface'#10#10'implementation'#10'uses'#10'  B,'#10'  A;'#10'end.', Fixed);
+  // Die Korrektur beseitigt die Meldung.
+  Data.Put(FileOf('C'), Fixed);
+  Assert.AreEqual('', Messages(Run(Data, FileOf('C')), UsesCycleRuleId));
+end;
+
+procedure TDeadCodeTests.MoveFixSortsLikeSortUses;
+var
+  Data: TScenario;
+  Found: TRuleFinding;
+begin
+  Data := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'C', ''),
+    TArray<string>.Create('C', 'A', 'X'), TArray<string>.Create('X', '', '')]);
+  Data.Live := True;
+  Data.Config := '{"sortUses": true}';
+  Found := CycleFinding(Run(Data, FileOf('C')));
+  Assert.AreEqual('unit C;'#10'interface'#10#10'implementation'#10'uses'#10'  A,'#10'  X;'#10'end.',
+    TChangeSignature.ApplyEdits(Data.Text(FileOf('C')), Found.Fixes[0].Edits));
+  Assert.AreEqual(1, Integer(Length(Found.Fixes[0].Edits)), 'eine kleinste Ersetzung');
+end;
+
+procedure TDeadCodeTests.JumpsAndGraphWhenInterfaceNeedsUnit;
+var
+  Data: TScenario;
+  Found: TRuleFinding;
+begin
+  Data := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'C', '')]);
+  Data.Put(FileOf('A'), 'unit A;'#10'interface'#10'uses'#10'  B;'#10'type'#10'  TA = class end;'#10 +
+    'implementation'#10'end.');
+  Data.Put(FileOf('C'), 'unit C;'#10'interface'#10'uses'#10'  A;'#10'type'#10'  TC = class(TA) end;'#10 +
+    'implementation'#10'end.');
+  Data.Projects[0].Sources := Data.Projects[0].Sources + [FileOf('C')];
+  Data.Live := True;
+  Found := CycleFinding(Run(Data, FileOf('C')));
+  Assert.AreEqual('Zirkuläre Unit-Referenz: C → A → B → C', Found.Message);
+  Assert.AreEqual('Zu TA springen (Zeile 6, braucht A im interface)'#10'Graph zeigen (Unit-Beziehungen)'#10,
+    FixTitles(Found));
+  Assert.IsTrue(Found.Fixes[0].HasJump);
+  Assert.AreEqual(5, Found.Fixes[0].JumpTo.Line);
+  Assert.AreEqual(13, Found.Fixes[0].JumpTo.Character);
+  Assert.IsTrue(Found.Fixes[1].ShowsUnitRelations);
+  Assert.IsTrue(Pos('Im interface-Teil gebraucht: TA (Zeile 6)', Found.Details) > 0, Found.Details);
+end;
+
+procedure TDeadCodeTests.ParserReadsUsesCycleSettings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := TServerSettings.Default;
+  Assert.IsTrue(Settings.DiagnosticsUsesCycleLive);
+  Assert.IsFalse(Settings.DiagnosticsUsesCycleImplementation);
+  Settings := TConfigurationParser.Parse('{"diagnostics": {"usesCycleLive": false, "usesCycleImplementation": true}}',
+    Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.DiagnosticsUsesCycleLive);
+  Assert.IsTrue(Settings.DiagnosticsUsesCycleImplementation);
+  Settings := TConfigurationParser.Parse('{"diagnostics": {"usesCycleLive": "nein"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.IsTrue(Settings.DiagnosticsUsesCycleLive);
+  Issues := nil;
+end;
+
+procedure TDeadCodeTests.LiveCycleCheckOf2000Units;
+const
+  UnitCount = 2000;
+var
+  Units: TArray<TArray<string>>;
+  Index: Integer;
+  Data: TScenario;
+  Watch: TStopwatch;
+begin
+  // Projektgruppe wie #501: Kette E1 -> … -> E2000 über interface, E2000 schließt den Kreis; dazu je Unit
+  // ein Eintrag im implementation-uses, der keinen Zyklus bildet.
+  Units := nil;
+  for Index := 1 to UnitCount do
+    Units := Units + [TArray<string>.Create(Format('E%d', [Index]), Format('E%d', [Index mod UnitCount + 1]),
+      Format('E%d', [(Index + 1) mod UnitCount + 1]))];
+  Data := Group(Units);
+  Data.Live := True;
+  // Beim Tippen steht der Graph schon (inkrementell, #268): gemessen wird die zweite Prüfung.
+  Data.Repeats := 1;
+  Watch := TStopwatch.StartNew;
+  Assert.AreEqual(1, Integer(Length(Run(Data, FileOf('E1')))));
+  Watch.Stop;
+  System.Writeln(Format('uses-cycle live: Prüfung bei %d Units in %d ms (mit Aufbau von Index und Graph %d ms)',
+    [UnitCount, LastCheckMs, Watch.ElapsedMilliseconds]));
+  Assert.IsTrue(LastCheckMs < 200, 'zu langsam für die Prüfung beim Tippen');
 end;
 
 procedure TDeadCodeTests.ParserReadsDeadCode;

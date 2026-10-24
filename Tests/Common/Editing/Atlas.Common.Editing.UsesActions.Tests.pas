@@ -31,6 +31,8 @@ type
     [Test]
     procedure SortsByNamespace;
     [Test]
+    procedure InterfaceUsagesNameTheNeed;
+    [Test]
     procedure MissingUnitIsSuggested;
     [Test]
     procedure MissingUnitSkipsUsedAndLocalNames;
@@ -245,6 +247,33 @@ var
 begin
   Text := Source('Units.A', 'procedure P(X: Foo);'#10, '', 'procedure P(X: Foo);'#10'begin'#10'  Foo;'#10'end;'#10);
   Assert.AreEqual(0, Integer(Length(TUsesActions.MovableUnits(TPascalLexer.Tokenize(Text), Info))));
+end;
+
+procedure TUsesActionsTests.InterfaceUsagesNameTheNeed;
+var
+  Text: string;
+  Found: TArray<TUsesInterfaceUsage>;
+begin
+  // Unit-Zyklus (#896): Bezeichner im interface-Teil, auch qualifiziert über den Unit-Namen; nicht im uses,
+  // nicht im implementation-Teil.
+  Text := Source('Units.Kunde', 'type'#10'  TA = class(TKunde) end;'#10'  TB = Kunde.TListe;'#10, 'Units.Kunde',
+    'var X: TKunde;'#10);
+  Found := TUsesActions.InterfaceUsages(TPascalLexer.Tokenize(Text), 'Units.Kunde',
+    TArray<string>.Create('TKunde', 'TListe'));
+  Assert.AreEqual(3, Integer(Length(Found)));
+  Assert.AreEqual('TKunde', Found[0].Name);
+  Assert.AreEqual(5, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(13, Found[0].Range.StartPos.Character);
+  Assert.AreEqual('Kunde', Found[1].Name);
+  Assert.AreEqual('TListe', Found[2].Name);
+  // Nur im implementation-Teil gebraucht: verschiebbar.
+  Text := Source('Units.Kunde', '', '', 'var X: TKunde;'#10);
+  Assert.AreEqual(0, Integer(Length(TUsesActions.InterfaceUsages(TPascalLexer.Tokenize(Text), 'Units.Kunde',
+    TArray<string>.Create('TKunde')))));
+  // Programme haben keinen interface-Teil.
+  Text := 'program P;'#10'uses'#10'  Units.Kunde;'#10'var X: TKunde;'#10'begin'#10'end.';
+  Assert.AreEqual(0, Integer(Length(TUsesActions.InterfaceUsages(TPascalLexer.Tokenize(Text), 'Units.Kunde',
+    TArray<string>.Create('TKunde')))));
 end;
 
 procedure TUsesActionsTests.SortsByNamespace;

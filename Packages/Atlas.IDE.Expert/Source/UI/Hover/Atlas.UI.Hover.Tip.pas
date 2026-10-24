@@ -59,8 +59,9 @@ type
   TAtlasHoverActionEvent = procedure(Sender: TObject; AAction: TAtlasHoverAction) of object;
   TAtlasHoverUrlEvent = procedure(Sender: TObject; const AUrl: string) of object;
   /// <summary>Klick auf eine Aktion unter einem Problem (#621); AProblem ist der Index in View.Problems.</summary>
+  /// <summary>AItem: Stelle in Problem.Related bei der Aktion Related (#896), sonst 0.</summary>
   TAtlasHoverProblemActionEvent = procedure(Sender: TObject; AProblem: Integer;
-    AAction: TAtlasHoverProblemAction) of object;
+    AAction: TAtlasHoverProblemAction; AItem: Integer) of object;
 
   TAtlasHoverTip = class(TAtlasPopupWindow)
   public const
@@ -422,6 +423,7 @@ begin
   Result.UsesRemove := TAtlasStrings.Text(TAtlasTextId.UsesRemove);
   Result.UsesRemoveAll := TAtlasStrings.Text(TAtlasTextId.UsesRemoveAll);
   Result.UsesMove := TAtlasStrings.Text(TAtlasTextId.UsesMove);
+  Result.ShowGraph := TAtlasStrings.Text(TAtlasTextId.HoverShowGraph);
   Result.KindError := TAtlasStrings.Text(TAtlasTextId.ProblemsKindError);
   Result.KindWarning := TAtlasStrings.Text(TAtlasTextId.ProblemsKindWarning);
   Result.KindInfo := TAtlasStrings.Text(TAtlasTextId.ProblemsKindInfo);
@@ -784,15 +786,15 @@ end;
 
 function TAtlasHoverTip.FireProblemAction(AHit: Integer): Boolean;
 var
-  ProblemIndex: Integer;
+  ProblemIndex, Item: Integer;
   ProblemAction: TAtlasHoverProblemAction;
 begin
   Result := (AHit >= 0) and (AHit <= High(FLayout.Hits)) and
     (FLayout.Hits[AHit].Kind = TAtlasHoverHitKind.ProblemAction) and Assigned(FOnProblemAction);
   if not Result then
     Exit;
-  TAtlasHoverLayout.DecodeProblemAction(FLayout.Hits[AHit].Index, ProblemIndex, ProblemAction);
-  FOnProblemAction(Self, ProblemIndex, ProblemAction);
+  TAtlasHoverLayout.DecodeProblemAction(FLayout.Hits[AHit].Index, ProblemIndex, ProblemAction, Item);
+  FOnProblemAction(Self, ProblemIndex, ProblemAction, Item);
 end;
 
 function TAtlasHoverTip.HasProblemActions: Boolean;
@@ -833,7 +835,7 @@ function TAtlasHoverTip.ApplyFix: Boolean;
 begin
   Result := HasFix and Assigned(FOnProblemAction);
   if Result then
-    FOnProblemAction(Self, FLayout.FixProblem, TAtlasHoverProblemAction.Fix);
+    FOnProblemAction(Self, FLayout.FixProblem, TAtlasHoverProblemAction.Fix, 0);
 end;
 
 procedure TAtlasHoverTip.Paint;
