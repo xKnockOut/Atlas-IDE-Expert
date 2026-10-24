@@ -938,11 +938,13 @@ begin
     Assert.IsTrue(Page.TestsBuildFirstCheck.Checked);
     Assert.IsFalse(Page.TestsAfterBuildCheck.Checked);
     Assert.IsFalse(Page.BuildZeroHintsCheck.Checked);
+    Assert.IsTrue(Page.ShowInterfaceCostCheck.Checked, 'Kosten einer interface-Änderung standardmäßig an (#554)');
     Page.CodeLensTestsCheck.Checked := False;
     Page.TestRunCheck.Checked := False;
     Page.TestsBuildFirstCheck.Checked := False;
     Page.TestsAfterBuildCheck.Checked := True;
     Page.BuildZeroHintsCheck.Checked := True;
+    Page.ShowInterfaceCostCheck.Checked := False;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.CodeLensTests);
@@ -950,8 +952,10 @@ begin
     Assert.IsFalse(Saved.TestsBuildFirst);
     Assert.IsTrue(Saved.TestsAfterBuild);
     Assert.IsTrue(Saved.BuildZeroHints);
+    Assert.IsFalse(Saved.ShowInterfaceCost);
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.CodeLensTestsCheck.Checked);
+    Assert.IsFalse(Page.ShowInterfaceCostCheck.Checked);
     Assert.IsTrue(Page.TestsAfterBuildCheck.Checked);
   finally
     Page.Free;

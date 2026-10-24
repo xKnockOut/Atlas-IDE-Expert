@@ -1275,6 +1275,12 @@ begin
   // Unit-Beziehungen (#593); am selben Schalter wie die Architektur (derselbe Uses-Graph).
   Add('Atlas.UnitRelations', TAtlasTextId.UnitRelationsCommand,
     Guarded(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowWindow), UnitRelationsVisible);
+  // Kosten einer interface-Änderung (#554): Verwender nach Abschnitt und verschiebbare uses der Unit im Editor,
+  // dazu die teuersten Units in der Architekturübersicht.
+  Add('Atlas.UnitDependencies', TAtlasTextId.UnitDependenciesCommand,
+    Guarded(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent), UnitRelationsVisible);
+  Add('Atlas.InterfaceCostRanking', TAtlasTextId.InterfaceCostRankingCommand,
+    Guarded(TAtlasFeature.Architecture, TAtlasIdeArchitecture.ShowRanking), ArchitectureVisible);
   // Brotkrumenleiste (#590): Fokus auf das letzte Glied; nur sichtbar, solange editor.breadcrumbs an ist.
   Add('Atlas.Breadcrumbs', TAtlasTextId.BreadcrumbsCommand,
     Guarded(TAtlasFeature.Breadcrumbs, TAtlasIdeBreadcrumbs.Focus), BreadcrumbsVisible);
@@ -1736,6 +1742,8 @@ end;
 
 const
   ProblemCountsExtra = 'problemCounts';
+  /// <summary>Kosten einer interface-Änderung (#554).</summary>
+  InterfaceCostExtra = 'interfaceCost';
 
 procedure RegisterStatusField;
 begin
@@ -2454,6 +2462,21 @@ begin
       Result := (Manager <> nil) and (Manager.RunningSession <> nil);
       if Result then
         Manager.RunServerCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
+    end);
+  // Kosten einer interface-Änderung (#554) im Zusatzfeld der Statusleiste; Klick zeigt die Abhängigkeiten.
+  TAtlasIdeUnitRelations.SetCostHandler(
+    procedure(const AText, AHint: string)
+    begin
+      if StatusField = nil then
+        Exit;
+      if AText = '' then
+        StatusField.SetExtra(InterfaceCostExtra, '', '', nil)
+      else
+        StatusField.SetExtra(InterfaceCostExtra, AText, AHint,
+          procedure(APoint: TPoint)
+          begin
+            TAtlasGuard.Run(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent);
+          end);
     end);
   // Strg+Doppelklick in der Architekturkarte zeigt die Unit dort.
   TAtlasIdeArchitecture.OnUnitRelations :=

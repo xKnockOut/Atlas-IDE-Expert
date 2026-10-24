@@ -510,6 +510,7 @@ contains
   Atlas.IDE.Architecture.Window in 'Source\IDE\Architecture\Atlas.IDE.Architecture.Window.pas',
   Atlas.IDE.Architecture.Service in 'Source\IDE\Architecture\Atlas.IDE.Architecture.Service.pas',
   Atlas.Core.UnitRelations.Model in 'Source\Core\UnitRelations\Atlas.Core.UnitRelations.Model.pas',
+  Atlas.Core.UnitRelations.InterfaceCost in 'Source\Core\UnitRelations\Atlas.Core.UnitRelations.InterfaceCost.pas',
   Atlas.UI.UnitRelations.Frame in 'Source\UI\UnitRelations\Atlas.UI.UnitRelations.Frame.pas' {AtlasUnitRelationsFrame: TFrame},
   Atlas.IDE.UnitRelations.Window in 'Source\IDE\UnitRelations\Atlas.IDE.UnitRelations.Window.pas',
   Atlas.IDE.UnitRelations.Service in 'Source\IDE\UnitRelations\Atlas.IDE.UnitRelations.Service.pas',

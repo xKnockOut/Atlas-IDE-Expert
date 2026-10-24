@@ -695,6 +695,8 @@ uses
   Atlas.UI.Architecture.Frame.Tests in 'IDE.Expert\Atlas.UI.Architecture.Frame.Tests.pas',
   Atlas.Core.UnitRelations.Model in '..\Packages\Atlas.IDE.Expert\Source\Core\UnitRelations\Atlas.Core.UnitRelations.Model.pas',
   Atlas.Core.UnitRelations.Model.Tests in 'IDE.Expert\Atlas.Core.UnitRelations.Model.Tests.pas',
+  Atlas.Core.UnitRelations.InterfaceCost in '..\Packages\Atlas.IDE.Expert\Source\Core\UnitRelations\Atlas.Core.UnitRelations.InterfaceCost.pas',
+  Atlas.Core.UnitRelations.InterfaceCost.Tests in 'IDE.Expert\Atlas.Core.UnitRelations.InterfaceCost.Tests.pas',
   Atlas.UI.UnitRelations.Frame in '..\Packages\Atlas.IDE.Expert\Source\UI\UnitRelations\Atlas.UI.UnitRelations.Frame.pas',
   Atlas.UI.UnitRelations.Frame.Tests in 'IDE.Expert\Atlas.UI.UnitRelations.Frame.Tests.pas',
   Atlas.Core.Outline.Breadcrumbs in '..\Packages\Atlas.IDE.Expert\Source\Core\Outline\Atlas.Core.Outline.Breadcrumbs.pas',

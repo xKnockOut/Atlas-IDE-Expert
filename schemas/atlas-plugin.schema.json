@@ -1000,6 +1000,17 @@
       "x-captionEn": "Build succeeds only without warnings and hints",
       "x-issue": "#530"
     },
+    "ShowInterfaceCost": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "build.showInterfaceCost",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Kosten einer interface-Änderung in der Statusleiste",
+      "x-captionEn": "Cost of an interface change in the status bar",
+      "x-issue": "#554"
+    },
     "WelcomePage": {
       "type": "boolean",
       "default": true,
