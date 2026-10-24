@@ -373,17 +373,28 @@ begin
   Assert.AreEqual(6, Found[0].Range.StartPos.Line);
   Assert.AreEqual(4, Found[0].Range.StartPos.Character);
   Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('Fehlende Einträge mit Platzhalter ergänzen', Found[0].Fixes[0].Title);
+  // Über einer Aufzählung an der richtigen Stelle, mit dem Text aus dem Namen (#667).
+  Assert.AreEqual('Fehlenden Eintrag ergänzen (stArchiviert)', Found[0].Fixes[0].Title);
   Fixed := Applied(Source, Found[0].Fixes[0]);
-  Assert.IsTrue(Pos('    (''Neu'', ''Offen'', ''Geschlossen'', ''''{stArchiviert});', Fixed) > 0, Fixed);
+  Assert.IsTrue(Pos('    (''Neu'', ''Offen'', ''Geschlossen'', ''Archiviert'');', Fixed) > 0, Fixed);
   Assert.AreEqual(0, Integer(Length(InitFindings(Fixed))), Fixed);
   // Zwei fehlende Werte.
   Found := InitFindings(StatusUnit('const'#10'  Kurz: array[TStatus] of Integer = (1, 2);'#10));
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual('TStatus hat 4 Werte, die Konstante 2 Einträge; stGeschlossen, stArchiviert fehlen (wie E2072).',
     Found[0].Message);
-  Assert.IsTrue(Pos('(1, 2, 0{stGeschlossen}, 0{stArchiviert});', Applied(StatusUnit('const'#10 +
+  // Ohne Hinweis auf die Elemente: hinten angehängt und als geschätzt markiert.
+  Assert.AreEqual('Fehlende Einträge ergänzen (stGeschlossen, stArchiviert), Stelle geschätzt',
+    Found[0].Fixes[0].Title);
+  Assert.IsTrue(Pos('(1, 2, 0 {TODO stGeschlossen}, 0 {TODO stArchiviert});', Applied(StatusUnit('const'#10 +
     '  Kurz: array[TStatus] of Integer = (1, 2);'#10), Found[0].Fixes[0])) > 0);
+  // Mitten im Wert über den Text der Nachbarn.
+  Source := StatusUnit('const'#10'  Texte: array[TStatus] of string = (''Neu'', ''Geschlossen'', ''Archiviert'');'#10);
+  Found := InitFindings(Source);
+  Assert.AreEqual('TStatus hat 4 Werte, die Konstante 3 Einträge; stOffen fehlt (wie E2072).', Found[0].Message);
+  Assert.AreEqual('Fehlenden Eintrag ergänzen (stOffen)', Found[0].Fixes[0].Title);
+  Assert.IsTrue(Pos('(''Neu'', ''Offen'', ''Geschlossen'', ''Archiviert'');', Applied(Source, Found[0].Fixes[0])) >
+    0);
 end;
 
 procedure TConstantInitializerMismatchTests.EmptyInitializerIsSilent;
@@ -405,7 +416,7 @@ begin
     'var'#10'  Start: array[0..1] of Integer = (7);'#10));
   Assert.AreEqual(6, Integer(Length(Found)));
   Assert.AreEqual('TStatus hat 4 Werte, die Konstante 5 Einträge (wie E2072).', Found[0].Message);
-  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('Überzähligen Eintrag entfernen (5), Stelle geschätzt', Found[0].Fixes[0].Title);
   Assert.AreEqual('0..Max hat 3 Werte, die Konstante 4 Einträge (wie E2072).', Found[1].Message);
   Assert.AreEqual('1..1 hat 1 Wert, die Konstante 2 Einträge (wie E2072).', Found[2].Message);
   Assert.AreEqual('Boolean hat 2 Werte, die Konstante 1 Eintrag (wie E2072).', Found[3].Message);

@@ -116,6 +116,7 @@ uses
   Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Rules.TypedScope,
+  Atlas.Common.Editing.EnumTables,
   Atlas.Text.Lines;
 
 { TComparisonAlwaysConstantRule }
@@ -641,6 +642,27 @@ var
       Result := Placeholder(TypeInfo.Name);
   end;
 
+  /// <summary>Wie neue Einträge einer Tabelle mit Elementtyp ANode aussehen (#667).</summary>
+  function ElementValues(ANode: TSyntaxNode; const AIndexType: string): TEnumTableValues;
+  var
+    Filler, Name: string;
+    Element: TEnumTableElement;
+  begin
+    Name := '';
+    if ANode.Kind = TSyntaxKind.TypeReference then
+      Name := ANode.Name;
+    Element := TEnumTables.ElementOf(Name);
+    if Element = TEnumTableElement.Other then
+    begin
+      Filler := ElementPlaceholder(ANode);
+      if Filler = 'nil' then
+        Element := TEnumTableElement.Pointer_
+      else if StartsStr('Low(', Filler) then
+        Element := TEnumTableElement.Enum;
+    end;
+    Result := TEnumTableValues.Create(Element, Name, AIndexType);
+  end;
+
   /// <summary>Text für die fehlenden Einträge ab AGiven: ", ''{stArchiviert}" je Eintrag.</summary>
   function MissingText(const AInfo: TIndexInfo; AGiven: Integer; const APlaceholder: string): string;
   var
@@ -738,6 +760,8 @@ var
     Fixes: TArray<TRuleFix>;
     Names: TArray<string>;
     Last: TSyntaxNode;
+    Repair: TEnumTableRepair;
+    Repaired: Boolean;
   begin
     Dimensions := AArray.ChildCount - 1;
     // () setzt alle Elemente auf null, wie bei Records (#1138).
@@ -756,9 +780,16 @@ var
     begin
       Message := Format('%s hat %s, die Konstante %s', [Info.Text, Counted(Info.Count, 'Wert', 'Werte'),
         Counted(AValue.ChildCount, 'Eintrag', 'Einträge')]);
+      // Über einer Aufzählung nennt die Zuordnung die wirklich fehlenden Werte, nicht die letzten (#667).
+      Repaired := (Length(Info.Names) = Info.Count) and (ADimension = Dimensions - 1) and
+        TEnumTables.Repair(AContext.Text, AContext.Tree, AValue, Info.Names,
+        ElementValues(AArray[AArray.ChildCount - 1], Info.Text), Repair);
       Names := nil;
-      for Index := AValue.ChildCount to Integer(Length(Info.Names)) - 1 do
-        Names := Names + [Info.Names[Index]];
+      if Repaired and not Repair.Uncertain then
+        Names := Repair.Added
+      else
+        for Index := AValue.ChildCount to Integer(Length(Info.Names)) - 1 do
+          Names := Names + [Info.Names[Index]];
       if Length(Names) = 1 then
         Message := Message + '; ' + Names[0] + ' fehlt'
       else if Length(Names) > 3 then
@@ -766,7 +797,10 @@ var
       else if Length(Names) > 1 then
         Message := Message + '; ' + string.Join(', ', Names) + ' fehlen';
       Fixes := nil;
-      if (Info.Count > AValue.ChildCount) and (AValue.ChildCount > 0) and (ADimension = Dimensions - 1) and
+      // Über einer Aufzählung: Einträge an ihrer Stelle ergänzen bzw. entfernen (#667).
+      if Repaired then
+        Fixes := [TRuleFix.Create(Repair.Title, Repair.Edits)]
+      else if (Info.Count > AValue.ChildCount) and (AValue.ChildCount > 0) and (ADimension = Dimensions - 1) and
         (Info.Count - AValue.ChildCount <= 64) then
       begin
         Filler := ElementPlaceholder(AArray[AArray.ChildCount - 1]);

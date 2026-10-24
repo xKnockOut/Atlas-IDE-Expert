@@ -82,6 +82,7 @@ uses
   Atlas.Common.Rules.Builtin.StringAddress,
   Atlas.Common.Rules.Builtin.FormatArgs,
   Atlas.Common.Rules.Builtin.ForbiddenSymbols,
+  Atlas.Common.Rules.Builtin.MethodWithoutSelf,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -159,6 +160,7 @@ begin
     RegisterStringAddressRules(Registry);
     RegisterFormatArgsRules(Registry);
     RegisterForbiddenSymbolRules(Registry);
+    RegisterMethodWithoutSelfRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

@@ -85,6 +85,10 @@ type
     CommandArguments: TArray<string>;
     /// <summary>Kennung für Clients, die eine bestimmte Aktion suchen (UsesRemoveTag, #621); '' ohne.</summary>
     Tag: string;
+    /// <summary>Text, den der Client vor dem Übernehmen als Vorschau zeigt (neue Signatur, #663); '' ohne.</summary>
+    Preview: string;
+    /// <summary>Grund, warum die Aktion hier nicht geht (Hinweis statt Aktion, #663); '' wenn sie geht.</summary>
+    Disabled: string;
   end;
 
   TCodeActions = class

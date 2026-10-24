@@ -42,6 +42,9 @@ type
     /// <summary>#621: „X entfernen“ am uses-Eintrag mit data.tag; inaktive Zweige über DefinesFor.</summary>
     [Test]
     procedure UsesEntryActionsCarryTag;
+    /// <summary>#663: Vorschau als data.preview, Hinweis statt Aktion als disabled.reason.</summary>
+    [Test]
+    procedure ActionJsonCarriesPreviewAndDisabled;
   end;
 
 implementation
@@ -52,7 +55,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Editing.UsesActions;
+  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Editing.CodeActions;
 
 const
   LB = #13#10;
@@ -194,6 +198,34 @@ begin
     Assert.IsTrue(Pos('try' + LB + #9'  L.Add(nil);', NewText) > 0, NewText);
   finally
     Response.Free;
+  end;
+end;
+
+procedure TLspCodeActionsTests.ActionJsonCarriesPreviewAndDisabled;
+var
+  Action: TCodeAction;
+  Json: TJSONObject;
+begin
+  Action := Default(TCodeAction);
+  Action.Title := 'Umwandeln';
+  Action.Kind := RewriteKind;
+  Action.Preview := 'Neue Signatur: procedure A;';
+  Json := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(FileName), Action);
+  try
+    Assert.AreEqual('Neue Signatur: procedure A;', Json.GetValue<string>('data.preview'));
+    Assert.IsNull(Json.GetValue('disabled'));
+    Assert.IsNull(TJSONObject(Json.GetValue('data')).GetValue('tag'));
+  finally
+    Json.Free;
+  end;
+  Action.Preview := '';
+  Action.Disabled := 'erst die andere umwandeln';
+  Json := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(FileName), Action);
+  try
+    Assert.AreEqual('erst die andere umwandeln', Json.GetValue<string>('disabled.reason'));
+    Assert.IsNull(Json.GetValue('data'));
+  finally
+    Json.Free;
   end;
 end;
 

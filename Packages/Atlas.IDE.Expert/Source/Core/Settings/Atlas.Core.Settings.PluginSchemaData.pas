@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4943] of string = (
+  Lines: array[0..4956] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -586,6 +586,19 @@ const
     '      "x-caption": "Steuerzeichen-Codes",',
     '      "x-captionEn": "Control character codes",',
     '      "x-issue": "#862"',
+    '    },',
+    '    "InlayMethodHints": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "refactoring.methodKindMarker",',
+    '      "x-area": "editor",',
+    '      "x-feature": "InlayHints",',
+    '      "x-page": "Editor",',
+    '      "x-quickToggle": true,',
+    '      "x-drawing": true,',
+    '      "x-caption": "Marke „ohne Self“",',
+    '      "x-captionEn": "“no Self” marker",',
+    '      "x-issue": "#686"',
     '    },',
     '    "BlockEndLabels": {',
     '      "type": "boolean",',

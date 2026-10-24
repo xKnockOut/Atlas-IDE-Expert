@@ -17,8 +17,18 @@
 // Bedeutung der Namen über TNameResolver.ResolveChain, der Rumpf der Methode
 // über die Deklaration (auch aus einer anderen Unit des Projekts, nicht aus
 // Bibliotheken).
-// Was refactoring.extract, .completeCase, .resolveWith, .createMethod und
-// .inline abschalten, kommt nicht.
+// Dazu „In case umwandeln“ und „In if-Kette umwandeln“ (#646): Typ des
+// verglichenen Ausdrucks und Konstanten über TIfCaseLookup.FromResolver.
+// Dazu die Umformungen von Bedingungen (#656) aus Atlas.Common.Editing.Conditions,
+// ohne Namensauflösung.
+// Dazu if-Anweisung und Bedingungsausdruck ineinander umwandeln und IfThen
+// ersetzen (#684): Typen der Werte und Herkunft von IfThen über
+// TConditionalLookup.FromResolver; vor Delphi 13 nur „In if-Anweisung umwandeln“.
+// Dazu lokale Routine und Methode ineinander umwandeln (#663): Records,
+// Objekte und Interfaces für const über TNestedRoutineLookup.FromResolver.
+// Was refactoring.extract, .completeCase, .resolveWith, .createMethod,
+// .inline, .ifCase, .conditions, .conditionalExpression und .nestedRoutine
+// abschalten, kommt nicht.
 
 interface
 
@@ -46,6 +56,8 @@ type
     Settings: TRefactoringSettings;
     /// <summary>Inline-Variablen erlaubt (Einstellung und Sprachversion).</summary>
     InlineVar: Boolean;
+    /// <summary>Bedingungsausdrücke erlaubt (Sprachversion, #684); sonst nur der Rückweg zur if-Anweisung.</summary>
+    IfExpression: Boolean;
     Style: TFormatStyle;
     /// <summary>Präfixe neuer Namen nach der Namensregel (#1111, TRuleEngine.NewNames); ohne leer.</summary>
     NewNames: TPascalNamePrefixes;
@@ -90,7 +102,19 @@ type
     /// <summary>„Variable einbetten“ und „Methode einbetten“ (#103) für APosition.</summary>
     class function InlineActions(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
       const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>; static;
-    /// <summary>Alle eingeschalteten Aktionen aus #50, #103 und #472 für ARange.</summary>
+    /// <summary>„In case umwandeln“ bzw. „In if-Kette umwandeln“ (#646) für den Kopf an APosition.</summary>
+    class function IfCaseActions(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
+      const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>; static;
+    /// <summary>Bedingung umkehren, früher Ausstieg, if zusammenfassen, doppelte Verneinung (#656).</summary>
+    class function ConditionActions(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition;
+      const AContext: TRefactoringContext): TArray<TCodeAction>; static;
+    /// <summary>In bedingten Ausdruck bzw. if-Anweisung umwandeln, IfThen ersetzen (#684).</summary>
+    class function ConditionalExpressionActions(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
+      const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>; static;
+    /// <summary>Lokale Routine herauslösen bzw. Routine als lokale einbetten (#663).</summary>
+    class function NestedRoutineActions(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
+      const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>; static;
+    /// <summary>Alle eingeschalteten Aktionen aus #50, #103, #472, #646, #656, #663 und #684 für ARange.</summary>
     class function Actions(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
       const AContext: TRefactoringContext): TArray<TCodeAction>; static;
   end;
@@ -106,6 +130,11 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.CreateMethod,
   Atlas.Common.Editing.CaseCompletion,
+  Atlas.Common.Editing.StatementText,
+  Atlas.Common.Editing.IfCase,
+  Atlas.Common.Editing.Conditions,
+  Atlas.Common.Editing.ConditionalExpression,
+  Atlas.Common.Editing.NestedRoutines,
   Atlas.Common.Lsp.InlayHints,
   Atlas.Common.Lsp.Completion;
 
@@ -573,6 +602,91 @@ begin
   end;
 end;
 
+class function TLspRefactorings.IfCaseActions(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
+  const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>;
+var
+  Lookup: TIfCaseLookup;
+  Layout: TStatementLayout;
+  Conversion: TIfCaseConversion;
+
+  procedure Add;
+  var
+    Action: TCodeAction;
+  begin
+    Action := Default(TCodeAction);
+    Action.Title := Conversion.Title;
+    Action.Kind := RewriteKind;
+    Action.Edits := [Conversion.Edit];
+    Result := Result + [Action];
+  end;
+
+begin
+  Result := nil;
+  Lookup := TIfCaseLookup.FromResolver(AResolver, ATree, AContext.FileName);
+  Layout := TStatementLayout.Create('', TRoutineBody.IndentUnit(AContext.Style), TTextLines.LineBreakOf(AText));
+  if TIfCase.ToCase(AText, ATree, APosition, Lookup, Layout, Conversion) then
+    Add;
+  if TIfCase.ToIf(AText, ATree, APosition, Lookup, Layout, Conversion) then
+    Add;
+end;
+
+class function TLspRefactorings.ConditionActions(ATree: TSyntaxTree; const AText: string;
+  const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>;
+var
+  Rewrite: TStatementRewrite;
+  Action: TCodeAction;
+begin
+  Result := nil;
+  for Rewrite in TConditions.Actions(AText, ATree, APosition, TStatementLayout.Create('',
+    TRoutineBody.IndentUnit(AContext.Style), TTextLines.LineBreakOf(AText))) do
+  begin
+    Action := Default(TCodeAction);
+    Action.Title := Rewrite.Title;
+    Action.Kind := RewriteKind;
+    Action.Edits := [Rewrite.Edit];
+    Result := Result + [Action];
+  end;
+end;
+
+class function TLspRefactorings.ConditionalExpressionActions(AResolver: TNameResolver; ATree: TSyntaxTree;
+  const AText: string; const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>;
+var
+  Lookup: TConditionalLookup;
+  Rewrite: TStatementRewrite;
+
+  procedure Add;
+  var
+    Action: TCodeAction;
+  begin
+    Action := Default(TCodeAction);
+    Action.Title := Rewrite.Title;
+    Action.Kind := RewriteKind;
+    Action.Edits := [Rewrite.Edit];
+    Result := Result + [Action];
+  end;
+
+begin
+  Result := nil;
+  Lookup := TConditionalLookup.FromResolver(AResolver, ATree, AContext.FileName);
+  if AContext.IfExpression then
+  begin
+    if TConditionalExpression.ToExpression(AText, ATree, APosition, Lookup, Rewrite) then
+      Add;
+    if TConditionalExpression.ReplaceIfThen(AText, ATree, APosition, Lookup, Rewrite) then
+      Add;
+  end;
+  if TConditionalExpression.ToStatement(AText, ATree, APosition, TStatementLayout.Create('',
+    TRoutineBody.IndentUnit(AContext.Style), TTextLines.LineBreakOf(AText)), Rewrite) then
+    Add;
+end;
+
+class function TLspRefactorings.NestedRoutineActions(AResolver: TNameResolver; ATree: TSyntaxTree;
+  const AText: string; const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>;
+begin
+  Result := TNestedRoutines.Actions(AText, ATree, APosition, TNestedRoutineLookup.FromResolver(AResolver, ATree,
+    AContext.FileName), AContext.Style);
+end;
+
 class function TLspRefactorings.Actions(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
   const AContext: TRefactoringContext): TArray<TCodeAction>;
 var
@@ -585,8 +699,11 @@ begin
     Exit;
   if AContext.Settings.Extract then
     Result := Result + TExtractRefactoring.Actions(AText, ATree, ARange, OptionsOf(AContext));
+  if AContext.Settings.Conditions then
+    Result := Result + ConditionActions(ATree, AText, ARange.StartPos, AContext);
   if not (AContext.Settings.CompleteCase or AContext.Settings.ResolveWith or AContext.Settings.CreateMethod or
-    AContext.Settings.InlineCode) then
+    AContext.Settings.InlineCode or AContext.Settings.IfCase or AContext.Settings.ConditionalExpression or
+    AContext.Settings.NestedRoutine) then
     Exit;
   Resolver := NewResolver(AContext);
   try
@@ -608,6 +725,12 @@ begin
       end;
       if AContext.Settings.InlineCode then
         Result := Result + InlineActions(Resolver, ATree, AText, ARange.StartPos, AContext);
+      if AContext.Settings.IfCase then
+        Result := Result + IfCaseActions(Resolver, ATree, AText, ARange.StartPos, AContext);
+      if AContext.Settings.ConditionalExpression then
+        Result := Result + ConditionalExpressionActions(Resolver, ATree, AText, ARange.StartPos, AContext);
+      if AContext.Settings.NestedRoutine then
+        Result := Result + NestedRoutineActions(Resolver, ATree, AText, ARange.StartPos, AContext);
     finally
       Resolver.UnpinTree;
     end;

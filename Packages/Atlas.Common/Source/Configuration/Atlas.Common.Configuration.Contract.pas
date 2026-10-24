@@ -82,6 +82,10 @@ type
     IncludeDefines: Boolean;
     /// <summary>Hinter Steuerzeichen wie ^C in Konstanten der Code (#3, #862).</summary>
     ControlChars: Boolean;
+    /// <summary>Marke „ohne Self“ hinter Methoden, die Self nicht brauchen (#686). Kein Schlüssel unter
+    /// inlayHints: Die Komposition setzt sie aus refactoring.methodKind und refactoring.methodKindMarker; in
+    /// Default aus.</summary>
+    MethodWithoutSelf: Boolean;
     class function Default: TInlayHintSettings; static;
   end;
 
@@ -446,6 +450,36 @@ type
     InvertBooleanFallbackPrefix: string;
     /// <summary>Published Properties auch in den Formularen umkehren (#715).</summary>
     InvertBooleanIncludeDfm: Boolean;
+    /// <summary>Code-Aktionen „In case umwandeln“ und „In if-Kette umwandeln“ (#646).</summary>
+    IfCase: Boolean;
+    /// <summary>Code-Aktionen zum Umformen von Bedingungen (#656).</summary>
+    Conditions: Boolean;
+    /// <summary>Code-Aktionen zwischen if-Anweisung und Bedingungsausdruck, IfThen ersetzen (#684).</summary>
+    ConditionalExpression: Boolean;
+    /// <summary>Code-Aktionen zwischen lokaler Routine und Methode bzw. Routine der Unit (#663).</summary>
+    NestedRoutine: Boolean;
+    /// <summary>Code-Aktionen zwischen lokaler Variable und Feld (#668).</summary>
+    PromoteVariable: Boolean;
+    /// <summary>Code-Aktionen zwischen anonymer Methode und Methode (#680).</summary>
+    AnonymousMethod: Boolean;
+    /// <summary>Später laufende anonyme Methode mit erfassten Variablen: forward (Weiterleitung bleibt) oder fields
+    /// (Werte als Felder) (#680).</summary>
+    AnonymousMethodDeferredCapture: string;
+    /// <summary>Erkennung und Code-Aktionen für Methoden ohne Self (#686): class-Methode, freie Routine,
+    /// Record-Helper.</summary>
+    MethodKind: Boolean;
+    /// <summary>Marke „ohne Self“ am Kopf solcher Methoden (#686); aus = nur über Strg+.</summary>
+    MethodKindMarker: Boolean;
+    /// <summary>class-Methoden mit static erzeugen (#686).</summary>
+    MethodKindStatic: Boolean;
+    /// <summary>Code-Aktionen „Typ-Alias einführen“ und „Alias auflösen“ (#681).</summary>
+    TypeAlias: Boolean;
+    /// <summary>Reichweite der ersten Aktion „Typ-Alias einführen“: here, unit oder project (#681).</summary>
+    TypeAliasScope: string;
+    /// <summary>Namenstabelle anlegen und Tabellen über Aufzählungen nachziehen (#667).</summary>
+    EnumTables: Boolean;
+    /// <summary>Texte der Namenstabelle als resourcestring je Element (#667).</summary>
+    EnumTablesResourceStrings: Boolean;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -966,6 +1000,20 @@ begin
   Result.InvertBooleanAntonyms := nil;
   Result.InvertBooleanFallbackPrefix := 'Not';
   Result.InvertBooleanIncludeDfm := True;
+  Result.IfCase := True;
+  Result.Conditions := True;
+  Result.ConditionalExpression := True;
+  Result.NestedRoutine := True;
+  Result.PromoteVariable := True;
+  Result.AnonymousMethod := True;
+  Result.AnonymousMethodDeferredCapture := 'forward';
+  Result.MethodKind := True;
+  Result.MethodKindMarker := True;
+  Result.MethodKindStatic := True;
+  Result.TypeAlias := True;
+  Result.TypeAliasScope := 'unit';
+  Result.EnumTables := True;
+  Result.EnumTablesResourceStrings := False;
 end;
 
 { TCompletionSettings }

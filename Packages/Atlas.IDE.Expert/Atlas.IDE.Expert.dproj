@@ -206,6 +206,12 @@
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.InvertBoolean.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.DisableWarning.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.MissingUnit.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.NamedRefactoring.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.PromoteVariable.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.AnonymousMethod.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.MethodKind.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.TypeAlias.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.EnumTables.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.KeyHook.pas"/>
         <DCCReference Include="Source\IDE\Signature\Atlas.IDE.Signature.Editor.pas"/>
         <DCCReference Include="Source\IDE\Signature\Atlas.IDE.Signature.FormatMarks.pas"/>

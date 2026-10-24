@@ -924,6 +924,22 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "conditional-expression-version",' + #10 +
+    '      "name": "Conditional expression before Delphi 13",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The conditional expression X := if C then A else B exists only from Delphi 13 on; a project that must still compile with Delphi 12 or older fails here (like E2029). Reported is t' +
+    'he outermost expression, not inside {$IF} branches that test CompilerVersion, RTLVersion, VERnnn or Declared. Silent without a known Delphi version. Quick fix (also for the whole unit): convert to an ' +
+    'if statement, the statement repeated per branch; not offered when the rest of the statement has side effects.",' + #10 +
+    '      "bad": "Caption := if Done then ''Ready'' else ''Busy'';",' + #10 +
+    '      "good": "if Done then\n  Caption := ''Ready''\nelse\n  Caption := ''Busy'';",' + #10 +
+    '      "level": "A",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2029"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "exception-not-raised",' + #10 +
     '      "name": "Exception created but not raised",' + #10 +
     '      "category": "bug",' + #10 +
@@ -3955,8 +3971,9 @@ begin
     '      "group": "compiler",' + #10 +
     '      "description": "A typed constant or initialized variable of a static array type has more or fewer elements than its index range (like E2072), typically after adding a value to an enumeration (ar' +
     'ray[TStatus] of string); checked per dimension and for named array types of the file. Record constants whose fields are in a different order than declared are reported as well (like E2083). Index rang' +
-    'es: subranges with constant bounds, enumerations without own values, Boolean, Byte, Char and so on. Declarations with conditional directives count as unsure. Quick fixes: add the missing entries with ' +
-    'a placeholder (name of the enumeration value as a comment), put the fields in the order of the declaration.",' + #10 +
+    'es: subranges with constant bounds, enumerations without own values, Boolean, Byte, Char and so on. Declarations with conditional directives count as unsure. Quick fixes: over an enumeration, add miss' +
+    'ing or remove surplus entries at their position (recognized by texts, identifiers and comments naming the value; otherwise appended and labelled as estimated), new strings get the text of the value na' +
+    'me, other types a default value with a {TODO value} comment (#667); over other ranges, add the missing entries with a placeholder; put the fields in the order of the declaration.",' + #10 +
     '      "bad": "StatusText: array[TStatus] of string = (''Neu'', ''Offen'', ''Geschlossen'');  // TStatus has 4 values",' + #10 +
     '      "good": "StatusText: array[TStatus] of string = (''Neu'', ''Offen'', ''Geschlossen'', ''''{stArchiviert});",' + #10 +
     '      "compilerCodes": [' + #10 +
@@ -4572,6 +4589,27 @@ begin
     '          "type": "integer",' + #10 +
     '          "default": 4,' + #10 +
     '          "description": "Number of comparisons of the same string from which the rule reports; at least 2."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "prefer-case",' + #10 +
+    '      "name": "if chain can be written as case",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "An if … else if chain with at least min branches (the final else counts) that compares the same ordinal expression (integer, character, enumeration; no side effects, no function ' +
+    'call) with constants: X = a, a = X, X in [a, b..c], (X >= a) and (X <= b), also combined with or. Labels must be literals, constant expressions, untyped constants or enumeration values, without duplic' +
+    'ates or overlaps. The type comes from name resolution; chains with unknown types and chains with directives stay silent. Off by default, high confidence. Quick fix: the code action In case umwandeln (' +
+    '#646, refactoring.ifCase); begin … end only where a branch has several statements, comments in the branches stay.",' + #10 +
+    '      "bad": "if Kind = 1 then Neu\nelse if (Kind = 2) or (Kind = 3) then Oeffnen\nelse if (Kind >= 4) and (Kind <= 6) then Speichern\nelse Beenden;",' + #10 +
+    '      "good": "case Kind of\n  1: Neu;\n  2, 3: Oeffnen;\n  4..6: Speichern;\nelse\n  Beenden;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "min",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 4,' + #10 +
+    '          "description": "Number of branches (the final else included) from which the rule reports; at least 2."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +
@@ -5262,6 +5300,19 @@ begin
     '        "E2035"' + #10 +
     '      ],' + #10 +
     '      "level": "T"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "method-without-self",' + #10 +
+    '      "name": "Method does not need Self",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A method of a class or record uses neither Self nor instance members (fields, properties, instance methods, inherited). It is not virtual, not an event of the form file, does not' +
+    ' implement an interface and is not used as a method pointer. Experimental: only active when switched on in atlas.json; silent with refactoring.methodKind off. Quick fix: turn into a class method (clas' +
+    's … static with refactoring.methodKindStatic); the code actions also offer calls via the class, a free routine and a record helper for the type of the first parameter, each with a preview of all chang' +
+    'ed calls.",' + #10 +
+    '      "bad": "function TRechner.Doppelt(A: Integer): Integer;\nbegin\n  Result := A * 2;  // no field, no Self\nend;",' + #10 +
+    '      "good": "class function TRechner.Doppelt(A: Integer): Integer; static;\nbegin\n  Result := A * 2;\nend;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -5753,6 +5804,13 @@ begin
     '      "description": "Die Schleife beginnt beim oberen Wert (High, Count - 1) und endet beim unteren, verwendet aber to. Sie läuft nie; gemeint war downto. Ebenso Schleifen mit konstanten Grenzen, die' +
     ' nie laufen, etwa for I := 10 to 1, auch mit Vorzeichen, Hex- oder Zeichenliteralen (wie H2135). Gleiche Grenzen, Ausdrücke, benannte Konstanten und aufsteigende Grenzen bleiben still. Korrektur: to d' +
     'urch downto ersetzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "conditional-expression-version",' + #10 +
+    '      "name": "Bedingungsausdruck vor Delphi 13",' + #10 +
+    '      "description": "Den Bedingungsausdruck X := if C then A else B gibt es erst ab Delphi 13; ein Projekt, das noch mit Delphi 12 oder älter übersetzen muss, scheitert hier (wie E2029). Gemeldet wir' +
+    'd der äußerste Ausdruck, nicht in Zweigen von {$IF}, die nach CompilerVersion, RTLVersion, VERnnn oder Declared fragen. Ohne bekannte Delphi-Version still. Korrektur (auch für die ganze Unit): in eine' +
+    ' if-Anweisung umwandeln, die Anweisung je Zweig wiederholt; nicht angeboten, wenn der Rest der Anweisung Seiteneffekte hat."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "exception-not-raised",' + #10 +
@@ -7475,8 +7533,10 @@ begin
     '      "name": "Initialisierung einer Konstanten passt nicht",' + #10 +
     '      "description": "Eine typisierte Konstante oder initialisierte Variable vom statischen Array-Typ hat mehr oder weniger Elemente als ihr Indexbereich (wie E2072), typisch nach einem neuen Wert in ' +
     'einer Aufzählung (array[TStatus] of string); geprüft je Dimension und auch für benannte Array-Typen der Datei. Ebenso Record-Konstanten, deren Felder in anderer Reihenfolge als deklariert stehen (wie ' +
-    'E2083). Indexbereiche: Teilbereiche mit konstanten Grenzen, Aufzählungen ohne eigene Werte, Boolean, Byte, Char usw. Deklarationen mit bedingten Direktiven gelten als unsicher. Korrekturen: fehlende E' +
-    'inträge mit Platzhalter ergänzen (Name des Aufzählungswerts als Kommentar), Felder in die Reihenfolge der Deklaration bringen."' + #10 +
+    'E2083). Indexbereiche: Teilbereiche mit konstanten Grenzen, Aufzählungen ohne eigene Werte, Boolean, Byte, Char usw. Deklarationen mit bedingten Direktiven gelten als unsicher. Korrekturen: über einer' +
+    ' Aufzählung fehlende Einträge an ihrer Stelle ergänzen bzw. überzählige entfernen (erkannt an Texten, Bezeichnern und Kommentaren mit dem Wertnamen; sonst hinten und als geschätzt benannt), neue Strin' +
+    'gs mit dem Text aus dem Namen, andere Typen mit Standardwert und Kommentar {TODO Wert} (#667); über anderen Bereichen fehlende Einträge mit Platzhalter ergänzen; Felder in die Reihenfolge der Deklarat' +
+    'ion bringen."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "case-selector-not-ordinal",' + #10 +
@@ -7784,6 +7844,20 @@ begin
     '        {' + #10 +
     '          "name": "min",' + #10 +
     '          "description": "Ab so vielen Vergleichen desselben Strings meldet die Regel; mindestens 2."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "prefer-case",' + #10 +
+    '      "name": "if-Kette lässt sich als case schreiben",' + #10 +
+    '      "description": "Eine if … else if-Kette mit mindestens min Zweigen (das abschließende else zählt mit) vergleicht denselben ordinalen Ausdruck (Ganzzahl, Zeichen, Aufzählung; ohne Seiteneffekte, ' +
+    'kein Funktionsaufruf) mit Konstanten: X = a, a = X, X in [a, b..c], (X >= a) and (X <= b), auch mit or verknüpft. Die Marken sind Literale, Konstantenausdrücke, untypisierte Konstanten oder Aufzählung' +
+    'swerte, ohne Doppelte und Überlappungen. Den Typ liefert die Namensauflösung; Ketten mit unbekanntem Typ und Ketten mit Direktiven bleiben still. Standard aus, Konfidenz hoch. Schnellkorrektur: die Co' +
+    'de-Aktion „In case umwandeln“ (#646, refactoring.ifCase); begin … end nur, wo ein Zweig mehrere Anweisungen hat, Kommentare in den Zweigen bleiben.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "min",' + #10 +
+    '          "description": "Ab so vielen Zweigen (das abschließende else eingeschlossen) meldet die Regel; mindestens 2."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +
@@ -8133,6 +8207,14 @@ begin
     ' wird nur, wenn der Name sicher genau eine Routine meint: Überladungen, varargs, Typumwandlungen, Variablen prozeduralen Typs, Bezeichner von System ohne Quelltext und Deklarationen in bedingten Zweig' +
     'en bleiben beim Compiler (E2250). Eine Funktion mit zu vielen Argumenten meldet die Regel nur bei bekanntem, nicht prozeduralem Ergebnistyp. Korrektur: Signaturhilfe öffnen setzt die Schreibmarke in d' +
     'ie Klammern und öffnet den Parameter-Hint (ergänzt () bei Bedarf)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "method-without-self",' + #10 +
+    '      "name": "Methode braucht Self nicht",' + #10 +
+    '      "description": "Eine Methode einer Klasse oder eines Records nutzt weder Self noch Instanzmitglieder (Felder, Properties, Instanzmethoden, inherited). Sie ist nicht virtuell, kein Ereignis der F' +
+    'ormulardatei, implementiert kein Interface und wird nicht als Methodenzeiger verwendet. Experimentell: nur aktiv, wenn in atlas.json eingeschaltet; schweigt mit refactoring.methodKind aus. Schnellkorr' +
+    'ektur: in eine class-Methode umwandeln (class … static mit refactoring.methodKindStatic); die Code-Aktionen bieten außerdem Aufrufe über die Klasse, eine freie Routine und einen Record-Helper für den ' +
+    'Typ des ersten Parameters, jeweils mit Vorschau aller geänderten Aufrufe."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

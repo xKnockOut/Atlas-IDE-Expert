@@ -76,6 +76,8 @@ type
     class function InlayDefineHintsOn: Boolean; static;
     /// <summary>Plugin eingeschaltet und Codes von Steuerzeichen an (#862).</summary>
     class function InlayCharHintsOn: Boolean; static;
+    /// <summary>Plugin eingeschaltet und Marken „ohne Self“ an (#686).</summary>
+    class function InlayMethodHintsOn: Boolean; static;
     /// <summary>Plugin eingeschaltet und Blockende-Beschriftungen an (#620); ohne Kopie des Einstellungsrecords.
     /// </summary>
     class function BlockEndLabelsOn: Boolean; static;
@@ -370,6 +372,12 @@ class function TAtlasIdeSettings.InlayCharHintsOn: Boolean;
 begin
   EnsureLoaded;
   Result := FEffective.Enabled and FEffective.InlayCharHints;
+end;
+
+class function TAtlasIdeSettings.InlayMethodHintsOn: Boolean;
+begin
+  EnsureLoaded;
+  Result := FEffective.Enabled and FEffective.InlayMethodHints;
 end;
 
 class function TAtlasIdeSettings.BlockEndLabelsOn: Boolean;

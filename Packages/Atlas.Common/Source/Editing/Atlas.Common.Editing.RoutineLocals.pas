@@ -1,8 +1,9 @@
 ﻿unit Atlas.Common.Editing.RoutineLocals;
 
 // Lokale Namen einer Routine und ihre Zugriffe, gemeinsam für Extrahieren
-// (#50) und Einbetten (#103): Parameter, var- und const-Abschnitt,
-// Inline-Variablen und for var mit ihrem Gültigkeitsbereich; Zugriff eines
+// (#50) und Einbetten (#103), auch für anonyme Methoden (#680): Parameter,
+// var- und const-Abschnitt, Inline-Variablen und for var mit ihrem
+// Gültigkeitsbereich; Zugriff eines
 // Bezeichners (Lesen, Schreiben, beides) und das Entfernen von Namen aus
 // einem var-Eintrag.
 
@@ -133,7 +134,10 @@ begin
     Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
     Parameters := nil;
     if Header <> nil then
-      Parameters := Header.FindChild(TSyntaxKind.Parameters);
+      Parameters := Header.FindChild(TSyntaxKind.Parameters)
+    else if ARoutine.Kind = TSyntaxKind.AnonymousMethod then
+      // Die anonyme Methode trägt ihre Parameter selbst (#680).
+      Parameters := ARoutine.FindChild(TSyntaxKind.Parameters);
     if Parameters <> nil then
       for Index := 0 to Parameters.ChildCount - 1 do
         // "A, B: Integer" ist ein Knoten mit beiden Namen.

@@ -6,16 +6,20 @@
 //   in einem Fenster wie die Befehlspalette, in der Reihenfolge des Servers,
 //   bevorzugte zuerst (Ersatz für die Glühbirne). Die gewählte ändert die
 //   Puffer über TAtlasIdeWorkspaceEdit (je Datei ein Rückgängig-Schritt, #397)
-//   und führt danach ihren Befehl aus: atlas.copyText legt das erste Argument
-//   in die Zwischenablage, atlas.openFile öffnet die Datei der URI im ersten
-//   Argument (Testunit, #274/#189), atlas.goToPosition setzt den Cursor im
+//   und führt danach ihren Befehl aus. Trägt die Aktion eine Vorschau
+//   (data.preview, #663), zeigt Atlas vorher die Änderungen mit diesem Text wie
+//   beim Umbenennen und übernimmt erst nach Bestätigung. Gesperrte Aktionen
+//   (disabled) stehen als Hinweis am Ende und nennen beim Wählen den Grund.
+//   Befehle: atlas.copyText legt das erste Argument in die Zwischenablage,
+//   atlas.openFile öffnet die Datei der URI im ersten Argument (Testunit, #274/#189), atlas.goToPosition setzt den Cursor im
 //   oberen Editor auf Zeile und Zeichen aus den Argumenten (Sprung zur
 //   Freigabe, #915), atlas.showSignatureHelp setzt ihn ebenso und öffnet
 //   den Parameter-Hint (OnSignatureHelp, setzt die Composition; #1007),
 //   atlas.showUnitRelations zeigt die Unit-Beziehungen der Unit im Editor
 //   („Graph zeigen“ an einem Unit-Zyklus, OnUnitRelations; #896),
 //   atlas.changeSignature (#100) und
-//   atlas.moveClass (#103) öffnen ihren Dialog, alle anderen gehen als
+//   atlas.moveClass (#103) öffnen ihren Dialog, atlas.invertBoolean (#715) und
+//   atlas.promoteVariable (#668) fragen einen Namen, alle anderen gehen als
 //   workspace/executeCommand an den Server.
 // - Auswahl erweitern und verkleinern (textDocument/selectionRange).
 // - Gehe zu Typdefinition (textDocument/typeDefinition); Gehe zu
@@ -105,6 +109,8 @@ type
     class procedure Select(const AView: IOTAEditView; const ALines: TArray<string>; const ARange: TLspRange); static;
     class procedure Step(AExpand: Boolean); static;
     class procedure Apply(const AAction: TLspCodeAction); static;
+    /// <summary>Vorschau der Änderungen mit AAction.Preview als Hinweis; True, wenn übernommen werden soll.</summary>
+    class function ConfirmPreview(const AAction: TLspCodeAction): Boolean; static;
     class procedure RunCommand(const ACommand, AArgumentsJson: string); static;
     class procedure RunSlash(const AView: IOTAEditView; AKind: TAtlasSlashKind); static;
     /// <summary>Qualifizierter Name am Cursor (#128); False mit Meldung ohne Server oder Editor, True mit
@@ -225,6 +231,11 @@ uses
   Atlas.IDE.Editor.InvertBoolean,
   Atlas.IDE.Editor.DisableWarning,
   Atlas.IDE.Editor.MissingUnit,
+  Atlas.IDE.Editor.PromoteVariable,
+  Atlas.IDE.Editor.AnonymousMethod,
+  Atlas.IDE.Editor.MethodKind,
+  Atlas.IDE.Editor.TypeAlias,
+  Atlas.IDE.Editor.EnumTables,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
@@ -236,7 +247,10 @@ uses
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.SymbolPath.Service,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.Core.Results.Model,
+  Atlas.UI.Results.Frame,
+  Atlas.UI.Results.RenamePreview;
 
 const
   // Code-Aktionen und Befehle des Servers; Befehle können projektweit arbeiten.
@@ -1349,6 +1363,10 @@ begin
   for Action in Found do
     if not Action.Preferred and (Action.Disabled = '') then
       Usable := Usable + [Action];
+  // Hinweis statt Aktion (#663): am Ende, wählen nennt den Grund.
+  for Action in Found do
+    if Action.Disabled <> '' then
+      Usable := Usable + [Action];
   if Length(Usable) = 0 then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.EditorNoActions));
@@ -1361,6 +1379,8 @@ begin
     Command.Id := IntToStr(Index);
     Command.Caption := Usable[Index].Title;
     Command.Path := KindCaption(Usable[Index].Kind);
+    if Usable[Index].Disabled <> '' then
+      Command.Path := TAtlasStrings.Text(TAtlasTextId.EditorActionNote);
     if Usable[Index].Preferred then
       Command.ShortCut := '★';
     Commands := Commands + [Command];
@@ -1424,13 +1444,38 @@ begin
   Say(TAtlasStrings.Text(TAtlasTextId.UsesActionMissing));
 end;
 
+class function TAtlasIdeEditorCommands.ConfirmPreview(const AAction: TLspCodeAction): Boolean;
+var
+  Preview: TArray<TAtlasResultEntry>;
+  Open: TAtlasResultsOpen;
+begin
+  Preview := TAtlasResults.RenamePreview(AAction.Edit,
+    function(const AFileName: string): string
+    begin
+      Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
+    end);
+  Open :=
+    procedure(const AFileName: string; ALine, ACharacter: Integer)
+    begin
+      TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
+    end;
+  Result := TAtlasRenamePreview.Execute(AAction.Title, AAction.Preview, TAtlasResults.Group(Preview), Open);
+end;
+
 class procedure TAtlasIdeEditorCommands.Apply(const AAction: TLspCodeAction);
 var
   Outcome: TAtlasWorkspaceEditResult;
 begin
+  if AAction.Disabled <> '' then
+  begin
+    Say(TAtlasStrings.Fmt(TAtlasTextId.EditorActionDisabled, [AAction.Title, AAction.Disabled]));
+    Exit;
+  end;
   // LSP: erst die Änderung, dann der Befehl.
   if not AAction.Edit.IsEmpty then
   begin
+    if (AAction.Preview <> '') and not ConfirmPreview(AAction) then
+      Exit;
     Outcome := TAtlasIdeWorkspaceEdit.Apply(AAction.Edit,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
       AAction.Title);
@@ -1596,6 +1641,83 @@ begin
   begin
     // Client-Befehl: Hinweis anzeigen, etwa die durchsuchten Orte (#550).
     TAtlasIdeMissingUnit.ShowInfo(AArgumentsJson,
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdePromoteVariable.ClientCommand then
+  begin
+    // Client-Befehl: Namen abfragen und „Lokale Variable und Feld umwandeln“ (#668); er fragt den Server selbst.
+    TAtlasIdePromoteVariable.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeAnonymousMethod.ClientCommand then
+  begin
+    // Client-Befehl: Namen abfragen und „Anonyme Methode in Methode umwandeln“ (#680); er fragt den Server selbst.
+    TAtlasIdeAnonymousMethod.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeMethodKind.ClientCommand then
+  begin
+    // Client-Befehl: Methode ohne Self umwandeln (#686); er fragt den Server selbst, ohne Namensabfrage.
+    TAtlasIdeMethodKind.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeTypeAlias.ClientCommand then
+  begin
+    // Client-Befehl: Namen abfragen und „Typ-Alias einführen“ (#681); er fragt den Server selbst.
+    TAtlasIdeTypeAlias.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeTypeAlias.InlineClientCommand then
+  begin
+    // Client-Befehl: „Alias auflösen“ (#681), ohne Namensabfrage.
+    TAtlasIdeTypeAlias.ExecuteInline(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeEnumTables.ClientCommand then
+  begin
+    // Client-Befehl: Namen abfragen und „Namenstabelle anlegen“ (#667); er fragt den Server selbst.
+    TAtlasIdeEnumTables.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeEnumTables.SyncClientCommand then
+  begin
+    // Client-Befehl: „Tabellen nachziehen“ (#667), ohne Namensabfrage.
+    TAtlasIdeEnumTables.ExecuteSync(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
       procedure(AText: string)
       begin
         Say(AText);
