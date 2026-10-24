@@ -180,7 +180,10 @@ type
     class procedure ThemeChanged; static;
     /// <summary>Fenster zeigen, Ausdruck unter dem Cursor ins Eingabefeld (Befehl Atlas.DebugEvaluate, Strg+F7).
     /// </summary>
-    class procedure ShowWindow; static;
+    class procedure ShowWindow; overload; static;
+    /// <summary>Fenster zeigen und AExpression als Zeile auswerten („Ausdruck auswerten“ der Exception-Leiste,
+    /// #865).</summary>
+    class procedure ShowWindow(const AExpression: string); overload; static;
     /// <summary>Dialog „Auswerten/Ändern“ der IDE öffnen (Befehl Atlas.DebugEvaluateIdeDialog).</summary>
     class procedure OpenIdeDialog; static;
   end;
@@ -446,6 +449,20 @@ begin
   WireFrame(Shown);
   FInstance.SyncPinned;
   Shown.FocusInput(Expression);
+end;
+
+class procedure TAtlasIdeDebugEvaluate.ShowWindow(const AExpression: string);
+var
+  Shown: TAtlasDebugEvaluateFrame;
+begin
+  if (FInstance = nil) or not Enabled or (Trim(AExpression) = '') then
+    Exit;
+  Shown := TAtlasIdeDebugEvaluateWindow.Show;
+  if Shown = nil then
+    Exit;
+  WireFrame(Shown);
+  FInstance.SyncPinned;
+  FInstance.Add(AExpression, False);
 end;
 
 class procedure TAtlasIdeDebugEvaluate.OpenIdeDialog;

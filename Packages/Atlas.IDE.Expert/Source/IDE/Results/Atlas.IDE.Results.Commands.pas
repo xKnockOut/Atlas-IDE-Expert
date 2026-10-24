@@ -47,7 +47,11 @@ type
     class procedure FindImplementations; static;
     class procedure ShowHierarchy(ADirection: TAtlasHierarchyDirection); static;
     /// <summary>Datenfluss des Symbols am Cursor (#690); nur mit navigation.dataFlow.</summary>
-    class procedure ShowDataFlow(ADirection: TAtlasDataFlowDirection); static;
+    class procedure ShowDataFlow(ADirection: TAtlasDataFlowDirection); overload; static;
+    /// <summary>Datenfluss des Symbols an AFileName/ALine/ACharacter (0-basiert), etwa „Wo wird Kunde
+    /// zugewiesen?“ aus der Exception-Leiste (#865).</summary>
+    class procedure ShowDataFlow(ADirection: TAtlasDataFlowDirection; const AFileName: string; ALine,
+      ACharacter: Integer; const AName: string); overload; static;
     class procedure SearchSymbol; static;
     /// <summary>Referenzen auf ein Symbol an einem Fundort (z. B. aus dem Tooltip); Anzahl der Fundstellen.</summary>
     class function ShowReferences(const AFileName: string; ALine, ACharacter: Integer; const AName: string): Integer; static;
@@ -373,6 +377,30 @@ begin
   FFlowRequest := TAtlasDataFlowRequest.Create(ADirection, FileName, Line, Character);
   FFlowRequest.ExcludeTests := TAtlasIdeSettings.Current.DataFlowExcludeTests;
   FFlowName := Name;
+  RunDataFlow(False);
+end;
+
+class procedure TAtlasIdeResults.ShowDataFlow(ADirection: TAtlasDataFlowDirection; const AFileName: string; ALine,
+  ACharacter: Integer; const AName: string);
+var
+  Current: TLspSession;
+begin
+  if not TAtlasIdeSettings.Current.DataFlow then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.ResultsDataFlowOff));
+    Exit;
+  end;
+  Current := Session;
+  if Current = nil then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+    Exit;
+  end;
+  // Projektweite Anfrage: wie am Cursor alle offenen Puffer abgleichen.
+  TAtlasIdeRename.SyncOpenBuffers(Current);
+  FFlowRequest := TAtlasDataFlowRequest.Create(ADirection, AFileName, ALine, ACharacter);
+  FFlowRequest.ExcludeTests := TAtlasIdeSettings.Current.DataFlowExcludeTests;
+  FFlowName := AName;
   RunDataFlow(False);
 end;
 

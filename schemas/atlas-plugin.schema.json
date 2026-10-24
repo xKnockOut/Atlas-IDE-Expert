@@ -943,6 +943,30 @@
       "x-captionEn": "Ctrl+F7 opens the Atlas window",
       "x-issue": "#784"
     },
+    "DebugExplainAccessViolation": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.explainAccessViolation",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Zugriffsverletzungen erklären",
+      "x-captionEn": "Explain access violations",
+      "x-issue": "#865"
+    },
+    "DebugExplainAccessViolationAllowCalls": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.explainAccessViolation.allowCalls",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-parent": "debug.explainAccessViolation",
+      "x-caption": "Getter und Funktionsaufrufe erlauben",
+      "x-captionEn": "Allow getters and function calls",
+      "x-issue": "#865"
+    },
     "DebugExceptionHistory": {
       "type": "boolean",
       "default": true,

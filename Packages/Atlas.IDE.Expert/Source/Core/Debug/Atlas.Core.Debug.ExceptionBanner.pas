@@ -28,6 +28,36 @@ type
   TAtlasDebugAutoContinue = (None, ByClass, ByLocation);
   {$SCOPEDENUMS OFF}
 
+  {$SCOPEDENUMS ON}
+  TAtlasDebugBannerMark = (Neutral, Ok, Bad);
+  {$SCOPEDENUMS OFF}
+
+  TAtlasDebugBannerLine = record
+    Mark: TAtlasDebugBannerMark;
+    Text: string;
+    class function Create(AMark: TAtlasDebugBannerMark; const AText: string): TAtlasDebugBannerLine; static;
+    /// <summary>✓, ✗ bzw. –.</summary>
+    class function MarkText(AMark: TAtlasDebugBannerMark): string; static;
+  end;
+
+  /// <summary>Erklärung unter der Meldung (#865); Active = False: keine.</summary>
+  TAtlasDebugBannerExplanation = record
+    Active: Boolean;
+    /// <summary>Atlas prüft noch: nur die Ergebniszeile, keine Knöpfe.</summary>
+    Busy: Boolean;
+    HeadlineMark: TAtlasDebugBannerMark;
+    Headline: string;
+    /// <summary>Hinter der Ergebniszeile, gedämpft (Feld und Versatz, Füllmuster).</summary>
+    Detail: string;
+    Lines: TArray<TAtlasDebugBannerLine>;
+    /// <summary>Name für „Wo wird X zugewiesen?“; '' = kein Knopf.</summary>
+    WhereName: string;
+    /// <summary>Ausdruck für „Ausdruck auswerten“; '' = kein Knopf.</summary>
+    EvaluateExpression: string;
+    /// <summary>Text für „Erklärung kopieren“; '' = kein Knopf.</summary>
+    CopyText: string;
+  end;
+
   TAtlasDebugBannerInfo = record
     ExceptionClass: string;
     Message: string;
@@ -75,6 +105,26 @@ uses
   System.SysUtils,
   System.Math,
   Atlas.Core.Debug.OwnCode;
+
+{ TAtlasDebugBannerLine }
+
+class function TAtlasDebugBannerLine.Create(AMark: TAtlasDebugBannerMark; const AText: string): TAtlasDebugBannerLine;
+begin
+  Result.Mark := AMark;
+  Result.Text := AText;
+end;
+
+class function TAtlasDebugBannerLine.MarkText(AMark: TAtlasDebugBannerMark): string;
+begin
+  case AMark of
+    TAtlasDebugBannerMark.Ok:
+      Result := #$2713;
+    TAtlasDebugBannerMark.Bad:
+      Result := #$2717;
+  else
+    Result := #$2013;
+  end;
+end;
 
 { TAtlasDebugBannerInfo }
 

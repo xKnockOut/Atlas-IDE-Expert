@@ -255,6 +255,8 @@ begin
   Assert.IsTrue(Settings.DebugCompletionInDialogs, 'debug.completionInDialogs (#538)');
   Assert.IsTrue(Settings.DebugEvaluateWindow, 'debug.evaluateWindow (#784)');
   Assert.IsTrue(Settings.DebugEvaluateReplaceCtrlF7, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
+  Assert.IsTrue(Settings.DebugExplainAccessViolation, 'debug.explainAccessViolation (#865)');
+  Assert.IsFalse(Settings.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
   Assert.IsTrue(Settings.DebugExceptionHistory, 'debug.exceptionHistory (#517)');
   Assert.IsTrue(Settings.DebugJustMyCode, 'debug.justMyCode (#578)');
   Assert.IsFalse(Settings.DebugExceptionBanner, 'debug.exceptionBanner (#783)');
@@ -366,6 +368,8 @@ begin
   Settings.DebugCompletionInDialogs := False;
   Settings.DebugEvaluateWindow := False;
   Settings.DebugEvaluateReplaceCtrlF7 := False;
+  Settings.DebugExplainAccessViolation := False;
+  Settings.DebugExplainAccessViolationAllowCalls := True;
   Settings.DebugExceptionHistory := False;
   Settings.DebugJustMyCode := False;
   Settings.DebugExceptionBanner := True;
@@ -462,6 +466,8 @@ begin
   Assert.IsFalse(Loaded.DebugCompletionInDialogs, 'debug.completionInDialogs (#538)');
   Assert.IsFalse(Loaded.DebugEvaluateWindow, 'debug.evaluateWindow (#784)');
   Assert.IsFalse(Loaded.DebugEvaluateReplaceCtrlF7, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
+  Assert.IsFalse(Loaded.DebugExplainAccessViolation, 'debug.explainAccessViolation (#865)');
+  Assert.IsTrue(Loaded.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
   Assert.IsFalse(Loaded.DebugExceptionHistory, 'debug.exceptionHistory (#517)');
   Assert.IsFalse(Loaded.DebugJustMyCode, 'debug.justMyCode (#578)');
   Assert.IsTrue(Loaded.DebugExceptionBanner, 'debug.exceptionBanner (#783)');

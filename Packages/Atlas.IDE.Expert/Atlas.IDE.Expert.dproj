@@ -673,6 +673,10 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Evaluate.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.DataFlow.pas"/>
         <DCCReference Include="Source\Core\Results\Atlas.Core.Results.DataFlow.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.AccessViolation.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.AccessViolation.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.AccessViolation.pas"/>
+        <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.AccessChains.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
