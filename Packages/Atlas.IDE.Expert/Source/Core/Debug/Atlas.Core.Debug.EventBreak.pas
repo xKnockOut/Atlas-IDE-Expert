@@ -6,9 +6,9 @@
 // - Ereignisarten nach dem Namen des Ereignisses (und Before/After bei
 //   Datenmengen): Maus, Tastatur, Timer, Fenster, Datenbank, Aktionen,
 //   Sonstige.
-// - Häufig feuernde Ereignisse (debug.breakOnNextEvent.excluded, Vorgabe
-//   OnPaint, OnMouseMove, OnUpdate, dazu Timer unter 100 ms) nur, wenn man
-//   sie ausdrücklich einschließt.
+// - Häufig feuernde Ereignisse (debug.breakOnNextEvent.excluded, Liste aus
+//   Atlas.Core.Settings.EventBreakNames, dazu Timer unter 100 ms) nur, wenn
+//   man sie ausdrücklich einschließt.
 // - Einschränkung auf ein Formular oder die gerade sichtbaren (deren Klassen
 //   ermittelt die IDE-Seite über Screen.Forms).
 // - Je Stelle (Datei und Zeile der ersten Anweisung, bodyLine) ein
@@ -73,7 +73,6 @@ type
   TAtlasEventBreak = class
   public const
     Command = 'atlas.server.eventHandlers';
-    DefaultExcluded = 'OnPaint, OnMouseMove, OnUpdate';
     /// <summary>Timer, die öfter feuern, zählen als häufig.</summary>
     FastTimerMs = 100;
     /// <summary>Ab so vielen Haltepunkten weist Atlas auf die Dauer hin.</summary>
@@ -86,9 +85,6 @@ type
     class function Arguments(const AProjectUri: string): string; static;
     class function ReadAnswer(AJson: TJSONValue; out AAnswer: TAtlasEventAnswer): Boolean; static;
     class function CategoryOf(const AEvent: string): TAtlasEventCategory; static;
-    /// <summary>Kommagetrennte Liste aufgeräumt: getrimmt, ohne Leere und Doppelte, Reihenfolge bleibt.</summary>
-    class function NormalizeExcluded(const AText: string): string; static;
-    class function ExcludedList(const AText: string): TArray<string>; static;
     /// <summary>Ausgenommenes Ereignis oder Timer unter FastTimerMs.</summary>
     class function IsFrequent(const AHandler: TAtlasEventHandler; const AExcluded: TArray<string>): Boolean;
       static;
@@ -225,32 +221,6 @@ begin
     Result := TAtlasEventCategory.Actions
   else
     Result := TAtlasEventCategory.Other;
-end;
-
-class function TAtlasEventBreak.ExcludedList(const AText: string): TArray<string>;
-var
-  Part, Name: string;
-  Found: Boolean;
-  Existing: string;
-begin
-  Result := nil;
-  for Part in AText.Split([',', ';', ' ', #9, #13, #10]) do
-  begin
-    Name := Trim(Part);
-    if Name = '' then
-      Continue;
-    Found := False;
-    for Existing in Result do
-      if SameText(Existing, Name) then
-        Found := True;
-    if not Found then
-      Result := Result + [Name];
-  end;
-end;
-
-class function TAtlasEventBreak.NormalizeExcluded(const AText: string): string;
-begin
-  Result := string.Join(', ', ExcludedList(AText));
 end;
 
 class function TAtlasEventBreak.IsFrequent(const AHandler: TAtlasEventHandler;

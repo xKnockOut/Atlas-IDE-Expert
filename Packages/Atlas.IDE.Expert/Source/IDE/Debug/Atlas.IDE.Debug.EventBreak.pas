@@ -111,8 +111,9 @@ uses
   Vcl.Controls,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.EventBreakNames,
   Atlas.Core.Lsp.Client,
-  Atlas.Core.Debug.Visualizers,
+  Atlas.Core.Settings.VisualizerKinds,
   Atlas.UI.Strings,
   Atlas.UI.Popup.Window,
   Atlas.IDE.Foundation.Settings,
@@ -320,7 +321,7 @@ begin
   if Choice.Scope = TAtlasEventScope.VisibleForms then
     Choice.Scope := TAtlasEventScope.AllForms;
   Selected := TAtlasEventBreak.Select(FAnswer.Handlers, Choice,
-    TAtlasEventBreak.ExcludedList(TAtlasIdeSettings.Current.DebugBreakOnNextEventExcluded), nil);
+    TAtlasEventBreakSettings.ExcludedList(TAtlasIdeSettings.Current.DebugBreakOnNextEventExcluded), nil);
   Result := TAtlasStrings.Fmt(TAtlasTextId.EventBreakCount,
     [Length(Selected), Length(TAtlasEventBreak.Locations(FAnswer.Handlers, Selected))]);
 end;
@@ -432,7 +433,7 @@ var
 begin
   FPhase := TPhase.Idle;
   Selected := TAtlasEventBreak.Select(FAnswer.Handlers, AChoice,
-    TAtlasEventBreak.ExcludedList(TAtlasIdeSettings.Current.DebugBreakOnNextEventExcluded), AVisibleForms);
+    TAtlasEventBreakSettings.ExcludedList(TAtlasIdeSettings.Current.DebugBreakOnNextEventExcluded), AVisibleForms);
   FLocations := TAtlasEventBreak.Locations(FAnswer.Handlers, Selected);
   if Length(FLocations) = 0 then
   begin

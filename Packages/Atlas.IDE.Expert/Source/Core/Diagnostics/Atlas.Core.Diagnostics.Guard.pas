@@ -629,7 +629,7 @@ const
     'Markierung umschließen', 'Umschließung entfernen', 'Ausblenden am Element', 'Atlas-Suche', 'Units suchen',
     'Erzeugen-Menü', 'Kommentar und Muster fortsetzen', 'Schnellbefehle', 'Gehe zu Definition', 'Editorleiste',
     'Schnelle Lesezeichen', 'Atlas-Statusleiste', 'Architekturübersicht', 'Unit-Beziehungen',
-    'Weg zwischen Symbolen', 'Projektaufgaben', 'Debugger-Hilfen');
+    'Weg zwischen Symbolen', 'Projektaufgaben', 'Debuggen');
 begin
   Result := Names[AFeature];
 end;

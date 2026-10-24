@@ -52,6 +52,9 @@ type
     /// <summary>Grenzen für navigation.impactDepth (#1120).</summary>
     MinImpactDepth = 1;
     MaxImpactDepth = 5;
+    /// <summary>Grenzen für navigation.dataFlow.maxDepth (#690).</summary>
+    MinDataFlowDepth = 1;
+    MaxDataFlowDepth = 20;
     /// <summary>Grenzen für editor.stickyScrollMaxLines (#506).</summary>
     MinStickyLines = 1;
     MaxStickyLines = 10;
@@ -70,6 +73,9 @@ type
     /// <summary>Grenzen für editor.blockEndLabels.minLines (#620).</summary>
     MinBlockEndLines = 1;
     MaxBlockEndLines = 1000;
+    /// <summary>Grenzen für debug.inlineValuesPerLine (#508).</summary>
+    MinInlineValuesPerLine = 1;
+    MaxInlineValuesPerLine = 20;
     /// <summary>Höchste Wartezeit in ms auf den zweiten Teil der Faltungsakkorde (#1104,
     /// bookmarks.quick.chordWait).</summary>
     MaxQuickChordWait = 5000;
@@ -437,6 +443,15 @@ type
     /// <summary>Codes von Warnungen und Hinweisen, die als Fehler zählen (build.warningsAsErrors, #530), z. B.
     /// "W1035, H2164"; gespeichert in der Form von TAtlasBuildVerdicts.NormalizeCodes.</summary>
     BuildWarningsAsErrors: string;
+    /// <summary>Fenster „Compiler-Schalter“ (#558, build.compilerSwitches, Befehl Atlas.CompilerSwitches): wirksame
+    /// Schalter R, Q, O, C, I, A, HINTS, WARNINGS, abgeschaltete Warnungen und aktive Symbole an der Cursorposition
+    /// mit Herkunft (Projektoption, Include-Datei, Direktive mit Zeile); Abweichungen von der .dproj hervorgehoben.
+    /// Aus = kein Fenster, kein Befehl, keine Anfrage.</summary>
+    BuildCompilerSwitches: Boolean;
+    /// <summary>Feld in der Statusleiste mit den Schaltern, die an der Cursorposition von der .dproj abweichen („R−
+    /// Q− HINTS OFF“; #558, build.showSwitchesInStatusBar); ohne Abweichung kein Feld. Ein Klick öffnet das Fenster
+    /// „Compiler-Schalter“.</summary>
+    BuildSwitchesInStatusBar: Boolean;
     /// <summary>Release-Build-Wächter (#533, build.releaseGuard): vor make und build in einer Release-Konfiguration
     /// die Projektoptionen prüfen, dazu der Befehl „Release-Build prüfen“ (Atlas.CheckRelease) mit Tipp. Aus = keine
     /// Prüfung, Befehl und Tipp verschwinden.</summary>
@@ -512,6 +527,16 @@ type
     /// Befehlspalette, der im angehaltenen Zustand die Aufrufe der Anweisung zur Wahl stellt; aus = Kürzel frei, kein
     /// Menüeintrag.</summary>
     DebugStepIntoTarget: Boolean;
+    /// <summary>debug.stepFilters (#850): F7 überspringt eigene Routinen der Arten aus debug.stepFilters.kinds und
+    /// Methoden nach debug.stepFilters.patterns und hält in der Routine, um die es geht; Umschalt+F7 springt ohne
+    /// Filter hinein.</summary>
+    DebugStepFilters: Boolean;
+    /// <summary>Gefilterte Arten (debug.stepFilters.kinds, kommagetrennt): getters, setters, trivial, operators,
+    /// emptyConstructors; Vorgabe getters,trivial.</summary>
+    DebugStepFilterKinds: string;
+    /// <summary>Gefilterte Methoden nach Muster (debug.stepFilters.patterns): Unit.Klasse.Methode mit * als
+    /// Platzhalter, durch ; getrennt.</summary>
+    DebugStepFilterPatterns: string;
     /// <summary>Tastenkürzel „Gezielt hineinspringen“ (debug.stepIntoTarget.key, 0 = keins).</summary>
     DebugStepIntoTargetKey: Integer;
     /// <summary>Beim nächsten Ereignis anhalten (#856, debug.breakOnNextEvent): Befehl im Menü Start und in der
@@ -521,6 +546,64 @@ type
     /// <summary>Häufige Ereignisse, die nur auf ausdrückliche Wahl beobachtet werden
     /// (debug.breakOnNextEvent.excluded, kommagetrennt).</summary>
     DebugBreakOnNextEventExcluded: string;
+    /// <summary>„kein Zugriff auf Wert“ erklären (#840, debug.explainUnavailable): Scheitert die Auswertung im Hover
+    /// oder in den Werten im Editor mit einem bekannten Text der IDE, zeigt Atlas „‹kein Zugriff›“ mit Ursache
+    /// (Release-Start, $D-/$L-, $O+, Lebensdauer, inline, Bibliothek ohne Debug-DCUs), Herkunft des Schalters und
+    /// Korrekturen. Aus = Fehler wie bisher ausgeblendet, keine Anfrage.</summary>
+    DebugExplainUnavailable: Boolean;
+    /// <summary>Vervollständigung in Debugger-Dialogen (#538, debug.completionInDialogs): In „Auswerten/Ändern“, im
+    /// Überwachungsausdruck und in Bedingung und Log-Ausdruck eines Haltepunkts bietet Atlas Bezeichner aus dem
+    /// Gültigkeitsbereich des Ausführungspunkts bzw. der Haltepunktzeile an; Pfeil nach unten im leeren Feld zeigt
+    /// die letzten 20 Ausdrücke des Projekts. Aus = kein Zeitgeber, keine Anfrage, kein Verlauf.</summary>
+    DebugCompletionInDialogs: Boolean;
+    /// <summary>Fenster „Auswerten“ (#784, debug.evaluateWindow): andockbares Fenster mit mehreren Ausdrücken, die
+    /// bei jedem Halt neu ausgewertet werden; Objekte, Records und Arrays klappen auf (Felder aus dem Atlas-Index),
+    /// geänderte Werte sind markiert, Ansichten Text, Zeilen, JSON und Hex, Ändern, Festheften, Verlauf mit 50
+    /// Ausdrücken je Projekt. Aus = kein Fenster, kein Befehl, Strg+F7 bleibt bei der IDE.</summary>
+    DebugEvaluateWindow: Boolean;
+    /// <summary>Strg+F7 öffnet das Fenster „Auswerten“ (#784, debug.evaluateWindow.replaceCtrlF7) mit dem Ausdruck
+    /// unter dem Cursor statt des Dialogs „Auswerten/Ändern“; mit Umschalttaste bzw. Befehl
+    /// Atlas.DebugEvaluateIdeDialog kommt der Dialog der IDE. Aus = Strg+F7 gehört der IDE.</summary>
+    DebugEvaluateReplaceCtrlF7: Boolean;
+    /// <summary>debug.explainAccessViolation (#865): Beim Halt wegen einer Zugriffsverletzung in eigenem Code die
+    /// Zugriffsketten der Zeile auswerten und das nil-Glied, ein freigegebenes Objekt oder einen Index außerhalb in
+    /// der Exception-Leiste bzw. in den Meldungen nennen.</summary>
+    DebugExplainAccessViolation: Boolean;
+    /// <summary>debug.explainAccessViolation.allowCalls (#865): Glieder mit Getter oder Funktionsaufruf auswerten;
+    /// aus bleiben sie „nicht ausgewertet“.</summary>
+    DebugExplainAccessViolationAllowCalls: Boolean;
+    /// <summary>Exception-Verlauf beim Debuggen (#517, debug.exceptionHistory): Jeder Halt wegen einer Exception
+    /// landet mit Klasse, Meldung, Ort, Thread und Anzahl im Fenster „Atlas: Exceptions“ (Befehl
+    /// Atlas.DebugExceptions); Klassen lassen sich dort ignorieren, Atlas setzt dann still fort. Aus = kein Verlauf,
+    /// kein Beobachter.</summary>
+    DebugExceptionHistory: Boolean;
+    /// <summary>Nur eigener Code beim Debuggen (#578, debug.justMyCode): Nach einer Exception in Bibliothekscode
+    /// springt Atlas zur ersten eigenen Zeile des Aufrufstapels und markiert sie; landet F7 in Code ohne Quelltext,
+    /// setzt Atlas „Bis zur Rückkehr“ fort; der Exception-Verlauf nennt den ersten eigenen Rahmen als Ort und fasst
+    /// Bibliotheksrahmen zusammen. Eigener Code: Projektordner der Gruppe und debug.ownCodeFolders. Aus = IDE wie
+    /// bisher.</summary>
+    DebugJustMyCode: Boolean;
+    /// <summary>Exception-Leiste beim Debuggen (#783, debug.exceptionBanner): Hält der Debugger wegen einer
+    /// Exception, zeigt Atlas oben im Editor eine Leiste mit Klasse, Meldung, Thread, Anzahl an dieser Stelle und
+    /// der ersten eigenen Zeile; in Delphi 12 und 13 schließt Atlas den Dialog der IDE dafür über „Anhalten“, sonst
+    /// bleibt er und die Leiste kommt danach. Baut auf debug.exceptionHistory auf. Vorgabe aus bis zur
+    /// Studie.</summary>
+    DebugExceptionBanner: Boolean;
+    /// <summary>Knopf „Nur an dieser Stelle ignorieren“ der Exception-Leiste (#783,
+    /// debug.exceptionBanner.ignoreAtLocation): merkt Klasse, Datei und Zeile je Projekt; trifft dieselbe
+    /// Kombination erneut ein, setzt Atlas still fort und zählt nur im Verlauf. Aus = kein Knopf, gemerkte Orte
+    /// wirken nicht.</summary>
+    DebugExceptionBannerIgnoreAtLocation: Boolean;
+    /// <summary>Werte im Editor beim Debuggen (#508, debug.inlineValues): Steht der Prozess, zeigt Atlas am Ende der
+    /// Zeilen der Routine mit dem Ausführungspunkt gedimmt die Werte der lokalen Variablen, Parameter und Felder von
+    /// Self (Count = 3, Name = 'Meier'); seit dem letzten Halt geänderte Werte hervorgehoben. Aus = keine Anfrage,
+    /// keine Auswertung, nichts gezeichnet.</summary>
+    DebugInlineValues: Boolean;
+    /// <summary>Höchstens so viele Werte je Zeile (#508, debug.inlineValuesPerLine, 1 bis 20).</summary>
+    DebugInlineValuesPerLine: Integer;
+    /// <summary>Weitere Ordner mit eigenem Code (#578, debug.ownCodeFolders), durch „;“ getrennt; die Projektordner
+    /// der Gruppe gelten immer.</summary>
+    DebugOwnCodeFolders: string;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -754,6 +837,13 @@ type
     /// <summary>Vorgabe der Tiefe der Auswirkungsanalyse (#1120, navigation.impactDepth), MinImpactDepth bis
     /// MaxImpactDepth.</summary>
     ImpactDepth: Integer;
+    /// <summary>„Woher kommt der Wert?“ und „Wohin geht der Wert?“ im Ergebnisfenster (#690, navigation.dataFlow).</summary>
+    DataFlow: Boolean;
+    /// <summary>Größte Tiefe beim Aufklappen (#690, navigation.dataFlow.maxDepth), MinDataFlowDepth bis
+    /// MaxDataFlowDepth.</summary>
+    DataFlowMaxDepth: Integer;
+    /// <summary>Filter „Tests ausblenden“ zu Beginn an (#690, navigation.dataFlow.excludeTests).</summary>
+    DataFlowExcludeTests: Boolean;
     /// <summary>Kürzel „Definition einblenden“ (#505, keys.peekDefinition); Vorgabe Alt+F12.</summary>
     PeekDefinitionKey: Integer;
     /// <summary>Kürzel „Referenzen einblenden“ (#505, keys.peekReferences); Vorgabe Umschalt+Alt+F12.</summary>
@@ -1192,8 +1282,9 @@ uses
   Atlas.Core.Build.Verdict,
   Atlas.Core.Build.OpenBuild,
   Atlas.Core.Settings.OverviewKinds,
-  Atlas.Core.Debug.Visualizers,
-  Atlas.Core.Debug.EventBreak,
+  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Core.Settings.EventBreakNames,
+  Atlas.Text.StepFilter,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Settings.ToolbarItems,
   Atlas.Core.Settings.StatusBarItems;
@@ -1517,6 +1608,8 @@ begin
   Result.ShowInterfaceCost := True;
   Result.BuildSummary := True;
   Result.BuildWarningsAsErrors := '';
+  Result.BuildCompilerSwitches := True;
+  Result.BuildSwitchesInStatusBar := False;
   Result.ReleaseGuard := True;
   Result.BuildGate := 'off';
   Result.TasksEnabled := True;
@@ -1532,18 +1625,34 @@ begin
   Result.TestBreakAtStart := True;
   Result.DebugHoverValues := True;
   Result.DebugVisualizers := True;
-  Result.DebugVisualizerTypes := TAtlasVisualizers.KindsText(TAtlasVisualizers.AllKinds);
-  Result.DebugVisualizerNameFields := TAtlasVisualizers.DefaultNameFields;
-  Result.DebugVisualizerMaxLength := TAtlasVisualizerOptions.DefaultMaxLength;
-  Result.DebugVisualizerTimeoutMs := TAtlasVisualizerOptions.DefaultTimeoutMs;
-  Result.DebugVisualizerMaxImagePixels := TAtlasVisualizerOptions.DefaultMaxImagePixels;
-  Result.DebugVisualizerEvaluation := TAtlasVisualizers.EvaluationNames[TAtlasVisualizerEvaluation.Properties];
+  Result.DebugVisualizerTypes := TAtlasVisualizerSettings.KindsText(TAtlasVisualizerSettings.AllKinds);
+  Result.DebugVisualizerNameFields := TAtlasVisualizerSettings.DefaultNameFields;
+  Result.DebugVisualizerMaxLength := TAtlasVisualizerSettings.DefaultMaxLength;
+  Result.DebugVisualizerTimeoutMs := TAtlasVisualizerSettings.DefaultTimeoutMs;
+  Result.DebugVisualizerMaxImagePixels := TAtlasVisualizerSettings.DefaultMaxImagePixels;
+  Result.DebugVisualizerEvaluation := TAtlasVisualizerSettings.EvaluationNames[TAtlasVisualizerEvaluation.Properties];
   Result.DebugDisplayRules := True;
   Result.DebugDisplayRulesAllowCalls := False;
   Result.DebugStepIntoTarget := True;
+  Result.DebugStepFilters := True;
+  Result.DebugStepFilterKinds := TStepFilterNames.KindsText(TStepFilterNames.DefaultKinds);
+  Result.DebugStepFilterPatterns := '';
   Result.DebugStepIntoTargetKey := $C076; // Strg+Alt+F7
   Result.DebugBreakOnNextEvent := True;
-  Result.DebugBreakOnNextEventExcluded := TAtlasEventBreak.DefaultExcluded;
+  Result.DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.DefaultExcluded;
+  Result.DebugExplainUnavailable := True;
+  Result.DebugCompletionInDialogs := True;
+  Result.DebugEvaluateWindow := True;
+  Result.DebugEvaluateReplaceCtrlF7 := True;
+  Result.DebugExplainAccessViolation := True;
+  Result.DebugExplainAccessViolationAllowCalls := False;
+  Result.DebugExceptionHistory := True;
+  Result.DebugJustMyCode := True;
+  Result.DebugExceptionBanner := False;
+  Result.DebugExceptionBannerIgnoreAtLocation := True;
+  Result.DebugInlineValues := True;
+  Result.DebugInlineValuesPerLine := 5;
+  Result.DebugOwnCodeFolders := '';
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
   Result.TodoList := True;
@@ -1644,6 +1753,9 @@ begin
   Result.CallHierarchyDiagram := True;
   Result.Impact := True;
   Result.ImpactDepth := 2;
+  Result.DataFlow := True;
+  Result.DataFlowMaxDepth := 6;
+  Result.DataFlowExcludeTests := False;
   Result.PeekDefinitionKey := $807B; // Alt+F12
   Result.PeekReferencesKey := $A07B; // Umschalt+Alt+F12
   Result.Outline := True;
@@ -1824,6 +1936,8 @@ end;
 
 procedure TAtlasPluginSettings.Normalize;
 begin
+  // Bereinigt (Trenner, doppelte) wird beim Speichern der Seite und beim Lesen in TAtlasDebugOwnCode.ParseFolders.
+  DebugOwnCodeFolders := Trim(DebugOwnCodeFolders);
   VisibleRows := EnsureRange(VisibleRows, MinVisibleRows, MaxVisibleRows);
   if ListWidth <> 0 then
     ListWidth := EnsureRange(ListWidth, MinListWidth, MaxListWidth);
@@ -1845,6 +1959,7 @@ begin
   XmlDocExpand := Choice(XmlDocExpand, ['last', 'collapsed', 'expanded']);
   BlockEndLabelsMinLines := EnsureRange(BlockEndLabelsMinLines, MinBlockEndLines, MaxBlockEndLines);
   RecursionMarkersDepth := EnsureRange(RecursionMarkersDepth, MinRecursionDepth, MaxRecursionDepth);
+  DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, MinInlineValuesPerLine, MaxInlineValuesPerLine);
   ContinuePatternMinLines := EnsureRange(ContinuePatternMinLines, MinPatternLines, MaxPatternLines);
   OpenDelayMs := EnsureRange(OpenDelayMs, 0, MaxOpenDelay);
   MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb);
@@ -1941,6 +2056,7 @@ begin
   LastEditKey := EnsureRange(LastEditKey, 0, $FFFF);
   PeekHeightLines := EnsureRange(PeekHeightLines, MinPeekLines, MaxPeekLines);
   ImpactDepth := EnsureRange(ImpactDepth, MinImpactDepth, MaxImpactDepth);
+  DataFlowMaxDepth := EnsureRange(DataFlowMaxDepth, MinDataFlowDepth, MaxDataFlowDepth);
   StickyScrollMaxLines := EnsureRange(StickyScrollMaxLines, MinStickyLines, MaxStickyLines);
   SelectionMatchesMinLength := EnsureRange(SelectionMatchesMinLength, MinSelectionMatchLength,
     MaxSelectionMatchLength);
@@ -1975,16 +2091,18 @@ begin
   NextChangeKey := EnsureRange(NextChangeKey, 0, $FFFF);
   PreviousChangeKey := EnsureRange(PreviousChangeKey, 0, $FFFF);
   OverviewRulerKinds := TAtlasOverviewKindNames.Normalize(OverviewRulerKinds);
-  DebugVisualizerTypes := TAtlasVisualizers.NormalizeKinds(DebugVisualizerTypes);
-  DebugVisualizerNameFields := TAtlasVisualizers.NormalizeNameFields(DebugVisualizerNameFields);
-  DebugBreakOnNextEventExcluded := TAtlasEventBreak.NormalizeExcluded(DebugBreakOnNextEventExcluded);
-  DebugVisualizerMaxLength := EnsureRange(DebugVisualizerMaxLength, TAtlasVisualizerOptions.MinMaxLength,
-    TAtlasVisualizerOptions.MaxMaxLength);
-  DebugVisualizerTimeoutMs := EnsureRange(DebugVisualizerTimeoutMs, TAtlasVisualizerOptions.MinTimeoutMs,
-    TAtlasVisualizerOptions.MaxTimeoutMs);
+  DebugVisualizerTypes := TAtlasVisualizerSettings.NormalizeKinds(DebugVisualizerTypes);
+  DebugStepFilterKinds := TStepFilterNames.NormalizeKinds(DebugStepFilterKinds);
+  DebugStepFilterPatterns := TStepFilterNames.NormalizePatterns(DebugStepFilterPatterns);
+  DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.NormalizeExcluded(DebugBreakOnNextEventExcluded);
+  DebugVisualizerNameFields := TAtlasVisualizerSettings.NormalizeNameFields(DebugVisualizerNameFields);
+  DebugVisualizerMaxLength := EnsureRange(DebugVisualizerMaxLength, TAtlasVisualizerSettings.MinMaxLength,
+    TAtlasVisualizerSettings.MaxMaxLength);
+  DebugVisualizerTimeoutMs := EnsureRange(DebugVisualizerTimeoutMs, TAtlasVisualizerSettings.MinTimeoutMs,
+    TAtlasVisualizerSettings.MaxTimeoutMs);
   DebugVisualizerMaxImagePixels := EnsureRange(DebugVisualizerMaxImagePixels,
-    TAtlasVisualizerOptions.MinMaxImagePixels, TAtlasVisualizerOptions.MaxMaxImagePixels);
-  DebugVisualizerEvaluation := Choice(DebugVisualizerEvaluation, TAtlasVisualizers.EvaluationNames);
+    TAtlasVisualizerSettings.MinMaxImagePixels, TAtlasVisualizerSettings.MaxMaxImagePixels);
+  DebugVisualizerEvaluation := Choice(DebugVisualizerEvaluation, TAtlasVisualizerSettings.EvaluationNames);
   JumpToMatchKey := EnsureRange(JumpToMatchKey, 0, $FFFF);
   JumpToMatchSelectKey := EnsureRange(JumpToMatchSelectKey, 0, $FFFF);
   MoveLinesUpKey := EnsureRange(MoveLinesUpKey, 0, $FFFF);
@@ -2178,6 +2296,8 @@ begin
   ShowInterfaceCost := AStore.ReadInteger('ShowInterfaceCost', BoolValue(Default.ShowInterfaceCost)) <> 0;
   BuildSummary := AStore.ReadInteger('BuildSummary', BoolValue(Default.BuildSummary)) <> 0;
   BuildWarningsAsErrors := AStore.ReadString('BuildWarningsAsErrors', Default.BuildWarningsAsErrors);
+  BuildCompilerSwitches := AStore.ReadInteger('BuildCompilerSwitches', BoolValue(Default.BuildCompilerSwitches)) <> 0;
+  BuildSwitchesInStatusBar := AStore.ReadInteger('BuildSwitchesInStatusBar', BoolValue(Default.BuildSwitchesInStatusBar)) <> 0;
   ReleaseGuard := AStore.ReadInteger('ReleaseGuard', BoolValue(Default.ReleaseGuard)) <> 0;
   BuildGate := AStore.ReadString('BuildGate', Default.BuildGate);
   TasksEnabled := AStore.ReadInteger('TasksEnabled', BoolValue(Default.TasksEnabled)) <> 0;
@@ -2206,10 +2326,26 @@ begin
   DebugDisplayRulesAllowCalls := AStore.ReadInteger('DebugDisplayRulesAllowCalls',
     BoolValue(Default.DebugDisplayRulesAllowCalls)) <> 0;
   DebugStepIntoTarget := AStore.ReadInteger('DebugStepIntoTarget', BoolValue(Default.DebugStepIntoTarget)) <> 0;
+  DebugStepFilters := AStore.ReadInteger('DebugStepFilters', BoolValue(Default.DebugStepFilters)) <> 0;
+  DebugStepFilterKinds := AStore.ReadString('DebugStepFilterKinds', Default.DebugStepFilterKinds);
+  DebugStepFilterPatterns := AStore.ReadString('DebugStepFilterPatterns', Default.DebugStepFilterPatterns);
   DebugStepIntoTargetKey := AStore.ReadInteger('DebugStepIntoTargetKey', Default.DebugStepIntoTargetKey);
   DebugBreakOnNextEvent := AStore.ReadInteger('DebugBreakOnNextEvent', BoolValue(Default.DebugBreakOnNextEvent)) <> 0;
   DebugBreakOnNextEventExcluded := AStore.ReadString('DebugBreakOnNextEventExcluded',
     Default.DebugBreakOnNextEventExcluded);
+  DebugExplainUnavailable := AStore.ReadInteger('DebugExplainUnavailable', BoolValue(Default.DebugExplainUnavailable)) <> 0;
+  DebugCompletionInDialogs := AStore.ReadInteger('DebugCompletionInDialogs', BoolValue(Default.DebugCompletionInDialogs)) <> 0;
+  DebugEvaluateWindow := AStore.ReadInteger('DebugEvaluateWindow', BoolValue(Default.DebugEvaluateWindow)) <> 0;
+  DebugEvaluateReplaceCtrlF7 := AStore.ReadInteger('DebugEvaluateReplaceCtrlF7', BoolValue(Default.DebugEvaluateReplaceCtrlF7)) <> 0;
+  DebugExplainAccessViolation := AStore.ReadInteger('DebugExplainAccessViolation', BoolValue(Default.DebugExplainAccessViolation)) <> 0;
+  DebugExplainAccessViolationAllowCalls := AStore.ReadInteger('DebugExplainAccessViolationAllowCalls', BoolValue(Default.DebugExplainAccessViolationAllowCalls)) <> 0;
+  DebugExceptionHistory := AStore.ReadInteger('DebugExceptionHistory', BoolValue(Default.DebugExceptionHistory)) <> 0;
+  DebugJustMyCode := AStore.ReadInteger('DebugJustMyCode', BoolValue(Default.DebugJustMyCode)) <> 0;
+  DebugExceptionBanner := AStore.ReadInteger('DebugExceptionBanner', BoolValue(Default.DebugExceptionBanner)) <> 0;
+  DebugExceptionBannerIgnoreAtLocation := AStore.ReadInteger('DebugExceptionBannerIgnoreAtLocation', BoolValue(Default.DebugExceptionBannerIgnoreAtLocation)) <> 0;
+  DebugInlineValues := AStore.ReadInteger('DebugInlineValues', BoolValue(Default.DebugInlineValues)) <> 0;
+  DebugInlineValuesPerLine := AStore.ReadInteger('DebugInlineValuesPerLine', Default.DebugInlineValuesPerLine);
+  DebugOwnCodeFolders := AStore.ReadString('DebugOwnCodeFolders', Default.DebugOwnCodeFolders);
   StartProfiles := AStore.ReadInteger('StartProfiles', BoolValue(Default.StartProfiles)) <> 0;
   StartProfilesStatusField := AStore.ReadInteger('StartProfilesStatusField',
     BoolValue(Default.StartProfilesStatusField)) <> 0;
@@ -2331,6 +2467,9 @@ begin
   CallHierarchyDiagram := AStore.ReadInteger('CallHierarchyDiagram', BoolValue(Default.CallHierarchyDiagram)) <> 0;
   Impact := AStore.ReadInteger('Impact', BoolValue(Default.Impact)) <> 0;
   ImpactDepth := AStore.ReadInteger('ImpactDepth', Default.ImpactDepth);
+  DataFlow := AStore.ReadInteger('DataFlow', BoolValue(Default.DataFlow)) <> 0;
+  DataFlowMaxDepth := AStore.ReadInteger('DataFlowMaxDepth', Default.DataFlowMaxDepth);
+  DataFlowExcludeTests := AStore.ReadInteger('DataFlowExcludeTests', BoolValue(Default.DataFlowExcludeTests)) <> 0;
   PeekDefinitionKey := AStore.ReadInteger('PeekDefinitionKey', Default.PeekDefinitionKey);
   PeekReferencesKey := AStore.ReadInteger('PeekReferencesKey', Default.PeekReferencesKey);
   Outline := AStore.ReadInteger('Outline', BoolValue(Default.Outline)) <> 0;
@@ -2677,6 +2816,8 @@ begin
   AStore.WriteInteger('ShowInterfaceCost', BoolValue(ShowInterfaceCost));
   AStore.WriteInteger('BuildSummary', BoolValue(BuildSummary));
   AStore.WriteString('BuildWarningsAsErrors', BuildWarningsAsErrors);
+  AStore.WriteInteger('BuildCompilerSwitches', BoolValue(BuildCompilerSwitches));
+  AStore.WriteInteger('BuildSwitchesInStatusBar', BoolValue(BuildSwitchesInStatusBar));
   AStore.WriteInteger('ReleaseGuard', BoolValue(ReleaseGuard));
   AStore.WriteString('BuildGate', BuildGate);
   AStore.WriteInteger('TasksEnabled', BoolValue(TasksEnabled));
@@ -2701,9 +2842,25 @@ begin
   AStore.WriteInteger('DebugDisplayRules', BoolValue(DebugDisplayRules));
   AStore.WriteInteger('DebugDisplayRulesAllowCalls', BoolValue(DebugDisplayRulesAllowCalls));
   AStore.WriteInteger('DebugStepIntoTarget', BoolValue(DebugStepIntoTarget));
+  AStore.WriteInteger('DebugStepFilters', BoolValue(DebugStepFilters));
+  AStore.WriteString('DebugStepFilterKinds', DebugStepFilterKinds);
+  AStore.WriteString('DebugStepFilterPatterns', DebugStepFilterPatterns);
   AStore.WriteInteger('DebugStepIntoTargetKey', DebugStepIntoTargetKey);
   AStore.WriteInteger('DebugBreakOnNextEvent', BoolValue(DebugBreakOnNextEvent));
   AStore.WriteString('DebugBreakOnNextEventExcluded', DebugBreakOnNextEventExcluded);
+  AStore.WriteInteger('DebugExplainUnavailable', BoolValue(DebugExplainUnavailable));
+  AStore.WriteInteger('DebugCompletionInDialogs', BoolValue(DebugCompletionInDialogs));
+  AStore.WriteInteger('DebugEvaluateWindow', BoolValue(DebugEvaluateWindow));
+  AStore.WriteInteger('DebugEvaluateReplaceCtrlF7', BoolValue(DebugEvaluateReplaceCtrlF7));
+  AStore.WriteInteger('DebugExplainAccessViolation', BoolValue(DebugExplainAccessViolation));
+  AStore.WriteInteger('DebugExplainAccessViolationAllowCalls', BoolValue(DebugExplainAccessViolationAllowCalls));
+  AStore.WriteInteger('DebugExceptionHistory', BoolValue(DebugExceptionHistory));
+  AStore.WriteInteger('DebugJustMyCode', BoolValue(DebugJustMyCode));
+  AStore.WriteInteger('DebugExceptionBanner', BoolValue(DebugExceptionBanner));
+  AStore.WriteInteger('DebugExceptionBannerIgnoreAtLocation', BoolValue(DebugExceptionBannerIgnoreAtLocation));
+  AStore.WriteInteger('DebugInlineValues', BoolValue(DebugInlineValues));
+  AStore.WriteInteger('DebugInlineValuesPerLine', DebugInlineValuesPerLine);
+  AStore.WriteString('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AStore.WriteInteger('StartProfiles', BoolValue(StartProfiles));
   AStore.WriteInteger('StartProfilesStatusField', BoolValue(StartProfilesStatusField));
   AStore.WriteInteger('TodoList', BoolValue(TodoList));
@@ -2801,6 +2958,9 @@ begin
   AStore.WriteInteger('CallHierarchyDiagram', BoolValue(CallHierarchyDiagram));
   AStore.WriteInteger('Impact', BoolValue(Impact));
   AStore.WriteInteger('ImpactDepth', ImpactDepth);
+  AStore.WriteInteger('DataFlow', BoolValue(DataFlow));
+  AStore.WriteInteger('DataFlowMaxDepth', DataFlowMaxDepth);
+  AStore.WriteInteger('DataFlowExcludeTests', BoolValue(DataFlowExcludeTests));
   AStore.WriteInteger('PeekDefinitionKey', PeekDefinitionKey);
   AStore.WriteInteger('PeekReferencesKey', PeekReferencesKey);
   AStore.WriteInteger('Outline', BoolValue(Outline));

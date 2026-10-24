@@ -264,8 +264,11 @@ type
     function LookupInlineVars(ANode: TSyntaxNode; const AName: string; out AResult: TResolvedSymbol): Boolean;
     function MethodClass(out AType: TResolvedSymbol): Boolean;
     /// <summary>Typ der umgebenden Methode und bei verschachtelten Typen (TAussen.TInnen.Methode) die
-    /// äußeren Typen, innerster zuerst; ihre Mitglieder sind dort ohne Präfix sichtbar.</summary>
+    /// äußeren Typen, innerster zuerst; ihre Mitglieder sind dort ohne Präfix sichtbar. In einer
+    /// Property-Deklaration deren Typ (#690).</summary>
     function MethodClasses: TArray<TResolvedSymbol>;
+    /// <summary>Qualifizierter Name des Typs, wenn FOffset in einer Property-Deklaration steht; sonst ''.</summary>
+    function PropertyClassName: string;
     /// <summary>Unit aus dem Baum samt der Symbole ihrer $I-Dateien aus dem Index (#500).</summary>
     function TreeUnit(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
     function ResolveFirst(const ANames: TArray<string>; out AConsumed: Integer; out AResult: TResolvedSymbol): Boolean;
@@ -1950,13 +1953,22 @@ begin
   if FTree = nil then
     Exit;
   Routines := EnclosingRoutines;
-  if Length(Routines) = 0 then
-    Exit;
-  Name := Routines[High(Routines)].Name;
-  Dot := LastDelimiter('.', Name);
-  if Dot = 0 then
-    Exit;
-  TypeName := Copy(Name, 1, Dot - 1);
+  if Length(Routines) > 0 then
+  begin
+    Name := Routines[High(Routines)].Name;
+    Dot := LastDelimiter('.', Name);
+    if Dot = 0 then
+      Exit;
+    TypeName := Copy(Name, 1, Dot - 1);
+  end
+  else
+  begin
+    // Zugriffe einer Property (read FName write SetName, #690) stehen im Bereich ihres Typs: Ohne das blieben
+    // sie unaufgelöst, und Referenzsuche, Umbenennen und Datenfluss übersahen sie.
+    TypeName := PropertyClassName;
+    if TypeName = '' then
+      Exit;
+  end;
   // Verschachtelte Typen zuerst (procedure TAussen.TInnen.Methode): TAussen.TInnen sonst als Unit
   // TAussen gesucht, mit Nachladen über alle Suchpfade, und die Felder blieben unaufgelöst (#647).
   Parts := TypeName.Split(['.']);
@@ -1981,6 +1993,28 @@ begin
   end;
   if ResolveTypeName(TypeName, FCurrent, True, Current) then
     Result := [Current];
+end;
+
+function TNameResolver.PropertyClassName: string;
+var
+  Node, Inner: TSyntaxNode;
+  Index: Integer;
+begin
+  Result := '';
+  Node := FTree.Root;
+  while Node <> nil do
+  begin
+    if Node.Kind = TSyntaxKind.PropertyDecl then
+      Exit(Node.EnclosingTypeName);
+    // Rümpfe enthalten keine Property-Deklarationen.
+    if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl] then
+      Exit;
+    Inner := nil;
+    for Index := 0 to Node.ChildCount - 1 do
+      if Contains(Node[Index], FOffset) then
+        Inner := Node[Index];
+    Node := Inner;
+  end;
 end;
 
 class function TNameResolver.IsBuiltinTypeName(const AName: string): Boolean;

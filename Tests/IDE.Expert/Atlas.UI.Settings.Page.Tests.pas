@@ -71,6 +71,8 @@ type
     procedure DebugStepIntoTargetRoundTrip;
     [Test]
     procedure DebugBreakOnNextEventRoundTrip;
+    [Test]
+    procedure DebugStepFiltersRoundTrip;
     /// <summary>Benannte Lesezeichen (#622): zwei Schalter auf dem Reiter Editor, Taste bei den Befehlen.</summary>
     [Test]
     procedure BookmarksRoundTrip;
@@ -191,7 +193,8 @@ uses
   System.Classes,
   System.UITypes,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Debug.Visualizers,
+  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Text.StepFilter,
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.QuickActions,
@@ -956,12 +959,16 @@ begin
     Assert.IsFalse(Page.TestsAfterBuildCheck.Checked);
     Assert.IsFalse(Page.BuildZeroHintsCheck.Checked);
     Assert.IsTrue(Page.ShowInterfaceCostCheck.Checked, 'Kosten einer interface-Änderung standardmäßig an (#554)');
+    Assert.IsTrue(Page.BuildCompilerSwitchesCheck.Checked);
+    Assert.IsFalse(Page.BuildSwitchesInStatusBarCheck.Checked);
     Page.CodeLensTestsCheck.Checked := False;
     Page.TestRunCheck.Checked := False;
     Page.TestsBuildFirstCheck.Checked := False;
     Page.TestsAfterBuildCheck.Checked := True;
     Page.BuildZeroHintsCheck.Checked := True;
     Page.ShowInterfaceCostCheck.Checked := False;
+    Page.BuildCompilerSwitchesCheck.Checked := False;
+    Page.BuildSwitchesInStatusBarCheck.Checked := True;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.CodeLensTests);
@@ -970,6 +977,8 @@ begin
     Assert.IsTrue(Saved.TestsAfterBuild);
     Assert.IsTrue(Saved.BuildZeroHints);
     Assert.IsFalse(Saved.ShowInterfaceCost);
+    Assert.IsFalse(Saved.BuildCompilerSwitches);
+    Assert.IsTrue(Saved.BuildSwitchesInStatusBar);
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.CodeLensTestsCheck.Checked);
     Assert.IsFalse(Page.ShowInterfaceCostCheck.Checked);
@@ -1069,20 +1078,81 @@ begin
     Assert.IsTrue(Page.TestDebugCheck.Checked, 'Test debuggen standardmäßig an');
     Assert.IsTrue(Page.TestBreakAtStartCheck.Checked, 'Haltepunkt am Anfang standardmäßig an');
     Assert.IsTrue(Page.DebugHoverValuesCheck.Checked, 'Werte im Hover standardmäßig an (#891)');
+    Assert.IsTrue(Page.DebugExplainUnavailableCheck.Checked, 'debug.explainUnavailable (#840)');
+    Assert.IsTrue(Page.DebugCompletionInDialogsCheck.Checked, 'debug.completionInDialogs (#538)');
+    Assert.IsTrue(Page.DebugEvaluateWindowCheck.Checked, 'debug.evaluateWindow (#784)');
+    Assert.IsTrue(Page.DebugEvaluateReplaceCtrlF7Check.Checked, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
+    Assert.IsTrue(Page.DebugExplainAccessViolationCheck.Checked, 'debug.explainAccessViolation (#865)');
+    Assert.IsFalse(Page.DebugExplainAccessViolationAllowCallsCheck.Checked, 'debug.explainAccessViolation.allowCalls (#865)');
+    Assert.IsTrue(Page.DebugExceptionHistoryCheck.Checked, 'debug.exceptionHistory (#517)');
+    Assert.IsTrue(Page.DebugJustMyCodeCheck.Checked, 'debug.justMyCode (#578)');
+    Assert.IsFalse(Page.DebugExceptionBannerCheck.Checked, 'debug.exceptionBanner (#783)');
+    Assert.IsTrue(Page.DebugExceptionBannerIgnoreAtLocationCheck.Checked,
+      'debug.exceptionBanner.ignoreAtLocation (#783)');
+    Assert.IsTrue(Page.DebugInlineValuesCheck.Checked, 'debug.inlineValues (#508)');
+    Assert.AreEqual('5', Page.DebugInlineValuesPerLineEdit.Text, 'debug.inlineValuesPerLine (#508)');
     Page.TestDebugCheck.Checked := False;
     Page.TestBreakAtStartCheck.Checked := False;
     Page.DebugHoverValuesCheck.Checked := False;
+    Page.DebugExplainUnavailableCheck.Checked := False;
+    Page.DebugCompletionInDialogsCheck.Checked := False;
+    Page.DebugEvaluateWindowCheck.Checked := False;
+    Page.DebugEvaluateReplaceCtrlF7Check.Checked := False;
+    Page.DebugExplainAccessViolationCheck.Checked := False;
+    Page.DebugExplainAccessViolationAllowCallsCheck.Checked := True;
+    Page.DebugExceptionHistoryCheck.Checked := False;
+    Page.DebugJustMyCodeCheck.Checked := False;
+    Page.DebugExceptionBannerCheck.Checked := True;
+    Page.DebugExceptionBannerIgnoreAtLocationCheck.Checked := False;
+    Page.DebugInlineValuesCheck.Checked := False;
+    Page.DebugInlineValuesPerLineEdit.Text := '3';
+    Page.DebugOwnCodeFoldersEdit.Text := 'C:\Komponenten\; ;c:\komponenten';
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.TestDebug);
     Assert.IsFalse(Saved.TestBreakAtStart);
     Assert.IsFalse(Saved.DebugHoverValues);
+    Assert.IsFalse(Saved.DebugExplainUnavailable);
+    Assert.IsFalse(Saved.DebugCompletionInDialogs);
+    Assert.IsFalse(Saved.DebugEvaluateWindow);
+    Assert.IsFalse(Saved.DebugEvaluateReplaceCtrlF7);
+    Assert.IsFalse(Saved.DebugExplainAccessViolation);
+    Assert.IsTrue(Saved.DebugExplainAccessViolationAllowCalls);
+    Assert.IsFalse(Saved.DebugExceptionHistory);
+    Assert.IsFalse(Saved.DebugJustMyCode);
+    Assert.IsTrue(Saved.DebugExceptionBanner);
+    Assert.IsFalse(Saved.DebugExceptionBannerIgnoreAtLocation);
+    Assert.IsFalse(Saved.DebugInlineValues);
+    Assert.AreEqual(3, Saved.DebugInlineValuesPerLine);
+    Assert.AreEqual('C:\Komponenten', Saved.DebugOwnCodeFolders, 'bereinigt (#578)');
     Saved.TestBreakAtStart := True;
     Saved.DebugHoverValues := True;
+    Saved.DebugExplainUnavailable := True;
+    Saved.DebugCompletionInDialogs := True;
+    Saved.DebugEvaluateWindow := True;
+    Saved.DebugEvaluateReplaceCtrlF7 := True;
+    Saved.DebugExplainAccessViolation := True;
+    Saved.DebugExplainAccessViolationAllowCalls := False;
+    Saved.DebugExceptionHistory := True;
+    Saved.DebugJustMyCode := True;
+    Saved.DebugExceptionBanner := False;
+    Saved.DebugExceptionBannerIgnoreAtLocation := True;
+    Saved.DebugInlineValues := True;
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.TestDebugCheck.Checked);
     Assert.IsTrue(Page.TestBreakAtStartCheck.Checked);
     Assert.IsTrue(Page.DebugHoverValuesCheck.Checked);
+    Assert.IsTrue(Page.DebugExplainUnavailableCheck.Checked);
+    Assert.IsTrue(Page.DebugCompletionInDialogsCheck.Checked);
+    Assert.IsTrue(Page.DebugEvaluateWindowCheck.Checked);
+    Assert.IsTrue(Page.DebugEvaluateReplaceCtrlF7Check.Checked);
+    Assert.IsTrue(Page.DebugExplainAccessViolationCheck.Checked);
+    Assert.IsFalse(Page.DebugExplainAccessViolationAllowCallsCheck.Checked);
+    Assert.IsTrue(Page.DebugExceptionHistoryCheck.Checked);
+    Assert.IsTrue(Page.DebugJustMyCodeCheck.Checked);
+    Assert.IsFalse(Page.DebugExceptionBannerCheck.Checked);
+    Assert.IsTrue(Page.DebugExceptionBannerIgnoreAtLocationCheck.Checked);
+    Assert.IsTrue(Page.DebugInlineValuesCheck.Checked);
   finally
     Page.Free;
   end;
@@ -1180,6 +1250,34 @@ begin
   end;
 end;
 
+procedure TAtlasSettingsPageTests.DebugStepFiltersRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  // #850: Schalter, Kontrollkästchen je Art und Muster auf dem Reiter Debuggen.
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.DebugStepFiltersCheck.Checked);
+    Assert.IsTrue(Page.DebugStepFilterKindCheck(TStepFilterKind.Getters).Checked);
+    Assert.IsFalse(Page.DebugStepFilterKindCheck(TStepFilterKind.Setters).Checked);
+    Assert.IsTrue(Page.DebugStepFilterKindCheck(TStepFilterKind.Trivial).Checked);
+    Assert.AreEqual('', Page.DebugStepFilterPatternsEdit.Text);
+    Page.DebugStepFiltersCheck.Checked := False;
+    Page.DebugStepFilterKindCheck(TStepFilterKind.Getters).Checked := False;
+    Page.DebugStepFilterKindCheck(TStepFilterKind.EmptyConstructors).Checked := True;
+    Page.DebugStepFilterPatternsEdit.Text := ' *.Log* ; ;TBasisForm.*';
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.DebugStepFilters);
+    Assert.AreEqual('trivial,emptyConstructors', Saved.DebugStepFilterKinds);
+    Assert.AreEqual('*.Log*;TBasisForm.*', Saved.DebugStepFilterPatterns, 'bereinigt');
+  finally
+    Page.Free;
+  end;
+end;
+
 procedure TAtlasSettingsPageTests.DebugVisualizersRoundTrip;
 var
   Page: TAtlasSettingsPage;
@@ -1207,7 +1305,7 @@ begin
     Assert.IsFalse(Saved.DebugVisualizers);
     Assert.AreEqual('lists,dictionaries,dataSets,bytes,colors,guid,geometry', Saved.DebugVisualizerTypes);
     Assert.AreEqual('Bezeichnung,Name', Saved.DebugVisualizerNameFields);
-    Assert.AreEqual(TAtlasVisualizerOptions.MaxMaxLength, Saved.DebugVisualizerMaxLength);
+    Assert.AreEqual(TAtlasVisualizerSettings.MaxMaxLength, Saved.DebugVisualizerMaxLength);
     Assert.AreEqual('calls', Saved.DebugVisualizerEvaluation);
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.DebugVisualizerKindCheck(TAtlasVisualizerKind.Json).Checked);
@@ -1361,6 +1459,13 @@ begin
     Assert.IsTrue(Page.DimUnusedUsesCheck.Checked, 'uses abblenden standardmäßig an (#621)');
     Assert.IsTrue(Page.RecursionMarkersCheck.Checked, 'Rekursionssymbole standardmäßig an (#623)');
     Assert.AreEqual('4', Page.RecursionMarkersDepthEdit.Text);
+    // Datenfluss (#690).
+    Assert.IsTrue(Page.DataFlowCheck.Checked, 'navigation.dataFlow (#690)');
+    Assert.AreEqual('6', Page.DataFlowMaxDepthEdit.Text);
+    Assert.IsFalse(Page.DataFlowExcludeTestsCheck.Checked);
+    Page.DataFlowCheck.Checked := False;
+    Page.DataFlowMaxDepthEdit.Text := '9';
+    Page.DataFlowExcludeTestsCheck.Checked := True;
     // Atlas-Spalte in der Zeilenleiste (#768).
     Assert.IsTrue(Page.GutterColumnCheck.Checked, 'Atlas-Spalte standardmäßig an (#768)');
     Assert.IsTrue(Page.GutterColumnProblemsCheck.Checked);
@@ -1424,6 +1529,9 @@ begin
     Assert.IsFalse(Saved.DimUnusedUses);
     Assert.IsFalse(Saved.RecursionMarkers);
     Assert.AreEqual(2, Saved.RecursionMarkersDepth);
+    Assert.IsFalse(Saved.DataFlow);
+    Assert.AreEqual(9, Saved.DataFlowMaxDepth);
+    Assert.IsTrue(Saved.DataFlowExcludeTests);
     Assert.IsTrue(Saved.GutterColumn);
     Assert.IsTrue(Saved.GutterColumnProblems);
     Assert.IsFalse(Saved.GutterColumnCodeActions);

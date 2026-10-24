@@ -64,6 +64,13 @@ type
     NewText: string;
   end;
 
+  /// <summary>Besondere Werte von TAtlasContext.Trigger.</summary>
+  TAtlasTriggers = record
+  public const
+    /// <summary>Verlauf der Debug-Dialoge (#538) statt einer Anfrage an den Server.</summary>
+    History = 'history';
+  end;
+
   TAtlasContext = record
     FileName: string;
     /// <summary>Editortext beim Auslösen, im Hauptthread gelesen (auch ungespeichert).</summary>

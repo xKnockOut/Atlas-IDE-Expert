@@ -47,7 +47,8 @@ type
   TAtlasHoverAction = (Navigate, Usages, Copy, Help);
   /// <summary>Schriften des Tooltips: UI, Editorschrift, beide verkleinert, Badge.</summary>
   TAtlasHoverFont = (Ui, Mono, SmallUi, SmallMono, Badge);
-  TAtlasHoverHitKind = (Link, Ancestor, Path, Back, Action, ProblemAction, Published);
+  /// <summary>DebugFix: Korrektur unter „kein Zugriff“ (#840), Index in View.DebugValue.Note.Fixes.</summary>
+  TAtlasHoverHitKind = (Link, Ancestor, Path, Back, Action, ProblemAction, Published, DebugFix);
   /// <summary>Schalter der published-Mitglieder (#110): geerbte zeigen, nur mit Vorgabe, Abschnitte zu- bzw.
   /// aufklappen, alle Zeilen zeigen.</summary>
   TAtlasHoverPublishedToggle = (ShowInherited, OnlyDefaults, Properties, Events, MoreProperties, MoreEvents);
@@ -149,6 +150,10 @@ type
     ConfirmedCode: string;
     /// <summary>Statt des Werts, solange der Debugger noch auswertet (#891).</summary>
     DebugPending: string;
+    /// <summary>„kein Zugriff“ (#840): solange die Ursache ermittelt wird, Überschrift der geprüften Punkte.
+    /// </summary>
+    DebugExplaining: string;
+    DebugChecked: string;
     /// <summary>published-Mitglieder (#110): Format mit %d, %d für Properties und Ereignisse; Schalter,
     /// Abschnitte, Spaltenköpfe, Formate „+ %d weitere …“, Hinweise und „Liste kopieren“.</summary>
     PublishedSummary: string;
@@ -327,6 +332,7 @@ type
     procedure DrawPart(AFrom, ATill: Integer);
     procedure Navigation;
     procedure DebugValue;
+    procedure DebugNote(const ANote: TAtlasDebugValueNote);
     procedure Problems;
     procedure Header;
     procedure Declaration;
@@ -845,6 +851,8 @@ begin
   Inc(FY, Height(MonoFace) + Scale(3));
   if Value.State = TAtlasDebugValueState.Pending then
     Block(FInput.Texts.DebugPending, FColors.Muted, 1)
+  else if Value.Explained then
+    DebugNote(Value.Note)
   else
     Block(Value.Text, FColors.Text, 6);
   FLeft := Scale(11);
@@ -852,6 +860,45 @@ begin
     FColors.Accent);
   Bar.Radius := 1;
   Add(Bar);
+end;
+
+procedure TBuilder.DebugNote(const ANote: TAtlasDebugValueNote);
+var
+  Line: string;
+  Index: Integer;
+  OldFont: TAtlasHoverFont;
+begin
+  // „kein Zugriff“ (#840): Kennzeichen, Ursache, Herkunft des Schalters, geprüfte Punkte, Korrekturen.
+  Block(ANote.Caption, FColors.Warn, 1);
+  if ANote.Pending then
+  begin
+    Block(FInput.Texts.DebugExplaining, FColors.Muted, 1);
+    Exit;
+  end;
+  Block(ANote.Reason, FColors.Text, 6);
+  Block(ANote.Origin, FColors.Muted, 2);
+  if Length(ANote.Checked) > 0 then
+  begin
+    Block(FInput.Texts.DebugChecked, FColors.Muted, 1);
+    for Line in ANote.Checked do
+      Block('• ' + Line, FColors.Muted, 2);
+  end;
+  if Length(ANote.Fixes) = 0 then
+    Exit;
+  OldFont := FFlowFont;
+  FFlowFont := TAtlasHoverFont.SmallUi;
+  FX := FLeft;
+  FRowHeight := 0;
+  for Index := 0 to High(ANote.Fixes) do
+  begin
+    if FX > FLeft then
+      Inc(FX, Scale(12));
+    Flow(ANote.Fixes[Index].Caption, FColors.Accent, False, TAtlasHoverHitKind.DebugFix, Index, Index,
+      FColors.Accent);
+  end;
+  EndFlow;
+  Inc(FY, Scale(6));
+  FFlowFont := OldFont;
 end;
 
 procedure TBuilder.SeverityPill(const AProblem: TAtlasProblem);
