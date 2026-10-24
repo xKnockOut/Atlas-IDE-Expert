@@ -25,6 +25,9 @@
 //   Git-Hook prepare-commit-msg (Atlas.Core.Tracker.CommitHook).
 // - Statusfeld: Zeile atlas.issue „Issue: ATL-123 Titel“; Klick beendet das
 //   Issue nach Rückfrage.
+// - Issue-Links "#312" in Begründungen (#1123): Adresse aus dem Tracker des
+//   aktuellen Projekts (IssueUrl), angemeldet bei TAtlasDocIssueLinks von Start
+//   bis Stop; ohne Tracker sind die Links nicht anklickbar.
 // - Protokoll anonym: nur Anbieter, Anzahl, Ergebnis und Fehlerart, nie
 //   Adresse, Projekt, Kennung, Titel oder Token.
 // Anbieter, Transport (mit Token aus dem Anmeldespeicher) und Zugangsdialog
@@ -134,6 +137,7 @@ type
     procedure WatchTick(Sender: TObject);
     procedure FillCommitDialog;
     procedure RegisterSection;
+    procedure RegisterIssueLinks;
     class function NowUtc: TDateTime; static;
   public
     /// <summary>AProjects: Bereich „Projekte“ (Liste, Auswahl, Öffnen, Stand der Versionsverwaltung). AMessage:
@@ -151,6 +155,9 @@ type
     class function Active: Boolean; static;
     /// <summary>Befehl Atlas.TrackerLogin: Zugang für den Tracker aus der .atlas des aktiven Projekts.</summary>
     procedure EnterCredentialsForActive;
+    /// <summary>Adresse des Issues AKey im Tracker des aktuellen Projekts (#1123); '' ohne Tracker. Ohne Netz.
+    /// </summary>
+    function IssueUrl(const AKey: string): string;
     property ProviderFactory: TAtlasTrackerProviderHook read FProviderFactory write FProviderFactory;
     property TransportFactory: TAtlasTrackerTransportHook read FTransportFactory write FTransportFactory;
     property OnCredentials: TAtlasTrackerCredentialsHook read FOnCredentials write FOnCredentials;
@@ -181,6 +188,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Core.Documentation.Layout,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.TeamFile,
@@ -252,7 +260,32 @@ begin
   FWatch.Interval := WatchMs;
   FWatch.OnTimer := WatchTick;
   FTitle := '';
+  RegisterIssueLinks;
   Refresh;
+end;
+
+procedure TAtlasIdeIssues.RegisterIssueLinks;
+begin
+  // Eigene Routine: Die anonyme Methode hält nur Self, keinen Rahmen von Start.
+  TAtlasDocIssueLinks.SetResolver(
+    function(const AKey: string): string
+    begin
+      Result := IssueUrl(AKey);
+    end);
+end;
+
+function TAtlasIdeIssues.IssueUrl(const AKey: string): string;
+var
+  Target: TAtlasTrackerTarget;
+  Provider: IAtlasTrackerProvider;
+begin
+  Result := '';
+  if not FStarted or (AKey = '') then
+    Exit;
+  Target := TargetOf(CurrentProject);
+  Provider := ProviderOf(Target.Provider);
+  if Provider <> nil then
+    Result := Provider.IssuePage(Target, AKey);
 end;
 
 procedure TAtlasIdeIssues.Stop;
@@ -260,6 +293,7 @@ begin
   if not FStarted then
     Exit;
   FStarted := False;
+  TAtlasDocIssueLinks.Clear;
   FreeAndNil(FWatch);
   RemoveStatus;
   TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.Issues);

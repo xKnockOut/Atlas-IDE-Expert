@@ -135,14 +135,14 @@ var
 begin
   Result := SizeOf(TUnitIndex) + StringBytes(AUnit.UnitName) + StringBytes(AUnit.FileName) +
     StringBytes(AUnit.Hash) + ArrayBytes(AUnit.InterfaceUses) + ArrayBytes(AUnit.ImplementationUses) +
-    ArrayBytes(AUnit.Directives) + StringBytes(AUnit.DeprecatedText);
+    ArrayBytes(AUnit.Directives) + StringBytes(AUnit.DeprecatedText) + ArrayBytes(AUnit.Rationale);
   if Length(AUnit.Symbols) > 0 then
     Inc(Result, 16);
   for Symbol in AUnit.Symbols do
     Inc(Result, SizeOf(TIndexSymbol) + StringBytes(Symbol.Name) + StringBytes(Symbol.Container) +
       StringBytes(Symbol.TypeName) + ArrayBytes(Symbol.Ancestors) + StringBytes(Symbol.Signature) +
       StringBytes(Symbol.Summary) + ArrayBytes(Symbol.Directives) + StringBytes(Symbol.DeprecatedText) +
-      ArrayBytes(Symbol.InlineRefs) + ArrayBytes(Symbol.Resolutions));
+      ArrayBytes(Symbol.InlineRefs) + ArrayBytes(Symbol.Resolutions) + ArrayBytes(Symbol.Rationale));
   Inc(Result, UsageBytes(AUnit));
 end;
 

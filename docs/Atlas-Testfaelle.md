@@ -6203,3 +6203,23 @@ Voraussetzung: Delphi 13 (noreturn gibt es erst dort), Server läuft in der IDE 
 | NR4 | Rumpf ruft nur `Protokolliere(AText)` aus einer anderen Unit des Projekts auf, einmal ohne, einmal mit `noreturn` an Protokolliere | Ohne: Warnung wie NR1 (Index bekannt); mit: keine Meldung |
 | NR5 | Delphi 13 übersetzt das Beispiel aus NR1 | Der Compiler meldet selbst nichts; Atlas meldet NR1 (**Abnahme**: Die Regel deckt ab, was der Compiler nicht prüft) |
 | NR6 | `"noreturn-returns": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden | Keine Meldung; die Regel steht mit Schalter und Schweregrad in der Gruppe |
+
+## Begründungen im Hover und MCP (#1123)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; im Projektordner `docs/adr/0007-ganzzahlen.md`; Tracker der Willkommensseite (#765) in der `.atlas` eingetragen (für BG6).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BG1 | Über einer Methode im interface `// WHY: Ganzzahlen genügen.`, im Rumpf ihrer Implementierung `// HACK: Umgeht QC 12345.`; Maus auf einen Aufruf der Methode | Tooltip zeigt unter Deklaration und XMLDoc den Abschnitt BEGRÜNDUNG mit `WHY Ganzzahlen genügen.` und `HACK Umgeht QC 12345.` (Marke halbfett in Akzentfarbe) |
+| BG2 | Mehrzeilig: `// WHY: Delphi 12 kennt keinen` und darunter `//      if-Ausdruck.` | Ein Eintrag „Delphi 12 kennt keinen if-Ausdruck.“ |
+| BG3 | Zwei Leerzeilen zwischen `// WHY: …` und der Deklaration | Kein Eintrag beim Symbol; mit einer Leerzeile wieder da |
+| BG4 | Fünf Begründungen an einem Symbol | Drei sichtbar, darunter „Mehr anzeigen ▾   2 weitere Begründungen“; Klick zeigt alle fünf |
+| BG5 | `// RATIONALE: siehe ADR-0007` und `// NOTE: siehe ADR 9` (keine Datei 0009) | `ADR-0007` ist unterstrichen, Klick öffnet `docs/adr/0007-ganzzahlen.md` in der IDE; `ADR 9` ist normaler Text |
+| BG6 | `// WHY: siehe #312` mit Tracker; dann ohne Tracker (Abschnitt `tracker` aus der `.atlas` entfernen, IDE neu starten) | Mit: `#312` unterstrichen, Klick öffnet das Issue im Browser; ohne: `#312` als Text |
+| BG7 | `// WHY: https://example.org/qc/1` | Link, Klick öffnet den Browser |
+| BG8 | atlas.json `"hints": {"rationaleMarkers": ["PERF"]}`, Kommentar `// PERF: Puffer wiederverwenden.` | Erscheint im Hover; `// WHY: …` erscheint nicht mehr |
+| BG9 | `// TODO: Aufräumen.` über einer Deklaration; dann `"rules": {"todo-comment": {"keywords": ["TODO", "HACK"]}}` | TODO nie unter BEGRÜNDUNG; mit der Option auch HACK nicht mehr, dafür in „TODOs des Projekts“ |
+| BG10 | `// NOTE: Nur für den Import.` zwischen `unit` und `interface`; Maus auf den Unit-Namen in einer uses-Klausel | Tooltip der Unit zeigt BEGRÜNDUNG mit dem NOTE-Eintrag |
+| BG11 | Claude Code: `get_declaration` für die Methode aus BG1; `get_rationale` mit `unit` und mit `name` | Abschnitt „Begründungen:“ mit `- WHY (Zeile n): …` und `- HACK (Zeile m): …`; `get_rationale` listet Unit-Einträge und alle Symbole mit Datei:Zeile |
+| BG12 | `"hints": {"rationale": false}` | Kein Abschnitt BEGRÜNDUNG im Hover, keiner in `get_declaration`; `get_rationale` liefert weiter; mit `"mcp": {"disabledTools": ["get_rationale"]}` fehlt das Werkzeug |
+| BG13 | Server mit altem Index-Cache (Format 26) starten | Cache wird verworfen und neu aufgebaut, danach erscheinen die Begründungen ohne Neuindizieren von Hand |

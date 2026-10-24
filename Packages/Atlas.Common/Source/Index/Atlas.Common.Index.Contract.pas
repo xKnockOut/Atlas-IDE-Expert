@@ -90,6 +90,9 @@ type
     /// <summary>XMLDoc-Kurztext: Klartext von &lt;summary&gt; aus den ///-Zeilen darüber, eine Zeile,
     /// höchstens TIndexSymbol.MaxSummary Zeichen; '' ohne Doku (#492).</summary>
     Summary: string;
+    /// <summary>Begründungen (#1123) über der Deklaration und bei Routinen im Rumpf, je Eintrag
+    /// TRationale.Encode (Marke, Zeile, Text); alle möglichen Marken, gefiltert wird bei der Anzeige.</summary>
+    Rationale: TArray<string>;
     function QualifiedName: string;
     /// <summary>Trägt die Direktive ADirective (ohne Groß-/Kleinschreibung)?</summary>
     function HasDirective(const ADirective: string): Boolean;
@@ -149,6 +152,9 @@ type
     Directives: TArray<string>;
     /// <summary>Grund hinter deprecated im Unit-Kopf; '' ohne.</summary>
     DeprecatedText: string;
+    /// <summary>Begründungen der Unit (#1123): Kopf und interface vor dem ersten type-Abschnitt, ohne die einer
+    /// Deklaration; Format wie TIndexSymbol.Rationale.</summary>
+    Rationale: TArray<string>;
     Symbols: TArray<TIndexSymbol>;
     /// <summary>Über eine uses-Liste nachgeladen (RTL, VCL, Bibliotheken), nicht aus dem Projekt.</summary>
     Library_: Boolean;

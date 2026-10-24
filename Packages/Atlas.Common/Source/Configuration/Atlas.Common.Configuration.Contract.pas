@@ -109,6 +109,13 @@ type
     XmlDocMaxLines: Integer;
     /// <summary>Hover über Komponentenklassen (#110): published-Properties und Ereignisse samt geerbter.</summary>
     PublishedMembers: Boolean;
+    /// <summary>Begründungen (// WHY: …, #1123) im Hover und in get_declaration.</summary>
+    Rationale: Boolean;
+    /// <summary>Marken der Begründungen; nil = Vorgabe (TRationale.DefaultMarkers).</summary>
+    RationaleMarkers: TArray<string>;
+    /// <summary>Ordner der Architekturentscheidungen für ADR-Verweise, relativ zum Projekt; '' = Vorgabe
+    /// (TRationale.DefaultAdrFolder).</summary>
+    AdrFolder: string;
     class function Default: THintSettings; static;
   end;
 
@@ -773,6 +780,9 @@ begin
   Result.XmlDocExpand := ExpandLast;
   Result.XmlDocMaxLines := 0;
   Result.PublishedMembers := True;
+  Result.Rationale := True;
+  Result.RationaleMarkers := nil;
+  Result.AdrFolder := '';
 end;
 
 { THighlightSettings }

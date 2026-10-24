@@ -21,7 +21,7 @@ Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnoc
 | [Bauen, Testen, Debuggen](#bauen-testen-debuggen) | Release-Build-Wächter, DUnitX-Tests aus dem Editor, Startprofile, Werte im Hover beim Debuggen |
 | [IDE-Komfort](#ide-komfort) | Willkommensseite, Befehlspalette, Benachrichtigungen, Änderungsmarken aus Git/SVN, abgesicherter Start |
 | [Einstellungen](#einstellungen) | Jede Funktion einzeln abschaltbar, Optionsseite als Baum, teamweite Projektdatei `.atlas` |
-| [Claude Code](#claude-code-und-mcp) | 20 MCP-Werkzeuge zum Lesen, Prüfen, Bauen, Testen und Umbenennen |
+| [Claude Code](#claude-code-und-mcp) | 21 MCP-Werkzeuge zum Lesen, Prüfen, Bauen, Testen und Umbenennen |
 
 ## Schnellstart
 
@@ -72,6 +72,7 @@ Alles Folgende ist in `main` umgesetzt. Funktionen mit *(experimentell)* sind ab
 ### Verstehen
 
 - **Hover-Tooltip** im Atlas-Stil statt Help Insight: Deklaration, XMLDoc in auf- und zuklappbaren Abschnitten, anklickbare Typen, Vererbungskette, Werte von Konstanten, Mengen und Resourcestrings, published-Mitglieder von Komponenten als Tabelle, Symbole in `{$IFDEF}` mit ihrer Herkunft, Aktionen (Gehe zu, Verwendungen, Deklaration kopieren, Hilfe)
+- **Begründungen im Hover:** Kommentare wie `// WHY: …`, `// HACK: …` oder `// NOTE: …` über einer Deklaration und im Rumpf der Routine stehen unter BEGRÜNDUNG; `ADR-0007` öffnet die Architekturentscheidung, `#312` das Issue im Tracker (#1123)
 - **Werte beim Debuggen:** Ist der Prozess angehalten, zeigt der Tooltip den Wert des Ausdrucks unter der Maus, ausgewertet über den Debugger der IDE ohne Nebenwirkungen
 - **Typmarken** hinter `var X := …` ohne Typangabe
 - **Code-Metriken** als Marke hinter jedem Methodenkopf (Länge, Tiefe, zyklomatische und kognitive Komplexität, Parameter, Operanden der größten Bedingung, lokale Variablen, Ausstiege), hinter jeder Klasse (Member, Vererbungstiefe ohne RTL und VCL), dem Unit-Namen (Zeilen) und dem ersten `uses` (Units)
@@ -178,7 +179,7 @@ Alle Schlüssel: [docs/Einstellungen.md](docs/Einstellungen.md) und [docs/Konfig
 
 ### Claude Code und MCP
 
-Der Server bietet Claude Code 20 MCP-Werkzeuge: Symbole suchen, Deklarationen und Typ- und Aufrufhierarchien lesen, Komponenten- und Formularinfos, Diagnosen, Metriken und TODOs abfragen, geplanten Code mit `check_code` vor dem Schreiben prüfen, Treffer erklären, Befunde an Hooks von Claude Code melden (`hook_check`), über die IDE bauen (`build_project`, `get_last_build`), DUnitX-Tests ausführen und schreibend umbenennen oder Code-Aktionen anwenden (mit Vorschau). Dazu die Ressource `delphi://conventions` mit den Konventionen des Projekts. Das Plugin `atlas` prüft außerdem jede Pascal-Datei, die Claude ändert, sofort mit den Prüfregeln des Projekts (Hook mit `hook_check`, Befunde gehen direkt an Claude zurück), und `/atlas:bauen` baut und testet und fasst das Ergebnis nach 0 Fehlern, 0 Warnungen, 0 Hinweisen zusammen. Einrichtung: [Editors/ClaudeCode](Editors/ClaudeCode/README.md), Werkzeuge: [docs/MCP.md](docs/MCP.md).
+Der Server bietet Claude Code 21 MCP-Werkzeuge: Symbole suchen, Deklarationen samt Begründungskommentaren (`get_rationale`) und Typ- und Aufrufhierarchien lesen, Komponenten- und Formularinfos, Diagnosen, Metriken und TODOs abfragen, geplanten Code mit `check_code` vor dem Schreiben prüfen, Treffer erklären, Befunde an Hooks von Claude Code melden (`hook_check`), über die IDE bauen (`build_project`, `get_last_build`), DUnitX-Tests ausführen und schreibend umbenennen oder Code-Aktionen anwenden (mit Vorschau). Dazu die Ressource `delphi://conventions` mit den Konventionen des Projekts. Das Plugin `atlas` prüft außerdem jede Pascal-Datei, die Claude ändert, sofort mit den Prüfregeln des Projekts (Hook mit `hook_check`, Befunde gehen direkt an Claude zurück), und `/atlas:bauen` baut und testet und fasst das Ergebnis nach 0 Fehlern, 0 Warnungen, 0 Hinweisen zusammen. Einrichtung: [Editors/ClaudeCode](Editors/ClaudeCode/README.md), Werkzeuge: [docs/MCP.md](docs/MCP.md).
 
 Neue Werkzeuge entwickeln: `pwsh Tools/Start-McpInspector.ps1` öffnet den [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) gegen den Server (Browser, Terminal oder Kommandozeile) und zeigt jedes Werkzeug, sein Schema und die rohen JSON-RPC-Nachrichten; `pwsh Tools/Test-McpTools.ps1` ruft jedes Werkzeug einmal mit Beispielargumenten gegen das Referenzprojekt auf und schreibt den rohen Mitschnitt. Siehe [docs/MCP.md](docs/MCP.md#werkzeuge-entwickeln-und-prüfen).
 
