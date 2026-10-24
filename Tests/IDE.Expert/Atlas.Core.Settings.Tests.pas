@@ -51,6 +51,8 @@ type
     procedure NavHistoryOptions;
     [Test]
     procedure PeekOptions;
+    [Test]
+    procedure DataFlowOptions;
     /// <summary>Gliederungsfenster (#537): an, Quelltextreihenfolge, Cursor folgen; Speichern und Laden.</summary>
     [Test]
     procedure OutlineOptions;
@@ -113,6 +115,8 @@ type
     procedure DebugStepIntoTargetOptions;
     [Test]
     procedure DebugBreakOnNextEventOptions;
+    [Test]
+    procedure DebugStepFilterOptions;
     /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure GenerateMenuOptions;
@@ -276,11 +280,26 @@ begin
   Assert.IsTrue(Settings.TestsBuildFirst, 'vor den Tests bauen standardmäßig an (#69)');
   Assert.IsFalse(Settings.BuildZeroHints, 'build.zeroHints standardmäßig aus (#530)');
   Assert.IsTrue(Settings.ShowInterfaceCost, 'build.showInterfaceCost standardmäßig an (#554)');
+  Assert.IsTrue(Settings.BuildCompilerSwitches, 'build.compilerSwitches (#558)');
+  Assert.IsFalse(Settings.BuildSwitchesInStatusBar, 'build.showSwitchesInStatusBar (#558)');
   Assert.IsTrue(Settings.StartProfiles, 'Startprofile standardmäßig an (#575)');
   Assert.IsTrue(Settings.StartProfilesStatusField, 'Startprofil in der Statusleiste standardmäßig an (#575)');
   Assert.IsTrue(Settings.TestDebug, 'Test debuggen standardmäßig da (#585)');
   Assert.IsTrue(Settings.TestBreakAtStart, 'debug.testBreakAtStart standardmäßig an (#585)');
   Assert.IsTrue(Settings.DebugHoverValues, 'debug.hoverValues standardmäßig an (#891)');
+  Assert.IsTrue(Settings.DebugExplainUnavailable, 'debug.explainUnavailable (#840)');
+  Assert.IsTrue(Settings.DebugCompletionInDialogs, 'debug.completionInDialogs (#538)');
+  Assert.IsTrue(Settings.DebugEvaluateWindow, 'debug.evaluateWindow (#784)');
+  Assert.IsTrue(Settings.DebugEvaluateReplaceCtrlF7, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
+  Assert.IsTrue(Settings.DebugExplainAccessViolation, 'debug.explainAccessViolation (#865)');
+  Assert.IsFalse(Settings.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
+  Assert.IsTrue(Settings.DebugExceptionHistory, 'debug.exceptionHistory (#517)');
+  Assert.IsTrue(Settings.DebugJustMyCode, 'debug.justMyCode (#578)');
+  Assert.IsFalse(Settings.DebugExceptionBanner, 'debug.exceptionBanner (#783)');
+  Assert.IsTrue(Settings.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
+  Assert.IsTrue(Settings.DebugInlineValues, 'debug.inlineValues (#508)');
+  Assert.AreEqual(5, Settings.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
+  Assert.AreEqual('', Settings.DebugOwnCodeFolders, 'debug.ownCodeFolders leer (#578)');
   Assert.IsTrue(Settings.TodoList, 'Befehl standardmäßig da (#68)');
   Assert.IsTrue(Settings.MetricsReport, 'Befehl standardmäßig da (#66)');
   Assert.IsTrue(Settings.TeamFile, 'Projektdatei standardmäßig an (#486)');
@@ -375,11 +394,26 @@ begin
   Settings.TestsBuildFirst := False;
   Settings.BuildZeroHints := True;
   Settings.ShowInterfaceCost := False;
+  Settings.BuildCompilerSwitches := False;
+  Settings.BuildSwitchesInStatusBar := True;
   Settings.StartProfiles := False;
   Settings.StartProfilesStatusField := False;
   Settings.TestDebug := False;
   Settings.TestBreakAtStart := False;
   Settings.DebugHoverValues := False;
+  Settings.DebugExplainUnavailable := False;
+  Settings.DebugCompletionInDialogs := False;
+  Settings.DebugEvaluateWindow := False;
+  Settings.DebugEvaluateReplaceCtrlF7 := False;
+  Settings.DebugExplainAccessViolation := False;
+  Settings.DebugExplainAccessViolationAllowCalls := True;
+  Settings.DebugExceptionHistory := False;
+  Settings.DebugJustMyCode := False;
+  Settings.DebugExceptionBanner := True;
+  Settings.DebugExceptionBannerIgnoreAtLocation := False;
+  Settings.DebugInlineValues := False;
+  Settings.DebugInlineValuesPerLine := 7;
+  Settings.DebugOwnCodeFolders := '  C:\Komponenten;D:\Lib ';
   Settings.TodoList := False;
   Settings.MetricsReport := False;
   Settings.TeamFile := False;
@@ -459,11 +493,26 @@ begin
   Assert.IsFalse(Loaded.TestsBuildFirst);
   Assert.IsTrue(Loaded.BuildZeroHints);
   Assert.IsFalse(Loaded.ShowInterfaceCost, 'build.showInterfaceCost (#554)');
+  Assert.IsFalse(Loaded.BuildCompilerSwitches);
+  Assert.IsTrue(Loaded.BuildSwitchesInStatusBar);
   Assert.IsFalse(Loaded.StartProfiles);
   Assert.IsFalse(Loaded.StartProfilesStatusField);
   Assert.IsFalse(Loaded.TestDebug, 'Test debuggen (#585)');
   Assert.IsFalse(Loaded.TestBreakAtStart, 'debug.testBreakAtStart (#585)');
   Assert.IsFalse(Loaded.DebugHoverValues, 'debug.hoverValues (#891)');
+  Assert.IsFalse(Loaded.DebugExplainUnavailable, 'debug.explainUnavailable (#840)');
+  Assert.IsFalse(Loaded.DebugCompletionInDialogs, 'debug.completionInDialogs (#538)');
+  Assert.IsFalse(Loaded.DebugEvaluateWindow, 'debug.evaluateWindow (#784)');
+  Assert.IsFalse(Loaded.DebugEvaluateReplaceCtrlF7, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
+  Assert.IsFalse(Loaded.DebugExplainAccessViolation, 'debug.explainAccessViolation (#865)');
+  Assert.IsTrue(Loaded.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
+  Assert.IsFalse(Loaded.DebugExceptionHistory, 'debug.exceptionHistory (#517)');
+  Assert.IsFalse(Loaded.DebugJustMyCode, 'debug.justMyCode (#578)');
+  Assert.IsTrue(Loaded.DebugExceptionBanner, 'debug.exceptionBanner (#783)');
+  Assert.IsFalse(Loaded.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
+  Assert.IsFalse(Loaded.DebugInlineValues, 'debug.inlineValues (#508)');
+  Assert.AreEqual(7, Loaded.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
+  Assert.AreEqual('C:\Komponenten;D:\Lib', Loaded.DebugOwnCodeFolders, 'debug.ownCodeFolders ohne Leerraum (#578)');
   Assert.IsFalse(Loaded.TodoList);
   Assert.IsFalse(Loaded.MetricsReport);
   Assert.IsFalse(Loaded.TeamFile);
@@ -844,7 +893,10 @@ begin
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.MinBlockEndLines, Settings.BlockEndLabelsMinLines, 'unten begrenzt');
   Settings.BlockEndLabelsMinLines := 5000;
+  Settings.DebugInlineValuesPerLine := 0;
   Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinInlineValuesPerLine, Settings.DebugInlineValuesPerLine,
+    'debug.inlineValuesPerLine unten begrenzt (#508)');
   Assert.AreEqual(TAtlasPluginSettings.MaxBlockEndLines, Settings.BlockEndLabelsMinLines, 'oben begrenzt');
   Settings.BlockEndLabels := False;
   Settings.BlockEndLabelsMinLines := 40;
@@ -1339,6 +1391,34 @@ begin
   Assert.IsFalse(Loaded.PeekShowImplementation);
   Assert.AreEqual(0, Loaded.PeekDefinitionKey);
   Assert.AreEqual($C07B, Loaded.PeekReferencesKey);
+end;
+
+procedure TAtlasPluginSettingsTests.DataFlowOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // Datenfluss (#690): an, Tiefe 6, Tests sichtbar.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DataFlow, 'navigation.dataFlow (#690)');
+  Assert.AreEqual(6, Settings.DataFlowMaxDepth);
+  Assert.IsFalse(Settings.DataFlowExcludeTests);
+  Settings.DataFlowMaxDepth := 0;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinDataFlowDepth, Settings.DataFlowMaxDepth);
+  Settings.DataFlowMaxDepth := 99;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MaxDataFlowDepth, Settings.DataFlowMaxDepth);
+  Settings.DataFlow := False;
+  Settings.DataFlowMaxDepth := 3;
+  Settings.DataFlowExcludeTests := True;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DataFlow);
+  Assert.AreEqual(3, Loaded.DataFlowMaxDepth);
+  Assert.IsTrue(Loaded.DataFlowExcludeTests);
 end;
 
 procedure TAtlasPluginSettingsTests.OutlineOptions;
@@ -2014,6 +2094,29 @@ begin
   Loaded.DebugBreakOnNextEventExcluded := ' OnPaint ;; OnResize,';
   Loaded.Normalize;
   Assert.AreEqual('OnPaint, OnResize', Loaded.DebugBreakOnNextEventExcluded);
+end;
+
+procedure TAtlasPluginSettingsTests.DebugStepFilterOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // #850: an, Getter und triviale Routinen, keine Muster; alles überlebt Speichern und Laden, Normalize bereinigt.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugStepFilters);
+  Assert.AreEqual('getters,trivial', Settings.DebugStepFilterKinds);
+  Assert.AreEqual('', Settings.DebugStepFilterPatterns);
+  Settings.DebugStepFilters := False;
+  Settings.DebugStepFilterKinds := 'Operators, setters, quatsch';
+  Settings.DebugStepFilterPatterns := ' *.Log* ;; TBasisForm.*;*.log*';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Loaded.Normalize;
+  Assert.IsFalse(Loaded.DebugStepFilters);
+  Assert.AreEqual('setters,operators', Loaded.DebugStepFilterKinds);
+  Assert.AreEqual('*.Log*;TBasisForm.*', Loaded.DebugStepFilterPatterns);
 end;
 
 procedure TAtlasPluginSettingsTests.DebugVisualizerOptions;

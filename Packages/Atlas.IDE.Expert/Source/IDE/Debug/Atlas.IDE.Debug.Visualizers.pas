@@ -31,6 +31,7 @@ uses
   System.Generics.Collections,
   ToolsAPI,
   Atlas.Core.Debug.Visualizers,
+  Atlas.Core.Settings.VisualizerKinds,
   Atlas.UI.Debug.Viewer;
 
 type
@@ -193,7 +194,7 @@ end;
 
 function TAtlasIdeVisualizer.GetVisualizerIdentifier: string;
 begin
-  Result := IdentifierPrefix + TAtlasVisualizers.KindNames[FKind];
+  Result := IdentifierPrefix + TAtlasVisualizerSettings.KindNames[FKind];
 end;
 
 function TAtlasIdeVisualizer.GetVisualizerName: string;
@@ -351,10 +352,10 @@ var
 begin
   Settings := TAtlasIdeSettings.Current;
   Result := TAtlasVisualizerOptions.Defaults;
-  Result.Kinds := TAtlasVisualizers.ParseKinds(Settings.DebugVisualizerTypes);
-  Result.NameFields := TAtlasVisualizers.ParseNameFields(Settings.DebugVisualizerNameFields);
+  Result.Kinds := TAtlasVisualizerSettings.ParseKinds(Settings.DebugVisualizerTypes);
+  Result.NameFields := TAtlasVisualizerSettings.ParseNameFields(Settings.DebugVisualizerNameFields);
   Result.MaxLength := Settings.DebugVisualizerMaxLength;
-  Result.Evaluation := TAtlasVisualizers.ParseEvaluation(Settings.DebugVisualizerEvaluation);
+  Result.Evaluation := TAtlasVisualizerSettings.ParseEvaluation(Settings.DebugVisualizerEvaluation);
   Result.MaxImagePixels := Settings.DebugVisualizerMaxImagePixels;
 end;
 
@@ -381,7 +382,7 @@ begin
     Exit;
   FRegistered := TList<IOTADebuggerVisualizer>.Create;
   FSignature := SettingsSignature;
-  Kinds := TAtlasVisualizers.ParseKinds(TAtlasIdeSettings.Current.DebugVisualizerTypes);
+  Kinds := TAtlasVisualizerSettings.ParseKinds(TAtlasIdeSettings.Current.DebugVisualizerTypes);
   for Kind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
   begin
     if not (Kind in Kinds) then

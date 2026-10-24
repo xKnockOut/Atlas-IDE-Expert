@@ -27,6 +27,7 @@ uses
   System.Types,
   Atlas.Core.Style.Palette,
   Atlas.Core.Debug.EventBreak,
+  Atlas.Core.Settings.EventBreakNames,
   Atlas.UI.Strings,
   Atlas.UI.Debug.EventBreak;
 
@@ -41,7 +42,7 @@ begin
   Start.Form := 'TfrmKunde';
   Asked := 0;
   Dialog := TAtlasEventBreakDialog.CreateDialog(nil, Start, TArray<string>.Create('TdmDaten', 'TfrmKunde'),
-    TAtlasEventBreak.DefaultExcluded,
+    TAtlasEventBreakSettings.DefaultExcluded,
     function(const AChoice: TAtlasEventChoice): string
     begin
       Inc(Asked);

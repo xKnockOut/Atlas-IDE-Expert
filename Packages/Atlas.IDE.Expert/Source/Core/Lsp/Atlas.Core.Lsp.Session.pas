@@ -42,6 +42,8 @@ uses
   Atlas.Core.Lsp.Progress,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Lsp.Contract,
+  Atlas.Core.Lsp.DataFlow,
+  Atlas.Core.Lsp.AccessChains,
   Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Projects.Contract,
   Atlas.Core.InlayHints.Store,
@@ -189,6 +191,31 @@ type
     /// Include-Symbole hinter {$I} (#860) kommen als DefineHint mit den Symbolen aus data.includeDefines.</summary>
     function InlayHints(const AFileName: string; AFromLine, AToLine, AEndMarkerMinLines: Integer;
       ATimeoutMs: Cardinal): TArray<TAtlasInlayHint>; overload;
+    /// <summary>Bezeichner für Werte beim Debuggen (#508, textDocument/inlineValue) in den Zeilen
+    /// AFromLine..AToLine (0-basiert), Halt an AStoppedLine; ohne Abgleich: Sync vorher im Hauptthread.
+    /// Threadsicher wie Completion.</summary>
+    function InlineValues(const AFileName: string; AFromLine, AToLine, AStoppedLine: Integer;
+      ATimeoutMs: Cardinal): TAtlasInlineValueRefs;
+    /// <summary>Bezeichner aus der Antwort auf textDocument/inlineValue; nur InlineValueVariableLookup mit
+    /// variableName.</summary>
+    class function InlineValueRefsOf(const AResponse: TJSONValue): TAtlasInlineValueRefs; static;
+    /// <summary>Wirksame Compiler-Schalter an ALine/ACharacter (0-basiert, #558, atlas/compilerSwitches); ohne
+    /// Abgleich: Sync vorher im Hauptthread. Threadsicher wie Completion. Gehört dem Aufrufer; nil ohne Antwort.
+    /// </summary>
+    function CompilerSwitches(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>atlas/debugUnavailable (#840): Schalter D, L, O, Routine, Lebensdauer von AName und Korrekturen
+    /// am Halt in ALine (0-basiert); gehört dem Aufrufer.</summary>
+    function DebugUnavailable(const AFileName: string; ALine: Integer; const AName: string;
+      ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>atlas/expressionCompletion (#538): Vorschläge für AExpression im Gültigkeitsbereich der Zeile
+    /// ALine (0-basiert) von AFileName, Schreibmarke ACharacter im Ausdruck. Ohne Abgleich; gehört dem Aufrufer.
+    /// </summary>
+    function ExpressionCompletion(const AFileName: string; ALine: Integer; const AExpression: string;
+      ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>atlas/accessChains (#865): Zugriffsketten der Anweisungen in ALine (0-basiert) von AFileName für
+    /// einen Prozess mit APointerSize. Ohne Abgleich: Sync vorher im Hauptthread. Found = False ohne Antwort.
+    /// </summary>
+    function AccessChains(const AFileName: string; ALine, APointerSize: Integer; ATimeoutMs: Cardinal): TAtlasAvChains;
     procedure Initialize;
     /// <summary>Parameter von initialize (#396, #397, #408, #648, #652). AApplyEdit: workspace.applyEdit
     /// ankündigen. Gehört dem Aufrufer.</summary>
@@ -244,6 +271,8 @@ type
     function Impact(const AFileName: string; ALine, ACharacter, ADepth: Integer): TAtlasImpact;
     /// <summary>Antwort von atlas/impact (#1120); ohne Objekt leer (kein Symbol am Cursor).</summary>
     class function ImpactFromJson(const AValue: TJSONValue): TAtlasImpact; static;
+    /// <summary>Woher kommt bzw. wohin geht der Wert des Symbols an der Stelle (atlas/dataFlow, #690).</summary>
+    function DataFlow(const ARequest: TAtlasDataFlowRequest): TAtlasDataFlowResult;
     /// <summary>Code-Aktionen für ARange (textDocument/codeAction, #399), Reihenfolge des Servers.</summary>
     function CodeActions(const AFileName: string; const ARange: TLspRange): TArray<TLspCodeAction>; overload;
     /// <summary>Wie oben mit eigener Wartezeit, etwa für die Glühbirne der Zeilenleiste (#768), die den Editor
@@ -1352,6 +1381,19 @@ begin
   end;
 end;
 
+function TLspSession.DataFlow(const ARequest: TAtlasDataFlowRequest): TAtlasDataFlowResult;
+var
+  Response: TJSONValue;
+begin
+  // Projektweit über die Referenzsuche; dafür so viel Zeit wie für die Hierarchien.
+  Response := FClient.Request(TAtlasDataFlowJson.Method, TAtlasDataFlowJson.Params(ARequest), FTimeoutMs * 10);
+  try
+    Result := TAtlasDataFlowJson.Parse(Response);
+  finally
+    Response.Free;
+  end;
+end;
+
 function TLspSession.HierarchyChildren(ADirection: TAtlasHierarchyDirection;
   const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
 const
@@ -1395,6 +1437,110 @@ begin
     end;
   finally
     Response.Free;
+  end;
+end;
+
+function TLspSession.InlineValues(const AFileName: string; AFromLine, AToLine, AStoppedLine: Integer;
+  ATimeoutMs: Cardinal): TAtlasInlineValueRefs;
+var
+  Params, Range, Stopped: TJSONObject;
+  Response: TJSONValue;
+begin
+  Range := TJSONObject.Create;
+  Range.AddPair('start', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AFromLine))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Range.AddPair('end', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AToLine + 1))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Stopped := TJSONObject.Create;
+  Stopped.AddPair('start', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AStoppedLine))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Stopped.AddPair('end', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AStoppedLine))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Params := TJSONObject.Create;
+  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  Params.AddPair('range', Range);
+  Params.AddPair('context', TJSONObject.Create.AddPair('frameId', TJSONNumber.Create(0))
+    .AddPair('stoppedLocation', Stopped));
+  Response := FClient.Request('textDocument/inlineValue', Params, ATimeoutMs);
+  try
+    Result := InlineValueRefsOf(Response);
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.CompilerSwitches(const AFileName: string; ALine, ACharacter: Integer;
+  ATimeoutMs: Cardinal): TJSONValue;
+var
+  Params: TJSONObject;
+begin
+  Params := TJSONObject.Create;
+  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  Params.AddPair('position', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ALine))
+    .AddPair('character', TJSONNumber.Create(ACharacter)));
+  Result := FClient.Request('atlas/compilerSwitches', Params, ATimeoutMs);
+end;
+
+function TLspSession.DebugUnavailable(const AFileName: string; ALine: Integer; const AName: string;
+  ATimeoutMs: Cardinal): TJSONValue;
+var
+  Params: TJSONObject;
+begin
+  Params := TJSONObject.Create;
+  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  Params.AddPair('position', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ALine))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Params.AddPair('name', AName);
+  Result := FClient.Request('atlas/debugUnavailable', Params, ATimeoutMs);
+end;
+
+function TLspSession.AccessChains(const AFileName: string; ALine, APointerSize: Integer;
+  ATimeoutMs: Cardinal): TAtlasAvChains;
+var
+  Response: TJSONValue;
+begin
+  Response := FClient.Request(TAtlasAvJson.Method, TAtlasAvJson.Params(AFileName, ALine, APointerSize), ATimeoutMs);
+  try
+    Result := TAtlasAvJson.Parse(Response);
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.ExpressionCompletion(const AFileName: string; ALine: Integer; const AExpression: string;
+  ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
+var
+  Params: TJSONObject;
+begin
+  Params := TJSONObject.Create;
+  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  Params.AddPair('position', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ALine))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Params.AddPair('expression', AExpression);
+  Params.AddPair('character', TJSONNumber.Create(ACharacter));
+  Result := FClient.Request('atlas/expressionCompletion', Params, ATimeoutMs);
+end;
+
+class function TLspSession.InlineValueRefsOf(const AResponse: TJSONValue): TAtlasInlineValueRefs;
+var
+  Item: TJSONValue;
+  Entry: TJSONObject;
+  Name: string;
+begin
+  Result := nil;
+  if not (AResponse is TJSONArray) then
+    Exit;
+  for Item in TJSONArray(AResponse) do
+  begin
+    if not (Item is TJSONObject) then
+      Continue;
+    Entry := TJSONObject(Item);
+    // InlineValueText (text) und InlineValueEvaluatableExpression (expression) wertet Atlas nicht aus.
+    Name := Entry.GetValue<string>('variableName', '');
+    if Name = '' then
+      Continue;
+    Result := Result + [TAtlasInlineValueRef.Create(Entry.GetValue<Integer>('range.start.line', -1),
+      Entry.GetValue<Integer>('range.start.character', 0), Name, Entry.GetValue<string>('atlasType', ''))];
   end;
 end;
 

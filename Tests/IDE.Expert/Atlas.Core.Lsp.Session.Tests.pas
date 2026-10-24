@@ -30,6 +30,8 @@ type
     /// <summary>#503: Gliederung flach, Container = Elternsymbol; SymbolInformation ebenso.</summary>
     [Test]
     procedure DocumentSymbolsAreFlattened;
+    [Test]
+    procedure InlineValueRefsAreVariableLookups;
   end;
 
   /// <summary>Antwort von atlas/impact (#1120): Ebenen, Ursachen, Formulare, Tests, Grenzen.</summary>
@@ -320,5 +322,31 @@ end;
 initialization
   TDUnitX.RegisterTestFixture(TLspInitializeParamsTests);
   TDUnitX.RegisterTestFixture(TLspImpactResponseTests);
+
+procedure TLspInitializeParamsTests.InlineValueRefsAreVariableLookups;
+var
+  Response: TJSONValue;
+  Refs: TAtlasInlineValueRefs;
+begin
+  // #508: nur variableName; Text- und Ausdrucks-Werte wertet Atlas nicht aus (keine Nebenwirkungen).
+  Response := TJSONObject.ParseJSONValue('[{"range":{"start":{"line":23,"character":2},"end":{"line":23,' +
+    '"character":7}},"variableName":"Summe","caseSensitiveLookup":false,"atlasType":"Integer"},' +
+    '{"range":{"start":{"line":24,"character":0}},"text":"x"},' +
+    '{"range":{"start":{"line":24,"character":4}},"expression":"Liste.Count"},' +
+    '{"range":{"start":{"line":24,"character":9}},"variableName":"Datum"}]');
+  try
+    Refs := TLspSession.InlineValueRefsOf(Response);
+  finally
+    Response.Free;
+  end;
+  Assert.AreEqual(2, Integer(Length(Refs)));
+  Assert.AreEqual('Summe', Refs[0].Name);
+  Assert.AreEqual(23, Refs[0].Line);
+  Assert.AreEqual(2, Refs[0].Character);
+  Assert.AreEqual('Integer', Refs[0].TypeName);
+  Assert.AreEqual('Datum', Refs[1].Name);
+  Assert.AreEqual('', Refs[1].TypeName);
+  Assert.AreEqual(0, Integer(Length(TLspSession.InlineValueRefsOf(nil))), 'ohne Antwort');
+end;
 
 end.

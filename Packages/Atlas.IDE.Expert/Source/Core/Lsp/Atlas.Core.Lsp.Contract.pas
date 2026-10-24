@@ -2,7 +2,8 @@
 
 // Werttypen, die der LSP-Client (TLspSession) liefert und die Features darüber verwenden (A-09): Probleme
 // (Diagnosen, #398), Symbole der projektweiten Suche und Einträge der Typ- und Aufrufhierarchie (#400),
-// Treffersicherheit einer Fundstelle (#1119), Ergebnis der Auswirkungsanalyse (#1120).
+// Treffersicherheit einer Fundstelle (#1119), Ergebnis der Auswirkungsanalyse (#1120) und Bezeichner für
+// Werte beim Debuggen (#508).
 // Sie liegen im Lsp-Feature, weil die Protokollschicht unten liegt; Atlas.Core.Problems.Contract und
 // Atlas.Core.Results.Model führen sie als Alias weiter. Positionen sind 0-basiert in UTF-16-Einheiten.
 
@@ -231,6 +232,18 @@ type
     /// <summary>Gibt es ein Ergebnis (Symbol gefunden)?</summary>
     function Found: Boolean;
   end;
+
+  /// <summary>Bezeichner aus textDocument/inlineValue (#508); Zeile und Spalte 0-basiert.</summary>
+  TAtlasInlineValueRef = record
+    Line: Integer;
+    Character: Integer;
+    Name: string;
+    /// <summary>Deklarierter Typ ('' = unbekannt), für die Darstellung.</summary>
+    TypeName: string;
+    class function Create(ALine, ACharacter: Integer; const AName, ATypeName: string): TAtlasInlineValueRef; static;
+  end;
+
+  TAtlasInlineValueRefs = TArray<TAtlasInlineValueRef>;
 
 implementation
 
@@ -497,6 +510,17 @@ begin
   for Item in AItems do
     if Item is TJSONObject then
       Result := Result + [FromJson(TJSONObject(Item))];
+end;
+
+{ TAtlasInlineValueRef }
+
+class function TAtlasInlineValueRef.Create(ALine, ACharacter: Integer; const AName,
+  ATypeName: string): TAtlasInlineValueRef;
+begin
+  Result.Line := ALine;
+  Result.Character := ACharacter;
+  Result.Name := AName;
+  Result.TypeName := ATypeName;
 end;
 
 end.

@@ -115,7 +115,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Files.TextFile,
-  Atlas.Core.Debug.Visualizers,
+  Atlas.Core.Settings.VisualizerKinds,
   Atlas.UI.Strings,
   Atlas.UI.Popup.Window,
   Atlas.IDE.Foundation.Settings,

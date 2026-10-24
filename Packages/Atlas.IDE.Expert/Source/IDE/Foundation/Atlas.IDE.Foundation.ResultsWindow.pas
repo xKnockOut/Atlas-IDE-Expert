@@ -8,6 +8,8 @@
 // ApplyTheme färbt nach einem Themenwechsel um, samt Symbol. Das
 // Aufrufdiagramm (#1122) ist nur erlaubt, solange DiagramAllowed True liefert
 // (callHierarchy.diagram); ApplySettings überträgt das nach einer Änderung.
+// ShowDataFlow zeigt den Baum des Datenflusses (#690); OnFlowExpand und OnFlowFilter holen die nächste Ebene
+// bzw. die erste neu.
 
 interface
 
@@ -20,6 +22,7 @@ uses
   Atlas.Core.Notes.Store,
   Atlas.Core.SymbolPath.Model,
   Atlas.Core.Lsp.Contract,
+  Atlas.Core.Lsp.DataFlow,
   Atlas.UI.Results.Frame;
 
 type
@@ -45,6 +48,9 @@ type
     /// <summary>Auswirkungsanalyse (#1120): andere Tiefe, betroffene Tests ausführen.</summary>
     OnImpactDepth: TAtlasImpactDepthChange;
     OnImpactRunTests: TAtlasImpactRunTests;
+    /// <summary>Datenfluss (#690): nächste Ebene bzw. Filter geändert.</summary>
+    OnFlowExpand: TAtlasDataFlowExpand;
+    OnFlowFilter: TAtlasDataFlowFilter;
   public
     /// <summary>Fenster zeigen (bei Bedarf anlegen); nil, wenn die IDE keine andockbaren Fenster anbietet.</summary>
     class function Frame: TAtlasResultsFrame; static;
@@ -70,6 +76,9 @@ type
     class procedure ShowSymbolPathMessage(const ATitle, AText: string); static;
     /// <summary>Auswirkungen einer Änderung am Symbol (#1120): direkt, indirekt, Tests.</summary>
     class procedure ShowImpact(const ATitle: string; const AImpact: TAtlasImpact); static;
+    /// <summary>Baum des Datenflusses (#690) mit Tiefengrenze und den Filtern der Anfrage.</summary>
+    class procedure ShowDataFlow(const ATitle: string; ADirection: TAtlasDataFlowDirection;
+      const AResult: TAtlasDataFlowResult; AMaxDepth: Integer; AOnlyProject, AExcludeTests: Boolean); static;
     /// <summary>Frame, falls das Fenster schon existiert; legt nichts an und holt nichts nach vorn.</summary>
     class function ExistingFrame: TAtlasResultsFrame; static;
     /// <summary>Fenstersymbol (#751) zum aktiven IDE-Thema.</summary>
@@ -208,6 +217,20 @@ begin
       Result := nil;
       if Assigned(TAtlasIdeResultsWindow.OnExpand) then
         Result := TAtlasIdeResultsWindow.OnExpand(ADirection, AItem);
+    end;
+  ResultsFrame.OnFlowExpand :=
+    function(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
+      const APath: TArray<string>): TAtlasDataFlowResult
+    begin
+      Result := Default(TAtlasDataFlowResult);
+      if Assigned(TAtlasIdeResultsWindow.OnFlowExpand) then
+        Result := TAtlasIdeResultsWindow.OnFlowExpand(ADirection, ASource, APath);
+    end;
+  ResultsFrame.OnFlowFilter :=
+    procedure(AOnlyProject, AExcludeTests: Boolean)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnFlowFilter) then
+        TAtlasIdeResultsWindow.OnFlowFilter(AOnlyProject, AExcludeTests);
     end;
   TAtlasIdeDockWindow.ApplyIdeTheme(AFrame);
 end;
@@ -373,6 +396,16 @@ begin
     Target.ShowImpact(ATitle, AImpact);
 end;
 
+class procedure TAtlasIdeResultsWindow.ShowDataFlow(const ATitle: string; ADirection: TAtlasDataFlowDirection;
+  const AResult: TAtlasDataFlowResult; AMaxDepth: Integer; AOnlyProject, AExcludeTests: Boolean);
+var
+  Target: TAtlasResultsFrame;
+begin
+  Target := Frame;
+  if Target <> nil then
+    Target.ShowDataFlow(ATitle, ADirection, AResult, AMaxDepth, AOnlyProject, AExcludeTests);
+end;
+
 class function TAtlasIdeResultsWindow.ExistingFrame: TAtlasResultsFrame;
 begin
   Result := nil;
@@ -422,6 +455,8 @@ begin
   OnShowRoute := nil;
   OnImpactDepth := nil;
   OnImpactRunTests := nil;
+  OnFlowExpand := nil;
+  OnFlowFilter := nil;
   // Meldet ab und gibt die Form nur frei, wenn die IDE sie nicht schon zerstört hat.
   FreeAndNil(Host);
 end;

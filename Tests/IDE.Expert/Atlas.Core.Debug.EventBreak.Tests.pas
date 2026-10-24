@@ -8,7 +8,8 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Debug.EventBreak;
+  Atlas.Core.Debug.EventBreak,
+  Atlas.Core.Settings.EventBreakNames;
 
 type
   [TestFixture]
@@ -33,8 +34,6 @@ type
     procedure SharedHandlerOneLocationIdentifiedBySender;
     [Test]
     procedure CaptionNamesComponentEventAndHandler;
-    [Test]
-    procedure ExcludedListNormalized;
     [Test]
     procedure HelpersAndExpressions;
   end;
@@ -133,7 +132,7 @@ begin
   Choice := TAtlasEventChoice.Defaults;
   Choice.Categories := [TAtlasEventCategory.Mouse];
   Selected := TAtlasEventBreak.Select(FAnswer.Handlers, Choice,
-    TAtlasEventBreak.ExcludedList(TAtlasEventBreak.DefaultExcluded), nil);
+    TAtlasEventBreakSettings.ExcludedList(TAtlasEventBreakSettings.DefaultExcluded), nil);
   Assert.AreEqual(2, Integer(Length(Selected)));
   Assert.AreEqual(0, Selected[0]);
   Assert.AreEqual(1, Selected[1]);
@@ -146,7 +145,7 @@ var
   Selected: TArray<Integer>;
 begin
   Load;
-  Excluded := TAtlasEventBreak.ExcludedList(TAtlasEventBreak.DefaultExcluded);
+  Excluded := TAtlasEventBreakSettings.ExcludedList(TAtlasEventBreakSettings.DefaultExcluded);
   Choice := TAtlasEventChoice.Defaults;
   Choice.Categories := TAtlasEventBreak.AllCategories;
   // Ohne häufige: OnPaint, Timer mit 50 ms und OnUpdate fehlen; der Timer im Code (ohne Interval) bleibt.
@@ -226,13 +225,6 @@ begin
     TAtlasEventBreak.Caption(FAnswer.Handlers, Locations[0], 1));
   Assert.AreEqual('btnSpeichern.OnClick / btnOk.OnClick → TfrmKunde.btnSpeichernClick',
     TAtlasEventBreak.Caption(FAnswer.Handlers, Locations[0], -1));
-end;
-
-procedure TCoreDebugEventBreakTests.ExcludedListNormalized;
-begin
-  Assert.AreEqual('OnPaint, OnMouseMove, OnUpdate', TAtlasEventBreak.NormalizeExcluded(' OnPaint;OnMouseMove,,OnUpdate ,onpaint'));
-  Assert.AreEqual('', TAtlasEventBreak.NormalizeExcluded('  '));
-  Assert.AreEqual(3, Integer(Length(TAtlasEventBreak.ExcludedList(TAtlasEventBreak.DefaultExcluded))));
 end;
 
 procedure TCoreDebugEventBreakTests.HelpersAndExpressions;

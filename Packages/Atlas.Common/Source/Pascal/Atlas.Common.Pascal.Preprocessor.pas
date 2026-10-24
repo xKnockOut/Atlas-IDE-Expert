@@ -26,6 +26,9 @@
 // - Inaktive Bereiche werden für das Abblenden im Editor (#23) gesammelt.
 // - Wirksame $DEFINE/$UNDEF stehen mit Stelle in DefineSites, für Zustand und
 //   Herkunft eines Symbols im Hover (#102).
+// - Alle übrigen wirksamen Direktiven ({$R-}, {$WARN …}, {$PUSHOPT} …) stehen
+//   mit Stelle in DirectiveSites, für die Compiler-Schalter an einer Stelle
+//   (#558).
 
 interface
 
@@ -122,6 +125,15 @@ type
     Undefine: Boolean;
   end;
 
+  /// <summary>Wirksame Direktive außer Bedingungen, $DEFINE, $UNDEF und $I (#558), in Reihenfolge der
+  /// Verarbeitung; RootPos wie bei TDefineSite. Body: Inhalt ohne "{$" und "}".</summary>
+  TDirectiveSite = record
+    FileIndex: Integer;
+    Range: TTextRange;
+    RootPos: TTextPosition;
+    Body: string;
+  end;
+
   TPreprocessorResult = record
     /// <summary>Aktive Token ohne die verarbeiteten Direktiven.</summary>
     Tokens: TArray<TPascalToken>;
@@ -139,6 +151,8 @@ type
     DefineSites: TArray<TDefineSite>;
     /// <summary>Ausgewertete Bedingungen unter geltendem Elternzweig (#847).</summary>
     Checks: TArray<TConditionCheck>;
+    /// <summary>Übrige wirksame Direktiven, auch aus Include-Dateien (#558).</summary>
+    DirectiveSites: TArray<TDirectiveSite>;
   end;
 
   TPascalPreprocessor = record
@@ -182,6 +196,11 @@ type
     class function IsSwitchEntry(const ADefine: string): Boolean; static;
     /// <summary>Eigenschaft der .dproj zum Schalter ALetter ("DCC_RangeChecking" für R); '' ohne.</summary>
     class function SwitchProperty(ALetter: Char): string; static;
+    /// <summary>Buchstabe zum langen Schalternamen ("RANGECHECKS" → R, #558); False für andere Namen.</summary>
+    class function LongSwitchLetter(const AName: string; out ALetter: Char): Boolean; static;
+    /// <summary>Stand des Schalters ALetter ohne Eintrag in der .dproj ('+', '-'); #0, wenn Atlas ihn nicht
+    /// kennt (#558).</summary>
+    class function SwitchDefault(ALetter: Char): Char; static;
     /// <summary>Declared(X) ohne Options.Declared: fragt AProvider (Server: den Symbolindex); nil = keiner.
     /// </summary>
     class procedure SetDeclaredProvider(const AProvider: TDeclaredFunc); static;
@@ -286,6 +305,7 @@ type
     FConditionals: TList<TConditionalRange>;
     FIssues: TList<TPreprocessorIssue>;
     FDefineSites: TList<TDefineSite>;
+    FDirectiveSites: TList<TDirectiveSite>;
     FChecks: TList<TConditionCheck>;
     FSwitches: TSwitchTable;
     FSwitchStack: TObjectStack<TSwitchTable>;
@@ -296,6 +316,7 @@ type
       AUndefine: Boolean);
     procedure AddIssue(AFileIndex: Integer; const AToken: TPascalToken; const AMessage: string;
       AKind: TPreprocessorIssueKind = TPreprocessorIssueKind.General);
+    procedure AddDirectiveSite(AFileIndex: Integer; const AToken: TPascalToken);
     procedure ProcessText(const AText: string; AFileIndex, ADepth: Integer);
     procedure Include(const AName: string; AFileIndex, ADepth: Integer; const AToken: TPascalToken);
     function EvaluateCondition(const AExpression, ADirective: string; AFileIndex: Integer;
@@ -1134,6 +1155,7 @@ begin
   FConditionals := TList<TConditionalRange>.Create;
   FIssues := TList<TPreprocessorIssue>.Create;
   FDefineSites := TList<TDefineSite>.Create;
+  FDirectiveSites := TList<TDirectiveSite>.Create;
   FIncludeStack := TList<string>.Create;
 end;
 
@@ -1143,6 +1165,7 @@ begin
   FChecks.Free;
   FSwitchStack.Free;
   FSwitches.Free;
+  FDirectiveSites.Free;
   FDefineSites.Free;
   FIssues.Free;
   FInactive.Free;
@@ -1170,6 +1193,20 @@ begin
   Site.Name := AName;
   Site.Undefine := AUndefine;
   FDefineSites.Add(Site);
+end;
+
+procedure TPreprocessorRun.AddDirectiveSite(AFileIndex: Integer; const AToken: TPascalToken);
+var
+  Site: TDirectiveSite;
+begin
+  Site.FileIndex := AFileIndex;
+  Site.Range := TTextRange.Create(AToken.StartPos, AToken.EndPos);
+  if AFileIndex = 0 then
+    Site.RootPos := AToken.StartPos
+  else
+    Site.RootPos := FRootRange.StartPos;
+  Site.Body := Trim(DirectiveBody(AToken.Text));
+  FDirectiveSites.Add(Site);
 end;
 
 procedure TPreprocessorRun.AddIssue(AFileIndex: Integer; const AToken: TPascalToken; const AMessage: string;
@@ -1533,6 +1570,8 @@ begin
         end
         else
           ApplySwitches(DirectiveBody(Token.Text), AFileIndex, Token);
+        // Für die Compiler-Schalter an einer Stelle (#558).
+        AddDirectiveSite(AFileIndex, Token);
         // Andere Direktiven bleiben für spätere Auswertungen erhalten.
         FTokens.Add(Token);
         FFileIndexes.Add(AFileIndex);
@@ -1577,6 +1616,7 @@ begin
   Result.Conditionals := FConditionals.ToArray;
   Result.Issues := FIssues.ToArray;
   Result.DefineSites := FDefineSites.ToArray;
+  Result.DirectiveSites := FDirectiveSites.ToArray;
   Result.Checks := FChecks.ToArray;
   Defines := TList<string>.Create;
   try
@@ -1691,6 +1731,30 @@ begin
     if SwitchName.Letter = UpCase(ALetter) then
       Exit(SwitchName.Prop);
   Result := '';
+end;
+
+class function TPascalPreprocessor.LongSwitchLetter(const AName: string; out ALetter: Char): Boolean;
+var
+  SwitchName: TSwitchName;
+begin
+  for SwitchName in SwitchNames do
+    if SameText(SwitchName.Long, Trim(AName)) then
+    begin
+      ALetter := SwitchName.Letter;
+      Exit(True);
+    end;
+  ALetter := #0;
+  Result := False;
+end;
+
+class function TPascalPreprocessor.SwitchDefault(ALetter: Char): Char;
+var
+  SwitchName: TSwitchName;
+begin
+  for SwitchName in SwitchNames do
+    if (SwitchName.Letter = UpCase(ALetter)) and (SwitchName.Default <> '') then
+      Exit(SwitchName.Default[1]);
+  Result := #0;
 end;
 
 class procedure TPascalPreprocessor.SetDeclaredProvider(const AProvider: TDeclaredFunc);
