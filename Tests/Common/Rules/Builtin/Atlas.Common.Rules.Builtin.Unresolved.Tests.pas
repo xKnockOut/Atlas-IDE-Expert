@@ -374,6 +374,17 @@ begin
   Assert.AreEqual('B.C', Entries[1].Name);
   Assert.AreEqual('b\c.pas', Entries[1].InPath);
   Assert.AreEqual('', Entries[2].InPath);
+  // In einer Unit sind Requires und Contains Bezeichner, keine Package-Listen (Record-Felder nach ";").
+  Entries := TUsesUnitNotFoundRule.Entries(TPascalLexer.Tokenize('unit U;'#10'interface'#10'type'#10 +
+    '  TPackageEntry = record end;'#10'  TPackageSource = record'#10'    Name: string;'#10 +
+    '    Requires: TArray<TPackageEntry>;'#10'    Contains: TArray<TPackageEntry>;'#10'  end;'#10 +
+    'implementation'#10'end.'));
+  Assert.AreEqual(0, Integer(Length(Entries)));
+  Entries := TUsesUnitNotFoundRule.Entries(TPascalLexer.Tokenize('package P;'#10'requires rtl;'#10 +
+    'contains A in ''a.pas'';'#10'end.'));
+  Assert.AreEqual(2, Integer(Length(Entries)));
+  Assert.IsTrue(Entries[0].Kind = TUsesListKind.RequiredPackage);
+  Assert.IsTrue(Entries[1].Kind = TUsesListKind.ContainedUnit);
   Edit := TUsesUnitNotFoundRule.DiffEdit('a'#10'xyz'#10'b', 'a'#10'xQyz'#10'b');
   Assert.AreEqual(1, Edit.Range.StartPos.Line);
   Assert.AreEqual(1, Edit.Range.StartPos.Character);
