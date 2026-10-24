@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2459] of string = (
+  Lines: array[0..2547] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1371,6 +1371,124 @@ const
       'ird mit umgedreht. Aus: Formulare bleiben, die Vorschau warnt.",',
     '          "x-issue": "#715"',
     '        },',
+    '        "ifCase": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen „In case umwandeln“ auf einer if-Kette, die denselben ordinalen Ausdruck ohne Seiteneffekte mit Konstanten vergleicht (X = a, X in [a, b..c], (X >= a) and (X <=' +
+      ' b), mit or verknüpft), und „In if-Kette umwandeln“ auf einem case. Kommentare in den Zweigen bleiben, begin … end nur bei mehreren Anweisungen. Der Hinweis auf lange umwandelbare if-Ketten ist die Re' +
+      'gel prefer-case.",',
+    '          "x-issue": "#646"',
+    '        },',
+    '        "conditions": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen zum Umformen von Bedingungen: „Bedingung umkehren“ (then und else tauschen, Bedingung lesbar verneint: Vergleiche drehen, De Morgan in gleicher Reihenfolge), „F' +
+      'rühen Ausstieg einführen“ (if ohne else am Ende einer Routine bzw. Schleife wird if … then Exit bzw. Continue), „Verschachtelte if zusammenfassen“ (if A then if B → if A and B) und „Doppelte Verneinun' +
+      'g entfernen“. Klammern nur, wo der Vorrang sie verlangt; Kommentare in den Zweigen bleiben.",',
+    '          "x-issue": "#656"',
+    '        },',
+    '        "conditionalExpression": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen zwischen if-Anweisung und Bedingungsausdruck (Delphi 13: X := if C then A else B): „In bedingten Ausdruck umwandeln“ auf einem if mit else, dessen Zweige an das' +
+      'selbe Ziel zuweisen, Exit aufrufen oder denselben Aufruf mit genau einem anderen Argument ohne Seiteneffekte machen (bis zu zwei Bedingungen, verträgliche Typen), „In if-Anweisung umwandeln“ als Rückw' +
+      'eg und „IfThen durch bedingten Ausdruck ersetzen“ (IfThen wertet beide Zweige aus). Muss das Projekt mit Delphi 12 oder älter übersetzen, gibt es nur den Rückweg; vorhandene Bedingungsausdrücke meldet' +
+      ' dann die Regel conditional-expression-version.",',
+    '          "x-issue": "#684"',
+    '        },',
+    '        "nestedRoutine": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen zwischen lokaler Routine und Methode: „In private Methode umwandeln“ bzw. „Aus Routine herauslösen“ auf dem Kopf einer lokalen Routine (genutzte Variablen und P' +
+      'arameter der äußeren Routine werden Parameter, var beim Schreiben, const bei Strings, Records und Interfaces; Konstanten wandern mit), „Als lokale Routine einbetten“ bzw. „In lokale Routine umwandeln“' +
+      ' auf einer privaten, nicht virtuellen Methode bzw. einer freien Routine der Implementierung mit genau einem Aufruf, wahlweise ohne durchgereichte Parameter. Jede Aktion zeigt vorher die neue Signatur ' +
+      'und die Zahl der geänderten Aufrufe. Liegt die lokale Routine in einer anderen, gibt es statt der Aktion einen Hinweis.",',
+    '          "x-issue": "#663"',
+    '        },',
+    '        "promoteVariable": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen zwischen lokaler Variable und Feld: „In Feld umwandeln“ auf einer lokalen Variablen oder Inline-Variablen einer Methode (Vorschlag F + Name ohne L-Präfix, änder' +
+      'bar; das Feld steht hinter dem letzten Feld des private-Abschnitts, eine Initialisierung bleibt als Zuweisung, der Typ einer Inline-Variablen ohne Angabe wird abgeleitet; Warnung, wenn das Objekt in d' +
+      'er Methode erzeugt und freigegeben wird) und „In lokale Variable umwandeln“ auf einem privaten Feld, das nur eine Methode benutzt und dort auf jedem Weg zuerst schreibt (nicht bei Property, published,' +
+      ' Formularfeld). Vorher eine Vorschau, ein Rückgängig-Schritt.",',
+    '          "x-issue": "#668"',
+    '        },',
+    '        "anonymousMethod": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen zwischen anonymer Methode und Methode: „In Methode umwandeln“ auf dem Kopf einer anonymen Methode (private Methode der Klasse, in freien Routinen eine Routine d' +
+      'er Unit; Name aus dem Zusammenhang wie HandleClick oder CompareByName, änderbar). Ohne erfasste Variablen steht an der Stelle der Methodenname; erfasste Variablen werden Parameter (var, wenn geschrieb' +
+      'en), und eine kurze anonyme Weiterleitung ruft die Methode mit ihnen auf. „Als anonyme Methode einbetten“ auf einer privaten Methode, die genau einmal als Wert an ein reference to übergeben und nie au' +
+      'fgerufen wird (nicht für Ereignisse der Formulardatei). Vorher eine Vorschau, ein Rückgängig-Schritt.",',
+    '          "x-issue": "#680"',
+    '        },',
+    '        "anonymousMethodDeferredCapture": {',
+    '          "type": "string",',
+    '          "enum": ["forward", "fields"],',
+    '          "default": "forward",',
+    '          "description": "Wenn eine anonyme Methode mit erfassten Variablen später läuft (TThread.Queue, TTask.Run, Ereignis): forward lässt eine kurze anonyme Weiterleitung stehen, die die Variablen ' +
+      'weiter festhält (Verhalten bleibt gleich); fields kopiert die Werte vor der Anweisung in Felder und setzt den Methodennamen ein (spätere Änderungen sieht die Methode nicht; nur in Methoden ohne geschr' +
+      'iebene Variablen).",',
+    '          "x-control": "Auswahl",',
+    '          "x-issue": "#680"',
+    '        },',
+    '        "methodKind": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Methoden ohne Self erkennen (kein Feld, keine Property, keine Instanzmethode, kein Self, auch nicht implizit; nicht virtual/override, nicht als Ereignis in der Formulardatei,' +
+      ' nicht als Methodenzeiger, nicht Teil eines Interfaces) und umwandeln: „In class-Methode umwandeln“ (wahlweise auch die Aufrufe über Instanzen auf TKlasse.X), „In freie Routine umwandeln“ (Aufrufe ver' +
+      'lieren den Objektbezug, uses in anderen Units) und „In Record-Helper verschieben“ (erster Parameter eines einfachen Typs wird Self, Aufrufe S.X; Warnung, wenn schon ein Helper für den Typ sichtbar ist' +
+      '). Vorher eine Vorschau mit allen geänderten Aufrufen, ein Rückgängig-Schritt je Datei. Die Hinweis-Diagnose dazu ist die Regel method-without-self.",',
+    '          "x-issue": "#686"',
+    '        },',
+    '        "methodKindMarker": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Marke „ohne Self“ am Kopf solcher Methoden; aus = die Aktionen nur über Strg+.",',
+    '          "x-issue": "#686"',
+    '        },',
+    '        "methodKindStatic": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "„In class-Methode umwandeln“ setzt static (ohne verstecktes Self der Klasse); bei Records immer.",',
+    '          "x-issue": "#686"',
+    '        },',
+    '        "typeAlias": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen „Typ-Alias einführen“ auf einem Typausdruck (generischer Typ mit Argumenten, Array, Menge, Methodenreferenz, prozeduraler Typ): schreibt X = Ausdruck in den typ' +
+      'e-Abschnitt vor der ersten Verwendung (bei Bedarf mit Vorwärtsdeklaration der eigenen Klasse, im Projekt in den interface-Teil) und ersetzt die Stelle, alle gleichen Ausdrücke der Unit oder des Projek' +
+      'ts; gleich heißt gleiche aufgelöste Typen. Offene generische Parameter (TList<T> in TBox<T>) ergeben keinen Alias, die Aktion nennt den Grund. Dazu „Alias auflösen“ auf dem Namen eines Alias X = Y: er' +
+      'setzt die Verwendungen durch Y (Arrays, Mengen und prozedurale Typen nur dort, wo Delphi einen Typausdruck annimmt) und entfernt den Alias, wenn keine Verwendung bleibt; X = type Y bleibt. Vorher eine' +
+      ' Vorschau mit allen Stellen, ein Rückgängig-Schritt je Datei.",',
+    '          "x-issue": "#681"',
+    '        },',
+    '        "typeAliasScope": {',
+    '          "type": "string",',
+    '          "enum": ["here", "unit", "project"],',
+    '          "default": "unit",',
+    '          "description": "Reichweite der ersten Aktion „Typ-Alias einführen“: here ersetzt nur die Stelle, unit alle gleichen Ausdrücke der Unit, project auch die Units, die die Unit einbinden. Die an' +
+      'deren beiden Reichweiten stehen als eigene Aktionen daneben.",',
+    '          "x-control": "Auswahl",',
+    '          "x-issue": "#681"',
+    '        },',
+    '        "enumTables": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen für Tabellen über Aufzählungen (array[TTyp] of …): „Namenstabelle anlegen“ auf einem Aufzählungstyp ohne feste Werte schreibt hinter den Typ (oder in den implem' +
+      'entation-Teil) const CTypNames: array[TTyp] of string mit Texten aus den Elementnamen (gemeinsames Kleinbuchstaben-Präfix weg, CamelCase getrennt: osPaymentDue → ''Payment due''); der Name ist änderba' +
+      'r. An einer Tabelle, deren Einträge nicht mehr zum Typ passen, „Fehlenden Eintrag ergänzen“ bzw. „Überzähligen Eintrag entfernen“ an der richtigen Stelle (erkannt an Texten, Bezeichnern und Kommentare' +
+      'n wie {osPaid}; sonst geschätzt und so benannt). „Tabellen von TTyp nachziehen“ ändert alle Tabellen über den Typ im Projekt und ergänzt fehlende Zweige in case-Anweisungen ohne else, mit Vorschau.",',
+    '          "x-issue": "#667"',
+    '        },',
+    '        "enumTablesResourceStrings": {',
+    '          "type": "boolean",',
+    '          "default": false,',
+    '          "description": "„Namenstabelle anlegen“ schreibt je Element einen resourcestring (übersetzbar) und eine Tabelle array[TTyp] of PResStringRec mit @-Verweisen; lesen mit LoadResString(CTypName' +
+      's[X]).",',
+    '          "x-issue": "#667"',
+    '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',
     '          "default": true,',
@@ -1507,7 +1625,7 @@ const
     '      "x-scope": "project",',
     '      "x-page": "Vervollständigung",',
     '      "x-control": "Kontrollkästchen",',
-    '      "x-issue": "#42, #50, #100, #188, #453, #472, #666, #682, #685, #715"',
+    '      "x-issue": "#42, #50, #100, #188, #453, #472, #646, #656, #666, #682, #684, #685, #715"',
     '    },',
     '    "usesCommand": {',
     '      "type": "boolean",',

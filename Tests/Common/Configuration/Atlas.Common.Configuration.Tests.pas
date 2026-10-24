@@ -780,6 +780,52 @@ begin
     Issues).Refactoring.InvertBooleanFallbackPrefix);
   Assert.AreEqual('Verbose=Silent', string.Join(',', Parse('{"refactoring": {"invertBooleanAntonyms": ' +
     '{"Verbose": "Silent"}}}', Issues).Refactoring.InvertBooleanAntonyms));
+  // #646: if-Kette und case.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.IfCase);
+  Assert.IsFalse(Parse('{"refactoring": {"ifCase": false}}', Issues).Refactoring.IfCase);
+  // #656: Bedingungen umformen.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.Conditions);
+  Assert.IsFalse(Parse('{"refactoring": {"conditions": false}}', Issues).Refactoring.Conditions);
+  // #684: if-Anweisung und Bedingungsausdruck.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.ConditionalExpression);
+  Assert.IsFalse(Parse('{"refactoring": {"conditionalExpression": false}}', Issues).Refactoring.ConditionalExpression);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.NestedRoutine);
+  Assert.IsFalse(Parse('{"refactoring": {"nestedRoutine": false}}', Issues).Refactoring.NestedRoutine);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.PromoteVariable);
+  Assert.IsFalse(Parse('{"refactoring": {"promoteVariable": false}}', Issues).Refactoring.PromoteVariable);
+  // #680: anonyme Methode und Methode.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.AnonymousMethod);
+  Assert.IsFalse(Parse('{"refactoring": {"anonymousMethod": false}}', Issues).Refactoring.AnonymousMethod);
+  Assert.AreEqual('forward', Parse('{}', Issues).Refactoring.AnonymousMethodDeferredCapture);
+  Assert.AreEqual('fields', Parse('{"refactoring": {"anonymousMethodDeferredCapture": "Fields"}}',
+    Issues).Refactoring.AnonymousMethodDeferredCapture);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('forward', Parse('{"refactoring": {"anonymousMethodDeferredCapture": "felder"}}',
+    Issues).Refactoring.AnonymousMethodDeferredCapture);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // #686: Methode ohne Self.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.MethodKind);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.MethodKindMarker);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.MethodKindStatic);
+  Assert.IsFalse(Parse('{"refactoring": {"methodKind": false}}', Issues).Refactoring.MethodKind);
+  Assert.IsFalse(Parse('{"refactoring": {"methodKindMarker": false}}', Issues).Refactoring.MethodKindMarker);
+  Assert.IsFalse(Parse('{"refactoring": {"methodKindStatic": false}}', Issues).Refactoring.MethodKindStatic);
+  // #681: Typ-Alias.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.TypeAlias);
+  Assert.IsFalse(Parse('{"refactoring": {"typeAlias": false}}', Issues).Refactoring.TypeAlias);
+  Assert.AreEqual('unit', Parse('{}', Issues).Refactoring.TypeAliasScope);
+  Assert.AreEqual('project', Parse('{"refactoring": {"typeAliasScope": "Project"}}', Issues).Refactoring.TypeAliasScope);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('unit', Parse('{"refactoring": {"typeAliasScope": "datei"}}', Issues).Refactoring.TypeAliasScope);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // #667: Aufzählung mit Namenstabelle.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.EnumTables);
+  Assert.IsFalse(Parse('{}', Issues).Refactoring.EnumTablesResourceStrings);
+  Assert.IsFalse(Parse('{"refactoring": {"enumTables": false}}', Issues).Refactoring.EnumTables);
+  Assert.IsTrue(Parse('{"refactoring": {"enumTablesResourceStrings": true}}',
+    Issues).Refactoring.EnumTablesResourceStrings);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{}', Issues);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"refactoring": {"propertyFromAccessorsPrefixes": "Get", "propertyFromAccessorsReplaceCalls": "ja", ' +
     '"propertyFromAccessorsSection": "private", "propertyFromAccessorsHideAccessors": "public"}}', Issues);

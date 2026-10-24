@@ -173,8 +173,8 @@ const
     'class-reference-nonvirtual-constructor,collection-modified-in-loop,commented-out-code,comparison-always-constant,comparison-as-statement,' +
     'compiler-warnings-disabled,component-create-without-override,component-default-mismatch,component-fixed-pixels,' +
     'component-hardcoded-color,component-interface-dangling,component-missing-free-notification,component-missing-inherited,' +
-    'component-palette-icon,component-setter-without-invalidate,condition-not-boolean,conditional-directive-unbalanced,confusable-identifier,constant-condition,constant-expression-error,' +
-    'constant-initializer-mismatch,constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,default-parameter-invalid,default-property-invalid,delimited-text-without-strict,deprecated-symbol,deref-before-nil-check,destroy-called-directly,destroy-without-override,destructor-not-nil-safe,' +
+    'component-palette-icon,component-setter-without-invalidate,condition-not-boolean,conditional-directive-unbalanced,conditional-expression-version,confusable-identifier,constant-condition,constant-expression-error,' +
+    'constant-initializer-mismatch,constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,debug-display-placeholder,declared-not-implemented,default-parameter-invalid,default-property-invalid,delimited-text-without-strict,deprecated-symbol,deref-before-nil-check,destroy-called-directly,destroy-without-override,destructor-not-nil-safe,' +
     'dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,' +
     'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,dictionary-get-without-check,directive-typo,dll-export-unsafe,dunitx-test-without-assert,duplicate-assignment,duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,dynamic-array-misuse,' +
     'empty-except,empty-finally,empty-routine,empty-statement,equals-without-gethashcode,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,exports-invalid,field-after-method,field-free-without-nil,field-not-freed,file-encoding-unsupported,filename-compare-case,first-char-address,float-equality,for-high-to-low,for-in-not-enumerable,for-variable-after-loop,for-variable-misuse,forbidden-uses,' +
@@ -191,26 +191,27 @@ const
     'slash-command,sql-write-without-where,string-index-base,string-length-limit,stringlist-objects-leak,stringlist-unsorted,suspicious-string-pointer-cast,synchronize-in-destructor,task-exception-unobserved,text-after-final-end,thread-free-with-free-on-terminate,thread-loop-without-terminated,thread-resume-suspend,' +
     'thread-unsafe-increment,thread-use-after-free-on-terminate,thread-vcl-access,threadvar-managed,transaction-without-rollback,type-restriction-violated,type-too-large,type-used-before-declaration,typed-constant-modified,typeinfo-invalid,' +
     'ui-call-in-console-or-service,unchecked-conversion,unchecked-enum-cast,unconditional-recursion,unit-name-conflict,unit-name-mismatch,unneeded-forward-declaration,unreachable-code,unrelated-class-cast,unresolved-attribute,unresolved-identifier,unresolved-type,unsatisfied-forward,' +
-    'untyped-pointer-refcount,unused-assignment,unused-local,unused-parameter,unused-private-member,unused-public-member,use-after-free,uses-unit-not-found,variant-record-managed-field,virtual-instead-of-override,with-statement,' +
+    'untyped-pointer-refcount,unused-assignment,unused-declaration,unused-local,unused-parameter,unused-private-member,unused-public-member,unused-unit,use-after-free,uses-cycle,uses-unit-not-found,variant-record-managed-field,virtual-instead-of-override,with-statement,' +
     'write-only-property,writeln-in-gui-app,xmldoc-mismatch';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
   // strict schaltet experimentelle Regeln ein (#146): security-path-traversal (#149), file-header und
   // hardcoded-string (#56), random-without-randomize (#153), die freiwillige Regel todo-comment (#68),
-  // die Architekturregeln des Rollenkonzepts (ohne "prefixes" stumm, Code-Review A-12).
+  // die Architekturregeln des Rollenkonzepts (ohne "prefixes" stumm, Code-Review A-12), prefer-case (#646),
+  // method-without-self (#686).
   Assert.AreEqual(Merged(All, ['architecture-contract-content', 'architecture-role-import',
     'catch-all-without-raise', 'default-parameter', 'file-header', 'forbidden-symbol', 'global-variable',
     'hardcoded-string',
     'implicit-variants-unit', 'legacy-stack-queue', 'legacy-tlist', 'line-length', 'loop-invariant-call', 'magic-number',
-    'managed-param-without-const', 'missing-begin-update', 'money-as-float', 'naming-prefix',
+    'managed-param-without-const', 'method-without-self', 'missing-begin-update', 'money-as-float', 'naming-prefix',
     'narrowing-assignment',
-    'override-case-mismatch', 'public-field', 'random-without-randomize', 'redundant-begin-end',
+    'override-case-mismatch', 'prefer-case', 'public-field', 'random-without-randomize', 'redundant-begin-end',
     'redundant-parens', 'security-path-traversal', 'sql-select-star', 'string-concat-in-loop', 'string-if-chain',
     'todo-comment']), ActiveRules('strict'));
   Assert.AreEqual('abstract-class-instantiated,abstract-declaration-invalid,anonymous-capture-invalid,anonymous-thread-not-started,argument-count-mismatch,assert-side-effect,assign-to-property-member,attribute-usage-invalid,bidi-control,calling-convention-required,captured-loop-variable,case-missing-enum-value,case-selector-not-ordinal,char-to-pchar,' +
     'class-reference-nonvirtual-constructor,collection-modified-in-loop,comparison-always-constant,comparison-as-statement,' +
     'component-create-without-override,component-default-mismatch,component-interface-dangling,component-missing-free-notification,' +
-    'component-missing-inherited,condition-not-boolean,conditional-directive-unbalanced,constant-condition,constant-expression-error,constant-initializer-mismatch,constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,default-parameter-invalid,default-property-invalid,delimited-text-without-strict,' +
+    'component-missing-inherited,condition-not-boolean,conditional-directive-unbalanced,conditional-expression-version,constant-condition,constant-expression-error,constant-initializer-mismatch,constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,debug-display-placeholder,declared-not-implemented,default-parameter-invalid,default-property-invalid,delimited-text-without-strict,' +
     'deref-before-nil-check,destroy-called-directly,destroy-without-override,destructor-not-nil-safe,dfm-circular-datasource,dfm-control-field-type-mismatch,' +
     'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,dictionary-get-without-check,directive-typo,' +
     'dll-export-unsafe,duplicate-assignment,duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,dynamic-array-misuse,empty-statement,equals-without-gethashcode,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,exports-invalid,field-after-method,field-free-without-nil,field-not-freed,file-encoding-unsupported,filename-compare-case,first-char-address,float-equality,for-high-to-low,for-in-not-enumerable,for-variable-after-loop,for-variable-misuse,' +
@@ -234,8 +235,8 @@ begin
     'metric-boolean-operands,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-exit-points,metric-inheritance-depth,metric-local-count,metric-method-length,' +
     'metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-begin-end,now-for-elapsed-time,null-compare,override-only-inherited,processmessages-in-loop,redundant-assigned-free,redundant-cast,redundant-jump,' +
     'reraise-exception-object,setlength-in-loop,shadowed-name,slash-command,task-exception-unobserved,text-after-final-end,thread-resume-suspend,unneeded-forward-declaration,' +
-    'unused-assignment,unused-local,' +
-    'unused-parameter,unused-private-member,unused-public-member,with-statement,write-only-property,xmldoc-mismatch',
+    'unused-assignment,unused-declaration,unused-local,' +
+    'unused-parameter,unused-private-member,unused-public-member,unused-unit,uses-cycle,with-statement,write-only-property,xmldoc-mismatch',
     ActiveRules('style'));
 end;
 

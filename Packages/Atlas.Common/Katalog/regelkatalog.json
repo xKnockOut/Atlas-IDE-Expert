@@ -846,6 +846,20 @@
       ]
     },
     {
+      "id": "conditional-expression-version",
+      "name": "Conditional expression before Delphi 13",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "The conditional expression X := if C then A else B exists only from Delphi 13 on; a project that must still compile with Delphi 12 or older fails here (like E2029). Reported is the outermost expression, not inside {$IF} branches that test CompilerVersion, RTLVersion, VERnnn or Declared. Silent without a known Delphi version. Quick fix (also for the whole unit): convert to an if statement, the statement repeated per branch; not offered when the rest of the statement has side effects.",
+      "bad": "Caption := if Done then 'Ready' else 'Busy';",
+      "good": "if Done then\n  Caption := 'Ready'\nelse\n  Caption := 'Busy';",
+      "level": "A",
+      "compilerCodes": [
+        "E2029"
+      ]
+    },
+    {
       "id": "exception-not-raised",
       "name": "Exception created but not raised",
       "category": "bug",
@@ -3427,7 +3441,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "A typed constant or initialized variable of a static array type has more or fewer elements than its index range (like E2072), typically after adding a value to an enumeration (array[TStatus] of string); checked per dimension and for named array types of the file. Record constants whose fields are in a different order than declared are reported as well (like E2083). Index ranges: subranges with constant bounds, enumerations without own values, Boolean, Byte, Char and so on. Declarations with conditional directives count as unsure. Quick fixes: add the missing entries with a placeholder (name of the enumeration value as a comment), put the fields in the order of the declaration.",
+      "description": "A typed constant or initialized variable of a static array type has more or fewer elements than its index range (like E2072), typically after adding a value to an enumeration (array[TStatus] of string); checked per dimension and for named array types of the file. Record constants whose fields are in a different order than declared are reported as well (like E2083). Index ranges: subranges with constant bounds, enumerations without own values, Boolean, Byte, Char and so on. Declarations with conditional directives count as unsure. Quick fixes: over an enumeration, add missing or remove surplus entries at their position (recognized by texts, identifiers and comments naming the value; otherwise appended and labelled as estimated), new strings get the text of the value name, other types a default value with a {TODO value} comment (#667); over other ranges, add the missing entries with a placeholder; put the fields in the order of the declaration.",
       "bad": "StatusText: array[TStatus] of string = ('Neu', 'Offen', 'Geschlossen');  // TStatus has 4 values",
       "good": "StatusText: array[TStatus] of string = ('Neu', 'Offen', 'Geschlossen', ''{stArchiviert});",
       "compilerCodes": [
@@ -3951,6 +3965,24 @@
           "type": "integer",
           "default": 4,
           "description": "Number of comparisons of the same string from which the rule reports; at least 2."
+        }
+      ]
+    },
+    {
+      "id": "prefer-case",
+      "name": "if chain can be written as case",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "An if … else if chain with at least min branches (the final else counts) that compares the same ordinal expression (integer, character, enumeration; no side effects, no function call) with constants: X = a, a = X, X in [a, b..c], (X >= a) and (X <= b), also combined with or. Labels must be literals, constant expressions, untyped constants or enumeration values, without duplicates or overlaps. The type comes from name resolution; chains with unknown types and chains with directives stay silent. Off by default, high confidence. Quick fix: the code action In case umwandeln (#646, refactoring.ifCase); begin … end only where a branch has several statements, comments in the branches stay.",
+      "bad": "if Kind = 1 then Neu\nelse if (Kind = 2) or (Kind = 3) then Oeffnen\nelse if (Kind >= 4) and (Kind <= 6) then Speichern\nelse Beenden;",
+      "good": "case Kind of\n  1: Neu;\n  2, 3: Oeffnen;\n  4..6: Speichern;\nelse\n  Beenden;\nend;",
+      "options": [
+        {
+          "name": "min",
+          "type": "integer",
+          "default": 4,
+          "description": "Number of branches (the final else included) from which the rule reports; at least 2."
         }
       ]
     },
@@ -4524,6 +4556,16 @@
         "E2035"
       ],
       "level": "T"
+    },
+    {
+      "id": "method-without-self",
+      "name": "Method does not need Self",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "A method of a class or record uses neither Self nor instance members (fields, properties, instance methods, inherited). It is not virtual, not an event of the form file, does not implement an interface and is not used as a method pointer. Experimental: only active when switched on in atlas.json; silent with refactoring.methodKind off. Quick fix: turn into a class method (class … static with refactoring.methodKindStatic); the code actions also offer calls via the class, a free routine and a record helper for the type of the first parameter, each with a preview of all changed calls.",
+      "bad": "function TRechner.Doppelt(A: Integer): Integer;\nbegin\n  Result := A * 2;  // no field, no Self\nend;",
+      "good": "class function TRechner.Doppelt(A: Integer): Integer; static;\nbegin\n  Result := A * 2;\nend;"
     }
   ]
 }

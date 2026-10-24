@@ -256,6 +256,9 @@ begin
     Exit;
   for Feature in TLanguageFeatures.Check(ATree, ALanguageLevel, AInactive) do
   begin
+    // Bedingungsausdrücke meldet die Regel conditional-expression-version (#684) als Fehler mit Korrektur.
+    if Feature.Feature = TLanguageFeature.IfExpression then
+      Continue;
     Finding := Default(TRuleFinding);
     Finding.RuleId := LanguageFeatureRuleId;
     Finding.Range := TTextRange.Create(Feature.StartPos, Feature.EndPos);

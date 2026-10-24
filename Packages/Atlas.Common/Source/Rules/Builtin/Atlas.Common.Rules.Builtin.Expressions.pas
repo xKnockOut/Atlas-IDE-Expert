@@ -29,6 +29,12 @@
 //                         und + - * / hindurch, nicht in Aufrufen (Round(A div B)). Ziel mit in der Datei deklariertem
 //                         Gleitkommatyp; TDateTime bleibt stumm (ganze Tage sind dort meist gewollt), ebenso with
 //                         und Trunc(A) div Trunc(B) (ausdrücklich gewandelt, also gewollt ganzzahlig).
+//   conditional-expression-version
+//                         Bedingungsausdruck X := if C then A else B in einem Projekt, das mit Delphi 12 oder älter
+//                         übersetzen muss (#684, Gruppe Compiler, wie E2029): gemeldet wird der äußerste Ausdruck,
+//                         nicht in Zweigen von {$IF}, die nach CompilerVersion, RTLVersion, VERnnn oder Declared
+//                         fragen. Korrektur „In if-Anweisung umwandeln“ (TConditionalExpression), auch als
+//                         Sammelkorrektur. Ohne bekannte Version still.
 
 interface
 
@@ -43,6 +49,7 @@ const
   NullCompareRuleId = 'null-compare';
   PosArgumentsSwappedRuleId = 'pos-arguments-swapped';
   IntegerDivisionToFloatRuleId = 'integer-division-to-float';
+  ConditionalExpressionVersionRuleId = 'conditional-expression-version';
 
 type
   TOperatorPrecedenceRule = class(TInterfacedObject, IRule)
@@ -90,6 +97,14 @@ type
     class function IsFractional(const AType: string): Boolean; static;
   end;
 
+  TConditionalExpressionVersionRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Fragt die Direktive ADirective (Text samt Klammern) nach der Compilerversion?</summary>
+    class function IsVersionDirective(const ADirective: string): Boolean; static;
+  end;
+
 procedure RegisterExpressionRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -104,7 +119,13 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Pascal.PureRoutines;
+  Atlas.Common.Pascal.PureRoutines,
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.LanguageFeatures,
+  Atlas.Common.Editing.StatementText,
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Editing.ConditionalExpression,
+  Atlas.Text.Lines;
 
 type
   TTokens = TArray<TPascalToken>;
@@ -1551,6 +1572,136 @@ begin
   end;
 end;
 
+{ TConditionalExpressionVersionRule }
+
+type
+  TOffsetRange = record
+    Start: Integer;
+    Stop: Integer;
+  end;
+
+  TVersionBlock = record
+    Start: Integer;
+    Version: Boolean;
+  end;
+
+function TConditionalExpressionVersionRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(ConditionalExpressionVersionRuleId, TRuleSeverity.Error,
+    'Bedingungsausdruck vor Delphi 13');
+end;
+
+class function TConditionalExpressionVersionRule.IsVersionDirective(const ADirective: string): Boolean;
+var
+  Text: string;
+  Index: Integer;
+begin
+  Text := UpperCase(ADirective);
+  Result := ContainsStr(Text, 'COMPILERVERSION') or ContainsStr(Text, 'RTLVERSION') or
+    ContainsStr(Text, 'DECLARED');
+  // VER370, VER360 …
+  Index := Pos('VER', Text);
+  while not Result and (Index > 0) do
+  begin
+    Result := (Index + 3 <= Length(Text)) and CharInSet(Text[Index + 3], ['0'..'9']) and
+      ((Index = 1) or not CharInSet(Text[Index - 1], ['A'..'Z', '0'..'9', '_']));
+    Index := PosEx('VER', Text, Index + 3);
+  end;
+end;
+
+/// <summary>Offsetbereiche der {$IF…}-Blöcke (alle Zweige), die nach der Compilerversion fragen.</summary>
+function VersionBlocks(const ATokens: TArray<TPascalToken>): TArray<TOffsetRange>;
+var
+  Stack: TArray<TVersionBlock>;
+  Block: TVersionBlock;
+  Range: TOffsetRange;
+  Token: TPascalToken;
+  Name: string;
+begin
+  Result := nil;
+  Stack := nil;
+  for Token in ATokens do
+  begin
+    if Token.Kind <> TPascalTokenKind.Directive then
+      Continue;
+    Name := TPascalLexer.DirectiveName(Token.Text);
+    if (Name = 'IF') or (Name = 'IFDEF') or (Name = 'IFNDEF') or (Name = 'IFOPT') then
+    begin
+      Block.Start := Token.Offset;
+      Block.Version := TConditionalExpressionVersionRule.IsVersionDirective(Token.Text);
+      Stack := Stack + [Block];
+    end
+    else if (Name = 'ELSEIF') and (Stack <> nil) and not Stack[High(Stack)].Version and
+      TConditionalExpressionVersionRule.IsVersionDirective(Token.Text) then
+    begin
+      Stack[High(Stack)].Version := True;
+      Stack[High(Stack)].Start := Token.Offset;
+    end
+    else if ((Name = 'ENDIF') or (Name = 'IFEND')) and (Stack <> nil) then
+    begin
+      if Stack[High(Stack)].Version then
+      begin
+        Range.Start := Stack[High(Stack)].Start;
+        Range.Stop := Token.Offset + Length(Token.Text);
+        Result := Result + [Range];
+      end;
+      SetLength(Stack, Length(Stack) - 1);
+    end;
+  end;
+end;
+
+procedure TConditionalExpressionVersionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Blocks: TArray<TOffsetRange>;
+  Found: TArray<TSyntaxNode>;
+  Node: TSyntaxNode;
+  Layout: TStatementLayout;
+  Rewrite: TStatementRewrite;
+  Fixes: TArray<TRuleFix>;
+  Message: string;
+
+  function Guarded(AOffset: Integer): Boolean;
+  var
+    Range: TOffsetRange;
+  begin
+    Result := False;
+    for Range in Blocks do
+      if (AOffset >= Range.Start) and (AOffset < Range.Stop) then
+        Exit(True);
+  end;
+
+begin
+  // Ohne bekannte Version (IsAvailable liefert dann True) oder ab Delphi 13 still.
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or
+    TLanguageFeatures.IsAvailable(TLanguageFeature.IfExpression, AContext.DelphiVersion) then
+    Exit;
+  Found := nil;
+  AContext.Tree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      Result := True;
+      if (ANode.Kind = TSyntaxKind.IfExpr) and (TConditionalExpression.Outermost(ANode) = ANode) then
+        Found := Found + [ANode];
+    end);
+  if Found = nil then
+    Exit;
+  Blocks := VersionBlocks(AContext.Tree.Tokens);
+  Layout := TStatementLayout.Create('', TRoutineBody.IndentUnit(AContext.Formatting),
+    TTextLines.LineBreakOf(AContext.Text));
+  Message := Format('Bedingungsausdrücke gibt es erst ab %s (eingestellt: %s)',
+    [TLanguageFeatures.ProductName(TLanguageFeatures.MinimumVersion(TLanguageFeature.IfExpression)),
+    TLanguageFeatures.ProductName(AContext.DelphiVersion)]);
+  for Node in Found do
+  begin
+    if Guarded(Node.StartOffset) then
+      Continue;
+    Fixes := nil;
+    if TConditionalExpression.ToStatement(AContext.Text, AContext.Tree, Node, Layout, Rewrite) then
+      Fixes := [TRuleFix.Create(Rewrite.Title, [TRuleEdit.Create(Rewrite.Edit.Range, Rewrite.Edit.NewText)])];
+    AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), Message, TRuleConfidence.High, Fixes);
+  end;
+end;
+
 procedure RegisterExpressionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TOperatorPrecedenceRule.Create);
@@ -1559,6 +1710,7 @@ begin
   ARegistry.Register(TNullCompareRule.Create);
   ARegistry.Register(TPosArgumentsSwappedRule.Create);
   ARegistry.Register(TIntegerDivisionToFloatRule.Create);
+  ARegistry.Register(TConditionalExpressionVersionRule.Create);
 end;
 
 end.

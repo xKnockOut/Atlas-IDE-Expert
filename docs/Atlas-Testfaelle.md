@@ -2808,6 +2808,134 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 | EX13 | Cursor auf das Wort `with`, Strg+Leertaste | Erster Eintrag „with auflösen“; Enter löst wie EX10 auf |
 | EX14 | `refactoring.extract`, `refactoring.completeCase` bzw. `refactoring.resolveWith` aus | Die jeweiligen Aktionen (und der Eintrag aus EX13) fehlen |
 
+## if-Kette und case (#646)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IFC1 | `if Kind = 1 then Neu else if (Kind = 2) or (Kind = 3) then Oeffnen else if (Kind >= 4) and (Kind <= 6) then Speichern else Beenden;` (Kind: Integer), Cursor auf dem ersten `if`, Alt+Enter | „In case umwandeln“ ergibt `case Kind of 1: Neu; 2, 3: Oeffnen; 4..6: Speichern; else Beenden; end;`, eingerückt wie die Umgebung (`format.indent`) |
+| IFC2 | Dasselbe mit `Kind in [7, 9..11]` und mit Aufzählungswerten (`Align = alLeft`) bzw. Zeichen (`C = 'a'`) | Marken `7, 9..11` bzw. `alLeft` bzw. `'a'` |
+| IFC3 | Ein Zweig mit zwei Anweisungen in begin … end, ein Zweig mit Kommentar davor und dahinter | Nur dieser Zweig bekommt begin … end; beide Kommentare stehen danach im case, nichts geht verloren |
+| IFC4 | Kette mit `Kind = 2` doppelt, mit überlappendem Bereich, mit `GetKind() = 1`, mit String-Vergleich, mit unbekanntem Typ | Aktion fehlt |
+| IFC5 | Kette mit `{$IFDEF}` zwischen den Zweigen bzw. mit einem Kommentar zwischen `else` und `if` | Aktion fehlt (Kommentar ginge sonst verloren) |
+| IFC6 | `case Kind of 1: Neu; 2, 3: Oeffnen; 4..6: Speichern; else Beenden; end;`, Cursor auf `case`, „In if-Kette umwandeln“ | `if Kind in [2, 3] then …` bzw. für Kind: Integer `Kind in [2, 3]` (0..255) und `(Kind >= 4) and (Kind <= 6)`; else-Zweig als letztes else; Bei Zeichen-Selektor eine or-Kette statt Menge (keine W1050) |
+| IFC7 | case mit leerem Zweig `5: ;` bzw. mit verschachteltem if ohne else | Leerer Zweig wird `begin end`, das innere if bekommt begin … end, damit else nicht an ihm hängt |
+| IFC8 | `refactoring.ifCase` aus | Beide Aktionen fehlen |
+| IFC9 | Regel `prefer-case` in atlas.json einschalten (`"prefer-case": {"severity": "hint"}`), Kette mit 4 Zweigen und mit 3 Zweigen; dann `"min": 3` | Hinweis „4 Zweige vergleichen denselben Ausdruck …“ nur bei der langen Kette, mit `min` 3 auch bei der kürzeren; Schnellkorrektur wie IFC1 |
+
+## Bedingungen umformen (#656)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BU1 | `if (I = 1) or Ready then A else begin B; C; end;`, Cursor auf `if`, Alt+Enter, „Bedingung umkehren“ | `if (I <> 1) and not Ready then begin B; C; end else A;`, eingerückt wie die Umgebung, ein Rückgängig-Schritt |
+| BU2 | Dasselbe mit `Assigned(P) and (P.Count > 0)`, mit `I in [1, 2]` und mit `not Ready` | `not Assigned(P) or (P.Count <= 0)` (Reihenfolge bleibt), `not (I in [1, 2])`, `Ready`; nie `not A = B` |
+| BU3 | `if A then X else if B then Y else Z;`, auf dem ersten `if` | Das innere if steht in begin … end vor dem neuen else; auf dem zweiten `if` wird nur dieses Glied umgekehrt |
+| BU4 | Letzte Anweisung einer Methode `if Assigned(P) then begin … end;`, „Frühen Ausstieg einführen (Exit)“ | `if not Assigned(P) then Exit;`, der Rumpf rückt eine Ebene aus, begin … end entfällt, Kommentare bleiben bei ihrer Anweisung |
+| BU5 | Dasselbe als letzte Anweisung in while/for/repeat, auch `for … do if A then begin … end;` | `if … then Continue;`; bei for ohne begin … end bekommt der Rumpf einen |
+| BU6 | if mit nachfolgender Anweisung, mit else, mit `var X := …` im Zweig oder im Hauptprogramm | „Frühen Ausstieg einführen“ fehlt; mit else gibt es nur „Bedingung umkehren“ |
+| BU7 | `if A or B then if C then X;`, auf dem äußeren oder inneren `if`, „Verschachtelte if zusammenfassen“ | `if (A or B) and C then X;`; mit else am inneren if oder einer zweiten Anweisung fehlt die Aktion |
+| BU8 | Cursor auf `not` in `if not not Ready then`, `X and not (A <> B)`, `not True`; dann `refactoring.conditions` aus | „Doppelte Verneinung entfernen“ ergibt `Ready`, `X and (A = B)`, `False`; ausgeschaltet fehlen alle vier Aktionen |
+
+## if-Anweisung und Bedingungsausdruck (#684)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BA1 | Projekt für Delphi 13: `if Fertig then Caption := 'Bereit' else Caption := 'Läuft';`, Cursor auf `if`, Alt+Enter, „In bedingten Ausdruck umwandeln“ | `Caption := if Fertig then 'Bereit' else 'Läuft';`, ein Rückgängig-Schritt |
+| BA2 | Dasselbe mit `Exit(1)`/`Exit(2)`, mit `Log(I, 'a')`/`Log(I, 'b')` und mit `if A then X := 1 else if B then X := 2 else X := 3;` | `Exit(if … then 1 else 2);`, `Log(I, if … then 'a' else 'b');`, `X := if A then 1 else if B then 2 else 3;`; ab drei Bedingungen fehlt die Aktion |
+| BA3 | Zweige mit `'a'` und `1`, mit zwei verschiedenen Klassen, mit `Log(F(1))`/`Log(G(2))`, ohne else, mit Kommentar im Zweig | Keine Aktion |
+| BA4 | Cursor in `X := (if A then I + 1 else 2) * 3;`, „In if-Anweisung umwandeln“ | `if A then X := (I + 1) * 3 else X := 2 * 3;`, mehrzeilig eingerückt wie die Umgebung |
+| BA5 | Dasselbe für `X := if A then (if B then 1 else 2) else 3;` und `var Y: Integer := if A then 1 else 2;` | Inneres if in begin … end vor dem else; `var Y: Integer;` und danach die if-Anweisung; ohne Typ (`var Y := …`) keine Aktion |
+| BA6 | `X := IfThen(A, 1, 2) + 1;` mit `System.Math` in uses, Cursor auf `IfThen`, „IfThen durch bedingten Ausdruck ersetzen“ | `X := (if A then 1 else 2) + 1;`; ein eigenes `IfThen` der Unit bekommt keine Aktion |
+| BA7 | Projekt für Delphi 12 (`delphiVersion` 23.0) mit zwei Bedingungsausdrücken | Je ein Fehler `conditional-expression-version` (wie E2029), Korrektur „In if-Anweisung umwandeln“, „Alle korrigieren“ wandelt beide um; „In bedingten Ausdruck umwandeln“ und IfThen-Ersetzung fehlen, keine zweite Warnung zum Sprachmerkmal |
+| BA8 | Bedingungsausdruck in `{$IF CompilerVersion >= 37} … {$ENDIF}`, dann `refactoring.conditionalExpression` aus | Kein Fehler im versionsabhängigen Zweig; ausgeschaltet fehlen alle drei Aktionen |
+
+## Lokale Routine und Methode (#663)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LRM1 | In `procedure TForm1.Rechne;` eine lokale `procedure Addiere(N: Integer);`, die `Summe := Summe + N + FZaehler;` und `Text := Name;` schreibt (Summe, Text lokal, Name Parameter `const`); Cursor auf den Kopf von `Addiere`, Alt+Enter, „In private Methode umwandeln“ | Vorschau mit „Neue Signatur: procedure TForm1.Addiere(N: Integer; var Summe: Integer; var Text: string; const Name: string);“ und der Zahl der Aufrufe; nach „Übernehmen“ steht die Methode hinter `TForm1.Rechne`, die Deklaration im private-Abschnitt, die Aufrufe bekommen die Argumente, `FZaehler` wird kein Parameter; ein Rückgängig-Schritt |
+| LRM2 | Dasselbe in einer freien Routine mit lokaler Konstante `Grenze = 10;`, die die lokale Routine nutzt, „Aus Routine herauslösen“ | Routine steht vor der äußeren, mit eigenem `const Grenze = 10;`; Record-Variable (`TPoint`) als `const`-Parameter |
+| LRM3 | Lokale Routine ruft sich selbst auf; der Name ist in der Klasse schon vergeben | Rekursiver Aufruf bekommt die Argumente; neuer Name mit Nummer (`Zeige2`) |
+| LRM4 | Lokale Routine in einer lokalen Routine, Cursor auf den inneren Kopf, Alt+Enter | Am Ende der Liste ein Hinweis „Aus Routine herauslösen“; Wählen meldet „geht hier nicht: … erst diese umwandeln“ |
+| LRM5 | Lokale Routine, die `Result` der äußeren Funktion setzt, eine andere lokale Routine aufruft, einen lokalen Typ nutzt, `with` enthält oder als `@Routine` benutzt wird | Keine Aktion |
+| LRM6 | Private Methode `Hilfe(Wert: Integer)` mit genau einem Aufruf `Self.Hilfe(I)` in `TForm1.Rechne`, Cursor auf ihren Kopf (Klasse oder Implementierung), „Als lokale Routine einbetten“ | Vorschau „Neue lokale Routine in TForm1.Rechne: …“; danach lokale Routine vor dem `begin` von `Rechne`, Deklaration aus der Klasse entfernt, Aufruf `Hilfe(I)` |
+| LRM7 | Dieselbe Methode `virtual`, `override`, öffentlich, mit zwei Aufrufern, ohne Aufruf, als `Button1.OnClick := Hilfe` oder über ein anderes Objekt benutzt; Aufrufer hat eine Variable mit einem Namen, den der Rumpf meint | Keine Aktion |
+| LRM8 | Freie Routine `Zeige(const Name: string; Anzahl: Integer)` der Implementierung, einziger Aufruf `Zeige(Name, Zahl)` mit Parameter `Name` und Variable `Zahl: Integer` des Aufrufers, „In lokale Routine umwandeln (durchgereichte Parameter entfernen)“ | Lokale Routine ohne Parameter, der Rumpf nutzt `Name` und `Zahl`; ein geschriebener Wertparameter bleibt; steht die Routine im interface, keine Aktion |
+| LRM9 | `refactoring.nestedRoutine` aus | Keine der vier Aktionen |
+
+## Lokale Variable und Feld (#668)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LVF1 | In `procedure TForm1.Rechne;` mit `var LZeile: Integer;` Cursor auf `LZeile`, Alt+Enter, „In Feld umwandeln (LZeile → FZeile)“ | Namensabfrage mit `FZeile`; nach Bestätigung Vorschau, dann `FZeile: Integer;` hinter dem letzten Feld im private-Abschnitt, alle Verwendungen umbenannt, der var-Eintrag weg (bei einzigem Eintrag auch `var`); ein Rückgängig-Schritt |
+| LVF2 | Dasselbe für `var LSumme: Integer := 0;` und `var LNeu := TStringList.Create;` (mit `LNeu.Free` am Ende) | `FSumme := 0;` bleibt als Zuweisung; `FNeu: TStringList;` mit abgeleitetem Typ, die Vorschau warnt zur Lebensdauer |
+| LVF3 | Namen in der Abfrage auf ein vorhandenes Feld, ein geerbtes Mitglied (`Caption`), `begin` oder einen Namen ändern, den eine andere Methode der Klasse anders meint | Meldung „Umwandeln fehlgeschlagen: …“ mit dem Grund, nichts geändert |
+| LVF4 | Klasse ohne private-Abschnitt; Record mit Methode | Neuer `private`-Abschnitt vor `end` bzw. Feld im Record |
+| LVF5 | Privates `FTemp: Integer;`, das nur `TForm1.Rechne` benutzt und dort zuerst schreibt (auch als `Self.FTemp`), Cursor auf das Feld oder eine Verwendung, „In lokale Variable umwandeln (FTemp → LTemp)“ | `LTemp: Integer;` im var-Abschnitt von `Rechne`, Verwendungen ohne `Self.`, das Feld weg (ein leerer private-Abschnitt auch) |
+| LVF6 | Feld in zwei Methoden, zuerst gelesen (`Inc(FTemp)`), nur in einem Zweig geschrieben, hinter einer Property, published, als Komponente in der .dfm, in einer lokalen Routine oder in einer rekursiven Methode | Keine Aktion |
+| LVF7 | `refactoring.promoteVariable` aus | Keine der beiden Aktionen; „Boolean umkehren“ fragt weiter den Namen und zeigt die Vorschau wie vorher |
+
+## Anonyme Methode und Methode (#680)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AMU1 | In `procedure TForm1.FormCreate(Sender: TObject);` steht `Button1.OnClick := procedure(Sender: TObject) begin Caption := 'x'; end;` (in einem Projekt, das das übersetzt); Cursor auf `procedure`, Alt+Enter, „In Methode umwandeln (HandleClick)“ | Namensabfrage mit `HandleClick`; Vorschau „Erfasst keine Variablen …“; danach `Button1.OnClick := HandleClick;`, `procedure HandleClick(Sender: TObject);` im private-Abschnitt, Rumpf hinter `FormCreate`; ein Rückgängig-Schritt |
+| AMU2 | `LSum` und `LFactor` lokal, `FList.ForEach(procedure(const AItem: Integer) begin LSum := LSum + AItem * LFactor; end);` umwandeln, übersetzen und ausführen | Vorschlag `ProcessItem`, Methode `ProcessItem(const AItem: Integer; var LSum: Integer; LFactor: Integer)`, an der Stelle eine kurze anonyme Methode `ProcessItem(AItem, LSum, LFactor)`; die Summe ist dieselbe wie vorher |
+| AMU3 | `TThread.Queue(nil, procedure begin Memo1.Lines.Add(LText); end);` mit lokaler `LText` umwandeln, `refactoring.anonymousMethodDeferredCapture` = `forward` | Vorschau erklärt die Weiterleitung; an der Stelle bleibt `procedure begin UpdateInMainThread(LText); end`, die Ausgabe ist dieselbe |
+| AMU4 | Wie AMU3 mit `fields` | `FText := LText;` vor der Anweisung, `TThread.Queue(nil, UpdateInMainThread);`, Feld `FText: string;`, die Vorschau warnt; schreibt die anonyme Methode eine Variable, bleibt es bei der Weiterleitung mit Begründung |
+| AMU5 | `FList.Sort(TComparer<TKunde>.Construct(function(const A, B: TKunde): Integer begin Result := CompareText(A.Name, B.Name); end));` | Vorschlag `CompareByName`, an der Stelle `TComparer<TKunde>.Construct(CompareByName)`, Sortierung unverändert |
+| AMU6 | Anonyme Methode in einer freien Routine (`TParallel.For` mit Zähler) | „In Routine umwandeln (ProcessIndex)“: Routine der Unit vor der äußeren Routine, Zähler als `var`-Parameter, Ergebnis wie vorher |
+| AMU7 | Anonyme Methode, die `Result` der äußeren Funktion setzt, eine lokale Routine der äußeren aufruft oder in einer lokalen Routine steht; Namen in der Abfrage auf ein vorhandenes Mitglied oder `begin` ändern | Keine Aktion bzw. „Umwandeln fehlgeschlagen: …“ mit Grund |
+| AMU8 | Private Methode `ProcessItem`, genau einmal als `FList.ForEach(ProcessItem)` übergeben (Parameter vom Typ `TProc<Integer>` oder eigenes `reference to`), Cursor auf ihren Kopf, „Als anonyme Methode einbetten“ | Vorschau, dann steht der Rumpf als `procedure(const AItem: Integer) … end` an der Stelle, Methode und Deklaration sind weg |
+| AMU9 | Dasselbe für eine Methode an `Timer1.OnTimer` (TNotifyEvent), eine Methode, die in der .dfm steht, die zweimal übergeben oder direkt aufgerufen wird | Keine Einbetten-Aktion |
+| AMU10 | `refactoring.anonymousMethod` aus | Keine der beiden Aktionen; „Lokale Variable und Feld umwandeln“ fragt weiter den Namen und zeigt die Vorschau wie vorher |
+
+## Methode ohne Self (#686)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MOS1 | In einer Klasse `function TRechner.Doppelt(A: Integer): Integer; begin Result := A * 2; end;` (ohne Felder), Datei öffnen | Hinter dem Kopf der Implementierung die graue Marke „ohne Self“ (englische IDE: „no Self“); nicht hinter Methoden, die Felder, Properties, Self oder inherited nutzen |
+| MOS2 | Rechtsklick auf die Marke, „Ausblenden“ hier; danach Einstellung „Marke ohne Self“ auf der Seite Editor aus | Marke verschwindet an dieser Zeile bzw. überall; nach Wiedereinschalten wieder da |
+| MOS3 | Cursor auf den Kopf von `Doppelt`, Alt+Enter | Aktionen „In class-Methode umwandeln“, „In class-Methode umwandeln, Aufrufe über TRechner“, „In freie Routine umwandeln“; ohne Parameter einfachen Typs kein Helper |
+| MOS4 | „In class-Methode umwandeln“, Vorschau prüfen, übernehmen, übersetzen | Deklaration `class function Doppelt(A: Integer): Integer; static;`, Implementierung `class function TRechner.Doppelt…`; Aufrufe über Instanzen unverändert; Projekt übersetzt |
+| MOS5 | `refactoring.methodKindStatic` = false, MOS4 wiederholen; dann eine Methode, die eine class-Methode der Klasse aufruft | Ohne `static`; im zweiten Fall auch mit Schalter an kein `static`, die Vorschau warnt |
+| MOS6 | „…, Aufrufe über TRechner“ mit Aufrufen `R.Doppelt(2)` in zwei Units und einem `Liefere.Doppelt(2)` | Vorschau listet jeden Aufruf „Datei, Zeile n: alt → neu“; `R.Doppelt` wird `TRechner.Doppelt`; bei `Liefere` Warnung, dass der Ausdruck nicht mehr ausgewertet wird; übersetzt |
+| MOS7 | „In freie Routine umwandeln“ für eine Methode, die nur in der eigenen Unit aufgerufen wird | Methode aus der Klasse entfernt, Routine steht vor ihrem ersten Aufrufer, Aufrufe ohne Empfänger; class-Konstanten der Klasse im Rumpf als `TRechner.X`; übersetzt |
+| MOS8 | Wie MOS7, aber eine zweite Unit ruft auf, die selbst eine Routine gleichen Namens hat | Deklaration vor `implementation`; in der zweiten Unit `Rechner.Doppelt(…)`; übersetzt |
+| MOS9 | `function TPruefer.IstLeer(const S: string): Boolean; begin Result := Trim(S) = ''; end;` in einer Unit mit `uses System.SysUtils`, „In Record-Helper für string verschieben“ | Neuer Helper `T<Unit>StringHelper` (weil der RTL-Helper sichtbar ist) mit Warnung in der Vorschau, Aufrufe `P.IstLeer(X)` → `X.IstLeer`; übersetzt; in einer Unit mit eigenem Record-Helper für string wird dieser erweitert |
+| MOS10 | Methode, die als Ereignis in der .dfm steht, virtuelle Methode, Überladung, Methode, die als `@TObj.M` oder Methodenzeiger übergeben wird | Keine Marke, keine Aktion; über atlas.server.methodKind ein Fehler mit Grund |
+| MOS11 | In atlas.json `"rules": { "method-without-self": "hint" }`, Problems-Ansicht | Hinweis „TRechner.Doppelt braucht Self nicht …“ mit Schnellkorrektur „In class-Methode umwandeln“; ohne Eintrag kein Hinweis (experimentell); im Profil strict aktiv |
+| MOS12 | `refactoring.methodKind` aus | Keine Marke, keine Aktionen, kein Hinweis; `refactoring.methodKindMarker` aus: Aktionen bleiben, nur die Marke fehlt |
+
+## Aufzählung mit Namenstabelle (#667)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NTB1 | `TOrderState = (osNew, osPaid, osPaymentDue);` im interface-Teil, Cursor auf den Namen, Alt+Enter | „Namenstabelle anlegen (TOrderState)“, „…, im implementation-Teil“, „Tabellen von TOrderState nachziehen“ |
+| NTB2 | „Namenstabelle anlegen“, Namen `COrderStateNames` übernehmen | Hinter dem Typ `const COrderStateNames: array[TOrderState] of string = ('New', 'Paid', 'Payment due');`, folgende Typen in einem neuen type-Abschnitt; übersetzt |
+| NTB3 | Im implementation-Teil anlegen, Unit mit `uses` im implementation-Teil | Tabelle direkt hinter diesem uses; übersetzt |
+| NTB4 | `refactoring.enumTablesResourceStrings` = true, NTB2 | resourcestring `SOrderStateNew = 'New';` usw. und `array[TOrderState] of PResStringRec = (@SOrderStateNew, …)`; `LoadResString(COrderStateNames[osPaid])` liefert 'Paid' |
+| NTB5 | Typ `TCode = (cA = 1, cB = 5)` bzw. Name eines vorhandenen Bezeichners eingeben | Keine Tabellen-Aktion bzw. „Namenstabelle anlegen fehlgeschlagen: Der Name … ist schon vergeben“ |
+| NTB6 | `osCancelled` zwischen `osPaid` und `osPaymentDue` einfügen, Cursor in die Tabelle aus NTB2 | Problems zeigt „… osCancelled fehlt (wie E2072)“; Glühbirne „Fehlenden Eintrag ergänzen (osCancelled)“ setzt `'Cancelled'` zwischen `'Paid'` und `'Payment due'`; übersetzt |
+| NTB7 | Mehrzeilige Integer-Tabelle mit `// osNew`-Kommentaren je Zeile, ein Element aus dem Typ löschen | „Überzähligen Eintrag entfernen (…)“ entfernt genau die Zeile des gelöschten Elements |
+| NTB8 | Tabelle `array[TOrderState] of Integer = (1, 2)` ohne Kommentare | „Fehlenden Eintrag ergänzen (osPaymentDue), Stelle geschätzt“ hängt `0 {TODO osPaymentDue}` hinten an |
+| NTB9 | Zwei weitere Units mit Tabellen über TOrderState und eine `case` ohne else, dritte Unit mit eigenem gleichnamigem Typ; auf dem Typ „Tabellen von TOrderState nachziehen“ | Vorschau listet jede Tabelle und die case-Anweisung „Datei, Zeile n: …“, geschätzte Stellen als Warnung; nach Übernahme übersetzt das Projekt, die dritte Unit bleibt unverändert |
+| NTB10 | `refactoring.enumTables` aus | Keine der Aktionen auf Typ und Tabelle; die Regel `constant-initializer-mismatch` meldet weiter |
+
+## Typ-Alias einführen und auflösen (#681)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TAL1 | In einer Klasse `FGroups: TDictionary<string, TList<TKunde>>;`, Cursor auf `TList`, Alt+Enter | „Typ-Alias einführen (TDictionary<string, TList<TKunde>>)“, dazu „…, nur diese Stelle“ und „…, im Projekt“; außerdem „Typ-Alias einführen (TList<TKunde>)“ für den inneren Ausdruck; Cursor auf `TDictionary` nur die ersten drei |
+| TAL2 | Erste Aktion, Namen `TKundeGroups` übernehmen, Vorschau prüfen, übernehmen, übersetzen | `TKundeGroups = TDictionary<string, TList<TKunde>>;` im type-Abschnitt vor der Klasse, alle gleichen Ausdrücke der Unit ersetzt; Projekt übersetzt |
+| TAL3 | Ausdruck `TList<TKunde>` in der Klasse TKunde selbst (Feld `FKinder: TList<TKunde>`) | Alias vor TKunde, davor die Vorwärtsdeklaration `TKunde = class;`, Warnung in der Vorschau; übersetzt |
+| TAL4 | „…, im Projekt“ mit einer zweiten Unit, die die erste einbindet und `TList<Kunden.TKunde>` nutzt, und einer dritten mit eigenem `TKunde` | Alias im interface-Teil; die zweite Unit ersetzt, die dritte bleibt; übersetzt |
+| TAL5 | `FWerte: array of array of Double;` und `FAktion: reference to function(A: Integer): string;` | Aktionen mit Vorschlag `TWerte` bzw. `TAktionFunc`; nach dem Einführen übersetzt das Projekt |
+| TAL6 | In `TBox<T> = class` das Feld `FItems: TList<T>;` | Aktion grau mit Grund „Kein Typ-Alias: Der Ausdruck nutzt den generischen Parameter T …“; Parameter `const A: array of Integer` ohne Aktion |
+| TAL7 | Name eines vorhandenen Typs eingeben (`TKunde`) | „Typ-Alias einführen fehlgeschlagen: Der Name TKunde ist schon vergeben“ |
+| TAL8 | Cursor auf den Namen von `TListe = TList<TKunde>;`, „Alias auflösen (TListe)“, Verwendungen in zwei Units, eine davon `TListe.Create` | Alle Stellen werden `TList<TKunde>` (auch `TList<TKunde>.Create`), fehlende uses ergänzt, Alias entfernt; übersetzt |
+| TAL9 | Alias `TWerte = array of Integer;`, als Feldtyp und als Parametertyp verwendet, auflösen; dann `TNeu = type Integer;` | Feld ersetzt, Parameter behält den Alias mit Warnung, Alias bleibt; bei `type Integer` keine Aktion bzw. Fehler mit Grund |
+| TAL10 | `refactoring.typeAlias` aus; dann an und `refactoring.typeAliasScope` = project | Keine der Aktionen; danach ersetzt die erste Aktion im Projekt, die anderen beiden heißen „nur diese Stelle“ und „in der Unit“ |
+
 ## Methode aus Aufruf anlegen (#472)
 
 | Nr. | Schritte | Erwartet |

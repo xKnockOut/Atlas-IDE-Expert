@@ -10,14 +10,14 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 77 |
+| [Compiler vorab](#gruppe-compiler) | 78 |
 | [Robustheit und Muster](#gruppe-robustness) | 14 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 14 |
 | [Architektur](#gruppe-architecture) | 5 |
-| [Stil und Metriken](#gruppe-style) | 50 |
+| [Stil und Metriken](#gruppe-style) | 52 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
@@ -156,6 +156,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`syntax`](#syntax) | Syntaxfehler | Bug | Fehler |
 | [`language-feature`](#language-feature) | Sprachmerkmal einer neueren Delphi-Version | Bug | Warnung |
 | [`for-high-to-low`](#for-high-to-low) | for-Schleife zählt mit to abwärts | Bug | Warnung |
+| [`conditional-expression-version`](#conditional-expression-version) | Bedingungsausdruck vor Delphi 13 | Bug | Fehler |
 | [`deprecated-symbol`](#deprecated-symbol) | Veraltetes oder gebundenes Symbol | Code Smell | Warnung |
 | [`signature-mismatch`](#signature-mismatch) | Implementierung weicht von der Deklaration ab | Bug | Fehler |
 | [`interface-not-implemented`](#interface-not-implemented) | Interface-Methode fehlt in der Klasse | Bug | Fehler |
@@ -376,10 +377,12 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`now-for-elapsed-time`](#now-for-elapsed-time) | Laufzeit mit Now gemessen | Code Smell | Hinweis |
 | [`money-as-float`](#money-as-float) | Geldbetrag als Gleitkommazahl | Bug | Hinweis |
 | [`string-if-chain`](#string-if-chain) | Lange if-Kette über denselben String | Code Smell | Hinweis |
+| [`prefer-case`](#prefer-case) | if-Kette lässt sich als case schreiben | Code Smell | Hinweis |
 | [`empty-finally`](#empty-finally) | Leerer finally-Block | Code Smell | Hinweis |
 | [`override-only-inherited`](#override-only-inherited) | override ruft nur inherited auf | Code Smell | Hinweis |
 | [`inherited-without-ancestor`](#inherited-without-ancestor) | inherited ohne Methode im Vorfahr | Code Smell | Hinweis |
 | [`redundant-jump`](#redundant-jump) | Überflüssiges Exit oder Continue | Code Smell | Hinweis |
+| [`method-without-self`](#method-without-self) | Methode braucht Self nicht | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -1994,6 +1997,32 @@ Richtig:
 ```pascal
 for I := 10 downto 1 do
   Countdown(I);
+```
+
+<a id="conditional-expression-version"></a>
+### conditional-expression-version
+
+**Bedingungsausdruck vor Delphi 13** · Bug · Fehler · Gruppe Compiler vorab
+
+Den Bedingungsausdruck X := if C then A else B gibt es erst ab Delphi 13; ein Projekt, das noch mit Delphi 12 oder älter übersetzen muss, scheitert hier (wie E2029). Gemeldet wird der äußerste Ausdruck, nicht in Zweigen von {$IF}, die nach CompilerVersion, RTLVersion, VERnnn oder Declared fragen. Ohne bekannte Delphi-Version still. Korrektur (auch für die ganze Unit): in eine if-Anweisung umwandeln, die Anweisung je Zweig wiederholt; nicht angeboten, wenn der Rest der Anweisung Seiteneffekte hat.
+
+Entspricht der Compilermeldung `E2029`.
+
+Stufe A (Parser genügt).
+
+Mit Treffer:
+
+```pascal
+Caption := if Done then 'Ready' else 'Busy';
+```
+
+Richtig:
+
+```pascal
+if Done then
+  Caption := 'Ready'
+else
+  Caption := 'Busy';
 ```
 
 <a id="exception-not-raised"></a>
@@ -6372,7 +6401,7 @@ while Rest > 0 do
 
 **Initialisierung einer Konstanten passt nicht** · Bug · Fehler · Gruppe Compiler vorab
 
-Eine typisierte Konstante oder initialisierte Variable vom statischen Array-Typ hat mehr oder weniger Elemente als ihr Indexbereich (wie E2072), typisch nach einem neuen Wert in einer Aufzählung (array[TStatus] of string); geprüft je Dimension und auch für benannte Array-Typen der Datei. Ebenso Record-Konstanten, deren Felder in anderer Reihenfolge als deklariert stehen (wie E2083). Indexbereiche: Teilbereiche mit konstanten Grenzen, Aufzählungen ohne eigene Werte, Boolean, Byte, Char usw. Deklarationen mit bedingten Direktiven gelten als unsicher. Korrekturen: fehlende Einträge mit Platzhalter ergänzen (Name des Aufzählungswerts als Kommentar), Felder in die Reihenfolge der Deklaration bringen.
+Eine typisierte Konstante oder initialisierte Variable vom statischen Array-Typ hat mehr oder weniger Elemente als ihr Indexbereich (wie E2072), typisch nach einem neuen Wert in einer Aufzählung (array[TStatus] of string); geprüft je Dimension und auch für benannte Array-Typen der Datei. Ebenso Record-Konstanten, deren Felder in anderer Reihenfolge als deklariert stehen (wie E2083). Indexbereiche: Teilbereiche mit konstanten Grenzen, Aufzählungen ohne eigene Werte, Boolean, Byte, Char usw. Deklarationen mit bedingten Direktiven gelten als unsicher. Korrekturen: über einer Aufzählung fehlende Einträge an ihrer Stelle ergänzen bzw. überzählige entfernen (erkannt an Texten, Bezeichnern und Kommentaren mit dem Wertnamen; sonst hinten und als geschätzt benannt), neue Strings mit dem Text aus dem Namen, andere Typen mit Standardwert und Kommentar {TODO Wert} (#667); über anderen Bereichen fehlende Einträge mit Platzhalter ergänzen; Felder in die Reihenfolge der Deklaration bringen.
 
 Entspricht der Compilermeldung `E2072`, `E2083`.
 
@@ -7121,6 +7150,38 @@ case IndexStr(Befehl, ['neu', 'oeffnen', 'speichern', 'beenden']) of
   1: Oeffnen;
   2: Speichern;
   3: Beenden;
+end;
+```
+
+<a id="prefer-case"></a>
+### prefer-case
+
+**if-Kette lässt sich als case schreiben** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine if … else if-Kette mit mindestens min Zweigen (das abschließende else zählt mit) vergleicht denselben ordinalen Ausdruck (Ganzzahl, Zeichen, Aufzählung; ohne Seiteneffekte, kein Funktionsaufruf) mit Konstanten: X = a, a = X, X in [a, b..c], (X >= a) and (X <= b), auch mit or verknüpft. Die Marken sind Literale, Konstantenausdrücke, untypisierte Konstanten oder Aufzählungswerte, ohne Doppelte und Überlappungen. Den Typ liefert die Namensauflösung; Ketten mit unbekanntem Typ und Ketten mit Direktiven bleiben still. Standard aus, Konfidenz hoch. Schnellkorrektur: die Code-Aktion „In case umwandeln“ (#646, refactoring.ifCase); begin … end nur, wo ein Zweig mehrere Anweisungen hat, Kommentare in den Zweigen bleiben.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `min` | integer | `4` | Ab so vielen Zweigen (das abschließende else eingeschlossen) meldet die Regel; mindestens 2. |
+
+Mit Treffer:
+
+```pascal
+if Kind = 1 then Neu
+else if (Kind = 2) or (Kind = 3) then Oeffnen
+else if (Kind >= 4) and (Kind <= 6) then Speichern
+else Beenden;
+```
+
+Richtig:
+
+```pascal
+case Kind of
+  1: Neu;
+  2, 3: Oeffnen;
+  4..6: Speichern;
+else
+  Beenden;
 end;
 ```
 
@@ -8199,4 +8260,29 @@ Richtig:
 
 ```pascal
 Versenden(Kunde.Mail, 'Rechnung', Text);
+```
+
+<a id="method-without-self"></a>
+### method-without-self
+
+**Methode braucht Self nicht** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine Methode einer Klasse oder eines Records nutzt weder Self noch Instanzmitglieder (Felder, Properties, Instanzmethoden, inherited). Sie ist nicht virtuell, kein Ereignis der Formulardatei, implementiert kein Interface und wird nicht als Methodenzeiger verwendet. Experimentell: nur aktiv, wenn in atlas.json eingeschaltet; schweigt mit refactoring.methodKind aus. Schnellkorrektur: in eine class-Methode umwandeln (class … static mit refactoring.methodKindStatic); die Code-Aktionen bieten außerdem Aufrufe über die Klasse, eine freie Routine und einen Record-Helper für den Typ des ersten Parameters, jeweils mit Vorschau aller geänderten Aufrufe.
+
+Mit Treffer:
+
+```pascal
+function TRechner.Doppelt(A: Integer): Integer;
+begin
+  Result := A * 2;  // no field, no Self
+end;
+```
+
+Richtig:
+
+```pascal
+class function TRechner.Doppelt(A: Integer): Integer; static;
+begin
+  Result := A * 2;
+end;
 ```

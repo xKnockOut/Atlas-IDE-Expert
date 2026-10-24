@@ -45,6 +45,8 @@ type
     /// <summary>Code eines Steuerzeichens wie ^C (#862); nur mit ControlChar.</summary>
     CharCode: Integer;
     ControlChar: Boolean;
+    /// <summary>Marke „ohne Self“ am Ende des Kopfs einer Methode (#686).</summary>
+    MethodWithoutSelf: Boolean;
   end;
 
   /// <summary>Abgeleiteter Typ einer Inline-Variablen ohne Typangabe (#453).</summary>
@@ -115,6 +117,10 @@ type
     /// ATreeText ist der Text, aus dem ATree gelesen wurde.</summary>
     class function ControlChars(ATree: TSyntaxTree; const ATreeText: string;
       const ARange: TTextRange): TArray<TInlayHint>; static;
+    /// <summary>Hinter dem Kopf jeder Methode in ARange, die Self nicht braucht, die Marke „ohne Self“ (#686);
+    /// Mitglieder, Interfaces und Formular über AResolver und AReadText.</summary>
+    class function MethodMarkers(AResolver: TNameResolver; ATree: TSyntaxTree; const ATreeText, AFileName: string;
+      const ARange: TTextRange; const AReadText: THoverReadText): TArray<TInlayHint>; static;
     /// <summary>Alle eingeschalteten Hinweise in ARange, nach Position sortiert.</summary>
     class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const ATreeText, AFileName: string; const ARange: TTextRange; const ASettings: TInlayHintSettings;
@@ -133,6 +139,9 @@ implementation
 uses
   Atlas.Common.Lsp.Internals.Namespaces,
   System.StrUtils,
+  Atlas.Common.Editing.MethodWithoutSelf,
+  Atlas.Common.Lsp.References,
+  Atlas.Common.Lsp.MethodWithoutSelf,
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Documents.Uris,
@@ -973,6 +982,37 @@ begin
   end;
 end;
 
+class function TLspInlayHints.MethodMarkers(AResolver: TNameResolver; ATree: TSyntaxTree;
+  const ATreeText, AFileName: string; const ARange: TTextRange; const AReadText: THoverReadText): TArray<TInlayHint>;
+var
+  ReadText: TReferenceReadText;
+  Position: TTextPosition;
+  Hint: TInlayHint;
+begin
+  Result := nil;
+  ReadText :=
+    function(const AName: string; out AText: string): Boolean
+    begin
+      AText := '';
+      Result := Assigned(AReadText) and AReadText(AName, AText);
+    end;
+  AResolver.PinTree(ATree, AFileName);
+  try
+    for Position in TLspMethodWithoutSelf.Markers(ATree, ATreeText, ARange,
+      TLspMethodWithoutSelf.Lookup(AResolver, ATree, AFileName, ReadText)) do
+    begin
+      Hint := Default(TInlayHint);
+      Hint.Position := Position;
+      Hint.Text := TMethodWithoutSelf.MarkerText;
+      Hint.PaddingLeft := True;
+      Hint.MethodWithoutSelf := True;
+      Result := Result + [Hint];
+    end;
+  finally
+    AResolver.UnpinTree;
+  end;
+end;
+
 function CompareHints(const A, B: TInlayHint): Integer;
 begin
   Result := ComparePositions(A.Position, B.Position);
@@ -1004,6 +1044,8 @@ begin
       List.AddRange(IncludeDefines(ATree, AProcessed, ARange));
     if ASettings.ControlChars then
       List.AddRange(ControlChars(ATree, ATreeText, ARange));
+    if ASettings.MethodWithoutSelf and (AResolver <> nil) then
+      List.AddRange(MethodMarkers(AResolver, ATree, ATreeText, AFileName, ARange, AReadText));
     List.Sort;
     Result := List.ToArray;
   finally
@@ -1048,6 +1090,9 @@ begin
     if Hint.ControlChar then
       Entry.AddPair('data', TJSONObject.Create(TJSONPair.Create('controlChar',
         TJSONObject.Create(TJSONPair.Create('code', TJSONNumber.Create(Hint.CharCode))))));
+    // Methode ohne Self (#686): Das Plugin beschriftet die Marke in der Sprache der IDE.
+    if Hint.MethodWithoutSelf then
+      Entry.AddPair('data', TJSONObject.Create(TJSONPair.Create('methodWithoutSelf', TJSONBool.Create(True))));
   end;
 end;
 

@@ -396,6 +396,31 @@ type
     function InvertBooleanActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Boolean umkehren“ (#715): das WorkspaceEdit für alle Stellen.</summary>
     function InvertBoolean(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>„In Feld umwandeln“ bzw. „In lokale Variable umwandeln“ an APosition (#668).</summary>
+    function PromoteVariableActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Lokale Variable und Feld umwandeln (#668): das WorkspaceEdit mit dem gewählten Namen.</summary>
+    function PromoteVariable(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>„In Methode umwandeln“ und „Als anonyme Methode einbetten“ an APosition (#680).</summary>
+    function AnonymousMethodActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Anonyme Methode in Methode umwandeln (#680): das WorkspaceEdit mit dem gewählten Namen.</summary>
+    function AnonymousMethod(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Methode ohne Self umwandeln (#686): Code-Aktionen an APosition.</summary>
+    function MethodKindActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Methode ohne Self umwandeln (#686): das WorkspaceEdit der gewählten Umwandlung über alle Dateien.
+    /// </summary>
+    function MethodKind(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Typ-Alias einführen und auflösen (#681): Code-Aktionen an APosition.</summary>
+    function TypeAliasActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Typ-Alias einführen (#681): das WorkspaceEdit mit dem gewählten Namen und der Reichweite.</summary>
+    function TypeAlias(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Alias auflösen (#681): das WorkspaceEdit über alle Verwendungen.</summary>
+    function InlineTypeAlias(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Aufzählung mit Namenstabelle (#667): Code-Aktionen an APosition.</summary>
+    function EnumTableActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Namenstabelle anlegen (#667): das WorkspaceEdit mit dem gewählten Namen und der Stelle.</summary>
+    function EnumTable(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Tabellen und case-Anweisungen über einen Aufzählungstyp nachziehen (#667).</summary>
+    function EnumTablesSync(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Umschließung entfernen“ (#657): Konstrukte am Cursor mit Varianten und Vorschau.</summary>
     function Unwrap(const AArguments: TJSONArray): TJSONValue;
     function StepTargets(const AArguments: TJSONArray): TJSONValue;
@@ -608,6 +633,12 @@ uses
   Atlas.Common.Editing.PropertyFromAccessors,
   Atlas.Common.Lsp.PropertyFromAccessors,
   Atlas.Common.Lsp.InvertBoolean,
+  Atlas.Common.Lsp.PromoteVariable,
+  Atlas.Common.Lsp.AnonymousMethods,
+  Atlas.Common.Lsp.MethodWithoutSelf,
+  Atlas.Common.Lsp.TypeAlias,
+  Atlas.Common.Editing.TypeAlias,
+  Atlas.Common.Lsp.EnumTables,
   Atlas.Common.Lsp.Unwrap,
   Atlas.Common.Lsp.StepTargets,
   Atlas.Common.Lsp.StepFilter,
@@ -1533,6 +1564,11 @@ begin
       Result := Result + MoveClassActions(AUri, ARange.StartPos);
       Result := Result + PropertyFromAccessorsActions(AUri, ARange.StartPos);
       Result := Result + InvertBooleanActions(AUri, ARange.StartPos);
+      Result := Result + PromoteVariableActions(AUri, ARange.StartPos);
+      Result := Result + AnonymousMethodActions(AUri, ARange.StartPos);
+      Result := Result + MethodKindActions(AUri, ARange.StartPos);
+      Result := Result + TypeAliasActions(AUri, ARange.StartPos);
+      Result := Result + EnumTableActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
       Result := Result + CompilerFixActions(AUri, ARange);
       Result := Result + MissingUnitActions(AUri, ARange);
@@ -1619,6 +1655,41 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := DisableWarning(AArguments);
+    end);
+  FCommands.Register(TLspPromoteVariable.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := PromoteVariable(AArguments);
+    end);
+  FCommands.Register(TLspAnonymousMethods.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := AnonymousMethod(AArguments);
+    end);
+  FCommands.Register(TLspMethodWithoutSelf.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := MethodKind(AArguments);
+    end);
+  FCommands.Register(TLspTypeAlias.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TypeAlias(AArguments);
+    end);
+  FCommands.Register(TLspTypeAlias.InlineApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := InlineTypeAlias(AArguments);
+    end);
+  FCommands.Register(TLspEnumTables.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := EnumTable(AArguments);
+    end);
+  FCommands.Register(TLspEnumTables.SyncApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := EnumTablesSync(AArguments);
     end);
   FCommands.Register(TLspUnwrap.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -3498,6 +3569,419 @@ begin
   Result := Answer;
 end;
 
+function TServerComposition.PromoteVariableActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).PromoteVariable or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(AUri));
+    try
+      Result := TLspPromoteVariable.Actions(Shared.Tree, Document.Text, AUri, APosition,
+        TLspPromoteVariable.Lookup(Resolver, Shared.Tree, TDocumentUris.ToPath(AUri), ReadSourceText));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.PromoteVariable(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+begin
+  // Argumente: URI, Position, Name.
+  if (AArguments = nil) or (AArguments.Count < 3) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri", "position" und "name" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).PromoteVariable then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Lokale Variable und Feld umwandeln" ist abgeschaltet (refactoring.promoteVariable).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(Uri));
+    try
+      Answer := TLspPromoteVariable.Execute(Shared.Tree, Document.Text, Uri, Position,
+        Trim(AArguments.Items[2].Value), TLspPromoteVariable.Lookup(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri),
+        ReadSourceText), ResolvedFormatStyleFor(Uri));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Variable/Feld umwandeln: %d Stellen, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.AnonymousMethodActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Settings: TRefactoringSettings;
+begin
+  Result := nil;
+  Settings := RefactoringSettingsFor(AUri);
+  if not Settings.AnonymousMethod or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(AUri));
+    try
+      Result := TLspAnonymousMethods.Actions(Shared.Tree, Document.Text, AUri, APosition,
+        TLspAnonymousMethods.Lookup(Resolver, Shared.Tree, TDocumentUris.ToPath(AUri), ReadSourceText),
+        TLspAnonymousMethods.CaptureOf(Settings.AnonymousMethodDeferredCapture), ResolvedFormatStyleFor(AUri));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.AnonymousMethod(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+  Settings: TRefactoringSettings;
+begin
+  // Argumente: URI, Position, Name.
+  if (AArguments = nil) or (AArguments.Count < 3) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri", "position" und "name" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  Settings := RefactoringSettingsFor(Uri);
+  if not Settings.AnonymousMethod then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Anonyme Methode und Methode umwandeln" ist abgeschaltet (refactoring.anonymousMethod).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(Uri));
+    try
+      Answer := TLspAnonymousMethods.Execute(Shared.Tree, Document.Text, Uri, Position,
+        Trim(AArguments.Items[2].Value), TLspAnonymousMethods.Lookup(Resolver, Shared.Tree,
+        TDocumentUris.ToPath(Uri), ReadSourceText), TLspAnonymousMethods.CaptureOf(
+        Settings.AnonymousMethodDeferredCapture), ResolvedFormatStyleFor(Uri));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Anonyme Methode umwandeln: %d Änderungen, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.MethodKindActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).MethodKind or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(AUri));
+    try
+      Result := TLspMethodWithoutSelf.Actions(Shared.Tree, Document.Text, AUri, APosition,
+        TLspMethodWithoutSelf.Lookup(Resolver, Shared.Tree, TDocumentUris.ToPath(AUri), ReadSourceText));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.MethodKind(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+  Settings: TRefactoringSettings;
+  Context: TMethodKindContext;
+begin
+  // Argumente: URI, Position, Umwandlung.
+  if (AArguments = nil) or (AArguments.Count < 3) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      'Argumente "uri", "position" und "conversion" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  Settings := RefactoringSettingsFor(Uri);
+  if not Settings.MethodKind then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Methode ohne Self umwandeln" ist abgeschaltet (refactoring.methodKind).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context.Index := FIndex;
+  Context.Files := ProjectSourceFiles;
+  Context.ReadText := ReadSourceText;
+  Context.WithStatic := Settings.MethodKindStatic;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspMethodWithoutSelf.Execute(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text,
+      Position, Trim(AArguments.Items[2].Value), Context, ResolvedFormatStyleFor(Uri));
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Methode ohne Self umwandeln: %d Änderungen, %d Aufrufe, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('calls') as TJSONNumber).AsInt,
+    (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.TypeAliasActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Settings: TRefactoringSettings;
+  Scope: TTypeAliasScope;
+begin
+  Result := nil;
+  Settings := RefactoringSettingsFor(AUri);
+  if not Settings.TypeAlias or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  if not TTypeAlias.ScopeOf(Settings.TypeAliasScope, Scope) then
+    Scope := TTypeAliasScope.InUnit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(AUri));
+    try
+      Result := TLspTypeAlias.Actions(Shared.Tree, Document.Text, AUri, APosition, Scope,
+        TLspTypeAlias.Lookup(Resolver));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.TypeAlias(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+  Context: TTypeAliasContext;
+begin
+  // Argumente: URI, Position, Name, Reichweite.
+  if (AArguments = nil) or (AArguments.Count < 4) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      'Argumente "uri", "position", "name" und "scope" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).TypeAlias then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Typ-Alias einführen" ist abgeschaltet (refactoring.typeAlias).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context.Index := FIndex;
+  Context.Files := ProjectSourceFiles;
+  Context.ReadText := ReadSourceText;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspTypeAlias.Execute(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text, Position,
+      AArguments.Items[2].Value, Trim(AArguments.Items[3].Value), Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Typ-Alias einführen: %d Stellen, %d Dateien, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt,
+    (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.InlineTypeAlias(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+  Context: TTypeAliasContext;
+begin
+  // Argumente: URI, Position des Alias-Namens.
+  if (AArguments = nil) or (AArguments.Count < 2) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "position" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).TypeAlias then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Alias auflösen" ist abgeschaltet (refactoring.typeAlias).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context.Index := FIndex;
+  Context.Files := ProjectSourceFiles;
+  Context.ReadText := ReadSourceText;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspTypeAlias.ExecuteInline(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text, Position,
+      Context);
+  finally
+    Resolver.Free;
+  end;
+  FLogger.Info(Format('Alias auflösen: %d Stellen, %d Dateien, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt,
+    (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.EnumTableActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).EnumTables or not FDocuments.TryGet(AUri, Document) or
+    not MatchText(ExtractFileExt(TDocumentUris.ToPath(AUri)), ['.pas', '.dpr']) then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(AUri));
+    try
+      Result := TLspEnumTables.Actions(Resolver, FIndex, Shared.Tree, Document.Text, AUri, APosition);
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.EnumTable(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Context: TEnumTablesContext;
+begin
+  // Argumente: URI, Position, Name, Stelle.
+  if (AArguments = nil) or (AArguments.Count < 4) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      'Argumente "uri", "position", "name" und "placement" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).EnumTables then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Namenstabelle anlegen" ist abgeschaltet (refactoring.enumTables).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context := Default(TEnumTablesContext);
+  Context.ResourceStrings := RefactoringSettingsFor(Uri).EnumTablesResourceStrings;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspEnumTables.Execute(Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text, Position,
+    AArguments.Items[2].Value, Trim(AArguments.Items[3].Value), Context);
+  FLogger.Info('Namenstabelle angelegt');
+end;
+
+function TServerComposition.EnumTablesSync(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+  Context: TEnumTablesContext;
+begin
+  // Argumente: URI, Position des Typnamens.
+  if (AArguments = nil) or (AArguments.Count < 2) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "position" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).EnumTables then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Tabellen nachziehen" ist abgeschaltet (refactoring.enumTables).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context := Default(TEnumTablesContext);
+  Context.Index := FIndex;
+  Context.Files := ProjectSourceFiles;
+  Context.ReadText := ReadSourceText;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspEnumTables.Sync(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text, Position,
+      Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Tabellen nachziehen: %d Stellen, %d Dateien, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt,
+    (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
 function TServerComposition.Unwrap(const AArguments: TJSONArray): TJSONValue;
 var
   Uri: string;
@@ -3946,6 +4430,7 @@ begin
   Result.ReadText := ReadSourceText;
   Result.InlineVar := Result.Settings.InlineVar and
     TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, LanguageLevelFor(AUri));
+  Result.IfExpression := TLanguageFeatures.IsAvailable(TLanguageFeature.IfExpression, LanguageLevelFor(AUri));
   Result.Style := ResolvedFormatStyleFor(AUri);
   Result.NewNames := NewNamesFor(AUri);
 end;
@@ -3989,7 +4474,8 @@ begin
     Exit;
   Context := RefactoringContextFor(AUri);
   if not (Context.Settings.Extract or Context.Settings.CompleteCase or Context.Settings.ResolveWith or
-    Context.Settings.CreateMethod or Context.Settings.InlineCode) then
+    Context.Settings.CreateMethod or Context.Settings.InlineCode or Context.Settings.IfCase or
+    Context.Settings.Conditions or Context.Settings.ConditionalExpression or Context.Settings.NestedRoutine) then
     Exit;
   Shared := TSyntaxTreeCache.Get(Document, nil);
   for Action in TLspRefactorings.Actions(Shared.Tree, Document.Text, ARange, Context) do
@@ -4604,8 +5090,13 @@ begin
 end;
 
 function TServerComposition.InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
+var
+  Settings: TServerSettings;
 begin
-  Result := SettingsFor(AUri).InlayHints;
+  Settings := SettingsFor(AUri);
+  Result := Settings.InlayHints;
+  // Marke „ohne Self“ (#686) hängt an der Umwandlung, nicht an inlayHints.
+  Result.MethodWithoutSelf := Settings.Refactoring.MethodKind and Settings.Refactoring.MethodKindMarker;
 end;
 
 function TServerComposition.HintSettingsFor(const AUri: string): THintSettings;

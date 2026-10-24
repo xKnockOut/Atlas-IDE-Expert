@@ -24,6 +24,8 @@ type
     [Test]
     procedure CheckerReportsLanguageFeaturesBelowMinDelphiVersion;
     [Test]
+    procedure CheckerLeavesIfExpressionsToTheirRule;
+    [Test]
     procedure FilterByRule;
     [Test]
     procedure FilterBySeverity;
@@ -173,6 +175,17 @@ begin
     Source))));
   Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText(nil,
     Settings('{ "minDelphiVersion": "12", "rules": { "language-feature": "off" } }'), 'U.pas', Source))));
+end;
+
+procedure TLinterOutputTests.CheckerLeavesIfExpressionsToTheirRule;
+const
+  Source = 'unit U; interface implementation function F(A: Boolean): Integer; ' +
+    'begin Result := if A then 1 else 2; end; end.';
+begin
+  // #684 mit #1126: Bedingungsausdrücke meldet conditional-expression-version als Fehler mit Korrektur, nicht
+  // zusätzlich language-feature.
+  Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText(nil, Settings('{ "minDelphiVersion": "12" }'), 'U.pas',
+    Source))));
 end;
 
 procedure TLinterOutputTests.FilterByRule;

@@ -76,6 +76,8 @@ type
     ArgumentsJson: string;
     /// <summary>Kennung aus data.tag, z. B. "uses.remove" (#621); '' ohne.</summary>
     Tag: string;
+    /// <summary>Vorschau aus data.preview (#663): vor dem Übernehmen zeigen; '' ohne.</summary>
+    Preview: string;
     /// <summary>Regel des behobenen Treffers aus diagnostics[0].code (#909); '' ohne.</summary>
     Rule: string;
     /// <summary>Aus einem Eintrag der Antwort: CodeAction oder Command; False bei anderem.</summary>
@@ -942,6 +944,7 @@ begin
   AAction.Disabled := Item.GetValue<string>('disabled.reason', '');
   AAction.Edit := TLspWorkspaceEdit.FromJson(Item.GetValue('edit'));
   AAction.Tag := Item.GetValue<string>('data.tag', '');
+  AAction.Preview := Item.GetValue<string>('data.preview', '');
   if Item.TryGetValue<TJSONArray>('diagnostics', Arguments) and (Arguments.Count > 0) and
     (Arguments.Items[0] is TJSONObject) then
     AAction.Rule := TJSONObject(Arguments.Items[0]).GetValue<string>('code', '');
@@ -1583,7 +1586,8 @@ begin
         Continue;
       Entry := TJSONObject(Item);
       // Parameternamen (kind 2), Typmarken (kind 1, #453), Endmarken ohne kind mit "// …" (#620) und
-      // Include-Symbole ohne kind mit data.includeDefines (#860) und Steuerzeichen mit data.controlChar (#862).
+      // Include-Symbole ohne kind mit data.includeDefines (#860), Steuerzeichen mit data.controlChar (#862) und
+      // Methoden ohne Self mit data.methodWithoutSelf (#686).
       Kind := Entry.GetValue<Integer>('kind', 0);
       if (Kind <> 2) and (Kind <> 1) and (Kind <> 0) then
         Continue;
@@ -1612,6 +1616,9 @@ begin
       end
       else if (Kind = 0) and (Entry.GetValue<Integer>('data.controlChar.code', -1) >= 0) then
         Hint.CharHint := True
+      else if (Kind = 0) and Entry.GetValue<Boolean>('data.methodWithoutSelf', False) then
+        // Methode ohne Self (#686); die Beschriftung baut die Oberfläche in der Sprache der IDE.
+        Hint.MethodHint := True
       else if Kind = 0 then
       begin
         if not Text.StartsWith('//') then
