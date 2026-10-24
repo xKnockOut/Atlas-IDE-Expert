@@ -585,7 +585,7 @@ begin
       Format := TMcpServer.OptionalString(AArguments, 'format');
       if (Format <> '') and not SameText(Format, 'text') and not SameText(Format, 'json') then
         raise EMcpToolError.Create('"format" ist text oder json');
-      ACode.Namespaces := AWorkspace.Namespaces;
+      ACode.Namespaces := AGroup.Main.Namespaces;
       if AArguments.TryGetValue<Integer>('depth', Depth) then
         Result := ACode.Impact(Name, Depth, SameText(Format, 'json'))
       else
@@ -1092,7 +1092,7 @@ begin
   Server := TMcpServer.Create('Atlas', '0');
   try
     RegisterTools(Server, nil, nil, nil, '', nil, nil, nil, nil);
-    RegisterDeadCodeTools(Server, nil, nil, nil, nil, '', nil);
+    RegisterDeadCodeTools(Server, nil, nil, '', nil);
     Listed := Server.ListTools;
     try
       for Tool in Listed.GetValue<TJSONArray>('tools') do

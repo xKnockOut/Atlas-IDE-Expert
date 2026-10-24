@@ -108,7 +108,7 @@
     },
     "get_architecture": {
       "arguments": {},
-      "contains": "# Architektur: "
+      "contains": "Teilsysteme:"
     },
     "get_unit_dependencies": {
       "arguments": { "unit": "Ref.Formulare.Haupt" },
