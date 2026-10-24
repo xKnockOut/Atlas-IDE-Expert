@@ -94,6 +94,10 @@ type
     /// <summary>Edits, die AUnits aus dem interface- ins implementation-uses verschieben.</summary>
     class function MoveUnits(const ATokens: TArray<TPascalToken>; const AText: string;
       const AUnits: TArray<string>; const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean; static;
+    /// <summary>Edits, die AUnits aus dem implementation- ins interface-uses verschieben (#593); False in
+    /// Programmen, ohne interface-Teil oder wenn eine Liste nicht schlicht ist.</summary>
+    class function MoveUnitsToInterface(const ATokens: TArray<TPascalToken>; const AText: string;
+      const AUnits: TArray<string>; const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean; static;
     /// <summary>Units, die den Bezeichner an APosition deklarieren und noch nicht eingebunden sind.
     /// Leer, wenn dort kein Bezeichner steht, er im Dokument deklariert wird oder eine
     /// eingebundene Unit ihn schon liefert.</summary>
@@ -559,6 +563,33 @@ begin
     end;
   if (Implementation_ < 0) or not RemoveUnits(ATokens, AText, AUnits, ALineBreak, AEdits) or
     not TUsesClauses.AddUnit(ATokens, ATokens[Implementation_].Offset + 1, string.Join(', ', AUnits),
+    ALineBreak, Added) then
+  begin
+    AEdits := nil;
+    Exit(False);
+  end;
+  AEdits := AEdits + [Added];
+  Result := True;
+end;
+
+class function TUsesActions.MoveUnitsToInterface(const ATokens: TArray<TPascalToken>; const AText: string;
+  const AUnits: TArray<string>; const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean;
+var
+  Index, Interface_: Integer;
+  Added: TTextEdit;
+begin
+  AEdits := nil;
+  if AUnits = nil then
+    Exit(False);
+  Interface_ := -1;
+  for Index := 0 to High(ATokens) do
+    if ATokens[Index].IsKeyword('interface') then
+    begin
+      Interface_ := Index;
+      Break;
+    end;
+  if (Interface_ < 0) or not RemoveUnits(ATokens, AText, AUnits, ALineBreak, AEdits) or
+    not TUsesClauses.AddUnit(ATokens, ATokens[Interface_].Offset + 1, string.Join(', ', AUnits),
     ALineBreak, Added) then
   begin
     AEdits := nil;

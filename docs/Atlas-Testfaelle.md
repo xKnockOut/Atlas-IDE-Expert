@@ -6186,3 +6186,27 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index. Beispiel: `TForm1
 | AD12 | Optionen › Atlas › Editor: „Aufrufdiagramm …“ aus (auch als Schnellschalter) | Umschalter im Ergebnisfenster weg, Befehl fehlt in Palette und Menü Atlas; nach Neustart auch im Kontextmenü (**Abnahme**) |
 | AD13 | Hell und dunkel, englische IDE-Sprache | Kästen, Linien und Schrift gut lesbar; „Call diagram“, „Diagram“, „Project units only“, „Save as HTML …“ |
 | AD14 | Claude Code: `get_call_hierarchy` für `Lesen`, `direction: "outgoing"` | `Schreiben` mit „[über Interface, 2 Umsetzungen]“ |
+
+## Unit-Beziehungen (#593)
+
+Voraussetzung: Server läuft in der IDE, Testprojekt mit `A` (interface uses `B`, `System.SysUtils`, `Vcl.Forms`; implementation uses `C`), `B` (interface uses `A`, also ein interface-Zyklus), `C` (uses `Daten`), Verwendern `E` (interface uses `A`) und `F` (implementation uses `A`); in `A` wird `Vcl.Forms` nicht gebraucht. Index fertig.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UB1 | `A.pas` im Editor, zum ersten Mal *Ansicht › Atlas › Unit-Beziehungen* | Fenster *Unit-Beziehungen* als Reiter neben der Projektverwaltung; Kopf „A“, „n Units neu übersetzen · Zyklus“; „Verwendet (4)“ und „Wird verwendet von (3)“ aufgeklappt |
+| UB2 | „Verwendet“ ansehen | `B  intf · Zyklus` rot, `C  impl`; Gruppe „Bibliothek (2)“ eingeklappt, darin `System.SysUtils` und `Vcl.Forms · ungenutzt` abgeblendet (**Abnahme**) |
+| UB3 | Maus über `B`; über den Kopf | Tooltip „Zyklus über interface-uses: A → B → A“; der Kopf zeigt denselben Rundweg (**Abnahme**) |
+| UB4 | „Wird verwendet von“ | Genau drei, nach Name: `B  intf`, `E  intf`, `F  impl` (**Abnahme**) |
+| UB5 | Zahl „Units neu übersetzen“ mit dem Reiter *Zentrale Units* der Architekturübersicht („gesamt abhängig“) und `get_architecture` vergleichen | Gleiche Zahl (**Abnahme**) |
+| UB6 | Doppelklick auf `C`; zurück zu `A`; Strg+Doppelklick auf `C` | `C.pas` öffnet sich und das Fenster zeigt sofort `C`; zurück in `A` steht sofort der gemerkte Stand (unter 300 ms); Strg+Doppelklick setzt den Cursor auf `C` im uses von `A` (**Abnahme**) |
+| UB7 | Rechtsklick auf `B`, „In implementation verschieben“; Strg+Z | `B` steht im implementation-uses von `A` (Server-Edit), der Zyklus verschwindet nach kurzer Zeit aus dem Fenster; Strg+Z stellt das uses in einem Schritt wieder her (**Abnahme**) |
+| UB8 | Rechtsklick auf `C`, „In interface verschieben“ | `C` steht im interface-uses; ohne interface-uses entsteht eines |
+| UB9 | Rechtsklick auf `Vcl.Forms`, „Eintrag entfernen“; Rechtsklick auf `B` | Eintrag weg; bei `B` (benutzt) fehlt „Eintrag entfernen“ |
+| UB10 | „Pfad kopieren“ auf `C`, in einen Editor einfügen | Vollständiger Pfad von `C.pas` |
+| UB11 | „alle Ebenen“; Filter „dat“; Filter leeren | Unter `C` hängt `Daten`, unter `B` steht `A · siehe oben`; mit Filter nur `C` mit `Daten`, aufgeklappt; leer wieder alles |
+| UB12 | Gruppe „Bibliothek“ aufklappen, `E` wählen, in `A` tippen und warten | Aufklappen und Auswahl bleiben, wenn das Fenster nachfragt (etwa alle 2 s) |
+| UB13 | Architekturübersicht, Strg+Doppelklick auf eine Unit in Karte, *Zentrale Units* oder *Teilsysteme* | Fenster *Unit-Beziehungen* zeigt diese Unit, bis der Editor eine andere Datei zeigt; ohne Strg öffnet der Doppelklick weiter die Unit |
+| UB14 | `.dpr` im Editor; Kontextmenü auf einem Eintrag, „In interface verschieben“ | Programm ohne interface: Kopfzeile meldet „Der Server hat die Änderung abgelehnt …“ |
+| UB15 | Datei ohne Pascal (z. B. `.dfm`) bzw. Server beendet | „Keine Pascal-Datei im Editor“ bzw. „Der Atlas-Server läuft nicht“ |
+| UB16 | `architecture.enabled` aus (Schnellschalter) | Fenster schließt sich, Menüeinträge und Palettenbefehl fehlen |
+| UB17 | Hell und dunkel, englische IDE-Sprache | Rot und Grau gut lesbar; „Unit relations“, „Uses (n)“, „Used by (n)“, „units to recompile“ |

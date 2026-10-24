@@ -1904,6 +1904,11 @@ begin
   Loaded.ArchitectureWindowPlaced := True;
   Loaded.Save(Store);
   Assert.AreEqual(1, Registry.ReadInteger('ArchitectureWindowPlaced', -1));
+  // Ebenso für das Fenster „Unit-Beziehungen“ (#593).
+  Assert.IsFalse(TAtlasPluginSettings.Defaults.UnitRelationsWindowPlaced);
+  Loaded.UnitRelationsWindowPlaced := True;
+  Loaded.Save(Store);
+  Assert.AreEqual(1, Registry.ReadInteger('UnitRelationsWindowPlaced', -1));
 end;
 
 procedure TAtlasSettingsScopesTests.KeepsCommentsAndOtherKeys;
