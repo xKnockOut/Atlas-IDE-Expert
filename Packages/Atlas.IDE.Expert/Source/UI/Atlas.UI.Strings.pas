@@ -795,7 +795,24 @@ type
     SettingsTasksBeforeBuildBlock, SettingsTasksSaveBeforeRun, SettingsTasksRunChecksParallel,
     SettingsTasksOnlyFindings, WelcomeQuickTasks, WelcomeQuickReasonTasksOff, WelcomeQuickTasksNone,
     WelcomeQuickTasksTitle, WelcomeQuickTasking, WelcomeQuickTasksRefused, WelcomeQuickTasksResult,
-    WelcomeQuickHintTasks, WelcomeQuickMenuTasks, WelcomeQuickMsgTaskRefused);
+    WelcomeQuickHintTasks, WelcomeQuickMenuTasks, WelcomeQuickMsgTaskRefused,
+    // Prüfung vor dem Kompilieren (#529).
+    SettingsBuildGateTimeout, GateFindings, GateBlocked, GateOverridden, GateTimedOut, GateBlockReason,
+    // Schranke für Hinweise und Warnungen (#530).
+    SettingsBuildSummary, SettingsBuildWarningsAsErrors, BuildSummaryClean, BuildSummaryCounts,
+    BuildSummaryRejected, BuildSummaryRejectedCodes, BuildSummaryFailed, BuildSummaryBaselined,
+    BuildCountWarning, BuildCountWarnings, BuildCountHint, BuildCountHints, BuildCountJoin,
+    NotificationsBuildRejected, NotificationsBuildRejectedCodes, NotificationsGoToMessage,
+    NotificationsBuildBaselined, CompilerBaselineCommand, CompilerBaselineNone, CompilerBaselineDone,
+    CompilerBaselineSkipped, CompilerBaselineFailed, CompilerBaselineNoProject,
+    // Compilerwarnung gezielt abschalten (#531).
+    DisableWarningTitle, DisableWarningReasonPrompt, DisableWarningFailed, DisableWarningDone,
+    DisableWarningAllWarnings, DisableWarningProjectConfirm, DisableWarningProjectDone, DisableWarningProjectFailed,
+    DisableWarningNoProject,
+    // Unit nicht gefunden: Suchpfad ergänzen (#550).
+    MissingUnitAllConfigs, MissingUnitSearchPathDone, MissingUnitSearchPathPresent,
+    MissingUnitSearchPathFailed, MissingUnitConfigNotFound, MissingUnitAdded, MissingUnitAlreadyInProject,
+    MissingUnitAddFailed, MissingUnitNoProject);
 
   TAtlasStrings = class
   private class var
@@ -817,6 +834,8 @@ type
     /// <summary>Zirkelbezug (#469) zur Kette "uA → uB → Haupt": „uA bindet diese Unit über uB im interface-Teil
     /// ein“; '' ohne.</summary>
     class function UsesCycle(const AChain: string): string; static;
+    /// <summary>Zählung eines Builds (#530): „2 Warnungen, 1 Hinweis“, Einzahl bei 1; '' ohne beides.</summary>
+    class function BuildCounts(AWarnings, AHints: Integer): string; static;
     /// <summary>Fußzeile nach "inherited " (#482) zu den ausgelassenen abstrakten Vorfahrmethoden
     /// ("TBasis.Zeichnen"): eine mit Namen, mehrere aufgezählt (höchstens drei, dann „…“); '' ohne.</summary>
     class function InheritedAbstract(const AMethods: TArray<string>): string; static;
@@ -1676,7 +1695,8 @@ const
      'Höchstens Einträge in der Liste:', 'Verhalten je Quelle:',
      'Release-Build',
      'Release-Build-Wächter: vor make und build in einer Release-Konfiguration die Projektoptionen prüfen (build.releaseGuard)',
-     'Bei Befunden (build.gate)', 'nur melden (off)', 'warnen (warn)', 'Build abbrechen (block)',
+     'Prüfung vor dem Compile und Release-Wächter (build.gate)',
+     'keine Prüfung vor dem Compile, Release-Wächter meldet nur (off)', 'melden (warn)', 'Build abbrechen (block)',
      'Release-Konfigurationen, durch Komma getrennt; „Release“ gilt immer (build.releaseConfigs)',
      'Prüfungen (build.releaseChecks)', 'Symbol DEBUG definiert', 'Debug-Informationen', 'Stack-Frames',
      'Assertions', 'Bereichsprüfung', 'Überlaufprüfung',
@@ -2764,7 +2784,56 @@ const
      '%s: %s',
      'Eine Projektaufgabe aus atlas.json ausführen; die Ausgabe steht im Register „Atlas-Aufgaben“.',
      'Aufgabe ausführen',
-     'Schnellaktion: Aufgabe %s für %s nicht gestartet: %s'),
+     'Schnellaktion: Aufgabe %s für %s nicht gestartet: %s',
+     'Zeitlimit der Prüfung vor dem Compile in ms (build.gateTimeoutMs)',
+     'Prüfung vor dem Compile: %d Fehler in %s (%d geänderte Unit(s) geprüft):',
+     'Prüfung vor dem Compile: Compile abgebrochen (build.gate = block). Ein zweiter Compile ohne Änderung binnen 10 s läuft trotzdem.',
+     'Prüfung vor dem Compile: bewusst übergangen, der Compile läuft trotz der Fehler.',
+     'Prüfung vor dem Compile: Zeitlimit von %d ms (build.gateTimeoutMs) überschritten, der Compile läuft ungeprüft. Dieser Hinweis erscheint einmal je Sitzung.',
+     '%d Fehler der Prüfung vor dem Compile',
+     'Zusammenfassung nach jedem Build (build.summary)',
+     'Codes, die als Fehler zählen (build.warningsAsErrors, z. B. W1035, H2164)',
+     'Build %s erfolgreich: 0 Fehler, 0 Warnungen, 0 Hinweise',
+     'Build %s erfolgreich, aber %s',
+     'Build %s gilt als gescheitert: %s (build.zeroHints)',
+     'Build %s gilt als gescheitert: %s; %s zählt als Fehler (build.warningsAsErrors)',
+     'Build %s fehlgeschlagen: %d Fehler',
+     ' (%d weitere in der Basislinie)',
+     '1 Warnung',
+     '%d Warnungen',
+     '1 Hinweis',
+     '%d Hinweise',
+     '%s, %s',
+     'Build gilt als gescheitert (build.zeroHints)',
+     'Build gilt als gescheitert: %s zählt als Fehler',
+     'Zur Meldung',
+     '(%d in der Basislinie)',
+     'Aktuelle Compilermeldungen in die Basislinie',
+     'Keine Warnungen oder Hinweise aus dem letzten Build von %s für die Basislinie.',
+     'Compilermeldungen in die Basislinie übernommen: %s (%d Compilermeldungen; %d neu, %d entfernt, %d unverändert)',
+     '%d Meldungen nicht übernommen: Datei nicht lesbar oder außerhalb des Projektordners.',
+     'Compilermeldungen nicht in die Basislinie übernommen (Server nicht erreichbar oder Basislinie nicht lesbar).',
+     'Kein aktives Projekt für die Basislinie.',
+     'Warnung abschalten',
+     'Begründung als Kommentar (leer: ohne):',
+     'Warnung nicht abgeschaltet: %s',
+     '%s abgeschaltet: %s',
+     'Achtung: {$WARNINGS OFF} schaltet dort alle Warnungen ab, %s hat keinen eigenen Bezeichner.',
+     '%s (%s) für das ganze Projekt %s abschalten?' + sLineBreak + sLineBreak +
+       'Atlas trägt %s = false in die Basiskonfiguration der Compiler-Optionen ein; sie gilt für alle ' +
+       'Konfigurationen und Plattformen, die den Wert nicht selbst setzen.',
+     '%s im Projekt %s abgeschaltet (%s = false); wirkt ab dem nächsten Compile. Speichern nicht vergessen.',
+     '%s nicht in die Projektoptionen eingetragen: %s',
+     'Kein geöffnetes Projekt enthält %s.',
+     'alle Konfigurationen',
+     'Suchpfad (%s) im Projekt %s ergänzt: %s; wirkt ab dem nächsten Compile. Speichern nicht vergessen.',
+     '%s steht schon im Suchpfad (%s) des Projekts %s.',
+     'Suchpfad nicht ergänzt: %s',
+     'Die Konfiguration %s gibt es im Projekt %s nicht.',
+     '%s ins Projekt %s aufgenommen. Speichern nicht vergessen.',
+     '%s gehört schon zum Projekt %s.',
+     '%s nicht ins Projekt aufgenommen: %s',
+     'Das Projekt %s ist nicht geöffnet.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3575,7 +3644,8 @@ const
      'Maximum entries in the list:', 'Behaviour per source:',
      'Release build',
      'Release build guard: check the project options before make and build in a release configuration (build.releaseGuard)',
-     'On findings (build.gate)', 'report only (off)', 'warn (warn)', 'cancel the build (block)',
+     'Check before compiling and release guard (build.gate)',
+     'no check before compiling, release guard only reports (off)', 'report (warn)', 'cancel the build (block)',
      'Release configurations, separated by commas; “Release” always counts (build.releaseConfigs)',
      'Checks (build.releaseChecks)', 'Symbol DEBUG defined', 'Debug information', 'Stack frames', 'Assertions',
      'Range checking', 'Overflow checking', 'ReportMemoryLeaksOnShutdown := True without {$IFDEF DEBUG}',
@@ -4634,7 +4704,56 @@ const
      '%s: %s',
      'Run a project task from atlas.json; the output appears in the "Atlas tasks" tab.',
      'Run task',
-     'Quick action: task %s for %s not started: %s'));
+     'Quick action: task %s for %s not started: %s',
+     'Time limit of the check before compiling in ms (build.gateTimeoutMs)',
+     'Check before compiling: %d error(s) in %s (%d changed unit(s) checked):',
+     'Check before compiling: compile cancelled (build.gate = block). A second compile without changes within 10 s runs anyway.',
+     'Check before compiling: deliberately overridden, the compile runs despite the errors.',
+     'Check before compiling: time limit of %d ms (build.gateTimeoutMs) exceeded, the compile runs unchecked. This notice appears once per session.',
+     '%d error(s) of the check before compiling',
+     'Summary after every build (build.summary)',
+     'Codes that count as errors (build.warningsAsErrors, e.g. W1035, H2164)',
+     'Build %s succeeded: 0 errors, 0 warnings, 0 hints',
+     'Build %s succeeded, but %s',
+     'Build %s counts as failed: %s (build.zeroHints)',
+     'Build %s counts as failed: %s; %s counts as an error (build.warningsAsErrors)',
+     'Build %s failed: %d error(s)',
+     ' (%d more in the baseline)',
+     '1 warning',
+     '%d warnings',
+     '1 hint',
+     '%d hints',
+     '%s, %s',
+     'Build counts as failed (build.zeroHints)',
+     'Build counts as failed: %s counts as an error',
+     'Go to message',
+     '(%d in the baseline)',
+     'Add current compiler messages to the baseline',
+     'No warnings or hints from the last build of %s for the baseline.',
+     'Compiler messages added to the baseline: %s (%d compiler messages; %d new, %d removed, %d unchanged)',
+     '%d messages not added: file not readable or outside the project folder.',
+     'Compiler messages not added to the baseline (server not reachable or baseline not readable).',
+     'No active project for the baseline.',
+     'Disable warning',
+     'Reason as a comment (empty: none):',
+     'Warning not disabled: %s',
+     '%s disabled: %s',
+     'Note: {$WARNINGS OFF} disables all warnings there, %s has no identifier of its own.',
+     'Disable %s (%s) for the whole project %s?' + sLineBreak + sLineBreak +
+       'Atlas sets %s = false in the base configuration of the compiler options; it applies to all ' +
+       'configurations and platforms that do not set the value themselves.',
+     '%s disabled in project %s (%s = false); takes effect with the next compile. Remember to save.',
+     '%s not added to the project options: %s',
+     'No open project contains %s.',
+     'all configurations',
+     'Search path (%s) of project %s extended: %s; takes effect with the next compile. Remember to save.',
+     '%s is already in the search path (%s) of project %s.',
+     'Search path not extended: %s',
+     'Configuration %s does not exist in project %s.',
+     '%s added to project %s. Remember to save.',
+     '%s already belongs to project %s.',
+     '%s not added to the project: %s',
+     'Project %s is not open.'));
 
 { TAtlasStrings }
 
@@ -4823,6 +4942,26 @@ begin
   if Length(Parts) = 2 then
     Exit(Fmt(TAtlasTextId.UsesCycleDirect, [Parts[0]]));
   Result := Fmt(TAtlasTextId.UsesCycleChain, [Parts[0], string.Join(', ', Copy(Parts, 1, Length(Parts) - 2))]);
+end;
+
+class function TAtlasStrings.BuildCounts(AWarnings, AHints: Integer): string;
+var
+  Warnings, Hints: string;
+begin
+  Warnings := '';
+  Hints := '';
+  if AWarnings = 1 then
+    Warnings := Text(TAtlasTextId.BuildCountWarning)
+  else if AWarnings > 1 then
+    Warnings := Fmt(TAtlasTextId.BuildCountWarnings, [AWarnings]);
+  if AHints = 1 then
+    Hints := Text(TAtlasTextId.BuildCountHint)
+  else if AHints > 1 then
+    Hints := Fmt(TAtlasTextId.BuildCountHints, [AHints]);
+  if (Warnings <> '') and (Hints <> '') then
+    Result := Fmt(TAtlasTextId.BuildCountJoin, [Warnings, Hints])
+  else
+    Result := Warnings + Hints;
 end;
 
 class function TAtlasStrings.Confidence(const AName: string): string;

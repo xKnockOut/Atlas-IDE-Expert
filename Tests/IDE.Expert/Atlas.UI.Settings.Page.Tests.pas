@@ -981,6 +981,9 @@ begin
     Page.LoadFrom(TAtlasPluginSettings.Defaults);
     Assert.IsTrue(Page.ReleaseGuardCheck.Checked, 'Wächter standardmäßig an');
     Assert.AreEqual(0, Page.BuildGateChoice.Choice, 'build.gate off');
+    Assert.AreEqual('300', Page.BuildGateTimeoutEdit.Text, 'build.gateTimeoutMs (#529)');
+    Assert.IsTrue(Page.BuildSummaryCheck.Checked, 'build.summary (#530)');
+    Assert.AreEqual('', Page.BuildWarningsAsErrorsEdit.Text, 'build.warningsAsErrors (#530)');
     Assert.AreEqual('Release', Page.ReleaseConfigsEdit.Text);
     Assert.IsTrue(Page.ReleaseCheckBox(TAtlasReleaseCheck.DebugDefine).Checked);
     Assert.IsNull(Page.ReleaseCheckChoice(TAtlasReleaseCheck.DebugDefine));
@@ -988,6 +991,9 @@ begin
     Assert.AreEqual(1, Page.ReleaseCheckChoice(TAtlasReleaseCheck.RangeChecks).Choice, 'prüfen, Soll aus');
     Page.ReleaseGuardCheck.Checked := False;
     Page.BuildGateChoice.Choice := 2;
+    Page.BuildGateTimeoutEdit.Text := '20';
+    Page.BuildSummaryCheck.Checked := False;
+    Page.BuildWarningsAsErrorsEdit.Text := 'w1035 h2164';
     Page.ReleaseConfigsEdit.Text := 'Release; Ship ,ship';
     Page.ReleaseCheckBox(TAtlasReleaseCheck.OutputFolder).Checked := False;
     Page.ReleaseCheckChoice(TAtlasReleaseCheck.Assertions).Choice := 0;
@@ -996,6 +1002,9 @@ begin
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.ReleaseGuard);
     Assert.AreEqual('block', Saved.BuildGate);
+    Assert.AreEqual(50, Saved.BuildGateTimeoutMs, 'auf die untere Grenze gehoben');
+    Assert.IsFalse(Saved.BuildSummary);
+    Assert.AreEqual('W1035, H2164', Saved.BuildWarningsAsErrors);
     Assert.AreEqual('Release, Ship', Saved.ReleaseConfigs);
     Checks := TAtlasReleaseChecks.Parse(Saved.ReleaseChecks);
     Assert.IsFalse(Checks.Items[TAtlasReleaseCheck.OutputFolder].Enabled);

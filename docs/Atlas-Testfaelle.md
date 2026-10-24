@@ -1778,6 +1778,96 @@ Voraussetzung: VCL-Projekt `Kasse.dproj` mit den Konfigurationen Debug und Relea
 | RW17 | Hintergrundprüfung nach dem Speichern (#548) und Syntaxprüfung in Release mit DEBUG | Keine Meldung des Wächters, kein Abbruch |
 | RW18 | Projektgruppe mit zwei Release-Projekten, eines mit DEBUG, *Alle erzeugen* mit block | Das Projekt mit DEBUG wird abgebrochen, die Meldung nennt dessen Namen; das andere prüft der Wächter ohne Befund (ob die IDE danach weiterbaut, entscheidet sie) |
 
+## Prüfung vor dem Kompilieren (#529)
+
+Voraussetzung: VCL-Projekt `Kasse.dproj` (Main.pas, Daten.pas), einmal erfolgreich kompiliert, Server läuft, Optionen › Atlas › *Compiler*: „Prüfung vor dem Compile“ (`build.gate`) = block, Zeitlimit 300 ms. Regel `empty-except` auf Schweregrad Fehler, `with-statement` auf Warnung.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PV1 | In Main.pas ein `begin` löschen (Syntaxfehler, nicht speichern), *Projekt › Compilieren* | Der Compile startet nicht. Atlas-Gruppe: „Prüfung vor dem Compile: 1 Fehler in Kasse.dproj (1 geänderte Unit(s) geprüft):“, darunter „[syntax] …“ mit Datei und Zeile; „Compile abgebrochen (build.gate = block) …“ und „Atlas: Compile abgebrochen – Kasse.dproj: 1 Fehler der Prüfung vor dem Compile“. Doppelklick auf die Zeile springt an die Stelle (Akzeptanz: block mit Syntaxfehler) |
+| PV2 | Nach PV1 binnen 10 s noch einmal *Compilieren* | Der Compile läuft (und scheitert am Compiler); Meldung „bewusst übergangen …“. Nach mehr als 10 s wieder Abbruch |
+| PV3 | `build.gate` = warn, wie PV1 | Der Compile läuft; die Treffer stehen trotzdem in der Atlas-Gruppe (Akzeptanz: warn) |
+| PV4 | Fehler beheben, in Daten.pas ein leeres `except … end` einfügen (`empty-except` = Fehler), block, *Compilieren* | Abbruch mit „[empty-except] …“ in Daten.pas; nur Daten.pas wurde geprüft („1 geänderte Unit(s)“) |
+| PV5 | `empty-except` auf Warnung stellen, nur einen `with`-Block einfügen, *Compilieren* | Kein Treffer, kein Abbruch (Akzeptanz: Warnung blockiert nie) |
+| PV6 | Erfolgreich kompilieren, ohne Änderung noch einmal *Compilieren* | Keine Meldung von Atlas (keine geänderte Unit) |
+| PV7 | *Projekt › Syntaxprüfung*, Code Insight (Strg+Leertaste) und die Hintergrundprüfung nach dem Speichern bei einem Syntaxfehler | Keine Prüfung, kein Abbruch durch Atlas |
+| PV8 | `build_project` von Claude Code mit Syntaxfehler | Keine Prüfung durch Atlas (Auftrag) |
+| PV9 | Zeitlimit 50 ms, großes Projekt ohne Ausgabedatei (Clean), *Compilieren* | Der Compile läuft sofort; einmal „Zeitlimit von 50 ms (build.gateTimeoutMs) überschritten …“, beim nächsten Compile nicht mehr (Akzeptanz: höchstens Zeitlimit) |
+| PV10 | Server beenden (Statusfeld › Server beenden), Syntaxfehler, *Compilieren* | Keine Prüfung, der Server startet nicht; der Compiler meldet den Fehler |
+| PV11 | `build.gate` = off | Keine Prüfung; der Release-Wächter (#533) meldet in Release weiter nur |
+
+## Schranke für Hinweise und Warnungen (#530)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SH1 | Projekt mit einer unbenutzten lokalen Variablen (H2164) bauen, Vorgaben | Atlas-Gruppe des Meldungsfensters (Reiter bleibt „Build“): „Build <Projekt> erfolgreich, aber 1 Hinweis“, darunter die Meldung H2164; Doppelklick springt in die Zeile |
+| SH2 | Dasselbe Projekt ohne Warnungen und Hinweise bauen | „Build <Projekt> erfolgreich: 0 Fehler, 0 Warnungen, 0 Hinweise“, keine Meldungszeile |
+| SH3 | `build.zeroHints` an, Build aus SH1 | „Build <Projekt> gilt als gescheitert: 1 Hinweis (build.zeroHints)“, die Atlas-Gruppe kommt nach vorn; Benachrichtigungszentrale: roter Eintrag „Build gilt als gescheitert (build.zeroHints)“ mit „Zur Meldung“ |
+| SH4 | Wie SH3 mit einem DUnitX-Testprojekt und „Tests nach dem Build“ an | Die Tests starten nicht; ohne den Hinweis starten sie |
+| SH5 | `build.zeroHints` aus, `build.warningsAsErrors` = `W1035`, Build mit W1035 (Funktion ohne Ergebniszuweisung) und W1036 | „… gilt als gescheitert: 2 Warnungen; W1035 zählt als Fehler (build.warningsAsErrors)“, Meldungszeile zeigt auf W1035; nur W1036: erfolgreich mit „1 Warnung“ |
+| SH6 | Einstellungsseite *Compiler*: in „Codes, die als Fehler zählen“ `w1035 h2164 x1` eintragen, speichern, Seite neu öffnen | Steht als `W1035, H2164` da |
+| SH7 | Build aus SH1, dann *Aktuelle Compilermeldungen in die Basislinie* (Befehlspalette) | Meldungsfenster: „Compilermeldungen in die Basislinie übernommen: …\atlas-baseline.json (1 Compilermeldungen; 1 neu, 0 entfernt, 0 unverändert)“; die Datei enthält einen Eintrag mit `"rule": "h2164"` |
+| SH8 | Nach SH7 erneut bauen, `build.zeroHints` an | „Build <Projekt> erfolgreich: 0 Fehler, 0 Warnungen, 0 Hinweise (1 weitere in der Basislinie)“; Tests nach dem Build laufen |
+| SH9 | Nach SH7 zwei Zeilen über der Variablen einfügen und bauen | Die Meldung zählt weiter nicht (Zuordnung über den Zeileninhalt) |
+| SH10 | Nach SH7 eine zweite unbenutzte Variable hinzufügen und bauen | „… 1 Hinweis (1 weitere in der Basislinie)“; die Meldungszeile zeigt auf die neue Variable |
+| SH11 | Nach SH7 *Baseline des Projekts aktualisieren* (#97) | Der Eintrag `h2164` bleibt in `atlas-baseline.json`; SH8 gilt weiter |
+| SH12 | Server beenden (Atlas aus- und wieder einschalten, ohne Datei zu öffnen), Build aus SH8 | Ohne laufenden Server zählt die Meldung wieder („1 Hinweis“), Atlas startet den Server dafür nicht |
+| SH13 | `build.summary` aus, Build aus SH1; dann zusätzlich `build.zeroHints` an | Ohne zeroHints keine Zusammenfassung; mit zeroHints erscheint die rote Zusammenfassung trotzdem |
+| SH14 | `baseline.update` aus | *Aktuelle Compilermeldungen in die Basislinie* fehlt in der Befehlspalette |
+| SH15 | Befehl aus SH7 ohne vorherigen Build bzw. nach einem Build ohne Warnungen | „Keine Warnungen oder Hinweise aus dem letzten Build von <Projekt> für die Basislinie.“ |
+
+## Compilerwarnung gezielt abschalten (#531)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WA1 | Aufruf einer `deprecated`-Routine, bauen (W1000), Cursor auf die Zeile, Strg+. | Aktionen „W1000 hier abschalten ({$WARN SYMBOL_DEPRECATED OFF})“ (bevorzugt), „W1000 in <Routine> abschalten …“, „W1000 in der ganzen Unit abschalten …“, „W1000 im ganzen Projekt abschalten (Projektoptionen)“ |
+| WA2 | „hier abschalten“, Begründung „Altlast“ | Über der Zeile `{$WARN SYMBOL_DEPRECATED OFF} // Altlast`, darunter `{$WARN SYMBOL_DEPRECATED ON}`, beide mit der Einrückung der Zeile; nach dem nächsten Compile ist W1000 weg |
+| WA3 | Nach WA2 einmal Strg+Z | Beide Schalter sind auf einmal weg |
+| WA4 | Unbenutzte lokale Variable (H2164), bauen, Strg+. auf der Variablen | Kein „hier abschalten“; „H2164 in <Routine> abschalten ({$HINTS OFF})“ ist bevorzugt; ausgeführt steht `{$HINTS OFF}` vor dem Routinenkopf und `{$HINTS ON}` hinter ihrem `end;`, nach dem Compile ist H2164 weg |
+| WA5 | Hinweis außerhalb einer Ablaufmeldung (z. B. H2443), „hier abschalten“ | `{$HINTS OFF}` … `{$HINTS ON}` um die Zeile; prüfen, ob der Hinweis danach weg ist |
+| WA6 | „in der ganzen Unit abschalten“ | Eine Zeile `{$WARN … OFF}` direkt unter `unit X;`, kein ON |
+| WA7 | Warnung ohne Bezeichner in der Tabelle (z. B. W1073 unter Delphi 12) | Titel „… ({$WARNINGS OFF}: betrifft alle Warnungen)“; nach dem Ausführen im Meldungsfenster der Hinweis, dass alle Warnungen betroffen sind |
+| WA8 | „im ganzen Projekt abschalten“, Rückfrage mit Nein, dann mit Ja | Nein: nichts geändert. Ja: Projekt geändert (Sternchen), *Projekt › Optionen › Compiler-Meldungen* zeigt die Warnung aus; in der .dproj steht `<DCC_SYMBOL_DEPRECATED>false</DCC_SYMBOL_DEPRECATED>` in der Basiskonfiguration; nach dem Compile ist W1000 im ganzen Projekt weg |
+| WA9 | `refactoring.disableWarningReason` = false, WA2 wiederholen | Keine Rückfrage, kein Kommentar |
+| WA10 | Begründungsdialog mit Abbrechen schließen | Nichts eingefügt |
+| WA11 | `refactoring.disableWarning` = false | Keine dieser Aktionen im Menü |
+| WA12 | Fehlerzeile (E2003) und Zeile ohne Meldung | Keine dieser Aktionen |
+
+## Schnellkorrekturen für Compilermeldungen, Teil 2 (#549)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SK1 | Unit mit `TJSONArray.Count` ohne `System.Generics.Collections` bauen (H2443), Strg+. auf der Zeile | „uses System.Generics.Collections ergänzen (H2443)“ trägt die Unit ins implementation-uses ein; der nächste Compile meldet H2443 nicht mehr |
+| SK2 | `var L: TStringList;` ohne `System.Classes`, bauen (E2003), Strg+. am Zeilenanfang | „uses System.Classes ergänzen (E2003: TStringList)“ an erster Stelle |
+| SK3 | Wie SK2, Cursor auf `TStringList` | Nur die gewohnte Aktion „uses System.Classes ergänzen“, nicht doppelt |
+| SK4 | `X := 0;` direkt vor `X := 1;` (H2077) | „Wirkungslose Zuweisung an X entfernen (H2077)“ löscht die Zeile |
+| SK5 | `X := Foo();` mit unbenutztem Ergebnis (H2077) | „Zuweisung an X entfernen, nur Foo aufrufen“ ergibt `Foo();`; der Aufruf bleibt |
+| SK6 | `X := Zaehler;` (Funktion ohne Klammern, H2077) | Keine Korrektur für H2077 |
+| SK7 | `function F: Integer;` mit Result nur in einem if-Zweig (W1035), Strg+. auf dem end | `Result := Default(Integer);` direkt hinter begin, mit der Einrückung der ersten Anweisung |
+| SK8 | `S := A;` mit `A: AnsiString` (W1057) bzw. umgekehrt (W1058) | `S := string(A);` bzw. `A := AnsiString(S);` |
+| SK9 | Zwei W1057 in der Datei | Zusätzlich „Alle W1057 in der Datei beheben (2)“; ein Strg+Z nimmt beide zurück |
+| SK10 | Jede Korrektur aus SK1–SK8, danach Strg+Z | Die Korrektur ist mit einem Schritt vollständig zurückgenommen |
+| SK11 | `refactoring.compilerFixes` = false | Keine dieser Aktionen |
+| SK12 | Deutsche IDE (Meldungen auf Deutsch), SK1, SK2, SK4 | Gleiche Korrekturen wie mit englischer Ausgabe |
+
+## Unit nicht gefunden: Suchpfad ergänzen (#550)
+
+Vorbereitung: Projekt `Kasse.dproj` mit den Konfigurationen Debug und Release (Win32, Win64); Unit `Werkzeug.pas` in `Source\Common`, das in keinem Suchpfad steht; Ordner `..\Gemeinsam\Debug` mit `Protokoll.pas` nur im Suchpfad von Debug.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UG1 | `uses Werkzeug;` in `Kasse.dpr`, bauen (F2613), Strg+. auf der uses-Zeile | „Ordner Source\Common in den Suchpfad von Debug aufnehmen“ (bevorzugt), „… aller Konfigurationen aufnehmen“, „Werkzeug.pas ins Projekt aufnehmen“ (**Abnahme**) |
+| UG2 | UG1, „… in den Suchpfad von Debug aufnehmen“, *Projekt › Optionen › Delphi-Compiler › Suchpfad* (Debug) | `Source\Common` steht vorn, relativ; das Geerbte (`$(DCC_UnitSearchPath)`) bleibt; das Projekt gilt als geändert; erneut bauen kompiliert (**Abnahme**) |
+| UG3 | UG1, „… aller Konfigurationen aufnehmen“ | Eintrag in der Basiskonfiguration („Alle Konfigurationen“); Debug und Release kompilieren |
+| UG4 | Aktive Konfiguration Release, `uses Protokoll;`, bauen | „Ordner ..\Gemeinsam\Debug in den Suchpfad von Release aufnehmen (steht in Debug, Win32)“; danach kompiliert Release (**Abnahme**) |
+| UG5 | UG1, „Werkzeug.pas ins Projekt aufnehmen“ | Die Unit steht in der Projektverwaltung und in der dpr; erneut ausführen: „Werkzeug.pas gehört schon zum Projekt …“ |
+| UG6 | Aktion aus UG2 zweimal ausführen | Zweites Mal: „Source\Common steht schon im Suchpfad …“, kein doppelter Eintrag |
+| UG7 | Plattform Linux64 (oder eine andere Nicht-Windows-Plattform), Unit mit `uses Winapi.Windows;`, bauen | Eine Aktion „Winapi.Windows gibt es für Linux64 nicht (nur Win32, Win64)“; kein Pfadvorschlag; Klick zeigt den Hinweis |
+| UG8 | `uses GibtEsNicht;`, bauen, Strg+. | „GibtEsNicht nicht gefunden: durchsuchte Orte anzeigen“; Klick zeigt Projektordner, Projekte der Gruppe, Suchpfade der anderen Konfigurationen, Bibliotheken und Index |
+| UG9 | Projektgruppe mit zweitem Projekt, dessen Ordner `Teile.pas` enthält; im ersten `uses Teile;`, bauen | „Ordner … in den Suchpfad … aufnehmen (aus <Projekt2>.dproj)“ |
+| UG10 | `refactoring.missingUnit` = false | Keine dieser Aktionen |
+| UG11 | Deutsche IDE (Meldung F2613 auf Deutsch) sowie eine Meldung F1026 (Datei 'Werkzeug.dcu' nicht gefunden) | Gleiche Aktionen wie UG1 |
+
 ## Units suchen (#777)
 
 Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testprojekt; Server läuft; Einstellungen auf Vorgabe.

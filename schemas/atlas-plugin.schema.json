@@ -1112,6 +1112,24 @@
       "description": "Register „Atlas-Aufgaben“ zeigt je Lauf nur die Kopfzeile und die erkannten Fundstellen; aus = die ganze Ausgabe. Auch über den Befehl „Aufgaben: nur Befunde / ganze Ausgabe“",
       "x-issue": "#900"
     },
+    "BuildSummary": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "build.summary",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-caption": "Zusammenfassung nach jedem Build",
+      "x-captionEn": "Summary after every build",
+      "x-issue": "#530"
+    },
+    "BuildWarningsAsErrors": {
+      "type": "string",
+      "default": "",
+      "x-key": "build.warningsAsErrors",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-issue": "#530"
+    },
     "WelcomePage": {
       "type": "boolean",
       "default": true,
@@ -2657,8 +2675,18 @@
       "default": "off",
       "x-key": "build.gate",
       "x-area": "build",
-      "x-page": "Release-Build",
-      "x-parent": "build.releaseGuard"
+      "x-page": "Compiler",
+      "x-issue": "#529, #533"
+    },
+    "BuildGateTimeoutMs": {
+      "type": "integer",
+      "default": 300,
+      "minimum": 50,
+      "maximum": 10000,
+      "x-key": "build.gateTimeoutMs",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-issue": "#529"
     },
     "ReleaseConfigs": {
       "type": "string",

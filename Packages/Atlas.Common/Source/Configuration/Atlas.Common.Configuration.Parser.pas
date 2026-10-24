@@ -1437,6 +1437,14 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ClassActions)
     else if Key = 'explicitType' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ExplicitType)
+    else if Key = 'compilerFixes' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.CompilerFixes)
+    else if Key = 'missingUnit' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.MissingUnit)
+    else if Key = 'disableWarning' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.DisableWarning)
+    else if Key = 'disableWarningReason' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.DisableWarningReason)
     else if Key = 'extract' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.Extract)
     else if Key = 'completeCase' then
