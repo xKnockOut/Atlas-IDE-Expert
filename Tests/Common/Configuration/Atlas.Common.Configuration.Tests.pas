@@ -1064,6 +1064,23 @@ begin
     '{"hints": {"xmlDocMaxLines": 5}}', Issues);
   Assert.AreEqual(THintSettings.ExpandLast, Settings.Hints.XmlDocExpand);
   Assert.AreEqual(5, Settings.Hints.XmlDocMaxLines);
+  // Begründungen (#1123): Schalter, Marken, ADR-Ordner.
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Hints.Rationale);
+  Assert.AreEqual(0, Integer(Length(Settings.Hints.RationaleMarkers)));
+  Assert.AreEqual('', Settings.Hints.AdrFolder);
+  Settings := Parse('{"hints": {"rationale": false, "rationaleMarkers": ["WHY", " PERF "], ' +
+    '"adrFolder": "doc/decisions"}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Hints.Rationale);
+  Assert.AreEqual('WHY PERF', string.Join(' ', Settings.Hints.RationaleMarkers));
+  Assert.AreEqual('doc/decisions', Settings.Hints.AdrFolder);
+  Settings := Parse('{"hints": {"rationale": "ja", "rationaleMarkers": ["WHY", ""], "adrFolder": 3}}', Issues);
+  Assert.AreEqual(3, Integer(Length(Issues)));
+  Assert.IsTrue(Settings.Hints.Rationale);
+  Settings := Parse('{"hints": {"rationaleMarkers": "WHY"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual(0, Integer(Length(Settings.Hints.RationaleMarkers)));
 end;
 
 procedure TServerSettingsTests.RuleSeverityFallsBackToDefault;

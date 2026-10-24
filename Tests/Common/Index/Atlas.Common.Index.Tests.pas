@@ -121,6 +121,8 @@ type
     [Test]
     procedure RoundTripsSpecialCharactersAndFlags;
     [Test]
+    procedure IndexesAndCachesRationale;
+    [Test]
     procedure RejectsOtherVersionAndBrokenData;
     [Test]
     procedure ReadsHeadersAndExpandsSymbolsOnDemand;
@@ -252,6 +254,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Memory,
   Atlas.Common.Index.Cache,
+  Atlas.Common.Rationale.Contract,
   Atlas.Common.Index.Builder,
   Atlas.Common.Index.Service,
   Atlas.Common.Index.Scheduler,
@@ -1152,6 +1155,49 @@ begin
   Assert.AreEqual('array of Integer', U.Symbols[0].ParamTypes[1]);
   Assert.AreEqual<NativeInt>(1, Length(U.Unavailable));
   Assert.IsTrue(U.Unavailable[0].Unavailable);
+end;
+
+procedure TIndexCacheTests.IndexesAndCachesRationale;
+const
+  cSource = '// RATIONALE: Unit fuer den Test'#10 +
+    'unit A;'#10'interface'#10'type'#10 +
+    '  // WHY: siehe ADR-0007'#10 +
+    '  TFoo = class'#10 +
+    '    // NOTE: Feld ohne Getter'#10 +
+    '    FWert: Integer;'#10 +
+    '    procedure Lauf;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TFoo.Lauf;'#10 +
+    'begin'#10 +
+    '  // HACK: bis #312 behoben ist'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mOriginal, mLoaded: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mFound: Boolean;
+begin
+  mOriginal := Extract(cSource);
+  Assert.AreEqual('RATIONALE'#9'0'#9'Unit fuer den Test', String.Join('|', mOriginal.Rationale));
+  Assert.IsTrue(FindSymbol(mOriginal, 'TFoo', mSymbol));
+  Assert.AreEqual('WHY'#9'4'#9'siehe ADR-0007', String.Join('|', mSymbol.Rationale));
+  Assert.IsTrue(FindSymbol(mOriginal, 'TFoo.FWert', mSymbol));
+  Assert.AreEqual('NOTE'#9'6'#9'Feld ohne Getter', String.Join('|', mSymbol.Rationale));
+  // Implementierung: Begründung im Rumpf.
+  mFound := False;
+  for mSymbol in mOriginal.Symbols do
+    if SameText(mSymbol.QualifiedName, 'TFoo.Lauf') and not mSymbol.InInterface then
+    begin
+      mFound := True;
+      Assert.AreEqual('HACK'#9'13'#9'bis #312 behoben ist', String.Join('|', mSymbol.Rationale));
+    end;
+  Assert.IsTrue(mFound);
+  mLoaded := TIndexCache.Deserialize(TIndexCache.Serialize([mOriginal]))[0];
+  Assert.AreEqual(String.Join('|', mOriginal.Rationale), String.Join('|', mLoaded.Rationale));
+  Assert.IsTrue(FindSymbol(mLoaded, 'TFoo', mSymbol));
+  Assert.AreEqual(1, Integer(Length(TRationale.DecodeAll(mSymbol.Rationale))));
+  Assert.AreEqual('ADR-0007', Copy(TRationale.DecodeAll(mSymbol.Rationale)[0].Text, 7, 8));
 end;
 
 procedure TIndexCacheTests.RejectsOtherVersionAndBrokenData;

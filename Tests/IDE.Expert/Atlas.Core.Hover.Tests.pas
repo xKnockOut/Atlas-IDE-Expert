@@ -26,6 +26,9 @@ type
     procedure ClassReferenceTitleIsOwnName;
     [Test]
     procedure ReadsStructuredDocumentation;
+    /// <summary>#1123: Nur Begründungen strukturiert; die Doku als Klartext bleibt davor.</summary>
+    [Test]
+    procedure KeepsPlainDocumentationBeforeRationale;
     /// <summary>#110: atlas.published, Filter und Liste für die Zwischenablage.</summary>
     [Test]
     procedure ReadsPublishedMembers;
@@ -126,6 +129,19 @@ begin
   Data := Parse(HoverJson);
   Assert.IsTrue(Data.Doc.IsEmpty);
   Assert.IsFalse(Data.Display.Known);
+end;
+
+procedure TAtlasHoverTests.KeepsPlainDocumentationBeforeRationale;
+var
+  Data: TAtlasHoverData;
+begin
+  Data := Parse('{"contents": "x", "atlas": {"declaration": "var Zaehler: Integer;",' +
+    '"documentationText": "Zaehlt.", "documentation": {"sections": [' +
+    '{"kind": "rationale", "name": "WHY", "runs": [{"kind": "text", "text": "Schnell."}]}]}}}');
+  Assert.AreEqual(2, Integer(Length(Data.Doc.Sections)));
+  Assert.AreEqual(Ord(TAtlasDocSectionKind.Summary), Ord(Data.Doc.Sections[0].Kind));
+  Assert.AreEqual('Zaehlt.', Data.Doc.Sections[0].Text);
+  Assert.AreEqual(Ord(TAtlasDocSectionKind.Rationale), Ord(Data.Doc.Sections[1].Kind));
 end;
 
 procedure TAtlasHoverTests.ReadsPublishedMembers;

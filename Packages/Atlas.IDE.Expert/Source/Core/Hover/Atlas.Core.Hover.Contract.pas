@@ -368,6 +368,10 @@ begin
     (Atlas.GetValue('documentation') is TJSONString) then
     Result.Documentation := Atlas.GetValue('documentation').Value;
   Result.Doc := TAtlasDoc.FromJson(Atlas.GetValue('documentation'));
+  // Nur Begründungen (#1123) strukturiert: die Doku als Klartext davor, sonst fiele sie weg.
+  if (Result.Documentation <> '') and not Result.Doc.IsEmpty and
+    (Length(Result.Doc.Sections) = Length(Result.Doc.SectionsOf(TAtlasDocSectionKind.Rationale))) then
+    Result.Doc.Sections := TAtlasDoc.FromText(Result.Documentation).Sections + Result.Doc.Sections;
   Result.Display := TAtlasDocDisplay.FromJson(Atlas.GetValue('xmlDoc'),
     TAtlasDocDisplay.Create(TAtlasDocExpand.Last, 0));
   Result.Value := Atlas.GetValue<string>('value', '');

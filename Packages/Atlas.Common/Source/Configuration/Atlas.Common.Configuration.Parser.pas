@@ -839,7 +839,7 @@ end;
 
 procedure TValidator.ReadHints(ANode: TJsonNode);
 var
-  Index, Lines: Integer;
+  Index, Lines, Item: Integer;
   Key, Text: string;
   Value: TJsonNode;
   Full, ExpandSet: Boolean;
@@ -892,6 +892,29 @@ begin
     end
     else if Key = 'publishedMembers' then
       ExpectBoolean(Value, Key, FSettings.Hints.PublishedMembers)
+    else if Key = 'rationale' then
+      ExpectBoolean(Value, Key, FSettings.Hints.Rationale)
+    else if Key = 'rationaleMarkers' then
+    begin
+      // Begründungen (#1123): eigene Marken ersetzen die Vorgabe.
+      if Value.Kind <> TJsonKind.Array_ then
+      begin
+        ReportNode(Value, '"rationaleMarkers" muss eine Liste von Marken sein');
+        Continue;
+      end;
+      FSettings.Hints.RationaleMarkers := nil;
+      for Item := 0 to Value.Count - 1 do
+        if ExpectString(Value[Item], 'rationaleMarkers', Text) then
+          if Trim(Text) = '' then
+            ReportNode(Value[Item], '"rationaleMarkers" darf keine leere Marke enthalten')
+          else
+            FSettings.Hints.RationaleMarkers := FSettings.Hints.RationaleMarkers + [Trim(Text)];
+    end
+    else if Key = 'adrFolder' then
+    begin
+      if ExpectString(Value, Key, Text) then
+        FSettings.Hints.AdrFolder := Trim(Text);
+    end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "hints.%s"', [Key]), False);
