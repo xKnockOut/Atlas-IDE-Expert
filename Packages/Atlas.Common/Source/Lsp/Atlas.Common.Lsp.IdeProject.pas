@@ -242,6 +242,8 @@ begin
       Result := Result + NamingKeys[Kind] + '=' + Naming[Kind] + '|';
   if HasConstantPrefix then
     Result := Result + 'constant=' + ConstantPrefix + '|';
+  for Routine in FormatFunctions do
+    Result := Result + 'format=' + Routine.Name + ':' + IntToStr(Routine.FormatIndex) + '|';
 end;
 
 function TIdeProjectContext.RuleNaming: TRuleNaming;
@@ -263,8 +265,6 @@ begin
     Result.Known[TRuleNamingKind.Constant] := True;
     Result.Prefixes[TRuleNamingKind.Constant] := ConstantPrefix;
   end;
-  for Routine in FormatFunctions do
-    Result := Result + 'format=' + Routine.Name + ':' + IntToStr(Routine.FormatIndex) + '|';
 end;
 
 function TIdeProjectContext.Key: string;
