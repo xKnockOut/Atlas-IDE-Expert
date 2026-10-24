@@ -200,6 +200,7 @@
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.AnonymousMethod.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.MethodKind.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.TypeAlias.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.EnumTables.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.KeyHook.pas"/>
         <DCCReference Include="Source\IDE\Signature\Atlas.IDE.Signature.Editor.pas"/>
         <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.Editor.pas"/>

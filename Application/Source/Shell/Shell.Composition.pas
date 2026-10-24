@@ -363,6 +363,12 @@ type
     function TypeAlias(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Alias auflösen (#681): das WorkspaceEdit über alle Verwendungen.</summary>
     function InlineTypeAlias(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Aufzählung mit Namenstabelle (#667): Code-Aktionen an APosition.</summary>
+    function EnumTableActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Namenstabelle anlegen (#667): das WorkspaceEdit mit dem gewählten Namen und der Stelle.</summary>
+    function EnumTable(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Tabellen und case-Anweisungen über einen Aufzählungstyp nachziehen (#667).</summary>
+    function EnumTablesSync(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Umschließung entfernen“ (#657): Konstrukte am Cursor mit Varianten und Vorschau.</summary>
     function Unwrap(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable an APosition.</summary>
@@ -524,6 +530,7 @@ uses
   Atlas.Common.Lsp.MethodWithoutSelf,
   Atlas.Common.Lsp.TypeAlias,
   Atlas.Common.Editing.TypeAlias,
+  Atlas.Common.Lsp.EnumTables,
   Atlas.Common.Lsp.Unwrap,
   Atlas.Common.Lsp.UnitRename,
   Atlas.Common.Lsp.SmartPaste,
@@ -1404,6 +1411,7 @@ begin
       Result := Result + AnonymousMethodActions(AUri, ARange.StartPos);
       Result := Result + MethodKindActions(AUri, ARange.StartPos);
       Result := Result + TypeAliasActions(AUri, ARange.StartPos);
+      Result := Result + EnumTableActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
       Result := Result + RefactoringActions(AUri, ARange);
     end;
@@ -1507,6 +1515,16 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := InlineTypeAlias(AArguments);
+    end);
+  FCommands.Register(TLspEnumTables.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := EnumTable(AArguments);
+    end);
+  FCommands.Register(TLspEnumTables.SyncApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := EnumTablesSync(AArguments);
     end);
   FCommands.Register(TLspUnwrap.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -3625,6 +3643,99 @@ begin
     Resolver.Free;
   end;
   FLogger.Info(Format('Alias auflösen: %d Stellen, %d Dateien, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt,
+    (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.EnumTableActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).EnumTables or not FDocuments.TryGet(AUri, Document) or
+    not MatchText(ExtractFileExt(TDocumentUris.ToPath(AUri)), ['.pas', '.dpr']) then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(AUri));
+    try
+      Result := TLspEnumTables.Actions(Resolver, FIndex, Shared.Tree, Document.Text, AUri, APosition);
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.EnumTable(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Context: TEnumTablesContext;
+begin
+  // Argumente: URI, Position, Name, Stelle.
+  if (AArguments = nil) or (AArguments.Count < 4) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      'Argumente "uri", "position", "name" und "placement" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).EnumTables then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Namenstabelle anlegen" ist abgeschaltet (refactoring.enumTables).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context := Default(TEnumTablesContext);
+  Context.ResourceStrings := RefactoringSettingsFor(Uri).EnumTablesResourceStrings;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspEnumTables.Execute(Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text, Position,
+    AArguments.Items[2].Value, Trim(AArguments.Items[3].Value), Context);
+  FLogger.Info('Namenstabelle angelegt');
+end;
+
+function TServerComposition.EnumTablesSync(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+  Context: TEnumTablesContext;
+begin
+  // Argumente: URI, Position des Typnamens.
+  if (AArguments = nil) or (AArguments.Count < 2) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "position" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).EnumTables then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Tabellen nachziehen" ist abgeschaltet (refactoring.enumTables).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context := Default(TEnumTablesContext);
+  Context.Index := FIndex;
+  Context.Files := ProjectSourceFiles;
+  Context.ReadText := ReadSourceText;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspEnumTables.Sync(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text, Position,
+      Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Tabellen nachziehen: %d Stellen, %d Dateien, %d Warnungen',
     [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt,
     (Answer.GetValue('warnings') as TJSONArray).Count]));
   Result := Answer;

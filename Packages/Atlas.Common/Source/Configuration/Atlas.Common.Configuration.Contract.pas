@@ -420,6 +420,10 @@ type
     TypeAlias: Boolean;
     /// <summary>Reichweite der ersten Aktion „Typ-Alias einführen“: here, unit oder project (#681).</summary>
     TypeAliasScope: string;
+    /// <summary>Namenstabelle anlegen und Tabellen über Aufzählungen nachziehen (#667).</summary>
+    EnumTables: Boolean;
+    /// <summary>Texte der Namenstabelle als resourcestring je Element (#667).</summary>
+    EnumTablesResourceStrings: Boolean;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -888,6 +892,8 @@ begin
   Result.MethodKindStatic := True;
   Result.TypeAlias := True;
   Result.TypeAliasScope := 'unit';
+  Result.EnumTables := True;
+  Result.EnumTablesResourceStrings := False;
 end;
 
 { TCompletionSettings }

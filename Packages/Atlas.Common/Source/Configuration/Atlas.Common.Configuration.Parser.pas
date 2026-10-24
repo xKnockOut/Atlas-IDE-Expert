@@ -1408,6 +1408,10 @@ begin
         else
           ReportNode(ANode[Index], '"refactoring.typeAliasScope" muss "here", "unit" oder "project" sein');
     end
+    else if Key = 'enumTables' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.EnumTables)
+    else if Key = 'enumTablesResourceStrings' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.EnumTablesResourceStrings)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);
