@@ -6,7 +6,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
-## [1.1.0] - 2026-10-23
+## [1.1.0] - 2026-10-24
 
 Schwerpunkte: schneller hinfinden (Schnell öffnen, Navigationsverlauf, Definition einblenden, Brotkrumen, Gliederung, Suchleiste, Editorleiste, schnelle Lesezeichen), besser vervollständigen, sicher umbauen (Extrahieren, Signatur ändern, Code-Aktionen), das Fenster „Atlas-Prüfung“ mit über 100 neuen Prüfregeln und der Gruppe „Compiler vorab“ sowie die Fehlerbehebungen seit 1.0.0 (Hänger, Server-Neustarts, Abstürze). Experimentelle Funktionen sind nach der Installation aus; sie wirken erst mit dem Hauptschalter `experimental.enabled` und ihrem eigenen Schalter.
 
@@ -332,6 +332,12 @@ Schwerpunkte: schneller hinfinden (Schnell öffnen, Navigationsverlauf, Definiti
 - Atlas-Regeln an Atlas selbst (#1109): Ein Prüflauf über den eigenen Quelltext fand Fehlmeldungen in lock-without-finally, deref-before-nil-check, possibly-uninitialized, destructor-not-nil-safe, result-not-set, event-call-without-assigned, missing-inherited, component-hardcoded-color, command- und sql-injection, insecure-http, generic-exception-raised, float-equality, dictionary-get-without-check, ifthen-side-effect, unused-parameter, unused-assignment und format-without-settings; die Regeln sind korrigiert, echte Funde im Code behoben (Lesen mit Kodierung, nil-sichere Destruktoren, Zeitstempel mit `TFormatSettings.Invariant`).
 
 ### Behoben
+- Editorleiste und Atlas-Statusleiste nach einem Projektwechsel wieder bedienbar (#1101, #1155): Beim Schließen aller Editoren sperrt die IDE jedes Steuerelement im Editor-Panel und gibt danach nur ihre eigenen wieder frei. Beide Leisten geben sich frei, sobald wieder ein Editor aktiv ist.
+- Live-Prüfung erst mit vollständigem Index: Solange Projekte laden oder der Symbolindex aufgebaut wird, prüft der Server ohne Index. Ein halber Index kannte Units noch nicht, und `unresolved-identifier` meldete deren Bezeichner als nicht deklariert; nach dem Aufbau prüft Atlas alle Dateien neu.
+- Der Zähler „Fehler/Warnungen/Hinweise“ in der Statuszeile der IDE (#509) ist aus, solange die Atlas-Statusleiste ihre Befundzähler zeigt; die Zahlen standen sonst doppelt.
+- `suspicious-string-pointer-cast`: `RawByteString` und `UTF8String` (`type AnsiString(Codepage)`) bleiben eigene Typen und werden nicht mehr als `AnsiString` gemeldet (Indexformat 27).
+- `unused-public-member`: Methoden, die als `protected` deklariert sind, meldete die Regel über ihren Rumpf als öffentlich und ungenutzt.
+- JSON-RPC: Die Fehlerantwort beim Zeitlimit einer Anfrage ging verloren, wenn die Verbindung gleich danach endete; sie zählt jetzt als laufende Arbeit.
 - Atlas-Editorleiste (#1101): Ein Klick auf einen Knopf tat nichts, Delphi flackerte nur. Die Leiste löste nur aus, wenn der beim Drücken gemerkte Knopf beim Loslassen noch gemerkt war, und ein Mausverlassen löschte ihn. In der IDE kommt zwischen Drücken und Loslassen jedes Klicks ein Mausverlassen (die Leiste fängt die Maus, die IDE holt den Fokus in den Editor). Jetzt löst wie in der Brotkrumenleiste das Loslassen über dem Knopf aus; nur wer auf einem anderen Knopf gedrückt hat, bricht ab. Jeder Klick steht als „Editorleiste: Klick auf …“ im atlas.log.
 - Parser: Bei `if A then else B` fehlte der leere then-Zweig im Syntaxbaum, `B` stand auf dem Platz des then-Zweigs. Kontrollfluss und Prüfregeln sahen `B` dadurch als then-Zweig. Jetzt steht dort eine leere Anweisung; ohne else bleibt der Baum unverändert.
 - Drei weitere Formen ohne Syntaxfehler (#1167, letzte Proben der Gegenprüfung mit DelphiAST): benannte OLE-Argumente mit reserviertem Wort als Namen (`Word.Foo(Type := 1)`), eine Aufrufkonvention an einer anonymen Methode (`function(const S: string): Boolean register begin … end`; bisher ging der Rest der Routine verloren) und Attribute an Inline-Variablen (`var [Weak] Obj: IInterface := nil;`).
