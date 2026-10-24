@@ -2,10 +2,12 @@
 
 // Ablauf für Code-Aktionen, die einen Namen brauchen und projektweit ändern
 // (Boolean umkehren #715, Variable und Feld umwandeln #668, anonyme Methode
-// umwandeln #680): Der Server bietet sie als Client-Befehl mit [uri,
-// position, vorgeschlagener Name] an. Atlas fragt den Namen ab, schickt die
-// offenen Puffer, holt die Antwort des Server-Befehls ({"edit", "warnings",
-// "places", "files", optional "preview"}), zeigt die Vorschau wie beim
+// umwandeln #680, Typ-Alias einführen #681): Der Server bietet sie als
+// Client-Befehl mit [uri, position, vorgeschlagener Name, weitere …] an;
+// weitere Argumente (die Reichweite bei #681) gehen unverändert mit. Atlas
+// fragt den Namen ab, schickt die offenen Puffer, holt die Antwort des
+// Server-Befehls ({"edit", "warnings", "places", "files", optional
+// "preview"}), zeigt die Vorschau wie beim
 // Umbenennen mit dem Vorschautext und den Warnungen und übernimmt erst nach
 // Bestätigung, je Datei ein Rückgängig-Schritt. Die Texte kommen je Aktion
 // aus TAtlasNamedRefactoringTexts. Aktionen ohne Namen (Methode ohne Self
@@ -42,8 +44,8 @@ type
       const ATexts: TAtlasNamedRefactoringTexts; APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
       static;
   public
-    /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position, name]); AApplyCommand: Befehl des
-    /// Servers; ASession: laufende Sitzung oder nil; AMessage: Zeile für die Meldungsansicht.</summary>
+    /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position, name, weitere …]); AApplyCommand:
+    /// Befehl des Servers; ASession: laufende Sitzung oder nil; AMessage: Zeile für die Meldungsansicht.</summary>
     class procedure Execute(ASession: TLspSession; const AArgumentsJson, AApplyCommand: string;
       const ATexts: TAtlasNamedRefactoringTexts; APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
       static;
@@ -85,6 +87,7 @@ var
   Arguments: TJSONValue;
   Values, List: TJSONArray;
   Name, ApplyArguments: string;
+  Index: Integer;
 begin
   if ASession = nil then
   begin
@@ -108,6 +111,8 @@ begin
       List.AddElement(Values.Items[0].Clone as TJSONValue);
       List.AddElement(Values.Items[1].Clone as TJSONValue);
       List.Add(Name);
+      for Index := 3 to Values.Count - 1 do
+        List.AddElement(Values.Items[Index].Clone as TJSONValue);
       ApplyArguments := List.ToJSON;
     finally
       List.Free;

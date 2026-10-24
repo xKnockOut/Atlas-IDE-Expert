@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2063] of string = (
+  Lines: array[0..2077] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1294,6 +1294,25 @@ const
     '          "default": true,',
     '          "description": "„In class-Methode umwandeln“ setzt static (ohne verstecktes Self der Klasse); bei Records immer.",',
     '          "x-issue": "#686"',
+    '        },',
+    '        "typeAlias": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen „Typ-Alias einführen“ auf einem Typausdruck (generischer Typ mit Argumenten, Array, Menge, Methodenreferenz, prozeduraler Typ): schreibt X = Ausdruck in den typ' +
+      'e-Abschnitt vor der ersten Verwendung (bei Bedarf mit Vorwärtsdeklaration der eigenen Klasse, im Projekt in den interface-Teil) und ersetzt die Stelle, alle gleichen Ausdrücke der Unit oder des Projek' +
+      'ts; gleich heißt gleiche aufgelöste Typen. Offene generische Parameter (TList<T> in TBox<T>) ergeben keinen Alias, die Aktion nennt den Grund. Dazu „Alias auflösen“ auf dem Namen eines Alias X = Y: er' +
+      'setzt die Verwendungen durch Y (Arrays, Mengen und prozedurale Typen nur dort, wo Delphi einen Typausdruck annimmt) und entfernt den Alias, wenn keine Verwendung bleibt; X = type Y bleibt. Vorher eine' +
+      ' Vorschau mit allen Stellen, ein Rückgängig-Schritt je Datei.",',
+    '          "x-issue": "#681"',
+    '        },',
+    '        "typeAliasScope": {',
+    '          "type": "string",',
+    '          "enum": ["here", "unit", "project"],',
+    '          "default": "unit",',
+    '          "description": "Reichweite der ersten Aktion „Typ-Alias einführen“: here ersetzt nur die Stelle, unit alle gleichen Ausdrücke der Unit, project auch die Units, die die Unit einbinden. Die an' +
+      'deren beiden Reichweiten stehen als eigene Aktionen daneben.",',
+    '          "x-control": "Auswahl",',
+    '          "x-issue": "#681"',
     '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',
