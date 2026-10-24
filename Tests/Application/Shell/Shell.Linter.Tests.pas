@@ -4,8 +4,11 @@
 // Optionen aus TCommandLineOptions.Parse auf Dateien in einem Temp-Ordner.
 // Exit-Codes (0 sauber, 1 Treffer, 3 Aufruf- oder Lesefehler), Formate,
 // Metriken (#66), TODOs (#68), Unterdrückungen (#147) und Baseline (#97),
-// dazu der Lauf mit und ohne Symbolindex (#1112). Index-Caches liegen im
-// Temp-Ordner (--index-cache), nie bei denen des Benutzers.
+// dazu der Lauf mit und ohne Symbolindex (#1112). Index-Caches liegen neben
+// dem Testprogramm (--index-cache), nie bei denen des Benutzers. Der Ordner
+// bleibt zwischen den Läufen: Der Index der erreichbaren RTL (rund 1500 Units)
+// kostete in einem leeren Cache je Aufbau gut drei Minuten, im Testlauf zweimal
+// (Aufwärmen und Test). Ein neues Cache-Format verwirft er selbst.
 // Jede Ausgabe geht in eine Datei (--output), nie auf stdout.
 // TLinterShell.ClearCache bleibt ungetestet: Es löscht die echten Index-Caches
 // des Benutzers.
@@ -129,7 +132,7 @@ begin
   if TFile.Exists(FOutput) then
     TFile.Delete(FOutput);
   Result := TLinterShell.Run(TCommandLineOptions.Parse(AArgs + ['--output', FOutput, '--index-cache',
-    Path('IndexCache')]));
+    TPath.Combine(ExtractFilePath(ParamStr(0)), 'TestIndexCache')]));
 end;
 
 function TShellLinterTests.OutputText: string;
