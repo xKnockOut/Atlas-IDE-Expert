@@ -665,6 +665,14 @@ begin
   Assert.IsFalse(Parse('{"refactoring": {"methodKind": false}}', Issues).Refactoring.MethodKind);
   Assert.IsFalse(Parse('{"refactoring": {"methodKindMarker": false}}', Issues).Refactoring.MethodKindMarker);
   Assert.IsFalse(Parse('{"refactoring": {"methodKindStatic": false}}', Issues).Refactoring.MethodKindStatic);
+  // #681: Typ-Alias.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.TypeAlias);
+  Assert.IsFalse(Parse('{"refactoring": {"typeAlias": false}}', Issues).Refactoring.TypeAlias);
+  Assert.AreEqual('unit', Parse('{}', Issues).Refactoring.TypeAliasScope);
+  Assert.AreEqual('project', Parse('{"refactoring": {"typeAliasScope": "Project"}}', Issues).Refactoring.TypeAliasScope);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('unit', Parse('{"refactoring": {"typeAliasScope": "datei"}}', Issues).Refactoring.TypeAliasScope);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   Parse('{}', Issues);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"refactoring": {"propertyFromAccessorsPrefixes": "Get", "propertyFromAccessorsReplaceCalls": "ja", ' +

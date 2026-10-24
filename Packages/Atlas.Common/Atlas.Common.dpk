@@ -188,6 +188,8 @@ contains
   Atlas.Common.Lsp.AnonymousMethods in 'Source\Lsp\Atlas.Common.Lsp.AnonymousMethods.pas',
   Atlas.Common.Editing.MethodWithoutSelf in 'Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.pas',
   Atlas.Common.Lsp.MethodWithoutSelf in 'Source\Lsp\Atlas.Common.Lsp.MethodWithoutSelf.pas',
+  Atlas.Common.Editing.TypeAlias in 'Source\Editing\Atlas.Common.Editing.TypeAlias.pas',
+  Atlas.Common.Lsp.TypeAlias in 'Source\Lsp\Atlas.Common.Lsp.TypeAlias.pas',
   Atlas.Common.Editing.PromoteVariable in 'Source\Editing\Atlas.Common.Editing.PromoteVariable.pas',
   Atlas.Common.Lsp.PromoteVariable in 'Source\Lsp\Atlas.Common.Lsp.PromoteVariable.pas',
   Atlas.Common.Editing.RoutineLocals in 'Source\Editing\Atlas.Common.Editing.RoutineLocals.pas',
