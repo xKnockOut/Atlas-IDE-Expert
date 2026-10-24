@@ -58,7 +58,7 @@ type
     MultiCursorAbove, MultiCursorBelow, Search, SearchNext, SearchPrevious,
     SearchMethod, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove, Unwrap, ProblemsWindow,
     SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
-    PreviousBookmark, SearchReplace, StepIntoTarget);
+    PreviousBookmark, SearchReplace, StepIntoTarget, ExpressionType);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -276,7 +276,10 @@ begin
     Create(TAtlasKeyFunction.PreviousBookmark, Word(ASettings.PreviousBookmarkKey), Shared, ASettings.QuickBookmarks),
     // Gezielt hineinspringen (#836): nur im angehaltenen Zustand, sonst geht die Taste an die IDE; aus = Kürzel frei.
     Create(TAtlasKeyFunction.StepIntoTarget, Word(ASettings.DebugStepIntoTargetKey), Shared,
-      ASettings.DebugStepIntoTarget)];
+      ASettings.DebugStepIntoTarget),
+    // Typ des markierten Ausdrucks (#689): Strg+Umschalt+T ist in der IDE „To-Do-Eintrag hinzufügen“; bewusst
+    // übernommen, darum mit Vorrang. Aus = die IDE behält die Taste.
+    Create(TAtlasKeyFunction.ExpressionType, Word(ASettings.ExpressionTypeKey), True, ASettings.ExpressionType)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -449,6 +452,8 @@ begin
         ASettings.PreviousBookmarkKey := Entry.Key;
       TAtlasKeyFunction.StepIntoTarget:
         ASettings.DebugStepIntoTargetKey := Entry.Key;
+      TAtlasKeyFunction.ExpressionType:
+        ASettings.ExpressionTypeKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;
@@ -523,6 +528,8 @@ begin
     TAtlasKeyOwner.Create(scShift or scAlt or $28, 'IDE: Spaltenblock nach unten markieren'), // VK_DOWN
     // Anweisung vervollständigen (#697) nimmt Strg+Umschalt+Enter mit Vorrang.
     TAtlasKeyOwner.Create(scCtrl or scShift or $0D, 'IDE: Referenzen suchen'), // VK_RETURN
+    // Typ des markierten Ausdrucks (#689) nimmt Strg+Umschalt+T mit Vorrang.
+    TAtlasKeyOwner.Create(scCtrl or scShift or Ord('T'), 'IDE: To-Do-Eintrag hinzufügen'),
     // Schnelle Lesezeichen (#1104): erster Teil der Faltungsakkorde.
     TAtlasKeyOwner.Create(scCtrl or scShift or Ord('K'), 'IDE: Faltung (Strg+Umschalt+K, dann U, E, A, T, O …)')];
   // Lesezeichen 0–9 der IDE; 0 bleibt immer bei ihr.

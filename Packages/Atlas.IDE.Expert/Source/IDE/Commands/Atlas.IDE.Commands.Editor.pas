@@ -244,6 +244,8 @@ uses
   Atlas.IDE.Editor.Unwrap,
   Atlas.IDE.Debug.StepInto,
   Atlas.IDE.Debug.StepFilter,
+  Atlas.IDE.Editor.ExpressionType,
+  Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.SymbolPath.Service,
   Atlas.Core.Editor.WorkspacePlan,
@@ -347,6 +349,18 @@ begin
     begin
       TAtlasIdeStepInto.Dismiss;
     end);
+  // Typ des Ausdrucks (#689): Der Tooltip gilt nur in seiner Ansicht.
+  TAtlasGuard.Run(TAtlasFeature.ExpressionType,
+    procedure
+    begin
+      TAtlasIdeExpressionType.Dismiss;
+    end);
+  // Methodenreihenfolge (#660): Neue Rümpfe zählen gegen den Stand der neuen Ansicht.
+  TAtlasGuard.Run(TAtlasFeature.MethodPlacement,
+    procedure
+    begin
+      TAtlasIdeMethodPlacement.Dismiss;
+    end);
 end;
 
 procedure TEditorNotifier.EditorViewModified(const EditWindow: INTAEditWindow; const EditView: IOTAEditView);
@@ -390,6 +404,18 @@ begin
     procedure
     begin
       TAtlasIdeUnwrap.EditorModified;
+    end);
+  // Typ des Ausdrucks (#689): Jede Änderung schließt den Tooltip.
+  TAtlasGuard.Run(TAtlasFeature.ExpressionType,
+    procedure
+    begin
+      TAtlasIdeExpressionType.EditorModified;
+    end);
+  // Methodenreihenfolge (#660): nach der Ruhezeit auf neue Rümpfe sehen.
+  TAtlasGuard.Run(TAtlasFeature.MethodPlacement,
+    procedure
+    begin
+      TAtlasIdeMethodPlacement.EditorModified;
     end);
 end;
 
@@ -546,6 +572,13 @@ begin
     procedure
     begin
       TAtlasIdeDebugStepFilter.UnskipAtCursor;
+    end);
+  // Methodenrümpfe wie die Klasse ordnen (#660); abgeschaltet meldet der Aufruf das.
+  FContextMenu.AddGuarded(TAtlasFeature.MethodPlacement, 'Atlas.MethodOrder',
+    TAtlasStrings.Text(TAtlasTextId.MethodOrderCommand), nil,
+    procedure
+    begin
+      TAtlasIdeMethodPlacement.Run;
     end);
   FContextMenu.Add('Atlas.References', TAtlasStrings.Text(TAtlasTextId.MenuReferences), nil,
     procedure

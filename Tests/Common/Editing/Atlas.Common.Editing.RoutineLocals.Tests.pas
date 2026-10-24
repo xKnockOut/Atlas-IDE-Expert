@@ -21,6 +21,8 @@ type
     procedure AccessOfDistinguishesWrites;
     [Test]
     procedure RemovesVariables;
+    [Test]
+    procedure RemovesVariableSharingLine;
   end;
 
 implementation
@@ -156,6 +158,30 @@ begin
     TRoutineLocals.RemoveVariables(Tree, Locals[6].Decl, ['X', 'Y', 'Z'], Edits);
     Assert.AreEqual(StringReplace(Source, 'var'#10'  X, Y: Integer;'#10'  Z: Integer;'#10, '', []),
       TChangeSignature.ApplyEdits(Source, Edits));
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TRoutineLocalsTests.RemovesVariableSharingLine;
+const
+  Shared = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'var X: Integer;'#10 +
+    '  Y: Integer; Z: Integer;'#10'begin'#10'  Y := 1;'#10'  Z := Y;'#10'end;'#10'end.';
+var
+  Tree: TSyntaxTree;
+  Locals: TArray<TRoutineLocal>;
+  Edits: TArray<TTextEdit>;
+begin
+  // Steht "var" oder ein weiterer Eintrag auf der Zeile, fällt nur der Eintrag weg (#644).
+  Tree := TPascalParser.Parse(Shared);
+  try
+    Locals := TRoutineLocals.Collect(Shared, Tree, TRoutineBody.RoutineAt(Tree, Pos('Y := 1', Shared)));
+    Edits := nil;
+    TRoutineLocals.RemoveVariables(Tree, Locals[0].Decl, ['X'], Edits);
+    Assert.AreEqual(StringReplace(Shared, 'var X: Integer;', 'var ', []), TChangeSignature.ApplyEdits(Shared, Edits));
+    Edits := nil;
+    TRoutineLocals.RemoveVariables(Tree, Locals[1].Decl, ['Y'], Edits);
+    Assert.AreEqual(StringReplace(Shared, 'Y: Integer; Z', 'Z', []), TChangeSignature.ApplyEdits(Shared, Edits));
   finally
     Tree.Free;
   end;

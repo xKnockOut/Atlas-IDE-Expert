@@ -146,6 +146,8 @@ const
     // Ersetzen in der Atlas-Suche (#893): Editorbefehl.
     3,
     // Gezielt hineinspringen (#836): Editorbefehl.
+    3,
+    // Typ des markierten Ausdrucks (#689): Editorbefehl.
     3);
 
 type

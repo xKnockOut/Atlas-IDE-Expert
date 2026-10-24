@@ -442,6 +442,9 @@ type
     FreeFields: Boolean;
     /// <summary>Form der Freigabe: free (FFeld.Free) oder freeAndNil (#666).</summary>
     FreeFieldsStyle: string;
+    /// <summary>Glühbirne „Als Konstante deklarieren“ für Variablen, die genau einmal zugewiesen und nie geändert
+    /// werden (#712); nur, wenn die Sprachversion Inline-Konstanten kennt.</summary>
+    SuggestConst: Boolean;
     /// <summary>Code-Aktion „Bedeutung umkehren“ für Boolean-Symbole (#715).</summary>
     InvertBoolean: Boolean;
     /// <summary>Eigene Gegensatzpaare als "A=B", vor den eingebauten (#715).</summary>
@@ -480,6 +483,13 @@ type
     EnumTables: Boolean;
     /// <summary>Texte der Namenstabelle als resourcestring je Element (#667).</summary>
     EnumTablesResourceStrings: Boolean;
+    /// <summary>Code-Aktionen „In Inline-Variable umwandeln“, „In var-Block verschieben“ und „var-Block
+    /// aufräumen“ (#644).</summary>
+    VarBlock: Boolean;
+    /// <summary>Beim Aufräumen gleiche Typen zusammenfassen; False trennt sie (#644).</summary>
+    VarBlockMerge: Boolean;
+    /// <summary>Reihenfolge beim Aufräumen: usage, alpha oder none (#644).</summary>
+    VarBlockSort: string;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -996,6 +1006,7 @@ begin
   Result.PropertyFromAccessorsHideAccessors := 'off';
   Result.FreeFields := True;
   Result.FreeFieldsStyle := 'free';
+  Result.SuggestConst := False;
   Result.InvertBoolean := True;
   Result.InvertBooleanAntonyms := nil;
   Result.InvertBooleanFallbackPrefix := 'Not';
@@ -1014,6 +1025,9 @@ begin
   Result.TypeAliasScope := 'unit';
   Result.EnumTables := True;
   Result.EnumTablesResourceStrings := False;
+  Result.VarBlock := True;
+  Result.VarBlockMerge := True;
+  Result.VarBlockSort := 'usage';
 end;
 
 { TCompletionSettings }

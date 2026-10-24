@@ -101,6 +101,12 @@ type
     /// <summary>Umschließung entfernen (#657): Vorgaben, Speichern und Laden, Kürzel normalisiert.</summary>
     [Test]
     procedure UnwrapOptions;
+    [Test]
+    procedure ExpressionTypeOptions;
+    /// <summary>Methodenrümpfe in Deklarationsreihenfolge (#660): Vorgabe, Werte normalisiert, Speichern und
+    /// Laden.</summary>
+    [Test]
+    procedure MethodPlacementOptions;
     /// <summary>Markierung beim Tippen umschließen (#672): Vorgaben, Speichern und Laden.</summary>
     [Test]
     procedure WrapSelectionOptions;
@@ -903,6 +909,18 @@ begin
   Settings.DimUnusedUses := False;
   Settings.RecursionMarkers := False;
   Settings.RecursionMarkersDepth := 7;
+  Settings.ExitPoints := False;
+  Settings.ExitPointsExceptions := False;
+  Settings.ExitPointsLoops := False;
+  Settings.ExitPointsBadge := False;
+  Settings.Reassigned := False;
+  Settings.ReassignedTargets := 'fields,locals';
+  Settings.ReassignedStyle := 'wavy';
+  Settings.ReassignedColor := '#00ff80';
+  Settings.ExpressionType := False;
+  Settings.ExpressionTypeConversions := False;
+  Settings.ExpressionTypeConstValue := False;
+  Settings.ExpressionTypeKey := $4054;
   Settings.InlineDiagnostics := 'off';
   Settings.ProblemsStatusCounter := False;
   Settings.NextProblemKey := 0;
@@ -917,6 +935,18 @@ begin
   Assert.IsFalse(Loaded.DimUnusedUses, 'uses-Abblenden abschaltbar');
   Assert.IsFalse(Loaded.RecursionMarkers, 'Rekursionssymbole abschaltbar (#623)');
   Assert.AreEqual(7, Loaded.RecursionMarkersDepth);
+  Assert.IsFalse(Loaded.ExitPoints, 'Austrittspunkte abschaltbar (#698)');
+  Assert.IsFalse(Loaded.ExitPointsExceptions);
+  Assert.IsFalse(Loaded.ExitPointsLoops);
+  Assert.IsFalse(Loaded.ExitPointsBadge);
+  Assert.IsFalse(Loaded.Reassigned, 'Unterstreichung abschaltbar (#712)');
+  Assert.AreEqual('locals,fields', Loaded.ReassignedTargets, 'feste Reihenfolge');
+  Assert.AreEqual('wavy', Loaded.ReassignedStyle);
+  Assert.AreEqual('#00FF80', Loaded.ReassignedColor);
+  Assert.IsFalse(Loaded.ExpressionType, 'Typ des Ausdrucks abschaltbar (#689)');
+  Assert.IsFalse(Loaded.ExpressionTypeConversions);
+  Assert.IsFalse(Loaded.ExpressionTypeConstValue);
+  Assert.AreEqual($4054, Loaded.ExpressionTypeKey);
   Assert.AreEqual('off', Loaded.InlineDiagnostics, 'Fehlertext abschaltbar');
   Assert.IsFalse(Loaded.ProblemsStatusCounter, 'Zähler abschaltbar');
   Assert.AreEqual(0, Loaded.NextProblemKey);
@@ -1953,6 +1983,45 @@ begin
   Loaded.NewLineBelowKey := -5;
   Loaded.Normalize;
   Assert.AreEqual(0, Loaded.NewLineBelowKey);
+end;
+
+procedure TAtlasPluginSettingsTests.ExpressionTypeOptions;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  // Typ des markierten Ausdrucks (#689): an, mit Umwandlungen und Wert, Strg+Umschalt+T.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.ExpressionType);
+  Assert.IsTrue(Settings.ExpressionTypeConversions);
+  Assert.IsTrue(Settings.ExpressionTypeConstValue);
+  Assert.AreEqual($6054, Settings.ExpressionTypeKey, 'Strg+Umschalt+T');
+  Settings.ExpressionTypeKey := $1FFFF;
+  Settings.Normalize;
+  Assert.AreEqual($FFFF, Settings.ExpressionTypeKey);
+  Settings.ExpressionTypeKey := -3;
+  Settings.Normalize;
+  Assert.AreEqual(0, Settings.ExpressionTypeKey);
+end;
+
+procedure TAtlasPluginSettingsTests.MethodPlacementOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('declaration', Settings.MethodPlacement);
+  Settings.MethodPlacement := 'Alphabetical';
+  Settings.Normalize;
+  Assert.AreEqual('alphabetical', Settings.MethodPlacement);
+  Settings.MethodPlacement := 'irgendwie';
+  Settings.Normalize;
+  Assert.AreEqual('declaration', Settings.MethodPlacement, 'Unbekanntes wird zur Vorgabe');
+  Settings.MethodPlacement := 'off';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.AreEqual('off', Loaded.MethodPlacement, 'abschaltbar');
 end;
 
 procedure TAtlasPluginSettingsTests.UnwrapOptions;

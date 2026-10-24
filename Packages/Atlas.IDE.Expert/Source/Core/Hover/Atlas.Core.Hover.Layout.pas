@@ -154,6 +154,10 @@ type
     /// </summary>
     DebugExplaining: string;
     DebugChecked: string;
+    /// <summary>Neu zugewiesene Variablen (#712): „Einmal neu zugewiesen (Zeile %s)“ und
+    /// „Neu zugewiesen: %d Zuweisungen (Zeilen %s)“.</summary>
+    ReassignedOne: string;
+    ReassignedCount: string;
     /// <summary>published-Mitglieder (#110): Format mit %d, %d für Properties und Ereignisse; Schalter,
     /// Abschnitte, Spaltenköpfe, Formate „+ %d weitere …“, Hinweise und „Liste kopieren“.</summary>
     PublishedSummary: string;
@@ -1184,10 +1188,13 @@ begin
 end;
 
 procedure TBuilder.Description;
+var
+  Reassigned: string;
 begin
   // Beschreibung unter einer Linie; nur die XMLDoc scrollt.
+  Reassigned := FData.ReassignedText(FInput.Texts.ReassignedOne, FInput.Texts.ReassignedCount);
   if not (((FData.LocationText = '') and (FData.UnitName <> '')) or (FData.Value <> '') or
-    (FData.Deprecation <> '') or FInput.HasDoc) then
+    (FData.Deprecation <> '') or (Reassigned <> '') or FInput.HasDoc) then
     Exit;
   HorizontalLine(FY);
   Inc(FY, Scale(7));
@@ -1196,6 +1203,7 @@ begin
   if FData.Value <> '' then
     Block('= ' + FData.Value, FColors.Muted, 0);
   Block(FData.Deprecation, FColors.Warn, 0);
+  Block(Reassigned, FColors.Muted, 0);
   FLayout.DocLeft := FLeft;
   FLayout.DocTop := FY;
   if FInput.HasDoc then

@@ -301,6 +301,11 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DebugDisplay.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.EventHandlers.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Recursion.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ExitPoints.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Reassigned.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ExpressionType.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MethodOrder.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodOrder.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.OverrideMarks.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Baseline.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerBaseline.pas"/>
@@ -384,6 +389,12 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UnitSearch.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Recursion.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ExitPoints.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Reassigned.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ExpressionTypes.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ResolvedSignatures.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.SuggestConst.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.VarBlock.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.OrdinalConstants.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ConstantValues.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ConditionalBranches.pas"/>
