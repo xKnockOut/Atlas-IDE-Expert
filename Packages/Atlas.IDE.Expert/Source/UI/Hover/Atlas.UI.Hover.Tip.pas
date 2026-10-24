@@ -58,8 +58,8 @@ type
   TAtlasHoverIndexEvent = procedure(Sender: TObject; AIndex: Integer) of object;
   TAtlasHoverActionEvent = procedure(Sender: TObject; AAction: TAtlasHoverAction) of object;
   TAtlasHoverUrlEvent = procedure(Sender: TObject; const AUrl: string) of object;
-  /// <summary>Klick auf eine Aktion unter einem Problem (#621); AProblem ist der Index in View.Problems.</summary>
-  /// <summary>AItem: Stelle in Problem.Related bei der Aktion Related (#896), sonst 0.</summary>
+  /// <summary>Klick auf eine Aktion unter einem Problem (#621); AProblem ist der Index in View.Problems.
+  /// AItem: Stelle in Problem.Related bei der Aktion Related (#896), sonst 0.</summary>
   TAtlasHoverProblemActionEvent = procedure(Sender: TObject; AProblem: Integer;
     AAction: TAtlasHoverProblemAction; AItem: Integer) of object;
 

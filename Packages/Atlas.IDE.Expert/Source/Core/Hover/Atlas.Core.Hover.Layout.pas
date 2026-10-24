@@ -51,8 +51,8 @@ type
   /// <summary>Schalter der published-Mitglieder (#110): geerbte zeigen, nur mit Vorgabe, Abschnitte zu- bzw.
   /// aufklappen, alle Zeilen zeigen.</summary>
   TAtlasHoverPublishedToggle = (ShowInherited, OnlyDefaults, Properties, Events, MoreProperties, MoreEvents);
-  /// <summary>Aktion unter einem Problem im Tooltip (#621).</summary>
-  /// <summary>Related: Sprung zu einer weiteren Stelle (#896), ShowGraph: Unit-Beziehungen zeigen (#896).</summary>
+  /// <summary>Aktion unter einem Problem im Tooltip (#621). Related: Sprung zu einer weiteren Stelle (#896),
+  /// ShowGraph: Unit-Beziehungen zeigen (#896).</summary>
   TAtlasHoverProblemAction = (RemoveUses, RemoveAllUses, MoveUses, Fix, SuppressLine, Configure, Related, ShowGraph);
   /// <summary>Fill: Fläche; Line: waagrechte Linie; Text: Text ab Rect.TopLeft; CenterText: zentriert in
   /// Rect; Frame: umrandetes Rechteck mit Fläche Back; RoundFill: gefülltes Rechteck mit Radius; Block:
