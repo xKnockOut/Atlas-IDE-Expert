@@ -138,6 +138,7 @@
         <DCCReference Include="Source\Index\Atlas.Common.Index.Service.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Derived.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.TypedScope.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ManagedTypes.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Registry.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Suppressions.pas"/>
@@ -331,6 +332,7 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.OrdinalConstants.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ConstantValues.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ConditionalBranches.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.FormatStrings.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.DirectiveNames.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.PureRoutines.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.pas"/>
@@ -397,6 +399,10 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ProjectFiles.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Naming.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Casts.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.StringAddress.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.FormatArgs.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.ForbiddenSymbols.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.pas"/>

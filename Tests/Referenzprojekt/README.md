@@ -60,6 +60,22 @@ Genau die markierten Zeilen müssen gemeldet werden, jede weitere Meldung ist ei
 Fehlalarm. `TLegacyStackQueueTests.ReferenceProjectMatchesMarkers` prüft
 `legacy-stack-queue` (#1106) zusätzlich für sich.
 
+Regeln, die erst mit Optionen etwas melden, schweigen im Golden-Korpus mit den
+Standardeinstellungen. Ihre Treffer tragen `// ERWARTET-OPTION: <regel-id>`.
+Für `forbidden-symbol` (#1133) prüft
+`TForbiddenSymbolTests.ReferenceProjectMatchesMarkers` alle Units unter `Source`
+mit `TThread` als Stub im Index und dieser Liste:
+
+```json
+[{"name": "System.Write*", "kind": "routine", "message": "Nur über das Protokoll",
+  "allowFirstArgument": ["ErrOutput", "TextFile", "Text"]},
+ {"name": "Ref.Pruefung.Verstoesse.AltMelden", "replacement": "Melden", "units": ["Ref.*"]},
+ {"name": "System.Classes.TThread.*Queue", "firstArgument": ["nil"], "units": ["Ref.Pruefung.*"]}]
+```
+
+Genau die markierten Zeilen müssen gemeldet werden, jede weitere Meldung ist ein
+Fehlalarm.
+
 ## Marker-IDs und zuständige Regeln
 
 | Marker-ID | Stand |
@@ -78,6 +94,12 @@ Fehlalarm. `TLegacyStackQueueTests.ReferenceProjectMatchesMarkers` prüft
 | `inherited-without-ancestor` | Regel im Katalog (#1144), in `Ref.Pruefung.Verstoesse` |
 | `redundant-jump` | Regel im Katalog (#1141), in `Ref.Pruefung.Verstoesse` |
 | `noreturn-returns` | Regel im Katalog (#1132), nur in `mutationen.txt` (noreturn gibt es erst ab Delphi 13, das Referenzprojekt übersetzt auch mit Delphi 12) |
+| `unrelated-class-cast` | Regel im Katalog (#1129), in `Ref.Pruefung.Verstoesse` |
+| `redundant-cast` | Regel im Katalog (#1139), in `Ref.Pruefung.Verstoesse` |
+| `first-char-address` | Regel im Katalog (#1130), in `Ref.Pruefung.Verstoesse` |
+| `loop-runs-at-most-once` | Regel im Katalog (#1131), in `Ref.Pruefung.Verstoesse` |
+| `format-args` | Regel im Katalog (#56), in `Ref.Pruefung.Verstoesse` |
+| `forbidden-symbol` | Regel im Katalog (#1133), `ERWARTET-OPTION`, in `Ref.Pruefung.Verstoesse` |
 
 Jede ID steht im Regelkatalog oder in `geplante-regeln.txt` mit dem
 offenen Issue, das sie in den Katalog übernimmt. Eine ID ohne Issue lässt

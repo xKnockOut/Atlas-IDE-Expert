@@ -36,6 +36,8 @@ type
     [Test]
     procedure ChecksTodoKeywordsOption;
     [Test]
+    procedure ChecksForbiddenSymbolsOption;
+    [Test]
     procedure ReadsHints;
     [Test]
     procedure ReadsMcpDisabledTools;
@@ -1004,6 +1006,58 @@ begin
   Parse('{"rules": {"xmldoc-mismatch": {"checkReturns": "nein"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.Contains(Issues[0].Message, '"checkReturns"');
+  // allowTypes von unrelated-class-cast (#1129).
+  Parse('{"rules": {"unrelated-class-cast": {"allowTypes": ["TEdit=TButton", "THackControl"]}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"unrelated-class-cast": {"allowTypes": "TEdit"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"allowTypes"');
+  // formatMethods von format-args (#56).
+  Parse('{"rules": {"format-args": {"formatMethods": ["TLogger.LogFmt", "Protokoll"]}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"format-args": {"formatMethods": "Protokoll"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"formatMethods"');
+  // checkFree von redundant-cast (#1139).
+  Parse('{"rules": {"redundant-cast": {"checkFree": false}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"redundant-cast": {"checkFree": "nein"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"checkFree"');
+  // allowFirstElement von loop-runs-at-most-once (#1131).
+  Parse('{"rules": {"loop-runs-at-most-once": {"allowFirstElement": true}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"loop-runs-at-most-once": {"allowFirstElement": "ja"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"allowFirstElement"');
+end;
+
+procedure TConfigurationParserTests.ChecksForbiddenSymbolsOption;
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  // symbols von forbidden-symbol (#1133).
+  Parse('{"rules": {"forbidden-symbol": {"symbols": [{"name": "System.Write*", "kind": "routine", ' +
+    '"message": "Nur über ILogger", "replacement": "Log", "severity": "error", "units": ["App.*", "!App.Cli"], ' +
+    '"firstArgument": ["nil"], "allowFirstArgument": ["ErrOutput"]}, {"name": "Vcl.Forms.TApplication.' +
+    'ProcessMessages"}]}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Parse('{"rules": {"forbidden-symbol": {"symbols": {"name": "X"}}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, '"symbols"');
+  Parse('{"rules": {"forbidden-symbol": {"symbols": [{"kind": "type"}, "X", {"name": ""}]}}}', mIssues);
+  Assert.AreEqual(3, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, 'ohne "name"');
+  Assert.Contains(mIssues[1].Message, 'ein Objekt');
+  Assert.Contains(mIssues[2].Message, '"name"');
+  Parse('{"rules": {"forbidden-symbol": {"symbols": [{"name": "X", "kind": "methode", "severity": "laut", ' +
+    '"units": "App", "message": 1, "farbe": "rot"}]}}}', mIssues);
+  Assert.AreEqual(5, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, '"kind"');
+  Assert.Contains(mIssues[1].Message, 'Schweregrad');
+  Assert.Contains(mIssues[2].Message, '"units"');
+  Assert.Contains(mIssues[3].Message, '"message"');
+  Assert.Contains(mIssues[4].Message, '"farbe"');
 end;
 
 procedure TConfigurationParserTests.ChecksTodoKeywordsOption;

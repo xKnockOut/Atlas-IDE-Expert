@@ -91,6 +91,17 @@
       ]
     },
     {
+      "id": "forbidden-symbol",
+      "name": "Verbotenes Symbol verwendet",
+      "description": "Eine Liste unter \"symbols\" in atlas.json verbietet Routinen, Typen, Konstanten, Felder, Properties, Aufzählungswerte oder Bezeichner, jeweils mit Meldung und Ersatz. Verglichen wird über die Namensauflösung, nicht über Text: System.SysUtils.FileExists trifft auch FileExists, aber nicht eine eigene Methode gleichen Namens. Ein Eintrag darf den Namen ab einer Punktgrenze kürzen (TThread.Queue) und * enthalten. Bezeichner aus System ohne Quelltext (Writeln, Halt) gelten als System.<Name>. Ist der linke Teil eines qualifizierten Namens gar nicht auflösbar (Unit nicht indexiert), wird der geschriebene Name mit dem Ende des Eintrags verglichen. Je Eintrag: kind (routine, type, constant, field, property, enumValue, identifier = nach Namen ohne Auflösung), message, replacement, severity, units (Muster der Unit-Namen, \"!\" schließt aus), firstArgument (nur mit diesem ersten Argument, z. B. nil) und allowFirstArgument (erlaubt mit diesem ersten Argument, z. B. ErrOutput); beide vergleichen den Text des Arguments oder den Namen seines Typs (TextFile). Standard aus und ohne Liste stumm; im Profil strict an. Sicherheit hoch. Schnellkorrektur: durch den konfigurierten Ersatz ersetzen.",
+      "options": [
+        {
+          "name": "symbols",
+          "description": "Tabelle der verbotenen Symbole, ein Objekt je Eintrag: name (qualifiziert, * erlaubt), kind (routine, type, constant, field, property, enumValue oder identifier), message, replacement, severity, units (Muster, ! schließt aus), firstArgument und allowFirstArgument (Texte oder Typnamen des Arguments)."
+        }
+      ]
+    },
+    {
       "id": "thread-vcl-access",
       "name": "VCL-Zugriff aus einem Thread",
       "description": "TThread.Execute, TThread.CreateAnonymousThread oder TTask greift außerhalb von Synchronize oder Queue auf die VCL zu (Application, Screen, ShowMessage, MessageDlg …). Die VCL ist nicht threadsicher."
@@ -434,6 +445,22 @@
       "description": "PChar(C) mit einer Char-Variablen macht aus dem Zeichencode eine Adresse. Gemeint war ein String."
     },
     {
+      "id": "unrelated-class-cast",
+      "name": "Harte Umwandlung zwischen nicht verwandten Klassen",
+      "description": "TButton(Obj) prüft nichts. Ist der statische Typ von Obj weder Vorfahr noch Nachfahr von TButton (z. B. TEdit oder TForm), liest der Zugriff Speicher eines Objekts mit anderem Aufbau. Gemeldet wird nur, wenn beide Typen sicher bekannt sind, beide Vererbungsketten bis TObject bekannt sind und beide Deklarationen immer mit der Umwandlung übersetzt werden. Interfaces, Zeiger, Zahlen, TObject als Quelle und Umwandlungen in oder aus Klassenreferenzen (class of) bleiben still, ebenso der Zugriffsklassen-Trick: Das Ziel und seine Vorfahren bis zu einem gemeinsamen Vorfahren deklarieren weder Felder noch neue virtuelle Methoden (THackControl = class(TControl)), der Aufbau ist also derselbe. Sicherheit hoch. Korrektur: (Obj as TButton) prüft den Typ zur Laufzeit.",
+      "options": [
+        {
+          "name": "allowTypes",
+          "description": "Typen, die absichtlich hart umgewandelt werden: ein Typname (als Quelle oder Ziel) oder ein Paar \"Quelle=Ziel\"."
+        }
+      ]
+    },
+    {
+      "id": "first-char-address",
+      "name": "Adresse des ersten Zeichens über S[1]",
+      "description": "@S[1] und PChar(@S[1]) lösen bei leerem String mit {$R+} einen Bereichsfehler aus, ohne Bereichsprüfung ergibt sich nil oder Müll. Außerdem erzwingt der Indexzugriff eine eindeutige Kopie (UniqueString). PChar(S) und Pointer(S) sind auch für leere Strings sicher. Gilt für string, UnicodeString, WideString, AnsiString, RawByteString und UTF8String, auch S[Low(S)]; ShortString, Arrays und andere Indizes bleiben still. Gemeldet wird nur, wenn der Typ von S sicher bekannt ist. Sicherheit hoch. Korrektur bei const-Parametern: durch PChar(S) ersetzen (PAnsiChar bei AnsiString-Typen), ein umgebendes PChar(…), PAnsiChar(…), PWideChar(…), PByte(…) oder Pointer(…) wird als Ganzes ersetzt. Bei anderen Strings kann der Zeiger zum Schreiben dienen, dann ist die eigene Kopie gewollt; dort gibt es keine Korrektur, die Meldung nennt UniqueString(S)."
+    },
+    {
       "id": "float-equality",
       "name": "Gleitkommavergleich mit = oder <>",
       "description": "Gleitkommawerte sind nach Berechnungen selten exakt gleich. Mit SameValue aus System.Math und einer Toleranz vergleichen. Vergleiche mit 0 werden nicht gemeldet."
@@ -447,6 +474,17 @@
       "id": "format-without-settings",
       "name": "Formatierung abhängig vom Gebietsschema",
       "description": "Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenner, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format('%d', …) wird nicht gemeldet, ebenso wenig FormatDateTime und FormatFloat mit festem Bild ohne Trennzeichen (: / . ,) wie 'yyyy\"-\"mm\"-\"dd' oder 'ddddd t'."
+    },
+    {
+      "id": "format-args",
+      "name": "Formatstring passt nicht zu den Argumenten",
+      "description": "Format, FmtStr, WideFormat, WideFmtStr, Exception.CreateFmt bzw. CreateFmtHelp und TStringBuilder.AppendFormat mit bekanntem Formatstring (Literal, mit + verbundene Literale, const oder resourcestring der Datei bzw. des Index), dessen Platzhalter nicht zur Argumentliste [...] passen: ungültiger Platzhalter (%q, '%' bzw. '%5' am Ende, %0: ohne Typbuchstaben), weniger Argumente als Platzhalter oder ein Argument vom falschen Typ: %d %u %x nur Ganzzahlen, %e %f %g %n %m nur Gleitkommazahlen, %s Strings, Zeichen und Variants, %p Zeiger und Objekte, ein * für Breite bzw. Genauigkeit eine Ganzzahl; Variants passen überall. Boolean und Aufzählungswerte werden bei jedem Typbuchstaben gemeldet, mit Ord(...) bzw. BoolToStr(..., True) als Hinweis. All das löst zur Laufzeit EConvertError aus. Ein Argument hinter dem letzten verwendeten wird mit mittlerer Sicherheit gemeldet (nur ohne Index im Formatstring), es wird nie ausgegeben. Typen werden nur geprüft, wenn sie sicher bekannt sind; Formatstrings aus Variablen, Index * und Bereiche bleiben still. Eigene Routinen namens Format bleiben still, wenn die Namensauflösung sie findet. Teilt die Zerlegung der Formatstrings mit format-without-settings. Keine Korrektur. Sicherheit hoch.",
+      "options": [
+        {
+          "name": "formatMethods",
+          "description": "Weitere Routinen mit Formatstring und folgender Argumentliste array of const, z. B. \"TLogger.LogFmt\" oder \"Protokoll\". Mit Punkt zählt ohne Namensauflösung der Methodenname hinter einem beliebigen Qualifizierer."
+        }
+      ]
     },
     {
       "id": "generic-exception-raised",
@@ -517,6 +555,17 @@
       "id": "redundant-parens",
       "name": "Überflüssige Klammern",
       "description": "Klammern um eine ganze Bedingung oder einen einzelnen Bezeichner bringen nichts. Standardmäßig aus."
+    },
+    {
+      "id": "redundant-cast",
+      "name": "Überflüssige Typumwandlung",
+      "description": "TStringList(Liste) mit Liste: TStringList, X as TFoo mit X: TFoo oder Integer(Anzahl) mit Anzahl: Integer ändern nichts. Ebenso TObject(Obj).Free: Free ruft den virtuellen Destruktor und braucht keine Umwandlung (Option checkFree). Gemeldet wird nur, wenn der Typ der Quelle sicher bekannt und genau mit dem Namen des Ziels deklariert ist; Aliase (TFarbIndex = Integer), Konstanten, Routinen ohne Aufruf, überladene Routinen als Quelle, Argumente überladener Aufrufe (die Umwandlung kann die Überladung wählen), as mit Interfaces (QueryInterface) und in der Klassenkette neu deklariertes Free bleiben still. Sicherheit hoch. Korrektur: die Umwandlung entfernen.",
+      "options": [
+        {
+          "name": "checkFree",
+          "description": "Auch eine Klassenumwandlung melden, die nur vor Free steht (CastAndFree)."
+        }
+      ]
     },
     {
       "id": "redundant-begin-end",
@@ -1805,6 +1854,17 @@
       "id": "loop-condition-unchanged",
       "name": "Schleifenbedingung ändert sich im Rumpf nie",
       "description": "Keine Variable der while- bzw. until-Bedingung ändert sich im Rumpf: keine Zuweisung, kein Inc/Dec, kein Argument (möglicherweise var), kein Methoden- oder Mitgliedszugriff auf das Objekt der Bedingung, keine for-Schleife darüber. Typisch ist das vergessene Inc(I) oder Next. Gemeldet wird nur, wenn jede Variable der Bedingung eine lokale Variable oder ein Wertparameter der Routine ist und mindestens eine direkt (nicht nur als X.Eigenschaft) vorkommt. Still bleiben Bedingungen mit Funktionsaufrufen, Feldern, globalen Variablen, var- und out-Parametern und Terminated, außerdem Schleifen mit Ausgang (Break, Exit, raise …), Warteschleifen (Sleep, ProcessMessages …), with, Aufrufen lokaler Routinen und Variablen, die eine anonyme Methode erfasst. Änderungen über X[…] zählen nur, wenn die Bedingung X[…] liest."
+    },
+    {
+      "id": "loop-runs-at-most-once",
+      "name": "Schleife läuft höchstens einmal",
+      "description": "Jeder Weg durch den Rumpf einer for-, for-in-, while- oder repeat-Schleife endet mit Exit, Break, raise, Halt, Abort, RunError, ExitProcess oder dem Aufruf einer Routine der Datei, die eine Ausnahme auslöst; die Schleife läuft also höchstens einmal. Meist fehlt ein if vor dem Sprung, oder ein Continue war gemeint. Ein Weg zählt als Sprung bei if mit else und beiden Zweigen, case mit else und allen Zweigen, try … finally mit try- oder finally-Teil und try … except mit try-Teil und jedem Behandler. Still bei Continue dieser Schleife, goto bzw. Marken und bedingten Direktiven im Rumpf; ein Break innerer Schleifen zählt nicht. Ergänzt infinite-loop und loop-condition-unchanged. Keine Korrektur, die Absicht ist unklar; steht der Sprung direkt hinter einem if ohne else, fragt die Meldung, ob er in den if-Zweig gehört. Sicherheit hoch.",
+      "options": [
+        {
+          "name": "allowFirstElement",
+          "description": "for-in aus einfachen Anweisungen, das mit Exit bzw. Break endet (erstes Element holen), nicht melden."
+        }
+      ]
     },
     {
       "id": "unconditional-recursion",
