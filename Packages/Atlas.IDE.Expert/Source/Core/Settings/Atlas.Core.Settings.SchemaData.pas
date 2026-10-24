@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2021] of string = (
+  Lines: array[0..2048] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1747,8 +1747,8 @@ const
     '    },',
     '    "hints": {',
     '      "type": "object",',
-    '      "description": "Anzeige von XMLDoc-Kommentaren (///) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku immer vollständig auf; die Werte steu' +
-      'ern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas.",',
+    '      "description": "Anzeige von XMLDoc-Kommentaren (///) und Begründungen (// WHY: …, #1123) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku i' +
+      'mmer vollständig auf; die Werte steuern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas.",',
     '      "additionalProperties": false,',
     '      "properties": {',
     '        "xmlDocExpand": {',
@@ -1780,6 +1780,37 @@ const
     '          "description": "Hover über einer Komponentenklasse (#110): published-Properties und Ereignisse samt geerbter in Tabellen mit Typ, Vorgabe (default, implizit, nodefault, stored) und deklarier' +
       'ender Klasse, Filter für geerbte und nur mit Vorgabe, die Standard-Property einer Array-Property und „Liste kopieren“ mit Strg+C. Aus: nur Deklaration, Doku und Vererbung.",',
     '          "x-issue": "#110"',
+    '        },',
+    '        "rationale": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Begründungen im Hover und in get_declaration (#1123): Kommentare wie // WHY: …, // HACK: … oder { NOTE: … } direkt über einer Deklaration (höchstens eine Leerzeile dazwischen' +
+      ') und im Rumpf einer Routine erscheinen im Abschnitt „Begründung“ unter Deklaration und XMLDoc, ab vier Einträgen hinter „Mehr anzeigen“. ADR-0007 öffnet die Datei aus adrFolder, #312 das Issue (Track' +
+      'er der Willkommensseite), URLs den Browser. Aus: Atlas zeigt keine Begründungen; get_rationale bleibt über mcp.disabledTools abschaltbar.",',
+    '          "x-issue": "#1123"',
+    '        },',
+    '        "rationaleMarkers": {',
+    '          "type": "array",',
+    '          "items": {',
+    '            "type": "string"',
+    '          },',
+    '          "default": [',
+    '            "NOTE",',
+    '            "WHY",',
+    '            "HACK",',
+    '            "IMPORTANT",',
+    '            "RATIONALE"',
+    '          ],',
+    '          "description": "Marken, die als Begründung gelten (#1123), Groß-/Kleinschreibung egal; die Liste ersetzt die Vorgabe. Nach der Marke folgt ein Doppelpunkt; ohne Doppelpunkt zählt sie nur in ' +
+      'Großbuchstaben (// NOTE das …). TODO und FIXME bleiben bei der TODO-Übersicht (todo-comment) und erscheinen hier nie.",',
+    '          "x-issue": "#1123"',
+    '        },',
+    '        "adrFolder": {',
+    '          "type": "string",',
+    '          "default": "docs/adr",',
+    '          "description": "Ordner der Architekturentscheidungen (#1123), relativ zum Projekt (Ordner der atlas.json): ADR-0007 bzw. ADR 7 in einer Begründung öffnet die Datei, deren Name mit 0007 (auch' +
+      ' ADR-0007) beginnt, z. B. docs/adr/0007-threads.md. Ohne passende Datei ist der Verweis nicht anklickbar.",',
+    '          "x-issue": "#1123"',
     '        }',
     '      },',
     '      "x-scope": "global",',

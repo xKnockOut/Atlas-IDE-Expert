@@ -24,6 +24,12 @@
 //     Server den Fundort kennt; Links öffnen den Browser; Codeblöcke eingefärbt
 //     auf schattierter, gerahmter Fläche; Listen mit hängendem Einzug je Ebene;
 //     Tabellen zweispaltig.
+//   - Begründungen (#1123) unter BEGRÜNDUNG nach allen XMLDoc-Abschnitten: je
+//     Eintrag Marke (Editorschrift, halbfett, Akzent) und Text. Zugeklappt die
+//     ersten MaxRationale, der Rest hinter „Mehr anzeigen“ („2 weitere
+//     Begründungen“). ADR-Verweise mit Fundort öffnen die Datei, Issue-Links
+//     "issue:312" die Adresse aus TAtlasDocIssueLinks; ohne Tracker bleiben sie
+//     Text.
 //   - TAtlasDocExpandState hält „wie zuletzt“ (hints.xmlDocExpand = last) je
 //     Fläche (Tooltip, Detailpanel) für die Sitzung.
 
@@ -85,6 +91,7 @@ type
     Remarks: string;
     Example: string;
     SeeAlso: string;
+    Rationale: string;
     Undocumented: string;
     More: string;
     Less: string;
@@ -95,6 +102,8 @@ type
     CountTypeParams: string;
     CountException: string;
     CountExceptions: string;
+    CountRationale: string;
+    CountRationales: string;
     ItemReturns: string;
     ItemValue: string;
     ItemRemarks: string;
@@ -159,8 +168,24 @@ type
     class procedure Reset; static;
   end;
 
+  /// <summary>Issue-Links "issue:312" der Begründungen (#1123): Die IDE meldet den Tracker der Willkommensseite
+  /// (#765) an und beim Entladen wieder ab. Nur im Hauptthread.</summary>
+  TAtlasDocIssueLinks = class
+  public const
+    Prefix = 'issue:';
+  private class var
+    FResolver: TAtlasDocIssueUrl;
+  public
+    class procedure SetResolver(const AResolver: TAtlasDocIssueUrl); static;
+    class procedure Clear; static;
+    /// <summary>Adresse zu ATarget ("issue:312"); '' ohne Tracker oder bei anderen Zielen.</summary>
+    class function Url(const ATarget: string): string; static;
+  end;
+
   TAtlasDocLayout = record
   public const
+    /// <summary>Begründungen, die zugeklappt sichtbar sind.</summary>
+    MaxRationale = 3;
     /// <summary>Tabellen: Spalte der Begriffe höchstens so viel Prozent der Breite.</summary>
     TermColumnPercent = 45;
     /// <summary>Parameter: Namens- und Typspalte höchstens so viel Prozent der Breite.</summary>
@@ -337,6 +362,7 @@ begin
   Result.Remarks := 'HINWEISE';
   Result.Example := 'BEISPIEL';
   Result.SeeAlso := 'SIEHE AUCH';
+  Result.Rationale := 'BEGRÜNDUNG';
   Result.Undocumented := 'nicht dokumentiert';
   Result.More := 'Mehr anzeigen ▾';
   Result.Less := 'Weniger anzeigen ▴';
@@ -346,6 +372,8 @@ begin
   Result.CountTypeParams := '%d Typparameter';
   Result.CountException := '%d Ausnahme';
   Result.CountExceptions := '%d Ausnahmen';
+  Result.CountRationale := '%d weitere Begründung';
+  Result.CountRationales := '%d weitere Begründungen';
   Result.ItemReturns := 'Rückgabe';
   Result.ItemValue := 'Wert';
   Result.ItemRemarks := 'Hinweis';
@@ -831,6 +859,11 @@ begin
           AddWords(Run.Text, TAtlasDocFace.Create(TAtlasDocFont.Mono, Run.Bold, Run.Italic),
             TAtlasDocColor.Accent);
       TAtlasDocRunKind.Link:
+        if Run.Target.StartsWith(TAtlasDocIssueLinks.Prefix, True) and
+          (TAtlasDocIssueLinks.Url(Run.Target) = '') then
+          // Issue ohne Tracker (#1123): nicht anklickbar.
+          AddWords(Run.Text, TAtlasDocFace.Create(TAtlasDocFont.UI, Run.Bold, Run.Italic), ABaseColor)
+        else
         begin
           LinkIndex := -1;
           if Run.Target <> '' then
@@ -838,6 +871,8 @@ begin
             Link := Default(TAtlasDocLink);
             Link.Kind := TAtlasDocLinkKind.Url;
             Link.Url := Run.Target;
+            if Run.Target.StartsWith(TAtlasDocIssueLinks.Prefix, True) then
+              Link.Url := TAtlasDocIssueLinks.Url(Run.Target);
             LinkIndex := AddLink(Link);
           end;
           AddWords(Run.Text, TAtlasDocFace.Create(TAtlasDocFont.UI, Run.Bold, Run.Italic), TAtlasDocColor.Accent,
@@ -977,6 +1012,29 @@ begin
     FLast[Surface] := False;
 end;
 
+{ TAtlasDocIssueLinks }
+
+class procedure TAtlasDocIssueLinks.SetResolver(const AResolver: TAtlasDocIssueUrl);
+begin
+  FResolver := AResolver;
+end;
+
+class procedure TAtlasDocIssueLinks.Clear;
+begin
+  FResolver := nil;
+end;
+
+class function TAtlasDocIssueLinks.Url(const ATarget: string): string;
+begin
+  Result := '';
+  if not ATarget.StartsWith(Prefix, True) or not Assigned(FResolver) then
+    Exit;
+  Result := FResolver(Copy(ATarget, Length(Prefix) + 1, MaxInt));
+  // Nur Web-Adressen, wie beim Öffnen aus „Meine Issues“.
+  if not (Result.StartsWith('https://', True) or Result.StartsWith('http://', True)) then
+    Result := '';
+end;
+
 { TAtlasDocLayout }
 
 function TAtlasDocLayout.IsEmpty: Boolean;
@@ -1086,11 +1144,16 @@ end;
 class function TAtlasDocLayout.IsCollapsible(const ADoc: TAtlasDoc): Boolean;
 var
   Section: TAtlasDocSection;
+  Rationale: Integer;
 begin
+  // Begründungen sind zugeklappt sichtbar, nur über MaxRationale hinaus nicht.
+  Rationale := 0;
   for Section in ADoc.Sections do
-    if Section.Kind <> TAtlasDocSectionKind.Summary then
+    if Section.Kind = TAtlasDocSectionKind.Rationale then
+      Inc(Rationale)
+    else if Section.Kind <> TAtlasDocSectionKind.Summary then
       Exit(True);
-  Result := False;
+  Result := Rationale > MaxRationale;
 end;
 
 function SectionsOf(const ADoc: TAtlasDoc; AKind: TAtlasDocSectionKind): TArray<TAtlasDocSection>;
@@ -1178,6 +1241,9 @@ begin
     Add(ALabels.ItemExample, TAtlasDocColor.Muted);
   if ADoc.Has(TAtlasDocSectionKind.SeeAlso) then
     Add(ALabels.ItemSeeAlso, TAtlasDocColor.Muted);
+  Count := Length(SectionsOf(ADoc, TAtlasDocSectionKind.Rationale)) - MaxRationale;
+  if Count > 0 then
+    Add(Counted(Count, ALabels.CountRationale, ALabels.CountRationales), TAtlasDocColor.Muted);
   AColors := Colors;
   Result := Parts;
 end;
@@ -1199,7 +1265,7 @@ var
   Parts: TArray<string>;
   PartColors: TArray<TAtlasDocColor>;
   Name, Mono, Muted, UI: TAtlasDocFace;
-  NameWidth, TypeWidth, Index, LineIndex, SpanIndex, Y, Pen, Found: Integer;
+  NameWidth, TypeWidth, Index, LineIndex, SpanIndex, Y, Pen, Found, Shown: Integer;
   ThreeColumns: Boolean;
   Toggle: TAtlasDocLink;
   Text_: TStringBuilder;
@@ -1374,6 +1440,21 @@ begin
         end;
         Builder.NewLine;
       end;
+    end;
+    // BEGRÜNDUNG (#1123) nach der XMLDoc; zugeklappt die ersten MaxRationale.
+    Sections := SectionsOf(ADoc, TAtlasDocSectionKind.Rationale);
+    if Length(Sections) > 0 then
+    begin
+      Builder.Heading(ALabels.Rationale);
+      Shown := Length(Sections);
+      if not Result.Expanded then
+        Shown := Min(Shown, MaxRationale);
+      NameWidth := 1;
+      for Index := 0 to Shown - 1 do
+        NameWidth := Max(NameWidth, Width(Sections[Index].Name, Name, NameColumnPercent));
+      for Index := 0 to Shown - 1 do
+        Builder.Columns([TDocCell.OfText(Sections[Index].Name, Name, TAtlasDocColor.Accent),
+          TDocCell.OfRuns(Sections[Index].Runs, TAtlasDocColor.Text)], [NameWidth]);
     end;
     // Schalter: zugeklappt mit dem, was verborgen ist.
     if Result.Collapsible then

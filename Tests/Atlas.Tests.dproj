@@ -120,6 +120,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.PublishedMembers.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.TypeInfoClasses.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Hover.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Rationale.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.HoverTypes.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.HoverValues.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.LinkedEditing.Tests.pas"/>
@@ -172,6 +173,8 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Metrics.Tests.pas"/>
         <DCCReference Include="Common\Todos\Atlas.Common.Todos.Scanner.Tests.pas"/>
         <DCCReference Include="Common\Todos\Atlas.Common.Todos.Report.Tests.pas"/>
+        <DCCReference Include="Common\Rationale\Atlas.Common.Rationale.Scanner.Tests.pas"/>
+        <DCCReference Include="Common\Rationale\Atlas.Common.Rationale.References.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Todos.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.Tests.pas"/>

@@ -161,6 +161,8 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Rationale.Contract,
+  Atlas.Common.Rationale.Scanner,
   Atlas.Text.Lines;
 
 const
@@ -321,6 +323,12 @@ begin
   Result := (Index >= 0) and not FTokens[Index].IsSymbol('=') and not FTokens[Index].IsKeyword('packed');
 end;
 
+/// <summary>Höchstens TRationale.MaxEntries Begründungen für den Index.</summary>
+function RationaleOf(const AEntries: TArray<TRationaleEntry>): TArray<string>;
+begin
+  Result := TRationale.EncodeAll(Copy(AEntries, 0, TRationale.MaxEntries));
+end;
+
 procedure TIndexExtractor.Add(ANode: TSyntaxNode; const AName, AContainer: string; AKind: TIndexSymbolKind;
   const AAncestors: TArray<string>);
 var
@@ -391,6 +399,7 @@ begin
     IsClassMember(ANode))) then
     Symbol.Directives := ['class'] + Symbol.Directives;
   Symbol.Summary := SummaryOf(ANode);
+  Symbol.Rationale := RationaleOf(TRationaleScanner.ForNode(FTokens, ANode));
   FSymbols.Add(Symbol);
 end;
 
@@ -1446,6 +1455,7 @@ begin
   AUnit.ImplementationUses := nil;
   AUnit.Directives := nil;
   AUnit.DeprecatedText := '';
+  AUnit.Rationale := RationaleOf(TRationaleScanner.ForUnit(FTokens, ARoot));
   AUnit.HasInitialization := (ARoot.FindChild(TSyntaxKind.InitializationSection) <> nil) or
     (ARoot.FindChild(TSyntaxKind.FinalizationSection) <> nil);
   if ARoot.Kind = TSyntaxKind.UnitFile then

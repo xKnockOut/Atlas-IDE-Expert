@@ -71,6 +71,13 @@ type
     procedure LongDocumentIsNotTruncated;
     [Test]
     procedure PlainTextOfForeignServers;
+    /// <summary>#1123: Begründungen unter BEGRÜNDUNG, zugeklappt höchstens drei.</summary>
+    [Test]
+    procedure RationaleBelowDocumentation;
+    [Test]
+    procedure RationaleBeyondThreeBehindToggle;
+    [Test]
+    procedure IssueLinksNeedTracker;
   end;
 
 implementation
@@ -137,6 +144,7 @@ end;
 
 procedure TAtlasDocumentationTests.TearDown;
 begin
+  TAtlasDocIssueLinks.Clear;
   TAtlasDocExpandState.Reset;
 end;
 
@@ -700,6 +708,76 @@ begin
   Assert.IsTrue(TAtlasDoc.FromText('  ').IsEmpty);
   Result_ := TAtlasDocLayout.Build(Doc, 400, Metrics, Measure, TAtlasDocLabels.German);
   Assert.AreEqual('Erste Zeile'#13#10'zweite'#13#10'Absatz'#13#10'  Code := 1;'#13#10'  Weiter;', Result_.Text);
+end;
+
+function Rationale(const AMarker, AText: string): string;
+begin
+  Result := '{"kind":"rationale","name":"' + AMarker + '","runs":[{"kind":"text","text":"' + AText + '"}]}';
+end;
+
+procedure TAtlasDocumentationTests.RationaleBelowDocumentation;
+var
+  Doc: TAtlasDoc;
+  Result_: TAtlasDocLayout;
+begin
+  Doc := DocOf('{"sections":[{"kind":"summary","runs":[{"kind":"text","text":"Liest."}]},' +
+    Rationale('WHY', 'Schnell.') + ',' + Rationale('HACK', 'QC 1.') + ']}');
+  Assert.AreEqual(3, Integer(Length(Doc.Sections)));
+  Assert.AreEqual(Ord(TAtlasDocSectionKind.Rationale), Ord(Doc.Sections[1].Kind));
+  Assert.AreEqual('WHY', Doc.Sections[1].Name);
+  Assert.AreEqual(2, Integer(Length(Doc.SectionsOf(TAtlasDocSectionKind.Rationale))));
+  // Bis drei Einträge kein Schalter.
+  Assert.IsFalse(TAtlasDocLayout.IsCollapsible(Doc));
+  Result_ := TAtlasDocLayout.Build(Doc, 600, Metrics, Measure, TAtlasDocLabels.German, Default(TAtlasDocSignature),
+    False);
+  Assert.AreEqual('Liest.|BEGRÜNDUNG|WHYSchnell.|HACKQC 1.|', Texts(Result_));
+  Assert.AreEqual(Ord(TAtlasDocColor.Accent), Ord(Result_.Lines[2].Spans[0].Color));
+end;
+
+procedure TAtlasDocumentationTests.RationaleBeyondThreeBehindToggle;
+const
+  Json = '{"sections":[{"kind":"summary","runs":[{"kind":"text","text":"Liest."}]},';
+var
+  Doc: TAtlasDoc;
+  Result_: TAtlasDocLayout;
+begin
+  Doc := DocOf(Json + Rationale('WHY', 'A') + ',' + Rationale('WHY', 'B') + ',' + Rationale('NOTE', 'C') + ',' +
+    Rationale('HACK', 'D') + ',' + Rationale('HACK', 'E') + ']}');
+  Assert.IsTrue(TAtlasDocLayout.IsCollapsible(Doc));
+  Result_ := TAtlasDocLayout.Build(Doc, 600, Metrics, Measure, TAtlasDocLabels.German, Default(TAtlasDocSignature),
+    False);
+  Assert.AreEqual('Liest.|BEGRÜNDUNG|WHYA|WHYB|NOTEC|Mehr anzeigen ▾   2 weitere Begründungen|', Texts(Result_));
+  Result_ := TAtlasDocLayout.Build(Doc, 600, Metrics, Measure, TAtlasDocLabels.German, Default(TAtlasDocSignature),
+    True);
+  Assert.AreEqual('Liest.|BEGRÜNDUNG|WHYA|WHYB|NOTEC|HACKD|HACKE|Weniger anzeigen ▴|', Texts(Result_));
+end;
+
+procedure TAtlasDocumentationTests.IssueLinksNeedTracker;
+const
+  Json = '{"sections":[{"kind":"rationale","name":"WHY","runs":[{"kind":"text","text":"Siehe "},' +
+    '{"kind":"link","text":"#312","target":"issue:312"}]}]}';
+var
+  Result_: TAtlasDocLayout;
+begin
+  // Ohne Tracker: Text, kein Link.
+  Result_ := Layout(Json, 600);
+  Assert.AreEqual(0, Integer(Length(Result_.Links)));
+  TAtlasDocIssueLinks.SetResolver(
+    function(const AKey: string): string
+    begin
+      Result := 'https://github.com/o/r/issues/' + AKey;
+    end);
+  Result_ := Layout(Json, 600);
+  Assert.AreEqual(1, Integer(Length(Result_.Links)));
+  Assert.AreEqual(Ord(TAtlasDocLinkKind.Url), Ord(Result_.Links[0].Kind));
+  Assert.AreEqual('https://github.com/o/r/issues/312', Result_.Links[0].Url);
+  // Nur Web-Adressen.
+  TAtlasDocIssueLinks.SetResolver(
+    function(const AKey: string): string
+    begin
+      Result := 'file:///C:/x';
+    end);
+  Assert.AreEqual(0, Integer(Length(Layout(Json, 600).Links)));
 end;
 
 initialization
