@@ -26,12 +26,19 @@
 
     Exit-Code 0: keine Verstöße, 1: mindestens ein Verstoß.
 
+    Mit -Files nur diese Dateien (z. B. aus dem PostToolUse-Hook in
+    .claude/hooks/nach-bearbeitung.sh nach jeder Änderung durch Claude).
+
 .EXAMPLE
     pwsh Tools/Check-Delphi12.ps1
+
+.EXAMPLE
+    pwsh Tools/Check-Delphi12.ps1 -Files Packages/Atlas.Common/Source/Foo.pas
 #>
 [CmdletBinding()]
 param(
-    [string] $Root = (Split-Path -Parent $PSScriptRoot)
+    [string] $Root = (Split-Path -Parent $PSScriptRoot),
+    [string[]] $Files = @()
 )
 
 Set-StrictMode -Version Latest
@@ -67,12 +74,18 @@ $PointerChecks = @(
 )
 
 $violations = @()
+$Selected = @($Files | ForEach-Object { [IO.Path]::GetFullPath($_, (Get-Location).Path) })
+
+function Test-Selected([string] $FullName) {
+    return ($Selected.Count -eq 0) -or ($Selected -contains $FullName)
+}
 
 foreach ($dir in $SourceDirs) {
     $path = Join-Path $Root $dir
     if (-not (Test-Path $path)) { continue }
 
     foreach ($file in Get-ChildItem -Path $path -Recurse -File -Include '*.pas', '*.dpr', '*.dpk', '*.inc') {
+        if (-not (Test-Selected $file.FullName)) { continue }
         $relative = [IO.Path]::GetRelativePath($Root, $file.FullName)
         $original = [IO.File]::ReadAllText($file.FullName)
         $originalLines = $original -split "`n"
@@ -91,6 +104,7 @@ foreach ($dir in $SourceDirs) {
 }
 
 foreach ($project in Get-ChildItem -Path $Root -Recurse -File -Filter '*.dproj') {
+    if (-not (Test-Selected $project.FullName)) { continue }
     $relative = [IO.Path]::GetRelativePath($Root, $project.FullName)
     $content = [IO.File]::ReadAllText($project.FullName)
     if ($content -match '<ProjectVersion>([^<]+)</ProjectVersion>') {

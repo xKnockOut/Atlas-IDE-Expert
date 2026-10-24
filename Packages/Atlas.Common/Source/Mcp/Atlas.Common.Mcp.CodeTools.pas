@@ -61,6 +61,17 @@ type
     class function Diagnostics(const ARules: TArray<IRule>; const ASettings: TServerSettings;
       const ARoot: string; const AFiles: TArray<string>; const AReadText: TReferenceReadText;
       const ASource: TCheckSourceFunc; const AProject: TCheckProjectFunc): string; overload; static;
+    /// <summary>hook_check: Befunde ab ASeverity (Warning: Warnungen und Fehler) einer gerade bearbeiteten
+    /// Datei als Ausgabe eines PostToolUse-Hooks von Claude Code: JSON mit
+    /// hookSpecificOutput.additionalContext, damit Claude die Befunde sofort sieht. Leer, wenn die Datei
+    /// kein Pascal-Quelltext ist (.pas, .dpr, .dpk, .inc), sich nicht lesen lässt oder keine Befunde hat;
+    /// leere Hook-Ausgabe ändert nichts. Projekt und Symbolindex aus AProject wie bei get_diagnostics (#1112).</summary>
+    class function HookDiagnostics(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+      const ARoot, AFileName: string; const AReadText: TReferenceReadText; const ASource: TCheckSourceFunc;
+      const AProject: TCheckProjectFunc; ASeverity: TRuleSeverity): string; static;
+    /// <summary>Schwelle für hook_check aus "error", "warning" (Vorgabe bei leerem Text), "information" oder
+    /// "hint"; EMcpToolError bei anderem Text.</summary>
+    class function ParseHookSeverity(const AText: string): TRuleSeverity; static;
     class function ParseDirection(const AText: string): TMcpCallDirection; static;
     /// <summary>get_metrics (#66): Kennzahlen je Methode mit den Grenzwerten aus ASettings; Markdown-Bericht
     /// oder mit AJson die Metrikdaten. Pfade relativ zu ARoot.</summary>
@@ -412,6 +423,70 @@ begin
   finally
     Lines.Free;
   end;
+end;
+
+class function TMcpCodeTools.HookDiagnostics(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const ARoot, AFileName: string; const AReadText: TReferenceReadText; const ASource: TCheckSourceFunc;
+  const AProject: TCheckProjectFunc; ASeverity: TRuleSeverity): string;
+const
+  PascalExtensions: array[0..3] of string = ('.pas', '.dpr', '.dpk', '.inc');
+var
+  Text, Extension, Context, RelativePath: string;
+  Finding: TRuleFinding;
+  Lines: TStringList;
+  Count: Integer;
+  Scopes: TFindingScopes;
+begin
+  Result := '';
+  Extension := ExtractFileExt(AFileName);
+  if not MatchText(Extension, PascalExtensions) then
+    Exit;
+  if not (Assigned(AReadText) and AReadText(AFileName, Text)) then
+    Exit;
+  // Wie get_diagnostics: Regeln und overrides aus atlas.json gelten für den Pfad relativ zum Projekt.
+  RelativePath := AFileName;
+  if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), AFileName) then
+    RelativePath := Copy(AFileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
+  Lines := TStringList.Create;
+  try
+    Count := 0;
+    for Finding in TFileChecker.CheckText(ARules, ASettings, RelativePath, Text,
+      TFileChecker.ProjectOf(AProject, AFileName), TFileChecker.SourceOf(ASource, AFileName), Scopes) do
+    begin
+      if Finding.Severity < ASeverity then
+        Continue;
+      Inc(Count);
+      if Count <= MaxFindings then
+        Lines.Add(Format('%d:%d: %s [%s] %s', [Finding.Range.StartPos.Line + 1,
+          Finding.Range.StartPos.Character + 1, TFindingsOutput.SeverityName(Finding.Severity), Finding.RuleId,
+          Finding.Message]));
+    end;
+    if Count = 0 then
+      Exit;
+    if Count > MaxFindings then
+      Lines.Add(Format('… %d weitere Befunde', [Count - MaxFindings]));
+    Context := Format('Atlas hat in %s nach der Änderung %d Befunde gefunden (Zeile:Spalte):', [AFileName, Count]) +
+      #10 + TrimRight(Lines.Text) + #10 +
+      'Ursache im Code beheben; Erklärung mit explain_finding, Korrektur mit apply_code_action.';
+  finally
+    Lines.Free;
+  end;
+  Result := '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":' +
+    TFindingsOutput.JsonString(Context) + '}}';
+end;
+
+class function TMcpCodeTools.ParseHookSeverity(const AText: string): TRuleSeverity;
+begin
+  if (AText = '') or SameText(AText, 'warning') then
+    Result := TRuleSeverity.Warning
+  else if SameText(AText, 'error') then
+    Result := TRuleSeverity.Error
+  else if SameText(AText, 'information') then
+    Result := TRuleSeverity.Information
+  else if SameText(AText, 'hint') then
+    Result := TRuleSeverity.Hint
+  else
+    raise EMcpToolError.Create('"severity" ist error, warning, information oder hint');
 end;
 
 function SplitKeepingBreaks(const AText: string): TArray<string>;

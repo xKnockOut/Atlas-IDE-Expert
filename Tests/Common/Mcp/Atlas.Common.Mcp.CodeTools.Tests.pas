@@ -20,6 +20,14 @@ type
     [Test]
     procedure ListsDiagnosticsWithLocation;
     [Test]
+    procedure HookDiagnosticsReportsWarningsAsHookOutput;
+    [Test]
+    procedure HookDiagnosticsIsEmptyForOtherFiles;
+    [Test]
+    procedure HookDiagnosticsIsEmptyWithoutFindings;
+    [Test]
+    procedure ParsesHookSeverity;
+    [Test]
     procedure ReportsMetrics;
     [Test]
     procedure ReportsTodosOfProjectFilesOnly;
@@ -192,6 +200,58 @@ begin
     end);
   Assert.Contains(Text, 'C:\P\Kaputt.pas:6:');
   Assert.Contains(Text, 'in 1 Dateien');
+end;
+
+procedure TMcpCodeToolsTests.HookDiagnosticsReportsWarningsAsHookOutput;
+var
+  Text: string;
+begin
+  Text := TMcpCodeTools.HookDiagnostics(BuiltinRules, TServerSettings.Default, 'C:\P', 'C:\P\Kaputt.pas',
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      AText := 'unit Kaputt;'#10'interface'#10'implementation'#10'procedure X;'#10'begin'#10'  if then'#10'end;'#10'end.';
+      Result := True;
+    end, nil, nil, TRuleSeverity.Warning);
+  Assert.StartsWith('{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"', Text);
+  Assert.Contains(Text, 'C:\\P\\Kaputt.pas');
+  Assert.Contains(Text, '6:');
+end;
+
+procedure TMcpCodeToolsTests.HookDiagnosticsIsEmptyForOtherFiles;
+var
+  Read: Boolean;
+begin
+  Read := False;
+  Assert.AreEqual('', TMcpCodeTools.HookDiagnostics(BuiltinRules, TServerSettings.Default, 'C:\P', 'C:\P\README.md',
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Read := True;
+      AText := 'if then';
+      Result := True;
+    end, nil, nil, TRuleSeverity.Warning));
+  Assert.IsFalse(Read, 'Andere Dateien liest hook_check gar nicht erst');
+end;
+
+procedure TMcpCodeToolsTests.HookDiagnosticsIsEmptyWithoutFindings;
+begin
+  Assert.AreEqual('', TMcpCodeTools.HookDiagnostics(BuiltinRules, TServerSettings.Default, 'C:\P', 'C:\P\Gut.pas',
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      AText := 'unit Gut;'#10'interface'#10'implementation'#10'end.';
+      Result := True;
+    end, nil, nil, TRuleSeverity.Error));
+end;
+
+procedure TMcpCodeToolsTests.ParsesHookSeverity;
+begin
+  Assert.IsTrue(TMcpCodeTools.ParseHookSeverity('') = TRuleSeverity.Warning);
+  Assert.IsTrue(TMcpCodeTools.ParseHookSeverity('Error') = TRuleSeverity.Error);
+  Assert.IsTrue(TMcpCodeTools.ParseHookSeverity('hint') = TRuleSeverity.Hint);
+  Assert.WillRaise(
+    procedure
+    begin
+      TMcpCodeTools.ParseHookSeverity('laut');
+    end, EMcpToolError);
 end;
 
 procedure TMcpCodeToolsTests.ReportsMetrics;

@@ -212,7 +212,7 @@ So far it is built and checked only with RAD Studio 13 in the 32-bit IDE. What r
 
 - **Claude Code:** MCP tools and LSP as a plugin, see [Editors/ClaudeCode](Editors/ClaudeCode/README.md)
 - **CI and command line:** `AtlasServer.exe --check`, see [Linter mode](#linter-mode)
-- **Claude Code in the cloud (Linux):** the repository's SessionStart hook builds the server with Free Pascal and installs it as `AtlasServer` (and `AtlasServer.exe`) in `/usr/local/bin`; the plugin starts without further setup ([ADR 0013](docs/adr/0013-linux-bau.md), [Building on Linux](#building-on-linux))
+- **Claude Code in the cloud (Linux):** the environment's setup script and the SessionStart hook install the server as `AtlasServer` (and `AtlasServer.exe`) in `/usr/local/bin`, prebuilt from the `cloud-linux` pre-release or built with Free Pascal; setup in [Editors/ClaudeCode](Editors/ClaudeCode/README.md#in-cloud-sitzungen-linux) ([ADR 0013](docs/adr/0013-linux-bau.md), [Building on Linux](#building-on-linux))
 
 More: [docs/Installation.md](docs/Installation.md).
 
@@ -267,7 +267,7 @@ Only the server, only for Claude Code sessions in the cloud and other Linux mach
 Tools/Linux/Build-AtlasServer.sh --install /usr/local/bin
 ```
 
-The script builds Free Pascal trunk at a pinned commit once (about 10 minutes, under `~/.cache/atlas-fpc`), prepares the source with `Tools/Linux/Convert-ForFpc.py` and compiles to `Output/Linux64/Bin/AtlasServer`. If the source has not changed, it does not rebuild. Platform adapters live in `Packages/Atlas.Linux`; `Shell.Platform` picks them. The Linux build does not replace the Delphi build before a merge.
+The script first takes the prebuilt program from the `cloud-linux` pre-release (workflow `linux-server.yml`, state of main) if it matches the source. Otherwise it fetches Free Pascal trunk at a pinned commit from the same release or builds it once (about 10 minutes, under `~/.cache/atlas-fpc`), prepares the source with `Tools/Linux/Convert-ForFpc.py` and compiles to `Output/Linux64/Bin/AtlasServer`. If the source has not changed, it does not rebuild. Platform adapters live in `Packages/Atlas.Linux`; `Shell.Platform` picks them. The Linux build does not replace the Delphi build before a merge.
 
 ## Testing
 
