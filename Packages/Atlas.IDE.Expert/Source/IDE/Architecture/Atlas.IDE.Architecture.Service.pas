@@ -21,6 +21,9 @@
 // - Doppelklick öffnet die Unit bzw. springt zum uses-Eintrag; Strg+Doppelklick
 //   auf eine Unit zeigt sie im Fenster „Unit-Beziehungen“ (#593) über
 //   OnUnitRelations, das die Zusammensetzung setzt.
+// - ShowRanking (Befehl „Teuerste Units bei interface-Änderungen“, #554)
+//   zeigt das Fenster auf „Zentrale Units“, sortiert nach „gesamt abhängig“
+//   (RecompileCount des Uses-Graphen).
 // - architecture.enabled aus schließt das Fenster.
 // Den Server erreicht der Dienst über ARun (Install), damit er die
 // Zusammensetzung des Plugins nicht kennen muss. Nur im Hauptthread.
@@ -47,6 +50,8 @@ type
     class procedure Uninstall; static;
     /// <summary>Fenster zeigen; nichts, solange architecture.enabled aus ist.</summary>
     class procedure ShowWindow; static;
+    /// <summary>Fenster auf „Zentrale Units“ nach „gesamt abhängig“ absteigend (#554).</summary>
+    class procedure ShowRanking; static;
     class procedure ApplySettings; static;
     class procedure ThemeChanged; static;
     class function Enabled: Boolean; static;
@@ -433,6 +438,16 @@ begin
   TArchitectureState(FState).EnsureData;
   if Frame.Filter.CanFocus then
     Frame.Filter.SetFocus;
+end;
+
+class procedure TAtlasIdeArchitecture.ShowRanking;
+var
+  Frame: TAtlasArchitectureFrame;
+begin
+  ShowWindow;
+  Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
+  if (FState <> nil) and Active and (Frame <> nil) then
+    Frame.ShowCostRanking;
 end;
 
 class procedure TAtlasIdeArchitecture.ApplySettings;

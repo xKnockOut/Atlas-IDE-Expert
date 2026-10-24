@@ -3,7 +3,9 @@
 // Tests der Unit-Beziehungen (#593): „Verwendet“ aus dem Text samt
 // Bibliotheks-Units, „Wird verwendet von“ mit Abschnitt und Fundstelle,
 // interface-Zyklus A ↔ B mit Rundweg, Neuübersetzungen, Bäume über alle
-// Ebenen mit einmal aufgeklappten Units, ungenutzte Einträge, JSON.
+// Ebenen mit einmal aufgeklappten Units, ungenutzte Einträge, JSON; Kosten
+// einer interface-Änderung (#554) über eine Kette und nur im implementation
+// gebrauchte interface-Einträge.
 
 interface
 
@@ -45,6 +47,14 @@ type
     procedure UnknownFileHasOnlyTextUses;
     [Test]
     procedure JsonCarriesAllFields;
+    [Test]
+    procedure OnlyImplementationEntriesAreMarked;
+    [Test]
+    procedure InterfaceCostFollowsChain;
+    [Test]
+    procedure InterfaceCostStopsAtImplementationUses;
+    [Test]
+    procedure InterfaceCostJsonAndLimit;
   end;
 
 /// <summary>Quelltext einer Unit mit den uses-Listen (Zeilen getrennt durch #10).</summary>
@@ -343,6 +353,112 @@ begin
     Assert.AreEqual('F', Item.GetValue<string>('name'));
     Assert.AreEqual('implementation', Item.GetValue<string>('section'));
     Assert.IsNull(Item.GetValue('cycle'));
+  finally
+    Json.Free;
+  end;
+end;
+
+procedure TUnitRelationsTests.OnlyImplementationEntriesAreMarked;
+var
+  Relations: TUnitRelations;
+  Builder: TUnitRelationsBuilder;
+  Json, Item: TJSONObject;
+begin
+  // B steht im interface und wird nur in der implementation gebraucht; C steht schon dort.
+  Relations := Build(FGraph, FLocator, Reader, FileOf('A'), 1, nil);
+  Assert.IsFalse(Find(Relations.Uses_, 'B').OnlyImplementation, 'ohne Angabe nichts');
+  Json := nil;
+  try
+    Builder := TUnitRelationsBuilder.Create(FGraph, FLocator, Reader, NoDefines);
+    try
+      Relations := Builder.Build(FileOf('A'), 1, nil, TArray<string>.Create('X.B', 'C'));
+    finally
+      Builder.Free;
+    end;
+    Assert.IsTrue(Find(Relations.Uses_, 'B').OnlyImplementation, 'mit Namensraum geschrieben');
+    Assert.IsFalse(Find(Relations.Uses_, 'C').OnlyImplementation, 'steht schon im implementation-uses');
+    Assert.IsFalse(Find(Relations.Uses_, 'System').OnlyImplementation);
+    Json := TUnitRelationsBuilder.ToJson(Relations);
+    Item := Json.GetValue<TJSONArray>('uses').Items[0] as TJSONObject;
+    Assert.IsTrue(Item.GetValue<Boolean>('onlyImplementation'));
+    Item := Json.GetValue<TJSONArray>('uses').Items[2] as TJSONObject;
+    Assert.IsNull(Item.GetValue('onlyImplementation'));
+  finally
+    Json.Free;
+  end;
+end;
+
+/// <summary>Kosten in einem eigenen Graphen aus AUnits.</summary>
+function CostIn(const AUnits: TArray<TUnitIndex>; const AName: string; ALimit: Integer): TUnitInterfaceCost;
+var
+  Graph: TUsesGraph;
+begin
+  Graph := TUsesGraph.Create(AUnits, TUsesGraphOptions.Default);
+  try
+    Result := TUnitRelationsBuilder.InterfaceCost(Graph, FileOf(AName), ALimit);
+  finally
+    Graph.Free;
+  end;
+end;
+
+procedure TUnitRelationsTests.InterfaceCostFollowsChain;
+var
+  Units: TArray<TUnitIndex>;
+  Cost: TUnitInterfaceCost;
+begin
+  // Kette Oben → Mitte → Unten über interface-uses: Eine Änderung in Unten übersetzt zwei Units neu.
+  Units := TArray<TUnitIndex>.Create(UsesUnit('Oben', ['Mitte'], nil), UsesUnit('Mitte', ['Unten'], nil),
+    UsesUnit('Unten', nil, nil));
+  Cost := CostIn(Units, 'Unten', 10);
+  Assert.IsTrue(Cost.Found);
+  Assert.AreEqual('Unten', Cost.UnitName);
+  Assert.AreEqual(2, Cost.RecompileCount);
+  Assert.AreEqual('Mitte,Oben', string.Join(',', Cost.Units), 'nach Name');
+  Assert.AreEqual(1, CostIn(Units, 'Mitte', 10).RecompileCount);
+  Assert.AreEqual(0, CostIn(Units, 'Oben', 10).RecompileCount, 'niemand verwendet Oben');
+  // Oben verwendet Mitte nur im implementation: Mitte wird neu übersetzt, Oben auch (es verwendet Mitte),
+  // weil Mitte Unten im interface verwendet.
+  Units := TArray<TUnitIndex>.Create(UsesUnit('Oben', nil, ['Mitte']), UsesUnit('Mitte', ['Unten'], nil),
+    UsesUnit('Unten', nil, nil));
+  Assert.AreEqual(2, CostIn(Units, 'Unten', 10).RecompileCount);
+end;
+
+procedure TUnitRelationsTests.InterfaceCostStopsAtImplementationUses;
+var
+  Units: TArray<TUnitIndex>;
+  Cost: TUnitInterfaceCost;
+begin
+  // Mitte verwendet Unten nur im implementation: Das interface von Mitte bleibt, Oben bleibt übersetzt.
+  Units := TArray<TUnitIndex>.Create(UsesUnit('Oben', ['Mitte'], nil), UsesUnit('Mitte', nil, ['Unten']),
+    UsesUnit('Unten', nil, nil));
+  Cost := CostIn(Units, 'Unten', 10);
+  Assert.AreEqual(1, Cost.RecompileCount);
+  Assert.AreEqual('Mitte', string.Join(',', Cost.Units));
+  Cost := CostIn(Units, 'Fehlt', 10);
+  Assert.IsFalse(Cost.Found, 'nicht im Graphen');
+  Assert.AreEqual('Fehlt', Cost.UnitName);
+  Assert.AreEqual(0, Cost.RecompileCount);
+  Assert.IsNull(Cost.Units);
+end;
+
+procedure TUnitRelationsTests.InterfaceCostJsonAndLimit;
+var
+  Cost: TUnitInterfaceCost;
+  Json: TJSONObject;
+begin
+  // A: B, E, F direkt, G über E (siehe RecompileCountMatchesGraph); nur die ersten zwei Namen.
+  Cost := TUnitRelationsBuilder.InterfaceCost(FGraph, FileOf('A'), 2);
+  Assert.AreEqual(4, Cost.RecompileCount);
+  Assert.AreEqual('B,E', string.Join(',', Cost.Units));
+  Assert.AreEqual(0, Integer(Length(TUnitRelationsBuilder.InterfaceCost(FGraph, FileOf('A'), 0).Units)));
+  Json := TUnitRelationsBuilder.CostToJson(Cost);
+  try
+    Assert.IsTrue(Json.GetValue<Boolean>('found'));
+    Assert.AreEqual('A', Json.GetValue<string>('unit'));
+    Assert.AreEqual(FileOf('A'), Json.GetValue<string>('file'));
+    Assert.AreEqual(4, Json.GetValue<Integer>('recompileCount'));
+    Assert.AreEqual(2, Json.GetValue<TJSONArray>('units').Count);
+    Assert.AreEqual('E', Json.GetValue<TJSONArray>('units').Items[1].Value);
   finally
     Json.Free;
   end;

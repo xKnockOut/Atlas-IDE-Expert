@@ -734,7 +734,10 @@ type
     // Fenster „Unit-Beziehungen“ (#593).
     UnitRelationsCaption, UnitRelationsCommand, UnitRelationsViewMenu, UnitRelationsUses, UnitRelationsUsedBy, UnitRelationsLibrary, UnitRelationsInterface, UnitRelationsImplementation, UnitRelationsCycle, UnitRelationsCyclePath,
     UnitRelationsUnused, UnitRelationsRepeated, UnitRelationsRecompile, UnitRelationsRecompileOne, UnitRelationsNotInGraph, UnitRelationsDirect, UnitRelationsAllLevels, UnitRelationsFilterHint, UnitRelationsMoveImplementation, UnitRelationsMoveInterface,
-    UnitRelationsRemove, UnitRelationsCopyPath, UnitRelationsNoFile, UnitRelationsLoading, UnitRelationsNoServer, UnitRelationsFailed, UnitRelationsEditFailed, UnitRelationsEditRefused, UnitRelationsEditAction);
+    UnitRelationsRemove, UnitRelationsCopyPath, UnitRelationsNoFile, UnitRelationsLoading, UnitRelationsNoServer, UnitRelationsFailed, UnitRelationsEditFailed, UnitRelationsEditRefused, UnitRelationsEditAction,
+    // Kosten einer interface-Änderung (#554).
+    InterfaceCostStatus, InterfaceCostStatusOne, InterfaceCostHint, InterfaceCostMore, UnitDependenciesCommand, InterfaceCostRankingCommand,
+    SettingsShowInterfaceCost, UnitRelationsOnlyImplementation, UnitRelationsOnlyImplementationHint, UnitRelationsUsedByInterface, UnitRelationsUsedByImplementation, UnitRelationsMovable);
 
   TAtlasStrings = class
   private class var
@@ -2459,7 +2462,19 @@ const
      'Keine Antwort vom Atlas-Server',
      'uses nicht geändert: %s',
      'Der Server hat die Änderung abgelehnt (Liste mit Direktiven oder Kommentaren, Programm, Eintrag wird verwendet)',
-     'uses ändern'),
+     'uses ändern',
+     'interface-Änderung: %d Units werden neu kompiliert',
+     'interface-Änderung: 1 Unit wird neu kompiliert',
+     'Eine Änderung im interface von %s übersetzt neu: %s. Klick: Abhängigkeiten dieser Unit',
+     '%s und %d weitere',
+     'Abhängigkeiten dieser Unit',
+     'Teuerste Units bei interface-Änderungen',
+     'Kosten einer interface-Änderung in der Statusleiste',
+     'nur in implementation gebraucht',
+     '%s wird nur im implementation-Teil gebraucht: ins implementation-uses verschieben, dann kostet eine Änderung dort weniger',
+     'über interface-uses (%d)',
+     'über implementation-uses (%d)',
+     '%d ins implementation-uses verschiebbar'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -4088,7 +4103,19 @@ const
      'No answer from the Atlas server',
      'uses not changed: %s',
      'The server refused the change (list with directives or comments, program, entry in use)',
-     'Change uses'));
+     'Change uses',
+     'interface change: %d units will be recompiled',
+     'interface change: 1 unit will be recompiled',
+     'A change in the interface of %s recompiles: %s. Click: dependencies of this unit',
+     '%s and %d more',
+     'Dependencies of this unit',
+     'Most expensive units for interface changes',
+     'Cost of an interface change in the status bar',
+     'only needed in implementation',
+     '%s is only needed in the implementation part: move it to the implementation uses, then a change there costs less',
+     'via interface uses (%d)',
+     'via implementation uses (%d)',
+     '%d movable to the implementation uses'));
 
 { TAtlasStrings }
 

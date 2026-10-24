@@ -11,6 +11,11 @@
 // - SplitLibrary trennt „Verwendet“ in Projekt- und Bibliotheks-Units (RTL,
 //   VCL, Fremdkomponenten): Das Fenster zeigt die Bibliothek abgeblendet in
 //   einer eingeklappten Gruppe.
+// - SplitUsedBy trennt „Wird verwendet von“ nach dem Abschnitt des Eintrags
+//   in der verwendenden Unit (#554): Verwender über interface-uses geben
+//   eine Änderung weiter, solche über implementation-uses nicht.
+// - Movable zählt die interface-Einträge, die nur im implementation-Teil
+//   gebraucht werden (#554, „ins implementation-uses verschieben“).
 // - TAtlasUnitRelationsCommands baut die Argumente von atlas.unitRelations,
 //   atlas.server.moveUses und atlas.server.removeUses.
 // - TAtlasUnitRelationsCache merkt sich die letzten Antworten je Datei und
@@ -36,6 +41,8 @@ type
     Cycle: Boolean;
     CyclePath: string;
     Unused: Boolean;
+    /// <summary>Steht im interface-uses, gebraucht wird die Unit nur im implementation-Teil (#554).</summary>
+    OnlyImplementation: Boolean;
     /// <summary>Steht im Baum schon weiter oben und wird hier nicht aufgeklappt.</summary>
     Repeated: Boolean;
     /// <summary>Fundstelle des uses-Eintrags; Line = -1 ohne.</summary>
@@ -74,6 +81,12 @@ type
     /// <summary>Teilt AItems in Projekt- und Bibliotheks-Units, Reihenfolge bleibt.</summary>
     class procedure SplitLibrary(const AItems: TAtlasUnitRelationList; out AProject,
       ALibrary: TAtlasUnitRelationList); static;
+    /// <summary>Teilt AItems nach dem Abschnitt des Eintrags (interface/implementation), Reihenfolge bleibt.
+    /// </summary>
+    class procedure SplitUsedBy(const AItems: TAtlasUnitRelationList; out AInterface,
+      AImplementation: TAtlasUnitRelationList); static;
+    /// <summary>Einträge in AItems (ohne Kinder), die sich ins implementation-uses verschieben lassen.</summary>
+    class function Movable(const AItems: TAtlasUnitRelationList): Integer; static;
   end;
 
   TAtlasUnitRelationsCommands = class
@@ -153,6 +166,7 @@ begin
   Result.Cycle := BoolOf(AObject, 'cycle');
   Result.CyclePath := TextOf(AObject, 'cyclePath');
   Result.Unused := BoolOf(AObject, 'unused');
+  Result.OnlyImplementation := BoolOf(AObject, 'onlyImplementation');
   Result.Repeated := BoolOf(AObject, 'repeated');
   Result.Line := -1;
   Result.Character := -1;
@@ -249,6 +263,30 @@ begin
       ALibrary := ALibrary + [Item]
     else
       AProject := AProject + [Item];
+end;
+
+class procedure TAtlasUnitRelationsModel.SplitUsedBy(const AItems: TAtlasUnitRelationList; out AInterface,
+  AImplementation: TAtlasUnitRelationList);
+var
+  Item: TAtlasUnitRelation;
+begin
+  AInterface := nil;
+  AImplementation := nil;
+  for Item in AItems do
+    if Item.InInterface then
+      AInterface := AInterface + [Item]
+    else
+      AImplementation := AImplementation + [Item];
+end;
+
+class function TAtlasUnitRelationsModel.Movable(const AItems: TAtlasUnitRelationList): Integer;
+var
+  Item: TAtlasUnitRelation;
+begin
+  Result := 0;
+  for Item in AItems do
+    if Item.OnlyImplementation and Item.InInterface then
+      Inc(Result);
 end;
 
 { TAtlasUnitRelationsCommands }

@@ -30,6 +30,8 @@ type
     [Test]
     procedure SortsByColumnClick;
     [Test]
+    procedure CostRankingSortsByTotal;
+    [Test]
     procedure FilterNarrowsEverything;
     [Test]
     procedure OpensUnitAndUsesEntry;
@@ -127,6 +129,23 @@ begin
   Assert.IsTrue(FFrame.SortDescending);
   Lines := FFrame.CentralText;
   Assert.IsTrue(CompareText(Lines[0].Split([#9])[0], Lines[1].Split([#9])[0]) > 0);
+end;
+
+procedure TAtlasArchitectureFrameTests.CostRankingSortsByTotal;
+var
+  Lines: TArray<string>;
+  Index: Integer;
+begin
+  // Teuerste Units (#554): auch nach anderer Sortierung und auf anderem Reiter wieder „gesamt abhängig“ absteigend.
+  FFrame.CentralList.OnColumnClick(FFrame.CentralList, FFrame.CentralList.Columns[0]);
+  FFrame.Pages.ActivePageIndex := 0;
+  FFrame.ShowCostRanking;
+  Assert.IsTrue(FFrame.SortColumn = TAtlasArchColumn.Total);
+  Assert.IsTrue(FFrame.SortDescending);
+  Assert.IsTrue(FFrame.Pages.ActivePage = FFrame.CentralList.Parent, 'Reiter „Zentrale Units“');
+  Lines := FFrame.CentralText;
+  for Index := 1 to High(Lines) do
+    Assert.IsTrue(StrToInt(Lines[Index - 1].Split([#9])[3]) >= StrToInt(Lines[Index].Split([#9])[3]));
 end;
 
 procedure TAtlasArchitectureFrameTests.FilterNarrowsEverything;

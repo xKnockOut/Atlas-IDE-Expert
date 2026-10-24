@@ -10,7 +10,9 @@
 //   "recompileCount", "dependencies", "dependents", "inCycle",
 //   "cyclePath", "uses" und "usedBy" mit je "name", "file", "section"
 //   (interface/implementation), "library", "cycle", "cyclePath", "unused",
-//   "repeated", "location" {file, line, character} und "children".
+//   "onlyImplementation" (interface-Eintrag, der nur im implementation-Teil
+//   gebraucht wird, #554), "repeated", "location" {file, line, character}
+//   und "children".
 // Befehl atlas.unitRelations: Argumente [uri, {"depth": n}], Antwort wie oben
 //   (für RunCommandAsync des Plugins).
 // Befehl atlas.server.moveUses: Argumente [uri, Unit, "interface" |
@@ -21,6 +23,11 @@
 // Befehl atlas.server.removeUses: Argumente [uri, Unit] streicht einen
 //   ungenutzten Eintrag (dieselbe Analyse wie die abgeblendeten uses, #621);
 //   Antwort {"edit": …}. Benutzte Einträge lehnt er ab.
+// Befehl atlas.interfaceCost (#554): Argumente [uri] liefert die Kosten einer
+//   Änderung im interface-Teil für die Statusleiste: {"found", "unit",
+//   "file", "recompileCount", "units" (die ersten CostUnits Namen),
+//   "generation"}. Ohne Text, Fundstellen und Bäume, also billig genug, um
+//   beim Tippen nachzufragen.
 //
 // Der Graph enthält Bibliotheks-Units (soweit im Index), damit „Verwendet“
 // sie mit Datei zeigt; Namensräume kommen je Datei aus OptionsFor.
@@ -49,6 +56,9 @@ type
     Command = 'atlas.unitRelations';
     MoveCommand = 'atlas.server.moveUses';
     RemoveCommand = 'atlas.server.removeUses';
+    CostCommand = 'atlas.interfaceCost';
+    /// <summary>So viele Namen nennt atlas.interfaceCost höchstens.</summary>
+    CostUnits = 10;
   private
     FGraph: TUsesGraphService;
     FLocator: TUsesLocator;
@@ -58,7 +68,7 @@ type
     FOptionsFor: TLspUnitRelationsOptionsFunc;
     function TextOf(const AFileName: string): string;
     function DefinesOf(const AFileName: string): TArray<string>;
-    function UnusedOf(const AFileName, AText: string): TArray<string>;
+    procedure EntriesOf(const AFileName, AText: string; out AUnused, AOnlyImplementation: TArray<string>);
     procedure EnsureOptions(const AFileName: string);
     function FileOf(const AArguments: TJSONArray; AIndex: Integer): string;
   public
@@ -75,6 +85,8 @@ type
     function Move(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Befehl atlas.server.removeUses [uri, Unit].</summary>
     function Remove(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Befehl atlas.interfaceCost [uri] (#554).</summary>
+    function Cost(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Edits, die AUnit in den Abschnitt ATarget verschieben; False mit AError.</summary>
     class function MoveEdits(const AText, AUnit: string; ATarget: TUsesSection; out AEdits: TArray<TTextEdit>;
       out AError: string): Boolean; static;
@@ -151,19 +163,24 @@ begin
     Result := FDefines(AFileName);
 end;
 
-function TLspUnitRelations.UnusedOf(const AFileName, AText: string): TArray<string>;
+procedure TLspUnitRelations.EntriesOf(const AFileName, AText: string; out AUnused,
+  AOnlyImplementation: TArray<string>);
 var
   Context: TUsesContext;
   Entry: TUsesEntry;
 begin
-  Result := nil;
+  AUnused := nil;
+  AOnlyImplementation := nil;
   if (AText = '') or not Assigned(FUsesContextFor) or
     not FUsesContextFor(TDocumentUris.FromPath(AFileName), Context) or not Assigned(Context.Info) then
     Exit;
+  // Dieselbe Analyse wie die abgeblendeten uses im Editor (#621).
   for Entry in TUsesActions.Entries(TPascalLexer.Tokenize(AText), TLspInactiveRegions.Ranges(AText,
     DefinesOf(AFileName)), Context.Info, Context.Keep) do
     if Entry.State = TUsesEntryState.Unused then
-      Result := Result + [Entry.Name];
+      AUnused := AUnused + [Entry.Name]
+    else if Entry.State = TUsesEntryState.OnlyImplementation then
+      AOnlyImplementation := AOnlyImplementation + [Entry.Name];
 end;
 
 procedure TLspUnitRelations.EnsureOptions(const AFileName: string);
@@ -194,7 +211,7 @@ var
   FileName, Text: string;
   Depth: Integer;
   Number: Double;
-  Unused: TArray<string>;
+  Unused, OnlyImplementation: TArray<string>;
   Relations: TUnitRelations;
 begin
   if not (AParams is TJSONObject) then
@@ -211,7 +228,7 @@ begin
   if Depth < 0 then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"depth" ist 0 (alle Ebenen) oder größer');
   Text := TextOf(FileName);
-  Unused := UnusedOf(FileName, Text);
+  EntriesOf(FileName, Text, Unused, OnlyImplementation);
   EnsureOptions(FileName);
   Answer := nil;
   FGraph.Read(
@@ -221,7 +238,7 @@ begin
     begin
       Builder := TUnitRelationsBuilder.Create(AGraph, FLocator, FReader, FDefines);
       try
-        Relations := Builder.Build(FileName, Depth, Unused);
+        Relations := Builder.Build(FileName, Depth, Unused, OnlyImplementation);
       finally
         Builder.Free;
       end;
@@ -252,6 +269,23 @@ begin
   finally
     Params.Free;
   end;
+end;
+
+function TLspUnitRelations.Cost(const AArguments: TJSONArray): TJSONValue;
+var
+  FileName: string;
+  Answer: TJSONObject;
+begin
+  FileName := FileOf(AArguments, 0);
+  EnsureOptions(FileName);
+  Answer := nil;
+  FGraph.Read(
+    procedure(const AGraph: TUsesGraph)
+    begin
+      Answer := TUnitRelationsBuilder.CostToJson(TUnitRelationsBuilder.InterfaceCost(AGraph, FileName, CostUnits));
+    end);
+  Answer.AddPair('generation', TJSONNumber.Create(FGraph.Generation));
+  Result := Answer;
 end;
 
 class function TLspUnitRelations.MoveEdits(const AText, AUnit: string; ATarget: TUsesSection;

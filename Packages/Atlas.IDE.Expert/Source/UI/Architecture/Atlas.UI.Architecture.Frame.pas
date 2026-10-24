@@ -9,7 +9,9 @@
 //   (ein- und ausblenden), die Karte (TAtlasArchitectureMap), darunter Angaben
 //   zur gewählten Unit bzw. der Weg nach Umschalt+Klick,
 // - Zentrale Units: Tabelle, Klick auf eine Spalte sortiert (nochmals:
-//   umgekehrt),
+//   umgekehrt); ShowCostRanking zeigt sie nach „gesamt abhängig“ absteigend,
+//   also die Units, deren interface-Änderung am meisten neu übersetzt
+//   (#554),
 // - Teilsysteme: Baum mit Zusammenhalt und Units, Ausreißer mit Grund,
 // - Zyklen: je Zyklus der Weg und die uses-Einträge mit Fundstelle,
 // - Querverbindungen: seltene Kanten und Kanten gegen die Hauptrichtung,
@@ -154,6 +156,8 @@ type
     /// <summary>Statt der Daten ein Hinweis in der Statuszeile (kein Projekt, kein Server, Rechnen läuft);
     /// AKeep: bisherige Daten stehen lassen (z. B. während neu gerechnet wird).</summary>
     procedure SetMessage(const AText: string; AKeep: Boolean);
+    /// <summary>Reiter „Zentrale Units“ nach „gesamt abhängig“ absteigend (#554, teuerste Units).</summary>
+    procedure ShowCostRanking;
     /// <summary>Unit öffnen (OnOpenUnit mit absolutem Pfad).</summary>
     procedure OpenUnit(AUnit: Integer);
     /// <summary>uses-Eintrag öffnen (OnOpenLocation), ohne Fundstelle die Unit, in der er steht.</summary>
@@ -1144,6 +1148,14 @@ procedure TAtlasArchitectureFrame.ShowAllClick(Sender: TObject);
 begin
   FMap.ShowAllSubsystems;
   UpdateInfo;
+end;
+
+procedure TAtlasArchitectureFrame.ShowCostRanking;
+begin
+  FSortColumn := TAtlasArchColumn.Total;
+  FSortDescending := True;
+  FPages.ActivePage := FCentral.Parent as TTabSheet;
+  FillCentral;
 end;
 
 procedure TAtlasArchitectureFrame.CentralColumnClick(Sender: TObject; Column: TListColumn);

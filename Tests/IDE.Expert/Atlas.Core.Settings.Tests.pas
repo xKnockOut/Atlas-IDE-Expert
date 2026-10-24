@@ -249,6 +249,7 @@ begin
   Assert.IsFalse(Settings.TestsAfterBuild, 'Tests nach dem Build standardmäßig aus (#69)');
   Assert.IsTrue(Settings.TestsBuildFirst, 'vor den Tests bauen standardmäßig an (#69)');
   Assert.IsFalse(Settings.BuildZeroHints, 'build.zeroHints standardmäßig aus (#530)');
+  Assert.IsTrue(Settings.ShowInterfaceCost, 'build.showInterfaceCost standardmäßig an (#554)');
   Assert.IsTrue(Settings.StartProfiles, 'Startprofile standardmäßig an (#575)');
   Assert.IsTrue(Settings.StartProfilesStatusField, 'Startprofil in der Statusleiste standardmäßig an (#575)');
   Assert.IsTrue(Settings.TestDebug, 'Test debuggen standardmäßig da (#585)');
@@ -347,6 +348,7 @@ begin
   Settings.TestsAfterBuild := True;
   Settings.TestsBuildFirst := False;
   Settings.BuildZeroHints := True;
+  Settings.ShowInterfaceCost := False;
   Settings.StartProfiles := False;
   Settings.StartProfilesStatusField := False;
   Settings.TestDebug := False;
@@ -430,6 +432,7 @@ begin
   Assert.IsTrue(Loaded.TestsAfterBuild);
   Assert.IsFalse(Loaded.TestsBuildFirst);
   Assert.IsTrue(Loaded.BuildZeroHints);
+  Assert.IsFalse(Loaded.ShowInterfaceCost, 'build.showInterfaceCost (#554)');
   Assert.IsFalse(Loaded.StartProfiles);
   Assert.IsFalse(Loaded.StartProfilesStatusField);
   Assert.IsFalse(Loaded.TestDebug, 'Test debuggen (#585)');

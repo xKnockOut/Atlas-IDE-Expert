@@ -4,7 +4,8 @@
 // Bibliothek eingeklappt, Zyklus mit Rundweg im Hinweis, Kosten in der
 // Infozeile, Filter samt Vorfahren, Öffnen von Unit und uses-Eintrag,
 // Kontextmenü nur dort, wo es passt, Aufklappen und Auswahl bleiben bei
-// neuen Daten, Umschalter der Tiefe.
+// neuen Daten, Umschalter der Tiefe; Verwender nach interface- und
+// implementation-uses und verschiebbare interface-Einträge (#554).
 
 interface
 
@@ -45,6 +46,8 @@ type
     procedure KeepsStateOnNewData;
     [Test]
     procedure DepthToggleReports;
+    [Test]
+    procedure ShowsMovableEntries;
   end;
 
 implementation
@@ -128,8 +131,15 @@ begin
   Assert.IsFalse(Library_.Expanded, 'Bibliothek eingeklappt');
   Assert.IsTrue(Library_.Item[0].Text.StartsWith('System  intf'));
   Assert.IsTrue(Library_.Item[0].Text.EndsWith(TAtlasStrings.Text(TAtlasTextId.UnitRelationsUnused)));
-  Assert.AreEqual('E  intf', UsedBy.Item[0].Text);
-  Assert.AreEqual('F  impl', UsedBy.Item[1].Text);
+  // Verwender nach Abschnitt (#554), beide Gruppen offen.
+  Assert.AreEqual(2, UsedBy.Count);
+  Assert.IsTrue(FFrame.IsUsedByGroup(UsedBy.Item[0]));
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsUsedByInterface, [1]), UsedBy.Item[0].Text);
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsUsedByImplementation, [1]), UsedBy.Item[1].Text);
+  Assert.IsTrue(UsedBy.Item[0].Expanded);
+  Assert.IsTrue(UsedBy.Item[1].Expanded);
+  Assert.AreEqual('E  intf', UsedBy.Item[0].Item[0].Text);
+  Assert.AreEqual('F  impl', UsedBy.Item[1].Item[0].Text);
   // Alle Ebenen: C hat Daten darunter, B die Wurzel A als „siehe oben“.
   Assert.AreEqual(1, Uses_.Item[1].Count);
   Assert.IsTrue(Uses_.Item[0].Item[0].Text.EndsWith(TAtlasStrings.Text(TAtlasTextId.UnitRelationsRepeated)));
@@ -260,6 +270,33 @@ begin
   FFrame.AllLevels := False;
   Assert.AreEqual(-1, FDepth, 'von außen gesetzt');
   Assert.IsTrue(FFrame.DirectButton.Checked);
+end;
+
+procedure TAtlasUnitRelationsFrameTests.ShowsMovableEntries;
+var
+  Relations: TAtlasUnitRelations;
+  B, UsedBy: TTreeNode;
+begin
+  Assert.IsTrue(TAtlasUnitRelationsModel.Parse('{"found":true,"unit":"A","file":"C:\\P\\A.pas",' +
+    '"recompileCount":2,"uses":[{"name":"B","file":"C:\\P\\B.pas","section":"interface",' +
+    '"onlyImplementation":true},{"name":"C","file":"C:\\P\\C.pas","section":"interface"}],' +
+    '"usedBy":[{"name":"D","file":"C:\\P\\D.pas","section":"implementation"}],"depth":1}', Relations));
+  FFrame.SetRelations(Relations);
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsRecompile, [2]) + ' · ' +
+    TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsMovable, [1]), FFrame.Info.Caption);
+  B := FFrame.FindEntry('B', True);
+  Assert.AreEqual('B  intf · ' + TAtlasStrings.Text(TAtlasTextId.UnitRelationsOnlyImplementation), B.Text);
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsOnlyImplementationHint, ['B']), FFrame.HintOf(B));
+  Assert.AreEqual('C  intf', FFrame.FindEntry('C', True).Text);
+  FFrame.Tree.Selected := B;
+  FFrame.UpdateMenu;
+  Assert.IsTrue(FFrame.MoveImplementationItem.Visible, 'ins implementation-uses verschieben');
+  FFrame.MoveImplementationItem.Click;
+  Assert.AreEqual('B>False', FMoved);
+  // Nur Verwender über implementation-uses: eine Gruppe.
+  UsedBy := FFrame.Tree.Items.GetFirstNode.GetNextSibling;
+  Assert.AreEqual(1, UsedBy.Count);
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsUsedByImplementation, [1]), UsedBy.Item[0].Text);
 end;
 
 initialization

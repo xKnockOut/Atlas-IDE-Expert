@@ -791,6 +791,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Architecture.Frame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\UnitRelations\Atlas.Core.UnitRelations.Model.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.UnitRelations.Model.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\UnitRelations\Atlas.Core.UnitRelations.InterfaceCost.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.UnitRelations.InterfaceCost.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\UnitRelations\Atlas.UI.UnitRelations.Frame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.UnitRelations.Frame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Outline\Atlas.Core.Outline.Breadcrumbs.pas"/>

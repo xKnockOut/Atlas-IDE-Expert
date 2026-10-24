@@ -3,7 +3,9 @@
 // Inhalt des Fensters „Unit-Beziehungen“ (#593), reine VCL, aufgebaut im Code
 // wie das Ergebnisfenster (#400; die DFM ist leer):
 // - Titelzeile mit Atlas-Symbol (#751) und Unit-Name, darunter eine Zeile mit
-//   den Kosten („N Units neu übersetzen“) und dem Zyklus der Unit.
+//   den Kosten („N Units neu übersetzen“), dem Zyklus der Unit und wie viele
+//   interface-Einträge sich ins implementation-uses verschieben lassen
+//   (#554).
 // - Leiste mit Filterfeld und dem Umschalter „direkt“ / „alle Ebenen“
 //   (OnDepthChanged; der Dienst fragt dann den Server neu).
 // - Baum mit „Verwendet (n)“ und „Wird verwendet von (n)“; je Eintrag intf
@@ -11,7 +13,11 @@
 //   ungenutzte Einträge und Bibliotheks-Units (RTL, VCL) abgeblendet, die
 //   Bibliothek in einer eingeklappten Gruppe. Mit „alle Ebenen“ hängen die
 //   weiteren Ebenen darunter; eine Unit, die weiter oben schon aufgeklappt
-//   ist, trägt „siehe oben“.
+//   ist, trägt „siehe oben“. „Wird verwendet von“ teilt sich in „über
+//   interface-uses“ und „über implementation-uses“ (#554, „Abhängigkeiten
+//   dieser Unit“): Nur die ersten geben eine interface-Änderung weiter.
+//   interface-Einträge, die nur im implementation-Teil gebraucht werden,
+//   tragen „nur in implementation gebraucht“.
 // - Doppelklick oder Enter öffnet die Unit, Strg+Doppelklick bzw. Strg+Enter
 //   springt zum uses-Eintrag (bei „Verwendet“ in der Unit selbst, bei „Wird
 //   verwendet von“ in der verwendenden Unit), beides über OnOpen.
@@ -48,7 +54,7 @@ type
   TAtlasUnitRelationsFrame = class(TFrame)
   private type
 {$SCOPEDENUMS ON}
-    TNodeKind = (Section, LibraryGroup, Entry);
+    TNodeKind = (Section, LibraryGroup, UsedByGroup, Entry);
 {$SCOPEDENUMS OFF}
     TNodeData = record
       Kind: TNodeKind;
@@ -123,6 +129,8 @@ type
     /// <summary>Hinweis unter der Maus für ANode: Rundweg bei Zyklen, sonst die Datei.</summary>
     function HintOf(ANode: TTreeNode): string;
     function IsLibraryGroup(ANode: TTreeNode): Boolean;
+    /// <summary>Gruppe „über interface-uses“ bzw. „über implementation-uses“ unter „Wird verwendet von“.</summary>
+    function IsUsedByGroup(ANode: TTreeNode): Boolean;
     property Relations: TAtlasUnitRelations read FRelations;
     property HasRelations: Boolean read FHasRelations;
     property AllLevels: Boolean read GetAllLevels write SetAllLevels;
@@ -309,7 +317,9 @@ begin
   if ARelation.Cycle then
     Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.UnitRelationsCycle);
   if ARelation.Unused then
-    Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.UnitRelationsUnused);
+    Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.UnitRelationsUnused)
+  else if ARelation.OnlyImplementation and ARelation.InInterface then
+    Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.UnitRelationsOnlyImplementation);
   if ARelation.Repeated then
     Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.UnitRelationsRepeated);
 end;
@@ -362,9 +372,10 @@ begin
     Data := DataOf(Node);
     if Node.HasChildren then
     begin
-      // Unbekannte Knoten: Abschnitte offen, Bibliothek und tiefere Ebenen zu; mit Filter alles offen.
+      // Unbekannte Knoten: Abschnitte und Verwender-Gruppen offen, Bibliothek und tiefere Ebenen zu; mit Filter
+      // alles offen.
       if not AExpanded.TryGetValue(Data.Key, Expanded) then
-        Expanded := (Data.Kind = TNodeKind.Section) or (Trim(FFilter.Text) <> '');
+        Expanded := (Data.Kind in [TNodeKind.Section, TNodeKind.UsedByGroup]) or (Trim(FFilter.Text) <> '');
       Node.Expanded := Expanded;
     end;
     if (ASelected <> '') and (Data.Key = ASelected) then
@@ -379,7 +390,8 @@ var
   Selected, Line: string;
   Data: TNodeData;
   Section, Group: TTreeNode;
-  Uses_, Project, Library_, UsedBy: TAtlasUnitRelationList;
+  Uses_, Project, Library_, UsedBy, ByInterface, ByImplementation: TAtlasUnitRelationList;
+  Movable: Integer;
 begin
   Expanded := TDictionary<string, Boolean>.Create;
   try
@@ -400,6 +412,9 @@ begin
         Line := TAtlasStrings.Text(TAtlasTextId.UnitRelationsRecompileOne)
       else
         Line := TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsRecompile, [FRelations.RecompileCount]);
+      Movable := TAtlasUnitRelationsModel.Movable(FRelations.Uses_);
+      if Movable > 0 then
+        Line := Line + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsMovable, [Movable]);
       if FRelations.InCycle then
         Line := Line + ' · ' + TAtlasStrings.Text(TAtlasTextId.UnitRelationsCycle);
       FInfo.Caption := Line;
@@ -429,7 +444,23 @@ begin
       Data.Kind := TNodeKind.Section;
       Data.Key := 'usedBy';
       Section := AddNode(nil, TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsUsedBy, [Length(UsedBy)]), Data);
-      AddEntries(Section, UsedBy, False, True, Data.Key);
+      // Nach dem Abschnitt in der verwendenden Unit (#554); leere Gruppen entfallen.
+      TAtlasUnitRelationsModel.SplitUsedBy(UsedBy, ByInterface, ByImplementation);
+      Data.Kind := TNodeKind.UsedByGroup;
+      if ByInterface <> nil then
+      begin
+        Data.Key := 'usedBy/#interface';
+        Group := AddNode(Section, TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsUsedByInterface,
+          [Length(ByInterface)]), Data);
+        AddEntries(Group, ByInterface, False, True, Data.Key);
+      end;
+      if ByImplementation <> nil then
+      begin
+        Data.Key := 'usedBy/#implementation';
+        Group := AddNode(Section, TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsUsedByImplementation,
+          [Length(ByImplementation)]), Data);
+        AddEntries(Group, ByImplementation, False, True, Data.Key);
+      end;
       RestoreState(Expanded, Selected);
     finally
       FTree.Items.EndUpdate;
@@ -482,6 +513,11 @@ begin
   Result := (ANode <> nil) and (DataOf(ANode).Kind = TNodeKind.LibraryGroup);
 end;
 
+function TAtlasUnitRelationsFrame.IsUsedByGroup(ANode: TTreeNode): Boolean;
+begin
+  Result := (ANode <> nil) and (DataOf(ANode).Kind = TNodeKind.UsedByGroup);
+end;
+
 function TAtlasUnitRelationsFrame.FindEntry(const AName: string; AUsesSide: Boolean): TTreeNode;
 var
   Node: TTreeNode;
@@ -508,6 +544,8 @@ begin
     Exit;
   if Relation.Cycle and (Relation.CyclePath <> '') then
     Result := TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsCyclePath, [Relation.CyclePath])
+  else if Relation.OnlyImplementation and Relation.InInterface and not Relation.Unused then
+    Result := TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsOnlyImplementationHint, [Relation.Name])
   else
     Result := Relation.FileName;
 end;

@@ -2,7 +2,8 @@
 
 // Tests des Kerns des Fensters „Unit-Beziehungen“ (#593): Antwort von
 // atlas.unitRelations lesen, filtern samt Vorfahren, Bibliothek abtrennen,
-// Argumente der Befehle, Zwischenspeicher je Datei und Tiefe.
+// Argumente der Befehle, Zwischenspeicher je Datei und Tiefe; Verwender nach
+// Abschnitt und verschiebbare interface-Einträge (#554).
 
 interface
 
@@ -25,6 +26,10 @@ type
     procedure BuildsCommandArguments;
     [Test]
     procedure CacheKeepsLatestAnswers;
+    [Test]
+    procedure SplitsUsersBySection;
+    [Test]
+    procedure CountsMovableEntries;
   end;
 
 /// <summary>Antwort von atlas.unitRelations für A: B (Zyklus), System (Bibliothek, ungenutzt), C → Daten;
@@ -178,6 +183,35 @@ begin
   finally
     Cache.Free;
   end;
+end;
+
+procedure TAtlasUnitRelationsModelTests.SplitsUsersBySection;
+var
+  Relations: TAtlasUnitRelations;
+  Interface_, Implementation_: TAtlasUnitRelationList;
+begin
+  Assert.IsTrue(TAtlasUnitRelationsModel.Parse(Answer, Relations));
+  TAtlasUnitRelationsModel.SplitUsedBy(Relations.UsedBy, Interface_, Implementation_);
+  Assert.AreEqual('E', Names(Interface_));
+  Assert.AreEqual('F', Names(Implementation_));
+  TAtlasUnitRelationsModel.SplitUsedBy(nil, Interface_, Implementation_);
+  Assert.IsNull(Interface_);
+  Assert.IsNull(Implementation_);
+end;
+
+procedure TAtlasUnitRelationsModelTests.CountsMovableEntries;
+var
+  Relations: TAtlasUnitRelations;
+begin
+  Assert.IsTrue(TAtlasUnitRelationsModel.Parse('{"found":true,"unit":"A","uses":[' +
+    '{"name":"B","section":"interface","onlyImplementation":true},' +
+    '{"name":"C","section":"interface"},' +
+    '{"name":"D","section":"implementation","onlyImplementation":true}],"usedBy":[]}', Relations));
+  Assert.IsTrue(Relations.Uses_[0].OnlyImplementation);
+  Assert.IsFalse(Relations.Uses_[1].OnlyImplementation);
+  Assert.AreEqual(1, TAtlasUnitRelationsModel.Movable(Relations.Uses_), 'nur interface-Einträge');
+  Assert.IsTrue(TAtlasUnitRelationsModel.Parse(Answer, Relations));
+  Assert.AreEqual(0, TAtlasUnitRelationsModel.Movable(Relations.Uses_));
 end;
 
 initialization
