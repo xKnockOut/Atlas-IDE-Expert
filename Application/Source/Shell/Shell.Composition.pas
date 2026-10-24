@@ -4026,6 +4026,7 @@ var
   Project: TProjectInfo;
   Projects: TArray<TProjectInfo>;
   RuleProject: TCheckProject;
+  Pending: string;
 begin
   AContext := Default(TRuleCheckContext);
   FileName := TDocumentUris.ToPath(AUri);
@@ -4070,6 +4071,14 @@ begin
   // Projekte der Gruppe für unused-public-member (#1102); still, solange Projekte laden oder der Index läuft.
   AContext.Services.Index := FIndex;
   AContext.Services.EnsureUnit := EnsureUnit;
+  // Solange Projekte laden oder der Index aufgebaut wird, ohne Index prüfen: Ein halber Index kennt Units noch
+  // nicht, Regeln wie unresolved-identifier meldeten dann Bezeichner aus ihnen als nicht deklariert. Ohne Index
+  // schweigen diese Regeln (wie mit --no-index); IndexFinished prüft danach alle Dateien neu.
+  if not RuleProjectsComplete(Pending) then
+  begin
+    AContext.Services.Index := nil;
+    AContext.Services.EnsureUnit := nil;
+  end;
   AContext.Services.ProjectFiles := TRuleProjectFiles.Create(RuleProjects, FIndex, ReadSourceText,
     RuleProjectsComplete);
   // Formulardatei neben der Unit für den Abgleich von Feldern und Objekten (#123).
