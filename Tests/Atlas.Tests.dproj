@@ -1035,6 +1035,12 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.AccessChains.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.VisualizerKinds.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.VisualizerKinds.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.StepFilter.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.StepFilter.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.StepFilter.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.StepFilter.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Debug\Atlas.UI.Debug.StepFilterFrame.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.StepFilterFrame.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

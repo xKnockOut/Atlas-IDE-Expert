@@ -593,6 +593,12 @@ contains
   Atlas.UI.Debug.AccessViolation in 'Source\UI\Debug\Atlas.UI.Debug.AccessViolation.pas',
   Atlas.IDE.Debug.AccessViolation in 'Source\IDE\Debug\Atlas.IDE.Debug.AccessViolation.pas',
   Atlas.Core.Lsp.AccessChains in 'Source\Core\Lsp\Atlas.Core.Lsp.AccessChains.pas',
-  Atlas.Core.Settings.VisualizerKinds in 'Source\Core\Settings\Atlas.Core.Settings.VisualizerKinds.pas';
+  Atlas.Core.Settings.VisualizerKinds in 'Source\Core\Settings\Atlas.Core.Settings.VisualizerKinds.pas',
+  Atlas.Text.StepFilter in '..\Atlas.Text\Source\StepFilter\Atlas.Text.StepFilter.pas',
+  Atlas.Core.Debug.StepFilter in 'Source\Core\Debug\Atlas.Core.Debug.StepFilter.pas',
+  Atlas.IDE.Debug.Trace in 'Source\IDE\Debug\Atlas.IDE.Debug.Trace.pas',
+  Atlas.UI.Debug.StepFilterFrame in 'Source\UI\Debug\Atlas.UI.Debug.StepFilterFrame.pas' {AtlasDebugStepFilterFrame: TFrame},
+  Atlas.IDE.Debug.StepFilterWindow in 'Source\IDE\Debug\Atlas.IDE.Debug.StepFilterWindow.pas',
+  Atlas.IDE.Debug.StepFilter in 'Source\IDE\Debug\Atlas.IDE.Debug.StepFilter.pas';
 
 end.

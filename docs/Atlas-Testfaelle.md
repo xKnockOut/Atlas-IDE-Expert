@@ -2822,6 +2822,33 @@ Vorbereitung: VCL-Projekt (Win32, Debug) mit `TKunde = class` (Eigenschaft `Name
 | GH17 | Tastenkürzel-Übersicht öffnen | Eintrag „Gezielt hineinspringen“ mit Strg+Alt+F7, Konflikt rot, falls die IDE die Taste belegt |
 | GH18 | Package deinstallieren, während die Liste offen bzw. ein Sprung läuft | Kein Fehler; keine Atlas-Haltepunkte bleiben zurück |
 
+## Schrittfilter beim Hineinspringen (#850)
+
+Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert. Unit `Kunden` mit `TKunde = class` (Feld `FName`, `property Name: string read GetName write SetName` mit `GetName` = `Result := FName;` und `SetName` = `FName := Value;`, `function Anzahl: Integer` = `Result := FAnzahl;`, `class operator Add`, `constructor Create` = `inherited Create;`), `TLog.LogSchreiben(const S: string)` und eine Methode `Speichere`, die in einer Zeile `Ausgabe(Kunde.Name + IntToStr(Kunde.Anzahl))` und in der nächsten `LogSchreiben('x')` ruft. Vorgabe `debug.stepFilters` an, Arten `getters,trivial`, keine Muster. Win32 und Win64 (LLDB) je einmal.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SF1 | Haltepunkt auf der Zeile mit `Kunde.Name`, F9, F7 | Kein Halt in `GetName` und `Anzahl`; der Debugger steht im `begin` von `Ausgabe` (**Abnahme**) |
+| SF2 | SF1 mit `debug.stepFilters` aus (Schnellschalter) | F7 hält in `GetName` wie ohne Atlas (**Abnahme**) |
+| SF3 | Haltepunkt in `GetName`, dann SF1 | Der Debugger hält in `GetName` (Haltepunkt geht vor) |
+| SF4 | SF1, Umschalt+F7 | Halt in `GetName`; das nächste F7 filtert wieder (**Abnahme**) |
+| SF5 | Befehlspalette „Trotzdem hineinspringen (ohne Schrittfilter)“ | Wie SF4; ohne angehaltenes Programm die Meldung „Trotzdem hineinspringen: Das Programm ist nicht angehalten.“ |
+| SF6 | Cursor in `LogSchreiben`, Kontextmenü „Beim Hineinspringen überspringen“ | Meldung „Schrittfilter: Kunden.TLog.LogSchreiben wird beim Hineinspringen übersprungen.“; F7 auf der Zeile mit `LogSchreiben` hält nicht darin (**Abnahme**) |
+| SF7 | SF6 noch einmal | „… wird schon übersprungen (Muster Kunden.TLog.LogSchreiben).“ |
+| SF8 | Cursor in `GetName`, „Beim Hineinspringen überspringen“ | „… wird schon übersprungen (Getter von Eigenschaften (eine Anweisung)).“, kein neues Muster |
+| SF9 | Cursor in `LogSchreiben`, „Nicht mehr überspringen“ | „… wird nicht mehr übersprungen.“; Muster weg. Mit zusätzlichem Muster `*.Log*`: „… wird weiter über das Muster *.Log* übersprungen …“ |
+| SF10 | Cursor in `GetName`, „Nicht mehr überspringen“ | „… wird weiter übersprungen (Getter …); die Art im Fenster „Schrittfilter“ abwählen.“ |
+| SF11 | Befehlspalette „Schrittfilter…“ | Andockbares Fenster mit Schalter, fünf Arten (Getter, Setter, trivial, Operatoren, leere Konstruktoren) samt Treffern, Muster mit Treffern, Zeile „n Routinen in m Dateien des Projekts“ (**Abnahme**) |
+| SF12 | Im Fenster Art „Setter“ an, `Kunde.Name := 'x'` mit F7 | Kein Halt in `SetName`; Einstellung gespeichert (Einstellungsseite Debuggen zeigt den Haken) |
+| SF13 | Im Fenster Muster `TKunde.*` hinzufügen (Enter), mit F2 in `TKunde.Get*` ändern, mit Entf entfernen | Liste und Treffer passen; ungültige Muster (Leerzeichen, nur `*`) und doppelte nimmt das Fenster nicht an |
+| SF14 | „Neu zählen“ ohne laufenden Server | „Treffer gibt es erst mit laufendem Server.“, kein Hänger |
+| SF15 | Nach SF1 im Fenster | „In dieser Debug-Sitzung übersprungen: 2 · zuletzt Kunden.TKunde.Anzahl (Triviale Routinen …)“; neue Debug-Sitzung: wieder 0 |
+| SF16 | Schalter im Fenster aus | F7 wie ohne Atlas, Sitzungszeile „Der Ablauf ist aus …“; Schalter an: filtert wieder, ohne Neustart |
+| SF17 | Exception in einer gefilterten Routine | Der Debugger hält an der Exception, kein weiteres „Bis zur Rückkehr“ |
+| SF18 | F7 in eine Routine mit 20 Aufrufen gefilterter Getter in einer Zeile | Höchstens 16 übersprungen, dann bleibt der Debugger stehen; keine Endlosschleife |
+| SF19 | Diagnoselog, „Nur eigener Code“ (#578) an: F7 in Code ohne Quelltext und in einen Getter | Beides verhält sich wie einzeln; Aktionsname für Umschalt+F7 im Log bzw. Issue notieren (**Studie**: `RunTraceToSourceCommand`) |
+| SF20 | Helles und dunkles Thema | Fenster gut lesbar, Kopfzeilen fett, Hinweis grau |
+
 ## Kein Hängen, während der Server indexiert (#874)
 
 Vorher: Eine große Projektgruppe öffnen (Index läuft, Fortschritt im Statusfeld), „Diagnosemodus“ an.

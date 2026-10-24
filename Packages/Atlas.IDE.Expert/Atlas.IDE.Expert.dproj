@@ -688,6 +688,16 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.AccessViolation.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.AccessChains.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.VisualizerKinds.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\StepFilter\Atlas.Text.StepFilter.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.StepFilter.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Trace.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.StepFilterFrame.pas">
+            <Form>AtlasDebugStepFilterFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StepFilterWindow.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StepFilter.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

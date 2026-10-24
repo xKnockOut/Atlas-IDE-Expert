@@ -471,6 +471,16 @@ type
     /// Befehlspalette, der im angehaltenen Zustand die Aufrufe der Anweisung zur Wahl stellt; aus = Kürzel frei, kein
     /// Menüeintrag.</summary>
     DebugStepIntoTarget: Boolean;
+    /// <summary>debug.stepFilters (#850): F7 überspringt eigene Routinen der Arten aus debug.stepFilters.kinds und
+    /// Methoden nach debug.stepFilters.patterns und hält in der Routine, um die es geht; Umschalt+F7 springt ohne
+    /// Filter hinein.</summary>
+    DebugStepFilters: Boolean;
+    /// <summary>Gefilterte Arten (debug.stepFilters.kinds, kommagetrennt): getters, setters, trivial, operators,
+    /// emptyConstructors; Vorgabe getters,trivial.</summary>
+    DebugStepFilterKinds: string;
+    /// <summary>Gefilterte Methoden nach Muster (debug.stepFilters.patterns): Unit.Klasse.Methode mit * als
+    /// Platzhalter, durch ; getrennt.</summary>
+    DebugStepFilterPatterns: string;
     /// <summary>Tastenkürzel „Gezielt hineinspringen“ (debug.stepIntoTarget.key, 0 = keins).</summary>
     DebugStepIntoTargetKey: Integer;
     /// <summary>„kein Zugriff auf Wert“ erklären (#840, debug.explainUnavailable): Scheitert die Auswertung im Hover
@@ -1167,6 +1177,7 @@ uses
   Atlas.Core.Build.OpenBuild,
   Atlas.Core.Settings.OverviewKinds,
   Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Text.StepFilter,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Settings.ToolbarItems;
 
@@ -1485,6 +1496,9 @@ begin
   Result.DebugDisplayRules := True;
   Result.DebugDisplayRulesAllowCalls := False;
   Result.DebugStepIntoTarget := True;
+  Result.DebugStepFilters := True;
+  Result.DebugStepFilterKinds := TStepFilterNames.KindsText(TStepFilterNames.DefaultKinds);
+  Result.DebugStepFilterPatterns := '';
   Result.DebugStepIntoTargetKey := $C076; // Strg+Alt+F7
   Result.DebugExplainUnavailable := True;
   Result.DebugCompletionInDialogs := True;
@@ -1913,6 +1927,8 @@ begin
   PreviousChangeKey := EnsureRange(PreviousChangeKey, 0, $FFFF);
   OverviewRulerKinds := TAtlasOverviewKindNames.Normalize(OverviewRulerKinds);
   DebugVisualizerTypes := TAtlasVisualizerSettings.NormalizeKinds(DebugVisualizerTypes);
+  DebugStepFilterKinds := TStepFilterNames.NormalizeKinds(DebugStepFilterKinds);
+  DebugStepFilterPatterns := TStepFilterNames.NormalizePatterns(DebugStepFilterPatterns);
   DebugVisualizerNameFields := TAtlasVisualizerSettings.NormalizeNameFields(DebugVisualizerNameFields);
   DebugVisualizerMaxLength := EnsureRange(DebugVisualizerMaxLength, TAtlasVisualizerSettings.MinMaxLength,
     TAtlasVisualizerSettings.MaxMaxLength);
@@ -2132,6 +2148,9 @@ begin
   DebugDisplayRulesAllowCalls := AStore.ReadInteger('DebugDisplayRulesAllowCalls',
     BoolValue(Default.DebugDisplayRulesAllowCalls)) <> 0;
   DebugStepIntoTarget := AStore.ReadInteger('DebugStepIntoTarget', BoolValue(Default.DebugStepIntoTarget)) <> 0;
+  DebugStepFilters := AStore.ReadInteger('DebugStepFilters', BoolValue(Default.DebugStepFilters)) <> 0;
+  DebugStepFilterKinds := AStore.ReadString('DebugStepFilterKinds', Default.DebugStepFilterKinds);
+  DebugStepFilterPatterns := AStore.ReadString('DebugStepFilterPatterns', Default.DebugStepFilterPatterns);
   DebugStepIntoTargetKey := AStore.ReadInteger('DebugStepIntoTargetKey', Default.DebugStepIntoTargetKey);
   DebugExplainUnavailable := AStore.ReadInteger('DebugExplainUnavailable', BoolValue(Default.DebugExplainUnavailable)) <> 0;
   DebugCompletionInDialogs := AStore.ReadInteger('DebugCompletionInDialogs', BoolValue(Default.DebugCompletionInDialogs)) <> 0;
@@ -2604,6 +2623,9 @@ begin
   AStore.WriteInteger('DebugDisplayRules', BoolValue(DebugDisplayRules));
   AStore.WriteInteger('DebugDisplayRulesAllowCalls', BoolValue(DebugDisplayRulesAllowCalls));
   AStore.WriteInteger('DebugStepIntoTarget', BoolValue(DebugStepIntoTarget));
+  AStore.WriteInteger('DebugStepFilters', BoolValue(DebugStepFilters));
+  AStore.WriteString('DebugStepFilterKinds', DebugStepFilterKinds);
+  AStore.WriteString('DebugStepFilterPatterns', DebugStepFilterPatterns);
   AStore.WriteInteger('DebugStepIntoTargetKey', DebugStepIntoTargetKey);
   AStore.WriteInteger('DebugExplainUnavailable', BoolValue(DebugExplainUnavailable));
   AStore.WriteInteger('DebugCompletionInDialogs', BoolValue(DebugCompletionInDialogs));

@@ -106,6 +106,8 @@ type
     procedure DebugDisplayRuleOptions;
     [Test]
     procedure DebugStepIntoTargetOptions;
+    [Test]
+    procedure DebugStepFilterOptions;
     /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure GenerateMenuOptions;
@@ -1936,6 +1938,29 @@ begin
   Loaded.DebugStepIntoTargetKey := -5;
   Loaded.Normalize;
   Assert.AreEqual(0, Loaded.DebugStepIntoTargetKey);
+end;
+
+procedure TAtlasPluginSettingsTests.DebugStepFilterOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // #850: an, Getter und triviale Routinen, keine Muster; alles überlebt Speichern und Laden, Normalize bereinigt.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugStepFilters);
+  Assert.AreEqual('getters,trivial', Settings.DebugStepFilterKinds);
+  Assert.AreEqual('', Settings.DebugStepFilterPatterns);
+  Settings.DebugStepFilters := False;
+  Settings.DebugStepFilterKinds := 'Operators, setters, quatsch';
+  Settings.DebugStepFilterPatterns := ' *.Log* ;; TBasisForm.*;*.log*';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Loaded.Normalize;
+  Assert.IsFalse(Loaded.DebugStepFilters);
+  Assert.AreEqual('setters,operators', Loaded.DebugStepFilterKinds);
+  Assert.AreEqual('*.Log*;TBasisForm.*', Loaded.DebugStepFilterPatterns);
 end;
 
 procedure TAtlasPluginSettingsTests.DebugVisualizerOptions;

@@ -200,6 +200,8 @@ uses
   Atlas.IDE.Debug.Visualizers,
   Atlas.IDE.Debug.DisplayRules,
   Atlas.IDE.Debug.StepInto,
+  Atlas.IDE.Debug.Trace,
+  Atlas.IDE.Debug.StepFilter,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Editor.TestUnitLens,
   Atlas.IDE.Hover.Editor,
@@ -1127,6 +1129,11 @@ begin
   TAtlasIdeStepInto.Run;
 end;
 
+function StepFilterRunning: Boolean;
+begin
+  Result := TAtlasIdeDebugStepFilter.Started;
+end;
+
 procedure CompleteStatement;
 begin
   TAtlasIdeStatementCompletion.Run;
@@ -1368,6 +1375,12 @@ begin
   // Gezielt hineinspringen (#836); nur sichtbar, solange debug.stepIntoTarget an ist.
   Add('Atlas.StepIntoTarget', TAtlasTextId.StepIntoTargetCommand,
     Guarded(TAtlasFeature.Debugger, StepIntoTarget), StepIntoTargetVisible);
+  // Schrittfilter (#850): Das Fenster schaltet debug.stepFilters selbst, deshalb immer sichtbar; „Trotzdem
+  // hineinspringen“ nur, solange der Ablauf läuft.
+  Add('Atlas.StepFilters', TAtlasTextId.StepFilterWindowCommand,
+    Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugStepFilter.ShowWindow));
+  Add('Atlas.StepIntoAnyway', TAtlasTextId.StepFilterStepIntoAnywayCommand,
+    Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugStepFilter.StepIntoAnyway), StepFilterRunning);
   // Mehrere Einfügemarken (#589).
   Add('Atlas.MultiCursorNext', TAtlasTextId.MultiCursorNextCommand,
     Guarded(TAtlasFeature.MultiCursor, MultiCursorNext), MultiCursorVisible);
@@ -2638,6 +2651,18 @@ begin
     begin
       MessageLine(AText);
     end);
+  // Schrittfilter (#850): Fenster und Befehle; den Ablauf startet Features (debug.stepFilters).
+  TAtlasIdeDebugStepFilter.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
   // Übersichtsleiste an der Scrollleiste (#519).
   // Mit schnellen Lesezeichen (#1104) zeigt die Art „bookmarks“ die Lesezeichen von Atlas.
   TAtlasIdeOverviewRuler.Bookmarks :=
@@ -2697,6 +2722,7 @@ begin
   TAtlasIdeBlockComment.Uninstall;
   TAtlasIdeUnwrap.Uninstall;
   TAtlasIdeStepInto.Uninstall;
+  TAtlasIdeDebugStepFilter.Uninstall;
   TAtlasIdeSmartPaste.Uninstall;
   TAtlasIdeWrapSelection.Uninstall;
   TAtlasIdeLinkedEditing.Uninstall;
@@ -4292,6 +4318,17 @@ begin
       Result := TAtlasIdeDebugEvaluate.Started;
     end,
     StartDebugEvaluate, TAtlasIdeDebugEvaluate.Release);
+  // Schrittfilter beim Hineinspringen (#850): Zuhörer der Debug-Sitzung und Empfänger von F7; aus = F7 wie bisher.
+  Features.AddWanted('DebugStepFilter',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugStepFilters;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugStepFilter.Started;
+    end,
+    TAtlasIdeDebugStepFilter.Start, TAtlasIdeDebugStepFilter.Release);
   // Wirksame Compiler-Schalter an der Cursorposition (#558): Fenster, Befehl und Statusfeld; aus = kein Zeitgeber.
   Features.AddWanted('CompilerSwitches',
     function(ALevel: TAtlasSafeLevel): Boolean
@@ -4564,6 +4601,7 @@ begin
       TAtlasIdeCompilerSwitches.ThemeChanged;
       TAtlasIdeDebugExceptionBar.ThemeChanged;
       TAtlasIdeDebugEvaluate.ThemeChanged;
+      TAtlasIdeDebugStepFilter.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -4627,6 +4665,8 @@ begin
       TAtlasIdeDebugDialogCompletion.ApplySettings;
       // debug.evaluateWindow.replaceCtrlF7 (#784): Strg+F7 an- bzw. abhängen.
       TAtlasIdeDebugEvaluate.ApplySettings;
+      // debug.stepFilters* (#850): Fenster mit dem gespeicherten Stand, Treffer neuer Muster zählen.
+      TAtlasIdeDebugStepFilter.ApplySettings;
       // editor.gitGutter, editor.gitBlame (#507).
       TAtlasIdeLineChanges.ApplySettings;
       // editor.overviewRuler, editor.overviewRulerKinds (#519).
@@ -4756,6 +4796,12 @@ begin
     // Einrichtung, Update-Prüfung und Willkommensseite haben Zeilen in dessen Registry (#479, #625, #754).
     if Features <> nil then
       Teardown.AddFailures(Features.StopAll);
+    // Nach den Debugger-Funktionen: Sie melden sich dort ab; was übrig bleibt, hängt Atlas hier von F7 ab (#850).
+    Teardown.Step('DebugTrace',
+      procedure
+      begin
+        TAtlasIdeDebugTrace.Release;
+      end);
     Teardown.Step('QuickToggles',
       procedure
       begin

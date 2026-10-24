@@ -452,6 +452,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ExpressionCompletion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataFlow.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AccessChains.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StepFilter.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

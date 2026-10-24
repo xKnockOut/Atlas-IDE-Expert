@@ -57,6 +57,7 @@ uses
   Atlas.Core.Settings.Groups,
   Atlas.Core.Editor.Overview,
   Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Text.StepFilter,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
   Atlas.UI.Strings,
@@ -303,6 +304,9 @@ type
     FDebugDisplayRulesAllowCalls: TCheckBox;
     /// <summary>Gezielt hineinspringen (#836).</summary>
     FDebugStepIntoTarget: TCheckBox;
+    FDebugStepFilters: TCheckBox;
+    FDebugStepFilterKinds: array[TStepFilterKind] of TCheckBox;
+    FDebugStepFilterPatterns: TEdit;
     FDebugStepIntoTargetKey: TEdit;
     FDebugExplainUnavailable: TCheckBox;
     FDebugCompletionInDialogs: TCheckBox;
@@ -1105,6 +1109,9 @@ type
     property DebugDisplayRulesCheck: TCheckBox read FDebugDisplayRules;
     property DebugDisplayRulesAllowCallsCheck: TCheckBox read FDebugDisplayRulesAllowCalls;
     property DebugStepIntoTargetCheck: TCheckBox read FDebugStepIntoTarget;
+    property DebugStepFiltersCheck: TCheckBox read FDebugStepFilters;
+    function DebugStepFilterKindCheck(AKind: TStepFilterKind): TCheckBox;
+    property DebugStepFilterPatternsEdit: TEdit read FDebugStepFilterPatterns;
     property DebugStepIntoTargetKeyEdit: TEdit read FDebugStepIntoTargetKey;
     function DebugVisualizerKindCheck(AKind: TAtlasVisualizerKind): TCheckBox;
     property DebugExplainUnavailableCheck: TCheckBox read FDebugExplainUnavailable;
@@ -1894,6 +1901,16 @@ begin
   FDebugDisplayRulesAllowCalls := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugDisplayRulesAllowCalls));
   // Gezielt hineinspringen (#836): Schalter und Tastenkürzel.
   FDebugStepIntoTarget := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugStepIntoTarget));
+  // Schrittfilter beim Hineinspringen (#850): Schalter, Arten, Muster.
+  FDebugStepFilters := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugStepFilters));
+  FDebugStepFilterKinds[TStepFilterKind.Getters] := AddCheck(TAtlasStrings.Text(TAtlasTextId.StepFilterKindGetters));
+  FDebugStepFilterKinds[TStepFilterKind.Setters] := AddCheck(TAtlasStrings.Text(TAtlasTextId.StepFilterKindSetters));
+  FDebugStepFilterKinds[TStepFilterKind.Trivial] := AddCheck(TAtlasStrings.Text(TAtlasTextId.StepFilterKindTrivial));
+  FDebugStepFilterKinds[TStepFilterKind.Operators] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.StepFilterKindOperators));
+  FDebugStepFilterKinds[TStepFilterKind.EmptyConstructors] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.StepFilterKindEmptyConstructors));
+  FDebugStepFilterPatterns := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsDebugStepFilterPatterns));
   FDebugStepIntoTargetKey := AddKey(TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand));
   // „kein Zugriff auf Wert“ erklären (#840).
   FDebugExplainUnavailable := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExplainUnavailable));
@@ -2805,6 +2822,7 @@ var
   Action: TAtlasQuickAction;
   Kind: TAtlasOverviewKind;
   VisualizerKind: TAtlasVisualizerKind;
+  StepFilterKind: TStepFilterKind;
 begin
   // Aus SaveTo: Element und die Einstellungen, die es schreibt. Listen aus mehreren Haken zeigen keinen Punkt
   // (der gälte für jeden Haken), lassen sich aber zurücksetzen.
@@ -3065,6 +3083,10 @@ begin
   FMarks.Bind(FDebugDisplayRules, ['DebugDisplayRules']);
   FMarks.Bind(FDebugDisplayRulesAllowCalls, ['DebugDisplayRulesAllowCalls']);
   FMarks.Bind(FDebugStepIntoTarget, ['DebugStepIntoTarget']);
+  FMarks.Bind(FDebugStepFilters, ['DebugStepFilters']);
+  for StepFilterKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+    FMarks.Bind(FDebugStepFilterKinds[StepFilterKind], ['DebugStepFilterKinds']);
+  FMarks.Bind(FDebugStepFilterPatterns, ['DebugStepFilterPatterns']);
   FMarks.Bind(FDebugStepIntoTargetKey, ['DebugStepIntoTargetKey']);
   FMarks.Bind(FDebugExplainUnavailable, ['DebugExplainUnavailable']);
   FMarks.Bind(FDebugCompletionInDialogs, ['DebugCompletionInDialogs']);
@@ -4722,6 +4744,11 @@ begin
   Result := FDebugVisualizerKinds[AKind];
 end;
 
+function TAtlasSettingsPage.DebugStepFilterKindCheck(AKind: TStepFilterKind): TCheckBox;
+begin
+  Result := FDebugStepFilterKinds[AKind];
+end;
+
 function TAtlasSettingsPage.AddCheck(const ACaption: string): TCheckBox;
 begin
   Result := TCheckBox.Create(Self);
@@ -4945,7 +4972,9 @@ var
   Kind: TAtlasOverviewKind;
   Kinds: TAtlasOverviewKinds;
   VisualizerKind: TAtlasVisualizerKind;
+  StepFilterKind: TStepFilterKind;
   VisualizerKinds: TAtlasVisualizerKinds;
+  StepFilterKinds: TStepFilterKinds;
 begin
   FWidths := ASettings;
   FEnabled.Checked := ASettings.Enabled;
@@ -5241,6 +5270,11 @@ begin
   FDebugDisplayRules.Checked := ASettings.DebugDisplayRules;
   FDebugDisplayRulesAllowCalls.Checked := ASettings.DebugDisplayRulesAllowCalls;
   FDebugStepIntoTarget.Checked := ASettings.DebugStepIntoTarget;
+  FDebugStepFilters.Checked := ASettings.DebugStepFilters;
+  StepFilterKinds := TStepFilterNames.ParseKinds(ASettings.DebugStepFilterKinds);
+  for StepFilterKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+    FDebugStepFilterKinds[StepFilterKind].Checked := StepFilterKind in StepFilterKinds;
+  FDebugStepFilterPatterns.Text := ASettings.DebugStepFilterPatterns;
   FDebugStepIntoTargetKey.Text := ShortCutToText(TShortCut(ASettings.DebugStepIntoTargetKey));
   FDebugExplainUnavailable.Checked := ASettings.DebugExplainUnavailable;
   FDebugCompletionInDialogs.Checked := ASettings.DebugCompletionInDialogs;
@@ -5393,7 +5427,9 @@ var
   Kind: TAtlasOverviewKind;
   Kinds: TAtlasOverviewKinds;
   VisualizerKind: TAtlasVisualizerKind;
+  StepFilterKind: TStepFilterKind;
   VisualizerKinds: TAtlasVisualizerKinds;
+  StepFilterKinds: TStepFilterKinds;
 begin
   ASettings.Enabled := FEnabled.Checked;
   ASettings.ServerPath := Trim(FServerPath.Text);
@@ -5730,6 +5766,13 @@ begin
   ASettings.DebugDisplayRules := FDebugDisplayRules.Checked;
   ASettings.DebugDisplayRulesAllowCalls := FDebugDisplayRulesAllowCalls.Checked;
   ASettings.DebugStepIntoTarget := FDebugStepIntoTarget.Checked;
+  ASettings.DebugStepFilters := FDebugStepFilters.Checked;
+  StepFilterKinds := [];
+  for StepFilterKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+    if FDebugStepFilterKinds[StepFilterKind].Checked then
+      Include(StepFilterKinds, StepFilterKind);
+  ASettings.DebugStepFilterKinds := TStepFilterNames.KindsText(StepFilterKinds);
+  ASettings.DebugStepFilterPatterns := TStepFilterNames.NormalizePatterns(FDebugStepFilterPatterns.Text);
   ASettings.DebugStepIntoTargetKey := Integer(TextToShortCut(Trim(FDebugStepIntoTargetKey.Text)));
   ASettings.DebugExplainUnavailable := FDebugExplainUnavailable.Checked;
   ASettings.DebugCompletionInDialogs := FDebugCompletionInDialogs.Checked;
