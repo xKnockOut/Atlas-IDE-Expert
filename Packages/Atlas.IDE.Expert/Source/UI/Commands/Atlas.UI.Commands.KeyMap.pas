@@ -356,6 +356,8 @@ begin
       Id := TAtlasTextId.NextBookmarkCommand;
     TAtlasKeyFunction.PreviousBookmark:
       Id := TAtlasTextId.PreviousBookmarkCommand;
+    TAtlasKeyFunction.StepIntoTarget:
+      Id := TAtlasTextId.StepIntoTargetCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

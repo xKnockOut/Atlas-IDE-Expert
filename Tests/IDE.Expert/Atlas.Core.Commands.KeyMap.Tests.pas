@@ -424,6 +424,9 @@ begin
   Assert.AreEqual('Atlas.QuickBookmarkToggle', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.QuickBookmark));
   Assert.AreEqual('Atlas.NextBookmark', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NextBookmark));
   Assert.AreEqual('Atlas.PreviousBookmark', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.PreviousBookmark));
+  // Gezielt hineinspringen (#836): Strg+Alt+F7, aus = Kürzel frei.
+  Assert.AreEqual($C076, Integer(EntryOf(Entries, TAtlasKeyFunction.StepIntoTarget).Key));
+  Assert.AreEqual('Atlas.StepIntoTarget', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.StepIntoTarget));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
   Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearch).Priority);
@@ -504,6 +507,7 @@ begin
   Settings.NewLineAround := False;
   Settings.Unwrap := False;
   Settings.ProblemsWindow := False;
+  Settings.DebugStepIntoTarget := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
@@ -519,7 +523,7 @@ begin
       TAtlasKeyFunction.MultiCursorSkip, TAtlasKeyFunction.MultiCursorLineEnds, TAtlasKeyFunction.MultiCursorAbove,
       TAtlasKeyFunction.MultiCursorBelow, TAtlasKeyFunction.FormatCode, TAtlasKeyFunction.ToggleBlockComment,
       TAtlasKeyFunction.NewLineBelow, TAtlasKeyFunction.NewLineAbove, TAtlasKeyFunction.Unwrap,
-      TAtlasKeyFunction.ProblemsWindow] then
+      TAtlasKeyFunction.ProblemsWindow, TAtlasKeyFunction.StepIntoTarget] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),

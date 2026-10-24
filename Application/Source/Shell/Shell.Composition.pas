@@ -66,6 +66,8 @@ uses
   Atlas.Common.Architecture.Service,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesService,
+  Atlas.Common.Lsp.DebugDisplay,
+  Atlas.Common.Lsp.EventHandlers,
   Atlas.Common.Lsp.Recursion,
   Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.SlashMenu,
@@ -179,6 +181,9 @@ type
     FUnitRelationsGraph: TUsesGraphService;
     FUnitRelations: TLspUnitRelations;
     FSymbolPath: TLspSymbolPath;
+    /// <summary>Eigene Wertdarstellungen beim Debuggen (#854): Befehl atlas.server.debugDisplayRules.</summary>
+    FDebugDisplay: TLspDebugDisplay;
+    FEventHandlers: TLspEventHandlers;
     FRecursion: TLspRecursion;
     /// <summary>Baseline für Altprojekte (#97): Befehl atlas.updateBaseline.</summary>
     FBaseline: TLspBaseline;
@@ -378,6 +383,7 @@ type
     function InvertBoolean(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Umschließung entfernen“ (#657): Konstrukte am Cursor mit Varianten und Vorschau.</summary>
     function Unwrap(const AArguments: TJSONArray): TJSONValue;
+    function StepTargets(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable an APosition.</summary>
     function ExplicitTypeActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Warnung hier abschalten“ auf Meldungen des letzten Compilerlaufs (#531).</summary>
@@ -581,6 +587,7 @@ uses
   Atlas.Common.Lsp.PropertyFromAccessors,
   Atlas.Common.Lsp.InvertBoolean,
   Atlas.Common.Lsp.Unwrap,
+  Atlas.Common.Lsp.StepTargets,
   Atlas.Common.Lsp.UnitRename,
   Atlas.Common.Lsp.SmartPaste,
   Atlas.Common.Editing.SmartPaste,
@@ -1296,6 +1303,11 @@ begin
     end,
     EnsureUnit, SymbolPathSourceFor);
   FSymbolPath.Attach(FDispatcher);
+  // Wertdarstellungen (#854): Dateien wie die TODO-Übersicht, Typen und Vorfahren aus dem Index.
+  FDebugDisplay := TLspDebugDisplay.Create(MetricsSourceFor, ReadSourceText);
+  FDebugDisplay.Index := FIndex;
+  FEventHandlers := TLspEventHandlers.Create(MetricsSourceFor, ReadSourceText);
+  FEventHandlers.Index := FIndex;
   // Rekursionssymbole im Editorrand (#623).
   FRecursion := TLspRecursion.Create(ReadSourceText);
   // Baseline (#97): dieselben Dateien wie die Metriken, Prüfung wie im Editor (Regeln, Index, Formulardatei).
@@ -1571,6 +1583,11 @@ begin
     begin
       Result := Unwrap(AArguments);
     end);
+  FCommands.Register(TLspStepTargets.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := StepTargets(AArguments);
+    end);
   FCommands.Register(TLspUnitRename.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
@@ -1630,6 +1647,16 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FSymbolPath.Execute(AArguments);
+    end);
+  FCommands.Register(TLspDebugDisplay.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FDebugDisplay.Execute(AArguments);
+    end);
+  FCommands.Register(TLspEventHandlers.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FEventHandlers.Execute(AArguments);
     end);
   FCommands.Register(TLspRecursion.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2229,6 +2256,8 @@ begin
   FArchitectureService.Free;
   FUnitRelations.Free;
   FUnitRelationsGraph.Free;
+  FDebugDisplay.Free;
+  FEventHandlers.Free;
   FRecursion.Free;
   FCompilerBaseline.Free;
   FBaseline.Free;
@@ -3442,6 +3471,36 @@ begin
   end;
   // Nur Zahlen ins Log, keine Namen und Pfade (#647).
   FLogger.Info(Format('Umschließung entfernen: %d Konstrukte', [(Answer.GetValue('candidates') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.StepTargets(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Line: Integer;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+begin
+  // Argumente: URI und Zeile (ab 0) des Ausführungspunkts (#836).
+  if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONNumber) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "line" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Line := TJSONNumber(AArguments.Items[1]).AsInt;
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspStepTargets.Execute(Resolver, FIndex, Shared.Tree, Document.Text, TDocumentUris.ToPath(Uri), Line,
+      ReadSourceText);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Gezielt hineinspringen: %d Aufrufe', [(Answer.GetValue('calls') as TJSONArray).Count]));
   Result := Answer;
 end;
 

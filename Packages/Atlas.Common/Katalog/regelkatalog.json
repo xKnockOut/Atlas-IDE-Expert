@@ -1347,6 +1347,16 @@
       ]
     },
     {
+      "id": "debug-display-placeholder",
+      "name": "Debugger display names an unknown member",
+      "category": "bug",
+      "severity": "warning",
+      "group": "robustness",
+      "description": "A debugger display rule above a type (// atlas-debug: '{Name}, {City}', [AtlasDebugDisplay('…')], // atlas-debug-children: Name, City or [AtlasDebugChildren('…')]) names a placeholder or child that is not a field, property or method of the type or one of its ancestors, or the template is invalid (unclosed or empty brace). In the debugger such a placeholder stays empty ({?Name}). Ancestors come from the unit and the index; when an ancestor is unknown the rule stays silent for that type. Members of TObject (ClassName, ToString, …) are always known.",
+      "bad": "// atlas-debug: '{Name}, {Stadt}'\nTKunde = class\n  Name, Ort: string;\nend;",
+      "good": "// atlas-debug: '{Name}, {Ort}'\nTKunde = class\n  Name, Ort: string;\nend;"
+    },
+    {
       "id": "component-palette-icon",
       "name": "Registered component without palette icon",
       "category": "code-smell",

@@ -127,6 +127,7 @@
         <DCCReference Include="Source\Index\Atlas.Common.Index.Usages.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Files.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.TypeMembers.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.SymbolIndex.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.NameIndex.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.LibraryUnits.pas"/>
@@ -223,6 +224,7 @@
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.Parser.pas"/>
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.Navigation.pas"/>
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.FormModel.pas"/>
+        <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.EventHandlers.pas"/>
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.FormInfo.pas"/>
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.BinaryForm.pas"/>
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.FormFiles.pas"/>
@@ -249,6 +251,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionExceptions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionSyntax.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionUses.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionDebugDisplay.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionInherited.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionSameNames.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionRequest.pas"/>
@@ -291,9 +294,12 @@
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Report.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Service.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DebugDisplay.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Todos.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Architecture.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DebugDisplay.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.EventHandlers.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Recursion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.OverrideMarks.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Baseline.pas"/>
@@ -352,6 +358,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InvertBoolean.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Unwrap.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Unwrap.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StepTargets.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.InterfaceStubs.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StringLiteralCommands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SlashMenu.pas"/>
@@ -485,6 +492,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Preprocessor.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.XmlDoc.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.SystemIntrinsics.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.StepCalls.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

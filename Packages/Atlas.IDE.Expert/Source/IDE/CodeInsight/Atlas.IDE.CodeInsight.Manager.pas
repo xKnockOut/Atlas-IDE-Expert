@@ -177,6 +177,8 @@ type
     function CurrentEditView: IOTAEditView;
     /// <summary>Cursorzeile ist ein ///-Kommentar (XMLDoc, #435).</summary>
     function InXmlDocLine: Boolean;
+    /// <summary>Cursorzeile ist eine Wertdarstellung (// atlas-debug:, [AtlasDebugDisplay], #854).</summary>
+    function InDebugDisplayLine: Boolean;
     /// <summary>Cursor im Namen von FieldByName('…'), FindField('…') oder ParamByName('…') (#461).
     /// ATypedQuote: Das gerade getippte ' steht vielleicht noch nicht im Puffer.</summary>
     function InDataNameString(ATypedQuote: Boolean): Boolean;
@@ -313,6 +315,7 @@ type
 implementation
 
 uses
+  Atlas.Text.DebugDisplay,
   Atlas.Core.Hover.DebugValue,
   Atlas.IDE.Hover.DebugValue,
   Atlas.Core.Diagnostics.Guard,
@@ -1717,6 +1720,23 @@ begin
     TrimLeft(TAtlasEditorBuffer.LineText(View, View.CursorPos.Line)).StartsWith('///');
 end;
 
+function TAtlasCodeInsightManager.InDebugDisplayLine: Boolean;
+var
+  View: IOTAEditView;
+  Line, Template: string;
+  Column: Integer;
+  Names: TArray<string>;
+begin
+  View := CurrentEditView;
+  Result := False;
+  if (View = nil) or (View.Buffer = nil) then
+    Exit;
+  Line := TAtlasEditorBuffer.LineText(View, View.CursorPos.Line);
+  Result := TDebugDisplayText.CommentTemplate(Line, Template, Column) or
+    TDebugDisplayText.AttributeTemplate(Line, Template, Column) or TDebugDisplayText.CommentChildren(Line, Names) or
+    TDebugDisplayText.AttributeChildren(Line, Names);
+end;
+
 function TAtlasCodeInsightManager.InDataNameString(ATypedQuote: Boolean): Boolean;
 var
   View: IOTAEditView;
@@ -1770,6 +1790,13 @@ begin
           CodeInsightType := citCodeInsight;
           InvokeType := itTimer;
         end;
+      // Nach { in einer Wertdarstellung die Mitglieder des Typs (#854).
+      '{':
+        if InDebugDisplayLine then
+        begin
+          CodeInsightType := citCodeInsight;
+          InvokeType := itTimer;
+        end;
       // Nach FieldByName(' die Feldnamen (#461).
       '''':
         if InDataNameString(True) then
@@ -1788,6 +1815,9 @@ begin
       // Vervollständigung bleibt; die XMLDoc-Quelle liefert die Tags.
     else if (CodeInsightType = citCodeInsight) and (AElement = atString) and InDataNameString(AChar = '''') then
       // Feld- und Parameternamen (#461): Vervollständigung im String, die Namen kommen vom Server.
+    else if (CodeInsightType = citCodeInsight) and ((AElement = atComment) or (AElement = atString)) and
+      InDebugDisplayLine then
+      // Platzhalter in Wertdarstellungen (#854): die Mitglieder des Typs kommen vom Server.
     else if (AChar = '<') or ((CodeInsightType in [citCodeInsight, citParameterCodeInsight]) and
       ((AElement = atComment) or (AElement = atString))) then
       CodeInsightType := citNone;

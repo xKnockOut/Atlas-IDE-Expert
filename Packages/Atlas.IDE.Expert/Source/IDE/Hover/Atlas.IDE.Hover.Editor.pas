@@ -30,7 +30,10 @@
 // der Maus über den Debugger der IDE aus (TAtlasIdeDebugValues) und zeigt den
 // Wert ganz oben; ohne Antwort des Servers nur den Wert. Antwortet der Debugger
 // verzögert, steht dort „wird ausgewertet …“, bis der Wert kommt. Schalter
-// debug.hoverValues (DebugHoverValues).
+// debug.hoverValues (DebugHoverValues). Für Listen, Datenmengen, Farben und
+// die anderen Arten aus debug.visualizers.types bereiten die Visualisierer
+// (#835) den Wert auf, sobald der Server den Typ gemeldet hat; das gilt auch
+// unter Win64, wo die Visualisierer der IDE nicht laufen.
 // Die IDE zeigt dann keinen eigenen Tooltip: GetHintText und GetHelpInsightHtml
 // liefern '' (Manager). Bedient Atlas die Datei nicht (Hauptschalter, Server
 // fehlt, Sicherung), übernimmt die IDE und der Atlas-Tooltip bleibt zu.
@@ -127,6 +130,10 @@ type
     FDebug: TAtlasIdeDebugValues;
     FDebugExpression: string;
     FDebugValue: TAtlasDebugValue;
+    /// <summary>Ersatztext der Visualisierer (#835) zu FDebugValue und Deklaration; Schlüssel des letzten Aufrufs.
+    /// </summary>
+    FVisualizedKey: string;
+    FVisualized: string;
     // Bezeichner unter der Maus bzw. im offenen Tooltip.
     FEditor: TWinControl;
     FView: IOTAEditView;
@@ -164,6 +171,8 @@ type
     function CurrentSession: TLspSession;
     function Fetch(const ARef: TAtlasHoverTypeRef; out AData: TAtlasHoverData): Boolean;
     function CurrentView: TAtlasHoverView;
+    /// <summary>FDebugValue, aufbereitet von den Visualisierern (#835), sobald Wert und Typ bekannt sind.</summary>
+    function VisualizedDebugValue: TAtlasDebugValue;
     procedure Refresh;
     procedure Execute(AAction: TAtlasHoverAction);
     procedure ShowUsages;
@@ -191,6 +200,9 @@ type
 implementation
 
 uses
+  Atlas.Core.Debug.Visualizers,
+  Atlas.IDE.Debug.Visualizers,
+  Atlas.IDE.Debug.DisplayRules,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Winapi.Windows,
@@ -388,8 +400,38 @@ begin
   if FHistory.Count <= 1 then
   begin
     Result.Problems := FProblems;
-    Result.DebugValue := FDebugValue;
+    Result.DebugValue := VisualizedDebugValue;
   end;
+end;
+
+function TAtlasEditorHover.VisualizedDebugValue: TAtlasDebugValue;
+var
+  Data: TAtlasHoverData;
+  Chain: TArray<string>;
+  Ancestor: TAtlasHoverTypeRef;
+  Key: string;
+begin
+  Result := FDebugValue;
+  if FDebugValue.State <> TAtlasDebugValueState.Value then
+    Exit;
+  Data := FHistory.Current;
+  if not Data.Found then
+    Exit;
+  // Einmal je Wert und Typ: Die Visualisierer werten im Debugger aus, Refresh kommt öfter.
+  Key := FDebugValue.Expression + #0 + FDebugValue.Text + #0 + Data.Declaration;
+  if Key <> FVisualizedKey then
+  begin
+    FVisualizedKey := Key;
+    Chain := TArray<string>.Create(TAtlasVisualizers.DeclaredType(Data.Declaration));
+    for Ancestor in Data.Ancestors do
+      Chain := Chain + [Ancestor.Name];
+    // Eigene Regel des Typs (#854) vor den Visualisierern für Bibliothekstypen (#835).
+    FVisualized := TAtlasIdeDisplayRules.HoverText(FDebugValue.Expression, Chain);
+    if FVisualized = '' then
+      FVisualized := TAtlasIdeVisualizers.HoverText(FDebugValue.Expression, Chain, FDebugValue.Text);
+  end;
+  if FVisualized <> '' then
+    Result := TAtlasDebugValue.Evaluated(FDebugValue.Expression, FVisualized);
 end;
 
 procedure TAtlasEditorHover.Refresh;
@@ -410,6 +452,8 @@ begin
   FProblems := nil;
   FDebug.Cancel;
   FDebugValue := Default(TAtlasDebugValue);
+  FVisualizedKey := '';
+  FVisualized := '';
   FUsagesCount := -1;
   FShownKey := '';
   FKey := '';
