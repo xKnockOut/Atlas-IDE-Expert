@@ -1073,3 +1073,10 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - `atlas.json` des Repos: `"minDelphiVersion": "23.0"` (CLAUDE.md: muss mit Delphi 12 übersetzen).
 - Plugin-Hook ohne `if` (Semantik von `Edit(...)` für Write/MultiEdit ungeklärt); `hook_check` filtert selbst. Repo-Hook ohne pwsh: einmal je Sitzung `additionalContext`.
 - Geprüft: FPC-Tests der geänderten Units grün (zwei Fehlschläge in SyntaxDiagnostics/CodeTools auch auf fc56a8e, Harness-bedingt), `--check` und `hook_check` über MCP mit Probe-Datei, alle Check-Skripte grün. Offen: Delphi-Bau 0/0/0 (Win64-Gruppe, Win32-Plugin), Tests unter Delphi (u. a. `KnownVersionsForMinDelphiVersion`, `CanSuppress`), Live-Probe des Plugin-Hooks in einer Claude-Code-Sitzung.
+
+## MCP Inspector und Probelauf (#1125, 23.10.2026, Branch `claude/project-thread-amkn03`, ungebaut)
+- Baut auf `claude/project-thread-e74he2` (Atlas-MCP in der Cloud, Plugin-Hook, `/atlas:bauen`) auf.
+- `Tools/Start-McpInspector.ps1`: MCP Inspector 2.12.0 im Browser, im Terminal (`-Tui`) oder als Kommandozeile (`-Method`, `-Strict`, `-Uri`, `-Output`). In der Cloud gegen den Linux-Server erprobt (Web verbindet, TUI, CLI).
+- `Tools/Test-McpTools.ps1` mit `Tools/Mcp/Werkzeug-Beispiele.json`: alle Werkzeuge in einer Sitzung gegen `Tests/Referenzprojekt`, roher Mitschnitt in `Output/Mcp/`. Cloud: 18 von 20 grün, `build_project`/`run_tests` nur mit `-WithProcessTools`. Neues Werkzeug ohne Beispiel lässt den Lauf scheitern.
+- Befund des Inspectors behoben: `resources/templates/list` fehlte (Fehler bei jedem Verbinden), jetzt leere Liste (`TMcpServer.ListResourceTemplates`, Test `ResourceTemplatesAreEmptyList`). Die Testunit ist nur unter FPC nicht übersetzt worden: vor dem Merge mit Delphi bauen.
+- Offen, nur gemeldet: `initialize` übernimmt jede vom Client gewünschte Protokollversion, auch unbekannte (Inspector verhandelt `2025-11-25`). `get_todos`, `get_metrics`, `get_diagnostics` ohne `file` melden „Kein Projekt geladen“ in einem Ordner mit `.groupproj` und mehreren `.dproj` ohne `project` in `atlas.json` (z. B. Referenzprojekt).
